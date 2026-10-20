@@ -125,9 +125,7 @@ export function ReviewQueue({ proposals, pending, onApply, onDecline, onOpenPage
                 </div>
                 <div className="review-meta">{source(p)}</div>
                 {p.proposal?.rationale ? <p className="review-note">{p.proposal.rationale}</p> : null}
-                {p.staleNow ? <p className="review-note review-note--warn">{r.staleNote}</p> : null}
                 {p.notice === null ? null : <p className="review-note review-note--warn">{p.notice}</p>}
-                {(p.unverified ?? []).length === 0 ? null : <p className="review-note review-note--warn">{r.unverifiedNote}</p>}
                 {(p.unverified ?? []).length === 0 ? null : (
                   <div className="wkrel review-unverified">
                     <span className="rl">{r.unverifiedLabel}</span>

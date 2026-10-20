@@ -4,6 +4,7 @@ import { delivery } from '../../ipc.js'
 import { useMessages } from '../../messages/useMessages.js'
 import { EntityLink } from '../EntityLink.js'
 import { FormInput } from '../FormControls.js'
+import { Tag } from '../Tag.js'
 import {
   ServiceActions, ServiceCard, ServiceClearKeyButton, ServiceConnectionStatus, ServiceError, ServiceField,
   ServiceFoot, ServiceSavedKey, ServiceStatus,
@@ -121,6 +122,7 @@ export function SemanticKeySettings() {
               }}
             />
           ) : null}
+          {canTestConnection ? null : <Tag>{m.settings.model.connection.notSaved}</Tag>}
           <button
             className="btn" disabled={!canTestConnection || saving || connectionCheck.state === 'testing'}
             onClick={() => { void testConnection() }}

@@ -85,6 +85,7 @@ const plan = {
 describe('PaperWikiIngest', () => {
   let host: HTMLDivElement
   let root: Root
+  const states = () => [...host.querySelectorAll('.wiki-ingest-body > .tag')].map((tag) => tag.textContent)
   beforeEach(() => {
     globalThis.IS_REACT_ACT_ENVIRONMENT = true
     host = document.createElement('div')
@@ -139,7 +140,7 @@ describe('PaperWikiIngest', () => {
       [...host.querySelectorAll<HTMLButtonElement>('button')]
         .find((button) => button.textContent === '结构化审核')!.click()
     })
-    expect(host.textContent).toContain('Markdown 修改已保留')
+    expect(host.querySelector('.wiki-ingest-review > .tag')?.textContent).toBe('Markdown 已修改')
     expect(api.start).toHaveBeenCalledTimes(1)
     await act(async () => {
       [...host.querySelectorAll<HTMLButtonElement>('button')]
@@ -179,7 +180,7 @@ describe('PaperWikiIngest', () => {
 
     expect(api.prepare).not.toHaveBeenCalled()
     expect(api.start).not.toHaveBeenCalled()
-    expect(host.textContent).toContain('本次没有调用模型')
+    expect(states()).toEqual(['无阅读记录', '已恢复上次的提案'])
     expect(host.textContent).toContain('记住什么')
 
     await act(async () => {
@@ -210,10 +211,17 @@ describe('PaperWikiIngest', () => {
     })
     await act(async () => { root.render(withMessages(<PaperWikiIngest paper={paper} reading={reading} />)) })
 
-    expect(host.textContent).toContain('仅供查看')
     const apply = [...host.querySelectorAll<HTMLButtonElement>('button')]
       .find((button) => button.textContent === '确认写入 Wiki')!
     expect(apply.disabled).toBe(true)
+    expect(apply.parentElement!.querySelector('.tag')?.textContent).toBe('依据已变化 · 请重新生成')
+  })
+
+  it('states a missing model as a short tag, never a sentence', async () => {
+    api.prepare.mockResolvedValue({ ...plan, model: { ...plan.model, configured: false } })
+    await act(async () => { root.render(withMessages(<PaperWikiIngest paper={paper} reading={reading} />)) })
+    expect(states()).toEqual(['无阅读记录', 'AI 未连接'])
+    expect(host.querySelector('.wiki-ingest-status')).toBeNull()
   })
 
   it('collects optional local feedback before rejecting a proposal', async () => {

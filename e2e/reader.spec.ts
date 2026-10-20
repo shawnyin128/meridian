@@ -554,7 +554,7 @@ test('内化到 Wiki 先展示完整费用范围,明确确认后才消费一次�
 
   await shown(win, '.wiki-ingest .harness-trigger').click()
   const dialog = win.locator('[role="alertdialog"]')
-  await expect(dialog).toContainText('本地或演示流程，不会产生 API 费用')
+  await expect(dialog.locator('.modal-actions .tag')).toHaveText('免费')
   await expect(dialog).toContainText('当前论文')
   await expect(dialog).not.toContainText('预计输入')
   await expect(dialog).not.toContainText('运行上限')

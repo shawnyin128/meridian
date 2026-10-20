@@ -19,6 +19,7 @@ export const ideas = {
     linked: 'Linked to project',
   },
   manage: (title: string) => `Manage idea: ${title}`,
+  projectFinished: 'Project finished',
   updated: (date: string) => `Updated ${date}`,
   detailHeading: 'Idea details',
   bodyLabel: 'Idea',

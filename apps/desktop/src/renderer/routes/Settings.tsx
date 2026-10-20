@@ -247,11 +247,11 @@ export function Settings() {
               </>
             )}
           {location?.locked
-            ? <p className="storage-note">{m.settings.storage.lockedNote}</p>
+            ? <Tag className="storage-state">{m.settings.storage.lockedNote}</Tag>
             : location?.restartRequired
               ? (
-                <div className="storage-note pending" role="status">
-                  <span>{m.settings.storage.pendingNote}</span>
+                <div className="storage-pending" role="status">
+                  <Tag tone="warn">{m.settings.storage.pendingNote}</Tag>
                   <button className="btn pri" onClick={() => appMenu.restartApp()}>
                     {m.settings.storage.restartNow}
                   </button>

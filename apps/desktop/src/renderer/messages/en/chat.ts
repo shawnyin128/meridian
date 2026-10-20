@@ -4,6 +4,7 @@ import { chat as zh } from '../zh/chat.js'
 export const chat = {
   newChat: 'New chat',
   saveIdeaLabel: 'Save as idea',
+  noDiscussion: 'No discussion yet',
   mentionGroup: { project: 'Projects', paper: 'Papers', page: 'Wiki' },
   conflictQuestion: 'Why do these two conclusions conflict?',
   quotePrefix: (quote: string) => `About this passage: “${quote}” `,
@@ -21,5 +22,4 @@ export const chat = {
   askAboutPaper: 'Ask about this paper',
   paperComposerPlaceholder: 'Ask about this paper, or note a related idea…',
   actionDone: 'Added to the research log',
-  noModel: 'Connect an AI model in Settings to get an answer.',
 } satisfies typeof zh

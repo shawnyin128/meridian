@@ -3,7 +3,6 @@ import type {
   ChatAction, ChatMessage, ChatMessageFields, ChatRun,
 } from '../../../shared/contract.js'
 import { useMessages } from '../../messages/useMessages.js'
-import type { Catalog } from '../../messages/catalog.js'
 import { Icon } from '../icons.js'
 import { AgentLabel } from '../SourceLabel.js'
 
@@ -11,9 +10,6 @@ export const plain = (text: string): { kind: 'text'; text: string } => ({ kind: 
 export const said = (runs: ChatRun[]): ChatMessageFields => ({ role: 'you', runs, actions: [] })
 export const answer = (runs: ChatRun[], actions: ChatAction[] = []): ChatMessageFields =>
   ({ role: 'ai', runs, actions })
-/** The honest status until a model is connected; global and paper chats must state the same limits. */
-export const noModel = (m: Catalog): ChatMessageFields =>
-  ({ role: 'status', runs: [plain(m.chat.noModel)], actions: [] })
 
 /** The text of a message; each run renders by its own kind. */
 function Runs({ runs }: { runs: ChatRun[] }) {

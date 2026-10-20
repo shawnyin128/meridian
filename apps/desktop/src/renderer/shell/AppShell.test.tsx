@@ -18,6 +18,7 @@ const fixture = vi.hoisted(() => ({
   back: vi.fn(),
   platform: 'darwin',
   fullScreen: [] as ((on: boolean) => void)[],
+  today: () => Promise.resolve('2026-10-18'),
 }))
 
 const none = () => Promise.resolve([])
@@ -45,13 +46,13 @@ vi.mock('../ipc.js', () => ({
   project: { list: () => Promise.resolve(fixture.projects) },
   search: { query: none },
   trash: { list: none },
-  vault: { today: () => Promise.resolve('2026-10-18') },
+  vault: { today: () => fixture.today() },
   watch: { list: () => Promise.resolve(fixture.watches) },
   wiki: { home: () => Promise.resolve({ aggregationCount: 0 }) },
 }))
 vi.mock('../components/AboutDialog.js', () => ({ AboutDialog: () => null }))
 
-const { AppShell, useCrumbTail, useEscapeLayer, useNotice, usePaperChatCollapsed } = await import('./AppShell.js')
+const { AppShell, useCrumbTail, useEscapeLayer, useNotice, usePaperChatCollapsed, useSettingsOpen } = await import('./AppShell.js')
 const { TOOLTIP_DELAY } = await import('../components/Tooltip.js')
 
 const TAIL = [{ text: '深层' }]
@@ -117,6 +118,36 @@ function slash(target: HTMLElement): boolean {
 afterEach(() => {
   if (root !== null) act(() => root!.unmount())
   root = null
+})
+
+/** Shows which settings category the shell has asked to open, or nothing while settings are closed. */
+function SettingsProbe() {
+  const { open, requestedCategory } = useSettingsOpen()
+  return <p id="settingsProbe">{open ? requestedCategory ?? 'default' : ''}</p>
+}
+
+describe('库打不开时', () => {
+  afterEach(() => { fixture.today = () => Promise.resolve('2026-10-18') })
+
+  it('报出原因，下面只有一个换论文库的操作，点它打开存储设置，不写一句该怎么做', async () => {
+    fixture.today = () => Promise.reject(new Error('库里没有论文页目录'))
+    globalThis.IS_REACT_ACT_ENVIRONMENT = true
+    window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'zh')
+    document.body.innerHTML = ''
+    host = document.createElement('div')
+    document.body.append(host)
+    root = createRoot(host)
+    await act(async () => {
+      root!.render(<MessagesProvider><AppShell screens={SCREENS} settings={<SettingsProbe />} /></MessagesProvider>)
+      await Promise.resolve()
+    })
+    const page = document.querySelector('.bootfail')!
+    expect(page.querySelector('.page-failure-note')).toBeNull()
+    const action = page.querySelector<HTMLButtonElement>('.btn')!
+    expect(action.textContent).toBe('换论文库')
+    act(() => action.click())
+    expect(document.querySelector('#settingsProbe')!.textContent).toBe('storage')
+  })
 })
 
 const press = (key: string, init: KeyboardEventInit = {}) => act(() => {

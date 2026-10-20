@@ -304,7 +304,7 @@ describe('Settings', () => {
     expect(dialog.querySelector('[data-setcat="model"]')?.classList.contains('on')).toBe(true)
   })
 
-  it('未配置 key 时科研卡片显示未配置，测试连接不可用', async () => {
+  it('未配置 key 时科研卡片显示未配置，测试连接不可用，按钮旁写着未保存', async () => {
     api.requestedCategory = 'research'
     await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
     const dialog = document.querySelector('.setdlg')!
@@ -312,8 +312,21 @@ describe('Settings', () => {
     expect(card.querySelector('.service-status-pill')?.textContent).toBe('未配置')
     const buttons = [...card.querySelectorAll<HTMLButtonElement>('button')]
     expect(buttons.find((b) => b.textContent === '测试连接')!.disabled).toBe(true)
+    expect(buttons.find((b) => b.textContent === '测试连接')!.previousElementSibling?.textContent).toBe('未保存')
     expect(buttons.find((b) => b.textContent === '保存配置')!.disabled).toBe(true)
     expect(buttons.some((b) => b.textContent === '清除已保存的 Key')).toBe(false)
+  })
+
+  it('模型配置还没保存时测试连接不可用，按钮旁写着未保存；保存过的可以测试，不写', async () => {
+    api.requestedCategory = 'model'
+    await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
+    const test = () => [...document.querySelectorAll<HTMLButtonElement>('.model-settings-card button')]
+      .find((b) => b.textContent === '测试连接')!
+    expect([test().disabled, test().previousElementSibling?.textContent]).toEqual([true, '未保存'])
+    api.modelSettings.mockResolvedValueOnce({ ...(await api.updateModelSettings()) })
+    await act(async () => { root.render(<MessagesProvider key="saved"><Settings /></MessagesProvider>) })
+    expect(test().disabled).toBe(false)
+    expect(document.querySelector('.model-settings-card .service-actions .tag')).toBeNull()
   })
 
   it('填写 key 并保存配置会调用 delivery.setSemanticKey', async () => {
@@ -463,6 +476,20 @@ describe('Settings', () => {
       expect([...pane.querySelectorAll('.settings-intro, .storage-head p, .storage-note')].map((p) => p.textContent), category)
         .toEqual([])
     }
+  })
+
+  it('库位置固定或要重启时，各写一个短状态：外部配置固定、重启后生效和立即重启', async () => {
+    api.requestedCategory = 'storage'
+    await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
+    const card = () => document.querySelector('.setdlg .storage-card')!
+    const states = () => [...card().querySelectorAll(':scope > .tag, :scope > [role="status"] > *')].map((node) => node.textContent)
+    expect(states()).toEqual(['库位置由外部配置固定'])
+    api.libraryLocation.mockResolvedValue({
+      root: '/tmp/meridian', source: 'configured', locked: false, restartRequired: true, openError: null,
+    })
+    await act(async () => { root.render(<MessagesProvider key="pending"><Settings /></MessagesProvider>) })
+    expect(states()).toEqual(['重启后生效', '立即重启'])
+    expect(card().querySelector('p')).toBeNull()
   })
 
   it('存储位置使用共享目录字段，不再另放一个选择按钮', async () => {

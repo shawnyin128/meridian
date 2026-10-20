@@ -91,8 +91,9 @@ describe('ReviewQueue', () => {
     ])
     expect([...row('p2').querySelectorAll('.diff div')].map((d) => d.textContent)).toEqual(['+ 新增结论：新结论', '+ 　实验 · draft 效率 · 加宽实验'])
     expect(row('p1').querySelector('.review-head .tag:not(.source-label)')).toBeNull()
-    expect(row('p2').querySelector('.tag--warn')!.textContent).toBe('已过期')
-    expect(row('p2').textContent).toContain('这些引句没有文字层可核对')
+    expect(row('p2').querySelector('.tag--warn')!.textContent).toBe('依据已变')
+    expect([...row('p2').querySelectorAll('.review-note--warn')].map((note) => note.textContent))
+      .toEqual([expect.stringContaining('这些引句没有文字层可核对')])
     expect(row('p1').querySelector<HTMLButtonElement>('.review-actions .btn.pri')!.disabled).toBe(false)
     expect(row('p2').querySelector<HTMLButtonElement>('.review-actions .btn.pri')!.disabled).toBe(true)
     const chip = row('p1').querySelector<HTMLElement>('.wkrel .tagchip')!
@@ -108,8 +109,9 @@ describe('ReviewQueue', () => {
     expect(row('p7').querySelector('.diff')!.textContent).toContain('证据 · Flux p.2「q」')
   })
 
-  it('引用了没验证的项目结论:标出结论待验证,应用按不了,点结论去验证它', () => {
-    expect(row('p6').querySelector('.tag--warn')!.textContent).toBe('结论待验证')
+  it('引用了没验证的项目结论:标出结论未验证,不另写一句,应用按不了,点结论去验证它', () => {
+    expect(row('p6').querySelector('.tag--warn')!.textContent).toBe('结论未验证')
+    expect(row('p6').querySelector('.review-note--warn')).toBeNull()
     expect(row('p6').querySelector<HTMLButtonElement>('.review-actions .btn.pri')!.disabled).toBe(true)
     const chip = row('p6').querySelector<HTMLElement>('.review-unverified .tagchip')!
     expect(chip.textContent).toBe('加宽实验')

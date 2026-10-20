@@ -93,12 +93,13 @@ export const SectionHeading = forwardRef<HTMLDivElement, {
 /**
  * The page that stands in when a screen cannot be shown: what broke, and the one way forward.
  * Both a library that will not open and a screen that threw while rendering land here, so the two
- * failures read the same. `action` is the single recovery control.
+ * failures read the same. `action` is the single recovery control; `note`, when given, is one line
+ * above it.
  */
 export function PageFailure({ title, error, note, action, className }: {
   title: ReactNode
   error: string | null | undefined
-  note: ReactNode
+  note?: ReactNode
   action: ReactNode
   className?: string
 }) {
@@ -107,7 +108,7 @@ export function PageFailure({ title, error, note, action, className }: {
       <PageHeader><PageTitle>{title}</PageTitle></PageHeader>
       <PageBody>
         <PageError error={error} />
-        <p className="page-failure-note">{note}</p>
+        {note === undefined ? null : <p className="page-failure-note">{note}</p>}
         {action}
       </PageBody>
     </PageShell>

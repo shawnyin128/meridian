@@ -200,13 +200,14 @@ describe('Chat composer', () => {
     await finish()
   })
 
-  it('快捷引用是一行的幽灵 chip，存为想法是排在工具栏末尾的幽灵按钮', () => {
+  it('快捷引用是一行的幽灵 chip，存为想法是排在工具栏末尾的幽灵按钮，还没讨论时旁边写着尚无讨论', () => {
     const chips = [...document.querySelectorAll<HTMLButtonElement>('#qmChips button')]
     expect(chips.map((chip) => [chip.className, chip.querySelector('.fade-text')?.textContent]))
       .toEqual([['btn ghost sm qm', '@草稿树项目']])
     const save = document.querySelector<HTMLButtonElement>('#qaIdea')!
     expect(save.className).toBe('btn ghost sm save-idea')
     expect(save.parentElement!.lastElementChild).toBe(save)
+    expect([save.disabled, save.previousElementSibling?.textContent]).toEqual([true, '尚无讨论'])
     expect(document.querySelector('.qsep')).toBeNull()
   })
 })

@@ -34,7 +34,7 @@ export const watches = {
   allAdded: '建议已全部添加',
   noneSuggested: '没有找到新的主题或作者',
   suggestionBasis: (n: number) => `基于 ${n} 篇相关论文`,
-  suggestionStale: '数据源暂时连不上，显示的是上次的建议',
+  suggestionStale: '离线 · 上次的建议',
   topicSuggestions: '值得关注的主题',
   authorSuggestions: '值得关注的作者',
   relatedPapers: (n: number) => n === 0 ? '来自项目' : `${n} 篇相关论文`,

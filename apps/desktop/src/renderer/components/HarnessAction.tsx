@@ -2,6 +2,7 @@ import type { HarnessPlan } from '../../shared/contract.js'
 import { useMessages } from '../messages/useMessages.js'
 import { ConfirmDialog } from './ConfirmDialog.js'
 import { GenerationControl } from './GenerationControl.js'
+import { Tag } from './Tag.js'
 import './HarnessAction.css'
 
 /**
@@ -33,21 +34,19 @@ export function HarnessAction({ plan, running, onStart, onCancel }: {
     <ConfirmDialog
       trigger={trigger}
       title={m.wiki.harness.confirmTitle(plan.label)}
-      confirmLabel={!plan.model.configured
-        ? m.wiki.harness.notConnected
-        : plan.action === 'create' ? m.wiki.harness.startCreate : m.wiki.harness.startUpdate}
+      confirmLabel={plan.action === 'create' ? m.wiki.harness.startCreate : m.wiki.harness.startUpdate}
       confirmTone="primary"
       confirmDisabled={!plan.model.configured}
       onConfirm={onStart}
+      state={(
+        <Tag tone={!plan.model.configured || plan.model.billable ? 'warn' : 'good'}>
+          {!plan.model.configured
+            ? m.wiki.harness.notConnectedDetail
+            : plan.model.billable ? m.wiki.harness.billableNote : m.wiki.harness.freeNote}
+        </Tag>
+      )}
       description={(
         <div className="harness-cost-plan">
-          <p className={!plan.model.configured || plan.model.billable ? 'cost-warning' : 'cost-demo'}>
-            {!plan.model.configured
-              ? m.wiki.harness.notConnectedDetail
-              : plan.model.billable
-                ? m.wiki.harness.billableNote
-                : m.wiki.harness.freeNote}
-          </p>
           <dl>
             <div><dt>{m.wiki.harness.scopeLabel}</dt><dd>{m.wiki.scope.currentPaper}</dd></div>
             <div>
@@ -56,7 +55,6 @@ export function HarnessAction({ plan, running, onStart, onCancel }: {
             </div>
             <div><dt>{m.wiki.harness.modelLabel}</dt><dd>{plan.model.provider} · {plan.model.name}</dd></div>
           </dl>
-          <small>{m.wiki.harness.authorizationNote}</small>
         </div>
       )}
     />

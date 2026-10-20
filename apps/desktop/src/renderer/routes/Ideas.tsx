@@ -56,7 +56,10 @@ function IdeaMenu({ idea, linked, onMove, canMove, onArchive, onDelete }: {
       <MenuItem disabled={!canMove(-1)} onSelect={() => onMove(-1)}>{m.common.moveUp}</MenuItem>
       <MenuItem disabled={!canMove(1)} onSelect={() => onMove(1)}>{m.common.moveDown}</MenuItem>
       <MenuSeparator />
-      <MenuItem disabled={locked} onSelect={onArchive}>{idea.archived ? m.common.unarchive : m.common.archive}</MenuItem>
+      <MenuItem disabled={locked} onSelect={onArchive}>
+        {idea.archived ? m.common.unarchive : m.common.archive}
+        {locked ? <span className="mi-key">{m.ideas.projectFinished}</span> : null}
+      </MenuItem>
       <MenuSeparator />
       <MenuItem className="mi danger" onSelect={onDelete}>{m.common.delete}</MenuItem>
     </DotsMenu>

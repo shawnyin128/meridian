@@ -17,6 +17,7 @@ export const ideas = {
     linked: '想法已关联项目',
   },
   manage: (title: string) => `管理想法：${title}`,
+  projectFinished: '项目已完成',
   updated: (date: string) => `${date} 更新`,
   detailHeading: '想法详情',
   bodyLabel: '想法',

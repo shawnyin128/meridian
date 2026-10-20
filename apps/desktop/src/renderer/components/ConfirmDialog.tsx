@@ -7,15 +7,17 @@ import { modalSurface } from './ModalDialog.js'
 /**
  * One destructive/confirming action shell with shared focus, wording order, and buttons, on the
  * dialog surface's confirmation step. `title` is the short question; `description` is the
- * consequence, on its own line under it.
+ * consequence, on its own line under it. `state` is a short state shown beside the buttons, such as
+ * what the confirmation costs or why it is disabled.
  */
 export function ConfirmDialog({
-  trigger, title, description, confirmLabel, cancelLabel,
+  trigger, title, description, state, confirmLabel, cancelLabel,
   confirmTone = 'danger', confirmDisabled = false, onConfirm,
 }: {
   trigger: ReactElement
   title: ReactNode
   description: ReactNode
+  state?: ReactNode
   confirmLabel?: ReactNode
   cancelLabel?: ReactNode
   confirmTone?: 'danger' | 'primary'
@@ -38,6 +40,7 @@ export function ConfirmDialog({
             <AlertDialog.Description className="modal-detail">{description}</AlertDialog.Description>
           </div>
           <div className="modal-actions">
+            {state === undefined ? null : <span className="modal-actions-state">{state}</span>}
             <AlertDialog.Cancel className="btn">{cancel}</AlertDialog.Cancel>
             <AlertDialog.Action
               className={confirmTone === 'danger' ? 'btn pri danger' : 'btn pri'}

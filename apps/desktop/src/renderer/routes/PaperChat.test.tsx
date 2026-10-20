@@ -29,6 +29,8 @@ const api = vi.hoisted(() => ({
   createConclusion: vi.fn(() => Promise.resolve({})),
   feedAppend: vi.fn(() => Promise.resolve()),
   bump: vi.fn(),
+  open: vi.fn(),
+  writes: [] as { result: unknown; opts: { note?: unknown; action?: (result: never) => { label: string; onAction: () => void } } }[],
   notice: { success: vi.fn(), refusal: vi.fn() },
   grip: {
     id: 'rrgrip', label: '论文对话宽度', value: 300, min: 240, max: 480,
@@ -50,14 +52,15 @@ vi.mock('../ipc.js', () => ({
 
 vi.mock('../shell/AppShell.js', () => ({
   useNotice: () => api.notice,
+  useJump: () => ({ jump: null, open: api.open, returnTo: vi.fn() }),
   useVaultRevision: () => ({ revision: 0, bump: api.bump }),
   usePaperChatGrip: () => api.grip,
   usePaperChatCollapsed: () => api.collapsed,
 }))
 
 vi.mock('../hooks/useVaultWrite.js', () => ({
-  useVaultWrite: () => async (op: Promise<unknown>) => {
-    await op
+  useVaultWrite: () => async (op: Promise<unknown>, opts = {}) => {
+    api.writes.push({ result: await op, opts })
     api.bump()
     return true
   },
@@ -90,6 +93,7 @@ describe('PaperChat', () => {
     window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'zh')
     document.body.innerHTML = ''
     vi.clearAllMocks()
+    api.writes.length = 0
     api.collapsed = false
   })
 
@@ -181,6 +185,7 @@ describe('PaperChat', () => {
       await Promise.resolve()
     })
 
+    expect(host.querySelector('.qacts .tag')).toBeNull()
     await act(async () => {
       host.querySelector<HTMLButtonElement>('.paper-chat .save-idea')!.click()
       await Promise.resolve()
@@ -197,6 +202,11 @@ describe('PaperChat', () => {
     expect(api.createIdea).toHaveBeenCalledWith(
       'chat-paper-1', '可验证的新方向', '把讨论后的机制和实验假设明确写下来',
     )
+    const saved = api.writes.at(-1)!
+    const action = saved.opts.action!(saved.result as never)
+    expect([saved.opts.note, action.label]).toEqual(['想法已保存', '打开'])
+    action.onAction()
+    expect(api.open).toHaveBeenCalledWith('ideas', 'idea-1')
     expect(document.body.textContent).not.toContain('存为结论')
   })
 
@@ -273,6 +283,7 @@ describe('PaperChat', () => {
 
     const save = host.querySelector<HTMLButtonElement>('.paper-chat .save-idea')!
     expect([save.className, save.disabled]).toEqual(['btn ghost sm save-idea', true])
+    expect(save.previousElementSibling?.textContent).toBe('尚无讨论')
   })
 
   it('空对话的提示和输入框一样留在对话栏的左右边距里', async () => {

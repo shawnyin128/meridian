@@ -18,6 +18,7 @@ export const common = {
   archive: 'Archive',
   unarchive: 'Unarchive',
   undo: 'Undo',
+  open: 'Open',
   moveUp: 'Move up',
   moveDown: 'Move down',
   loading: 'Loading…',

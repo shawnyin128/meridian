@@ -33,6 +33,7 @@
 .watch-suggestion-error{margin-top:8px;color:var(--bad);font-size:var(--fs-cap);line-height:var(--lh-ui)}
 .watch-suggestion-results{margin-top:10px}
 .watch-suggestion-results>.ph2{font-size:var(--fs-cap);color:var(--ter)}
+.watch-suggestion-results>.ph2>.tag{margin-left:var(--sp-8)}
 .watch-suggestion-group{margin-top:10px}
 .watch-suggestion-group-heading{display:flex;align-items:center;justify-content:space-between;gap:10px;
   min-height:24px;color:var(--sec);font-size:var(--fs-cap)}

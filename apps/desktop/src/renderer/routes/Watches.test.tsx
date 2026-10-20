@@ -336,7 +336,7 @@ describe('WatchSettings', () => {
     await act(async () => { root.unmount() })
   })
 
-  it('建议来源用共享的分段切换,切换后换成新来源的建议', async () => {
+  it('建议来源用共享的分段切换,切换后换成新来源的建议;离线时依据旁写一个短状态', async () => {
     const root = createRoot(host)
     await act(async () => { root.render(<MessagesProvider><WatchSettings /></MessagesProvider>) })
 
@@ -360,11 +360,13 @@ describe('WatchSettings', () => {
     expect(section.querySelector('button[aria-label="项目"]')!.textContent).toBe('Draft-tree serving')
 
     api.suggest.mockResolvedValueOnce({
-      topics: [{ name: 'tree attention kernels', relatedPapers: 2 }], authors: [], paperCount: 4,
+      topics: [{ name: 'tree attention kernels', relatedPapers: 2 }], authors: [], paperCount: 4, stale: true,
     })
     await act(async () => { button(section, '查找建议').click() })
     expect(api.suggest).toHaveBeenLastCalledWith({ source: 'project', projectId: 'project-1' })
     expect(section.textContent).toContain('tree attention kernels')
+    const basis = section.querySelector('.watch-suggestion-results > .ph2')!
+    expect([basis.firstChild?.textContent, basis.querySelector('.tag')?.textContent]).toEqual(['基于 4 篇相关论文', '离线 · 上次的建议'])
 
     await act(async () => { root.unmount() })
   })

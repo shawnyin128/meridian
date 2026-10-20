@@ -6,6 +6,7 @@ export const trash = {
     inbox: '论文推送', paper: '论文', project: '项目', idea: '想法', attachment: '附件',
   },
   autoClear: (days: number) => `${days} 天后自动清除`,
+  projectGone: '项目已删除',
   restored: (title: string) => `已恢复「${title}」`,
   purged: '已彻底删除',
   clear: '清空垃圾桶',

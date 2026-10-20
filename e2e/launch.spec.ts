@@ -59,9 +59,9 @@ test('指定的库里没有论文页目录时,内容区报出缺的目录,设置
     const win = await app.firstWindow()
     await expect(win.locator('.bootfail .desk-head .t')).toHaveText('论文库打不开')
     await expect(win.locator('.bootfail .ipcerror')).toHaveText(`库里没有论文页目录：${join(bare, 'wiki', 'papers')}`)
-    await win.locator('.bootfail .btn', { hasText: '打开设置' }).click()
-    // The button opens settings on its default category (appearance), not a contextual jump to storage.
-    await win.locator('.setdlg .srow[data-setcat="storage"]').click()
+    await win.locator('.bootfail .btn', { hasText: '换论文库' }).click()
+    // The button opens settings on the storage category, where another library is chosen.
+    await expect(win.locator('.setdlg .srow[data-setcat="storage"]')).toHaveClass(/\bon\b/)
     // The root path now shows in the shared read-only directory field, not a separate <code> element.
     await expect(win.locator('.setdlg .storage-root .directory-field input')).toHaveValue(/meridian-e2e-bare-/)
   } finally {

@@ -30,6 +30,7 @@ import { GenerationControl } from '../components/GenerationControl.js'
 import { FadeText } from '../components/FadeText.js'
 import { Toolbar, ToolbarButton } from '../components/Toolbar.js'
 import { TitleNote } from '../components/TitleNote.js'
+import { Tag } from '../components/Tag.js'
 import { PaperText } from '../components/paper/PaperText.js'
 import { plainTitle } from '../components/paper/paper-text.js'
 import './shell.css'
@@ -100,7 +101,7 @@ export function Chat() {
   const fmt = useFormat()
   const m = useMessages()
   const { id, title, archived, select } = useChatSession()
-  const { jump } = useJump()
+  const { jump, open } = useJump()
   const { revision, bump } = useVaultRevision()
   const notice = useNotice()
   const [messages, setMessages] = useState<ChatMessage[] | null>(null)
@@ -256,6 +257,7 @@ export function Chat() {
                     </ToolbarButton>
                   ))}
                 </span>
+                {hasDiscussion ? null : <Tag>{m.chat.noDiscussion}</Tag>}
                 <ToolbarButton
                   className="btn ghost sm save-idea" id="qaIdea" disabled={id === null || !hasDiscussion}
                   onClick={() => setSavingIdea(true)}
@@ -314,9 +316,10 @@ export function Chat() {
       {id === null ? null : (
         <IdeaEditorDialog
           open={savingIdea} sourceLabel={title === null ? m.chat.currentChat : plainTitle(title)} onOpenChange={setSavingIdea}
-          onSubmit={(ideaTitle, body) => write(
-            ideaApi.create(id, ideaTitle, body), { note: m.chat.ideaSavedNote },
-          )}
+          onSubmit={(ideaTitle, body) => write(ideaApi.create(id, ideaTitle, body), {
+            note: m.chat.ideaSavedNote,
+            action: (idea) => ({ label: m.common.open, onAction: () => open('ideas', idea.id) }),
+          })}
         />
       )}
     </PageShell>

@@ -16,6 +16,7 @@ export const common = {
   archive: '归档',
   unarchive: '取消归档',
   undo: '撤销',
+  open: '打开',
   moveUp: '上移',
   moveDown: '下移',
   loading: '正在载入…',

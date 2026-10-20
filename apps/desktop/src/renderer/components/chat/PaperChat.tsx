@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ChatMessage, ChatSession, PaperRow } from '../../../shared/contract.js'
 import { chat, feed, idea as ideaApi } from '../../ipc.js'
 import {
-  useNotice, usePaperChatCollapsed, usePaperChatGrip, useVaultRevision,
+  useJump, useNotice, usePaperChatCollapsed, usePaperChatGrip, useVaultRevision,
 } from '../../shell/AppShell.js'
 import { GripTooltip } from '../../shell/GripTooltip.js'
 import { sendsMessage } from '../../lib/chat.js'
@@ -20,6 +20,7 @@ import { useVaultWrite } from '../../hooks/useVaultWrite.js'
 import { useMessages } from '../../messages/useMessages.js'
 import { IdeaEditorDialog } from '../ideas/IdeaEditorDialog.js'
 import { GenerationControl } from '../GenerationControl.js'
+import { Tag } from '../Tag.js'
 import { PaperText } from '../paper/PaperText.js'
 import { plainTitle } from '../paper/paper-text.js'
 import './Chat.css'
@@ -39,6 +40,7 @@ export function PaperChat({ paper, onBack = () => {}, prompt = null }: {
   const m = useMessages()
   const { revision, bump } = useVaultRevision()
   const notice = useNotice()
+  const { open } = useJump()
   const write = useVaultWrite()
   const grip = usePaperChatGrip()
   const collapsed = usePaperChatCollapsed()
@@ -137,6 +139,7 @@ export function PaperChat({ paper, onBack = () => {}, prompt = null }: {
       <div className="composer paper-chat-composer">
         <div className="mwrap">
           <div className="qacts">
+            {hasDiscussion ? null : <Tag>{m.chat.noDiscussion}</Tag>}
             <button
               className="btn ghost sm save-idea" disabled={session === null || !hasDiscussion}
               onClick={() => setSavingIdea(true)}
@@ -165,9 +168,10 @@ export function PaperChat({ paper, onBack = () => {}, prompt = null }: {
         <IdeaEditorDialog
           open={savingIdea} sourceLabel={`${plainTitle(paper.title)} · ${plainTitle(session.title)}`}
           onOpenChange={setSavingIdea}
-          onSubmit={(title, body) => write(
-            ideaApi.create(session.id, title, body), { note: m.chat.ideaSavedNote },
-          )}
+          onSubmit={(title, body) => write(ideaApi.create(session.id, title, body), {
+            note: m.chat.ideaSavedNote,
+            action: (idea) => ({ label: m.common.open, onAction: () => open('ideas', idea.id) }),
+          })}
         />
       )}
     </aside>

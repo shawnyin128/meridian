@@ -761,10 +761,10 @@ export function AppShell({ screens, settings }: {
                             {bootError === null ? null : (
                               <PageFailure
                                 className="bootfail" title={m.shell.bootFailure.title}
-                                error={bootError} note={m.shell.bootFailure.note}
+                                error={bootError}
                                 action={(
-                                  <button className="btn" onClick={() => setSettingsOpen(true)}>
-                                    {m.shell.bootFailure.openSettings}
+                                  <button className="btn" onClick={() => openSettingsCategory('storage')}>
+                                    {m.shell.bootFailure.changeLibrary}
                                   </button>
                                 )}
                               />

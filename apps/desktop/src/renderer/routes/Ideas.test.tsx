@@ -244,6 +244,20 @@ describe('Ideas', () => {
     expect(group.querySelector('[data-idea="idea-completed"]')).not.toBeNull()
   })
 
+  it('关联已完成项目的已归档想法，取消归档按不了，菜单项后面写着项目已完成', async () => {
+    await act(async () => { root.render(<MessagesProvider><Ideas /></MessagesProvider>) })
+    const group = host.querySelector<HTMLElement>('.collapsible-group.collapsible-group--quiet')!
+    await act(async () => { group.querySelector<HTMLButtonElement>('.collapsible-group-toggle')!.click() })
+    await act(async () => {
+      host.querySelector('[data-idea="idea-completed"] .dots')!
+        .dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, button: 0 }))
+    })
+    const unarchive = [...document.querySelectorAll<HTMLElement>('[role="menu"] [role="menuitem"]')]
+      .find((item) => item.textContent?.startsWith('取消归档'))!
+    expect([unarchive.hasAttribute('data-disabled'), unarchive.querySelector('.mi-key')?.textContent])
+      .toEqual([true, '项目已完成'])
+  })
+
   it('想法详情里每一节的操作放在那一节小标题的右端', async () => {
     await act(async () => { root.render(<MessagesProvider><Ideas /></MessagesProvider>) })
     const headings = async (id: string) => {

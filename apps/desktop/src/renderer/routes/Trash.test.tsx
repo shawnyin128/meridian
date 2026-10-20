@@ -19,7 +19,7 @@ const api = vi.hoisted(() => ({
     restorable: true,
   }, {
     id: 'trash-3', kind: 'attachment', title: 'notes--v2.pdf', deletedAt: Date.parse('2026-08-25T00:00:00Z'),
-    restorable: true,
+    restorable: false,
   }, {
     id: 'trash-4', kind: 'attachment', title: 'MoE 路由用熵正则代替负载均衡 load balancing.pdf',
     deletedAt: Date.parse('2026-08-25T00:00:00Z'), restorable: true,
@@ -84,6 +84,12 @@ describe('Trash', () => {
   it('每条只写几天后自动清除，页脚不再用一句话重复保留期', () => {
     expect(host.querySelector('.trow .tm2')!.textContent).toBe('7 天后自动清除')
     expect(host.querySelector('.desk-foot')).toBeNull()
+  })
+
+  it('附件所属项目已删除时恢复按不了，行上写着项目已删除；能恢复的不写', () => {
+    const rows = [...host.querySelectorAll('.trow')]
+    expect(rows.map((row) => [button(row, '恢复').disabled, row.querySelector(':scope > .tag')?.textContent ?? null]))
+      .toEqual([[false, null], [false, null], [true, '项目已删除'], [false, null]])
   })
 
   it('每一类条目是页面上的嵌入列表，不套卡片外框', () => {

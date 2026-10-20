@@ -40,6 +40,7 @@ export const project = {
     verified: 'Conclusion verified',
     unverify: 'Unverify',
     unverified: 'Verification withdrawn',
+    unverifiedState: 'Not verified',
     write: 'Write to Wiki',
     written: 'Written to the Wiki',
     writeProposal: (page: string) => `Project conclusion written to "${page}"`,
@@ -220,7 +221,7 @@ export const project = {
     delete: 'Delete attachment',
     localOnly: 'You can only add files stored on this computer.',
     added: (n: number) => `Added ${n} ${pluralEn(n, { one: 'attachment', other: 'attachments' })}`,
-    noPath: "The file location wasn't saved for this attachment.",
+    noPath: 'No file location',
     missing: 'The file is no longer in its original location.',
   },
   agentSessions: {

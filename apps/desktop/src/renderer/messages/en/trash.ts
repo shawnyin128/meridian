@@ -9,6 +9,7 @@ export const trash = {
     inbox: 'Inmail', paper: 'Papers', project: 'Projects', idea: 'Ideas', attachment: 'Attachments',
   },
   autoClear: (days: number) => `Deletes automatically in ${days} ${pluralEn(days, { one: 'day', other: 'days' })}`,
+  projectGone: 'Project deleted',
   restored: (title: string) => `Restored “${title}”`,
   purged: 'Deleted permanently',
   clear: 'Empty trash',

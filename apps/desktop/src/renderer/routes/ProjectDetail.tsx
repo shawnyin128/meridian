@@ -1147,11 +1147,9 @@ export function ProjectDetail({
 
                   <ProjectAttachments
                     attachments={project.attachments} onAdd={addAttachments}
-                    onReveal={(attachment) => (attachment.path === undefined
-                      ? notice.refusal(m.project.attachments.noPath)
-                      : void files.reveal(attachment.path).then((found) => {
-                        if (!found) notice.refusal(m.project.attachments.missing)
-                      }))}
+                    onReveal={(path) => void files.reveal(path).then((found) => {
+                      if (!found) notice.refusal(m.project.attachments.missing)
+                    })}
                     onRemove={(attachmentId) => applyWrite(
                       projectApi.deleteAttachment(projectId, attachmentId), m.common.trashed,
                     )}

@@ -8,6 +8,7 @@ import { useMessages } from '../../messages/useMessages.js'
 import { ChoicePicker } from '../FieldPickers.js'
 import { FormInput } from '../FormControls.js'
 import { LoadingPlaceholder } from '../LoadingPlaceholder.js'
+import { Tag } from '../Tag.js'
 import {
   ServiceActions, ServiceCard, ServiceClearKeyButton, ServiceConnectionStatus, ServiceError, ServiceField,
   ServiceFoot, ServiceSavedKey, ServiceStatus,
@@ -388,6 +389,7 @@ export function ModelSettings() {
               }}
             />
           ) : null}
+          {canTestConnection ? null : <Tag>{m.settings.model.connection.notSaved}</Tag>}
           <button
             className="btn" disabled={!canTestConnection || saving || connectionCheck.state === 'testing'}
             onClick={() => { void testConnection() }}
