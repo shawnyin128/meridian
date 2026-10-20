@@ -110,7 +110,6 @@
 .wiki-ingest-scope>div:first-child{border-top:0}
 .wiki-ingest-scope span{color:var(--ter);font-size:var(--fs-cap)}
 .wiki-ingest-scope strong{font-size:var(--fs-sm)}
-.wiki-ingest .wiki-ingest-tip{padding:0 2px;color:var(--ter)}
 .wiki-ingest .wiki-ingest-status{margin-top:10px;padding:0 2px;color:var(--ter)}
 .wiki-ingest .wiki-ingest-status.bad{color:var(--bad)}
 .wiki-ingest .wiki-ingest-status.done{color:var(--good)}

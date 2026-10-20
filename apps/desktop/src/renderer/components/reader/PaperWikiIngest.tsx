@@ -187,11 +187,7 @@ export function PaperWikiIngest({ paper, reading }: {
           </div>
         </div>
 
-        {personal === 0 ? (
-          <Tag>{m.wiki.ingest.noPersonalRecords}</Tag>
-        ) : (
-          <p className="wiki-ingest-tip">{m.wiki.ingest.personalRecordsIncluded(personal)}</p>
-        )}
+        <Tag>{personal === 0 ? m.wiki.ingest.noPersonalRecords : m.wiki.ingest.personalRecordsIncluded(personal)}</Tag>
 
         {plan === null && pending === null && error === null
           ? <p className="wiki-ingest-status">{m.wiki.ingest.preparing}</p>

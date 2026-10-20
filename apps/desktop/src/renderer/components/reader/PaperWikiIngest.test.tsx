@@ -247,6 +247,15 @@ describe('PaperWikiIngest', () => {
     expect(host.querySelector('.wiki-ingest-status')).toBeNull()
   })
 
+  it('states the reading records it includes as a short tag, never a sentence', async () => {
+    const notes = [1, 2].map((page) => ({ id: `n${page}`, page, text: '笔记', created: '2026-09-14', updated: '2026-09-14' }))
+    await act(async () => {
+      root.render(withMessages(<PaperWikiIngest paper={paper} reading={{ ...reading, notes, remark: '随笔' }} />))
+    })
+    expect(states()).toEqual(['3 条阅读记录'])
+    expect(host.querySelector('.wiki-ingest-tip')).toBeNull()
+  })
+
   it('collects optional local feedback before rejecting a proposal', async () => {
     await act(async () => { root.render(withMessages(<PaperWikiIngest paper={paper} reading={reading} />)) })
     await act(async () => {

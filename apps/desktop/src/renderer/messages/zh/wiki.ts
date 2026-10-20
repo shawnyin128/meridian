@@ -77,7 +77,7 @@ export const wiki = {
       other: '其他',
     },
     noPersonalRecords: '无阅读记录',
-    personalRecordsIncluded: (n: number) => `本次会包含 ${n} 条个人阅读记录。`,
+    personalRecordsIncluded: (n: number) => `${n} 条阅读记录`,
     preparing: '正在准备范围…',
     notConnectedNote: 'AI 未连接',
     restoredPending: '已恢复上次的提案',

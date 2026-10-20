@@ -84,8 +84,7 @@ export const wiki = {
       other: 'Other',
     },
     noPersonalRecords: 'No reading notes',
-    personalRecordsIncluded: (n: number) =>
-      `This draft will include ${n} of your reading ${pluralEn(n, { one: 'note', other: 'notes' })}.`,
+    personalRecordsIncluded: (n: number) => `${n} reading ${pluralEn(n, { one: 'note', other: 'notes' })}`,
     preparing: 'Preparing scope…',
     notConnectedNote: 'AI not connected',
     restoredPending: 'Restored the last draft',
