@@ -124,20 +124,41 @@ describe('idea and graph association', () => {
     expect(host.querySelectorAll('.active-edge-flows path')).toHaveLength(2)
   })
 
-  it('lets the keyboard reach every node and select it with Enter or Space', () => {
+  it('takes every node as one Tab stop, moves between nodes with the arrow keys and selects one with Enter or Space', async () => {
     globalThis.IS_REACT_ACT_ENVIRONMENT = true
     const onSelect = vi.fn()
     const host = document.createElement('div')
+    document.body.append(host)
     const root = createRoot(host)
-    act(() => root.render(withMessages(<ResearchGraph graph={GRAPH} selected={null} onSelect={onSelect} />)))
+    const branched: Graph = {
+      nodes: [...GRAPH.nodes, { id: 'side', label: '旁支', state: 'idle', x: 0, y: 0, width: 180, writebacks: [] }],
+      edges: [...GRAPH.edges, ['root', 'side']],
+    }
+    act(() => root.render(withMessages(<ResearchGraph graph={branched} selected="probe" onSelect={onSelect} />)))
+    const group = host.querySelector<SVGGElement>('svg > g')!
     const nodes = [...host.querySelectorAll<SVGGElement>('.rgn')]
-    expect(nodes.map((node) => [node.getAttribute('role'), node.getAttribute('tabindex')]))
-      .toEqual([['button', '0'], ['button', '0']])
-    act(() => { nodes[1]!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })) })
-    act(() => { nodes[0]!.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', bubbles: true })) })
-    act(() => { nodes[0]!.dispatchEvent(new KeyboardEvent('keydown', { key: 'a', bubbles: true })) })
-    expect(onSelect.mock.calls).toEqual([['probe'], ['root']])
+    expect([group.getAttribute('role'), group.getAttribute('aria-label')]).toEqual(['radiogroup', '科研图'])
+    expect(nodes.map((node) => [node.getAttribute('role'), node.getAttribute('aria-label'), node.getAttribute('aria-checked')]))
+      .toEqual([['radio', '根节点', 'false'], ['radio', '动态预算探针', 'true'], ['radio', '旁支', 'false']])
+    expect([group, ...nodes].filter((element) => element.tabIndex === 0)).toEqual([group])
+    const press = async (key: string) => {
+      await act(async () => {
+        document.activeElement!.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }))
+        await new Promise((done) => setTimeout(done, 0))
+      })
+    }
+    await act(async () => { group.focus() })
+    expect(document.activeElement).toBe(nodes[1])
+    await press('ArrowDown')
+    expect(document.activeElement).toBe(nodes[2])
+    await press('Enter')
+    await press('Home')
+    expect(document.activeElement).toBe(nodes[0])
+    await press(' ')
+    await press('a')
+    expect(onSelect.mock.calls).toEqual([['side'], ['root']])
     act(() => root.unmount())
+    host.remove()
   })
 
   it('keeps the zoom controls one Tab stop, with the arrow keys between zoom out, the reset and zoom in', async () => {

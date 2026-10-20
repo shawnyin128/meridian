@@ -67,17 +67,18 @@ export const ToolbarButton = forwardRef<HTMLButtonElement, ButtonHTMLAttributes<
  * A row of toggles that picks one `value` (`''` for none) and reports the picked one, or `''` when
  * the picked toggle is pressed again. On its own it is one Tab stop with the arrow keys inside, the
  * picked toggle taking focus first; inside a toolbar its toggles join the toolbar's controls.
- * `label` names it.
+ * `label` names it; with `asChild`, the one element in `children` is the group.
  */
-export function ToggleGroup({ label, value, onValueChange, disabled = false, className, children }: {
+export function ToggleGroup({ label, value, onValueChange, disabled = false, asChild = false, className, children }: {
   label: string
   value: string
   onValueChange: (value: string) => void
   disabled?: boolean
+  asChild?: boolean
   className?: string
   children: ReactNode
 }) {
-  const props = { type: 'single' as const, 'aria-label': label, value, onValueChange, disabled, className, children }
+  const props = { type: 'single' as const, 'aria-label': label, value, onValueChange, disabled, asChild, className, children }
   return useContext(InToolbar) === null ? <RadixToggleGroup.Root {...props} /> : <RadixToolbar.ToggleGroup {...props} />
 }
 

@@ -9,6 +9,7 @@ import { IconButton } from '../components/IconButton.js'
 import { Icon, IconNorthStar, IconPlus } from '../components/icons.js'
 import { NavRow } from '../components/NavRow.js'
 import { CountBadge } from '../components/Tag.js'
+import { Toolbar } from '../components/Toolbar.js'
 import { Tooltip } from '../components/Tooltip.js'
 import { useMessages } from '../messages/useMessages.js'
 import { useAppUpdate } from '../hooks/useAppUpdate.js'
@@ -145,7 +146,8 @@ function UpdateRow() {
  * `chats` fills the list under Chats; archived chats are not here but in Settings. `chatId` is the
  * chat the Chats screen shows; null means none is selected.
  * `grip` is the props of the grip on the sidebar's edge: the shell owns the sidebar's width. A
- * `collapsed` sidebar is inert: nothing in it takes focus.
+ * `collapsed` sidebar is inert: nothing in it takes focus. Its rows, from Feed to Trash, are one Tab
+ * stop, with the up and down arrow keys between them.
  */
 export function Sidebar({
   screen, onNavigate, onJump, paperCount, changeCount, projectCount, trashCount, wikiCount, ideaCount,
@@ -196,203 +198,207 @@ export function Sidebar({
     <div className="sidebar" id="sidebar" inert={collapsed}>
       <SearchBox onJump={onJump} />
 
-      <div className="sb-top" ref={navFade}>
-        <NavRow
-          className="srow" selected={screen === 'feed'} id="rowFeed" data-desk="feed"
-          style={{ marginTop: 8 }} onActivate={() => onNavigate('feed')}
-        >
-          <span className="ic"><Icon><path d="M22 12h-4l-3 8L9 4l-3 8H2" /></Icon></span>{m.shell.nav.feed}
-        </NavRow>
+      <Toolbar orientation="vertical">
+        <div className="sb-nav">
+          <div className="sb-top" ref={navFade}>
+            <NavRow
+              className="srow" selected={screen === 'feed'} id="rowFeed" data-desk="feed"
+              style={{ marginTop: 8 }} onActivate={() => onNavigate('feed')}
+            >
+              <span className="ic"><Icon><path d="M22 12h-4l-3 8L9 4l-3 8H2" /></Icon></span>{m.shell.nav.feed}
+            </NavRow>
 
-        <SectHead sect="inbox" label={m.shell.nav.inbox} closed={!!closed['inbox']} onToggle={() => toggle('inbox')} />
-        <div className={sect('inbox')} id="sect-inbox">
-          {/* As in the demo, only this row's caret collapses its subgroups; the rest of the row opens the Inbox. */}
-          <NavRow
-            className={closed['inboxsub'] ? 'srow closed' : 'srow'} selected={onWatch(ALL_WATCHES)}
-            id="rowInboxAll" data-inbox={ALL_WATCHES} onActivate={() => onOpenInbox(ALL_WATCHES)}
-            label={(
-              <>
+            <SectHead sect="inbox" label={m.shell.nav.inbox} closed={!!closed['inbox']} onToggle={() => toggle('inbox')} />
+            <div className={sect('inbox')} id="sect-inbox">
+              {/* As in the demo, only this row's caret collapses its subgroups; the rest of the row opens the Inbox. */}
+              <NavRow
+                className={closed['inboxsub'] ? 'srow closed' : 'srow'} selected={onWatch(ALL_WATCHES)}
+                id="rowInboxAll" data-inbox={ALL_WATCHES} onActivate={() => onOpenInbox(ALL_WATCHES)}
+                label={(
+                  <>
+                    <span className="ic">
+                      <Icon>
+                        <path d="M22 13h-5l-2 3h-6l-2-3H2" />
+                        <path d="M5.4 5.6L2 13v5a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-5l-3.4-7.4A2 2 0 0 0 16.8 4H7.2a2 2 0 0 0-1.8 1.6z" />
+                      </Icon>
+                    </span>{m.shell.nav.delivery}
+                  </>
+                )}
+              >
+                <CaretToggle label={m.shell.nav.delivery} open={!closed['inboxsub']} onToggle={() => toggle('inboxsub')} />
+                {pushed > 0 ? <CountBadge className="n" count={pushed} strong /> : null}
+              </NavRow>
+              <div className={wgroup('inboxsub')} id="g-inboxsub">
+                <NavRow
+                  className={closed['discoverysub'] ? 'srow discovery closed' : 'srow discovery'}
+                  selected={onDiscovery(ALL_WATCHES)} data-inbox="discovery"
+                  onActivate={() => onOpenInbox(ALL_WATCHES, 'discovery')}
+                  label={<><span className="ic"><IconNorthStar /></span>{m.shell.nav.discovery}</>}
+                >
+                  {discoveryProjects.length > 0 ? (
+                    <CaretToggle
+                      label={m.shell.nav.discovery} open={!closed['discoverysub']} onToggle={() => toggle('discoverysub')}
+                    />
+                  ) : null}
+                  {discoveryCount > 0 ? <CountBadge className="n" count={discoveryCount} strong /> : null}
+                </NavRow>
+                <div className={wgroup('discoverysub')} id="g-discoverysub">
+                  {discoveryProjects.map((held) => (
+                    <NavRow
+                      key={held.id} className="srow sub watch-row" selected={onDiscovery(held.id)}
+                      data-discovery-project={held.id} onActivate={() => onOpenInbox(held.id, 'discovery')}
+                    >
+                      <span className="ic" />
+                      <Tooltip label={held.name} whenClipped><span className="watch-name">{held.name}</span></Tooltip>
+                      <CountBadge className="n" count={held.count} strong />
+                    </NavRow>
+                  ))}
+                </div>
+                <NavRow
+                  className={closed['topics'] ? 'srow disc closed' : 'srow disc'} data-disc="topics"
+                  expanded={!closed['topics']} onActivate={() => toggle('topics')}
+                >
+                  <span className="ic">
+                    <Icon>
+                      <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.83z" />
+                      <line x1="7" y1="7" x2="7.01" y2="7" />
+                    </Icon>
+                  </span>{m.shell.nav.watchTopics}<Caret /><CountBadge className="n" count={topics.length} />
+                </NavRow>
+                <div className={wgroup('topics')} id="g-topics">
+                  {topics.map((w) => (
+                    <WatchRow
+                      key={w.id} watch={w} count={inboxCounts[w.id] ?? 0} on={onWatch(w.id)}
+                      onOpen={() => onOpenInbox(w.id)}
+                    />
+                  ))}
+                </div>
+                <NavRow
+                  className={closed['authors'] ? 'srow disc closed' : 'srow disc'} data-disc="authors"
+                  expanded={!closed['authors']} onActivate={() => toggle('authors')}
+                >
+                  <span className="ic">
+                    <Icon><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></Icon>
+                  </span>{m.shell.nav.watchAuthors}<Caret /><CountBadge className="n" count={authors.length} />
+                </NavRow>
+                <div className={wgroup('authors')} id="g-authors">
+                  {authors.map((w) => (
+                    <WatchRow
+                      key={w.id} watch={w} count={inboxCounts[w.id] ?? 0} on={onWatch(w.id)}
+                      onOpen={() => onOpenInbox(w.id)}
+                    />
+                  ))}
+                </div>
+              </div>
+              <NavRow
+                className="srow" selected={screen === 'later'} id="rowLater" data-desk="later"
+                onActivate={() => onNavigate('later')}
+              >
+                <span className="ic"><Icon><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></Icon></span>
+                {m.shell.nav.later}{laterCount > 0 ? <CountBadge className="n" count={laterCount} /> : null}
+              </NavRow>
+            </div>
+
+            <SectHead
+              sect="chats" label={m.shell.nav.chats} closed={!!closed['chats']} onToggle={() => toggle('chats')}
+              extra={(
+                <IconButton
+                  label={m.shell.nav.newChat} size="inline" className="sb-add"
+                  onClick={(e) => { e.stopPropagation(); onNewChat() }}
+                ><IconPlus /></IconButton>
+              )}
+            />
+            <div className={sect('chats')} id="sect-chats">
+              <div id="chatList">
+                {active.map((s) => (
+                  <ChatRow
+                    key={s.id} session={s} on={s.id === chatId} onOpen={() => onOpenChat(s.id)}
+                    onArchive={() => onArchiveChat(s.id)}
+                  />
+                ))}
+              </div>
+            </div>
+
+            <SectHead sect="lib" label={m.shell.nav.myLibrary} closed={!!closed['lib']} onToggle={() => toggle('lib')} />
+            <div className={sect('lib')} id="sect-lib">
+              <NavRow
+                className="srow" selected={screen === 'wiki'} data-desk="wiki"
+                onActivate={() => onNavigate('wiki')}
+              >
                 <span className="ic">
                   <Icon>
-                    <path d="M22 13h-5l-2 3h-6l-2-3H2" />
-                    <path d="M5.4 5.6L2 13v5a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-5l-3.4-7.4A2 2 0 0 0 16.8 4H7.2a2 2 0 0 0-1.8 1.6z" />
+                    <path d="M12 2L2 7l10 5 10-5-10-5z" /><path d="M2 12l10 5 10-5" /><path d="M2 17l10 5 10-5" />
                   </Icon>
-                </span>{m.shell.nav.delivery}
-              </>
-            )}
-          >
-            <CaretToggle label={m.shell.nav.delivery} open={!closed['inboxsub']} onToggle={() => toggle('inboxsub')} />
-            {pushed > 0 ? <CountBadge className="n" count={pushed} strong /> : null}
-          </NavRow>
-          <div className={wgroup('inboxsub')} id="g-inboxsub">
-            <NavRow
-              className={closed['discoverysub'] ? 'srow discovery closed' : 'srow discovery'}
-              selected={onDiscovery(ALL_WATCHES)} data-inbox="discovery"
-              onActivate={() => onOpenInbox(ALL_WATCHES, 'discovery')}
-              label={<><span className="ic"><IconNorthStar /></span>{m.shell.nav.discovery}</>}
-            >
-              {discoveryProjects.length > 0 ? (
-                <CaretToggle
-                  label={m.shell.nav.discovery} open={!closed['discoverysub']} onToggle={() => toggle('discoverysub')}
-                />
-              ) : null}
-              {discoveryCount > 0 ? <CountBadge className="n" count={discoveryCount} strong /> : null}
-            </NavRow>
-            <div className={wgroup('discoverysub')} id="g-discoverysub">
-              {discoveryProjects.map((held) => (
-                <NavRow
-                  key={held.id} className="srow sub watch-row" selected={onDiscovery(held.id)}
-                  data-discovery-project={held.id} onActivate={() => onOpenInbox(held.id, 'discovery')}
-                >
-                  <span className="ic" />
-                  <Tooltip label={held.name} whenClipped><span className="watch-name">{held.name}</span></Tooltip>
-                  <CountBadge className="n" count={held.count} strong />
-                </NavRow>
-              ))}
+                </span>{m.shell.nav.wiki}{wikiCount === null ? null : <CountBadge className="n" count={wikiCount} />}
+              </NavRow>
+              <NavRow
+                className="srow" selected={screen === 'papers'} data-desk="papers"
+                onActivate={() => onNavigate('papers')}
+              >
+                <span className="ic">
+                  <Icon>
+                    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+                    <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+                  </Icon>
+                </span>{m.shell.nav.papers}{paperCount === null ? null : <CountBadge className="n" count={paperCount} />}
+              </NavRow>
+              <NavRow
+                className="srow" selected={screen === 'changelog'} data-desk="changelog"
+                onActivate={() => onNavigate('changelog')}
+              >
+                <span className="ic">
+                  <Icon>
+                    <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+                    <path d="M3 3v5h5" /><path d="M12 7v5l4 2" />
+                  </Icon>
+                </span>{m.shell.nav.changelog}{changeCount === null ? null : <CountBadge className="n" count={changeCount} />}
+              </NavRow>
             </div>
-            <NavRow
-              className={closed['topics'] ? 'srow disc closed' : 'srow disc'} data-disc="topics"
-              expanded={!closed['topics']} onActivate={() => toggle('topics')}
-            >
-              <span className="ic">
-                <Icon>
-                  <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.83z" />
-                  <line x1="7" y1="7" x2="7.01" y2="7" />
-                </Icon>
-              </span>{m.shell.nav.watchTopics}<Caret /><CountBadge className="n" count={topics.length} />
-            </NavRow>
-            <div className={wgroup('topics')} id="g-topics">
-              {topics.map((w) => (
-                <WatchRow
-                  key={w.id} watch={w} count={inboxCounts[w.id] ?? 0} on={onWatch(w.id)}
-                  onOpen={() => onOpenInbox(w.id)}
-                />
-              ))}
-            </div>
-            <NavRow
-              className={closed['authors'] ? 'srow disc closed' : 'srow disc'} data-disc="authors"
-              expanded={!closed['authors']} onActivate={() => toggle('authors')}
-            >
-              <span className="ic">
-                <Icon><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></Icon>
-              </span>{m.shell.nav.watchAuthors}<Caret /><CountBadge className="n" count={authors.length} />
-            </NavRow>
-            <div className={wgroup('authors')} id="g-authors">
-              {authors.map((w) => (
-                <WatchRow
-                  key={w.id} watch={w} count={inboxCounts[w.id] ?? 0} on={onWatch(w.id)}
-                  onOpen={() => onOpenInbox(w.id)}
-                />
-              ))}
+
+            <SectHead sect="research" label={m.shell.nav.research} closed={!!closed['research']} onToggle={() => toggle('research')} />
+            <div className={sect('research')} id="sect-research">
+              <NavRow
+                className="srow" selected={screen === 'overview'} data-desk="restl"
+                onActivate={() => onNavigate('overview')}
+              >
+                <span className="ic"><Icon><path d="M4 6h8" /><path d="M9 12h11" /><path d="M6 18h9" /></Icon></span>{m.shell.nav.overview}
+              </NavRow>
+              <NavRow
+                className="srow" selected={screen === 'project'} data-desk="resproj"
+                onActivate={() => onNavigate('project')}
+              >
+                <span className="ic">
+                  <Icon>
+                    <path d="M10 2v7.5L4.7 19a2 2 0 0 0 1.8 3h11a2 2 0 0 0 1.8-3L14 9.5V2" />
+                    <path d="M8.5 2h7" /><path d="M7 16h10" />
+                  </Icon>
+                </span>{m.shell.nav.projects}{projectCount === null ? null : <CountBadge className="n" count={projectCount} />}
+              </NavRow>
+              <NavRow
+                className="srow" selected={screen === 'ideas'} data-desk="ideas"
+                onActivate={() => onNavigate('ideas')}
+              >
+                <span className="ic">
+                  <Icon><path d="M9 18h6" /><path d="M10 22h4" /><path d="M8.2 14.5A7 7 0 1 1 15.8 14.5C14.8 15.2 14.5 16 14.5 17h-5c0-1-.3-1.8-1.3-2.5z" /></Icon>
+                </span>{m.shell.nav.ideas}{ideaCount === null ? null : <CountBadge className="n" count={ideaCount} />}
+              </NavRow>
             </div>
           </div>
-          <NavRow
-            className="srow" selected={screen === 'later'} id="rowLater" data-desk="later"
-            onActivate={() => onNavigate('later')}
-          >
-            <span className="ic"><Icon><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></Icon></span>
-            {m.shell.nav.later}{laterCount > 0 ? <CountBadge className="n" count={laterCount} /> : null}
-          </NavRow>
-        </div>
 
-        <SectHead
-          sect="chats" label={m.shell.nav.chats} closed={!!closed['chats']} onToggle={() => toggle('chats')}
-          extra={(
-            <IconButton
-              label={m.shell.nav.newChat} size="inline" className="sb-add"
-              onClick={(e) => { e.stopPropagation(); onNewChat() }}
-            ><IconPlus /></IconButton>
-          )}
-        />
-        <div className={sect('chats')} id="sect-chats">
-          <div id="chatList">
-            {active.map((s) => (
-              <ChatRow
-                key={s.id} session={s} on={s.id === chatId} onOpen={() => onOpenChat(s.id)}
-                onArchive={() => onArchiveChat(s.id)}
-              />
-            ))}
-          </div>
-        </div>
-
-        <SectHead sect="lib" label={m.shell.nav.myLibrary} closed={!!closed['lib']} onToggle={() => toggle('lib')} />
-        <div className={sect('lib')} id="sect-lib">
+          <UpdateRow />
+          {/* The trash can does not belong to any content group and is pinned outside the scroll area just like demo. */}
           <NavRow
-            className="srow" selected={screen === 'wiki'} data-desk="wiki"
-            onActivate={() => onNavigate('wiki')}
+            className="srow" selected={screen === 'trash'} data-desk="trash"
+            style={{ flexShrink: 0, marginTop: 6 }} onActivate={() => onNavigate('trash')}
           >
             <span className="ic">
               <Icon>
-                <path d="M12 2L2 7l10 5 10-5-10-5z" /><path d="M2 12l10 5 10-5" /><path d="M2 17l10 5 10-5" />
+                <path d="M3 6h18" /><path d="M8 6V4h8v2" /><path d="M19 6l-1 14H6L5 6" /><path d="M10 11v6M14 11v6" />
               </Icon>
-            </span>{m.shell.nav.wiki}{wikiCount === null ? null : <CountBadge className="n" count={wikiCount} />}
-          </NavRow>
-          <NavRow
-            className="srow" selected={screen === 'papers'} data-desk="papers"
-            onActivate={() => onNavigate('papers')}
-          >
-            <span className="ic">
-              <Icon>
-                <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
-                <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
-              </Icon>
-            </span>{m.shell.nav.papers}{paperCount === null ? null : <CountBadge className="n" count={paperCount} />}
-          </NavRow>
-          <NavRow
-            className="srow" selected={screen === 'changelog'} data-desk="changelog"
-            onActivate={() => onNavigate('changelog')}
-          >
-            <span className="ic">
-              <Icon>
-                <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
-                <path d="M3 3v5h5" /><path d="M12 7v5l4 2" />
-              </Icon>
-            </span>{m.shell.nav.changelog}{changeCount === null ? null : <CountBadge className="n" count={changeCount} />}
+            </span>{m.shell.nav.trash}{trashCount > 0 ? <CountBadge className="n" count={trashCount} /> : null}
           </NavRow>
         </div>
-
-        <SectHead sect="research" label={m.shell.nav.research} closed={!!closed['research']} onToggle={() => toggle('research')} />
-        <div className={sect('research')} id="sect-research">
-          <NavRow
-            className="srow" selected={screen === 'overview'} data-desk="restl"
-            onActivate={() => onNavigate('overview')}
-          >
-            <span className="ic"><Icon><path d="M4 6h8" /><path d="M9 12h11" /><path d="M6 18h9" /></Icon></span>{m.shell.nav.overview}
-          </NavRow>
-          <NavRow
-            className="srow" selected={screen === 'project'} data-desk="resproj"
-            onActivate={() => onNavigate('project')}
-          >
-            <span className="ic">
-              <Icon>
-                <path d="M10 2v7.5L4.7 19a2 2 0 0 0 1.8 3h11a2 2 0 0 0 1.8-3L14 9.5V2" />
-                <path d="M8.5 2h7" /><path d="M7 16h10" />
-              </Icon>
-            </span>{m.shell.nav.projects}{projectCount === null ? null : <CountBadge className="n" count={projectCount} />}
-          </NavRow>
-          <NavRow
-            className="srow" selected={screen === 'ideas'} data-desk="ideas"
-            onActivate={() => onNavigate('ideas')}
-          >
-            <span className="ic">
-              <Icon><path d="M9 18h6" /><path d="M10 22h4" /><path d="M8.2 14.5A7 7 0 1 1 15.8 14.5C14.8 15.2 14.5 16 14.5 17h-5c0-1-.3-1.8-1.3-2.5z" /></Icon>
-            </span>{m.shell.nav.ideas}{ideaCount === null ? null : <CountBadge className="n" count={ideaCount} />}
-          </NavRow>
-        </div>
-      </div>
-
-      <UpdateRow />
-      {/* The trash can does not belong to any content group and is pinned outside the scroll area just like demo. */}
-      <NavRow
-        className="srow" selected={screen === 'trash'} data-desk="trash"
-        style={{ flexShrink: 0, marginTop: 6 }} onActivate={() => onNavigate('trash')}
-      >
-        <span className="ic">
-          <Icon>
-            <path d="M3 6h18" /><path d="M8 6V4h8v2" /><path d="M19 6l-1 14H6L5 6" /><path d="M10 11v6M14 11v6" />
-          </Icon>
-        </span>{m.shell.nav.trash}{trashCount > 0 ? <CountBadge className="n" count={trashCount} /> : null}
-      </NavRow>
+      </Toolbar>
       <GripTooltip><Grip {...grip} /></GripTooltip>
     </div>
   )

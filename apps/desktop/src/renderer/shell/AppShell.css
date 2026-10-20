@@ -59,6 +59,8 @@
  */
 .sidebar{flex:0 0 var(--sbw,232px);min-width:0;background:var(--sidebar);backdrop-filter:blur(20px);border-right:1px solid var(--sep);padding:12px 10px;overflow:visible;position:relative;display:flex;flex-direction:column;user-select:none;transition:transform var(--t-slow) var(--e-inout),opacity var(--t-slow) var(--e-inout)}
 .sidebar :is(input,textarea,[contenteditable="true"]){user-select:text}
+/* The rows' toolbar: the scroll area, then the update and trash rows pinned under it. */
+.sb-nav{flex:1;min-height:0;display:flex;flex-direction:column}
 /* The scroll area reaches into the sidebar padding by the ring room, so a focused row's ring is not cut off. */
 .sb-top{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;margin-inline:calc(-1 * var(--ring-room));
   padding:0 var(--ring-room) var(--ring-room)}

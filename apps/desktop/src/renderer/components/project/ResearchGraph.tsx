@@ -23,7 +23,7 @@ import { SectionHeading } from '../PageShell.js'
 import { StatusDot } from '../StatusDot.js'
 import { StructuredList, StructuredRow } from '../StructuredList.js'
 import { AgentLabel } from '../SourceLabel.js'
-import { Toolbar, ToolbarButton } from '../Toolbar.js'
+import { ToggleGroup, ToggleItem, Toolbar, ToolbarButton } from '../Toolbar.js'
 import { Tooltip } from '../Tooltip.js'
 import { ProjectEventRow } from './ProjectSignals.js'
 import './ResearchGraph.css'
@@ -228,6 +228,8 @@ export function ResearchGraph({ graph, selected, ideaNodeIds = [], onSelect }: {
     return <EmptyState variant="section">{m.project.graph.empty}</EmptyState>
   }
   const nodes = layout.nodes
+  // The arrow keys move between nodes in document order: down each column, then on to the next one.
+  const readingOrder = [...nodes].sort((a, b) => a.x - b.x || a.y - b.y)
   const byId = new Map(nodes.map((node) => [node.id, node]))
   const activeNodeIds = new Set((graph.activeNodes ?? []).filter((id) => byId.has(id)))
   const routes = activeRoutes(graph, graph.activeNodes ?? [])
@@ -338,49 +340,55 @@ export function ResearchGraph({ graph, selected, ideaNodeIds = [], onSelect }: {
               <path className="idea-node-pattern-stripe" d="M-12 0V12 M0 0V12 M12 0V12" />
             </pattern>
           </defs>
-          <g transform={`translate(${baseX + view.x},${baseY + view.y}) scale(${view.zoom})`}>
-            <g className="redges">
-              {layout.edges.map(([from, to]) => (
-                <path
-                  className={routes.edges.has(`${from}\u0000${to}`) ? 'active' : undefined}
-                  key={`${from} ${to}`} d={edgePath(from, to)}
-                />
-              ))}
+          <ToggleGroup
+            asChild label={m.project.sections.graph} value={selected ?? ''}
+            onValueChange={(nodeId) => { if (nodeId !== '') onSelect(nodeId) }}
+          >
+            <g transform={`translate(${baseX + view.x},${baseY + view.y}) scale(${view.zoom})`}>
+              <g className="redges">
+                {layout.edges.map(([from, to]) => (
+                  <path
+                    className={routes.edges.has(`${from}\u0000${to}`) ? 'active' : undefined}
+                    key={`${from} ${to}`} d={edgePath(from, to)}
+                  />
+                ))}
+              </g>
+              <g className="active-edge-flows" aria-hidden="true">
+                {routeEdges.map(([from, to]) => <path key={`${from} ${to}`} d={edgePath(from, to)} />)}
+              </g>
+              {readingOrder.map((node) => {
+                const ideaRelated = ideaNodes.has(node.id)
+                const onRoute = routes.nodes.has(node.id) && !activeNodeIds.has(node.id)
+                const shown = graphNodeLabel(node.label)
+                return (
+                  <Tooltip key={node.id} label={shown === node.label ? undefined : node.label}>
+                    <ToggleItem asChild value={node.id} aria-label={node.label}>
+                      <g
+                        className={`rgn ${node.state} ${nodeMode(node)}${onRoute ? ' active-path-node-graph' : ''}${activeNodeIds.has(node.id) ? ' active-leaf' : ''}${ideaRelated ? ' idea-related' : ''}${node.id === selected ? ' sel' : ''}`}
+                        data-node={node.id} transform={`translate(${node.x},${node.y})`}
+                        // An SVG group fires no click on Enter or Space, as a button does.
+                        onKeyDown={(event) => {
+                          if (event.key !== 'Enter' && event.key !== ' ') return
+                          event.preventDefault()
+                          onSelect(node.id)
+                        }}
+                        // A node that the keyboard focuses may lie outside the view; one under the pointer is in it.
+                        onFocus={(event) => { if (event.currentTarget.matches(':focus-visible')) reveal(node) }}
+                      >
+                        <rect
+                          className="rgn-box" width={node.width} height={GRAPH_NODE_HEIGHT} rx="11"
+                          style={ideaRelated ? { fill: `url(#${ideaPatternId})` } : undefined}
+                        />
+                        <rect className="rgn-hover" width={node.width} height={GRAPH_NODE_HEIGHT} rx="11" />
+                        <circle cx="18" cy={GRAPH_NODE_HEIGHT / 2} r="4" className="nd" />
+                        <text x={GRAPH_LABEL_LEFT} y="29">{shown}</text>
+                      </g>
+                    </ToggleItem>
+                  </Tooltip>
+                )
+              })}
             </g>
-            <g className="active-edge-flows" aria-hidden="true">
-              {routeEdges.map(([from, to]) => <path key={`${from} ${to}`} d={edgePath(from, to)} />)}
-            </g>
-            {nodes.map((node) => {
-              const ideaRelated = ideaNodes.has(node.id)
-              const onRoute = routes.nodes.has(node.id) && !activeNodeIds.has(node.id)
-              const shown = graphNodeLabel(node.label)
-              return (
-                <Tooltip key={node.id} label={shown === node.label ? undefined : node.label}>
-                  <g
-                    className={`rgn ${node.state} ${nodeMode(node)}${onRoute ? ' active-path-node-graph' : ''}${activeNodeIds.has(node.id) ? ' active-leaf' : ''}${ideaRelated ? ' idea-related' : ''}${node.id === selected ? ' sel' : ''}`}
-                    data-node={node.id} role="button" tabIndex={0} aria-label={node.label}
-                    transform={`translate(${node.x},${node.y})`}
-                    onClick={() => onSelect(node.id)}
-                    onKeyDown={(event) => {
-                      if (event.key !== 'Enter' && event.key !== ' ') return
-                      event.preventDefault()
-                      onSelect(node.id)
-                    }}
-                    // A node that the keyboard focuses may lie outside the view; one under the pointer is in it.
-                    onFocus={(event) => { if (event.currentTarget.matches(':focus-visible')) reveal(node) }}
-                  >
-                    <rect
-                      className="rgn-box" width={node.width} height={GRAPH_NODE_HEIGHT} rx="11"
-                      style={ideaRelated ? { fill: `url(#${ideaPatternId})` } : undefined}
-                    />
-                    <rect className="rgn-hover" width={node.width} height={GRAPH_NODE_HEIGHT} rx="11" />
-                    <circle cx="18" cy={GRAPH_NODE_HEIGHT / 2} r="4" className="nd" />
-                    <text x={GRAPH_LABEL_LEFT} y="29">{shown}</text>
-                  </g>
-                </Tooltip>
-              )
-            })}
-          </g>
+          </ToggleGroup>
         </svg>
         <Toolbar>
           <div className="graph-view-controls">

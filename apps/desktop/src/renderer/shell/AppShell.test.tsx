@@ -292,6 +292,32 @@ describe('AppShell sidebar grip', () => {
 describe('AppShell keyboard navigation', () => {
   beforeEach(() => mount())
 
+  it('takes the sidebar rows, from Feed to Trash, as one Tab stop with the up and down arrow keys between them', async () => {
+    const nav = document.querySelector<HTMLElement>('#sidebar .sb-nav')!
+    const stops = [...document.querySelectorAll<HTMLElement>('#sidebar *')].filter((element) => element.tabIndex >= 0)
+    expect(stops).toEqual([
+      document.querySelector('#sSearch'), nav, document.querySelector('[data-chat="c1"] .row-actions'), document.querySelector('#sbgrip'),
+    ])
+    const step = async (key: string) => {
+      await act(async () => {
+        document.activeElement!.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }))
+        await new Promise((done) => setTimeout(done, 0))
+      })
+    }
+    await act(async () => { nav.focus() })
+    expect(document.activeElement).toBe(controlOf('[data-desk="feed"]'))
+    await step('ArrowDown')
+    expect(document.activeElement).toBe(controlOf('[data-sect="inbox"]'))
+    await step('ArrowRight')
+    expect(document.activeElement).toBe(controlOf('[data-sect="inbox"]'))
+    await step('End')
+    expect(document.activeElement).toBe(controlOf('[data-desk="trash"]'))
+    await step('ArrowUp')
+    expect(document.activeElement).toBe(controlOf('[data-desk="ideas"]'))
+    await step('Home')
+    expect(document.activeElement).toBe(controlOf('[data-desk="feed"]'))
+  })
+
   it('opens every sidebar destination from a button', () => {
     const rows = [
       '[data-desk="later"]', '[data-desk="wiki"]', '[data-desk="papers"]', '[data-desk="changelog"]',
