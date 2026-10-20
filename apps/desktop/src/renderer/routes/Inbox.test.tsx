@@ -27,6 +27,7 @@ const api = vi.hoisted(() => ({
   scope: 'all',
   watches: [] as Watch[],
   setActive: vi.fn(async () => {}),
+  enter: vi.fn(),
 }))
 
 vi.mock('../ipc.js', () => ({
@@ -54,7 +55,7 @@ vi.mock('../shell/AppShell.js', () => ({
   useCrumbTail: () => {},
   useInboxMode: () => api.mode,
   useInboxScope: () => api.scope,
-  useJump: () => ({ open: vi.fn() }),
+  useJump: () => ({ open: vi.fn(), enter: api.enter }),
   useSettingsOpen: () => ({
     open: false, requestedCategory: null, setOpen: vi.fn(), openCategory: api.openCategory,
   }),
@@ -91,6 +92,19 @@ describe('Inbox', () => {
     api.scope = 'all'
     api.watches = []
     vi.unstubAllGlobals()
+  })
+
+  it('全部项目的发现为空、项目里还没有带 arXiv 编号的论文时，空状态只写状态，带一个打开项目列表的操作', async () => {
+    api.mode = 'discovery'
+    const root = createRoot(host)
+    await act(async () => { root.render(<MessagesProvider><Inbox /></MessagesProvider>) })
+    const empty = host.querySelector('.empty-state')!
+    expect(empty.querySelector('span')?.textContent).toBe('还没有带 arXiv 编号的项目论文')
+    const action = empty.querySelector<HTMLButtonElement>('button')!
+    expect(action.textContent).toBe('打开项目列表')
+    act(() => action.click())
+    expect(api.enter).toHaveBeenCalledWith('project')
+    act(() => root.unmount())
   })
 
   it('暂停的关注在它自己的页上写着已暂停，旁边就能恢复', async () => {

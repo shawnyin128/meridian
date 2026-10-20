@@ -116,6 +116,7 @@ const JumpContext = createContext<{
   jump: ScreenJump | null
   open: (screen: ScreenKey, target: string, anchor?: JumpAnchor) => void
   returnTo: (screen: ScreenKey) => void
+  enter: (screen: ScreenKey) => void
 } | null>(null)
 /** The screen these children belong to: every mounted screen keeps running, so each must know its own. */
 const SlotContext = createContext<ScreenKey | null>(null)
@@ -197,11 +198,13 @@ export function useToday(): string {
  * UI calls it. `jump` is non-null only when the caller's screen is a jump's destination: every mounted
  * screen keeps running, so none may take another screen's jump for its own. `returnTo` goes back to
  * the origin screen. The third argument of `open` is where to land, such as a page in the reader.
+ * `enter` opens a screen at its top level, as a sidebar click does.
  */
 export function useJump(): {
   jump: ScreenJump | null
   open: (screen: ScreenKey, target: string, anchor?: JumpAnchor) => void
   returnTo: (screen: ScreenKey) => void
+  enter: (screen: ScreenKey) => void
 } {
   const state = useContext(JumpContext)
   const slot = useContext(SlotContext)
@@ -210,6 +213,7 @@ export function useJump(): {
     jump: state.jump !== null && state.jump.screen === slot ? state.jump : null,
     open: state.open,
     returnTo: state.returnTo,
+    enter: state.enter,
   }
 }
 
@@ -540,11 +544,11 @@ export function AppShell({ screens, settings }: {
   }, [])
 
   // Every sidebar click is an entry: a screen showing a detail returns to its list, also when it is the current screen.
-  const navigate = (next: ScreenKey) => {
+  const navigate = useCallback((next: ScreenKey) => {
     setEntry((n) => n + 1)
     if (next === screen) setReentry((n) => n + 1)
     goTo(next)
-  }
+  }, [screen, goTo])
 
   const openInbox = (scope: string, mode: InboxMode = 'watch') => {
     setInboxScope(scope)
@@ -599,7 +603,8 @@ export function AppShell({ screens, settings }: {
       goTo(next)
     },
     returnTo: goTo,
-  }), [jump, screen, goTo])
+    enter: navigate,
+  }), [jump, screen, goTo, navigate])
 
   const crumbs = useMemo(() => crumbsOf(m), [m])
 

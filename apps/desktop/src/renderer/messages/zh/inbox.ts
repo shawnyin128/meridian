@@ -19,6 +19,7 @@ export const inbox = {
   empty: {
     discoveryNone: '还没有新的发现',
     discoveryNoSeeds: '还没有带 arXiv 编号的项目论文',
+    openProjects: '打开项目列表',
     watch: '还没有新的推送',
   },
   dismissAll: '全部忽略',

@@ -81,7 +81,7 @@ export function Inbox() {
 
   const notice = useNotice()
   const { openCategory } = useSettingsOpen()
-  const { open } = useJump()
+  const { open, enter } = useJump()
   const { revision, bump } = useVaultRevision()
   const reportError = useCallback((e: unknown) => setError(errorLabel(m, e)), [m])
   const write = useVaultWrite()
@@ -348,6 +348,9 @@ export function Inbox() {
           ? (
             <EmptyState
               variant="page"
+              action={stream === 'discovery' && scope === ALL_WATCHES && !profiles.some((profile) => profile.seedCount > 0)
+                ? <button type="button" className="btn" onClick={() => enter('project')}>{m.inbox.empty.openProjects}</button>
+                : undefined}
               icon={(
                 <Icon sw={1.4}>
                   <path d="M22 13h-5l-2 3h-6l-2-3H2" />
