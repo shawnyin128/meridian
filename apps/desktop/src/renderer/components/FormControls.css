@@ -66,7 +66,7 @@
  * alone with reduced motion. Each editor styles its own focus frame, so the red one must win over all
  * of them without changing border-width or padding.
  */
-.form-control[aria-invalid="true"]{outline:1px solid var(--bad)!important;outline-offset:-1px!important;animation:form-control-refused .32s var(--e-inout)}
+.form-control[aria-invalid="true"]{outline:1px solid var(--bad)!important;outline-offset:-1px!important;animation:form-control-refused var(--t-shake) var(--e-inout)}
 @keyframes form-control-refused{20%,60%{transform:translateX(-3px)}40%,80%{transform:translateX(3px)}}
 @media (prefers-reduced-motion:reduce){.form-control[aria-invalid="true"]{animation:none}}
 

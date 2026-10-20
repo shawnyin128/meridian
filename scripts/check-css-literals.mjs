@@ -18,16 +18,6 @@ const NUMBER = /(?<![\w.#-])-?(?:\d+\.?\d*|\.\d+)([a-z%]*)/gi
 const SIZE_KEYWORD = /\b(xx-small|x-small|small|medium|large|x-large|xx-large|xxx-large|smaller|larger)\b/g
 const WEIGHT_KEYWORD = /\b(normal|bold|bolder|lighter)\b/g
 
-/**
- * Stylesheets not swept onto the tokens yet, relative to the renderer: their literals are not
- * reported, and each one listed must still write a literal.
- */
-const PENDING = new Set([
-  'components/CardTray.css',
-  'components/FormControls.css',
-  'components/project/ProjectPlan.css',
-].map((file) => `${RENDERER}${file}`))
-
 function lineNumber(text, offset) {
   let line = 1
   for (let index = 0; index < offset; index += 1) if (text[index] === '\n') line += 1
@@ -133,15 +123,11 @@ if (import.meta.url === pathToFileURL(process.argv[1]).href) {
   const files = new Map(listed
     .filter((file) => file.startsWith(RENDERER) && file.endsWith('.css') && file !== TOKENS && fs.existsSync(path.join(ROOT, file)))
     .map((file) => [file, fs.readFileSync(path.join(ROOT, file), 'utf8')]))
-  const failures = [
-    ...literalValues(files).filter((line) => !PENDING.has(line.slice(0, line.indexOf(':')))),
-    ...[...PENDING].filter((file) => literalValues(new Map([[file, files.get(file) ?? '']])).length === 0)
-      .map((file) => `${file} writes no literal any more: take it off PENDING`),
-  ]
+  const failures = literalValues(files)
   if (failures.length > 0) {
     console.error(failures.join('\n'))
     process.exitCode = 1
   } else {
-    console.log(`Checked ${files.size} stylesheets, ${PENDING.size} of them not swept yet: no other one writes a literal radius, font size, weight, duration or spacing.`)
+    console.log(`Checked ${files.size} stylesheets: every radius, font size, weight, duration and spacing comes from a token.`)
   }
 }
