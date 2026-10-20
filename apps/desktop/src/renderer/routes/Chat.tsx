@@ -223,7 +223,11 @@ export function Chat() {
 
   return (
     <PageShell className="chatcol">
-      <PageHeader><PageTitle>{title === null ? m.chat.newChat : <PaperText text={title} />}</PageTitle></PageHeader>
+      <PageHeader>
+        <PageTitle label={title === null ? undefined : plainTitle(title)}>
+          {title === null ? m.chat.newChat : <PaperText text={title} />}
+        </PageTitle>
+      </PageHeader>
 
       <PageBody>
         <div className="stream">

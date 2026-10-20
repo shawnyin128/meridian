@@ -8,7 +8,7 @@
 /* The paper chat collapses as the sidebar does: out of the layout at once, then sliding away. */
 .main.sbhide .paper-chat{position:absolute;top:0;bottom:0;left:0;width:var(--rrw,300px);z-index:8;transform:translateX(-100%);opacity:0;pointer-events:none}
 .paper-chat-head{height:46px;box-sizing:border-box;padding:0 var(--sp-10);border-bottom:1px solid var(--sep);display:flex;align-items:center;gap:var(--sp-8);min-width:0;background:var(--sidebar)}
-.paper-chat-head strong{font-size:var(--fs-sm);color:var(--sec);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.paper-chat-head .paper-chat-title{font-size:var(--fs-sm);font-weight:var(--fw-title);color:var(--sec)}
 .paper-chat .msgs{padding:var(--sp-16) 0;gap:var(--sp-14)}
 .paper-chat .mwrap{width:calc(100% - 24px)}
 .paper-chat .bubble,.paper-chat .answer,.paper-chat .event{font-size:var(--fs-sm);line-height:1.5}

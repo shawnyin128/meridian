@@ -1,14 +1,19 @@
 import { forwardRef, useImperativeHandle, useLayoutEffect, useRef, useState } from 'react'
 import type { HTMLAttributes, ReactNode } from 'react'
+import { Tooltip } from './Tooltip.js'
 import './FadeText.css'
 
 /**
  * One line of text that fades out at its box's right edge only when it does not fit, and is left
- * whole when it does. `className` sizes the box; the box must be allowed to shrink. Other props and
- * the ref go to the box, so a tooltip can name it.
+ * whole when it does; with `label`, the shared tooltip shows that whole text while it is cut off.
+ * `className` sizes the box; the box must be allowed to shrink. Other props and the ref go to the box,
+ * so a tooltip around it can name it instead.
  */
-export const FadeText = forwardRef<HTMLSpanElement, { children: ReactNode; className?: string | undefined }
-  & Omit<HTMLAttributes<HTMLSpanElement>, 'children' | 'className'>>(function FadeText({ children, className, ...props }, ref) {
+export const FadeText = forwardRef<HTMLSpanElement, {
+  children: ReactNode
+  className?: string | undefined
+  label?: string | undefined
+} & Omit<HTMLAttributes<HTMLSpanElement>, 'children' | 'className'>>(function FadeText({ children, className, label, ...props }, ref) {
   const box = useRef<HTMLSpanElement>(null)
   useImperativeHandle(ref, () => box.current!, [])
   const [clipped, setClipped] = useState(false)
@@ -22,5 +27,5 @@ export const FadeText = forwardRef<HTMLSpanElement, { children: ReactNode; class
     return () => observer.disconnect()
   }, [children])
   const classes = ['fade-text', className, clipped ? 'clipped' : undefined].filter(Boolean).join(' ')
-  return <span {...props} ref={box} className={classes}>{children}</span>
+  return <Tooltip label={label} whenClipped><span {...props} ref={box} className={classes}>{children}</span></Tooltip>
 })

@@ -263,6 +263,8 @@ async function moveFocus(key: string): Promise<void> {
 describe('PaperTable', () => {
   beforeEach(() => {
     globalThis.IS_REACT_ACT_ENVIRONMENT = true
+    // The page title measures whether it fits, and jsdom has no ResizeObserver.
+    vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} })
     window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'zh')
     document.body.innerHTML = ''
     columnsCall = controlled()
@@ -308,7 +310,7 @@ describe('PaperTable', () => {
     listCall.resolve({ rows: mappedRows, total: 2 })
     await flush()
 
-    expect([...host.querySelector('.desk-head')!.children].map((child) => child.className)).toEqual(['t', 'page-actions'])
+    expect([...host.querySelector('.desk-head')!.children].map((child) => child.className)).toEqual(['fade-text t', 'page-actions'])
     const mapSwitch = [...host.querySelectorAll<HTMLButtonElement>('.paper-view-toolbar .segmented-control button')]
       .find((button) => button.textContent === '研究地图')!
     expect(host.querySelector('.desk-head .page-actions .pdfupload')).not.toBeNull()
@@ -640,6 +642,23 @@ describe('PaperTable', () => {
     await act(async () => { value.click() })
     await flush()
     expect(listParams.at(-1)?.facet).toEqual({ field: 'topics', value: '推理' })
+  })
+
+  it('分组索引写出最新一篇的整个标题，放不下时淡出，不按字数截掉', async () => {
+    const newest = 'Accelerating Large Language Model Decoding with Speculative Sampling'
+    facetRows = [{ value: '推理', count: 2, newestTitle: newest }]
+    const host = mount()
+    columnsCall.resolve({ hidden: [], custom: [], groups: ['topics'] })
+    listCall.resolve({ rows: [ROW], total: 1 })
+    await flush()
+    const topics = [...host.querySelectorAll<HTMLElement>('.filters .segmented-control > button')]
+      .find((button) => button.textContent === '主题')!
+    await act(async () => { topics.click() })
+    await flush()
+
+    const line = host.querySelector<HTMLElement>('.gxrow .gx-m')!
+    expect(line.textContent).toBe(`最新：${newest}`)
+    expect(line.classList.contains('fade-text')).toBe(true)
   })
 
   it('选定分组取值后，取值换成一个选择器：按钮显示当前值，从菜单里换一个值就列出那一组', async () => {
@@ -999,6 +1018,7 @@ describe('PaperTable', () => {
   afterEach(() => {
     if (mountedRoot) act(() => { mountedRoot!.unmount() })
     mountedRoot = null
+    vi.unstubAllGlobals()
   })
 
   it('打开论文详情仍保留全部配置列、列操作与当前行上下文', async () => {

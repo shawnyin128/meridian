@@ -7,6 +7,7 @@ import {
 } from '../ipc.js'
 import { ActionMenu, MenuItem } from '../components/ActionMenu.js'
 import { AboutDialog } from '../components/AboutDialog.js'
+import { FadeText } from '../components/FadeText.js'
 import { GripEdge, type GripProps } from '../components/Grip.js'
 import { IconButton } from '../components/IconButton.js'
 import { Notice, type NoticeAction, type NoticeContent, type NoticeTone } from '../components/Notice.js'
@@ -706,8 +707,12 @@ export function AppShell({ screens, settings }: {
               <Fragment key={`${i}${p.text}`}>
                 {i > 0 ? <span className="csep">›</span> : null}
                 {link
-                  ? <button type="button" className="cseg link" onClick={p.onClick}>{p.text}</button>
-                  : <span className="cseg">{p.text}</span>}
+                  ? (
+                    <Tooltip label={p.text} whenClipped>
+                      <button type="button" className="cseg link" onClick={p.onClick}><FadeText>{p.text}</FadeText></button>
+                    </Tooltip>
+                  )
+                  : <FadeText className="cseg" label={p.text}>{p.text}</FadeText>}
               </Fragment>
             )
           })}

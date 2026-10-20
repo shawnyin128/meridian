@@ -103,6 +103,8 @@ describe('feed rows', () => {
 
   it('filtering by source keeps the day headings of the entries it shows', async () => {
     globalThis.IS_REACT_ACT_ENVIRONMENT = true
+    // The page title measures whether it fits, and jsdom has no ResizeObserver.
+    vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} })
     feedList.rows = [
       { ...ENTRY, id: 'a', source: 'lab' },
       { ...ENTRY, id: 'b', source: 'me', day: '昨天' },
@@ -118,5 +120,6 @@ describe('feed rows', () => {
     expect([...host.querySelectorAll('.feed-day .day-heading')].map((h) => h.textContent)).toEqual(['今天', '昨天'])
     await act(async () => { root.unmount() })
     host.remove()
+    vi.unstubAllGlobals()
   })
 })

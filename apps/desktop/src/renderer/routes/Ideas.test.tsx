@@ -71,6 +71,8 @@ describe('Ideas', () => {
 
   beforeEach(() => {
     globalThis.IS_REACT_ACT_ENVIRONMENT = true
+    // The page title measures whether it fits, and jsdom has no ResizeObserver.
+    vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} })
     window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'zh')
     document.body.innerHTML = ''
     host = document.createElement('div')
@@ -84,6 +86,7 @@ describe('Ideas', () => {
   afterEach(() => {
     act(() => root.unmount())
     api.loading = false
+    vi.unstubAllGlobals()
   })
 
   it('没有进行中的想法时，进行中留着标题，下面是一行分节空态，不是整页的', async () => {

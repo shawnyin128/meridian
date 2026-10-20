@@ -18,6 +18,14 @@
 .wkcard .wm{font-size:var(--card-fs);color:var(--ter);margin-top:var(--sp-4);line-height:1.5;height:calc(1.5em * var(--card-lines));
   overflow:hidden;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:var(--card-lines)}
 .wkcard .wf{font-size:var(--fs-sm);color:var(--ter);margin-top:var(--sp-8);white-space:nowrap;overflow:hidden;mask-image:var(--clipfade);display:flex;align-items:center;gap:var(--sp-6)}
+/*
+ * A paper card's title takes up to two lines, always the height of two so every card in the grid keeps
+ * one height, and its year, venue and topics take one line under it.
+ */
+.wkcard--paper .wt{align-items:flex-start}
+.wkcard--paper .tt{white-space:normal;mask-image:none}
+.wkcard--paper .tt-lines{display:-webkit-box;height:calc(1.5em * 2);overflow:hidden;-webkit-box-orient:vertical;-webkit-line-clamp:2}
+.wkcard--paper .wm{display:block;height:auto}
 
 /* Body paragraphs and empty-state lines share one paragraph spacing */
 .wkpage p{margin:var(--sp-4) 0 var(--sp-8)}

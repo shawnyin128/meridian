@@ -68,6 +68,8 @@ describe('Projects', () => {
 
   beforeEach(async () => {
     globalThis.IS_REACT_ACT_ENVIRONMENT = true
+    // The page title measures whether it fits, and jsdom has no ResizeObserver.
+    vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} })
     window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'zh')
     host = document.createElement('div')
     document.body.append(host)
@@ -78,6 +80,7 @@ describe('Projects', () => {
   afterEach(() => {
     act(() => root.unmount())
     host.remove()
+    vi.unstubAllGlobals()
   })
 
   const click = async (selector: string) => {

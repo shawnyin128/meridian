@@ -82,6 +82,20 @@ describe('idea and graph association', () => {
   })
   afterEach(() => { vi.unstubAllGlobals() })
 
+  it('draws a node label that cannot fit whole, faded out by CSS rather than cut to a character count', () => {
+    const label = '长程稳健性'.repeat(12)
+    const host = document.createElement('div')
+    host.innerHTML = renderToStaticMarkup(withMessages(
+      <ResearchGraph
+        graph={{ ...GRAPH, nodes: [...GRAPH.nodes, { id: 'long', label, state: 'idle', x: 440, y: 0, width: 180, writebacks: [] }] }}
+        selected={null} onSelect={vi.fn()}
+      />,
+    ))
+    const node = host.querySelector('[data-node="long"]')!
+    expect(node.textContent).toBe(label)
+    expect(node.querySelector('.fade-text')?.textContent).toBe(label)
+  })
+
   it('explains active-path and current-node emphasis with matching legend marks', () => {
     const markup = renderToStaticMarkup(withMessages(
       <ResearchGraph

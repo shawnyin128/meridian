@@ -89,6 +89,8 @@ describe('Wiki keyboard reach', () => {
 
   beforeEach(async () => {
     globalThis.IS_REACT_ACT_ENVIRONMENT = true
+    // The page title measures whether it fits, and jsdom has no ResizeObserver.
+    vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} })
     window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'zh')
     fixture.aggregation.mockReset().mockResolvedValue(AGG)
     fixture.paper.mockReset().mockResolvedValue(PAPER)
@@ -106,6 +108,7 @@ describe('Wiki keyboard reach', () => {
   afterEach(() => {
     if (root !== null) act(() => root!.unmount())
     root = null
+    vi.unstubAllGlobals()
   })
 
   const all = (selector: string) => [...host.querySelectorAll<HTMLElement>(selector)]
@@ -127,9 +130,16 @@ describe('Wiki keyboard reach', () => {
     expect(fixture.aggregation).toHaveBeenCalledWith('topics/sd')
   })
 
+  it('首页论文卡片是论文那一种卡片：标题整句放进两行的框里，年份、会场和主题是一行淡出的字', () => {
+    const card = host.querySelector<HTMLElement>('[data-wk="papers/p1"]')!
+    expect(card.classList.contains('wkcard--paper')).toBe(true)
+    expect(card.querySelector('.tt > .tt-lines')?.textContent).toBe('EAGLE-2')
+    expect(card.querySelector('.wm')?.matches('.fade-text')).toBe(true)
+  })
+
   it('home, subpage and paper cards are the shared research object card in its grid variant', async () => {
     expect(all('.wkcard').map((el) => el.className)).toEqual([
-      'research-object-card research-object-card--grid wkcard', 'research-object-card research-object-card--grid wkcard',
+      'research-object-card research-object-card--grid wkcard', 'research-object-card research-object-card--grid wkcard wkcard--paper',
     ])
     expect(all('.wkcard .tt').map((el) => el.classList.contains('research-object-card-open'))).toEqual([true, true])
     await press(host.querySelector<HTMLElement>('[data-wk="topics/sd"] .tt')!)

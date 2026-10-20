@@ -40,6 +40,7 @@ import { Grip, type GripLimits } from '../Grip.js'
 import { Toolbar, ToolbarButton } from '../Toolbar.js'
 import { Tooltip } from '../Tooltip.js'
 import { DetailPanel } from '../DetailPanel.js'
+import { FadeText } from '../FadeText.js'
 import { ActionMenu, MenuRadioGroup, MenuRadioItem, MenuSeparator } from '../ActionMenu.js'
 import { SegmentedControl } from '../SegmentedControl.js'
 import { ContextMenu, ContextMenuItem, ContextMenuSeparator } from '../ContextMenu.js'
@@ -1273,17 +1274,16 @@ export function PaperTable() {
               : !listed
               ? (
                 <StructuredList variant="embedded" maxVisibleRows="all">
-                  {facets.map((f) => (
-                    <StructuredRow className="gxrow" key={f.value} onActivate={() => { setSel(f.value); setPage(1) }}>
-                      <span className="gx-t">{f.value}</span>
-                      <span className="gx-m">
-                        {m.papers.groupIndex.newest(
-                          `${plainTitle(f.newestTitle).slice(0, 44)}${plainTitle(f.newestTitle).length > 44 ? '…' : ''}`,
-                        )}
-                      </span>
-                      <CountBadge className="n" count={f.count} />
-                    </StructuredRow>
-                  ))}
+                  {facets.map((f) => {
+                    const newest = m.papers.groupIndex.newest(plainTitle(f.newestTitle))
+                    return (
+                      <StructuredRow className="gxrow" key={f.value} onActivate={() => { setSel(f.value); setPage(1) }}>
+                        <span className="gx-t">{f.value}</span>
+                        <FadeText className="gx-m" label={newest}>{newest}</FadeText>
+                        <CountBadge className="n" count={f.count} />
+                      </StructuredRow>
+                    )
+                  })}
                 </StructuredList>
               )
               : (

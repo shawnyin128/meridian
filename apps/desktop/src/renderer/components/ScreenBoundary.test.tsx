@@ -31,12 +31,15 @@ describe('ScreenBoundary', () => {
     failing = true
     // React reports every caught error through console.error; the test owns that channel instead.
     vi.spyOn(console, 'error').mockImplementation(() => {})
+    // The failure page's title measures whether it fits, and jsdom has no ResizeObserver.
+    vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} })
   })
 
   afterEach(() => {
     if (root !== null) act(() => root!.unmount())
     root = null
     vi.restoreAllMocks()
+    vi.unstubAllGlobals()
   })
 
   it('替下崩掉的子树，alert 里只有通用标签，真实错误文本只进日志，下面只有一句短话', () => {

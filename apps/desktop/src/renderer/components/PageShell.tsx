@@ -3,6 +3,7 @@ import {
   type HTMLAttributes,
   type ReactNode,
 } from 'react'
+import { FadeText } from './FadeText.js'
 import './PageShell.css'
 
 const classes = (base: string, className: string | undefined) =>
@@ -38,10 +39,16 @@ export const PageToolbar = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElem
   },
 )
 
-export function PageTitle({ children, className, ...props }: {
+/**
+ * The page's title on one line: when it does not fit it fades out at its end and the tooltip shows it
+ * whole. `label` is that whole text, for a title that is not a plain string.
+ */
+export function PageTitle({ children, label, className, ...props }: {
   children: ReactNode
-} & HTMLAttributes<HTMLSpanElement>) {
-  return <span className={classes('t', className)} {...props}>{children}</span>
+  label?: string | undefined
+} & Omit<HTMLAttributes<HTMLSpanElement>, 'children'>) {
+  const whole = label ?? (typeof children === 'string' ? children : undefined)
+  return <FadeText className={classes('t', className)} label={whole} {...props}>{children}</FadeText>
 }
 
 /** The only main scrolling area of the page. */

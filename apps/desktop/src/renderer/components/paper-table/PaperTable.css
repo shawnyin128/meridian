@@ -28,7 +28,7 @@
 /* Group index level: pick a value first, then see the papers under it */
 .gxrow{display:flex;align-items:center;gap:var(--sp-12);padding:var(--sp-12) var(--sp-10)}
 .gxrow .gx-t{font-size:var(--fs-base);font-weight:var(--fw-semibold);min-width:150px}
-.gxrow .gx-m{flex:1;font-size:var(--fs-sm);color:var(--ter);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gxrow .gx-m{flex:1;font-size:var(--fs-sm);color:var(--ter)}
 .gnav{display:flex;align-items:center;gap:var(--sp-6);flex-wrap:wrap;margin-bottom:var(--sp-12)}
 
 /*
@@ -45,7 +45,9 @@
 .thmove:active{cursor:grabbing;color:var(--ink)}
 .thmove svg{width:9px;height:14px}
 .column-drag-ghost{position:fixed;left:-100px;top:-100px;width:1px;height:1px;opacity:0;pointer-events:none}
-.ptable td .ci{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ptable td .ci{display:block;overflow:hidden;white-space:nowrap}
+/* A text cell that does not fit fades out, until its hover shows it whole or its title takes keyboard focus. */
+.ptable td.trunc:not(:hover) .ci:not(:has(.tagchip)):not(:focus-visible){mask-image:var(--clipfade)}
 /* A chip cell clips its chips, so it keeps the ring room around them inside the cell's padding. */
 .ptable td .ci:has(.tagchip){padding:var(--ring-room);margin:calc(-1 * var(--ring-room))}
 .ptable td.trunc:has(.ci):not(:has(.tagchip)):hover{overflow:visible}
@@ -195,16 +197,17 @@
 .research-map-groups{min-width:0}
 .research-map-group{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:var(--sp-12);min-height:54px;padding:var(--sp-8) var(--sp-12)}
 .research-map-group-copy{display:flex;min-width:0;flex-direction:column;gap:var(--sp-4)}
-.research-map-group-copy strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:var(--fs-base)}
+/* A name is a span beside the span of its kind or count line, and keeps its own type and colour. */
+.research-map-group-copy .research-map-group-name{color:inherit;font-size:var(--fs-base);font-weight:var(--fw-title)}
 .research-map-group-copy>span{color:var(--ter);font-size:var(--fs-cap)}
 .research-map-detail{min-width:0;border-radius:var(--r-card);background:var(--card);overflow:hidden}
 .research-map-detail-head{display:flex;align-items:flex-start;gap:var(--sp-12);padding:var(--sp-14) var(--sp-16);border-bottom:1px solid var(--sep2)}
 .research-map-detail-head>div{display:flex;min-width:0;flex:1;flex-direction:column;gap:var(--sp-4)}
-.research-map-detail-head strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:var(--fs-read)}
+.research-map-detail-head .research-map-detail-name{color:inherit;font-size:var(--fs-group);font-weight:var(--fw-title)}
 .research-map-detail-head>div>span{color:var(--ter);font-size:var(--fs-cap)}
 .research-map-papers{padding:0 var(--sp-16)}
 .research-map-paper{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:var(--sp-4) var(--sp-16);min-height:78px;padding:var(--sp-10) 0}
-.research-map-paper-title{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:var(--fw-semibold)}
+.research-map-paper-title{font-weight:var(--fw-title)}
 .research-map-paper-meta{color:var(--ter);font-size:var(--fs-sm);white-space:nowrap}
 .research-map-why{display:flex;grid-column:1/-1;align-items:center;gap:var(--sp-4);min-width:0;color:var(--ter);font-size:var(--fs-cap);overflow:hidden;white-space:nowrap;mask-image:var(--clipfade)}
 .research-map-why>.tagchip{margin:0}
