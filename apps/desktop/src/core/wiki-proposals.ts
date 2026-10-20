@@ -53,10 +53,11 @@ export function pdfPageText(store: Pick<VaultStore, 'paperSource'>): PdfPageText
  * Checks every source evidence item and source conflict target in `ops` against its PDF (write protocol
  * §4.3). Returns the refusal for a page the PDF lacks, a quote absent from a page that has text, or, from
  * a producer other than HUMAN, a quote shorter than 12 characters after normalization; otherwise null
- * with the items whose page had no text layer (or whose paper has no PDF) listed as unverifiable.
+ * with the items whose page had no text layer (or whose paper has no PDF) listed as unverifiable. Both
+ * name the paper by `title`.
  */
 export async function checkQuotes(
-  ops: ProposalOp[], by: string, pdf: PdfPageText,
+  ops: ProposalOp[], by: string, pdf: PdfPageText, title: (paper: string) => string,
 ): Promise<{ invalid: string | null; unverifiable: string[] }> {
   const sources = ops.flatMap((op) => {
     const items = op.op === 'addClaim' ? op.claim.evidence
@@ -68,18 +69,18 @@ export async function checkQuotes(
   for (const source of sources) {
     const quote = normalizeQuote(source.quote)
     if (by !== HUMAN && [...quote].length < 12) {
-      return { invalid: `引句太短，至少要 12 个字符才能核对：${source.paper}`, unverifiable }
+      return { invalid: `引句太短，至少要 12 个字符才能核对：${title(source.paper)}`, unverifiable }
     }
     const held = await pdf(source.paper, source.page)
     if (held.state === 'no-page') {
-      return { invalid: `${source.paper} 的原文只有 ${held.pages} 页，没有第 ${source.page} 页`, unverifiable }
+      return { invalid: `${title(source.paper)} 的原文只有 ${held.pages} 页，没有第 ${source.page} 页`, unverifiable }
     }
     if (held.state !== 'text') {
-      unverifiable.push(`${source.paper} p.${source.page}`)
+      unverifiable.push(`${title(source.paper)} p.${source.page}`)
       continue
     }
     if (!normalizeQuote(held.text).includes(quote)) {
-      return { invalid: `引句在原文第 ${source.page} 页找不到：${source.paper}`, unverifiable }
+      return { invalid: `引句在原文第 ${source.page} 页找不到：${title(source.paper)}`, unverifiable }
     }
   }
   return { invalid: null, unverifiable }
@@ -127,6 +128,13 @@ export function createWikiProposals({ store, pdf, now }: {
     return null
   }
 
+  /** The title of paper page `id`, undefined when the vault has no such paper page. */
+  const paperTitle = (id: string): string | undefined =>
+    (id.startsWith(PAPER_PAGE) && store.pageVersion(id) !== null ? store.wikiPaper(id).title : undefined)
+
+  /** Quote checks (checkQuotes) of `ops` from producer `by`, naming each paper by its title, or by its id when it is gone. */
+  const quoteCheck = (ops: ProposalOp[], by: string) => checkQuotes(ops, by, pdf, (paper) => paperTitle(paper) ?? paper)
+
   /**
    * The titles and claim texts the review list shows for `proposal` writing `pages` (see
    * WikiProposalSchema), read from the vault as it stands; a page, project, node or claim that is gone
@@ -138,8 +146,7 @@ export function createWikiProposals({ store, pdf, now }: {
     const aggregations = new Map(store.wikiCards().map((card) => [card.id, card.title]))
     const page = (id: string): void => {
       if (id in titles) return
-      const title = aggregations.get(id)
-        ?? (id.startsWith(PAPER_PAGE) && store.pageVersion(id) !== null ? store.wikiPaper(id).title : undefined)
+      const title = aggregations.get(id) ?? paperTitle(id)
       if (title !== undefined) titles[id] = title
     }
     const claim = (ref: string): void => {
@@ -215,7 +222,7 @@ export function createWikiProposals({ store, pdf, now }: {
       // An op the vault refuses is the proposal's outcome, recorded and returned rather than thrown.
       return reject('invalid', error instanceof Error ? error.message : String(error))
     }
-    const quotes = await checkQuotes(proposal.ops, byOf(proposal), pdf)
+    const quotes = await quoteCheck(proposal.ops, byOf(proposal))
     if (quotes.invalid !== null) return reject('invalid', quotes.invalid)
     const notice = quotes.unverifiable.length === 0 ? null : `这些引句没有文字层可核对：${quotes.unverifiable.join('、')}`
     return { status: 'queued', reason: null, notice }
@@ -352,7 +359,7 @@ export function createWikiProposals({ store, pdf, now }: {
 
     /** Throws the refusal checkQuotes gives for the user's `ops`; a quote with no text layer is accepted. */
     async checkHumanQuotes(ops: ProposalOp[]): Promise<void> {
-      const { invalid } = await checkQuotes(ops, HUMAN, pdf)
+      const { invalid } = await quoteCheck(ops, HUMAN)
       if (invalid !== null) throw new Error(invalid)
     },
   }

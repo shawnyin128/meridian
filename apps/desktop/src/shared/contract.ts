@@ -1474,9 +1474,14 @@ export const WikiEvidenceSchema = z.object({
   by: z.string(),
   /** Paper short title, target claim text or page title, or project name; absent for personal evidence. */
   title: z.string().optional(),
+  /** Name of the project node (its label) or legacy conclusion (its text) an experiment item cites; its id when gone. */
+  point: z.string().optional(),
 }).strict()
 
-/** One open conflict on a claim; `title` is the other side's display text (claim text, paper short title, or project name). */
+/**
+ * One open conflict on a claim; `title` is the other side's display text (claim text, paper short title, or
+ * project name), and `point` names the node or conclusion an experiment side cites, as on WikiEvidence.
+ */
 export const WikiConflictSchema = z.object({
   id: z.string(),
   against: ConflictTargetSchema,
@@ -1484,6 +1489,7 @@ export const WikiConflictSchema = z.object({
   since: IsoDate,
   by: z.string(),
   title: z.string(),
+  point: z.string().optional(),
 }).strict()
 
 /**

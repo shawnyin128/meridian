@@ -1227,6 +1227,7 @@ describe('vault store on the aggregation layout', () => {
     expect(createVaultStore(vault).getProject(id).projectConclusions![0]).toMatchObject({ state: 'verified', verifiedOn: '2026-09-10' })
     expect(counts()).toEqual({ verified: 1, pending: 0, conflicting: 0 })
     write()
+    expect(store.wikiAggregation('topics/ptq').claims.find((c) => c.id === 'wide-b8')!.evidence[0]!.point).toBe('宽树')
     expect(store.getProject(id).projectConclusions![0]!.wiki).toEqual([{
       page: 'topics/ptq', title: store.wikiAggregation('topics/ptq').title, claim: 'wide-b8', version: 1,
     }])

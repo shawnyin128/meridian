@@ -1138,7 +1138,7 @@ describe('contract schemas', () => {
     const aggregationIds = wikiSearchIndex(data).map((hit) => hit.target)
     expect(aggregationIds.length).toBeGreaterThan(0)
     const version = { fm: '0123456789abcdef', body: '0123456789abcdef' }
-    for (const id of aggregationIds) WikiAggregationSchema.parse(wikiAggregation(data, id, version, {}))
+    for (const id of aggregationIds) WikiAggregationSchema.parse(wikiAggregation(data, id, version, {}, () => undefined))
     for (const row of papers) WikiPaperSchema.parse(wikiPaper(data, `papers/${row.id}`, version))
   })
 

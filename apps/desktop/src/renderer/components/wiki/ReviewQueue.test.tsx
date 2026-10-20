@@ -102,10 +102,31 @@ describe('ReviewQueue', () => {
     expect(onOpenPage).toHaveBeenCalledWith('topics/sd')
   })
 
-  it('提案标题与论文页名按 LaTeX 显示，改动行里的论文名是纯文本', () => {
+  it('提案标题、论文页名与改动行里的论文名都按 LaTeX 显示，引句照写', () => {
     expect(row('p7').querySelector('.review-title')!.innerHTML).toBe('收进《<strong>F</strong>lux》')
     expect(row('p7').querySelector('.wkrel .tagchip .tag-text')!.innerHTML).toBe('<strong>F</strong>lux')
-    expect(row('p7').querySelector('.diff')!.textContent).toContain('证据 · Flux p.2「q」')
+    expect([...row('p7').querySelectorAll('.diff div')].map((d) => d.innerHTML)).toEqual([
+      '+ 给「拐点在宽度 6」补证据', '+ 　证据 · <strong>F</strong>lux p.2「q」',
+    ])
+  })
+
+  it('Core 写的提醒与拒收原因里的论文名按 LaTeX 显示，用户自己写的拒绝原因照写', () => {
+    const decided = { at: RECEIVED, by: '我' as const }
+    act(() => root!.render(
+      <MessagesProvider>
+        <ReviewQueue
+          proposals={[
+            proposal('n1', { notice: '这些引句没有文字层可核对：\\textbf{F}lux p.1' }),
+            proposal('n2', { status: 'rejected', reason: { kind: 'invalid', message: '引句在原文第 2 页找不到：\\textbf{F}lux' }, decided }),
+            proposal('n3', { status: 'rejected', reason: { kind: 'declined', message: '差 ~5% 而已' }, decided }),
+          ]}
+          pending={false} onApply={onApply} onDecline={onDecline} onOpenPage={onOpenPage} onOpenConclusion={onOpenConclusion}
+        />
+      </MessagesProvider>,
+    ))
+    expect(row('n1').querySelector('.review-note--warn')!.innerHTML).toBe('这些引句没有文字层可核对：<strong>F</strong>lux p.1')
+    expect(row('n2').querySelector('.review-note')!.innerHTML).toBe('引句在原文第 2 页找不到：<strong>F</strong>lux')
+    expect(row('n3').querySelector('.review-note')!.textContent).toBe('差 ~5% 而已')
   })
 
   it('引用了没验证的项目结论:标出结论待验证,应用按不了,点结论去验证它', () => {

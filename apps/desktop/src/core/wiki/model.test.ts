@@ -75,7 +75,7 @@ describe('wiki 视图', () => {
   })
 
   it('聚合页:子聚合、对照表的行与格子、派生列、正文、关联', () => {
-    const leaf = wikiAggregation(DATA, 'topics/leaf', V, {})
+    const leaf = wikiAggregation(DATA, 'topics/leaf', V, {}, () => undefined)
     expect(leaf.parents).toEqual([{ id: 'topics/root', title: 'Root' }])
     expect(leaf.splitOn).toBeUndefined()
     expect(leaf.columns).toEqual([{ key: 'bits', label: '位宽' }, { key: 'calib', label: '校准' }])
@@ -92,14 +92,14 @@ describe('wiki 视图', () => {
     })
     expect(leaf.related).toEqual([{ label: '方法', links: [{ id: 'methods/m', title: 'M' }] }])
 
-    const root = wikiAggregation(DATA, 'topics/root', V, {})
+    const root = wikiAggregation(DATA, 'topics/root', V, {}, () => undefined)
     expect(root.summary).toBe('第一段。')
     expect(root.body).toBe(DATA.pages['topics/root']!.body)
     expect(root.splitOn).toBe('按什么拆')
     expect(root.children.map((c) => c.id)).toEqual(['topics/leaf'])
     expect(root.rows).toEqual([])
 
-    const m = wikiAggregation(DATA, 'methods/m', V, {})
+    const m = wikiAggregation(DATA, 'methods/m', V, {}, () => undefined)
     expect(m.derivedColumns).toEqual([{ key: 'used_for', label: '用于' }])
     expect(m.rows.map((r) => r.derived)).toEqual([
       { used_for: [{ id: 'topics/leaf', title: 'Leaf' }] }, { used_for: [] },
@@ -143,8 +143,8 @@ describe('wiki 视图', () => {
   })
 
   it('不存在的 id 抛出,论文 id 当聚合取也抛出', () => {
-    expect(() => wikiAggregation(DATA, 'topics/nope', V, {})).toThrow(/topics\/nope/)
-    expect(() => wikiAggregation(DATA, 'papers/a', V, {})).toThrow(/papers\/a/)
+    expect(() => wikiAggregation(DATA, 'topics/nope', V, {}, () => undefined)).toThrow(/topics\/nope/)
+    expect(() => wikiAggregation(DATA, 'papers/a', V, {}, () => undefined)).toThrow(/papers\/a/)
     expect(() => wikiPaper(DATA, 'papers/nope', V)).toThrow(/papers\/nope/)
     expect(() => wikiPaper(DATA, 'topics/leaf', V)).toThrow(/topics\/leaf/)
   })
@@ -161,16 +161,16 @@ describe('wiki 视图', () => {
         },
       },
     }
-    expect(wikiAggregation(data, 'topics/orphan', V, {}).parents).toEqual([{ id: 'topics/gone', title: 'topics/gone' }])
+    expect(wikiAggregation(data, 'topics/orphan', V, {}, () => undefined).parents).toEqual([{ id: 'topics/gone', title: 'topics/gone' }])
   })
 
   it('取回的视图是新对象,改它渗不回数据', () => {
-    const before = JSON.stringify(wikiAggregation(DATA, 'topics/leaf', V, {}))
-    const leaf = wikiAggregation(DATA, 'topics/leaf', V, {})
+    const before = JSON.stringify(wikiAggregation(DATA, 'topics/leaf', V, {}, () => undefined))
+    const leaf = wikiAggregation(DATA, 'topics/leaf', V, {}, () => undefined)
     leaf.rows[0]!.cells['bits']!.value = '篡改'
     leaf.columns[0]!.label = '篡改'
     leaf.parents.length = 0
-    expect(JSON.stringify(wikiAggregation(DATA, 'topics/leaf', V, {}))).toBe(before)
+    expect(JSON.stringify(wikiAggregation(DATA, 'topics/leaf', V, {}, () => undefined))).toBe(before)
     const a = wikiPaper(DATA, 'papers/a', V)
     a.authors.push('篡改')
     expect(wikiPaper(DATA, 'papers/a', V).authors).toEqual(['Ann'])

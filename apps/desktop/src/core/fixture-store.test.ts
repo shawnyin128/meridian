@@ -1593,6 +1593,11 @@ describe('fixture store', () => {
     })
   })
 
+  it('聚合页里结论的实验证据按名字写它引的项目结论', () => {
+    const claim = store.wikiAggregation('topics/kv-cache-quantization').claims.find((c) => c.id === 'prefix-schedule')!
+    expect(claim.evidence.map((e) => e.point)).toEqual([undefined, '迁移后吞吐与基线持平'])
+  })
+
   it('聚合页:子聚合、对照表的行与格子、派生列、追加区与关联', () => {
     const ptq = store.wikiAggregation('topics/ptq')
     expect(ptq.children.map((c) => c.id))
