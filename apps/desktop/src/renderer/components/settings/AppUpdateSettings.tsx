@@ -10,7 +10,7 @@ export interface UpdateActionProps {
   onDownload: (url: string) => void
 }
 
-/** One sentence stating where the app's self-update stands. */
+/** The short state label of where the app's self-update stands. */
 export function updateLine(status: AppUpdateStatus, m: Catalog): string {
   const phase = m.settings.extensions.app.phase
   switch (status.phase) {

@@ -191,11 +191,11 @@ export const settings = {
     app: {
       phase: {
         unsupported: '开发版本',
-        idle: '尚未检查更新。',
+        idle: '尚未检查更新',
         checking: '正在检查更新…',
-        latest: '已是最新版本。',
-        downloading: (version: string, percent: number) => `正在下载 ${version}（${percent}%）。`,
-        ready: (version: string) => `${version} 已下载，重启即可更新。`,
+        latest: '已是最新版本',
+        downloading: (version: string, percent: number) => `正在下载 ${version}（${percent}%）`,
+        ready: (version: string) => `${version} 已下载`,
         available: (version: string) => `有新版本 ${version} · 需手动安装`,
         error: (reason: string) => `检查更新失败：${reason}`,
       },
