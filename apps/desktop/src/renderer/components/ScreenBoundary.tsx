@@ -36,7 +36,6 @@ function ScreenFailure({ error, onRetry }: { error: Error; onRetry: () => void }
   return (
     <PageFailure
       className="screen-failure" title={m.errors.screen.title} error={reasonLabel(m, failureOf(error))}
-      note={m.errors.screen.note}
       action={<button className="btn" onClick={onRetry}>{m.errors.screen.retry}</button>}
     />
   )

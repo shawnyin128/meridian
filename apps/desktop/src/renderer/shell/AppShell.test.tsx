@@ -142,7 +142,7 @@ describe('库打不开时', () => {
       await Promise.resolve()
     })
     const page = document.querySelector('.bootfail')!
-    expect(page.querySelector('.page-failure-note')).toBeNull()
+    expect([...page.querySelector('.desk-body')!.children].map((el) => el.getAttribute('role') ?? el.tagName)).toEqual(['alert', 'BUTTON'])
     const action = page.querySelector<HTMLButtonElement>('.btn')!
     expect(action.textContent).toBe('换论文库')
     act(() => action.click())

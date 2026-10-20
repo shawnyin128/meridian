@@ -39,7 +39,7 @@ describe('ScreenBoundary', () => {
     vi.restoreAllMocks()
   })
 
-  it('替下崩掉的子树，alert 里只有通用标签，真实错误文本只进日志，下面只有一句短话', () => {
+  it('替下崩掉的子树，alert 里只有通用标签，真实错误文本只进日志，标签下面只有重试，不写一句宽慰的话', () => {
     act(() => root!.render(
       <MessagesProvider><ScreenBoundary><Unstable /></ScreenBoundary></MessagesProvider>,
     ))
@@ -47,7 +47,7 @@ describe('ScreenBoundary', () => {
     expect(host.textContent).not.toContain('项目详情')
     expect(host.querySelector('[role="alert"]')?.textContent).toBe('出了点问题')
     expect(host.textContent).not.toContain('日期格式不对')
-    expect(host.querySelector('.page-failure-note')?.textContent).not.toMatch(/[。；，]/)
+    expect([...host.querySelector('.desk-body')!.children].map((el) => el.textContent)).toEqual(['出了点问题', '重试'])
     expect(console.error).toHaveBeenCalledWith(expect.stringContaining('日期格式不对'))
   })
 
