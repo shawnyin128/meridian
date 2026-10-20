@@ -503,10 +503,10 @@ describe('Settings', () => {
     expect(dialog.querySelector('.set-main .empty-state')).toBeNull()
   })
 
-  it('库打不开时显示路径与原因，切换和重置仍然可用', async () => {
+  it('库打不开时显示所选目录与原因的标签，错误里不带路径，切换和重置仍然可用', async () => {
     api.libraryLocation.mockResolvedValueOnce({
       root: '/tmp/broken-library', source: 'fallback', locked: false, restartRequired: false,
-      openError: '库里没有论文页目录:/tmp/broken-library/wiki/papers',
+      openError: 'not-library',
     })
     await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
     const dialog = document.querySelector('.setdlg')!
@@ -515,8 +515,7 @@ describe('Settings', () => {
     })
 
     expect(dialog.textContent).not.toContain('正在读取库位置')
-    expect(dialog.querySelector('.ipcerror')?.textContent)
-      .toBe('库里没有论文页目录:/tmp/broken-library/wiki/papers')
+    expect(dialog.querySelector('.ipcerror')?.textContent).toBe('不是 Meridian 论文库')
     expect(dialog.querySelector<HTMLInputElement>('.storage-root input')?.value)
       .toBe('/tmp/broken-library')
     expect(dialog.querySelector<HTMLButtonElement>('[aria-label="选择论文库根目录"]')?.disabled)
@@ -678,6 +677,17 @@ describe('Settings', () => {
     const field = dialog.querySelector<HTMLInputElement>('[aria-label="模型 API Key"]')!
     expect(field.value).toBe('')
     expect(field.type).toBe('password')
+  })
+
+  it('已存的模型配置读不进来时只显示原因的标签', async () => {
+    const unreadable = { ...(await api.modelSettings()), error: 'key-unreadable' as const }
+    api.modelSettings.mockResolvedValueOnce(unreadable)
+    api.requestedCategory = 'model'
+    await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
+    const dialog = document.querySelector('.setdlg')!
+
+    expect(dialog.textContent).toContain('没能读取已存的密钥。请检查后重新保存。')
+    expect(dialog.textContent).not.toContain('key-unreadable')
   })
 
   it('用最多一个输出 token 测试当前已保存的模型连接', async () => {

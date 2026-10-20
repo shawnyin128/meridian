@@ -4,7 +4,7 @@ import type {
   HarnessModelProvider, HarnessModelSettings,
 } from '../../../shared/contract.js'
 import { harness } from '../../ipc.js'
-import { errorLabel } from '../../lib/failure-label.js'
+import { errorLabel, reasonLabel } from '../../lib/failure-label.js'
 import { useMessages } from '../../messages/useMessages.js'
 import { ChoicePicker } from '../FieldPickers.js'
 import { FormInput } from '../FormControls.js'
@@ -407,7 +407,7 @@ export function ModelSettings() {
         </ServiceActions>
       </ServiceFoot>
       {settings.error === undefined ? null : (
-        <ServiceError>{m.settings.model.errorHint(settings.error)}</ServiceError>
+        <ServiceError>{m.settings.model.errorHint(reasonLabel(m, settings.error))}</ServiceError>
       )}
       {error === null ? null : <ServiceError>{error}</ServiceError>}
     </ServiceCard>

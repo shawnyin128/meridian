@@ -211,7 +211,7 @@ export const settings = {
         downloading: (version: string, percent: number) => `正在下载 ${version}（${percent}%）。`,
         ready: (version: string) => `${version} 已下载，重启即可更新。`,
         available: (version: string) => `有新版本 ${version}。Meridian 不能在当前位置替换自己（例如从磁盘映像里运行），请下载后安装。`,
-        error: (message: string) => `检查更新失败：${message}`,
+        error: (reason: string) => `检查更新失败：${reason}`,
       },
       check: '检查更新',
       checking: '检查中…',

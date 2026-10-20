@@ -77,12 +77,24 @@ describe('Core chat service', () => {
     const sending = service.send('amortize', '停止这个请求')
 
     expect(service.cancel('amortize')).toEqual({ id: 'amortize', cancelled: true })
-    await expect(sending).resolves.toEqual({
-      id: 'amortize', state: 'cancelled', message: '已停止生成',
-    })
+    await expect(sending).resolves.toEqual({ id: 'amortize', state: 'cancelled' })
     expect(store.chatMessages('amortize').slice(before)).toMatchObject([
       { role: 'you', runs: [{ text: '停止这个请求' }] },
     ])
+  })
+
+  it('answers a failed model call with its reason and keeps the provider text out of the result', async () => {
+    const store = createFixtureStore()
+    const runner: ChatHarnessRunner = {
+      checkConnection: vi.fn(async () => ({
+        state: 'connected' as const, modelCalls: 1 as const, maxOutputTokens: 1 as const,
+      })),
+      answer: vi.fn(async () => { throw new Error('401 Unauthorized: invalid x-api-key') }),
+      close: vi.fn(),
+    }
+    const service = createChatService({ store, model: await configuredModel(), runner })
+
+    await expect(service.send('amortize', '测试')).resolves.toEqual({ id: 'amortize', state: 'failed', reason: 'model' })
   })
 
   it('fails a second send to a chat that is still generating as busy', async () => {
@@ -115,7 +127,7 @@ describe('Core chat service', () => {
     const before = store.chatMessages('amortize').length
 
     const result = await service.send('amortize', '测试')
-    expect(result.state).toBe('failed')
+    expect(result).toEqual({ id: 'amortize', state: 'failed', reason: 'no-model' })
     expect(store.chatMessages('amortize').slice(before)).toMatchObject([
       { role: 'you' },
       { role: 'status', runs: [{ text: expect.stringContaining('设置') }] },

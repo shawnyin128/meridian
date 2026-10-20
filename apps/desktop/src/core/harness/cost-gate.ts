@@ -4,7 +4,7 @@ import type {
   HarnessPaperWikiQuality, HarnessPaperWikiReview, HarnessPendingPaperWikiResult, HarnessRejectPaperWikiResult,
   HarnessRejectPaperWikiParams, HarnessStartParams, PaperReading, PaperRow, WikiPaper,
 } from '../../shared/contract.js'
-import { CallError } from '../call-error.js'
+import { CallError, callFailure } from '../call-error.js'
 import type { HarnessProposalAuditEvent, PendingHarnessProposal } from './proposal-audit.js'
 
 const PLAN_TTL_MS = 10 * 60 * 1_000
@@ -165,7 +165,7 @@ export function createHarnessCostGate(deps: Dependencies) {
       if (Date.parse(held.plan.expiresAt) <= now().getTime()) {
         throw new CallError('refused', '这份 AI 任务确认已过期，请重新准备')
       }
-      if (!held.plan.model.configured) throw new CallError('refused', 'AI 尚未连接，请先在设置中配置模型')
+      if (!held.plan.model.configured) throw new CallError('no-model', 'AI 尚未连接，请先在设置中配置模型')
       if (JSON.stringify(configuredModel()) !== JSON.stringify(held.plan.model)) {
         throw new CallError('changed', 'AI 模型配置已变化，请重新确认任务')
       }
@@ -236,7 +236,8 @@ export function createHarnessCostGate(deps: Dependencies) {
             ...(result.proposalQuality === undefined ? {} : { quality: result.proposalQuality }),
           })
         } catch (error) {
-          receipt.warning = `提案已生成，但审计记录写入失败：${error instanceof Error ? error.message : String(error)}`
+          console.error(`[harness] 提案已生成，但审计记录写入失败：${error instanceof Error ? error.message : String(error)}`)
+          receipt.warning = callFailure(error)
         }
       }
       return receipt
@@ -270,7 +271,8 @@ export function createHarnessCostGate(deps: Dependencies) {
           scopeDigest: proposal.scopeDigest, at: result.appliedAt, body: params.body,
         })
       } catch (error) {
-        result.warning = `Wiki 已写入，但审计记录写入失败：${error instanceof Error ? error.message : String(error)}`
+        console.error(`[harness] Wiki 已写入，但审计记录写入失败：${error instanceof Error ? error.message : String(error)}`)
+        result.warning = callFailure(error)
       }
       return result
     },
@@ -288,7 +290,8 @@ export function createHarnessCostGate(deps: Dependencies) {
           ...(params.feedback === undefined ? {} : { feedback: structuredClone(params.feedback) }),
         })
       } catch (error) {
-        result.warning = `提案已丢弃，但审计记录写入失败：${error instanceof Error ? error.message : String(error)}`
+        console.error(`[harness] 提案已丢弃，但审计记录写入失败：${error instanceof Error ? error.message : String(error)}`)
+        result.warning = callFailure(error)
       }
       proposal.used = true
       return result

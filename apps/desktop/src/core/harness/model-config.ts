@@ -1,11 +1,11 @@
 import { chmodSync, existsSync, mkdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import type {
-  HarnessModelProfile, HarnessModelProtocol, HarnessModelProvider, HarnessModelSettings,
+  CallFailure, HarnessModelProfile, HarnessModelProtocol, HarnessModelProvider, HarnessModelSettings,
   HarnessModelSettingsUpdate,
 } from '../../shared/contract.js'
 import { HarnessModelSettingsUpdateSchema } from '../../shared/contract.js'
-import { CallError } from '../call-error.js'
+import { CallError, callFailure } from '../call-error.js'
 import { writeJson } from '../vault/writer.js'
 import type { CredentialVault } from './credential-vault.js'
 
@@ -144,7 +144,7 @@ function persist(configHome: string, file: string, value: PrivateModelConfig): v
 export async function createHarnessModelConfig(configHome: string, vault: CredentialVault) {
   const file = join(configHome, HARNESS_MODEL_CONFIG_FILENAME)
   let value = defaults()
-  let loadError: string | undefined
+  let loadError: CallFailure | undefined
   try {
     const loaded = readPrivateConfig(file)
     value = loaded.value
@@ -167,13 +167,15 @@ export async function createHarnessModelConfig(configHome: string, vault: Creden
         persist(configHome, file, value)
       } catch (cause) {
         persist(configHome, file, value)
-        loadError = `旧 API Key 已从明文配置移除：${cause instanceof Error ? cause.message : String(cause)}`
+        console.error(`[harness] 旧 API Key 已从明文配置移除：${cause instanceof Error ? cause.message : String(cause)}`)
+        loadError = callFailure(cause)
       }
     } else if (loaded.migrated === true) {
       persist(configHome, file, value)
     }
   } catch (error) {
-    loadError = error instanceof Error ? error.message : String(error)
+    console.error(`[harness] ${error instanceof Error ? error.message : String(error)}`)
+    loadError = callFailure(error)
   }
 
   const publicSettings = (): HarnessModelSettings => {
@@ -379,14 +381,17 @@ function readPrivateConfig(file: string): LoadedConfig {
     if (!LEGACY_CONFIG_VERSIONS.includes(
       schemaVersion as typeof LEGACY_CONFIG_VERSIONS[number],
     )) {
-      throw new Error('版本不受支持')
+      throw new CallError('newer-version', '版本不受支持')
     }
     return parseLegacyConfig(
       parsed,
       schemaVersion as typeof LEGACY_CONFIG_VERSIONS[number],
     )
   } catch (error) {
-    throw new Error(`AI 模型配置无效：${error instanceof Error ? error.message : String(error)}`)
+    throw new CallError(
+      callFailure(error) === 'newer-version' ? 'newer-version' : 'invalid',
+      `AI 模型配置无效：${error instanceof Error ? error.message : String(error)}`, { cause: error },
+    )
   }
 }
 

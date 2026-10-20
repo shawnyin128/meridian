@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
-import type { ContractMethod, LibrarySource } from '../shared/contract.js'
+import type { CallFailure, ContractMethod, LibrarySource } from '../shared/contract.js'
 import {
   AuthorSearchParamsSchema,
   ChatAppendParamsSchema,
@@ -293,7 +293,7 @@ function sourceOf(root: string | undefined, source: string | undefined): Library
  */
 function openStore(
   root: string | undefined, appliedProposalBodies: Map<string, string>,
-): { store: VaultStore; openError: string | null } {
+): { store: VaultStore; openError: CallFailure | null } {
   if (root === undefined) {
     return { store: createFixtureStore(undefined, undefined, appliedProposalBodies), openError: null }
   }
@@ -305,7 +305,8 @@ function openStore(
   } catch (err) {
     const reason = err instanceof Error ? err.message : String(err)
     console.error(`[core] 论文库打不开：${reason}`)
-    return { store: unopenedStore(reason, callFailure(err)), openError: reason }
+    const failure = callFailure(err)
+    return { store: unopenedStore(reason, failure), openError: failure }
   }
 }
 

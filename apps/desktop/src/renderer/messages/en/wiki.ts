@@ -113,6 +113,7 @@ export const wiki = {
     writing: 'Writing…',
     confirm: 'Save to Wiki',
     writeNote: 'Wiki draft saved to the paper page',
+    auditFailed: 'Audit record not saved',
     written: 'Saved to Wiki.',
     discarded: 'Draft discarded. The Wiki was not changed.',
     disclaimer: 'The model runs only after you confirm. Review the generated draft before saving it to the Wiki.',

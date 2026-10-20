@@ -149,6 +149,21 @@ describe('PaperWikiIngest', () => {
     expect(host.textContent).toContain('已写入 Wiki')
   })
 
+  it('names an audit record that could not be written by its reason, next to the ready proposal', async () => {
+    api.start.mockResolvedValueOnce({
+      id: 'run-1', planId: 'plan-1', workflow: 'paper-wiki', targetId: 'p1',
+      startedAt: '2026-09-17T12:00:00.000Z', state: 'proposal-ready', message: '请审核', warning: 'write',
+      proposal: { id: 'proposal-1', targetId: 'p1', action: 'create', body: '# Draft', review, quality },
+    })
+    await act(async () => { root.render(withMessages(<PaperWikiIngest paper={paper} reading={reading} />)) })
+    await act(async () => {
+      host.querySelector<HTMLButtonElement>('[data-testid="start-harness"]')!.click()
+    })
+
+    expect(host.textContent).toContain('审计记录没能保存 · 没能写入论文库')
+    expect(host.textContent).toContain('记住什么')
+  })
+
   it('lets the user stop an in-flight run and requires a fresh confirmation afterward', async () => {
     let rejectRun: ((cause: CallError) => void) | undefined
     api.start.mockImplementation(() => new Promise((_resolve, reject) => { rejectRun = reject }))
