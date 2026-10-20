@@ -8,12 +8,14 @@ type Node = { dispatchEvent(event: object): boolean }
 type Style = {
   backgroundColor: string; backgroundImage: string; borderColor: string; boxShadow: string; color: string; cursor: string
   fill: string; stroke: string; opacity: string; getPropertyValue(name: string): string
+  borderTopStyle: string; borderBottomStyle: string
 }
 type Window = {
   document: {
     head: { innerHTML: string }
     body: { innerHTML: string }
     querySelector(selector: string): Node
+    querySelectorAll(selector: string): Node[]
   }
   MouseEvent: new (type: string, init: { bubbles: boolean }) => object
   getComputedStyle(element: Node): Style
@@ -138,5 +140,24 @@ describe('悬停的反馈不被任何状态盖掉', () => {
       expect([overlay.fill, overlay.opacity], state).toEqual(['var(--hover)', '1'])
       expect(styleOf(node, '.rgn-hover').opacity, state).toBe('0')
     }
+  })
+})
+
+describe('论文表行与行之间的分隔线', () => {
+  beforeEach(() => {
+    // jsdom drops a border shorthand that holds var(), so the divider's colour is written out first.
+    document.head.innerHTML = STYLES.map((css) => `<style>${css.replaceAll('var(--sep2)', 'rgb(220, 228, 239)')}</style>`).join('')
+  })
+
+  it('每一行的分隔线画在它自己格子的上边，吸住的标题格和操作格也是；第一行上面和最后一行下面都不画', () => {
+    const row = '<tr><td class="trunc"><span class="ci">EAGLE</span></td><td class="pt-dim">2024</td><td class="row-actions-cell"></td></tr>'
+    document.body.innerHTML = `<table class="ptable"><tbody>${row}${row}${row}</tbody></table>`
+    const edges = [...document.querySelectorAll('tbody tr')].map((tr) => [...(tr as unknown as { children: Node[] }).children]
+      .map((td) => { const style = getComputedStyle(td); return `${style.borderTopStyle}/${style.borderBottomStyle}` }))
+    expect(edges).toEqual([
+      ['none/none', 'none/none', 'none/none'],
+      ['solid/none', 'solid/none', 'solid/none'],
+      ['solid/none', 'solid/none', 'solid/none'],
+    ])
   })
 })
