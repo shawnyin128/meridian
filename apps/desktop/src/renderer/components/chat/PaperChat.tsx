@@ -17,6 +17,7 @@ import { LoadingPlaceholder } from '../LoadingPlaceholder.js'
 import { PageError } from '../PageShell.js'
 import { useDrafts } from '../../hooks/useDrafts.js'
 import { useGenerations } from '../../hooks/useGenerations.js'
+import { useNoModelChats } from '../../hooks/useNoModelChats.js'
 import { TitleNote } from '../TitleNote.js'
 import { useVaultWrite } from '../../hooks/useVaultWrite.js'
 import { useMessages } from '../../messages/useMessages.js'
@@ -51,6 +52,7 @@ export function PaperChat({ paper, onBack = () => {}, prompt = null }: {
   const drafts = useDrafts()
   const [savingIdea, setSavingIdea] = useState(false)
   const { running, run, stop } = useGenerations()
+  const { noModel, track } = useNoModelChats()
   const [error, setError] = useState<string | null>(null)
   const stream = useRef<HTMLDivElement>(null)
   const composer = useRef<HTMLTextAreaElement>(null)
@@ -98,7 +100,7 @@ export function PaperChat({ paper, onBack = () => {}, prompt = null }: {
     const text = draft.trim()
     if (text === '' || paperId === null || session === null || sending) return
     drafts.drop(paperId)
-    void run(session.id, write(chat.send(session.id, text)))
+    void run(session.id, write(track(session.id, chat.send(session.id, text))))
   }
 
   const stopSending = () => {
@@ -161,6 +163,7 @@ export function PaperChat({ paper, onBack = () => {}, prompt = null }: {
                 submit()
               }}
             />
+            {sessionId !== null && noModel(sessionId) ? <Tag>{m.chat.noModel}</Tag> : null}
             <GenerationControl
               className="send" running={sending} disabled={session === null || draft.trim() === ''}
               onStart={submit} onStop={stopSending}

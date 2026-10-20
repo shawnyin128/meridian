@@ -28,11 +28,7 @@ export function createChatService(options: {
       if (running.has(id)) throw new CallError('busy', '这段对话仍在生成，请先停止或等待完成')
       options.store.chatSession(id)
       options.store.appendChatMessages(id, [userMessage(text)])
-      if (!options.model.settings().configured || options.runner === null) {
-        const message = 'AI 尚未接入，请先在设置中配置模型与 API Key。'
-        options.store.appendChatMessages(id, [statusMessage(message)])
-        return { id, state: 'failed', reason: 'no-model' }
-      }
+      if (!options.model.settings().configured || options.runner === null) return { id, state: 'failed', reason: 'no-model' }
 
       const controller = new AbortController()
       running.set(id, controller)

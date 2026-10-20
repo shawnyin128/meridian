@@ -117,7 +117,7 @@ describe('Core chat service', () => {
     await first
   })
 
-  it('states that setup is required instead of pretending to be an AI answer', async () => {
+  it('without a model keeps only the user turn and reports no-model, writing no status sentence of its own', async () => {
     const store = createFixtureStore()
     const model = await createHarnessModelConfig(
       mkdtempSync(join(tmpdir(), 'meridian-chat-model-')),
@@ -128,9 +128,6 @@ describe('Core chat service', () => {
 
     const result = await service.send('amortize', '测试')
     expect(result).toEqual({ id: 'amortize', state: 'failed', reason: 'no-model' })
-    expect(store.chatMessages('amortize').slice(before)).toMatchObject([
-      { role: 'you' },
-      { role: 'status', runs: [{ text: expect.stringContaining('设置') }] },
-    ])
+    expect(store.chatMessages('amortize').slice(before).map((message) => message.role)).toEqual(['you'])
   })
 })

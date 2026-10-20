@@ -2,6 +2,7 @@
 import { act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import type { ChatSendResult } from '../../shared/contract.js'
 import { MessagesProvider } from '../messages/useMessages.js'
 import { LANGUAGE_STORAGE_KEY } from '../shell/language.js'
 import { TOOLTIP_DELAY } from '../components/Tooltip.js'
@@ -11,7 +12,7 @@ declare global {
 }
 
 const api = vi.hoisted(() => ({
-  send: vi.fn(() => Promise.resolve({ id: 'chat-1', state: 'complete' })),
+  send: vi.fn((): Promise<ChatSendResult> => Promise.resolve({ id: 'chat-1', state: 'complete' })),
   cancel: vi.fn(() => Promise.resolve({ id: 'chat-1', cancelled: true })),
   listProjects: vi.fn(() => Promise.resolve([{
     id: 'draft', name: '草稿树项目', status: '进行中', priority: 'p1', topic: '推理', focus: '验证',
@@ -107,6 +108,20 @@ describe('Chat composer', () => {
     expect(press('Enter').defaultPrevented).toBe(true)
     await act(async () => { await Promise.resolve() })
     expect(api.send).toHaveBeenCalledWith('chat-1', '为什么')
+  })
+
+  it('没配置模型时发送失败，输入框里显示「AI 未连接」的状态；配好后再发一次成功，状态就消失', async () => {
+    api.send.mockResolvedValueOnce({ id: 'chat-1', state: 'failed', reason: 'no-model' })
+    const state = () => document.querySelector('.cbox .tag')?.textContent ?? null
+    expect(state()).toBeNull()
+    act(() => setValue(composer, '为什么'))
+    press('Enter')
+    await act(async () => { await Promise.resolve(); await Promise.resolve() })
+    expect(state()).toBe('AI 未连接')
+    act(() => setValue(composer, '再问一次'))
+    press('Enter')
+    await act(async () => { await Promise.resolve(); await Promise.resolve() })
+    expect(state()).toBeNull()
   })
 
   it('@ 候选开着时输入法组字的 Esc 不收起候选，组完字后的 Esc 才收起', () => {

@@ -4,6 +4,7 @@ import { chat as zh } from '../zh/chat.js'
 export const chat = {
   newChat: 'New chat',
   saveIdeaLabel: 'Save as idea',
+  noModel: 'AI not connected',
   noDiscussion: 'No discussion yet',
   mentionGroup: { project: 'Projects', paper: 'Papers', page: 'Wiki' },
   conflictQuestion: 'Why do these two conclusions conflict?',

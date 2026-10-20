@@ -23,6 +23,7 @@ import {
 import { useCandidateKeys } from '../hooks/useCandidateKeys.js'
 import { useDrafts } from '../hooks/useDrafts.js'
 import { useGenerations } from '../hooks/useGenerations.js'
+import { useNoModelChats } from '../hooks/useNoModelChats.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
 import { CONFLICT_THREAD, sendsMessage } from '../lib/chat.js'
 import { composing } from '../lib/keyboard.js'
@@ -112,6 +113,7 @@ export function Chat() {
   const [mentionIn, setMentionIn] = useState<string | null>(null)
   const [savingIdea, setSavingIdea] = useState(false)
   const { running, run, stop } = useGenerations()
+  const { noModel, track } = useNoModelChats()
   const [projects, setProjects] = useState<ProjectSummary[]>([])
   const [rows, setRows] = useState<PaperRow[]>([])
   const [pages, setPages] = useState<WikiAggregationCard[]>([])
@@ -146,7 +148,7 @@ export function Chat() {
   const suggest = useMemo(() => (mentioning ? hitsOf(draft.trim(), mentions) : []), [mentioning, draft, mentions])
 
   const send = useCallback(
-    (session: string, text: string) => run(session, write(chat.send(session, text))), [run, write])
+    (session: string, text: string) => run(session, write(track(session, chat.send(session, text)))), [run, write, track])
 
   const stopSending = () => {
     if (id === null) return
@@ -291,6 +293,7 @@ export function Chat() {
                       }
                     }}
                   />
+                  {id !== null && noModel(id) ? <Tag>{m.chat.noModel}</Tag> : null}
                   <GenerationControl
                     className="send" id="sendBtn" running={sending} disabled={id === null || draft.trim() === ''}
                     onStart={submit} onStop={stopSending}
