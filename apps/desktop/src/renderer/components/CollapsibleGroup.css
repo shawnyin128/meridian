@@ -10,7 +10,7 @@
 .collapsible-group-toggle:hover .collapsible-group-caret{color:var(--ink)}
 .collapsible-group-caret svg{width:12px;height:12px}
 .collapsible-group.is-closed .collapsible-group-caret{transform:rotate(-90deg)}
-.collapsible-group-title{min-width:0;overflow-wrap:anywhere}
+.collapsible-group-label{min-width:0;overflow-wrap:anywhere}
 .collapsible-group-actions{display:flex;flex:none;align-items:center;gap:8px}
 /*
  * An opening group grows through its one grid row from 0fr, as CardTray does, and clips its content

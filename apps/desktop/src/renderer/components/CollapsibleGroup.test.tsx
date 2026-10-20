@@ -8,7 +8,7 @@ describe('CollapsibleGroup', () => {
     const withCount = renderToStaticMarkup(
       <CollapsibleGroup title="标题" count={3} open onToggle={vi.fn()}>内容</CollapsibleGroup>,
     )
-    expect(withCount).toContain('<span class="collapsible-group-title">标题</span><span class="collapsible-group-count">· 3</span>')
+    expect(withCount).toContain('<span class="collapsible-group-label"><span class="collapsible-group-title">标题</span><span class="collapsible-group-count"> · 3</span></span>')
     expect(withCount).not.toContain('count-badge')
 
     const withoutCount = renderToStaticMarkup(

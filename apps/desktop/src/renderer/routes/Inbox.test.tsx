@@ -186,7 +186,7 @@ describe('Inbox', () => {
     const groups = [...host.querySelectorAll<HTMLElement>('.collapsible-group')]
     expect(groups.map((group) => group.dataset['group'])).toEqual(['p1', 'p2'])
     expect(groups[0]!.querySelector('.collapsible-group-title')?.textContent).toBe('项目 · 项目一')
-    expect(groups[0]!.querySelector('.collapsible-group-count')?.textContent).toBe('· 2')
+    expect(groups[0]!.querySelector('.collapsible-group-count')?.textContent).toBe(' · 2')
     expect(groups[0]!.querySelectorAll('.paper-card')).toHaveLength(2)
 
     await act(async () => { groups[0]!.querySelector<HTMLButtonElement>('.collapsible-group-toggle')!.click() })

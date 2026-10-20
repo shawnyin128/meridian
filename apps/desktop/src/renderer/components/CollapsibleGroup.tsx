@@ -30,8 +30,10 @@ export function CollapsibleGroup({
       <div className="collapsible-group-head">
         <button type="button" className="collapsible-group-toggle" aria-expanded={open} onClick={onToggle}>
           <span className="collapsible-group-caret"><Icon sw={2.4}><path d="M6 9l6 6 6-6" /></Icon></span>
-          <span className="collapsible-group-title">{title}</span>
-          {count === undefined ? null : <span className="collapsible-group-count">· {count}</span>}
+          <span className="collapsible-group-label">
+            <span className="collapsible-group-title">{title}</span>
+            {count === undefined ? null : <span className="collapsible-group-count"> · {count}</span>}
+          </span>
         </button>
         {actions === undefined ? null : <div className="collapsible-group-actions">{actions}</div>}
       </div>
