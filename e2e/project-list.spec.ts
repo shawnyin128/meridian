@@ -199,7 +199,7 @@ test('新建一个项目,重命名、改状态、删掉,再从垃圾桶恢复', 
   await card.hover()
   await card.locator('.dots').click()
   await win.locator('.ctxmenu .mi.danger').click()
-  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已移入垃圾桶 · 7 天内可恢复')
+  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已移入垃圾桶')
   await expect(rows).toHaveCount(before.length)
   expect((await listProjects(win)).map((p) => p.id)).not.toContain(created!.id)
 

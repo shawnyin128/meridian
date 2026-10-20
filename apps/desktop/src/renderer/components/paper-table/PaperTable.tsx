@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { DragEvent as ReactDragEvent, RefObject } from 'react'
 import type {
-  Facet, ListParams, PaperCell, PaperColumn, PaperColumns, PaperRow, ReadState, SortDirection,
+  Facet, ListParams, PaperCell, PaperColumn, PaperColumns, PaperRow, ReadState, RecordedChange, SortDirection,
   SortKey,
 } from '../../../shared/contract.js'
 import { MAX_PDF_UPLOAD_BYTES } from '../../../shared/contract.js'
@@ -26,6 +26,7 @@ import { PageBody, PageError, PageHeader, PageShell, PageTitle, PageToolbar } fr
 import { NO_TRIGGERS } from '../../hooks/useOnLeave.js'
 import { useInlineDraft } from '../../hooks/useInlineDraft.js'
 import { useScrollFade } from '../../hooks/useScrollFade.js'
+import { useUndo } from '../../hooks/useUndo.js'
 import { useVaultWrite } from '../../hooks/useVaultWrite.js'
 import {
   useCrumbTail, useEscapeLayer, useJump, useNotice, usePaperCount, useScreen, useScreenReentry, useVaultRevision,
@@ -345,6 +346,7 @@ export function PaperTable() {
   const reportError = useCallback((e: Error) => setError(e.message), [])
   const closeDetail = useCallback(() => setDetail(null), [])
   const write = useVaultWrite()
+  const undo = useUndo()
   const detailId = detail?.id
 
   // A write in the detail panel (linking a project) only bumps the vault revision, so the open paper
@@ -644,28 +646,31 @@ export function PaperTable() {
   const ariaSort = (key: SortKey) => (sort !== key ? undefined : direction === 'asc' ? 'ascending' : 'descending')
 
   const addTopic = (p: PaperRow, value: string): Promise<boolean> =>
-    write(papers.update(p.id, { topics: [...p.topics, value] }), { note: m.papers.notices.topicAdded })
+    write(papers.update(p.id, { topics: [...p.topics, value] }), { note: m.papers.notices.topicAdded, action: undo.change })
 
   const setReadState = (p: PaperRow, readState: ReadState) => {
     void write(papers.update(p.id, { readState }), { note: m.papers.notices.readStateUpdated })
   }
 
   const removeTopic = (p: PaperRow, value: string): Promise<boolean> =>
-    write(papers.update(p.id, { topics: p.topics.filter((held) => held !== value) }), { note: m.papers.notices.updated })
+    write(papers.update(p.id, { topics: p.topics.filter((held) => held !== value) }), {
+      note: m.papers.notices.updated, action: undo.change,
+    })
 
   const setRating = (p: PaperRow, rating: number | null) => {
-    void write(papers.update(p.id, { rating }), {
-      note: rating === null ? m.papers.notices.updated : m.papers.notices.rated(rating),
-    })
+    void write(papers.update(p.id, { rating }), rating === null
+      ? { note: m.papers.notices.updated, action: undo.change }
+      : { note: m.papers.notices.rated(rating) })
   }
 
   const remove = (id: string) => {
     // As in the demo, a delete shortens the list by one item, so the page number clamps back in the
     // same frame instead of drawing an empty list first.
-    void write(papers.delete(id).then(() => {
+    void write(papers.delete(id).then((recorded) => {
       if (detail?.id === id) setDetail(null)
       setTotal((t) => t - 1)
-    }), { note: m.common.trashed })
+      return recorded
+    }), { note: m.common.trashed, action: undo.change })
   }
 
   /**
@@ -753,7 +758,7 @@ export function PaperTable() {
   const saveCell = (p: PaperRow, k: string, value: string): boolean | Promise<boolean> => {
     if (value.trim() === (p.custom[k] ?? '')) return true
     return write(papers.update(p.id, { custom: { [k]: value.trim() === '' ? null : value.trim() } }),
-      { note: m.papers.notices.updated })
+      { note: m.papers.notices.updated, action: undo.change })
   }
 
   /**
@@ -809,7 +814,7 @@ export function PaperTable() {
       })
       const ok = added && await write(papers.update(p.id, {
         custom: { [column.key]: next.length === 0 ? null : column.type === 'select' ? next[0]! : next },
-      }), { note: m.papers.notices.updated })
+      }), { note: m.papers.notices.updated, action: undo.change })
       if (ok) {
         if (column.type === 'select') closeCell()
         return next
@@ -908,12 +913,12 @@ export function PaperTable() {
    * is rejected, Core's original message shows as a refusal notice and the columns stay unchanged. Returns
    * whether it was written.
    */
-  const writeColumnsAndCells = (op: () => Promise<void>, note: string): Promise<boolean> =>
+  const writeColumnsAndCells = (op: () => Promise<RecordedChange>, note: string): Promise<boolean> =>
     writeColumns(async () => {
-      await op()
+      const recorded = await op()
       const live = await papers.columns()
       bump()
-      notice.success(note)
+      notice.success(note, undo.change(recorded))
       return live
     })
 

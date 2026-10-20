@@ -60,6 +60,7 @@ import { StatusDot } from '../components/StatusDot.js'
 import { Tag } from '../components/Tag.js'
 import { Tooltip } from '../components/Tooltip.js'
 import { NO_TRIGGERS } from '../hooks/useOnLeave.js'
+import { useUndo } from '../hooks/useUndo.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
 import './shell.css'
 import './ProjectDetail.css'
@@ -205,6 +206,7 @@ export function ProjectDetail({
   const openWikiPage = (page: string) => jumpTo('wiki', page)
   const reportError = useCallback((e: Error) => setError(e.message), [])
   const write = useVaultWrite()
+  const undo = useUndo()
   const heldPapers = project?.papers
   const suggestPapers = useCallback(async (query: string): Promise<PickHit[]> => {
     if (query === '') return []
@@ -1150,9 +1152,13 @@ export function ProjectDetail({
                     onReveal={(path) => void files.reveal(path).then((found) => {
                       if (!found) notice.refusal(m.project.attachments.missing)
                     })}
-                    onRemove={(attachmentId) => applyWrite(
-                      projectApi.deleteAttachment(projectId, attachmentId), m.common.trashed,
-                    )}
+                    onRemove={(attachmentId) => {
+                      discardOpenEdits()
+                      void write(projectApi.deleteAttachment(projectId, attachmentId).then((deleted) => {
+                        setProject(deleted.project)
+                        return deleted
+                      }), { note: m.common.trashed, action: undo.change })
+                    }}
                   />
                 </>
               )

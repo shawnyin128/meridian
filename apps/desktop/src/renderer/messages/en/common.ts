@@ -1,4 +1,3 @@
-import { TRASH_RETENTION_DAYS } from '../../../shared/vocabulary.js'
 import { pluralEn } from '../../lib/plural.js'
 import { common as zh } from '../zh/common.js'
 
@@ -26,7 +25,7 @@ export const common = {
   reading: 'Reading…',
   none: 'None',
   all: 'All',
-  trashed: `Moved to Trash · recoverable for ${TRASH_RETENTION_DAYS} days`,
+  trashed: 'Moved to Trash',
   updatedOn: (date: string) => `Updated ${date}`,
   addedOn: (date: string) => `Added ${date}`,
   overdue: 'Overdue',

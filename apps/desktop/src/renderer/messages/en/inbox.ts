@@ -38,8 +38,8 @@ export const inbox = {
   notices: {
     queued: 'Saved for later',
     alreadyQueued: 'Already saved for later',
-    dismissedAll: 'All dismissed · can be restored from trash',
-    dismissed: 'Dismissed · can be restored from trash',
+    dismissedAll: 'All dismissed',
+    dismissed: 'Dismissed',
     duplicateToast: 'Already in the library',
     alreadyInLibrary: (title: string) => `Already in the library: "${title}"`,
     downloaded: 'Downloaded and added to library · ready to read',

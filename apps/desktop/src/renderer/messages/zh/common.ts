@@ -1,5 +1,3 @@
-import { TRASH_RETENTION_DAYS } from '../../../shared/vocabulary.js'
-
 /** Verbs, statuses and units shared by every screen. The Chinese catalog is the reference. */
 export const common = {
   save: '保存',
@@ -24,7 +22,7 @@ export const common = {
   reading: '正在读取…',
   none: '暂无',
   all: '全部',
-  trashed: `已移入垃圾桶 · ${TRASH_RETENTION_DAYS} 天内可恢复`,
+  trashed: '已移入垃圾桶',
   updatedOn: (date: string) => `更新于 ${date}`,
   addedOn: (date: string) => `加入于 ${date}`,
   overdue: '已逾期',

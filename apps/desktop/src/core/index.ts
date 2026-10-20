@@ -110,6 +110,7 @@ import { sleep } from './net/http.js'
 import { unopenedStore } from './unopened-store.js'
 import type { VaultStore } from './vault.js'
 import { createDesktopVaultStore, createVaultStore } from './vault-store.js'
+import { recordChange, trashedEntry } from './write-receipts.js'
 import {
   deleteLibraryBackup, listLibraryBackups, resetLibrary, switchLibraryBackup,
 } from './workspace-layout.js'
@@ -426,9 +427,14 @@ registerHandler('papers.facets', (params) => {
 registerHandler('papers.get', (params) => store.getPaper(PapersGetParamsSchema.parse(params).id))
 registerHandler('papers.update', (params) => {
   const { id, patch } = PapersUpdateParamsSchema.parse(params)
-  return store.updatePaper(id, definedFields(patch))
+  const { change } = recordChange(store, () => store.updatePaper(id, definedFields(patch)))
+  return { change }
 })
-registerHandler('papers.delete', (params) => store.deletePaper(PapersDeleteParamsSchema.parse(params).id))
+registerHandler('papers.delete', (params) => {
+  const { id } = PapersDeleteParamsSchema.parse(params)
+  const { change } = recordChange(store, () => store.deletePaper(id))
+  return { change }
+})
 registerHandler('papers.source', (params) =>
   store.paperSource(PapersSourceParamsSchema.parse(params).id))
 registerHandler('papers.import', (params) => {
@@ -473,11 +479,13 @@ registerHandler('papers.setColumns', (params) =>
   store.setPaperColumns(PapersSetColumnsParamsSchema.parse(params).columns))
 registerHandler('papers.renameOption', (params) => {
   const { key, from, to } = PapersRenameOptionParamsSchema.parse(params)
-  return store.renamePaperOption(key, from, to)
+  const { change } = recordChange(store, () => store.renamePaperOption(key, from, to))
+  return { change }
 })
 registerHandler('papers.setColumnType', (params) => {
   const { key, type } = PapersSetColumnTypeParamsSchema.parse(params)
-  return store.setPaperColumnType(key, type)
+  const { change } = recordChange(store, () => store.setPaperColumnType(key, type))
+  return { change }
 })
 registerHandler('project.list', (params) => {
   EmptyParamsSchema.parse(params)
@@ -504,8 +512,11 @@ registerHandler('project.update', (params) => {
   const { id, patch } = ProjectUpdateParamsSchema.parse(params)
   return store.updateProject(id, definedFields(patch))
 })
-registerHandler('project.delete', (params) =>
-  store.deleteProject(ProjectDeleteParamsSchema.parse(params).id))
+registerHandler('project.delete', (params) => {
+  const { id } = ProjectDeleteParamsSchema.parse(params)
+  const { change } = recordChange(store, () => store.deleteProject(id))
+  return { change }
+})
 registerHandler('project.createTask', (params) => {
   const { projectId, task } = ProjectCreateTaskParamsSchema.parse(params)
   return store.createTask(projectId, task)
@@ -570,7 +581,8 @@ registerHandler('project.createAttachment', (params) => {
 })
 registerHandler('project.deleteAttachment', (params) => {
   const { projectId, attachmentId } = ProjectDeleteAttachmentParamsSchema.parse(params)
-  return store.deleteAttachment(projectId, attachmentId)
+  const { result, change } = recordChange(store, () => store.deleteAttachment(projectId, attachmentId))
+  return { project: result, change }
 })
 registerHandler('project.createConclusion', (params) => {
   const { projectId, text, chat, paper } = ProjectCreateConclusionParamsSchema.parse(params)
@@ -595,8 +607,10 @@ registerHandler('project.unverifyConclusion', (params) => {
 registerHandler('inbox.list', (params) => {
   return store.listInbox(InboxListParamsSchema.parse(params))
 })
-registerHandler('inbox.dismiss', (params) =>
-  store.dismissInbox(InboxDismissParamsSchema.parse(params).id))
+registerHandler('inbox.dismiss', (params) => {
+  const { id } = InboxDismissParamsSchema.parse(params)
+  return trashedEntry(store, () => store.dismissInbox(id))
+})
 registerHandler('inbox.readLater', (params) =>
   store.readLater(InboxReadLaterParamsSchema.parse(params).id))
 registerHandler('inbox.download', (params) =>
@@ -795,8 +809,10 @@ registerHandler('idea.placeOnGraph', (params) => {
   const { id, placement } = ResearchIdeaPlaceOnGraphParamsSchema.parse(params)
   return placeResearchIdeaOnGraph(store, id, placement)
 })
-registerHandler('idea.delete', (params) =>
-  store.deleteIdea(ResearchIdeaDeleteParamsSchema.parse(params).id))
+registerHandler('idea.delete', (params) => {
+  const { id } = ResearchIdeaDeleteParamsSchema.parse(params)
+  return trashedEntry(store, () => store.deleteIdea(id))
+})
 registerHandler('idea.reorder', (params) =>
   store.reorderIdeas(ResearchIdeaReorderParamsSchema.parse(params).order))
 registerHandler('chat.recordAction', (params) => {

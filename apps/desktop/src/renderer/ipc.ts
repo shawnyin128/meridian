@@ -12,12 +12,13 @@ import type {
   HarnessRejectPaperWikiResult, HarnessRunReceipt,
   LibraryBackup, LibraryLocation, LibraryResetResult, ListResult,
   MilestoneFields, NetFailed, PaperColumn, PaperColumns, PaperFields, PaperImportResult, PaperReading, PaperRow,
-  Proposal, ProjectDetail, ProjectFields, ProjectWorkspaceBinding, ReadingMutation, ResearchIdea,
+  Proposal, ProjectDetail, ProjectFields, ProjectRecordedChange, ProjectWorkspaceBinding, ReadingMutation, RecordedChange,
+  ResearchIdea,
   ResearchIdeaGraphPlacement, ResearchIdeaPatch, ResearchIdeaPlaceOnGraphResult,
   ResearchIdeaPromoteResult,
   ProjectOverview,
   ProjectSummary,
-  RelationFields, SearchHit, TaskFields, TaskPatch, TrashEntry, Watch, WatchFields,
+  RelationFields, SearchHit, TaskFields, TaskPatch, TrashEntry, TrashedEntry, Watch, WatchFields,
   WatchSuggestionParams, WatchSuggestionResult, WikiAggregation,
   WikiAggregationCard, WikiHome, WikiPaper, ProposalReceipt, ProposalStatus, WikiProposal,
 } from '../shared/contract.js'
@@ -104,8 +105,8 @@ export const papers = {
     call<Facet[]>('papers.facets', { field, ...(filter ? { filter } : {}) }),
   get: (id: string) => call<PaperRow>('papers.get', { id }),
   update: (id: string, patch: Partial<PaperFields>) =>
-    call<void>('papers.update', { id, patch }),
-  delete: (id: string) => call<void>('papers.delete', { id }),
+    call<RecordedChange>('papers.update', { id, patch }),
+  delete: (id: string) => call<RecordedChange>('papers.delete', { id }),
   /** Bytes of the paper's original PDF. Rejects when the vault has no source file for this paper. */
   source: (id: string) => call<Uint8Array>('papers.source', { id }),
   /** The uploaded binary is directly structurally cloned to Core without base64. */
@@ -117,9 +118,9 @@ export const papers = {
   columns: () => call<PaperColumns>('papers.columns', {}),
   setColumns: (columns: PaperColumns) => call<void>('papers.setColumns', { columns }),
   renameOption: (key: string, from: string, to: string) =>
-    call<void>('papers.renameOption', { key, from, to }),
+    call<RecordedChange>('papers.renameOption', { key, from, to }),
   setColumnType: (key: string, type: PaperColumn['type']) =>
-    call<void>('papers.setColumnType', { key, type }),
+    call<RecordedChange>('papers.setColumnType', { key, type }),
 }
 
 export const harness = {
@@ -159,7 +160,7 @@ export const project = {
     call<ProjectDetail>('project.bindWorkspace', { id, binding }),
   update: (id: string, patch: Partial<ProjectFields>) =>
     call<ProjectDetail>('project.update', { id, patch }),
-  delete: (id: string) => call<void>('project.delete', { id }),
+  delete: (id: string) => call<RecordedChange>('project.delete', { id }),
   createTask: (projectId: string, task: TaskFields) =>
     call<ProjectDetail>('project.createTask', { projectId, task }),
   updateTask: (projectId: string, taskId: string, patch: TaskPatch) =>
@@ -192,7 +193,7 @@ export const project = {
   createAttachment: (projectId: string, attachment: AttachmentFields) =>
     call<ProjectDetail>('project.createAttachment', { projectId, attachment }),
   deleteAttachment: (projectId: string, attachmentId: string) =>
-    call<ProjectDetail>('project.deleteAttachment', { projectId, attachmentId }),
+    call<ProjectRecordedChange>('project.deleteAttachment', { projectId, attachmentId }),
   createConclusion: (
     projectId: string, text: string, from: { chat?: string; paper?: string } = {},
   ) => call<ProjectDetail>('project.createConclusion', { projectId, text, ...from }),
@@ -252,13 +253,13 @@ export const idea = {
   promote: (id: string) => call<ResearchIdeaPromoteResult>('idea.promote', { id }),
   placeOnGraph: (id: string, placement: ResearchIdeaGraphPlacement) =>
     call<ResearchIdeaPlaceOnGraphResult>('idea.placeOnGraph', { id, placement }),
-  delete: (id: string) => call<void>('idea.delete', { id }),
+  delete: (id: string) => call<TrashedEntry>('idea.delete', { id }),
   reorder: (order: string[]) => call<void>('idea.reorder', { order }),
 }
 
 export const inbox = {
   list: (params: InboxListParams = {}) => call<InboxEntry[]>('inbox.list', params),
-  dismiss: (id: string) => call<void>('inbox.dismiss', { id }),
+  dismiss: (id: string) => call<TrashedEntry>('inbox.dismiss', { id }),
   readLater: (id: string) => call<boolean>('inbox.readLater', { id }),
   /** Adds the paper to the vault; whether it was added or already there tells the UI how to open the entry. */
   download: (id: string) => call<InboxDownloadResult>('inbox.download', { id }),

@@ -67,6 +67,9 @@ describe('提示、标签和占位只说结果', () => {
     m.research.list.createdNote, m.research.list.createdFeedNote('Draft trees'), m.settings.archived.unarchived,
     m.watches.notices.added, m.watches.notices.updated, m.watches.notices.resumed, m.watches.notices.pausedNote,
     m.watches.notices.removed, m.watches.projectLabel, m.watches.focusPlaceholder, m.wiki.ingest.discarded,
+    m.common.trashed, m.inbox.notices.dismissed, m.inbox.notices.dismissedAll, m.papers.notices.topicAdded,
+    m.papers.notices.updated, m.papers.notices.optionRenamed, m.papers.notices.columnTypeChanged,
+    m.papers.metadata.updated(m.papers.metadata.fields.title),
   ]
 
   it('zh:一句之内，没有间隔号、逗号或句号后的解释', () => {

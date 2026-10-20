@@ -13,6 +13,7 @@ import { PaperTopics } from './PaperTopics.js'
 import { ProjectChips } from './ProjectChips.js'
 import { tagClass } from './Tag.js'
 import { ToggleGroup, ToggleItem } from './Toolbar.js'
+import { useUndo } from '../hooks/useUndo.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
 import './PaperMetadata.css'
 
@@ -109,6 +110,7 @@ export function PaperMetadata({ paper, onSaved }: {
   const m = useMessages()
   const labels = m.papers.metadata.fields
   const write = useVaultWrite()
+  const undo = useUndo()
   const notice = useNotice()
   const [ratingSaving, setRatingSaving] = useState(false)
   const ratingBusy = useRef(false)
@@ -118,9 +120,10 @@ export function PaperMetadata({ paper, onSaved }: {
   ): Promise<boolean> => {
     if (JSON.stringify(currentValue(paper, field)) === JSON.stringify(patchValue(patch))) return true
     let fresh: PaperRow | null = null
-    const ok = await write(papers.update(paper.id, patch).then(async () => {
+    const ok = await write(papers.update(paper.id, patch).then(async (recorded) => {
       fresh = await papers.get(paper.id)
-    }), { note: m.papers.metadata.updated(labels[field]) })
+      return recorded
+    }), { note: m.papers.metadata.updated(labels[field]), action: undo.change })
     if (ok && fresh !== null) onSaved(fresh)
     return ok
   }

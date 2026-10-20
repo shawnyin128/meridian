@@ -15,7 +15,9 @@ const api = vi.hoisted(() => ({
   entries: [] as InboxEntry[],
   profiles: [] as DiscoveryProfile[],
   mode: 'watch' as 'watch' | 'discovery',
-  dismiss: vi.fn<(id: string) => Promise<void>>(async () => {}),
+  dismiss: vi.fn<(id: string) => Promise<{ trash: string }>>(async (id) => ({ trash: `trash-${id}` })),
+  restored: [] as string[],
+  writes: [] as { result: unknown; opts: { note?: unknown; action?: (result: never) => { label: string; onAction: () => void } } }[],
   downloads: {} as Record<string, InboxDownloadResult>,
   feedback: vi.fn(async () => {}),
   setIntent: vi.fn(async () => {}),
@@ -45,6 +47,7 @@ vi.mock('../ipc.js', () => ({
     feedback: api.feedback,
   },
   watch: { list: async () => api.watches, setActive: api.setActive },
+  trash: { restore: async (id: string) => { api.restored.push(id) } },
 }))
 vi.mock('../shell/AppShell.js', () => ({
   ALL_WATCHES: 'all',
@@ -59,7 +62,9 @@ vi.mock('../shell/AppShell.js', () => ({
   useVaultRevision: () => ({ revision: 0, bump: vi.fn() }),
 }))
 vi.mock('../shell/useJobs.js', () => ({ useJobs: () => status }))
-vi.mock('../hooks/useVaultWrite.js', () => ({ useVaultWrite: () => (work: Promise<unknown>) => work }))
+vi.mock('../hooks/useVaultWrite.js', () => ({
+  useVaultWrite: () => async (work: Promise<unknown>, opts = {}) => { api.writes.push({ result: await work, opts }); return true },
+}))
 
 const { Inbox } = await import('./Inbox.js')
 
@@ -196,7 +201,7 @@ describe('Inbox', () => {
     await act(async () => { root.unmount() })
   })
 
-  it('推送按关注分组：「全部忽略」只忽略自己这一组，这一组折叠着也一样', async () => {
+  it('推送按关注分组：「全部忽略」只忽略自己这一组，这一组折叠着也一样；提示里的撤销把这一组放回', async () => {
     const entry = (id: string, watch: string): InboxEntry => ({
       id, kind: 'watch', watch, project: '', source: `主题 · ${watch}`,
       title: `Paper ${id}`, authors: 'Ada', venue: 'ICLR', abstract: 'Abstract', rec: '',
@@ -214,6 +219,11 @@ describe('Inbox', () => {
     await act(async () => { dismissAll(groups[0]!)[0]!.click() })
     await act(async () => { await new Promise((done) => { setTimeout(done, 300) }) })
     expect(api.dismiss.mock.calls.map(([id]) => id).sort()).toEqual(['a1', 'a2'])
+    const dismissed = api.writes.at(-1)!
+    const action = dismissed.opts.action!(dismissed.result as never)
+    expect([dismissed.opts.note, action.label]).toEqual(['已全部忽略', '撤销'])
+    await act(async () => { action.onAction() })
+    expect(api.restored.sort()).toEqual(['trash-a1', 'trash-a2'])
     expect(groups[1]!.querySelectorAll('.paper-card.is-leaving')).toHaveLength(0)
     expect(dismissAll(groups[1]!)).toHaveLength(1)
     await act(async () => { root.unmount() })

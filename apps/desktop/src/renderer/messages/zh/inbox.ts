@@ -34,8 +34,8 @@ export const inbox = {
   notices: {
     queued: '已存入稍后阅读',
     alreadyQueued: '已在稍后阅读中',
-    dismissedAll: '已全部忽略 · 可在垃圾桶恢复',
-    dismissed: '已忽略 · 可在垃圾桶恢复',
+    dismissedAll: '已全部忽略',
+    dismissed: '已忽略',
     duplicateToast: '库里已有这一篇',
     alreadyInLibrary: (title: string) => `库里已经有这一篇：「${title}」`,
     downloaded: '已下载入库 · 可阅读',

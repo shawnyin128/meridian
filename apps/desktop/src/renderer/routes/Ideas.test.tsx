@@ -33,7 +33,9 @@ const api = vi.hoisted(() => ({
   ] as unknown as ProjectSummary[],
   update: vi.fn(async () => {}),
   promote: vi.fn(async () => ({ idea: {}, project: {} })),
-  remove: vi.fn(async () => {}),
+  remove: vi.fn(async () => ({ trash: 'trash-idea' })),
+  restored: [] as string[],
+  writes: [] as { result: unknown; opts: { note?: unknown; action?: (result: never) => { label: string; onAction: () => void } } }[],
   reorder: vi.fn(async () => {}),
   open: vi.fn(),
   /** While true the idea list never arrives. */
@@ -49,6 +51,7 @@ vi.mock('../ipc.js', () => ({
     reorder: api.reorder,
   },
   project: { list: async () => structuredClone(api.projects) },
+  trash: { restore: async (id: string) => { api.restored.push(id) } },
 }))
 vi.mock('../shell/AppShell.js', () => ({
   useEscapeLayer: () => {},
@@ -57,7 +60,7 @@ vi.mock('../shell/AppShell.js', () => ({
   useVaultRevision: () => ({ revision: 0, bump: vi.fn() }),
 }))
 vi.mock('../hooks/useVaultWrite.js', () => ({
-  useVaultWrite: () => async (work: Promise<unknown>) => { await work; return true },
+  useVaultWrite: () => async (work: Promise<unknown>, opts = {}) => { api.writes.push({ result: await work, opts }); return true },
 }))
 
 const { Ideas } = await import('./Ideas.js')
@@ -242,6 +245,21 @@ describe('Ideas', () => {
     expect(host.querySelector('[data-idea="idea-completed"]')).toBeNull()
     await act(async () => { group.querySelector<HTMLButtonElement>('.collapsible-group-toggle')!.click() })
     expect(group.querySelector('[data-idea="idea-completed"]')).not.toBeNull()
+  })
+
+  it('删掉想法后提示只说已移入垃圾桶，撤销把垃圾桶里那一条放回', async () => {
+    await act(async () => { root.render(<MessagesProvider><Ideas /></MessagesProvider>) })
+    await act(async () => {
+      host.querySelector('[data-idea="idea-independent"] .dots')!
+        .dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, button: 0 }))
+    })
+    const remove = [...document.querySelectorAll<HTMLElement>('[role="menu"] [role="menuitem"]')].find((item) => item.textContent === '删除')!
+    await act(async () => { remove.click() })
+    const deleted = api.writes.at(-1)!
+    const action = deleted.opts.action!(deleted.result as never)
+    expect([deleted.opts.note, action.label]).toEqual(['已移入垃圾桶', '撤销'])
+    await act(async () => { action.onAction() })
+    expect(api.restored).toEqual(['trash-idea'])
   })
 
   it('关联已完成项目的已归档想法，取消归档按不了，菜单项后面写着项目已完成', async () => {

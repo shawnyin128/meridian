@@ -34,7 +34,9 @@ import { ProjectDetail } from './ProjectDetail.js'
 import type { RecordTab } from './ProjectDetail.js'
 import type { PlanTab } from '../components/project/ProjectPlan.js'
 import { Tooltip } from '../components/Tooltip.js'
+import { useUndo } from '../hooks/useUndo.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
+import type { NoticeAction } from '../components/Notice.js'
 import { useDragReorder, type Reorderable } from '../hooks/useDragReorder.js'
 import { DragHandle } from '../components/DragHandle.js'
 import {
@@ -271,6 +273,7 @@ function ProjectList({ onOpen }: { onOpen: (id: string) => void }) {
   const { revision } = useVaultRevision()
   const reportError = useCallback((e: Error) => setError(e.message), [])
   const write = useVaultWrite()
+  const undo = useUndo()
   const stopCreating = useCallback(() => setCreating(false), [])
   const createRow = useRef<HTMLDivElement>(null)
   const projNew = useRef<HTMLButtonElement>(null)
@@ -297,9 +300,9 @@ function ProjectList({ onOpen }: { onOpen: (id: string) => void }) {
    * Finishes a write: closes the new-project row, then lets `write` finish. Creating from the row does
    * not come here: whether the row stays depends on that write's result.
    */
-  const applyWrite = (op: Promise<unknown>, note: string) => {
+  const applyWrite = <T,>(op: Promise<T>, note: string, action?: (result: T) => NoticeAction) => {
     setCreating(false)
-    void write(op, { note })
+    void write(op, { note, action })
   }
 
   /**
@@ -336,7 +339,7 @@ function ProjectList({ onOpen }: { onOpen: (id: string) => void }) {
       onStatus={(status) => applyWrite(
         projectApi.update(p.id, { status }), m.research.list.statusChangedTo(status),
       )}
-      onDelete={() => applyWrite(projectApi.delete(p.id), m.common.trashed)}
+      onDelete={() => applyWrite(projectApi.delete(p.id), m.common.trashed, undo.change)}
     />
   )
 

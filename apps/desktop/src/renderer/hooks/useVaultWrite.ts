@@ -3,7 +3,7 @@ import type { ReactNode } from 'react'
 import type { NoticeAction } from '../components/Notice.js'
 import { useNotice, useVaultRevision } from '../shell/AppShell.js'
 
-type WriteOpts<T> = { note?: ReactNode; action?: (result: T) => NoticeAction }
+type WriteOpts<T> = { note?: ReactNode; action?: ((result: T) => NoticeAction) | undefined }
 
 /**
  * Finishes a vault write: once `op` resolves, bumps the vault revision, shows `note` as a success
