@@ -47,6 +47,11 @@ Current shared contracts:
 - `SegmentedControl`: the only switch between peer views in the app, including the timeline scale: a track of
   equal segments with a raised thumb that slides to the picked one, radio-group semantics, and one Tab stop
   with arrow keys inside. The `.fchip` and `.segbtn` pill rows are retired.
+- `Toolbar`: the one roving group, on Radix Toolbar: a group of controls is one Tab stop, the arrow keys move
+  between them, and Tab comes back to the one focused last. IconButton, AddAction, ChoicePicker's trigger and
+  `ToolbarButton` join the toolbar they render in; a toolbar inside one of the same orientation joins it, and a
+  menu, popover or dialog opened from a toolbar keeps its controls out of it. `ToggleGroup` is the group that
+  picks a value, on its own or inside a toolbar. A paper row, the row-actions slot and the rating stars use them.
 - `ChipToggles`: a multi-select of short values as chips that each turn on or off, with the same one Tab
   stop and arrow keys. A choice among many values is a menu picker, not a segment per value.
 - `Switch`: a binary setting that takes effect as soon as it flips. Its name stays the same in both states;
