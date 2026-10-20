@@ -254,6 +254,19 @@ describe('idea and graph association', () => {
       act(() => root.unmount())
     })
 
+    it('dims zoom in at the largest zoom and zoom out at the smallest, as the reader does', () => {
+      const { host, root, view } = open(chain, 1200)
+      const button = (label: string) => host.querySelector<HTMLButtonElement>(`[aria-label="${label}"]`)!
+      const press = (label: string, times: number) => {
+        for (let n = 0; n < times; n += 1) act(() => button(label).click())
+      }
+      press('放大科研图', 5)
+      expect([view().zoom, button('放大科研图').disabled, button('缩小科研图').disabled]).toEqual([1.8, true, false])
+      press('缩小科研图', 8)
+      expect([view().zoom, button('放大科研图').disabled, button('缩小科研图').disabled]).toEqual([0.6, false, true])
+      act(() => root.unmount())
+    })
+
     it('puts the view it opened with back when the view is reset', () => {
       const { host, root, view } = open(chain, 600)
       const opened = view()
