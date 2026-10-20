@@ -155,10 +155,6 @@ const PAIRS: Pair[] = [
   { theme: 'light', label: '幽灵红色按钮的字在浮层面', fg: '--bad-text', ground: ['--raised'], min: TEXT },
   { theme: 'dark', label: '幽灵红色按钮的字在卡片面', fg: '--bad-text', ground: ['--card'], min: TEXT },
   { theme: 'dark', label: '幽灵红色按钮的字在浮层面', fg: '--bad-text', ground: ['--raised'], min: TEXT },
-  // Accent text.
-  { theme: 'light', label: '强调色的字在内容面', fg: '--accent-text', ground: ['--content'], min: TEXT },
-  { theme: 'dark', label: '强调色的字在内容面', fg: '--accent-text', ground: ['--content'], min: TEXT },
-  { theme: 'dark', label: '强调色的字在卡片面', fg: '--accent-text', ground: ['--card'], min: TEXT },
   // Text on light accent surfaces.
   { theme: 'light', label: '选中侧栏行的字', fg: '--on-selected', ground: ['--window', '--sidebar', '--selected'], min: TEXT },
   { theme: 'dark', label: '选中侧栏行的字', fg: '--on-selected', ground: ['--window', '--sidebar', '--selected'], min: TEXT },
@@ -221,6 +217,32 @@ describe('tokens.css 的对比度', () => {
   }
 })
 
+describe('选中的筛选项和开关项', () => {
+  /** The token of the `color:var(…)` declaration in the rule for `selector` in the renderer stylesheet `path`. */
+  const textOf = (path: string, selector: string): string => {
+    const css = readFileSync(new URL(`../renderer/${path}`, import.meta.url), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '')
+    const body = [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)].find((match) => match[1]!.trim() === selector)![2]!
+    return /(?:^|;)color:var\((--[\w-]+)\)/.exec(body)![1]!
+  }
+  const PICKED = [
+    ['components/ChipToggles.css', '.chip-toggle[data-state="on"]'],
+    ['routes/shell.css', '.read-state-filter.on'],
+  ] as const
+
+  it('字在浅 accent 底上不低于 4.5:1,铺在内容面或卡片面上都是,和选中的行用同一个字色', () => {
+    for (const [path, selector] of PICKED) {
+      const fg = textOf(path, selector)
+      for (const theme of ['light', 'dark'] as const) {
+        for (const ground of [['--content', '--accent-soft'], ['--card', '--accent-soft']]) {
+          const got = contrast(colour(theme, fg), flatten(theme, ground))
+          expect(got, `${theme} ${selector} 的 ${fg} 压在 ${ground.join(' + ')} 上是 ${got.toFixed(2)}:1`).toBeGreaterThanOrEqual(TEXT)
+        }
+      }
+      expect(fg, selector).toBe('--on-selected')
+    }
+  })
+})
+
 describe('tokens.css 的决定值', () => {
   it('两端按钮只剩一条不分方向的隐藏规则,没有逐个画箭头的 :single-button / :double-button', () => {
     const rules = tokens.replace(/\/\*[\s\S]*?\*\//g, '')
@@ -269,15 +291,15 @@ describe('tokens.css 的决定值', () => {
     }
   })
 
-  it('亮色的 --info / --tint-info 是青色,且与 --accent-text 解出来的颜色分开', () => {
+  it('亮色的 --info / --tint-info 是青色,且与 --on-selected 解出来的颜色分开', () => {
     expect(colour('light', '--info')).toEqual({ r: 14, g: 154, b: 167, a: 1 })
     expect(colour('light', '--tint-info')).toEqual({ r: 14, g: 154, b: 167, a: .14 })
-    expect(colour('light', '--info')).not.toEqual(colour('light', '--accent-text'))
+    expect(colour('light', '--info')).not.toEqual(colour('light', '--on-selected'))
   })
 
-  it('暗色的 --info / --tint-info 是青色,且与 --accent-text 解出来的颜色分开', () => {
+  it('暗色的 --info / --tint-info 是青色,且与 --on-selected 解出来的颜色分开', () => {
     expect(colour('dark', '--info')).toEqual({ r: 46, g: 196, b: 214, a: 1 })
     expect(colour('dark', '--tint-info')).toEqual({ r: 46, g: 196, b: 214, a: .2 })
-    expect(colour('dark', '--info')).not.toEqual(colour('dark', '--accent-text'))
+    expect(colour('dark', '--info')).not.toEqual(colour('dark', '--on-selected'))
   })
 })

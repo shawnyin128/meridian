@@ -32,7 +32,7 @@
 .btn.danger:focus-visible{outline-color:var(--bad)}
 .btn:disabled{opacity:.45;cursor:default;box-shadow:none}
 /* An applied read-state filter takes the selected tint; solid accent is kept for primary actions. */
-.read-state-filter.on{background-color:var(--accent-soft);border-color:transparent;color:var(--accent-text)}
+.read-state-filter.on{background-color:var(--accent-soft);border-color:transparent;color:var(--on-selected)}
 .add-action{display:inline-flex;align-items:center;justify-content:center;gap:5px;white-space:nowrap}
 .add-action>svg{width:12px;height:12px;flex:none}
 
