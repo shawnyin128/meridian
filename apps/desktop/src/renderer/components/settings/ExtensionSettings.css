@@ -19,7 +19,7 @@
   list-style:none}
 .extension-tutorial-steps li{display:flex;min-width:0;gap:9px;padding:10px;border-radius:var(--r-md);background:var(--field)}
 .extension-tutorial-steps li>span{display:grid;place-items:center;flex:0 0 20px;width:20px;height:20px;border-radius:var(--r-full);
-  background:var(--accent-solid);color:#fff;font-size:var(--fs-cap);font-weight:600}
+  background:var(--accent-solid);color:var(--on-accent);font-size:var(--fs-cap);font-weight:600}
 .extension-tutorial-steps strong,.extension-prompt strong{display:block;color:var(--ink);font-size:var(--fs-sm);font-weight:600}
 .extension-tutorial-steps p,.extension-prompt p{margin:3px 0 0;color:var(--ter);font-size:var(--fs-cap);line-height:var(--lh-ui)}
 .extension-tutorial h4{margin:18px 0 8px;color:var(--ink);font-size:var(--fs-sm);font-weight:600}

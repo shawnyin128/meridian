@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { useMessages } from '../../messages/useMessages.js'
 import { RowActions } from '../StructuredList.js'
+import { Tag } from '../Tag.js'
 import { PaperAbstract } from './PaperAbstract.js'
 import { PaperText } from './PaperText.js'
 import './PaperCard.css'
@@ -50,9 +51,9 @@ export function PaperCard({
   )
 }
 
-/** A short badge in a paper card's metadata, such as the venue or the source. */
+/** A short badge in a paper card's metadata, such as the venue or the source: a neutral tag. */
 export function PaperCardBadge({ children }: { children: ReactNode }) {
-  return <span className="paper-card-badge venue">{children}</span>
+  return <Tag className="paper-card-badge venue">{children}</Tag>
 }
 
 /** Inline hints in paper cards; `action` can hold open or retry buttons. */

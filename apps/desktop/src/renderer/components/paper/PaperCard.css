@@ -6,7 +6,7 @@
 .paper-card-notice{display:flex;align-items:center;gap:8px;margin-top:8px;padding:6px 10px;border:1px solid var(--sep2);border-radius:var(--r-md);font-size:var(--fs-sm);color:var(--sec)}
 .paper-card-notice>span{flex:1}
 .paper-card-notice.is-error{color:var(--bad)}
-.paper-card-badge{display:inline-block;font-size:var(--fs-cap);font-weight:600;color:var(--ink);background:var(--accent-soft);border-radius:999px;padding:1px 8px;margin-left:6px;vertical-align:1px}
+.paper-card-badge{margin-left:6px}
 .paper-card-metadata .source-label{margin-left:var(--sp-6)}
 .paper-card-citations{margin-left:8px;color:var(--ter);font-variant-numeric:tabular-nums}
 .paper-card-label{font-size:var(--fs-cap);font-weight:700;color:var(--ter);text-transform:uppercase;letter-spacing:.04em;margin-bottom:2px}

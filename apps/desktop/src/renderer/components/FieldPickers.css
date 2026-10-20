@@ -13,4 +13,4 @@ button.pv{border:0;background:transparent;font-family:var(--sans);font-size:var(
 .cd.off{cursor:default}
 .cd.off:hover{background:transparent}
 .cd.today{color:var(--bad);font-weight:700}
-.cd.sel{background:var(--accent-solid);color:var(--on-accent)}
+.cd.sel{background:var(--selected);color:var(--on-selected)}

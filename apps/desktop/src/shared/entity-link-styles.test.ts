@@ -16,11 +16,10 @@ const rules = (path: string) => [...readFileSync(join(RENDERER, path), 'utf8').r
   declarations: body!.split(';').map((d) => d.trim()).filter(Boolean),
 }))
 
-/** The states that may write text in the accent colour: a picked or current item, and a status icon. */
+/** The rules that may write in the accent colour: the accent tag and status icons. Picked and current items use --on-selected. */
 const ACCENT_TEXT_STATES = new Set([
-  '.srow.on .ic', '.update-row .ic', '.tag--accent',
-  '.about-status.is-ready svg', '.about-status.is-checking svg', '.about-status.is-downloading svg', '.reader-rail button.on',
-  '.icbtn[aria-pressed="true"]',
+  '.update-row .ic', '.tag--accent',
+  '.about-status.is-ready svg', '.about-status.is-checking svg', '.about-status.is-downloading svg',
 ])
 
 describe('实体链接的样子', () => {
@@ -37,9 +36,9 @@ describe('实体链接的样子', () => {
     expect(offenders).toEqual([])
   })
 
-  it('不是链接的标签不用强调色写字,强调色的字只留给选中和状态', () => {
+  it('不是链接的标签不用强调色写字,强调色的字只留给 accent 标签和状态图标', () => {
     const offenders = STYLESHEETS.flatMap((path) => rules(path).flatMap(({ selectors, declarations }) => (
-      declarations.some((d) => /^color:var\(--accent\)$/.test(d))
+      declarations.some((d) => /^color:var\(--accent(?:-text)?\)$/.test(d))
         ? selectors.filter((s) => !ACCENT_TEXT_STATES.has(s)).map((s) => `${path}  ${s}`)
         : []
     )))

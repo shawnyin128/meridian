@@ -7,7 +7,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 type Node = { dispatchEvent(event: object): boolean }
 type Style = {
   opacity: string; cursor: string; height: string; borderTopWidth: string; borderTopStyle: string
-  boxShadow: string; transition: string; backgroundColor: string
+  boxShadow: string; transition: string; backgroundColor: string; color: string
 }
 type Window = {
   document: {
@@ -156,10 +156,13 @@ describe('按钮组', () => {
     expect(new Set(heights)).toEqual(new Set(['30px']))
   })
 
-  it('按下的开关按钮铺一层浅 accent 底', () => {
+  it('按下的开关按钮是选中的样子：--selected 的底配 --on-selected 的字', () => {
     document.body.innerHTML = '<button type="button" class="btn ghost sm" aria-pressed="true">历史项目</button><button type="button" class="btn ghost sm" aria-pressed="false">历史项目</button>'
-    const [on, off] = ['[aria-pressed="true"]', '[aria-pressed="false"]'].map((selector) => getComputedStyle(document.querySelector(selector)).backgroundColor)
-    expect([on, off]).toEqual(['var(--accent-soft)', TRANSPARENT])
+    const [on, off] = ['[aria-pressed="true"]', '[aria-pressed="false"]'].map((selector) => {
+      const style = getComputedStyle(document.querySelector(selector))
+      return `${style.backgroundColor} ${style.color}`
+    })
+    expect([on, off]).toEqual(['var(--selected) var(--on-selected)', `${TRANSPARENT} var(--sec)`])
   })
 
   it('危险按钮的键盘焦点环是红色的', () => {

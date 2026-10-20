@@ -10,7 +10,7 @@
 .icbtn.xs::before{content:"";position:absolute;inset:-4px}
 :where(.icbtn):hover{color:var(--ink);box-shadow:inset 0 0 0 100vmax var(--hover)}
 :where(.icbtn.danger):hover{color:var(--bad)}
-.icbtn[aria-pressed="true"]{background-color:var(--accent-soft);color:var(--accent)}
+.icbtn[aria-pressed="true"]{background-color:var(--selected);color:var(--on-selected)}
 .icbtn:enabled:active{background-image:linear-gradient(var(--press),var(--press))}
 .icbtn.danger:focus-visible{outline-color:var(--bad)}
 /* A busy button shows live progress, so it keeps its full colour while it cannot be clicked. */

@@ -121,9 +121,9 @@ describe('图标按钮', () => {
     expect(getComputedStyle(document.querySelector('button')).opacity).toBe('1')
   })
 
-  it('按下的开关铺一层浅 accent 底', () => {
+  it('按下的开关是选中的样子：--selected 的底配 --on-selected 的图标', () => {
     expect(new Set(Object.values(each((button) => `${button.backgroundColor} ${button.color}`, 'aria-pressed="true"'))))
-      .toEqual(new Set(['var(--accent-soft) var(--accent)']))
+      .toEqual(new Set(['var(--selected) var(--on-selected)']))
   })
 
   it('别的样式表不改图标按钮的尺寸、颜色、边框或光标，只管放在哪里和显不显', () => {

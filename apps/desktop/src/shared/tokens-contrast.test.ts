@@ -113,6 +113,16 @@ const contrast = (fg: Colour, bg: Colour): number => {
   return (hi! + 0.05) / (lo! + 0.05)
 }
 
+/**
+ * The light surfaces text and tags sit on, bottom-to-top: the canvas, a card, a floating layer, the
+ * window, a hovered card row, and a selected card or sidebar row.
+ */
+const LIGHT_SURFACES: [string, string[]][] = [
+  ['内容面', ['--content']], ['卡片面', ['--card']], ['浮层面', ['--raised']], ['窗口底', ['--window', '--sidebar']],
+  ['悬停的卡片行', ['--card', '--hover']], ['选中的卡片行', ['--card', '--selected']],
+  ['选中的侧栏行', ['--window', '--sidebar', '--selected']],
+]
+
 const PAIRS: Pair[] = [
   // Body text and surfaces.
   { theme: 'light', label: '正文在内容面', fg: '--ink', ground: ['--content'], min: TEXT },
@@ -135,6 +145,7 @@ const PAIRS: Pair[] = [
   { theme: 'dark', label: '次级文字在浮层面', fg: '--sec', ground: ['--raised'], min: TEXT },
   { theme: 'dark', label: '三级文字在内容面', fg: '--ter', ground: ['--content'], min: TEXT },
   { theme: 'dark', label: 'toast 的字在墨底', fg: '--window', ground: ['--ink'], min: TEXT },
+  ...LIGHT_SURFACES.map(([where, ground]): Pair => ({ theme: 'light', label: `三级文字在${where}`, fg: '--ter', ground, min: TEXT })),
   // Solid accent surfaces.
   { theme: 'light', label: '白字在实心 accent', fg: '--on-accent', ground: ['--accent-solid'], min: TEXT },
   { theme: 'dark', label: '白字在实心 accent', fg: '--on-accent', ground: ['--accent-solid'], min: TEXT },
@@ -166,8 +177,6 @@ const PAIRS: Pair[] = [
   { theme: 'dark', label: '悬停的选中列表行的字', fg: '--on-selected', ground: ['--card', '--selected', '--hover'], min: TEXT },
   { theme: 'light', label: '设置里选中外观的名字', fg: '--on-selected', ground: ['--raised'], min: TEXT },
   { theme: 'dark', label: '设置里选中外观的名字', fg: '--on-selected', ground: ['--raised'], min: TEXT },
-  { theme: 'light', label: '会场徽标的字', fg: '--ink', ground: ['--card', '--accent-soft'], min: TEXT },
-  { theme: 'dark', label: '会场徽标的字', fg: '--ink', ground: ['--card', '--accent-soft'], min: TEXT },
   { theme: 'light', label: '信息标签的字', fg: '--ink', ground: ['--content', '--tint-info'], min: TEXT },
   { theme: 'dark', label: '信息标签的字', fg: '--ink', ground: ['--content', '--tint-info'], min: TEXT },
   { theme: 'light', label: '文本选中底上的正文', fg: '--ink', ground: ['--content', '--sel'], min: TEXT },
@@ -217,29 +226,50 @@ describe('tokens.css 的对比度', () => {
   }
 })
 
-describe('选中的筛选项和开关项', () => {
-  /** The token of the `color:var(…)` declaration in the rule for `selector` in the renderer stylesheet `path`. */
-  const textOf = (path: string, selector: string): string => {
-    const css = readFileSync(new URL(`../renderer/${path}`, import.meta.url), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '')
-    const body = [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)].find((match) => match[1]!.trim() === selector)![2]!
-    return /(?:^|;)color:var\((--[\w-]+)\)/.exec(body)![1]!
+/**
+ * The tokens the fill and the text colour of the rule for `selector` in the renderer stylesheet `path`
+ * read, as `<fill> <text>`; a rule listing several selectors counts for each of them.
+ * @throws When no rule names `selector`.
+ */
+const lookOf = (path: string, selector: string): string => {
+  const css = readFileSync(new URL(`../renderer/${path}`, import.meta.url), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '')
+  const rule = [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)]
+    .find((match) => match[1]!.split(',').some((part) => part.trim() === selector))
+  if (rule === undefined) throw new Error(`${path} 里没有 ${selector} 这条规则`)
+  const token = (property: RegExp) => property.exec(rule[2]!)?.[1] ?? '无'
+  return `${token(/(?:^|;)background(?:-color)?:var\((--[\w-]+)\)/)} ${token(/(?:^|;)color:var\((--[\w-]+)\)/)}`
+}
+
+describe('亮色标签的字', () => {
+  for (const tone of ['good', 'warn', 'accent']) {
+    it(`亮色的 ${tone} 标签的字压在它自己的底上,铺在每种底面上都不低于 4.5:1`, () => {
+      const [fill, text] = lookOf('components/Tag.css', `.tag--${tone}`).split(' ') as [string, string]
+      for (const [where, ground] of LIGHT_SURFACES) {
+        const got = contrast(colour('light', text), flatten('light', [...ground, fill]))
+        expect(got, `${text} 压在${where}的 ${fill} 上是 ${got.toFixed(2)}:1`).toBeGreaterThanOrEqual(TEXT)
+      }
+    })
   }
-  const PICKED = [
-    ['components/ChipToggles.css', '.chip-toggle[data-state="on"]'],
+})
+
+describe('选中、当前、已应用和按下的状态', () => {
+  const STATES = [
+    ['shell/AppShell.css', '.srow.on'],
+    ['components/StructuredList.css', '.structured-row--selected'],
+    ['components/ResearchObjectCard.css', '.research-object-card.selected'],
+    ['components/Pager.css', '.pgbtn.on'],
+    ['components/FieldPickers.css', '.cd.sel'],
+    ['components/paper-table/PaperTable.css', '.ctbtn.on'],
+    ['routes/Reader.css', '.reader-rail button.on'],
     ['routes/shell.css', '.read-state-filter.on'],
+    ['components/ChipToggles.css', '.chip-toggle[data-state="on"]'],
+    ['routes/shell.css', '.btn:not(.danger)[aria-pressed="true"]'],
+    ['components/IconButton.css', '.icbtn[aria-pressed="true"]'],
   ] as const
 
-  it('字在浅 accent 底上不低于 4.5:1,铺在内容面或卡片面上都是,和选中的行用同一个字色', () => {
-    for (const [path, selector] of PICKED) {
-      const fg = textOf(path, selector)
-      for (const theme of ['light', 'dark'] as const) {
-        for (const ground of [['--content', '--accent-soft'], ['--card', '--accent-soft']]) {
-          const got = contrast(colour(theme, fg), flatten(theme, ground))
-          expect(got, `${theme} ${selector} 的 ${fg} 压在 ${ground.join(' + ')} 上是 ${got.toFixed(2)}:1`).toBeGreaterThanOrEqual(TEXT)
-        }
-      }
-      expect(fg, selector).toBe('--on-selected')
-    }
+  it('选中的行、当前页、选中的日期、已应用的筛选和按下的开关都是同一个样子:--selected 的底配 --on-selected 的字', () => {
+    expect(Object.fromEntries(STATES.map(([path, selector]) => [selector, lookOf(path, selector)])))
+      .toEqual(Object.fromEntries(STATES.map(([, selector]) => [selector, '--selected --on-selected'])))
   })
 })
 
@@ -289,6 +319,11 @@ describe('tokens.css 的决定值', () => {
         expect(contrast(chip, row), label).toBeGreaterThanOrEqual(1.1)
       }
     }
+  })
+
+  it('评分星的颜色来自 --star,两种主题下都解得出颜色', () => {
+    expect(lookOf('components/PaperMetadata.css', '.rating-stars button.rated')).toBe('无 --star')
+    for (const theme of ['light', 'dark'] as const) expect(colour(theme, '--star').a, theme).toBe(1)
   })
 
   it('亮色的 --info / --tint-info 是青色,且与 --on-selected 解出来的颜色分开', () => {
