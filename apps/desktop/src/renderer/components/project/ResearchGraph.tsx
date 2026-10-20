@@ -23,6 +23,7 @@ import { SectionHeading } from '../PageShell.js'
 import { StatusDot } from '../StatusDot.js'
 import { StructuredList, StructuredRow } from '../StructuredList.js'
 import { AgentLabel } from '../SourceLabel.js'
+import { Toolbar, ToolbarButton } from '../Toolbar.js'
 import { Tooltip } from '../Tooltip.js'
 import { ProjectEventRow } from './ProjectSignals.js'
 import './ResearchGraph.css'
@@ -381,23 +382,25 @@ export function ResearchGraph({ graph, selected, ideaNodeIds = [], onSelect }: {
             })}
           </g>
         </svg>
-        <div className="graph-view-controls">
-          <IconButton label={m.project.graph.zoomOut} size="nested" onClick={() => zoomAt(view.zoom / 1.2)}>
-            <IconMinus />
-          </IconButton>
-          <Tooltip label={m.project.graph.resetView}>
-            <button
-              type="button" className="btn ghost sm graph-zoom-reset"
-              onClick={() => {
-                moved.current = false
-                setView(fitted)
-              }}
-            >{Math.round(view.zoom * 100)}%</button>
-          </Tooltip>
-          <IconButton label={m.project.graph.zoomIn} size="nested" onClick={() => zoomAt(view.zoom * 1.2)}>
-            <IconPlus />
-          </IconButton>
-        </div>
+        <Toolbar>
+          <div className="graph-view-controls">
+            <IconButton label={m.project.graph.zoomOut} size="nested" onClick={() => zoomAt(view.zoom / 1.2)}>
+              <IconMinus />
+            </IconButton>
+            <Tooltip label={m.project.graph.resetView}>
+              <ToolbarButton
+                className="btn ghost sm graph-zoom-reset"
+                onClick={() => {
+                  moved.current = false
+                  setView(fitted)
+                }}
+              >{Math.round(view.zoom * 100)}%</ToolbarButton>
+            </Tooltip>
+            <IconButton label={m.project.graph.zoomIn} size="nested" onClick={() => zoomAt(view.zoom * 1.2)}>
+              <IconPlus />
+            </IconButton>
+          </div>
+        </Toolbar>
       </div>
       <div className="glegend">
         <span className="legend-item"><StatusDot tone="warn" size="md" />{m.project.graph.legend.needsRepair}</span>

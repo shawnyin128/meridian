@@ -23,6 +23,7 @@ import { ProjectIdentity, ProjectLabel } from '../components/project/ProjectIden
 import { DAY_SLOT_HOURS } from '../components/timeline/TimelineScale.js'
 import { TimelineBoard } from '../components/timeline/TimelineBoard.js'
 import { useMilestoneEditor } from '../components/timeline/MilestoneEditor.js'
+import { ToolbarButton } from '../components/Toolbar.js'
 import { Tooltip } from '../components/Tooltip.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
 import {
@@ -355,10 +356,10 @@ function OverviewGantt({
       foldable
       {...editor.board}
       headerAction={() => (
-        <button
-          className="btn ghost sm overview-history-toggle" type="button" aria-pressed={showInactive}
+        <ToolbarButton
+          className="btn ghost sm overview-history-toggle" aria-pressed={showInactive}
           onClick={() => { editor.close(); setShowInactive((shown) => !shown) }}
-        >{m.research.overview.historyProjects}</button>
+        >{m.research.overview.historyProjects}</ToolbarButton>
       )}
       onLabelClick={(projectId, kind, itemId) => (kind === 'task' && itemId !== undefined
         ? onOpenTask(projectId, itemId) : onOpenProject(projectId))}

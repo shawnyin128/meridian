@@ -91,6 +91,31 @@ describe('ReaderSidePanel', () => {
     field(selector).dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }))
   })
 
+  it('右栏的五个按钮是一组：一个 Tab 停靠点，进来落在开着的那个，方向键换一个，再按开着的那个就收起', async () => {
+    const onTab = vi.fn()
+    act(() => root!.render(
+      <MessagesProvider>
+        <ReaderSidePanel
+          tab="notes" onTab={onTab} paper={PAPER} onPaper={vi.fn()} reading={PAPER_ONE} currentPage={1}
+          saving={false} onMutate={vi.fn()} onSaveRemark={vi.fn()} onJump={vi.fn()} focusHighlightId={null}
+        />
+      </MessagesProvider>,
+    ))
+    const rail = host.querySelector<HTMLElement>('.reader-rail')!
+    const tabs = [...rail.querySelectorAll<HTMLButtonElement>('button')]
+    expect([rail, ...tabs].filter((element) => element.tabIndex === 0)).toEqual([rail])
+    await act(async () => { rail.focus() })
+    expect(document.activeElement!.getAttribute('aria-label')).toBe('阅读笔记')
+    await act(async () => {
+      document.activeElement!.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true, cancelable: true }))
+      await new Promise((done) => setTimeout(done, 0))
+    })
+    expect(document.activeElement!.getAttribute('aria-label')).toBe('随笔')
+    act(() => tabs[2]!.click())
+    act(() => tabs[0]!.click())
+    expect(onTab.mock.calls).toEqual([[null], ['metadata']])
+  })
+
   it('右栏的每个面板都以同一种标题栏开头，元数据面板也有', () => {
     const heads = (['metadata', 'highlights', 'notes', 'remark', 'wiki'] as const).map((tab) => {
       show(tab, PAPER_ONE, undefined, PAPER)

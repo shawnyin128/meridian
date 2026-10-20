@@ -4,8 +4,9 @@ import { createRoot, type Root } from 'react-dom/client'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { MessagesProvider } from '../messages/useMessages.js'
+import { TodayContext } from '../shell/AppShell.js'
 import { LANGUAGE_STORAGE_KEY } from '../shell/language.js'
-import { ChoicePicker, DotsMenu } from './FieldPickers.js'
+import { ChoicePicker, DateButton, DotsMenu } from './FieldPickers.js'
 import { TOOLTIP_DELAY } from './Tooltip.js'
 
 declare global {
@@ -139,5 +140,49 @@ describe('ChoicePicker', () => {
     })
     expect(onPick).toHaveBeenCalledWith('openai')
     expect(trigger().textContent).toBe('OpenAI')
+  })
+})
+
+describe('DateButton', () => {
+  let host: HTMLDivElement
+  let root: Root
+
+  beforeEach(() => {
+    globalThis.IS_REACT_ACT_ENVIRONMENT = true
+    window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'zh')
+    host = document.createElement('div')
+    document.body.append(host)
+    root = createRoot(host)
+  })
+
+  afterEach(() => {
+    act(() => root.unmount())
+    host.remove()
+  })
+
+  it('日历的日子是一组：一个 Tab 停靠点，进来落在选中的那天，方向键换一天，每天按完整日期命名，今天报 aria-current="date"', async () => {
+    const onPick = vi.fn()
+    act(() => root.render(
+      <MessagesProvider>
+        <TodayContext.Provider value="2026-10-18">
+          <DateButton iso="2026-10-16" className="date" onPick={onPick} />
+        </TodayContext.Provider>
+      </MessagesProvider>,
+    ))
+    await act(async () => { host.querySelector<HTMLButtonElement>('.date')!.click() })
+    const days = document.querySelector<HTMLElement>('.calg')!
+    const buttons = [...days.querySelectorAll<HTMLButtonElement>('button')]
+    expect([days, ...buttons].filter((element) => element.tabIndex === 0)).toEqual([days])
+    expect([buttons[15], buttons[17]].map((day) => [day!.getAttribute('aria-label'), day!.getAttribute('aria-current')]))
+      .toEqual([['10月16日', null], ['10月18日', 'date']])
+    await act(async () => { days.focus() })
+    expect(document.activeElement).toBe(buttons[15])
+    await act(async () => {
+      document.activeElement!.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true, cancelable: true }))
+      await new Promise((done) => setTimeout(done, 0))
+    })
+    expect(document.activeElement).toBe(buttons[16])
+    await act(async () => { buttons[16]!.click() })
+    expect(onPick).toHaveBeenCalledWith('2026-10-17')
   })
 })

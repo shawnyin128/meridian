@@ -81,8 +81,8 @@ export function ToggleGroup({ label, value, onValueChange, disabled = false, cla
   return useContext(InToolbar) === null ? <RadixToggleGroup.Root {...props} /> : <RadixToolbar.ToggleGroup {...props} />
 }
 
-/** One toggle of a `ToggleGroup`, standing for `value`. */
-export const ToggleItem = forwardRef<HTMLButtonElement, { value: string } & ButtonHTMLAttributes<HTMLButtonElement>>(
+/** One toggle of a `ToggleGroup`, standing for `value`; with `asChild`, the one element in `children` is the toggle. */
+export const ToggleItem = forwardRef<HTMLButtonElement, { value: string; asChild?: boolean } & ButtonHTMLAttributes<HTMLButtonElement>>(
   function ToggleItem(props, ref) {
     return useContext(InToolbar) === null
       ? <RadixToggleGroup.Item {...props} ref={ref} />

@@ -140,6 +140,28 @@ describe('idea and graph association', () => {
     act(() => root.unmount())
   })
 
+  it('keeps the zoom controls one Tab stop, with the arrow keys between zoom out, the reset and zoom in', async () => {
+    globalThis.IS_REACT_ACT_ENVIRONMENT = true
+    const host = document.createElement('div')
+    document.body.append(host)
+    const root = createRoot(host)
+    act(() => root.render(withMessages(<ResearchGraph graph={GRAPH} selected={null} onSelect={vi.fn()} />)))
+    const controls = host.querySelector<HTMLElement>('.graph-view-controls')!
+    expect([controls, ...controls.querySelectorAll<HTMLElement>('*')].filter((element) => element.tabIndex === 0)).toEqual([controls])
+    await act(async () => { controls.focus() })
+    const walked: (string | null)[] = []
+    for (let step = 0; step < 3; step += 1) {
+      walked.push(document.activeElement!.getAttribute('aria-label') ?? document.activeElement!.textContent)
+      await act(async () => {
+        document.activeElement!.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true, cancelable: true }))
+        await new Promise((done) => setTimeout(done, 0))
+      })
+    }
+    expect(walked).toEqual(['缩小科研图', '100%', '放大科研图'])
+    act(() => root.unmount())
+    host.remove()
+  })
+
   it('pans a node that takes keyboard focus outside the view into it, and leaves the view alone for a pointer', () => {
     globalThis.IS_REACT_ACT_ENVIRONMENT = true
     const wide: Graph = {

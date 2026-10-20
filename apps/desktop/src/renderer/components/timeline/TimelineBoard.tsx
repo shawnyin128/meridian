@@ -8,6 +8,7 @@ import { useMessages } from '../../messages/useMessages.js'
 import { IconButton } from '../IconButton.js'
 import { IconChevron } from '../icons.js'
 import { ProjectLabel, ProjectPriorityTag } from '../project/ProjectIdentity.js'
+import { Toolbar } from '../Toolbar.js'
 import { Tooltip } from '../Tooltip.js'
 import {
   DAY_SLOT_HOURS, shiftTaskWindow, timelineDayAt, TimelineControls, TimelineGrid,
@@ -180,15 +181,17 @@ export function TimelineBoard({
 
   return (
     <div className={`gantt${className ? ` ${className}` : ''}`} onClickCapture={drag.onClickCapture}>
-      <div className="ghead">
-        <span className="gm">{label}</span>
-        <TimelineControls
-          scale={scale} onScaleChange={(next) => { onPeriodChange?.(); period.setScale(next) }}
-          onStep={(direction) => { onPeriodChange?.(); period.step(direction) }}
-          onToday={() => { onPeriodChange?.(); period.goToday() }}
-        />
-        {headerAction?.({ scale, firstDay: isoOf(w0), today: todayIso })}
-      </div>
+      <Toolbar>
+        <div className="ghead">
+          <span className="gm">{label}</span>
+          <TimelineControls
+            scale={scale} onScaleChange={(next) => { onPeriodChange?.(); period.setScale(next) }}
+            onStep={(direction) => { onPeriodChange?.(); period.step(direction) }}
+            onToday={() => { onPeriodChange?.(); period.goToday() }}
+          />
+          {headerAction?.({ scale, firstDay: isoOf(w0), today: todayIso })}
+        </div>
+      </Toolbar>
       <div className="gsplit">
         <div className="glabels">
           <div className="glhead" />

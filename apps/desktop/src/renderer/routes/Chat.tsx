@@ -28,6 +28,7 @@ import { composing } from '../lib/keyboard.js'
 import { IdeaEditorDialog } from '../components/ideas/IdeaEditorDialog.js'
 import { GenerationControl } from '../components/GenerationControl.js'
 import { FadeText } from '../components/FadeText.js'
+import { Toolbar, ToolbarButton } from '../components/Toolbar.js'
 import { TitleNote } from '../components/TitleNote.js'
 import { PaperText } from '../components/paper/PaperText.js'
 import { plainTitle } from '../components/paper/paper-text.js'
@@ -240,25 +241,27 @@ export function Chat() {
       <PageFooter bare>
         <div className="composer">
           <div className="mwrap">
-            <div className="qacts">
-              <span id="qmChips">
-                {[
-                  ...mentions.filter((mention) => mention.kind === 'project').slice(0, QUICK_MENTIONS),
-                  ...mentions.filter((mention) => mention.kind === 'paper').slice(0, QUICK_MENTIONS),
-                ].map((mention) => (
-                  <button
-                    className="btn ghost sm qm" key={mention.title}
-                    onClick={() => quick(mention.title)}
-                  >
-                    <FadeText>@{mention.kind === 'paper' ? <PaperText text={mention.entity.title} /> : mention.title}</FadeText>
-                  </button>
-                ))}
-              </span>
-              <button
-                className="btn ghost sm save-idea" id="qaIdea" disabled={id === null || !hasDiscussion}
-                onClick={() => setSavingIdea(true)}
-              >{m.chat.saveIdeaLabel}</button>
-            </div>
+            <Toolbar>
+              <div className="qacts">
+                <span id="qmChips">
+                  {[
+                    ...mentions.filter((mention) => mention.kind === 'project').slice(0, QUICK_MENTIONS),
+                    ...mentions.filter((mention) => mention.kind === 'paper').slice(0, QUICK_MENTIONS),
+                  ].map((mention) => (
+                    <ToolbarButton
+                      className="btn ghost sm qm" key={mention.title}
+                      onClick={() => quick(mention.title)}
+                    >
+                      <FadeText>@{mention.kind === 'paper' ? <PaperText text={mention.entity.title} /> : mention.title}</FadeText>
+                    </ToolbarButton>
+                  ))}
+                </span>
+                <ToolbarButton
+                  className="btn ghost sm save-idea" id="qaIdea" disabled={id === null || !hasDiscussion}
+                  onClick={() => setSavingIdea(true)}
+                >{m.chat.saveIdeaLabel}</ToolbarButton>
+              </div>
+            </Toolbar>
 
             <PickerPopover
               open={suggest.length > 0} onOpenChange={(open) => { if (!open) setMentioning(false) }}

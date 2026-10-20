@@ -963,8 +963,7 @@ test('分页条两端对齐:条数贴左缘,页码与每页档位挨着贴右缘
     const count = document.createRange()
     count.selectNodeContents(bar.querySelector('.pginfo')!)
     const seg = bar.querySelector('.segmented-control')!.getBoundingClientRect()
-    const pgbtn = bar.querySelectorAll('.pager .pgbtn')
-    const tail = pgbtn[pgbtn.length - 1]!.getBoundingClientRect()
+    const tail = bar.querySelector('.pager')!.lastElementChild!.getBoundingClientRect()
     // Children of one line share a vertical center up to layout rounding, which can straddle a half
     // pixel; a wrapped child sits a whole line lower.
     const centers = [...bar.children].map((c) => {
@@ -981,7 +980,7 @@ test('分页条两端对齐:条数贴左缘,页码与每页档位挨着贴右缘
   })
 
   console.log(`分页条版式:条数离左缘 ${laid.countInset}px,每页档位离右缘 ${laid.segInset}px,`
-    + `末页码与每页档位相距 ${laid.pageToSeg}px(分页条的 gap 是 ${laid.gap}px)`)
+    + `页码条末端与每页档位相距 ${laid.pageToSeg}px(分页条的 gap 是 ${laid.gap}px)`)
   expect(laid.centerSpread, '分页条已经换行,量到的不是同一行上的版式').toBeLessThan(1)
   expect(laid.countInset).toBe(0)
   expect(laid.segInset).toBe(0)

@@ -7,6 +7,7 @@ import type { Task } from '../../../shared/contract.js'
 import { MessagesProvider } from '../../messages/useMessages.js'
 import { TodayContext } from '../../shell/AppShell.js'
 import { LANGUAGE_STORAGE_KEY } from '../../shell/language.js'
+import { ToolbarButton } from '../Toolbar.js'
 import { TOOLTIP_DELAY } from '../Tooltip.js'
 import { TimelineBoard, type TimelineProject } from './TimelineBoard.js'
 
@@ -72,6 +73,47 @@ function mountBoard(host: HTMLDivElement, overrides: {
 function mouse(target: EventTarget, type: string, clientX = 0): void {
   act(() => { target.dispatchEvent(new MouseEvent(type, { bubbles: true, clientX })) })
 }
+
+describe('TimelineBoard 的头部', () => {
+  it('上一个、下一个周期、今天和头部的操作是一个 Tab 停靠点，时间尺度自己是一个', async () => {
+    globalThis.IS_REACT_ACT_ENVIRONMENT = true
+    window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'zh')
+    const host = document.createElement('div')
+    document.body.append(host)
+    const root = createRoot(host)
+    act(() => root.render(
+      <MessagesProvider>
+        <TodayContext.Provider value="2026-09-16">
+          <TimelineBoard
+            projects={[project]} headerAction={() => <ToolbarButton className="btn">新建</ToolbarButton>}
+            onTaskClick={vi.fn()} onMilestoneClick={vi.fn()} onMilestoneLaneClick={vi.fn()}
+            onMoveTask={vi.fn()} onMoveTaskWindow={vi.fn()} onMoveMilestone={vi.fn()}
+          />
+        </TodayContext.Provider>
+      </MessagesProvider>,
+    ))
+    const head = host.querySelector<HTMLElement>('.ghead')!
+    const scale = head.querySelector<HTMLElement>('.segmented-control')!
+    expect([head, ...head.querySelectorAll<HTMLElement>('*')].filter((element) => element.tabIndex === 0)).toEqual([head, scale])
+    await act(async () => { head.focus() })
+    const walked: (string | null)[] = []
+    for (let step = 0; step < 3; step += 1) {
+      walked.push(document.activeElement!.getAttribute('aria-label') ?? document.activeElement!.textContent)
+      await act(async () => {
+        document.activeElement!.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true, cancelable: true }))
+        await new Promise((done) => setTimeout(done, 0))
+      })
+    }
+    expect(walked).toEqual(['上一个周期', '下一个周期', '今天'])
+    await act(async () => {
+      document.activeElement!.dispatchEvent(new KeyboardEvent('keydown', { key: 'End', bubbles: true, cancelable: true }))
+      await new Promise((done) => setTimeout(done, 0))
+    })
+    expect(document.activeElement!.textContent).toBe('新建')
+    act(() => root.unmount())
+    host.remove()
+  })
+})
 
 describe('TimelineBoard 标签列拖拽排序', () => {
   it('提供了 onReorderTasks 时,任务标签行可以拖拽,里程碑行不可以', () => {

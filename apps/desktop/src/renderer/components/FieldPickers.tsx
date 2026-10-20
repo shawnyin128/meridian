@@ -9,7 +9,7 @@ import { ActionPopover, PopoverClose } from './ActionPopover.js'
 import { FormButton } from './FormControls.js'
 import { IconButton } from './IconButton.js'
 import { IconChevron, IconDots, IconNext, IconPrevious } from './icons.js'
-import { useToolbarItem } from './Toolbar.js'
+import { ToggleGroup, ToggleItem, useToolbarItem } from './Toolbar.js'
 import './FieldPickers.css'
 
 const PRIORITIES: Task['priority'][] = ['p0', 'p1', 'p2']
@@ -158,7 +158,10 @@ function Calendar({ selected, onPick }: { selected: string; onPick: (iso: string
         <b>{fmt.monthYear(`${ym.y}-${String(ym.m).padStart(2, '0')}-01`)}</b>
         <IconButton label={m.common.calendar.next} size="nested" onClick={() => shift(1)}><IconNext /></IconButton>
       </div>
-      <div className="calg">
+      <ToggleGroup
+        label={fmt.monthYear(`${ym.y}-${String(ym.m).padStart(2, '0')}-01`)} className="calg" value={selected}
+        onValueChange={(iso) => { if (iso !== '') onPick(iso) }}
+      >
         {[...Array(7)].map((_, weekday) => (
           <span className="cw" key={weekday}>{fmt.weekdayShort(weekday)}</span>
         ))}
@@ -166,13 +169,14 @@ function Calendar({ selected, onPick }: { selected: string; onPick: (iso: string
         {[...Array(daysInMonth)].map((_, index) => {
           const iso = `${ym.y}-${String(ym.m).padStart(2, '0')}-${String(index + 1).padStart(2, '0')}`
           return (
-            <PopoverClose
-              className={`cd${iso === today ? ' today' : ''}${iso === selected ? ' sel' : ''}`}
-              key={iso} onClick={() => onPick(iso)}
-            >{index + 1}</PopoverClose>
+            <ToggleItem
+              asChild key={iso} value={iso} aria-label={fmt.date(iso)} aria-current={iso === today ? 'date' : undefined}
+            >
+              <PopoverClose className={`cd${iso === today ? ' today' : ''}${iso === selected ? ' sel' : ''}`}>{index + 1}</PopoverClose>
+            </ToggleItem>
           )
         })}
-      </div>
+      </ToggleGroup>
     </>
   )
 }

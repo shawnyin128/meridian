@@ -120,7 +120,7 @@ test('从别的屏再进「项目」落在列表,已经在项目屏时再点侧�
 
   // Go to Papers, turn a page and come back: the Projects screen shows the list.
   await win.locator('[data-desk="papers"]').click()
-  await win.locator('.pager .pgbtn').last().click()
+  await win.locator('.pager [aria-label="下一页"]').click()
   await expect(win.locator('.pager .pgbtn.on')).toHaveText('2')
 
   await gotoList(win)

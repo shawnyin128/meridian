@@ -13,6 +13,7 @@ import { IconButton } from '../components/IconButton.js'
 import { IconMinus, IconPlus } from '../components/icons.js'
 import { LoadingPlaceholder } from '../components/LoadingPlaceholder.js'
 import { PickerPopover, type AnchorBox } from '../components/PickerPopover.js'
+import { Toolbar, ToolbarButton } from '../components/Toolbar.js'
 import { Tooltip } from '../components/Tooltip.js'
 import {
   highlightLines, highlightShape, normalizedHighlightRects, selectedTextRanges, selectionBox,
@@ -726,11 +727,13 @@ export function Reader() {
             onOpenChange={(open) => { if (!open) setPending(null) }}
             contentClassName="ctxmenu selection-tools" side="bottom" align="center" sideOffset={10}
             content={pending === null ? null : (
-              <>
-                <button type="button" className="mi" onClick={() => { void addHighlight(false) }}>{m.reader.selection.highlight}</button>
-                <button type="button" className="mi" onClick={() => { void addHighlight(true) }}>{m.reader.selection.note}</button>
-                <button type="button" className="mi" onClick={askAi}>{m.reader.selection.askAi}</button>
-              </>
+              <Toolbar>
+                <div className="selection-tools-row">
+                  <ToolbarButton className="mi" onClick={() => { void addHighlight(false) }}>{m.reader.selection.highlight}</ToolbarButton>
+                  <ToolbarButton className="mi" onClick={() => { void addHighlight(true) }}>{m.reader.selection.note}</ToolbarButton>
+                  <ToolbarButton className="mi" onClick={askAi}>{m.reader.selection.askAi}</ToolbarButton>
+                </div>
+              </Toolbar>
             )}
           />
 
@@ -741,19 +744,21 @@ export function Reader() {
             onJump={jumpToPage} focusHighlightId={focusHighlightId}
           />
 
-          <div className="zoomctl">
-            <IconButton label={m.reader.zoom.out} size="nested" disabled={zoom <= ZOOM_MIN} onClick={() => zoomBy(-ZOOM_STEP)}>
-              <IconMinus />
-            </IconButton>
-            <Tooltip label={m.reader.zoom.reset}>
-              <button type="button" className="btn ghost sm zoom-reset" onClick={() => zoomBy(1 - shownZoom.current)}>
-                {Math.round(zoom * 100)}%
-              </button>
-            </Tooltip>
-            <IconButton label={m.reader.zoom.in} size="nested" disabled={zoom >= ZOOM_MAX} onClick={() => zoomBy(ZOOM_STEP)}>
-              <IconPlus />
-            </IconButton>
-          </div>
+          <Toolbar>
+            <div className="zoomctl">
+              <IconButton label={m.reader.zoom.out} size="nested" disabled={zoom <= ZOOM_MIN} onClick={() => zoomBy(-ZOOM_STEP)}>
+                <IconMinus />
+              </IconButton>
+              <Tooltip label={m.reader.zoom.reset}>
+                <ToolbarButton className="btn ghost sm zoom-reset" onClick={() => zoomBy(1 - shownZoom.current)}>
+                  {Math.round(zoom * 100)}%
+                </ToolbarButton>
+              </Tooltip>
+              <IconButton label={m.reader.zoom.in} size="nested" disabled={zoom >= ZOOM_MAX} onClick={() => zoomBy(ZOOM_STEP)}>
+                <IconPlus />
+              </IconButton>
+            </div>
+          </Toolbar>
         </div>
       </PageShell>
     </>

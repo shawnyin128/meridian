@@ -8,6 +8,7 @@ import { IconNext, IconPrevious } from '../icons.js'
 import { zh } from '../../messages/zh/index.js'
 import type { Catalog } from '../../messages/catalog.js'
 import { SegmentedControl } from '../SegmentedControl.js'
+import { ToolbarButton } from '../Toolbar.js'
 
 export type TimelineScale = 'day' | 'week' | 'month'
 
@@ -192,7 +193,7 @@ export function TimelineControls({ scale, onScaleChange, onStep, onToday }: {
         <IconButton label={m.timeline.nextPeriod} size="nested" onClick={() => onStep(1)}><IconNext /></IconButton>
       </div>
       <TimelineScalePicker value={scale} onChange={onScaleChange} />
-      <button type="button" className="btn ghost sm" onClick={onToday}>{m.timeline.today}</button>
+      <ToolbarButton className="btn ghost sm" onClick={onToday}>{m.timeline.today}</ToolbarButton>
     </>
   )
 }

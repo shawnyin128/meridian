@@ -6,6 +6,7 @@ import { ReadingNotes } from './ReadingNotes.js'
 import { ReadingRemark } from './ReadingRemark.js'
 import { PaperWikiIngest } from './PaperWikiIngest.js'
 import { ReaderPanelHeader } from './ReaderPanelHeader.js'
+import { ToggleGroup, ToggleItem } from '../Toolbar.js'
 import { Tooltip } from '../Tooltip.js'
 import '../DetailPanel.css'
 
@@ -67,16 +68,18 @@ export function ReaderSidePanel({
       {tab === 'wiki' && paper !== null && reading !== null
         ? <PaperWikiIngest paper={paper} reading={reading} />
         : null}
-      <nav className="reader-rail" aria-label={m.reader.rail.label}>
+      <ToggleGroup
+        label={m.reader.rail.label} className="reader-rail" value={tab ?? ''}
+        onValueChange={(next) => onTab(next === '' ? null : next as ReaderSideTab)}
+      >
         {TABS.map((key) => (
           <Tooltip key={key} label={m.reader.rail.tabs[key]} side="left">
-            <button
-              aria-label={m.reader.rail.tabs[key]} className={tab === key ? 'on' : ''}
-              onClick={() => onTab(tab === key ? null : key)}
-            ><RailIcon tab={key} /></button>
+            <ToggleItem value={key} aria-label={m.reader.rail.tabs[key]} className={tab === key ? 'on' : ''}>
+              <RailIcon tab={key} />
+            </ToggleItem>
           </Tooltip>
         ))}
-      </nav>
+      </ToggleGroup>
     </aside>
   )
 }
