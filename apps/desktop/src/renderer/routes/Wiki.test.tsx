@@ -229,3 +229,72 @@ describe('Wiki keyboard reach', () => {
     vi.unstubAllGlobals()
   })
 })
+
+describe('论文对比表的五行上限', () => {
+  let root: Root | null = null
+  let host: HTMLDivElement
+
+  /** The topic page with `count` member papers, so its comparison table has that many rows. */
+  const withRows = (count: number): WikiAggregation => ({
+    ...AGG,
+    rows: Array.from({ length: count }, (_, at) => ({ ...AGG.rows[0]!, paper: { id: `papers/p${at + 1}`, title: `论文 ${at + 1}` } })),
+  })
+
+  /**
+   * Lays the comparison table out from y=100, the top of its scroll box: the header row is 30px tall
+   * and body row `n` is `heights[n]` tall, the way a browser would stack them.
+   */
+  const layOut = (heights: number[]) => {
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+      if (this.classList.contains('cmpwrap')) return { top: 100, bottom: 100 } as DOMRect
+      const table = this.closest('.cmp')
+      if (table === null || this.tagName !== 'TR') return { top: 0, bottom: 0 } as DOMRect
+      const sizes = [30, ...heights]
+      const at = [...table.querySelectorAll('tr')].indexOf(this as HTMLTableRowElement)
+      const bottom = 100 + sizes.slice(0, at + 1).reduce((sum, height) => sum + height, 0)
+      return { top: bottom - sizes[at]!, bottom } as DOMRect
+    })
+  }
+
+  const open = async (rows: number) => {
+    fixture.aggregation.mockReset().mockResolvedValue(withRows(rows))
+    await act(async () => {
+      root!.render(<MessagesProvider><Wiki /></MessagesProvider>)
+      await Promise.resolve()
+    })
+    await act(async () => {
+      host.querySelector<HTMLElement>('[data-wk="topics/sd"] .tt')!.click()
+      await Promise.resolve()
+    })
+    return host.querySelector<HTMLElement>('.cmpwrap')!
+  }
+
+  beforeEach(() => {
+    globalThis.IS_REACT_ACT_ENVIRONMENT = true
+    window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'zh')
+    vi.stubGlobal('ResizeObserver', class { observe() {} unobserve() {} disconnect() {} })
+    document.body.innerHTML = ''
+    host = document.createElement('div')
+    document.body.append(host)
+    root = createRoot(host)
+  })
+
+  afterEach(() => {
+    if (root !== null) act(() => root!.unmount())
+    root = null
+    vi.restoreAllMocks()
+    vi.unstubAllGlobals()
+  })
+
+  it('第六行起在表里滚动，高度是表头加前五行实际渲染的高度，不按固定行高算', async () => {
+    layOut([36, 36, 50, 36, 36, 36, 36])
+    const wrap = await open(7)
+    expect(wrap.style.maxHeight).toBe(`${30 + 36 + 36 + 50 + 36 + 36}px`)
+  })
+
+  it('五行以内不设上限，整张表留在页面流里', async () => {
+    layOut([36, 36, 50, 36, 36])
+    const wrap = await open(5)
+    expect(wrap.style.maxHeight).toBe('')
+  })
+})

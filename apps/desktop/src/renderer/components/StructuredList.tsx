@@ -1,5 +1,6 @@
-import { useCallback, useLayoutEffect, useRef, useState } from 'react'
+import { useCallback, useRef } from 'react'
 import type { CSSProperties, HTMLAttributes, MouseEvent as ReactMouseEvent, ReactNode, Ref } from 'react'
+import { useRowCap } from '../hooks/useRowCap.js'
 import { useScrollFade } from '../hooks/useScrollFade.js'
 import { Toolbar } from './Toolbar.js'
 import './StructuredList.css'
@@ -12,17 +13,6 @@ export const EMBEDDED_LIST_ROW_LIMIT = 5
  */
 const ownRows = (list: HTMLElement) => [...list.querySelectorAll<HTMLElement>('.structured-row')]
   .filter((row) => row.closest('.structured-list') === list && row.getClientRects().length > 0)
-
-/**
- * The height that shows exactly the first `limit` rendered rows of `list`, or null when the list
- * has no more rows than that.
- */
-function measureCap(list: HTMLElement, limit: number): number | null {
-  const rows = ownRows(list)
-  if (rows.length <= limit) return null
-  const top = list.getBoundingClientRect().top - list.scrollTop
-  return Math.ceil(rows[limit - 1]!.getBoundingClientRect().bottom - top)
-}
 
 export function StructuredList({
   children, className = '', variant = 'card', maxVisibleRows, style, ...props
@@ -44,28 +34,11 @@ export function StructuredList({
     ? undefined
     : maxVisibleRows ?? (variant === 'embedded' ? EMBEDDED_LIST_ROW_LIMIT : undefined)
   const list = useRef<HTMLDivElement | null>(null)
-  const [cap, setCap] = useState<number | null>(null)
+  const cap = useRowCap(list, ownRows, rowLimit)
   const listRef = useCallback((node: HTMLDivElement | null) => {
     list.current = node
     fade(node)
   }, [fade])
-
-  // Runs after every render: rows come and go with the children, and the observer follows the
-  // rows' own size changes, such as text wrapping at a new window width.
-  useLayoutEffect(() => {
-    const node = list.current
-    if (node === null || rowLimit === undefined) {
-      setCap(null)
-      return undefined
-    }
-    const measure = () => setCap(measureCap(node, rowLimit))
-    measure()
-    const rows = ownRows(node)
-    if (rows.length <= rowLimit) return undefined
-    const observer = new ResizeObserver(measure)
-    for (const row of rows.slice(0, rowLimit)) observer.observe(row)
-    return () => observer.disconnect()
-  })
 
   const variantClass = variant === 'embedded' ? ' structured-list--embedded' : ''
   const scrollClass = cap === null ? '' : ' structured-list--scrollable'

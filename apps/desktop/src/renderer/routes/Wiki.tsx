@@ -31,6 +31,7 @@ import { headingsOf, MarkdownBox } from '../components/Markdown.js'
 import { Pager } from '../components/Pager.js'
 import { PickRow, type PickHit } from '../components/PickRow.js'
 import { nextKey, slugOf } from '../lib/slug.js'
+import { useRowCap } from '../hooks/useRowCap.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
 import { PaperUnderstanding } from '../components/paper/PaperUnderstanding.js'
 import { PaperText } from '../components/paper/PaperText.js'
@@ -40,7 +41,7 @@ import { WikiClaims } from '../components/wiki/WikiClaims.js'
 import { SourceAnchor } from '../components/SourceAnchor.js'
 import { Tag, TagButton } from '../components/Tag.js'
 import { CardOpen, ResearchObjectCard } from '../components/ResearchObjectCard.js'
-import { RowActions } from '../components/StructuredList.js'
+import { EMBEDDED_LIST_ROW_LIMIT, RowActions } from '../components/StructuredList.js'
 import { Tooltip } from '../components/Tooltip.js'
 import './shell.css'
 import './Wiki.css'
@@ -120,10 +121,14 @@ function Cell({ cell, onAnchor }: { cell: WikiCell; onAnchor: (page: number) => 
   return <>{cell.value} <SourceAnchor page={cell.page} quote={cell.quote} onOpen={() => onAnchor(cell.page)} /></>
 }
 
+/** The body rows of the comparison table in `box`, in document order. */
+const comparisonRows = (box: HTMLElement) => [...box.querySelectorAll<HTMLElement>('tbody tr')]
+
 /**
  * The paper comparison: rows are member papers, columns come from the aggregation's columns, empty
  * cells show a dash, and derived columns show chips. Every header cell has a body cell under it in
- * every row. An inner node with no columns and no rows takes no papers directly.
+ * every row. An inner node with no columns and no rows takes no papers directly. Like an embedded
+ * list, it shows its header and first five rows as rendered, and the rest scroll inside it.
  */
 function Table({ agg, onOpen, onAnchor, onRemove, pending, adding, head }: {
   agg: WikiAggregation
@@ -142,6 +147,8 @@ function Table({ agg, onOpen, onAnchor, onRemove, pending, adding, head }: {
   head?: { controls: ReactNode; newColumn: ReactNode } | undefined
 }) {
   const m = useMessages()
+  const wrap = useRef<HTMLDivElement | null>(null)
+  const cap = useRowCap(wrap, comparisonRows, EMBEDDED_LIST_ROW_LIMIT)
   if (adding === undefined) {
     if (agg.columns.length === 0 && agg.rows.length === 0) {
       return <EmptyState variant="section">{m.wiki.noDirectPapers}</EmptyState>
@@ -149,7 +156,7 @@ function Table({ agg, onOpen, onAnchor, onRemove, pending, adding, head }: {
     if (agg.rows.length === 0) return <EmptyState variant="section">{m.wiki.noPapers}</EmptyState>
   }
   return (
-    <div className="cmpwrap">
+    <div className="cmpwrap" ref={wrap} style={cap === null ? undefined : { maxHeight: cap }}>
       <table className="cmp">
         <thead>
           <tr>

@@ -26,10 +26,10 @@
  * The aggregation page's paper comparison: rows are member papers, columns come from the aggregation's
  * columns, and cells carry anchors into the source text
  */
-/* An embedded table keeps five rows in page flow; the rest scroll inside it. */
+/* Wiki.tsx caps this box at the header and first five rows as rendered; the rest scroll inside it. */
 /* It keeps the ring room inside its edges and reaches out by as much, so the table stays put. */
 .cmpwrap{overflow:auto;margin:calc(-1 * var(--ring-room)) calc(-1 * var(--ring-room)) 0;padding:var(--ring-room);
-  max-height:calc(38px*5 + 30px + 2 * var(--ring-room));overflow-y:auto;overscroll-behavior:contain;scrollbar-gutter:stable}
+  overflow-y:auto;overscroll-behavior:contain;scrollbar-gutter:stable}
 .cmp{width:100%;border-collapse:collapse;font-size:var(--fs-base);line-height:var(--lh-ui)}
 .cmp th{text-align:left;font-size:var(--fs-sm);color:var(--ter);font-weight:var(--fw-semibold);padding:var(--sp-6) var(--row-table-pad);border-bottom:1px solid var(--sep);white-space:nowrap;position:sticky;top:0;background:var(--content)}
 .cmp td{padding:var(--sp-8) var(--row-table-pad);border-bottom:1px solid var(--sep2);vertical-align:top;max-width:26ch}
