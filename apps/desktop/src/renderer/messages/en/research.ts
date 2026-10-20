@@ -52,10 +52,10 @@ export const research = {
     noUpcomingMilestone: 'No upcoming milestone',
     focusUndefined: 'Not set yet',
     recentProgressLabel: 'Recent progress',
-    noRecords: 'No research updates yet.',
+    noRecords: 'No research updates yet',
     staleAlert: (n: number) => `No progress for ${n} ${pluralEn(n, { one: 'day', other: 'days' })}`,
     paperCount: (n: number) =>
-      (n === 0 ? 'No linked papers yet.' : `${n} linked ${pluralEn(n, { one: 'paper', other: 'papers' })}`),
+      (n === 0 ? 'No linked papers yet' : `${n} linked ${pluralEn(n, { one: 'paper', other: 'papers' })}`),
   },
   chips: {
     addProject: 'Link project',

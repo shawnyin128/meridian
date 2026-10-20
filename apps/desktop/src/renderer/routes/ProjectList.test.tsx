@@ -121,7 +121,7 @@ describe('项目列表的卡片', () => {
   })
 
   it('还没有推进时写还没有记录', async () => {
-    expect(await recentProgress(summary({}))).toBe('最近推进还没有记录。')
+    expect(await recentProgress(summary({}))).toBe('最近推进还没有记录')
   })
 })
 

@@ -48,9 +48,9 @@ export const research = {
     noUpcomingMilestone: '无后续里程碑',
     focusUndefined: '待定义',
     recentProgressLabel: '最近推进',
-    noRecords: '还没有记录。',
+    noRecords: '还没有记录',
     staleAlert: (n: number) => `已 ${n} 天无推进`,
-    paperCount: (n: number) => (n === 0 ? '还没有关联论文。' : `关联论文 ${n} 篇`),
+    paperCount: (n: number) => (n === 0 ? '还没有关联论文' : `关联论文 ${n} 篇`),
   },
   chips: {
     addProject: '关联项目',

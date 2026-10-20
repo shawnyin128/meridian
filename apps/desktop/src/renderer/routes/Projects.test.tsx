@@ -54,7 +54,7 @@ const { Projects, projectPaperCountLabel } = await import('./Projects.js')
 
 describe('projectPaperCountLabel', () => {
   it('explains the empty relationship instead of rendering a bare zero', () => {
-    expect(projectPaperCountLabel(0, zh)).toBe('还没有关联论文。')
+    expect(projectPaperCountLabel(0, zh)).toBe('还没有关联论文')
   })
 
   it('labels a non-empty count as linked papers', () => {
