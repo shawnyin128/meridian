@@ -8,7 +8,7 @@ type Node = { dispatchEvent(event: object): boolean }
 type Style = {
   backgroundColor: string; backgroundImage: string; borderColor: string; boxShadow: string; color: string; cursor: string
   fill: string; stroke: string; opacity: string; getPropertyValue(name: string): string
-  borderTopStyle: string; borderBottomStyle: string
+  borderTopStyle: string; borderBottomStyle: string; borderCollapse: string; borderSpacing: string
 }
 type Window = {
   document: {
@@ -149,15 +149,18 @@ describe('论文表行与行之间的分隔线', () => {
     document.head.innerHTML = STYLES.map((css) => `<style>${css.replaceAll('var(--sep2)', 'rgb(220, 228, 239)')}</style>`).join('')
   })
 
-  it('每一行的分隔线画在它自己格子的上边，吸住的标题格和操作格也是；第一行上面和最后一行下面都不画', () => {
+  it('论文表不合并边框，分隔线由上面一行的格子自己画，吸住的标题格和操作格也是；最后一行下面不画', () => {
     const row = '<tr><td class="trunc"><span class="ci">EAGLE</span></td><td class="pt-dim">2024</td><td class="row-actions-cell"></td></tr>'
     document.body.innerHTML = `<table class="ptable"><tbody>${row}${row}${row}</tbody></table>`
+    // Chromium leaves part of a collapsed border out of a sticky cell's first paint.
+    const table = getComputedStyle(document.querySelector('table'))
+    expect([table.borderCollapse, table.borderSpacing]).toEqual(['separate', '0px'])
     const edges = [...document.querySelectorAll('tbody tr')].map((tr) => [...(tr as unknown as { children: Node[] }).children]
       .map((td) => { const style = getComputedStyle(td); return `${style.borderTopStyle}/${style.borderBottomStyle}` }))
     expect(edges).toEqual([
+      ['none/solid', 'none/solid', 'none/solid'],
+      ['none/solid', 'none/solid', 'none/solid'],
       ['none/none', 'none/none', 'none/none'],
-      ['solid/none', 'solid/none', 'solid/none'],
-      ['solid/none', 'solid/none', 'solid/none'],
     ])
   })
 })
