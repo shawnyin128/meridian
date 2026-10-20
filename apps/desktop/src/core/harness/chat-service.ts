@@ -1,4 +1,5 @@
 import type { ChatMessageFields, ChatSendResult } from '../../shared/contract.js'
+import { CallError } from '../call-error.js'
 import type { VaultStore } from '../vault.js'
 import type { ChatHarnessRunner } from './chat.js'
 import type { HarnessModelConfig } from './model-config.js'
@@ -24,7 +25,7 @@ export function createChatService(options: {
 
   return {
     async send(id: string, text: string): Promise<ChatSendResult> {
-      if (running.has(id)) throw new Error('这段对话仍在生成，请先停止或等待完成')
+      if (running.has(id)) throw new CallError('busy', '这段对话仍在生成，请先停止或等待完成')
       options.store.chatSession(id)
       options.store.appendChatMessages(id, [userMessage(text)])
       if (!options.model.settings().configured || options.runner === null) {

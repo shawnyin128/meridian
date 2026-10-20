@@ -1,11 +1,12 @@
-import { chmodSync, cpSync, mkdtempSync, rmSync } from 'node:fs'
+import { chmodSync, cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ProjectCreateParamsSchema, type CallFailure } from '../shared/contract.js'
 import { callFailure } from './call-error.js'
 import { createFixtureStore } from './fixture-store.js'
 import { HttpStatusError } from './net/http.js'
+import { emptyColumns } from './paper-library/index.js'
 import type { VaultStore } from './vault.js'
 import { createVaultStore } from './vault-store.js'
 
@@ -31,6 +32,7 @@ beforeEach(() => {
 afterEach(() => {
   chmodSync(join(vault, 'wiki', 'papers'), 0o755)
   rmSync(vault, { recursive: true, force: true })
+  vi.restoreAllMocks()
 })
 
 describe.each([
@@ -38,9 +40,14 @@ describe.each([
   ['真实论文库', () => createVaultStore(vault, () => '2026-09-10')],
 ] as const)('%s里调用失败的原因', (_name, open) => {
   let store: VaultStore
+  let project: string
+  let paper: string
 
   beforeEach(() => {
     store = open()
+    store.createProject('原因')
+    project = store.listProjects().find((p) => p.name === '原因')!.id
+    paper = store.listPapers({ page: 1, size: 1 }).rows[0]!.id
   })
 
   it('要的实体不在库里:not-found', () => {
@@ -50,6 +57,35 @@ describe.each([
     expect(thrownFailure(() => store.restoreTrash('no-such-entry'))).toBe('not-found')
     expect(thrownFailure(() => store.removeLater('no-such-entry'))).toBe('not-found')
   })
+
+  it('已经关联过的论文再关联一次:refused', () => {
+    store.addPaper(project, paper)
+    expect(thrownFailure(() => store.addPaper(project, paper))).toBe('refused')
+  })
+
+  it('撤销一条之后又被改过的变动:changed', () => {
+    store.updatePaper(paper, { readState: '在读' })
+    store.updatePaper(paper, { readState: '已读' })
+    const older = store.listChanges()[1]!
+    expect(thrownFailure(() => store.undoChange(older.id))).toBe('changed')
+  })
+
+  it('删掉还有论文在用的选项:in-use', () => {
+    const custom = { key: 'du-fa', label: '读法', type: 'select' as const }
+    store.setPaperColumns({ ...emptyColumns(), custom: [{ ...custom, options: ['精读', '略读'] }] })
+    store.updatePaper(paper, { custom: { 'du-fa': '精读' } })
+    expect(thrownFailure(() => store.setPaperColumns({ ...emptyColumns(), custom: [{ ...custom, options: ['略读'] }] })))
+      .toBe('in-use')
+  })
+
+  it('一条科研记录里带换行:invalid', () => {
+    expect(thrownFailure(() => store.createEvent(project, '第一行\n第二行'))).toBe('invalid')
+  })
+
+  it('上传的文件不是 PDF:not-pdf', () => {
+    expect(thrownFailure(() => store.importPaper('notes.pdf', new TextEncoder().encode('plain text'))))
+      .toBe('not-pdf')
+  })
 })
 
 describe('Core 按错误本身分出的原因', () => {
@@ -58,6 +94,15 @@ describe('Core 按错误本身分出的原因', () => {
     const paper = store.listPapers({ page: 1, size: 1 }).rows[0]!.id
     chmodSync(join(vault, 'wiki', 'papers'), 0o555)
     expect(thrownFailure(() => store.updatePaper(paper, { readState: '在读' }))).toBe('write')
+  })
+
+  it('新版本写的 Wiki 页这个版本改不了:newer-version', () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    const topic = join(vault, 'wiki', 'topics', 'speculative-decoding.md')
+    writeFileSync(topic, readFileSync(topic, 'utf8').replace(/^kind: "topic"$/m, 'kind: "method"'))
+    const store = createVaultStore(vault, () => '2026-09-10')
+    expect(thrownFailure(() => store.updateWikiPage('topics/speculative-decoding', '## 问题\n新的')))
+      .toBe('newer-version')
   })
 
   it('参数没通过契约校验:invalid', () => {

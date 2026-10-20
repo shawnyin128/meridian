@@ -147,7 +147,7 @@ const GENERATED_MARK = /^<!-- (?:generated:\w+|\/generated) -->$/m
 
 /** Throws if `body` holds a generated-region marker line; `id` names the page in the message. */
 export function checkBody(id: string, body: string): void {
-  if (GENERATED_MARK.test(body)) throw new Error(`正文里不能有生成区的标记：${id}`)
+  if (GENERATED_MARK.test(body)) throw new CallError('invalid', `正文里不能有生成区的标记：${id}`)
 }
 
 /** First non-heading, non-empty body line used as the card summary. */

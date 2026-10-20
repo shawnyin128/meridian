@@ -53,7 +53,7 @@ export function cellValues(row: PaperRow, key: string): string[] {
 export function checkGroupKey(key: string, columns: PaperColumns): void {
   if ((GROUPABLE_PAPER_FIELDS as readonly string[]).includes(key)) return
   const column = columns.custom.find((c) => c.key === key)
-  if (column === undefined || column.type === 'text') throw new Error(`不能按这一列分组：${key}`)
+  if (column === undefined || column.type === 'text') throw new CallError('invalid', `不能按这一列分组：${key}`)
 }
 
 /** Throws if any of `papers` holds a cell `column` as given could not have been filled through. */
@@ -62,11 +62,11 @@ function checkCells(column: PaperColumn, papers: readonly PaperRow[]): void {
   for (const row of papers) {
     const cell = row.custom[key]
     if (cell === undefined) continue
-    if (type === 'multi' && !Array.isArray(cell)) throw new Error(`列「${label}」是多选列，有论文填着一段文本`)
-    if (type !== 'multi' && Array.isArray(cell)) throw new Error(`列「${label}」不是多选列，有论文填着多个值`)
+    if (type === 'multi' && !Array.isArray(cell)) throw new CallError('in-use', `列「${label}」是多选列，有论文填着一段文本`)
+    if (type !== 'multi' && Array.isArray(cell)) throw new CallError('in-use', `列「${label}」不是多选列，有论文填着多个值`)
     if (type === 'text') continue
     const stray = cellValues(row, key).find((value) => !options.includes(value))
-    if (stray !== undefined) throw new Error(`列「${label}」的选项「${stray}」还有论文在用，删不掉`)
+    if (stray !== undefined) throw new CallError('in-use', `列「${label}」的选项「${stray}」还有论文在用，删不掉`)
   }
 }
 
@@ -96,28 +96,28 @@ export function misfitCells(
  */
 export function checkColumns(columns: PaperColumns, papers: readonly PaperRow[]): void {
   for (const key of columns.hidden) {
-    if (!(PAPER_COLUMNS as readonly string[]).includes(key)) throw new Error(`不是内置列：${key}`)
-    if ((LOCKED_PAPER_COLUMNS as readonly string[]).includes(key)) throw new Error(`固定列不能隐藏：${key}`)
+    if (!(PAPER_COLUMNS as readonly string[]).includes(key)) throw new CallError('invalid', `不是内置列：${key}`)
+    if ((LOCKED_PAPER_COLUMNS as readonly string[]).includes(key)) throw new CallError('invalid', `固定列不能隐藏：${key}`)
   }
   const keys = new Set<string>()
   const labels = new Set<string>()
   for (const column of columns.custom) {
     const { key, label, type, options } = column
-    if (!KEY.test(key)) throw new Error(`列的 key 只能是字母、数字、_ 与 -:${key}`)
-    if (key.startsWith('-')) throw new Error(`列的 key 不能以 - 开头：${key}`)
-    if (RESERVED_KEYS.has(key)) throw new Error(`列的 key 是保留字：${key}`)
+    if (!KEY.test(key)) throw new CallError('invalid', `列的 key 只能是字母、数字、_ 与 -:${key}`)
+    if (key.startsWith('-')) throw new CallError('invalid', `列的 key 不能以 - 开头：${key}`)
+    if (RESERVED_KEYS.has(key)) throw new CallError('invalid', `列的 key 是保留字：${key}`)
     if ((PAPER_COLUMNS as readonly string[]).includes(key) || key === 't'
       || (GROUPABLE_PAPER_FIELDS as readonly string[]).includes(key)) {
-      throw new Error(`列的 key 与内置列重名：${key}`)
+      throw new CallError('invalid', `列的 key 与内置列重名：${key}`)
     }
-    if (keys.has(key)) throw new Error(`列的 key 重复：${key}`)
-    if (label.trim() === '') throw new Error('列名不能为空')
-    if (labels.has(label)) throw new Error(`列名重复：${label}`)
-    if (type === 'text' && options.length > 0) throw new Error(`文本列没有选项：${label}`)
+    if (keys.has(key)) throw new CallError('invalid', `列的 key 重复：${key}`)
+    if (label.trim() === '') throw new CallError('invalid', '列名不能为空')
+    if (labels.has(label)) throw new CallError('invalid', `列名重复：${label}`)
+    if (type === 'text' && options.length > 0) throw new CallError('invalid', `文本列没有选项：${label}`)
     const seen = new Set<string>()
     for (const option of options) {
-      if (option.trim() === '') throw new Error(`列「${label}」的选项不能为空`)
-      if (seen.has(option)) throw new Error(`列「${label}」的选项重复：${option}`)
+      if (option.trim() === '') throw new CallError('invalid', `列「${label}」的选项不能为空`)
+      if (seen.has(option)) throw new CallError('invalid', `列「${label}」的选项重复：${option}`)
       seen.add(option)
     }
     checkCells(column, papers)
@@ -125,13 +125,13 @@ export function checkColumns(columns: PaperColumns, papers: readonly PaperRow[])
     labels.add(label)
   }
   for (const [at, key] of columns.groups.entries()) {
-    if (columns.groups.indexOf(key) !== at) throw new Error(`分组重复：${key}`)
+    if (columns.groups.indexOf(key) !== at) throw new CallError('invalid', `分组重复：${key}`)
     checkGroupKey(key, columns)
   }
   const available = new Set<string>([...PAPER_COLUMNS, ...columns.custom.map((column) => column.key)])
   for (const [at, key] of (columns.order ?? []).entries()) {
-    if (!available.has(key)) throw new Error(`列顺序里没有这一列：${key}`)
-    if (columns.order?.indexOf(key) !== at) throw new Error(`列顺序重复：${key}`)
+    if (!available.has(key)) throw new CallError('invalid', `列顺序里没有这一列：${key}`)
+    if (columns.order?.indexOf(key) !== at) throw new CallError('invalid', `列顺序重复：${key}`)
   }
 }
 
@@ -148,13 +148,13 @@ export function checkCustom(
     if (sameCell(cell, ownCell(held, key))) continue
     const column = columns.custom.find((c) => c.key === key)
     if (column === undefined) throw new CallError('not-found', `论文表里没有这一列：${key}`)
-    if (column.type === 'multi' && !Array.isArray(cell)) throw new Error(`列「${column.label}」是多选列，格子要一列取值`)
-    if (column.type !== 'multi' && Array.isArray(cell)) throw new Error(`列「${column.label}」不是多选列，格子只要一个值`)
+    if (column.type === 'multi' && !Array.isArray(cell)) throw new CallError('invalid', `列「${column.label}」是多选列，格子要一列取值`)
+    if (column.type !== 'multi' && Array.isArray(cell)) throw new CallError('invalid', `列「${column.label}」不是多选列，格子只要一个值`)
     if (column.type === 'text') continue
     const seen = new Set<string>()
     for (const value of Array.isArray(cell) ? cell : [cell]) {
-      if (!column.options.includes(value)) throw new Error(`列「${column.label}」没有这个选项：${value}`)
-      if (seen.has(value)) throw new Error(`列「${column.label}」的格子里有重复的选项：${value}`)
+      if (!column.options.includes(value)) throw new CallError('invalid', `列「${column.label}」没有这个选项：${value}`)
+      if (seen.has(value)) throw new CallError('invalid', `列「${column.label}」的格子里有重复的选项：${value}`)
       seen.add(value)
     }
   }
@@ -181,10 +181,10 @@ export function renamedOptions(
   columns: PaperColumns, key: string, from: string, to: string,
 ): string[] {
   const column = columns.custom.find((c) => c.key === key)
-  if (column === undefined || column.type === 'text') throw new Error(`不是选择列：${key}`)
-  if (!column.options.includes(from)) throw new Error(`列「${column.label}」没有这个选项：${from}`)
-  if (to.trim() === '') throw new Error(`列「${column.label}」的选项不能为空`)
-  if (column.options.includes(to)) throw new Error(`列「${column.label}」已经有这个选项：${to}`)
+  if (column === undefined || column.type === 'text') throw new CallError('invalid', `不是选择列：${key}`)
+  if (!column.options.includes(from)) throw new CallError('invalid', `列「${column.label}」没有这个选项：${from}`)
+  if (to.trim() === '') throw new CallError('invalid', `列「${column.label}」的选项不能为空`)
+  if (column.options.includes(to)) throw new CallError('refused', `列「${column.label}」已经有这个选项：${to}`)
   return column.options.map((option) => (option === from ? to : option))
 }
 
@@ -216,7 +216,7 @@ export function retypedColumn(
 ): { columns: PaperColumns; cells: Map<string, PaperCell | undefined> } {
   const column = columns.custom.find((c) => c.key === key)
   if (column === undefined) throw new CallError('not-found', `论文表里没有这一列：${key}`)
-  if (column.type === type) throw new Error(`列「${column.label}」已经是${COLUMN_TYPE_LABEL[type]}列`)
+  if (column.type === type) throw new CallError('refused', `列「${column.label}」已经是${COLUMN_TYPE_LABEL[type]}列`)
   const held = papers.flatMap((row) => {
     const cell = ownCell(row.custom, key)
     if (cell === undefined) return []
@@ -226,7 +226,7 @@ export function retypedColumn(
   })
   if (column.type === 'multi' && type === 'select') {
     const crowded = held.filter((h) => h.values.length > 1).length
-    if (crowded > 0) throw new Error(`列「${column.label}」有 ${crowded} 篇论文填着多个值，改不成单选列`)
+    if (crowded > 0) throw new CallError('in-use', `列「${column.label}」有 ${crowded} 篇论文填着多个值，改不成单选列`)
   }
   const options = type === 'text'
     ? []

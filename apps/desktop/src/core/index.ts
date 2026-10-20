@@ -97,7 +97,7 @@ import {
   WikiProposeParamsSchema,
   WikiUpdateParamsSchema,
 } from '../shared/contract.js'
-import { CallError } from './call-error.js'
+import { CallError, callFailure } from './call-error.js'
 import { createFixtureStore } from './fixture-store.js'
 import { withUiSampleUpload } from './fixtures/ui-samples.js'
 import { createBackground } from './background.js'
@@ -308,7 +308,7 @@ function openStore(
   } catch (err) {
     const reason = err instanceof Error ? err.message : String(err)
     console.error(`[core] 论文库打不开：${reason}`)
-    return { store: unopenedStore(reason), openError: reason }
+    return { store: unopenedStore(reason, callFailure(err)), openError: reason }
   }
 }
 
@@ -369,19 +369,19 @@ registerHandler('library.switchBackup', (params) => {
 
 registerHandler('library.deleteBackup', (params) => {
   const { id } = LibraryBackupParamsSchema.parse(params)
-  if (librarySource === 'fixture') throw new Error('测试数据模式没有论文库备份')
-  if (libraryLocation.restartRequired) throw new Error('论文库位置待重启生效，请先重启再管理备份')
+  if (librarySource === 'fixture') throw new CallError('refused', '测试数据模式没有论文库备份')
+  if (libraryLocation.restartRequired) throw new CallError('refused', '论文库位置待重启生效，请先重启再管理备份')
   deleteLibraryBackup(locationRoot, id)
   return null
 })
 
 function assertLibraryRestartReady(): void {
-  if (librarySource === 'fixture') throw new Error('测试数据模式不能切换或重置论文库')
-  if (libraryLocation.restartRequired) throw new Error('论文库位置待重启生效，请先重启再继续')
+  if (librarySource === 'fixture') throw new CallError('refused', '测试数据模式不能切换或重置论文库')
+  if (libraryLocation.restartRequired) throw new CallError('refused', '论文库位置待重启生效，请先重启再继续')
   const status = background.status()
   const parsing = status.uploads.some((job) => job.step !== 'done' && job.step !== 'failed')
   if (parsing || status.downloads.length > 0 || status.fetch.state === 'checking') {
-    throw new Error('论文库仍有下载或解析任务，请完成后再继续')
+    throw new CallError('busy', '论文库仍有下载或解析任务，请完成后再继续')
   }
 }
 
@@ -782,7 +782,7 @@ registerHandler('idea.promote', (params) => {
   const { id } = ResearchIdeaPromoteParamsSchema.parse(params)
   const held = store.listIdeas().find((idea) => idea.id === id)
   if (held === undefined) throw new CallError('not-found', `想法不存在：${id}`)
-  if (held.project !== undefined) throw new Error('这个想法已经关联项目')
+  if (held.project !== undefined) throw new CallError('refused', '这个想法已经关联项目')
   const before = new Set(store.listProjects().map((project) => project.id))
   store.createProject(held.title)
   const made = store.listProjects().find((project) => !before.has(project.id))

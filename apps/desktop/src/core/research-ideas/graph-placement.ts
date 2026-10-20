@@ -15,7 +15,7 @@ export function placeResearchIdeaOnGraph(
 ): ResearchIdeaPlaceOnGraphResult {
   const held = store.listIdeas().find((idea) => idea.id === ideaId)
   if (held === undefined) throw new CallError('not-found', `想法不存在：${ideaId}`)
-  if (held.project === undefined) throw new Error('请先把想法关联到项目')
+  if (held.project === undefined) throw new CallError('refused', '请先把想法关联到项目')
 
   let project = store.getProject(held.project)
 
@@ -40,7 +40,7 @@ export function placeResearchIdeaOnGraph(
   }
 
   if (project.workspace !== undefined) {
-    throw new Error('工作区科研图的新节点必须通过 Lab 更新协议创建')
+    throw new CallError('refused', '工作区科研图的新节点必须通过 Lab 更新协议创建')
   }
 
   const before = new Set(project.graph.nodes.map((node) => node.id))

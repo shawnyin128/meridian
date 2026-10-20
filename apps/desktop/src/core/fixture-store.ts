@@ -169,15 +169,15 @@ function vaultRoot(): string {
 /** Throw when task dates or a partial-day window are reversed. */
 function checkSpan(task: TaskFields): void {
   // The contract guarantees fixed-width ISO dates, so lexical order equals chronological order.
-  if (task.end < task.start) throw new Error(`任务结束日期早于开始日期：${task.start} – ${task.end}`)
+  if (task.end < task.start) throw new CallError('invalid', `任务结束日期早于开始日期：${task.start} – ${task.end}`)
   if (task.start === task.end && task.window && task.window.end <= task.window.start) {
-    throw new Error(`任务结束时间不晚于开始时间：${task.window.start} – ${task.window.end}`)
+    throw new CallError('invalid', `任务结束时间不晚于开始时间：${task.window.start} – ${task.window.end}`)
   }
 }
 
 /** Throw when a research-record body contains a newline. */
 function checkOneLine(text: string): void {
-  if (text.includes('\n')) throw new Error('科研记录一条占一行，正文里不能有换行')
+  if (text.includes('\n')) throw new CallError('invalid', '科研记录一条占一行，正文里不能有换行')
 }
 
 /**
@@ -341,7 +341,7 @@ export function createFixtureStore(
       const target = wiki.pages[page]
       if (target === undefined || isPaper(target)) throw new CallError('not-found', `wiki 聚合不存在：${page}`)
     }
-    if (page !== undefined && url !== undefined) throw new Error('关联不能同时指向 Wiki 页和链接')
+    if (page !== undefined && url !== undefined) throw new CallError('invalid', '关联不能同时指向 Wiki 页和链接')
     return { text, ...(page === undefined ? {} : { page }), ...(url === undefined ? {} : { url }) }
   }
 
@@ -604,7 +604,7 @@ export function createFixtureStore(
   const downloadableEntry = (id: string): InboxRecord => {
     const entry = inbox.find((held) => held.id === id)
     if (!entry) throw new CallError('not-found', `收件里没有这一条：${id}`)
-    if (entry.downloaded) throw new Error(`这一条已经入库：${id}`)
+    if (entry.downloaded) throw new CallError('refused', `这一条已经入库：${id}`)
     return entry
   }
 
@@ -908,7 +908,7 @@ export function createFixtureStore(
       const nodeIds = new Set(project.graph.nodes.map((n) => n.id))
       for (const [from, to] of project.graph.edges) {
         if (!nodeIds.has(from) || !nodeIds.has(to)) {
-          throw new Error(`科研图的边指向不存在的节点：${from} → ${to}`)
+          throw new CallError('invalid', `科研图的边指向不存在的节点：${from} → ${to}`)
         }
       }
       return detailOf(project)
@@ -949,7 +949,7 @@ export function createFixtureStore(
       if (block === null) delete next.block
       if (typeof block === 'string') next.block = block
       // The contract guarantees fixed-width ISO dates, so lexical order equals chronological order.
-      if (next.due < next.start) throw new Error(`项目截止日期早于开始日期：${next.start} – ${next.due}`)
+      if (next.due < next.start) throw new CallError('invalid', `项目截止日期早于开始日期：${next.start} – ${next.due}`)
       projectById.set(id, next)
       if (next.status === FINISHED_PROJECT) archiveIdeasForProject(id)
       return detailOf(next)
@@ -1023,7 +1023,7 @@ export function createFixtureStore(
       if (!project) throw new CallError('not-found', `项目不存在：${projectId}`)
       const byId = new Map(project.tasks.map((t) => [t.id, t]))
       if (order.length !== project.tasks.length || !order.every((id) => byId.has(id))) {
-        throw new Error('任务顺序与项目任务不匹配')
+        throw new CallError('changed', '任务顺序与项目任务不匹配')
       }
       const nextProject = { ...project, tasks: order.map((id) => byId.get(id)!) }
       projectById.set(projectId, nextProject)
@@ -1129,7 +1129,7 @@ export function createFixtureStore(
       const project = projectById.get(projectId)
       if (!project) throw new CallError('not-found', `项目不存在：${projectId}`)
       if (!byId.has(paperId)) throw new CallError('not-found', `论文不存在：${paperId}`)
-      if (project.papers.includes(paperId)) throw new Error(`已经关联过这篇论文：${paperId}`)
+      if (project.papers.includes(paperId)) throw new CallError('refused', `已经关联过这篇论文：${paperId}`)
       const nextProject = { ...project, papers: [paperId, ...project.papers] }
       projectById.set(projectId, nextProject)
       return detailOf(nextProject)
@@ -1168,7 +1168,7 @@ export function createFixtureStore(
     },
 
     createAttachment(projectId, attachment) {
-      if (!isAbsolute(attachment.path)) throw new Error(`附件路径不是绝对路径：${attachment.path}`)
+      if (!isAbsolute(attachment.path)) throw new CallError('invalid', `附件路径不是绝对路径：${attachment.path}`)
       const project = projectById.get(projectId)
       if (!project) throw new CallError('not-found', `项目不存在：${projectId}`)
       const nextProject = {
@@ -1300,7 +1300,7 @@ export function createFixtureStore(
       if (!project) throw new CallError('not-found', `项目不存在：${projectId}`)
       const held = concludedNodes(project.graph).find((n) => n.id === node)
       if (held === undefined) throw new CallError('not-found', `节点没有可验证的结论：${node}`)
-      if (conclusionFingerprint(held) !== fingerprint) throw new Error(CONCLUSION_CHANGED)
+      if (conclusionFingerprint(held) !== fingerprint) throw new CallError('changed', CONCLUSION_CHANGED)
       const entry = { node, fingerprint, date: today() }
       const nextProject = {
         ...project,
@@ -1392,7 +1392,7 @@ export function createFixtureStore(
       const known = pageOf.get(entry.paper)
         ?? [...byId.values()].find((paper) => paper.identifier === `arXiv:${entry.vault.arxiv}`)?.id
       if (known !== undefined) return { kind: 'existing', paper: known, title: byId.get(known)!.title }
-      if (entry.pdf === '') throw new Error('这一条没有原文地址')
+      if (entry.pdf === '') throw new CallError('refused', '这一条没有原文地址')
       return { kind: 'fetch', url: entry.pdf }
     },
 
@@ -1451,7 +1451,7 @@ export function createFixtureStore(
     updateWatch(id, watch) {
       const current = watches.find((item) => item.id === id)
       if (current === undefined) throw new CallError('not-found', `关注不存在：${id}`)
-      if (current.type !== watch.type) throw new Error('不能把主题关注改成作者关注，或把作者关注改成主题关注')
+      if (current.type !== watch.type) throw new CallError('invalid', '不能把主题关注改成作者关注，或把作者关注改成主题关注')
       watches = watches.map((item) => (
         item.id === id ? { id, ...structuredClone(watch), active: item.active } as Watch : item
       ))
@@ -1618,7 +1618,7 @@ export function createFixtureStore(
 
     feedbackDiscovery(id, feedback) {
       const entry = liveEntry(id)
-      if (entry.kind !== 'discovery') throw new Error(`这一条不是论文发现：${id}`)
+      if (entry.kind !== 'discovery') throw new CallError('invalid', `这一条不是论文发现：${id}`)
       inbox = inbox.map((held) => held.id === id ? { ...held, feedback } : held)
       if (feedback !== 'more') gone.add(id)
     },
@@ -1701,7 +1701,7 @@ export function createFixtureStore(
     },
 
     dropProposalInboxFile(name) {
-      throw new Error(`测试数据模式没有提案收件箱：${name}`)
+      throw new CallError('refused', `测试数据模式没有提案收件箱：${name}`)
     },
 
     updateWikiPage(id, body) {
@@ -1948,7 +1948,7 @@ export function createFixtureStore(
       if (linked !== undefined && !projectById.has(linked)) throw new CallError('not-found', `项目不存在：${linked}`)
       const node = normalized.node === undefined ? current.node : normalized.node ?? undefined
       if (node !== undefined && linked === undefined) {
-        throw new Error('科研图节点必须属于想法关联的项目')
+        throw new CallError('invalid', '科研图节点必须属于想法关联的项目')
       }
       const completed = linked !== undefined && projectById.get(linked)?.status === FINISHED_PROJECT
       const next = updateResearchIdea(
@@ -1972,8 +1972,8 @@ export function createFixtureStore(
       const message = chat.messages.find((held) => held.id === messageId)
       if (!message) throw new CallError('not-found', `消息不存在：${messageId}`)
       const action = message.actions[0]
-      if (action === undefined) throw new Error(`这条消息上没有要记入科研记录的话：${messageId}`)
-      if (action.done === true) throw new Error('这一条已经记入过科研记录')
+      if (action === undefined) throw new CallError('refused', `这条消息上没有要记入科研记录的话：${messageId}`)
+      if (action.done === true) throw new CallError('refused', '这一条已经记入过科研记录')
       const detail = appendEvent(action.project, `${CHAT_EVENT_PREFIX}${action.text}`)
       chats = chats.map((held) => (held !== chat ? held : {
         ...held,

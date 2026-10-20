@@ -719,11 +719,11 @@ export function withChangelog(ops: VaultOps, log: ChangeLogStore): VaultStore {
       const at = rows.findIndex((row) => row.id === id)
       const row = rows[at]
       if (!row) throw new CallError('not-found', `最近变动里没有这一条：${id}`)
-      if (row.undone) throw new Error('这一条已经撤销过了')
+      if (row.undone) throw new CallError('refused', '这一条已经撤销过了')
       const { target, restore } = row
-      if (target === null) throw new Error('这一条撤不了：库里没有还原它所需的东西')
+      if (target === null) throw new CallError('refused', '这一条撤不了：库里没有还原它所需的东西')
       if (restore === null) {
-        throw new Error(`这一条的快照已过 ${TRASH_RETENTION_DAYS} 天保留期，撤不了了`)
+        throw new CallError('refused', `这一条的快照已过 ${TRASH_RETENTION_DAYS} 天保留期，撤不了了`)
       }
 
       const before = entityOf(target)
@@ -731,7 +731,7 @@ export function withChangelog(ops: VaultOps, log: ChangeLogStore): VaultStore {
         // Newer records are at the front, so every record newer than this one precedes it.
         const newer = rows.slice(0, at)
           .filter((r) => !r.undone && r.target?.kind === target.kind && r.target.id === target.id)
-        throw new Error(newer.length > 0
+        throw new CallError('changed', newer.length > 0
           ? `这条之后该实体又被改过 ${newer.length} 次，先撤销较新的那几条`
           : target.kind === 'columns' || target.kind === 'columnType'
             ? '这一列之后又改过，撤销会盖掉那次改动'
@@ -743,7 +743,7 @@ export function withChangelog(ops: VaultOps, log: ChangeLogStore): VaultStore {
         const held = ops.getPaper(target.id)
         const misfit = misfitCells(ops.paperColumns(), { ...held, custom: restore.snapshot.custom }, held.custom)[0]
         if (misfit !== undefined) {
-          throw new Error(
+          throw new CallError('changed',
             `这篇论文的「${misfit.column.label}」列之后改过类型或选项，撤销会写进这一列现在放不下的值`, { cause: misfit.cause },
           )
         }

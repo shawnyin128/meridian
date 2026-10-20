@@ -2,6 +2,7 @@ import { mkdtempSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
+import { callFailure } from '../call-error.js'
 import { createFixtureStore } from '../fixture-store.js'
 import { sanitizeModelConnectionDetail, type ChatHarnessRunner } from './chat.js'
 import { createChatService } from './chat-service.js'
@@ -82,6 +83,26 @@ describe('Core chat service', () => {
     expect(store.chatMessages('amortize').slice(before)).toMatchObject([
       { role: 'you', runs: [{ text: '停止这个请求' }] },
     ])
+  })
+
+  it('fails a second send to a chat that is still generating as busy', async () => {
+    const store = createFixtureStore()
+    const runner: ChatHarnessRunner = {
+      checkConnection: vi.fn(async () => ({
+        state: 'connected' as const, modelCalls: 1 as const, maxOutputTokens: 1 as const,
+      })),
+      answer: vi.fn((_id, _text, signal) => new Promise<string>((_resolve, reject) => {
+        signal.addEventListener('abort', () => reject(new Error('cancelled')), { once: true })
+      })),
+      close: vi.fn(),
+    }
+    const service = createChatService({ store, model: await configuredModel(), runner })
+    const first = service.send('amortize', '第一句')
+
+    const second = await service.send('amortize', '第二句').catch((error: unknown) => error)
+    expect(callFailure(second)).toBe('busy')
+    service.cancel('amortize')
+    await first
   })
 
   it('states that setup is required instead of pretending to be an AI answer', async () => {

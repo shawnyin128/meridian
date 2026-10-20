@@ -195,7 +195,7 @@ export async function createHarnessModelConfig(configHome: string, vault: Creden
         profileKey(profile.provider, profile.baseUrl) === nextKey
       ))
       if (existing === undefined && value.profiles.length >= 100) {
-        throw new Error('最多保存 100 个模型配置')
+        throw new CallError('refused', '最多保存 100 个模型配置')
       }
       let credential: StoredCredential | undefined
       if (next.clearApiKey !== true && next.authentication !== 'none') {
@@ -300,7 +300,7 @@ function parseProfile(raw: unknown): PrivateModelProfile {
   })
   const credential = parseCredential(held['credential'])
   if (publicPart.authentication === 'none' && credential !== undefined) {
-    throw new Error('无需认证的模型配置不能保存 API Key')
+    throw new CallError('invalid', '无需认证的模型配置不能保存 API Key')
   }
   return {
     provider: publicPart.provider,

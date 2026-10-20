@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import type { LibraryLocation, LibrarySource } from '../shared/contract.js'
+import { CallError } from './call-error.js'
 import { writeJson } from './vault/writer.js'
 import { libraryPaths, prepareSelectedLibrary } from './workspace-layout.js'
 
@@ -31,7 +32,7 @@ export function currentLibrary(options: LibraryConfigOptions): LibraryLocation {
  */
 export function configureLibrary(root: string, options: LibraryConfigOptions): LibraryLocation {
   if (options.source === 'environment' || options.source === 'fixture') {
-    throw new Error(options.source === 'environment'
+    throw new CallError('refused', options.source === 'environment'
       ? '当前库由 MERIDIAN_VAULT_ROOT 指定，请先移除该环境变量再在设置中切换'
       : '测试数据模式不能切换论文库')
   }

@@ -93,7 +93,7 @@ export async function checkQuotes(
 export function parseEnvelope(raw: unknown): AgentProposal {
   const protocol = typeof raw === 'object' && raw !== null ? (raw as { protocol?: unknown }).protocol : undefined
   if (protocol !== WIKI_PROTOCOL_VERSION) {
-    throw new Error(`提案协议版本 ${String(protocol)} 不认识，Core 只认 ${WIKI_PROTOCOL_VERSION}；请更新 App`)
+    throw new CallError('newer-version', `提案协议版本 ${String(protocol)} 不认识，Core 只认 ${WIKI_PROTOCOL_VERSION}；请更新 App`)
   }
   const parsed = AgentProposalSchema.safeParse(raw)
   if (!parsed.success) throw new Error(`提案的格式不对：${parsed.error.message}`)
@@ -327,7 +327,7 @@ export function createWikiProposals({ store, pdf, now }: {
     async decide(id: string, decision: 'apply' | 'decline', reason?: string): Promise<ProposalReceipt> {
       const record = store.proposalRecords().find((r) => r.id === id)
       if (record === undefined) throw new CallError('not-found', `没有这条提案：${id}`)
-      if (record.status !== 'queued' || record.proposal === null) throw new Error('这条提案已经处理过了')
+      if (record.status !== 'queued' || record.proposal === null) throw new CallError('refused', '这条提案已经处理过了')
       const proposal = record.proposal
       const decided = { at: now(), by: '我' as const }
       let next: ProposalRecord
@@ -339,7 +339,7 @@ export function createWikiProposals({ store, pdf, now }: {
         if (outcome.status === 'rejected') {
           next = { ...record, status: 'rejected', reason: outcome.reason, decided }
         } else if (unverified.length > 0) {
-          throw new Error(`结论待验证：${unverified.join('、')}。验证之后再应用`)
+          throw new CallError('refused', `结论待验证：${unverified.join('、')}。验证之后再应用`)
         } else {
           store.applyProposal({ source: 'user', title: proposal.title, ops: proposal.ops }, {
             by: byOf(proposal), source: chipOf(proposal),
@@ -354,7 +354,7 @@ export function createWikiProposals({ store, pdf, now }: {
     /** Throws the refusal checkQuotes gives for the user's `ops`; a quote with no text layer is accepted. */
     async checkHumanQuotes(ops: ProposalOp[]): Promise<void> {
       const { invalid } = await checkQuotes(ops, HUMAN, pdf)
-      if (invalid !== null) throw new Error(invalid)
+      if (invalid !== null) throw new CallError('invalid', invalid)
     },
   }
 }
