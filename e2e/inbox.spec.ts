@@ -34,7 +34,7 @@ const call = <T>(win: Page, method: string, params: unknown) => win.evaluate(
 
 const inboxFromCore = (win: Page) =>
   call<{
-    id: string; watch: string; source: string; paper: string; downloaded: boolean; pdf: string
+    id: string; watch: string; source: string; title: string; paper: string; downloaded: boolean; pdf: string
   }[]>(win, 'inbox.list', {})
 const discoveryFromCore = (win: Page) =>
   call<{ id: string; project: string; reasons: { label: string }[] }[]>(
@@ -423,8 +423,11 @@ test('关注管理:暂停、添加与移除都实时改侧栏与推送屏', asyn
   await spec.locator('[role="switch"]').click()
   await expect(win.locator('[data-watchrow="spec"]')).not.toHaveClass(/\bdim\b/)
 
-  // Add: the sidebar's topic group gains a row, and its count goes up by one.
+  // Add: the sidebar's topic group gains a row; its count, the papers its watches delivered, stays.
   const topics = watches.filter((w) => w.type === 'topic').length
+  const topicIds = new Set(watches.filter((w) => w.type === 'topic').map((w) => w.id))
+  const topicPapers = new Set(entriesBefore.filter((e) => topicIds.has(e.watch)).map((e) => e.title)).size
+  expect(topicPapers).toBeGreaterThan(0)
   await settings(win, '.section-heading').filter({ hasText: '主题' }).locator('.btn').click()
   await expect(settings(win, '.wrow')).toHaveCount(watches.length + 1)
   // A new watch lands first in its group, so the topic group's placeholder is the very first row.
@@ -434,7 +437,7 @@ test('关注管理:暂停、添加与移除都实时改侧栏与推送屏', asyn
   await expect(settings(win, '.wrow.newrow')).toHaveCount(0)
   await expect(settings(win, '.wrow')).toHaveCount(watches.length + 1)
   await expect(win.locator('#g-topics .srow')).toHaveCount(topics + 1)
-  await expect(win.locator('[data-disc="topics"] .n')).toHaveText(String(topics + 1))
+  await expect(win.locator('[data-disc="topics"] .n')).toHaveText(String(topicPapers))
 
   // Removed: the sidebar row disappears, and its own pushes are cleared with it (the confirm dialog's
   // own wording says so); other watches' pushes are untouched.
@@ -680,11 +683,14 @@ test('侧栏角标数的都是库里的真实数量', async ({ win }) => {
   const watches = await watchesFromCore(win)
   const queued = await laterFromCore(win)
   const count = (id: string) => entries.filter((e) => e.watch === id).length
+  // A group counts the papers its watches delivered, a paper two of them delivered once.
+  const papers = (type: string) => new Set(entries
+    .filter((e) => watches.some((w) => w.id === e.watch && w.type === type)).map((e) => e.title)).size
 
   const badges: [string, number][] = [
     ['#rowInboxAll .n', entries.length],
-    ['[data-disc="topics"] .n', watches.filter((w) => w.type === 'topic').length],
-    ['[data-disc="authors"] .n', watches.filter((w) => w.type === 'author').length],
+    ['[data-disc="topics"] .n', papers('topic')],
+    ['[data-disc="authors"] .n', papers('author')],
     ['#rowLater .n', queued.length],
     ...watches.map((w): [string, number] => [`[data-watchrow="${w.id}"] .n`, count(w.id)]),
   ]

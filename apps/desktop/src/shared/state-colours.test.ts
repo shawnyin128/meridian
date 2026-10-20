@@ -101,20 +101,28 @@ describe('实心强调色', () => {
   })
 })
 
+describe('计数', () => {
+  it('计数只有一种样子:样式表里没有计数徽标的变体', () => {
+    const variants = STYLESHEETS.flatMap((path) => rules(path).flatMap(({ selectors }) => selectors
+      .filter((s) => /\.count-badge-[\w-]/.test(s)).map((s) => `${path}  ${s}`)))
+    expect(variants).toEqual([])
+  })
+})
+
 describe('强调色', () => {
   /**
    * The only rules that may read an accent token, by what the accent says there: what to act on (the
    * primary and the send), where you are (the current sidebar row), what is on or running (an on switch,
-   * the running ring), new items (their count) and today on the timeline. The focus ring reads --ring.
+   * the running ring) and today on the timeline. The focus ring reads --ring.
    */
   const ACCENT = [
-    'components/Switch.css  .switch[data-state="checked"]', 'components/Tag.css  .count-badge--strong',
+    'components/Switch.css  .switch[data-state="checked"]',
     'components/chat/Chat.css  .send', 'components/icons.css  .ring',
     'components/timeline/TimelineBoard.css  .gnow', 'components/timeline/TimelineBoard.css  .gnow::after',
     'components/timeline/TimelineBoard.css  .gtoday', 'routes/shell.css  .btn.pri', 'shell/AppShell.css  .srow.on',
   ]
 
-  it('强调色只在键盘焦点环、主操作、侧栏的当前行、开着的开关、运行中的圈、新条目的计数和时间线的今天;标签、列表的选中项和别的规则都不读', () => {
+  it('强调色只在键盘焦点环、主操作、侧栏的当前行、开着的开关、运行中的圈和时间线的今天;标签、计数、列表的选中项和别的规则都不读', () => {
     const readers = readdirSync(RENDERER, { recursive: true, encoding: 'utf8' })
       .filter((path) => /\.(css|tsx?)$/.test(path) && !/\.test\.tsx?$/.test(path))
       .flatMap((path) => (path.endsWith('.css')

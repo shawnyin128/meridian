@@ -34,8 +34,8 @@ describe('Tag', () => {
 describe('CountBadge', () => {
   it('shows a quiet count, and a strong one for items waiting for the user', () => {
     expect(renderToStaticMarkup(<CountBadge count={79} />)).toBe('<span class="count-badge">79</span>')
-    expect(renderToStaticMarkup(<CountBadge count={3} strong className="n" />))
-      .toBe('<span class="count-badge count-badge--strong n">3</span>')
+    expect(renderToStaticMarkup(<CountBadge count={3} className="n" />))
+      .toBe('<span class="count-badge n">3</span>')
   })
 
   it('shows zero instead of hiding itself; hosts that hide an empty count leave the badge out', () => {

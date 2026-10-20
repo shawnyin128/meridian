@@ -23,7 +23,7 @@ export function ReviewEntry({ count, onOpen }: { count: number; onOpen: () => vo
   return (
     <button type="button" className="btn review-entry" onClick={onOpen}>
       {m.wiki.queue.entry}
-      {count > 0 ? <CountBadge count={count} strong /> : null}
+      {count > 0 ? <CountBadge count={count} /> : null}
     </button>
   )
 }

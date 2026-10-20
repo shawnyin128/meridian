@@ -28,8 +28,8 @@
   /* Solid accent surfaces, the same in both themes: white on the dark --accent is only 3.19:1 */
   --accent-solid:#3568ff;
   /*
-   * Accent text on --accent-soft, the current sidebar row and the count of new items: the accent moved
-   * 30% toward --ink, so it keeps 4.5:1 there in both themes, a hovered row and a badge on it included.
+   * Accent text on --accent-soft, the current sidebar row: the accent moved 30% toward --ink, so it
+   * keeps 4.5:1 there in both themes, a hovered row included.
    */
   --accent-text:color-mix(in srgb,var(--accent) 70%,var(--ink));
   --card:#ffffff; --raised:#ffffff; --field:#f2f2f2; --hover:rgba(17,17,17,.05);

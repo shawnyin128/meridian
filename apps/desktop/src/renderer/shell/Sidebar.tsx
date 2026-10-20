@@ -38,6 +38,14 @@ function CaretToggle({ label, open, onToggle }: { label: string; open: boolean; 
 }
 
 /**
+ * The number of papers the watches `ids` delivered, by `inboxPapers`: a paper two of them delivered
+ * counts once.
+ */
+function papersOf(ids: string[], inboxPapers: Record<string, string[]>): number {
+  return new Set(ids.flatMap((id) => inboxPapers[id] ?? [])).size
+}
+
+/**
  * A watch's row in the sidebar. When `count` is 0 there is no badge; a paused watch is greyed out and
  * shows no badge, as in the demo's applyWatchUI.
  */
@@ -52,7 +60,7 @@ function WatchRow({ watch, count, on, onOpen }: {
     >
       <span className="ic" />
       <Tooltip label={watch.name} whenClipped><span className="watch-name">{watch.name}</span></Tooltip>
-      {watch.active && count > 0 ? <CountBadge className="n" count={count} strong /> : null}
+      {watch.active && count > 0 ? <CountBadge className="n" count={count} /> : null}
     </NavRow>
   )
 }
@@ -139,8 +147,10 @@ function UpdateRow() {
  * the global search, and clicking a result opens that item on its screen.
  * While `paperCount`, `changeCount`, `projectCount` or `wikiCount` is null, its badge is not rendered;
  * when `trashCount` or `laterCount` is 0 its row has no badge, like the demo's `TRASH.length||''`.
- * `watches` fills the Watched topics and Watched authors groups under the Inbox; `inboxCounts` gives
- * each watch's number of delivered papers by watch id, and a watch missing from it counts as 0.
+ * `watches` fills the Watched topics and Watched authors groups under the Inbox; `inboxPapers` gives
+ * the papers each watch delivered by watch id, one key per paper, and a watch missing from it delivered
+ * none. Every count in the Inbox section is a number of papers: a group row's counts its watches' papers,
+ * and a group or watch with none shows no badge.
  * `inboxMode` tells the Discovery stream from the watch stream and `inboxScope` is the scope shown in
  * it; together they decide which row is selected.
  * `chats` fills the list under Chats; archived chats are not here but in Settings. `chatId` is the
@@ -151,7 +161,7 @@ function UpdateRow() {
  */
 export function Sidebar({
   screen, onNavigate, onJump, paperCount, changeCount, projectCount, trashCount, wikiCount, ideaCount,
-  inboxScope, inboxMode, onOpenInbox, watches, inboxCounts, discoveryCount, discoveryProjects, laterCount,
+  inboxScope, inboxMode, onOpenInbox, watches, inboxPapers, discoveryCount, discoveryProjects, laterCount,
   chats, chatId, onOpenChat, onNewChat, onArchiveChat, grip, collapsed,
 }: {
   screen: ScreenKey
@@ -167,7 +177,7 @@ export function Sidebar({
   inboxMode: InboxMode
   onOpenInbox: (scope: string, mode?: InboxMode) => void
   watches: Watch[]
-  inboxCounts: Record<string, number>
+  inboxPapers: Record<string, string[]>
   discoveryCount: number
   discoveryProjects: DiscoveryProjectCount[]
   laterCount: number
@@ -190,7 +200,9 @@ export function Sidebar({
   const authors = watches.filter((w) => w.type === 'author')
   const active = chats.filter((s) => !s.archived)
   // The Inmail row counts the papers every watch delivered, the demo's allN = unread.spec + unread.dao.
-  const pushed = Object.values(inboxCounts).reduce((sum, n) => sum + n, 0)
+  const pushed = papersOf(Object.keys(inboxPapers), inboxPapers)
+  const topicPapers = papersOf(topics.map((w) => w.id), inboxPapers)
+  const authorPapers = papersOf(authors.map((w) => w.id), inboxPapers)
   const onWatch = (id: string) => screen === 'inbox' && inboxMode === 'watch' && inboxScope === id
   const onDiscovery = (id: string) => screen === 'inbox' && inboxMode === 'discovery' && inboxScope === id
 
@@ -226,7 +238,7 @@ export function Sidebar({
                 )}
               >
                 <CaretToggle label={m.shell.nav.delivery} open={!closed['inboxsub']} onToggle={() => toggle('inboxsub')} />
-                {pushed > 0 ? <CountBadge className="n" count={pushed} strong /> : null}
+                {pushed > 0 ? <CountBadge className="n" count={pushed} /> : null}
               </NavRow>
               <div className={wgroup('inboxsub')} id="g-inboxsub">
                 <NavRow
@@ -240,7 +252,7 @@ export function Sidebar({
                       label={m.shell.nav.discovery} open={!closed['discoverysub']} onToggle={() => toggle('discoverysub')}
                     />
                   ) : null}
-                  {discoveryCount > 0 ? <CountBadge className="n" count={discoveryCount} strong /> : null}
+                  {discoveryCount > 0 ? <CountBadge className="n" count={discoveryCount} /> : null}
                 </NavRow>
                 <div className={wgroup('discoverysub')} id="g-discoverysub">
                   {discoveryProjects.map((held) => (
@@ -250,7 +262,7 @@ export function Sidebar({
                     >
                       <span className="ic" />
                       <Tooltip label={held.name} whenClipped><span className="watch-name">{held.name}</span></Tooltip>
-                      <CountBadge className="n" count={held.count} strong />
+                      <CountBadge className="n" count={held.count} />
                     </NavRow>
                   ))}
                 </div>
@@ -263,12 +275,12 @@ export function Sidebar({
                       <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.83z" />
                       <line x1="7" y1="7" x2="7.01" y2="7" />
                     </Icon>
-                  </span>{m.shell.nav.watchTopics}<Caret /><CountBadge className="n" count={topics.length} />
+                  </span>{m.shell.nav.watchTopics}<Caret />{topicPapers > 0 ? <CountBadge className="n" count={topicPapers} /> : null}
                 </NavRow>
                 <div className={wgroup('topics')} id="g-topics">
                   {topics.map((w) => (
                     <WatchRow
-                      key={w.id} watch={w} count={inboxCounts[w.id] ?? 0} on={onWatch(w.id)}
+                      key={w.id} watch={w} count={papersOf([w.id], inboxPapers)} on={onWatch(w.id)}
                       onOpen={() => onOpenInbox(w.id)}
                     />
                   ))}
@@ -279,12 +291,12 @@ export function Sidebar({
                 >
                   <span className="ic">
                     <Icon><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></Icon>
-                  </span>{m.shell.nav.watchAuthors}<Caret /><CountBadge className="n" count={authors.length} />
+                  </span>{m.shell.nav.watchAuthors}<Caret />{authorPapers > 0 ? <CountBadge className="n" count={authorPapers} /> : null}
                 </NavRow>
                 <div className={wgroup('authors')} id="g-authors">
                   {authors.map((w) => (
                     <WatchRow
-                      key={w.id} watch={w} count={inboxCounts[w.id] ?? 0} on={onWatch(w.id)}
+                      key={w.id} watch={w} count={papersOf([w.id], inboxPapers)} on={onWatch(w.id)}
                       onOpen={() => onOpenInbox(w.id)}
                     />
                   ))}

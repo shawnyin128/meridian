@@ -14,6 +14,7 @@ const fixture = vi.hoisted(() => ({
   watches: [{ id: 'w-topic', type: 'topic', name: '推测解码', active: true }],
   projects: [{ id: 'p1', name: '推理项目', status: '进行中' }],
   discovery: [{ id: 'e1', kind: 'discovery', watch: '', project: 'p1', source: '推理项目' }],
+  delivered: [] as { id: string; kind: 'watch'; watch: string; title: string }[],
   chats: [{ id: 'c1', title: '讨论', archived: false, messageCount: 1 }],
   back: vi.fn(),
   platform: 'darwin',
@@ -39,7 +40,7 @@ vi.mock('../ipc.js', () => ({
   },
   extensions: { checkLatest: vi.fn() },
   idea: { list: none },
-  inbox: { list: ({ kind }: { kind: string }) => Promise.resolve(kind === 'discovery' ? fixture.discovery : []) },
+  inbox: { list: ({ kind }: { kind: string }) => Promise.resolve(kind === 'discovery' ? fixture.discovery : fixture.delivered) },
   jobs: { status: () => new Promise(() => {}) },
   later: { list: none },
   papers: { list: () => Promise.resolve({ rows: [], total: 0 }) },
@@ -180,6 +181,32 @@ function controlOf(selector: string): HTMLElement {
   expect(control.tagName, selector).toBe('BUTTON')
   return control
 }
+
+describe('侧栏论文推送的计数', () => {
+  const watches = fixture.watches
+  afterEach(() => {
+    fixture.watches = watches
+    fixture.delivered = []
+  })
+
+  it('分组行数的是组里关注推来的新论文,两个关注推来的同一篇只算一篇;没有新论文的组和关注都不显示数', async () => {
+    fixture.watches = [
+      { id: 'w-topic', type: 'topic', name: '推测解码', active: true },
+      { id: 'w-moe', type: 'topic', name: '专家混合', active: true },
+      { id: 'w-dao', type: 'author', name: 'Tri Dao', active: true },
+    ]
+    fixture.delivered = [
+      { id: 'i1', kind: 'watch', watch: 'w-topic', title: 'EAGLE' },
+      { id: 'i2', kind: 'watch', watch: 'w-topic', title: 'Medusa' },
+      { id: 'i3', kind: 'watch', watch: 'w-topic', title: 'SpecInfer' },
+      { id: 'i4', kind: 'watch', watch: 'w-moe', title: 'Medusa' },
+    ]
+    await mount()
+    const rows = ['#rowInboxAll', '[data-disc="topics"]', '[data-watchrow="w-topic"]', '[data-watchrow="w-moe"]', '[data-disc="authors"]', '[data-watchrow="w-dao"]']
+    expect(Object.fromEntries(rows.map((row) => [row, document.querySelector(`${row} .count-badge`)?.textContent ?? null])))
+      .toEqual(Object.fromEntries(rows.map((row, at) => [row, ['3', '3', '3', '1', null, null][at]])))
+  })
+})
 
 describe('AppShell sidebar collapse', () => {
   let sidebar: HTMLElement

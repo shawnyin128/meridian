@@ -284,26 +284,23 @@ describe('标签', () => {
 })
 
 describe('强调色的字', () => {
-  /** The sidebar's surface, hovered, under the current row, and both: a count of new items sits on each. */
-  const SIDEBAR: [string, string[]][] = [
-    ['侧栏', ['--window', '--sidebar']], ['悬停的侧栏行', ['--window', '--sidebar', '--hover']],
-    ['侧栏的当前行', ['--window', '--sidebar', '--accent-soft']], ['悬停的侧栏当前行', ['--window', '--sidebar', '--accent-soft', '--hover']],
-  ]
-
   for (const theme of ['light', 'dark'] as const) {
-    it(`${theme === 'dark' ? '暗色' : '亮色'}侧栏当前行的字、和新条目的计数在侧栏每种底上的字,都不低于 4.5:1`, () => {
-      const row = lookOf('shell/AppShell.css', '.srow.on').split(' ') as [string, string]
-      const badge = lookOf('components/Tag.css', '.count-badge--strong').split(' ') as [string, string]
-      const grounds: [string, string, string[]][] = [
-        ['当前行', row[1], SIDEBAR[2]![1]], ['悬停的当前行', row[1], SIDEBAR[3]![1]],
-        ...SIDEBAR.map(([where, ground]): [string, string, string[]] => [`${where}上的计数`, badge[1], [...ground, badge[0]]]),
-      ]
-      for (const [where, text, ground] of grounds) {
+    it(`${theme === 'dark' ? '暗色' : '亮色'}侧栏当前行的字,静止和悬停时都不低于 4.5:1`, () => {
+      const [fill, text] = lookOf('shell/AppShell.css', '.srow.on').split(' ') as [string, string]
+      for (const ground of [['--window', '--sidebar', fill], ['--window', '--sidebar', fill, '--hover']]) {
         const got = contrast(colour(theme, text), flatten(theme, ground))
-        expect(got, `${where}: ${text} 压在 ${ground.join(' + ')} 上是 ${got.toFixed(2)}:1`).toBeGreaterThanOrEqual(TEXT)
+        expect(got, `${text} 压在 ${ground.join(' + ')} 上是 ${got.toFixed(2)}:1`).toBeGreaterThanOrEqual(TEXT)
       }
     })
   }
+
+  it('亮色侧栏当前行上的计数,字压在它的标签底上不低于 4.5:1', () => {
+    const [row] = lookOf('shell/AppShell.css', '.srow.on').split(' ') as [string]
+    const [fill, text] = lookOf('components/Tag.css', '.count-badge').split(' ') as [string, string]
+    const ground = ['--window', '--sidebar', row, fill]
+    const got = contrast(colour('light', text), flatten('light', ground))
+    expect(got, `${text} 压在 ${ground.join(' + ')} 上是 ${got.toFixed(2)}:1`).toBeGreaterThanOrEqual(TEXT)
+  })
 })
 
 describe('选中、当前、已应用和按下的状态', () => {

@@ -367,7 +367,7 @@ export function AppShell({ screens, settings }: {
   const [watches, setWatches] = useState<Watch[]>([])
   const [chats, setChats] = useState<ChatSession[]>([])
   const [chatId, setChatId] = useState<string | null>(null)
-  const [inboxCounts, setInboxCounts] = useState<Record<string, number>>({})
+  const [inboxPapers, setInboxPapers] = useState<Record<string, string[]>>({})
   const [discoveryCount, setDiscoveryCount] = useState(0)
   const [discoveryProjects, setDiscoveryProjects] = useState<DiscoveryProjectCount[]>([])
   const [laterCount, setLaterCount] = useState(0)
@@ -399,8 +399,9 @@ export function AppShell({ screens, settings }: {
     void watch.list().then(setWatches)
     void chat.list().then(setChats)
     void later.list().then((entries) => setLaterCount(entries.length))
-    void inbox.list({ kind: 'watch' }).then((entries) => setInboxCounts(entries.reduce<Record<string, number>>(
-      (counts, e) => ({ ...counts, [e.watch]: (counts[e.watch] ?? 0) + 1 }), {})))
+    // A paper is keyed by its title: the contract carries no arXiv id, and Core already takes a title it holds for the same paper.
+    void inbox.list({ kind: 'watch' }).then((entries) => setInboxPapers(entries.reduce<Record<string, string[]>>(
+      (papers, e) => ({ ...papers, [e.watch]: [...(papers[e.watch] ?? []), e.title] }), {})))
     void Promise.all([inbox.list({ kind: 'discovery' }), project.list()]).then(([entries, projects]) => {
       setDiscoveryCount(entries.length)
       const names = new Map(projects.map((held) => [held.id, held.name]))
@@ -731,7 +732,7 @@ export function AppShell({ screens, settings }: {
           changeCount={changeCount} projectCount={projectCount} trashCount={trashCount}
           wikiCount={wikiCount} ideaCount={ideaCount}
           inboxScope={inboxScope} inboxMode={inboxMode} onOpenInbox={openInbox} watches={watches}
-          inboxCounts={inboxCounts} discoveryCount={discoveryCount} discoveryProjects={discoveryProjects}
+          inboxPapers={inboxPapers} discoveryCount={discoveryCount} discoveryProjects={discoveryProjects}
           laterCount={laterCount}
           chats={chats} chatId={screen === 'chat' ? chatId : null} onOpenChat={openChat}
           onNewChat={newChat} onArchiveChat={archiveChat}
