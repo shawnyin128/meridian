@@ -17,6 +17,7 @@ export const chat = {
   archivedSuffix: (title: string) => `${title} · Archived`,
   paperChatLabel: 'Paper chat',
   expandPaperChat: 'Expand the paper chat',
+  collapsePaperChat: 'Collapse the paper chat',
   paperChatWidth: 'Paper chat width',
   paperHeaderSuffix: ' · Paper chat',
   empty: 'No conversation yet',

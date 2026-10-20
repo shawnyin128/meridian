@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ChatMessage, PaperRow } from '../../shared/contract.js'
 import { MessagesProvider } from '../messages/useMessages.js'
 import { LANGUAGE_STORAGE_KEY } from '../shell/language.js'
+import { TOOLTIP_DELAY } from '../components/Tooltip.js'
 
 declare global {
   var IS_REACT_ACT_ENVIRONMENT: boolean
@@ -145,6 +146,22 @@ describe('PaperChat', () => {
 
     expect(api.send).toHaveBeenCalledWith('chat-paper-1', '关键假设是什么？')
     expect(input.value).toBe('')
+  })
+
+  it('对话栏的拖动条在共享 tooltip 里写它的操作「收起论文对话」和 ⌘B，不写拖动提示', async () => {
+    const host = document.createElement('div')
+    document.body.append(host)
+    root = createRoot(host)
+    await act(async () => { root!.render(withMessages(<PaperChat paper={PAPER} />)) })
+    vi.useFakeTimers()
+    act(() => {
+      host.querySelector('#rrgrip')!.dispatchEvent(new PointerEvent('pointermove', { bubbles: true, pointerType: 'mouse' }))
+    })
+    act(() => { vi.advanceTimersByTime(TOOLTIP_DELAY) })
+    vi.useRealTimers()
+    const tip = document.querySelector('[role="tooltip"]')!
+    expect([tip.firstChild?.textContent, tip.querySelector('.tooltip-key')?.textContent, tip.querySelector('.tooltip-note')])
+      .toEqual(['收起论文对话', '⌘B', null])
   })
 
   it('对话栏头部写出整篇论文的标题，放不下时淡出，和面包屑同一个规则', async () => {

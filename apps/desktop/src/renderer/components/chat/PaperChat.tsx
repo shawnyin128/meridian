@@ -171,7 +171,7 @@ export function PaperChat({ paper, onBack = () => {}, prompt = null }: {
           </div>
         </div>
       </div>
-      <GripTooltip><Grip {...grip} /></GripTooltip>
+      <GripTooltip label={m.chat.collapsePaperChat}><Grip {...grip} /></GripTooltip>
       {session === null || paper === null ? null : (
         <IdeaEditorDialog
           open={savingIdea} sourceLabel={`${plainTitle(paper.title)} · ${plainTitle(session.title)}`}

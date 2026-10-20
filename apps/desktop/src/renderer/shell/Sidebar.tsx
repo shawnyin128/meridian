@@ -400,7 +400,7 @@ export function Sidebar({
           </NavRow>
         </div>
       </Toolbar>
-      <GripTooltip><Grip {...grip} /></GripTooltip>
+      <GripTooltip label={m.shell.sidebar.collapse}><Grip {...grip} /></GripTooltip>
     </div>
   )
 }

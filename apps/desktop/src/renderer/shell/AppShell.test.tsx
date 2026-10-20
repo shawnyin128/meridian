@@ -261,9 +261,9 @@ describe('AppShell sidebar collapse', () => {
     fixture.platform = 'darwin'
   })
 
-  it('names the sidebar grip in the shared tooltip with ⌘B on macOS, and draws no tooltip of its own', () => {
-    expect(hoverTip('#sbgrip')).toEqual(['收起', '⌘B'])
-    expect(document.querySelector('[role="tooltip"] .tooltip-note')?.textContent).toBe('拖动调整宽度')
+  it('names the sidebar grip in the shared tooltip by its action with ⌘B on macOS, with no drag hint and no tooltip of its own', () => {
+    expect(hoverTip('#sbgrip')).toEqual(['收起侧栏', '⌘B'])
+    expect(document.querySelector('[role="tooltip"] .tooltip-note')).toBeNull()
     expect(document.querySelector('#griptip')).toBeNull()
   })
 
