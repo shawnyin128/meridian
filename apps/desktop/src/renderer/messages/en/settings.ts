@@ -305,7 +305,7 @@ export const settings = {
   },
   discovery: {
     heading: 'Discovery',
-    directionsHeading: 'Research directions',
+    directionsHeading: (n: number) => `Research directions · ${n}`,
     noDirections: 'No research directions yet',
     seeds: (n: number) => `${n} ${pluralEn(n, { one: 'seed paper', other: 'seed papers' })}`,
     refreshing: 'Refreshing…',

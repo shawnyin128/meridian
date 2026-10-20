@@ -298,7 +298,7 @@ export const settings = {
   },
   discovery: {
     heading: '发现',
-    directionsHeading: '发现方向',
+    directionsHeading: (n: number) => `发现方向 · ${n}`,
     noDirections: '还没有项目方向',
     seeds: (n: number) => `${n} 篇种子`,
     refreshing: '正在刷新…',

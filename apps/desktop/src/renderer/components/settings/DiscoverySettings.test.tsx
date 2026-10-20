@@ -47,6 +47,13 @@ describe('DiscoverySettings', () => {
   const row = (label: string) => [...host.querySelectorAll('.direction-row')]
     .find((item) => item.textContent?.includes(label))!
 
+  it('发现方向的标题按「标签 · 数」写出方向数,和别的标题一样', async () => {
+    const root = createRoot(host)
+    await act(async () => { root.render(<MessagesProvider><DiscoverySettings /></MessagesProvider>) })
+    expect(host.querySelector('.delivery-directions .section-heading')!.textContent).toBe('发现方向 · 2')
+    act(() => root.unmount())
+  })
+
   it('启用一个方向是以方向名命名的开关，不再是翻转文字的按钮；设为核心仍是一次性操作', async () => {
     const root = createRoot(host)
     await act(async () => { root.render(<MessagesProvider><DiscoverySettings /></MessagesProvider>) })

@@ -66,7 +66,7 @@ export function DiscoverySettings() {
   return (
     <section className="delivery-directions">
       <SectionHeading variant="group">
-        {m.settings.discovery.directionsHeading} <span className="settings-count">{enabled}</span>
+        {m.settings.discovery.directionsHeading(enabled)}
       </SectionHeading>
       {error === null ? null : <div className="err">{error}</div>}
       <Card flush className="direction-panel">
