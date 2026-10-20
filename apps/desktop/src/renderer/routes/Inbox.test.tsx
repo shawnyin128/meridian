@@ -257,6 +257,18 @@ describe('Inbox', () => {
     await act(async () => { root.unmount() })
   })
 
+  it('上次检查的时刻像全 App 的时间一样写成日期与时刻', async () => {
+    status = {
+      writes: 0, uploads: [], downloads: [], fetch: { state: 'idle', checkedAt: new Date(2026, 8, 20, 14, 5).getTime(), reason: null },
+    }
+    const root = createRoot(host)
+    await act(async () => { root.render(<MessagesProvider><Inbox /></MessagesProvider>) })
+    const note = host.querySelector('.fetchnote')!
+    expect(note.firstChild!.textContent).toBe('上次检查')
+    expect([...note.querySelectorAll('.date-time-display .date-chip')].map((chip) => chip.textContent)).toEqual(['9月20日', '14:05'])
+    await act(async () => { root.unmount() })
+  })
+
   it('检查新论文失败时状态行只显示失败原因', async () => {
     status = {
       writes: 0, uploads: [], downloads: [], fetch: { state: 'failed', checkedAt: null, reason: 'unavailable' },

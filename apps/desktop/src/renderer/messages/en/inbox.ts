@@ -9,7 +9,7 @@ export const inbox = {
   check: {
     checking: 'Checking for new papers…',
     failed: 'Check failed',
-    lastChecked: (when: string) => `Last checked ${when}`,
+    lastChecked: 'Last checked',
   },
   checkNewPapers: 'Check for new papers',
   discovering: 'Discovering…',

@@ -6,7 +6,7 @@ export const inbox = {
   check: {
     checking: '正在检查新论文…',
     failed: '检查失败',
-    lastChecked: (when: string) => `上次检查 ${when}`,
+    lastChecked: '上次检查',
   },
   checkNewPapers: '检查新论文',
   discovering: '正在发现…',

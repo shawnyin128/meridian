@@ -20,19 +20,9 @@ describe('中文日期', () => {
     expect(fmt.dayHead('2025-12-31', '2026-09-19')).toBe('2025年12月31日')
   })
 
-  it('动态时间会从刚刚推进到分钟和小时', () => {
-    const createdAt = '2026-09-19T12:00:00.000Z'
-    expect(fmt.activityTime(createdAt, '2026-09-19', Date.parse('2026-09-19T12:00:30.000Z'))).toBe('刚刚')
-    expect(fmt.activityTime(createdAt, '2026-09-19', Date.parse('2026-09-19T12:03:00.000Z'))).toBe('3分钟前')
-    expect(fmt.activityTime(createdAt, '2026-09-19', Date.parse('2026-09-19T14:00:00.000Z'))).toBe('2小时前')
-  })
-
-  it('今天之前的动态写日期和时刻,不足 24 小时的昨天也一样', () => {
-    const now = new Date(2026, 8, 19, 8, 0).getTime()
-    expect(fmt.activityTime(new Date(2026, 8, 18, 23, 0).toISOString(), '2026-09-19', now))
-      .toBe('2026年9月18日 23:00')
-    expect(fmt.activityTime(new Date(2026, 8, 12, 9, 28).toISOString(), '2026-09-19', now))
-      .toBe('2026年9月12日 09:28')
+  it('时刻是本地时间的两位时与分', () => {
+    expect(fmt.clock(new Date(2026, 8, 18, 23, 0).toISOString())).toBe('23:00')
+    expect(fmt.clock(new Date(2026, 8, 12, 9, 28).getTime())).toBe('09:28')
   })
 })
 
@@ -55,17 +45,8 @@ describe('英文日期', () => {
     expect(fmt.dayHead('2025-12-31', '2026-09-19')).toBe('Dec 31, 2025')
   })
 
-  it('advances activity time instead of freezing at Just now', () => {
-    const createdAt = '2026-09-19T12:00:00.000Z'
-    expect(fmt.activityTime(createdAt, '2026-09-19', Date.parse('2026-09-19T12:00:30.000Z'))).toBe('Just now')
-    expect(fmt.activityTime(createdAt, '2026-09-19', Date.parse('2026-09-19T12:03:00.000Z'))).toBe('3 minutes ago')
-    expect(fmt.activityTime(createdAt, '2026-09-19', Date.parse('2026-09-19T14:00:00.000Z'))).toBe('2 hours ago')
-  })
-
-  it('shows the date with the time for activity before today', () => {
-    const now = new Date(2026, 8, 19, 8, 0).getTime()
-    expect(fmt.activityTime(new Date(2026, 8, 18, 23, 0).toISOString(), '2026-09-19', now))
-      .toBe('Sep 18, 2026, 11:00 PM')
+  it('writes a clock time as local hour and minute', () => {
+    expect(fmt.clock(new Date(2026, 8, 18, 23, 0).toISOString())).toBe('11:00 PM')
   })
 
   it('复数按 Intl.PluralRules 选词', () => {

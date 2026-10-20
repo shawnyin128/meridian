@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { dnum, localDayOf } from '../../shared/dates.js'
+import { dnum } from '../../shared/dates.js'
 import { useLocale } from '../messages/useMessages.js'
 import type { Locale } from '../shell/language.js'
 
@@ -13,7 +13,7 @@ export type Format = {
   fullDate: (iso: string) => string
   fullDateRange: (startIso: string, endIso: string) => string
   dateTime: (iso: string) => string
-  activityTime: (iso: string, todayIso: string, nowMs?: number) => string
+  clock: (at: string | number) => string
   number: (value: number) => string
   plural: (count: number, forms: { one: string; other: string }) => string
 }
@@ -44,9 +44,7 @@ export function createFormat(locale: Locale): Format {
   const dateTime = new Intl.DateTimeFormat(locale === 'zh' ? 'zh-CN' : 'en-US', {
     year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit',
   })
-  const relativeTime = new Intl.RelativeTimeFormat(locale === 'zh' ? 'zh-CN' : 'en-US', {
-    numeric: 'always',
-  })
+  const clock = new Intl.DateTimeFormat(locale === 'zh' ? 'zh-CN' : 'en-US', { hour: '2-digit', minute: '2-digit' })
   const numbers = new Intl.NumberFormat(locale === 'zh' ? 'zh-CN' : 'en-US')
   const plurals = new Intl.PluralRules(locale === 'zh' ? 'zh-CN' : 'en-US')
 
@@ -87,18 +85,7 @@ export function createFormat(locale: Locale): Format {
         : `${zhWithYear(from)}–${zhWithYear(to)}`
     },
     dateTime: (iso) => dateTime.format(new Date(iso)),
-    activityTime: (iso, todayIso, nowMs = Date.now()) => {
-      const at = Date.parse(iso)
-      if (!Number.isFinite(at)) return ''
-      if (localDayOf(iso) < todayIso) return dateTime.format(new Date(at))
-      const elapsedSeconds = Math.max(0, Math.floor((nowMs - at) / 1_000))
-      if (elapsedSeconds < 60) return locale === 'zh' ? '刚刚' : 'Just now'
-      const elapsedMinutes = Math.floor(elapsedSeconds / 60)
-      if (elapsedMinutes < 60) return relativeTime.format(-elapsedMinutes, 'minute')
-      const elapsedHours = Math.floor(elapsedMinutes / 60)
-      if (elapsedHours < 24) return relativeTime.format(-elapsedHours, 'hour')
-      return dateTime.format(new Date(at))
-    },
+    clock: (at) => clock.format(new Date(at)),
     number: (value) => numbers.format(value),
     plural: (count, forms) => (plurals.select(count) === 'one' ? forms.one : forms.other),
   }

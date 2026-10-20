@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import type {
   DiscoveryFetchResult, DiscoveryProfile, FetchStatus, InboxDownloadFailure, InboxEntry,
   InboxListParams, Watch,
@@ -9,7 +9,6 @@ import {
 } from '../shell/AppShell.js'
 import { useJobs } from '../shell/useJobs.js'
 import { failureLabel } from '../lib/failure-label.js'
-import { useFormat } from '../lib/format.js'
 import type { Catalog } from '../messages/catalog.js'
 import { useMessages } from '../messages/useMessages.js'
 import {
@@ -23,6 +22,7 @@ import { EmptyState } from '../components/EmptyState.js'
 import { LoadingPlaceholder } from '../components/LoadingPlaceholder.js'
 import { plainTitle } from '../components/paper/paper-text.js'
 import { CollapsibleGroup } from '../components/CollapsibleGroup.js'
+import { DateTimeDisplay } from '../components/DateTimeDisplay.js'
 import { SegmentedControl } from '../components/SegmentedControl.js'
 import { Tag } from '../components/Tag.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
@@ -41,16 +41,12 @@ const label = (w: Watch, watchKind: Record<Watch['type'], string>) => `${watchKi
 const streamLabel = (m: Catalog, stream: 'watch' | 'discovery'): string =>
   (stream === 'watch' ? m.inbox.streamLabel.watch : m.inbox.streamLabel.discovery)
 
-function fetchNote(status: FetchStatus | null, m: Catalog, fmt: ReturnType<typeof useFormat>): string {
+function fetchNote(status: FetchStatus | null, m: Catalog): ReactNode {
   if (status === null) return ''
   if (status.state === 'checking') return m.inbox.check.checking
   if (status.state === 'failed') return failureLabel(m, m.inbox.check.failed, status.reason ?? 'unknown')
   if (status.checkedAt === null) return ''
-  const at = new Date(status.checkedAt)
-  const pad = (n: number) => String(n).padStart(2, '0')
-  const localDate = `${at.getFullYear()}-${pad(at.getMonth() + 1)}-${pad(at.getDate())}`
-  const clock = `${pad(at.getHours())}:${pad(at.getMinutes())}`
-  return m.inbox.check.lastChecked(`${fmt.date(localDate)} ${clock}`)
+  return <>{m.inbox.check.lastChecked}{' '}<DateTimeDisplay at={status.checkedAt} /></>
 }
 
 function discoveryResultNote(result: DiscoveryFetchResult, m: Catalog): string {
@@ -71,7 +67,6 @@ function discoveryResultNote(result: DiscoveryFetchResult, m: Catalog): string {
  */
 export function Inbox() {
   const m = useMessages()
-  const fmt = useFormat()
   const scope = useInboxScope()
   const stream = useInboxMode()
   const [entries, setEntries] = useState<InboxEntry[] | null>(null)
@@ -296,7 +291,7 @@ export function Inbox() {
                 >{m.watches.resume}</button>
               </>
             ) : null}
-            <span className="fetchnote">{stream === 'watch' ? fetchNote(jobs?.fetch ?? null, m, fmt) : ''}</span>
+            <span className="fetchnote">{stream === 'watch' ? fetchNote(jobs?.fetch ?? null, m) : ''}</span>
             <IconButton
               label={stream === 'discovery' ? m.inbox.discoverySettings : m.inbox.watchSettings}
               onClick={() => openCategory(stream === 'discovery' ? 'delivery-discovery' : 'delivery-watch')}
