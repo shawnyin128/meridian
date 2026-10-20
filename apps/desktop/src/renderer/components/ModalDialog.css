@@ -18,4 +18,5 @@
 .modal-body{flex:1 1 auto;min-height:0;overflow:auto;padding:var(--sp-4) var(--sp-20)}
 .modal-detail{margin:0;color:var(--sec);font-size:var(--fs-base);line-height:var(--lh-ui)}
 .modal-actions{flex:none;display:flex;justify-content:flex-end;gap:var(--sp-8);padding:var(--sp-16) var(--sp-20) 0}
+.modal-actions-state{display:flex;align-items:center}
 .modal-close{position:absolute;top:var(--sp-12);right:var(--sp-12)}

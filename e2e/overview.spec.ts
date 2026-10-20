@@ -227,7 +227,7 @@ test('新建的项目在总览里看得见,成功提示那句话才算数', asyn
   await shown(win).locator('#projNew').click()
   await shown(win).locator('.projpanel .inedit').fill(NEW_PROJECT)
   await shown(win).locator('.projpanel .inedit').press('Enter')
-  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已创建项目 · 已加入研究总览')
+  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已创建项目')
 
   await gotoOverview(win)
   const after = await overviewCounts(win)

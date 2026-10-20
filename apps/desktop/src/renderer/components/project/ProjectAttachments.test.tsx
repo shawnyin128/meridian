@@ -47,6 +47,21 @@ describe('ProjectAttachments', () => {
     const name = host.querySelector<HTMLElement>('.attrow .an')!
     expect(name.tagName).toBe('BUTTON')
     act(() => name.click())
-    expect(onReveal).toHaveBeenCalledWith(attachment)
+    expect(onReveal).toHaveBeenCalledWith('attachments/run.log')
+  })
+
+  it('shows an attachment saved without a location as a disabled name with a short state', () => {
+    const onReveal = vi.fn()
+    act(() => root.render(
+      <MessagesProvider>
+        <ProjectAttachments
+          attachments={[{ id: 'a1', name: 'run.log', size: '2 KB' }]} onAdd={vi.fn()} onReveal={onReveal} onRemove={vi.fn()}
+        />
+      </MessagesProvider>,
+    ))
+    const name = host.querySelector<HTMLButtonElement>('.attrow .an')!
+    expect([name.disabled, name.nextElementSibling?.textContent]).toEqual([true, 'No file location'])
+    act(() => name.click())
+    expect(onReveal).not.toHaveBeenCalled()
   })
 })

@@ -68,7 +68,6 @@ export function DiscoverySettings() {
       <SectionHeading variant="group">
         {m.settings.discovery.directionsHeading} <span className="settings-count">{enabled}</span>
       </SectionHeading>
-      <p className="settings-explain">{m.settings.discovery.explain}</p>
       {error === null ? null : <div className="err">{error}</div>}
       <Card flush className="direction-panel">
         {profiles === null && error === null ? <LoadingPlaceholder shape="rows" count={2} /> : null}

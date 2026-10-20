@@ -58,8 +58,7 @@ export const shell = {
   about: { title: 'About Meridian', releases: 'Release notes', version: (version: string) => `Version ${version}` },
   bootFailure: {
     title: "The library won't open",
-    note: 'Choose a different library in Settings. Meridian will use it after you restart.',
-    openSettings: 'Open settings',
+    changeLibrary: 'Change library',
   },
   search: {
     placeholder: 'Search everything',

@@ -9,12 +9,12 @@ export function ServiceCard({ children, className }: { children: ReactNode; clas
   return <Card className={className === undefined ? 'service-card' : `service-card ${className}`}>{children}</Card>
 }
 
-/** Status head: the service's name and one-line description on the left, a configured/not-configured pill on the right. */
+/** Status head: the service's name and an optional line under it on the left, a configured/not-configured pill on the right. */
 export function ServiceStatus({
   title, description, configured, configuredLabel, notConfiguredLabel,
 }: {
   title: ReactNode
-  description: ReactNode
+  description?: ReactNode
   configured: boolean
   configuredLabel: string
   notConfiguredLabel: string
@@ -23,7 +23,7 @@ export function ServiceStatus({
     <div className="service-status-head">
       <div>
         <strong>{title}</strong>
-        <p>{description}</p>
+        {description === undefined ? null : <p>{description}</p>}
       </div>
       <Tag tone={configured ? 'good' : 'neutral'} className="service-status-pill">
         {configured ? configuredLabel : notConfiguredLabel}

@@ -22,7 +22,8 @@
 .qacts{display:flex;align-items:center;gap:var(--sp-4);padding:0 0 var(--sp-6)}
 #qmChips{display:flex;gap:var(--sp-4);min-width:0}
 .qm{min-width:0;max-width:160px}
-.save-idea{margin-left:auto}
+.save-idea,.qacts>.tag{margin-left:auto}
+.qacts>.tag+.save-idea{margin-left:0}
 .cbox{display:flex;align-items:flex-end;gap:10px;background:var(--field);border:1px solid var(--sep2);border-radius:22px;padding:4px 6px 4px 16px}
 .cbox:focus-within{border-color:var(--sep-strong);background:var(--card)}
 .cbox:has(textarea:focus-visible){outline:0;box-shadow:none}

@@ -171,7 +171,7 @@ test('原项目还在垃圾桶里时,那条附件恢复不回去,项目回来才
   await shown(win, '[data-proj="draft"]').hover()
   await shown(win, '[data-proj="draft"] .dots').click()
   await win.locator('.ctxmenu .mi.danger').click()
-  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已移入垃圾桶 · 7 天内可恢复')
+  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已移入垃圾桶')
 
   await gotoTrash(win)
   await expect(shown(win, '.section-heading')).toHaveText(['项目 · 1', '附件 · 1'])

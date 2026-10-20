@@ -400,7 +400,7 @@ test.describe(() => {
     await selectPaper(win, READABLE.title)
     await win.locator('.ptable tbody tr').hover()
     await win.locator('.ptable tbody tr .rowx').click()
-    await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已移入垃圾桶 · 7 天内可恢复')
+    await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已移入垃圾桶')
 
     await expect.poll(async () => (await pdfWorkers(win, 'killed')).length).toBe(1)
     expect(await pdfWorkers(win)).toHaveLength(2)
@@ -550,11 +550,11 @@ test('稍后阅读里指着库内一篇的那条,「开始阅读」把那一篇�
 test('内化到 Wiki 先展示完整费用范围,明确确认后才消费一次授权计划', async ({ win }) => {
   await openFromPapers(win)
   await shown(win, '.reader-rail [aria-label="内化到 Wiki"]').click()
-  await expect(shown(win, '.wiki-ingest')).toContainText('生成一份可审核的 Wiki 提案')
+  await expect(shown(win, '.wiki-ingest-scope')).toContainText('当前论文')
 
   await shown(win, '.wiki-ingest .harness-trigger').click()
   const dialog = win.locator('[role="alertdialog"]')
-  await expect(dialog).toContainText('本地或演示流程，不会产生 API 费用')
+  await expect(dialog.locator('.modal-actions .tag')).toHaveText('免费')
   await expect(dialog).toContainText('当前论文')
   await expect(dialog).not.toContainText('预计输入')
   await expect(dialog).not.toContainText('运行上限')

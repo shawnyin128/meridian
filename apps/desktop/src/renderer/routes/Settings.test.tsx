@@ -305,7 +305,7 @@ describe('Settings', () => {
     expect(dialog.querySelector('[data-setcat="model"]')?.classList.contains('on')).toBe(true)
   })
 
-  it('未配置 key 时科研卡片显示未配置，测试连接不可用', async () => {
+  it('未配置 key 时科研卡片显示未配置，测试连接不可用，按钮旁写着未保存', async () => {
     api.requestedCategory = 'research'
     await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
     const dialog = document.querySelector('.setdlg')!
@@ -313,8 +313,21 @@ describe('Settings', () => {
     expect(card.querySelector('.service-status-pill')?.textContent).toBe('未配置')
     const buttons = [...card.querySelectorAll<HTMLButtonElement>('button')]
     expect(buttons.find((b) => b.textContent === '测试连接')!.disabled).toBe(true)
+    expect(buttons.find((b) => b.textContent === '测试连接')!.previousElementSibling?.textContent).toBe('未保存')
     expect(buttons.find((b) => b.textContent === '保存配置')!.disabled).toBe(true)
     expect(buttons.some((b) => b.textContent === '清除已保存的 Key')).toBe(false)
+  })
+
+  it('模型配置还没保存时测试连接不可用，按钮旁写着未保存；保存过的可以测试，不写', async () => {
+    api.requestedCategory = 'model'
+    await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
+    const test = () => [...document.querySelectorAll<HTMLButtonElement>('.model-settings-card button')]
+      .find((b) => b.textContent === '测试连接')!
+    expect([test().disabled, test().previousElementSibling?.textContent]).toEqual([true, '未保存'])
+    api.modelSettings.mockResolvedValueOnce({ ...(await api.updateModelSettings()) })
+    await act(async () => { root.render(<MessagesProvider key="saved"><Settings /></MessagesProvider>) })
+    expect(test().disabled).toBe(false)
+    expect(document.querySelector('.model-settings-card .service-actions .tag')).toBeNull()
   })
 
   it('填写 key 并保存配置会调用 delivery.setSemanticKey', async () => {
@@ -447,6 +460,37 @@ describe('Settings', () => {
     await act(async () => { choices[0]!.click() })
     expect(document.documentElement.dataset.theme).toBeUndefined()
     expect(document.documentElement.dataset.appearance).toBe('light')
+  })
+
+  it('每个设置页只有标题和控件，标题下不写介绍句子', async () => {
+    api.libraryLocation.mockResolvedValue({
+      root: '/tmp/meridian', source: 'configured', locked: false, restartRequired: false, openError: null,
+    })
+    api.libraryBackups.mockResolvedValue([{ id: 'b1', path: '/tmp/meridian-backup', createdAt: '2026-09-15T10:28:00.000Z' }])
+    const categories: SettingsCategory[] = [
+      'appearance', 'storage', 'api', 'research', 'model', 'extensions', 'delivery', 'delivery-watch', 'delivery-discovery',
+    ]
+    for (const category of categories) {
+      api.requestedCategory = category
+      await act(async () => { root.render(<MessagesProvider key={category}><Settings /></MessagesProvider>) })
+      const pane = document.querySelector('.setdlg .set-main')!
+      expect([...pane.querySelectorAll('.settings-intro, .storage-head p, .storage-note')].map((p) => p.textContent), category)
+        .toEqual([])
+    }
+  })
+
+  it('库位置固定或要重启时，各写一个短状态：外部配置固定、重启后生效和立即重启', async () => {
+    api.requestedCategory = 'storage'
+    await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
+    const card = () => document.querySelector('.setdlg .storage-card')!
+    const states = () => [...card().querySelectorAll(':scope > .tag, :scope > [role="status"] > *')].map((node) => node.textContent)
+    expect(states()).toEqual(['库位置由外部配置固定'])
+    api.libraryLocation.mockResolvedValue({
+      root: '/tmp/meridian', source: 'configured', locked: false, restartRequired: true, openError: null,
+    })
+    await act(async () => { root.render(<MessagesProvider key="pending"><Settings /></MessagesProvider>) })
+    expect(states()).toEqual(['重启后生效', '立即重启'])
+    expect(card().querySelector('p')).toBeNull()
   })
 
   it('存储位置使用共享目录字段，不再另放一个选择按钮', async () => {
@@ -824,6 +868,22 @@ describe('Settings', () => {
       authentication: 'api-key',
       apiKey: 'third-party-secret',
     })
+  })
+
+  it('服务卡片的头部只写服务名，科研数据源旁只留申请 key 的链接', async () => {
+    api.requestedCategory = 'model'
+    await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
+    const dialog = document.querySelector('.setdlg')!
+    for (const provider of ['OpenAI', 'Anthropic', 'Google Gemini', 'OpenAI 兼容 API']) {
+      await pick(dialog, '模型服务', provider)
+      expect([dialog.querySelector('.service-status-head strong')?.textContent, dialog.querySelector('.service-status-head p')])
+        .toEqual([provider, null])
+    }
+    expect(dialog.querySelector('.model-template-help')).toBeNull()
+
+    api.requestedCategory = 'research'
+    await act(async () => { root.render(<MessagesProvider key="research"><Settings /></MessagesProvider>) })
+    expect(document.querySelector('.setdlg .service-status-head p')?.textContent).toBe('申请 key')
   })
 
   it('常用模板只要求用户填写模型 ID 和需要的密钥', async () => {

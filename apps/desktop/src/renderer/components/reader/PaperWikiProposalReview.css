@@ -4,7 +4,6 @@
 .paper-wiki-quality-head{display:flex;align-items:center;justify-content:space-between;gap:10px}
 .paper-wiki-quality-head>strong{font-size:var(--fs-sm);line-height:var(--lh-ui)}
 .paper-wiki-quality-head>span{font-size:var(--fs-cap);font-weight:600;line-height:var(--lh-ui)}
-.paper-wiki-quality>p{margin:4px 0 0;color:var(--sec);font-size:var(--fs-cap);line-height:1.5}
 .paper-wiki-quality-findings{margin-top:8px;color:var(--ink)}
 .paper-wiki-quality-finding{display:block;padding:8px 0}
 .paper-wiki-quality-finding>div{display:flex;align-items:center;justify-content:space-between;gap:8px}
@@ -12,7 +11,6 @@
 .paper-wiki-quality-finding span{color:var(--ter);font-size:var(--fs-cap);line-height:var(--lh-ui)}
 .paper-wiki-quality-finding p{margin:3px 0 0;color:var(--sec);font-size:var(--fs-cap);line-height:1.5}
 .paper-wiki-quality-finding code{display:block;margin-top:3px;color:var(--ter);font:var(--fs-cap)/var(--lh-ui) var(--mono)}
-.paper-wiki-review-legend{margin:0;color:var(--ter);font-size:var(--fs-cap);line-height:1.5}
 .paper-wiki-review-section{min-width:0}
 .paper-wiki-review-section-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:5px}
 .paper-wiki-review-section-head h4{margin:0;font-size:var(--fs-sm);line-height:var(--lh-ui)}

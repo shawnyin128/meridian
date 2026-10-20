@@ -207,8 +207,7 @@ test('研究地图从真实论文元数据形成可切换、可解释的重叠�
 
   await expect(win.locator('.research-map-title')).toContainText('自适应研究地图')
   await expect(win.locator('.research-map-group')).not.toHaveCount(0)
-  await expect(win.locator('.research-map-detail')).toContainText('归入依据')
-  await expect(win.locator('.research-map-detail')).toContainText('不会写回论文库')
+  await expect(win.locator('.research-map-detail .research-map-why .tag').first()).toBeVisible()
   await expect(win.locator('.pagebar')).toHaveCount(0)
 
   const groups = win.locator('.research-map-group')
@@ -1607,7 +1606,7 @@ test('改类型:文本 → 单选,现有的不同值收成选项,格子画成选
   await expect(cells.nth(0).locator('.tagchip')).toHaveText('精读')
   await expect(cells.nth(1).locator('.tagchip')).toHaveText('略读')
   await expect(cells.nth(2).locator('.tagchip')).toHaveText('精读')
-  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已改列类型 · 记入最近变动，可撤销')
+  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已改列类型')
   const column = (await call<PaperColumns>(win, 'papers.columns', {})).custom[0]!
   expect(column.type).toBe('select')
   // Options are collected in vault order, which differs from table order; Core's unit tests pin the

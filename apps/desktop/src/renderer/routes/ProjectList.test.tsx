@@ -10,14 +10,20 @@ declare global {
   var IS_REACT_ACT_ENVIRONMENT: boolean
 }
 
-const api = vi.hoisted(() => ({ projects: [] as ProjectSummary[], loading: false }))
+const api = vi.hoisted(() => ({
+  projects: [] as ProjectSummary[], loading: false,
+  writes: [] as { result: unknown; opts: { note?: unknown; action?: (result: never) => { label: string; onAction: () => void } } }[],
+  undone: [] as string[],
+}))
 
 vi.mock('../ipc.js', () => ({
   feed: { append: vi.fn() },
   project: {
     list: () => (api.loading ? new Promise(() => {}) : Promise.resolve(structuredClone(api.projects))),
     reorder: vi.fn(),
+    delete: () => Promise.resolve({ change: 'change-delete' }),
   },
+  changelog: { undo: (id: string) => { api.undone.push(id); return Promise.resolve() } },
 }))
 
 vi.mock('../shell/AppShell.js', () => ({
@@ -30,7 +36,7 @@ vi.mock('../shell/AppShell.js', () => ({
 }))
 
 vi.mock('../hooks/useVaultWrite.js', () => ({
-  useVaultWrite: () => async (work: Promise<unknown>) => { await work; return true },
+  useVaultWrite: () => async (work: Promise<unknown>, opts = {}) => { api.writes.push({ result: await work, opts }); return true },
 }))
 vi.mock('./ProjectDetail.js', () => ({ ProjectDetail: ({ projectId }: { projectId: string }) => <p data-open={projectId} /> }))
 
@@ -216,6 +222,19 @@ describe('项目的排序', () => {
       .toEqual([['重命名', false], ['上移', true], ['下移', false]])
     await act(async () => { items[2]!.click() })
     expect(await reorder()).toHaveBeenCalledWith(['b', 'a', 'c'])
+  })
+
+  it('从「更多」菜单删掉项目，提示只说已移入垃圾桶，撤销的是这次删除记下的那条变动', async () => {
+    await mount()
+    const dots = host.querySelector<HTMLElement>('[data-proj="a"] .dots')!
+    await act(async () => { dots.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, button: 0 })) })
+    const remove = [...document.querySelectorAll<HTMLElement>('[role="menu"] [role="menuitem"]')].find((item) => item.textContent === '删除')!
+    await act(async () => { remove.click() })
+    const deleted = api.writes.at(-1)!
+    const action = deleted.opts.action!(deleted.result as never)
+    expect([deleted.opts.note, action.label]).toEqual(['已移入垃圾桶', '撤销'])
+    await act(async () => { action.onAction() })
+    expect(api.undone).toEqual(['change-delete'])
   })
 
   it('Alt+↓ 在卡片里把项目往下挪一格，只在同一状态里挪', async () => {

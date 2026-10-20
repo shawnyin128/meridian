@@ -236,7 +236,7 @@ describe('WatchSettings', () => {
     await act(async () => { root.render(<MessagesProvider><WatchSettings /></MessagesProvider>) })
 
     const input = host.querySelector<HTMLInputElement>(
-      'input[placeholder="用一句话描述想持续关注的研究方向"]',
+      'input[placeholder="研究方向"]',
     )!
     await act(async () => { enter(input, '我想关注批量推理中的动态验证策略') })
     const section = host.querySelector('.watch-suggestions')!
@@ -272,7 +272,7 @@ describe('WatchSettings', () => {
     await act(async () => { root.render(<MessagesProvider><WatchSettings /></MessagesProvider>) })
 
     const input = host.querySelector<HTMLInputElement>(
-      'input[placeholder="用一句话描述想持续关注的研究方向"]',
+      'input[placeholder="研究方向"]',
     )!
     await act(async () => { enter(input, '批量推理的动态验证') })
     const pressEnter = (init: KeyboardEventInit) => act(async () => {
@@ -336,7 +336,7 @@ describe('WatchSettings', () => {
     await act(async () => { root.unmount() })
   })
 
-  it('建议来源用共享的分段切换,切换后换成新来源的建议', async () => {
+  it('建议来源用共享的分段切换,切换后换成新来源的建议;离线时依据旁写一个短状态', async () => {
     const root = createRoot(host)
     await act(async () => { root.render(<MessagesProvider><WatchSettings /></MessagesProvider>) })
 
@@ -346,7 +346,7 @@ describe('WatchSettings', () => {
     expect(button(sources!, '描述关注方向').getAttribute('aria-checked')).toBe('true')
 
     const input = section.querySelector<HTMLInputElement>(
-      'input[placeholder="用一句话描述想持续关注的研究方向"]',
+      'input[placeholder="研究方向"]',
     )!
     await act(async () => { enter(input, '我想关注批量推理中的动态验证策略') })
     await act(async () => { button(section, '查找建议').click() })
@@ -357,14 +357,16 @@ describe('WatchSettings', () => {
     expect(button(sources!, '描述关注方向').getAttribute('aria-checked')).toBe('false')
     expect(section.textContent).not.toContain('batch aware verification')
     expect(section.querySelector('select')).toBeNull()
-    expect(section.querySelector('button[aria-label="用于生成建议的项目"]')!.textContent).toBe('Draft-tree serving')
+    expect(section.querySelector('button[aria-label="项目"]')!.textContent).toBe('Draft-tree serving')
 
     api.suggest.mockResolvedValueOnce({
-      topics: [{ name: 'tree attention kernels', relatedPapers: 2 }], authors: [], paperCount: 4,
+      topics: [{ name: 'tree attention kernels', relatedPapers: 2 }], authors: [], paperCount: 4, stale: true,
     })
     await act(async () => { button(section, '查找建议').click() })
     expect(api.suggest).toHaveBeenLastCalledWith({ source: 'project', projectId: 'project-1' })
     expect(section.textContent).toContain('tree attention kernels')
+    const basis = section.querySelector('.watch-suggestion-results > .ph2')!
+    expect([basis.firstChild?.textContent, basis.querySelector('.tag')?.textContent]).toEqual(['基于 4 篇相关论文', '离线 · 上次的建议'])
 
     await act(async () => { root.unmount() })
   })

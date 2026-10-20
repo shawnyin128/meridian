@@ -2,15 +2,15 @@
 export const chat = {
   newChat: '新对话',
   saveIdeaLabel: '保存为想法',
+  noDiscussion: '尚无讨论',
   mentionGroup: { project: '项目', paper: '论文', page: 'Wiki' },
   conflictQuestion: '为什么说这两条结论冲突？',
   quotePrefix: (quote: string) => `关于这段原文：“${quote}” `,
   composerPlaceholder: '问题或想法',
   mentionPickerHeading: '引用项目、论文或 Wiki',
   currentChat: '当前对话',
-  ideaSavedNote: '想法已保存，可在“研究 → 想法”中查看',
+  ideaSavedNote: '想法已保存',
   recordedNote: (project: string) => `已记入《${project}》的科研记录`,
-  recordedTo: (project: string) => `对话结论已记入项目《${project}》的科研记录。`,
   archivedSuffix: (title: string) => `${title} · 已归档`,
   paperChatLabel: '当前论文对话',
   expandPaperChat: '展开论文对话',
@@ -20,5 +20,4 @@ export const chat = {
   askAboutPaper: '向当前论文提问',
   paperComposerPlaceholder: '问这篇论文，或记录相关想法…',
   actionDone: '已记入科研记录',
-  noModel: 'AI 尚未接入，这个问题现在答不了。',
 } satisfies Record<string, unknown>

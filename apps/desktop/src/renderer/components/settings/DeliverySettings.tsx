@@ -54,7 +54,6 @@ export function DeliverySettings() {
     <Card className="delivery-settings-card">
       <div className="delivery-setting-copy">
         <strong>{m.settings.delivery.limitHeading}</strong>
-        <p>{m.settings.delivery.limitNote}</p>
       </div>
       <div className="delivery-setting-control">
         <FormInput

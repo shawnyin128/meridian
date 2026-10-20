@@ -19,6 +19,7 @@ export const ideas = {
     linked: 'Linked to project',
   },
   manage: (title: string) => `Manage idea: ${title}`,
+  projectFinished: 'Project finished',
   updated: (date: string) => `Updated ${date}`,
   detailHeading: 'Idea details',
   bodyLabel: 'Idea',
@@ -38,8 +39,7 @@ export const ideas = {
     sourceLabel: (source: string) => `Source: ${source}`,
     titleLabel: 'Title',
     titlePlaceholder: 'What problem does this idea solve?',
-    bodyPlaceholder: 'Describe, in your own words, the mechanism, hypothesis, or direction worth exploring further…',
-    note: 'Save the idea in your own words. Meridian keeps a link to the original chat but never treats chat content as a confirmed conclusion.',
+    bodyPlaceholder: 'Mechanism, hypothesis, or direction…',
     save: 'Save idea',
   },
   graphDialog: {

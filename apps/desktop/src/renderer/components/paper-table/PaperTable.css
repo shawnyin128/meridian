@@ -36,7 +36,6 @@
 .gxrow .gx-t{font-size:13px;font-weight:600;min-width:150px}
 .gxrow .gx-m{flex:1;font-size:12px;color:var(--ter);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .gnav{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:12px}
-.lmore{font-size:var(--fs-sm);color:var(--ter);padding:12px 2px}
 
 .ptable{width:100%;min-width:0;border-collapse:collapse;font-size:var(--fs-base);margin-bottom:16px;table-layout:fixed}
 .ptable th{position:relative}
@@ -185,7 +184,6 @@
 .research-map-intro{display:flex;align-items:flex-start;gap:24px;padding:16px 18px;border:1px solid var(--sep);border-radius:var(--r-xl);background:var(--card)}
 .research-map-copy{min-width:0;flex:1}
 .research-map-title{display:flex;align-items:center;gap:8px;font-size:var(--fs-read)}
-.research-map-copy p{max-width:720px;margin:6px 0 0;color:var(--sec);font-size:var(--fs-sm);line-height:var(--lh-read)}
 .research-map-stats{display:flex;flex:0 0 auto;align-items:stretch;gap:8px}
 .research-map-stats>span{display:flex;min-width:72px;flex-direction:column;gap:2px;padding:7px 10px;border-radius:var(--r-md);background:var(--field);color:var(--ter);font-size:var(--fs-cap)}
 .research-map-stats strong{color:var(--ink);font-size:var(--fs-read)}
@@ -200,8 +198,7 @@
 .research-map-detail-head{display:flex;align-items:flex-start;gap:12px;padding:14px 16px;border-bottom:1px solid var(--sep2)}
 .research-map-detail-head>div{display:flex;min-width:0;flex:1;flex-direction:column;gap:3px}
 .research-map-detail-head strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:var(--fs-read)}
-.research-map-detail-head>div>span,.research-map-readonly{color:var(--ter);font-size:var(--fs-cap)}
-.research-map-readonly{flex:0 0 auto;padding-top:2px}
+.research-map-detail-head>div>span{color:var(--ter);font-size:var(--fs-cap)}
 .research-map-papers{padding:0 16px}
 .research-map-paper{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 16px;min-height:78px;padding:10px 0}
 .research-map-paper-title{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}

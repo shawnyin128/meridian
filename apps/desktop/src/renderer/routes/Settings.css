@@ -48,18 +48,14 @@
 .appearance-mini-content i:nth-child(3){width:52%;background:var(--ap-field)}
 
 .language-select{width:220px}
-.language-note{margin:12px 0 0;color:var(--ter);font-size:var(--fs-cap);line-height:var(--lh-ui)}
 
 .storage-head{display:flex;align-items:flex-start;gap:16px}
 .storage-head>div{flex:1;min-width:0}
-.storage-head p{margin:0;color:var(--sec);font-size:var(--fs-sm);line-height:var(--lh-ui)}
 .storage-root{display:grid;grid-template-columns:64px minmax(0,1fr);gap:12px;margin-top:16px;
   padding:10px 0;border-top:1px solid var(--sep2);border-bottom:1px solid var(--sep2);align-items:center}
 .storage-root span{color:var(--ter);font-size:var(--fs-sm)}
-.storage-note{margin:12px 0 0;color:var(--ter);font-size:var(--fs-cap);line-height:var(--lh-ui)}
-.storage-note.pending{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 10px;
-  border-radius:var(--r-md);background:var(--tint-warn);color:var(--warn)}
-.storage-note.pending .btn{flex-shrink:0}
+.storage-state{margin-top:12px}
+.storage-pending{display:flex;align-items:center;gap:12px;margin-top:12px}
 .storage-reset{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-top:16px;
   padding-top:14px;border-top:1px solid var(--sep2);color:var(--sec);font-size:var(--fs-sm)}
 .storage-backup-row{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:16px;
@@ -73,16 +69,13 @@
 .model-protocol{display:grid;grid-template-columns:88px minmax(0,1fr);gap:12px;align-items:center;margin-top:12px;
   color:var(--sec);font-size:var(--fs-sm)}
 .model-protocol strong{color:var(--ink);font-size:var(--fs-sm);font-weight:500}
-.model-template-help{margin:10px 0 0 100px;color:var(--ter);font-size:var(--fs-cap);line-height:var(--lh-ui)}
 .model-template-summary{margin:10px 0 0 100px;padding:9px 11px;border-radius:var(--r-md);background:var(--field);
   display:flex;flex-direction:column;gap:3px;color:var(--sec);font-size:var(--fs-cap);line-height:var(--lh-ui)}
 .model-template-summary code{color:var(--ter);font-family:var(--mono);font-size:var(--fs-cap);overflow-wrap:anywhere}
 
-.settings-intro,.settings-explain{margin:0 0 12px;color:var(--ter);font-size:var(--fs-sm);line-height:var(--lh-ui)}
 .settings-count{color:var(--ter);font-weight:500}
 .delivery-settings-card{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:8px 24px}
 .delivery-setting-copy strong{font-size:var(--fs-base);font-weight:600;color:var(--ink)}
-.delivery-setting-copy p{margin:5px 0 0;color:var(--ter);font-size:var(--fs-sm);line-height:var(--lh-ui)}
 .delivery-setting-control{display:flex;align-items:center;gap:7px;color:var(--sec);font-size:var(--fs-sm)}
 .delivery-setting-control .form-input{width:76px;text-align:right}
 .delivery-setting-control .btn{margin-left:3px}

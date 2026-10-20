@@ -12,6 +12,7 @@ import { ChipToggles } from '../ChipToggles.js'
 import { FormTextarea } from '../FormControls.js'
 import { HarnessAction } from '../HarnessAction.js'
 import { SegmentedControl } from '../SegmentedControl.js'
+import { Tag } from '../Tag.js'
 import { ReaderPanelHeader } from './ReaderPanelHeader.js'
 import { PaperWikiProposalReview } from './PaperWikiProposalReview.js'
 
@@ -176,10 +177,6 @@ export function PaperWikiIngest({ paper, reading }: {
     <section className="wiki-ingest" aria-label={m.wiki.addToWiki}>
       <ReaderPanelHeader title={m.wiki.addToWiki} />
       <div className="wiki-ingest-body">
-        <p className="wiki-ingest-intro">
-          {m.wiki.ingest.intro}
-        </p>
-
         <div className="wiki-ingest-scope">
           <div><span>{m.wiki.scope.source}</span><strong>{m.wiki.scope.currentPaper}</strong></div>
           <div><span>{m.wiki.scope.highlights}</span><strong>{m.wiki.scope.count(writtenHighlights)}</strong></div>
@@ -191,7 +188,7 @@ export function PaperWikiIngest({ paper, reading }: {
         </div>
 
         {personal === 0 ? (
-          <p className="wiki-ingest-tip">{m.wiki.ingest.noPersonalRecords}</p>
+          <Tag>{m.wiki.ingest.noPersonalRecords}</Tag>
         ) : (
           <p className="wiki-ingest-tip">{m.wiki.ingest.personalRecordsIncluded(personal)}</p>
         )}
@@ -199,20 +196,9 @@ export function PaperWikiIngest({ paper, reading }: {
         {plan === null && pending === null && error === null
           ? <p className="wiki-ingest-status">{m.wiki.ingest.preparing}</p>
           : null}
-        {plan !== null && !plan.model.configured ? (
-          <p className="wiki-ingest-status bad">{m.wiki.ingest.notConnectedNote}</p>
-        ) : null}
+        {plan !== null && !plan.model.configured ? <Tag tone="warn">{m.wiki.ingest.notConnectedNote}</Tag> : null}
         {receipt !== null ? <p className="wiki-ingest-status done">{receipt.message}</p> : null}
-        {pending !== null ? (
-          <p className="wiki-ingest-status done">
-            {m.wiki.ingest.restoredPending}
-          </p>
-        ) : null}
-        {pending?.stale === true ? (
-          <p className="wiki-ingest-status bad">
-            {m.wiki.ingest.stalePending}
-          </p>
-        ) : null}
+        {pending !== null ? <Tag tone="good">{m.wiki.ingest.restoredPending}</Tag> : null}
         {receipt?.warning === undefined ? null : (
           <p className="wiki-ingest-status bad">{failureLabel(m, m.wiki.ingest.auditFailed, receipt.warning)}</p>
         )}
@@ -244,11 +230,7 @@ export function PaperWikiIngest({ paper, reading }: {
             )}
             {proposal.review !== undefined && reviewMode === 'structured' ? (
               <>
-                {draft === proposal.body ? null : (
-                  <p className="wiki-ingest-edit-note">
-                    {m.wiki.ingest.editNote}
-                  </p>
-                )}
+                {draft === proposal.body ? null : <Tag tone="warn">{m.wiki.ingest.editNote}</Tag>}
                 <PaperWikiProposalReview review={proposal.review}
                   {...(proposal.quality === undefined ? {} : { quality: proposal.quality })} />
               </>
@@ -260,7 +242,6 @@ export function PaperWikiIngest({ paper, reading }: {
               <div className="wiki-ingest-rejection" aria-label={m.wiki.ingest.rejectionFeedbackLabel}>
                 <div className="wiki-ingest-rejection-head">
                   <strong>{m.wiki.ingest.rejectionPrompt}</strong>
-                  <span>{m.wiki.ingest.rejectionPrivacyNote}</span>
                 </div>
                 <ChipToggles
                   className="wiki-ingest-rejection-reasons" label={m.wiki.ingest.rejectReasonsLabel}
@@ -286,6 +267,7 @@ export function PaperWikiIngest({ paper, reading }: {
               </div>
             ) : (
               <div className="wiki-ingest-actions">
+                {pending?.stale === true ? <Tag tone="warn">{m.wiki.ingest.stalePending}</Tag> : null}
                 <button className="btn" disabled={applying || rejecting}
                   onClick={() => setRejectionOpen(true)}>
                   {m.wiki.ingest.discardProposal}
@@ -301,7 +283,6 @@ export function PaperWikiIngest({ paper, reading }: {
         ) : null}
         {applied ? <p className="wiki-ingest-status done">{m.wiki.ingest.written}</p> : null}
         {rejected ? <p className="wiki-ingest-status">{m.wiki.ingest.discarded}</p> : null}
-        <small>{m.wiki.ingest.disclaimer}</small>
       </div>
     </section>
   )

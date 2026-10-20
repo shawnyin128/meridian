@@ -17,6 +17,7 @@ export const ideas = {
     linked: '想法已关联项目',
   },
   manage: (title: string) => `管理想法：${title}`,
+  projectFinished: '项目已完成',
   updated: (date: string) => `${date} 更新`,
   detailHeading: '想法详情',
   bodyLabel: '想法',
@@ -36,8 +37,7 @@ export const ideas = {
     sourceLabel: (source: string) => `来源：${source}`,
     titleLabel: '标题',
     titlePlaceholder: '这个想法要解决什么问题？',
-    bodyPlaceholder: '用自己的话整理讨论中值得继续探索的机制、假设或方向…',
-    note: '这里保存的是你明确整理的研究想法，并保留来源对话；不会把聊天内容自动当成结论。',
+    bodyPlaceholder: '机制、假设或方向…',
     save: '保存想法',
   },
   graphDialog: {

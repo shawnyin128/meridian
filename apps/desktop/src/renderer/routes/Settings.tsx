@@ -30,13 +30,11 @@ import { DateTimeDisplay } from '../components/DateTimeDisplay.js'
 import { ModalDialog, ModalTitle } from '../components/ModalDialog.js'
 import { NavRow } from '../components/NavRow.js'
 import { RowActions, StructuredList, StructuredRow } from '../components/StructuredList.js'
-import { TitleNote } from '../components/TitleNote.js'
 import { PageError, SectionHeading } from '../components/PageShell.js'
 import { useScrollFade } from '../hooks/useScrollFade.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
 import { WatchSettings } from './Watches.js'
 import { PaperText } from '../components/paper/PaperText.js'
-import { plainTitle } from '../components/paper/paper-text.js'
 import { Tag } from '../components/Tag.js'
 import { Card } from '../components/Card.js'
 import { Tooltip } from '../components/Tooltip.js'
@@ -137,8 +135,7 @@ export function Settings() {
   const archived = (chats ?? []).filter((s) => s.archived)
 
   const unarchive = (session: ChatSession) => {
-    void write(chat.setArchived(session.id, false),
-      { note: <TitleNote message={m.settings.archived.unarchived} title={plainTitle(session.title)} /> })
+    void write(chat.setArchived(session.id, false), { note: m.settings.archived.unarchived })
   }
 
   const openChat = (session: ChatSession) => {
@@ -230,7 +227,6 @@ export function Settings() {
           <div className="storage-head">
             <div>
               <SectionHeading variant="group">{m.settings.storage.libraryTitle}</SectionHeading>
-              <p>{m.settings.storage.libraryNote}</p>
             </div>
             {location === null ? null : <Tag>{m.settings.storage.source[location.source]}</Tag>}
           </div>
@@ -256,17 +252,17 @@ export function Settings() {
               </>
             )}
           {location?.locked
-            ? <p className="storage-note">{m.settings.storage.lockedNote}</p>
+            ? <Tag className="storage-state">{m.settings.storage.lockedNote}</Tag>
             : location?.restartRequired
               ? (
-                <div className="storage-note pending" role="status">
-                  <span>{m.settings.storage.pendingNote}</span>
+                <div className="storage-pending" role="status">
+                  <Tag tone="warn">{m.settings.storage.pendingNote}</Tag>
                   <button className="btn pri" onClick={() => appMenu.restartApp()}>
                     {m.settings.storage.restartNow}
                   </button>
                 </div>
               )
-              : <p className="storage-note">{m.settings.storage.chooseNote}</p>}
+              : null}
           <div className="storage-reset">
             <span>{m.settings.storage.resetLabel}</span>
             <ConfirmDialog
@@ -288,7 +284,6 @@ export function Settings() {
           : (
             <>
               <SectionHeading>{m.settings.storage.backupsHeading(backups.length)}</SectionHeading>
-              <p className="settings-intro">{m.settings.storage.backupsIntro}</p>
               <StructuredList className="storage-backup-list">
                 {backups.map((backup) => {
                   const label = `${format.date(localDayOf(backup.createdAt))} ${format.clock(backup.createdAt)}`
@@ -335,21 +330,18 @@ export function Settings() {
     api: (
       <>
         <SectionHeading>{m.settings.api.heading}</SectionHeading>
-        <p className="settings-intro">{m.settings.api.intro}</p>
         <ApiOverview onOpen={setCurrent} />
       </>
     ),
     research: (
       <>
         <SectionHeading>{m.settings.research.heading}</SectionHeading>
-        <p className="settings-intro">{m.settings.research.intro}</p>
         <SemanticKeySettings />
       </>
     ),
     model: (
       <>
         <SectionHeading>{m.settings.model.heading}</SectionHeading>
-        <p className="settings-intro">{m.settings.model.intro}</p>
         <ModelSettings />
       </>
     ),
@@ -379,21 +371,18 @@ export function Settings() {
     delivery: (
       <>
         <SectionHeading>{m.settings.delivery.heading}</SectionHeading>
-        <p className="settings-intro">{m.settings.delivery.intro}</p>
         <DeliverySettings />
       </>
     ),
     'delivery-watch': (
       <>
         <SectionHeading>{m.settings.categories.deliveryWatch}</SectionHeading>
-        <p className="settings-intro">{m.settings.delivery.watchIntro}</p>
         <WatchSettings />
       </>
     ),
     'delivery-discovery': (
       <>
         <SectionHeading>{m.settings.discovery.heading}</SectionHeading>
-        <p className="settings-intro">{m.settings.discovery.intro}</p>
         <DiscoverySettings />
       </>
     ),

@@ -173,7 +173,7 @@ test('新建一个项目,重命名、改状态、删掉,再从垃圾桶恢复', 
   await shown(win).locator('.projpanel .inedit').fill(NEW_PROJECT)
   await shown(win).locator('.projpanel .inedit').press('Enter')
 
-  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已创建项目 · 已加入研究总览')
+  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已创建项目')
   await expect(rows).toHaveCount(before.length + 1)
   const created = (await listProjects(win)).find((p) => p.name === NEW_PROJECT)
   expect(created?.status).toBe(ACTIVE)
@@ -199,7 +199,7 @@ test('新建一个项目,重命名、改状态、删掉,再从垃圾桶恢复', 
   await card.hover()
   await card.locator('.dots').click()
   await win.locator('.ctxmenu .mi.danger').click()
-  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已移入垃圾桶 · 7 天内可恢复')
+  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已移入垃圾桶')
   await expect(rows).toHaveCount(before.length)
   expect((await listProjects(win)).map((p) => p.id)).not.toContain(created!.id)
 
@@ -428,7 +428,7 @@ test('库里一个项目都没有时,「＋ 新建项目」仍在,建得出第�
   await shown(win).locator('.projpanel .inedit').fill(NEW_PROJECT)
   await shown(win).locator('.projpanel .inedit').press('Enter')
 
-  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已创建项目 · 已加入研究总览')
+  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已创建项目')
   expect((await listProjects(win)).map((p) => p.name)).toEqual([NEW_PROJECT])
   await expect(shown(win).locator('.projpanel .project-identity-name')).toHaveText([NEW_PROJECT])
 })

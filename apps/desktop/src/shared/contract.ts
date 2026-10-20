@@ -1383,6 +1383,21 @@ export const ChangeEntrySchema = z.object({
   archived: z.boolean(),
 }).strict()
 
+/**
+ * What a write the change log records answers: `change` is the id of the change entry it recorded,
+ * the one `changelog.undo` takes to undo exactly that write. A call response; nothing stores it.
+ */
+export const RecordedChangeSchema = z.object({ change: z.string() }).strict()
+
+/**
+ * What a write that moves one item into the trash without a change entry answers: `trash` is the id
+ * of the trash entry it created, the one `trash.restore` takes. A call response; nothing stores it.
+ */
+export const TrashedEntrySchema = z.object({ trash: z.string() }).strict()
+
+/** What `project.deleteAttachment` answers: the project after the write, and the change entry it recorded. */
+export const ProjectRecordedChangeSchema = RecordedChangeSchema.extend({ project: ProjectDetailSchema }).strict()
+
 export const ChangelogUndoParamsSchema = z.object({ id: z.string() }).strict()
 
 export const ChangelogArchiveParamsSchema = z.object({ id: z.string() }).strict()
@@ -2280,6 +2295,9 @@ export type DeliverySettings = z.infer<typeof DeliverySettingsSchema>
 export type LaterEntry = z.infer<typeof LaterEntrySchema>
 export type ChangeEntry = z.infer<typeof ChangeEntrySchema>
 export type DiffPiece = z.infer<typeof DiffPieceSchema>
+export type RecordedChange = z.infer<typeof RecordedChangeSchema>
+export type TrashedEntry = z.infer<typeof TrashedEntrySchema>
+export type ProjectRecordedChange = z.infer<typeof ProjectRecordedChangeSchema>
 export type ChangeSource = ChangeEntry['source']
 export type FeedEntry = z.infer<typeof FeedEntrySchema>
 export type FeedSource = FeedEntry['source']

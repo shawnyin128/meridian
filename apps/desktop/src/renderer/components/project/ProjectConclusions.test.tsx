@@ -102,10 +102,14 @@ describe('project conclusions', () => {
     expect(handlers.onOpenNode).toHaveBeenCalledWith('t.wide')
   })
 
-  it('验证和写入 Wiki 是面板的操作,和关闭按钮一起放在面板头部', async () => {
+  it('验证和写入 Wiki 是面板的操作,和关闭按钮一起放在面板头部;写不了时按钮旁写着未验证', async () => {
     await panel(PENDING)
-    const head = host.querySelector('.node-document-head > .section-heading-actions')!
-    expect([...head.children].map((child) => child.textContent || child.getAttribute('aria-label'))).toEqual(['验证', '写入 Wiki', '收起详情'])
+    const head = () => host.querySelector('.node-document-head > .section-heading-actions')!
+    expect([...head().children].map((child) => child.textContent || child.getAttribute('aria-label')))
+      .toEqual(['验证', '未验证', '写入 Wiki', '收起详情'])
+    expect(head().querySelector('.tag')!.nextElementSibling!.textContent).toBe('写入 Wiki')
+    await panel({ ...PENDING, state: 'verified', verifiedOn: '2026-09-21' })
+    expect(head().querySelector('.tag')).toBeNull()
   })
 
   it('已验证:选一页写入 Wiki,提交一条以这个节点为证据的结论', async () => {

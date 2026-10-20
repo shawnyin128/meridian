@@ -20,6 +20,7 @@ import {
 } from '../components/PageShell.js'
 import { errorLabel } from '../lib/failure-label.js'
 import { useEscapeLayer, useJump, useScreenReentry, useVaultRevision } from '../shell/AppShell.js'
+import { useUndo } from '../hooks/useUndo.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
 import { useDragReorder, type Reorderable } from '../hooks/useDragReorder.js'
 import { DragHandle } from '../components/DragHandle.js'
@@ -57,7 +58,10 @@ function IdeaMenu({ idea, linked, onMove, canMove, onArchive, onDelete }: {
       <MenuItem disabled={!canMove(-1)} onSelect={() => onMove(-1)}>{m.common.moveUp}</MenuItem>
       <MenuItem disabled={!canMove(1)} onSelect={() => onMove(1)}>{m.common.moveDown}</MenuItem>
       <MenuSeparator />
-      <MenuItem disabled={locked} onSelect={onArchive}>{idea.archived ? m.common.unarchive : m.common.archive}</MenuItem>
+      <MenuItem disabled={locked} onSelect={onArchive}>
+        {idea.archived ? m.common.unarchive : m.common.archive}
+        {locked ? <span className="mi-key">{m.ideas.projectFinished}</span> : null}
+      </MenuItem>
       <MenuSeparator />
       <MenuItem className="mi danger" onSelect={onDelete}>{m.common.delete}</MenuItem>
     </DotsMenu>
@@ -226,6 +230,7 @@ export function Ideas() {
   const { revision } = useVaultRevision()
   const { jump, open } = useJump()
   const write = useVaultWrite()
+  const undo = useUndo()
   const consumedJump = useRef(0)
   const [rows, setRows] = useState<ResearchIdea[] | null>(null)
   const [projects, setProjects] = useState<ProjectSummary[]>([])
@@ -280,7 +285,7 @@ export function Ideas() {
     )
   }
   const remove = (idea: ResearchIdea) => {
-    void write(ideaApi.delete(idea.id), { note: m.common.trashed }).then((saved) => {
+    void write(ideaApi.delete(idea.id), { note: m.common.trashed, action: (trashed) => undo.restore([trashed]) }).then((saved) => {
       if (!saved) return
       if (selectedId === idea.id) setSelectedId(null)
     })

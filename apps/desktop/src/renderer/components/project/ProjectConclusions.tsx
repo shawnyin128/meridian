@@ -14,6 +14,7 @@ import { SectionHeading } from '../PageShell.js'
 import { PanelClose } from '../PanelClose.js'
 import { AgentLabel } from '../SourceLabel.js'
 import { StructuredList, StructuredRow } from '../StructuredList.js'
+import { Tag } from '../Tag.js'
 import { Tooltip } from '../Tooltip.js'
 import { WikiFormDialog, WikiFormField } from '../wiki/WikiFormDialog.js'
 import { EntityLink } from '../EntityLink.js'
@@ -125,6 +126,7 @@ export function ProjectConclusionPanel({
             {conclusion.node !== undefined && conclusion.verifiedOn !== undefined
               ? <button className="btn ghost sm" onClick={() => onUnverify(conclusion.node!)}>{c.unverify}</button>
               : null}
+            {conclusion.state === 'verified' ? null : <Tag>{c.unverifiedState}</Tag>}
             <button
               className="btn ghost sm" disabled={conclusion.state !== 'verified'} onClick={() => setWriting(true)}
             >{c.write}</button>

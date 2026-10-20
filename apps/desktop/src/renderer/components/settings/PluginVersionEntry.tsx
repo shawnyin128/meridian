@@ -26,7 +26,7 @@ export function PluginVersionEntry({ plugin, checking, onCheck }: PluginVersionE
       <div className="extension-head">
         <div>
           <SectionHeading variant="group">{copy.name}</SectionHeading>
-          <p>{copy.description} · {checked}</p>
+          <p>{checked}</p>
         </div>
         <div className="extension-head-side">
           <Tag className="extension-state">{copy.latest(plugin.version)}</Tag>

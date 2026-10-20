@@ -9,6 +9,7 @@ import { useMessages } from '../../messages/useMessages.js'
 import { ChoicePicker } from '../FieldPickers.js'
 import { FormInput } from '../FormControls.js'
 import { LoadingPlaceholder } from '../LoadingPlaceholder.js'
+import { Tag } from '../Tag.js'
 import {
   ServiceActions, ServiceCard, ServiceClearKeyButton, ServiceConnectionStatus, ServiceError, ServiceField,
   ServiceFoot, ServiceSavedKey, ServiceStatus,
@@ -281,7 +282,6 @@ export function ModelSettings() {
     <ServiceCard className="model-settings-card">
       <ServiceStatus
         title={selected.label}
-        description={selected.description}
         configured={savedSelection && savedProfile?.configured === true}
         configuredLabel={m.settings.model.configured}
         notConfiguredLabel={m.settings.model.notConfigured}
@@ -326,9 +326,7 @@ export function ModelSettings() {
                 />
               </ServiceField>
             </>
-          ) : selectedCompatibleTemplate === null ? (
-            <p className="model-template-help">{m.settings.model.templates.help}</p>
-          ) : (
+          ) : selectedCompatibleTemplate === null ? null : (
             <div className="model-template-summary" aria-label={m.settings.model.templates.summaryAria}>
               <span>{selectedCompatibleTemplate.protocolLabel} · {selectedCompatibleTemplate.authenticationLabel}</span>
               <code>{selectedCompatibleTemplate.baseUrl}</code>
@@ -392,6 +390,7 @@ export function ModelSettings() {
               }}
             />
           ) : null}
+          {canTestConnection ? null : <Tag>{m.settings.model.connection.notSaved}</Tag>}
           <button
             className="btn" disabled={!canTestConnection || saving || connectionCheck.state === 'testing'}
             onClick={() => { void testConnection() }}

@@ -43,10 +43,7 @@ export function ExtensionSettings({ statuses, plugin, onCopy, onCopyPrompt }: Ex
           return (
             <section className="extension-entry" key={extension.id} data-extension={extension.id}>
               <div className="extension-head">
-                <div>
-                  <SectionHeading variant="group">{extension.name}</SectionHeading>
-                  <p>{m.settings.extensions.description}</p>
-                </div>
+                <SectionHeading variant="group">{extension.name}</SectionHeading>
                 <Tag tone={STATE_TONE[extension.state]} className="extension-state">
                   {m.settings.extensions.state[extension.state]}
                   {extension.version === undefined ? '' : ` · ${extension.version}`}
@@ -76,15 +73,12 @@ export function ExtensionSettings({ statuses, plugin, onCopy, onCopyPrompt }: Ex
       </Card>
 
       <Card as="section" className="extension-tutorial" data-extension-tutorial="">
-        <div className="extension-tutorial-head">
-          <SectionHeading variant="group">{m.settings.extensions.tutorial.heading}</SectionHeading>
-          <p>{m.settings.extensions.tutorial.intro}</p>
-        </div>
+        <SectionHeading variant="group">{m.settings.extensions.tutorial.heading}</SectionHeading>
         <ol className="extension-tutorial-steps">
           {m.settings.extensions.tutorial.steps.map((step, index) => (
             <li key={step.title}>
               <span>{index + 1}</span>
-              <div><strong>{step.title}</strong><p>{step.body}</p></div>
+              <strong>{step.title}</strong>
             </li>
           ))}
         </ol>

@@ -33,7 +33,7 @@ async function shootStates(win: Page, route: string): Promise<void> {
   await parkPointer(win)
 
   await win.getByRole('radio', { name: '主题', exact: true }).first().click()
-  await expect(win.locator('.lmore')).toHaveText('选一个主题查看论文')
+  await expect(win.locator('.gxrow').first()).toBeVisible()
   await parkPointer(win)
   await win.screenshot({ path: `${SHOTS}/route-${route}-grouped.png` })
 }

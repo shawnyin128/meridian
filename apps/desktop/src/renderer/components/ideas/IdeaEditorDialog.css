@@ -2,4 +2,3 @@
 .idea-dialog-field{display:flex;flex-direction:column;gap:6px;margin-top:12px;color:var(--sec);font-size:var(--fs-sm)}
 .idea-dialog-field .form-control{width:100%}
 .idea-dialog-field .form-textarea{min-height:132px}
-.idea-dialog-note{margin:10px 0 0;color:var(--ter);font-size:var(--fs-cap);line-height:1.5}

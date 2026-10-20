@@ -73,6 +73,10 @@ let renameOptionCalls: [key: string, from: string, to: string][]
 let setColumnTypeCalls: (Controlled<void> & { key: string; type: string })[]
 /** The text of each refusal notice, in the order shown. */
 let refusals: string[]
+/** Each success notice's text and the action it offered, in the order shown. */
+let successes: [text: unknown, action: { label: string; onAction: () => void } | undefined][]
+/** The change entries changelog.undo was asked to undo, in order. */
+let undone: string[]
 let deletedPapers: string[]
 /** An error the next papers.update throws synchronously, instead of rejecting, to simulate an unexpected throw. */
 let throwOnNextUpdate: Error | null
@@ -97,9 +101,10 @@ vi.mock('../ipc.js', () => ({
       if (throwOnNextUpdate) { const e = throwOnNextUpdate; throwOnNextUpdate = null; throw e }
       const c = controlled<void>()
       updateCalls.push({ ...c, id, patch })
-      return c.promise
+      const change = `change-update-${updateCalls.length}`
+      return c.promise.then(() => ({ change }))
     },
-    delete: (id: string) => { deletedPapers.push(id); return Promise.resolve() },
+    delete: (id: string) => { deletedPapers.push(id); return Promise.resolve({ change: 'change-delete' }) },
     reading: (id: string) => Promise.resolve({ paperId: id, highlights: [], notes: [], remark: '' }),
     source: () => Promise.reject(new Error('未在这个探针里用到')),
     import: (filename: string, bytes: Uint8Array) => {
@@ -119,14 +124,15 @@ vi.mock('../ipc.js', () => ({
     },
     renameOption: (key: string, from: string, to: string) => {
       renameOptionCalls.push([key, from, to])
-      return Promise.resolve()
+      return Promise.resolve({ change: 'change-rename' })
     },
     setColumnType: (key: string, type: string) => {
       const c = controlled<void>()
       setColumnTypeCalls.push({ ...c, key, type })
-      return c.promise
+      return c.promise.then(() => ({ change: 'change-type' }))
     },
   },
+  changelog: { undo: (id: string) => { undone.push(id); return Promise.resolve() } },
   project: {
     list: () => Promise.resolve([]),
     addPaper: () => Promise.resolve(),
@@ -145,7 +151,10 @@ vi.mock('../shell/AppShell.js', () => ({
   }),
   usePaperCount: () => vaultPaperCount,
   useScreen: () => 'papers',
-  useNotice: () => ({ success: vi.fn(), refusal: (message: string) => { refusals.push(message) } }),
+  useNotice: () => ({
+    success: (text: unknown, action?: { label: string; onAction: () => void }) => { successes.push([text, action]) },
+    refusal: (message: string) => { refusals.push(message) },
+  }),
   // Only real revision state makes bump re-run the effects that fetch on revision, as in the app.
   useVaultRevision: () => {
     const [revision, setRevision] = useState(0)
@@ -265,6 +274,8 @@ describe('PaperTable', () => {
     renameOptionCalls = []
     setColumnTypeCalls = []
     refusals = []
+    successes = []
+    undone = []
     deletedPapers = []
     throwOnNextUpdate = null
     columnsCallCount = 0
@@ -308,7 +319,6 @@ describe('PaperTable', () => {
     expect(listParams.at(-1)).toMatchObject({ page: 1, size: 200, sort: 'addedAt', direction: 'desc' })
     expect(host.querySelector('.research-map-title')?.textContent).toContain('自适应研究地图')
     expect(host.querySelector('.research-map-groups')?.textContent).toContain('Speculative decoding')
-    expect(host.querySelector('.research-map-detail')?.textContent).toContain('归入依据')
     expect(host.querySelector('.research-map-detail')?.textContent).toContain('主题：Speculative decoding')
     expect(host.querySelector('.pagebar')).toBeNull()
   })
@@ -587,7 +597,7 @@ describe('PaperTable', () => {
     expect(updateCalls.at(-1)!.patch).toEqual({ rating: 3 })
   })
 
-  it('分组索引里的每个值都是按钮，按它列出这一组的论文', async () => {
+  it('分组索引里的每个值都是按钮，按它列出这一组的论文，下面不写一句该怎么选', async () => {
     facetRows = [{ value: '推理', count: 2, newestTitle: '一篇论文' }]
     const host = mount()
     columnsCall.resolve({ hidden: [], custom: [], groups: ['topics'] })
@@ -600,6 +610,7 @@ describe('PaperTable', () => {
     await flush()
     const value = host.querySelector<HTMLElement>('.gxrow')!
     expect(value.tagName).toBe('BUTTON')
+    expect(host.querySelector('.lmore')).toBeNull()
     expect(value.classList.contains('structured-row')).toBe(true)
     expect(value.parentElement!.classList.contains('structured-list--embedded')).toBe(true)
     await act(async () => { value.click() })
@@ -951,6 +962,76 @@ describe('PaperTable', () => {
     expect(host.querySelector<HTMLButtonElement>('[aria-label="新建列"]')!.disabled).toBe(false)
     expect(row.classList).toContain('selected')
     expect(row.getAttribute('aria-current')).toBe('true')
+  })
+
+  /** Clicks the action of the last success notice, which must be Undo, and lets the undo land. */
+  const undoLast = async (): Promise<unknown> => {
+    const [text, action] = successes.at(-1)!
+    expect(action?.label).toBe('撤销')
+    await act(async () => { action!.onAction() })
+    await flush()
+    return text
+  }
+
+  it('移除主题后提示只说已更新，给一个撤销，撤销的是这次写入记下的那条变动', async () => {
+    const host = mount()
+    columnsCall.resolve(EMPTY_COLUMNS)
+    listCall.resolve({ rows: [{ ...ROW, topics: ['推理', '检索'] }], total: 1 })
+    await flush()
+    const row = host.querySelector<HTMLElement>('.ptable tbody tr')!
+    await act(async () => {
+      [...row.querySelectorAll<HTMLElement>('.tagchip')].find((chip) => chip.textContent === '检索')!
+        .querySelector<HTMLButtonElement>('button')!.click()
+    })
+    updateCalls.at(-1)!.resolve()
+    await flush()
+    expect(await undoLast()).toBe('已更新')
+    expect(undone).toEqual(['change-update-1'])
+  })
+
+  it('论文移进垃圾桶后提示只说已移入垃圾桶，撤销按最近变动的那一条把它放回', async () => {
+    const host = mount()
+    columnsCall.resolve(EMPTY_COLUMNS)
+    listCall.resolve({ rows: [ROW], total: 1 })
+    await flush()
+    const row = host.querySelector<HTMLElement>('.ptable tbody tr')!
+    await act(async () => {
+      row.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, clientX: 120, clientY: 80 }))
+    })
+    await act(async () => { press([...document.body.querySelectorAll('.paper-row-menu [role="menuitem"]')].at(-1)!) })
+    await flush()
+    expect(await undoLast()).toBe('已移入垃圾桶')
+    expect(undone).toEqual(['change-delete'])
+  })
+
+  it('改列类型后提示只说已改列类型，撤销的是这次改类型记下的那条变动', async () => {
+    await openNoteTypeRow()
+    await act(async () => { typeButton('单选').click() })
+    columnsCall = controlled()
+    columnsCall.resolve(NOTE_AS_SELECT)
+    setColumnTypeCalls[0]!.resolve()
+    for (let i = 0; i < 8; i++) await flush()
+    expect(await undoLast()).toBe('已改列类型')
+    expect(undone).toEqual(['change-type'])
+  })
+
+  it('详情里改了元数据，提示只说已更新哪一项，撤销的是这次写入记下的那条变动', async () => {
+    const host = mount()
+    columnsCall.resolve(EMPTY_COLUMNS)
+    listCall.resolve({ rows: [{ ...ROW, topics: ['推理', '检索'] }], total: 1 })
+    await flush()
+    await act(async () => { press(host.querySelector<HTMLElement>('.ptable tbody tr td')!) })
+    getCall.resolve({ ...ROW, topics: ['推理', '检索'] })
+    await flush()
+    const panel = host.querySelector<HTMLElement>('.pdetail .paper-meta')!
+    await act(async () => {
+      [...panel.querySelectorAll<HTMLElement>('.tagchip')].find((chip) => chip.textContent === '检索')!
+        .querySelector<HTMLButtonElement>('button')!.click()
+    })
+    updateCalls.at(-1)!.resolve()
+    await flush()
+    expect(await undoLast()).toBe('已更新主题')
+    expect(undone).toEqual([`change-update-${updateCalls.length}`])
   })
 
   it('表格和详情用同一组评分、阅读状态与主题编辑：点当前那颗星清空评分，状态是同一个选择器，主题是带 × 的标签加 +', async () => {

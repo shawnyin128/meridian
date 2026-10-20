@@ -13,9 +13,10 @@ import { LoadingPlaceholder } from '../components/LoadingPlaceholder.js'
 import { PaperText } from '../components/paper/PaperText.js'
 import { plainTitle } from '../components/paper/paper-text.js'
 import { RowActions, StructuredList, StructuredRow } from '../components/StructuredList.js'
+import { Tag } from '../components/Tag.js'
 import { TitleNote } from '../components/TitleNote.js'
 import {
-  PageBody, PageError, PageFooter, PageHeader, PageShell, PageTitle, SectionHeading,
+  PageBody, PageError, PageHeader, PageShell, PageTitle, SectionHeading,
 } from '../components/PageShell.js'
 import { D1, dnum } from '../../shared/dates.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
@@ -121,6 +122,7 @@ export function Trash() {
                   <StructuredRow className="trow" key={entry.id}>
                     <span className="tt2">{PAPER_KINDS.has(entry.kind) ? <PaperText text={entry.title} /> : entry.title}</span>
                     <span className="tm2">{m.trash.autoClear(daysLeft(entry.deletedAt, today))}</span>
+                    {entry.restorable ? null : <Tag>{m.trash.projectGone}</Tag>}
                     <RowActions>
                       <IconButton
                         label={m.common.restore} size="nested" disabled={!entry.restorable} onClick={() => restore(entry)}
@@ -139,15 +141,6 @@ export function Trash() {
             </Fragment>
           ))}
       </PageBody>
-
-      {/* As in the demo, the retention note stays at the bottom of the view; an empty trash shows no bar. */}
-      {held.length > 0
-        ? (
-          <PageFooter bare>
-            <div className="thint">{m.trash.retentionNote(TRASH_RETENTION_DAYS)}</div>
-          </PageFooter>
-        )
-        : null}
     </PageShell>
   )
 }

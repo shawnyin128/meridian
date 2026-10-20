@@ -21,7 +21,7 @@ test('picking English relabels the shell and each main screen, and survives a re
   await win.locator('.choice-picker-menu [role="menuitemradio"]', { hasText: 'English' }).click()
   await expect(win.locator('button.language-select')).toHaveText('English')
   await expect(win.locator('html')).toHaveAttribute('lang', 'en')
-  await expect(win.locator('.language-note')).toContainText('only affects the interface')
+  await expect(win.locator('button.language-select')).toHaveAttribute('aria-label', 'Language')
   await win.screenshot({ path: `${SHOTS}/english-settings.png` })
   await win.keyboard.press('Escape')
 

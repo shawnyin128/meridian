@@ -25,6 +25,7 @@ import { CollapsibleGroup } from '../components/CollapsibleGroup.js'
 import { DateTimeDisplay } from '../components/DateTimeDisplay.js'
 import { SegmentedControl } from '../components/SegmentedControl.js'
 import { Tag } from '../components/Tag.js'
+import { useUndo } from '../hooks/useUndo.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
 import {
   PageBody, PageError, PageHeader, PageShell, PageTitle, PageToolbar,
@@ -84,6 +85,7 @@ export function Inbox() {
   const { revision, bump } = useVaultRevision()
   const reportError = useCallback((e: unknown) => setError(errorLabel(m, e)), [m])
   const write = useVaultWrite()
+  const undo = useUndo()
   const jobs = useJobs()
   const [busy, setBusy] = useState<ReadonlySet<string>>(new Set())
   const [failed, setFailed] = useState<ReadonlyMap<string, InboxDownloadFailure>>(new Map())
@@ -142,8 +144,9 @@ export function Inbox() {
 
   const dismiss = (ids: string[], text: string) => {
     leave(ids)
-    notice.success(text)
-    window.setTimeout(() => { void write(Promise.all(ids.map((id) => inbox.dismiss(id)))) }, LEAVE_MS)
+    window.setTimeout(() => {
+      void write(Promise.all(ids.map((id) => inbox.dismiss(id))), { note: text, action: undo.restore })
+    }, LEAVE_MS)
   }
 
   const queue = (id: string) => {
@@ -193,8 +196,7 @@ export function Inbox() {
   const feedback = (id: string, value: 'more' | 'less' | 'known') => {
     if (value !== 'more') leave([id])
     void discovery.feedback(id, value).then(() => {
-      notice.success(value === 'more' ? m.inbox.notices.moreLike
-        : value === 'less' ? m.inbox.notices.lessLike : m.inbox.notices.known)
+      notice.success(value === 'known' ? m.inbox.notices.known : m.inbox.notices.remembered)
       window.setTimeout(bump, value === 'more' ? 0 : LEAVE_MS)
     }).catch((e: unknown) => notice.refusal(errorLabel(m, e)))
   }

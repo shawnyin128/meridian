@@ -37,6 +37,7 @@ export const project = {
     verified: '已验证这条结论',
     unverify: '取消验证',
     unverified: '已取消验证',
+    unverifiedState: '未验证',
     write: '写入 Wiki',
     written: '已写入 Wiki',
     writeProposal: (page: string) => `项目结论写入「${page}」`,
@@ -210,7 +211,7 @@ export const project = {
     delete: '删除附件',
     localOnly: '只能添加本机上的文件',
     added: (n: number) => `已添加附件 ${n} 个`,
-    noPath: '这个附件只记了名字，没有记下文件在哪',
+    noPath: '无文件位置',
     missing: '文件已经不在原来的位置',
   },
   agentSessions: {

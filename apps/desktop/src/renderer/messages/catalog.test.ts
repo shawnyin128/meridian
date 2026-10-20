@@ -113,3 +113,26 @@ describe('标签后的数', () => {
     ]).toEqual(['主题 · speculative decoding · 3', '任务 · 2', '实验记录 · 2'])
   })
 })
+
+describe('提示、标签和占位只说结果', () => {
+  // The notices, labels and placeholders the copy audit shortened: each states its result or name in
+  // one clause, with no explanation after it.
+  const results = (m: typeof zh) => [
+    m.changelog.undoneNote, m.chat.ideaSavedNote, m.inbox.notices.duplicateToast, m.inbox.notices.remembered,
+    m.papers.parse.addedFixable, m.papers.notices.remarkSaved, m.papers.columnMenu.noOptionsHint,
+    m.research.list.createdNote, m.research.list.createdFeedNote('Draft trees'), m.settings.archived.unarchived,
+    m.watches.notices.added, m.watches.notices.updated, m.watches.notices.resumed, m.watches.notices.pausedNote,
+    m.watches.notices.removed, m.watches.projectLabel, m.watches.focusPlaceholder, m.wiki.ingest.discarded,
+    m.common.trashed, m.inbox.notices.dismissed, m.inbox.notices.dismissedAll, m.papers.notices.topicAdded,
+    m.papers.notices.updated, m.papers.notices.optionRenamed, m.papers.notices.columnTypeChanged,
+    m.papers.metadata.updated(m.papers.metadata.fields.title),
+  ]
+
+  it('zh:一句之内，没有间隔号、逗号或句号后的解释', () => {
+    for (const text of results(zh)) expect(text, text).not.toMatch(/[·，。；：]/)
+  })
+
+  it('en: one clause, with no separator or sentence after it', () => {
+    for (const text of results(en)) expect(text, text).not.toMatch(/ · |[.;:]\s|[.;:]$/)
+  })
+})

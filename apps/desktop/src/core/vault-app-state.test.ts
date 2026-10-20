@@ -555,11 +555,13 @@ describe('vault app state', () => {
   })
 
   describe('git 检查', () => {
-    it('库不在 git 之下时,动态里说得出这件事,重开不再重复说', () => {
+    it('库不在 git 之下时,动态里只说这件事,不附劝告,重开不再重复说', () => {
       const entries = store.listFeed()
       expect(entries).toHaveLength(1)
       expect(entries[0]).toMatchObject({ source: 'steward' })
-      expect(JSON.stringify(entries[0]!.body)).toContain('不在 git 管理之下')
+      expect(entries[0]!.body).toEqual({ kind: 'runs', runs: [
+        { kind: 'text', text: '这个库' }, { kind: 'strong', text: '不在 git 管理之下' }, { kind: 'text', text: '。' },
+      ] })
       expect(reopen().listFeed()).toHaveLength(1)
     })
 

@@ -339,7 +339,7 @@ export const attachmentSizeText = (bytes: number) => bytes >= 1048576
 export function ProjectAttachments({ attachments, onAdd, onReveal, onRemove }: {
   attachments: Attachment[]
   onAdd: (files: File[]) => void
-  onReveal: (attachment: Attachment) => void
+  onReveal: (path: string) => void
   onRemove: (attachmentId: string) => void
 }) {
   const m = useMessages()
@@ -384,7 +384,11 @@ export function ProjectAttachments({ attachments, onAdd, onReveal, onRemove }: {
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                     <path d={CLIP_PATH} />
                   </svg>
-                  <button type="button" className="an" onClick={() => onReveal(attachment)}>{attachment.name}</button>
+                  <button
+                    type="button" className="an" disabled={attachment.path === undefined}
+                    onClick={() => { if (attachment.path !== undefined) onReveal(attachment.path) }}
+                  >{attachment.name}</button>
+                  {attachment.path === undefined ? <Tag>{m.project.attachments.noPath}</Tag> : null}
                   <span className="as">{attachment.size}</span>
                   <RowActions>
                     <IconButton

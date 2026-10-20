@@ -502,7 +502,7 @@ export function WatchSettings() {
                 <>
                   <div className="ph2">
                     {m.watches.suggestionBasis(suggestions.paperCount)}
-                    {suggestions.stale === true ? ` · ${m.watches.suggestionStale}` : ''}
+                    {suggestions.stale === true ? <Tag tone="warn">{m.watches.suggestionStale}</Tag> : null}
                   </div>
                   {suggestions.topics.length === 0 ? null : (
                     <section className="watch-suggestion-group">

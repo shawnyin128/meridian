@@ -5,6 +5,7 @@ import { errorLabel } from '../../lib/failure-label.js'
 import { useMessages } from '../../messages/useMessages.js'
 import { EntityLink } from '../EntityLink.js'
 import { FormInput } from '../FormControls.js'
+import { Tag } from '../Tag.js'
 import {
   ServiceActions, ServiceCard, ServiceClearKeyButton, ServiceConnectionStatus, ServiceError, ServiceField,
   ServiceFoot, ServiceSavedKey, ServiceStatus,
@@ -75,7 +76,7 @@ export function SemanticKeySettings() {
     <ServiceCard className="semantic-key-card">
       <ServiceStatus
         title={copy.heading}
-        description={<>{copy.description} <EntityLink kind="external" label={copy.apply} href={APPLY_URL} /></>}
+        description={<EntityLink kind="external" label={copy.apply} href={APPLY_URL} />}
         configured={status.configured}
         configuredLabel={m.settings.model.configured}
         notConfiguredLabel={m.settings.model.notConfigured}
@@ -122,6 +123,7 @@ export function SemanticKeySettings() {
               }}
             />
           ) : null}
+          {canTestConnection ? null : <Tag>{m.settings.model.connection.notSaved}</Tag>}
           <button
             className="btn" disabled={!canTestConnection || saving || connectionCheck.state === 'testing'}
             onClick={() => { void testConnection() }}
