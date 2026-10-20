@@ -3,6 +3,7 @@ import type { PaperRow } from '../../../shared/contract.js'
 import { useMessages } from '../../messages/useMessages.js'
 import { ContextMenu, ContextMenuItem } from '../ContextMenu.js'
 import { EmptyState } from '../EmptyState.js'
+import { FadeText } from '../FadeText.js'
 import { LoadingPlaceholder } from '../LoadingPlaceholder.js'
 import { StructuredList, StructuredRow } from '../StructuredList.js'
 import { CountBadge, Tag } from '../Tag.js'
@@ -64,7 +65,7 @@ export function ResearchMap({ rows, total, loading, onOpenPaper, onReadPaper }: 
                     onActivate={() => setSelectedId(group.id)}
                   >
                     <span className="research-map-group-copy">
-                      <strong>{group.label}</strong>
+                      <FadeText className="research-map-group-name" label={group.label}>{group.label}</FadeText>
                       {group.kind === 'phrase' ? null : <span>{m.papers.researchMap.kind[group.kind]}</span>}
                     </span>
                     <CountBadge count={group.members.length} />
@@ -78,7 +79,7 @@ export function ResearchMap({ rows, total, loading, onOpenPaper, onReadPaper }: 
                   <div className="research-map-detail">
                     <div className="research-map-detail-head">
                       <div>
-                        <strong>{selected.label}</strong>
+                        <FadeText className="research-map-detail-name" label={selected.label}>{selected.label}</FadeText>
                         <span>{m.papers.researchMap.paperCount(selected.members.length)}</span>
                       </div>
                     </div>
@@ -91,7 +92,9 @@ export function ResearchMap({ rows, total, loading, onOpenPaper, onReadPaper }: 
                           key={member.paper.id} label={m.papers.contextMenu.label(plainTitle(member.paper.title))}
                           trigger={(
                             <StructuredRow className="research-map-paper" onActivate={() => onOpenPaper(member.paper)}>
-                              <span className="research-map-paper-title"><PaperText text={member.paper.title} /></span>
+                              <FadeText className="research-map-paper-title" label={plainTitle(member.paper.title)}>
+                                <PaperText text={member.paper.title} />
+                              </FadeText>
                               <span className="research-map-paper-meta">
                                 {member.paper.year === undefined ? member.paper.venue : `${member.paper.year} · ${member.paper.venue}`}
                               </span>

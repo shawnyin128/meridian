@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import type { ProjectStatus } from '../../../shared/contract.js'
 import { useMessages } from '../../messages/useMessages.js'
+import { FadeText } from '../FadeText.js'
 import { StatusDot } from '../StatusDot.js'
 import { Tag } from '../Tag.js'
 import { Tooltip } from '../Tooltip.js'
@@ -66,13 +67,13 @@ export function ProjectIdentity({
             ? <span className="project-identity-topic">{project.topic}</span>
             : null}
         </span>
-        {showStatus ? <span className="project-identity-sub">{project.status}</span> : null}
+        {showStatus ? <FadeText className="project-identity-sub" label={project.status}>{project.status}</FadeText> : null}
       </span>
     )
   }
   return (
     <span className={`project-identity ${variant}`}>
-      <Tooltip label={project.name} whenClipped><span className="project-identity-name">{project.name}</span></Tooltip>
+      <FadeText className="project-identity-name" label={project.name}>{project.name}</FadeText>
       {showStatus ? <ProjectStatusTag status={project.status} /> : null}
       {showPriority ? <ProjectPriorityTag priority={project.priority} /> : null}
       {showTopic && project.topic

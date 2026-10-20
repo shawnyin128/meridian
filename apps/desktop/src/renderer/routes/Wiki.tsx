@@ -16,6 +16,7 @@ import { BackButton } from '../components/BackButton.js'
 import { EditActions } from '../components/EditActions.js'
 import { EmptyState } from '../components/EmptyState.js'
 import { EntityLink } from '../components/EntityLink.js'
+import { FadeText } from '../components/FadeText.js'
 import { FormInput } from '../components/FormControls.js'
 import {
   PageBody, PageError, PageHeader, PageShell, PageTitle, PageToolbar, SectionHeading,
@@ -96,21 +97,24 @@ function AggregationCard({ card, onOpen, onRemove, pending }: {
   )
 }
 
-/** The demo's paperCard; a click opens this paper's page, and its title is the card's button. */
+/**
+ * The demo's paperCard; a click opens this paper's page, and its title is the card's button. The title
+ * takes up to two lines, and the year, venue and topics one.
+ */
 function PaperCard({ paper, onOpen }: { paper: PaperRow; onOpen: () => void }) {
   const m = useMessages()
   const line = [`${paper.year ?? ''} ${paper.venue}`.trim(), paper.topics.join(' / ')]
     .filter((part) => part !== '').join(' · ')
   return (
-    <ResearchObjectCard variant="grid" className="wkcard" data-wk={`${PAPER_PAGE}${paper.id}`} onActivate={onOpen}>
+    <ResearchObjectCard variant="grid" className="wkcard wkcard--paper" data-wk={`${PAPER_PAGE}${paper.id}`} onActivate={onOpen}>
       <div className="wt">
         <Tag tone="paper" className="wkind">{m.wiki.paperKind}</Tag>
         <Tooltip label={plainTitle(paper.title)} whenClipped>
-          <CardOpen className="tt"><PaperText text={paper.title} /></CardOpen>
+          <CardOpen className="tt"><span className="tt-lines"><PaperText text={paper.title} /></span></CardOpen>
         </Tooltip>
         <span className="sp" />
       </div>
-      <div className="wm">{line}</div>
+      <FadeText className="wm" label={line}>{line}</FadeText>
       <div className="wf">{m.wiki.paperCardFooter(paper.noteCount, paper.conclusionCount)}</div>
     </ResearchObjectCard>
   )
@@ -627,7 +631,7 @@ export function Wiki() {
           : <button className="btn" onClick={() => jumpTo('papers', shownPaper.title)}>{m.wiki.viewInPaperList}</button>}
       >
         {place === null ? null : <BackButton onClick={back} />}
-        <PageTitle>{title}</PageTitle>
+        <PageTitle label={shownAgg?.title ?? (shownPaper === null ? undefined : plainTitle(shownPaper.title))}>{title}</PageTitle>
       </PageHeader>
 
       <PageError error={error} />

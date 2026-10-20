@@ -90,6 +90,8 @@ describe('PaperChat', () => {
 
   beforeEach(() => {
     globalThis.IS_REACT_ACT_ENVIRONMENT = true
+    // The head's title measures whether it fits, and jsdom has no ResizeObserver.
+    vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} })
     window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'zh')
     document.body.innerHTML = ''
     vi.clearAllMocks()
@@ -100,6 +102,7 @@ describe('PaperChat', () => {
   afterEach(() => {
     if (root !== null) act(() => root!.unmount())
     root = null
+    vi.unstubAllGlobals()
   })
 
   it('记入科研记录后，动态里那一条和提示说的是同一句', async () => {
@@ -142,6 +145,15 @@ describe('PaperChat', () => {
 
     expect(api.send).toHaveBeenCalledWith('chat-paper-1', '关键假设是什么？')
     expect(input.value).toBe('')
+  })
+
+  it('对话栏头部写出整篇论文的标题，放不下时淡出，和面包屑同一个规则', async () => {
+    const title = 'EAGLE: Speculative Sampling Requires Rethinking Feature Uncertainty'
+    const host = document.createElement('div')
+    document.body.append(host)
+    root = createRoot(host)
+    await act(async () => { root!.render(withMessages(<PaperChat paper={{ ...PAPER, title }} />)) })
+    expect(host.querySelector('.paper-chat-head .fade-text')?.textContent).toBe(`${title} · 阅读中`)
   })
 
   it('提交未完成时发送箭头变为可停止的旋转控件', async () => {

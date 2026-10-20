@@ -11,12 +11,11 @@
 .ovstat.bad b{color:var(--bad)}
 
 /*
- * The overview timeline mirrors the project timeline: each row starts with its project, followed by
- * the milestones or an actual task.
+ * The overview timeline mirrors the project timeline: each project's milestone row carries the
+ * project's name, and its task rows follow.
  */
 .overview-gantt .glabels{flex-basis:258px}
 .overview-gantt .timeline-label-row{gap:var(--sp-8);cursor:pointer;font-weight:var(--fw-regular)}
-.overview-gantt .timeline-project-label{max-width:82px}
 
 /*
  * Overview rows share one list layout and reading order: project / date / kind / content / extra
@@ -40,9 +39,9 @@
 .ovpulse-row{display:grid;grid-template-columns:170px minmax(0,1.05fr) minmax(0,1.3fr) minmax(0,1.05fr) 140px;column-gap:var(--sp-20)}
 .ovlist-row.ovpulse-row{grid-template-columns:170px minmax(0,1.05fr) minmax(0,1.3fr) minmax(0,1.05fr) 140px;column-gap:var(--sp-20);min-height:68px;padding:var(--sp-10) 0}
 .ovpulse-cell{display:flex;min-width:0;flex-direction:column;justify-content:center;gap:var(--sp-6)}
-.ovpulse-cell b{display:block;min-width:0;overflow:hidden;white-space:nowrap;mask-image:var(--clipfade);font-size:var(--fs-base);font-weight:var(--fw-semibold)}
+.ovpulse-title{font-size:var(--fs-base);font-weight:var(--fw-title)}
 .ovpulse-latest{font-size:var(--fs-base);font-weight:var(--fw-semibold)}
-.ovpulse-sub{display:block;min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;color:var(--ter);font-size:var(--fs-sm);font-weight:var(--fw-regular)}
+.ovpulse-sub{max-width:100%;color:var(--ter);font-size:var(--fs-sm);font-weight:var(--fw-regular)}
 .ovpulse-cell.signal{align-items:flex-start}
 
 /* Recent progress juxtaposed with next milestones */

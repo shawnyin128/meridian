@@ -12,6 +12,7 @@ import { BackButton } from '../BackButton.js'
 import { FormTextarea } from '../FormControls.js'
 import { Grip } from '../Grip.js'
 import { EmptyState } from '../EmptyState.js'
+import { FadeText } from '../FadeText.js'
 import { LoadingPlaceholder } from '../LoadingPlaceholder.js'
 import { PageError } from '../PageShell.js'
 import { useDrafts } from '../../hooks/useDrafts.js'
@@ -123,9 +124,12 @@ export function PaperChat({ paper, onBack = () => {}, prompt = null }: {
     <aside className="paper-chat stream" aria-label={m.chat.paperChatLabel} inert={collapsed}>
       <header className="paper-chat-head">
         <BackButton onClick={onBack} />
-        <strong>
+        <FadeText
+          className="paper-chat-title"
+          label={paper === null ? m.common.loading : `${plainTitle(paper.title)}${m.chat.paperHeaderSuffix}`}
+        >
           {paper === null ? m.common.loading : <><PaperText text={paper.title} />{m.chat.paperHeaderSuffix}</>}
-        </strong>
+        </FadeText>
       </header>
       <PageError error={error} />
       <div className="msgs" ref={stream}>

@@ -102,6 +102,25 @@ describe('研究总览的项目推进', () => {
     expect(latest.textContent).toBe('agent 记的agent')
   })
 
+  it('项目推进一行里每一格的每一行文字放不下时都同样淡出，字整句都在，不出省略号', async () => {
+    const focus = '把动态树宽度原型在 13B 与 70B 两个尺寸上都跑通'
+    const next = '跑一遍完整的接受率扫描并把每个宽度的结果写回科研记录'
+    api.rows = [{
+      ...row([{ date: '2026-10-15', text: '先在 7B 上确认宽度为 4 时接受率最高', kind: 'note' }]), focus,
+      tasks: [{ id: 't1', title: next, start: '2026-10-12', end: '2026-10-20', state: 'act', priority: 'p0' }],
+    }]
+    await act(async () => root.render(<MessagesProvider><ResearchOverview /></MessagesProvider>))
+    const rowElement = host.querySelector<HTMLElement>('.ovpulse-row[data-proj="spec"]')!
+    const loose: string[] = []
+    const walker = document.createTreeWalker(rowElement, NodeFilter.SHOW_TEXT)
+    for (let node = walker.nextNode(); node !== null; node = walker.nextNode()) {
+      if (node.textContent!.trim() !== '' && node.parentElement!.closest('.fade-text, .tag') === null) loose.push(node.textContent!)
+    }
+    expect(loose).toEqual([])
+    expect(rowElement.textContent).toContain(focus)
+    expect(rowElement.textContent).toContain(next)
+  })
+
   it('最近科研记录给每条记录标上项目页科研记录的类型名和色调,没有类型的旧记录标成记录', async () => {
     api.rows = [row([
       { date: '2026-10-13', text: '旧记录' },

@@ -1,6 +1,6 @@
 .parse-float{position:fixed;right:18px;bottom:18px;z-index:80;width:min(292px,calc(100vw - 36px));display:grid;gap:var(--sp-8);pointer-events:none}
 .upcard{position:relative;padding:var(--sp-10) var(--sp-12);pointer-events:auto}
-.upcard .upt{display:flex;align-items:center;font-size:var(--fs-base);font-weight:var(--fw-semibold);color:var(--ink)}
+.upcard .upt{display:flex;align-items:center;font-size:var(--fs-card-title);font-weight:var(--fw-title);color:var(--ink)}
 .upcard .upcount{margin-left:auto;color:var(--ter);font-weight:var(--fw-regular)}
 .upcard .upclose{margin:calc(-1 * var(--sp-4)) calc(-1 * var(--sp-4)) calc(-1 * var(--sp-4)) auto}
 .upcard.quiet{color:var(--ter)}

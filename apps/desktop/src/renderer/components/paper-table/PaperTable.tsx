@@ -18,7 +18,7 @@ import { ColumnMenu } from './ColumnMenu.js'
 import { GroupMenu, groupRows } from './GroupMenu.js'
 import { ParseProgress } from '../ParseProgress.js'
 import { Pager } from '../Pager.js'
-import { PaperMetadata, RatingStars, ReadStatePicker } from '../PaperMetadata.js'
+import { PaperMetadata, PaperTitleField, RatingStars, ReadStatePicker } from '../PaperMetadata.js'
 import { PaperTopics } from '../PaperTopics.js'
 import { PaperReadingSummary } from './PaperReadingSummary.js'
 import { FormInput } from '../FormControls.js'
@@ -40,6 +40,7 @@ import { Grip, type GripLimits } from '../Grip.js'
 import { Toolbar, ToolbarButton } from '../Toolbar.js'
 import { Tooltip } from '../Tooltip.js'
 import { DetailPanel } from '../DetailPanel.js'
+import { FadeText } from '../FadeText.js'
 import { ActionMenu, MenuRadioGroup, MenuRadioItem, MenuSeparator } from '../ActionMenu.js'
 import { SegmentedControl } from '../SegmentedControl.js'
 import { ContextMenu, ContextMenuItem, ContextMenuSeparator } from '../ContextMenu.js'
@@ -1272,17 +1273,16 @@ export function PaperTable() {
               : !listed
               ? (
                 <StructuredList variant="embedded" maxVisibleRows="all">
-                  {facets.map((f) => (
-                    <StructuredRow className="gxrow" key={f.value} onActivate={() => { setSel(f.value); setPage(1) }}>
-                      <span className="gx-t">{f.value}</span>
-                      <span className="gx-m">
-                        {m.papers.groupIndex.newest(
-                          `${plainTitle(f.newestTitle).slice(0, 44)}${plainTitle(f.newestTitle).length > 44 ? '…' : ''}`,
-                        )}
-                      </span>
-                      <CountBadge className="n" count={f.count} />
-                    </StructuredRow>
-                  ))}
+                  {facets.map((f) => {
+                    const newest = m.papers.groupIndex.newest(plainTitle(f.newestTitle))
+                    return (
+                      <StructuredRow className="gxrow" key={f.value} onActivate={() => { setSel(f.value); setPage(1) }}>
+                        <span className="gx-t">{f.value}</span>
+                        <FadeText className="gx-m" label={newest}>{newest}</FadeText>
+                        <CountBadge className="n" count={f.count} />
+                      </StructuredRow>
+                    )
+                  })}
                 </StructuredList>
               )
               : (
@@ -1319,13 +1319,13 @@ export function PaperTable() {
           : (
             <div className="pdetail">
               <div className="pd-h">
-                <span className="pd-t"><PaperText text={detail.title} /></span>
+                <span className="pd-t"><PaperTitleField paper={detail} onSaved={setDetail} /></span>
                 <IconButton label={m.papers.rowActions.openReader} onClick={() => open('reader', detail.id)}>
                   <IconRead />
                 </IconButton>
                 <PanelClose onClose={closeDetail} />
               </div>
-              <PaperMetadata paper={detail} readStateLabel={names.columns.st} onSaved={setDetail} />
+              <PaperMetadata paper={detail} readStateLabel={names.columns.st} onSaved={setDetail} titled={false} />
               <PaperReadingSummary
                 paper={detail}
                 onRead={(anchor) => open('reader', detail.id, anchor)}

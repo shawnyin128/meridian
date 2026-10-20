@@ -58,6 +58,23 @@ describe('ResearchMap', () => {
     vi.unstubAllGlobals()
   })
 
+  it('分组名、选中分组的名字和论文标题放不下时都淡出，不出省略号', () => {
+    const title = 'Accelerating Large Language Model Decoding with Speculative Sampling'
+    const rows = [paper('a', title, { topics: ['Speculative decoding'] }), paper('b', 'Bravo', { topics: ['Speculative decoding'] })]
+    const host = document.createElement('div')
+    host.innerHTML = renderToStaticMarkup(
+      <MessagesProvider>
+        <ResearchMap rows={rows} total={rows.length} loading={false} onOpenPaper={() => {}} onReadPaper={() => {}} />
+      </MessagesProvider>,
+    )
+    const faded = (selector: string) => [...host.querySelectorAll(`${selector} .fade-text`)].map((line) => line.textContent)
+    expect(faded('.research-map-group-copy')).toEqual(['Speculative decoding'])
+    expect(faded('.research-map-detail-head')).toEqual(['Speculative decoding'])
+    expect(faded('.research-map-paper')).toEqual([title, 'Bravo'])
+    expect([...host.querySelectorAll('.research-map-group-name, .research-map-detail-name')].every((name) => name.matches('.fade-text')))
+      .toBe(true)
+  })
+
   it('只写分组、数量和归入理由，不写说明句子', () => {
     const rows = [
       paper('a', 'Alpha', { topics: ['Speculative decoding'] }),
@@ -76,7 +93,10 @@ describe('ResearchMap', () => {
     expect(host.querySelector('.research-map-title .tag')).toBeNull()
     expect(host.querySelector('.research-map-limit')?.textContent).toBe('5 / 7 篇')
     const kinds = [...host.querySelectorAll('.research-map-group')]
-      .map((group) => [group.querySelector('strong')?.textContent, group.querySelector('.research-map-group-copy>span')?.textContent ?? null])
+      .map((group) => [
+        group.querySelector('.research-map-group-name')?.textContent,
+        group.querySelector('.research-map-group-copy>span:not(.research-map-group-name)')?.textContent ?? null,
+      ])
     expect(kinds).toContainEqual(['Speculative decoding', '主题或方法信号'])
     expect(kinds).toContainEqual(['Kernel fusion', null])
     const detail = host.querySelector('.research-map-detail')!
@@ -86,6 +106,8 @@ describe('ResearchMap', () => {
 
   it('论文行的右键菜单可以打开详情,也可以直接在阅读器中打开', async () => {
     globalThis.IS_REACT_ACT_ENVIRONMENT = true
+    // The titles measure whether they fit, and jsdom has no ResizeObserver.
+    vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} })
     const rows = [paper('a', 'Alpha', { topics: ['Speculative decoding'] }), paper('b', 'Bravo', { topics: ['Speculative decoding'] })]
     const onOpenPaper = vi.fn()
     const onReadPaper = vi.fn()
@@ -108,5 +130,6 @@ describe('ResearchMap', () => {
     expect(onReadPaper).toHaveBeenCalledExactlyOnceWith(rows[1])
     expect(onOpenPaper).not.toHaveBeenCalled()
     act(() => root.unmount())
+    vi.unstubAllGlobals()
   })
 })

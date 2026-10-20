@@ -263,6 +263,8 @@ async function moveFocus(key: string): Promise<void> {
 describe('PaperTable', () => {
   beforeEach(() => {
     globalThis.IS_REACT_ACT_ENVIRONMENT = true
+    // The page title measures whether it fits, and jsdom has no ResizeObserver.
+    vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} })
     window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'zh')
     document.body.innerHTML = ''
     columnsCall = controlled()
@@ -308,7 +310,7 @@ describe('PaperTable', () => {
     listCall.resolve({ rows: mappedRows, total: 2 })
     await flush()
 
-    expect([...host.querySelector('.desk-head')!.children].map((child) => child.className)).toEqual(['t', 'page-actions'])
+    expect([...host.querySelector('.desk-head')!.children].map((child) => child.className)).toEqual(['fade-text t', 'page-actions'])
     const mapSwitch = [...host.querySelectorAll<HTMLButtonElement>('.paper-view-toolbar .segmented-control button')]
       .find((button) => button.textContent === '研究地图')!
     expect(host.querySelector('.desk-head .page-actions .pdfupload')).not.toBeNull()
@@ -597,6 +599,30 @@ describe('PaperTable', () => {
     expect(updateCalls.at(-1)!.patch).toEqual({ rating: 3 })
   })
 
+  it('详情面板只在头部写一次标题，属性表里没有第二个「标题」；点头部的标题就在原处改', async () => {
+    const host = mount()
+    columnsCall.resolve(EMPTY_COLUMNS)
+    listCall.resolve({ rows: [ROW], total: 1 })
+    await flush()
+    await act(async () => { press(host.querySelector<HTMLElement>('.ptable tbody td')!) })
+    getCall.resolve(ROW)
+    await flush()
+
+    const panel = host.querySelector<HTMLElement>('.pdetail')!
+    expect([...panel.querySelectorAll('dt')].map((label) => label.textContent)).not.toContain('标题')
+    expect(panel.textContent!.split(ROW.title)).toHaveLength(2)
+    await act(async () => { panel.querySelector<HTMLButtonElement>('.pd-t button')!.click() })
+    const input = panel.querySelector<HTMLTextAreaElement>('.pd-t textarea')!
+    expect(input.getAttribute('aria-label')).toBe('编辑标题')
+    const setter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value')!.set!
+    await act(async () => {
+      setter.call(input, '改过的标题')
+      input.dispatchEvent(new Event('input', { bubbles: true }))
+    })
+    await act(async () => { input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })) })
+    expect(updateCalls.at(-1)!.patch).toEqual({ title: '改过的标题' })
+  })
+
   it('分组索引里的每个值都是按钮，按它列出这一组的论文，下面不写一句该怎么选', async () => {
     facetRows = [{ value: '推理', count: 2, newestTitle: '一篇论文' }]
     const host = mount()
@@ -616,6 +642,23 @@ describe('PaperTable', () => {
     await act(async () => { value.click() })
     await flush()
     expect(listParams.at(-1)?.facet).toEqual({ field: 'topics', value: '推理' })
+  })
+
+  it('分组索引写出最新一篇的整个标题，放不下时淡出，不按字数截掉', async () => {
+    const newest = 'Accelerating Large Language Model Decoding with Speculative Sampling'
+    facetRows = [{ value: '推理', count: 2, newestTitle: newest }]
+    const host = mount()
+    columnsCall.resolve({ hidden: [], custom: [], groups: ['topics'] })
+    listCall.resolve({ rows: [ROW], total: 1 })
+    await flush()
+    const topics = [...host.querySelectorAll<HTMLElement>('.filters .segmented-control > button')]
+      .find((button) => button.textContent === '主题')!
+    await act(async () => { topics.click() })
+    await flush()
+
+    const line = host.querySelector<HTMLElement>('.gxrow .gx-m')!
+    expect(line.textContent).toBe(`最新：${newest}`)
+    expect(line.classList.contains('fade-text')).toBe(true)
   })
 
   it('选定分组取值后，取值换成一个选择器：按钮显示当前值，从菜单里换一个值就列出那一组', async () => {
@@ -989,6 +1032,7 @@ describe('PaperTable', () => {
   afterEach(() => {
     if (mountedRoot) act(() => { mountedRoot!.unmount() })
     mountedRoot = null
+    vi.unstubAllGlobals()
   })
 
   it('打开论文详情仍保留全部配置列、列操作与当前行上下文', async () => {
@@ -1122,7 +1166,8 @@ describe('PaperTable', () => {
     getCall.resolve(latex)
     await flush()
 
-    const [title, short] = [...host.querySelectorAll<HTMLElement>('.paper-meta-list .paper-meta-editable')]
+    const title = host.querySelector<HTMLElement>('.pdetail .pd-t')
+    const short = host.querySelector<HTMLElement>('.paper-meta-list .paper-meta-editable')
     expect(title!.innerHTML).toMatch(/<strong>F<\/strong>luxBin <span><span class="katex">/)
     expect(short!.innerHTML).toContain('<em>Flux</em>')
     await act(async () => { title!.querySelector('button')!.click() })

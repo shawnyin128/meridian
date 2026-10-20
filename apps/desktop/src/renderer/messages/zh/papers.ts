@@ -169,6 +169,7 @@ export const papers = {
     updated: (date: string) => `更新 ${date}`,
   },
   card: {
+    abstractLabel: '摘要',
     recommendationLabel: '推荐理由',
     citations: (n: number) => `${n} 引用`,
     expandAbstract: '展开摘要',

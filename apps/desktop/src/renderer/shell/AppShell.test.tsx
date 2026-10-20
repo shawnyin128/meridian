@@ -79,6 +79,8 @@ let host: HTMLDivElement
 /** Mounts the shell with `feed` as the content of its first screen. */
 async function mount(feed: ReactNode = <PaperChatState />): Promise<void> {
   globalThis.IS_REACT_ACT_ENVIRONMENT = true
+  // The breadcrumb's segments measure whether they fit, and jsdom has no ResizeObserver.
+  vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} })
   window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'zh')
   document.body.innerHTML = ''
   host = document.createElement('div')
@@ -118,6 +120,7 @@ function slash(target: HTMLElement): boolean {
 afterEach(() => {
   if (root !== null) act(() => root!.unmount())
   root = null
+  vi.unstubAllGlobals()
 })
 
 /** Shows which settings category the shell has asked to open, or nothing while settings are closed. */
@@ -132,6 +135,8 @@ describe('库打不开时', () => {
   it('报出原因，下面只有一个换论文库的操作，点它打开存储设置，不写一句该怎么做', async () => {
     fixture.today = () => Promise.reject(new Error('库里没有论文页目录'))
     globalThis.IS_REACT_ACT_ENVIRONMENT = true
+    // The failure page's title measures whether it fits, and jsdom has no ResizeObserver.
+    vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} })
     window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'zh')
     document.body.innerHTML = ''
     host = document.createElement('div')
@@ -400,6 +405,13 @@ describe('AppShell keyboard navigation', () => {
     expect(link.tagName).toBe('BUTTON')
     act(() => link.click())
     expect(fixture.back).toHaveBeenCalledOnce()
+  })
+
+  it('面包屑的每一段放不下时都淡出，返回的链接也一样，名字整段都在', () => {
+    act(() => document.querySelector<HTMLElement>('[data-desk="papers"]')!.click())
+    const faded = [...document.querySelectorAll<HTMLElement>('#crumb .cseg')]
+      .map((segment) => (segment.matches('.fade-text') ? segment : segment.querySelector('.fade-text'))?.textContent)
+    expect(faded).toEqual(['我的库', '论文', '深层'])
   })
 })
 

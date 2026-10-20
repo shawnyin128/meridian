@@ -38,6 +38,8 @@ describe('最近变动的来源标签', () => {
 
   beforeEach(() => {
     globalThis.IS_REACT_ACT_ENVIRONMENT = true
+    // The page title measures whether it fits, and jsdom has no ResizeObserver.
+    vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} })
     window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'zh')
     host = document.createElement('div')
     document.body.append(host)
@@ -47,6 +49,7 @@ describe('最近变动的来源标签', () => {
   afterEach(() => {
     act(() => root.unmount())
     host.remove()
+    vi.unstubAllGlobals()
   })
 
   it('agent 做的那条跟一个 agent 标签,提案再写明来自笔记还是实验;我自己做的不带标签', async () => {

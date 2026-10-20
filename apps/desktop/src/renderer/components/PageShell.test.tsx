@@ -18,10 +18,15 @@ describe('PageShell', () => {
     )
     expect(html).toContain('class="desk paper-library"')
     expect(html).toContain('class="desk-head"')
-    expect(html).toContain('class="t"')
+    expect(html).toContain('class="fade-text t"')
     expect(html).toContain('class="desk-body libview"')
     expect(html).toContain('class="page-toolbar"')
     expect(html).toContain('class="desk-foot bare"')
+  })
+
+  it('fades a page title that does not fit, as every one-line title does', () => {
+    const html = renderToStaticMarkup(<PageHeader><PageTitle>推测解码和 KV 量化联合优化</PageTitle></PageHeader>)
+    expect(html).toBe('<div class="desk-head"><span class="fade-text t" data-state="closed">推测解码和 KV 量化联合优化</span></div>')
   })
 
   it('renders errors and action headings through one contract', () => {
@@ -46,7 +51,7 @@ describe('PageShell', () => {
     const html = renderToStaticMarkup(
       <PageHeader actions={<AddAction variant="page">Import</AddAction>}><PageTitle>Papers</PageTitle></PageHeader>,
     )
-    expect(html).toMatch(/^<div class="desk-head"><span class="t">Papers<\/span><div class="page-actions"><button class="btn pri add-action add-action-page">/)
+    expect(html).toMatch(/^<div class="desk-head"><span class="fade-text t" data-state="closed">Papers<\/span><div class="page-actions"><button class="btn pri add-action add-action-page">/)
   })
 
   it('keeps peer-view switches in the shared content toolbar', () => {

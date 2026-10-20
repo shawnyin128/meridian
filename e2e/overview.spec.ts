@@ -236,7 +236,7 @@ test('新建的项目在总览里看得见,成功提示那句话才算数', asyn
 
   await expect(shown(win).locator(`.ovlist-row.progress[data-proj="${created}"] .project-label`))
     .toHaveText(NEW_PROJECT)
-  await expect(shown(win).locator(`.gantt .glrow[data-proj="${created}"] .timeline-project-label`))
+  await expect(shown(win).locator(`.gantt .glrow.msl[data-proj="${created}"] .timeline-item-label`))
     .toHaveText(NEW_PROJECT)
   // A new project with no tasks shows only its milestone row; its schedule no longer fakes a task bar.
   await expect(shown(win).locator(`.gantt .gbar[data-proj="${created}"]`)).toHaveCount(0)

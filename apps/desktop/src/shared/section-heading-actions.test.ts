@@ -35,8 +35,9 @@ describe('小标题的操作', () => {
   it('每种小标题都有自己的字号,右端动作只有一个槽', () => {
     const css = readFileSync(join(RENDERER, 'components', 'PageShell.css'), 'utf8')
     const rule = (selector: string) => new RegExp(`(?:^|\\n)${selector.replace(/[.-]/g, (c) => `\\${c}`)}\\{([^}]*)\\}`).exec(css)?.[1]
-    expect(rule('.section-heading--group')).toMatch(/font-size:var\(--fs-read\);font-weight:var\(--fw-semibold\)/)
-    expect(rule('.section-heading--rail')).toMatch(/font-size:var\(--fs-read\)/)
+    expect(rule('.section-heading')).toMatch(/font-size:var\(--fs-section\);font-weight:var\(--fw-title\)/)
+    expect(rule('.section-heading--group')).toMatch(/font-size:var\(--fs-group\)/)
+    expect(rule('.section-heading--rail')).toMatch(/font-size:var\(--fs-group\)/)
     expect(rule('.section-heading-actions')).toMatch(/margin-left:auto/)
     expect(css).not.toMatch(/\.flexh|\.section-actions/)
   })

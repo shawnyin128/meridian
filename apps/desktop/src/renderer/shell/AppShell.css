@@ -25,20 +25,15 @@
 /* The bar's content is only 26px tall, so its icon buttons take the nested size, not the 30px one. */
 .titlebar .brandmark{width:18px;height:18px;display:block}
 /* Breadcrumbs: always shown after the app button, they tell where the user is */
-.crumb{display:flex;align-items:center;gap:var(--sp-6);margin-left:var(--sp-8);font-size:var(--fs-sm);color:var(--ter);flex:1;min-width:0;overflow:hidden;white-space:nowrap;mask-image:var(--clipfade);user-select:none}
+.crumb{display:flex;align-items:center;gap:var(--sp-6);margin-left:var(--sp-8);font-size:var(--fs-sm);color:var(--ter);flex:1;min-width:0;overflow:hidden;white-space:nowrap;user-select:none}
 .crumb::before{content:"";width:1px;height:12px;background:var(--sep);margin-right:var(--sp-4);flex-shrink:0}
 .crumb:empty{display:none}
 .crumb .csep{opacity:.5;font-size:var(--fs-sm);flex-shrink:0}
-.crumb .cseg{max-width:260px;overflow:hidden;text-overflow:ellipsis}
-/*
- * Long titles land in the last segment (the current location), so only it fades out: the clickable
- * segments have a pill background on hover that the mask would eat into along with the text, so they
- * keep the ellipsis. flex:1 serves the fade: it stretches the last segment up to its 260px cap, so a
- * short title ends before the fade zone.
- */
-.crumb .cseg:last-child{flex:1;color:var(--sec);text-overflow:clip;mask-image:var(--clipfade)}
+/* Every segment fades its text out when it does not fit; a link fades its text inside its hover pill. */
+.crumb .cseg{max-width:260px}
+.crumb .cseg:last-child{color:var(--sec)}
 /* Padding paired with a negative margin: the pill grows outward only, and the text does not move. */
-.crumb .cseg.link{border:0;background:transparent;color:inherit;font:inherit;cursor:pointer;padding:var(--sp-2) var(--sp-6);margin:calc(-1 * var(--sp-2)) calc(-1 * var(--sp-6));border-radius:var(--r-sm);transition:background var(--t-fast) var(--e-out),color var(--t-fast) var(--e-out)}
+.crumb .cseg.link{display:flex;min-width:0;border:0;background:transparent;color:inherit;font:inherit;cursor:pointer;padding:var(--sp-2) var(--sp-6);margin:calc(-1 * var(--sp-2)) calc(-1 * var(--sp-6));border-radius:var(--r-sm);transition:background var(--t-fast) var(--e-out),color var(--t-fast) var(--e-out)}
 .crumb .cseg.link:hover{background:var(--hover);color:var(--ink)}
 
 /* The demo takes this background from .window; the window frame is not copied, so it moves here. */
@@ -88,7 +83,7 @@
 /* A search with no hits keeps the panel open; its empty state sits on the rows' inline padding. */
 .pickhits.sres .sres-empty{padding:0 var(--row-menu-pad)}
 
-.sb-h{display:flex;align-items:center;gap:var(--sp-4);font-size:var(--fs-cap);font-weight:var(--fw-semibold);color:var(--ter);text-transform:uppercase;letter-spacing:.04em;padding:0 var(--row-nav-pad);margin:var(--sp-12) 0 var(--sp-4)}
+.sb-h{display:flex;align-items:center;gap:var(--sp-4);font-size:var(--fs-label);font-weight:var(--fw-label);color:var(--ter);padding:0 var(--row-nav-pad);margin:var(--sp-12) 0 var(--sp-4)}
 .sb-h.chats-h{display:flex;align-items:center}
 .sect-h{cursor:pointer;user-select:none}
 /* A fold caret always shows, in a row in the tone of the row's caret buttons; a closed group's caret turns to point at its title. */

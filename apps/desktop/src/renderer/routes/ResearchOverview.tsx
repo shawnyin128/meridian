@@ -11,6 +11,7 @@ import { errorLabel } from '../lib/failure-label.js'
 import { useJump, useToday, useVaultRevision, type JumpAnchor } from '../shell/AppShell.js'
 import { LoadingPlaceholder } from '../components/LoadingPlaceholder.js'
 import { AgentLabel } from '../components/SourceLabel.js'
+import { FadeText } from '../components/FadeText.js'
 import { StructuredList, StructuredRow } from '../components/StructuredList.js'
 import { Tag, type TagTone } from '../components/Tag.js'
 import { dnum } from '../../shared/dates.js'
@@ -194,6 +195,12 @@ function ProjectProgress({ rows, onOpen }: {
           const activeTitle = project.research.activeNodes.map((n) => n.label).join(', ')
           const shown = activeLabel ?? project.focus
           const named = activeLabel === undefined ? project.focus : activeTitle
+          const note = firstActive
+            ? m.research.overview.activePathNote(active ? control.next.text : undefined)
+            : active
+              ? m.research.overview.focusWithActiveTasks(m.project.identity.focusLabel[FOCUS_KEY[project.status]], activeCount)
+              : m.project.identity.focusLabel[FOCUS_KEY[project.status]]
+          const when = latest ? fmt.date(latest.date) : m.research.overview.waitingForAgent
           return (
             <StructuredRow
               className="ovlist-row progress ovpulse-row" data-proj={project.id}
@@ -201,32 +208,25 @@ function ProjectProgress({ rows, onOpen }: {
             >
               <ProjectIdentity project={project} variant="progress" />
               <span className="ovpulse-cell">
-                <Tooltip label={named} whenClipped={named === shown}><b>{shown}</b></Tooltip>
-                <span className="ovpulse-sub">
-                  {firstActive
-                    ? m.research.overview.activePathNote(active ? control.next.text : undefined)
-                    : (() => {
-                      const label = m.project.identity.focusLabel[FOCUS_KEY[project.status]]
-                      return active
-                        ? m.research.overview.focusWithActiveTasks(label, activeCount)
-                        : label
-                    })()}
-                </span>
+                <Tooltip label={named} whenClipped={named === shown}><FadeText className="ovpulse-title">{shown}</FadeText></Tooltip>
+                <FadeText className="ovpulse-sub" label={note}>{note}</FadeText>
               </span>
               <span className="ovpulse-cell">
                 {latest
                   ? <EventText className="ovpulse-latest" text={latest.text} origin={latest.origin} />
-                  : <b>{m.research.overview.noRecentRecord}</b>}
-                <span className="ovpulse-sub">
-                  {latest ? fmt.date(latest.date) : m.research.overview.waitingForAgent}
-                </span>
+                  : (
+                    <FadeText className="ovpulse-title" label={m.research.overview.noRecentRecord}>
+                      {m.research.overview.noRecentRecord}
+                    </FadeText>
+                  )}
+                <FadeText className="ovpulse-sub" label={when}>{when}</FadeText>
               </span>
               <span className="ovpulse-cell">
                 <ProjectNextActionView action={control.next} variant="summary" />
               </span>
               <span className="ovpulse-cell signal">
                 <Tag tone={PULSE_TONE[signal.tone]}>{signal.label}</Tag>
-                <Tooltip label={signal.detail} whenClipped><span className="ovpulse-sub">{signal.detail}</span></Tooltip>
+                <FadeText className="ovpulse-sub" label={signal.detail}>{signal.detail}</FadeText>
               </span>
             </StructuredRow>
           )

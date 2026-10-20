@@ -37,7 +37,7 @@ export function PaperCard({
       <div className="paper-card-metadata pm">{metadata}</div>
       {abstract ? (
         <section className="paper-card-section">
-          <div className="paper-card-label plabel">Abstract</div>
+          <div className="paper-card-label plabel">{m.papers.card.abstractLabel}</div>
           <PaperAbstract text={abstract} folded />
         </section>
       ) : null}

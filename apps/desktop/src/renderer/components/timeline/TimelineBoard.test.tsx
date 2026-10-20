@@ -2,7 +2,7 @@
 import { act } from 'react'
 import { createRoot } from 'react-dom/client'
 import { renderToStaticMarkup } from 'react-dom/server'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Task } from '../../../shared/contract.js'
 import { MessagesProvider } from '../../messages/useMessages.js'
 import { TodayContext } from '../../shell/AppShell.js'
@@ -399,5 +399,84 @@ describe('TimelineBoard 的提示', () => {
     expect([tip('.gbar[data-task="t1"]'), tip('.gddl')]).toEqual(['第一个任务 · 9月16日 – 9月18日 · P1', '9月17日 阶段汇报'])
     expect(host.querySelectorAll('[title]')).toHaveLength(0)
     vi.useRealTimers()
+  })
+})
+
+describe('TimelineBoard 在总览上标出项目', () => {
+  beforeEach(() => {
+    globalThis.IS_REACT_ACT_ENVIRONMENT = true
+    window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'zh')
+    document.body.innerHTML = ''
+  })
+
+  it('项目名只在它的里程碑那一行写一次，占满标签列，放不下才淡出；任务行不再重复项目标签', () => {
+    const host = document.createElement('div')
+    document.body.append(host)
+    const projects: TimelineProject[] = [
+      { id: 'joint', name: '推测解码和 KV 量化联合优化', tasks: [task('a', '联合实验')], milestones: [] },
+      { id: 'spec', name: '推测解码加速', tasks: [task('b', '实现动态树宽度')], milestones: [] },
+    ]
+    act(() => createRoot(host).render(
+      <MessagesProvider>
+        <TodayContext.Provider value="2026-09-16">
+          <TimelineBoard
+            projects={projects} showProjectNames foldable onProjectLabelClick={vi.fn()} onTaskLabelClick={vi.fn()}
+            onTaskClick={vi.fn()} onMilestoneClick={vi.fn()} onMilestoneLaneClick={vi.fn()}
+            onMoveTask={vi.fn()} onMoveTaskWindow={vi.fn()} onMoveMilestone={vi.fn()}
+          />
+        </TodayContext.Provider>
+      </MessagesProvider>,
+    ))
+    const lanes = [...host.querySelectorAll('.glrow.msl .timeline-item-label')]
+    expect(lanes.map((label) => label.textContent)).toEqual(['推测解码和 KV 量化联合优化', '推测解码加速'])
+    expect(lanes.every((label) => label.matches('.fade-text'))).toBe(true)
+    expect(host.querySelectorAll('.glrow .project-label')).toHaveLength(0)
+  })
+})
+
+describe('TimelineBoard 的一天任务条', () => {
+  beforeEach(() => {
+    globalThis.IS_REACT_ACT_ENVIRONMENT = true
+    window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'zh')
+    document.body.innerHTML = ''
+    // jsdom lays nothing out: the three-day bar's title is 90px wide and every other title 60px, and the
+    // room for a title is its bar's width less the 10px padding on each side.
+    vi.spyOn(HTMLElement.prototype, 'scrollWidth', 'get').mockImplementation(function (this: HTMLElement) {
+      if (!this.classList.contains('gbar-label')) return 0
+      return this.textContent === '三天的任务' ? 90 : 60
+    })
+    vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockImplementation(function (this: HTMLElement) {
+      return this.classList.contains('gbar-label') ? Number.parseFloat(this.parentElement!.style.width) - 20 : 0
+    })
+  })
+  afterEach(() => { vi.restoreAllMocks() })
+
+  it('月视图里比标题还窄的一天任务条把整句标题画在条旁边，几天长的条和放得下的条照旧把标题画在条里', () => {
+    const host = document.createElement('div')
+    document.body.append(host)
+    const days: TimelineProject = {
+      id: 'proj-3', name: '一天项目', milestones: [],
+      tasks: [
+        { id: 'one', title: '汇总今天的宽度扫描结果', start: '2026-09-16', end: '2026-09-16', state: 'act', priority: 'p1' },
+        { id: 'three', title: '三天的任务', start: '2026-09-21', end: '2026-09-23', state: 'act', priority: 'p1' },
+      ],
+    }
+    act(() => createRoot(host).render(
+      <MessagesProvider>
+        <TodayContext.Provider value="2026-09-16">
+          <TimelineBoard
+            projects={[days]}
+            onTaskClick={vi.fn()} onMilestoneClick={vi.fn()} onMilestoneLaneClick={vi.fn()}
+            onMoveTask={vi.fn()} onMoveTaskWindow={vi.fn()} onMoveMilestone={vi.fn()}
+          />
+        </TodayContext.Provider>
+      </MessagesProvider>,
+    ))
+    const beside = () => [...host.querySelectorAll<HTMLElement>('.gbar-aside')]
+      .map((label) => [label.closest<HTMLElement>('.grow')!.dataset.task, label.textContent])
+    expect(beside(), '周视图里一天的条放得下标题').toEqual([])
+    const month = [...host.querySelectorAll<HTMLButtonElement>('.ghead .segmented-control>button')].find((b) => b.textContent === '月')!
+    act(() => { month.click() })
+    expect(beside()).toEqual([['one', '汇总今天的宽度扫描结果']])
   })
 })

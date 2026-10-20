@@ -77,10 +77,10 @@ describe('选中的样子只有一种', () => {
   })
 
   it('选中的科研图节点铺选中色，标签用选中色上的强调色，不再描一圈墨色粗边', () => {
-    const node = '<svg><g class="rgn supported sel"><rect class="rgn-box"></rect><text>宽树</text></g></svg>'
+    const node = '<svg><g class="rgn supported sel"><rect class="rgn-box"></rect><foreignObject><div class="rgn-label"><span class="fade-text">宽树</span></div></foreignObject></g></svg>'
     const box = styleOf(node, '.rgn-box')
     expect([box.fill, box.stroke]).toEqual(['var(--selected)', 'var(--sep)'])
-    expect(styleOf(node, 'text').fill).toBe('var(--on-selected)')
+    expect(styleOf(node, '.rgn-label').color).toBe('var(--on-selected)')
   })
 
   it('选中的外观选项铺选中色，名字用选中色上的强调色，不再画强调色边框和光圈', () => {

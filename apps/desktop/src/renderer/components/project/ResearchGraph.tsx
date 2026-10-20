@@ -41,23 +41,12 @@ const glyphWidth = (char: string) => (/[\u2e80-\u9fff\uf900-\ufaff\uff00-\uffef]
 /** Estimated pixel width of a node label. */
 export const graphLabelWidth = (label: string) => [...label].reduce((sum, char) => sum + glyphWidth(char), 0)
 
-/** The label as drawn: whole when it fits the widest node, otherwise cut with an ellipsis. */
-export function graphNodeLabel(label: string): string {
-  const room = GRAPH_NODE_MAX_WIDTH - GRAPH_LABEL_LEFT - GRAPH_LABEL_RIGHT
-  if (graphLabelWidth(label) <= room) return label
-  let width = glyphWidth('…')
-  let kept = ''
-  for (const char of label) {
-    width += glyphWidth(char)
-    if (width > room) break
-    kept += char
-  }
-  return `${kept}…`
-}
-
-/** Node width that holds its drawn label between the status dot and the right edge. */
+/**
+ * Node width that holds its label between the status dot and the right edge, up to the widest node;
+ * a label longer than that fades out at the node's edge.
+ */
 export const graphNodeWidth = (label: string, given: number) => Math.min(GRAPH_NODE_MAX_WIDTH, Math.max(
-  172, given + 28, Math.ceil(GRAPH_LABEL_LEFT + graphLabelWidth(graphNodeLabel(label)) + GRAPH_LABEL_RIGHT),
+  172, given + 28, Math.ceil(GRAPH_LABEL_LEFT + graphLabelWidth(label) + GRAPH_LABEL_RIGHT),
 ))
 const GRAPH_VIEW_HEIGHT = 280
 const GRAPH_COLUMN_GAP = 72
@@ -359,9 +348,8 @@ export function ResearchGraph({ graph, selected, ideaNodeIds = [], onSelect }: {
               {readingOrder.map((node) => {
                 const ideaRelated = ideaNodes.has(node.id)
                 const onRoute = routes.nodes.has(node.id) && !activeNodeIds.has(node.id)
-                const shown = graphNodeLabel(node.label)
                 return (
-                  <Tooltip key={node.id} label={shown === node.label ? undefined : node.label}>
+                  <Tooltip key={node.id} label={node.label} whenClipped>
                     <ToggleItem asChild value={node.id} aria-label={node.label}>
                       <g
                         className={`rgn ${node.state} ${nodeMode(node)}${onRoute ? ' active-path-node-graph' : ''}${activeNodeIds.has(node.id) ? ' active-leaf' : ''}${ideaRelated ? ' idea-related' : ''}${node.id === selected ? ' sel' : ''}`}
@@ -381,7 +369,12 @@ export function ResearchGraph({ graph, selected, ideaNodeIds = [], onSelect }: {
                         />
                         <rect className="rgn-hover" width={node.width} height={GRAPH_NODE_HEIGHT} />
                         <circle cx="18" cy={GRAPH_NODE_HEIGHT / 2} r="4" className="nd" />
-                        <text x={GRAPH_LABEL_LEFT} y="29">{shown}</text>
+                        <foreignObject
+                          x={GRAPH_LABEL_LEFT} width={node.width - GRAPH_LABEL_LEFT - GRAPH_LABEL_RIGHT}
+                          height={GRAPH_NODE_HEIGHT}
+                        >
+                          <div className="rgn-label"><FadeText>{node.label}</FadeText></div>
+                        </foreignObject>
                       </g>
                     </ToggleItem>
                   </Tooltip>
