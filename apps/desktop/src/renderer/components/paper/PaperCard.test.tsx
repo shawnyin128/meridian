@@ -60,7 +60,22 @@ describe('PaperCard', () => {
     const out = renderToStaticMarkup(
       <MessagesProvider><PaperCard paperId="paper-2" title="Plain" actions={null} metadata="Ada" /></MessagesProvider>,
     )
-    expect(out).not.toContain('Abstract')
+    expect(out).not.toContain('摘要')
     expect(out).not.toContain('推荐理由')
+  })
+
+  it('摘要和推荐理由的小标签都来自词表，跟着界面语言走', () => {
+    const labels = (language: 'zh' | 'en') => {
+      window.localStorage.setItem(LANGUAGE_STORAGE_KEY, language)
+      const host = document.createElement('div')
+      host.innerHTML = renderToStaticMarkup(
+        <MessagesProvider>
+          <PaperCard paperId="paper-4" title="A paper" actions={null} metadata="Ada" abstract="Text" recommendation="Why" />
+        </MessagesProvider>,
+      )
+      return [...host.querySelectorAll('.paper-card-label')].map((label) => label.textContent)
+    }
+    expect(labels('zh')).toEqual(['摘要', '推荐理由'])
+    expect(labels('en')).toEqual(['Abstract', 'Why recommended'])
   })
 })

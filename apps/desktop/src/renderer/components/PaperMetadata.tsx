@@ -109,46 +109,79 @@ function patchValue(patch: Partial<PaperFields>): unknown {
   return Object.values(patch)[0]
 }
 
-/** The property list always remains in reading form; only the value clicked by the user is replaced with an edit control. */
-export function PaperMetadata({ paper, onSaved }: {
-  paper: PaperRow
-  onSaved: (paper: PaperRow) => void
-}) {
+type SavedField = EditableField | 'rating' | 'readState' | 'topics'
+
+/**
+ * Saves a patch of one field of `paper` with an undoable notice, then hands the paper as Core now holds
+ * it to `onSaved`. The returned function resolves whether the write landed; an unchanged value writes
+ * nothing and resolves true.
+ */
+function usePaperSave(paper: PaperRow, onSaved: (paper: PaperRow) => void) {
   const m = useMessages()
-  const labels = m.papers.metadata.fields
   const write = useVaultWrite()
   const undo = useUndo()
-  const notice = useNotice()
-  const [ratingSaving, setRatingSaving] = useState(false)
-  const ratingBusy = useRef(false)
-
-  const savePatch = async (
-    field: EditableField | 'rating' | 'readState' | 'topics', patch: Partial<PaperFields>,
-  ): Promise<boolean> => {
+  return async (field: SavedField, patch: Partial<PaperFields>): Promise<boolean> => {
     if (JSON.stringify(currentValue(paper, field)) === JSON.stringify(patchValue(patch))) return true
     let fresh: PaperRow | null = null
     const ok = await write(papers.update(paper.id, patch).then(async (recorded) => {
       fresh = await papers.get(paper.id)
       return recorded
-    }), { note: m.papers.metadata.updated(labels[field]), action: undo.change })
+    }), { note: m.papers.metadata.updated(m.papers.metadata.fields[field]), action: undo.change })
     if (ok && fresh !== null) onSaved(fresh)
     return ok
   }
+}
+
+/** The in-place editor of one text field of `paper`: an invalid value is refused with a notice, a valid one goes to `save`. */
+function PaperFieldEditor({ paper, field, display, save }: {
+  paper: PaperRow
+  field: EditableField
+  display: ReactNode
+  save: (field: EditableField, patch: Partial<PaperFields>) => Promise<boolean>
+}) {
+  const m = useMessages()
+  const notice = useNotice()
+  return (
+    <InlineMetadataField
+      label={m.papers.metadata.fields[field]} value={draftOf(paper, field)} display={display || '—'}
+      type={field === 'submitted' ? 'date' : 'text'}
+      inputMode={field === 'year' ? 'numeric' : 'text'}
+      onSave={(value) => {
+        const parsed = parsedPatch(field, value, m.papers.metadata.validation)
+        if (parsed instanceof Error) { notice.refusal(parsed.message); return false }
+        return save(field, parsed)
+      }}
+    />
+  )
+}
+
+/** The paper's title as the head of a panel that details the paper: shown whole, and edited in place on click. */
+export function PaperTitleField({ paper, onSaved }: { paper: PaperRow; onSaved: (paper: PaperRow) => void }) {
+  const save = usePaperSave(paper, onSaved)
+  return <PaperFieldEditor key={paper.id} paper={paper} field="title" display={<PaperText text={paper.title} />} save={save} />
+}
+
+/**
+ * The property list always remains in reading form; only the value clicked by the user is replaced with
+ * an edit control. `titled` false leaves the title out, for a panel whose head is the title.
+ */
+export function PaperMetadata({ paper, onSaved, titled = true }: {
+  paper: PaperRow
+  onSaved: (paper: PaperRow) => void
+  titled?: boolean
+}) {
+  const m = useMessages()
+  const labels = m.papers.metadata.fields
+  const notice = useNotice()
+  const savePatch = usePaperSave(paper, onSaved)
+  const [ratingSaving, setRatingSaving] = useState(false)
+  const ratingBusy = useRef(false)
 
   const editableRow = (field: EditableField, display: ReactNode) => (
     <>
       <dt>{labels[field]}</dt>
       <dd className="paper-meta-editable">
-        <InlineMetadataField
-          key={`${paper.id}:${field}`} label={labels[field]} value={draftOf(paper, field)} display={display || '—'}
-          type={field === 'submitted' ? 'date' : 'text'}
-          inputMode={field === 'year' ? 'numeric' : 'text'}
-          onSave={(value) => {
-            const parsed = parsedPatch(field, value, m.papers.metadata.validation)
-            if (parsed instanceof Error) { notice.refusal(parsed.message); return false }
-            return savePatch(field, parsed)
-          }}
-        />
+        <PaperFieldEditor key={`${paper.id}:${field}`} paper={paper} field={field} display={display} save={savePatch} />
       </dd>
     </>
   )
@@ -156,7 +189,7 @@ export function PaperMetadata({ paper, onSaved }: {
   return (
     <div className="paper-meta" aria-busy={ratingSaving}>
       <dl className="paper-meta-list">
-        {editableRow('title', <PaperText text={paper.title} />)}
+        {titled ? editableRow('title', <PaperText text={paper.title} />) : null}
         {editableRow('shortTitle', paper.shortTitle ? <PaperText text={paper.shortTitle} /> : '')}
         {editableRow('authors', paper.authors?.join(', ') ?? '')}
         <dt>{m.papers.metadata.abstractLabel}</dt>

@@ -158,7 +158,9 @@
 .pdetail{height:100%;box-sizing:border-box;overflow:auto;overscroll-behavior:contain;padding:var(--sp-16)}
 .desk-body.withdetail,.desk-foot.withdetail{margin-right:var(--detailw)}
 .pd-h{display:flex;align-items:flex-start;gap:var(--sp-8);margin-bottom:var(--sp-12)}
-.pd-t{font-size:var(--fs-read);font-weight:var(--fw-bold);line-height:var(--lh-ui);flex:1;min-width:0}
+.pd-t{font-size:var(--fs-section);font-weight:var(--fw-title);line-height:var(--lh-ui);flex:1;min-width:0}
+/* The title is the panel's head, in the head's ink rather than a property value's grey. */
+.pd-t .metadata-editable{color:inherit}
 .pdetail .wkprops{grid-template-columns:52px 1fr;font-size:var(--fs-sm)}
 .pdetail>.paper-meta{height:auto;margin:0 calc(-1 * var(--sp-16)) calc(-1 * var(--sp-16))}
 .paper-reading-summary{margin-top:var(--sp-16)}

@@ -108,7 +108,7 @@ test('侧栏「论文推送」进推送屏,条目、分组与正文都照 demo',
   expect(await text('.pm')).toBe(demo[0]!.authors + demo[0]!.venue)
   expect(await text('.pabs')).toBe(demo[0]!.abs)
   expect(await text('.prec')).toBe(demo[0]!.rec)
-  expect(await card.locator('.plabel').allTextContents()).toEqual(['Abstract', '推荐理由'])
+  expect(await card.locator('.plabel').allTextContents()).toEqual(['摘要', '推荐理由'])
 })
 
 test('关注与项目发现是两条流,发现解释来源并接受显式反馈', async ({ win }) => {
@@ -321,7 +321,7 @@ test('检查新论文按关注抓取一次,新论文进入相应分组且标题�
   await expect(shown(win, '.desk-head .fetchnote .date-chip')).toHaveCount(2)
   expect((await cardTitles(win))[0]).toBe('Tree Width in Batched Serving')
   const fresh = shown(win, '.pcard').filter({ hasText: 'Tree Width in Batched Serving' })
-  await expect(fresh.locator('.plabel')).toHaveText(['Abstract'])
+  await expect(fresh.locator('.plabel')).toHaveText(['摘要'])
   await expect(win.locator('#rowInboxAll .n')).toHaveText(String(before.length + 2))
 })
 

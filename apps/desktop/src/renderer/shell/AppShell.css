@@ -88,7 +88,7 @@
 /* A search with no hits keeps the panel open; its empty state sits on the rows' inline padding. */
 .pickhits.sres .sres-empty{padding:0 var(--row-menu-pad)}
 
-.sb-h{display:flex;align-items:center;gap:var(--sp-4);font-size:var(--fs-cap);font-weight:var(--fw-semibold);color:var(--ter);text-transform:uppercase;letter-spacing:.04em;padding:0 var(--row-nav-pad);margin:var(--sp-12) 0 var(--sp-4)}
+.sb-h{display:flex;align-items:center;gap:var(--sp-4);font-size:var(--fs-label);font-weight:var(--fw-label);color:var(--ter);padding:0 var(--row-nav-pad);margin:var(--sp-12) 0 var(--sp-4)}
 .sb-h.chats-h{display:flex;align-items:center}
 .sect-h{cursor:pointer;user-select:none}
 /* A fold caret always shows, in a row in the tone of the row's caret buttons; a closed group's caret turns to point at its title. */

@@ -172,6 +172,7 @@ export const papers = {
     updated: (date: string) => `Updated ${date}`,
   },
   card: {
+    abstractLabel: 'Abstract',
     recommendationLabel: 'Why recommended',
     citations: (n: number) => `${n} ${pluralEn(n, { one: 'citation', other: 'citations' })}`,
     expandAbstract: 'Show full abstract',

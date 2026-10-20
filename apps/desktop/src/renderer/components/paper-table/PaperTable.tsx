@@ -18,7 +18,7 @@ import { ColumnMenu } from './ColumnMenu.js'
 import { GroupMenu, groupRows } from './GroupMenu.js'
 import { ParseProgress } from '../ParseProgress.js'
 import { Pager } from '../Pager.js'
-import { PaperMetadata, RatingStars, ReadStatePicker } from '../PaperMetadata.js'
+import { PaperMetadata, PaperTitleField, RatingStars, ReadStatePicker } from '../PaperMetadata.js'
 import { PaperTopics } from '../PaperTopics.js'
 import { PaperReadingSummary } from './PaperReadingSummary.js'
 import { FormInput } from '../FormControls.js'
@@ -1320,13 +1320,13 @@ export function PaperTable() {
           : (
             <div className="pdetail">
               <div className="pd-h">
-                <span className="pd-t"><PaperText text={detail.title} /></span>
+                <span className="pd-t"><PaperTitleField paper={detail} onSaved={setDetail} /></span>
                 <IconButton label={m.papers.rowActions.openReader} onClick={() => open('reader', detail.id)}>
                   <IconRead />
                 </IconButton>
                 <PanelClose onClose={closeDetail} />
               </div>
-              <PaperMetadata paper={detail} onSaved={setDetail} />
+              <PaperMetadata paper={detail} onSaved={setDetail} titled={false} />
               <PaperReadingSummary
                 paper={detail}
                 onRead={(anchor) => open('reader', detail.id, anchor)}

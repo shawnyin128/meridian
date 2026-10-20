@@ -1,6 +1,6 @@
 .paper-understanding{min-width:0}
 .paper-understanding-remark{padding:var(--sp-10) var(--sp-12);border-radius:var(--r-lg);background:var(--field)}
-.paper-understanding-label{margin-bottom:var(--sp-6);color:var(--ter);font-size:var(--fs-cap);font-weight:var(--fw-semibold)}
+.paper-understanding-label{margin-bottom:var(--sp-6);color:var(--ter);font-size:var(--fs-label);font-weight:var(--fw-label)}
 .paper-understanding-text{white-space:pre-wrap;color:var(--ink);overflow-wrap:anywhere}
 .paper-understanding-notes{margin-top:var(--sp-14)}
 .paper-understanding-row{display:grid;gap:var(--sp-12);align-items:start;min-height:52px;padding:var(--sp-8) var(--sp-10)}

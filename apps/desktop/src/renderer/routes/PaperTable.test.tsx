@@ -597,6 +597,30 @@ describe('PaperTable', () => {
     expect(updateCalls.at(-1)!.patch).toEqual({ rating: 3 })
   })
 
+  it('详情面板只在头部写一次标题，属性表里没有第二个「标题」；点头部的标题就在原处改', async () => {
+    const host = mount()
+    columnsCall.resolve(EMPTY_COLUMNS)
+    listCall.resolve({ rows: [ROW], total: 1 })
+    await flush()
+    await act(async () => { press(host.querySelector<HTMLElement>('.ptable tbody td')!) })
+    getCall.resolve(ROW)
+    await flush()
+
+    const panel = host.querySelector<HTMLElement>('.pdetail')!
+    expect([...panel.querySelectorAll('dt')].map((label) => label.textContent)).not.toContain('标题')
+    expect(panel.textContent!.split(ROW.title)).toHaveLength(2)
+    await act(async () => { panel.querySelector<HTMLButtonElement>('.pd-t button')!.click() })
+    const input = panel.querySelector<HTMLTextAreaElement>('.pd-t textarea')!
+    expect(input.getAttribute('aria-label')).toBe('编辑标题')
+    const setter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value')!.set!
+    await act(async () => {
+      setter.call(input, '改过的标题')
+      input.dispatchEvent(new Event('input', { bubbles: true }))
+    })
+    await act(async () => { input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })) })
+    expect(updateCalls.at(-1)!.patch).toEqual({ title: '改过的标题' })
+  })
+
   it('分组索引里的每个值都是按钮，按它列出这一组的论文，下面不写一句该怎么选', async () => {
     facetRows = [{ value: '推理', count: 2, newestTitle: '一篇论文' }]
     const host = mount()
@@ -1108,7 +1132,8 @@ describe('PaperTable', () => {
     getCall.resolve(latex)
     await flush()
 
-    const [title, short] = [...host.querySelectorAll<HTMLElement>('.paper-meta-list .paper-meta-editable')]
+    const title = host.querySelector<HTMLElement>('.pdetail .pd-t')
+    const short = host.querySelector<HTMLElement>('.paper-meta-list .paper-meta-editable')
     expect(title!.innerHTML).toMatch(/<strong>F<\/strong>luxBin <span><span class="katex">/)
     expect(short!.innerHTML).toContain('<em>Flux</em>')
     await act(async () => { title!.querySelector('button')!.click() })
