@@ -218,7 +218,7 @@ describe('a vault write that fails', () => {
     unlock()
     store.updateProject(id, { focus: '第二次才写成' })
     const [change] = store.listChanges()
-    expect(change!.diff).toEqual(['- focus: "定义第一步"', '+ focus: "第二次才写成"'])
+    expect(change!.diff).toEqual(['- 当前目标：定义第一步', '+ 当前目标：第二次才写成'])
     store.undoChange(change!.id)
     expect(open().getProject(id).focus).toBe('定义第一步')
   })
@@ -285,8 +285,8 @@ describe('a vault write that fails', () => {
     allow('changelog.json')
     store.updateProject(id, { priority: 'p0' })
     expect(open().listChanges().map((change) => change.diff)).toEqual([
-      ['- priority: "p1"', '+ priority: "p0"'],
-      ['- focus: "定义第一步"', '+ focus: "落了盘的目标"'],
+      ['- 优先级：常规', '+ 优先级：紧急'],
+      ['- 当前目标：定义第一步', '+ 当前目标：落了盘的目标'],
       expect.any(Array),
     ])
   })
