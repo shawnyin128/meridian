@@ -78,6 +78,7 @@ describe('ReviewQueue', () => {
   })
 
   const row = (id: string) => host.querySelector<HTMLElement>(`[data-proposal="${id}"]`)!
+  const apply = (id: string) => [...row(id).querySelectorAll<HTMLButtonElement>('.review-actions button')].find((b) => b.textContent === '应用')!
 
   it('排队的一条一行:标题、提出者与触发的项目节点名、理由、按结论原文写的改动行、涉及的页名;过期与无法核对的引句标出来', () => {
     expect(row('p1').querySelector('.review-title')!.textContent).toBe('提案 p1')
@@ -93,8 +94,8 @@ describe('ReviewQueue', () => {
     expect(row('p1').querySelector('.review-head .tag:not(.source-label)')).toBeNull()
     expect(row('p2').querySelector('.tag--warn')!.textContent).toBe('已过期')
     expect(row('p2').textContent).toContain('这些引句没有文字层可核对')
-    expect(row('p1').querySelector<HTMLButtonElement>('.review-actions .btn.pri')!.disabled).toBe(false)
-    expect(row('p2').querySelector<HTMLButtonElement>('.review-actions .btn.pri')!.disabled).toBe(true)
+    expect(apply('p1').disabled).toBe(false)
+    expect(apply('p2').disabled).toBe(true)
     const chip = row('p1').querySelector<HTMLElement>('.wkrel .tagchip')!
     expect(chip.textContent).toBe('Speculative decoding')
     expect(chip.tagName).toBe('BUTTON')
@@ -110,7 +111,7 @@ describe('ReviewQueue', () => {
 
   it('引用了没验证的项目结论:标出结论待验证,应用按不了,点结论去验证它', () => {
     expect(row('p6').querySelector('.tag--warn')!.textContent).toBe('结论待验证')
-    expect(row('p6').querySelector<HTMLButtonElement>('.review-actions .btn.pri')!.disabled).toBe(true)
+    expect(apply('p6').disabled).toBe(true)
     const chip = row('p6').querySelector<HTMLElement>('.review-unverified .tagchip')!
     expect(chip.textContent).toBe('加宽实验')
     expect(chip.tagName).toBe('BUTTON')
@@ -133,9 +134,10 @@ describe('ReviewQueue', () => {
     expect(onDecline).toHaveBeenCalledWith(PROPOSALS[1], '证据不够')
   })
 
-  it('应用是主按钮，拒绝是红色的幽灵按钮，确认拒绝是浅红按钮', () => {
+  it('第一条能应用的提案的应用是主按钮，其余的应用是次要按钮；拒绝是红色的幽灵按钮，确认拒绝是浅红按钮', () => {
+    expect(['p1', 'p2', 'p6', 'p7'].map((id) => apply(id).className)).toEqual(['btn pri', 'btn', 'btn', 'btn'])
     const actions = [...row('p2').querySelectorAll<HTMLButtonElement>('.review-actions button')]
-    expect(actions.map((b) => `${b.textContent} ${b.className}`)).toEqual(['应用 btn pri', '拒绝 btn ghost danger'])
+    expect(actions.map((b) => `${b.textContent} ${b.className}`)).toEqual(['应用 btn', '拒绝 btn ghost danger'])
     act(() => actions[1]!.dispatchEvent(new MouseEvent('click', { bubbles: true })))
     expect(document.querySelector<HTMLButtonElement>('.review-decline button')!.className).toBe('btn danger')
   })

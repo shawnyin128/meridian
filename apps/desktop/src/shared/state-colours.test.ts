@@ -91,6 +91,15 @@ describe('结论冲突', () => {
   })
 })
 
+describe('实心强调色', () => {
+  it('样式表只给主按钮和输入框的发送铺实心强调色,开关和步骤序号都不用', () => {
+    const filled = STYLESHEETS.flatMap((path) => rules(path).flatMap(({ selectors, body }) => (
+      /(?:^|;)\s*background(?:-color)?:var\(--accent-solid\)/.test(body) ? selectors : []
+    )))
+    expect(filled.sort()).toEqual(['.btn.pri', '.send'])
+  })
+})
+
 describe('阅读器里的高亮', () => {
   it('四种高亮色都取自 token', () => {
     const colours = ['yellow', 'green', 'blue', 'pink']

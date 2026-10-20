@@ -289,7 +289,7 @@ export function PaperWikiIngest({ paper, reading }: {
                   onClick={() => setRejectionOpen(true)}>
                   {m.wiki.ingest.discardProposal}
                 </button>
-                <button className="btn pri"
+                <button className="btn"
                   disabled={applying || rejecting || draft.trim() === '' || pending?.stale === true}
                   onClick={() => { void apply() }}>
                   {applying ? m.wiki.ingest.writing : m.wiki.ingest.confirm}

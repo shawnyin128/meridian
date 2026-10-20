@@ -126,7 +126,7 @@ function UpdateRow() {
         {ready ? m.shell.update.ready(update.version) : m.shell.update.available(update.version)}
       </span>
       <button
-        type="button" className="btn pri sm update-row-action"
+        type="button" className="btn sm update-row-action"
         onClick={() => { if (ready) appUpdates.install(); else window.open(update.url) }}
       >{ready ? m.shell.update.relaunch : m.shell.update.download}</button>
     </div>
