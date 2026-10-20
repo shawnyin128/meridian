@@ -11,12 +11,11 @@
 .ovstat.bad b{color:var(--bad)}
 
 /*
- * The overview timeline mirrors the project timeline: each row starts with its project, followed by
- * the milestones or an actual task.
+ * The overview timeline mirrors the project timeline: each project's milestone row carries the
+ * project's name, and its task rows follow.
  */
 .overview-gantt .glabels{flex-basis:258px}
 .overview-gantt .timeline-label-row{gap:var(--sp-8);cursor:pointer;font-weight:var(--fw-regular)}
-.overview-gantt .timeline-project-label{max-width:82px}
 
 /*
  * Overview rows share one list layout and reading order: project / date / kind / content / extra
