@@ -725,10 +725,11 @@ describe('PaperTable', () => {
 
       const more = host.querySelector<HTMLButtonElement>('.morebadge')!
       const chips = more.parentElement!
-      expect(more.textContent).toBe('+2')
+      expect([more.textContent, more.getAttribute('aria-label')]).toEqual(['+2', '展开其余 2 项'])
       expect(more.getAttribute('aria-expanded')).toBe('false')
       act(() => more.click())
       expect(more.getAttribute('aria-expanded')).toBe('true')
+      expect(more.getAttribute('aria-label')).toBe('收起其余 2 项')
       expect(chips.classList.contains('chip-expanded')).toBe(true)
       expect(openedScreens).toEqual([])
       act(() => more.click())

@@ -600,7 +600,7 @@ export function PaperTable() {
           ci.dataset['expanded'] = String(expanded)
           ci.classList.toggle('chip-expanded', expanded)
           badge.textContent = expanded ? '−' : `+${real}`
-          badge.setAttribute('aria-label', expanded ? m.common.details.collapse : m.papers.tags.showMore(real))
+          badge.setAttribute('aria-label', expanded ? m.papers.tags.showLess(real) : m.papers.tags.showMore(real))
           badge.setAttribute('aria-expanded', String(expanded))
         }
         setExpanded(wasExpanded)

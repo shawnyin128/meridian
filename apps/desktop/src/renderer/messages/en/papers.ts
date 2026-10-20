@@ -69,6 +69,7 @@ export const papers = {
     add: 'Add topic',
     existingTopics: 'Existing topics',
     showMore: (n: number) => `Show ${n} more`,
+    showLess: (n: number) => `Hide the other ${n}`,
     remove: (topic: string) => `Remove topic "${topic}"`,
   },
   notices: {

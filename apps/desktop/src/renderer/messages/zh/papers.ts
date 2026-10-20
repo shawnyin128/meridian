@@ -66,6 +66,7 @@ export const papers = {
     add: '添加主题',
     existingTopics: '已有主题',
     showMore: (n: number) => `展开其余 ${n} 项`,
+    showLess: (n: number) => `收起其余 ${n} 项`,
     remove: (topic: string) => `移除主题「${topic}」`,
   },
   notices: {
