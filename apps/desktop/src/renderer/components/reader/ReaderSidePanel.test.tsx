@@ -132,6 +132,12 @@ describe('ReaderSidePanel', () => {
     ])
   })
 
+  it('元数据面板的 Wiki 一行写页的状态名，不写存下的值', () => {
+    show('metadata', PAPER_ONE, undefined, PAPER)
+    const wiki = [...host.querySelectorAll('.paper-meta-list dt')].find((dt) => dt.textContent === 'Wiki')!
+    expect(wiki.nextElementSibling!.textContent).toBe('草稿')
+  })
+
   it('没保存的新笔记、笔记修改、高亮笔记和随笔留在各自的论文上：切右栏、收起右栏、换一篇再回来都还在，也不出现在另一篇', () => {
     show('notes', PAPER_ONE)
     type(NEW_NOTE, '一个新想法')

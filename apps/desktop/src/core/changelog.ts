@@ -1,8 +1,8 @@
 import { createHash } from 'node:crypto'
 import { z } from 'zod'
 import type {
-  ChangeEntry, ChangeSource, PaperCell, PaperColumn, PaperFields, PaperHighlight, PaperNote, PaperRow,
-  ProjectDetail, ReadingMutation,
+  AgentSession, Attachment, ChangeEntry, ChangeSource, Milestone, PaperCell, PaperColumn, PaperFields, PaperHighlight,
+  PaperNote, PaperRow, ProjectDetail, ReadingMutation, Task,
 } from '../shared/contract.js'
 import {
   ChangeEntrySchema, PaperColumnsSchema, PaperHighlightSchema, PaperNoteSchema, PaperRowSchema,
@@ -286,9 +286,9 @@ function valueOf(entity: Entity): Record<string, unknown> {
   }
 }
 
-/** Diff for a type change: the column key and its previous and next types. */
-const typeDiff = (key: string, from: PaperColumn['type'], to: PaperColumn['type']): string[] =>
-  [`- ${key}: ${JSON.stringify(COLUMN_TYPE_LABEL[from])}`, `+ ${key}: ${JSON.stringify(COLUMN_TYPE_LABEL[to])}`]
+/** Change lines of a column type change: the previous and the next type. */
+const typeLines = (from: PaperColumn['type'], to: PaperColumn['type']): string[] =>
+  [`- 类型：${COLUMN_TYPE_LABEL[from]}`, `+ 类型：${COLUMN_TYPE_LABEL[to]}`]
 
 /** JSON with sorted object keys so identical content always serializes identically for fingerprinting. */
 export function stableJson(value: unknown): string {
@@ -304,37 +304,219 @@ const fingerprint = (entity: Entity | undefined): string => (entity === undefine
   ? ''
   : createHash('sha256').update(stableJson(valueOf(entity))).digest('hex').slice(0, FINGERPRINT_CHARS))
 
+/** What change lines call a priority, a task state and, by the project's status, a project's focus. */
+const PRIORITY = { p0: '紧急', p1: '常规', p2: '较低' } as const
+const TASK_STATE = { act: '进行中', plan: '计划中', done: '已完成' } as const
+const FOCUS: Record<ProjectDetail['status'], string> = { 进行中: '当前目标', 搁置: '重启条件', 已完成: '成果' }
+
+/** One field's reading in change lines: its text, empty when the field is empty, or a list's elements. */
+type Reading = string | readonly string[]
+
+/** How change lines read an ISO date; empty when there is none. */
+type DateReading = (iso: string | undefined) => string
+
+/** A field as change lines show it: its label and how an entity's value of it reads. */
+type Field<T> = readonly [label: string, read: (entity: T, date: DateReading) => Reading]
+
+/** Listed items in change lines: what one is called, its id and name, and its fields. */
+type Items<T> = { label: string; id: (item: T) => string; name: (item: T) => string; fields: readonly Field<T>[] }
+
+/** A project relation with the group it is listed under. */
+type GroupedRelation = ProjectDetail['relations'][number]['items'][number] & { group: string }
+
+const COLUMN_FIELDS: readonly Field<Omit<PaperColumn, 'key'>>[] = [
+  ['列名', (c) => c.label], ['类型', (c) => COLUMN_TYPE_LABEL[c.type]], ['选项', (c) => c.options],
+]
+
+/** The paper fields the user edits; ids, counts, page state and timestamps are the vault's own and not shown. */
+const PAPER_FIELDS: readonly Field<PaperRow>[] = [
+  ['标题', (p) => p.title], ['短标题', (p) => p.shortTitle ?? ''], ['作者', (p) => p.authors ?? []],
+  ['年份', (p) => p.year?.toString() ?? ''], ['发表', (p) => p.venue],
+  ['评分', (p) => (p.rating === undefined ? '' : `${p.rating} 星`)], ['编号', (p) => p.identifier ?? ''],
+  ['提交', (p, date) => date(p.submitted)], ['摘要', (p) => p.abstract ?? ''], ['主题', (p) => p.topics],
+  ['方法', (p) => p.methods], ['数据集', (p) => p.datasets], ['指标', (p) => p.metrics],
+  ['阅读状态', (p) => p.readState], ['随笔', (p) => p.remark ?? ''],
+]
+
+const NOTE_FIELDS: readonly Field<PaperNote>[] = [['页码', (n) => String(n.page)], ['笔记', (n) => n.text]]
+const HIGHLIGHT_FIELDS: readonly Field<PaperHighlight>[] = [
+  ['页码', (h) => String(h.page)], ['高亮', (h) => h.quote], ['批注', (h) => h.note],
+]
+
+const TASKS: Items<Task> = {
+  label: '任务', id: (t) => t.id, name: (t) => t.title,
+  fields: [
+    ['名称', (t) => t.title], ['开始', (t, date) => date(t.start)], ['结束', (t, date) => date(t.end)],
+    ['时段', (t) => (t.window === undefined ? '' : `${t.window.start}–${t.window.end}`)],
+    ['状态', (t) => TASK_STATE[t.state]], ['优先级', (t) => PRIORITY[t.priority]], ['备注', (t) => t.note ?? ''],
+  ],
+}
+const MILESTONES: Items<Milestone> = {
+  label: '里程碑', id: (m) => m.id, name: (m) => m.title,
+  fields: [['名称', (m) => m.title], ['日期', (m, date) => date(m.date)], ['状态', (m) => (m.done ? '已完成' : '未完成')]],
+}
+const RELATIONS: Items<GroupedRelation> = {
+  label: '关联', id: (r) => r.id, name: (r) => r.text,
+  fields: [['名称', (r) => r.text], ['分组', (r) => r.group], ['链接', (r) => r.url ?? '']],
+}
+const ATTACHMENTS: Items<Attachment> = {
+  label: '附件', id: (f) => f.id, name: (f) => f.name,
+  fields: [['名称', (f) => f.name], ['大小', (f) => f.size], ['位置', (f) => f.path ?? '']],
+}
+const SESSIONS: Items<AgentSession> = {
+  label: 'agent 会话', id: (s) => s.id, name: (s) => s.title,
+  fields: [['名称', (s) => s.title], ['日期', (s, date) => date(s.when)], ['结果', (s) => s.outcome]],
+}
+const CUSTOM_COLUMNS: Items<PaperColumn> = { label: '列', id: (c) => c.key, name: (c) => c.label, fields: COLUMN_FIELDS }
+
+/** The elements of a reading: a list's, a text's own, or none for an empty text. */
+const elements = (reading: Reading): string[] =>
+  (typeof reading !== 'string' ? [...reading] : reading === '' ? [] : [reading])
+
+/** `items` as change lines with `sign`, each after `label`. */
+const signedLines = (sign: '+' | '-', label: string, items: readonly string[]): string[] =>
+  items.map((item) => `${sign} ${label}：${item}`)
+
 /**
- * Line-oriented diff between pre- and post-change entities. Equal keys emit nothing. Array values are
- * compared element by element, with removed entries as `-` and added entries as `+`. Other changed keys
- * emit the old value as `-` and the new value as `+`. A missing entity is empty, so creation emits only
- * additions and deletion only removals.
+ * The change lines of a field labelled `label` that reads `a` before and `b` after. A list compares
+ * element by element: each element gone is a `-` line, each new one a `+` line, and a reorder emits
+ * nothing. Any other value emits its old reading as `-` and its new one as `+`, the `+` line labelled
+ * `labelAfter`; an empty reading emits no line.
  */
-function diffLines(before: Entity | undefined, after: Entity | undefined): string[] {
-  const from = before === undefined ? {} : valueOf(before)
-  const to = after === undefined ? {} : valueOf(after)
-  const lines: string[] = []
-  for (const key of new Set([...Object.keys(from), ...Object.keys(to)])) {
-    const a = from[key]
-    const b = to[key]
-    if (stableJson(a) === stableJson(b)) continue
-    if (Array.isArray(a) || Array.isArray(b)) {
-      const left = (Array.isArray(a) ? a : []).map(stableJson)
-      const dropped = [...left]
-      const added = (Array.isArray(b) ? b : []).map(stableJson).filter((item) => {
-        const at = dropped.indexOf(item)
-        if (at < 0) return true
-        dropped.splice(at, 1)
-        return false
-      })
-      lines.push(...dropped.map((item) => `- ${key}: ${item}`))
-      lines.push(...added.map((item) => `+ ${key}: ${item}`))
-      continue
-    }
-    if (a !== undefined) lines.push(`- ${key}: ${stableJson(a)}`)
-    if (b !== undefined) lines.push(`+ ${key}: ${stableJson(b)}`)
+function readingLines(label: string, a: Reading, b: Reading, labelAfter = label): string[] {
+  if (typeof a === 'string' && typeof b === 'string') {
+    return a === b ? [] : [...signedLines('-', label, elements(a)), ...signedLines('+', labelAfter, elements(b))]
   }
-  return lines
+  const dropped = elements(a)
+  const added = elements(b).filter((item) => {
+    const at = dropped.indexOf(item)
+    if (at < 0) return true
+    dropped.splice(at, 1)
+    return false
+  })
+  return [...signedLines('-', label, dropped), ...signedLines('+', labelAfter, added)]
+}
+
+/** The change lines of `fields` from `a` to `b`, each label after `prefix`. */
+const fieldLines = <T>(fields: readonly Field<T>[], a: T, b: T, date: DateReading, prefix = ''): string[] =>
+  fields.flatMap(([label, read]) => readingLines(`${prefix}${label}`, read(a, date), read(b, date)))
+
+/** The change lines of `fields` for `entity` added (`+`) or removed (`-`): one per element of each reading. */
+const sideLines = <T>(sign: '+' | '-', fields: readonly Field<T>[], entity: T, date: DateReading): string[] =>
+  fields.flatMap(([label, read]) => signedLines(sign, label, elements(read(entity, date))))
+
+/**
+ * The change lines of a list of items from `a` to `b`, matched by id: an item gone or new is one line
+ * with its name, and each changed field of an item in both is a line under the item's name after the change.
+ */
+function itemLines<T>(items: Items<T>, a: readonly T[], b: readonly T[], date: DateReading): string[] {
+  const held = new Map(a.map((item) => [items.id(item), item]))
+  const kept = new Set(b.map(items.id))
+  return [
+    ...a.filter((item) => !kept.has(items.id(item))).map((item) => `- ${items.label}：${items.name(item)}`),
+    ...b.flatMap((item) => {
+      const old = held.get(items.id(item))
+      return old === undefined
+        ? [`+ ${items.label}：${items.name(item)}`]
+        : fieldLines(items.fields, old, item, date, `${items.label}「${items.name(item)}」· `)
+    }),
+  ]
+}
+
+/** The change lines between two shapes of one project, in the order the project page shows its fields. */
+function projectLines(a: ProjectDetail, b: ProjectDetail, date: DateReading): string[] {
+  const field = (label: string, read: (p: ProjectDetail) => Reading): string[] => readingLines(label, read(a), read(b))
+  const relations = (p: ProjectDetail): GroupedRelation[] =>
+    p.relations.flatMap((g) => g.items.map((item) => ({ ...item, group: g.group })))
+  const verified = (p: ProjectDetail): string[] => (p.verifiedConclusions ?? []).map((v) => p.projectConclusions
+    ?.find((c) => c.node === v.node)?.text
+    ?? [...p.graph.nodes, ...p.workspace?.graph?.nodes ?? []].find((n) => n.id === v.node)?.label ?? v.node)
+  return [
+    ...field('名称', (p) => p.name),
+    ...field('状态', (p) => p.status),
+    ...field('优先级', (p) => PRIORITY[p.priority]),
+    ...field('主题', (p) => p.topic),
+    ...readingLines(FOCUS[a.status], a.focus, b.focus, FOCUS[b.status]),
+    ...field('阻塞', (p) => p.block ?? ''),
+    ...field('开始', (p) => date(p.start)),
+    ...field('截止', (p) => date(p.due)),
+    ...field('项目随笔', (p) => p.memo),
+    ...field('关联论文', (p) => p.papers.map((id) => p.paperTitles[id] ?? id)),
+    ...itemLines(TASKS, a.tasks, b.tasks, date),
+    ...itemLines(MILESTONES, a.milestones, b.milestones, date),
+    ...field('科研记录', (p) => p.events.map((e) => e.text)),
+    ...itemLines(RELATIONS, relations(a), relations(b), date),
+    ...itemLines(ATTACHMENTS, a.attachments, b.attachments, date),
+    ...itemLines(SESSIONS, a.agentSessions, b.agentSessions, date),
+    ...field('已验证结论', verified),
+  ]
+}
+
+/**
+ * The change lines between the pre- and post-change entity of one target: one for each changed field,
+ * with its label and a readable value. Dates read as month and day, with the year when it is not
+ * `year`; enum values by their names; papers, tasks, milestones, relations, attachments and columns by
+ * their names; custom cells under the label their column has in `columns`. A paper, project or column
+ * created or deleted is one line with its name; a note or highlight lists its fields. Throws for a pages
+ * entity, whose changes the proposal or the body edit describes, and when the entity changed kind.
+ */
+function changeLines(
+  before: Entity | undefined, after: Entity | undefined, { year, columns }: { year: string; columns: readonly PaperColumn[] },
+): string[] {
+  const date: DateReading = (iso) => (iso === undefined
+    ? ''
+    : `${iso.slice(0, 4) === year ? '' : `${iso.slice(0, 4)}年`}${Number(iso.slice(5, 7))}月${Number(iso.slice(8, 10))}日`)
+  const sign = before === undefined ? '+' : '-'
+  /** Both sides as entities of `kind`; throws when the target's entity changed kind. */
+  const sides = <K extends Entity['kind']>(kind: K) => [before, after].map((entity) => {
+    if (entity !== undefined && entity.kind !== kind) throw new Error(`同一目标前后的实体种类不同：${kind} → ${entity.kind}`)
+    return entity
+  }) as [Extract<Entity, { kind: K }> | undefined, Extract<Entity, { kind: K }> | undefined]
+  const one = (before ?? after)!
+  switch (one.kind) {
+    case 'paper': {
+      const [a, b] = sides('paper')
+      if (a === undefined || b === undefined) return [`${sign} 论文：${one.paper.title}`]
+      const label = (key: string): string => columns.find((c) => c.key === key)?.label ?? key
+      return [
+        ...fieldLines(PAPER_FIELDS, a.paper, b.paper, date),
+        ...[...new Set([...Object.keys(a.paper.custom), ...Object.keys(b.paper.custom)])]
+          .flatMap((key) => readingLines(label(key), a.paper.custom[key] ?? '', b.paper.custom[key] ?? '')),
+      ]
+    }
+    case 'project': {
+      const [a, b] = sides('project')
+      return a === undefined || b === undefined ? [`${sign} 项目：${one.project.name}`] : projectLines(a.project, b.project, date)
+    }
+    case 'columns':
+    case 'columnType': {
+      const [a, b] = sides(one.kind)
+      return a === undefined || b === undefined
+        ? [`${sign} 列：${one.column.label}`]
+        : fieldLines(COLUMN_FIELDS, a.column, b.column, date)
+    }
+    case 'customColumns': {
+      const [a, b] = sides('customColumns')
+      return itemLines(CUSTOM_COLUMNS, a?.columns ?? [], b?.columns ?? [], date)
+    }
+    case 'note': {
+      const [a, b] = sides('note')
+      return a === undefined || b === undefined
+        ? sideLines(sign, NOTE_FIELDS, one.note, date)
+        : fieldLines(NOTE_FIELDS, a.note, b.note, date)
+    }
+    case 'highlight': {
+      const [a, b] = sides('highlight')
+      return a === undefined || b === undefined
+        ? sideLines(sign, HIGHLIGHT_FIELDS, one.highlight, date)
+        : fieldLines(HIGHLIGHT_FIELDS, a.highlight, b.highlight, date)
+    }
+    case 'remark': {
+      const [a, b] = sides('remark')
+      return readingLines('随笔', a?.remark ?? '', b?.remark ?? '')
+    }
+    default: throw new Error('Wiki 页的改动由提案或正文编辑自己描述')
+  }
 }
 
 /**
@@ -362,6 +544,10 @@ export function withChangelog(ops: VaultOps, log: ChangeLogStore): VaultStore {
 
   /** Current vault time as epoch milliseconds at today's UTC midnight, shared by recording and retention. */
   const nowMs = (): number => Date.parse(`${ops.today()}T00:00:00Z`)
+
+  /** The change lines between the two shapes of an entity, read against the vault's year and columns now. */
+  const describe = (before: Entity | undefined, after: Entity | undefined): string[] =>
+    changeLines(before, after, { year: ops.today().slice(0, 4), columns: ops.paperColumns().custom })
 
   /**
    * Current entity shape, or undefined when the paper, project or column no longer exists. Any other
@@ -473,7 +659,7 @@ export function withChangelog(ops: VaultOps, log: ChangeLogStore): VaultStore {
         : `${target.kind === 'project' ? '项目' : '论文'}「${nameOf(named)}」· ${what}`,
       meta: null,
       source,
-      diff: diff ?? diffLines(before, after),
+      diff: diff ?? describe(before, after),
       target,
       after: fingerprint(after),
       at: nowMs(),
@@ -539,7 +725,7 @@ export function withChangelog(ops: VaultOps, log: ChangeLogStore): VaultStore {
         `论文表 · 列「${column.label}」的选项 ${from} → ${to}`,
         { kind: 'option', key, from: to, to: from },
         () => ops.renamePaperOption(key, from, to),
-        [`- ${key}: ${JSON.stringify(from)}`, `+ ${key}: ${JSON.stringify(to)}`],
+        [`- 选项：${from}`, `+ 选项：${to}`],
       )
     },
 
@@ -554,7 +740,7 @@ export function withChangelog(ops: VaultOps, log: ChangeLogStore): VaultStore {
         `论文表 · 列「${before.column.label}」的类型 ${COLUMN_TYPE_LABEL[before.column.type]} → ${COLUMN_TYPE_LABEL[type]}`,
         { kind: 'columnType', column: before.column, groupAt: type === 'text' && groupAt >= 0 ? groupAt : null, cells: before.cells },
         before,
-        typeDiff(key, before.column.type, type),
+        typeLines(before.column.type, type),
       )
     },
 
@@ -778,8 +964,8 @@ export function withChangelog(ops: VaultOps, log: ChangeLogStore): VaultStore {
         diff: restore.kind === 'pages'
           ? restore.pages.map((p) => `~ ${p.path}`)
           : restore.kind === 'columnType' && before?.kind === 'columnType'
-            ? typeDiff(target.id, before.column.type, restore.column.type)
-            : diffLines(before, after),
+            ? typeLines(before.column.type, restore.column.type)
+            : describe(before, after),
         target,
         after: fingerprint(after),
         at: nowMs(),

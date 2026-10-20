@@ -140,6 +140,8 @@ export const papers = {
     abstractLabel: '摘要',
     projectsLabel: '项目',
     wikiLabel: 'Wiki',
+    /** Names of the Wiki page states Core writes; a state written outside the App shows as written. */
+    pageState: { draft: '草稿' },
     fileLabel: '文件',
     fileSummary: (pages: string) => `PDF · ${pages} 页 · 已保存`,
   },

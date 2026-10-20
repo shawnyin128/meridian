@@ -97,6 +97,12 @@ function currentValue(paper: PaperRow, field: EditableField | 'rating' | 'readSt
   return paper[field]
 }
 
+/** The catalog name of a Wiki page state, the state as written when the catalog has none, or a dash when there is none. */
+function pageStateName(state: string, names: Catalog['papers']['metadata']['pageState']): string {
+  if (state === '') return '—'
+  return Object.hasOwn(names, state) ? names[state as keyof typeof names] : state
+}
+
 function patchValue(patch: Partial<PaperFields>): unknown {
   return Object.values(patch)[0]
 }
@@ -184,7 +190,7 @@ export function PaperMetadata({ paper, onSaved }: {
         <dd className="paper-meta-projects">
           <ProjectChips paper={paper} onError={(error) => notice.refusal(error.message)} />
         </dd>
-        <dt>{m.papers.metadata.wikiLabel}</dt><dd>{paper.pageState || '—'}</dd>
+        <dt>{m.papers.metadata.wikiLabel}</dt><dd>{pageStateName(paper.pageState, m.papers.metadata.pageState)}</dd>
         <dt>{m.papers.metadata.fileLabel}</dt>
         <dd>{m.papers.metadata.fileSummary(String(paper.pageCount || '—'))}</dd>
       </dl>

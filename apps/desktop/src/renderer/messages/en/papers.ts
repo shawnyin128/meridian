@@ -143,6 +143,7 @@ export const papers = {
     abstractLabel: 'Abstract',
     projectsLabel: 'Projects',
     wikiLabel: 'Wiki',
+    pageState: { draft: 'Draft' },
     fileLabel: 'File',
     fileSummary: (pages: string) => `PDF · ${pages} pages`,
   },
