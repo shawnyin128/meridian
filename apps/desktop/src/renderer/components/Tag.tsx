@@ -55,7 +55,7 @@ export const TagButton = forwardRef<HTMLButtonElement, TagOwnProps & Omit<Compon
   },
 )
 
-/** A number beside a label: quiet, or `strong` when it counts items waiting for the user. Zero is shown as 0. */
+/** A number beside a label: quiet, or `strong`, in the accent, when it counts items waiting for the user. Zero is shown as 0. */
 export function CountBadge({ count, strong = false, className = '' }: {
   count: number
   strong?: boolean

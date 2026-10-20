@@ -43,7 +43,7 @@ describe('选中的样子只有一种', () => {
     document.head.innerHTML = STYLES.map((css) => `<style>${css}</style>`).join('')
   })
 
-  it('选中的列表行、侧栏行、研究地图分组和卡片都铺选中色，字用选中色上的强调色', () => {
+  it('选中的列表行、研究地图分组和卡片都铺中性的选中色，侧栏的当前行铺浅强调色、字用强调色', () => {
     const looks = {
       row: styleOf('<div class="structured-list"><button class="structured-row structured-row--selected">项目</button></div>', '.structured-row'),
       sidebar: styleOf('<button class="nav-row srow on"><span class="ic"></span>论文</button>', '.srow'),
@@ -53,7 +53,7 @@ describe('选中的样子只有一种', () => {
     expect(Object.fromEntries(Object.entries(looks).map(([host, style]) => [host, [style.backgroundColor, style.color, style.boxShadow]])))
       .toEqual({
         row: ['var(--selected)', 'var(--on-selected)', ''],
-        sidebar: ['var(--selected)', 'var(--on-selected)', ''],
+        sidebar: ['var(--accent-soft)', 'var(--accent-text)', ''],
         map: ['var(--selected)', 'var(--on-selected)', ''],
         card: ['var(--selected)', 'var(--on-selected)', ''],
       })
@@ -66,7 +66,7 @@ describe('选中的样子只有一种', () => {
   })
 
   it('选中的侧栏行图标跟着字用同一个颜色', () => {
-    expect(styleOf('<button class="nav-row srow on"><span class="ic"></span>论文</button>', '.ic').color).toBe('var(--on-selected)')
+    expect(styleOf('<button class="nav-row srow on"><span class="ic"></span>论文</button>', '.ic').color).toBe('var(--accent-text)')
   })
 
   it('选中的论文行铺选中色，标题用选中色上的强调色，左边不再画强调色竖条', () => {
@@ -98,11 +98,11 @@ describe('悬停的反馈不被任何状态盖掉', () => {
     document.head.innerHTML = STYLES.map((css) => `<style>${css}</style>`).join('')
   })
 
-  it('选中的列表行和侧栏行悬停时，选中色上再盖一层悬停色', () => {
+  it('选中的列表行和侧栏的当前行悬停时，选中色上再盖一层悬停色', () => {
     const row = styleOf('<div class="structured-list"><button class="structured-row structured-row--selected">项目</button></div>', '.structured-row', '.structured-row')
     expect([row.backgroundColor, row.backgroundImage]).toEqual(['var(--selected)', HOVER])
     const sidebar = styleOf('<button class="nav-row srow on">论文</button>', '.srow', '.srow')
-    expect([sidebar.backgroundColor, sidebar.backgroundImage]).toEqual(['var(--selected)', HOVER])
+    expect([sidebar.backgroundColor, sidebar.backgroundImage]).toEqual(['var(--accent-soft)', HOVER])
   })
 
   it('最近变动的一行悬停时整行铺上列表行的悬停色，能点的仍只是它展开详情的开关；只在末尾带一段历史的论断行不铺', () => {

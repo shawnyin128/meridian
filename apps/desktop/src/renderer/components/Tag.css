@@ -23,4 +23,4 @@ button.tag:disabled{cursor:default;opacity:.45;background-image:none}
 .count-badge{display:inline-flex;align-items:center;justify-content:center;flex:none;box-sizing:border-box;
   min-width:var(--sp-20);height:var(--sp-20);padding:0 var(--sp-6);border-radius:var(--r-chip);background:var(--chip);
   color:var(--ter);font-size:var(--fs-cap);font-weight:var(--fw-medium);line-height:1;font-variant-numeric:tabular-nums}
-.count-badge--strong{color:var(--ink);font-weight:var(--fw-semibold)}
+.count-badge--strong{background:var(--accent-soft);color:var(--accent-text);font-weight:var(--fw-semibold)}

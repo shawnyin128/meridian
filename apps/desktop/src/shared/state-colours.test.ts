@@ -48,10 +48,10 @@ describe('红色只标逾期、错误和危险', () => {
     }
   })
 
-  it('时间线上今天的日期是当前项的选中样子,今天的竖线和此刻线是墨色', () => {
+  it('时间线上今天的日期是当前项的选中样子,今天的竖线和此刻线是强调色', () => {
     expect(tokens(bodyOf('components/timeline/TimelineBoard.css', '.gday.today span'))).toEqual(['--selected', '--on-selected'])
     for (const selector of ['.gtoday', '.gnow', '.gnow::after']) {
-      expect(tokens(bodyOf('components/timeline/TimelineBoard.css', selector)), selector).toEqual(['--ink'])
+      expect(tokens(bodyOf('components/timeline/TimelineBoard.css', selector)), selector).toEqual(['--accent'])
     }
   })
 })
@@ -92,22 +92,37 @@ describe('结论冲突', () => {
   })
 })
 
-describe('主操作的墨色实心', () => {
-  it('样式表只给主按钮和输入框的发送铺墨色实心、配画布色的字,开关和步骤序号都不用', () => {
+describe('实心强调色', () => {
+  it('样式表只给主按钮和输入框的发送铺实心强调色,开关和步骤序号都不用', () => {
     const filled = STYLESHEETS.flatMap((path) => rules(path).flatMap(({ selectors, body }) => (
-      /(?:^|;)\s*background(?:-color)?:var\(--ink\)/.test(body) && /(?:^|;)\s*color:var\(--content\)/.test(body) ? selectors : []
+      /(?:^|;)\s*background(?:-color)?:var\(--accent-solid\)/.test(body) ? selectors : []
     )))
     expect(filled.sort()).toEqual(['.btn.pri', '.send'])
   })
 })
 
 describe('强调色', () => {
-  it('强调色只留给键盘焦点环:除了 tokens.css 里的 --ring,没有样式表或组件读 --accent', () => {
+  /**
+   * The only rules that may read an accent token, by what the accent says there: what to act on (the
+   * primary and the send), where you are (the current sidebar row), what is on or running (an on switch,
+   * the running ring), new items (their count) and today on the timeline. The focus ring reads --ring.
+   */
+  const ACCENT = [
+    'components/Switch.css  .switch[data-state="checked"]', 'components/Tag.css  .count-badge--strong',
+    'components/chat/Chat.css  .send', 'components/icons.css  .ring',
+    'components/timeline/TimelineBoard.css  .gnow', 'components/timeline/TimelineBoard.css  .gnow::after',
+    'components/timeline/TimelineBoard.css  .gtoday', 'routes/shell.css  .btn.pri', 'shell/AppShell.css  .srow.on',
+  ]
+
+  it('强调色只在键盘焦点环、主操作、侧栏的当前行、开着的开关、运行中的圈、新条目的计数和时间线的今天;标签、列表的选中项和别的规则都不读', () => {
     const readers = readdirSync(RENDERER, { recursive: true, encoding: 'utf8' })
       .filter((path) => /\.(css|tsx?)$/.test(path) && !/\.test\.tsx?$/.test(path))
-      .flatMap((path) => readFileSync(join(RENDERER, path), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').split('\n')
-        .filter((line) => /var\(--accent[\w-]*\)/.test(line)).map((line) => `${path}  ${line.trim()}`))
-    expect(readers).toEqual(['shell/tokens.css  --ring:var(--accent); --ring-width:2px; --ring-offset:2px;'])
+      .flatMap((path) => (path.endsWith('.css')
+        ? rules(path).filter(({ selectors, body }) => /var\(--accent[\w-]*\)/.test(body) && !selectors.some((s) => /^(?::root|\[data-theme="dark"\])$/.test(s)))
+          .flatMap(({ selectors }) => selectors.map((s) => `${path}  ${s}`))
+        : /var\(--accent[\w-]*\)/.test(readFileSync(join(RENDERER, path), 'utf8')) ? [`${path}  (script)`] : []))
+    expect(readers.sort()).toEqual(ACCENT)
+    expect(readFileSync(join(RENDERER, 'shell/tokens.css'), 'utf8')).toMatch(/--ring:var\(--accent\);/)
   })
 })
 

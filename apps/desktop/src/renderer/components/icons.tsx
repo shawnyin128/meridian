@@ -229,5 +229,5 @@ export const DownloadRing = ({ progress }: {
   )
 }
 
-/** The one running indicator: the ring that turns while a job runs, in the colour of the text around it. */
+/** The one running indicator: the ring that turns while a job runs, in the accent. */
 export const RunningRing = () => <DownloadRing progress={null} />

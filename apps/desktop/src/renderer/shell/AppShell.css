@@ -103,7 +103,7 @@ span.sh-caret svg{width:9px;height:9px}
  * row shows it too.
  */
 .srow:hover,.srow:has(.row-actions [data-state="open"]){background-image:linear-gradient(var(--hover),var(--hover))}
-.srow.on{background-color:var(--selected);color:var(--on-selected)}
+.srow.on{background-color:var(--accent-soft);color:var(--accent-text)}
 .srow.on .ic{color:inherit}
 .feed-row{margin-top:var(--sp-8)}
 .trash-row{flex-shrink:0;margin-top:var(--sp-6)}

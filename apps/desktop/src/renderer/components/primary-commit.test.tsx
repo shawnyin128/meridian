@@ -30,11 +30,11 @@ declare global {
   var IS_REACT_ACT_ENVIRONMENT: boolean
 }
 
-/** The controls the stylesheets fill with solid ink; shared/state-colours.test.ts keeps this list in step with them. */
-const SOLID_INK = '.btn.pri, .send'
+/** The controls the stylesheets fill with the solid accent; shared/state-colours.test.ts keeps this list in step with them. */
+const SOLID_ACCENT = '.btn.pri, .send'
 
-/** The solid-ink controls rendered under `root`. */
-const solid = (root: ParentNode) => [...root.querySelectorAll(SOLID_INK)]
+/** The solid-accent controls rendered under `root`. */
+const solid = (root: ParentNode) => [...root.querySelectorAll(SOLID_ACCENT)]
 
 const PAPER: PaperRow = {
   id: 'paper-1', title: '一篇论文', venue: 'arXiv', topics: [], methods: [], datasets: [], metrics: [],
@@ -83,7 +83,7 @@ describe('每个屏幕只有一个主操作', () => {
 
   const show = (node: ReactNode) => act(async () => { root.render(<MessagesProvider>{node}</MessagesProvider>) })
 
-  it('阅读器右栏的每个面板都不放墨色实心:这一屏的主操作是论文对话的发送', async () => {
+  it('阅读器右栏的每个面板都不放实心强调色:这一屏的主操作是论文对话的发送', async () => {
     for (const tab of ['highlights', 'notes', 'remark', 'wiki'] as const) {
       await show(
         <ReaderSidePanel
@@ -95,7 +95,7 @@ describe('每个屏幕只有一个主操作', () => {
     }
   })
 
-  it('内化到 Wiki 恢复出待审的提案时,确认写入也不是墨色实心', async () => {
+  it('内化到 Wiki 恢复出待审的提案时,确认写入也不是实心强调色', async () => {
     api.pending.mockResolvedValue({
       proposal: { id: 'proposal-old', targetId: 'paper-1', action: 'create', body: '# Recovered' },
       generatedAt: '2026-09-17T11:00:00.000Z', stale: false,
@@ -110,7 +110,7 @@ describe('每个屏幕只有一个主操作', () => {
     expect(solid(host).map((element) => element.textContent)).toEqual([])
   })
 
-  it('对话里各条回答的动作都不是墨色实心:这一屏的主操作是发送', async () => {
+  it('对话里各条回答的动作都不是实心强调色:这一屏的主操作是发送', async () => {
     const message = (id: string): ChatMessage => ({
       id, role: 'ai', runs: [{ kind: 'text', text: '可以记下这条结论' }],
       actions: [{ kind: 'writeBack', label: '写回项目', project: 'draft', text: '结论' }],
@@ -119,7 +119,7 @@ describe('每个屏幕只有一个主操作', () => {
     expect(solid(host).map((element) => element.textContent)).toEqual([])
   })
 
-  it('审阅队列只有第一条能应用的提案的应用是墨色实心', async () => {
+  it('审阅队列只有第一条能应用的提案的应用是实心强调色', async () => {
     await show(
       <ReviewQueue
         proposals={[PROPOSAL('p1', { staleNow: true }), PROPOSAL('p2'), PROPOSAL('p3')]} pending={false}
@@ -130,7 +130,7 @@ describe('每个屏幕只有一个主操作', () => {
       .toEqual([['p2', '应用']])
   })
 
-  it('侧栏的更新提示不放墨色实心:主操作留给当前屏幕', async () => {
+  it('侧栏的更新提示不放实心强调色:主操作留给当前屏幕', async () => {
     await show(
       <Sidebar
         screen="feed" onNavigate={vi.fn()} onJump={vi.fn()} paperCount={0} changeCount={0} projectCount={0}

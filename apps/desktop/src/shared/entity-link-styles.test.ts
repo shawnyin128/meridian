@@ -9,6 +9,9 @@ const FILES = readdirSync(RENDERER, { recursive: true, encoding: 'utf8' })
   .filter((path) => /\.(css|tsx?)$/.test(path) && !/\.test\.tsx?$/.test(path))
 const STYLESHEETS = FILES.filter((path) => path.endsWith('.css'))
 
+/** The rules that write in the accent: the current sidebar row, the count of new items and the running ring. */
+const ACCENT_TEXT = new Set(['.srow.on', '.count-badge--strong', '.ring'])
+
 /** Each rule of `path` as its selectors and its declarations, comments dropped. */
 const rules = (path: string) => [...readFileSync(join(RENDERER, path), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '')
   .matchAll(/([^{}]+)\{([^{}]*)\}/g)].map(([, selectors, body]) => ({
@@ -30,9 +33,11 @@ describe('实体链接的样子', () => {
     expect(offenders).toEqual([])
   })
 
-  it('没有规则用强调色写字,标签、状态图标和选中项都不例外', () => {
+  it('链接、标签、状态图标和列表里的选中项都不用强调色写字,强调色的字只留给侧栏的当前行、新条目的计数和运行中的圈', () => {
     const offenders = STYLESHEETS.flatMap((path) => rules(path).flatMap(({ selectors, declarations }) => (
-      declarations.some((d) => /^color:var\(--accent[\w-]*\)$/.test(d)) ? selectors.map((s) => `${path}  ${s}`) : []
+      declarations.some((d) => /^color:var\(--accent[\w-]*\)$/.test(d))
+        ? selectors.filter((s) => !ACCENT_TEXT.has(s)).map((s) => `${path}  ${s}`)
+        : []
     )))
     expect(offenders).toEqual([])
   })

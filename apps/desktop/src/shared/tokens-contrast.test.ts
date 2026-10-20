@@ -215,15 +215,15 @@ const lookOf = (path: string, selector: string): string => {
     .find((match) => match[1]!.split(',').some((part) => part.trim() === selector))
   if (rule === undefined) throw new Error(`${path} 里没有 ${selector} 这条规则`)
   const token = (property: RegExp) => property.exec(rule[2]!)?.[1] ?? '无'
-  return `${token(/(?:^|;)background(?:-color)?:var\((--[\w-]+)\)/)} ${token(/(?:^|;)color:var\((--[\w-]+)\)/)}`
+  return `${token(/(?:^|;)\s*background(?:-color)?:var\((--[\w-]+)\)/)} ${token(/(?:^|;)\s*color:var\((--[\w-]+)\)/)}`
 }
 
 describe('主操作', () => {
   /** The primary button and the composer's send: their fill and text tokens. */
   const PRIMARY = [['routes/shell.css', '.btn.pri'], ['components/chat/Chat.css', '.send']] as const
 
-  it('主按钮和输入框的发送都是墨色实心配画布色的字:亮色黑底白字,暗色近白底深字', () => {
-    expect(PRIMARY.map(([path, selector]) => lookOf(path, selector))).toEqual(['--ink --content', '--ink --content'])
+  it('主按钮和输入框的发送都是实心强调色配白字,两种主题一样', () => {
+    expect(PRIMARY.map(([path, selector]) => lookOf(path, selector))).toEqual(['--accent-solid --on-accent', '--accent-solid --on-accent'])
   })
 
   for (const theme of ['light', 'dark'] as const) {
@@ -283,9 +283,31 @@ describe('标签', () => {
   }
 })
 
+describe('强调色的字', () => {
+  /** The sidebar's surface, hovered, under the current row, and both: a count of new items sits on each. */
+  const SIDEBAR: [string, string[]][] = [
+    ['侧栏', ['--window', '--sidebar']], ['悬停的侧栏行', ['--window', '--sidebar', '--hover']],
+    ['侧栏的当前行', ['--window', '--sidebar', '--accent-soft']], ['悬停的侧栏当前行', ['--window', '--sidebar', '--accent-soft', '--hover']],
+  ]
+
+  for (const theme of ['light', 'dark'] as const) {
+    it(`${theme === 'dark' ? '暗色' : '亮色'}侧栏当前行的字、和新条目的计数在侧栏每种底上的字,都不低于 4.5:1`, () => {
+      const row = lookOf('shell/AppShell.css', '.srow.on').split(' ') as [string, string]
+      const badge = lookOf('components/Tag.css', '.count-badge--strong').split(' ') as [string, string]
+      const grounds: [string, string, string[]][] = [
+        ['当前行', row[1], SIDEBAR[2]![1]], ['悬停的当前行', row[1], SIDEBAR[3]![1]],
+        ...SIDEBAR.map(([where, ground]): [string, string, string[]] => [`${where}上的计数`, badge[1], [...ground, badge[0]]]),
+      ]
+      for (const [where, text, ground] of grounds) {
+        const got = contrast(colour(theme, text), flatten(theme, ground))
+        expect(got, `${where}: ${text} 压在 ${ground.join(' + ')} 上是 ${got.toFixed(2)}:1`).toBeGreaterThanOrEqual(TEXT)
+      }
+    })
+  }
+})
+
 describe('选中、当前、已应用和按下的状态', () => {
   const STATES = [
-    ['shell/AppShell.css', '.srow.on'],
     ['components/StructuredList.css', '.structured-row--selected'],
     ['components/ResearchObjectCard.css', '.research-object-card.selected'],
     ['components/Pager.css', '.pgbtn.on'],
@@ -298,9 +320,10 @@ describe('选中、当前、已应用和按下的状态', () => {
     ['components/IconButton.css', '.icbtn[aria-pressed="true"]'],
   ] as const
 
-  it('选中的行、当前页、选中的日期、已应用的筛选和按下的开关都是同一个样子:--selected 的底配 --on-selected 的字', () => {
-    expect(Object.fromEntries(STATES.map(([path, selector]) => [selector, lookOf(path, selector)])))
-      .toEqual(Object.fromEntries(STATES.map(([, selector]) => [selector, '--selected --on-selected'])))
+  it('只有侧栏的当前行用浅强调色配强调色的字;选中的行、当前页、选中的日期、已应用的筛选和按下的开关都是中性的 --selected 配 --on-selected', () => {
+    expect(Object.fromEntries([['shell/AppShell.css', '.srow.on'] as const, ...STATES].map(([path, selector]) => [selector, lookOf(path, selector)])))
+      .toEqual(Object.fromEntries([['.srow.on', '--accent-soft --accent-text'], ...STATES.map(([, selector]) => [selector, '--selected --on-selected'])]))
+    expect(lookOf('components/SegmentedControl.css', '.segmented-thumb')).toBe('--raised 无')
   })
 })
 
@@ -337,12 +360,16 @@ describe('tokens.css 的决定值', () => {
     }
   })
 
-  it('开关打开时滑块是 --on-selected,关着时是 --raised,两种主题下两颗滑块对比都不低于 3:1', () => {
-    const off = lookOf('components/Switch.css', '.switch-thumb').split(' ')[0]!
-    const on = lookOf('components/Switch.css', '.switch-thumb[data-state="checked"]').split(' ')[0]!
-    expect([off, on]).toEqual(['--raised', '--on-selected'])
+  it('开着的开关是强调色的轨道,关着的是 --sep-strong,滑块都是白色;两种主题下开着的轨道对所在面、滑块对开着的轨道都不低于 3:1', () => {
+    const fill = (selector: string) => lookOf('components/Switch.css', selector).split(' ')[0]!
+    const [off, on] = [fill('.switch'), fill('.switch[data-state="checked"]')]
+    const thumbs = [fill('.switch-thumb'), fill('.switch-thumb[data-state="checked"]')]
+    expect([off, on, ...thumbs]).toEqual(['--sep-strong', '--accent', '--on-accent', '--on-accent'])
     for (const theme of ['light', 'dark'] as const) {
-      expect(contrast(colour(theme, on), colour(theme, off)), theme).toBeGreaterThanOrEqual(MARK)
+      for (const ground of ['--content', '--card', '--raised']) {
+        expect(contrast(colour(theme, on), flatten(theme, [ground])), `${theme} ${ground}`).toBeGreaterThanOrEqual(MARK)
+      }
+      expect(contrast(colour(theme, thumbs[1]!), colour(theme, on)), theme).toBeGreaterThanOrEqual(MARK)
     }
   })
 
