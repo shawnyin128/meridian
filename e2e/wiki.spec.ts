@@ -600,7 +600,7 @@ test('这一节没有成员时没有表,也就没有列入口', async ({ win }) 
   // The header keeps only the add-paper +: the gear comes with the table, so with no table there is none.
   const head = shown(win).locator('.wkmain .section-heading', { hasText: '论文对比' })
   await expect(head.locator('button')).toHaveCount(1)
-  await expect(head.locator('button')).toHaveAttribute('title', '添加论文')
+  await expect(head.locator('button')).toHaveAttribute('aria-label', '添加论文')
 })
 
 test('细分:名字里没有字母数字时占位与打好的字都留着', async ({ win }) => {
