@@ -125,21 +125,19 @@ describe('highlight geometry', () => {
     expect(lines[1]).toEqual(stored[4])
   })
 
-  it('高亮画成一个形状：无批注时每行一个矩形填色，有批注时每行一条底线', () => {
+  it('高亮的填色每行一个矩形，批注的底线每行一条，沿着同一行的底边', () => {
     const lines = normalizedHighlightRects(PAGE, TWO_COLUMNS).slice(0, 2)
-    const filled = highlightShape(lines, false)
-    const noted = highlightShape(lines, true)
-    expect(filled.path.match(/M/g)).toHaveLength(2)
-    expect(filled.path.match(/z/g)).toHaveLength(2)
-    expect(noted.path).toBe(lines.map((line) => `M${line.x} ${line.y + line.height}h${line.width}`).join(''))
-    expect(onScreen(filled.box)).toEqual({ left: 350, right: 878, top: 891.7, bottom: 908.4 })
-    expect(noted.box).toEqual(filled.box)
+    const shape = highlightShape(lines)
+    expect(shape.fill.match(/M/g)).toHaveLength(2)
+    expect(shape.fill.match(/z/g)).toHaveLength(2)
+    expect(shape.underline).toBe(lines.map((line) => `M${line.x} ${line.y + line.height}h${line.width}`).join(''))
+    expect(onScreen(shape.box)).toEqual({ left: 350, right: 878, top: 891.7, bottom: 908.4 })
   })
 
   it('选区工具条贴着的框是选中各行在屏幕上的外接矩形，页面挪了框跟着挪', () => {
     const lines = normalizedHighlightRects(PAGE, TWO_COLUMNS)
     const box = selectionBox(PAGE, lines)
-    const union = highlightShape(lines, false).box
+    const union = highlightShape(lines).box
     expect(box.left).toBeCloseTo(PAGE.left + union.x * PAGE.width, 5)
     expect(box.top).toBeCloseTo(PAGE.top + union.y * PAGE.height, 5)
     expect(box.width).toBeCloseTo(union.width * PAGE.width, 5)

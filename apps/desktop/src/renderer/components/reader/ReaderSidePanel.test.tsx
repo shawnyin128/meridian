@@ -86,7 +86,7 @@ describe('ReaderSidePanel', () => {
   ))
   const field = (selector: string) => host.querySelector<HTMLTextAreaElement>(selector)!
   const type = (selector: string, value: string) => act(() => setValue(field(selector), value))
-  const saveButton = (selector: string) => field(selector).closest('article, .remark-compose')!.querySelector<HTMLButtonElement>('.btn.pri')!
+  const saveButton = (selector: string) => field(selector).closest('article, .remark-compose')!.querySelector<HTMLButtonElement>('.btn')!
   const escape = (selector: string) => act(() => {
     field(selector).dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }))
   })
@@ -168,7 +168,7 @@ describe('ReaderSidePanel', () => {
   it('保存成功后不再留草稿：输入框显示库里存下的文字', async () => {
     show('notes', PAPER_ONE)
     type(NOTE, '  改过的笔记  ')
-    await act(async () => { field(NOTE).closest('article')!.querySelector<HTMLButtonElement>('.btn.pri')!.click() })
+    await act(async () => { saveButton(NOTE).click() })
     const saved = { ...PAPER_ONE, notes: [{ ...PAPER_ONE.notes[0]!, text: '改过的笔记' }] }
     show('notes', saved)
     expect(field(NOTE).value).toBe('改过的笔记')

@@ -8,5 +8,5 @@
 .rating-stars{display:inline-flex;align-items:center;white-space:nowrap}
 .rating-stars button{border:0;background:transparent;padding:0 1px;color:var(--sep-strong);font-size:15px;line-height:1;cursor:pointer;transition:color var(--t-fast) var(--e-out)}
 .rating-stars button:enabled:not(.rated):hover{color:var(--ter)}
-.rating-stars button.rated{color:#e3a520}
+.rating-stars button.rated{color:var(--star)}
 .rating-stars button:disabled{cursor:default}

@@ -154,4 +154,18 @@ describe('研究总览的需要注意', () => {
     await act(async () => { decision('等 8 卡机器').click() })
     expect(api.open).toHaveBeenLastCalledWith('project', 'spec')
   })
+
+  it('阻塞在需要决策和项目进展里都是警示色,逾期仍是红色', async () => {
+    api.rows = [{
+      ...row([]), block: '等 8 卡机器',
+      milestones: [{ id: 'm-late', date: '2026-10-13', title: '负载分析初稿', done: false }],
+    }]
+    await act(async () => root.render(<MessagesProvider><ResearchOverview /></MessagesProvider>))
+    const tone = (tag: Element) => tag.className.split(' ').find((name) => /^tag--(?!label$|chip$)/.test(name))
+    const kinds = [...host.querySelectorAll('.ovlist-row.attention .tag--label')]
+      .map((tag) => [tag.textContent, tone(tag)])
+    expect(kinds).toEqual([['阻塞', 'tag--warn'], ['里程碑逾期', 'tag--bad']])
+    const pulse = [...host.querySelectorAll('.ovpulse-cell.signal .tag')]
+    expect(pulse.map((tag) => [tag.textContent, tone(tag)])).toEqual([['受阻', 'tag--warn']])
+  })
 })

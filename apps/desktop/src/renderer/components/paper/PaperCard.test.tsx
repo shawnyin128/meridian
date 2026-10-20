@@ -40,6 +40,13 @@ describe('PaperCard', () => {
     expect(card.querySelector('.paper-card-heading .row-actions')!.textContent).toBe('稍后阅读')
   })
 
+  it('元数据里的会场徽标是中性的标签，不用强调色', () => {
+    const host = document.createElement('div')
+    host.innerHTML = renderToStaticMarkup(<PaperCardBadge>ICLR</PaperCardBadge>)
+    expect(host.firstElementChild!.className).toBe('tag tag--label tag--neutral paper-card-badge venue')
+    expect(host.textContent).toBe('ICLR')
+  })
+
   it('标题里的公式与文本命令按 LaTeX 渲染', () => {
     const out = renderToStaticMarkup(
       <MessagesProvider>

@@ -25,7 +25,7 @@ export function HarnessAction({ plan, running, onStart, onCancel }: {
   }
   const personal = plan.scope.notes + plan.scope.annotatedHighlights
   const trigger = (
-    <button className="btn pri harness-trigger">
+    <button className="btn harness-trigger">
       <span aria-hidden="true">✦</span>{plan.label}
     </button>
   )

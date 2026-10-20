@@ -159,7 +159,7 @@ export function projectDecisionItems(
   }
   if (project.block) {
     items.push({
-      id: 'block', rank: 1, kind: m.kind.block, tone: 'bad',
+      id: 'block', rank: 1, kind: m.kind.block, tone: 'warn',
       reason: project.block, action: m.action.clearBlocker,
     })
   }

@@ -50,7 +50,7 @@ describe('没有悬停反馈的控件', () => {
     const stars = '<span class="rating-stars"><button type="button" class="rated">★</button><button type="button">★</button></span>'
     expect(restAndHover(stars, 'button:not(.rated)', 'button:not(.rated)', (style) => style.color))
       .toEqual(['var(--sep-strong)', 'var(--ter)'])
-    expect(restAndHover(stars, '.rated', '.rated', (style) => style.color)).toEqual(['rgb(227, 165, 32)', 'rgb(227, 165, 32)'])
+    expect(restAndHover(stars, '.rated', '.rated', (style) => style.color)).toEqual(['var(--star)', 'var(--star)'])
   })
 
   it('分组标题悬停时它的折叠箭头变深', () => {

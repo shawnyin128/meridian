@@ -67,11 +67,9 @@ function paintHighlights(box: ParentNode, reading: PaperReading | null): void {
   for (const highlight of reading.highlights) {
     const pagebox = box.querySelector<HTMLElement>(`.pdfpagebox[data-page="${highlight.page}"]`)
     if (pagebox === null) continue
-    const noted = highlight.note.trim() !== ''
-    const { box: bounds, path } = highlightShape(
-      highlightLines(highlight.rects, Number(pagebox.dataset.aspect)), noted)
+    const { box: bounds, fill, underline } = highlightShape(highlightLines(highlight.rects, Number(pagebox.dataset.aspect)))
     const mark = document.createElementNS(SVG_NS, 'svg')
-    mark.setAttribute('class', `paper-highlight ${highlight.color}${noted ? ' noted' : ''}`)
+    mark.setAttribute('class', `paper-highlight ${highlight.color}`)
     mark.dataset.highlight = highlight.id
     mark.setAttribute('viewBox', `${bounds.x} ${bounds.y} ${bounds.width} ${bounds.height}`)
     mark.setAttribute('preserveAspectRatio', 'none')
@@ -80,8 +78,14 @@ function paintHighlights(box: ParentNode, reading: PaperReading | null): void {
     mark.style.width = `${bounds.width * 100}%`
     mark.style.height = `${bounds.height * 100}%`
     const shape = document.createElementNS(SVG_NS, 'path')
-    shape.setAttribute('d', path)
+    shape.setAttribute('d', fill)
     mark.append(shape)
+    if (highlight.note.trim() !== '') {
+      const note = document.createElementNS(SVG_NS, 'path')
+      note.setAttribute('class', 'paper-highlight-note')
+      note.setAttribute('d', underline)
+      mark.append(note)
+    }
     pagebox.querySelector('.paper-highlights')!.append(mark)
   }
 }

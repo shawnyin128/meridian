@@ -36,4 +36,4 @@
 .attrow .as{font-size:var(--fs-sm);color:var(--ter);flex-shrink:0}
 .attrow .row-actions{margin:-4px 0}
 .attachments{min-width:0;border-radius:var(--r-md);transition:background-color var(--t) var(--e-out),outline-color var(--t) var(--e-out);outline:1px solid transparent}
-.attachments.drag{background:var(--tint-good);outline-color:var(--good)}
+.attachments.drag{background:var(--accent-soft);outline-color:var(--accent)}

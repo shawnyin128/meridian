@@ -131,6 +131,9 @@ export function ReviewQueue({ proposals, pending, onApply, onDecline, onOpenPage
   const [reason, setReason] = useState('')
   const queued = (proposals ?? []).filter((p) => p.status === 'queued')
   const decided = (proposals ?? []).filter((p) => p.status !== 'queued')
+  const applicable = (p: WikiProposal): boolean => p.proposal !== null && !p.staleNow && (p.unverified ?? []).length === 0
+  // The queue's one primary commit is the apply of the first proposal that can be applied.
+  const lead = queued.find(applicable)?.id
 
   const source = (p: WikiProposal): string => {
     if (p.proposal === null) return fmt.date(dayOf(p.received))
@@ -185,7 +188,7 @@ export function ReviewQueue({ proposals, pending, onApply, onDecline, onOpenPage
                   ))}
                 </div>
                 <div className="review-actions">
-                  <button type="button" className="btn pri" disabled={pending || p.proposal === null || p.staleNow || (p.unverified ?? []).length > 0} onClick={() => onApply(p)}>{r.apply}</button>
+                  <button type="button" className={p.id === lead ? 'btn pri' : 'btn'} disabled={pending || !applicable(p)} onClick={() => onApply(p)}>{r.apply}</button>
                   <ActionPopover
                     open={declining === p.id}
                     onOpenChange={(next) => {

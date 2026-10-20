@@ -79,16 +79,17 @@ export function highlightLines(rects: PaperHighlightRect[], aspect: number): Pap
 
 /**
  * The SVG drawing of a highlight's lines: `box` is their union in page coordinates, which places
- * the drawing and serves as its viewBox, and `path` either fills every line as one shape or, for a
- * highlight with a note, draws one underline along the bottom of each line.
+ * the drawing and serves as its viewBox, `fill` fills every line as one shape, and `underline` draws
+ * one line along the bottom of each line, the mark of a highlight with a note.
  */
 export function highlightShape(
-  lines: PaperHighlightRect[], noted: boolean,
-): { box: PaperHighlightRect; path: string } {
-  const path = lines.map((line) => (noted
-    ? `M${line.x} ${line.y + line.height}h${line.width}`
-    : `M${line.x} ${line.y}h${line.width}v${line.height}h${-line.width}z`)).join('')
-  return { box: unionOf(lines), path }
+  lines: PaperHighlightRect[],
+): { box: PaperHighlightRect; fill: string; underline: string } {
+  return {
+    box: unionOf(lines),
+    fill: lines.map((line) => `M${line.x} ${line.y}h${line.width}v${line.height}h${-line.width}z`).join(''),
+    underline: lines.map((line) => `M${line.x} ${line.y + line.height}h${line.width}`).join(''),
+  }
 }
 
 /**

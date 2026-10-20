@@ -2,17 +2,18 @@
  * Variable names match :root / [data-theme="dark"] of e2e/fixtures/platform-shell-demo.html.
  * 1. Color values match the demo: both moved to the brand palette together. The accent is Primary
  *    blue, and the dark theme has a full gray scale; both derive from a hue of about 220°. The light
- *    surface ladder (--card / --window / --sidebar) is the exception: the demo's cards are white.
+ *    surface ladder (--card / --window / --sidebar) is one exception: the demo's cards are white. The
+ *    light --ter is the other: it is darker, so it keeps 4.5:1 on every surface it sits on.
  * 2. The tokens added beyond the demo (--accent-solid / --press / --press-solid / --hover-solid /
- *    --bad-solid / --bad-text / --ring* / --sel / --selected / --on-selected / --tint-* / --on-tint /
- *    --paper / --scrim / --raised / --chip / --r-* / --pad-* / --sp-* / --row-* / --fs-* / --lh-* /
- *    --t-* / --e-*)
+ *    --bad-solid / --bad-text / --good-text / --warn-text / --accent-text / --ring* / --sel / --selected /
+ *    --on-selected / --tint-* / --star / --hl-* / --paper / --scrim / --raised / --chip / --r-* /
+ *    --pad-* / --sp-* / --row-* / --fs-* / --lh-* / --t-* / --e-*)
  *    and the split into --sh-1 / --sh-2 / --sh-3 / --sh-paper are not in the demo: the demo is the
  *    reference for layout and behavior, not for the finished look, so the two differ on these.
- * 3. --accent-solid / --bad-solid / --press-solid / --hover-solid / --bad-text / --ring / --paper /
- *    --on-tint have the same value in both themes and do not flip (all but the last two are written
- *    only in :root; the last two are repeated with the same values next to their neighbours in the
- *    dark block). No dark value is missing.
+ * 3. --accent-solid / --bad-solid / --press-solid / --hover-solid / --bad-text / --ring / --star / --hl-* /
+ *    --paper have the same value in both themes and do not flip (all but the last are written only in
+ *    :root; the last is repeated with the same value next to its neighbours in the dark block). No dark
+ *    value is missing.
  */
 :root{
   /*
@@ -22,7 +23,7 @@
    */
   --desktop:#e6eaf2; --content:#ffffff;
   --window:color-mix(in srgb,var(--content) 97%,var(--ink)); --sidebar:color-mix(in srgb,var(--window) 85%,transparent);
-  --ink:#0a1020; --sec:#536175; --ter:#7c8798;
+  --ink:#0a1020; --sec:#536175; --ter:#5e6879;
   --sep:#dce4ef; --sep2:rgba(220,228,239,.6);
   --accent:#3568ff; --accent-soft:rgba(53,104,255,.12); --on-accent:#ffffff;
   /* Solid accent surfaces, the same in both themes: white on the dark --accent is only 3.19:1 */
@@ -31,6 +32,11 @@
   /* The neutral tag and count fill: translucent, so it stays a step off any surface, a hovered row included. */
   --chip:rgba(10,16,32,.07);
   --good:#1f9d4d; --warn:#b8860b; --bad:#e0453a; --info:#0e9aa7; --hl:rgba(255,214,10,.45);
+  /* Text in a semantic tone or the accent, on its tint over any surface: darker than the tone, so it keeps 4.5:1. */
+  --good-text:color-mix(in srgb,var(--good) 66%,var(--ink)); --warn-text:color-mix(in srgb,var(--warn) 66%,var(--ink));
+  --accent-text:color-mix(in srgb,var(--accent) 76%,var(--ink));
+  /* A rated star, the same in both themes. */
+  --star:#e3a520;
   /* Two record-kind hues beyond the semantic tones above: complete (teal) and project (violet). */
   --teal:#0f8a72; --violet:#7c4fe0;
   --mslane:rgba(184,134,11,.07);
@@ -81,12 +87,13 @@
   --selected:var(--accent-soft); --on-selected:color-mix(in srgb,var(--accent) 80%,var(--ink));
   --tint-good:rgba(48,209,88,.14); --tint-warn:rgba(255,214,10,.14);
   --tint-bad:rgba(224,69,58,.12); --tint-info:rgba(14,154,167,.14);
-  --tint-mut:rgba(10,16,32,.04); --on-tint:#fff;
+  --tint-mut:rgba(10,16,32,.04);
   --tint-teal:rgba(15,138,114,.14); --tint-violet:rgba(124,79,224,.14);
   /* Entity-type tags. Only type tags use these brand tints; other tags are neutral or semantic */
   --tint-paper:rgba(91,140,255,.14); --tint-wiki:rgba(167,120,255,.14);
-  /* The paper does not flip with the theme */
+  /* The paper does not flip with the theme, nor do the reading highlights on it and the underline of a highlight with a note */
   --paper:#fff; --scrim:rgba(10,22,48,.42);
+  --hl-yellow:#f8d84a; --hl-green:#87d99a; --hl-blue:#82c7f2; --hl-pink:#f0a0be; --hl-note:rgba(10,16,32,.55);
   /* Elevation. --sh-2 (menus, popovers) and --sh-3 (dialogs) draw the layer's edge as their first ring. */
   --sh-1:0 1px 2px rgba(10,22,48,.06), 0 0 0 1px rgba(10,22,48,.04);
   --sh-2:0 0 0 1px rgba(10,22,48,.10), 0 6px 16px rgba(10,22,48,.12), 0 2px 5px rgba(10,22,48,.06);
@@ -120,6 +127,7 @@
   --card:#12213a; --raised:#12213a; --field:#16263f; --hover:rgba(245,247,251,.05);
   --chip:rgba(245,247,251,.08);
   --good:#30d158; --warn:#ffd60a; --bad:#ff453a; --info:#2ec4d6; --hl:rgba(255,214,10,.35);
+  --good-text:var(--good); --warn-text:var(--warn); --accent-text:var(--accent);
   --teal:#2dd4bf; --violet:#a78bfa;
   --mslane:rgba(255,214,10,.06);
   --diff-add:rgba(48,209,88,.14); --diff-del:rgba(255,69,58,.12);
@@ -131,7 +139,7 @@
   --tint-good:rgba(48,209,88,.20); --tint-warn:rgba(255,214,10,.20);
   /* #ff453a on an 18% red tint over #0d1b2d is 4.26:1, short of body text's 4.5:1; 10% gives 4.68:1 */
   --tint-bad:rgba(255,69,58,.10); --tint-info:rgba(46,196,214,.20);
-  --tint-mut:rgba(245,247,251,.05); --on-tint:#fff;
+  --tint-mut:rgba(245,247,251,.05);
   --tint-teal:rgba(45,212,191,.20); --tint-violet:rgba(167,139,250,.20);
   --tint-paper:rgba(91,140,255,.20); --tint-wiki:rgba(197,155,255,.20);
   --paper:#fff; --scrim:rgba(4,11,20,.55);
@@ -169,7 +177,7 @@ b,strong{font-weight:600}
  * button set in routes/shell.css and the icon button press the same way.
  */
 .cd:active,.pgbtn:active{background-image:linear-gradient(var(--press),var(--press))}
-.send:active,.pgbtn.on:active,.cd.sel:active{background-image:linear-gradient(var(--press-solid),var(--press-solid))}
+.send:active{background-image:linear-gradient(var(--press-solid),var(--press-solid))}
 html,body{height:100%}
 body{margin:0;background:var(--desktop);color:var(--ink);font-family:var(--sans);font-size:13px;line-height:1.45;-webkit-font-smoothing:antialiased}
 #root{height:100%;display:flex;flex-direction:column}

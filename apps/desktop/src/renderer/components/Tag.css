@@ -9,9 +9,9 @@
 .tag-text{min-width:0;overflow:hidden;text-overflow:ellipsis}
 .tag--chip{font-size:var(--fs-sm);font-weight:400}
 .tag--neutral{background:var(--chip);color:var(--sec)}
-.tag--accent{background:var(--accent-soft);color:var(--accent)}
-.tag--good{background:var(--tint-good);color:var(--good)}
-.tag--warn{background:var(--tint-warn);color:var(--warn)}
+.tag--accent{background:var(--accent-soft);color:var(--accent-text)}
+.tag--good{background:var(--tint-good);color:var(--good-text)}
+.tag--warn{background:var(--tint-warn);color:var(--warn-text)}
 .tag--bad{background:var(--tint-bad);color:var(--bad)}
 .tag--info{background:var(--tint-info);color:var(--ink)}
 .tag--paper{background:var(--tint-paper);color:var(--sec)}

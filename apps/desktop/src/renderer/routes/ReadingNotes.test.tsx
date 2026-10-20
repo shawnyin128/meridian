@@ -101,7 +101,7 @@ describe('ReadingNotes', () => {
     for (const card of host.querySelectorAll('.reading-card')) {
       expect(card.hasAttribute('data-row-actions')).toBe(true)
       expect(slot(card)).toEqual([['删除', '', true, true]])
-      expect(card.querySelector('.row-actions .btn.pri')).toBeNull()
+      expect(card.querySelector('.row-actions .btn')).toBeNull()
     }
   })
 
@@ -123,10 +123,10 @@ describe('ReadingNotes', () => {
 
     const highlightNote = host.querySelector<HTMLTextAreaElement>('[aria-label="第 2 页高亮批注"]')!
     act(() => setValue(highlightNote, '高亮判断'))
-    await act(async () => { highlightNote.closest('article')!.querySelector<HTMLButtonElement>('.btn.pri')!.click() })
+    await act(async () => { highlightNote.closest('article')!.querySelector<HTMLButtonElement>('.reading-actions .btn')!.click() })
     const note = host.querySelector<HTMLTextAreaElement>('[aria-label="第 3 页笔记"]')!
     act(() => setValue(note, '修订笔记'))
-    await act(async () => { note.closest('article')!.querySelector<HTMLButtonElement>('.btn.pri')!.click() })
+    await act(async () => { note.closest('article')!.querySelector<HTMLButtonElement>('.reading-actions .btn')!.click() })
     await act(async () => { note.closest('article')!.querySelector<HTMLButtonElement>('.reading-delete')!.click() })
     act(() => { host.querySelector<HTMLButtonElement>('.highlight-card .reading-page .source-anchor')!.click() })
 

@@ -166,6 +166,13 @@ describe('PaperWikiIngest', () => {
     expect(host.textContent).toContain('记住什么')
   })
 
+  it('states that no model is connected in the neutral status tone, not as an error', async () => {
+    api.prepare.mockResolvedValue({ ...plan, model: { ...plan.model, configured: false } })
+    await act(async () => { root.render(withMessages(<PaperWikiIngest paper={paper} reading={reading} />)) })
+    const tag = [...host.querySelectorAll('.tag')].find((t) => t.textContent === 'AI 未连接')!
+    expect(tag.className).toBe('tag tag--label tag--neutral')
+  })
+
   it('lets the user stop an in-flight run and requires a fresh confirmation afterward', async () => {
     let rejectRun: ((cause: CallError) => void) | undefined
     api.start.mockImplementation(() => new Promise((_resolve, reject) => { rejectRun = reject }))

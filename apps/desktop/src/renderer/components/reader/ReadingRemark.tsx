@@ -37,7 +37,7 @@ export function ReadingRemark({ reading, saving, onSave, edits }: {
             edit.fieldProps.onKeyDown(event)
           }}
         />
-        <button className="btn pri sm" disabled={saving || unchanged} onClick={save}>{m.common.save}</button>
+        <button className="btn sm" disabled={saving || unchanged} onClick={save}>{m.common.save}</button>
       </div>
     </aside>
   )

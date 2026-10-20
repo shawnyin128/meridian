@@ -5,4 +5,4 @@
 .project-control-value.empty{color:var(--ter)}
 .project-control-value.summary .project-control-text{font-size:var(--fs-base);font-weight:600;color:var(--ink)}
 .project-control-value.inline{display:inline-flex;align-items:center;min-width:0}
-.project-control-value.inline.blocker{color:var(--warn)}
+.project-control-value.blocker .project-control-text{color:var(--warn-text)}

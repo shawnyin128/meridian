@@ -196,7 +196,7 @@ export function PaperWikiIngest({ paper, reading }: {
         {plan === null && pending === null && error === null
           ? <p className="wiki-ingest-status">{m.wiki.ingest.preparing}</p>
           : null}
-        {plan !== null && !plan.model.configured ? <Tag tone="warn">{m.wiki.ingest.notConnectedNote}</Tag> : null}
+        {plan !== null && !plan.model.configured ? <Tag>{m.wiki.ingest.notConnectedNote}</Tag> : null}
         {receipt !== null ? <p className="wiki-ingest-status done">{receipt.message}</p> : null}
         {pending !== null ? <Tag tone="good">{m.wiki.ingest.restoredPending}</Tag> : null}
         {receipt?.warning === undefined ? null : (
@@ -272,7 +272,7 @@ export function PaperWikiIngest({ paper, reading }: {
                   onClick={() => setRejectionOpen(true)}>
                   {m.wiki.ingest.discardProposal}
                 </button>
-                <button className="btn pri"
+                <button className="btn"
                   disabled={applying || rejecting || draft.trim() === '' || pending?.stale === true}
                   onClick={() => { void apply() }}>
                   {applying ? m.wiki.ingest.writing : m.wiki.ingest.confirm}
