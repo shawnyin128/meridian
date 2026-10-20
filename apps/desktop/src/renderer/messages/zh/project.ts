@@ -15,7 +15,7 @@ export const project = {
     records: '科研记录',
   },
   recordViewLabel: '科研记录视图',
-  recordModes: { activity: '动态', conclusions: '结论' },
+  recordModes: { activity: '记录', conclusions: '结论' },
   records: {
     kind: {
       start: '开始推进',
@@ -57,7 +57,7 @@ export const project = {
     addTask: '添加任务',
     addMilestone: '添加里程碑',
     addTaskOrMilestone: '添加任务或里程碑',
-    newAction: '新建',
+    newAction: '添加',
     viewLabel: '计划视图',
     noTasks: '还没有任务',
     noMilestones: '还没有里程碑',
@@ -69,7 +69,7 @@ export const project = {
     deleteTaskFor: (title: string) => `删除任务：${title}`,
     renameTaskFor: (title: string) => `重命名任务：${title}`,
     deleteMilestoneFor: (title: string) => `删除里程碑：${title}`,
-    taskCreated: '已创建任务',
+    taskCreated: '已添加任务',
     taskUpdated: '已更新任务',
     taskDeleted: '已删除任务',
     milestoneCreated: '已添加里程碑',
@@ -102,7 +102,7 @@ export const project = {
     action: {
       decideConflict: '检查证据并裁决',
       clearBlocker: '确认如何解除阻塞',
-      fixPath: '让 Agent 校正当前研究路径',
+      fixPath: '让 Agent 校正当前科研路径',
       rescheduleOrFinish: '完成或重新排期',
       confirmDelivery: '确认交付准备',
       chooseDirection: '确认继续、搁置或调整方向',
@@ -111,8 +111,8 @@ export const project = {
       conflictCount: (n: number) => `${n} 条证据结论互相冲突`,
       overdueTasks: (n: number) => `${n} 条任务已过计划时间`,
       idleDays: (n: number) => `已 ${n} 天无推进`,
-      pathBroken: '当前 active path 已断裂',
-      pathMissing: '科研图尚未指定 active path',
+      pathBroken: '当前科研路径已断裂',
+      pathMissing: '科研图尚未指定当前科研路径',
     },
     idle: {
       none: '尚无推进',
@@ -139,6 +139,7 @@ export const project = {
     topic: '主题',
     // Keyed by shared/project-signals.js's FocusLabelKey; Task 28 introduces project status codes.
     focusLabel: { currentGoal: '当前目标', restartCondition: '重启条件', outcome: '成果' },
+    focusWithLabel: (label: string, focus: string) => `${label}：${focus}`,
     nameFieldLabel: '项目名称',
     nameRequired: '项目名称不能为空',
     nameUpdated: '已更新项目名称',
@@ -218,7 +219,7 @@ export const project = {
   },
   idea: {
     kind: '想法',
-    openIdea: '跳转到想法',
+    openIdea: '打开想法',
     createNode: '转为新节点',
     sourceTag: (source: string) => `来源 · ${source}`,
     placedCreated: '已创建科研图节点并关联想法',
@@ -240,7 +241,7 @@ export const project = {
       verified: '已验证',
       failed: '失败',
       candidate: '候选 / 搁置',
-      activePath: '当前研究路径',
+      activePath: '当前科研路径',
       ideaLinked: '当前想法关联',
     },
     branchSummary: (n: number) => `分支 · ${n}`,

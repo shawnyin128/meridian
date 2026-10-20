@@ -70,6 +70,21 @@ describe('ReadingNotes', () => {
     expect(draft.value).toBe('')
   })
 
+  it('新笔记、改笔记与改高亮批注的保存钮都只叫保存', async () => {
+    const host = document.createElement('div')
+    document.body.append(host)
+    const root = createRoot(host)
+    roots.push(root)
+    act(() => root.render(
+      <MessagesProvider>
+        <Notes reading={READING} currentPage={1} saving={false} onJump={vi.fn()} onMutate={async () => true} />
+      </MessagesProvider>,
+    ))
+    const saves = [...host.querySelectorAll('.btn.pri')].map((button) => button.textContent)
+    expect(saves).toHaveLength(3)
+    expect(new Set(saves)).toEqual(new Set(['保存']))
+  })
+
   it('笔记和高亮卡片的删除是卡片顶行操作槽里的图标钮，悬停时标红；保存留在槽外', async () => {
     const host = document.createElement('div')
     document.body.append(host)
@@ -106,7 +121,7 @@ describe('ReadingNotes', () => {
       </MessagesProvider>,
     ))
 
-    const highlightNote = host.querySelector<HTMLTextAreaElement>('[aria-label="第 2 页高亮笔记"]')!
+    const highlightNote = host.querySelector<HTMLTextAreaElement>('[aria-label="第 2 页高亮批注"]')!
     act(() => setValue(highlightNote, '高亮判断'))
     await act(async () => { highlightNote.closest('article')!.querySelector<HTMLButtonElement>('.btn.pri')!.click() })
     const note = host.querySelector<HTMLTextAreaElement>('[aria-label="第 3 页笔记"]')!

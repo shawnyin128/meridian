@@ -46,7 +46,7 @@ const PAPER_TWO = reading('paper-2', 2)
 
 const NEW_NOTE = '[aria-label="新笔记"]'
 const NOTE = '[aria-label="第 3 页笔记"]'
-const HIGHLIGHT_NOTE = '[aria-label="第 2 页高亮笔记"]'
+const HIGHLIGHT_NOTE = '[aria-label="第 2 页高亮批注"]'
 const REMARK = 'textarea[aria-label="随笔"]'
 
 function setValue(input: HTMLTextAreaElement, value: string): void {

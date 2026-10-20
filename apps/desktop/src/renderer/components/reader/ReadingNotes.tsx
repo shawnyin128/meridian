@@ -124,7 +124,7 @@ export function ReadingNotes({
         <button
           className="btn pri sm" disabled={draft.trim() === '' || saving}
           onClick={() => { void addNote() }}
-        >{m.reader.notes.add}</button>
+        >{m.common.save}</button>
       </div>}
       <div className="reading-list">
         {mode === 'notes' ? null : reading.highlights.map((highlight) => (

@@ -100,7 +100,7 @@ test('项目反向展示关联想法，点击后在项目右栏就地打开详�
   await expect(page.locator('.node-document-pane')).toContainText(idea!.title)
   await expect(page.locator('.idea-panel-body')).not.toBeEmpty()
   const openIdea = page.locator('.idea-panel-head .project-idea-open-idea')
-  await expect(openIdea).toHaveText('跳转到想法')
+  await expect(openIdea).toHaveText('打开想法')
   await expect(page.getByRole('button', { name: '打开来源对话' })).toHaveCount(0)
   await expect(row).toHaveClass(/selected/)
 
@@ -583,7 +583,7 @@ test('新建一个任务再删掉,任务数前后一致', async ({ win }) => {
   await win.locator('#taskList .min').fill(NEW_TASK_TITLE)
   await win.locator('#taskList .min').press('Enter')
 
-  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已创建任务')
+  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已添加任务')
   await expect(win.locator('#taskList .ddlrow')).toHaveCount(ACTIVE_TASK_ROWS + 1)
   expect((await readDraft(win)).tasks.some((t) => t.title === NEW_TASK_TITLE)).toBe(true)
 
@@ -750,7 +750,7 @@ test('在项目详情里再点侧栏的「项目」,回到项目列表;返回键
   await expect(back).toHaveCount(0)
 })
 
-test('科研记录在动态和科研图之间切换,标题留在原处,动态短也不留空白', async ({ win }) => {
+test('科研记录在记录和科研图之间切换,标题留在原处,记录短也不留空白', async ({ win }) => {
   await gotoProject(win)
   const page = win.locator('.screenslot:not([hidden]) .wkpage')
   const heading = page.locator('.section-heading', { hasText: '科研记录' })
@@ -764,7 +764,7 @@ test('科研记录在动态和科研图之间切换,标题留在原处,动态短
   // Scroll so the graph is in view, then switch back to the shorter activity feed.
   await heading.evaluate((el) => el.scrollIntoView({ block: 'start' }))
   const held = await top()
-  await toggle('动态')
+  await toggle('记录')
   await expect(page.locator('.evlist')).toBeVisible()
   // The heading holds its place unless the shorter page cannot scroll that far; then it sits as
   // high as the page allows, with nothing padded in to fake the old height.

@@ -36,7 +36,7 @@ const row = (events: ProjectOverview['events']): ProjectOverview => ({
   research: { pathState: 'empty', activeNodes: [], branches: { active: 0, supported: 0, failed: 0, shelved: 0 } },
 })
 
-describe('研究总览的项目进展', () => {
+describe('研究总览的项目推进', () => {
   let host: HTMLDivElement
   let root: Root
 
@@ -55,12 +55,12 @@ describe('研究总览的项目进展', () => {
     api.loading = false
   })
 
-  it('项目进展、最近进展和接下来的里程碑是汇总出来的，没有内容时整节不显示', async () => {
+  it('项目推进、最近科研记录和接下来的里程碑是汇总出来的，没有内容时整节不显示', async () => {
     api.rows = [{ ...row([]), status: '已完成' }]
     await act(async () => { root.render(<MessagesProvider><ResearchOverview /></MessagesProvider>) })
     const headings = [...host.querySelectorAll('.section-heading')].map((node) => node.textContent)
-    expect(headings).not.toContain('项目进展')
-    expect(headings).not.toContain('最近进展')
+    expect(headings).not.toContain('项目推进')
+    expect(headings).not.toContain('最近科研记录')
     expect(headings).not.toContain('接下来的里程碑')
     expect(host.querySelector('.empty-state')).toBeNull()
   })
@@ -82,7 +82,7 @@ describe('研究总览的项目进展', () => {
     expect(cells[1]!.querySelector('.ovpulse-latest')!.textContent).toBe('后写的记录')
   })
 
-  it('最近进展和项目进展里 agent 写的记录都在那一行的末尾带 agent 标签,我写的不带', async () => {
+  it('最近科研记录和项目推进里 agent 写的记录都在那一行的末尾带 agent 标签,我写的不带', async () => {
     api.rows = [row([
       { date: '2026-10-15', text: '我记的', kind: 'note' },
       { date: '2026-10-16', text: 'agent 记的', kind: 'result', origin: 'agent' },
@@ -96,7 +96,7 @@ describe('研究总览的项目进展', () => {
     expect(latest.textContent).toBe('agent 记的agent')
   })
 
-  it('最近进展给每条记录标上项目页科研记录的类型名和色调,没有类型的旧记录标成记录', async () => {
+  it('最近科研记录给每条记录标上项目页科研记录的类型名和色调,没有类型的旧记录标成记录', async () => {
     api.rows = [row([
       { date: '2026-10-13', text: '旧记录' },
       { date: '2026-10-14', text: '开工', kind: 'start' },
@@ -113,7 +113,7 @@ describe('研究总览的项目进展', () => {
   })
 })
 
-describe('研究总览的需要决策', () => {
+describe('研究总览的需要注意', () => {
   let host: HTMLDivElement
   let root: Root
 

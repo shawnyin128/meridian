@@ -247,7 +247,7 @@ function ProjectRow({ project, onOpen, menu, reorder, dropClassName }: {
         <ProjectIdentity project={project} variant="row" showPriority={false} showTopic />
       </button>
       <span className="m">
-        {m.project.identity.focusLabel[FOCUS_KEY[project.status]]}:{project.focus} ·{' '}
+        {m.project.identity.focusWithLabel(m.project.identity.focusLabel[FOCUS_KEY[project.status]], project.focus)} ·{' '}
         {idleNote(idle, m.project.signals.idle)}
       </span>
       <RowActions><DragHandle {...reorder.handle} />{menu}</RowActions>

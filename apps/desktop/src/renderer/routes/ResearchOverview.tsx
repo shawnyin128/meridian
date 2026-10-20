@@ -32,9 +32,9 @@ import {
 import './shell.css'
 import './ResearchOverview.css'
 
-/** How many entries Recent progress lists, as in the demo's recentHTML. */
+/** How many entries Recent research log lists, as in the demo's recentHTML. */
 const RECENT_EVENTS = 6
-/** Research records dated within this many days count toward "Progress over the last 7 days". */
+/** Research records dated within this many days count toward "Research log entries, last 7 days". */
 const WEEK_DAYS = 7
 
 const PULSE_TONE: Record<ProjectPulseSignal['tone'], TagTone> = {
@@ -80,7 +80,7 @@ function Stats({ rows }: { rows: ProjectOverview[] }) {
 
 /**
  * Every list on the overview shares one column order: project, date, kind, main text, secondary
- * status. Dates come from OverviewDate, so a milestone reads the same in Needs a decision and in
+ * status. Dates come from OverviewDate, so a milestone reads the same in Needs attention and in
  * Upcoming milestones.
  */
 function OverviewList({ children }: { children: ReactNode }) {
@@ -113,7 +113,7 @@ function OverviewRow({ when, kind, main, meta, project, projectId, variant, onOp
 }
 
 /**
- * Needs a decision: all projects' signals, merged and sorted, each with its next action at the right.
+ * Needs attention: all projects' signals, merged and sorted, each with its next action at the right.
  * A row opens its project, at the task or milestone the signal is about.
  */
 function DecisionQueue({ rows, onOpen }: {
@@ -235,7 +235,7 @@ function ProjectProgress({ rows, onOpen }: {
   )
 }
 
-/** Recent progress: all projects' research records, newest first: "what happened while I was away". */
+/** Recent research log: all projects' research records, newest first: "what happened while I was away". */
 function Recent({ rows, onOpen }: { rows: ProjectOverview[]; onOpen: (projectId: string) => void }) {
   const m = useMessages()
   const events = rows
@@ -373,7 +373,7 @@ function OverviewGantt({
 
 /**
  * Research › Overview: all projects over time. The top is the Gantt chart of every project; below
- * it come Stats, Needs a decision, Project progress, and two columns, Recent progress and Upcoming
+ * it come Stats, Needs attention, Project progress, and two columns, Recent research log and Upcoming
  * milestones. Data comes from project.overview. Rescheduling a task or milestone on the timeline
  * writes back through project.updateTask / updateMilestone, and creating or deleting a milestone
  * through the matching methods. Every project entry on the screen opens that project on the

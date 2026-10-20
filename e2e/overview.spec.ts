@@ -258,7 +258,7 @@ test('点甘特行内空白在那一天新建里程碑,写落进 core', async ({
 
   // repro's bar starts on the window's second day, so the start of its row is empty and on day one.
   await row.click({ position: { x: 10, y: 22 } })
-  await expect(win.locator('.ctxmenu .rh')).toHaveText(`新建里程碑 · ${dshort(firstDay)}`)
+  await expect(win.locator('.ctxmenu .rh')).toHaveText(`添加里程碑 · ${dshort(firstDay)}`)
   await win.locator('.ctxmenu .mi-in input').fill('总览上补的里程碑')
   await win.locator('.ctxmenu .mi-in input').press('Enter')
 
@@ -507,7 +507,7 @@ test('总览新建里程碑:写被拒时弹层与打的字都留着,改了再回
 
   // repro's bar starts on the window's second day, so the start of its row is empty and on day one.
   await shown(win).locator('.gantt .grow[data-row="repro"]').click({ position: { x: 10, y: 22 } })
-  await expect(menu.locator('.rh')).toHaveText(`新建里程碑 · ${dshort(firstDay)}`)
+  await expect(menu.locator('.rh')).toHaveText(`添加里程碑 · ${dshort(firstDay)}`)
 
   // Delete repro directly, bypassing the UI: Overview does not refetch, so the popover stays on repro's
   // row, and this write to Core is bound to be rejected.
@@ -675,7 +675,7 @@ test.describe(() => {
     await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已添加里程碑')
     expect(await milestonesOf(win, 'repro')).toContainEqual({ date: firstDay, title: STALE_TITLE })
     await expect(menu).toBeVisible()
-    await expect(menu.locator('.rh')).toHaveText(`新建里程碑 · ${dshort(secondDay)}`)
+    await expect(menu.locator('.rh')).toHaveText(`添加里程碑 · ${dshort(secondDay)}`)
     await expect(input).toHaveValue(MOVED_TITLE)
   })
 
@@ -710,7 +710,7 @@ test.describe(() => {
     await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已添加里程碑')
     expect(await milestonesOf(win, 'repro')).toContainEqual({ date: firstDay, title: STALE_TITLE })
     await expect(menu).toBeVisible()
-    await expect(menu.locator('.rh')).toHaveText(`新建里程碑 · ${dshort(firstDay)}`)
+    await expect(menu.locator('.rh')).toHaveText(`添加里程碑 · ${dshort(firstDay)}`)
     // A popover moved to another project must not keep the text typed for repro, or Enter would create
     // that milestone on draft.
     await expect(input).toHaveValue('')
