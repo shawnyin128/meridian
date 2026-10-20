@@ -2,6 +2,7 @@ import { Fragment, useCallback, useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import type { FeedEntry, FeedSource } from '../../shared/contract.js'
 import { feed } from '../ipc.js'
+import { errorLabel } from '../lib/failure-label.js'
 import { useMessages } from '../messages/useMessages.js'
 import { useJump, useToday, useVaultRevision } from '../shell/AppShell.js'
 import { CONFLICT_THREAD } from '../lib/chat.js'
@@ -151,7 +152,7 @@ export function Feed() {
   const [source, setSource] = useState<FeedSource | null>(null)
   const [nowMs, setNowMs] = useState(Date.now)
 
-  const reportError = useCallback((e: Error) => setError(e.message), [])
+  const reportError = useCallback((e: unknown) => setError(errorLabel(m, e)), [m])
 
   useEffect(() => {
     void feed.list().then(setEntries).catch(reportError)

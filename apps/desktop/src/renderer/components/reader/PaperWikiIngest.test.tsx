@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type {
   HarnessPaperWikiQuality, HarnessPlan, PaperReading, PaperRow,
 } from '../../../shared/contract.js'
+import { CallError } from '../../call-error.js'
 import { MessagesProvider } from '../../messages/useMessages.js'
 import { LANGUAGE_STORAGE_KEY } from '../../shell/language.js'
 
@@ -149,7 +150,7 @@ describe('PaperWikiIngest', () => {
   })
 
   it('lets the user stop an in-flight run and requires a fresh confirmation afterward', async () => {
-    let rejectRun: ((cause: Error) => void) | undefined
+    let rejectRun: ((cause: CallError) => void) | undefined
     api.start.mockImplementation(() => new Promise((_resolve, reject) => { rejectRun = reject }))
     await act(async () => { root.render(withMessages(<PaperWikiIngest paper={paper} reading={reading} />)) })
     act(() => host.querySelector<HTMLButtonElement>('[data-testid="start-harness"]')!.click())
@@ -159,9 +160,9 @@ describe('PaperWikiIngest', () => {
     expect(api.cancel).toHaveBeenCalledWith('plan-1')
 
     await act(async () => {
-      rejectRun!(new Error('已停止生成。模型请求若已发出，服务商仍可能计费；再次生成需要重新确认。'))
+      rejectRun!(new CallError('harness.start', 'cancelled'))
     })
-    expect(host.textContent).toContain('仍可能计费')
+    expect(host.textContent).toContain('已停止生成')
     expect(host.querySelector('[data-testid="start-harness"]')).toBeNull()
     expect(host.textContent).toContain('重新准备')
   })

@@ -1,5 +1,5 @@
 import { ZodError } from 'zod'
-import type { CallFailure } from '../shared/contract.js'
+import type { CallFailure, CallRejection } from '../shared/contract.js'
 import { HttpStatusError, netFailure } from './net/http.js'
 import { isWriteFailure } from './vault/writer.js'
 
@@ -22,4 +22,21 @@ export function callFailure(error: unknown): CallFailure {
   if (isWriteFailure(error)) return 'write'
   if (error instanceof HttpStatusError) return netFailure(error)
   return 'unknown'
+}
+
+/**
+ * Answers call `id` of `method` on `port` once `outcome` settles: with its data, or with the
+ * CallRejection of the error it threw. The error's own text goes to the log only.
+ */
+export function answerCall(
+  port: { postMessage(message: unknown): void }, id: number, method: string, outcome: Promise<unknown>,
+): Promise<void> {
+  return outcome.then(
+    (data) => { port.postMessage({ id, ok: true, data }) },
+    (error: unknown) => {
+      console.error(`[core] ${method} 失败：${error instanceof Error ? error.message : String(error)}`)
+      const rejection: CallRejection = { reason: callFailure(error) }
+      port.postMessage({ id, ok: false, error: rejection })
+    },
+  )
 }

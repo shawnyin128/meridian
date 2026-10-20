@@ -5,6 +5,7 @@ import type {
 } from '../../../shared/contract.js'
 import { harness } from '../../ipc.js'
 import { useVaultWrite } from '../../hooks/useVaultWrite.js'
+import { errorLabel } from '../../lib/failure-label.js'
 import { useMessages } from '../../messages/useMessages.js'
 import type { Catalog } from '../../messages/catalog.js'
 import { ChipToggles } from '../ChipToggles.js'
@@ -84,11 +85,11 @@ export function PaperWikiIngest({ paper, reading }: {
       }
       const next = await harness.preparePaperWiki(paper.id)
       if (live) setPlan(next)
-    }).catch((cause: Error) => {
-      if (live) setError(cause.message)
+    }).catch((cause: unknown) => {
+      if (live) setError(errorLabel(m, cause))
     })
     return () => { live = false }
-  }, [paper.id, readingScope])
+  }, [paper.id, readingScope, m])
 
   useEffect(prepare, [prepare])
 
@@ -101,8 +102,8 @@ export function PaperWikiIngest({ paper, reading }: {
       setPending(null)
       setDraft(next.proposal?.body ?? '')
       setReviewMode(next.proposal?.review === undefined ? 'markdown' : 'structured')
-    }).catch((cause: Error) => {
-      setError(cause.message)
+    }).catch((cause: unknown) => {
+      setError(errorLabel(m, cause))
       setPlan(null)
     }).finally(() => {
       setRunning(false)
@@ -114,8 +115,8 @@ export function PaperWikiIngest({ paper, reading }: {
     if (plan === null || !running || cancelling) return
     setCancelling(true)
     setError(null)
-    void harness.cancel(plan.id).catch((cause: Error) => {
-      setError(cause.message)
+    void harness.cancel(plan.id).catch((cause: unknown) => {
+      setError(errorLabel(m, cause))
       setCancelling(false)
     })
   }
@@ -150,7 +151,7 @@ export function PaperWikiIngest({ paper, reading }: {
       setRejected(true)
       if (result.warning !== undefined) setError(result.warning)
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : String(cause))
+      setError(errorLabel(m, cause))
     } finally {
       setRejecting(false)
     }

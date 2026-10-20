@@ -18,6 +18,7 @@ import { RowActions } from '../components/StructuredList.js'
 import {
   PageBody, PageError, PageHeader, PageShell, PageTitle, SectionHeading,
 } from '../components/PageShell.js'
+import { errorLabel } from '../lib/failure-label.js'
 import { useEscapeLayer, useJump, useScreenReentry, useVaultRevision } from '../shell/AppShell.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
 import { useDragReorder, type Reorderable } from '../hooks/useDragReorder.js'
@@ -239,7 +240,7 @@ export function Ideas() {
       setProjects(projectRows)
       setSelectedId((held) => held !== null && ideas.some((idea) => idea.id === held) ? held : null)
       setError(null)
-    }).catch((cause: Error) => setError(cause.message))
+    }).catch((cause: unknown) => setError(errorLabel(m, cause)))
   }, [])
   useEffect(load, [load, revision])
   // Clicking the sidebar while this screen is shown lands on the plain list: an open detail closes.

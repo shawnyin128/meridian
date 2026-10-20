@@ -49,7 +49,7 @@ test('不传 MERIDIAN_SHOW_WINDOW 时窗口上屏', async ({ configHome }) => {
 const cleanEnv = () => Object.fromEntries(Object.entries(process.env).filter(
   (e): e is [string, string] => e[1] !== undefined && !e[0].startsWith('MERIDIAN_')))
 
-test('指定的库里没有论文页目录时,内容区报出缺的目录,设置仍打得开', async ({ configHome }) => {
+test('指定的库里没有论文页目录时,内容区报出原因的标签而不带路径,设置仍打得开', async ({ configHome }) => {
   const bare = mkdtempSync(join(tmpdir(), 'meridian-e2e-bare-'))
   const app = await electron.launch({
     args: ZH_ARGS,
@@ -58,7 +58,7 @@ test('指定的库里没有论文页目录时,内容区报出缺的目录,设置
   try {
     const win = await app.firstWindow()
     await expect(win.locator('.bootfail .desk-head .t')).toHaveText('论文库打不开')
-    await expect(win.locator('.bootfail .ipcerror')).toHaveText(`库里没有论文页目录：${join(bare, 'wiki', 'papers')}`)
+    await expect(win.locator('.bootfail .ipcerror')).toHaveText('内容无效')
     await win.locator('.bootfail .btn', { hasText: '打开设置' }).click()
     // The button opens settings on its default category (appearance), not a contextual jump to storage.
     await win.locator('.setdlg .srow[data-setcat="storage"]').click()
@@ -70,16 +70,16 @@ test('指定的库里没有论文页目录时,内容区报出缺的目录,设置
   }
 })
 
-test('指定的库没有 Wiki 结构文件时,内容区报出缺的那个文件', async ({ configHome }) => {
+test('指定的库没有 Wiki 结构文件时,内容区报出原因的标签而不带路径', async ({ configHome }) => {
   const legacy = mkdtempSync(join(tmpdir(), 'meridian-e2e-noschema-'))
   mkdirSync(join(legacy, 'wiki', 'papers'), { recursive: true })
   const app = await electron.launch({
-    args: [APP_DIR],
+    args: ZH_ARGS,
     env: { ...cleanEnv(), MERIDIAN_VAULT_ROOT: legacy, MERIDIAN_CONFIG_HOME: configHome, MERIDIAN_SHOW_WINDOW: '0' },
   })
   try {
     const win = await app.firstWindow()
-    await expect(win.locator('.bootfail .ipcerror')).toHaveText(`库里没有 Wiki 结构文件：${join(legacy, 'wiki', 'schema.yaml')}`)
+    await expect(win.locator('.bootfail .ipcerror')).toHaveText('内容无效')
   } finally {
     await app.close()
     rmSync(legacy, { recursive: true, force: true })
@@ -91,11 +91,11 @@ test('用户配置登记的库打不开时报错,不悄悄换成应用自己的�
   const missing = join(home, 'missing-library')
   writeFileSync(join(home, 'paper-wiki-workspaces.json'), JSON.stringify({ active_library_root: missing }), 'utf8')
   const app = await electron.launch({
-    args: [APP_DIR], env: { ...cleanEnv(), MERIDIAN_CONFIG_HOME: home, MERIDIAN_SHOW_WINDOW: '0' },
+    args: ZH_ARGS, env: { ...cleanEnv(), MERIDIAN_CONFIG_HOME: home, MERIDIAN_SHOW_WINDOW: '0' },
   })
   try {
     const win = await app.firstWindow()
-    await expect(win.locator('.bootfail .ipcerror')).toHaveText(`库里没有论文页目录：${join(missing, 'wiki', 'papers')}`)
+    await expect(win.locator('.bootfail .ipcerror')).toHaveText('内容无效')
   } finally {
     await app.close()
     rmSync(home, { recursive: true, force: true })

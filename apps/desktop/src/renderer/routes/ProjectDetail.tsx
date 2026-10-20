@@ -12,6 +12,7 @@ import {
 } from '../../shared/project-signals.js'
 import { PROJECT_STATUSES } from '../../shared/vocabulary.js'
 import { appMenu, files, idea as ideaApi, papers, project as projectApi, wiki } from '../ipc.js'
+import { errorLabel } from '../lib/failure-label.js'
 import {
   useCrumbTail, useEscapeLayer, useJump, useNotice, useToday, useVaultRevision,
 } from '../shell/AppShell.js'
@@ -203,7 +204,7 @@ export function ProjectDetail({
   const { revision } = useVaultRevision()
   const { open: jumpTo } = useJump()
   const openWikiPage = (page: string) => jumpTo('wiki', page)
-  const reportError = useCallback((e: Error) => setError(e.message), [])
+  const reportError = useCallback((e: unknown) => setError(errorLabel(m, e)), [m])
   const write = useVaultWrite()
   const heldPapers = project?.papers
   const suggestPapers = useCallback(async (query: string): Promise<PickHit[]> => {

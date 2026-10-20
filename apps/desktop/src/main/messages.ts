@@ -8,7 +8,7 @@ export type MainCopy = {
   chooseLibrary: { title: string; button: string }
   chooseWorkspace: { title: string; button: string }
   credentials: CredentialVaultCopy
-  preload: { serviceUnavailable: string; connectionMissing: string; unknownError: string }
+  preload: { serviceUnavailable: string; connectionMissing: string }
 }
 
 export const MAIN_COPY: Record<UiLocale, MainCopy> = {
@@ -27,7 +27,6 @@ export const MAIN_COPY: Record<UiLocale, MainCopy> = {
     preload: {
       serviceUnavailable: 'Meridian 无法连接本地数据服务。',
       connectionMissing: 'Meridian 没有收到本地数据服务连接。',
-      unknownError: '出了点问题。',
     },
   },
   en: {
@@ -46,7 +45,6 @@ export const MAIN_COPY: Record<UiLocale, MainCopy> = {
     preload: {
       serviceUnavailable: 'Meridian could not connect to its local data service.',
       connectionMissing: 'Meridian did not receive a connection to its local data service.',
-      unknownError: 'Something went wrong.',
     },
   },
 }

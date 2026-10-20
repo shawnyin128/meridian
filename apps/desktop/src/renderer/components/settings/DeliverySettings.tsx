@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import type { DeliverySettings as DeliverySettingsValue } from '../../../shared/contract.js'
 import { DEFAULT_DELIVERY_SETTINGS } from '../../../shared/contract.js'
 import { delivery } from '../../ipc.js'
+import { errorLabel } from '../../lib/failure-label.js'
 import { useMessages } from '../../messages/useMessages.js'
 import { useVaultWrite } from '../../hooks/useVaultWrite.js'
 import { composing } from '../../lib/keyboard.js'
@@ -29,11 +30,11 @@ export function DeliverySettings() {
       setSaved(settings)
       setDraft(String(settings.maxItemsPerRun))
       setLoadingError(null)
-    }).catch((error: Error) => {
-      if (active) setLoadingError(error.message)
+    }).catch((error: unknown) => {
+      if (active) setLoadingError(errorLabel(m, error))
     })
     return () => { active = false }
-  }, [])
+  }, [m])
 
   const amount = Number(draft)
   const valid = Number.isInteger(amount) && amount >= MIN_ITEMS && amount <= MAX_ITEMS

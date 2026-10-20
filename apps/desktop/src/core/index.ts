@@ -97,7 +97,7 @@ import {
   WikiProposeParamsSchema,
   WikiUpdateParamsSchema,
 } from '../shared/contract.js'
-import { CallError, callFailure } from './call-error.js'
+import { answerCall, CallError, callFailure } from './call-error.js'
 import { createFixtureStore } from './fixture-store.js'
 import { withUiSampleUpload } from './fixtures/ui-samples.js'
 import { createBackground } from './background.js'
@@ -145,14 +145,11 @@ process.parentPort.on('message', (event) => {
   if (!port) throw new Error('core 未收到 MessagePort')
   port.on('message', (msg) => {
     const { id, method, params } = msg.data as { id: number; method: ContractMethod; params: unknown }
-    void handlersReady.then(() => {
+    void answerCall(port, id, method, handlersReady.then(() => {
       const handler = handlers.get(method)
       if (!handler) throw new Error(`未注册的契约方法：${method}`)
       return handler(params)
-    }).then(
-      (data) => { port.postMessage({ id, ok: true, data }) },
-      (err: unknown) => { port.postMessage({ id, ok: false, error: err instanceof Error ? err.message : String(err) }) },
-    )
+    }))
   })
   port.start()
 })

@@ -1127,6 +1127,9 @@ export const CallFailureSchema = z.enum([
   'newer-version', 'cancelled', 'model',
 ])
 
+/** What a rejected call carries across the process boundary instead of Core's error. */
+export const CallRejectionSchema = z.object({ reason: CallFailureSchema }).strict()
+
 /** An author search result, projected to the fields needed for disambiguation and selection. */
 export const AuthorCandidateSchema = z.object({
   source: AuthorSourceSchema,
@@ -2239,6 +2242,7 @@ export type NetFailed = z.infer<typeof NetFailedSchema>
 export type AuthorSearchFailure = z.infer<typeof AuthorSearchFailureSchema>
 export type AuthorSearchFailed = z.infer<typeof AuthorSearchFailedSchema>
 export type CallFailure = z.infer<typeof CallFailureSchema>
+export type CallRejection = z.infer<typeof CallRejectionSchema>
 export type AuthorCandidate = z.infer<typeof AuthorCandidateSchema>
 export type WatchTopicSuggestion = z.infer<typeof WatchTopicSuggestionSchema>
 export type WatchAuthorSuggestion = z.infer<typeof WatchAuthorSuggestionSchema>

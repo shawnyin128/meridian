@@ -6,5 +6,5 @@
     "src/core/**/*.ts",
     "src/shared/**/*.ts"
   ],
-  "exclude": ["src/main/preload.ts"]
+  "exclude": ["src/main/preload.ts", "src/shared/call-boundary.test.ts"]
 }

@@ -8,7 +8,7 @@ import {
   ALL_WATCHES, useCrumbTail, useInboxMode, useInboxScope, useJump, useNotice, useSettingsOpen, useVaultRevision,
 } from '../shell/AppShell.js'
 import { useJobs } from '../shell/useJobs.js'
-import { failureLabel } from '../lib/failure-label.js'
+import { errorLabel, failureLabel } from '../lib/failure-label.js'
 import { useFormat } from '../lib/format.js'
 import type { Catalog } from '../messages/catalog.js'
 import { useMessages } from '../messages/useMessages.js'
@@ -87,7 +87,7 @@ export function Inbox() {
   const { openCategory } = useSettingsOpen()
   const { open } = useJump()
   const { revision, bump } = useVaultRevision()
-  const reportError = useCallback((e: Error) => setError(e.message), [])
+  const reportError = useCallback((e: unknown) => setError(errorLabel(m, e)), [m])
   const write = useVaultWrite()
   const jobs = useJobs()
   const [busy, setBusy] = useState<ReadonlySet<string>>(new Set())
@@ -156,7 +156,7 @@ export function Inbox() {
     void inbox.readLater(id).then((queued) => {
       notice.success(queued ? m.inbox.notices.queued : m.inbox.notices.alreadyQueued)
       window.setTimeout(bump, LEAVE_MS)
-    }).catch((e: Error) => notice.refusal(e.message))
+    }).catch((e: unknown) => notice.refusal(errorLabel(m, e)))
   }
 
   const ingest = (id: string) => {
@@ -178,7 +178,7 @@ export function Inbox() {
       }
       bump()
       notice.success(m.inbox.notices.downloaded)
-    }).catch((e: Error) => notice.refusal(e.message)).finally(() => {
+    }).catch((e: unknown) => notice.refusal(errorLabel(m, e))).finally(() => {
       setBusy((held) => {
         const next = new Set(held)
         next.delete(id)
@@ -192,7 +192,7 @@ export function Inbox() {
     void discovery.fetch().then((result) => {
       notice.success(discoveryResultNote(result, m))
       bump()
-    }).catch((e: Error) => notice.refusal(e.message)).finally(() => setDiscovering(false))
+    }).catch((e: unknown) => notice.refusal(errorLabel(m, e))).finally(() => setDiscovering(false))
   }
 
   const feedback = (id: string, value: 'more' | 'less' | 'known') => {
@@ -201,7 +201,7 @@ export function Inbox() {
       notice.success(value === 'more' ? m.inbox.notices.moreLike
         : value === 'less' ? m.inbox.notices.lessLike : m.inbox.notices.known)
       window.setTimeout(bump, value === 'more' ? 0 : LEAVE_MS)
-    }).catch((e: Error) => notice.refusal(e.message))
+    }).catch((e: unknown) => notice.refusal(errorLabel(m, e)))
   }
 
   const card = (p: InboxEntry) => (
@@ -304,7 +304,7 @@ export function Inbox() {
             {stream === 'watch' ? (
               <button
                 className="btn" disabled={jobs?.fetch?.state === 'checking'}
-                onClick={() => { void inbox.fetch().catch((e: Error) => notice.refusal(e.message)) }}
+                onClick={() => { void inbox.fetch().catch((e: unknown) => notice.refusal(errorLabel(m, e))) }}
               >{jobs?.fetch?.state === 'failed' ? m.common.retry : m.inbox.checkNewPapers}</button>
             ) : (
               <button className="btn" disabled={discovering} onClick={refreshDiscovery}>

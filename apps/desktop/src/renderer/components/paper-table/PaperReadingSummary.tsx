@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { PaperReading, PaperRow } from '../../../shared/contract.js'
 import { papers } from '../../ipc.js'
+import { errorLabel } from '../../lib/failure-label.js'
 import { useMessages } from '../../messages/useMessages.js'
 import { useVaultRevision, type JumpAnchor } from '../../shell/AppShell.js'
 import { entryAnchor, readingEntries } from './reading-entries.js'
@@ -30,7 +31,7 @@ export function PaperReadingSummary({ paper, onRead, onConclusions }: {
     setError(null)
     void papers.reading(paper.id)
       .then((value) => { if (live) setReading(value) })
-      .catch((cause: Error) => { if (live) setError(cause.message) })
+      .catch((cause: unknown) => { if (live) setError(errorLabel(m, cause)) })
     return () => { live = false }
   }, [paper.id, revision])
 

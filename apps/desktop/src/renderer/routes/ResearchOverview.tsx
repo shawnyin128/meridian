@@ -7,6 +7,7 @@ import {
 } from '../../shared/project-signals.js'
 import { project as projectApi } from '../ipc.js'
 import { ACTIVE_PROJECT, FINISHED_PROJECT, SHELVED_PROJECT } from '../../shared/vocabulary.js'
+import { errorLabel } from '../lib/failure-label.js'
 import { useJump, useToday, useVaultRevision, type JumpAnchor } from '../shell/AppShell.js'
 import { LoadingPlaceholder } from '../components/LoadingPlaceholder.js'
 import { AgentLabel } from '../components/SourceLabel.js'
@@ -386,7 +387,7 @@ export function ResearchOverview() {
   const [error, setError] = useState<string | null>(null)
   const { revision } = useVaultRevision()
   const { open: jumpTo } = useJump()
-  const reportError = useCallback((e: Error) => setError(e.message), [])
+  const reportError = useCallback((e: unknown) => setError(errorLabel(m, e)), [m])
   const write = useVaultWrite()
 
   useEffect(() => {

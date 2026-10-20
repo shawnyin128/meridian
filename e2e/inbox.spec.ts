@@ -286,7 +286,7 @@ test.describe('这一条推送已经在别处入过库', () => {
     await call(win, 'inbox.download', { id: fresh.id })
 
     await card.locator('[aria-label="下载并入库"]').click()
-    await expect(win.locator('#notice[data-tone="refusal"] .notice-text')).toHaveText(`这一条已经入库：${fresh.id}`)
+    await expect(win.locator('#notice[data-tone="refusal"] .notice-text')).toHaveText('现在不能这样做')
     await expect(shown(win, '.ipcerror')).toHaveCount(0)
   })
 })

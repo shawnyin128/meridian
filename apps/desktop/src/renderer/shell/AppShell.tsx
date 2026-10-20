@@ -13,6 +13,7 @@ import { Notice, type NoticeAction, type NoticeContent, type NoticeTone } from '
 import { PageFailure } from '../components/PageShell.js'
 import { ScreenBoundary } from '../components/ScreenBoundary.js'
 import { Tooltip } from '../components/Tooltip.js'
+import { errorLabel } from '../lib/failure-label.js'
 import { commandShortcut, composing } from '../lib/keyboard.js'
 import type { Catalog } from '../messages/catalog.js'
 import { useMessages } from '../messages/useMessages.js'
@@ -387,7 +388,7 @@ export function AppShell({ screens, settings }: {
   // follows `revision`. The vault's today is fetched here too: a write uses the current day, and a
   // stale day on screen would be one day off.
   useEffect(() => {
-    void vault.today().then(setToday).catch((e: Error) => setBootError(e.message))
+    void vault.today().then(setToday).catch((e: unknown) => setBootError(errorLabel(m, e)))
     void papers.list({ page: 1, size: 1 }).then((r) => setPaperCount(r.total))
     void project.list().then((rows) =>
       setProjectCount(rows.filter((p) => p.status === ACTIVE_PROJECT).length))
@@ -562,7 +563,7 @@ export function AppShell({ screens, settings }: {
     void chat.create(m.chat.newChat, false).then((session) => {
       bump()
       openChat(session.id)
-    }).catch((e: Error) => notify.refusal(e.message))
+    }).catch((e: unknown) => notify.refusal(errorLabel(m, e)))
   }
 
   // The demo's archive: archive a chat and, if it is the open one, go to the Feed. Unarchiving happens
@@ -573,7 +574,7 @@ export function AppShell({ screens, settings }: {
       if (id !== chatId) return
       setChatId(null)
       navigate('feed')
-    }).catch((e: Error) => notify.refusal(e.message))
+    }).catch((e: unknown) => notify.refusal(errorLabel(m, e)))
   }
 
   const chatSession = useMemo(() => {

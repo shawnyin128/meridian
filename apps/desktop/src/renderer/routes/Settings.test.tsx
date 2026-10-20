@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type {
   HarnessModelConnectionCheckResult, LibraryBackup, LibraryLocation, SemanticKeyCheckResult, SemanticKeyStatus,
 } from '../../shared/contract.js'
+import { CallError } from '../call-error.js'
 import { MessagesProvider } from '../messages/useMessages.js'
 import type { SettingsCategory } from '../shell/AppShell.js'
 import { LANGUAGE_STORAGE_KEY } from '../shell/language.js'
@@ -483,14 +484,14 @@ describe('Settings', () => {
   })
 
   it('每个设置页只显示自己那次读取的错误：对话列表读不到时，存储页不报，归档的对话页报', async () => {
-    api.chatList.mockImplementationOnce(async () => { throw new Error('对话列表读不到') })
+    api.chatList.mockImplementationOnce(async () => { throw new CallError('chat.list', 'newer-version') })
     await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
     const dialog = document.querySelector('.setdlg')!
     await act(async () => { dialog.querySelector<HTMLElement>('[data-setcat="storage"]')!.click() })
     expect(dialog.querySelector('.set-main [role="alert"]')).toBeNull()
 
     await act(async () => { dialog.querySelector<HTMLElement>('[data-setcat="archived"]')!.click() })
-    expect(dialog.querySelector('.set-main [role="alert"]')?.textContent).toBe('对话列表读不到')
+    expect(dialog.querySelector('.set-main [role="alert"]')?.textContent).toBe('需要更新 App')
   })
 
   it('还没有备份时备份这一节整节不显示', async () => {

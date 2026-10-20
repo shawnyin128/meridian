@@ -68,7 +68,10 @@ export const common = {
     label: (what: string, why: string) => `${what} · ${why}`,
     reasons: {
       unavailable: '网络不可用', timeout: '连接超时', 'rate-limit': '正在限流', server: '服务器出错', 'not-pdf': '不是 PDF',
-      write: '没能写入论文库', 'no-key': '没有 Semantic Scholar key',
+      write: '没能写入论文库', 'no-key': '没有 Semantic Scholar key', 'not-found': '这一项已不存在',
+      refused: '现在不能这样做', changed: '内容已变化', 'in-use': '还有内容在用', invalid: '内容无效', busy: '仍在进行中',
+      'newer-version': '需要更新 App', cancelled: '已停止生成', model: '模型调用失败',
     },
+    unknown: '出了点问题',
   },
 } satisfies Record<string, unknown>

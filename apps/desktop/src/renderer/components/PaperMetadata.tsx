@@ -2,6 +2,7 @@ import { useRef, useState, type ReactNode } from 'react'
 import type { PaperFields, PaperRow, ReadState } from '../../shared/contract.js'
 import { READ_STATES, READING_PAPER } from '../../shared/vocabulary.js'
 import { papers } from '../ipc.js'
+import { errorLabel } from '../lib/failure-label.js'
 import type { Catalog } from '../messages/catalog.js'
 import { useMessages } from '../messages/useMessages.js'
 import { useNotice } from '../shell/AppShell.js'
@@ -175,14 +176,14 @@ export function PaperMetadata({ paper, onSaved }: {
         <dt>{labels.topics}</dt>
         <dd className="paper-meta-topics">
           <PaperTopics
-            topics={paper.topics} onError={(error) => notice.refusal(error.message)}
+            topics={paper.topics} onError={(error) => notice.refusal(errorLabel(m, error))}
             onAdd={(topic) => savePatch('topics', { topics: [...paper.topics, topic] })}
             onRemove={(topic) => savePatch('topics', { topics: paper.topics.filter((held) => held !== topic) })}
           />
         </dd>
         <dt>{m.papers.metadata.projectsLabel}</dt>
         <dd className="paper-meta-projects">
-          <ProjectChips paper={paper} onError={(error) => notice.refusal(error.message)} />
+          <ProjectChips paper={paper} onError={(error) => notice.refusal(errorLabel(m, error))} />
         </dd>
         <dt>{m.papers.metadata.wikiLabel}</dt><dd>{paper.pageState || '—'}</dd>
         <dt>{m.papers.metadata.fileLabel}</dt>

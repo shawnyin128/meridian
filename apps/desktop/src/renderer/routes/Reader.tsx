@@ -5,6 +5,7 @@ import type {
   PaperHighlightRect, PaperReading, PaperRow, ReadingMutation,
 } from '../../shared/contract.js'
 import { papers } from '../ipc.js'
+import { errorLabel } from '../lib/failure-label.js'
 import { useMessages } from '../messages/useMessages.js'
 import {
   useCrumbTail, useJump, useNotice, useVaultRevision, type CrumbSeg, type ScreenKey, type JumpAnchor,
@@ -197,7 +198,7 @@ export function Reader() {
   const loadingDocs = useRef(new Set<string>())
   const openedRef = useRef(opened)
   openedRef.current = opened
-  const reportError = useCallback((cause: Error) => setError(cause.message), [])
+  const reportError = useCallback((cause: unknown) => setError(errorLabel(m, cause)), [m])
 
   useEffect(() => {
     if (jump === null || jump.seq === consumed.current) return
@@ -579,7 +580,7 @@ export function Reader() {
     const timer = window.setTimeout(() => {
       void papers.mutateReading(opened, { kind: 'progress.set', page: currentPage })
         .then(setReading)
-        .catch((cause: Error) => notice.refusal(cause.message))
+        .catch((cause: unknown) => notice.refusal(errorLabel(m, cause)))
     }, PROGRESS_MS)
     return () => window.clearTimeout(timer)
   }, [opened, doc, reading, currentPage, notice])
@@ -655,7 +656,7 @@ export function Reader() {
       bump()
       return next
     } catch (cause) {
-      notice.refusal(cause instanceof Error ? cause.message : String(cause))
+      notice.refusal(errorLabel(m, cause))
       return null
     } finally {
       setSaving(false)
