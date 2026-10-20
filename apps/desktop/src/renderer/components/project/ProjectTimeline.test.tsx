@@ -64,6 +64,7 @@ describe('项目页时间线上的里程碑', () => {
   })
 
   const heading = () => document.querySelector('.ctxmenu .rh')?.textContent
+  const dateField = () => document.querySelector<HTMLButtonElement>('.ctxmenu .short-text-field .form-button')!
   const input = () => document.querySelector<HTMLInputElement>('.ctxmenu input')!
   const type = async (value: string) => {
     await act(async () => {
@@ -83,7 +84,7 @@ describe('项目页时间线上的里程碑', () => {
     const lane = host.querySelector<HTMLButtonElement>('.msrow .glane-new')!
     await act(async () => { lane.focus() })
     await act(async () => { lane.click() })
-    expect(heading()).toBe('添加里程碑 · 9月16日')
+    expect([heading(), dateField().textContent]).toEqual(['添加里程碑', '9月16日'])
     expect(document.activeElement).toBe(input())
     await act(async () => { input().dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true })) })
     // Radix returns focus on the task after the popover unmounts.
@@ -95,7 +96,7 @@ describe('项目页时间线上的里程碑', () => {
 
   it('点里程碑行的空白处,和总览一样在点到的地方打开新建里程碑的小窗', async () => {
     await act(async () => { host.querySelector<HTMLElement>('.msrow')!.click() })
-    expect(heading()).toEqual(expect.stringMatching(/^添加里程碑 · /))
+    expect(heading()).toBe('添加里程碑')
     await typeAndEnter('上线评测')
     expect(calls.onCreateMilestone).toHaveBeenCalledExactlyOnceWith(expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/), '上线评测')
     expect(calls.onNewMilestone).not.toHaveBeenCalled()
@@ -107,13 +108,12 @@ describe('项目页时间线上的里程碑', () => {
       diamond.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, clientX: 10 }))
       document.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, clientX: 10 }))
     })
-    expect(heading()).toBe('里程碑 · 9月16日')
+    expect([heading(), dateField().textContent]).toEqual(['里程碑', '9月16日'])
     expect(input().value).toBe('中期评审')
     await typeAndEnter('中期评审 v2')
     expect(calls.onUpdateMilestone).toHaveBeenCalledExactlyOnceWith('m1', { title: '中期评审 v2', date: TODAY })
   })
 
-  const dateField = () => document.querySelector<HTMLButtonElement>('.ctxmenu .short-text-field .form-button')!
   const pickDay = async (label: string) => {
     await act(async () => { dateField().click() })
     await act(async () => { document.querySelector<HTMLButtonElement>(`.calg [aria-label="${label}"]`)!.click() })
@@ -126,7 +126,7 @@ describe('项目页时间线上的里程碑', () => {
     expect(dateField().textContent).toBe('9月16日')
     await type('上线评测')
     await pickDay('9月18日')
-    expect([heading(), dateField().textContent, input().value]).toEqual(['添加里程碑 · 9月18日', '9月18日', '上线评测'])
+    expect([heading(), dateField().textContent, input().value]).toEqual(['添加里程碑', '9月18日', '上线评测'])
     await enter()
     expect(calls.onCreateMilestone).toHaveBeenCalledExactlyOnceWith('2026-09-18', '上线评测')
   })

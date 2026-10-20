@@ -22,7 +22,8 @@ export const research = {
     recentHeading: '最近科研记录',
     upcomingHeading: '接下来的里程碑',
     historyProjects: '历史项目',
-    milestonePopTitle: (isNew: boolean, date: string) => `${isNew ? '添加里程碑' : '里程碑'} · ${date}`,
+    milestonePopTitle: (isNew: boolean): string => (isNew ? '添加里程碑' : '里程碑'),
+    newMilestoneOn: (date: string) => `添加里程碑 · ${date}`,
     taskWindowMovedHours: (slots: number, hours: number) =>
       `任务${slots > 0 ? '后移' : '前移'} ${hours} 小时`,
   },

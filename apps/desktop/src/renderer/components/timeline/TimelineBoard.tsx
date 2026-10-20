@@ -274,7 +274,7 @@ export function TimelineBoard({
                     >
                       {/* The lane's keyboard control covers today's day; a pointer press reaches the lane through it. */}
                       <ToolbarButton
-                        className="glane-new" aria-label={m.research.overview.milestonePopTitle(true, fmt.date(todayIso))}
+                        className="glane-new" aria-label={m.research.overview.newMilestoneOn(fmt.date(todayIso))}
                         style={todayShown
                         ? { left: `calc(${(today - w0) * dayWidth}px + var(--ring-room))`, width: `calc(${dayWidth}px - 2 * var(--ring-room))` }
                         : { left: 'var(--ring-room)', right: 'var(--ring-room)' }}

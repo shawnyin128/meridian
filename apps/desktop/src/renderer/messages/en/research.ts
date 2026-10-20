@@ -26,7 +26,8 @@ export const research = {
     recentHeading: 'Recent research log',
     upcomingHeading: 'Upcoming milestones',
     historyProjects: 'History',
-    milestonePopTitle: (isNew: boolean, date: string) => `${isNew ? 'Add milestone' : 'Edit milestone'} · ${date}`,
+    milestonePopTitle: (isNew: boolean) => (isNew ? 'Add milestone' : 'Edit milestone'),
+    newMilestoneOn: (date: string) => `Add milestone · ${date}`,
     taskWindowMovedHours: (slots: number, hours: number) =>
       `Task moved ${slots > 0 ? 'later' : 'earlier'} by ${hours} ${pluralEn(hours, { one: 'hour', other: 'hours' })}`,
   },

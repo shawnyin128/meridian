@@ -87,8 +87,10 @@ describe('一个概念一个词', () => {
   })
 
   it('计划里加任务或里程碑只叫添加', () => {
-    expect([zh.project.plan.newAction, zh.project.plan.taskCreated, zh.research.overview.milestonePopTitle(true, 'X')]
-      .filter((text) => !text.includes('添加'))).toEqual([])
+    expect([
+      zh.project.plan.newAction, zh.project.plan.taskCreated, zh.research.overview.milestonePopTitle(true),
+      zh.research.overview.newMilestoneOn('X'),
+    ].filter((text) => !text.includes('添加'))).toEqual([])
   })
 
   it('建一列只叫新建列,阅读状态只叫阅读状态', () => {

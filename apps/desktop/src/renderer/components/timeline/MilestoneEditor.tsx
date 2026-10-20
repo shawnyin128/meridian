@@ -1,7 +1,6 @@
 import { useCallback, useState } from 'react'
 import type { ReactNode } from 'react'
 import type { Milestone } from '../../../shared/contract.js'
-import { useFormat } from '../../lib/format.js'
 import { useMessages } from '../../messages/useMessages.js'
 import { DateButton } from '../FieldPickers.js'
 import { FloatingTextEditor } from '../FloatingTextEditor.js'
@@ -41,7 +40,6 @@ export function useMilestoneEditor({ projects, onCreate, onUpdate, onDelete }: {
     canvasOverlay: ReactNode
   }
 } {
-  const fmt = useFormat()
   const m = useMessages()
   const [edit, setEdit] = useState<MilestoneEdit | null>(null)
   const close = useCallback(() => setEdit(null), [])
@@ -56,7 +54,7 @@ export function useMilestoneEditor({ projects, onCreate, onUpdate, onDelete }: {
         : `${edit.kind}/${edit.projectId}/${edit.kind === 'edit' ? edit.milestoneId : ''}/${edit.left}`}
       title={edit === null
         ? m.project.plan.milestoneMode
-        : m.research.overview.milestonePopTitle(edit.kind !== 'edit', fmt.date(edit.date))}
+        : m.research.overview.milestonePopTitle(edit.kind !== 'edit')}
       initialValue={edit?.kind === 'edit' ? edit.title : ''} placeholder={m.project.plan.milestoneNamePlaceholder}
       field={edit === null
         ? undefined
