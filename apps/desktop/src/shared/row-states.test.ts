@@ -6,7 +6,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 /** The parts of the jsdom window this test reads; the tsconfig of shared code carries no DOM types. */
 type Node = { dispatchEvent(event: object): boolean }
 type Style = {
-  backgroundColor: string; backgroundImage: string; borderColor: string; boxShadow: string; color: string
+  backgroundColor: string; backgroundImage: string; borderColor: string; boxShadow: string; color: string; cursor: string
   fill: string; stroke: string; opacity: string; getPropertyValue(name: string): string
 }
 type Window = {
@@ -101,6 +101,15 @@ describe('悬停的反馈不被任何状态盖掉', () => {
     expect([row.backgroundColor, row.backgroundImage]).toEqual(['var(--selected)', HOVER])
     const sidebar = styleOf('<button class="nav-row srow on">论文</button>', '.srow', '.srow')
     expect([sidebar.backgroundColor, sidebar.backgroundImage]).toEqual(['var(--selected)', HOVER])
+  })
+
+  it('最近变动的一行悬停时整行铺上列表行的悬停色，能点的仍只是它展开详情的开关；只在末尾带一段历史的论断行不铺', () => {
+    const tray = '<div class="card-tray card-tray--row"><div class="card-tray-head"><button type="button" class="card-tray-toggle"><span class="card-tray-summary">改了标题</span></button></div></div>'
+    const row = `<div class="structured-list"><div class="structured-row crow" data-row-actions="">${tray}</div></div>`
+    expect([styleOf(row, '.crow').backgroundImage, styleOf(row, '.crow', '.crow').backgroundImage]).toEqual(['none', HOVER])
+    expect(styleOf(row, '.crow', '.crow').cursor).not.toBe('pointer')
+    const claim = `<div class="structured-list"><div class="structured-row wkclaim" data-row-actions=""><div class="wkclaim-head">论断</div>${tray}</div></div>`
+    expect(styleOf(claim, '.wkclaim', '.wkclaim').backgroundImage).toBe('none')
   })
 
   it('选中的论文行悬停时，选中色和悬停色叠在一起', () => {
