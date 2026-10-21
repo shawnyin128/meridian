@@ -15,6 +15,7 @@ import { StructuredList, StructuredRow } from '../StructuredList.js'
 import { AgentLabel } from '../SourceLabel.js'
 import { Tag, TagButton } from '../Tag.js'
 import { PaperText } from '../paper/PaperText.js'
+import { ClaimSide, type ClaimLinks } from './WikiClaims.js'
 import './ReviewQueue.css'
 
 /** Local calendar day, the vault's day, a proposal arrived or was decided, from epoch ms. */
@@ -49,68 +50,119 @@ function named(text: string, titles: Record<string, string>): DiffPiece[] {
 /** `text` as a change line, its paper title as paper text. */
 const lineOf = (text: Titled): DiffLine => (typeof text === 'string' ? text : paperLine(text.message, text.title))
 
+/** What one op of a proposal does: the page it writes, its change lines and the evidence it adds. */
+type Change = { target: string; lines: Titled[]; evidence: Evidence[] }
+
 /**
- * The change lines of `op` in `p`: everything applying it would write, with claims by their current text
- * and pages, papers, projects, nodes and conclusions by their titles (the id stands for one no longer in
- * the vault), paper titles as paper text. A revision shows the old text and the new one; each evidence
- * item gets a line of its own.
+ * The change `op` in `p` makes: the page it writes, the one core/wiki touchedPages names first for it;
+ * its change lines, everything applying it would write but its evidence, with claims by their current
+ * text and pages, papers, projects, nodes and conclusions by their titles (the id stands for one no
+ * longer in the vault), paper titles as paper text, a revision showing the old text and the new one;
+ * and the evidence items it adds.
  */
-function linesOf(op: ProposalOp, p: WikiProposal, w: Catalog['wiki']): Titled[] {
+function changeOf(op: ProposalOp, p: WikiProposal, w: Catalog['wiki']): Change {
   const c = w.queue.change
   const title = (id: string): string => p.titles[id] ?? id
   const text = (ref: string): string => p.claimTexts[ref] ?? ref.split('#')[1]!
   const paper = (id: string, message: (title: string) => string = (name) => name): Titled => ({ message, title: title(id) })
-  const side = (item: Evidence | ConflictTarget): [string, Titled] => {
+  const target = op.op === 'setMembership' || op.op === 'removeMembership' ? op.paper
+    : op.op === 'createAggregation' ? op.id : op.page
+  /** The other side of a conflict: a claim's text, a source passage, or a project node or conclusion. */
+  const against = (item: ConflictTarget): Titled => {
     switch (item.kind) {
-      case 'source': return [w.claims.evidence, paper(item.paper, (name) => c.quote(name, item.page, item.quote))]
+      case 'claim': return text(item.ref)
+      case 'source': return paper(item.paper, (name) => c.quote(name, item.page, item.quote))
       case 'experiment': {
         const point = item.node ?? item.conclusion
         const name = [title(`projects/${item.project}`), ...(point === undefined ? [] : [title(`projects/${item.project}#${point}`)])]
-        return [w.claims.experiment, c.detail(name.join(' · '), item.text ?? '')]
+        return c.detail(name.join(' · '), item.text ?? '')
       }
-      case 'wiki': return [
-        w.claims.evidence,
-        item.ref.includes('#') ? text(item.ref) : item.ref.startsWith(PAPER_PAGE) ? paper(item.ref) : title(item.ref),
-      ]
-      case 'claim': return [w.claims.conflict, text(item.ref)]
-      case 'note': return [w.claims.note, paper(item.paper)]
-      case 'personal': return [w.claims.personal, item.text]
     }
   }
-  const evidence = (items: Evidence[]): Titled[] => items.map((item) => {
-    const [kind, detail] = side(item)
-    return within(detail, (shown) => c.evidenceLine(kind, shown))
-  })
+  const only = (lines: Titled[], evidence: Evidence[] = []): Change => ({ target, lines, evidence })
   switch (op.op) {
-    case 'addClaim': return [c.add(op.claim.text), ...evidence(op.claim.evidence)]
+    case 'addClaim': return only([c.add(op.claim.text)], op.claim.evidence)
     case 'reviseClaim': {
       const held = p.claimTexts[`${op.page}#${op.claim}`]
-      return [...(held === undefined ? [] : [c.before(held)]), c.after(op.text), ...evidence(op.evidence ?? [])]
+      return only([...(held === undefined ? [] : [c.before(held)]), c.after(op.text)], op.evidence ?? [])
     }
-    case 'addEvidence': return [c.evidence(text(`${op.page}#${op.claim}`)), ...evidence(op.evidence)]
-    case 'markConflict': {
-      const other = op.conflict.against.kind === 'claim' ? text(op.conflict.against.ref) : side(op.conflict.against)[1]
-      return [within(other, (shown) => c.conflict(text(`${op.page}#${op.claim}`), shown, op.conflict.note))]
-    }
-    case 'resolveConflict': return [c.resolve(text(`${op.page}#${op.claim}`), c.outcomes[op.outcome], op.note)]
-    case 'retractClaim': return [c.retract(text(`${op.page}#${op.claim}`), op.reason)]
-    default: return [c.other]
+    case 'addEvidence': return only([c.evidence(text(`${op.page}#${op.claim}`))], op.evidence)
+    case 'markConflict':
+      return only([within(against(op.conflict.against), (shown) => c.conflict(text(`${op.page}#${op.claim}`), shown, op.conflict.note))])
+    case 'resolveConflict': return only([c.resolve(text(`${op.page}#${op.claim}`), c.outcomes[op.outcome], op.note)])
+    case 'retractClaim': return only([c.retract(text(`${op.page}#${op.claim}`), op.reason)])
+    default: return only([c.other])
   }
 }
 
+/** The chip of page `id` of `p`, by its title (a paper's as paper text), that opens it through `links`. */
+function PageChip({ id, p, links }: { id: string; p: WikiProposal; links: ClaimLinks }) {
+  return (
+    <TagButton shape="chip" className="tagchip" data-wk={id} onClick={() => links.openPage(id)}>
+      {id.startsWith(PAPER_PAGE) ? <PaperText text={p.titles[id] ?? id} /> : p.titles[id] ?? id}
+    </TagButton>
+  )
+}
+
 /**
- * The review queue: every queued agent proposal with the agent label, what prompted it, its change lines
- * and the pages it would change, flagged when a page it rests on changed since or when it cites a
- * project conclusion the user has not verified (each opens through `onOpenConclusion`); the user
- * applies it or declines it with an optional reason. Decided proposals follow under their own heading,
+ * The changes of `p`, each as its change lines and then the evidence it adds, under the page it writes;
+ * consecutive changes to the same page share one link to it. `declined` mutes lines that never took
+ * effect. Pages, projects and source passages open through `links`.
+ */
+function Changes({ p, links, declined = false }: { p: WikiProposal; links: ClaimLinks; declined?: boolean }) {
+  const m = useMessages()
+  const changes = (p.proposal?.ops ?? []).map((op) => changeOf(op, p, m.wiki))
+  const title = (id: string): string => p.titles[id] ?? id
+  /** The name an evidence item shows: its paper's, project's, page's or claim's. */
+  const name = (item: Evidence): string | undefined => {
+    switch (item.kind) {
+      case 'source':
+      case 'note': return title(item.paper)
+      case 'experiment': return title(`projects/${item.project}`)
+      case 'wiki': return item.ref.includes('#') ? p.claimTexts[item.ref] ?? item.ref.split('#')[1]! : title(item.ref)
+      case 'personal': return undefined
+    }
+  }
+  const point = (item: Evidence): string | undefined => {
+    const cited = item.kind === 'experiment' ? item.node ?? item.conclusion : undefined
+    return cited === undefined || item.kind !== 'experiment' ? undefined : title(`projects/${item.project}#${cited}`)
+  }
+  return changes.map((change, at) => (
+    <div className="review-change" key={at}>
+      {change.target === changes[at - 1]?.target ? null : (
+        <div className="wkrel review-target">
+          <span className="rl">{m.wiki.queue.target}</span>
+          <PageChip id={change.target} p={p} links={links} />
+        </div>
+      )}
+      <DiffLines lines={change.lines.map(lineOf)} declined={declined} />
+      {change.evidence.length === 0 ? null : (
+        <ul className="wkclaim-lines review-evidence">
+          {change.evidence.map((item, n) => (
+            <li className="wkclaim-evidence" key={n}>
+              <ClaimSide item={item} title={name(item)} point={point(item)} links={links} />
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  ))
+}
+
+/**
+ * The review queue: every queued agent proposal with the agent label, what prompted it, its changes with
+ * the page each writes and the evidence each rests on, and any other page it would change, flagged when
+ * a page it rests on changed since or when it cites a project conclusion the user has not verified (each
+ * opens through `onOpenConclusion`); the user applies it or declines it with an optional reason. Pages,
+ * projects and source passages open through `links`. Decided proposals follow under their own heading,
  * each with its outcome. `proposals` is null while they load.
  */
-export function ReviewQueue({ proposals, pending, onApply, onDecline, onOpenPage, onOpenConclusion }: {
+export function ReviewQueue({ proposals, pending, onApply, onDecline, links, onOpenConclusion }: {
   proposals: WikiProposal[] | null
   pending: boolean
   onApply: (proposal: WikiProposal) => void
   onDecline: (proposal: WikiProposal, reason: string) => void
-  onOpenPage: (id: string) => void
+  links: ClaimLinks
   onOpenConclusion: (project: string, conclusion: string) => void
 }) {
   const m = useMessages()
@@ -133,7 +185,11 @@ export function ReviewQueue({ proposals, pending, onApply, onDecline, onOpenPage
     )
     return [why, fmt.date(dayOf(p.received))].filter((part) => part !== null).join(' · ')
   }
-  const lines = (p: WikiProposal): DiffLine[] => (p.proposal?.ops ?? []).flatMap((op) => linesOf(op, p, m.wiki)).map(lineOf)
+  /** The pages `p` would write beyond the ones its changes target. */
+  const others = (p: WikiProposal): string[] => {
+    const targets = new Set((p.proposal?.ops ?? []).map((op) => changeOf(op, p, m.wiki).target))
+    return p.pages.filter((id) => !targets.has(id))
+  }
 
   return (
     <>
@@ -167,15 +223,13 @@ export function ReviewQueue({ proposals, pending, onApply, onDecline, onOpenPage
                     })}
                   </div>
                 )}
-                <DiffLines lines={lines(p)} />
-                <div className="wkrel">
-                  <span className="rl">{r.pages}</span>
-                  {p.pages.map((id) => (
-                    <TagButton shape="chip" className="tagchip" data-wk={id} key={id} onClick={() => onOpenPage(id)}>
-                      {id.startsWith(PAPER_PAGE) ? <PaperText text={p.titles[id] ?? id} /> : p.titles[id] ?? id}
-                    </TagButton>
-                  ))}
-                </div>
+                <Changes p={p} links={links} />
+                {others(p).length === 0 ? null : (
+                  <div className="wkrel">
+                    <span className="rl">{r.pages}</span>
+                    {others(p).map((id) => <PageChip key={id} id={id} p={p} links={links} />)}
+                  </div>
+                )}
                 <div className="review-actions">
                   <ActionPopover
                     open={declining === p.id}
@@ -231,7 +285,7 @@ export function ReviewQueue({ proposals, pending, onApply, onDecline, onOpenPage
                           : <LinePieces pieces={named(p.reason.message, p.titles)} />}
                     </p>
                   )}
-                  {p.proposal === null ? null : <DiffLines lines={lines(p)} declined={p.status !== 'applied'} />}
+                  {p.proposal === null ? null : <Changes p={p} links={links} declined={p.status !== 'applied'} />}
                 </StructuredRow>
               ))}
             </StructuredList>

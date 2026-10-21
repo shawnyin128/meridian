@@ -296,12 +296,12 @@ export const wiki = {
     unverifiedLabel: 'Verify',
     trigger: (project: string, node: string | null) => `Project ${project}${node === null ? '' : ` · node ${node}`}`,
     pages: 'Pages',
+    target: 'Into',
     change: {
       add: (text: string) => `+ Add finding: ${text}`,
       before: (text: string) => `- Was: ${text}`,
       after: (text: string) => `+ Now: ${text}`,
       evidence: (claim: string) => `+ More evidence for “${claim}”`,
-      evidenceLine: (kind: string, detail: string) => `+   ${kind} · ${detail}`,
       detail: (name: string, text: string) => (text === '' ? name : `${name}: ${text}`),
       quote: (paper: string, page: number, quote: string) => `${paper} p.${page} “${quote}”`,
       conflict: (claim: string, other: string, note: string) => `~ “${claim}” conflicts with “${other}”: ${note}`,

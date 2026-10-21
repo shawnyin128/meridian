@@ -123,7 +123,8 @@ describe('每个屏幕只有一个主操作', () => {
     await show(
       <ReviewQueue
         proposals={[PROPOSAL('p1', { staleNow: true }), PROPOSAL('p2'), PROPOSAL('p3')]} pending={false}
-        onApply={vi.fn()} onDecline={vi.fn()} onOpenPage={vi.fn()} onOpenConclusion={vi.fn()}
+        onApply={vi.fn()} onDecline={vi.fn()} links={{ openPage: vi.fn(), openProject: vi.fn(), openReader: vi.fn() }}
+        onOpenConclusion={vi.fn()}
       />,
     )
     expect(solid(host).map((element) => [element.closest('[data-proposal]')!.getAttribute('data-proposal'), element.textContent]))

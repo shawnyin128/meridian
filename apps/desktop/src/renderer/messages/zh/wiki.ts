@@ -259,12 +259,12 @@ export const wiki = {
     unverifiedLabel: '结论',
     trigger: (project: string, node: string | null) => `项目 ${project}${node === null ? '' : ` · 节点 ${node}`}`,
     pages: '涉及',
+    target: '写入',
     change: {
       add: (text: string) => `+ 添加结论：${text}`,
       before: (text: string) => `- 原来：${text}`,
       after: (text: string) => `+ 改为：${text}`,
       evidence: (claim: string) => `+ 给「${claim}」补证据`,
-      evidenceLine: (kind: string, detail: string) => `+ 　${kind} · ${detail}`,
       detail: (name: string, text: string) => (text === '' ? name : `${name}：${text}`),
       quote: (paper: string, page: number, quote: string) => `${paper} p.${page}「${quote}」`,
       conflict: (claim: string, other: string, note: string) => `~ 「${claim}」与「${other}」冲突：${note}`,

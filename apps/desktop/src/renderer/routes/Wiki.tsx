@@ -40,7 +40,7 @@ import { PaperText } from '../components/paper/PaperText.js'
 import { plainTitle } from '../components/paper/paper-text.js'
 import { ReviewQueue } from '../components/wiki/ReviewQueue.js'
 import { WikiBacklinks } from '../components/wiki/WikiBacklinks.js'
-import { WikiClaims } from '../components/wiki/WikiClaims.js'
+import { WikiClaims, type ClaimLinks } from '../components/wiki/WikiClaims.js'
 import { tidyRows, TidyList } from '../components/wiki/WikiTidy.js'
 import { SourceAnchor } from '../components/SourceAnchor.js'
 import { CountBadge, Tag, TagButton } from '../components/Tag.js'
@@ -529,6 +529,12 @@ export function Wiki() {
   /** Opens the reader at `page` of the paper whose Wiki page is `paper`. */
   const openSource = (paper: string, page: number) => jumpTo('reader', paper.slice(PAPER_PAGE.length), { page })
 
+  const claimLinks: ClaimLinks = {
+    openPage: go,
+    openProject: (id) => jumpTo('project', id),
+    openReader: (paper, anchor) => jumpTo('reader', paper.slice(PAPER_PAGE.length), anchor),
+  }
+
   const shownAgg = agg !== null && place === agg.id ? agg : null
   const shownPaper = paper !== null && place === paper.id ? paper : null
   const shownReading = shownPaper !== null && reading?.paperId === shownPaper.id.slice(PAPER_PAGE.length)
@@ -860,12 +866,7 @@ export function Wiki() {
                   }}
                 />
                 <WikiClaims
-                  page={shownAgg} pending={pending}
-                  links={{
-                    openPage: go,
-                    openProject: (id) => jumpTo('project', id),
-                    openReader: (paper, anchor) => jumpTo('reader', paper.slice(PAPER_PAGE.length), anchor),
-                  }}
+                  page={shownAgg} pending={pending} links={claimLinks}
                   onApply={(note, ops) => propose(note, ops, m.wiki.claims.saved)}
                 />
                 {bodyHead(shownAgg.title)}
@@ -1049,7 +1050,7 @@ export function Wiki() {
         {place === REVIEW
           ? (
             <ReviewQueue
-              proposals={proposals} pending={pending} onOpenPage={go}
+              proposals={proposals} pending={pending} links={claimLinks}
               onOpenConclusion={(project, conclusion) => jumpTo('project', project, { conclusion })}
               onApply={(proposal) => decide(proposal, 'apply')}
               onDecline={(proposal, reason) => decide(proposal, 'decline', reason === '' ? undefined : reason)}
