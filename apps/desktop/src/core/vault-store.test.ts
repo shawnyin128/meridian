@@ -19,6 +19,7 @@ import { createDesktopVaultStore, createVaultStore, isGitManaged } from './vault
 import { generatedChildren, generatedTable, pageVersion, readWikiData } from './wiki/index.js'
 import { prepareSelectedLibrary } from './workspace-layout.js'
 import { minimalPdf } from './net/minimal-pdf.js'
+import { recordChange } from './write-receipts.js'
 
 /** Test vault for the real implementation: aggregation layout, two paper pages, two topics, one method, and four sources. */
 const VAULT = resolve(import.meta.dirname, 'fixtures/vault')
@@ -2024,6 +2025,63 @@ describe('vault store on the aggregation layout', () => {
     expect(store.getPaper('2404.00456').readState).toBe('在读')
     expect(createVaultStore(vault).getPaper('2404.00456').readState).toBe('在读')
     expect(() => store.updatePaper('2404.00456', { topics: ['x'] })).toThrow(/归属/)
+  })
+
+  it('加减论文的主题写的是 Wiki 归属:已有的主题归进那一页,没有的照入库的做法新建一页;每笔记一条变动,倒着撤销逐字节还原', () => {
+    const paper = join(vault, 'wiki', 'papers', '2401.18079.md')
+    const weightOnly = join(vault, 'wiki', 'topics', 'ptq-weight-only.md')
+    const kv = join(vault, 'wiki', 'topics', 'kv-cache-quantization.md')
+    const outliers = join(vault, 'wiki', 'topics', 'outlier-channels.md')
+    const before = [paper, weightOnly, kv].map((file) => readFileSync(file, 'utf8'))
+    const members = (topic: string) => store.wikiAggregation(topic).rows.map((row) => row.paper.id)
+
+    const added = recordChange(store, () => store.setPaperTopic('2401.18079', 'Weight-only PTQ', true)).change
+    expect(readFileSync(paper, 'utf8')).toContain('  - in: "topics/ptq-weight-only"')
+    expect(members('topics/ptq-weight-only')).toContain('papers/2401.18079')
+    const created = recordChange(store, () => store.setPaperTopic('2401.18079', 'Outlier channels', true)).change
+    expect(readFileSync(outliers, 'utf8')).toMatch(/^kind: "?topic"?$/m)
+    expect(store.wikiAggregation('topics/outlier-channels').title).toBe('Outlier channels')
+    expect(members('topics/outlier-channels')).toEqual(['papers/2401.18079'])
+    const removed = recordChange(store, () => store.setPaperTopic('2401.18079', 'KV cache quantization', false)).change
+    expect(readFileSync(paper, 'utf8')).not.toContain('topics/kv-cache-quantization')
+    expect(members('topics/kv-cache-quantization')).not.toContain('papers/2401.18079')
+    expect(store.getPaper('2401.18079').topics).toEqual(['Weight-only PTQ', 'Outlier channels'])
+    expect(createVaultStore(vault).getPaper('2401.18079').topics).toEqual(['Weight-only PTQ', 'Outlier channels'])
+    expect(store.listChanges().slice(0, 3)).toMatchObject([
+      { id: removed, source: '我', undoable: true, diff: ['- papers/2401.18079 ∈ topics/kv-cache-quantization'] },
+      {
+        id: created, source: '我', undoable: true,
+        diff: ['+ topics/outlier-channels 新建(topic)', '+ papers/2401.18079 ∈ topics/outlier-channels(0 格)'],
+      },
+      { id: added, source: '我', undoable: true, diff: ['+ papers/2401.18079 ∈ topics/ptq-weight-only(0 格)'] },
+    ])
+
+    for (const change of [removed, created, added]) store.undoChange(change)
+    expect([paper, weightOnly, kv].map((file) => readFileSync(file, 'utf8'))).toEqual(before)
+    expect(existsSync(outliers)).toBe(false)
+    expect(store.getPaper('2401.18079').topics).toEqual(['KV cache quantization'])
+    expect(members('topics/kv-cache-quantization')).toContain('papers/2401.18079')
+  })
+
+  it('论文已在的主题再加、不在的主题去掉都被拒,库里一个字节不动,也不记一条', () => {
+    const paper = join(vault, 'wiki', 'papers', '2401.18079.md')
+    const before = readFileSync(paper, 'utf8')
+    const changes = store.listChanges().length
+    expect(() => store.setPaperTopic('2401.18079', 'kv cache  Quantization', true)).toThrow(/KVQuant/)
+    expect(() => store.setPaperTopic('2401.18079', 'QAT', false)).toThrow(/KVQuant/)
+    expect(readFileSync(paper, 'utf8')).toBe(before)
+    expect(store.listChanges()).toHaveLength(changes)
+  })
+
+  it('加了主题之后,论文行上的随笔与笔记数照旧', () => {
+    store.mutatePaperReading('2401.18079', { kind: 'remark.set', text: '整篇的随想' })
+    store.mutatePaperReading('2401.18079', { kind: 'note.add', page: 1, text: '一条笔记' })
+    const row = store.getPaper('2401.18079')
+    expect(row).toMatchObject({ remark: '整篇的随想', noteCount: 1 })
+    store.setPaperTopic('2401.18079', 'Weight-only PTQ', true)
+    expect(store.getPaper('2401.18079')).toMatchObject({ remark: '整篇的随想', noteCount: 1 })
+    expect(store.listPapers({ page: 1, size: 20 }).rows.find((r) => r.id === '2401.18079'))
+      .toMatchObject({ remark: '整篇的随想', noteCount: 1 })
   })
 
   it('新布局的页也写得下自定义格,行上读得到,重开还在', () => {

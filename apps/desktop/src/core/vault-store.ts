@@ -620,7 +620,7 @@ export function createVaultStore(
       const stem = path.slice(PAPER_PAGE.length)
       const page = wikiData.pages[path]
       if (page === undefined) papers.delete(stem)
-      else papers.set(stem, paperRowOf(wikiData, stem, page as WikiPaperRecord))
+      else papers.set(stem, withReadingCount(paperRowOf(wikiData, stem, page as WikiPaperRecord)))
     }
     writeSignals()
   }

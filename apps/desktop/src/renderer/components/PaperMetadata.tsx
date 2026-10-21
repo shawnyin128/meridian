@@ -1,5 +1,5 @@
 import { useRef, useState, type ReactNode } from 'react'
-import type { PaperFields, PaperRow, ReadState } from '../../shared/contract.js'
+import type { PaperFields, PaperRow, ReadState, RecordedChange } from '../../shared/contract.js'
 import { READ_STATES, READING_PAPER } from '../../shared/vocabulary.js'
 import { papers } from '../ipc.js'
 import { errorLabel } from '../lib/failure-label.js'
@@ -113,9 +113,10 @@ function patchValue(patch: Partial<PaperFields>): unknown {
 type SavedField = EditableField | 'rating' | 'readState' | 'topics'
 
 /**
- * Saves a patch of one field of `paper` with an undoable notice that names the field by `labels`, then
- * hands the paper as Core now holds it to `onSaved`. The returned function resolves whether the write
- * landed; an unchanged value writes nothing and resolves true.
+ * Saves one field of `paper` with an undoable notice that names the field by `labels`, then hands the
+ * paper as Core now holds it to `onSaved`. `patch` saves a patch of the field: an unchanged value
+ * writes nothing and resolves true. `topic` files the paper under (`member` true) or unfiles it from
+ * the topic `topic`. Both resolve whether the write landed.
  */
 function usePaperSave(
   paper: PaperRow, onSaved: (paper: PaperRow) => void, labels: Catalog['papers']['metadata']['fields'],
@@ -123,15 +124,22 @@ function usePaperSave(
   const m = useMessages()
   const write = useVaultWrite()
   const undo = useUndo()
-  return async (field: SavedField, patch: Partial<PaperFields>): Promise<boolean> => {
-    if (JSON.stringify(currentValue(paper, field)) === JSON.stringify(patchValue(patch))) return true
+  const save = async (field: SavedField, op: Promise<RecordedChange>): Promise<boolean> => {
     let fresh: PaperRow | null = null
-    const ok = await write(papers.update(paper.id, patch).then(async (recorded) => {
+    const ok = await write(op.then(async (recorded) => {
       fresh = await papers.get(paper.id)
       return recorded
     }), { note: m.papers.metadata.updated(labels[field]), action: undo.change })
     if (ok && fresh !== null) onSaved(fresh)
     return ok
+  }
+  return {
+    patch: async (field: SavedField, patch: Partial<PaperFields>): Promise<boolean> => {
+      if (JSON.stringify(currentValue(paper, field)) === JSON.stringify(patchValue(patch))) return true
+      return save(field, papers.update(paper.id, patch))
+    },
+    topic: async (topic: string, member: boolean): Promise<boolean> =>
+      save('topics', papers.setTopic(paper.id, topic, member)),
   }
 }
 
@@ -161,7 +169,7 @@ function PaperFieldEditor({ paper, field, display, save }: {
 /** The paper's title as the head of a panel that details the paper: shown whole, and edited in place on click. */
 export function PaperTitleField({ paper, onSaved }: { paper: PaperRow; onSaved: (paper: PaperRow) => void }) {
   const m = useMessages()
-  const save = usePaperSave(paper, onSaved, m.papers.metadata.fields)
+  const { patch: save } = usePaperSave(paper, onSaved, m.papers.metadata.fields)
   return <PaperFieldEditor key={paper.id} paper={paper} field="title" display={<PaperText text={paper.title} />} save={save} />
 }
 
@@ -180,7 +188,7 @@ export function PaperMetadata({ paper, readStateLabel, onSaved, titled = true }:
   const listFade = useScrollFade('y')
   const labels = { ...m.papers.metadata.fields, readState: readStateLabel }
   const notice = useNotice()
-  const savePatch = usePaperSave(paper, onSaved, labels)
+  const { patch: savePatch, topic: saveTopic } = usePaperSave(paper, onSaved, labels)
   const [ratingSaving, setRatingSaving] = useState(false)
   const ratingBusy = useRef(false)
 
@@ -226,8 +234,8 @@ export function PaperMetadata({ paper, readStateLabel, onSaved, titled = true }:
         <dd className="paper-meta-topics">
           <PaperTopics
             topics={paper.topics} onError={(error) => notice.refusal(errorLabel(m, error))}
-            onAdd={(topic) => savePatch('topics', { topics: [...paper.topics, topic] })}
-            onRemove={(topic) => savePatch('topics', { topics: paper.topics.filter((held) => held !== topic) })}
+            onAdd={(topic) => saveTopic(topic, true)}
+            onRemove={(topic) => saveTopic(topic, false)}
           />
         </dd>
         <dt>{m.papers.metadata.projectsLabel}</dt>

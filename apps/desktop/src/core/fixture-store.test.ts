@@ -929,12 +929,19 @@ describe('fixture store', () => {
       .toHaveLength(before + 1)
   })
 
-  it('改论文主题后列表里读到的是新主题', () => {
-    const row = store.listPapers({ page: 1, size: 1 }).rows[0]!
-    store.updatePaper(row.id, { topics: [...row.topics, 'kv cache'] })
-    expect(store.getPaper(row.id).topics).toEqual([...row.topics, 'kv cache'])
-    expect(store.listPapers({ page: 1, size: 1 }).rows[0]!.topics)
-      .toEqual([...row.topics, 'kv cache'])
+  it('加了主题后列表里读到的是新主题,它是 Wiki 归属', () => {
+    const title = store.getPaper('2401.18079').title
+    store.setPaperTopic('2401.18079', 'Weight-only PTQ', true)
+    expect(store.getPaper('2401.18079').topics).toEqual(['KV cache quantization', 'Weight-only PTQ'])
+    expect(store.listPapers({ page: 1, size: 1, filter: title }).rows[0]!.topics)
+      .toEqual(['KV cache quantization', 'Weight-only PTQ'])
+    expect(store.wikiPaper('papers/2401.18079').memberships.map((m) => m.aggregation.id)).toContain('topics/ptq-weight-only')
+  })
+
+  it('主题不能直接改:直接改主题的补丁被拒,论文一字不动', () => {
+    const before = store.getPaper('2401.18079')
+    expect(() => store.updatePaper('2401.18079', { topics: [...before.topics, 'kv cache'] })).toThrow(/归属/)
+    expect(store.getPaper('2401.18079')).toEqual(before)
   })
 
   it('库里没记下阅读状态的按未读呈现,改过之后列表与分组都读到新的那一档', () => {
@@ -1332,11 +1339,12 @@ describe('fixture store', () => {
     const milestonesBefore = other.getProject('draft').milestones.length
     const id = store.listPapers({ page: 1, size: 1 }).rows[0]!.id
 
-    store.updatePaper(id, { topics: ['篡改的话题'] })
+    store.setPaperTopic(id, '篡改的话题', true)
     store.createMilestone('draft', { date: '2026-09-01', title: '新里程碑', done: false })
     store.deletePaper(id)
 
     expect(other.getPaper(id).topics).not.toContain('篡改的话题')
+    expect(other.wikiCards().map((card) => card.title)).not.toContain('篡改的话题')
     expect(other.getProject('draft').milestones).toHaveLength(milestonesBefore)
     expect(other.listPapers({ page: 1, size: 1 }).total).toBe(291)
   })
@@ -2105,6 +2113,7 @@ describe('fixture store', () => {
       'papers.facets': () => store.facetPapers('topics'),
       'papers.get': () => store.getPaper(store.listPapers({ page: 1, size: 1 }).rows[0]!.id),
       'papers.update': () => store.updatePaper(store.listPapers({ page: 1, size: 1 }).rows[0]!.id, {}),
+      'papers.setTopic': () => store.setPaperTopic('2401.18079', 'Weight-only PTQ', true),
       'papers.delete': () => store.deletePaper(store.listPapers({ page: 1, size: 1 }).rows[0]!.id),
       'project.list': () => store.listProjects(),
       'project.overview': () => store.overviewProjects(),

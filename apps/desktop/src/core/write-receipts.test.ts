@@ -2,17 +2,18 @@ import { describe, expect, it } from 'vitest'
 import { createFixtureStore } from './fixture-store.js'
 import { recordChange, trashedEntry } from './write-receipts.js'
 
-const WITH_SOURCE = '13979-STAR-Speculative-Decodin'
+/** A fixture paper whose topics are its Wiki topic memberships. */
+const FILED = '2401.18079'
 
 describe('写入回执', () => {
   it('记进最近变动的写入回给它记下的那一条,撤销那一条正好撤回这次写入', () => {
     const store = createFixtureStore(() => '2026-08-25')
-    const before = store.getPaper(WITH_SOURCE).topics
-    const { result, change } = recordChange(store, () => store.updatePaper(WITH_SOURCE, { topics: [...before, '新主题'] }))
+    const before = store.getPaper(FILED).topics
+    const { result, change } = recordChange(store, () => store.setPaperTopic(FILED, '新主题', true))
     expect(result).toBeUndefined()
     expect(change).toBe(store.listChanges()[0]!.id)
     store.undoChange(change)
-    expect(store.getPaper(WITH_SOURCE).topics).toEqual(before)
+    expect(store.getPaper(FILED).topics).toEqual(before)
   })
 
   it('没记进最近变动的写入不给回执,直接报错', () => {

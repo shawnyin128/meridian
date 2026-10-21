@@ -104,8 +104,21 @@ export interface VaultStore {
    * sets to a value the paper does not carry has to name a column the vault
    * holds and match that column's type and options; throws otherwise. A cell it
    * empties, or sets to the value it carries, passes whatever it names.
+   * Throws for a patch carrying `topics`, which are Wiki memberships that
+   * setPaperTopic changes.
    */
   updatePaper(id: string, patch: Partial<PaperFields>): void
+
+  /**
+   * Files the paper with the given id under the Wiki topic page titled `topic`
+   * when `member` is true, and unfiles it from that page when false, by
+   * applying one proposal recorded in the change log, so undoing that record
+   * reverts it. Titles match ignoring case and whitespace. A title no topic
+   * page carries first gets a new topic page, as filing a downloaded paper
+   * under its watch topic does. Throws if no such paper exists, if the paper
+   * already is (or is not) under that topic, or if the proposal is not valid.
+   */
+  setPaperTopic(id: string, topic: string, member: boolean): void
 
   /**
    * Returns what putPaper takes to leave the paper with the given id exactly as
@@ -963,12 +976,12 @@ export interface VaultStore {
 }
 
 /**
- * Everything a store implements on its own. The changelog reads and the undo
- * are not among them: withChangelog adds those over any of these, so that one
- * implementation records the writes of every store. Here, restoreTrash only
- * has to put the trash entry back; emptying the cells a paper's columns no
- * longer take, and recording that as a change, is withChangelog's doing, not
- * the bare store's.
+ * Everything a store implements on its own. The changelog reads, the undo and
+ * setPaperTopic are not among them: withChangelog adds those over any of
+ * these, so that one implementation records the writes of every store. Here,
+ * restoreTrash only has to put the trash entry back; emptying the cells a
+ * paper's columns no longer take, and recording that as a change, is
+ * withChangelog's doing, not the bare store's.
  */
 export type VaultOps = Omit<
   VaultStore,
@@ -979,4 +992,5 @@ export type VaultOps = Omit<
   | 'deleteChange'
   | 'clearArchivedChanges'
   | 'absorbAgentTasks'
+  | 'setPaperTopic'
 >

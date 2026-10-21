@@ -921,9 +921,10 @@ export const HarnessModelSettingsUpdateSchema = z.object({
 
 /**
  * Writable paper fields. Users can correct bibliographic frontmatter without
- * changing the immutable PDF and maintain topics, read state, and custom cells.
- * `pageState`, timestamps, counts, and page identity remain system-owned.
- * `custom` is a cell patch keyed by column, with null clearing a cell.
+ * changing the immutable PDF and maintain read state and custom cells. Topics
+ * are Wiki memberships: Core refuses a `topics` patch, and `papers.setTopic`
+ * changes them. `pageState`, timestamps, counts, and page identity remain
+ * system-owned. `custom` is a cell patch keyed by column, with null clearing a cell.
  */
 const PaperFieldsSchema = z.object({
   title: z.string().trim().min(1).max(2_000),
@@ -943,6 +944,13 @@ const PaperFieldsSchema = z.object({
 export const PapersUpdateParamsSchema = z.object({
   id: z.string(),
   patch: PaperFieldsSchema.partial(),
+}).strict()
+
+/** Files a paper under (`member` true) or unfiles it from the Wiki topic page titled `topic`, as one undoable change. */
+export const PapersSetTopicParamsSchema = z.object({
+  id: z.string(),
+  topic: z.string().trim().min(1).max(300),
+  member: z.boolean(),
 }).strict()
 
 export const ProjectGetParamsSchema = z.object({ id: z.string() }).strict()
@@ -2383,6 +2391,7 @@ export const CONTRACT_METHODS = [
   'papers.facets',
   'papers.get',
   'papers.update',
+  'papers.setTopic',
   'papers.delete',
   'papers.source',
   'papers.import',

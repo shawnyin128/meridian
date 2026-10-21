@@ -642,6 +642,7 @@ export function createFixtureStore(
     updatePaper(id, patch) {
       const paper = byId.get(id)
       if (!paper) throw new CallError('not-found', `论文不存在：${id}`)
+      if (patch.topics !== undefined) throw new CallError('refused', '这一页的主题由归属决定，改归属')
       const { custom, shortTitle, year, rating, identifier, submitted, ...fields } = patch
       if (custom !== undefined) checkCustom(columns, custom, paper.custom)
       const next: PaperRow = {

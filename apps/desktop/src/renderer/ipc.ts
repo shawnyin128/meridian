@@ -121,6 +121,9 @@ export const papers = {
   get: (id: string) => call<PaperRow>('papers.get', { id }),
   update: (id: string, patch: Partial<PaperFields>) =>
     call<RecordedChange>('papers.update', { id, patch }),
+  /** Files the paper under (`member` true) or unfiles it from the Wiki topic page titled `topic`. */
+  setTopic: (id: string, topic: string, member: boolean) =>
+    call<RecordedChange>('papers.setTopic', { id, topic, member }),
   delete: (id: string) => call<RecordedChange>('papers.delete', { id }),
   /** Bytes of the paper's original PDF. Rejects when the vault has no source file for this paper. */
   source: (id: string) => call<Uint8Array>('papers.source', { id }),
