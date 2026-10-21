@@ -47,7 +47,7 @@ const PLACED = SOURCES.flatMap(dialogsIn)
 const NOT_CREATING: Record<string, string> = {
   'components/AboutDialog.tsx <ModalDialog>': 'shows the App version and its update',
   'shell/AppShell.tsx <AboutDialog>': 'opens About from the App menu',
-  'shell/CommandPalette.tsx <ModalDialog>': 'searches the vault and runs a command',
+  'shell/CommandPalette.tsx <ModalDialog>': 'runs a command',
   'routes/Settings.tsx <ModalDialog>': 'holds Settings',
   'routes/ProjectDetail.tsx <ModalDialog> m.project.workspace.dialogTitle': 'connects the project to a workspace',
 }

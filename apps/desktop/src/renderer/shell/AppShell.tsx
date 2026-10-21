@@ -94,7 +94,7 @@ export type JumpAnchor = {
   importPdf?: true
   /** Project: show the project list with its new-project row open. */
   newProject?: true
-  /** Ideas: open the editor of a new idea of the user's own. */
+  /** Ideas: open the draft of a new idea of the user's own. */
   newIdea?: true
 }
 export type ScreenJump = {

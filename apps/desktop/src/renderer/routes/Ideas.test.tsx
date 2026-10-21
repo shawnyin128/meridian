@@ -263,7 +263,7 @@ describe('Ideas', () => {
     expect(host.querySelector('.desk-head > .back')).toBeNull()
   })
 
-  it('从 ⌘K 带着新建想法的落点跳进来时打开同一张草稿卡，标题框获得焦点，不弹对话框', async () => {
+  it('从命令面板带着新建想法的落点跳进来时打开同一张草稿卡，标题框获得焦点，不弹对话框', async () => {
     api.jump = { screen: 'ideas', target: '', from: 'feed', seq: 1, anchor: { newIdea: true } }
     await act(async () => { root.render(<MessagesProvider><Ideas /></MessagesProvider>) })
     expect(draft()?.previousElementSibling?.className).toContain('section-heading')
