@@ -112,6 +112,15 @@ describe('project conclusions', () => {
     expect(head().querySelector('.tag')).toBeNull()
   })
 
+  it('面板头部的验证、取消验证和写入 Wiki 与其他面板头部一样是小号的普通按钮', async () => {
+    const looks = () => [...host.querySelectorAll<HTMLButtonElement>('.node-document-head > .section-heading-actions > .btn')]
+      .map((button) => `${button.textContent} ${button.className}`)
+    await panel(PENDING)
+    expect(looks()).toEqual(['验证 btn sm', '写入 Wiki btn sm'])
+    await panel({ ...PENDING, state: 'verified', verifiedOn: '2026-09-21' })
+    expect(looks()).toEqual(['取消验证 btn sm', '写入 Wiki btn sm'])
+  })
+
   it('已验证:选一页写入 Wiki,提交一条以这个节点为证据的结论', async () => {
     await panel({ ...PENDING, state: 'verified', verifiedOn: '2026-09-21' })
     expect([...document.querySelectorAll('button')].some((b) => b.textContent === '验证')).toBe(false)

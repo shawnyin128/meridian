@@ -155,6 +155,7 @@ const LABELLED: [RegExp, string][] = [
 type Look = { operation: string; size: string; variant: string; label?: string }
 type Placement = Look & { slot: Slot; at: string }
 type IconPlacement = { slot: Slot; size: string; at: string }
+type ButtonPlacement = { slot: Slot; size: string; variant: string; at: string }
 type Place = { slot: Slot; size: string; variant: string; scope?: string }
 
 /**
@@ -268,7 +269,7 @@ const isFunction = (node: Node | null | undefined) =>
  * Every tracked action in one source file with the slot it sits in. A function the file names and
  * places elsewhere in the file (as a JSX tag, a call or a callback) is read where it is placed.
  */
-function placementsIn(path: string): { actions: Placement[]; icons: IconPlacement[] } {
+function placementsIn(path: string): { actions: Placement[]; icons: IconPlacement[]; buttons: ButtonPlacement[] } {
   const source = readFileSync(join(RENDERER, path), 'utf8')
   const ast = parse(source, { sourceType: 'module', plugins: ['typescript', 'jsx'] })
   const functions = new Map<string, Node[]>()
@@ -298,6 +299,7 @@ function placementsIn(path: string): { actions: Placement[]; icons: IconPlacemen
 
   const found: Placement[] = []
   const icons: IconPlacement[] = []
+  const buttons: ButtonPlacement[] = []
   const visit = (node: unknown, slot: Slot, inside: ReadonlySet<string>) => {
     if (node === null || typeof node !== 'object') return
     if (Array.isArray(node)) { for (const item of node) visit(item, slot, inside); return }
@@ -331,6 +333,9 @@ function placementsIn(path: string): { actions: Placement[]; icons: IconPlacemen
       if (name === 'IconButton' && !CONTROL_FILES.has(path)) {
         icons.push({ slot, size: strings(attribute(held, 'size'))[0] ?? 'default', at: `${path}:${line(held)}` })
       }
+      if ((name === 'button' || name === 'ToolbarButton') && classesOf(held).includes('btn') && !CONTROL_FILES.has(path)) {
+        buttons.push({ slot, ...buttonLook(classesOf(held)), at: `${path}:${line(held)}` })
+      }
       const built = ((attribute(held, 'className')?.value as Node | undefined)?.expression as Node | undefined)
       const builder = built?.type === 'CallExpression' && (built.callee as Node).type === 'Identifier'
         ? functions.get((built.callee as Node).name as string) ?? [] : []
@@ -350,7 +355,7 @@ function placementsIn(path: string): { actions: Placement[]; icons: IconPlacemen
     for (const [key, value] of Object.entries(held)) if (key !== 'loc') visit(value, slot, inside)
   }
   visit(ast.program, 'inline', new Set())
-  return { actions: found, icons }
+  return { actions: found, icons, buttons }
 }
 
 const READ = SOURCES.map(placementsIn)
@@ -398,6 +403,13 @@ describe('一个操作一个位置', () => {
       .map((locale) => `${menu.at} ${locale}: ${textOf(menu.label!, locale)}`))
     expect(clashes).toEqual([])
     expect(new Set(menus.map((menu) => `${textOf(menu.label!, 'zh')} / ${textOf(menu.label!, 'en')}`)).size).toBe(1)
+  })
+
+  it('详情面板头部的文字按钮都是小号的普通按钮', () => {
+    const offenders = READ.flatMap((file) => file.buttons)
+      .filter((button) => button.slot === 'panel head' && `${button.size} · ${button.variant}` !== 'sm · plain')
+      .map((button) => `${button.at} ${button.size} · ${button.variant}`)
+    expect([...new Set(offenders)]).toEqual([])
   })
 
   it('一行的图标操作一种尺寸：行里是嵌套尺寸，标签里是行内尺寸', () => {
