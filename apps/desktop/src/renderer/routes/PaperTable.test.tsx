@@ -300,6 +300,20 @@ describe('PaperTable', () => {
       .toEqual(['20 / 页', '30 / 页', '50 / 页'])
   })
 
+  it('视图切换、搜索、分组与阅读状态筛选同在页面工具栏里，和稍后阅读的分组一个位置', async () => {
+    const host = mount()
+    columnsCall.resolve({ ...EMPTY_COLUMNS, groups: ['readState'] })
+    listCall.resolve({ rows: [ROW], total: 1 })
+    await flush()
+
+    const toolbar = host.querySelector('.desk-body .page-toolbar')!
+    expect([...toolbar.querySelectorAll('.segmented-control')].map((control) => control.getAttribute('aria-label')))
+      .toEqual(['论文库视图', '分组字段'])
+    expect(toolbar.querySelector('#libq')).not.toBeNull()
+    expect(toolbar.querySelector('.read-state-filter')).not.toBeNull()
+    expect(toolbar.querySelector('.grpgear')).not.toBeNull()
+  })
+
   it('研究地图用实际论文元数据生成可重叠的只读分组,并解释每篇论文为何归入', async () => {
     const host = mount()
     const mappedRows = [

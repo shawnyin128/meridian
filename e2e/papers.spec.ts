@@ -179,13 +179,14 @@ test('悬停截断的作者格与自定义文本格,浮框比格子宽,压到邻
   }
 })
 
-test('导入 PDF 是屏头右端的页级操作,工具栏只放视图切换', async ({ win }) => {
+test('导入 PDF 是屏头右端的页级操作,工具栏放视图切换和列表的筛选', async ({ win }) => {
   await gotoPapers(win)
   await firstPage(win)
 
   await expect(win.locator('.screenslot:not([hidden]) .desk-head .page-actions .pdfupload')).toHaveCount(1)
   await expect(win.locator('.screenslot:not([hidden]) .paper-view-toolbar .pdfupload')).toHaveCount(0)
-  await expect(win.locator('.screenslot:not([hidden]) .paper-view-toolbar .segmented-control>button')).toHaveCount(2)
+  await expect(win.locator('.screenslot:not([hidden]) .paper-view-toolbar>.segmented-control>button')).toHaveCount(2)
+  await expect(win.locator('.screenslot:not([hidden]) .paper-view-toolbar .filters .segmented-control')).toHaveCount(1)
 })
 
 test('论文内容与分页栏遵循全局页面宽度', async ({ win }) => {

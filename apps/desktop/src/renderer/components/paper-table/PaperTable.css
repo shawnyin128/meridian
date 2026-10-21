@@ -15,8 +15,9 @@
 .desk-body.libview .tblwrap{flex:1;min-height:0}
 .tblwrap{overflow:auto;scrollbar-gutter:stable}
 
-/* Top bar of the paper list: filter input + group switch */
-.libbar{display:flex;align-items:center;gap:var(--sp-12);margin-bottom:var(--sp-16)}
+/* The page toolbar holds the view switch, then the filters of the list: filter input + group switch */
+.paper-view-toolbar{align-items:center;gap:var(--sp-12)}
+.libbar{display:flex;flex:1;min-width:0;align-items:center;gap:var(--sp-12)}
 .pdfupload-input{display:none}
 .paper-drop{position:absolute;inset:46px 0 0;z-index:30;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:var(--sp-8);background:color-mix(in srgb,var(--content) 88%,transparent);border:2px dashed var(--ink);color:var(--ink);backdrop-filter:blur(8px);pointer-events:none}
 .paper-drop strong{font-size:var(--fs-read)}

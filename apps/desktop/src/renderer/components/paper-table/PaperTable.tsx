@@ -1224,45 +1224,45 @@ export function PaperTable() {
               ]}
               onChange={(next) => { setView(next); setDetail(null) }}
             />
+            <div className="libbar">
+              <ClearableInput
+                appearance="field" wrapperClassName="paper-search"
+                id="libq" placeholder={m.papers.toolbar.searchPlaceholder} autoComplete="off" value={q}
+                onChange={(e) => { setQ(e.target.value); setPage(1) }}
+                onClear={() => { setQ(''); setPage(1) }} clearLabel={m.papers.toolbar.clearSearch}
+              />
+              {view === 'table' ? <div className="filters">
+                <span className="pt-dim">{m.papers.toolbar.group}</span>
+                <SegmentedControl
+                  label={m.papers.toolbar.groupFieldAria}
+                  value={group}
+                  options={['none', ...columns.groups.filter((k) => k !== 'readState' && groupable.has(k))]
+                    .map((k) => ({ value: k, label: labelOf(k) }))}
+                  onChange={(value) => { setGroup(value); setSel(null); setPage(1) }}
+                />
+                {columns.groups.includes('readState')
+                  ? (
+                    <>
+                      <span className="pt-dim">{m.papers.toolbar.filter}</span>
+                      <ReadStateFilter
+                        name={names.columns.st}
+                        current={group === 'readState' ? sel as ReadState | null : null}
+                        onPick={(state) => {
+                          setGroup(state === null ? 'none' : 'readState')
+                          setSel(state)
+                          setPage(1)
+                        }}
+                      />
+                    </>
+                  )
+                  : null}
+                <GroupMenu columns={columns} onChange={(update) => { void changeColumns(update) }} />
+              </div> : null}
+            </div>
           </PageToolbar>
           <ParseProgress
             onParsed={() => bump()}
           />
-          <div className="libbar">
-            <ClearableInput
-              appearance="field" wrapperClassName="paper-search"
-              id="libq" placeholder={m.papers.toolbar.searchPlaceholder} autoComplete="off" value={q}
-              onChange={(e) => { setQ(e.target.value); setPage(1) }}
-              onClear={() => { setQ(''); setPage(1) }} clearLabel={m.papers.toolbar.clearSearch}
-            />
-            {view === 'table' ? <div className="filters">
-              <span className="pt-dim">{m.papers.toolbar.group}</span>
-              <SegmentedControl
-                label={m.papers.toolbar.groupFieldAria}
-                value={group}
-                options={['none', ...columns.groups.filter((k) => k !== 'readState' && groupable.has(k))]
-                  .map((k) => ({ value: k, label: labelOf(k) }))}
-                onChange={(value) => { setGroup(value); setSel(null); setPage(1) }}
-              />
-              {columns.groups.includes('readState')
-                ? (
-                  <>
-                    <span className="pt-dim">{m.papers.toolbar.filter}</span>
-                    <ReadStateFilter
-                      name={names.columns.st}
-                      current={group === 'readState' ? sel as ReadState | null : null}
-                      onPick={(state) => {
-                        setGroup(state === null ? 'none' : 'readState')
-                        setSel(state)
-                        setPage(1)
-                      }}
-                    />
-                  </>
-                )
-                : null}
-              <GroupMenu columns={columns} onChange={(update) => { void changeColumns(update) }} />
-            </div> : null}
-          </div>
 
           <div id="libList">
             {view === 'research-map'
