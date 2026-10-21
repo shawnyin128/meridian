@@ -351,7 +351,7 @@ function ProjectList({ onOpen }: { onOpen: (id: string) => void }) {
           <>
             {projects.length === 0 ? null : (
               <SortMenu
-                variant="page" label={m.research.list.sort}
+                label={m.research.list.sort}
                 options={[
                   { label: m.research.list.sortPriority, onSelect: () => sortBy('priority') },
                   { label: m.research.list.sortMilestone, onSelect: () => sortBy('milestone') },

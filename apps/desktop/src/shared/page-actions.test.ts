@@ -79,7 +79,7 @@ describe('屏头的按钮', () => {
     expect(offenders).toEqual([])
   })
 
-  it('页级操作一种尺寸:actions 槽里没有小号按钮、小号添加或分节权重的排序', () => {
+  it('页级操作一种尺寸:actions 槽里没有小号按钮或小号添加', () => {
     const offenders = headers.flatMap(({ path, header }) => {
       const actions = attribute(header, 'actions')
       if (actions === undefined) return []
@@ -88,7 +88,7 @@ describe('屏头的按钮', () => {
         const classes = strings(attribute(element, 'className')).flatMap((value) => value.split(/\s+/))
         const variant = strings(attribute(element, 'variant'))
         const small = classes.includes('sm') || strings(attribute(element, 'size')).some((size) => ['sm', 'nested', 'inline'].includes(size))
-          || (name === 'AddAction' && !variant.includes('page')) || (name === 'SortMenu' && !variant.includes('page'))
+          || (name === 'AddAction' && !variant.includes('page'))
         return small ? [`${path}:${line(element)} <${name}>`] : []
       })
     })

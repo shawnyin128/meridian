@@ -3,17 +3,15 @@ import { ActionMenu, MenuItem } from './ActionMenu.js'
 export type SortOption = { label: string; onSelect: () => void }
 
 /**
- * Sort entry for a list. `variant` gives it the weight of where it sits: `section` in a section heading,
- * `page` in the page header when it orders the whole page. `options` lists the one-shot orderings the
- * menu applies.
+ * Sort entry for the list a page shows; it orders the whole page, so it sits in the page header.
+ * `options` lists the one-shot orderings the menu applies.
  */
-export function SortMenu({ label, options, variant = 'section' }: {
+export function SortMenu({ label, options }: {
   label: string
   options: SortOption[]
-  variant?: 'page' | 'section'
 }) {
   return (
-    <ActionMenu trigger={<button type="button" className={variant === 'page' ? 'btn sort-menu' : 'btn sm sort-menu'}>{label}</button>}>
+    <ActionMenu trigger={<button type="button" className="btn sort-menu">{label}</button>}>
       {options.map((option) => (
         <MenuItem key={option.label} onSelect={option.onSelect}>{option.label}</MenuItem>
       ))}

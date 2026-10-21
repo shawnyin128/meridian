@@ -76,18 +76,16 @@ describe('PageShell', () => {
     )
   })
 
-  it('gives sorting and adding in a heading the same section weight', () => {
+  it('sorts a page from its header at the page weight and adds to a section from its heading at the section weight', () => {
     const html = renderToStaticMarkup(
-      <SectionHeading actions={(
-        <>
-          <SortMenu label="排序" options={[{ label: '按更新时间', onSelect: () => undefined }]} />
-          <AddAction variant="section">任务</AddAction>
-        </>
-      )}
-      >计划
-      </SectionHeading>,
+      <>
+        <PageHeader actions={<SortMenu label="排序" options={[{ label: '按更新时间', onSelect: () => undefined }]} />}>
+          <PageTitle>想法</PageTitle>
+        </PageHeader>
+        <SectionHeading actions={<AddAction variant="section">任务</AddAction>}>计划</SectionHeading>
+      </>,
     )
     const classes = [...html.matchAll(/<button[^>]*class="([^"]*)"/g)].map((match) => match[1]!.split(' ').slice(0, 2).join(' '))
-    expect(classes).toEqual(['btn sm', 'btn sm'])
+    expect(classes).toEqual(['btn sort-menu', 'btn sm'])
   })
 })

@@ -315,15 +315,17 @@ export function Ideas() {
 
   return (
     <PageShell className="ideas-page">
-      <PageHeader><PageTitle>{m.ideas.title(active.length)}</PageTitle></PageHeader>
+      <PageHeader actions={active.length === 0 ? undefined : (
+        <SortMenu label={m.ideas.sort} options={[{ label: m.ideas.sortUpdated, onSelect: sortByUpdated }]} />
+      )}
+      >
+        <PageTitle>{m.ideas.title(active.length)}</PageTitle>
+      </PageHeader>
       <PageError error={error} />
       <PageBody className="ideas-body">
         <div className={`ideas-workspace${selected === undefined ? '' : ' has-detail'}`}>
           <main className="ideas-list">
-            <SectionHeading actions={active.length === 0 ? undefined : (
-              <SortMenu label={m.ideas.sort} options={[{ label: m.ideas.sortUpdated, onSelect: sortByUpdated }]} />
-            )}
-            >{m.ideas.activeHeading(active.length)}</SectionHeading>
+            <SectionHeading>{m.ideas.activeHeading(active.length)}</SectionHeading>
             {rows === null ? (
               error === null ? <LoadingPlaceholder shape="cards" /> : null
             ) : active.length === 0

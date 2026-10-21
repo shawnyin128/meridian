@@ -98,6 +98,13 @@ describe('Ideas', () => {
     expect(host.querySelector('.ideas-list .empty-state')?.className).toBe('empty-state empty-state--section')
   })
 
+  it('排序作用于整页的想法，和项目一样放在屏头右端，一种尺寸；进行中的标题不带按钮', async () => {
+    await act(async () => { root.render(<MessagesProvider><Ideas /></MessagesProvider>) })
+    const actions = [...host.querySelectorAll<HTMLButtonElement>('.desk-head > .page-actions > button')]
+    expect(actions.map((b) => [b.textContent, b.className])).toEqual([['排序', 'btn sort-menu']])
+    expect(host.querySelector('.ideas-list .section-heading .section-heading-actions')).toBeNull()
+  })
+
   it('列表还没到时显示载入占位，不说还没有想法', async () => {
     api.loading = true
     await act(async () => { root.render(<MessagesProvider><Ideas /></MessagesProvider>) })
