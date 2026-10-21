@@ -66,5 +66,5 @@ export const shell = {
     results: 'Search results',
     noHits: 'No matches found',
   },
-  palette: { title: 'Command palette', placeholder: 'Type a command' },
+  palette: { title: 'Command palette', placeholder: 'Type a command', settingsPane: (pane: string) => `Settings · ${pane}` },
 } satisfies typeof zh

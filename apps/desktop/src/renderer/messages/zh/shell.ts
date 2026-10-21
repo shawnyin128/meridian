@@ -64,5 +64,5 @@ export const shell = {
     results: '搜索结果',
     noHits: '没有找到匹配的内容',
   },
-  palette: { title: '命令面板', placeholder: '输入命令' },
+  palette: { title: '命令面板', placeholder: '输入命令', settingsPane: (pane: string) => `设置 · ${pane}` },
 } satisfies Record<string, unknown>

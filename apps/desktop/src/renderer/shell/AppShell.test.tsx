@@ -676,6 +676,23 @@ describe('AppShell command palette', () => {
     expect(document.querySelector('#settingsProbe')!.textContent).toBe('default')
   })
 
+  it('lists 设置 · <pane> right after 设置…, one per pane in the Settings side list\'s order, each opening Settings on its pane', async () => {
+    const panes = [
+      ['外观', 'appearance'], ['存储', 'storage'], ['API', 'api'], ['模型', 'model'], ['科研', 'research'],
+      ['扩展', 'extensions'], ['论文推送', 'delivery'], ['关注', 'delivery-watch'], ['发现', 'delivery-discovery'],
+      ['归档的对话', 'archived'],
+    ]
+    await mount(<SettingsProbe />)
+    act(() => fixture.openPalette!())
+    const labels = [...document.querySelectorAll('.cmdk .rrow')].map((row) => row.textContent)
+    const settings = labels.indexOf('设置…⌘,')
+    expect(labels.slice(settings + 1, settings + 1 + panes.length)).toEqual(panes.map(([name]) => `设置 · ${name}`))
+    for (const [name, pane] of panes) {
+      run(`设置 · ${name}`)
+      expect(document.querySelector('#settingsProbe')!.textContent).toBe(pane)
+    }
+  })
+
   it('新建想法打开想法屏,带着打开新建想法编辑框的落点', async () => {
     await mount(undefined, { ideas: <JumpProbe id="ideasJump" /> })
     run('新建想法')

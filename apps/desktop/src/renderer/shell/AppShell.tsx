@@ -19,6 +19,7 @@ import { commandShortcut, composing } from '../lib/keyboard.js'
 import type { Catalog } from '../messages/catalog.js'
 import { useMessages } from '../messages/useMessages.js'
 import { CommandPalette, type PaletteCommand } from './CommandPalette.js'
+import { SETTINGS_CATEGORIES, SETTINGS_CATEGORY_LABEL, type SettingsCategory } from './settings-categories.js'
 import { Sidebar } from './Sidebar.js'
 import { JobsContext, useJobsPoll } from './useJobs.js'
 import brandmark from '../../../resources/mark-64.png'
@@ -129,7 +130,6 @@ const JumpContext = createContext<{
 } | null>(null)
 /** The screen these children belong to: every mounted screen keeps running, so each must know its own. */
 const SlotContext = createContext<ScreenKey | null>(null)
-export type SettingsCategory = 'appearance' | 'storage' | 'api' | 'model' | 'research' | 'extensions' | 'delivery' | 'delivery-watch' | 'delivery-discovery' | 'archived'
 const SettingsContext = createContext<{
   open: boolean
   requestedCategory: SettingsCategory | null
@@ -626,6 +626,10 @@ export function AppShell({ screens, settings }: {
     { label: m.papers.upload.importAction, run: () => jumps.open('papers', '', { importPdf: true }) },
     { label: m.ideas.create, run: () => jumps.open('ideas', '', { newIdea: true }) },
     { label: m.shell.titlebar.settings, shortcut: commandShortcut(appMenu.platform(), ','), run: () => setSettingsOpen(true) },
+    ...SETTINGS_CATEGORIES.map((category) => ({
+      label: m.shell.palette.settingsPane(m.settings.categories[SETTINGS_CATEGORY_LABEL[category]]),
+      run: () => openSettingsCategory(category),
+    })),
     { label: m.shell.nav.feed, run: () => navigate('feed') },
     { label: m.shell.nav.delivery, run: () => openInbox(ALL_WATCHES) },
     { label: m.shell.nav.discovery, run: () => openInbox(ALL_WATCHES, 'discovery') },
