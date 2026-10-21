@@ -13,11 +13,10 @@
 .paper-card-section+.paper-card-section{margin-top:var(--sp-10)}
 .paper-abstract{font-size:var(--fs-base);color:var(--sec);line-height:var(--lh-ui)}
 .paper-abstract>p{margin:0}
-/* A folded abstract keeps three lines and fades the last one when more text is hidden. */
-.paper-abstract.is-folded{max-height:calc(var(--fs-base)*var(--lh-ui)*3);overflow:hidden}
-.paper-abstract.is-clipped{mask-image:linear-gradient(to bottom,#000 calc(100% - 1.2em),transparent)}
+/* A folded abstract keeps three lines; the shared .fade-lines fades the last one when more text is hidden. */
+.paper-abstract.is-folded{max-height:calc(3 * 1lh)}
 /* A link that takes focus inside the folded lines shows them all while it holds focus. */
-.paper-abstract:is(.is-folded,.is-clipped):has(:focus-visible){max-height:none;mask-image:none}
+.paper-abstract.is-folded:has(:focus-visible){max-height:none;mask-image:none}
 /* A ghost button's padding is pulled back so its label lines up with the abstract above it. */
 .paper-abstract-toggle{margin:var(--sp-2) 0 0 calc(-1 * var(--sp-10))}
 .paper-card-recommendation{font-size:var(--fs-base);color:var(--ink)}

@@ -48,24 +48,29 @@ describe('PaperAbstract', () => {
       vi.unstubAllGlobals()
     })
 
-    /** Renders a folded abstract whose text box reports `scrollHeight` against a 57px clipped box. */
+    /**
+     * Renders a folded abstract whose text box reports `scrollHeight` against a 57px clipped box, its third
+     * and last whole line ending 212px from its left edge and a fourth line hidden below it.
+     */
     async function renderFolded(scrollHeight: number) {
       const heights = vi.spyOn(HTMLElement.prototype, 'scrollHeight', 'get').mockReturnValue(scrollHeight)
       const clipped = vi.spyOn(HTMLElement.prototype, 'clientHeight', 'get').mockReturnValue(57)
+      const frame = vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue({ left: 0, top: 0, bottom: 57, width: 300 } as DOMRect)
+      const lines = [{ top: 40, bottom: 55, right: 212, width: 212 }, { top: 59, bottom: 74, right: 90, width: 90 }]
+      const range = vi.spyOn(document, 'createRange').mockReturnValue({ selectNodeContents() {}, getClientRects: () => lines } as unknown as Range)
       const root = createRoot(host)
       await act(async () => {
         root.render(<MessagesProvider><PaperAbstract text="A long abstract." folded /></MessagesProvider>)
       })
-      heights.mockRestore()
-      clipped.mockRestore()
+      for (const spy of [heights, clipped, frame, range]) spy.mockRestore()
       return root
     }
 
-    it('超过三行时淡出并给「展开摘要」，点开后整段显示、按钮改成「收起摘要」', async () => {
+    it('超过三行时用共用的多行淡出在第三行文字末尾淡出并给「展开摘要」，点开后整段显示、按钮改成「收起摘要」', async () => {
       const root = await renderFolded(200)
-      const body = host.querySelector('.paper-abstract')!
-      expect(body.classList.contains('is-folded')).toBe(true)
-      expect(body.classList.contains('is-clipped')).toBe(true)
+      const body = host.querySelector<HTMLElement>('.paper-abstract')!
+      expect([body.classList.contains('is-folded'), body.classList.contains('fade-lines'), body.classList.contains('clipped')]).toEqual([true, true, true])
+      expect(body.style.getPropertyValue('--line-end')).toBe('212px')
       const toggle = host.querySelector<HTMLButtonElement>('.paper-abstract-toggle')!
       expect(toggle.textContent).toBe('展开摘要')
       expect(toggle.classList.contains('btn')).toBe(true)
@@ -77,7 +82,7 @@ describe('PaperAbstract', () => {
 
     it('三行放得下时不淡出也不给展开按钮', async () => {
       const root = await renderFolded(57)
-      expect(host.querySelector('.paper-abstract')?.classList.contains('is-clipped')).toBe(false)
+      expect(host.querySelector('.paper-abstract')?.classList.contains('clipped')).toBe(false)
       expect(host.querySelector('.paper-abstract-toggle')).toBeNull()
       await act(async () => { root.unmount() })
     })

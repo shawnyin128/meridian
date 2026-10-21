@@ -69,6 +69,8 @@ const LINES: Record<string, [file: string, markup: RegExp, measure: RegExp]> = {
   '.wkcard .wm': ['routes/Wiki.tsx', /className=\{`wm fade-lines\$\{summaryCut \? ' clipped' : ''\}`\}/, /useClipped\(summary, card\.summary, true\)/],
   '.wkcard--paper .tt-lines': ['routes/Wiki.tsx', /className=\{`tt-lines fade-lines\$\{titleCut \? ' clipped' : ''\}`\}/,
     /useClipped\(title, paper\.title, true\)/],
+  '.paper-abstract.is-folded': ['components/paper/PaperAbstract.tsx',
+    /className=\{`paper-abstract pabs\$\{shut \? ' is-folded fade-lines' : ''\}\$\{overflows \? ' clipped' : ''\}`\}/, /useClipped\(body, text, true\)/],
 }
 
 describe('放不下的文字淡出,不以省略号结尾', () => {
@@ -89,5 +91,13 @@ describe('放不下的文字淡出,不以省略号结尾', () => {
       + 'calc(var(--line-end,100%)-var(--clipfade-width)),transparentvar(--line-end,100%))0100%/100%1lhno-repeat')
     const missing = Object.entries(LINES).filter(([, [file, markup, measure]]) => !markup.test(source(file)) || !measure.test(source(file)))
     expect(missing.map(([selector]) => selector)).toEqual([])
+  })
+
+  it('放不下的文字只有两种淡出:一行的用 --clipfade,多行的用共用的 .fade-lines', () => {
+    // A sticky cell's or head's pseudo-element fades the content under it, and [data-fade] fades a scroll area's edge.
+    const own = RULES.filter(({ selector, body }) => /(^|;)\s*mask(-image)?:/.test(body) && !/::(before|after)|\[data-fade/.test(selector))
+    const other = own.filter(({ path, selector, body }) => !(path === 'components/FadeText.css' && selector === '.fade-lines.clipped')
+      && !/(^|;)\s*mask(-image)?:\s*(var\(--clipfade\)|none)\s*(;|$)/.test(body))
+    expect(other.map(({ path, selector }) => `${path}  ${selector}`)).toEqual([])
   })
 })
