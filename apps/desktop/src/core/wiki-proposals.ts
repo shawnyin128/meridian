@@ -119,13 +119,16 @@ export function createWikiProposals({ store, pdf, now }: {
   pdf: PdfPageText
   now: () => number
 }) {
-  /** The first page of `proposal` whose base version is not the page's version now, with the refusal; null when none. */
+  /** The first page of `proposal` whose base version is not the page's version now; null when none. */
+  const changedPage = (proposal: AgentProposal): string | null => Object.entries(proposal.base).find(([id, base]) => {
+    const current = store.pageVersion(id)
+    return current?.fm !== base?.fm || current?.body !== base?.body
+  })?.[0] ?? null
+
+  /** The refusal for the changedPage of `proposal`; null when none. */
   const staleness = (proposal: AgentProposal): string | null => {
-    for (const [id, base] of Object.entries(proposal.base)) {
-      const current = store.pageVersion(id)
-      if (current?.fm !== base?.fm || current?.body !== base?.body) return staleMessage(id, base, current)
-    }
-    return null
+    const id = changedPage(proposal)
+    return id === null ? null : staleMessage(id, proposal.base[id] ?? null, store.pageVersion(id))
   }
 
   /**
@@ -293,8 +296,8 @@ export function createWikiProposals({ store, pdf, now }: {
 
     /**
      * Returns the queue records with `status` (every record when absent), newest first, each with the
-     * pages it would write, whether its base is stale now, the unverified project conclusions a queued one
-     * cites, and the titles and claim texts it names. A
+     * pages it would write, whether its base is stale now and the page that changed, the unverified
+     * project conclusions a queued one cites, and the titles and claim texts it names. A
      * record whose proposal cannot be read against the vault is listed as unreadable with the cause as
      * its notice, and the others list as usual.
      */
@@ -302,10 +305,12 @@ export function createWikiProposals({ store, pdf, now }: {
       return store.proposalRecords().filter((r) => status === undefined || r.status === status).map((r) => {
         try {
           const pages = r.proposal === null ? [] : store.pagesWritten(r.proposal.ops)
+          const changed = r.proposal === null ? null : changedPage(r.proposal)
           return {
             ...r,
             pages,
-            staleNow: r.proposal !== null && staleness(r.proposal) !== null,
+            staleNow: changed !== null,
+            ...(changed === null ? {} : { stalePage: changed }),
             unverified: r.proposal === null || r.status !== 'queued' ? [] : unverifiedOf(r.proposal),
             ...(r.proposal === null ? { titles: {}, claimTexts: {} } : labelsOf(r.proposal, pages)),
           }

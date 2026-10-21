@@ -67,6 +67,10 @@ describe('review queue on the fixture library', () => {
     expect(queue.list('rejected').map((p) => p.reason?.kind)).toEqual(['declined'])
   })
 
+  it('过期的提案带上它依据的页里先改过的那一页,没过期的不带', () => {
+    expect(queue.list().map((p) => p.stalePage)).toEqual([undefined, 'topics/ptq-weight-only', undefined])
+  })
+
   it('base 里的页 id 带 . 或 .. 的提案进不了队列', async () => {
     const before = store.proposalRecords().length
     await expect(queue.propose(envelope(store, [addClaim('dots')], { base: { '../x': null } }))).rejects.toThrow('提案的格式不对')

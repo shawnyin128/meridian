@@ -1898,6 +1898,8 @@ export const ProposalRecordSchema = z.object({
 export const WikiProposalSchema = ProposalRecordSchema.extend({
   pages: z.array(z.string()),
   staleNow: z.boolean(),
+  /** The first page it rests on whose version changed since it was made, when `staleNow`. */
+  stalePage: z.string().optional(),
   /** `projects/<id>#<node or conclusion>` of each cited project conclusion the user has not verified yet. */
   unverified: z.array(z.string()).optional(),
   titles: z.record(z.string(), z.string()),
