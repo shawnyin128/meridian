@@ -66,7 +66,7 @@ export function ReaderSidePanel({
         ? <ReadingRemark reading={reading} saving={saving} onSave={onSaveRemark} edits={edits} />
         : null}
       {tab === 'wiki' && paper !== null && reading !== null
-        ? <PaperWikiIngest paper={paper} reading={reading} />
+        ? <PaperWikiIngest paper={paper} reading={reading} onJump={onJump} />
         : null}
       <ToggleGroup
         label={m.reader.rail.label} className="reader-rail" value={tab ?? ''}

@@ -41,6 +41,8 @@ const api = vi.hoisted(() => ({
   reject: vi.fn(),
   settingsOpen: false,
   openCategory: vi.fn(),
+  open: vi.fn(),
+  jump: vi.fn(),
 }))
 
 vi.mock('../../ipc.js', () => ({
@@ -55,6 +57,7 @@ vi.mock('../../ipc.js', () => ({
 }))
 vi.mock('../../shell/AppShell.js', () => ({
   useSettingsOpen: () => ({ open: api.settingsOpen, openCategory: api.openCategory }),
+  useJump: () => ({ jump: null, open: api.open }),
 }))
 vi.mock('../../hooks/useVaultWrite.js', () => ({
   useVaultWrite: () => async (operation: Promise<unknown>) => { await operation; return true },
@@ -118,7 +121,7 @@ describe('PaperWikiIngest', () => {
   afterEach(() => act(() => root.unmount()))
 
   it('shows the generated proposal without applying until the user reviews and confirms', async () => {
-    await act(async () => { root.render(withMessages(<PaperWikiIngest paper={paper} reading={reading} />)) })
+    await act(async () => { root.render(withMessages(<PaperWikiIngest paper={paper} reading={reading} onJump={api.jump} />)) })
     await act(async () => {
       host.querySelector<HTMLButtonElement>('[data-testid="start-harness"]')!.click()
     })
@@ -147,7 +150,7 @@ describe('PaperWikiIngest', () => {
       [...host.querySelectorAll<HTMLButtonElement>('button')]
         .find((button) => button.textContent === '结构化审核')!.click()
     })
-    expect(host.querySelector('.wiki-ingest-review > .tag')?.textContent).toBe('Markdown 已修改')
+    expect(host.querySelector('.wiki-ingest-review .proposal-change > .tag')?.textContent).toBe('Markdown 已修改')
     expect(api.start).toHaveBeenCalledTimes(1)
     await act(async () => {
       [...host.querySelectorAll<HTMLButtonElement>('button')]
@@ -163,7 +166,7 @@ describe('PaperWikiIngest', () => {
       startedAt: '2026-09-17T12:00:00.000Z', state: 'proposal-ready', message: '请审核', warning: 'write',
       proposal: { id: 'proposal-1', targetId: 'p1', action: 'create', body: '# Draft', review, quality },
     })
-    await act(async () => { root.render(withMessages(<PaperWikiIngest paper={paper} reading={reading} />)) })
+    await act(async () => { root.render(withMessages(<PaperWikiIngest paper={paper} reading={reading} onJump={api.jump} />)) })
     await act(async () => {
       host.querySelector<HTMLButtonElement>('[data-testid="start-harness"]')!.click()
     })
@@ -174,7 +177,7 @@ describe('PaperWikiIngest', () => {
 
   it('states that no model is connected in the neutral status tone, not as an error', async () => {
     api.prepare.mockResolvedValue({ ...plan, model: { ...plan.model, configured: false } })
-    await act(async () => { root.render(withMessages(<PaperWikiIngest paper={paper} reading={reading} />)) })
+    await act(async () => { root.render(withMessages(<PaperWikiIngest paper={paper} reading={reading} onJump={api.jump} />)) })
     const tag = [...host.querySelectorAll('.tag')].find((t) => t.textContent === 'AI 未连接')!
     expect(tag.className).toBe('tag tag--label tag--neutral')
   })
@@ -183,7 +186,7 @@ describe('PaperWikiIngest', () => {
     api.settingsOpen = false
     api.openCategory.mockReset()
     api.prepare.mockResolvedValue({ ...plan, model: { ...plan.model, configured: false } })
-    const render = () => act(async () => { root.render(withMessages(<PaperWikiIngest paper={paper} reading={reading} />)) })
+    const render = () => act(async () => { root.render(withMessages(<PaperWikiIngest paper={paper} reading={reading} onJump={api.jump} />)) })
     await render()
     const tag = [...host.querySelectorAll<HTMLElement>('.tag')].find((t) => t.textContent === 'AI 未连接')!
     expect(tag.tagName).toBe('BUTTON')
@@ -202,7 +205,7 @@ describe('PaperWikiIngest', () => {
   it('lets the user stop an in-flight run and requires a fresh confirmation afterward', async () => {
     let rejectRun: ((cause: CallError) => void) | undefined
     api.start.mockImplementation(() => new Promise((_resolve, reject) => { rejectRun = reject }))
-    await act(async () => { root.render(withMessages(<PaperWikiIngest paper={paper} reading={reading} />)) })
+    await act(async () => { root.render(withMessages(<PaperWikiIngest paper={paper} reading={reading} onJump={api.jump} />)) })
     act(() => host.querySelector<HTMLButtonElement>('[data-testid="start-harness"]')!.click())
     await act(async () => {
       host.querySelector<HTMLButtonElement>('[data-testid="cancel-harness"]')!.click()
@@ -225,7 +228,7 @@ describe('PaperWikiIngest', () => {
       generatedAt: '2026-09-17T11:00:00.000Z',
       stale: false,
     })
-    await act(async () => { root.render(withMessages(<PaperWikiIngest paper={paper} reading={reading} />)) })
+    await act(async () => { root.render(withMessages(<PaperWikiIngest paper={paper} reading={reading} onJump={api.jump} />)) })
 
     expect(api.prepare).not.toHaveBeenCalled()
     expect(api.start).not.toHaveBeenCalled()
@@ -245,12 +248,12 @@ describe('PaperWikiIngest', () => {
       generatedAt: '2026-09-17T11:00:00.000Z',
       stale: false,
     })
-    await act(async () => { root.render(withMessages(<PaperWikiIngest paper={paper} reading={reading} />)) })
+    await act(async () => { root.render(withMessages(<PaperWikiIngest paper={paper} reading={reading} onJump={api.jump} />)) })
 
     const heading = host.querySelector('.wiki-ingest-review > .section-heading')!
     expect(heading.querySelector(':scope > .section-heading-actions > .segmented-control')!.getAttribute('aria-label'))
       .toBe('Wiki 提案审核视图')
-    const decide = [...host.querySelectorAll<HTMLButtonElement>('.wiki-ingest-review > .wiki-ingest-actions > button')]
+    const decide = [...host.querySelectorAll<HTMLButtonElement>('.wiki-ingest-review .proposal-decision > button')]
     expect(decide.map((button) => `${button.textContent} ${button.className}`))
       .toEqual(['丢弃提案 btn ghost danger', '确认写入 Wiki btn'])
   })
@@ -261,7 +264,7 @@ describe('PaperWikiIngest', () => {
       generatedAt: '2026-09-17T11:00:00.000Z',
       stale: false,
     })
-    await act(async () => { root.render(withMessages(<PaperWikiIngest paper={paper} reading={reading} />)) })
+    await act(async () => { root.render(withMessages(<PaperWikiIngest paper={paper} reading={reading} onJump={api.jump} />)) })
 
     expect(host.querySelector<HTMLTextAreaElement>('[aria-label="Wiki 提案内容"]')?.value)
       .toBe('# Legacy')
@@ -274,17 +277,37 @@ describe('PaperWikiIngest', () => {
       generatedAt: '2026-09-17T11:00:00.000Z',
       stale: true,
     })
-    await act(async () => { root.render(withMessages(<PaperWikiIngest paper={paper} reading={reading} />)) })
+    await act(async () => { root.render(withMessages(<PaperWikiIngest paper={paper} reading={reading} onJump={api.jump} />)) })
 
     const apply = [...host.querySelectorAll<HTMLButtonElement>('button')]
       .find((button) => button.textContent === '确认写入 Wiki')!
     expect(apply.disabled).toBe(true)
-    expect(apply.parentElement!.querySelector('.tag')?.textContent).toBe('依据已变化 · 请重新生成')
+    expect([...apply.parentElement!.children].map((part) => part.textContent))
+      .toEqual(['丢弃提案', '确认写入 Wiki', '依据已变化 · 请重新生成'])
+  })
+
+  it('shows a proposal as the review queue does: the change, the paper\'s Wiki page and the agent with its day on the first line, then what it writes', async () => {
+    api.pending.mockResolvedValue({
+      proposal: { id: 'proposal-old', targetId: 'p1', action: 'update', body: '# Recovered', review },
+      generatedAt: '2026-09-17T11:00:00.000Z',
+      stale: false,
+    })
+    await act(async () => { root.render(withMessages(<PaperWikiIngest paper={paper} reading={reading} onJump={api.jump} />)) })
+
+    const card = host.querySelector('.wiki-ingest-review .proposal-card')!
+    const where = card.querySelector('.proposal-change > .proposal-where')!
+    expect([...where.children].map((part) => part.textContent)).toEqual(['更新内容', '→', 'Paper', 'agent9月17日'])
+    expect(card.querySelector('.proposal-change .paper-wiki-structured-review')).not.toBeNull()
+    expect(host.querySelector('.wiki-ingest-review > .section-heading')!.textContent).not.toContain('更新内容')
+    await act(async () => { where.querySelector<HTMLButtonElement>('.proposal-target .entity-link')!.click() })
+    expect(api.open).toHaveBeenCalledWith('wiki', 'papers/p1')
+    await act(async () => { card.querySelector<HTMLButtonElement>('.source-anchor')!.click() })
+    expect(api.jump).toHaveBeenCalledWith(1)
   })
 
   it('states a missing model as a short tag, never a sentence', async () => {
     api.prepare.mockResolvedValue({ ...plan, model: { ...plan.model, configured: false } })
-    await act(async () => { root.render(withMessages(<PaperWikiIngest paper={paper} reading={reading} />)) })
+    await act(async () => { root.render(withMessages(<PaperWikiIngest paper={paper} reading={reading} onJump={api.jump} />)) })
     expect(states()).toEqual(['无阅读记录', 'AI 未连接'])
     expect(host.querySelector('.wiki-ingest-status')).toBeNull()
   })
@@ -292,14 +315,14 @@ describe('PaperWikiIngest', () => {
   it('states the reading records it includes as a short tag, never a sentence', async () => {
     const notes = [1, 2].map((page) => ({ id: `n${page}`, page, text: '笔记', created: '2026-09-14', updated: '2026-09-14' }))
     await act(async () => {
-      root.render(withMessages(<PaperWikiIngest paper={paper} reading={{ ...reading, notes, remark: '随笔' }} />))
+      root.render(withMessages(<PaperWikiIngest paper={paper} reading={{ ...reading, notes, remark: '随笔' }} onJump={api.jump} />))
     })
     expect(states()).toEqual(['3 条阅读记录'])
     expect(host.querySelector('.wiki-ingest-tip')).toBeNull()
   })
 
   it('collects optional local feedback before rejecting a proposal', async () => {
-    await act(async () => { root.render(withMessages(<PaperWikiIngest paper={paper} reading={reading} />)) })
+    await act(async () => { root.render(withMessages(<PaperWikiIngest paper={paper} reading={reading} onJump={api.jump} />)) })
     await act(async () => {
       host.querySelector<HTMLButtonElement>('[data-testid="start-harness"]')!.click()
     })
@@ -337,7 +360,7 @@ describe('PaperWikiIngest', () => {
   })
 
   it('offers the rejection reasons as chips that each toggle on their own, not as segments', async () => {
-    await act(async () => { root.render(withMessages(<PaperWikiIngest paper={paper} reading={reading} />)) })
+    await act(async () => { root.render(withMessages(<PaperWikiIngest paper={paper} reading={reading} onJump={api.jump} />)) })
     await act(async () => {
       host.querySelector<HTMLButtonElement>('[data-testid="start-harness"]')!.click()
     })
@@ -357,7 +380,7 @@ describe('PaperWikiIngest', () => {
   })
 
   it('allows rejecting without providing feedback', async () => {
-    await act(async () => { root.render(withMessages(<PaperWikiIngest paper={paper} reading={reading} />)) })
+    await act(async () => { root.render(withMessages(<PaperWikiIngest paper={paper} reading={reading} onJump={api.jump} />)) })
     await act(async () => {
       host.querySelector<HTMLButtonElement>('[data-testid="start-harness"]')!.click()
     })
