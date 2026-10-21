@@ -1,0 +1,30 @@
+/*
+ * A card's labelled rows share one label column, as wide as its longest label; every other part spans the
+ * card. A list nested deeper in a change, as in a review group, keeps a label column of its own.
+ */
+.proposal-card{display:grid;grid-template-columns:max-content minmax(0,1fr);column-gap:var(--sp-12);row-gap:var(--sp-6)}
+.proposal-card>*,.proposal-change>*,.proposal-rows>*{grid-column:1/-1}
+.proposal-change,.proposal-row,:is(.proposal-card,.proposal-change)>.proposal-rows{display:grid;grid-template-columns:subgrid}
+.proposal-rows{display:grid;grid-template-columns:max-content minmax(0,1fr);column-gap:var(--sp-12);row-gap:var(--sp-6);margin:0}
+.proposal-change{row-gap:var(--sp-6)}
+.proposal-change+.proposal-change{margin-top:var(--sp-10)}
+.proposal-change>.tag{justify-self:start}
+.proposal-row>dt{grid-column:1;width:auto;white-space:nowrap;color:var(--ter);font-size:var(--fs-sm);line-height:var(--lh-ui)}
+.proposal-row>dd{grid-column:2;display:flex;flex-direction:column;gap:var(--sp-2);min-width:0;margin:0;
+  color:var(--sec);font-size:var(--fs-sm);line-height:var(--lh-ui)}
+.proposal-value{display:flex;flex-wrap:wrap;align-items:center;gap:var(--sp-6);min-width:0;overflow-wrap:anywhere}
+.proposal-quote{color:var(--ter);overflow-wrap:anywhere}
+.proposal-sep{color:var(--ter)}
+.proposal-where{display:flex;flex-wrap:wrap;align-items:center;gap:var(--sp-8);min-width:0}
+.proposal-arrow{color:var(--ter)}
+/* The target keeps to the first line and wraps within it; the producer and date wrap under it in a narrow column. */
+.proposal-target{flex:1 1 12em;min-width:0;font-size:var(--fs-base);font-weight:var(--fw-medium);overflow-wrap:anywhere}
+.proposal-by{display:flex;align-items:center;gap:var(--sp-8);margin-left:auto;color:var(--ter);font-size:var(--fs-sm);white-space:nowrap}
+.proposal-context{margin:0;color:var(--ter);font-size:var(--fs-sm);line-height:var(--lh-ui)}
+.proposal-text{margin:0;color:var(--ink);font-size:var(--fs-base);line-height:var(--lh-read);overflow-wrap:anywhere}
+.proposal-text--removed{color:var(--ter);text-decoration:line-through}
+.proposal-text--context{color:var(--sec)}
+.proposal-card.is-decided :is(.proposal-target,.proposal-text--new){color:var(--sec)}
+.proposal-card.is-declined .proposal-text{color:var(--ter);text-decoration:line-through}
+.proposal-decision{display:flex;flex-wrap:wrap;align-items:center;gap:var(--sp-8);margin-top:var(--sp-4);
+  color:var(--ter);font-size:var(--fs-sm)}

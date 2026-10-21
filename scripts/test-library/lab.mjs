@@ -122,7 +122,9 @@ export async function seedLab(seed, call, tasks) {
  * Seeds the Wiki review queue: an agent proposal submitted through `meridian wiki propose` and left
  * pending, one left pending because the node conclusion it cites is not verified, one applied after the
  * user verified the node conclusion it cites, one declined, and one Core rejects because its quote is
- * not in the paper.
+ * not in the paper; then one that revises a claim and marks a conflict on it, one that retracts a
+ * claim, one left pending after the page it rests on changed, and one membership Core rejects because
+ * an agent may only change claims.
  */
 export async function seedProposals(seed, call, files) {
   const project = seed.projects.spec.id
@@ -162,12 +164,35 @@ export async function seedProposals(seed, call, files) {
     if (waited > 40) throw new Error('The App did not take the agent proposal from its inbox')
     await new Promise((done) => setTimeout(done, 500))
   }
+  const submit = async (key, title, cited, pages, ops) => call('wiki.propose', { proposal: {
+    protocol: 1, key, producer: { kind: 'ai', id: 'skill.meridian' }, trigger: { kind: 'experiment', project, node: cited },
+    title, base: Object.fromEntries(await Promise.all(pages.map(async (id) => [id, (await call('wiki.aggregation', { id })).version]))), ops,
+  } })
+  const spec = 'topics/speculative-decoding'
+  const heads = 'methods/draft-heads'
+  await submit('seed-revise-acceptance', '按基线实验修订接受率的结论', node('A'), [spec], [
+    { op: 'reviseClaim', page: spec, claim: 'acceptance-rate', text: '加速比主要取决于草稿的接受率：13B 上 68M 草稿模型的接受率只有 0.62，加速 1.9×。', evidence: [experiment] },
+    { op: 'markConflict', page: spec, claim: 'acceptance-rate', conflict: {
+      id: 'ngram-chat', against: { kind: 'experiment', project, node: node('D') }, note: '对话任务里命中率才是瓶颈，接受率解释不了 n-gram 草稿的结果。',
+    } },
+  ])
+  // Applying the proposal below changes the page this one rests on, which leaves it pending as stale.
+  await submit('seed-stale-heads', '把草稿头的层数写进草稿头', node('A'), [heads], [{ op: 'addClaim', page: heads, claim: {
+    id: 'heads-depth', text: '草稿头只用一层 decoder 就够，再加层接受率不再上升。', evidence: [experiment, { kind: 'source', paper: `papers/${seed.papers.eagle}`, page: 1, quote: eagle.text }],
+  } }])
+  await submit('seed-membership-trees', '把 Dynamic Draft Trees 收进推测解码', node('B'), [], [{
+    op: 'setMembership', paper: `papers/${seed.papers.trees}`, in: spec,
+    cells: { draft: { value: '目标模型自身的树形草稿', page: 1, quote: await quoteOf(files, 'trees') } },
+  }])
   const held = (await call('project.get', { id: project })).projectConclusions.find((item) => item.node === node('A'))
   await onDay(seed, -1, async () => {
     await call('project.verifyConclusion', { projectId: project, node: node('A'), fingerprint: held.fingerprint })
     await call('wiki.decide', { id: applied.id, decision: 'apply' })
     await call('wiki.decide', { id: declined.id, decision: 'decline', reason: '基线实验不涉及 KV cache，证据对不上。' })
   })
+  await submit('seed-retract-heads', '撤回草稿头接受率的结论', node('B'), [heads], [
+    { op: 'retractClaim', page: heads, claim: 'heads-acceptance', reason: '换成同一组 γ 重跑之后，两者的接受率只差 0.03。' },
+  ])
 }
 
 /**

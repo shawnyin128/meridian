@@ -119,19 +119,22 @@ export function createWikiProposals({ store, pdf, now }: {
   pdf: PdfPageText
   now: () => number
 }) {
-  /** The first page of `proposal` whose base version is not the page's version now, with the refusal; null when none. */
+  /** The first page of `proposal` whose base version is not the page's version now; null when none. */
+  const changedPage = (proposal: AgentProposal): string | null => Object.entries(proposal.base).find(([id, base]) => {
+    const current = store.pageVersion(id)
+    return current?.fm !== base?.fm || current?.body !== base?.body
+  })?.[0] ?? null
+
+  /** The refusal for the changedPage of `proposal`; null when none. */
   const staleness = (proposal: AgentProposal): string | null => {
-    for (const [id, base] of Object.entries(proposal.base)) {
-      const current = store.pageVersion(id)
-      if (current?.fm !== base?.fm || current?.body !== base?.body) return staleMessage(id, base, current)
-    }
-    return null
+    const id = changedPage(proposal)
+    return id === null ? null : staleMessage(id, proposal.base[id] ?? null, store.pageVersion(id))
   }
 
   /**
    * The titles and claim texts the review list shows for `proposal` writing `pages` (see
-   * WikiProposalSchema), read from the vault as it stands; a page, project, node or claim that is gone
-   * gets no entry.
+   * WikiProposalSchema), read from the vault as it stands; a page, project, node, column, kind or claim
+   * that is gone gets no entry.
    */
   const labelsOf = (proposal: AgentProposal, pages: string[]): Pick<WikiProposal, 'titles' | 'claimTexts'> => {
     const titles: Record<string, string> = {}
@@ -168,6 +171,15 @@ export function createWikiProposals({ store, pdf, now }: {
     if (proposal.trigger.kind === 'experiment') project(proposal.trigger.project, proposal.trigger)
     for (const id of pages) page(id)
     for (const op of proposal.ops) {
+      if (op.op === 'setMembership' || op.op === 'removeMembership') page(op.in)
+      if (op.op === 'setParents' || op.op === 'createAggregation') op.parents.forEach(page)
+      if (op.op === 'setMembership' && aggregations.has(op.in)) {
+        for (const column of store.wikiAggregation(op.in).columns) titles[`${op.in}#${column.key}`] = column.label
+      }
+      if (op.op === 'createAggregation') {
+        const kind = store.wikiHome().kinds.find((k) => k.key === op.kind)
+        if (kind !== undefined) titles[op.kind] = kind.label
+      }
       if (isClaimOp(op) && op.op !== 'addClaim') claim(`${op.page}#${op.claim}`)
       const items = op.op === 'addClaim' ? op.claim.evidence
         : op.op === 'reviseClaim' || op.op === 'addEvidence' ? op.evidence ?? []
@@ -293,8 +305,8 @@ export function createWikiProposals({ store, pdf, now }: {
 
     /**
      * Returns the queue records with `status` (every record when absent), newest first, each with the
-     * pages it would write, whether its base is stale now, the unverified project conclusions a queued one
-     * cites, and the titles and claim texts it names. A
+     * pages it would write, whether its base is stale now and the page that changed, the unverified
+     * project conclusions a queued one cites, and the titles and claim texts it names. A
      * record whose proposal cannot be read against the vault is listed as unreadable with the cause as
      * its notice, and the others list as usual.
      */
@@ -302,10 +314,12 @@ export function createWikiProposals({ store, pdf, now }: {
       return store.proposalRecords().filter((r) => status === undefined || r.status === status).map((r) => {
         try {
           const pages = r.proposal === null ? [] : store.pagesWritten(r.proposal.ops)
+          const changed = r.proposal === null ? null : changedPage(r.proposal)
           return {
             ...r,
             pages,
-            staleNow: r.proposal !== null && staleness(r.proposal) !== null,
+            staleNow: changed !== null,
+            ...(changed === null ? {} : { stalePage: changed }),
             unverified: r.proposal === null || r.status !== 'queued' ? [] : unverifiedOf(r.proposal),
             ...(r.proposal === null ? { titles: {}, claimTexts: {} } : labelsOf(r.proposal, pages)),
           }

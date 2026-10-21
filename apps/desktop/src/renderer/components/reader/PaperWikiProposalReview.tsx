@@ -4,8 +4,10 @@ import type {
 import { useMessages } from '../../messages/useMessages.js'
 import type { Catalog } from '../../messages/catalog.js'
 import { EmptyState } from '../EmptyState.js'
+import { SourceAnchor } from '../SourceAnchor.js'
 import { StructuredList, StructuredRow } from '../StructuredList.js'
 import { Tag } from '../Tag.js'
+import { ProposalRows, ProposalText } from '../wiki/ProposalChange.js'
 import './PaperWikiProposalReview.css'
 
 function anchorLabel(anchor: string, m: Catalog): string {
@@ -16,29 +18,30 @@ function anchorLabel(anchor: string, m: Catalog): string {
   return anchor
 }
 
-function ReviewGroup({ group }: { group: HarnessPaperWikiReviewGroup }) {
+/**
+ * One group of the review: its title and provenance, its unlabelled text in body type, then one aligned
+ * list of its labelled rows and what it rests on: the paper's pages as anchors that open the reader
+ * there through `onJump`, and the reading records it cites by name.
+ */
+function ReviewGroup({ group, onJump }: { group: HarnessPaperWikiReviewGroup; onJump: (page: number) => void }) {
   const m = useMessages()
+  const g = m.wiki.queue.grounds
+  const pages = group.anchors.filter((anchor) => anchor.startsWith('page:')).map((anchor) => Number(anchor.slice('page:'.length)))
+  const records = group.anchors.filter((anchor) => !anchor.startsWith('page:'))
   return (
     <StructuredRow className="paper-wiki-review-group">
       <div className="paper-wiki-review-group-head">
         {group.title === undefined ? null : <strong>{group.title}</strong>}
         <Tag>{m.wiki.provenance[group.provenance]}</Tag>
       </div>
-      <div className="paper-wiki-review-fields">
-        {group.rows.map((row, index) => (
-          <div className="paper-wiki-review-field" key={`${row.label ?? 'text'}-${index}`}>
-            {row.label === undefined ? null : <span>{row.label}</span>}
-            <p>{row.text}</p>
-          </div>
-        ))}
-      </div>
-      {group.anchors.length === 0 ? null : (
-        <div className="paper-wiki-review-anchors" aria-label={m.wiki.groundsLabel}>
-          {group.anchors.map((anchor) => (
-            <span key={anchor}>{anchorLabel(anchor, m)}</span>
-          ))}
-        </div>
-      )}
+      {group.rows.map((row, index) => (row.label === undefined ? <ProposalText key={index}>{row.text}</ProposalText> : null))}
+      <ProposalRows rows={[
+        ...group.rows.flatMap((row, index) => (row.label === undefined ? [] : [{ key: `row-${index}`, label: row.label, value: row.text }])),
+        ...(pages.length === 0 ? [] : [{
+          key: 'pages', label: g.source, value: pages.map((page) => <SourceAnchor key={page} page={page} onOpen={() => onJump(page)} />),
+        }]),
+        ...(records.length === 0 ? [] : [{ key: 'records', label: g.note, value: records.map((anchor) => anchorLabel(anchor, m)).join(' · ') }]),
+      ]} />
     </StructuredRow>
   )
 }
@@ -79,10 +82,14 @@ function QualityReport({ quality }: { quality: HarnessPaperWikiQuality }) {
   )
 }
 
-/** Read-only, provenance-visible review of the Core-authored proposal projection. */
-export function PaperWikiProposalReview({ review, quality }: {
+/**
+ * Read-only, provenance-visible review of the Core-authored proposal projection; a page a group rests
+ * on opens the reader there through `onJump`.
+ */
+export function PaperWikiProposalReview({ review, quality, onJump }: {
   review: HarnessPaperWikiReview
   quality?: HarnessPaperWikiQuality
+  onJump: (page: number) => void
 }) {
   return (
     <div className="paper-wiki-structured-review">
@@ -100,7 +107,7 @@ export function PaperWikiProposalReview({ review, quality }: {
               variant="embedded"
               aria-label={section.title}
             >
-              {section.groups.map((group) => <ReviewGroup group={group} key={group.id} />)}
+              {section.groups.map((group) => <ReviewGroup group={group} key={group.id} onJump={onJump} />)}
             </StructuredList>
           )}
         </section>

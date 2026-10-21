@@ -1892,12 +1892,15 @@ export const ProposalRecordSchema = z.object({
 /**
  * A queue record as the review list reads it, plus derived fields: the pages it would write, whether the
  * pages it rests on changed since it was made, the titles of what it names (a page by its id, a project
- * as `projects/<id>`, a node as `projects/<id>#<node>`), and the current text of each claim it names by
+ * as `projects/<id>`, a node as `projects/<id>#<node>`, a column of the page a membership joins as
+ * `<page>#<column key>`, a Wiki kind by its key), and the current text of each claim it names by
  * `<page>#<claim>`. Anything no longer in the vault has no entry.
  */
 export const WikiProposalSchema = ProposalRecordSchema.extend({
   pages: z.array(z.string()),
   staleNow: z.boolean(),
+  /** The first page it rests on whose version changed since it was made, when `staleNow`. */
+  stalePage: z.string().optional(),
   /** `projects/<id>#<node or conclusion>` of each cited project conclusion the user has not verified yet. */
   unverified: z.array(z.string()).optional(),
   titles: z.record(z.string(), z.string()),
