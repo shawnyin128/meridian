@@ -56,7 +56,7 @@ export async function seedWatches(seed, call) {
 export function writeInbox(seed, extra = []) {
   const records = RECOMMENDATIONS.map((paper) => {
     const watch = seed.watches[paper.watch]
-    const kind = watch.type === 'topic' ? '主题' : '作者'
+    const kind = watch.type === 'topic' ? '关键词' : '作者'
     return {
       id: paper.id, kind: 'watch', watch: watch.id, project: '', source: `${kind} · ${watch.name}`,
       title: paper.title, authors: paper.authors.join(', '), venue: `arXiv:${paper.arxiv}`, abstract: paper.abstract,
