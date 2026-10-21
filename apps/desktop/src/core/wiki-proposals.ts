@@ -133,8 +133,8 @@ export function createWikiProposals({ store, pdf, now }: {
 
   /**
    * The titles and claim texts the review list shows for `proposal` writing `pages` (see
-   * WikiProposalSchema), read from the vault as it stands; a page, project, node or claim that is gone
-   * gets no entry.
+   * WikiProposalSchema), read from the vault as it stands; a page, project, node, column, kind or claim
+   * that is gone gets no entry.
    */
   const labelsOf = (proposal: AgentProposal, pages: string[]): Pick<WikiProposal, 'titles' | 'claimTexts'> => {
     const titles: Record<string, string> = {}
@@ -171,6 +171,15 @@ export function createWikiProposals({ store, pdf, now }: {
     if (proposal.trigger.kind === 'experiment') project(proposal.trigger.project, proposal.trigger)
     for (const id of pages) page(id)
     for (const op of proposal.ops) {
+      if (op.op === 'setMembership' || op.op === 'removeMembership') page(op.in)
+      if (op.op === 'setParents' || op.op === 'createAggregation') op.parents.forEach(page)
+      if (op.op === 'setMembership' && aggregations.has(op.in)) {
+        for (const column of store.wikiAggregation(op.in).columns) titles[`${op.in}#${column.key}`] = column.label
+      }
+      if (op.op === 'createAggregation') {
+        const kind = store.wikiHome().kinds.find((k) => k.key === op.kind)
+        if (kind !== undefined) titles[op.kind] = kind.label
+      }
       if (isClaimOp(op) && op.op !== 'addClaim') claim(`${op.page}#${op.claim}`)
       const items = op.op === 'addClaim' ? op.claim.evidence
         : op.op === 'reviseClaim' || op.op === 'addEvidence' ? op.evidence ?? []

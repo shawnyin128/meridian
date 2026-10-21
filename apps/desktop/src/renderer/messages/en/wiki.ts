@@ -305,7 +305,10 @@ export const wiki = {
       setAggregationMetadata: 'Edit metadata',
     },
     grounds: { experiment: 'Experiment conclusion', source: 'Source', wiki: 'Wiki', note: 'Your note', personal: 'My judgment', conflict: 'Conflict' },
-    fields: { note: 'Note', outcome: 'Outcome', reason: 'Reason' },
+    fields: {
+      paper: 'Paper', kind: 'Kind', parents: 'Parents', columns: 'Columns', splitOn: 'Split on', title: 'Title', note: 'Note',
+      outcome: 'Outcome', reason: 'Reason',
+    },
     outcomes: { revised: 'finding revised', split: 'new finding split off', retracted: 'finding retracted', dismissed: 'not a conflict' },
     applied: 'Applied',
     rejected: 'Rejected',

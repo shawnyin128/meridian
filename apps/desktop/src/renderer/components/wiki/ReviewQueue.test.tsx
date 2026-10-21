@@ -54,6 +54,25 @@ const PROPOSALS: WikiProposal[] = [
     ...proposal('p7').proposal!, title: '收进《\\textbf{F}lux》',
     ops: [{ op: 'addEvidence', page: 'topics/sd', claim: 'knee', evidence: [{ kind: 'source', paper: 'papers/flux', page: 2, quote: 'q' }] }],
   } }),
+  proposal('p8', {
+    status: 'rejected', reason: { kind: 'invalid', message: 'agent 只能提交结论相关的提案' }, decided: { at: RECEIVED, by: 'policy' },
+    pages: ['topics/new', 'papers/eagle', 'topics/sd'],
+    titles: {
+      'topics/sd': 'Speculative decoding', 'topics/old': '旧主题', 'papers/eagle': 'EAGLE-2', 'topics/sd#speedup': '加速比', topic: '主题',
+    },
+    proposal: { ...proposal('p8').proposal!, ops: [
+      {
+        op: 'createAggregation', kind: 'topic', id: 'topics/new', title: '新主题', parents: ['topics/sd'],
+        columns: [{ key: 'speedup', label: '加速比' }], describe: '先猜后验', splitOn: '草稿来源',
+      },
+      { op: 'setMembership', paper: 'papers/eagle', in: 'topics/sd', cells: { speedup: { value: '3×', page: 2, quote: 'three times faster' } } },
+      { op: 'removeMembership', paper: 'papers/eagle', in: 'topics/old' },
+      { op: 'appendEntry', page: 'topics/sd', section: '实验', date: '2026-09-20', text: '13B 上复现' },
+      { op: 'setColumns', page: 'topics/sd', columns: [{ key: 'speedup', label: '加速比' }, { key: 'draft', label: '草稿来源' }] },
+      { op: 'setParents', page: 'topics/sd', parents: [] },
+      { op: 'setAggregationMetadata', page: 'topics/sd', title: '推测解码', splitOn: null },
+    ] },
+  }),
   proposal('p9', { proposal: { ...proposal('p9').proposal!, trigger: { kind: 'experiment', project: 'draft', node: 'seed' } } }),
   proposal('p10', { proposal: { ...proposal('p10').proposal!, ops: [{ op: 'retractClaim', page: 'topics/sd', claim: 'knee', reason: '不成立' }] } }),
 ]
@@ -125,6 +144,21 @@ describe('ReviewQueue', () => {
     expect(row('p1').textContent).not.toContain('提案 p1')
   })
 
+  it('结论以外的改动也一种一块,写的是页名、论文名、列名和值,不写 id 和存的键', () => {
+    expect(blocks('p8')).toEqual([
+      { kind: '新建页', target: '新主题', texts: ['new: 先猜后验'], rows: [
+        ['种类', '主题', null], ['上级', 'Speculative decoding', null], ['列', '加速比', null], ['细分依据', '草稿来源', null],
+      ] },
+      { kind: '归入', target: 'Speculative decoding', texts: [], rows: [['论文', 'EAGLE-2', null], ['加速比', '3× · p.2', 'three times faster']] },
+      { kind: '移出', target: '旧主题', texts: [], rows: [['论文', 'EAGLE-2', null]] },
+      { kind: '追加记录', target: 'Speculative decoding', texts: ['new: 13B 上复现'], rows: [['实验', '9月20日', null]] },
+      { kind: '修改列', target: 'Speculative decoding', texts: [], rows: [['列', '加速比 · 草稿来源', null]] },
+      { kind: '修改上级', target: 'Speculative decoding', texts: [], rows: [['上级', '暂无', null]] },
+      { kind: '修改元数据', target: 'Speculative decoding', texts: [], rows: [['标题', '推测解码', null], ['细分依据', '暂无', null]] },
+    ])
+    expect(row('p8').textContent).not.toMatch(/topics\/|papers\/|speedup/)
+  })
+
   it('第一行末尾是 agent 和收到的日期;卡片不拿提案标题当标题', () => {
     const first = row('p1').querySelector('.proposal-change')!
     expect(first.querySelector('.proposal-by .source-label')!.textContent).toBe('agent')
@@ -185,6 +219,8 @@ describe('ReviewQueue', () => {
     expect(others('p2')).toHaveLength(0)
     expect(others('p1').map((r) => [text(r.querySelector('dt')), [...r.querySelectorAll('.entity-link')].map((l) => l.getAttribute('data-wk'))]))
       .toEqual([['涉及', ['topics/other']]])
+    // A membership's paper shows in its block, so it is not listed again.
+    expect(others('p8')).toHaveLength(0)
   })
 
   it('依据和涉及里的论文名都按 LaTeX 显示,引句照写', () => {
@@ -257,7 +293,7 @@ describe('ReviewQueue', () => {
   })
 
   it('已处理的在自己的小标题下列出,同样一块一块,淡下去,末行是结果、处理的日期和原因', () => {
-    expect(host.querySelector('.section-heading')!.textContent).toBe('已处理 · 3')
+    expect(host.querySelector('.section-heading')!.textContent).toBe('已处理 · 4')
     expect(outcome('p3').map((part) => part.textContent)).toEqual(['已应用', '9月22日'])
     expect(row('p3').querySelector('.proposal-decision .tag--good')).not.toBeNull()
     expect(outcome('p4').map((part) => part.textContent)).toEqual(['已拒绝 · 过期', '9月22日', '依据的页在提案生成之后改过'])
@@ -271,7 +307,7 @@ describe('ReviewQueue', () => {
 
   it('已处理的卡片淡下去;被拒绝的再把写入的内容划掉,应用了的不划', () => {
     expect(row('p3').querySelector('.proposal-card')!.className).toBe('proposal-card is-decided')
-    expect(row('p4').querySelector('.proposal-card')!.className).toBe('proposal-card is-decided is-declined')
+    for (const id of ['p4', 'p8']) expect(row(id).querySelector('.proposal-card')!.className, id).toBe('proposal-card is-decided is-declined')
     expect(row('p1').querySelector('.proposal-card')!.className).toBe('proposal-card')
   })
 

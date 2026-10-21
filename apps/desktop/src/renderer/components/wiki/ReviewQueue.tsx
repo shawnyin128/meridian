@@ -59,9 +59,9 @@ const experimentsOf = (ops: ProposalOp[]): Extract<Evidence, { kind: 'experiment
 })
 
 /**
- * The blocks of proposal `p`, one per op, each showing where the op writes, what a claim op writes by
- * current claim texts and by the titles of pages, papers, projects and nodes (the id stands for one no
- * longer in the vault), and what it rests on. `by` and `context` end and follow the first
+ * The blocks of proposal `p`, one per op, each showing where the op writes, what it writes by current
+ * claim texts and by the titles of pages, papers, projects, nodes, columns and kinds (the id stands for
+ * one no longer in the vault), and what it rests on. `by` and `context` end and follow the first
  * block's first line. Pages, projects, conclusions and source passages open through `links` and
  * `onOpenConclusion`.
  */
@@ -76,6 +76,7 @@ function Blocks({ p, links, onOpenConclusion, by, context }: {
   const r = m.wiki.queue
   const g = r.grounds
   const f = r.fields
+  const fmt = useFormat()
   const title = (id: string): string => p.titles[id] ?? id
   const text = (ref: string): string => p.claimTexts[ref] ?? ref.split('#')[1]!
   const paperName = (id: string) => <PaperText text={title(id)} />
@@ -85,6 +86,7 @@ function Blocks({ p, links, onOpenConclusion, by, context }: {
       onOpen={() => links.openPage(id)}
     />
   )
+  const pages = (ids: string[]) => (ids.length === 0 ? m.common.none : ids.map((id) => <span key={id}>{page(id)}</span>))
   const anchor = (paper: string, at: number, quote?: string, highlight?: string) => (
     <SourceAnchor
       page={at} quote={quote}
@@ -162,7 +164,39 @@ function Blocks({ p, links, onOpenConclusion, by, context }: {
         texts: <ProposalText role="removed">{text(`${op.page}#${op.claim}`)}</ProposalText>,
         fields: [{ key: 'reason', label: f.reason, value: op.reason }],
       }
-      default: return {}
+      case 'createAggregation': return {
+        ...(op.describe === '' ? {} : { texts: <ProposalText>{op.describe}</ProposalText> }),
+        fields: [
+          { key: 'kind', label: f.kind, value: title(op.kind) },
+          { key: 'parents', label: f.parents, value: pages(op.parents) },
+          { key: 'columns', label: f.columns, value: op.columns.length === 0 ? m.common.none : op.columns.map((c) => c.label).join(' · ') },
+          ...(op.splitOn === undefined ? [] : [{ key: 'split', label: f.splitOn, value: op.splitOn }]),
+        ],
+      }
+      case 'setMembership': return {
+        fields: [
+          { key: 'paper', label: f.paper, value: page(op.paper) },
+          ...Object.entries(op.cells).map(([key, cell]) => ({
+            key: `cell-${key}`, label: title(`${op.in}#${key}`), quote: <q>{cell.quote}</q>,
+            value: <span>{cell.value} · {anchor(op.paper, cell.page, cell.quote)}</span>,
+          })),
+        ],
+      }
+      case 'removeMembership': return { fields: [{ key: 'paper', label: f.paper, value: page(op.paper) }] }
+      case 'appendEntry': return {
+        texts: <ProposalText>{op.text}</ProposalText>,
+        fields: [{ key: 'section', label: op.section, value: fmt.date(op.date) }],
+      }
+      case 'setColumns': return {
+        fields: [{ key: 'columns', label: f.columns, value: op.columns.length === 0 ? m.common.none : op.columns.map((c) => c.label).join(' · ') }],
+      }
+      case 'setParents': return { fields: [{ key: 'parents', label: f.parents, value: pages(op.parents) }] }
+      case 'setAggregationMetadata': return {
+        fields: [
+          { key: 'title', label: f.title, value: op.title },
+          { key: 'split', label: f.splitOn, value: op.splitOn ?? m.common.none },
+        ],
+      }
     }
   }
 

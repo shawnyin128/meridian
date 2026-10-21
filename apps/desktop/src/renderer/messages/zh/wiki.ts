@@ -268,7 +268,10 @@ export const wiki = {
       setAggregationMetadata: '修改元数据',
     },
     grounds: { experiment: '实验结论', source: '原文', wiki: 'Wiki', note: '你的笔记', personal: '个人判断', conflict: '冲突' },
-    fields: { note: '说明', outcome: '处理结果', reason: '撤回理由' },
+    fields: {
+      paper: '论文', kind: '种类', parents: '上级', columns: '列', splitOn: '细分依据', title: '标题', note: '说明',
+      outcome: '处理结果', reason: '撤回理由',
+    },
     outcomes: { revised: '修订了结论', split: '拆出一条新结论', retracted: '撤回了结论', dismissed: '不算冲突' },
     applied: '已应用',
     rejected: '已拒绝',

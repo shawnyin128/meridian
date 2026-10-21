@@ -71,6 +71,20 @@ describe('review queue on the fixture library', () => {
     expect(queue.list().map((p) => p.stalePage)).toEqual([undefined, 'topics/ptq-weight-only', undefined])
   })
 
+  it('结论以外的改动也带上名字:归入的页和那一页的列、上级、新建页的种类', async () => {
+    await queue.propose(envelope(store, [
+      { op: 'setMembership', paper: 'papers/2305.17888', in: 'topics/ptq-weight-only', cells: { bits: { value: 'W4', page: 1, quote: 'q' } } },
+      { op: 'createAggregation', kind: 'topic', id: 'topics/new', title: '新页', parents: ['topics/quantization'], columns: [], describe: 'd' },
+      { op: 'setParents', page: 'topics/qat', parents: ['topics/ptq'] },
+    ]))
+    const listed = queue.list().find((p) => p.proposal?.ops[0]?.op === 'setMembership')!
+    expect(listed.status).toBe('rejected')
+    expect(listed.titles).toMatchObject({
+      'topics/ptq-weight-only': 'Weight-only PTQ', 'topics/ptq-weight-only#bits': '位宽', 'topics/ptq-weight-only#backprop': '需要反向传播',
+      topic: '主题', 'topics/quantization': 'Quantization', 'topics/ptq': 'PTQ',
+    })
+  })
+
   it('base 里的页 id 带 . 或 .. 的提案进不了队列', async () => {
     const before = store.proposalRecords().length
     await expect(queue.propose(envelope(store, [addClaim('dots')], { base: { '../x': null } }))).rejects.toThrow('提案的格式不对')
