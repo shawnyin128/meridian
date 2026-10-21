@@ -1951,6 +1951,13 @@ describe('fixture store', () => {
     expect(store.listIdeas().find((idea) => idea.id === created.id)).toEqual(created)
   })
 
+  it('排过手动顺序之后新建的想法排在最前，其余仍按手动顺序', () => {
+    const order = store.listIdeas().map((idea) => idea.id).reverse()
+    store.reorderIdeas(order)
+    const created = store.createIdea(undefined, '排序之后的新想法', '应当排在最前')
+    expect(store.listIdeas().map((idea) => idea.id)).toEqual([created.id, ...order])
+  })
+
   it('设了手动顺序后,点到的想法排到前面;没点到的仍按更新时间排在后面', () => {
     const created = store.createIdea('amortize', '排序用的新想法', '仅用于验证手动顺序')
     const before = store.listIdeas().map((idea) => idea.id)

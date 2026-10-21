@@ -1707,6 +1707,16 @@ describe('vault store on the aggregation layout', () => {
     expect(store.listIdeas().filter((idea) => idea.source.agent === true)).toEqual([])
   })
 
+  it('排过手动顺序之后新建的想法排在最前，重开还在；没排过时不写顺序', () => {
+    const session = store.createChat('想法排序会话', true)
+    const first = store.createIdea(session.id, '第一条', '排序用')
+    const second = store.createIdea(session.id, '第二条', '排序用')
+    expect(JSON.parse(readFileSync(join(vault, '.meridian', 'state.json'), 'utf8')).ideaOrder).toBeUndefined()
+    store.reorderIdeas([first.id, second.id])
+    const third = store.createIdea(undefined, '第三条', '排序之后新建')
+    expect(createVaultStore(vault).listIdeas().map((idea) => idea.id)).toEqual([third.id, first.id, second.id])
+  })
+
   it('手动设的想法顺序存进 state.json,重开还在;坏 id 被丢弃', () => {
     const session = store.createChat('想法排序会话', true)
     const first = store.createIdea(session.id, '第一条', '排序用')

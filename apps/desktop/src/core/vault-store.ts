@@ -2479,6 +2479,8 @@ export function createVaultStore(
           : { paperId: sourcePaper.id, paperTitle: sourcePaper.title }),
       }, today())
       ideas = save('ideas', [idea, ...ideas])
+      // Without a manual order the newest idea already leads; with one, it goes to the front of it.
+      if (state.ideaOrder !== undefined) saveState({ ...state, ideaOrder: [idea.id, ...state.ideaOrder] })
       return structuredClone(idea)
     },
 

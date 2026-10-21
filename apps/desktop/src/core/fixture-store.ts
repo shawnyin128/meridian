@@ -1963,6 +1963,8 @@ export function createFixtureStore(
           : { paperId: sourcePaper.id, paperTitle: sourcePaper.title }),
       }, today())
       ideas = [idea, ...ideas]
+      // Without a manual order the newest idea already leads; with one, it goes to the front of it.
+      if (ideaOrder !== undefined) ideaOrder = [idea.id, ...ideaOrder]
       return structuredClone(idea)
     },
 

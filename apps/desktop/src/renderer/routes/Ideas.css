@@ -15,6 +15,10 @@
 .idea-card-source{color:var(--ter);font-size:var(--fs-cap)}
 .idea-card-updated{flex:none;margin-left:auto;color:var(--ter);font-size:var(--fs-cap);font-variant-numeric:tabular-nums}
 .idea-card>.row-actions{margin-top:calc(-1 * var(--sp-4))}
+/* The new-idea draft keeps a saved card's rows: its body sits where the summary does, Cancel and Save where the date does. */
+.idea-draft-body{margin-top:var(--sp-10);font-size:var(--fs-sm);line-height:1.55}
+.idea-draft-body .form-textarea{field-sizing:content;min-height:calc(3lh + 2 * var(--sp-2));max-height:calc(12lh + 2 * var(--sp-2));resize:none;overflow-y:auto}
+.idea-draft-actions{justify-content:flex-end}
 
 /*
  * The detail panel follows a research graph node's layout, content on the left and its document on

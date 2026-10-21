@@ -14,9 +14,11 @@ function setValue(input: HTMLInputElement, value: string): void {
   input.dispatchEvent(new Event('input', { bubbles: true }))
 }
 
-function Probe({ onSubmit, onCancel }: {
+function Probe({ onSubmit, onCancel, isEmpty, invalid }: {
   onSubmit: (value: string) => boolean | Promise<boolean>
   onCancel: () => void
+  isEmpty?: () => boolean
+  invalid?: boolean
 }) {
   const row = useRef<HTMLDivElement>(null)
   const reopen = useRef<HTMLButtonElement>(null)
@@ -28,6 +30,7 @@ function Probe({ onSubmit, onCancel }: {
         <InlineDraftInput
           scopeRef={row} triggers={triggers} placeholder="名称"
           onSubmit={onSubmit} onCancel={onCancel}
+          {...(isEmpty === undefined ? {} : { isEmpty })} {...(invalid === undefined ? {} : { 'aria-invalid': invalid })}
         />
       </div>
       <button className="reopen" ref={reopen}>新建</button>
@@ -128,6 +131,37 @@ describe('InlineDraftInput', () => {
     })
     expect(cancel).not.toHaveBeenCalled()
     expect(input.value).toBe('重名项目')
+    expect(input.getAttribute('aria-invalid')).toBe('true')
+  })
+
+  it('asks the host whether the whole draft is empty: leaving closes it when the host says so, whatever the input holds', async () => {
+    const submit = vi.fn(() => true)
+    const cancel = vi.fn()
+    const outside = () => act(async () => {
+      host.querySelector<HTMLButtonElement>('.outside')!.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }))
+      await Promise.resolve()
+    })
+    act(() => root!.render(<Probe onSubmit={submit} onCancel={cancel} isEmpty={() => true} />))
+    act(() => setValue(host.querySelector<HTMLInputElement>('input')!, '有字'))
+    await outside()
+    expect([submit.mock.calls.length, cancel.mock.calls.length]).toEqual([0, 1])
+    act(() => root!.render(<Probe onSubmit={submit} onCancel={cancel} isEmpty={() => false} />))
+    act(() => setValue(host.querySelector<HTMLInputElement>('input')!, ''))
+    await outside()
+    expect(cancel).toHaveBeenCalledTimes(1)
+  })
+
+  it('shows the invalid mark the host passes instead of the one a refused leave sets', async () => {
+    const outside = () => act(async () => {
+      host.querySelector<HTMLButtonElement>('.outside')!.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }))
+      await Promise.resolve()
+    })
+    act(() => root!.render(<Probe onSubmit={() => false} onCancel={vi.fn()} invalid={false} />))
+    const input = host.querySelector<HTMLInputElement>('input')!
+    act(() => setValue(input, '另一栏空着'))
+    await outside()
+    expect(input.getAttribute('aria-invalid')).toBe('false')
+    act(() => root!.render(<Probe onSubmit={() => false} onCancel={vi.fn()} invalid />))
     expect(input.getAttribute('aria-invalid')).toBe('true')
   })
 })

@@ -94,6 +94,7 @@ describe('Ideas', () => {
     api.update.mockClear()
     api.promote.mockClear()
     api.open.mockClear()
+    api.create.mockClear()
   })
 
   afterEach(() => {
@@ -120,41 +121,128 @@ describe('Ideas', () => {
     expect(host.querySelector('.ideas-list .section-heading .section-heading-actions')).toBeNull()
   })
 
-  it('新建想法打开想法编辑框，只有标题和正文；保存成自己的想法，不关联项目，出现在进行中并在详情里打开', async () => {
-    api.create.mockImplementationOnce(async (_chatId, title, body) => {
-      const idea = { ...OWN, title, body }
-      api.ideas.unshift(idea)
-      return idea
-    })
+  /** Sets a field's value the way typing does, so React sees the change. */
+  const type = (field: HTMLInputElement | HTMLTextAreaElement, value: string) => {
+    const proto = field instanceof window.HTMLInputElement ? window.HTMLInputElement.prototype : window.HTMLTextAreaElement.prototype
+    Object.getOwnPropertyDescriptor(proto, 'value')!.set!.call(field, value)
+    field.dispatchEvent(new Event('input', { bubbles: true }))
+  }
+  const press = (field: Element, key: string, metaKey = false) => act(() => {
+    field.dispatchEvent(new KeyboardEvent('keydown', { key, metaKey, bubbles: true, cancelable: true }))
+  })
+  const draft = () => host.querySelector<HTMLElement>('.ideas-list > .idea-draft')
+  const openDraft = () => act(async () => {
+    [...host.querySelectorAll<HTMLButtonElement>('.desk-head > .page-actions > button')].at(-1)!.click()
+  })
+  /** Makes `idea.create` answer as Core does: the new idea leads the list it returns next. */
+  const createLikeCore = () => api.create.mockImplementationOnce(async (_chatId, title, body) => {
+    const idea = { ...OWN, title, body }
+    api.ideas.unshift(idea)
+    return idea
+  })
+
+  it('新建想法在进行中最前面摆一张草稿卡，标题框已获得焦点，下面是正文框；不弹对话框', async () => {
+    await act(async () => { root.render(<MessagesProvider><Ideas /></MessagesProvider>) })
+    await openDraft()
+    expect(draft()?.previousElementSibling?.className).toContain('section-heading')
+    expect(draft()!.nextElementSibling?.getAttribute('data-idea')).toBe('idea-linked')
+    expect(document.activeElement).toBe(draft()!.querySelector('input'))
+    expect(draft()!.querySelector('textarea')).not.toBeNull()
+    expect(document.querySelector('[role="dialog"], .idea-dialog')).toBeNull()
+  })
+
+  it('在正文里按 ⌘Enter 新建自己的想法、不关联项目；它取代草稿排在进行中最前，并在详情里打开', async () => {
+    createLikeCore()
     try {
       await act(async () => { root.render(<MessagesProvider><Ideas /></MessagesProvider>) })
-      await act(async () => {
-        [...host.querySelectorAll<HTMLButtonElement>('.desk-head > .page-actions > button')].at(-1)!.click()
-      })
-      const dialog = document.querySelector<HTMLElement>('.idea-dialog')!
-      expect(dialog.querySelector('.modal-title, h2')?.textContent).toBe('新建想法')
-      expect(dialog.querySelector('.idea-dialog-source')).toBeNull()
-      const type = (field: HTMLInputElement | HTMLTextAreaElement, value: string) => {
-        const proto = field instanceof window.HTMLInputElement ? window.HTMLInputElement.prototype : window.HTMLTextAreaElement.prototype
-        Object.getOwnPropertyDescriptor(proto, 'value')!.set!.call(field, value)
-        field.dispatchEvent(new Event('input', { bubbles: true }))
-      }
+      await openDraft()
       act(() => {
-        type(dialog.querySelector('input')!, '按 batch 校准阈值')
-        type(dialog.querySelector('textarea')!, '先在两个 batch 上试。')
+        type(draft()!.querySelector('input')!, '按 batch 校准阈值')
+        type(draft()!.querySelector('textarea')!, '先在两个 batch 上试。')
       })
-      await act(async () => { dialog.querySelector<HTMLButtonElement>('.btn.pri')!.click() })
+      await press(draft()!.querySelector('textarea')!, 'Enter', true)
       expect(api.create).toHaveBeenCalledWith(undefined, '按 batch 校准阈值', '先在两个 batch 上试。')
       expect(api.update).not.toHaveBeenCalled()
+      expect(draft()).toBeNull()
+      expect(document.querySelector('[role="dialog"], .idea-dialog')).toBeNull()
+      const first = () => host.querySelector('.ideas-list > .section-heading')!.nextElementSibling
+      expect(first()?.getAttribute('data-idea')).toBe('idea-own')
+      expect(first()?.classList.contains('selected')).toBe(true)
+      expect(host.querySelector('.idea-detail-slot .node-document-title')?.textContent).toBe('按 batch 校准阈值')
       api.revision += 1
       await act(async () => { root.render(<MessagesProvider><Ideas /></MessagesProvider>) })
-      expect(host.querySelector('.ideas-list > [data-idea]')?.getAttribute('data-idea')).toBe('idea-own')
-      expect(host.querySelector('.idea-detail-slot')?.getAttribute('data-panel-state')).not.toBe('closed')
-      expect(host.querySelector('.idea-detail-slot .node-document-title')?.textContent).toBe('按 batch 校准阈值')
+      expect(first()?.getAttribute('data-idea')).toBe('idea-own')
+      expect(first()?.classList.contains('selected')).toBe(true)
     } finally {
       api.ideas = api.ideas.filter((idea) => idea.id !== OWN.id)
       api.revision = 0
     }
+  })
+
+  it('草稿卡上的保存同样新建想法', async () => {
+    createLikeCore()
+    try {
+      await act(async () => { root.render(<MessagesProvider><Ideas /></MessagesProvider>) })
+      await openDraft()
+      act(() => {
+        type(draft()!.querySelector('input')!, '按 batch 校准阈值')
+        type(draft()!.querySelector('textarea')!, '先在两个 batch 上试。')
+      })
+      const save = [...draft()!.querySelectorAll<HTMLButtonElement>('button')].find((button) => button.textContent === '保存')!
+      await act(async () => { save.click() })
+      expect(api.create).toHaveBeenCalledWith(undefined, '按 batch 校准阈值', '先在两个 batch 上试。')
+      expect(draft()).toBeNull()
+      expect(host.querySelector('.ideas-list > .section-heading')!.nextElementSibling?.getAttribute('data-idea')).toBe('idea-own')
+    } finally {
+      api.ideas = api.ideas.filter((idea) => idea.id !== OWN.id)
+    }
+  })
+
+  it('有一栏空着时不新建：空着的那一栏标红，不多一句说明；再输入就不红了', async () => {
+    await act(async () => { root.render(<MessagesProvider><Ideas /></MessagesProvider>) })
+    await openDraft()
+    const title = () => draft()!.querySelector('input')!
+    const body = () => draft()!.querySelector('textarea')!
+    act(() => { type(title(), '只有标题') })
+    await press(body(), 'Enter', true)
+    expect([title().getAttribute('aria-invalid'), body().getAttribute('aria-invalid')]).toEqual(['false', 'true'])
+    act(() => { type(title(), ''); type(body(), '只有正文') })
+    await press(title(), 'Enter')
+    expect([title().getAttribute('aria-invalid'), body().getAttribute('aria-invalid')]).toEqual(['true', 'false'])
+    const shown = draft()!.cloneNode(true) as HTMLElement
+    shown.querySelectorAll('textarea').forEach((field) => field.remove())
+    expect(shown.textContent).toBe('取消保存')
+    expect(api.create).not.toHaveBeenCalled()
+    act(() => { type(title(), '补上标题') })
+    expect(title().getAttribute('aria-invalid')).toBe('false')
+  })
+
+  it('Esc 丢掉草稿，在标题里按和在正文里按一样，不新建', async () => {
+    await act(async () => { root.render(<MessagesProvider><Ideas /></MessagesProvider>) })
+    await openDraft()
+    act(() => { type(draft()!.querySelector('input')!, '写了一半') })
+    await press(draft()!.querySelector('input')!, 'Escape')
+    expect(draft()).toBeNull()
+    await openDraft()
+    expect(draft()!.querySelector('input')!.value).toBe('')
+    act(() => { type(draft()!.querySelector('textarea')!, '写了一半') })
+    await press(draft()!.querySelector('textarea')!, 'Escape')
+    expect(draft()).toBeNull()
+    expect(api.create).not.toHaveBeenCalled()
+  })
+
+  it('点到草稿卡外面：空草稿收起；写了字的草稿留着，不新建也不标红', async () => {
+    await act(async () => { root.render(<MessagesProvider><Ideas /></MessagesProvider>) })
+    const outside = () => act(() => { host.querySelector('.desk-head')!.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true })) })
+    await openDraft()
+    await outside()
+    expect(draft()).toBeNull()
+    await openDraft()
+    act(() => { type(draft()!.querySelector('textarea')!, '只写了正文') })
+    await outside()
+    expect(draft()!.querySelector('textarea')!.value).toBe('只写了正文')
+    expect([...draft()!.querySelectorAll('[aria-invalid="true"]')]).toEqual([])
+    expect(api.create).not.toHaveBeenCalled()
   })
 
   it('从别的屏点链接来时屏头左端有返回，按它回到来的那一屏；没跳进来时没有返回', async () => {
@@ -168,10 +256,12 @@ describe('Ideas', () => {
     expect(host.querySelector('.desk-head > .back')).toBeNull()
   })
 
-  it('从别处带着新建想法的落点跳进来时打开同一个想法编辑框', async () => {
+  it('从 ⌘K 带着新建想法的落点跳进来时打开同一张草稿卡，标题框获得焦点，不弹对话框', async () => {
     api.jump = { screen: 'ideas', target: '', from: 'feed', seq: 1, anchor: { newIdea: true } }
     await act(async () => { root.render(<MessagesProvider><Ideas /></MessagesProvider>) })
-    expect(document.querySelector('.idea-dialog .modal-title, .idea-dialog h2')?.textContent).toBe('新建想法')
+    expect(draft()?.previousElementSibling?.className).toContain('section-heading')
+    expect(document.activeElement).toBe(draft()!.querySelector('input'))
+    expect(document.querySelector('[role="dialog"], .idea-dialog')).toBeNull()
   })
 
   it('自己写下的想法不写来源：卡片上没有来源和来源标签，详情里没有来源一节', async () => {
