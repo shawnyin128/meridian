@@ -10,13 +10,14 @@ declare global {
   var IS_REACT_ACT_ENVIRONMENT: boolean
 }
 
-const api = vi.hoisted(() => ({ entries: [] as ChangeEntry[] }))
+const api = vi.hoisted(() => ({ entries: [] as ChangeEntry[], open: vi.fn() }))
 
 vi.mock('../ipc.js', () => ({
   changelog: { list: async () => structuredClone(api.entries) },
 }))
 
 vi.mock('../shell/AppShell.js', () => ({
+  useJump: () => ({ jump: null, open: api.open }),
   useNotice: () => ({ success: vi.fn(), refusal: vi.fn() }),
   useToday: () => '2026-10-16',
   useVaultRevision: () => ({ revision: 0, bump: vi.fn() }),
@@ -91,13 +92,42 @@ describe('最近变动的来源标签', () => {
     const toggle = host.querySelector<HTMLButtonElement>('.crow .card-tray-toggle')!
     expect(toggle.querySelector('.card-tray-chevron svg')).not.toBeNull()
     expect(toggle.getAttribute('aria-label')).toBeNull()
-    expect(toggle.textContent).toContain('项目「draft 效率」· 改了字段')
+    expect(document.getElementById(toggle.getAttribute('aria-labelledby')!)!.textContent).toContain('项目「draft 效率」· 改了字段')
     expect(toggle.getAttribute('aria-expanded')).toBe('false')
     act(() => toggle.click())
     expect(toggle.getAttribute('aria-expanded')).toBe('true')
     expect(host.querySelector('.crow .card-tray')!.classList.contains('is-open')).toBe(true)
     act(() => toggle.click())
     expect(toggle.getAttribute('aria-expanded')).toBe('false')
+  })
+
+  it('标题点名的论文、项目和 Wiki 页是链接:点名字打开它、这一行不展开;点标题的别处照样展开', async () => {
+    const named = (title: string, name: string, kind: NonNullable<ChangeEntry['named']>['kind'], id: string): ChangeEntry => ({
+      ...entry(id, title, '我'), named: { kind, id, from: title.indexOf(name), to: title.indexOf(name) + name.length },
+    })
+    api.entries = [
+      named('项目「draft 效率」· 改了字段', 'draft 效率', 'project', 'draft'),
+      named('撤销：论文「Mixtral of Experts」· 改了随笔', 'Mixtral of Experts', 'paper', 'mixtral'),
+      named('Wiki · 「PTQ」· 改了正文', 'PTQ', 'page', 'topics/ptq'),
+      entry('c4', '论文表 · 新建列「备注」', '我'),
+    ]
+    await act(async () => root.render(<MessagesProvider><Changelog /></MessagesProvider>))
+    const rows = [...host.querySelectorAll('.crow')]
+    expect(rows.map((row) => {
+      const link = row.querySelector('.ct .entity-link')
+      return [row.querySelector('.ct')!.textContent, link?.tagName ?? null, link?.textContent ?? null]
+    })).toEqual([
+      ['项目「draft 效率」· 改了字段', 'A', 'draft 效率'],
+      ['撤销：论文「Mixtral of Experts」· 改了随笔', 'A', 'Mixtral of Experts'],
+      ['Wiki · 「PTQ」· 改了正文', 'A', 'PTQ'],
+      ['论文表 · 新建列「备注」', null, null],
+    ])
+    for (const row of rows.slice(0, 3)) act(() => row.querySelector<HTMLElement>('.ct .entity-link')!.click())
+    expect(api.open.mock.calls).toEqual([['project', 'draft'], ['reader', 'mixtral'], ['wiki', 'topics/ptq']])
+    const expanded = () => rows.map((row) => row.querySelector('.card-tray-toggle')!.getAttribute('aria-expanded'))
+    expect(expanded()).toEqual(['false', 'false', 'false', 'false'])
+    act(() => rows[0]!.querySelector<HTMLElement>('.ct')!.click())
+    expect(expanded()).toEqual(['true', 'false', 'false', 'false'])
   })
 
   it('展开的一条按 Core 给的显示行画:页名照写,论文名按论文文本显示,增删照旧着色', async () => {

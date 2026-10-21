@@ -1,6 +1,7 @@
 import type { ReactElement, ReactNode } from 'react'
 import type { GraphNode } from '../../shared/contract.js'
 import { useMessages } from '../messages/useMessages.js'
+import type { ScreenKey } from '../shell/AppShell.js'
 import { FadeText } from './FadeText.js'
 import { IconExternal } from './icons.js'
 import { StatusDot } from './StatusDot.js'
@@ -26,6 +27,9 @@ export type EntityLinkProps = {
   | { kind: 'project' | 'page' | 'paper'; onOpen?: () => void; href?: string }
   | { kind: 'external'; href: string }
 )
+
+/** The screen that opens each kind of entity a link names: a paper in the reader, a project, a Wiki page. */
+export const ENTITY_SCREEN = { paper: 'reader', project: 'project', page: 'wiki' } as const satisfies Record<'paper' | 'project' | 'page', ScreenKey>
 
 /** The one mark that ends a link leaving the App for the browser. */
 export const ExternalMark = () => <span className="entity-link-mark" aria-hidden="true"><IconExternal /></span>

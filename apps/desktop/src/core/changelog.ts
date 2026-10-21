@@ -113,10 +113,10 @@ const RestoreSchema = z.discriminatedUnion('kind', [
  * vault day's UTC midnight and drives retention. Only seeded history stores `meta`; newer rows derive
  * their date bucket from `at`. `archived` defaults to false for files written before archiving existed.
  * `date` is derived from `at` at read time rather than stored twice where it could drift, and so are
- * the shown `lines`, from `diff` and the vault as it stands.
+ * the shown `lines`, from `diff` and the vault as it stands, and `named`, from `title` and `target`.
  */
 export const ChangeRecordSchema = ChangeEntrySchema
-  .omit({ meta: true, undoable: true, date: true, lines: true })
+  .omit({ meta: true, undoable: true, date: true, lines: true, named: true })
   .extend({
     meta: z.string().nullable(),
     target: ChangeTargetSchema.nullable(),
@@ -529,6 +529,12 @@ function changeLines(
   }
 }
 
+/**
+ * A change title that names its entity, undone any number of times: a paper's or project's name, up to
+ * the first `」· ` after it, or a Wiki page's title in a body edit's title. The name is group 1 or 2.
+ */
+const NAMED_TITLE = /^(?:撤销[：:])*(?:(?:论文|项目)「(.+?)」· |Wiki · 「(.+)」· 改了正文$)/sd
+
 /** The labels changeLines writes a paper's title under; the rest of such a line is the title. */
 const PAPER_TITLE_LINE = /^([+-] (?:论文|关联论文|标题|短标题)：)(.+)$/s
 
@@ -938,8 +944,27 @@ export function withChangelog(ops: VaultOps, log: ChangeLogStore): VaultStore {
         return aggregations.get(id)
           ?? (id.startsWith(PAPER_PAGE) && ops.pageVersion(id) !== null ? ops.wikiPaper(id).title : undefined)
       }
+      /** The entity of `target` that change title `heading` names, when it names one that is in the vault. */
+      const namedIn = (heading: string, target: ChangeTarget | null): ChangeEntry['named'] => {
+        const name = NAMED_TITLE.exec(heading)?.indices?.slice(1).find((span) => span !== undefined)
+        if (name === undefined || target === null) return undefined
+        const [from, to] = name
+        switch (target.kind) {
+          case 'paper':
+          case 'remark': return ops.hasPaper(target.id) ? { kind: 'paper', id: target.id, from, to } : undefined
+          case 'note':
+          case 'highlight': return ops.hasPaper(target.paper) ? { kind: 'paper', id: target.paper, from, to } : undefined
+          case 'project': return ops.hasProject(target.id) ? { kind: 'project', id: target.id, from, to } : undefined
+          case 'pages': {
+            const page = target.paths.length === 1 ? target.paths[0]! : undefined
+            return page !== undefined && title(page) !== undefined ? { kind: 'page', id: page, from, to } : undefined
+          }
+          default: return undefined
+        }
+      }
       return rows.map((row): ChangeEntry => {
         const date = new Date(row.at).toISOString().slice(0, 10)
+        const named = namedIn(row.title, row.target)
         return {
           id: row.id,
           title: row.title,
@@ -948,6 +973,7 @@ export function withChangelog(ops: VaultOps, log: ChangeLogStore): VaultStore {
           source: row.source,
           diff: [...row.diff],
           lines: row.diff.map((line) => shownLine(line, title)),
+          ...(named === undefined ? {} : { named }),
           undone: row.undone,
           undoable: !row.undone && row.target !== null && row.restore !== null,
           archived: row.archived,

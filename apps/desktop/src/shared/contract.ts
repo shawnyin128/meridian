@@ -1361,10 +1361,23 @@ export const TrashPurgeParamsSchema = z.object({ id: z.string() }).strict()
 export const DiffPieceSchema = z.union([z.string(), z.object({ paper: z.string() }).strict()])
 
 /**
+ * The entity a recent-change title names, while it is in the vault: paper `id` (for a change to its
+ * reading notes, highlights or remark too), project `id` or Wiki page `id`, named by
+ * `title.slice(from, to)`.
+ */
+export const ChangeNamedSchema = z.object({
+  kind: z.enum(['paper', 'project', 'page']),
+  id: z.string(),
+  from: z.number().int(),
+  to: z.number().int(),
+}).strict()
+
+/**
  * Recent-change entry. `meta` is human-readable secondary text while `date`
  * drives day grouping. `source` distinguishes user and agent changes. Diff lines
  * begin with `+` or `-` and are the stored ones; `lines` are the same lines as
  * shown, in pieces, Wiki page ids named by their titles and paper titles marked.
+ * `named` is the entity the title names, which the entry opens.
  * `undone` records completed undo, while `undoable`
  * reflects current snapshot availability. Snapshots and fingerprints remain in
  * Core. `archived` means acknowledged and removes the entry from active counts,
@@ -1378,6 +1391,7 @@ export const ChangeEntrySchema = z.object({
   source: z.enum(['笔记', '实验', 'Meridian', '我']),
   diff: z.array(z.string()),
   lines: z.array(z.array(DiffPieceSchema)),
+  named: ChangeNamedSchema.optional(),
   undone: z.boolean(),
   undoable: z.boolean(),
   archived: z.boolean(),
