@@ -129,7 +129,7 @@ const SLOT_BODIES: Record<string, Slot> = { TimelineControls: 'timeline toolbar'
 
 /** Files that define an operation's own control; their insides are not placements. */
 const CONTROL_FILES = new Set(['components/SortMenu.tsx', 'components/AddAction.tsx', 'components/EditActions.tsx',
-  'components/PanelClose.tsx', 'components/FieldPickers.tsx', 'components/IconButton.tsx'])
+  'components/PanelClose.tsx', 'components/FieldPickers.tsx', 'components/IconButton.tsx', 'components/DraftForm.tsx'])
 
 /** Segmented controls that switch the views of a page, a section or a board, by their accessible name. */
 const VIEW_SWITCHES = new Set(['m.papers.views.aria', 'm.papers.toolbar.groupFieldAria', 'm.later.groupBy',

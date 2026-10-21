@@ -41,11 +41,9 @@ export const ideas = {
     bodyPlaceholder: '机制、假设或方向…',
     save: '保存想法',
   },
-  graphDialog: {
-    createTitle: '转为科研图节点',
+  nodeDraft: {
     nodeTitleLabel: '节点标题',
     afterLabel: '接在哪个节点后',
     newRootOption: '作为新的根节点',
-    createAndLink: '创建并关联',
   },
 } satisfies Record<string, unknown>

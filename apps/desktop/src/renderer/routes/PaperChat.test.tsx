@@ -245,15 +245,20 @@ describe('PaperChat', () => {
       host.querySelector<HTMLButtonElement>('.paper-chat .save-idea')!.click()
       await Promise.resolve()
     })
-    const fields = document.body.querySelectorAll<HTMLInputElement | HTMLTextAreaElement>('.idea-dialog .form-control')
+    expect(document.querySelector('[role="dialog"]')).toBeNull()
+    const draft = host.querySelector<HTMLElement>('.paper-chat .msgs > :last-child .idea-draft')!
+    expect(draft.querySelector('.draft-form-destination')!.textContent).toBe('→想法')
+    expect(draft.querySelector('.idea-draft-source')!.textContent).toBe('来源：Paper One · Paper One')
+    expect(document.activeElement).toBe(draft.querySelector('input'))
     act(() => {
-      setValue(fields[0] as HTMLInputElement, '可验证的新方向')
-      setValue(fields[1] as HTMLTextAreaElement, '把讨论后的机制和实验假设明确写下来')
+      setValue(draft.querySelector('input')!, '可验证的新方向')
+      setValue(draft.querySelector('textarea')!, '把讨论后的机制和实验假设明确写下来')
     })
     await act(async () => {
-      [...document.body.querySelectorAll<HTMLButtonElement>('button')]
-        .find((candidate) => candidate.textContent === '保存想法')!.click()
+      draft.querySelector('input')!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }))
+      await Promise.resolve()
     })
+    expect(host.querySelector('.idea-draft')).toBeNull()
     expect(api.createIdea).toHaveBeenCalledWith(
       'chat-paper-1', '可验证的新方向', '把讨论后的机制和实验假设明确写下来',
     )
@@ -324,6 +329,23 @@ describe('PaperChat', () => {
     act(() => control().click())
     expect(api.cancel).toHaveBeenCalledExactlyOnceWith('chat-paper-1')
     await act(async () => { finish(); await Promise.resolve() })
+  })
+
+  it('想法草稿留在它的论文上：换一篇时不跟过去，回到原篇草稿还在；Esc 收起', async () => {
+    api.messages.mockResolvedValueOnce([{ id: 'm1', role: 'you', runs: [{ kind: 'text', text: '先讨论机制' }], actions: [] }])
+    const host = await mountChat()
+    await act(async () => { host.querySelector<HTMLButtonElement>('.paper-chat .save-idea')!.click() })
+    act(() => setValue(host.querySelector<HTMLInputElement>('.idea-draft input')!, '只属于这一篇'))
+    await showPaper(null)
+    await showPaper(PAPER_TWO)
+    expect(host.querySelector('.idea-draft')).toBeNull()
+    await showPaper(null)
+    await showPaper(PAPER)
+    const title = host.querySelector<HTMLInputElement>('.idea-draft input')!
+    expect(title.value).toBe('只属于这一篇')
+    act(() => { title.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true })) })
+    expect(host.querySelector('.idea-draft')).toBeNull()
+    expect(api.createIdea).not.toHaveBeenCalled()
   })
 
   it('问题去掉空白后为空时发送钮不可点；还没讨论时保存为想法是变淡的幽灵按钮', async () => {

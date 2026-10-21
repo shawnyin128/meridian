@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { Fragment, useEffect, useRef, useState } from 'react'
 import type {
   ConflictTarget, Evidence, ProjectConclusion, ProjectSummary, ProposalOp, WikiAggregation, WikiClaim, WikiConflict,
 } from '../../../shared/contract.js'
@@ -12,10 +12,11 @@ import { AddAction } from '../AddAction.js'
 import { CardTray } from '../CardTray.js'
 import { MenuItem } from '../ActionMenu.js'
 import { DiffLines } from '../DiffLines.js'
+import { DraftForm, DraftLine } from '../DraftForm.js'
 import { EmptyState } from '../EmptyState.js'
 import { EntityLink } from '../EntityLink.js'
 import { ChoicePicker, DotsMenu } from '../FieldPickers.js'
-import { FormInput, FormTextarea } from '../FormControls.js'
+import { FormInput } from '../FormControls.js'
 import { SectionHeading } from '../PageShell.js'
 import { SegmentedControl } from '../SegmentedControl.js'
 import { SourceAnchor } from '../SourceAnchor.js'
@@ -29,13 +30,17 @@ import './WikiClaims.css'
 type Outcome = 'revised' | 'split' | 'retracted' | 'dismissed'
 const OUTCOMES: readonly Outcome[] = ['dismissed', 'revised', 'split', 'retracted']
 
-/** The form open over the claims area, if any. */
-type Form =
+/**
+ * The form open in the claims area of `page`, if any: adding, revising and resolving are drafted in
+ * place, marking a conflict and retracting open the claim form dialog.
+ */
+type Form = { page: string } & (
   | { kind: 'add' }
   | { kind: 'revise'; claim: WikiClaim }
   | { kind: 'conflict'; claim: WikiClaim }
   | { kind: 'resolve'; claim: WikiClaim; conflict: WikiConflict }
   | { kind: 'retract'; claim: WikiClaim }
+)
 
 /** Where the claims area sends the user: a Wiki page, a project, or the reader at a paper page. */
 export type ClaimLinks = {
@@ -118,8 +123,9 @@ export function ClaimSide({ item, title, point, links }: {
  * agent wrote it, its evidence (experiments open the project, source quotes open the reader at their
  * page), its open conflicts with the other side linked, and its earlier versions folded away. The user
  * adds, revises, marks and resolves conflicts on, and retracts claims through `onApply`, which submits
- * one titled list of ops and resolves whether it was written. `arrival`, a claim id, is brought into
- * view once the claims show, after which `onArrived` is called.
+ * one titled list of ops and resolves whether it was written. A new claim is drafted last in the list,
+ * where it lands; a revision in its claim's place; a resolution under its conflict. `arrival`, a claim
+ * id, is brought into view once the claims show, after which `onArrived` is called.
  */
 export function WikiClaims({ page, pending, links, onApply, arrival, onArrived }: {
   page: WikiAggregation
@@ -133,7 +139,7 @@ export function WikiClaims({ page, pending, links, onApply, arrival, onArrived }
   const c = m.wiki.claims
   const f = c.form
   const fmt = useFormat()
-  const [form, setForm] = useState<Form | null>(null)
+  const [held, setForm] = useState<Form | null>(null)
   const arrivalRow = useRef<HTMLDivElement>(null)
   useEffect(() => {
     if (arrival === undefined) return
@@ -149,8 +155,17 @@ export function WikiClaims({ page, pending, links, onApply, arrival, onArrived }
   const [conclusionId, setConclusionId] = useState('')
   const [other, setOther] = useState('')
   const [outcome, setOutcome] = useState<Outcome>('dismissed')
+  const addRow = useRef<HTMLDivElement>(null)
+  // A revision picked in a claim's menu opens once the menu has closed, so its draft keeps the focus.
+  const revising = useRef<Form | null>(null)
+  // A form belongs to the page it was opened on and shows only there.
+  const form = held?.page === page.id ? held : null
 
   const open = (next: Form) => {
+    if (next.kind === 'add' && form?.kind === 'add') {
+      addRow.current?.querySelector<HTMLElement>('.form-control')?.focus()
+      return
+    }
     setForm(next)
     setText(next.kind === 'revise' || next.kind === 'resolve' ? next.claim.text : '')
     setNote('')
@@ -160,11 +175,12 @@ export function WikiClaims({ page, pending, links, onApply, arrival, onArrived }
     setOther('')
     setOutcome('dismissed')
   }
+  const close = () => setForm(null)
 
   useEffect(() => {
     if (form?.kind !== 'add' || basis !== 'conclusion') return
     void projectApi.list().then(setProjects)
-  }, [form, basis])
+  }, [form?.kind, basis])
 
   useEffect(() => {
     setConclusions([])
@@ -176,6 +192,9 @@ export function WikiClaims({ page, pending, links, onApply, arrival, onArrived }
 
   const others = form === null || form.kind === 'add' ? [] : page.claims.filter((x) => x.id !== form.claim.id)
   const ids = page.claims.map((x) => x.id)
+  /** Whether the drafted claim text cannot be saved: empty, or a revision that changes nothing. */
+  const textMissing = text.trim() === ''
+    || ((form?.kind === 'revise' || (form?.kind === 'resolve' && outcome === 'revised')) && text.trim() === form.claim.text)
 
   /** The title and ops the open form submits, or null while it is incomplete. */
   const submission = (): { title: string; ops: ProposalOp[] } | null => {
@@ -235,14 +254,73 @@ export function WikiClaims({ page, pending, links, onApply, arrival, onArrived }
   }
 
   const ready = submission()
+  const apply = () => (ready === null ? Promise.resolve(false) : onApply(ready.title, ready.ops))
+  /** Writes the drafted form and closes it once written. */
+  const saveDraft = () => apply().then((saved) => { if (saved) close() })
+
+  const addDraft = form?.kind !== 'add'
+    ? null
+    : (
+      <StructuredRow className="wkclaim wkclaim-draft" rowRef={addRow}>
+        <DraftForm canSave={ready !== null} onSave={saveDraft} onCancel={close}>
+          {(invalid) => (
+            <>
+              <FormInput
+                value={text} placeholder={f.textPlaceholder} aria-label={f.text} aria-invalid={invalid(text.trim() === '')}
+                onChange={(e) => setText(e.target.value)}
+              />
+              <DraftLine label={f.basis}>
+                <SegmentedControl
+                  label={f.basisLabel} value={basis} onChange={setBasis}
+                  options={[{ value: 'personal', label: f.personal }, { value: 'conclusion', label: f.conclusion }]}
+                />
+                {basis === 'personal'
+                  ? (
+                    <FormInput
+                      value={note} placeholder={f.personalPlaceholder} aria-label={f.personal} onChange={(e) => setNote(e.target.value)}
+                    />
+                  )
+                  : (
+                    <>
+                      <ChoicePicker
+                        appearance="field" aria-label={f.project} placeholder={f.projectPick} value={projectId}
+                        aria-invalid={invalid(projectId === '')} options={projects.map((p) => p.id)}
+                        label={(id) => projects.find((p) => p.id === id)?.name ?? id}
+                        onPick={(id) => { setProjectId(id); setConclusionId('') }}
+                      />
+                      {projectId === ''
+                        ? null
+                        : conclusions.length === 0
+                          ? <span className="draft-form-label">{f.noConclusions}</span>
+                          : (
+                            <ChoicePicker
+                              appearance="field" aria-label={f.conclusion} placeholder={f.conclusionPick}
+                              value={conclusionId} aria-invalid={invalid(conclusionId === '')}
+                              options={conclusions.map((x) => x.id)}
+                              label={(id) => conclusions.find((x) => x.id === id)?.text ?? id}
+                              onPick={(id) => {
+                                setConclusionId(id)
+                                const picked = conclusions.find((x) => x.id === id)
+                                if (picked !== undefined && text.trim() === '') setText(picked.text)
+                              }}
+                            />
+                          )}
+                    </>
+                  )}
+              </DraftLine>
+            </>
+          )}
+        </DraftForm>
+      </StructuredRow>
+    )
 
   return (
     <>
       <SectionHeading
-        actions={<AddAction variant="section" disabled={pending} label={c.add} onClick={() => open({ kind: 'add' })}>{c.addShort}</AddAction>}
+        actions={<AddAction variant="section" disabled={pending} label={c.add} onClick={() => open({ page: page.id, kind: 'add' })}>{c.addShort}</AddAction>}
       >{c.heading}
       </SectionHeading>
-      {page.claims.length === 0
+      {page.claims.length === 0 && addDraft === null
         ? <EmptyState variant="section">{c.empty}</EmptyState>
         : (
           <StructuredList variant="embedded" maxVisibleRows="all" className="wkclaims">
@@ -252,13 +330,35 @@ export function WikiClaims({ page, pending, links, onApply, arrival, onArrived }
                 {...claim.id === arrival ? { rowRef: arrivalRow } : {}}
               >
                 <div className="wkclaim-head">
-                  <span className="wkclaim-text">{claim.text}</span>
+                  {form?.kind === 'revise' && form.claim.id === claim.id
+                    ? (
+                      <DraftForm canSave={ready !== null} onSave={saveDraft} onCancel={close}>
+                        {(invalid) => (
+                          <FormInput
+                            value={text} aria-label={f.text} aria-invalid={invalid(textMissing)}
+                            onChange={(e) => setText(e.target.value)}
+                          />
+                        )}
+                      </DraftForm>
+                    )
+                    : <span className="wkclaim-text">{claim.text}</span>}
                   {claim.by === HUMAN_PRODUCER ? null : <AgentLabel />}
                   <RowActions>
-                    <DotsMenu label={c.actionsLabel(claim.text)}>
-                      <MenuItem disabled={pending} onSelect={() => open({ kind: 'revise', claim })}>{c.revise}</MenuItem>
-                      <MenuItem disabled={pending} onSelect={() => open({ kind: 'conflict', claim })}>{c.markConflict}</MenuItem>
-                      <MenuItem disabled={pending} onSelect={() => open({ kind: 'retract', claim })}>{c.retract}</MenuItem>
+                    <DotsMenu
+                      label={c.actionsLabel(claim.text)}
+                      onCloseAutoFocus={(event) => {
+                        const next = revising.current
+                        revising.current = null
+                        if (next === null) return
+                        event.preventDefault()
+                        open(next)
+                      }}
+                    >
+                      <MenuItem disabled={pending} onSelect={() => { revising.current = { page: page.id, kind: 'revise', claim } }}>
+                        {c.revise}
+                      </MenuItem>
+                      <MenuItem disabled={pending} onSelect={() => open({ page: page.id, kind: 'conflict', claim })}>{c.markConflict}</MenuItem>
+                      <MenuItem disabled={pending} onSelect={() => open({ page: page.id, kind: 'retract', claim })}>{c.retract}</MenuItem>
                     </DotsMenu>
                   </RowActions>
                 </div>
@@ -271,15 +371,58 @@ export function WikiClaims({ page, pending, links, onApply, arrival, onArrived }
                     <li key={at} className="wkclaim-evidence"><ClaimSide item={e.evidence} title={e.title} point={e.point} links={links} /></li>
                   ))}
                   {claim.conflicts.map((x) => (
-                    <li key={`conflict ${x.id}`} className="wkclaim-conflict">
-                      <Tag tone="warn">{c.conflict}</Tag>
-                      <ClaimSide item={x.against} title={x.title} point={x.point} links={links} />
-                      <span className="wkclaim-note">{x.note}</span>
-                      <button
-                        type="button" className="btn ghost sm wkclaim-resolve" disabled={pending}
-                        onClick={() => open({ kind: 'resolve', claim, conflict: x })}
-                      >{c.resolve}</button>
-                    </li>
+                    <Fragment key={`conflict ${x.id}`}>
+                      <li className="wkclaim-conflict">
+                        <Tag tone="warn">{c.conflict}</Tag>
+                        <ClaimSide item={x.against} title={x.title} point={x.point} links={links} />
+                        <span className="wkclaim-note">{x.note}</span>
+                        <button
+                          type="button" className="btn ghost sm wkclaim-resolve" disabled={pending}
+                          onClick={() => open({ page: page.id, kind: 'resolve', claim, conflict: x })}
+                        >{c.resolve}</button>
+                      </li>
+                      {form?.kind === 'resolve' && form.claim.id === claim.id && form.conflict.id === x.id
+                        ? (
+                          <li className="wkclaim-resolving">
+                            <DraftForm
+                              destination={outcome === 'split' ? c.heading : undefined}
+                              canSave={ready !== null} onSave={saveDraft} onCancel={close}
+                            >
+                              {(invalid) => (
+                                <>
+                                  <DraftLine label={f.outcome}>
+                                    <ChoicePicker
+                                      appearance="field" aria-label={f.outcome} value={outcome}
+                                      options={OUTCOMES} label={(o) => f.outcomes[o]}
+                                      onPick={(next) => {
+                                        setOutcome(next)
+                                        setText(next === 'revised' ? claim.text : '')
+                                      }}
+                                    />
+                                  </DraftLine>
+                                  {outcome === 'revised' || outcome === 'split'
+                                    ? (
+                                      <DraftLine label={outcome === 'revised' ? f.revisedText : f.splitText}>
+                                        <FormInput
+                                          value={text} aria-invalid={invalid(textMissing)}
+                                          onChange={(e) => setText(e.target.value)}
+                                        />
+                                      </DraftLine>
+                                    )
+                                    : null}
+                                  <DraftLine label={f.note}>
+                                    <FormInput
+                                      value={note} placeholder={f.resolvePlaceholder} aria-invalid={invalid(note.trim() === '')}
+                                      onChange={(e) => setNote(e.target.value)}
+                                    />
+                                  </DraftLine>
+                                </>
+                              )}
+                            </DraftForm>
+                          </li>
+                        )
+                        : null}
+                    </Fragment>
                   ))}
                 </ul>
                 {claim.history.length === 0
@@ -295,72 +438,16 @@ export function WikiClaims({ page, pending, links, onApply, arrival, onArrived }
                   )}
               </StructuredRow>
             ))}
+            {addDraft}
           </StructuredList>
         )}
 
       <WikiFormDialog
-        open={form !== null} canSubmit={ready !== null}
-        title={form === null ? '' : {
-          add: f.addTitle, revise: f.reviseTitle, conflict: f.conflictTitle, resolve: f.resolveTitle, retract: f.retractTitle,
-        }[form.kind]}
-        onOpenChange={(next) => { if (!next) setForm(null) }}
-        onSubmit={() => (ready === null ? Promise.resolve(false) : onApply(ready.title, ready.ops))}
+        open={form?.kind === 'conflict' || form?.kind === 'retract'} canSubmit={ready !== null}
+        title={form?.kind === 'conflict' ? f.conflictTitle : f.retractTitle}
+        onOpenChange={(next) => { if (!next) close() }}
+        onSubmit={apply}
       >
-        {form?.kind === 'add' || form?.kind === 'revise'
-          ? (
-            <WikiFormField label={f.text}>
-              <FormTextarea appearance="field" autoFocus value={text} placeholder={f.textPlaceholder} onChange={(e) => setText(e.target.value)} />
-            </WikiFormField>
-          )
-          : null}
-        {form?.kind === 'add'
-          ? (
-            <>
-              <WikiFormField label={f.basis}>
-                <SegmentedControl
-                  label={f.basisLabel} value={basis} onChange={setBasis}
-                  options={[{ value: 'personal', label: f.personal }, { value: 'conclusion', label: f.conclusion }]}
-                />
-              </WikiFormField>
-              {basis === 'personal'
-                ? (
-                  <WikiFormField label={f.personal}>
-                    <FormInput appearance="field" value={note} placeholder={f.personalPlaceholder} onChange={(e) => setNote(e.target.value)} />
-                  </WikiFormField>
-                )
-                : (
-                  <>
-                    <WikiFormField label={f.project}>
-                      <ChoicePicker
-                        appearance="field" aria-label={f.project} placeholder={f.projectPick} value={projectId}
-                        options={projects.map((p) => p.id)}
-                        label={(id) => projects.find((p) => p.id === id)?.name ?? id}
-                        onPick={(id) => { setProjectId(id); setConclusionId('') }}
-                      />
-                    </WikiFormField>
-                    {projectId === ''
-                      ? null
-                      : conclusions.length === 0
-                        ? <p className="wiki-form-hint">{f.noConclusions}</p>
-                        : (
-                          <WikiFormField label={f.conclusion}>
-                            <ChoicePicker
-                              appearance="field" aria-label={f.conclusion} placeholder={f.conclusionPick}
-                              value={conclusionId} options={conclusions.map((x) => x.id)}
-                              label={(id) => conclusions.find((x) => x.id === id)?.text ?? id}
-                              onPick={(id) => {
-                                setConclusionId(id)
-                                const picked = conclusions.find((x) => x.id === id)
-                                if (picked !== undefined && text.trim() === '') setText(picked.text)
-                              }}
-                            />
-                          </WikiFormField>
-                        )}
-                  </>
-                )}
-            </>
-          )
-          : null}
         {form?.kind === 'conflict'
           ? (
             <>
@@ -377,32 +464,6 @@ export function WikiClaims({ page, pending, links, onApply, arrival, onArrived }
                 )}
               <WikiFormField label={f.note}>
                 <FormInput appearance="field" value={note} placeholder={f.conflictPlaceholder} onChange={(e) => setNote(e.target.value)} />
-              </WikiFormField>
-            </>
-          )
-          : null}
-        {form?.kind === 'resolve'
-          ? (
-            <>
-              <WikiFormField label={f.outcome}>
-                <ChoicePicker
-                  appearance="field" aria-label={f.outcome} value={outcome}
-                  options={OUTCOMES} label={(o) => f.outcomes[o]}
-                  onPick={(next) => {
-                    setOutcome(next)
-                    setText(next === 'revised' ? form.claim.text : '')
-                  }}
-                />
-              </WikiFormField>
-              {outcome === 'revised' || outcome === 'split'
-                ? (
-                  <WikiFormField label={outcome === 'revised' ? f.revisedText : f.splitText}>
-                    <FormTextarea appearance="field" value={text} onChange={(e) => setText(e.target.value)} />
-                  </WikiFormField>
-                )
-                : null}
-              <WikiFormField label={f.note}>
-                <FormInput appearance="field" value={note} placeholder={f.resolvePlaceholder} onChange={(e) => setNote(e.target.value)} />
               </WikiFormField>
             </>
           )

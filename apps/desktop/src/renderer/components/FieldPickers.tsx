@@ -19,9 +19,11 @@ const PRIORITIES: Task['priority'][] = ['p0', 'p1', 'p2']
  * The one overflow-menu trigger, named and tooltipped by `label`, which says which object the menu
  * belongs to, or by the shared "more actions" label without one. `stopRowActivation` keeps the click
  * off a clickable row or card underneath. It goes in its row's `RowActions` slot, which shows it.
+ * `onCloseAutoFocus` runs once the closed menu is about to hand focus back to its trigger; preventing
+ * it leaves focus to an editor an item opens in place.
  */
 export function DotsMenu({
-  children, label, stopRowActivation = false, open, onOpenChange, contentClassName,
+  children, label, stopRowActivation = false, open, onOpenChange, contentClassName, onCloseAutoFocus,
 }: {
   children: ReactNode
   /** The name, e.g. naming which idea or chat the menu manages. Falls back to the shared "more actions" label when omitted. */
@@ -31,6 +33,7 @@ export function DotsMenu({
   open?: boolean
   onOpenChange?: (open: boolean) => void
   contentClassName?: string
+  onCloseAutoFocus?: (event: Event) => void
 }) {
   const m = useMessages()
   return (
@@ -38,6 +41,7 @@ export function DotsMenu({
       {...(open === undefined ? {} : { open })}
       {...(onOpenChange === undefined ? {} : { onOpenChange })}
       {...(contentClassName === undefined ? {} : { contentClassName })}
+      {...(onCloseAutoFocus === undefined ? {} : { contentProps: { onCloseAutoFocus } })}
       stopContentClickPropagation
       trigger={(
         <IconButton
@@ -52,13 +56,14 @@ export function DotsMenu({
 /**
  * The one single-value picker: a menu of `options` with the picked one marked. With
  * `appearance="field"` it is the boxed field of a form, showing the picked option's label, or
- * `placeholder` while `value` matches no option. Otherwise the host field supplies the trigger's
- * class, and its content as `children`, which defaults to the picked option's label, and the trigger
- * is one of the controls of the toolbar it renders in.
+ * `placeholder` while `value` matches no option, and with the refused look of a field while
+ * `aria-invalid` holds. Otherwise the host field supplies the trigger's class, and its content as
+ * `children`, which defaults to the picked option's label, and the trigger is one of the controls of
+ * the toolbar it renders in.
  */
 export function ChoicePicker<T extends string>({
   value, options, onPick, label = (option) => option, className, appearance, placeholder = '',
-  disabled = false, 'aria-label': ariaLabel, stopRowActivation = false, children,
+  disabled = false, 'aria-label': ariaLabel, 'aria-invalid': invalid, stopRowActivation = false, children,
 }: {
   value: T
   options: readonly T[]
@@ -69,6 +74,7 @@ export function ChoicePicker<T extends string>({
   placeholder?: string
   disabled?: boolean
   'aria-label'?: string
+  'aria-invalid'?: true | undefined
   /** Pass true when the row or card itself is clickable, so the trigger swallows the click instead of bubbling it. */
   stopRowActivation?: boolean
   children?: ReactNode
@@ -78,7 +84,8 @@ export function ChoicePicker<T extends string>({
   const trigger = appearance === 'field'
     ? (
       <FormButton
-        className={`choice-picker${className ? ` ${className}` : ''}`} aria-label={ariaLabel} disabled={disabled}
+        className={`choice-picker${className ? ` ${className}` : ''}`} aria-label={ariaLabel} aria-invalid={invalid}
+        disabled={disabled}
       >
         <FadeText className="choice-picker-value" label={picked}>{picked}</FadeText>
         <IconChevron />

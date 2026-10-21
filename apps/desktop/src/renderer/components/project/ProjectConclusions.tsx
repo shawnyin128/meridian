@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useRef, useState } from 'react'
 import type {
   ConclusionState, GraphNode, ProjectConclusion, ProposalOp, WikiAggregationCard,
 } from '../../../shared/contract.js'
@@ -6,17 +6,17 @@ import { wiki } from '../../ipc.js'
 import { claimId } from '../../lib/slug.js'
 import { useFormat } from '../../lib/format.js'
 import { useMessages } from '../../messages/useMessages.js'
+import { DraftForm, DraftLine } from '../DraftForm.js'
 import { EmptyState } from '../EmptyState.js'
 import { FadeText } from '../FadeText.js'
 import { ChoicePicker } from '../FieldPickers.js'
-import { FormTextarea } from '../FormControls.js'
+import { FormInput } from '../FormControls.js'
 import { SectionHeading } from '../PageShell.js'
 import { PanelClose } from '../PanelClose.js'
 import { AgentLabel } from '../SourceLabel.js'
 import { StructuredList, StructuredRow } from '../StructuredList.js'
 import { Tag } from '../Tag.js'
 import { Tooltip } from '../Tooltip.js'
-import { WikiFormDialog, WikiFormField } from '../wiki/WikiFormDialog.js'
 import { EntityLink } from '../EntityLink.js'
 import { ProjectSignalDate, ProjectSignalKind } from './ProjectSignals.js'
 import './ProjectConclusions.css'
@@ -68,20 +68,22 @@ export function ProjectConclusionRow({ conclusion, node, selected, onOpen }: {
  * The detail panel of one conclusion: its text, state and actions, then the evidence chain — the
  * node's tasks, the node, the experiment records — and the Wiki claims written from it. A legacy
  * conclusion shows its source instead of the chain. Verify is offered while a node conclusion is
- * pending and unverify once the user verified it; writing to the Wiki needs a verified conclusion and
- * submits one claim through `onWrite`.
+ * pending and unverify once the user verified it; writing to the Wiki needs a verified conclusion. It
+ * opens a draft of the claim right under the conclusion, which names the page it lands on and shows the
+ * claim and its experiment evidence, and submits that one claim to page `page` through `onWrite`.
  */
 export function ProjectConclusionPanel({
-  projectId, conclusion, node, onClose, onVerify, onUnverify, onWrite, onOpenNode, onOpenTask, onOpenPage,
+  projectId, projectName, conclusion, node, onClose, onVerify, onUnverify, onWrite, onOpenNode, onOpenTask, onOpenPage,
 }: {
   projectId: string
+  projectName: string
   conclusion: ProjectConclusion
   node: NodeLook | undefined
   onClose: () => void
   /** Verifies the node's conclusion as shown: its node and the fingerprint of what the panel displays. */
   onVerify: (node: string, fingerprint: string) => void
   onUnverify: (node: string) => void
-  onWrite: (title: string, ops: ProposalOp[]) => Promise<boolean>
+  onWrite: (page: string, title: string, ops: ProposalOp[]) => Promise<boolean>
   onOpenNode: (nodeId: string) => void
   onOpenTask: (taskId: string) => void
   onOpenPage: (page: string) => void
@@ -89,22 +91,26 @@ export function ProjectConclusionPanel({
   const m = useMessages()
   const c = m.project.conclusions
   const fmt = useFormat()
-  const [writing, setWriting] = useState(false)
+  const [held, setDraft] = useState<{ conclusion: string; page: string; text: string } | null>(null)
   const [pages, setPages] = useState<WikiAggregationCard[]>([])
-  const [page, setPage] = useState('')
-  const [text, setText] = useState('')
+  const draftAt = useRef<HTMLDivElement>(null)
+  // A draft belongs to the conclusion it was opened from and shows only with it.
+  const draft = held?.conclusion === conclusion.id ? held : null
 
-  useEffect(() => {
-    if (!writing) return
-    setPage('')
-    setText(conclusion.text)
+  const startWriting = () => {
+    if (draft !== null) {
+      draftAt.current?.querySelector<HTMLElement>('.form-control')?.focus()
+      return
+    }
+    setDraft({ conclusion: conclusion.id, page: '', text: conclusion.text })
     void wiki.cards().then((cards) => setPages([...cards].sort((a, b) => a.title.localeCompare(b.title))))
-  }, [writing, conclusion.text])
+  }
 
-  const submit = async (): Promise<boolean> => {
+  const submit = async (): Promise<void> => {
+    const { page, text } = draft!
     const taken = (await wiki.aggregation(page)).claims.map((claim) => claim.id)
     const target = pages.find((card) => card.id === page)!
-    return onWrite(c.writeProposal(target.title), [{
+    const written = await onWrite(page, c.writeProposal(target.title), [{
       op: 'addClaim', page, claim: {
         id: claimId(text.trim(), taken), text: text.trim(),
         evidence: [conclusion.node === undefined
@@ -112,6 +118,7 @@ export function ProjectConclusionPanel({
           : { kind: 'experiment', project: projectId, node: conclusion.node }],
       },
     }])
+    if (written) setDraft(null)
   }
 
   return (
@@ -127,9 +134,7 @@ export function ProjectConclusionPanel({
               ? <button className="btn sm" onClick={() => onUnverify(conclusion.node!)}>{c.unverify}</button>
               : null}
             {conclusion.state === 'verified' ? null : <Tag>{c.unverifiedState}</Tag>}
-            <button
-              className="btn sm" disabled={conclusion.state !== 'verified'} onClick={() => setWriting(true)}
-            >{c.write}</button>
+            <button className="btn sm" disabled={conclusion.state !== 'verified'} onClick={startWriting}>{c.write}</button>
             <PanelClose onClose={onClose} />
           </>
         )}
@@ -140,6 +145,42 @@ export function ProjectConclusionPanel({
         <ProjectSignalKind tone={STATE_TONE[conclusion.state]}>{c.state[conclusion.state]}</ProjectSignalKind>
         {conclusion.date === undefined ? null : <span className="conclusion-detail-date">{fmt.date(conclusion.date)}</span>}
       </div>
+      {draft === null
+        ? null
+        : (
+          <div className="conclusion-draft" ref={draftAt}>
+            <DraftForm
+              destination={(invalid) => (
+                <>
+                  <ChoicePicker
+                    appearance="field" aria-label={c.page} placeholder={c.pagePick} value={draft.page}
+                    aria-invalid={invalid(draft.page === '')} options={pages.map((card) => card.id)}
+                    label={(id) => pages.find((card) => card.id === id)?.title ?? id}
+                    onPick={(page) => setDraft({ ...draft, page })}
+                  />
+                  <span>· {m.wiki.claims.heading}</span>
+                </>
+              )}
+              canSave={draft.page !== '' && draft.text.trim() !== ''} onSave={submit} onCancel={() => setDraft(null)}
+            >
+              {(invalid) => (
+                <>
+                  <FormInput
+                    value={draft.text} aria-label={c.text} aria-invalid={invalid(draft.text.trim() === '')}
+                    onChange={(event) => setDraft({ ...draft, text: event.target.value })}
+                  />
+                  <DraftLine>
+                    <span className="conclusion-draft-evidence">
+                      <Tag>{m.wiki.claims.experiment}</Tag>
+                      <EntityLink kind="project" label={projectName} />
+                      <span>{conclusion.node === undefined ? conclusion.text : node?.label ?? conclusion.node}</span>
+                    </span>
+                  </DraftLine>
+                </>
+              )}
+            </DraftForm>
+          </div>
+        )}
 
       {conclusion.node === undefined
         ? (
@@ -203,21 +244,6 @@ export function ProjectConclusionPanel({
           </StructuredList>
         )}
 
-      <WikiFormDialog
-        open={writing} title={c.write} canSubmit={page !== '' && text.trim() !== ''}
-        onOpenChange={setWriting} onSubmit={submit}
-      >
-        <WikiFormField label={c.page}>
-          <ChoicePicker
-            appearance="field" aria-label={c.page} placeholder={c.pagePick} value={page}
-            options={pages.map((card) => card.id)} onPick={setPage}
-            label={(id) => pages.find((card) => card.id === id)?.title ?? id}
-          />
-        </WikiFormField>
-        <WikiFormField label={c.text}>
-          <FormTextarea appearance="field" value={text} onChange={(event) => setText(event.target.value)} />
-        </WikiFormField>
-      </WikiFormDialog>
     </>
   )
 }

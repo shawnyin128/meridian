@@ -91,11 +91,19 @@ describe('WikiClaims', () => {
   })
   const menuItem = (text: string) => [...document.querySelectorAll<HTMLElement>('[role="menuitem"]')].find((el) => el.textContent === text)!
   const dialog = () => document.querySelector<HTMLElement>('.wiki-form')!
-  const save = () => [...dialog().querySelectorAll<HTMLButtonElement>('button')].find((b) => b.textContent === '保存')!
-  /** Opens the dialog's `nth` picker and returns the labels of its options. */
+  /** The form drafted in place, which stands where its change lands. */
+  const draft = () => host.querySelector<HTMLElement>('.draft-form')
+  /** The button labelled `label` in `area`. */
+  const button = (area: HTMLElement, label: string) => [...area.querySelectorAll<HTMLButtonElement>('button')].find((b) => b.textContent === label)!
+  const save = () => button(document.querySelector<HTMLElement>('.wiki-form') ?? draft()!, '保存')
+  const press = (target: Element, init: KeyboardEventInit) => {
+    target.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, cancelable: true, ...init }))
+  }
+  const expectNoDialog = () => expect(document.querySelector('[role="dialog"]')).toBeNull()
+  /** Opens the `nth` picker of the open dialog or draft and returns the labels of its options. */
   const openPicker = async (nth: number) => {
     await act(async () => {
-      dialog().querySelectorAll('.choice-picker')[nth]!
+      (document.querySelector<HTMLElement>('.wiki-form') ?? draft()!).querySelectorAll('.choice-picker')[nth]!
         .dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, button: 0 }))
       await flush()
     })
@@ -183,27 +191,59 @@ describe('WikiClaims', () => {
     }
   })
 
-  it('添加结论:个人判断作依据,id 由正文算出', async () => {
+  it('添加结论在结论区的最后一行打开草稿,新结论就落在那里;焦点在正文,不弹对话框', () => {
     act(() => host.querySelector<HTMLButtonElement>('.add-action')!.click())
-    expect(save().disabled).toBe(true)
-    act(() => setValue(dialog().querySelector('textarea')!, 'Wide trees win at B ≥ 8'))
-    act(() => setValue(dialog().querySelector('input')!, '看过日志'))
-    await act(async () => { save().click(); await flush() })
+    expectNoDialog()
+    const rows = [...host.querySelectorAll<HTMLElement>('.wkclaims > .wkclaim')]
+    expect(rows.map((row) => row.dataset.claim ?? 'draft')).toEqual(['knee', 'plain', 'draft'])
+    expect(rows.at(-1)!.contains(draft())).toBe(true)
+    expect(document.activeElement).toBe(draft()!.querySelector('input'))
+  })
+
+  it('一条结论都没有时,草稿取代空状态,站在结论区的第一行', async () => {
+    await act(async () => {
+      root!.render(<MessagesProvider><WikiClaims page={{ ...PAGE, claims: [] }} pending={false} links={links} onApply={onApply} /></MessagesProvider>)
+    })
+    act(() => host.querySelector<HTMLButtonElement>('.add-action')!.click())
+    expect(host.textContent).not.toContain('还没有结论')
+    expect(host.querySelector('.wkclaims > .wkclaim')!.contains(draft())).toBe(true)
+  })
+
+  it('添加结论:个人判断作依据,回车写入,id 由正文算出', async () => {
+    act(() => host.querySelector<HTMLButtonElement>('.add-action')!.click())
+    const [text, note] = [...draft()!.querySelectorAll('input')]
+    act(() => setValue(text!, 'Wide trees win at B ≥ 8'))
+    act(() => setValue(note!, '看过日志'))
+    await act(async () => { press(note!, { key: 'Enter' }); await flush() })
     expect(onApply).toHaveBeenCalledWith('给「Speculative decoding」添加结论', [{
       op: 'addClaim', page: 'topics/sd',
       claim: { id: 'wide-trees-win-at-b-8', text: 'Wide trees win at B ≥ 8', evidence: [{ kind: 'personal', text: '看过日志' }] },
     }])
-    expect(document.querySelector('.wiki-form')).toBeNull()
+    expect(draft()).toBeNull()
+  })
+
+  it('添加结论:正文空着时回车不写,正文标成无效;Esc 收起草稿,什么也不写', async () => {
+    act(() => host.querySelector<HTMLButtonElement>('.add-action')!.click())
+    const text = draft()!.querySelector('input')!
+    expect(save().disabled).toBe(true)
+    await act(async () => { press(text, { key: 'Enter' }); await flush() })
+    expect(onApply).not.toHaveBeenCalled()
+    expect(text.getAttribute('aria-invalid')).toBe('true')
+    act(() => setValue(text, '拐点后移'))
+    expect(text.hasAttribute('aria-invalid')).toBe(false)
+    act(() => press(text, { key: 'Escape' }))
+    expect(draft()).toBeNull()
+    expect(onApply).not.toHaveBeenCalled()
   })
 
   it('添加结论:只能选已验证的项目结论作依据,节点结论引用节点,旧版结论引用结论 id', async () => {
     act(() => host.querySelector<HTMLButtonElement>('.add-action')!.click())
-    await act(async () => { [...dialog().querySelectorAll<HTMLButtonElement>('.segmented-control button')][1]!.click(); await flush() })
-    expect(dialog().querySelector('select')).toBeNull()
+    await act(async () => { [...draft()!.querySelectorAll<HTMLButtonElement>('.segmented-control button')][1]!.click(); await flush() })
     await pick(0, 'draft 效率')
     const verified = await openPicker(1)
     expect(verified.map((item) => item.textContent)).toEqual(['宽树在 B≥8 时净赚', '拐点是 batch size 的函数'])
     await choose(verified[0]!)
+    expectNoDialog()
     await act(async () => { save().click(); await flush() })
     expect(onApply.mock.calls[0]![1]).toEqual([{
       op: 'addClaim', page: 'topics/sd',
@@ -213,10 +253,10 @@ describe('WikiClaims', () => {
 
   it('添加结论:选一条旧版项目结论作依据,正文先填成那条结论', async () => {
     act(() => host.querySelector<HTMLButtonElement>('.add-action')!.click())
-    await act(async () => { [...dialog().querySelectorAll<HTMLButtonElement>('.segmented-control button')][1]!.click(); await flush() })
+    await act(async () => { [...draft()!.querySelectorAll<HTMLButtonElement>('.segmented-control button')][1]!.click(); await flush() })
     await pick(0, 'draft 效率')
     await pick(1, '拐点是 batch size 的函数')
-    expect(dialog().querySelector('textarea')!.value).toBe('拐点是 batch size 的函数')
+    expect(draft()!.querySelector('input')!.value).toBe('拐点是 batch size 的函数')
     await act(async () => { save().click(); await flush() })
     expect(onApply.mock.calls[0]![1]).toEqual([{
       op: 'addClaim', page: 'topics/sd',
@@ -224,13 +264,24 @@ describe('WikiClaims', () => {
     }])
   })
 
-  it('修订、标记冲突、撤回各发一条对应的 op', async () => {
+  it('修订在结论自己那一行就地改写:正文换成输入框,回车发一条 reviseClaim,不弹对话框', async () => {
     openMenu('plain')
-    act(() => menuItem('修订').click())
-    act(() => setValue(dialog().querySelector('textarea')!, '另一条结论,改过'))
-    await act(async () => { save().click(); await flush() })
+    // The draft opens once the menu has handed focus back, which Radix does in a 0 ms timeout.
+    await act(async () => { menuItem('修订').click(); await new Promise((done) => setTimeout(done, 0)) })
+    expectNoDialog()
+    const row = host.querySelector<HTMLElement>('[data-claim="plain"]')!
+    expect(row.contains(draft())).toBe(true)
+    expect(row.querySelector('.wkclaim-text')).toBeNull()
+    const text = draft()!.querySelector('input')!
+    expect([text.value, document.activeElement]).toEqual(['另一条结论', text])
+    act(() => setValue(text, '另一条结论,改过'))
+    await act(async () => { press(text, { key: 'Enter' }); await flush() })
     expect(onApply.mock.calls.at(-1)![1]).toEqual([{ op: 'reviseClaim', page: 'topics/sd', claim: 'plain', text: '另一条结论,改过' }])
+    expect(draft()).toBeNull()
+    expect(row.querySelector('.wkclaim-text')!.textContent).toBe('另一条结论')
+  })
 
+  it('标记冲突、撤回各发一条对应的 op', async () => {
     openMenu('plain')
     act(() => menuItem('标记冲突').click())
     await pick(0, '拐点在宽度 6')
@@ -248,18 +299,24 @@ describe('WikiClaims', () => {
     expect(onApply.mock.calls.at(-1)![1]).toEqual([{ op: 'retractClaim', page: 'topics/sd', claim: 'plain', reason: '不成立' }])
   })
 
-  it('处理冲突:不算冲突只发一条;修订或撤回时与对应的 op 一起发', async () => {
+  it('处理冲突在那条冲突下面就地打开,不弹对话框;不算冲突只发一条,修订或撤回时与对应的 op 一起发', async () => {
     const resolve = () => act(() => host.querySelector<HTMLButtonElement>('.wkclaim-resolve')!.click())
     const done = { op: 'resolveConflict', page: 'topics/sd', claim: 'knee', conflict: 'batch', note: '场景不同' }
+    const note = () => [...draft()!.querySelectorAll('input')].at(-1)!
     resolve()
-    act(() => setValue(dialog().querySelector('input')!, '场景不同'))
-    await act(async () => { save().click(); await flush() })
+    expectNoDialog()
+    expect(host.querySelector('.wkclaim-conflict')!.nextElementSibling!.contains(draft())).toBe(true)
+    act(() => setValue(note(), '场景不同'))
+    await act(async () => { press(note(), { key: 'Enter' }); await flush() })
     expect(onApply.mock.calls.at(-1)![1]).toEqual([{ ...done, outcome: 'dismissed' }])
+    expect(draft()).toBeNull()
 
     resolve()
     await pick(0, '修订这一条')
-    act(() => setValue(dialog().querySelector('textarea')!, '单请求下拐点在宽度 6'))
-    act(() => setValue(dialog().querySelector('input')!, '场景不同'))
+    const revised = draft()!.querySelector('input')!
+    expect(revised.value).toBe('拐点在宽度 6')
+    act(() => setValue(revised, '单请求下拐点在宽度 6'))
+    act(() => setValue(note(), '场景不同'))
     await act(async () => { save().click(); await flush() })
     expect(onApply.mock.calls.at(-1)![1]).toEqual([
       { op: 'reviseClaim', page: 'topics/sd', claim: 'knee', text: '单请求下拐点在宽度 6' }, { ...done, outcome: 'revised' },
@@ -267,10 +324,34 @@ describe('WikiClaims', () => {
 
     resolve()
     await pick(0, '撤回这一条')
-    act(() => setValue(dialog().querySelector('input')!, '场景不同'))
+    act(() => setValue(note(), '场景不同'))
     await act(async () => { save().click(); await flush() })
     expect(onApply.mock.calls.at(-1)![1]).toEqual([
       { ...done, outcome: 'retracted' }, { op: 'retractClaim', page: 'topics/sd', claim: 'knee', reason: '场景不同' },
     ])
+  })
+
+  it('拆出一条新结论:新结论的正文在处理冲突的草稿里写,标明它落到结论区,回车连同处理一起写入', async () => {
+    act(() => host.querySelector<HTMLButtonElement>('.wkclaim-resolve')!.click())
+    await pick(0, '拆出一条新结论')
+    expectNoDialog()
+    expect(draft()!.querySelector('.draft-form-destination')!.textContent).toBe('→结论')
+    const [text, note] = [...draft()!.querySelectorAll('input')]
+    act(() => setValue(text!, '批量下拐点后移'))
+    act(() => setValue(note!, '场景不同'))
+    await act(async () => { press(text!, { key: 'Enter' }); await flush() })
+    expect(onApply.mock.calls.at(-1)![1]).toEqual([
+      { op: 'addClaim', page: 'topics/sd', claim: { id: 'c1', text: '批量下拐点后移', evidence: [{ kind: 'personal', text: '场景不同' }] } },
+      { op: 'resolveConflict', page: 'topics/sd', claim: 'knee', conflict: 'batch', outcome: 'split', note: '场景不同' },
+    ])
+  })
+
+  it('换到另一页时,上一页的草稿不跟过去', async () => {
+    act(() => host.querySelector<HTMLButtonElement>('.add-action')!.click())
+    act(() => setValue(draft()!.querySelector('input')!, '只属于这一页'))
+    await act(async () => {
+      root!.render(<MessagesProvider><WikiClaims page={{ ...PAGE, id: 'topics/other', title: 'Other' }} pending={false} links={links} onApply={onApply} /></MessagesProvider>)
+    })
+    expect(draft()).toBeNull()
   })
 })
