@@ -149,9 +149,13 @@ thead:hover .colbtn,.colbtn:hover,.colbtn:focus-visible{opacity:1;pointer-events
 .wkside{box-sizing:border-box;flex:0 0 260px;width:260px;max-width:260px;min-width:0;font-size:var(--fs-sm);line-height:var(--lh-ui);border-left:1px solid var(--sep2);padding-left:var(--sp-24);
   position:sticky;top:0;z-index:2;max-height:100cqh;overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;
   --fade-paint:var(--content);--fade-pad-top:0px;--fade-pad-bottom:0px}
-/* The rail clips, so it keeps the ring room at its end and foot, reaching out at its end by as much: its content keeps its width. */
-.wkside:not(.node-document-pane){flex-basis:calc(260px + var(--ring-room));width:calc(260px + var(--ring-room));
-  max-width:calc(260px + var(--ring-room));margin-right:calc(-1 * var(--ring-room));padding-right:var(--ring-room);
+/*
+ * The rail clips, so it keeps room at its end for a focus ring or an inline editor, whichever reaches
+ * further, and the ring room at its foot, reaching out at its end by as much: its content keeps its width.
+ */
+.wkside:not(.node-document-pane){--rail-room:max(var(--ring-room),calc(var(--sp-6) + 1px));
+  flex-basis:calc(260px + var(--rail-room));width:calc(260px + var(--rail-room));
+  max-width:calc(260px + var(--rail-room));margin-right:calc(-1 * var(--rail-room));padding-right:var(--rail-room);
   padding-bottom:var(--ring-room)}
 /* In a window too short for the column to stay pinned with room to read, it scrolls with the page. */
 @media (max-height:860px){.wkside:not(.node-document-pane){position:static;max-height:none}}

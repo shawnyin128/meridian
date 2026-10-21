@@ -4,7 +4,7 @@ import { join } from 'node:path'
 import { beforeAll, describe, expect, it } from 'vitest'
 
 /** The parts of the jsdom window this test reads; the tsconfig of shared code carries no DOM types. */
-type Style = { width: string }
+type Style = { width: string; paddingRight: string; marginRight: string; getPropertyValue(name: string): string }
 type Window = {
   document: { head: { innerHTML: string }; body: { innerHTML: string }; querySelector(selector: string): object | null }
   getComputedStyle(element: object): Style
@@ -26,7 +26,7 @@ const LINK_FIELD = 'form-control form-input form-control-inline inedit'
  * paper details and in their metadata list, and the address and name fields of a link being added to
  * a project's relations.
  */
-const MARKUP = `<div class="wkside">
+const MARKUP = `<div class="wkside" id="rail-column">
   <div class="wkprops"><div class="pk">当前目标</div><span class="metadata-field"><textarea class="${MULTILINE}" id="rail"></textarea></span></div>
   <div class="wkrel"><span class="rl">链接</span><span class="reladd"><div class="urldraft">
     <input class="${LINK_FIELD}" id="address"><input class="${LINK_FIELD}" id="link-name">
@@ -42,6 +42,8 @@ const MARKUP = `<div class="wkside">
  * border and padding, so the text inside keeps the width of the text it replaces.
  */
 const INLINE = 'calc(100% + 2 * (var(--sp-6) + 1px))'
+/** How far an inline editor reaches past the side of its text: its padding and border. */
+const REACH = 'calc(var(--sp-6) + 1px)'
 
 describe('就地编辑框的宽度', () => {
   beforeAll(() => {
@@ -57,5 +59,11 @@ describe('就地编辑框的宽度', () => {
 
   it('关联里加链接的地址和显示名两格同样宽出两侧,字和别的就地输入框对齐', () => {
     expect([width('address'), width('link-name')]).toEqual([INLINE, INLINE])
+  })
+
+  it('右栏右侧留的余量取对焦环和就地编辑框伸出量里大的那个,编辑框右缘不被切掉', () => {
+    const rail = getComputedStyle(document.querySelector('#rail-column')!)
+    expect(rail.getPropertyValue('--rail-room')).toBe(`max(var(--ring-room),${REACH})`)
+    expect([rail.paddingRight, rail.marginRight]).toEqual(['var(--rail-room)', 'calc(-1 * var(--rail-room))'])
   })
 })
