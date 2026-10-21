@@ -101,6 +101,8 @@ let gotIds: string[]
 let bumps: number
 /** The breadcrumb tail the table last set. */
 let crumbTail: { text: string }[]
+/** The screens the back control returned to, in order. */
+let returnedTo: string[]
 
 vi.mock('../ipc.js', () => ({
   papers: {
@@ -163,8 +165,9 @@ vi.mock('../shell/AppShell.js', () => ({
   useJump: () => ({
     jump: jumpHere,
     open: (screen: string, id?: string) => { openedScreens.push([screen, id]) },
-    returnTo: vi.fn(),
+    returnTo: (screen: string) => { returnedTo.push(screen) },
   }),
+  useScreenEntry: () => 0,
   usePaperCount: () => vaultPaperCount,
   useScreen: () => 'papers',
   useNotice: () => ({
@@ -307,6 +310,26 @@ describe('PaperTable', () => {
     gotIds = []
     bumps = 0
     crumbTail = []
+    returnedTo = []
+  })
+
+  it('从别的屏点链接打开一篇的详情时屏头左端有返回,按它回到来的那一屏;从论文屏自己的搜索打开时没有', async () => {
+    jumpHere = { screen: 'papers', target: 'p1', from: 'feed', seq: 1, anchor: { detail: true } }
+    const host = mount()
+    columnsCall.resolve(EMPTY_COLUMNS)
+    listCall.resolve({ rows: [ROW], total: 1 })
+    getCall.resolve(ROW)
+    await flush()
+    expect(host.querySelector('.desk-head')!.firstElementChild?.classList.contains('back')).toBe(true)
+    await act(async () => { host.querySelector<HTMLButtonElement>('.desk-head > .back')!.click() })
+    expect(returnedTo).toEqual(['feed'])
+    expect(host.querySelector('.desk-head > .back')).toBeNull()
+
+    act(() => mountedRoot!.unmount())
+    jumpHere = { screen: 'papers', target: 'p1', from: 'papers', seq: 2, anchor: { detail: true } }
+    const own = mount()
+    await flush()
+    expect(own.querySelector('.desk-head > .back')).toBeNull()
   })
 
   it('带详情落点跳进来时打开那篇的详情,搜索框不填字', async () => {

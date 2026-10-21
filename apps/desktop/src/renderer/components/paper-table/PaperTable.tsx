@@ -27,12 +27,14 @@ import { PageBody, PageError, PageHeader, PageShell, PageTitle, PageToolbar } fr
 import { NO_TRIGGERS } from '../../hooks/useOnLeave.js'
 import { useInlineDraft } from '../../hooks/useInlineDraft.js'
 import { useUndo } from '../../hooks/useUndo.js'
+import { useJumpOrigin } from '../../hooks/useJumpOrigin.js'
 import { useVaultWrite } from '../../hooks/useVaultWrite.js'
 import { useScrollFade } from '../../hooks/useScrollFade.js'
 import {
   useCrumbTail, useEscapeLayer, useJump, useNotice, usePaperCount, useScreen, useScreenReentry, useVaultRevision,
 } from '../../shell/AppShell.js'
 import { AddAction } from '../AddAction.js'
+import { BackButton } from '../BackButton.js'
 import { IconButton } from '../IconButton.js'
 import { holdRepeatSelection, RowActions, StructuredList, StructuredRow } from '../StructuredList.js'
 import { PanelClose } from '../PanelClose.js'
@@ -291,6 +293,7 @@ function TextCellEdit({ cell, initial, onSave, onCancel }: {
  */
 export function PaperTable() {
   const m = useMessages()
+  const jumpOrigin = useJumpOrigin()
   const [view, setView] = useState<'table' | 'research-map'>('table')
   const [rows, setRows] = useState<PaperRow[]>([])
   const [total, setTotal] = useState(0)
@@ -1224,6 +1227,7 @@ export function PaperTable() {
           </>
         )}
       >
+        {jumpOrigin.origin === null ? null : <BackButton onClick={jumpOrigin.back} />}
         <PageTitle>{m.papers.title(titleCount)}</PageTitle>
       </PageHeader>
 

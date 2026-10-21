@@ -9,6 +9,7 @@ import type {
 import { IconTrash } from '../components/icons.js'
 import { TOOLTIP_DELAY } from '../components/Tooltip.js'
 import { MessagesProvider } from '../messages/useMessages.js'
+import type { ScreenJump } from '../shell/AppShell.js'
 import { LANGUAGE_STORAGE_KEY } from '../shell/language.js'
 
 declare global {
@@ -27,6 +28,8 @@ const fixture = vi.hoisted(() => ({
   proposals: vi.fn(),
   signals: vi.fn(),
   open: vi.fn(),
+  returnTo: vi.fn(),
+  jump: null as ScreenJump | null,
 }))
 
 const HOME: WikiHome = {
@@ -82,7 +85,7 @@ vi.mock('../ipc.js', () => ({
 vi.mock('../shell/AppShell.js', () => ({
   useNotice: () => ({ success: vi.fn(), refusal: vi.fn() }),
   useCrumbTail: () => {},
-  useJump: () => ({ jump: null, open: fixture.open, returnTo: vi.fn() }),
+  useJump: () => ({ jump: fixture.jump, open: fixture.open, returnTo: fixture.returnTo }),
   useScreenEntry: () => 0,
   useVaultRevision: () => ({ revision: 0, bump: vi.fn() }),
 }))
@@ -274,6 +277,19 @@ describe('Wiki keyboard reach', () => {
     ])
     expect(rows.map((row) => row.slice(1))).toEqual(Array(4).fill(['SPAN rl', 'BUTTON tag tag--chip tag--neutral tagchip']))
     expect(new Set(rows.map((row) => row[0])).size).toBe(1)
+  })
+
+  it('从别的屏点链接打开一页时屏头左端有返回,按它回到来的那一屏', async () => {
+    fixture.jump = { screen: 'wiki', target: 'topics/sd', from: 'chat', seq: 9 }
+    try {
+      await act(async () => { root!.render(<MessagesProvider><Wiki /></MessagesProvider>) })
+      await act(async () => { await Promise.resolve() })
+      expect(host.querySelector('.desk-head')!.firstElementChild?.classList.contains('back')).toBe(true)
+      await act(async () => { host.querySelector<HTMLButtonElement>('.desk-head > .back')!.click() })
+      expect(fixture.returnTo).toHaveBeenCalledWith('chat')
+    } finally {
+      fixture.jump = null
+    }
   })
 
   it('没有东西指向这一页时右栏没有反向链接这一块', async () => {

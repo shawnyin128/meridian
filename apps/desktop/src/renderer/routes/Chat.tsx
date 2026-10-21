@@ -25,11 +25,13 @@ import { useDrafts } from '../hooks/useDrafts.js'
 import { useFollowEnd } from '../hooks/useFollowEnd.js'
 import { useGenerations } from '../hooks/useGenerations.js'
 import { useNoModelChats } from '../hooks/useNoModelChats.js'
+import { useJumpOrigin } from '../hooks/useJumpOrigin.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
 import { CONFLICT_THREAD, sendsMessage } from '../lib/chat.js'
 import { composing } from '../lib/keyboard.js'
 import { IdeaEditorDialog } from '../components/ideas/IdeaEditorDialog.js'
 import { GenerationControl } from '../components/GenerationControl.js'
+import { BackButton } from '../components/BackButton.js'
 import { FadeText } from '../components/FadeText.js'
 import { Toolbar, ToolbarButton } from '../components/Toolbar.js'
 import { namedRuns, TitleNote } from '../components/TitleNote.js'
@@ -108,6 +110,7 @@ export function Chat() {
   const m = useMessages()
   const { id, title, archived, select } = useChatSession()
   const { jump, open } = useJump()
+  const { origin, back } = useJumpOrigin()
   const { revision, bump } = useVaultRevision()
   const notice = useNotice()
   const [messages, setMessages] = useState<ChatMessage[] | null>(null)
@@ -232,6 +235,7 @@ export function Chat() {
   return (
     <PageShell className="chatcol">
       <PageHeader>
+        {origin === null ? null : <BackButton onClick={back} />}
         <PageTitle label={title === null ? undefined : plainTitle(title)}>
           {title === null ? m.chat.newChat : <PaperText text={title} />}
         </PageTitle>

@@ -13,6 +13,7 @@ import {
   useCrumbTail, useJump, useScreenEntry, useToday, useVaultRevision,
 } from '../shell/AppShell.js'
 import { AddAction } from '../components/AddAction.js'
+import { BackButton } from '../components/BackButton.js'
 import { SortMenu } from '../components/SortMenu.js'
 import {
   MenuItem, MenuRadioGroup, MenuRadioItem, MenuSeparator,
@@ -265,8 +266,14 @@ function ProjectRow({ project, onOpen, menu, reorder, dropClassName }: {
  * "New project". Data comes from project.list; creating, renaming, changing status and deleting
  * write back through project.create / project.update / project.delete. Clicking a panel or row opens
  * that project's details. `newRow` opens the new-project row, and `onNewRow` reports it has opened.
+ * `onReturn`, when given, is the header's back control to the screen a jump came from.
  */
-function ProjectList({ onOpen, newRow, onNewRow }: { onOpen: (id: string) => void; newRow: boolean; onNewRow: () => void }) {
+function ProjectList({ onOpen, newRow, onNewRow, onReturn }: {
+  onOpen: (id: string) => void
+  newRow: boolean
+  onNewRow: () => void
+  onReturn?: (() => void) | undefined
+}) {
   const m = useMessages()
   const [projects, setProjects] = useState<ProjectSummary[] | null>(null)
   const [creating, setCreating] = useState(false)
@@ -377,6 +384,7 @@ function ProjectList({ onOpen, newRow, onNewRow }: { onOpen: (id: string) => voi
           </>
         )}
       >
+        {onReturn === undefined ? null : <BackButton onClick={onReturn} />}
         <PageTitle>{m.research.list.title(projects.filter((p) => p.status === ACTIVE_PROJECT).length)}</PageTitle>
       </PageHeader>
       <PageError error={error} />
@@ -469,6 +477,7 @@ export function Projects() {
     if (jump.anchor?.newProject === true) {
       close()
       setNewRow(true)
+      if (jump.from !== jump.screen) setOrigin(jump.from)
       return
     }
     setOpenId(jump.target)
@@ -480,7 +489,7 @@ export function Projects() {
   }, [jump, close])
 
   return openId === null
-    ? <ProjectList onOpen={setOpenId} newRow={newRow} onNewRow={newRowShown} />
+    ? <ProjectList onOpen={setOpenId} newRow={newRow} onNewRow={newRowShown} onReturn={origin === null ? undefined : back} />
     : (
       <ProjectDetail
         projectId={openId} onBack={close} onReturn={back}

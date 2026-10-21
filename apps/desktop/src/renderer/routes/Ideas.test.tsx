@@ -50,6 +50,7 @@ const api = vi.hoisted(() => ({
   loading: false,
   jump: null as ScreenJump | null,
   revision: 0,
+  returnTo: vi.fn(),
 }))
 
 vi.mock('../ipc.js', () => ({
@@ -67,7 +68,8 @@ vi.mock('../ipc.js', () => ({
 vi.mock('../shell/AppShell.js', () => ({
   useEscapeLayer: () => {},
   useScreenReentry: () => 0,
-  useJump: () => ({ jump: api.jump, open: api.open }),
+  useJump: () => ({ jump: api.jump, open: api.open, returnTo: api.returnTo }),
+  useScreenEntry: () => 0,
   useVaultRevision: () => ({ revision: api.revision, bump: vi.fn() }),
 }))
 vi.mock('../hooks/useVaultWrite.js', () => ({
@@ -153,6 +155,17 @@ describe('Ideas', () => {
       api.ideas = api.ideas.filter((idea) => idea.id !== OWN.id)
       api.revision = 0
     }
+  })
+
+  it('从别的屏点链接来时屏头左端有返回，按它回到来的那一屏；没跳进来时没有返回', async () => {
+    await act(async () => { root.render(<MessagesProvider><Ideas /></MessagesProvider>) })
+    expect(host.querySelector('.desk-head > .back')).toBeNull()
+    api.jump = { screen: 'ideas', target: 'idea-linked', from: 'wiki', seq: 3 }
+    await act(async () => { root.render(<MessagesProvider><Ideas /></MessagesProvider>) })
+    expect(host.querySelector('.desk-head')!.firstElementChild?.classList.contains('back')).toBe(true)
+    await act(async () => { host.querySelector<HTMLButtonElement>('.desk-head > .back')!.click() })
+    expect(api.returnTo).toHaveBeenCalledWith('wiki')
+    expect(host.querySelector('.desk-head > .back')).toBeNull()
   })
 
   it('从别处带着新建想法的落点跳进来时打开同一个想法编辑框', async () => {

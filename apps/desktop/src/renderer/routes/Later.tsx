@@ -3,6 +3,8 @@ import type { InboxDownloadFailure, LaterEntry } from '../../shared/contract.js'
 import { inbox, later } from '../ipc.js'
 import { useMessages } from '../messages/useMessages.js'
 import { useJump, useNotice, useVaultRevision } from '../shell/AppShell.js'
+import { BackButton } from '../components/BackButton.js'
+import { useJumpOrigin } from '../hooks/useJumpOrigin.js'
 import { useJobs } from '../shell/useJobs.js'
 import { DownloadRing, Icon, IconCross, IconRead } from '../components/icons.js'
 import { IconButton } from '../components/IconButton.js'
@@ -40,6 +42,7 @@ export function Later() {
 
   const notice = useNotice()
   const { jump, open } = useJump()
+  const { origin, back } = useJumpOrigin()
   const body = useRef<HTMLDivElement>(null)
   const consumed = useRef(0)
   const { revision, bump } = useVaultRevision()
@@ -104,6 +107,7 @@ export function Later() {
   return (
     <PageShell>
       <PageHeader>
+        {origin === null ? null : <BackButton onClick={back} />}
         <PageTitle>{m.later.title(entries?.length ?? 0)}</PageTitle>
       </PageHeader>
 

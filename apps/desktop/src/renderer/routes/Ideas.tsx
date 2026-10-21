@@ -22,6 +22,8 @@ import {
 } from '../components/PageShell.js'
 import { errorLabel } from '../lib/failure-label.js'
 import { useEscapeLayer, useJump, useScreenReentry, useVaultRevision } from '../shell/AppShell.js'
+import { BackButton } from '../components/BackButton.js'
+import { useJumpOrigin } from '../hooks/useJumpOrigin.js'
 import { useUndo } from '../hooks/useUndo.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
 import { useScrollFade } from '../hooks/useScrollFade.js'
@@ -241,6 +243,7 @@ export function Ideas() {
   const m = useMessages()
   const { revision } = useVaultRevision()
   const { jump, open } = useJump()
+  const { origin, back } = useJumpOrigin()
   const write = useVaultWrite()
   const undo = useUndo()
   const consumedJump = useRef(0)
@@ -333,6 +336,7 @@ export function Ideas() {
         </>
       )}
       >
+        {origin === null ? null : <BackButton onClick={back} />}
         <PageTitle>{m.ideas.title(active.length)}</PageTitle>
       </PageHeader>
       <PageError error={error} />

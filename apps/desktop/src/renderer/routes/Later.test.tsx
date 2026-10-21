@@ -13,7 +13,9 @@ declare global {
   var IS_REACT_ACT_ENVIRONMENT: boolean
 }
 
-const api = vi.hoisted(() => ({ notes: [] as unknown[], jump: null as ScreenJump | null, entries: null as LaterEntry[] | null }))
+const api = vi.hoisted(() => ({
+  notes: [] as unknown[], jump: null as ScreenJump | null, entries: null as LaterEntry[] | null, returnTo: vi.fn(),
+}))
 
 const ENTRY: LaterEntry = {
   id: 'later-1', title: 'MoE 路由用熵正则代替负载均衡 load balancing', source: 'arXiv', added: '2026-08-25',
@@ -25,7 +27,8 @@ vi.mock('../ipc.js', () => ({
   later: { list: async () => api.entries ?? [ENTRY], remove: async () => {} },
 }))
 vi.mock('../shell/AppShell.js', () => ({
-  useJump: () => ({ jump: api.jump, open: vi.fn() }),
+  useJump: () => ({ jump: api.jump, open: vi.fn(), returnTo: api.returnTo }),
+  useScreenEntry: () => 0,
   useNotice: () => ({ success: vi.fn(), refusal: vi.fn() }),
   useVaultRevision: () => ({ revision: 0, bump: vi.fn() }),
 }))
@@ -53,6 +56,18 @@ describe('Later', () => {
     api.entries = null
   })
   afterEach(() => { host.remove(); vi.unstubAllGlobals() })
+
+  it('从别的屏点链接来时屏头左端有返回,按它回到来的那一屏', async () => {
+    HTMLElement.prototype.scrollIntoView = () => {}
+    api.jump = { screen: 'later', target: 'later-1', from: 'changelog', seq: 2 }
+    const root = createRoot(host)
+    await act(async () => { root.render(<MessagesProvider><Later /></MessagesProvider>) })
+    expect(host.querySelector('.desk-head')!.firstElementChild?.classList.contains('back')).toBe(true)
+    await act(async () => { host.querySelector<HTMLButtonElement>('.desk-head > .back')!.click() })
+    expect(api.returnTo).toHaveBeenCalledWith('changelog')
+    await act(async () => { root.unmount() })
+    delete (HTMLElement.prototype as Partial<HTMLElement>).scrollIntoView
+  })
 
   it('从别处跳到一条时,把那一条移到眼前', async () => {
     const shown: (string | null)[] = []

@@ -31,7 +31,7 @@ const api = vi.hoisted(() => ({
 const session = vi.hoisted(() => ({ id: 'chat-1', revision: 0 }))
 const settings = vi.hoisted(() => ({ openCategory: vi.fn() }))
 /** The jump useJump hands the Chat screen. */
-const nav = vi.hoisted(() => ({ jump: null as ScreenJump | null }))
+const nav = vi.hoisted(() => ({ jump: null as ScreenJump | null, returnTo: vi.fn(), entry: 0 }))
 
 /** The callbacks of every ResizeObserver made. */
 const resized: (() => void)[] = []
@@ -48,7 +48,8 @@ vi.mock('../ipc.js', () => ({
 vi.mock('../shell/AppShell.js', () => ({
   useNotice: () => ({ success: vi.fn(), refusal: vi.fn() }),
   useCrumbTail: () => {},
-  useJump: () => ({ jump: nav.jump, open: vi.fn(), returnTo: vi.fn() }),
+  useJump: () => ({ jump: nav.jump, open: vi.fn(), returnTo: nav.returnTo }),
+  useScreenEntry: () => nav.entry,
   useChatSession: () => ({ id: session.id, title: '讨论', archived: false, select: vi.fn() }),
   useVaultRevision: () => ({ revision: session.revision, bump: vi.fn() }),
   useSettingsOpen: () => ({ open: false, openCategory: settings.openCategory }),
@@ -102,6 +103,8 @@ describe('Chat composer', () => {
     if (root !== null) act(() => root!.unmount())
     root = null
     nav.jump = null
+    nav.entry = 0
+    nav.returnTo.mockClear()
   })
 
   const press = (key: string, init: KeyboardEventInit = {}) => {
@@ -118,6 +121,25 @@ describe('Chat composer', () => {
       await Promise.resolve()
     })
   }
+
+  it('从别的屏点链接来时屏头左端有返回，按它回到来的那一屏；从侧栏进来时没有返回', async () => {
+    const back = () => document.querySelector<HTMLButtonElement>('.desk-head > .back')
+    expect(back()).toBeNull()
+    nav.jump = { screen: 'chat', target: 'chat-2', from: 'wiki', seq: 7 }
+    await openChat('chat-2')
+    expect([...document.querySelector('.desk-head')!.children].map((child) => child.className.split(' ')[0])).toEqual(['icbtn', 'fade-text'])
+    expect(back()?.getAttribute('aria-label')).toBe('返回')
+    act(() => back()!.click())
+    expect(nav.returnTo).toHaveBeenCalledWith('wiki')
+    expect(back()).toBeNull()
+
+    nav.jump = { screen: 'chat', target: 'chat-1', from: 'feed', seq: 8 }
+    await openChat('chat-1')
+    expect(back()).not.toBeNull()
+    nav.entry = 1
+    await openChat('chat-1')
+    expect(back()).toBeNull()
+  })
 
   it('从动态看冲突时新开一个叫结论冲突的对话，问这两条结论为什么冲突', async () => {
     api.create.mockResolvedValueOnce({ id: 'chat-9' } as ChatSession)
