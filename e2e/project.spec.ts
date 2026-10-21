@@ -2,8 +2,8 @@ import { resolve } from 'node:path'
 import type { Locator, Page } from '@playwright/test'
 import { ACTIVE_PROJECT, PROJECT_STATUSES, SHELVED_PROJECT } from '../apps/desktop/src/shared/vocabulary.js'
 import {
-  dshort, expect, fixtureDay, gotoProject, overlaps, readDraft, test, timelinePeriod, uniqueHeights, vaultToday,
-  type MeridianWindow,
+  dshort, expect, expectWholeInRail, fixtureDay, gotoProject, overlaps, railEdges, readDraft, test, textBox,
+  timelinePeriod, uniqueHeights, vaultToday, type MeridianWindow,
 } from './app.js'
 
 const call = <T>(win: Page, method: string, params: unknown) => win.evaluate(
@@ -1076,26 +1076,47 @@ test('属性格进入编辑时不改变右栏和值列宽度,字也不挪位', a
   const props = side.locator('.wkprops')
   const field = props.locator('.pk:text-is("名称") + .metadata-field')
   const name = field.locator('.metadata-editable')
-  // Where the text starts inside its box: the same box with the same inset keeps it in place.
-  const inset = (box: Locator) => box.evaluate((el) => {
-    const style = getComputedStyle(el)
-    return [style.paddingLeft, style.paddingTop, style.borderLeftWidth, style.borderTopWidth, style.lineHeight]
-  })
-  const before = await Promise.all([side.boundingBox(), props.boundingBox(), field.boundingBox(), name.boundingBox()])
-  const insetBefore = await inset(name)
-  expect(before[3]?.x).toBe(before[2]?.x)
-  expect(before[3]?.width).toBe(before[2]?.width)
+  const boxes = () => Promise.all([side.boundingBox(), props.boundingBox(), field.boundingBox()])
+  const before = await boxes()
+  const textBefore = await textBox(name)
 
   await name.click()
   const input = field.locator('.metadata-input')
   await expect(input).toBeVisible()
-  const editing = await Promise.all([side.boundingBox(), props.boundingBox(), field.boundingBox(), input.boundingBox()])
+  expect(await boxes()).toEqual(before)
+  expect(await textBox(input)).toEqual(textBefore)
+})
 
-  expect(editing.map((box) => box?.width)).toEqual(before.map((box) => box?.width))
-  expect(editing.map((box) => box?.x)).toEqual(before.map((box) => box?.x))
-  expect(editing.map((box) => box?.y)).toEqual(before.map((box) => box?.y))
-  expect(editing[2]?.height).toBe(before[2]?.height)
-  expect(await inset(input)).toEqual(insetBefore)
+for (const [key, kind] of [['当前目标', '多行'], ['领域', '单行']]) {
+  test(`属性栏${kind}的值(${key})进入编辑时,编辑框整个露在右栏里,右栏不横向滚动,字不挪位`, async ({ win }) => {
+    await gotoProject(win)
+    const side = win.locator('.screenslot:not([hidden]) .wkside')
+    const field = side.locator(`.pk:text-is("${key}") + .metadata-field`)
+    const value = field.locator('.metadata-editable')
+    const before = await textBox(value)
+
+    await value.click()
+    const input = field.locator('.metadata-input')
+    await expectWholeInRail(side, input)
+    expect((await textBox(input)).left).toBe(before.left)
+  })
+}
+
+test('关联里加一条:页面和链接的就地输入框都整个露在右栏里,右栏不横向滚动,链接两格的字从右栏内容左缘起', async ({ win }) => {
+  await gotoProject(win)
+  const side = win.locator('.screenslot:not([hidden]) .wkside')
+  const { left } = await railEdges(side)
+
+  await side.locator('[aria-label="添加关联"]').click()
+  await expectWholeInRail(side, side.locator('.wkrel .reladd .inedit'))
+  await side.locator('.wkrel .segmented-control>button', { hasText: '链接' }).click()
+  const fields = side.locator('.urldraft input')
+  await expect(fields).toHaveCount(2)
+  await expectWholeInRail(side, fields.nth(0))
+  expect((await textBox(fields.nth(0))).left).toBe(left)
+  await fields.nth(1).focus()
+  await expectWholeInRail(side, fields.nth(1))
+  expect((await textBox(fields.nth(1))).left).toBe(left)
 })
 
 test('属性栏焦点格:焦点移走或点到格外都像回车一样写回,Esc 才放弃', async ({ win }) => {
