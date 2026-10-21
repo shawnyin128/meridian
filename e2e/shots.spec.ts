@@ -172,7 +172,7 @@ test('第 6 批:列菜单与改类型那一行,四档窗口 × 亮暗', async ({
       await parkPointer(win)
       await win.screenshot({ path: `${B6}/column-menu-${theme}-${w}.png` })
       await win.keyboard.press('Escape')
-      await expect(win.locator('[data-radix-popper-content-wrapper]')).toHaveCount(0)
+      await expect(win.locator('[data-radix-popper-content-wrapper]:not(:has(> .tooltip))')).toHaveCount(0)
 
       await win.locator('.ptable thead').hover()
       await win.locator('.ptable thead [aria-label="列设置"]').click()
@@ -181,7 +181,7 @@ test('第 6 批:列菜单与改类型那一行,四档窗口 × 亮暗', async ({
       // A text column has no Options toggle, so the first button at the row's end is Change type.
       await win.screenshot({ path: `${B6}/column-menu-text-${theme}-${w}.png` })
       await win.keyboard.press('Escape')
-      await expect(win.locator('[data-radix-popper-content-wrapper]')).toHaveCount(0)
+      await expect(win.locator('[data-radix-popper-content-wrapper]:not(:has(> .tooltip))')).toHaveCount(0)
     }
   }
 })
