@@ -95,3 +95,267 @@ describe('屏头的按钮', () => {
     expect(offenders).toEqual([])
   })
 })
+
+/** Where an action sits on the screen; its slot says which scope the action acts on. */
+type Slot = 'page header' | 'page toolbar' | 'section heading' | 'panel head' | 'group heading' | 'row actions'
+  | 'chip' | 'table header' | 'timeline toolbar' | 'dialog actions' | 'sidebar heading' | 'inline'
+
+/** Props whose content a component renders in one slot. */
+const SLOT_PROPS: Record<string, Record<string, Slot>> = {
+  PageHeader: { actions: 'page header' },
+  SectionHeading: { actions: 'section heading' },
+  CollapsibleGroup: { actions: 'group heading' },
+  IdeaPanel: { actions: 'panel head' },
+  PaperCard: { actions: 'row actions' },
+  IdeaCard: { menu: 'row actions' },
+  ProjectPanel: { menu: 'row actions' },
+  ProjectRow: { menu: 'row actions' },
+  Table: { head: 'table header' },
+  TimelineBoard: { headerAction: 'timeline toolbar' },
+  ModalDialog: { actions: 'dialog actions' },
+  SectHead: { extra: 'sidebar heading' },
+}
+
+/** Elements whose children sit in one slot: components by name, plain elements by a class. */
+const SLOT_CHILDREN: Record<string, Slot> = {
+  PageToolbar: 'page toolbar', RowActions: 'row actions', Tag: 'chip', tagchip: 'chip', 'pd-h': 'panel head',
+  'th-add': 'table header',
+}
+
+/** Components whose whole body is one slot wherever they are placed. */
+const SLOT_BODIES: Record<string, Slot> = { TimelineControls: 'timeline toolbar' }
+
+/** Files that define an operation's own control; their insides are not placements. */
+const CONTROL_FILES = new Set(['components/SortMenu.tsx', 'components/AddAction.tsx', 'components/EditActions.tsx',
+  'components/PanelClose.tsx', 'components/FieldPickers.tsx', 'components/IconButton.tsx'])
+
+/** Segmented controls that switch the views of a page, a section or a board, by their accessible name. */
+const VIEW_SWITCHES = new Set(['m.papers.views.aria', 'm.papers.toolbar.groupFieldAria', 'm.later.groupBy',
+  'm.feed.sourceFieldLabel', 'm.inbox.sortLabel', 'm.project.plan.viewLabel', 'm.project.recordViewLabel',
+  'm.timeline.scaleGroup'])
+
+/** Icon and text buttons whose operation their label names. */
+const LABELLED: [RegExp, string][] = [
+  [/^m\.(common\.(delete|deletePermanently|remove)|project\.attachments\.delete|project\.plan\.delete\w+For|papers\.rowActions\.delete)\b/, 'delete'],
+  [/^m\.(inbox\.actions\.dismiss|later\.actions\.removeFrom|wiki\.removeFromPage|common\.removeLink|papers\.tags\.remove)\b/, 'remove'],
+  [/^m\.(papers\.rowActions\.openReader|settings\.archived\.open)\b/, 'open'],
+  [/^m\.(common\.(restore|undo)|settings\.archived\.unarchive)\b/, 'restore'],
+  [/^m\.(trash\.clear|changelog\.clearArchived)\b/, 'clear'],
+  [/^m\.(inbox\.dismissAll|changelog\.archiveAll)\b/, 'dismiss all'],
+]
+
+type Look = { operation: string; size: string; variant: string }
+type Placement = Look & { slot: Slot; at: string }
+type IconPlacement = { slot: Slot; size: string; at: string }
+type Place = { slot: Slot; size: string; variant: string; scope?: string }
+
+/**
+ * Each operation's one place: its slot, size and variant. A further place names the scope that tells
+ * it apart, which the screen shows by where the control sits.
+ */
+const PLACES: Record<string, Place[]> = {
+  sort: [{ slot: 'page header', size: 'md', variant: 'plain' }],
+  create: [{ slot: 'page header', size: 'md', variant: 'primary' }],
+  add: [
+    { slot: 'section heading', size: 'sm', variant: 'plain' },
+    { slot: 'table header', size: 'nested', variant: 'icon', scope: 'a table adds a column to itself' },
+    { slot: 'inline', size: 'chip', variant: 'chip', scope: 'a field adds a value after its chips' },
+  ],
+  'view switch': [
+    { slot: 'page toolbar', size: 'md', variant: 'plain' },
+    { slot: 'section heading', size: 'sm', variant: 'plain', scope: 'a section switches its own content' },
+    { slot: 'timeline toolbar', size: 'sm', variant: 'plain', scope: 'a timeline switches its own scale' },
+  ],
+  delete: [{ slot: 'row actions', size: 'nested', variant: 'danger' }],
+  remove: [
+    { slot: 'row actions', size: 'nested', variant: 'plain' },
+    { slot: 'chip', size: 'inline', variant: 'plain', scope: 'a chip takes itself out of its field' },
+  ],
+  open: [
+    { slot: 'row actions', size: 'nested', variant: 'plain' },
+    { slot: 'panel head', size: 'default', variant: 'plain', scope: 'a detail panel opens the paper it shows' },
+  ],
+  restore: [{ slot: 'row actions', size: 'nested', variant: 'plain' }],
+  close: [{ slot: 'panel head', size: 'default', variant: 'plain' }],
+  edit: [
+    { slot: 'section heading', size: 'sm', variant: 'plain' },
+    { slot: 'panel head', size: 'sm', variant: 'plain', scope: 'a detail panel edits the idea it shows' },
+  ],
+  'overflow menu': [{ slot: 'row actions', size: 'nested', variant: 'plain' }],
+  clear: [
+    { slot: 'page header', size: 'md', variant: 'danger' },
+    { slot: 'section heading', size: 'sm', variant: 'danger', scope: 'a section clears its own entries' },
+  ],
+  'dismiss all': [
+    { slot: 'section heading', size: 'sm', variant: 'plain' },
+    { slot: 'group heading', size: 'sm', variant: 'plain', scope: 'a group dismisses its own rows' },
+  ],
+}
+
+/** The class words of an element's className, literal or picked by a ternary. */
+const classesOf = (element: Node) => strings(attribute(element, 'className')).flatMap((value) => value.split(/\s+/))
+
+/** The look of a button from its btn classes. */
+const buttonLook = (classes: string[]) => ({
+  size: classes.includes('sm') ? 'sm' : 'md',
+  variant: ['pri', 'ghost', 'danger'].filter((word) => classes.includes(word))
+    .map((word) => (word === 'pri' ? 'primary' : word)).join(' ') || 'plain',
+})
+
+/** The operation an element performs and how it looks, or null when it is not a tracked action. */
+function lookOf(element: Node, source: string): Look | null {
+  const name = nameOf(element)
+  const text = (node: Node | undefined) => (node === undefined ? '' : source.slice(node.start as number, node.end as number))
+  const expression = (attr: Node | undefined) => ((attr?.value as Node | undefined)?.expression as Node | undefined)
+  const literal = (attr: string) => strings(attribute(element, attr))[0]
+  const labelled = (label: string) => LABELLED.find(([pattern]) => pattern.test(label))?.[1]
+  if (name === 'SortMenu') return { operation: 'sort', size: 'md', variant: 'plain' }
+  if (name === 'AddAction') {
+    const variant = literal('variant') ?? 'section'
+    if (variant === 'page') return { operation: 'create', size: 'md', variant: 'primary' }
+    if (variant === 'section') return { operation: 'add', size: 'sm', variant: classesOf(element).includes('ghost') ? 'ghost' : 'plain' }
+    return { operation: 'add', size: variant === 'icon' ? 'nested' : variant, variant }
+  }
+  if (name === 'EditActions') return { operation: 'edit', size: 'sm', variant: 'plain' }
+  if (name === 'PanelClose') return { operation: 'close', size: 'default', variant: 'plain' }
+  if (name === 'DotsMenu') return { operation: 'overflow menu', size: 'nested', variant: 'plain' }
+  if (name === 'SegmentedControl') {
+    return VIEW_SWITCHES.has(text(expression(attribute(element, 'label'))))
+      ? { operation: 'view switch', size: literal('size') ?? 'md', variant: 'plain' } : null
+  }
+  if (name === 'IconButton') {
+    const operation = labelled(text(expression(attribute(element, 'label'))))
+    return operation === undefined ? null : {
+      operation, size: literal('size') ?? 'default', variant: literal('tone') === 'danger' ? 'danger' : 'plain',
+    }
+  }
+  if (name === 'button' || name === 'ToolbarButton') {
+    const children = (element.children as Node[]).filter((child) => child.type === 'JSXExpressionContainer')
+    const operation = children.map((child) => labelled(text(child.expression as Node))).find(Boolean)
+    return operation === undefined ? null : { operation, ...buttonLook(classesOf(element)) }
+  }
+  return null
+}
+
+const isFunction = (node: Node | null | undefined) =>
+  node != null && ['ArrowFunctionExpression', 'FunctionExpression', 'FunctionDeclaration'].includes(node.type)
+
+/**
+ * Every tracked action in one source file with the slot it sits in. A function the file names and
+ * places elsewhere in the file (as a JSX tag, a call or a callback) is read where it is placed.
+ */
+function placementsIn(path: string): { actions: Placement[]; icons: IconPlacement[] } {
+  const source = readFileSync(join(RENDERER, path), 'utf8')
+  const ast = parse(source, { sourceType: 'module', plugins: ['typescript', 'jsx'] })
+  const functions = new Map<string, Node[]>()
+  const placed = new Set<string>()
+  const scan = (node: unknown) => {
+    if (node === null || typeof node !== 'object') return
+    if (Array.isArray(node)) { node.forEach(scan); return }
+    const held = node as Node
+    if (held.type === 'FunctionDeclaration' && held.id) {
+      const name = (held.id as Node).name as string
+      functions.set(name, [...functions.get(name) ?? [], held])
+    }
+    if (held.type === 'VariableDeclarator' && (held.id as Node).type === 'Identifier' && isFunction(held.init as Node | null)) {
+      const name = (held.id as Node).name as string
+      functions.set(name, [...functions.get(name) ?? [], held.init as Node])
+    }
+    if (held.type === 'JSXOpeningElement' && (held.name as Node).type === 'JSXIdentifier') placed.add((held.name as Node).name as string)
+    if (held.type === 'CallExpression') {
+      for (const part of [held.callee, ...(held.arguments as Node[])] as Node[]) {
+        if (part.type === 'Identifier') placed.add(part.name as string)
+      }
+    }
+    for (const [key, value] of Object.entries(held)) if (key !== 'loc') scan(value)
+  }
+  scan(ast.program)
+  const elsewhere = (name: string | undefined) => name !== undefined && functions.has(name) && placed.has(name)
+
+  const found: Placement[] = []
+  const icons: IconPlacement[] = []
+  const visit = (node: unknown, slot: Slot, inside: ReadonlySet<string>) => {
+    if (node === null || typeof node !== 'object') return
+    if (Array.isArray(node)) { for (const item of node) visit(item, slot, inside); return }
+    const held = node as Node
+    if (held.type === 'FunctionDeclaration' && elsewhere(((held.id as Node | undefined)?.name) as string | undefined)) return
+    if (held.type === 'VariableDeclarator' && isFunction(held.init as Node | null)
+      && elsewhere((held.id as Node).name as string)) return
+    const enter = (name: string, at: Slot) => {
+      if (inside.has(name) || !functions.has(name)) return
+      for (const fn of functions.get(name)!) visit(fn.body, SLOT_BODIES[name] ?? at, new Set([...inside, name]))
+    }
+    if (isFunction(held)) {
+      const own = held.type === 'FunctionDeclaration' ? ((held.id as Node | undefined)?.name as string | undefined) : undefined
+      visit(held.body, own === undefined ? slot : SLOT_BODIES[own] ?? slot, inside)
+      return
+    }
+    if (held.type === 'VariableDeclarator' && isFunction(held.init as Node | null)) {
+      const own = (held.id as Node).name as string
+      visit((held.init as Node).body, SLOT_BODIES[own] ?? slot, inside)
+      return
+    }
+    if (held.type === 'CallExpression') {
+      for (const part of [held.callee, ...(held.arguments as Node[])] as Node[]) {
+        if (part.type === 'Identifier') enter(part.name as string, slot)
+      }
+    }
+    if (held.type === 'JSXElement') {
+      const name = nameOf(held)
+      const look = lookOf(held, source)
+      if (look !== null && !CONTROL_FILES.has(path)) found.push({ ...look, slot, at: `${path}:${line(held)}` })
+      if (name === 'IconButton' && !CONTROL_FILES.has(path)) {
+        icons.push({ slot, size: strings(attribute(held, 'size'))[0] ?? 'default', at: `${path}:${line(held)}` })
+      }
+      const built = ((attribute(held, 'className')?.value as Node | undefined)?.expression as Node | undefined)
+      const builder = built?.type === 'CallExpression' && (built.callee as Node).type === 'Identifier'
+        ? functions.get((built.callee as Node).name as string) ?? [] : []
+      const classes = [...classesOf(held), ...strings(builder).flatMap((value) => value.split(/\s+/))]
+      for (const attr of (held.openingElement as Node).attributes as Node[]) {
+        if (attr.type !== 'JSXAttribute') { visit(attr, slot, inside); continue }
+        const prop = (attr.name as Node).name as string
+        const own = name === 'SectionHeading' && prop === 'actions' && classes.includes('node-document-head')
+          ? 'panel head' : SLOT_PROPS[name]?.[prop]
+        visit(attr.value, slot === 'chip' ? slot : own ?? slot, inside)
+      }
+      const holds = SLOT_CHILDREN[name] ?? classes.map((word) => SLOT_CHILDREN[word]).find(Boolean)
+      visit(held.children, slot === 'chip' ? slot : holds ?? slot, inside)
+      enter(name, slot)
+      return
+    }
+    for (const [key, value] of Object.entries(held)) if (key !== 'loc') visit(value, slot, inside)
+  }
+  visit(ast.program, 'inline', new Set())
+  return { actions: found, icons }
+}
+
+const READ = SOURCES.map(placementsIn)
+const PLACEMENTS = READ.flatMap((file) => file.actions)
+
+/** The one icon button size of the slots that hold rows' and chips' own actions. */
+const ICON_SIZES: Partial<Record<Slot, string>> = { 'row actions': 'nested', chip: 'inline' }
+
+const shown = (place: Pick<Place, 'slot' | 'size' | 'variant'>) => `${place.slot} · ${place.size} · ${place.variant}`
+
+describe('一个操作一个位置', () => {
+  it('每个操作只在它的位置上出现，同一种尺寸和样式；另一个位置要写明它的作用范围', () => {
+    const offenders = PLACEMENTS
+      .filter((placement) => !(PLACES[placement.operation] ?? []).some((place) => shown(place) === shown(placement)))
+      .map((placement) => `${placement.at} ${placement.operation}: ${shown(placement)}`)
+    expect([...new Set(offenders)]).toEqual([])
+  })
+
+  it('每个操作都在源码里找得到，每个写了作用范围的位置都有人用', () => {
+    const unused = Object.entries(PLACES).flatMap(([operation, places]) => places
+      .filter((place) => !PLACEMENTS.some((placement) => placement.operation === operation && shown(placement) === shown(place)))
+      .map((place) => `${operation}: ${shown(place)}`))
+    expect(unused).toEqual([])
+  })
+
+  it('一行的图标操作一种尺寸：行里是嵌套尺寸，标签里是行内尺寸', () => {
+    const offenders = READ.flatMap((file) => file.icons)
+      .filter((icon) => ICON_SIZES[icon.slot] !== undefined && icon.size !== ICON_SIZES[icon.slot])
+      .map((icon) => `${icon.at} ${icon.slot}: ${icon.size}`)
+    expect([...new Set(offenders)]).toEqual([])
+  })
+})
