@@ -900,7 +900,7 @@ export function ProjectDetail({
               : conclusion !== undefined
               ? (
                 <ProjectConclusionPanel
-                  projectId={projectId} conclusion={conclusion} node={nodeLook(conclusion.node)}
+                  projectId={projectId} projectName={project.name} conclusion={conclusion} node={nodeLook(conclusion.node)}
                   onClose={clearConclusion}
                   onVerify={(verified, fingerprint) => {
                     void writeProject(
@@ -912,9 +912,10 @@ export function ProjectDetail({
                       projectApi.unverifyConclusion(projectId, verified), m.project.conclusions.unverified,
                     )
                   }}
-                  onWrite={(title, ops) => write(
-                    wiki.apply({ source: 'user', title, ops }), { note: m.project.conclusions.written },
-                  )}
+                  onWrite={(page, title, ops) => write(wiki.apply({ source: 'user', title, ops }), {
+                    note: m.project.conclusions.written,
+                    action: () => ({ label: m.common.open, onAction: () => openWikiPage(page) }),
+                  })}
                   onOpenNode={goToRecordNode}
                   onOpenTask={locateTask}
                   onOpenPage={openWikiPage}

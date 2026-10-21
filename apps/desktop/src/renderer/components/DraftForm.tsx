@@ -15,11 +15,12 @@ export type DraftInvalid = (missing: boolean) => true | undefined
  * composition, and those of a menu opened from a field, are not the draft's. A press outside neither
  * saves nor cancels. `destination` names where the item lands when that is not the draft's own spot,
  * after an arrow, and makes the draft a card of its own. While `canSave` is false, Save is held and a
- * save by key is refused: `children` then receive an `invalid` that marks each field still `missing`.
- * `onSave` settles once the write does; the host closes the draft when it was written.
+ * save by key is refused: `children`, and a `destination` that holds a field, then receive an `invalid`
+ * that marks each field still `missing`. `onSave` settles once the write does; the host closes the
+ * draft when it was written.
  */
 export function DraftForm({ destination, canSave, onSave, onCancel, className, children }: {
-  destination?: ReactNode
+  destination?: ReactNode | ((invalid: DraftInvalid) => ReactNode)
   canSave: boolean
   onSave: () => Promise<unknown>
   onCancel: () => void
@@ -68,12 +69,17 @@ export function DraftForm({ destination, canSave, onSave, onCancel, className, c
     save()
   }
 
+  const invalid: DraftInvalid = (missing) => (refused && missing ? true : undefined)
   const form = (
     <div ref={root} className={`draft-form${className === undefined ? '' : ` ${className}`}`} onKeyDown={keyDown}>
       {destination === undefined
         ? null
-        : <div className="draft-form-destination"><span aria-hidden="true">→</span>{destination}</div>}
-      {children((missing) => (refused && missing ? true : undefined))}
+        : (
+          <div className="draft-form-destination">
+            <span aria-hidden="true">→</span>{typeof destination === 'function' ? destination(invalid) : destination}
+          </div>
+        )}
+      {children(invalid)}
       <div className="draft-form-foot">
         <EditActions editing saving={saving} canSave={canSave} onEdit={() => {}} onCancel={onCancel} onSave={save} />
       </div>
