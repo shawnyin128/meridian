@@ -4,6 +4,16 @@ import { expect, gotoPapers, settle, test, type MeridianWindow } from './app.js'
 /** Visited screens stay mounted, so reader selectors are scoped to the screen shown. */
 const shown = (win: Page, sel: string) => win.locator(`.screenslot:not([hidden]) ${sel}`)
 
+/** Opens the Inbox from the sidebar row's own button; the fold caret beside it only folds the groups. */
+const openInbox = (win: Page) => win.locator('#rowInboxAll .nav-row-label').click()
+
+/** A card's actions show only while the card is hovered: hovers card `pid`, then clicks its action `label`. */
+async function cardAction(win: Page, pid: string, label: string): Promise<void> {
+  const card = shown(win, `.pcard[data-pid="${pid}"]`)
+  await card.hover()
+  await card.locator(`[aria-label="${label}"]`).click()
+}
+
 const call = <T>(win: Page, method: string, params: unknown) => win.evaluate(
   ([m, p]) => (window as unknown as MeridianWindow).meridian.call(m as string, p) as Promise<T>,
   [method, params] as const,
@@ -257,7 +267,7 @@ test('别处写库不会把原文重解析一遍', async ({ win }) => {
   // never destroy the replaced document. The global sidebar is collapsed while reading, so leave
   // through the reader's own back button, then open Watch settings from the Inbox screen.
   await shown(win, '.paper-chat-head .back').click()
-  await win.locator('[data-inbox="all"]').click()
+  await openInbox(win)
   await shown(win, '[aria-label="关注设置"]').click()
   const watched = win.locator('.setdlg .wrow').first()
   for (let n = 0; n < VAULT_WRITES; n += 1) {
@@ -334,9 +344,9 @@ test.describe(() => {
     // C: download the inbox entry and open it; the cache is full, so this evicts A.
     const entries = await call<{ id: string; title: string; paper: string }[]>(win, 'inbox.list', {})
     const target = entries.find((e) => e.id === INGESTED.entry)!
-    await win.locator('#rowInboxAll').click()
-    await shown(win, `.pcard[data-pid="${target.id}"] [aria-label="下载并入库"]`).click()
-    await shown(win, `.pcard[data-pid="${target.id}"] [aria-label="开始阅读"]`).click()
+    await openInbox(win)
+    await cardAction(win, target.id, '下载并入库')
+    await cardAction(win, target.id, '开始阅读')
     await expectPainted(win, INGESTED.pages)
     await shown(win, '.paper-chat-head .back').click()
 
@@ -463,9 +473,9 @@ test('同一篇再进来按当下的库重取,不吃上一次的结果', async (
   const entries = await call<{ id: string; title: string; paper: string }[]>(win, 'inbox.list', {})
   const target = entries.find((e) => e.id === INGESTED.entry)!
 
-  await win.locator('#rowInboxAll').click()
-  await shown(win, `.pcard[data-pid="${target.id}"] [aria-label="下载并入库"]`).click()
-  await shown(win, `.pcard[data-pid="${target.id}"] [aria-label="开始阅读"]`).click()
+  await openInbox(win)
+  await cardAction(win, target.id, '下载并入库')
+  await cardAction(win, target.id, '开始阅读')
   await expectPainted(win, INGESTED.pages)
 
   // Delete the paper from Papers: the reader stays open on the same paper, which is no longer in the vault.
@@ -477,17 +487,18 @@ test('同一篇再进来按当下的库重取,不吃上一次的结果', async (
   await win.locator('.ptable tbody tr .rowx').click()
   await expect(win.locator('.ptable tbody tr')).toHaveCount(0)
 
-  await win.locator('#rowInboxAll').click()
-  await shown(win, `.pcard[data-pid="${target.id}"] [aria-label="开始阅读"]`).click()
+  await openInbox(win)
+  await cardAction(win, target.id, '开始阅读')
   await expect(shown(win, '.pdfload')).toHaveText('这一项已不存在')
 
   // Restored from the Trash, the same paper opens without the earlier error. The global sidebar is
   // collapsed while reading, so leave through the back button.
   await shown(win, '.paper-chat-head .back').click()
   await win.locator('[data-desk="trash"]').click()
+  await win.locator('.tgroup .trow').hover()
   await win.locator('.tgroup .trow .row-actions [aria-label="恢复"]').click()
-  await win.locator('#rowInboxAll').click()
-  await shown(win, `.pcard[data-pid="${target.id}"] [aria-label="开始阅读"]`).click()
+  await openInbox(win)
+  await cardAction(win, target.id, '开始阅读')
   await expect(shown(win, '.pdfload')).toHaveCount(0)
   await expect(shown(win, '.pdfpagebox')).toHaveCount(INGESTED.pages)
 })
@@ -511,9 +522,9 @@ test('收件里下载入库那一条的「开始阅读」进阅读器,入库那�
   // `paper` is the ID the paper gets once added to the vault; the inbox entry's own ID is not a paper ID.
   expect(target.paper).toMatch(/^paper-pdf-[0-9a-f]{12}$/)
 
-  await win.locator('#rowInboxAll').click()
-  await shown(win, `.pcard[data-pid="${target.id}"] [aria-label="下载并入库"]`).click()
-  await shown(win, `.pcard[data-pid="${target.id}"] [aria-label="开始阅读"]`).click()
+  await openInbox(win)
+  await cardAction(win, target.id, '下载并入库')
+  await cardAction(win, target.id, '开始阅读')
 
   await expect(win.locator('#crumb .cseg'))
     .toHaveText(['收件', '论文推送', target.title.split(':')[0]!])
@@ -527,11 +538,11 @@ test('从某一条关注那一档进阅读器,面包屑是那一档的三段加�
   const target = entries.find((e) => e.watch === watched.id)!
 
   await win.locator(`[data-inbox="${watched.id}"]`).click()
-  await shown(win, `.pcard[data-pid="${target.id}"] [aria-label="下载并入库"]`).click()
-  await shown(win, `.pcard[data-pid="${target.id}"] [aria-label="开始阅读"]`).click()
+  await cardAction(win, target.id, '下载并入库')
+  await cardAction(win, target.id, '开始阅读')
 
   await expect(win.locator('#crumb .cseg'))
-    .toHaveText(['收件', '主题', watched.name, target.title.split(':')[0]!])
+    .toHaveText(['收件', '关键词', watched.name, target.title.split(':')[0]!])
   await expect(win.locator('#crumb .cseg.link')).toHaveText([watched.name])
 })
 
@@ -540,7 +551,7 @@ test('稍后阅读里指着库内一篇的那条,「开始阅读」把那一篇�
   const target = queued.find((e) => e.id === QUEUED.entry)!
 
   await win.locator('#rowLater').click()
-  await shown(win, `.pcard[data-pid="${target.id}"] [aria-label="开始阅读"]`).click()
+  await cardAction(win, target.id, '开始阅读')
 
   await expect(win.locator('#crumb .cseg'))
     .toHaveText(['收件', '稍后阅读', target.title.split(':')[0]!])
