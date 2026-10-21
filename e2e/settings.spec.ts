@@ -137,9 +137,10 @@ test('preload 仍是窄接口:页面上没有任何收得下 channel 名的口�
   })
   console.log(`preload 面 ${JSON.stringify(surface)}`)
   expect(surface.meridian).toEqual([
-    'call:function', 'chooseLibraryRoot:function', 'chooseWorkspaceRoot:function', 'onOpenAgentTutorial:function',
-    'onOpenSettings:function', 'pathForFile:function', 'platform:string', 'restartApp:function', 'revealFile:function',
-    'setLocale:function', 'setTitleBarTheme:function', 'toggleMaximize:function', 'updates:object',
+    'call:function', 'chooseLibraryRoot:function', 'chooseWorkspaceRoot:function', 'onFullScreen:function',
+    'onOpenAgentTutorial:function', 'onOpenPalette:function', 'onOpenSettings:function', 'pathForFile:function',
+    'platform:string', 'restartApp:function', 'revealFile:function', 'setLocale:function', 'setTitleBarTheme:function',
+    'toggleMaximize:function', 'updates:object',
   ])
   expect(surface.escapes).toEqual([
     'require:undefined', 'process:undefined', 'ipcRenderer:undefined',
@@ -171,6 +172,29 @@ test('preload 仍是窄接口:页面上没有任何收得下 channel 名的口�
     BrowserWindow.getAllWindows()[0]!.webContents.send('meridian:open-settings')
   })
   await expect.poll(seen).toBe(1)
+
+  // The palette subscription likewise listens only on its own channel.
+  await win.evaluate(() => {
+    const page = window as unknown as {
+      palette: number
+      meridian: { onOpenPalette(handler: () => void): () => void }
+    }
+    page.palette = 0
+    page.meridian.onOpenPalette(() => { page.palette += 1 })
+  })
+  const palette = () => win.evaluate(() => (window as unknown as { palette: number }).palette)
+  await app.evaluate(({ BrowserWindow }) => {
+    const wc = BrowserWindow.getAllWindows()[0]!.webContents
+    for (const channel of ['open-palette', 'meridian:palette', 'meridian:openpalette', 'meridian:open-settings']) {
+      wc.send(channel)
+    }
+  })
+  await win.waitForTimeout(300)
+  expect(await palette()).toBe(0)
+  await app.evaluate(({ BrowserWindow }) => {
+    BrowserWindow.getAllWindows()[0]!.webContents.send('meridian:open-palette')
+  })
+  await expect.poll(palette).toBe(1)
 })
 
 test('设置是左右分栏:左栏是分类,右栏是选中那一类的内容', async ({ app, win }) => {
@@ -247,6 +271,7 @@ test('取消归档弹出的提示盖在设置模态之上', async ({ app, win })
 
   await openSettings(app, win)
   await win.locator('.setdlg .srow[data-setcat="archived"]').click()
+  await win.locator(`.setdlg .wrow[data-chat="${target.id}"]`).hover()
   await win.locator(`.setdlg .wrow[data-chat="${target.id}"] .row-actions [aria-label="取消归档"]`).click()
   await win.locator('#notice.show').waitFor()
 
