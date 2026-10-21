@@ -1070,6 +1070,26 @@ describe('PaperTable', () => {
     expect(crumbTail.map((seg) => seg.text)).toEqual(['阅读状态', '待读'])
   })
 
+  it('英文界面里每个阅读状态都写它的英文名,行里和筛选菜单都是,筛选仍按存的值', async () => {
+    window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'en')
+    const host = mount()
+    columnsCall.resolve({ hidden: [], custom: [], groups: ['readState'] })
+    listCall.resolve({ rows: ['未读', '在读', '已读', '稍后阅读'].map((readState, at) => ({ ...ROW, id: `p${at}`, readState }) as PaperRow), total: 4 })
+    await flush()
+    expect([...host.querySelectorAll('tbody .stchip')].map((chip) => chip.textContent)).toEqual(['Unread', 'Reading', 'Read', 'To read'])
+
+    await act(async () => {
+      host.querySelector('.filters .read-state-filter')!.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, button: 0 }))
+    })
+    await flush()
+    const items = [...document.querySelectorAll<HTMLElement>('.ctxmenu .mi')]
+    expect(items.map((item) => item.textContent)).toEqual(['All statuses', 'Unread', 'Reading', 'Read', 'To read'])
+    await act(async () => { press(items[3]!) })
+    await flush()
+    expect(listParams.at(-1)?.facet).toEqual({ field: 'readState', value: '已读' })
+    expect(host.querySelector('.filters .read-state-filter.on')?.textContent).toBe('Read')
+  })
+
   it('论文行在当前位置右键即可移到垃圾桶,不依赖横向滚到行尾', async () => {
     const host = mount()
     columnsCall.resolve(EMPTY_COLUMNS)

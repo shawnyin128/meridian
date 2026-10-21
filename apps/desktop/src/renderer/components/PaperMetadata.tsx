@@ -1,6 +1,6 @@
 import { useRef, useState, type ReactNode } from 'react'
 import type { PaperFields, PaperRow, ReadState, RecordedChange } from '../../shared/contract.js'
-import { LATER_PAPER, READ_STATES, READING_PAPER } from '../../shared/vocabulary.js'
+import { LATER_PAPER, READ_PAPER, READ_STATES, READING_PAPER, UNREAD_PAPER } from '../../shared/vocabulary.js'
 import { papers } from '../ipc.js'
 import { errorLabel } from '../lib/failure-label.js'
 import type { Catalog } from '../messages/catalog.js'
@@ -45,9 +45,14 @@ export function RatingStars({ value, onChange, disabled = false }: {
   )
 }
 
-/** The name reading status `state` shows: the read-later state by the catalog's name for it, every other one as stored. */
+/** The catalog name of each stored reading status. */
+const READ_STATE_NAME = {
+  [UNREAD_PAPER]: 'unread', [READING_PAPER]: 'reading', [READ_PAPER]: 'read', [LATER_PAPER]: 'later',
+} as const satisfies Record<ReadState, keyof Catalog['papers']['readState']>
+
+/** The name reading status `state` shows in the current language; a value no version stores shows as stored. */
 export function readStateName(m: Catalog, state: string): string {
-  return state === LATER_PAPER ? m.papers.readState.later : state
+  return Object.hasOwn(READ_STATE_NAME, state) ? m.papers.readState[READ_STATE_NAME[state as ReadState]] : state
 }
 
 /** A paper's reading status, the same in the paper table and the detail panel; Reading is highlighted. */

@@ -30,11 +30,14 @@ export const UNREAD_PAPER = '未读'
 /** State for papers being read now, shown separately in the paper table. */
 export const READING_PAPER = '在读'
 
+/** State for papers the reader has finished. */
+export const READ_PAPER = '已读'
+
 /** State for papers the reader has set aside to read later. */
 export const LATER_PAPER = '稍后阅读'
 
 /** Reading states in paper-table selector order. */
-export const READ_STATES = [UNREAD_PAPER, READING_PAPER, '已读', LATER_PAPER] as const
+export const READ_STATES = [UNREAD_PAPER, READING_PAPER, READ_PAPER, LATER_PAPER] as const
 
 /**
  * Trash retention in days. Expired records and their content are removed; the

@@ -49,6 +49,9 @@ export const papers = {
   readState: {
     filterAria: (field: string) => `Filter by ${field.toLowerCase()}`,
     allStates: 'All statuses',
+    unread: 'Unread',
+    reading: 'Reading',
+    read: 'Read',
     later: 'To read',
   },
   columnHeader: {

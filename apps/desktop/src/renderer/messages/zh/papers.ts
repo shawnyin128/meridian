@@ -46,6 +46,9 @@ export const papers = {
   readState: {
     filterAria: (field: string) => `筛选${field}`,
     allStates: '全部状态',
+    unread: '未读',
+    reading: '在读',
+    read: '已读',
     later: '待读',
   },
   columnHeader: {
