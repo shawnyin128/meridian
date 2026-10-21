@@ -20,7 +20,7 @@ import type {
   ProjectSummary,
   RelationFields, SearchHit, TaskFields, TaskPatch, TrashEntry, TrashedEntry, Watch, WatchFields,
   WatchSuggestionParams, WatchSuggestionResult, WikiAggregation,
-  WikiAggregationCard, WikiHome, WikiPaper, ProposalReceipt, ProposalStatus, WikiProposal,
+  WikiAggregationCard, WikiBacklink, WikiHome, WikiPaper, ProposalReceipt, ProposalStatus, WikiProposal, WikiSignal,
 } from '../shared/contract.js'
 import { CallError } from './call-error.js'
 
@@ -130,6 +130,8 @@ export const papers = {
   /** The uploaded binary is directly structurally cloned to Core without base64. */
   import: (filename: string, bytes: Uint8Array) =>
     call<PaperImportResult>('papers.import', { filename, bytes }),
+  /** Parses the metadata of an upload whose lookup failed again; progress shows in jobs.status. */
+  retryMetadata: (id: string) => call<void>('papers.retryMetadata', { id }),
   reading: (id: string) => call<PaperReading>('papers.reading', { id }),
   mutateReading: (id: string, mutation: ReadingMutation) =>
     call<PaperReading>('papers.mutateReading', { id, mutation }),
@@ -339,6 +341,10 @@ export const wiki = {
     call<WikiProposal[]>('wiki.proposals', status === undefined ? {} : { status }),
   decide: (id: string, decision: 'apply' | 'decline', reason?: string) =>
     call<ProposalReceipt>('wiki.decide', { id, decision, ...(reason === undefined ? {} : { reason }) }),
+  /** The signals of what in the Wiki needs tidying, as the vault stands. */
+  signals: () => call<WikiSignal[]>('wiki.signals', {}),
+  /** What refers to page `id`: other pages, projects, ideas and chats. */
+  backlinks: (id: string) => call<WikiBacklink[]>('wiki.backlinks', { id }),
 }
 
 export const search = {

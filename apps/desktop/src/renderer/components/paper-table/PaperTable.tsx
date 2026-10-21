@@ -281,7 +281,7 @@ function TextCellEdit({ cell, initial, onSave, onCancel }: {
  * The table holds only the current page: papers.list fetches it by page, papers.facets supplies the
  * group values and counts, and papers.columns says which columns show.
  * A jump from another screen lands on that paper's title: the title goes into the filter box, which
- * leaves only that paper in the table.
+ * leaves only that paper in the table; a jump with the `import` anchor also opens the PDF import.
  */
 export function PaperTable() {
   const m = useMessages()
@@ -441,12 +441,14 @@ export function PaperTable() {
   useEffect(() => { setDetail(null) }, [reentry])
 
   // A jump from another screen lands on a paper title: put it in the filter box and go back to the
-  // first page, like `go` in the demo's search.
+  // first page, like `go` in the demo's search. A jump that asks for the import opens the PDF picker;
+  // the click that made the jump still counts as the user gesture the picker needs.
   useEffect(() => {
     if (jump === null || jump.seq === consumed.current) return
     consumed.current = jump.seq
     setQ(jump.target)
     setPage(1)
+    if (jump.anchor?.import === true) uploadInput.current?.click()
   }, [jump])
 
   const backToValues = useCallback(() => { setSel(null); setPage(1) }, [])
@@ -1260,6 +1262,7 @@ export function PaperTable() {
           </PageToolbar>
           <ParseProgress
             onParsed={() => bump()}
+            onOpenPaper={(id) => { void papers.get(id).then(setDetail).catch(reportError) }}
           />
 
           <div id="libList">

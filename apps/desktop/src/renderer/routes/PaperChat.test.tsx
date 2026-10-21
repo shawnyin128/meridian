@@ -39,6 +39,7 @@ const api = vi.hoisted(() => ({
   },
   collapsed: false,
   revision: 0,
+  openCategory: vi.fn(),
 }))
 
 vi.mock('../ipc.js', () => ({
@@ -58,6 +59,7 @@ vi.mock('../shell/AppShell.js', () => ({
   useVaultRevision: () => ({ revision: api.revision, bump: api.bump }),
   usePaperChatGrip: () => api.grip,
   usePaperChatCollapsed: () => api.collapsed,
+  useSettingsOpen: () => ({ open: false, openCategory: api.openCategory }),
 }))
 
 vi.mock('../hooks/useVaultWrite.js', () => ({
@@ -148,6 +150,25 @@ describe('PaperChat', () => {
 
     expect(api.send).toHaveBeenCalledWith('chat-paper-1', '关键假设是什么？')
     expect(input.value).toBe('')
+  })
+
+  it('没配置模型时发送失败，输入框里的「AI 未连接」是一个按钮，打开设置的模型一栏', async () => {
+    api.send.mockResolvedValueOnce({ id: 'chat-paper-1', state: 'failed', reason: 'no-model' } as never)
+    const host = document.createElement('div')
+    document.body.append(host)
+    root = createRoot(host)
+    await act(async () => {
+      root!.render(withMessages(<PaperChat paper={PAPER} />))
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+    act(() => setValue(host.querySelector<HTMLInputElement>('[aria-label="向当前论文提问"]')!, '关键假设是什么？'))
+    await act(async () => { host.querySelector<HTMLButtonElement>('.paper-chat .send')!.click() })
+    await act(async () => { await Promise.resolve() })
+    const tag = host.querySelector<HTMLElement>('.paper-chat .cbox .tag')!
+    expect([tag.tagName, tag.textContent]).toEqual(['BUTTON', 'AI 未连接'])
+    act(() => tag.click())
+    expect(api.openCategory).toHaveBeenCalledWith('model')
   })
 
   it('对话栏的拖动条在共享 tooltip 里写它的操作「收起论文对话」和 ⌘B，不写拖动提示', async () => {

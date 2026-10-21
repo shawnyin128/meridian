@@ -19,6 +19,7 @@ vi.mock('../shell/AppShell.js', async (original) => ({
   ...await original<typeof import('../shell/AppShell.js')>(),
   useNotice: () => ({ success: vi.fn(), refusal: vi.fn() }),
   useVaultRevision: () => ({ revision: 0, bump: vi.fn() }),
+  useSettingsOpen: () => ({ open: false, requestedCategory: null, setOpen: vi.fn(), openCategory: vi.fn() }),
 }))
 
 const { ReaderSidePanel } = await import('./reader/ReaderSidePanel.js')
@@ -123,7 +124,8 @@ describe('每个屏幕只有一个主操作', () => {
     await show(
       <ReviewQueue
         proposals={[PROPOSAL('p1', { staleNow: true }), PROPOSAL('p2'), PROPOSAL('p3')]} pending={false}
-        onApply={vi.fn()} onDecline={vi.fn()} onOpenPage={vi.fn()} onOpenConclusion={vi.fn()}
+        onApply={vi.fn()} onDecline={vi.fn()} links={{ openPage: vi.fn(), openProject: vi.fn(), openReader: vi.fn() }}
+        onOpenConclusion={vi.fn()}
       />,
     )
     expect(solid(host).map((element) => [element.closest('[data-proposal]')!.getAttribute('data-proposal'), element.textContent]))

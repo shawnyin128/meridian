@@ -155,6 +155,7 @@ export const papers = {
     count: (n: number) => `${n} 篇`,
     progressAria: '论文信息处理进度',
     needsAttention: (n: number) => `${n} 篇论文已入库，元数据暂未补全`,
+    fill: '填写元数据',
     collapse: '收起',
   },
   understanding: {

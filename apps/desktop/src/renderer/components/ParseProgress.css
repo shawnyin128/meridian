@@ -5,3 +5,4 @@
 .upcard .upclose{margin:calc(-1 * var(--sp-4)) calc(-1 * var(--sp-4)) calc(-1 * var(--sp-4)) auto}
 .upcard.quiet{color:var(--ter)}
 .upcard.quiet .upt{font-weight:var(--fw-regular);color:var(--ter)}
+.upcard .upacts{display:flex;gap:var(--sp-8);margin-top:var(--sp-8)}

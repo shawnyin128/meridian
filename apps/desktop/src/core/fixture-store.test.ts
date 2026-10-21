@@ -2184,6 +2184,7 @@ describe('fixture store', () => {
       }),
       'wiki.update': () => store.updateWikiPage('topics/ptq', '## 问题\n改过的。'),
       'wiki.signals': () => store.wikiSignals(),
+      'wiki.backlinks': () => store.wikiBacklinks('topics/ptq'),
       'trash.list': () => store.listTrash(),
       'trash.restore': () => {
         store.deletePaper(store.listPapers({ page: 1, size: 1 }).rows[0]!.id)
@@ -2293,6 +2294,7 @@ describe('fixture store', () => {
     const coreMethods = new Set([
       'library.location', 'library.configure', 'library.reset', 'library.backups',
       'library.switchBackup', 'library.deleteBackup', 'extensions.status', 'extensions.checkLatest', 'extensions.pluginVersion', 'delivery.semanticKey', 'delivery.setSemanticKey', 'delivery.checkSemanticKey', 'jobs.status', 'inbox.fetch',
+      'papers.retryMetadata',
       'discovery.fetch', 'author.search', 'watch.suggest', 'harness.prepare', 'harness.pendingPaperWiki',
       'harness.start', 'harness.cancel',
       'harness.modelSettings', 'harness.updateModelSettings', 'harness.checkModelConnection',

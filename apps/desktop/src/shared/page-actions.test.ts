@@ -151,6 +151,7 @@ const LABELLED: [RegExp, string][] = [
   // The review queue names its copy `r`, for m.wiki.queue.
   [/^(r\.decline|m\.wiki\.ingest\.discardProposal)$/, 'decline a proposal'],
   [/^r\.apply$|\bm\.wiki\.ingest\.confirm\b/, 'apply a proposal'],
+  [/^m\.wiki\.(queue|tidy)\.entry$/, 'open pending work'],
 ]
 
 type Look = { operation: string; size: string; variant: string; label?: string }
@@ -203,6 +204,7 @@ const PLACES: Record<string, Place[]> = {
     { slot: 'inline', size: 'md', variant: 'primary', scope: "the review queue's first applicable proposal, its one primary" },
   ],
   'option switch': [{ slot: 'inline', size: 'md', variant: 'plain' }],
+  'open pending work': [{ slot: 'page header', size: 'md', variant: 'plain' }],
   'settings save': [{ slot: 'card foot', size: 'md', variant: 'primary' }],
   'dismiss all': [
     { slot: 'section heading', size: 'sm', variant: 'plain' },

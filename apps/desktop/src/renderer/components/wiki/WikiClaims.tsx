@@ -56,7 +56,7 @@ function conflictId(...claims: (WikiClaim | undefined)[]): string {
  * One evidence item or conflict target as a line of links: what it is, then where it points. `title` is
  * its display name and `point` the name of the node or conclusion an experiment cites.
  */
-function Side({ item, title, point, links }: {
+export function ClaimSide({ item, title, point, links }: {
   item: Evidence | ConflictTarget; title: string | undefined; point: string | undefined; links: ClaimLinks
 }) {
   const m = useMessages()
@@ -258,12 +258,12 @@ export function WikiClaims({ page, pending, links, onApply }: {
                 </div>
                 <ul className="wkclaim-lines">
                   {claim.evidence.map((e, at) => (
-                    <li key={at} className="wkclaim-evidence"><Side item={e.evidence} title={e.title} point={e.point} links={links} /></li>
+                    <li key={at} className="wkclaim-evidence"><ClaimSide item={e.evidence} title={e.title} point={e.point} links={links} /></li>
                   ))}
                   {claim.conflicts.map((x) => (
                     <li key={`conflict ${x.id}`} className="wkclaim-conflict">
                       <Tag tone="warn">{c.conflict}</Tag>
-                      <Side item={x.against} title={x.title} point={x.point} links={links} />
+                      <ClaimSide item={x.against} title={x.title} point={x.point} links={links} />
                       <span className="wkclaim-note">{x.note}</span>
                       <button
                         type="button" className="btn ghost sm wkclaim-resolve" disabled={pending}

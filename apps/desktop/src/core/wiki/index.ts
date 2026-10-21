@@ -2,6 +2,8 @@ export {
   applyProposal, describeOp, entryLine, HUMAN, isClaimOp, namedPages, normalizeQuote, touchedPages,
 } from './apply.js'
 export type { ClaimWorld } from './apply.js'
+export { wikiBacklinks } from './backlinks.js'
+export type { BacklinkContext } from './backlinks.js'
 export { generatedChildren, generatedClaims, generatedTable } from './generated.js'
 export {
   checkBody,

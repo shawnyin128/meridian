@@ -1,0 +1,3 @@
+/* A row's links wrap beside its kind label, a long title onto a second line, and never under the label. */
+.wkbacklinks{align-items:baseline}
+.wkbacklinks-links{display:flex;flex-wrap:wrap;align-items:baseline;gap:var(--sp-2) var(--sp-10);flex:1;min-width:0}

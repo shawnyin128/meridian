@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type {
   CallFailure, HarnessPaperWikiRejectionFeedback, HarnessPaperWikiRejectionReason, HarnessPendingPaperWikiResult,
   HarnessPlan, HarnessRunReceipt, PaperReading, PaperRow,
@@ -9,11 +9,13 @@ import { useScrollFade } from '../../hooks/useScrollFade.js'
 import { errorLabel, failureLabel } from '../../lib/failure-label.js'
 import { useMessages } from '../../messages/useMessages.js'
 import type { Catalog } from '../../messages/catalog.js'
+import { useSettingsOpen } from '../../shell/AppShell.js'
 import { ChipToggles } from '../ChipToggles.js'
 import { FormTextarea } from '../FormControls.js'
 import { HarnessAction } from '../HarnessAction.js'
 import { SectionHeading } from '../PageShell.js'
 import { SegmentedControl } from '../SegmentedControl.js'
+import { NoModelTag } from '../NoModelTag.js'
 import { Tag } from '../Tag.js'
 import { ReaderPanelHeader } from './ReaderPanelHeader.js'
 import { PaperWikiProposalReview } from './PaperWikiProposalReview.js'
@@ -59,6 +61,8 @@ export function PaperWikiIngest({ paper, reading }: {
   const [applied, setApplied] = useState(false)
   const [rejected, setRejected] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  /** Bumped to prepare the plan again, as when Settings closes on a plan prepared without a model. */
+  const [preparations, setPreparations] = useState(0)
   const write = useVaultWrite()
   const readingScope = JSON.stringify({
     highlights: reading.highlights,
@@ -93,9 +97,18 @@ export function PaperWikiIngest({ paper, reading }: {
       if (live) setError(errorLabel(m, cause))
     })
     return () => { live = false }
-  }, [paper.id, readingScope, m])
+  }, [paper.id, readingScope, m, preparations])
 
   useEffect(prepare, [prepare])
+
+  // Settings is where a model is set up: once it closes, a plan prepared without a model is prepared again.
+  const { open: settingsOpen } = useSettingsOpen()
+  const settingsWereOpen = useRef(settingsOpen)
+  useEffect(() => {
+    const closed = settingsWereOpen.current && !settingsOpen
+    settingsWereOpen.current = settingsOpen
+    if (closed && plan !== null && !plan.model.configured) setPreparations((n) => n + 1)
+  }, [settingsOpen, plan])
 
   const start = () => {
     if (plan === null || running) return
@@ -195,7 +208,7 @@ export function PaperWikiIngest({ paper, reading }: {
         {plan === null && pending === null && error === null
           ? <p className="wiki-ingest-status">{m.wiki.ingest.preparing}</p>
           : null}
-        {plan !== null && !plan.model.configured ? <Tag>{m.wiki.ingest.notConnectedNote}</Tag> : null}
+        {plan !== null && !plan.model.configured ? <NoModelTag label={m.wiki.ingest.notConnectedNote} /> : null}
         {receipt !== null ? <p className="wiki-ingest-status done">{receipt.message}</p> : null}
         {pending !== null ? <Tag tone="good">{m.wiki.ingest.restoredPending}</Tag> : null}
         {receipt?.warning === undefined ? null : (

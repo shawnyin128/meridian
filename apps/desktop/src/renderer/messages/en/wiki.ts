@@ -62,6 +62,10 @@ export const wiki = {
   viewInPaperList: 'View in the paper list',
   membershipHeading: 'Location in Wiki',
   noMembership: 'Not under any page yet',
+  backlinks: {
+    heading: 'Backlinks',
+    kinds: { project: 'Project', idea: 'Idea', chat: 'Chat' },
+  },
   scope: {
     source: 'Source text',
     currentPaper: 'Current paper',
@@ -271,6 +275,12 @@ export const wiki = {
       retract: (page: string) => `Retract a finding on “${page}”`,
     },
   },
+  tidy: {
+    entry: 'To tidy',
+    title: (n: number) => `To tidy · ${n}`,
+    empty: 'No pages to tidy yet',
+    kinds: { 'open-conflict': 'Conflict', 'broken-link': 'Broken link', 'thin-aggregation': 'Thin', 'unfiled-paper': 'Unfiled' },
+  },
   queue: {
     entry: 'To review',
     title: (n: number) => `To review · ${n}`,
@@ -286,12 +296,12 @@ export const wiki = {
     unverifiedLabel: 'Verify',
     trigger: (project: string, node: string | null) => `Project ${project}${node === null ? '' : ` · node ${node}`}`,
     pages: 'Pages',
+    target: 'Into',
     change: {
       add: (text: string) => `+ Add finding: ${text}`,
       before: (text: string) => `- Was: ${text}`,
       after: (text: string) => `+ Now: ${text}`,
       evidence: (claim: string) => `+ More evidence for “${claim}”`,
-      evidenceLine: (kind: string, detail: string) => `+   ${kind} · ${detail}`,
       detail: (name: string, text: string) => (text === '' ? name : `${name}: ${text}`),
       quote: (paper: string, page: number, quote: string) => `${paper} p.${page} “${quote}”`,
       conflict: (claim: string, other: string, note: string) => `~ “${claim}” conflicts with “${other}”: ${note}`,

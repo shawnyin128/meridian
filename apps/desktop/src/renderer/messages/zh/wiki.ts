@@ -55,6 +55,10 @@ export const wiki = {
   viewInPaperList: '去论文列表查看',
   membershipHeading: '归属',
   noMembership: '还没有归到任何一页',
+  backlinks: {
+    heading: '反向链接',
+    kinds: { project: '项目', idea: '想法', chat: '对话' },
+  },
   scope: {
     source: '原文',
     currentPaper: '当前论文',
@@ -234,6 +238,12 @@ export const wiki = {
       retract: (page: string) => `撤回「${page}」的一条结论`,
     },
   },
+  tidy: {
+    entry: '需要整理',
+    title: (n: number) => `需要整理 · ${n}`,
+    empty: '还没有需要整理的页',
+    kinds: { 'open-conflict': '冲突', 'broken-link': '断链', 'thin-aggregation': '内容少', 'unfiled-paper': '未归类' },
+  },
   queue: {
     entry: '待审阅',
     title: (n: number) => `待审阅 · ${n}`,
@@ -249,12 +259,12 @@ export const wiki = {
     unverifiedLabel: '结论',
     trigger: (project: string, node: string | null) => `项目 ${project}${node === null ? '' : ` · 节点 ${node}`}`,
     pages: '涉及',
+    target: '写入',
     change: {
       add: (text: string) => `+ 添加结论：${text}`,
       before: (text: string) => `- 原来：${text}`,
       after: (text: string) => `+ 改为：${text}`,
       evidence: (claim: string) => `+ 给「${claim}」补证据`,
-      evidenceLine: (kind: string, detail: string) => `+ 　${kind} · ${detail}`,
       detail: (name: string, text: string) => (text === '' ? name : `${name}：${text}`),
       quote: (paper: string, page: number, quote: string) => `${paper} p.${page}「${quote}」`,
       conflict: (claim: string, other: string, note: string) => `~ 「${claim}」与「${other}」冲突：${note}`,

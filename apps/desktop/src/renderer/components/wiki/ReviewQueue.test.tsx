@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, onTestFinished, vi } from 
 import type { WikiProposal } from '../../../shared/contract.js'
 import { MessagesProvider } from '../../messages/useMessages.js'
 import { LANGUAGE_STORAGE_KEY } from '../../shell/language.js'
-import { ReviewEntry, ReviewQueue } from './ReviewQueue.js'
+import { ReviewQueue } from './ReviewQueue.js'
 
 declare global {
   var IS_REACT_ACT_ENVIRONMENT: boolean
@@ -54,7 +54,7 @@ describe('ReviewQueue', () => {
   let host: HTMLDivElement
   const onApply = vi.fn()
   const onDecline = vi.fn()
-  const onOpenPage = vi.fn()
+  const links = { openPage: vi.fn(), openProject: vi.fn(), openReader: vi.fn() }
   const onOpenConclusion = vi.fn()
 
   beforeEach(() => {
@@ -68,7 +68,7 @@ describe('ReviewQueue', () => {
     root = createRoot(host)
     act(() => root!.render(
       <MessagesProvider>
-        <ReviewQueue proposals={PROPOSALS} pending={false} onApply={onApply} onDecline={onDecline} onOpenPage={onOpenPage} onOpenConclusion={onOpenConclusion} />
+        <ReviewQueue proposals={PROPOSALS} pending={false} onApply={onApply} onDecline={onDecline} links={links} onOpenConclusion={onOpenConclusion} />
       </MessagesProvider>,
     ))
   })
@@ -81,36 +81,66 @@ describe('ReviewQueue', () => {
   const row = (id: string) => host.querySelector<HTMLElement>(`[data-proposal="${id}"]`)!
   const apply = (id: string) => [...row(id).querySelectorAll<HTMLButtonElement>('.review-actions button')].find((b) => b.textContent === '应用')!
 
-  it('排队的一条一行:标题、提出者与触发的项目节点名、理由、按结论原文写的改动行、涉及的页名;过期与无法核对的引句标出来', () => {
+  /** Each change of proposal `id`: its change lines, and the text of each evidence item under them. */
+  const changes = (id: string) => [...row(id).querySelectorAll('.review-change')].map((change) => [
+    [...change.querySelectorAll('.diff div')].map((d) => d.textContent),
+    [...change.querySelectorAll('.review-evidence li')].map((li) => li.textContent),
+  ])
+
+  it('排队的一条一行:标题、提出者与触发的项目节点名、理由、按结论原文写的一条条改动;过期与无法核对的引句标出来', () => {
     expect(row('p1').querySelector('.review-title')!.textContent).toBe('提案 p1')
     expect(row('p1').querySelector('.review-meta')!.textContent).toBe('项目 draft 效率 · 节点 加宽实验 · 9月22日')
     expect(row('p1').querySelector('.review-head .source-label')!.textContent).toBe('agent')
     expect(row('p1').textContent).toContain('重跑了一遍')
-    expect([...row('p1').querySelectorAll('.diff div')].map((d) => d.textContent)).toEqual([
-      '- 原来：拐点在宽度 6', '+ 改为：拐点在宽度 8',
-      '+ 给「拐点在宽度 6」补证据', '+ 　证据 · EAGLE-2 p.7「wide trees amortize」',
-      '~ 「拐点在宽度 6」与「x」冲突：批量下不同',
+    expect(changes('p1')).toEqual([
+      [['- 原来：拐点在宽度 6', '+ 改为：拐点在宽度 8'], []],
+      [['+ 给「拐点在宽度 6」补证据'], ['证据EAGLE-2 p.7wide trees amortize']],
+      [['~ 「拐点在宽度 6」与「x」冲突：批量下不同'], []],
     ])
-    expect([...row('p2').querySelectorAll('.diff div')].map((d) => d.textContent)).toEqual(['+ 添加结论：新结论', '+ 　实验 · draft 效率 · 加宽实验'])
+    expect(changes('p2')).toEqual([[['+ 添加结论：新结论'], ['实验draft 效率加宽实验']]])
     expect(row('p1').querySelector('.review-head .tag:not(.source-label)')).toBeNull()
     expect(row('p2').querySelector('.tag--warn')!.textContent).toBe('依据已变')
     expect([...row('p2').querySelectorAll('.review-note--warn')].map((note) => note.textContent))
       .toEqual([expect.stringContaining('这些引句没有文字层可核对')])
     expect(apply('p1').disabled).toBe(false)
     expect(apply('p2').disabled).toBe(true)
-    const chip = row('p1').querySelector<HTMLElement>('.wkrel .tagchip')!
-    expect(chip.textContent).toBe('Speculative decoding')
-    expect(chip.tagName).toBe('BUTTON')
-    act(() => chip.click())
-    expect(onOpenPage).toHaveBeenCalledWith('topics/sd')
   })
 
-  it('提案标题、论文页名与改动行里的论文名都按 LaTeX 显示，引句照写', () => {
+  it('每条改动上方是「写入」它写的那一页,接连写同一页的改动共用一个;点页名打开那一页', () => {
+    const targets = (id: string) => [...row(id).querySelectorAll('.review-change')]
+      .map((change) => [...change.querySelectorAll('.review-target .rl, .review-target .tagchip')].map((el) => el.textContent))
+    expect(targets('p1')).toEqual([['写入', 'Speculative decoding'], [], []])
+    const chip = row('p1').querySelector<HTMLElement>('.review-target .tagchip')!
+    expect(chip.tagName).toBe('BUTTON')
+    act(() => chip.click())
+    expect(links.openPage).toHaveBeenCalledWith('topics/sd')
+  })
+
+  it('改动下列出它依据的证据:原文引句的锚点在阅读器里打开那一页,实验写节点名并打开项目;没有证据的改动不列', () => {
+    const anchor = row('p1').querySelector<HTMLButtonElement>('.review-evidence .source-anchor')!
+    expect([anchor.tagName, anchor.textContent]).toEqual(['BUTTON', 'p.7'])
+    expect(row('p1').querySelector('.review-evidence .wkclaim-quote')!.textContent).toBe('wide trees amortize')
+    act(() => anchor.click())
+    expect(links.openReader).toHaveBeenCalledWith('papers/eagle', { page: 7 })
+    expect(row('p2').querySelector('.review-evidence .wkclaim-point')!.textContent).toBe('加宽实验')
+    act(() => row('p2').querySelector<HTMLButtonElement>('.review-evidence .entity-link--project')!.click())
+    expect(links.openProject).toHaveBeenCalledWith('draft')
+    expect(row('p1').querySelectorAll('.review-change')[0]!.querySelector('.review-evidence')).toBeNull()
+  })
+
+  it('「涉及」只列改动写入的页以外的页,没有这样的页就不出这一行', () => {
+    const others = (id: string) => row(id).querySelector('.wkrel:not(.review-target):not(.review-unverified)')
+    expect(others('p1')).toBeNull()
+    expect(others('p7')!.querySelector('.rl')!.textContent).toBe('涉及')
+    expect([...others('p7')!.querySelectorAll('.tagchip')].map((chip) => chip.getAttribute('data-wk'))).toEqual(['papers/flux'])
+  })
+
+  it('提案标题、涉及和证据里的论文名都按 LaTeX 显示，引句照写', () => {
     expect(row('p7').querySelector('.review-title')!.innerHTML).toBe('收进《<strong>F</strong>lux》')
-    expect(row('p7').querySelector('.wkrel .tagchip .tag-text')!.innerHTML).toBe('<strong>F</strong>lux')
-    expect([...row('p7').querySelectorAll('.diff div')].map((d) => d.innerHTML)).toEqual([
-      '+ 给「拐点在宽度 6」补证据', '+ 　证据 · <strong>F</strong>lux p.2「q」',
-    ])
+    expect(row('p7').querySelector('.wkrel:not(.review-target) .tagchip .tag-text')!.innerHTML).toBe('<strong>F</strong>lux')
+    expect([...row('p7').querySelectorAll('.diff div')].map((d) => d.innerHTML)).toEqual(['+ 给「拐点在宽度 6」补证据'])
+    expect(row('p7').querySelector('.review-evidence li')!.innerHTML).toContain('<strong>F</strong>lux')
+    expect(row('p7').querySelector('.review-evidence .wkclaim-quote')!.textContent).toBe('q')
   })
 
   it('Core 写的提醒与拒收原因里的页 id 按页名显示、论文名按 LaTeX 显示，过期写成一个状态，用户自己写的拒绝原因照写', () => {
@@ -129,7 +159,7 @@ describe('ReviewQueue', () => {
             }),
             proposal('n5', { titles, status: 'rejected', reason: { kind: 'invalid', message: '提案没有给出它依据的页的版本：topics/sd' }, decided }),
           ]}
-          pending={false} onApply={onApply} onDecline={onDecline} onOpenPage={onOpenPage} onOpenConclusion={onOpenConclusion}
+          pending={false} onApply={onApply} onDecline={onDecline} links={links} onOpenConclusion={onOpenConclusion}
         />
       </MessagesProvider>,
     ))
@@ -213,7 +243,7 @@ describe('ReviewQueue', () => {
     })
     act(() => root!.render(
       <MessagesProvider>
-        <ReviewQueue proposals={[...PROPOSALS, declined]} pending={false} onApply={onApply} onDecline={onDecline} onOpenPage={onOpenPage} onOpenConclusion={onOpenConclusion} />
+        <ReviewQueue proposals={[...PROPOSALS, declined]} pending={false} onApply={onApply} onDecline={onDecline} links={links} onOpenConclusion={onOpenConclusion} />
       </MessagesProvider>,
     ))
     for (const id of ['p4', 'p8']) {
@@ -233,7 +263,7 @@ describe('ReviewQueue', () => {
       <MessagesProvider>
         <ReviewQueue
           proposals={[proposal('q1', { received: early }), proposal('d1', { received: early, status: 'applied', decided: { at: late, by: '我' }, change: 'change-1' })]}
-          pending={false} onApply={onApply} onDecline={onDecline} onOpenPage={onOpenPage} onOpenConclusion={onOpenConclusion}
+          pending={false} onApply={onApply} onDecline={onDecline} links={links} onOpenConclusion={onOpenConclusion}
         />
       </MessagesProvider>,
     ))
@@ -242,14 +272,12 @@ describe('ReviewQueue', () => {
     expect(row('d1').querySelector('.review-head .source-label')!.textContent).toBe('agent')
   })
 
-  it('没有排队的提案时说一句;入口上的数是排队的条数', () => {
+  it('没有排队的提案时说一句', () => {
     act(() => root!.render(
       <MessagesProvider>
-        <ReviewEntry count={2} onOpen={() => {}} />
-        <ReviewQueue proposals={PROPOSALS.filter((p) => p.status !== 'queued')} pending={false} onApply={onApply} onDecline={onDecline} onOpenPage={onOpenPage} onOpenConclusion={onOpenConclusion} />
+        <ReviewQueue proposals={PROPOSALS.filter((p) => p.status !== 'queued')} pending={false} onApply={onApply} onDecline={onDecline} links={links} onOpenConclusion={onOpenConclusion} />
       </MessagesProvider>,
     ))
     expect(host.textContent).toContain('还没有待审阅的提案')
-    expect(host.querySelector('.review-entry')!.textContent).toBe('待审阅2')
   })
 })

@@ -42,6 +42,7 @@ import {
   PapersFacetsParamsSchema,
   PapersGetParamsSchema,
   PapersImportParamsSchema,
+  PapersRetryMetadataParamsSchema,
   PapersMutateReadingParamsSchema,
   PapersReadingParamsSchema,
   PapersRenameOptionParamsSchema,
@@ -92,6 +93,7 @@ import {
   WatchUpdateParamsSchema,
   WikiAggregationParamsSchema,
   WikiApplyParamsSchema,
+  WikiBacklinksParamsSchema,
   WikiDecideParamsSchema,
   WikiPaperParamsSchema,
   WikiProposalsParamsSchema,
@@ -446,6 +448,8 @@ registerHandler('papers.import', (params) => {
   const { filename, bytes } = PapersImportParamsSchema.parse(params)
   return background.importPaper(filename, bytes)
 })
+registerHandler('papers.retryMetadata', (params) =>
+  background.retryMetadata(PapersRetryMetadataParamsSchema.parse(params).id))
 registerHandler('papers.reading', (params) =>
   store.paperReading(PapersReadingParamsSchema.parse(params).id))
 registerHandler('papers.mutateReading', (params) => {
@@ -725,6 +729,8 @@ registerHandler('wiki.signals', (params) => {
   EmptyParamsSchema.parse(params)
   return store.wikiSignals()
 })
+registerHandler('wiki.backlinks', (params) =>
+  store.wikiBacklinks(WikiBacklinksParamsSchema.parse(params).id))
 registerHandler('wiki.update', (params) => {
   const { id, body } = WikiUpdateParamsSchema.parse(params)
   return store.updateWikiPage(id, body)

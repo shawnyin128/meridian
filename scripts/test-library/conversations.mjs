@@ -5,9 +5,10 @@ const say = (role, ...runs) => ({ role, runs: runs.map((run) => (typeof run === 
 
 /**
  * Seeds the chats and ideas. Replies are written with `chat.append`, since only a model produces
- * them: two paper chats, ordinary chats, one archived, and a reply whose action records a research
- * record for the KV cache project. Ideas are saved from those chats in every state: placed on the
- * research graph, linked only, archived, promoted to a project, unlinked, and deleted into Trash.
+ * them: two paper chats, ordinary chats, one of them mentioning a Wiki page with `@`, one archived, and
+ * a reply whose action records a research record for the KV cache project. Ideas are saved from those
+ * chats in every state: placed on the research graph, linked only, archived, promoted to a project,
+ * unlinked, and deleted into Trash.
  */
 export async function seedConversations(seed, call) {
   const append = (id, messages) => call('chat.append', { id, messages })
@@ -30,7 +31,10 @@ export async function seedConversations(seed, call) {
   })
   const width = await onDay(seed, -3, async () => {
     const chat = await call('chat.create', { title: '推测解码的树宽怎么定', named: true })
-    await append(chat.id, [say('you', '固定树宽为什么在长回答上变差？'), say('ai', '长回答后半段的接受率下降，宽树里大部分分支都会被拒绝，验证开销白白浪费。')])
+    await append(chat.id, [
+      say('you', '固定树宽为什么在长回答上变差？'), say('ai', '长回答后半段的接受率下降，宽树里大部分分支都会被拒绝，验证开销白白浪费。'),
+      say('you', '@推测解码 里说加速比取决于接受率，长回答也是这样吗？'), say('ai', '是的：长回答后半段的接受率更低，加速比也跟着下降。'),
+    ])
     return chat
   })
   await onDay(seed, -30, async () => {

@@ -157,6 +157,7 @@ export const papers = {
     count: (n: number) => `${n} ${pluralEn(n, { one: 'paper', other: 'papers' })}`,
     progressAria: 'Paper metadata processing progress',
     needsAttention: (n: number) => `${n} ${pluralEn(n, { one: 'paper needs', other: 'papers need' })} a metadata review`,
+    fill: 'Fill in metadata',
     collapse: 'Collapse',
   },
   understanding: {

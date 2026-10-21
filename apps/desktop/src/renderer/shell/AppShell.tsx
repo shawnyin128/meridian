@@ -86,6 +86,8 @@ export type JumpAnchor = {
   milestone?: string
   /** Project: the conclusion to open in the Conclusions view, by its id. */
   conclusion?: string
+  /** Papers: open the PDF import. */
+  import?: true
 }
 export type ScreenJump = {
   screen: ScreenKey

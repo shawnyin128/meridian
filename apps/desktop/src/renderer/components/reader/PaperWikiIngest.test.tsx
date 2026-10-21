@@ -39,6 +39,8 @@ const api = vi.hoisted(() => ({
   cancel: vi.fn(),
   apply: vi.fn(),
   reject: vi.fn(),
+  settingsOpen: false,
+  openCategory: vi.fn(),
 }))
 
 vi.mock('../../ipc.js', () => ({
@@ -50,6 +52,9 @@ vi.mock('../../ipc.js', () => ({
     applyPaperWiki: api.apply,
     rejectPaperWiki: api.reject,
   },
+}))
+vi.mock('../../shell/AppShell.js', () => ({
+  useSettingsOpen: () => ({ open: api.settingsOpen, openCategory: api.openCategory }),
 }))
 vi.mock('../../hooks/useVaultWrite.js', () => ({
   useVaultWrite: () => async (operation: Promise<unknown>) => { await operation; return true },
@@ -172,6 +177,26 @@ describe('PaperWikiIngest', () => {
     await act(async () => { root.render(withMessages(<PaperWikiIngest paper={paper} reading={reading} />)) })
     const tag = [...host.querySelectorAll('.tag')].find((t) => t.textContent === 'AI 未连接')!
     expect(tag.className).toBe('tag tag--label tag--neutral')
+  })
+
+  it('AI 未连接 is the button that opens Settings at 模型, and the plan is prepared again once Settings closes', async () => {
+    api.settingsOpen = false
+    api.openCategory.mockReset()
+    api.prepare.mockResolvedValue({ ...plan, model: { ...plan.model, configured: false } })
+    const render = () => act(async () => { root.render(withMessages(<PaperWikiIngest paper={paper} reading={reading} />)) })
+    await render()
+    const tag = [...host.querySelectorAll<HTMLElement>('.tag')].find((t) => t.textContent === 'AI 未连接')!
+    expect(tag.tagName).toBe('BUTTON')
+    act(() => tag.click())
+    expect(api.openCategory).toHaveBeenCalledWith('model')
+    api.settingsOpen = true
+    await render()
+    expect(api.prepare).toHaveBeenCalledTimes(1)
+    api.prepare.mockResolvedValue(plan)
+    api.settingsOpen = false
+    await render()
+    expect(api.prepare).toHaveBeenCalledTimes(2)
+    expect(states()).not.toContain('AI 未连接')
   })
 
   it('lets the user stop an in-flight run and requires a fresh confirmation afterward', async () => {

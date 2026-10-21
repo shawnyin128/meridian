@@ -5,7 +5,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { HarnessPlan } from '../../shared/contract.js'
 import { MessagesProvider } from '../messages/useMessages.js'
 import { LANGUAGE_STORAGE_KEY } from '../shell/language.js'
-import { HarnessAction } from './HarnessAction.js'
+
+const settings = vi.hoisted(() => ({ openCategory: vi.fn() }))
+vi.mock('../shell/AppShell.js', () => ({ useSettingsOpen: () => ({ open: false, openCategory: settings.openCategory }) }))
+
+const { HarnessAction } = await import('./HarnessAction.js')
 
 declare global {
   var IS_REACT_ACT_ENVIRONMENT: boolean
@@ -82,6 +86,10 @@ describe('HarnessAction', () => {
     expect(confirm.disabled).toBe(true)
     act(() => confirm.click())
     expect(start).not.toHaveBeenCalled()
+    const state = document.querySelector<HTMLElement>('.modal-actions .tag')!
+    expect([state.tagName, state.className]).toEqual(['BUTTON', 'tag tag--label tag--warn'])
+    act(() => state.click())
+    expect(settings.openCategory).toHaveBeenCalledWith('model')
   })
 
   it('replaces the start gate with one explicit stop action while running, in the neutral tone', () => {
