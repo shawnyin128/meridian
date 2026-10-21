@@ -215,6 +215,21 @@ describe('Inbox', () => {
     await act(async () => { root.unmount() })
   })
 
+  it('同一个关键词关注早先存的主题 · 和现在的关键词 · 条目是一组,组名用现在的词,存的来源不改', async () => {
+    const entry = (id: string, source: string): InboxEntry => ({
+      id, kind: 'watch', watch: 'w1', project: '', source,
+      title: `Paper ${id}`, authors: 'Ada', venue: 'ICLR', abstract: 'Abstract', rec: '',
+      reasons: [], downloaded: false, paper: '', pdf: 'https://arxiv.org/pdf/2609.1',
+    })
+    api.entries = [entry('old', '主题 · speculative decoding'), entry('new', '关键词 · speculative decoding')]
+    const root = createRoot(host)
+    await act(async () => { root.render(<MessagesProvider><Inbox /></MessagesProvider>) })
+    expect([...host.querySelectorAll('.collapsible-group-title')].map((title) => title.textContent))
+      .toEqual(['关键词 · speculative decoding'])
+    expect(api.entries.map((held) => held.source)).toEqual(['主题 · speculative decoding', '关键词 · speculative decoding'])
+    await act(async () => { root.unmount() })
+  })
+
   it('推送按关注分组：「全部忽略」只忽略自己这一组，这一组折叠着也一样；提示里的撤销把这一组放回', async () => {
     const entry = (id: string, watch: string): InboxEntry => ({
       id, kind: 'watch', watch, project: '', source: `主题 · ${watch}`,

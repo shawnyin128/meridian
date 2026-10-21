@@ -27,6 +27,7 @@ import { SegmentedControl } from '../components/SegmentedControl.js'
 import { Tag } from '../components/Tag.js'
 import { useUndo } from '../hooks/useUndo.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
+import { shownSource } from '../lib/watch-source.js'
 import {
   PageBody, PageError, PageHeader, PageShell, PageTitle, PageToolbar,
 } from '../components/PageShell.js'
@@ -115,7 +116,7 @@ export function Inbox() {
     const byKey = new Map<string, { key: string; title: string; rows: InboxEntry[] }>()
     for (const row of rows) {
       const key = groupOf(row)
-      const group = byKey.get(key) ?? { key, title: row.source, rows: [] }
+      const group = byKey.get(key) ?? { key, title: shownSource(row.source), rows: [] }
       group.rows.push(row)
       byKey.set(key, group)
     }

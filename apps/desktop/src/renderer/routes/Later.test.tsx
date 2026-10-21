@@ -13,7 +13,7 @@ declare global {
   var IS_REACT_ACT_ENVIRONMENT: boolean
 }
 
-const api = vi.hoisted(() => ({ notes: [] as unknown[], jump: null as ScreenJump | null }))
+const api = vi.hoisted(() => ({ notes: [] as unknown[], jump: null as ScreenJump | null, entries: null as LaterEntry[] | null }))
 
 const ENTRY: LaterEntry = {
   id: 'later-1', title: 'MoE 路由用熵正则代替负载均衡 load balancing', source: 'arXiv', added: '2026-08-25',
@@ -22,7 +22,7 @@ const ENTRY: LaterEntry = {
 
 vi.mock('../ipc.js', () => ({
   inbox: { download: async () => ({ kind: 'added', paper: ENTRY.paper }) },
-  later: { list: async () => [ENTRY], remove: async () => {} },
+  later: { list: async () => api.entries ?? [ENTRY], remove: async () => {} },
 }))
 vi.mock('../shell/AppShell.js', () => ({
   useJump: () => ({ jump: api.jump, open: vi.fn() }),
@@ -50,6 +50,7 @@ describe('Later', () => {
     document.body.append(host)
     api.notes.length = 0
     api.jump = null
+    api.entries = null
   })
   afterEach(() => { host.remove(); vi.unstubAllGlobals() })
 
@@ -63,6 +64,23 @@ describe('Later', () => {
     expect(shown).toEqual(['later-1'])
     await act(async () => { root.unmount() })
     delete (HTMLElement.prototype as Partial<HTMLElement>).scrollIntoView
+  })
+
+  it('同一个关键词关注早先存的主题 · 和现在的关键词 · 是一个来源:来源标签和按来源的分组都用现在的词', async () => {
+    api.entries = [
+      { ...ENTRY, id: 'old', paper: 'old', source: '主题 · MoE serving' },
+      { ...ENTRY, id: 'new', paper: 'new', source: '关键词 · MoE serving' },
+    ]
+    const root = createRoot(host)
+    await act(async () => { root.render(<MessagesProvider><Later /></MessagesProvider>) })
+    expect([...host.querySelectorAll('.source-label')].map((label) => label.textContent))
+      .toEqual(['关键词 · MoE serving', '关键词 · MoE serving'])
+    await act(async () => {
+      [...host.querySelectorAll<HTMLButtonElement>('.segmented-control button')].find((button) => button.textContent === '按来源')!.click()
+    })
+    expect([...host.querySelectorAll('.day-heading')].map((heading) => heading.textContent)).toEqual(['关键词 · MoE serving · 2'])
+    expect(api.entries.map((entry) => entry.source)).toEqual(['主题 · MoE serving', '关键词 · MoE serving'])
+    await act(async () => { root.unmount() })
   })
 
   it('按时间/按来源是视图切换，放在正文开头的工具栏，屏头只有标题', async () => {

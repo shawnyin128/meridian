@@ -18,6 +18,7 @@ import { useFormat } from '../lib/format.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
 import { PageBody, PageError, PageHeader, PageShell, PageTitle, PageToolbar } from '../components/PageShell.js'
 import { SourceLabel } from '../components/SourceLabel.js'
+import { shownSource } from '../lib/watch-source.js'
 import './shell.css'
 
 /** How entries are grouped: by the day they joined the queue, or by where they came from. */
@@ -92,7 +93,7 @@ export function Later() {
   }
 
   // Entries arrive newest first by the day they were queued; groups follow the order keys first appear in.
-  const key = (e: LaterEntry) => (grouping === 'time' ? e.day : e.source)
+  const key = (e: LaterEntry) => (grouping === 'time' ? e.day : shownSource(e.source))
   const groups = (entries ?? []).reduce<{ key: string; items: LaterEntry[] }[]>((made, entry) => {
     const seen = made.find((g) => g.key === key(entry))
     if (seen) seen.items.push(entry)
@@ -167,7 +168,7 @@ export function Later() {
                     <>
                     {x.authors}{x.venue ? <PaperCardBadge>{x.venue}</PaperCardBadge> : null}
                     {grouping === 'time'
-                      ? <SourceLabel>{x.source}</SourceLabel>
+                      ? <SourceLabel>{shownSource(x.source)}</SourceLabel>
                       : <PaperCardBadge>{m.common.addedOn(fmt.date(x.added))}</PaperCardBadge>}
                     </>
                   )}

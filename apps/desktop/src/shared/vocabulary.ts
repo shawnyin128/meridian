@@ -79,6 +79,9 @@ export type DaySection = keyof typeof DAY_SECTIONS
 /** UI labels for the two watch types. */
 export const WATCH_KINDS = { topic: '关键词', author: '作者' } as const
 
+/** The word versions before 0.0.16.0 wrote for a keyword watch at the start of an inbox or read-later source. */
+export const OLD_KEYWORD_WATCH = '主题'
+
 /** Prefix for research-log entries saved from chat so their origin remains visible on the project page. */
 export const CHAT_EVENT_PREFIX = '[对话] '
 
