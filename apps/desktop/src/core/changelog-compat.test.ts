@@ -34,6 +34,17 @@ describe('reading change logs older versions wrote', () => {
     expect(record?.restore?.kind === 'project' && 'activePath' in record.restore.project.graph).toBe(false)
   })
 
+  it('0.0.15.4 应用提案时按提案自己的标题记下的变动,标题照原样读出,仍可撤销', () => {
+    const applied = {
+      id: 'change-4', title: 'Wiki · 宽树实验的结论', meta: null, source: '实验', diff: ['+ topics/qat#c1:结论 c1'],
+      undone: false, archived: false, target: { kind: 'pages', id: 'topics/qat', paths: ['topics/qat'] },
+      after: '0123456789abcdef', at: Date.UTC(2026, 9, 1),
+      restore: { kind: 'pages', pages: [{ path: 'topics/qat', text: '---\nkind: topic\n---\n' }] },
+    }
+    const [record] = parseChangeRecords([applied]).rows
+    expect(record).toMatchObject({ title: 'Wiki · 宽树实验的结论', restore: { kind: 'pages' } })
+  })
+
   it('撤销数据读不了的一条留作历史、不能撤销;整条读不了的跳过;其余照常', () => {
     const broken = { ...legacyProjectRecord(), id: 'change-8', restore: { kind: 'project', project: { name: 3 } } }
     const garbage = { id: 9 }

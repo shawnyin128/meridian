@@ -20,7 +20,7 @@
 /* The target keeps to the first line and wraps within it; the producer and date wrap under it in a narrow column. */
 .proposal-target{flex:1 1 12em;min-width:0;font-size:var(--fs-base);font-weight:var(--fw-medium);overflow-wrap:anywhere}
 .proposal-by{display:flex;align-items:center;gap:var(--sp-8);margin-left:auto;color:var(--ter);font-size:var(--fs-sm);white-space:nowrap}
-.proposal-context{margin:0;color:var(--ter);font-size:var(--fs-sm);line-height:var(--lh-ui)}
+.proposal-context,.proposal-rows-label{margin:0;color:var(--ter);font-size:var(--fs-sm);line-height:var(--lh-ui)}
 .proposal-text{margin:0;color:var(--ink);font-size:var(--fs-base);line-height:var(--lh-read);overflow-wrap:anywhere}
 .proposal-text--removed{color:var(--ter);text-decoration:line-through}
 .proposal-text--context{color:var(--sec)}

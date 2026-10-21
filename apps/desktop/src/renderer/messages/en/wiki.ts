@@ -92,7 +92,7 @@ export const wiki = {
     preparing: 'Preparing scope…',
     notConnectedNote: 'AI not connected',
     restoredPending: 'Restored the last draft',
-    stalePending: 'Sources changed · regenerate',
+    discard: 'Discard',
     stopping: 'Stopping…',
     reprepare: 'Prepare again',
     reviewHeading: 'Review Wiki draft',

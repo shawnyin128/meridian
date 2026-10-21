@@ -21,7 +21,7 @@ import { SectionHeading } from '../PageShell.js'
 import { SegmentedControl } from '../SegmentedControl.js'
 import { NoModelTag } from '../NoModelTag.js'
 import { AgentLabel } from '../SourceLabel.js'
-import { Tag } from '../Tag.js'
+import { Tag, TagButton } from '../Tag.js'
 import { PaperText } from '../paper/PaperText.js'
 import { ProposalCard, ProposalChange, ProposalDecision } from '../wiki/ProposalChange.js'
 import { ReaderPanelHeader } from './ReaderPanelHeader.js'
@@ -313,7 +313,13 @@ export function PaperWikiIngest({ paper, reading, onJump }: {
                     onClick={() => { void apply() }}>
                     {applying ? m.wiki.ingest.writing : m.wiki.ingest.confirm}
                   </button>
-                  {pending?.stale === true ? <Tag tone="warn">{m.wiki.ingest.stalePending}</Tag> : null}
+                  {pending?.stale === true
+                    ? (
+                      <TagButton tone="warn" disabled={applying || rejecting} onClick={() => setRejectionOpen(true)}>
+                        {`${m.wiki.queue.stale} · ${m.wiki.ingest.discard}`}
+                      </TagButton>
+                    )
+                    : null}
                 </ProposalDecision>
               )}
             </ProposalCard>

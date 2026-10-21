@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import { useId, type ReactNode } from 'react'
 import { Tag } from '../Tag.js'
 import './ProposalChange.css'
 
@@ -6,13 +6,14 @@ import './ProposalChange.css'
 export type ProposalRow = { key: string; label: string; value?: ReactNode; quote?: ReactNode }
 
 /**
- * `rows` as one aligned two-column list named `label`, each label in the card's label column; nothing
- * when there are no rows.
+ * `rows` as one aligned two-column list, each label in the card's label column, under a visible
+ * `label` that names the list when one is given; nothing when there are no rows.
  */
 export function ProposalRows({ rows, label }: { rows: ProposalRow[]; label?: string | undefined }) {
+  const id = useId()
   if (rows.length === 0) return null
-  return (
-    <dl className="proposal-rows" aria-label={label}>
+  const list = (
+    <dl className="proposal-rows" aria-labelledby={label === undefined ? undefined : id}>
       {rows.map((row) => (
         <div className="proposal-row" key={row.key}>
           <dt>{row.label}</dt>
@@ -24,6 +25,7 @@ export function ProposalRows({ rows, label }: { rows: ProposalRow[]; label?: str
       ))}
     </dl>
   )
+  return label === undefined ? list : <><p className="proposal-rows-label" id={id}>{label}</p>{list}</>
 }
 
 /** A text a change writes, in body type: `new` text in ink, text it `removed` muted and struck, or the claim it acts on as `context`. */
@@ -35,7 +37,7 @@ export function ProposalText({ role = 'new', children }: { role?: 'new' | 'remov
  * One change of a proposal, read from the top down: the change type `kind` as a label, then the page it
  * writes as `target`, with `by` (the producer and date) at the line's end; `context` under that line;
  * the texts it writes (`children`) and its labelled `fields`; and `grounds`, what it rests on, as a list
- * named `groundsLabel`.
+ * under the visible label `groundsLabel`.
  */
 export function ProposalChange({ kind, target, by, context, fields = [], grounds = [], groundsLabel, children }: {
   kind: string

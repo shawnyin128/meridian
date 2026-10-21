@@ -85,7 +85,7 @@ export const wiki = {
     preparing: '正在准备范围…',
     notConnectedNote: 'AI 未连接',
     restoredPending: '已恢复上次的提案',
-    stalePending: '依据已变化 · 请重新生成',
+    discard: '丢弃',
     stopping: '正在停止…',
     reprepare: '重新准备',
     reviewHeading: '审核 Wiki 提案',

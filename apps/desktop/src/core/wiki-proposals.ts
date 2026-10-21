@@ -33,6 +33,18 @@ const chipOf = (proposal: AgentProposal): ChangeSource =>
 const byOf = (proposal: AgentProposal): string =>
   (proposal.producer.kind === 'ai' ? `ai:${proposal.producer.id}` : HUMAN)
 
+/** The name a review card's first line gives each op, as the Chinese catalog's `wiki.queue.kinds` writes it. */
+export const PROPOSAL_KIND_NAMES: Record<ProposalOp['op'], string> = {
+  addClaim: '添加结论', reviseClaim: '修订结论', addEvidence: '补充依据', markConflict: '标记冲突',
+  resolveConflict: '处理冲突', retractClaim: '撤回结论', createAggregation: '新建页', setMembership: '归入',
+  removeMembership: '移出', appendEntry: '追加记录', setColumns: '修改列', setParents: '修改上级',
+  setAggregationMetadata: '修改元数据',
+}
+
+/** The page a review card's first line names for `op`: where a membership goes, else the page it writes. */
+const cardTarget = (op: ProposalOp): string => (op.op === 'setMembership' || op.op === 'removeMembership' ? op.in
+  : op.op === 'createAggregation' ? op.id : op.page)
+
 /** Returns the PdfPageText that reads a vault paper's source through `store` with pdf.js. */
 export function pdfPageText(store: Pick<VaultStore, 'paperSource'>): PdfPageText {
   return async (paper, page) => {
@@ -355,7 +367,11 @@ export function createWikiProposals({ store, pdf, now }: {
         } else if (unverified.length > 0) {
           throw new CallError('refused', `实验结论待验证：${unverified.join('、')}。验证之后再应用`)
         } else {
-          store.applyProposal({ source: 'user', title: proposal.title, ops: proposal.ops }, {
+          // Recent changes names the change as its card's first line does.
+          const [first] = proposal.ops as [ProposalOp, ...ProposalOp[]]
+          const target = cardTarget(first)
+          const page = first.op === 'createAggregation' ? first.title : labelsOf(proposal, [target]).titles[target] ?? target
+          store.applyProposal({ source: 'user', title: `${page} · ${PROPOSAL_KIND_NAMES[first.op]}`, ops: proposal.ops }, {
             by: byOf(proposal), source: chipOf(proposal),
           })
           next = { ...record, status: 'applied', decided, change: store.listChanges()[0]?.id ?? null, notice: outcome.notice }

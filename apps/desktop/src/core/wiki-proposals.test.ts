@@ -116,7 +116,7 @@ describe('review queue on the fixture library', () => {
       history: [{ version: 1 }, { version: 2, by: '我' }],
     })
     const change = store.listChanges()[0]!
-    expect(change).toMatchObject({ source: '实验', title: `Wiki · ${valid!.proposal!.title}` })
+    expect(change).toMatchObject({ source: '实验', title: 'Wiki · KV cache quantization · 修订结论' })
     expect(change.diff[0]).toMatch(/^~ topics\/kv-cache-quantization#prefix-schedule v2→v3:/)
     const record = queue.list().find((p) => p.id === valid!.id)!
     expect(record).toMatchObject({ status: 'applied', change: change.id, decided: { at: NOW, by: '我' } })

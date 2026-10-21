@@ -144,6 +144,15 @@ describe('ReviewQueue', () => {
     expect(row('p1').textContent).not.toContain('提案 p1')
   })
 
+  it('依据那一组行前面有看得见的「依据」,它就是那组行的名字;没有依据的改动没有这一行', () => {
+    const changes = [...row('p1').querySelectorAll('.proposal-change')]
+    expect(changes.map((block) => [...block.querySelectorAll(':scope > .proposal-rows-label')].map((label) => label.textContent)))
+      .toEqual([['依据'], ['依据'], ['依据'], ['依据'], [], []])
+    const label = changes[0]!.querySelector(':scope > .proposal-rows-label')!
+    expect(label.nextElementSibling!.getAttribute('aria-labelledby')).toBe(label.id)
+    expect([...label.nextElementSibling!.querySelectorAll('dt')].map((dt) => dt.textContent)).toEqual(['实验结论', '原文'])
+  })
+
   it('结论以外的改动也一种一块,写的是页名、论文名、列名和值,不写 id 和存的键', () => {
     expect(blocks('p8')).toEqual([
       { kind: '新建页', target: '新主题', texts: ['new: 先猜后验'], rows: [

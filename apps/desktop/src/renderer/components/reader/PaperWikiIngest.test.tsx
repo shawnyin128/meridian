@@ -282,8 +282,11 @@ describe('PaperWikiIngest', () => {
     const apply = [...host.querySelectorAll<HTMLButtonElement>('button')]
       .find((button) => button.textContent === '确认写入 Wiki')!
     expect(apply.disabled).toBe(true)
-    expect([...apply.parentElement!.children].map((part) => part.textContent))
-      .toEqual(['丢弃提案', '确认写入 Wiki', '依据已变化 · 请重新生成'])
+    expect([...apply.parentElement!.children].map((part) => [part.tagName, part.textContent]))
+      .toEqual([['BUTTON', '丢弃提案'], ['BUTTON', '确认写入 Wiki'], ['BUTTON', '依据已变 · 丢弃']])
+    expect(host.querySelector('.wiki-ingest-rejection')).toBeNull()
+    await act(async () => { (apply.parentElement!.lastElementChild as HTMLButtonElement).click() })
+    expect(host.querySelector('.wiki-ingest-rejection')).not.toBeNull()
   })
 
   it('shows a proposal as the review queue does: the change, the paper\'s Wiki page and the agent with its day on the first line, then what it writes', async () => {
