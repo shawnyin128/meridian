@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, onTestFinished, vi } from 
 import type { WikiProposal } from '../../../shared/contract.js'
 import { MessagesProvider } from '../../messages/useMessages.js'
 import { LANGUAGE_STORAGE_KEY } from '../../shell/language.js'
-import { ReviewEntry, ReviewQueue } from './ReviewQueue.js'
+import { ReviewQueue } from './ReviewQueue.js'
 
 declare global {
   var IS_REACT_ACT_ENVIRONMENT: boolean
@@ -242,14 +242,12 @@ describe('ReviewQueue', () => {
     expect(row('d1').querySelector('.review-head .source-label')!.textContent).toBe('agent')
   })
 
-  it('没有排队的提案时说一句;入口上的数是排队的条数', () => {
+  it('没有排队的提案时说一句', () => {
     act(() => root!.render(
       <MessagesProvider>
-        <ReviewEntry count={2} onOpen={() => {}} />
         <ReviewQueue proposals={PROPOSALS.filter((p) => p.status !== 'queued')} pending={false} onApply={onApply} onDecline={onDecline} onOpenPage={onOpenPage} onOpenConclusion={onOpenConclusion} />
       </MessagesProvider>,
     ))
     expect(host.textContent).toContain('还没有待审阅的提案')
-    expect(host.querySelector('.review-entry')!.textContent).toBe('待审阅2')
   })
 })

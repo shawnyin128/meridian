@@ -238,6 +238,12 @@ export const wiki = {
       retract: (page: string) => `撤回「${page}」的一条结论`,
     },
   },
+  tidy: {
+    entry: '需要整理',
+    title: (n: number) => `需要整理 · ${n}`,
+    empty: '还没有需要整理的页',
+    kinds: { 'open-conflict': '冲突', 'broken-link': '断链', 'thin-aggregation': '内容少', 'unfiled-paper': '未归类' },
+  },
   queue: {
     entry: '待审阅',
     title: (n: number) => `待审阅 · ${n}`,

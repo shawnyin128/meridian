@@ -3,7 +3,9 @@ import { act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { WikiAggregation, WikiAggregationCard, WikiHome, WikiPaper } from '../../shared/contract.js'
+import type {
+  WikiAggregation, WikiAggregationCard, WikiHome, WikiPaper, WikiProposal, WikiSignal,
+} from '../../shared/contract.js'
 import { IconTrash } from '../components/icons.js'
 import { TOOLTIP_DELAY } from '../components/Tooltip.js'
 import { MessagesProvider } from '../messages/useMessages.js'
@@ -22,6 +24,8 @@ const fixture = vi.hoisted(() => ({
   aggregation: vi.fn(),
   paper: vi.fn(),
   backlinks: vi.fn(),
+  proposals: vi.fn(),
+  signals: vi.fn(),
   open: vi.fn(),
 }))
 
@@ -61,14 +65,17 @@ vi.mock('../ipc.js', () => ({
       rows: [{ id: 'p1', title: 'EAGLE-2', venue: 'ICML', topics: [], noteCount: 0, conclusionCount: 0 }], total: 1,
     }),
     reading: () => new Promise(() => {}),
+    get: (id: string) => Promise.resolve({ id, title: id === 'p1' ? 'EAGLE-2' : id }),
   },
+  project: { list: () => Promise.resolve([{ id: 'p-47', name: '推测解码加速' }]) },
   wiki: {
     home: () => Promise.resolve(HOME),
-    proposals: () => Promise.resolve([]),
+    proposals: fixture.proposals,
+    signals: fixture.signals,
     aggregation: fixture.aggregation,
     paper: fixture.paper,
     backlinks: fixture.backlinks,
-    cards: () => Promise.resolve([]),
+    cards: () => Promise.resolve([card('topics/sd', '推测解码')]),
   },
 }))
 
@@ -97,6 +104,8 @@ describe('Wiki keyboard reach', () => {
     fixture.aggregation.mockReset().mockResolvedValue(AGG)
     fixture.paper.mockReset().mockResolvedValue(PAPER)
     fixture.backlinks.mockReset().mockResolvedValue([])
+    fixture.proposals.mockReset().mockResolvedValue([])
+    fixture.signals.mockReset().mockResolvedValue([])
     fixture.open.mockReset()
     document.body.innerHTML = ''
     host = document.createElement('div')
@@ -277,6 +286,103 @@ describe('Wiki keyboard reach', () => {
     expect(remove.querySelector('svg')!.outerHTML).toBe(renderToStaticMarkup(<IconTrash />))
     vi.unstubAllGlobals()
   })
+})
+
+describe('Wiki 首页屏头的待审阅与需要整理', () => {
+  let root: Root | null = null
+  let host: HTMLDivElement
+
+  const proposal = (id: string, status: WikiProposal['status']) => ({
+    id, status, received: Date.parse('2026-10-14T08:00:00Z'), reason: null, decided: null, notice: null, staleNow: false,
+    proposal: { title: id, producer: { kind: 'ai', id: 'skill.meridian' }, trigger: { kind: 'manual' }, ops: [] },
+    pages: [], titles: {}, claimTexts: {},
+  }) as unknown as WikiProposal
+  const signal = (kind: WikiSignal['kind'], page: string): WikiSignal => ({ kind, page, related: [], detail: '一句' })
+
+  const render = async () => {
+    await act(async () => {
+      root!.render(<MessagesProvider><Wiki /></MessagesProvider>)
+      await Promise.resolve()
+    })
+    for (let i = 0; i < 4; i += 1) await act(async () => { await Promise.resolve() })
+  }
+  const actions = () => [...host.querySelectorAll<HTMLButtonElement>('.desk-head > .page-actions > .btn')]
+  const press = async (el: HTMLElement) => {
+    await act(async () => { el.click() })
+    for (let i = 0; i < 4; i += 1) await act(async () => { await Promise.resolve() })
+  }
+
+  beforeEach(() => {
+    globalThis.IS_REACT_ACT_ENVIRONMENT = true
+    vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} })
+    window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'zh')
+    fixture.aggregation.mockReset().mockResolvedValue(AGG)
+    fixture.backlinks.mockReset().mockResolvedValue([])
+    fixture.proposals.mockReset().mockResolvedValue([proposal('p1', 'queued'), proposal('p2', 'queued'), proposal('p0', 'applied')])
+    fixture.signals.mockReset().mockResolvedValue([
+      signal('unfiled-paper', 'papers/p1'), signal('broken-link', 'projects/p-47'), signal('broken-link', 'projects/p-47'),
+      signal('single-child', 'topics/sd'), signal('open-conflict', 'topics/sd'),
+    ])
+    fixture.open.mockReset()
+    document.body.innerHTML = ''
+    host = document.createElement('div')
+    document.body.append(host)
+    root = createRoot(host)
+  })
+
+  afterEach(() => {
+    if (root !== null) act(() => root!.unmount())
+    root = null
+    vi.unstubAllGlobals()
+  })
+
+  it('屏头右端是「待审阅 N」和「需要整理 N」两个普通按钮,数是灰的计数;正文只有主题、方法、论文,没有单独的待审阅按钮', async () => {
+    await render()
+    expect(actions().map((button) => [button.className, button.textContent, button.querySelector('.count-badge')?.textContent]))
+      .toEqual([['btn', '待审阅2', '2'], ['btn', '需要整理3', '3']])
+    expect(host.querySelector('.desk-body .page-toolbar, .desk-body .btn')).toBeNull()
+    expect(all('.desk-body > .section-heading').map((heading) => heading.textContent)).toEqual(['主题', '论文'])
+  })
+
+  it('数为零的按钮不出现,两个都为零时屏头没有操作', async () => {
+    fixture.signals.mockResolvedValue([signal('single-child', 'topics/sd')])
+    await render()
+    expect(actions().map((button) => button.textContent)).toEqual(['待审阅2'])
+    fixture.proposals.mockResolvedValue([proposal('p0', 'applied')])
+    fixture.signals.mockResolvedValue([signal('thin-aggregation', 'topics/sd')])
+    act(() => root!.unmount())
+    root = createRoot(host)
+    await render()
+    expect(actions().map((button) => button.textContent)).toEqual(['需要整理1'])
+    fixture.signals.mockResolvedValue([])
+    act(() => root!.unmount())
+    root = createRoot(host)
+    await render()
+    expect(host.querySelector('.desk-head .page-actions')).toBeNull()
+  })
+
+  it('需要整理打开整理页:屏头有返回和「需要整理 · N」,一行一个信号,点一行打开它的页或项目;待审阅打开审阅队列', async () => {
+    await render()
+    await press(actions().find((button) => button.textContent!.startsWith('需要整理'))!)
+    expect(host.querySelector('.desk-head .t')!.textContent).toBe('需要整理 · 3')
+    expect(host.querySelector('.desk-head .back')).not.toBeNull()
+    expect(host.querySelector('.desk-head .page-actions')).toBeNull()
+    const rows = all('.desk-body .structured-row')
+    expect(rows.map((row) => [row.tagName, row.textContent])).toEqual([
+      ['BUTTON', '冲突推测解码'], ['BUTTON', '断链推测解码加速'], ['BUTTON', '未归类EAGLE-2'],
+    ])
+    await press(rows[1]!)
+    expect(fixture.open).toHaveBeenCalledWith('project', 'p-47')
+    await press(rows[0]!)
+    expect(fixture.aggregation).toHaveBeenLastCalledWith('topics/sd')
+    expect(host.querySelector('.desk-head .t')!.textContent).toBe('推测解码')
+    await press(host.querySelector<HTMLElement>('.desk-head .back')!)
+    await press(host.querySelector<HTMLElement>('.desk-head .back')!)
+    await press(actions().find((button) => button.textContent!.startsWith('待审阅'))!)
+    expect(host.querySelector('.desk-head .t')!.textContent).toBe('待审阅 · 2')
+  })
+
+  const all = (selector: string) => [...host.querySelectorAll<HTMLElement>(selector)]
 })
 
 describe('论文对比表的五行上限', () => {

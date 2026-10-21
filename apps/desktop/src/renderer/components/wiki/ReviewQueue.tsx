@@ -13,20 +13,9 @@ import { LoadingPlaceholder } from '../LoadingPlaceholder.js'
 import { SectionHeading } from '../PageShell.js'
 import { StructuredList, StructuredRow } from '../StructuredList.js'
 import { AgentLabel } from '../SourceLabel.js'
-import { CountBadge, Tag, TagButton } from '../Tag.js'
+import { Tag, TagButton } from '../Tag.js'
 import { PaperText } from '../paper/PaperText.js'
 import './ReviewQueue.css'
-
-/** The button that opens the review queue, with the number of proposals waiting. */
-export function ReviewEntry({ count, onOpen }: { count: number; onOpen: () => void }) {
-  const m = useMessages()
-  return (
-    <button type="button" className="btn review-entry" onClick={onOpen}>
-      {m.wiki.queue.entry}
-      {count > 0 ? <CountBadge count={count} /> : null}
-    </button>
-  )
-}
 
 /** Local calendar day, the vault's day, a proposal arrived or was decided, from epoch ms. */
 const dayOf = (ms: number): string => localDayOf(new Date(ms).toISOString())

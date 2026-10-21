@@ -2,10 +2,10 @@ import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'rea
 import type { ReactNode, RefObject } from 'react'
 import type {
   PaperFields, PaperReading, PaperRow, Proposal, WikiAggregation, WikiAggregationCard, WikiBacklink, WikiCell, WikiColumn,
-  WikiHome, WikiPaper, WikiProposal,
+  WikiHome, WikiPaper, WikiProposal, WikiSignal,
 } from '../../shared/contract.js'
 import { PAPER_PAGE } from '../../shared/vocabulary.js'
-import { papers, wiki } from '../ipc.js'
+import { papers, project, wiki } from '../ipc.js'
 import { errorLabel } from '../lib/failure-label.js'
 import {
   useCrumbTail, useJump, useNotice, useScreenEntry, useVaultRevision, type CrumbSeg, type ScreenKey,
@@ -19,7 +19,7 @@ import { EntityLink } from '../components/EntityLink.js'
 import { FadeText } from '../components/FadeText.js'
 import { FormInput } from '../components/FormControls.js'
 import {
-  PageBody, PageError, PageHeader, PageShell, PageTitle, PageToolbar, SectionHeading,
+  PageBody, PageError, PageHeader, PageShell, PageTitle, SectionHeading,
 } from '../components/PageShell.js'
 import { IconButton } from '../components/IconButton.js'
 import { IconCross, IconGear, IconTrash } from '../components/icons.js'
@@ -38,11 +38,12 @@ import { useScrollFade } from '../hooks/useScrollFade.js'
 import { PaperUnderstanding } from '../components/paper/PaperUnderstanding.js'
 import { PaperText } from '../components/paper/PaperText.js'
 import { plainTitle } from '../components/paper/paper-text.js'
-import { ReviewEntry, ReviewQueue } from '../components/wiki/ReviewQueue.js'
+import { ReviewQueue } from '../components/wiki/ReviewQueue.js'
 import { WikiBacklinks } from '../components/wiki/WikiBacklinks.js'
 import { WikiClaims } from '../components/wiki/WikiClaims.js'
+import { tidyRows, TidyList } from '../components/wiki/WikiTidy.js'
 import { SourceAnchor } from '../components/SourceAnchor.js'
-import { Tag, TagButton } from '../components/Tag.js'
+import { CountBadge, Tag, TagButton } from '../components/Tag.js'
 import { CardOpen, ResearchObjectCard } from '../components/ResearchObjectCard.js'
 import { EMBEDDED_LIST_ROW_LIMIT, RowActions } from '../components/StructuredList.js'
 import { Tooltip } from '../components/Tooltip.js'
@@ -53,11 +54,17 @@ import './Wiki.css'
 /** Papers per page, as in the demo's pagerHTML('wkp', …, [12,24,48]). */
 const PAGE_SIZES = [12, 24, 48]
 
-/** The page shown: null is the Wiki home, REVIEW the review queue, any other value a page id. */
+/** The page shown: null is the Wiki home, REVIEW the review queue, TIDY the tidying list, any other value a page id. */
 type Place = string | null
 
 /** The review queue's place; it has no `/`, so no page id can be it. */
 const REVIEW = 'review'
+
+/** The tidying list's place; like REVIEW it has no `/`. */
+const TIDY = 'tidy'
+
+/** The prefix of the page id a Wiki signal gives a project. */
+const PROJECT_PAGE = 'projects/'
 
 /** One entry of the Back stack: the previous Wiki page, or the screen that jumped here. */
 type Step = { place: Place } | { origin: ScreenKey }
@@ -360,6 +367,8 @@ export function Wiki() {
   const [reading, setReading] = useState<PaperReading | null>(null)
   const [proposals, setProposals] = useState<WikiProposal[] | null>(null)
   const [backlinks, setBacklinks] = useState<{ page: string; links: WikiBacklink[] } | null>(null)
+  const [signals, setSignals] = useState<WikiSignal[] | null>(null)
+  const [tidyTitles, setTidyTitles] = useState<Record<string, string> | null>(null)
   const [error, setError] = useState<string | null>(null)
   const consumed = useRef(0)
   const main = useRef<HTMLDivElement>(null)
@@ -444,14 +453,40 @@ export function Wiki() {
   }, [revision, reportError])
 
   useEffect(() => {
+    void wiki.signals().then(setSignals).catch(reportError)
+  }, [revision, reportError])
+
+  // The tidying list names each row's page: aggregations and projects from their lists, papers one by one.
+  useEffect(() => {
+    setTidyTitles(null)
+    if (place !== TIDY || signals === null) return
+    let live = true
+    const pages = tidyRows(signals).map((row) => row.page)
+    const paperPages = [...new Set(pages.filter((id) => id.startsWith(PAPER_PAGE)))]
+    void Promise.all([
+      wiki.cards(), project.list(),
+      Promise.all(paperPages.map(async (id) => [id, (await papers.get(id.slice(PAPER_PAGE.length))).title] as const)),
+    ]).then(([cards, projects, paperTitles]) => {
+      if (live) {
+        setTidyTitles(Object.fromEntries([
+          ...cards.map((c) => [c.id, c.title] as const),
+          ...projects.map((p) => [`${PROJECT_PAGE}${p.id}`, p.name] as const),
+          ...paperTitles,
+        ]))
+      }
+    }).catch(reportError)
+    return () => { live = false }
+  }, [place, signals, reportError])
+
+  useEffect(() => {
     setError(null)
-    if (place === null || place === REVIEW) return
+    if (place === null || place === REVIEW || place === TIDY) return
     if (place.startsWith(PAPER_PAGE)) void wiki.paper(place).then(setPaper).catch(reportError)
     else void wiki.aggregation(place).then(setAgg).catch(reportError)
   }, [place, revision, reportError])
 
   useEffect(() => {
-    if (place === null || place === REVIEW) return
+    if (place === null || place === REVIEW || place === TIDY) return
     let live = true
     void wiki.backlinks(place)
       .then((links) => { if (live) setBacklinks({ page: place, links }) })
@@ -504,6 +539,12 @@ export function Wiki() {
   const openBacklink = (link: WikiBacklink) => {
     if (link.kind === 'page') go(link.id)
     else jumpTo(link.kind === 'idea' ? 'ideas' : link.kind, link.id)
+  }
+
+  /** Opens the page a tidying row is about: a Wiki page here, a project on its own screen. */
+  const openSignal = (page: string) => {
+    if (page.startsWith(PROJECT_PAGE)) jumpTo('project', page.slice(PROJECT_PAGE.length))
+    else go(page)
   }
 
   /**
@@ -591,14 +632,18 @@ export function Wiki() {
     }
     if (shownPaper !== null) return [{ text: plainTitle(shownPaper.title) }]
     if (place === REVIEW) return [{ text: m.wiki.queue.entry }]
+    if (place === TIDY) return [{ text: m.wiki.tidy.entry }]
     return []
   }, [shownAgg, shownPaper, go, place, m])
   useCrumbTail(tail, place === null ? undefined : goHome)
 
   const queued = (proposals ?? []).filter((p) => p.status === 'queued').length
+  const tidy = signals === null ? null : tidyRows(signals)
   const title = shownAgg?.title ?? (shownPaper === null ? null : <PaperText text={shownPaper.title} />)
     ?? (place === REVIEW ? m.wiki.queue.title(queued) : null)
+    ?? (place === TIDY ? m.wiki.tidy.title(tidy?.length ?? 0) : null)
     ?? (home === null ? 'Wiki' : m.wiki.title(home.aggregationCount))
+  const tidyCount = tidy?.length ?? 0
 
   /** Applies or declines a queued proposal; a proposal Core refuses on apply is reported with its reason. */
   const decide = (proposal: WikiProposal, decision: 'apply' | 'decline', reason?: string) => {
@@ -652,9 +697,8 @@ export function Wiki() {
   return (
     <PageShell>
       <PageHeader
-        actions={shownPaper === null
-          ? undefined
-          : (
+        actions={shownPaper !== null
+          ? (
             <>
               {/* Papers filters its table down to this paper by title; the user continues from that row's details. */}
               <button className="btn" onClick={() => jumpTo('papers', shownPaper.title)}>{m.wiki.viewInPaperList}</button>
@@ -662,7 +706,19 @@ export function Wiki() {
                 {m.papers.understanding.goRead}
               </button>
             </>
-          )}
+          )
+          : place === null && (queued > 0 || tidyCount > 0)
+            ? (
+              <>
+                {queued === 0 ? null : (
+                  <button type="button" className="btn" onClick={() => go(REVIEW)}>{m.wiki.queue.entry}<CountBadge count={queued} /></button>
+                )}
+                {tidyCount === 0 ? null : (
+                  <button type="button" className="btn" onClick={() => go(TIDY)}>{m.wiki.tidy.entry}<CountBadge count={tidyCount} /></button>
+                )}
+              </>
+            )
+            : undefined}
       >
         {place === null ? null : <BackButton onClick={back} />}
         <PageTitle label={shownAgg?.title ?? (shownPaper === null ? undefined : plainTitle(shownPaper.title))}>{title}</PageTitle>
@@ -671,7 +727,7 @@ export function Wiki() {
       <PageError error={error} />
 
       <PageBody className="wiki-body">
-        {error === null && (place === null ? home === null : place !== REVIEW && shownAgg === null && shownPaper === null)
+        {error === null && (place === null ? home === null : place !== REVIEW && place !== TIDY && shownAgg === null && shownPaper === null)
           ? <LoadingPlaceholder shape="cards" />
           : null}
         {shownAgg !== null
@@ -1001,12 +1057,13 @@ export function Wiki() {
           )
           : null}
 
+        {place === TIDY
+          ? tidy === null ? <LoadingPlaceholder shape="rows" /> : <TidyList rows={tidy} titles={tidyTitles} onOpen={openSignal} />
+          : null}
+
         {place === null && home !== null
           ? (
             <>
-              <PageToolbar>
-                <ReviewEntry count={queued} onOpen={() => go(REVIEW)} />
-              </PageToolbar>
               {home.kinds.map((k) => {
                 const roots = home.roots.filter((c) => c.kind === k.key)
                 return roots.length === 0 ? null : (

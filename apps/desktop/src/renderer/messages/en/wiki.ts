@@ -275,6 +275,12 @@ export const wiki = {
       retract: (page: string) => `Retract a finding on “${page}”`,
     },
   },
+  tidy: {
+    entry: 'To tidy',
+    title: (n: number) => `To tidy · ${n}`,
+    empty: 'No pages to tidy yet',
+    kinds: { 'open-conflict': 'Conflict', 'broken-link': 'Broken link', 'thin-aggregation': 'Thin', 'unfiled-paper': 'Unfiled' },
+  },
   queue: {
     entry: 'To review',
     title: (n: number) => `To review · ${n}`,
