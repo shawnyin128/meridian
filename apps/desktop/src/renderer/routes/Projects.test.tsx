@@ -8,6 +8,7 @@ import { MessagesProvider } from '../messages/useMessages.js'
 import { LANGUAGE_STORAGE_KEY } from '../shell/language.js'
 import type { PlanTab } from '../components/project/ProjectPlan.js'
 import type { RecordTab } from './ProjectDetail.js'
+import type { ScreenJump } from '../shell/AppShell.js'
 
 declare global {
   var IS_REACT_ACT_ENVIRONMENT: boolean
@@ -19,6 +20,9 @@ const summary = (id: string, name: string): ProjectSummary => ({
   control: { next: { source: 'missing', text: '' } }, milestones: [], recentEvents: [],
 })
 
+/** The jump aimed at the Projects screen. */
+const nav = vi.hoisted(() => ({ jump: null as ScreenJump | null }))
+
 vi.mock('../ipc.js', () => ({
   feed: { append: vi.fn() },
   project: { list: async () => [summary('a', '项目甲'), summary('b', '项目乙')], reorder: vi.fn() },
@@ -27,7 +31,7 @@ vi.mock('../ipc.js', () => ({
 vi.mock('../shell/AppShell.js', () => ({
   useNotice: () => ({ success: vi.fn(), refusal: vi.fn() }),
   useCrumbTail: () => {},
-  useJump: () => ({ jump: null, returnTo: vi.fn() }),
+  useJump: () => ({ jump: nav.jump, returnTo: vi.fn() }),
   useScreenEntry: () => 0,
   useToday: () => '2026-10-16',
   useVaultRevision: () => ({ revision: 0, bump: vi.fn() }),
@@ -81,6 +85,7 @@ describe('Projects', () => {
     act(() => root.unmount())
     host.remove()
     vi.unstubAllGlobals()
+    nav.jump = null
   })
 
   const click = async (selector: string) => {
@@ -118,4 +123,17 @@ describe('Projects', () => {
     await click('[data-proj="a"]')
     expect(shownRecord()).toBe('graph')
   })
+
+  it('带新建项目落点跳进来时,从项目详情回到列表并打开新建行;再回到列表时不再打开', async () => {
+    await click('[data-proj="a"]')
+    nav.jump = { screen: 'project', target: '', from: 'feed', seq: 1, anchor: { newProject: true } }
+    await act(async () => root.render(<MessagesProvider><Projects /></MessagesProvider>))
+    expect(host.querySelector('[data-project]')).toBeNull()
+    expect(host.querySelectorAll('.projpanel .inedit')).toHaveLength(1)
+
+    await click('[data-proj="b"]')
+    await click('.to-list')
+    expect(host.querySelectorAll('.projpanel .inedit')).toHaveLength(0)
+  })
 })
+

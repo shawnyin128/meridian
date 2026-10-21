@@ -309,6 +309,20 @@ describe('PaperTable', () => {
     expect(host.querySelector('.pdetail')?.textContent).toContain('一篇论文')
   })
 
+  it('带导入 PDF 落点跳进来时打开导入的文件选择', async () => {
+    const clicked = vi.spyOn(HTMLInputElement.prototype, 'click').mockImplementation(() => {})
+    jumpNow = { screen: 'papers', target: '', from: 'feed', seq: 1, anchor: { importPdf: true } }
+    mount()
+    columnsCall.resolve(EMPTY_COLUMNS)
+    listCall.resolve({ rows: [ROW], total: 1 })
+    await flush()
+
+    expect(clicked.mock.contexts.map((input) => (input as HTMLInputElement).className)).toEqual([
+      expect.stringContaining('pdfupload-input'),
+    ])
+    clicked.mockRestore()
+  })
+
   it('defaults to 20 papers and offers only the 20, 30, and 50 page sizes', async () => {
     const host = mount()
     columnsCall.resolve(EMPTY_COLUMNS)

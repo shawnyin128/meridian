@@ -5,8 +5,9 @@ import { PickerPopover, PickOption } from '../components/PickerPopover.js'
 import { ClearableInput } from '../components/ClearableInput.js'
 import { EmptyState } from '../components/EmptyState.js'
 import { FadeText } from '../components/FadeText.js'
+import { IconSearch } from '../components/icons.js'
 import { PaperText } from '../components/paper/PaperText.js'
-import { useCandidateKeys } from '../hooks/useCandidateKeys.js'
+import { useCandidateKeys, type CandidateKeys } from '../hooks/useCandidateKeys.js'
 import { useMessages } from '../messages/useMessages.js'
 import type { JumpAnchor, ScreenKey } from './AppShell.js'
 
@@ -35,10 +36,29 @@ export function openHit(hit: SearchHit, open: (screen: ScreenKey, target: string
 }
 
 /**
+ * Hit `index` of a candidate list driven by `keys`, as a two-line row: its title, then the text it
+ * matched in place of its secondary line when it matched outside its title.
+ */
+export function HitOption({ hit, keys, index, onChoose }: {
+  hit: SearchHit
+  keys: Pick<CandidateKeys, 'active' | 'pointAt'>
+  index: number
+  onChoose: () => void
+}) {
+  return (
+    <PickOption keys={keys} index={index} className="two-line" onClick={onChoose}>
+      <div className="rt">{hit.kind === 'paper' || hit.kind === 'chat' ? <PaperText text={hit.title} /> : hit.title}</div>
+      {hit.snippet === undefined
+        ? <div className="rm">{hit.meta}</div>
+        : <FadeText className="rm">{hit.snippet}</FadeText>}
+    </PickOption>
+  )
+}
+
+/**
  * The global search at the top of the sidebar: results appear as you type, and clicking one opens
  * that item as `openHit` says. Indexing, matching, ranking and the result limit live in Core; this
  * component only sends the query and shows the few hits search.query returns, holding no vault data.
- * A hit matched outside its title shows the matching text in place of its secondary line.
  * While the query is not empty the results stay open, saying so when nothing matched, until a pick,
  * Escape or a press outside closes them; typing opens them again. `onJump` is the shell's
  * cross-screen jump, and every hit reaches its screen through it.
@@ -79,11 +99,7 @@ export function SearchBox({ onJump }: { onJump: (screen: ScreenKey, target: stri
         onChange={(e) => setQ(e.target.value)} onClear={() => setQ('')}
         onKeyDown={keys.onKeyDown}
         clearLabel={m.shell.search.clear} keycap="/" aria-keyshortcuts="/"
-        leading={(
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-            <circle cx="11" cy="11" r="7" /><path d="M21 21l-4.3-4.3" />
-          </svg>
-        )}
+        leading={<IconSearch />}
       />
       {/* The results line up with the whole field, its icon included, not with the input inside it. */}
       <PickerPopover
@@ -97,15 +113,7 @@ export function SearchBox({ onJump }: { onJump: (screen: ScreenKey, target: stri
               ? <div className="sres-empty"><EmptyState variant="section">{m.shell.search.noHits}</EmptyState></div>
               : null}
             {shown.map((hit, at) => (
-              <PickOption
-                keys={keys} index={at} className="two-line" key={`${at}${hit.kind}${hit.target}`}
-                onClick={() => go(hit)}
-              >
-                <div className="rt">{hit.kind === 'paper' || hit.kind === 'chat' ? <PaperText text={hit.title} /> : hit.title}</div>
-                {hit.snippet === undefined
-                  ? <div className="rm">{hit.meta}</div>
-                  : <FadeText className="rm">{hit.snippet}</FadeText>}
-              </PickOption>
+              <HitOption hit={hit} keys={keys} index={at} key={`${at}${hit.kind}${hit.target}`} onChoose={() => go(hit)} />
             ))}
           </>
         )}

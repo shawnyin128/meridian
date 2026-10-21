@@ -66,4 +66,5 @@ export const shell = {
     results: 'Search results',
     noHits: 'No matches found',
   },
+  palette: { title: 'Command palette', placeholder: 'Search or run a command' },
 } satisfies typeof zh
