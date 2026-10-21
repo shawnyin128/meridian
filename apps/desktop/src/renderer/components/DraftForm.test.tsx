@@ -165,6 +165,12 @@ describe('DraftForm', () => {
     expect(onCancel).toHaveBeenCalledTimes(1)
   })
 
+  it('sets a line\'s label in the label column and the fields after it in one box', () => {
+    show()
+    const line = host.querySelector('.draft-form-line')!
+    expect([...line.children].map((part) => [part.className, part.textContent])).toEqual([['draft-form-label', 'kind'], ['draft-form-fields', 'a']])
+  })
+
   it('names where the item lands after an arrow, on a card of its own, only when that is elsewhere', () => {
     show()
     expect(host.querySelector('.draft-form-destination')).toBeNull()

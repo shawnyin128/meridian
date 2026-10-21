@@ -94,12 +94,15 @@ export function DraftForm({ destination, canSave, onSave, onCancel, empty = fals
   return destination === undefined ? form : <Card className="draft-form-card">{form}</Card>
 }
 
-/** One labelled line of a DraftForm: `label` names the fields after it. */
+/**
+ * One line of a DraftForm: `label`, in the draft's label column, names the fields after it, which
+ * start where every other line's fields do; a line without a label spans the draft.
+ */
 export function DraftLine({ label, children }: { label?: string; children: ReactNode }) {
   return (
     <div className="draft-form-line">
       {label === undefined ? null : <span className="draft-form-label">{label}</span>}
-      {children}
+      <div className="draft-form-fields">{children}</div>
     </div>
   )
 }
