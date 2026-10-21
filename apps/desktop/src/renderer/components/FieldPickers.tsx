@@ -6,22 +6,25 @@ import { useFormat } from '../lib/format.js'
 import { useMessages } from '../messages/useMessages.js'
 import { ActionMenu, MenuRadioGroup, MenuRadioItem } from './ActionMenu.js'
 import { ActionPopover, PopoverClose } from './ActionPopover.js'
-import { IconDots } from './icons.js'
+import { FormButton } from './FormControls.js'
+import { IconButton } from './IconButton.js'
+import { IconChevron, IconDots, IconNext, IconPrevious } from './icons.js'
+import { ToggleGroup, ToggleItem, useToolbarItem } from './Toolbar.js'
+import { FadeText } from './FadeText.js'
 import './FieldPickers.css'
 
 const PRIORITIES: Task['priority'][] = ['p0', 'p1', 'p2']
 
 /**
- * The one overflow-menu trigger. The tooltip is always the shared "more actions" label; `label`
- * adds the screen-reader name for rows that need to say which object the menu belongs to.
- * `stopRowActivation` keeps the click off a clickable row or card underneath. The trigger shows
- * only while the element marked `data-dots-row` around it is hovered or holds focus.
+ * The one overflow-menu trigger, named and tooltipped by `label`, which says which object the menu
+ * belongs to, or by the shared "more actions" label without one. `stopRowActivation` keeps the click
+ * off a clickable row or card underneath. It goes in its row's `RowActions` slot, which shows it.
  */
 export function DotsMenu({
   children, label, stopRowActivation = false, open, onOpenChange, contentClassName,
 }: {
   children: ReactNode
-  /** The screen-reader name, e.g. naming which idea or chat the menu manages. Falls back to the bare tooltip when omitted. */
+  /** The name, e.g. naming which idea or chat the menu manages. Falls back to the shared "more actions" label when omitted. */
   label?: string
   /** Pass true when the row or card itself is clickable, so the trigger swallows the click instead of bubbling it. */
   stopRowActivation?: boolean
@@ -37,49 +40,64 @@ export function DotsMenu({
       {...(contentClassName === undefined ? {} : { contentClassName })}
       stopContentClickPropagation
       trigger={(
-        <button
-          type="button" className="dots" title={m.common.menu.more} aria-label={label}
+        <IconButton
+          label={label ?? m.common.menu.more} size="nested" className="dots"
           onClick={stopRowActivation ? (e) => e.stopPropagation() : undefined}
-        ><IconDots /></button>
+        ><IconDots /></IconButton>
       )}
     >{children}</ActionMenu>
   )
 }
 
 /**
- * A single-value picker whose trigger appearance is supplied by the host field. The trigger shows
- * `children` when given, and the current value's label otherwise.
+ * The one single-value picker: a menu of `options` with the picked one marked. With
+ * `appearance="field"` it is the boxed field of a form, showing the picked option's label, or
+ * `placeholder` while `value` matches no option. Otherwise the host field supplies the trigger's
+ * class, and its content as `children`, which defaults to the picked option's label, and the trigger
+ * is one of the controls of the toolbar it renders in.
  */
 export function ChoicePicker<T extends string>({
-  value, options, onPick, label = (option) => option, className = 'pv metadata-editable',
-  stopRowActivation = false, children,
+  value, options, onPick, label = (option) => option, className, appearance, placeholder = '',
+  disabled = false, 'aria-label': ariaLabel, stopRowActivation = false, children,
 }: {
   value: T
   options: readonly T[]
   onPick: (next: T) => void
   label?: (option: T) => string
   className?: string
+  appearance?: 'field'
+  placeholder?: string
+  disabled?: boolean
+  'aria-label'?: string
   /** Pass true when the row or card itself is clickable, so the trigger swallows the click instead of bubbling it. */
   stopRowActivation?: boolean
   children?: ReactNode
 }) {
-  const m = useMessages()
+  const asItem = useToolbarItem()
+  const picked = options.includes(value) ? label(value) : placeholder
+  const trigger = appearance === 'field'
+    ? (
+      <FormButton
+        className={`choice-picker${className ? ` ${className}` : ''}`} aria-label={ariaLabel} disabled={disabled}
+      >
+        <FadeText className="choice-picker-value" label={picked}>{picked}</FadeText>
+        <IconChevron />
+      </FormButton>
+    )
+    : asItem(
+      <button
+        className={className ?? 'pv metadata-editable'} aria-label={ariaLabel}
+        disabled={disabled} onClick={stopRowActivation ? (e) => e.stopPropagation() : undefined}
+      >{children ?? label(value)}</button>,
+    )
   return (
     <ActionMenu
-      align="start"
-      trigger={(
-        <button
-          className={className} title={m.common.field.clickToEdit}
-          onClick={stopRowActivation ? (e) => e.stopPropagation() : undefined}
-        >{children ?? label(value)}</button>
-      )}
+      align="start" trigger={trigger} stopContentClickPropagation={stopRowActivation}
+      {...(appearance === 'field' ? { contentClassName: 'ctxmenu choice-picker-menu', scrolls: true } : {})}
     >
       <MenuRadioGroup value={value}>
         {options.map((option) => (
-          <MenuRadioItem
-            className={option === value ? 'mi on' : 'mi'} key={option} value={option}
-            onSelect={() => onPick(option)}
-          >
+          <MenuRadioItem key={option} value={option} onSelect={() => onPick(option)}>
             {label(option)}
           </MenuRadioItem>
         ))}
@@ -88,34 +106,30 @@ export function ChoicePicker<T extends string>({
   )
 }
 
-/** Priority picker shared by plan rows and project metadata. */
-export function PriorityPicker({ value, className, title, onPick, children, stopRowActivation = false }: {
+/** Priority picker shared by plan rows and project metadata; its trigger is one of the controls of the toolbar it renders in. */
+export function PriorityPicker({ value, className, onPick, children, stopRowActivation = false }: {
   value: Task['priority']
   className: string
-  title: string
   onPick: (next: Task['priority']) => void
   children: ReactNode
   /** Pass true when the row or card itself is clickable, so the trigger swallows the click instead of bubbling it. */
   stopRowActivation?: boolean
 }) {
   const m = useMessages()
+  const asItem = useToolbarItem()
   const priorityNote = (option: Task['priority']) => ` · ${m.common.priority[option]}`
   return (
     <ActionMenu
       align="start"
-      trigger={(
-        <button
-          className={className} title={title}
-          onClick={stopRowActivation ? (e) => e.stopPropagation() : undefined}
-        >{children}</button>
+      trigger={asItem(
+        <button className={className} onClick={stopRowActivation ? (e) => e.stopPropagation() : undefined}>
+          {children}
+        </button>,
       )}
     >
       <MenuRadioGroup value={value}>
         {PRIORITIES.map((priority) => (
-          <MenuRadioItem
-            className={priority === value ? 'mi on' : 'mi'} key={priority} value={priority}
-            onSelect={() => onPick(priority)}
-          >
+          <MenuRadioItem key={priority} value={priority} onSelect={() => onPick(priority)}>
             {priority.toUpperCase()}{priorityNote(priority)}
           </MenuRadioItem>
         ))}
@@ -125,6 +139,7 @@ export function PriorityPicker({ value, className, title, onPick, children, stop
 }
 
 function Calendar({ selected, onPick }: { selected: string; onPick: (iso: string) => void }) {
+  const m = useMessages()
   const today = useToday()
   const fmt = useFormat()
   const [ym, setYm] = useState({ y: Number(selected.slice(0, 4)), m: Number(selected.slice(5, 7)) })
@@ -141,11 +156,14 @@ function Calendar({ selected, onPick }: { selected: string; onPick: (iso: string
   return (
     <>
       <div className="calh">
-        <button className="cnav" onClick={() => shift(-1)}>‹</button>
+        <IconButton label={m.common.calendar.previous} size="nested" onClick={() => shift(-1)}><IconPrevious /></IconButton>
         <b>{fmt.monthYear(`${ym.y}-${String(ym.m).padStart(2, '0')}-01`)}</b>
-        <button className="cnav" onClick={() => shift(1)}>›</button>
+        <IconButton label={m.common.calendar.next} size="nested" onClick={() => shift(1)}><IconNext /></IconButton>
       </div>
-      <div className="calg">
+      <ToggleGroup
+        label={fmt.monthYear(`${ym.y}-${String(ym.m).padStart(2, '0')}-01`)} className="calg" value={selected}
+        onValueChange={(iso) => { if (iso !== '') onPick(iso) }}
+      >
         {[...Array(7)].map((_, weekday) => (
           <span className="cw" key={weekday}>{fmt.weekdayShort(weekday)}</span>
         ))}
@@ -153,30 +171,43 @@ function Calendar({ selected, onPick }: { selected: string; onPick: (iso: string
         {[...Array(daysInMonth)].map((_, index) => {
           const iso = `${ym.y}-${String(ym.m).padStart(2, '0')}-${String(index + 1).padStart(2, '0')}`
           return (
-            <PopoverClose
-              className={`cd${iso === today ? ' today' : ''}${iso === selected ? ' sel' : ''}`}
-              key={iso} onClick={() => onPick(iso)}
-            >{index + 1}</PopoverClose>
+            <ToggleItem
+              asChild key={iso} value={iso} aria-label={fmt.date(iso)} aria-current={iso === today ? 'date' : undefined}
+            >
+              <PopoverClose className={`cd${iso === today ? ' today' : ''}${iso === selected ? ' sel' : ''}`}>{index + 1}</PopoverClose>
+            </ToggleItem>
           )
         })}
-      </div>
+      </ToggleGroup>
     </>
   )
 }
 
-/** Shared calendar trigger. Consumers control only the trigger presentation and selected ISO date. */
-export function DateButton({ iso, className, title, onPick, children }: {
+/**
+ * Shared calendar trigger for the ISO date `iso`. With `appearance="field"` it is the boxed field of a
+ * form, as ChoicePicker's is, showing the date; otherwise consumers control only the trigger's class
+ * and its content, which defaults to the date.
+ */
+export function DateButton({ iso, className, appearance, onPick, children }: {
   iso: string
-  className: string
-  title: string
+  className?: string
+  appearance?: 'field'
   onPick: (next: string) => void
   children?: ReactNode
 }) {
   const fmt = useFormat()
+  const shown = children ?? fmt.date(iso)
   return (
     <ActionPopover
       align="start"
-      trigger={<button className={className} title={title}>{children ?? fmt.date(iso)}</button>}
+      trigger={appearance === 'field'
+        ? (
+          <FormButton className={`choice-picker${className ? ` ${className}` : ''}`}>
+            <FadeText className="choice-picker-value">{shown}</FadeText>
+            <IconChevron />
+          </FormButton>
+        )
+        : <button className={className}>{shown}</button>}
     >
       <Calendar selected={iso} onPick={onPick} />
     </ActionPopover>

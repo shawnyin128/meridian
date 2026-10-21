@@ -1,9 +1,13 @@
 // @vitest-environment jsdom
 import { act, Profiler, useState } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
+import { renderToStaticMarkup } from 'react-dom/server'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Facet, ListParams, PaperColumns, PaperImportResult, PaperRow } from '../../shared/contract.js'
 import { PAPER_COLUMNS } from '../../shared/vocabulary.js'
+import { CallError } from '../call-error.js'
+import { IconTrash } from '../components/icons.js'
+import { TOOLTIP_DELAY } from '../components/Tooltip.js'
 import { MessagesProvider } from '../messages/useMessages.js'
 import { papers as papersZh } from '../messages/zh/papers.js'
 import { LANGUAGE_STORAGE_KEY } from '../shell/language.js'
@@ -67,8 +71,12 @@ let updateCalls: (Controlled<void> & { id: string; patch: Record<string, unknown
 let renameOptionCalls: [key: string, from: string, to: string][]
 /** Each papers.setColumnType call's own controlled promise, in the order the calls were made. */
 let setColumnTypeCalls: (Controlled<void> & { key: string; type: string })[]
-/** The text of each toast, in the order shown. */
-let toastMessages: string[]
+/** The text of each refusal notice, in the order shown. */
+let refusals: string[]
+/** Each success notice's text and the action it offered, in the order shown. */
+let successes: [text: unknown, action: { label: string; onAction: () => void } | undefined][]
+/** The change entries changelog.undo was asked to undo, in order. */
+let undone: string[]
 let deletedPapers: string[]
 /** An error the next papers.update throws synchronously, instead of rejecting, to simulate an unexpected throw. */
 let throwOnNextUpdate: Error | null
@@ -93,9 +101,10 @@ vi.mock('../ipc.js', () => ({
       if (throwOnNextUpdate) { const e = throwOnNextUpdate; throwOnNextUpdate = null; throw e }
       const c = controlled<void>()
       updateCalls.push({ ...c, id, patch })
-      return c.promise
+      const change = `change-update-${updateCalls.length}`
+      return c.promise.then(() => ({ change }))
     },
-    delete: (id: string) => { deletedPapers.push(id); return Promise.resolve() },
+    delete: (id: string) => { deletedPapers.push(id); return Promise.resolve({ change: 'change-delete' }) },
     reading: (id: string) => Promise.resolve({ paperId: id, highlights: [], notes: [], remark: '' }),
     source: () => Promise.reject(new Error('未在这个探针里用到')),
     import: (filename: string, bytes: Uint8Array) => {
@@ -115,14 +124,15 @@ vi.mock('../ipc.js', () => ({
     },
     renameOption: (key: string, from: string, to: string) => {
       renameOptionCalls.push([key, from, to])
-      return Promise.resolve()
+      return Promise.resolve({ change: 'change-rename' })
     },
     setColumnType: (key: string, type: string) => {
       const c = controlled<void>()
       setColumnTypeCalls.push({ ...c, key, type })
-      return c.promise
+      return c.promise.then(() => ({ change: 'change-type' }))
     },
   },
+  changelog: { undo: (id: string) => { undone.push(id); return Promise.resolve() } },
   project: {
     list: () => Promise.resolve([]),
     addPaper: () => Promise.resolve(),
@@ -131,7 +141,6 @@ vi.mock('../ipc.js', () => ({
 }))
 
 vi.mock('../shell/AppShell.js', () => ({
-  useBanner: () => vi.fn(),
   useCrumbTail: () => {},
   useEscapeLayer: () => {},
   useScreenReentry: () => 0,
@@ -142,7 +151,10 @@ vi.mock('../shell/AppShell.js', () => ({
   }),
   usePaperCount: () => vaultPaperCount,
   useScreen: () => 'papers',
-  useToast: () => (message: string) => { toastMessages.push(message) },
+  useNotice: () => ({
+    success: (text: unknown, action?: { label: string; onAction: () => void }) => { successes.push([text, action]) },
+    refusal: (message: string) => { refusals.push(message) },
+  }),
   // Only real revision state makes bump re-run the effects that fetch on revision, as in the app.
   useVaultRevision: () => {
     const [revision, setRevision] = useState(0)
@@ -153,10 +165,10 @@ vi.mock('../shell/AppShell.js', () => ({
 const { COLUMNS, orderedColumns, PaperTable } = await import('./PaperTable.js')
 
 describe('内置列', () => {
-  it('标题之后依次是短标题、评分、作者、年份、发表、主题、状态、随笔,与词表一一对应;能排序的只有作者与年份', () => {
+  it('标题之后依次是短标题、评分、作者、年份、发表、主题、阅读状态、随笔,与词表一一对应;能排序的只有作者与年份', () => {
     expect(COLUMNS.map((c) => c.k)).toEqual([...PAPER_COLUMNS])
     expect(COLUMNS.map((c) => papersZh.columns[c.k]))
-      .toEqual(['短标题', '评分', '作者', '年份', '发表', '主题', '状态', '随笔'])
+      .toEqual(['短标题', '评分', '作者', '年份', '发表', '主题', '阅读状态', '随笔'])
     expect(orderedColumns({ hidden: [], custom: [], groups: [] }).map((c) => c.k)).toEqual([...PAPER_COLUMNS])
     expect(COLUMNS.filter((c) => c.sort !== undefined).map((c) => [c.k, c.sort]))
       .toEqual([['authors', 'authors'], ['y', 'year']])
@@ -204,10 +216,10 @@ const TYPE_TITLE = { select: '单选', multi: '多选' } as const
  * in the name, presses Enter, and returns the papers.setColumns call that started.
  */
 async function startCreate(host: HTMLDivElement, label: string, type?: 'select' | 'multi') {
-  const plus = host.querySelector<HTMLButtonElement>('[title="新增列"]')!
+  const plus = host.querySelector<HTMLButtonElement>('[aria-label="新建列"]')!
   await act(async () => { plus.click() })
   if (type) {
-    const typeBtn = document.querySelector<HTMLButtonElement>(`[title="${TYPE_TITLE[type]}"]`)!
+    const typeBtn = document.querySelector<HTMLButtonElement>(`[aria-label="${TYPE_TITLE[type]}"]`)!
     await act(async () => { typeBtn.click() })
   }
   const input = host.querySelector<HTMLInputElement>('th.th-new input')!
@@ -224,13 +236,13 @@ async function openNoteTypeRow(): Promise<void> {
   columnsCall.resolve(NOTE_COLUMNS)
   listCall.resolve({ rows: [ROW], total: 1 })
   await flush()
-  await act(async () => { host.querySelector<HTMLButtonElement>('[title="列设置"]')!.click() })
-  await act(async () => { document.querySelector<HTMLButtonElement>('[title="改类型"]')!.click() })
+  await act(async () => { host.querySelector<HTMLButtonElement>('[aria-label="列设置"]')!.click() })
+  await act(async () => { document.querySelector<HTMLButtonElement>('[aria-label="改类型"]')!.click() })
 }
 
 /** The option button titled `title` in the column menu's type row. */
 function typeButton(title: string): HTMLButtonElement {
-  return document.querySelector<HTMLButtonElement>(`.typerow [title="${title}"]`)!
+  return document.querySelector<HTMLButtonElement>(`.typerow [aria-label="${title}"]`)!
 }
 
 /** Presses `key` on the element currently holding focus. */
@@ -240,9 +252,19 @@ async function pressKey(key: string): Promise<void> {
   })
 }
 
+/** Presses an arrow `key` on the focused element and waits for Radix, which moves roving focus on the next task. */
+async function moveFocus(key: string): Promise<void> {
+  await act(async () => {
+    document.activeElement!.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }))
+    await new Promise((done) => setTimeout(done, 0))
+  })
+}
+
 describe('PaperTable', () => {
   beforeEach(() => {
     globalThis.IS_REACT_ACT_ENVIRONMENT = true
+    // The page title measures whether it fits, and jsdom has no ResizeObserver.
+    vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} })
     window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'zh')
     document.body.innerHTML = ''
     columnsCall = controlled()
@@ -253,7 +275,9 @@ describe('PaperTable', () => {
     updateCalls = []
     renameOptionCalls = []
     setColumnTypeCalls = []
-    toastMessages = []
+    refusals = []
+    successes = []
+    undone = []
     deletedPapers = []
     throwOnNextUpdate = null
     columnsCallCount = 0
@@ -276,6 +300,20 @@ describe('PaperTable', () => {
       .toEqual(['20 / 页', '30 / 页', '50 / 页'])
   })
 
+  it('视图切换、搜索、分组与阅读状态筛选同在页面工具栏里，和稍后阅读的分组一个位置', async () => {
+    const host = mount()
+    columnsCall.resolve({ ...EMPTY_COLUMNS, groups: ['readState'] })
+    listCall.resolve({ rows: [ROW], total: 1 })
+    await flush()
+
+    const toolbar = host.querySelector('.desk-body .page-toolbar')!
+    expect([...toolbar.querySelectorAll('.segmented-control')].map((control) => control.getAttribute('aria-label')))
+      .toEqual(['论文库视图', '分组字段'])
+    expect(toolbar.querySelector('#libq')).not.toBeNull()
+    expect(toolbar.querySelector('.read-state-filter')).not.toBeNull()
+    expect(toolbar.querySelector('.grpgear')).not.toBeNull()
+  })
+
   it('研究地图用实际论文元数据生成可重叠的只读分组,并解释每篇论文为何归入', async () => {
     const host = mount()
     const mappedRows = [
@@ -286,17 +324,17 @@ describe('PaperTable', () => {
     listCall.resolve({ rows: mappedRows, total: 2 })
     await flush()
 
-    expect(host.querySelector('.desk-head')?.children).toHaveLength(1)
+    expect([...host.querySelector('.desk-head')!.children].map((child) => child.className)).toEqual(['fade-text t', 'page-actions'])
     const mapSwitch = [...host.querySelectorAll<HTMLButtonElement>('.paper-view-toolbar .segmented-control button')]
       .find((button) => button.textContent === '研究地图')!
-    expect(host.querySelector('.paper-view-toolbar .pdfupload')).not.toBeNull()
+    expect(host.querySelector('.desk-head .page-actions .pdfupload')).not.toBeNull()
+    expect(host.querySelector('.paper-view-toolbar .pdfupload')).toBeNull()
     await act(async () => { mapSwitch.click() })
     await flush()
 
     expect(listParams.at(-1)).toMatchObject({ page: 1, size: 200, sort: 'addedAt', direction: 'desc' })
     expect(host.querySelector('.research-map-title')?.textContent).toContain('自适应研究地图')
     expect(host.querySelector('.research-map-groups')?.textContent).toContain('Speculative decoding')
-    expect(host.querySelector('.research-map-detail')?.textContent).toContain('归入依据')
     expect(host.querySelector('.research-map-detail')?.textContent).toContain('主题：Speculative decoding')
     expect(host.querySelector('.pagebar')).toBeNull()
   })
@@ -462,6 +500,40 @@ describe('PaperTable', () => {
     expect(openedScreens).toEqual([['reader', ROW.id]])
   })
 
+  it('双击论文行打开阅读器时不选中标题里的字：第二下按下被拦住，第一下照常', async () => {
+    const host = mount()
+    columnsCall.resolve(EMPTY_COLUMNS)
+    listCall.resolve({ rows: [ROW], total: 1 })
+    await flush()
+    const title = host.querySelector('.ptable tbody tr .pt-title .ci')!
+    const pressed = (detail: number) => {
+      const event = new MouseEvent('mousedown', { bubbles: true, cancelable: true, detail })
+      title.dispatchEvent(event)
+      return event.defaultPrevented
+    }
+    expect([pressed(1), pressed(2)]).toEqual([false, true])
+  })
+
+  it('论文行是操作槽的宿主，行尾的删除在槽里', async () => {
+    const host = mount()
+    columnsCall.resolve(EMPTY_COLUMNS)
+    listCall.resolve({ rows: [ROW], total: 1 })
+    await flush()
+    const row = host.querySelector('.ptable tbody tr')!
+    expect(row.hasAttribute('data-row-actions')).toBe(true)
+    expect([...row.querySelectorAll('.row-actions button')].map((item) => item.getAttribute('aria-label'))).toEqual(['删除'])
+  })
+
+  it('行尾的删除把论文移到垃圾桶，画的是垃圾桶而不是关闭用的叉', async () => {
+    const host = mount()
+    columnsCall.resolve(EMPTY_COLUMNS)
+    listCall.resolve({ rows: [ROW], total: 1 })
+    await flush()
+    const remove = host.querySelector<HTMLButtonElement>('.ptable tbody tr .rowx')!
+    expect(remove.getAttribute('aria-label')).toBe('删除')
+    expect(remove.querySelector('svg')!.outerHTML).toBe(renderToStaticMarkup(<IconTrash />))
+  })
+
   it('能排序的表头里各有一个排序按钮，按它排序，表头报出排序方向', async () => {
     const host = mount()
     columnsCall.resolve(EMPTY_COLUMNS)
@@ -497,7 +569,75 @@ describe('PaperTable', () => {
     expect(row.classList).toContain('selected')
   })
 
-  it('分组索引里的每个值都是按钮，按它列出这一组的论文', async () => {
+  it('一行论文只占一个 Tab 停靠点：前三行一共三站，进行先到标题，方向键依次走过星级、主题、状态和删除', async () => {
+    const host = mount()
+    columnsCall.resolve(EMPTY_COLUMNS)
+    listCall.resolve({
+      rows: [{ ...ROW, id: 'p1', title: '甲', topics: ['推理'] }, { ...ROW, id: 'p2', title: '乙' }, { ...ROW, id: 'p3', title: '丙' }],
+      total: 3,
+    })
+    await flush()
+
+    const rows = [...host.querySelectorAll<HTMLElement>('.ptable tbody tr')]
+    const stops = [...host.querySelector('.ptable tbody')!.querySelectorAll<HTMLElement>('*')]
+      .filter((element) => element.tabIndex >= 0 && !(element as HTMLButtonElement).disabled)
+    expect(stops).toEqual(rows)
+
+    await act(async () => { rows[0]!.focus() })
+    const walked: string[] = []
+    for (let step = 0; step < 11; step += 1) {
+      walked.push(document.activeElement!.getAttribute('aria-label') ?? document.activeElement!.textContent ?? '')
+      await moveFocus('ArrowRight')
+    }
+    expect(walked).toEqual(['甲', '1 星', '2 星', '3 星', '4 星', '5 星', '移除主题「推理」', '添加主题', '未读', '删除', '甲'])
+    expect(rows[0]!.getAttribute('role')).toBe('row')
+  })
+
+  it('详情里的五颗星只占一个 Tab 停靠点，进来落在当前评分那颗，方向键移到别的星，按下就是新评分', async () => {
+    const host = mount()
+    columnsCall.resolve(EMPTY_COLUMNS)
+    listCall.resolve({ rows: [{ ...ROW, rating: 2 }], total: 1 })
+    await flush()
+    await act(async () => { press(host.querySelector<HTMLElement>('.ptable tbody td')!) })
+    getCall.resolve({ ...ROW, rating: 2 })
+    await flush()
+
+    const group = host.querySelector<HTMLElement>('.pdetail .rating-stars')!
+    const stars = [...group.querySelectorAll<HTMLButtonElement>('button')]
+    expect([group, ...stars].filter((element) => element.tabIndex === 0)).toEqual([group])
+    await act(async () => { group.focus() })
+    expect(document.activeElement).toBe(stars[1])
+    await moveFocus('ArrowRight')
+    expect(document.activeElement).toBe(stars[2])
+    await act(async () => { stars[2]!.click() })
+    expect(updateCalls.at(-1)!.patch).toEqual({ rating: 3 })
+  })
+
+  it('详情面板只在头部写一次标题，属性表里没有第二个「标题」；点头部的标题就在原处改', async () => {
+    const host = mount()
+    columnsCall.resolve(EMPTY_COLUMNS)
+    listCall.resolve({ rows: [ROW], total: 1 })
+    await flush()
+    await act(async () => { press(host.querySelector<HTMLElement>('.ptable tbody td')!) })
+    getCall.resolve(ROW)
+    await flush()
+
+    const panel = host.querySelector<HTMLElement>('.pdetail')!
+    expect([...panel.querySelectorAll('dt')].map((label) => label.textContent)).not.toContain('标题')
+    expect(panel.textContent!.split(ROW.title)).toHaveLength(2)
+    await act(async () => { panel.querySelector<HTMLButtonElement>('.pd-t button')!.click() })
+    const input = panel.querySelector<HTMLTextAreaElement>('.pd-t textarea')!
+    expect(input.getAttribute('aria-label')).toBe('编辑标题')
+    const setter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value')!.set!
+    await act(async () => {
+      setter.call(input, '改过的标题')
+      input.dispatchEvent(new Event('input', { bubbles: true }))
+    })
+    await act(async () => { input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })) })
+    expect(updateCalls.at(-1)!.patch).toEqual({ title: '改过的标题' })
+  })
+
+  it('分组索引里的每个值都是按钮，按它列出这一组的论文，下面不写一句该怎么选', async () => {
     facetRows = [{ value: '推理', count: 2, newestTitle: '一篇论文' }]
     const host = mount()
     columnsCall.resolve({ hidden: [], custom: [], groups: ['topics'] })
@@ -510,9 +650,61 @@ describe('PaperTable', () => {
     await flush()
     const value = host.querySelector<HTMLElement>('.gxrow')!
     expect(value.tagName).toBe('BUTTON')
+    expect(host.querySelector('.lmore')).toBeNull()
+    expect(value.classList.contains('structured-row')).toBe(true)
+    expect(value.parentElement!.classList.contains('structured-list--embedded')).toBe(true)
     await act(async () => { value.click() })
     await flush()
     expect(listParams.at(-1)?.facet).toEqual({ field: 'topics', value: '推理' })
+  })
+
+  it('分组索引写出最新一篇的整个标题，放不下时淡出，不按字数截掉', async () => {
+    const newest = 'Accelerating Large Language Model Decoding with Speculative Sampling'
+    facetRows = [{ value: '推理', count: 2, newestTitle: newest }]
+    const host = mount()
+    columnsCall.resolve({ hidden: [], custom: [], groups: ['topics'] })
+    listCall.resolve({ rows: [ROW], total: 1 })
+    await flush()
+    const topics = [...host.querySelectorAll<HTMLElement>('.filters .segmented-control > button')]
+      .find((button) => button.textContent === '主题')!
+    await act(async () => { topics.click() })
+    await flush()
+
+    const line = host.querySelector<HTMLElement>('.gxrow .gx-m')!
+    expect(line.textContent).toBe(`最新：${newest}`)
+    expect(line.classList.contains('fade-text')).toBe(true)
+  })
+
+  it('选定分组取值后，取值换成一个选择器：按钮显示当前值，从菜单里换一个值就列出那一组', async () => {
+    facetRows = [
+      { value: '推理', count: 2, newestTitle: '一篇论文' },
+      { value: '检索', count: 1, newestTitle: '一篇论文' },
+    ]
+    const host = mount()
+    columnsCall.resolve({ hidden: [], custom: [], groups: ['topics'] })
+    listCall.resolve({ rows: [ROW], total: 1 })
+    await flush()
+    const topics = [...host.querySelectorAll<HTMLElement>('.filters .segmented-control > button')]
+      .find((button) => button.textContent === '主题')!
+    await act(async () => { topics.click() })
+    await flush()
+    await act(async () => { host.querySelector<HTMLElement>('.gxrow')!.click() })
+    await flush()
+
+    expect(host.querySelector('.gnav .segmented-control')).toBeNull()
+    const picker = host.querySelector<HTMLButtonElement>('.gnav button[aria-label="分组取值"]')!
+    expect(picker.textContent).toBe('推理 · 2')
+    expect(host.querySelector('#gxBack')).toBeNull()
+    expect([...host.querySelector('.gnav')!.children]).toEqual([picker])
+    await act(async () => { picker.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, button: 0 })) })
+    await flush()
+    const items = [...document.querySelectorAll<HTMLElement>('.ctxmenu [role="menuitemradio"]')]
+    expect(items.map((item) => [item.textContent, item.getAttribute('aria-checked'), item.querySelectorAll('svg').length]))
+      .toEqual([['推理2', 'true', 1], ['检索1', 'false', 0]])
+    await act(async () => { press(items[1]!) })
+    await flush()
+    expect(listParams.at(-1)?.facet).toEqual({ field: 'topics', value: '检索' })
+    expect(host.querySelector('.gnav button[aria-label="分组取值"]')!.textContent).toBe('检索 · 1')
   })
 
   it('列设置里能显隐的内置列是按钮并报出是否显示，锁定的列不是按钮', async () => {
@@ -521,12 +713,69 @@ describe('PaperTable', () => {
     listCall.resolve({ rows: [ROW], total: 1 })
     await flush()
 
-    await act(async () => { host.querySelector<HTMLButtonElement>('[title="列设置"]')!.click() })
+    await act(async () => { host.querySelector<HTMLButtonElement>('[aria-label="列设置"]')!.click() })
     const row = (label: string) => [...document.querySelectorAll<HTMLElement>('.mi.colrow')]
       .find((el) => el.textContent === label)!
     expect([row('主题').tagName, row('主题').getAttribute('aria-pressed')]).toEqual(['BUTTON', 'true'])
     expect([row('发表').tagName, row('发表').getAttribute('aria-pressed')]).toEqual(['BUTTON', 'false'])
     expect(row('作者').tagName).toBe('DIV')
+  })
+
+  /** The texts among `texts` that name a state. */
+  const states = (texts: (string | null)[]) => texts.filter((text) => text?.includes('状态'))
+  const HELD_READ_STATE: PaperColumns = {
+    hidden: [], groups: [], custom: [{ key: 'yuedu', label: '阅读状态', type: 'select', options: ['核心'] }],
+  }
+
+  it('库里早先建的自定义列已经叫阅读状态时，内置的阅读状态在表头、列设置与分组菜单里仍叫原来的状态', async () => {
+    const host = mount()
+    columnsCall.resolve(HELD_READ_STATE)
+    listCall.resolve({ rows: [ROW], total: 1 })
+    await flush()
+
+    expect(states(headTexts(host))).toEqual(['状态', '阅读状态'])
+    await act(async () => { host.querySelector<HTMLButtonElement>('[aria-label="列设置"]')!.click() })
+    expect(states([...document.querySelectorAll('.mi.colrow')].map((row) => row.textContent))).toEqual(['状态', '阅读状态'])
+    const gear = document.querySelector<HTMLButtonElement>('.grpgear')!
+    await act(async () => { gear.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, button: 0 })) })
+    expect(states([...document.querySelectorAll('[role="menuitemcheckbox"]')].map((item) => item.textContent)))
+      .toEqual(['状态', '阅读状态'])
+  })
+
+  it('自定义列占着阅读状态这个名字时，顶栏的阅读状态筛选和论文详情也叫状态，与表头同名', async () => {
+    const host = mount()
+    columnsCall.resolve({ ...HELD_READ_STATE, groups: ['readState'] })
+    listCall.resolve({ rows: [ROW], total: 1 })
+    await flush()
+
+    const filter = host.querySelector<HTMLButtonElement>('.filters .read-state-filter')!
+    expect([filter.textContent, filter.getAttribute('aria-label')]).toEqual(['状态', '筛选状态'])
+    await act(async () => { press(host.querySelector<HTMLElement>('.ptable tbody tr')!) })
+    getCall.resolve(ROW)
+    await flush()
+    expect(states([...host.querySelectorAll('.pdetail .paper-meta-list dt')].map((dt) => dt.textContent))).toEqual(['状态'])
+  })
+
+  it('自定义列占着阅读状态这个名字时，内置列叫状态，新建一列也不能叫状态', async () => {
+    const host = mount()
+    columnsCall.resolve(HELD_READ_STATE)
+    listCall.resolve({ rows: [ROW], total: 1 })
+    await flush()
+
+    await startCreate(host, '状态')
+    expect(setColumnsCalls).toEqual([])
+  })
+
+  it('列设置只在能点着显隐的行上打勾，自定义列的行不打勾', async () => {
+    const host = mount()
+    columnsCall.resolve({ ...SELECT_COLUMNS, hidden: ['venue'] })
+    listCall.resolve({ rows: [ROW], total: 1 })
+    await flush()
+
+    await act(async () => { host.querySelector<HTMLButtonElement>('[aria-label="列设置"]')!.click() })
+    const checked = (label: string) => [...document.querySelectorAll<HTMLElement>('.mi.colrow')]
+      .find((el) => el.textContent === label)!.querySelector('.ck svg') !== null
+    expect([checked('主题'), checked('发表'), checked('选择')]).toEqual([true, false, false])
   })
 
   it('主题超出一行时用 +N 收起,点击后展开且不会误开论文详情', async () => {
@@ -547,10 +796,11 @@ describe('PaperTable', () => {
 
       const more = host.querySelector<HTMLButtonElement>('.morebadge')!
       const chips = more.parentElement!
-      expect(more.textContent).toBe('+2')
+      expect([more.textContent, more.getAttribute('aria-label')]).toEqual(['+2', '展开其余 2 项'])
       expect(more.getAttribute('aria-expanded')).toBe('false')
       act(() => more.click())
       expect(more.getAttribute('aria-expanded')).toBe('true')
+      expect(more.getAttribute('aria-label')).toBe('收起其余 2 项')
       expect(chips.classList.contains('chip-expanded')).toBe(true)
       expect(openedScreens).toEqual([])
       act(() => more.click())
@@ -599,6 +849,117 @@ describe('PaperTable', () => {
     expect(column('rating').style.width).toBe('100px')
   })
 
+  /**
+   * Mounts a one-row table whose columns are laid out at `ACTUAL` px, the header cells as wide as
+   * their columns, and returns the title column's grip with a reader for each column's written width.
+   */
+  async function laidOutTable() {
+    const host = mount()
+    columnsCall.resolve(EMPTY_COLUMNS)
+    listCall.resolve({ rows: [ROW], total: 1 })
+    await flush()
+    const actual: Record<string, number> = {
+      t: 400, short: 180, rating: 100, authors: 170, y: 110, venue: 130, topics: 220, st: 90, remark: 220, x: 52,
+    }
+    const column = (key: string) => host.querySelector<HTMLElement>(`col[data-cw="${key}"]`)!
+    for (const [key, width] of Object.entries(actual)) {
+      Object.defineProperty(column(key), 'getBoundingClientRect', { configurable: true, value: () => ({ width }) })
+    }
+    const titleHead = host.querySelector<HTMLElement>('th:first-child')!
+    Object.defineProperty(titleHead, 'getBoundingClientRect', { configurable: true, value: () => ({ width: 400 }) })
+    const grip = titleHead.querySelector<HTMLElement>('.thgrip')!
+    return { host, grip, width: (key: string) => column(key).style.width }
+  }
+  const mouseAt = (target: EventTarget, type: string, clientX = 0) => act(() => {
+    target.dispatchEvent(new MouseEvent(type, { bubbles: true, cancelable: true, clientX }))
+  })
+  const keyOn = (target: HTMLElement, key: string) => act(() => {
+    target.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }))
+  })
+
+  it('列宽把手是键盘可达的分隔条,方向键让左右两列等量变化', async () => {
+    const { grip, width } = await laidOutTable()
+    expect(grip.getAttribute('role')).toBe('separator')
+    expect(grip.tabIndex).toBe(0)
+    expect(grip.getAttribute('aria-label')).toBe('「标题」列宽')
+    expect(grip.hasAttribute('title')).toBe(false)
+    keyOn(grip, 'ArrowRight')
+    expect([width('t'), width('short')]).toEqual(['410px', '170px'])
+  })
+
+  it('列宽把手在共享 tooltip 里写出它调的是哪一列,下一行说可以拖动', async () => {
+    const { grip } = await laidOutTable()
+    vi.useFakeTimers()
+    act(() => { grip.dispatchEvent(new PointerEvent('pointermove', { bubbles: true, pointerType: 'mouse' })) })
+    act(() => { vi.advanceTimersByTime(TOOLTIP_DELAY) })
+    vi.useRealTimers()
+    const tip = document.querySelector('[role="tooltip"]')
+    expect([tip?.firstChild?.textContent, tip?.querySelector('.tooltip-note')?.textContent]).toEqual(['「标题」列宽', '拖动调整宽度'])
+    expect(grip.hasAttribute('title')).toBe(false)
+  })
+
+  it('拖动列宽时按 Esc,两列回到按下时的宽度,之后移动鼠标不再调宽', async () => {
+    const { grip, width } = await laidOutTable()
+    mouseAt(grip, 'mousedown', 400)
+    mouseAt(document, 'mousemove', 460)
+    expect([width('t'), width('short')]).toEqual(['460px', '120px'])
+    keyOn(document.body, 'Escape')
+    expect([width('t'), width('short')]).toEqual(['400px', '180px'])
+    mouseAt(document, 'mousemove', 300)
+    mouseAt(document, 'mouseup', 300)
+    expect([width('t'), width('short')]).toEqual(['400px', '180px'])
+  })
+
+  it('拖完列宽在标题格上松手,随后那次 click 不排序', async () => {
+    const { host, grip, width } = await laidOutTable()
+    const head = host.querySelector<HTMLElement>('th[data-k="title"]')!
+    mouseAt(grip, 'mousedown', 400)
+    mouseAt(document, 'mousemove', 380)
+    mouseAt(document, 'mouseup', 380)
+    mouseAt(head, 'click', 380)
+    await flush()
+    expect(width('t')).toBe('380px')
+    expect(head.getAttribute('aria-sort')).toBeNull()
+  })
+
+  it('双击列宽把手,该列回到默认宽度,右邻列补上差额', async () => {
+    const { grip, width } = await laidOutTable()
+    mouseAt(grip, 'dblclick', 400)
+    expect([width('t'), width('short')]).toEqual(['300px', '280px'])
+  })
+
+  it('按下列宽把手不移动就松开,列宽不变,也不排序', async () => {
+    const { host, grip, width } = await laidOutTable()
+    const listed = listCallCount
+    mouseAt(grip, 'mousedown', 400)
+    mouseAt(document, 'mousemove', 402)
+    mouseAt(document, 'mouseup', 402)
+    mouseAt(grip, 'click', 402)
+    await flush()
+    expect([width('t'), width('short')]).toEqual(['300px', '150px'])
+    expect(host.querySelector('th[data-k="title"]')!.getAttribute('aria-sort')).toBeNull()
+    expect(listCallCount).toBe(listed)
+  })
+
+  it('表格的上、左、右三边由吸住的表头、标题列和操作列守着；横向滚动时只标出藏着内容的那一边，由吸住的格子去淡出', async () => {
+    const host = mount()
+    columnsCall.resolve(EMPTY_COLUMNS)
+    listCall.resolve({ rows: [ROW], total: 1 })
+    await flush()
+    const wrap = host.querySelector<HTMLElement>('.tblwrap')!
+    let offset = 0
+    Object.defineProperty(wrap, 'clientWidth', { configurable: true, get: () => 900 })
+    Object.defineProperty(wrap, 'scrollWidth', { configurable: true, get: () => 1500 })
+    Object.defineProperty(wrap, 'scrollLeft', { configurable: true, get: () => offset })
+    expect(wrap.dataset.fadeHeld).toBe('left right top')
+    act(() => { wrap.dispatchEvent(new Event('scroll')) })
+    expect(wrap.dataset.fade).toBe('right')
+    act(() => { offset = 300; wrap.dispatchEvent(new Event('scroll')) })
+    expect(wrap.dataset.fade).toBe('left right')
+    act(() => { offset = 600; wrap.dispatchEvent(new Event('scroll')) })
+    expect(wrap.dataset.fade).toBe('left')
+  })
+
   it('阅读状态可在顶栏直接筛选,不必先进入分组索引', async () => {
     const host = mount()
     columnsCall.resolve({ hidden: [], custom: [], groups: ['readState'] })
@@ -639,9 +1000,54 @@ describe('PaperTable', () => {
     expect(document.body.querySelector('.paper-row-menu')).toBeNull()
   })
 
+  it('论文行的右键菜单用方向键在条目间移动,Home 与 End 到两头,只有当前条目是 Tab 停靠点', async () => {
+    const host = mount()
+    columnsCall.resolve(EMPTY_COLUMNS)
+    listCall.resolve({ rows: [ROW], total: 1 })
+    await flush()
+
+    const row = host.querySelector<HTMLElement>('.ptable tbody tr')!
+    row.focus()
+    await act(async () => { row.dispatchEvent(new KeyboardEvent('keydown', { key: 'ContextMenu', bubbles: true })) })
+    const items = [...document.body.querySelectorAll<HTMLElement>('.paper-row-menu [role="menuitem"]')]
+    // Radix moves the roving focus on the next task, not inside the keydown.
+    const key = async (name: string) => {
+      await act(async () => {
+        document.activeElement!.dispatchEvent(new KeyboardEvent('keydown', { key: name, bubbles: true }))
+        await new Promise((done) => setTimeout(done, 0))
+      })
+    }
+    expect(document.activeElement).toBe(items[0])
+    await key('ArrowDown')
+    expect(document.activeElement).toBe(items[1])
+    expect(items.filter((item) => item.tabIndex === 0)).toEqual([items[1]])
+    await key('End')
+    expect(document.activeElement).toBe(items.at(-1))
+    await key('Home')
+    expect(document.activeElement).toBe(items[0])
+  })
+
+  it('论文行的右键菜单可以直接在阅读器中打开这篇论文', async () => {
+    const host = mount()
+    columnsCall.resolve(EMPTY_COLUMNS)
+    listCall.resolve({ rows: [ROW], total: 1 })
+    await flush()
+
+    const row = host.querySelector<HTMLElement>('.ptable tbody tr')!
+    await act(async () => {
+      row.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, clientX: 120, clientY: 80 }))
+    })
+    const items = [...document.body.querySelectorAll<HTMLElement>('.paper-row-menu [role="menuitem"]')]
+    expect(items.map((item) => item.textContent)).toEqual(['打开详情', '在阅读器中打开', '移到垃圾桶'])
+    await act(async () => { press(items[1]!) })
+    expect(openedScreens).toEqual([['reader', ROW.id]])
+    expect(document.body.querySelector('.paper-row-menu')).toBeNull()
+  })
+
   afterEach(() => {
     if (mountedRoot) act(() => { mountedRoot!.unmount() })
     mountedRoot = null
+    vi.unstubAllGlobals()
   })
 
   it('打开论文详情仍保留全部配置列、列操作与当前行上下文', async () => {
@@ -660,9 +1066,109 @@ describe('PaperTable', () => {
     expect(labels()).toEqual(before)
     expect(labels()).toContain('选择')
     expect(host.querySelectorAll('.ptable thead .thmove')).toHaveLength(COLUMNS.length + 1)
-    expect(host.querySelector<HTMLButtonElement>('[title="新增列"]')!.disabled).toBe(false)
+    expect(host.querySelector<HTMLButtonElement>('[aria-label="新建列"]')!.disabled).toBe(false)
     expect(row.classList).toContain('selected')
     expect(row.getAttribute('aria-current')).toBe('true')
+  })
+
+  /** Clicks the action of the last success notice, which must be Undo, and lets the undo land. */
+  const undoLast = async (): Promise<unknown> => {
+    const [text, action] = successes.at(-1)!
+    expect(action?.label).toBe('撤销')
+    await act(async () => { action!.onAction() })
+    await flush()
+    return text
+  }
+
+  it('移除主题后提示只说已更新，给一个撤销，撤销的是这次写入记下的那条变动', async () => {
+    const host = mount()
+    columnsCall.resolve(EMPTY_COLUMNS)
+    listCall.resolve({ rows: [{ ...ROW, topics: ['推理', '检索'] }], total: 1 })
+    await flush()
+    const row = host.querySelector<HTMLElement>('.ptable tbody tr')!
+    await act(async () => {
+      [...row.querySelectorAll<HTMLElement>('.tagchip')].find((chip) => chip.textContent === '检索')!
+        .querySelector<HTMLButtonElement>('button')!.click()
+    })
+    updateCalls.at(-1)!.resolve()
+    await flush()
+    expect(await undoLast()).toBe('已更新')
+    expect(undone).toEqual(['change-update-1'])
+  })
+
+  it('论文移进垃圾桶后提示只说已移入垃圾桶，撤销按最近变动的那一条把它放回', async () => {
+    const host = mount()
+    columnsCall.resolve(EMPTY_COLUMNS)
+    listCall.resolve({ rows: [ROW], total: 1 })
+    await flush()
+    const row = host.querySelector<HTMLElement>('.ptable tbody tr')!
+    await act(async () => {
+      row.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, clientX: 120, clientY: 80 }))
+    })
+    await act(async () => { press([...document.body.querySelectorAll('.paper-row-menu [role="menuitem"]')].at(-1)!) })
+    await flush()
+    expect(await undoLast()).toBe('已移入垃圾桶')
+    expect(undone).toEqual(['change-delete'])
+  })
+
+  it('改列类型后提示只说已改列类型，撤销的是这次改类型记下的那条变动', async () => {
+    await openNoteTypeRow()
+    await act(async () => { typeButton('单选').click() })
+    columnsCall = controlled()
+    columnsCall.resolve(NOTE_AS_SELECT)
+    setColumnTypeCalls[0]!.resolve()
+    for (let i = 0; i < 8; i++) await flush()
+    expect(await undoLast()).toBe('已改列类型')
+    expect(undone).toEqual(['change-type'])
+  })
+
+  it('详情里改了元数据，提示只说已更新哪一项，撤销的是这次写入记下的那条变动', async () => {
+    const host = mount()
+    columnsCall.resolve(EMPTY_COLUMNS)
+    listCall.resolve({ rows: [{ ...ROW, topics: ['推理', '检索'] }], total: 1 })
+    await flush()
+    await act(async () => { press(host.querySelector<HTMLElement>('.ptable tbody tr td')!) })
+    getCall.resolve({ ...ROW, topics: ['推理', '检索'] })
+    await flush()
+    const panel = host.querySelector<HTMLElement>('.pdetail .paper-meta')!
+    await act(async () => {
+      [...panel.querySelectorAll<HTMLElement>('.tagchip')].find((chip) => chip.textContent === '检索')!
+        .querySelector<HTMLButtonElement>('button')!.click()
+    })
+    updateCalls.at(-1)!.resolve()
+    await flush()
+    expect(await undoLast()).toBe('已更新主题')
+    expect(undone).toEqual([`change-update-${updateCalls.length}`])
+  })
+
+  it('表格和详情用同一组评分、阅读状态与主题编辑：点当前那颗星清空评分，状态是同一个选择器，主题是带 × 的标签加 +', async () => {
+    const rated = { ...ROW, rating: 4, topics: ['推理', '检索'] }
+    const host = mount()
+    columnsCall.resolve(EMPTY_COLUMNS)
+    listCall.resolve({ rows: [rated], total: 1 })
+    await flush()
+
+    const row = host.querySelector<HTMLElement>('.ptable tbody tr')!
+    await act(async () => { row.querySelector<HTMLButtonElement>('.rating-stars [aria-label="4 星"]')!.click() })
+    expect(updateCalls.at(-1)!.patch).toEqual({ rating: null })
+    await act(async () => {
+      [...row.querySelectorAll<HTMLElement>('.tagchip')].find((chip) => chip.textContent === '检索')!
+        .querySelector<HTMLButtonElement>('button')!.click()
+    })
+    expect(updateCalls.at(-1)!.patch).toEqual({ topics: ['推理'] })
+
+    await act(async () => { press(row.querySelector<HTMLElement>('td')!) })
+    getCall.resolve(rated)
+    await flush()
+    const panel = host.querySelector<HTMLElement>('.pdetail .paper-meta')!
+    expect(panel.querySelector('select')).toBeNull()
+    const tableStatus = row.querySelector('.stchip')!
+    const panelStatus = panel.querySelector('.stchip')!
+    expect([panelStatus.tagName, panelStatus.getAttribute('aria-haspopup'), panelStatus.textContent])
+      .toEqual([tableStatus.tagName, tableStatus.getAttribute('aria-haspopup'), tableStatus.textContent])
+    expect([...panel.querySelectorAll('.tagchip:not(.tagadd)')].map((chip) => chip.textContent))
+      .toEqual(expect.arrayContaining(['推理', '检索']))
+    expect(panel.querySelector('.tagadd')).not.toBeNull()
   })
 
   it('详情里的标题和短标题按 LaTeX 显示，点开编辑时仍是原文', async () => {
@@ -675,7 +1181,8 @@ describe('PaperTable', () => {
     getCall.resolve(latex)
     await flush()
 
-    const [title, short] = [...host.querySelectorAll<HTMLElement>('.paper-meta-list .paper-meta-editable')]
+    const title = host.querySelector<HTMLElement>('.pdetail .pd-t')
+    const short = host.querySelector<HTMLElement>('.paper-meta-list .paper-meta-editable')
     expect(title!.innerHTML).toMatch(/<strong>F<\/strong>luxBin <span><span class="katex">/)
     expect(short!.innerHTML).toContain('<em>Flux</em>')
     await act(async () => { title!.querySelector('button')!.click() })
@@ -724,13 +1231,13 @@ describe('PaperTable', () => {
     expect(host.querySelector('.paper-detail-slot')?.getAttribute('data-panel-state')).toBe('open')
 
     // Collapse details panel
-    const closeDetail = host.querySelector<HTMLButtonElement>('[title="收起详情"]')!
+    const closeDetail = host.querySelector<HTMLButtonElement>('[aria-label="收起详情"]')!
     await act(async () => { closeDetail.click() })
     expect(host.querySelector('.pdetail')).toBeNull()
     expect(host.querySelector('.paper-detail-slot')?.getAttribute('data-panel-state')).toBe('closed')
 
     // Open a new draft and type it without submitting it
-    const plus = host.querySelector<HTMLButtonElement>('[title="新增列"]')!
+    const plus = host.querySelector<HTMLButtonElement>('[aria-label="新建列"]')!
     await act(async () => { plus.click() })
     const input2 = host.querySelector<HTMLInputElement>('th.th-new input')!
     await act(async () => { setValue(input2, '第二次') })
@@ -754,7 +1261,7 @@ describe('PaperTable', () => {
 
     // The write has not landed yet: the draft header, the type popover and the selected option all stay.
     expect(host.querySelector('th.th-new')).not.toBeNull()
-    const selectBtn = document.querySelector<HTMLButtonElement>('[title="单选"]')!
+    const selectBtn = document.querySelector<HTMLButtonElement>('[aria-label="单选"]')!
     expect(selectBtn.getAttribute('aria-checked')).toBe('true')
     expect(selectBtn.className).toContain('on')
 
@@ -914,7 +1421,7 @@ describe('PaperTable', () => {
     await act(async () => { press(existingRow) })
     await flush()
 
-    expect(toastMessages).toEqual(['意外炸了'])
+    expect(refusals).toEqual(['出了点问题'])
     // The throw happened before any controlled promise was recorded, so this pick left no papers.update call.
     expect(updateCalls).toHaveLength(0)
 
@@ -1012,7 +1519,7 @@ describe('PaperTable', () => {
     expect(host.querySelector('th.th-new')).toBeNull()
   })
 
-  it('建列被 core 拒:占位、打的字与选中的类型都留着,只报一条 toast 是 core 的原话;改了再回车照发', async () => {
+  it('建列被 core 拒:占位、打的字与选中的类型都留着,只报一条拒绝提示,是拒绝原因的标签;改了再回车照发', async () => {
     const host = mount()
     columnsCall.resolve(EMPTY_COLUMNS)
     listCall.resolve({ rows: [ROW], total: 1 })
@@ -1020,15 +1527,15 @@ describe('PaperTable', () => {
     const columnsCallsAtMount = columnsCallCount
 
     const call = await startCreate(host, '建列时序', 'select')
-    call.reject(new Error('列名重复:建列时序'))
+    call.reject(new CallError('papers.setColumns', 'invalid'))
     await flush()
     await flush()
 
-    expect(toastMessages).toEqual(['列名重复:建列时序'])
+    expect(refusals).toEqual(['内容无效'])
     const input = host.querySelector<HTMLInputElement>('th.th-new input')
     expect(input).not.toBeNull()
     expect(input!.value).toBe('建列时序')
-    expect(document.querySelector('[title="单选"]')!.getAttribute('aria-checked')).toBe('true')
+    expect(document.querySelector('[aria-label="单选"]')!.getAttribute('aria-checked')).toBe('true')
     expect(headTexts(host)).not.toContain('建列时序')
     // After the rejection, the table fetched the columns from Core again to correct itself.
     expect(columnsCallCount).toBeGreaterThan(columnsCallsAtMount)
@@ -1055,7 +1562,7 @@ describe('PaperTable', () => {
     })
     expect(host.querySelector('th.th-new')).toBeNull()
 
-    const plus = host.querySelector<HTMLButtonElement>('[title="新增列"]')!
+    const plus = host.querySelector<HTMLButtonElement>('[aria-label="新建列"]')!
     await act(async () => { plus.click() })
     const input2 = host.querySelector<HTMLInputElement>('th.th-new input')!
     await act(async () => { setValue(input2, '第二次') })
@@ -1086,7 +1593,7 @@ describe('PaperTable', () => {
     expect(headTexts(host)).toContain('建列时序')
   })
 
-  it('单元格里一次选择被 core 拒:同一格排在后面的选择作废不发,这一格从 core 重取,只报一条 toast', async () => {
+  it('单元格里一次选择被 core 拒:同一格排在后面的选择作废不发,这一格从 core 重取,只报一条拒绝提示', async () => {
     const host = mount()
     columnsCall.resolve(MULTI_COLUMNS)
     listCall.resolve({ rows: [ROW], total: 1 })
@@ -1104,12 +1611,12 @@ describe('PaperTable', () => {
     await flush()
     expect(updateCalls).toHaveLength(1)
 
-    updateCalls[0]!.reject(new Error('论文不存在:p1'))
+    updateCalls[0]!.reject(new CallError('papers.update', 'not-found'))
     await flush()
     await flush()
 
     expect(updateCalls).toHaveLength(1)
-    expect(toastMessages).toEqual(['论文不存在:p1'])
+    expect(refusals).toEqual(['这一项已不存在'])
     await flush()
     expect(columnsCallCount).toBeGreaterThan(columnsCallsAtMount)
     expect(listCallCount).toBeGreaterThan(listCallsAtMount)
@@ -1120,7 +1627,7 @@ describe('PaperTable', () => {
     await act(async () => { press(document.querySelector<HTMLElement>('.rrow.opt')!) })
     await flush()
     expect(updateCalls).toHaveLength(2)
-    updateCalls[1]!.reject(new Error('论文不存在:p1'))
+    updateCalls[1]!.reject(new CallError('papers.update', 'not-found'))
     await flush()
     await flush()
     listCall.resolve({ rows: [{ ...ROW, custom: { pick: ['existing'] } }], total: 1 })
@@ -1130,7 +1637,7 @@ describe('PaperTable', () => {
     expect(updateCalls.slice(2).map((u) => u.patch)).toEqual([{ custom: { pick: null } }])
   })
 
-  it('格子里新建选项的加选项被 core 拒:这一次与排在后面的选择都不写格子,重取,只报一条 toast', async () => {
+  it('格子里新建选项的加选项被 core 拒:这一次与排在后面的选择都不写格子,重取,只报一条拒绝提示', async () => {
     const host = mount()
     columnsCall.resolve(MULTI_COLUMNS)
     listCall.resolve({ rows: [ROW], total: 1 })
@@ -1152,13 +1659,13 @@ describe('PaperTable', () => {
     await act(async () => { press(document.querySelector<HTMLElement>('.rrow.opt')!) })
     await flush()
 
-    setColumnsCalls[0]!.reject(new Error('列「多选」的选项重复:新选项'))
+    setColumnsCalls[0]!.reject(new CallError('papers.setColumns', 'invalid'))
     await flush()
     await flush()
 
     expect(updateCalls).toHaveLength(0)
     expect(setColumnsCalls).toHaveLength(1)
-    expect(toastMessages).toEqual(['列「多选」的选项重复:新选项'])
+    expect(refusals).toEqual(['内容无效'])
     await flush()
     expect(columnsCallCount).toBeGreaterThan(columnsCallsAtMount)
     expect(listCallCount).toBeGreaterThan(listCallsAtMount)
@@ -1193,7 +1700,7 @@ describe('PaperTable', () => {
     await flush()
 
     const create = await startCreate(host, '建列时序')
-    const gear = host.querySelector<HTMLButtonElement>('[title="列设置"]')!
+    const gear = host.querySelector<HTMLButtonElement>('[aria-label="列设置"]')!
     await act(async () => { gear.click() })
     const topicsRow = [...document.querySelectorAll<HTMLElement>('.mi.colrow')]
       .find((el) => el.textContent === '主题')!
@@ -1214,10 +1721,10 @@ describe('PaperTable', () => {
     await flush()
 
     const create = await startCreate(host, '建列时序')
-    const gear = host.querySelector<HTMLButtonElement>('[title="列设置"]')!
+    const gear = host.querySelector<HTMLButtonElement>('[aria-label="列设置"]')!
     await act(async () => { gear.click() })
-    await act(async () => { document.querySelector<HTMLButtonElement>('[title="选项"]')!.click() })
-    await act(async () => { document.querySelector<HTMLButtonElement>('[title="重命名选项"]')!.click() })
+    await act(async () => { document.querySelector<HTMLButtonElement>('[aria-label="选项"]')!.click() })
+    await act(async () => { document.querySelector<HTMLButtonElement>('[aria-label="重命名选项"]')!.click() })
     // Look only inside the option row: the column draft header is in the document too, with the same
     // input.celledit class.
     const input = document.querySelector<HTMLInputElement>('.mi.optrow input.celledit')!
@@ -1230,7 +1737,7 @@ describe('PaperTable', () => {
     create.resolve()
     await flush()
     expect(renameOptionCalls).toEqual([['pick', 'existing', 'renamed']])
-    expect(toastMessages).toEqual([])
+    expect(refusals).toEqual([])
   })
 
   it('删一列的写落地之后推一次库的版本,侧栏的数与最近变动跟着重取', async () => {
@@ -1238,8 +1745,8 @@ describe('PaperTable', () => {
     columnsCall.resolve(NOTE_COLUMNS)
     listCall.resolve({ rows: [ROW], total: 1 })
     await flush()
-    await act(async () => { host.querySelector<HTMLButtonElement>('[title="列设置"]')!.click() })
-    await act(async () => { document.querySelector<HTMLButtonElement>('[title="删除列"]')!.click() })
+    await act(async () => { host.querySelector<HTMLButtonElement>('[aria-label="列设置"]')!.click() })
+    await act(async () => { document.querySelector<HTMLButtonElement>('[aria-label="删除列"]')!.click() })
     expect(setColumnsCalls.map((c) => c.columns.custom)).toEqual([[]])
 
     const before = bumps
@@ -1254,7 +1761,7 @@ describe('PaperTable', () => {
     columnsCall.resolve(SELECT_COLUMNS)
     listCall.resolve({ rows: [ROW], total: 1 })
     await flush()
-    const gear = host.querySelector<HTMLButtonElement>('[title="列设置"]')!
+    const gear = host.querySelector<HTMLButtonElement>('[aria-label="列设置"]')!
     // Radix closes the menu on the click that ends the press, once the rename has been accepted.
     const pressOutside = async () => {
       await act(async () => { document.body.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true })) })
@@ -1263,7 +1770,7 @@ describe('PaperTable', () => {
     }
 
     await act(async () => { gear.click() })
-    await act(async () => { document.querySelector<HTMLButtonElement>('[title="重命名列"]')!.click() })
+    await act(async () => { document.querySelector<HTMLButtonElement>('[aria-label="重命名列"]')!.click() })
     await act(async () => { setValue(document.querySelector<HTMLInputElement>('.mi.colrow input.celledit')!, '挑选') })
     await pressOutside()
     expect(setColumnsCalls.at(-1)?.columns.custom.map((c) => c.label)).toEqual(['挑选'])
@@ -1272,15 +1779,15 @@ describe('PaperTable', () => {
     await flush()
 
     await act(async () => { gear.click() })
-    await act(async () => { document.querySelector<HTMLButtonElement>('[title="选项"]')!.click() })
-    await act(async () => { document.querySelector<HTMLButtonElement>('[title="重命名选项"]')!.click() })
+    await act(async () => { document.querySelector<HTMLButtonElement>('[aria-label="选项"]')!.click() })
+    await act(async () => { document.querySelector<HTMLButtonElement>('[aria-label="重命名选项"]')!.click() })
     await act(async () => { setValue(document.querySelector<HTMLInputElement>('.mi.optrow input.celledit')!, 'renamed') })
     await pressOutside()
     expect(renameOptionCalls).toEqual([['pick', 'existing', 'renamed']])
 
     // A name another column already has is refused: the menu, the input and its text stay.
     await act(async () => { gear.click() })
-    await act(async () => { document.querySelector<HTMLButtonElement>('[title="重命名列"]')!.click() })
+    await act(async () => { document.querySelector<HTMLButtonElement>('[aria-label="重命名列"]')!.click() })
     await act(async () => { setValue(document.querySelector<HTMLInputElement>('.mi.colrow input.celledit')!, '标题') })
     await pressOutside()
     const refused = document.querySelector<HTMLInputElement>('.mi.colrow input.celledit')!
@@ -1293,8 +1800,8 @@ describe('PaperTable', () => {
     columnsCall.resolve(SELECT_COLUMNS)
     listCall.resolve({ rows: [ROW], total: 1 })
     await flush()
-    await act(async () => { host.querySelector<HTMLButtonElement>('[title="列设置"]')!.click() })
-    await act(async () => { document.querySelector<HTMLButtonElement>('[title="重命名列"]')!.click() })
+    await act(async () => { host.querySelector<HTMLButtonElement>('[aria-label="列设置"]')!.click() })
+    await act(async () => { document.querySelector<HTMLButtonElement>('[aria-label="重命名列"]')!.click() })
     const input = document.querySelector<HTMLInputElement>('.mi.colrow input.celledit')!
     await act(async () => { setValue(input, '挑选') })
     for (const key of ['Escape', 'Enter']) {
@@ -1305,7 +1812,7 @@ describe('PaperTable', () => {
 
     await act(async () => { input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })) })
     expect(document.querySelector('.mi.colrow input.celledit')).toBeNull()
-    expect(document.querySelector('[title="重命名列"]')).not.toBeNull()
+    expect(document.querySelector('[aria-label="重命名列"]')).not.toBeNull()
   })
 
   it('列菜单改列名时点菜单里别的地方:先存下这一列;名字重了就带着字留着标红,另一列的重命名不开', async () => {
@@ -1313,8 +1820,8 @@ describe('PaperTable', () => {
     columnsCall.resolve(PICK_AND_NOTE)
     listCall.resolve({ rows: [ROW], total: 1 })
     await flush()
-    await act(async () => { host.querySelector<HTMLButtonElement>('[title="列设置"]')!.click() })
-    const pencil = (at: number) => document.querySelectorAll<HTMLButtonElement>('[title="重命名列"]')[at]!
+    await act(async () => { host.querySelector<HTMLButtonElement>('[aria-label="列设置"]')!.click() })
+    const pencil = (at: number) => document.querySelectorAll<HTMLButtonElement>('[aria-label="重命名列"]')[at]!
     const renameInput = () => document.querySelector<HTMLInputElement>('.mi.colrow input.celledit')
     /** Presses `el` in the menu as a user would: the press, then the click. */
     const pressInMenu = async (el: Element) => {
@@ -1366,7 +1873,7 @@ describe('PaperTable', () => {
     })
 
     await typeThenOpenRemark('写不进去')
-    await act(async () => { updateCalls[1]!.reject(new Error('论文不存在')) })
+    await act(async () => { updateCalls[1]!.reject(new CallError('papers.update', 'not-found')) })
     await flush()
     const kept = noteCell.querySelector<HTMLInputElement>('input')!
     expect(kept.value).toBe('写不进去')
@@ -1400,7 +1907,7 @@ describe('PaperTable', () => {
     setColumnsCalls[1]!.resolve()
     await flush()
     expect(updateCalls.map((u) => u.patch)).toEqual([{ custom: { pick: '新选项' } }])
-    expect(toastMessages).toEqual([])
+    expect(refusals).toEqual([])
   })
 
   it('建列的写在路上时,格子里新建选项与其后的选择都排队:建列落地后依次发出,后一次带着前一次确认的取值', async () => {
@@ -1436,7 +1943,7 @@ describe('PaperTable', () => {
     await flush()
     expect(updateCalls).toHaveLength(2)
     expect(updateCalls[1]!.patch).toEqual({ custom: { pick: ['新选项', 'existing'] } })
-    expect(toastMessages).toEqual([])
+    expect(refusals).toEqual([])
   })
 
   it('建列的写在路上时,第二次建列排在第一次之后发出:载荷带着两列,第二个占位等自己的写落地才收', async () => {
@@ -1451,7 +1958,7 @@ describe('PaperTable', () => {
       input1.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
     })
     expect(host.querySelector('th.th-new')).toBeNull()
-    const plus = host.querySelector<HTMLButtonElement>('[title="新增列"]')!
+    const plus = host.querySelector<HTMLButtonElement>('[aria-label="新建列"]')!
     await act(async () => { plus.click() })
     const input2 = host.querySelector<HTMLInputElement>('th.th-new input')!
     await act(async () => { setValue(input2, '第二次') })
@@ -1489,7 +1996,7 @@ describe('PaperTable', () => {
     await act(async () => { press(host.querySelector<HTMLElement>('td.pt-cust')!) })
     await act(async () => { press(document.querySelector<HTMLElement>('.rrow.opt')!) })
     await flush()
-    updateCalls[0]!.reject(new Error('论文不存在:p1'))
+    updateCalls[0]!.reject(new CallError('papers.update', 'not-found'))
     await flush()
     await flush()
     expect(columnsCallCount).toBe(columnsAtMount + 1)
@@ -1525,7 +2032,7 @@ describe('PaperTable', () => {
     const gear = document.querySelector<HTMLButtonElement>('.grpgear')!
     await act(async () => { gear.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, button: 0 })) })
     const readState = [...document.querySelectorAll<HTMLElement>('[role="menuitemcheckbox"]')]
-      .find((el) => el.textContent === '状态')!
+      .find((el) => el.textContent === '阅读状态')!
     await act(async () => { press(readState) })
 
     columnsCall.resolve(SELECT_COLUMNS)
@@ -1542,10 +2049,10 @@ describe('PaperTable', () => {
     await flush()
 
     const create = await startCreate(host, '建列时序')
-    await act(async () => { host.querySelector<HTMLButtonElement>('[title="列设置"]')!.click() })
-    await act(async () => { document.querySelector<HTMLButtonElement>('[title="改类型"]')!.click() })
+    await act(async () => { host.querySelector<HTMLButtonElement>('[aria-label="列设置"]')!.click() })
+    await act(async () => { document.querySelector<HTMLButtonElement>('[aria-label="改类型"]')!.click() })
     // The column draft header's popover also has a multi-select button, so look only in the column menu's type row.
-    await act(async () => { document.querySelector<HTMLButtonElement>('.typerow [title="多选"]')!.click() })
+    await act(async () => { document.querySelector<HTMLButtonElement>('.typerow [aria-label="多选"]')!.click() })
     expect(setColumnTypeCalls).toHaveLength(0)
 
     create.resolve()
@@ -1591,9 +2098,9 @@ describe('PaperTable', () => {
     // The write is still in flight: the type row already selects the requested single-select option.
     expect(typeButton('单选').getAttribute('aria-checked')).toBe('true')
 
-    setColumnTypeCalls[0]!.reject(new Error('论文页写不进去'))
+    setColumnTypeCalls[0]!.reject(new CallError('papers.setColumnType', 'write'))
     for (let i = 0; i < 8; i++) await flush()
-    expect(toastMessages).toEqual(['论文页写不进去'])
+    expect(refusals).toEqual(['没能写入论文库'])
     expect(typeButton('文本').getAttribute('aria-checked')).toBe('true')
 
     await pressKey('ArrowRight')

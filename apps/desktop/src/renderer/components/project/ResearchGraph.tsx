@@ -14,11 +14,17 @@ import { recordKind, recordOrigin, sortRecordsNewestFirst } from '../../../share
 import { Markdown } from '../Markdown.js'
 import { plainTitle } from '../paper/paper-text.js'
 import { EmptyState } from '../EmptyState.js'
+import { EntityLink } from '../EntityLink.js'
 import { FadeText } from '../FadeText.js'
-import { IconPlus } from '../icons.js'
+import { IconButton } from '../IconButton.js'
+import { IconMinus, IconPlus } from '../icons.js'
 import { PanelClose } from '../PanelClose.js'
 import { SectionHeading } from '../PageShell.js'
+import { StatusDot } from '../StatusDot.js'
 import { StructuredList, StructuredRow } from '../StructuredList.js'
+import { AgentLabel } from '../SourceLabel.js'
+import { ToggleGroup, ToggleItem, Toolbar, ToolbarButton } from '../Toolbar.js'
+import { Tooltip } from '../Tooltip.js'
 import { ProjectEventRow } from './ProjectSignals.js'
 import './ResearchGraph.css'
 
@@ -35,23 +41,12 @@ const glyphWidth = (char: string) => (/[\u2e80-\u9fff\uf900-\ufaff\uff00-\uffef]
 /** Estimated pixel width of a node label. */
 export const graphLabelWidth = (label: string) => [...label].reduce((sum, char) => sum + glyphWidth(char), 0)
 
-/** The label as drawn: whole when it fits the widest node, otherwise cut with an ellipsis. */
-export function graphNodeLabel(label: string): string {
-  const room = GRAPH_NODE_MAX_WIDTH - GRAPH_LABEL_LEFT - GRAPH_LABEL_RIGHT
-  if (graphLabelWidth(label) <= room) return label
-  let width = glyphWidth('…')
-  let kept = ''
-  for (const char of label) {
-    width += glyphWidth(char)
-    if (width > room) break
-    kept += char
-  }
-  return `${kept}…`
-}
-
-/** Node width that holds its drawn label between the status dot and the right edge. */
+/**
+ * Node width that holds its label between the status dot and the right edge, up to the widest node;
+ * a label longer than that fades out at the node's edge.
+ */
 export const graphNodeWidth = (label: string, given: number) => Math.min(GRAPH_NODE_MAX_WIDTH, Math.max(
-  172, given + 28, Math.ceil(GRAPH_LABEL_LEFT + graphLabelWidth(graphNodeLabel(label)) + GRAPH_LABEL_RIGHT),
+  172, given + 28, Math.ceil(GRAPH_LABEL_LEFT + graphLabelWidth(label) + GRAPH_LABEL_RIGHT),
 ))
 const GRAPH_VIEW_HEIGHT = 280
 const GRAPH_COLUMN_GAP = 72
@@ -61,6 +56,29 @@ const GRAPH_MAX_ZOOM = 1.8
 
 const clampGraphZoom = (zoom: number) =>
   Math.min(GRAPH_MAX_ZOOM, Math.max(GRAPH_MIN_ZOOM, zoom))
+/** The room, in px, kept between the graph and the viewport's edge. */
+const GRAPH_MARGIN = 24
+
+/** Where content `size` px long rests along an axis `room` px long: centred when it fits, else 24px in. */
+const restingStart = (size: number, room: number) => (size < room ? (room - size) / 2 : GRAPH_MARGIN)
+
+/** The view of an untouched graph at 100%. */
+const UNMOVED = { x: 0, y: 0, zoom: 1 }
+
+/**
+ * The view a graph `content` px large opens with in a viewport `width` px wide: at 100% when it
+ * fits, otherwise zoomed out until it fits, but not below the minimum zoom, and centred along each
+ * axis it then fits. `x` and `y` offset the graph from where it rests at 100%. A viewport with no
+ * width yet keeps the graph at 100%.
+ */
+export function fittedView(content: { width: number; height: number }, width: number) {
+  if (width <= 0) return UNMOVED
+  const zoom = clampGraphZoom(Math.min(
+    1, (width - 2 * GRAPH_MARGIN) / content.width, (GRAPH_VIEW_HEIGHT - 2 * GRAPH_MARGIN) / content.height,
+  ))
+  const offset = (size: number, room: number) => restingStart(size * zoom, room) - restingStart(size, room)
+  return { x: offset(content.width, width), y: offset(content.height, GRAPH_VIEW_HEIGHT), zoom }
+}
 
 /** A node's research state, the one the graph colours its dot by. */
 export const nodeMode = (node: GraphNode): NonNullable<GraphNode['mode']> =>
@@ -170,10 +188,15 @@ export function ResearchGraph({ graph, selected, ideaNodeIds = [], onSelect }: {
     pointerId: number; clientX: number; clientY: number; x: number; y: number
   } | null>(null)
   const [viewportWidth, setViewportWidth] = useState(780)
-  const [view, setView] = useState({ x: 0, y: 0, zoom: 1 })
+  const [view, setView] = useState(UNMOVED)
   const [panning, setPanning] = useState(false)
+  // Until the user zooms or pans, the view follows the fitted one as the viewport's width settles.
+  const moved = useRef(false)
   const layout = layoutResearchTree(graph)
   const graphKey = `${layout.nodes.map((node) => `${node.id}:${node.width}`).join('|')}::${layout.edges.join('|')}`
+  const contentWidth = Math.max(0, ...layout.nodes.map((node) => node.x + node.width))
+  const contentHeight = Math.max(0, ...layout.nodes.map((node) => node.y + GRAPH_NODE_HEIGHT))
+  const fitted = fittedView({ width: contentWidth, height: contentHeight }, viewportWidth)
 
   useEffect(() => {
     const element = viewport.current
@@ -184,21 +207,25 @@ export function ResearchGraph({ graph, selected, ideaNodeIds = [], onSelect }: {
     resize.observe(element)
     return () => resize.disconnect()
   }, [graph.nodes.length])
-  useEffect(() => setView({ x: 0, y: 0, zoom: 1 }), [graphKey])
+  useEffect(() => {
+    moved.current = false
+    setView(fitted)
+  }, [graphKey])
+  useEffect(() => { if (!moved.current) setView(fitted) }, [viewportWidth])
 
   if (graph.nodes.length === 0) {
-    return <div className="lm rgempty">{m.project.graph.empty}</div>
+    return <EmptyState variant="section">{m.project.graph.empty}</EmptyState>
   }
   const nodes = layout.nodes
+  // The arrow keys move between nodes in document order: down each column, then on to the next one.
+  const readingOrder = [...nodes].sort((a, b) => a.x - b.x || a.y - b.y)
   const byId = new Map(nodes.map((node) => [node.id, node]))
   const activeNodeIds = new Set((graph.activeNodes ?? []).filter((id) => byId.has(id)))
   const routes = activeRoutes(graph, graph.activeNodes ?? [])
   const ideaNodes = new Set(ideaNodeIds.filter((id) => byId.has(id)))
   const routeEdges = layout.edges.filter(([from, to]) => routes.edges.has(`${from}\u0000${to}`))
-  const contentWidth = Math.max(...nodes.map((node) => node.x + node.width))
-  const contentHeight = Math.max(...nodes.map((node) => node.y + GRAPH_NODE_HEIGHT))
-  const baseX = contentWidth < viewportWidth ? (viewportWidth - contentWidth) / 2 : 24
-  const baseY = contentHeight < GRAPH_VIEW_HEIGHT ? (GRAPH_VIEW_HEIGHT - contentHeight) / 2 : 24
+  const baseX = restingStart(contentWidth, viewportWidth)
+  const baseY = restingStart(contentHeight, GRAPH_VIEW_HEIGHT)
   const edgePath = (from: string, to: string) => {
     const a = byId.get(from)!
     const b = byId.get(to)!
@@ -209,6 +236,7 @@ export function ResearchGraph({ graph, selected, ideaNodeIds = [], onSelect }: {
   }
 
   const zoomAt = (requested: number, atX = viewportWidth / 2, atY = GRAPH_VIEW_HEIGHT / 2) => {
+    moved.current = true
     setView((current) => {
       const zoom = clampGraphZoom(requested)
       if (zoom === current.zoom) return current
@@ -223,6 +251,7 @@ export function ResearchGraph({ graph, selected, ideaNodeIds = [], onSelect }: {
   }
   /** Pans the view just enough to bring `node` inside the viewport, with a small margin. */
   const reveal = (node: { x: number; y: number; width: number }) => setView((current) => {
+    moved.current = true
     const margin = 12
     const left = baseX + current.x + node.x * current.zoom
     const top = baseY + current.y + node.y * current.zoom
@@ -262,6 +291,7 @@ export function ResearchGraph({ graph, selected, ideaNodeIds = [], onSelect }: {
       y: view.y,
     }
     event.currentTarget.setPointerCapture(event.pointerId)
+    moved.current = true
     setPanning(true)
   }
   const movePan = (event: ReactPointerEvent<HTMLDivElement>) => {
@@ -296,76 +326,94 @@ export function ResearchGraph({ graph, selected, ideaNodeIds = [], onSelect }: {
               patternTransform="rotate(32)"
             >
               <rect className="idea-node-pattern-base" width="12" height="12" />
-              <path className="idea-node-pattern-stripe" d="M-12 0V12 M0 0V12 M12 0V12">
-                <animateTransform
-                  attributeName="transform" type="translate" from="-12 0" to="0 0"
-                  dur="720ms" repeatCount="indefinite"
-                />
-              </path>
+              <path className="idea-node-pattern-stripe" d="M-12 0V12 M0 0V12 M12 0V12" />
             </pattern>
           </defs>
-          <g transform={`translate(${baseX + view.x},${baseY + view.y}) scale(${view.zoom})`}>
-            <g className="redges">
-              {layout.edges.map(([from, to]) => (
-                <path
-                  className={routes.edges.has(`${from}\u0000${to}`) ? 'active' : undefined}
-                  key={`${from} ${to}`} d={edgePath(from, to)}
-                />
-              ))}
-            </g>
-            <g className="active-edge-flows" aria-hidden="true">
-              {routeEdges.map(([from, to], index) => (
-                <path
-                  key={`${from} ${to}`} d={edgePath(from, to)}
-                  style={{ animationDelay: `${index * 110}ms` }}
-                />
-              ))}
-            </g>
-            {nodes.map((node) => {
-              const ideaRelated = ideaNodes.has(node.id)
-              const onRoute = routes.nodes.has(node.id) && !activeNodeIds.has(node.id)
-              return (
-                <g
-                  className={`rgn ${node.state} ${nodeMode(node)}${onRoute ? ' active-path-node-graph' : ''}${activeNodeIds.has(node.id) ? ' active-leaf' : ''}${ideaRelated ? ' idea-related' : ''}${node.id === selected ? ' sel' : ''}`}
-                  data-node={node.id} role="button" tabIndex={0}
-                  key={node.id} transform={`translate(${node.x},${node.y})`}
-                  onClick={() => onSelect(node.id)}
-                  onKeyDown={(event) => {
-                    if (event.key !== 'Enter' && event.key !== ' ') return
-                    event.preventDefault()
-                    onSelect(node.id)
-                  }}
-                  // A node that the keyboard focuses may lie outside the view; one under the pointer is in it.
-                  onFocus={(event) => { if (event.currentTarget.matches(':focus-visible')) reveal(node) }}
-                >
-                  <rect
-                    width={node.width} height={GRAPH_NODE_HEIGHT} rx="11"
-                    style={ideaRelated ? { fill: `url(#${ideaPatternId})` } : undefined}
+          <ToggleGroup
+            asChild label={m.project.sections.graph} value={selected ?? ''}
+            onValueChange={(nodeId) => { if (nodeId !== '') onSelect(nodeId) }}
+          >
+            <g transform={`translate(${baseX + view.x},${baseY + view.y}) scale(${view.zoom})`}>
+              <g className="redges">
+                {layout.edges.map(([from, to]) => (
+                  <path
+                    className={routes.edges.has(`${from}\u0000${to}`) ? 'active' : undefined}
+                    key={`${from} ${to}`} d={edgePath(from, to)}
                   />
-                  <circle cx="18" cy={GRAPH_NODE_HEIGHT / 2} r="4" className="nd" />
-                  <title>{node.label}</title>
-                  <text x={GRAPH_LABEL_LEFT} y="29">{graphNodeLabel(node.label)}</text>
-                </g>
-              )
-            })}
-          </g>
+                ))}
+              </g>
+              <g className="active-edge-flows" aria-hidden="true">
+                {routeEdges.map(([from, to]) => <path key={`${from} ${to}`} d={edgePath(from, to)} />)}
+              </g>
+              {readingOrder.map((node) => {
+                const ideaRelated = ideaNodes.has(node.id)
+                const onRoute = routes.nodes.has(node.id) && !activeNodeIds.has(node.id)
+                return (
+                  <Tooltip key={node.id} label={node.label} whenClipped>
+                    <ToggleItem asChild value={node.id} aria-label={node.label}>
+                      <g
+                        className={`rgn ${node.state} ${nodeMode(node)}${onRoute ? ' active-path-node-graph' : ''}${activeNodeIds.has(node.id) ? ' active-leaf' : ''}${ideaRelated ? ' idea-related' : ''}${node.id === selected ? ' sel' : ''}`}
+                        data-node={node.id} transform={`translate(${node.x},${node.y})`}
+                        // An SVG group fires no click on Enter or Space, as a button does.
+                        onKeyDown={(event) => {
+                          if (event.key !== 'Enter' && event.key !== ' ') return
+                          event.preventDefault()
+                          onSelect(node.id)
+                        }}
+                        // A node that the keyboard focuses may lie outside the view; one under the pointer is in it.
+                        onFocus={(event) => { if (event.currentTarget.matches(':focus-visible')) reveal(node) }}
+                      >
+                        <rect
+                          className="rgn-box" width={node.width} height={GRAPH_NODE_HEIGHT}
+                          style={ideaRelated ? { fill: `url(#${ideaPatternId})` } : undefined}
+                        />
+                        <rect className="rgn-hover" width={node.width} height={GRAPH_NODE_HEIGHT} />
+                        <circle cx="18" cy={GRAPH_NODE_HEIGHT / 2} r="4" className="nd" />
+                        <foreignObject
+                          x={GRAPH_LABEL_LEFT} width={node.width - GRAPH_LABEL_LEFT - GRAPH_LABEL_RIGHT}
+                          height={GRAPH_NODE_HEIGHT}
+                        >
+                          <div className="rgn-label"><FadeText>{node.label}</FadeText></div>
+                        </foreignObject>
+                      </g>
+                    </ToggleItem>
+                  </Tooltip>
+                )
+              })}
+            </g>
+          </ToggleGroup>
         </svg>
-        <div className="graph-view-controls">
-          <button type="button" aria-label={m.project.graph.zoomOut} onClick={() => zoomAt(view.zoom / 1.2)}>−</button>
-          <button
-            type="button" className="graph-zoom-reset" title={m.project.graph.resetView}
-            onClick={() => setView({ x: 0, y: 0, zoom: 1 })}
-          >{Math.round(view.zoom * 100)}%</button>
-          <button
-            type="button" aria-label={m.project.graph.zoomIn} onClick={() => zoomAt(view.zoom * 1.2)}
-          ><IconPlus /></button>
-        </div>
+        <Toolbar>
+          <div className="graph-view-controls">
+            <IconButton
+              label={m.project.graph.zoomOut} size="nested" disabled={view.zoom <= GRAPH_MIN_ZOOM}
+              onClick={() => zoomAt(view.zoom / 1.2)}
+            >
+              <IconMinus />
+            </IconButton>
+            <Tooltip label={m.project.graph.resetView}>
+              <ToolbarButton
+                className="btn ghost sm graph-zoom-reset"
+                onClick={() => {
+                  moved.current = false
+                  setView(fitted)
+                }}
+              >{Math.round(view.zoom * 100)}%</ToolbarButton>
+            </Tooltip>
+            <IconButton
+              label={m.project.graph.zoomIn} size="nested" disabled={view.zoom >= GRAPH_MAX_ZOOM}
+              onClick={() => zoomAt(view.zoom * 1.2)}
+            >
+              <IconPlus />
+            </IconButton>
+          </div>
+        </Toolbar>
       </div>
       <div className="glegend">
-        <span className="legend-item"><span className="ld progress" />{m.project.graph.legend.needsRepair}</span>
-        <span className="legend-item"><span className="ld verified" />{m.project.graph.legend.verified}</span>
-        <span className="legend-item"><span className="ld failed" />{m.project.graph.legend.failed}</span>
-        <span className="legend-item"><span className="ld candidate" />{m.project.graph.legend.candidate}</span>
+        <span className="legend-item"><StatusDot tone="warn" size="md" />{m.project.graph.legend.needsRepair}</span>
+        <span className="legend-item"><StatusDot tone="good" size="md" />{m.project.graph.legend.verified}</span>
+        <span className="legend-item"><StatusDot tone="bad" size="md" />{m.project.graph.legend.failed}</span>
+        <span className="legend-item"><StatusDot tone="neutral" size="md" />{m.project.graph.legend.candidate}</span>
         {routes.nodes.size === 0 ? null : (
           <>
             <span className="legend-divider" aria-hidden="true" />
@@ -422,7 +470,7 @@ export function ResearchNodePanel({ graph, events, ideas, tasks, node, onClose, 
     .flatMap(([, to]) => byId.get(to) ?? [])
   const activeNodeIds = new Set(graph.activeNodes ?? [])
   const isActive = (child: GraphNode) => activeNodeIds.has(child.id)
-  const branches = [
+  const branches = ([
     {
       key: 'active', label: m.project.graph.legend.inProgress,
       nodes: children.filter(isActive),
@@ -443,7 +491,7 @@ export function ResearchNodePanel({ graph, events, ideas, tasks, node, onClose, 
       key: 'candidate', label: m.project.graph.legend.candidate,
       nodes: children.filter((child) => !isActive(child) && nodeMode(child) === 'unresolved'),
     },
-  ].filter((group) => group.nodes.length > 0)
+  ] satisfies { key: string; label: string; nodes: GraphNode[] }[]).filter((group) => group.nodes.length > 0)
   const nodeEvents = sortRecordsNewestFirst(events.filter((event) => event.node === node.id))
   const document = splitNodeDocument(node.markdown)
 
@@ -452,27 +500,27 @@ export function ResearchNodePanel({ graph, events, ideas, tasks, node, onClose, 
       <SectionHeading
         variant="rail" className="node-document-head"
         actions={<PanelClose onClose={onClose} />}
-      ><span className="node-document-title">{node.label}</span>
+      ><FadeText className="node-document-title" label={node.label}>{node.label}</FadeText>
       </SectionHeading>
-      <SectionHeading variant="rail">{m.project.graph.branchSummary(children.length)}</SectionHeading>
-      {children.length === 0
-        ? <EmptyState variant="section">{m.project.graph.noBranches}</EmptyState>
-        : (
+      {children.length === 0 ? null : (
+        <>
+          <SectionHeading variant="rail">{m.project.graph.branchSummary(children.length)}</SectionHeading>
           <div className="node-branch-groups">
             {branches.map((group) => (
               <div className={`node-branch-group ${group.key}`} key={group.key}>
                 <span className="node-branch-label">{group.label}</span>
                 <div className="node-branch-list">
                   {group.nodes.map((child) => (
-                    <button className="node-branch" key={child.id} onClick={() => onSelect(child.id)}>
-                      <span className="node-branch-dot" />{child.label}
-                    </button>
+                    <EntityLink
+                      kind="node" key={child.id} label={child.label} mode={nodeMode(child)} onOpen={() => onSelect(child.id)}
+                    />
                   ))}
                 </div>
               </div>
             ))}
           </div>
-        )}
+        </>
+      )}
 
       <SectionHeading variant="rail">{m.project.graph.tasks(tasks.length)}</SectionHeading>
       {tasks.length === 0
@@ -482,7 +530,7 @@ export function ResearchNodePanel({ graph, events, ideas, tasks, node, onClose, 
             {tasks.map((task) => (
               <StructuredRow className="node-task-row" data-task={task.id} key={task.id} onActivate={() => onSelectTask(task.id)}>
                 <FadeText>{task.title}</FadeText>
-                {task.origin === 'agent' ? <span className="agtag">{m.project.records.who.agent}</span> : null}
+                {task.origin === 'agent' ? <AgentLabel /> : null}
               </StructuredRow>
             ))}
           </StructuredList>
@@ -502,18 +550,19 @@ export function ResearchNodePanel({ graph, events, ideas, tasks, node, onClose, 
                   className="node-idea-row" data-idea={idea.id} key={idea.id}
                   onActivate={() => onSelectIdea(idea.id)}
                 >
-                  <span className="node-idea-title">{idea.title}</span>
-                  <span className="node-idea-source" title={source}>{m.project.idea.sourceTag(source)}</span>
+                  <FadeText className="node-idea-title" label={idea.title}>{idea.title}</FadeText>
+                  <FadeText className="node-idea-source" label={m.project.idea.sourceTag(source)}>
+                    {m.project.idea.sourceTag(source)}
+                  </FadeText>
                 </StructuredRow>
               )
             })}
           </StructuredList>
         )}
 
-      <SectionHeading variant="rail">{m.project.graph.records(nodeEvents.length)}</SectionHeading>
-      {nodeEvents.length === 0
-        ? <EmptyState variant="section">{m.project.graph.noRecords}</EmptyState>
-        : (
+      {nodeEvents.length === 0 ? null : (
+        <>
+          <SectionHeading variant="rail">{m.project.graph.records(nodeEvents.length)}</SectionHeading>
           <StructuredList className="node-event-list" variant="embedded">
             {nodeEvents.map((event, index) => (
               <ProjectEventRow
@@ -522,20 +571,19 @@ export function ResearchNodePanel({ graph, events, ideas, tasks, node, onClose, 
               />
             ))}
           </StructuredList>
-        )}
+        </>
+      )}
 
-      <div className="node-markdown">
-        {document.body === ''
-          ? <p className="lm">{m.project.graph.noDocument}</p>
-          : <div className="md"><Markdown src={document.body} titles={{}} /></div>}
-      </div>
+      {document.body === '' ? null : (
+        <div className="node-markdown"><div className="md"><Markdown src={document.body} titles={{}} /></div></div>
+      )}
 
       {node.markdownPath === undefined
         ? null
         : (
-          <div className="node-document-source" title={node.markdownPath}>
+          <FadeText className="node-document-source" label={`${node.markdownPath}${node.markdownAnchor === undefined ? '' : `#${node.markdownAnchor}`}`}>
             {node.markdownPath}{node.markdownAnchor === undefined ? '' : `#${node.markdownAnchor}`}
-          </div>
+          </FadeText>
         )}
     </>
   )

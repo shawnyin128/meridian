@@ -9,9 +9,10 @@ import { DirectoryField, FormButton, FormInput, FormSelect, FormTextarea } from 
 describe('FormControls', () => {
   beforeEach(() => { window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'zh') })
 
-  it('keeps the shared geometry class alongside a feature class', () => {
+  it('draws a boxed field unless the field asks to be inline, and keeps a feature class beside it', () => {
     const html = renderToStaticMarkup(<FormInput className="workspace-input" value="项目" readOnly />)
-    expect(html).toContain('class="form-control form-input form-control-plain workspace-input"')
+    expect(html).toContain('class="form-control form-input form-control-field workspace-input"')
+    expect(renderToStaticMarkup(<FormTextarea defaultValue="笔记" />)).toContain('form-control-field')
   })
 
   it('preserves native input capabilities and refs', () => {
@@ -75,7 +76,7 @@ describe('FormControls', () => {
       </MessagesProvider>,
     )
     expect(choosing).toContain('aria-busy="true"')
-    expect(choosing).toContain('title="正在检查论文库目录"')
+    expect(choosing).not.toContain('title=')
     expect(choosing).toContain('aria-label="正在检查论文库目录"')
     expect(choosing).toMatch(/directory-field-action[^>]*disabled=""/)
     expect(choosing).not.toMatch(/form-input[^>]*disabled=""/)

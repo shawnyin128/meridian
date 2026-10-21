@@ -1,6 +1,8 @@
 // @vitest-environment jsdom
+import { act } from 'react'
+import { createRoot } from 'react-dom/client'
 import { renderToStaticMarkup } from 'react-dom/server'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { PaperRow } from '../../../shared/contract.js'
 import { MessagesProvider } from '../../messages/useMessages.js'
 import { LANGUAGE_STORAGE_KEY } from '../../shell/language.js'
@@ -15,20 +17,119 @@ const paper = (id: string, title: string, patch: Partial<PaperRow> = {}): PaperR
 describe('ResearchMap', () => {
   beforeEach(() => window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'zh'))
 
-  it('scrolls the selected group\'s papers inside the list after the fifth row', () => {
+  it('还在整理时显示载入占位，不借空状态写一句正在整理', () => {
+    const html = renderToStaticMarkup(
+      <MessagesProvider>
+        <ResearchMap rows={[]} total={0} loading onOpenPaper={() => {}} onReadPaper={() => {}} />
+      </MessagesProvider>,
+    )
+    expect(html).not.toContain('empty-state')
+    expect(html).toContain('loading-placeholder')
+  })
+
+  it('scrolls the selected group\'s papers inside the list after the fifth row', async () => {
+    globalThis.IS_REACT_ACT_ENVIRONMENT = true
+    vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} })
+    // Every row draws a 78px box, stacked from the top of its list.
+    vi.spyOn(HTMLElement.prototype, 'getClientRects').mockReturnValue([{}] as unknown as DOMRectList)
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+      const rows = [...this.closest('.structured-list')!.querySelectorAll('.structured-row')]
+      return { top: 0, bottom: 78 * (rows.indexOf(this) + 1) } as DOMRect
+    })
     const grouped = ['Alpha', 'Bravo', 'Charlie', 'Delta', 'Echo', 'Foxtrot', 'Golf']
       .map((title, index) => paper(`p${index}`, title, { topics: ['Speculative decoding'] }))
     const rows = [...grouped, paper('x', 'Hotel'), paper('y', 'India')]
     const host = document.createElement('div')
-    host.innerHTML = renderToStaticMarkup(
+    document.body.append(host)
+    const root = createRoot(host)
+    await act(async () => root.render(
       <MessagesProvider>
-        <ResearchMap rows={rows} total={rows.length} loading={false} onOpenPaper={() => {}} />
+        <ResearchMap rows={rows} total={rows.length} loading={false} onOpenPaper={() => {}} onReadPaper={() => {}} />
       </MessagesProvider>,
-    )
+    ))
 
-    const list = host.querySelector('.research-map-papers')!
+    const list = host.querySelector<HTMLElement>('.research-map-papers')!
     expect(list.querySelectorAll('.research-map-paper')).toHaveLength(grouped.length)
     expect(list.classList.contains('structured-list--scrollable')).toBe(true)
-    expect(list.getAttribute('style')).toBe('--structured-list-visible-rows:5')
+    expect(list.style.maxHeight).toBe(`${78 * 5}px`)
+    act(() => root.unmount())
+    host.remove()
+    vi.restoreAllMocks()
+    vi.unstubAllGlobals()
+  })
+
+  it('分组名、选中分组的名字和论文标题放不下时都淡出，不出省略号', () => {
+    const title = 'Accelerating Large Language Model Decoding with Speculative Sampling'
+    const rows = [paper('a', title, { topics: ['Speculative decoding'] }), paper('b', 'Bravo', { topics: ['Speculative decoding'] })]
+    const host = document.createElement('div')
+    host.innerHTML = renderToStaticMarkup(
+      <MessagesProvider>
+        <ResearchMap rows={rows} total={rows.length} loading={false} onOpenPaper={() => {}} onReadPaper={() => {}} />
+      </MessagesProvider>,
+    )
+    const faded = (selector: string) => [...host.querySelectorAll(`${selector} .fade-text:not(.tag-text)`)].map((line) => line.textContent)
+    expect(faded('.research-map-group-copy')).toEqual(['Speculative decoding'])
+    expect(faded('.research-map-detail-head')).toEqual(['Speculative decoding'])
+    expect(faded('.research-map-paper')).toEqual([title, 'Bravo'])
+    expect([...host.querySelectorAll('.research-map-group-name, .research-map-detail-name')].every((name) => name.matches('.fade-text')))
+      .toBe(true)
+  })
+
+  it('只写分组、数量和归入理由，不写说明句子', () => {
+    const rows = [
+      paper('a', 'Alpha', { topics: ['Speculative decoding'] }),
+      paper('b', 'Bravo', { topics: ['Speculative decoding'] }),
+      paper('c', 'Kernel fusion tricks'),
+      paper('d', 'Kernel fusion at scale'),
+      paper('e', 'Unrelated'),
+    ]
+    const host = document.createElement('div')
+    host.innerHTML = renderToStaticMarkup(
+      <MessagesProvider>
+        <ResearchMap rows={rows} total={7} loading={false} onOpenPaper={() => {}} onReadPaper={() => {}} />
+      </MessagesProvider>,
+    )
+    expect(host.querySelector('.research-map-copy p')).toBeNull()
+    expect(host.querySelector('.research-map-title .tag')).toBeNull()
+    expect(host.querySelector('.research-map-limit')?.textContent).toBe('5 / 7 篇')
+    const kinds = [...host.querySelectorAll('.research-map-group')]
+      .map((group) => [
+        group.querySelector('.research-map-group-name')?.textContent,
+        group.querySelector('.research-map-group-copy>span:not(.research-map-group-name)')?.textContent ?? null,
+      ])
+    expect(kinds).toContainEqual(['Speculative decoding', '主题或方法信号'])
+    expect(kinds).toContainEqual(['Kernel fusion', null])
+    const detail = host.querySelector('.research-map-detail')!
+    expect(detail.querySelector('.research-map-readonly')).toBeNull()
+    expect(detail.querySelector('.research-map-why')!.textContent).toBe('主题：Speculative decoding')
+  })
+
+  it('论文行的右键菜单可以打开详情,也可以直接在阅读器中打开', async () => {
+    globalThis.IS_REACT_ACT_ENVIRONMENT = true
+    // The titles measure whether they fit, and jsdom has no ResizeObserver.
+    vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} })
+    const rows = [paper('a', 'Alpha', { topics: ['Speculative decoding'] }), paper('b', 'Bravo', { topics: ['Speculative decoding'] })]
+    const onOpenPaper = vi.fn()
+    const onReadPaper = vi.fn()
+    const host = document.createElement('div')
+    document.body.append(host)
+    const root = createRoot(host)
+    await act(async () => root.render(
+      <MessagesProvider>
+        <ResearchMap rows={rows} total={rows.length} loading={false} onOpenPaper={onOpenPaper} onReadPaper={onReadPaper} />
+      </MessagesProvider>,
+    ))
+
+    const row = [...host.querySelectorAll<HTMLElement>('.research-map-paper')].find((el) => el.textContent?.includes('Bravo'))!
+    await act(async () => {
+      row.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, clientX: 40, clientY: 40 }))
+    })
+    const items = () => [...document.body.querySelectorAll<HTMLElement>('[role="menu"] [role="menuitem"]')]
+    expect(items().map((item) => item.textContent)).toEqual(['打开详情', '在阅读器中打开'])
+    await act(async () => { items()[1]!.click() })
+    expect(onReadPaper).toHaveBeenCalledExactlyOnceWith(rows[1])
+    expect(onOpenPaper).not.toHaveBeenCalled()
+    act(() => root.unmount())
+    vi.unstubAllGlobals()
   })
 })

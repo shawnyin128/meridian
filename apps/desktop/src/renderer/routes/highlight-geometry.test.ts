@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest'
 import type { PaperHighlightRect } from '../../shared/contract.js'
 import {
-  highlightLines, highlightShape, normalizedHighlightRects, selectedTextRanges, selectionToolsAnchor,
+  highlightLines, highlightShape, normalizedHighlightRects, selectedTextRanges, selectionBox,
 } from './highlight-geometry.js'
 
 /** A US Letter page at the reader's fit scale (830 / 612), as the page box's client rectangle. */
@@ -125,24 +125,24 @@ describe('highlight geometry', () => {
     expect(lines[1]).toEqual(stored[4])
   })
 
-  it('高亮画成一个形状：无批注时每行一个矩形填色，有批注时每行一条底线', () => {
+  it('高亮的填色每行一个矩形，批注的底线每行一条，沿着同一行的底边', () => {
     const lines = normalizedHighlightRects(PAGE, TWO_COLUMNS).slice(0, 2)
-    const filled = highlightShape(lines, false)
-    const noted = highlightShape(lines, true)
-    expect(filled.path.match(/M/g)).toHaveLength(2)
-    expect(filled.path.match(/z/g)).toHaveLength(2)
-    expect(noted.path).toBe(lines.map((line) => `M${line.x} ${line.y + line.height}h${line.width}`).join(''))
-    expect(onScreen(filled.box)).toEqual({ left: 350, right: 878, top: 891.7, bottom: 908.4 })
-    expect(noted.box).toEqual(filled.box)
+    const shape = highlightShape(lines)
+    expect(shape.fill.match(/M/g)).toHaveLength(2)
+    expect(shape.fill.match(/z/g)).toHaveLength(2)
+    expect(shape.underline).toBe(lines.map((line) => `M${line.x} ${line.y + line.height}h${line.width}`).join(''))
+    expect(onScreen(shape.box)).toEqual({ left: 350, right: 878, top: 891.7, bottom: 908.4 })
   })
 
-  it('选区工具条放在选中文字下方，下方放不下才放到上方，横向居中且不出窗口', () => {
+  it('选区工具条贴着的框是选中各行在屏幕上的外接矩形，页面挪了框跟着挪', () => {
     const lines = normalizedHighlightRects(PAGE, TWO_COLUMNS)
-    expect(selectionToolsAnchor(PAGE, lines, { width: 1400, height: 1100 }))
-      .toEqual({ left: expect.closeTo(535.5, 5), top: expect.closeTo(955, 5) })
-    expect(selectionToolsAnchor(PAGE, lines, { width: 1400, height: 1000 }))
-      .toEqual({ left: expect.closeTo(535.5, 5), top: expect.closeTo(847.7, 5) })
-    expect(selectionToolsAnchor(PAGE, lines.slice(1, 2), { width: 750, height: 1100 }).left).toBe(650)
+    const box = selectionBox(PAGE, lines)
+    const union = highlightShape(lines).box
+    expect(box.left).toBeCloseTo(PAGE.left + union.x * PAGE.width, 5)
+    expect(box.top).toBeCloseTo(PAGE.top + union.y * PAGE.height, 5)
+    expect(box.width).toBeCloseTo(union.width * PAGE.width, 5)
+    expect(box.height).toBeCloseTo(union.height * PAGE.height, 5)
+    expect(selectionBox({ ...PAGE, left: PAGE.left + 40 }, lines).left).toBeCloseTo(box.left + 40, 5)
   })
 
   it('选区只按选中的文字节点量，去掉首尾空白，不量元素、<br> 和 endOfContent', () => {

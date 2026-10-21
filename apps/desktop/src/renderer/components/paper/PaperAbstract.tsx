@@ -1,37 +1,30 @@
-import { useLayoutEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import { PaperText } from './PaperText.js'
+import { useClipped } from '../../hooks/useClipped.js'
 import { useMessages } from '../../messages/useMessages.js'
+import '../FadeText.css'
 import './PaperCard.css'
 
 /**
  * The one presentation of paper abstracts. Abstracts render through `PaperText` as Markdown, so the
  * `$…$` and `$$…$$` math and the text commands common on arXiv show rendered instead of raw LaTeX.
- * With `folded`, the abstract shows its first lines fading out and offers to expand when there is more.
+ * With `folded`, the abstract shows its first three lines, fading out where the last one ends when there
+ * is more, and offers to expand.
  */
 export function PaperAbstract({ text, folded = false }: { text: string; folded?: boolean }) {
   const m = useMessages()
   const body = useRef<HTMLDivElement>(null)
   const [expanded, setExpanded] = useState(false)
-  const [overflows, setOverflows] = useState(false)
-
-  useLayoutEffect(() => {
-    const element = body.current
-    if (!folded || element === null) return
-    const measure = () => setOverflows(element.scrollHeight > element.clientHeight + 1)
-    measure()
-    const observer = new ResizeObserver(measure)
-    observer.observe(element)
-    return () => observer.disconnect()
-  }, [folded, text])
-
-  const clipped = folded && !expanded
+  const cut = useClipped(body, text, true)
+  const shut = folded && !expanded
+  const overflows = shut && cut
   return (
     <>
-      <div ref={body} className={`paper-abstract pabs${clipped ? ' is-folded' : ''}${clipped && overflows ? ' is-clipped' : ''}`}>
+      <div ref={body} className={`paper-abstract pabs${shut ? ' is-folded fade-lines' : ''}${overflows ? ' clipped' : ''}`}>
         <PaperText text={text} block />
       </div>
       {folded && (overflows || expanded) ? (
-        <button type="button" className="paper-abstract-toggle" onClick={() => setExpanded((open) => !open)}>
+        <button type="button" className="btn ghost sm paper-abstract-toggle" onClick={() => setExpanded((open) => !open)}>
           {expanded ? m.papers.card.collapseAbstract : m.papers.card.expandAbstract}
         </button>
       ) : null}

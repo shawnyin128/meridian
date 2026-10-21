@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ProposalOp, WikiAggregation } from '../../../shared/contract.js'
 import { MessagesProvider } from '../../messages/useMessages.js'
 import { LANGUAGE_STORAGE_KEY } from '../../shell/language.js'
+import { TOOLTIP_DELAY } from '../Tooltip.js'
 
 declare global {
   var IS_REACT_ACT_ENVIRONMENT: boolean
@@ -35,7 +36,7 @@ const PAGE = {
       id: 'knee', text: '拐点在宽度 6', version: 2, since: '2026-06-09', by: '我',
       evidence: [
         { evidence: { kind: 'personal', text: '直觉' }, added: '2026-05-02', by: '我' },
-        { evidence: { kind: 'experiment', project: 'draft', node: 'exp1', text: '单请求实测' }, added: '2026-06-09', by: '我', title: 'draft 效率' },
+        { evidence: { kind: 'experiment', project: 'draft', node: 'exp1', text: '单请求实测' }, added: '2026-06-09', by: '我', title: 'draft 效率', point: '单请求实验' },
         { evidence: { kind: 'source', paper: 'papers/eagle', page: 7, quote: 'wide trees amortize', highlight: 'h-3' }, added: '2026-09-14', by: 'ai:skill.meridian', title: 'EAGLE-2' },
       ],
       conflicts: [{ id: 'batch', against: { kind: 'claim', ref: 'topics/batch#wins' }, note: '批量下拐点后移', since: '2026-09-14', by: '我', title: '批量场景仍净赚' }],
@@ -43,17 +44,17 @@ const PAGE = {
     },
     {
       id: 'plain', text: '另一条结论', version: 1, since: '2026-09-01', by: 'ai:skill.meridian',
-      evidence: [{ evidence: { kind: 'experiment', project: 'draft', node: 'exp2', text: '批量实测' }, added: '2026-09-01', by: 'ai:skill.meridian', title: 'draft 效率' }],
+      evidence: [{ evidence: { kind: 'experiment', project: 'draft', node: 'exp2', text: '批量实测' }, added: '2026-09-01', by: 'ai:skill.meridian', title: 'draft 效率', point: '批量实验' }],
       conflicts: [], history: [],
     },
   ],
 } as WikiAggregation
 
-function setValue(input: HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement, value: string): void {
+function setValue(input: HTMLInputElement | HTMLTextAreaElement, value: string): void {
   const prototype = input instanceof window.HTMLTextAreaElement ? window.HTMLTextAreaElement.prototype
-    : input instanceof window.HTMLSelectElement ? window.HTMLSelectElement.prototype : window.HTMLInputElement.prototype
+    : window.HTMLInputElement.prototype
   Object.getOwnPropertyDescriptor(prototype, 'value')!.set!.call(input, value)
-  input.dispatchEvent(new Event(input instanceof window.HTMLSelectElement ? 'change' : 'input', { bubbles: true }))
+  input.dispatchEvent(new Event('input', { bubbles: true }))
 }
 
 const flush = async () => {
@@ -67,6 +68,7 @@ describe('WikiClaims', () => {
   const links = { openPage: vi.fn(), openProject: vi.fn(), openReader: vi.fn() }
 
   beforeEach(async () => {
+    vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} })
     globalThis.IS_REACT_ACT_ENVIRONMENT = true
     window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'zh')
     document.body.innerHTML = ''
@@ -90,36 +92,79 @@ describe('WikiClaims', () => {
   const menuItem = (text: string) => [...document.querySelectorAll<HTMLElement>('[role="menuitem"]')].find((el) => el.textContent === text)!
   const dialog = () => document.querySelector<HTMLElement>('.wiki-form')!
   const save = () => [...dialog().querySelectorAll<HTMLButtonElement>('button')].find((b) => b.textContent === '保存')!
+  /** Opens the dialog's `nth` picker and returns the labels of its options. */
+  const openPicker = async (nth: number) => {
+    await act(async () => {
+      dialog().querySelectorAll('.choice-picker')[nth]!
+        .dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, button: 0 }))
+      await flush()
+    })
+    return [...document.querySelectorAll<HTMLElement>('.choice-picker-menu [role="menuitemradio"]')]
+  }
+  const choose = async (item: HTMLElement) => {
+    await act(async () => {
+      item.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }))
+      item.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+      await flush()
+    })
+  }
+  /** Picks the option shown as `label` in the dialog's `nth` picker. */
+  const pick = async (nth: number, label: string) => {
+    await choose((await openPicker(nth)).find((candidate) => candidate.textContent === label)!)
+  }
 
-  it('每条结论:正文、版本、日期、谁写的;证据一行一条;冲突高亮并链到另一边;版本史默认收起', () => {
+  it('每条结论:正文、版本、日期,agent 写的跟一个 agent 标签;证据一行一条,实验证据写节点的名字;冲突只用一个警示色标签标出并链到另一边;版本史默认收起', () => {
     const knee = host.querySelector<HTMLElement>('[data-claim="knee"]')!
     expect(knee.querySelector('.wkclaim-text')!.textContent).toBe('拐点在宽度 6')
-    expect(knee.querySelector('.wkclaim-meta')!.textContent).toBe('v26月9日我')
-    expect(host.querySelector('[data-claim="plain"] .wkclaim-by')!.textContent).toBe('agent')
+    expect(knee.querySelector('.wkclaim-meta')!.textContent).toBe('v26月9日')
+    expect(knee.querySelector('.source-label')).toBeNull()
+    expect(host.querySelector('[data-claim="plain"] .wkclaim-head .source-label')!.textContent).toBe('agent')
     expect([...knee.querySelectorAll('.wkclaim-evidence')].map((li) => li.textContent))
-      .toEqual(['个人判断直觉', '实验draft 效率exp1单请求实测', '证据EAGLE-2 p.7wide trees amortize'])
-    expect(knee.classList.contains('wkclaim--conflict')).toBe(true)
-    expect(host.querySelector('[data-claim="plain"]')!.classList.contains('wkclaim--conflict')).toBe(false)
+      .toEqual(['个人判断直觉', '实验draft 效率单请求实验单请求实测', '证据EAGLE-2 p.7wide trees amortize'])
+    expect(knee.className).toBe(host.querySelector('[data-claim="plain"]')!.className)
     expect(knee.querySelector('.wkclaim-conflict')!.textContent).toBe('冲突批量场景仍净赚批量下拐点后移处理冲突')
-    expect(host.querySelector('[data-claim="plain"] .wkclaim-evidence')!.textContent).toBe('实验draft 效率exp2批量实测')
-    expect(knee.querySelector('.diff')).toBeNull()
-    act(() => knee.querySelector<HTMLButtonElement>('.wkclaim-history')!.click())
-    expect([...knee.querySelectorAll('.diff div')].map((d) => d.textContent)).toEqual(['- v1 · 5月2日 · 树宽收益递减', '+ v2 · 6月9日 · 拐点在宽度 6'])
+    expect([...knee.querySelectorAll('.wkclaim-conflict .tag')].map((tag) => tag.className)).toEqual(['tag tag--label tag--warn'])
+    expect(host.querySelector('[data-claim="plain"] .wkclaim-evidence')!.textContent).toBe('实验draft 效率批量实验批量实测')
+    const history = knee.querySelector<HTMLButtonElement>('.wkclaim-history .card-tray-toggle')!
+    expect(history.querySelector('.card-tray-chevron svg')).not.toBeNull()
+    expect(history.getAttribute('aria-expanded')).toBe('false')
+    act(() => history.click())
+    expect(history.getAttribute('aria-expanded')).toBe('true')
+    expect([...knee.querySelectorAll('.card-tray-reveal .diff div')].map((d) => d.textContent)).toEqual(['- v1 · 5月2日 · 树宽收益递减', '+ v2 · 6月9日 · 拐点在宽度 6'])
   })
 
   it('整条结论是它那个 … 所属的行:悬停或聚焦结论的任何一处都露出 …', () => {
-    expect([...host.querySelectorAll('[data-claim]')].map((row) => [row.getAttribute('data-claim'), row.hasAttribute('data-dots-row')]))
+    expect([...host.querySelectorAll('[data-claim]')].map((row) => [row.getAttribute('data-claim'), row.hasAttribute('data-row-actions')]))
       .toEqual([['knee', true], ['plain', true]])
   })
 
-  it('实验证据打开项目,原文证据打开阅读器到那一页与高亮,冲突的另一边打开它所在的页', () => {
-    const [experiment, source] = [...host.querySelectorAll<HTMLButtonElement>('[data-claim="knee"] .wkclaim-evidence .wkclaim-link')]
+  it('实验证据打开项目,原文证据的锚点打开阅读器到那一页与高亮,冲突的另一边打开它所在的页', () => {
+    const [experiment, source] = [...host.querySelectorAll<HTMLButtonElement>('[data-claim="knee"] .wkclaim-evidence button')]
+    expect([experiment!.className, source!.className]).toEqual(['entity-link entity-link--project', 'entity-link source-anchor'])
+    expect(source!.textContent).toBe('p.7')
     act(() => experiment!.click())
     expect(links.openProject).toHaveBeenCalledWith('draft')
     act(() => source!.click())
     expect(links.openReader).toHaveBeenCalledWith('papers/eagle', { page: 7, highlight: 'h-3' })
-    act(() => host.querySelector<HTMLButtonElement>('[data-claim="knee"] .wkclaim-conflict .wkclaim-link')!.click())
+    act(() => host.querySelector<HTMLButtonElement>('[data-claim="knee"] .wkclaim-conflict .entity-link--page')!.click())
     expect(links.openPage).toHaveBeenCalledWith('topics/batch')
+  })
+
+  it('原文证据的锚点悬停或聚焦时在共享 tooltip 里显示它锚定的原文', () => {
+    const anchor = host.querySelector<HTMLButtonElement>('[data-claim="knee"] .source-anchor')!
+    const tip = () => document.querySelector('[role="tooltip"]')?.textContent ?? null
+    act(() => {
+      document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', bubbles: true }))
+      anchor.focus()
+    })
+    expect(tip()).toBe('“wide trees amortize”')
+    act(() => anchor.blur())
+    expect(tip()).toBeNull()
+    vi.useFakeTimers()
+    act(() => { anchor.dispatchEvent(new PointerEvent('pointermove', { bubbles: true, pointerType: 'mouse' })) })
+    act(() => { vi.advanceTimersByTime(TOOLTIP_DELAY) })
+    vi.useRealTimers()
+    expect(tip()).toBe('“wide trees amortize”')
   })
 
   it('添加结论:个人判断作依据,id 由正文算出', async () => {
@@ -138,10 +183,11 @@ describe('WikiClaims', () => {
   it('添加结论:只能选已验证的项目结论作依据,节点结论引用节点,旧版结论引用结论 id', async () => {
     act(() => host.querySelector<HTMLButtonElement>('.add-action')!.click())
     await act(async () => { [...dialog().querySelectorAll<HTMLButtonElement>('.segmented-control button')][1]!.click(); await flush() })
-    await act(async () => { setValue(dialog().querySelector('select')!, 'draft'); await flush() })
-    const options = [...dialog().querySelectorAll('select')[1]!.querySelectorAll('option')].map((o) => o.value)
-    expect(options).toEqual(['', 't.wide', 'c1'])
-    act(() => setValue(dialog().querySelectorAll('select')[1]!, 't.wide'))
+    expect(dialog().querySelector('select')).toBeNull()
+    await pick(0, 'draft 效率')
+    const verified = await openPicker(1)
+    expect(verified.map((item) => item.textContent)).toEqual(['宽树在 B≥8 时净赚', '拐点是 batch size 的函数'])
+    await choose(verified[0]!)
     await act(async () => { save().click(); await flush() })
     expect(onApply.mock.calls[0]![1]).toEqual([{
       op: 'addClaim', page: 'topics/sd',
@@ -152,8 +198,8 @@ describe('WikiClaims', () => {
   it('添加结论:选一条旧版项目结论作依据,正文先填成那条结论', async () => {
     act(() => host.querySelector<HTMLButtonElement>('.add-action')!.click())
     await act(async () => { [...dialog().querySelectorAll<HTMLButtonElement>('.segmented-control button')][1]!.click(); await flush() })
-    await act(async () => { setValue(dialog().querySelector('select')!, 'draft'); await flush() })
-    act(() => setValue(dialog().querySelectorAll('select')[1]!, 'c1'))
+    await pick(0, 'draft 效率')
+    await pick(1, '拐点是 batch size 的函数')
     expect(dialog().querySelector('textarea')!.value).toBe('拐点是 batch size 的函数')
     await act(async () => { save().click(); await flush() })
     expect(onApply.mock.calls[0]![1]).toEqual([{
@@ -171,7 +217,7 @@ describe('WikiClaims', () => {
 
     openMenu('plain')
     act(() => menuItem('标记冲突').click())
-    act(() => setValue(dialog().querySelector('select')!, 'knee'))
+    await pick(0, '拐点在宽度 6')
     act(() => setValue(dialog().querySelector('input')!, '说法相反'))
     await act(async () => { save().click(); await flush() })
     expect(onApply.mock.calls.at(-1)![1]).toEqual([{
@@ -195,7 +241,7 @@ describe('WikiClaims', () => {
     expect(onApply.mock.calls.at(-1)![1]).toEqual([{ ...done, outcome: 'dismissed' }])
 
     resolve()
-    act(() => setValue(dialog().querySelector('select')!, 'revised'))
+    await pick(0, '修订这一条')
     act(() => setValue(dialog().querySelector('textarea')!, '单请求下拐点在宽度 6'))
     act(() => setValue(dialog().querySelector('input')!, '场景不同'))
     await act(async () => { save().click(); await flush() })
@@ -204,7 +250,7 @@ describe('WikiClaims', () => {
     ])
 
     resolve()
-    act(() => setValue(dialog().querySelector('select')!, 'retracted'))
+    await pick(0, '撤回这一条')
     act(() => setValue(dialog().querySelector('input')!, '场景不同'))
     await act(async () => { save().click(); await flush() })
     expect(onApply.mock.calls.at(-1)![1]).toEqual([

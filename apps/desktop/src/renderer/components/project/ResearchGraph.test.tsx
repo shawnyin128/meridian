@@ -82,6 +82,20 @@ describe('idea and graph association', () => {
   })
   afterEach(() => { vi.unstubAllGlobals() })
 
+  it('draws a node label that cannot fit whole, faded out by CSS rather than cut to a character count', () => {
+    const label = '长程稳健性'.repeat(12)
+    const host = document.createElement('div')
+    host.innerHTML = renderToStaticMarkup(withMessages(
+      <ResearchGraph
+        graph={{ ...GRAPH, nodes: [...GRAPH.nodes, { id: 'long', label, state: 'idle', x: 440, y: 0, width: 180, writebacks: [] }] }}
+        selected={null} onSelect={vi.fn()}
+      />,
+    ))
+    const node = host.querySelector('[data-node="long"]')!
+    expect(node.textContent).toBe(label)
+    expect(node.querySelector('.fade-text')?.textContent).toBe(label)
+  })
+
   it('explains active-path and current-node emphasis with matching legend marks', () => {
     const markup = renderToStaticMarkup(withMessages(
       <ResearchGraph
@@ -93,7 +107,7 @@ describe('idea and graph association', () => {
     host.innerHTML = markup
 
     expect(host.querySelector('.glegend')?.textContent)
-      .toContain('当前研究路径推进中')
+      .toContain('当前科研路径推进中')
     expect(host.querySelector('.legend-path')).not.toBeNull()
     expect(host.querySelector('.legend-node.current')).not.toBeNull()
     expect(host.querySelector('.legend-node.idea')).toBeNull()
@@ -124,20 +138,63 @@ describe('idea and graph association', () => {
     expect(host.querySelectorAll('.active-edge-flows path')).toHaveLength(2)
   })
 
-  it('lets the keyboard reach every node and select it with Enter or Space', () => {
+  it('takes every node as one Tab stop, moves between nodes with the arrow keys and selects one with Enter or Space', async () => {
     globalThis.IS_REACT_ACT_ENVIRONMENT = true
     const onSelect = vi.fn()
     const host = document.createElement('div')
+    document.body.append(host)
     const root = createRoot(host)
-    act(() => root.render(withMessages(<ResearchGraph graph={GRAPH} selected={null} onSelect={onSelect} />)))
+    const branched: Graph = {
+      nodes: [...GRAPH.nodes, { id: 'side', label: '旁支', state: 'idle', x: 0, y: 0, width: 180, writebacks: [] }],
+      edges: [...GRAPH.edges, ['root', 'side']],
+    }
+    act(() => root.render(withMessages(<ResearchGraph graph={branched} selected="probe" onSelect={onSelect} />)))
+    const group = host.querySelector<SVGGElement>('svg > g')!
     const nodes = [...host.querySelectorAll<SVGGElement>('.rgn')]
-    expect(nodes.map((node) => [node.getAttribute('role'), node.getAttribute('tabindex')]))
-      .toEqual([['button', '0'], ['button', '0']])
-    act(() => { nodes[1]!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })) })
-    act(() => { nodes[0]!.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', bubbles: true })) })
-    act(() => { nodes[0]!.dispatchEvent(new KeyboardEvent('keydown', { key: 'a', bubbles: true })) })
-    expect(onSelect.mock.calls).toEqual([['probe'], ['root']])
+    expect([group.getAttribute('role'), group.getAttribute('aria-label')]).toEqual(['radiogroup', '科研图'])
+    expect(nodes.map((node) => [node.getAttribute('role'), node.getAttribute('aria-label'), node.getAttribute('aria-checked')]))
+      .toEqual([['radio', '根节点', 'false'], ['radio', '动态预算探针', 'true'], ['radio', '旁支', 'false']])
+    expect([group, ...nodes].filter((element) => element.tabIndex === 0)).toEqual([group])
+    const press = async (key: string) => {
+      await act(async () => {
+        document.activeElement!.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }))
+        await new Promise((done) => setTimeout(done, 0))
+      })
+    }
+    await act(async () => { group.focus() })
+    expect(document.activeElement).toBe(nodes[1])
+    await press('ArrowDown')
+    expect(document.activeElement).toBe(nodes[2])
+    await press('Enter')
+    await press('Home')
+    expect(document.activeElement).toBe(nodes[0])
+    await press(' ')
+    await press('a')
+    expect(onSelect.mock.calls).toEqual([['side'], ['root']])
     act(() => root.unmount())
+    host.remove()
+  })
+
+  it('keeps the zoom controls one Tab stop, with the arrow keys between zoom out, the reset and zoom in', async () => {
+    globalThis.IS_REACT_ACT_ENVIRONMENT = true
+    const host = document.createElement('div')
+    document.body.append(host)
+    const root = createRoot(host)
+    act(() => root.render(withMessages(<ResearchGraph graph={GRAPH} selected={null} onSelect={vi.fn()} />)))
+    const controls = host.querySelector<HTMLElement>('.graph-view-controls')!
+    expect([controls, ...controls.querySelectorAll<HTMLElement>('*')].filter((element) => element.tabIndex === 0)).toEqual([controls])
+    await act(async () => { controls.focus() })
+    const walked: (string | null)[] = []
+    for (let step = 0; step < 3; step += 1) {
+      walked.push(document.activeElement!.getAttribute('aria-label') ?? document.activeElement!.textContent)
+      await act(async () => {
+        document.activeElement!.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true, cancelable: true }))
+        await new Promise((done) => setTimeout(done, 0))
+      })
+    }
+    expect(walked).toEqual(['缩小科研图', '100%', '放大科研图'])
+    act(() => root.unmount())
+    host.remove()
   })
 
   it('pans a node that takes keyboard focus outside the view into it, and leaves the view alone for a pointer', () => {
@@ -168,7 +225,74 @@ describe('idea and graph association', () => {
     host.remove()
   })
 
-  it('adds an animated hatch only to nodes linked to the open idea', () => {
+  describe('opening the graph', () => {
+    const chain: Graph = {
+      nodes: ['甲', '乙', '丙'].map((label, at) => ({
+        id: `n${at}`, label, state: 'done' as const, x: 0, y: 0, width: 180, writebacks: [],
+      })),
+      edges: [['n0', 'n1'], ['n1', 'n2']],
+    }
+    /** Renders `graph` in a viewport `width` px wide and returns the view's translation and zoom. */
+    const open = (graph: Graph, width: number) => {
+      globalThis.IS_REACT_ACT_ENVIRONMENT = true
+      vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(width)
+      const host = document.createElement('div')
+      document.body.append(host)
+      const root = createRoot(host)
+      act(() => root.render(withMessages(<ResearchGraph graph={graph} selected={null} onSelect={vi.fn()} />)))
+      const view = () => {
+        const [, x, y, zoom] = /translate\((-?[\d.]+),(-?[\d.]+)\) scale\(([\d.]+)\)/
+          .exec(host.querySelector('svg > g')!.getAttribute('transform')!)!
+        return { x: Number(x), y: Number(y), zoom: Number(zoom) }
+      }
+      const shown = () => host.querySelector('.graph-zoom-reset')!.textContent
+      return { host, root, view, shown }
+    }
+    afterEach(() => { vi.restoreAllMocks() })
+
+    it('zooms a graph wider than its view out until every node shows, and centres it', () => {
+      const { root, view, shown } = open(chain, 600)
+      const right = Math.max(...layoutResearchTree(chain).nodes.map((node) => node.x + node.width))
+      const { x, zoom } = view()
+      expect(zoom).toBeLessThan(1)
+      expect(x).toBeGreaterThanOrEqual(0)
+      expect(x + right * zoom).toBeLessThanOrEqual(600)
+      expect(Math.abs(x - (600 - (x + right * zoom)))).toBeLessThanOrEqual(1)
+      expect(shown()).toBe(`${Math.round(zoom * 100)}%`)
+      act(() => root.unmount())
+    })
+
+    it('opens a graph that fits at 100%', () => {
+      const { root, view } = open(chain, 1200)
+      expect(view().zoom).toBe(1)
+      act(() => root.unmount())
+    })
+
+    it('dims zoom in at the largest zoom and zoom out at the smallest, as the reader does', () => {
+      const { host, root, view } = open(chain, 1200)
+      const button = (label: string) => host.querySelector<HTMLButtonElement>(`[aria-label="${label}"]`)!
+      const press = (label: string, times: number) => {
+        for (let n = 0; n < times; n += 1) act(() => button(label).click())
+      }
+      press('放大科研图', 5)
+      expect([view().zoom, button('放大科研图').disabled, button('缩小科研图').disabled]).toEqual([1.8, true, false])
+      press('缩小科研图', 8)
+      expect([view().zoom, button('放大科研图').disabled, button('缩小科研图').disabled]).toEqual([0.6, false, true])
+      act(() => root.unmount())
+    })
+
+    it('puts the view it opened with back when the view is reset', () => {
+      const { host, root, view } = open(chain, 600)
+      const opened = view()
+      act(() => host.querySelector<HTMLButtonElement>('[aria-label="放大科研图"]')!.click())
+      expect(view().zoom).toBeGreaterThan(opened.zoom)
+      act(() => host.querySelector<HTMLButtonElement>('.graph-zoom-reset')!.click())
+      expect(view()).toEqual(opened)
+      act(() => root.unmount())
+    })
+  })
+
+  it('adds a still hatch only to nodes linked to the open idea', () => {
     const markup = renderToStaticMarkup(withMessages(
       <ResearchGraph graph={GRAPH} selected={null} ideaNodeIds={['root']} onSelect={vi.fn()} />,
     ))
@@ -177,7 +301,7 @@ describe('idea and graph association', () => {
 
     expect(host.querySelector('[data-node="root"]')?.classList.contains('idea-related')).toBe(true)
     expect(host.querySelector('[data-node="probe"]')?.classList.contains('idea-related')).toBe(false)
-    expect(markup).toContain('<animateTransform')
+    expect(markup).not.toContain('<animate')
     expect(host.querySelector('[data-node="root"] rect')?.getAttribute('style')).toContain('url(#idea-node-hatch-')
     expect(host.querySelector('.glegend')?.textContent).toContain('当前想法关联')
     expect(host.querySelector('.legend-node.idea')).not.toBeNull()
@@ -197,7 +321,7 @@ describe('idea and graph association', () => {
     )))
 
     const headings = [...host.querySelectorAll('.section-heading')].map((heading) => heading.textContent)
-    expect(headings.slice(1, 5)).toEqual(['分支 · 1', '任务 · 1', '关联想法 · 1', '科研记录 · 0'])
+    expect(headings.slice(1)).toEqual(['分支 · 1', '任务 · 1', '关联想法 · 1'])
     expect(host.querySelector('.node-task-row')?.textContent).toBe('重跑延迟矩阵agent')
     act(() => (host.querySelector('.node-task-row') as HTMLButtonElement).click())
     expect(onSelectTask).toHaveBeenCalledWith('task-7')
@@ -207,6 +331,40 @@ describe('idea and graph association', () => {
 
     act(() => (host.querySelector('.node-idea-row') as HTMLButtonElement).click())
     expect(onSelectIdea).toHaveBeenCalledWith('idea-1')
+    act(() => root.unmount())
+  })
+
+  it('names each branch with the same node link as every other screen and opens it on click', () => {
+    const host = document.createElement('div')
+    const root = createRoot(host)
+    const onSelect = vi.fn()
+    act(() => root.render(withMessages(
+      <ResearchNodePanel
+        graph={GRAPH} events={[]} ideas={[]} tasks={[]} node={GRAPH.nodes[0]!}
+        onClose={vi.fn()} onSelect={onSelect} onSelectIdea={vi.fn()} onSelectTask={vi.fn()}
+      />,
+    )))
+    const branch = host.querySelector<HTMLButtonElement>('.node-branch-list > *')!
+    expect(branch.className).toBe('entity-link entity-link--node')
+    expect(branch.querySelector('.status-dot')).not.toBeNull()
+    act(() => branch.click())
+    expect(onSelect).toHaveBeenCalledWith(GRAPH.nodes[1]!.id)
+    act(() => root.unmount())
+  })
+
+  it('分支、科研记录和节点文档由 agent 写出，空着时整节不显示；任务和关联想法留着标题和空态', () => {
+    const host = document.createElement('div')
+    const root = createRoot(host)
+    const leaf = { ...GRAPH.nodes[1]!, markdown: '' }
+    act(() => root.render(withMessages(
+      <ResearchNodePanel
+        graph={{ ...GRAPH, nodes: [GRAPH.nodes[0]!, leaf] }} events={[]} ideas={[]} tasks={[]} node={leaf}
+        onClose={vi.fn()} onSelect={vi.fn()} onSelectIdea={vi.fn()} onSelectTask={vi.fn()}
+      />,
+    )))
+    const headings = [...host.querySelectorAll('.section-heading')].map((heading) => heading.textContent)
+    expect(headings.slice(1)).toEqual(['任务 · 0', '关联想法 · 0'])
+    expect([...host.querySelectorAll('.empty-state')].map((node) => node.textContent)).toEqual(['还没有任务', '还没有关联想法'])
     act(() => root.unmount())
   })
 
@@ -248,7 +406,7 @@ describe('idea and graph association', () => {
     expect(row?.querySelector('.record-line')?.textContent).toBe('跑通延迟测量')
     expect(row?.querySelector('.project-signal-kind')?.textContent).toBe('实验结果')
     expect(row?.querySelector('.record-who')?.textContent).toBe('agent')
-    expect(row?.querySelector('.node-tag')).toBeNull()
+    expect(row?.querySelector('.entity-link--node')).toBeNull()
     act(() => root.unmount())
   })
 })

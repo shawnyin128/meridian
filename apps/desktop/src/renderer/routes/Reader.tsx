@@ -5,16 +5,23 @@ import type {
   PaperHighlightRect, PaperReading, PaperRow, ReadingMutation,
 } from '../../shared/contract.js'
 import { papers } from '../ipc.js'
+import { errorLabel } from '../lib/failure-label.js'
 import { useMessages } from '../messages/useMessages.js'
 import {
-  useBanner, useCrumbTail, useJump, useToast, useVaultRevision, type CrumbSeg, type ScreenKey,
-  type JumpAnchor,
+  useCrumbTail, useJump, useNotice, useVaultRevision, type CrumbSeg, type ScreenKey, type JumpAnchor,
 } from '../shell/AppShell.js'
-import { IconPlus } from '../components/icons.js'
+import { IconButton } from '../components/IconButton.js'
+import { IconMinus, IconPlus } from '../components/icons.js'
+import { LoadingPlaceholder } from '../components/LoadingPlaceholder.js'
+import { PickerPopover, type AnchorBox } from '../components/PickerPopover.js'
+import { Toolbar, ToolbarButton } from '../components/Toolbar.js'
+import { Tooltip } from '../components/Tooltip.js'
 import {
-  highlightLines, highlightShape, normalizedHighlightRects, selectedTextRanges, selectionToolsAnchor,
+  highlightLines, highlightShape, normalizedHighlightRects, selectedTextRanges, selectionBox,
 } from './highlight-geometry.js'
-import { clampZoom, keptScroll, scaledAbout, wheelZoom, type SheetTransform } from './reader-zoom.js'
+import {
+  ZOOM_MAX, ZOOM_MIN, clampZoom, keptScroll, pageScale, scaledAbout, wheelZoom, type SheetTransform,
+} from './reader-zoom.js'
 import { PaperChat, type PaperChatPrompt } from '../components/chat/PaperChat.js'
 import { ReaderSidePanel, type ReaderSideTab } from '../components/reader/ReaderSidePanel.js'
 import { PageShell } from '../components/PageShell.js'
@@ -22,8 +29,6 @@ import { plainTitle } from '../components/paper/paper-text.js'
 import './shell.css'
 import './Reader.css'
 
-const PAGE_WIDTH = 830
-const MAX_FIT = 1.6
 const MAX_DPR = 2
 const ZOOM_STEP = 0.2
 /** How long zooming and scrolling pause before the pages are laid out and drawn at the zoom shown. */
@@ -49,7 +54,8 @@ type PendingHighlight = {
   page: number
   quote: string
   rects: PaperHighlightRect[]
-  anchor: { left: number; top: number }
+  /** The selected text's box on screen, measured from its page each time it is read. */
+  box: AnchorBox
 }
 
 const emptyReading = (paperId: string): PaperReading => ({ paperId, highlights: [], notes: [], remark: '' })
@@ -61,11 +67,9 @@ function paintHighlights(box: ParentNode, reading: PaperReading | null): void {
   for (const highlight of reading.highlights) {
     const pagebox = box.querySelector<HTMLElement>(`.pdfpagebox[data-page="${highlight.page}"]`)
     if (pagebox === null) continue
-    const noted = highlight.note.trim() !== ''
-    const { box: bounds, path } = highlightShape(
-      highlightLines(highlight.rects, Number(pagebox.dataset.aspect)), noted)
+    const { box: bounds, fill, underline } = highlightShape(highlightLines(highlight.rects, Number(pagebox.dataset.aspect)))
     const mark = document.createElementNS(SVG_NS, 'svg')
-    mark.setAttribute('class', `paper-highlight ${highlight.color}${noted ? ' noted' : ''}`)
+    mark.setAttribute('class', `paper-highlight ${highlight.color}`)
     mark.dataset.highlight = highlight.id
     mark.setAttribute('viewBox', `${bounds.x} ${bounds.y} ${bounds.width} ${bounds.height}`)
     mark.setAttribute('preserveAspectRatio', 'none')
@@ -74,8 +78,14 @@ function paintHighlights(box: ParentNode, reading: PaperReading | null): void {
     mark.style.width = `${bounds.width * 100}%`
     mark.style.height = `${bounds.height * 100}%`
     const shape = document.createElementNS(SVG_NS, 'path')
-    shape.setAttribute('d', path)
+    shape.setAttribute('d', fill)
     mark.append(shape)
+    if (highlight.note.trim() !== '') {
+      const note = document.createElementNS(SVG_NS, 'path')
+      note.setAttribute('class', 'paper-highlight-note')
+      note.setAttribute('d', underline)
+      mark.append(note)
+    }
     pagebox.querySelector('.paper-highlights')!.append(mark)
   }
 }
@@ -83,14 +93,32 @@ function paintHighlights(box: ParentNode, reading: PaperReading | null): void {
 /** True when `cause` is pdf.js cancelling a render that a newer draw or a closed document replaced. */
 const cancelled = (cause: unknown): boolean => cause instanceof Error && cause.name === 'RenderingCancelledException'
 
-/** Sizes a page box for `zoom`; its canvas, text layer and highlights follow the box's size and `--scale-factor`. */
-function layOut(slot: PageSlot, zoom: number): void {
+/**
+ * Sizes a page box for `zoom` in a scroll area `room` px wide; its canvas, text layer and highlights
+ * follow the box's size and `--scale-factor`.
+ */
+function layOut(slot: PageSlot, zoom: number, room: number): void {
   const viewport = slot.pdf.getViewport({
-    scale: Math.min(PAGE_WIDTH / slot.pdf.getViewport({ scale: 1 }).width, MAX_FIT) * zoom,
+    scale: pageScale(slot.pdf.getViewport({ scale: 1 }).width, room, zoom),
   })
   slot.box.style.width = `${Math.floor(viewport.width)}px`
   slot.box.style.height = `${Math.floor(viewport.height)}px`
   slot.box.style.setProperty('--scale-factor', String(viewport.scale))
+}
+
+/** The content width of the pages' scroll area, in px: its width inside the padding and the scrollbar. */
+function roomOf(view: HTMLElement): number {
+  const style = getComputedStyle(view)
+  return view.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight)
+}
+
+/** The page whose box is nearest the client point `point`, measured vertically. */
+function slotNearest(slots: Iterable<PageSlot>, point: { y: number }): PageSlot {
+  const offset = (slot: PageSlot) => {
+    const rect = slot.box.getBoundingClientRect()
+    return Math.max(rect.top - point.y, point.y - rect.bottom, 0)
+  }
+  return [...slots].reduce((best, slot) => (offset(slot) < offset(best) ? slot : best))
 }
 
 /** The scale a page box is laid out at. */
@@ -136,8 +164,7 @@ export function Reader() {
   const m = useMessages()
   const { jump, returnTo } = useJump()
   const { revision, bump } = useVaultRevision()
-  const toast = useToast()
-  const banner = useBanner()
+  const notice = useNotice()
   const [opened, setOpened] = useState<string | null>(null)
   const [origin, setOrigin] = useState<ScreenKey | null>(null)
   const [paper, setPaper] = useState<PaperRow | null>(null)
@@ -154,11 +181,15 @@ export function Reader() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const scroller = useRef<HTMLDivElement>(null)
+  const selectionAnchor = useRef<AnchorBox | null>(null)
+  selectionAnchor.current = pending?.box ?? null
   const sheet = useRef<HTMLDivElement>(null)
   const readingRef = useRef<PaperReading | null>(null)
   readingRef.current = reading
   const zoomRef = useRef(zoom)
   zoomRef.current = zoom
+  // The scroll area's content width the pages are laid out to fit; unbounded until it is first measured.
+  const room = useRef(Number.POSITIVE_INFINITY)
   const slots = useRef(new Map<number, PageSlot>())
   // While zooming, the sheet stays laid out at `zoom` and a CSS transform shows it at `shownZoom`.
   const transform = useRef(UNSCALED)
@@ -171,7 +202,7 @@ export function Reader() {
   const loadingDocs = useRef(new Set<string>())
   const openedRef = useRef(opened)
   openedRef.current = opened
-  const reportError = useCallback((cause: Error) => setError(cause.message), [])
+  const reportError = useCallback((cause: unknown) => setError(errorLabel(m, cause)), [m])
 
   useEffect(() => {
     if (jump === null || jump.seq === consumed.current) return
@@ -301,6 +332,8 @@ export function Reader() {
         Array.from({ length: doc.numPages }, (_, index) => doc.getPage(index + 1)))
       if (!live) return
       const nextSheet = document.createDocumentFragment()
+      const measured = roomOf(view)
+      if (measured > 0) room.current = measured
       for (const pdf of pages) {
         const pagebox = document.createElement('div')
         pagebox.className = 'pdfpagebox'
@@ -320,7 +353,7 @@ export function Reader() {
         pagebox.append(text)
         nextSheet.append(pagebox)
         const slot: PageSlot = { pdf, box: pagebox, scale: 0, task: null, text: null }
-        layOut(slot, zoomRef.current)
+        layOut(slot, zoomRef.current, room.current)
         placed.set(pdf.pageNumber, slot)
         pending.add(pdf.pageNumber)
       }
@@ -445,14 +478,9 @@ export function Reader() {
     const view = scroller.current!
     if (transform.current !== UNSCALED) {
       const point = zoomPoint.current
-      const offset = (slot: PageSlot) => {
-        const rect = slot.box.getBoundingClientRect()
-        return Math.max(rect.top - point.y, point.y - rect.bottom, 0)
-      }
-      const nearest = [...slots.current.values()]
-        .reduce((best, slot) => (offset(slot) < offset(best) ? slot : best))
+      const nearest = slotNearest(slots.current.values(), point)
       const before = nearest.box.getBoundingClientRect()
-      for (const slot of slots.current.values()) layOut(slot, shownZoom.current)
+      for (const slot of slots.current.values()) layOut(slot, shownZoom.current, room.current)
       sheet.current!.style.transform = ''
       transform.current = UNSCALED
       // A reader hidden behind another screen lays out no boxes, so there is no point to keep.
@@ -478,6 +506,7 @@ export function Reader() {
    * only becomes the zoom they are laid out at.
    */
   const zoomTo = useCallback((target: number, point: { x: number; y: number }) => {
+    setPending(null)
     shownZoom.current = clampZoom(target)
     if (slots.current.size === 0) {
       zoomRef.current = shownZoom.current
@@ -522,6 +551,28 @@ export function Reader() {
     }
   }, [zoomTo, settleLater])
 
+  // Opening or closing the paper chat or a rail tab, or resizing the window, changes the room the
+  // pages fit; they are laid out again with the page at the top of the view kept in place.
+  useEffect(() => {
+    const view = scroller.current!
+    const observer = new ResizeObserver(() => {
+      const measured = roomOf(view)
+      // A reader hidden behind another screen measures nothing, and its pages keep their layout.
+      if (measured <= 0 || measured === room.current) return
+      room.current = measured
+      if (slots.current.size === 0) return
+      const frame = view.getBoundingClientRect()
+      const point = { x: frame.left, y: frame.top }
+      const nearest = slotNearest(slots.current.values(), point)
+      const before = nearest.box.getBoundingClientRect()
+      for (const slot of slots.current.values()) layOut(slot, zoomRef.current, measured)
+      view.scrollTop += keptScroll(before, nearest.box.getBoundingClientRect(), point).top
+      settleLater()
+    })
+    observer.observe(view)
+    return () => observer.disconnect()
+  }, [settleLater])
+
   useEffect(() => {
     if (opened !== null) zoomOf.current.set(opened, zoom)
   }, [opened, zoom])
@@ -533,10 +584,10 @@ export function Reader() {
     const timer = window.setTimeout(() => {
       void papers.mutateReading(opened, { kind: 'progress.set', page: currentPage })
         .then(setReading)
-        .catch((cause: Error) => toast(cause.message))
+        .catch((cause: unknown) => notice.refusal(errorLabel(m, cause)))
     }, PROGRESS_MS)
     return () => window.clearTimeout(timer)
-  }, [opened, doc, reading, currentPage, toast])
+  }, [opened, doc, reading, currentPage, notice])
 
   useEffect(() => {
     const view = scroller.current
@@ -587,9 +638,18 @@ export function Reader() {
     const quote = selection.toString().replace(/\s+/g, ' ').trim()
     setPending(quote === '' || rects.length === 0 ? null : {
       page: Number(pagebox.dataset.page), quote, rects,
-      anchor: selectionToolsAnchor(bounds, rects, { width: window.innerWidth, height: window.innerHeight }),
+      box: { getBoundingClientRect: () => selectionBox(pagebox.getBoundingClientRect(), rects) },
     })
   }, [])
+
+  // The toolbar is placed against the selection when it opens, so it closes once the pages scroll.
+  useEffect(() => {
+    const view = scroller.current
+    if (pending === null || view === null) return
+    const close = () => setPending(null)
+    view.addEventListener('scroll', close, { passive: true })
+    return () => view.removeEventListener('scroll', close)
+  }, [pending])
 
   const mutateReading = useCallback(async (mutation: ReadingMutation): Promise<PaperReading | null> => {
     if (opened === null || saving) return null
@@ -600,19 +660,19 @@ export function Reader() {
       bump()
       return next
     } catch (cause) {
-      toast(cause instanceof Error ? cause.message : String(cause))
+      notice.refusal(errorLabel(m, cause))
       return null
     } finally {
       setSaving(false)
     }
-  }, [opened, saving, bump, toast])
+  }, [opened, saving, bump, notice])
 
   const mutate = useCallback(async (mutation: ReadingMutation): Promise<boolean> =>
     await mutateReading(mutation) !== null, [mutateReading])
 
   const saveRemark = async (text: string): Promise<boolean> => {
     const ok = await mutate({ kind: 'remark.set', text })
-    if (ok) banner(m.papers.notices.remarkSaved)
+    if (ok) notice.success(m.papers.notices.remarkSaved)
     return ok
   }
 
@@ -650,7 +710,7 @@ export function Reader() {
     () => (paper === null ? [] : [{ text: plainTitle(paper.title) }]), [paper])
   useCrumbTail(tail)
 
-  const status = error ?? (opened !== null && (doc === null || reading === null) ? m.reader.loadingPdf : null)
+  const loading = error === null && opened !== null && (doc === null || reading === null)
   const heldReading = reading ?? (opened === null ? null : emptyReading(opened))
 
   return (
@@ -663,16 +723,24 @@ export function Reader() {
         <div className="reader">
           <div className="pdfwrap" ref={scroller} onMouseUp={captureSelection}>
             <div ref={sheet} className="pdfsheet" />
-            {status === null ? null : <div className="pdfload">{status}</div>}
+            {error === null ? null : <div className="pdfload">{error}</div>}
+            {loading ? <LoadingPlaceholder shape="sheet" /> : null}
           </div>
 
-          {pending === null ? null : (
-            <div className="selection-tools" style={{ left: pending.anchor.left, top: pending.anchor.top }}>
-              <button onMouseDown={(event) => event.preventDefault()} onClick={() => { void addHighlight(false) }}>{m.reader.selection.highlight}</button>
-              <button onMouseDown={(event) => event.preventDefault()} onClick={() => { void addHighlight(true) }}>{m.reader.selection.note}</button>
-              <button onMouseDown={(event) => event.preventDefault()} onClick={askAi}>{m.reader.selection.askAi}</button>
-            </div>
-          )}
+          <PickerPopover
+            open={pending !== null} anchorBox={selectionAnchor}
+            onOpenChange={(open) => { if (!open) setPending(null) }}
+            contentClassName="ctxmenu selection-tools" side="bottom" align="center" sideOffset={10}
+            content={pending === null ? null : (
+              <Toolbar>
+                <div className="selection-tools-row">
+                  <ToolbarButton className="mi" onClick={() => { void addHighlight(false) }}>{m.reader.selection.highlight}</ToolbarButton>
+                  <ToolbarButton className="mi" onClick={() => { void addHighlight(true) }}>{m.reader.selection.note}</ToolbarButton>
+                  <ToolbarButton className="mi" onClick={askAi}>{m.reader.selection.askAi}</ToolbarButton>
+                </div>
+              </Toolbar>
+            )}
+          />
 
           <ReaderSidePanel
             tab={sideTab} onTab={(tab) => { setSideTab(tab); setFocusHighlightId(null) }}
@@ -681,15 +749,21 @@ export function Reader() {
             onJump={jumpToPage} focusHighlightId={focusHighlightId}
           />
 
-          <div className="zoomctl">
-            <button title={m.reader.zoom.out} onClick={() => zoomBy(-ZOOM_STEP)}>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
-                <path d="M5 12h14" />
-              </svg>
-            </button>
-            <span>{Math.round(zoom * 100)}%</span>
-            <button title={m.reader.zoom.in} onClick={() => zoomBy(ZOOM_STEP)}><IconPlus /></button>
-          </div>
+          <Toolbar>
+            <div className="zoomctl">
+              <IconButton label={m.reader.zoom.out} size="nested" disabled={zoom <= ZOOM_MIN} onClick={() => zoomBy(-ZOOM_STEP)}>
+                <IconMinus />
+              </IconButton>
+              <Tooltip label={m.reader.zoom.reset}>
+                <ToolbarButton className="btn ghost sm zoom-reset" onClick={() => zoomBy(1 - shownZoom.current)}>
+                  {Math.round(zoom * 100)}%
+                </ToolbarButton>
+              </Tooltip>
+              <IconButton label={m.reader.zoom.in} size="nested" disabled={zoom >= ZOOM_MAX} onClick={() => zoomBy(ZOOM_STEP)}>
+                <IconPlus />
+              </IconButton>
+            </div>
+          </Toolbar>
         </div>
       </PageShell>
     </>

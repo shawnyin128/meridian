@@ -1,3 +1,5 @@
+import { CallError } from '../call-error.js'
+
 type CredentialRequest = {
   type: 'credentials.request'
   id: number
@@ -37,7 +39,7 @@ export function createMainCredentialVault(
   let serial = 0
   const pending = new Map<number, {
     resolve: (response: CredentialResponse) => void
-    reject: (cause: Error) => void
+    reject: (message: string) => void
     timer: NodeJS.Timeout
   }>()
 
@@ -51,19 +53,22 @@ export function createMainCredentialVault(
     if (response.ok === true && typeof response.value === 'string') {
       held.resolve(response as CredentialResponse)
     } else {
-      held.reject(new Error(response.error ?? '系统凭据库操作失败'))
+      held.reject(response.error ?? '系统凭据库操作失败')
     }
   })
 
   const request = (operation: CredentialRequest['operation'], value: string) => {
     const id = serial += 1
     return new Promise<CredentialResponse>((resolve, reject) => {
+      const fail = (message: string) => {
+        reject(new CallError(operation === 'encrypt' ? 'key-unsaved' : 'key-unreadable', message))
+      }
       const timer = setTimeout(() => {
         pending.delete(id)
-        reject(new Error('系统凭据库响应超时'))
+        fail('系统凭据库响应超时')
       }, timeoutMs)
       timer.unref()
-      pending.set(id, { resolve, reject, timer })
+      pending.set(id, { resolve, reject: fail, timer })
       port.postMessage({
         type: 'credentials.request', id, operation, value,
       } satisfies CredentialRequest)

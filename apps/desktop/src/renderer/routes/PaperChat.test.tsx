@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ChatMessage, PaperRow } from '../../shared/contract.js'
 import { MessagesProvider } from '../messages/useMessages.js'
 import { LANGUAGE_STORAGE_KEY } from '../shell/language.js'
+import { TOOLTIP_DELAY } from '../components/Tooltip.js'
 
 declare global {
   var IS_REACT_ACT_ENVIRONMENT: boolean
@@ -29,13 +30,19 @@ const api = vi.hoisted(() => ({
   createConclusion: vi.fn(() => Promise.resolve({})),
   feedAppend: vi.fn(() => Promise.resolve()),
   bump: vi.fn(),
-  banner: vi.fn(),
-  toast: vi.fn(),
-  grip: { onMouseDown: vi.fn(), onMouseEnter: vi.fn(), onMouseLeave: vi.fn() },
+  open: vi.fn(),
+  writes: [] as { result: unknown; opts: { note?: unknown; action?: (result: never) => { label: string; onAction: () => void } } }[],
+  notice: { success: vi.fn(), refusal: vi.fn() },
+  grip: {
+    id: 'rrgrip', label: '论文对话宽度', value: 300, min: 240, max: 480,
+    onResize: vi.fn(), onReset: vi.fn(),
+  },
   collapsed: false,
+  revision: 0,
 }))
 
 vi.mock('../ipc.js', () => ({
+  appMenu: { platform: () => 'darwin' },
   chat: {
     send: api.send, cancel: api.cancel, forPaper: api.forPaper, messages: api.messages,
     recordAction: api.recordAction,
@@ -46,16 +53,16 @@ vi.mock('../ipc.js', () => ({
 }))
 
 vi.mock('../shell/AppShell.js', () => ({
-  useBanner: () => api.banner,
-  useToast: () => api.toast,
-  useVaultRevision: () => ({ revision: 0, bump: api.bump }),
+  useNotice: () => api.notice,
+  useJump: () => ({ jump: null, open: api.open, returnTo: vi.fn() }),
+  useVaultRevision: () => ({ revision: api.revision, bump: api.bump }),
   usePaperChatGrip: () => api.grip,
   usePaperChatCollapsed: () => api.collapsed,
 }))
 
 vi.mock('../hooks/useVaultWrite.js', () => ({
-  useVaultWrite: () => async (op: Promise<unknown>) => {
-    await op
+  useVaultWrite: () => async (op: Promise<unknown>, opts = {}) => {
+    api.writes.push({ result: await op, opts })
     api.bump()
     return true
   },
@@ -85,15 +92,40 @@ describe('PaperChat', () => {
 
   beforeEach(() => {
     globalThis.IS_REACT_ACT_ENVIRONMENT = true
+    // The head's title measures whether it fits, and jsdom has no ResizeObserver.
+    vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} })
     window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'zh')
     document.body.innerHTML = ''
     vi.clearAllMocks()
+    api.writes.length = 0
     api.collapsed = false
+    api.revision = 0
   })
 
   afterEach(() => {
     if (root !== null) act(() => root!.unmount())
     root = null
+    vi.unstubAllGlobals()
+  })
+
+  it('记入科研记录后，动态里那一条和提示说的是同一句', async () => {
+    api.messages.mockResolvedValueOnce([{
+      id: 'm1', role: 'ai', runs: [{ kind: 'text', text: '结论' }],
+      actions: [{ kind: 'writeBack', label: '记入科研记录', project: 'draft', text: '结论' }],
+    }])
+    api.recordAction.mockResolvedValueOnce({ name: '草稿树项目' } as never)
+    const host = document.createElement('div')
+    document.body.append(host)
+    root = createRoot(host)
+    await act(async () => {
+      root!.render(withMessages(<PaperChat paper={PAPER} />))
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+    await act(async () => { host.querySelector<HTMLButtonElement>('.macts .btn')!.click() })
+    expect(api.feedAppend).toHaveBeenCalledWith({
+      source: 'me', body: { kind: 'runs', runs: [{ kind: 'text', text: '已记入《草稿树项目》的科研记录' }] },
+    })
   })
 
   it('按论文取得持久会话并把输入追加到同一条会话', async () => {
@@ -118,6 +150,31 @@ describe('PaperChat', () => {
     expect(input.value).toBe('')
   })
 
+  it('对话栏的拖动条在共享 tooltip 里写它的操作「收起论文对话」和 ⌘B，不写拖动提示', async () => {
+    const host = document.createElement('div')
+    document.body.append(host)
+    root = createRoot(host)
+    await act(async () => { root!.render(withMessages(<PaperChat paper={PAPER} />)) })
+    vi.useFakeTimers()
+    act(() => {
+      host.querySelector('#rrgrip')!.dispatchEvent(new PointerEvent('pointermove', { bubbles: true, pointerType: 'mouse' }))
+    })
+    act(() => { vi.advanceTimersByTime(TOOLTIP_DELAY) })
+    vi.useRealTimers()
+    const tip = document.querySelector('[role="tooltip"]')!
+    expect([tip.firstChild?.textContent, tip.querySelector('.tooltip-key')?.textContent, tip.querySelector('.tooltip-note')])
+      .toEqual(['收起论文对话', '⌘B', null])
+  })
+
+  it('对话栏头部写出整篇论文的标题，放不下时淡出，和面包屑同一个规则', async () => {
+    const title = 'EAGLE: Speculative Sampling Requires Rethinking Feature Uncertainty'
+    const host = document.createElement('div')
+    document.body.append(host)
+    root = createRoot(host)
+    await act(async () => { root!.render(withMessages(<PaperChat paper={{ ...PAPER, title }} />)) })
+    expect(host.querySelector('.paper-chat-head .fade-text')?.textContent).toBe(`${title} · 阅读中`)
+  })
+
   it('提交未完成时发送箭头变为可停止的旋转控件', async () => {
     let finish = () => {}
     api.send.mockImplementationOnce(() => new Promise((resolve) => {
@@ -137,7 +194,7 @@ describe('PaperChat', () => {
     act(() => host.querySelector<HTMLButtonElement>('.paper-chat .send')!.click())
     const control = host.querySelector<HTMLButtonElement>('.paper-chat .send')!
     expect(control.getAttribute('aria-label')).toBe('正在生成，点击停止')
-    expect(control.querySelector('.generation-spinner')).not.toBeNull()
+    expect(control.querySelector('.ring.spin')).not.toBeNull()
     expect(control.querySelector('.generation-stop')).not.toBeNull()
 
     act(() => control.click())
@@ -159,8 +216,9 @@ describe('PaperChat', () => {
       await Promise.resolve()
     })
 
+    expect(host.querySelector('.qacts .tag')).toBeNull()
     await act(async () => {
-      host.querySelector<HTMLButtonElement>('.paper-chat .qa')!.click()
+      host.querySelector<HTMLButtonElement>('.paper-chat .save-idea')!.click()
       await Promise.resolve()
     })
     const fields = document.body.querySelectorAll<HTMLInputElement | HTMLTextAreaElement>('.idea-dialog .form-control')
@@ -175,6 +233,11 @@ describe('PaperChat', () => {
     expect(api.createIdea).toHaveBeenCalledWith(
       'chat-paper-1', '可验证的新方向', '把讨论后的机制和实验假设明确写下来',
     )
+    const saved = api.writes.at(-1)!
+    const action = saved.opts.action!(saved.result as never)
+    expect([saved.opts.note, action.label]).toEqual(['想法已保存', '打开'])
+    action.onAction()
+    expect(api.open).toHaveBeenCalledWith('ideas', 'idea-1')
     expect(document.body.textContent).not.toContain('存为结论')
   })
 
@@ -214,10 +277,50 @@ describe('PaperChat', () => {
     expect(input.value).toBe('这篇的关键假设是什么？')
   })
 
+  it('上一篇还在生成时换一篇论文，这一篇照常可以提问，停止只停正在生成的那篇', async () => {
+    let finish = () => {}
+    api.send.mockImplementationOnce(() => new Promise((resolve) => {
+      finish = () => resolve({ id: 'chat-paper-1', state: 'complete' })
+    }))
+    const host = await mountChat()
+    const input = host.querySelector<HTMLTextAreaElement>('[aria-label="向当前论文提问"]')!
+    const control = () => host.querySelector<HTMLButtonElement>('.paper-chat .send')!
+    act(() => setValue(input, '这篇的关键假设是什么？'))
+    act(() => control().click())
+    expect(control().getAttribute('aria-label')).toBe('正在生成，点击停止')
+
+    await showPaper(null)
+    await showPaper(PAPER_TWO)
+    expect(input.disabled).toBe(false)
+    expect(control().getAttribute('aria-label')).toBe('发送')
+
+    await showPaper(null)
+    await showPaper(PAPER)
+    expect(control().getAttribute('aria-label')).toBe('正在生成，点击停止')
+    act(() => control().click())
+    expect(api.cancel).toHaveBeenCalledExactlyOnceWith('chat-paper-1')
+    await act(async () => { finish(); await Promise.resolve() })
+  })
+
+  it('问题去掉空白后为空时发送钮不可点；还没讨论时保存为想法是变淡的幽灵按钮', async () => {
+    const host = await mountChat()
+    const input = host.querySelector<HTMLTextAreaElement>('[aria-label="向当前论文提问"]')!
+    const send = host.querySelector<HTMLButtonElement>('.paper-chat .send')!
+    expect(send.disabled).toBe(true)
+    act(() => setValue(input, '   '))
+    expect(send.disabled).toBe(true)
+    act(() => setValue(input, '关键假设是什么？'))
+    expect(send.disabled).toBe(false)
+
+    const save = host.querySelector<HTMLButtonElement>('.paper-chat .save-idea')!
+    expect([save.className, save.disabled]).toEqual(['btn ghost sm save-idea', true])
+    expect(save.previousElementSibling?.textContent).toBe('尚无讨论')
+  })
+
   it('空对话的提示和输入框一样留在对话栏的左右边距里', async () => {
     const host = await mountChat()
     const hint = host.querySelector('.msgs .empty-state')!
-    expect(hint.textContent).toContain('围绕当前论文提问')
+    expect(hint.textContent).toBe('还没有对话')
     expect(hint.parentElement!.className).toBe(host.querySelector('.composer > div')!.className)
   })
 
@@ -252,11 +355,50 @@ describe('PaperChat', () => {
     expect(host.querySelector('.paper-chat')!.hasAttribute('inert')).toBe(false)
   })
 
-  it('对话栏右缘有调宽把手，按下交给外壳处理拖动与收起', async () => {
+  it('对话栏右缘有调宽把手，拖动时把新宽度交给外壳', async () => {
     const host = await mountChat()
-    const grip = host.querySelector('.paper-chat > .grip')
-    expect(grip).not.toBeNull()
-    act(() => { grip!.dispatchEvent(new MouseEvent('mousedown', { bubbles: true })) })
-    expect(api.grip.onMouseDown).toHaveBeenCalledTimes(1)
+    host.querySelector<HTMLElement>('.paper-chat')!.getBoundingClientRect = () => ({ width: 300 }) as DOMRect
+    const grip = host.querySelector<HTMLElement>('.paper-chat > .grip')!
+    expect(grip.getAttribute('role')).toBe('separator')
+    act(() => { grip.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, clientX: 100 })) })
+    act(() => { document.dispatchEvent(new MouseEvent('mousemove', { clientX: 140 })) })
+    act(() => { document.dispatchEvent(new MouseEvent('mouseup')) })
+    expect(api.grip.onResize).toHaveBeenLastCalledWith(340)
+  })
+
+  it('消息列表停在末尾时新消息滚进视野,往上翻着读时不抢,自己发出的消息总会滚进视野', async () => {
+    const host = await mountChat()
+    const stream = host.querySelector<HTMLElement>('.msgs')!
+    let top = 0
+    let length = 600
+    Object.defineProperty(stream, 'clientHeight', { configurable: true, get: () => 300 })
+    Object.defineProperty(stream, 'scrollHeight', { configurable: true, get: () => length })
+    Object.defineProperty(stream, 'scrollTop', {
+      configurable: true, get: () => top, set: (value: number) => { top = Math.min(value, Math.max(length - 300, 0)) },
+    })
+    const said: ChatMessage[] = []
+    /** An answer lands in the vault: the chat reloads and its list grows by one 200px message. */
+    const arrive = async () => {
+      said.push({ id: `m${said.length}`, role: 'ai', runs: [{ kind: 'text', text: '回答' }], actions: [] })
+      api.messages.mockResolvedValueOnce([...said])
+      api.revision += 1
+      length += 200
+      await showPaper(PAPER)
+    }
+
+    await arrive()
+    expect(stream.scrollTop).toBe(500)
+    act(() => {
+      stream.scrollTop = 100
+      stream.dispatchEvent(new Event('scroll'))
+    })
+    await arrive()
+    expect(stream.scrollTop).toBe(100)
+
+    const composer = host.querySelector<HTMLTextAreaElement>('[aria-label="向当前论文提问"]')!
+    act(() => setValue(composer, '为什么'))
+    act(() => { composer.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true })) })
+    await act(async () => { await Promise.resolve() })
+    expect(stream.scrollTop).toBe(700)
   })
 })

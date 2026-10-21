@@ -5,8 +5,9 @@
 
 /*
  * The table itself is the scroll viewport: it scrolls both ways inside the table, with the horizontal
- * scrollbar always at the bottom of the visible area. The header row sticks to the top and the title
- * column to the left (the corner cell is fixed both ways)
+ * scrollbar always at the bottom of the visible area. The header row sticks to the top, the title
+ * column to the left (the corner cell is fixed both ways) and the actions column to the right; those
+ * three edges are held, and only the bottom edge fades the way other scroll areas do.
  */
 .desk-body.libview{display:flex;flex-direction:column;overflow:hidden}
 .desk-body.libview>.libwide{display:flex;flex-direction:column;flex:1;min-height:0;width:100%}
@@ -14,13 +15,11 @@
 .desk-body.libview .tblwrap{flex:1;min-height:0}
 .tblwrap{overflow:auto;scrollbar-gutter:stable}
 
-/* Top bar of the paper list: filter input + group switch */
-.libbar{display:flex;align-items:center;gap:12px;margin-bottom:16px}
+/* The page toolbar holds the view switch, then the filters of the list: filter input + group switch */
+.paper-view-toolbar{align-items:center;gap:var(--sp-12)}
+.libbar{display:flex;flex:1;min-width:0;align-items:center;gap:var(--sp-12)}
 .pdfupload-input{display:none}
-.pdfupload{display:flex;align-items:center;gap:5px;font-size:var(--fs-sm);padding:4px 10px}
-.pdfupload svg{width:12px;height:12px}
-.pdfupload:disabled{cursor:wait;opacity:.65}
-.paper-drop{position:absolute;inset:46px 0 0;z-index:30;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;background:color-mix(in srgb,var(--content) 88%,transparent);border:2px dashed var(--accent);color:var(--ink);backdrop-filter:blur(8px);pointer-events:none}
+.paper-drop{position:absolute;inset:46px 0 0;z-index:30;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:var(--sp-8);background:color-mix(in srgb,var(--content) 88%,transparent);border:2px dashed var(--ink);color:var(--ink);backdrop-filter:blur(8px);pointer-events:none}
 .paper-drop strong{font-size:var(--fs-read)}
 .paper-drop span{font-size:var(--fs-sm);color:var(--ter)}
 /* Filter input: the shared field input at the size of the Watches screen's one-line add box (.af-in). */
@@ -28,160 +27,176 @@
 .paper-search>.form-input{width:100%;font-size:var(--fs-sm)}
 
 /* Group index level: pick a value first, then see the papers under it */
-.gxrow{display:flex;width:100%;align-items:center;gap:12px;padding:12px 10px;border:0;border-bottom:1px solid var(--sep2);border-radius:var(--r-md);background:none;color:inherit;font:inherit;text-align:left;cursor:pointer}
-.gxrow:hover{background:var(--hover)}
-.gxrow .gx-t{font-size:13px;font-weight:600;min-width:150px}
-.gxrow .gx-m{flex:1;font-size:12px;color:var(--ter);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.gxrow .n{font-size:12px;color:var(--ter);background:var(--hover);border-radius:999px;padding:1px 8px;flex-shrink:0}
-.gnav{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:12px}
-.lmore{font-size:var(--fs-sm);color:var(--ter);padding:12px 2px}
+.gxrow{display:flex;align-items:center;gap:var(--sp-12);padding:var(--sp-12) var(--sp-10)}
+.gxrow .gx-t{font-size:var(--fs-base);font-weight:var(--fw-semibold);min-width:150px}
+.gxrow .gx-m{flex:1;font-size:var(--fs-sm);color:var(--ter)}
+.gnav{display:flex;align-items:center;gap:var(--sp-6);flex-wrap:wrap;margin-bottom:var(--sp-12)}
 
-.ptable{width:100%;min-width:0;border-collapse:collapse;font-size:var(--fs-base);margin-bottom:16px;table-layout:fixed}
+/*
+ * Separate borders: with collapsed ones, Chromium leaves the divider above the last row out of the
+ * sticky cells' first paint, until something repaints them.
+ */
+.ptable{width:100%;min-width:0;border-collapse:separate;border-spacing:0;font-size:var(--fs-base);margin-bottom:var(--sp-16);table-layout:fixed}
 .ptable th{position:relative}
 .thsort{padding:0;border:0;background:none;color:inherit;font:inherit;cursor:inherit}
-.thgrip{position:absolute;top:0;right:-4px;width:8px;height:100%;cursor:col-resize;z-index:3}
-.thgrip::after{content:'';position:absolute;left:3px;top:22%;bottom:22%;width:2px;border-radius:2px;background:transparent;transition:background var(--t-fast) var(--e-out)}
-.thgrip:hover::after{background:var(--sec)}
-.thmove{display:inline-flex;width:13px;height:17px;align-items:center;justify-content:center;margin:0 4px 0 -5px;color:var(--ter);opacity:0;cursor:grab;vertical-align:-4px;border-radius:3px}
+.thsort svg{width:9px;height:9px;vertical-align:0}
+/* A column's grip straddles the border with the next header cell. */
+.ptable th>.thgrip{right:-5px}
+.thmove{display:inline-flex;width:13px;height:17px;align-items:center;justify-content:center;margin:0 var(--sp-4) 0 calc(-1 * var(--sp-6));color:var(--ter);opacity:0;cursor:grab;vertical-align:-4px;border-radius:var(--r-xs)}
 .ptable th:hover .thmove,.thmove:focus-visible{opacity:1}
 .thmove:active{cursor:grabbing;color:var(--ink)}
 .thmove svg{width:9px;height:14px}
 .column-drag-ghost{position:fixed;left:-100px;top:-100px;width:1px;height:1px;opacity:0;pointer-events:none}
-.ptable td .ci{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ptable td .ci{display:block;overflow:hidden;white-space:nowrap}
+/* A text cell that does not fit fades out, until its hover shows it whole or its title takes keyboard focus. */
+.ptable td.trunc:not(:hover) .ci:not(:has(.tagchip)):not(:focus-visible){mask-image:var(--clipfade)}
+/* A chip cell clips its chips, so it keeps the ring room around them inside the cell's padding. */
+.ptable td .ci:has(.tagchip){padding:var(--ring-room);margin:calc(-1 * var(--ring-room))}
 .ptable td.trunc:has(.ci):not(:has(.tagchip)):hover{overflow:visible}
 /* Hover reveal: expands in place (Excel style); text stays put, no border, and the background over adjacent columns matches the row */
-.ptable td.trunc:hover .ci:not(:has(.tagchip)){position:absolute;left:0;top:0;bottom:0;display:flex;align-items:center;padding:7px 10px;width:max-content;background:linear-gradient(var(--row-bg),var(--row-bg)) var(--content);z-index:6;overflow:visible;text-overflow:clip}
+.ptable td.trunc:hover .ci:not(:has(.tagchip)){position:absolute;left:0;top:0;bottom:0;display:flex;align-items:center;padding:var(--sp-6) var(--row-table-pad);width:max-content;background:linear-gradient(var(--row-over),var(--row-over)),linear-gradient(var(--row-bg),var(--row-bg)) var(--content);z-index:6;overflow:visible;text-overflow:clip}
 .tblwrap .ptable thead th{position:sticky;top:0;z-index:3;background:var(--content)}
-.ptable th:first-child,.ptable td:first-child{position:sticky;left:0;z-index:2;background:var(--content);box-shadow:1px 0 0 var(--sep2)}
+.ptable th:first-child,.ptable td:first-child{position:sticky;left:0;z-index:2;background:var(--content)}
 .ptable th:first-child{top:0;z-index:4}
 /* The corner cell must sit above the other header cells: the "thead th" rule is more specific, so the corner cell gets its own rule. */
 .tblwrap .ptable thead th:first-child{left:0;z-index:4}
+/*
+ * Content scrolling under the title column, the actions column or the header fades at the sticky
+ * cell's inner edge while the cell is stuck, in that cell's own paint, so a hovered or selected row
+ * keeps its tint; the sticky cells themselves never fade. A header cell marking a column drop keeps
+ * its ::after for the marker.
+ */
+.ptable :is(th,td):first-child,.ptable td.row-actions-cell,.tblwrap .ptable thead th{container-type:scroll-state}
+.ptable td:first-child,.ptable td.row-actions-cell{overflow:visible}
+.ptable :is(th,td):first-child::before,.ptable :is(td.row-actions-cell,th.th-add)::before,
+.tblwrap .ptable thead th:not(.column-drop-after)::after{content:"";position:absolute;background:inherit;opacity:0;
+  pointer-events:none;transition:opacity var(--t-fast) var(--e-out)}
+.ptable :is(th,td):first-child::before{top:0;bottom:0;left:100%;width:var(--sp-24);mask-image:linear-gradient(to right,#000,transparent)}
+.ptable :is(td.row-actions-cell,th.th-add)::before{top:0;bottom:0;right:100%;width:var(--sp-24);mask-image:linear-gradient(to left,#000,transparent)}
+.tblwrap .ptable thead th:not(.column-drop-after)::after{top:100%;left:0;right:0;height:var(--sp-24);mask-image:linear-gradient(#000,transparent)}
+@container scroll-state(stuck: left){.ptable :is(th,td):first-child::before{opacity:1}}
+@container scroll-state(stuck: right){.ptable :is(td.row-actions-cell,th.th-add)::before{opacity:1}}
+@container scroll-state(stuck: top){.tblwrap .ptable thead th:not(.column-drop-after)::after{opacity:1}}
 .ptable td .ci .hid{display:none}
-.ptable td .ci.chip-expanded{display:flex;align-items:center;flex-wrap:wrap;gap:2px;overflow:visible;white-space:normal;text-overflow:clip}
+.ptable td .ci.chip-expanded{display:flex;align-items:center;flex-wrap:wrap;gap:var(--sp-2);overflow:visible;white-space:normal;text-overflow:clip}
 .ptable td .ci.chip-expanded .hid{display:inline-block;animation:chip-row-reveal var(--t) var(--e-out) both}
-.ptable td .ci.chip-expanded .hid:nth-child(3){animation-delay:30ms}
-.ptable td .ci.chip-expanded .hid:nth-child(4){animation-delay:60ms}
-.ptable td .ci.chip-expanded .hid:nth-child(n+5){animation-delay:90ms}
-.morebadge{display:inline-flex;align-items:center;justify-content:center;min-width:28px;border:0;background:var(--tint-mut);color:var(--sec);border-radius:999px;padding:1px 8px;margin-left:2px;font:inherit;font-size:var(--fs-cap);cursor:pointer}
-.morebadge:hover{background:var(--hover);color:var(--ink)}
+.morebadge{min-width:28px;margin-left:var(--sp-2)}
 @keyframes chip-row-reveal{from{opacity:0;transform:translateX(-4px)}to{opacity:1;transform:translateX(0)}}
 @media (prefers-reduced-motion:reduce){.ptable td .ci.chip-expanded .hid{animation:none}}
-.ptable th{text-align:left;font-size:var(--fs-sm);color:var(--sec);font-weight:600;padding:6px 10px;border-bottom:1px solid var(--sep);cursor:pointer;white-space:nowrap;user-select:none;transition:color var(--t-fast) var(--e-out)}
-.ptable th:hover{color:var(--ink)}
+/* Only a sortable header, the one that carries aria-sort, shows a pointer and darkens on hover. */
+.ptable th{text-align:left;font-size:var(--fs-sm);color:var(--sec);font-weight:var(--fw-semibold);padding:var(--sp-6) var(--row-table-pad);border-bottom:1px solid var(--sep);cursor:default;white-space:nowrap;user-select:none;transition:color var(--t-fast) var(--e-out)}
+.ptable th[aria-sort]{cursor:pointer}
+.ptable th[aria-sort]:hover{color:var(--ink)}
 .ptable th.column-moving{opacity:.45;background:var(--tint-mut)}
-.ptable th.column-drop-before::before,.ptable th.column-drop-after::after{content:'';position:absolute;top:3px;bottom:3px;width:2px;border-radius:2px;background:var(--accent);z-index:5}
+.ptable th.column-drop-before::before,.ptable th.column-drop-after::after{content:'';position:absolute;top:3px;bottom:3px;width:2px;border-radius:var(--r-2xs);background:var(--ink);z-index:5}
 .ptable th.column-drop-before::before{left:-1px}.ptable th.column-drop-after::after{right:-1px}
-.ptable td{padding:7px 10px;height:38px;box-sizing:border-box;border-bottom:1px solid var(--sep2);vertical-align:middle;line-height:var(--lh-ui);overflow:hidden;white-space:nowrap;position:relative}
+.ptable td{padding:var(--sp-6) var(--row-table-pad);height:var(--row-table-h);box-sizing:border-box;border-bottom:1px solid var(--sep2);vertical-align:middle;line-height:var(--lh-ui);overflow:hidden;white-space:nowrap;position:relative}
 /* An embedded table draws a rule only between adjacent rows, never under the last one. */
 .ptable tbody tr:last-child td{border-bottom:0}
-.ptable td:last-child{padding-top:0;padding-bottom:0}
+.ptable td:last-child{padding-top:0;padding-bottom:0;text-align:center}
 /*
- * One background per row, painted by every cell and by a truncated cell's hover box. The sticky title
- * cell and the hover box lay it over --content, so cells scrolling under them never show through.
- * A row keeps the hover background while its reading status menu is open and the pointer is on a
- * menu item; :where() keeps that rule below the selected state.
+ * One row colour (--row-bg, the selected look of StructuredList.css) and the hover over it
+ * (--row-over), painted by every cell and by a truncated cell's hover box. The sticky title cell and
+ * the hover box lay both over --content, so cells scrolling under them never show through. A row
+ * keeps the hover while its reading status menu is open and the pointer is on a menu item.
  */
-.ptable tbody tr{--row-bg:transparent}
-.ptable tbody tr:hover,.ptable tbody tr:where(:has(.stchip[data-state="open"])){--row-bg:var(--hover)}
-.ptable tbody tr.selected{--row-bg:var(--accent-soft)}
-.ptable tbody td{background:var(--row-bg)}
-.ptable tbody td:first-child{background:linear-gradient(var(--row-bg),var(--row-bg)) var(--content)}
-.ptable tbody tr.selected td:first-child{box-shadow:inset 3px 0 0 var(--accent),1px 0 0 var(--sep2)}
-/* The title cell's hover box covers the selected bar, so it draws the bar again. */
-.ptable tbody tr.selected td.trunc:first-child:hover .ci{box-shadow:inset 3px 0 0 var(--accent)}
-.pt-title{font-weight:500;color:var(--ink);cursor:pointer}
+.ptable tbody tr{--row-bg:transparent;--row-over:transparent}
+.ptable tbody tr:hover,.ptable tbody tr:has(.stchip[data-state="open"]){--row-over:var(--hover)}
+.ptable tbody tr.selected{--row-bg:var(--selected)}
+.ptable tbody td{background-color:var(--row-bg);background-image:linear-gradient(var(--row-over),var(--row-over))}
+.ptable tbody td:first-child{background-color:var(--content);
+  background-image:linear-gradient(var(--row-over),var(--row-over)),linear-gradient(var(--row-bg),var(--row-bg))}
+.pt-title{font-weight:var(--fw-medium);color:var(--ink);cursor:pointer}
+/* The title is the row's button; it draws nothing of its own, and its click reaches the row. */
+.ptable .pt-open{width:100%;padding:0;border:0;background:none;color:inherit;font:inherit;text-align:left;cursor:inherit}
+.ptable tbody tr.selected .pt-title{color:var(--on-selected)}
 .pt-title:hover{text-decoration:underline;text-underline-offset:2px}
 .ptable tbody tr{cursor:pointer}
 .pt-dim{color:var(--ter);white-space:nowrap}
 /*
- * The + at the end of a tag cell: a transparent placeholder at rest, visible only while the row is
- * hovered or it has keyboard focus. The demo uses a span; this is a button, so font and line height
- * are added. Its background and text color must beat .tagchip in shell.css, hence .tagchip.tagadd,
- * relying on specificity rather than module bundling order. The focus state needs both classes too,
- * or it ties with the resting state and only source order decides.
+ * The + at the end of a tag cell: a ghost tag, hidden at rest and shown only while the row is hovered
+ * or it has keyboard focus. The focus state names both classes, or it ties with the resting state and
+ * only source order decides.
  */
-.tagchip.tagadd{background:transparent;border:1px dashed var(--sep-strong);color:var(--ter);cursor:pointer;opacity:0;pointer-events:none;transition:opacity var(--t-fast) var(--e-out);font-family:var(--sans);line-height:var(--lh-ui)}
+.tagchip.tagadd{opacity:0;pointer-events:none;transition:opacity var(--t-fast) var(--e-out)}
 .ptable tr:hover .tagadd,.tagchip.tagadd:focus-visible{opacity:1;pointer-events:auto}
+/* A topic chip's × in the table shows with the row's +, so a resting table reads as plain tags. */
+.ptable .tagchip .rx{opacity:0;pointer-events:none;transition:opacity var(--t-fast) var(--e-out)}
+.ptable tr:hover .tagchip .rx,.ptable .tagchip .rx:focus-visible{opacity:1;pointer-events:auto}
 .ptable tr:has(.stchip[data-state="open"]) .tagadd{opacity:1}
-.tagadd:hover{color:var(--ink);border-color:var(--sec)}
-.paper-meta-projects .tagchip.tagadd{opacity:1;pointer-events:auto}
-.tagin{border:1px solid var(--sep-strong);background:transparent;border-radius:999px;padding:1px 8px;font-size:var(--fs-sm);color:var(--ink);width:110px;font-family:var(--sans)}
-.tagin:focus-visible{outline:0}
-.stchip{font-size:var(--fs-sm);line-height:var(--lh-ui);padding:1px 10px;border:0;border-radius:999px;background:var(--field);color:var(--sec);font-family:var(--sans);cursor:pointer;white-space:nowrap}
+.paper-meta-projects .tagchip.tagadd,.paper-meta-topics .tagchip.tagadd{opacity:1;pointer-events:auto}
+.form-input.form-control-inline.tagin{display:inline-block;width:110px;vertical-align:middle}
 
-/* Custom columns: the header's last cell holds the + and the column gear; clicking a cell edits it in place */
-.th-add{width:28px}
-.colbtn{border:0;background:transparent;color:var(--ter);cursor:pointer;padding:3px;border-radius:var(--r-sm);display:flex;opacity:0;pointer-events:none;transition:opacity var(--t-fast) var(--e-out)}
-.ptable thead:hover .colbtn,.colbtn:hover,.colbtn:focus-visible{opacity:1;pointer-events:auto}
-.colbtn:hover{background:var(--hover);color:var(--ink)}
-.colbtn svg{width:12px;height:12px}
+/* Custom columns: clicking a cell edits it in place */
 .pt-cust,.pt-remark{color:var(--sec);font-size:var(--fs-sm);cursor:text;min-width:70px}
 /* Text values use the shared inline editor; compact column-menu and picker inputs retain their own width. */
 .ptable td .paper-text-cell-input{display:block}
 
 /* Column menu: locked built-in columns are grayed out, and custom columns have rename/delete at the end of their rows. */
-.mi.colrow .cl{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis}
+.mi.colrow .cl{flex:1}
 .mi.locked{cursor:default;opacity:.45}
-.cmx{border:0;background:transparent;color:var(--ter);cursor:pointer;padding:2px;border-radius:var(--r-sm);display:grid;place-items:center;opacity:0;pointer-events:none;flex-shrink:0}
+/* The 24px buttons reach into the menu row's padding, so custom-column rows stay as tall as the others. */
+.cmx{margin:calc(-1 * var(--sp-4)) 0;opacity:0;pointer-events:none}
 .mi.colrow:hover .cmx,.cmx:focus-visible{opacity:1;pointer-events:auto}
-.cmx:hover{background:var(--hover);color:var(--ink)}
-.cmx.del:hover{color:var(--bad)}
-.cmx svg{width:12px;height:12px}
 
 /* The type options below the new-column draft: text/select/multi-select icons side by side, the selected one has .on */
-.mi-in.ctrow{display:flex;gap:6px;padding-bottom:0}
-.ctbtn{flex:1;border:1px solid var(--sep2);background:var(--field);color:var(--ter);cursor:pointer;padding:5px 0;border-radius:var(--r-sm);display:grid;place-items:center}
+.mi-in.ctrow{display:flex;gap:var(--sp-6);padding-bottom:0}
+.ctbtn{flex:1;border:1px solid var(--sep2);background:var(--field);color:var(--ter);cursor:pointer;padding:var(--sp-6) 0;border-radius:var(--r-sm);display:grid;place-items:center}
 .ctbtn:hover{color:var(--ink)}
-.ctbtn.on{background:var(--hover);border-color:var(--sec);color:var(--ink)}
+.ctbtn.on{background:var(--selected-strong);border-color:transparent;color:var(--on-selected)}
 .ctbtn svg{width:12px;height:12px}
 /* Options: expand below the column row, one level deeper; the toggle is always visible, not only on row hover, or nobody would find it */
 .cmx.optx{opacity:1;pointer-events:auto}
 /* Column row labels start from 10px padding + 13px tick + 10px spacing = 33px, and option rows are indented 20px more */
-.mi.optrow{padding-left:53px;font-size:12px;color:var(--sec)}
-.mi.optrow .cl{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis}
+.mi.optrow{padding-left:calc(var(--row-menu-pad) + var(--row-menu-check) + var(--sp-10) + var(--sp-20));font-size:var(--fs-sm);color:var(--sec)}
+.mi.optrow .cl{flex:1}
 .mi.optrow:hover .cmx{opacity:1;pointer-events:auto}
 .mi.optrow.optnone{color:var(--ter);cursor:default}
-/* Change type: the type options expand under the column row, in line with option text; while open, the row's type button stays visible */
-.typerow{padding-left:45px}
-.cmx.typex.on{opacity:1;pointer-events:auto;color:var(--ink)}
-/* Cell picker: one option per row, with a slot for the check mark at the start of the row */
-.ctxmenu.drop .rrow.opt{display:flex;align-items:center;gap:8px}
-.ctxmenu.drop .rrow.opt .ck{width:13px;display:flex;align-items:center;flex-shrink:0}
+/*
+ * Change type: the type options expand under the column row, in line with option text once their own
+ * row's 8px inset is added; while open, the row's type button stays visible
+ */
+.typerow{padding-left:calc(var(--row-menu-pad) + var(--row-menu-check) + var(--sp-10) + var(--sp-20) - var(--sp-8))}
+.cmx.typex.on{opacity:1;pointer-events:auto}
 
-/* The delete button at the end of a row: hidden at rest, shown only while the row is hovered */
-.rowx{border:0;background:transparent;color:var(--ter);cursor:pointer;padding:2px;border-radius:var(--r-sm);display:grid;place-items:center;opacity:0;pointer-events:none;transition:opacity var(--t-fast) var(--e-out);margin:0 auto}
-.ptable tbody tr:hover .rowx,.rowx:focus-visible{opacity:1;pointer-events:auto}
-.ptable tbody tr:has(.stchip[data-state="open"]) .rowx{opacity:1}
-.rowx:hover{background:var(--hover);color:var(--bad)}
-.rowx svg{width:13px;height:13px}
+/*
+ * The cell of a row's actions and the header's add cell stick to the table's right edge, so the
+ * actions stay in reach while the columns scroll under them. They lie above a truncated cell's hover
+ * box (z-index 6), and the header cell above the body cells that scroll under it.
+ */
+.ptable td.row-actions-cell,.tblwrap .ptable thead th.th-add{position:sticky;right:0}
+.ptable td.row-actions-cell{z-index:7;background-color:var(--content);
+  background-image:linear-gradient(var(--row-over),var(--row-over)),linear-gradient(var(--row-bg),var(--row-bg))}
+.tblwrap .ptable thead th.th-add{z-index:8}
 
 /* The paper row's right-click menu uses the shared ContextMenu; only this menu's width is set here. */
 .paper-row-menu{min-width:168px}
 
 
 /* Paper detail: a full-height right panel; the table and the footer make room for it together. */
-.paper-detail-slot{--detail-panel-width:360px;top:46px;right:0;bottom:0;border-left:1px solid var(--sep);
+.paper-detail-slot{--detail-panel-width:var(--detailw);top:46px;right:0;bottom:0;border-left:1px solid var(--sep);
   background:var(--content);z-index:5}
-.pdetail{height:100%;box-sizing:border-box;overflow:auto;overscroll-behavior:contain;padding:16px}
-.desk-body.libview,.desk-foot{transition:margin-right var(--t-slow) var(--e-inout)}
-.desk-body.withdetail,.desk-foot.withdetail{margin-right:360px}
-.pd-h{display:flex;align-items:flex-start;gap:8px;margin-bottom:12px}
-.pd-t{font-size:var(--fs-read);font-weight:700;line-height:var(--lh-ui);flex:1;min-width:0}
-.pdetail .wkprops{grid-template-columns:52px 1fr;font-size:12px}
-.pdetail>.paper-meta{height:auto;margin:0 -16px -16px}
-.paper-reading-summary{margin-top:16px}
+.pdetail{height:100%;box-sizing:border-box;overflow:auto;overscroll-behavior:contain;padding:var(--sp-16)}
+.desk-body.withdetail,.desk-foot.withdetail{margin-right:var(--detailw)}
+.pd-h{display:flex;align-items:flex-start;gap:var(--sp-8);margin-bottom:var(--sp-12)}
+.pd-t{font-size:var(--fs-section);font-weight:var(--fw-title);line-height:var(--lh-ui);flex:1;min-width:0}
+/* The title is the panel's head, in the head's ink rather than a property value's grey. */
+.pd-t .metadata-editable{color:inherit}
+.pdetail .wkprops{grid-template-columns:52px 1fr;font-size:var(--fs-sm)}
+.pdetail>.paper-meta{height:auto;margin:0 calc(-1 * var(--sp-16)) calc(-1 * var(--sp-16))}
+.paper-reading-summary{margin-top:var(--sp-16)}
 .paper-reading-summary .paper-meta-list{padding:0}
-.paper-reading-summary .lm{font-size:12px;color:var(--ter)}
-.paper-reading-summary button.lm{border:0;background:transparent;padding:6px 0;cursor:pointer}
+.paper-reading-summary .reading-summary-all{margin:var(--sp-6) 0 0 calc(-1 * var(--sp-10))}
 
 /*
  * The gear at the end of the group bar: the same button as the header's column gear, but always
  * visible. When the bar is full it wraps to a new line rather than overflow the paper list's top
  * bar. Only this top bar wraps, since .filters itself is also used by the Feed screen's .feedbar.
  */
-.libbar .filters{align-items:center;flex-wrap:wrap}
+.libbar .filters{align-items:center;flex-wrap:wrap;margin:0}
+.libbar .filters>.pt-dim{font-size:var(--fs-sm)}
 /* Fixed width, so the toolbar layout does not shift when the label changes from "Reading status" to "Unread" or another value. */
-.libbar .read-state-filter{width:78px;box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.libbar .read-state-filter{width:78px;box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;white-space:nowrap}
 /*
  * pointer-events is inherit rather than auto: normally that inherits the parent's default auto, and
  * when the whole page is disabled it inherits none and is disabled with it.
@@ -190,36 +205,32 @@
 
 /* Research Map is a read-only peer view of the table. It composes the shared list and segmented
  * controls; these rules only define its two-column domain layout and information hierarchy. */
-.research-map{display:flex;min-height:0;flex:1;flex-direction:column;gap:14px;overflow:auto;padding:2px 2px 18px}
-.research-map-intro{display:flex;align-items:flex-start;gap:24px;padding:16px 18px;border:1px solid var(--sep);border-radius:var(--r-xl);background:var(--card)}
+.research-map{display:flex;min-height:0;flex:1;flex-direction:column;gap:var(--sp-14);overflow:auto;padding:var(--sp-2) var(--sp-2) var(--sp-20)}
+.research-map-intro{display:flex;align-items:flex-start;gap:var(--sp-24);padding:var(--sp-16) var(--sp-20);border:1px solid var(--sep);border-radius:var(--r-card);background:var(--card)}
 .research-map-copy{min-width:0;flex:1}
-.research-map-title{display:flex;align-items:center;gap:8px;font-size:var(--fs-read)}
-.research-map-title .tagchip{margin:0;font-weight:400}
-.research-map-copy p{max-width:720px;margin:6px 0 0;color:var(--sec);font-size:var(--fs-sm);line-height:var(--lh-read)}
-.research-map-stats{display:flex;flex:0 0 auto;align-items:stretch;gap:8px}
-.research-map-stats>span{display:flex;min-width:72px;flex-direction:column;gap:2px;padding:7px 10px;border-radius:var(--r-md);background:var(--field);color:var(--ter);font-size:var(--fs-cap)}
+.research-map-title{display:flex;align-items:center;gap:var(--sp-8);font-size:var(--fs-read)}
+.research-map-stats{display:flex;flex:0 0 auto;align-items:stretch;gap:var(--sp-8)}
+.research-map-stats>span{display:flex;min-width:72px;flex-direction:column;gap:var(--sp-2);padding:var(--sp-8) var(--sp-10);border-radius:var(--r-md);background:var(--field);color:var(--ter);font-size:var(--fs-cap)}
 .research-map-stats strong{color:var(--ink);font-size:var(--fs-read)}
 .research-map-limit{color:var(--ter);font-size:var(--fs-sm)}
-.research-map-layout{display:grid;min-height:0;grid-template-columns:minmax(220px,310px) minmax(0,1fr);gap:16px;align-items:start}
+.research-map-layout{display:grid;min-height:0;grid-template-columns:minmax(220px,310px) minmax(0,1fr);gap:var(--sp-16);align-items:start}
 .research-map-groups{min-width:0}
-.research-map-group{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:12px;min-height:54px;padding:9px 12px}
-.research-map-group.is-selected{background:var(--hover);box-shadow:inset 3px 0 0 var(--accent)}
-.research-map-group-copy{display:flex;min-width:0;flex-direction:column;gap:3px}
-.research-map-group-copy strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:var(--fs-base)}
+.research-map-group{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:var(--sp-12);min-height:54px;padding:var(--sp-8) var(--sp-12)}
+.research-map-group-copy{display:flex;min-width:0;flex-direction:column;gap:var(--sp-4)}
+/* A name is a span beside the span of its kind or count line, and keeps its own type and colour. */
+.research-map-group-copy .research-map-group-name{color:inherit;font-size:var(--fs-base);font-weight:var(--fw-title)}
 .research-map-group-copy>span{color:var(--ter);font-size:var(--fs-cap)}
-.research-map-count{min-width:28px;padding:2px 7px;border-radius:var(--r-full);background:var(--field);color:var(--sec);font-size:var(--fs-sm);text-align:center}
-.research-map-detail{min-width:0;border:1px solid var(--sep);border-radius:var(--r-xl);background:var(--card);overflow:hidden}
-.research-map-detail-head{display:flex;align-items:flex-start;gap:12px;padding:14px 16px;border-bottom:1px solid var(--sep2)}
-.research-map-detail-head>div{display:flex;min-width:0;flex:1;flex-direction:column;gap:3px}
-.research-map-detail-head strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:var(--fs-read)}
-.research-map-detail-head>div>span,.research-map-readonly{color:var(--ter);font-size:var(--fs-cap)}
-.research-map-readonly{flex:0 0 auto;padding-top:2px}
-.research-map-papers{padding:0 16px;--structured-list-row-height:78px}
-.research-map-paper{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 16px;min-height:78px;padding:10px 0}
-.research-map-paper-title{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}
+.research-map-detail{min-width:0;border:1px solid var(--sep);border-radius:var(--r-card);background:var(--card);overflow:hidden}
+.research-map-detail-head{display:flex;align-items:flex-start;gap:var(--sp-12);padding:var(--sp-14) var(--sp-16);border-bottom:1px solid var(--sep2)}
+.research-map-detail-head>div{display:flex;min-width:0;flex:1;flex-direction:column;gap:var(--sp-4)}
+.research-map-detail-head .research-map-detail-name{color:inherit;font-size:var(--fs-group);font-weight:var(--fw-title)}
+.research-map-detail-head>div>span{color:var(--ter);font-size:var(--fs-cap)}
+.research-map-papers{padding:0 var(--sp-16)}
+.research-map-paper{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:var(--sp-4) var(--sp-16);min-height:78px;padding:var(--sp-10) 0}
+.research-map-paper-title{font-weight:var(--fw-title)}
 .research-map-paper-meta{color:var(--ter);font-size:var(--fs-sm);white-space:nowrap}
-.research-map-why{display:flex;grid-column:1/-1;align-items:center;gap:4px;min-width:0;color:var(--ter);font-size:var(--fs-cap);overflow:hidden;white-space:nowrap;mask-image:var(--clipfade)}
-.research-map-why>.tagchip{margin:0;font-size:var(--fs-cap)}
+.research-map-why{display:flex;grid-column:1/-1;align-items:center;gap:var(--sp-4);min-width:0;color:var(--ter);font-size:var(--fs-cap);overflow:hidden;white-space:nowrap;mask-image:var(--clipfade)}
+.research-map-why>.tagchip{margin:0}
 
 @media (max-width:900px){
   .research-map-intro{flex-direction:column}.research-map-stats{width:100%}.research-map-stats>span{flex:1}

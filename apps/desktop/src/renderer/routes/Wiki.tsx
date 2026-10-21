@@ -6,32 +6,46 @@ import type {
 } from '../../shared/contract.js'
 import { PAPER_PAGE } from '../../shared/vocabulary.js'
 import { papers, wiki } from '../ipc.js'
+import { errorLabel } from '../lib/failure-label.js'
 import {
-  useBanner, useCrumbTail, useJump, useScreenEntry, useToast, useVaultRevision, type CrumbSeg, type ScreenKey,
+  useCrumbTail, useJump, useNotice, useScreenEntry, useVaultRevision, type CrumbSeg, type ScreenKey,
 } from '../shell/AppShell.js'
 import { AddAction } from '../components/AddAction.js'
 import { ActionPopover } from '../components/ActionPopover.js'
 import { BackButton } from '../components/BackButton.js'
+import { EditActions } from '../components/EditActions.js'
 import { EmptyState } from '../components/EmptyState.js'
+import { EntityLink } from '../components/EntityLink.js'
+import { FadeText } from '../components/FadeText.js'
 import { FormInput } from '../components/FormControls.js'
 import {
   PageBody, PageError, PageHeader, PageShell, PageTitle, PageToolbar, SectionHeading,
 } from '../components/PageShell.js'
-import { IconCross, IconGear } from '../components/icons.js'
+import { IconButton } from '../components/IconButton.js'
+import { IconCross, IconGear, IconTrash } from '../components/icons.js'
 import { useFormat } from '../lib/format.js'
 import { useMessages } from '../messages/useMessages.js'
 import { InlineMetadataField } from '../components/InlineField.js'
+import { LoadingPlaceholder } from '../components/LoadingPlaceholder.js'
 import { NewColumnHead } from '../components/paper-table/ColumnAdd.js'
 import { headingsOf, MarkdownBox } from '../components/Markdown.js'
 import { Pager } from '../components/Pager.js'
 import { PickRow, type PickHit } from '../components/PickRow.js'
 import { nextKey, slugOf } from '../lib/slug.js'
+import { useRowCap } from '../hooks/useRowCap.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
+import { useScrollFade } from '../hooks/useScrollFade.js'
 import { PaperUnderstanding } from '../components/paper/PaperUnderstanding.js'
 import { PaperText } from '../components/paper/PaperText.js'
 import { plainTitle } from '../components/paper/paper-text.js'
 import { ReviewEntry, ReviewQueue } from '../components/wiki/ReviewQueue.js'
 import { WikiClaims } from '../components/wiki/WikiClaims.js'
+import { SourceAnchor } from '../components/SourceAnchor.js'
+import { Tag, TagButton } from '../components/Tag.js'
+import { CardOpen, ResearchObjectCard } from '../components/ResearchObjectCard.js'
+import { EMBEDDED_LIST_ROW_LIMIT, RowActions } from '../components/StructuredList.js'
+import { Tooltip } from '../components/Tooltip.js'
+import { useClipped } from '../hooks/useClipped.js'
 import './shell.css'
 import './Wiki.css'
 
@@ -47,9 +61,6 @@ const REVIEW = 'review'
 /** One entry of the Back stack: the previous Wiki page, or the screen that jumped here. */
 type Step = { place: Place } | { origin: ScreenKey }
 
-/** The source quote of the hovered cell and where its tooltip goes. */
-type Tip = { page: number; quote: string; left: number; top: number }
-
 /**
  * The demo's aggCard: kind tag, title, an "N parents" tag when the aggregation has several parents,
  * the first line of its summary, and a last line with its subpage count, paper count and update date.
@@ -60,15 +71,17 @@ function AggregationCard({ card, onOpen, onRemove, pending }: {
 }) {
   const fmt = useFormat()
   const m = useMessages()
+  const summary = useRef<HTMLDivElement>(null)
+  const summaryCut = useClipped(summary, card.summary, true)
   return (
-    <div className="wkcard" data-wk={card.id} title={card.summary} onClick={onOpen}>
+    <ResearchObjectCard variant="grid" className="wkcard" data-wk={card.id} onActivate={onOpen}>
       <div className="wt">
-        <span className="wkind k-wiki">{card.kindLabel}</span>
-        <button type="button" className="tt">{card.title}</button>
-        {card.parentCount > 1 ? <span className="wkind">{m.wiki.aggregation.parentCount(card.parentCount)}</span> : null}
+        <Tag tone="wiki" className="wkind">{card.kindLabel}</Tag>
+        <CardOpen className="tt">{card.title}</CardOpen>
+        {card.parentCount > 1 ? <Tag className="wkind">{m.wiki.aggregation.parentCount(card.parentCount)}</Tag> : null}
         <span className="sp" />
       </div>
-      <div className="wm">{card.summary}</div>
+      <div ref={summary} className={`wm fade-lines${summaryCut ? ' clipped' : ''}`}>{card.summary}</div>
       <div className="wf">
         {m.wiki.aggregation.cardFooter(
           card.childCount > 0 ? card.childCount : null, card.memberCount, fmt.date(card.updated),
@@ -77,57 +90,61 @@ function AggregationCard({ card, onOpen, onRemove, pending }: {
       {onRemove === undefined
         ? null
         : (
-          <button
-            className="rx" title={m.wiki.removeFromPage} aria-disabled={pending}
-            onClick={(e) => { e.stopPropagation(); onRemove() }}
-          ><IconCross sw={2.5} /></button>
+          <RowActions>
+            <IconButton
+              label={m.wiki.removeFromPage} size="nested" className="rx" aria-disabled={pending}
+              onClick={(e) => { e.stopPropagation(); onRemove() }}
+            ><IconCross /></IconButton>
+          </RowActions>
         )}
-    </div>
-  )
-}
-
-/** The demo's paperCard; a click opens this paper's page, and its title is the card's button. */
-function PaperCard({ paper, onOpen }: { paper: PaperRow; onOpen: () => void }) {
-  const m = useMessages()
-  const line = [`${paper.year ?? ''} ${paper.venue}`.trim(), paper.topics.join(' / ')]
-    .filter((part) => part !== '').join(' · ')
-  return (
-    <div className="wkcard" data-wk={`${PAPER_PAGE}${paper.id}`} title={plainTitle(paper.title)} onClick={onOpen}>
-      <div className="wt">
-        <span className="wkind k-paper">{m.wiki.paperKind}</span>
-        <button type="button" className="tt"><PaperText text={paper.title} /></button><span className="sp" />
-      </div>
-      <div className="wm">{line}</div>
-      <div className="wf">{m.wiki.paperCardFooter(paper.noteCount, paper.conclusionCount)}</div>
-    </div>
-  )
-}
-
-/** A cell with an anchor: its value carries the page number in superscript; hovering shows the quote. */
-function Cell({ cell, onTip }: { cell: WikiCell; onTip: (tip: Tip | null) => void }) {
-  return (
-    <span
-      className="anc"
-      onMouseEnter={(e) => {
-        const r = e.currentTarget.getBoundingClientRect()
-        onTip({ page: cell.page, quote: cell.quote, left: r.left, top: r.bottom + 8 })
-      }}
-      onMouseLeave={() => onTip(null)}
-    >
-      {cell.value}<sup>p{cell.page}</sup>
-    </span>
+    </ResearchObjectCard>
   )
 }
 
 /**
- * The paper comparison: rows are member papers, columns come from the aggregation's columns, empty
- * cells show a dash, and derived columns show chips. An inner node with no columns and no rows takes
- * no papers directly.
+ * The demo's paperCard; a click opens this paper's page, and its title is the card's button. The title
+ * takes up to two lines, and the year, venue and topics one.
  */
-function Table({ agg, onOpen, onTip, onRemove, pending, adding, head }: {
+function PaperCard({ paper, onOpen }: { paper: PaperRow; onOpen: () => void }) {
+  const m = useMessages()
+  const title = useRef<HTMLSpanElement>(null)
+  const titleCut = useClipped(title, paper.title, true)
+  const line = [`${paper.year ?? ''} ${paper.venue}`.trim(), paper.topics.join(' / ')]
+    .filter((part) => part !== '').join(' · ')
+  return (
+    <ResearchObjectCard variant="grid" className="wkcard wkcard--paper" data-wk={`${PAPER_PAGE}${paper.id}`} onActivate={onOpen}>
+      <div className="wt">
+        <Tag tone="paper" className="wkind">{m.wiki.paperKind}</Tag>
+        <Tooltip label={plainTitle(paper.title)} whenClipped>
+          <CardOpen className="tt"><span ref={title} className={`tt-lines fade-lines${titleCut ? ' clipped' : ''}`}><PaperText text={paper.title} /></span></CardOpen>
+        </Tooltip>
+        <span className="sp" />
+      </div>
+      <FadeText className="wm" label={line}>{line}</FadeText>
+      <div className="wf">{m.wiki.paperCardFooter(paper.noteCount, paper.conclusionCount)}</div>
+    </ResearchObjectCard>
+  )
+}
+
+/** A cell with an anchor: its value, then the anchor that opens the source at its page through `onAnchor`. */
+function Cell({ cell, onAnchor }: { cell: WikiCell; onAnchor: (page: number) => void }) {
+  return <>{cell.value} <SourceAnchor page={cell.page} quote={cell.quote} onOpen={() => onAnchor(cell.page)} /></>
+}
+
+/** The body rows of the comparison table in `box`, in document order. */
+const comparisonRows = (box: HTMLElement) => [...box.querySelectorAll<HTMLElement>('tbody tr')]
+
+/**
+ * The paper comparison: rows are member papers, columns come from the aggregation's columns, empty
+ * cells show a dash, and derived columns show chips. Every header cell has a body cell under it in
+ * every row. An inner node with no columns and no rows takes no papers directly. Like an embedded
+ * list, it shows its header and first five rows as rendered, and the rest scroll inside it.
+ */
+function Table({ agg, onOpen, onAnchor, onRemove, pending, adding, head }: {
   agg: WikiAggregation
   onOpen: (id: string) => void
-  onTip: (tip: Tip | null) => void
+  /** Opens the source of the paper page `paper` at `page`. */
+  onAnchor: (paper: string, page: number) => void
   onRemove?: (paperId: string) => void
   pending?: boolean
   /** The placeholder row for adding a paper: `row` goes on its `<tr>`, `input` sits in its first cell. */
@@ -140,21 +157,24 @@ function Table({ agg, onOpen, onTip, onRemove, pending, adding, head }: {
   head?: { controls: ReactNode; newColumn: ReactNode } | undefined
 }) {
   const m = useMessages()
+  const wrap = useRef<HTMLDivElement | null>(null)
+  const wrapFade = useScrollFade('both', wrap)
+  const cap = useRowCap(wrap, comparisonRows, EMBEDDED_LIST_ROW_LIMIT)
   if (adding === undefined) {
     if (agg.columns.length === 0 && agg.rows.length === 0) {
-      return <p className="lm">{m.wiki.noDirectPapers}</p>
+      return <EmptyState variant="section">{m.wiki.noDirectPapers}</EmptyState>
     }
     if (agg.rows.length === 0) return <EmptyState variant="section">{m.wiki.noPapers}</EmptyState>
   }
   return (
-    <div className="cmpwrap">
+    <div className="cmpwrap" ref={wrapFade} data-fade-held="top" style={cap === null ? undefined : { maxHeight: cap }}>
       <table className="cmp">
         <thead>
           <tr>
             <th>{m.wiki.paperKind}</th>
             {agg.columns.map((c) => <th key={c.key}>{c.label}</th>)}
             {agg.derivedColumns.map((d) => (
-              <th className="dv" key={d.key}>{d.label}<span className="wkind">{m.wiki.autoColumn}</span></th>
+              <th className="dv" key={d.key}>{d.label}<Tag className="wkind">{m.wiki.autoColumn}</Tag></th>
             ))}
             {head?.newColumn}
             {onRemove === undefined ? null : <th className="rx" />}
@@ -163,30 +183,30 @@ function Table({ agg, onOpen, onTip, onRemove, pending, adding, head }: {
         </thead>
         <tbody>
           {agg.rows.map((row) => (
-            <tr key={row.paper.id}>
+            <tr key={row.paper.id} data-row-actions="">
               <td className="rh">
-                <button
-                  type="button" className="wl" data-wk={row.paper.id} onClick={() => onOpen(row.paper.id)}
+                <EntityLink
+                  kind="paper" label={<PaperText text={row.paper.title} />} data-wk={row.paper.id}
                   title={row.paper.fullTitle === undefined ? undefined : plainTitle(row.paper.fullTitle)}
-                >
-                  <PaperText text={row.paper.title} />
-                </button>
+                  onOpen={() => onOpen(row.paper.id)}
+                />
               </td>
               {agg.columns.map((c) => {
                 const cell = row.cells[c.key]
                 return cell === undefined
                   ? <td className="na" key={c.key}>—</td>
-                  : <td key={c.key}><Cell cell={cell} onTip={onTip} /></td>
+                  : <td key={c.key}><Cell cell={cell} onAnchor={(page) => onAnchor(row.paper.id, page)} /></td>
               })}
               {agg.derivedColumns.map((d) => {
                 const links = row.derived[d.key] ?? []
                 return (
                   <td className="dv" key={d.key}>
                     {links.length === 0 ? '—' : links.map((l) => (
-                      <button
-                        type="button" className="tagchip" data-wk={l.id} key={l.id} title={l.fullTitle}
-                        onClick={() => onOpen(l.id)}
-                      >{l.title}</button>
+                      <Tooltip key={l.id} label={l.fullTitle}>
+                        <TagButton shape="chip" className="tagchip" data-wk={l.id} onClick={() => onOpen(l.id)}>
+                          {l.title}
+                        </TagButton>
+                      </Tooltip>
                     ))}
                   </td>
                 )
@@ -196,12 +216,15 @@ function Table({ agg, onOpen, onTip, onRemove, pending, adding, head }: {
                 ? null
                 : (
                   <td className="rx">
-                    <button
-                      type="button" title={m.wiki.removeFromPage} aria-disabled={pending}
-                      onClick={() => onRemove(row.paper.id)}
-                    ><IconCross sw={2.5} /></button>
+                    <RowActions>
+                      <IconButton
+                        label={m.wiki.removeFromPage} size="nested" aria-disabled={pending}
+                        onClick={() => onRemove(row.paper.id)}
+                      ><IconCross /></IconButton>
+                    </RowActions>
                   </td>
                 )}
+              {head === undefined ? null : <td className="td-add" />}
             </tr>
           ))}
           {adding === undefined
@@ -213,6 +236,7 @@ function Table({ agg, onOpen, onTip, onRemove, pending, adding, head }: {
                 {agg.derivedColumns.map((d) => <td className="na dv" key={d.key}>—</td>)}
                 {head === undefined || head.newColumn === null ? null : <td />}
                 {onRemove === undefined ? null : <td className="rx" />}
+                {head === undefined ? null : <td className="td-add" />}
               </tr>
             )}
         </tbody>
@@ -240,14 +264,14 @@ function ColumnsEditor({ columns, onSave, onCancel }: {
             className="inedit" value={c.label}
             onChange={(e) => setRows(rows.map((r, j) => (j === i ? { ...r, label: e.target.value } : r)))}
           />
-          <button
-            className="btn plain" title={m.wiki.aggregation.deleteColumn}
+          <IconButton
+            label={m.wiki.aggregation.deleteColumn} size="nested" tone="danger"
             onClick={() => setRows(rows.filter((_, j) => j !== i))}
-          ><IconCross sw={2.5} /></button>
+          ><IconTrash /></IconButton>
         </div>
       ))}
       <div className="acts">
-        <button className="btn plain" onClick={onCancel}>{m.common.cancel}</button>
+        <button className="btn" onClick={onCancel}>{m.common.cancel}</button>
         <button
           className="btn pri" disabled={rows.some((c) => c.label.trim() === '')}
           onClick={() => onSave(rows.map((c) => ({ key: c.key, label: c.label.trim() })))}
@@ -296,7 +320,7 @@ function Toc({ body, main }: { body: string; main: RefObject<HTMLDivElement | nu
             <button
               type="button"
               onClick={() => main.current?.querySelector<HTMLElement>(`#${h.id}`)?.scrollIntoView({ block: 'start' })}
-            >{h.text}</button>
+            ><FadeText label={h.text}>{h.text}</FadeText></button>
           </li>
         ))}
       </ul>
@@ -318,6 +342,8 @@ function Toc({ body, main }: { body: string; main: RefObject<HTMLDivElement | nu
 export function Wiki() {
   const fmt = useFormat()
   const m = useMessages()
+  const railFade = useScrollFade('y')
+  const paperRailFade = useScrollFade('y')
   const entry = useScreenEntry()
   const { jump, open: jumpTo, returnTo } = useJump()
   const { revision } = useVaultRevision()
@@ -331,14 +357,12 @@ export function Wiki() {
   const [agg, setAgg] = useState<WikiAggregation | null>(null)
   const [paper, setPaper] = useState<WikiPaper | null>(null)
   const [reading, setReading] = useState<PaperReading | null>(null)
-  const [proposals, setProposals] = useState<WikiProposal[]>([])
-  const [tip, setTip] = useState<Tip | null>(null)
+  const [proposals, setProposals] = useState<WikiProposal[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   const consumed = useRef(0)
   const main = useRef<HTMLDivElement>(null)
-  const reportError = useCallback((e: Error) => setError(e.message), [])
-  const toast = useToast()
-  const banner = useBanner()
+  const reportError = useCallback((e: unknown) => setError(errorLabel(m, e)), [m])
+  const notice = useNotice()
   const write = useVaultWrite()
   const box = useRef<HTMLDivElement>(null)
   const [editing, setEditing] = useState(false)
@@ -346,7 +370,7 @@ export function Wiki() {
   const [pending, setPending] = useState(false)
   const [adding, setAdding] = useState<'child' | 'paper' | 'columns' | null>(null)
   const [newCol, setNewCol] = useState(false)
-  const addRow = useRef<HTMLDivElement>(null)
+  const addRow = useRef<HTMLElement>(null)
   const newPaperRow = useRef<HTMLTableRowElement>(null)
   const newColCell = useRef<HTMLTableCellElement>(null)
   const childBtn = useRef<HTMLButtonElement>(null)
@@ -366,8 +390,8 @@ export function Wiki() {
 
   /**
    * A management operation is a proposal: once it is written, close the input row, bump the vault
-   * revision, show `title` in the banner, and return whether it was written. `pending` is true while
-   * the proposal is in flight. `note` replaces `title` in the banner.
+   * revision, show `title` as a success notice, and return whether it was written. `pending` is true
+   * while the proposal is in flight. `note` replaces `title` in the notice.
    */
   const propose = (title: string, ops: Proposal['ops'], note = title): Promise<boolean> => {
     setPending(true)
@@ -420,7 +444,6 @@ export function Wiki() {
   useEffect(() => {
     setError(null)
     if (place === null || place === REVIEW) return
-    setTip(null)
     if (place.startsWith(PAPER_PAGE)) void wiki.paper(place).then(setPaper).catch(reportError)
     else void wiki.aggregation(place).then(setAgg).catch(reportError)
   }, [place, revision, reportError])
@@ -456,6 +479,9 @@ export function Wiki() {
     else if ('origin' in top) returnTo(top.origin)
     else setPlace(top.place)
   }
+
+  /** Opens the reader at `page` of the paper whose Wiki page is `paper`. */
+  const openSource = (paper: string, page: number) => jumpTo('reader', paper.slice(PAPER_PAGE.length), { page })
 
   const shownAgg = agg !== null && place === agg.id ? agg : null
   const shownPaper = paper !== null && place === paper.id ? paper : null
@@ -526,7 +552,7 @@ export function Wiki() {
     if (shownAgg === null) return false
     const slug = slugOf(title)
     if (slug === '') {
-      toast(m.wiki.nameNeedsChar)
+      notice.refusal(m.wiki.nameNeedsChar)
       return false
     }
     return propose(m.wiki.proposals.createUnder(title, shownAgg.title), [{
@@ -551,7 +577,7 @@ export function Wiki() {
   }, [shownAgg, shownPaper, go, place, m])
   useCrumbTail(tail, place === null ? undefined : goHome)
 
-  const queued = proposals.filter((p) => p.status === 'queued').length
+  const queued = (proposals ?? []).filter((p) => p.status === 'queued').length
   const title = shownAgg?.title ?? (shownPaper === null ? null : <PaperText text={shownPaper.title} />)
     ?? (place === REVIEW ? m.wiki.queue.title(queued) : null)
     ?? (home === null ? 'Wiki' : m.wiki.title(home.aggregationCount))
@@ -560,21 +586,17 @@ export function Wiki() {
   const decide = (proposal: WikiProposal, decision: 'apply' | 'decline', reason?: string) => {
     setPending(true)
     void write(wiki.decide(proposal.id, decision, reason).then((receipt) => {
-      if (decision === 'decline') banner(m.wiki.queue.declinedNote)
-      else if (receipt.status === 'applied') banner(m.wiki.queue.appliedNote)
-      else toast(m.wiki.queue.rejectedNote(receipt.reason?.message ?? ''))
+      if (decision === 'decline') notice.success(m.wiki.queue.declinedNote)
+      else if (receipt.status === 'applied') notice.success(m.wiki.queue.appliedNote)
+      else notice.refusal(m.wiki.queue.rejectedNote(receipt.reason?.message ?? ''))
     })).finally(() => setPending(false))
   }
 
   /**
-   * "Edit" switches to editing the source; "Save" reads the source back and writes it, and the vault
-   * revision bump after the write makes this page fetch again.
+   * Reads the edited source back and writes it; the vault revision bump after the write makes this
+   * page fetch again.
    */
-  const toggleEdit = () => {
-    if (!editing) {
-      setEditing(true)
-      return
-    }
+  const saveBody = () => {
     if (saving) return
     const next = box.current?.innerText.trim() ?? ''
     setSaving(true)
@@ -583,12 +605,16 @@ export function Wiki() {
     }), { note: m.wiki.saved }).finally(() => setSaving(false))
   }
 
-  /** The body's section heading: the page name on the left, "Edit"/"Save" on the right, like Project notes. */
+  /** The body's section heading: the page name on the left, its EditActions on the right, like Project notes. */
   const bodyHead = (name: string) => (
-    <SectionHeading variant="content" className="flexh">{name}
-      <button className="btn plain acts" disabled={saving} onClick={toggleEdit}>
-        {editing ? m.common.save : m.common.edit}
-      </button>
+    <SectionHeading
+      actions={(
+        <EditActions
+          editing={editing} saving={saving} onEdit={() => setEditing(true)} onCancel={() => setEditing(false)}
+          onSave={saveBody}
+        />
+      )}
+    >{name}
     </SectionHeading>
   )
 
@@ -607,24 +633,41 @@ export function Wiki() {
 
   return (
     <PageShell>
-      <PageHeader>
+      <PageHeader
+        actions={shownPaper === null
+          ? undefined
+          : (
+            <>
+              {/* Papers filters its table down to this paper by title; the user continues from that row's details. */}
+              <button className="btn" onClick={() => jumpTo('papers', shownPaper.title)}>{m.wiki.viewInPaperList}</button>
+              <button className="btn" onClick={() => jumpTo('reader', shownPaper.id.slice(PAPER_PAGE.length))}>
+                {m.papers.understanding.goRead}
+              </button>
+            </>
+          )}
+      >
         {place === null ? null : <BackButton onClick={back} />}
-        <PageTitle>{title}</PageTitle>
+        <PageTitle label={shownAgg?.title ?? (shownPaper === null ? undefined : plainTitle(shownPaper.title))}>{title}</PageTitle>
       </PageHeader>
 
       <PageError error={error} />
 
-      <PageBody>
+      <PageBody className="wiki-body">
+        {error === null && (place === null ? home === null : place !== REVIEW && shownAgg === null && shownPaper === null)
+          ? <LoadingPlaceholder shape="cards" />
+          : null}
         {shownAgg !== null
           ? (
             <div className="wkpage">
               <div className="wkmain" ref={main}>
-                <SectionHeading variant="content" className="flexh">
-                  {m.wiki.subdivisionsHeading(shownAgg.kindLabel)}
-                  <AddAction
-                    variant="section" ref={childBtn} disabled={pending}
-                    title={m.wiki.addKind(shownAgg.kindLabel)} onClick={() => open('child')}
-                  >{shownAgg.kindLabel}</AddAction>
+                <SectionHeading
+                  actions={(
+                    <AddAction
+                      variant="section" ref={childBtn} disabled={pending}
+                      label={m.wiki.addKind(shownAgg.kindLabel)} onClick={() => open('child')}
+                    >{shownAgg.kindLabel}</AddAction>
+                  )}
+                >{m.wiki.subdivisionsHeading(shownAgg.kindLabel)}
                 </SectionHeading>
                 {shownAgg.children.length === 0 && adding !== 'child'
                   ? <EmptyState variant="section">{m.wiki.noChildren}</EmptyState>
@@ -638,9 +681,9 @@ export function Wiki() {
                       ))}
                       {adding === 'child'
                         ? (
-                          <div className="wkcard newcard" ref={addRow}>
+                          <ResearchObjectCard variant="grid" className="wkcard newcard" cardRef={addRow}>
                             <div className="wt">
-                              <span className="wkind k-wiki">{shownAgg.kindLabel}</span>
+                              <Tag tone="wiki" className="wkind">{shownAgg.kindLabel}</Tag>
                               <PickRow
                                 row={addRow} triggers={[childBtn, paperBtn, colBtn]} allowNew
                                 placeholder={m.wiki.kindNamePlaceholder(shownAgg.kindLabel)}
@@ -649,19 +692,22 @@ export function Wiki() {
                               />
                             </div>
                             <div className="wf" />
-                          </div>
+                          </ResearchObjectCard>
                         )
                         : null}
                     </div>
                   )}
-                <SectionHeading variant="content" className="flexh">{m.wiki.paperComparisonHeading}
-                  <AddAction
-                    variant="section" ref={paperBtn} disabled={pending}
-                    title={m.wiki.addPaperTitle} onClick={() => open('paper')}
-                  >{m.wiki.paperKind}</AddAction>
+                <SectionHeading
+                  actions={(
+                    <AddAction
+                      variant="section" ref={paperBtn} disabled={pending}
+                      label={m.wiki.addPaperTitle} onClick={() => open('paper')}
+                    >{m.wiki.paperKind}</AddAction>
+                  )}
+                >{m.wiki.paperComparisonHeading}
                 </SectionHeading>
                 <Table
-                  agg={shownAgg} onOpen={go} onTip={setTip} pending={pending}
+                  agg={shownAgg} onOpen={go} onAnchor={openSource} pending={pending}
                   adding={adding !== 'paper'
                     ? undefined
                     : {
@@ -686,7 +732,7 @@ export function Wiki() {
                           {/* If the placeholder column is already open, only refocus it, keeping the half-typed name. */}
                           <AddAction
                             variant="icon" className="colbtn" ref={colAdd} disabled={pending}
-                            title={m.wiki.aggregation.addColumn}
+                            label={m.wiki.aggregation.addColumn}
                             onClick={() => {
                               if (newCol) { newColCell.current?.querySelector('input')?.focus(); return }
                               setAdding(null)
@@ -698,9 +744,9 @@ export function Wiki() {
                             onOpenChange={(next) => setAdding(next ? 'columns' : null)}
                             contentClassName="ctxmenu colpop" sticky="always"
                             trigger={(
-                              <button className="colbtn" ref={colBtn} disabled={pending} title={m.wiki.columnSettings}>
-                                <IconGear />
-                              </button>
+                              <IconButton
+                                label={m.wiki.columnSettings} size="nested" className="colbtn" ref={colBtn} disabled={pending}
+                              ><IconGear /></IconButton>
                             )}
                           >
                             {/*
@@ -750,11 +796,12 @@ export function Wiki() {
                 />
                 {bodyHead(shownAgg.title)}
                 <MarkdownBox
-                  text={shownAgg.body} editing={editing} box={box} onCancel={() => setEditing(false)} onOpen={go}
+                  text={shownAgg.body} editing={editing} box={box} onCancel={() => setEditing(false)} onSave={saveBody}
+                  onOpen={go}
                   titles={shownAgg.titles} empty={<EmptyState variant="section">{m.wiki.noBody}</EmptyState>}
                 />
               </div>
-              <div className="wkside">
+              <div className="wkside" ref={railFade} data-fade-paint="">
                 <SectionHeading variant="rail">{m.project.identity.heading}</SectionHeading>
                 <div className="wkprops">
                   <div className="pk">{m.project.identity.typeLabel}</div><div className="pv">{shownAgg.kindLabel}</div>
@@ -763,7 +810,7 @@ export function Wiki() {
                     label={m.wiki.nameFieldLabel} value={shownAgg.title}
                     onSave={(title) => {
                       const next = title.trim()
-                      if (next === '') { toast(m.wiki.nameRequired); return false }
+                      if (next === '') { notice.refusal(m.wiki.nameRequired); return false }
                       return propose(m.wiki.proposals.editMetadata(shownAgg.title), [{
                         op: 'setAggregationMetadata', page: shownAgg.id, title: next,
                         splitOn: shownAgg.splitOn ?? null,
@@ -792,10 +839,11 @@ export function Wiki() {
                     <div className="wkrel">
                       <span className="rl">{m.wiki.belongsTo}</span>
                       {shownAgg.parents.map((p) => (
-                        <button
-                          type="button" className="tagchip" data-wk={p.id} key={p.id} title={p.fullTitle}
-                          onClick={() => go(p.id)}
-                        >{p.title}</button>
+                        <Tooltip key={p.id} label={p.fullTitle}>
+                          <TagButton shape="chip" className="tagchip" data-wk={p.id} onClick={() => go(p.id)}>
+                            {p.title}
+                          </TagButton>
+                        </Tooltip>
                       ))}
                     </div>
                   )
@@ -804,10 +852,11 @@ export function Wiki() {
                   <div className="wkrel" key={r.label}>
                     <span className="rl">{r.label}</span>
                     {r.links.map((l) => (
-                      <button
-                        type="button" className="tagchip" data-wk={l.id} key={l.id} title={l.fullTitle}
-                        onClick={() => go(l.id)}
-                      >{l.title}</button>
+                      <Tooltip key={l.id} label={l.fullTitle}>
+                        <TagButton shape="chip" className="tagchip" data-wk={l.id} onClick={() => go(l.id)}>
+                          {l.title}
+                        </TagButton>
+                      </Tooltip>
                     ))}
                   </div>
                 ))}
@@ -829,12 +878,13 @@ export function Wiki() {
                 />
                 {bodyHead(m.wiki.internalizedContent)}
                 <MarkdownBox
-                  text={shownPaper.body} editing={editing} box={box} onCancel={() => setEditing(false)} onOpen={go}
+                  text={shownPaper.body} editing={editing} box={box} onCancel={() => setEditing(false)} onSave={saveBody}
+                  onOpen={go} onAnchor={(page) => openSource(shownPaper.id, page)}
                   titles={shownPaper.titles}
                   empty={<EmptyState variant="section">{m.wiki.noInternalizedContent}</EmptyState>}
                 />
               </div>
-              <div className="wkside">
+              <div className="wkside" ref={paperRailFade} data-fade-paint="">
                 <SectionHeading variant="rail">{m.project.identity.heading}</SectionHeading>
                 <div className="wkprops">
                   <div className="pk">{m.project.identity.typeLabel}</div><div className="pv">{m.wiki.paperKind}</div>
@@ -843,7 +893,7 @@ export function Wiki() {
                     label={m.wiki.titleLabel} value={shownPaper.title}
                     onSave={(title) => {
                       const next = title.trim()
-                      if (next === '') { toast(m.wiki.titleRequired); return false }
+                      if (next === '') { notice.refusal(m.wiki.titleRequired); return false }
                       return updateWikiPaper({ title: next }, m.wiki.titleLabel)
                     }}
                   />
@@ -869,7 +919,7 @@ export function Wiki() {
                       if (text === '') return updateWikiPaper({ year: null }, m.wiki.yearLabel)
                       const next = Number(text)
                       if (!Number.isInteger(next) || next < 1000 || next > 3000) {
-                        toast(m.wiki.yearRange)
+                        notice.refusal(m.wiki.yearRange)
                         return false
                       }
                       return updateWikiPaper({ year: next }, m.wiki.yearLabel)
@@ -890,29 +940,25 @@ export function Wiki() {
                     )}
                   <div className="pk">{m.wiki.updatedLabel}</div><div className="pv">{fmt.date(shownPaper.updated)}</div>
                 </div>
-                {/* Papers filters its table down to this paper by title; the user continues from that row's details. */}
-                <div className="macts">
-                  <button className="btn pri" onClick={() => jumpTo('papers', shownPaper.title)}>
-                    {m.wiki.viewInPaperList}
-                  </button>
-                </div>
                 <SectionHeading variant="rail">{m.wiki.membershipHeading}</SectionHeading>
                 {shownPaper.memberships.length === 0
                   ? <EmptyState variant="section">{m.wiki.noMembership}</EmptyState>
                   : shownPaper.memberships.map((ms) => (
                     <div className="memb" key={ms.aggregation.id}>
                       <div className="wkrel">
-                        <span className="wkind k-wiki">{ms.kindLabel}</span>
-                        <button
-                          type="button" className="tagchip" data-wk={ms.aggregation.id}
+                        <Tag tone="wiki" className="wkind">{ms.kindLabel}</Tag>
+                        <TagButton
+                          shape="chip" className="tagchip" data-wk={ms.aggregation.id}
                           onClick={() => go(ms.aggregation.id)}
-                        >{ms.aggregation.title}</button>
+                        >{ms.aggregation.title}</TagButton>
                       </div>
                       <div className="wkprops">
                         {ms.cells.map((c) => (
                           <Fragment key={c.label}>
                             <div className="pk">{c.label}</div>
-                            <div className="pv"><Cell cell={c.cell} onTip={setTip} /></div>
+                            <div className="pv">
+                              <Cell cell={c.cell} onAnchor={(page) => openSource(shownPaper.id, page)} />
+                            </div>
                           </Fragment>
                         ))}
                       </div>
@@ -941,16 +987,17 @@ export function Wiki() {
               <PageToolbar>
                 <ReviewEntry count={queued} onOpen={() => go(REVIEW)} />
               </PageToolbar>
-              {home.kinds.map((k) => (
-                <Fragment key={k.key}>
-                  <SectionHeading>{k.label}</SectionHeading>
-                  <div className="wkgrid">
-                    {home.roots.filter((c) => c.kind === k.key).map((c) => (
-                      <AggregationCard key={c.id} card={c} onOpen={() => go(c.id)} />
-                    ))}
-                  </div>
-                </Fragment>
-              ))}
+              {home.kinds.map((k) => {
+                const roots = home.roots.filter((c) => c.kind === k.key)
+                return roots.length === 0 ? null : (
+                  <Fragment key={k.key}>
+                    <SectionHeading>{k.label}</SectionHeading>
+                    <div className="wkgrid">
+                      {roots.map((c) => <AggregationCard key={c.id} card={c} onOpen={() => go(c.id)} />)}
+                    </div>
+                  </Fragment>
+                )
+              })}
 
               <SectionHeading>{m.project.sections.papers}</SectionHeading>
               <div className="wkgrid">
@@ -970,13 +1017,6 @@ export function Wiki() {
         )
         : null}
 
-      {tip === null
-        ? null
-        : (
-          <div id="wktip" style={{ left: tip.left, top: tip.top }}>
-            <b>{m.wiki.tipSource(tip.page)}</b>“{tip.quote}”
-          </div>
-        )}
     </PageShell>
   )
 }

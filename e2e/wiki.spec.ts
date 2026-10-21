@@ -1,6 +1,6 @@
 import type { Locator, Page } from '@playwright/test'
 import { PAPER_PAGE } from '../apps/desktop/src/shared/vocabulary.js'
-import { dshort, expect, test, type MeridianWindow } from './app.js'
+import { dshort, expect, parkPointer, test, type MeridianWindow } from './app.js'
 
 /** Visited screens stay mounted, so selectors every screen has, like the header, target the shown one. */
 const shown = (win: Page) => win.locator('.screenslot:not([hidden])')
@@ -54,11 +54,13 @@ test('侧栏「Wiki」进 wiki 屏:标题与角标都是聚合总数,分节只�
   await expect(shown(win).locator('.desk-head .t')).toHaveText(`Wiki · ${home.aggregationCount}`)
   await expect(win.locator('[data-desk="wiki"] .n')).toHaveText(String(home.aggregationCount))
   await expect(shown(win).locator('.desk-head .back')).toHaveCount(0)
+  // A kind with no root page shows no heading of its own.
+  const kinds = home.kinds.filter((k) => home.roots.some((c) => c.kind === k.key))
   expect(await shown(win).locator('.section-heading').allTextContents())
-    .toEqual([...home.kinds.map((k) => k.label), '论文'])
+    .toEqual([...kinds.map((k) => k.label), '论文'])
 
   // One grid per aggregation kind, holding only its root pages, with footer counts from the contract.
-  for (const [at, kind] of home.kinds.entries()) {
+  for (const [at, kind] of kinds.entries()) {
     const cards = shown(win).locator('.wkgrid').nth(at).locator('.wkcard')
     const roots = home.roots.filter((c) => c.kind === kind.key)
     expect(await cards.locator('.tt').allTextContents()).toEqual(roots.map((c) => c.title))
@@ -74,21 +76,21 @@ test('侧栏「Wiki」进 wiki 屏:标题与角标都是聚合总数,分节只�
   await expect(shown(win).locator('.pginfo')).toHaveText(`共 ${await paperTotal(win)} 条`)
 })
 
-test('实体类型标签按类型上底色:聚合一种,论文另一种', async ({ win }) => {
+test('实体类型标签是中性的标签底:聚合和论文同一种底色', async ({ win }) => {
   const home = await homeFromCore(win)
   await gotoWiki(win)
 
   const aggKind = shown(win).locator('.wkgrid').first().locator('.wkcard .wkind').first()
   const paperKind = shown(win).locator('.wkgrid').nth(home.kinds.length).locator('.wkcard .wkind').first()
-  await expect(aggKind).toHaveClass(/\bk-wiki\b/)
-  await expect(paperKind).toHaveClass(/\bk-paper\b/)
+  await expect(aggKind).toHaveClass(/\btag--wiki\b/)
+  await expect(paperKind).toHaveClass(/\btag--paper\b/)
 
   const ground = (l: Locator) => l.evaluate((el) => getComputedStyle(el).backgroundColor)
   const [agg, paper] = [await ground(aggKind), await ground(paperKind)]
   console.log(`类型标签底色:聚合 ${agg},论文 ${paper}`)
   expect(agg, '类型标签该有自己的浅色底').not.toBe('rgba(0, 0, 0, 0)')
   expect(paper, '类型标签该有自己的浅色底').not.toBe('rgba(0, 0, 0, 0)')
-  expect(agg, '两种实体该是两种底色').not.toBe(paper)
+  expect(agg, '两种实体都是中性的标签底').toBe(paper)
 })
 
 test('根节点卡进聚合页,子聚合再进一层带上级,返回按历史退', async ({ win }) => {
@@ -146,21 +148,26 @@ test('对照表的行是成员论文,格子按契约的列排,悬停看原文;�
   expect(await table.locator('thead th:not(.rx):not(.th-add)').allTextContents())
     .toEqual(['论文', ...agg.columns.map((c) => c.label)])
   expect(await table.locator('tbody tr td.rh').allTextContents()).toEqual(agg.rows.map((r) => r.paper.title))
-  // An empty cell shows a dash, and a filled cell carries a page-number superscript.
+  // An empty cell shows a dash, and a filled cell ends with its anchor, p.N.
   const first = agg.rows[0]!
   expect(await table.locator('tbody tr').first().locator('td:not(.rh):not(.rx)').allTextContents()).toEqual(
     agg.columns.map((c) => {
       const cell = first.cells[c.key]
-      return cell === undefined ? '—' : `${cell.value}p${cell.page}`
+      return cell === undefined ? '—' : `${cell.value} p.${cell.page}`
     }),
   )
-  // Hovering a cell's anchor shows the source text it quotes.
+  // Hovering a cell's anchor, or focusing it, shows the source text it quotes in the shared tooltip.
   const filled = agg.columns.find((c) => first.cells[c.key] !== undefined)!
-  await table.locator('tbody tr').first().locator('.anc').first().hover()
-  await expect(win.locator('#wktip')).toContainText(first.cells[filled.key]!.quote)
+  const anchor = table.locator('tbody tr').first().locator('.source-anchor').first()
+  await anchor.hover()
+  await expect(win.locator('[role="tooltip"]')).toContainText(first.cells[filled.key]!.quote)
+  await parkPointer(win)
+  await win.keyboard.press('Shift')
+  await anchor.focus()
+  await expect(win.locator('[role="tooltip"]')).toContainText(first.cells[filled.key]!.quote)
 
   // An [[id]] link without an alias in the body shows that page's display name.
-  expect(await shown(win).locator('.wkmain .md .wl').allTextContents()).toContain('GPTQ')
+  expect(await shown(win).locator('.wkmain .md .entity-link--page').allTextContents()).toContain('GPTQ')
 
   // Open the paper page.
   await table.locator(`[data-wk="${first.paper.id}"]`).click()
@@ -176,7 +183,7 @@ test('对照表的行是成员论文,格子按契约的列排,悬停看原文;�
   await expect(shown(win).locator('.memb')).toHaveCount(paper.memberships.length)
   expect(await shown(win).locator('.memb .tagchip').allTextContents())
     .toEqual(paper.memberships.map((m) => m.aggregation.title))
-  await expect(shown(win).locator('.memb .wkind').first()).toHaveClass(/\bk-wiki\b/)
+  await expect(shown(win).locator('.memb .wkind').first()).toHaveClass(/\btag--wiki\b/)
 
   // An aggregation chip under Location in Wiki opens that page's table; back returns to the paper page.
   const back = paper.memberships[0]!.aggregation
@@ -200,13 +207,13 @@ test('首页论文卡进论文页;个人理解与 Wiki 内容分层,没内化的
   expect(paper.body).toBe('')
   await expect(shown(win).locator('.paper-understanding')).toBeVisible()
   await expect(shown(win).locator('.wkmain .section-heading')).toHaveText(['个人理解', 'Wiki 内化内容编辑'])
-  await expect(shown(win).locator('.wkmain .md .empty-state')).toHaveText('还没有生成 Wiki 内化内容。')
-  await expect(shown(win).locator('.wkmain .acts')).toHaveText('编辑')
-  await expect(shown(win).locator('.wkside .empty-state')).toHaveText('还没有归到任何一页下。')
+  await expect(shown(win).locator('.wkmain > .empty-state')).toHaveText('还没有 Wiki 内化内容')
+  await expect(shown(win).locator('.wkmain .section-heading-actions > .btn:not(.add-action)', { hasText: '编辑' })).toHaveCount(1)
+  await expect(shown(win).locator('.wkside .empty-state')).toHaveText('还没有归到任何一页')
   // "View in the paper list" goes to Papers with the title in the filter box. In the fixture, QuaRot and
   // SpinQuant each have a same-named paper page copied from an old vault, so the filtered row count can
   // only be asserted non-zero.
-  await shown(win).locator('.macts .btn').click()
+  await shown(win).locator('.desk-head .page-actions .btn', { hasText: '去论文列表查看' }).click()
   await expect(win.locator('#crumb .cseg')).toHaveText(['我的库', '论文'])
   await expect(win.locator('#libq')).toHaveValue(paper.title)
   // The filter box fills at once, but rows wait for papers.list to return, so poll the row count rather
@@ -290,13 +297,13 @@ test('正文抬头的「编辑」把正文换成原文,「保存」后按 markdo
   await gotoWiki(win)
   await shown(win).locator('[data-wk="topics/quantization"]').click()
   const before = (await aggFromCore(win, 'topics/quantization')).body
-  await shown(win).locator('.wkmain .acts').click()
+  await shown(win).locator('.wkmain .section-heading-actions > .btn:not(.add-action)', { hasText: '编辑' }).click()
   const box = shown(win).locator('.md.src')
   await expect(box).toBeFocused()
   await expect(box).toHaveText(before)
   await box.press('Control+End')
   await box.pressSequentially('\n\n## 端到端加的一节\n\n一句 **加粗** 的话,公式 $x^2$。')
-  await shown(win).locator('.wkmain .acts').click()
+  await shown(win).locator('.wkmain .section-heading-actions > .btn:not(.add-action)', { hasText: '保存' }).click()
 
   await expect(shown(win).locator('.wkmain .md h2', { hasText: '端到端加的一节' })).toHaveCount(1)
   await expect(shown(win).locator('.wkmain .md strong')).toHaveText('加粗')
@@ -320,11 +327,11 @@ test('Esc 放弃这一次编辑,正文照旧', async ({ win }) => {
   await gotoWiki(win)
   await shown(win).locator('[data-wk="topics/quantization"]').click()
   const before = (await aggFromCore(win, 'topics/quantization')).body
-  await shown(win).locator('.wkmain .acts').click()
+  await shown(win).locator('.wkmain .section-heading-actions > .btn:not(.add-action)', { hasText: '编辑' }).click()
   await shown(win).locator('.md.src').pressSequentially('改了又不要')
   await win.keyboard.press('Escape')
   await expect(shown(win).locator('.md.src')).toHaveCount(0)
-  await expect(shown(win).locator('.wkmain .acts')).toHaveText('编辑')
+  await expect(shown(win).locator('.wkmain .section-heading-actions > .btn:not(.add-action)', { hasText: '编辑' })).toHaveCount(1)
   expect((await aggFromCore(win, 'topics/quantization')).body).toBe(before)
 })
 
@@ -340,7 +347,7 @@ test('细分:挂上已有的同类聚合,拿掉;新名字回车新建一页', as
   await expect(cards).toHaveCount(n + 1)
   await expect(cards.last()).toHaveClass(/\bnewcard\b/)
   await expect(cards.last().locator('.pickin')).toHaveCount(1)
-  await expect(cards.last().locator('.wkind')).toHaveClass(/\bk-wiki\b/)
+  await expect(cards.last().locator('.wkind')).toHaveClass(/\btag--wiki\b/)
   // The placeholder is a card: as wide and tall as the real card beside it, not a separate search box.
   const real = (await cards.nth(n - 1).boundingBox())!
   const holder = (await cards.last().boundingBox())!
@@ -351,7 +358,7 @@ test('细分:挂上已有的同类聚合,拿掉;新名字回车新建一页', as
     .toBe((await cards.nth(n - 1).locator('.wf').boundingBox())!.height)
   const row = shown(win).locator('.pickin')
   await row.pressSequentially('KV cache')
-  await expect(win.locator('.pickhits li')).toHaveCount(1)
+  await expect(win.locator('.pickhits .rrow')).toHaveCount(1)
   await expect(row).toHaveAttribute('aria-busy', 'false')
   await row.press('Enter')
   await expect(cards).toHaveCount(n + 1)
@@ -372,7 +379,7 @@ test('细分:挂上已有的同类聚合,拿掉;新名字回车新建一页', as
 
   await shown(win).locator('.wkmain .section-heading', { hasText: '细分主题' }).locator('.btn').click()
   await shown(win).locator('.pickin').pressSequentially('端到端新建的主题')
-  await expect(win.locator('.pickhits li')).toHaveCount(0)
+  await expect(win.locator('.pickhits .rrow')).toHaveCount(0)
   await expect(shown(win).locator('.pickin')).toHaveAttribute('aria-busy', 'false')
   await shown(win).locator('.pickin').press('Enter')
   await expect(cards).toHaveCount(n + 1)
@@ -405,7 +412,7 @@ test('论文对比:加一篇论文,拿掉;改列——改名生效,删有格子�
   const n = agg.rows.length
 
   // Clicking + adds a row at the end of the table body: its header cell is the input, the other cells dashes.
-  await shown(win).locator('.wkmain .section-heading', { hasText: '论文对比' }).locator('[title="添加论文"]').click()
+  await shown(win).locator('.wkmain .section-heading', { hasText: '论文对比' }).locator('[aria-label="添加论文"]').click()
   await expect(rows).toHaveCount(n + 1)
   await expect(rows.last()).toHaveClass(/\bnewrow\b/)
   expect(await rows.last().locator('td:not(.rh):not(.rx)').allTextContents()).toEqual(agg.columns.map(() => '—'))
@@ -416,7 +423,7 @@ test('论文对比:加一篇论文,拿掉;改列——改名生效,删有格子�
   const holder = (await rows.last().boundingBox())!
   expect(Math.abs(holder.height - real.height)).toBeLessThan(0.5)
   await shown(win).locator('.pickin').pressSequentially('QuaRot')
-  await expect(win.locator('.pickhits li').first()).toContainText('QuaRot')
+  await expect(win.locator('.pickhits .rrow').first()).toContainText('QuaRot')
   await expect(shown(win).locator('.pickin')).toHaveAttribute('aria-busy', 'false')
   await shown(win).locator('.pickin').press('Enter')
   await expect(rows).toHaveCount(n + 1)
@@ -429,7 +436,7 @@ test('论文对比:加一篇论文,拿掉;改列——改名生效,删有格子�
   await expect(rows).toHaveCount(n)
 
   await shown(win).locator('table.cmp thead').hover()
-  await shown(win).locator('table.cmp thead [title="列设置"]').click()
+  await shown(win).locator('table.cmp thead [aria-label="列设置"]').click()
   const editor = win.locator('[data-radix-popper-content-wrapper] .coledit')
   // The gear has no label, so the opened editor must say what it changes.
   await expect(editor.locator('.ch')).toHaveText('列设置')
@@ -440,10 +447,10 @@ test('论文对比:加一篇论文,拿掉;改列——改名生效,删有格子�
   // The first column has cells filled for member papers: Core rejects deleting it, the header stays, and
   // the editor stays open.
   await shown(win).locator('table.cmp thead').hover()
-  await shown(win).locator('table.cmp thead [title="列设置"]').click()
-  await editor.locator('.row .btn').first().click()
+  await shown(win).locator('table.cmp thead [aria-label="列设置"]').click()
+  await editor.locator('.row .icbtn').first().click()
   await editor.locator('.btn.pri').click()
-  await expect(win.locator('#toast')).toContainText('不在新的列里')
+  await expect(win.locator('#notice[data-tone="refusal"] .notice-text')).toHaveText('还有内容在用')
   await expect(shown(win).locator('.ipcerror')).toHaveCount(0)
   await expect(shown(win).locator('table.cmp thead th').nth(1)).toHaveText('比特')
   await expect(editor).toHaveCount(1)
@@ -463,7 +470,7 @@ test('论文对比:提案在路上时连着点另一行「从这一页移出」,
 
   // The two clicks are on different member rows, leaving only one microtask between them.
   await win.evaluate(async () => {
-    const cells = document.querySelectorAll('table.cmp tbody tr td.rx')
+    const cells = document.querySelectorAll('table.cmp tbody tr td.rx button')
     ;(cells[0] as HTMLElement).click()
     await Promise.resolve()
     ;(cells[1] as HTMLElement).click()
@@ -471,7 +478,7 @@ test('论文对比:提案在路上时连着点另一行「从这一页移出」,
 
   await expect(rows).toHaveCount(agg.rows.length - 1)
   await expect(shown(win).locator('.ipcerror')).toHaveCount(0)
-  expect(await win.locator('#toast').textContent()).toBe('')
+  await expect(win.locator('#notice[data-tone="refusal"]')).toHaveCount(0)
   const changes = await call<{ title: string }[]>(win, 'changelog.list', {})
   expect(changes.filter((c) => c.title === `Wiki · 把 ${removed!.paper.title} 从 ${agg.title} 移出`)).toHaveLength(1)
   expect(changes.filter((c) => c.title === `Wiki · 把 ${spared!.paper.title} 从 ${agg.title} 移出`)).toHaveLength(0)
@@ -530,7 +537,7 @@ test('论文对比:在表头末尾就地建一列,建完没有配置层', async 
   const before = await heads()
 
   await table.locator('thead').hover()
-  await table.locator('thead [title="新增列"]').click()
+  await table.locator('thead [aria-label="新建列"]').click()
   await expect(table.locator('thead th.th-new')).toHaveCount(1)
   // The placeholder column adds a blank cell to each body row too, or the body's cells would not line up.
   expect(await table.locator('tbody tr').first().locator('td').count())
@@ -544,7 +551,7 @@ test('论文对比:在表头末尾就地建一列,建完没有配置层', async 
 
   // Renaming and deleting go through the gear's Column settings, the same as for other columns.
   await table.locator('thead').hover()
-  await table.locator('thead [title="列设置"]').click()
+  await table.locator('thead [aria-label="列设置"]').click()
   const editor = win.locator('[data-radix-popper-content-wrapper] .coledit')
   // The editor has a row per column but none for the Paper heading; before includes Paper but not the new
   // column, so the two counts are exactly equal.
@@ -555,7 +562,7 @@ test('论文对比:在表头末尾就地建一列,建完没有配置层', async 
 
   // A column name that duplicates an existing one is not submitted: the placeholder and typed text stay.
   await table.locator('thead').hover()
-  await table.locator('thead [title="新增列"]').click()
+  await table.locator('thead [aria-label="新建列"]').click()
   await table.locator('thead th.th-new input').fill('新列 2')
   await table.locator('thead th.th-new input').press('Enter')
   await expect(table.locator('thead th.th-new')).toHaveCount(1)
@@ -568,7 +575,7 @@ test('论文对比:在表头末尾就地建一列,建完没有配置层', async 
 
   // Open the placeholder again and press Esc. The number of columns remains unchanged.
   await table.locator('thead').hover()
-  await table.locator('thead [title="新增列"]').click()
+  await table.locator('thead [aria-label="新建列"]').click()
   await table.locator('thead th.th-new input').press('Escape')
   await expect(table.locator('thead th.th-new')).toHaveCount(0)
   await expect.poll(heads).toEqual([...before, '新列 2'])
@@ -576,10 +583,10 @@ test('论文对比:在表头末尾就地建一列,建完没有配置层', async 
   // Pressing Paper comparison's + from the keyboard sends no pointerdown, so the placeholder column cannot
   // rely on an outside click to close; the two placeholders must still never be open at once.
   await table.locator('thead').hover()
-  await table.locator('thead [title="新增列"]').click()
+  await table.locator('thead [aria-label="新建列"]').click()
   await expect(table.locator('thead th.th-new')).toHaveCount(1)
   await shown(win).locator('.wkmain .section-heading', { hasText: '论文对比' })
-    .locator('[title="添加论文"]').press('Enter')
+    .locator('[aria-label="添加论文"]').press('Enter')
   await expect(table.locator('tbody tr.newrow')).toHaveCount(1)
   await expect(table.locator('thead th.th-new')).toHaveCount(0)
   // The number of cells in the placeholder row is consistent with the real row
@@ -595,7 +602,7 @@ test('这一节没有成员时没有表,也就没有列入口', async ({ win }) 
   // The header keeps only the add-paper +: the gear comes with the table, so with no table there is none.
   const head = shown(win).locator('.wkmain .section-heading', { hasText: '论文对比' })
   await expect(head.locator('button')).toHaveCount(1)
-  await expect(head.locator('button')).toHaveAttribute('title', '添加论文')
+  await expect(head.locator('button')).toHaveAttribute('aria-label', '添加论文')
 })
 
 test('细分:名字里没有字母数字时占位与打好的字都留着', async ({ win }) => {
@@ -614,9 +621,9 @@ test('细分:名字里没有字母数字时占位与打好的字都留着', asyn
   await expect(shown(win).locator('.pickin')).toHaveAttribute('aria-busy', 'false')
   await shown(win).locator('.pickin').press('Enter')
 
-  // Rejected: the message shows in the toast, and the placeholder card keeps the typed text so it can be
+  // Rejected: the message shows in the refusal notice, and the placeholder card keeps the typed text so it can be
   // fixed in place and submitted again.
-  await expect(win.locator('#toast')).toHaveText('名字里得有字母或数字')
+  await expect(win.locator('#notice[data-tone="refusal"] .notice-text')).toHaveText('名字里得有字母或数字')
   await expect(shown(win).locator('.ipcerror')).toHaveCount(0)
   await expect(cards).toHaveCount(n + 1)
   await expect(cards.last()).toHaveClass(/\bnewcard\b/)

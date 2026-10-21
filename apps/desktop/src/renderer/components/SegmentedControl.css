@@ -1,13 +1,19 @@
-.segmented-control{display:inline-flex;align-items:center;gap:6px;min-width:0}
-.segmented-control>button{border:1px solid var(--sep);background:var(--field);color:var(--sec);
-  font-family:var(--sans);font-size:var(--fs-sm);padding:3px 10px;border-radius:var(--r-md);cursor:pointer;
-  transition:background-color var(--t-fast) var(--e-out),border-color var(--t-fast) var(--e-out)}
-.segmented-control--sm>button{padding:2px 8px}
-:where(.segmented-control>button):hover{color:var(--ink);
-  background-image:linear-gradient(var(--hover),var(--hover));border-color:var(--sep-strong)}
-.segmented-control>button.on{background:var(--accent-solid);border-color:var(--accent-solid);
-  color:var(--on-accent);font-weight:600}
-.segmented-control>button:focus-visible{outline:0;box-shadow:inset 0 0 0 1px var(--accent)}
+/*
+ * The 1fr columns of an inline grid all take the widest label's width, and the thumb is one column
+ * wide, so moving it by its own width per index puts it under the picked segment. The segments keep
+ * one font weight, so picking one never changes a column's width.
+ */
+.segmented-control{position:relative;display:inline-grid;grid-auto-flow:column;grid-auto-columns:1fr;min-width:0;
+  padding:var(--pad-track);border-radius:var(--r-control);background:var(--track);
+  user-select:none}
+.segmented-thumb{position:absolute;top:var(--pad-track);bottom:var(--pad-track);left:var(--pad-track);
+  width:calc((100% - 2 * var(--pad-track)) / var(--segmented-count));border-radius:var(--r-thumb);
+  background:var(--raised);box-shadow:var(--sh-1);pointer-events:none;
+  transform:translateX(calc(var(--segmented-index) * 100%));transition:transform var(--t) var(--e-out)}
+.segmented-control>button{position:relative;height:24px;padding:0 var(--sp-10);border:0;border-radius:var(--r-thumb);
+  background:transparent;color:var(--sec);font-family:var(--sans);font-size:var(--fs-sm);font-weight:var(--fw-medium);line-height:1;
+  white-space:nowrap;cursor:pointer;transition:color var(--t-fast) var(--e-out)}
+.segmented-control--sm>button{height:20px;padding:0 var(--sp-8)}
+.segmented-control>button:not(:disabled):hover,.segmented-control>button[data-state="on"]{color:var(--ink)}
+.segmented-control>button[data-state="off"]:not(:disabled):active{background-image:linear-gradient(var(--press),var(--press))}
 .segmented-control>button:disabled{cursor:default;opacity:.5}
-.segmented-control>button:active{background-image:linear-gradient(var(--press),var(--press))}
-.segmented-control>button.on:active{background-image:linear-gradient(var(--press-solid),var(--press-solid))}

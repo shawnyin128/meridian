@@ -1,4 +1,5 @@
 import type { ChatMessageFields, ChatSendResult } from '../../shared/contract.js'
+import { CallError, callFailure } from '../call-error.js'
 import type { VaultStore } from '../vault.js'
 import type { ChatHarnessRunner } from './chat.js'
 import type { HarnessModelConfig } from './model-config.js'
@@ -24,14 +25,10 @@ export function createChatService(options: {
 
   return {
     async send(id: string, text: string): Promise<ChatSendResult> {
-      if (running.has(id)) throw new Error('这段对话仍在生成，请先停止或等待完成')
+      if (running.has(id)) throw new CallError('busy', '这段对话仍在生成，请先停止或等待完成')
       options.store.chatSession(id)
       options.store.appendChatMessages(id, [userMessage(text)])
-      if (!options.model.settings().configured || options.runner === null) {
-        const message = 'AI 尚未接入，请先在设置中配置模型与 API Key。'
-        options.store.appendChatMessages(id, [statusMessage(message)])
-        return { id, state: 'failed', message }
-      }
+      if (!options.model.settings().configured || options.runner === null) return { id, state: 'failed', reason: 'no-model' }
 
       const controller = new AbortController()
       running.set(id, controller)
@@ -40,10 +37,11 @@ export function createChatService(options: {
         options.store.appendChatMessages(id, [answerMessage(answer)])
         return { id, state: 'complete' }
       } catch (cause) {
-        if (controller.signal.aborted) return { id, state: 'cancelled', message: '已停止生成' }
+        if (controller.signal.aborted) return { id, state: 'cancelled' }
         const message = cause instanceof Error ? cause.message : '模型服务调用失败'
         options.store.appendChatMessages(id, [statusMessage(`生成失败：${message}`)])
-        return { id, state: 'failed', message }
+        const failure = callFailure(cause)
+        return { id, state: 'failed', reason: failure === 'unknown' ? 'model' : failure }
       } finally {
         if (running.get(id) === controller) running.delete(id)
       }

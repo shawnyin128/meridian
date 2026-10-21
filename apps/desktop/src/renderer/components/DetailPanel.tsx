@@ -1,4 +1,4 @@
-import type { HTMLAttributes, ReactNode } from 'react'
+import type { HTMLAttributes, ReactNode, Ref } from 'react'
 import './DetailPanel.css'
 
 export type DetailPanelMode = 'inline' | 'overlay' | 'resize'
@@ -9,6 +9,7 @@ interface DetailPanelProps extends Omit<HTMLAttributes<HTMLElement>, 'children'>
   contentClassName?: string
   mode: DetailPanelMode
   open: boolean
+  ref?: Ref<HTMLDivElement>
 }
 
 /** Shared geometry and content motion for right-side detail panels. */

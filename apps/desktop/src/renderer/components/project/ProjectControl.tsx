@@ -2,6 +2,9 @@ import type { ProjectControl, ProjectNextAction } from '../../../shared/contract
 import { useFormat, type Format } from '../../lib/format.js'
 import { useMessages } from '../../messages/useMessages.js'
 import type { Catalog } from '../../messages/catalog.js'
+import { FadeText } from '../FadeText.js'
+import { Tag } from '../Tag.js'
+import { Tooltip } from '../Tooltip.js'
 import './ProjectControl.css'
 
 export type ProjectControlVariant = 'detail' | 'summary' | 'inline'
@@ -37,22 +40,21 @@ export function ProjectNextActionView({ action, variant = 'detail', className = 
   }
   const meta = actionMeta(action, fmt, m)
   return (
-    <span
-      className={`project-control-value ${variant} ${className}`.trim()}
-      title={`${action.text} · ${meta}`}
-    >
-      <span className="project-control-main">
-        {variant === 'summary'
-          ? null
-          : (
-            <span className={`project-control-source ${action.source}`}>
-              {action.source === 'task' ? m.project.plan.taskMode : m.project.sections.graph}
-            </span>
-          )}
-        <span className="project-control-text">{action.text}</span>
+    <Tooltip label={variant === 'inline' ? action.text : `${action.text} · ${meta}`} whenClipped>
+      <span className={`project-control-value ${variant} ${className}`.trim()}>
+        <span className="project-control-main">
+          {variant === 'summary'
+            ? null
+            : (
+              <Tag tone={action.source === 'task' ? 'neutral' : 'good'}>
+                {action.source === 'task' ? m.project.plan.taskMode : m.project.sections.graph}
+              </Tag>
+            )}
+          <FadeText className="project-control-text">{action.text}</FadeText>
+        </span>
+        {variant === 'inline' ? null : <FadeText className="project-control-meta">{meta}</FadeText>}
       </span>
-      {variant === 'inline' ? null : <span className="project-control-meta">{meta}</span>}
-    </span>
+    </Tooltip>
   )
 }
 
@@ -73,11 +75,13 @@ export function ProjectBlockerView({ blocker, variant = 'detail', className = ''
       )
   }
   return (
-    <span className={`project-control-value ${variant} blocker ${className}`.trim()} title={blocker.text}>
-      <span className="project-control-main">
-        <span className="project-control-source manual">{m.project.control.manualSource}</span>
-        <span className="project-control-text">{blocker.text}</span>
+    <Tooltip label={blocker.text} whenClipped>
+      <span className={`project-control-value ${variant} blocker ${className}`.trim()}>
+        <span className="project-control-main">
+          <Tag>{m.project.control.manualSource}</Tag>
+          <FadeText className="project-control-text">{blocker.text}</FadeText>
+        </span>
       </span>
-    </span>
+    </Tooltip>
   )
 }

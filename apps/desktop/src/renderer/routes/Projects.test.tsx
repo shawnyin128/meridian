@@ -25,11 +25,10 @@ vi.mock('../ipc.js', () => ({
 }))
 
 vi.mock('../shell/AppShell.js', () => ({
-  useBanner: () => vi.fn(),
+  useNotice: () => ({ success: vi.fn(), refusal: vi.fn() }),
   useCrumbTail: () => {},
   useJump: () => ({ jump: null, returnTo: vi.fn() }),
   useScreenEntry: () => 0,
-  useToast: () => vi.fn(),
   useToday: () => '2026-10-16',
   useVaultRevision: () => ({ revision: 0, bump: vi.fn() }),
 }))
@@ -55,7 +54,7 @@ const { Projects, projectPaperCountLabel } = await import('./Projects.js')
 
 describe('projectPaperCountLabel', () => {
   it('explains the empty relationship instead of rendering a bare zero', () => {
-    expect(projectPaperCountLabel(0, zh)).toBe('还没有关联论文。')
+    expect(projectPaperCountLabel(0, zh)).toBe('还没有关联论文')
   })
 
   it('labels a non-empty count as linked papers', () => {
@@ -69,6 +68,8 @@ describe('Projects', () => {
 
   beforeEach(async () => {
     globalThis.IS_REACT_ACT_ENVIRONMENT = true
+    // The page title measures whether it fits, and jsdom has no ResizeObserver.
+    vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} })
     window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'zh')
     host = document.createElement('div')
     document.body.append(host)
@@ -79,6 +80,7 @@ describe('Projects', () => {
   afterEach(() => {
     act(() => root.unmount())
     host.remove()
+    vi.unstubAllGlobals()
   })
 
   const click = async (selector: string) => {

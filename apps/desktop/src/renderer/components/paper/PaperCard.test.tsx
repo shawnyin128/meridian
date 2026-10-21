@@ -28,6 +28,25 @@ describe('PaperCard', () => {
     expect(out).toContain('推荐理由')
   })
 
+  it('卡片是操作槽的宿主，标题行尾的动作都放在槽里', () => {
+    const host = document.createElement('div')
+    host.innerHTML = renderToStaticMarkup(
+      <MessagesProvider>
+        <PaperCard paperId="paper-2" title="A paper" actions={<button>稍后阅读</button>} metadata="Ada" />
+      </MessagesProvider>,
+    )
+    const card = host.querySelector('.paper-card')!
+    expect(card.hasAttribute('data-row-actions')).toBe(true)
+    expect(card.querySelector('.paper-card-heading .row-actions')!.textContent).toBe('稍后阅读')
+  })
+
+  it('元数据里的会场徽标是中性的标签，不用强调色', () => {
+    const host = document.createElement('div')
+    host.innerHTML = renderToStaticMarkup(<PaperCardBadge>ICLR</PaperCardBadge>)
+    expect(host.firstElementChild!.className).toBe('tag tag--label tag--neutral paper-card-badge venue')
+    expect(host.textContent).toBe('ICLR')
+  })
+
   it('标题里的公式与文本命令按 LaTeX 渲染', () => {
     const out = renderToStaticMarkup(
       <MessagesProvider>
@@ -41,7 +60,22 @@ describe('PaperCard', () => {
     const out = renderToStaticMarkup(
       <MessagesProvider><PaperCard paperId="paper-2" title="Plain" actions={null} metadata="Ada" /></MessagesProvider>,
     )
-    expect(out).not.toContain('Abstract')
+    expect(out).not.toContain('摘要')
     expect(out).not.toContain('推荐理由')
+  })
+
+  it('摘要和推荐理由的小标签都来自词表，跟着界面语言走', () => {
+    const labels = (language: 'zh' | 'en') => {
+      window.localStorage.setItem(LANGUAGE_STORAGE_KEY, language)
+      const host = document.createElement('div')
+      host.innerHTML = renderToStaticMarkup(
+        <MessagesProvider>
+          <PaperCard paperId="paper-4" title="A paper" actions={null} metadata="Ada" abstract="Text" recommendation="Why" />
+        </MessagesProvider>,
+      )
+      return [...host.querySelectorAll('.paper-card-label')].map((label) => label.textContent)
+    }
+    expect(labels('zh')).toEqual(['摘要', '推荐理由'])
+    expect(labels('en')).toEqual(['Abstract', 'Why recommended'])
   })
 })

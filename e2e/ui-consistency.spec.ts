@@ -9,7 +9,7 @@ test('空态只有两档:整屏的带图标居中,分节的是一行灰字', asy
   await win.locator('[data-desk="trash"]').click()
   const page = shown(win, '.empty-state')
   await expect(page).toHaveClass(/empty-state--page/)
-  await expect(page).toHaveText('垃圾桶是空的。')
+  await expect(page).toHaveText('还没有移入垃圾桶的内容')
   await expect(page.locator('svg')).toHaveCount(1)
 
   // A leaf aggregation page has no children, so that section states it inline without an icon.
@@ -18,7 +18,7 @@ test('空态只有两档:整屏的带图标居中,分节的是一行灰字', asy
   await shown(win, '[data-wk="topics/ptq"]').click()
   await shown(win, '[data-wk="topics/ptq-weight-only"]').click()
   const section = shown(win, '.empty-state--section').first()
-  await expect(section).toHaveText('还没有细分。')
+  await expect(section).toHaveText('还没有细分')
   await expect(section.locator('svg')).toHaveCount(0)
 
   // No screen keeps a hand-rolled empty-state class any more.
@@ -27,26 +27,37 @@ test('空态只有两档:整屏的带图标居中,分节的是一行灰字', asy
   }
 })
 
-test('平级视图切换全应用一个组件:药丸排,选中的那颗是实心', async ({ win }) => {
+test('平级视图切换全应用一个组件:轨道里等宽分段,选中项由一颗凸起的滑块托着,不是实心强调色', async ({ win }) => {
   test.slow()
-  const accent = await win.evaluate(() =>
-    getComputedStyle(document.documentElement).getPropertyValue('--accent-solid').trim())
+  const color = (raw: string) => win.evaluate((value) => {
+    const probe = document.createElement('span')
+    probe.style.backgroundColor = value
+    document.body.append(probe)
+    const computed = getComputedStyle(probe).backgroundColor
+    probe.remove()
+    return computed
+  }, raw)
+  const token = (name: string) => win.evaluate((n) =>
+    getComputedStyle(document.documentElement).getPropertyValue(n).trim(), name)
+  const raised = await color(await token('--raised'))
+  const accent = await color(await token('--accent-solid'))
 
   for (const [desk, label] of [['papers', '分组字段'], ['later', '分组方式']] as const) {
     await win.locator(`[data-desk="${desk}"]`).click()
-    const group = shown(win, `[role="group"][aria-label="${label}"]`)
+    const group = shown(win, `[role="radiogroup"][aria-label="${label}"]`)
     await expect(group).toHaveCount(1)
-    const on = group.locator('button.on')
+    const on = group.locator('button[aria-checked="true"]')
     await expect(on).toHaveCount(1)
-    await expect(on).toHaveAttribute('aria-pressed', 'true')
-    await expect(on).toHaveCSS('background-color', await win.evaluate((raw) => {
-      const probe = document.createElement('span')
-      probe.style.backgroundColor = raw
-      document.body.append(probe)
-      const value = getComputedStyle(probe).backgroundColor
-      probe.remove()
-      return value
-    }, accent))
+    await expect(on).not.toHaveCSS('background-color', accent)
+    const thumb = group.locator('.segmented-thumb')
+    await expect(thumb).toHaveCSS('background-color', raised)
+    const boxes = await group.evaluate((track) => [...track.querySelectorAll('button')]
+      .map((button) => button.getBoundingClientRect().width))
+    expect(Math.max(...boxes) - Math.min(...boxes), `${label} 的分段等宽`).toBeLessThan(1)
+    await expect.poll(async () => {
+      const [a, b] = await Promise.all([thumb.boundingBox(), on.boundingBox()])
+      return Math.abs(a!.x - b!.x) + Math.abs(a!.width - b!.width)
+    }, { message: `${label} 的滑块停在选中项下面` }).toBeLessThan(1)
   }
 
   // No screen keeps a second pill vocabulary.
@@ -72,17 +83,17 @@ test('内嵌列表和表格不画外框线:末行下方与首行上方都没有�
 test('撤不回来的动作才弹确认,弹出来的都是同一个对话框', async ({ win }) => {
   test.slow()
   await win.locator('[data-inbox="all"]').click()
-  await shown(win, '[title="关注设置"]').click()
+  await shown(win, '[aria-label="关注设置"]').click()
   await win.locator('.setdlg .wrow').first().waitFor()
-  await win.locator('.setdlg .wrow').first().locator('.btn', { hasText: '移除' }).click()
+  await win.locator('.setdlg .wrow').first().locator('.row-actions [aria-label="移除"]').click()
 
-  const dialog = win.locator('.cfpop')
+  const dialog = win.locator('.modal.confirm')
   await expect(dialog).toBeVisible()
-  await expect(dialog.locator('.dlg-t'))
-    .toHaveText('移除「speculative decoding」？它带来的推送会一起清掉，且不能撤销。')
+  await expect(dialog.locator('.modal-title')).toHaveText('移除「speculative decoding」？')
+  await expect(dialog.locator('.modal-detail')).toHaveText('它带来的推送会一起清掉，且不能撤销。')
   // Cancel is always the left button and the destructive one is always on the right.
-  await expect(dialog.locator('.dlg-a>*').first()).toHaveText('取消')
-  await expect(dialog.locator('.dlg-a>*').last()).toHaveText('确认移除')
+  await expect(dialog.locator('.modal-actions>*').first()).toHaveText('取消')
+  await expect(dialog.locator('.modal-actions>*').last()).toHaveText('确认移除')
 })
 
 const TITLES: [string, string][] = [
@@ -91,13 +102,13 @@ const TITLES: [string, string][] = [
   ['papers', '论文 · 291'],
   ['wiki', 'Wiki · 13'],
   ['changelog', '最近变动 · 4'],
-  ['restl', '总览 · 4'],
-  ['resproj', '项目 · 6'],
+  ['restl', '总览'],
+  ['resproj', '项目 · 4'],
   ['ideas', '想法 · 1'],
   ['trash', '垃圾桶 · 0'],
 ]
 
-test('每一屏都有屏头,标题是「屏名 · 数字」,不带量词不带括号', async ({ win }) => {
+test('每一屏都有屏头,标题是「屏名 · 数字」,不带量词不带括号;动态与总览只写屏名', async ({ win }) => {
   test.slow()
   for (const [desk, title] of TITLES) {
     await win.locator(`[data-desk="${desk}"]`).click()
@@ -111,8 +122,8 @@ test('分节抬头全应用一个类名,右端动作只有一个槽', async ({ w
   await shown(win, '[data-proj="draft"]').click()
   await shown(win, '.section-heading').first().waitFor()
   await expect(win.locator('.sh, .shx, .wk-sec, .wksec, .sechead')).toHaveCount(0)
-  const withAction = shown(win, '.section-heading.flexh').first()
-  await expect(withAction.locator('>*').last()).toHaveCSS('margin-left', /auto|\d/)
+  const slot = shown(win, '.section-heading > .section-heading-actions').first()
+  await expect(slot).toHaveCSS('margin-left', /auto|\d/)
 })
 
 test('收起钮全应用一个说法,Escape 一层一层剥,「/」跳到输入框', async ({ win }) => {
@@ -134,7 +145,7 @@ test('收起钮全应用一个说法,Escape 一层一层剥,「/」跳到输入�
   await win.keyboard.press('/')
   await expect(shown(win, '#libq')).toBeFocused()
 
-  await expect(win.locator('[title="关闭"]')).toHaveCount(0)
+  await expect(win.locator('[aria-label="关闭"]')).toHaveCount(0)
 })
 
 test('按天分组的三屏用同一行小标题', async ({ win }) => {
@@ -156,18 +167,19 @@ test('按天分组的三屏用同一行小标题', async ({ win }) => {
   await expect(win.locator('.daymark, .cday')).toHaveCount(0)
 })
 
-test('四处「更多」菜单同一个触发器:tooltip 一样、悬停显形、键盘能到、开着不褪色', async ({ win }) => {
+test('四处「更多」菜单同一个触发器:tooltip 说出它的名字、悬停显形、键盘能到、开着不褪色', async ({ win }) => {
   test.slow()
   await win.locator('[data-desk="resproj"]').click()
   const card = shown(win, '.research-object-card').first()
   await card.hover()
   const dots = card.locator('.dots')
-  await expect(dots).toHaveAttribute('title', '更多')
-  await expect(dots).toHaveCSS('opacity', '1')
+  await expect(card.locator('.row-actions')).toHaveCSS('opacity', '1')
+  await dots.hover()
+  await expect(win.locator('[role="tooltip"]')).toHaveText((await dots.getAttribute('aria-label'))!)
   await dots.click()
   // Move off the card: only the open state, not hover, should be keeping the trigger visible now.
   await parkPointer(win)
-  await expect(dots).toHaveCSS('opacity', '1') // the trigger stays put while its own menu is open
+  await expect(card.locator('.row-actions')).toHaveCSS('opacity', '1') // the trigger stays put while its own menu is open
   await win.keyboard.press('Escape')
 })
 
@@ -186,12 +198,12 @@ test('项目目录那一行的「更多」悬停就能点到', async ({ win }) =
   await win.keyboard.press('Escape')
 })
 
-test('分节里的添加钮都带字,tooltip 和可见文字说的是同一句', async ({ win }) => {
+test('分节里的添加钮都带字,名字是整句,可见的是其中的短词', async ({ win }) => {
   test.slow()
   await win.locator('[data-desk="wiki"]').click()
   await shown(win, '[data-wk="topics/quantization"]').click()
-  for (const [text, title] of [['主题', '添加主题'], ['论文', '添加论文']] as const) {
-    const btn = shown(win, `.section-heading .add-action[title="${title}"]`)
+  for (const [text, name] of [['主题', '添加主题'], ['论文', '添加论文']] as const) {
+    const btn = shown(win, `.section-heading .add-action[aria-label="${name}"]`)
     await expect(btn).toHaveCount(1)
     await expect(btn).toHaveText(text)
   }
@@ -229,7 +241,7 @@ test('界面上没有文字叉、没有文字加号,主按钮一律在取消右�
   await shown(win, '[data-wk="topics/ptq"]').click()
   await shown(win, '[data-wk="topics/ptq-weight-only"]').click()
   await shown(win, 'table.cmp thead').hover()
-  await shown(win, '[title="列设置"]').first().click()
+  await shown(win, '[aria-label="列设置"]').first().click()
   // The column editor is a Radix popover, portaled to <body> outside .screenslot — not wrapped in shown().
   const actions = win.locator('.coledit .acts')
   await expect(actions.locator('>button').first()).toHaveText('取消')

@@ -1,4 +1,4 @@
-import type { AppUpdatePhase, AppUpdateStatus } from '../shared/app-update.js'
+import type { AppUpdatePhase, AppUpdateStatus, UpdateFailure } from '../shared/app-update.js'
 import { releaseUrl } from '../shared/app-update.js'
 import { displayVersion } from '../shared/app-version.js'
 import type { ReleaseInfo, SelfUpdate } from './mac-self-update.js'
@@ -33,20 +33,38 @@ export interface Updater {
 }
 
 /**
+ * Why an update check or download failed: a timeout or no network as Chromium's network layer names
+ * it, an HTTP status or a release-feed error from electron-updater, a file system call, or anything else.
+ */
+export function updateFailure(error: unknown): UpdateFailure {
+  if (!(error instanceof Error)) return 'unknown'
+  if (error.message.includes('net::ERR_TIMED_OUT') || error.message.includes('net::ERR_CONNECTION_TIMED_OUT')) return 'timeout'
+  if (error.message.includes('net::ERR_')) return 'unavailable'
+  const { statusCode, code, syscall } = error as Error & { statusCode?: unknown; code?: unknown; syscall?: unknown }
+  if (typeof statusCode === 'number' || (typeof code === 'string' && code.startsWith('ERR_UPDATER_'))) return 'server'
+  if (typeof syscall === 'string') return 'write'
+  return 'unknown'
+}
+
+/**
  * How a found release is installed: the feed downloads and installs it (`feed`), the App downloads it
  * and replaces its own bundle (`self`, macOS without a signing identity), or the user downloads it
  * from its release page (`page`, where the App cannot replace itself).
  */
 export type InstallRoute = { kind: 'feed' } | { kind: 'self'; self: SelfUpdate } | { kind: 'page' }
 
-/** Tracks self-update state for the running app and installs a found release by `route`. `onChange` receives every new status. */
-export function createUpdater({ feed, current, supported, route, now, onChange }: {
+/**
+ * Tracks self-update state for the running app and installs a found release by `route`. `onChange`
+ * receives every new status; `log` receives the text of every failure.
+ */
+export function createUpdater({ feed, current, supported, route, now, onChange, log }: {
   feed: UpdateFeed
   current: string
   supported: boolean
   route: InstallRoute
   now: () => number
   onChange: (status: AppUpdateStatus) => void
+  log: (line: string) => void
 }): Updater {
   let phase: AppUpdatePhase = supported ? { phase: 'idle' } : { phase: 'unsupported' }
   let checkedAt: number | undefined
@@ -57,6 +75,11 @@ export function createUpdater({ feed, current, supported, route, now, onChange }
     phase = next
     if (finished) checkedAt = now()
     onChange(status())
+  }
+  // electron-updater appends response headers and a stack to the message; the first line names the failure.
+  const fail = (error: unknown): void => {
+    log(`[main] Update failed: ${error instanceof Error ? error.message.split('\n', 1)[0]!.trim() : String(error)}`)
+    set({ phase: 'error', reason: updateFailure(error) }, true)
   }
 
   feed.autoDownload = route.kind === 'feed'
@@ -75,7 +98,7 @@ export function createUpdater({ feed, current, supported, route, now, onChange }
         if (phase.phase === 'downloading') set({ ...phase, percent: Math.round(percent) })
       }).then(
         () => set({ phase: 'ready', version }),
-        (error: unknown) => set({ phase: 'error', message: error instanceof Error ? error.message : String(error) }, true),
+        fail,
       )
     }
   })
@@ -83,8 +106,7 @@ export function createUpdater({ feed, current, supported, route, now, onChange }
     if (phase.phase === 'downloading') set({ ...phase, percent: Math.round(info.percent) })
   })
   feed.on('update-downloaded', (info) => set({ phase: 'ready', version: displayVersion(info.version) }))
-  // electron-updater appends response headers and a stack to the message; the first line names the failure.
-  feed.on('error', (error) => set({ phase: 'error', message: error.message.split('\n', 1)[0]!.trim() }, true))
+  feed.on('error', fail)
 
   const busy = () => ['unsupported', 'checking', 'downloading', 'ready'].includes(phase.phase)
   const check = (): void => {

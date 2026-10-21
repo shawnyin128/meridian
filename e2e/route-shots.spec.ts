@@ -17,10 +17,10 @@ async function shootStates(win: Page, route: string): Promise<void> {
   await win.screenshot({ path: `${SHOTS}/route-${route}-table.png` })
 
   await rows.first().click()
-  await win.locator('[title="收起详情"]').waitFor()
+  await win.locator('[aria-label="收起详情"]').waitFor()
   await parkPointer(win)
   await win.screenshot({ path: `${SHOTS}/route-${route}-detail.png` })
-  await win.locator('[title="收起详情"]').click()
+  await win.locator('[aria-label="收起详情"]').click()
 
   // The + in a topic cell stays hidden until its row is hovered; Topics is the 7th column (Title,
   // Short title, Rating, Authors, Year, Venue, Topics).
@@ -32,8 +32,8 @@ async function shootStates(win: Page, route: string): Promise<void> {
   await win.keyboard.press('Escape')
   await parkPointer(win)
 
-  await win.getByRole('button', { name: '主题', exact: true }).first().click()
-  await expect(win.locator('.lmore')).toHaveText('选一个主题查看论文')
+  await win.getByRole('radio', { name: '主题', exact: true }).first().click()
+  await expect(win.locator('.gxrow').first()).toBeVisible()
   await parkPointer(win)
   await win.screenshot({ path: `${SHOTS}/route-${route}-grouped.png` })
 }

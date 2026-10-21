@@ -38,7 +38,7 @@ function renderPlan(tab: 'task' | 'ms', options: {
       <ProjectPlan
         project={{ tasks, milestones }} tab={tab} today="2026-09-16"
         creating={creating} flashId={flashId} selectedTaskId={null}
-        listRef={createRef()} addRef={createRef()} timelineAddRef={createRef()} milestoneLaneRef={createRef()}
+        listRef={createRef()} addRef={createRef()} timelineAddRef={createRef()}
         onTab={vi.fn()} onDiscardOpenEdits={vi.fn()} onStartTask={vi.fn()} onStartMilestone={vi.fn()}
         onCancelCreate={vi.fn()} onCreateTask={vi.fn()} onCreateMilestone={vi.fn()}
         onUpdateTask={vi.fn()} onDeleteTask={vi.fn()} onReorderTasks={vi.fn()} onOpenTask={vi.fn()}
@@ -52,20 +52,79 @@ function renderPlan(tab: 'task' | 'ms', options: {
 describe('ProjectPlan', () => {
   beforeEach(() => { window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'zh') })
 
+  it('任务和里程碑共用一个位置，都空着时是同一种分节空态', () => {
+    const empty = (tab: 'task' | 'ms') => {
+      const host = document.createElement('div')
+      host.innerHTML = renderPlan(tab, { tasks: [], milestones: [] })
+      return [...host.querySelectorAll('.empty-state')].map((node) => [node.className, node.textContent])
+    }
+    expect(empty('task')).toEqual([['empty-state empty-state--section', '还没有任务']])
+    expect(empty('ms')).toEqual([['empty-state empty-state--section', '还没有里程碑']])
+  })
+
   it('任务模式把日期和时间保留为两个独立编辑入口', () => {
     const output = renderPlan('task')
     expect(output).toContain('structured-list--embedded')
-    expect(output).toContain('title="修改日期"')
-    expect(output).toContain('title="修改时间"')
+    expect(output).toMatch(/<button type="button" class="schedule-trigger task-date-part"/)
+    expect(output).toMatch(/<button type="button" class="schedule-trigger task-clock-part"/)
     expect(output).toContain('9月16日')
     expect(output).toContain('08:00–10:00')
     expect(output).toContain('校准批次')
     expect(output).not.toContain('完成首轮校准')
   })
 
-  it('任务行可以拖拽排序', () => {
-    const output = renderPlan('task')
-    expect(output).toContain('data-row="task-1" draggable="true"')
+  it('任务行和里程碑行的删除是行尾操作槽里的图标钮，悬停时标红', () => {
+    const host = document.createElement('div')
+    host.innerHTML = renderPlan('task')
+    const slot = (row: Element) => [...row.querySelectorAll('.row-actions button')].map((item) => [
+      item.getAttribute('aria-label'), item.textContent, item.classList.contains('icbtn'), item.classList.contains('danger'),
+    ])
+    expect(slot(host.querySelector('.task-row')!)).toEqual([['删除任务：校准批次', '', true, true]])
+    host.innerHTML = renderPlan('ms')
+    expect(slot(host.querySelector('.milestone-row')!)).toEqual([['删除里程碑：完成首轮校准', '', true, true]])
+  })
+
+  it('任务行整行就是拖拽把手，在窄的计划列表里不另占一列', () => {
+    const host = document.createElement('div')
+    host.innerHTML = renderPlan('task')
+    const row = host.querySelector('[data-row="task-1"]')!
+    expect(row.getAttribute('draggable')).toBe('true')
+    expect(row.getAttribute('data-reorder-item')).toBe('task-1')
+    expect(row.querySelector('.drag-handle')).toBeNull()
+  })
+
+  it('Alt+↓ 在任务行里把任务往下挪一格，已归档的任务不参与', () => {
+    globalThis.IS_REACT_ACT_ENVIRONMENT = true
+    vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} })
+    const host = document.createElement('div')
+    document.body.append(host)
+    const onReorderTasks = vi.fn()
+    const root = createRoot(host)
+    act(() => root.render(
+      <MessagesProvider>
+        <ProjectPlan
+          project={{ tasks: [task, rangeTask, doneTask], milestones: [] }} tab="task" today="2026-09-16"
+          creating={null} flashId={null} selectedTaskId={null}
+          listRef={createRef()} addRef={createRef()} timelineAddRef={createRef()}
+          onTab={vi.fn()} onDiscardOpenEdits={vi.fn()} onStartTask={vi.fn()} onStartMilestone={vi.fn()}
+          onCancelCreate={vi.fn()} onCreateTask={vi.fn()} onCreateMilestone={vi.fn()}
+          onUpdateTask={vi.fn()} onDeleteTask={vi.fn()} onReorderTasks={onReorderTasks} onOpenTask={vi.fn()}
+          onUpdateMilestone={vi.fn()} onDeleteMilestone={vi.fn()} onHoverMilestone={vi.fn()}
+        />
+      </MessagesProvider>,
+    ))
+    const altDown = (id: string) => act(() => {
+      host.querySelector(`[data-row="${id}"] .plan-open`)!
+        .dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', altKey: true, bubbles: true }))
+    })
+    altDown('task-1')
+    expect(onReorderTasks).toHaveBeenCalledWith(['task-2', 'task-1', 'task-3'])
+    onReorderTasks.mockClear()
+    altDown('task-2')
+    expect(onReorderTasks).not.toHaveBeenCalled()
+    act(() => root.unmount())
+    host.remove()
+    vi.unstubAllGlobals()
   })
 
   it('单日和跨天任务的日期栏共用同一个网格列,不再包在同一个容器里', () => {
@@ -90,6 +149,7 @@ describe('ProjectPlan', () => {
     const output = renderPlan('task', { creating: { kind: 'task', date: '2026-09-16', window: null } })
     expect(output.indexOf('task-create-row')).toBeGreaterThan(-1)
     expect(output.indexOf('task-create-row')).toBeLessThan(output.indexOf('data-row="task-1"'))
+    expect(output).toMatch(/task-create-row[\s\S]*<input[^>]*class="form-control form-input form-control-inline/)
   })
 
   it('已完成的任务默认折叠进已归档分组,活动列表里看不到它', () => {
@@ -99,15 +159,23 @@ describe('ProjectPlan', () => {
     expect(output).toContain('已归档')
   })
 
+  it('已归档分组和想法页的一样,标题后带条数', () => {
+    const count = (html: string) => /collapsible-group-title">已归档<\/span><span class="collapsible-group-count"> · (\d+)</.exec(html)?.[1]
+    expect(count(renderPlan('task', { tasks: [task, doneTask] }))).toBe('1')
+    expect(count(renderPlan('ms', { milestones: [milestone, doneMilestone] }))).toBe('1')
+  })
+
   it('flashId 指向已归档任务时,归档分组自动展开显示它', () => {
     const output = renderPlan('task', { tasks: [task, doneTask], flashId: doneTask.id })
     expect(output).toContain('已完成的任务')
   })
 
   it('归档任务不参与拖拽排序', () => {
-    const output = renderPlan('task', { tasks: [task, doneTask], flashId: doneTask.id })
-    expect(output).toContain('data-row="task-1" draggable="true"')
-    expect(output).not.toContain('data-row="task-3" draggable="true"')
+    const host = document.createElement('div')
+    host.innerHTML = renderPlan('task', { tasks: [task, doneTask], flashId: doneTask.id })
+    expect(host.querySelector('[data-row="task-1"]')!.getAttribute('draggable')).toBe('true')
+    expect(host.querySelector('[data-row="task-3"]')!.hasAttribute('draggable')).toBe(false)
+    expect(host.querySelector('[data-row="task-3"]')!.hasAttribute('data-reorder-item')).toBe(false)
   })
 
   it('已完成的里程碑默认折叠进已归档分组,展开后可见', () => {
@@ -118,11 +186,6 @@ describe('ProjectPlan', () => {
 
     const open = renderPlan('ms', { milestones: [milestone, doneMilestone], flashId: doneMilestone.id })
     expect(open).toContain('已完成的里程碑')
-  })
-
-  it('任务行整行可点开任务详情,不止是拖拽把手', () => {
-    const output = renderPlan('task')
-    expect(output).toContain('title="打开任务"')
   })
 
   describe('任务名', () => {
@@ -145,7 +208,7 @@ describe('ProjectPlan', () => {
           <ProjectPlan
             project={{ tasks: [task], milestones: [] }} tab="task" today="2026-09-16"
             creating={null} flashId={null} selectedTaskId={null}
-            listRef={createRef()} addRef={createRef()} timelineAddRef={createRef()} milestoneLaneRef={createRef()}
+            listRef={createRef()} addRef={createRef()} timelineAddRef={createRef()}
             onTab={vi.fn()} onDiscardOpenEdits={vi.fn()} onStartTask={vi.fn()} onStartMilestone={vi.fn()}
             onCancelCreate={vi.fn()} onCreateTask={vi.fn()} onCreateMilestone={vi.fn()}
             onUpdateTask={onUpdateTask} onDeleteTask={vi.fn()} onReorderTasks={vi.fn()} onOpenTask={onOpenTask}
@@ -166,6 +229,12 @@ describe('ProjectPlan', () => {
       expect(host.querySelector('.plan-name-input')).toBeNull()
     })
 
+    it('任务行整行可点开任务详情,不止是拖拽把手', () => {
+      const { host, onOpenTask } = mount()
+      act(() => host.querySelector<HTMLElement>('.task-row')!.click())
+      expect(onOpenTask).toHaveBeenCalledWith('task-1')
+    })
+
     it('改名从任务名旁的铅笔进入,在行内写回,不打开任务详情', async () => {
       const { host, onOpenTask, onUpdateTask } = mount()
       const rename = host.querySelector<HTMLButtonElement>('.task-row .plan-rename')!
@@ -183,6 +252,27 @@ describe('ProjectPlan', () => {
       })
       expect(onUpdateTask).toHaveBeenCalledWith('task-1', { title: '复核批次' })
       expect(onOpenTask).not.toHaveBeenCalled()
+    })
+
+    it('一行任务只占一个 Tab 停靠点，方向键依次走过日期、时间、优先级、状态、任务名、改名铅笔和删除，双击仍不选中字', async () => {
+      const { host } = mount()
+      const row = host.querySelector<HTMLElement>('.task-row')!
+      const stops = [...host.querySelectorAll<HTMLElement>('.structured-list *')]
+        .filter((element) => element.tabIndex >= 0 && !(element as HTMLButtonElement).disabled)
+      expect(stops).toEqual([row])
+      await act(async () => { row.focus() })
+      const walked: string[] = []
+      for (let step = 0; step < 8; step += 1) {
+        walked.push(document.activeElement!.getAttribute('aria-label') ?? document.activeElement!.textContent ?? '')
+        await act(async () => {
+          document.activeElement!.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true, cancelable: true }))
+          await new Promise((done) => setTimeout(done, 0))
+        })
+      }
+      expect(walked).toEqual(['9月16日', '08:00–10:00', 'P1', '进行中', '校准批次', '重命名任务：校准批次', '删除任务：校准批次', '9月16日'])
+      const second = new MouseEvent('mousedown', { bubbles: true, cancelable: true, detail: 2 })
+      row.querySelector('.plan-name')!.dispatchEvent(second)
+      expect(second.defaultPrevented).toBe(true)
     })
 
     it('改名时点进输入框只是在编辑,不打开任务详情', () => {
@@ -227,22 +317,73 @@ describe('ProjectTaskPanel', () => {
   it('显示任务挂在哪个科研节点上;还没挂时只写「未关联」', () => {
     const linked = renderTaskPanel({}, { id: 'kv.n3', label: '前缀共调度', mode: 'supported' })
     expect(linked).toContain('科研节点')
-    expect(linked).toMatch(/<button[^>]*class="node-tag node-tag--supported"[^>]*title="在科研图中打开「前缀共调度」"/)
+    expect(linked).toMatch(/<button type="button" class="entity-link entity-link--node"[^>]*><span class="status-dot status-dot--sm status-dot--good"/)
+    expect(linked).not.toContain('title=')
     expect(renderTaskPanel()).toContain('未关联')
     expect(renderTaskPanel()).not.toContain('agent 做这个任务')
   })
 
   it('agent 加的任务在面板和列表里都带一个安静的 agent 标记,用户加的没有', () => {
-    expect(renderTaskPanel({ origin: 'agent' })).toContain('<span class="agtag">agent</span>')
-    expect(renderTaskPanel()).not.toContain('agtag')
-    expect(renderPlan('task', { tasks: [{ ...task, origin: 'agent' }] })).toContain('<span class="agtag">agent</span>')
-    expect(renderPlan('task')).not.toContain('agtag')
+    const agent = '<span class="tag tag--label tag--neutral source-label"><span class="fade-text tag-text" data-state="closed">agent</span></span>'
+    expect(renderTaskPanel({ origin: 'agent' })).toContain(agent)
+    expect(renderTaskPanel()).not.toContain('>agent<')
+    expect(renderPlan('task', { tasks: [{ ...task, origin: 'agent' }] })).toContain(agent)
+    expect(renderPlan('task')).not.toContain('>agent<')
   })
 
   it('有备注时渲染备注正文', () => {
     const output = renderTaskPanel({ note: '先跑 A/B 两组,再看结论' })
     expect(output).toContain('先跑 A/B 两组')
     expect(output).not.toContain('还没有备注')
+  })
+
+  it('备注按长文本的同一套约定编辑:编辑的位置换成取消和保存,取消或 Esc 还原不写,保存或 ⌘回车写回', async () => {
+    globalThis.IS_REACT_ACT_ENVIRONMENT = true
+    vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} })
+    const host = document.createElement('div')
+    document.body.append(host)
+    const onSaveNote = vi.fn(async () => true)
+    const root = createRoot(host)
+    act(() => root.render(
+      <MessagesProvider>
+        <ProjectTaskPanel
+          task={{ ...task, note: '原备注' }} node={undefined} nodes={[]} handSet={false}
+          onClose={vi.fn()} onSaveNote={onSaveNote} onOpenNode={vi.fn()} onSetNode={vi.fn()}
+        />
+      </MessagesProvider>,
+    ))
+    const heading = () => [...host.querySelectorAll<HTMLElement>('.section-heading')]
+      .find((element) => element.textContent?.startsWith('备注'))!
+    const buttons = () => [...heading().querySelectorAll<HTMLButtonElement>('.section-heading-actions > .btn')]
+    const press = (text: string) => act(() => buttons().find((button) => button.textContent === text)!.click())
+    const type = (text: string) => {
+      Object.defineProperty(host.querySelector('.md.src')!, 'innerText', { value: text, configurable: true })
+    }
+
+    press('编辑')
+    expect(buttons().map((button) => button.textContent)).toEqual(['取消', '保存'])
+    type('改过的备注')
+    press('取消')
+    expect(buttons().map((button) => button.textContent)).toEqual(['编辑'])
+    press('编辑')
+    type('改过的备注')
+    act(() => {
+      host.querySelector('.md.src')!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+    })
+    expect(onSaveNote).not.toHaveBeenCalled()
+    press('编辑')
+    type('改过的备注')
+    await act(async () => {
+      host.querySelector('.md.src')!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', metaKey: true, bubbles: true }))
+    })
+    expect(onSaveNote).toHaveBeenCalledWith('改过的备注')
+    press('编辑')
+    type('再改一次')
+    press('保存')
+    expect(onSaveNote).toHaveBeenLastCalledWith('再改一次')
+    act(() => root.unmount())
+    host.remove()
+    vi.unstubAllGlobals()
   })
 
   describe('科研节点', () => {
@@ -288,14 +429,14 @@ describe('ProjectTaskPanel', () => {
     })
 
     it('科研节点的操作和备注的编辑一样放在小标题右侧', () => {
-      /**
-       * The section heading that starts with `label`, and the texts of its own buttons: the shared
-       * heading rule right-aligns only buttons that are its direct children.
-       */
+      /** The section heading that starts with `label`, and the texts of the buttons in its actions slot. */
       const heading = (label: string) => {
         const found = [...document.querySelectorAll<HTMLElement>('.section-heading')]
           .find((element) => element.textContent?.startsWith(label))!
-        return { className: found.className, buttons: [...found.querySelectorAll(':scope > .btn')].map((b) => b.textContent) }
+        return {
+          className: found.className,
+          buttons: [...found.querySelectorAll(':scope > .section-heading-actions > .btn')].map((b) => b.textContent),
+        }
       }
       mount({})
       expect(heading('科研节点').buttons).toEqual(['关联节点'])

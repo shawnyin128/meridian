@@ -1,18 +1,20 @@
 import type { ReactNode } from 'react'
+import { Card } from '../Card.js'
 import { FormButton } from '../FormControls.js'
+import { Tag } from '../Tag.js'
 import './ServiceCard.css'
 
 /** Card container for one external service's settings: a status head, field rows, and a foot with actions. */
 export function ServiceCard({ children, className }: { children: ReactNode; className?: string }) {
-  return <div className={className === undefined ? 'service-card' : `service-card ${className}`}>{children}</div>
+  return <Card className={className === undefined ? 'service-card' : `service-card ${className}`}>{children}</Card>
 }
 
-/** Status head: the service's name and one-line description on the left, a configured/not-configured pill on the right. */
+/** Status head: the service's name and an optional line under it on the left, a configured/not-configured pill on the right. */
 export function ServiceStatus({
   title, description, configured, configuredLabel, notConfiguredLabel,
 }: {
   title: ReactNode
-  description: ReactNode
+  description?: ReactNode
   configured: boolean
   configuredLabel: string
   notConfiguredLabel: string
@@ -21,11 +23,11 @@ export function ServiceStatus({
     <div className="service-status-head">
       <div>
         <strong>{title}</strong>
-        <p>{description}</p>
+        {description === undefined ? null : <p>{description}</p>}
       </div>
-      <span className={configured ? 'service-status-pill ready' : 'service-status-pill'}>
+      <Tag tone={configured ? 'good' : 'neutral'} className="service-status-pill">
         {configured ? configuredLabel : notConfiguredLabel}
-      </span>
+      </Tag>
     </div>
   )
 }
@@ -90,7 +92,7 @@ export function ServiceClearKeyButton({ pending, label, pendingLabel, onClick }:
 }) {
   return (
     <button
-      className={pending ? 'btn service-clear-key on' : 'btn service-clear-key'}
+      className={pending ? 'btn danger service-clear-key' : 'btn service-clear-key'}
       aria-pressed={pending}
       onClick={onClick}
     >

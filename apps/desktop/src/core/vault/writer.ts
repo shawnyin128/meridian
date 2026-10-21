@@ -4,6 +4,15 @@ import {
 } from 'node:fs'
 import { basename, dirname, join } from 'node:path'
 
+/**
+ * Whether `error` is the file system failing a vault write (a full disk, a missing permission, a
+ * file another program holds), raised directly or as the cause of the writer's own error.
+ */
+export function isWriteFailure(error: unknown): boolean {
+  if (!(error instanceof Error)) return false
+  return typeof (error as NodeJS.ErrnoException).syscall === 'string' || isWriteFailure(error.cause)
+}
+
 /** Create the file's parent directory when absent. */
 function ensureDir(file: string): void {
   mkdirSync(dirname(file), { recursive: true })

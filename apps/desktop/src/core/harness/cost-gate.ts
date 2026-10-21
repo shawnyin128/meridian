@@ -4,6 +4,7 @@ import type {
   HarnessPaperWikiQuality, HarnessPaperWikiReview, HarnessPendingPaperWikiResult, HarnessRejectPaperWikiResult,
   HarnessRejectPaperWikiParams, HarnessStartParams, PaperReading, PaperRow, WikiPaper,
 } from '../../shared/contract.js'
+import { CallError, callFailure } from '../call-error.js'
 import type { HarnessProposalAuditEvent, PendingHarnessProposal } from './proposal-audit.js'
 
 const PLAN_TTL_MS = 10 * 60 * 1_000
@@ -156,22 +157,22 @@ export function createHarnessCostGate(deps: Dependencies) {
     },
 
     async start(params: HarnessStartParams): Promise<HarnessRunReceipt> {
-      if (params.acknowledgeCost !== true) throw new Error('必须明确确认 AI 运行可能产生费用')
+      if (params.acknowledgeCost !== true) throw new CallError('invalid', '必须明确确认 AI 运行可能产生费用')
       const held = plans.get(params.planId)
-      if (held === undefined) throw new Error('这份 AI 任务确认已失效，请重新准备')
-      if (held.used) throw new Error('这份 AI 任务确认已经使用过，请重新准备')
-      if (held.plan.scopeDigest !== params.scopeDigest) throw new Error('AI 任务范围与确认内容不一致')
+      if (held === undefined) throw new CallError('refused', '这份 AI 任务确认已失效，请重新准备')
+      if (held.used) throw new CallError('refused', '这份 AI 任务确认已经使用过，请重新准备')
+      if (held.plan.scopeDigest !== params.scopeDigest) throw new CallError('changed', 'AI 任务范围与确认内容不一致')
       if (Date.parse(held.plan.expiresAt) <= now().getTime()) {
-        throw new Error('这份 AI 任务确认已过期，请重新准备')
+        throw new CallError('refused', '这份 AI 任务确认已过期，请重新准备')
       }
-      if (!held.plan.model.configured) throw new Error('AI 尚未连接，请先在设置中配置模型')
+      if (!held.plan.model.configured) throw new CallError('no-model', 'AI 尚未连接，请先在设置中配置模型')
       if (JSON.stringify(configuredModel()) !== JSON.stringify(held.plan.model)) {
-        throw new Error('AI 模型配置已变化，请重新确认任务')
+        throw new CallError('changed', 'AI 模型配置已变化，请重新确认任务')
       }
 
       const current = snapshot(held.plan.targetId)
       if (digestOf(current) !== held.plan.scopeDigest) {
-        throw new Error('论文、笔记或 Wiki 已发生变化，请重新确认范围')
+        throw new CallError('changed', '论文、笔记或 Wiki 已发生变化，请重新确认范围')
       }
 
       // Consume before crossing the cost boundary. A provider error may already have spent tokens,
@@ -235,7 +236,8 @@ export function createHarnessCostGate(deps: Dependencies) {
             ...(result.proposalQuality === undefined ? {} : { quality: result.proposalQuality }),
           })
         } catch (error) {
-          receipt.warning = `提案已生成，但审计记录写入失败：${error instanceof Error ? error.message : String(error)}`
+          console.error(`[harness] 提案已生成，但审计记录写入失败：${error instanceof Error ? error.message : String(error)}`)
+          receipt.warning = callFailure(error)
         }
       }
       return receipt
@@ -243,18 +245,18 @@ export function createHarnessCostGate(deps: Dependencies) {
 
     cancel(planId: string): HarnessCancelResult {
       const controller = running.get(planId)
-      if (controller === undefined) throw new Error('这项 AI 任务当前没有在运行')
+      if (controller === undefined) throw new CallError('refused', '这项 AI 任务当前没有在运行')
       controller.abort()
       return { planId, cancelled: true }
     },
 
     applyPaperWiki(params: HarnessApplyPaperWikiParams): HarnessApplyPaperWikiResult {
       const proposal = proposals.get(params.proposalId)
-      if (proposal === undefined) throw new Error('这份 Wiki 提案不存在或已经失效')
-      if (proposal.used) throw new Error('这份 Wiki 提案已经写入过')
+      if (proposal === undefined) throw new CallError('not-found', '这份 Wiki 提案不存在或已经失效')
+      if (proposal.used) throw new CallError('refused', '这份 Wiki 提案已经写入过')
       const current = snapshot(proposal.targetId)
       if (digestOf(current) !== proposal.scopeDigest) {
-        throw new Error('论文、笔记或 Wiki 已发生变化，请重新生成提案')
+        throw new CallError('changed', '论文、笔记或 Wiki 已发生变化，请重新生成提案')
       }
       deps.applyWiki(`papers/${proposal.targetId}`, params.body)
       proposal.used = true
@@ -269,15 +271,16 @@ export function createHarnessCostGate(deps: Dependencies) {
           scopeDigest: proposal.scopeDigest, at: result.appliedAt, body: params.body,
         })
       } catch (error) {
-        result.warning = `Wiki 已写入，但审计记录写入失败：${error instanceof Error ? error.message : String(error)}`
+        console.error(`[harness] Wiki 已写入，但审计记录写入失败：${error instanceof Error ? error.message : String(error)}`)
+        result.warning = callFailure(error)
       }
       return result
     },
 
     rejectPaperWiki(params: HarnessRejectPaperWikiParams): HarnessRejectPaperWikiResult {
       const proposal = proposals.get(params.proposalId)
-      if (proposal === undefined) throw new Error('这份 Wiki 提案不存在或已经失效')
-      if (proposal.used) throw new Error('这份 Wiki 提案已经处理过')
+      if (proposal === undefined) throw new CallError('not-found', '这份 Wiki 提案不存在或已经失效')
+      if (proposal.used) throw new CallError('refused', '这份 Wiki 提案已经处理过')
       const rejectedAt = now().toISOString()
       const result: HarnessRejectPaperWikiResult = { proposalId: params.proposalId, rejectedAt }
       try {
@@ -287,7 +290,8 @@ export function createHarnessCostGate(deps: Dependencies) {
           ...(params.feedback === undefined ? {} : { feedback: structuredClone(params.feedback) }),
         })
       } catch (error) {
-        result.warning = `提案已丢弃，但审计记录写入失败：${error instanceof Error ? error.message : String(error)}`
+        console.error(`[harness] 提案已丢弃，但审计记录写入失败：${error instanceof Error ? error.message : String(error)}`)
+        result.warning = callFailure(error)
       }
       proposal.used = true
       return result

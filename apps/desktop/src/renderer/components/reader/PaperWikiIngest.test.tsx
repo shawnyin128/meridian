@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type {
   HarnessPaperWikiQuality, HarnessPlan, PaperReading, PaperRow,
 } from '../../../shared/contract.js'
+import { CallError } from '../../call-error.js'
 import { MessagesProvider } from '../../messages/useMessages.js'
 import { LANGUAGE_STORAGE_KEY } from '../../shell/language.js'
 
@@ -85,7 +86,9 @@ const plan = {
 describe('PaperWikiIngest', () => {
   let host: HTMLDivElement
   let root: Root
+  const states = () => [...host.querySelectorAll('.wiki-ingest-body > .tag')].map((tag) => tag.textContent)
   beforeEach(() => {
+    vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} })
     globalThis.IS_REACT_ACT_ENVIRONMENT = true
     host = document.createElement('div')
     document.body.replaceChildren(host)
@@ -115,10 +118,11 @@ describe('PaperWikiIngest', () => {
       host.querySelector<HTMLButtonElement>('[data-testid="start-harness"]')!.click()
     })
     expect(api.apply).not.toHaveBeenCalled()
+    expect(host.querySelector('.wiki-ingest-intro')).toBeNull()
+    expect(host.querySelector('.wiki-ingest-body > small')).toBeNull()
     expect(host.textContent).toContain('记住什么')
     expect(host.textContent).toContain('论文原文')
     expect(host.textContent).toContain('7 项规则检查未发现问题')
-    expect(host.textContent).toContain('不代表内容正确')
     expect(host.querySelector('[aria-label="Wiki 提案内容"]')).toBeNull()
     expect(api.start).toHaveBeenCalledTimes(1)
 
@@ -138,7 +142,7 @@ describe('PaperWikiIngest', () => {
       [...host.querySelectorAll<HTMLButtonElement>('button')]
         .find((button) => button.textContent === '结构化审核')!.click()
     })
-    expect(host.textContent).toContain('Markdown 修改已保留')
+    expect(host.querySelector('.wiki-ingest-review > .tag')?.textContent).toBe('Markdown 已修改')
     expect(api.start).toHaveBeenCalledTimes(1)
     await act(async () => {
       [...host.querySelectorAll<HTMLButtonElement>('button')]
@@ -148,8 +152,30 @@ describe('PaperWikiIngest', () => {
     expect(host.textContent).toContain('已写入 Wiki')
   })
 
+  it('names an audit record that could not be written by its reason, next to the ready proposal', async () => {
+    api.start.mockResolvedValueOnce({
+      id: 'run-1', planId: 'plan-1', workflow: 'paper-wiki', targetId: 'p1',
+      startedAt: '2026-09-17T12:00:00.000Z', state: 'proposal-ready', message: '请审核', warning: 'write',
+      proposal: { id: 'proposal-1', targetId: 'p1', action: 'create', body: '# Draft', review, quality },
+    })
+    await act(async () => { root.render(withMessages(<PaperWikiIngest paper={paper} reading={reading} />)) })
+    await act(async () => {
+      host.querySelector<HTMLButtonElement>('[data-testid="start-harness"]')!.click()
+    })
+
+    expect(host.textContent).toContain('审计记录没能保存 · 没能写入论文库')
+    expect(host.textContent).toContain('记住什么')
+  })
+
+  it('states that no model is connected in the neutral status tone, not as an error', async () => {
+    api.prepare.mockResolvedValue({ ...plan, model: { ...plan.model, configured: false } })
+    await act(async () => { root.render(withMessages(<PaperWikiIngest paper={paper} reading={reading} />)) })
+    const tag = [...host.querySelectorAll('.tag')].find((t) => t.textContent === 'AI 未连接')!
+    expect(tag.className).toBe('tag tag--label tag--neutral')
+  })
+
   it('lets the user stop an in-flight run and requires a fresh confirmation afterward', async () => {
-    let rejectRun: ((cause: Error) => void) | undefined
+    let rejectRun: ((cause: CallError) => void) | undefined
     api.start.mockImplementation(() => new Promise((_resolve, reject) => { rejectRun = reject }))
     await act(async () => { root.render(withMessages(<PaperWikiIngest paper={paper} reading={reading} />)) })
     act(() => host.querySelector<HTMLButtonElement>('[data-testid="start-harness"]')!.click())
@@ -159,9 +185,9 @@ describe('PaperWikiIngest', () => {
     expect(api.cancel).toHaveBeenCalledWith('plan-1')
 
     await act(async () => {
-      rejectRun!(new Error('已停止生成。模型请求若已发出，服务商仍可能计费；再次生成需要重新确认。'))
+      rejectRun!(new CallError('harness.start', 'cancelled'))
     })
-    expect(host.textContent).toContain('仍可能计费')
+    expect(host.textContent).toContain('已停止生成')
     expect(host.querySelector('[data-testid="start-harness"]')).toBeNull()
     expect(host.textContent).toContain('重新准备')
   })
@@ -178,7 +204,7 @@ describe('PaperWikiIngest', () => {
 
     expect(api.prepare).not.toHaveBeenCalled()
     expect(api.start).not.toHaveBeenCalled()
-    expect(host.textContent).toContain('本次没有调用模型')
+    expect(states()).toEqual(['无阅读记录', '已恢复上次的提案'])
     expect(host.textContent).toContain('记住什么')
 
     await act(async () => {
@@ -186,6 +212,22 @@ describe('PaperWikiIngest', () => {
         .find((button) => button.textContent === '确认写入 Wiki')!.click()
     })
     expect(api.apply).toHaveBeenCalledWith('proposal-old', '# Recovered')
+  })
+
+  it('decides a recovered proposal like the review queue: the view switch in the heading, 丢弃提案 first as the red ghost, 确认写入 last and not the primary', async () => {
+    api.pending.mockResolvedValue({
+      proposal: { id: 'proposal-old', targetId: 'p1', action: 'create', body: '# Recovered', review },
+      generatedAt: '2026-09-17T11:00:00.000Z',
+      stale: false,
+    })
+    await act(async () => { root.render(withMessages(<PaperWikiIngest paper={paper} reading={reading} />)) })
+
+    const heading = host.querySelector('.wiki-ingest-review > .section-heading')!
+    expect(heading.querySelector(':scope > .section-heading-actions > .segmented-control')!.getAttribute('aria-label'))
+      .toBe('Wiki 提案审核视图')
+    const decide = [...host.querySelectorAll<HTMLButtonElement>('.wiki-ingest-review > .wiki-ingest-actions > button')]
+    expect(decide.map((button) => `${button.textContent} ${button.className}`))
+      .toEqual(['丢弃提案 btn ghost danger', '确认写入 Wiki btn'])
   })
 
   it('opens a legacy recovered proposal directly in Markdown mode', async () => {
@@ -209,10 +251,26 @@ describe('PaperWikiIngest', () => {
     })
     await act(async () => { root.render(withMessages(<PaperWikiIngest paper={paper} reading={reading} />)) })
 
-    expect(host.textContent).toContain('仅供查看')
     const apply = [...host.querySelectorAll<HTMLButtonElement>('button')]
       .find((button) => button.textContent === '确认写入 Wiki')!
     expect(apply.disabled).toBe(true)
+    expect(apply.parentElement!.querySelector('.tag')?.textContent).toBe('依据已变化 · 请重新生成')
+  })
+
+  it('states a missing model as a short tag, never a sentence', async () => {
+    api.prepare.mockResolvedValue({ ...plan, model: { ...plan.model, configured: false } })
+    await act(async () => { root.render(withMessages(<PaperWikiIngest paper={paper} reading={reading} />)) })
+    expect(states()).toEqual(['无阅读记录', 'AI 未连接'])
+    expect(host.querySelector('.wiki-ingest-status')).toBeNull()
+  })
+
+  it('states the reading records it includes as a short tag, never a sentence', async () => {
+    const notes = [1, 2].map((page) => ({ id: `n${page}`, page, text: '笔记', created: '2026-09-14', updated: '2026-09-14' }))
+    await act(async () => {
+      root.render(withMessages(<PaperWikiIngest paper={paper} reading={{ ...reading, notes, remark: '随笔' }} />))
+    })
+    expect(states()).toEqual(['3 条阅读记录'])
+    expect(host.querySelector('.wiki-ingest-tip')).toBeNull()
   })
 
   it('collects optional local feedback before rejecting a proposal', async () => {
@@ -226,11 +284,13 @@ describe('PaperWikiIngest', () => {
     })
 
     expect(api.reject).not.toHaveBeenCalled()
-    expect(host.textContent).toContain('只记录在本地审计中，不调用模型')
+    expect(host.querySelector('.wiki-ingest-rejection-head')!.textContent).toBe('可选：这份提案哪里不好？')
     await act(async () => {
       [...host.querySelectorAll<HTMLButtonElement>('button')]
         .find((button) => button.textContent === '论文事实不准确')!.click()
-      ;[...host.querySelectorAll<HTMLButtonElement>('button')]
+    })
+    await act(async () => {
+      [...host.querySelectorAll<HTMLButtonElement>('button')]
         .find((button) => button.textContent === '遗漏重要内容')!.click()
     })
     const note = host.querySelector<HTMLTextAreaElement>('[aria-label="丢弃提案的补充说明"]')!
@@ -248,7 +308,27 @@ describe('PaperWikiIngest', () => {
       reasons: ['source-inaccurate', 'missing-important'],
       note: '第 4 页的限制条件被遗漏。',
     })
-    expect(host.textContent).toContain('提案已丢弃，未修改 Wiki')
+    expect([...host.querySelectorAll('.wiki-ingest-status')].map((line) => line.textContent)).toContain('提案已丢弃')
+  })
+
+  it('offers the rejection reasons as chips that each toggle on their own, not as segments', async () => {
+    await act(async () => { root.render(withMessages(<PaperWikiIngest paper={paper} reading={reading} />)) })
+    await act(async () => {
+      host.querySelector<HTMLButtonElement>('[data-testid="start-harness"]')!.click()
+    })
+    await act(async () => {
+      [...host.querySelectorAll<HTMLButtonElement>('button')]
+        .find((button) => button.textContent === '丢弃提案')!.click()
+    })
+
+    const reasons = host.querySelector('[aria-label="丢弃原因"]')!
+    expect(reasons.classList.contains('chip-toggles')).toBe(true)
+    expect(reasons.classList.contains('segmented-control')).toBe(false)
+    const chip = [...reasons.querySelectorAll<HTMLButtonElement>('button')]
+      .find((button) => button.textContent === '遗漏重要内容')!
+    expect(chip.classList.contains('tagchip')).toBe(true)
+    await act(async () => { chip.click() })
+    expect(chip.getAttribute('aria-pressed')).toBe('true')
   })
 
   it('allows rejecting without providing feedback', async () => {

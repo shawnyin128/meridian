@@ -32,6 +32,7 @@ const pageSurfaceBoundaries = [
       '@radix-ui/react-dialog',
       '@radix-ui/react-dropdown-menu',
       '@radix-ui/react-popover',
+      '@radix-ui/react-tooltip',
     ],
     message: '页面与应用外壳使用 components 下的共享模态、菜单或浮层组件，不直接重建 Radix 骨架',
   },
@@ -48,6 +49,16 @@ const sharedMarkupSyntax = [
   {
     selector: "JSXOpeningElement[name.name='select']",
     message: '原生 select 统一经 components/FormControls 的 FormSelect',
+  },
+]
+const nativeTitleSyntax = [
+  {
+    selector: "JSXOpeningElement[name.name=/^[a-z]/] > JSXAttribute[name.name='title']",
+    message: '悬停提示统一经 components/Tooltip，不用原生 title',
+  },
+  {
+    selector: "JSXOpeningElement[name.name='title']",
+    message: 'SVG 的 <title> 也是原生悬停提示：名字放 aria-label，提示经 components/Tooltip',
   },
 ]
 const pageShellSyntax = [
@@ -86,7 +97,16 @@ export default tseslint.config(
       'apps/desktop/src/renderer/**/*.test.tsx',
     ],
     rules: {
-      'no-restricted-syntax': ['error', ...sharedMarkupSyntax, ...pageShellSyntax],
+      'no-restricted-syntax': ['error', ...sharedMarkupSyntax, ...pageShellSyntax, ...nativeTitleSyntax],
+    },
+  },
+  {
+    files: [
+      'apps/desktop/src/renderer/components/FormControls.tsx',
+      'apps/desktop/src/renderer/components/PageShell.tsx',
+    ],
+    rules: {
+      'no-restricted-syntax': ['error', ...nativeTitleSyntax],
     },
   },
   {
@@ -137,6 +157,7 @@ export default tseslint.config(
       'apps/desktop/src/renderer/components/ActionPopover.tsx',
       'apps/desktop/src/renderer/components/PickerPopover.tsx',
       'apps/desktop/src/renderer/components/ModalDialog.tsx',
+      'apps/desktop/src/renderer/components/Tooltip.tsx',
     ],
     rules: {
       'no-restricted-imports': forbid([

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { NO_TRIGGERS } from '../hooks/useOnLeave.js'
 import { useInlineDraft } from '../hooks/useInlineDraft.js'
 import { useMessages } from '../messages/useMessages.js'
-import { FormInput, FormSelect, FormTextarea, type FormControlAppearance } from './FormControls.js'
+import { FormInput, FormTextarea, type FormControlAppearance } from './FormControls.js'
 
 export type InlineFieldProps = {
   label: string
@@ -10,7 +10,6 @@ export type InlineFieldProps = {
   display?: ReactNode
   type?: 'text' | 'date'
   inputMode?: 'text' | 'numeric'
-  options?: readonly string[]
   onSave: (value: string) => boolean | Promise<boolean>
   wrapperClassName?: string
   buttonClassName?: string
@@ -39,7 +38,7 @@ export type InlineFieldProps = {
  * stays there, so it never activates the row or card around the field.
  */
 export function InlineField({
-  label, value, display, type = 'text', inputMode, options, onSave,
+  label, value, display, type = 'text', inputMode, onSave,
   wrapperClassName = 'metadata-field', buttonClassName = 'metadata-editable',
   inputClassName = 'metadata-input', inputAppearance = 'plain', emptyText, normalize = (next) => next,
   validate = () => true, multiline = false, rest,
@@ -48,7 +47,7 @@ export function InlineField({
   const empty = emptyText ?? m.common.field.emptyValue
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(value)
-  const control = useRef<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>(null)
+  const control = useRef<HTMLInputElement | HTMLTextAreaElement>(null)
 
   useEffect(() => {
     if (!editing) setDraft(value)
@@ -67,8 +66,8 @@ export function InlineField({
       return next === value ? true : onSave(next)
     },
   })
-  // Select, input and textarea each take a ref of their own element type; `control` holds their union.
-  const holdControl = (element: HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement | null) => {
+  // Input and textarea each take a ref of their own element type; `control` holds their union.
+  const holdControl = (element: HTMLInputElement | HTMLTextAreaElement | null) => {
     control.current = element
   }
 
@@ -81,21 +80,9 @@ export function InlineField({
   if (!editing) {
     field = rest === undefined
       ? (
-        <button
-          type="button" className={buttonClassName} title={m.common.field.change(label)} onClick={edit}
-        >{(display ?? value) || empty}</button>
+        <button type="button" className={buttonClassName} onClick={edit}>{(display ?? value) || empty}</button>
       )
       : rest(edit)
-  } else if (options !== undefined) {
-    field = (
-      <FormSelect
-        ref={holdControl} appearance={inputAppearance} className={inputClassName}
-        aria-label={m.common.field.edit(label)} value={draft}
-        onChange={(event) => setDraft(event.target.value)} {...draftField.inputProps}
-      >
-        {options.map((option) => <option key={option}>{option}</option>)}
-      </FormSelect>
-    )
   } else if (multiline) {
     field = (
       <FormTextarea
@@ -122,7 +109,7 @@ export function InlineField({
 
   return (
     // The wrapper keeps the same node in both states, so Grid/Flex always measures the same value
-    // cell and a native input/select's min-content width does not widen the property column on click.
+    // cell and a native input's min-content width does not widen the property column on click.
     <span className={wrapperClassName} onClick={editing ? (event) => event.stopPropagation() : undefined}>
       {field}
     </span>
@@ -137,6 +124,6 @@ export function InlineMetadataField(props: Omit<InlineFieldProps,
   | 'wrapperClassName' | 'buttonClassName' | 'inputClassName' | 'inputAppearance'
   | 'emptyText' | 'normalize' | 'validate' | 'multiline'
 >) {
-  const freeText = props.options === undefined && props.type !== 'date' && props.inputMode !== 'numeric'
+  const freeText = props.type !== 'date' && props.inputMode !== 'numeric'
   return <InlineField {...props} inputAppearance="inline" multiline={freeText} />
 }

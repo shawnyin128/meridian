@@ -1,6 +1,7 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { parse } from 'yaml'
+import { CallError } from '../call-error.js'
 import type { WikiAggregationRecord, WikiData, WikiKindRecord, WikiPaperRecord } from './model.js'
 
 /** schema.yaml shape: kinds, sections, and anchor configuration. */
@@ -41,7 +42,7 @@ export function readWikiPage(file: string, kind: string | null): WikiPaperRecord
  */
 export function readWikiData(wikiDir: string): WikiData {
   const schemaFile = join(wikiDir, 'schema.yaml')
-  if (!existsSync(schemaFile)) throw new Error(`库里没有 Wiki 结构文件：${schemaFile}`)
+  if (!existsSync(schemaFile)) throw new CallError('not-library', `库里没有 Wiki 结构文件：${schemaFile}`)
   const schema = parse(readFileSync(schemaFile, 'utf8')) as Schema
   const pages: WikiData['pages'] = {}
   const scan = (dir: string, kind: string | null): void => {

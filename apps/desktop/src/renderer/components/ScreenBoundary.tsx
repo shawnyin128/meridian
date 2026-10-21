@@ -1,5 +1,6 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react'
 import { PageFailure } from './PageShell.js'
+import { failureOf, reasonLabel } from '../lib/failure-label.js'
 import { useMessages } from '../messages/useMessages.js'
 
 /**
@@ -22,7 +23,7 @@ export class ScreenBoundary extends Component<{ children: ReactNode }, { error: 
   override render(): ReactNode {
     const { error } = this.state
     if (error === null) return this.props.children
-    return <ScreenFailure message={error.message} onRetry={() => this.setState({ error: null })} />
+    return <ScreenFailure error={error} onRetry={() => this.setState({ error: null })} />
   }
 }
 
@@ -30,12 +31,11 @@ export class ScreenBoundary extends Component<{ children: ReactNode }, { error: 
  * Clearing the error remounts the subtree. Navigation deliberately does not clear it: screens are
  * kept alive, so a screen broken by its own data would silently break again on return.
  */
-function ScreenFailure({ message, onRetry }: { message: string; onRetry: () => void }) {
+function ScreenFailure({ error, onRetry }: { error: Error; onRetry: () => void }) {
   const m = useMessages()
   return (
     <PageFailure
-      className="screen-failure" title={m.errors.screen.title} error={message}
-      note={m.errors.screen.note}
+      className="screen-failure" title={m.errors.screen.title} error={reasonLabel(m, failureOf(error))}
       action={<button className="btn" onClick={onRetry}>{m.errors.screen.retry}</button>}
     />
   )

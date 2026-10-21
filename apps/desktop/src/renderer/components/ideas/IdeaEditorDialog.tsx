@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react'
 import type { ResearchIdea } from '../../../shared/contract.js'
 import { useMessages } from '../../messages/useMessages.js'
 import { FormInput, FormTextarea } from '../FormControls.js'
-import { ModalDialog, ModalTitle } from '../ModalDialog.js'
+import { ModalDialog } from '../ModalDialog.js'
+import { FadeText } from '../FadeText.js'
 import './IdeaEditorDialog.css'
 
 export function IdeaEditorDialog({ open, idea, sourceLabel, onOpenChange, onSubmit }: {
@@ -34,11 +35,20 @@ export function IdeaEditorDialog({ open, idea, sourceLabel, onOpenChange, onSubm
   }
 
   return (
-    <ModalDialog open={open} onOpenChange={onOpenChange} contentClassName="idea-dialog">
-      <ModalTitle className="idea-dialog-title">
-        {idea === undefined ? m.ideas.editor.newTitle : m.ideas.editor.editTitle}
-      </ModalTitle>
-      <p className="idea-dialog-source">{m.ideas.editor.sourceLabel(sourceLabel)}</p>
+    <ModalDialog
+      open={open} onOpenChange={onOpenChange} size="form" className="idea-dialog"
+      title={idea === undefined ? m.ideas.editor.newTitle : m.ideas.editor.editTitle}
+      actions={(
+        <>
+          <button className="btn" disabled={busy} onClick={() => onOpenChange(false)}>{m.common.cancel}</button>
+          <button
+            className="btn pri" disabled={busy || title.trim() === '' || body.trim() === ''}
+            onClick={save}
+          >{busy ? m.ideas.saving : m.ideas.editor.save}</button>
+        </>
+      )}
+    >
+      <FadeText className="idea-dialog-source" label={m.ideas.editor.sourceLabel(sourceLabel)}>{m.ideas.editor.sourceLabel(sourceLabel)}</FadeText>
       <label className="idea-dialog-field">
         <span>{m.ideas.editor.titleLabel}</span>
         <FormInput
@@ -54,16 +64,6 @@ export function IdeaEditorDialog({ open, idea, sourceLabel, onOpenChange, onSubm
           onChange={(event) => setBody(event.target.value)}
         />
       </label>
-      <p className="idea-dialog-note">
-        {m.ideas.editor.note}
-      </p>
-      <div className="idea-dialog-actions">
-        <button className="btn" disabled={busy} onClick={() => onOpenChange(false)}>{m.common.cancel}</button>
-        <button
-          className="btn pri" disabled={busy || title.trim() === '' || body.trim() === ''}
-          onClick={save}
-        >{busy ? m.ideas.saving : m.ideas.editor.save}</button>
-      </div>
     </ModalDialog>
   )
 }

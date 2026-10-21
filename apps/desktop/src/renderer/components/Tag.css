@@ -1,0 +1,24 @@
+/*
+ * The one tag and the one count badge. Every tag is fully rounded on the neutral chip; its shape sets
+ * the padding and type. Only the states that need attention (good, warn, bad) colour its text; every
+ * other tone is neutral. Hosts place and size a tag but never restyle it.
+ */
+.tag{display:inline-flex;align-items:center;justify-content:center;gap:var(--sp-4);flex:none;min-width:0;max-width:100%;
+  box-sizing:border-box;margin:0;padding:var(--sp-2) var(--sp-8);border:0;border-radius:var(--r-chip);
+  font-family:var(--sans);font-size:var(--fs-cap);font-weight:var(--fw-semibold);line-height:var(--lh-ui);
+  font-variant-numeric:tabular-nums;white-space:nowrap}
+.tag--chip{font-size:var(--fs-sm);font-weight:var(--fw-regular)}
+.tag--neutral,.tag--accent,.tag--info,.tag--paper,.tag--wiki{background:var(--chip);color:var(--sec)}
+.tag--good{background:var(--chip);color:var(--good-text)}
+.tag--warn{background:var(--chip);color:var(--warn-text)}
+.tag--bad{background:var(--chip);color:var(--bad-text)}
+.tag--ghost{padding:calc(var(--sp-2) - 1px) calc(var(--sp-8) - 1px);border:1px dashed var(--sep-strong);background:transparent;color:var(--ter)}
+button.tag{cursor:pointer;transition:color var(--t-fast) var(--e-out)}
+button.tag:hover{color:var(--ink);background-image:linear-gradient(var(--hover),var(--hover))}
+button.tag:active{background-image:linear-gradient(var(--press),var(--press))}
+button.tag--ghost:hover{border-color:var(--sec);background-image:none}
+button.tag:disabled{cursor:default;opacity:.45;background-image:none}
+
+.count-badge{display:inline-flex;align-items:center;justify-content:center;flex:none;box-sizing:border-box;
+  min-width:var(--sp-20);height:var(--sp-20);padding:0 var(--sp-6);border-radius:var(--r-chip);background:var(--chip);
+  color:var(--ter);font-size:var(--fs-cap);font-weight:var(--fw-medium);line-height:1;font-variant-numeric:tabular-nums}

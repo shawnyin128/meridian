@@ -1,14 +1,15 @@
 import { createHash } from 'node:crypto'
 import { z } from 'zod'
 import type {
-  ChangeEntry, ChangeSource, PaperCell, PaperColumn, PaperFields, PaperHighlight, PaperNote, PaperRow,
-  ProjectDetail, ReadingMutation,
+  AgentSession, Attachment, ChangeEntry, ChangeSource, DiffPiece, Milestone, PaperCell, PaperColumn, PaperFields,
+  PaperHighlight, PaperNote, PaperRow, ProjectDetail, ReadingMutation, Task,
 } from '../shared/contract.js'
 import {
   ChangeEntrySchema, PaperColumnsSchema, PaperHighlightSchema, PaperNoteSchema, PaperRowSchema,
   ProjectDetailSchema,
 } from '../shared/contract.js'
 import { COLUMN_TYPE_LABEL, PAPER_PAGE, TRASH_RETENTION_DAYS } from '../shared/vocabulary.js'
+import { CallError } from './call-error.js'
 import { dayOf } from './dates.js'
 import { liveColumns, misfitCells } from './paper-library/index.js'
 import type { ProjectRecord } from './project-management/index.js'
@@ -111,10 +112,11 @@ const RestoreSchema = z.discriminatedUnion('kind', [
  * an empty string, and null for those fields. `at` is the recorded epoch-millisecond timestamp at the
  * vault day's UTC midnight and drives retention. Only seeded history stores `meta`; newer rows derive
  * their date bucket from `at`. `archived` defaults to false for files written before archiving existed.
- * `date` is derived from `at` at read time rather than stored twice where it could drift.
+ * `date` is derived from `at` at read time rather than stored twice where it could drift, and so are
+ * the shown `lines`, from `diff` and the vault as it stands.
  */
 export const ChangeRecordSchema = ChangeEntrySchema
-  .omit({ meta: true, undoable: true, date: true })
+  .omit({ meta: true, undoable: true, date: true, lines: true })
   .extend({
     meta: z.string().nullable(),
     target: ChangeTargetSchema.nullable(),
@@ -250,14 +252,14 @@ function customColumnsTitle(from: PaperColumn[], to: PaperColumn[]): string {
   const deleted = from.find((c) => !to.some((n) => n.key === c.key))
   if (deleted) return `论文表 · 删掉列「${deleted.label}」`
   const created = to.find((c) => !from.some((p) => p.key === c.key))
-  if (created) return `论文表 · 新增列「${created.label}」`
+  if (created) return `论文表 · 新建列「${created.label}」`
   for (const column of to) {
     const held = from.find((c) => c.key === column.key)!
     if (held.label !== column.label) return `论文表 · 列「${held.label}」改名为「${column.label}」`
     const dropped = held.options.find((option) => !column.options.includes(option))
     if (dropped !== undefined) return `论文表 · 列「${column.label}」删掉选项「${dropped}」`
     const added = column.options.find((option) => !held.options.includes(option))
-    if (added !== undefined) return `论文表 · 列「${column.label}」新增选项「${added}」`
+    if (added !== undefined) return `论文表 · 列「${column.label}」新建选项「${added}」`
   }
   return '论文表 · 改了列设置'
 }
@@ -286,9 +288,9 @@ function valueOf(entity: Entity): Record<string, unknown> {
   }
 }
 
-/** Diff for a type change: the column key and its previous and next types. */
-const typeDiff = (key: string, from: PaperColumn['type'], to: PaperColumn['type']): string[] =>
-  [`- ${key}: ${JSON.stringify(COLUMN_TYPE_LABEL[from])}`, `+ ${key}: ${JSON.stringify(COLUMN_TYPE_LABEL[to])}`]
+/** Change lines of a column type change: the previous and the next type. */
+const typeLines = (from: PaperColumn['type'], to: PaperColumn['type']): string[] =>
+  [`- 类型：${COLUMN_TYPE_LABEL[from]}`, `+ 类型：${COLUMN_TYPE_LABEL[to]}`]
 
 /** JSON with sorted object keys so identical content always serializes identically for fingerprinting. */
 export function stableJson(value: unknown): string {
@@ -304,37 +306,262 @@ const fingerprint = (entity: Entity | undefined): string => (entity === undefine
   ? ''
   : createHash('sha256').update(stableJson(valueOf(entity))).digest('hex').slice(0, FINGERPRINT_CHARS))
 
+/** What change lines call a priority, a task state and, by the project's status, a project's focus. */
+const PRIORITY = { p0: '紧急', p1: '常规', p2: '较低' } as const
+const TASK_STATE = { act: '进行中', plan: '计划中', done: '已完成' } as const
+const FOCUS: Record<ProjectDetail['status'], string> = { 进行中: '当前目标', 搁置: '重启条件', 已完成: '成果' }
+
+/** One field's reading in change lines: its text, empty when the field is empty, or a list's elements. */
+type Reading = string | readonly string[]
+
+/** How change lines read an ISO date; empty when there is none. */
+type DateReading = (iso: string | undefined) => string
+
+/** A field as change lines show it: its label and how an entity's value of it reads. */
+type Field<T> = readonly [label: string, read: (entity: T, date: DateReading) => Reading]
+
+/** Listed items in change lines: what one is called, its id and name, and its fields. */
+type Items<T> = { label: string; id: (item: T) => string; name: (item: T) => string; fields: readonly Field<T>[] }
+
+/** A project relation with the group it is listed under. */
+type GroupedRelation = ProjectDetail['relations'][number]['items'][number] & { group: string }
+
+const COLUMN_FIELDS: readonly Field<Omit<PaperColumn, 'key'>>[] = [
+  ['列名', (c) => c.label], ['类型', (c) => COLUMN_TYPE_LABEL[c.type]], ['选项', (c) => c.options],
+]
+
+/** The read state's label, and the earlier one it keeps while a custom column holds that label. */
+const READ_STATE = '阅读状态'
+const READ_STATE_TAKEN = '状态'
+
+/** The paper fields the user edits; ids, counts, page state and timestamps are the vault's own and not shown. */
+const PAPER_FIELDS: readonly Field<PaperRow>[] = [
+  ['标题', (p) => p.title], ['短标题', (p) => p.shortTitle ?? ''], ['作者', (p) => p.authors ?? []],
+  ['年份', (p) => p.year?.toString() ?? ''], ['发表', (p) => p.venue],
+  ['评分', (p) => (p.rating === undefined ? '' : `${p.rating} 星`)], ['编号', (p) => p.identifier ?? ''],
+  ['提交', (p, date) => date(p.submitted)], ['摘要', (p) => p.abstract ?? ''], ['主题', (p) => p.topics],
+  ['方法', (p) => p.methods], ['数据集', (p) => p.datasets], ['指标', (p) => p.metrics],
+  [READ_STATE, (p) => p.readState], ['随笔', (p) => p.remark ?? ''],
+]
+
+const NOTE_FIELDS: readonly Field<PaperNote>[] = [['页码', (n) => String(n.page)], ['笔记', (n) => n.text]]
+const HIGHLIGHT_FIELDS: readonly Field<PaperHighlight>[] = [
+  ['页码', (h) => String(h.page)], ['高亮', (h) => h.quote], ['批注', (h) => h.note],
+]
+
+const TASKS: Items<Task> = {
+  label: '任务', id: (t) => t.id, name: (t) => t.title,
+  fields: [
+    ['名称', (t) => t.title], ['开始', (t, date) => date(t.start)], ['结束', (t, date) => date(t.end)],
+    ['时段', (t) => (t.window === undefined ? '' : `${t.window.start}–${t.window.end}`)],
+    ['状态', (t) => TASK_STATE[t.state]], ['优先级', (t) => PRIORITY[t.priority]], ['备注', (t) => t.note ?? ''],
+  ],
+}
+const MILESTONES: Items<Milestone> = {
+  label: '里程碑', id: (m) => m.id, name: (m) => m.title,
+  fields: [['名称', (m) => m.title], ['日期', (m, date) => date(m.date)], ['状态', (m) => (m.done ? '已完成' : '未完成')]],
+}
+const RELATIONS: Items<GroupedRelation> = {
+  label: '关联', id: (r) => r.id, name: (r) => r.text,
+  fields: [['名称', (r) => r.text], ['分组', (r) => r.group], ['链接', (r) => r.url ?? '']],
+}
+const ATTACHMENTS: Items<Attachment> = {
+  label: '附件', id: (f) => f.id, name: (f) => f.name,
+  fields: [['名称', (f) => f.name], ['大小', (f) => f.size], ['位置', (f) => f.path ?? '']],
+}
+const SESSIONS: Items<AgentSession> = {
+  label: 'agent 会话', id: (s) => s.id, name: (s) => s.title,
+  fields: [['名称', (s) => s.title], ['日期', (s, date) => date(s.when)], ['结果', (s) => s.outcome]],
+}
+const CUSTOM_COLUMNS: Items<PaperColumn> = { label: '列', id: (c) => c.key, name: (c) => c.label, fields: COLUMN_FIELDS }
+
+/** The elements of a reading: a list's, a text's own, or none for an empty text. */
+const elements = (reading: Reading): string[] =>
+  (typeof reading !== 'string' ? [...reading] : reading === '' ? [] : [reading])
+
+/** `items` as change lines with `sign`, each after `label`. */
+const signedLines = (sign: '+' | '-', label: string, items: readonly string[]): string[] =>
+  items.map((item) => `${sign} ${label}：${item}`)
+
 /**
- * Line-oriented diff between pre- and post-change entities. Equal keys emit nothing. Array values are
- * compared element by element, with removed entries as `-` and added entries as `+`. Other changed keys
- * emit the old value as `-` and the new value as `+`. A missing entity is empty, so creation emits only
- * additions and deletion only removals.
+ * The change lines of a field labelled `label` that reads `a` before and `b` after. A list compares
+ * element by element: each element gone is a `-` line, each new one a `+` line, and a reorder emits
+ * nothing. Any other value emits its old reading as `-` and its new one as `+`, the `+` line labelled
+ * `labelAfter`; an empty reading emits no line.
  */
-function diffLines(before: Entity | undefined, after: Entity | undefined): string[] {
-  const from = before === undefined ? {} : valueOf(before)
-  const to = after === undefined ? {} : valueOf(after)
-  const lines: string[] = []
-  for (const key of new Set([...Object.keys(from), ...Object.keys(to)])) {
-    const a = from[key]
-    const b = to[key]
-    if (stableJson(a) === stableJson(b)) continue
-    if (Array.isArray(a) || Array.isArray(b)) {
-      const left = (Array.isArray(a) ? a : []).map(stableJson)
-      const dropped = [...left]
-      const added = (Array.isArray(b) ? b : []).map(stableJson).filter((item) => {
-        const at = dropped.indexOf(item)
-        if (at < 0) return true
-        dropped.splice(at, 1)
-        return false
-      })
-      lines.push(...dropped.map((item) => `- ${key}: ${item}`))
-      lines.push(...added.map((item) => `+ ${key}: ${item}`))
-      continue
-    }
-    if (a !== undefined) lines.push(`- ${key}: ${stableJson(a)}`)
-    if (b !== undefined) lines.push(`+ ${key}: ${stableJson(b)}`)
+function readingLines(label: string, a: Reading, b: Reading, labelAfter = label): string[] {
+  if (typeof a === 'string' && typeof b === 'string') {
+    return a === b ? [] : [...signedLines('-', label, elements(a)), ...signedLines('+', labelAfter, elements(b))]
   }
-  return lines
+  const dropped = elements(a)
+  const added = elements(b).filter((item) => {
+    const at = dropped.indexOf(item)
+    if (at < 0) return true
+    dropped.splice(at, 1)
+    return false
+  })
+  return [...signedLines('-', label, dropped), ...signedLines('+', labelAfter, added)]
+}
+
+/** The change lines of `fields` from `a` to `b`, each label after `prefix`. */
+const fieldLines = <T>(fields: readonly Field<T>[], a: T, b: T, date: DateReading, prefix = ''): string[] =>
+  fields.flatMap(([label, read]) => readingLines(`${prefix}${label}`, read(a, date), read(b, date)))
+
+/** The change lines of `fields` for `entity` added (`+`) or removed (`-`): one per element of each reading. */
+const sideLines = <T>(sign: '+' | '-', fields: readonly Field<T>[], entity: T, date: DateReading): string[] =>
+  fields.flatMap(([label, read]) => signedLines(sign, label, elements(read(entity, date))))
+
+/**
+ * The change lines of a list of items from `a` to `b`, matched by id: an item gone or new is one line
+ * with its name, and each changed field of an item in both is a line under the item's name after the change.
+ */
+function itemLines<T>(items: Items<T>, a: readonly T[], b: readonly T[], date: DateReading): string[] {
+  const held = new Map(a.map((item) => [items.id(item), item]))
+  const kept = new Set(b.map(items.id))
+  return [
+    ...a.filter((item) => !kept.has(items.id(item))).map((item) => `- ${items.label}：${items.name(item)}`),
+    ...b.flatMap((item) => {
+      const old = held.get(items.id(item))
+      return old === undefined
+        ? [`+ ${items.label}：${items.name(item)}`]
+        : fieldLines(items.fields, old, item, date, `${items.label}「${items.name(item)}」· `)
+    }),
+  ]
+}
+
+/** The change lines between two shapes of one project, in the order the project page shows its fields. */
+function projectLines(a: ProjectDetail, b: ProjectDetail, date: DateReading): string[] {
+  const field = (label: string, read: (p: ProjectDetail) => Reading): string[] => readingLines(label, read(a), read(b))
+  const relations = (p: ProjectDetail): GroupedRelation[] =>
+    p.relations.flatMap((g) => g.items.map((item) => ({ ...item, group: g.group })))
+  const verified = (p: ProjectDetail): string[] => (p.verifiedConclusions ?? []).map((v) => p.projectConclusions
+    ?.find((c) => c.node === v.node)?.text
+    ?? [...p.graph.nodes, ...p.workspace?.graph?.nodes ?? []].find((n) => n.id === v.node)?.label ?? v.node)
+  return [
+    ...field('名称', (p) => p.name),
+    ...field('状态', (p) => p.status),
+    ...field('优先级', (p) => PRIORITY[p.priority]),
+    ...field('主题', (p) => p.topic),
+    ...readingLines(FOCUS[a.status], a.focus, b.focus, FOCUS[b.status]),
+    ...field('阻塞', (p) => p.block ?? ''),
+    ...field('开始', (p) => date(p.start)),
+    ...field('截止', (p) => date(p.due)),
+    ...field('项目随笔', (p) => p.memo),
+    ...field('关联论文', (p) => p.papers.map((id) => p.paperTitles[id] ?? id)),
+    ...itemLines(TASKS, a.tasks, b.tasks, date),
+    ...itemLines(MILESTONES, a.milestones, b.milestones, date),
+    ...field('科研记录', (p) => p.events.map((e) => e.text)),
+    ...itemLines(RELATIONS, relations(a), relations(b), date),
+    ...itemLines(ATTACHMENTS, a.attachments, b.attachments, date),
+    ...itemLines(SESSIONS, a.agentSessions, b.agentSessions, date),
+    ...field('已验证结论', verified),
+  ]
+}
+
+/**
+ * The change lines between the pre- and post-change entity of one target: one for each changed field,
+ * with its label and a readable value. Dates read as month and day, with the year when it is not
+ * `year`; enum values by their names; papers, tasks, milestones, relations, attachments and columns by
+ * their names; custom cells under the label their column has in `columns`, and the read state under its
+ * earlier label while one of them holds its label. A paper, project or column created or deleted is one
+ * line with its name; a note or highlight lists its fields. Throws for a pages entity, whose changes the
+ * proposal or the body edit describes, and when the entity changed kind.
+ */
+function changeLines(
+  before: Entity | undefined, after: Entity | undefined, { year, columns }: { year: string; columns: readonly PaperColumn[] },
+): string[] {
+  const date: DateReading = (iso) => (iso === undefined
+    ? ''
+    : `${iso.slice(0, 4) === year ? '' : `${iso.slice(0, 4)}年`}${Number(iso.slice(5, 7))}月${Number(iso.slice(8, 10))}日`)
+  const sign = before === undefined ? '+' : '-'
+  /** Both sides as entities of `kind`; throws when the target's entity changed kind. */
+  const sides = <K extends Entity['kind']>(kind: K) => [before, after].map((entity) => {
+    if (entity !== undefined && entity.kind !== kind) throw new Error(`同一目标前后的实体种类不同：${kind} → ${entity.kind}`)
+    return entity
+  }) as [Extract<Entity, { kind: K }> | undefined, Extract<Entity, { kind: K }> | undefined]
+  const one = (before ?? after)!
+  switch (one.kind) {
+    case 'paper': {
+      const [a, b] = sides('paper')
+      if (a === undefined || b === undefined) return [`${sign} 论文：${one.paper.title}`]
+      const label = (key: string): string => columns.find((c) => c.key === key)?.label ?? key
+      const fields = columns.some((c) => c.label === READ_STATE)
+        ? PAPER_FIELDS.map((field): Field<PaperRow> => (field[0] === READ_STATE ? [READ_STATE_TAKEN, field[1]] : field))
+        : PAPER_FIELDS
+      return [
+        ...fieldLines(fields, a.paper, b.paper, date),
+        ...[...new Set([...Object.keys(a.paper.custom), ...Object.keys(b.paper.custom)])]
+          .flatMap((key) => readingLines(label(key), a.paper.custom[key] ?? '', b.paper.custom[key] ?? '')),
+      ]
+    }
+    case 'project': {
+      const [a, b] = sides('project')
+      return a === undefined || b === undefined ? [`${sign} 项目：${one.project.name}`] : projectLines(a.project, b.project, date)
+    }
+    case 'columns':
+    case 'columnType': {
+      const [a, b] = sides(one.kind)
+      return a === undefined || b === undefined
+        ? [`${sign} 列：${one.column.label}`]
+        : fieldLines(COLUMN_FIELDS, a.column, b.column, date)
+    }
+    case 'customColumns': {
+      const [a, b] = sides('customColumns')
+      return itemLines(CUSTOM_COLUMNS, a?.columns ?? [], b?.columns ?? [], date)
+    }
+    case 'note': {
+      const [a, b] = sides('note')
+      return a === undefined || b === undefined
+        ? sideLines(sign, NOTE_FIELDS, one.note, date)
+        : fieldLines(NOTE_FIELDS, a.note, b.note, date)
+    }
+    case 'highlight': {
+      const [a, b] = sides('highlight')
+      return a === undefined || b === undefined
+        ? sideLines(sign, HIGHLIGHT_FIELDS, one.highlight, date)
+        : fieldLines(HIGHLIGHT_FIELDS, a.highlight, b.highlight, date)
+    }
+    case 'remark': {
+      const [a, b] = sides('remark')
+      return readingLines('随笔', a?.remark ?? '', b?.remark ?? '')
+    }
+    default: throw new Error('Wiki 页的改动由提案或正文编辑自己描述')
+  }
+}
+
+/** The labels changeLines writes a paper's title under; the rest of such a line is the title. */
+const PAPER_TITLE_LINE = /^([+-] (?:论文|关联论文|标题|短标题)：)(.+)$/s
+
+/** A Wiki page id, or a claim ref (`<page>#<claim>`), as a describeOp line or a body line writes it. */
+const WIKI_REF = /([\p{L}\p{N}._-]+\/[\p{L}\p{N}._-]+)(#[a-z0-9][a-z0-9-]{0,63})?/gu
+
+/**
+ * Stored change line `line` as shown, in pieces: a paper title written under one of changeLines' title
+ * labels is paper text, and each Wiki page id or claim ref names its page by `title` (paper pages as
+ * paper text, a claim by the page it is on). A ref whose page `title` does not know stays as written.
+ */
+function shownLine(line: string, title: (page: string) => string | undefined): DiffPiece[] {
+  const titled = PAPER_TITLE_LINE.exec(line)
+  if (titled !== null) return [titled[1]!, { paper: titled[2]! }]
+  const pieces: DiffPiece[] = []
+  const text = (part: string): void => {
+    if (part === '') return
+    const last = pieces.at(-1)
+    if (typeof last === 'string') pieces[pieces.length - 1] = last + part
+    else pieces.push(part)
+  }
+  let from = 0
+  for (const match of line.matchAll(WIKI_REF)) {
+    const page = match[1]!
+    const name = title(page)
+    text(line.slice(from, match.index))
+    if (name === undefined) text(match[0])
+    else if (page.startsWith(PAPER_PAGE)) pieces.push({ paper: name })
+    else text(name)
+    from = match.index + match[0].length
+  }
+  text(line.slice(from))
+  return pieces.length === 0 ? [''] : pieces
 }
 
 /**
@@ -355,13 +582,19 @@ function diffLines(before: Entity | undefined, after: Entity | undefined): strin
  * snapshot holds a cell the columns as they stand now could not take. A paper
  * put back from the trash, by restoring it or by undoing its deletion, has the
  * cells those columns could not take emptied through updatePaper, recorded as a
- * change of its own.
+ * change of its own. When the log itself cannot be written, a record of a write
+ * that landed stays in `log` and is written with the next save, while archiving,
+ * deleting or expiring records leaves `log` as it was.
  */
 export function withChangelog(ops: VaultOps, log: ChangeLogStore): VaultStore {
   let rows = log.load()
 
   /** Current vault time as epoch milliseconds at today's UTC midnight, shared by recording and retention. */
   const nowMs = (): number => Date.parse(`${ops.today()}T00:00:00Z`)
+
+  /** The change lines between the two shapes of an entity, read against the vault's year and columns now. */
+  const describe = (before: Entity | undefined, after: Entity | undefined): string[] =>
+    changeLines(before, after, { year: ops.today().slice(0, 4), columns: ops.paperColumns().custom })
 
   /**
    * Current entity shape, or undefined when the paper, project or column no longer exists. Any other
@@ -426,8 +659,9 @@ export function withChangelog(ops: VaultOps, log: ChangeLogStore): VaultStore {
   const dropExpired = (): void => {
     const cutoff = nowMs() - TRASH_RETENTION_DAYS * 86_400_000
     if (!rows.some((row) => row.restore !== null && row.at <= cutoff)) return
-    rows = rows.map((row) => (row.restore !== null && row.at <= cutoff ? { ...row, restore: null } : row))
-    log.save(rows)
+    const next = rows.map((row) => (row.restore !== null && row.at <= cutoff ? { ...row, restore: null } : row))
+    log.save(next)
+    rows = next
   }
 
   /** Restoration work for a record. Snapshot mode stores the previous entity; explicit work is used as-is. */
@@ -473,7 +707,7 @@ export function withChangelog(ops: VaultOps, log: ChangeLogStore): VaultStore {
         : `${target.kind === 'project' ? '项目' : '论文'}「${nameOf(named)}」· ${what}`,
       meta: null,
       source,
-      diff: diff ?? diffLines(before, after),
+      diff: diff ?? describe(before, after),
       target,
       after: fingerprint(after),
       at: nowMs(),
@@ -533,20 +767,20 @@ export function withChangelog(ops: VaultOps, log: ChangeLogStore): VaultStore {
 
     renamePaperOption(key, from, to) {
       const column = ops.paperColumns().custom.find((c) => c.key === key)
-      if (!column) throw new Error(`论文表里没有这一列：${key}`)
+      if (!column) throw new CallError('not-found', `论文表里没有这一列：${key}`)
       return wrote(
         { kind: 'columns', id: key },
         `论文表 · 列「${column.label}」的选项 ${from} → ${to}`,
         { kind: 'option', key, from: to, to: from },
         () => ops.renamePaperOption(key, from, to),
-        [`- ${key}: ${JSON.stringify(from)}`, `+ ${key}: ${JSON.stringify(to)}`],
+        [`- 选项：${from}`, `+ 选项：${to}`],
       )
     },
 
     setPaperColumnType(key, type) {
       const target: ChangeTarget = { kind: 'columnType', id: key }
       const before = entityOf(target)
-      if (before?.kind !== 'columnType') throw new Error(`论文表里没有这一列：${key}`)
+      if (before?.kind !== 'columnType') throw new CallError('not-found', `论文表里没有这一列：${key}`)
       const groupAt = ops.paperColumns().groups.indexOf(key)
       ops.setPaperColumnType(key, type)
       push(
@@ -554,7 +788,7 @@ export function withChangelog(ops: VaultOps, log: ChangeLogStore): VaultStore {
         `论文表 · 列「${before.column.label}」的类型 ${COLUMN_TYPE_LABEL[before.column.type]} → ${COLUMN_TYPE_LABEL[type]}`,
         { kind: 'columnType', column: before.column, groupAt: type === 'text' && groupAt >= 0 ? groupAt : null, cells: before.cells },
         before,
-        typeDiff(key, before.column.type, type),
+        typeLines(before.column.type, type),
       )
     },
 
@@ -592,7 +826,7 @@ export function withChangelog(ops: VaultOps, log: ChangeLogStore): VaultStore {
         const target: ChangeTarget = { kind: 'project', id: project }
         const before = entityOf(target)
         ops.addAgentTask(project, request)
-        push(target, 'agent 新增任务', 'snapshot', before, undefined, 'Meridian')
+        push(target, '添加任务', 'snapshot', before, undefined, 'Meridian')
       }
     },
 
@@ -609,7 +843,7 @@ export function withChangelog(ops: VaultOps, log: ChangeLogStore): VaultStore {
     },
 
     createTask(projectId, task) {
-      return onProject(projectId, '新增任务', () => ops.createTask(projectId, task))
+      return onProject(projectId, '添加任务', () => ops.createTask(projectId, task))
     },
 
     updateTask(projectId, taskId, patch) {
@@ -625,7 +859,7 @@ export function withChangelog(ops: VaultOps, log: ChangeLogStore): VaultStore {
     },
 
     createMilestone(projectId, milestone) {
-      return onProject(projectId, '新增里程碑', () => ops.createMilestone(projectId, milestone))
+      return onProject(projectId, '添加里程碑', () => ops.createMilestone(projectId, milestone))
     },
 
     updateMilestone(projectId, milestoneId, patch) {
@@ -638,7 +872,7 @@ export function withChangelog(ops: VaultOps, log: ChangeLogStore): VaultStore {
     },
 
     createRelation(projectId, relation) {
-      return onProject(projectId, '新增关联', () => ops.createRelation(projectId, relation))
+      return onProject(projectId, '添加关联', () => ops.createRelation(projectId, relation))
     },
 
     deleteRelation(projectId, relationId) {
@@ -662,7 +896,7 @@ export function withChangelog(ops: VaultOps, log: ChangeLogStore): VaultStore {
     },
 
     createAttachment(projectId, attachment) {
-      return onProject(projectId, '新增附件', () => ops.createAttachment(projectId, attachment))
+      return onProject(projectId, '添加附件', () => ops.createAttachment(projectId, attachment))
     },
 
     deleteAttachment(projectId, attachmentId) {
@@ -670,14 +904,14 @@ export function withChangelog(ops: VaultOps, log: ChangeLogStore): VaultStore {
     },
 
     createEvent(projectId, text, node) {
-      return onProject(projectId, '新增科研记录', () => ops.createEvent(projectId, text, node))
+      return onProject(projectId, '记入科研记录', () => ops.createEvent(projectId, text, node))
     },
 
     recordAction(id, messageId) {
       const action = ops.chatMessages(id).find((message) => message.id === messageId)?.actions[0]
       return action === undefined
         ? ops.recordAction(id, messageId)
-        : onProject(action.project, '新增科研记录', () => ops.recordAction(id, messageId))
+        : onProject(action.project, '记入科研记录', () => ops.recordAction(id, messageId))
     },
 
     applyProposal(proposal, producer = { by: BY_ME, source: BY_ME }) {
@@ -697,6 +931,13 @@ export function withChangelog(ops: VaultOps, log: ChangeLogStore): VaultStore {
     listChanges() {
       dropExpired()
       const day = ops.today()
+      let aggregations: Map<string, string> | undefined
+      /** The title of Wiki page `id` as the vault holds it now, undefined when there is no such page. */
+      const title = (id: string): string | undefined => {
+        aggregations ??= new Map(ops.wikiCards().map((card) => [card.id, card.title]))
+        return aggregations.get(id)
+          ?? (id.startsWith(PAPER_PAGE) && ops.pageVersion(id) !== null ? ops.wikiPaper(id).title : undefined)
+      }
       return rows.map((row): ChangeEntry => {
         const date = new Date(row.at).toISOString().slice(0, 10)
         return {
@@ -706,6 +947,7 @@ export function withChangelog(ops: VaultOps, log: ChangeLogStore): VaultStore {
           date,
           source: row.source,
           diff: [...row.diff],
+          lines: row.diff.map((line) => shownLine(line, title)),
           undone: row.undone,
           undoable: !row.undone && row.target !== null && row.restore !== null,
           archived: row.archived,
@@ -717,12 +959,12 @@ export function withChangelog(ops: VaultOps, log: ChangeLogStore): VaultStore {
       dropExpired()
       const at = rows.findIndex((row) => row.id === id)
       const row = rows[at]
-      if (!row) throw new Error(`最近变动里没有这一条：${id}`)
-      if (row.undone) throw new Error('这一条已经撤销过了')
+      if (!row) throw new CallError('not-found', `最近变动里没有这一条：${id}`)
+      if (row.undone) throw new CallError('refused', '这一条已经撤销过了')
       const { target, restore } = row
-      if (target === null) throw new Error('这一条撤不了：库里没有还原它所需的东西')
+      if (target === null) throw new CallError('refused', '这一条撤不了：库里没有还原它所需的东西')
       if (restore === null) {
-        throw new Error(`这一条的快照已过 ${TRASH_RETENTION_DAYS} 天保留期，撤不了了`)
+        throw new CallError('refused', `这一条的快照已过 ${TRASH_RETENTION_DAYS} 天保留期，撤不了了`)
       }
 
       const before = entityOf(target)
@@ -730,9 +972,9 @@ export function withChangelog(ops: VaultOps, log: ChangeLogStore): VaultStore {
         // Newer records are at the front, so every record newer than this one precedes it.
         const newer = rows.slice(0, at)
           .filter((r) => !r.undone && r.target?.kind === target.kind && r.target.id === target.id)
-        throw new Error(newer.length > 0
-          ? `这条之后该实体又被改过 ${newer.length} 次，先撤销较新的那几条`
-          : target.kind === 'columns' || target.kind === 'columnType'
+        throw newer.length > 0
+          ? new CallError('newer-changes', `这条之后该实体又被改过 ${newer.length} 次，先撤销较新的那几条`)
+          : new CallError('changed', target.kind === 'columns' || target.kind === 'columnType'
             ? '这一列之后又改过，撤销会盖掉那次改动'
             : '这条之后该实体已经不是当时的样子，撤销会盖掉那次改动，所以拒绝')
       }
@@ -742,7 +984,7 @@ export function withChangelog(ops: VaultOps, log: ChangeLogStore): VaultStore {
         const held = ops.getPaper(target.id)
         const misfit = misfitCells(ops.paperColumns(), { ...held, custom: restore.snapshot.custom }, held.custom)[0]
         if (misfit !== undefined) {
-          throw new Error(
+          throw new CallError('changed',
             `这篇论文的「${misfit.column.label}」列之后改过类型或选项，撤销会写进这一列现在放不下的值`, { cause: misfit.cause },
           )
         }
@@ -778,8 +1020,8 @@ export function withChangelog(ops: VaultOps, log: ChangeLogStore): VaultStore {
         diff: restore.kind === 'pages'
           ? restore.pages.map((p) => `~ ${p.path}`)
           : restore.kind === 'columnType' && before?.kind === 'columnType'
-            ? typeDiff(target.id, before.column.type, restore.column.type)
-            : diffLines(before, after),
+            ? typeLines(before.column.type, restore.column.type)
+            : describe(before, after),
         target,
         after: fingerprint(after),
         at: nowMs(),
@@ -796,28 +1038,32 @@ export function withChangelog(ops: VaultOps, log: ChangeLogStore): VaultStore {
 
     archiveChange(id) {
       const row = rows.find((r) => r.id === id)
-      if (!row) throw new Error(`最近变动里没有这一条：${id}`)
+      if (!row) throw new CallError('not-found', `最近变动里没有这一条：${id}`)
       if (row.archived) return
-      rows = rows.map((r) => (r.id === id ? { ...r, archived: true } : r))
-      log.save(rows)
+      const next = rows.map((r) => (r.id === id ? { ...r, archived: true } : r))
+      log.save(next)
+      rows = next
     },
 
     archiveAllChanges() {
       if (rows.every((r) => r.archived)) return
-      rows = rows.map((r) => (r.archived ? r : { ...r, archived: true }))
-      log.save(rows)
+      const next = rows.map((r) => (r.archived ? r : { ...r, archived: true }))
+      log.save(next)
+      rows = next
     },
 
     deleteChange(id) {
-      if (!rows.some((row) => row.id === id)) throw new Error(`最近变动里没有这一条：${id}`)
-      rows = rows.filter((row) => row.id !== id)
-      log.save(rows)
+      if (!rows.some((row) => row.id === id)) throw new CallError('not-found', `最近变动里没有这一条：${id}`)
+      const next = rows.filter((row) => row.id !== id)
+      log.save(next)
+      rows = next
     },
 
     clearArchivedChanges() {
       if (!rows.some((row) => row.archived)) return
-      rows = rows.filter((row) => !row.archived)
-      log.save(rows)
+      const next = rows.filter((row) => !row.archived)
+      log.save(next)
+      rows = next
     },
   }
 }

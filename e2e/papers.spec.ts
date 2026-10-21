@@ -80,11 +80,11 @@ async function seed(
 /** Opens Column settings, expands column `label`'s type row and picks `type`; the menu stays open. */
 async function retype(win: Page, label: string, type: '文本' | '单选' | '多选'): Promise<void> {
   await win.locator('.ptable thead').hover()
-  await win.locator('.ptable thead [title="列设置"]').click()
+  await win.locator('.ptable thead [aria-label="列设置"]').click()
   const row = win.locator('[data-radix-popper-content-wrapper] .mi.colrow', { hasText: label })
   await row.hover()
-  await row.locator('[title="改类型"]').click()
-  await win.locator(`[data-radix-popper-content-wrapper] .typerow .ctbtn[title="${type}"]`).click()
+  await row.locator('[aria-label="改类型"]').click()
+  await win.locator(`[data-radix-popper-content-wrapper] .typerow .ctbtn[aria-label="${type}"]`).click()
 }
 
 /** Fetches the current custom cells of the given papers through Core. */
@@ -179,17 +179,14 @@ test('悬停截断的作者格与自定义文本格,浮框比格子宽,压到邻
   }
 })
 
-test('论文工具栏的视图切换与导入操作底边对齐', async ({ win }) => {
+test('导入 PDF 是屏头右端的页级操作,工具栏放视图切换和列表的筛选', async ({ win }) => {
   await gotoPapers(win)
   await firstPage(win)
 
-  const controls = win.locator(
-    '.paper-view-toolbar .segmented-control>button, .paper-view-toolbar .pdfupload',
-  )
-  await expect(controls).toHaveCount(3)
-  const bottoms = await controls.evaluateAll((buttons) => buttons.map((button) =>
-    +button.getBoundingClientRect().bottom.toFixed(2)))
-  expect(new Set(bottoms).size, `三个操作的底边分别在 ${bottoms.join(', ')}px`).toBe(1)
+  await expect(win.locator('.screenslot:not([hidden]) .desk-head .page-actions .pdfupload')).toHaveCount(1)
+  await expect(win.locator('.screenslot:not([hidden]) .paper-view-toolbar .pdfupload')).toHaveCount(0)
+  await expect(win.locator('.screenslot:not([hidden]) .paper-view-toolbar>.segmented-control>button')).toHaveCount(2)
+  await expect(win.locator('.screenslot:not([hidden]) .paper-view-toolbar .filters .segmented-control')).toHaveCount(1)
 })
 
 test('论文内容与分页栏遵循全局页面宽度', async ({ win }) => {
@@ -207,12 +204,11 @@ test('论文内容与分页栏遵循全局页面宽度', async ({ win }) => {
 test('研究地图从真实论文元数据形成可切换、可解释的重叠分组', async ({ win }) => {
   await gotoPapers(win)
   await firstPage(win)
-  await win.getByRole('button', { name: '研究地图', exact: true }).click()
+  await win.getByRole('radio', { name: '研究地图', exact: true }).click()
 
   await expect(win.locator('.research-map-title')).toContainText('自适应研究地图')
   await expect(win.locator('.research-map-group')).not.toHaveCount(0)
-  await expect(win.locator('.research-map-detail')).toContainText('归入依据')
-  await expect(win.locator('.research-map-detail')).toContainText('不会写回论文库')
+  await expect(win.locator('.research-map-detail .research-map-why .tag').first()).toBeVisible()
   await expect(win.locator('.pagebar')).toHaveCount(0)
 
   const groups = win.locator('.research-map-group')
@@ -258,7 +254,7 @@ test('别的屏上的写不摘掉论文表的截断标记', async ({ win }) => {
 
   // Read Later's write bumps the revision while the papers screen is hidden, where widths measure 0.
   await win.locator('#rowLater').click()
-  await shown(win, '.pcard').first().locator('[title="移出"]').click()
+  await shown(win, '.pcard').first().locator('[aria-label="移出"]').click()
   await expect(shown(win, '.desk-head .t')).toHaveText('稍后阅读 · 3')
 
   await gotoPapers(win)
@@ -278,7 +274,7 @@ test('分组加筛选后,索引层计数、值 chip 计数与分页总数三者�
   const indexCount = await indexRow.locator('.n').innerText()
   await indexRow.click()
 
-  await expect(win.locator('.gnav .segmented-control>button.on')).toHaveText(`${TOPIC}(${indexCount})`)
+  await expect(win.locator('.gnav button[aria-label="分组取值"]')).toHaveText(`${TOPIC} · ${indexCount}`)
   await expect(win.locator('.pginfo')).toHaveText(`共 ${indexCount} 条`)
 })
 
@@ -310,7 +306,7 @@ test('表内给论文加一个主题后,重新取数确认这一行的主题真�
   expect(refetchedTopics).toEqual([...before, ADDED_TOPIC])
 })
 
-test('状态列显示的是阅读状态,点它选一档就写回 core,页面状态不受影响', async ({ win }) => {
+test('阅读状态列点它选一档就写回 core,页面状态不受影响', async ({ win }) => {
   await gotoPapers(win)
   await firstPage(win)
   const row = win.locator('.ptable tbody tr').first()
@@ -402,7 +398,7 @@ test('标签添加框:写被拒时输入框与打好的字都留着', async ({ w
   await call(win, 'papers.delete', { id: first.id })
   await input.press('Enter')
 
-  await expect(win.locator('#toast')).toContainText(`论文不存在：${first.id}`)
+  await expect(win.locator('#notice[data-tone="refusal"] .notice-text')).toHaveText('这一项已不存在')
   await expect(shown(win, '.ipcerror')).toHaveCount(0)
   await expect(input).toHaveCount(1)
   await expect(input).toHaveValue(ADDED_TOPIC)
@@ -428,7 +424,7 @@ test('标签添加框:点联想项写被拒时,候选层与打开的占位都留
   await call(win, 'papers.delete', { id: first.id })
   await hit.click()
 
-  await expect(win.locator('#toast')).toContainText(`论文不存在：${first.id}`)
+  await expect(win.locator('#notice[data-tone="refusal"] .notice-text')).toHaveText('这一项已不存在')
   await expect(shown(win, '.ipcerror')).toHaveCount(0)
   await expect(input).toHaveCount(1)
   await expect(hit).toHaveText(picked)
@@ -466,7 +462,7 @@ test('标签添加框:提交在路上时点外,写落地前候选层与占位都
     }
   })
 
-  await expect(win.locator('#toast')).toContainText(`论文不存在：${first.id}`)
+  await expect(win.locator('#notice[data-tone="refusal"] .notice-text')).toHaveText('这一项已不存在')
   await expect(shown(win, '.ipcerror')).toHaveCount(0)
   await expect(input).toHaveCount(1)
   await expect(input).toHaveValue(picked)
@@ -502,7 +498,7 @@ test('标签添加框:回车提交在路上时点外,写落地前占位、打的
     }
   })
 
-  await expect(win.locator('#toast')).toContainText(`论文不存在：${first.id}`)
+  await expect(win.locator('#notice[data-tone="refusal"] .notice-text')).toHaveText('这一项已不存在')
   await expect(shown(win, '.ipcerror')).toHaveCount(0)
   await expect(input).toHaveCount(1)
   await expect(input).toHaveValue(ADDED_TOPIC)
@@ -559,7 +555,7 @@ test('文本格:改完焦点移走或点到格外都像回车一样写,Esc 才�
   await gotoPapers(win)
   await firstPage(win)
   await win.locator('.ptable thead').hover()
-  await win.locator('.ptable thead [title="新增列"]').click()
+  await win.locator('.ptable thead [aria-label="新建列"]').click()
   await win.locator('.ptable thead th.th-new input').fill('备注')
   await win.locator('.ptable thead th.th-new input').press('Enter')
   // The placeholder goes only once the column write lands; until then every body row has an extra
@@ -601,7 +597,7 @@ test('文本格开着时按住表格自己的滚动条,不算点到格外:格子
   await gotoPapers(win)
   await firstPage(win)
   await win.locator('.ptable thead').hover()
-  await win.locator('.ptable thead [title="新增列"]').click()
+  await win.locator('.ptable thead [aria-label="新建列"]').click()
   await win.locator('.ptable thead th.th-new input').fill('滚动条备注')
   await win.locator('.ptable thead th.th-new input').press('Enter')
   await expect(win.locator('.ptable thead th.th-new')).toHaveCount(0)
@@ -626,7 +622,7 @@ test('文本格开着时按住表格自己的竖直滚动条,不算点到格外:
   await gotoPapers(win)
   await firstPage(win)
   await win.locator('.ptable thead').hover()
-  await win.locator('.ptable thead [title="新增列"]').click()
+  await win.locator('.ptable thead [aria-label="新建列"]').click()
   await win.locator('.ptable thead th.th-new input').fill('竖向滚动条备注')
   await win.locator('.ptable thead th.th-new input').press('Enter')
   await expect(win.locator('.ptable thead th.th-new')).toHaveCount(0)
@@ -666,10 +662,10 @@ test('列管理:内置列显隐持久到离开再回来,固定列藏不了;自�
   await expect.poll(head).toContain('主题')
   // The header ends in two buttons: + adds a column (no circle in its icon) and the gear opens
   // Column settings (one circle, the gear's hub).
-  await expect(win.locator('.ptable thead [title="列设置"] svg circle')).toHaveCount(1)
-  await expect(win.locator('.ptable thead [title="新增列"] svg circle')).toHaveCount(0)
+  await expect(win.locator('.ptable thead [aria-label="列设置"] svg circle')).toHaveCount(1)
+  await expect(win.locator('.ptable thead [aria-label="新建列"] svg circle')).toHaveCount(0)
   await win.locator('.ptable thead').hover()
-  await win.locator('.ptable thead [title="列设置"]').click()
+  await win.locator('.ptable thead [aria-label="列设置"]').click()
   const menu = win.locator('[data-radix-popper-content-wrapper] .mi.colrow')
   await menu.filter({ hasText: '主题' }).click()
   await expect.poll(head).not.toContain('主题')
@@ -683,7 +679,7 @@ test('列管理:内置列显隐持久到离开再回来,固定列藏不了;自�
   expect((await call<{ hidden: string[] }>(win, 'papers.columns', {})).hidden).toEqual(['topics'])
 
   await win.locator('.ptable thead').hover()
-  await win.locator('.ptable thead [title="新增列"]').click()
+  await win.locator('.ptable thead [aria-label="新建列"]').click()
   await expect(win.locator('.ptable thead th.th-new')).toHaveCount(1)
   // The type popover opens with the placeholder while focus stays in the column name input; the new
   // header sits at the table's right end, and the popover must still fit inside the window.
@@ -729,14 +725,14 @@ test('列管理:内置列显隐持久到离开再回来,固定列藏不了;自�
   await expect(first.locator('td.pt-cust')).toHaveText('')
 
   await win.locator('.ptable thead').hover()
-  await win.locator('.ptable thead [title="列设置"]').click()
+  await win.locator('.ptable thead [aria-label="列设置"]').click()
   await menu.filter({ hasText: '备注' }).hover()
-  await menu.filter({ hasText: '备注' }).locator('[title="重命名列"]').click()
+  await menu.filter({ hasText: '备注' }).locator('[aria-label="重命名列"]').click()
   await win.locator('[data-radix-popper-content-wrapper] input.celledit').fill('批注')
   await win.locator('[data-radix-popper-content-wrapper] input.celledit').press('Enter')
   await expect.poll(head).toContain('批注')
   await menu.filter({ hasText: '批注' }).hover()
-  await menu.filter({ hasText: '批注' }).locator('.cmx.del').click()
+  await menu.filter({ hasText: '批注' }).locator('.cmx.danger').click()
   await expect.poll(head).not.toContain('批注')
 })
 
@@ -750,8 +746,8 @@ test('多选格:连着提交两次都留得住,点输入框本身不关弹层', 
 
   // Multiple choice, because only then can one cell keep two values submitted back to back.
   await win.locator('.ptable thead').hover()
-  await win.locator('.ptable thead [title="新增列"]').click()
-  await pop.locator('.ctbtn[title="多选"]').click()
+  await win.locator('.ptable thead [aria-label="新建列"]').click()
+  await pop.locator('.ctbtn[aria-label="多选"]').click()
   await win.locator('.ptable thead th.th-new input').fill(MULTI_COLUMN)
   await win.locator('.ptable thead th.th-new input').press('Enter')
   await expect.poll(() => win.locator('.ptable thead th').allTextContents()).toContain(MULTI_COLUMN)
@@ -801,13 +797,13 @@ test('列类型:建单选列、格子里建选项、按它分组、改名与撤�
   // Create a single-choice column: the + at the header's end opens a placeholder; pick the type in
   // the popover below it first, then type the name and press Enter.
   await win.locator('.ptable thead').hover()
-  await win.locator('.ptable thead [title="新增列"]').click()
-  await win.locator('[data-radix-popper-content-wrapper] .ctbtn[title="单选"]').click()
-  await expect(win.locator('[data-radix-popper-content-wrapper] .ctbtn[title="单选"]')).toHaveClass(/on/)
+  await win.locator('.ptable thead [aria-label="新建列"]').click()
+  await win.locator('[data-radix-popper-content-wrapper] .ctbtn[aria-label="单选"]').click()
+  await expect(win.locator('[data-radix-popper-content-wrapper] .ctbtn[aria-label="单选"]')).toHaveClass(/on/)
   await win.locator('.ptable thead th.th-new input').fill('读法')
   await win.locator('.ptable thead th.th-new input').press('Enter')
   await expect.poll(head).toContain('读法')
-  await expect(win.locator('#banner span')).toHaveText('已新建列 · 全库可用')
+  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已新建列 · 全库可用')
   expect((await call<{ custom: { label: string; type: string }[] }>(win, 'papers.columns', {}))
     .custom[0]).toMatchObject({ label: '读法', type: 'select' })
 
@@ -837,13 +833,13 @@ test('列类型:建单选列、格子里建选项、按它分组、改名与撤�
   await win.locator('[data-radix-popper-content-wrapper] .mi', { hasText: '读法' }).click()
   await win.keyboard.press('Escape')
   await expect(win.locator('.filters .segmented-control>button', { hasText: '读法' })).toHaveCount(0)
-  await expect(win.locator('.filters .segmented-control>button.on')).toHaveText('无')
+  await expect(win.locator('.filters .segmented-control>button[aria-checked="true"]')).toHaveText('无')
 
   // Rename an option: the cell follows, and refetching through Core rules out an optimistic state.
   await firstPage(win)
   const title = await rows.first().locator('td.pt-title').innerText()
   await win.locator('.ptable thead').hover()
-  await win.locator('.ptable thead [title="列设置"]').click()
+  await win.locator('.ptable thead [aria-label="列设置"]').click()
   await menu.filter({ hasText: '读法' }).locator('.cmx.optx').click()
   const option = win.locator('[data-radix-popper-content-wrapper] .mi.optrow', { hasText: '精读' })
   await option.hover()
@@ -868,15 +864,15 @@ test('列类型:建单选列、格子里建选项、按它分组、改名与撤�
   expect((await call<{ custom: { options: string[] }[] }>(win, 'papers.columns', {}))
     .custom[0]!.options).toEqual(['精读', '略读'])
 
-  // An option a paper still uses cannot be deleted: the toast shows Core's own message and the
-  // header is unchanged.
+  // An option a paper still uses cannot be deleted: the refusal notice names the reason and the header
+  // is unchanged.
   await win.locator('.ptable thead').hover()
-  await win.locator('.ptable thead [title="列设置"]').click()
+  await win.locator('.ptable thead [aria-label="列设置"]').click()
   await menu.filter({ hasText: '读法' }).locator('.cmx.optx').click()
   const still = win.locator('[data-radix-popper-content-wrapper] .mi.optrow', { hasText: '略读' })
   await still.hover()
-  await still.locator('.cmx.del').click()
-  await expect(win.locator('#toast')).toContainText('还有论文在用')
+  await still.locator('.cmx.danger').click()
+  await expect(win.locator('#notice[data-tone="refusal"] .notice-text')).toHaveText('还有内容在用')
   await expect(shown(win, '.ipcerror')).toHaveCount(0)
   await expect.poll(head).toContain('读法')
 
@@ -888,14 +884,14 @@ test('列类型:建单选列、格子里建选项、按它分组、改名与撤�
   await win.keyboard.press('Escape')
   await shown(win, '.filters .segmented-control>button').filter({ hasText: '读法' }).click()
   await win.locator('.gxrow').first().click()
-  await expect(shown(win, '.filters .segmented-control>button.on')).toHaveText('读法')
+  await expect(shown(win, '.filters .segmented-control>button[aria-checked="true"]')).toHaveText('读法')
 
   await win.locator('.ptable thead').hover()
-  await win.locator('.ptable thead [title="列设置"]').click()
+  await win.locator('.ptable thead [aria-label="列设置"]').click()
   await menu.filter({ hasText: '读法' }).hover()
-  await menu.filter({ hasText: '读法' }).locator('.cmx.del').click()
+  await menu.filter({ hasText: '读法' }).locator('.cmx.danger').click()
   await expect(shown(win, '.filters .segmented-control>button').filter({ hasText: '读法' })).toHaveCount(0)
-  await expect(shown(win, '.filters .segmented-control>button.on')).toHaveText('无')
+  await expect(shown(win, '.filters .segmented-control>button[aria-checked="true"]')).toHaveText('无')
   await expect.poll(head).not.toContain('读法')
   // Had the column been deleted without leaving the groups, Core would reject the write and the
   // column would return; the assertions above see only the optimistic state.
@@ -967,8 +963,7 @@ test('分页条两端对齐:条数贴左缘,页码与每页档位挨着贴右缘
     const count = document.createRange()
     count.selectNodeContents(bar.querySelector('.pginfo')!)
     const seg = bar.querySelector('.segmented-control')!.getBoundingClientRect()
-    const pgbtn = bar.querySelectorAll('.pager .pgbtn')
-    const tail = pgbtn[pgbtn.length - 1]!.getBoundingClientRect()
+    const tail = bar.querySelector('.pager')!.lastElementChild!.getBoundingClientRect()
     // Children of one line share a vertical center up to layout rounding, which can straddle a half
     // pixel; a wrapped child sits a whole line lower.
     const centers = [...bar.children].map((c) => {
@@ -985,7 +980,7 @@ test('分页条两端对齐:条数贴左缘,页码与每页档位挨着贴右缘
   })
 
   console.log(`分页条版式:条数离左缘 ${laid.countInset}px,每页档位离右缘 ${laid.segInset}px,`
-    + `末页码与每页档位相距 ${laid.pageToSeg}px(分页条的 gap 是 ${laid.gap}px)`)
+    + `页码条末端与每页档位相距 ${laid.pageToSeg}px(分页条的 gap 是 ${laid.gap}px)`)
   expect(laid.centerSpread, '分页条已经换行,量到的不是同一行上的版式').toBeLessThan(1)
   expect(laid.countInset).toBe(0)
   expect(laid.segInset).toBe(0)
@@ -1001,7 +996,7 @@ test('年份与发表分两列:年份只写年份、仍按它排序,发表只写
   // Header cells draw a sort arrow beside the label, which leaves a leading space; trim to the label.
   const head = async () => (await win.locator('.ptable thead th').allTextContents()).map((t) => t.trim())
   // After Title come Short title, Rating, Authors, Year, Venue, Topics and Status.
-  expect((await head()).slice(0, 8)).toEqual(['标题', '短标题', '评分', '作者', '年份', '发表', '主题', '状态'])
+  expect((await head()).slice(0, 8)).toEqual(['标题', '短标题', '评分', '作者', '年份', '发表', '主题', '阅读状态'])
   const listed = (direction: 'asc' | 'desc') => call<{ rows: { year?: number; venue: string }[] }>(
     win, 'papers.list', { page: 1, size: 20, sort: 'year', direction },
   ).then((r) => r.rows)
@@ -1020,7 +1015,7 @@ test('年份与发表分两列:年份只写年份、仍按它排序,发表只写
 
   // Venue is not a locked column, so it can be hidden; Core stores it as venue.
   await win.locator('.ptable thead').hover()
-  await win.locator('.ptable thead [title="列设置"]').click()
+  await win.locator('.ptable thead [aria-label="列设置"]').click()
   const menu = win.locator('[data-radix-popper-content-wrapper] .mi.colrow')
   await expect(menu.filter({ hasText: '年份' })).toHaveClass(/locked/)
   await expect(menu.filter({ hasText: '发表' })).not.toHaveClass(/locked/)
@@ -1045,7 +1040,7 @@ test('齿轮里没有新建入口,建列归表头末尾的 ＋', async ({ win })
   await gotoPapers(win)
   await firstPage(win)
   await win.locator('.ptable thead').hover()
-  await win.locator('.ptable thead [title="列设置"]').click()
+  await win.locator('.ptable thead [aria-label="列设置"]').click()
   const menu = win.locator('[data-radix-popper-content-wrapper]')
   // The menu is really open, so the two checks below cannot pass merely because it is closed.
   await expect(menu.locator('.mi.colrow', { hasText: '年份' })).toHaveCount(1)
@@ -1059,7 +1054,7 @@ test('占位列开着时行高仍是 38px,表仍对齐全局页面宽度', async
   const cells = () => win.locator('.ptable tbody tr').first().locator('td').count()
   const before = await cells()
   await win.locator('.ptable thead').hover()
-  await win.locator('.ptable thead [title="新增列"]').click()
+  await win.locator('.ptable thead [aria-label="新建列"]').click()
   await expect(win.locator('.ptable thead th.th-new')).toHaveCount(1)
   // The placeholder column also adds an empty cell to every body row, keeping the cell count right.
   expect(await cells()).toBe(before + 1)
@@ -1084,7 +1079,7 @@ test('详情面板保留完整列与列操作,Escape 收的是详情面板', asy
   expect(await detailSlot.evaluate((element) => getComputedStyle(element).transitionProperty))
     .toContain('transform')
   expect(await win.locator('.ptable thead th').allTextContents()).toEqual(headersBefore)
-  await expect(win.locator('.ptable thead [title="新增列"]')).toBeEnabled()
+  await expect(win.locator('.ptable thead [aria-label="新建列"]')).toBeEnabled()
   await win.keyboard.press('Escape')
   await expect(win.locator('.pdetail')).toHaveCount(0)
   await expect(detailSlot).toHaveAttribute('data-panel-state', 'closed')
@@ -1107,8 +1102,8 @@ test('建列被 core 拒绝:占位格与打好的列名都留着,改了再回车
   // Leave two values in a multiple-choice column on the first row, then delete the column: the
   // column is gone but the values stay on the paper.
   await win.locator('.ptable thead').hover()
-  await win.locator('.ptable thead [title="新增列"]').click()
-  await pop.locator('.ctbtn[title="多选"]').click()
+  await win.locator('.ptable thead [aria-label="新建列"]').click()
+  await pop.locator('.ctbtn[aria-label="多选"]').click()
   await newInput.fill(MULTI_COLUMN)
   await newInput.press('Enter')
   await expect(newHead).toHaveCount(0)
@@ -1121,10 +1116,10 @@ test('建列被 core 拒绝:占位格与打好的列名都留着,改了再回车
   }
   await win.keyboard.press('Escape')
   await win.locator('.ptable thead').hover()
-  await win.locator('.ptable thead [title="列设置"]').click()
+  await win.locator('.ptable thead [aria-label="列设置"]').click()
   const menu = pop.locator('.mi.colrow')
   await menu.filter({ hasText: MULTI_COLUMN }).hover()
-  await menu.filter({ hasText: MULTI_COLUMN }).locator('.cmx.del').click()
+  await menu.filter({ hasText: MULTI_COLUMN }).locator('.cmx.danger').click()
   await expect.poll(head).not.toContain(MULTI_COLUMN)
   await win.keyboard.press('Escape')
   // The table sorts by date added by default, so the first paper listed that way is its first row.
@@ -1138,21 +1133,21 @@ test('建列被 core 拒绝:占位格与打好的列名都留着,改了再回车
   // paper still holds several values under it. A non-default type is picked so this test catches
   // the type quietly falling back to the default after a rejection.
   await win.locator('.ptable thead').hover()
-  await win.locator('.ptable thead [title="新增列"]').click()
-  await pop.locator('.ctbtn[title="单选"]').click()
+  await win.locator('.ptable thead [aria-label="新建列"]').click()
+  await pop.locator('.ctbtn[aria-label="单选"]').click()
   await newInput.fill('读法')
   await newInput.press('Enter')
   // Columns are not inserted optimistically: for now the header has only the placeholder, and focus
   // stays in it.
   expect(await head()).not.toContain('读法')
   await expect(newInput).toBeFocused()
-  await expect(win.locator('#toast')).toHaveText('列「读法」不是多选列，有论文填着多个值')
+  await expect(win.locator('#notice[data-tone="refusal"] .notice-text')).toHaveText('还有内容在用')
   await expect(shown(win, '.ipcerror')).toHaveCount(0)
   // After the rejection the placeholder, type popover, typed name and chosen type (Single choice,
   // not the default Text) all remain.
   await expect(newHead).toHaveCount(1)
   await expect(newInput).toHaveValue('读法')
-  const selectBtn = pop.locator('.ctbtn[title="单选"]')
+  const selectBtn = pop.locator('.ctbtn[aria-label="单选"]')
   await expect(selectBtn).toHaveAttribute('aria-checked', 'true')
   await expect(selectBtn).toHaveClass(/on/)
   await expect.poll(head).not.toContain('读法')
@@ -1173,12 +1168,12 @@ test('建列一次建成:选中的类型跟着一次写落地,不是先建文本
 
   // Clicking + shows the placeholder and type popover together, with focus in the column name input.
   await win.locator('.ptable thead').hover()
-  await win.locator('.ptable thead [title="新增列"]').click()
+  await win.locator('.ptable thead [aria-label="新建列"]').click()
   await expect(win.locator('.ptable thead th.th-new')).toHaveCount(1)
   await expect(win.locator('.ptable thead th.th-new input')).toBeFocused()
 
   // Clicking Single choice sets its aria-checked="true" while focus stays in the input.
-  const selectBtn = win.locator('[data-radix-popper-content-wrapper] .ctbtn[title="单选"]')
+  const selectBtn = win.locator('[data-radix-popper-content-wrapper] .ctbtn[aria-label="单选"]')
   await selectBtn.click()
   await expect(selectBtn).toHaveAttribute('aria-checked', 'true')
   await expect(win.locator('.ptable thead th.th-new input')).toBeFocused()
@@ -1198,7 +1193,7 @@ test('建列占位:Esc 放弃,占位与类型层一起没了', async ({ win }) =
   await gotoPapers(win)
   await firstPage(win)
   await win.locator('.ptable thead').hover()
-  await win.locator('.ptable thead [title="新增列"]').click()
+  await win.locator('.ptable thead [aria-label="新建列"]').click()
   await win.locator('.ptable thead th.th-new input').fill('放弃的草稿')
   await expect(win.locator('[data-radix-popper-content-wrapper]')).toHaveCount(1)
 
@@ -1213,7 +1208,7 @@ test('建列占位:空着点到外面,占位与类型层一起没了;打了列�
   await gotoPapers(win)
   await firstPage(win)
   await win.locator('.ptable thead').hover()
-  await win.locator('.ptable thead [title="新增列"]').click()
+  await win.locator('.ptable thead [aria-label="新建列"]').click()
   await expect(win.locator('[data-radix-popper-content-wrapper]')).toHaveCount(1)
 
   await shown(win, '.desk-head .t').click()
@@ -1223,7 +1218,7 @@ test('建列占位:空着点到外面,占位与类型层一起没了;打了列�
   expect(await win.locator('.ptable thead th.th-new').count()).toBe(0)
 
   await win.locator('.ptable thead').hover()
-  await win.locator('.ptable thead [title="新增列"]').click()
+  await win.locator('.ptable thead [aria-label="新建列"]').click()
   await win.locator('.ptable thead th.th-new input').fill('点外面建成的列')
   await shown(win, '.desk-head .t').click()
   // The placeholder goes only once the column write lands.
@@ -1237,10 +1232,10 @@ test('建列占位:点类型按钮不放弃,占位、类型层、打的字都还
   await gotoPapers(win)
   await firstPage(win)
   await win.locator('.ptable thead').hover()
-  await win.locator('.ptable thead [title="新增列"]').click()
+  await win.locator('.ptable thead [aria-label="新建列"]').click()
   await win.locator('.ptable thead th.th-new input').fill('点类型不放弃')
 
-  await win.locator('[data-radix-popper-content-wrapper] .ctbtn[title="多选"]').click()
+  await win.locator('[data-radix-popper-content-wrapper] .ctbtn[aria-label="多选"]').click()
   await expect(win.locator('.ptable thead th.th-new')).toHaveCount(1)
   await expect(win.locator('[data-radix-popper-content-wrapper]')).toHaveCount(1)
   await expect(win.locator('.ptable thead th.th-new input')).toHaveValue('点类型不放弃')
@@ -1250,14 +1245,14 @@ test('建列占位:只用键盘建一列多选列', async ({ win }) => {
   await gotoPapers(win)
   await firstPage(win)
   await win.locator('.ptable thead').hover()
-  await win.locator('.ptable thead [title="新增列"]').click()
+  await win.locator('.ptable thead [aria-label="新建列"]').click()
   const input = win.locator('.ptable thead th.th-new input')
   await input.fill('键盘建列')
 
   // Tab from the input moves focus into the type popover, onto the selected Text option.
   await win.keyboard.press('Tab')
-  const textBtn = win.locator('[data-radix-popper-content-wrapper] .ctbtn[title="文本"]')
-  const multiBtn = win.locator('[data-radix-popper-content-wrapper] .ctbtn[title="多选"]')
+  const textBtn = win.locator('[data-radix-popper-content-wrapper] .ctbtn[aria-label="文本"]')
+  const multiBtn = win.locator('[data-radix-popper-content-wrapper] .ctbtn[aria-label="多选"]')
   await expect(textBtn).toBeFocused()
 
   // Arrow keys move through and select the three options, focus staying in the group: Text, Single
@@ -1284,7 +1279,7 @@ test('建列不乐观插入:写在路上或写失败时表头不会同时有新�
   const head = () => win.locator('.ptable thead th').allTextContents()
 
   await win.locator('.ptable thead').hover()
-  await win.locator('.ptable thead [title="新增列"]').click()
+  await win.locator('.ptable thead [aria-label="新建列"]').click()
   await win.locator('.ptable thead th.th-new input').fill('建列时序')
   // The write can land before a snapshot taken after Enter, so the header is recorded after every DOM
   // change from before Enter until the write lands.
@@ -1314,7 +1309,7 @@ test('建列写在路上时 Esc 放弃了草稿:占位与类型层一起没了,�
   await gotoPapers(win)
   await firstPage(win)
   await win.locator('.ptable thead').hover()
-  await win.locator('.ptable thead [title="新增列"]').click()
+  await win.locator('.ptable thead [aria-label="新建列"]').click()
   await win.locator('.ptable thead th.th-new input').fill('写在路上被放弃')
   await win.locator('.ptable thead th.th-new input').press('Enter')
   // Escape before the write lands removes the placeholder, but the write is already sent and
@@ -1338,7 +1333,7 @@ test('建列写在路上时在格子选择器里新建选项:排在建列之后�
   const cell = win.locator('.ptable tbody tr').first().locator('td.pt-cust').first()
   await expect(cell.locator('.tagchip')).toHaveText('精读')
   await win.locator('.ptable thead').hover()
-  await win.locator('.ptable thead [title="新增列"]').click()
+  await win.locator('.ptable thead [aria-label="新建列"]').click()
   await win.locator('.ptable thead th.th-new input').fill('建列时序')
 
   // Within one task: Enter starts the column write, then the first row's single-choice cell is
@@ -1376,7 +1371,7 @@ test('窄窗口下建列的类型层仍整块落在窗口里', async ({ win, app
   await gotoPapers(win)
   await firstPage(win)
   await win.locator('.ptable thead').hover()
-  await win.locator('.ptable thead [title="新增列"]').click()
+  await win.locator('.ptable thead [aria-label="新建列"]').click()
   // The type popover opens with the placeholder, so there is no Enter or write to wait for.
   const layer = (await win.locator('[data-radix-popper-content-wrapper] .ctxmenu').boundingBox())!
   const vw = await win.evaluate(() => window.innerWidth)
@@ -1385,7 +1380,7 @@ test('窄窗口下建列的类型层仍整块落在窗口里', async ({ win, app
   expect(layer.x + layer.width).toBeLessThanOrEqual(vw)
 })
 
-test('状态浮层是真菜单:四档是 menuitemradio,当前那一档 aria-checked;下键走到「在读」回车写回', async ({ win }) => {
+test('阅读状态浮层是真菜单:四档是 menuitemradio,当前那一档 aria-checked;下键走到「在读」回车写回', async ({ win }) => {
   await gotoPapers(win)
   await firstPage(win)
   const chip = win.locator('.ptable tbody tr').first().locator('.stchip')
@@ -1479,7 +1474,7 @@ test.describe(() => {
     await title.hover()
     const hovered = (await title.screenshot()).toString('base64')
 
-    // The selected bar is the cell's left 3px and the text sits below 7px of padding, so the first two
+    // The selected bar is the cell's left 3px and the text sits below 6px of padding, so the first two
     // pixel columns and the first three pixel rows show only the bar and the row background. Gradients
     // are dithered, so a repaint may move a channel by a level or two.
     const changed = await win.evaluate(async (shots) => {
@@ -1547,9 +1542,9 @@ test('分组齿轮是真菜单:每行是 menuitemcheckbox,勾选跟着分组栏;
   await expect(gear).toHaveAttribute('aria-haspopup', 'menu')
   await gear.click()
   const items = win.locator('[role="menu"] [role="menuitemcheckbox"]')
-  await expect(items).toHaveText(['主题', '项目', '状态'])
+  await expect(items).toHaveText(['主题', '项目', '阅读状态'])
   await expect(items.filter({ hasText: '主题' })).toHaveAttribute('aria-checked', 'true')
-  await expect(items.filter({ hasText: '状态' })).toHaveAttribute('aria-checked', 'true')
+  await expect(items.filter({ hasText: '阅读状态' })).toHaveAttribute('aria-checked', 'true')
 
   await items.filter({ hasText: '主题' }).click()
   await expect(items.filter({ hasText: '主题' })).toHaveAttribute('aria-checked', 'false')
@@ -1612,7 +1607,7 @@ test('改类型:文本 → 单选,现有的不同值收成选项,格子画成选
   await expect(cells.nth(0).locator('.tagchip')).toHaveText('精读')
   await expect(cells.nth(1).locator('.tagchip')).toHaveText('略读')
   await expect(cells.nth(2).locator('.tagchip')).toHaveText('精读')
-  await expect(win.locator('#banner span')).toHaveText('已改列类型 · 记入最近变动，可撤销')
+  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已改列类型')
   const column = (await call<PaperColumns>(win, 'papers.columns', {})).custom[0]!
   expect(column.type).toBe('select')
   // Options are collected in vault order, which differs from table order; Core's unit tests pin the
@@ -1657,11 +1652,11 @@ test('改类型:单选 → 文本,字留着、选项清空;正按它分组时当
   await firstPage(win)
   await shown(win, '.filters .segmented-control>button').filter({ hasText: '读法' }).click()
   await win.locator('.gxrow').first().click()
-  await expect(shown(win, '.filters .segmented-control>button.on')).toHaveText('读法')
+  await expect(shown(win, '.filters .segmented-control>button[aria-checked="true"]')).toHaveText('读法')
 
   await retype(win, '读法', '文本')
   await expect(shown(win, '.filters .segmented-control>button').filter({ hasText: '读法' })).toHaveCount(0)
-  await expect(shown(win, '.filters .segmented-control>button.on')).toHaveText('无')
+  await expect(shown(win, '.filters .segmented-control>button[aria-checked="true"]')).toHaveText('无')
   await win.keyboard.press('Escape')
   await firstPage(win)
   const cells = win.locator('.ptable tbody tr td.pt-cust')
@@ -1689,16 +1684,16 @@ test('改类型:多选 → 单选,只有一个值的直接转,空着的格子仍
   expect(await cellsOf(win, ids)).toEqual([{ tags: '综述' }, {}, { tags: '必读' }])
 })
 
-test('改类型:多选 → 单选时有论文填着多个值,整次被拒,toast 说清几篇,列与格子都不变', async ({ win }) => {
+test('改类型:多选 → 单选时有论文填着多个值,整次被拒,拒绝提示说清几篇,列与格子都不变', async ({ win }) => {
   const ids = await seed(win, [{ key: 'tags', label: '标签', type: 'multi', options: ['综述', '必读'] }],
     [{ tags: ['综述', '必读'] }, { tags: ['综述', '必读'] }, { tags: ['综述'] }])
   await gotoPapers(win)
   await firstPage(win)
   await retype(win, '标签', '单选')
-  await expect(win.locator('#toast')).toHaveText('列「标签」有 2 篇论文填着多个值，改不成单选列')
+  await expect(win.locator('#notice[data-tone="refusal"] .notice-text')).toHaveText('还有内容在用')
   await expect(shown(win, '.ipcerror')).toHaveCount(0)
   // Rejected: Multiple choice stays selected in the type row; the table cells and Core are unchanged.
-  await expect(win.locator('[data-radix-popper-content-wrapper] .typerow .ctbtn[title="多选"]'))
+  await expect(win.locator('[data-radix-popper-content-wrapper] .typerow .ctbtn[aria-label="多选"]'))
     .toHaveAttribute('aria-checked', 'true')
   await expect(win.locator('.ptable tbody tr td.pt-cust').nth(0).locator('.tagchip')).toHaveText(['综述', '必读'])
   expect((await call<PaperColumns>(win, 'papers.columns', {})).custom[0]!.type).toBe('multi')
@@ -1737,9 +1732,9 @@ test('改类型:没人填过的列,三档之间怎么换都照改', async ({ win
   const typeOf = () => call<PaperColumns>(win, 'papers.columns', {}).then((c) => c.custom[0])
   await retype(win, '备注', '多选')
   await expect.poll(typeOf).toEqual({ key: 'note', label: '备注', type: 'multi', options: [] })
-  await win.locator('[data-radix-popper-content-wrapper] .typerow .ctbtn[title="单选"]').click()
+  await win.locator('[data-radix-popper-content-wrapper] .typerow .ctbtn[aria-label="单选"]').click()
   await expect.poll(typeOf).toEqual({ key: 'note', label: '备注', type: 'select', options: [] })
-  await win.locator('[data-radix-popper-content-wrapper] .typerow .ctbtn[title="文本"]').click()
+  await win.locator('[data-radix-popper-content-wrapper] .typerow .ctbtn[aria-label="文本"]').click()
   await expect.poll(typeOf).toEqual({ key: 'note', label: '备注', type: 'text', options: [] })
 })
 
@@ -1748,20 +1743,20 @@ test('改类型:列菜单里只用键盘把文本列改成单选', async ({ win 
   await gotoPapers(win)
   await firstPage(win)
   await win.locator('.ptable thead').hover()
-  await win.locator('.ptable thead [title="列设置"]').click()
+  await win.locator('.ptable thead [aria-label="列设置"]').click()
   const menu = win.locator('[data-radix-popper-content-wrapper]')
 
   // Opening the menu focuses its first tabbable button; a text column has no Options toggle, so
   // that is Change type.
-  await expect(menu.locator('.mi.colrow', { hasText: '备注' }).locator('[title="改类型"]')).toBeFocused()
+  await expect(menu.locator('.mi.colrow', { hasText: '备注' }).locator('[aria-label="改类型"]')).toBeFocused()
   await win.keyboard.press('Enter')
   // Of the expanded type options only the current one is in the Tab order; after Change type come
   // the rename pen, the delete × and then that option.
   await win.keyboard.press('Tab')
   await win.keyboard.press('Tab')
   await win.keyboard.press('Tab')
-  const selectBtn = menu.locator('.typerow .ctbtn[title="单选"]')
-  await expect(menu.locator('.typerow .ctbtn[title="文本"]')).toBeFocused()
+  const selectBtn = menu.locator('.typerow .ctbtn[aria-label="单选"]')
+  await expect(menu.locator('.typerow .ctbtn[aria-label="文本"]')).toBeFocused()
 
   // ArrowRight moves to Single choice and selects it: the column becomes single-choice, the cell
   // renders as an option chip, and focus stays on Single choice.
@@ -1778,7 +1773,7 @@ test('详情里点一项元数据,原位输入框没有边框、浅灰实底,只
   await gotoPapers(win)
   await firstPage(win)
   await win.locator('.ptable tbody tr').first().locator('td.pt-title').click()
-  await win.locator('.pdetail .metadata-editable[title="修改年份"]').click()
+  await win.locator('.pdetail .paper-meta-list dt:text-is("年份") + dd .metadata-editable').click()
 
   const input = win.locator('.pdetail .metadata-input')
   await expect(input).toBeFocused()

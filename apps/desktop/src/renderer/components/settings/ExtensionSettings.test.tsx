@@ -20,6 +20,8 @@ describe('ExtensionSettings', () => {
   let root: Root
 
   beforeEach(() => {
+    // FadeText measures whether its text fits, and jsdom has no ResizeObserver.
+    vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} })
     globalThis.IS_REACT_ACT_ENVIRONMENT = true
     window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'en')
     host = document.createElement('div')
@@ -48,6 +50,21 @@ describe('ExtensionSettings', () => {
     act(() => toggle.click())
     expect(toggle.getAttribute('aria-expanded')).toBe('true')
     expect(host.querySelector('.extension-command-code')?.textContent).toBe(extension.installCommand)
+  })
+
+  it('names each extension and the tutorial without sentences explaining them', () => {
+    act(() => root.render(
+      <MessagesProvider>
+        <ExtensionSettings
+          statuses={[extension]} onCopy={vi.fn()} onCopyPrompt={vi.fn()}
+          plugin={{ plugin: { version: '0.0.9', checkedAt: null }, checking: false, onCheck: vi.fn() }}
+        />
+      </MessagesProvider>,
+    ))
+    expect([...host.querySelectorAll('.extension-head p')].map((p) => p.textContent))
+      .toEqual(['Not checked online yet'])
+    expect(host.querySelector('[data-extension-tutorial] > .section-heading + p')).toBeNull()
+    expect(host.querySelector('.extension-tutorial-steps li p')).toBeNull()
   })
 
   it('shows workflow guidance and copies the selected prompt without exposing tool syntax', () => {

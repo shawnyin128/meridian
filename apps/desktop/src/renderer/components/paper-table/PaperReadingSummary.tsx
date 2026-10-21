@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react'
 import type { PaperReading, PaperRow } from '../../../shared/contract.js'
 import { papers } from '../../ipc.js'
+import { errorLabel } from '../../lib/failure-label.js'
 import { useMessages } from '../../messages/useMessages.js'
 import { useVaultRevision, type JumpAnchor } from '../../shell/AppShell.js'
 import { entryAnchor, readingEntries } from './reading-entries.js'
 import { EmptyState } from '../EmptyState.js'
+import { LoadingPlaceholder } from '../LoadingPlaceholder.js'
 import { PageError, SectionHeading } from '../PageShell.js'
 import { StructuredList, StructuredRow } from '../StructuredList.js'
 
@@ -29,7 +31,7 @@ export function PaperReadingSummary({ paper, onRead, onConclusions }: {
     setError(null)
     void papers.reading(paper.id)
       .then((value) => { if (live) setReading(value) })
-      .catch((cause: Error) => { if (live) setError(cause.message) })
+      .catch((cause: unknown) => { if (live) setError(errorLabel(m, cause)) })
     return () => { live = false }
   }, [paper.id, revision])
 
@@ -50,7 +52,9 @@ export function PaperReadingSummary({ paper, onRead, onConclusions }: {
       </dl>
       <SectionHeading variant="rail">{m.papers.reading.remarkAndNotes}</SectionHeading>
       <PageError error={error} />
-      {remark === '' && entries.length === 0
+      {held === null
+        ? (error === null ? <LoadingPlaceholder shape="rows" count={2} /> : null)
+        : remark === '' && entries.length === 0
         ? <EmptyState variant="section">{m.papers.reading.empty}</EmptyState>
         : (
           <StructuredList variant="embedded">
@@ -65,7 +69,7 @@ export function PaperReadingSummary({ paper, onRead, onConclusions }: {
         )}
       {entries.length > EXCERPT
         ? (
-          <button className="lm more" onClick={() => onRead({ panel: 'notes' })}>
+          <button type="button" className="btn ghost sm reading-summary-all" onClick={() => onRead({ panel: 'notes' })}>
             {m.papers.reading.viewAll(entries.length)}
           </button>
         )

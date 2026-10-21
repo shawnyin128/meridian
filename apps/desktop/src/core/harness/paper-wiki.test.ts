@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { HarnessPaperWikiQuality } from '../../shared/contract.js'
+import { callFailure } from '../call-error.js'
 import type { PaperWikiDraft } from './paper-wiki.js'
 import {
   paperWikiHarnessError, projectPaperWikiReview, renderPaperWikiDraft,
@@ -164,6 +165,15 @@ describe('Paper Wiki Harness draft boundary', () => {
       ...quality, passed: false,
       dimensions: quality.dimensions.map((dimension) => ({ ...dimension })),
     }, 'p1')).toThrow('结论不一致')
+  })
+
+  it('fails a run the user stopped as cancelled and every other Harness failure as a model failure', () => {
+    const failure = (kind: 'cancelled' | 'harness_gone' | 'bad_request' | 'model_error') =>
+      callFailure(paperWikiHarnessError(new HarnessRpcError({ kind, message: kind })))
+    expect(failure('cancelled')).toBe('cancelled')
+    expect(failure('harness_gone')).toBe('model')
+    expect(failure('bad_request')).toBe('model')
+    expect(failure('model_error')).toBe('model')
   })
 
   it('turns cancellation and process loss into explicit no-retry messages', () => {

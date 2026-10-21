@@ -1,5 +1,5 @@
 import type {
-  AuthorCandidate, DiscoveryFetchResult, InboxDownloadResult, JobsStatus, NetFailed, PaperImportResult,
+  AuthorCandidate, AuthorSearchFailed, DiscoveryFetchResult, InboxDownloadResult, JobsStatus, NetFailed, PaperImportResult,
   SemanticKeyCheckResult, WatchSuggestionResult,
 } from '../shared/contract.js'
 import { createInboxDownloads } from './inbox/download.js'
@@ -7,7 +7,7 @@ import { createWatchFetcher } from './inbox/fetch.js'
 import { armFetchSchedule } from './inbox/schedule.js'
 import { createArxiv } from './net/arxiv.js'
 import type { HttpGet } from './net/http.js'
-import { createRateLimitedGet, HttpStatusError, netFailure } from './net/http.js'
+import { createRateLimitedGet, netFailure } from './net/http.js'
 import { createSemanticAuthors } from './net/semantic-authors.js'
 import { createArxivSuggestionSource, createWatchSuggestions } from './net/watch-suggestions.js'
 import { createAuthorSearch, type ScholarSource } from './net/scholar-sources.js'
@@ -23,7 +23,7 @@ export type Background = {
   importPaper(filename: string, bytes: Uint8Array): PaperImportResult
   downloadInbox(id: string): Promise<InboxDownloadResult>
   fetchWatches(watchIds?: string[]): Promise<void>
-  searchAuthors(query: string): Promise<AuthorCandidate[] | NetFailed>
+  searchAuthors(query: string): Promise<AuthorCandidate[] | AuthorSearchFailed>
   suggestWatches(input: { focus: string; seedTopics?: string[] }): Promise<WatchSuggestionResult | NetFailed>
   fetchDiscoveries(projectId?: string, force?: boolean): Promise<DiscoveryFetchResult>
   /** One Semantic Scholar request with the saved key; fails as authentication when no key is saved. */
@@ -95,15 +95,10 @@ export function createBackground(deps: {
     downloadInbox: (id) => downloads.download(id),
     fetchWatches: (watchIds) => fetcher.run(watchIds),
     async searchAuthors(query) {
-      if (semanticKey() === undefined) {
-        throw new Error('填入 Semantic Scholar key 后才能区分同名作者；也可以先按姓名保存为未确认作者')
-      }
+      if (semanticKey() === undefined) return { kind: 'failed', reason: 'no-key' }
       try {
         return await authorSearch.search(query)
       } catch (error) {
-        if (error instanceof HttpStatusError && error.status === 429) {
-          throw new Error('Semantic Scholar 正在限流，请稍后重试；也可以先按姓名保存为未确认作者')
-        }
         return { kind: 'failed', reason: netFailure(error) }
       }
     },
@@ -111,9 +106,6 @@ export function createBackground(deps: {
       try {
         return await watchSuggestions.suggest(input)
       } catch (error) {
-        if (error instanceof HttpStatusError && error.status === 429) {
-          throw new Error('论文检索正在限流，请稍后重试')
-        }
         return { kind: 'failed', reason: netFailure(error) }
       }
     },

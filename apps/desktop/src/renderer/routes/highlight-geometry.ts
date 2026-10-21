@@ -2,13 +2,6 @@ import type { PaperHighlightRect } from '../../shared/contract.js'
 
 type Rect = Pick<DOMRect, 'left' | 'top' | 'width' | 'height'>
 
-/** The selection toolbar's height and its distance from the selected text, in CSS pixels. */
-const TOOLS_HEIGHT = 34
-const TOOLS_GAP = 10
-/** How close the toolbar comes to the window's top and bottom, and its centre to the sides. */
-const TOOLS_MARGIN = 12
-const TOOLS_HALF_WIDTH = 100
-
 /**
  * Splits a selection into one range per text node it covers, each trimmed of leading and trailing
  * whitespace and dropped when nothing else is left. `Range.getClientRects` also returns the box of
@@ -86,35 +79,29 @@ export function highlightLines(rects: PaperHighlightRect[], aspect: number): Pap
 
 /**
  * The SVG drawing of a highlight's lines: `box` is their union in page coordinates, which places
- * the drawing and serves as its viewBox, and `path` either fills every line as one shape or, for a
- * highlight with a note, draws one underline along the bottom of each line.
+ * the drawing and serves as its viewBox, `fill` fills every line as one shape, and `underline` draws
+ * one line along the bottom of each line, the mark of a highlight with a note.
  */
 export function highlightShape(
-  lines: PaperHighlightRect[], noted: boolean,
-): { box: PaperHighlightRect; path: string } {
-  const path = lines.map((line) => (noted
-    ? `M${line.x} ${line.y + line.height}h${line.width}`
-    : `M${line.x} ${line.y}h${line.width}v${line.height}h${-line.width}z`)).join('')
-  return { box: unionOf(lines), path }
+  lines: PaperHighlightRect[],
+): { box: PaperHighlightRect; fill: string; underline: string } {
+  return {
+    box: unionOf(lines),
+    fill: lines.map((line) => `M${line.x} ${line.y}h${line.width}v${line.height}h${-line.width}z`).join(''),
+    underline: lines.map((line) => `M${line.x} ${line.y + line.height}h${line.width}`).join(''),
+  }
 }
 
 /**
- * Where the selection toolbar goes for the selected `lines` on a page whose client rectangle is
- * `page`: centred under the text, or above it when the window `view` has no room below. `left` is
- * the toolbar's centre and `top` its top edge, both in client pixels.
+ * The client rectangle around the selected `lines` on a page whose client rectangle is `page`: the
+ * box the selection toolbar is placed against.
  */
-export function selectionToolsAnchor(
-  page: Rect, lines: PaperHighlightRect[], view: { width: number; height: number },
-): { left: number; top: number } {
+export function selectionBox(page: Rect, lines: PaperHighlightRect[]): DOMRect {
   const box = unionOf(lines)
-  const top = page.top + box.y * page.height
-  const below = top + box.height * page.height + TOOLS_GAP
-  const centre = page.left + (box.x + box.width / 2) * page.width
-  return {
-    left: Math.min(view.width - TOOLS_HALF_WIDTH, Math.max(TOOLS_HALF_WIDTH, centre)),
-    top: below + TOOLS_HEIGHT <= view.height - TOOLS_MARGIN
-      ? below : Math.max(TOOLS_MARGIN, top - TOOLS_GAP - TOOLS_HEIGHT),
-  }
+  return DOMRect.fromRect({
+    x: page.left + box.x * page.width, y: page.top + box.y * page.height,
+    width: box.width * page.width, height: box.height * page.height,
+  })
 }
 
 /** The smallest rectangle holding every one of `rects`, which must not be empty. */

@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { CardTray } from './CardTray.js'
 
 declare global {
@@ -13,6 +13,8 @@ describe('CardTray', () => {
   let root: Root
 
   beforeEach(() => {
+    // FadeText measures whether its text fits, and jsdom has no ResizeObserver.
+    vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} })
     globalThis.IS_REACT_ACT_ENVIRONMENT = true
     host = document.createElement('div')
     document.body.append(host)
@@ -36,8 +38,18 @@ describe('CardTray', () => {
     expect(detail.getAttribute('aria-hidden')).toBe('true')
     act(() => toggle.click())
     expect(toggle.getAttribute('aria-expanded')).toBe('true')
-    expect(toggle.title).toBe('Hide details')
+    expect([toggle.getAttribute('aria-label'), toggle.getAttribute('title')]).toEqual(['Hide details', null])
     expect(detail.getAttribute('aria-hidden')).toBe('false')
     expect(host.querySelector('.card-tray')?.classList.contains('is-open')).toBe(true)
+  })
+
+  it('a row tray draws no surface and lets its summary name the toggle', () => {
+    act(() => root.render(<CardTray variant="row" summary="Renamed the project"><p>diff</p></CardTray>))
+    const toggle = host.querySelector<HTMLButtonElement>('.card-tray-toggle')!
+    expect(host.querySelector('.card-tray')!.className).toBe('card-tray card-tray--row')
+    expect([toggle.getAttribute('aria-label'), toggle.getAttribute('title')]).toEqual([null, null])
+    expect(toggle.textContent).toBe('Renamed the project')
+    act(() => toggle.click())
+    expect(toggle.getAttribute('aria-expanded')).toBe('true')
   })
 })

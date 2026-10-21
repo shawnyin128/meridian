@@ -1,13 +1,15 @@
 import { useEffect, useState } from 'react'
 import type { SemanticKeyCheckResult, SemanticKeyStatus } from '../../../shared/contract.js'
 import { delivery } from '../../ipc.js'
+import { errorLabel } from '../../lib/failure-label.js'
 import { useMessages } from '../../messages/useMessages.js'
+import { EntityLink } from '../EntityLink.js'
 import { FormInput } from '../FormControls.js'
+import { Tag } from '../Tag.js'
 import {
   ServiceActions, ServiceCard, ServiceClearKeyButton, ServiceConnectionStatus, ServiceError, ServiceField,
   ServiceFoot, ServiceSavedKey, ServiceStatus,
 } from './ServiceCard.js'
-import './SemanticKeySettings.css'
 
 const APPLY_URL = 'https://www.semanticscholar.org/product/api#api-key-form'
 
@@ -26,8 +28,8 @@ export function SemanticKeySettings() {
   const [connectionCheck, setConnectionCheck] = useState<ConnectionCheckState>({ state: 'idle' })
 
   useEffect(() => {
-    void delivery.semanticKey().then(setStatus).catch((e: Error) => setError(e.message))
-  }, [])
+    void delivery.semanticKey().then(setStatus).catch((e: unknown) => setError(errorLabel(m, e)))
+  }, [m])
 
   useEffect(() => {
     setConnectionCheck({ state: 'idle' })
@@ -44,7 +46,7 @@ export function SemanticKeySettings() {
       setClearPending(false)
       setConnectionCheck({ state: 'idle' })
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : String(caught))
+      setError(errorLabel(m, caught))
     } finally {
       setSaving(false)
     }
@@ -74,7 +76,7 @@ export function SemanticKeySettings() {
     <ServiceCard className="semantic-key-card">
       <ServiceStatus
         title={copy.heading}
-        description={<>{copy.description} <a href={APPLY_URL} target="_blank" rel="noreferrer">{copy.apply}</a></>}
+        description={<EntityLink kind="external" label={copy.apply} href={APPLY_URL} />}
         configured={status.configured}
         configuredLabel={m.settings.model.configured}
         notConfiguredLabel={m.settings.model.notConfigured}
@@ -121,9 +123,9 @@ export function SemanticKeySettings() {
               }}
             />
           ) : null}
+          {canTestConnection ? null : <Tag>{m.settings.model.connection.notSaved}</Tag>}
           <button
             className="btn" disabled={!canTestConnection || saving || connectionCheck.state === 'testing'}
-            title={canTestConnection ? undefined : copy.connection.saveFirst}
             onClick={() => { void testConnection() }}
           >
             {connectionCheck.state === 'testing' ? m.settings.model.connection.testing : m.settings.model.connection.action}

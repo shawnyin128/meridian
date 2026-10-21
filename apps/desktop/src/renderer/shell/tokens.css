@@ -1,27 +1,53 @@
 /*
  * Variable names match :root / [data-theme="dark"] of e2e/fixtures/platform-shell-demo.html.
- * 1. Color values match the demo: both moved to the brand palette together. The accent is Primary
- *    blue, and the dark theme has a full gray scale; both derive from a hue of about 220°.
- * 2. The tokens added beyond the demo (--accent-solid / --press / --press-solid / --ring / --sel /
- *    --link / --tint-* / --on-tint / --paper / --scrim / --r-* / --fs-* / --lh-* / --t-* / --e-*)
+ * 1. The dark color values match the demo: the accent is Primary blue, and the dark theme has a full
+ *    gray scale; both derive from a hue of about 220°. The dark --ter is lighter, so it keeps 4.5:1 on
+ *    every surface and on a chip over a card. The light grays are neutral instead, and the light --sec
+ *    and --ter are darker, so they keep 4.5:1 on every surface they sit on, a chip included.
+ *    The accent marks only what to act on, where you are and what is on or running.
+ * 2. The tokens added beyond the demo (--accent-solid / --press / --press-solid / --hover-solid /
+ *    --bad-solid / --bad-text / --good-text / --warn-text / --accent-text / --ring* / --sel / --selected /
+ *    --on-selected / --tint-* / --star / --hl-* / --paper / --scrim / --raised / --chip / --track / --r-* /
+ *    --pad-* / --sp-* / --row-* / --fs-* / --fw-* / --lh-* / --t-* / --e-* / --window-buttons-*)
  *    and the split into --sh-1 / --sh-2 / --sh-3 / --sh-paper are not in the demo: the demo is the
  *    reference for layout and behavior, not for the finished look, so the two differ on these.
- * 3. --accent-solid / --press-solid / --ring / --paper / --on-tint have the same value in both
- *    themes and do not flip (the first three are written only in :root; the last two are repeated
- *    with the same values next to their neighbours in the dark block). No dark value is missing.
+ * 3. --accent-solid / --bad-solid / --press-solid / --hover-solid / --ring / --star / --hl-* /
+ *    --paper have the same value in both themes and do not flip (all but the last are written only in
+ *    :root; the last is repeated with the same value next to its neighbours in the dark block). No dark
+ *    value is missing.
  */
 :root{
-  --desktop:#e6eaf2; --window:#f6f8fc; --content:#ffffff; --sidebar:rgba(246,248,252,.85);
-  --ink:#0a1020; --sec:#536175; --ter:#7c8798;
-  --sep:#dce4ef; --sep2:rgba(220,228,239,.6);
+  /*
+   * The surface ladder, bottom to top: --window (sidebar, title bar, page heads), --content (the
+   * canvas), --card, then --raised (menus, popovers, tooltips, the notice). In this theme the canvas,
+   * cards and floating layers are white, so a card's border separates it from the canvas.
+   */
+  --desktop:#eaeaea; --window:#f8f8f8; --content:#ffffff; --sidebar:rgba(248,248,248,.85);
+  --ink:#111111; --sec:#555555; --ter:#5b5b5b;
+  --sep:#e3e3e3; --sep2:rgba(227,227,227,.6);
   --accent:#3568ff; --accent-soft:rgba(53,104,255,.12); --on-accent:#ffffff;
   /* Solid accent surfaces, the same in both themes: white on the dark --accent is only 3.19:1 */
   --accent-solid:#3568ff;
-  --card:#ffffff; --field:#eef2f8; --hover:rgba(10,16,32,.05);
-  --good:#1f9d4d; --warn:#b8860b; --bad:#e0453a; --info:#0e9aa7; --hl:rgba(255,214,10,.45);
-  /* Two record-kind hues beyond the semantic tones above: complete (teal) and project (violet). */
-  --teal:#0f8a72; --violet:#7c4fe0;
-  --mslane:rgba(184,134,11,.07);
+  /*
+   * Accent text on --accent-soft, the current sidebar row: the accent moved 30% toward --ink, so it
+   * keeps 4.5:1 there in both themes, a hovered row included.
+   */
+  --accent-text:color-mix(in srgb,var(--accent) 70%,var(--ink));
+  --card:#ffffff; --raised:#ffffff; --field:#f2f2f2; --hover:rgba(17,17,17,.05);
+  /* The neutral tag and count fill: translucent, so it stays a step off any surface, a hovered row included. */
+  --chip:rgba(17,17,17,.07);
+  /*
+   * The segmented control's track: translucent and darker, so it stays a step below the canvas, a
+   * card or a popover in both themes, and the --raised thumb sits a step above it.
+   */
+  --track:rgba(17,17,17,.07);
+  --good:#1f9d4d; --warn:#b8860b; --bad:#e0453a; --hl:rgba(255,214,10,.45);
+  /* Text in a semantic tone on the neutral chip over any surface: darker than the tone, so it keeps 4.5:1. */
+  --good-text:color-mix(in srgb,var(--good) 60%,var(--ink)); --warn-text:color-mix(in srgb,var(--warn) 55%,var(--ink));
+  /* A rated star, the same in both themes. */
+  --star:#e3a520;
+  /* The timeline's milestone lane: the muted neutral tint, a step off the rows around it. */
+  --mslane:var(--tint-mut);
   /*
    * Content columns and cards scale with the window width in three steps, not continuously: narrow
    * (default), medium (≥1600) and wide (≥2000). --pagew is the content column width of list screens;
@@ -31,68 +57,111 @@
    * summary font sizes, and its number of summary lines.
    */
   --pagew:1080px; --prosew:1080px; --chatw:720px;
-  --cardw:230px; --card-tt:13px; --card-fs:12px; --card-lines:2;
+  /*
+   * The title bar's room for the window's own buttons, which main/index.ts places: win32 and linux
+   * draw them at its end, macOS its traffic lights at its start.
+   */
+  --window-buttons-end:154px; --window-buttons-start:78px;
+  /* A detail panel's width beside the list whose item it details. */
+  --detailw:360px;
+  --cardw:230px; --card-tt:var(--fs-card-title); --card-fs:var(--fs-sm); --card-lines:2;
   --diff-add:rgba(40,167,69,.12); --diff-del:rgba(224,69,58,.1);
   --sans:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI","PingFang SC","Microsoft YaHei","Noto Sans SC",sans-serif;
   --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
-  --sbthumb:rgba(10,16,32,.28); --sbthumb-h:rgba(10,16,32,.45);
-  --q-bg:rgba(10,16,32,.06);
+  --sbthumb:rgba(17,17,17,.28); --sbthumb-h:rgba(17,17,17,.45); --scrollbar-size:12px;
+  --q-bg:rgba(17,17,17,.06);
   /*
    * Not in the demo: a clipped one-line title fades out at its right end instead of ending in an
    * ellipsis. Used only as a mask-image, so only the colors' alpha counts. An element using it must
    * fill the available width, or the end of a short title is faded too.
    */
-  --clipfade:linear-gradient(to right,#000 calc(100% - 28px),transparent);
+  --clipfade-width:28px;
+  --clipfade:linear-gradient(to right,#000 calc(100% - var(--clipfade-width)),transparent);
   /*
    * The stroke a border turns into on hover. For 1px strokes only: it moves 15% from --sep toward
    * --sec, which would be nearly invisible on the 4px-wide resize handle or the 2px column-width guide.
    */
-  --sep-strong:#c7d0dd;
+  --sep-strong:#cecece;
   /*
-   * Pressed-state overlays. --press-solid darkens in both themes: lightening a solid accent surface
-   * would drop its white text to 3.78:1.
+   * Pressed-state overlays, and the hover overlay of a solid surface. --press-solid and --hover-solid
+   * darken in both themes: lightening a solid accent surface would drop its white text to 3.78:1.
    */
-  --press:rgba(10,16,32,.06); --press-solid:rgba(0,0,0,.18);
-  --ring:var(--accent); --sel:rgba(53,104,255,.22); --link:var(--accent);
+  --press:rgba(17,17,17,.06); --press-solid:rgba(0,0,0,.18); --hover-solid:rgba(0,0,0,.08);
+  /*
+   * The solid danger surface, darker than --bad so white text on it passes 4.5:1, and danger text on
+   * a soft red tint, the neutral chip or a card, darker in light and lighter in dark for the same reason.
+   */
+  --bad-solid:#d1372c; --bad-text:color-mix(in srgb,var(--bad) 60%,var(--ink));
+  --ring:var(--accent); --ring-width:2px; --ring-offset:2px;
+  /* How far the ring reaches past a control: a container that clips keeps this much room around its controls. */
+  --ring-room:calc(var(--ring-width) + var(--ring-offset));
+  --sel:rgba(17,17,17,.14);
+  /*
+   * The one selected look of rows, cards, graph nodes and picked options: a neutral fill a step darker
+   * than the hover, and text in --ink.
+   */
+  --selected:rgba(17,17,17,.1); --on-selected:var(--ink);
+  /* The on state of a control that already has a fill at rest, a page or a filter: a step darker than --selected. */
+  --selected-strong:rgba(17,17,17,.18);
   --tint-good:rgba(48,209,88,.14); --tint-warn:rgba(255,214,10,.14);
-  --tint-bad:rgba(224,69,58,.12); --tint-info:rgba(14,154,167,.14);
-  --tint-mut:rgba(10,16,32,.04); --on-tint:#fff;
-  --tint-teal:rgba(15,138,114,.14); --tint-violet:rgba(124,79,224,.14);
-  /* Entity-type tags. Only type tags use these brand tints; other tags are neutral or semantic */
-  --tint-paper:rgba(91,140,255,.14); --tint-wiki:rgba(167,120,255,.14);
-  /* The paper does not flip with the theme */
-  --paper:#fff; --scrim:rgba(10,22,48,.42);
-  --sh-1:0 1px 2px rgba(10,22,48,.06), 0 0 0 1px rgba(10,22,48,.04);
-  --sh-2:0 0 0 1px rgba(10,22,48,.05), 0 6px 16px rgba(10,22,48,.12), 0 2px 5px rgba(10,22,48,.06);
-  --sh-3:0 24px 60px rgba(10,22,48,.20), 0 6px 18px rgba(10,22,48,.10);
-  --sh-paper:0 4px 22px rgba(10,22,48,.22);
-  --r-xs:4px; --r-sm:6px; --r-md:8px; --r-lg:10px; --r-xl:12px; --r-bubble:18px; --r-full:999px;
+  --tint-bad:rgba(224,69,58,.12);
+  --tint-mut:rgba(17,17,17,.04);
+  /* The paper does not flip with the theme, nor do the reading highlights on it and the underline of a highlight with a note */
+  --paper:#fff; --scrim:rgba(23,23,23,.42);
+  --hl-yellow:#f8d84a; --hl-green:#87d99a; --hl-blue:#82c7f2; --hl-pink:#f0a0be; --hl-note:rgba(17,17,17,.55);
+  /* Elevation. --sh-2 (menus, popovers) and --sh-3 (dialogs) draw the layer's edge as their first ring. */
+  --sh-1:0 1px 2px rgba(23,23,23,.06), 0 0 0 1px rgba(23,23,23,.04);
+  --sh-2:0 0 0 1px rgba(23,23,23,.10), 0 6px 16px rgba(23,23,23,.12), 0 2px 5px rgba(23,23,23,.06);
+  --sh-3:0 0 0 1px rgba(23,23,23,.08), 0 24px 60px rgba(23,23,23,.20), 0 6px 18px rgba(23,23,23,.10);
+  --sh-paper:0 4px 22px rgba(23,23,23,.22);
+  --r-2xs:2px; --r-xs:4px; --r-sm:6px; --r-md:8px; --r-lg:10px; --r-xl:12px; --r-2xl:16px; --r-bubble:18px; --r-full:999px;
+  /*
+   * One radius per object class, dialogs above cards. A nested shape is concentric with its container:
+   * its radius is the container's minus the --pad-* between them.
+   */
+  --r-control:var(--r-md); --r-chip:var(--r-full); --r-card:var(--r-xl); --r-menu:var(--r-lg); --r-dialog:var(--r-2xl);
+  --pad-menu:var(--sp-6); --r-menu-item:calc(var(--r-menu) - var(--pad-menu));
+  --pad-track:var(--sp-2); --r-thumb:calc(var(--r-control) - var(--pad-track));
+  /* Spacing steps, then per list type a row height and the row's inline padding; a menu row also has its check slot. */
+  --sp-2:2px; --sp-4:4px; --sp-6:6px; --sp-8:8px; --sp-10:10px; --sp-12:12px; --sp-14:14px; --sp-16:16px; --sp-20:20px; --sp-24:24px; --sp-32:32px;
+  --row-nav-h:30px; --row-nav-pad:var(--sp-8); --row-menu-h:30px; --row-menu-pad:var(--sp-10); --row-menu-check:13px;
+  --row-list-h:38px; --row-list-pad:var(--sp-8); --row-table-h:38px; --row-table-pad:var(--sp-10);
   --fs-cap:11px; --fs-sm:12px; --fs-base:13px; --fs-read:14px; --fs-title:15px; --fs-xl:17px;
+  --fw-regular:400; --fw-medium:500; --fw-semibold:600; --fw-bold:700;
+  /*
+   * Text roles, from the top: page title, section, group, card title, body (--fs-base), meta (--fs-sm in
+   * --ter) and small label (in --ter). Every title takes the one title weight. No role sets letter
+   * spacing or upper case: spacing pulls CJK apart, and upper case changes only the Latin labels.
+   */
+  --fw-title:var(--fw-semibold);
+  --fs-page-title:var(--fs-xl); --fs-section:var(--fs-title); --fs-group:var(--fs-read); --fs-card-title:var(--fs-base);
+  --fs-label:var(--fs-cap); --fw-label:var(--fw-semibold);
+  --fs-dialog-title:var(--fs-title);
   --lh-tight:1.3; --lh-ui:1.45; --lh-read:1.7;
   --t-fast:120ms; --t:180ms; --t-slow:280ms;
+  /* The pause before content enters an opening container, a refusal shake, a located row's flash, a spinner turn. */
+  --t-delay:60ms; --t-shake:320ms; --t-flash:500ms; --t-spin:1s;
   --e-out:cubic-bezier(.2,.6,.35,1); --e-inout:cubic-bezier(.4,0,.2,1);
 }
 [data-theme="dark"]{
   --desktop:#040b14; --window:#07111f; --content:#0d1b2d; --sidebar:rgba(9,21,38,.85);
-  --ink:#f5f7fb; --sec:#aab6c8; --ter:#7a8698;
+  --ink:#f5f7fb; --sec:#aab6c8; --ter:#94a0b2;
   --sep:#20324c; --sep2:rgba(32,50,76,.6);
   --accent:#558cff; --accent-soft:rgba(85,140,255,.12); --on-accent:#ffffff;
-  --card:#12213a; --field:#16263f; --hover:rgba(245,247,251,.05);
-  --good:#30d158; --warn:#ffd60a; --bad:#ff453a; --info:#2ec4d6; --hl:rgba(255,214,10,.35);
-  --teal:#2dd4bf; --violet:#a78bfa;
-  --mslane:rgba(255,214,10,.06);
+  --card:#12213a; --raised:#12213a; --field:#16263f; --hover:rgba(245,247,251,.05);
+  --chip:rgba(245,247,251,.08); --track:rgba(0,0,0,.45);
+  --good:#30d158; --warn:#ffd60a; --bad:#ff453a; --hl:rgba(255,214,10,.35);
+  --good-text:var(--good); --warn-text:var(--warn); --bad-text:color-mix(in srgb,var(--bad) 50%,var(--ink));
   --diff-add:rgba(48,209,88,.14); --diff-del:rgba(255,69,58,.12);
   --sbthumb:rgba(245,247,251,.28); --sbthumb-h:rgba(245,247,251,.45);
   --q-bg:rgba(4,11,20,.4);
   --sep-strong:#394a62;
   --press:rgba(245,247,251,.09);
-  --sel:rgba(85,140,255,.22);
+  --sel:rgba(245,247,251,.18); --selected:rgba(245,247,251,.1); --selected-strong:rgba(245,247,251,.18);
   --tint-good:rgba(48,209,88,.20); --tint-warn:rgba(255,214,10,.20);
   /* #ff453a on an 18% red tint over #0d1b2d is 4.26:1, short of body text's 4.5:1; 10% gives 4.68:1 */
-  --tint-bad:rgba(255,69,58,.10); --tint-info:rgba(46,196,214,.20);
-  --tint-mut:rgba(245,247,251,.05); --on-tint:#fff;
-  --tint-teal:rgba(45,212,191,.20); --tint-violet:rgba(167,139,250,.20);
-  --tint-paper:rgba(91,140,255,.20); --tint-wiki:rgba(197,155,255,.20);
+  --tint-bad:rgba(255,69,58,.10);
+  --tint-mut:rgba(245,247,251,.05);
   --paper:#fff; --scrim:rgba(4,11,20,.55);
   --sh-1:0 1px 2px rgba(0,0,0,.5), 0 0 0 1px rgba(245,247,251,.05);
   --sh-2:0 0 0 1px rgba(245,247,251,.08), 0 8px 24px rgba(0,0,0,.55), 0 2px 6px rgba(0,0,0,.4);
@@ -100,34 +169,37 @@
   --sh-paper:0 4px 22px rgba(0,0,0,.5);
 }
 
-@media (min-width:1600px){:root{--pagew:1320px;--prosew:1200px;--chatw:880px;--cardw:280px;--card-tt:13px;--card-fs:12px;--card-lines:3}}
-@media (min-width:2000px){:root{--pagew:1560px;--prosew:1320px;--chatw:1000px;--cardw:320px;--card-tt:14px;--card-fs:13px;--card-lines:3}}
+@media (min-width:1600px){:root{--pagew:1320px;--prosew:1200px;--chatw:880px;--cardw:280px;--card-tt:var(--fs-card-title);--card-fs:var(--fs-sm);--card-lines:3}}
+@media (min-width:2000px){:root{--pagew:1560px;--prosew:1320px;--chatw:1000px;--cardw:320px;--card-tt:var(--fs-read);--card-fs:var(--fs-base);--card-lines:3}}
 
 /*
- * With the system's "Reduce motion" on, transitions stop entirely but every state change still shows.
- * A JS timer adds and removes .ddlrow.flash, so it gets a static background rather than only
- * animation:none, and the located row stays highlighted for that time.
+ * With the system's "Reduce motion" on, transitions and keyframe animations stop entirely but every
+ * state change still shows. Only the spinning DownloadRing keeps turning: it is the live sign that a
+ * job is running. A JS timer adds and removes .ddlrow.flash, so it gets a static background, and the
+ * located row stays highlighted for that time.
  */
 @media (prefers-reduced-motion:reduce){
-  :root{--t-fast:1ms;--t:1ms;--t-slow:1ms}
-  .ddlrow.flash{animation:none;background:var(--tint-warn)}
+  :root{--t-fast:1ms;--t:1ms;--t-slow:1ms;--t-delay:0ms}
+  :not(.ring.spin),::before,::after{animation:none!important}
+  .ddlrow.flash{background:var(--tint-warn)}
   .paper-card.is-leaving{transform:none}
 }
 
 *{box-sizing:border-box}
-b,strong{font-weight:600}
+b,strong{font-weight:var(--fw-semibold)}
 /*
  * A pressed macOS button darkens as a whole rather than shrinking; scale blurs the icon on a 30×30
  * icon button. Solid accent surfaces take a black overlay, not white: white would drop the white text
  * on them to 3.78:1.
  * The two rules below set the same background-image as each route's hover rules, and at equal
- * specificity the bundle order would pick the winner. The six hovers are therefore written as
- * :where(.btn):hover, one class lighter than the pressed rules, which win on specificity.
+ * specificity the bundle order would pick the winner. Those hovers are therefore written as
+ * :where(.cd):hover, one class lighter than the pressed rules, which win on specificity. The
+ * button set in routes/shell.css and the icon button press the same way.
  */
-.btn:active,.icbtn:active,.tbtn:active,.cd:active,.pgbtn:active{background-image:linear-gradient(var(--press),var(--press))}
-.btn.pri:active,.send:active,.pgbtn.on:active,.cd.sel:active{background-image:linear-gradient(var(--press-solid),var(--press-solid))}
+.cd:active,.pgbtn:active{background-image:linear-gradient(var(--press),var(--press))}
+.send:active{background-image:linear-gradient(var(--press-solid),var(--press-solid))}
 html,body{height:100%}
-body{margin:0;background:var(--desktop);color:var(--ink);font-family:var(--sans);font-size:13px;line-height:1.45;-webkit-font-smoothing:antialiased}
+body{margin:0;background:var(--desktop);color:var(--ink);font-family:var(--sans);font-size:var(--fs-base);line-height:var(--lh-ui);-webkit-font-smoothing:antialiased}
 #root{height:100%;display:flex;flex-direction:column}
 
 /*
@@ -135,7 +207,7 @@ body{margin:0;background:var(--desktop);color:var(--ink);font-family:var(--sans)
  * text editors get a neutral border instead, so the blue outline from Chromium's defaults or from a
  * screen's own styles no longer shows.
  */
-:focus-visible{outline:2px solid var(--ring);outline-offset:2px}
+:focus-visible{outline:var(--ring-width) solid var(--ring);outline-offset:var(--ring-offset)}
 :is(input,textarea,select,[contenteditable="true"]):focus,
 :is(input,textarea,select,[contenteditable="true"]):focus-visible{
   outline:0;outline-offset:0;border-color:var(--sep-strong);box-shadow:none
@@ -143,12 +215,53 @@ body{margin:0;background:var(--desktop);color:var(--ink);font-family:var(--sans)
 ::selection{background:var(--sel)}
 
 /* Claude-style scroll bars: the thumb is always visible, so what scrolls is clear at a glance */
-::-webkit-scrollbar{width:12px;height:12px}
+::-webkit-scrollbar{width:var(--scrollbar-size);height:var(--scrollbar-size)}
 ::-webkit-scrollbar-track{background:transparent}
 ::-webkit-scrollbar-thumb{background-color:var(--sbthumb);border-radius:var(--r-full);border:3px solid transparent;background-clip:padding-box;min-height:40px}
 ::-webkit-scrollbar-thumb:hover{background-color:var(--sbthumb-h);border:3px solid transparent;background-clip:padding-box}
 ::-webkit-scrollbar-button{display:none;width:0;height:0}
 ::-webkit-scrollbar-corner{background:transparent}
+/*
+ * A scroll area that hides content past an edge fades toward that edge; useScrollFade lists those
+ * edges in data-fade. The mask leaves out the strips of the scrollbars it shows, so a scrollbar never
+ * fades: the vertical fade and the horizontal fade are intersected, then the strips added back. An
+ * edge named in data-fade-held belongs to a sticky element, so the area leaves that edge solid: the
+ * sticky element is a scroll-state container and, while it is stuck, lays a pseudo-element in its own
+ * paint beside its inner edge, which fades the content sliding under it. Its scroll padding keeps a
+ * control that takes focus out of a faded edge.
+ */
+[data-fade]{--fade-top:0px;--fade-bottom:0px;--fade-left:0px;--fade-right:0px;--fade-bar-y:0px;--fade-bar-x:0px;
+  scroll-padding:var(--sp-24);
+  mask:linear-gradient(#000,#000) right top/var(--fade-bar-y) 100% no-repeat,
+    linear-gradient(#000,#000) left bottom/100% var(--fade-bar-x) no-repeat,
+    linear-gradient(to bottom,transparent,#000 var(--fade-top),#000 calc(100% - var(--fade-bottom)),transparent)
+      left top/calc(100% - var(--fade-bar-y)) calc(100% - var(--fade-bar-x)) no-repeat,
+    linear-gradient(to right,transparent,#000 var(--fade-left),#000 calc(100% - var(--fade-right)),transparent)
+      left top/calc(100% - var(--fade-bar-y)) calc(100% - var(--fade-bar-x)) no-repeat;
+  mask-composite:add,add,intersect,add}
+[data-fade~="top"]{--fade-top:var(--sp-24)}
+[data-fade~="bottom"]{--fade-bottom:var(--sp-24)}
+[data-fade~="left"]{--fade-left:var(--sp-24)}
+[data-fade~="right"]{--fade-right:var(--sp-24)}
+:is([data-fade~="top"],[data-fade~="bottom"]){--fade-bar-y:var(--scrollbar-size)}
+:is([data-fade~="left"],[data-fade~="right"]){--fade-bar-x:var(--scrollbar-size)}
+[data-fade-held~="top"]{--fade-top:0px}
+[data-fade-held~="bottom"]{--fade-bottom:0px}
+[data-fade-held~="left"]{--fade-left:0px}
+[data-fade-held~="right"]{--fade-right:0px}
+/*
+ * A scroll area that draws its own frame or holds sticky rails fades a hidden top or bottom by laying
+ * its own background over it, --fade-paint, instead of masking, so its frame and its sticky children,
+ * which sit above that layer, stay solid. The layer sticks across the area's padding, which its host
+ * gives as --fade-pad-top and --fade-pad-bottom, and takes no room.
+ */
+[data-fade][data-fade-paint]{mask:none}
+[data-fade~="top"][data-fade-paint]::before,[data-fade~="bottom"][data-fade-paint]::after{content:"";display:block;position:sticky;
+  z-index:1;height:var(--sp-24);pointer-events:none}
+[data-fade~="top"][data-fade-paint]::before{top:calc(-1 * var(--fade-pad-top));margin-bottom:calc(-1 * var(--sp-24));
+  background:linear-gradient(var(--fade-paint),transparent)}
+[data-fade~="bottom"][data-fade-paint]::after{bottom:calc(-1 * var(--fade-pad-bottom));margin-top:calc(-1 * var(--sp-24));
+  background:linear-gradient(transparent,var(--fade-paint))}
 @supports not selector(::-webkit-scrollbar){
   *{scrollbar-width:thin;scrollbar-color:var(--sbthumb) transparent}
 }

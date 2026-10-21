@@ -40,7 +40,7 @@ describe('ReadingRemark', () => {
     for (const root of roots.splice(0)) act(() => root.unmount())
   })
 
-  it('没改过时存随笔按不动,改过之后存的是去掉首尾空白的整段', async () => {
+  it('没改过时保存按不动,改过之后存的是去掉首尾空白的整段', async () => {
     const host = document.createElement('div')
     document.body.append(host)
     const root = createRoot(host)
@@ -57,5 +57,29 @@ describe('ReadingRemark', () => {
     expect(button.disabled).toBe(false)
     await act(async () => { button.click() })
     expect(onSave).toHaveBeenCalledWith('读完的第一反应')
+  })
+
+  it('随笔和表格里的随笔一样按长文本约定保存：⌘回车或「保存」写回，Esc 还原，单按回车只是换行', async () => {
+    const host = document.createElement('div')
+    document.body.append(host)
+    const root = createRoot(host)
+    roots.push(root)
+    const onSave = vi.fn(async () => true)
+    act(() => root.render(
+      <MessagesProvider><Remark reading={READING} saving={false} onSave={onSave} /></MessagesProvider>,
+    ))
+    const textarea = host.querySelector('textarea')!
+    const key = (init: KeyboardEventInit) => act(() => {
+      textarea.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, cancelable: true, ...init }))
+    })
+    expect(host.querySelector('button')!.textContent).toBe('保存')
+    act(() => setValue(textarea, '新的随想'))
+    key({ key: 'Enter' })
+    expect(onSave).not.toHaveBeenCalled()
+    key({ key: 'Escape' })
+    expect(textarea.value).toBe('原来的随想')
+    act(() => setValue(textarea, '新的随想'))
+    await act(async () => { key({ key: 'Enter', metaKey: true }) })
+    expect(onSave).toHaveBeenCalledWith('新的随想')
   })
 })

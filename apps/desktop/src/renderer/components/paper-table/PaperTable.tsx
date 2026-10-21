@@ -1,39 +1,47 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import type { DragEvent as ReactDragEvent, MouseEvent as ReactMouseEvent, RefObject } from 'react'
+import type { DragEvent as ReactDragEvent, RefObject } from 'react'
 import type {
-  Facet, ListParams, PaperCell, PaperColumn, PaperColumns, PaperRow, ReadState, SortDirection,
+  Facet, ListParams, PaperCell, PaperColumn, PaperColumns, PaperRow, ReadState, RecordedChange, SortDirection,
   SortKey,
 } from '../../../shared/contract.js'
 import { MAX_PDF_UPLOAD_BYTES } from '../../../shared/contract.js'
-import { DEFAULT_PAPER_GROUPS, PAPER_PAGE, READ_STATES, READING_PAPER } from '../../../shared/vocabulary.js'
+import { DEFAULT_PAPER_GROUPS, PAPER_PAGE, READ_STATES } from '../../../shared/vocabulary.js'
 import { papers } from '../../ipc.js'
+import { errorLabel } from '../../lib/failure-label.js'
 import type { Catalog } from '../../messages/catalog.js'
 import { useMessages } from '../../messages/useMessages.js'
-import { IconCheck, IconCross, IconGrip, IconPlus, IconRead } from '../icons.js'
+import { IconGrip, IconRead, IconTrash } from '../icons.js'
 import { CellPicker } from './CellPicker.js'
 import { NewColumnHead } from './ColumnAdd.js'
-import { columnKey, takenLabel } from './column-key.js'
+import { builtinNames, columnKey, takenLabel } from './column-key.js'
 import { ColumnMenu } from './ColumnMenu.js'
 import { GroupMenu, groupRows } from './GroupMenu.js'
 import { ParseProgress } from '../ParseProgress.js'
 import { Pager } from '../Pager.js'
-import { PaperMetadata, RatingStars } from '../PaperMetadata.js'
+import { PaperMetadata, PaperTitleField, RatingStars, ReadStatePicker } from '../PaperMetadata.js'
+import { PaperTopics } from '../PaperTopics.js'
 import { PaperReadingSummary } from './PaperReadingSummary.js'
-import { PickerPopover } from '../PickerPopover.js'
 import { FormInput } from '../FormControls.js'
 import { ClearableInput } from '../ClearableInput.js'
 import { PageBody, PageError, PageHeader, PageShell, PageTitle, PageToolbar } from '../PageShell.js'
-import { useCandidateKeys } from '../../hooks/useCandidateKeys.js'
 import { NO_TRIGGERS } from '../../hooks/useOnLeave.js'
 import { useInlineDraft } from '../../hooks/useInlineDraft.js'
+import { useUndo } from '../../hooks/useUndo.js'
 import { useVaultWrite } from '../../hooks/useVaultWrite.js'
+import { useScrollFade } from '../../hooks/useScrollFade.js'
 import {
-  useBanner, useCrumbTail, useEscapeLayer, useJump, usePaperCount, useScreen, useScreenReentry, useToast,
-  useVaultRevision,
+  useCrumbTail, useEscapeLayer, useJump, useNotice, usePaperCount, useScreen, useScreenReentry, useVaultRevision,
 } from '../../shell/AppShell.js'
 import { AddAction } from '../AddAction.js'
+import { IconButton } from '../IconButton.js'
+import { holdRepeatSelection, RowActions, StructuredList, StructuredRow } from '../StructuredList.js'
 import { PanelClose } from '../PanelClose.js'
+import { CountBadge, Tag, tagClass } from '../Tag.js'
+import { Grip, type GripLimits } from '../Grip.js'
+import { Toolbar, ToolbarButton } from '../Toolbar.js'
+import { Tooltip } from '../Tooltip.js'
 import { DetailPanel } from '../DetailPanel.js'
+import { FadeText } from '../FadeText.js'
 import { ActionMenu, MenuRadioGroup, MenuRadioItem, MenuSeparator } from '../ActionMenu.js'
 import { SegmentedControl } from '../SegmentedControl.js'
 import { ContextMenu, ContextMenuItem, ContextMenuSeparator } from '../ContextMenu.js'
@@ -56,9 +64,9 @@ type ShownCol =
   | { k: BodyKey; sort?: SortKey; column?: undefined }
   | { k: string; sort?: undefined; column: PaperColumn }
 
-/** The label to show for a column of the table at this time. */
-function shownLabel(m: Catalog, col: ShownCol): string {
-  return col.column ? col.column.label : m.papers.columns[col.k]
+/** The label to show for a column of the table at this time, a built-in one named by `names`. */
+function shownLabel(names: Catalog['papers']['columns'], col: ShownCol): string {
+  return col.column ? col.column.label : names[col.k]
 }
 
 export const COLUMNS: { k: BodyKey; sort?: SortKey }[] = [
@@ -88,8 +96,12 @@ const MIN_COLUMN_WIDTH = 56
 /** Lower limit for a manual drag; the browser can still shrink columns further as the window narrows. */
 const minimumWidth = (key: string): number => key === 'x' ? ROWX_WIDTH : MIN_COLUMN_WIDTH
 
+/** The width a double-click on a column's grip restores. */
+const defaultWidth = (key: string): number => (DEFAULT_WIDTHS as Record<string, number>)[key] ?? CUSTOM_WIDTH
+
+/** A column resize in progress: `start` is the grip's pane width when it began. */
 type WidthDrag = {
-  x0: number
+  start: number
   widths: Record<string, number>
   left: { key: string; initial: number; width: number }
   right?: { key: string; initial: number; width: number }
@@ -110,7 +122,7 @@ function cellValues(held: PaperCell | undefined): string[] {
 }
 
 /**
- * The banner for this column configuration change, or undefined when there is none. The first match
+ * The success notice for this column configuration change, or undefined when there is none. The first match
  * wins, in this order: a deleted column, an added column, a renamed column, changed groups, a changed
  * column order, and otherwise changed options.
  */
@@ -160,143 +172,18 @@ export function movedColumnOrder(
 
 function SortArrow({ direction }: { direction: SortDirection }) {
   return (
-    <svg
-      style={{ width: 9, height: 9, verticalAlign: 0 }} viewBox="0 0 24 24" fill="none"
-      stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"
-    >
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
       <path d={ARROW_PATH[direction]} />
     </svg>
   )
 }
 
 /**
- * The `+` at the end of a topics cell: clicking it turns it into an input. Its candidate list shows
- * the vault's values this paper does not have yet; clicking a candidate hands it to `onAdd`, and
- * Enter, a press outside the input and its candidates, or focus leaving them hands over the
- * highlighted candidate, or the typed text when there is none. `onAdd` returns whether the write
- * completed. The input closes only then; a rejected write keeps the input and the typed text. Esc,
- * or leaving with nothing typed, closes it and drops the typed text; while a submission is pending,
- * neither an outside press nor focus leaving closes it, and no second add is sent before the first
- * one lands. The `+` button opens it with its own `setOpen(true)` and all closing goes through
- * `useInlineDraft`; Radix only positions and renders the popover and has no say in opening or
- * closing. The styling follows the demo's .tagadd/.tagin/tagSug. The candidates are fetched with
- * papers.facets each time it opens, so they are always the vault's current values.
- */
-function TagAdd({ field, values, onAdd, onError }: {
-  field: ChipKey
-  /** Values this paper already has. */
-  values: string[]
-  onAdd: (value: string) => Promise<boolean>
-  onError: (e: Error) => void
-}) {
-  const m = useMessages()
-  const [open, setOpen] = useState(false)
-  const [q, setQ] = useState('')
-  const [vocab, setVocab] = useState<string[]>([])
-  const input = useRef<HTMLInputElement>(null)
-  const close = useCallback(() => {
-    setOpen(false)
-    setQ('')
-  }, [])
-
-  useEffect(() => {
-    if (!open) return
-    void papers.facets(field).then((fs) => setVocab(fs.map((f) => f.value))).catch(onError)
-  }, [open, field, onError])
-
-  const typed = q.trim()
-  const needle = typed.toLowerCase()
-  const hits = open
-    ? vocab.filter((v) => !values.includes(v) && (!needle || v.toLowerCase().includes(needle)))
-    : []
-  const isNew = typed !== '' && !values.includes(typed) && !hits.some((v) => v.toLowerCase() === needle)
-
-  // While closed the input is not rendered and its ref is null, so the outside and focus paths do nothing.
-  const draft = useInlineDraft({
-    row: input, triggers: NO_TRIGGERS, onCancel: close, isEmpty: () => typed === '',
-    onSubmit: () => (typed === '' ? false : onAdd(hits[keys.active] ?? typed)),
-  })
-  const keys = useCandidateKeys(hits.length, (i) => draft.submit(() => onAdd(hits[i]!)))
-
-  return (
-    <PickerPopover
-      open={open} anchorRef={input} stopClickPropagation
-      anchor={open
-        ? (
-          <FormInput
-            className="tagin" ref={input} value={q} {...draft.inputProps}
-            onClick={(e) => e.stopPropagation()}
-            onChange={(e) => setQ(e.target.value)}
-            onKeyDown={(e) => { keys.onKeyDown(e); draft.inputProps.onKeyDown(e) }}
-          />
-        )
-        : (
-          <AddAction
-            variant="icon" className="tagchip tagadd" title={m.papers.tags.add}
-            onClick={(e) => { e.stopPropagation(); setOpen(true) }}
-          />
-        )}
-      content={hits.length > 0 || isNew
-        ? (
-          <>
-              {hits.length > 0 ? <div className="rh">{m.papers.tags.existingTopics}</div> : null}
-              {hits.map((v, i) => (
-                <div
-                  className={i === keys.active ? 'rrow on' : 'rrow'} key={v}
-                  onClick={() => draft.submit(() => onAdd(v))}
-                >{v}</div>
-              ))}
-              {isNew
-                ? (
-                  <div className="rrow mk" onClick={() => draft.submit(() => onAdd(typed))}>
-                    <IconPlus />
-                    <span className="tagchip">{typed}</span>
-                  </div>
-                )
-                : null}
-          </>
-        )
-        : null}
-    />
-  )
-}
-
-/**
- * The reading status in a Status cell: clicking it opens the four statuses, and picking one writes it
- * back to this paper. The styling is the demo's .stchip and the popover it opens; Radix owns opening
- * and closing. The "Reading" status is highlighted in the table, as in the demo.
- */
-function ReadStateChip({ current, onPick }: {
-  current: ReadState
-  onPick: (readState: ReadState) => void
-}) {
-  return (
-    <ActionMenu
-      trigger={(
-        <button
-          type="button" className={current === READING_PAPER ? 'stchip on' : 'stchip'}
-          onClick={(e) => e.stopPropagation()}
-        >{current}</button>
-      )}
-      align="start" stopContentClickPropagation
-    >
-      <MenuRadioGroup value={current}>
-        {READ_STATES.map((s) => (
-          <MenuRadioItem key={s} value={s} onSelect={() => onPick(s)}>
-            <span className="ck">{s === current ? <IconCheck /> : null}</span>
-            {s}
-          </MenuRadioItem>
-        ))}
-      </MenuRadioGroup>
-    </ActionMenu>
-  )
-}
-
-/**
  * The reading status shortcut in the paper library toolbar. It applies the existing readState facet
- * instead of adding a second "unread" area.
+ * instead of adding a second "unread" area. `name` is the read state's name, the one its column shows.
  */
-function ReadStateFilter({ current, onPick }: {
+function ReadStateFilter({ name, current, onPick }: {
+  name: string
   current: ReadState | null
   onPick: (readState: ReadState | null) => void
 }) {
@@ -306,21 +193,44 @@ function ReadStateFilter({ current, onPick }: {
       trigger={(
         <button
           type="button"
-          className={current === null ? 'btn plain read-state-filter' : 'btn plain read-state-filter on'}
-          aria-label={m.papers.readState.filterAria}
-        >{current ?? m.papers.readState.filterLabel}</button>
+          className={current === null ? 'btn sm read-state-filter' : 'btn sm read-state-filter on'}
+          aria-label={m.papers.readState.filterAria(name)}
+        ><FadeText>{current ?? name}</FadeText></button>
       )}
     >
       <MenuRadioGroup value={current ?? 'all'}>
-        <MenuRadioItem value="all" onSelect={() => onPick(null)}>
-          <span className="ck">{current === null ? <IconCheck /> : null}</span>
-          {m.papers.readState.allStates}
-        </MenuRadioItem>
+        <MenuRadioItem value="all" onSelect={() => onPick(null)}>{m.papers.readState.allStates}</MenuRadioItem>
         <MenuSeparator />
         {READ_STATES.map((state) => (
-          <MenuRadioItem key={state} value={state} onSelect={() => onPick(state)}>
-            <span className="ck">{state === current ? <IconCheck /> : null}</span>
-            {state}
+          <MenuRadioItem key={state} value={state} onSelect={() => onPick(state)}>{state}</MenuRadioItem>
+        ))}
+      </MenuRadioGroup>
+    </ActionMenu>
+  )
+}
+
+/** The picked group value with its paper count; its menu switches to another value of the same group. */
+function GroupValuePicker({ current, facets, onPick }: {
+  current: string | null
+  facets: Facet[]
+  onPick: (value: string) => void
+}) {
+  const m = useMessages()
+  const count = facets.find((facet) => facet.value === current)?.count
+  return (
+    <ActionMenu
+      align="start"
+      trigger={(
+        <button type="button" className="btn sm" aria-label={m.papers.toolbar.groupValueAria}>
+          {count === undefined ? current : `${current} · ${count}`}
+        </button>
+      )}
+    >
+      <MenuRadioGroup value={current ?? ''}>
+        {facets.map((facet) => (
+          <MenuRadioItem key={facet.value} value={facet.value} onSelect={() => onPick(facet.value)}>
+            {facet.value}
+            <span className="mi-key">{facet.count}</span>
           </MenuRadioItem>
         ))}
       </MenuRadioGroup>
@@ -329,12 +239,12 @@ function ReadStateFilter({ current, onPick }: {
 }
 
 /**
- * Double-clicking a row's blank space or text opens the reader; buttons and editors inside a cell
- * keep their own double-click behaviour.
+ * Double-clicking a row's blank space, its text or its title opens the reader; the other buttons and
+ * the editors inside a cell keep their own double-click behaviour.
  */
 function opensPaperFrom(target: EventTarget | null): boolean {
   return !(target instanceof Element)
-    || target.closest('button, input, select, textarea, [contenteditable="true"]') === null
+    || target.closest('button:not(.pt-open), input, select, textarea, [contenteditable="true"]') === null
 }
 
 /**
@@ -392,6 +302,7 @@ export function PaperTable() {
   const [widths, setWidths] = useState<Record<string, number>>(DEFAULT_WIDTHS)
   const [columns, setColumns] = useState<PaperColumns>(
     { hidden: [], custom: [], groups: [...DEFAULT_PAPER_GROUPS] })
+  const names = builtinNames(m, columns)
   // Core's last confirmed column set. Every step on the column chain computes its write from this,
   // not from the columns captured in a render's closure.
   const confirmedColumns = useRef(columns)
@@ -415,10 +326,10 @@ export function PaperTable() {
   const dropDepth = useRef(0)
   const [movingColumn, setMovingColumn] = useState<string | null>(null)
   const [columnDrop, setColumnDrop] = useState<{ key: string; after: boolean } | null>(null)
-  const [rowMenu, setRowMenu] = useState<{ paper: PaperRow; x: number; y: number } | null>(null)
   const drag = useRef<WidthDrag | null>(null)
-  const dragged = useRef(false)
   const table = useRef<HTMLTableElement>(null)
+  const tableFade = useScrollFade('both')
+  const detailFade = useScrollFade('y')
   const consumed = useRef(0)
   // Write queue of the cell being edited: each link resolves to the values the previous step settled
   // on, or to null when a step failed, which voids this pick so it is not sent.
@@ -427,17 +338,17 @@ export function PaperTable() {
     chain: Promise<string[] | null>
   } | null>(null)
 
-  const banner = useBanner()
-  const toast = useToast()
+  const notice = useNotice()
   const paperCount = usePaperCount()
   const screen = useScreen()
   const { jump, open } = useJump()
   // The revision is bumped after a write so the grouping and row-fetch effects run again, like the
   // demo's renderLibRows call after a submit.
   const { revision, bump } = useVaultRevision()
-  const reportError = useCallback((e: Error) => setError(e.message), [])
+  const reportError = useCallback((e: unknown) => setError(errorLabel(m, e)), [m])
   const closeDetail = useCallback(() => setDetail(null), [])
   const write = useVaultWrite()
+  const undo = useUndo()
   const detailId = detail?.id
 
   // A write in the detail panel (linking a project) only bumps the vault revision, so the open paper
@@ -545,16 +456,16 @@ export function PaperTable() {
   // groupNames is a plain object; without the hasOwn check, keys such as toString would return
   // functions from Object.prototype.
   const labelOf = (key: string) => columns.custom.find((c) => c.key === key)?.label
-    ?? (Object.hasOwn(m.papers.groupNames, key) ? m.papers.groupNames[key as keyof typeof m.papers.groupNames] : key)
+    ?? (Object.hasOwn(names.groupNames, key) ? names.groupNames[key as keyof typeof names.groupNames] : key)
 
   useCrumbTail(useMemo(() => {
     if (view === 'research-map') return []
     if (group === 'none') return []
     // Same lookup order as labelOf. labelOf is a new function every render, and as a dependency it
     // would reset the breadcrumbs every frame.
+    const { groupNames } = builtinNames(m, columns)
     const label = columns.custom.find((c) => c.key === group)?.label
-      ?? (Object.hasOwn(m.papers.groupNames, group)
-        ? m.papers.groupNames[group as keyof typeof m.papers.groupNames] : group)
+      ?? (Object.hasOwn(groupNames, group) ? groupNames[group as keyof typeof groupNames] : group)
     return sel === null ? [{ text: label }] : [{ text: label, onClick: backToValues }, { text: sel }]
   }, [view, group, sel, columns, backToValues, m]), backToUngrouped)
 
@@ -569,48 +480,86 @@ export function PaperTable() {
 
   useEscapeLayer(detail !== null, closeDetail)
 
-  // A drag moves the boundary between two columns: the left column and its right neighbour grow and
-  // shrink by the same amount, so the total width stays fixed and columns further right do not move.
-  // A drag first freezes the widths the browser actually shows, so the slack left by width:100% is
-  // not redistributed across the table.
-  useEffect(() => {
-    const move = (e: MouseEvent) => {
-      const d = drag.current
-      if (!d) return
-      const raw = e.clientX - d.x0
-      const delta = d.right === undefined
+  // A column's grip moves the boundary between two columns: the left column and its right neighbour
+  // grow and shrink by the same amount, so the total width stays fixed and columns further right do
+  // not move. A resize first freezes the widths the browser actually shows, so the slack left by
+  // width:100% is not redistributed across the table.
+  /** The column right of column `k`, which gives or takes the width `k` gains or loses. */
+  const columnAfter = (k: string): string | undefined => {
+    const keys = ['t', ...cols.map((column) => column.k), 'x']
+    return keys[keys.indexOf(k) + 1]
+  }
+
+  /**
+   * Freezes the column widths and starts resizing column `k` from `start`, the grip's pane width,
+   * or its measured width. Returns the sizes, measured the same way, that keep both columns at least
+   * at their minimum width.
+   */
+  const beginResize = (k: string, start?: number): GripLimits => {
+    const measured = { ...widths }
+    table.current?.querySelectorAll<HTMLElement>('col[data-cw]').forEach((column) => {
+      const key = column.dataset['cw']
+      const width = column.getBoundingClientRect().width
+      if (key !== undefined && width > 0) measured[key] = width
+    })
+    for (const [key, width] of Object.entries(measured)) {
+      const column = table.current?.querySelector<HTMLElement>(`col[data-cw="${key}"]`)
+      if (column) column.style.width = `${width}px`
+    }
+    const rightKey = columnAfter(k)
+    const leftWidth = measured[k] ?? widthOf(k)
+    const rightWidth = rightKey === undefined ? undefined : measured[rightKey] ?? widthOf(rightKey)
+    const from = start ?? leftWidth
+    drag.current = {
+      start: from,
+      widths: measured,
+      left: { key: k, initial: leftWidth, width: leftWidth },
+      ...(rightKey === undefined || rightWidth === undefined
+        ? {}
+        : { right: { key: rightKey, initial: rightWidth, width: rightWidth } }),
+    }
+    return {
+      min: from + minimumWidth(k) - leftWidth,
+      max: rightKey === undefined || rightWidth === undefined
+        ? Number.POSITIVE_INFINITY
+        : from + rightWidth - minimumWidth(rightKey),
+    }
+  }
+
+  const resizeTo = (size: number) => {
+    const d = drag.current!
+    const raw = size - d.start
+    const delta = d.right === undefined
         ? Math.max(minimumWidth(d.left.key) - d.left.initial, raw)
         : Math.max(
           minimumWidth(d.left.key) - d.left.initial,
           Math.min(d.right.initial - minimumWidth(d.right.key), raw),
         )
-      d.left.width = d.left.initial + delta
-      if (d.right !== undefined) d.right.width = d.right.initial - delta
-      const left = table.current?.querySelector<HTMLElement>(`col[data-cw="${d.left.key}"]`)
-      if (left) left.style.width = `${d.left.width}px`
-      if (d.right !== undefined) {
-        const right = table.current?.querySelector<HTMLElement>(`col[data-cw="${d.right.key}"]`)
-        if (right) right.style.width = `${d.right.width}px`
-      }
+    d.left.width = d.left.initial + delta
+    if (d.right !== undefined) d.right.width = d.right.initial - delta
+    const left = table.current?.querySelector<HTMLElement>(`col[data-cw="${d.left.key}"]`)
+    if (left) left.style.width = `${d.left.width}px`
+    if (d.right !== undefined) {
+      const right = table.current?.querySelector<HTMLElement>(`col[data-cw="${d.right.key}"]`)
+      if (right) right.style.width = `${d.right.width}px`
     }
-    const up = () => {
-      const d = drag.current
-      if (!d) return
-      drag.current = null
-      dragged.current = true
-      setWidths({
-        ...d.widths,
-        [d.left.key]: d.left.width,
-        ...(d.right === undefined ? {} : { [d.right.key]: d.right.width }),
-      })
-    }
-    document.addEventListener('mousemove', move)
-    document.addEventListener('mouseup', up)
-    return () => {
-      document.removeEventListener('mousemove', move)
-      document.removeEventListener('mouseup', up)
-    }
-  }, [])
+  }
+
+  const endResize = () => {
+    const d = drag.current!
+    drag.current = null
+    setWidths({
+      ...d.widths,
+      [d.left.key]: d.left.width,
+      ...(d.right === undefined ? {} : { [d.right.key]: d.right.width }),
+    })
+  }
+
+  const resetWidth = (k: string) => {
+    beginResize(k)
+    resizeTo(defaultWidth(k))
+    endResize()
+  }
 
   // Recalculate truncation after data, columns, widths, panels, or editing state change. Text cells
   // retain their hover preview; chip cells keep the first visible row and expose hidden items through
@@ -648,13 +597,12 @@ export function PaperTable() {
       if (real > 0) {
         const badge = document.createElement('button')
         badge.type = 'button'
-        badge.className = 'morebadge'
+        badge.className = tagClass('neutral', 'label', 'morebadge')
         const setExpanded = (expanded: boolean) => {
           ci.dataset['expanded'] = String(expanded)
           ci.classList.toggle('chip-expanded', expanded)
           badge.textContent = expanded ? '−' : `+${real}`
-          badge.title = expanded ? m.common.details.collapse : m.papers.tags.showMore(real)
-          badge.setAttribute('aria-label', badge.title)
+          badge.setAttribute('aria-label', expanded ? m.papers.tags.showLess(real) : m.papers.tags.showMore(real))
           badge.setAttribute('aria-expanded', String(expanded))
         }
         setExpanded(wasExpanded)
@@ -675,37 +623,22 @@ export function PaperTable() {
    */
   const widthOf = (k: string) => widths[k] ?? CUSTOM_WIDTH
 
-  const startDrag = (e: ReactMouseEvent, k: string) => {
-    const measured = { ...widths }
-    table.current?.querySelectorAll<HTMLElement>('col[data-cw]').forEach((column) => {
-      const key = column.dataset['cw']
-      const width = column.getBoundingClientRect().width
-      if (key !== undefined && width > 0) measured[key] = width
-    })
-    for (const [key, width] of Object.entries(measured)) {
-      const column = table.current?.querySelector<HTMLElement>(`col[data-cw="${key}"]`)
-      if (column) column.style.width = `${width}px`
-    }
-    const keys = ['t', ...cols.map((column) => column.k), 'x']
-    const rightKey = keys[keys.indexOf(k) + 1]
-    const leftWidth = measured[k] ?? widthOf(k)
-    const rightWidth = rightKey === undefined ? undefined : measured[rightKey] ?? widthOf(rightKey)
-    drag.current = {
-      x0: e.clientX,
-      widths: measured,
-      left: { key: k, initial: leftWidth, width: leftWidth },
-      ...(rightKey === undefined || rightWidth === undefined
-        ? {}
-        : { right: { key: rightKey, initial: rightWidth, width: rightWidth } }),
-    }
-    e.preventDefault()
+  /** The grip on the end edge of column `k`'s header; `name` is the column's shown name. */
+  const columnGrip = (k: string, name: string) => {
+    const right = columnAfter(k)
+    return (
+      <Tooltip label={m.papers.columnHeader.resize(name)} note={m.shell.sidebar.dragHint}>
+        <Grip
+          className="thgrip" label={m.papers.columnHeader.resize(name)} value={widthOf(k)} min={minimumWidth(k)}
+          max={right === undefined ? widthOf(k) : widthOf(k) + widthOf(right) - minimumWidth(right)}
+          onResizeStart={(size) => beginResize(k, size)} onResize={resizeTo} onResizeEnd={endResize}
+          onReset={() => resetWidth(k)}
+        />
+      </Tooltip>
+    )
   }
 
-  const clickHeader = (e: ReactMouseEvent, key: SortKey) => {
-    if (dragged.current || (e.target as HTMLElement).closest('.thgrip')) {
-      dragged.current = false
-      return
-    }
+  const clickHeader = (key: SortKey) => {
     if (sort === key) setDirection((d) => (d === 'asc' ? 'desc' : 'asc'))
     else {
       setSort(key)
@@ -715,23 +648,31 @@ export function PaperTable() {
   const ariaSort = (key: SortKey) => (sort !== key ? undefined : direction === 'asc' ? 'ascending' : 'descending')
 
   const addTopic = (p: PaperRow, value: string): Promise<boolean> =>
-    write(papers.update(p.id, { topics: [...p.topics, value] }), { note: m.papers.notices.topicAdded })
+    write(papers.update(p.id, { topics: [...p.topics, value] }), { note: m.papers.notices.topicAdded, action: undo.change })
 
   const setReadState = (p: PaperRow, readState: ReadState) => {
     void write(papers.update(p.id, { readState }), { note: m.papers.notices.readStateUpdated })
   }
 
-  const setRating = (p: PaperRow, rating: number) => {
-    void write(papers.update(p.id, { rating }), { note: m.papers.notices.rated(rating) })
+  const removeTopic = (p: PaperRow, value: string): Promise<boolean> =>
+    write(papers.update(p.id, { topics: p.topics.filter((held) => held !== value) }), {
+      note: m.papers.notices.updated, action: undo.change,
+    })
+
+  const setRating = (p: PaperRow, rating: number | null) => {
+    void write(papers.update(p.id, { rating }), rating === null
+      ? { note: m.papers.notices.updated, action: undo.change }
+      : { note: m.papers.notices.rated(rating) })
   }
 
   const remove = (id: string) => {
     // As in the demo, a delete shortens the list by one item, so the page number clamps back in the
     // same frame instead of drawing an empty list first.
-    void write(papers.delete(id).then(() => {
+    void write(papers.delete(id).then((recorded) => {
       if (detail?.id === id) setDetail(null)
       setTotal((t) => t - 1)
-    }), { note: m.common.trashed })
+      return recorded
+    }), { note: m.common.trashed, action: undo.change })
   }
 
   /**
@@ -741,7 +682,7 @@ export function PaperTable() {
    */
   const uploadPdf = async (file: File) => {
     if (file.size > MAX_PDF_UPLOAD_BYTES) {
-      toast(m.papers.upload.tooLarge)
+      notice.refusal(m.papers.upload.tooLarge)
       if (uploadInput.current !== null) uploadInput.current.value = ''
       return
     }
@@ -755,9 +696,9 @@ export function PaperTable() {
       setGroup('none')
       setSel(null)
       setDetail(result.paper)
-      banner(result.kind === 'added' ? m.papers.upload.addedParsing : m.papers.upload.alreadyInLibrary)
+      notice.success(result.kind === 'added' ? m.papers.upload.addedParsing : m.papers.upload.alreadyInLibrary)
     } catch (cause) {
-      toast(cause instanceof Error ? cause.message : String(cause))
+      notice.refusal(errorLabel(m, cause))
     } finally {
       setUploading(false)
       if (uploadInput.current !== null) uploadInput.current.value = ''
@@ -766,7 +707,7 @@ export function PaperTable() {
 
   const uploadFiles = async (files: File[]) => {
     const pdfs = files.filter((file) => file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf'))
-    if (pdfs.length === 0) { toast(m.papers.upload.dropPdfOnly); return }
+    if (pdfs.length === 0) { notice.refusal(m.papers.upload.dropPdfOnly); return }
     for (const file of pdfs) await uploadPdf(file)
   }
 
@@ -819,7 +760,7 @@ export function PaperTable() {
   const saveCell = (p: PaperRow, k: string, value: string): boolean | Promise<boolean> => {
     if (value.trim() === (p.custom[k] ?? '')) return true
     return write(papers.update(p.id, { custom: { [k]: value.trim() === '' ? null : value.trim() } }),
-      { note: m.papers.notices.updated })
+      { note: m.papers.notices.updated, action: undo.change })
   }
 
   /**
@@ -839,9 +780,9 @@ export function PaperTable() {
    * then `papers.update` changes the cell: a single-choice column takes the option, or is cleared when
    * its current value is picked again, and a multi-choice column adds or removes it. After a
    * single-choice write the editor closes, while a multi-choice one stays open for more picks; a write
-   * shows the banner. If any step is rejected, this pick writes nothing further and the cell's column
+   * shows a success notice. If any step is rejected, this pick writes nothing further and the cell's column
    * and row are refetched from Core to correct it; the unsent picks queued after it are voided too,
-   * and the whole sequence shows one toast. Consecutive picks in the same cell each compute their
+   * and the whole sequence shows one refusal notice. Consecutive picks in the same cell each compute their
    * values when their turn comes and the previous pick has truly settled, not when they are submitted.
    * Resolves whether this pick was written.
    */
@@ -875,17 +816,17 @@ export function PaperTable() {
       })
       const ok = added && await write(papers.update(p.id, {
         custom: { [column.key]: next.length === 0 ? null : column.type === 'select' ? next[0]! : next },
-      }), { note: m.papers.notices.updated })
+      }), { note: m.papers.notices.updated, action: undo.change })
       if (ok) {
         if (column.type === 'select') closeCell()
         return next
       }
       // Rejected: this cell's assumptions no longer match Core, so refetch it; the rejected step
-      // already showed the toast.
+      // already showed the refusal notice.
       clearIfLatest()
       bump()
       return null
-    }).catch((e: Error) => { clearIfLatest(); toast(e.message); return null })
+    }).catch((e: unknown) => { clearIfLatest(); notice.refusal(errorLabel(m, e)); return null })
     const entry = { cell: q.cell, chain }
     queue.current = entry
     return chain.then((settled) => settled !== null)
@@ -895,7 +836,7 @@ export function PaperTable() {
    * Queues a column set change at the end of the column chain. When its turn comes, `step` receives
    * Core's last confirmed column set, does its own write and returns the written column set, which
    * then takes effect; `onApplied` (if given) is called synchronously at that moment, and the result
-   * is true. When `step` throws or rejects, its original message shows as a toast, the column set is
+   * is true. When `step` throws or rejects, the label of its reason shows as a refusal notice, the column set is
    * refetched from Core to correct it, and the result is false. Each step starts only after the
    * previous step and its correction have settled.
    */
@@ -910,7 +851,7 @@ export function PaperTable() {
         onApplied?.()
         return true
       } catch (e) {
-        toast((e as Error).message)
+        notice.refusal(errorLabel(m, e))
         await papers.columns().then((live) => {
           confirmedColumns.current = live
           setColumns(live)
@@ -926,7 +867,7 @@ export function PaperTable() {
    * A column configuration change, queued on the column chain: when its turn comes, `update` computes
    * the new configuration from the last confirmed column set and it is handed to Core. It takes effect
    * only once written (`onApplied` is called synchronously at that moment), bumps the vault revision,
-   * shows its banner, and drops a deleted column's width along with the column. Returns whether it was
+   * shows its success notice, and drops a deleted column's width along with the column. Returns whether it was
    * written.
    */
   const changeColumns = (
@@ -944,7 +885,7 @@ export function PaperTable() {
       })
     }
     const note = columnsNote(base, next, m.papers.notices)
-    if (note !== undefined) banner(note)
+    if (note !== undefined) notice.success(note)
     return next
   }, onApplied)
 
@@ -956,7 +897,7 @@ export function PaperTable() {
    * before that.
    */
   const createColumn = (label: string, type: PaperColumn['type']): boolean | Promise<boolean> => {
-    const builtinLabels = [m.papers.columns.title, ...COLUMNS.map((c) => m.papers.columns[c.k])]
+    const builtinLabels = [names.columns.title, ...COLUMNS.map((c) => names.columns[c.k])]
     if (label === '' || takenLabel(label, columns, builtinLabels)) return false
     const token = {}
     columnDraftToken.current = token
@@ -971,15 +912,15 @@ export function PaperTable() {
   /**
    * Writes a column set change that also rewrites papers, queued on the column chain: once `op` is
    * written, refetches the column set from Core, refetches the table's rows and shows `note`. When it
-   * is rejected, Core's original message shows as a toast and the columns stay unchanged. Returns
+   * is rejected, the label of its reason shows as a refusal notice and the columns stay unchanged. Returns
    * whether it was written.
    */
-  const writeColumnsAndCells = (op: () => Promise<void>, note: string): Promise<boolean> =>
+  const writeColumnsAndCells = (op: () => Promise<RecordedChange>, note: string): Promise<boolean> =>
     writeColumns(async () => {
-      await op()
+      const recorded = await op()
       const live = await papers.columns()
       bump()
-      banner(note)
+      notice.success(note, undo.change(recorded))
       return live
     })
 
@@ -1002,7 +943,7 @@ export function PaperTable() {
     const editing = editingCell?.id === p.id && editingCell.key === column.key
     if (!editing) {
       if (column.type === 'text') return <span className="ci">{values[0] ?? ''}</span>
-      return <span className="ci">{values.map((v) => <span className="tagchip" key={v}>{v}</span>)}</span>
+      return <span className="ci">{values.map((v) => <Tag shape="chip" className="tagchip" key={v}>{v}</Tag>)}</span>
     }
     if (column.type === 'text') {
       return (
@@ -1067,18 +1008,16 @@ export function PaperTable() {
     if (k === 'st') {
       return (
         <td key={k}>
-          <ReadStateChip
-            current={p.readState}
-            onPick={(readState) => setReadState(p, readState)}
-          />
+          <ReadStatePicker value={p.readState} onPick={(readState) => setReadState(p, readState)} />
         </td>
       )
     }
     return (
       <td key={k}>
         <span className="ci">
-          {p.topics.map((v) => <span className="tagchip" key={v}>{v}</span>)}
-          <TagAdd field={k} values={p.topics} onError={reportError} onAdd={(v) => addTopic(p, v)} />
+          <PaperTopics
+            topics={p.topics} onError={reportError} onAdd={(v) => addTopic(p, v)} onRemove={(v) => removeTopic(p, v)}
+          />
         </span>
       </td>
     )
@@ -1108,7 +1047,7 @@ export function PaperTable() {
     }))
   }
   const paperTable = (
-    <div className="tblwrap">
+    <div className="tblwrap" ref={tableFade} data-fade-held="left right top">
       <table ref={table} className="ptable">
         <colgroup>
           <col data-cw="t" style={{ width: `${widthOf('t')}px` }} />
@@ -1119,11 +1058,11 @@ export function PaperTable() {
         <thead>
           <tr>
             {/* A sortable header sorts on click; its button is the keyboard's way to that click. */}
-            <th data-k="title" aria-sort={ariaSort('title')} onClick={(e) => clickHeader(e, 'title')}>
+            <th data-k="title" aria-sort={ariaSort('title')} onClick={() => clickHeader('title')}>
               <button type="button" className="thsort">
                 {m.papers.columns.title}{sort === 'title' ? <> <SortArrow direction={direction} /></> : null}
               </button>
-              <span className="thgrip" title={m.papers.columnHeader.resizeHint} onMouseDown={(e) => startDrag(e, 't')} />
+              {columnGrip('t', m.papers.columns.title)}
             </th>
             {cols.map((c) => (
               <th
@@ -1141,10 +1080,10 @@ export function PaperTable() {
                   }
                 }}
                 onDrop={(event) => dropColumn(event, c.k)}
-                onClick={(e) => { if (c.sort) clickHeader(e, c.sort) }}
+                onClick={() => { if (c.sort) clickHeader(c.sort) }}
               >
                 <span
-                  className="thmove" draggable title={m.papers.columnHeader.reorderHint}
+                  className="thmove" draggable
                   onMouseDown={(event) => event.stopPropagation()}
                   onClick={(event) => event.stopPropagation()}
                   onDragStart={(event) => startColumnMove(event, c.k)}
@@ -1153,11 +1092,11 @@ export function PaperTable() {
                 {c.sort
                   ? (
                     <button type="button" className="thsort">
-                      {shownLabel(m, c)}{sort === c.sort ? <> <SortArrow direction={direction} /></> : null}
+                      {shownLabel(names.columns, c)}{sort === c.sort ? <> <SortArrow direction={direction} /></> : null}
                     </button>
                   )
-                  : shownLabel(m, c)}
-                <span className="thgrip" title={m.papers.columnHeader.resizeHint} onMouseDown={(e) => startDrag(e, c.k)} />
+                  : shownLabel(names.columns, c)}
+                {columnGrip(c.k, shownLabel(names.columns, c))}
               </th>
             ))}
             {newCol
@@ -1171,7 +1110,7 @@ export function PaperTable() {
               : null}
             <th className="th-add">
               <AddAction
-                variant="icon" className="colbtn" ref={colAdd} title={m.papers.columnHeader.addColumn}
+                variant="icon" className="colbtn" ref={colAdd} label={m.papers.columnHeader.addColumn}
                 onClick={() => {
                   if (newCol) { newColCell.current?.querySelector('input')?.focus(); return }
                   setNewCol(true)
@@ -1186,40 +1125,49 @@ export function PaperTable() {
         </thead>
         <tbody>
           {rows.map((p) => (
-            <tr
-              key={p.id} tabIndex={0} className={detail?.id === p.id ? 'selected' : undefined}
-              aria-current={detail?.id === p.id ? 'true' : undefined}
-              onClick={() => { void papers.get(p.id).then(setDetail).catch(reportError) }}
-              onDoubleClick={(event) => {
-                if (opensPaperFrom(event.target)) open('reader', p.id)
-              }}
-              onContextMenu={(event) => {
-                event.preventDefault()
-                setRowMenu({ paper: p, x: event.clientX, y: event.clientY })
-              }}
-              onKeyDown={(event) => {
-                if (event.key === 'Enter' && event.target === event.currentTarget) {
-                  void papers.get(p.id).then(setDetail).catch(reportError)
-                  return
-                }
-                if (event.key !== 'ContextMenu' && !(event.shiftKey && event.key === 'F10')) return
-                event.preventDefault()
-                const bounds = event.currentTarget.getBoundingClientRect()
-                setRowMenu({ paper: p, x: bounds.left + 24, y: bounds.top + 24 })
-              }}
+            <ContextMenu
+              key={p.id} label={m.papers.contextMenu.label(plainTitle(p.title))} className="paper-row-menu"
+              trigger={(
+                // The row is the toolbar of its own controls, from its title to its delete, and keeps its row role.
+                <Toolbar role="row" aria-orientation={undefined}>
+                  <tr
+                    className={detail?.id === p.id ? 'selected' : undefined} data-row-actions=""
+                    aria-current={detail?.id === p.id ? 'true' : undefined}
+                    onClick={() => { void papers.get(p.id).then(setDetail).catch(reportError) }}
+                    onMouseDown={holdRepeatSelection}
+                    onDoubleClick={(event) => {
+                      if (opensPaperFrom(event.target)) open('reader', p.id)
+                    }}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter' && event.target === event.currentTarget) {
+                        void papers.get(p.id).then(setDetail).catch(reportError)
+                      }
+                    }}
+                  >
+                    <td className="pt-title"><ToolbarButton className="ci pt-open"><PaperText text={p.title} /></ToolbarButton></td>
+                    {cols.map((c) => cell(p, c))}
+                    {newCol ? <td className="pt-cust" /> : null}
+                    <td className="row-actions-cell">
+                      <RowActions>
+                        <IconButton
+                          label={m.papers.rowActions.delete} size="nested" tone="danger" className="rowx"
+                          onClick={(e) => { e.stopPropagation(); remove(p.id) }}
+                        ><IconTrash /></IconButton>
+                      </RowActions>
+                    </td>
+                  </tr>
+                </Toolbar>
+              )}
             >
-              <td className="pt-title"><span className="ci"><PaperText text={p.title} /></span></td>
-              {cols.map((c) => cell(p, c))}
-              {newCol ? <td className="pt-cust" /> : null}
-              <td>
-                <button
-                  className="rowx" title={m.papers.rowActions.delete}
-                  onClick={(e) => { e.stopPropagation(); remove(p.id) }}
-                >
-                  <IconCross />
-                </button>
-              </td>
-            </tr>
+              <ContextMenuItem onSelect={() => { void papers.get(p.id).then(setDetail).catch(reportError) }}>
+                {m.papers.contextMenu.openDetail}
+              </ContextMenuItem>
+              <ContextMenuItem onSelect={() => open('reader', p.id)}>{m.papers.contextMenu.openReader}</ContextMenuItem>
+              <ContextMenuSeparator />
+              <ContextMenuItem className="mi danger" onSelect={() => remove(p.id)}>
+                {m.papers.contextMenu.moveToTrash}
+              </ContextMenuItem>
+            </ContextMenu>
           ))}
         </tbody>
       </table>
@@ -1241,23 +1189,9 @@ export function PaperTable() {
     >
       {dropActive ? <div className="paper-drop"><strong>{m.papers.upload.dropToImport}</strong></div> : null}
       {/* As in the demo the title carries a count; until it arrives, the "·" and space after it are hidden. */}
-      <PageHeader>
-        <PageTitle>{m.papers.title(titleCount)}</PageTitle>
-      </PageHeader>
-
-      <PageError error={error} />
-
-      <PageBody className={detail ? 'libview withdetail' : 'libview'}>
-        <div className="libwide">
-          <PageToolbar className="paper-view-toolbar">
-            <SegmentedControl
-              size="sm" label={m.papers.views.aria} value={view}
-              options={[
-                { value: 'table', label: m.papers.views.table },
-                { value: 'research-map', label: m.papers.views.researchMap },
-              ]}
-              onChange={(next) => { setView(next); setDetail(null) }}
-            />
+      <PageHeader
+        actions={(
+          <>
             <FormInput
               ref={uploadInput} className="pdfupload-input" type="file" accept="application/pdf,.pdf" multiple
               onChange={(event) => {
@@ -1271,44 +1205,64 @@ export function PaperTable() {
             >
               {uploading ? m.papers.upload.importing : m.papers.upload.importAction}
             </AddAction>
+          </>
+        )}
+      >
+        <PageTitle>{m.papers.title(titleCount)}</PageTitle>
+      </PageHeader>
+
+      <PageError error={error} />
+
+      <PageBody className={detail ? 'libview withdetail' : 'libview'}>
+        <div className="libwide">
+          <PageToolbar className="paper-view-toolbar">
+            <SegmentedControl
+              label={m.papers.views.aria} value={view}
+              options={[
+                { value: 'table', label: m.papers.views.table },
+                { value: 'research-map', label: m.papers.views.researchMap },
+              ]}
+              onChange={(next) => { setView(next); setDetail(null) }}
+            />
+            <div className="libbar">
+              <ClearableInput
+                appearance="field" wrapperClassName="paper-search"
+                id="libq" placeholder={m.papers.toolbar.searchPlaceholder} autoComplete="off" value={q}
+                onChange={(e) => { setQ(e.target.value); setPage(1) }}
+                onClear={() => { setQ(''); setPage(1) }} clearLabel={m.papers.toolbar.clearSearch}
+              />
+              {view === 'table' ? <div className="filters">
+                <span className="pt-dim">{m.papers.toolbar.group}</span>
+                <SegmentedControl
+                  label={m.papers.toolbar.groupFieldAria}
+                  value={group}
+                  options={['none', ...columns.groups.filter((k) => k !== 'readState' && groupable.has(k))]
+                    .map((k) => ({ value: k, label: labelOf(k) }))}
+                  onChange={(value) => { setGroup(value); setSel(null); setPage(1) }}
+                />
+                {columns.groups.includes('readState')
+                  ? (
+                    <>
+                      <span className="pt-dim">{m.papers.toolbar.filter}</span>
+                      <ReadStateFilter
+                        name={names.columns.st}
+                        current={group === 'readState' ? sel as ReadState | null : null}
+                        onPick={(state) => {
+                          setGroup(state === null ? 'none' : 'readState')
+                          setSel(state)
+                          setPage(1)
+                        }}
+                      />
+                    </>
+                  )
+                  : null}
+                <GroupMenu columns={columns} onChange={(update) => { void changeColumns(update) }} />
+              </div> : null}
+            </div>
           </PageToolbar>
           <ParseProgress
             onParsed={() => bump()}
           />
-          <div className="libbar">
-            <ClearableInput
-              appearance="field" wrapperClassName="paper-search"
-              id="libq" placeholder={m.papers.toolbar.searchPlaceholder} autoComplete="off" value={q}
-              onChange={(e) => { setQ(e.target.value); setPage(1) }}
-              onClear={() => { setQ(''); setPage(1) }} clearLabel={m.papers.toolbar.clearSearch}
-            />
-            {view === 'table' ? <div className="filters" style={{ margin: 0 }}>
-              <span className="pt-dim" style={{ fontSize: 12 }}>{m.papers.toolbar.group}</span>
-              <SegmentedControl
-                label={m.papers.toolbar.groupFieldAria}
-                value={group}
-                options={['none', ...columns.groups.filter((k) => k !== 'readState' && groupable.has(k))]
-                  .map((k) => ({ value: k, label: labelOf(k) }))}
-                onChange={(value) => { setGroup(value); setSel(null); setPage(1) }}
-              />
-              {columns.groups.includes('readState')
-                ? (
-                  <>
-                    <span className="pt-dim" style={{ fontSize: 12 }}>{m.papers.toolbar.filter}</span>
-                    <ReadStateFilter
-                      current={group === 'readState' ? sel as ReadState | null : null}
-                      onPick={(state) => {
-                        setGroup(state === null ? 'none' : 'readState')
-                        setSel(state)
-                        setPage(1)
-                      }}
-                    />
-                  </>
-                )
-                : null}
-              <GroupMenu columns={columns} onChange={(update) => { void changeColumns(update) }} />
-            </div> : null}
-          </div>
 
           <div id="libList">
             {view === 'research-map'
@@ -1316,40 +1270,31 @@ export function PaperTable() {
                 <ResearchMap
                   rows={mapRows} total={mapTotal} loading={mapLoading}
                   onOpenPaper={(paper) => { void papers.get(paper.id).then(setDetail).catch(reportError) }}
+                  onReadPaper={(paper) => open('reader', paper.id)}
                 />
               )
               : !listed
               ? (
-                <>
-                  {facets.map((f) => (
-                    <button
-                      type="button" className="gxrow" key={f.value} onClick={() => { setSel(f.value); setPage(1) }}
-                    >
-                      <span className="gx-t">{f.value}</span>
-                      <span className="gx-m">
-                        {m.papers.groupIndex.newest(
-                          `${plainTitle(f.newestTitle).slice(0, 44)}${plainTitle(f.newestTitle).length > 44 ? '…' : ''}`,
-                        )}
-                      </span>
-                      <span className="n">{f.count}</span>
-                    </button>
-                  ))}
-                  <div className="lmore">{m.papers.groupIndex.pickToView(labelOf(group))}</div>
-                </>
+                <StructuredList variant="embedded" maxVisibleRows="all">
+                  {facets.map((f) => {
+                    const newest = m.papers.groupIndex.newest(plainTitle(f.newestTitle))
+                    return (
+                      <StructuredRow className="gxrow" key={f.value} onActivate={() => { setSel(f.value); setPage(1) }}>
+                        <span className="gx-t">{f.value}</span>
+                        <FadeText className="gx-m" label={newest}>{newest}</FadeText>
+                        <CountBadge className="n" count={f.count} />
+                      </StructuredRow>
+                    )
+                  })}
+                </StructuredList>
               )
               : (
                 <>
                   {group !== 'none'
                     ? (
                       <div className="gnav">
-                        <button className="btn plain" id="gxBack" onClick={backToValues}>
-                          ‹ {labelOf(group)}
-                        </button>
-                        <SegmentedControl
-                          label={m.papers.toolbar.groupValueAria}
-                          value={sel ?? ''}
-                          options={facets.map((f) => ({ value: f.value, label: `${f.value}(${f.count})` }))}
-                          onChange={(value) => { setSel(value); setPage(1) }}
+                        <GroupValuePicker
+                          current={sel} facets={facets} onPick={(value) => { setSel(value); setPage(1) }}
                         />
                       </div>
                     )
@@ -1375,15 +1320,15 @@ export function PaperTable() {
         {detail === null
           ? null
           : (
-            <div className="pdetail">
+            <div className="pdetail" ref={detailFade}>
               <div className="pd-h">
-                <span className="pd-t"><PaperText text={detail.title} /></span>
-                <button className="icbtn" title={m.papers.rowActions.openReader} onClick={() => open('reader', detail.id)}>
+                <span className="pd-t"><PaperTitleField paper={detail} onSaved={setDetail} /></span>
+                <IconButton label={m.papers.rowActions.openReader} onClick={() => open('reader', detail.id)}>
                   <IconRead />
-                </button>
+                </IconButton>
                 <PanelClose onClose={closeDetail} />
               </div>
-              <PaperMetadata paper={detail} onSaved={setDetail} />
+              <PaperMetadata paper={detail} readStateLabel={names.columns.st} onSaved={setDetail} titled={false} />
               <PaperReadingSummary
                 paper={detail}
                 onRead={(anchor) => open('reader', detail.id, anchor)}
@@ -1393,27 +1338,6 @@ export function PaperTable() {
           )}
       </DetailPanel>
 
-      {rowMenu === null
-        ? null
-        : (
-          <ContextMenu
-            point={{ x: rowMenu.x, y: rowMenu.y }} label={m.papers.contextMenu.label(plainTitle(rowMenu.paper.title))}
-            className="paper-row-menu" onClose={() => setRowMenu(null)}
-          >
-          <ContextMenuItem
-            onClick={() => {
-              const id = rowMenu.paper.id
-              setRowMenu(null)
-              void papers.get(id).then(setDetail).catch(reportError)
-            }}
-          >{m.papers.contextMenu.openDetail}</ContextMenuItem>
-          <ContextMenuSeparator />
-          <ContextMenuItem
-            className="danger"
-            onClick={() => { const id = rowMenu.paper.id; setRowMenu(null); remove(id) }}
-          >{m.papers.contextMenu.moveToTrash}</ContextMenuItem>
-          </ContextMenu>
-        )}
     </PageShell>
   )
 }

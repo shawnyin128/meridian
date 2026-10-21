@@ -8,6 +8,7 @@ import { z } from 'zod'
 import type {
   ProjectWorkspace, ProjectWorkspaceBinding, ResearchGraph, ResearchIdea,
 } from '../../shared/contract.js'
+import { CallError } from '../call-error.js'
 import type { ProjectRecord } from './page.js'
 
 export const WORKSPACE_SCHEMA = 'meridian.workspace.v1'
@@ -361,7 +362,9 @@ const systemSsh: SshExecutor = (binding, command, input) => {
     timeout: 15_000,
   })
   if (result.error) {
-    throw new Error(result.error.message.includes('ETIMEDOUT') ? 'SSH 连接超时' : result.error.message)
+    throw result.error.message.includes('ETIMEDOUT')
+      ? new CallError('timeout', 'SSH 连接超时')
+      : new Error(result.error.message)
   }
   if (result.status !== 0) throw new Error(sshError(result.stderr))
   return Buffer.isBuffer(result.stdout) ? result.stdout : Buffer.from(result.stdout ?? '')
@@ -369,9 +372,9 @@ const systemSsh: SshExecutor = (binding, command, input) => {
 
 /** Resolves and validates a directory before it is stored on a project page. */
 export function projectWorkspaceRoot(root: string): string {
-  if (!isAbsolute(root)) throw new Error('项目目录必须是绝对路径')
+  if (!isAbsolute(root)) throw new CallError('invalid', '项目目录必须是绝对路径')
   const canonical = realpathSync(root)
-  if (!statSync(canonical).isDirectory()) throw new Error('项目目录不是文件夹')
+  if (!statSync(canonical).isDirectory()) throw new CallError('invalid', '项目目录不是文件夹')
   return canonical
 }
 
@@ -379,12 +382,12 @@ export function projectWorkspaceRoot(root: string): string {
 export function projectWorkspaceSsh(binding: Omit<SshBinding, 'kind'>): SshBinding {
   const host = binding.host.trim()
   const path = binding.path.trim()
-  if (!/^(?!-)[A-Za-z0-9._@%+:[\]-]+$/.test(host)) throw new Error('SSH 主机或别名无效')
+  if (!/^(?!-)[A-Za-z0-9._@%+:[\]-]+$/.test(host)) throw new CallError('invalid', 'SSH 主机或别名无效')
   if (path.includes('\0') || path.includes('\n') || path.includes('\r') || !posix.isAbsolute(path)) {
-    throw new Error('远端项目目录必须是绝对路径')
+    throw new CallError('invalid', '远端项目目录必须是绝对路径')
   }
   if (binding.port !== undefined && (!Number.isInteger(binding.port) || binding.port < 1 || binding.port > 65_535)) {
-    throw new Error('SSH 端口无效')
+    throw new CallError('invalid', 'SSH 端口无效')
   }
   const normalized = posix.normalize(path)
   return {
@@ -515,7 +518,7 @@ export function writeProjectWorkspaceState(
     return planned.revision
   }
 
-  if (project.workspaceRoot === undefined) throw new Error('项目尚未连接工作区')
+  if (project.workspaceRoot === undefined) throw new CallError('refused', '项目尚未连接工作区')
   const root = projectWorkspaceRoot(project.workspaceRoot)
   const manifestFile = join(root, MANIFEST)
   if (existsSync(manifestFile)) ManifestSchema.parse(JSON.parse(readFileSync(manifestFile, 'utf8')))

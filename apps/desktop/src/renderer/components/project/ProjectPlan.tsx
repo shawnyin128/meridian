@@ -17,18 +17,25 @@ import { EmptyState } from '../EmptyState.js'
 import { ChoicePicker, DateButton, PriorityPicker } from '../FieldPickers.js'
 import { InlineDraftInput } from '../InlineDraftInput.js'
 import { InlineField, type InlineFieldProps } from '../InlineField.js'
+import { EditActions } from '../EditActions.js'
 import { MarkdownBox } from '../Markdown.js'
 import { PanelClose } from '../PanelClose.js'
 import { TaskScheduleField } from '../TaskScheduleField.js'
+import { IconButton } from '../IconButton.js'
 import { IconPencil, IconTrash } from '../icons.js'
 import { SectionHeading } from '../PageShell.js'
 import { SegmentedControl } from '../SegmentedControl.js'
-import { StructuredList, StructuredRow } from '../StructuredList.js'
-import { useDragReorder, type DragCardProps } from '../../hooks/useDragReorder.js'
+import { RowActions, StructuredList, StructuredRow } from '../StructuredList.js'
+import { Toolbar, ToolbarButton } from '../Toolbar.js'
+import { useDragReorder, type Reorderable } from '../../hooks/useDragReorder.js'
 import { useFormat } from '../../lib/format.js'
 import { useMessages } from '../../messages/useMessages.js'
 import type { Catalog } from '../../messages/catalog.js'
-import { NodeTag } from './NodeTag.js'
+import { AgentLabel } from '../SourceLabel.js'
+import { TagButton, tagClass } from '../Tag.js'
+import { NodeAssignment } from './NodeAssignment.js'
+import { PRIORITY_TONE, ProjectPriorityTag } from './ProjectIdentity.js'
+import { FadeText } from '../FadeText.js'
 import './ProjectPlan.css'
 
 const stateWord = (m: Catalog): Record<Task['state'], string> => m.project.plan.state
@@ -108,11 +115,11 @@ function TaskCreateRow({ initial, triggers, onSave, onCancel }: {
   }
   return (
     <StructuredRow className="ddlrow task-create-row" rowRef={row}>
-      <DateButton iso={start} className="din" title={m.project.plan.pickStart} onPick={pickStart} />
+      <DateButton iso={start} className="din" onPick={pickStart} />
       <span className="dsep">–</span>
-      <DateButton iso={end} className="din" title={m.project.plan.pickEnd} onPick={pickEnd} />
+      <DateButton iso={end} className="din" onPick={pickEnd} />
       <button
-        className="din twmode" type="button" title={m.project.plan.toggleWindowMode}
+        className="din twmode" type="button"
         onClick={() => setTaskWindow((current) => current ? null : { start: '10:00', end: '12:00' })}
       >{taskWindow ? m.project.plan.windowMode.timed : m.project.plan.windowMode.allDay}</button>
       {taskWindow
@@ -130,14 +137,14 @@ function TaskCreateRow({ initial, triggers, onSave, onCancel }: {
           </span>
         )
         : null}
-      <button
-        className={`din prw prtag ${priority}`} title={m.project.plan.cyclePriority}
+      <TagButton
+        tone={PRIORITY_TONE[priority]}
         onClick={() => setPriority(NEXT_PRIORITY[priority])}
       >
         {priority.toUpperCase()}
-      </button>
+      </TagButton>
       <button
-        className="din state-edit" type="button" title={m.project.plan.cycleState}
+        className="din state-edit" type="button"
         onClick={() => setState(NEXT_TASK_STATE[state])}
       >{stateWord(m)[state]}</button>
       <InlineDraftInput
@@ -167,9 +174,9 @@ function MilestoneCreateRow({ initial, triggers, onSave, onCancel }: {
 
   return (
     <StructuredRow className="ddlrow milestone-create-row" rowRef={row}>
-      <DateButton iso={date} className="din" title={m.project.plan.pickDate} onPick={setDate} />
+      <DateButton iso={date} className="din" onPick={setDate} />
       <button
-        className="din state-edit" type="button" title={m.project.plan.cycleState}
+        className="din state-edit" type="button"
         onClick={() => setDone((current) => !current)}
       >{done ? m.project.plan.milestoneState.done : m.project.plan.milestoneState.open}</button>
       <InlineDraftInput
@@ -208,12 +215,11 @@ function TaskNameCell({ task, onSave }: { task: Task; onSave: (patch: TaskPatch)
       value={task.title} label={m.project.plan.taskNamePlaceholder} onSave={(title) => onSave({ title })}
       rest={(edit) => (
         <>
-          <button type="button" className="plan-cell plan-name plan-open">{task.title}</button>
-          <button
-            type="button" className="plan-rename"
-            title={m.project.plan.renameTask} aria-label={m.project.plan.renameTaskFor(task.title)}
-            onClick={(event) => { event.stopPropagation(); edit() }}
-          ><IconPencil /></button>
+          <ToolbarButton className="plan-cell plan-name plan-open">{task.title}</ToolbarButton>
+          <IconButton
+            label={m.project.plan.renameTaskFor(task.title)} size="nested"
+            className="plan-rename" onClick={(event) => { event.stopPropagation(); edit() }}
+          ><IconPencil /></IconButton>
         </>
       )}
     />
@@ -242,74 +248,54 @@ export function ProjectTaskPanel({
   const fmt = useFormat()
   const [editing, setEditing] = useState(false)
   const box = useRef<HTMLDivElement>(null)
-  const toggle = () => {
-    if (!editing) { setEditing(true); return }
+  const save = () => {
     const next = box.current?.innerText.trim() ?? ''
     setEditing(false)
     void onSaveNote(next)
   }
-  const pickNode = (className: string, text: string) => (
-    <ChoicePicker
-      value={node?.id ?? ''} options={nodes.map((candidate) => candidate.id)} className={className}
-      label={(id) => nodes.find((candidate) => candidate.id === id)?.label ?? id} onPick={onSetNode}
-    >{text}</ChoicePicker>
-  )
   return (
     <>
       <SectionHeading
         variant="rail" className="node-document-head"
         actions={<PanelClose onClose={onClose} />}
-      ><span className="node-document-title">{task.title}</span>
+      ><FadeText className="node-document-title" label={task.title}>{task.title}</FadeText>
       </SectionHeading>
       <div className="project-task-detail-meta">
         <DateChip>{fmt.dateRange(task.start, task.end)}</DateChip>
-        <span className={`prtag ${task.priority}`}>{task.priority.toUpperCase()}</span>
+        <ProjectPriorityTag priority={task.priority} />
         <span className="project-task-detail-state">{stateWord(m)[task.state]}</span>
-        {task.origin === 'agent' ? <span className="agtag">{m.project.records.who.agent}</span> : null}
+        {task.origin === 'agent' ? <AgentLabel /> : null}
       </div>
+      <NodeAssignment node={node} nodes={nodes} canUnlink={handSet} onOpen={onOpenNode} onSet={onSetNode} />
       <SectionHeading
         variant="rail"
-        actions={node === undefined
-          ? (nodes.length === 0 ? undefined : pickNode('btn plain', m.project.plan.linkNode))
-          : (
-            <>
-              {pickNode('btn plain', m.project.plan.changeNode)}
-              {handSet
-                ? <button className="btn plain" onClick={() => onSetNode(null)}>{m.project.plan.unlinkNode}</button>
-                : null}
-            </>
-          )}
-      >{m.project.plan.nodeHeading}
-      </SectionHeading>
-      {node === undefined
-        ? <EmptyState variant="section">{m.project.plan.noNode}</EmptyState>
-        : (
-          <div className="project-task-detail-node">
-            <NodeTag
-              label={node.label} mode={node.mode} hint={m.project.records.goToGraph(node.label)}
-              onOpen={() => onOpenNode(node.id)}
-            />
-          </div>
+        actions={(
+          <EditActions
+            editing={editing} onEdit={() => setEditing(true)} onCancel={() => setEditing(false)} onSave={save}
+          />
         )}
-      <SectionHeading variant="rail" className="flexh">{m.project.plan.noteHeading}
-        <button className="btn plain" onClick={toggle}>{editing ? m.common.save : m.common.edit}</button>
+      >{m.project.plan.noteHeading}
       </SectionHeading>
       <MarkdownBox
         className="task-note" text={task.note ?? ''} editing={editing} box={box}
-        onCancel={() => setEditing(false)}
-        empty={<span className="lm">{m.project.plan.noteEmpty}</span>}
+        onCancel={() => setEditing(false)} onSave={save}
+        empty={<EmptyState variant="section">{m.project.plan.noteEmpty}</EmptyState>}
       />
     </>
   )
 }
 
-function TaskRow({ task, flash, selected, dragProps, dropClass = '', onSave, onDelete, onOpen }: {
+function TaskRow({ task, flash, selected, reorder, dropClass = '', onSave, onDelete, onOpen }: {
   task: Task
   flash: boolean
   /** Whether this task's detail panel is the one currently open. */
   selected: boolean
-  /** Omitted for an archived row: it is not draggable, since its position among other done tasks does not matter. */
-  dragProps?: DragCardProps
+  /**
+   * The whole row is its drag handle: a task's name is a control, not prose, and a grip would take a
+   * column from the narrow plan list. Omitted for an archived row: it does not move, since its
+   * position among other done tasks does not matter.
+   */
+  reorder?: Reorderable
   dropClass?: string
   onSave: (patch: TaskPatch) => Promise<boolean>
   onDelete: () => void
@@ -318,38 +304,41 @@ function TaskRow({ task, flash, selected, dragProps, dropClass = '', onSave, onD
 }) {
   const m = useMessages()
   return (
-    <StructuredRow
-      composite selected={selected} data-row={task.id} {...dragProps} onActivate={onOpen}
-      title={m.project.plan.openTask}
-      className={`ddlrow task-row${task.state === 'done' ? ' done' : ''}${flash ? ' flash' : ''}${
-        dropClass ? ` ${dropClass}` : ''}`}
-    >
-      <TaskScheduleField mode="date" task={task} onSave={onSave} className="task-date-part" stopRowActivation />
-      <TaskScheduleField mode="time" task={task} onSave={onSave} className="task-clock-part" stopRowActivation />
-      <PriorityPicker
-        value={task.priority} className={`prtag ${task.priority} plan-cell`}
-        title={m.project.plan.editPriority} stopRowActivation
-        onPick={(priority) => { void onSave({ priority }) }}
-      >{task.priority.toUpperCase()}</PriorityPicker>
-      <ChoicePicker
-        value={task.state} options={TASK_STATES} label={(state) => stateWord(m)[state]}
-        className="dleft plan-cell state-cell" stopRowActivation
-        onPick={(state) => { void onSave({ state }) }}
-      />
-      {task.origin === 'agent'
-        ? (
-          <span className="task-name-with-origin">
-            <TaskNameCell task={task} onSave={onSave} />
-            <span className="agtag">{m.project.records.who.agent}</span>
-          </span>
-        )
-        : <TaskNameCell task={task} onSave={onSave} />}
-      <button
-        className="row-delete" type="button"
-        title={m.project.plan.deleteTask} aria-label={m.project.plan.deleteTaskFor(task.title)}
-        onClick={(event) => { event.stopPropagation(); onDelete() }}
-      ><IconTrash /></button>
-    </StructuredRow>
+    // The row is the toolbar of its own controls, from its date to its delete.
+    <Toolbar label={task.title}>
+      <StructuredRow
+        composite selected={selected} data-row={task.id} {...reorder?.item} {...reorder?.handle} onActivate={onOpen}
+        className={`ddlrow task-row${task.state === 'done' ? ' done' : ''}${flash ? ' flash' : ''}${
+          dropClass ? ` ${dropClass}` : ''}`}
+      >
+        <TaskScheduleField mode="date" task={task} onSave={onSave} className="task-date-part" stopRowActivation />
+        <TaskScheduleField mode="time" task={task} onSave={onSave} className="task-clock-part" stopRowActivation />
+        <PriorityPicker
+          value={task.priority} className={tagClass(PRIORITY_TONE[task.priority], 'label', 'plan-priority')}
+          stopRowActivation
+          onPick={(priority) => { void onSave({ priority }) }}
+        >{task.priority.toUpperCase()}</PriorityPicker>
+        <ChoicePicker
+          value={task.state} options={TASK_STATES} label={(state) => stateWord(m)[state]}
+          className="dleft plan-cell state-cell" stopRowActivation
+          onPick={(state) => { void onSave({ state }) }}
+        />
+        {task.origin === 'agent'
+          ? (
+            <span className="task-name-with-origin">
+              <TaskNameCell task={task} onSave={onSave} />
+              <AgentLabel />
+            </span>
+          )
+          : <TaskNameCell task={task} onSave={onSave} />}
+        <RowActions>
+          <IconButton
+            label={m.project.plan.deleteTaskFor(task.title)} size="nested" tone="danger"
+            className="row-delete" onClick={(event) => { event.stopPropagation(); onDelete() }}
+          ><IconTrash /></IconButton>
+        </RowActions>
+      </StructuredRow>
+    </Toolbar>
   )
 }
 
@@ -369,8 +358,8 @@ function MilestoneRow({ milestone, flash, onHover, onSave, onDelete }: {
       onMouseEnter={() => onHover(milestone.id)} onMouseLeave={() => onHover(null)}
     >
       <DateButton
-        iso={milestone.date} className="dchip plan-cell plan-date-button"
-        title={m.project.plan.editDate} onPick={(date) => { void onSave({ date }) }}
+        iso={milestone.date} className="plan-cell plan-date-button"
+        onPick={(date) => { void onSave({ date }) }}
       >
         <DateChip date={milestone.date} className="plan-date" />
       </DateButton>
@@ -384,10 +373,12 @@ function MilestoneRow({ milestone, flash, onHover, onSave, onDelete }: {
         value={milestone.title} label={m.project.plan.milestoneNamePlaceholder}
         onSave={(title) => onSave({ title })}
       />
-      <button
-        className="row-delete" type="button" title={m.project.plan.deleteMilestone}
-        aria-label={m.project.plan.deleteMilestoneFor(milestone.title)} onClick={onDelete}
-      ><IconTrash /></button>
+      <RowActions>
+        <IconButton
+          label={m.project.plan.deleteMilestoneFor(milestone.title)} size="nested"
+          tone="danger" className="row-delete" onClick={onDelete}
+        ><IconTrash /></IconButton>
+      </RowActions>
     </StructuredRow>
   )
 }
@@ -398,7 +389,7 @@ function MilestoneRow({ milestone, flash, onHover, onSave, onDelete }: {
  */
 export function ProjectPlan({
   project, tab, today, creating, flashId, selectedTaskId,
-  listRef, addRef, timelineAddRef, milestoneLaneRef,
+  listRef, addRef, timelineAddRef,
   onTab, onDiscardOpenEdits, onStartTask, onStartMilestone, onCancelCreate,
   onCreateTask, onCreateMilestone, onUpdateTask, onDeleteTask, onReorderTasks, onOpenTask,
   onUpdateMilestone, onDeleteMilestone, onHoverMilestone,
@@ -413,7 +404,6 @@ export function ProjectPlan({
   listRef: RefObject<HTMLDivElement | null>
   addRef: RefObject<HTMLButtonElement | null>
   timelineAddRef: RefObject<HTMLButtonElement | null>
-  milestoneLaneRef: RefObject<HTMLDivElement | null>
   onTab: (tab: PlanTab) => void
   onDiscardOpenEdits: () => void
   onStartTask: () => void
@@ -423,7 +413,7 @@ export function ProjectPlan({
   onCreateMilestone: (draft: MilestoneDraft) => Promise<boolean>
   onUpdateTask: (taskId: string, patch: TaskPatch) => Promise<boolean>
   onDeleteTask: (taskId: string) => void
-  /** Persists a full drag-reordering of the task list: `order` is a permutation of the project's task ids. */
+  /** Persists a reordering of the task list, by drag or keyboard: `order` is a permutation of the project's task ids. */
   onReorderTasks: (order: string[]) => void
   /** Opens the task's detail panel; fired by clicking its row here or its bar/label in the Gantt. */
   onOpenTask: (taskId: string) => void
@@ -454,23 +444,26 @@ export function ProjectPlan({
   const msArchiveShown = msArchiveOpen || archivedMilestones.some((milestone) => milestone.id === flashId)
   return (
     <section className="project-plan">
-      <SectionHeading variant="content" className="flexh">{m.project.sections.plan}
-        <div className="section-actions">
-          <SegmentedControl
-            label={m.project.plan.viewLabel}
-            value={tab}
-            options={[
-              { value: 'task', label: m.project.plan.taskMode },
-              { value: 'ms', label: m.project.plan.milestoneMode },
-            ]}
-            onChange={(value) => { onTab(value); onDiscardOpenEdits() }}
-          />
-          <AddAction
-            variant="section" ref={addRef}
-            title={tab === 'ms' ? m.project.plan.addMilestone : m.project.plan.addTask}
-            onClick={() => (tab === 'ms' ? onStartMilestone(today) : onStartTask())}
-          >{tab === 'ms' ? m.project.plan.milestoneMode : m.project.plan.taskMode}</AddAction>
-        </div>
+      <SectionHeading
+        actions={(
+          <>
+            <SegmentedControl
+              size="sm" label={m.project.plan.viewLabel}
+              value={tab}
+              options={[
+                { value: 'task', label: m.project.plan.taskMode },
+                { value: 'ms', label: m.project.plan.milestoneMode },
+              ]}
+              onChange={(value) => { onTab(value); onDiscardOpenEdits() }}
+            />
+            <AddAction
+              variant="section" ref={addRef}
+              label={tab === 'ms' ? m.project.plan.addMilestone : m.project.plan.addTask}
+              onClick={() => (tab === 'ms' ? onStartMilestone(today) : onStartTask())}
+            >{tab === 'ms' ? m.project.plan.milestoneMode : m.project.plan.taskMode}</AddAction>
+          </>
+        )}
+      >{m.project.sections.plan}
       </SectionHeading>
 
       <div ref={listRef}>
@@ -496,20 +489,21 @@ export function ProjectPlan({
               {activeTasks.map((task) => (
                 <TaskRow
                   key={task.id} task={task} flash={flashId === task.id} selected={selectedTaskId === task.id}
-                  dragProps={taskOrder.cardProps(task.id)} dropClass={taskOrder.dropClass(task.id)}
+                  reorder={{ item: taskOrder.itemProps(task.id), handle: taskOrder.handleProps(task.id) }}
+                  dropClass={taskOrder.dropClass(task.id)}
                   onSave={(patch) => onUpdateTask(task.id, patch)}
                   onDelete={() => onDeleteTask(task.id)}
                   onOpen={() => onOpenTask(task.id)}
                 />
               ))}
               {project.tasks.length === 0 && creating?.kind !== 'task'
-                ? <div className="lm">{m.project.plan.noTasks}</div>
+                ? <EmptyState variant="section">{m.project.plan.noTasks}</EmptyState>
                 : null}
               {archivedTasks.length === 0
                 ? null
                 : (
                   <CollapsibleGroup
-                    variant="quiet" title={m.common.archived}
+                    variant="quiet" title={m.common.archived} count={archivedTasks.length}
                     open={taskArchiveShown} onToggle={() => setTaskArchiveOpen((open) => !open)}
                   >
                     {archivedTasks.map((task) => (
@@ -539,16 +533,19 @@ export function ProjectPlan({
                 ? (
                   <MilestoneCreateRow
                     initial={{ date: creating.date, title: '', done: false }}
-                    triggers={[addRef, timelineAddRef, milestoneLaneRef]}
+                    triggers={[addRef, timelineAddRef]}
                     onCancel={onCancelCreate} onSave={onCreateMilestone}
                   />
                 )
+                : null}
+              {project.milestones.length === 0 && creating?.kind !== 'ms'
+                ? <EmptyState variant="section">{m.project.plan.noMilestones}</EmptyState>
                 : null}
               {archivedMilestones.length === 0
                 ? null
                 : (
                   <CollapsibleGroup
-                    variant="quiet" title={m.common.archived}
+                    variant="quiet" title={m.common.archived} count={archivedMilestones.length}
                     open={msArchiveShown} onToggle={() => setMsArchiveOpen((open) => !open)}
                   >
                     {archivedMilestones.map((milestone) => (

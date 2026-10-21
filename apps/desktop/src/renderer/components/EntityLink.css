@@ -1,0 +1,15 @@
+/*
+ * One look for every link to an entity: the text around it keeps its colour, and a quiet underline
+ * marks the link, taking the text's colour on hover. A name that is not a link draws no underline.
+ */
+.entity-link{padding:0;border:0;background:none;color:inherit;font:inherit;text-align:left;cursor:pointer;
+  text-decoration:underline;text-decoration-color:var(--sep-strong);text-decoration-thickness:1px;text-underline-offset:3px;
+  transition:color var(--t-fast) var(--e-out),text-decoration-color var(--t-fast) var(--e-out)}
+.entity-link:hover{color:var(--ink);text-decoration-color:currentColor}
+span.entity-link{cursor:inherit;text-decoration:none}
+.entity-link-mark{display:inline-grid;place-items:center;margin-left:var(--sp-2);color:var(--ter);vertical-align:-1px}
+.entity-link-mark svg{width:10px;height:10px}
+/* A node is named compactly: its state dot, then its label in quiet small type that fades when it does not fit. */
+.entity-link--node{display:inline-flex;align-items:center;gap:var(--sp-6);flex:none;min-width:0;max-width:170px;
+  color:var(--sec);font-size:var(--fs-sm);line-height:var(--lh-ui)}
+.entity-link--fill{width:100%;max-width:none}

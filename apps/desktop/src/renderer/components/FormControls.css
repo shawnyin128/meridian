@@ -16,80 +16,66 @@
   outline:0;
   box-shadow:none;
 }
+.form-control::placeholder{color:var(--ter)}
 
-/* Standard boxed fields are selected explicitly so inline editors can keep their own geometry. */
-.form-control-field{
+/*
+ * The two appearances share one edge, fill and radius. The edge is a real 1px border, so the one
+ * focus rule in tokens.css, which turns a focused field's border --sep-strong, applies to both.
+ */
+.form-control-field,
+.form-control-inline{
   border:1px solid var(--sep2);
-  border-radius:var(--r-md);
+  border-radius:var(--r-control);
   background:var(--field);
   color:var(--ink);
-  transition:border-color .12s ease,background-color .12s ease;
+  transition:border-color var(--t-fast) var(--e-out);
 }
 .form-input.form-control-field,
 .form-select.form-control-field,
 .form-button.form-control-field{
-  height:32px;
-  padding:0 10px;
+  height:30px;
+  padding:0 var(--sp-10);
 }
 .form-button.form-control-field{cursor:pointer;text-align:left}
-.form-select.form-control-field{padding-right:28px}
-.form-textarea.form-control-field{padding:8px 10px;line-height:var(--lh-ui);resize:vertical}
+.form-select.form-control-field{padding-right:var(--sp-32)}
+.form-textarea.form-control-field{padding:var(--sp-8) var(--sp-10);line-height:var(--lh-ui);resize:vertical}
 .form-control-field:hover{border-color:var(--sep-strong)}
-.form-control-field:focus,
-.form-control-field:focus-visible{
-  border-color:var(--accent);
-  background:var(--card);
-}
 .form-control-field:disabled{cursor:default;opacity:.55}
 
 /*
- * Compact editors embedded in table cells and metadata rows take the box of the text they replace,
- * so the text stays put when editing starts: no inline padding, and the block padding lies in
- * negative margins. Editing shows the field color with an accent line along the bottom.
+ * An inline editor takes the place of the text it replaces: its padding and border lie in negative
+ * margins, so the text stays where it was when editing starts.
  */
 .form-input.form-control-inline,
 .form-textarea.form-control-inline,
 .form-select.form-control-inline{
   display:block;
-  width:100%;
+  width:calc(100% + 2 * (var(--sp-6) + 1px));
   height:auto;
-  margin:-2px 0;
-  padding:2px 0;
-  border:0;
-  border-radius:var(--r-xs);
-  background:var(--field);
-  color:var(--ink);
+  margin:calc(-1 * (var(--sp-2) + 1px)) calc(-1 * (var(--sp-6) + 1px));
+  padding:var(--sp-2) var(--sp-6);
   line-height:inherit;
-  outline:0;
-  transition:box-shadow .12s ease;
 }
 /* A native select insets its text and a date input pads its fields; either would move the text. */
 .form-select.form-control-inline{appearance:none}
 .form-input.form-control-inline::-webkit-datetime-edit,
 .form-input.form-control-inline::-webkit-datetime-edit-fields-wrapper{padding:0}
-.form-input.form-control-inline:focus,
-.form-textarea.form-control-inline:focus,
-.form-select.form-control-inline:focus{
-  box-shadow:inset 0 -2px 0 var(--ring);
-}
 
 /*
  * A save refused on leaving the field: a red frame drawn inside the box and a short shake, the frame
  * alone with reduced motion. Each editor styles its own focus frame, so the red one must win over all
  * of them without changing border-width or padding.
  */
-.form-control[aria-invalid="true"]{outline:1px solid var(--bad)!important;outline-offset:-1px!important;animation:form-control-refused .32s var(--e-inout)}
+.form-control[aria-invalid="true"]{outline:1px solid var(--bad)!important;outline-offset:-1px!important;animation:form-control-refused var(--t-shake) var(--e-inout)}
 @keyframes form-control-refused{20%,60%{transform:translateX(-3px)}40%,80%{transform:translateX(3px)}}
 @media (prefers-reduced-motion:reduce){.form-control[aria-invalid="true"]{animation:none}}
 
 /* A directory path and its system chooser form a single field everywhere in the app. */
-.directory-field{position:relative;display:block;min-width:0;width:100%}
-.directory-field .form-input{width:100%;padding-right:42px}
-.directory-field-action{position:absolute;top:1px;right:1px;width:34px;height:30px;padding:0;border:0;
-  border-left:1px solid var(--sep2);border-radius:0 calc(var(--r-md) - 1px) calc(var(--r-md) - 1px) 0;
+.directory-field{--directory-action-w:34px;position:relative;display:block;min-width:0;width:100%}
+.directory-field .form-input{width:100%;padding-right:calc(var(--directory-action-w) + var(--sp-8))}
+.directory-field-action{position:absolute;top:1px;right:1px;width:var(--directory-action-w);height:28px;padding:0;border:0;
+  border-left:1px solid var(--sep2);border-radius:0 calc(var(--r-control) - 1px) calc(var(--r-control) - 1px) 0;
   display:grid;place-items:center;background:transparent;color:var(--ter);cursor:pointer}
 .directory-field-action:hover{background:var(--hover);color:var(--ink)}
-.directory-field-action:focus-visible{outline:0;background:var(--hover);color:var(--accent)}
 .directory-field-action:disabled{cursor:default;opacity:.45;background:transparent;color:var(--ter)}
 .directory-field-action svg{width:16px;height:16px}
-.directory-field:focus-within .form-input{border-color:var(--accent);background:var(--card)}

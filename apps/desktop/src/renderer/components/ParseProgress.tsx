@@ -2,10 +2,12 @@ import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import type { MetadataJob } from '../../shared/contract.js'
 import { useMessages } from '../messages/useMessages.js'
-import { useBanner } from '../shell/AppShell.js'
+import { useNotice } from '../shell/AppShell.js'
 import { useJobs } from '../shell/useJobs.js'
+import { IconButton } from './IconButton.js'
 import { IconCross } from './icons.js'
 import { ProgressFill } from './ProgressFill.js'
+import { Card } from './Card.js'
 import './ParseProgress.css'
 
 const PROGRESS: Record<MetadataJob['step'], number> = {
@@ -16,7 +18,7 @@ const PROGRESS: Record<MetadataJob['step'], number> = {
 export function ParseProgress({ onParsed }: { onParsed: (job: MetadataJob) => void }) {
   const m = useMessages()
   const status = useJobs()
-  const banner = useBanner()
+  const notice = useNotice()
   const [closed, setClosed] = useState<ReadonlySet<string>>(new Set())
   const reported = useRef(new Set<string>())
 
@@ -27,10 +29,10 @@ export function ParseProgress({ onParsed }: { onParsed: (job: MetadataJob) => vo
       reported.current.add(job.id)
       if (job.step === 'done' && job.found !== 'none') {
         onParsed(job)
-        banner(m.papers.parse.addedFixable)
+        notice.success(m.papers.parse.addedFixable)
       }
     }
-  }, [status, banner, onParsed, m])
+  }, [status, notice, onParsed, m])
 
   const uploads = status?.uploads ?? []
   const shown = uploads.filter((job) => !closed.has(job.id))
@@ -44,24 +46,24 @@ export function ParseProgress({ onParsed }: { onParsed: (job: MetadataJob) => vo
   return createPortal(
     <aside className="parse-float" aria-label={m.papers.parse.statusAria}>
       {active.length > 0 ? (
-        <div className="upcard compact progress-host" role="status">
+        <Card floating className="upcard compact progress-host" role="status">
           <ProgressFill percent={progress} label={m.papers.parse.progressAria} />
           <div className="upt">
             <span>{m.papers.parse.working}</span>
             <span className="upcount">{m.papers.parse.count(active.length)}</span>
           </div>
-        </div>
+        </Card>
       ) : null}
       {failed.length > 0 ? (
-        <div className="upcard compact quiet" role="status">
+        <Card floating className="upcard compact quiet" role="status">
           <div className="upt">
             <span>{m.papers.parse.needsAttention(failed.length)}</span>
-            <button
-              className="upclose" title={m.papers.parse.collapse}
+            <IconButton
+              label={m.papers.parse.collapse} size="nested" className="upclose"
               onClick={() => setClosed((held) => new Set([...held, ...failed.map((job) => job.id)]))}
-            ><IconCross /></button>
+            ><IconCross /></IconButton>
           </div>
-        </div>
+        </Card>
       ) : null}
     </aside>,
     document.body,

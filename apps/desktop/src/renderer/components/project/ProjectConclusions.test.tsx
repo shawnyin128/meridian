@@ -61,7 +61,7 @@ describe('project conclusions', () => {
   }
   const button = (text: string) => [...document.querySelectorAll<HTMLButtonElement>('button')].find((b) => b.textContent === text)!
 
-  it('一行与动态同一套列:状态、日期、节点、结论、Wiki 状态;点一下打开', () => {
+  it('一行与动态同一套列:状态、日期、节点、结论连同 Wiki 状态、末尾是 agent 标签;点一下打开', () => {
     const onOpen = vi.fn()
     const written = { ...PENDING, state: 'verified' as const, verifiedOn: '2026-09-21', wiki: [{ page: 'topics/sd', title: 'Speculative decoding', claim: 'wide-b8', version: 2 }] }
     act(() => root!.render(
@@ -73,13 +73,14 @@ describe('project conclusions', () => {
     const [pending, verified] = [...host.querySelectorAll<HTMLElement>('.record-row')]
     expect(pending!.className).toContain('project-signal-columns record-row with-node')
     expect([...pending!.children].map((cell) => cell.className)).toEqual([
-      'project-signal-kind', 'project-signal-date', 'record-node', 'attn-text record-text', 'record-who conclusion-wiki',
+      'project-signal-kind', 'project-signal-date', 'record-node', 'attn-text record-text', 'record-who',
     ])
-    expect(pending!.querySelector('.ak')!.textContent).toBe('待验证')
-    expect(pending!.querySelector('.node-tag')!.textContent).toBe('宽树')
-    expect(pending!.querySelector('.conclusion-wiki')!.textContent).toBe('未写入 Wiki')
-    expect(verified!.querySelector('.ak')!.textContent).toBe('已验证')
-    expect(verified!.querySelector('.conclusion-wiki')!.textContent).toBe('Speculative decoding v2')
+    expect(pending!.querySelector('.tag--warn')!.textContent).toBe('待验证')
+    expect(pending!.querySelector('.entity-link--node')!.textContent).toBe('宽树')
+    expect(pending!.querySelector('.record-line')!.textContent).toBe('Wide trees win at B8 · 未写入 Wiki')
+    expect(pending!.querySelector('.record-who .source-label')!.textContent).toBe('agent')
+    expect(verified!.querySelector('.tag--good')!.textContent).toBe('已验证')
+    expect(verified!.querySelector('.record-line')!.textContent).toBe('Wide trees win at B8 · Speculative decoding v2')
     expect(verified!.classList.contains('structured-row--selected')).toBe(true)
     expect(pending!.classList.contains('structured-row--selected')).toBe(false)
     act(() => pending!.click())
@@ -93,12 +94,31 @@ describe('project conclusions', () => {
     act(() => button('验证').click())
     expect(handlers.onVerify).toHaveBeenCalledWith('t.wide', '0123456789abcdef')
     expect(button('写入 Wiki').disabled).toBe(true)
-    const chain = [...host.querySelectorAll('.conclusion-chain-row, .conclusion-detail-node .node-tag')].map((el) => el.textContent)
+    const chain = [...host.querySelectorAll('.conclusion-chain-row, .conclusion-detail-node .entity-link--node')].map((el) => el.textContent)
     expect(chain).toEqual(['跑宽度扫描', '宽树', '宽度扫描exp-1'])
     act(() => host.querySelector<HTMLButtonElement>('.conclusion-chain-row')!.click())
     expect(handlers.onOpenTask).toHaveBeenCalledWith('task-1')
-    act(() => host.querySelector<HTMLButtonElement>('.conclusion-detail-node .node-tag')!.click())
+    act(() => host.querySelector<HTMLButtonElement>('.conclusion-detail-node .entity-link--node')!.click())
     expect(handlers.onOpenNode).toHaveBeenCalledWith('t.wide')
+  })
+
+  it('验证和写入 Wiki 是面板的操作,和关闭按钮一起放在面板头部;写不了时按钮旁写着未验证', async () => {
+    await panel(PENDING)
+    const head = () => host.querySelector('.node-document-head > .section-heading-actions')!
+    expect([...head().children].map((child) => child.textContent || child.getAttribute('aria-label')))
+      .toEqual(['验证', '未验证', '写入 Wiki', '收起详情'])
+    expect(head().querySelector('.tag')!.nextElementSibling!.textContent).toBe('写入 Wiki')
+    await panel({ ...PENDING, state: 'verified', verifiedOn: '2026-09-21' })
+    expect(head().querySelector('.tag')).toBeNull()
+  })
+
+  it('面板头部的验证、取消验证和写入 Wiki 与其他面板头部一样是小号的普通按钮', async () => {
+    const looks = () => [...host.querySelectorAll<HTMLButtonElement>('.node-document-head > .section-heading-actions > .btn')]
+      .map((button) => `${button.textContent} ${button.className}`)
+    await panel(PENDING)
+    expect(looks()).toEqual(['验证 btn sm', '写入 Wiki btn sm'])
+    await panel({ ...PENDING, state: 'verified', verifiedOn: '2026-09-21' })
+    expect(looks()).toEqual(['取消验证 btn sm', '写入 Wiki btn sm'])
   })
 
   it('已验证:选一页写入 Wiki,提交一条以这个节点为证据的结论', async () => {
@@ -107,10 +127,17 @@ describe('project conclusions', () => {
     act(() => button('取消验证').click())
     expect(handlers.onUnverify).toHaveBeenCalledWith('t.wide')
     await act(async () => { button('写入 Wiki').click(); await flush() })
-    const select = document.querySelector<HTMLSelectElement>('.wiki-form select')!
+    expect(document.querySelector('.wiki-form select')).toBeNull()
     await act(async () => {
-      Object.getOwnPropertyDescriptor(window.HTMLSelectElement.prototype, 'value')!.set!.call(select, 'topics/sd')
-      select.dispatchEvent(new Event('change', { bubbles: true }))
+      document.querySelector('.wiki-form .choice-picker')!
+        .dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, button: 0 }))
+      await flush()
+    })
+    const page = [...document.querySelectorAll<HTMLElement>('.choice-picker-menu [role="menuitemradio"]')]
+      .find((item) => item.textContent === 'Speculative decoding')!
+    await act(async () => {
+      page.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }))
+      page.dispatchEvent(new MouseEvent('click', { bubbles: true }))
       await flush()
     })
     expect(document.querySelector<HTMLTextAreaElement>('.wiki-form textarea')!.value).toBe('Wide trees win at B8')

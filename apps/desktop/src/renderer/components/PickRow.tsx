@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { RefObject } from 'react'
 import { useCandidateKeys } from '../hooks/useCandidateKeys.js'
 import { useInlineDraft } from '../hooks/useInlineDraft.js'
-import { PickerPopover } from './PickerPopover.js'
+import { PickerPopover, PickOption } from './PickerPopover.js'
 import { FormInput, type FormControlAppearance } from './FormControls.js'
 import { PaperText } from './paper/PaperText.js'
 import './PickRow.css'
@@ -15,9 +15,9 @@ const LIMIT = 8
 
 /**
  * The input of a draft row, with suggested candidates: typing asks `suggest` for candidates, the
- * up/down keys move the highlight, and Enter picks the highlighted one. Clicking a candidate picks
- * it; with no candidate highlighted and `allowNew` true, Enter hands the typed text over as a new
- * name. Enter does nothing while the candidates have not caught up with the input, and the input
+ * up/down keys or the pointer move the highlight, and Enter picks the highlighted one. Clicking a
+ * candidate picks it; with no candidate highlighted and `allowNew` true, Enter hands the typed text
+ * over as a new name. Enter does nothing while the candidates have not caught up with the input, and the input
  * is `aria-busy` meanwhile. Enter, a candidate click, Esc, a press outside the draft and focus
  * leaving it go through `useInlineDraft`, which sends no second pick until the first has landed.
  * Leaving the draft with text in it acts as Enter does; leaving it empty, with `initialText`
@@ -28,8 +28,8 @@ const LIMIT = 8
  */
 export function PickRow({
   row, triggers, placeholder, initialText = '', suggest, allowNew, onPick, onNew, onCancel, onError,
-  inputClassName = 'inedit pickin',
-  inputAppearance = 'plain',
+  inputClassName = 'inedit',
+  inputAppearance = 'inline',
   cancelOnLeave = false,
 }: {
   row: RefObject<HTMLElement | null>
@@ -70,7 +70,7 @@ export function PickRow({
 
   const pick = (): boolean | Promise<boolean> => {
     if (stale) return false
-    const hit = hits[at]
+    const hit = hits[keys.active]
     if (hit !== undefined) return onPick(hit)
     if (allowNew && text.trim() !== '') return onNew(text.trim())
     return false
@@ -82,7 +82,6 @@ export function PickRow({
   // A stale result set must not be selected by Enter; the input's own onSubmit (pick) re-checks
   // `stale` and takes over instead, matching the mouse-pick path's staleness rule.
   const keys = useCandidateKeys(hits.length, (i) => { if (!stale) draft.submit(() => onPick(hits[i]!)) })
-  const at = keys.active
 
   return (
     <PickerPopover
@@ -98,19 +97,15 @@ export function PickRow({
           }}
         />
       )}
-      content={(
-          <ul>
-            {hits.map((h, i) => (
-              <li
-                className={i === at ? 'on' : undefined} key={h.id}
-                onMouseDown={(e) => { e.preventDefault(); draft.submit(() => onPick(h)) }}
-              >
-                {h.paper ? <PaperText text={h.title} /> : h.title}
-                {h.meta === undefined ? null : <span className="meta">{h.meta}</span>}
-              </li>
-            ))}
-          </ul>
-      )}
+      content={hits.map((h, i) => (
+        <PickOption
+          keys={keys} index={i} key={h.id}
+          onMouseDown={(e) => { e.preventDefault(); draft.submit(() => onPick(h)) }}
+        >
+          {h.paper ? <PaperText text={h.title} /> : h.title}
+          {h.meta === undefined ? null : <span className="meta">{h.meta}</span>}
+        </PickOption>
+      ))}
     />
   )
 }

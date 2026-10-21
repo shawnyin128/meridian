@@ -7,13 +7,18 @@ import {
 } from '../ipc.js'
 import { ActionMenu, MenuItem } from '../components/ActionMenu.js'
 import { AboutDialog } from '../components/AboutDialog.js'
+import { FadeText } from '../components/FadeText.js'
+import { GripEdge, type GripProps } from '../components/Grip.js'
+import { IconButton } from '../components/IconButton.js'
+import { Notice, type NoticeAction, type NoticeContent, type NoticeTone } from '../components/Notice.js'
 import { PageFailure } from '../components/PageShell.js'
 import { ScreenBoundary } from '../components/ScreenBoundary.js'
-import { composing } from '../lib/keyboard.js'
+import { Tooltip } from '../components/Tooltip.js'
+import { errorLabel } from '../lib/failure-label.js'
+import { commandShortcut, composing } from '../lib/keyboard.js'
 import type { Catalog } from '../messages/catalog.js'
 import { useMessages } from '../messages/useMessages.js'
 import { Sidebar } from './Sidebar.js'
-import { GRIP_WIDTHS, useGrip } from './useGrip.js'
 import { JobsContext, useJobsPoll } from './useJobs.js'
 import brandmark from '../../../resources/mark-64.png'
 import './AppShell.css'
@@ -50,8 +55,15 @@ export type InboxMode = 'watch' | 'discovery'
 /** One project's share of the discovery stream, listed under Discovery in the sidebar. */
 export type DiscoveryProjectCount = { id: string; name: string; count: number }
 
-/** The demo's showGtip: the handle's tooltip appears after the pointer rests on it this many ms. */
-const GRIPTIP_DELAY = 350
+/** The sidebar's default width in px, which a double-click on its grip restores. */
+const SIDEBAR_WIDTH = 232
+/** The paper chat's width in px while it has not been resized, the default of `--rrw` in Reader.css. */
+const PAPER_CHAT_WIDTH = 300
+/** The width range, in px, that each of the shell's grips keeps its pane within. */
+const GRIP_LIMITS = {
+  sidebar: { min: 180, max: 320 },
+  paperChat: { min: 240, max: 480 },
+}
 
 /** A screen's additions to its base breadcrumbs: deeper segments and the last base segment's back action. */
 type Deeper = { tail: CrumbSeg[]; onLeafClick: (() => void) | null }
@@ -70,6 +82,8 @@ export type JumpAnchor = {
   panel?: 'highlights' | 'notes'
   /** Project: the task to locate in the plan. */
   task?: string
+  /** Project: the milestone to locate in the plan. */
+  milestone?: string
   /** Project: the conclusion to open in the Conclusions view, by its id. */
   conclusion?: string
 }
@@ -82,8 +96,9 @@ export type ScreenJump = {
 }
 
 const CrumbTailContext = createContext<((tail: CrumbSeg[], onLeafClick: (() => void) | null) => void) | null>(null)
-const BannerContext = createContext<((text: ReactNode) => void) | null>(null)
-const ToastContext = createContext<((text: ReactNode) => void) | null>(null)
+/** Shows a notice of one tone: `text`, and optionally the one action it offers. */
+export type Notify = (text: ReactNode, action?: NoticeAction) => void
+const NoticeContext = createContext<{ success: Notify; refusal: Notify } | null>(null)
 const PaperCountContext = createContext<{ count: number | null } | null>(null)
 const ScreenContext = createContext<{ screen: ScreenKey; entry: number; reentry: number } | null>(null)
 const InboxScopeContext = createContext<string | null>(null)
@@ -101,6 +116,7 @@ const JumpContext = createContext<{
   jump: ScreenJump | null
   open: (screen: ScreenKey, target: string, anchor?: JumpAnchor) => void
   returnTo: (screen: ScreenKey) => void
+  enter: (screen: ScreenKey) => void
 } | null>(null)
 /** The screen these children belong to: every mounted screen keeps running, so each must know its own. */
 const SlotContext = createContext<ScreenKey | null>(null)
@@ -111,29 +127,11 @@ const SettingsContext = createContext<{
   setOpen: (open: boolean) => void
   openCategory: (category: SettingsCategory) => void
 } | null>(null)
-/** The mouse handlers of a resize grip: dragging, click-to-collapse and the hover tooltip are the shell's. */
-type GripHandlers = {
-  onMouseDown: (e: ReactMouseEvent) => void
-  onMouseEnter: (e: ReactMouseEvent) => void
-  onMouseLeave: () => void
-}
-const PaperChatGripContext = createContext<{ grip: GripHandlers; collapsed: boolean } | null>(null)
+const PaperChatGripContext = createContext<{ grip: GripProps; collapsed: boolean } | null>(null)
 
 /** The color of the window buttons' symbols in the current theme: `--sec`, the tone of secondary text. */
 function symbolColor(): string {
   return getComputedStyle(document.documentElement).getPropertyValue('--sec').trim()
-}
-
-/** The demo's banner() and toast(): a new message replaces the shown one, which hides after `ms` ms. */
-function useFading(ms: number): [{ text: ReactNode; show: boolean }, (text: ReactNode) => void] {
-  const [state, setState] = useState<{ text: ReactNode; show: boolean }>({ text: '', show: false })
-  const timer = useRef(0)
-  const show = useCallback((text: ReactNode) => {
-    setState({ text, show: true })
-    window.clearTimeout(timer.current)
-    timer.current = window.setTimeout(() => setState((s) => ({ ...s, show: false })), ms)
-  }, [ms])
-  return [state, show]
 }
 
 /**
@@ -150,25 +148,14 @@ export function useCrumbTail(tail: CrumbSeg[], onLeafClick?: () => void): void {
 }
 
 /**
- * Returns the function that shows the confirmation banner after a write, the demo's banner(): a new
- * message replaces the shown one, which hides after 1.6 seconds.
- * The returned function retains the same reference throughout the lifetime of the shell.
+ * Returns the two ways to show the app's one notice: `success` for an action that took effect,
+ * `refusal` for one that was refused or failed and wrote nothing. A new notice replaces the shown one.
+ * The returned object keeps the same reference throughout the lifetime of the shell.
  */
-export function useBanner(): (text: ReactNode) => void {
-  const show = useContext(BannerContext)
-  if (!show) throw new Error('useBanner needs AppShell')
-  return show
-}
-
-/**
- * Returns the function that tells the user an action was rejected, the demo's toast(): a new message
- * replaces the shown one, which hides after 2.4 seconds.
- * The returned function retains the same reference throughout the lifetime of the shell.
- */
-export function useToast(): (text: ReactNode) => void {
-  const show = useContext(ToastContext)
-  if (!show) throw new Error('useToast needs AppShell')
-  return show
+export function useNotice(): { success: Notify; refusal: Notify } {
+  const notify = useContext(NoticeContext)
+  if (!notify) throw new Error('useNotice needs AppShell')
+  return notify
 }
 
 /**
@@ -211,11 +198,13 @@ export function useToday(): string {
  * UI calls it. `jump` is non-null only when the caller's screen is a jump's destination: every mounted
  * screen keeps running, so none may take another screen's jump for its own. `returnTo` goes back to
  * the origin screen. The third argument of `open` is where to land, such as a page in the reader.
+ * `enter` opens a screen at its top level, as a sidebar click does.
  */
 export function useJump(): {
   jump: ScreenJump | null
   open: (screen: ScreenKey, target: string, anchor?: JumpAnchor) => void
   returnTo: (screen: ScreenKey) => void
+  enter: (screen: ScreenKey) => void
 } {
   const state = useContext(JumpContext)
   const slot = useContext(SlotContext)
@@ -224,6 +213,7 @@ export function useJump(): {
     jump: state.jump !== null && state.jump.screen === slot ? state.jump : null,
     open: state.open,
     returnTo: state.returnTo,
+    enter: state.enter,
   }
 }
 
@@ -312,11 +302,10 @@ export function useChatSession(): {
 }
 
 /**
- * Returns the handlers for the grip on the Reader paper chat's edge, which must be a direct child of
- * the chat: dragging it resizes the chat, a click collapses it, and hovering it shows the tooltip.
- * The returned object keeps its reference throughout the lifetime of the shell.
+ * Returns the props of the grip on the Reader paper chat's edge, which must be a direct child of the
+ * chat: the shell owns the chat's width.
  */
-export function usePaperChatGrip(): GripHandlers {
+export function usePaperChatGrip(): GripProps {
   const state = useContext(PaperChatGripContext)
   if (!state) throw new Error('usePaperChatGrip needs AppShell')
   return state.grip
@@ -368,7 +357,7 @@ export function AppShell({ screens, settings }: {
   const [inboxMode, setInboxMode] = useState<InboxMode>('watch')
   const [mounted, setMounted] = useState<ScreenKey[]>(['feed'])
   const [tails, setTails] = useState<Partial<Record<ScreenKey, Deeper>>>({})
-  const [width, setWidth] = useState(232)
+  const [width, setWidth] = useState(SIDEBAR_WIDTH)
   /** The paper chat's dragged width; null until the first drag, leaving the Reader's CSS default. */
   const [chatWidth, setChatWidth] = useState<number | null>(null)
   const [hidden, setHidden] = useState(false)
@@ -391,10 +380,8 @@ export function AppShell({ screens, settings }: {
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [settingsCategory, setSettingsCategory] = useState<SettingsCategory | null>(null)
   const [bootError, setBootError] = useState<string | null>(null)
-  const [banner, showBanner] = useFading(1600)
-  const [toast, showToast] = useFading(2400)
-  const [griptip, setGriptip] = useState<{ top: number; left: number } | null>(null)
-  const griptipTimer = useRef(0)
+  const [notice, setNotice] = useState<NoticeContent | null>(null)
+  const noticeSeq = useRef(0)
   const jumpSeq = useRef(0)
   /** Focus before the app menu opened, restored on close; when null, Radix returns focus to the logo button. */
   const appMenuOpener = useRef<HTMLElement | null>(null)
@@ -406,7 +393,7 @@ export function AppShell({ screens, settings }: {
   // follows `revision`. The vault's today is fetched here too: a write uses the current day, and a
   // stale day on screen would be one day off.
   useEffect(() => {
-    void vault.today().then(setToday).catch((e: Error) => setBootError(e.message))
+    void vault.today().then(setToday).catch((e: unknown) => setBootError(errorLabel(m, e)))
     void papers.list({ page: 1, size: 1 }).then((r) => setPaperCount(r.total))
     void project.list().then((rows) =>
       setProjectCount(rows.filter((p) => p.status === ACTIVE_PROJECT).length))
@@ -453,6 +440,10 @@ export function AppShell({ screens, settings }: {
 
   // The platform name is for CSS: the room left for the window buttons on either side depends on it.
   useEffect(() => { document.documentElement.dataset.os = appMenu.platform() }, [])
+  useEffect(() => appMenu.onFullScreen((on) => {
+    if (on) document.documentElement.dataset.fullscreen = ''
+    else delete document.documentElement.dataset.fullscreen
+  }), [])
 
   // The theme is not React state: it is written straight to documentElement's data-theme, and the
   // screenshot script and e2e write it the same way. So this watches the attribute, not the buttons,
@@ -465,6 +456,13 @@ export function AppShell({ screens, settings }: {
   }, [])
 
   const bump = useCallback(() => setRevision((n) => n + 1), [])
+  const notify = useMemo(() => {
+    const of = (tone: NoticeTone): Notify => (text, action) => {
+      noticeSeq.current += 1
+      setNotice({ id: noticeSeq.current, tone, text, action })
+    }
+    return { success: of('success'), refusal: of('refusal') }
+  }, [])
   const jobsStatus = useJobsPoll(bump)
   const paperCountState = useMemo(() => ({ count: paperCount }), [paperCount])
   const screenState = useMemo(() => ({ screen, entry, reentry }), [screen, entry, reentry])
@@ -479,11 +477,6 @@ export function AppShell({ screens, settings }: {
     setOpen: setSettingsOpen,
     openCategory: openSettingsCategory,
   }), [settingsCategory, settingsOpen, openSettingsCategory])
-
-  // Both grips toggle `hidden`: in the Reader the paper chat takes the sidebar's place and collapses with it.
-  const toggleHidden = useCallback(() => setHidden((h) => !h), [])
-  const dragSidebar = useGrip(GRIP_WIDTHS.sidebar, setWidth, toggleHidden)
-  const dragPaperChat = useGrip(GRIP_WIDTHS.paperChat, setChatWidth, toggleHidden)
 
   // Ctrl+B / Cmd+B toggles the sidebar; Escape peels the topmost dismissible layer; "/" outside an
   // editable element jumps to the nearest search field.
@@ -532,27 +525,18 @@ export function AppShell({ screens, settings }: {
     }
   }, [])
 
-  const hideGriptip = useCallback(() => {
-    window.clearTimeout(griptipTimer.current)
-    setGriptip(null)
-  }, [])
-
-  const gripEnter = useCallback((e: ReactMouseEvent) => {
-    const r = e.currentTarget.getBoundingClientRect()
-    window.clearTimeout(griptipTimer.current)
-    griptipTimer.current = window.setTimeout(() => setGriptip({
-      top: Math.max(8, Math.min(window.innerHeight - 64, r.top + r.height / 2 - 20)),
-      left: r.right + 10,
-    }), GRIPTIP_DELAY)
-  }, [])
-
-  const gripOf = useCallback((startDrag: (e: ReactMouseEvent) => void): GripHandlers => ({
-    onMouseDown: (e) => { startDrag(e); hideGriptip() },
-    onMouseEnter: gripEnter,
-    onMouseLeave: hideGriptip,
-  }), [gripEnter, hideGriptip])
-  const paperChatGrip = useMemo(() => gripOf(dragPaperChat), [gripOf, dragPaperChat])
-  const paperChat = useMemo(() => ({ grip: paperChatGrip, collapsed: hidden }), [paperChatGrip, hidden])
+  const sidebarGrip: GripProps = {
+    id: 'sbgrip', label: m.shell.sidebar.resize, value: width, ...GRIP_LIMITS.sidebar,
+    onResize: setWidth, onReset: () => setWidth(SIDEBAR_WIDTH),
+  }
+  // In the Reader the paper chat takes the sidebar's place and collapses with it.
+  const paperChat = useMemo(() => ({
+    grip: {
+      id: 'rrgrip', label: m.chat.paperChatWidth, value: chatWidth ?? PAPER_CHAT_WIDTH, ...GRIP_LIMITS.paperChat,
+      onResize: setChatWidth, onReset: () => setChatWidth(null),
+    },
+    collapsed: hidden,
+  }), [m, chatWidth, hidden])
 
   const goTo = useCallback((next: ScreenKey) => {
     setScreen(next)
@@ -560,11 +544,11 @@ export function AppShell({ screens, settings }: {
   }, [])
 
   // Every sidebar click is an entry: a screen showing a detail returns to its list, also when it is the current screen.
-  const navigate = (next: ScreenKey) => {
+  const navigate = useCallback((next: ScreenKey) => {
     setEntry((n) => n + 1)
     if (next === screen) setReentry((n) => n + 1)
     goTo(next)
-  }
+  }, [screen, goTo])
 
   const openInbox = (scope: string, mode: InboxMode = 'watch') => {
     setInboxScope(scope)
@@ -584,7 +568,7 @@ export function AppShell({ screens, settings }: {
     void chat.create(m.chat.newChat, false).then((session) => {
       bump()
       openChat(session.id)
-    }).catch((e: Error) => showToast(e.message))
+    }).catch((e: unknown) => notify.refusal(errorLabel(m, e)))
   }
 
   // The demo's archive: archive a chat and, if it is the open one, go to the Feed. Unarchiving happens
@@ -595,7 +579,7 @@ export function AppShell({ screens, settings }: {
       if (id !== chatId) return
       setChatId(null)
       navigate('feed')
-    }).catch((e: Error) => showToast(e.message))
+    }).catch((e: unknown) => notify.refusal(errorLabel(m, e)))
   }
 
   const chatSession = useMemo(() => {
@@ -619,7 +603,8 @@ export function AppShell({ screens, settings }: {
       goTo(next)
     },
     returnTo: goTo,
-  }), [jump, screen, goTo])
+    enter: navigate,
+  }), [jump, screen, goTo, navigate])
 
   const crumbs = useMemo(() => crumbsOf(m), [m])
 
@@ -660,14 +645,17 @@ export function AppShell({ screens, settings }: {
           appMenu.toggleMaximize()
         }}
       >
-        <button className="tbtn" id="sbBtn" title={m.shell.sidebar.toggle} onClick={() => setHidden((h) => !h)}>
+        <IconButton
+          label={m.shell.sidebar.toggle} shortcut={commandShortcut(appMenu.platform(), 'B')} size="nested"
+          className="tbtn" id="sbBtn" onClick={() => setHidden((h) => !h)}
+        >
           <svg
             viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"
             strokeLinecap="round" strokeLinejoin="round"
           >
             <rect x="3" y="3" width="18" height="18" rx="2.5" /><path d="M9.5 3v18" />
           </svg>
-        </button>
+        </IconButton>
         <ActionMenu
           align="start" sideOffset={6} contentData={{ 'data-appmenu': '' }}
           onOpenChange={(open) => {
@@ -679,9 +667,9 @@ export function AppShell({ screens, settings }: {
               : null
           }}
           trigger={(
-            <button className="appbtn" title="Meridian">
-            <img className="brandmark" src={brandmark} alt="Meridian" />
-            </button>
+            <IconButton label="Meridian" size="nested" className="appbtn">
+              <img className="brandmark" src={brandmark} alt="Meridian" />
+            </IconButton>
           )}
           contentProps={{
               // The menu and the Dialog cannot both manage focus. Mounting the Dialog as soon as
@@ -704,7 +692,7 @@ export function AppShell({ screens, settings }: {
           }}
         >
           <MenuItem onSelect={() => { wantDialog.current = 'settings' }}>
-            {m.shell.titlebar.settings}<span className="mi-key">{appMenu.platform() === 'darwin' ? '⌘,' : 'Ctrl+,'}</span>
+            {m.shell.titlebar.settings}<span className="mi-key">{commandShortcut(appMenu.platform(), ',')}</span>
           </MenuItem>
           <MenuItem onSelect={() => {
             void appUpdates.check()
@@ -724,8 +712,13 @@ export function AppShell({ screens, settings }: {
               <Fragment key={`${i}${p.text}`}>
                 {i > 0 ? <span className="csep">›</span> : null}
                 {link
-                  ? <button type="button" className="cseg link" onClick={p.onClick}>{p.text}</button>
-                  : <span className="cseg">{p.text}</span>}
+                  ? (
+                    <Tooltip label={p.text} whenClipped>
+                      <button type="button" className="cseg link" onClick={p.onClick}><FadeText>{p.text}</FadeText></button>
+                    </Tooltip>
+                  )
+                  // A segment that is not a link drags the window, which takes its pointer, so it has no tooltip.
+                  : <FadeText className="cseg">{p.text}</FadeText>}
               </Fragment>
             )
           })}
@@ -747,14 +740,21 @@ export function AppShell({ screens, settings }: {
           laterCount={laterCount}
           chats={chats} chatId={screen === 'chat' ? chatId : null} onOpenChat={openChat}
           onNewChat={newChat} onArchiveChat={archiveChat}
-          grip={gripOf(dragSidebar)} collapsed={hidden}
+          grip={sidebarGrip} collapsed={hidden}
         />
-        {screen === 'reader' && hidden ? (
-          <button className="paper-chat-edge" title={m.chat.expandPaperChat} onClick={() => setHidden(false)} />
+        {hidden ? (
+          <Tooltip
+            label={screen === 'reader' ? m.chat.expandPaperChat : m.shell.sidebar.expand}
+            shortcut={commandShortcut(appMenu.platform(), 'B')} side="right"
+          >
+            <GripEdge
+              label={screen === 'reader' ? m.chat.expandPaperChat : m.shell.sidebar.expand}
+              onExpand={() => setHidden(false)}
+            />
+          </Tooltip>
         ) : null}
-        <BannerContext.Provider value={showBanner}>
+        <NoticeContext.Provider value={notify}>
           <JobsContext.Provider value={jobsStatus}>
-          <ToastContext.Provider value={showToast}>
             <PaperCountContext.Provider value={paperCountState}>
               <VaultRevisionContext.Provider value={vaultRevision}>
                 <ScreenContext.Provider value={screenState}>
@@ -773,10 +773,10 @@ export function AppShell({ screens, settings }: {
                             {bootError === null ? null : (
                               <PageFailure
                                 className="bootfail" title={m.shell.bootFailure.title}
-                                error={bootError} note={m.shell.bootFailure.note}
+                                error={bootError}
                                 action={(
-                                  <button className="btn" onClick={() => setSettingsOpen(true)}>
-                                    {m.shell.bootFailure.openSettings}
+                                  <button className="btn" onClick={() => openSettingsCategory('storage')}>
+                                    {m.shell.bootFailure.changeLibrary}
                                   </button>
                                 )}
                               />
@@ -802,33 +802,11 @@ export function AppShell({ screens, settings }: {
                 </ScreenContext.Provider>
               </VaultRevisionContext.Provider>
             </PaperCountContext.Provider>
-          </ToastContext.Provider>
           </JobsContext.Provider>
-        </BannerContext.Provider>
+        </NoticeContext.Provider>
+        <Notice notice={notice} />
       </div>
 
-      {/* The demo's banner: the element is always present, and its text stays while it fades out. */}
-      <div className={banner.show ? 'banner show' : 'banner'} id="banner">
-        <svg
-          viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4"
-          strokeLinecap="round" strokeLinejoin="round"
-        >
-          <path d="M20 6L9 17l-5-5" />
-        </svg>
-        <span>{banner.text}</span>
-      </div>
-
-      {/* The demo's toast: says an action was rejected; like the banner, the element is always present. */}
-      <div className={toast.show ? 'toast show' : 'toast'} id="toast">{toast.text}</div>
-
-      {/* The demo's griptip: the tooltip shown after hovering the handle, parked off screen while hidden. */}
-      <div
-        className={griptip ? 'griptip show' : 'griptip'} id="griptip"
-        style={{ top: griptip?.top ?? 0, left: griptip?.left ?? -9999 }}
-      >
-        <div className="t1">{m.shell.sidebar.collapseHint}<span className="k">Ctrl+B</span></div>
-        <div className="t2">{m.shell.sidebar.dragHint}</div>
-      </div>
     </>
   )
 }

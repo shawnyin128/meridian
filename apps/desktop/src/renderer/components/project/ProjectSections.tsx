@@ -1,11 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import type { DragEvent as ReactDragEvent, ReactNode, RefObject } from 'react'
+import type { DragEvent as ReactDragEvent, KeyboardEvent as ReactKeyboardEvent, ReactNode, RefObject } from 'react'
 import type { AgentSession, Attachment, RelationGroup } from '../../../shared/contract.js'
 import { papers } from '../../ipc.js'
 import { AddAction } from '../AddAction.js'
 import { CardTray } from '../CardTray.js'
 import { FadeText } from '../FadeText.js'
-import { IconCross, IconPencil } from '../icons.js'
+import { IconButton } from '../IconButton.js'
+import { IconCross, IconPencil, IconTrash } from '../icons.js'
+import { EditActions } from '../EditActions.js'
+import { ExternalMark } from '../EntityLink.js'
+import { EmptyState } from '../EmptyState.js'
 import { MarkdownBox } from '../Markdown.js'
 import { PaperText } from '../paper/PaperText.js'
 import { PickRow, type PickHit } from '../PickRow.js'
@@ -15,7 +19,9 @@ import { useMessages } from '../../messages/useMessages.js'
 import { FormInput } from '../FormControls.js'
 import { SectionHeading } from '../PageShell.js'
 import { SegmentedControl } from '../SegmentedControl.js'
-import { StructuredList, StructuredRow } from '../StructuredList.js'
+import { RowActions, StructuredList, StructuredRow } from '../StructuredList.js'
+import { Tag, tagClass } from '../Tag.js'
+import { Tooltip } from '../Tooltip.js'
 import './ProjectSections.css'
 
 /** Local-only grouping key for linked papers inside the relations list; never sent to Core. */
@@ -66,11 +72,13 @@ export function ProjectUrlDraft({ row, triggers, initial, onSubmit, onCancel, on
   return (
     <div className="urldraft">
       <FormInput
-        ref={address} className="inedit" placeholder={m.project.links.urlPlaceholder} defaultValue={initial?.url}
+        ref={address} appearance="inline" className="inedit" placeholder={m.project.links.urlPlaceholder}
+        defaultValue={initial?.url}
         {...draft.inputProps}
       />
       <FormInput
-        ref={label} className="inedit" placeholder={m.project.links.urlNamePlaceholder} defaultValue={initial?.text}
+        ref={label} appearance="inline" className="inedit" placeholder={m.project.links.urlNamePlaceholder}
+        defaultValue={initial?.text}
         {...draft.inputProps} autoFocus={false}
       />
     </div>
@@ -104,12 +112,7 @@ export function ProjectTopicField({ value, onSave, onError }: {
   if (!editing) {
     return (
       <span className="metadata-field">
-        <button
-          className="pv metadata-editable" title={m.common.field.clickToEdit}
-          onClick={() => setEditing(true)}
-        >
-          {value}
-        </button>
+        <button className="pv metadata-editable" onClick={() => setEditing(true)}>{value}</button>
       </span>
     )
   }
@@ -117,7 +120,7 @@ export function ProjectTopicField({ value, onSave, onError }: {
     <span className="metadata-field" ref={row}>
       <PickRow
         row={row} triggers={NO_TRIGGERS} allowNew placeholder={m.project.identity.topic} suggest={suggest}
-        inputClassName="metadata-input pickin" inputAppearance="inline" cancelOnLeave
+        inputClassName="metadata-input" cancelOnLeave
         onPick={(hit) => onSave(hit.title)} onNew={onSave} onCancel={stop} onError={onError}
       />
     </span>
@@ -134,21 +137,25 @@ export function ProjectMemo({ text, editing, onEditing, onSave, onOpen }: {
 }) {
   const m = useMessages()
   const box = useRef<HTMLDivElement>(null)
-  const toggle = () => {
-    if (!editing) { onEditing(true); return }
+  const save = () => {
     const next = box.current?.innerText.trim() ?? ''
     onEditing(false)
     onSave(next)
   }
   return (
     <>
-      <SectionHeading variant="content" className="flexh">{m.project.sections.remark}
-        <button className="btn plain" onClick={toggle}>{editing ? m.common.save : m.common.edit}</button>
+      <SectionHeading
+        actions={(
+          <EditActions
+            editing={editing} onEdit={() => onEditing(true)} onCancel={() => onEditing(false)} onSave={save}
+          />
+        )}
+      >{m.project.sections.remark}
       </SectionHeading>
       <MarkdownBox
         className="memo" text={text} editing={editing} box={box}
-        onCancel={() => onEditing(false)} onOpen={onOpen}
-        empty={<span className="lm">{m.project.remarkEmpty}</span>}
+        onCancel={() => onEditing(false)} onSave={save} onOpen={onOpen}
+        empty={<EmptyState variant="section">{m.project.remarkEmpty}</EmptyState>}
       />
     </>
   )
@@ -176,7 +183,7 @@ export function ProjectRelations({
   onOpenPage: (page: string) => void
   onOpenPaper: (paperId: string) => void
   onRemovePaper: (paperId: string, title: string) => void
-  /** Drops the chip `id` at `index` among the chips of the same row. */
+  /** Puts the chip `id` at `index` among the chips of the same row, from a drop or Alt+← / Alt+→. */
   onMove: (id: string, index: number) => void
 }) {
   const m = useMessages()
@@ -212,13 +219,22 @@ export function ProjectRelations({
       setDropAt(null)
       if (to !== from) onMove(dragging.id, to)
     },
+    // The keyboard path of a drag: Alt+← / Alt+→ move the chip one place along its row.
+    onKeyDown: (event: ReactKeyboardEvent<HTMLElement>) => {
+      const by = event.key === 'ArrowLeft' ? -1 : event.key === 'ArrowRight' ? 1 : 0
+      if (by === 0 || !event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return
+      event.preventDefault()
+      const ids = rowChipIds(row)
+      const to = ids.indexOf(id) + by
+      if (to >= 0 && to < ids.length) onMove(id, to)
+    },
   })
   const chipClass = (row: RelationGroup, id: string) => {
     const at = rowChipIds(row).indexOf(id)
     const before = dropAt !== null && dropAt.row === row.group && dropAt.index === at
     const after = dropAt !== null && dropAt.row === row.group && dropAt.index === at + 1
       && at === rowChipIds(row).length - 1
-    return `tagchip${dragging?.id === id ? ' dragging' : ''}${before ? ' drop-before' : ''}${after ? ' drop-after' : ''}`
+    return tagClass('neutral', 'chip', `tagchip${dragging?.id === id ? ' dragging' : ''}${before ? ' drop-before' : ''}${after ? ' drop-after' : ''}`)
   }
   const groupLabel = (group: string) => (group === PROJECT_PAPER_GROUP
     ? m.project.sections.papers
@@ -242,6 +258,7 @@ export function ProjectRelations({
   ]
   return (
     <>
+      {rows.length === 0 ? <EmptyState variant="section">{m.project.links.empty}</EmptyState> : null}
       {rows.map((row) => (
         <div
           className="wkrel" key={row.group}
@@ -264,16 +281,18 @@ export function ProjectRelations({
           {isPaperRow(row.group)
             ? linked.map((paper) => (
               <span
-                className={chipClass(row, paper.id)} key={paper.id} data-paper={paper.id}
+                className={chipClass(row, paper.id)} key={paper.id} data-paper={paper.id} data-row-actions=""
                 onClick={() => onOpenPaper(paper.id)} {...dragProps(row, paper.id)}
               >
                 <button type="button" className="tagchip-open">
                   <FadeText className="tagchip-text"><PaperText text={paper.title} /></FadeText>
                 </button>
-                <button
-                  className="rx" title={m.common.removeLink}
-                  onClick={(event) => { event.stopPropagation(); onRemovePaper(paper.id, paper.title) }}
-                ><IconCross sw={2.5} /></button>
+                <RowActions>
+                  <IconButton
+                    label={m.common.removeLink} size="inline" className="rx"
+                    onClick={(event) => { event.stopPropagation(); onRemovePaper(paper.id, paper.title) }}
+                  ><IconCross /></IconButton>
+                </RowActions>
               </span>
             ))
             : null}
@@ -282,7 +301,7 @@ export function ProjectRelations({
             : (
               <span
                 className={chipClass(row, item.id)} key={item.id} data-wk={item.page} data-url={item.url}
-                title={item.url} {...dragProps(row, item.id)}
+                data-row-actions="" {...dragProps(row, item.id)}
                 onClick={item.url !== undefined
                   ? () => { window.open(item.url, '_blank') }
                   : item.page === undefined ? undefined : () => onOpenPage(item.page!)}
@@ -290,18 +309,23 @@ export function ProjectRelations({
                 {item.url === undefined && item.page === undefined
                   ? <FadeText className="tagchip-text">{item.text}</FadeText>
                   : (
-                    <button type="button" className="tagchip-open">
-                      <FadeText className="tagchip-text">{item.text}</FadeText>
-                    </button>
+                    <Tooltip label={item.url}>
+                      <button type="button" className="tagchip-open">
+                        <FadeText className="tagchip-text">{item.text}</FadeText>
+                        {item.url === undefined ? null : <ExternalMark />}
+                      </button>
+                    </Tooltip>
                   )}
-                <button
-                  className="tagchip-edit" title={m.project.links.editTitle}
-                  onClick={(event) => { event.stopPropagation(); onEdit(item) }}
-                ><IconPencil /></button>
-                <button
-                  className="rx" title={m.common.removeLink}
-                  onClick={(event) => { event.stopPropagation(); onRemove(item.id, item.text) }}
-                ><IconCross sw={2.5} /></button>
+                <RowActions>
+                  <IconButton
+                    label={m.project.links.editTitle} size="inline" className="tagchip-edit"
+                    onClick={(event) => { event.stopPropagation(); onEdit(item) }}
+                  ><IconPencil /></IconButton>
+                  <IconButton
+                    label={m.common.removeLink} size="inline" className="rx"
+                    onClick={(event) => { event.stopPropagation(); onRemove(item.id, item.text) }}
+                  ><IconCross /></IconButton>
+                </RowActions>
               </span>
             )))}
         </div>
@@ -318,7 +342,7 @@ export const attachmentSizeText = (bytes: number) => bytes >= 1048576
 export function ProjectAttachments({ attachments, onAdd, onReveal, onRemove }: {
   attachments: Attachment[]
   onAdd: (files: File[]) => void
-  onReveal: (attachment: Attachment) => void
+  onReveal: (path: string) => void
   onRemove: (attachmentId: string) => void
 }) {
   const m = useMessages()
@@ -329,7 +353,7 @@ export function ProjectAttachments({ attachments, onAdd, onReveal, onRemove }: {
       <SectionHeading
         variant="rail"
         actions={(
-          <AddAction variant="section" title={m.project.attachments.addTitle} onClick={() => input.current?.click()}>
+          <AddAction variant="section" label={m.project.attachments.addTitle} onClick={() => input.current?.click()}>
             {m.project.sections.attachments}
           </AddAction>
         )}
@@ -353,7 +377,7 @@ export function ProjectAttachments({ attachments, onAdd, onReveal, onRemove }: {
             if (picked.length) onAdd(picked)
           }}
         />
-        {attachments.length === 0 ? <div className="lm">{m.project.attachments.empty}</div> : null}
+        {attachments.length === 0 ? <EmptyState variant="section">{m.project.attachments.empty}</EmptyState> : null}
         {attachments.length === 0
           ? null
           : (
@@ -364,12 +388,17 @@ export function ProjectAttachments({ attachments, onAdd, onReveal, onRemove }: {
                     <path d={CLIP_PATH} />
                   </svg>
                   <button
-                    type="button" className="an" title={m.project.attachments.reveal} onClick={() => onReveal(attachment)}
+                    type="button" className="an" disabled={attachment.path === undefined}
+                    onClick={() => { if (attachment.path !== undefined) onReveal(attachment.path) }}
                   >{attachment.name}</button>
+                  {attachment.path === undefined ? <Tag>{m.project.attachments.noPath}</Tag> : null}
                   <span className="as">{attachment.size}</span>
-                  <button
-                    className="ax" title={m.project.attachments.delete} onClick={() => onRemove(attachment.id)}
-                  ><IconCross /></button>
+                  <RowActions>
+                    <IconButton
+                      label={m.project.attachments.delete} size="nested" tone="danger" className="ax"
+                      onClick={() => onRemove(attachment.id)}
+                    ><IconTrash /></IconButton>
+                  </RowActions>
                 </StructuredRow>
               ))}
             </StructuredList>
@@ -385,12 +414,12 @@ export function ProjectAgentSessions({ sessions }: { sessions: AgentSession[] })
   const m = useMessages()
   return (
     <>
-      <SectionHeading variant="content">{m.project.agentSessions.heading(sessions.length)}</SectionHeading>
+      <SectionHeading>{m.project.agentSessions.heading(sessions.length)}</SectionHeading>
       {sessions.map((session) => (
         <div className="agcard" key={session.id}>
           <div className="agh">
             <span className="agnm">{session.title}</span>
-            <span className="stag mut">{m.project.agentSessions.done}</span>
+            <Tag>{m.project.agentSessions.done}</Tag>
             <span className="agbg">{fmt.date(session.when)}</span>
           </div>
           <CardTray

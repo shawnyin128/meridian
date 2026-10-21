@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { act } from 'react'
 import { createRoot } from 'react-dom/client'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { PaperColumn } from '../../../shared/contract.js'
 import { MessagesProvider } from '../../messages/useMessages.js'
 import { CellPicker, optionRows } from './CellPicker.js'
@@ -67,6 +67,7 @@ async function pressOutside(): Promise<void> {
 }
 
 describe('CellPicker', () => {
+  beforeEach(() => { vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} }) })
   it('候选行按输入词过滤,未命中时补一条新建', () => {
     expect(optionRows(['综述', '必读'], '')).toEqual({ hits: ['综述', '必读'], isNew: false })
     expect(optionRows(['综述', '必读'], '综')).toEqual({ hits: ['综述'], isNew: true })
@@ -132,5 +133,10 @@ describe('CellPicker', () => {
       input.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true }))
     })
     expect(onRowContextMenu).not.toHaveBeenCalled()
+  })
+
+  it('edits in the inline field, the one in-place editor look of the table', async () => {
+    const host = await mount(() => {})
+    expect(host.querySelector('input')!.classList).toContain('form-control-inline')
   })
 })

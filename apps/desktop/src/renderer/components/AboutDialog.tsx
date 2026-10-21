@@ -1,9 +1,9 @@
 import { appUpdates, extensions } from '../ipc.js'
 import { useAppUpdate } from '../hooks/useAppUpdate.js'
 import { useMessages } from '../messages/useMessages.js'
-import { DownloadRing, IconCheck } from './icons.js'
+import { EntityLink } from './EntityLink.js'
+import { IconCheck, RunningRing } from './icons.js'
 import { ModalDialog, ModalTitle } from './ModalDialog.js'
-import { PanelClose } from './PanelClose.js'
 import { ProgressFill } from './ProgressFill.js'
 import { UpdateAction, updateLine } from './settings/AppUpdateSettings.js'
 import type { AppUpdateStatus } from '../../shared/app-update.js'
@@ -14,20 +14,19 @@ const RELEASES = 'https://github.com/shawnyin128/meridian/releases'
 
 /** The small mark before the status line: a spinner while checking, a check once current or ready. */
 function StatusMark({ status }: { status: AppUpdateStatus }) {
-  if (status.phase === 'checking') return <DownloadRing progress={null} />
+  if (status.phase === 'checking') return <RunningRing />
   if (status.phase === 'latest' || status.phase === 'ready') return <IconCheck />
   return null
 }
 
-function AboutBody({ status, onClose }: { status: AppUpdateStatus; onClose: () => void }) {
+function AboutBody({ status }: { status: AppUpdateStatus }) {
   const m = useMessages()
   return (
-    <div className="about-dlg">
-      <PanelClose onClose={onClose} className="about-close" />
+    <>
       <div className="about-head">
         <img className="about-mark" src={brandmark} alt="" />
         <div>
-          <ModalTitle className="about-name">Meridian</ModalTitle>
+          <ModalTitle>Meridian</ModalTitle>
           <p className="about-version">{m.shell.about.version(status.current)}</p>
         </div>
       </div>
@@ -39,9 +38,7 @@ function AboutBody({ status, onClose }: { status: AppUpdateStatus; onClose: () =
         <span>{updateLine(status, m)}</span>
       </p>
       <div className="about-actions">
-        <button type="button" className="about-link" onClick={() => { window.open(RELEASES) }}>
-          {m.shell.about.releases}
-        </button>
+        <span className="about-link"><EntityLink kind="external" label={m.shell.about.releases} href={RELEASES} /></span>
         <UpdateAction
           status={status}
           onCheck={() => {
@@ -52,7 +49,7 @@ function AboutBody({ status, onClose }: { status: AppUpdateStatus; onClose: () =
           onDownload={(url) => { window.open(url) }}
         />
       </div>
-    </div>
+    </>
   )
 }
 
@@ -61,7 +58,7 @@ export function AboutDialog({ open, onOpenChange }: { open: boolean; onOpenChang
   const status = useAppUpdate()
   return (
     <ModalDialog
-      open={open && status !== null} onOpenChange={onOpenChange} contentClassName="ctxmenu cfpop about-pop"
+      open={open && status !== null} onOpenChange={onOpenChange} size="confirm" closable className="about-pop"
       contentProps={{
         // Focus the dialog itself so no button opens highlighted as if it were the default action.
         onOpenAutoFocus: (event) => {
@@ -70,7 +67,7 @@ export function AboutDialog({ open, onOpenChange }: { open: boolean; onOpenChang
         },
       }}
     >
-      {status === null ? null : <AboutBody status={status} onClose={() => onOpenChange(false)} />}
+      {status === null ? null : <AboutBody status={status} />}
     </ModalDialog>
   )
 }

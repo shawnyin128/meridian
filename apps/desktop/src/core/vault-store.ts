@@ -17,6 +17,7 @@ import {
   ACTIVE_PROJECT, CHAT_EVENT_PREFIX, FINISHED_PROJECT, PAPER_PAGE, PROJECTS_DIR, READ_STATES, SEARCH_LIMIT,
   TRASH_RETENTION_DAYS, UNREAD_PAPER,
 } from '../shared/vocabulary.js'
+import { CallError } from './call-error.js'
 import type { ChangeRecord } from './changelog.js'
 import { lastProgressOf, PROJECT_FIELDS, parseChangeRecords, withChangelog } from './changelog.js'
 import { dayOf, feedNewestFirst, systemToday } from './dates.js'
@@ -60,7 +61,7 @@ import {
   readWikiData, readWikiPage, removeClaim, removeMembership, setAggregationMetadata, setBody, setBodyAndTrust,
   setClaim, setColumns, setMembership, setParents, setUpdated, touchedPages, wikiAggregation, wikiCards,
   wikiHome, wikiPaper, wikiSearchIndex, wikiSignals,
-  type ClaimWorld, type WikiAggregationRecord, type WikiData, type WikiPaperRecord,
+  type ClaimWorld, type PointName, type WikiAggregationRecord, type WikiData, type WikiPaperRecord,
 } from './wiki/index.js'
 import { prepareFallbackLibrary } from './workspace-layout.js'
 import { createResearchIdea, updateResearchIdea } from './research-ideas/index.js'
@@ -260,15 +261,15 @@ function newPaperPageText(
 /** Throws when a task date range or time window is reversed. */
 function checkSpan(task: TaskFields): void {
   // The contract guarantees fixed-width ISO dates, so lexical order is chronological order.
-  if (task.end < task.start) throw new Error(`任务结束日期早于开始日期：${task.start} – ${task.end}`)
+  if (task.end < task.start) throw new CallError('invalid', `任务结束日期早于开始日期：${task.start} – ${task.end}`)
   if (task.start === task.end && task.window && task.window.end <= task.window.start) {
-    throw new Error(`任务结束时间不晚于开始时间：${task.window.start} – ${task.window.end}`)
+    throw new CallError('invalid', `任务结束时间不晚于开始时间：${task.window.start} – ${task.window.end}`)
   }
 }
 
 /** Throws when a research-log entry contains a newline. */
 function checkOneLine(text: string): void {
-  if (text.includes('\n')) throw new Error('科研记录一条占一行，正文里不能有换行')
+  if (text.includes('\n')) throw new CallError('invalid', '科研记录一条占一行，正文里不能有换行')
 }
 
 /** Project order: creation date first, then numeric-aware IDs so `project-2` precedes `project-10`. */
@@ -343,7 +344,7 @@ export function createVaultStore(
 ): VaultStore {
   const wiki = join(root, 'wiki')
   const paperDir = join(wiki, 'papers')
-  if (!existsSync(paperDir)) throw new Error(`库里没有论文页目录：${paperDir}`)
+  if (!existsSync(paperDir)) throw new CallError('not-library', `库里没有论文页目录：${paperDir}`)
   /** Vault aggregation structure, reread from pages after every wiki write. */
   let wikiData = readWikiData(wiki)
   const meridian = join(root, MERIDIAN)
@@ -388,8 +389,14 @@ export function createVaultStore(
     lists.set(name, list)
     return list.rows
   }
-  const save = (name: string, rows: readonly unknown[]): void =>
+  /**
+   * Writes `rows` to `.meridian/<name>.json` and returns them. Throws, leaving the file as it stood,
+   * when it cannot be written.
+   */
+  const save = <T>(name: string, rows: T[]): T[] => {
     writeJson(join(meridian, `${name}.json`), lists.get(name)?.stored(rows) ?? rows, staging)
+    return rows
+  }
 
   // Remove partial output from the previous run; destination pages were never modified and the debris is no longer useful.
   rmSync(staging, { recursive: true, force: true })
@@ -398,15 +405,20 @@ export function createVaultStore(
   const readState = existsSync(stateFile)
     ? readRecord(VaultStateSchema, JSON.parse(readFileSync(stateFile, 'utf8')))
     : { value: { seq: 0 }, unknown: [] }
-  if ('error' in readState) throw new Error(`${stateFile} 这个版本读不了：${readState.error}`)
+  if ('error' in readState) throw new CallError('newer-version', `${stateFile} 这个版本读不了：${readState.error}`)
   let state: VaultState = readState.value
-  /** Writes `state` to `state.json` with the fields this version does not know put back. */
-  const saveState = (): void => writeJson(stateFile, withUnknownFields(state, readState.unknown), staging)
+  /**
+   * Writes `next` to `state.json` with the fields this version does not know put back, then holds it as
+   * `state`. Throws, still holding the previous state, when the file cannot be written.
+   */
+  const saveState = (next: VaultState): void => {
+    writeJson(stateFile, withUnknownFields(next, readState.unknown), staging)
+    state = next
+  }
 
   /** Returns an unused vault ID from a monotonically increasing sequence that survives restarts. */
   const nextId = (prefix: string): string => {
-    state = { ...state, seq: state.seq + 1 }
-    saveState()
+    saveState({ ...state, seq: state.seq + 1 })
     return `${prefix}-${state.seq}`
   }
 
@@ -505,8 +517,7 @@ export function createVaultStore(
 
   /** Persists `next` as paper `id`'s reading state and projects its note count and remark onto the paper's row. */
   const storeReading = (id: string, next: PaperReading): void => {
-    readings = [...readings.filter((reading) => reading.paperId !== id), next]
-    save('paper-readings', readings)
+    readings = save('paper-readings', [...readings.filter((reading) => reading.paperId !== id), next])
     const row: PaperRow = {
       ...papers.get(id)!,
       noteCount: readingNoteCount(next),
@@ -616,12 +627,12 @@ export function createVaultStore(
 
   /** Throws when Wiki page `id` has a file that the Wiki left out because this version cannot read it. */
   const checkReadable = (id: string): void => {
-    if (wikiData.pages[id] === undefined && existsSync(wikiFile(id))) throw new Error(`wiki 页这个版本读不了（可能要更新 App）：${id}`)
+    if (wikiData.pages[id] === undefined && existsSync(wikiFile(id))) throw new CallError('newer-version', `wiki 页这个版本读不了（可能要更新 App）：${id}`)
   }
 
   /** Page version of Wiki page `id`, null when it has no file. Throws if a part of the id is `.` or `..`. */
   const versionOf = (id: string): ReturnType<typeof pageVersion> => {
-    if (id.split('/').some((part) => part === '.' || part === '..')) throw new Error(`页 id 不能含 . 或 ..:${id}`)
+    if (id.split('/').some((part) => part === '.' || part === '..')) throw new CallError('invalid', `页 id 不能含 . 或 ..:${id}`)
     const file = wikiFile(id)
     return existsSync(file) ? pageVersion(readFileSync(file, 'utf8')) : null
   }
@@ -629,6 +640,14 @@ export function createVaultStore(
   /** Every project's name, by id. */
   const projectNames = (): Record<string, string> =>
     Object.fromEntries([...projectById.values()].map((p) => [p.id, p.name]))
+
+  /** The label of a project's node (workspace nodes included) or the text of its legacy conclusion. */
+  const pointName: PointName = (id, point) => {
+    const project = projectById.get(id)
+    if (project === undefined) return undefined
+    const nodes = [...project.graph.nodes, ...readProjectWorkspace(project)?.graph?.nodes ?? []]
+    return nodes.find((n) => n.id === point)?.label ?? project.conclusionList.find((c) => c.id === point)?.text
+  }
 
   /** The claim-validation world for producer `by`: the vault's projects (with workspace nodes) and reading records. */
   const worldOf = (by: string, requireVerified = true): ClaimWorld => ({
@@ -752,7 +771,11 @@ export function createVaultStore(
   /** Returns a project by ID. Throws when the vault has no such project, or cannot read its page. */
   const projectOf = (id: string): ProjectRecord => {
     const project = projectById.get(id)
-    if (!project) throw new Error(unreadableProjects.has(id) ? `项目页这个版本读不了（可能要更新 App）：${id}` : `项目不存在：${id}`)
+    if (!project) {
+      throw unreadableProjects.has(id)
+        ? new CallError('newer-version', `项目页这个版本读不了（可能要更新 App）：${id}`)
+        : new CallError('not-found', `项目不存在：${id}`)
+    }
     return project
   }
 
@@ -763,9 +786,9 @@ export function createVaultStore(
   const relationFields = ({ text, page, url }: Omit<RelationFields, 'group'>) => {
     if (page !== undefined) {
       const target = wikiData.pages[page]
-      if (target === undefined || isPaper(target)) throw new Error(`wiki 聚合不存在：${page}`)
+      if (target === undefined || isPaper(target)) throw new CallError('not-found', `wiki 聚合不存在：${page}`)
     }
-    if (page !== undefined && url !== undefined) throw new Error('关联不能同时指向 Wiki 页和链接')
+    if (page !== undefined && url !== undefined) throw new CallError('invalid', '关联不能同时指向 Wiki 页和链接')
     return { text, ...(page === undefined ? {} : { page }), ...(url === undefined ? {} : { url }) }
   }
 
@@ -806,12 +829,12 @@ export function createVaultStore(
   const archiveIdeasForProject = (projectId: string): void => {
     const day = today()
     let changed = false
-    ideas = ideas.map((idea) => {
+    const next = ideas.map((idea) => {
       if (idea.project !== projectId || idea.archived) return idea
       changed = true
       return { ...idea, archived: true, updated: day }
     })
-    if (changed) save('ideas', ideas)
+    if (changed) ideas = save('ideas', next)
   }
 
   /** Refreshes the App-owned workspace projection without making project edits depend on transport health. */
@@ -847,22 +870,19 @@ export function createVaultStore(
       if (fresh.length > 0) touched.push(project)
     }
     if (added.length === 0) return
-    ideas = [...added, ...ideas]
-    save('ideas', ideas)
-    state = { ...state, agentIdeas: [...taken] }
-    saveState()
+    ideas = save('ideas', [...added, ...ideas])
+    saveState({ ...state, agentIdeas: [...taken] })
     for (const project of touched) syncProjectWorkspace(project)
   }
 
   /** Appends one feed entry dated now. */
   const appendFeedEntry = (source: FeedEntry['source'], runs: FeedRun[]): void => {
     const day = today()
-    feed = [...feed, {
+    feed = save('feed', [...feed, {
       id: nextId('entry'), source, day: dayOf(day, day), time: FEED_NOW,
       createdAt: now().toISOString(),
       body: { kind: 'runs', runs: structuredClone(runs) },
-    }]
-    save('feed', feed)
+    }])
   }
 
   let eventsReadAt = Number.NEGATIVE_INFINITY
@@ -893,8 +913,7 @@ export function createVaultStore(
         appendFeedEntry('lab', [{ kind: 'strong', text: `「${event.project}」` }, { kind: 'text', text: event.text }])
       }
     }
-    state = { ...state, feedEvents: [...seen] }
-    saveState()
+    saveState({ ...state, feedEvents: [...seen] })
   }
 
   /** Current paper rows augmented with links and conclusions stored on projects. */
@@ -903,7 +922,6 @@ export function createVaultStore(
     return [...papers.values()].map((row) => withProjectLinks(row, held))
   }
 
-  /** Writes only the modified project fields to its page and returns the updated detail. */
   /** The one path that adds a task to a plan, for the user and for agents alike (see VaultOps.createTask). */
   const createTask = (projectId: string, task: TaskFields, origin?: 'agent'): ProjectDetail => {
     const project = projectOf(projectId)
@@ -912,11 +930,16 @@ export function createVaultStore(
     return writeProject({ ...project, tasks: [made, ...project.tasks] }, ['tasks'])
   }
 
+  /**
+   * Writes only the modified project fields to its page and returns the updated detail. Throws when
+   * the page cannot be written, still holding the previous record and neither archiving ideas nor
+   * syncing the workspace.
+   */
   const writeProject = (
     project: ProjectRecord, fields: (keyof ProjectRecord)[], syncWorkspace = true,
   ): ProjectDetail => {
-    projectById.set(project.id, project)
     writeProjectFields(projectFile(project.id), project, fields, staging)
+    projectById.set(project.id, project)
     if (project.status === FINISHED_PROJECT) archiveIdeasForProject(project.id)
     if (syncWorkspace) syncProjectWorkspace(project)
     return detailOf(project)
@@ -925,20 +948,19 @@ export function createVaultStore(
   /** Returns a live inbox entry. Throws when the ID is absent or already removed. */
   const liveEntry = (id: string): InboxRecord => {
     const entry = inbox.find((e) => e.id === id && !e.gone)
-    if (!entry) throw new Error(`收件里没有这一条：${id}`)
+    if (!entry) throw new CallError('not-found', `收件里没有这一条：${id}`)
     return entry
   }
 
   /** Applies a patch to an inbox entry and persists the list. */
   const putEntry = (id: string, patch: Partial<InboxRecord>): void => {
-    inbox = inbox.map((e) => (e.id === id ? { ...e, ...patch } : e))
-    save('inbox', inbox)
+    inbox = save('inbox', inbox.map((e) => (e.id === id ? { ...e, ...patch } : e)))
   }
 
   /** Returns a chat by ID. Throws when the vault has no such chat. */
   const chatOf = (id: string): ChatRecord => {
     const chat = chats.find((c) => c.id === id)
-    if (!chat) throw new Error(`会话不存在：${id}`)
+    if (!chat) throw new CallError('not-found', `会话不存在：${id}`)
     return chat
   }
 
@@ -952,7 +974,7 @@ export function createVaultStore(
     const project = projectOf(projectId)
     checkOneLine(text)
     if (node !== undefined && !project.graph.nodes.some((item) => item.id === node)) {
-      throw new Error(`节点不存在：${node}`)
+      throw new CallError('not-found', `节点不存在：${node}`)
     }
     return writeProject(
       {
@@ -969,7 +991,10 @@ export function createVaultStore(
     )
   }
 
-  /** Permanently removes a page held by a trash record; record kinds without pages need no file removal. */
+  /**
+   * Permanently removes a page held by a trash record; record kinds without pages need no file removal.
+   * Callers save the trash without the record first, so a record never outlives its page.
+   */
   const discard = (item: TrashRecord): void => {
     if (item.kind === 'paper' || item.kind === 'project') removePage(trashPage(item.id))
   }
@@ -979,15 +1004,13 @@ export function createVaultStore(
     const cutoff = nowMs() - TRASH_RETENTION_DAYS * 86_400_000
     const expired = trash.filter((item) => item.deletedAt <= cutoff)
     if (expired.length === 0) return
+    trash = save('trash', trash.filter((item) => item.deletedAt > cutoff))
     for (const item of expired) discard(item)
-    trash = trash.filter((item) => item.deletedAt > cutoff)
-    save('trash', trash)
   }
 
   /** Adds a record to trash with the most recently deleted item first. */
   const toTrash = (item: TrashRecord): void => {
-    trash = [item, ...trash]
-    save('trash', trash)
+    trash = save('trash', [item, ...trash])
   }
 
   const managed = isGitManaged(root)
@@ -1007,15 +1030,9 @@ export function createVaultStore(
     note([
       { kind: 'text', text: '这个库' },
       { kind: 'strong', text: managed ? '在 git 管理之下' : '不在 git 管理之下' },
-      {
-        kind: 'text',
-        text: managed
-          ? '，写入都能靠版本历史撤回。'
-          : '，写入没有撤销的安全网——把它交给 git 之后再动它。',
-      },
+      { kind: 'text', text: '。' },
     ])
-    state = { ...state, gitManaged: managed }
-    saveState()
+    saveState({ ...state, gitManaged: managed })
   }
 
   // Multiple pages may legally reference one source, usually after duplicate imports. Keep every page visible and
@@ -1033,8 +1050,7 @@ export function createVaultStore(
         },
       ])
     }
-    state = { ...state, sharedSources: shared.length }
-    saveState()
+    saveState({ ...state, sharedSources: shared.length })
   }
 
   /** Returns the current vault column configuration, or an empty configuration before customization. */
@@ -1067,25 +1083,24 @@ export function createVaultStore(
   /** Fills only missing bibliographic fields and updates queued copies of the same source. */
   const fillPaper = (id: string, fill: MetadataFill, replaceTitle: string | null): string[] => {
     const paper = papers.get(id)
-    if (!paper) throw new Error(`论文不存在：${id}`)
+    if (!paper) throw new CallError('not-found', `论文不存在：${id}`)
     const write = missingMetadata(paper, fill, replaceTitle)
     const written = Object.keys(write)
     if (written.length === 0) return []
     writePaper(id, { ...write, updated: today() })
     const filled = papers.get(id)!
     const source = sourceOf(id)
-    later = later.map((entry) => (entry.paper === source
+    later = save('later', later.map((entry) => (entry.paper === source
       ? laterWithMetadata(entry, filled, write.title !== undefined)
-      : entry))
-    save('later', later)
+      : entry)))
     return written
   }
 
   /** Returns an inbox record even after it has left the visible inbox. */
   const downloadableEntry = (id: string): InboxRecord => {
     const entry = inbox.find((held) => held.id === id)
-    if (!entry) throw new Error(`收件里没有这一条：${id}`)
-    if (entry.downloaded) throw new Error(`这一条已经入库：${id}`)
+    if (!entry) throw new CallError('not-found', `收件里没有这一条：${id}`)
+    if (entry.downloaded) throw new CallError('refused', `这一条已经入库：${id}`)
     return entry
   }
 
@@ -1159,7 +1174,7 @@ export function createVaultStore(
 
     getPaper(id) {
       const paper = papers.get(id)
-      if (!paper) throw new Error(`论文不存在：${id}`)
+      if (!paper) throw new CallError('not-found', `论文不存在：${id}`)
       return structuredClone(withProjectLinks(paper, projects()))
     },
 
@@ -1169,8 +1184,8 @@ export function createVaultStore(
 
     updatePaper(id, patch) {
       const paper = papers.get(id)
-      if (!paper) throw new Error(`论文不存在：${id}`)
-      if (patch.topics !== undefined) throw new Error('这一页的主题由归属决定，改归属')
+      if (!paper) throw new CallError('not-found', `论文不存在：${id}`)
+      if (patch.topics !== undefined) throw new CallError('refused', '这一页的主题由归属决定，改归属')
       const { custom, ...fields } = patch
       if (custom !== undefined) checkCustom(heldColumns(), custom, paper.custom)
       writePaper(id, {
@@ -1180,20 +1195,19 @@ export function createVaultStore(
       })
       if (patch.title !== undefined || patch.shortTitle !== undefined) {
         const fresh = papers.get(id)!
-        chats = chats.map((session) => (session.paperId === id
+        chats = save('chats', chats.map((session) => (session.paperId === id
           ? { ...session, title: fresh.title }
-          : session))
-        save('chats', chats)
+          : session)))
       }
     },
 
     paperSnapshot(id) {
-      if (!papers.has(id)) throw new Error(`论文不存在：${id}`)
+      if (!papers.has(id)) throw new CallError('not-found', `论文不存在：${id}`)
       return snapshotOf(readPage(paperFile(id)).front)
     },
 
     putPaper(id, snapshot) {
-      if (!papers.has(id)) throw new Error(`论文不存在：${id}`)
+      if (!papers.has(id)) throw new CallError('not-found', `论文不存在：${id}`)
       const held = snapshotOf(readPage(paperFile(id)).front)
       // Skip values already present on the page: real-vault writes replace lines, so rewriting an unchanged value would reorder its block.
       writePaper(id, {
@@ -1215,15 +1229,14 @@ export function createVaultStore(
           ? {} : { custom: snapshot.custom }),
       })
       const restored = papers.get(id)!
-      chats = chats.map((session) => (session.paperId === id
+      chats = save('chats', chats.map((session) => (session.paperId === id
         ? { ...session, title: restored.title }
-        : session))
-      save('chats', chats)
+        : session)))
     },
 
     deletePaper(id) {
       const paper = papers.get(id)
-      if (!paper) throw new Error(`论文不存在：${id}`)
+      if (!paper) throw new CallError('not-found', `论文不存在：${id}`)
       const entry = nextId('trash')
       const source = sourceOf(id)
       const reading = readings.find((held) => held.paperId === id)
@@ -1232,8 +1245,7 @@ export function createVaultStore(
       unindexPaper(id, source)
       refreshWikiPage(id, null)
       if (reading !== undefined) {
-        readings = readings.filter((held) => held !== reading)
-        save('paper-readings', readings)
+        readings = save('paper-readings', readings.filter((held) => held !== reading))
       }
       toTrash({
         id: entry, kind: 'paper', title: paper.title, deletedAt: nowMs(),
@@ -1243,13 +1255,13 @@ export function createVaultStore(
     },
 
     paperSource(id) {
-      if (!papers.has(id)) throw new Error(`论文不存在：${id}`)
+      if (!papers.has(id)) throw new CallError('not-found', `论文不存在：${id}`)
       const source = sourceOf(id)
       const dir = join(root, 'sources', 'papers')
       const file = source === ''
         ? undefined
         : readdirSync(dir).find((name) => name.startsWith(`${source}-`) && name.endsWith('.pdf'))
-      if (!file) throw new Error(`库里没有这一篇的原文：${id}`)
+      if (!file) throw new CallError('not-found', `库里没有这一篇的原文：${id}`)
       return new Uint8Array(readFileSync(join(dir, file)))
     },
 
@@ -1258,19 +1270,19 @@ export function createVaultStore(
     fillPaperMetadata: fillPaper,
 
     paperReading(id) {
-      if (!papers.has(id)) throw new Error(`论文不存在：${id}`)
+      if (!papers.has(id)) throw new CallError('not-found', `论文不存在：${id}`)
       return readingOf(id)
     },
 
     mutatePaperReading(id, mutation: ReadingMutation) {
-      if (!papers.has(id)) throw new Error(`论文不存在：${id}`)
+      if (!papers.has(id)) throw new CallError('not-found', `论文不存在：${id}`)
       const next = applyReadingMutation(readingOf(id), mutation, nextId, today())
       storeReading(id, next)
       return structuredClone(next)
     },
 
     putPaperReading(id, reading) {
-      if (!papers.has(id)) throw new Error(`论文不存在：${id}`)
+      if (!papers.has(id)) throw new CallError('not-found', `论文不存在：${id}`)
       storeReading(id, structuredClone(reading))
     },
 
@@ -1280,8 +1292,7 @@ export function createVaultStore(
 
     setPaperColumns(columns) {
       checkColumns(columns, [...papers.values()])
-      state = { ...state, columns: structuredClone(columns) }
-      saveState()
+      saveState({ ...state, columns: structuredClone(columns) })
     },
 
     renamePaperOption(key, from, to) {
@@ -1294,14 +1305,13 @@ export function createVaultStore(
         if (cell === undefined) continue
         writePaper(row.id, { custom: { ...row.custom, [key]: cell }, updated: day })
       }
-      state = {
+      saveState({
         ...state,
         columns: {
           ...held,
           custom: held.custom.map((c) => (c.key === key ? { ...c, options } : c)),
         },
-      }
-      saveState()
+      })
     },
 
     setPaperColumnType(key, type) {
@@ -1311,8 +1321,7 @@ export function createVaultStore(
       for (const [id, cell] of cells) {
         writePaper(id, { custom: patchedCustom(papers.get(id)!.custom, { [key]: cell ?? null }), updated: day })
       }
-      state = { ...state, columns: next }
-      saveState()
+      saveState({ ...state, columns: next })
     },
 
     paperCells(key) {
@@ -1328,8 +1337,7 @@ export function createVaultStore(
           custom: patchedCustom(papers.get(id)!.custom, { [column.key]: cell ?? null }), updated: day,
         })
       }
-      state = { ...state, columns: next }
-      saveState()
+      saveState({ ...state, columns: next })
     },
 
     listProjects() {
@@ -1363,8 +1371,7 @@ export function createVaultStore(
 
     reorderProjects(order) {
       const known = new Set(projectById.keys())
-      state = { ...state, projectOrder: [...order].filter((id) => known.has(id)) }
-      saveState()
+      saveState({ ...state, projectOrder: [...order].filter((id) => known.has(id)) })
     },
 
     overviewProjects() {
@@ -1419,11 +1426,10 @@ export function createVaultStore(
         graph: { nodes: [], edges: [] },
         agentSessions: [],
       }
-      projectById.set(project.id, project)
       writePage(projectFile(project.id), projectPageText(project), staging)
+      projectById.set(project.id, project)
       // Front of whatever order already exists, so a new project outranks the manual order too.
-      state = { ...state, projectOrder: [project.id, ...(state.projectOrder ?? [])] }
-      saveState()
+      saveState({ ...state, projectOrder: [project.id, ...(state.projectOrder ?? [])] })
     },
 
     putProject(project) {
@@ -1436,7 +1442,7 @@ export function createVaultStore(
       const nodeIds = new Set(project.graph.nodes.map((n) => n.id))
       for (const [from, to] of project.graph.edges) {
         if (!nodeIds.has(from) || !nodeIds.has(to)) {
-          throw new Error(`科研图的边指向不存在的节点：${from} → ${to}`)
+          throw new CallError('invalid', `科研图的边指向不存在的节点：${from} → ${to}`)
         }
       }
       return detailOf(project)
@@ -1477,7 +1483,7 @@ export function createVaultStore(
       if (block === null) delete next.block
       if (typeof block === 'string') next.block = block
       // The contract guarantees fixed-width ISO dates, so lexical order is chronological order.
-      if (next.due < next.start) throw new Error(`项目截止日期早于开始日期：${next.start} – ${next.due}`)
+      if (next.due < next.start) throw new CallError('invalid', `项目截止日期早于开始日期：${next.start} – ${next.due}`)
       return writeProject(next, Object.keys(patch) as (keyof ProjectRecord)[])
     },
 
@@ -1491,10 +1497,8 @@ export function createVaultStore(
           .map((held) => held.id),
       )
       if (removedEntries.size > 0) {
-        inbox = inbox.filter((held) => !removedEntries.has(held.id))
-        trash = trash.filter((item) => item.kind !== 'inbox' || !removedEntries.has(item.entryId))
-        save('inbox', inbox)
-        save('trash', trash)
+        inbox = save('inbox', inbox.filter((held) => !removedEntries.has(held.id)))
+        trash = save('trash', trash.filter((item) => item.kind !== 'inbox' || !removedEntries.has(item.entryId)))
       }
       toTrash({
         id: entry, kind: 'project', title: project.name, deletedAt: nowMs(),
@@ -1527,7 +1531,7 @@ export function createVaultStore(
     updateTask(projectId, taskId, patch) {
       const project = projectOf(projectId)
       const task = project.tasks.find((t) => t.id === taskId)
-      if (!task) throw new Error(`任务不存在：${taskId}`)
+      if (!task) throw new CallError('not-found', `任务不存在：${taskId}`)
       const { window, ...fields } = patch
       // Core has removed undefined patch keys; this assertion preserves the exact required type after merging.
       const next = { ...task, ...fields } as Task
@@ -1541,7 +1545,7 @@ export function createVaultStore(
 
     deleteTask(projectId, taskId) {
       const project = projectOf(projectId)
-      if (!project.tasks.some((t) => t.id === taskId)) throw new Error(`任务不存在：${taskId}`)
+      if (!project.tasks.some((t) => t.id === taskId)) throw new CallError('not-found', `任务不存在：${taskId}`)
       return writeProject(
         { ...project, tasks: project.tasks.filter((t) => t.id !== taskId) }, ['tasks'],
       )
@@ -1551,16 +1555,16 @@ export function createVaultStore(
       const project = projectOf(projectId)
       const byId = new Map(project.tasks.map((t) => [t.id, t]))
       if (order.length !== project.tasks.length || !order.every((id) => byId.has(id))) {
-        throw new Error('任务顺序与项目任务不匹配')
+        throw new CallError('changed', '任务顺序与项目任务不匹配')
       }
       return writeProject({ ...project, tasks: order.map((id) => byId.get(id)!) }, ['tasks'])
     },
 
     setTaskNode(projectId, taskId, nodeId) {
       const project = projectOf(projectId)
-      if (!project.tasks.some((t) => t.id === taskId)) throw new Error(`任务不存在：${taskId}`)
+      if (!project.tasks.some((t) => t.id === taskId)) throw new CallError('not-found', `任务不存在：${taskId}`)
       const graph = readProjectWorkspace(project)?.graph ?? project.graph
-      if (nodeId !== null && !graph.nodes.some((n) => n.id === nodeId)) throw new Error(`节点不存在：${nodeId}`)
+      if (nodeId !== null && !graph.nodes.some((n) => n.id === nodeId)) throw new CallError('not-found', `节点不存在：${nodeId}`)
       const taskNodes = Object.fromEntries(Object.entries(project.taskNodes ?? {}).filter(([task]) => task !== taskId))
       if (nodeId !== null) taskNodes[taskId] = nodeId
       const next: ProjectRecord = { ...project, taskNodes }
@@ -1579,7 +1583,7 @@ export function createVaultStore(
     updateMilestone(projectId, milestoneId, patch) {
       const project = projectOf(projectId)
       const milestone = project.milestones.find((m) => m.id === milestoneId)
-      if (!milestone) throw new Error(`里程碑不存在：${milestoneId}`)
+      if (!milestone) throw new CallError('not-found', `里程碑不存在：${milestoneId}`)
       const next = { ...milestone, ...patch }
       return writeProject({
         ...project,
@@ -1590,7 +1594,7 @@ export function createVaultStore(
     deleteMilestone(projectId, milestoneId) {
       const project = projectOf(projectId)
       if (!project.milestones.some((m) => m.id === milestoneId)) {
-        throw new Error(`里程碑不存在：${milestoneId}`)
+        throw new CallError('not-found', `里程碑不存在：${milestoneId}`)
       }
       return writeProject({
         ...project,
@@ -1614,7 +1618,7 @@ export function createVaultStore(
     deleteRelation(projectId, relationId) {
       const project = projectOf(projectId)
       if (!project.relations.some((r) => r.items.some((i) => i.id === relationId))) {
-        throw new Error(`关联不存在：${relationId}`)
+        throw new CallError('not-found', `关联不存在：${relationId}`)
       }
       return writeProject({
         ...project,
@@ -1626,7 +1630,7 @@ export function createVaultStore(
     updateRelation(projectId, relationId, relation) {
       const project = projectOf(projectId)
       if (!project.relations.some((r) => r.items.some((i) => i.id === relationId))) {
-        throw new Error(`关联不存在：${relationId}`)
+        throw new CallError('not-found', `关联不存在：${relationId}`)
       }
       const item = { id: relationId, ...relationFields(relation) }
       return writeProject({
@@ -1638,14 +1642,14 @@ export function createVaultStore(
 
     addPaper(projectId, paperId) {
       const project = projectOf(projectId)
-      if (!papers.has(paperId)) throw new Error(`论文不存在：${paperId}`)
-      if (project.papers.includes(paperId)) throw new Error(`已经关联过这篇论文：${paperId}`)
+      if (!papers.has(paperId)) throw new CallError('not-found', `论文不存在：${paperId}`)
+      if (project.papers.includes(paperId)) throw new CallError('refused', `已经关联过这篇论文：${paperId}`)
       return writeProject({ ...project, papers: [paperId, ...project.papers] }, ['papers'])
     },
 
     removePaper(projectId, paperId) {
       const project = projectOf(projectId)
-      if (!project.papers.includes(paperId)) throw new Error(`项目没有关联这篇论文：${paperId}`)
+      if (!project.papers.includes(paperId)) throw new CallError('not-found', `项目没有关联这篇论文：${paperId}`)
       return writeProject({
         ...project, papers: project.papers.filter((id) => id !== paperId),
       }, ['papers'])
@@ -1663,7 +1667,7 @@ export function createVaultStore(
       const paperAt = project.papers.indexOf(id)
       if (paperAt >= 0) return writeProject({ ...project, papers: moved(project.papers, paperAt) }, ['papers'])
       const group = project.relations.find((r) => r.items.some((i) => i.id === id))
-      if (group === undefined) throw new Error(`关联不存在：${id}`)
+      if (group === undefined) throw new CallError('not-found', `关联不存在：${id}`)
       const relations = project.relations.map((r) => (r !== group
         ? r
         : { ...r, items: moved(r.items, r.items.findIndex((i) => i.id === id)) }))
@@ -1671,7 +1675,7 @@ export function createVaultStore(
     },
 
     createAttachment(projectId, attachment) {
-      if (!isAbsolute(attachment.path)) throw new Error(`附件路径不是绝对路径：${attachment.path}`)
+      if (!isAbsolute(attachment.path)) throw new CallError('invalid', `附件路径不是绝对路径：${attachment.path}`)
       const project = projectOf(projectId)
       return writeProject({
         ...project,
@@ -1682,7 +1686,7 @@ export function createVaultStore(
     deleteAttachment(projectId, attachmentId) {
       const project = projectOf(projectId)
       const attachment = project.attachments.find((a) => a.id === attachmentId)
-      if (!attachment) throw new Error(`附件不存在：${attachmentId}`)
+      if (!attachment) throw new CallError('not-found', `附件不存在：${attachmentId}`)
       const next = writeProject({
         ...project,
         attachments: project.attachments.filter((a) => a.id !== attachmentId),
@@ -1718,7 +1722,7 @@ export function createVaultStore(
     updateNode(projectId, nodeId, patch) {
       const project = projectOf(projectId)
       if (!project.graph.nodes.some((node) => node.id === nodeId)) {
-        throw new Error(`节点不存在：${nodeId}`)
+        throw new CallError('not-found', `节点不存在：${nodeId}`)
       }
       return writeProject({
         ...project,
@@ -1734,7 +1738,7 @@ export function createVaultStore(
     deleteNode(projectId, nodeId) {
       const project = projectOf(projectId)
       if (!project.graph.nodes.some((node) => node.id === nodeId)) {
-        throw new Error(`节点不存在：${nodeId}`)
+        throw new CallError('not-found', `节点不存在：${nodeId}`)
       }
       const nextProject = writeProject({
         ...project,
@@ -1744,12 +1748,11 @@ export function createVaultStore(
         },
       }, ['graph'])
       const day = today()
-      ideas = ideas.map((idea) => (
+      ideas = save('ideas', ideas.map((idea) => (
         idea.project === projectId && idea.node === nodeId
           ? updateResearchIdea(idea, { node: null }, day)
           : idea
-      ))
-      save('ideas', ideas)
+      )))
       const updatedProject = projectById.get(projectId)
       if (updatedProject !== undefined) syncProjectWorkspace(updatedProject)
       return nextProject
@@ -1758,7 +1761,7 @@ export function createVaultStore(
     createConclusion(projectId, text, { chat, paper }) {
       const project = projectOf(projectId)
       const source = chat === undefined ? MANUAL_SOURCE : chatSource(chatOf(chat).title)
-      if (paper !== undefined && !papers.has(paper)) throw new Error(`论文不存在：${paper}`)
+      if (paper !== undefined && !papers.has(paper)) throw new CallError('not-found', `论文不存在：${paper}`)
       const item: Conclusion = {
         id: nextId('concl'),
         text,
@@ -1775,7 +1778,7 @@ export function createVaultStore(
     setConclusionState(projectId, conclusionId, state) {
       const project = projectOf(projectId)
       if (!project.conclusionList.some((conclusion) => conclusion.id === conclusionId)) {
-        throw new Error(`结论不存在：${conclusionId}`)
+        throw new CallError('not-found', `结论不存在：${conclusionId}`)
       }
       return writeProject({
         ...project,
@@ -1788,8 +1791,8 @@ export function createVaultStore(
     verifyConclusion(projectId, node, fingerprint) {
       const project = projectOf(projectId)
       const held = concludedNodes(readProjectWorkspace(project)?.graph ?? project.graph).find((n) => n.id === node)
-      if (held === undefined) throw new Error(`节点没有可验证的结论：${node}`)
-      if (conclusionFingerprint(held) !== fingerprint) throw new Error(CONCLUSION_CHANGED)
+      if (held === undefined) throw new CallError('not-found', `节点没有可验证的结论：${node}`)
+      if (conclusionFingerprint(held) !== fingerprint) throw new CallError('changed', CONCLUSION_CHANGED)
       const entry = { node, fingerprint, date: today() }
       return writeProject({
         ...project,
@@ -1809,7 +1812,7 @@ export function createVaultStore(
     deleteConclusion(projectId, conclusionId) {
       const project = projectOf(projectId)
       if (!project.conclusionList.some((conclusion) => conclusion.id === conclusionId)) {
-        throw new Error(`结论不存在：${conclusionId}`)
+        throw new CallError('not-found', `结论不存在：${conclusionId}`)
       }
       return writeProject({
         ...project,
@@ -1854,7 +1857,7 @@ export function createVaultStore(
       const entry = liveEntry(id)
       putEntry(id, { gone: true })
       if (later.some((x) => x.id === id)) return false
-      later = [{
+      later = save('later', [{
         id: entry.id,
         title: entry.title,
         source: entry.source,
@@ -1864,8 +1867,7 @@ export function createVaultStore(
         abstract: entry.abstract,
         paper: entry.paper,
         pdf: entry.pdf,
-      }, ...later]
-      save('later', later)
+      }, ...later])
       return true
     },
 
@@ -1874,7 +1876,7 @@ export function createVaultStore(
       const known = pagesOf.get(entry.paper)?.[0]
         ?? [...papers.values()].find((paper) => paper.identifier === `arXiv:${entry.arxiv}`)?.id
       if (known !== undefined) return { kind: 'existing', paper: known, title: papers.get(known)!.title }
-      if (entry.pdf === '') throw new Error('这一条没有原文地址')
+      if (entry.pdf === '') throw new CallError('refused', '这一条没有原文地址')
       return { kind: 'fetch', url: entry.pdf }
     },
 
@@ -1887,8 +1889,7 @@ export function createVaultStore(
       }
       const source = sourceOf(result.paper.id)
       putEntry(id, { downloaded: true, paper: source })
-      later = later.map((queued) => (queued.id === id ? { ...queued, paper: source } : queued))
-      save('later', later)
+      later = save('later', later.map((queued) => (queued.id === id ? { ...queued, paper: source } : queued)))
       fillPaper(result.paper.id, remoteMetadata({
         id: entry.arxiv,
         title: entry.title,
@@ -1920,9 +1921,8 @@ export function createVaultStore(
     },
 
     removeLater(id) {
-      if (!later.some((x) => x.id === id)) throw new Error(`稍后阅读里没有这一条：${id}`)
-      later = later.filter((x) => x.id !== id)
-      save('later', later)
+      if (!later.some((x) => x.id === id)) throw new CallError('not-found', `稍后阅读里没有这一条：${id}`)
+      later = save('later', later.filter((x) => x.id !== id))
     },
 
     listWatches() {
@@ -1930,37 +1930,31 @@ export function createVaultStore(
     },
 
     createWatch(watch) {
-      watches = [{ id: nextId('watch'), ...structuredClone(watch), active: true }, ...watches]
-      save('watches', watches)
+      watches = save('watches', [{ id: nextId('watch'), ...structuredClone(watch), active: true }, ...watches])
     },
 
     updateWatch(id, watch) {
       const current = watches.find((item) => item.id === id)
-      if (current === undefined) throw new Error(`关注不存在：${id}`)
-      if (current.type !== watch.type) throw new Error('不能把主题关注改成作者关注，或把作者关注改成主题关注')
-      watches = watches.map((item) => (
+      if (current === undefined) throw new CallError('not-found', `关注不存在：${id}`)
+      if (current.type !== watch.type) throw new CallError('invalid', '不能把主题关注改成作者关注，或把作者关注改成主题关注')
+      watches = save('watches', watches.map((item) => (
         item.id === id ? { id, ...structuredClone(watch), active: item.active } as typeof item : item
-      ))
-      save('watches', watches)
+      )))
     },
 
     setWatchActive(id, active) {
-      if (!watches.some((w) => w.id === id)) throw new Error(`关注不存在：${id}`)
-      watches = watches.map((w) => (w.id === id ? { ...w, active } : w))
-      save('watches', watches)
+      if (!watches.some((w) => w.id === id)) throw new CallError('not-found', `关注不存在：${id}`)
+      watches = save('watches', watches.map((w) => (w.id === id ? { ...w, active } : w)))
     },
 
     deleteWatch(id) {
-      if (!watches.some((w) => w.id === id)) throw new Error(`关注不存在：${id}`)
+      if (!watches.some((w) => w.id === id)) throw new CallError('not-found', `关注不存在：${id}`)
       const removedEntries = new Set(
         inbox.filter((entry) => entry.kind === 'watch' && entry.watch === id).map((entry) => entry.id),
       )
-      watches = watches.filter((w) => w.id !== id)
-      inbox = inbox.filter((entry) => entry.kind !== 'watch' || entry.watch !== id)
-      trash = trash.filter((item) => item.kind !== 'inbox' || !removedEntries.has(item.entryId))
-      save('watches', watches)
-      save('inbox', inbox)
-      save('trash', trash)
+      watches = save('watches', watches.filter((w) => w.id !== id))
+      inbox = save('inbox', inbox.filter((entry) => entry.kind !== 'watch' || entry.watch !== id))
+      trash = save('trash', trash.filter((item) => item.kind !== 'inbox' || !removedEntries.has(item.entryId)))
     },
 
     deliverySettings() {
@@ -1968,13 +1962,12 @@ export function createVaultStore(
     },
 
     setDeliverySettings(settings: DeliverySettings) {
-      state = { ...state, deliverySettings: structuredClone(settings) }
-      saveState()
+      saveState({ ...state, deliverySettings: structuredClone(settings) })
     },
 
     addInboxEntries(watchId, found, limit) {
       const watch = watches.find((w) => w.id === watchId)
-      if (!watch) throw new Error(`关注不存在：${watchId}`)
+      if (!watch) throw new CallError('not-found', `关注不存在：${watchId}`)
       const unseen = unseenPapers(
         found, inbox.filter((entry) => entry.kind === 'watch').map((entry) => entry.arxiv), papers.values(),
       )
@@ -1985,15 +1978,14 @@ export function createVaultStore(
         }))
       if (added.length === 0) return []
       const at = inbox.findIndex((entry) => entry.watch === watch.id)
-      inbox = at < 0 ? [...inbox, ...added] : [...inbox.slice(0, at), ...added, ...inbox.slice(at)]
-      save('inbox', inbox)
+      inbox = save('inbox', at < 0 ? [...inbox, ...added] : [...inbox.slice(0, at), ...added, ...inbox.slice(at)])
       return added.map((entry) => entry.arxiv)
     },
 
     updateInboxEntries(watchId, found) {
       const byArxiv = new Map(found.map((paper) => [paper.id, paper]))
       let updated = 0
-      inbox = inbox.map((entry) => {
+      const next = inbox.map((entry) => {
         if (entry.watch !== watchId) return entry
         const paper = byArxiv.get(entry.arxiv)
         if (paper?.ranking === undefined) return entry
@@ -2010,7 +2002,7 @@ export function createVaultStore(
           meta: { ...entry.meta, journalRef: paper.journalRef },
         }
       })
-      if (updated > 0) save('inbox', inbox)
+      if (updated > 0) inbox = save('inbox', next)
       return updated
     },
 
@@ -2054,23 +2046,22 @@ export function createVaultStore(
 
     setDiscoverySchedule(projectId, schedule) {
       projectOf(projectId)
-      state = {
+      saveState({
         ...state,
         discoverySchedules: { ...state.discoverySchedules, [projectId]: schedule },
-      }
-      saveState()
+      })
     },
 
     setDiscoveryIntent(projectId, intentId, action) {
       projectOf(projectId)
       if (!projectDiscoveryIntents(projectId).some((intent) => intent.id === intentId)) {
-        throw new Error(`推荐方向不存在：${intentId}`)
+        throw new CallError('not-found', `推荐方向不存在：${intentId}`)
       }
       const held = discoveryPreferences(projectId)
       const disabled = new Set(held.disabledIntentIds)
       if (action === 'disable') disabled.add(intentId)
       else disabled.delete(intentId)
-      state = {
+      saveState({
         ...state,
         discoveryPreferences: {
           ...state.discoveryPreferences,
@@ -2079,8 +2070,7 @@ export function createVaultStore(
             disabledIntentIds: [...disabled],
           },
         },
-      }
-      saveState()
+      })
     },
 
     addDiscoveryEntries(projectId, found: DiscoveryPaper[], limit) {
@@ -2112,14 +2102,13 @@ export function createVaultStore(
         meta: { authors: paper.authors, submitted: paper.submitted, journalRef: paper.journalRef },
       }))
       if (added.length === 0) return 0
-      inbox = [...added, ...inbox]
-      save('inbox', inbox)
+      inbox = save('inbox', [...added, ...inbox])
       return added.length
     },
 
     feedbackDiscovery(id, feedback) {
       const entry = liveEntry(id)
-      if (entry.kind !== 'discovery') throw new Error(`这一条不是论文发现：${id}`)
+      if (entry.kind !== 'discovery') throw new CallError('invalid', `这一条不是论文发现：${id}`)
       putEntry(id, { feedback, gone: feedback === 'more' ? false : true })
     },
 
@@ -2128,8 +2117,7 @@ export function createVaultStore(
     },
 
     setLastFetch(at) {
-      state = { ...state, fetchedAt: at }
-      saveState()
+      saveState({ ...state, fetchedAt: at })
     },
 
     wikiHome() {
@@ -2138,12 +2126,12 @@ export function createVaultStore(
 
     wikiAggregation(id) {
       checkReadable(id)
-      return wikiAggregation(wikiData, id, versionOf(id)!, projectNames())
+      return wikiAggregation(wikiData, id, versionOf(id)!, projectNames(), pointName)
     },
 
     wikiPaper(id) {
       checkReadable(id)
-      if (wikiData.pages[id] === undefined) throw new Error(`wiki 论文页不存在：${id}`)
+      if (wikiData.pages[id] === undefined) throw new CallError('not-found', `wiki 论文页不存在：${id}`)
       return wikiPaper(wikiData, id, versionOf(id)!)
     },
 
@@ -2249,8 +2237,9 @@ export function createVaultStore(
     },
 
     saveProposalRecords(rows) {
-      proposals = structuredClone(rows)
-      save('proposals', [...proposals, ...unreadProposals])
+      const next = structuredClone(rows)
+      save('proposals', [...next, ...unreadProposals])
+      proposals = next
     },
 
     nextProposalId() {
@@ -2270,7 +2259,7 @@ export function createVaultStore(
     updateWikiPage(id, body) {
       checkBody(id, body)
       checkReadable(id)
-      if (wikiData.pages[id] === undefined) throw new Error(`wiki 页不存在：${id}`)
+      if (wikiData.pages[id] === undefined) throw new CallError('not-found', `wiki 页不存在：${id}`)
       setBody(wikiFile(id), body, staging)
       setUpdated(wikiFile(id), today(), staging)
       rereadWiki([id])
@@ -2279,7 +2268,7 @@ export function createVaultStore(
     applyPaperWikiDraft(id, body) {
       checkBody(id, body)
       checkReadable(id)
-      if (wikiData.pages[id] === undefined) throw new Error(`wiki 页不存在：${id}`)
+      if (wikiData.pages[id] === undefined) throw new CallError('not-found', `wiki 页不存在：${id}`)
       setBodyAndTrust(wikiFile(id), body, staging)
       setUpdated(wikiFile(id), today(), staging)
       rereadWiki([id])
@@ -2332,13 +2321,12 @@ export function createVaultStore(
     restoreTrash(id) {
       dropExpired()
       const item = trash.find((entry) => entry.id === id)
-      if (!item) throw new Error(`垃圾桶里没有这一条：${id}`)
+      if (!item) throw new CallError('not-found', `垃圾桶里没有这一条：${id}`)
       if (item.kind === 'paper') {
         const back = join(root, item.page)
         movePage(trashPage(id), back)
         if (item.reading !== undefined) {
-          readings = [...readings, item.reading]
-          save('paper-readings', readings)
+          readings = save('paper-readings', [...readings, item.reading])
         }
         const page = readPage(back)
         refreshWikiPage(page.id, back)
@@ -2353,36 +2341,33 @@ export function createVaultStore(
       } else if (item.kind === 'inbox') {
         putEntry(item.entryId, { gone: false })
       } else if (item.kind === 'idea') {
-        ideas = [structuredClone(item.idea), ...ideas]
-        save('ideas', ideas)
+        ideas = save('ideas', [structuredClone(item.idea), ...ideas])
         if (item.idea.project !== undefined) {
           const project = projectById.get(item.idea.project)
           if (project !== undefined) syncProjectWorkspace(project)
         }
       } else {
         const project = projectById.get(item.projectId)
-        if (!project) throw new Error(`项目不存在：${item.projectId}`)
+        if (!project) throw new CallError('not-found', `项目不存在：${item.projectId}`)
         writeProject(
           { ...project, attachments: [...project.attachments, item.attachment] }, ['attachments'],
         )
       }
-      trash = trash.filter((entry) => entry !== item)
-      save('trash', trash)
+      trash = save('trash', trash.filter((entry) => entry !== item))
     },
 
     purgeTrash(id) {
       dropExpired()
       const item = trash.find((entry) => entry.id === id)
-      if (!item) throw new Error(`垃圾桶里没有这一条：${id}`)
+      if (!item) throw new CallError('not-found', `垃圾桶里没有这一条：${id}`)
+      trash = save('trash', trash.filter((entry) => entry !== item))
       discard(item)
-      trash = trash.filter((entry) => entry !== item)
-      save('trash', trash)
     },
 
     clearTrash() {
-      for (const item of trash) discard(item)
-      trash = []
-      save('trash', trash)
+      const cleared = trash
+      trash = save('trash', [])
+      for (const item of cleared) discard(item)
     },
 
     listFeed() {
@@ -2392,12 +2377,11 @@ export function createVaultStore(
 
     appendFeed({ source, body }) {
       const day = today()
-      feed = [...feed, {
+      feed = save('feed', [...feed, {
         id: nextId('entry'), source, day: dayOf(day, day), time: FEED_NOW,
         createdAt: now().toISOString(),
         body: structuredClone(body),
-      }]
-      save('feed', feed)
+      }])
     },
 
     listChats() {
@@ -2416,8 +2400,7 @@ export function createVaultStore(
 
     createChat(title, named) {
       const chat: ChatRecord = { id: nextId('chat'), title, named, archived: false, messages: [] }
-      chats = [chat, ...chats]
-      save('chats', chats)
+      chats = save('chats', [chat, ...chats])
       return chatSession(chat)
     },
 
@@ -2425,12 +2408,11 @@ export function createVaultStore(
       const found = chats.find((held) => held.paperId === paperId)
       if (found !== undefined) return chatSession(found)
       const paper = papers.get(paperId)
-      if (paper === undefined) throw new Error(`论文不存在：${paperId}`)
+      if (paper === undefined) throw new CallError('not-found', `论文不存在：${paperId}`)
       const created: ChatRecord = {
         id: nextId('chat'), title: paper.title, named: true, archived: false, messages: [], paperId,
       }
-      chats = [created, ...chats]
-      save('chats', chats)
+      chats = save('chats', [created, ...chats])
       return chatSession(created)
     },
 
@@ -2445,8 +2427,7 @@ export function createVaultStore(
           : { title: naming.runs.map((r) => r.text).join('').slice(0, CHAT_TITLE_CHARS), named: true }),
         messages: [...chat.messages, ...added],
       }
-      chats = chats.map((c) => (c.id === id ? next : c))
-      save('chats', chats)
+      chats = save('chats', chats.map((c) => (c.id === id ? next : c)))
     },
 
     listIdeas() {
@@ -2458,8 +2439,7 @@ export function createVaultStore(
 
     reorderIdeas(order) {
       const known = new Set(ideas.map((idea) => idea.id))
-      state = { ...state, ideaOrder: [...order].filter((id) => known.has(id)) }
-      saveState()
+      saveState({ ...state, ideaOrder: [...order].filter((id) => known.has(id)) })
     },
 
     createIdea(chatId, title, body) {
@@ -2472,28 +2452,26 @@ export function createVaultStore(
           ? {}
           : { paperId: sourcePaper.id, paperTitle: sourcePaper.title }),
       }, today())
-      ideas = [idea, ...ideas]
-      save('ideas', ideas)
+      ideas = save('ideas', [idea, ...ideas])
       return structuredClone(idea)
     },
 
     updateIdea(id, patch) {
       const current = ideas.find((idea) => idea.id === id)
-      if (current === undefined) throw new Error(`想法不存在：${id}`)
+      if (current === undefined) throw new CallError('not-found', `想法不存在：${id}`)
       const projectChanged = patch.project !== undefined && patch.project !== current.project
       const normalized = projectChanged && patch.node === undefined ? { ...patch, node: null } : patch
       const linked = normalized.project === undefined ? current.project : normalized.project ?? undefined
-      if (linked !== undefined && !projectById.has(linked)) throw new Error(`项目不存在：${linked}`)
+      if (linked !== undefined && !projectById.has(linked)) throw new CallError('not-found', `项目不存在：${linked}`)
       const node = normalized.node === undefined ? current.node : normalized.node ?? undefined
       if (node !== undefined && linked === undefined) {
-        throw new Error('科研图节点必须属于想法关联的项目')
+        throw new CallError('invalid', '科研图节点必须属于想法关联的项目')
       }
       const completed = linked !== undefined && projectById.get(linked)?.status === FINISHED_PROJECT
       const next = updateResearchIdea(
         current, completed ? { ...normalized, archived: true } : normalized, today(),
       )
-      ideas = ideas.map((idea) => (idea.id === id ? next : idea))
-      save('ideas', ideas)
+      ideas = save('ideas', ideas.map((idea) => (idea.id === id ? next : idea)))
       const affectedProjects = new Set([current.project, next.project])
       for (const projectId of affectedProjects) {
         if (projectId === undefined) continue
@@ -2505,9 +2483,8 @@ export function createVaultStore(
 
     deleteIdea(id) {
       const idea = ideas.find((held) => held.id === id)
-      if (idea === undefined) throw new Error(`想法不存在：${id}`)
-      ideas = ideas.filter((held) => held !== idea)
-      save('ideas', ideas)
+      if (idea === undefined) throw new CallError('not-found', `想法不存在：${id}`)
+      ideas = save('ideas', ideas.filter((held) => held !== idea))
       if (idea.project !== undefined) {
         const project = projectById.get(idea.project)
         if (project !== undefined) syncProjectWorkspace(project)
@@ -2520,12 +2497,12 @@ export function createVaultStore(
     recordAction(id, messageId) {
       const chat = chatOf(id)
       const message = chat.messages.find((held) => held.id === messageId)
-      if (!message) throw new Error(`消息不存在：${messageId}`)
+      if (!message) throw new CallError('not-found', `消息不存在：${messageId}`)
       const action = message.actions[0]
-      if (action === undefined) throw new Error(`这条消息上没有要记入科研记录的话：${messageId}`)
-      if (action.done === true) throw new Error('这一条已经记入过科研记录')
+      if (action === undefined) throw new CallError('refused', `这条消息上没有要记入科研记录的话：${messageId}`)
+      if (action.done === true) throw new CallError('refused', '这一条已经记入过科研记录')
       const detail = appendEvent(action.project, `${CHAT_EVENT_PREFIX}${action.text}`)
-      chats = chats.map((held) => (held !== chat ? held : {
+      chats = save('chats', chats.map((held) => (held !== chat ? held : {
         ...held,
         messages: held.messages.map((candidate) => (candidate !== message ? candidate : {
           ...candidate,
@@ -2533,15 +2510,13 @@ export function createVaultStore(
             ? { ...candidateAction, done: true }
             : candidateAction)),
         })),
-      }))
-      save('chats', chats)
+      })))
       return detail
     },
 
     setChatArchived(id, archived) {
       const chat = chatOf(id)
-      chats = chats.map((c) => (c === chat ? { ...c, archived } : c))
-      save('chats', chats)
+      chats = save('chats', chats.map((c) => (c === chat ? { ...c, archived } : c)))
     },
 
     search(query) {
@@ -2572,8 +2547,8 @@ export function createVaultStore(
       return log.rows
     },
     save: (rows) => {
-      changes = rows
       save('changelog', rows)
+      changes = rows
     },
     nextId: () => nextId('change'),
   })

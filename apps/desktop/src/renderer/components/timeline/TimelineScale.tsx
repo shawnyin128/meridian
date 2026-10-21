@@ -3,8 +3,12 @@ import type { Task, TaskWindow as PlannedWindow } from '../../../shared/contract
 import { D1, dnum, isoOf } from '../../../shared/dates.js'
 import { createFormat, useFormat, type Format } from '../../lib/format.js'
 import { useMessages } from '../../messages/useMessages.js'
+import { IconButton } from '../IconButton.js'
+import { IconNext, IconPrevious } from '../icons.js'
 import { zh } from '../../messages/zh/index.js'
 import type { Catalog } from '../../messages/catalog.js'
+import { SegmentedControl } from '../SegmentedControl.js'
+import { ToolbarButton } from '../Toolbar.js'
 
 export type TimelineScale = 'day' | 'week' | 'month'
 
@@ -102,6 +106,9 @@ export function useTimelinePeriod(today: string) {
   return { anchor, scale, setScale, step, goToday, window: timelineWindow(anchor, scale, fmt, m) }
 }
 
+/** The period a timeline shows; its screen holds it, so the screen's own controls can read it too. */
+export type TimelinePeriod = ReturnType<typeof useTimelinePeriod>
+
 /** Converts a pointer coordinate on a timeline canvas back to its exact day. */
 export function timelineDayAt(
   canvas: HTMLElement, clientX: number, window: Pick<TimelineWindow, 'w0' | 'w1' | 'dayWidth'>,
@@ -168,14 +175,10 @@ export function TimelineScalePicker({ value, onChange }: {
 }) {
   const m = useMessages()
   return (
-    <div className="gscale" role="group" aria-label={m.timeline.scaleGroup}>
-      {SCALES.map((scale) => (
-        <button
-          type="button" className={value === scale ? 'on' : ''} aria-pressed={value === scale}
-          key={scale} onClick={() => onChange(scale)}
-        >{m.timeline.scale[scale]}</button>
-      ))}
-    </div>
+    <SegmentedControl
+      label={m.timeline.scaleGroup} value={value} onChange={onChange} size="sm"
+      options={SCALES.map((scale) => ({ value: scale, label: m.timeline.scale[scale] }))}
+    />
   )
 }
 
@@ -189,21 +192,11 @@ export function TimelineControls({ scale, onScaleChange, onStep, onToday }: {
   return (
     <>
       <div className="gperiodnav">
-        <button
-          type="button" title={m.timeline.prevPeriod} aria-label={m.timeline.prevPeriod}
-          onClick={() => onStep(-1)}
-        >
-          <svg viewBox="0 0 16 16" aria-hidden="true"><path d="m10 3-5 5 5 5" /></svg>
-        </button>
-        <button
-          type="button" title={m.timeline.nextPeriod} aria-label={m.timeline.nextPeriod}
-          onClick={() => onStep(1)}
-        >
-          <svg viewBox="0 0 16 16" aria-hidden="true"><path d="m6 3 5 5-5 5" /></svg>
-        </button>
+        <IconButton label={m.timeline.prevPeriod} size="nested" onClick={() => onStep(-1)}><IconPrevious /></IconButton>
+        <IconButton label={m.timeline.nextPeriod} size="nested" onClick={() => onStep(1)}><IconNext /></IconButton>
       </div>
       <TimelineScalePicker value={scale} onChange={onScaleChange} />
-      <button type="button" className="btn plain" onClick={onToday}>{m.timeline.today}</button>
+      <ToolbarButton className="btn ghost sm" onClick={onToday}>{m.timeline.today}</ToolbarButton>
     </>
   )
 }
@@ -309,7 +302,6 @@ export function TimelineGrid({ window, scale, today }: {
                 <div
                   className={`${day === today ? 'gday today' : 'gday'} ${scale}`}
                   key={day} style={{ flexBasis: window.dayWidth }}
-                  title={`${date.getUTCFullYear()}-${date.getUTCMonth() + 1}-${date.getUTCDate()}`}
                 >
                   <span>
                     {scale === 'week'

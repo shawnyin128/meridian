@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type {
   HarnessModelConnectionCheckResult, LibraryBackup, LibraryLocation, SemanticKeyCheckResult, SemanticKeyStatus,
 } from '../../shared/contract.js'
+import { CallError } from '../call-error.js'
 import { MessagesProvider } from '../messages/useMessages.js'
 import type { SettingsCategory } from '../shell/AppShell.js'
 import { LANGUAGE_STORAGE_KEY } from '../shell/language.js'
@@ -57,14 +58,15 @@ const api = vi.hoisted(() => ({
   })),
   deleteBackup: vi.fn(async () => null),
   restartApp: vi.fn(),
-  banner: vi.fn(),
+  success: vi.fn(),
+  chatList: vi.fn(async () => [] as unknown[]),
 }))
 
 vi.mock('../ipc.js', () => ({
   appMenu: {
     chooseLibraryRoot: vi.fn(async () => null), restartApp: api.restartApp,
   },
-  chat: { list: vi.fn(async () => []), setArchived: vi.fn(async () => {}) },
+  chat: { list: api.chatList, setArchived: vi.fn(async () => {}) },
   library: {
     location: api.libraryLocation,
     backups: api.libraryBackups,
@@ -87,7 +89,7 @@ vi.mock('../ipc.js', () => ({
   extensions: { status: api.extensionStatus, pluginVersion: api.pluginVersion, checkLatest: api.checkLatest },
 }))
 vi.mock('../shell/AppShell.js', () => ({
-  useBanner: () => api.banner,
+  useNotice: () => ({ success: api.success, refusal: vi.fn() }),
   useJump: () => ({ open: vi.fn() }),
   useSettingsOpen: () => ({
     open: true, requestedCategory: api.requestedCategory, setOpen: api.setOpen, openCategory: vi.fn(),
@@ -104,10 +106,34 @@ vi.mock('../components/settings/DiscoverySettings.js', () => ({
 
 const { Settings } = await import('./Settings.js')
 
+/** Opens the picker named `label` in `dialog` and returns its menu items. */
+async function openPicker(dialog: Element, label: string): Promise<HTMLElement[]> {
+  const trigger = dialog.querySelector<HTMLButtonElement>(`button[aria-label="${label}"]`)!
+  await act(async () => { trigger.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, button: 0 })) })
+  return [...document.querySelectorAll<HTMLElement>('.choice-picker-menu [role="menuitemradio"]')]
+}
+
+/** Closes the open picker menu without picking. */
+async function closePicker(): Promise<void> {
+  await act(async () => {
+    document.activeElement!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+  })
+}
+
+/** Picks the option shown as `text` in the picker named `label`. */
+async function pick(dialog: Element, label: string, text: string): Promise<void> {
+  const item = (await openPicker(dialog, label)).find((candidate) => candidate.textContent === text)!
+  await act(async () => {
+    item.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }))
+    item.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+  })
+}
+
 describe('Settings', () => {
   let root: Root
   let host: HTMLDivElement
   beforeEach(() => {
+    vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} })
     globalThis.IS_REACT_ACT_ENVIRONMENT = true
     window.localStorage.clear()
     window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'zh')
@@ -144,7 +170,7 @@ describe('Settings', () => {
     api.switchBackup.mockClear()
     api.deleteBackup.mockClear()
     api.restartApp.mockClear()
-    api.banner.mockClear()
+    api.success.mockClear()
   })
   afterEach(() => { act(() => root.unmount()) })
 
@@ -175,10 +201,12 @@ describe('Settings', () => {
       setter.call(limit, '12')
       limit.dispatchEvent(new Event('input', { bubbles: true }))
     })
-    await act(async () => {
-      dialog.querySelector<HTMLButtonElement>('.delivery-setting-control .btn')!.click()
-    })
+    // Like the model card's save, it sits at the end of the card's foot and says it saved in place.
+    const save = dialog.querySelector<HTMLButtonElement>('.delivery-settings-card > .service-foot > .service-actions > .btn')!
+    expect(dialog.querySelector('.delivery-setting-control .btn')).toBeNull()
+    await act(async () => { save.click() })
     expect(api.updateDeliverySettings).toHaveBeenCalledWith({ maxItemsPerRun: 12 })
+    expect(save.textContent).toBe('已保存')
   })
 
   it('单次推送上限里输入法组字的回车不保存，组完字后的回车才保存', async () => {
@@ -196,6 +224,32 @@ describe('Settings', () => {
     expect(api.updateDeliverySettings).not.toHaveBeenCalled()
     await pressEnter({})
     expect(api.updateDeliverySettings).toHaveBeenCalledExactlyOnceWith({ maxItemsPerRun: 12 })
+  })
+
+  it('归档的对话那一行的打开和取消归档是行尾操作槽里的图标钮', async () => {
+    const { chat } = await import('../ipc.js')
+    vi.mocked(chat.list).mockResolvedValueOnce([{ id: 'chat-1', title: '树宽讨论', archived: true, messageCount: 2 }])
+    api.requestedCategory = 'archived'
+    await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
+    const row = document.querySelector('.setdlg [data-chat="chat-1"]')!
+    const slot = (row: Element) => [...row.querySelectorAll('.row-actions button')].map((item) => [
+      item.getAttribute('aria-label'), item.textContent, item.classList.contains('icbtn'), item.classList.contains('danger'),
+    ])
+    expect(row.hasAttribute('data-row-actions')).toBe(true)
+    expect(slot(row)).toEqual([['打开', '', true, false], ['取消归档', '', true, false]])
+  })
+
+  it('设置右栏放不下时，只在藏着内容的那一边淡出', async () => {
+    await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
+    const pane = document.querySelector<HTMLElement>('.setdlg .set-main')!
+    let offset = 0
+    Object.defineProperty(pane, 'clientHeight', { configurable: true, get: () => 400 })
+    Object.defineProperty(pane, 'scrollHeight', { configurable: true, get: () => 900 })
+    Object.defineProperty(pane, 'scrollTop', { configurable: true, get: () => offset })
+    act(() => { pane.dispatchEvent(new Event('scroll')) })
+    expect(pane.dataset.fade).toBe('bottom')
+    act(() => { offset = 200; pane.dispatchEvent(new Event('scroll')) })
+    expect(pane.dataset.fade).toBe('top bottom')
   })
 
   it('每个设置分类都是按钮，键盘能聚焦和打开', async () => {
@@ -254,7 +308,7 @@ describe('Settings', () => {
     expect(dialog.querySelector('[data-setcat="model"]')?.classList.contains('on')).toBe(true)
   })
 
-  it('未配置 key 时科研卡片显示未配置，测试连接不可用', async () => {
+  it('未配置 key 时科研卡片显示未配置，测试连接不可用，按钮旁写着未保存', async () => {
     api.requestedCategory = 'research'
     await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
     const dialog = document.querySelector('.setdlg')!
@@ -262,8 +316,21 @@ describe('Settings', () => {
     expect(card.querySelector('.service-status-pill')?.textContent).toBe('未配置')
     const buttons = [...card.querySelectorAll<HTMLButtonElement>('button')]
     expect(buttons.find((b) => b.textContent === '测试连接')!.disabled).toBe(true)
+    expect(buttons.find((b) => b.textContent === '测试连接')!.previousElementSibling?.textContent).toBe('未保存')
     expect(buttons.find((b) => b.textContent === '保存配置')!.disabled).toBe(true)
     expect(buttons.some((b) => b.textContent === '清除已保存的 Key')).toBe(false)
+  })
+
+  it('模型配置还没保存时测试连接不可用，按钮旁写着未保存；保存过的可以测试，不写', async () => {
+    api.requestedCategory = 'model'
+    await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
+    const test = () => [...document.querySelectorAll<HTMLButtonElement>('.model-settings-card button')]
+      .find((b) => b.textContent === '测试连接')!
+    expect([test().disabled, test().previousElementSibling?.textContent]).toEqual([true, '未保存'])
+    api.modelSettings.mockResolvedValueOnce({ ...(await api.updateModelSettings()) })
+    await act(async () => { root.render(<MessagesProvider key="saved"><Settings /></MessagesProvider>) })
+    expect(test().disabled).toBe(false)
+    expect(document.querySelector('.model-settings-card .service-actions .tag')).toBeNull()
   })
 
   it('填写 key 并保存配置会调用 delivery.setSemanticKey', async () => {
@@ -349,7 +416,7 @@ describe('Settings', () => {
       .toContain('在 Coding Agent 中使用 Meridian')
     // The first row is the plugin version the skills and MCP share, not the app's own version.
     const pluginRow = dialog.querySelector('[data-plugin-version="0.0.1"]')!
-    expect(pluginRow.querySelector('h3')?.textContent).toBe('Meridian Plugin')
+    expect(pluginRow.querySelector('.section-heading--group')?.textContent).toBe('Meridian Plugin')
     expect(pluginRow.querySelector('.extension-state')?.textContent).toBe('最新 0.0.1')
     expect(pluginRow.querySelector('p')?.textContent).toContain('还没联网检查过')
     api.pluginVersion.mockResolvedValueOnce({ version: '0.0.2', checkedAt: '2026-09-22T08:00:00.000Z' })
@@ -365,14 +432,14 @@ describe('Settings', () => {
       dialog.querySelector<HTMLButtonElement>('[aria-label="复制 Claude Code 安装命令"]')!.click()
     })
     expect(writeText).toHaveBeenCalledWith('claude install command')
-    expect(api.banner).toHaveBeenCalledWith('Claude Code 命令已复制')
+    expect(api.success).toHaveBeenCalledWith('Claude Code 命令已复制')
 
     const firstPrompt = dialog.querySelector('.extension-prompt p')?.textContent ?? ''
     await act(async () => {
       dialog.querySelector<HTMLButtonElement>('.extension-prompt button')!.click()
     })
     expect(writeText).toHaveBeenLastCalledWith(firstPrompt)
-    expect(api.banner).toHaveBeenLastCalledWith('提示词已复制')
+    expect(api.success).toHaveBeenLastCalledWith('提示词已复制')
   })
 
   it('外观设置用三张预览卡选择浅色、深色或跟随系统', async () => {
@@ -398,6 +465,37 @@ describe('Settings', () => {
     expect(document.documentElement.dataset.appearance).toBe('light')
   })
 
+  it('每个设置页只有标题和控件，标题下不写介绍句子', async () => {
+    api.libraryLocation.mockResolvedValue({
+      root: '/tmp/meridian', source: 'configured', locked: false, restartRequired: false, openError: null,
+    })
+    api.libraryBackups.mockResolvedValue([{ id: 'b1', path: '/tmp/meridian-backup', createdAt: '2026-09-15T10:28:00.000Z' }])
+    const categories: SettingsCategory[] = [
+      'appearance', 'storage', 'api', 'research', 'model', 'extensions', 'delivery', 'delivery-watch', 'delivery-discovery',
+    ]
+    for (const category of categories) {
+      api.requestedCategory = category
+      await act(async () => { root.render(<MessagesProvider key={category}><Settings /></MessagesProvider>) })
+      const pane = document.querySelector('.setdlg .set-main')!
+      expect([...pane.querySelectorAll('.settings-intro, .storage-head p, .storage-note')].map((p) => p.textContent), category)
+        .toEqual([])
+    }
+  })
+
+  it('库位置固定或要重启时，各写一个短状态：外部配置固定、重启后生效和立即重启', async () => {
+    api.requestedCategory = 'storage'
+    await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
+    const card = () => document.querySelector('.setdlg .storage-card')!
+    const states = () => [...card().querySelectorAll(':scope > .tag, :scope > [role="status"] > *')].map((node) => node.textContent)
+    expect(states()).toEqual(['库位置由外部配置固定'])
+    api.libraryLocation.mockResolvedValue({
+      root: '/tmp/meridian', source: 'configured', locked: false, restartRequired: true, openError: null,
+    })
+    await act(async () => { root.render(<MessagesProvider key="pending"><Settings /></MessagesProvider>) })
+    expect(states()).toEqual(['重启后生效', '立即重启'])
+    expect(card().querySelector('p')).toBeNull()
+  })
+
   it('存储位置使用共享目录字段，不再另放一个选择按钮', async () => {
     await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
     const dialog = document.querySelector('.setdlg')!
@@ -415,10 +513,47 @@ describe('Settings', () => {
     expect(dialog.textContent).not.toContain('选择根目录…')
   })
 
-  it('库打不开时显示路径与原因，切换和重置仍然可用', async () => {
+  it('库位置和归档的对话还没读到时都显示同一种载入占位，不写读取中的句子，也不说没有', async () => {
+    const never = () => new Promise<never>(() => {})
+    api.libraryLocation.mockImplementation(never)
+    api.libraryBackups.mockImplementation(never)
+    api.chatList.mockImplementationOnce(never)
+    await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
+    const dialog = document.querySelector('.setdlg')!
+    await act(async () => { dialog.querySelector<HTMLElement>('[data-setcat="storage"]')!.click() })
+    expect(dialog.querySelectorAll('.set-main .loading-placeholder')).toHaveLength(1)
+    expect(dialog.querySelector('.set-main .empty-state')).toBeNull()
+    expect(dialog.querySelector('.set-main')!.textContent).not.toMatch(/正在读取/)
+
+    await act(async () => { dialog.querySelector<HTMLElement>('[data-setcat="archived"]')!.click() })
+    expect(dialog.querySelector('.set-main .loading-placeholder')).not.toBeNull()
+    expect(dialog.querySelector('.set-main .empty-state')).toBeNull()
+  })
+
+  it('每个设置页只显示自己那次读取的错误：对话列表读不到时，存储页不报，归档的对话页报', async () => {
+    api.chatList.mockImplementationOnce(async () => { throw new CallError('chat.list', 'newer-version') })
+    await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
+    const dialog = document.querySelector('.setdlg')!
+    await act(async () => { dialog.querySelector<HTMLElement>('[data-setcat="storage"]')!.click() })
+    expect(dialog.querySelector('.set-main [role="alert"]')).toBeNull()
+
+    await act(async () => { dialog.querySelector<HTMLElement>('[data-setcat="archived"]')!.click() })
+    expect(dialog.querySelector('.set-main [role="alert"]')?.textContent).toBe('需要更新 App')
+  })
+
+  it('还没有备份时备份这一节整节不显示', async () => {
+    await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
+    const dialog = document.querySelector('.setdlg')!
+    await act(async () => { dialog.querySelector<HTMLElement>('[data-setcat="storage"]')!.click() })
+    expect([...dialog.querySelectorAll('.section-heading')].map((node) => node.textContent))
+      .not.toContain('论文库备份 · 0')
+    expect(dialog.querySelector('.set-main .empty-state')).toBeNull()
+  })
+
+  it('库打不开时显示所选目录与原因的标签，错误里不带路径，切换和重置仍然可用', async () => {
     api.libraryLocation.mockResolvedValueOnce({
       root: '/tmp/broken-library', source: 'fallback', locked: false, restartRequired: false,
-      openError: '库里没有论文页目录:/tmp/broken-library/wiki/papers',
+      openError: 'not-library',
     })
     await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
     const dialog = document.querySelector('.setdlg')!
@@ -427,13 +562,12 @@ describe('Settings', () => {
     })
 
     expect(dialog.textContent).not.toContain('正在读取库位置')
-    expect(dialog.querySelector('.ipcerror')?.textContent)
-      .toBe('库里没有论文页目录:/tmp/broken-library/wiki/papers')
+    expect(dialog.querySelector('.ipcerror')?.textContent).toBe('不是 Meridian 论文库')
     expect(dialog.querySelector<HTMLInputElement>('.storage-root input')?.value)
       .toBe('/tmp/broken-library')
     expect(dialog.querySelector<HTMLButtonElement>('[aria-label="选择论文库根目录"]')?.disabled)
       .toBe(false)
-    expect(dialog.querySelector<HTMLButtonElement>('.storage-reset .btn.tdel')?.disabled).toBe(false)
+    expect(dialog.querySelector<HTMLButtonElement>('.storage-reset .btn.danger')?.disabled).toBe(false)
   })
 
   it('备份可直接切换，当前库会由 Core 保存后重启', async () => {
@@ -452,7 +586,10 @@ describe('Settings', () => {
     })
 
     expect(dialog.querySelector('.storage-backup-list')).not.toBeNull()
-    expect(dialog.querySelector('.storage-backup-copy span')?.textContent)
+    const at = new Date('2026-09-15T18:28:38.000Z')
+    expect([...dialog.querySelectorAll('.storage-backup-copy .date-time-display .date-chip')].map((chip) => chip.textContent))
+      .toEqual([`${at.getMonth() + 1}月${at.getDate()}日`, `${String(at.getHours()).padStart(2, '0')}:${String(at.getMinutes()).padStart(2, '0')}`])
+    expect(dialog.querySelector('.storage-backup-copy .storage-backup-path')?.textContent)
       .toBe('/tmp/meridian-backup-20260915-182838Z')
     const switchButton = [...dialog.querySelectorAll<HTMLButtonElement>('.storage-backup-actions .btn')]
       .find((button) => button.textContent === '切换')!
@@ -480,15 +617,51 @@ describe('Settings', () => {
       .find((button) => button.textContent === '删除')!
     await act(async () => { deleteButton.click() })
     expect(api.deleteBackup).not.toHaveBeenCalled()
-    expect(document.querySelector('.cfpop')?.textContent).toContain('永久删除')
+    expect(document.querySelector('.modal.confirm')?.textContent).toContain('永久删除')
 
-    const confirm = [...document.querySelectorAll<HTMLButtonElement>('.cfpop .btn')]
+    const confirm = [...document.querySelectorAll<HTMLButtonElement>('.modal.confirm .btn')]
       .find((button) => button.textContent === '删除')!
     await act(async () => { confirm.click() })
     expect(api.deleteBackup).toHaveBeenCalledWith('meridian-backup-20260915-182838Z')
     expect(dialog.querySelector('.storage-backup-list')).toBeNull()
-    expect(dialog.textContent).toContain('暂无论文库备份')
-    expect(api.banner).toHaveBeenCalledWith('备份已删除')
+    expect(dialog.textContent).not.toContain('论文库备份 ·')
+    expect(api.success).toHaveBeenCalledWith('备份已删除')
+  })
+
+  // With every dialog layer at one z-index (shared/dialog-surface.test.ts), document order decides
+  // which paints on top.
+  it('设置里弹出的确认框与它的遮罩都排在设置之后,用对话框的面', async () => {
+    api.libraryLocation.mockResolvedValueOnce({
+      root: '/tmp/meridian', source: 'configured', locked: false, restartRequired: false, openError: null,
+    })
+    api.libraryBackups.mockResolvedValueOnce([{
+      id: 'meridian-backup-20260915-182838Z',
+      path: '/tmp/meridian-backup-20260915-182838Z',
+      createdAt: '2026-09-15T18:28:38.000Z',
+    }])
+    await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
+    const settings = document.querySelector<HTMLElement>('[role="dialog"]')!
+    await act(async () => { settings.querySelector<HTMLElement>('[data-setcat="storage"]')!.click() })
+    const deleteButton = [...settings.querySelectorAll<HTMLButtonElement>('.storage-backup-actions .btn')]
+      .find((button) => button.textContent === '删除')!
+    await act(async () => { deleteButton.click() })
+
+    const confirm = document.querySelector<HTMLElement>('[role="alertdialog"]')!
+    const scrims = [...document.querySelectorAll<HTMLElement>('.scrim')]
+    expect(scrims).toHaveLength(2)
+    const after = (later: Node, earlier: Node) => (earlier.compareDocumentPosition(later) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0
+    expect([after(scrims[1]!, settings), after(confirm, scrims[1]!)]).toEqual([true, true])
+    expect([...confirm.classList]).toEqual(['modal', 'confirm'])
+  })
+
+  it('设置用对话框统一的宽面,右上角有关闭按钮,点它关掉设置', async () => {
+    api.setOpen.mockClear()
+    await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
+    const settings = document.querySelector<HTMLElement>('[role="dialog"]')!
+    expect([settings.classList.contains('modal'), settings.classList.contains('wide')]).toEqual([true, true])
+    const close = settings.querySelector<HTMLButtonElement>(':scope > .modal-close')!
+    await act(async () => { close.click() })
+    expect(api.setOpen).toHaveBeenCalledExactlyOnceWith(false)
   })
 
   it('模型设置明确区分服务商和协议，并使用共享字段外观', async () => {
@@ -496,20 +669,16 @@ describe('Settings', () => {
     await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
     const dialog = document.querySelector('.setdlg')!
 
-    const provider = dialog.querySelector<HTMLSelectElement>('[aria-label="模型服务"]')!
-    expect([...provider.options].map((option) => option.textContent))
+    expect(dialog.querySelector('select')).toBeNull()
+    expect((await openPicker(dialog, '模型服务')).map((item) => item.textContent))
       .toEqual(['OpenAI', 'Anthropic', 'Google Gemini', 'OpenAI 兼容 API'])
+    await closePicker()
     expect(dialog.querySelector('[aria-label="模型协议"]')?.textContent).toContain('Responses API')
     expect(dialog.querySelectorAll('.model-settings-card .form-control-field').length).toBe(3)
     expect(dialog.querySelector('[aria-label="模型接口地址"]')).toBeNull()
 
-    await act(async () => {
-      const setter = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value')!.set!
-      setter.call(provider, 'openai-compatible')
-      provider.dispatchEvent(new Event('change', { bubbles: true }))
-    })
-    const templates = dialog.querySelector<HTMLSelectElement>('[aria-label="兼容服务模板"]')!
-    expect([...templates.options].map((option) => option.textContent)).toEqual([
+    await pick(dialog, '模型服务', 'OpenAI 兼容 API')
+    expect((await openPicker(dialog, '兼容服务模板')).map((item) => item.textContent)).toEqual([
       '选择常用服务…',
       'DeepSeek（云端）',
       'OpenRouter（云端聚合）',
@@ -517,20 +686,17 @@ describe('Settings', () => {
       'LM Studio（本地）',
       '其他兼容服务（手动配置）',
     ])
+    await closePicker()
     expect(dialog.querySelector('[aria-label="模型协议"]')).toBeNull()
     expect(dialog.querySelector('[aria-label="模型接口地址"]')).toBeNull()
     expect(dialog.querySelector('[aria-label="模型认证方式"]')).toBeNull()
     expect(dialog.querySelector('[aria-label="模型名称"]')).toBeNull()
 
-    await act(async () => {
-      const setter = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value')!.set!
-      setter.call(templates, 'custom')
-      templates.dispatchEvent(new Event('change', { bubbles: true }))
-    })
+    await pick(dialog, '兼容服务模板', '其他兼容服务（手动配置）')
 
-    const protocol = dialog.querySelector<HTMLSelectElement>('[aria-label="模型协议"]')!
-    expect([...protocol.options].map((option) => option.textContent))
+    expect((await openPicker(dialog, '模型协议')).map((item) => item.textContent))
       .toEqual(['Responses API', 'Chat Completions API'])
+    await closePicker()
     expect(dialog.querySelector<HTMLInputElement>('[aria-label="模型接口地址"]')?.placeholder)
       .toBe('例如 https://api.example.com/v1')
   })
@@ -563,6 +729,17 @@ describe('Settings', () => {
     expect(field.type).toBe('password')
   })
 
+  it('已存的模型配置读不进来时只显示原因的标签', async () => {
+    const unreadable = { ...(await api.modelSettings()), error: 'key-unreadable' as const }
+    api.modelSettings.mockResolvedValueOnce(unreadable)
+    api.requestedCategory = 'model'
+    await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
+    const dialog = document.querySelector('.setdlg')!
+
+    expect(dialog.textContent).toContain('没能读取已存的密钥。请检查后重新保存。')
+    expect(dialog.textContent).not.toContain('key-unreadable')
+  })
+
   it('用最多一个输出 token 测试当前已保存的模型连接', async () => {
     api.modelSettings.mockResolvedValueOnce({
       provider: 'openai', protocol: 'responses', baseUrl: 'https://api.openai.com/v1',
@@ -581,7 +758,6 @@ describe('Settings', () => {
     const test = [...dialog.querySelectorAll<HTMLButtonElement>('button')]
       .find((button) => button.textContent === '测试连接')!
     expect(test.disabled).toBe(false)
-    expect(test.title).toBe('发送 1 次请求，最多生成 1 个输出 token。')
     await act(async () => { test.click() })
 
     expect(api.checkModelConnection).toHaveBeenCalledOnce()
@@ -647,23 +823,14 @@ describe('Settings', () => {
     await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
     const dialog = document.querySelector('.setdlg')!
 
-    const provider = dialog.querySelector<HTMLSelectElement>('[aria-label="模型服务"]')!
-    await act(async () => {
-      const setter = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value')!.set!
-      setter.call(provider, 'anthropic')
-      provider.dispatchEvent(new Event('change', { bubbles: true }))
-    })
+    await pick(dialog, '模型服务', 'Anthropic')
     expect(dialog.querySelector<HTMLInputElement>('[aria-label="模型名称"]')?.value)
       .toBe('claude-saved')
     expect(dialog.querySelector<HTMLButtonElement>(
       '[aria-label="模型 API Key 已保存，末四位 2222"]',
     )?.textContent).toBe('••••••••2222')
 
-    await act(async () => {
-      const setter = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value')!.set!
-      setter.call(provider, 'openai')
-      provider.dispatchEvent(new Event('change', { bubbles: true }))
-    })
+    await pick(dialog, '模型服务', 'OpenAI')
     expect(dialog.querySelector<HTMLInputElement>('[aria-label="模型名称"]')?.value)
       .toBe('gpt-saved')
     expect(dialog.querySelector<HTMLButtonElement>(
@@ -677,14 +844,6 @@ describe('Settings', () => {
     await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
     const dialog = document.querySelector('.setdlg')!
 
-    const select = async (label: string, value: string) => {
-      const field = dialog.querySelector<HTMLSelectElement>(`[aria-label="${label}"]`)!
-      await act(async () => {
-        const setter = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value')!.set!
-        setter.call(field, value)
-        field.dispatchEvent(new Event('change', { bubbles: true }))
-      })
-    }
     const fill = async (label: string, value: string) => {
       const field = dialog.querySelector<HTMLInputElement>(`[aria-label="${label}"]`)!
       await act(async () => {
@@ -694,9 +853,9 @@ describe('Settings', () => {
       })
     }
 
-    await select('模型服务', 'openai-compatible')
-    await select('兼容服务模板', 'custom')
-    await select('模型协议', 'chat-completions')
+    await pick(dialog, '模型服务', 'OpenAI 兼容 API')
+    await pick(dialog, '兼容服务模板', '其他兼容服务（手动配置）')
+    await pick(dialog, '模型协议', 'Chat Completions API')
     await fill('模型接口地址', 'https://third-party.example/v1')
     await fill('模型名称', 'third-party-model')
     await fill('模型 API Key', 'third-party-secret')
@@ -714,21 +873,29 @@ describe('Settings', () => {
     })
   })
 
+  it('服务卡片的头部只写服务名，科研数据源旁只留申请 key 的链接', async () => {
+    api.requestedCategory = 'model'
+    await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
+    const dialog = document.querySelector('.setdlg')!
+    for (const provider of ['OpenAI', 'Anthropic', 'Google Gemini', 'OpenAI 兼容 API']) {
+      await pick(dialog, '模型服务', provider)
+      expect([dialog.querySelector('.service-status-head strong')?.textContent, dialog.querySelector('.service-status-head p')])
+        .toEqual([provider, null])
+    }
+    expect(dialog.querySelector('.model-template-help')).toBeNull()
+
+    api.requestedCategory = 'research'
+    await act(async () => { root.render(<MessagesProvider key="research"><Settings /></MessagesProvider>) })
+    expect(document.querySelector('.setdlg .service-status-head p')?.textContent).toBe('申请 key')
+  })
+
   it('常用模板只要求用户填写模型 ID 和需要的密钥', async () => {
     api.requestedCategory = 'model'
     await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
     const dialog = document.querySelector('.setdlg')!
-    const setSelect = async (label: string, value: string) => {
-      const field = dialog.querySelector<HTMLSelectElement>(`[aria-label="${label}"]`)!
-      await act(async () => {
-        const setter = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value')!.set!
-        setter.call(field, value)
-        field.dispatchEvent(new Event('change', { bubbles: true }))
-      })
-    }
 
-    await setSelect('模型服务', 'openai-compatible')
-    await setSelect('兼容服务模板', 'deepseek')
+    await pick(dialog, '模型服务', 'OpenAI 兼容 API')
+    await pick(dialog, '兼容服务模板', 'DeepSeek（云端）')
 
     expect(dialog.querySelector('[aria-label="模板连接信息"]')?.textContent)
       .toContain('Chat Completions API · API Key')
@@ -741,7 +908,7 @@ describe('Settings', () => {
       .toBe('输入 DeepSeek 模型 ID')
     expect(dialog.querySelector('[aria-label="模型 API Key"]')).not.toBeNull()
 
-    await setSelect('兼容服务模板', 'ollama')
+    await pick(dialog, '兼容服务模板', 'Ollama（本地）')
     expect(dialog.querySelector('[aria-label="模板连接信息"]')?.textContent)
       .toContain('Responses API · 无需认证')
     expect(dialog.querySelector('[aria-label="模型 API Key"]')).toBeNull()

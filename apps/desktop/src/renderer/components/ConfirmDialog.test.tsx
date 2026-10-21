@@ -39,18 +39,40 @@ describe('ConfirmDialog', () => {
       </MessagesProvider>,
     ))
     act(() => host.querySelector<HTMLButtonElement>('button')!.click())
-    expect(document.querySelector('[role="alertdialog"]')).not.toBeNull()
-    expect(document.body.textContent).toContain('删除后不能恢复。')
+    const dialog = document.querySelector<HTMLElement>('[role="alertdialog"]')!
+    expect([...dialog.classList]).toEqual(['modal', 'confirm'])
+    expect(dialog.querySelector('.modal-title')!.textContent).toBe('删除这条记录？')
+    expect(dialog.querySelector('.modal-body > .modal-detail')!.textContent).toBe('删除后不能恢复。')
+    expect(dialog.getAttribute('aria-describedby')).toBe(dialog.querySelector('.modal-detail')!.id)
     expect(confirm).not.toHaveBeenCalled()
     act(() => Array.from(document.querySelectorAll('button'))
       .find((button) => button.textContent === '确认删除')!.click())
     expect(confirm).toHaveBeenCalledTimes(1)
   })
 
+  it('confirms an irreversible loss with the solid danger button and anything else with the primary button', () => {
+    const confirmOf = (tone: 'danger' | 'primary') => {
+      act(() => root!.render(
+        <MessagesProvider>
+          <ConfirmDialog
+            trigger={<button>打开</button>} title="确认？" description="确认后生效。" confirmLabel="确认"
+            confirmTone={tone} onConfirm={vi.fn()}
+          />
+        </MessagesProvider>,
+      ))
+      act(() => host.querySelector<HTMLButtonElement>('button')!.click())
+      const classes = [...document.querySelectorAll<HTMLButtonElement>('.modal-actions button')].map((button) => button.className)
+      act(() => document.activeElement!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })))
+      return classes
+    }
+    expect(confirmOf('danger')).toEqual(['btn', 'btn pri danger'])
+    expect(confirmOf('primary')).toEqual(['btn', 'btn pri'])
+  })
+
   it('stays open on an Escape that ends an input method composition and closes on the next one', () => {
     act(() => root!.render(
       <MessagesProvider>
-        <ConfirmDialog trigger={<button>删除记录</button>} title="删除这条记录？" onConfirm={vi.fn()} />
+        <ConfirmDialog trigger={<button>删除记录</button>} title="删除这条记录？" description="删除后不能恢复。" onConfirm={vi.fn()} />
       </MessagesProvider>,
     ))
     act(() => host.querySelector<HTMLButtonElement>('button')!.click())

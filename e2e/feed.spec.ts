@@ -88,24 +88,18 @@ test('条目的来源、时刻与正文和 demo 源文件里的原文逐字相�
   await expect(shown(win, '.fitem .ftime').nth(onScreen(PROSE))).toHaveText(demo[PROSE]!.time)
 })
 
-test('五个筛选档各自的条数与按来源分档的计数一致', async ({ win }) => {
-  const sources = await sourcesFromCore(win)
-  const count = (src: string) => sources.filter((s) => s === src).length
-  const chips: [string, number][] = [
-    ['全部', sources.length],
-    ['Meridian', count('steward')],
-    ['我', count('me')],
-    ['实验', count('lab')],
-    ['收件', count('inbox')],
-  ]
+test('五个筛选档各自的条数与按来源分档的计数一致,筛过的条目照样分在各自的日期标题下', async ({ win }) => {
+  const entries = await win.evaluate(async () => (window as unknown as MeridianWindow).meridian
+    .call('feed.list', {}) as Promise<{ source: string; day: string }[]>)
+  const chips: [string, string | null][] = [['全部', null], ['Meridian', 'steward'], ['我', 'me'], ['实验', 'lab'], ['收件', 'inbox']]
+  const kept = (source: string | null) => entries.filter((e) => source === null || e.source === source)
   // At least two filters must yield different counts, or this test could not tell whether filtering works.
-  expect(new Set(chips.map(([, n]) => n)).size).toBeGreaterThan(1)
+  expect(new Set(chips.map(([, source]) => kept(source).length)).size).toBeGreaterThan(1)
 
-  for (const [label, expected] of chips) {
-    expect(expected).toBeGreaterThan(0)
-    await shown(win, '.feedbar .segmented-control>button').filter({ hasText: label }).first().click()
-    await expect(shown(win, '.fitem')).toHaveCount(expected)
-    // As in the demo, a filter matches each item's source; day headings have no source, so any filter hides them.
-    await expect(shown(win, '.day-heading')).toHaveCount(label === '全部' ? 2 : 0)
+  for (const [label, source] of chips) {
+    expect(kept(source).length).toBeGreaterThan(0)
+    await shown(win, '.page-toolbar .segmented-control>button').filter({ hasText: label }).first().click()
+    await expect(shown(win, '.fitem')).toHaveCount(kept(source).length)
+    await expect(shown(win, '.day-heading')).toHaveCount(new Set(kept(source).map((e) => e.day)).size)
   }
 })

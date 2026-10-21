@@ -1,0 +1,15 @@
+/* The blocks wait --t-slow before fading in: most fetches settle sooner, and then nothing flashes. */
+.loading-placeholder{display:flex;flex-direction:column;animation:loading-in var(--t) var(--e-out) var(--t-slow) both}
+.loading-placeholder>span{--line-h:12px;display:block;background:var(--chip)}
+.loading-placeholder--rows{gap:0}
+.loading-placeholder--rows>span{height:var(--line-h);margin:calc((var(--row-list-h) - var(--line-h)) / 2) var(--row-list-pad);border-radius:var(--r-xs)}
+.loading-placeholder--rows>span:nth-child(3n+2){width:72%}
+.loading-placeholder--rows>span:nth-child(3n){width:84%}
+.loading-placeholder--cards{gap:var(--sp-12)}
+.loading-placeholder--cards>span{height:88px;border-radius:var(--r-card)}
+.loading-placeholder--lines{gap:var(--sp-8);padding:var(--sp-4) 0}
+.loading-placeholder--lines>span{height:var(--line-h);border-radius:var(--r-xs)}
+.loading-placeholder--lines>span:last-child:not(:first-child){width:60%}
+.loading-placeholder--sheet{align-items:center}
+.loading-placeholder--sheet>span{width:min(100%,612px);aspect-ratio:1/1.294;border-radius:var(--r-2xs)}
+@keyframes loading-in{from{opacity:0}to{opacity:1}}

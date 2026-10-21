@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import type {
-  ProjectDetail as Project, RelationGroup, ResearchGraph as ResearchGraphData, ResearchIdea,
+  ProjectDetail as Project, ProjectWorkspace, RelationGroup, ResearchGraph as ResearchGraphData, ResearchIdea,
   ResearchIdeaGraphPlacement, TaskWindow,
 } from '../../shared/contract.js'
 import { projectControlState } from '../../shared/project-control.js'
@@ -12,20 +12,23 @@ import {
 } from '../../shared/project-signals.js'
 import { PROJECT_STATUSES } from '../../shared/vocabulary.js'
 import { appMenu, files, idea as ideaApi, papers, project as projectApi, wiki } from '../ipc.js'
+import { errorLabel } from '../lib/failure-label.js'
 import {
-  useBanner, useCrumbTail, useEscapeLayer, useJump, useToast, useToday, useVaultRevision,
+  useCrumbTail, useEscapeLayer, useJump, useNotice, useToday, useVaultRevision,
 } from '../shell/AppShell.js'
 import { AddAction } from '../components/AddAction.js'
 import { MenuItem } from '../components/ActionMenu.js'
 import { EmptyState } from '../components/EmptyState.js'
+import { LoadingPlaceholder } from '../components/LoadingPlaceholder.js'
 import { DetailPanel } from '../components/DetailPanel.js'
-import { PanelClose } from '../components/PanelClose.js'
 import { ChoicePicker, DateButton, DotsMenu, PriorityPicker } from '../components/FieldPickers.js'
+import { IconButton } from '../components/IconButton.js'
+import { IconOpen } from '../components/icons.js'
 import { SegmentedControl } from '../components/SegmentedControl.js'
-import { StructuredList, StructuredRow } from '../components/StructuredList.js'
+import { RowActions, StructuredList, StructuredRow } from '../components/StructuredList.js'
 import { TitleNote } from '../components/TitleNote.js'
 import {
-  ProjectEventRow, ProjectSignalDate, ProjectSignalKind,
+  ProjectAttention, ProjectEventRow,
 } from '../components/project/ProjectSignals.js'
 import {
   ProjectBlockerView, ProjectNextActionView,
@@ -35,13 +38,13 @@ import {
   attachmentSizeText, PROJECT_PAPER_GROUP, PROJECT_RELATION_GROUPS, PROJECT_URL_GROUP, ProjectAgentSessions,
   ProjectAttachments, ProjectMemo, ProjectRelations, ProjectTopicField, ProjectUrlDraft,
 } from '../components/project/ProjectSections.js'
-import { NodeTag } from '../components/project/NodeTag.js'
+import { NodeAssignment } from '../components/project/NodeAssignment.js'
+import { EntityLink } from '../components/EntityLink.js'
 import { ProjectConclusionPanel, ProjectConclusionRow } from '../components/project/ProjectConclusions.js'
 import { ProjectTimeline } from '../components/project/ProjectTimeline.js'
 import { nodeMode, ResearchGraph, ResearchNodePanel } from '../components/project/ResearchGraph.js'
-import {
-  IdeaGraphDialog, type IdeaGraphDialogMode,
-} from '../components/ideas/IdeaGraphDialog.js'
+import { IdeaGraphDialog } from '../components/ideas/IdeaGraphDialog.js'
+import { IdeaPanel, IdeaSource, ideaSourceLabel } from '../components/ideas/IdeaPanel.js'
 import { ProjectPlan, ProjectTaskPanel } from '../components/project/ProjectPlan.js'
 import type { PlanCreating, PlanTab } from '../components/project/ProjectPlan.js'
 import { BackButton } from '../components/BackButton.js'
@@ -49,24 +52,51 @@ import { dnum } from '../../shared/dates.js'
 import { useFormat } from '../lib/format.js'
 import { useMessages } from '../messages/useMessages.js'
 import { InlineMetadataField } from '../components/InlineField.js'
-import { ModalDialog, ModalTitle } from '../components/ModalDialog.js'
+import { ModalDialog } from '../components/ModalDialog.js'
 import { DirectoryField, FormInput } from '../components/FormControls.js'
 import {
   PageBody, PageError, PageHeader, PageShell, PageTitle, SectionHeading,
 } from '../components/PageShell.js'
 import { PickRow, type PickHit } from '../components/PickRow.js'
 import { plainTitle } from '../components/paper/paper-text.js'
+import { StatusDot } from '../components/StatusDot.js'
+import { Tag } from '../components/Tag.js'
+import { Tooltip } from '../components/Tooltip.js'
 import { NO_TRIGGERS } from '../hooks/useOnLeave.js'
+import { useUndo } from '../hooks/useUndo.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
+import { useScrollFade } from '../hooks/useScrollFade.js'
+import { FadeText } from '../components/FadeText.js'
 import './shell.css'
 import './ProjectDetail.css'
 
 /** The Research log's three views: activity, conclusions, and the research graph. */
 export type RecordTab = 'tl' | 'concl' | 'graph'
 
+/**
+ * The bound workspace's name as the button that changes the connection, after a dot that names the
+ * connection's state: in words when the workspace cannot be reached, as its tooltip when it is connected.
+ * The name's tooltip is the workspace's `root`.
+ */
+export function WorkspaceRoot({ state, name, root, onOpen }: {
+  state: ProjectWorkspace['state']
+  name: string
+  root: string
+  onOpen: () => void
+}) {
+  const m = useMessages()
+  return (
+    <button className="workspace-root" onClick={onOpen}>
+      <StatusDot
+        tone={state === 'ready' ? 'good' : 'bad'} label={m.project.workspace.state[state]} labelHidden={state === 'ready'}
+      />
+      <Tooltip label={root} whenClipped={name === root}><FadeText className="workspace-name">{name}</FadeText></Tooltip>
+    </button>
+  )
+}
+
 export function ProjectIdeaPanel({
-  idea, graph, workspaceManaged, onClose, onOpenIdea, onCreateNode, onLinkNode,
-  onOpenNode, onUnlinkNode,
+  idea, graph, workspaceManaged, onClose, onOpenIdea, onCreateNode, onOpenNode, onSetNode,
 }: {
   idea: ResearchIdea
   graph: ResearchGraphData
@@ -74,60 +104,26 @@ export function ProjectIdeaPanel({
   onClose: () => void
   onOpenIdea: () => void
   onCreateNode: () => void
-  onLinkNode: () => void
   onOpenNode: (nodeId: string) => void
-  onUnlinkNode: () => void
+  onSetNode: (nodeId: string | null) => void
 }) {
-  const fmt = useFormat()
   const m = useMessages()
-  const source = idea.source.paperTitle === undefined
-    ? plainTitle(idea.source.chatTitle)
-    : `${plainTitle(idea.source.paperTitle)} · ${plainTitle(idea.source.chatTitle)}`
   const linkedNode = graph.nodes.find((node) => node.id === idea.node)
   return (
-    <>
-      <SectionHeading
-        variant="rail" className="node-document-head"
-        actions={<PanelClose onClose={onClose} />}
-      ><span className="node-document-title">{idea.title}</span>
-      </SectionHeading>
-      <div className="project-idea-detail-meta">
-        <span className="project-idea-detail-kind">{m.project.idea.kind}</span>
-        {idea.archived ? <span className="project-idea-state">{m.common.archived}</span> : null}
-        <button className="btn project-idea-open-idea" onClick={onOpenIdea}>{m.project.idea.openIdea}</button>
-      </div>
-      <SectionHeading variant="rail">{m.project.sections.content}</SectionHeading>
-      <p className="project-idea-detail-body">{idea.body}</p>
-      <SectionHeading variant="rail">{m.project.sections.source}</SectionHeading>
-      <p className="project-idea-detail-source">{source}</p>
-      <div className="project-idea-detail-updated">{m.common.updatedOn(fmt.date(idea.updated))}</div>
-      <SectionHeading variant="rail">{m.project.sections.graph}</SectionHeading>
-      {idea.node !== undefined && linkedNode !== undefined
-        ? (
-          <div className="project-idea-node-link">
-            <button
-              className="project-idea-node"
-              onClick={() => onOpenNode(linkedNode.id)}
-            >
-              {linkedNode.label}
-            </button>
-            <span className="project-idea-node-actions">
-              <button className="btn plain" onClick={onLinkNode}>{m.project.idea.changeNode}</button>
-              <button className="btn plain" onClick={onUnlinkNode}>{m.project.idea.unlinkNode}</button>
-            </span>
-          </div>
-        )
-        : (
-          <div className="project-idea-graph-actions">
-            {!workspaceManaged
-              ? <button className="btn pri" onClick={onCreateNode}>{m.project.idea.createNode}</button>
-              : null}
-            <button className="btn" disabled={graph.nodes.length === 0} onClick={onLinkNode}>
-              {m.project.idea.linkExistingNode}
-            </button>
-          </div>
-        )}
-    </>
+    <IdeaPanel
+      idea={idea} onClose={onClose}
+      actions={(
+        <IconButton label={m.project.idea.openIdea} className="project-idea-open-idea" onClick={onOpenIdea}>
+          <IconOpen />
+        </IconButton>
+      )}
+    >
+      <NodeAssignment
+        node={linkedNode === undefined ? undefined : { id: linkedNode.id, label: linkedNode.label, mode: nodeMode(linkedNode) }}
+        nodes={graph.nodes} canUnlink onOpen={onOpenNode} onSet={onSetNode}
+        create={workspaceManaged ? undefined : <button className="btn sm" onClick={onCreateNode}>{m.project.idea.createNode}</button>}
+      />
+    </IdeaPanel>
   )
 }
 
@@ -144,7 +140,8 @@ export function ProjectIdeaPanel({
  * `onRecord` must keep the same reference too.
  */
 export function ProjectDetail({
-  projectId, onBack, onReturn, tab, onTab, record, onRecord, arrivalTask = null, arrivalConclusion = null, onArrived,
+  projectId, onBack, onReturn, tab, onTab, record, onRecord, arrivalTask = null, arrivalMilestone = null,
+  arrivalConclusion = null, onArrived,
 }: {
   projectId: string
   onBack: () => void
@@ -156,14 +153,17 @@ export function ProjectDetail({
   onRecord: (record: RecordTab) => void
   /** A task to locate once the project has loaded, as when the overview timeline opens it. */
   arrivalTask?: string | null
+  /** A milestone to locate once the project has loaded, as when an overview decision opens it. */
+  arrivalMilestone?: string | null
   /** A conclusion to open once the project has loaded, as when the Wiki review queue asks to verify it. */
   arrivalConclusion?: string | null
   onArrived?: () => void
 }) {
   const fmt = useFormat()
   const m = useMessages()
+  const railFade = useScrollFade('y')
   const [project, setProject] = useState<Project | null>(null)
-  const [linkedIdeas, setLinkedIdeas] = useState<ResearchIdea[]>([])
+  const [linkedIdeas, setLinkedIdeas] = useState<ResearchIdea[] | null>(null)
   const [relAdding, setRelAdding] = useState(false)
   const [relGroup, setRelGroup] = useState<string>(PROJECT_RELATION_GROUPS[0])
   const [relEditing, setRelEditing] = useState<RelationGroup['items'][number] | null>(null)
@@ -176,10 +176,7 @@ export function ProjectDetail({
   const [selectedIdeaId, setSelectedIdeaId] = useState<string | null>(null)
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
   const [selectedConclusion, setSelectedConclusion] = useState<string | null>(null)
-  const [ideaGraphDialog, setIdeaGraphDialog] = useState<{
-    ideaId: string
-    mode: IdeaGraphDialogMode
-  } | null>(null)
+  const [ideaGraphDialog, setIdeaGraphDialog] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [workspaceOpen, setWorkspaceOpen] = useState(false)
   const [workspaceMode, setWorkspaceMode] = useState<'local' | 'ssh'>('local')
@@ -190,7 +187,6 @@ export function ProjectDetail({
   const planList = useRef<HTMLDivElement>(null)
   const planAdd = useRef<HTMLButtonElement>(null)
   const ganttAdd = useRef<HTMLButtonElement>(null)
-  const msLane = useRef<HTMLDivElement>(null)
   const relRow = useRef<HTMLDivElement>(null)
   const relAdd = useRef<HTMLButtonElement>(null)
   const relTriggers = useMemo(() => [relAdd], [])
@@ -200,8 +196,7 @@ export function ProjectDetail({
     setRelAdding(false)
   }, [])
   const stopRelEdit = useCallback(() => setRelEditing(null), [])
-  const banner = useBanner()
-  const toast = useToast()
+  const notice = useNotice()
   const today = useToday()
   const clearNode = useCallback(() => setSelectedNode(null), [])
   const clearIdea = useCallback(() => setSelectedIdeaId(null), [])
@@ -219,8 +214,9 @@ export function ProjectDetail({
   const { revision } = useVaultRevision()
   const { open: jumpTo } = useJump()
   const openWikiPage = (page: string) => jumpTo('wiki', page)
-  const reportError = useCallback((e: Error) => setError(e.message), [])
+  const reportError = useCallback((e: unknown) => setError(errorLabel(m, e)), [m])
   const write = useVaultWrite()
+  const undo = useUndo()
   const heldPapers = project?.papers
   const suggestPapers = useCallback(async (query: string): Promise<PickHit[]> => {
     if (query === '') return []
@@ -281,7 +277,7 @@ export function ProjectDetail({
   }, [projectId])
 
   useEffect(() => {
-    if (selectedIdeaId !== null && !linkedIdeas.some((idea) => idea.id === selectedIdeaId)) {
+    if (selectedIdeaId !== null && linkedIdeas !== null && !linkedIdeas.some((idea) => idea.id === selectedIdeaId)) {
       setSelectedIdeaId(null)
     }
   }, [linkedIdeas, selectedIdeaId])
@@ -346,23 +342,20 @@ export function ProjectDetail({
 
   /**
    * Finishes a write that returns the project: the project goes into state, then `write` bumps the
-   * vault revision and, when `note` is given, shows it through `notify` (the confirmation banner by
-   * default). A failed write is reported and returns false. Placeholder submissions come straight
+   * vault revision and, when `note` is given, shows it as a success notice. A failed write is
+   * reported and returns false. Placeholder submissions come straight
    * here: the placeholder closes or stays open by itself depending on the result, so nothing is lost.
    */
-  const writeProject = (
-    op: Promise<Project>, note?: ReactNode, notify: (text: ReactNode) => void = banner,
-  ): Promise<boolean> => write(op.then((p) => setProject(p)), { note, notify })
+  const writeProject = (op: Promise<Project>, note?: ReactNode): Promise<boolean> =>
+    write(op.then((p) => setProject(p)), { note })
 
   /**
    * A write not made from a placeholder: first discards any open editor, as the demo's renderProject
    * rewrote the whole deskBody.
    */
-  const applyWrite = (
-    op: Promise<Project>, note?: ReactNode, notify: (text: ReactNode) => void = banner,
-  ) => {
+  const applyWrite = (op: Promise<Project>, note?: ReactNode) => {
     discardOpenEdits()
-    void writeProject(op, note, notify)
+    void writeProject(op, note)
   }
 
   /** Persists a drag-reordering of the task list, shared by the plan's task rows and the Gantt's labels. */
@@ -376,7 +369,7 @@ export function ProjectDetail({
   const connectLocalWorkspace = async () => {
     const connected = await writeProject(
       projectApi.bindWorkspace(projectId, { kind: 'local', root: localPath.trim() }),
-      m.project.workspace.connected, toast,
+      m.project.workspace.connected,
     )
     if (connected) setWorkspaceOpen(false)
   }
@@ -397,7 +390,7 @@ export function ProjectDetail({
     const connected = await writeProject(projectApi.bindWorkspace(projectId, {
       kind: 'ssh', host: sshHost.trim(), path: sshPath.trim(),
       ...(port === undefined ? {} : { port }),
-    }), m.project.workspace.sshConnected, toast)
+    }), m.project.workspace.sshConnected)
     if (connected) setWorkspaceOpen(false)
   }
 
@@ -424,15 +417,18 @@ export function ProjectDetail({
   }, [arrivalTask, project, projectId, locateTask, onArrived])
 
   useEffect(() => {
+    if (arrivalMilestone === null || project?.id !== projectId) return
+    locatePlanRow('ms', arrivalMilestone)
+    onArrived?.()
+  }, [arrivalMilestone, project, projectId, locatePlanRow, onArrived])
+
+  useEffect(() => {
     if (arrivalConclusion === null || project?.id !== projectId) return
     setSelectedNode(null)
     setSelectedIdeaId(null)
     setSelectedConclusion(arrivalConclusion)
     onArrived?.()
   }, [arrivalConclusion, project, projectId, onArrived])
-  const locateMilestone = useCallback(
-    (milestoneId: string) => locatePlanRow('ms', milestoneId), [locatePlanRow],
-  )
 
   if (!project) {
     return (
@@ -442,7 +438,7 @@ export function ProjectDetail({
           <PageTitle>{m.project.loadingTitle}</PageTitle>
         </PageHeader>
         <PageError error={error} />
-        <PageBody />
+        <PageBody>{error === null ? <LoadingPlaceholder shape="lines" count={6} /> : null}</PageBody>
       </PageShell>
     )
   }
@@ -475,7 +471,7 @@ export function ProjectDetail({
    */
   const addAttachments = (dropped: File[]) => {
     const local = dropped.filter((file) => files.pathOf(file) !== '')
-    if (local.length < dropped.length) toast(m.project.attachments.localOnly)
+    if (local.length < dropped.length) notice.refusal(m.project.attachments.localOnly)
     if (local.length === 0) return
     let chain = Promise.resolve(project)
     for (const file of local) {
@@ -524,9 +520,9 @@ export function ProjectDetail({
       }),
   })
   const node = taskGraph.nodes.find((n) => n.id === selectedNode)
-  const selectedIdea = linkedIdeas.find((idea) => idea.id === selectedIdeaId)
+  const selectedIdea = linkedIdeas?.find((idea) => idea.id === selectedIdeaId)
   const selectedTask = project.tasks.find((t) => t.id === selectedTaskId)
-  const dialogIdea = linkedIdeas.find((idea) => idea.id === ideaGraphDialog?.ideaId)
+  const dialogIdea = linkedIdeas?.find((idea) => idea.id === ideaGraphDialog)
   const conclusions = project.projectConclusions ?? []
   const conclusion = conclusions.find((candidate) => candidate.id === selectedConclusion)
   const nodeLook = (nodeId: string | undefined) => {
@@ -553,9 +549,9 @@ export function ProjectDetail({
       ideaApi.placeOnGraph(idea.id, placement).then((result) => {
         nodeId = result.nodeId
         setProject(result.project)
-        setLinkedIdeas((held) => held.map((candidate) => (
+        setLinkedIdeas((held) => held?.map((candidate) => (
           candidate.id === result.idea.id ? result.idea : candidate
-        )))
+        )) ?? null)
       }),
       { note },
     )
@@ -576,9 +572,17 @@ export function ProjectDetail({
       <PageError error={error} />
 
       <ModalDialog
-        open={workspaceOpen} onOpenChange={setWorkspaceOpen} contentClassName="workspace-dialog"
+        open={workspaceOpen} onOpenChange={setWorkspaceOpen} size="form" className="workspace-dialog"
+        title={m.project.workspace.dialogTitle}
+        actions={(
+          <>
+            <button type="button" className="btn" onClick={() => setWorkspaceOpen(false)}>{m.common.cancel}</button>
+            {workspaceMode === 'local'
+              ? <button type="submit" form="workspaceLocal" className="workspace-local btn pri">{m.project.workspace.add}</button>
+              : <button type="submit" form="workspaceSsh" className="btn pri">{m.project.workspace.connect}</button>}
+          </>
+        )}
       >
-            <ModalTitle className="workspace-dialog-title">{m.project.workspace.dialogTitle}</ModalTitle>
             <SegmentedControl
               className="workspace-kinds"
               label={m.project.workspace.kindLabel}
@@ -592,7 +596,7 @@ export function ProjectDetail({
             {workspaceMode === 'local'
               ? (
                 <form
-                  className="workspace-form"
+                  id="workspaceLocal" className="workspace-form"
                   onSubmit={(event) => { event.preventDefault(); void connectLocalWorkspace() }}
                 >
                   <label>{m.project.workspace.pathLabel}
@@ -603,15 +607,11 @@ export function ProjectDetail({
                       onChange={(event) => setLocalPath(event.target.value)}
                     />
                   </label>
-                  <div className="workspace-dialog-actions">
-                    <button type="button" className="btn" onClick={() => setWorkspaceOpen(false)}>{m.common.cancel}</button>
-                    <button type="submit" className="workspace-local btn pri">{m.project.workspace.add}</button>
-                  </div>
                 </form>
               )
               : (
                 <form
-                  className="workspace-form"
+                  id="workspaceSsh" className="workspace-form"
                   onSubmit={(event) => { event.preventDefault(); void connectSshWorkspace() }}
                 >
                   <label>{m.project.workspace.hostLabel}
@@ -634,10 +634,6 @@ export function ProjectDetail({
                       onChange={(event) => setSshPort(event.target.value)}
                     />
                   </label>
-                  <div className="workspace-dialog-actions">
-                    <button type="button" className="btn" onClick={() => setWorkspaceOpen(false)}>{m.common.cancel}</button>
-                    <button type="submit" className="btn pri">{m.project.workspace.connect}</button>
-                  </div>
                 </form>
               )}
       </ModalDialog>
@@ -645,53 +641,51 @@ export function ProjectDetail({
       {dialogIdea !== undefined && ideaGraphDialog !== null
         ? (
           <IdeaGraphDialog
-            open mode={ideaGraphDialog.mode} idea={dialogIdea} graph={displayedGraph}
+            open idea={dialogIdea} graph={displayedGraph}
             onOpenChange={(open) => { if (!open) setIdeaGraphDialog(null) }}
             onSubmit={(placement) => placeIdeaOnGraph(dialogIdea, placement)}
           />
         )
         : null}
 
-      <PageBody>
-        <SectionHeading>{m.project.sections.timeline}</SectionHeading>
+      <PageBody className="project-detail-body">
         <ProjectTimeline
           project={project} hoverMilestone={hoverMilestone} onHoverMilestone={setHoverMilestone}
-          onLocateTask={locateTask} onLocateMilestone={locateMilestone}
+          onLocateTask={locateTask}
           onMoveTask={(taskId, start, end, days) => applyWrite(
             projectApi.updateTask(projectId, taskId, { start, end }),
             m.project.plan.taskMoved(days),
-            toast,
           )}
           onMoveTaskWindow={(taskId, patch, slots) => applyWrite(
             projectApi.updateTask(projectId, taskId, patch),
             m.project.plan.taskWindowMoved(slots),
-            toast,
           )}
           onMoveMilestone={(milestoneId, date) => applyWrite(
             projectApi.updateMilestone(projectId, milestoneId, { date }),
-            m.project.plan.rescheduledTo(fmt.date(date)), toast,
+            m.project.plan.rescheduledTo(fmt.date(date)),
           )}
           onReorderTasks={reorderTasks}
           onNewTask={startTask} onNewMilestone={startMilestone}
-          newActionRef={ganttAdd} milestoneLaneRef={msLane}
+          onCreateMilestone={(date, title) => writeProject(
+            projectApi.createMilestone(projectId, { date, title, done: false }), m.project.plan.milestoneCreated,
+          )}
+          onUpdateMilestone={(milestoneId, patch) => writeProject(
+            projectApi.updateMilestone(projectId, milestoneId, patch), m.project.plan.milestoneUpdated,
+          )}
+          onDeleteMilestone={(milestoneId) => applyWrite(
+            projectApi.deleteMilestone(projectId, milestoneId), m.project.plan.milestoneDeleted,
+          )}
+          newActionRef={ganttAdd}
         />
 
         {attn.length > 0
           ? (
             <>
               <SectionHeading>{m.project.signals.heading(attn.length)}</SectionHeading>
-              <StructuredList className="attn" variant="embedded">
-                {attn.map((a) => (
-                  <StructuredRow
-                    className="attnrow project-signal-columns" key={a.id} data-wk={a.page}
-                    {...(a.page === undefined ? {} : { onActivate: () => openWikiPage(a.page!) })}
-                  >
-                    <ProjectSignalKind tone={a.tone}>{a.kind}</ProjectSignalKind>
-                    <ProjectSignalDate date={a.date} />
-                    <span className="attn-text">{a.reason}</span>
-                  </StructuredRow>
-                ))}
-              </StructuredList>
+              <ProjectAttention
+                items={attn} onOpenPage={openWikiPage} onLocateTask={locateTask}
+                onLocateMilestone={(milestoneId) => locatePlanRow('ms', milestoneId)}
+              />
             </>
           )
           : null}
@@ -705,7 +699,7 @@ export function ProjectDetail({
             <ProjectPlan
               project={project} tab={tab} today={today} creating={creating}
               flashId={flash?.id ?? null} selectedTaskId={selectedTaskId}
-              listRef={planList} addRef={planAdd} timelineAddRef={ganttAdd} milestoneLaneRef={msLane}
+              listRef={planList} addRef={planAdd} timelineAddRef={ganttAdd}
               onTab={onTab} onDiscardOpenEdits={discardOpenEdits}
               onStartTask={() => startTask()} onStartMilestone={startMilestone}
               onCancelCreate={() => setCreating(null)} onHoverMilestone={setHoverMilestone}
@@ -734,10 +728,11 @@ export function ProjectDetail({
               )}
             />
 
-            <SectionHeading variant="content" className="flexh" ref={recordHeading}>{m.project.sections.records}
-              <div className="section-actions">
+            <SectionHeading
+              ref={recordHeading}
+              actions={(
                 <SegmentedControl
-                  label={m.project.recordViewLabel}
+                  size="sm" label={m.project.recordViewLabel}
                   value={record}
                   options={[
                     { value: 'tl', label: m.project.recordModes.activity },
@@ -752,12 +747,15 @@ export function ProjectDetail({
                     discardOpenEdits()
                   }}
                 />
-              </div>
+              )}
+            >{m.project.sections.records}
             </SectionHeading>
             <div className="record-view">
             <PageError error={project.workspace?.issue} variant="section" />
             {record === 'tl'
-              ? (
+              ? (sortedRecords.length === 0
+                ? <EmptyState variant="section">{m.project.graph.noRecords}</EmptyState>
+                : (
                 <StructuredList className="evlist" variant="embedded">
                   {sortedRecords.map((ev, index) => {
                     const graphNode = ev.node === undefined
@@ -776,7 +774,7 @@ export function ProjectDetail({
                     )
                   })}
                 </StructuredList>
-              )
+                ))
               : record === 'concl'
               ? (conclusions.length === 0
                 ? <EmptyState variant="section">{m.project.conclusions.empty}</EmptyState>
@@ -812,15 +810,15 @@ export function ProjectDetail({
               )}
             </div>
 
-            <SectionHeading variant="content">{m.project.linkedIdeas(linkedIdeas.length)}</SectionHeading>
-            {linkedIdeas.length === 0
+            <SectionHeading>{m.project.linkedIdeas(linkedIdeas?.length ?? 0)}</SectionHeading>
+            {linkedIdeas === null
+              ? <LoadingPlaceholder shape="rows" count={2} />
+              : linkedIdeas.length === 0
               ? <EmptyState variant="section">{m.project.noLinkedIdeas}</EmptyState>
               : (
                 <StructuredList className="project-ideas" variant="embedded">
                   {linkedIdeas.map((idea) => {
-                    const source = idea.source.paperTitle === undefined
-                      ? plainTitle(idea.source.chatTitle)
-                      : `${plainTitle(idea.source.paperTitle)} · ${plainTitle(idea.source.chatTitle)}`
+                    const source = ideaSourceLabel(idea)
                     const ideaNode = displayedGraph.nodes.find((node) => node.id === idea.node)
                     return (
                       <StructuredRow
@@ -833,16 +831,18 @@ export function ProjectDetail({
                           discardOpenEdits()
                         }}
                       >
-                        <span className="project-idea-title">{idea.title}</span>
+                        <FadeText className="project-idea-title" label={idea.title}>{idea.title}</FadeText>
                         <span className="project-idea-flags">
                           {ideaNode === undefined
                             ? null
                             : (
-                              <NodeTag label={ideaNode.label} mode={nodeMode(ideaNode)} />
+                              <EntityLink kind="node" label={ideaNode.label} mode={nodeMode(ideaNode)} />
                             )}
-                          {idea.archived ? <span className="project-idea-state">{m.common.archived}</span> : null}
+                          {idea.archived ? <Tag>{m.common.archived}</Tag> : null}
                         </span>
-                        <span className="project-idea-source" title={source}>{m.project.idea.sourceTag(source)}</span>
+                        <FadeText className="project-idea-source" label={m.project.idea.sourceTag(source)}>
+                          <IdeaSource idea={idea} message={m.project.idea.sourceTag} />
+                        </FadeText>
                       </StructuredRow>
                     )
                   })}
@@ -856,7 +856,7 @@ export function ProjectDetail({
           </div>
 
           <DetailPanel
-            open={detailOpen} mode="resize"
+            open={detailOpen} mode="resize" ref={railFade} data-fade-paint=""
             className={`wkside project-detail-panel${detailOpen ? ' node-document-pane' : ''}`}
           >
             {selectedTask !== undefined
@@ -882,19 +882,14 @@ export function ProjectDetail({
                   workspaceManaged={project.workspace !== undefined}
                   onClose={clearIdea}
                   onOpenIdea={() => jumpTo('ideas', selectedIdea.id)}
-                  onCreateNode={() => setIdeaGraphDialog({
-                    ideaId: selectedIdea.id, mode: 'create',
-                  })}
-                  onLinkNode={() => setIdeaGraphDialog({
-                    ideaId: selectedIdea.id, mode: 'link',
-                  })}
+                  onCreateNode={() => setIdeaGraphDialog(selectedIdea.id)}
                   onOpenNode={(nodeId) => {
                     onRecord('graph')
                     setSelectedIdeaId(null)
                     setSelectedNode(nodeId)
                   }}
-                  onUnlinkNode={() => {
-                    void placeIdeaOnGraph(selectedIdea, { kind: 'unlink' })
+                  onSetNode={(nodeId) => {
+                    void placeIdeaOnGraph(selectedIdea, nodeId === null ? { kind: 'unlink' } : { kind: 'link', nodeId })
                   }}
                 />
               )
@@ -936,7 +931,7 @@ export function ProjectDetail({
                             label={m.project.identity.nameFieldLabel} value={project.name}
                             onSave={(name) => {
                               const next = name.trim()
-                              if (next === '') { toast(m.project.identity.nameRequired); return false }
+                              if (next === '') { notice.refusal(m.project.identity.nameRequired); return false }
                               return writeProject(
                                 projectApi.update(projectId, { name: next }), m.project.identity.nameUpdated,
                               )
@@ -954,7 +949,6 @@ export function ProjectDetail({
                         priority: (
                           <PriorityPicker
                             value={project.priority} className="pv metadata-editable"
-                            title={m.common.field.clickToEdit}
                             onPick={(priority) => applyWrite(
                               projectApi.update(projectId, { priority }), m.project.identity.priorityUpdated,
                             )}
@@ -976,7 +970,7 @@ export function ProjectDetail({
                       onSave={(focus) => {
                         const next = focus.trim()
                         const label = m.project.identity.focusLabel[FOCUS_KEY[project.status]]
-                        if (next === '') { toast(m.project.identity.focusRequired(label)); return false }
+                        if (next === '') { notice.refusal(m.project.identity.focusRequired(label)); return false }
                         // On submit, close any editor open elsewhere without waiting for this write; whether
                         // this field closes is left to InlineMetadataField, which follows the write's result
                         discardOpenEdits()
@@ -1001,10 +995,10 @@ export function ProjectDetail({
                     />
                     <div className="pk">{m.project.identity.startLabel}</div>
                     <DateButton
-                      iso={project.start} className="pv metadata-editable" title={m.common.field.clickToEdit}
+                      iso={project.start} className="pv metadata-editable"
                       onPick={(start) => {
                         if (dnum(start) > dnum(project.due)) {
-                          toast(m.project.identity.startAfterDue)
+                          notice.refusal(m.project.identity.startAfterDue)
                           return
                         }
                         applyWrite(projectApi.update(projectId, { start }), m.project.identity.dateUpdated)
@@ -1012,17 +1006,17 @@ export function ProjectDetail({
                     />
                     <div className="pk">{m.project.identity.dueLabel}</div>
                     <DateButton
-                      iso={project.due} className="pv metadata-editable" title={m.common.field.clickToEdit}
+                      iso={project.due} className="pv metadata-editable"
                       onPick={(due) => {
                         if (dnum(due) < dnum(project.start)) {
-                          toast(m.project.identity.dueBeforeStart)
+                          notice.refusal(m.project.identity.dueBeforeStart)
                           return
                         }
                         applyWrite(projectApi.update(projectId, { due }), m.project.identity.dateUpdated)
                       }}
                     />
                     <div className="pk">{m.project.sections.papers}</div>
-                    <div className="pv" title={m.project.identity.paperCountHint}>
+                    <div className="pv">
                       {m.project.identity.paperCount(project.paperCount)}
                     </div>
                     <div className="pk">{m.project.identity.workspaceLabel}</div>
@@ -1033,24 +1027,26 @@ export function ProjectDetail({
                         </button>
                       )
                       : (
-                        <div className="pv workspace-field" data-dots-row="" title={project.workspace.issue ?? project.workspace.root}>
-                          <button
-                            className={`workspace-root ${project.workspace.state}`}
-                            onClick={openWorkspace}
-                          >{workspaceName ?? project.workspace.root}</button>
-                          <DotsMenu>
-                            <MenuItem onSelect={refreshWorkspace}>{m.project.identity.refreshWorkspace}</MenuItem>
-                            <MenuItem onSelect={openWorkspace}>
-                              {m.project.identity.changeWorkspace}
-                            </MenuItem>
-                            <MenuItem
-                              className="mi danger"
-                              onSelect={() => applyWrite(
-                                projectApi.bindWorkspace(projectId, null),
-                                m.project.identity.workspaceDisconnected, toast,
-                              )}
-                            >{m.project.identity.disconnectWorkspace}</MenuItem>
-                          </DotsMenu>
+                        <div className="pv workspace-field" data-row-actions="">
+                          <WorkspaceRoot
+                            state={project.workspace.state} name={workspaceName ?? project.workspace.root}
+                            root={project.workspace.root} onOpen={openWorkspace}
+                          />
+                          <RowActions>
+                            <DotsMenu>
+                              <MenuItem onSelect={refreshWorkspace}>{m.project.identity.refreshWorkspace}</MenuItem>
+                              <MenuItem onSelect={openWorkspace}>
+                                {m.project.identity.changeWorkspace}
+                              </MenuItem>
+                              <MenuItem
+                                className="mi danger"
+                                onSelect={() => applyWrite(
+                                  projectApi.bindWorkspace(projectId, null),
+                                  m.project.identity.workspaceDisconnected,
+                                )}
+                              >{m.project.identity.disconnectWorkspace}</MenuItem>
+                            </DotsMenu>
+                          </RowActions>
                         </div>
                       )}
                   </div>
@@ -1060,7 +1056,7 @@ export function ProjectDetail({
                     actions={(
                       // The demo's relAdd guard: an open placeholder is only refocused, keeping what was typed.
                       <AddAction
-                        variant="section" ref={relAdd} title={m.project.links.addTitle}
+                        variant="section" ref={relAdd} label={m.project.links.addTitle}
                         onClick={() => {
                           if (relAdding) relRow.current?.querySelector('input')?.focus()
                           else setRelAdding(true)
@@ -1077,7 +1073,7 @@ export function ProjectDetail({
                     onOpenPaper={(paperId) => jumpTo('reader', paperId)}
                     onRemovePaper={(paperId, title) => applyWrite(
                       projectApi.removePaper(projectId, paperId),
-                      <TitleNote message={m.project.links.paperRemoved} title={plainTitle(title)} />, toast,
+                      <TitleNote message={m.project.links.paperRemoved} title={plainTitle(title)} />,
                     )}
                     onMove={(id, index) => { void writeProject(projectApi.moveRelation(projectId, id, index)) }}
                     adding={!relAdding
@@ -1103,7 +1099,7 @@ export function ProjectDetail({
                             ? (
                               <ProjectUrlDraft
                                 key="url" row={relRow} triggers={relTriggers} onCancel={stopRel}
-                                onInvalid={() => toast(m.project.links.urlInvalid)}
+                                onInvalid={() => notice.refusal(m.project.links.urlInvalid)}
                                 onSubmit={(url, text) => writeProject(projectApi.createRelation(projectId, {
                                   group: PROJECT_URL_GROUP, text, url,
                                 }), m.project.links.added)}
@@ -1133,7 +1129,7 @@ export function ProjectDetail({
                             <ProjectUrlDraft
                               row={relEditRow} triggers={NO_TRIGGERS} onCancel={stopRelEdit}
                               initial={{ url: relEditing.url, text: relEditing.text }}
-                              onInvalid={() => toast(m.project.links.urlInvalid)}
+                              onInvalid={() => notice.refusal(m.project.links.urlInvalid)}
                               onSubmit={(url, text) => writeProject(projectApi.updateRelation(
                                 projectId, relEditing.id, { text, url },
                               ), m.project.links.updated)}
@@ -1156,27 +1152,29 @@ export function ProjectDetail({
                     onEdit={setRelEditing}
                     onRemove={(relationId, text) => applyWrite(
                       projectApi.deleteRelation(projectId, relationId),
-                      <TitleNote message={m.project.links.removed} title={text} />, toast,
+                      <TitleNote message={m.project.links.removed} title={text} />,
                     )}
                   />
 
                   <ProjectAttachments
                     attachments={project.attachments} onAdd={addAttachments}
-                    onReveal={(attachment) => (attachment.path === undefined
-                      ? toast(m.project.attachments.noPath)
-                      : void files.reveal(attachment.path).then((found) => {
-                        if (!found) toast(m.project.attachments.missing)
-                      }))}
-                    onRemove={(attachmentId) => applyWrite(
-                      projectApi.deleteAttachment(projectId, attachmentId), m.common.trashed,
-                    )}
+                    onReveal={(path) => void files.reveal(path).then((found) => {
+                      if (!found) notice.refusal(m.project.attachments.missing)
+                    })}
+                    onRemove={(attachmentId) => {
+                      discardOpenEdits()
+                      void write(projectApi.deleteAttachment(projectId, attachmentId).then((deleted) => {
+                        setProject(deleted.project)
+                        return deleted
+                      }), { note: m.common.trashed, action: undo.change })
+                    }}
                   />
                 </>
               )
               : (
                 <ResearchNodePanel
                   graph={displayedGraph} events={visibleEvents}
-                  ideas={linkedIdeas.filter((idea) => idea.node === node.id)} node={node}
+                  ideas={(linkedIdeas ?? []).filter((idea) => idea.node === node.id)} node={node}
                   tasks={project.tasks.filter((task) => node.tasks?.includes(task.id))}
                   onSelectTask={openTask}
                   onClose={clearNode}

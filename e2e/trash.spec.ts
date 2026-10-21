@@ -57,13 +57,13 @@ test('删掉的论文进垃圾桶,恢复后回到列表且总数复原', async (
   await gotoTrash(win)
   await expect(win.locator('#crumb .cseg')).toHaveText(['垃圾桶'])
   await expect(shown(win, '.desk-head .t')).toHaveText('垃圾桶 · 1')
-  await expect(shown(win, '.section-heading')).toHaveText('论文 · 1清空垃圾桶')
+  await expect(shown(win, '.section-heading')).toHaveText('论文 · 1')
   await expect(win.locator('.tgroup .trow .tt2')).toHaveText([title])
   await expect(win.locator('.tgroup .trow .tm2')).toHaveText([FULL_RETENTION])
 
-  await win.locator('.tgroup .trow .btn', { hasText: '恢复' }).click()
+  await win.locator('.tgroup .trow .row-actions [aria-label="恢复"]').click()
   await expect(win.locator('.tgroup .trow')).toHaveCount(0)
-  await expect(win.locator('[data-desk="trash"] .n')).toHaveText('')
+  await expect(win.locator('[data-desk="trash"] .n')).toHaveCount(0)
   await expect(win.locator('[data-desk="papers"] .n')).toHaveText(String(total))
   expect(await paperTotal(win)).toBe(total)
 
@@ -141,10 +141,10 @@ test('删掉的附件进垃圾桶,恢复后回到项目', async ({ win }) => {
   await expect(win.locator('.attrow')).toHaveCount(names.length - 1)
 
   await gotoTrash(win)
-  await expect(shown(win, '.section-heading')).toHaveText('附件 · 1清空垃圾桶')
+  await expect(shown(win, '.section-heading')).toHaveText('附件 · 1')
   await expect(win.locator('.tgroup .trow .tt2')).toHaveText([names[0]!])
 
-  await win.locator('.tgroup .trow .btn', { hasText: '恢复' }).click()
+  await win.locator('.tgroup .trow .row-actions [aria-label="恢复"]').click()
   await expect(win.locator('.tgroup .trow')).toHaveCount(0)
 
   // Entering Projects from another screen lands on the list; the attachments are in the project detail,
@@ -165,30 +165,30 @@ test('原项目还在垃圾桶里时,那条附件恢复不回去,项目回来才
   // Entering Projects from another screen lands on the list, so detour through the Trash, then go back
   // to the list and delete this project too.
   await gotoTrash(win)
-  await expect(shown(win, '.section-heading')).toHaveText('附件 · 1清空垃圾桶')
+  await expect(shown(win, '.section-heading')).toHaveText('附件 · 1')
   await win.locator('[data-desk="resproj"]').click()
   const name = await shown(win, '[data-proj="draft"] .project-identity-name').innerText()
   await shown(win, '[data-proj="draft"]').hover()
   await shown(win, '[data-proj="draft"] .dots').click()
   await win.locator('.ctxmenu .mi.danger').click()
-  await expect(win.locator('#banner span')).toHaveText('已移入垃圾桶 · 7 天内可恢复')
+  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已移入垃圾桶')
 
   await gotoTrash(win)
-  await expect(shown(win, '.section-heading')).toHaveText(['项目 · 1清空垃圾桶', '附件 · 1'])
+  await expect(shown(win, '.section-heading')).toHaveText(['项目 · 1', '附件 · 1'])
   const projectRow = shown(win, '.trow').filter({ hasText: name })
   const attachmentRow = shown(win, '.trow').filter({ hasText: names[0]! })
 
   // An attachment cannot go back to a project that is gone, so its Restore button is disabled rather
   // than clickable into an IPC error.
-  await expect(attachmentRow.locator('.btn', { hasText: '恢复' })).toBeDisabled()
-  await expect(projectRow.locator('.btn', { hasText: '恢复' })).toBeEnabled()
+  await expect(attachmentRow.locator('.row-actions [aria-label="恢复"]')).toBeDisabled()
+  await expect(projectRow.locator('.row-actions [aria-label="恢复"]')).toBeEnabled()
 
-  await projectRow.locator('.btn', { hasText: '恢复' }).click()
-  await expect(attachmentRow.locator('.btn', { hasText: '恢复' })).toBeEnabled()
-  await attachmentRow.locator('.btn', { hasText: '恢复' }).click()
+  await projectRow.locator('.row-actions [aria-label="恢复"]').click()
+  await expect(attachmentRow.locator('.row-actions [aria-label="恢复"]')).toBeEnabled()
+  await attachmentRow.locator('.row-actions [aria-label="恢复"]').click()
   await expect(win.locator('.tgroup .trow')).toHaveCount(0)
   await expect(shown(win, '.ipcerror')).toHaveCount(0)
-  expect(await win.locator('#toast').textContent()).toBe('')
+  await expect(win.locator('#notice[data-tone="refusal"]')).toHaveCount(0)
 
   await win.locator('[data-desk="resproj"]').click()
   await win.locator('[data-proj="draft"]').click()
@@ -210,21 +210,22 @@ test('清空垃圾桶要过二次确认,清掉的东西恢复不回来', async (
   await expect(win.locator('.tgroup .trow')).toHaveCount(2)
   const ids = await trashIds(win)
 
-  await shown(win, '.section-heading.flexh .btn').filter({ hasText: '清空垃圾桶' }).click()
+  await shown(win, '.desk-head .page-actions .btn').filter({ hasText: '清空垃圾桶' }).click()
   const dialog = win.locator('[role="alertdialog"]')
-  await expect(dialog.locator('.dlg-t')).toHaveText('清空垃圾桶？2 项将被彻底删除，不可恢复。')
-  await expect(dialog.locator('.dlg-a .btn')).toHaveText(['取消', '确认清空'])
+  await expect(dialog.locator('.modal-title')).toHaveText('清空垃圾桶？')
+  await expect(dialog.locator('.modal-detail')).toHaveText('2 项将被彻底删除，不可恢复。')
+  await expect(dialog.locator('.modal-actions .btn')).toHaveText(['取消', '确认清空'])
 
   // Cancel leaves the contents unchanged.
   await dialog.locator('.btn', { hasText: '取消' }).click()
   await expect(dialog).toHaveCount(0)
   await expect(win.locator('.tgroup .trow')).toHaveCount(2)
 
-  await shown(win, '.section-heading.flexh .btn').filter({ hasText: '清空垃圾桶' }).click()
+  await shown(win, '.desk-head .page-actions .btn').filter({ hasText: '清空垃圾桶' }).click()
   await dialog.locator('.btn', { hasText: '确认清空' }).click()
   await expect(win.locator('.tgroup .trow')).toHaveCount(0)
   await expect(win.locator('.empty-state')).toHaveCount(1)
-  await expect(win.locator('[data-desk="trash"] .n')).toHaveText('')
+  await expect(win.locator('[data-desk="trash"] .n')).toHaveCount(0)
 
   expect(ids).toHaveLength(2)
   for (const id of ids) expect(await restoreRefused(win, id)).toContain(id)

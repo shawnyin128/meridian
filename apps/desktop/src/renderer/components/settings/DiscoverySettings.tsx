@@ -1,11 +1,19 @@
 import { Fragment, useCallback, useEffect, useState } from 'react'
 import type { DiscoveryFetchResult, DiscoveryIntentAction, DiscoveryProfile } from '../../../shared/contract.js'
 import { discovery } from '../../ipc.js'
+import { errorLabel } from '../../lib/failure-label.js'
 import type { Catalog } from '../../messages/catalog.js'
 import { useMessages } from '../../messages/useMessages.js'
-import { useToast, useVaultRevision } from '../../shell/AppShell.js'
+import { useNotice, useVaultRevision } from '../../shell/AppShell.js'
+import { EmptyState } from '../EmptyState.js'
+import { LoadingPlaceholder } from '../LoadingPlaceholder.js'
 import { SectionHeading } from '../PageShell.js'
 import { PaperText } from '../paper/PaperText.js'
+import { Switch } from '../Switch.js'
+import { Tag } from '../Tag.js'
+import { Card } from '../Card.js'
+import { FadeText } from '../FadeText.js'
+import { plainTitle } from '../paper/paper-text.js'
 
 function resultNote(result: DiscoveryFetchResult, m: Catalog): string {
   const parts = [
@@ -21,15 +29,15 @@ function resultNote(result: DiscoveryFetchResult, m: Catalog): string {
 /** The only editor of research directions; the gear on the Discovery page just opens these settings. */
 export function DiscoverySettings() {
   const m = useMessages()
-  const [profiles, setProfiles] = useState<DiscoveryProfile[]>([])
+  const [profiles, setProfiles] = useState<DiscoveryProfile[] | null>(null)
   const [busy, setBusy] = useState<ReadonlySet<string>>(new Set())
   const [refreshing, setRefreshing] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const toast = useToast()
+  const notice = useNotice()
   const { revision, bump } = useVaultRevision()
   const load = useCallback(() => {
-    void discovery.profiles().then(setProfiles).catch((caught: Error) => setError(caught.message))
-  }, [])
+    void discovery.profiles().then(setProfiles).catch((caught: unknown) => setError(errorLabel(m, caught)))
+  }, [m])
 
   useEffect(load, [load, revision])
 
@@ -37,9 +45,9 @@ export function DiscoverySettings() {
     setBusy((held) => new Set([...held, intentId]))
     void discovery.setIntent(projectId, intentId, action).then(() => {
       load()
-      toast(action === 'set-core' ? m.settings.discovery.setCore
+      notice.success(action === 'set-core' ? m.settings.discovery.setCore
         : action === 'disable' ? m.settings.discovery.disabled : m.settings.discovery.enabled)
-    }).catch((caught: Error) => setError(caught.message)).finally(() => {
+    }).catch((caught: unknown) => setError(errorLabel(m, caught))).finally(() => {
       setBusy((held) => {
         const next = new Set(held)
         next.delete(intentId)
@@ -51,64 +59,64 @@ export function DiscoverySettings() {
   const refresh = (projectId: string) => {
     setRefreshing(projectId)
     void discovery.fetch(projectId, true).then((result) => {
-      toast(resultNote(result, m))
+      notice.success(resultNote(result, m))
       bump()
-    }).catch((caught: Error) => setError(caught.message)).finally(() => setRefreshing(null))
+    }).catch((caught: unknown) => setError(errorLabel(m, caught))).finally(() => setRefreshing(null))
   }
 
-  const enabled = profiles.reduce((total, profile) => total + profile.intentCount, 0)
+  const enabled = (profiles ?? []).reduce((total, profile) => total + profile.intentCount, 0)
   return (
     <section className="delivery-directions">
       <SectionHeading variant="group">
-        {m.settings.discovery.directionsHeading} <span className="settings-count">{enabled}</span>
+        {m.settings.discovery.directionsHeading(enabled)}
       </SectionHeading>
-      <p className="settings-explain">{m.settings.discovery.explain}</p>
       {error === null ? null : <div className="err">{error}</div>}
-      <div className="direction-panel">
-        {profiles.length === 0 ? <p className="direction-empty">{m.settings.discovery.noDirections}</p> : null}
-        {profiles.map((profile) => (
+      <Card flush className="direction-panel">
+        {profiles === null && error === null ? <LoadingPlaceholder shape="rows" count={2} /> : null}
+        {profiles?.length === 0 ? <EmptyState variant="section">{m.settings.discovery.noDirections}</EmptyState> : null}
+        {(profiles ?? []).map((profile) => (
           <section className="direction-project" key={profile.id}>
             <header>
               <strong>{profile.name}</strong>
               <span>{m.settings.discovery.seeds(profile.seedCount + profile.positiveCount)}</span>
               <button
-                className="btn plain" disabled={refreshing !== null || profile.intentCount === 0}
+                className="btn ghost sm" disabled={refreshing !== null || profile.intentCount === 0}
                 onClick={() => refresh(profile.id)}
               >{refreshing === profile.id
                 ? m.settings.discovery.refreshing : m.settings.discovery.refreshProject}</button>
             </header>
             {profile.intents.length === 0 ? (
-              <p className="direction-empty">{m.settings.discovery.needsArxiv}</p>
+              <EmptyState variant="section">{m.settings.discovery.needsArxiv}</EmptyState>
             ) : profile.intents.map((intent) => (
               <div className={`direction-row${intent.enabled ? '' : ' disabled'}`} key={intent.id}>
                 <div className="direction-main">
                   <div className="direction-name">
-                    {intent.core ? <span className="direction-core">{m.settings.discovery.core}</span> : null}
+                    {intent.core ? <Tag tone="accent">{m.settings.discovery.core}</Tag> : null}
                     <span>{intent.label}</span>
                   </div>
-                  <div className="direction-seeds">
+                  <FadeText className="direction-seeds" label={intent.seeds.map((seed) => plainTitle(seed.title)).join(' · ')}>
                     {intent.seeds.map((seed, at) => (
                       <Fragment key={seed.id}>{at === 0 ? null : ' · '}<PaperText text={seed.title} /></Fragment>
                     ))}
-                  </div>
+                  </FadeText>
                 </div>
                 <div className="direction-actions">
                   {!intent.core && intent.enabled ? (
                     <button
-                      className="btn plain" disabled={busy.has(intent.id)}
+                      className="btn ghost sm" disabled={busy.has(intent.id)}
                       onClick={() => update(profile.id, intent.id, 'set-core')}
                     >{m.settings.discovery.setCoreAction}</button>
                   ) : null}
-                  <button
-                    className="btn plain" disabled={busy.has(intent.id)}
-                    onClick={() => update(profile.id, intent.id, intent.enabled ? 'disable' : 'enable')}
-                  >{intent.enabled ? m.settings.discovery.close : m.settings.discovery.enable}</button>
+                  <Switch
+                    label={intent.label} checked={intent.enabled} disabled={busy.has(intent.id)}
+                    onChange={(on) => update(profile.id, intent.id, on ? 'enable' : 'disable')}
+                  />
                 </div>
               </div>
             ))}
           </section>
         ))}
-      </div>
+      </Card>
     </section>
   )
 }

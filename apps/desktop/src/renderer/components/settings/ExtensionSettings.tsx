@@ -1,8 +1,17 @@
 import type { ExtensionStatus } from '../../../shared/contract.js'
 import { useMessages } from '../../messages/useMessages.js'
 import { CardTray } from '../CardTray.js'
+import { SectionHeading } from '../PageShell.js'
+import { LoadingPlaceholder } from '../LoadingPlaceholder.js'
+import { Tag, type TagTone } from '../Tag.js'
+import { Card } from '../Card.js'
 import { PluginVersionEntry, type PluginVersionEntryProps } from './PluginVersionEntry.js'
+import { FadeText } from '../FadeText.js'
 import './ExtensionSettings.css'
+
+const STATE_TONE: Record<ExtensionStatus['state'], TagTone> = {
+  installed: 'good', 'update-required': 'warn', 'not-installed': 'neutral',
+}
 
 interface ExtensionSettingsProps {
   statuses: ExtensionStatus[] | null
@@ -16,12 +25,12 @@ interface ExtensionSettingsProps {
 export function ExtensionSettings({ statuses, plugin, onCopy, onCopyPrompt }: ExtensionSettingsProps) {
   const m = useMessages()
   if (statuses === null) {
-    return <div className="extension-settings-card extension-settings-loading">{m.settings.extensions.loading}</div>
+    return <LoadingPlaceholder shape="cards" count={1} />
   }
 
   return (
     <>
-      <div className="extension-settings-card">
+      <Card className="extension-settings-card">
         {plugin === undefined ? null : <PluginVersionEntry {...plugin} />}
         {statuses.map((extension) => {
           // An installed extension, current or not, is kept up to date rather than installed again.
@@ -35,14 +44,11 @@ export function ExtensionSettings({ statuses, plugin, onCopy, onCopyPrompt }: Ex
           return (
             <section className="extension-entry" key={extension.id} data-extension={extension.id}>
               <div className="extension-head">
-                <div>
-                  <h3>{extension.name}</h3>
-                  <p>{m.settings.extensions.description}</p>
-                </div>
-                <span className={`extension-state ${extension.state}`}>
+                <SectionHeading variant="group">{extension.name}</SectionHeading>
+                <Tag tone={STATE_TONE[extension.state]} className="extension-state">
                   {m.settings.extensions.state[extension.state]}
                   {extension.version === undefined ? '' : ` · ${extension.version}`}
-                </span>
+                </Tag>
               </div>
               <CardTray
                 className="extension-command"
@@ -50,12 +56,12 @@ export function ExtensionSettings({ statuses, plugin, onCopy, onCopyPrompt }: Ex
                 summary={(
                   <span className="extension-command-summary">
                     <span>{commandHeading}</span>
-                    <code>{command}</code>
+                    <FadeText><code>{command}</code></FadeText>
                   </span>
                 )}
                 action={(
                   <button
-                    className="btn" aria-label={copyLabel}
+                    className="btn ghost sm" aria-label={copyLabel}
                     onClick={() => onCopy(extension.name, command)}
                   >{m.settings.extensions.copy}</button>
                 )}
@@ -65,18 +71,15 @@ export function ExtensionSettings({ statuses, plugin, onCopy, onCopyPrompt }: Ex
             </section>
           )
         })}
-      </div>
+      </Card>
 
-      <section className="extension-tutorial" data-extension-tutorial>
-        <div className="extension-tutorial-head">
-          <h3>{m.settings.extensions.tutorial.heading}</h3>
-          <p>{m.settings.extensions.tutorial.intro}</p>
-        </div>
+      <Card as="section" className="extension-tutorial" data-extension-tutorial="">
+        <SectionHeading variant="group">{m.settings.extensions.tutorial.heading}</SectionHeading>
         <ol className="extension-tutorial-steps">
           {m.settings.extensions.tutorial.steps.map((step, index) => (
             <li key={step.title}>
               <span>{index + 1}</span>
-              <div><strong>{step.title}</strong><p>{step.body}</p></div>
+              <strong>{step.title}</strong>
             </li>
           ))}
         </ol>
@@ -93,7 +96,7 @@ export function ExtensionSettings({ statuses, plugin, onCopy, onCopyPrompt }: Ex
                       <strong>{example.label}</strong>
                       <p>{example.prompt}</p>
                     </div>
-                    <button className="btn" onClick={() => onCopyPrompt(example.prompt)}>
+                    <button className="btn ghost sm" onClick={() => onCopyPrompt(example.prompt)}>
                       {m.settings.extensions.tutorial.copyPrompt}
                     </button>
                   </div>
@@ -107,7 +110,7 @@ export function ExtensionSettings({ statuses, plugin, onCopy, onCopyPrompt }: Ex
         <ul className="extension-healthy-list">
           {m.settings.extensions.tutorial.healthy.map((item) => <li key={item}>{item}</li>)}
         </ul>
-      </section>
+      </Card>
     </>
   )
 }

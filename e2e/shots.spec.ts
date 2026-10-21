@@ -14,7 +14,7 @@ test('截下论文库表的一组基线图', async ({ win }) => {
   await parkPointer(win)
   await win.screenshot({ path: `${SHOTS}/papers-detail.png` })
 
-  await win.locator('.pdetail [title="收起详情"]').click()
+  await win.locator('.pdetail [aria-label="收起详情"]').click()
   await win.locator('.filters .segmented-control>button', { hasText: '主题' }).click()
   await win.locator('.gxrow').first().waitFor()
   await parkPointer(win)
@@ -26,8 +26,8 @@ test('截下带选择列与自定义分组的一组基线图', async ({ win, app
   await gotoPapers(win)
   await win.locator('.ptable tbody tr').first().waitFor()
   await win.locator('.ptable thead').hover()
-  await win.locator('.ptable thead [title="新增列"]').click()
-  await win.locator('[data-radix-popper-content-wrapper] .ctbtn[title="多选"]').click()
+  await win.locator('.ptable thead [aria-label="新建列"]').click()
+  await win.locator('[data-radix-popper-content-wrapper] .ctbtn[aria-label="多选"]').click()
   await win.locator('.ptable thead th.th-new input').fill('标签')
   await win.locator('.ptable thead th.th-new input').press('Enter')
   await expect(win.locator('.ptable thead th.th-new')).toHaveCount(0)
@@ -116,7 +116,7 @@ test('第 6 批:论文表的年份与发表、详情面板,四档窗口 × 亮�
       await win.locator('.pdetail').waitFor()
       await parkPointer(win)
       await win.screenshot({ path: `${B6}/detail-${theme}-${w}.png` })
-      await win.locator('.pdetail [title="收起详情"]').click()
+      await win.locator('.pdetail [aria-label="收起详情"]').click()
       await expect(win.locator('.pdetail')).toHaveCount(0)
     }
   }
@@ -145,15 +145,15 @@ test('第 6 批:列菜单与改类型那一行,四档窗口 × 亮暗', async ({
   await gotoPapers(win)
   await win.locator('.ptable tbody tr').first().waitFor()
   await win.locator('.ptable thead').hover()
-  await win.locator('.ptable thead [title="新增列"]').click()
-  await win.locator('[data-radix-popper-content-wrapper] .ctbtn[title="单选"]').click()
+  await win.locator('.ptable thead [aria-label="新建列"]').click()
+  await win.locator('[data-radix-popper-content-wrapper] .ctbtn[aria-label="单选"]').click()
   await win.locator('.ptable thead th.th-new input').fill('读法')
   await win.locator('.ptable thead th.th-new input').press('Enter')
   await expect(win.locator('.ptable thead th.th-new')).toHaveCount(0)
   // Text is the default type, so no type click: create a second column to capture a text column's
   // row, which has no Options toggle.
   await win.locator('.ptable thead').hover()
-  await win.locator('.ptable thead [title="新增列"]').click()
+  await win.locator('.ptable thead [aria-label="新建列"]').click()
   await win.locator('.ptable thead th.th-new input').fill('备注')
   await win.locator('.ptable thead th.th-new input').press('Enter')
   await expect(win.locator('.ptable thead th.th-new')).toHaveCount(0)
@@ -163,19 +163,19 @@ test('第 6 批:列菜单与改类型那一行,四档窗口 × 亮暗', async ({
       await app.evaluate(({ BrowserWindow }, s) => BrowserWindow.getAllWindows()[0]!.setSize(s.w, s.h), { w, h })
 
       await win.locator('.ptable thead').hover()
-      await win.locator('.ptable thead [title="列设置"]').click()
+      await win.locator('.ptable thead [aria-label="列设置"]').click()
       const row = win.locator('[data-radix-popper-content-wrapper] .mi.colrow', { hasText: '读法' })
       await row.hover()
       // With the pointer on the row, all four .cmx (options, change type, rename, delete) show.
       await win.screenshot({ path: `${B6}/column-menu-hover-${theme}-${w}.png` })
-      await row.locator('[title="改类型"]').click()
+      await row.locator('[aria-label="改类型"]').click()
       await parkPointer(win)
       await win.screenshot({ path: `${B6}/column-menu-${theme}-${w}.png` })
       await win.keyboard.press('Escape')
       await expect(win.locator('[data-radix-popper-content-wrapper]')).toHaveCount(0)
 
       await win.locator('.ptable thead').hover()
-      await win.locator('.ptable thead [title="列设置"]').click()
+      await win.locator('.ptable thead [aria-label="列设置"]').click()
       const textRow = win.locator('[data-radix-popper-content-wrapper] .mi.colrow', { hasText: '备注' })
       await textRow.hover()
       // A text column has no Options toggle, so the first button at the row's end is Change type.

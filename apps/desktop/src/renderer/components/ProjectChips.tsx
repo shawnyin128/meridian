@@ -2,8 +2,10 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import type { PaperRow, ProjectSummary } from '../../shared/contract.js'
 import { project } from '../ipc.js'
 import { AddAction } from './AddAction.js'
+import { IconButton } from './IconButton.js'
 import { IconCross } from './icons.js'
-import { PickerPopover } from './PickerPopover.js'
+import { PickerPopover, PickOption } from './PickerPopover.js'
+import { tagClass } from './Tag.js'
 import { TitleNote } from './TitleNote.js'
 import { useCandidateKeys } from '../hooks/useCandidateKeys.js'
 import { NO_TRIGGERS } from '../hooks/useOnLeave.js'
@@ -55,16 +57,16 @@ export function ProjectChips({ paper, onError }: {
   return (
     <>
       {paper.projects.map((linked) => (
-        <span className="tagchip" key={linked.id} data-project={linked.id}>{linked.name}
-          <button
-            className="rx" title={m.common.removeLink}
+        <span className={tagClass('neutral', 'chip', 'tagchip')} key={linked.id} data-project={linked.id}>{linked.name}
+          <IconButton
+            label={m.common.removeLink} size="inline" className="rx"
             onClick={(event) => {
               event.stopPropagation()
               void write(project.removePaper(linked.id, paper.id), {
                 note: m.research.chips.unlinked,
               })
             }}
-          ><IconCross sw={2.5} /></button>
+          ><IconCross /></IconButton>
         </span>
       ))}
       <PickerPopover
@@ -72,7 +74,8 @@ export function ProjectChips({ paper, onError }: {
         anchor={open
           ? (
             <FormInput
-              className="tagin" ref={input} value={query} placeholder={m.project.identity.nameFieldLabel}
+              appearance="inline" className="tagin" ref={input} value={query}
+              placeholder={m.project.identity.nameFieldLabel}
               {...draft.inputProps} onClick={(event) => event.stopPropagation()}
               onChange={(event) => setQuery(event.target.value)}
               onKeyDown={(event) => { keys.onKeyDown(event); draft.inputProps.onKeyDown(event) }}
@@ -80,7 +83,7 @@ export function ProjectChips({ paper, onError }: {
           )
           : (
             <AddAction
-              variant="icon" className="tagchip tagadd" title={m.research.chips.addProject}
+              variant="chip" className={tagClass('ghost', 'chip', 'tagchip tagadd')} label={m.research.chips.addProject}
               onClick={(event) => { event.stopPropagation(); setOpen(true) }}
             />
           )}
@@ -89,10 +92,9 @@ export function ProjectChips({ paper, onError }: {
             <>
               <div className="rh">{m.research.chips.pickerHeading}</div>
               {hits.map((held, i) => (
-                <div
-                  className={i === keys.active ? 'rrow on' : 'rrow'} key={held.id}
-                  onClick={() => draft.submit(() => add(held))}
-                >{held.name}</div>
+                <PickOption keys={keys} index={i} key={held.id} onClick={() => draft.submit(() => add(held))}>
+                  {held.name}
+                </PickOption>
               ))}
             </>
           )

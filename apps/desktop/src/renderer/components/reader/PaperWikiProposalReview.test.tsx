@@ -28,7 +28,7 @@ describe('PaperWikiProposalReview', () => {
     )
     expect(html).toContain('structured-list--embedded')
     expect(html).toContain('论文原文')
-    expect(html).toContain('第 2 页')
+    expect(html).toContain('<span>p.2</span>')
     expect(html).toContain('原始分数')
   })
 
@@ -44,7 +44,7 @@ describe('PaperWikiProposalReview', () => {
     expect(html).not.toContain('structured-list')
   })
 
-  it('states the limit of a passing deterministic report instead of predicting correctness', () => {
+  it('states a passing deterministic report by its title alone, with no note about what it means', () => {
     const review: HarnessPaperWikiReview = {
       schemaVersion: 'meridian.paper-wiki-review.v1',
       sections: [{ id: 'limitations', title: '局限', emptyLabel: '没有原文依据的局限。', groups: [] }],
@@ -57,7 +57,10 @@ describe('PaperWikiProposalReview', () => {
       <MessagesProvider><PaperWikiProposalReview review={review} quality={quality} /></MessagesProvider>,
     )
     expect(html).toContain('7 项规则检查未发现问题')
-    expect(html).toContain('不代表内容正确')
+    const host = document.createElement('div')
+    host.innerHTML = html
+    expect(host.querySelector('.paper-wiki-quality > p')).toBeNull()
+    expect(host.querySelector('.paper-wiki-review-legend')).toBeNull()
   })
 
   it('renders actionable findings in the shared embedded-list pattern', () => {

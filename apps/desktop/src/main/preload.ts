@@ -1,9 +1,9 @@
 import { contextBridge, ipcRenderer, webUtils } from 'electron'
-import type { ContractMethod } from '../shared/contract.js'
+import type { CallRejection, ContractMethod } from '../shared/contract.js'
 import type { AppUpdateStatus } from '../shared/app-update.js'
 import { MAIN_COPY, type UiLocale } from './messages.js'
 
-const pending = new Map<number, { resolve: (v: unknown) => void; reject: (e: Error) => void }>()
+const pending = new Map<number, { resolve: (v: unknown) => void; reject: (reason: unknown) => void }>()
 let nextId = 1
 
 /** Resolve the saved preference before the renderer starts so connection errors use the same language. */
@@ -37,12 +37,13 @@ const port = new Promise<MessagePort>((resolve, reject) => {
       return
     }
     incoming.onmessage = (msg) => {
-      const { id, ok, data, error } = msg.data as { id: number; ok: boolean; data?: unknown; error?: string }
-      const waiter = pending.get(id)
+      const reply = msg.data as { id: number; ok: true; data: unknown } | { id: number; ok: false; error: CallRejection }
+      const waiter = pending.get(reply.id)
       if (!waiter) return
-      pending.delete(id)
-      if (ok) waiter.resolve(data)
-      else waiter.reject(new Error(error ?? copy().unknownError))
+      pending.delete(reply.id)
+      // contextBridge keeps only an Error's message, so the rejection stays the plain object Core sent.
+      if (reply.ok) waiter.resolve(reply.data)
+      else waiter.reject(reply.error)
     }
     incoming.start()
     resolve(incoming)
@@ -104,6 +105,12 @@ contextBridge.exposeInMainWorld('meridian', {
   },
   toggleMaximize(): void {
     ipcRenderer.send('meridian:toggle-maximize')
+  },
+  onFullScreen(handler: (on: boolean) => void): () => void {
+    const relay = (_event: unknown, on: boolean) => handler(on)
+    ipcRenderer.on('meridian:full-screen-changed', relay)
+    void (ipcRenderer.invoke('meridian:full-screen') as Promise<boolean>).then(handler)
+    return () => { ipcRenderer.off('meridian:full-screen-changed', relay) }
   },
   platform: process.platform,
   setTitleBarTheme(symbolColor: string): void {

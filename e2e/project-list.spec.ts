@@ -72,7 +72,7 @@ test('侧栏「项目」进的是列表,项目条数与 project.list 一致', as
   await expect(shown(win).locator('.projpanel, .prow')).toHaveCount(projects.length)
   await expect(shown(win).locator('.projpanel')).toHaveCount(active.length)
   await expect(shown(win).locator('.desk-head .t'))
-    .toHaveText(`项目 · ${projects.length}`)
+    .toHaveText(`项目 · ${active.length}`)
   await expect(shown(win).locator('.projpanel .project-identity-name')).toHaveText(active.map((p) => p.name))
 })
 
@@ -120,7 +120,7 @@ test('从别的屏再进「项目」落在列表,已经在项目屏时再点侧�
 
   // Go to Papers, turn a page and come back: the Projects screen shows the list.
   await win.locator('[data-desk="papers"]').click()
-  await win.locator('.pager .pgbtn').last().click()
+  await win.locator('.pager [aria-label="下一页"]').click()
   await expect(win.locator('.pager .pgbtn.on')).toHaveText('2')
 
   await gotoList(win)
@@ -131,11 +131,11 @@ test('从别的屏再进「项目」落在列表,已经在项目屏时再点侧�
   await win.locator('[data-desk="papers"]').click()
   await expect(win.locator('.pager .pgbtn.on')).toHaveText('2')
   await win.locator('.filters .segmented-control>button', { hasText: '主题' }).click()
-  await expect(win.locator('.filters .segmented-control>button.on')).toHaveText('主题')
+  await expect(win.locator('.filters .segmented-control>button[aria-checked="true"]')).toHaveText('主题')
 
   await gotoList(win)
   await win.locator('[data-desk="papers"]').click()
-  await expect(win.locator('.filters .segmented-control>button.on')).toHaveText('主题')
+  await expect(win.locator('.filters .segmented-control>button[aria-checked="true"]')).toHaveText('主题')
   await expect(win.locator('.gxrow').first()).toBeVisible()
 })
 
@@ -173,7 +173,7 @@ test('新建一个项目,重命名、改状态、删掉,再从垃圾桶恢复', 
   await shown(win).locator('.projpanel .inedit').fill(NEW_PROJECT)
   await shown(win).locator('.projpanel .inedit').press('Enter')
 
-  await expect(win.locator('#banner span')).toHaveText('已创建项目 · 已加入研究总览')
+  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已创建项目')
   await expect(rows).toHaveCount(before.length + 1)
   const created = (await listProjects(win)).find((p) => p.name === NEW_PROJECT)
   expect(created?.status).toBe(ACTIVE)
@@ -185,13 +185,13 @@ test('新建一个项目,重命名、改状态、删掉,再从垃圾桶恢复', 
   await win.locator('.ctxmenu .mi', { hasText: '重命名' }).click()
   await win.locator('.ctxmenu .mi-in input').fill(RENAMED_PROJECT)
   await win.locator('.ctxmenu .mi-in input').press('Enter')
-  await expect(win.locator('#banner span')).toHaveText('已重命名')
+  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已重命名')
   await expect(card.locator('.project-identity-name')).toHaveText(RENAMED_PROJECT)
 
   await card.hover()
   await card.locator('.dots').click()
   await win.locator('.ctxmenu .mi', { hasText: '搁置' }).click()
-  await expect(win.locator('#toast')).toHaveText('已标记为 搁置')
+  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已标记为 搁置')
   // It moves to another group: the panel becomes a compact row, and project.list has the new status.
   await expect(card).toHaveClass(/prow/)
   expect((await listProjects(win)).find((p) => p.id === created!.id)?.status).toBe('搁置')
@@ -199,14 +199,14 @@ test('新建一个项目,重命名、改状态、删掉,再从垃圾桶恢复', 
   await card.hover()
   await card.locator('.dots').click()
   await win.locator('.ctxmenu .mi.danger').click()
-  await expect(win.locator('#banner span')).toHaveText('已移入垃圾桶 · 7 天内可恢复')
+  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已移入垃圾桶')
   await expect(rows).toHaveCount(before.length)
   expect((await listProjects(win)).map((p) => p.id)).not.toContain(created!.id)
 
   await win.locator('[data-desk="trash"]').click()
-  await expect(shown(win).locator('.section-heading')).toHaveText('项目 · 1清空垃圾桶')
+  await expect(shown(win).locator('.section-heading')).toHaveText('项目 · 1')
   await expect(win.locator('.tgroup .trow .tt2')).toHaveText([RENAMED_PROJECT])
-  await win.locator('.tgroup .trow .btn', { hasText: '恢复' }).click()
+  await win.locator('.tgroup .trow .row-actions [aria-label="恢复"]').click()
   await expect(win.locator('.tgroup .trow')).toHaveCount(0)
 
   await gotoList(win)
@@ -254,8 +254,8 @@ test('没有图数据的项目出的是一行占位,不是空画布加图例', a
   await win.locator('[data-proj="sched"]').click()
   expect((await getProject(win, 'sched')).graphNodes).toBe(0)
 
-  await win.locator('.section-heading.flexh .segmented-control>button', { hasText: '科研图' }).click()
-  await expect(win.locator('.rgempty')).toHaveText('暂无科研图')
+  await win.locator('.section-heading-actions .segmented-control>button', { hasText: '科研图' }).click()
+  await expect(win.locator('.screenslot:not([hidden]) .record-view .empty-state--section')).toHaveText('还没有科研图')
   await expect(win.locator('.rgraph')).toHaveCount(0)
   await expect(win.locator('.glegend')).toHaveCount(0)
 
@@ -263,8 +263,8 @@ test('没有图数据的项目出的是一行占位,不是空画布加图例', a
   // the graph tab sched was left on.
   await win.locator('#crumb .cseg.link', { hasText: '项目' }).click()
   await win.locator('[data-proj="draft"]').click()
-  const graphTab = win.locator('.section-heading.flexh .segmented-control>button', { hasText: '科研图' })
-  await expect(graphTab).toHaveAttribute('aria-pressed', 'false')
+  const graphTab = win.locator('.section-heading-actions .segmented-control>button', { hasText: '科研图' })
+  await expect(graphTab).toHaveAttribute('aria-checked', 'false')
   await graphTab.click()
   await expect(win.locator('.rgraph .rgn')).toHaveCount((await getProject(win, 'draft')).graphNodes)
   await expect(win.locator('.glegend')).toHaveCount(1)
@@ -285,7 +285,7 @@ test('sched / moe / fa 各打开一次,各板块条数与 project.get 一致', a
     await expect(win.locator('.evlist .record-row'), id).toHaveCount(project.events)
     await expect(win.locator('.agcard'), id).toHaveCount(project.agentSessions)
 
-    await win.locator('.section-heading.flexh .segmented-control>button', { hasText: '里程碑' }).click()
+    await win.locator('.section-heading-actions .segmented-control>button', { hasText: '里程碑' }).click()
     await expect(win.locator('#msList .ddlrow'), id).toHaveCount(project.activeMilestones)
     // Leaving on Milestones does not carry over: the next project opens on its own tasks.
     await win.locator('#crumb .cseg.link', { hasText: '项目' }).click()
@@ -359,7 +359,7 @@ test('项目菜单是真菜单;重命名框里打菜单项首字、方向键、H
   await menu.locator('[role="menuitem"]', { hasText: '重命名' }).click()
   await input.fill(RENAMED_PROJECT)
   await input.press('Enter')
-  await expect(win.locator('#banner span')).toHaveText('已重命名')
+  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已重命名')
   await expect(card.locator('.project-identity-name')).toHaveText(RENAMED_PROJECT)
 })
 
@@ -376,7 +376,7 @@ test('项目菜单开着、指针挪到菜单项上之后,悬停才露出的 ...
   // sticks and the bug cannot show.
   await win.locator('[role="menu"] [role="menuitem"]').first().hover()
   await settle(dots)
-  await expect(dots).toHaveCSS('opacity', '1')
+  await expect(card.locator('.row-actions')).toHaveCSS('opacity', '1')
   await settle(card)
   expect(await card.evaluate((el) => getComputedStyle(el).borderColor)).toBe(hoverBorderColor)
 })
@@ -388,13 +388,15 @@ test('搁置或已完成的项目菜单开着、指针挪到菜单项上之后,�
 
   await row.hover()
   await settle(row)
-  const hoverBg = await row.evaluate((el) => getComputedStyle(el).backgroundColor)
+  // The row's hover is an overlay image over its own colour (StructuredList.css).
+  const hoverBg = await row.evaluate((el) => getComputedStyle(el).backgroundImage)
+  expect(hoverBg).not.toBe('none')
   await dots.click()
   // Moving the pointer onto a menu item really takes :hover off the row; without the move, :hover
   // sticks and the bug cannot show.
   await win.locator('[role="menu"] [role="menuitem"]').first().hover()
   await settle(row)
-  expect(await row.evaluate((el) => getComputedStyle(el).backgroundColor)).toBe(hoverBg)
+  expect(await row.evaluate((el) => getComputedStyle(el).backgroundImage)).toBe(hoverBg)
 })
 
 test('菜单开着时触发器仍然可点;再点一下菜单收起,不重新弹出也不冒给行', async ({ win }) => {
@@ -426,7 +428,7 @@ test('库里一个项目都没有时,「＋ 新建项目」仍在,建得出第�
   await shown(win).locator('.projpanel .inedit').fill(NEW_PROJECT)
   await shown(win).locator('.projpanel .inedit').press('Enter')
 
-  await expect(win.locator('#banner span')).toHaveText('已创建项目 · 已加入研究总览')
+  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已创建项目')
   expect((await listProjects(win)).map((p) => p.name)).toEqual([NEW_PROJECT])
   await expect(shown(win).locator('.projpanel .project-identity-name')).toHaveText([NEW_PROJECT])
 })
@@ -441,7 +443,8 @@ test('拖一张进行中的卡片到另一张前面,顺序写进库里;别的分
   const dragged = shown(win).locator(`[data-proj="${activeIds.at(-1)}"]`)
   const target = shown(win).locator(`[data-proj="${activeIds[0]}"]`)
   const targetBox = (await target.boundingBox())!
-  await dragged.dispatchEvent('dragstart', { dataTransfer: await win.evaluateHandle(() => new DataTransfer()) })
+  // A card is dragged by the grip in its row-actions slot.
+  await dragged.locator('.drag-handle').dispatchEvent('dragstart', { dataTransfer: await win.evaluateHandle(() => new DataTransfer()) })
   await target.dispatchEvent('dragover', {
     clientY: targetBox.y + 2, // top of the target's box: insert before it.
     dataTransfer: await win.evaluateHandle(() => new DataTransfer()),
@@ -456,7 +459,7 @@ test('拖一张进行中的卡片到另一张前面,顺序写进库里;别的分
   expect((await listProjects(win)).filter((p) => p.status !== ACTIVE).map((p) => p.id)).toEqual(otherIds)
 })
 
-test('排序按钮:按优先级重排后写进库里,与算出来的顺序一致', async ({ win }) => {
+test('重新排列:按优先级重排后写进库里,与算出来的顺序一致', async ({ win }) => {
   await gotoList(win)
   const active = (await listProjects(win)).filter((p) => p.status === ACTIVE)
   expect(active.length).toBeGreaterThan(1)
@@ -470,7 +473,7 @@ test('排序按钮:按优先级重排后写进库里,与算出来的顺序一致
     .sort((a, b) => a.priority.localeCompare(b.priority) || a.i - b.i)
     .map((p) => p.id)
 
-  const sortTrigger = win.locator('.section-heading.flexh .sort-menu', { hasText: '排序' })
+  const sortTrigger = win.locator('.desk-head .page-actions .sort-menu', { hasText: '重新排列' })
   const sortBox = await sortTrigger.boundingBox()
   const addBox = await win.locator('#projNew').boundingBox()
   // The sort entry sits beside the page's add action and must share its height and baseline.

@@ -216,7 +216,7 @@ describe('claim ops', () => {
     const broken: WikiData = { ...DATA, pages: { ...DATA.pages, 'topics/batch': {
       ...DATA.pages['topics/batch']!, fm: { title: 'Batch serving', updated: '2026-09-01', claims: [{ id: 'x' } as unknown as WikiClaimRecord, ...claims(DATA, 'topics/batch')] },
     } } }
-    expect(wikiClaims(broken, 'topics/batch', {}).map((c) => c.id)).toEqual(['wins'])
+    expect(wikiClaims(broken, 'topics/batch', {}, () => undefined).map((c) => c.id)).toEqual(['wins'])
     expect(generatedClaims(broken, 'topics/batch', {})).toContain('^wins')
   })
 })
@@ -287,14 +287,16 @@ describe('claims region', () => {
     expect(generatedClaims(empty, 'topics/batch', {})).toBe('## 结论\n(暂无结论)')
   })
 
-  it('视图把证据与冲突的名字解析出来', () => {
-    const [knee] = wikiClaims(DATA, 'topics/sd', { draft: 'draft 效率' })
+  it('视图把证据与冲突的名字解析出来,实验证据的节点也按名字', () => {
+    const points = (project: string, point: string) => (project === 'draft' && point === 'exp1' ? '单请求实验' : undefined)
+    const [knee] = wikiClaims(DATA, 'topics/sd', { draft: 'draft 效率' }, points)
     expect(knee!.evidence[0]).toEqual({
-      evidence: { kind: 'experiment', project: 'draft', node: 'exp1', text: '单请求实测' }, added: '2026-06-09', by: '我', title: 'draft 效率',
+      evidence: { kind: 'experiment', project: 'draft', node: 'exp1', text: '单请求实测' }, added: '2026-06-09', by: '我',
+      title: 'draft 效率', point: '单请求实验',
     })
     expect(knee!.conflicts[0]).toMatchObject({ id: 'batch', title: '批量场景仍净赚' })
     expect(knee!.history).toEqual([{ version: 1, text: '树宽收益递减', since: '2026-05-02', by: '我' }])
-    expect(wikiClaims(DATA, 'topics/sd', {})[1]!.evidence[0]).toEqual({
+    expect(wikiClaims(DATA, 'topics/sd', {}, points)[1]!.evidence[0]).toEqual({
       evidence: { kind: 'personal', text: '直觉' }, added: '2026-09-01', by: '我',
     })
   })

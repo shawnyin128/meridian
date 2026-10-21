@@ -1,8 +1,11 @@
 import {
   forwardRef,
+  useCallback,
   type HTMLAttributes,
   type ReactNode,
 } from 'react'
+import { useScrollFade } from '../hooks/useScrollFade.js'
+import { FadeText } from './FadeText.js'
 import './PageShell.css'
 
 const classes = (base: string, className: string | undefined) =>
@@ -15,30 +18,51 @@ export const PageShell = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElemen
   },
 )
 
-/** Fixed-height page identity bar. Page actions belong in `PageToolbar`, not beside the title. */
-export const PageHeader = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
-  function PageHeader({ className, ...props }, ref) {
-    return <div ref={ref} className={classes('desk-head', className)} {...props} />
+/**
+ * Fixed-height page identity bar: the back button when the page has one and the title, as children,
+ * and `actions`, everything that acts on the whole page, at its right end. Page actions are default-size
+ * buttons, the primary one last.
+ */
+export const PageHeader = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement> & { actions?: ReactNode }>(
+  function PageHeader({ className, children, actions, ...props }, ref) {
+    return (
+      <div ref={ref} className={classes('desk-head', className)} {...props}>
+        {children}
+        {actions === undefined ? null : <div className="page-actions">{actions}</div>}
+      </div>
+    )
   },
 )
 
-/** Shared in-content row for page actions and peer-view switches. */
+/** The one place for switching between peer views of the page, with the filters that go with them, at the body's start. */
 export const PageToolbar = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
   function PageToolbar({ className, ...props }, ref) {
     return <div ref={ref} className={classes('page-toolbar', className)} {...props} />
   },
 )
 
-export function PageTitle({ children, className, ...props }: {
+/**
+ * The page's title on one line: when it does not fit it fades out at its end and the tooltip shows it
+ * whole. `label` is that whole text, for a title that is not a plain string.
+ */
+export function PageTitle({ children, label, className, ...props }: {
   children: ReactNode
-} & HTMLAttributes<HTMLSpanElement>) {
-  return <span className={classes('t', className)} {...props}>{children}</span>
+  label?: string | undefined
+} & Omit<HTMLAttributes<HTMLSpanElement>, 'children'>) {
+  const whole = label ?? (typeof children === 'string' ? children : undefined)
+  return <FadeText className={classes('t', className)} label={whole} {...props}>{children}</FadeText>
 }
 
-/** The only main scrolling area of the page. */
+/** The only main scrolling area of the page; its top and bottom fade while content is hidden past them. */
 export const PageBody = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
   function PageBody({ className, ...props }, ref) {
-    return <div ref={ref} className={classes('desk-body', className)} {...props} />
+    const fade = useScrollFade('y')
+    const attach = useCallback((node: HTMLDivElement | null) => {
+      fade(node)
+      if (typeof ref === 'function') ref(node)
+      else if (ref !== null) ref.current = node
+    }, [fade, ref])
+    return <div ref={attach} className={classes('desk-body', className)} data-fade-paint="" {...props} />
   },
 )
 
@@ -61,18 +85,21 @@ export function PageError({ error, variant = 'page' }: {
   return error ? <div className={`ipcerror ipcerror--${variant}`} role="alert">{error}</div> : null
 }
 
-/** The one section heading in the app. `variant` picks the weight; `actions` is the only right-hand slot. */
+/**
+ * The one section heading in the app. `variant` is its role: `page` heads a section of a page's body,
+ * `group` heads a group inside a section or a card, and `rail` heads a section of a side rail or a
+ * detail panel. `actions` holds everything that acts on the section and sits at the heading's end.
+ */
 export const SectionHeading = forwardRef<HTMLDivElement, {
   children: ReactNode
   actions?: ReactNode
-  variant?: 'page' | 'content' | 'group' | 'rail'
+  variant?: 'page' | 'group' | 'rail'
 } & HTMLAttributes<HTMLDivElement>>(
   function SectionHeading({ children, actions, className, variant = 'page', ...rest }, ref) {
-    const own = `section-heading section-heading--${variant}${actions === undefined ? '' : ' flexh'}`
     return (
-      <div ref={ref} className={classes(own, className)} {...rest}>
+      <div ref={ref} className={classes(`section-heading section-heading--${variant}`, className)} {...rest}>
         {children}
-        {actions}
+        {actions === undefined ? null : <div className="section-heading-actions">{actions}</div>}
       </div>
     )
   },
@@ -83,10 +110,9 @@ export const SectionHeading = forwardRef<HTMLDivElement, {
  * Both a library that will not open and a screen that threw while rendering land here, so the two
  * failures read the same. `action` is the single recovery control.
  */
-export function PageFailure({ title, error, note, action, className }: {
+export function PageFailure({ title, error, action, className }: {
   title: ReactNode
   error: string | null | undefined
-  note: ReactNode
   action: ReactNode
   className?: string
 }) {
@@ -95,7 +121,6 @@ export function PageFailure({ title, error, note, action, className }: {
       <PageHeader><PageTitle>{title}</PageTitle></PageHeader>
       <PageBody>
         <PageError error={error} />
-        <p className="page-failure-note">{note}</p>
         {action}
       </PageBody>
     </PageShell>

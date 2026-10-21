@@ -1,7 +1,8 @@
-import { forwardRef, useRef, type InputHTMLAttributes, type ReactNode } from 'react'
+import { forwardRef, useRef, type InputHTMLAttributes, type ReactNode, type Ref } from 'react'
 import { useMessages } from '../messages/useMessages.js'
 import { FormInput, type FormControlAppearance } from './FormControls.js'
 import { IconCross } from './icons.js'
+import { Tooltip } from './Tooltip.js'
 import './ClearableInput.css'
 
 type ClearableInputProps = Omit<InputHTMLAttributes<HTMLInputElement>, 'value'> & {
@@ -10,15 +11,21 @@ type ClearableInputProps = Omit<InputHTMLAttributes<HTMLInputElement>, 'value'> 
   appearance?: FormControlAppearance
   wrapperClassName?: string
   wrapperId?: string
+  wrapperRef?: Ref<HTMLDivElement>
   leading?: ReactNode
   clearLabel?: string
+  /** The key that focuses the field from anywhere, shown at its end while it is empty and unfocused. */
+  keycap?: string
 }
 
-/** A controlled single-line field with one stable trailing clear action. */
+/**
+ * A controlled single-line field with one stable trailing clear action, an optional leading icon
+ * inside the field, and an optional keycap at its end while it is empty.
+ */
 export const ClearableInput = forwardRef<HTMLInputElement, ClearableInputProps>(
   function ClearableInput({
-    value, onClear, wrapperClassName = '', wrapperId, leading,
-    clearLabel, className, ...props
+    value, onClear, wrapperClassName = '', wrapperId, wrapperRef, leading,
+    clearLabel, keycap, className, ...props
   }, forwardedRef) {
     const m = useMessages()
     const clear = clearLabel ?? m.common.field.clear
@@ -30,19 +37,24 @@ export const ClearableInput = forwardRef<HTMLInputElement, ClearableInputProps>(
     }
 
     return (
-      <div id={wrapperId} className={`clearable-input${wrapperClassName ? ` ${wrapperClassName}` : ''}`}>
-        {leading}
+      <div id={wrapperId} ref={wrapperRef} className={`clearable-input${wrapperClassName ? ` ${wrapperClassName}` : ''}`}>
+        {leading === undefined ? null : <span className="clearable-input-leading">{leading}</span>}
         <FormInput ref={setRef} className={className} value={value} {...props} />
+        {value === '' && keycap !== undefined
+          ? <kbd className="clearable-input-key" aria-hidden="true">{keycap}</kbd>
+          : null}
         {value === '' ? null : (
-          <button
-            className="clearable-input-action" type="button" aria-label={clear} title={clear}
-            onClick={() => {
-              onClear()
-              input.current?.focus()
-            }}
-          >
-            <IconCross sw={2.2} />
-          </button>
+          <Tooltip label={clear}>
+            <button
+              className="clearable-input-action" type="button" aria-label={clear}
+              onClick={() => {
+                onClear()
+                input.current?.focus()
+              }}
+            >
+              <IconCross sw={2.2} />
+            </button>
+          </Tooltip>
         )}
       </div>
     )

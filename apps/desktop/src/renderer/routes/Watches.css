@@ -7,49 +7,38 @@
  * dropped.
  */
 
-/*
- * Placeholder row: every watch row is at least 40px tall (`.wrow` in shell.css). The placeholder's
- * input stays 22px, the height of a row's name line, so it does not change the row's height.
- */
-.wrow.newrow .inedit{height:22px;padding:0 9px}
-.wrow.editrow{align-items:flex-start;min-height:30px;padding-block:4px}
-.wrow.editrow .inedit{height:22px;padding:0 9px}
-.author-id-state{display:inline-flex;align-items:center;height:22px;line-height:22px;max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ter);font-size:12px}
-.author-id-state.unconfirmed{color:var(--warn)}
+.wrow.editrow{align-items:flex-start;min-height:30px;padding-block:var(--sp-4)}
+.author-id-state{display:inline-flex;align-items:center;height:22px;line-height:22px;max-width:260px;color:var(--ter);font-size:var(--fs-sm)}
 .author-resolver{flex:1;min-width:0}
-.author-resolver>.inedit{display:block;width:100%}
-.author-search-note{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 4px 3px;color:var(--ter);font-size:12px}
+.author-search-note{display:flex;align-items:center;justify-content:space-between;gap:var(--sp-10);padding:var(--sp-8) var(--sp-4) var(--sp-4);color:var(--ter);font-size:var(--fs-sm)}
 .author-search-note.error{color:var(--bad)}
-.author-matches{margin-top:7px}
-.author-match{display:flex;align-items:center;gap:12px;padding:9px 4px;border-bottom:1px solid var(--sep2)}
-.author-match:last-child{border-bottom:0;padding-bottom:3px}
-.author-match-copy{display:grid;gap:2px;min-width:0;flex:1}
-.author-match-copy strong,.author-match-copy span,.author-match-copy small{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.author-match-copy strong{font-size:13px;color:var(--ink)}
-.author-match-copy span{font-size:12px;color:var(--sec)}
-.author-match-copy small{font-size:11px;color:var(--ter)}
-.author-resolver-actions{display:flex;justify-content:flex-end;padding:8px 4px 1px;border-top:1px solid var(--sep2)}
+.author-matches{margin-top:var(--sp-8)}
+.author-match{display:flex;align-items:center;gap:var(--sp-12);padding:var(--sp-10) var(--sp-4);border-bottom:1px solid var(--sep2)}
+.author-match:last-child{border-bottom:0;padding-bottom:var(--sp-4)}
+.author-match-copy{display:grid;gap:var(--sp-2);min-width:0;flex:1}
+.author-match-name{font-size:var(--fs-base);font-weight:var(--fw-semibold);color:var(--ink)}
+.author-match-affiliations{font-size:var(--fs-sm);color:var(--sec)}
+.author-match-info{font-size:var(--fs-cap);color:var(--ter)}
+.author-resolver-actions{display:flex;justify-content:flex-end;padding:var(--sp-8) var(--sp-4) 1px;border-top:1px solid var(--sep2)}
 
-.watch-suggestions{margin-top:20px;padding-top:16px;border-top:1px solid var(--sep)}
+.watch-suggestions{margin-top:var(--sp-20);padding-top:var(--sp-16);border-top:1px solid var(--sep)}
 .watch-settings>.err:first-child{margin-top:0}
 
-.af-h{display:flex;align-items:center;gap:6px;font-size:var(--fs-read);font-weight:700;color:var(--ink);margin-bottom:8px}
-.watch-suggestion-source{margin-bottom:8px}
-.af-in{display:flex;gap:8px}
+.af-h{display:flex;align-items:center;gap:var(--sp-6);font-size:var(--fs-group);font-weight:var(--fw-title);color:var(--ink);margin-bottom:var(--sp-8)}
+.watch-suggestion-source{margin-bottom:var(--sp-8)}
+.af-in{display:flex;gap:var(--sp-8)}
 .af-in .form-control{flex:1;width:auto;font-size:var(--fs-sm);font-family:var(--sans)}
 .af-in>.btn{flex-shrink:0}
-.watch-suggestion-error{margin-top:8px;color:var(--bad);font-size:var(--fs-cap);line-height:var(--lh-ui)}
-.watch-suggestion-results{margin-top:10px}
+.watch-suggestion-error{margin-top:var(--sp-8);color:var(--bad);font-size:var(--fs-cap);line-height:var(--lh-ui)}
+.watch-suggestion-results{margin-top:var(--sp-10)}
 .watch-suggestion-results>.ph2{font-size:var(--fs-cap);color:var(--ter)}
-.watch-suggestion-group{margin-top:10px}
-.watch-suggestion-group-heading{display:flex;align-items:center;justify-content:space-between;gap:10px;
+.watch-suggestion-results>.ph2>.tag{margin-left:var(--sp-8)}
+.watch-suggestion-group{margin-top:var(--sp-10)}
+.watch-suggestion-group-heading{display:flex;align-items:center;justify-content:space-between;gap:var(--sp-10);
   min-height:24px;color:var(--sec);font-size:var(--fs-cap)}
-.watch-suggestion-group-heading strong{font-weight:600;color:var(--ink)}
-.watch-suggestion-group-heading .btn{font-size:var(--fs-cap)}
-.watch-suggestion-list{--structured-list-row-height:42px}
-.watch-suggestion-row{display:flex;align-items:center;gap:12px;min-height:42px;padding:6px 2px}
-.watch-suggestion-copy{display:grid;gap:2px;min-width:0;flex:1}
-.watch-suggestion-copy span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.watch-suggestion-group-heading strong{font-weight:var(--fw-semibold);color:var(--ink)}
+.watch-suggestion-row{display:flex;align-items:center;gap:var(--sp-12);min-height:42px;padding:var(--sp-6) var(--sp-2)}
+.watch-suggestion-copy{display:grid;gap:var(--sp-2);min-width:0;flex:1}
 .watch-suggestion-copy .nm{color:var(--ink);font-size:var(--fs-sm)}
 .watch-suggestion-copy span:last-child{color:var(--ter);font-size:var(--fs-cap)}
-.watch-suggestion-row>.btn{flex-shrink:0;font-size:var(--fs-cap)}
+.watch-suggestion-row>.btn{flex-shrink:0}

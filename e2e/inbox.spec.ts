@@ -68,7 +68,7 @@ const cardTitles = (win: Page) => shown(win, '.pcard h3').allTextContents()
 /** Inmail settings live only in Settings; the gear on the Inmail screen opens their Watches category directly. */
 async function openDeliverySettings(win: Page) {
   await openInbox(win, 'all')
-  await shown(win, '[title="关注设置"]').click()
+  await shown(win, '[aria-label="关注设置"]').click()
   await expect(win.locator('.setdlg')).toBeVisible()
   await expect(settings(win, '[data-setcat="delivery-watch"]')).toHaveClass(/\bon\b/)
 }
@@ -108,7 +108,7 @@ test('侧栏「论文推送」进推送屏,条目、分组与正文都照 demo',
   expect(await text('.pm')).toBe(demo[0]!.authors + demo[0]!.venue)
   expect(await text('.pabs')).toBe(demo[0]!.abs)
   expect(await text('.prec')).toBe(demo[0]!.rec)
-  expect(await card.locator('.plabel').allTextContents()).toEqual(['Abstract', '推荐理由'])
+  expect(await card.locator('.plabel').allTextContents()).toEqual(['摘要', '推荐理由'])
 })
 
 test('关注与项目发现是两条流,发现解释来源并接受显式反馈', async ({ win }) => {
@@ -133,11 +133,11 @@ test('关注与项目发现是两条流,发现解释来源并接受显式反馈'
   await openInbox(win, 'discovery')
 
   const first = shown(win, '.pcard').first()
-  await first.locator('[title="更多类似"]').click()
-  await expect(first.locator('[title="更多类似"]')).toHaveClass(/\bon\b/)
+  await first.locator('[aria-label="更多类似"]').click()
+  await expect(first.locator('[aria-label="更多类似"]')).toHaveClass(/\bon\b/)
 
   const before = (await discoveryFromCore(win)).length
-  await shown(win, '.pcard').nth(1).locator('[title="减少类似"]').click()
+  await shown(win, '.pcard').nth(1).locator('[aria-label="减少类似"]').click()
   await expect.poll(async () => (await discoveryFromCore(win)).length).toBe(before - 1)
 })
 
@@ -152,7 +152,7 @@ test('按主题与作者各筛一档,面包屑与条数都跟着换', async ({ w
   for (const w of counted) {
     await openInbox(win, w.id)
     await expect(win.locator('#crumb .cseg')).toHaveText(['收件', KIND[w.type], w.name])
-    await expect(shown(win, '.desk-head .t')).toHaveText(`${KIND[w.type]} · ${w.name} · ${w.n} 篇`)
+    await expect(shown(win, '.desk-head .t')).toHaveText(`${KIND[w.type]} · ${w.name} · ${w.n}`)
     await expect(shown(win, '.pcard')).toHaveCount(w.n)
     // A watch's view has one group heading, naming that watch; a watch with no entries shows only the empty state.
     await expect(shown(win, '.collapsible-group')).toHaveCount(w.n === 0 ? 0 : 1)
@@ -169,7 +169,7 @@ test('忽略一条:它进垃圾桶,恢复后回到推送屏原来的位置', asy
   const order = await cardTitles(win)
   const dropped = order[1]!
 
-  await shown(win, '.pcard').nth(1).locator('[title="忽略"]').click()
+  await shown(win, '.pcard').nth(1).locator('[aria-label="忽略"]').click()
   await expect(shown(win, '.pcard')).toHaveCount(order.length - 1)
   expect(await cardTitles(win)).toEqual(order.filter((t) => t !== dropped))
 
@@ -180,9 +180,9 @@ test('忽略一条:它进垃圾桶,恢复后回到推送屏原来的位置', asy
   expect(await inboxFromCore(win)).toHaveLength(order.length - 1)
 
   await win.locator('[data-desk="trash"]').click()
-  await expect(shown(win, '.section-heading')).toHaveText('论文推送 · 1清空垃圾桶')
+  await expect(shown(win, '.section-heading')).toHaveText('论文推送 · 1')
   await expect(win.locator('.tgroup .trow .tt2')).toHaveText([dropped])
-  await win.locator('.tgroup .trow .btn', { hasText: '恢复' }).click()
+  await win.locator('.tgroup .trow .row-actions [aria-label="恢复"]').click()
 
   await openInbox(win, 'all')
   await expect(shown(win, '.pcard')).toHaveCount(order.length)
@@ -218,7 +218,7 @@ test('「全部忽略」只清空自己这一组,逐组清完出空态,忽略的
   const trash = await trashFromCore(win)
   expect(trash.map((t) => t.title).sort()).toEqual([...titles].sort())
   expect(trash.every((t) => t.kind === 'inbox')).toBe(true)
-  await expect(win.locator('#rowInboxAll .n')).toHaveText('')
+  await expect(win.locator('#rowInboxAll .n')).toHaveCount(0)
 })
 
 test('入库:论文进库,按钮就地变开始阅读', async ({ win }) => {
@@ -228,10 +228,10 @@ test('入库:论文进库,按钮就地变开始阅读', async ({ win }) => {
   const title = (await cardTitles(win))[0]!
 
   const card = shown(win, '.pcard').first()
-  await card.locator('[title="下载并入库"]').click()
-  await expect(card.locator('[title="开始阅读"]')).toHaveCount(1)
-  await expect(win.locator('#toast')).toHaveText('已下载入库 · 可阅读')
-  await expect(card.locator('[title="下载并入库"]')).toHaveCount(0)
+  await card.locator('[aria-label="下载并入库"]').click()
+  await expect(card.locator('[aria-label="开始阅读"]')).toHaveCount(1)
+  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已下载入库 · 可阅读')
+  await expect(card.locator('[aria-label="下载并入库"]')).toHaveCount(0)
 
   expect(await paperTotal(win)).toBe(before + 1)
   expect((await inboxFromCore(win)).filter((e) => e.downloaded)).toHaveLength(1)
@@ -253,9 +253,9 @@ test('入库撞上库里已有的那一篇:不重复入库,就地给出打开那
 
   await openInbox(win, 'all')
   const card = shown(win, `.pcard[data-pid="${dup.id}"]`)
-  await card.locator('[title="下载并入库"]').click()
+  await card.locator('[aria-label="下载并入库"]').click()
 
-  await expect(win.locator('#toast')).toHaveText('库里已经有这一篇 · 没有重复入库')
+  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('库里已有这一篇')
   await expect(card.locator('.pdup span')).toHaveText(`库里已经有这一篇：「${known.title}」`)
   // The vault has no extra paper, and the entry is not marked as added.
   expect(await paperTotal(win)).toBe(before)
@@ -272,21 +272,21 @@ test.describe('这一条推送已经在别处入过库', () => {
   // once per second, so the click racing the stale card can lose to the poll there but not on screen.
   test.use({ showWindow: true })
 
-  test('界面上还没刷新时再点「入库」:报进 toast 而不是 .ipcerror', async ({ win }) => {
+  test('界面上还没刷新时再点「入库」:报进拒绝提示而不是 .ipcerror', async ({ win }) => {
     const entries = await inboxFromCore(win)
     const fresh = (await Promise.all(entries.filter((e) => !e.downloaded).map(async (e) =>
       ({ e, known: await inLibrary(win, e.paper) })))).find((x) => !x.known)!.e
 
     await openInbox(win, 'all')
     const card = shown(win, `.pcard[data-pid="${fresh.id}"]`)
-    await expect(card.locator('[title="下载并入库"]')).toHaveCount(1)
+    await expect(card.locator('[aria-label="下载并入库"]')).toHaveCount(1)
 
     // Add it directly, bypassing the UI: Core records the entry as added, but the UI has not
     // refetched, so the card still shows it as not added.
     await call(win, 'inbox.download', { id: fresh.id })
 
-    await card.locator('[title="下载并入库"]').click()
-    await expect(win.locator('#toast')).toHaveText(`这一条已经入库：${fresh.id}`)
+    await card.locator('[aria-label="下载并入库"]').click()
+    await expect(win.locator('#notice[data-tone="refusal"] .notice-text')).toHaveText('现在不能这样做')
     await expect(shown(win, '.ipcerror')).toHaveCount(0)
   })
 })
@@ -294,9 +294,9 @@ test.describe('这一条推送已经在别处入过库', () => {
 test('下载并入库时显示进度环,完成后就地变成开始阅读', async ({ win }) => {
   await openInbox(win, 'all')
   const card = shown(win, '.pcard[data-pid="drafterlite"]')
-  await card.locator('[title="下载并入库"]').click()
-  await expect(card.locator('.icbtn.busy[title="从 arXiv 下载中"] .ring')).toHaveCount(1)
-  await expect(card.locator('[title="开始阅读"]')).toHaveCount(1, { timeout: 10_000 })
+  await card.locator('[aria-label="下载并入库"]').click()
+  await expect(card.locator('.icbtn.busy[aria-label="从 arXiv 下载中"] .ring')).toHaveCount(1)
+  await expect(card.locator('[aria-label="开始阅读"]')).toHaveCount(1, { timeout: 10_000 })
   await expect(card.locator('.ring')).toHaveCount(0)
   expect((await inboxFromCore(win)).find((entry) => entry.id === 'drafterlite')?.downloaded).toBe(true)
 })
@@ -304,9 +304,9 @@ test('下载并入库时显示进度环,完成后就地变成开始阅读', asyn
 test('下载失败在卡片内给原因和重试,不占用全页错误', async ({ win }) => {
   await openInbox(win, 'all')
   const card = shown(win, '.pcard[data-pid="sequoia2"]')
-  await card.locator('[title="下载并入库"]').click()
+  await card.locator('[aria-label="下载并入库"]').click()
   await expect(card.locator('.pfail span')).toHaveText('下载失败 · 服务器出错')
-  await expect(card.locator('[title="下载并入库"]')).toHaveCount(1)
+  await expect(card.locator('[aria-label="下载并入库"]')).toHaveCount(1)
   await expect(shown(win, '.ipcerror')).toHaveCount(0)
   await card.locator('.pfail .btn', { hasText: '重试' }).click()
   await expect(card.locator('.pfail span')).toHaveText('下载失败 · 服务器出错')
@@ -317,10 +317,11 @@ test('检查新论文按关注抓取一次,新论文进入相应分组且标题�
   const before = await inboxFromCore(win)
   await shown(win, '.desk-head .btn').filter({ hasText: '检查新论文' }).click()
   await expect(shown(win, '.pcard')).toHaveCount(before.length + 2)
-  await expect(shown(win, '.desk-head .fetchnote')).toHaveText(/^上次检查 \d+月\d+日 \d{2}:\d{2}$/)
+  await expect(shown(win, '.desk-head .fetchnote')).toHaveText(/^上次检查 \d+月\d+日\d{2}:\d{2}$/)
+  await expect(shown(win, '.desk-head .fetchnote .date-chip')).toHaveCount(2)
   expect((await cardTitles(win))[0]).toBe('Tree Width in Batched Serving')
   const fresh = shown(win, '.pcard').filter({ hasText: 'Tree Width in Batched Serving' })
-  await expect(fresh.locator('.plabel')).toHaveText(['Abstract'])
+  await expect(fresh.locator('.plabel')).toHaveText(['摘要'])
   await expect(win.locator('#rowInboxAll .n')).toHaveText(String(before.length + 2))
 })
 
@@ -341,7 +342,7 @@ test('存入稍后阅读:离开推送屏,排到队首,再移出', async ({ win }
     .map((k) => `${k} · ${queued.filter((e) => e[key] === k).length}`)
   expect(await shown(win, '.day-heading').allTextContents()).toEqual(heads('day'))
   await shown(win, '.segmented-control>button').filter({ hasText: '按来源' }).click()
-  await expect(shown(win, '.segmented-control>button').filter({ hasText: '按来源' })).toHaveClass(/\bon\b/)
+  await expect(shown(win, '.segmented-control>button').filter({ hasText: '按来源' })).toHaveAttribute('aria-checked', 'true')
   expect(await shown(win, '.day-heading').allTextContents()).toEqual(heads('source'))
 
   await openInbox(win, 'all')
@@ -349,7 +350,7 @@ test('存入稍后阅读:离开推送屏,排到队首,再移出', async ({ win }
   await expect(shown(win, '.pcard')).toHaveCount(entries.length)
   const first = entries[0]!
   const title = (await cardTitles(win))[0]!
-  await shown(win, '.pcard').first().locator('[title="稍后阅读"]').click()
+  await shown(win, '.pcard').first().locator('[aria-label="稍后阅读"]').click()
   await expect(shown(win, '.pcard')).toHaveCount(entries.length - 1)
 
   await win.locator('#rowLater').click()
@@ -360,7 +361,7 @@ test('存入稍后阅读:离开推送屏,排到队首,再移出', async ({ win }
     id: first.id, day: '今天', source: `${KIND[watched.type]} · ${watched.name}`,
   })
 
-  await shown(win, '.pcard').first().locator('[title="移出"]').click()
+  await shown(win, '.pcard').first().locator('[aria-label="移出"]').click()
   await expect(shown(win, '.desk-head .t')).toHaveText(`稍后阅读 · ${queued.length}`)
   expect((await laterFromCore(win)).map((e) => e.id)).toEqual(queued.map((e) => e.id))
 })
@@ -374,23 +375,23 @@ test('稍后阅读里有原文地址的条目可以直接开始阅读并在需�
   await win.locator('#rowLater').click()
   await expect(shown(win, '.pcard')).toHaveCount(queued.length)
   for (const entry of queued) {
-    await expect(shown(win, `.pcard[data-pid="${entry.id}"] [title="开始阅读"]`))
+    await expect(shown(win, `.pcard[data-pid="${entry.id}"] [aria-label="开始阅读"]`))
       .toHaveCount(readable.has(entry.id) ? 1 : 0)
   }
   // Every queued entry can still be removed; only the entry point to the reader is missing on some.
-  await expect(shown(win, '.pcard [title="移出"]')).toHaveCount(queued.length)
+  await expect(shown(win, '.pcard [aria-label="移出"]')).toHaveCount(queued.length)
 
   // Adding the same paper from Inmail gives the queued entry pointing at it a reader entry point too.
   const shared = queued.find((e) => !e.downloaded
     && entries.some((x) => x.id === e.id && !x.downloaded))!
   const source = entries.find((x) => x.paper === shared.paper)!
   await openInbox(win, 'all')
-  await shown(win, `.pcard[data-pid="${source.id}"] [title="下载并入库"]`).click()
-  await expect(shown(win, `.pcard[data-pid="${source.id}"] [title="开始阅读"]`)).toHaveCount(1)
+  await shown(win, `.pcard[data-pid="${source.id}"] [aria-label="下载并入库"]`).click()
+  await expect(shown(win, `.pcard[data-pid="${source.id}"] [aria-label="开始阅读"]`)).toHaveCount(1)
 
   await win.locator('#rowLater').click()
-  await expect(shown(win, `.pcard[data-pid="${shared.id}"] [title="开始阅读"]`)).toHaveCount(1)
-  await expect(shown(win, '.pcard [title="开始阅读"]')).toHaveCount(readable.size)
+  await expect(shown(win, `.pcard[data-pid="${shared.id}"] [aria-label="开始阅读"]`)).toHaveCount(1)
+  await expect(shown(win, '.pcard [aria-label="开始阅读"]')).toHaveCount(readable.size)
 })
 
 test('关注管理:暂停、添加与移除都实时改侧栏与推送屏', async ({ win }) => {
@@ -408,20 +409,25 @@ test('关注管理:暂停、添加与移除都实时改侧栏与推送屏', asyn
   await expect(groupHeads.nth(1)).toHaveCSS('font-size', '15px')
   await expect(groupHeads.nth(1)).toHaveCSS('border-top-width', '1px')
 
-  // Pause: the sidebar row dims, its badge goes away, and the entries already fetched stay.
+  // Pause: the sidebar row dims and keeps its count, and the entries already fetched stay.
   const entriesBefore = await inboxFromCore(win)
   const kept = entriesBefore.filter((e) => e.watch === 'spec').length
   const spec = settings(win, '.wrow').filter({ hasText: 'speculative decoding' })
-  await spec.locator('.btn', { hasText: '暂停' }).click()
-  await expect(spec.locator('.src')).toHaveText('已暂停')
+  await expect(spec.locator('[role="switch"]')).toHaveAttribute('aria-checked', 'true')
+  await spec.locator('[role="switch"]').click()
+  await expect(spec.locator('[role="switch"]')).toHaveAttribute('aria-checked', 'false')
+  await expect(spec.locator('.watch-paused')).toHaveText('已暂停')
   await expect(win.locator('[data-watchrow="spec"]')).toHaveClass(/\bdim\b/)
-  await expect(win.locator('[data-watchrow="spec"] .n')).toHaveCount(0)
+  await expect(win.locator('[data-watchrow="spec"] .n')).toHaveText(String(kept))
   expect((await inboxFromCore(win)).filter((e) => e.watch === 'spec')).toHaveLength(kept)
-  await spec.locator('.btn', { hasText: '恢复' }).click()
+  await spec.locator('[role="switch"]').click()
   await expect(win.locator('[data-watchrow="spec"]')).not.toHaveClass(/\bdim\b/)
 
-  // Add: the sidebar's topic group gains a row, and its count goes up by one.
+  // Add: the sidebar's topic group gains a row; its count, the papers its watches delivered, stays.
   const topics = watches.filter((w) => w.type === 'topic').length
+  const topicIds = new Set(watches.filter((w) => w.type === 'topic').map((w) => w.id))
+  const topicPapers = entriesBefore.filter((e) => topicIds.has(e.watch)).length
+  expect(topicPapers).toBeGreaterThan(0)
   await settings(win, '.section-heading').filter({ hasText: '主题' }).locator('.btn').click()
   await expect(settings(win, '.wrow')).toHaveCount(watches.length + 1)
   // A new watch lands first in its group, so the topic group's placeholder is the very first row.
@@ -431,14 +437,14 @@ test('关注管理:暂停、添加与移除都实时改侧栏与推送屏', asyn
   await expect(settings(win, '.wrow.newrow')).toHaveCount(0)
   await expect(settings(win, '.wrow')).toHaveCount(watches.length + 1)
   await expect(win.locator('#g-topics .srow')).toHaveCount(topics + 1)
-  await expect(win.locator('[data-disc="topics"] .n')).toHaveText(String(topics + 1))
+  await expect(win.locator('[data-disc="topics"] .n')).toHaveText(String(topicPapers))
 
   // Removed: the sidebar row disappears, and its own pushes are cleared with it (the confirm dialog's
   // own wording says so); other watches' pushes are untouched.
   expect(kept).toBeGreaterThan(0)
-  await spec.locator('.btn', { hasText: '移除' }).click()
+  await spec.locator('.row-actions [aria-label="移除"]').click()
   // Removing a watch is destructive, so it now confirms first (ConfirmDialog.tsx).
-  await win.locator('.cfpop .dlg-a>*').last().click()
+  await win.locator('.modal.confirm .modal-actions>*').last().click()
   await expect(win.locator('[data-watchrow="spec"]')).toHaveCount(0)
   const survivors = entriesBefore.filter((e) => e.watch !== 'spec')
   await expect.poll(async () => (await inboxFromCore(win)).map((e) => e.id))
@@ -468,11 +474,11 @@ test('关注管理:占位行按 Esc 撤掉,屏上没有旧的圆角添加框', a
   await expect(settings(win, '.mgr-add')).toHaveCount(0)
 })
 
-test('没填 Semantic Scholar key 时作者搜索直接说明，填了之后先用机构消歧,确认后保存稳定作者身份', async ({ win }) => {
+test('没填 Semantic Scholar key 时作者搜索写出缺 key，填了之后先用机构消歧,确认后保存稳定作者身份', async ({ win }) => {
   await openDeliverySettings(win)
   await settings(win, '.section-heading').filter({ hasText: '作者' }).locator('.btn').click()
   await settings(win, '.wrow.newrow input').fill('Alex Kim')
-  await expect(settings(win, '.author-search-note.error')).toContainText('填入 Semantic Scholar key')
+  await expect(settings(win, '.author-search-note.error span')).toHaveText('搜索作者失败 · 没有 Semantic Scholar key')
 
   await call(win, 'delivery.setSemanticKey', { apiKey: 'fixture-key' })
   await settings(win, '.wrow.newrow input').fill('')
@@ -525,7 +531,7 @@ test('没填 key 时关注建议从 arXiv 生成主题与按姓名的作者,添�
   expect(projectResult.authors[0]?.name).toBeTruthy()
   expect(projectResult.authors[0]?.id).toBeUndefined()
 
-  await section.locator('.watch-suggestion-source').getByRole('button', { name: '从项目生成' }).click()
+  await section.locator('.watch-suggestion-source').getByRole('radio', { name: '从项目生成' }).click()
   await section.locator('.btn.pri').click()
   await expect(section.locator('.watch-suggestion-row').first()).toBeVisible()
 })
@@ -537,14 +543,14 @@ test('关注可原地编辑:保留原 id、暂停状态与已经收到的论文'
 
   const topic = before.find((item) => item.type === 'topic')!
   const topicRow = settings(win, `.wrow[data-w="${topic.id}"]`)
-  await topicRow.locator('.btn', { hasText: '编辑' }).click()
+  await topicRow.locator('.row-actions [aria-label="编辑"]').click()
   await settings(win, `.wrow.editrow[data-w="${topic.id}"] input`).fill(`${topic.name} updated`)
   await settings(win, `.wrow.editrow[data-w="${topic.id}"] input`).press('Enter')
   await expect(settings(win, `.wrow[data-w="${topic.id}"] .nm`)).toHaveText(`${topic.name} updated`)
 
   const authorWatch = before.find((item) => item.type === 'author')!
   const authorRow = settings(win, `.wrow[data-w="${authorWatch.id}"]`)
-  await authorRow.locator('.btn', { hasText: '编辑' }).click()
+  await authorRow.locator('.row-actions [aria-label="编辑"]').click()
   await settings(win, `.wrow.editrow[data-w="${authorWatch.id}"] input`).fill(`${authorWatch.name} Lab`)
   await settings(win, '.author-resolver-actions .btn').click()
   await expect(settings(win, `.wrow[data-w="${authorWatch.id}"] .nm`)).toHaveText(`${authorWatch.name} Lab`)
@@ -677,11 +683,13 @@ test('侧栏角标数的都是库里的真实数量', async ({ win }) => {
   const watches = await watchesFromCore(win)
   const queued = await laterFromCore(win)
   const count = (id: string) => entries.filter((e) => e.watch === id).length
+  // A group counts the papers its watches delivered.
+  const papers = (type: string) => entries.filter((e) => watches.some((w) => w.id === e.watch && w.type === type)).length
 
   const badges: [string, number][] = [
     ['#rowInboxAll .n', entries.length],
-    ['[data-disc="topics"] .n', watches.filter((w) => w.type === 'topic').length],
-    ['[data-disc="authors"] .n', watches.filter((w) => w.type === 'author').length],
+    ['[data-disc="topics"] .n', papers('topic')],
+    ['[data-disc="authors"] .n', papers('author')],
     ['#rowLater .n', queued.length],
     ...watches.map((w): [string, number] => [`[data-watchrow="${w.id}"] .n`, count(w.id)]),
   ]
@@ -689,7 +697,8 @@ test('侧栏角标数的都是库里的真实数量', async ({ win }) => {
   expect(new Set(badges.map(([, n]) => n)).size).toBeGreaterThan(1)
 
   for (const [sel, n] of badges) {
-    // A zero badge has empty text and CSS hides it, matching the demo's `n||''`.
-    await expect(win.locator(sel)).toHaveText(n === 0 ? '' : String(n))
+    // A zero count shows no badge, matching the demo's `n||''`.
+    if (n === 0) await expect(win.locator(sel)).toHaveCount(0)
+    else await expect(win.locator(sel)).toHaveText(String(n))
   }
 })

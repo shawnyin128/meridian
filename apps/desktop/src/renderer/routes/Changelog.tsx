@@ -1,20 +1,27 @@
 import { Fragment, useCallback, useEffect, useState } from 'react'
 import type { ChangeEntry } from '../../shared/contract.js'
+import { HUMAN_PRODUCER, NOTES_PROPOSAL } from '../../shared/vocabulary.js'
 import { changelog } from '../ipc.js'
+import { errorLabel } from '../lib/failure-label.js'
 import type { Catalog } from '../messages/catalog.js'
 import { useMessages } from '../messages/useMessages.js'
-import { useBanner, useToast, useToday, useVaultRevision } from '../shell/AppShell.js'
+import { useNotice, useToday, useVaultRevision } from '../shell/AppShell.js'
 import { useFormat } from '../lib/format.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
+import { CardTray } from '../components/CardTray.js'
 import { ConfirmDialog } from '../components/ConfirmDialog.js'
 import { DayHeading } from '../components/DayHeading.js'
 import { DiffLines } from '../components/DiffLines.js'
 import { EmptyState } from '../components/EmptyState.js'
+import { LoadingPlaceholder } from '../components/LoadingPlaceholder.js'
 import { PaperText } from '../components/paper/PaperText.js'
+import { AgentLabel } from '../components/SourceLabel.js'
 import {
   PageBody, PageError, PageHeader, PageShell, PageTitle, SectionHeading,
 } from '../components/PageShell.js'
-import { StructuredList, StructuredRow } from '../components/StructuredList.js'
+import { RowActions, StructuredList, StructuredRow } from '../components/StructuredList.js'
+import { IconButton } from '../components/IconButton.js'
+import { IconArchive, IconTrash, IconUndo } from '../components/icons.js'
 import './shell.css'
 import './Changelog.css'
 
@@ -30,10 +37,22 @@ export function metaBelowHeading(meta: string): string {
   return at < 0 ? '' : meta.slice(at + SEP.length)
 }
 
-/** The end of the grey line under the title: undone, cannot be undone, or a prompt to open the entry. */
+/** The end of the grey line under the title: undone, cannot be undone, or nothing for an entry that can be undone. */
 const hint = (entry: ChangeEntry, state: Catalog['changelog']['state']): string => {
   if (entry.undone) return state.undone
-  return entry.undoable ? state.openToSee : state.notUndoable
+  return entry.undoable ? '' : state.notUndoable
+}
+
+/**
+ * Who made a change: nothing for the user's own, otherwise the agent label, naming the notes or the
+ * experiment an agent's proposal came from.
+ */
+function ChangeSource({ source }: { source: ChangeEntry['source'] }) {
+  const m = useMessages()
+  if (source === HUMAN_PRODUCER) return null
+  if (source === 'Meridian') return <AgentLabel className="src" />
+  const from = m.changelog.proposalSource
+  return <AgentLabel className="src" source={source === NOTES_PROPOSAL ? from.notes : from.lab} />
 }
 
 function DeleteChangeButton({ entry, onDelete }: {
@@ -44,11 +63,11 @@ function DeleteChangeButton({ entry, onDelete }: {
   return (
     <ConfirmDialog
       trigger={(
-        <button className="btn plain tdel" onClick={(event) => event.stopPropagation()}>
-          {m.common.delete}
-        </button>
+        <IconButton label={m.common.delete} size="nested" tone="danger" onClick={(event) => event.stopPropagation()}>
+          <IconTrash />
+        </IconButton>
       )}
-      title={m.changelog.confirmDelete}
+      title={m.changelog.confirmDelete} description={m.changelog.confirmDeleteDescription}
       confirmLabel={m.changelog.confirmDeleteLabel} onConfirm={() => onDelete(entry.id)}
     />
   )
@@ -58,8 +77,8 @@ function ClearArchivedButton({ count, onClear }: { count: number; onClear: () =>
   const m = useMessages()
   return (
     <ConfirmDialog
-      trigger={<button className="btn plain tdel">{m.changelog.clearArchived}</button>}
-      title={m.changelog.confirmClearArchived(count)}
+      trigger={<button className="btn danger sm">{m.changelog.clearArchived}</button>}
+      title={m.changelog.confirmClearArchived(count)} description={m.changelog.confirmClearArchivedDescription}
       confirmLabel={m.changelog.confirmClearArchivedLabel} onConfirm={onClear}
     />
   )
@@ -75,86 +94,81 @@ function ClearArchivedButton({ count, onClear }: { count: number; onClear: () =>
  */
 export function Changelog() {
   const m = useMessages()
-  const [entries, setEntries] = useState<ChangeEntry[]>([])
+  const [entries, setEntries] = useState<ChangeEntry[] | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [open, setOpen] = useState<ReadonlySet<string>>(new Set())
 
   const today = useToday()
   const fmt = useFormat()
-  const banner = useBanner()
-  const toast = useToast()
+  const notice = useNotice()
   const { revision, bump } = useVaultRevision()
-  const reportError = useCallback((e: Error) => setError(e.message), [])
+  const reportError = useCallback((e: unknown) => setError(errorLabel(m, e)), [m])
   const write = useVaultWrite()
 
   useEffect(() => {
     void changelog.list().then(setEntries).catch(reportError)
   }, [revision, reportError])
 
-  const toggle = (id: string) => setOpen((shown) => {
-    const next = new Set(shown)
-    if (!next.delete(id)) next.add(id)
-    return next
-  })
-
   // An undo is often rejected (the entity changed again after this change), so the reason shows as a
-  // toast instead of becoming a page-wide error.
+  // refusal notice instead of becoming a page-wide error.
   const undo = (id: string) => {
     void changelog.undo(id).then(() => {
       bump()
-      banner(m.changelog.undoneNote)
-    }).catch((e: Error) => toast(e.message))
+      notice.success(m.changelog.undoneNote)
+    }).catch((e: unknown) => notice.refusal(errorLabel(m, e)))
   }
 
-  // Archiving one entry shows no banner: the entry moving down into the Archived section is the feedback.
+  // Archiving one entry shows no notice: the entry moving down into the Archived section is the feedback.
   const archive = (id: string) => {
     void write(changelog.archive(id))
   }
 
   const archiveAll = (count: number) => {
-    void write(changelog.archiveAll(), { note: m.changelog.archivedNote(count), notify: toast })
+    void write(changelog.archiveAll(), { note: m.changelog.archivedNote(count) })
   }
 
   const deleteChange = (id: string) => {
-    void write(changelog.delete(id), { note: m.changelog.deletedNote, notify: toast })
+    void write(changelog.delete(id), { note: m.changelog.deletedNote })
   }
 
   const clearArchived = (count: number) => {
-    void write(changelog.clearArchived(), { note: m.changelog.clearedArchivedNote(count), notify: toast })
+    void write(changelog.clearArchived(), { note: m.changelog.clearedArchivedNote(count) })
   }
 
-  const fresh = entries.filter((c) => !c.archived)
-  const filed = entries.filter((c) => c.archived)
+  const fresh = (entries ?? []).filter((c) => !c.archived)
+  const filed = (entries ?? []).filter((c) => c.archived)
   // The screen title and "Archive all" count only the unarchived entries.
   const unread = fresh.length
 
   const row = (c: ChangeEntry) => (
-    <StructuredRow
-      composite className={open.has(c.id) ? 'crow open' : 'crow'} key={c.id} onActivate={() => toggle(c.id)}
-    >
-      <div className="chead">
-        {/* Its click bubbles to the row, which owns the toggle; this button is the keyboard path to it. */}
-        <button className="cbody" type="button" aria-expanded={open.has(c.id)}>
-          <span className="ct"><PaperText text={c.title} /><span className="src">{c.source}</span></span>
-          <span className="cm">{[metaBelowHeading(c.meta), hint(c, m.changelog.state)].filter((s) => s !== '').join(SEP)}</span>
-        </button>
-        <div className="cact">
-          <DeleteChangeButton entry={c} onDelete={deleteChange} />
-          {c.archived ? null : (
-            <button
-              className="btn plain carch"
-              onClick={(e) => { e.stopPropagation(); archive(c.id) }}
-            >{m.common.archive}</button>
-          )}
-          {c.undoable ? (
-            <button
-              className="btn plain cundo"
-              onClick={(e) => { e.stopPropagation(); undo(c.id) }}
-            >{m.common.undo}</button>
-          ) : null}
-        </div>
-      </div>
-      <DiffLines lines={c.diff} />
+    <StructuredRow className="crow" key={c.id}>
+      <CardTray
+        variant="row"
+        summary={(
+          <>
+            <span className="ct"><PaperText text={c.title} /><ChangeSource source={c.source} /></span>
+            <span className="cm">{[metaBelowHeading(c.meta), hint(c, m.changelog.state)].filter((s) => s !== '').join(SEP)}</span>
+          </>
+        )}
+        action={(
+          <RowActions className="cact">
+            <DeleteChangeButton entry={c} onDelete={deleteChange} />
+            {c.archived ? null : (
+              <IconButton
+                label={m.common.archive} size="nested" className="carch"
+                onClick={(e) => { e.stopPropagation(); archive(c.id) }}
+              ><IconArchive /></IconButton>
+            )}
+            {c.undoable ? (
+              <IconButton
+                label={m.common.undo} size="nested" className="cundo"
+                onClick={(e) => { e.stopPropagation(); undo(c.id) }}
+              ><IconUndo /></IconButton>
+            ) : null}
+          </RowActions>
+        )}
+      >
+        <DiffLines lines={c.lines} />
+      </CardTray>
     </StructuredRow>
   )
 
@@ -187,18 +201,24 @@ export function Changelog() {
       <PageError error={error} />
 
       <PageBody>
-        <SectionHeading className="flexh">{m.changelog.unarchivedHeading}
-          <button
-            className="btn plain archall" disabled={unread === 0}
-            onClick={() => archiveAll(unread)}
-          >{m.changelog.archiveAll}</button>
+        <SectionHeading
+          actions={(
+            <button
+              className="btn sm archall" disabled={unread === 0}
+              onClick={() => archiveAll(unread)}
+            >{m.changelog.archiveAll}</button>
+          )}
+        >{m.changelog.unarchivedHeading}
         </SectionHeading>
-        {fresh.length === 0 ? <EmptyState variant="section">{m.changelog.empty}</EmptyState> : section(fresh)}
+        {entries === null
+          ? (error === null ? <LoadingPlaceholder shape="rows" /> : null)
+          : fresh.length === 0 ? <EmptyState variant="section">{m.changelog.empty}</EmptyState> : section(fresh)}
 
         {filed.length === 0 ? null : (
           <>
-            <SectionHeading className="flexh">{m.changelog.archivedHeading}
-              <ClearArchivedButton count={filed.length} onClear={() => clearArchived(filed.length)} />
+            <SectionHeading
+              actions={<ClearArchivedButton count={filed.length} onClear={() => clearArchived(filed.length)} />}
+            >{m.changelog.archivedHeading}
             </SectionHeading>
             {section(filed)}
           </>

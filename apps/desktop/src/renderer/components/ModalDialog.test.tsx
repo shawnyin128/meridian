@@ -2,6 +2,7 @@
 import { act, useState } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { MessagesProvider } from '../messages/useMessages.js'
 import { InlineDraftInput } from './InlineDraftInput.js'
 import { ModalDialog, ModalTitle } from './ModalDialog.js'
 
@@ -14,7 +15,7 @@ function Example() {
   return (
     <>
       <button type="button" onClick={() => setOpen(true)}>打开设置</button>
-      <ModalDialog open={open} onOpenChange={setOpen} contentClassName="settings-modal">
+      <ModalDialog open={open} onOpenChange={setOpen} size="wide">
         <ModalTitle>设置</ModalTitle>
         <button type="button" onClick={() => setOpen(false)}>完成</button>
       </ModalDialog>
@@ -26,7 +27,7 @@ function WithDraft() {
   const [drafting, setDrafting] = useState(true)
   const [open, setOpen] = useState(true)
   return (
-    <ModalDialog open={open} onOpenChange={setOpen} contentClassName="settings-modal">
+    <ModalDialog open={open} onOpenChange={setOpen} size="wide">
       <ModalTitle>设置</ModalTitle>
       <button type="button" className="add" onClick={() => setDrafting(true)}>添加</button>
       {drafting
@@ -41,6 +42,7 @@ const pressEscape = (target: Element) => act(() => {
 })
 
 describe('ModalDialog', () => {
+  beforeEach(() => { vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} }) })
   let root: Root | null = null
   let host: HTMLDivElement
 
@@ -74,10 +76,37 @@ describe('ModalDialog', () => {
     expect(document.activeElement).toBe(opener)
   })
 
+  it('owns the surface: a size step, the title, the body and the actions after it', () => {
+    act(() => root!.render(
+      <ModalDialog open onOpenChange={vi.fn()} size="form" title="新建想法" actions={<button type="button">保存</button>}>
+        <p>正文</p>
+      </ModalDialog>,
+    ))
+    const surface = document.querySelector<HTMLElement>('[role="dialog"]')!
+    expect([...surface.classList]).toEqual(['modal', 'form'])
+    expect([...surface.children].map((part) => part.className)).toEqual(['modal-title', 'modal-body', 'modal-actions'])
+    expect(surface.getAttribute('aria-labelledby')).toBe(surface.querySelector('.modal-title')!.id)
+    expect(surface.querySelector('.modal-body')!.textContent).toBe('正文')
+    expect(surface.querySelector('.modal-actions')!.textContent).toBe('保存')
+  })
+
+  it('puts a close control named Close, not a panel\'s Collapse details, in the surface when closable, and it closes the dialog', () => {
+    const change = vi.fn()
+    act(() => root!.render(
+      <MessagesProvider>
+        <ModalDialog open onOpenChange={change} size="wide" closable><ModalTitle>设置</ModalTitle></ModalDialog>
+      </MessagesProvider>,
+    ))
+    const close = document.querySelector<HTMLButtonElement>('[role="dialog"] > .icbtn.modal-close')!
+    expect(close.getAttribute('aria-label')).toBe('Close')
+    act(() => close.click())
+    expect(change).toHaveBeenCalledExactlyOnceWith(false)
+  })
+
   it('stays open on an Escape that ends an input method composition and closes on the next one', () => {
     const change = vi.fn()
     act(() => root!.render(
-      <ModalDialog open onOpenChange={change} contentClassName="settings-modal">
+      <ModalDialog open onOpenChange={change} size="wide">
         <ModalTitle>设置</ModalTitle>
         <input aria-label="名称" />
       </ModalDialog>,

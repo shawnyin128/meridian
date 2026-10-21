@@ -14,6 +14,7 @@ import {
   wikiAggregation, wikiPaper, wikiSearchIndex, type WikiData,
 } from '../core/wiki/index.js'
 import {
+  AuthorSearchFailedSchema,
   ChangeEntrySchema,
   ChangelogDeleteParamsSchema,
   ChatActionSchema,
@@ -843,6 +844,7 @@ describe('contract schemas', () => {
       date: '2026-08-24',
       source: '实验',
       diff: ['- v2:长上下文下效应更强(推测)', '+ v3:batch≥8 实测确认(实验 #3)'],
+      lines: [['- v2:长上下文下效应更强(推测)'], ['+ v3:', { paper: 'EAGLE-2' }]],
       undone: false,
       undoable: true,
       archived: false,
@@ -867,11 +869,11 @@ describe('contract schemas', () => {
 
   it('最近变动的 fixture 全部符合契约', () => {
     expect(changes.length).toBe(4)
-    // Legacy fixture entries predate undo and archive support; reads supply the three missing fields.
+    // Legacy fixture entries predate undo and archive support; reads supply the missing fields.
     expect(changes.every((entry) =>
       !('undone' in entry) && !('undoable' in entry) && !('archived' in entry))).toBe(true)
     for (const entry of changes) {
-      ChangeEntrySchema.parse({ ...entry, undone: false, undoable: false, archived: false })
+      ChangeEntrySchema.parse({ ...entry, lines: entry.diff.map((line) => [line]), undone: false, undoable: false, archived: false })
     }
   })
 
@@ -1039,6 +1041,8 @@ describe('contract schemas', () => {
   it('没取回原文的结果只带一个封闭的失败原因，不带原始错误', () => {
     expect(InboxDownloadResultSchema.parse({ kind: 'failed', reason: 'not-pdf' }))
       .toEqual({ kind: 'failed', reason: 'not-pdf' })
+    expect(InboxDownloadResultSchema.parse({ kind: 'failed', reason: 'write' }))
+      .toEqual({ kind: 'failed', reason: 'write' })
     expect(() => InboxDownloadResultSchema.parse({ kind: 'failed', reason: 'ENOENT' })).toThrow()
     expect(() => InboxDownloadResultSchema.parse({ kind: 'failed', reason: 'server', error: 'x' })).toThrow()
   })
@@ -1047,6 +1051,9 @@ describe('contract schemas', () => {
     expect(NetFailedSchema.parse({ kind: 'failed', reason: 'rate-limit' })).toEqual({ kind: 'failed', reason: 'rate-limit' })
     expect(() => NetFailedSchema.parse({ kind: 'failed', reason: 'not-pdf' })).toThrow()
     expect(() => NetFailedSchema.parse({ kind: 'failed', reason: 'unknown', error: 'x' })).toThrow()
+    expect(AuthorSearchFailedSchema.parse({ kind: 'failed', reason: 'no-key' })).toEqual({ kind: 'failed', reason: 'no-key' })
+    expect(() => NetFailedSchema.parse({ kind: 'failed', reason: 'no-key' })).toThrow()
+    expect(() => AuthorSearchFailedSchema.parse({ kind: 'failed', reason: 'no-key', error: 'x' })).toThrow()
   })
 
   it('收件的三个写入口各只收一个条目 id', () => {
@@ -1132,7 +1139,7 @@ describe('contract schemas', () => {
     const aggregationIds = wikiSearchIndex(data).map((hit) => hit.target)
     expect(aggregationIds.length).toBeGreaterThan(0)
     const version = { fm: '0123456789abcdef', body: '0123456789abcdef' }
-    for (const id of aggregationIds) WikiAggregationSchema.parse(wikiAggregation(data, id, version, {}))
+    for (const id of aggregationIds) WikiAggregationSchema.parse(wikiAggregation(data, id, version, {}, () => undefined))
     for (const row of papers) WikiPaperSchema.parse(wikiPaper(data, `papers/${row.id}`, version))
   })
 

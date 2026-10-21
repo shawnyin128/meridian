@@ -37,6 +37,7 @@ function setValue(input: HTMLTextAreaElement, value: string): void {
 }
 
 describe('ReadingNotes', () => {
+  beforeEach(() => { vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} }) })
   const roots: ReturnType<typeof createRoot>[] = []
 
   beforeEach(() => {
@@ -70,6 +71,41 @@ describe('ReadingNotes', () => {
     expect(draft.value).toBe('')
   })
 
+  it('新笔记、改笔记与改高亮批注的保存钮都只叫保存', async () => {
+    const host = document.createElement('div')
+    document.body.append(host)
+    const root = createRoot(host)
+    roots.push(root)
+    act(() => root.render(
+      <MessagesProvider>
+        <Notes reading={READING} currentPage={1} saving={false} onJump={vi.fn()} onMutate={async () => true} />
+      </MessagesProvider>,
+    ))
+    const saves = [...host.querySelectorAll('.note-compose > .btn, .reading-actions > .btn')].map((button) => button.textContent)
+    expect(saves).toHaveLength(3)
+    expect(new Set(saves)).toEqual(new Set(['保存']))
+  })
+
+  it('笔记和高亮卡片的删除是卡片顶行操作槽里的图标钮，悬停时标红；保存留在槽外', async () => {
+    const host = document.createElement('div')
+    document.body.append(host)
+    const root = createRoot(host)
+    roots.push(root)
+    act(() => root.render(
+      <MessagesProvider>
+        <Notes reading={READING} currentPage={1} saving={false} onJump={vi.fn()} onMutate={async () => true} />
+      </MessagesProvider>,
+    ))
+    const slot = (row: Element) => [...row.querySelectorAll('.row-actions button')].map((item) => [
+      item.getAttribute('aria-label'), item.textContent, item.classList.contains('icbtn'), item.classList.contains('danger'),
+    ])
+    for (const card of host.querySelectorAll('.reading-card')) {
+      expect(card.hasAttribute('data-row-actions')).toBe(true)
+      expect(slot(card)).toEqual([['删除', '', true, true]])
+      expect(card.querySelector('.row-actions .btn')).toBeNull()
+    }
+  })
+
   it('已有高亮与笔记只发精确的修改、删除命令，页码按钮负责定位', async () => {
     const host = document.createElement('div')
     document.body.append(host)
@@ -86,14 +122,14 @@ describe('ReadingNotes', () => {
       </MessagesProvider>,
     ))
 
-    const highlightNote = host.querySelector<HTMLTextAreaElement>('[aria-label="第 2 页高亮笔记"]')!
+    const highlightNote = host.querySelector<HTMLTextAreaElement>('[aria-label="第 2 页高亮批注"]')!
     act(() => setValue(highlightNote, '高亮判断'))
-    await act(async () => { highlightNote.closest('article')!.querySelector<HTMLButtonElement>('.btn')!.click() })
+    await act(async () => { highlightNote.closest('article')!.querySelector<HTMLButtonElement>('.reading-actions .btn')!.click() })
     const note = host.querySelector<HTMLTextAreaElement>('[aria-label="第 3 页笔记"]')!
     act(() => setValue(note, '修订笔记'))
-    await act(async () => { note.closest('article')!.querySelector<HTMLButtonElement>('.btn')!.click() })
+    await act(async () => { note.closest('article')!.querySelector<HTMLButtonElement>('.reading-actions .btn')!.click() })
     await act(async () => { note.closest('article')!.querySelector<HTMLButtonElement>('.reading-delete')!.click() })
-    act(() => { host.querySelector<HTMLButtonElement>('.highlight-card .reading-page')!.click() })
+    act(() => { host.querySelector<HTMLButtonElement>('.highlight-card .reading-page .source-anchor')!.click() })
 
     expect(mutations).toEqual([
       { kind: 'highlight.update', id: 'highlight-1', note: '高亮判断' },

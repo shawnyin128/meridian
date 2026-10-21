@@ -38,7 +38,8 @@ test('不传 MERIDIAN_SHOW_WINDOW 时窗口上屏', async ({ configHome }) => {
   try {
     const win = await app.firstWindow()
     await win.locator('.sidebar').waitFor()
-    expect(await visible(app)).toBe(true)
+    // The window shows once the renderer has painted its first frame, which may land just after this.
+    await expect.poll(() => visible(app)).toBe(true)
   } finally {
     await app.close()
   }
@@ -48,7 +49,7 @@ test('不传 MERIDIAN_SHOW_WINDOW 时窗口上屏', async ({ configHome }) => {
 const cleanEnv = () => Object.fromEntries(Object.entries(process.env).filter(
   (e): e is [string, string] => e[1] !== undefined && !e[0].startsWith('MERIDIAN_')))
 
-test('指定的库里没有论文页目录时,内容区报出缺的目录,设置仍打得开', async ({ configHome }) => {
+test('指定的库里没有论文页目录时,内容区报出原因的标签而不带路径,设置仍打得开', async ({ configHome }) => {
   const bare = mkdtempSync(join(tmpdir(), 'meridian-e2e-bare-'))
   const app = await electron.launch({
     args: ZH_ARGS,
@@ -57,10 +58,10 @@ test('指定的库里没有论文页目录时,内容区报出缺的目录,设置
   try {
     const win = await app.firstWindow()
     await expect(win.locator('.bootfail .desk-head .t')).toHaveText('论文库打不开')
-    await expect(win.locator('.bootfail .ipcerror')).toHaveText(`库里没有论文页目录：${join(bare, 'wiki', 'papers')}`)
-    await win.locator('.bootfail .btn', { hasText: '打开设置' }).click()
-    // The button opens settings on its default category (appearance), not a contextual jump to storage.
-    await win.locator('.setdlg .srow[data-setcat="storage"]').click()
+    await expect(win.locator('.bootfail .ipcerror')).toHaveText('不是 Meridian 论文库')
+    await win.locator('.bootfail .btn', { hasText: '换论文库' }).click()
+    // The button opens settings on the storage category, where another library is chosen.
+    await expect(win.locator('.setdlg .srow[data-setcat="storage"]')).toHaveClass(/\bon\b/)
     // The root path now shows in the shared read-only directory field, not a separate <code> element.
     await expect(win.locator('.setdlg .storage-root .directory-field input')).toHaveValue(/meridian-e2e-bare-/)
   } finally {
@@ -69,16 +70,16 @@ test('指定的库里没有论文页目录时,内容区报出缺的目录,设置
   }
 })
 
-test('指定的库没有 Wiki 结构文件时,内容区报出缺的那个文件', async ({ configHome }) => {
+test('指定的库没有 Wiki 结构文件时,内容区报出原因的标签而不带路径', async ({ configHome }) => {
   const legacy = mkdtempSync(join(tmpdir(), 'meridian-e2e-noschema-'))
   mkdirSync(join(legacy, 'wiki', 'papers'), { recursive: true })
   const app = await electron.launch({
-    args: [APP_DIR],
+    args: ZH_ARGS,
     env: { ...cleanEnv(), MERIDIAN_VAULT_ROOT: legacy, MERIDIAN_CONFIG_HOME: configHome, MERIDIAN_SHOW_WINDOW: '0' },
   })
   try {
     const win = await app.firstWindow()
-    await expect(win.locator('.bootfail .ipcerror')).toHaveText(`库里没有 Wiki 结构文件：${join(legacy, 'wiki', 'schema.yaml')}`)
+    await expect(win.locator('.bootfail .ipcerror')).toHaveText('不是 Meridian 论文库')
   } finally {
     await app.close()
     rmSync(legacy, { recursive: true, force: true })
@@ -90,11 +91,11 @@ test('用户配置登记的库打不开时报错,不悄悄换成应用自己的�
   const missing = join(home, 'missing-library')
   writeFileSync(join(home, 'paper-wiki-workspaces.json'), JSON.stringify({ active_library_root: missing }), 'utf8')
   const app = await electron.launch({
-    args: [APP_DIR], env: { ...cleanEnv(), MERIDIAN_CONFIG_HOME: home, MERIDIAN_SHOW_WINDOW: '0' },
+    args: ZH_ARGS, env: { ...cleanEnv(), MERIDIAN_CONFIG_HOME: home, MERIDIAN_SHOW_WINDOW: '0' },
   })
   try {
     const win = await app.firstWindow()
-    await expect(win.locator('.bootfail .ipcerror')).toHaveText(`库里没有论文页目录：${join(missing, 'wiki', 'papers')}`)
+    await expect(win.locator('.bootfail .ipcerror')).toHaveText('不是 Meridian 论文库')
   } finally {
     await app.close()
     rmSync(home, { recursive: true, force: true })
@@ -129,13 +130,13 @@ test('设置可重置、切换和删除论文库备份', async ({ configHome }) 
     const reset = win.locator('.storage-reset .btn', { hasText: '重置库' })
     await expect(reset).toBeEnabled()
     await reset.click()
-    await expect(win.locator('.dlg-t')).toContainText('旧库会自动备份')
-    await win.locator('.dlg-a .btn', { hasText: '取消' }).click()
-    await expect(win.locator('.dlg-t')).toHaveCount(0)
+    await expect(win.locator('.modal-detail')).toContainText('旧库会自动备份')
+    await win.locator('.modal-actions .btn', { hasText: '取消' }).click()
+    await expect(win.locator('.modal-title')).toHaveCount(0)
 
     await reset.click()
     const reloaded = win.waitForEvent('domcontentloaded')
-    await win.locator('.dlg-a .btn', { hasText: '重置并重启' }).click()
+    await win.locator('.modal-actions .btn', { hasText: '重置并重启' }).click()
     await reloaded
     await win.locator('.sidebar').waitFor()
     await expect(win.locator('.bootfail')).toHaveCount(0)
@@ -165,8 +166,8 @@ test('设置可重置、切换和删除论文库备份', async ({ configHome }) 
     await win.locator('.setdlg .srow[data-setcat="storage"]').click()
     await expect(win.locator('.storage-backup-row')).toHaveCount(1)
     await win.locator('.storage-backup-actions .btn', { hasText: '删除' }).click()
-    await expect(win.locator('.dlg-d')).toContainText('永久删除')
-    await win.locator('.dlg-a .btn', { hasText: '删除' }).click()
+    await expect(win.locator('.modal-detail')).toContainText('永久删除')
+    await win.locator('.modal-actions .btn', { hasText: '删除' }).click()
     await expect(win.locator('.storage-backup-row')).toHaveCount(0)
     expect(readdirSync(parent).filter((name) => name.startsWith('library-backup-'))).toEqual([])
   } finally {

@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { CallError } from './call-error.js'
 import { appMenu, chat, extensions, idea, library, papers, project } from './ipc.js'
 import type { ContractMethod } from '../shared/contract.js'
 
@@ -52,9 +53,21 @@ describe('renderer ipc client', () => {
     )
   })
 
-  it('core 报错时把错误透出来而不是吞掉', async () => {
-    vi.stubGlobal('meridian', { call: () => Promise.reject(new Error('论文不存在:x')) })
-    await expect(papers.get('x')).rejects.toThrow('论文不存在:x')
+  it('core 拒绝的调用抛出带着 core 所给原因的 CallError', async () => {
+    vi.stubGlobal('meridian', { call: () => Promise.reject({ reason: 'not-found' }) })
+    const caught: unknown = await papers.get('x').catch((error: unknown) => error)
+    expect(caught).toBeInstanceOf(CallError)
+    expect(caught).toMatchObject({ method: 'papers.get', reason: 'not-found' })
+  })
+
+  it('不是 core 给的拒绝记进日志、原因是 unknown,错误里不带原话', async () => {
+    const log = vi.spyOn(console, 'error').mockImplementation(() => {})
+    vi.stubGlobal('meridian', { call: () => Promise.reject(new Error('Meridian 无法连接本地数据服务。')) })
+    const caught: unknown = await papers.get('x').catch((error: unknown) => error)
+    expect(caught).toMatchObject({ method: 'papers.get', reason: 'unknown' })
+    expect((caught as Error).message).not.toContain('Meridian')
+    expect(log).toHaveBeenCalledWith(expect.stringContaining('Meridian 无法连接本地数据服务。'))
+    log.mockRestore()
   })
 
   it('库位置读写走类型化 Core 契约，目录选择与重启走窄 Main 接口', async () => {

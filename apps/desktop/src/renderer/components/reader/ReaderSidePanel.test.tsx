@@ -2,10 +2,22 @@
 import { act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { PaperReading } from '../../../shared/contract.js'
+import type { PaperReading, PaperRow } from '../../../shared/contract.js'
 import { MessagesProvider } from '../../messages/useMessages.js'
 import { LANGUAGE_STORAGE_KEY } from '../../shell/language.js'
-import { ReaderSidePanel, type ReaderSideTab } from './ReaderSidePanel.js'
+
+vi.mock('../../ipc.js', () => ({
+  harness: { pendingPaperWiki: () => new Promise(() => {}), preparePaperWiki: vi.fn() },
+  papers: { update: vi.fn(), get: vi.fn() },
+  project: { list: () => new Promise(() => {}), addPaper: vi.fn(), removePaper: vi.fn() },
+}))
+vi.mock('../../shell/AppShell.js', () => ({
+  useNotice: () => ({ success: vi.fn(), refusal: vi.fn() }),
+  useVaultRevision: () => ({ revision: 0, bump: vi.fn() }),
+}))
+
+const { ReaderSidePanel } = await import('./ReaderSidePanel.js')
+type ReaderSideTab = import('./ReaderSidePanel.js').ReaderSideTab
 
 declare global {
   var IS_REACT_ACT_ENVIRONMENT: boolean
@@ -24,12 +36,17 @@ const reading = (paperId: string, n: number): PaperReading => ({
     id: `note-${n}`, page: 3, text: '原笔记', created: '2026-09-14', updated: '2026-09-14',
   }],
 })
+const PAPER: PaperRow = {
+  id: 'paper-1', title: '一篇论文', venue: 'arXiv', topics: [], methods: [], datasets: [], metrics: [],
+  pageState: 'draft', readState: '未读', pageCount: 1, noteCount: 0, conclusionCount: 0,
+  updated: '2026-01-01', custom: {}, projects: [],
+}
 const PAPER_ONE = reading('paper-1', 1)
 const PAPER_TWO = reading('paper-2', 2)
 
 const NEW_NOTE = '[aria-label="新笔记"]'
 const NOTE = '[aria-label="第 3 页笔记"]'
-const HIGHLIGHT_NOTE = '[aria-label="第 2 页高亮笔记"]'
+const HIGHLIGHT_NOTE = '[aria-label="第 2 页高亮批注"]'
 const REMARK = 'textarea[aria-label="随笔"]'
 
 function setValue(input: HTMLTextAreaElement, value: string): void {
@@ -39,6 +56,7 @@ function setValue(input: HTMLTextAreaElement, value: string): void {
 }
 
 describe('ReaderSidePanel', () => {
+  beforeEach(() => { vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} }) })
   let root: Root | null = null
   let host: HTMLElement
 
@@ -57,10 +75,12 @@ describe('ReaderSidePanel', () => {
   })
 
   /** Renders the rail on `tab` for `held`, as the reader does on every tab switch or paper change. */
-  const show = (tab: ReaderSideTab | null, held: PaperReading, onSave = async () => true) => act(() => root!.render(
+  const show = (
+    tab: ReaderSideTab | null, held: PaperReading, onSave = async () => true, paper: PaperRow | null = null,
+  ) => act(() => root!.render(
     <MessagesProvider>
       <ReaderSidePanel
-        tab={tab} onTab={vi.fn()} paper={null} onPaper={vi.fn()} reading={held} currentPage={1}
+        tab={tab} onTab={vi.fn()} paper={paper} onPaper={vi.fn()} reading={held} currentPage={1}
         saving={false} onMutate={onSave} onSaveRemark={onSave} onJump={vi.fn()} focusHighlightId={null}
       />
     </MessagesProvider>,
@@ -70,6 +90,53 @@ describe('ReaderSidePanel', () => {
   const saveButton = (selector: string) => field(selector).closest('article, .remark-compose')!.querySelector<HTMLButtonElement>('.btn')!
   const escape = (selector: string) => act(() => {
     field(selector).dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }))
+  })
+
+  it('右栏的五个按钮是一组：一个 Tab 停靠点，进来落在开着的那个，方向键换一个，再按开着的那个就收起', async () => {
+    const onTab = vi.fn()
+    act(() => root!.render(
+      <MessagesProvider>
+        <ReaderSidePanel
+          tab="notes" onTab={onTab} paper={PAPER} onPaper={vi.fn()} reading={PAPER_ONE} currentPage={1}
+          saving={false} onMutate={vi.fn()} onSaveRemark={vi.fn()} onJump={vi.fn()} focusHighlightId={null}
+        />
+      </MessagesProvider>,
+    ))
+    const rail = host.querySelector<HTMLElement>('.reader-rail')!
+    const tabs = [...rail.querySelectorAll<HTMLButtonElement>('button')]
+    expect([rail, ...tabs].filter((element) => element.tabIndex === 0)).toEqual([rail])
+    await act(async () => { rail.focus() })
+    expect(document.activeElement!.getAttribute('aria-label')).toBe('阅读笔记')
+    await act(async () => {
+      document.activeElement!.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true, cancelable: true }))
+      await new Promise((done) => setTimeout(done, 0))
+    })
+    expect(document.activeElement!.getAttribute('aria-label')).toBe('随笔')
+    act(() => tabs[2]!.click())
+    act(() => tabs[0]!.click())
+    expect(onTab.mock.calls).toEqual([[null], ['metadata']])
+  })
+
+  it('右栏的每个面板都以同一种标题栏开头，元数据面板也有', () => {
+    const heads = (['metadata', 'highlights', 'notes', 'remark', 'wiki'] as const).map((tab) => {
+      show(tab, PAPER_ONE, undefined, PAPER)
+      const panel = host.querySelector('.reader-side')!.firstElementChild!
+      const head = panel.firstElementChild!
+      return [head.tagName, head.className, head.querySelector('strong')?.textContent]
+    })
+    expect(heads).toEqual([
+      ['HEADER', 'reader-panel-head', '元数据'],
+      ['HEADER', 'reader-panel-head', '高亮与批注'],
+      ['HEADER', 'reader-panel-head', '阅读笔记 · 1'],
+      ['HEADER', 'reader-panel-head', '随笔 · 本篇'],
+      ['HEADER', 'reader-panel-head', '内化到 Wiki'],
+    ])
+  })
+
+  it('元数据面板的 Wiki 一行写页的状态名，不写存下的值', () => {
+    show('metadata', PAPER_ONE, undefined, PAPER)
+    const wiki = [...host.querySelectorAll('.paper-meta-list dt')].find((dt) => dt.textContent === 'Wiki')!
+    expect(wiki.nextElementSibling!.textContent).toBe('草稿')
   })
 
   it('没保存的新笔记、笔记修改、高亮笔记和随笔留在各自的论文上：切右栏、收起右栏、换一篇再回来都还在，也不出现在另一篇', () => {
@@ -102,7 +169,7 @@ describe('ReaderSidePanel', () => {
   it('保存成功后不再留草稿：输入框显示库里存下的文字', async () => {
     show('notes', PAPER_ONE)
     type(NOTE, '  改过的笔记  ')
-    await act(async () => { field(NOTE).closest('article')!.querySelector<HTMLButtonElement>('.btn')!.click() })
+    await act(async () => { saveButton(NOTE).click() })
     const saved = { ...PAPER_ONE, notes: [{ ...PAPER_ONE.notes[0]!, text: '改过的笔记' }] }
     show('notes', saved)
     expect(field(NOTE).value).toBe('改过的笔记')

@@ -2,6 +2,7 @@ import { mkdtempSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
+import { callFailure } from '../call-error.js'
 import { createFixtureStore } from '../fixture-store.js'
 import { sanitizeModelConnectionDetail, type ChatHarnessRunner } from './chat.js'
 import { createChatService } from './chat-service.js'
@@ -76,15 +77,47 @@ describe('Core chat service', () => {
     const sending = service.send('amortize', '停止这个请求')
 
     expect(service.cancel('amortize')).toEqual({ id: 'amortize', cancelled: true })
-    await expect(sending).resolves.toEqual({
-      id: 'amortize', state: 'cancelled', message: '已停止生成',
-    })
+    await expect(sending).resolves.toEqual({ id: 'amortize', state: 'cancelled' })
     expect(store.chatMessages('amortize').slice(before)).toMatchObject([
       { role: 'you', runs: [{ text: '停止这个请求' }] },
     ])
   })
 
-  it('states that setup is required instead of pretending to be an AI answer', async () => {
+  it('answers a failed model call with its reason and keeps the provider text out of the result', async () => {
+    const store = createFixtureStore()
+    const runner: ChatHarnessRunner = {
+      checkConnection: vi.fn(async () => ({
+        state: 'connected' as const, modelCalls: 1 as const, maxOutputTokens: 1 as const,
+      })),
+      answer: vi.fn(async () => { throw new Error('401 Unauthorized: invalid x-api-key') }),
+      close: vi.fn(),
+    }
+    const service = createChatService({ store, model: await configuredModel(), runner })
+
+    await expect(service.send('amortize', '测试')).resolves.toEqual({ id: 'amortize', state: 'failed', reason: 'model' })
+  })
+
+  it('fails a second send to a chat that is still generating as busy', async () => {
+    const store = createFixtureStore()
+    const runner: ChatHarnessRunner = {
+      checkConnection: vi.fn(async () => ({
+        state: 'connected' as const, modelCalls: 1 as const, maxOutputTokens: 1 as const,
+      })),
+      answer: vi.fn((_id, _text, signal) => new Promise<string>((_resolve, reject) => {
+        signal.addEventListener('abort', () => reject(new Error('cancelled')), { once: true })
+      })),
+      close: vi.fn(),
+    }
+    const service = createChatService({ store, model: await configuredModel(), runner })
+    const first = service.send('amortize', '第一句')
+
+    const second = await service.send('amortize', '第二句').catch((error: unknown) => error)
+    expect(callFailure(second)).toBe('busy')
+    service.cancel('amortize')
+    await first
+  })
+
+  it('without a model keeps only the user turn and reports no-model, writing no status sentence of its own', async () => {
     const store = createFixtureStore()
     const model = await createHarnessModelConfig(
       mkdtempSync(join(tmpdir(), 'meridian-chat-model-')),
@@ -94,10 +127,7 @@ describe('Core chat service', () => {
     const before = store.chatMessages('amortize').length
 
     const result = await service.send('amortize', '测试')
-    expect(result.state).toBe('failed')
-    expect(store.chatMessages('amortize').slice(before)).toMatchObject([
-      { role: 'you' },
-      { role: 'status', runs: [{ text: expect.stringContaining('设置') }] },
-    ])
+    expect(result).toEqual({ id: 'amortize', state: 'failed', reason: 'no-model' })
+    expect(store.chatMessages('amortize').slice(before).map((message) => message.role)).toEqual(['you'])
   })
 })

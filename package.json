@@ -9,8 +9,8 @@
   "scripts": {
     "setup:harness": "conda run --no-capture-output -n meridian python -m pip install --upgrade --target apps/harness/.runtime -e apps/harness",
     "dev:ui-samples": "MERIDIAN_LIBRARY_ROOT=/tmp/meridian-ui-samples MERIDIAN_UI_SAMPLES=1 npm --prefix apps/desktop run dev",
-    "lint": "eslint apps e2e && node scripts/check-comment-language.mjs",
-    "typecheck": "tsc -p apps/desktop --noEmit && tsc -p apps/desktop/tsconfig.preload.json --noEmit && tsc -p apps/desktop/tsconfig.renderer.json --noEmit && tsc -p apps/desktop/tsconfig.copy-test.json --noEmit && tsc -p e2e --noEmit",
+    "lint": "eslint apps e2e && node scripts/check-comment-language.mjs && node scripts/check-css-vars.mjs && node scripts/check-css-literals.mjs",
+    "typecheck": "tsc -p apps/desktop --noEmit && tsc -p apps/desktop/tsconfig.preload.json --noEmit && tsc -p apps/desktop/tsconfig.renderer.json --noEmit && tsc -p apps/desktop/tsconfig.copy-test.json --noEmit && tsc -p apps/desktop/tsconfig.boundary-test.json --noEmit && tsc -p e2e --noEmit",
     "test": "vitest run",
     "e2e": "npm --prefix apps/desktop run build && node scripts/e2e.mjs",
     "check": "npm run lint && npm run typecheck"
@@ -35,9 +35,14 @@
   },
   "dependencies": {
     "@radix-ui/react-alert-dialog": "^1.1.23",
+    "@radix-ui/react-context-menu": "^2.3.7",
     "@radix-ui/react-dialog": "^1.1.23",
     "@radix-ui/react-dropdown-menu": "^2.1.24",
     "@radix-ui/react-popover": "^1.1.23",
+    "@radix-ui/react-switch": "^1.3.7",
+    "@radix-ui/react-toggle-group": "^1.1.19",
+    "@radix-ui/react-toolbar": "^1.1.19",
+    "@radix-ui/react-tooltip": "^1.2.16",
     "katex": "^0.16.47",
     "pdfjs-dist": "^6.3.289",
     "react": "^19.2.8",

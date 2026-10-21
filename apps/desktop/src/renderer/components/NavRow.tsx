@@ -1,4 +1,5 @@
-import type { CSSProperties, ReactNode } from 'react'
+import type { ReactNode } from 'react'
+import { useToolbarItem } from './Toolbar.js'
 import './NavRow.css'
 
 /**
@@ -7,10 +8,11 @@ import './NavRow.css'
  * `children`, such as a collapse caret or a "More" menu: it stays a div whose button is the `label`,
  * and a pointer click anywhere else on the row activates it too, so each control in `children` must
  * stop its click from reaching the row. `className` gives the row its look; `selected` adds `on` for
- * the row whose destination is shown, and `expanded` is the state of a row that folds a group.
+ * the row whose destination is shown, and `expanded` is the state of a row that folds a group. In a
+ * toolbar the row's button is one of the toolbar's controls.
  */
 export function NavRow({
-  children, label, className, selected = false, expanded, onActivate, id, style, ...data
+  children, label, className, selected = false, expanded, onActivate, id, ...data
 }: {
   children: ReactNode
   label?: ReactNode
@@ -19,20 +21,20 @@ export function NavRow({
   expanded?: boolean
   onActivate: () => void
   id?: string
-  style?: CSSProperties
 } & { [key: `data-${string}`]: string }) {
+  const asItem = useToolbarItem()
   const rowClass = selected ? `${className} on` : className
   if (label === undefined) {
-    return (
+    return asItem(
       <button
-        type="button" className={`nav-row ${rowClass}`} id={id} style={style} aria-expanded={expanded}
+        type="button" className={`nav-row ${rowClass}`} id={id} aria-expanded={expanded}
         onClick={onActivate} {...data}
-      >{children}</button>
+      >{children}</button>,
     )
   }
   return (
-    <div className={rowClass} id={id} style={style} onClick={onActivate} {...data}>
-      <button type="button" className="nav-row nav-row-label" aria-expanded={expanded}>{label}</button>
+    <div className={rowClass} id={id} onClick={onActivate} {...data}>
+      {asItem(<button type="button" className="nav-row nav-row-label" aria-expanded={expanded}>{label}</button>)}
       {children}
     </div>
   )

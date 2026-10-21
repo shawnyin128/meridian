@@ -49,13 +49,17 @@ describe('上传之后的元数据解析', () => {
     expect(store.getPaper(paper.id).pageCount).toBe(9)
   })
 
-  it('没有编号时使用 PDF info 标题', async () => {
+  it('没有编号时使用 PDF info 标题,动态里只说标题取自哪里', async () => {
     const { store, queue, lookups, upload } = setup({ facts: { title: 'Speculative Serving at Scale' } })
     const paper = upload('scan.pdf')
     await queue.idle()
     expect(lookups).toEqual([])
     expect(store.getPaper(paper.id).title).toBe('Speculative Serving at Scale')
     expect(queue.uploads()[0]).toMatchObject({ step: 'done', found: 'pdf' })
+    expect(store.listFeed()[0]?.body).toEqual({ kind: 'runs', runs: [
+      { kind: 'text', text: '你上传的' }, { kind: 'strong', text: '《Speculative Serving at Scale》' },
+      { kind: 'text', text: '已入库，标题取自 PDF。' },
+    ] })
   })
 
   it('远端失败不删除已入库论文,并留下短原因', async () => {
@@ -66,6 +70,7 @@ describe('上传之后的元数据解析', () => {
     expect(queue.uploads()[0]).toMatchObject({ step: 'failed', error: '网络不可用' })
     expect(JSON.stringify(store.listFeed()[0]?.body)).toContain('元数据暂未补全')
     expect(JSON.stringify(store.listFeed()[0]?.body)).not.toContain('网络不可用')
+    expect(JSON.stringify(store.listFeed()[0]?.body)).not.toContain('论文表')
   })
 
   it('保留整个活动批次,并发探测 PDF,再用一次远端批量查询补全', async () => {

@@ -10,6 +10,7 @@ describe('ProjectAttachments', () => {
   let root: Root
 
   beforeEach(() => {
+    vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} })
     globalThis.IS_REACT_ACT_ENVIRONMENT = true
     host = document.createElement('div')
     document.body.append(host)
@@ -19,6 +20,21 @@ describe('ProjectAttachments', () => {
   afterEach(() => {
     act(() => root.unmount())
     host.remove()
+  })
+
+  it('puts the attachment\'s delete into the row-actions slot as a glyph that turns red on hover', () => {
+    act(() => root.render(
+      <MessagesProvider>
+        <ProjectAttachments
+          attachments={[{ id: 'a1', name: 'run.log', size: '2 KB', path: 'attachments/run.log' }]}
+          onAdd={vi.fn()} onReveal={vi.fn()} onRemove={vi.fn()}
+        />
+      </MessagesProvider>,
+    ))
+    const slot = (row: Element) => [...row.querySelectorAll('.row-actions button')].map((item) => [
+      item.getAttribute('aria-label'), item.textContent, item.classList.contains('icbtn'), item.classList.contains('danger'),
+    ])
+    expect(slot(host.querySelector('.attrow')!)).toEqual([['Delete attachment', '', true, true]])
   })
 
   it('reveals an attachment from a button that holds its name', () => {
@@ -32,6 +48,21 @@ describe('ProjectAttachments', () => {
     const name = host.querySelector<HTMLElement>('.attrow .an')!
     expect(name.tagName).toBe('BUTTON')
     act(() => name.click())
-    expect(onReveal).toHaveBeenCalledWith(attachment)
+    expect(onReveal).toHaveBeenCalledWith('attachments/run.log')
+  })
+
+  it('shows an attachment saved without a location as a disabled name with a short state', () => {
+    const onReveal = vi.fn()
+    act(() => root.render(
+      <MessagesProvider>
+        <ProjectAttachments
+          attachments={[{ id: 'a1', name: 'run.log', size: '2 KB' }]} onAdd={vi.fn()} onReveal={onReveal} onRemove={vi.fn()}
+        />
+      </MessagesProvider>,
+    ))
+    const name = host.querySelector<HTMLButtonElement>('.attrow .an')!
+    expect([name.disabled, name.nextElementSibling?.textContent]).toEqual([true, 'No file location'])
+    act(() => name.click())
+    expect(onReveal).not.toHaveBeenCalled()
   })
 })

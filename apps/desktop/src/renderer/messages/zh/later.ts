@@ -1,7 +1,7 @@
 /** Later (read-later queue) screen copy. */
 export const later = {
   title: (count: number) => `稍后阅读 · ${count}`,
-  empty: '稍后阅读里还没有论文。',
+  empty: '还没有稍后阅读的论文',
   groupBy: '分组方式',
   modes: { time: '按时间', src: '按来源' },
   actions: {

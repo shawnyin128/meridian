@@ -2,27 +2,34 @@
 import { act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import type { ChatMessage, ChatSendResult } from '../../shared/contract.js'
 import { MessagesProvider } from '../messages/useMessages.js'
 import { LANGUAGE_STORAGE_KEY } from '../shell/language.js'
+import { TOOLTIP_DELAY } from '../components/Tooltip.js'
 
 declare global {
   var IS_REACT_ACT_ENVIRONMENT: boolean
 }
 
 const api = vi.hoisted(() => ({
-  send: vi.fn(() => Promise.resolve({ id: 'chat-1', state: 'complete' })),
+  send: vi.fn((): Promise<ChatSendResult> => Promise.resolve({ id: 'chat-1', state: 'complete' })),
+  cancel: vi.fn(() => Promise.resolve({ id: 'chat-1', cancelled: true })),
   listProjects: vi.fn(() => Promise.resolve([{
     id: 'draft', name: '草稿树项目', status: '进行中', priority: 'p1', topic: '推理', focus: '验证',
     conclusions: { verified: 0, pending: 0, conflicting: 0 }, paperCount: 0,
     milestones: [], recentEvents: [],
   }])),
   listPapers: vi.fn(() => Promise.resolve({ rows: [], total: 0 })),
+  messages: vi.fn<() => Promise<ChatMessage[]>>(() => Promise.resolve([])),
 }))
 
-const session = vi.hoisted(() => ({ id: 'chat-1' }))
+const session = vi.hoisted(() => ({ id: 'chat-1', revision: 0 }))
+
+/** The callbacks of every ResizeObserver made. */
+const resized: (() => void)[] = []
 
 vi.mock('../ipc.js', () => ({
-  chat: { send: api.send, messages: () => Promise.resolve([]), cancel: vi.fn(), create: vi.fn() },
+  chat: { send: api.send, messages: api.messages, cancel: api.cancel, create: vi.fn() },
   feed: { append: vi.fn() },
   idea: { create: vi.fn() },
   papers: { list: api.listPapers },
@@ -31,12 +38,11 @@ vi.mock('../ipc.js', () => ({
 }))
 
 vi.mock('../shell/AppShell.js', () => ({
-  useBanner: () => vi.fn(),
-  useToast: () => vi.fn(),
+  useNotice: () => ({ success: vi.fn(), refusal: vi.fn() }),
   useCrumbTail: () => {},
   useJump: () => ({ jump: null, open: vi.fn(), returnTo: vi.fn() }),
   useChatSession: () => ({ id: session.id, title: '讨论', archived: false, select: vi.fn() }),
-  useVaultRevision: () => ({ revision: 0, bump: vi.fn() }),
+  useVaultRevision: () => ({ revision: session.revision, bump: vi.fn() }),
 }))
 
 vi.mock('../hooks/useVaultWrite.js', () => ({
@@ -59,10 +65,17 @@ describe('Chat composer', () => {
 
   beforeEach(async () => {
     globalThis.IS_REACT_ACT_ENVIRONMENT = true
+    resized.length = 0
+    vi.stubGlobal('ResizeObserver', class {
+      constructor(callback: () => void) { resized.push(callback) }
+      observe() {}
+      disconnect() {}
+    })
     window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'zh')
     document.body.innerHTML = ''
     vi.clearAllMocks()
     session.id = 'chat-1'
+    session.revision = 0
     const host = document.createElement('div')
     document.body.append(host)
     root = createRoot(host)
@@ -107,6 +120,20 @@ describe('Chat composer', () => {
     expect(api.send).toHaveBeenCalledWith('chat-1', '为什么')
   })
 
+  it('没配置模型时发送失败，输入框里显示「AI 未连接」的状态；配好后再发一次成功，状态就消失', async () => {
+    api.send.mockResolvedValueOnce({ id: 'chat-1', state: 'failed', reason: 'no-model' })
+    const state = () => document.querySelector('.cbox .tag')?.textContent ?? null
+    expect(state()).toBeNull()
+    act(() => setValue(composer, '为什么'))
+    press('Enter')
+    await act(async () => { await Promise.resolve(); await Promise.resolve() })
+    expect(state()).toBe('AI 未连接')
+    act(() => setValue(composer, '再问一次'))
+    press('Enter')
+    await act(async () => { await Promise.resolve(); await Promise.resolve() })
+    expect(state()).toBeNull()
+  })
+
   it('@ 候选开着时输入法组字的 Esc 不收起候选，组完字后的 Esc 才收起', () => {
     act(() => setValue(composer, '@'))
     expect(document.querySelector('#cRes')).not.toBeNull()
@@ -145,5 +172,131 @@ describe('Chat composer', () => {
     expect(document.querySelector('#cRes')).not.toBeNull()
     await openChat('chat-2')
     expect(document.querySelector('#cRes')).toBeNull()
+  })
+
+  /** Sends `text` from the open chat and leaves its reply generating until the returned call. */
+  const sendPending = (text: string) => {
+    let finish = () => {}
+    api.send.mockImplementationOnce(() => new Promise((resolve) => {
+      finish = () => resolve({ id: session.id, state: 'complete' })
+    }))
+    act(() => setValue(composer, text))
+    press('Enter')
+    return async () => { await act(async () => { finish(); await Promise.resolve() }) }
+  }
+  const control = () => document.querySelector<HTMLButtonElement>('#sendBtn')!
+
+  it('一条对话还在生成时，换到另一条对话照常可以输入和发送', async () => {
+    const finish = sendPending('第一条的问题')
+    expect(control().getAttribute('aria-label')).toBe('正在生成，点击停止')
+
+    await openChat('chat-2')
+    expect(composer.disabled).toBe(false)
+    expect(control().getAttribute('aria-label')).toBe('发送')
+    act(() => setValue(composer, '第二条的问题'))
+    press('Enter')
+    await act(async () => { await Promise.resolve() })
+    expect(api.send).toHaveBeenLastCalledWith('chat-2', '第二条的问题')
+    await finish()
+  })
+
+  it('停止停的是正在生成的那条对话，别的对话不显示停止', async () => {
+    const finish = sendPending('第一条的问题')
+    await openChat('chat-2')
+    expect(control().getAttribute('aria-label')).toBe('发送')
+
+    await openChat('chat-1')
+    expect(control().getAttribute('aria-label')).toBe('正在生成，点击停止')
+    act(() => control().click())
+    expect(api.cancel).toHaveBeenCalledExactlyOnceWith('chat-1')
+    expect(control().getAttribute('aria-label')).toBe('发送')
+    await finish()
+  })
+
+  it('草稿去掉空白后为空时发送钮不可点，生成中的停止仍可点', async () => {
+    expect(control().disabled).toBe(true)
+    act(() => setValue(composer, ' \n '))
+    expect(control().disabled).toBe(true)
+    act(() => setValue(composer, '为什么'))
+    expect(control().disabled).toBe(false)
+
+    const finish = sendPending('为什么')
+    expect(control().getAttribute('aria-label')).toBe('正在生成，点击停止')
+    expect(control().disabled).toBe(false)
+    await finish()
+  })
+
+  it('快捷引用是一行的幽灵 chip，保存为想法是排在工具栏末尾的幽灵按钮，还没讨论时旁边写着尚无讨论', () => {
+    const chips = [...document.querySelectorAll<HTMLButtonElement>('#qmChips button')]
+    expect(chips.map((chip) => [chip.className, chip.querySelector('.fade-text')?.textContent]))
+      .toEqual([['btn ghost sm qm', '@草稿树项目']])
+    const save = document.querySelector<HTMLButtonElement>('#qaIdea')!
+    expect(save.className).toBe('btn ghost sm save-idea')
+    expect(save.parentElement!.lastElementChild).toBe(save)
+    expect([save.disabled, save.previousElementSibling?.textContent]).toEqual([true, '尚无讨论'])
+    expect(document.querySelector('.qsep')).toBeNull()
+  })
+
+  it('快捷引用的名字被截断时，悬停在共享 tooltip 里显示全名，放得下时不弹', () => {
+    vi.useFakeTimers()
+    const chip = document.querySelector<HTMLButtonElement>('#qmChips button')!
+    const text = chip.querySelector<HTMLElement>('.fade-text')!
+    text.style.overflowX = 'hidden'
+    const width = vi.spyOn(text, 'scrollWidth', 'get').mockReturnValue(100)
+    vi.spyOn(text, 'clientWidth', 'get').mockReturnValue(100)
+    const tip = () => {
+      act(() => { chip.dispatchEvent(new PointerEvent('pointermove', { bubbles: true, pointerType: 'mouse' })) })
+      act(() => { vi.advanceTimersByTime(TOOLTIP_DELAY) })
+      const shown = document.querySelector('[role="tooltip"]')?.textContent ?? null
+      act(() => {
+        chip.dispatchEvent(new PointerEvent('pointerout', { bubbles: true, pointerType: 'mouse', relatedTarget: document.body }))
+        chip.dispatchEvent(new PointerEvent('pointerleave', { pointerType: 'mouse' }))
+      })
+      act(() => { document.dispatchEvent(new PointerEvent('pointermove', { clientX: 400, clientY: 400, pointerType: 'mouse' })) })
+      act(() => { vi.advanceTimersByTime(TOOLTIP_DELAY) })
+      return shown
+    }
+    expect(tip()).toBeNull()
+    width.mockReturnValue(160)
+    expect(tip()).toBe('草稿树项目')
+    vi.useRealTimers()
+  })
+
+  it('对话在页面主体里滚动:停在末尾时新消息滚进视野,往上翻着读时不抢,自己发出的消息总会滚进视野', async () => {
+    const body = document.querySelector<HTMLElement>('.desk-body')!
+    let top = 0
+    let length = 600
+    Object.defineProperty(body, 'clientHeight', { configurable: true, get: () => 300 })
+    Object.defineProperty(body, 'scrollHeight', { configurable: true, get: () => length })
+    Object.defineProperty(body, 'scrollTop', {
+      configurable: true, get: () => top, set: (value: number) => { top = Math.min(value, Math.max(length - 300, 0)) },
+    })
+    const said: ChatMessage[] = []
+    /** An answer lands in the vault: the chat reloads and its conversation grows by 200px. */
+    const arrive = async () => {
+      said.push({ id: `m${said.length}`, role: 'ai', runs: [{ kind: 'text', text: '回答' }], actions: [] })
+      api.messages.mockResolvedValueOnce([...said])
+      session.revision += 1
+      length += 200
+      await act(async () => {
+        root!.render(<MessagesProvider><Chat /></MessagesProvider>)
+        await Promise.resolve()
+      })
+      act(() => { for (const callback of resized) callback() })
+    }
+
+    await arrive()
+    expect(body.scrollTop).toBe(500)
+    act(() => {
+      body.scrollTop = 100
+      body.dispatchEvent(new Event('scroll'))
+    })
+    await arrive()
+    expect(body.scrollTop).toBe(100)
+
+    act(() => setValue(composer, '为什么'))
+    press('Enter')
+    await act(async () => { await Promise.resolve() })
+    expect(body.scrollTop).toBe(700)
   })
 })

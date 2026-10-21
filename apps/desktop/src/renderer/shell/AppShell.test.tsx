@@ -14,15 +14,23 @@ const fixture = vi.hoisted(() => ({
   watches: [{ id: 'w-topic', type: 'topic', name: '推测解码', active: true }],
   projects: [{ id: 'p1', name: '推理项目', status: '进行中' }],
   discovery: [{ id: 'e1', kind: 'discovery', watch: '', project: 'p1', source: '推理项目' }],
+  delivered: [] as { id: string; kind: 'watch'; watch: string; title: string }[],
   chats: [{ id: 'c1', title: '讨论', archived: false, messageCount: 1 }],
   back: vi.fn(),
+  platform: 'darwin',
+  fullScreen: [] as ((on: boolean) => void)[],
+  today: () => Promise.resolve('2026-10-18'),
 }))
 
 const none = () => Promise.resolve([])
 
 vi.mock('../ipc.js', () => ({
   appMenu: {
-    onOpenSettings: () => () => {}, onOpenAgentTutorial: () => () => {}, platform: () => 'darwin',
+    onOpenSettings: () => () => {}, onOpenAgentTutorial: () => () => {}, platform: () => fixture.platform,
+    onFullScreen: (handler: (on: boolean) => void) => {
+      fixture.fullScreen.push(handler)
+      return () => { fixture.fullScreen.splice(fixture.fullScreen.indexOf(handler), 1) }
+    },
     setTitleBarTheme: vi.fn(), toggleMaximize: vi.fn(),
   },
   appUpdates: { check: vi.fn(), status: () => new Promise(() => {}), onChange: () => () => {}, install: vi.fn() },
@@ -32,20 +40,21 @@ vi.mock('../ipc.js', () => ({
   },
   extensions: { checkLatest: vi.fn() },
   idea: { list: none },
-  inbox: { list: ({ kind }: { kind: string }) => Promise.resolve(kind === 'discovery' ? fixture.discovery : []) },
+  inbox: { list: ({ kind }: { kind: string }) => Promise.resolve(kind === 'discovery' ? fixture.discovery : fixture.delivered) },
   jobs: { status: () => new Promise(() => {}) },
   later: { list: none },
   papers: { list: () => Promise.resolve({ rows: [], total: 0 }) },
   project: { list: () => Promise.resolve(fixture.projects) },
   search: { query: none },
   trash: { list: none },
-  vault: { today: () => Promise.resolve('2026-10-18') },
+  vault: { today: () => fixture.today() },
   watch: { list: () => Promise.resolve(fixture.watches) },
   wiki: { home: () => Promise.resolve({ aggregationCount: 0 }) },
 }))
 vi.mock('../components/AboutDialog.js', () => ({ AboutDialog: () => null }))
 
-const { AppShell, useCrumbTail, useEscapeLayer, usePaperChatCollapsed } = await import('./AppShell.js')
+const { AppShell, useCrumbTail, useEscapeLayer, useNotice, usePaperChatCollapsed, useSettingsOpen } = await import('./AppShell.js')
+const { TOOLTIP_DELAY } = await import('../components/Tooltip.js')
 
 const TAIL = [{ text: '深层' }]
 
@@ -71,6 +80,8 @@ let host: HTMLDivElement
 /** Mounts the shell with `feed` as the content of its first screen. */
 async function mount(feed: ReactNode = <PaperChatState />): Promise<void> {
   globalThis.IS_REACT_ACT_ENVIRONMENT = true
+  // The breadcrumb's segments measure whether they fit, and jsdom has no ResizeObserver.
+  vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} })
   window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'zh')
   document.body.innerHTML = ''
   host = document.createElement('div')
@@ -93,7 +104,7 @@ function Editors() {
   const box = useRef<HTMLDivElement>(null)
   return (
     <>
-      <MarkdownBox text="a" editing box={box} onCancel={() => {}} empty={null} />
+      <MarkdownBox text="a" editing box={box} onCancel={() => {}} onSave={() => {}} empty={null} />
       <select><option>a</option></select>
       <button type="button">b</button>
     </>
@@ -110,6 +121,39 @@ function slash(target: HTMLElement): boolean {
 afterEach(() => {
   if (root !== null) act(() => root!.unmount())
   root = null
+  vi.unstubAllGlobals()
+})
+
+/** Shows which settings category the shell has asked to open, or nothing while settings are closed. */
+function SettingsProbe() {
+  const { open, requestedCategory } = useSettingsOpen()
+  return <p id="settingsProbe">{open ? requestedCategory ?? 'default' : ''}</p>
+}
+
+describe('库打不开时', () => {
+  afterEach(() => { fixture.today = () => Promise.resolve('2026-10-18') })
+
+  it('报出原因，下面只有一个换论文库的操作，点它打开存储设置，不写一句该怎么做', async () => {
+    fixture.today = () => Promise.reject(new Error('库里没有论文页目录'))
+    globalThis.IS_REACT_ACT_ENVIRONMENT = true
+    // The failure page's title measures whether it fits, and jsdom has no ResizeObserver.
+    vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} })
+    window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'zh')
+    document.body.innerHTML = ''
+    host = document.createElement('div')
+    document.body.append(host)
+    root = createRoot(host)
+    await act(async () => {
+      root!.render(<MessagesProvider><AppShell screens={SCREENS} settings={<SettingsProbe />} /></MessagesProvider>)
+      await Promise.resolve()
+    })
+    const page = document.querySelector('.bootfail')!
+    expect([...page.querySelector('.desk-body')!.children].map((el) => el.getAttribute('role') ?? el.tagName)).toEqual(['alert', 'BUTTON'])
+    const action = page.querySelector<HTMLButtonElement>('.btn')!
+    expect(action.textContent).toBe('换论文库')
+    act(() => action.click())
+    expect(document.querySelector('#settingsProbe')!.textContent).toBe('storage')
+  })
 })
 
 const press = (key: string, init: KeyboardEventInit = {}) => act(() => {
@@ -118,6 +162,18 @@ const press = (key: string, init: KeyboardEventInit = {}) => act(() => {
 
 const crumbs = () => [...document.querySelectorAll('#crumb .cseg')].map((seg) => seg.textContent)
 
+/** Rests the pointer on `selector` past the shared tooltip delay; returns the tooltip's name and shortcut. */
+function hoverTip(selector: string): [string | undefined, string | undefined] {
+  vi.useFakeTimers()
+  act(() => {
+    document.querySelector(selector)!.dispatchEvent(new PointerEvent('pointermove', { bubbles: true, pointerType: 'mouse' }))
+  })
+  act(() => { vi.advanceTimersByTime(TOOLTIP_DELAY) })
+  vi.useRealTimers()
+  const tip = document.querySelector('[role="tooltip"]')
+  return [tip?.firstChild?.textContent ?? undefined, tip?.querySelector('.tooltip-key')?.textContent ?? undefined]
+}
+
 /** The button that activates a row: the row itself, or the first child of a row that holds other controls. */
 function controlOf(selector: string): HTMLElement {
   const row = document.querySelector<HTMLElement>(selector)!
@@ -125,6 +181,57 @@ function controlOf(selector: string): HTMLElement {
   expect(control.tagName, selector).toBe('BUTTON')
   return control
 }
+
+describe('侧栏论文推送的计数', () => {
+  const watches = fixture.watches
+  afterEach(() => {
+    fixture.watches = watches
+    fixture.delivered = []
+  })
+
+  /** The text of the count badge in each of `rows`, or null where a row has none. */
+  const counts = (rows: string[]) => Object.fromEntries(rows.map((row) => [row, document.querySelector(`${row} .count-badge`)?.textContent ?? null]))
+
+  it('分组行数的是组里各个关注推来的条数,同名的两篇不同论文各算一篇;没有条目的组和关注都不显示数', async () => {
+    fixture.watches = [
+      { id: 'w-topic', type: 'topic', name: '推测解码', active: true },
+      { id: 'w-moe', type: 'topic', name: '专家混合', active: true },
+      { id: 'w-dao', type: 'author', name: 'Tri Dao', active: true },
+    ]
+    fixture.delivered = [
+      { id: 'i1', kind: 'watch', watch: 'w-topic', title: 'EAGLE' },
+      { id: 'i2', kind: 'watch', watch: 'w-topic', title: 'Medusa' },
+      { id: 'i3', kind: 'watch', watch: 'w-topic', title: 'SpecInfer' },
+      { id: 'i4', kind: 'watch', watch: 'w-moe', title: 'Medusa' },
+    ]
+    await mount()
+    expect(counts(['#rowInboxAll', '[data-disc="topics"]', '[data-watchrow="w-topic"]', '[data-watchrow="w-moe"]', '[data-disc="authors"]', '[data-watchrow="w-dao"]']))
+      .toEqual({
+        '#rowInboxAll': '4', '[data-disc="topics"]': '4', '[data-watchrow="w-topic"]': '3', '[data-watchrow="w-moe"]': '1',
+        '[data-disc="authors"]': null, '[data-watchrow="w-dao"]': null,
+      })
+  })
+
+  it('暂停的关注照样显示它推来的条数,只是变灰', async () => {
+    fixture.watches = [{ id: 'w-paused', type: 'topic', name: '已暂停的关注', active: false }]
+    fixture.delivered = [
+      { id: 'i1', kind: 'watch', watch: 'w-paused', title: 'EAGLE' },
+      { id: 'i2', kind: 'watch', watch: 'w-paused', title: 'Medusa' },
+    ]
+    await mount()
+    const row = document.querySelector('[data-watchrow="w-paused"]')!
+    expect([row.classList.contains('dim'), row.querySelector('.count-badge')?.textContent ?? null]).toEqual([true, '2'])
+  })
+
+  it('侧栏没有一行显示 0:数为 0 的行和收件、垃圾桶一样不带计数', async () => {
+    await mount()
+    expect(counts(['[data-desk="wiki"]', '[data-desk="papers"]', '[data-desk="changelog"]', '[data-desk="resproj"]', '[data-desk="ideas"]', '[data-desk="later"]', '[data-desk="trash"]']))
+      .toEqual({
+        '[data-desk="wiki"]': null, '[data-desk="papers"]': null, '[data-desk="changelog"]': null, '[data-desk="resproj"]': '1',
+        '[data-desk="ideas"]': null, '[data-desk="later"]': null, '[data-desk="trash"]': null,
+      })
+  })
+})
 
 describe('AppShell sidebar collapse', () => {
   let sidebar: HTMLElement
@@ -143,6 +250,21 @@ describe('AppShell sidebar collapse', () => {
     expect(sidebar.hasAttribute('inert')).toBe(true)
     press('b', { metaKey: true })
     expect(sidebar.hasAttribute('inert')).toBe(false)
+  })
+
+  it('names the sidebar toggle in the shared tooltip with the platform\'s shortcut', async () => {
+    expect(hoverTip('#sbBtn')).toEqual(['收起/展开侧栏', '⌘B'])
+    act(() => root!.unmount())
+    fixture.platform = 'win32'
+    await mount()
+    expect(hoverTip('#sbBtn')).toEqual(['收起/展开侧栏', 'Ctrl+B'])
+    fixture.platform = 'darwin'
+  })
+
+  it('names the sidebar grip in the shared tooltip by its action with ⌘B on macOS, with no drag hint and no tooltip of its own', () => {
+    expect(hoverTip('#sbgrip')).toEqual(['收起侧栏', '⌘B'])
+    expect(document.querySelector('[role="tooltip"] .tooltip-note')).toBeNull()
+    expect(document.querySelector('#griptip')).toBeNull()
   })
 
   it('reports the paper chat as collapsed while the sidebar is collapsed', () => {
@@ -165,8 +287,124 @@ describe('AppShell sidebar collapse', () => {
   })
 })
 
+describe('AppShell title bar', () => {
+  it('marks the document while the window is full screen, where macOS hides the traffic lights', async () => {
+    await mount()
+    const root = document.documentElement
+    expect(root.hasAttribute('data-fullscreen')).toBe(false)
+    act(() => fixture.fullScreen.forEach((handler) => handler(true)))
+    expect(root.hasAttribute('data-fullscreen')).toBe(true)
+    act(() => fixture.fullScreen.forEach((handler) => handler(false)))
+    expect(root.hasAttribute('data-fullscreen')).toBe(false)
+  })
+})
+
+describe('AppShell sidebar grip', () => {
+  let grip: HTMLElement
+  const width = () => (document.querySelector<HTMLElement>('#main')!.style.getPropertyValue('--sbw'))
+  const mouse = (target: EventTarget, type: string, clientX = 0) => act(() => {
+    target.dispatchEvent(new MouseEvent(type, { bubbles: true, cancelable: true, clientX }))
+  })
+  const key = (target: HTMLElement, name: string, init: KeyboardEventInit = {}) => act(() => {
+    target.dispatchEvent(new KeyboardEvent('keydown', { key: name, bubbles: true, cancelable: true, ...init }))
+  })
+
+  /** Mounts the shell with `feed` as its first screen, its sidebar laid out at the default 232px. */
+  const setUp = async (feed?: ReactNode) => {
+    await mount(feed)
+    document.querySelector<HTMLElement>('#sidebar')!.getBoundingClientRect = () => ({ width: 232 }) as DOMRect
+    grip = document.querySelector<HTMLElement>('#sbgrip')!
+  }
+
+  it('is a focusable separator that states the sidebar width and its limits', async () => {
+    await setUp()
+    expect(grip.getAttribute('role')).toBe('separator')
+    expect(grip.getAttribute('aria-orientation')).toBe('vertical')
+    expect(grip.tabIndex).toBe(0)
+    expect(grip.getAttribute('aria-label')).toBe('侧栏宽度')
+    expect([grip.getAttribute('aria-valuenow'), grip.getAttribute('aria-valuemin'), grip.getAttribute('aria-valuemax')])
+      .toEqual(['232', '180', '320'])
+  })
+
+  it('leaves the sidebar open and its width unchanged after a press without moving', async () => {
+    await setUp()
+    mouse(grip, 'mousedown', 100)
+    mouse(document, 'mousemove', 102)
+    mouse(document, 'mouseup', 102)
+    expect(document.querySelector('#main')!.classList.contains('sbhide')).toBe(false)
+    expect(width()).toBe('232px')
+  })
+
+  it('puts the width back when Escape ends a drag, and that Escape closes no other layer', async () => {
+    const close = vi.fn()
+    await setUp(<Panel onClose={close} />)
+    mouse(grip, 'mousedown', 100)
+    mouse(document, 'mousemove', 160)
+    expect(width()).toBe('292px')
+    key(document.body, 'Escape')
+    expect(width()).toBe('232px')
+    expect(close).not.toHaveBeenCalled()
+    mouse(document, 'mousemove', 200)
+    mouse(document, 'mouseup', 200)
+    expect(width()).toBe('232px')
+  })
+
+  it('steps the width with the arrow keys within its limits and resets it on a double-click', async () => {
+    await setUp()
+    key(grip, 'ArrowRight')
+    expect(width()).toBe('242px')
+    document.querySelector<HTMLElement>('#sidebar')!.getBoundingClientRect = () => ({ width: 242 }) as DOMRect
+    key(grip, 'ArrowLeft', { shiftKey: true })
+    expect(width()).toBe('192px')
+    key(grip, 'End')
+    expect(width()).toBe('320px')
+    mouse(grip, 'dblclick')
+    expect(width()).toBe('232px')
+  })
+
+  it('leaves an expand control with a visible glyph at the edge of the collapsed sidebar', async () => {
+    await setUp()
+    expect(document.querySelector('.grip-edge')).toBeNull()
+    press('b', { metaKey: true })
+    const edge = document.querySelector<HTMLButtonElement>('.grip-edge')!
+    expect(edge.tagName).toBe('BUTTON')
+    expect(edge.getAttribute('aria-label')).toBe('展开侧栏')
+    expect(edge.getAttribute('aria-expanded')).toBe('false')
+    expect(hoverTip('.grip-edge')).toEqual(['展开侧栏', '⌘B'])
+    act(() => edge.click())
+    expect(document.querySelector('#main')!.classList.contains('sbhide')).toBe(false)
+    expect(document.querySelector('.grip-edge')).toBeNull()
+  })
+})
+
 describe('AppShell keyboard navigation', () => {
   beforeEach(() => mount())
+
+  it('takes the sidebar rows, from Feed to Trash, as one Tab stop with the up and down arrow keys between them', async () => {
+    const nav = document.querySelector<HTMLElement>('#sidebar .sb-nav')!
+    const stops = [...document.querySelectorAll<HTMLElement>('#sidebar *')].filter((element) => element.tabIndex >= 0)
+    expect(stops).toEqual([
+      document.querySelector('#sSearch'), nav, document.querySelector('[data-chat="c1"] .row-actions'), document.querySelector('#sbgrip'),
+    ])
+    const step = async (key: string) => {
+      await act(async () => {
+        document.activeElement!.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }))
+        await new Promise((done) => setTimeout(done, 0))
+      })
+    }
+    await act(async () => { nav.focus() })
+    expect(document.activeElement).toBe(controlOf('[data-desk="feed"]'))
+    await step('ArrowDown')
+    expect(document.activeElement).toBe(controlOf('[data-sect="inbox"]'))
+    await step('ArrowRight')
+    expect(document.activeElement).toBe(controlOf('[data-sect="inbox"]'))
+    await step('End')
+    expect(document.activeElement).toBe(controlOf('[data-desk="trash"]'))
+    await step('ArrowUp')
+    expect(document.activeElement).toBe(controlOf('[data-desk="ideas"]'))
+    await step('Home')
+    expect(document.activeElement).toBe(controlOf('[data-desk="feed"]'))
+  })
 
   it('opens every sidebar destination from a button', () => {
     const rows = [
@@ -219,6 +457,101 @@ describe('AppShell keyboard navigation', () => {
     expect(link.tagName).toBe('BUTTON')
     act(() => link.click())
     expect(fixture.back).toHaveBeenCalledOnce()
+  })
+
+  it('面包屑的每一段放不下时都淡出，返回的链接也一样，名字整段都在', () => {
+    act(() => document.querySelector<HTMLElement>('[data-desk="papers"]')!.click())
+    const faded = [...document.querySelectorAll<HTMLElement>('#crumb .cseg')]
+      .map((segment) => (segment.matches('.fade-text') ? segment : segment.querySelector('.fade-text'))?.textContent)
+    expect(faded).toEqual(['我的库', '论文', '深层'])
+  })
+})
+
+/** Sends a success, then a refusal, through the shell's one notice. */
+function Notifier() {
+  const notice = useNotice()
+  return (
+    <>
+      <button type="button" id="ok" onClick={() => notice.success('已保存')}>ok</button>
+      <button type="button" id="no" onClick={() => notice.refusal('项目不存在：repro')}>no</button>
+    </>
+  )
+}
+
+describe('AppShell notice', () => {
+  it('成功和拒绝都报在画布里同一个提示上，并被读出来', async () => {
+    await mount(<Notifier />)
+    act(() => host.querySelector<HTMLButtonElement>('#ok')!.click())
+    const notice = host.querySelector<HTMLElement>('#notice')!
+    expect(notice.closest('#main')).not.toBeNull()
+    expect(notice.closest('[role="status"]')?.textContent).toBe('已保存')
+    expect(notice.dataset['tone']).toBe('success')
+
+    act(() => host.querySelector<HTMLButtonElement>('#no')!.click())
+    expect(host.querySelectorAll('#notice')).toHaveLength(1)
+    expect(notice.textContent).toBe('项目不存在：repro')
+    expect(notice.dataset['tone']).toBe('refusal')
+  })
+})
+
+describe('AppShell sidebar rows', () => {
+  beforeEach(() => mount())
+
+  it('names a watch, a discovery project and a chat in full in the shared tooltip, only while the row fades them out', () => {
+    const names = {
+      '[data-watchrow="w-topic"] .watch-name': '推测解码',
+      '[data-discovery-project="p1"] .watch-name': '推理项目',
+      '[data-chat="c1"] .ct-t': '讨论',
+    }
+    for (const [selector, name] of Object.entries(names)) {
+      const text = document.querySelector<HTMLElement>(selector)!
+      expect(text.hasAttribute('title'), selector).toBe(false)
+      text.style.overflowX = 'hidden'
+      const width = vi.spyOn(text, 'scrollWidth', 'get').mockReturnValue(100)
+      vi.spyOn(text, 'clientWidth', 'get').mockReturnValue(100)
+      expect(hoverTip(selector), selector).toEqual([undefined, undefined])
+      act(() => {
+        text.dispatchEvent(new PointerEvent('pointerout', { bubbles: true, pointerType: 'mouse', relatedTarget: document.body }))
+        text.dispatchEvent(new PointerEvent('pointerleave', { pointerType: 'mouse' }))
+      })
+      act(() => { document.dispatchEvent(new PointerEvent('pointermove', { clientX: 400, clientY: 400, pointerType: 'mouse' })) })
+      width.mockReturnValue(160)
+      expect(hoverTip(selector), selector).toEqual([name, undefined])
+      act(() => {
+        text.dispatchEvent(new PointerEvent('pointerout', { bubbles: true, pointerType: 'mouse', relatedTarget: document.body }))
+        text.dispatchEvent(new PointerEvent('pointerleave', { pointerType: 'mouse' }))
+      })
+      act(() => { document.dispatchEvent(new PointerEvent('pointermove', { clientX: 400, clientY: 400, pointerType: 'mouse' })) })
+    }
+  })
+
+  it('folds the delivery groups from inline icon buttons that state whether they are open', () => {
+    for (const selector of ['#rowInboxAll .sh-caret', '[data-inbox="discovery"] .sh-caret']) {
+      const toggle = document.querySelector<HTMLElement>(selector)!
+      expect(toggle.classList.contains('icbtn'), selector).toBe(true)
+      expect(toggle.classList.contains('xs'), selector).toBe(true)
+      expect(toggle.getAttribute('aria-expanded'), selector).toBe('true')
+    }
+  })
+
+  it('fades the sidebar\'s scroll area only toward the edge whose rows are hidden', () => {
+    const top = document.querySelector<HTMLElement>('.sb-top')!
+    let offset = 0
+    Object.defineProperty(top, 'clientHeight', { configurable: true, get: () => 500 })
+    Object.defineProperty(top, 'scrollHeight', { configurable: true, get: () => 700 })
+    Object.defineProperty(top, 'scrollTop', { configurable: true, get: () => offset })
+    act(() => { top.dispatchEvent(new Event('scroll')) })
+    expect(top.dataset.fade).toBe('bottom')
+    act(() => { offset = 200; top.dispatchEvent(new Event('scroll')) })
+    expect(top.dataset.fade).toBe('top')
+  })
+
+  it('shows "/" as a keycap on the empty search field and names the shortcut on the field', () => {
+    const search = document.querySelector<HTMLInputElement>('#sSearch')!
+    const keycap = document.querySelector<HTMLElement>('#searchBox kbd')!
+    expect(keycap.textContent).toBe('/')
+    expect(keycap.getAttribute('aria-hidden')).toBe('true')
+    expect(search.getAttribute('aria-keyshortcuts')).toBe('/')
   })
 })
 

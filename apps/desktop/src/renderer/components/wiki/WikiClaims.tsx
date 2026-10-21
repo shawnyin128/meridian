@@ -9,19 +9,25 @@ import { claimId } from '../../lib/slug.js'
 import { useMessages } from '../../messages/useMessages.js'
 import type { JumpAnchor } from '../../shell/AppShell.js'
 import { AddAction } from '../AddAction.js'
+import { CardTray } from '../CardTray.js'
 import { MenuItem } from '../ActionMenu.js'
 import { DiffLines } from '../DiffLines.js'
 import { EmptyState } from '../EmptyState.js'
-import { DotsMenu } from '../FieldPickers.js'
-import { FormInput, FormSelect, FormTextarea } from '../FormControls.js'
+import { EntityLink } from '../EntityLink.js'
+import { ChoicePicker, DotsMenu } from '../FieldPickers.js'
+import { FormInput, FormTextarea } from '../FormControls.js'
 import { SectionHeading } from '../PageShell.js'
 import { SegmentedControl } from '../SegmentedControl.js'
-import { StructuredList, StructuredRow } from '../StructuredList.js'
+import { SourceAnchor } from '../SourceAnchor.js'
+import { AgentLabel } from '../SourceLabel.js'
+import { RowActions, StructuredList, StructuredRow } from '../StructuredList.js'
+import { Tag } from '../Tag.js'
 import { WikiFormDialog, WikiFormField } from './WikiFormDialog.js'
 import { PaperText } from '../paper/PaperText.js'
 import './WikiClaims.css'
 
 type Outcome = 'revised' | 'split' | 'retracted' | 'dismissed'
+const OUTCOMES: readonly Outcome[] = ['dismissed', 'revised', 'split', 'retracted']
 
 /** The form open over the claims area, if any. */
 type Form =
@@ -46,8 +52,13 @@ function conflictId(...claims: (WikiClaim | undefined)[]): string {
   return `k${n}`
 }
 
-/** One evidence item or conflict target as a line of links: what it is, then where it points. */
-function Side({ item, title, links }: { item: Evidence | ConflictTarget; title: string | undefined; links: ClaimLinks }) {
+/**
+ * One evidence item or conflict target as a line of links: what it is, then where it points. `title` is
+ * its display name and `point` the name of the node or conclusion an experiment cites.
+ */
+function Side({ item, title, point, links }: {
+  item: Evidence | ConflictTarget; title: string | undefined; point: string | undefined; links: ClaimLinks
+}) {
   const m = useMessages()
   const c = m.wiki.claims
   const paper = title === undefined ? null : <PaperText text={title} />
@@ -55,47 +66,47 @@ function Side({ item, title, links }: { item: Evidence | ConflictTarget; title: 
     case 'experiment':
       return (
         <>
-          <span className="wkclaim-kind">{c.experiment}</span>
-          <button type="button" className="wkclaim-link" onClick={() => links.openProject(item.project)}>{title}</button>
-          <span className="wkclaim-point">{item.node ?? item.conclusion}</span>
+          <Tag>{c.experiment}</Tag>
+          <EntityLink kind="project" label={title} onOpen={() => links.openProject(item.project)} />
+          <span className="wkclaim-point">{point}</span>
           {item.text ? <span className="wkclaim-note">{item.text}</span> : null}
         </>
       )
     case 'source':
       return (
         <>
-          <span className="wkclaim-kind">{c.evidence}</span>
-          <button
-            type="button" className="wkclaim-link"
-            onClick={() => links.openReader(item.paper, { page: item.page, ...(item.highlight === undefined ? {} : { highlight: item.highlight }) })}
-          >{paper} {c.page(item.page)}</button>
+          <Tag>{c.evidence}</Tag>
+          <span>{paper} <SourceAnchor
+            page={item.page} quote={item.quote}
+            onOpen={() => links.openReader(item.paper, { page: item.page, ...(item.highlight === undefined ? {} : { highlight: item.highlight }) })}
+          /></span>
           <q className="wkclaim-quote">{item.quote}</q>
         </>
       )
     case 'note':
       return (
         <>
-          <span className="wkclaim-kind">{c.note}</span>
-          <button
-            type="button" className="wkclaim-link"
-            onClick={() => links.openReader(item.paper, item.highlight === undefined ? { panel: 'notes', note: item.note! } : { highlight: item.highlight })}
-          >{paper}</button>
+          <Tag>{c.note}</Tag>
+          <EntityLink
+            kind="paper" label={paper}
+            onOpen={() => links.openReader(item.paper, item.highlight === undefined ? { panel: 'notes', note: item.note! } : { highlight: item.highlight })}
+          />
         </>
       )
     case 'wiki':
     case 'claim':
       return (
         <>
-          {item.kind === 'wiki' ? <span className="wkclaim-kind">{c.evidence}</span> : null}
-          <button type="button" className="wkclaim-link" data-wk={item.ref.split('#')[0]} onClick={() => links.openPage(item.ref.split('#')[0]!)}>
-            {title}
-          </button>
+          {item.kind === 'wiki' ? <Tag>{c.evidence}</Tag> : null}
+          <EntityLink
+            kind="page" label={title} data-wk={item.ref.split('#')[0]} onOpen={() => links.openPage(item.ref.split('#')[0]!)}
+          />
         </>
       )
     case 'personal':
       return (
         <>
-          <span className="wkclaim-kind">{c.personal}</span>
+          <Tag>{c.personal}</Tag>
           {item.text === '' ? null : <span className="wkclaim-note">{item.text}</span>}
         </>
       )
@@ -103,11 +114,11 @@ function Side({ item, title, links }: { item: Evidence | ConflictTarget; title: 
 }
 
 /**
- * The claims area of an aggregation page: each claim with its version, date and author, its evidence
- * (experiments open the project, source quotes open the reader at their page), its open conflicts with
- * the other side linked, and its earlier versions folded away. The user adds, revises, marks and
- * resolves conflicts on, and retracts claims through `onApply`, which submits one titled list of ops
- * and resolves whether it was written.
+ * The claims area of an aggregation page: each claim with its version and date, the agent label when an
+ * agent wrote it, its evidence (experiments open the project, source quotes open the reader at their
+ * page), its open conflicts with the other side linked, and its earlier versions folded away. The user
+ * adds, revises, marks and resolves conflicts on, and retracts claims through `onApply`, which submits
+ * one titled list of ops and resolves whether it was written.
  */
 export function WikiClaims({ page, pending, links, onApply }: {
   page: WikiAggregation
@@ -120,7 +131,6 @@ export function WikiClaims({ page, pending, links, onApply }: {
   const f = c.form
   const fmt = useFormat()
   const [form, setForm] = useState<Form | null>(null)
-  const [history, setHistory] = useState<ReadonlySet<string>>(new Set())
   const [text, setText] = useState('')
   const [note, setNote] = useState('')
   const [basis, setBasis] = useState<'personal' | 'conclusion'>('personal')
@@ -216,17 +226,12 @@ export function WikiClaims({ page, pending, links, onApply }: {
   }
 
   const ready = submission()
-  const who = (by: string): string => (by === HUMAN_PRODUCER ? c.me : c.agent)
-  const toggleHistory = (id: string) => setHistory((shown) => {
-    const next = new Set(shown)
-    if (!next.delete(id)) next.add(id)
-    return next
-  })
 
   return (
     <>
-      <SectionHeading variant="content" className="flexh">{c.heading}
-        <AddAction variant="section" disabled={pending} title={c.add} onClick={() => open({ kind: 'add' })}>{c.addShort}</AddAction>
+      <SectionHeading
+        actions={<AddAction variant="section" disabled={pending} label={c.add} onClick={() => open({ kind: 'add' })}>{c.addShort}</AddAction>}
+      >{c.heading}
       </SectionHeading>
       {page.claims.length === 0
         ? <EmptyState variant="section">{c.empty}</EmptyState>
@@ -234,33 +239,34 @@ export function WikiClaims({ page, pending, links, onApply }: {
           <StructuredList variant="embedded" maxVisibleRows="all" className="wkclaims">
             {page.claims.map((claim) => (
               <StructuredRow
-                key={claim.id} data-claim={claim.id} data-dots-row=""
-                className={`wkclaim${claim.conflicts.length > 0 ? ' wkclaim--conflict' : ''}`}
+                key={claim.id} data-claim={claim.id} className="wkclaim"
               >
                 <div className="wkclaim-head">
                   <span className="wkclaim-text">{claim.text}</span>
-                  <DotsMenu label={c.actionsLabel(claim.text)}>
-                    <MenuItem disabled={pending} onSelect={() => open({ kind: 'revise', claim })}>{c.revise}</MenuItem>
-                    <MenuItem disabled={pending} onSelect={() => open({ kind: 'conflict', claim })}>{c.markConflict}</MenuItem>
-                    <MenuItem disabled={pending} onSelect={() => open({ kind: 'retract', claim })}>{c.retract}</MenuItem>
-                  </DotsMenu>
+                  {claim.by === HUMAN_PRODUCER ? null : <AgentLabel />}
+                  <RowActions>
+                    <DotsMenu label={c.actionsLabel(claim.text)}>
+                      <MenuItem disabled={pending} onSelect={() => open({ kind: 'revise', claim })}>{c.revise}</MenuItem>
+                      <MenuItem disabled={pending} onSelect={() => open({ kind: 'conflict', claim })}>{c.markConflict}</MenuItem>
+                      <MenuItem disabled={pending} onSelect={() => open({ kind: 'retract', claim })}>{c.retract}</MenuItem>
+                    </DotsMenu>
+                  </RowActions>
                 </div>
                 <div className="wkclaim-meta">
                   <span className="wkclaim-version">v{claim.version}</span>
                   <span>{fmt.date(claim.since)}</span>
-                  <span className={claim.by === HUMAN_PRODUCER ? 'wkclaim-by' : 'wkclaim-by wkclaim-by--agent'}>{who(claim.by)}</span>
                 </div>
                 <ul className="wkclaim-lines">
                   {claim.evidence.map((e, at) => (
-                    <li key={at} className="wkclaim-evidence"><Side item={e.evidence} title={e.title} links={links} /></li>
+                    <li key={at} className="wkclaim-evidence"><Side item={e.evidence} title={e.title} point={e.point} links={links} /></li>
                   ))}
                   {claim.conflicts.map((x) => (
                     <li key={`conflict ${x.id}`} className="wkclaim-conflict">
-                      <span className="wkclaim-kind wkclaim-kind--conflict">{c.conflict}</span>
-                      <Side item={x.against} title={x.title} links={links} />
+                      <Tag tone="warn">{c.conflict}</Tag>
+                      <Side item={x.against} title={x.title} point={x.point} links={links} />
                       <span className="wkclaim-note">{x.note}</span>
                       <button
-                        type="button" className="btn plain wkclaim-resolve" disabled={pending}
+                        type="button" className="btn ghost sm wkclaim-resolve" disabled={pending}
                         onClick={() => open({ kind: 'resolve', claim, conflict: x })}
                       >{c.resolve}</button>
                     </li>
@@ -269,21 +275,13 @@ export function WikiClaims({ page, pending, links, onApply }: {
                 {claim.history.length === 0
                   ? null
                   : (
-                    <>
-                      <button
-                        type="button" className="wkclaim-history" aria-expanded={history.has(claim.id)}
-                        onClick={() => toggleHistory(claim.id)}
-                      >{c.history(claim.history.length)}</button>
-                      {history.has(claim.id)
-                        ? (
-                          <DiffLines lines={[
-                            ...claim.history.map((h) => `- v${h.version} · ${fmt.date(h.since)} · ${h.text}`),
-                            `+ v${claim.version} · ${fmt.date(claim.since)} · ${claim.text}`,
-                          ]}
-                          />
-                        )
-                        : null}
-                    </>
+                    <CardTray variant="row" className="wkclaim-history" summary={c.history(claim.history.length)}>
+                      <DiffLines lines={[
+                        ...claim.history.map((h) => `- v${h.version} · ${fmt.date(h.since)} · ${h.text}`),
+                        `+ v${claim.version} · ${fmt.date(claim.since)} · ${claim.text}`,
+                      ]}
+                      />
+                    </CardTray>
                   )}
               </StructuredRow>
             ))}
@@ -310,7 +308,7 @@ export function WikiClaims({ page, pending, links, onApply }: {
             <>
               <WikiFormField label={f.basis}>
                 <SegmentedControl
-                  label={f.basisLabel} size="sm" value={basis} onChange={setBasis}
+                  label={f.basisLabel} value={basis} onChange={setBasis}
                   options={[{ value: 'personal', label: f.personal }, { value: 'conclusion', label: f.conclusion }]}
                 />
               </WikiFormField>
@@ -323,10 +321,12 @@ export function WikiClaims({ page, pending, links, onApply }: {
                 : (
                   <>
                     <WikiFormField label={f.project}>
-                      <FormSelect appearance="field" value={projectId} onChange={(e) => { setProjectId(e.target.value); setConclusionId('') }}>
-                        <option value="" disabled>{f.projectPick}</option>
-                        {projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-                      </FormSelect>
+                      <ChoicePicker
+                        appearance="field" aria-label={f.project} placeholder={f.projectPick} value={projectId}
+                        options={projects.map((p) => p.id)}
+                        label={(id) => projects.find((p) => p.id === id)?.name ?? id}
+                        onPick={(id) => { setProjectId(id); setConclusionId('') }}
+                      />
                     </WikiFormField>
                     {projectId === ''
                       ? null
@@ -334,17 +334,16 @@ export function WikiClaims({ page, pending, links, onApply }: {
                         ? <p className="wiki-form-hint">{f.noConclusions}</p>
                         : (
                           <WikiFormField label={f.conclusion}>
-                            <FormSelect
-                              appearance="field" value={conclusionId}
-                              onChange={(e) => {
-                                setConclusionId(e.target.value)
-                                const picked = conclusions.find((x) => x.id === e.target.value)
+                            <ChoicePicker
+                              appearance="field" aria-label={f.conclusion} placeholder={f.conclusionPick}
+                              value={conclusionId} options={conclusions.map((x) => x.id)}
+                              label={(id) => conclusions.find((x) => x.id === id)?.text ?? id}
+                              onPick={(id) => {
+                                setConclusionId(id)
+                                const picked = conclusions.find((x) => x.id === id)
                                 if (picked !== undefined && text.trim() === '') setText(picked.text)
                               }}
-                            >
-                              <option value="" disabled>{f.conclusionPick}</option>
-                              {conclusions.map((x) => <option key={x.id} value={x.id}>{x.text}</option>)}
-                            </FormSelect>
+                            />
                           </WikiFormField>
                         )}
                   </>
@@ -359,10 +358,11 @@ export function WikiClaims({ page, pending, links, onApply }: {
                 ? <p className="wiki-form-hint">{f.noOthers}</p>
                 : (
                   <WikiFormField label={f.other}>
-                    <FormSelect appearance="field" value={other} onChange={(e) => setOther(e.target.value)}>
-                      <option value="" disabled>{f.other}</option>
-                      {others.map((x) => <option key={x.id} value={x.id}>{x.text}</option>)}
-                    </FormSelect>
+                    <ChoicePicker
+                      appearance="field" aria-label={f.other} placeholder={f.other} value={other}
+                      options={others.map((x) => x.id)} label={(id) => others.find((x) => x.id === id)?.text ?? id}
+                      onPick={setOther}
+                    />
                   </WikiFormField>
                 )}
               <WikiFormField label={f.note}>
@@ -375,16 +375,14 @@ export function WikiClaims({ page, pending, links, onApply }: {
           ? (
             <>
               <WikiFormField label={f.outcome}>
-                <FormSelect
-                  appearance="field" value={outcome}
-                  onChange={(e) => {
-                    const next = e.target.value as Outcome
+                <ChoicePicker
+                  appearance="field" aria-label={f.outcome} value={outcome}
+                  options={OUTCOMES} label={(o) => f.outcomes[o]}
+                  onPick={(next) => {
                     setOutcome(next)
                     setText(next === 'revised' ? form.claim.text : '')
                   }}
-                >
-                  {(['dismissed', 'revised', 'split', 'retracted'] as const).map((o) => <option key={o} value={o}>{f.outcomes[o]}</option>)}
-                </FormSelect>
+                />
               </WikiFormField>
               {outcome === 'revised' || outcome === 'split'
                 ? (

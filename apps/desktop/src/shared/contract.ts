@@ -585,6 +585,26 @@ export const PapersMutateReadingParamsSchema = z.object({
   mutation: ReadingMutationSchema,
 }).strict()
 
+/** Why a network call failed: no network, a timeout, a rate limit, another error status, or anything else. */
+export const NetFailureSchema = z.enum(['unavailable', 'timeout', 'rate-limit', 'server', 'unknown'])
+
+/**
+ * Why Core failed a call: a network failure, a file that is not a PDF, a vault write the file
+ * system refused, an entity that no longer exists, a change the current state refuses, content that
+ * changed since it was shown, a change with newer changes to undo first, an option or column still
+ * in use, input that failed validation, a folder that is not a Meridian library, a resource still
+ * busy, data a newer App wrote, a key the system credential store could not save or read back, no
+ * model set up, a generation the user stopped, a failed model call, or anything else.
+ */
+export const CallFailureSchema = z.enum([
+  ...NetFailureSchema.options, 'not-pdf', 'write', 'not-found', 'refused', 'changed', 'newer-changes', 'in-use',
+  'invalid', 'not-library', 'busy', 'newer-version', 'key-unsaved', 'key-unreadable', 'no-model', 'cancelled',
+  'model',
+])
+
+/** What a rejected call carries across the process boundary instead of Core's error. */
+export const CallRejectionSchema = z.object({ reason: CallFailureSchema }).strict()
+
 /**
  * A cost-bearing Harness action. Core prepares this plan without a model call; the renderer must
  * show its exact scope and selected model before it can exchange the one-time plan for a run.
@@ -743,7 +763,8 @@ export const HarnessRunReceiptSchema = z.object({
   state: z.enum(['accepted', 'demo-complete', 'proposal-ready']),
   message: z.string().min(1),
   proposal: HarnessPaperWikiDraftSchema.optional(),
-  warning: z.string().min(1).optional(),
+  /** Why the proposal's audit record could not be written; the proposal itself is ready. */
+  warning: CallFailureSchema.optional(),
 }).strict()
 
 export const HarnessApplyPaperWikiParamsSchema = z.object({
@@ -755,7 +776,8 @@ export const HarnessApplyPaperWikiResultSchema = z.object({
   proposalId: z.string().min(1),
   wikiId: z.string().min(1),
   appliedAt: IsoTimestamp,
-  warning: z.string().min(1).optional(),
+  /** Why the audit record of the applied proposal could not be written; the Wiki page is written. */
+  warning: CallFailureSchema.optional(),
 }).strict()
 
 export const HarnessPaperWikiRejectionReasonSchema = z.enum([
@@ -781,7 +803,8 @@ export const HarnessRejectPaperWikiParamsSchema = z.object({
 export const HarnessRejectPaperWikiResultSchema = z.object({
   proposalId: z.string().min(1),
   rejectedAt: IsoTimestamp,
-  warning: z.string().min(1).optional(),
+  /** Why the audit record of the rejection could not be written; the proposal is discarded. */
+  warning: CallFailureSchema.optional(),
 }).strict()
 
 export const HarnessModelProviderSchema = z.enum([
@@ -811,7 +834,8 @@ export const HarnessModelProfileSchema = z.object({
 
 export const HarnessModelSettingsSchema = HarnessModelProfileSchema.extend({
   profiles: z.array(HarnessModelProfileSchema).max(100),
-  error: z.string().min(1).optional(),
+  /** Why the saved model configuration could not be loaded as it was. */
+  error: CallFailureSchema.optional(),
 }).strict()
 
 export const HarnessModelConnectionFailureSchema = z.enum([
@@ -1103,11 +1127,14 @@ const WatchFieldsSchema = z.discriminatedUnion('type', [
   }).strict(),
 ])
 
-/** Why a network call failed: no network, a timeout, a rate limit, another error status, or anything else. */
-export const NetFailureSchema = z.enum(['unavailable', 'timeout', 'rate-limit', 'server', 'unknown'])
-
-/** A network call that failed, with its reason; author search and watch suggestions answer with it. */
+/** A network call that failed, with its reason; watch suggestions answer with it. */
 export const NetFailedSchema = z.object({ kind: z.literal('failed'), reason: NetFailureSchema }).strict()
+
+/** Why an author search failed: a network failure, or no saved Semantic Scholar key to search with. */
+export const AuthorSearchFailureSchema = z.enum([...NetFailureSchema.options, 'no-key'])
+
+/** A failed author search, with its reason. */
+export const AuthorSearchFailedSchema = z.object({ kind: z.literal('failed'), reason: AuthorSearchFailureSchema }).strict()
 
 /** An author search result, projected to the fields needed for disambiguation and selection. */
 export const AuthorCandidateSchema = z.object({
@@ -1262,14 +1289,14 @@ export const InboxReadLaterParamsSchema = z.object({ id: z.string() }).strict()
 
 export const InboxDownloadParamsSchema = z.object({ id: z.string() }).strict()
 
-/** Why the PDF of an inbox entry could not be fetched. */
-export const InboxDownloadFailureSchema = z.enum([...NetFailureSchema.options, 'not-pdf'])
+/** Why the PDF of an inbox entry could not be fetched, or, once fetched, could not be written into the vault. */
+export const InboxDownloadFailureSchema = z.enum([...NetFailureSchema.options, 'not-pdf', 'write'])
 
 /**
  * Import result. `added` means a new page was written; `existing` means a page
  * already referenced the source and no write occurred. Both return the page ID;
  * `existing` also returns the authoritative vault title for user messaging.
- * `failed` means the PDF could not be fetched and nothing was written.
+ * `failed` means the PDF could not be fetched or stored.
  */
 export const InboxDownloadResultSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('added'), paper: z.string() }).strict(),
@@ -1330,10 +1357,15 @@ export const TrashRestoreParamsSchema = z.object({ id: z.string() }).strict()
 
 export const TrashPurgeParamsSchema = z.object({ id: z.string() }).strict()
 
+/** A piece of a change line as it is shown: text, or a paper title, which shows as paper text. */
+export const DiffPieceSchema = z.union([z.string(), z.object({ paper: z.string() }).strict()])
+
 /**
  * Recent-change entry. `meta` is human-readable secondary text while `date`
  * drives day grouping. `source` distinguishes user and agent changes. Diff lines
- * begin with `+` or `-`. `undone` records completed undo, while `undoable`
+ * begin with `+` or `-` and are the stored ones; `lines` are the same lines as
+ * shown, in pieces, Wiki page ids named by their titles and paper titles marked.
+ * `undone` records completed undo, while `undoable`
  * reflects current snapshot availability. Snapshots and fingerprints remain in
  * Core. `archived` means acknowledged and removes the entry from active counts,
  * independently of undo state.
@@ -1345,10 +1377,26 @@ export const ChangeEntrySchema = z.object({
   date: IsoDate,
   source: z.enum(['笔记', '实验', 'Meridian', '我']),
   diff: z.array(z.string()),
+  lines: z.array(z.array(DiffPieceSchema)),
   undone: z.boolean(),
   undoable: z.boolean(),
   archived: z.boolean(),
 }).strict()
+
+/**
+ * What a write the change log records answers: `change` is the id of the change entry it recorded,
+ * the one `changelog.undo` takes to undo exactly that write. A call response; nothing stores it.
+ */
+export const RecordedChangeSchema = z.object({ change: z.string() }).strict()
+
+/**
+ * What a write that moves one item into the trash without a change entry answers: `trash` is the id
+ * of the trash entry it created, the one `trash.restore` takes. A call response; nothing stores it.
+ */
+export const TrashedEntrySchema = z.object({ trash: z.string() }).strict()
+
+/** What `project.deleteAttachment` answers: the project after the write, and the change entry it recorded. */
+export const ProjectRecordedChangeSchema = RecordedChangeSchema.extend({ project: ProjectDetailSchema }).strict()
 
 export const ChangelogUndoParamsSchema = z.object({ id: z.string() }).strict()
 
@@ -1391,7 +1439,7 @@ export const FeedBodySchema = z.discriminatedUnion('kind', [
 /**
  * Feed entry. `source` is both provenance and filter key; `day` selects the
  * localized date section and `time` is the legacy display timestamp.
- * `createdAt` lets the renderer derive a live, locale-aware relative time.
+ * `createdAt` lets the renderer show the local date and time it happened.
  * It stays optional so vaults written before exact activity timestamps remain
  * readable and can be migrated by Core.
  */
@@ -1468,9 +1516,14 @@ export const WikiEvidenceSchema = z.object({
   by: z.string(),
   /** Paper short title, target claim text or page title, or project name; absent for personal evidence. */
   title: z.string().optional(),
+  /** Name of the project node (its label) or legacy conclusion (its text) an experiment item cites; its id when gone. */
+  point: z.string().optional(),
 }).strict()
 
-/** One open conflict on a claim; `title` is the other side's display text (claim text, paper short title, or project name). */
+/**
+ * One open conflict on a claim; `title` is the other side's display text (claim text, paper short title, or
+ * project name), and `point` names the node or conclusion an experiment side cites, as on WikiEvidence.
+ */
 export const WikiConflictSchema = z.object({
   id: z.string(),
   against: ConflictTargetSchema,
@@ -1478,6 +1531,7 @@ export const WikiConflictSchema = z.object({
   since: IsoDate,
   by: z.string(),
   title: z.string(),
+  point: z.string().optional(),
 }).strict()
 
 /**
@@ -1925,7 +1979,8 @@ export const ChatSendParamsSchema = z.object({
 export const ChatSendResultSchema = z.object({
   id: z.string(),
   state: z.enum(['complete', 'failed', 'cancelled']),
-  message: z.string().min(1).optional(),
+  /** Why a `failed` send failed. */
+  reason: CallFailureSchema.optional(),
 }).strict()
 
 export const ChatCancelParamsSchema = z.object({ id: z.string() }).strict()
@@ -2091,7 +2146,7 @@ export const LibraryLocationSchema = z.object({
   locked: z.boolean(),
   restartRequired: z.boolean(),
   /** Why the library at `root` failed to open, or null when it opened (or has not been tried yet). */
-  openError: z.string().nullable(),
+  openError: CallFailureSchema.nullable(),
 }).strict()
 
 export const LibraryConfigureParamsSchema = z.object({ root: z.string().min(1) }).strict()
@@ -2218,6 +2273,10 @@ export type WatchFields = z.infer<typeof WatchFieldsSchema>
 export type AuthorIdentity = z.infer<typeof AuthorIdentitySchema>
 export type NetFailure = z.infer<typeof NetFailureSchema>
 export type NetFailed = z.infer<typeof NetFailedSchema>
+export type AuthorSearchFailure = z.infer<typeof AuthorSearchFailureSchema>
+export type AuthorSearchFailed = z.infer<typeof AuthorSearchFailedSchema>
+export type CallFailure = z.infer<typeof CallFailureSchema>
+export type CallRejection = z.infer<typeof CallRejectionSchema>
 export type AuthorCandidate = z.infer<typeof AuthorCandidateSchema>
 export type WatchTopicSuggestion = z.infer<typeof WatchTopicSuggestionSchema>
 export type WatchAuthorSuggestion = z.infer<typeof WatchAuthorSuggestionSchema>
@@ -2235,6 +2294,10 @@ export type DiscoveryFeedback = z.infer<typeof DiscoveryFeedbackParamsSchema>['f
 export type DeliverySettings = z.infer<typeof DeliverySettingsSchema>
 export type LaterEntry = z.infer<typeof LaterEntrySchema>
 export type ChangeEntry = z.infer<typeof ChangeEntrySchema>
+export type DiffPiece = z.infer<typeof DiffPieceSchema>
+export type RecordedChange = z.infer<typeof RecordedChangeSchema>
+export type TrashedEntry = z.infer<typeof TrashedEntrySchema>
+export type ProjectRecordedChange = z.infer<typeof ProjectRecordedChangeSchema>
 export type ChangeSource = ChangeEntry['source']
 export type FeedEntry = z.infer<typeof FeedEntrySchema>
 export type FeedSource = FeedEntry['source']

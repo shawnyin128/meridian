@@ -1,7 +1,26 @@
-import type { InboxDownloadFailure } from '../../shared/contract.js'
+import type { AuthorSearchFailure, CallFailure, InboxDownloadFailure } from '../../shared/contract.js'
+import { CallError } from '../call-error.js'
 import type { Catalog } from '../messages/catalog.js'
 
-/** Labels a failed network call: `what` failed, followed by the reason unless the reason is unknown. */
-export function failureLabel(m: Catalog, what: string, reason: InboxDownloadFailure): string {
+/** Why a caught error failed: its rejected call's reason, or `unknown` for any other error. */
+export function failureOf(error: unknown): CallFailure {
+  return error instanceof CallError ? error.reason : 'unknown'
+}
+
+/** Labels a failed call: `what` failed, followed by the reason unless the reason is unknown. */
+export function failureLabel(
+  m: Catalog, what: string, reason: CallFailure | InboxDownloadFailure | AuthorSearchFailure,
+): string {
   return reason === 'unknown' ? what : m.common.failure.label(what, m.common.failure.reasons[reason])
+}
+
+/** Labels `reason` alone, or with the generic label when the reason is unknown. */
+export function reasonLabel(m: Catalog, reason: CallFailure): string {
+  return reason === 'unknown' ? m.common.failure.unknown : m.common.failure.reasons[reason]
+}
+
+/** Labels a caught error by its reason. Any error that is not a rejected call is logged and reads as unknown. */
+export function errorLabel(m: Catalog, error: unknown): string {
+  if (!(error instanceof CallError)) console.error(`[renderer] ${error instanceof Error ? error.message : String(error)}`)
+  return reasonLabel(m, failureOf(error))
 }

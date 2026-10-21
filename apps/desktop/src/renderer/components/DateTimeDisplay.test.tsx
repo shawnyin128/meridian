@@ -27,4 +27,11 @@ describe('DateTimeDisplay', () => {
     )
     expect(html.match(/date-chip/g)).toHaveLength(1)
   })
+
+  it('a timestamp shows its local day, then its local clock time', () => {
+    const html = renderToStaticMarkup(
+      <MessagesProvider><DateTimeDisplay at={new Date(2026, 8, 16, 7, 45).getTime()} /></MessagesProvider>,
+    )
+    expect([...html.matchAll(/<span class="fade-text tag-text"[^>]*>([^<]*)<\/span>/g)].map((m) => m[1])).toEqual(['9月16日', '07:45'])
+  })
 })

@@ -1,0 +1,4 @@
+.drag-handle{cursor:grab}
+.drag-handle:active{cursor:grabbing}
+/* The grip is drawn on a 12×16 box, narrower than the square glyphs IconButton sizes. */
+.icbtn.drag-handle>svg{width:9px;height:12px}

@@ -13,33 +13,32 @@ export const reader = {
   page: {
     at: (n: number) => `第 ${n} 页`,
   },
-  emptyReading: '选中文字可以高亮，也可以直接记录当前页的想法。',
+  emptyReading: '还没有高亮和笔记',
+  emptyHighlights: '还没有高亮',
+  emptyNotes: '还没有笔记',
   notes: {
     ariaLabel: '阅读笔记',
     heading: (count: number) => `阅读笔记 · ${count}`,
     newAria: '新笔记',
     placeholder: (page: number) => `第 ${page} 页的笔记`,
-    add: '保存笔记',
     pageAria: (page: number) => `第 ${page} 页笔记`,
   },
   highlights: {
-    jumpToPage: (page: number) => `第 ${page} 页 · 高亮`,
-    noteAria: (page: number) => `第 ${page} 页高亮笔记`,
-    annotate: '这段高亮的笔记',
+    noteAria: (page: number) => `第 ${page} 页高亮批注`,
+    annotate: '这段高亮的批注',
   },
   remark: {
     heading: '随笔 · 本篇',
     placeholder: '对整篇论文的随想',
-    save: '存随笔',
   },
-  loadingPdf: '正在加载 PDF…',
   selection: {
     highlight: '高亮',
-    note: '笔记',
+    note: '批注',
     askAi: '问 AI',
   },
   zoom: {
     out: '缩小',
     in: '放大',
+    reset: '重置缩放',
   },
 } satisfies Record<string, unknown>

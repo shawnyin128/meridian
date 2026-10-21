@@ -1,3 +1,8 @@
+import type { CallFailure } from './contract.js'
+
+/** Why an update check or download failed: no network, a timeout, the release server, a file the App could not write, or anything else. */
+export type UpdateFailure = Extract<CallFailure, 'unavailable' | 'timeout' | 'server' | 'write' | 'unknown'>
+
 /**
  * Where the app's self-update stands. `unsupported` covers development and test builds, which have
  * no published feed. `available` means a newer release exists that the App cannot install where it
@@ -12,7 +17,7 @@ export type AppUpdatePhase =
   | { phase: 'downloading'; version: string; percent: number }
   | { phase: 'ready'; version: string }
   | { phase: 'available'; version: string; url: string }
-  | { phase: 'error'; message: string }
+  | { phase: 'error'; reason: UpdateFailure }
 
 /** Running version, the update phase, and when the last check finished (ISO time, absent before the first). */
 export type AppUpdateStatus = AppUpdatePhase & { current: string; checkedAt?: string }

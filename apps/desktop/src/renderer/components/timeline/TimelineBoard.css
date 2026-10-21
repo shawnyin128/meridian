@@ -1,45 +1,34 @@
 /* Shared timeline presentation. Route styles may size the board, but must not
    redefine its scale, rows, markers, bars, or interaction states. */
-.gantt{background:var(--card);border:1px solid var(--sep);border-radius:var(--r-xl);overflow:hidden;margin-bottom:0}
-.gantt+.wkpage{margin-top:24px}
-.ghead{display:flex;align-items:center;gap:12px;padding:8px 16px;border-bottom:1px solid var(--sep2)}
-.ghead .gm{font-size:12px;color:var(--ter);margin-right:auto}
-.gscale{display:flex;align-items:center;padding:2px;background:var(--field);border:1px solid var(--sep2);border-radius:var(--r-md);user-select:none}
-.gscale button{min-width:28px;height:22px;padding:0 7px;border:0;border-radius:var(--r-sm);background:transparent;color:var(--ter);font:inherit;font-size:12px;cursor:pointer}
-.gscale button:hover{color:var(--ink);background:var(--hover)}
-.gscale button.on{color:var(--ink);background:var(--card);box-shadow:var(--sh-1)}
-.gperiodnav{display:flex;align-items:center;gap:2px;height:28px}
-.gperiodnav button{display:grid;place-items:center;width:24px;height:24px;padding:0;border:0;border-radius:var(--r-sm);background:transparent;color:var(--sec);cursor:pointer}
-.gperiodnav button:hover{background:var(--hover);color:var(--ink)}
-.gperiodnav button svg{display:block;width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.gantt{background:var(--card);border:1px solid var(--sep);border-radius:var(--r-card);overflow:hidden;margin-bottom:0}
+.gantt+.wkpage{margin-top:var(--sp-24)}
+.ghead{display:flex;align-items:center;gap:var(--sp-12);padding:var(--sp-8) var(--sp-16);border-bottom:1px solid var(--sep2)}
+.ghead .gm{font-size:var(--fs-sm);color:var(--ter);margin-right:auto}
+.gperiodnav{display:flex;align-items:center;gap:var(--sp-2);height:28px}
 .gsplit{display:flex}
 .glabels{flex:0 0 148px;min-width:0;border-right:1px solid var(--sep2)}
 .glhead{height:30px}
-.glrow{height:44px;border-top:1px solid var(--sep2);display:flex;align-items:center;gap:8px;padding:0 12px;font-size:12px;cursor:pointer;white-space:nowrap;overflow:hidden}
+.glrow{height:44px;border-top:1px solid var(--sep2);display:flex;align-items:center;gap:var(--sp-8);padding:0 var(--sp-12);font-size:var(--fs-sm);cursor:pointer;white-space:nowrap;overflow:hidden}
 .glrow:hover{background:var(--hover)}
 .glrow .gln{flex:1;min-width:0;overflow:hidden;mask-image:var(--clipfade)}
-.timeline-item-label{flex:1;min-width:0;overflow:hidden;white-space:nowrap;mask-image:var(--clipfade);color:var(--ink)}
-.timeline-label-row.msl .timeline-item-label{color:var(--sec);font-weight:600}
-.timeline-task-priority{display:inline-flex;align-items:center;justify-content:center;min-width:24px;height:17px;border-radius:var(--r-xs);font-size:10px;font-weight:700;flex-shrink:0}
-.timeline-task-priority.p0{background:var(--tint-bad);color:var(--bad)}
-.timeline-task-priority.p1{background:var(--tint-warn);color:var(--warn)}
-.timeline-task-priority.p2{background:var(--tint-mut);color:var(--ter)}
-.gdot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
-.gdot.ok{background:var(--good)}.gdot.pend{background:var(--warn)}.gdot.mut{background:var(--ter)}
-.gwrap{overflow-x:scroll;flex:1;min-width:0}
+.timeline-item-label{flex:1;color:var(--ink)}
+.timeline-label-row.msl .timeline-item-label{color:var(--sec);font-weight:var(--fw-title)}
+/* A label that opens something is the row's button and draws nothing of its own. */
+.timeline-label-open{display:flex;flex:1;min-width:0;padding:0;border:0;border-radius:var(--r-sm);background:none;color:inherit;font:inherit;text-align:left;cursor:inherit}
+.gwrap{overflow-x:auto;flex:1;min-width:0}
 .gcanvas{position:relative;border-bottom:1px solid var(--sep2)}
 .glabels .glrow:last-child{border-bottom:1px solid var(--sep2)}
 .glrow.dragging{opacity:.4}
-.glrow.drag-over-before{box-shadow:inset 0 2px 0 0 var(--accent)}
-.glrow.drag-over-after{box-shadow:inset 0 -2px 0 0 var(--accent)}
+.glrow.drag-over-before{box-shadow:inset 0 2px 0 0 var(--ink)}
+.glrow.drag-over-after{box-shadow:inset 0 -2px 0 0 var(--ink)}
 .gdays{display:flex;position:relative;z-index:2}
-.gday{flex:0 0 auto;text-align:center;font-size:var(--fs-sm);color:var(--ter);padding:6px 0 4px;box-sizing:border-box;border-left:1px solid var(--sep2)}
+.gday{flex:0 0 auto;text-align:center;font-size:var(--fs-sm);color:var(--ter);font-variant-numeric:tabular-nums;padding:var(--sp-6) 0 var(--sp-4);box-sizing:border-box;border-left:1px solid var(--sep2)}
 .gday:first-child{border-left:0}
-.gday span{display:inline-grid;place-items:center;width:20px;height:20px;border-radius:999px}
-.gday.week span{width:auto;padding:0 6px}
-.gday.today span{background:var(--bad);color:var(--on-tint);font-weight:600}
+.gday span{display:inline-grid;place-items:center;width:20px;height:20px;border-radius:var(--r-full)}
+.gday.week span{width:auto;padding:0 var(--sp-6)}
+.gday.today span{background:var(--selected);color:var(--on-selected);font-weight:var(--fw-semibold)}
 .gdays.times{height:30px}
-.gtime{flex:0 0 auto;box-sizing:border-box;padding:7px 7px 5px;border-left:1px solid var(--sep2);font-family:var(--mono);font-size:11px;color:var(--ter)}
+.gtime{flex:0 0 auto;box-sizing:border-box;padding:var(--sp-8) var(--sp-8) var(--sp-4);border-left:1px solid var(--sep2);font-family:var(--mono);font-size:var(--fs-cap);color:var(--ter)}
 .gtime:first-child{border-left:0}
 .gtimecell{position:absolute;top:30px;bottom:0;box-sizing:border-box;border-left:1px solid var(--sep2);z-index:1;pointer-events:none}
 .gtimecell:first-of-type{border-left:0}
@@ -48,33 +37,46 @@
 .gdatecell.first{border-left:0}
 .gstripe{position:absolute;top:0;bottom:0;background:var(--hover);z-index:0}
 .grow{position:relative;height:44px;border-top:1px solid var(--sep2);z-index:2}
-.gbar{position:absolute;top:50%;transform:translateY(-50%);height:27px;box-sizing:border-box;background:var(--field);border:1px solid var(--sep);border-radius:var(--r-md);font-size:12px;color:var(--ink);display:flex;align-items:center;padding:0 10px;white-space:nowrap;overflow:hidden;cursor:pointer;transition:border-color var(--t) var(--e-out)}
+.gbar{position:absolute;top:50%;transform:translateY(-50%);height:27px;box-sizing:border-box;background-color:var(--field);border:1px solid var(--sep);border-radius:var(--r-md);font-size:var(--fs-sm);color:var(--ink);display:flex;align-items:center;padding:0 var(--sp-10);white-space:nowrap;overflow:hidden;cursor:grab;transition:opacity var(--t) var(--e-out)}
 .gbar-label{flex:1;min-width:0;overflow:hidden;mask-image:var(--clipfade)}
-.gbar:hover{border-color:var(--sep-strong)}
+/* Bars and stubs are buttons in the board's own type. */
+.gbar,.gstub{font-family:inherit;line-height:inherit;text-align:left}
+.gstub{padding:0}
+/* The one hover of bars and stubs lies over them as an image, which no state rule sets; a done item is dimmed only at rest. */
+:where(.gbar,.gstub):hover{background-image:linear-gradient(var(--hover),var(--hover))}
 .gbar.clipl{border-top-left-radius:0;border-bottom-left-radius:0;border-left:0}
-.gbar.dim{opacity:.45}
-.gbar.plan{background:transparent;border-style:dashed;color:var(--sec)}
-.gbar.active{border-color:color-mix(in srgb,var(--accent) 42%,var(--sep));background:var(--accent-soft)}
+.gbar.dim:not(:hover){opacity:.45}
+.gbar.plan{background-color:transparent;border-style:dashed;border-color:var(--sep-strong);color:var(--sec)}
+.gbar.active{border-color:color-mix(in srgb,var(--ink) 42%,var(--sep));background-color:var(--selected)}
 .gbar.overdue{box-shadow:inset 3px 0 var(--bad)}
-.gbar.priority-p0{border-top-color:var(--bad)}
-.gddl{position:absolute;top:18px;width:8px;height:8px;background:var(--warn);transform:rotate(45deg);border-radius:2px;z-index:3;cursor:grab}
+.gbar.priority-p0{font-weight:var(--fw-semibold)}
+/* A one-day bar narrower than its title keeps the title's box empty and draws the title beside the bar. */
+.gbar.label-beside .gbar-label{visibility:hidden}
+.gbar-aside{position:absolute;top:50%;transform:translateY(-50%);font-size:var(--fs-sm);color:var(--sec);white-space:nowrap;pointer-events:none}
+.gddl{position:absolute;top:18px;width:8px;height:8px;background:var(--warn);transform:rotate(45deg);border-radius:var(--r-2xs);z-index:3;cursor:grab}
 .gddl.overdue{background:var(--bad)}
 .gddl.done{background:var(--ter)}
+/* A bar or diamond being dragged lifts above its row. */
+.gbar.dragging,.gddl.dragging{cursor:grabbing;box-shadow:var(--sh-2);z-index:4}
 .glrow.msl,.grow.msrow{height:44px;background:var(--mslane)}
-.gstub{position:absolute;top:50%;transform:translateY(-50%);height:27px;width:20px;box-sizing:border-box;background:var(--field);border:1px solid var(--sep);border-radius:var(--r-md);display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--sec);cursor:pointer;z-index:2;user-select:none;transition:border-color var(--t) var(--e-out)}
-.gstub:hover{border-color:var(--sep-strong)}
-.gstub.done{opacity:.45}
-.glrow.msl{font-size:12px;font-weight:700;color:var(--ink);cursor:default}
-.gtoday{position:absolute;top:31px;bottom:0;width:2px;background:var(--bad);opacity:.75;z-index:1}
-.gnow{position:absolute;top:0;bottom:0;width:1px;background:var(--bad);z-index:4;pointer-events:none}
-.gnow::after{content:"";position:absolute;top:27px;left:-3px;width:7px;height:7px;border-radius:50%;background:var(--bad)}
+.gstub{position:absolute;top:50%;transform:translateY(-50%);height:27px;width:20px;box-sizing:border-box;background-color:var(--field);border:1px solid var(--sep);border-radius:var(--r-md);display:flex;align-items:center;justify-content:center;font-size:var(--fs-sm);color:var(--sec);cursor:pointer;z-index:2;user-select:none;transition:opacity var(--t) var(--e-out)}
+.gstub.done:not(:hover){opacity:.45}
+.glrow.msl{font-size:var(--fs-sm);font-weight:var(--fw-title);color:var(--ink);cursor:default}
+.gtoday{position:absolute;top:31px;bottom:0;width:2px;background:var(--accent);opacity:.75;z-index:1}
+.gnow{position:absolute;top:0;bottom:0;width:1px;background:var(--accent);z-index:4;pointer-events:none}
+.gnow::after{content:"";position:absolute;top:27px;left:-3px;width:7px;height:7px;border-radius:var(--r-full);background:var(--accent)}
 .gddl.hl{box-shadow:0 0 0 4px var(--tint-warn);transform:rotate(45deg) scale(1.35)}
 .gddl.overdue.hl{box-shadow:0 0 0 4px var(--tint-bad)}
-.timeline-fold{display:grid;place-items:center;flex:none;width:18px;height:18px;margin-left:-4px;padding:0;border:0;
-  border-radius:var(--r-sm);background:none;color:var(--ter);cursor:pointer;transition:transform var(--t-fast) var(--e-out)}
-.timeline-fold svg{width:12px;height:12px}
-.timeline-fold:hover{background:var(--hover);color:var(--ink)}
-.timeline-fold:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
-.timeline-fold[aria-expanded="false"]{transform:rotate(-90deg)}
-.timeline-folded-count{flex:none;color:var(--ter);font-weight:400}
-@media (prefers-reduced-motion:reduce){.timeline-fold{transition:none}}
+.timeline-fold{margin-left:calc(-1 * var(--sp-8))}
+.timeline-fold svg{transition:transform var(--t-fast) var(--e-out)}
+.timeline-fold[aria-expanded="false"] svg{transform:rotate(-90deg)}
+.timeline-folded-count{flex:none;color:var(--ter);font-weight:var(--fw-regular)}
+
+/*
+ * The milestone lane's keyboard control lies on today's day, inside it by the ring room so its ring
+ * shows whole; a pointer press passes through it to the lane.
+ */
+.glane-new{position:absolute;top:var(--ring-room);bottom:var(--ring-room);padding:0;border:0;border-radius:var(--r-sm);background:none;pointer-events:none}
+
+/* Anchor of the milestone editor: a zero-size point placed inside the timeline canvas. */
+.ganchor{position:absolute;width:0;height:0}

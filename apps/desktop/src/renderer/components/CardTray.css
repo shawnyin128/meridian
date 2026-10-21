@@ -1,8 +1,8 @@
-.card-tray{margin-top:12px;overflow:hidden;border-radius:var(--r-md);background:var(--field);color:var(--sec)}
-.card-tray-head{display:flex;min-height:34px;align-items:center;gap:6px;padding:0 7px 0 11px}
-.card-tray-toggle{display:flex;min-width:0;flex:1;align-items:center;gap:8px;padding:0;border:0;background:transparent;
+.card-tray{margin-top:var(--sp-12);overflow:hidden;border-radius:var(--r-md);background:var(--field);color:var(--sec)}
+.card-tray-head{display:flex;min-height:34px;align-items:center;gap:var(--sp-6);padding:0 var(--sp-8) 0 var(--sp-12)}
+.card-tray-toggle{display:flex;min-width:0;flex:1;align-items:center;gap:var(--sp-8);padding:0;border:0;background:transparent;
   color:inherit;font:inherit;text-align:left;cursor:pointer}
-.card-tray-summary{min-width:0;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.card-tray-summary{flex:1}
 .card-tray-chevron{display:grid;width:18px;height:18px;flex:0 0 auto;place-items:center;color:var(--ter);
   transition:transform var(--t) var(--e-out)}
 .card-tray-chevron svg{width:12px;height:12px}
@@ -12,6 +12,17 @@
 .card-tray.is-open .card-tray-reveal{grid-template-rows:1fr}
 .card-tray-content{min-height:0;overflow:hidden;border-top:1px solid transparent;opacity:0;
   transition:opacity var(--t) var(--e-out),border-color var(--t-fast) var(--e-out)}
-.card-tray.is-open .card-tray-content{border-top-color:var(--sep2);opacity:1;transition-delay:70ms,0ms}
-
-@media (prefers-reduced-motion:reduce){.card-tray.is-open .card-tray-content{transition-delay:0ms}}
+.card-tray.is-open .card-tray-content{border-top-color:var(--sep2);opacity:1;transition-delay:var(--t-delay),0ms}
+/*
+ * A row tray has no surface: the list row is the surface, its summary wraps like the row's text, and a
+ * leading caret points right while closed and down while open; the details line up with the summary.
+ */
+.card-tray--row{margin-top:0;overflow:visible;border-radius:0;background:none;color:inherit}
+.card-tray--row .card-tray-head{min-height:0;padding:0;gap:var(--sp-10)}
+.card-tray--row .card-tray-summary{white-space:normal}
+.card-tray--row .card-tray-chevron{width:16px;height:16px;transform:rotate(-90deg)}
+.card-tray--row.is-open .card-tray-chevron{transform:none}
+.card-tray--row .card-tray-toggle:hover,.card-tray--row.is-open .card-tray-toggle,
+.card-tray--row .card-tray-toggle:hover .card-tray-chevron{color:var(--ink)}
+.card-tray--row .card-tray-content{padding-left:var(--sp-24)}
+.card-tray--row.is-open .card-tray-content{border-top-color:transparent}

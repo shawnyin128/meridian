@@ -1,23 +1,30 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode, RefObject } from 'react'
 import type {
-  AuthorCandidate, NetFailed, ProjectSummary, Watch, WatchAuthorSuggestion, WatchFields,
+  AuthorCandidate, AuthorSearchFailed, ProjectSummary, Watch, WatchAuthorSuggestion, WatchFields,
   WatchSuggestionResult,
 } from '../../shared/contract.js'
 import { author, project, watch } from '../ipc.js'
-import { failureLabel } from '../lib/failure-label.js'
-import { useToast, useVaultRevision } from '../shell/AppShell.js'
+import { errorLabel, failureLabel, failureOf } from '../lib/failure-label.js'
+import { useVaultRevision } from '../shell/AppShell.js'
 import { useMessages } from '../messages/useMessages.js'
 import { AddAction } from '../components/AddAction.js'
 import { ConfirmDialog } from '../components/ConfirmDialog.js'
 import { EmptyState } from '../components/EmptyState.js'
+import { LoadingPlaceholder } from '../components/LoadingPlaceholder.js'
 import { afterLeaving, InlineDraftInput } from '../components/InlineDraftInput.js'
-import { StructuredList, StructuredRow } from '../components/StructuredList.js'
-import { FormInput, FormSelect } from '../components/FormControls.js'
+import { RowActions, StructuredList, StructuredRow } from '../components/StructuredList.js'
+import { IconButton } from '../components/IconButton.js'
+import { IconPencil, IconTrash } from '../components/icons.js'
+import { FormInput } from '../components/FormControls.js'
+import { ChoicePicker } from '../components/FieldPickers.js'
 import { PageError, SectionHeading } from '../components/PageShell.js'
 import { SegmentedControl } from '../components/SegmentedControl.js'
+import { Switch } from '../components/Switch.js'
+import { Tag } from '../components/Tag.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
 import { composing } from '../lib/keyboard.js'
+import { FadeText } from '../components/FadeText.js'
 import './shell.css'
 import './Watches.css'
 
@@ -33,12 +40,12 @@ const suggestedAuthorKey = (item: WatchAuthorSuggestion): string => (
 
 /**
  * One group of watches, with a plus button at the right of its heading that opens a new row at the
- * top of the group's list. `editor` is the row being filled in: the draft row wears the `.wrow`
- * styles, and the caller renders and submits the input inside it.
+ * top of the group's list. `watches` is null while it loads. `editor` is the row being filled in: the
+ * draft row wears the `.wrow` styles, and the caller renders and submits the input inside it.
  */
 function WatchGroup({ type, watches, add, editor, onOpen, onEdit, onSetActive, onRemove }: {
   type: Watch['type']
-  watches: Watch[]
+  watches: Watch[] | null
   add: RefObject<HTMLButtonElement | null>
   editor?: { id?: string; row: RefObject<HTMLDivElement | null>; input: ReactNode } | undefined
   onOpen: () => void
@@ -49,10 +56,14 @@ function WatchGroup({ type, watches, add, editor, onOpen, onEdit, onSetActive, o
   const m = useMessages()
   return (
     <>
-      <SectionHeading variant="group" className="flexh">{m.shell.watchKind[type]}
-        <AddAction variant="section" ref={add} title={m.watches.add(m.shell.watchKind[type])} onClick={onOpen}>{m.shell.watchKind[type]}</AddAction>
+      <SectionHeading
+        variant="group"
+        actions={<AddAction variant="section" ref={add} label={m.watches.add(m.shell.watchKind[type])} onClick={onOpen}>{m.shell.watchKind[type]}</AddAction>}
+      >{m.shell.watchKind[type]}
       </SectionHeading>
-      {watches.length === 0 && editor === undefined
+      {watches === null
+        ? <LoadingPlaceholder shape="rows" count={2} />
+        : watches.length === 0 && editor === undefined
         ? <EmptyState variant="section">{m.watches.empty(m.shell.watchKind[type])}</EmptyState>
         : (
           <StructuredList className="wlist">
@@ -68,22 +79,23 @@ function WatchGroup({ type, watches, add, editor, onOpen, onEdit, onSetActive, o
               : (
                 <StructuredRow className="wrow" data-w={w.id} key={w.id}>
                   <span className="nm">{w.name}</span>
-                  {w.type === 'author'
-                    ? (
-                      <span
-                        className={`author-id-state${w.identity === undefined ? ' unconfirmed' : ''}`}
-                        title={w.identity?.affiliations.join(' · ') || m.watches.identityUnknown}
-                      >{w.identity?.affiliations[0] || m.watches.identityUnconfirmed}</span>
-                    )
-                    : null}
-                  {w.active ? null : <span className="src">{m.watches.paused}</span>}
-                  <button className="btn" onClick={() => onEdit(w)}>{m.common.edit}</button>
-                  <button className="btn" onClick={() => onSetActive(w)}>{w.active ? m.watches.pause : m.watches.resume}</button>
-                  <ConfirmDialog
-                    trigger={<button className="btn">{m.common.remove}</button>}
-                    title={m.watches.confirmRemove(w.name)}
-                    confirmLabel={m.watches.confirmRemoveLabel} onConfirm={() => onRemove(w.id)}
-                  />
+                  {w.type !== 'author' ? null : w.identity === undefined
+                    ? <Tag tone="warn">{m.watches.identityUnconfirmed}</Tag>
+                    : (
+                      <FadeText className="author-id-state" label={w.identity.affiliations[0] || m.watches.identityUnconfirmed}>
+                        {w.identity.affiliations[0] || m.watches.identityUnconfirmed}
+                      </FadeText>
+                    )}
+                  {w.active ? null : <Tag className="watch-paused">{m.watches.paused}</Tag>}
+                  <Switch label={w.name} checked={w.active} onChange={() => onSetActive(w)} />
+                  <RowActions>
+                    <IconButton label={m.common.edit} size="nested" onClick={() => onEdit(w)}><IconPencil /></IconButton>
+                    <ConfirmDialog
+                      trigger={<IconButton label={m.common.remove} size="nested" tone="danger"><IconTrash /></IconButton>}
+                      title={m.watches.confirmRemove(w.name)} description={m.watches.confirmRemoveDescription}
+                      confirmLabel={m.watches.confirmRemoveLabel} onConfirm={() => onRemove(w.id)}
+                    />
+                  </RowActions>
                 </StructuredRow>
               ))) }
           </StructuredList>
@@ -98,7 +110,8 @@ function WatchGroup({ type, watches, add, editor, onOpen, onEdit, onSetActive, o
  */
 export function WatchSettings() {
   const m = useMessages()
-  const [watches, setWatches] = useState<Watch[]>([])
+  const [listed, setListed] = useState<Watch[] | null>(null)
+  const watches = useMemo(() => listed ?? [], [listed])
   const [projects, setProjects] = useState<ProjectSummary[]>([])
   const [suggestionSource, setSuggestionSource] = useState<SuggestionSource>('focus')
   const [focus, setFocus] = useState('')
@@ -115,7 +128,7 @@ export function WatchSettings() {
   const [name, setName] = useState('')
   const [authorMatches, setAuthorMatches] = useState<AuthorCandidate[]>([])
   const [authorSearching, setAuthorSearching] = useState(false)
-  const [authorSearchError, setAuthorSearchError] = useState<string | NetFailed | null>(null)
+  const [authorSearchError, setAuthorSearchError] = useState<string | AuthorSearchFailed | null>(null)
   const [authorSearchNonce, setAuthorSearchNonce] = useState(0)
   const authorSearchRevision = useRef(0)
   const row = useRef<HTMLDivElement>(null)
@@ -128,9 +141,8 @@ export function WatchSettings() {
   // nothing: the old draft gone and the new group's not opened.
   const triggers = useMemo(() => [addTopic, addAuthor], [])
 
-  const toast = useToast()
   const { revision } = useVaultRevision()
-  const reportError = useCallback((e: Error) => setError(e.message), [])
+  const reportError = useCallback((e: unknown) => setError(errorLabel(m, e)), [m])
   const write = useVaultWrite()
 
   const stop = useCallback(() => {
@@ -142,7 +154,7 @@ export function WatchSettings() {
     setAuthorSearchError(null)
   }, [])
   useEffect(() => {
-    void watch.list().then(setWatches).catch(reportError)
+    void watch.list().then(setListed).catch(reportError)
     void project.list().then((items) => {
       setProjects(items)
       setProjectId((current) => current || items[0]?.id || '')
@@ -172,11 +184,11 @@ export function WatchSettings() {
           setAuthorSearchError(matches)
         }
         setAuthorSearching(false)
-      }).catch((caught: Error) => {
+      }).catch((caught: unknown) => {
         if (request !== authorSearchRevision.current) return
         setAuthorMatches([])
         setAuthorSearching(false)
-        setAuthorSearchError(caught.message)
+        setAuthorSearchError(failureLabel(m, m.watches.authorSearchFailed, failureOf(caught)))
       })
     }, 700)
     return () => { window.clearTimeout(timer) }
@@ -184,13 +196,13 @@ export function WatchSettings() {
 
   /** Creates a watch. Returns true when the write succeeds; on failure it reports the error and returns false. */
   const create = (fields: WatchFields): Promise<boolean> => write(watch.create(fields),
-    { note: m.watches.notices.added, notify: toast })
+    { note: m.watches.notices.added })
 
   /** Saves the draft row: an edit updates the watch in place, keeping its delivered papers; a new row adds one. */
   const persist = (fields: WatchFields): Promise<boolean> => editor?.id === undefined
     ? create(fields)
     : write(watch.update(editor.id, fields), {
-      note: m.watches.notices.updated, notify: toast,
+      note: m.watches.notices.updated,
     })
 
   const leaveDraft = useRef<(() => Promise<boolean>) | null>(null)
@@ -236,12 +248,11 @@ export function WatchSettings() {
       note: active
         ? m.watches.notices.resumed
         : m.watches.notices.pausedNote,
-      notify: toast,
     })
   }
 
   const remove = (id: string) => {
-    void write(watch.delete(id), { note: m.watches.notices.removed, notify: toast })
+    void write(watch.delete(id), { note: m.watches.notices.removed })
   }
 
   const clearSuggestionResults = () => {
@@ -292,7 +303,7 @@ export function WatchSettings() {
       setHadSuggestions(next.topics.length + next.authors.length > 0)
     } catch (caught) {
       if (request === suggestionRequest.current) {
-        setSuggestionError(caught instanceof Error ? caught.message : String(caught))
+        setSuggestionError(failureLabel(m, m.watches.suggestionFailed, failureOf(caught)))
       }
     } finally {
       if (request === suggestionRequest.current) setSuggesting(false)
@@ -377,7 +388,7 @@ export function WatchSettings() {
               <span>
                 {m.watches.currentIdentity(editingWatch.identity.affiliations.join(' · ') || m.watches.noAffiliation)}
               </span>
-              <button className="btn plain" onClick={() => setAuthorSearchNonce((value) => value + 1)}>
+              <button className="btn ghost sm" onClick={() => setAuthorSearchNonce((value) => value + 1)}>
                 {m.watches.reconfirm}
               </button>
             </div>
@@ -392,25 +403,27 @@ export function WatchSettings() {
                     <span>{typeof authorSearchError === 'string'
                       ? authorSearchError
                       : failureLabel(m, m.watches.authorSearchFailed, authorSearchError.reason)}</span>
-                    <button className="btn plain" onClick={() => setAuthorSearchNonce((value) => value + 1)}>
+                    <button className="btn ghost sm" onClick={() => setAuthorSearchNonce((value) => value + 1)}>
                       {m.common.retry}
                     </button>
                   </div>
                 )
                 : authorMatches.length === 0
-                  ? <div className="author-search-note">{m.watches.noMatches}</div>
+                  ? <EmptyState variant="section">{m.watches.noMatches}</EmptyState>
                   : (
                     <div className="author-matches">
                       {authorMatches.map((candidate) => (
                         <div className="author-match" key={candidate.id}>
                           <div className="author-match-copy">
-                            <strong>{candidate.name}</strong>
-                            <span>{candidate.affiliations.join(' · ') || m.watches.noAffiliation}</span>
-                            <small>
+                            <FadeText className="author-match-name" label={candidate.name}>{candidate.name}</FadeText>
+                            <FadeText className="author-match-affiliations">
+                              {candidate.affiliations.join(' · ') || m.watches.noAffiliation}
+                            </FadeText>
+                            <FadeText className="author-match-info">
                               {m.watches.candidateInfo(candidate.paperCount, candidate.citationCount, candidate.hIndex)}
-                            </small>
+                            </FadeText>
                           </div>
-                          <button className="btn" onClick={() => chooseAuthor(candidate)}>
+                          <button className="btn ghost sm" onClick={() => chooseAuthor(candidate)}>
                             {editor.id === undefined ? m.watches.follow : m.watches.choose}
                           </button>
                         </div>
@@ -437,7 +450,7 @@ export function WatchSettings() {
       <PageError error={error} />
       {GROUPS.map((type) => (
         <WatchGroup
-          key={type} type={type} watches={watches.filter((w) => w.type === type)}
+          key={type} type={type} watches={listed === null ? null : watches.filter((w) => w.type === type)}
           add={type === 'topic' ? addTopic : addAuthor} onOpen={() => open(type)} onEdit={edit}
           editor={editor?.type !== type || editorInput === null
             ? undefined : { ...(editor.id === undefined ? {} : { id: editor.id }), row, input: editorInput }}
@@ -470,16 +483,15 @@ export function WatchSettings() {
               />
             )
             : (
-              <FormSelect
-                appearance="field" aria-label={m.watches.projectLabel}
-                value={projectId} onChange={(event) => {
-                  setProjectId(event.target.value)
+              <ChoicePicker
+                appearance="field" aria-label={m.watches.projectLabel} placeholder={m.watches.noProjects}
+                value={projectId} options={projects.map((item) => item.id)} disabled={projects.length === 0}
+                label={(id) => projects.find((item) => item.id === id)?.name ?? id}
+                onPick={(id) => {
+                  setProjectId(id)
                   clearSuggestionResults()
                 }}
-              >
-                {projects.length === 0 ? <option value="">{m.watches.noProjects}</option> : null}
-                {projects.map((item) => <option value={item.id} key={item.id}>{item.name}</option>)}
-              </FormSelect>
+              />
             )}
           <button
             className="btn pri" disabled={suggesting || addingSuggestion !== null
@@ -492,12 +504,12 @@ export function WatchSettings() {
         {suggestions === null || suggesting ? null : (
           <div className="watch-suggestion-results">
             {suggestions.topics.length + suggestions.authors.length === 0
-              ? <div className="ph2">{hadSuggestions ? m.watches.allAdded : m.watches.noneSuggested}</div>
+              ? <EmptyState variant="section">{hadSuggestions ? m.watches.allAdded : m.watches.noneSuggested}</EmptyState>
               : (
                 <>
                   <div className="ph2">
                     {m.watches.suggestionBasis(suggestions.paperCount)}
-                    {suggestions.stale === true ? ` · ${m.watches.suggestionStale}` : ''}
+                    {suggestions.stale === true ? <Tag tone="warn">{m.watches.suggestionStale}</Tag> : null}
                   </div>
                   {suggestions.topics.length === 0 ? null : (
                     <section className="watch-suggestion-group">
@@ -506,7 +518,7 @@ export function WatchSettings() {
                         {suggestions.topics.length > 1
                           ? (
                             <button
-                              className="btn plain" disabled={addingSuggestion !== null}
+                              className="btn ghost sm" disabled={addingSuggestion !== null}
                               onClick={() => { void addAllSuggestedTopics() }}
                             >{m.watches.addAllTopics}</button>
                           )
@@ -516,11 +528,11 @@ export function WatchSettings() {
                         {suggestions.topics.map((item) => (
                           <StructuredRow className="watch-suggestion-row" key={item.name}>
                             <div className="watch-suggestion-copy">
-                              <span className="nm">{item.name}</span>
-                              <span>{m.watches.relatedPapers(item.relatedPapers)}</span>
+                              <FadeText className="nm" label={item.name}>{item.name}</FadeText>
+                              <FadeText>{m.watches.relatedPapers(item.relatedPapers)}</FadeText>
                             </div>
                             <button
-                              className="btn" disabled={addingSuggestion !== null}
+                              className="btn ghost sm" disabled={addingSuggestion !== null}
                               onClick={() => { void addSuggestedTopic(item.name) }}
                             >{m.watches.addAction}</button>
                           </StructuredRow>
@@ -537,13 +549,13 @@ export function WatchSettings() {
                         {suggestions.authors.map((item) => (
                           <StructuredRow className="watch-suggestion-row" key={suggestedAuthorKey(item)}>
                             <div className="watch-suggestion-copy">
-                              <span className="nm">{item.name}</span>
-                              <span>{'id' in item
+                              <FadeText className="nm" label={item.name}>{item.name}</FadeText>
+                              <FadeText>{'id' in item
                                 ? m.watches.suggestedAuthorInfo(item.relatedPapers, item.hIndex, item.citationCount)
-                                : m.watches.relatedPapers(item.relatedPapers)}</span>
+                                : m.watches.relatedPapers(item.relatedPapers)}</FadeText>
                             </div>
                             <button
-                              className="btn" disabled={addingSuggestion !== null}
+                              className="btn ghost sm" disabled={addingSuggestion !== null}
                               onClick={() => { void addSuggestedAuthor(item) }}
                             >{m.watches.addAction}</button>
                           </StructuredRow>

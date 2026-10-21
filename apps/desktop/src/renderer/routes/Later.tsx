@@ -2,19 +2,22 @@ import { Fragment, useCallback, useEffect, useState } from 'react'
 import type { InboxDownloadFailure, LaterEntry } from '../../shared/contract.js'
 import { inbox, later } from '../ipc.js'
 import { useMessages } from '../messages/useMessages.js'
-import { useJump, useToast, useVaultRevision } from '../shell/AppShell.js'
+import { useJump, useNotice, useVaultRevision } from '../shell/AppShell.js'
 import { useJobs } from '../shell/useJobs.js'
 import { DownloadRing, Icon, IconCross, IconRead } from '../components/icons.js'
+import { IconButton } from '../components/IconButton.js'
 import { PaperCard, PaperCardBadge, PaperCardNotice } from '../components/paper/PaperCard.js'
 import { plainTitle } from '../components/paper/paper-text.js'
 import { DayHeading, daySectionName } from '../components/DayHeading.js'
 import { EmptyState } from '../components/EmptyState.js'
+import { LoadingPlaceholder } from '../components/LoadingPlaceholder.js'
 import { SegmentedControl } from '../components/SegmentedControl.js'
-import { failureLabel } from '../lib/failure-label.js'
+import { errorLabel, failureLabel } from '../lib/failure-label.js'
 import { TitleNote } from '../components/TitleNote.js'
 import { useFormat } from '../lib/format.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
-import { PageBody, PageError, PageHeader, PageShell, PageTitle } from '../components/PageShell.js'
+import { PageBody, PageError, PageHeader, PageShell, PageTitle, PageToolbar } from '../components/PageShell.js'
+import { SourceLabel } from '../components/SourceLabel.js'
 import './shell.css'
 
 /** How entries are grouped: by the day they joined the queue, or by where they came from. */
@@ -29,14 +32,14 @@ const MODES: Grouping[] = ['time', 'src']
 export function Later() {
   const m = useMessages()
   const fmt = useFormat()
-  const [entries, setEntries] = useState<LaterEntry[]>([])
+  const [entries, setEntries] = useState<LaterEntry[] | null>(null)
   const [grouping, setGrouping] = useState<Grouping>('time')
   const [error, setError] = useState<string | null>(null)
 
-  const toast = useToast()
+  const notice = useNotice()
   const { open } = useJump()
   const { revision, bump } = useVaultRevision()
-  const reportError = useCallback((e: Error) => setError(e.message), [])
+  const reportError = useCallback((e: unknown) => setError(errorLabel(m, e)), [m])
   const write = useVaultWrite()
   const jobs = useJobs()
   const [busy, setBusy] = useState<ReadonlySet<string>>(new Set())
@@ -60,7 +63,7 @@ export function Later() {
       }
       bump()
       open('reader', result.paper)
-    }).catch((e: Error) => toast(e.message)).finally(() => {
+    }).catch((e: unknown) => notice.refusal(errorLabel(m, e))).finally(() => {
       setBusy((held) => {
         const next = new Set(held)
         next.delete(entry.id)
@@ -75,12 +78,12 @@ export function Later() {
 
   const remove = (entry: LaterEntry) => {
     void write(later.remove(entry.id),
-      { note: <TitleNote message={m.later.removed} title={plainTitle(entry.title)} />, notify: toast })
+      { note: <TitleNote message={m.later.removed} title={plainTitle(entry.title)} /> })
   }
 
   // Entries arrive newest first by the day they were queued; groups follow the order keys first appear in.
   const key = (e: LaterEntry) => (grouping === 'time' ? e.day : e.source)
-  const groups = entries.reduce<{ key: string; items: LaterEntry[] }[]>((made, entry) => {
+  const groups = (entries ?? []).reduce<{ key: string; items: LaterEntry[] }[]>((made, entry) => {
     const seen = made.find((g) => g.key === key(entry))
     if (seen) seen.items.push(entry)
     else made.push({ key: key(entry), items: [entry] })
@@ -90,21 +93,25 @@ export function Later() {
   return (
     <PageShell>
       <PageHeader>
-        <PageTitle>{m.later.title(entries.length)}</PageTitle>
-        {groups.length === 0 ? null : (
-          <SegmentedControl
-            label={m.later.groupBy}
-            value={grouping}
-            options={MODES.map((mode) => ({ value: mode, label: m.later.modes[mode] }))}
-            onChange={setGrouping}
-          />
-        )}
+        <PageTitle>{m.later.title(entries?.length ?? 0)}</PageTitle>
       </PageHeader>
 
       <PageError error={error} />
 
       <PageBody>
-        {groups.length === 0
+        {groups.length === 0 ? null : (
+          <PageToolbar>
+            <SegmentedControl
+              label={m.later.groupBy}
+              value={grouping}
+              options={MODES.map((mode) => ({ value: mode, label: m.later.modes[mode] }))}
+              onChange={setGrouping}
+            />
+          </PageToolbar>
+        )}
+        {entries === null
+          ? (error === null ? <LoadingPlaceholder shape="cards" /> : null)
+          : groups.length === 0
           ? (
             <EmptyState
               variant="page"
@@ -125,33 +132,33 @@ export function Later() {
                     <>
                     {busy.has(x.id)
                       ? (
-                        <button className="icbtn busy" title={m.later.actions.downloading} disabled>
+                        <IconButton label={m.later.actions.downloading} size="nested" className="busy" disabled>
                           <DownloadRing progress={jobs?.downloads?.find((item) => item.id === x.id) ?? null} />
-                        </button>
+                        </IconButton>
                       )
                       : x.downloaded || x.pdf !== undefined
                         ? (
-                          <button className="icbtn" title={m.papers.rowActions.openReader} onClick={() => read(x)}>
+                          <IconButton label={m.papers.rowActions.openReader} size="nested" onClick={() => read(x)}>
                             <IconRead />
-                          </button>
+                          </IconButton>
                         )
                         : null}
-                    <button className="icbtn" title={m.later.actions.removeFrom} onClick={() => remove(x)}>
+                    <IconButton label={m.later.actions.removeFrom} size="nested" onClick={() => remove(x)}>
                       <IconCross />
-                    </button>
+                    </IconButton>
                     </>
                   )}
                   notices={failed.has(x.id) ? (
                     <PaperCardNotice tone="error" action={(
-                      <button className="btn plain" onClick={() => read(x)}>{m.common.retry}</button>
+                      <button className="btn ghost sm" onClick={() => read(x)}>{m.common.retry}</button>
                     )}>{failureLabel(m, m.inbox.notices.downloadFailed, failed.get(x.id)!)}</PaperCardNotice>
                   ) : null}
                   metadata={(
                     <>
                     {x.authors}{x.venue ? <PaperCardBadge>{x.venue}</PaperCardBadge> : null}
-                    <PaperCardBadge>
-                      {grouping === 'time' ? x.source : m.common.addedOn(fmt.date(x.added))}
-                    </PaperCardBadge>
+                    {grouping === 'time'
+                      ? <SourceLabel>{x.source}</SourceLabel>
+                      : <PaperCardBadge>{m.common.addedOn(fmt.date(x.added))}</PaperCardBadge>}
                     </>
                   )}
                   {...(x.abstract ? { abstract: x.abstract } : {})}

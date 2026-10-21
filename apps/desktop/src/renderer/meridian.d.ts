@@ -19,6 +19,7 @@ declare global {
       }
       restartApp(): void
       toggleMaximize(): void
+      onFullScreen(handler: (on: boolean) => void): () => void
       readonly platform: string
       setTitleBarTheme(symbolColor: string): void
       setLocale(locale: 'zh' | 'en'): void

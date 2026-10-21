@@ -2,26 +2,29 @@ import { Fragment, useCallback, useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import type { FeedEntry, FeedSource } from '../../shared/contract.js'
 import { feed } from '../ipc.js'
+import { errorLabel } from '../lib/failure-label.js'
 import { useMessages } from '../messages/useMessages.js'
-import { useJump, useToday, useVaultRevision } from '../shell/AppShell.js'
+import { useJump, useVaultRevision } from '../shell/AppShell.js'
 import { CONFLICT_THREAD } from '../lib/chat.js'
+import { DateChip, DateTimeDisplay } from '../components/DateTimeDisplay.js'
 import { DayHeading, daySectionName } from '../components/DayHeading.js'
+import { LoadingPlaceholder } from '../components/LoadingPlaceholder.js'
 import {
-  PageBody, PageError, PageHeader, PageShell, PageTitle,
+  PageBody, PageError, PageHeader, PageShell, PageTitle, PageToolbar,
 } from '../components/PageShell.js'
 import { SegmentedControl } from '../components/SegmentedControl.js'
 import { PaperText } from '../components/paper/PaperText.js'
-import { useFormat } from '../lib/format.js'
+import { SourceLabel } from '../components/SourceLabel.js'
+import { Tag } from '../components/Tag.js'
 import './shell.css'
 import './Feed.css'
 
 /**
- * Feed sources: the icon identifies the source, and only the icon is colored. Copied entry by
- * entry from the demo's FSRC; names come from the catalog.
+ * Feed source icons, drawn in the source label's colour. Copied entry by entry from the demo's FSRC;
+ * names come from the catalog.
  */
-const FSRC: Record<FeedSource, { color: string; icon: ReactNode }> = {
+const FSRC: Record<FeedSource, { icon: ReactNode }> = {
   steward: {
-    color: 'var(--sec)',
     icon: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round">
         <path d="M12 3l1.8 4.6 4.6 1.8-4.6 1.8L12 16l-1.8-4.8L5.6 9.4l4.6-1.8z" />
@@ -30,7 +33,6 @@ const FSRC: Record<FeedSource, { color: string; icon: ReactNode }> = {
     ),
   },
   me: {
-    color: 'var(--warn)',
     icon: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
         <circle cx="12" cy="8" r="4" />
@@ -39,7 +41,6 @@ const FSRC: Record<FeedSource, { color: string; icon: ReactNode }> = {
     ),
   },
   lab: {
-    color: 'var(--good)',
     icon: (
       <svg
         viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"
@@ -51,7 +52,6 @@ const FSRC: Record<FeedSource, { color: string; icon: ReactNode }> = {
     ),
   },
   inbox: {
-    color: 'var(--ter)',
     icon: (
       <svg
         viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"
@@ -77,11 +77,11 @@ function Body({ body, onOpenConflict }: {
         <div className="bh">{body.heading}</div>
         {body.items.map((item) => (
           <div className="bitem" key={item.id}>
-            <span className="tag conf">{item.tag}</span>
+            <Tag tone="bad">{item.tag}</Tag>
             <span className="t">{item.text}</span>
             {/* The demo's briefConf: this button opens a chat about the conflicting conclusions. */}
             <span className="go">
-              <button className="btn" onClick={onOpenConflict}>{item.action}</button>
+              <button className="btn ghost sm" onClick={onOpenConflict}>{item.action}</button>
             </span>
           </div>
         ))}
@@ -91,30 +91,26 @@ function Body({ body, onOpenConflict }: {
   return (
     <>
       {body.runs.map((run, at) => (
-        run.kind === 'strong' ? <b key={at}><PaperText text={run.text} /></b>
-          : run.kind === 'cite' ? <span className="cite" key={at}>{run.text}</span>
-            : <Fragment key={at}>{run.text}</Fragment>
+        run.kind === 'strong' ? <b key={at}><PaperText text={run.text} /></b> : <Fragment key={at}>{run.text}</Fragment>
       ))}
     </>
   )
 }
 
-/** One feed entry: the source icon and name, the time at the top right, and the body. */
-function Item({ entry, nowMs, onOpenConflict }: {
-  entry: FeedEntry; nowMs: number; onOpenConflict: () => void
-}) {
+/**
+ * One feed entry: its source label with the source icon, the time at the top right, and the body. An
+ * entry written before entries kept their timestamp shows the time it was stored with.
+ */
+function Item({ entry, onOpenConflict }: { entry: FeedEntry; onOpenConflict: () => void }) {
   const m = useMessages()
-  const fmt = useFormat()
-  const today = useToday()
-  const src = FSRC[entry.source]
-  const time = entry.createdAt === undefined ? entry.time : fmt.activityTime(entry.createdAt, today, nowMs)
+  const time = entry.createdAt === undefined ? <DateChip>{entry.time}</DateChip> : <DateTimeDisplay at={entry.createdAt} />
   return (
     <div className="mwrap">
       <div className="msg">
         <div className="fitem" data-src={entry.source}>
           <div className="fsrc">
-            <span className="fic" style={{ color: src.color }}>{src.icon}</span>
-            {m.feed.sources[entry.source]}<span className="ftime">{time}</span>
+            <SourceLabel lead={<span className="fic">{FSRC[entry.source].icon}</span>}>{m.feed.sources[entry.source]}</SourceLabel>
+            <span className="ftime">{time}</span>
           </div>
           <div className="fbody"><Body body={entry.body} onOpenConflict={onOpenConflict} /></div>
         </div>
@@ -123,20 +119,15 @@ function Item({ entry, nowMs, onOpenConflict }: {
   )
 }
 
-/** Feed rows with each date heading constrained to the same centered column as its cards. */
-export function FeedRows({ rows, showDays, nowMs, onOpenConflict }: {
-  rows: FeedEntry[]
-  showDays: boolean
-  nowMs: number
-  onOpenConflict: () => void
-}) {
+/** Feed rows under their day headings, each heading constrained to the same centered column as its cards. */
+export function FeedRows({ rows, onOpenConflict }: { rows: FeedEntry[]; onOpenConflict: () => void }) {
   const m = useMessages()
   return rows.map((entry, index) => (
     <Fragment key={entry.id}>
-      {showDays && entry.day !== rows[index - 1]?.day ? (
+      {entry.day !== rows[index - 1]?.day ? (
         <div className="mwrap feed-day"><DayHeading>{daySectionName(entry.day, m.common.daySections)}</DayHeading></div>
       ) : null}
-      <Item entry={entry} nowMs={nowMs} onOpenConflict={onOpenConflict} />
+      <Item entry={entry} onOpenConflict={onOpenConflict} />
     </Fragment>
   ))
 }
@@ -150,46 +141,35 @@ export function Feed() {
   const m = useMessages()
   const { revision } = useVaultRevision()
   const { open } = useJump()
-  const [entries, setEntries] = useState<FeedEntry[]>([])
+  const [entries, setEntries] = useState<FeedEntry[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [source, setSource] = useState<FeedSource | null>(null)
-  const [nowMs, setNowMs] = useState(Date.now)
 
-  const reportError = useCallback((e: Error) => setError(e.message), [])
+  const reportError = useCallback((e: unknown) => setError(errorLabel(m, e)), [m])
 
   useEffect(() => {
     void feed.list().then(setEntries).catch(reportError)
   }, [revision, reportError])
 
-  // Relative labels must age while the feed remains mounted; otherwise an entry written as
-  // "just now" stays frozen until a navigation or vault write happens to rerender the screen.
-  useEffect(() => {
-    const timer = window.setInterval(() => setNowMs(Date.now()), 30_000)
-    return () => window.clearInterval(timer)
-  }, [])
-
-  const rows = source === null ? entries : entries.filter((e) => e.source === source)
+  const rows = source === null ? entries ?? [] : (entries ?? []).filter((e) => e.source === source)
 
   return (
     <PageShell className="feedcol">
       <PageHeader><PageTitle>{m.feed.title}</PageTitle></PageHeader>
       <PageError error={error} />
       <PageBody>
-        <div className="feedbar">
-          <SegmentedControl
-            label={m.feed.sourceFieldLabel}
-            value={source ?? 'all'}
-            options={FILTERS.map((f) => ({ value: f ?? 'all', label: f === null ? m.feed.filters.all : m.feed.sources[f] }))}
-            onChange={(value) => setSource(value === 'all' ? null : value as FeedSource)}
-          />
-        </div>
-
         <div className="msgs">
-          {/* A source-filtered stream omits date headings because the heading itself has no source. */}
-          <FeedRows
-            rows={rows} showDays={source === null} nowMs={nowMs}
-            onOpenConflict={() => open('chat', CONFLICT_THREAD)}
-          />
+          {/* The switch sits in the stream, so it lines up with the entries' column. */}
+          <PageToolbar className="mwrap">
+            <SegmentedControl
+              label={m.feed.sourceFieldLabel}
+              value={source ?? 'all'}
+              options={FILTERS.map((f) => ({ value: f ?? 'all', label: f === null ? m.feed.filters.all : m.feed.sources[f] }))}
+              onChange={(value) => setSource(value === 'all' ? null : value as FeedSource)}
+            />
+          </PageToolbar>
+          {entries === null && error === null ? <LoadingPlaceholder shape="cards" /> : null}
+          <FeedRows rows={rows} onOpenConflict={() => open('chat', CONFLICT_THREAD)} />
         </div>
       </PageBody>
     </PageShell>

@@ -5,11 +5,11 @@ import { inbox as zh } from '../zh/inbox.js'
 export const inbox = {
   streamLabel: { watch: 'Inmail', discovery: 'Recommended papers' },
   headAll: (streamLabel: string, count: number) => `${streamLabel} · ${count}`,
-  headWatch: (label: string, count: number) => `${label} · ${count} ${pluralEn(count, { one: 'paper', other: 'papers' })}`,
+  headWatch: (label: string, count: number) => `${label} · ${count}`,
   check: {
     checking: 'Checking for new papers…',
     failed: 'Check failed',
-    lastChecked: (when: string) => `Last checked ${when}`,
+    lastChecked: 'Last checked',
   },
   checkNewPapers: 'Check for new papers',
   discovering: 'Discovering…',
@@ -21,9 +21,10 @@ export const inbox = {
   discoverySummary: (projects: number, intents: number) =>
     `${projects} ${pluralEn(projects, { one: 'project', other: 'projects' })} · ${intents} active research ${pluralEn(intents, { one: 'direction', other: 'directions' })}`,
   empty: {
-    discoveryNone: 'No new discoveries yet.',
-    discoveryNoSeeds: 'Link an arXiv paper to a project to get recommendations.',
-    watch: 'No new papers from your watches.',
+    discoveryNone: 'No new discoveries yet',
+    discoveryNoSeeds: 'No project papers with an arXiv ID yet',
+    openProjects: 'Open project list',
+    watch: 'No new papers yet',
   },
   dismissAll: 'Dismiss all',
   actions: {
@@ -38,14 +39,13 @@ export const inbox = {
   notices: {
     queued: 'Saved for later',
     alreadyQueued: 'Already saved for later',
-    dismissedAll: 'All dismissed · can be restored from trash',
-    dismissed: 'Dismissed · can be restored from trash',
-    duplicateToast: 'Already in the library · not added again',
+    dismissedAll: 'All dismissed',
+    dismissed: 'Dismissed',
+    duplicateToast: 'Already in the library',
     alreadyInLibrary: (title: string) => `Already in the library: "${title}"`,
     downloaded: 'Downloaded and added to library · ready to read',
     downloadFailed: 'Download failed',
-    moreLike: 'Got it · showing you more papers like this',
-    lessLike: 'Got it · showing you fewer papers like this',
+    remembered: 'Got it',
     known: 'Marked as familiar',
   },
 } satisfies typeof zh

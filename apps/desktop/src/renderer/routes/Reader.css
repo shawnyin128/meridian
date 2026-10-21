@@ -4,36 +4,36 @@
  * The reading view has three columns: paper chat, PDF and reading notes; AppShell collapses the
  * global navigation in this view.
  */
-.paper-chat{flex:0 0 var(--rrw,300px);min-width:0;border-right:1px solid var(--sep);transition:opacity var(--t-slow) var(--e-inout),margin-left var(--t-slow) var(--e-inout)}
-.main.sbhide .paper-chat{margin-left:calc(var(--rrw,300px) * -1);opacity:0;pointer-events:none}
-.paper-chat-head{height:46px;box-sizing:border-box;padding:0 10px;border-bottom:1px solid var(--sep);display:flex;align-items:center;gap:8px;min-width:0;background:var(--sidebar)}
-.paper-chat-head strong{font-size:var(--fs-sm);color:var(--sec);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.paper-chat-head .back{border:0;background:var(--field);color:var(--ink);border-radius:var(--r-md);width:28px;height:26px;padding:0;cursor:pointer;display:flex;align-items:center;justify-content:center;flex:0 0 auto}
-.paper-chat-head .back svg{width:13px;height:13px}
-.paper-chat .msgs{padding:16px 0;gap:14px}
+.paper-chat{flex:0 0 var(--rrw,300px);min-width:0;border-right:1px solid var(--sep);transition:transform var(--t-slow) var(--e-inout),opacity var(--t-slow) var(--e-inout)}
+/* The paper chat collapses as the sidebar does: out of the layout at once, then sliding away. */
+.main.sbhide .paper-chat{position:absolute;top:0;bottom:0;left:0;width:var(--rrw,300px);z-index:8;transform:translateX(-100%);opacity:0;pointer-events:none}
+.paper-chat-head{height:46px;box-sizing:border-box;padding:0 var(--sp-10);border-bottom:1px solid var(--sep);display:flex;align-items:center;gap:var(--sp-8);min-width:0;background:var(--sidebar)}
+.paper-chat-head .paper-chat-title{font-size:var(--fs-sm);font-weight:var(--fw-title);color:var(--sec)}
+.paper-chat .msgs{padding:var(--sp-16) 0;gap:var(--sp-14)}
 .paper-chat .mwrap{width:calc(100% - 24px)}
-.paper-chat .bubble,.paper-chat .event{font-size:var(--fs-sm);line-height:1.5}
-.paper-chat .composer{padding:10px 0 12px}
-.paper-chat .cbox{padding-left:12px}
-.paper-chat .send:disabled{opacity:.45;cursor:default}
-.note-compose .btn:disabled,.reading-actions .btn:disabled{opacity:.45;cursor:default}
-.yellow{--mark:#f8d84a}.green{--mark:#87d99a}.blue{--mark:#82c7f2}.pink{--mark:#f0a0be}
+.paper-chat .bubble,.paper-chat .answer,.paper-chat .event{font-size:var(--fs-sm);line-height:1.5}
+.paper-chat .composer{padding:var(--sp-10) 0 var(--sp-12)}
+.paper-chat .cbox{padding-left:var(--sp-12)}
+.yellow{--mark:var(--hl-yellow)}.green{--mark:var(--hl-green)}.blue{--mark:var(--hl-blue)}.pink{--mark:var(--hl-pink)}
 
 .reader{flex:1;display:flex;overflow:hidden;min-width:0;background:var(--desktop);position:relative}
-.pdfwrap{flex:1;overflow:auto;padding:24px;min-width:0;overscroll-behavior:contain}
+.pdfwrap{flex:1;overflow:auto;padding:var(--sp-24);min-width:0;overscroll-behavior:contain}
 /*
- * Page width comes only from the one pdf.js viewport. A narrow window scrolls horizontally; never
- * shrink the width while keeping the original height, or the canvas, text selection layer and
- * highlight layer end up with three different geometries.
+ * Page width comes only from the one pdf.js viewport, which fits the page to this area's width; a
+ * page zoomed wider than the area scrolls horizontally. Never shrink the width while keeping the
+ * original height, or the canvas, text selection layer and highlight layer end up with three
+ * different geometries.
  */
 .pdfsheet{width:max-content;min-width:100%;transform-origin:0 0}
-.pdfpagebox{--user-unit:1;--total-scale-factor:calc(var(--scale-factor) * var(--user-unit));--scale-round-x:1px;--scale-round-y:1px;direction:ltr;position:relative;margin:0 auto 24px;background:var(--paper);box-shadow:var(--sh-paper);border-radius:2px}
+.pdfpagebox{--user-unit:1;--total-scale-factor:calc(var(--scale-factor) * var(--user-unit));--scale-round-x:1px;--scale-round-y:1px;direction:ltr;position:relative;margin:0 auto var(--sp-24);background:var(--paper);box-shadow:var(--sh-paper);border-radius:var(--r-2xs)}
 .pdfpagebox canvas{display:block}
-.pdfload{text-align:center;color:var(--ter);font-size:var(--fs-sm);padding:48px 0}
+.pdfload{text-align:center;color:var(--ter);font-size:var(--fs-sm);padding:calc(2 * var(--sp-24)) 0}
 
 /*
  * pdf.js's TextLayer is only for text selection: transparent text laid over the canvas. These are
- * the `.textLayer` rules of pdfjs-dist 6.3.289 web/pdf_viewer.css, unnested, without -moz- prefixes.
+ * the `.textLayer` rules of pdfjs-dist 6.3.289 web/pdf_viewer.css, unnested, without -moz- prefixes,
+ * with the forced-colors values pdf.js gives --hcm-highlight-filter and --hcm-highlight-selected-filter
+ * on .pdfViewer written in place.
  */
 .textLayer{color-scheme:only light;position:absolute;text-align:initial;inset:0;overflow:clip;opacity:1;line-height:1;letter-spacing:normal;word-spacing:normal;-webkit-text-size-adjust:none;text-size-adjust:none;forced-color-adjust:none;transform-origin:0 0;caret-color:CanvasText;z-index:0;--min-font-size:1;--text-scale-factor:calc(var(--total-scale-factor) * var(--min-font-size));--min-font-size-inv:calc(1 / var(--min-font-size))}
 .textLayer.highlighting{touch-action:none}
@@ -41,11 +41,11 @@
 .textLayer>:not(.markedContent),.textLayer .markedContent span:not(.markedContent){z-index:1;--font-height:0;font-size:calc(var(--text-scale-factor) * var(--font-height));--scale-x:1;--rotate:0deg;transform:rotate(var(--rotate)) scaleX(var(--scale-x)) scale(var(--min-font-size-inv))}
 .textLayer .markedContent{display:contents}
 .textLayer span[role="img"]{-webkit-user-select:none;user-select:none;cursor:default}
-.textLayer .highlight{--highlight-bg-color:rgb(180 0 170/.25);--highlight-selected-bg-color:rgb(0 100 0/.25);--highlight-backdrop-filter:none;--highlight-selected-backdrop-filter:none;margin:-1px;padding:1px;background-color:var(--highlight-bg-color);backdrop-filter:var(--highlight-backdrop-filter);border-radius:4px}
-@media screen and (forced-colors:active){.textLayer .highlight{--highlight-bg-color:transparent;--highlight-selected-bg-color:transparent;--highlight-backdrop-filter:var(--hcm-highlight-filter);--highlight-selected-backdrop-filter:var(--hcm-highlight-selected-filter)}}
+.textLayer .highlight{--highlight-bg-color:rgb(180 0 170/.25);--highlight-selected-bg-color:rgb(0 100 0/.25);--highlight-backdrop-filter:none;--highlight-selected-backdrop-filter:none;margin:-1px;padding:1px;background-color:var(--highlight-bg-color);backdrop-filter:var(--highlight-backdrop-filter);border-radius:var(--r-xs)}
+@media screen and (forced-colors:active){.textLayer .highlight{--highlight-bg-color:transparent;--highlight-selected-bg-color:transparent;--highlight-backdrop-filter:invert(100%);--highlight-selected-backdrop-filter:none}}
 .textLayer .highlight.appended{position:initial}
-.textLayer .highlight.begin{border-radius:4px 0 0 4px}
-.textLayer .highlight.end{border-radius:0 4px 4px 0}
+.textLayer .highlight.begin{border-radius:var(--r-xs) 0 0 var(--r-xs)}
+.textLayer .highlight.end{border-radius:0 var(--r-xs) var(--r-xs) 0}
 .textLayer .highlight.middle{border-radius:0}
 .textLayer .highlight.selected{background-color:var(--highlight-selected-bg-color);backdrop-filter:var(--highlight-selected-backdrop-filter);scroll-margin-top:50px}
 .textLayer ::selection{background:rgba(0 0 255/.25);background:color-mix(in srgb,AccentColor,transparent 50%);color:transparent}
@@ -59,87 +59,70 @@
 .paper-highlights{position:absolute;inset:0;z-index:1;pointer-events:none;overflow:hidden}
 .paper-highlight{position:absolute;overflow:visible}
 .paper-highlight path{fill:color-mix(in srgb,var(--mark) 30%,transparent)}
-.paper-highlight.noted path{fill:none;stroke:#eb9d2a;stroke-width:2.5px;vector-effect:non-scaling-stroke}
-.selection-tools{position:fixed;transform:translateX(-50%);display:flex;align-items:center;background:#20242d;color:#fff;border-radius:7px;padding:3px;box-shadow:0 6px 20px rgb(0 0 0/.24);z-index:40}
-.selection-tools button{border:0;background:transparent;color:inherit;font:inherit;font-size:var(--fs-sm);padding:6px 9px;border-radius:5px;cursor:pointer;white-space:nowrap}
-.selection-tools button:hover{background:rgb(255 255 255/.12)}
+.paper-highlight .paper-highlight-note{fill:none;stroke:var(--hl-note);stroke-width:2.5px;vector-effect:non-scaling-stroke}
+/* The selection toolbar: the shared menu surface and items, laid out in one row. */
+.ctxmenu.selection-tools{display:flex;min-width:0}
+.selection-tools-row{display:flex}
+.selection-tools .mi{width:auto;white-space:nowrap}
 
 .reading-notes{width:320px;min-width:320px;box-sizing:border-box;border-left:1px solid var(--sep);background:var(--content);display:flex;flex-direction:column;overflow:hidden}
-.reading-notes>header{height:46px;box-sizing:border-box;padding:0 14px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--sep)}
-.reading-notes>header strong{font-size:var(--fs-sm)}
-.reading-notes>header span,.reading-page{font-size:var(--fs-cap);color:var(--ter)}
-.note-compose{padding:12px;border-bottom:1px solid var(--sep);display:flex;flex-direction:column;gap:8px;align-items:flex-end}
-.note-compose textarea,.reading-card textarea{width:100%;box-sizing:border-box;border:1px solid var(--sep2);background:var(--field);color:var(--ink);border-radius:var(--r-md);padding:8px;font:inherit;line-height:1.45;resize:vertical}
-.note-compose textarea{min-height:86px}.reading-card textarea{min-height:64px}
-.note-compose textarea:focus,.reading-card textarea:focus{border-color:var(--sep-strong);outline:0;box-shadow:none}
-.reading-list{flex:1;overflow:auto;padding:12px;display:flex;flex-direction:column;gap:10px}
-.reading-card{border:1px solid var(--sep2);border-radius:var(--r-lg);padding:10px;background:var(--card);display:flex;flex-direction:column;gap:8px}
+/* The heading bar of every reader rail panel */
+.reader-panel-head{flex:none;height:46px;box-sizing:border-box;padding:0 var(--sp-14);display:flex;align-items:center;justify-content:space-between;gap:var(--sp-8);border-bottom:1px solid var(--sep)}
+.reader-panel-head strong{font-size:var(--fs-sm)}
+.reader-panel-head span,.reading-page{font-size:var(--fs-cap);color:var(--ter)}
+.note-compose{padding:var(--sp-12);border-bottom:1px solid var(--sep);display:flex;flex-direction:column;gap:var(--sp-8);align-items:flex-end}
+.note-compose .form-textarea,.reading-card .form-textarea{width:100%}
+.note-compose .form-textarea{min-height:86px}.reading-card .form-textarea{min-height:64px}
+.reading-list{flex:1;overflow:auto;padding:var(--sp-12);display:flex;flex-direction:column;gap:var(--sp-10)}
+.reading-card{border:1px solid var(--sep2);border-radius:var(--r-card);padding:var(--sp-10);background:var(--card);display:flex;flex-direction:column;gap:var(--sp-8)}
 .highlight-card{border-left:3px solid var(--mark)}
-.reading-page,.reading-delete{border:0;background:transparent;padding:0;cursor:pointer;font-family:var(--sans);width:max-content}
-.reading-page:hover{color:var(--accent)}
-.reading-delete{color:var(--bad);font-size:var(--fs-cap)}
-.reading-actions{display:flex;align-items:center;justify-content:space-between}
-.reading-actions .btn,.note-compose .btn{font-size:var(--fs-cap);padding:3px 9px}
-.highlight-card blockquote{margin:0;color:var(--sec);font-size:var(--fs-sm);line-height:1.45;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
+.reading-page{width:max-content}
+.reading-card-head{display:flex;align-items:center;justify-content:space-between;gap:var(--sp-8)}
+.reading-actions{display:flex;align-items:center;justify-content:flex-end}
+.highlight-card blockquote{max-height:calc(4 * 1lh);margin:0;color:var(--sec);font-size:var(--fs-sm);line-height:1.45}
 .reading-remark{width:320px;min-width:320px;box-sizing:border-box;border-left:1px solid var(--sep);background:var(--content);display:flex;flex-direction:column;overflow:hidden}
-.reading-remark>header{height:46px;box-sizing:border-box;padding:0 14px;display:flex;align-items:center;border-bottom:1px solid var(--sep)}
-.reading-remark>header strong{font-size:var(--fs-sm)}
-.remark-compose{padding:12px;display:flex;flex-direction:column;gap:8px;align-items:flex-end}
-.remark-compose textarea{width:100%;box-sizing:border-box;min-height:120px;border:1px solid var(--sep-strong);background:transparent;color:var(--ink);border-radius:var(--r-md);padding:8px;font:inherit;line-height:1.45;resize:vertical;outline:0}
-.remark-compose .btn{font-size:var(--fs-cap);padding:3px 9px}
-.remark-compose .btn:disabled{opacity:.45;cursor:default}
+.remark-compose{padding:var(--sp-12);display:flex;flex-direction:column;gap:var(--sp-8);align-items:flex-end}
+.remark-compose .form-textarea{width:100%;min-height:120px}
 
-.reader-side{display:flex;flex:0 0 362px;min-width:0;height:100%;overflow:hidden;background:var(--content);
-  transition:flex-basis var(--t-slow) var(--e-inout)}
+.reader-side{display:flex;flex:0 0 362px;min-width:0;height:100%;overflow:hidden;background:var(--content)}
 .reader-side.collapsed{flex-basis:42px}
 .reader-side:not(.collapsed)>:not(.reader-rail){animation:detail-panel-content-in var(--t-slow) var(--e-out) both}
-.reader-side>.paper-meta,.reader-side>.reading-notes,.reader-side>.reading-remark,.reader-side>.wiki-ingest{width:320px;min-width:320px;border-left:1px solid var(--sep)}
-.reader-rail{width:42px;min-width:42px;border-left:1px solid var(--sep);background:var(--sidebar);display:flex;flex-direction:column;align-items:center;padding-top:9px;box-sizing:border-box;gap:4px;order:2}
-.reader-rail button{width:32px;height:32px;border:0;border-radius:8px;background:transparent;color:var(--ter);display:grid;place-items:center;cursor:pointer}
+.reader-side>.reader-meta,.reader-side>.reading-notes,.reader-side>.reading-remark,.reader-side>.wiki-ingest{width:320px;min-width:320px;border-left:1px solid var(--sep)}
+.reader-meta{display:flex;flex-direction:column;overflow:hidden;background:var(--content)}
+.reader-meta>.paper-meta{flex:1;height:auto}
+.reader-rail{width:42px;min-width:42px;border-left:1px solid var(--sep);background:var(--sidebar);display:flex;flex-direction:column;align-items:center;padding-top:var(--sp-8);box-sizing:border-box;gap:var(--sp-4);order:2}
+.reader-rail button{width:32px;height:32px;border:0;border-radius:var(--r-control);background:transparent;color:var(--ter);display:grid;place-items:center;cursor:pointer}
 .reader-rail button:hover{background:var(--hover);color:var(--ink)}
-.reader-rail button.on{background:var(--tint);color:var(--accent)}
+.reader-rail button.on{background:var(--selected);color:var(--on-selected)}
 .reader-rail svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
 
-.zoomctl{position:absolute;bottom:16px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:2px;background:var(--card);border:1px solid var(--sep);border-radius:999px;padding:4px 8px;box-shadow:var(--sh-2);z-index:22}
-.zoomctl button{border:0;background:transparent;color:var(--ter);cursor:pointer;border-radius:var(--r-full);width:22px;height:22px;display:grid;place-items:center;padding:0;transition:background var(--t-fast) var(--e-out)}
-.zoomctl button:hover{background:var(--hover);color:var(--ink)}
-.zoomctl svg{width:12px;height:12px}
-.zoomctl span{font-size:var(--fs-sm);color:var(--sec);min-width:38px;text-align:center;font-family:var(--mono)}
+.zoomctl{position:absolute;bottom:16px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:var(--sp-2);background:var(--card);border-radius:var(--r-full);padding:var(--sp-4) var(--sp-6);box-shadow:var(--sh-2);z-index:22}
+.zoomctl .zoom-reset{min-width:52px}
 
 @media (max-width:1100px){.main.reading{--rrw:260px}}
-@media (max-width:900px){.reader-side{flex-basis:322px}.reader-side.collapsed{flex-basis:42px}.reader-side>.paper-meta,.reader-side>.reading-notes,.reader-side>.reading-remark,.reader-side>.wiki-ingest{width:280px;min-width:280px}}
+@media (max-width:900px){.reader-side{flex-basis:322px}.reader-side.collapsed{flex-basis:42px}.reader-side>.reader-meta,.reader-side>.reading-notes,.reader-side>.reading-remark,.reader-side>.wiki-ingest{width:280px;min-width:280px}}
 
 .wiki-ingest{box-sizing:border-box;background:var(--content);display:flex;flex-direction:column;overflow:auto}
-.wiki-ingest>header{height:46px;min-height:46px;padding:0 14px;display:flex;align-items:center;border-bottom:1px solid var(--sep)}
-.wiki-ingest>header strong{font-size:var(--fs-sm)}
-.wiki-ingest-body{padding:12px;display:flex;flex-direction:column;align-items:stretch}
+.wiki-ingest-body{padding:var(--sp-12);display:flex;flex-direction:column;align-items:stretch}
 .wiki-ingest-body>p{font-size:var(--fs-sm);line-height:1.55;color:var(--sec);margin:0}
-.wiki-ingest .wiki-ingest-intro{color:var(--sec);padding:0 2px}
-.wiki-ingest-scope{margin:12px 0 10px;border:1px solid var(--sep2);border-radius:var(--r-lg);overflow:hidden;background:var(--card)}
-.wiki-ingest-scope>div{height:35px;padding:0 10px;display:flex;align-items:center;justify-content:space-between;border-top:1px solid var(--sep)}
+.wiki-ingest-scope{margin:0 0 var(--sp-10);border:1px solid var(--sep2);border-radius:var(--r-card);overflow:hidden;background:var(--card)}
+.wiki-ingest-scope>div{height:35px;padding:0 var(--sp-10);display:flex;align-items:center;justify-content:space-between;border-top:1px solid var(--sep)}
 .wiki-ingest-scope>div:first-child{border-top:0}
 .wiki-ingest-scope span{color:var(--ter);font-size:var(--fs-cap)}
 .wiki-ingest-scope strong{font-size:var(--fs-sm)}
-.wiki-ingest .wiki-ingest-tip{padding:0 2px;color:var(--ter)}
-.wiki-ingest .wiki-ingest-status{margin-top:10px;padding:0 2px;color:var(--ter)}
+.wiki-ingest .wiki-ingest-status{margin-top:var(--sp-10);padding:0 var(--sp-2);color:var(--ter)}
 .wiki-ingest .wiki-ingest-status.bad{color:var(--bad)}
 .wiki-ingest .wiki-ingest-status.done{color:var(--good)}
-.wiki-ingest-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:14px}
-.wiki-ingest-body>small{margin-top:10px;padding:0 2px;color:var(--ter);font-size:var(--fs-cap);line-height:1.45}
-.wiki-ingest-review{margin-top:14px;padding-top:14px;border-top:1px solid var(--sep2)}
-.wiki-ingest-review-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px}
-.wiki-ingest-review-head strong{font-size:var(--fs-sm)}
-.wiki-ingest-review-head span{color:var(--ter);font-size:var(--fs-cap)}
-.wiki-ingest-review-mode{display:flex;width:100%;margin-bottom:12px}
-.wiki-ingest-review-mode>button{flex:1 1 50%}
+.wiki-ingest-actions{display:flex;justify-content:flex-end;gap:var(--sp-8);margin-top:var(--sp-14)}
+.wiki-ingest-review{margin-top:var(--sp-14);padding-top:var(--sp-14);border-top:1px solid var(--sep2)}
+.wiki-ingest-review-kind{color:var(--ter);font-size:var(--fs-cap);font-weight:var(--fw-regular)}
 .wiki-ingest-review .form-textarea{width:100%;min-height:360px;font-family:var(--mono);font-size:var(--fs-cap);line-height:1.55}
-.wiki-ingest-edit-note{margin:0 0 10px;color:var(--warn);font-size:var(--fs-cap);line-height:1.5}
-.wiki-ingest-rejection{margin-top:14px;padding:12px;background:var(--field);border-radius:var(--r-lg)}
-.wiki-ingest-rejection-head{display:flex;flex-direction:column;gap:3px;margin-bottom:10px}
+.wiki-ingest-body>.tag{align-self:flex-start;margin-top:var(--sp-10)}
+.wiki-ingest-review>.tag{margin-bottom:var(--sp-10)}
+.wiki-ingest-actions>.tag{align-self:center;margin-right:auto}
+.wiki-ingest-rejection{margin-top:var(--sp-14);padding:var(--sp-12);background:var(--field);border-radius:var(--r-lg)}
+.wiki-ingest-rejection-head{display:flex;flex-direction:column;gap:var(--sp-4);margin-bottom:var(--sp-10)}
 .wiki-ingest-rejection-head strong{font-size:var(--fs-sm)}
-.wiki-ingest-rejection-head span{color:var(--ter);font-size:var(--fs-cap);line-height:1.45}
-.wiki-ingest-rejection-reasons{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:9px}
-.wiki-ingest-rejection-reasons.segmented-control>button{background:var(--card)}
-.wiki-ingest-rejection-reasons.segmented-control>button.on{background:var(--accent-soft)}
+.wiki-ingest-rejection-reasons{margin-bottom:var(--sp-10)}
 .wiki-ingest-rejection>.form-textarea{min-height:62px;font-family:var(--sans);font-size:var(--fs-sm)}
-.wiki-ingest-rejection .wiki-ingest-actions{margin-top:10px}
+.wiki-ingest-rejection .wiki-ingest-actions{margin-top:var(--sp-10)}

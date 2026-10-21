@@ -3,9 +3,9 @@ import type {
   ChatMessage, PaperRow, ProjectSummary, WikiAggregationCard,
 } from '../../shared/contract.js'
 import { chat, feed, idea as ideaApi, papers, project, wiki } from '../ipc.js'
+import { errorLabel } from '../lib/failure-label.js'
 import {
-  useBanner, useChatSession, useCrumbTail, useJump, useToast, useVaultRevision,
-  type CrumbSeg,
+  useChatSession, useCrumbTail, useJump, useNotice, useVaultRevision, type CrumbSeg,
 } from '../shell/AppShell.js'
 import { dnum } from '../../shared/dates.js'
 import { useFormat, type Format } from '../lib/format.js'
@@ -13,19 +13,28 @@ import { useMessages } from '../messages/useMessages.js'
 import type { Catalog } from '../messages/catalog.js'
 import { ChatMessageView, plain } from '../components/chat/ChatMessage.js'
 import { FOCUS_KEY } from '../../shared/project-signals.js'
-import { PickerPopover } from '../components/PickerPopover.js'
+import { PickerPopover, PickOption } from '../components/PickerPopover.js'
+import { EmptyState } from '../components/EmptyState.js'
 import { FormTextarea } from '../components/FormControls.js'
+import { LoadingPlaceholder } from '../components/LoadingPlaceholder.js'
 import {
   PageBody, PageError, PageFooter, PageHeader, PageShell, PageTitle,
 } from '../components/PageShell.js'
 import { useCandidateKeys } from '../hooks/useCandidateKeys.js'
 import { useDrafts } from '../hooks/useDrafts.js'
+import { useFollowEnd } from '../hooks/useFollowEnd.js'
+import { useGenerations } from '../hooks/useGenerations.js'
+import { useNoModelChats } from '../hooks/useNoModelChats.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
 import { CONFLICT_THREAD, sendsMessage } from '../lib/chat.js'
 import { composing } from '../lib/keyboard.js'
 import { IdeaEditorDialog } from '../components/ideas/IdeaEditorDialog.js'
 import { GenerationControl } from '../components/GenerationControl.js'
+import { FadeText } from '../components/FadeText.js'
+import { Toolbar, ToolbarButton } from '../components/Toolbar.js'
 import { TitleNote } from '../components/TitleNote.js'
+import { Tag } from '../components/Tag.js'
+import { Tooltip } from '../components/Tooltip.js'
 import { PaperText } from '../components/paper/PaperText.js'
 import { plainTitle } from '../components/paper/paper-text.js'
 import './shell.css'
@@ -96,28 +105,29 @@ export function Chat() {
   const fmt = useFormat()
   const m = useMessages()
   const { id, title, archived, select } = useChatSession()
-  const { jump } = useJump()
+  const { jump, open } = useJump()
   const { revision, bump } = useVaultRevision()
-  const banner = useBanner()
-  const toast = useToast()
-  const [messages, setMessages] = useState<ChatMessage[]>([])
+  const notice = useNotice()
+  const [messages, setMessages] = useState<ChatMessage[] | null>(null)
   const drafts = useDrafts()
   // The `@` picker, like the draft, belongs to the chat it was opened in.
   const [mentionIn, setMentionIn] = useState<string | null>(null)
   const [savingIdea, setSavingIdea] = useState(false)
-  const [sending, setSending] = useState(false)
+  const { running, run, stop } = useGenerations()
+  const { noModel, track } = useNoModelChats()
   const [projects, setProjects] = useState<ProjectSummary[]>([])
   const [rows, setRows] = useState<PaperRow[]>([])
   const [pages, setPages] = useState<WikiAggregationCard[]>([])
   const [error, setError] = useState<string | null>(null)
-  const stream = useRef<HTMLDivElement>(null)
+  // The page body, not the message list, scrolls the conversation.
+  const { ref: followRef, follow } = useFollowEnd<HTMLDivElement>()
   const composer = useRef<HTMLTextAreaElement>(null)
   const consumed = useRef(0)
-  const sendAttempt = useRef(0)
-  const reportError = useCallback((e: Error) => setError(e.message), [])
+  const reportError = useCallback((e: unknown) => setError(errorLabel(m, e)), [m])
   const write = useVaultWrite()
   const draft = id === null ? '' : drafts.get(id) ?? ''
   const mentioning = id !== null && mentionIn === id
+  const sending = id !== null && running(id)
 
   useEffect(() => {
     void project.list().then(setProjects).catch(reportError)
@@ -126,30 +136,29 @@ export function Chat() {
   }, [revision, reportError])
 
   useEffect(() => {
+    setMessages(null)
+    follow()
+  }, [id, follow])
+  useEffect(() => {
     if (id === null) return
     void chat.messages(id).then(setMessages).catch(reportError)
   }, [id, revision, reportError])
-
-  // As in the demo's add(): scroll the message list to the bottom whenever a message is added.
-  useEffect(() => { stream.current?.scrollTo?.({ top: stream.current.scrollHeight }) }, [messages])
 
   const mentions = useMemo(() => mentionsOf(projects, rows, pages, fmt, m), [projects, rows, pages, fmt, m])
   // Candidates come from the current input and the loaded vault data: empty until the data arrives,
   // after which the picker opens by itself.
   const suggest = useMemo(() => (mentioning ? hitsOf(draft.trim(), mentions) : []), [mentioning, draft, mentions])
 
-  const send = useCallback(async (session: string, text: string) => {
-    const attempt = ++sendAttempt.current
-    setSending(true)
-    await write(chat.send(session, text))
-    if (sendAttempt.current === attempt) setSending(false)
-  }, [write])
+  const send = useCallback((session: string, text: string) => {
+    follow()
+    return run(session, write(track(session, chat.send(session, text))))
+  }, [follow, run, write, track])
 
-  const stopSending = useCallback(() => {
-    sendAttempt.current += 1
-    setSending(false)
-    if (id !== null) void chat.cancel(id)
-  }, [id])
+  const stopSending = () => {
+    if (id === null) return
+    stop(id)
+    void chat.cancel(id)
+  }
 
   // The conflict brief in the Feed starts a new chat and asks the preset question, as in the demo.
   // Any other jump target is an existing chat (e.g. a search hit), so just switch to it.
@@ -163,8 +172,8 @@ export function Chat() {
     void chat.create(m.project.signals.kind.conflict, true).then(async (session) => {
       select(session.id)
       await send(session.id, m.chat.conflictQuestion)
-    }).catch((e: Error) => toast(e.message))
-  }, [jump, select, send, toast, m])
+    }).catch((e: unknown) => notice.refusal(errorLabel(m, e)))
+  }, [jump, select, send, notice, m])
 
   const setDraft = (text: string) => { if (id !== null) drafts.set(id, text) }
   const setMentioning = (on: boolean) => setMentionIn(on ? id : null)
@@ -202,14 +211,14 @@ export function Chat() {
   const act = (message: ChatMessage) => {
     if (id === null) return
     void chat.recordAction(id, message.id).then(async (p) => {
-      banner(<TitleNote message={m.chat.recordedNote} title={p.name} />)
+      notice.success(<TitleNote message={m.chat.recordedNote} title={p.name} />)
       await feed.append({ source: 'me', body: { kind: 'runs', runs: [
-        plain(m.chat.recordedTo(p.name)),
+        plain(m.chat.recordedNote(p.name)),
       ] } })
       bump()
-    }).catch((e: Error) => toast(e.message))
+    }).catch((e: unknown) => notice.refusal(errorLabel(m, e)))
   }
-  const hasDiscussion = messages.some((message) => message.role === 'you')
+  const hasDiscussion = (messages ?? []).some((message) => message.role === 'you')
 
   // An archived chat is not listed in the sidebar. Once opened it looks like any other chat; only
   // the breadcrumb marks it as archived.
@@ -220,16 +229,24 @@ export function Chat() {
 
   return (
     <PageShell className="chatcol">
-      <PageHeader><PageTitle>{title === null ? m.chat.newChat : <PaperText text={title} />}</PageTitle></PageHeader>
+      <PageHeader>
+        <PageTitle label={title === null ? undefined : plainTitle(title)}>
+          {title === null ? m.chat.newChat : <PaperText text={title} />}
+        </PageTitle>
+      </PageHeader>
 
-      <PageBody>
+      <PageBody ref={followRef}>
         <div className="stream">
           <PageError error={error} />
 
-          <div className="msgs" ref={stream}>
-            {messages.map((msg) => (
-              <ChatMessageView key={msg.id} message={msg} onAct={() => act(msg)} />
-            ))}
+          <div className="msgs">
+            {messages === null
+              ? (id !== null && error === null ? <div className="mwrap"><LoadingPlaceholder shape="lines" /></div> : null)
+              : messages.length === 0
+                ? <div className="mwrap"><EmptyState variant="page">{m.chat.empty}</EmptyState></div>
+                : messages.map((msg) => (
+                  <ChatMessageView key={msg.id} message={msg} onAct={() => act(msg)} />
+                ))}
           </div>
         </div>
       </PageBody>
@@ -237,26 +254,27 @@ export function Chat() {
       <PageFooter bare>
         <div className="composer">
           <div className="mwrap">
-            <div className="qacts">
-              <button
-                className="qa" id="qaIdea" disabled={id === null || !hasDiscussion}
-                title={hasDiscussion ? m.chat.saveIdea : m.chat.saveIdeaDisabled}
-                onClick={() => setSavingIdea(true)}
-              >{m.chat.saveIdeaLabel}</button>
-              <span className="qsep" />
-              <span id="qmChips">
-                {[
-                  ...mentions.filter((mention) => mention.kind === 'project').slice(0, QUICK_MENTIONS),
-                  ...mentions.filter((mention) => mention.kind === 'paper').slice(0, QUICK_MENTIONS),
-                ].map((mention) => (
-                  <button
-                    className="qa" key={mention.title}
-                    title={m.chat.quickMentionTitle(m.chat.mentionGroup[mention.kind], mention.meta)}
-                    onClick={() => quick(mention.title)}
-                  >@{mention.kind === 'paper' ? <PaperText text={mention.entity.title} /> : mention.title}</button>
-                ))}
-              </span>
-            </div>
+            <Toolbar>
+              <div className="qacts">
+                <span id="qmChips">
+                  {[
+                    ...mentions.filter((mention) => mention.kind === 'project').slice(0, QUICK_MENTIONS),
+                    ...mentions.filter((mention) => mention.kind === 'paper').slice(0, QUICK_MENTIONS),
+                  ].map((mention) => (
+                    <Tooltip key={mention.title} label={mention.title} whenClipped side="top">
+                      <ToolbarButton className="btn ghost sm qm" onClick={() => quick(mention.title)}>
+                        <FadeText>@{mention.kind === 'paper' ? <PaperText text={mention.entity.title} /> : mention.title}</FadeText>
+                      </ToolbarButton>
+                    </Tooltip>
+                  ))}
+                </span>
+                {hasDiscussion ? null : <Tag>{m.chat.noDiscussion}</Tag>}
+                <ToolbarButton
+                  className="btn ghost sm save-idea" id="qaIdea" disabled={id === null || !hasDiscussion}
+                  onClick={() => setSavingIdea(true)}
+                >{m.chat.saveIdeaLabel}</ToolbarButton>
+              </div>
+            </Toolbar>
 
             <PickerPopover
               open={suggest.length > 0} onOpenChange={(open) => { if (!open) setMentioning(false) }}
@@ -264,7 +282,7 @@ export function Chat() {
               anchor={(
                 <div className="cbox" id="cbox">
                   <FormTextarea
-                    id="composer" ref={composer} value={draft} rows={1} autoComplete="off"
+                    appearance="plain" id="composer" ref={composer} value={draft} rows={1} autoComplete="off"
                     placeholder={m.chat.composerPlaceholder} disabled={sending || id === null}
                     onChange={(e) => type(e.target.value)}
                     onKeyDown={(e) => {
@@ -279,8 +297,10 @@ export function Chat() {
                       }
                     }}
                   />
+                  {id !== null && noModel(id) ? <Tag>{m.chat.noModel}</Tag> : null}
                   <GenerationControl
-                    className="send" id="sendBtn" running={sending} onStart={submit} onStop={stopSending}
+                    className="send" id="sendBtn" running={sending} disabled={id === null || draft.trim() === ''}
+                    onStart={submit} onStop={stopSending}
                   />
                 </div>
               )}
@@ -292,10 +312,10 @@ export function Chat() {
                       {suggest[at - 1]?.kind === hit.kind
                         ? null
                         : <div className="rg">{m.chat.mentionGroup[hit.kind]}</div>}
-                      <div className={at === keys.active ? 'rrow on' : 'rrow'} onClick={() => pick(hit.title)}>
+                      <PickOption keys={keys} index={at} className="two-line" onClick={() => pick(hit.title)}>
                         <div className="rt">@{hit.kind === 'paper' ? <PaperText text={hit.entity.title} /> : hit.title}</div>
                         <div className="rm">{hit.meta}</div>
-                      </div>
+                      </PickOption>
                     </Fragment>
                   ))}
                 </>
@@ -308,9 +328,10 @@ export function Chat() {
       {id === null ? null : (
         <IdeaEditorDialog
           open={savingIdea} sourceLabel={title === null ? m.chat.currentChat : plainTitle(title)} onOpenChange={setSavingIdea}
-          onSubmit={(ideaTitle, body) => write(
-            ideaApi.create(id, ideaTitle, body), { note: m.chat.ideaSavedNote },
-          )}
+          onSubmit={(ideaTitle, body) => write(ideaApi.create(id, ideaTitle, body), {
+            note: m.chat.ideaSavedNote,
+            action: (idea) => ({ label: m.common.open, onAction: () => open('ideas', idea.id) }),
+          })}
         />
       )}
     </PageShell>

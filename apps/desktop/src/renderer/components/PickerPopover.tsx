@@ -1,6 +1,10 @@
 import * as Popover from '@radix-ui/react-popover'
-import type { ReactElement, ReactNode, RefObject } from 'react'
+import type { HTMLAttributes, ReactElement, ReactNode, RefObject } from 'react'
+import { useScrollFade } from '../hooks/useScrollFade.js'
+import type { CandidateKeys } from '../hooks/useCandidateKeys.js'
 import { ignoreComposingEscape } from '../lib/keyboard.js'
+import { COLLISION_PADDING } from './floating-layer.js'
+import { OutsideToolbar } from './Toolbar.js'
 
 /** PickerPopover's focus guard, kept beside it so pages never touch the Radix event contract. */
 function pressGuard(
@@ -15,9 +19,11 @@ function pressGuard(
   }
 }
 
-export type PickerPopoverProps = {
+/** Anything the popover can be placed against: an element, or a box that is not one. */
+export type AnchorBox = { getBoundingClientRect: () => DOMRect }
+
+type PickerPopoverBaseProps = {
   open: boolean
-  anchor: ReactElement
   content: ReactNode
   anchorRef?: RefObject<HTMLElement | null>
   onOpenChange?: (open: boolean) => void
@@ -30,37 +36,65 @@ export type PickerPopoverProps = {
   stopClickPropagation?: boolean
 }
 
+export type PickerPopoverProps = PickerPopoverBaseProps & (
+  | { anchor: ReactElement; anchorBox?: never }
+  | { anchorBox: RefObject<AnchorBox | null>; anchor?: never }
+)
+
 /**
  * The popover shell shared by input suggestions and pickers. Radix only positions it; this owns the
- * portal, the spacing, treating a press on the anchor as inside, not taking the input's focus on
- * open, and not blurring the input when a candidate is pressed. An Escape pressed while an input
- * method is composing does not close it. When `content` is empty, only the anchor renders and no
- * empty popover is mounted.
+ * portal, the spacing, the gap it keeps from the window edge, treating a press on the anchor as
+ * inside, not taking the input's focus on open, and not blurring the input when a candidate is
+ * pressed. An Escape pressed while an input method is composing does not close it. When `content`
+ * is empty, only the anchor renders and no empty popover is mounted. It is placed against `anchor`,
+ * which it renders, or against `anchorBox`, which the caller renders or measures itself.
  */
-export function PickerPopover({
-  open, anchor, content, anchorRef, onOpenChange,
-  contentId,
-  contentClassName = 'pickhits', side = 'bottom', align = 'start', sideOffset = 4,
-  sticky, stopClickPropagation = false,
-}: PickerPopoverProps) {
+export function PickerPopover(props: PickerPopoverProps) {
+  const listFade = useScrollFade('y')
+  const {
+    open, content, anchorRef, onOpenChange,
+    contentId,
+    contentClassName = 'pickhits', side = 'bottom', align = 'start', sideOffset = 4,
+    sticky, stopClickPropagation = false,
+  } = props
   return (
     <Popover.Root open={open} {...(onOpenChange === undefined ? {} : { onOpenChange })}>
-      <Popover.Anchor asChild>{anchor}</Popover.Anchor>
+      {props.anchorBox === undefined
+        ? <Popover.Anchor asChild>{props.anchor}</Popover.Anchor>
+        : <Popover.Anchor virtualRef={props.anchorBox} />}
       {content === null || content === undefined || content === false
         ? null
         : (
           <Popover.Portal>
             <Popover.Content
+              ref={listFade} data-fade-paint=""
               {...(contentId === undefined ? {} : { id: contentId })}
-              className={contentClassName} side={side} align={align}
+              className={contentClassName} side={side} align={align} collisionPadding={COLLISION_PADDING}
               sideOffset={sideOffset} {...(sticky === undefined ? {} : { sticky })}
               {...pressGuard(anchorRef)} onEscapeKeyDown={ignoreComposingEscape()}
               onClick={stopClickPropagation ? (event) => event.stopPropagation() : undefined}
             >
-              {content}
+              <OutsideToolbar>{content}</OutsideToolbar>
             </Popover.Content>
           </Popover.Portal>
         )}
     </Popover.Root>
+  )
+}
+
+/**
+ * Row `index` of a candidate list driven by `keys`, in the shared menu item anatomy. It is lit only
+ * while it is the active row, and pointer movement over it makes it the active row, so the row
+ * under the pointer and the row the arrow keys move are always one row.
+ */
+export function PickOption({ keys, index, className, ...props }: Omit<HTMLAttributes<HTMLDivElement>, 'onMouseMove'> & {
+  keys: Pick<CandidateKeys, 'active' | 'pointAt'>
+  index: number
+}) {
+  return (
+    <div
+      {...props} onMouseMove={() => keys.pointAt(index)}
+      className={`mi rrow${className === undefined ? '' : ` ${className}`}${keys.active === index ? ' on' : ''}`}
+    />
   )
 }

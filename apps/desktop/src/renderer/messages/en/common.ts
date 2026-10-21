@@ -1,10 +1,10 @@
-import { TRASH_RETENTION_DAYS } from '../../../shared/vocabulary.js'
 import { pluralEn } from '../../lib/plural.js'
 import { common as zh } from '../zh/common.js'
 
 /** English counterpart of `zh/common`. `satisfies` makes a missing, extra or re-parameterised key a compile error. */
 export const common = {
   save: 'Save',
+  saved: 'Saved',
   cancel: 'Cancel',
   edit: 'Edit',
   confirm: 'Confirm',
@@ -17,12 +17,15 @@ export const common = {
   archive: 'Archive',
   unarchive: 'Unarchive',
   undo: 'Undo',
+  open: 'Open',
+  moveUp: 'Move up',
+  moveDown: 'Move down',
   loading: 'Loading…',
   saving: 'Saving…',
   reading: 'Reading…',
   none: 'None',
   all: 'All',
-  trashed: `Moved to Trash · recoverable for ${TRASH_RETENTION_DAYS} days`,
+  trashed: 'Moved to Trash',
   updatedOn: (date: string) => `Updated ${date}`,
   addedOn: (date: string) => `Added ${date}`,
   overdue: 'Overdue',
@@ -30,15 +33,15 @@ export const common = {
   archived: 'Archived',
   count: (n: number) => `${n}`,
   priority: { p0: 'Urgent', p1: 'Normal', p2: 'Low' },
+  attribution: { agent: 'Agent', withSource: (who: string, source: string) => `${who} · ${source}` },
   daySections: { today: 'Today', yesterday: 'Yesterday', week: 'This week', earlier: 'Earlier' },
   nav: { back: 'Back' },
+  dialog: { close: 'Close' },
   panel: { close: 'Collapse details' },
   details: { expand: 'Show details', collapse: 'Hide details' },
   field: {
     clear: 'Clear input',
-    clickToEdit: 'Click to edit',
     emptyValue: '—',
-    change: (label: string) => `Edit ${label}`,
     edit: (label: string) => `Edit ${label}`,
     chooseDirectory: 'Choose folder',
   },
@@ -46,20 +49,33 @@ export const common = {
     total: (n: number) => `${n} ${pluralEn(n, { one: 'item', other: 'items' })} total`,
     perPage: 'Items per page',
     perPageOption: (n: number) => `${n} / page`,
+    page: (n: number) => `Page ${n}`,
+    previous: 'Previous page',
+    next: 'Next page',
   },
   menu: { more: 'More' },
+  calendar: { previous: 'Previous month', next: 'Next month' },
   generation: {
     start: 'Send',
     stop: 'Stop generating',
     running: 'Generating',
     runningHint: 'Generating — click to stop',
   },
-  markdown: { citePage: (page: string) => `Source · page ${page}` },
+  anchor: {
+    label: (page: number) => `p.${page}`,
+    name: (page: number) => `Source · page ${page}`,
+  },
   failure: {
     label: (what: string, why: string) => `${what} · ${why}`,
     reasons: {
       unavailable: 'No network', timeout: 'Timed out', 'rate-limit': 'Rate limited', server: 'Server error',
-      'not-pdf': 'Not a PDF',
+      'not-pdf': 'Not a PDF', write: 'Could not write to the library', 'no-key': 'No Semantic Scholar key',
+      'not-found': 'It no longer exists', refused: 'Not possible right now', changed: 'Changed in the meantime',
+      'newer-changes': 'Undo the newer changes first', 'in-use': 'Still in use', invalid: 'Not valid',
+      'not-library': 'Not a Meridian library', busy: 'Still in progress', 'newer-version': 'Needs a newer App',
+      'key-unsaved': 'Could not save the key', 'key-unreadable': 'Could not read the saved key', 'no-model': 'No model set up',
+      cancelled: 'Generation stopped', model: 'The model call failed',
     },
+    unknown: 'Something went wrong',
   },
 } satisfies typeof zh

@@ -4,8 +4,10 @@ import type { Task, TaskPatch, TaskWindow } from '../../shared/contract.js'
 import { TASK_SLOT_ENDS, TASK_SLOT_STARTS } from '../../shared/contract.js'
 import { ActionPopover } from './ActionPopover.js'
 import { DateChip } from './DateTimeDisplay.js'
-import { FormInput, FormSelect } from './FormControls.js'
+import { ChoicePicker } from './FieldPickers.js'
+import { FormInput } from './FormControls.js'
 import { SegmentedControl } from './SegmentedControl.js'
+import { useToolbarItem } from './Toolbar.js'
 import { dnum } from '../../shared/dates.js'
 import { useFormat } from '../lib/format.js'
 import { useMessages } from '../messages/useMessages.js'
@@ -80,19 +82,17 @@ export function TaskScheduleEditor({ mode, task, saving, onSave, onCancel }: {
               ? null
               : (
                 <div className="schedule-window">
-                  <FormSelect
-                    className="schedule-input" aria-label={m.research.schedule.startSlot} value={window.start}
-                    onChange={(event) => setWindow((current) => current && ({
-                      ...current, start: event.target.value as TaskWindow['start'],
-                    }))}
-                  >{TASK_SLOT_STARTS.map((time) => <option key={time}>{time}</option>)}</FormSelect>
+                  <ChoicePicker
+                    appearance="field" className="schedule-input" aria-label={m.research.schedule.startSlot}
+                    value={window.start} options={TASK_SLOT_STARTS}
+                    onPick={(start) => setWindow((current) => current && ({ ...current, start }))}
+                  />
                   <span>–</span>
-                  <FormSelect
-                    className="schedule-input" aria-label={m.research.schedule.endSlot} value={window.end}
-                    onChange={(event) => setWindow((current) => current && ({
-                      ...current, end: event.target.value as TaskWindow['end'],
-                    }))}
-                  >{TASK_SLOT_ENDS.map((time) => <option key={time}>{time}</option>)}</FormSelect>
+                  <ChoicePicker
+                    appearance="field" className="schedule-input" aria-label={m.research.schedule.endSlot}
+                    value={window.end} options={TASK_SLOT_ENDS}
+                    onPick={(end) => setWindow((current) => current && ({ ...current, end }))}
+                  />
                 </div>
               )}
           </>
@@ -105,7 +105,10 @@ export function TaskScheduleEditor({ mode, task, saving, onSave, onCancel }: {
   )
 }
 
-/** A separate date or time-window entry; both open TaskScheduleEditor but never edit together. */
+/**
+ * A separate date or time-window entry; both open TaskScheduleEditor but never edit together. Its
+ * trigger is one of the controls of the toolbar it renders in.
+ */
 export function TaskScheduleField({ mode, task, onSave, className = '', stopRowActivation = false }: {
   mode: ScheduleEditMode
   task: Task
@@ -116,12 +119,12 @@ export function TaskScheduleField({ mode, task, onSave, className = '', stopRowA
 }) {
   const fmt = useFormat()
   const m = useMessages()
+  const asItem = useToolbarItem()
   const [open, setOpen] = useState(false)
   const [saving, setSaving] = useState(false)
   const label = mode === 'date'
     ? fmt.dateRange(task.start, task.end)
     : task.window ? `${task.window.start}–${task.window.end}` : m.project.plan.windowMode.allDay
-  const title = mode === 'date' ? m.project.plan.editDate : m.research.schedule.editTime
 
   const save = async (patch: TaskPatch) => {
     setSaving(true)
@@ -135,12 +138,11 @@ export function TaskScheduleField({ mode, task, onSave, className = '', stopRowA
   return (
     <ActionPopover
       open={open} onOpenChange={(next) => { if (!saving || next) setOpen(next) }}
-      trigger={(
+      trigger={asItem(
         <button
           type="button" className={`schedule-trigger${className ? ` ${className}` : ''}`}
-          title={title}
           onClick={stopRowActivation ? (e) => e.stopPropagation() : undefined}
-        ><DateChip>{label}</DateChip></button>
+        ><DateChip>{label}</DateChip></button>,
       )}
       contentClassName="ctxmenu schedule-pop" side="bottom" align="start" sideOffset={4}
       contentProps={{ onEscapeKeyDown: (event) => { if (saving) event.preventDefault() } }}

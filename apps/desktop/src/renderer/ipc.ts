@@ -1,7 +1,7 @@
 import type { AppUpdateStatus } from '../shared/app-update.js'
 import type {
-  AttachmentFields, AuthorCandidate, ChangeEntry, ChatCancelResult, ChatMessage, ChatMessageFields,
-  ChatSendResult, ChatSession, ConclusionState,
+  AttachmentFields, AuthorCandidate, AuthorSearchFailed, CallRejection, ChangeEntry, ChatCancelResult,
+  ChatMessage, ChatMessageFields, ChatSendResult, ChatSession, ConclusionState,
   ContractMethod, Facet, PluginVersion, SemanticKeyCheckResult, SemanticKeyStatus,
   DeliverySettings, DiscoveryFeedback, DiscoveryFetchResult, DiscoveryIntentAction, DiscoveryProfile,
   ExtensionStatus, FeedEntry, FeedFields,
@@ -12,18 +12,34 @@ import type {
   HarnessRejectPaperWikiResult, HarnessRunReceipt,
   LibraryBackup, LibraryLocation, LibraryResetResult, ListResult,
   MilestoneFields, NetFailed, PaperColumn, PaperColumns, PaperFields, PaperImportResult, PaperReading, PaperRow,
-  Proposal, ProjectDetail, ProjectFields, ProjectWorkspaceBinding, ReadingMutation, ResearchIdea,
+  Proposal, ProjectDetail, ProjectFields, ProjectRecordedChange, ProjectWorkspaceBinding, ReadingMutation, RecordedChange,
+  ResearchIdea,
   ResearchIdeaGraphPlacement, ResearchIdeaPatch, ResearchIdeaPlaceOnGraphResult,
   ResearchIdeaPromoteResult,
   ProjectOverview,
   ProjectSummary,
-  RelationFields, SearchHit, TaskFields, TaskPatch, TrashEntry, Watch, WatchFields,
+  RelationFields, SearchHit, TaskFields, TaskPatch, TrashEntry, TrashedEntry, Watch, WatchFields,
   WatchSuggestionParams, WatchSuggestionResult, WikiAggregation,
   WikiAggregationCard, WikiHome, WikiPaper, ProposalReceipt, ProposalStatus, WikiProposal,
 } from '../shared/contract.js'
+import { CallError } from './call-error.js'
+
+/**
+ * The CallError for a rejected `method` call: Core rejects with a CallRejection; any other rejection,
+ * such as the preload losing its connection, is logged and becomes `unknown`.
+ */
+function callError(method: ContractMethod, rejected: unknown): CallError {
+  if (typeof rejected === 'object' && rejected !== null && !(rejected instanceof Error) && 'reason' in rejected) {
+    return new CallError(method, (rejected as CallRejection).reason)
+  }
+  console.error(`[ipc] ${method}: ${rejected instanceof Error ? rejected.message : String(rejected)}`)
+  return new CallError(method, 'unknown')
+}
 
 const call = <T>(method: ContractMethod, params: unknown): Promise<T> =>
-  window.meridian.call(method, params) as Promise<T>
+  (window.meridian.call(method, params) as Promise<T>).catch((rejected: unknown) => {
+    throw callError(method, rejected)
+  })
 
 export const appMenu = {
   /**
@@ -41,6 +57,11 @@ export const appMenu = {
   restartApp: () => { window.meridian.restartApp() },
   /** The self-drawn title bar switches between maximized and restored when double-clicked. */
   toggleMaximize: () => { window.meridian.toggleMaximize() },
+  /**
+   * Calls `handler` with whether the window is full screen, once now and on every change, and
+   * returns its unsubscribe function.
+   */
+  onFullScreen: (handler: (on: boolean) => void) => window.meridian.onFullScreen(handler),
   /** The platform; it sets the title bar's room for window buttons and whether shortcuts use ⌘ or Ctrl. */
   platform: (): string => window.meridian.platform,
   /**
@@ -99,8 +120,8 @@ export const papers = {
     call<Facet[]>('papers.facets', { field, ...(filter ? { filter } : {}) }),
   get: (id: string) => call<PaperRow>('papers.get', { id }),
   update: (id: string, patch: Partial<PaperFields>) =>
-    call<void>('papers.update', { id, patch }),
-  delete: (id: string) => call<void>('papers.delete', { id }),
+    call<RecordedChange>('papers.update', { id, patch }),
+  delete: (id: string) => call<RecordedChange>('papers.delete', { id }),
   /** Bytes of the paper's original PDF. Rejects when the vault has no source file for this paper. */
   source: (id: string) => call<Uint8Array>('papers.source', { id }),
   /** The uploaded binary is directly structurally cloned to Core without base64. */
@@ -112,9 +133,9 @@ export const papers = {
   columns: () => call<PaperColumns>('papers.columns', {}),
   setColumns: (columns: PaperColumns) => call<void>('papers.setColumns', { columns }),
   renameOption: (key: string, from: string, to: string) =>
-    call<void>('papers.renameOption', { key, from, to }),
+    call<RecordedChange>('papers.renameOption', { key, from, to }),
   setColumnType: (key: string, type: PaperColumn['type']) =>
-    call<void>('papers.setColumnType', { key, type }),
+    call<RecordedChange>('papers.setColumnType', { key, type }),
 }
 
 export const harness = {
@@ -154,7 +175,7 @@ export const project = {
     call<ProjectDetail>('project.bindWorkspace', { id, binding }),
   update: (id: string, patch: Partial<ProjectFields>) =>
     call<ProjectDetail>('project.update', { id, patch }),
-  delete: (id: string) => call<void>('project.delete', { id }),
+  delete: (id: string) => call<RecordedChange>('project.delete', { id }),
   createTask: (projectId: string, task: TaskFields) =>
     call<ProjectDetail>('project.createTask', { projectId, task }),
   updateTask: (projectId: string, taskId: string, patch: TaskPatch) =>
@@ -187,7 +208,7 @@ export const project = {
   createAttachment: (projectId: string, attachment: AttachmentFields) =>
     call<ProjectDetail>('project.createAttachment', { projectId, attachment }),
   deleteAttachment: (projectId: string, attachmentId: string) =>
-    call<ProjectDetail>('project.deleteAttachment', { projectId, attachmentId }),
+    call<ProjectRecordedChange>('project.deleteAttachment', { projectId, attachmentId }),
   createConclusion: (
     projectId: string, text: string, from: { chat?: string; paper?: string } = {},
   ) => call<ProjectDetail>('project.createConclusion', { projectId, text, ...from }),
@@ -247,13 +268,13 @@ export const idea = {
   promote: (id: string) => call<ResearchIdeaPromoteResult>('idea.promote', { id }),
   placeOnGraph: (id: string, placement: ResearchIdeaGraphPlacement) =>
     call<ResearchIdeaPlaceOnGraphResult>('idea.placeOnGraph', { id, placement }),
-  delete: (id: string) => call<void>('idea.delete', { id }),
+  delete: (id: string) => call<TrashedEntry>('idea.delete', { id }),
   reorder: (order: string[]) => call<void>('idea.reorder', { order }),
 }
 
 export const inbox = {
   list: (params: InboxListParams = {}) => call<InboxEntry[]>('inbox.list', params),
-  dismiss: (id: string) => call<void>('inbox.dismiss', { id }),
+  dismiss: (id: string) => call<TrashedEntry>('inbox.dismiss', { id }),
   readLater: (id: string) => call<boolean>('inbox.readLater', { id }),
   /** Adds the paper to the vault; whether it was added or already there tells the UI how to open the entry. */
   download: (id: string) => call<InboxDownloadResult>('inbox.download', { id }),
@@ -300,7 +321,7 @@ export const watch = {
 }
 
 export const author = {
-  search: (query: string) => call<AuthorCandidate[] | NetFailed>('author.search', { query }),
+  search: (query: string) => call<AuthorCandidate[] | AuthorSearchFailed>('author.search', { query }),
 }
 
 export const wiki = {

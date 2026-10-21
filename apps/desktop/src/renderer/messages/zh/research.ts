@@ -1,18 +1,17 @@
 /** research screen copy. */
 export const research = {
   overview: {
-    title: (n: number) => `总览 · ${n}`,
+    title: '总览',
     timelineHeading: '时间线 · 项目',
     statsHeading: '概况',
     stats: {
       active: '进行中',
       shelved: '搁置',
       openMilestones: '待完成里程碑',
-      recentProgress: '近 7 天推进',
+      recentProgress: '近 7 天科研记录',
     },
-    decisions: (n: number) => `需要决策 · ${n}`,
-    progressHeading: '项目进展',
-    empty: '暂无待推进项目。',
+    decisions: (n: number) => `需要注意 · ${n}`,
+    progressHeading: '项目推进',
     activePathNote: (taskText: string | undefined) =>
       `当前科研路径${taskText === undefined ? '' : ` · 任务 ${taskText}`}`,
     /** Suffix after the first in-progress node's label when several nodes are active at once. */
@@ -20,20 +19,19 @@ export const research = {
     focusWithActiveTasks: (label: string, n: number) => `${label} · ${n} 条进行中任务`,
     noRecentRecord: '暂无科研记录',
     waitingForAgent: '等待 Agent 回传',
-    recentHeading: '最近进展',
-    eventKind: '进展',
+    recentHeading: '最近科研记录',
     upcomingHeading: '接下来的里程碑',
-    hideHistory: '隐藏已完成和搁置项目',
-    showHistory: '显示已完成和搁置项目',
     historyProjects: '历史项目',
-    milestonePopTitle: (isNew: boolean, date: string) => `${isNew ? '新建里程碑' : '里程碑'} · ${date}`,
+    milestonePopTitle: (isNew: boolean): string => (isNew ? '添加里程碑' : '里程碑'),
+    newMilestoneOn: (date: string) => `添加里程碑 · ${date}`,
     taskWindowMovedHours: (slots: number, hours: number) =>
       `任务${slots > 0 ? '后移' : '前移'} ${hours} 小时`,
   },
   list: {
     title: (n: number) => `项目 · ${n}`,
     create: '新建项目',
-    sort: '排序',
+    empty: '还没有进行中的项目',
+    sort: '重新排列',
     sortPriority: '按优先级',
     sortMilestone: '按下一个里程碑',
     renameTitle: '重命名项目',
@@ -41,8 +39,8 @@ export const research = {
     renamed: '已重命名',
     statusChangedTo: (status: string) => `已标记为 ${status}`,
     groupHeading: (status: string, n: number) => `${status} · ${n}`,
-    createdNote: '已创建项目 · 已加入研究总览',
-    createdFeedNote: (name: string) => `新项目《${name}》已创建，已加入研究总览。`,
+    createdNote: '已创建项目',
+    createdFeedNote: (name: string) => `新项目《${name}》已创建`,
   },
   panel: {
     milestoneOn: (date: string) => `里程碑 ${date}`,
@@ -51,9 +49,9 @@ export const research = {
     noUpcomingMilestone: '无后续里程碑',
     focusUndefined: '待定义',
     recentProgressLabel: '最近推进',
-    noRecords: '还没有记录。',
+    noRecords: '还没有记录',
     staleAlert: (n: number) => `已 ${n} 天无推进`,
-    paperCount: (n: number) => (n === 0 ? '还没有关联论文。' : `关联论文 ${n} 篇`),
+    paperCount: (n: number) => (n === 0 ? '还没有关联论文' : `关联论文 ${n} 篇`),
   },
   chips: {
     addProject: '关联项目',
@@ -67,6 +65,5 @@ export const research = {
     modeLabel: '档期方式',
     startSlot: '开始时段',
     endSlot: '结束时段',
-    editTime: '修改时间',
   },
 } satisfies Record<string, unknown>

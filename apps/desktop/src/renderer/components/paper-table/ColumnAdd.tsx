@@ -5,6 +5,7 @@ import { useMessages } from '../../messages/useMessages.js'
 import { ActionPopover } from '../ActionPopover.js'
 import { InlineDraftInput } from '../InlineDraftInput.js'
 import { IconMulti, IconSelect, IconText } from '../icons.js'
+import { Tooltip } from '../Tooltip.js'
 
 /** Each column type's icon, in type-button order; its name comes from the catalog's `papers.columnType`. */
 const TYPES = [
@@ -48,12 +49,14 @@ export function ColumnTypePicker({ type, onPick, onKeyDown, buttons, focusAfterC
       }}
     >
       {TYPES.map(({ type: t, Icon }, i) => (
-        <button
-          key={t} type="button" ref={(el) => { refs.current[i] = el }}
-          className={t === type ? 'ctbtn on' : 'ctbtn'} title={m.papers.columnType[t]}
-          role="radio" aria-checked={t === type} tabIndex={t === type ? 0 : -1}
-          onClick={() => { onPick(t); focusAfterClick?.current?.focus() }}
-        ><Icon /></button>
+        <Tooltip key={t} label={m.papers.columnType[t]}>
+          <button
+            type="button" ref={(el) => { refs.current[i] = el }}
+            className={t === type ? 'ctbtn on' : 'ctbtn'} aria-label={m.papers.columnType[t]}
+            role="radio" aria-checked={t === type} tabIndex={t === type ? 0 : -1}
+            onClick={() => { onPick(t); focusAfterClick?.current?.focus() }}
+          ><Icon /></button>
+        </Tooltip>
       ))}
     </div>
   )

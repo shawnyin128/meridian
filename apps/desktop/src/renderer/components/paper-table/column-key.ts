@@ -1,6 +1,7 @@
 import type { PaperColumns } from '../../../shared/contract.js'
 import { GROUPABLE_PAPER_FIELDS, PAPER_COLUMNS } from '../../../shared/vocabulary.js'
 import { nextKey } from '../../lib/slug.js'
+import type { Catalog } from '../../messages/catalog.js'
 
 // The contract allows only [A-Za-z0-9_-] in keys, but slugOf keeps CJK as letters; fold the rest into -
 const NON_KEY = /[^A-Za-z0-9_-]+/g
@@ -15,6 +16,19 @@ export function columnKey(label: string, columns: PaperColumns): string {
     ...columns.custom.map((c) => c.key), ...PAPER_COLUMNS, ...GROUPABLE_PAPER_FIELDS, 't',
     'none', ...Object.getOwnPropertyNames(Object.prototype),
   ])
+}
+
+/**
+ * The names the built-in columns and group fields show beside `columns`' custom ones: the catalog's,
+ * except that the read state shows its earlier name, `stTaken`, while a custom column holds its name,
+ * so no two columns show one name.
+ */
+export function builtinNames(m: Catalog, columns: PaperColumns): Pick<Catalog['papers'], 'columns' | 'groupNames'> {
+  const { columns: names, groupNames } = m.papers
+  const held = columns.custom.some((c) => c.label === names.st || c.label === groupNames.readState)
+  return held
+    ? { columns: { ...names, st: names.stTaken }, groupNames: { ...groupNames, readState: names.stTaken } }
+    : { columns: names, groupNames }
 }
 
 /**

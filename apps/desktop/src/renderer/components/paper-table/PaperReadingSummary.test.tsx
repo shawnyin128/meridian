@@ -45,6 +45,7 @@ let root: Root | null = null
 
 describe('PaperReadingSummary', () => {
   beforeEach(() => {
+    vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} })
     globalThis.IS_REACT_ACT_ENVIRONMENT = true
     window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'zh')
   })
@@ -73,6 +74,7 @@ describe('PaperReadingSummary', () => {
     expect(rows.every((row) => row.classList.contains('structured-row'))).toBe(true)
     expect(rows.map((row) => row.textContent)).toEqual(['先看第三节的消融。', '“固定上下文”和自适应上下文对比', '第二条'])
     expect(list!.nextElementSibling?.textContent).toBe('共 3 条 · 阅读器中查看全部')
+    expect(list!.nextElementSibling?.className).toBe('btn ghost sm reading-summary-all')
 
     await act(async () => { (rows[1] as HTMLElement).click() })
     expect(read).toEqual([{ page: 2, highlight: 'h1', panel: 'highlights' }])

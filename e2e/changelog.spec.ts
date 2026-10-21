@@ -13,6 +13,13 @@ const sourcesFromCore = (win: Page) => win.evaluate(async () => {
   return entries.map((e) => e.source)
 })
 
+/**
+ * The attribution labels the screen shows for these change sources, top to bottom: a change the user
+ * made has none, and an agent's carries the agent label, with the notes or experiment it came from.
+ */
+const labelsOf = (sources: string[]) => sources.filter((source) => source !== '我')
+  .map((source) => (source === 'Meridian' ? 'agent' : `agent · ${source}`))
+
 /** Calls `changelog.list` directly, bypassing the UI, and returns whether each change in the vault is archived. */
 const archivedFromCore = (win: Page) => win.evaluate(async () => {
   const entries = await (window as unknown as MeridianWindow).meridian
@@ -42,7 +49,7 @@ async function shelveDraft(win: Page): Promise<void> {
   await win.locator('[data-proj="draft"]').hover()
   await win.locator('[data-proj="draft"] .dots').click()
   await win.locator('.ctxmenu .mi', { hasText: '搁置' }).click()
-  await expect(win.locator('#toast')).toHaveText('已标记为 搁置')
+  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已标记为 搁置')
 }
 
 test('侧栏「最近变动」进的是变动屏,面包屑、屏头的数与角标都对上', async ({ win }) => {
@@ -53,7 +60,7 @@ test('侧栏「最近变动」进的是变动屏,面包屑、屏头的数与角�
   await expect(win.locator('#crumb .cseg')).toHaveText(['我的库', '最近变动'])
   await expect(shown(win, '.desk-head .t')).toHaveText(`最近变动 · ${sources.length}`)
   await expect(shown(win, '.crow')).toHaveCount(sources.length)
-  await expect(shown(win, '.crow .src')).toHaveText(sources)
+  await expect(shown(win, '.crow .src')).toHaveText(labelsOf(sources))
   // No fixture change is archived, so only the unarchived section shows.
   await expect(shown(win, '.section-heading')).toContainText(['未归档'])
 })
@@ -62,17 +69,19 @@ test('点开一条才看得见它的 diff,加行删行分开着色', async ({ wi
   await gotoChangelog(win)
   // The change with one deleted and one added line: the user's conclusion "branch waste", v2 to v3.
   const row = shown(win, '.crow').filter({ hasText: '分支浪费' })
-  await expect(row.locator('.diff')).toBeHidden()
+  const toggle = row.locator('.card-tray-toggle')
+  await expect(toggle).toHaveAttribute('aria-expanded', 'false')
 
-  await row.click()
+  await toggle.click()
+  await expect(toggle).toHaveAttribute('aria-expanded', 'true')
   await expect(row.locator('.diff')).toBeVisible()
   await expect(row.locator('.diff .del')).toHaveCount(1)
   await expect(row.locator('.diff .add')).toHaveCount(1)
   // Each row expands on its own: opening one leaves the others closed.
-  await expect(shown(win, '.crow').first().locator('.diff')).toBeHidden()
+  await expect(shown(win, '.crow').first().locator('.card-tray-toggle')).toHaveAttribute('aria-expanded', 'false')
 
-  await row.click()
-  await expect(row.locator('.diff')).toBeHidden()
+  await toggle.click()
+  await expect(toggle).toHaveAttribute('aria-expanded', 'false')
 })
 
 test('改一笔再撤销:数据真的回到改之前,那一条标成已撤销,并多出一条撤销记录', async ({ win }) => {
@@ -85,12 +94,12 @@ test('改一笔再撤销:数据真的回到改之前,那一条标成已撤销,�
   await expect(shown(win, '.crow')).toHaveCount(seeded + 1)
   const top = shown(win, '.crow').first()
   await expect(top.locator('.ct')).toContainText('项目「draft 效率」· 改了字段')
-  await expect(top.locator('.src')).toHaveText('我')
+  await expect(top.locator('.src')).toHaveCount(0)
   await top.hover()
-  await expect(top.locator('.cundo')).toHaveText('撤销')
+  await expect(top.locator('.cundo')).toHaveAttribute('aria-label', '撤销')
 
   await top.locator('.cundo').click()
-  await expect(win.locator('#banner span')).toHaveText('已撤销 · 数据回到这一笔之前')
+  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已撤销')
   // Read Core again: the vault really is back to its state before the change, not just the screen.
   expect(await statusFromCore(win, 'draft')).toBe('进行中')
 
@@ -110,18 +119,18 @@ test('这一笔之后又改过时撤销被拒,说清还有几条更新的,数据
   await win.locator('.ctxmenu .mi', { hasText: '重命名' }).click()
   await win.locator('.ctxmenu .mi-in input').fill('改过名字的 draft')
   await win.locator('.ctxmenu .mi-in input').press('Enter')
-  await expect(win.locator('#banner span')).toHaveText('已重命名')
+  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已重命名')
 
   await gotoChangelog(win)
   // The status change is older than the rename, so it is listed second.
   const shelved = shown(win, '.crow').nth(1)
   await shelved.hover()
-  await expect(shelved.locator('.cundo')).toHaveText('撤销')
+  await expect(shelved.locator('.cundo')).toHaveAttribute('aria-label', '撤销')
   await shelved.locator('.cundo').click()
 
-  await expect(win.locator('#toast')).toHaveText('这条之后该实体又被改过 1 次，先撤销较新的那几条')
+  await expect(win.locator('#notice[data-tone="refusal"] .notice-text')).toHaveText('先撤销较新的变动')
   expect(await statusFromCore(win, 'draft')).toBe('搁置')
-  await expect(shelved.locator('.cundo')).toHaveText('撤销')
+  await expect(shelved.locator('.cundo')).toHaveAttribute('aria-label', '撤销')
 })
 
 test('撤不动的那几条没有撤销钮,灰字里写着无法撤销:fixture 带进来的历史没有还原所需的东西', async ({ win }) => {
@@ -163,17 +172,17 @@ test('归一条:它落到「已归档」那一节,屏头与侧栏的数都掉一
   await expect(shown(win, '.crow')).toHaveCount(total)
 })
 
-test('「全部归档」把未归档清空,写「都看过了。」,按钮跟着灰掉', async ({ win }) => {
+test('「全部归档」把未归档清空,写「还没有新的变动」,按钮跟着灰掉', async ({ win }) => {
   const total = (await sourcesFromCore(win)).length
   await gotoChangelog(win)
   // "Archive all" sits at the right end of the unarchived section's heading.
   await expect(shown(win, '.section-heading').first().locator('.archall')).toHaveCount(1)
   await shown(win, '.archall').click()
 
-  await expect(win.locator('#toast')).toHaveText(`已归档 ${total} 条`)
+  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText(`已归档 ${total} 条`)
   await expect(shown(win, '.desk-head .t')).toHaveText('最近变动 · 0')
   await expect(win.locator('[data-desk="changelog"] .n')).toHaveText('0')
-  await expect(shown(win, '.empty-state')).toHaveText('都看过了。')
+  await expect(shown(win, '.empty-state')).toHaveText('还没有新的变动')
   // It sits under a section heading with the archived list below it, so it is the one-line variant.
   await expect(shown(win, '.empty-state')).toHaveClass(/empty-state--section/)
   await expect(shown(win, '.archall')).toBeDisabled()
@@ -194,7 +203,7 @@ test('归过档的那一条照样撤得动,撤销不动它的归档,撤销本身
   await expect(filed.locator('.ct')).toContainText('项目「draft 效率」· 改了字段')
   await filed.hover()
   await filed.locator('.cundo').click()
-  await expect(win.locator('#banner span')).toHaveText('已撤销 · 数据回到这一笔之前')
+  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已撤销')
   // Read Core again: the vault really is back to its state before the change.
   expect(await statusFromCore(win, 'draft')).toBe('进行中')
 
@@ -210,7 +219,7 @@ test('这一屏没有筛选条:来源只写在条目上,不能按它筛', async 
   await gotoChangelog(win)
   await expect(shown(win, '.crow')).toHaveCount(sources.length)
   await expect(shown(win, '.segmented-control')).toHaveCount(0)
-  await expect(shown(win, '.crow .src')).toHaveText(sources)
+  await expect(shown(win, '.crow .src')).toHaveText(labelsOf(sources))
 })
 
 test('两节内部各自按天分段,同一天连成一段,段首一行日期', async ({ win }) => {
@@ -231,9 +240,8 @@ test('两节内部各自按天分段,同一天连成一段,段首一行日期', 
 test('日期只写在小标题上:条目的灰字不再重复一遍', async ({ win }) => {
   await shelveDraft(win)
   await gotoChangelog(win)
-  // The meta line of the user's own change was its date plus this phrase; with the date cut, only
-  // the phrase is left.
-  await expect(shown(win, '.crow').first().locator('.cm')).toHaveText('点开看改了什么')
+  // The meta line of the user's own undoable change was only its date; with the date cut, it is empty.
+  await expect(shown(win, '.crow').first().locator('.cm')).toHaveText('')
   // Fixture meta lines are hand-written in two parts; only the leading date part is cut.
   await expect(shown(win, '.crow').filter({ hasText: '分支浪费' }).locator('.cm'))
     .toHaveText('实验 #3 的结果回流 · 无法撤销')

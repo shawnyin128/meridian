@@ -83,10 +83,10 @@ const overviewCounts = (win: Page) => win.evaluate(async () => {
  * renders, so the check is deterministic regardless of which day of the month the suite runs on.
  */
 async function revealMilestone(win: Page, dataMilestone: string) {
-  await shown(win).locator('.gantt .gscale button', { hasText: '月' }).click()
+  await shown(win).locator('.gantt .segmented-control>button', { hasText: '月' }).click()
   const diamond = shown(win).locator(`.gantt .gddl[data-milestone="${dataMilestone}"]`)
   for (let step = 0; step < 3 && await diamond.count() === 0; step += 1) {
-    await shown(win).locator('.gantt .gperiodnav button[title="下一个周期"]').click()
+    await shown(win).locator('.gantt .gperiodnav button[aria-label="下一个周期"]').click()
   }
   await expect(diamond).toBeVisible()
   // Center it in the scrollable viewport instead of leaving it wherever it first became visible, so it
@@ -120,7 +120,7 @@ test('侧栏「总览」进的是研究总览,各块条数与 project.overview �
   const counts = await overviewCounts(win)
 
   await expect(win.locator('#crumb .cseg')).toHaveText(['研究', '总览'])
-  await expect(shown(win).locator('.desk-head .t')).toHaveText(`总览 · ${counts.active}`)
+  await expect(shown(win).locator('.desk-head .t')).toHaveText('总览')
   // In the demo this sidebar row has no badge; only the other rows do.
   await expect(win.locator('[data-desk="restl"] .n')).toHaveCount(0)
 
@@ -165,7 +165,6 @@ test('侧栏「总览」进的是研究总览,各块条数与 project.overview �
 
 test('总览点一个项目进它的详情,返回钮回总览,面包屑「项目」回列表,列表进来的返回钮回列表', async ({ win }) => {
   await gotoOverview(win)
-  const { active } = await overviewCounts(win)
   await shown(win).locator('.ovlist-row.progress[data-proj="draft"]').click()
 
   await expect(shown(win).locator('.desk-head .t')).toHaveText('draft 效率')
@@ -174,7 +173,7 @@ test('总览点一个项目进它的详情,返回钮回总览,面包屑「项目
   // Back follows history: the project was opened from Overview, so Back returns to Overview.
   await shown(win).locator('.desk-head .back').click()
   await expect(win.locator('#crumb .cseg')).toHaveText(['研究', '总览'])
-  await expect(shown(win).locator('.desk-head .t')).toHaveText(`总览 · ${active}`)
+  await expect(shown(win).locator('.desk-head .t')).toHaveText('总览')
   await expect(shown(win).locator('.ovlist-row.progress[data-proj="draft"]')).toBeVisible()
 
   // The breadcrumb's Projects segment still returns to the project list, as in the demo.
@@ -220,7 +219,7 @@ test('总览时间线:项目行的折叠钮收起它的任务,别的项目不动
   await expect(win.locator('#crumb .cseg')).toHaveText(['研究', '项目', '复现 EAGLE-2'])
 })
 
-test('新建的项目在总览里看得见,横幅那句话才算数', async ({ win }) => {
+test('新建的项目在总览里看得见,成功提示那句话才算数', async ({ win }) => {
   await gotoOverview(win)
   const before = await overviewCounts(win)
 
@@ -228,16 +227,16 @@ test('新建的项目在总览里看得见,横幅那句话才算数', async ({ w
   await shown(win).locator('#projNew').click()
   await shown(win).locator('.projpanel .inedit').fill(NEW_PROJECT)
   await shown(win).locator('.projpanel .inedit').press('Enter')
-  await expect(win.locator('#banner span')).toHaveText('已创建项目 · 已加入研究总览')
+  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已创建项目')
 
   await gotoOverview(win)
   const after = await overviewCounts(win)
   const created = after.ids.find((id) => !before.ids.includes(id))!
   expect(created).toBeDefined()
 
-  await expect(shown(win).locator(`.ovlist-row.progress[data-proj="${created}"] .project-identity-name`))
+  await expect(shown(win).locator(`.ovlist-row.progress[data-proj="${created}"] .project-label`))
     .toHaveText(NEW_PROJECT)
-  await expect(shown(win).locator(`.gantt .glrow[data-proj="${created}"] .timeline-project-label`))
+  await expect(shown(win).locator(`.gantt .glrow.msl[data-proj="${created}"] .timeline-item-label`))
     .toHaveText(NEW_PROJECT)
   // A new project with no tasks shows only its milestone row; its schedule no longer fakes a task bar.
   await expect(shown(win).locator(`.gantt .gbar[data-proj="${created}"]`)).toHaveCount(0)
@@ -258,11 +257,12 @@ test('点甘特行内空白在那一天新建里程碑,写落进 core', async ({
 
   // repro's bar starts on the window's second day, so the start of its row is empty and on day one.
   await row.click({ position: { x: 10, y: 22 } })
-  await expect(win.locator('.ctxmenu .rh')).toHaveText(`新建里程碑 · ${dshort(firstDay)}`)
+  await expect(win.locator('.ctxmenu .rh')).toHaveText('添加里程碑')
+  await expect(win.locator('.ctxmenu .short-text-field .form-button')).toHaveText(dshort(firstDay))
   await win.locator('.ctxmenu .mi-in input').fill('总览上补的里程碑')
   await win.locator('.ctxmenu .mi-in input').press('Enter')
 
-  await expect(win.locator('#banner span')).toHaveText('已添加里程碑')
+  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已添加里程碑')
   expect(await milestonesOf(win, 'repro'))
     .toContainEqual({ date: firstDay, title: '总览上补的里程碑' })
   await expect(row.locator('.gddl')).toHaveCount(before + 1)
@@ -289,7 +289,7 @@ test('总览横条是真实任务:拖动改任务日期,单击进所属项目', 
   await expect.poll(async () => (await left()) - from).toBeCloseTo(2 * dayPx, 0)
   await win.mouse.up()
 
-  await expect(win.locator('#toast')).toHaveText('任务顺延 2 天')
+  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('任务顺延 2 天')
   // The drag did not count as a click: the app stays on Overview instead of opening the project.
   await expect(win.locator('#crumb .cseg')).toHaveText(['研究', '总览'])
   const saved = await win.evaluate(async () => {
@@ -369,7 +369,7 @@ test.describe('拖总览菱形改期', () => {
     await expect.poll(async () => Math.round((await left()) - from)).toBe(Math.round(3 * dayPx))
     await win.mouse.up()
 
-    await expect(win.locator('#toast')).toHaveText(`已改期到 ${dshort(moved)}`)
+    await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText(`已改期到 ${dshort(moved)}`)
     // The click sent after mouseup was swallowed: no "New milestone" popover opened on the empty row space.
     await expect(win.locator('.ctxmenu')).toHaveCount(0)
     expect(await milestonesOf(win, 'repro')).toContainEqual({ date: moved, title })
@@ -424,16 +424,16 @@ test('日周月切换时只列出和当前时间段有交集的任务,同日任�
   )).sort()
   expect(await taskLabels()).toEqual(listed('week'))
 
-  await gantt.locator('.gscale button', { hasText: '月' }).click()
+  await gantt.locator('.segmented-control>button', { hasText: '月' }).click()
   await expect(bar).toBeVisible()
   expect((await bar.boundingBox())!.width).toBeLessThan(40)
   await expect.poll(taskLabels).toEqual(listed('month'))
 
-  await gantt.locator('.gscale button', { hasText: '日' }).click()
+  await gantt.locator('.segmented-control>button', { hasText: '日' }).click()
   await expect(bar).toBeVisible()
   await expect.poll(taskLabels).toEqual(listed('day'))
 
-  await gantt.locator('.gscale button', { hasText: '周' }).click()
+  await gantt.locator('.segmented-control>button', { hasText: '周' }).click()
   await expect(bar).toBeVisible()
   await expect.poll(taskLabels).toEqual(listed('week'))
 })
@@ -454,7 +454,7 @@ test.describe('窗口收窄并滚动', () => {
     await gotoOverview(win)
     // The history view keeps every project and finished tasks too.
     await shown(win).locator('.overview-history-toggle').click()
-    await shown(win).locator('.gantt .gscale button', { hasText: '月' }).click()
+    await shown(win).locator('.gantt .segmented-control>button', { hasText: '月' }).click()
     await expect(shown(win).locator('.gantt .gbar-label', { hasText: '月初任务' })).toHaveCount(1)
     const taskRows = (await win.evaluate(() => (window as unknown as MeridianWindow).meridian
       .call('project.overview', {}) as Promise<{ tasks: { start: string; end: string }[] }[]>))
@@ -507,16 +507,17 @@ test('总览新建里程碑:写被拒时弹层与打的字都留着,改了再回
 
   // repro's bar starts on the window's second day, so the start of its row is empty and on day one.
   await shown(win).locator('.gantt .grow[data-row="repro"]').click({ position: { x: 10, y: 22 } })
-  await expect(menu.locator('.rh')).toHaveText(`新建里程碑 · ${dshort(firstDay)}`)
+  await expect(menu.locator('.rh')).toHaveText('添加里程碑')
+  await expect(menu.locator('.short-text-field .form-button')).toHaveText(dshort(firstDay))
 
   // Delete repro directly, bypassing the UI: Overview does not refetch, so the popover stays on repro's
   // row, and this write to Core is bound to be rejected.
   await win.evaluate(() => (window as unknown as MeridianWindow).meridian.call('project.delete', { id: 'repro' }))
   await input.fill(REJECTED_TITLE)
   await input.press('Enter')
-  // Wait for the error toast first: it shows the Enter really reached Core and was rejected, so the
+  // Wait for the refusal notice first: it shows the Enter really reached Core and was rejected, so the
   // popover is checked only after the write has returned.
-  await expect(win.locator('#toast')).toHaveText('项目不存在：repro')
+  await expect(win.locator('#notice[data-tone="refusal"] .notice-text')).toHaveText('这一项已不存在')
   await expect(shown(win).locator('.ipcerror')).toHaveCount(0)
   await expect(menu).toBeVisible()
   await expect(input).toHaveValue(REJECTED_TITLE)
@@ -531,7 +532,7 @@ test('总览新建里程碑:写被拒时弹层与打的字都留着,改了再回
   })
   await input.fill(RETRIED_TITLE)
   await input.press('Enter')
-  await expect(win.locator('#banner span')).toHaveText('已添加里程碑')
+  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已添加里程碑')
   await expect(menu).toHaveCount(0)
   const saved = await milestonesOf(win, 'repro')
   expect(saved).toContainEqual({ date: firstDay, title: RETRIED_TITLE })
@@ -551,7 +552,7 @@ test('总览新建里程碑:一次写没落地之前连按两下回车,只建一
   await input.evaluate((el) => {
     for (let i = 0; i < 2; i += 1) el.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
   })
-  await expect(win.locator('#banner span')).toHaveText('已添加里程碑')
+  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已添加里程碑')
   await expect(win.locator('.ctxmenu')).toHaveCount(0)
   expect((await milestonesOf(win, 'repro')).filter((m) => m.title === TWICE_TITLE))
     .toEqual([{ date: firstDay, title: TWICE_TITLE }])
@@ -567,7 +568,7 @@ test('总览里程碑改名:写成了才收起;写被拒时弹层与打的字都
   await diamond.click()
   await input.fill(RENAMED_TITLE)
   await input.press('Enter')
-  await expect(win.locator('#banner span')).toHaveText('已更新里程碑')
+  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已更新里程碑')
   await expect(menu).toHaveCount(0)
   expect(await milestonesOf(win, 'repro'))
     .toContainEqual({ date: fixtureDay(today, REPRO_M2), title: RENAMED_TITLE })
@@ -580,7 +581,7 @@ test('总览里程碑改名:写成了才收起;写被拒时弹层与打的字都
     .call('project.deleteMilestone', { projectId: 'repro', milestoneId: 'm2' }))
   await input.fill(REJECTED_TITLE)
   await input.press('Enter')
-  await expect(win.locator('#toast')).toHaveText('里程碑不存在：m2')
+  await expect(win.locator('#notice[data-tone="refusal"] .notice-text')).toHaveText('这一项已不存在')
   await expect(shown(win).locator('.ipcerror')).toHaveCount(0)
   await expect(menu).toBeVisible()
   await expect(input).toHaveValue(REJECTED_TITLE)
@@ -611,7 +612,7 @@ test('总览新建里程碑:点外落在一次被拒的写的在途期间,弹层
     }
   })
 
-  await expect(win.locator('#toast')).toHaveText('项目不存在：repro')
+  await expect(win.locator('#notice[data-tone="refusal"] .notice-text')).toHaveText('这一项已不存在')
   await expect(menu).toBeVisible()
   await expect(input).toHaveValue(REJECTED_TITLE)
 })
@@ -672,10 +673,11 @@ test.describe(() => {
       moved.dispatchEvent(new Event('input', { bubbles: true }))
     }, { dayPx, typed: MOVED_TITLE })
 
-    await expect(win.locator('#banner span')).toHaveText('已添加里程碑')
+    await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已添加里程碑')
     expect(await milestonesOf(win, 'repro')).toContainEqual({ date: firstDay, title: STALE_TITLE })
     await expect(menu).toBeVisible()
-    await expect(menu.locator('.rh')).toHaveText(`新建里程碑 · ${dshort(secondDay)}`)
+    await expect(menu.locator('.rh')).toHaveText('添加里程碑')
+    await expect(menu.locator('.short-text-field .form-button')).toHaveText(dshort(secondDay))
     await expect(input).toHaveValue(MOVED_TITLE)
   })
 
@@ -707,10 +709,11 @@ test.describe(() => {
       if (anchor.style.top === top) throw new Error('弹层没有在同一个任务里挪到 draft 行')
     })
 
-    await expect(win.locator('#banner span')).toHaveText('已添加里程碑')
+    await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已添加里程碑')
     expect(await milestonesOf(win, 'repro')).toContainEqual({ date: firstDay, title: STALE_TITLE })
     await expect(menu).toBeVisible()
-    await expect(menu.locator('.rh')).toHaveText(`新建里程碑 · ${dshort(firstDay)}`)
+    await expect(menu.locator('.rh')).toHaveText('添加里程碑')
+    await expect(menu.locator('.short-text-field .form-button')).toHaveText(dshort(firstDay))
     // A popover moved to another project must not keep the text typed for repro, or Enter would create
     // that milestone on draft.
     await expect(input).toHaveValue('')
@@ -728,7 +731,7 @@ test('总览里程碑弹层:点「删除」收起弹层,里程碑从 core 里删
   await diamond.click()
   await expect(menu.locator('.rh')).toHaveText(`里程碑 · ${dshort(m2.date)}`)
   await menu.locator('.mi.danger').click()
-  await expect(win.locator('#banner span')).toHaveText('已删除里程碑')
+  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已删除里程碑')
   await expect(menu).toHaveCount(0)
   const after = await milestonesOf(win, 'repro')
   expect(after).not.toContainEqual(m2)

@@ -2,14 +2,15 @@ import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'rea
 import type { ReactNode, RefObject } from 'react'
 import type { ProjectStatus, ProjectSummary } from '../../shared/contract.js'
 import {
-  FOCUS_KEY, idleDays, idleNote, NEAR_DAYS, nextMilestone, projectSortOrder, STALE_DAYS,
+  FOCUS_KEY, idleDays, idleNote, nextMilestone, projectSortOrder, STALE_DAYS,
 } from '../../shared/project-signals.js'
 import type { ProjectSortKey } from '../../shared/project-signals.js'
 import { ACTIVE_PROJECT, PROJECT_STATUSES } from '../../shared/vocabulary.js'
+import { errorLabel } from '../lib/failure-label.js'
 import type { CrumbSeg, ScreenKey } from '../shell/AppShell.js'
 import { feed, project as projectApi } from '../ipc.js'
 import {
-  useBanner, useCrumbTail, useJump, useScreenEntry, useToast, useToday, useVaultRevision,
+  useCrumbTail, useJump, useScreenEntry, useToday, useVaultRevision,
 } from '../shell/AppShell.js'
 import { AddAction } from '../components/AddAction.js'
 import { SortMenu } from '../components/SortMenu.js'
@@ -17,13 +18,15 @@ import {
   MenuItem, MenuRadioGroup, MenuRadioItem, MenuSeparator,
 } from '../components/ActionMenu.js'
 import { DotsMenu } from '../components/FieldPickers.js'
+import { EmptyState } from '../components/EmptyState.js'
 import { InlineDraftInput } from '../components/InlineDraftInput.js'
+import { LoadingPlaceholder } from '../components/LoadingPlaceholder.js'
 import { ShortTextEditor } from '../components/ShortTextEditor.js'
-import { IconCheck } from '../components/icons.js'
 import { ProjectBlockerView, ProjectNextActionView } from '../components/project/ProjectControl.js'
 import { ProjectIdentity } from '../components/project/ProjectIdentity.js'
 import { EventText } from '../components/project/ProjectSignals.js'
-import { ResearchObjectCard } from '../components/ResearchObjectCard.js'
+import { CardOpen, ResearchObjectCard } from '../components/ResearchObjectCard.js'
+import { RowActions, StructuredList, StructuredRow } from '../components/StructuredList.js'
 import { dnum } from '../../shared/dates.js'
 import { useFormat } from '../lib/format.js'
 import { useMessages } from '../messages/useMessages.js'
@@ -31,11 +34,15 @@ import type { Catalog } from '../messages/catalog.js'
 import { ProjectDetail } from './ProjectDetail.js'
 import type { RecordTab } from './ProjectDetail.js'
 import type { PlanTab } from '../components/project/ProjectPlan.js'
+import { useUndo } from '../hooks/useUndo.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
-import { useDragReorder, type DragCardProps } from '../hooks/useDragReorder.js'
+import type { NoticeAction } from '../components/Notice.js'
+import { useDragReorder, type Reorderable } from '../hooks/useDragReorder.js'
+import { DragHandle } from '../components/DragHandle.js'
 import {
   PageBody, PageError, PageHeader, PageShell, PageTitle, SectionHeading,
 } from '../components/PageShell.js'
+import { FadeText } from '../components/FadeText.js'
 import './shell.css'
 import './Projects.css'
 
@@ -63,9 +70,11 @@ function signals(project: ProjectSummary, todayIso: string) {
  * Rename replaces the content of the same popover, matching the demo, which closed the menu and
  * opened a rename popover in the same spot; while renaming, only the rename editor closes it.
  */
-function ProjectMenu({ project, onRename, onStatus, onDelete }: {
+function ProjectMenu({ project, onRename, onMove, canMove, onStatus, onDelete }: {
   project: ProjectSummary
   onRename: (name: string) => boolean | Promise<boolean>
+  onMove: (by: -1 | 1) => void
+  canMove: (by: -1 | 1) => boolean
   onStatus: (status: ProjectStatus) => void
   onDelete: () => void
 }) {
@@ -98,13 +107,12 @@ function ProjectMenu({ project, onRename, onStatus, onDelete }: {
                 <MenuItem onSelect={(e) => { e.preventDefault(); setRenaming(true) }}>
                   {m.research.list.rename}
                 </MenuItem>
+                <MenuItem disabled={!canMove(-1)} onSelect={() => onMove(-1)}>{m.common.moveUp}</MenuItem>
+                <MenuItem disabled={!canMove(1)} onSelect={() => onMove(1)}>{m.common.moveDown}</MenuItem>
                 <MenuSeparator />
                 <MenuRadioGroup value={project.status}>
                   {PROJECT_STATUSES.map((s) => (
-                    <MenuRadioItem key={s} value={s} onSelect={() => onStatus(s)}>
-                      <span className="ck">{s === project.status ? <IconCheck /> : null}</span>
-                      {s}
-                    </MenuRadioItem>
+                    <MenuRadioItem key={s} value={s} onSelect={() => onStatus(s)}>{s}</MenuRadioItem>
                   ))}
                 </MenuRadioGroup>
                 <MenuSeparator />
@@ -145,9 +153,9 @@ export function projectPaperCountLabel(count: number, m: Catalog): string {
 }
 
 /** Ongoing projects expose the decisions a researcher needs before secondary counts and history. */
-function ProjectPanel({ project, onOpen, menu, dragProps, dropClassName }: {
+function ProjectPanel({ project, onOpen, menu, reorder, dropClassName }: {
   project: ProjectSummary; onOpen: () => void; menu: ReactNode
-  dragProps: DragCardProps; dropClassName: string
+  reorder: Reorderable; dropClassName: string
 }) {
   const today = useToday()
   const fmt = useFormat()
@@ -161,30 +169,28 @@ function ProjectPanel({ project, onOpen, menu, dragProps, dropClassName }: {
   return (
     <ResearchObjectCard
       className={`projpanel${dropClassName ? ` ${dropClassName}` : ''}`}
-      data-proj={project.id} onActivate={onOpen} {...dragProps}
+      data-proj={project.id} onActivate={onOpen} {...reorder.item}
     >
       <div className="pp-h">
-        <ProjectIdentity project={project} showTopic />
+        <CardOpen><ProjectIdentity project={project} showTopic /></CardOpen>
         <span className="dd">
           {next && left !== null
             ? (
               <>
-                <span className={left <= NEAR_DAYS ? 'dchip near' : 'dchip'}>
-                  {m.research.panel.milestoneOn(fmt.date(next.date))}
-                </span>
+                <span>{m.research.panel.milestoneOn(fmt.date(next.date))}</span>
                 {left === 0 ? m.research.panel.dueToday : m.research.panel.dueInDays(left)}
               </>
             )
             : m.research.panel.noUpcomingMilestone}
         </span>
-        {menu}
+        <RowActions><DragHandle {...reorder.handle} />{menu}</RowActions>
       </div>
       <div className="project-card-decisions">
         <div className="project-card-decision">
           <span className="project-card-label">{m.project.identity.focusLabel.currentGoal}</span>
-          <span className="project-card-value" title={project.focus}>
+          <FadeText className="project-card-value" label={project.focus || m.research.panel.focusUndefined}>
             {project.focus || m.research.panel.focusUndefined}
-          </span>
+          </FadeText>
         </div>
         <div className="project-card-decision">
           <span className="project-card-label">{m.project.control.nextAction}</span>
@@ -210,12 +216,12 @@ function ProjectPanel({ project, onOpen, menu, dragProps, dropClassName }: {
         <span className="project-card-fact project-card-recent">
           <span className="project-card-label">{m.research.panel.recentProgressLabel}</span>
           {project.lastProgress === undefined
-            ? <span className="project-card-empty">{m.research.panel.noRecords}</span>
+            ? <FadeText className="project-card-empty">{m.research.panel.noRecords}</FadeText>
             : (
-              <span title={record?.text}>
-                {fmt.date(project.lastProgress)}
-                {record === undefined ? null : <> <EventText text={record.text} origin={record.origin} /></>}
-              </span>
+              <>
+                <FadeText>{fmt.date(project.lastProgress)}</FadeText>
+                {record === undefined ? null : <EventText text={record.text} origin={record.origin} />}
+              </>
             )}
         </span>
       </div>
@@ -225,30 +231,30 @@ function ProjectPanel({ project, onOpen, menu, dragProps, dropClassName }: {
 }
 
 /**
- * Shelved and completed projects: one row with status, name, focus and time since the last progress.
- * The name is the row's button; a click anywhere else on the row opens it too.
+ * Shelved and completed projects: one composite row with the cards' identity (name, status, topic),
+ * focus and time since the last progress. The identity is the row's button; a click anywhere else on
+ * the row opens it too.
  */
-function ProjectRow({ project, onOpen, menu, dragProps, dropClassName }: {
+function ProjectRow({ project, onOpen, menu, reorder, dropClassName }: {
   project: ProjectSummary; onOpen: () => void; menu: ReactNode
-  dragProps: DragCardProps; dropClassName: string
+  reorder: Reorderable; dropClassName: string
 }) {
   const { idle } = signals(project, useToday())
   const m = useMessages()
   return (
-    <div
-      className={`prow${dropClassName ? ` ${dropClassName}` : ''}`}
-      data-proj={project.id} data-dots-row="" onClick={onOpen} {...dragProps}
+    <StructuredRow
+      composite className={`prow${dropClassName ? ` ${dropClassName}` : ''}`}
+      data-proj={project.id} onActivate={onOpen} {...reorder.item}
     >
       <button type="button" className="prow-open">
-        <ProjectIdentity project={project} variant="row" showPriority={false} />
+        <ProjectIdentity project={project} variant="row" showPriority={false} showTopic />
       </button>
-      <span className="m">
-        {m.project.identity.focusLabel[FOCUS_KEY[project.status]]}:{project.focus} ·{' '}
+      <FadeText className="m">
+        {m.project.identity.focusWithLabel(m.project.identity.focusLabel[FOCUS_KEY[project.status]], project.focus)} ·{' '}
         {idleNote(idle, m.project.signals.idle)}
-      </span>
-      <span className="tp">{project.topic}</span>
-      {menu}
-    </div>
+      </FadeText>
+      <RowActions><DragHandle {...reorder.handle} />{menu}</RowActions>
+    </StructuredRow>
   )
 }
 
@@ -264,12 +270,11 @@ function ProjectList({ onOpen }: { onOpen: (id: string) => void }) {
   const [projects, setProjects] = useState<ProjectSummary[] | null>(null)
   const [creating, setCreating] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const banner = useBanner()
-  const toast = useToast()
   const today = useToday()
   const { revision } = useVaultRevision()
-  const reportError = useCallback((e: Error) => setError(e.message), [])
+  const reportError = useCallback((e: unknown) => setError(errorLabel(m, e)), [m])
   const write = useVaultWrite()
+  const undo = useUndo()
   const stopCreating = useCallback(() => setCreating(false), [])
   const createRow = useRef<HTMLDivElement>(null)
   const projNew = useRef<HTMLButtonElement>(null)
@@ -296,9 +301,9 @@ function ProjectList({ onOpen }: { onOpen: (id: string) => void }) {
    * Finishes a write: closes the new-project row, then lets `write` finish. Creating from the row does
    * not come here: whether the row stays depends on that write's result.
    */
-  const applyWrite = (op: Promise<unknown>, note: string, notify: (text: ReactNode) => void = banner) => {
+  const applyWrite = <T,>(op: Promise<T>, note: string, action?: (result: T) => NoticeAction) => {
     setCreating(false)
-    void write(op, { note, notify })
+    void write(op, { note, action })
   }
 
   /**
@@ -316,6 +321,7 @@ function ProjectList({ onOpen }: { onOpen: (id: string) => void }) {
       <PageShell>
         <PageHeader><PageTitle>{m.project.loadingTitle}</PageTitle></PageHeader>
         <PageError error={error} />
+        <PageBody>{error === null ? <LoadingPlaceholder shape="cards" /> : null}</PageBody>
       </PageShell>
     )
   }
@@ -330,44 +336,48 @@ function ProjectList({ onOpen }: { onOpen: (id: string) => void }) {
     <ProjectMenu
       project={p}
       onRename={(name) => write(projectApi.update(p.id, { name }), { note: m.research.list.renamed })}
+      onMove={(by) => reorder.move(p.id, by)} canMove={(by) => reorder.canMove(p.id, by)}
       onStatus={(status) => applyWrite(
-        projectApi.update(p.id, { status }), m.research.list.statusChangedTo(status), toast,
+        projectApi.update(p.id, { status }), m.research.list.statusChangedTo(status),
       )}
-      onDelete={() => applyWrite(projectApi.delete(p.id), m.common.trashed)}
+      onDelete={() => applyWrite(projectApi.delete(p.id), m.common.trashed, undo.change)}
     />
   )
 
   return (
     <PageShell>
-      <PageHeader>
-        <PageTitle>{m.research.list.title(projects.length)}</PageTitle>
+      <PageHeader
+        actions={(
+          <>
+            {projects.length === 0 ? null : (
+              <SortMenu
+                label={m.research.list.sort}
+                options={[
+                  { label: m.research.list.sortPriority, onSelect: () => sortBy('priority') },
+                  { label: m.research.list.sortMilestone, onSelect: () => sortBy('milestone') },
+                ]}
+              />
+            )}
+            <AddAction
+              variant="page" id="projNew" ref={projNew}
+              onClick={() => {
+                // An open row is only refocused, keeping the half-typed name, so this click does not
+                // count as outside the row.
+                if (creating) createRow.current?.querySelector('input')?.focus()
+                else setCreating(true)
+              }}
+            >{m.research.list.create}</AddAction>
+          </>
+        )}
+      >
+        <PageTitle>{m.research.list.title(projects.filter((p) => p.status === ACTIVE_PROJECT).length)}</PageTitle>
       </PageHeader>
       <PageError error={error} />
 
       <PageBody>
         {groups.map((g, i) => (
           <Fragment key={g.status}>
-            <SectionHeading actions={i === 0
-              ? (
-                <div className="section-actions">
-                  <SortMenu label={m.research.list.sort} options={[
-                    { label: m.research.list.sortPriority, onSelect: () => sortBy('priority') },
-                    { label: m.research.list.sortMilestone, onSelect: () => sortBy('milestone') },
-                  ]}
-                  />
-                  <AddAction
-                    variant="page" id="projNew" ref={projNew}
-                    onClick={() => {
-                      // An open row is only refocused, keeping the half-typed name, so this click does not
-                      // count as outside the row.
-                      if (creating) createRow.current?.querySelector('input')?.focus()
-                      else setCreating(true)
-                    }}
-                  >{m.research.list.create}</AddAction>
-                </div>
-              )
-              : undefined}
-            >{m.research.list.groupHeading(g.status, g.items.length)}</SectionHeading>
+            <SectionHeading>{m.research.list.groupHeading(g.status, g.items.length)}</SectionHeading>
             {i === 0 && creating
               ? (
                 <ProjectCreateRow
@@ -375,20 +385,26 @@ function ProjectList({ onOpen }: { onOpen: (id: string) => void }) {
                   onCancel={stopCreating} onCreate={createProject}
                 />
               )
-              : null}
-            {g.items.map((p) => (p.status === ACTIVE_PROJECT
-              ? (
+              : g.items.length === 0 ? <EmptyState variant="section">{m.research.list.empty}</EmptyState> : null}
+            {g.status === ACTIVE_PROJECT
+              ? g.items.map((p) => (
                 <ProjectPanel
                   project={p} onOpen={() => onOpen(p.id)} menu={menuOf(p)} key={p.id}
-                  dragProps={reorder.cardProps(p.id)} dropClassName={reorder.dropClass(p.id)}
+                  reorder={{ item: reorder.itemProps(p.id), handle: reorder.handleProps(p.id) }}
+                  dropClassName={reorder.dropClass(p.id)}
                 />
-              )
+              ))
               : (
-                <ProjectRow
-                  project={p} onOpen={() => onOpen(p.id)} menu={menuOf(p)} key={p.id}
-                  dragProps={reorder.cardProps(p.id)} dropClassName={reorder.dropClass(p.id)}
-                />
-              )))}
+                <StructuredList variant="embedded" maxVisibleRows="all">
+                  {g.items.map((p) => (
+                    <ProjectRow
+                      project={p} onOpen={() => onOpen(p.id)} menu={menuOf(p)} key={p.id}
+                      reorder={{ item: reorder.itemProps(p.id), handle: reorder.handleProps(p.id) }}
+                      dropClassName={reorder.dropClass(p.id)}
+                    />
+                  ))}
+                </StructuredList>
+              )}
           </Fragment>
         ))}
       </PageBody>
@@ -411,6 +427,7 @@ function ProjectList({ onOpen }: { onOpen: (id: string) => void }) {
 export function Projects() {
   const [openId, setOpenId] = useState<string | null>(null)
   const [arrivalTask, setArrivalTask] = useState<string | null>(null)
+  const [arrivalMilestone, setArrivalMilestone] = useState<string | null>(null)
   const [arrivalConclusion, setArrivalConclusion] = useState<string | null>(null)
   const [origin, setOrigin] = useState<ScreenKey | null>(null)
   const [planTabs, setPlanTabs] = useState<Record<string, PlanTab>>({})
@@ -442,6 +459,7 @@ export function Projects() {
     setOpenId(jump.target)
     setOrigin(jump.from)
     setArrivalTask(jump.anchor?.task ?? null)
+    setArrivalMilestone(jump.anchor?.milestone ?? null)
     setArrivalConclusion(jump.anchor?.conclusion ?? null)
     if (jump.anchor?.conclusion !== undefined) setRecordTabs((tabs) => ({ ...tabs, [jump.target]: 'concl' }))
   }, [jump])
@@ -453,8 +471,8 @@ export function Projects() {
         projectId={openId} onBack={close} onReturn={back}
         tab={planTabs[openId] ?? 'task'} onTab={setPlanTab}
         record={recordTabs[openId] ?? 'tl'} onRecord={setRecordTab}
-        arrivalTask={arrivalTask} arrivalConclusion={arrivalConclusion}
-        onArrived={() => { setArrivalTask(null); setArrivalConclusion(null) }}
+        arrivalTask={arrivalTask} arrivalMilestone={arrivalMilestone} arrivalConclusion={arrivalConclusion}
+        onArrived={() => { setArrivalTask(null); setArrivalMilestone(null); setArrivalConclusion(null) }}
       />
     )
 }

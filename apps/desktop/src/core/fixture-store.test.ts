@@ -1083,7 +1083,7 @@ describe('fixture store', () => {
     })
     expect(movable.listChanges().length).toBe(before + 1)
     expect(movable.listChanges()[0]).toMatchObject({
-      title: '论文表 · 列「标签」的类型 多选 → 文本', diff: ['- tags: "多选"', '+ tags: "文本"'], undoable: true,
+      title: '论文表 · 列「标签」的类型 多选 → 文本', diff: ['- 类型：多选', '+ 类型：文本'], undoable: true,
     })
 
     advance(2)
@@ -1591,6 +1591,11 @@ describe('fixture store', () => {
     expect(home.roots[1]).toMatchObject({
       kindLabel: '主题', title: 'Quantization', childCount: 2, memberCount: 0, parentCount: 0,
     })
+  })
+
+  it('聚合页里结论的实验证据按名字写它引的项目结论', () => {
+    const claim = store.wikiAggregation('topics/kv-cache-quantization').claims.find((c) => c.id === 'prefix-schedule')!
+    expect(claim.evidence.map((e) => e.point)).toEqual([undefined, '迁移后吞吐与基线持平'])
   })
 
   it('聚合页:子聚合、对照表的行与格子、派生列、追加区与关联', () => {

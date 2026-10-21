@@ -1,28 +1,32 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
-import type { ProjectOverview, Task } from '../../shared/contract.js'
+import type { Milestone, ProjectOverview, Task } from '../../shared/contract.js'
 import { projectControlState } from '../../shared/project-control.js'
 import {
-  FOCUS_KEY, projectDecisionItems, projectPulseSignal, sortRecordsNewestFirst,
+  FOCUS_KEY, projectDecisionItems, projectPulseSignal, sortRecordsNewestFirst, type ProjectPulseSignal,
 } from '../../shared/project-signals.js'
 import { project as projectApi } from '../ipc.js'
 import { ACTIVE_PROJECT, FINISHED_PROJECT, SHELVED_PROJECT } from '../../shared/vocabulary.js'
-import { useBanner, useJump, useToast, useToday, useVaultRevision } from '../shell/AppShell.js'
-import { FloatingTextEditor } from '../components/FloatingTextEditor.js'
-import { Icon } from '../components/icons.js'
-import { EmptyState } from '../components/EmptyState.js'
+import { errorLabel } from '../lib/failure-label.js'
+import { useJump, useToday, useVaultRevision, type JumpAnchor } from '../shell/AppShell.js'
+import { LoadingPlaceholder } from '../components/LoadingPlaceholder.js'
+import { AgentLabel } from '../components/SourceLabel.js'
+import { FadeText } from '../components/FadeText.js'
 import { StructuredList, StructuredRow } from '../components/StructuredList.js'
+import { Tag, type TagTone } from '../components/Tag.js'
 import { dnum } from '../../shared/dates.js'
 import { useFormat } from '../lib/format.js'
 import { useMessages } from '../messages/useMessages.js'
 import {
-  EventText, ProjectSignalDate, ProjectSignalKind,
+  EventText, ProjectSignalDate, ProjectSignalKind, RECORD_TONE,
 } from '../components/project/ProjectSignals.js'
 import { ProjectNextActionView } from '../components/project/ProjectControl.js'
-import { ProjectIdentity } from '../components/project/ProjectIdentity.js'
-import { DAY_SLOT_HOURS } from '../components/timeline/TimelineScale.js'
+import { ProjectIdentity, ProjectLabel } from '../components/project/ProjectIdentity.js'
+import { DAY_SLOT_HOURS, useTimelinePeriod } from '../components/timeline/TimelineScale.js'
 import { TimelineBoard } from '../components/timeline/TimelineBoard.js'
-import type { TimelinePoint } from '../components/timeline/TimelineBoard.js'
+import { useMilestoneEditor } from '../components/timeline/MilestoneEditor.js'
+import { ToolbarButton } from '../components/Toolbar.js'
+import { Tooltip } from '../components/Tooltip.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
 import {
   PageBody, PageError, PageHeader, PageShell, PageTitle, SectionHeading,
@@ -30,22 +34,19 @@ import {
 import './shell.css'
 import './ResearchOverview.css'
 
-/** How many entries Recent progress lists, as in the demo's recentHTML. */
+/** How many entries Recent research log lists, as in the demo's recentHTML. */
 const RECENT_EVENTS = 6
-/** Research records dated within this many days count toward "Progress over the last 7 days". */
+/** Research records dated within this many days count toward "Research log entries, last 7 days". */
 const WEEK_DAYS = 7
+
+const PULSE_TONE: Record<ProjectPulseSignal['tone'], TagTone> = {
+  healthy: 'good', warn: 'warn', risk: 'bad', blocked: 'warn', quiet: 'neutral',
+}
 
 /**
  * The milestone popover opened on the Gantt chart: a new milestone on a given day, or an edit of
  * an existing one. `left`/`top` are coordinates within the canvas.
  */
-type MilestonePop =
-  | { kind: 'new'; projectId: string; date: string; left: number; top: number }
-  | {
-    kind: 'edit'; projectId: string; milestoneId: string; date: string; title: string
-    left: number; top: number
-  }
-
 /** Stats: the size and health of all projects at a glance, as in the demo's statHTML. */
 function Stats({ rows }: { rows: ProjectOverview[] }) {
   const today = dnum(useToday())
@@ -81,7 +82,7 @@ function Stats({ rows }: { rows: ProjectOverview[] }) {
 
 /**
  * Every list on the overview shares one column order: project, date, kind, main text, secondary
- * status. Dates come from OverviewDate, so a milestone reads the same in Needs a decision and in
+ * status. Dates come from OverviewDate, so a milestone reads the same in Needs attention and in
  * Upcoming milestones.
  */
 function OverviewList({ children }: { children: ReactNode }) {
@@ -104,7 +105,7 @@ function OverviewRow({ when, kind, main, meta, project, projectId, variant, onOp
 }) {
   return (
     <StructuredRow className={`ovlist-row ${variant}`} data-proj={projectId} onActivate={onOpen}>
-      <span className="ovlist-project" title={project}>{project}</span>
+      <ProjectLabel name={project} className="ovlist-project" />
       <span className="ovlist-when">{when}</span>
       <span className="ovlist-kind">{kind}</span>
       <span className="ovlist-main">{main}</span>
@@ -113,9 +114,12 @@ function OverviewRow({ when, kind, main, meta, project, projectId, variant, onOp
   )
 }
 
-/** Needs a decision: all projects' signals, merged and sorted, each with its next action at the right. */
+/**
+ * Needs attention: all projects' signals, merged and sorted, each with its next action at the right.
+ * A row opens its project, at the task or milestone the signal is about.
+ */
 function DecisionQueue({ rows, onOpen }: {
-  rows: ProjectOverview[]; onOpen: (projectId: string) => void
+  rows: ProjectOverview[]; onOpen: (projectId: string, anchor: JumpAnchor | undefined) => void
 }) {
   const today = useToday()
   const m = useMessages()
@@ -139,10 +143,11 @@ function DecisionQueue({ rows, onOpen }: {
             when={<OverviewDate date={x.date} />}
             kind={<ProjectSignalKind tone={x.tone}>{x.kind}</ProjectSignalKind>}
             main={x.reason}
-            meta={<span className="ovdecision-action">{x.action} →</span>}
+            meta={`${x.action} →`}
             project={x.name}
             projectId={x.projectId}
-            onOpen={() => onOpen(x.projectId)}
+            onOpen={() => onOpen(x.projectId, x.task !== undefined ? { task: x.task }
+              : x.milestone !== undefined ? { milestone: x.milestone } : undefined)}
           />
         ))}
       </OverviewList>
@@ -159,92 +164,86 @@ function ProjectProgress({ rows, onOpen }: {
   rows: ProjectOverview[]; onOpen: (projectId: string) => void
 }) {
   const today = useToday()
+  const fmt = useFormat()
   const m = useMessages()
   const current = rows.filter((project) => project.status !== FINISHED_PROJECT)
+  if (current.length === 0) return null
   return (
     <>
       <SectionHeading>{m.research.overview.progressHeading}</SectionHeading>
-      {current.length === 0
-        ? (
-          <EmptyState variant="page" icon={<Icon sw={1.4}><path d="M20 6L9 17l-5-5" /></Icon>}>
-            {m.research.overview.empty}
-          </EmptyState>
-        )
-        : (
-          <StructuredList className="ovpulse" variant="embedded">
-            {current.map((project) => {
-              const control = projectControlState({
-                tasks: project.tasks,
-                ...(project.block === undefined ? {} : { block: project.block }),
-                activeNodes: project.research.activeNodes,
-              })
-              const active = control.next.source === 'task' && control.next.task.state === 'act'
-                ? control.next.task
-                : undefined
-              const activeCount = project.tasks.filter((task) => task.state === 'act').length
-              const latest = sortRecordsNewestFirst(project.events)[0]
-              const signal = projectPulseSignal({
-                ...project, conclusions: { conflicting: 0 },
-              }, today, m.project.signals)
-              const [firstActive, ...moreActive] = project.research.activeNodes
-              const activeLabel = firstActive === undefined
-                ? undefined
-                : moreActive.length === 0
-                  ? firstActive.label
-                  : `${firstActive.label} ${m.research.overview.activeNodesMore(moreActive.length)}`
-              const activeTitle = project.research.activeNodes.map((n) => n.label).join(', ')
-              return (
-                <StructuredRow
-                  className="ovlist-row progress ovpulse-row" data-proj={project.id}
-                  key={project.id} onActivate={() => onOpen(project.id)}
-                >
-                  <ProjectIdentity project={project} variant="progress" />
-                  <span className="ovpulse-cell">
-                    <b title={activeLabel === undefined ? project.focus : activeTitle}>
-                      {activeLabel ?? project.focus}
-                    </b>
-                    <span className="ovpulse-sub">
-                      {firstActive
-                        ? m.research.overview.activePathNote(active ? control.next.text : undefined)
-                        : (() => {
-                          const label = m.project.identity.focusLabel[FOCUS_KEY[project.status]]
-                          return active
-                            ? m.research.overview.focusWithActiveTasks(label, activeCount)
-                            : label
-                        })()}
-                    </span>
-                  </span>
-                  <span className="ovpulse-cell">
-                    <b title={latest?.text}>
-                      {latest ? <EventText text={latest.text} /> : m.research.overview.noRecentRecord}
-                    </b>
-                    <span className="ovpulse-sub">
-                      {latest ? <OverviewDate date={latest.date} /> : m.research.overview.waitingForAgent}
-                    </span>
-                  </span>
-                  <span className="ovpulse-cell">
-                    <ProjectNextActionView action={control.next} variant="summary" />
-                  </span>
-                  <span className="ovpulse-cell signal">
-                    <span className={`ovpulse-signal ${signal.tone}`}>{signal.label}</span>
-                    <span className="ovpulse-sub" title={signal.detail}>{signal.detail}</span>
-                  </span>
-                </StructuredRow>
-              )
-            })}
-          </StructuredList>
-        )}
+      <StructuredList className="ovpulse" variant="embedded">
+        {current.map((project) => {
+          const control = projectControlState({
+            tasks: project.tasks,
+            ...(project.block === undefined ? {} : { block: project.block }),
+            activeNodes: project.research.activeNodes,
+          })
+          const active = control.next.source === 'task' && control.next.task.state === 'act'
+            ? control.next.task
+            : undefined
+          const activeCount = project.tasks.filter((task) => task.state === 'act').length
+          const latest = sortRecordsNewestFirst(project.events)[0]
+          const signal = projectPulseSignal({
+            ...project, conclusions: { conflicting: 0 },
+          }, today, m.project.signals)
+          const [firstActive, ...moreActive] = project.research.activeNodes
+          const activeLabel = firstActive === undefined
+            ? undefined
+            : moreActive.length === 0
+              ? firstActive.label
+              : `${firstActive.label} ${m.research.overview.activeNodesMore(moreActive.length)}`
+          const activeTitle = project.research.activeNodes.map((n) => n.label).join(', ')
+          const shown = activeLabel ?? project.focus
+          const named = activeLabel === undefined ? project.focus : activeTitle
+          const note = firstActive
+            ? m.research.overview.activePathNote(active ? control.next.text : undefined)
+            : active
+              ? m.research.overview.focusWithActiveTasks(m.project.identity.focusLabel[FOCUS_KEY[project.status]], activeCount)
+              : m.project.identity.focusLabel[FOCUS_KEY[project.status]]
+          const when = latest ? fmt.date(latest.date) : m.research.overview.waitingForAgent
+          return (
+            <StructuredRow
+              className="ovlist-row progress ovpulse-row" data-proj={project.id}
+              key={project.id} onActivate={() => onOpen(project.id)}
+            >
+              <ProjectIdentity project={project} variant="progress" />
+              <span className="ovpulse-cell">
+                <Tooltip label={named} whenClipped={named === shown}><FadeText className="ovpulse-title">{shown}</FadeText></Tooltip>
+                <FadeText className="ovpulse-sub" label={note}>{note}</FadeText>
+              </span>
+              <span className="ovpulse-cell">
+                {latest
+                  ? <EventText className="ovpulse-latest" text={latest.text} origin={latest.origin} />
+                  : (
+                    <FadeText className="ovpulse-title" label={m.research.overview.noRecentRecord}>
+                      {m.research.overview.noRecentRecord}
+                    </FadeText>
+                  )}
+                <FadeText className="ovpulse-sub" label={when}>{when}</FadeText>
+              </span>
+              <span className="ovpulse-cell">
+                <ProjectNextActionView action={control.next} variant="summary" />
+              </span>
+              <span className="ovpulse-cell signal">
+                <Tag tone={PULSE_TONE[signal.tone]}>{signal.label}</Tag>
+                <FadeText className="ovpulse-sub" label={signal.detail}>{signal.detail}</FadeText>
+              </span>
+            </StructuredRow>
+          )
+        })}
+      </StructuredList>
     </>
   )
 }
 
-/** Recent progress: all projects' research records, newest first: "what happened while I was away". */
+/** Recent research log: all projects' research records, newest first: "what happened while I was away". */
 function Recent({ rows, onOpen }: { rows: ProjectOverview[]; onOpen: (projectId: string) => void }) {
   const m = useMessages()
   const events = rows
     .flatMap((p) => p.events.map((e) => ({ ...e, projectId: p.id, name: p.name })))
     .sort((a, b) => dnum(b.date) - dnum(a.date))
     .slice(0, RECENT_EVENTS)
+  if (events.length === 0) return null
   return (
     <>
       <SectionHeading>{m.research.overview.recentHeading}</SectionHeading>
@@ -255,8 +254,13 @@ function Recent({ rows, onOpen }: { rows: ProjectOverview[]; onOpen: (projectId:
               key={`${e.projectId}${e.date}${e.text}`}
               variant="dated"
               when={<OverviewDate date={e.date} />}
-              kind={<ProjectSignalKind tone="mut">{m.research.overview.eventKind}</ProjectSignalKind>}
-              main={<EventText text={e.text} />}
+              kind={(
+                <ProjectSignalKind tone={RECORD_TONE[e.kind ?? 'note']}>
+                  {m.project.records.kind[e.kind ?? 'note']}
+                </ProjectSignalKind>
+              )}
+              main={e.text}
+              meta={e.origin === 'agent' ? <AgentLabel /> : undefined}
               project={e.name}
               projectId={e.projectId}
               onOpen={() => onOpen(e.projectId)}
@@ -277,6 +281,7 @@ function Upcoming({ rows, onOpen }: { rows: ProjectOverview[]; onOpen: (projectI
     .flatMap((p) => p.milestones.filter((x) => !x.done).map((x) => ({ ...x, projectId: p.id, name: p.name })))
     .filter((x) => dnum(x.date) >= today)
     .sort((a, b) => dnum(a.date) - dnum(b.date))
+  if (items.length === 0) return null
   return (
     <>
       <SectionHeading>{m.research.overview.upcomingHeading}</SectionHeading>
@@ -302,16 +307,13 @@ function Upcoming({ rows, onOpen }: { rows: ProjectOverview[]; onOpen: (projectI
  * Timeline of all projects: each project draws its milestone lane first, then one row per task.
  * A bar is the task's real date or time window; the project's start and due date are not drawn as
  * a fake task. Dragging a bar moves the task and dragging a diamond moves the milestone; a click
- * without a drag opens the task in its project, and a click on a diamond opens the edit popover.
- * Switching between day, week and month keeps every task row; a task outside the current window
- * shrinks to a stub at the edge instead of its row disappearing.
- * Enter in the popover saves and then closes it. A rejected write keeps the popover and the typed
- * text; if the popover moves to another milestone while a write is in flight, that write finishing
- * does not close the one it moved to. Esc closes it from whichever element inside has focus.
- * `onRenameMilestone` and `onNewMilestone` return whether that write succeeded.
+ * without a drag opens the task in its project, and a click on a diamond or the milestone lane opens
+ * the shared milestone editor. Switching between day, week and month keeps every task row; a task
+ * outside the current window shrinks to a stub at the edge instead of its row disappearing.
+ * `onUpdateMilestone` and `onNewMilestone` return whether that write succeeded.
  */
 function OverviewGantt({
-  rows, onOpenProject, onOpenTask, onMoveTask, onMoveTaskWindow, onMoveMilestone, onRenameMilestone,
+  rows, onOpenProject, onOpenTask, onMoveTask, onMoveTaskWindow, onMoveMilestone, onUpdateMilestone,
   onDeleteMilestone, onNewMilestone,
 }: {
   rows: ProjectOverview[]
@@ -325,13 +327,11 @@ function OverviewGantt({
     slots: number
   ) => void
   onMoveMilestone: (projectId: string, milestoneId: string, date: string) => void
-  onRenameMilestone: (projectId: string, milestoneId: string, title: string) => Promise<boolean>
+  onUpdateMilestone: (projectId: string, milestoneId: string, patch: Pick<Milestone, 'title' | 'date'>) => Promise<boolean>
   onDeleteMilestone: (projectId: string, milestoneId: string) => void
   onNewMilestone: (projectId: string, date: string, title: string) => Promise<boolean>
 }) {
-  const fmt = useFormat()
   const m = useMessages()
-  const [pop, setPop] = useState<MilestonePop | null>(null)
   const [showInactive, setShowInactive] = useState(false)
   // The overview answers what is still left to do, so finished tasks and milestones stay on the project page;
   // the history view shows everything, finished work included.
@@ -345,72 +345,37 @@ function OverviewGantt({
       })),
     [rows, showInactive],
   )
-  const closePop = useCallback(() => setPop(null), [])
-
-  const milestonePopover = (
-    <FloatingTextEditor
-      open={pop !== null}
-      anchor={<span className="ganchor" style={{ left: pop?.left ?? 0, top: pop?.top ?? 0 }} />}
-      editorKey={pop === null
-        ? 'closed'
-        : `${pop.kind}/${pop.projectId}/${pop.kind === 'edit' ? pop.milestoneId : ''}/${pop.date}/${pop.left}`}
-      title={pop === null
-        ? m.project.plan.milestoneMode
-        : m.research.overview.milestonePopTitle(pop.kind !== 'edit', fmt.date(pop.date))}
-      initialValue={pop?.kind === 'edit' ? pop.title : ''} placeholder={m.project.plan.milestoneNamePlaceholder}
-      onSubmit={(title) => pop === null
-        ? false
-        : pop.kind === 'edit'
-          ? onRenameMilestone(pop.projectId, pop.milestoneId, title)
-          : onNewMilestone(pop.projectId, pop.date, title)}
-      onClose={closePop}
-      {...(pop?.kind === 'edit'
-        ? { onDelete: () => onDeleteMilestone(pop.projectId, pop.milestoneId) }
-        : {})}
-    />
-  )
+  const editor = useMilestoneEditor({
+    projects: rows, onCreate: onNewMilestone, onUpdate: onUpdateMilestone, onDelete: onDeleteMilestone,
+  })
+  const period = useTimelinePeriod(useToday())
 
   return (
     <TimelineBoard
-      projects={visibleProjects}
+      projects={visibleProjects} period={period}
       className="overview-gantt"
       showProjectNames
       foldable
-      onPeriodChange={closePop}
-      headerAction={() => (
-        <button
-          className={`overview-history-toggle${showInactive ? ' on' : ''}`}
-          type="button" aria-pressed={showInactive}
-          title={showInactive ? m.research.overview.hideHistory : m.research.overview.showHistory}
-          onClick={() => { setPop(null); setShowInactive((shown) => !shown) }}
-        >{m.research.overview.historyProjects}</button>
+      {...editor.board}
+      headerAction={(
+        <ToolbarButton
+          className="btn ghost sm overview-history-toggle" aria-pressed={showInactive}
+          onClick={() => { editor.close(); setShowInactive((shown) => !shown) }}
+        >{m.research.overview.historyProjects}</ToolbarButton>
       )}
-      onLabelClick={(projectId, kind, itemId) => (kind === 'task' && itemId !== undefined
-        ? onOpenTask(projectId, itemId) : onOpenProject(projectId))}
+      onTaskLabelClick={onOpenTask}
+      onProjectLabelClick={onOpenProject}
       onTaskClick={onOpenTask}
-      onMilestoneClick={(projectId, milestoneId, point: TimelinePoint) => {
-        const milestone = rows.find((project) => project.id === projectId)
-          ?.milestones.find((item) => item.id === milestoneId)
-        if (!milestone) return
-        setPop({
-          kind: 'edit', projectId, milestoneId,
-          date: milestone.date, title: milestone.title, ...point,
-        })
-      }}
-      onMilestoneLaneClick={(projectId, date, point) => {
-        setPop({ kind: 'new', projectId, date, ...point })
-      }}
       onMoveTask={onMoveTask}
       onMoveTaskWindow={onMoveTaskWindow}
       onMoveMilestone={onMoveMilestone}
-      canvasOverlay={milestonePopover}
     />
   )
 }
 
 /**
  * Research › Overview: all projects over time. The top is the Gantt chart of every project; below
- * it come Stats, Needs a decision, Project progress, and two columns, Recent progress and Upcoming
+ * it come Stats, Needs attention, Project progress, and two columns, Recent research log and Upcoming
  * milestones. Data comes from project.overview. Rescheduling a task or milestone on the timeline
  * writes back through project.updateTask / updateMilestone, and creating or deleting a milestone
  * through the matching methods. Every project entry on the screen opens that project on the
@@ -423,9 +388,7 @@ export function ResearchOverview() {
   const [error, setError] = useState<string | null>(null)
   const { revision } = useVaultRevision()
   const { open: jumpTo } = useJump()
-  const banner = useBanner()
-  const toast = useToast()
-  const reportError = useCallback((e: Error) => setError(e.message), [])
+  const reportError = useCallback((e: unknown) => setError(errorLabel(m, e)), [m])
   const write = useVaultWrite()
 
   useEffect(() => {
@@ -434,15 +397,18 @@ export function ResearchOverview() {
 
   const openProject = useCallback((id: string) => jumpTo('project', id), [jumpTo])
   const openTask = useCallback((id: string, task: string) => jumpTo('project', id, { task }), [jumpTo])
+  const openDecision = useCallback((id: string, anchor: JumpAnchor | undefined) => (
+    anchor === undefined ? jumpTo('project', id) : jumpTo('project', id, anchor)
+  ), [jumpTo])
 
   const moveTask = useCallback((
     projectId: string, taskId: string, start: string, end: string, days: number,
   ) => {
     void write(
       projectApi.updateTask(projectId, taskId, { start, end }),
-      { note: m.project.plan.taskMoved(days), notify: toast },
+      { note: m.project.plan.taskMoved(days) },
     )
-  }, [write, toast, m])
+  }, [write, m])
 
   const moveTaskWindow = useCallback((
     projectId: string, taskId: string,
@@ -452,58 +418,55 @@ export function ResearchOverview() {
       projectApi.updateTask(projectId, taskId, patch),
       {
         note: m.research.overview.taskWindowMovedHours(slots, Math.abs(slots) * DAY_SLOT_HOURS),
-        notify: toast,
       },
     )
-  }, [write, toast, m])
+  }, [write, m])
 
   const moveMilestone = useCallback((projectId: string, milestoneId: string, date: string) => {
     void write(
       projectApi.updateMilestone(projectId, milestoneId, { date }),
-      { note: m.project.plan.rescheduledTo(fmt.date(date)), notify: toast },
+      { note: m.project.plan.rescheduledTo(fmt.date(date)) },
     )
-  }, [write, toast, fmt, m])
+  }, [write, fmt, m])
 
-  const renameMilestone = useCallback((projectId: string, milestoneId: string, title: string) => write(
-    projectApi.updateMilestone(projectId, milestoneId, { title }),
-    { note: m.project.plan.milestoneUpdated, notify: banner },
-  ), [write, banner, m])
+  const updateMilestone = useCallback((projectId: string, milestoneId: string, patch: Pick<Milestone, 'title' | 'date'>) => write(
+    projectApi.updateMilestone(projectId, milestoneId, patch),
+    { note: m.project.plan.milestoneUpdated },
+  ), [write, m])
 
   const deleteMilestone = useCallback((projectId: string, milestoneId: string) => {
     void write(
       projectApi.deleteMilestone(projectId, milestoneId),
-      { note: m.project.plan.milestoneDeleted, notify: banner },
+      { note: m.project.plan.milestoneDeleted },
     )
-  }, [write, banner, m])
+  }, [write, m])
 
   const newMilestone = useCallback((projectId: string, date: string, title: string) => write(
     projectApi.createMilestone(projectId, { date, title, done: false }),
-    { note: m.project.plan.milestoneCreated, notify: banner },
-  ), [write, banner, m])
+    { note: m.project.plan.milestoneCreated },
+  ), [write, m])
 
   return (
     <PageShell>
       <PageHeader>
-        <PageTitle>
-          {m.research.overview.title(rows?.filter((p) => p.status === ACTIVE_PROJECT).length ?? 0)}
-        </PageTitle>
+        <PageTitle>{m.research.overview.title}</PageTitle>
       </PageHeader>
       <PageError error={error} />
 
       {rows === null
-        ? null
+        ? <PageBody>{error === null ? <LoadingPlaceholder shape="cards" /> : null}</PageBody>
         : (
           <PageBody>
             <SectionHeading>{m.research.overview.timelineHeading}</SectionHeading>
             <OverviewGantt
               rows={rows} onOpenProject={openProject} onOpenTask={openTask} onMoveTask={moveTask}
               onMoveTaskWindow={moveTaskWindow}
-              onMoveMilestone={moveMilestone} onRenameMilestone={renameMilestone}
+              onMoveMilestone={moveMilestone} onUpdateMilestone={updateMilestone}
               onDeleteMilestone={deleteMilestone} onNewMilestone={newMilestone}
             />
             <SectionHeading>{m.research.overview.statsHeading}</SectionHeading>
             <Stats rows={rows} />
-            <DecisionQueue rows={rows} onOpen={openProject} />
+            <DecisionQueue rows={rows} onOpen={openDecision} />
             <ProjectProgress rows={rows} onOpen={openProject} />
             <div className="ovcols">
               <div><Recent rows={rows} onOpen={openProject} /></div>

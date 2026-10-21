@@ -1,5 +1,6 @@
 import type { ProjectOverview, ResearchGraph } from '../../shared/contract.js'
 import { researchPathState } from '../../shared/research-path.js'
+import { CallError } from '../call-error.js'
 
 /** Canvas padding at the upper-left corner. */
 const MARGIN = 12
@@ -26,7 +27,7 @@ export function placeNode(
   let x = MARGIN
   if (after !== null) {
     const from = graph.nodes.find((node) => node.id === after)
-    if (!from) throw new Error(`节点不存在：${after}`)
+    if (!from) throw new CallError('not-found', `节点不存在：${after}`)
     x = from.x + from.width + GAP_X
   }
   const column = graph.nodes.filter((node) => node.x < x + width && x < node.x + node.width)

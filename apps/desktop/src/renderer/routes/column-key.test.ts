@@ -45,7 +45,7 @@ describe('columnKey', () => {
 })
 
 // The labels a caller would read from the active catalog: the title column plus the built-in columns.
-const builtinLabels = ['标题', '短标题', '评分', '作者', '年份', '发表', '主题', '状态', '随笔']
+const builtinLabels = ['标题', '短标题', '评分', '作者', '年份', '发表', '主题', '阅读状态', '随笔']
 
 describe('takenLabel', () => {
   it('与标题列、内置列、已有自定义列同名都算占了', () => {

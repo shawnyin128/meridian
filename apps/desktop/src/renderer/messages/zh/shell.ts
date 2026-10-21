@@ -44,7 +44,9 @@ export const shell = {
   watchKind: { topic: '主题', author: '作者' },
   sidebar: {
     toggle: '收起/展开侧栏',
-    collapseHint: '点击收起',
+    expand: '展开侧栏',
+    resize: '侧栏宽度',
+    collapse: '收起侧栏',
     toggleGroup: (name: string) => `收起/展开「${name}」`,
     dragHint: '拖动调整宽度',
     manageChat: (title: string) => `管理对话：${title}`,
@@ -54,12 +56,12 @@ export const shell = {
   about: { title: '关于 Meridian', releases: '发布记录', version: (version: string) => `版本 ${version}` },
   bootFailure: {
     title: '论文库打不开',
-    note: '可以在设置里换一个论文库，重启之后打开它。',
-    openSettings: '打开设置',
+    changeLibrary: '换论文库',
   },
   search: {
     placeholder: '全局搜索',
     clear: '清除全局搜索',
     results: '搜索结果',
+    noHits: '没有找到匹配的内容',
   },
 } satisfies Record<string, unknown>

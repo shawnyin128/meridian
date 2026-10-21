@@ -20,6 +20,14 @@ describe('EmptyState', () => {
     expect(html).not.toContain('<svg')
   })
 
+  it('puts its one action after the sentence', () => {
+    const html = renderToStaticMarkup(
+      <EmptyState variant="page" action={<button type="button" className="btn">打开项目列表</button>}>还没有项目论文</EmptyState>,
+    )
+    expect(html).toBe('<div class="empty-state empty-state--page"><span>还没有项目论文</span>'
+      + '<button type="button" class="btn">打开项目列表</button></div>')
+  })
+
   it('keeps the page variant usable without an icon', () => {
     const html = renderToStaticMarkup(<EmptyState variant="page">都看过了。</EmptyState>)
     expect(html).toContain('class="empty-state empty-state--page"')

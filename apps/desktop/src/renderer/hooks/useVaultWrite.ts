@@ -1,26 +1,29 @@
 import { useCallback } from 'react'
 import type { ReactNode } from 'react'
-import { useBanner, useToast, useVaultRevision } from '../shell/AppShell.js'
+import type { NoticeAction } from '../components/Notice.js'
+import { errorLabel } from '../lib/failure-label.js'
+import { useMessages } from '../messages/useMessages.js'
+import { useNotice, useVaultRevision } from '../shell/AppShell.js'
 
-type WriteOpts = { note?: ReactNode; notify?: ((text: ReactNode) => void) | undefined }
+type WriteOpts<T> = { note?: ReactNode; action?: ((result: T) => NoticeAction) | undefined }
 
 /**
- * Finishes a vault write: once `op` resolves, bumps the vault revision, reports `note` through
- * `notify` (the confirmation banner by default) when `note` is given, and returns true. When the
- * write is rejected, or `bump` or `notify` throws, shows the original error message as a toast and
- * returns false. To use the write's resolved value, or to change state before this finishes, chain
- * that step with `.then` before passing the promise here.
+ * Finishes a vault write: once `op` resolves, bumps the vault revision, shows `note` as a success
+ * notice when `note` is given, offering the action `action` builds from the write's resolved value,
+ * and returns true. When the write is rejected, or `bump` throws, shows the label of its reason as a
+ * refusal notice and returns false. To change state before this finishes, chain that step with
+ * `.then` before passing the promise here.
  */
-export function useVaultWrite(): (op: Promise<unknown>, opts?: WriteOpts) => Promise<boolean> {
-  const banner = useBanner()
-  const toast = useToast()
+export function useVaultWrite(): <T>(op: Promise<T>, opts?: WriteOpts<T>) => Promise<boolean> {
+  const m = useMessages()
+  const notice = useNotice()
   const { bump } = useVaultRevision()
-  return useCallback((op: Promise<unknown>, opts: WriteOpts = {}) => op.then(() => {
+  return useCallback(<T,>(op: Promise<T>, opts: WriteOpts<T> = {}) => op.then((result) => {
     bump()
-    if (opts.note !== undefined) (opts.notify ?? banner)(opts.note)
+    if (opts.note !== undefined) notice.success(opts.note, opts.action?.(result))
     return true
-  }).catch((e: Error) => {
-    toast(e.message)
+  }).catch((e: unknown) => {
+    notice.refusal(errorLabel(m, e))
     return false
-  }), [banner, bump, toast])
+  }), [bump, notice, m])
 }

@@ -3,11 +3,13 @@ import type {
 } from '../../../shared/contract.js'
 import { useMessages } from '../../messages/useMessages.js'
 import type { Catalog } from '../../messages/catalog.js'
+import { EmptyState } from '../EmptyState.js'
 import { StructuredList, StructuredRow } from '../StructuredList.js'
+import { Tag } from '../Tag.js'
 import './PaperWikiProposalReview.css'
 
 function anchorLabel(anchor: string, m: Catalog): string {
-  if (anchor.startsWith('page:')) return m.wiki.anchors.page(anchor.slice('page:'.length))
+  if (anchor.startsWith('page:')) return m.common.anchor.label(Number(anchor.slice('page:'.length)))
   if (anchor.startsWith('highlight:')) return m.wiki.scope.highlights
   if (anchor.startsWith('note:')) return m.wiki.scope.notes
   if (anchor === 'remark') return m.wiki.scope.remark
@@ -20,9 +22,7 @@ function ReviewGroup({ group }: { group: HarnessPaperWikiReviewGroup }) {
     <StructuredRow className="paper-wiki-review-group">
       <div className="paper-wiki-review-group-head">
         {group.title === undefined ? null : <strong>{group.title}</strong>}
-        <span className={`paper-wiki-provenance ${group.provenance}`}>
-          {m.wiki.provenance[group.provenance]}
-        </span>
+        <Tag>{m.wiki.provenance[group.provenance]}</Tag>
       </div>
       <div className="paper-wiki-review-fields">
         {group.rows.map((row, index) => (
@@ -35,7 +35,7 @@ function ReviewGroup({ group }: { group: HarnessPaperWikiReviewGroup }) {
       {group.anchors.length === 0 ? null : (
         <div className="paper-wiki-review-anchors" aria-label={m.wiki.groundsLabel}>
           {group.anchors.map((anchor) => (
-            <span key={anchor} title={anchor}>{anchorLabel(anchor, m)}</span>
+            <span key={anchor}>{anchorLabel(anchor, m)}</span>
           ))}
         </div>
       )}
@@ -55,12 +55,9 @@ function QualityReport({ quality }: { quality: HarnessPaperWikiQuality }) {
         <strong>{m.wiki.quality.heading}</strong>
         <span>{title}</span>
       </div>
-      <p>
-        {quality.passed ? m.wiki.quality.passedNote : m.wiki.quality.needsReviewNote}
-      </p>
       {quality.findings.length === 0 ? null : (
         <StructuredList className="paper-wiki-quality-findings" variant="embedded"
-          aria-label={m.wiki.quality.findingsListLabel} style={{ '--structured-list-row-height': '68px' }}>
+          aria-label={m.wiki.quality.findingsListLabel}>
           {quality.findings.map((finding, index) => {
             const findingCopy: Record<string, { title: string; detail: string }> = m.wiki.quality.findings
             const copy = findingCopy[finding.code]
@@ -87,13 +84,9 @@ export function PaperWikiProposalReview({ review, quality }: {
   review: HarnessPaperWikiReview
   quality?: HarnessPaperWikiQuality
 }) {
-  const m = useMessages()
   return (
     <div className="paper-wiki-structured-review">
       {quality === undefined ? null : <QualityReport quality={quality} />}
-      <p className="paper-wiki-review-legend">
-        {m.wiki.review.legend}
-      </p>
       {review.sections.map((section) => (
         <section className="paper-wiki-review-section" key={section.id}>
           <div className="paper-wiki-review-section-head">
@@ -101,12 +94,11 @@ export function PaperWikiProposalReview({ review, quality }: {
             <span>{section.groups.length}</span>
           </div>
           {section.groups.length === 0 ? (
-            <p className="paper-wiki-review-empty">{section.emptyLabel}</p>
+            <EmptyState variant="section">{section.emptyLabel}</EmptyState>
           ) : (
             <StructuredList
               variant="embedded"
               aria-label={section.title}
-              style={{ '--structured-list-row-height': '128px' }}
             >
               {section.groups.map((group) => <ReviewGroup group={group} key={group.id} />)}
             </StructuredList>

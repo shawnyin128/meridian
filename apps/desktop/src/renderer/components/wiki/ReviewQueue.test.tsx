@@ -58,6 +58,7 @@ describe('ReviewQueue', () => {
   const onOpenConclusion = vi.fn()
 
   beforeEach(() => {
+    vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} })
     globalThis.IS_REACT_ACT_ENVIRONMENT = true
     window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'zh')
     document.body.innerHTML = ''
@@ -78,22 +79,25 @@ describe('ReviewQueue', () => {
   })
 
   const row = (id: string) => host.querySelector<HTMLElement>(`[data-proposal="${id}"]`)!
+  const apply = (id: string) => [...row(id).querySelectorAll<HTMLButtonElement>('.review-actions button')].find((b) => b.textContent === '应用')!
 
   it('排队的一条一行:标题、提出者与触发的项目节点名、理由、按结论原文写的改动行、涉及的页名;过期与无法核对的引句标出来', () => {
     expect(row('p1').querySelector('.review-title')!.textContent).toBe('提案 p1')
-    expect(row('p1').querySelector('.review-meta')!.textContent).toBe('skill.meridian · 项目 draft 效率 · 节点 加宽实验 · 9月22日')
+    expect(row('p1').querySelector('.review-meta')!.textContent).toBe('项目 draft 效率 · 节点 加宽实验 · 9月22日')
+    expect(row('p1').querySelector('.review-head .source-label')!.textContent).toBe('agent')
     expect(row('p1').textContent).toContain('重跑了一遍')
     expect([...row('p1').querySelectorAll('.diff div')].map((d) => d.textContent)).toEqual([
       '- 原来：拐点在宽度 6', '+ 改为：拐点在宽度 8',
       '+ 给「拐点在宽度 6」补证据', '+ 　证据 · EAGLE-2 p.7「wide trees amortize」',
       '~ 「拐点在宽度 6」与「x」冲突：批量下不同',
     ])
-    expect([...row('p2').querySelectorAll('.diff div')].map((d) => d.textContent)).toEqual(['+ 新增结论：新结论', '+ 　实验 · draft 效率 · 加宽实验'])
-    expect(row('p1').querySelector('.stag')).toBeNull()
-    expect(row('p2').querySelector('.stag.pend')!.textContent).toBe('已过期')
-    expect(row('p2').textContent).toContain('这些引句没有文字层可核对')
-    expect(row('p1').querySelector<HTMLButtonElement>('.review-actions .btn.pri')!.disabled).toBe(false)
-    expect(row('p2').querySelector<HTMLButtonElement>('.review-actions .btn.pri')!.disabled).toBe(true)
+    expect([...row('p2').querySelectorAll('.diff div')].map((d) => d.textContent)).toEqual(['+ 添加结论：新结论', '+ 　实验 · draft 效率 · 加宽实验'])
+    expect(row('p1').querySelector('.review-head .tag:not(.source-label)')).toBeNull()
+    expect(row('p2').querySelector('.tag--warn')!.textContent).toBe('依据已变')
+    expect([...row('p2').querySelectorAll('.review-note--warn')].map((note) => note.textContent))
+      .toEqual([expect.stringContaining('这些引句没有文字层可核对')])
+    expect(apply('p1').disabled).toBe(false)
+    expect(apply('p2').disabled).toBe(true)
     const chip = row('p1').querySelector<HTMLElement>('.wkrel .tagchip')!
     expect(chip.textContent).toBe('Speculative decoding')
     expect(chip.tagName).toBe('BUTTON')
@@ -101,15 +105,45 @@ describe('ReviewQueue', () => {
     expect(onOpenPage).toHaveBeenCalledWith('topics/sd')
   })
 
-  it('提案标题与论文页名按 LaTeX 显示，改动行里的论文名是纯文本', () => {
+  it('提案标题、论文页名与改动行里的论文名都按 LaTeX 显示，引句照写', () => {
     expect(row('p7').querySelector('.review-title')!.innerHTML).toBe('收进《<strong>F</strong>lux》')
-    expect(row('p7').querySelector('.wkrel .tagchip')!.innerHTML).toBe('<strong>F</strong>lux')
-    expect(row('p7').querySelector('.diff')!.textContent).toContain('证据 · Flux p.2「q」')
+    expect(row('p7').querySelector('.wkrel .tagchip .tag-text')!.innerHTML).toBe('<strong>F</strong>lux')
+    expect([...row('p7').querySelectorAll('.diff div')].map((d) => d.innerHTML)).toEqual([
+      '+ 给「拐点在宽度 6」补证据', '+ 　证据 · <strong>F</strong>lux p.2「q」',
+    ])
   })
 
-  it('引用了没验证的项目结论:标出结论待验证,应用按不了,点结论去验证它', () => {
-    expect(row('p6').querySelector('.stag.pend')!.textContent).toBe('结论待验证')
-    expect(row('p6').querySelector<HTMLButtonElement>('.review-actions .btn.pri')!.disabled).toBe(true)
+  it('Core 写的提醒与拒收原因里的页 id 按页名显示、论文名按 LaTeX 显示，过期写成一个状态，用户自己写的拒绝原因照写', () => {
+    const decided = { at: RECEIVED, by: '我' as const }
+    const titles = { 'papers/flux': '\\textbf{F}lux', 'topics/sd': 'Speculative decoding' }
+    act(() => root!.render(
+      <MessagesProvider>
+        <ReviewQueue
+          proposals={[
+            proposal('n1', { titles, notice: '这些引句没有文字层可核对：papers/flux p.1' }),
+            proposal('n2', { titles, status: 'rejected', reason: { kind: 'invalid', message: '引句在原文第 2 页找不到：papers/flux' }, decided }),
+            proposal('n3', { titles, status: 'rejected', reason: { kind: 'declined', message: '差 ~5% papers/flux' }, decided }),
+            proposal('n4', {
+              titles, status: 'rejected', decided,
+              reason: { kind: 'stale', message: '提案过期：topics/sd 在提案生成之后改过（提案依据 fm 0123456789abcdef / body 0123456789abcdef，现在 不存在），没有落盘。按现在的页重新生成。' },
+            }),
+            proposal('n5', { titles, status: 'rejected', reason: { kind: 'invalid', message: '提案没有给出它依据的页的版本：topics/sd' }, decided }),
+          ]}
+          pending={false} onApply={onApply} onDecline={onDecline} onOpenPage={onOpenPage} onOpenConclusion={onOpenConclusion}
+        />
+      </MessagesProvider>,
+    ))
+    expect(row('n1').querySelector('.review-note--warn')!.innerHTML).toBe('这些引句没有文字层可核对：<strong>F</strong>lux p.1')
+    expect(row('n2').querySelector('.review-note')!.innerHTML).toBe('引句在原文第 2 页找不到：<strong>F</strong>lux')
+    expect(row('n3').querySelector('.review-note')!.textContent).toBe('差 ~5% papers/flux')
+    expect(row('n4').querySelector('.review-note')!.textContent).toBe('依据的页在提案生成之后改过')
+    expect(row('n5').querySelector('.review-note')!.textContent).toBe('提案没有给出它依据的页的版本：Speculative decoding')
+  })
+
+  it('引用了没验证的项目结论:标出结论未验证,不另写一句,应用按不了,点结论去验证它', () => {
+    expect(row('p6').querySelector('.tag--warn')!.textContent).toBe('结论未验证')
+    expect(row('p6').querySelector('.review-note--warn')).toBeNull()
+    expect(apply('p6').disabled).toBe(true)
     const chip = row('p6').querySelector<HTMLElement>('.review-unverified .tagchip')!
     expect(chip.textContent).toBe('加宽实验')
     expect(chip.tagName).toBe('BUTTON')
@@ -130,6 +164,14 @@ describe('ReviewQueue', () => {
     })
     act(() => pop.querySelector<HTMLButtonElement>('button')!.click())
     expect(onDecline).toHaveBeenCalledWith(PROPOSALS[1], '证据不够')
+  })
+
+  it('拒绝在前、应用在后；第一条能应用的提案的应用是主按钮，其余的应用是次要按钮；拒绝是红色的幽灵按钮，确认拒绝是浅红按钮', () => {
+    expect(['p1', 'p2', 'p6', 'p7'].map((id) => apply(id).className)).toEqual(['btn pri', 'btn', 'btn', 'btn'])
+    const actions = [...row('p2').querySelectorAll<HTMLButtonElement>('.review-actions button')]
+    expect(actions.map((b) => `${b.textContent} ${b.className}`)).toEqual(['拒绝 btn ghost danger', '应用 btn'])
+    act(() => actions[0]!.dispatchEvent(new MouseEvent('click', { bubbles: true })))
+    expect(document.querySelector<HTMLButtonElement>('.review-decline button')!.className).toBe('btn danger')
   })
 
   it('拒绝的原因框从拒绝钮的左缘往右展开在它下方,不往左盖到侧栏上', async () => {
@@ -154,15 +196,33 @@ describe('ReviewQueue', () => {
 
   it('已处理的在自己的小标题下列出,各带结果', () => {
     expect(host.querySelector('.section-heading')!.textContent).toBe('已处理 · 3')
-    expect(row('p3').querySelector('.stag.ok')!.textContent).toBe('已应用')
-    expect(row('p4').querySelector('.stag.mut')!.textContent).toBe('已拒绝 · 过期')
-    expect(row('p4').textContent).toContain('提案过期:topics/sd')
+    expect(row('p3').querySelector('.tag--good')!.textContent).toBe('已应用')
+    expect(row('p4').querySelector('.tag--neutral')!.textContent).toBe('已拒绝 · 过期')
+    expect(row('p4').querySelector('.review-note')!.textContent).toBe('依据的页在提案生成之后改过')
     expect([...row('p4').querySelectorAll('.diff div')].map((d) => d.textContent)).toEqual([
       '~ 「拐点在宽度 6」的冲突：不算冲突（场景不同）', '- 撤回「拐点在宽度 6」：重跑后不成立',
     ])
     expect(row('p5').querySelector('.review-title')!.textContent).toBe('读不了的提案')
-    expect(row('p5').querySelector('.stag')!.textContent).toBe('已拒绝 · 无效')
+    expect(row('p5').querySelector('.tag')!.textContent).toBe('已拒绝 · 无效')
     expect(row('p5').querySelector('.diff')).toBeNull()
+  })
+
+  it('被拒绝的提案的改动行淡下去并划掉，不再像应用了的那样标成增删；应用了的照旧', () => {
+    const declined = proposal('p8', {
+      status: 'rejected', reason: { kind: 'declined', message: '' }, decided: { at: RECEIVED, by: '我' },
+    })
+    act(() => root!.render(
+      <MessagesProvider>
+        <ReviewQueue proposals={[...PROPOSALS, declined]} pending={false} onApply={onApply} onDecline={onDecline} onOpenPage={onOpenPage} onOpenConclusion={onOpenConclusion} />
+      </MessagesProvider>,
+    ))
+    for (const id of ['p4', 'p8']) {
+      expect(row(id).querySelector('.diff')!.classList.contains('is-declined'), id).toBe(true)
+      expect(row(id).querySelectorAll('.diff .add, .diff .del'), id).toHaveLength(0)
+    }
+    expect(row('p8').querySelector('.diff div')!.textContent).toMatch(/^\+ /)
+    expect(row('p3').querySelector('.diff')!.classList.contains('is-declined')).toBe(false)
+    expect(row('p3').querySelectorAll('.diff .add').length).toBeGreaterThan(0)
   })
 
   it('收到和处理的日期按本地的那一天算，半夜前后的不会挪到前一天或后一天', () => {
@@ -177,8 +237,9 @@ describe('ReviewQueue', () => {
         />
       </MessagesProvider>,
     ))
-    expect(row('q1').querySelector('.review-meta')!.textContent).toBe('skill.meridian · 项目 draft 效率 · 节点 加宽实验 · 10月16日')
-    expect(row('d1').querySelector('.review-meta')!.textContent).toBe('skill.meridian · 项目 draft 效率 · 节点 加宽实验 · 10月16日 → 10月16日')
+    expect(row('q1').querySelector('.review-meta')!.textContent).toBe('项目 draft 效率 · 节点 加宽实验 · 10月16日')
+    expect(row('d1').querySelector('.review-meta')!.textContent).toBe('项目 draft 效率 · 节点 加宽实验 · 10月16日 → 10月16日')
+    expect(row('d1').querySelector('.review-head .source-label')!.textContent).toBe('agent')
   })
 
   it('没有排队的提案时说一句;入口上的数是排队的条数', () => {
@@ -188,7 +249,7 @@ describe('ReviewQueue', () => {
         <ReviewQueue proposals={PROPOSALS.filter((p) => p.status !== 'queued')} pending={false} onApply={onApply} onDecline={onDecline} onOpenPage={onOpenPage} onOpenConclusion={onOpenConclusion} />
       </MessagesProvider>,
     ))
-    expect(host.textContent).toContain('没有等你审阅的提案。')
+    expect(host.textContent).toContain('还没有待审阅的提案')
     expect(host.querySelector('.review-entry')!.textContent).toBe('待审阅2')
   })
 })

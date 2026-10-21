@@ -1,4 +1,5 @@
 import type { AppUpdateStatus } from '../../../shared/app-update.js'
+import { reasonLabel } from '../../lib/failure-label.js'
 import type { Catalog } from '../../messages/catalog.js'
 import { useMessages } from '../../messages/useMessages.js'
 
@@ -9,7 +10,7 @@ export interface UpdateActionProps {
   onDownload: (url: string) => void
 }
 
-/** One sentence stating where the app's self-update stands. */
+/** The short state label of where the app's self-update stands. */
 export function updateLine(status: AppUpdateStatus, m: Catalog): string {
   const phase = m.settings.extensions.app.phase
   switch (status.phase) {
@@ -20,7 +21,7 @@ export function updateLine(status: AppUpdateStatus, m: Catalog): string {
     case 'downloading': return phase.downloading(status.version, status.percent)
     case 'ready': return phase.ready(status.version)
     case 'available': return phase.available(status.version)
-    case 'error': return phase.error(status.message)
+    case 'error': return phase.error(reasonLabel(m, status.reason))
   }
 }
 

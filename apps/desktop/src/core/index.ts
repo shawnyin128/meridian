@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
-import type { ContractMethod, LibrarySource } from '../shared/contract.js'
+import type { CallFailure, ContractMethod, LibrarySource } from '../shared/contract.js'
 import {
   AuthorSearchParamsSchema,
   ChatAppendParamsSchema,
@@ -97,6 +97,7 @@ import {
   WikiProposeParamsSchema,
   WikiUpdateParamsSchema,
 } from '../shared/contract.js'
+import { answerCall, CallError, callFailure } from './call-error.js'
 import { createFixtureStore } from './fixture-store.js'
 import { withUiSampleUpload } from './fixtures/ui-samples.js'
 import { createBackground } from './background.js'
@@ -110,6 +111,7 @@ import { sleep } from './net/http.js'
 import { unopenedStore } from './unopened-store.js'
 import type { VaultStore } from './vault.js'
 import { createDesktopVaultStore, createVaultStore } from './vault-store.js'
+import { recordChange, trashedEntry } from './write-receipts.js'
 import {
   deleteLibraryBackup, listLibraryBackups, resetLibrary, switchLibraryBackup,
 } from './workspace-layout.js'
@@ -144,14 +146,11 @@ process.parentPort.on('message', (event) => {
   if (!port) throw new Error('core 未收到 MessagePort')
   port.on('message', (msg) => {
     const { id, method, params } = msg.data as { id: number; method: ContractMethod; params: unknown }
-    void handlersReady.then(() => {
+    void answerCall(port, id, method, handlersReady.then(() => {
       const handler = handlers.get(method)
       if (!handler) throw new Error(`未注册的契约方法：${method}`)
       return handler(params)
-    }).then(
-      (data) => { port.postMessage({ id, ok: true, data }) },
-      (err: unknown) => { port.postMessage({ id, ok: false, error: err instanceof Error ? err.message : String(err) }) },
-    )
+    }))
   })
   port.start()
 })
@@ -295,7 +294,7 @@ function sourceOf(root: string | undefined, source: string | undefined): Library
  */
 function openStore(
   root: string | undefined, appliedProposalBodies: Map<string, string>,
-): { store: VaultStore; openError: string | null } {
+): { store: VaultStore; openError: CallFailure | null } {
   if (root === undefined) {
     return { store: createFixtureStore(undefined, undefined, appliedProposalBodies), openError: null }
   }
@@ -307,7 +306,8 @@ function openStore(
   } catch (err) {
     const reason = err instanceof Error ? err.message : String(err)
     console.error(`[core] 论文库打不开：${reason}`)
-    return { store: unopenedStore(reason), openError: reason }
+    const failure = callFailure(err)
+    return { store: unopenedStore(reason, failure), openError: failure }
   }
 }
 
@@ -368,19 +368,19 @@ registerHandler('library.switchBackup', (params) => {
 
 registerHandler('library.deleteBackup', (params) => {
   const { id } = LibraryBackupParamsSchema.parse(params)
-  if (librarySource === 'fixture') throw new Error('测试数据模式没有论文库备份')
-  if (libraryLocation.restartRequired) throw new Error('论文库位置待重启生效，请先重启再管理备份')
+  if (librarySource === 'fixture') throw new CallError('refused', '测试数据模式没有论文库备份')
+  if (libraryLocation.restartRequired) throw new CallError('refused', '论文库位置待重启生效，请先重启再管理备份')
   deleteLibraryBackup(locationRoot, id)
   return null
 })
 
 function assertLibraryRestartReady(): void {
-  if (librarySource === 'fixture') throw new Error('测试数据模式不能切换或重置论文库')
-  if (libraryLocation.restartRequired) throw new Error('论文库位置待重启生效，请先重启再继续')
+  if (librarySource === 'fixture') throw new CallError('refused', '测试数据模式不能切换或重置论文库')
+  if (libraryLocation.restartRequired) throw new CallError('refused', '论文库位置待重启生效，请先重启再继续')
   const status = background.status()
   const parsing = status.uploads.some((job) => job.step !== 'done' && job.step !== 'failed')
   if (parsing || status.downloads.length > 0 || status.fetch.state === 'checking') {
-    throw new Error('论文库仍有下载或解析任务，请完成后再继续')
+    throw new CallError('busy', '论文库仍有下载或解析任务，请完成后再继续')
   }
 }
 
@@ -426,9 +426,14 @@ registerHandler('papers.facets', (params) => {
 registerHandler('papers.get', (params) => store.getPaper(PapersGetParamsSchema.parse(params).id))
 registerHandler('papers.update', (params) => {
   const { id, patch } = PapersUpdateParamsSchema.parse(params)
-  return store.updatePaper(id, definedFields(patch))
+  const { change } = recordChange(store, () => store.updatePaper(id, definedFields(patch)))
+  return { change }
 })
-registerHandler('papers.delete', (params) => store.deletePaper(PapersDeleteParamsSchema.parse(params).id))
+registerHandler('papers.delete', (params) => {
+  const { id } = PapersDeleteParamsSchema.parse(params)
+  const { change } = recordChange(store, () => store.deletePaper(id))
+  return { change }
+})
 registerHandler('papers.source', (params) =>
   store.paperSource(PapersSourceParamsSchema.parse(params).id))
 registerHandler('papers.import', (params) => {
@@ -473,11 +478,13 @@ registerHandler('papers.setColumns', (params) =>
   store.setPaperColumns(PapersSetColumnsParamsSchema.parse(params).columns))
 registerHandler('papers.renameOption', (params) => {
   const { key, from, to } = PapersRenameOptionParamsSchema.parse(params)
-  return store.renamePaperOption(key, from, to)
+  const { change } = recordChange(store, () => store.renamePaperOption(key, from, to))
+  return { change }
 })
 registerHandler('papers.setColumnType', (params) => {
   const { key, type } = PapersSetColumnTypeParamsSchema.parse(params)
-  return store.setPaperColumnType(key, type)
+  const { change } = recordChange(store, () => store.setPaperColumnType(key, type))
+  return { change }
 })
 registerHandler('project.list', (params) => {
   EmptyParamsSchema.parse(params)
@@ -504,8 +511,11 @@ registerHandler('project.update', (params) => {
   const { id, patch } = ProjectUpdateParamsSchema.parse(params)
   return store.updateProject(id, definedFields(patch))
 })
-registerHandler('project.delete', (params) =>
-  store.deleteProject(ProjectDeleteParamsSchema.parse(params).id))
+registerHandler('project.delete', (params) => {
+  const { id } = ProjectDeleteParamsSchema.parse(params)
+  const { change } = recordChange(store, () => store.deleteProject(id))
+  return { change }
+})
 registerHandler('project.createTask', (params) => {
   const { projectId, task } = ProjectCreateTaskParamsSchema.parse(params)
   return store.createTask(projectId, task)
@@ -570,7 +580,8 @@ registerHandler('project.createAttachment', (params) => {
 })
 registerHandler('project.deleteAttachment', (params) => {
   const { projectId, attachmentId } = ProjectDeleteAttachmentParamsSchema.parse(params)
-  return store.deleteAttachment(projectId, attachmentId)
+  const { result, change } = recordChange(store, () => store.deleteAttachment(projectId, attachmentId))
+  return { project: result, change }
 })
 registerHandler('project.createConclusion', (params) => {
   const { projectId, text, chat, paper } = ProjectCreateConclusionParamsSchema.parse(params)
@@ -595,8 +606,10 @@ registerHandler('project.unverifyConclusion', (params) => {
 registerHandler('inbox.list', (params) => {
   return store.listInbox(InboxListParamsSchema.parse(params))
 })
-registerHandler('inbox.dismiss', (params) =>
-  store.dismissInbox(InboxDismissParamsSchema.parse(params).id))
+registerHandler('inbox.dismiss', (params) => {
+  const { id } = InboxDismissParamsSchema.parse(params)
+  return trashedEntry(store, () => store.dismissInbox(id))
+})
 registerHandler('inbox.readLater', (params) =>
   store.readLater(InboxReadLaterParamsSchema.parse(params).id))
 registerHandler('inbox.download', (params) =>
@@ -780,8 +793,8 @@ registerHandler('idea.update', (params) => {
 registerHandler('idea.promote', (params) => {
   const { id } = ResearchIdeaPromoteParamsSchema.parse(params)
   const held = store.listIdeas().find((idea) => idea.id === id)
-  if (held === undefined) throw new Error(`想法不存在：${id}`)
-  if (held.project !== undefined) throw new Error('这个想法已经关联项目')
+  if (held === undefined) throw new CallError('not-found', `想法不存在：${id}`)
+  if (held.project !== undefined) throw new CallError('refused', '这个想法已经关联项目')
   const before = new Set(store.listProjects().map((project) => project.id))
   store.createProject(held.title)
   const made = store.listProjects().find((project) => !before.has(project.id))
@@ -795,8 +808,10 @@ registerHandler('idea.placeOnGraph', (params) => {
   const { id, placement } = ResearchIdeaPlaceOnGraphParamsSchema.parse(params)
   return placeResearchIdeaOnGraph(store, id, placement)
 })
-registerHandler('idea.delete', (params) =>
-  store.deleteIdea(ResearchIdeaDeleteParamsSchema.parse(params).id))
+registerHandler('idea.delete', (params) => {
+  const { id } = ResearchIdeaDeleteParamsSchema.parse(params)
+  return trashedEntry(store, () => store.deleteIdea(id))
+})
 registerHandler('idea.reorder', (params) =>
   store.reorderIdeas(ResearchIdeaReorderParamsSchema.parse(params).order))
 registerHandler('chat.recordAction', (params) => {

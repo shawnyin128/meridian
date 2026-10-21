@@ -2,6 +2,7 @@ import type {
   ConflictTarget, Evidence, PageVersion, SearchHit, WikiAggregation, WikiAggregationCard, WikiCell, WikiClaim,
   WikiHome, WikiPaper, WikiRef,
 } from '../../shared/contract.js'
+import { CallError } from '../call-error.js'
 
 /** One entry from schema.yaml `kinds`. */
 export type WikiKindRecord = {
@@ -98,7 +99,7 @@ const ids = (data: WikiData): string[] => Object.keys(data.pages).sort()
 /** Aggregation page from `data`. Throw when the id is absent or identifies a paper. */
 function aggregationOf(data: WikiData, id: string): WikiAggregationRecord {
   const page = data.pages[id]
-  if (page === undefined || isPaper(page)) throw new Error(`wiki 聚合不存在：${id}`)
+  if (page === undefined || isPaper(page)) throw new CallError('not-found', `wiki 聚合不存在：${id}`)
   return page
 }
 
@@ -146,7 +147,7 @@ const GENERATED_MARK = /^<!-- (?:generated:\w+|\/generated) -->$/m
 
 /** Throws if `body` holds a generated-region marker line; `id` names the page in the message. */
 export function checkBody(id: string, body: string): void {
-  if (GENERATED_MARK.test(body)) throw new Error(`正文里不能有生成区的标记：${id}`)
+  if (GENERATED_MARK.test(body)) throw new CallError('invalid', `正文里不能有生成区的标记：${id}`)
 }
 
 /** First non-heading, non-empty body line used as the card summary. */
@@ -240,12 +241,28 @@ function sideTitle(
   }
 }
 
+/** Returns the name of node or legacy conclusion `point` of project `project`, undefined when there is none. */
+export type PointName = (project: string, point: string) => string | undefined
+
+/**
+ * Returns `{ point }` naming the node or legacy conclusion an experiment side cites, by `points` (its id
+ * when gone), and nothing for any other side or an experiment that cites neither.
+ */
+function sidePoint(side: Evidence | ConflictTarget, points: PointName): { point?: string } {
+  if (side.kind !== 'experiment') return {}
+  const point = side.node ?? side.conclusion
+  return point === undefined ? {} : { point: points(side.project, point) ?? point }
+}
+
 /**
  * Returns the claims of aggregation `id` as the contract shows them, in page order: each evidence item
- * and conflict with its display name resolved (see sideTitle), empty conflict and history lists where the
- * page omits them. `projects` maps project ids to names. Throws if `id` is not an aggregation.
+ * and conflict with its display name resolved (see sideTitle) and the node or conclusion an experiment
+ * cites named (see sidePoint), empty conflict and history lists where the page omits them. `projects`
+ * maps project ids to names. Throws if `id` is not an aggregation.
  */
-export function wikiClaims(data: WikiData, id: string, projects: Record<string, string>): WikiClaim[] {
+export function wikiClaims(
+  data: WikiData, id: string, projects: Record<string, string>, points: PointName,
+): WikiClaim[] {
   return claimsOf(data, id).map((claim) => ({
     id: claim.id,
     text: claim.text,
@@ -254,9 +271,11 @@ export function wikiClaims(data: WikiData, id: string, projects: Record<string, 
     by: claim.by,
     evidence: claim.evidence.map(({ added, by, ...evidence }) => {
       const title = sideTitle(data, evidence, projects)
-      return { evidence, added, by, ...(title === undefined ? {} : { title }) }
+      return { evidence, added, by, ...(title === undefined ? {} : { title }), ...sidePoint(evidence, points) }
     }),
-    conflicts: (claim.conflicts ?? []).map((c) => ({ ...c, title: sideTitle(data, c.against, projects)! })),
+    conflicts: (claim.conflicts ?? []).map((c) => ({
+      ...c, title: sideTitle(data, c.against, projects)!, ...sidePoint(c.against, points),
+    })),
     history: (claim.history ?? []).map((h) => ({ ...h })),
   }))
 }
@@ -329,12 +348,13 @@ export function projectDisputes(data: WikiData, project: string): { node?: strin
 
 /**
  * Returns the aggregation `id` in `data` as the contract shows it: aggregationView's fields plus its
- * claims (wikiClaims, with `projects` naming projects) and `version`. Throws if `id` is not an aggregation.
+ * claims (wikiClaims, with `projects` naming projects and `points` their nodes and conclusions) and
+ * `version`. Throws if `id` is not an aggregation.
  */
 export function wikiAggregation(
-  data: WikiData, id: string, version: PageVersion, projects: Record<string, string>,
+  data: WikiData, id: string, version: PageVersion, projects: Record<string, string>, points: PointName,
 ): WikiAggregation {
-  return { ...aggregationView(data, id), claims: wikiClaims(data, id, projects), version }
+  return { ...aggregationView(data, id), claims: wikiClaims(data, id, projects, points), version }
 }
 
 /**
@@ -398,7 +418,7 @@ export function aggregationView(data: WikiData, id: string): Omit<WikiAggregatio
  */
 export function wikiPaper(data: WikiData, id: string, version: PageVersion): WikiPaper {
   const page = data.pages[id]
-  if (page === undefined || !isPaper(page)) throw new Error(`wiki 论文页不存在：${id}`)
+  if (page === undefined || !isPaper(page)) throw new CallError('not-found', `wiki 论文页不存在：${id}`)
   const memberships = (page.fm.memberships ?? []).flatMap((m) => {
     const aggregation = data.pages[m.in]
     if (aggregation === undefined || isPaper(aggregation)) return []

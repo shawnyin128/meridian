@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react'
 import type { HarnessModelSettings, SemanticKeyStatus } from '../../../shared/contract.js'
 import { delivery, harness } from '../../ipc.js'
+import { errorLabel } from '../../lib/failure-label.js'
 import { useMessages } from '../../messages/useMessages.js'
 import { StructuredList, StructuredRow } from '../StructuredList.js'
+import { FadeText } from '../FadeText.js'
 import './ApiOverview.css'
 
 /** The API category's summary: which model and which scholarly source Meridian uses now, each opening its own page. */
@@ -14,9 +16,9 @@ export function ApiOverview({ onOpen }: { onOpen: (category: 'model' | 'research
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    void harness.modelSettings().then(setModel).catch((e: Error) => setError(e.message))
-    void delivery.semanticKey().then(setSemanticKey).catch((e: Error) => setError(e.message))
-  }, [])
+    void harness.modelSettings().then(setModel).catch((e: unknown) => setError(errorLabel(m, e)))
+    void delivery.semanticKey().then(setSemanticKey).catch((e: unknown) => setError(errorLabel(m, e)))
+  }, [m])
 
   const modelState = model === null
     ? m.common.reading
@@ -38,8 +40,8 @@ export function ApiOverview({ onOpen }: { onOpen: (category: 'model' | 'research
         {rows.map((row) => (
           <StructuredRow composite className="wrow" data-api={row.key} key={row.key} onActivate={() => onOpen(row.key)}>
             <span className="nm">{row.name}</span>
-            <span className="api-state">{row.state}</span>
-            <button className="btn" onClick={(event) => { event.stopPropagation(); onOpen(row.key) }}>{copy.open}</button>
+            <FadeText className="api-state">{row.state}</FadeText>
+            <button className="btn ghost sm" onClick={(event) => { event.stopPropagation(); onOpen(row.key) }}>{copy.open}</button>
           </StructuredRow>
         ))}
       </StructuredList>

@@ -15,33 +15,32 @@ export const reader = {
   page: {
     at: (n: number) => `Page ${n}`,
   },
-  emptyReading: 'Highlight a passage or add a note about this page.',
+  emptyReading: 'No highlights or notes yet',
+  emptyHighlights: 'No highlights yet',
+  emptyNotes: 'No notes yet',
   notes: {
     ariaLabel: 'Reading notes',
     heading: (count: number) => `Reading notes · ${count}`,
     newAria: 'New note',
     placeholder: (page: number) => `Add a note about page ${page}…`,
-    add: 'Save note',
     pageAria: (page: number) => `Page ${page} note`,
   },
   highlights: {
-    jumpToPage: (page: number) => `Go to highlight on page ${page}`,
-    noteAria: (page: number) => `Page ${page} highlight note`,
-    annotate: 'Note for this highlight',
+    noteAria: (page: number) => `Page ${page} highlight annotation`,
+    annotate: 'Annotation for this highlight',
   },
   remark: {
     heading: 'Thoughts on this paper',
     placeholder: 'Write your overall thoughts on this paper…',
-    save: 'Save thoughts',
   },
-  loadingPdf: 'Loading PDF…',
   selection: {
     highlight: 'Highlight',
-    note: 'Note',
+    note: 'Annotate',
     askAi: 'Ask AI',
   },
   zoom: {
     out: 'Zoom out',
     in: 'Zoom in',
+    reset: 'Reset zoom',
   },
 } satisfies typeof zh

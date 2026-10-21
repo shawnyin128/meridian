@@ -3,11 +3,13 @@ import type { PaperColumn, PaperColumns } from '../../../shared/contract.js'
 import { LOCKED_PAPER_COLUMNS } from '../../../shared/vocabulary.js'
 import { useMessages } from '../../messages/useMessages.js'
 import { ActionPopover } from '../ActionPopover.js'
-import { IconCheck, IconChevron, IconCross, IconGear, IconPencil } from '../icons.js'
+import { IconButton } from '../IconButton.js'
+import { IconCheck, IconChevron, IconGear, IconPencil, IconTrash } from '../icons.js'
 import { ColumnTypeIcon, ColumnTypePicker } from './ColumnAdd.js'
-import { takenLabel } from './column-key.js'
+import { builtinNames, takenLabel } from './column-key.js'
 import { COLUMNS } from './PaperTable.js'
 import { afterLeaving, InlineDraftInput } from '../InlineDraftInput.js'
+import { FadeText } from '../FadeText.js'
 
 /**
  * The column menu, opened from the gear at the end of the table header. Built-in columns take one
@@ -23,7 +25,7 @@ import { afterLeaving, InlineDraftInput } from '../InlineDraftInput.js'
  * Select and multi-select columns have an extra toggle at the end of the row that expands their
  * options, one per row, with rename and delete at the end of the row. Renaming goes to
  * `onRenameOption` (the papers holding it change too); deleting goes to `onChange` as usual, and
- * while any paper in the vault still holds that option, Core rejects it and the banner shows
+ * while any paper in the vault still holds that option, Core rejects it and a refusal notice shows
  * Core's message.
  * Custom column rows also have a "Change type" button that expands the row of type options used
  * when adding a column; clicking or arrowing to another option calls `onRetype`, whose promise
@@ -38,6 +40,7 @@ export function ColumnMenu({ columns, onChange, onRenameOption, onRetype }: {
   onRetype: (key: string, type: PaperColumn['type']) => Promise<unknown>
 }) {
   const m = useMessages()
+  const names = builtinNames(m, columns).columns
   const [open, setOpen] = useState(false)
   // The key of the column being renamed
   const [renaming, setRenaming] = useState<string | null>(null)
@@ -90,7 +93,9 @@ export function ColumnMenu({ columns, onChange, onRenameOption, onRetype }: {
         setOpened(null)
         setRetyping(null)
       }}
-      sticky="always" trigger={<button className="colbtn" title={m.papers.columnMenu.settings}><IconGear /></button>}
+      sticky="always" trigger={(
+        <IconButton label={m.papers.columnMenu.settings} size="nested" className="colbtn"><IconGear /></IconButton>
+      )}
       contentProps={{
           // Radix takes Esc in the document's capture phase, so the input cannot stop it; during a
           // rename, keep the popover open here and only cancel the rename.
@@ -108,11 +113,11 @@ export function ColumnMenu({ columns, onChange, onRenameOption, onRetype }: {
             const body = (
               <>
                 <span className="ck">{shown ? <IconCheck /> : null}</span>
-                <span className="cl">{m.papers.columns[c.k]}</span>
+                <FadeText className="cl" label={names[c.k]}>{names[c.k]}</FadeText>
               </>
             )
             return locked
-              ? <div key={c.k} className="mi colrow locked" title={m.papers.columnMenu.locked}>{body}</div>
+              ? <div key={c.k} className="mi colrow locked">{body}</div>
               : (
                 <button
                   type="button" key={c.k} className="mi colrow" aria-pressed={shown} onClick={() => toggle(c.k)}
@@ -122,7 +127,7 @@ export function ColumnMenu({ columns, onChange, onRenameOption, onRetype }: {
           {columns.custom.map((c) => (
             <div key={c.key}>
               <div className="mi colrow">
-                <span className="ck"><IconCheck /></span>
+                <span className="ck" />
                 {renaming === c.key
                   ? (
                     <InlineDraftInput
@@ -130,7 +135,7 @@ export function ColumnMenu({ columns, onChange, onRenameOption, onRetype }: {
                       onCancel={() => setRenaming(null)}
                       onSubmit={(label) => {
                         if (label === c.label) return true
-                        const builtinLabels = [m.papers.columns.title, ...COLUMNS.map((k) => m.papers.columns[k.k])]
+                        const builtinLabels = [names.title, ...COLUMNS.map((k) => names[k.k])]
                         if (takenLabel(label, columns, builtinLabels)) return false
                         onChange((base) => ({
                           ...base,
@@ -140,33 +145,33 @@ export function ColumnMenu({ columns, onChange, onRenameOption, onRetype }: {
                       }}
                     />
                   )
-                  : <span className="cl">{c.label}</span>}
+                  : <FadeText className="cl" label={c.label}>{c.label}</FadeText>}
                 {c.type === 'text'
                   ? null
                   : (
-                    <button
-                      className={opened === c.key ? 'cmx optx on' : 'cmx optx'} title={m.papers.columnMenu.options}
+                    <IconButton
+                      label={m.papers.columnMenu.options} size="nested" className={opened === c.key ? 'cmx optx on' : 'cmx optx'}
                       onClick={() => setOpened((k) => (k === c.key ? null : c.key))}
-                    ><IconChevron /></button>
+                    ><IconChevron /></IconButton>
                   )}
-                <button
-                  className={retyping === c.key ? 'cmx typex on' : 'cmx typex'} title={m.papers.columnMenu.changeType}
+                <IconButton
+                  label={m.papers.columnMenu.changeType} size="nested" className={retyping === c.key ? 'cmx typex on' : 'cmx typex'}
                   onClick={() => setRetyping((k) => (k === c.key ? null : c.key))}
-                ><ColumnTypeIcon type={c.type} /></button>
-                <button
-                  className="cmx" title={m.papers.columnMenu.rename}
+                ><ColumnTypeIcon type={c.type} /></IconButton>
+                <IconButton
+                  label={m.papers.columnMenu.rename} size="nested" className="cmx"
                   onClick={() => afterLeaving(leaveRename, () => setRenaming(c.key))}
-                ><IconPencil /></button>
+                ><IconPencil /></IconButton>
                 {/* Core rejects group keys with no column, so a deleted column leaves the groups too. */}
-                <button
-                  className="cmx del" title={m.papers.columnMenu.deleteColumn}
+                <IconButton
+                  label={m.papers.columnMenu.deleteColumn} size="nested" tone="danger" className="cmx"
                   onClick={() => onChange((base) => ({
                     ...base,
                     custom: base.custom.filter((x) => x.key !== c.key),
                     groups: base.groups.filter((g) => g !== c.key),
                     order: base.order?.filter((key) => key !== c.key),
                   }))}
-                ><IconCross sw={2.2} /></button>
+                ><IconTrash /></IconButton>
               </div>
               {retyping === c.key
                 ? (
@@ -196,22 +201,22 @@ export function ColumnMenu({ columns, onChange, onRenameOption, onRetype }: {
                             }}
                           />
                         )
-                        : <span className="cl">{o}</span>}
-                      <button
-                        className="cmx" title={m.papers.columnMenu.renameOption}
+                        : <FadeText className="cl" label={o}>{o}</FadeText>}
+                      <IconButton
+                        label={m.papers.columnMenu.renameOption} size="nested" className="cmx"
                         onClick={() => afterLeaving(
                           leaveOptionRename, () => setRenamingOption({ key: c.key, from: o }),
                         )}
-                      ><IconPencil /></button>
-                      <button
-                        className="cmx del" title={m.papers.columnMenu.deleteOption}
+                      ><IconPencil /></IconButton>
+                      <IconButton
+                        label={m.papers.columnMenu.deleteOption} size="nested" tone="danger" className="cmx"
                         onClick={() => onChange((base) => ({
                           ...base,
                           custom: base.custom.map((x) => (x.key === c.key
                             ? { ...x, options: x.options.filter((v) => v !== o) }
                             : x)),
                         }))}
-                      ><IconCross sw={2.2} /></button>
+                      ><IconTrash /></IconButton>
                     </div>
                   ))}
             </div>

@@ -1,0 +1,71 @@
+import { readdirSync, readFileSync } from 'node:fs'
+import { join } from 'node:path'
+import { describe, expect, it } from 'vitest'
+
+const RENDERER = join(import.meta.dirname, '..', 'renderer')
+
+/** Every stylesheet under the renderer, as paths relative to it. */
+const STYLESHEETS = readdirSync(RENDERER, { recursive: true, encoding: 'utf8' })
+  .filter((path) => path.endsWith('.css'))
+
+/**
+ * The private chip, pill, badge and dot styles that became a Tag, a CountBadge or a StatusDot. Each is
+ * a class that may still name an element, optionally inside a scope class, but no longer draws it.
+ */
+const RETIRED: { cls: string; scope?: string }[] = [
+  { cls: 'storage-source' }, { cls: 'service-status-pill' }, { cls: 'extension-state' },
+  { cls: 'n', scope: 'srow' }, { cls: 'n', scope: 'gxrow' }, { cls: 'review-entry-count' },
+  { cls: 'collapsible-group-count' }, { cls: 'research-map-count' }, { cls: 'stchip' },
+  { cls: 'ak' }, { cls: 'stag' }, { cls: 'prtag' }, { cls: 'timeline-task-priority' }, { cls: 'agtag' },
+  { cls: 'project-control-source' }, { cls: 'idea-source-kind' }, { cls: 'idea-project-tag' }, { cls: 'idea-archive-tag' },
+  { cls: 'project-idea-state' }, { cls: 'project-idea-detail-kind' }, { cls: 'ovpulse-signal' },
+  { cls: 'timeline-project-label' }, { cls: 'ovlist-project' }, { cls: 'project-identity-name', scope: 'progress' },
+  { cls: 'node-branch' }, { cls: 'date-chip' }, { cls: 'dchip' },
+  { cls: 'gdot' }, { cls: 'ld' }, { cls: 'node-tag-dot' }, { cls: 'node-branch-dot' }, { cls: 'project-identity-dot' },
+  { cls: 'workspace-root::before' },
+  { cls: 'wkind' }, { cls: 'wkclaim-kind' }, { cls: 'src', scope: 'crow' }, { cls: 'direction-core' },
+  { cls: 'tagchip' }, { cls: 'morebadge' }, { cls: 'paper-wiki-provenance' }, { cls: 'tag', scope: 'brief' },
+]
+
+/** Properties that draw a tag: its fill, text colour, border, radius, padding and type. */
+const LOOK = /^(background|color|border|padding|font|line-height)/
+
+/** The last compound of a selector, the element it styles, with the arguments of :has() and the like dropped. */
+const subject = (selector: string): string => {
+  let flat = selector
+  while (/\([^()]*\)/.test(flat)) flat = flat.replace(/\([^()]*\)/g, '')
+  return flat.trim().split(/[\s>+~]+/).at(-1)!
+}
+
+const hasClass = (text: string, cls: string): boolean => new RegExp(`\\.${cls}(?![\\w-])`).test(text)
+
+describe('标签、计数徽标和状态点', () => {
+  it('收编进共享组件的旧 chip、pill、计数和点样式都不再自画填充、颜色、边框、圆角、内边距或字型', () => {
+    const offenders = STYLESHEETS.flatMap((path) => {
+      const css = readFileSync(join(RENDERER, path), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '')
+      return [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)].flatMap(([, selectors, body]) => {
+        const drawn = body!.split(';').map((d) => d.slice(0, d.indexOf(':')).trim()).filter((p) => LOOK.test(p))
+        if (drawn.length === 0) return []
+        return selectors!.split(',').map((s) => s.trim())
+          .filter((s) => RETIRED.some(({ cls, scope }) => hasClass(subject(s), cls) && (scope === undefined || hasClass(s, scope))))
+          .map((s) => `${path}  ${s}  { ${drawn.join(', ')} }`)
+      })
+    })
+    expect(offenders).toEqual([])
+  })
+
+  it('标签、计数徽标和状态点的样子只由它们自己的样式表画,别的样式表同名的规则会在打包后盖掉它们', () => {
+    const OWN = new Set(['components/Tag.css', 'components/StatusDot.css'])
+    const offenders = STYLESHEETS.filter((path) => !OWN.has(path)).flatMap((path) => {
+      const css = readFileSync(join(RENDERER, path), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '')
+      return [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)].flatMap(([, selectors, body]) => {
+        const drawn = body!.split(';').map((d) => d.slice(0, d.indexOf(':')).trim()).filter((p) => LOOK.test(p))
+        if (drawn.length === 0) return []
+        return selectors!.split(',').map((s) => s.trim())
+          .filter((s) => /\.(tag|count-badge|status-dot)(--[\w-]+)?(?![\w-])/.test(subject(s)))
+          .map((s) => `${path}  ${s}  { ${drawn.join(', ')} }`)
+      })
+    })
+    expect(offenders).toEqual([])
+  })
+})

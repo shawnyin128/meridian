@@ -1,5 +1,5 @@
 import {
-  app, BrowserWindow, dialog, ipcMain, MessageChannelMain, Menu, net, shell, utilityProcess,
+  app, BrowserWindow, dialog, ipcMain, MessageChannelMain, Menu, nativeTheme, net, shell, utilityProcess,
 } from 'electron'
 import { execFile, spawn } from 'node:child_process'
 import { existsSync, readFileSync } from 'node:fs'
@@ -13,6 +13,7 @@ import { attachCredentialVault } from './credential-vault.js'
 import { MAIN_COPY, uiLocaleOf } from './messages.js'
 import { afterCoreStops } from './restart-core.js'
 import { canReplaceSelf, createMacSelfUpdate } from './mac-self-update.js'
+import { windowBackground } from './window-background.js'
 import { createUpdater, type InstallRoute } from './updater.js'
 import { releaseFilesUrl } from '../shared/app-update.js'
 import { displayVersion } from '../shared/app-version.js'
@@ -35,6 +36,8 @@ const UPDATE_STATUS = 'meridian:update-status'
 const UPDATE_CHECK = 'meridian:update-check'
 const UPDATE_INSTALL = 'meridian:update-install'
 const UPDATE_CHANGED = 'meridian:update-changed'
+const FULL_SCREEN = 'meridian:full-screen'
+const FULL_SCREEN_CHANGED = 'meridian:full-screen-changed'
 
 // A closed terminal or an earlier parent-process exit is normal, not an application failure. Without
 // this listener, EPIPE would become an uncaught exception and display a crash dialog.
@@ -92,10 +95,12 @@ app.whenReady().then(() => {
   // Set the Dock icon explicitly so unpackaged runs still show Meridian's rounded macOS artwork.
   if (process.platform === 'darwin') app.dock?.setIcon(macIcon)
 
+  // The window opens on the system theme's background and shows once the renderer has painted.
   const win = new BrowserWindow({
     width: 1440,
     height: 900,
-    show: !hidden,
+    show: false,
+    backgroundColor: windowBackground(nativeTheme.shouldUseDarkColors),
     // Only Windows and Linux use this option for window and taskbar icons; macOS uses the app bundle.
     ...(process.platform === 'darwin' ? {} : { icon }),
     // The system no longer draws the title and menu bars; the app's .titlebar becomes the window bar.
@@ -105,7 +110,7 @@ app.whenReady().then(() => {
     titleBarStyle: 'hidden',
     ...(process.platform === 'darwin'
       ? { trafficLightPosition: { x: 16, y: 17 } }
-      : { titleBarOverlay: { color: '#00000000', symbolColor: '#536175', height: 50 }, accentColor: false }),
+      : { titleBarOverlay: { color: '#00000000', symbolColor: '#555555', height: 50 }, accentColor: false }),
     webPreferences: {
       backgroundThrottling: false,
       preload: join(here, '../preload/preload.cjs'),
@@ -115,6 +120,8 @@ app.whenReady().then(() => {
       webSecurity: true,
     },
   })
+
+  win.once('ready-to-show', () => { if (!hidden) win.show() })
 
   win.webContents.setWindowOpenHandler(openLinks((url) => shell.openExternal(url)))
 
@@ -189,6 +196,7 @@ app.whenReady().then(() => {
     route,
     now: Date.now,
     onChange: (status) => { if (!win.isDestroyed()) win.webContents.send(UPDATE_CHANGED, status) },
+    log: (line) => log(`${line}\n`),
   })
   updater.arm()
   ipcMain.handle(UPDATE_STATUS, (event) => event.sender === win.webContents ? updater.status() : null)
@@ -200,6 +208,11 @@ app.whenReady().then(() => {
   ipcMain.on(UPDATE_INSTALL, (event) => {
     if (event.sender === win.webContents) updater.install()
   })
+  // macOS hides the traffic lights in full screen, so the title bar drops the room it keeps for them.
+  ipcMain.handle(FULL_SCREEN, (event) => event.sender === win.webContents && win.isFullScreen())
+  const sendFullScreen = () => { if (!win.isDestroyed()) win.webContents.send(FULL_SCREEN_CHANGED, win.isFullScreen()) }
+  win.on('enter-full-screen', sendFullScreen)
+  win.on('leave-full-screen', sendFullScreen)
   ipcMain.on(TOGGLE_MAXIMIZE, (event) => {
     if (event.sender !== win.webContents) return
     if (win.isMaximized()) win.unmaximize()

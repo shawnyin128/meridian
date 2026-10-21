@@ -1,15 +1,6 @@
 /* Recent Changes' day headings, entries and diffs, copied rule by rule from e2e/fixtures/platform-shell-demo.html. */
 
-.crow{padding:10px 2px;cursor:pointer}
-.crow .chead{display:flex;align-items:flex-start;gap:10px}
-.crow .cbody{flex:1;min-width:0;border:0;background:transparent;padding:0;color:inherit;font:inherit;text-align:left;cursor:pointer}
-/* The row's buttons stay hidden until the row is hovered (or entered with the keyboard), like the demo's .dots / .rowx. */
-.crow .cact{flex:none;align-self:center;display:flex;gap:6px;opacity:0;transition:opacity var(--t-fast) var(--e-out)}
-.crow:hover .cact,.crow .cact:focus-within{opacity:1}
-.crow .ct{display:block;font-size:var(--fs-base);font-weight:500}
+.crow{padding:var(--sp-10) var(--sp-2)}
+.crow .ct{display:block;font-size:var(--fs-base);font-weight:var(--fw-medium)}
 .crow .cm{display:block;font-size:var(--fs-sm);color:var(--ter);margin-top:1px}
-.crow .src{font-size:var(--fs-cap);padding:1px 8px;border-radius:999px;background:var(--field);color:var(--sec);margin-left:6px}
-.crow .diff{display:none}
-.crow.open .diff{display:block}
-/* "Archive all" sits at the right of the Current heading, placed there by .section-heading.flexh in PageShell.css. */
-.section-heading .archall:disabled{opacity:.45;cursor:default}
+.crow .src{margin-left:var(--sp-6)}

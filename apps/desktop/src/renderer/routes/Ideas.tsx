@@ -1,35 +1,40 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import type { ReactNode } from 'react'
+import type { KeyboardEvent, ReactNode } from 'react'
 import type { ProjectSummary, ResearchIdea } from '../../shared/contract.js'
 import { FINISHED_PROJECT } from '../../shared/vocabulary.js'
 import { idea as ideaApi, project as projectApi } from '../ipc.js'
 import { MenuItem, MenuSeparator } from '../components/ActionMenu.js'
 import { SortMenu } from '../components/SortMenu.js'
-import { FormInput, FormSelect, FormTextarea } from '../components/FormControls.js'
-import { DotsMenu } from '../components/FieldPickers.js'
+import { FormInput, FormTextarea } from '../components/FormControls.js'
+import { ChoicePicker, DotsMenu } from '../components/FieldPickers.js'
+import { EditActions } from '../components/EditActions.js'
+import { CollapsibleGroup } from '../components/CollapsibleGroup.js'
 import { EmptyState } from '../components/EmptyState.js'
-import { PanelClose } from '../components/PanelClose.js'
+import { IdeaPanel, IdeaSource, ideaSourceLabel } from '../components/ideas/IdeaPanel.js'
+import { LoadingPlaceholder } from '../components/LoadingPlaceholder.js'
 import { DetailPanel } from '../components/DetailPanel.js'
-import { ResearchObjectCard } from '../components/ResearchObjectCard.js'
+import { CardOpen, ResearchObjectCard } from '../components/ResearchObjectCard.js'
+import { RowActions } from '../components/StructuredList.js'
 import {
   PageBody, PageError, PageHeader, PageShell, PageTitle, SectionHeading,
 } from '../components/PageShell.js'
+import { errorLabel } from '../lib/failure-label.js'
 import { useEscapeLayer, useJump, useScreenReentry, useVaultRevision } from '../shell/AppShell.js'
+import { useUndo } from '../hooks/useUndo.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
-import { useDragReorder, type DragCardProps } from '../hooks/useDragReorder.js'
+import { useScrollFade } from '../hooks/useScrollFade.js'
+import { useDragReorder, type Reorderable } from '../hooks/useDragReorder.js'
+import { DragHandle } from '../components/DragHandle.js'
 import { useFormat } from '../lib/format.js'
+import { commitsMultiline, composing } from '../lib/keyboard.js'
 import { useMessages } from '../messages/useMessages.js'
 import type { Catalog } from '../messages/catalog.js'
-import { plainTitle } from '../components/paper/paper-text.js'
+import { AgentLabel, SourceLabel } from '../components/SourceLabel.js'
+import { Tag } from '../components/Tag.js'
+import { FadeText } from '../components/FadeText.js'
+import { useClipped } from '../hooks/useClipped.js'
 import './Ideas.css'
 
-const sourceLabel = (idea: ResearchIdea) => idea.source.paperTitle === undefined
-  ? plainTitle(idea.source.chatTitle)
-  : `${plainTitle(idea.source.paperTitle)} · ${plainTitle(idea.source.chatTitle)}`
-
-const sourceKind = (idea: ResearchIdea, m: Catalog) => idea.source.agent === true
-  ? m.ideas.sourceKind.agent
-  : idea.source.paperTitle === undefined ? m.ideas.sourceKind.chat : m.ideas.sourceKind.paperReading
 
 function linkedProjectLabel(idea: ResearchIdea, linked: ProjectSummary | undefined, m: Catalog): string {
   if (idea.project === undefined) return m.ideas.link.none
@@ -40,9 +45,11 @@ function linkedProjectLabel(idea: ResearchIdea, linked: ProjectSummary | undefin
  * Idea cards share the project cards' row-end pattern: clicking the card opens its details, and
  * management actions sit in the "More" menu.
  */
-function IdeaMenu({ idea, linked, onArchive, onDelete }: {
+function IdeaMenu({ idea, linked, onMove, canMove, onArchive, onDelete }: {
   idea: ResearchIdea
   linked: ProjectSummary | undefined
+  onMove: (by: -1 | 1) => void
+  canMove: (by: -1 | 1) => boolean
   onArchive: () => void
   onDelete: () => void
 }) {
@@ -50,48 +57,61 @@ function IdeaMenu({ idea, linked, onArchive, onDelete }: {
   const locked = idea.archived && linked?.status === FINISHED_PROJECT
   return (
     <DotsMenu label={m.ideas.manage(idea.title)} stopRowActivation>
-      <MenuItem
-        disabled={locked}
-        title={locked ? m.ideas.archiveLockedHint : undefined}
-        onSelect={onArchive}
-      >{idea.archived ? m.common.unarchive : m.common.archive}</MenuItem>
+      <MenuItem disabled={!canMove(-1)} onSelect={() => onMove(-1)}>{m.common.moveUp}</MenuItem>
+      <MenuItem disabled={!canMove(1)} onSelect={() => onMove(1)}>{m.common.moveDown}</MenuItem>
+      <MenuSeparator />
+      <MenuItem disabled={locked} onSelect={onArchive}>
+        {idea.archived ? m.common.unarchive : m.common.archive}
+        {locked ? <span className="mi-key">{m.ideas.projectFinished}</span> : null}
+      </MenuItem>
       <MenuSeparator />
       <MenuItem className="mi danger" onSelect={onDelete}>{m.common.delete}</MenuItem>
     </DotsMenu>
   )
 }
 
-function IdeaCard({ idea, linked, selected, menu, onOpen, dragProps, dropClassName }: {
+function IdeaCard({ idea, linked, selected, menu, onOpen, reorder, dropClassName }: {
   idea: ResearchIdea
   linked: ProjectSummary | undefined
   selected: boolean
   menu: ReactNode
   onOpen: () => void
-  dragProps: DragCardProps
+  reorder: Reorderable
   dropClassName: string
 }) {
   const fmt = useFormat()
   const m = useMessages()
+  const summary = useRef<HTMLParagraphElement>(null)
+  const summaryCut = useClipped(summary, idea.body, true)
   return (
     <ResearchObjectCard
       className={`idea-card${dropClassName ? ` ${dropClassName}` : ''}`} selected={selected} muted={idea.archived}
-      data-idea={idea.id} aria-label={m.ideas.view(idea.title)} onActivate={onOpen} {...dragProps}
+      data-idea={idea.id} onActivate={onOpen} {...reorder.item}
     >
       <div className="idea-card-content">
         <div className="idea-card-title-row">
-          <strong>{idea.title}</strong>
-          <span className={`idea-project-tag${linked === undefined ? ' unlinked' : ''}${idea.project !== undefined && linked === undefined ? ' missing' : ''}`}>
-            {linkedProjectLabel(idea, linked, m)}
-          </span>
+          <CardOpen><FadeText className="idea-card-title" label={idea.title}>{idea.title}</FadeText></CardOpen>
+          <Tag
+            tone={linked === undefined && idea.project !== undefined ? 'bad' : 'neutral'}
+            className="idea-project-tag"
+          >{linkedProjectLabel(idea, linked, m)}</Tag>
         </div>
-        <p className="idea-card-summary">{idea.body}</p>
+        <p ref={summary} className={`idea-card-summary fade-lines${summaryCut ? ' clipped' : ''}`}>{idea.body}</p>
         <div className="idea-card-meta">
-          <span className="idea-source-kind">{sourceKind(idea, m)}</span>
-          <span className="idea-card-source" title={sourceLabel(idea)}>{m.project.idea.sourceTag(sourceLabel(idea))}</span>
+          <FadeText className="idea-card-source" label={m.project.idea.sourceTag(ideaSourceLabel(idea))}>
+            <IdeaSource idea={idea} message={m.project.idea.sourceTag} />
+          </FadeText>
+          {idea.source.agent === true
+            ? <AgentLabel className="idea-source-kind" />
+            : (
+              <SourceLabel className="idea-source-kind">
+                {idea.source.paperTitle === undefined ? m.ideas.sourceKind.chat : m.ideas.sourceKind.paperReading}
+              </SourceLabel>
+            )}
           <span className="idea-card-updated">{m.ideas.updated(fmt.date(idea.updated))}</span>
         </div>
       </div>
-      {menu}
+      <RowActions><DragHandle {...reorder.handle} />{menu}</RowActions>
     </ResearchObjectCard>
   )
 }
@@ -106,8 +126,8 @@ function IdeaDetailPanel({ idea, linked, projects, onClose, onSave, onProject, o
   onPromote: () => void
   onOpen: (screen: 'project' | 'chat', id: string) => void
 }) {
-  const fmt = useFormat()
   const m = useMessages()
+  const panelFade = useScrollFade('y')
   const [editing, setEditing] = useState(false)
   const [title, setTitle] = useState(idea.title)
   const [body, setBody] = useState(idea.body)
@@ -140,85 +160,72 @@ function IdeaDetailPanel({ idea, linked, projects, onClose, onSave, onProject, o
       if (saved) setEditing(false)
     })
   }
+  /** Enter commits the title, ⌘Enter or Ctrl+Enter the body, and Escape restores both. */
+  const commitOrCancel = (multiline: boolean) => (event: KeyboardEvent<HTMLElement>) => {
+    if (composing(event.nativeEvent)) return
+    if (event.key === 'Escape') { event.stopPropagation(); cancelEditing(); return }
+    if (multiline ? commitsMultiline(event.nativeEvent) : event.key === 'Enter') { event.preventDefault(); save() }
+  }
 
   return (
-    <aside className="idea-detail-panel" aria-label={m.ideas.detailHeading}>
-      <header className="idea-detail-head">
-        <span>{m.ideas.detailHeading}</span>
-        {editing ? null : <button className="btn plain" onClick={startEditing}>{m.common.edit}</button>}
-        <PanelClose onClose={onClose} />
-      </header>
-
-      {editing
-        ? (
-          <section className="idea-detail-editor">
-            <label>
-              <span>{m.ideas.editor.titleLabel}</span>
-              <FormInput
-                autoFocus value={title} maxLength={160}
-                onChange={(event) => setTitle(event.target.value)}
-              />
-            </label>
-            <label>
-              <span>{m.ideas.bodyLabel}</span>
-              <FormTextarea
-                value={body} maxLength={20_000}
-                onChange={(event) => setBody(event.target.value)}
-              />
-            </label>
-            <div className="idea-detail-editor-actions">
-              <button className="btn" disabled={busy} onClick={cancelEditing}>{m.common.cancel}</button>
-              <button
-                className="btn pri" disabled={busy || title.trim() === '' || body.trim() === ''}
-                onClick={save}
-              >{busy ? m.ideas.saving : m.common.save}</button>
-            </div>
-          </section>
-        )
-        : (
-          <>
-            <div className="idea-detail-title-row">
-              <h2>{idea.title}</h2>
-              {idea.archived ? <span className="idea-archive-tag">{m.common.archived}</span> : null}
-            </div>
-            <section className="idea-detail-section">
-              <h3>{m.ideas.bodyLabel}</h3>
-              <p className="idea-detail-body">{idea.body}</p>
-            </section>
-          </>
+    <aside className="idea-detail-panel node-document-pane" ref={panelFade} data-fade-paint="" aria-label={m.ideas.detailHeading}>
+      <IdeaPanel
+        idea={idea} onClose={onClose} onOpenSourceChat={(chatId) => onOpen('chat', chatId)}
+        actions={(
+          <EditActions
+            editing={editing} saving={busy} canSave={title.trim() !== '' && body.trim() !== ''}
+            onEdit={startEditing} onCancel={cancelEditing} onSave={save}
+          />
         )}
-
-      <section className="idea-detail-section">
-        <h3>{m.ideas.link.heading}</h3>
-        <FormSelect
-          aria-label={m.ideas.link.selectAriaLabel(idea.title)} value={idea.project ?? ''}
-          onChange={(event) => onProject(event.target.value || null)}
-        >
-          <option value="">{m.ideas.link.none}</option>
-          {idea.project !== undefined && linked === undefined
-            ? <option value={idea.project}>{m.ideas.link.originalUnavailable}</option>
-            : null}
-          {projects.map((project) => (
-            <option value={project.id} key={project.id}>{project.name} · {project.status}</option>
-          ))}
-        </FormSelect>
-        <div className="idea-detail-actions">
-          {idea.project === undefined
-            ? <button className="btn" onClick={onPromote}>{m.ideas.promote.action}</button>
+        editor={editing
+          ? (
+            <section className="idea-detail-editor">
+              <label>
+                <span>{m.ideas.editor.titleLabel}</span>
+                <FormInput
+                  autoFocus value={title} maxLength={160}
+                  onChange={(event) => setTitle(event.target.value)} onKeyDown={commitOrCancel(false)}
+                />
+              </label>
+              <label>
+                <span>{m.ideas.bodyLabel}</span>
+                <FormTextarea
+                  value={body} maxLength={20_000}
+                  onChange={(event) => setBody(event.target.value)} onKeyDown={commitOrCancel(true)}
+                />
+              </label>
+            </section>
+          )
+          : undefined}
+      >
+        <SectionHeading
+          variant="rail"
+          actions={idea.project === undefined
+            ? <button className="btn sm" onClick={onPromote}>{m.ideas.promote.action}</button>
             : linked === undefined
-              ? <span className="idea-missing-project">{m.ideas.link.originalUnavailable}</span>
-              : <button className="btn" onClick={() => onOpen('project', linked.id)}>{m.ideas.promote.openProject}</button>}
-        </div>
-      </section>
-
-      <section className="idea-detail-section idea-detail-source">
-        <h3>{m.project.sections.source}</h3>
-        <p>{sourceLabel(idea)}</p>
-        <div className="idea-detail-meta">{m.common.updatedOn(fmt.date(idea.updated))}</div>
-        {idea.source.chatId === undefined
-          ? null
-          : <button className="btn" onClick={() => onOpen('chat', idea.source.chatId!)}>{m.ideas.openSourceChat}</button>}
-      </section>
+              ? undefined
+              : <button className="btn sm" onClick={() => onOpen('project', linked.id)}>{m.ideas.promote.openProject}</button>}
+        >{m.ideas.link.heading}
+        </SectionHeading>
+        <ChoicePicker
+          appearance="field" className="idea-link-picker" aria-label={m.ideas.link.selectAriaLabel(idea.title)}
+          value={idea.project ?? ''}
+          options={[
+            '',
+            ...(idea.project !== undefined && linked === undefined ? [idea.project] : []),
+            ...projects.map((project) => project.id),
+          ]}
+          label={(id) => {
+            if (id === '') return m.ideas.link.none
+            const project = projects.find((candidate) => candidate.id === id)
+            return project === undefined ? m.ideas.link.originalUnavailable : `${project.name} · ${project.status}`
+          }}
+          onPick={(id) => onProject(id || null)}
+        />
+        {idea.project !== undefined && linked === undefined
+          ? <div className="idea-missing-project">{m.ideas.link.originalUnavailable}</div>
+          : null}
+      </IdeaPanel>
     </aside>
   )
 }
@@ -228,10 +235,12 @@ export function Ideas() {
   const { revision } = useVaultRevision()
   const { jump, open } = useJump()
   const write = useVaultWrite()
+  const undo = useUndo()
   const consumedJump = useRef(0)
-  const [rows, setRows] = useState<ResearchIdea[]>([])
+  const [rows, setRows] = useState<ResearchIdea[] | null>(null)
   const [projects, setProjects] = useState<ProjectSummary[]>([])
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [archiveOpen, setArchiveOpen] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const closeDetail = useCallback(() => setSelectedId(null), [])
 
@@ -241,7 +250,7 @@ export function Ideas() {
       setProjects(projectRows)
       setSelectedId((held) => held !== null && ideas.some((idea) => idea.id === held) ? held : null)
       setError(null)
-    }).catch((cause: Error) => setError(cause.message))
+    }).catch((cause: unknown) => setError(errorLabel(m, cause)))
   }, [])
   useEffect(load, [load, revision])
   // Clicking the sidebar while this screen is shown lands on the plain list: an open detail closes.
@@ -258,18 +267,19 @@ export function Ideas() {
     () => new Map(projects.map((project) => [project.id, project])),
     [projects],
   )
-  const selected = selectedId === null ? undefined : rows.find((idea) => idea.id === selectedId)
-  const active = rows.filter((idea) => !idea.archived)
-  const archived = rows.filter((idea) => idea.archived)
+  const listed = useMemo(() => rows ?? [], [rows])
+  const selected = selectedId === null ? undefined : listed.find((idea) => idea.id === selectedId)
+  const active = listed.filter((idea) => !idea.archived)
+  const archived = listed.filter((idea) => idea.archived)
 
-  const ids = useMemo(() => rows.map((idea) => idea.id), [rows])
-  const archivedOf = useMemo(() => new Map(rows.map((idea) => [idea.id, idea.archived])), [rows])
+  const ids = useMemo(() => listed.map((idea) => idea.id), [listed])
+  const archivedOf = useMemo(() => new Map(listed.map((idea) => [idea.id, idea.archived])), [listed])
   const reorder = useDragReorder(
     ids, (id) => (archivedOf.get(id) ? 'archived' : 'active'),
     (order) => { void write(ideaApi.reorder(order)) },
   )
   const sortByUpdated = () => {
-    const order = [...rows].sort((a, b) => b.updated.localeCompare(a.updated)).map((idea) => idea.id)
+    const order = [...listed].sort((a, b) => b.updated.localeCompare(a.updated)).map((idea) => idea.id)
     void write(ideaApi.reorder(order))
   }
 
@@ -280,7 +290,7 @@ export function Ideas() {
     )
   }
   const remove = (idea: ResearchIdea) => {
-    void write(ideaApi.delete(idea.id), { note: m.common.trashed }).then((saved) => {
+    void write(ideaApi.delete(idea.id), { note: m.common.trashed, action: (trashed) => undo.restore([trashed]) }).then((saved) => {
       if (!saved) return
       if (selectedId === idea.id) setSelectedId(null)
     })
@@ -291,33 +301,44 @@ export function Ideas() {
       <IdeaCard
         idea={idea} linked={linked} selected={selectedId === idea.id} key={idea.id}
         onOpen={() => setSelectedId(idea.id)}
-        menu={<IdeaMenu idea={idea} linked={linked} onArchive={() => archive(idea)} onDelete={() => remove(idea)} />}
-        dragProps={reorder.cardProps(idea.id)} dropClassName={reorder.dropClass(idea.id)}
+        menu={(
+          <IdeaMenu
+            idea={idea} linked={linked} onArchive={() => archive(idea)} onDelete={() => remove(idea)}
+            onMove={(by) => reorder.move(idea.id, by)} canMove={(by) => reorder.canMove(idea.id, by)}
+          />
+        )}
+        reorder={{ item: reorder.itemProps(idea.id), handle: reorder.handleProps(idea.id) }}
+        dropClassName={reorder.dropClass(idea.id)}
       />
     )
   }
 
   return (
     <PageShell className="ideas-page">
-      <PageHeader><PageTitle>{m.ideas.title(active.length)}</PageTitle></PageHeader>
+      <PageHeader actions={active.length === 0 ? undefined : (
+        <SortMenu label={m.ideas.sort} options={[{ label: m.ideas.sortUpdated, onSelect: sortByUpdated }]} />
+      )}
+      >
+        <PageTitle>{m.ideas.title(active.length)}</PageTitle>
+      </PageHeader>
       <PageError error={error} />
       <PageBody className="ideas-body">
         <div className={`ideas-workspace${selected === undefined ? '' : ' has-detail'}`}>
           <main className="ideas-list">
-            <SectionHeading actions={active.length === 0 ? undefined : (
-              <SortMenu label={m.ideas.sort} options={[{ label: m.ideas.sortUpdated, onSelect: sortByUpdated }]} />
-            )}
-            >{m.ideas.activeHeading(active.length)}</SectionHeading>
-            {active.length === 0 ? (
-              <EmptyState variant="page">
-                {m.ideas.empty}
-              </EmptyState>
-            ) : active.map(card)}
+            <SectionHeading>{m.ideas.activeHeading(active.length)}</SectionHeading>
+            {rows === null ? (
+              error === null ? <LoadingPlaceholder shape="cards" /> : null
+            ) : active.length === 0
+              ? <EmptyState variant="section">{m.ideas.empty}</EmptyState>
+              : active.map(card)}
             {archived.length === 0 ? null : (
-              <>
-                <SectionHeading>{m.ideas.archivedHeading(archived.length)}</SectionHeading>
+              <CollapsibleGroup
+                variant="quiet" title={m.common.archived} count={archived.length}
+                open={archiveOpen || archived.some((idea) => idea.id === selectedId)}
+                onToggle={() => setArchiveOpen((open) => !open)}
+              >
                 {archived.map(card)}
-              </>
+              </CollapsibleGroup>
             )}
           </main>
 

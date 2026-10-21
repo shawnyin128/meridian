@@ -87,7 +87,7 @@ test('标题栏整条可拖,交互元素让出拖拽区', async ({ win }) => {
   await win.locator('#libq').fill('STAR: SPECULATIVE DECODING')
   await expect(win.locator('.ptable tbody tr')).toHaveCount(1)
   await win.locator('.ptable tbody tr').click()
-  await win.locator('.screenslot:not([hidden]) .pdetail [title="开始阅读"]').click()
+  await win.locator('.screenslot:not([hidden]) .pdetail [aria-label="开始阅读"]').click()
   expect(await region('.titlebar .cseg.link'), '能点的面包屑段落在拖拽区里就点不动了').toBe('no-drag')
   expect(await region('.titlebar .cseg:not(.link)'), '不能点的面包屑段要能拖动窗口').toBe('drag')
 })
@@ -212,11 +212,11 @@ test('全应用的齿轮是同一颗:一条闭合轮廓加一个轴孔,四处逐
 
   // The column menu at the end of the table header opens Column settings, so it is a gear too, with the
   // same tooltip as on aggregation pages.
-  expect(await win.locator('.ptable thead [title="列设置"] svg path').getAttribute('d')).toBe(gear)
+  expect(await win.locator('.ptable thead [aria-label="列设置"] svg path').getAttribute('d')).toBe(gear)
   // Settings entries no longer crowd the sidebar; the only Watch settings gear is in the Inbox toolbar.
-  await expect(win.locator('.sidebar [title="管理关注"]')).toHaveCount(0)
+  await expect(win.locator('.sidebar [aria-label="管理关注"]')).toHaveCount(0)
   await win.locator('[data-inbox="all"]').click()
-  expect(await win.locator('.screenslot:not([hidden]) [title="关注设置"] svg path').getAttribute('d'))
+  expect(await win.locator('.screenslot:not([hidden]) [aria-label="关注设置"] svg path').getAttribute('d'))
     .toBe(gear)
 
   // Column settings of "Paper comparison" on an aggregation page: the gear sits at the end of the
@@ -227,5 +227,5 @@ test('全应用的齿轮是同一颗:一条闭合轮廓加一个轴孔,四处逐
   await shown.locator('[data-wk="topics/ptq"]').click()
   await shown.locator('[data-wk="topics/ptq-weight-only"]').click()
   await shown.locator('table.cmp').waitFor()
-  expect(await shown.locator('[title="列设置"] svg path').getAttribute('d')).toBe(gear)
+  expect(await shown.locator('[aria-label="列设置"] svg path').getAttribute('d')).toBe(gear)
 })

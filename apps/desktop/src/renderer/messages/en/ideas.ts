@@ -4,11 +4,10 @@ import { ideas as zh } from '../zh/ideas.js'
 export const ideas = {
   title: (n: number) => `Ideas · ${n}`,
   activeHeading: (n: number) => `Active · ${n}`,
-  archivedHeading: (n: number) => `Archived · ${n}`,
-  sort: 'Sort',
+  sort: 'Rearrange',
   sortUpdated: 'By updated',
-  empty: 'No active ideas yet. Save a promising direction while reading a paper or chatting with AI.',
-  sourceKind: { chat: 'Chat', paperReading: 'Paper notes', agent: 'Coding agent' },
+  empty: 'No active ideas yet',
+  sourceKind: { chat: 'Chat', paperReading: 'Paper notes' },
   link: {
     none: 'No linked project',
     unavailable: 'Linked project unavailable',
@@ -20,8 +19,7 @@ export const ideas = {
     linked: 'Linked to project',
   },
   manage: (title: string) => `Manage idea: ${title}`,
-  archiveLockedHint: 'Ideas linked to a finished project stay archived. Unlink the project to restore them.',
-  view: (title: string) => `View idea: ${title}`,
+  projectFinished: 'Project finished',
   updated: (date: string) => `Updated ${date}`,
   detailHeading: 'Idea details',
   bodyLabel: 'Idea',
@@ -41,8 +39,7 @@ export const ideas = {
     sourceLabel: (source: string) => `Source: ${source}`,
     titleLabel: 'Title',
     titlePlaceholder: 'What problem does this idea solve?',
-    bodyPlaceholder: 'Describe, in your own words, the mechanism, hypothesis, or direction worth exploring further…',
-    note: 'Save the idea in your own words. Meridian keeps a link to the original chat but never treats chat content as a confirmed conclusion.',
+    bodyPlaceholder: 'Mechanism, hypothesis, or direction…',
     save: 'Save idea',
   },
   graphDialog: {
@@ -50,8 +47,6 @@ export const ideas = {
     nodeTitleLabel: 'Node title',
     afterLabel: 'Place after',
     newRootOption: 'Create as a root node',
-    nodeLabel: 'Research graph node',
     createAndLink: 'Create and link',
-    confirmLink: 'Confirm link',
   },
 } satisfies typeof zh

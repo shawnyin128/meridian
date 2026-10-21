@@ -2,10 +2,13 @@ import { useEffect, useState } from 'react'
 import type { DeliverySettings as DeliverySettingsValue } from '../../../shared/contract.js'
 import { DEFAULT_DELIVERY_SETTINGS } from '../../../shared/contract.js'
 import { delivery } from '../../ipc.js'
+import { errorLabel } from '../../lib/failure-label.js'
 import { useMessages } from '../../messages/useMessages.js'
 import { useVaultWrite } from '../../hooks/useVaultWrite.js'
 import { composing } from '../../lib/keyboard.js'
 import { FormInput } from '../FormControls.js'
+import { Card } from '../Card.js'
+import { ServiceActions, ServiceFoot } from './ServiceCard.js'
 
 const MIN_ITEMS = 1
 const MAX_ITEMS = 100
@@ -17,6 +20,8 @@ export function DeliverySettings() {
   const [draft, setDraft] = useState(String(DEFAULT_DELIVERY_SETTINGS.maxItemsPerRun))
   const [loadingError, setLoadingError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  // After a save the button says so in place, until the field changes again.
+  const [justSaved, setJustSaved] = useState(false)
   const write = useVaultWrite()
 
   useEffect(() => {
@@ -26,11 +31,11 @@ export function DeliverySettings() {
       setSaved(settings)
       setDraft(String(settings.maxItemsPerRun))
       setLoadingError(null)
-    }).catch((error: Error) => {
-      if (active) setLoadingError(error.message)
+    }).catch((error: unknown) => {
+      if (active) setLoadingError(errorLabel(m, error))
     })
     return () => { active = false }
-  }, [])
+  }, [m])
 
   const amount = Number(draft)
   const valid = Number.isInteger(amount) && amount >= MIN_ITEMS && amount <= MAX_ITEMS
@@ -40,36 +45,43 @@ export function DeliverySettings() {
     if (!changed) return
     const next = { maxItemsPerRun: amount }
     setSaving(true)
-    const ok = await write(delivery.updateSettings(next), { note: m.settings.delivery.saved })
+    const ok = await write(delivery.updateSettings(next))
     if (ok) setSaved(next)
+    setJustSaved(ok)
     setSaving(false)
   }
 
   return (
-    <div className="delivery-settings-card">
+    <Card className="delivery-settings-card">
       <div className="delivery-setting-copy">
         <strong>{m.settings.delivery.limitHeading}</strong>
-        <p>{m.settings.delivery.limitNote}</p>
       </div>
       <div className="delivery-setting-control">
         <FormInput
           appearance="field"
           aria-label={m.settings.delivery.limitHeading} type="number" min={MIN_ITEMS} max={MAX_ITEMS}
           value={draft} disabled={saved === null || saving}
-          onChange={(event) => setDraft(event.currentTarget.value)}
+          onChange={(event) => {
+            setDraft(event.currentTarget.value)
+            setJustSaved(false)
+          }}
           onKeyDown={(event) => {
             if (event.key === 'Enter' && !composing(event.nativeEvent)) void save()
           }}
         />
         <span>{m.settings.delivery.unit}</span>
-        <button className="btn pri" disabled={!changed || saving} onClick={() => { void save() }}>
-          {saving ? m.settings.delivery.saving : m.common.save}
-        </button>
       </div>
       {!valid && saved !== null
         ? <p className="delivery-setting-error">{m.settings.delivery.rangeError(MIN_ITEMS, MAX_ITEMS)}</p>
         : null}
       {loadingError === null ? null : <p className="delivery-setting-error">{loadingError}</p>}
-    </div>
+      <ServiceFoot>
+        <ServiceActions>
+          <button className="btn pri" disabled={!changed || saving} onClick={() => { void save() }}>
+            {saving ? m.settings.delivery.saving : justSaved ? m.common.saved : m.common.save}
+          </button>
+        </ServiceActions>
+      </ServiceFoot>
+    </Card>
   )
 }

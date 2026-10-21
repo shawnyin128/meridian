@@ -76,7 +76,9 @@ export function createMacSelfUpdate({ bundle, pid, base, fetch, run, launch, qui
 
   const fetchVerified = async (file: ReleaseFile, url: URL, target: string, onProgress: (percent: number) => void) => {
     const response = await fetch(url.href)
-    if (!response.ok || response.body === null) throw new Error(`Downloading ${file.url} failed with HTTP ${response.status}`)
+    if (!response.ok || response.body === null) {
+      throw Object.assign(new Error(`Downloading ${file.url} failed with HTTP ${response.status}`), { statusCode: response.status })
+    }
     const total = Number(response.headers.get('content-length')) || file.size || 0
     const hash = createHash('sha512')
     let received = 0

@@ -8,12 +8,16 @@ import { useFormat } from '../../lib/format.js'
 import { useMessages } from '../../messages/useMessages.js'
 import { EmptyState } from '../EmptyState.js'
 import { FadeText } from '../FadeText.js'
-import { FormSelect, FormTextarea } from '../FormControls.js'
+import { ChoicePicker } from '../FieldPickers.js'
+import { FormTextarea } from '../FormControls.js'
 import { SectionHeading } from '../PageShell.js'
 import { PanelClose } from '../PanelClose.js'
+import { AgentLabel } from '../SourceLabel.js'
 import { StructuredList, StructuredRow } from '../StructuredList.js'
+import { Tag } from '../Tag.js'
+import { Tooltip } from '../Tooltip.js'
 import { WikiFormDialog, WikiFormField } from '../wiki/WikiFormDialog.js'
-import { NodeTag } from './NodeTag.js'
+import { EntityLink } from '../EntityLink.js'
 import { ProjectSignalDate, ProjectSignalKind } from './ProjectSignals.js'
 import './ProjectConclusions.css'
 
@@ -25,7 +29,8 @@ type NodeLook = { label: string; mode: NonNullable<GraphNode['mode']> }
 
 /**
  * One conclusion row on the research-record columns: the state chip, the date, the source node (left
- * empty for a legacy conclusion), the conclusion in one line, and where it stands in the Wiki.
+ * empty for a legacy conclusion), the conclusion and where it stands in the Wiki in one line, and the
+ * agent label of a node's conclusion, which an agent wrote.
  */
 export function ProjectConclusionRow({ conclusion, node, selected, onOpen }: {
   conclusion: ProjectConclusion
@@ -36,6 +41,7 @@ export function ProjectConclusionRow({ conclusion, node, selected, onOpen }: {
   const m = useMessages()
   const c = m.project.conclusions
   const written = conclusion.wiki[0]
+  const wikiState = written === undefined ? c.notWritten : c.writtenTo(written.title, written.version)
   return (
     <StructuredRow
       className="attnrow project-signal-columns record-row with-node conclusion-row" selected={selected}
@@ -44,14 +50,16 @@ export function ProjectConclusionRow({ conclusion, node, selected, onOpen }: {
       <ProjectSignalKind tone={STATE_TONE[conclusion.state]}>{c.state[conclusion.state]}</ProjectSignalKind>
       <ProjectSignalDate date={conclusion.date} />
       <span className="record-node">
-        {node === undefined ? null : <NodeTag label={node.label} mode={node.mode} fill />}
+        {node === undefined ? null : <EntityLink kind="node" label={node.label} mode={node.mode} fill />}
       </span>
-      <span className="attn-text record-text" title={conclusion.text}>
-        <FadeText className="record-line">{conclusion.text}</FadeText>
+      <span className="attn-text record-text">
+        <Tooltip label={`${conclusion.text} · ${wikiState}`} whenClipped>
+          <FadeText className="record-line">
+            {conclusion.text}<span className="record-detail"> · {wikiState}</span>
+          </FadeText>
+        </Tooltip>
       </span>
-      <span className="record-who conclusion-wiki" title={written === undefined ? undefined : written.title}>
-        {written === undefined ? c.notWritten : c.writtenTo(written.title, written.version)}
-      </span>
+      <span className="record-who">{conclusion.node === undefined ? null : <AgentLabel />}</span>
     </StructuredRow>
   )
 }
@@ -110,26 +118,27 @@ export function ProjectConclusionPanel({
     <>
       <SectionHeading
         variant="rail" className="node-document-head"
-        actions={<PanelClose onClose={onClose} />}
-      ><span className="node-document-title">{c.heading}</span>
+        actions={(
+          <>
+            {conclusion.node !== undefined && conclusion.fingerprint !== undefined && conclusion.state === 'pending'
+              ? <button className="btn sm" onClick={() => onVerify(conclusion.node!, conclusion.fingerprint!)}>{c.verify}</button>
+              : null}
+            {conclusion.node !== undefined && conclusion.verifiedOn !== undefined
+              ? <button className="btn sm" onClick={() => onUnverify(conclusion.node!)}>{c.unverify}</button>
+              : null}
+            {conclusion.state === 'verified' ? null : <Tag>{c.unverifiedState}</Tag>}
+            <button
+              className="btn sm" disabled={conclusion.state !== 'verified'} onClick={() => setWriting(true)}
+            >{c.write}</button>
+            <PanelClose onClose={onClose} />
+          </>
+        )}
+      ><FadeText className="node-document-title" label={c.heading}>{c.heading}</FadeText>
       </SectionHeading>
       <p className="conclusion-detail-text">{conclusion.text}</p>
       <div className="conclusion-detail-meta">
         <ProjectSignalKind tone={STATE_TONE[conclusion.state]}>{c.state[conclusion.state]}</ProjectSignalKind>
         {conclusion.date === undefined ? null : <span className="conclusion-detail-date">{fmt.date(conclusion.date)}</span>}
-        <span className="conclusion-detail-actions">
-          {conclusion.node !== undefined && conclusion.fingerprint !== undefined && conclusion.state === 'pending'
-            ? <button className="btn pri" onClick={() => onVerify(conclusion.node!, conclusion.fingerprint!)}>{c.verify}</button>
-            : null}
-          {conclusion.node !== undefined && conclusion.verifiedOn !== undefined
-            ? <button className="btn" onClick={() => onUnverify(conclusion.node!)}>{c.unverify}</button>
-            : null}
-          <button
-            className="btn" disabled={conclusion.state !== 'verified'}
-            title={conclusion.state === 'verified' ? undefined : c.verifyFirst}
-            onClick={() => setWriting(true)}
-          >{c.write}</button>
-        </span>
       </div>
 
       {conclusion.node === undefined
@@ -158,10 +167,7 @@ export function ProjectConclusionPanel({
               ? null
               : (
                 <div className="conclusion-detail-node">
-                  <NodeTag
-                    label={node.label} mode={node.mode} hint={m.project.records.goToGraph(node.label)}
-                    onOpen={() => onOpenNode(conclusion.node!)}
-                  />
+                  <EntityLink kind="node" label={node.label} mode={node.mode} onOpen={() => onOpenNode(conclusion.node!)} />
                 </div>
               )}
             <SectionHeading variant="rail">{c.experiments(conclusion.experiments.length)}</SectionHeading>
@@ -202,10 +208,11 @@ export function ProjectConclusionPanel({
         onOpenChange={setWriting} onSubmit={submit}
       >
         <WikiFormField label={c.page}>
-          <FormSelect appearance="field" value={page} onChange={(event) => setPage(event.target.value)}>
-            <option value="" disabled>{c.pagePick}</option>
-            {pages.map((card) => <option key={card.id} value={card.id}>{card.title}</option>)}
-          </FormSelect>
+          <ChoicePicker
+            appearance="field" aria-label={c.page} placeholder={c.pagePick} value={page}
+            options={pages.map((card) => card.id)} onPick={setPage}
+            label={(id) => pages.find((card) => card.id === id)?.title ?? id}
+          />
         </WikiFormField>
         <WikiFormField label={c.text}>
           <FormTextarea appearance="field" value={text} onChange={(event) => setText(event.target.value)} />

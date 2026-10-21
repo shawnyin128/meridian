@@ -4,6 +4,7 @@ import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { RelationGroup } from '../../../shared/contract.js'
 import { MessagesProvider } from '../../messages/useMessages.js'
+import { TOOLTIP_DELAY } from '../Tooltip.js'
 import { PROJECT_PAPER_GROUP, PROJECT_URL_GROUP, ProjectRelations } from './ProjectSections.js'
 
 describe('ProjectRelations', () => {
@@ -19,6 +20,7 @@ describe('ProjectRelations', () => {
   const onEdit = vi.fn()
   const onOpenPage = vi.fn()
   const onOpenPaper = vi.fn()
+  const onMove = vi.fn()
 
   const render = (editing?: { id: string; row: RefObject<HTMLDivElement | null>; input: ReactNode }) => act(() => {
     root.render(
@@ -26,7 +28,7 @@ describe('ProjectRelations', () => {
         <ProjectRelations
           groups={groups} papers={[{ id: 'p1', title: 'EAGLE-2' }]} editing={editing}
           onEdit={onEdit} onRemove={vi.fn()} onOpenPage={onOpenPage} onOpenPaper={onOpenPaper}
-          onRemovePaper={vi.fn()} onMove={vi.fn()}
+          onRemovePaper={vi.fn()} onMove={onMove}
         />
       </MessagesProvider>,
     )
@@ -47,6 +49,20 @@ describe('ProjectRelations', () => {
     vi.unstubAllGlobals()
   })
 
+  it('没有任何关联时，标题下是一行分节空态，和附件、任务一样', () => {
+    act(() => {
+      root.render(
+        <MessagesProvider>
+          <ProjectRelations
+            groups={[]} papers={[]} onEdit={onEdit} onRemove={vi.fn()} onOpenPage={onOpenPage}
+            onOpenPaper={onOpenPaper} onRemovePaper={vi.fn()} onMove={vi.fn()}
+          />
+        </MessagesProvider>,
+      )
+    })
+    expect(host.querySelector('.empty-state--section')?.textContent).toBe('No links yet')
+  })
+
   it('offers editing on relation items only and puts the host editor in place of the item being edited', () => {
     const open = vi.spyOn(window, 'open').mockImplementation(() => null)
     render()
@@ -60,10 +76,38 @@ describe('ProjectRelations', () => {
     const row = createRef<HTMLDivElement>()
     render({ id: 'rel-2', row, input: <input className="probe" /> })
     const wiki = host.querySelector('.wkrel')!
-    expect([...wiki.children].map((child) => child.className)).toEqual(['rl', 'tagchip', 'reladd'])
+    expect([...wiki.children].map((child) => child.className)).toEqual(['rl', 'tag tag--chip tag--neutral tagchip', 'reladd'])
     expect(row.current).toBe(wiki.lastElementChild)
     expect(row.current?.querySelector('.probe')).not.toBeNull()
     open.mockRestore()
+  })
+
+  it('puts a chip\'s edit and remove into the chip\'s row-actions slot; the chip hosts the slot', () => {
+    render()
+    const slot = (chip: Element) => [...chip.querySelectorAll('.row-actions button')].map((item) => [
+      item.getAttribute('aria-label'), item.textContent, item.classList.contains('icbtn'),
+    ])
+    const paper = host.querySelector('[data-paper="p1"]')!
+    expect(paper.hasAttribute('data-row-actions')).toBe(true)
+    expect(slot(paper)).toEqual([['Remove link', '', true]])
+    const item = host.querySelector('.wkrel [data-wk]')!
+    expect(item.hasAttribute('data-row-actions')).toBe(true)
+    expect(slot(item)).toEqual([['Edit link', '', true], ['Remove link', '', true]])
+  })
+
+  it('moves a chip one place with Alt+← / Alt+→ from its name, within its own row', () => {
+    render()
+    const altKey = (selector: string, key: string) => act(() => {
+      host.querySelector(`${selector} .tagchip-open`)!.dispatchEvent(new KeyboardEvent('keydown', { key, altKey: true, bubbles: true }))
+    })
+    altKey('[data-wk="topics/knee"]', 'ArrowRight')
+    expect(onMove).toHaveBeenLastCalledWith('rel-1', 1)
+    altKey('[data-url="https://wandb.ai/team/draft"]', 'ArrowLeft')
+    expect(onMove).toHaveBeenLastCalledWith('rel-2', 0)
+    onMove.mockClear()
+    altKey('[data-wk="topics/knee"]', 'ArrowLeft')
+    altKey('[data-paper="p1"]', 'ArrowRight')
+    expect(onMove).not.toHaveBeenCalled()
   })
 
   it('opens a paper, a Wiki page and a URL from the button that holds each chip\'s name', () => {
@@ -102,6 +146,28 @@ describe('ProjectRelations', () => {
     })
     return [...host.querySelectorAll('.wkrel > .rl')].map((label) => label.textContent)
   }
+
+  it('shows a web address chip\'s URL in the shared tooltip, and no tooltip on a Wiki page chip', () => {
+    vi.useFakeTimers()
+    render()
+    const tip = (selector: string) => {
+      const name = host.querySelector(`${selector} .tagchip-open`)!
+      act(() => { name.dispatchEvent(new PointerEvent('pointermove', { bubbles: true, pointerType: 'mouse' })) })
+      act(() => { vi.advanceTimersByTime(TOOLTIP_DELAY) })
+      const text = document.querySelector('[role="tooltip"]')?.textContent ?? null
+      act(() => { document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })) })
+      return text
+    }
+    expect([tip('[data-url="https://wandb.ai/team/draft"]'), tip('[data-wk="topics/knee"]')])
+      .toEqual(['https://wandb.ai/team/draft', null])
+    vi.useRealTimers()
+  })
+
+  it('marks only the chip that opens the browser with the external mark', () => {
+    render()
+    const marked = (selector: string) => host.querySelector(`${selector} .tagchip-open .entity-link-mark`) !== null
+    expect([marked('[data-url]'), marked('[data-wk="topics/knee"]'), marked('[data-paper="p1"]')]).toEqual([true, false, false])
+  })
 
   it('shows no row for a stored group whose last item was removed', () => {
     expect(rowsFor([])).toEqual([])

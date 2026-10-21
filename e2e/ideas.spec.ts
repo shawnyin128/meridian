@@ -26,7 +26,8 @@ const dragCard = async (win: Page, draggedId: string, targetId: string) => {
   const dragged = shown(win).locator(`[data-idea="${draggedId}"]`)
   const target = shown(win).locator(`[data-idea="${targetId}"]`)
   const targetBox = (await target.boundingBox())!
-  await dragged.dispatchEvent('dragstart', { dataTransfer: await win.evaluateHandle(() => new DataTransfer()) })
+  // A card is dragged by the grip in its row-actions slot.
+  await dragged.locator('.drag-handle').dispatchEvent('dragstart', { dataTransfer: await win.evaluateHandle(() => new DataTransfer()) })
   await target.dispatchEvent('dragover', {
     clientY: targetBox.y + 2, // top of the target's box: insert before it.
     dataTransfer: await win.evaluateHandle(() => new DataTransfer()),
@@ -51,11 +52,11 @@ test('拖一张想法卡片到另一张前面,顺序写进库里', async ({ win 
   await expect.poll(async () => (await listIdeaIds(win)).filter((id) => seeded.has(id))).toEqual(expected)
 })
 
-test('排序按钮点「按更新时间」不报错,菜单收起、列表还在', async ({ win }) => {
+test('重新排列点「按更新时间」不报错,菜单收起、列表还在', async ({ win }) => {
   const seeded = await seedIdea(win, '排序菜单验证')
   await gotoIdeas(win)
 
-  await win.locator('.section-heading.flexh .sort-menu', { hasText: '排序' }).click()
+  await win.locator('.desk-head .page-actions .sort-menu', { hasText: '重新排列' }).click()
   await win.locator('.ctxmenu .mi', { hasText: '按更新时间' }).click()
 
   await expect(win.locator('.ctxmenu')).toHaveCount(0)
@@ -79,7 +80,7 @@ test('论文详情开着时再点侧栏「论文」,详情收起回到表格', a
   await expect(shown(win).locator('.pdetail')).toHaveCount(0)
 })
 
-test('coding agent 在项目工作区记下的想法出现在想法页,标着来自 coding agent,没有「打开来源对话」', async ({ win }) => {
+test('coding agent 在项目工作区记下的想法出现在想法页,标着 agent,没有「打开来源对话」', async ({ win }) => {
   const repo = mkdtempSync(join(tmpdir(), 'meridian-agent-ideas-'))
   const ideaCount = win.locator('[data-desk="ideas"] .n')
   const before = Number(await ideaCount.textContent())
@@ -99,7 +100,7 @@ test('coding agent 在项目工作区记下的想法出现在想法页,标着来
     await gotoIdeas(win)
     const card = shown(win).locator('.idea-card', { hasText: 'agent 记下的想法' })
     await expect(card).toHaveCount(1)
-    await expect(card.locator('.idea-source-kind')).toHaveText('coding agent')
+    await expect(card.locator('.idea-source-kind')).toHaveText('agent')
     await expect(ideaCount).toHaveText(String(before + 1))
     await expect(card.locator('.idea-project-tag')).toHaveText('项目 · draft 效率')
     await card.click()

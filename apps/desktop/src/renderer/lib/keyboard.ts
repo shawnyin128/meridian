@@ -18,3 +18,16 @@ export function ignoreComposingEscape(then?: (event: KeyboardEvent) => void): (e
     else then?.(event)
   }
 }
+
+/**
+ * Whether a keydown commits a multi-line text: ⌘Enter or Ctrl+Enter outside an input method
+ * composition. A plain Enter starts a new line there.
+ */
+export function commitsMultiline(key: Pick<KeyboardEvent, 'key' | 'metaKey' | 'ctrlKey' | 'isComposing'>): boolean {
+  return key.key === 'Enter' && (key.metaKey || key.ctrlKey) && !composing(key)
+}
+
+/** The label of the shortcut that is `key` pressed with the platform's command key: ⌘ on macOS, Ctrl elsewhere. */
+export function commandShortcut(platform: string, key: string): string {
+  return platform === 'darwin' ? `⌘${key}` : `Ctrl+${key}`
+}

@@ -25,7 +25,8 @@ function conflictFromDemo(): { asked: string; reply: string } {
   return { asked: asked[1]!.replace(/\?$/, '？'), reply: reply[1]! }
 }
 
-const MODEL_NOT_CONFIGURED = 'AI 尚未接入，请先在设置中配置模型与 API Key。'
+/** The composer's state after a send that found no model set up. */
+const NO_MODEL = 'AI 未连接'
 
 /** A piece of HTML text with tags stripped and whitespace collapsed into a single space. */
 const stripped = (html: string) => html.replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim()
@@ -56,7 +57,7 @@ async function say(win: Page, value: string): Promise<void> {
 
 /** Starts a new chat with the + on the sidebar's Chats heading. */
 async function newChat(win: Page): Promise<void> {
-  await win.locator('.sidebar .sb-add[title="新对话"]').click()
+  await win.locator('.sidebar .sb-add[aria-label="新对话"]').click()
   await shown(win, '#composer').waitFor()
 }
 
@@ -84,7 +85,8 @@ test('动态的「看看」建立结论冲突会话，未配置模型时给明�
   await expect(win.locator('#crumb .cseg')).toHaveText(['对话', '结论冲突'])
 
   await expect(shown(win, '.msg.you .bubble')).toHaveText(demo.asked)
-  await expect(shown(win, '.msg .event')).toHaveText(MODEL_NOT_CONFIGURED)
+  await expect(shown(win, '.cbox .tag')).toHaveText(NO_MODEL)
+  await expect(shown(win, '.msg .event')).toHaveCount(0)
   await expect(shown(win, '.msg.ai')).toHaveCount(0)
   await expect(shown(win, '.msgs')).not.toContainText(stripped(demo.reply.split('<div class="macts">')[0]!))
 
@@ -99,26 +101,27 @@ test('@ 引用项目、论文与 wiki 页都交给真实对话链路', async ({ 
   const p = projects.find((x) => x.id === 'draft')!
   await say(win, `@${p.name} 这条线还剩什么`)
   await expect(shown(win, '.msg.you .bubble').last()).toContainText(`@${p.name}`)
-  await expect(shown(win, '.msg .event').last()).toHaveText(MODEL_NOT_CONFIGURED)
+  await expect(shown(win, '.cbox .tag')).toHaveText(NO_MODEL)
 
   const page = (await core<{ id: string; title: string; kindLabel: string; updated: string; summary: string }[]>(
     win, 'wiki.cards', {}))[0]!
   await say(win, `@${page.title} 这一页怎么说`)
   await expect(shown(win, '.msg.you .bubble').last()).toContainText(`@${page.title}`)
-  await expect(shown(win, '.msg .event').last()).toHaveText(MODEL_NOT_CONFIGURED)
+  await expect(shown(win, '.cbox .tag')).toHaveText(NO_MODEL)
 
   const paper = (await core<{ rows: { title: string }[] }>(
     win, 'papers.list', { page: 1, size: 1 })).rows[0]!
   await say(win, `@${paper.title.split(':')[0]} 这篇讲了什么`)
   await expect(shown(win, '.msg.you .bubble').last()).toContainText(`@${paper.title.split(':')[0]}`)
-  await expect(shown(win, '.msg .event').last()).toHaveText(MODEL_NOT_CONFIGURED)
+  await expect(shown(win, '.cbox .tag')).toHaveText(NO_MODEL)
 })
 
-test('问一个一般问题,出来的是「AI 尚未接入」的状态而不是回答', async ({ win }) => {
+test('问一个一般问题,输入框显示「AI 未连接」的状态而不是回答', async ({ win }) => {
   await newChat(win)
   await say(win, '宽树在批量下还成立吗?')
 
-  await expect(shown(win, '.msg .event')).toHaveText(MODEL_NOT_CONFIGURED)
+  await expect(shown(win, '.cbox .tag')).toHaveText(NO_MODEL)
+  await expect(shown(win, '.msg .event')).toHaveCount(0)
   // The status is not an answer: no answer bubble is drawn, and no fake answer marked "(demo)" appears.
   await expect(shown(win, '.msg.ai')).toHaveCount(0)
   await expect(shown(win, '.msgs')).not.toContainText('(demo)')
@@ -128,7 +131,7 @@ test('短输入也会真正发送，不再被当成未实现的搜索词', async
   await newChat(win)
   await say(win, '测试')
 
-  await expect(shown(win, '.msg .event')).toHaveText(MODEL_NOT_CONFIGURED)
+  await expect(shown(win, '.cbox .tag')).toHaveText(NO_MODEL)
   await expect(shown(win, '.msg.ai')).toHaveCount(0)
   await expect(shown(win, '.msg.you .bubble')).toHaveText('测试')
 })
