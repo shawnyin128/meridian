@@ -99,6 +99,19 @@ describe('滚动区和吸住的部分都淡出而不是硬切', () => {
       .map(({ path, selector }) => `${path}  ${selector}`)).toEqual([])
   })
 
+  it('Wiki 的侧栏和项目节点面板的高度取自页面主体内的可见高度,不论窗口多高都止于页面主体之内', () => {
+    const body = (path: string, selector: string) => RULES.filter((rule) => rule.path === path && rule.selector === selector)
+      .map((rule) => rule.body).join(';')
+    expect(body('routes/shell.css', '.wiki-body,.project-detail-body')).toMatch(/container-type:\s*size/)
+    expect(source('routes/Wiki.tsx')).toMatch(/<PageBody className="wiki-body">/)
+    expect(source('routes/ProjectDetail.tsx')).toMatch(/<PageBody className="project-detail-body">/)
+    expect(body('routes/shell.css', '.wkside')).toMatch(/max-height:\s*100cqh/)
+    expect(body('routes/ProjectDetail.css', '.wkside.node-document-pane')).toMatch(/(^|;)\s*height:\s*100cqh/)
+    for (const [path, selector] of [['routes/shell.css', '.wkside'], ['routes/ProjectDetail.css', '.wkside.node-document-pane']] as const) {
+      expect(body(path, selector), selector).not.toMatch(/vh\b/)
+    }
+  })
+
   it('想法详情面板的高度取自页面主体内的可见高度,不论窗口多高都止于页面主体之内', () => {
     const body = (selector: string) => RULES.filter((rule) => rule.path === 'routes/Ideas.css' && rule.selector === selector)
       .map((rule) => rule.body).join(';')

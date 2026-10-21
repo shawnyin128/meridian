@@ -642,7 +642,7 @@ export function ProjectDetail({
         )
         : null}
 
-      <PageBody>
+      <PageBody className="project-detail-body">
         <SectionHeading>{m.project.sections.timeline}</SectionHeading>
         <ProjectTimeline
           project={project} hoverMilestone={hoverMilestone} onHoverMilestone={setHoverMilestone}
