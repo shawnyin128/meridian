@@ -10,14 +10,15 @@ import './NodeAssignment.css'
 /**
  * The research-node section of a detail panel. Its heading holds the one control that assigns a node:
  * picking one of `nodes` links it or changes it, and with `canUnlink` the link can be taken away.
- * `create` joins the heading while no node is linked. Below the heading, the linked node opens through
- * `onOpen`.
+ * `create` joins the heading while no node is linked, and `draft`, the node it drafts, stands below the
+ * heading where the linked node will show. Below the heading, the linked node opens through `onOpen`.
  */
-export function NodeAssignment({ node, nodes, canUnlink, create, onOpen, onSet }: {
+export function NodeAssignment({ node, nodes, canUnlink, create, draft, onOpen, onSet }: {
   node: { id: string; label: string; mode: NonNullable<GraphNode['mode']> } | undefined
   nodes: readonly { id: string; label: string }[]
   canUnlink: boolean
   create?: ReactNode
+  draft?: ReactNode
   onOpen: (nodeId: string) => void
   onSet: (nodeId: string | null) => void
 }) {
@@ -40,7 +41,7 @@ export function NodeAssignment({ node, nodes, canUnlink, create, onOpen, onSet }
     <>
       <SectionHeading variant="rail" actions={actions}>{m.project.plan.nodeHeading}</SectionHeading>
       {node === undefined
-        ? <EmptyState variant="section">{m.project.plan.noNode}</EmptyState>
+        ? draft ?? <EmptyState variant="section">{m.project.plan.noNode}</EmptyState>
         : (
           <div className="node-assignment">
             <EntityLink kind="node" label={node.label} mode={node.mode} onOpen={() => onOpen(node.id)} />

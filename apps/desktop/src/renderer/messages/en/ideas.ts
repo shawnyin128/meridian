@@ -43,11 +43,9 @@ export const ideas = {
     bodyPlaceholder: 'Mechanism, hypothesis, or direction…',
     save: 'Save idea',
   },
-  graphDialog: {
-    createTitle: 'Add to research graph',
+  nodeDraft: {
     nodeTitleLabel: 'Node title',
     afterLabel: 'Place after',
     newRootOption: 'Create as a root node',
-    createAndLink: 'Create and link',
   },
 } satisfies typeof zh

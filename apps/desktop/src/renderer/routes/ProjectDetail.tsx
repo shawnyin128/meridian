@@ -17,6 +17,7 @@ import {
   useCrumbTail, useEscapeLayer, useJump, useNotice, useToday, useVaultRevision,
 } from '../shell/AppShell.js'
 import { AddAction } from '../components/AddAction.js'
+import { DraftForm, DraftLine } from '../components/DraftForm.js'
 import { MenuItem } from '../components/ActionMenu.js'
 import { EmptyState } from '../components/EmptyState.js'
 import { LoadingPlaceholder } from '../components/LoadingPlaceholder.js'
@@ -43,7 +44,6 @@ import { EntityLink } from '../components/EntityLink.js'
 import { ProjectConclusionPanel, ProjectConclusionRow } from '../components/project/ProjectConclusions.js'
 import { ProjectTimeline } from '../components/project/ProjectTimeline.js'
 import { nodeMode, ResearchGraph, ResearchNodePanel } from '../components/project/ResearchGraph.js'
-import { IdeaGraphDialog } from '../components/ideas/IdeaGraphDialog.js'
 import { IdeaPanel, IdeaSource, ideaSourceLabel, ownIdea } from '../components/ideas/IdeaPanel.js'
 import { ProjectPlan, ProjectTaskPanel } from '../components/project/ProjectPlan.js'
 import type { PlanCreating, PlanTab } from '../components/project/ProjectPlan.js'
@@ -95,6 +95,11 @@ export function WorkspaceRoot({ state, name, root, onOpen }: {
   )
 }
 
+/**
+ * A linked idea in the project's detail panel. Its research-node section links a node of `graph`, or,
+ * unless the workspace manages the graph, drafts a new node in place, titled as the idea and after a
+ * node or as a root, which `onCreateNode` creates and links, resolving whether it did.
+ */
 export function ProjectIdeaPanel({
   idea, graph, workspaceManaged, onClose, onOpenIdea, onOpenPaper, onCreateNode, onOpenNode, onSetNode,
 }: {
@@ -104,12 +109,21 @@ export function ProjectIdeaPanel({
   onClose: () => void
   onOpenIdea: () => void
   onOpenPaper: (paperId: string) => void
-  onCreateNode: () => void
+  onCreateNode: (label: string, after: string | null) => Promise<boolean>
   onOpenNode: (nodeId: string) => void
   onSetNode: (nodeId: string | null) => void
 }) {
   const m = useMessages()
+  const g = m.ideas.nodeDraft
   const linkedNode = graph.nodes.find((node) => node.id === idea.node)
+  const [held, setDraft] = useState<{ idea: string; label: string; after: string } | null>(null)
+  const draftAt = useRef<HTMLDivElement>(null)
+  // A node draft belongs to the idea it was opened for and shows only with it.
+  const draft = held?.idea === idea.id ? held : null
+  const startNode = () => {
+    if (draft === null) setDraft({ idea: idea.id, label: idea.title, after: '' })
+    else draftAt.current?.querySelector<HTMLElement>('.form-control')?.focus()
+  }
   return (
     <IdeaPanel
       idea={idea} onClose={onClose} onOpenSourcePaper={onOpenPaper}
@@ -122,7 +136,34 @@ export function ProjectIdeaPanel({
       <NodeAssignment
         node={linkedNode === undefined ? undefined : { id: linkedNode.id, label: linkedNode.label, mode: nodeMode(linkedNode) }}
         nodes={graph.nodes} canUnlink onOpen={onOpenNode} onSet={onSetNode}
-        create={workspaceManaged ? undefined : <button className="btn sm" onClick={onCreateNode}>{m.project.idea.createNode}</button>}
+        create={workspaceManaged ? undefined : <button className="btn sm" onClick={startNode}>{m.project.idea.createNode}</button>}
+        draft={draft === null ? undefined : (
+          <div ref={draftAt}>
+            <DraftForm
+              canSave={draft.label.trim() !== ''} onCancel={() => setDraft(null)}
+              onSave={() => onCreateNode(draft.label.trim(), draft.after === '' ? null : draft.after)
+                .then((created) => { if (created) setDraft(null) })}
+            >
+              {(invalid) => (
+                <>
+                  <FormInput
+                    value={draft.label} maxLength={160} aria-label={g.nodeTitleLabel}
+                    aria-invalid={invalid(draft.label.trim() === '')}
+                    onChange={(event) => setDraft({ ...draft, label: event.target.value })}
+                  />
+                  <DraftLine label={g.afterLabel}>
+                    <ChoicePicker
+                      appearance="field" aria-label={g.afterLabel} value={draft.after}
+                      options={['', ...graph.nodes.map((node) => node.id)]}
+                      label={(id) => (id === '' ? g.newRootOption : graph.nodes.find((node) => node.id === id)?.label ?? id)}
+                      onPick={(after) => setDraft({ ...draft, after })}
+                    />
+                  </DraftLine>
+                </>
+              )}
+            </DraftForm>
+          </div>
+        )}
       />
     </IdeaPanel>
   )
@@ -177,7 +218,6 @@ export function ProjectDetail({
   const [selectedIdeaId, setSelectedIdeaId] = useState<string | null>(null)
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
   const [selectedConclusion, setSelectedConclusion] = useState<string | null>(null)
-  const [ideaGraphDialog, setIdeaGraphDialog] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [workspaceOpen, setWorkspaceOpen] = useState(false)
   const [workspaceMode, setWorkspaceMode] = useState<'local' | 'ssh'>('local')
@@ -274,7 +314,6 @@ export function ProjectDetail({
     setSelectedIdeaId(null)
     setSelectedTaskId(null)
     setSelectedConclusion(null)
-    setIdeaGraphDialog(null)
   }, [projectId])
 
   useEffect(() => {
@@ -523,7 +562,6 @@ export function ProjectDetail({
   const node = taskGraph.nodes.find((n) => n.id === selectedNode)
   const selectedIdea = linkedIdeas?.find((idea) => idea.id === selectedIdeaId)
   const selectedTask = project.tasks.find((t) => t.id === selectedTaskId)
-  const dialogIdea = linkedIdeas?.find((idea) => idea.id === ideaGraphDialog)
   const conclusions = project.projectConclusions ?? []
   const conclusion = conclusions.find((candidate) => candidate.id === selectedConclusion)
   const nodeLook = (nodeId: string | undefined) => {
@@ -638,16 +676,6 @@ export function ProjectDetail({
                 </form>
               )}
       </ModalDialog>
-
-      {dialogIdea !== undefined && ideaGraphDialog !== null
-        ? (
-          <IdeaGraphDialog
-            open idea={dialogIdea} graph={displayedGraph}
-            onOpenChange={(open) => { if (!open) setIdeaGraphDialog(null) }}
-            onSubmit={(placement) => placeIdeaOnGraph(dialogIdea, placement)}
-          />
-        )
-        : null}
 
       <PageBody className="project-detail-body">
         <ProjectTimeline
@@ -886,7 +914,7 @@ export function ProjectDetail({
                   onClose={clearIdea}
                   onOpenIdea={() => jumpTo('ideas', selectedIdea.id)}
                   onOpenPaper={(paperId) => jumpTo('reader', paperId)}
-                  onCreateNode={() => setIdeaGraphDialog(selectedIdea.id)}
+                  onCreateNode={(label, after) => placeIdeaOnGraph(selectedIdea, { kind: 'create', label, after })}
                   onOpenNode={(nodeId) => {
                     onRecord('graph')
                     setSelectedIdeaId(null)

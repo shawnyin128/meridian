@@ -30,7 +30,7 @@ const ONE_LINE: Record<string, [file: string, markup: RegExp, count?: number]> =
   'paper-understanding-quote': ['components/paper/PaperUnderstanding.tsx', /<FadeText className="paper-understanding-quote">/],
   'project-identity-topic': ['components/project/ProjectIdentity.tsx', /<FadeText className="project-identity-topic" label=/g, 2],
   'idea-dialog-source': ['components/ideas/IdeaEditorDialog.tsx', /<FadeText className="idea-dialog-source" label=/],
-  'idea-graph-dialog-idea': ['components/ideas/IdeaGraphDialog.tsx', /<FadeText className="idea-graph-dialog-idea" label=/],
+  'idea-draft-source': ['components/ideas/IdeaDraft.tsx', /<FadeText className="idea-draft-source" label=/],
   'cl': ['components/paper-table/ColumnMenu.tsx', /<FadeText className="cl" label=/g, 3],
   'read-state-filter': ['components/paper-table/PaperTable.tsx', /<FadeText>\{current === null \? name : readStateName\(m, current\)\}<\/FadeText><\/button>/],
   'node-document-title': ['components/project/ResearchGraph.tsx', /<FadeText className="node-document-title" label=/],
