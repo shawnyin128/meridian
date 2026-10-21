@@ -99,7 +99,7 @@ describe('屏头的按钮', () => {
 
 /** Where an action sits on the screen; its slot says which scope the action acts on. */
 type Slot = 'page header' | 'page toolbar' | 'section heading' | 'panel head' | 'group heading' | 'row actions'
-  | 'chip' | 'table header' | 'timeline toolbar' | 'dialog actions' | 'sidebar heading' | 'inline'
+  | 'chip' | 'table header' | 'timeline toolbar' | 'dialog actions' | 'card foot' | 'sidebar heading' | 'inline'
 
 /** Props whose content a component renders in one slot. */
 const SLOT_PROPS: Record<string, Record<string, Slot>> = {
@@ -120,7 +120,7 @@ const SLOT_PROPS: Record<string, Record<string, Slot>> = {
 /** Elements whose children sit in one slot: components by name, plain elements by a class. */
 const SLOT_CHILDREN: Record<string, Slot> = {
   PageToolbar: 'page toolbar', RowActions: 'row actions', Tag: 'chip', tagchip: 'chip', 'pd-h': 'panel head',
-  'th-add': 'table header',
+  'th-add': 'table header', ServiceFoot: 'card foot',
 }
 
 /** Components whose whole body is one slot wherever they are placed. */
@@ -196,6 +196,7 @@ const PLACES: Record<string, Place[]> = {
     { slot: 'inline', size: 'md', variant: 'plain' },
     { slot: 'inline', size: 'md', variant: 'primary', scope: "the review queue's first applicable proposal, its one primary" },
   ],
+  'settings save': [{ slot: 'card foot', size: 'md', variant: 'primary' }],
   'dismiss all': [
     { slot: 'section heading', size: 'sm', variant: 'plain' },
     { slot: 'group heading', size: 'sm', variant: 'plain', scope: 'a group dismisses its own rows' },
@@ -212,8 +213,11 @@ const buttonLook = (classes: string[]) => ({
     .map((word) => (word === 'pri' ? 'primary' : word)).join(' ') || 'plain',
 })
 
-/** The operation an element performs and how it looks, or null when it is not a tracked action. */
-function lookOf(element: Node, source: string): Look | null {
+/** A Settings card's save, by its label. */
+const SETTINGS_SAVE = /\bm\.(common|settings\.model)\.save\b/
+
+/** The operation an element in the source file `path` performs and how it looks, or null when it is not a tracked action. */
+function lookOf(element: Node, source: string, path: string): Look | null {
   const name = nameOf(element)
   const text = (node: Node | undefined) => (node === undefined ? '' : source.slice(node.start as number, node.end as number))
   const expression = (attr: Node | undefined) => ((attr?.value as Node | undefined)?.expression as Node | undefined)
@@ -243,7 +247,9 @@ function lookOf(element: Node, source: string): Look | null {
   }
   if (name === 'button' || name === 'ToolbarButton') {
     const children = (element.children as Node[]).filter((child) => child.type === 'JSXExpressionContainer')
-    const operation = children.map((child) => labelled(text(child.expression as Node))).find(Boolean)
+      .map((child) => text(child.expression as Node))
+    const operation = path.startsWith('components/settings/') && children.some((child) => SETTINGS_SAVE.test(child))
+      ? 'settings save' : children.map(labelled).find(Boolean)
     return operation === undefined ? null : { operation, ...buttonLook(classesOf(element)) }
   }
   return null
@@ -314,7 +320,7 @@ function placementsIn(path: string): { actions: Placement[]; icons: IconPlacemen
     }
     if (held.type === 'JSXElement') {
       const name = nameOf(held)
-      const look = lookOf(held, source)
+      const look = lookOf(held, source, path)
       if (look !== null && !CONTROL_FILES.has(path)) found.push({ ...look, slot, at: `${path}:${line(held)}` })
       if (name === 'IconButton' && !CONTROL_FILES.has(path)) {
         icons.push({ slot, size: strings(attribute(held, 'size'))[0] ?? 'default', at: `${path}:${line(held)}` })

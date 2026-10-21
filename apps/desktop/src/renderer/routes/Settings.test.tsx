@@ -201,10 +201,12 @@ describe('Settings', () => {
       setter.call(limit, '12')
       limit.dispatchEvent(new Event('input', { bubbles: true }))
     })
-    await act(async () => {
-      dialog.querySelector<HTMLButtonElement>('.delivery-setting-control .btn')!.click()
-    })
+    // Like 保存配置, the card's save sits at the end of its foot, and says it saved in place.
+    const save = dialog.querySelector<HTMLButtonElement>('.delivery-settings-card > .service-foot > .service-actions > .btn')!
+    expect(dialog.querySelector('.delivery-setting-control .btn')).toBeNull()
+    await act(async () => { save.click() })
     expect(api.updateDeliverySettings).toHaveBeenCalledWith({ maxItemsPerRun: 12 })
+    expect(save.textContent).toBe('已保存')
   })
 
   it('单次推送上限里输入法组字的回车不保存，组完字后的回车才保存', async () => {

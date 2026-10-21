@@ -8,6 +8,7 @@ import { useVaultWrite } from '../../hooks/useVaultWrite.js'
 import { composing } from '../../lib/keyboard.js'
 import { FormInput } from '../FormControls.js'
 import { Card } from '../Card.js'
+import { ServiceActions, ServiceFoot } from './ServiceCard.js'
 
 const MIN_ITEMS = 1
 const MAX_ITEMS = 100
@@ -69,14 +70,18 @@ export function DeliverySettings() {
           }}
         />
         <span>{m.settings.delivery.unit}</span>
-        <button className="btn pri" disabled={!changed || saving} onClick={() => { void save() }}>
-          {saving ? m.settings.delivery.saving : justSaved ? m.common.saved : m.common.save}
-        </button>
       </div>
       {!valid && saved !== null
         ? <p className="delivery-setting-error">{m.settings.delivery.rangeError(MIN_ITEMS, MAX_ITEMS)}</p>
         : null}
       {loadingError === null ? null : <p className="delivery-setting-error">{loadingError}</p>}
+      <ServiceFoot>
+        <ServiceActions>
+          <button className="btn pri" disabled={!changed || saving} onClick={() => { void save() }}>
+            {saving ? m.settings.delivery.saving : justSaved ? m.common.saved : m.common.save}
+          </button>
+        </ServiceActions>
+      </ServiceFoot>
     </Card>
   )
 }
