@@ -136,6 +136,35 @@ describe('DraftForm', () => {
     expect(onCancel).not.toHaveBeenCalled()
   })
 
+  it('leaving it cancels only a draft its host calls empty, and a press on the control that opens it is not leaving', () => {
+    const entry = { current: null as HTMLButtonElement | null }
+    const render = (empty?: boolean) => act(() => root.render(
+      <MessagesProvider>
+        <button type="button" className="outside">x</button>
+        <button type="button" className="entry" ref={(node) => { entry.current = node }}>+</button>
+        <DraftForm
+          {...(empty === undefined ? {} : { empty, triggers: [entry] })}
+          canSave={false} onSave={onSave} onCancel={onCancel}
+        >
+          {() => <FormInput aria-label="title" value="" onChange={() => {}} />}
+        </DraftForm>
+      </MessagesProvider>,
+    ))
+    const pressOn = (selector: string) => act(() => {
+      host.querySelector(selector)!.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true }))
+    })
+    render()
+    pressOn('.outside')
+    render(false)
+    pressOn('.outside')
+    expect(onCancel).not.toHaveBeenCalled()
+    render(true)
+    pressOn('.entry')
+    expect(onCancel).not.toHaveBeenCalled()
+    pressOn('.outside')
+    expect(onCancel).toHaveBeenCalledTimes(1)
+  })
+
   it('names where the item lands after an arrow, on a card of its own, only when that is elsewhere', () => {
     show()
     expect(host.querySelector('.draft-form-destination')).toBeNull()

@@ -248,6 +248,8 @@ export function Ideas() {
   const undo = useUndo()
   const consumedJump = useRef(0)
   const draftCard = useRef<HTMLElement>(null)
+  const newIdea = useRef<HTMLButtonElement>(null)
+  const draftTriggers = useMemo(() => [newIdea], [])
   const [rows, setRows] = useState<ResearchIdea[] | null>(null)
   const [projects, setProjects] = useState<ProjectSummary[]>([])
   const [selectedId, setSelectedId] = useState<string | null>(null)
@@ -340,7 +342,7 @@ export function Ideas() {
             ? null
             : <SortMenu label={m.ideas.sort} options={[{ label: m.ideas.sortUpdated, onSelect: sortByUpdated }]} />}
           <AddAction
-            variant="page"
+            variant="page" ref={newIdea}
             onClick={() => {
               // An open draft is only refocused, keeping what is typed.
               if (draft !== null) draftCard.current?.querySelector<HTMLElement>('.form-control')?.focus()
@@ -362,7 +364,9 @@ export function Ideas() {
               ? null
               : (
                 <ResearchObjectCard className="idea-draft-card" cardRef={draftCard}>
-                  <IdeaDraft draft={draft} onChange={setDraft} onSave={createIdea} onCancel={() => setDraft(null)} />
+                  <IdeaDraft
+                    draft={draft} triggers={draftTriggers} onChange={setDraft} onSave={createIdea} onCancel={() => setDraft(null)}
+                  />
                 </ResearchObjectCard>
               )}
             {rows === null ? (

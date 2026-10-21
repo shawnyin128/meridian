@@ -1,3 +1,4 @@
+import type { RefObject } from 'react'
 import { useMessages } from '../../messages/useMessages.js'
 import { DraftForm } from '../DraftForm.js'
 import { FadeText } from '../FadeText.js'
@@ -10,12 +11,14 @@ export type IdeaDraftText = { title: string; body: string }
 /**
  * The draft of a new idea with the title and body `draft` holds. Saved from a chat, opened at the end
  * of the conversation, it lands among the ideas, from the chat `source` names; without a `source` it
- * is the user's own idea, drafted where it lands on the Ideas page. `onSave` gets the title and body
+ * is the user's own idea, drafted where it lands on the Ideas page. Leaving it while both fields are
+ * empty cancels it; `triggers` are the controls that open it. `onSave` gets the title and body
  * trimmed and settles once the idea is written or refused.
  */
-export function IdeaDraft({ source, draft, onChange, onSave, onCancel }: {
+export function IdeaDraft({ source, draft, triggers, onChange, onSave, onCancel }: {
   source?: string
   draft: IdeaDraftText
+  triggers?: Array<RefObject<HTMLElement | null>>
   onChange: (draft: IdeaDraftText) => void
   onSave: (title: string, body: string) => Promise<unknown>
   onCancel: () => void
@@ -28,6 +31,7 @@ export function IdeaDraft({ source, draft, onChange, onSave, onCancel }: {
     <DraftForm
       className="idea-draft" destination={from === null ? undefined : m.shell.nav.ideas}
       canSave={title !== '' && body !== ''} onSave={() => onSave(title, body)} onCancel={onCancel}
+      empty={title === '' && body === ''} {...(triggers === undefined ? {} : { triggers })}
     >
       {(invalid) => (
         <>

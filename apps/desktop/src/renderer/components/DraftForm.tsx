@@ -1,5 +1,6 @@
 import { useLayoutEffect, useRef, useState } from 'react'
-import type { KeyboardEvent, ReactNode } from 'react'
+import type { KeyboardEvent, ReactNode, RefObject } from 'react'
+import { NO_TRIGGERS, useOnLeave } from '../hooks/useOnLeave.js'
 import { commitsMultiline, composing } from '../lib/keyboard.js'
 import { Card } from './Card.js'
 import { EditActions } from './EditActions.js'
@@ -12,18 +13,22 @@ export type DraftInvalid = (missing: boolean) => true | undefined
  * The one form drafted in place: a new item, or a change to one, with its fields where it lands and
  * Cancel and Save at its foot. It opens with its first field focused. Enter in a one-line field, or
  * ⌘Enter / Ctrl+Enter in a long text, saves as Save does; Escape cancels; the keys of an input method
- * composition, and those of a menu opened from a field, are not the draft's. A press outside neither
- * saves nor cancels. `destination` names where the item lands when that is not the draft's own spot,
+ * composition, and those of a menu opened from a field, are not the draft's. Leaving the draft, by a
+ * press outside it or focus moving out of it, neither saves nor cancels, except that it cancels a
+ * draft its host calls `empty`; a press on `triggers`, the controls that open the draft, is not
+ * leaving (see useOnLeave). `destination` names where the item lands when that is not the draft's own spot,
  * after an arrow, and makes the draft a card of its own. While `canSave` is false, Save is held and a
  * save by key is refused: `children`, and a `destination` that holds a field, then receive an `invalid`
  * that marks each field still `missing`. `onSave` settles once the write does; the host closes the
  * draft when it was written.
  */
-export function DraftForm({ destination, canSave, onSave, onCancel, className, children }: {
+export function DraftForm({ destination, canSave, onSave, onCancel, empty = false, triggers = NO_TRIGGERS, className, children }: {
   destination?: ReactNode | ((invalid: DraftInvalid) => ReactNode)
   canSave: boolean
   onSave: () => Promise<unknown>
   onCancel: () => void
+  empty?: boolean
+  triggers?: Array<RefObject<HTMLElement | null>>
   className?: string
   children: (invalid: DraftInvalid) => ReactNode
 }) {
@@ -32,6 +37,7 @@ export function DraftForm({ destination, canSave, onSave, onCancel, className, c
   const busy = useRef(false)
   const [saving, setSaving] = useState(false)
   const [refused, setRefused] = useState(false)
+  useOnLeave(root, () => { if (empty) onCancel() }, triggers)
 
   useLayoutEffect(() => {
     const first = root.current?.querySelector<HTMLElement>('.form-control')

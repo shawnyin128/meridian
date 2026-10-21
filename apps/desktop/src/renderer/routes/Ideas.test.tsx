@@ -241,9 +241,16 @@ describe('Ideas', () => {
     expect(api.create).not.toHaveBeenCalled()
   })
 
-  it('点到草稿卡外面：草稿和写了的字都留着，不新建也不标红', async () => {
+  it('点到草稿卡外面：空草稿收起；写了字的草稿留着，不新建也不标红；按新建想法不算点到外面', async () => {
     await act(async () => { root.render(<MessagesProvider><Ideas /></MessagesProvider>) })
     const outside = () => act(() => { host.querySelector('.desk-head')!.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true })) })
+    await openDraft()
+    act(() => {
+      host.querySelector('.desk-head > .page-actions > button:last-child')!.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true }))
+    })
+    expect(draft()).not.toBeNull()
+    await outside()
+    expect(draft()).toBeNull()
     await openDraft()
     act(() => { type(draft()!.querySelector('textarea')!, '只写了正文') })
     await outside()
