@@ -28,8 +28,10 @@ export type EntityLinkProps = {
   | { kind: 'external'; href: string }
 )
 
-/** The screen that opens each kind of entity a link names: a paper in the reader, a project, a Wiki page. */
-export const ENTITY_SCREEN = { paper: 'reader', project: 'project', page: 'wiki' } as const satisfies Record<'paper' | 'project' | 'page', ScreenKey>
+/** The screen that opens each kind of entity a link names: a paper in the reader, a project, a Wiki page, an idea, a chat. */
+export const ENTITY_SCREEN = {
+  paper: 'reader', project: 'project', page: 'wiki', idea: 'ideas', chat: 'chat',
+} as const satisfies Record<'paper' | 'project' | 'page' | 'idea' | 'chat', ScreenKey>
 
 /** The one mark that ends a link leaving the App for the browser. */
 export const ExternalMark = () => <span className="entity-link-mark" aria-hidden="true"><IconExternal /></span>

@@ -15,7 +15,7 @@ import { ActionPopover } from '../components/ActionPopover.js'
 import { BackButton } from '../components/BackButton.js'
 import { EditActions } from '../components/EditActions.js'
 import { EmptyState } from '../components/EmptyState.js'
-import { EntityLink } from '../components/EntityLink.js'
+import { ENTITY_SCREEN, EntityLink } from '../components/EntityLink.js'
 import { FadeText } from '../components/FadeText.js'
 import { FormInput } from '../components/FormControls.js'
 import {
@@ -550,7 +550,7 @@ export function Wiki() {
   /** Opens what a backlink names: a Wiki page here, a project, an idea or a chat on its own screen. */
   const openBacklink = (link: WikiBacklink) => {
     if (link.kind === 'page') go(link.id)
-    else jumpTo(link.kind === 'idea' ? 'ideas' : link.kind, link.id)
+    else jumpTo(ENTITY_SCREEN[link.kind], link.id)
   }
 
   /** Opens the page a tidying row is about: a Wiki page here, a project on its own screen. */

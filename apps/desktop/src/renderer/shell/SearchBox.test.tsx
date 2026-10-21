@@ -118,5 +118,15 @@ describe('SearchBox', () => {
       ['later', 'later-1', undefined],
     ])
   })
+
+  it('命中一个实体时打开的屏和实体链接打开它的屏是同一个:Wiki 页、项目、论文、想法、对话', async () => {
+    const { openHit } = await import('./SearchBox.js')
+    const { ENTITY_SCREEN } = await import('../components/EntityLink.js')
+    const opened: string[] = []
+    for (const kind of ['aggregation', 'project', 'paper', 'idea', 'chat'] as const) {
+      openHit({ kind, title: '一条', meta: '', target: 'x', pdf: true }, (screen) => { opened.push(screen) })
+    }
+    expect(opened).toEqual([ENTITY_SCREEN.page, ENTITY_SCREEN.project, ENTITY_SCREEN.paper, ENTITY_SCREEN.idea, ENTITY_SCREEN.chat])
+  })
 })
 

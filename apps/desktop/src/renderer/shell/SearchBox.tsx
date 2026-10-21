@@ -4,6 +4,7 @@ import { search } from '../ipc.js'
 import { PickerPopover, PickOption } from '../components/PickerPopover.js'
 import { ClearableInput } from '../components/ClearableInput.js'
 import { EmptyState } from '../components/EmptyState.js'
+import { ENTITY_SCREEN } from '../components/EntityLink.js'
 import { FadeText } from '../components/FadeText.js'
 import { IconSearch } from '../components/icons.js'
 import { PaperText } from '../components/paper/PaperText.js'
@@ -11,9 +12,13 @@ import { useCandidateKeys, type CandidateKeys } from '../hooks/useCandidateKeys.
 import { useMessages } from '../messages/useMessages.js'
 import type { JumpAnchor, ScreenKey } from './AppShell.js'
 
-/** The screen a chosen hit opens; a paper without a PDF opens in the Papers screen instead. */
+/**
+ * The screen a chosen hit opens, an entity's the one its link opens; a task opens in its project, and a
+ * paper without a PDF opens in the Papers screen instead.
+ */
 const SCREEN: Record<SearchHit['kind'], ScreenKey> = {
-  aggregation: 'wiki', project: 'project', chat: 'chat', paper: 'reader', idea: 'ideas', task: 'project', later: 'later',
+  aggregation: ENTITY_SCREEN.page, project: ENTITY_SCREEN.project, chat: ENTITY_SCREEN.chat, paper: ENTITY_SCREEN.paper,
+  idea: ENTITY_SCREEN.idea, task: ENTITY_SCREEN.project, later: 'later',
 }
 
 /**
