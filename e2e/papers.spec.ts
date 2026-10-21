@@ -1,4 +1,4 @@
-import type { Page } from '@playwright/test'
+import type { Locator, Page } from '@playwright/test'
 import type { PaperCell, PaperColumns } from '../apps/desktop/src/shared/contract.js'
 import {
   DEFAULT_PAPER_GROUPS, LATER_PAPER, READ_STATES, READING_PAPER, UNREAD_PAPER,
@@ -57,6 +57,12 @@ const call = <T>(win: Page, method: string, params: unknown) => win.evaluate(
 
 /** Waits until the first page renders all 20 rows, so later measurements run on a populated table. */
 const firstPage = (win: Page) => expect(win.locator('.ptable tbody tr')).toHaveCount(20)
+
+/** Clicks the action `sel` of a row or card; its actions show only while it is hovered. */
+async function rowAction(row: Locator, sel: string): Promise<void> {
+  await row.hover()
+  await row.locator(sel).click()
+}
 
 /**
  * Writes the column configuration through Core, then fills `cells[i]` into the i-th paper by date
@@ -215,9 +221,9 @@ test('研究地图从真实论文元数据形成可切换、可解释的重叠�
   await expect(win.locator('.pagebar')).toHaveCount(0)
 
   const groups = win.locator('.research-map-group')
-  const firstLabel = await groups.first().locator('strong').innerText()
+  const firstLabel = await groups.first().locator('.research-map-group-name').innerText()
   await groups.nth(1).click()
-  await expect(win.locator('.research-map-detail-head strong')).not.toHaveText(firstLabel)
+  await expect(win.locator('.research-map-detail-head .research-map-detail-name')).not.toHaveText(firstLabel)
 })
 
 test('论文表首列是冻结列', async ({ win }) => {
@@ -257,7 +263,7 @@ test('别的屏上的写不摘掉论文表的截断标记', async ({ win }) => {
 
   // Read Later's write bumps the revision while the papers screen is hidden, where widths measure 0.
   await win.locator('#rowLater').click()
-  await shown(win, '.pcard').first().locator('[aria-label="移出"]').click()
+  await rowAction(shown(win, '.pcard').first(), '[aria-label="移出"]')
   await expect(shown(win, '.desk-head .t')).toHaveText('稍后阅读 · 3')
 
   await gotoPapers(win)
@@ -723,7 +729,7 @@ test('列管理:内置列显隐持久到离开再回来,固定列藏不了;自�
   expect(changes[0]!.title).toContain('改了字段')
   // Undo the real way, on Recent Changes: it bumps the vault revision and the paper table refetches.
   await win.locator('[data-desk="changelog"]').click()
-  await shown(win, '.crow').first().locator('.cundo').click()
+  await rowAction(shown(win, '.crow').first(), '.cundo')
   await gotoPapers(win)
   await expect(first.locator('td.pt-cust')).toHaveText('')
 
@@ -861,7 +867,7 @@ test('列类型:建单选列、格子里建选项、按它分组、改名与撤�
 
   // Undo: the paper's cell and the column options both revert.
   await win.locator('[data-desk="changelog"]').click()
-  await shown(win, '.crow').first().locator('.cundo').click()
+  await rowAction(shown(win, '.crow').first(), '.cundo')
   await gotoPapers(win)
   await expect(rows.first().locator('td.pt-cust .tagchip')).toHaveText('精读')
   expect((await call<{ custom: { options: string[] }[] }>(win, 'papers.columns', {}))
@@ -1438,7 +1444,7 @@ test('阅读状态菜单开着、指针挪到菜单项上之后,行留着 hover 
   await expect(tagadd).toHaveCSS('pointer-events', 'none')
 })
 
-test('选中行的冻结标题格不透底,阅读状态菜单开着时整行仍是选中底色', async ({ win }) => {
+test('选中行的冻结标题格不透底,阅读状态菜单开着时整行是选中底色叠悬停', async ({ win }) => {
   await gotoPapers(win)
   await firstPage(win)
   const row = win.locator('.ptable tbody tr').first()
@@ -1447,22 +1453,28 @@ test('选中行的冻结标题格不透底,阅读状态菜单开着时整行仍�
   await parkPointer(win)
   const paint = () => row.locator('td').evaluateAll((tds) => tds.map((td) => {
     const style = getComputedStyle(td)
-    return `${style.backgroundImage} ${style.backgroundColor}`
+    return { image: style.backgroundImage, color: style.backgroundColor }
   }))
   const selected = await paint()
   // Columns scroll sideways under the sticky title cell, so its background color must be opaque.
   expect(await row.locator('td.pt-title').evaluate((td) => getComputedStyle(td).backgroundColor)).toMatch(/^rgb\(/)
 
+  // The hover lies over the selected tint as an image: every cell's color stays, its image changes.
+  await row.hover()
+  const hovered = await paint()
+  expect(hovered.map((cell) => cell.color)).toEqual(selected.map((cell) => cell.color))
+  for (const [at, cell] of hovered.entries()) expect(cell.image).not.toBe(selected[at]!.image)
+
   await row.locator('.stchip').click()
   await win.locator('[role="menu"] [role="menuitemradio"]').first().hover()
-  expect(await paint()).toEqual(selected)
+  expect(await paint()).toEqual(hovered)
 })
 
 // Pixel checks take element screenshots, which need a visible window.
 test.describe(() => {
   test.use({ showWindow: true })
 
-  test('选中行在截断的标题上悬停时,左侧选中条与格子底色不变', async ({ win }) => {
+  test('选中行在截断的标题上悬停时,标题格的边缘与整行悬停时一样', async ({ win }) => {
     await gotoPapers(win)
     await firstPage(win)
     const index = await truncatedTitleRow(win)
@@ -1474,13 +1486,16 @@ test.describe(() => {
     await settle(win.locator('.desk-body.libview'))
     await parkPointer(win)
     const resting = (await title.screenshot()).toString('base64')
+    // The row hovered away from the title: the hover lies over the selected tint, the title stays folded.
+    await row.locator('td.pt-dim').last().hover()
+    const rowHovered = (await title.screenshot()).toString('base64')
     await title.hover()
     const hovered = (await title.screenshot()).toString('base64')
 
-    // The selected bar is the cell's left 3px and the text sits below 6px of padding, so the first two
-    // pixel columns and the first three pixel rows show only the bar and the row background. Gradients
-    // are dithered, so a repaint may move a channel by a level or two.
-    const changed = await win.evaluate(async (shots) => {
+    // The text sits below 6px of padding, so the first two pixel columns and the first three pixel
+    // rows show only the row background. Gradients are dithered, so a repaint may move a channel by a
+    // level or two.
+    const edgeDiff = (shots: [string, string]) => win.evaluate(async (shots) => {
       const [before, after] = await Promise.all(shots.map(async (b64) => {
         const img = new Image()
         img.src = `data:image/png;base64,${b64}`
@@ -1501,8 +1516,9 @@ test.describe(() => {
         }
       }
       return count
-    }, [resting, hovered])
-    expect(changed, '悬停后标题格的左侧选中条或底色变了').toBe(0)
+    }, shots)
+    expect(await edgeDiff([resting, rowHovered]), '选中行悬停时没有叠上悬停底色').toBeGreaterThan(0)
+    expect(await edgeDiff([rowHovered, hovered]), '悬停截断的标题后,标题格边缘的底色与整行悬停时不同').toBe(0)
   })
 })
 
@@ -1719,7 +1735,7 @@ test('改类型:多选 → 文本,多个值用「, 」连成一段;撤销之后�
 
   await win.keyboard.press('Escape')
   await win.locator('[data-desk="changelog"]').click()
-  await shown(win, '.crow').first().locator('.cundo').click()
+  await rowAction(shown(win, '.crow').first(), '.cundo')
   await gotoPapers(win)
   await expect(cells.nth(0).locator('.tagchip')).toHaveText(['综述', '必读'])
   await expect(cells.nth(1).locator('.tagchip')).toHaveText(['必读'])
@@ -1749,8 +1765,11 @@ test('改类型:列菜单里只用键盘把文本列改成单选', async ({ win 
   await win.locator('.ptable thead [aria-label="列设置"]').click()
   const menu = win.locator('[data-radix-popper-content-wrapper]')
 
-  // Opening the menu focuses its first tabbable button; a text column has no Options toggle, so
-  // that is Change type.
+  // Opening the menu focuses its first tabbable button, the first built-in column that can be hidden.
+  // Tab passes each such column; a text column has no Options toggle, so its first button is Change type.
+  const toggles = menu.locator('button.mi.colrow')
+  await expect(toggles.first()).toBeFocused()
+  for (let n = await toggles.count(); n > 0; n -= 1) await win.keyboard.press('Tab')
   await expect(menu.locator('.mi.colrow', { hasText: '备注' }).locator('[aria-label="改类型"]')).toBeFocused()
   await win.keyboard.press('Enter')
   // Of the expanded type options only the current one is in the Tab order; after Change type come
@@ -1772,7 +1791,7 @@ test('改类型:列菜单里只用键盘把文本列改成单选', async ({ win 
   await expect(selectBtn).toBeFocused()
 })
 
-test('详情里点一项元数据,原位输入框没有边框、浅灰实底,只在底部有一条强调线、没有外圈', async ({ win }) => {
+test('详情里点一项元数据,原位输入框是共用的原位外观:1px 边框聚焦时变深、浅灰实底,没有外圈也没有阴影线', async ({ win }) => {
   await gotoPapers(win)
   await firstPage(win)
   await win.locator('.ptable tbody tr').first().locator('td.pt-title').click()
@@ -1780,26 +1799,34 @@ test('详情里点一项元数据,原位输入框没有边框、浅灰实底,只
 
   const input = win.locator('.pdetail .metadata-input')
   await expect(input).toBeFocused()
-  // The editing line fades in over the focus transition; read the field once it has settled.
-  await expect.poll(() => input.evaluate((el) => getComputedStyle(el).boxShadow)).toMatch(/ 0px -2px 0px 0px inset$/)
-  const style = await input.evaluate((el) => {
-    // Resolve the field token next to the input so the comparison holds in either theme.
+  await expect(input).toHaveClass(/\bform-control-inline\b/)
+  // Resolve the tokens next to the input so the comparison holds in either theme.
+  const token = (property: 'backgroundColor' | 'borderTopColor', value: string) => input.evaluate((el, [p, v]) => {
     const probe = document.createElement('span')
-    probe.style.backgroundColor = 'var(--field)'
+    probe.style.border = '1px solid transparent'
+    probe.style[p as 'backgroundColor' | 'borderTopColor'] = v as string
     el.parentElement!.append(probe)
-    const field = getComputedStyle(probe).backgroundColor
+    const resolved = getComputedStyle(probe)[p as 'backgroundColor' | 'borderTopColor']
     probe.remove()
+    return resolved
+  }, [property, value] as const)
+  const field = await token('backgroundColor', 'var(--field)')
+  const strong = await token('borderTopColor', 'var(--sep-strong)')
+  // The focused edge turns --sep-strong over the border transition; read the field once it has settled.
+  await expect.poll(() => input.evaluate((el) => getComputedStyle(el).borderTopColor)).toBe(strong)
+  const style = await input.evaluate((el) => {
     const s = getComputedStyle(el)
     return {
       borders: [s.borderTopWidth, s.borderRightWidth, s.borderBottomWidth, s.borderLeftWidth],
-      field, background: s.backgroundColor, shadow: s.boxShadow, outline: s.outlineStyle,
+      colors: [s.borderTopColor, s.borderRightColor, s.borderBottomColor, s.borderLeftColor],
+      background: s.backgroundColor, shadow: s.boxShadow, outline: s.outlineStyle,
     }
   })
-  expect(style.borders).toEqual(['0px', '0px', '0px', '0px'])
-  expect(style.background).toBe(style.field)
+  expect(style.borders).toEqual(['1px', '1px', '1px', '1px'])
+  expect(style.colors).toEqual([strong, strong, strong, strong])
+  expect(style.background).toBe(field)
   expect(style.background).not.toBe('rgba(0, 0, 0, 0)')
-  // One inset line along the bottom edge and nothing around the field.
-  expect(style.shadow.split(/,(?![^(]*\))/)).toHaveLength(1)
-  expect(style.shadow).toMatch(/ 0px -2px 0px 0px inset$/)
+  // Nothing around the field but its own edge.
+  expect(style.shadow).toBe('none')
   expect(style.outline).toBe('none')
 })

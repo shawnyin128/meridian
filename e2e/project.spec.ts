@@ -1,5 +1,5 @@
 import { resolve } from 'node:path'
-import type { Page } from '@playwright/test'
+import type { Locator, Page } from '@playwright/test'
 import { ACTIVE_PROJECT, PROJECT_STATUSES, SHELVED_PROJECT } from '../apps/desktop/src/shared/vocabulary.js'
 import {
   dshort, expect, expectWholeInRail, fixtureDay, gotoProject, overlaps, railEdges, readDraft, test, textBox,
@@ -11,7 +11,7 @@ const call = <T>(win: Page, method: string, params: unknown) => win.evaluate(
   [method, params] as const,
 )
 
-/** The `rgb()` that `--sep-strong` resolves to, compared with the border color of a style C input. */
+/** The `rgb()` that `--sep-strong` resolves to, compared with the border color of a focused inline field. */
 const sepStrongRgb = (win: Page): Promise<string> => win.evaluate(() => {
   const probe = document.createElement('div')
   probe.style.color = 'var(--sep-strong)'
@@ -21,7 +21,7 @@ const sepStrongRgb = (win: Page): Promise<string> => win.evaluate(() => {
   return rgb
 })
 
-/** The `rgba()` parsed by `--field` is used to compare the metadata input's filled background. */
+/** The `rgba()` parsed by `--field` is used to compare an inline field's filled background. */
 const fieldRgb = (win: Page): Promise<string> => win.evaluate(() => {
   const probe = document.createElement('div')
   probe.style.backgroundColor = 'var(--field)'
@@ -30,6 +30,12 @@ const fieldRgb = (win: Page): Promise<string> => win.evaluate(() => {
   probe.remove()
   return rgb
 })
+
+/** Clicks the action `sel` of a row or chip; its actions show only while it is hovered. */
+async function rowAction(row: Locator, sel: string): Promise<void> {
+  await row.hover()
+  await row.locator(sel).click()
+}
 
 /**
  * Offsets in days from the vault's today to the dates of the fixture's draft project. The fixture
@@ -134,7 +140,7 @@ test('想法在科研图中动态标出关联节点，节点详情反向展示�
   await page.locator('.section-heading-actions .segmented-control>button', { hasText: '科研图' }).click()
   const linkedNode = page.locator('.rgn[data-node="knee"]')
   await expect(linkedNode).toHaveClass(/idea-related/)
-  await expect(linkedNode.locator('rect')).toHaveAttribute('style', /idea-node-hatch-/)
+  await expect(linkedNode.locator('rect.rgn-box')).toHaveAttribute('style', /idea-node-hatch-/)
 
   await linkedNode.click()
   const headings = await side.locator('.section-heading').allTextContents()
@@ -347,9 +353,12 @@ test('各板块渲染出的条目数与 project.get 返回的条数逐对相等'
 test('越界的日期被 core 拒绝,绕开界面直调也拦得住', async ({ win }) => {
   await gotoProject(win)
   const today = await vaultToday(win)
+  type Stored = { due: string; tasks: { id: string; end: string }[] }
+  const stored = (p: Stored) => ({ due: p.due, t2End: p.tasks.find((task) => task.id === 't2')!.end })
+  const before = stored(await call<Stored>(win, 'project.get', { id: 'draft' }))
   const rejected = await win.evaluate(async (dates) => {
     const meridian = (window as unknown as MeridianWindow).meridian
-    const reason = (call: Promise<unknown>) => call.then(() => '没有被拒绝', (e: Error) => e.message)
+    const reason = (call: Promise<unknown>) => call.then(() => '没有被拒绝', (e: unknown) => e)
     return {
       // The patch holds only end, checked against the stored start; this day is before t2's start.
       task: await reason(meridian.call('project.updateTask', {
@@ -361,8 +370,8 @@ test('越界的日期被 core 拒绝,绕开界面直调也拦得住', async ({ w
       })),
     }
   }, { beforeTask: fixtureDay(today, T2_START - 1), beforeProject: fixtureDay(today, -200) })
-  expect(rejected.task).toMatch(/任务结束日期早于开始日期/)
-  expect(rejected.project).toMatch(/项目截止日期早于开始日期/)
+  expect(rejected).toEqual({ task: { reason: 'invalid' }, project: { reason: 'invalid' } })
+  expect(stored(await call<Stored>(win, 'project.get', { id: 'draft' }))).toEqual(before)
 })
 
 test('拖菱形改期后,抬手补发的那次点击不算点在空白处新建里程碑', async ({ win }) => {
@@ -558,7 +567,8 @@ test('拖完菱形那一下不算点击,单击打开它的改名小窗并写回'
   // The reschedule may have pushed m2 into the next calendar window; find it again before clicking it.
   const movedDiamond = await revealMilestone(win, 'draft/m2')
   await movedDiamond.click()
-  await expect(win.locator('.ctxmenu .rh')).toHaveText(`里程碑 · ${dshort(moved)}`)
+  await expect(win.locator('.ctxmenu .rh')).toHaveText('里程碑')
+  await expect(win.locator('.ctxmenu .short-text-field .form-button')).toHaveText(dshort(moved))
   const name = win.locator('.ctxmenu .mi-in input')
   await expect(name).toHaveValue(titleOfM2)
   await name.fill(EDITED_MILESTONE_TITLE)
@@ -587,8 +597,7 @@ test('新建一个任务再删掉,任务数前后一致', async ({ win }) => {
   await expect(win.locator('#taskList .ddlrow')).toHaveCount(ACTIVE_TASK_ROWS + 1)
   expect((await readDraft(win)).tasks.some((t) => t.title === NEW_TASK_TITLE)).toBe(true)
 
-  const created = win.locator('#taskList .ddlrow', { hasText: NEW_TASK_TITLE })
-  await created.locator('.row-delete').click()
+  await rowAction(win.locator('#taskList .ddlrow', { hasText: NEW_TASK_TITLE }), '.row-delete')
 
   await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已删除任务')
   await expect(win.locator('#taskList .ddlrow')).toHaveCount(ACTIVE_TASK_ROWS)
@@ -693,7 +702,12 @@ test('科研图节点上下居中且可缩放平移,分支和科研记录在正�
 
   await viewport.locator('.graph-zoom-reset').click()
   const mainWidth = (await detail.locator('.wkmain').boundingBox())!.width
-  await viewport.locator('.rgn').first().click()
+  // An empty section is hidden: root has branches but no records, knee has both.
+  await viewport.locator('.rgn[data-node="root"]').click()
+  await expect(detail.locator('.node-document-pane .section-heading', { hasText: /^分支 ·/ })).toHaveCount(1)
+  await expect(detail.locator('.node-document-pane .section-heading', { hasText: /^科研记录/ })).toHaveCount(0)
+  await viewport.locator('.rgn[data-node="knee"]').click()
+  await expect(detail.locator('.node-document-title')).toHaveText('树宽收益拐点')
   const branchHeading = detail.locator('.node-document-pane .section-heading', { hasText: /^分支 ·/ })
   const recordHeading = detail.locator('.node-document-pane .section-heading', { hasText: /^科研记录 ·/ })
   const markdown = detail.locator('.node-markdown')
@@ -824,7 +838,7 @@ test('新任务行开着且打了字时按侧栏会话的「...」:任务照样�
   expect(after).toContain('按菜单触发器建成的任务')
 })
 
-test('科研计划:新建任务那一行和已有行同一套样子,日期不折行、输入框没有边框', async ({ win }) => {
+test('科研计划:新建任务那一行和已有行同一套样子,日期不折行、输入框是共用的原位外观', async ({ win }) => {
   await gotoProject(win)
   const plan = win.locator('.screenslot:not([hidden]) .project-plan')
   await plan.locator('[aria-label="添加任务"]').first().click()
@@ -843,11 +857,16 @@ test('科研计划:新建任务那一行和已有行同一套样子,日期不折
 
   const input = await draft.locator('input.min').evaluate((el) => {
     const style = getComputedStyle(el)
-    return { border: style.borderTopWidth, height: el.getBoundingClientRect().height, background: style.backgroundColor }
+    return {
+      border: style.borderTopWidth, background: style.backgroundColor,
+      // The height the input takes in its row: its box less the negative margins its edge and padding lie in.
+      rowHeight: el.getBoundingClientRect().height + parseFloat(style.marginTop) + parseFloat(style.marginBottom),
+      lineHeight: parseFloat(style.lineHeight),
+    }
   })
-  expect(input.border).toBe('0px')
-  expect(input.height).toBe(20)
-  expect(input.background).not.toBe('rgba(0, 0, 0, 0)')
+  expect(input.border).toBe('1px')
+  expect(input.background).toBe(await fieldRgb(win))
+  expect(input.rowHeight).toBeCloseTo(input.lineHeight, 1)
   await win.screenshot({ path: resolve(import.meta.dirname, '../.superpowers/e2e-shots/project-task-draft.png') })
 })
 
@@ -993,7 +1012,7 @@ test('关联论文的候选行按标题任意一段命中,显示的是完整标�
     .toContainText('AWQ: Activation-aware Weight Quantization for LLM Compression and Acceleration')
 })
 
-test('关联 chip 上的 × 不用悬停就在,落在 chip 自己的框里;点它只移除这一条,不顺带打开它挂着的那一页', async ({ win }) => {
+test('关联 chip 上的 × 悬停才出现,落在 chip 自己的框里;点它只移除这一条,不顺带打开它挂着的那一页', async ({ win }) => {
   await gotoProject(win)
   const side = win.locator('.screenslot:not([hidden]) .wkside')
   const linked = side.locator('.wkrel .tagchip[data-wk]')
@@ -1004,12 +1023,14 @@ test('关联 chip 上的 × 不用悬停就在,落在 chip 自己的框里;点�
   // Inside its chip's own box the × cannot be clipped by the side column, even on a chip as wide as the column.
   for (const each of await side.locator('.wkrel .tagchip').all()) {
     const remove = each.locator('.rx')
-    await expect(remove).toHaveCSS('opacity', '1')
+    await expect(each.locator('.row-actions')).toHaveCSS('opacity', '0')
+    await each.hover()
+    await expect(each.locator('.row-actions')).toHaveCSS('opacity', '1')
     const [outer, inner] = await Promise.all([each.boundingBox(), remove.boundingBox()])
     expect(inner!.y).toBeGreaterThanOrEqual(outer!.y)
     expect(inner!.x + inner!.width).toBeLessThanOrEqual(outer!.x + outer!.width)
   }
-  await chip.locator('.rx').click()
+  await rowAction(chip, '.rx')
   await expect(win.locator('#crumb .cseg')).toHaveText(['研究', '项目', 'draft 效率'])
   await expect(win.locator('.screenslot:not([hidden]) .desk-head .t')).toHaveText('draft 效率')
   await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText(`已移除关联「${text}」`)
@@ -1027,13 +1048,13 @@ test('关联:点 chip 上的编辑就地改它,位置不变,改动写进库里',
   const page = (await chips.first().getAttribute('data-wk'))!
 
   // Leaving the edit without a change closes it and leaves the item as it was, page link included.
-  await chips.first().locator('.tagchip-edit').click()
+  await rowAction(chips.first(), '.tagchip-edit')
   await win.locator('.screenslot:not([hidden]) .memo').click()
   await expect(wikiRow.locator('.reladd')).toHaveCount(0)
   await expect(chips).toHaveText(before)
   await expect(chips.first()).toHaveAttribute('data-wk', page)
 
-  await chips.first().locator('.tagchip-edit').click()
+  await rowAction(chips.first(), '.tagchip-edit')
   const input = wikiRow.locator('.reladd .inedit')
   await expect(input).toHaveValue(before[0]!)
   await input.fill('端到端改名')
@@ -1149,7 +1170,7 @@ test('属性栏焦点格:回车后写被拒,格子仍在编辑、字还在', asy
   await expect(pin).toHaveValue('项目没了这段还想留着')
 })
 
-test('就地输入框:关联占位是样式 C,属性栏焦点格没有边框浅灰实底,焦点都不出环;按钮的环不受影响', async ({ win }) => {
+test('就地输入框:关联占位与属性栏焦点格都是共用的原位外观,1px 边框、浅灰实底,焦点都不出环;按钮的环不受影响', async ({ win }) => {
   await gotoProject(win)
   const side = win.locator('.screenslot:not([hidden]) .wkside')
   const sepStrong = await sepStrongRgb(win)
@@ -1164,24 +1185,26 @@ test('就地输入框:关联占位是样式 C,属性栏焦点格没有边框浅�
   await expect(relAdd).toHaveCSS('outline-style', 'solid')
   await expect(relAdd).toHaveCSS('outline-width', '2px')
 
-  // .inedit: the link placeholder uses style C.
+  // .inedit: the link placeholder takes the one inline field look, a 1px edge over the field fill.
   await relAdd.click()
   const relInput = side.locator('.wkrel .inedit')
   await relInput.focus()
   await expect(relInput).toHaveCSS('outline-style', 'none')
-  await expect(relInput).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)')
+  await expect(relInput).toHaveCSS('background-color', field)
+  await expect(relInput).toHaveCSS('border-top-width', '1px')
   await expect(relInput).toHaveCSS('border-top-color', sepStrong)
 
-  // .metadata-input of the property bar focus cell: no border and a light filled background, not style C
-  // (a drawn border there reads too heavy; confirmed by papers.spec.ts's sibling check on the same class).
+  // .metadata-input of the property bar focus cell takes the same look (papers.spec.ts checks the same
+  // class in the paper details).
   const before = await call<{ focus: string }>(win, 'project.get', { id: 'draft' }).then((p) => p.focus)
   await side.locator('button.metadata-editable', { hasText: before }).click()
   const pin = side.locator('.metadata-input')
   await expect(pin).toHaveCSS('outline-style', 'none')
-  await expect(pin).toHaveCSS('border-top-width', '0px')
-  await expect(pin).toHaveCSS('border-right-width', '0px')
-  await expect(pin).toHaveCSS('border-bottom-width', '0px')
-  await expect(pin).toHaveCSS('border-left-width', '0px')
+  await expect(pin).toHaveCSS('border-top-width', '1px')
+  await expect(pin).toHaveCSS('border-right-width', '1px')
+  await expect(pin).toHaveCSS('border-bottom-width', '1px')
+  await expect(pin).toHaveCSS('border-left-width', '1px')
+  await expect(pin).toHaveCSS('border-top-color', sepStrong)
   await expect(pin).toHaveCSS('background-color', field)
 })
 
@@ -1382,7 +1405,17 @@ test('红色垃圾桶直接删除任务,不会先把这一行切进编辑态', a
   await gotoProject(win)
   const row = win.locator('#taskList .ddlrow').first()
   const taskId = await row.getAttribute('data-row')
-  await expect(row.locator('.row-delete')).toHaveCSS('color', /rgb/)
+  const bad = await win.evaluate(() => {
+    const probe = document.createElement('div')
+    probe.style.color = 'var(--bad)'
+    document.body.appendChild(probe)
+    const rgb = getComputedStyle(probe).color
+    probe.remove()
+    return rgb
+  })
+  await row.hover()
+  await row.locator('.row-delete').hover()
+  await expect(row.locator('.row-delete')).toHaveCSS('color', bad)
   await row.locator('.row-delete').click()
   await expect(win.locator('#taskList .plan-name-input')).toHaveCount(0)
   await expect(win.locator('.plan-time-pop')).toHaveCount(0)

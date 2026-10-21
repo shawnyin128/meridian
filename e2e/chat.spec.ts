@@ -47,12 +47,13 @@ async function gotoChat(win: Page, at = 0): Promise<void> {
   await shown(win, '.msg').first().waitFor()
 }
 
-/** Sends a message in the open chat and waits until it and the response are both in the message list. */
+/** Sends a message in the open chat and waits until it is the last message; with no model, no reply follows it. */
 async function say(win: Page, value: string): Promise<void> {
   const before = await shown(win, '.msg').count()
   await shown(win, '#composer').fill(value)
   await shown(win, '#sendBtn').click()
-  await expect(shown(win, '.msg')).toHaveCount(before + 2)
+  await expect(shown(win, '.msg')).toHaveCount(before + 1)
+  await expect(shown(win, '.msg').last()).toHaveClass(/\byou\b/)
 }
 
 /** Starts a new chat with the + on the sidebar's Chats heading. */
@@ -152,6 +153,13 @@ test('@ 下拉按项目、论文、Wiki 三组列候选,点一条填进输入框
 const isArchived = async (win: Page, id: string) =>
   (await core<Session[]>(win, 'chat.list', {})).find((s) => s.id === id)!.archived
 
+/** Clicks a button on an archived chat's row in Settings; the row shows its actions only while hovered. */
+async function archivedRowAction(win: Page, id: string, name: string): Promise<void> {
+  const row = win.locator(`.setdlg .wrow[data-chat="${id}"]`)
+  await row.hover()
+  await row.getByRole('button', { name }).click()
+}
+
 test('归档把会话移出侧栏,设置里取消归档把它放回', async ({ app, win }) => {
   await win.locator('#chatList .chat-row').first().waitFor()
   const sessions = await core<Session[]>(win, 'chat.list', {})
@@ -173,8 +181,7 @@ test('归档把会话移出侧栏,设置里取消归档把它放回', async ({ a
   await win.locator('[data-setcat="archived"]').click()
   await expect(win.locator(`.setdlg .wrow[data-chat="${target.id}"] .nm`)).toHaveText(target.title)
 
-  await win.locator(`.setdlg .wrow[data-chat="${target.id}"]`)
-    .getByRole('button', { name: '取消归档' }).click()
+  await archivedRowAction(win, target.id, '取消归档')
   await expect(win.locator(`.setdlg .wrow[data-chat="${target.id}"]`)).toHaveCount(0)
   await expect(win.locator(`#chatList [data-chat="${target.id}"]`)).toHaveCount(1)
   await expect(win.locator('.sidebar .chat-row')).toHaveCount(listed)
@@ -187,8 +194,7 @@ test('设置里「打开」进那条归档的会话,模态让开且屏上标出�
   await openSettings(app, win)
   // Settings opens on another category; archived chats show only under "Archived chats" on the left.
   await win.locator('[data-setcat="archived"]').click()
-  await win.locator(`.setdlg .wrow[data-chat="${archived.id}"]`)
-    .getByRole('button', { name: '打开' }).click()
+  await archivedRowAction(win, archived.id, '打开')
 
   await expect(win.locator('.setdlg')).toHaveCount(0)
   // Archived chats are not in the sidebar, so once opened they would look like any other chat; the

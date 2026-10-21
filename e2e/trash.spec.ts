@@ -1,4 +1,4 @@
-import type { Page } from '@playwright/test'
+import type { Locator, Page } from '@playwright/test'
 import { TRASH_RETENTION_DAYS } from '../apps/desktop/src/shared/vocabulary.js'
 import { expect, gotoPapers, gotoProject, test, vaultToday, type MeridianWindow } from './app.js'
 
@@ -6,6 +6,12 @@ import { expect, gotoPapers, gotoProject, test, vaultToday, type MeridianWindow 
 const shown = (win: Page, sel: string) => win.locator(`.screenslot:not([hidden]) ${sel}`)
 
 const gotoTrash = (win: Page) => win.locator('[data-desk="trash"]').click()
+
+/** Clicks a Trash row's Restore; the row shows its actions only while it is hovered. */
+async function restore(row: Locator): Promise<void> {
+  await row.hover()
+  await row.locator('.row-actions [aria-label="恢复"]').click()
+}
 
 const DAY_MS = 86_400_000
 
@@ -26,10 +32,10 @@ const trashIds = (win: Page) => win.evaluate(async () => {
   return entries.map((e) => e.id)
 })
 
-/** Calls `trash.restore` directly, bypassing the UI; returns the rejection message, or a note if accepted. */
+/** Calls `trash.restore` directly, bypassing the UI; returns the rejection Core sent, or a note if accepted. */
 const restoreRefused = (win: Page, id: string) => win.evaluate((entryId) =>
   (window as unknown as MeridianWindow).meridian.call('trash.restore', { id: entryId })
-    .then(() => '没有被拒绝', (e: Error) => e.message), id)
+    .then(() => '没有被拒绝', (rejection: unknown) => rejection), id)
 
 const paperTotal = (win: Page) => win.evaluate(async () => {
   const result = await (window as unknown as MeridianWindow).meridian
@@ -61,7 +67,7 @@ test('删掉的论文进垃圾桶,恢复后回到列表且总数复原', async (
   await expect(win.locator('.tgroup .trow .tt2')).toHaveText([title])
   await expect(win.locator('.tgroup .trow .tm2')).toHaveText([FULL_RETENTION])
 
-  await win.locator('.tgroup .trow .row-actions [aria-label="恢复"]').click()
+  await restore(win.locator('.tgroup .trow'))
   await expect(win.locator('.tgroup .trow')).toHaveCount(0)
   await expect(win.locator('[data-desk="trash"] .n')).toHaveCount(0)
   await expect(win.locator('[data-desk="papers"] .n')).toHaveText(String(total))
@@ -144,7 +150,7 @@ test('删掉的附件进垃圾桶,恢复后回到项目', async ({ win }) => {
   await expect(shown(win, '.section-heading')).toHaveText('附件 · 1')
   await expect(win.locator('.tgroup .trow .tt2')).toHaveText([names[0]!])
 
-  await win.locator('.tgroup .trow .row-actions [aria-label="恢复"]').click()
+  await restore(win.locator('.tgroup .trow'))
   await expect(win.locator('.tgroup .trow')).toHaveCount(0)
 
   // Entering Projects from another screen lands on the list; the attachments are in the project detail,
@@ -183,9 +189,9 @@ test('原项目还在垃圾桶里时,那条附件恢复不回去,项目回来才
   await expect(attachmentRow.locator('.row-actions [aria-label="恢复"]')).toBeDisabled()
   await expect(projectRow.locator('.row-actions [aria-label="恢复"]')).toBeEnabled()
 
-  await projectRow.locator('.row-actions [aria-label="恢复"]').click()
+  await restore(projectRow)
   await expect(attachmentRow.locator('.row-actions [aria-label="恢复"]')).toBeEnabled()
-  await attachmentRow.locator('.row-actions [aria-label="恢复"]').click()
+  await restore(attachmentRow)
   await expect(win.locator('.tgroup .trow')).toHaveCount(0)
   await expect(shown(win, '.ipcerror')).toHaveCount(0)
   await expect(win.locator('#notice[data-tone="refusal"]')).toHaveCount(0)
@@ -228,5 +234,5 @@ test('清空垃圾桶要过二次确认,清掉的东西恢复不回来', async (
   await expect(win.locator('[data-desk="trash"] .n')).toHaveCount(0)
 
   expect(ids).toHaveLength(2)
-  for (const id of ids) expect(await restoreRefused(win, id)).toContain(id)
+  for (const id of ids) expect(await restoreRefused(win, id)).toEqual({ reason: 'not-found' })
 })

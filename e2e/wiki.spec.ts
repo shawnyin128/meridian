@@ -41,6 +41,8 @@ const paperTotal = (win: Page) =>
 
 const gotoWiki = (win: Page) => win.locator('[data-desk="wiki"]').click()
 const crumbs = (win: Page) => win.locator('#crumb .cseg')
+/** The input of the placeholder a + opens in place: a subtopic card or a comparison row. */
+const pickInput = (win: Page) => shown(win).locator('.wkmain :is(.newcard, tr.newrow) .inedit')
 
 /** The words on the last line of a card: count and update date, formatted the same way as dates elsewhere in the app. */
 const foot = (c: Card) =>
@@ -150,7 +152,7 @@ test('对照表的行是成员论文,格子按契约的列排,悬停看原文;�
   expect(await table.locator('tbody tr td.rh').allTextContents()).toEqual(agg.rows.map((r) => r.paper.title))
   // An empty cell shows a dash, and a filled cell ends with its anchor, p.N.
   const first = agg.rows[0]!
-  expect(await table.locator('tbody tr').first().locator('td:not(.rh):not(.rx)').allTextContents()).toEqual(
+  expect(await table.locator('tbody tr').first().locator('td:not(.rh):not(.rx):not(.td-add)').allTextContents()).toEqual(
     agg.columns.map((c) => {
       const cell = first.cells[c.key]
       return cell === undefined ? '—' : `${cell.value} p.${cell.page}`
@@ -283,7 +285,7 @@ test('右栏目录列正文的标题,点一条把它滚进视口', async ({ win,
   // Lower the window so this page really scrolls. Set the content height, not the outer frame: in a
   // frameless window the two differ only by a 1px border, and this test's premise, "the first heading is
   // above the viewport", measures the content area, so setting it directly keeps it from drifting.
-  await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]!.setContentSize(1200, 440))
+  await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]!.setContentSize(1200, 340))
   const agg = await aggFromCore(win, 'topics/ptq-weight-only')
   await gotoWiki(win)
   await shown(win).locator('[data-wk="topics/quantization"]').click()
@@ -364,7 +366,7 @@ test('细分:挂上已有的同类聚合,拿掉;新名字回车新建一页', as
   await shown(win).locator('.wkmain .section-heading', { hasText: '细分主题' }).locator('.btn').click()
   await expect(cards).toHaveCount(n + 1)
   await expect(cards.last()).toHaveClass(/\bnewcard\b/)
-  await expect(cards.last().locator('.pickin')).toHaveCount(1)
+  await expect(cards.last().locator('.inedit')).toHaveCount(1)
   await expect(cards.last().locator('.wkind')).toHaveClass(/\btag--wiki\b/)
   // The placeholder is a card: as wide and tall as the real card beside it, not a separate search box.
   const real = (await cards.nth(n - 1).boundingBox())!
@@ -374,7 +376,7 @@ test('细分:挂上已有的同类聚合,拿掉;新名字回车新建一页', as
   // The placeholder's footer is empty but still as tall as a real card's footer.
   expect((await cards.last().locator('.wf').boundingBox())!.height)
     .toBe((await cards.nth(n - 1).locator('.wf').boundingBox())!.height)
-  const row = shown(win).locator('.pickin')
+  const row = pickInput(win)
   await row.pressSequentially('KV cache')
   await expect(win.locator('.pickhits .rrow')).toHaveCount(1)
   await expect(row).toHaveAttribute('aria-busy', 'false')
@@ -392,14 +394,14 @@ test('细分:挂上已有的同类聚合,拿掉;新名字回车新建一页', as
   // Esc to remove the entire placeholder card
   await shown(win).locator('.wkmain .section-heading', { hasText: '细分主题' }).locator('.btn').click()
   await expect(cards).toHaveCount(n + 1)
-  await shown(win).locator('.pickin').press('Escape')
+  await pickInput(win).press('Escape')
   await expect(cards).toHaveCount(n)
 
   await shown(win).locator('.wkmain .section-heading', { hasText: '细分主题' }).locator('.btn').click()
-  await shown(win).locator('.pickin').pressSequentially('端到端新建的主题')
+  await pickInput(win).pressSequentially('端到端新建的主题')
   await expect(win.locator('.pickhits .rrow')).toHaveCount(0)
-  await expect(shown(win).locator('.pickin')).toHaveAttribute('aria-busy', 'false')
-  await shown(win).locator('.pickin').press('Enter')
+  await expect(pickInput(win)).toHaveAttribute('aria-busy', 'false')
+  await pickInput(win).press('Enter')
   await expect(cards).toHaveCount(n + 1)
   await shown(win).locator('.wkmain .wkgrid [data-wk="topics/端到端新建的主题"]').click()
   await expect(shown(win).locator('.desk-head .t')).toHaveText('端到端新建的主题')
@@ -433,21 +435,19 @@ test('论文对比:加一篇论文,拿掉;改列——改名生效,删有格子�
   await shown(win).locator('.wkmain .section-heading', { hasText: '论文对比' }).locator('[aria-label="添加论文"]').click()
   await expect(rows).toHaveCount(n + 1)
   await expect(rows.last()).toHaveClass(/\bnewrow\b/)
-  expect(await rows.last().locator('td:not(.rh):not(.rx)').allTextContents()).toEqual(agg.columns.map(() => '—'))
-  // The placeholder row matches the height of a one-line real row; the QuIP (papers/2307.13304) row does
-  // not wrap at the default window width, so it is the reference.
-  const quipIdx = agg.rows.findIndex((r) => r.paper.id === 'papers/2307.13304')
-  const real = (await rows.nth(quipIdx).boundingBox())!
+  expect(await rows.last().locator('td:not(.rh):not(.rx):not(.td-add)').allTextContents()).toEqual(agg.columns.map(() => '—'))
   const holder = (await rows.last().boundingBox())!
-  expect(Math.abs(holder.height - real.height)).toBeLessThan(0.5)
-  await shown(win).locator('.pickin').pressSequentially('QuaRot')
+  await pickInput(win).pressSequentially('QuaRot')
   await expect(win.locator('.pickhits .rrow').first()).toContainText('QuaRot')
-  await expect(shown(win).locator('.pickin')).toHaveAttribute('aria-busy', 'false')
-  await shown(win).locator('.pickin').press('Enter')
+  await expect(pickInput(win)).toHaveAttribute('aria-busy', 'false')
+  await pickInput(win).press('Enter')
   await expect(rows).toHaveCount(n + 1)
   await expect(shown(win).locator('table.cmp tbody tr.newrow')).toHaveCount(0)
   const added = shown(win).locator('table.cmp tbody tr', { hasText: 'QuaRot' })
-  expect(await added.locator('td:not(.rh):not(.rx)').allTextContents()).toEqual(agg.columns.map(() => '—'))
+  await expect(added.locator('td:not(.rh):not(.rx):not(.td-add)')).toHaveText(agg.columns.map(() => '—'))
+  // The placeholder row is as tall as the one-line row that takes its place, both the table's last row.
+  await expect(rows.last()).toHaveText(/QuaRot/)
+  expect(Math.abs((await added.boundingBox())!.height - holder.height)).toBeLessThan(0.5)
 
   await added.hover()
   await added.locator('td.rx').click()
@@ -521,7 +521,10 @@ test('内容列与卡片按窗口宽度分档:窄窗口 1080 与小卡,宽窗口
   expect(await tier()).toEqual({ pagew: '1560px', cardw: '320px' })
   expect((await grid.boundingBox())!.width).toBeGreaterThan(1500)
   // A wide window shows a three-line card summary.
-  await expect(shown(win).locator('.wkcard .wm').first()).toHaveCSS('-webkit-line-clamp', '3')
+  const wm = shown(win).locator('.wkcard .wm').first()
+  await expect(wm).toHaveCSS('overflow-y', 'hidden')
+  expect(await wm.evaluate((el) => { const cs = getComputedStyle(el); return parseFloat(cs.height) / parseFloat(cs.lineHeight) }))
+    .toBeCloseTo(3)
 })
 
 test('从别的屏再进 Wiki 落在首页,已经在 wiki 屏时再点侧栏也回到首页', async ({ win }) => {
@@ -559,7 +562,7 @@ test('论文对比:在表头末尾就地建一列,建完没有配置层', async 
   await expect(table.locator('thead th.th-new')).toHaveCount(1)
   // The placeholder column adds a blank cell to each body row too, or the body's cells would not line up.
   expect(await table.locator('tbody tr').first().locator('td').count())
-    .toBe(before.length + 2)
+    .toBe(before.length + 3)
   await table.locator('thead th.th-new input').fill('新列')
   await table.locator('thead th.th-new input').press('Enter')
   await expect.poll(heads).toEqual([...before, '新列'])
@@ -635,9 +638,9 @@ test('细分:名字里没有字母数字时占位与打好的字都留着', asyn
   // Only pure punctuation has no slug: slugOf keeps \p{L}, so Chinese characters stay as they are (see
   // slug.test.ts).
   await shown(win).locator('.wkmain .section-heading', { hasText: '细分主题' }).locator('.btn').click()
-  await shown(win).locator('.pickin').pressSequentially('!!!')
-  await expect(shown(win).locator('.pickin')).toHaveAttribute('aria-busy', 'false')
-  await shown(win).locator('.pickin').press('Enter')
+  await pickInput(win).pressSequentially('!!!')
+  await expect(pickInput(win)).toHaveAttribute('aria-busy', 'false')
+  await pickInput(win).press('Enter')
 
   // Rejected: the message shows in the refusal notice, and the placeholder card keeps the typed text so it can be
   // fixed in place and submitted again.
@@ -645,11 +648,11 @@ test('细分:名字里没有字母数字时占位与打好的字都留着', asyn
   await expect(shown(win).locator('.ipcerror')).toHaveCount(0)
   await expect(cards).toHaveCount(n + 1)
   await expect(cards.last()).toHaveClass(/\bnewcard\b/)
-  await expect(shown(win).locator('.pickin')).toHaveValue('!!!')
+  await expect(pickInput(win)).toHaveValue('!!!')
 
-  await shown(win).locator('.pickin').fill('kv paging')
-  await expect(shown(win).locator('.pickin')).toHaveAttribute('aria-busy', 'false')
-  await shown(win).locator('.pickin').press('Enter')
+  await pickInput(win).fill('kv paging')
+  await expect(pickInput(win)).toHaveAttribute('aria-busy', 'false')
+  await pickInput(win).press('Enter')
   await expect(shown(win).locator('.wkmain .wkgrid .newcard')).toHaveCount(0)
   await expect(cards).toHaveCount(n + 1)
   await expect(shown(win).locator('.wkmain .wkgrid [data-wk="topics/kv-paging"]')).toHaveCount(1)

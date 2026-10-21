@@ -21,7 +21,8 @@ const test = base.extend<{ app: ElectronApplication }>({
       cpSync(join(EXAMPLE, name), join(vault, 'wiki', name), { recursive: true })
     }
     const app = await electron.launch({
-      args: [APP_DIR],
+      // The specs assert Chinese copy, so the app must not follow the host's language.
+      args: [APP_DIR, '--lang=zh-CN'],
       env: {
         ...Object.fromEntries(Object.entries(process.env).filter((e): e is [string, string] => e[1] !== undefined)),
         MERIDIAN_VAULT_ROOT: vault,

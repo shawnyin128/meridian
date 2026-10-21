@@ -110,6 +110,9 @@ test('四档窗口下主内容随窗口变宽,比例不低于下限,不横向溢
     // A wide window uses the large card, with a three-line summary.
     await win.locator('[data-desk="wiki"]').click()
     await shown(win).locator('.wkgrid .wkcard').first().waitFor()
-    await expect(shown(win).locator('.wkcard .wm').first()).toHaveCSS('-webkit-line-clamp', wide ? '3' : '2')
+    const summary = shown(win).locator('.wkcard .wm').first()
+    await expect.poll(() => summary.evaluate((el) =>
+      el.getBoundingClientRect().height / parseFloat(getComputedStyle(el).lineHeight)))
+      .toBeCloseTo(wide ? 3 : 2)
   }
 })
