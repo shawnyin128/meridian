@@ -92,7 +92,7 @@ function AggregationCard({ card, onOpen, onRemove, pending }: {
         : (
           <RowActions>
             <IconButton
-              label={m.wiki.removeFromPage} size="inline" className="rx" aria-disabled={pending}
+              label={m.wiki.removeFromPage} size="nested" className="rx" aria-disabled={pending}
               onClick={(e) => { e.stopPropagation(); onRemove() }}
             ><IconCross /></IconButton>
           </RowActions>
@@ -218,7 +218,7 @@ function Table({ agg, onOpen, onAnchor, onRemove, pending, adding, head }: {
                   <td className="rx">
                     <RowActions>
                       <IconButton
-                        label={m.wiki.removeFromPage} size="inline" aria-disabled={pending}
+                        label={m.wiki.removeFromPage} size="nested" aria-disabled={pending}
                         onClick={() => onRemove(row.paper.id)}
                       ><IconCross /></IconButton>
                     </RowActions>

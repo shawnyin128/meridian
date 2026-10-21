@@ -77,7 +77,9 @@
 .wkcard{position:relative}
 .wkcard .row-actions{position:absolute;top:8px;right:8px}
 /* The row's × sits in its row-actions slot. */
-.cmp th.rx,.cmp td.rx{width:22px;padding-left:var(--sp-2);padding-right:var(--sp-2)}
+.cmp th.rx,.cmp td.rx{width:24px;padding-left:var(--sp-2);padding-right:var(--sp-2)}
+/* Its 24px button centres on the row's first line without making the row taller. */
+.cmp td.rx{padding-top:var(--sp-6);padding-bottom:0}
 .coledit{margin:var(--sp-6) 0 var(--sp-12);display:grid;gap:var(--sp-6);max-width:420px}
 .coledit .row{display:flex;gap:var(--sp-8);align-items:center}
 .coledit .acts{display:flex;gap:var(--sp-8);margin-top:var(--sp-4)}

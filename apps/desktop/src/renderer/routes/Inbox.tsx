@@ -209,38 +209,38 @@ export function Inbox() {
         {stream === 'discovery' ? (
           <>
             <IconButton
-              label={m.inbox.actions.more} pressed={p.feedback === 'more'} onClick={() => feedback(p.id, 'more')}
+              label={m.inbox.actions.more} size="nested" pressed={p.feedback === 'more'} onClick={() => feedback(p.id, 'more')}
             ><Icon><path d="M7 10v11H3V10h4zM7 19l4 2h6.5a2 2 0 0 0 2-1.7l1.2-7A2 2 0 0 0 18.7 10H14l1-4.2A2.3 2.3 0 0 0 12.8 3L7 10z" /></Icon></IconButton>
-            <IconButton label={m.inbox.actions.less} onClick={() => feedback(p.id, 'less')}>
+            <IconButton label={m.inbox.actions.less} size="nested" onClick={() => feedback(p.id, 'less')}>
               <Icon><path d="M7 14V3H3v11h4zM7 5l4-2h6.5a2 2 0 0 1 2 1.7l1.2 7a2 2 0 0 1-2 2.3H14l1 4.2a2.3 2.3 0 0 1-2.2 2.8L7 14z" /></Icon>
             </IconButton>
-            <IconButton label={m.inbox.actions.known} onClick={() => feedback(p.id, 'known')}>
+            <IconButton label={m.inbox.actions.known} size="nested" onClick={() => feedback(p.id, 'known')}>
               <IconSeen />
             </IconButton>
           </>
         ) : null}
         {p.downloaded
           ? (
-            <IconButton label={m.papers.rowActions.openReader} onClick={() => open('reader', p.paper)}>
+            <IconButton label={m.papers.rowActions.openReader} size="nested" onClick={() => open('reader', p.paper)}>
               <IconRead />
             </IconButton>
           )
           : busy.has(p.id)
             ? (
-              <IconButton label={m.later.actions.downloading} className="busy" disabled>
+              <IconButton label={m.later.actions.downloading} size="nested" className="busy" disabled>
                 <DownloadRing progress={jobs?.downloads?.find((item) => item.id === p.id) ?? null} />
               </IconButton>
             )
             : (
-              <IconButton label={m.inbox.actions.download} onClick={() => ingest(p.id)}>
+              <IconButton label={m.inbox.actions.download} size="nested" onClick={() => ingest(p.id)}>
                 <IconDownload />
               </IconButton>
             )}
-        <IconButton label={m.inbox.actions.readLater} onClick={() => queue(p.id)}>
+        <IconButton label={m.inbox.actions.readLater} size="nested" onClick={() => queue(p.id)}>
           <IconLater />
         </IconButton>
         {stream === 'watch' ? (
-          <IconButton label={m.inbox.actions.dismiss} onClick={() => dismiss([p.id], m.inbox.notices.dismissed)}>
+          <IconButton label={m.inbox.actions.dismiss} size="nested" onClick={() => dismiss([p.id], m.inbox.notices.dismissed)}>
             <IconTrash />
           </IconButton>
         ) : null}

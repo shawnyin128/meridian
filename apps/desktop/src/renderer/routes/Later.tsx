@@ -132,18 +132,18 @@ export function Later() {
                     <>
                     {busy.has(x.id)
                       ? (
-                        <IconButton label={m.later.actions.downloading} className="busy" disabled>
+                        <IconButton label={m.later.actions.downloading} size="nested" className="busy" disabled>
                           <DownloadRing progress={jobs?.downloads?.find((item) => item.id === x.id) ?? null} />
                         </IconButton>
                       )
                       : x.downloaded || x.pdf !== undefined
                         ? (
-                          <IconButton label={m.papers.rowActions.openReader} onClick={() => read(x)}>
+                          <IconButton label={m.papers.rowActions.openReader} size="nested" onClick={() => read(x)}>
                             <IconRead />
                           </IconButton>
                         )
                         : null}
-                    <IconButton label={m.later.actions.removeFrom} onClick={() => remove(x)}>
+                    <IconButton label={m.later.actions.removeFrom} size="nested" onClick={() => remove(x)}>
                       <IconCross />
                     </IconButton>
                     </>
