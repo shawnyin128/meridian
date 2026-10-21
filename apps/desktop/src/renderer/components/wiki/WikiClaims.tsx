@@ -76,8 +76,8 @@ export function ClaimSide({ item, title, point, links }: {
       return (
         <>
           <Tag>{c.evidence}</Tag>
-          <span>{paper} <SourceAnchor
-            page={item.page} quote={item.quote}
+          <span>{paper}<SourceAnchor
+            page={item.page} quote={item.quote} separator=" "
             onOpen={() => links.openReader(item.paper, { page: item.page, ...(item.highlight === undefined ? {} : { highlight: item.highlight }) })}
           /></span>
           <q className="wkclaim-quote">{item.quote}</q>

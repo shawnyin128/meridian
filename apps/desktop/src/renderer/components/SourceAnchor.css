@@ -1,1 +1,7 @@
 .source-anchor{font-variant-numeric:tabular-nums;white-space:nowrap}
+/*
+ * Chromium may break a line before a button even after a no-break space, so the anchor and its
+ * separator sit in one box that never wraps, and a word joiner ties that box to the character before it.
+ */
+.source-anchor-keep{white-space:nowrap}
+.source-anchor-keep::before{content:"\2060"}

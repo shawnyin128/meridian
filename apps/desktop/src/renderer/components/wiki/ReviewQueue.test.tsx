@@ -199,6 +199,14 @@ describe('ReviewQueue', () => {
     expect(links.openPage).toHaveBeenCalledWith('topics/sd')
   })
 
+  it('原文依据和归入的格子里,「 · 」连同锚点是一段不断行的内容,紧贴论文名或格子的值', () => {
+    const keeps = [...row('p1').querySelectorAll('.source-anchor'), ...row('p8').querySelectorAll('.source-anchor')]
+      .map((anchor) => anchor.parentElement!)
+    expect(keeps.map((keep) => [keep.className, keep.previousSibling?.textContent, keep.textContent])).toEqual([
+      ['source-anchor-keep', 'EAGLE-2', ' · p.7'], ['source-anchor-keep', 'EAGLE-2', ' · p.7'], ['source-anchor-keep', '3×', ' · p.2'],
+    ])
+  })
+
   it('依据里的项目和节点与触发它的一样时不另写一行;不一样或改动没有依据时,项目 · 节点留作提出者的来由', () => {
     for (const id of ['p1', 'p6']) expect(row(id).textContent, id).not.toContain('项目 draft 效率 · 节点')
     expect(row('p1').querySelector('.proposal-context')!.textContent).toBe('重跑了一遍')

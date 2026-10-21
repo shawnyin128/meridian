@@ -65,4 +65,18 @@ describe('SourceAnchor', () => {
     expect(tip()).toBeNull()
     bare.done()
   })
+
+  it('跟在文字后面时,锚点连同它前面的分隔是一段不断行的内容,紧贴那段文字的最后一个字', () => {
+    const host = document.createElement('p')
+    document.body.append(host)
+    const root = createRoot(host)
+    const parts = () => [...host.childNodes].map((node) => (node instanceof Element ? `${node.className}|${node.textContent}` : node.textContent))
+    act(() => root.render(<MessagesProvider>W4<SourceAnchor page={7} separator=" " onOpen={() => undefined} /></MessagesProvider>))
+    expect(parts()).toEqual(['W4', 'source-anchor-keep| p.7'])
+    act(() => root.render(<MessagesProvider>可忽略。<SourceAnchor page={7} onOpen={() => undefined} /></MessagesProvider>))
+    expect(parts()).toEqual(['可忽略。', 'source-anchor-keep|p.7'])
+    expect(host.querySelector('.source-anchor-keep > .source-anchor')).not.toBeNull()
+    act(() => root.unmount())
+    host.remove()
+  })
 })

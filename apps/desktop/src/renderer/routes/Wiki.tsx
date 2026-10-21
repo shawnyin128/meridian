@@ -138,7 +138,7 @@ function PaperCard({ paper, onOpen }: { paper: PaperRow; onOpen: () => void }) {
 
 /** A cell with an anchor: its value, then the anchor that opens the source at its page through `onAnchor`. */
 function Cell({ cell, onAnchor }: { cell: WikiCell; onAnchor: (page: number) => void }) {
-  return <>{cell.value} <SourceAnchor page={cell.page} quote={cell.quote} onOpen={() => onAnchor(cell.page)} /></>
+  return <>{cell.value}<SourceAnchor page={cell.page} quote={cell.quote} separator=" " onOpen={() => onAnchor(cell.page)} /></>
 }
 
 /** The body rows of the comparison table in `box`, in document order. */

@@ -239,6 +239,13 @@ describe('Wiki keyboard reach', () => {
     expect(fixture.open).toHaveBeenCalledWith('reader', 'p1', { page: 3 })
   })
 
+  it('比较表的格子先是值,再是一段不断行的「空格 + 锚点」,紧贴值的最后一个字', async () => {
+    await press(host.querySelector<HTMLElement>('[data-wk="topics/sd"] .tt')!)
+    const cell = host.querySelector<HTMLElement>('.cmp .source-anchor')!.closest('td')!
+    expect([...cell.childNodes].map((node) => (node instanceof Element ? `${node.className}|${node.textContent}` : node.textContent)))
+      .toEqual(['W4', 'source-anchor-keep| p.3'])
+  })
+
   it('论文页的「去论文列表查看」和「去阅读论文」都离开这一页,一起在屏头右端,分别到论文表里这篇和阅读器', async () => {
     expect(host.querySelector('.desk-head .page-actions')).toBeNull()
     await press(host.querySelector<HTMLElement>('[data-wk="papers/p1"] .tt')!)
@@ -255,7 +262,7 @@ describe('Wiki keyboard reach', () => {
   it('比较表格子里的锚点能用 Tab 停上去，悬停或聚焦都在共享 tooltip 里显示原文', async () => {
     await press(host.querySelector<HTMLElement>('[data-wk="topics/sd"] .tt')!)
     const anchor = host.querySelector<HTMLElement>('.cmp .source-anchor')!
-    expect([anchor.tabIndex, anchor.parentElement!.textContent]).toEqual([0, 'W4 p.3'])
+    expect([anchor.tabIndex, anchor.closest('td')!.textContent]).toEqual([0, 'W4 p.3'])
     act(() => {
       document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', bubbles: true }))
       anchor.focus()
