@@ -229,6 +229,8 @@ describe('Ideas', () => {
 
     await act(async () => { (independent as HTMLElement).click() })
     const independentDetail = host.querySelector('.idea-detail-panel')!
+    await act(async () => { independentDetail.querySelector<HTMLElement>('.idea-panel-source .entity-link')!.click() })
+    expect(api.open).toHaveBeenCalledWith('reader', 'paper-2')
     const promote = [...independentDetail.querySelectorAll<HTMLButtonElement>('button')]
       .find((item) => item.textContent === '转为项目')!
     await act(async () => { promote.click() })

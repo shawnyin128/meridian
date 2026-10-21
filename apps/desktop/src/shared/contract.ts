@@ -1372,10 +1372,23 @@ export const TrashPurgeParamsSchema = z.object({ id: z.string() }).strict()
 export const DiffPieceSchema = z.union([z.string(), z.object({ paper: z.string() }).strict()])
 
 /**
+ * The entity a recent-change title names, while it is in the vault: paper `id` (for a change to its
+ * reading notes, highlights or remark too), project `id` or Wiki page `id`, named by
+ * `title.slice(from, to)`.
+ */
+export const ChangeNamedSchema = z.object({
+  kind: z.enum(['paper', 'project', 'page']),
+  id: z.string(),
+  from: z.number().int(),
+  to: z.number().int(),
+}).strict()
+
+/**
  * Recent-change entry. `meta` is human-readable secondary text while `date`
  * drives day grouping. `source` distinguishes user and agent changes. Diff lines
  * begin with `+` or `-` and are the stored ones; `lines` are the same lines as
  * shown, in pieces, Wiki page ids named by their titles and paper titles marked.
+ * `named` is the entity the title names, which the entry opens.
  * `undone` records completed undo, while `undoable`
  * reflects current snapshot availability. Snapshots and fingerprints remain in
  * Core. `archived` means acknowledged and removes the entry from active counts,
@@ -1389,6 +1402,7 @@ export const ChangeEntrySchema = z.object({
   source: z.enum(['笔记', '实验', 'Meridian', '我']),
   diff: z.array(z.string()),
   lines: z.array(z.array(DiffPieceSchema)),
+  named: ChangeNamedSchema.optional(),
   undone: z.boolean(),
   undoable: z.boolean(),
   archived: z.boolean(),
@@ -1417,12 +1431,19 @@ export const ChangelogDeleteParamsSchema = z.object({ id: z.string() }).strict()
 
 /**
  * Feed-body run whose `kind` controls presentation: plain text, emphasized text,
- * or a citation to a vault conclusion or page.
+ * or a citation to a vault conclusion or page. This is the run this version writes.
  */
 export const FeedRunSchema = z.object({
   kind: z.enum(['text', 'strong', 'cite']),
   text: z.string(),
 }).strict()
+
+/**
+ * The entity a stored feed run names, by id: a `paper`, a `project` or a Wiki `page`. This version
+ * reads it and writes none. `kind` takes any string, so a run naming a kind a later version adds
+ * still reads, as its text.
+ */
+export const FeedTargetSchema = z.object({ kind: z.string(), id: z.string() }).strict()
 
 /**
  * Briefing item requiring attention. `tag`, `text`, and `action` supply display
@@ -1435,17 +1456,18 @@ export const FeedBriefItemSchema = z.object({
   action: z.string(),
 }).strict()
 
-/**
- * Feed entry body: either formatted runs or a brief summary with attention items.
- */
-export const FeedBodySchema = z.discriminatedUnion('kind', [
-  z.object({ kind: z.literal('runs'), runs: z.array(FeedRunSchema) }).strict(),
+/** Feed entry body of runs shaped by `run`: either formatted runs or a brief summary with attention items. */
+const feedBody = <Run extends z.ZodType>(run: Run) => z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('runs'), runs: z.array(run) }).strict(),
   z.object({
     kind: z.literal('brief'),
     heading: z.string(),
     items: z.array(FeedBriefItemSchema),
   }).strict(),
 ])
+
+/** Feed entry body as stored: a run may also hold the entity it names. */
+export const FeedBodySchema = feedBody(FeedRunSchema.extend({ target: FeedTargetSchema.optional() }).strict())
 
 /**
  * Feed entry. `source` is both provenance and filter key; `day` selects the
@@ -2089,8 +2111,12 @@ export const SearchHitSchema = z.object({
 
 export const SearchParamsSchema = z.object({ query: z.string() }).strict()
 
-/** Feed creation accepts source and body; Core supplies ID, date section, and time from the vault date. */
+/**
+ * Feed creation accepts source and body, whose runs name no entity; Core supplies ID, date section,
+ * and time from the vault date.
+ */
 export const FeedAppendParamsSchema = FeedEntrySchema.omit({ id: true, day: true, time: true })
+  .extend({ body: feedBody(FeedRunSchema) })
 
 /** Creates a conclusion with optional originating chat and referenced paper. */
 export const ProjectCreateConclusionParamsSchema = z.object({

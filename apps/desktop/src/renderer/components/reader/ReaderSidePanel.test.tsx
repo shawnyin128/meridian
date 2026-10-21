@@ -12,6 +12,7 @@ vi.mock('../../ipc.js', () => ({
   project: { list: () => new Promise(() => {}), addPaper: vi.fn(), removePaper: vi.fn() },
 }))
 vi.mock('../../shell/AppShell.js', () => ({
+  useJump: () => ({ jump: null, open: vi.fn() }),
   useNotice: () => ({ success: vi.fn(), refusal: vi.fn() }),
   useVaultRevision: () => ({ revision: 0, bump: vi.fn() }),
   useSettingsOpen: () => ({ open: false, openCategory: vi.fn() }),

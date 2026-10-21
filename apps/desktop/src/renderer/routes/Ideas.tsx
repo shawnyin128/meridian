@@ -124,7 +124,7 @@ function IdeaDetailPanel({ idea, linked, projects, onClose, onSave, onProject, o
   onSave: (title: string, body: string) => Promise<boolean>
   onProject: (projectId: string | null) => void
   onPromote: () => void
-  onOpen: (screen: 'project' | 'chat', id: string) => void
+  onOpen: (screen: 'project' | 'chat' | 'reader', id: string) => void
 }) {
   const m = useMessages()
   const panelFade = useScrollFade('y')
@@ -171,6 +171,7 @@ function IdeaDetailPanel({ idea, linked, projects, onClose, onSave, onProject, o
     <aside className="idea-detail-panel node-document-pane" ref={panelFade} data-fade-paint="" aria-label={m.ideas.detailHeading}>
       <IdeaPanel
         idea={idea} onClose={onClose} onOpenSourceChat={(chatId) => onOpen('chat', chatId)}
+        onOpenSourcePaper={(paperId) => onOpen('reader', paperId)}
         actions={(
           <EditActions
             editing={editing} saving={busy} canSave={title.trim() !== '' && body.trim() !== ''}

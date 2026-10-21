@@ -85,6 +85,21 @@ describe('IdeaPanel', () => {
     expect(onOpenSourceChat).toHaveBeenCalledWith('chat-1')
   })
 
+  it('给了打开论文的去处时，来源里的论文名是链接，点它打开那篇论文；对话名不是链接，没给去处时论文名也不是', () => {
+    const onOpenSourcePaper = vi.fn()
+    act(() => root.render(<MessagesProvider><IdeaPanel idea={IDEA} onClose={vi.fn()} /></MessagesProvider>))
+    expect(host.querySelector('.idea-panel-source a, .idea-panel-source button')).toBeNull()
+    act(() => root.render(
+      <MessagesProvider><IdeaPanel idea={IDEA} onClose={vi.fn()} onOpenSourcePaper={onOpenSourcePaper} /></MessagesProvider>,
+    ))
+    const source = host.querySelector('.idea-panel-source')!
+    expect(source.textContent).toBe('EAGLE-2 · 论文讨论')
+    expect([...source.querySelectorAll('a, button')].map((link) => [link.tagName, link.className, link.textContent]))
+      .toEqual([['A', 'entity-link entity-link--paper', 'EAGLE-2']])
+    act(() => source.querySelector<HTMLElement>('.entity-link')!.click())
+    expect(onOpenSourcePaper).toHaveBeenCalledWith('p1')
+  })
+
   it('来源里的论文名和对话名按论文文本显示，不露 LaTeX 源码', () => {
     const latex = { ...IDEA, source: { ...IDEA.source, chatTitle: 'H$_2$O 的讨论', paperTitle: 'H$_2$O: Heavy-Hitter Oracle' } }
     act(() => root.render(<MessagesProvider><IdeaPanel idea={latex} onClose={vi.fn()} /></MessagesProvider>))

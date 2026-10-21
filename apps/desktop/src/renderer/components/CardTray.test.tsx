@@ -52,4 +52,23 @@ describe('CardTray', () => {
     act(() => toggle.click())
     expect(toggle.getAttribute('aria-expanded')).toBe('true')
   })
+
+  it('a composite row keeps the control in its summary out of the toggle, which the summary names and which comes before the control', () => {
+    const onOpen = vi.fn()
+    act(() => root.render(
+      <CardTray variant="row" composite summary={<>Renamed <a href="#project:draft" onClick={onOpen}>Draft</a></>}>
+        <p>diff</p>
+      </CardTray>,
+    ))
+    const toggle = host.querySelector<HTMLButtonElement>('.card-tray-toggle')!
+    const summary = host.querySelector<HTMLElement>('.card-tray-summary')!
+    const link = summary.querySelector('a')!
+    expect(toggle.contains(summary)).toBe(false)
+    expect(document.getElementById(toggle.getAttribute('aria-labelledby')!)).toBe(summary)
+    expect(toggle.compareDocumentPosition(link) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    act(() => link.click())
+    expect([onOpen.mock.calls.length, toggle.getAttribute('aria-expanded')]).toEqual([1, 'false'])
+    act(() => toggle.click())
+    expect(toggle.getAttribute('aria-expanded')).toBe('true')
+  })
 })
