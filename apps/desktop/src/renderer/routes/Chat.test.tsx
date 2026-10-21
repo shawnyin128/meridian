@@ -26,6 +26,7 @@ const api = vi.hoisted(() => ({
   create: vi.fn<(title: string, named: boolean) => Promise<ChatSession>>(),
   recordAction: vi.fn<() => Promise<{ id: string; name: string }>>(),
   feedAppend: vi.fn(() => Promise.resolve()),
+  createIdea: vi.fn(() => Promise.resolve({ id: 'idea-1' })),
 }))
 
 const session = vi.hoisted(() => ({ id: 'chat-1', revision: 0 }))
@@ -39,7 +40,7 @@ const resized: (() => void)[] = []
 vi.mock('../ipc.js', () => ({
   chat: { send: api.send, messages: api.messages, cancel: api.cancel, create: api.create, recordAction: api.recordAction },
   feed: { append: api.feedAppend },
-  idea: { create: vi.fn() },
+  idea: { create: api.createIdea },
   papers: { list: api.listPapers },
   project: { list: api.listProjects },
   wiki: { cards: () => Promise.resolve([]) },
@@ -63,8 +64,10 @@ vi.mock('../hooks/useVaultWrite.js', () => ({
 
 const { Chat } = await import('./Chat.js')
 
-function setValue(input: HTMLTextAreaElement, value: string): void {
-  Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value')!.set!.call(input, value)
+function setValue(input: HTMLInputElement | HTMLTextAreaElement, value: string): void {
+  const prototype = input instanceof window.HTMLTextAreaElement ? window.HTMLTextAreaElement.prototype
+    : window.HTMLInputElement.prototype
+  Object.getOwnPropertyDescriptor(prototype, 'value')!.set!.call(input, value)
   input.dispatchEvent(new Event('input', { bubbles: true }))
 }
 
@@ -286,6 +289,61 @@ describe('Chat composer', () => {
     expect(save.parentElement!.lastElementChild).toBe(save)
     expect([save.disabled, save.previousElementSibling?.textContent]).toEqual([true, '尚无讨论'])
     expect(document.querySelector('.qsep')).toBeNull()
+  })
+
+  /** Shows the chat `id` holding one message of yours, as the shell does when that chat is picked. */
+  const showChat = async (id: string) => {
+    session.id = id
+    session.revision += 1
+    api.messages.mockResolvedValueOnce([{ id: 'm1', role: 'you', runs: [{ kind: 'text', text: '先讨论机制' }], actions: [] }])
+    await act(async () => {
+      root!.render(<MessagesProvider><Chat /></MessagesProvider>)
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+  }
+  const ideaDraft = () => document.querySelector<HTMLElement>('.idea-draft')
+  const keyIn = (target: Element, key: string, init: KeyboardEventInit = {}) => act(() => {
+    target.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true, ...init }))
+  })
+
+  it('保存为想法在最后一条消息下面就地打开草稿,不弹对话框,标明落到想法和它的来源,焦点在标题', async () => {
+    await showChat('chat-1')
+    act(() => document.querySelector<HTMLButtonElement>('#qaIdea')!.click())
+    expect(document.querySelector('[role="dialog"]')).toBeNull()
+    const msgs = document.querySelector('.msgs')!
+    expect(msgs.lastElementChild!.contains(ideaDraft())).toBe(true)
+    expect(msgs.lastElementChild!.previousElementSibling!.textContent).toContain('先讨论机制')
+    expect(ideaDraft()!.querySelector('.draft-form-destination')!.textContent).toBe('→想法')
+    expect(ideaDraft()!.querySelector('.idea-draft-source')!.textContent).toBe('来源：讨论')
+    expect(document.activeElement).toBe(ideaDraft()!.querySelector('input'))
+  })
+
+  it('想法草稿在正文上按 ⌘Enter 经 idea.create 存进这条对话的想法;Esc 收起,什么也不存', async () => {
+    await showChat('chat-1')
+    act(() => document.querySelector<HTMLButtonElement>('#qaIdea')!.click())
+    act(() => setValue(ideaDraft()!.querySelector('input')!, '批大小拐点'))
+    act(() => setValue(ideaDraft()!.querySelector('textarea')!, '验证最优批大小是否随推理深度稳定迁移。'))
+    keyIn(ideaDraft()!.querySelector('textarea')!, 'Enter')
+    expect(api.createIdea).not.toHaveBeenCalled()
+    await act(async () => { keyIn(ideaDraft()!.querySelector('textarea')!, 'Enter', { metaKey: true }); await Promise.resolve() })
+    expect(api.createIdea).toHaveBeenCalledWith('chat-1', '批大小拐点', '验证最优批大小是否随推理深度稳定迁移。')
+    expect(ideaDraft()).toBeNull()
+
+    act(() => document.querySelector<HTMLButtonElement>('#qaIdea')!.click())
+    keyIn(ideaDraft()!.querySelector('input')!, 'Escape')
+    expect(ideaDraft()).toBeNull()
+    expect(api.createIdea).toHaveBeenCalledOnce()
+  })
+
+  it('想法草稿留在它的对话上:换一条对话时不跟过去,回来时还在', async () => {
+    await showChat('chat-1')
+    act(() => document.querySelector<HTMLButtonElement>('#qaIdea')!.click())
+    act(() => setValue(ideaDraft()!.querySelector('input')!, '只属于这条对话'))
+    await showChat('chat-2')
+    expect(ideaDraft()).toBeNull()
+    await showChat('chat-1')
+    expect(ideaDraft()!.querySelector('input')!.value).toBe('只属于这条对话')
   })
 
   it('快捷引用的名字被截断时，悬停在共享 tooltip 里显示全名，放得下时不弹', () => {

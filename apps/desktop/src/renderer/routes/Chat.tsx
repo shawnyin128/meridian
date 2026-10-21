@@ -28,7 +28,7 @@ import { useNoModelChats } from '../hooks/useNoModelChats.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
 import { CONFLICT_THREAD, sendsMessage } from '../lib/chat.js'
 import { composing } from '../lib/keyboard.js'
-import { IdeaEditorDialog } from '../components/ideas/IdeaEditorDialog.js'
+import { IdeaDraft, type IdeaDraftText } from '../components/ideas/IdeaDraft.js'
 import { GenerationControl } from '../components/GenerationControl.js'
 import { FadeText } from '../components/FadeText.js'
 import { Toolbar, ToolbarButton } from '../components/Toolbar.js'
@@ -114,7 +114,9 @@ export function Chat() {
   const drafts = useDrafts()
   // The `@` picker, like the draft, belongs to the chat it was opened in.
   const [mentionIn, setMentionIn] = useState<string | null>(null)
-  const [savingIdea, setSavingIdea] = useState(false)
+  // An idea being drafted belongs to its chat, as the message being typed does.
+  const ideaDrafts = useDrafts<IdeaDraftText>()
+  const ideaAt = useRef<HTMLDivElement>(null)
   const { running, run, stop } = useGenerations()
   const { noModel, track } = useNoModelChats()
   const [projects, setProjects] = useState<ProjectSummary[]>([])
@@ -128,6 +130,7 @@ export function Chat() {
   const reportError = useCallback((e: unknown) => setError(errorLabel(m, e)), [m])
   const write = useVaultWrite()
   const draft = id === null ? '' : drafts.get(id) ?? ''
+  const ideaDraft = id === null ? undefined : ideaDrafts.get(id)
   const mentioning = id !== null && mentionIn === id
   const sending = id !== null && running(id)
 
@@ -222,6 +225,12 @@ export function Chat() {
   }
   const hasDiscussion = (messages ?? []).some((message) => message.role === 'you')
 
+  const startIdea = () => {
+    if (id === null) return
+    if (ideaDraft === undefined) ideaDrafts.set(id, { title: '', body: '' })
+    else ideaAt.current?.querySelector<HTMLElement>('.form-control')?.focus()
+  }
+
   // An archived chat is not listed in the sidebar. Once opened it looks like any other chat; only
   // the breadcrumb marks it as archived.
   const tail = useMemo<CrumbSeg[]>(
@@ -249,6 +258,20 @@ export function Chat() {
                 : messages.map((msg) => (
                   <ChatMessageView key={msg.id} message={msg} onAct={() => act(msg)} />
                 ))}
+            {id === null || ideaDraft === undefined
+              ? null
+              : (
+                <div className="mwrap" ref={ideaAt}>
+                  <IdeaDraft
+                    source={title === null ? m.chat.currentChat : plainTitle(title)} draft={ideaDraft}
+                    onChange={(next) => ideaDrafts.set(id, next)} onCancel={() => ideaDrafts.drop(id)}
+                    onSave={(ideaTitle, body) => write(ideaApi.create(id, ideaTitle, body), {
+                      note: m.chat.ideaSavedNote,
+                      action: (idea) => ({ label: m.common.open, onAction: () => open('ideas', idea.id) }),
+                    }).then((saved) => { if (saved) ideaDrafts.drop(id) })}
+                  />
+                </div>
+              )}
           </div>
         </div>
       </PageBody>
@@ -273,7 +296,7 @@ export function Chat() {
                 {hasDiscussion ? null : <Tag>{m.chat.noDiscussion}</Tag>}
                 <ToolbarButton
                   className="btn ghost sm save-idea" id="qaIdea" disabled={id === null || !hasDiscussion}
-                  onClick={() => setSavingIdea(true)}
+                  onClick={startIdea}
                 >{m.chat.saveIdeaLabel}</ToolbarButton>
               </div>
             </Toolbar>
@@ -327,15 +350,6 @@ export function Chat() {
         </div>
       </PageFooter>
 
-      {id === null ? null : (
-        <IdeaEditorDialog
-          open={savingIdea} sourceLabel={title === null ? m.chat.currentChat : plainTitle(title)} onOpenChange={setSavingIdea}
-          onSubmit={(ideaTitle, body) => write(ideaApi.create(id, ideaTitle, body), {
-            note: m.chat.ideaSavedNote,
-            action: (idea) => ({ label: m.common.open, onAction: () => open('ideas', idea.id) }),
-          })}
-        />
-      )}
     </PageShell>
   )
 }
