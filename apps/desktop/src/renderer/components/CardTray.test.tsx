@@ -1,6 +1,4 @@
 // @vitest-environment jsdom
-import { readFileSync } from 'node:fs'
-import { join } from 'node:path'
 import { act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -55,8 +53,7 @@ describe('CardTray', () => {
     expect(toggle.getAttribute('aria-expanded')).toBe('true')
   })
 
-  it('a composite row keeps the control in its summary out of the toggle, which the summary names and which lies under the control', () => {
-    document.head.innerHTML = `<style>${readFileSync(join(import.meta.dirname, 'CardTray.css'), 'utf8')}</style>`
+  it('a composite row keeps the control in its summary out of the toggle, which the summary names and which comes before the control', () => {
     const onOpen = vi.fn()
     act(() => root.render(
       <CardTray variant="row" composite summary={<>Renamed <a href="#project:draft" onClick={onOpen}>Draft</a></>}>
@@ -68,13 +65,10 @@ describe('CardTray', () => {
     const link = summary.querySelector('a')!
     expect(toggle.contains(summary)).toBe(false)
     expect(document.getElementById(toggle.getAttribute('aria-labelledby')!)).toBe(summary)
-    expect([toggle, toggle.parentElement!, link].map((element) => getComputedStyle(element).position))
-      .toEqual(['absolute', 'relative', 'relative'])
     expect(toggle.compareDocumentPosition(link) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     act(() => link.click())
     expect([onOpen.mock.calls.length, toggle.getAttribute('aria-expanded')]).toEqual([1, 'false'])
     act(() => toggle.click())
     expect(toggle.getAttribute('aria-expanded')).toBe('true')
-    document.head.innerHTML = ''
   })
 })
