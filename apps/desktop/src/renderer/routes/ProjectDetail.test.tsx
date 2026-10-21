@@ -278,7 +278,7 @@ describe('project idea panel', () => {
     const on = handlers()
     const panel = mount(<ProjectIdeaPanel idea={idea} graph={graph} workspaceManaged {...on} />)
     const actions = panel.host.querySelector('.node-document-head > .section-heading-actions')!
-    // Like the paper detail's 开始阅读, opening elsewhere from a panel head is an icon button.
+    // Like the paper detail's read action, opening elsewhere from a panel head is an icon button.
     expect([...actions.querySelectorAll('button')].map((b) => [b.getAttribute('aria-label'), b.className]))
       .toEqual([['打开想法', 'icbtn project-idea-open-idea'], ['收起详情', 'icbtn panel-close']])
     expect(panel.button('打开来源对话')).toBeUndefined()

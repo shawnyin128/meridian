@@ -201,7 +201,7 @@ describe('Settings', () => {
       setter.call(limit, '12')
       limit.dispatchEvent(new Event('input', { bubbles: true }))
     })
-    // Like 保存配置, the card's save sits at the end of its foot, and says it saved in place.
+    // Like the model card's save, it sits at the end of the card's foot and says it saved in place.
     const save = dialog.querySelector<HTMLButtonElement>('.delivery-settings-card > .service-foot > .service-actions > .btn')!
     expect(dialog.querySelector('.delivery-setting-control .btn')).toBeNull()
     await act(async () => { save.click() })
