@@ -262,7 +262,17 @@ describe('project idea panel', () => {
     return { host, button, headingActions, pick, unmount: () => { act(() => root.unmount()); vi.unstubAllGlobals() } }
   }
   const handlers = () => ({
-    onClose: vi.fn(), onOpenIdea: vi.fn(), onCreateNode: vi.fn(), onOpenNode: vi.fn(), onSetNode: vi.fn(),
+    onClose: vi.fn(), onOpenIdea: vi.fn(), onOpenPaper: vi.fn(), onCreateNode: vi.fn(), onOpenNode: vi.fn(), onSetNode: vi.fn(),
+  })
+
+  it('opens the paper the idea came from through its name in the source', () => {
+    const on = handlers()
+    const panel = mount(
+      <ProjectIdeaPanel idea={{ ...idea, source: { ...idea.source, paperId: 'p1', paperTitle: 'EAGLE-2' } }} graph={graph} workspaceManaged {...on} />,
+    )
+    act(() => panel.host.querySelector<HTMLElement>('.idea-panel-source .entity-link')!.click())
+    expect(on.onOpenPaper).toHaveBeenCalledWith('p1')
+    panel.unmount()
   })
 
   it('shows the shared idea panel: the head, the content, the research node, then the source', () => {

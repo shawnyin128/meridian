@@ -96,13 +96,14 @@ export function WorkspaceRoot({ state, name, root, onOpen }: {
 }
 
 export function ProjectIdeaPanel({
-  idea, graph, workspaceManaged, onClose, onOpenIdea, onCreateNode, onOpenNode, onSetNode,
+  idea, graph, workspaceManaged, onClose, onOpenIdea, onOpenPaper, onCreateNode, onOpenNode, onSetNode,
 }: {
   idea: ResearchIdea
   graph: ResearchGraphData
   workspaceManaged: boolean
   onClose: () => void
   onOpenIdea: () => void
+  onOpenPaper: (paperId: string) => void
   onCreateNode: () => void
   onOpenNode: (nodeId: string) => void
   onSetNode: (nodeId: string | null) => void
@@ -111,7 +112,7 @@ export function ProjectIdeaPanel({
   const linkedNode = graph.nodes.find((node) => node.id === idea.node)
   return (
     <IdeaPanel
-      idea={idea} onClose={onClose}
+      idea={idea} onClose={onClose} onOpenSourcePaper={onOpenPaper}
       actions={(
         <IconButton label={m.project.idea.openIdea} className="project-idea-open-idea" onClick={onOpenIdea}>
           <IconOpen />
@@ -882,6 +883,7 @@ export function ProjectDetail({
                   workspaceManaged={project.workspace !== undefined}
                   onClose={clearIdea}
                   onOpenIdea={() => jumpTo('ideas', selectedIdea.id)}
+                  onOpenPaper={(paperId) => jumpTo('reader', paperId)}
                   onCreateNode={() => setIdeaGraphDialog(selectedIdea.id)}
                   onOpenNode={(nodeId) => {
                     onRecord('graph')
