@@ -20,6 +20,8 @@ const fixture = vi.hoisted(() => ({
   platform: 'darwin',
   fullScreen: [] as ((on: boolean) => void)[],
   today: () => Promise.resolve('2026-10-18'),
+  /** What the native menu's Command Palette item sends, once the shell has subscribed to it. */
+  openPalette: null as (() => void) | null,
 }))
 
 const none = () => Promise.resolve([])
@@ -27,6 +29,10 @@ const none = () => Promise.resolve([])
 vi.mock('../ipc.js', () => ({
   appMenu: {
     onOpenSettings: () => () => {}, onOpenAgentTutorial: () => () => {}, platform: () => fixture.platform,
+    onOpenPalette: (handler: () => void) => {
+      fixture.openPalette = handler
+      return () => { fixture.openPalette = null }
+    },
     onFullScreen: (handler: (on: boolean) => void) => {
       fixture.fullScreen.push(handler)
       return () => { fixture.fullScreen.splice(fixture.fullScreen.indexOf(handler), 1) }
@@ -608,9 +614,9 @@ function JumpProbe({ id }: { id: string }) {
 
 describe('AppShell command palette', () => {
   const palette = () => document.querySelector('.cmdk')
-  /** Opens the palette with ⌘K and chooses the command row labelled `label`. */
+  /** Opens the palette from the native menu and chooses the command row labelled `label`. */
   const run = (label: string) => {
-    press('k', { metaKey: true })
+    act(() => fixture.openPalette!())
     const row = [...document.querySelectorAll<HTMLElement>('.cmdk .rrow')].find((r) => r.textContent?.startsWith(label))!
     act(() => { row.click() })
   }
@@ -619,21 +625,38 @@ describe('AppShell command palette', () => {
   beforeEach(() => { HTMLElement.prototype.scrollIntoView = () => {} })
   afterEach(() => { delete (HTMLElement.prototype as Partial<HTMLElement>).scrollIntoView })
 
-  it('opens over the current screen with ⌘K on macOS and closes with it again; Ctrl+K opens it elsewhere', async () => {
+  it('opens over the current screen from the native menu\'s 命令面板…, and ⌘K or Ctrl+K opens nothing', async () => {
     await mount()
+    press('k', { metaKey: true })
     press('k', { ctrlKey: true })
     expect(palette()).toBeNull()
-    press('k', { metaKey: true })
+    act(() => fixture.openPalette!())
     expect(palette()).not.toBeNull()
     expect(document.activeElement?.id).toBe('cmdkq')
-    press('k', { metaKey: true })
-    expect(palette()).toBeNull()
+  })
+
+  it('lists 命令面板… after 设置… in the App menu with ⇧⌘P on macOS and Ctrl+Shift+P elsewhere, and opens the palette from it', async () => {
+    /** Opens the title bar's App menu and returns each item's label and shortcut. */
+    const openMenu = () => {
+      act(() => {
+        document.querySelector('.appbtn')!.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, button: 0 }))
+      })
+      return [...document.querySelectorAll('[data-appmenu] .mi')].map((item) => item.textContent)
+    }
+    await mount()
+    expect(openMenu().slice(0, 2)).toEqual(['设置…⌘,', '命令面板…⇧⌘P'])
+    const item = [...document.querySelectorAll<HTMLElement>('[data-appmenu] .mi')].find((mi) => mi.textContent?.startsWith('命令面板'))!
+    await act(async () => {
+      item.click()
+      await new Promise((done) => setTimeout(done, 20))
+    })
+    expect(document.querySelector('[data-appmenu]')).toBeNull()
+    expect(palette()).not.toBeNull()
 
     act(() => root!.unmount())
     fixture.platform = 'win32'
     await mount()
-    press('k', { ctrlKey: true })
-    expect(palette()).not.toBeNull()
+    expect(openMenu().slice(0, 2)).toEqual(['设置…Ctrl+,', '命令面板…Ctrl+Shift+P'])
     fixture.platform = 'darwin'
   })
 

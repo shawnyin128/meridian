@@ -49,6 +49,8 @@ export const appMenu = {
   onOpenSettings: (handler: () => void) => window.meridian.onOpenSettings(handler),
   /** Open the Skill and MCP tutorial from the native Help menu. */
   onOpenAgentTutorial: (handler: () => void) => window.meridian.onOpenAgentTutorial(handler),
+  /** Open the command palette from the native menu, whose accelerator is the palette's shortcut. */
+  onOpenPalette: (handler: () => void) => window.meridian.onOpenPalette(handler),
   /** Open the system directory selector. The page only gets the final path, not any Electron channel. */
   chooseLibraryRoot: () => window.meridian.chooseLibraryRoot(),
   /** Open the system directory selector and connect the code workspace to a project. */

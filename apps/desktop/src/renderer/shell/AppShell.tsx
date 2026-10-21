@@ -19,7 +19,6 @@ import { commandShortcut, composing } from '../lib/keyboard.js'
 import type { Catalog } from '../messages/catalog.js'
 import { useMessages } from '../messages/useMessages.js'
 import { CommandPalette, type PaletteCommand } from './CommandPalette.js'
-import { openHit } from './SearchBox.js'
 import { Sidebar } from './Sidebar.js'
 import { JobsContext, useJobsPoll } from './useJobs.js'
 import brandmark from '../../../resources/mark-64.png'
@@ -396,7 +395,7 @@ export function AppShell({ screens, settings }: {
   /** Focus before the app menu opened, restored on close; when null, Radix returns focus to the logo button. */
   const appMenuOpener = useRef<HTMLElement | null>(null)
   // The dialog a menu item asked for, opened only once the menu has closed and handed focus back.
-  const wantDialog = useRef<'settings' | 'about' | null>(null)
+  const wantDialog = useRef<'settings' | 'palette' | 'about' | null>(null)
   const [aboutOpen, setAboutOpen] = useState(false)
   const [paletteOpen, setPaletteOpen] = useState(false)
 
@@ -442,6 +441,9 @@ export function AppShell({ screens, settings }: {
 
   // "Settings…" in the app menu: the main process sends a message; the open state stays in the page.
   useEffect(() => appMenu.onOpenSettings(() => setSettingsOpen(true)), [])
+
+  // "Command Palette…" in the native menu, whose accelerator is the palette's shortcut.
+  useEffect(() => appMenu.onOpenPalette(() => setPaletteOpen(true)), [])
 
   // Help owns one stable entry into the same Extensions surface that reports installation state.
   useEffect(() => appMenu.onOpenAgentTutorial(() => {
@@ -489,19 +491,13 @@ export function AppShell({ screens, settings }: {
     openCategory: openSettingsCategory,
   }), [settingsCategory, settingsOpen, openSettingsCategory])
 
-  // Ctrl+B / Cmd+B toggles the sidebar; the platform's command key with K opens and closes the
-  // command palette; Escape peels the topmost dismissible layer; "/" outside an editable element
-  // jumps to the nearest search field.
+  // Ctrl+B / Cmd+B toggles the sidebar; Escape peels the topmost dismissible layer; "/" outside an
+  // editable element jumps to the nearest search field.
   useEffect(() => {
     const key = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && (e.key === 'b' || e.key === 'B')) {
         e.preventDefault()
         setHidden((h) => !h)
-        return
-      }
-      if ((appMenu.platform() === 'darwin' ? e.metaKey : e.ctrlKey) && (e.key === 'k' || e.key === 'K')) {
-        e.preventDefault()
-        setPaletteOpen((open) => !open)
         return
       }
       if (e.key === 'Escape' && !e.defaultPrevented && !composing(e)) {
@@ -722,12 +718,16 @@ export function AppShell({ screens, settings }: {
                 const wanted = wantDialog.current
                 wantDialog.current = null
                 if (wanted === 'settings') setSettingsOpen(true)
+                if (wanted === 'palette') setPaletteOpen(true)
                 if (wanted === 'about') setAboutOpen(true)
               },
           }}
         >
           <MenuItem onSelect={() => { wantDialog.current = 'settings' }}>
             {m.shell.titlebar.settings}<span className="mi-key">{commandShortcut(appMenu.platform(), ',')}</span>
+          </MenuItem>
+          <MenuItem onSelect={() => { wantDialog.current = 'palette' }}>
+            {m.shell.titlebar.palette}<span className="mi-key">{commandShortcut(appMenu.platform(), 'P', true)}</span>
           </MenuItem>
           <MenuItem onSelect={() => {
             void appUpdates.check()
@@ -739,9 +739,7 @@ export function AppShell({ screens, settings }: {
           <MenuItem onSelect={() => { wantDialog.current = 'about' }}>{m.shell.titlebar.about}</MenuItem>
         </ActionMenu>
         <AboutDialog open={aboutOpen} onOpenChange={setAboutOpen} />
-        <CommandPalette
-          open={paletteOpen} onOpenChange={setPaletteOpen} commands={commands} onHit={(hit) => openHit(hit, jumps.open)}
-        />
+        <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} commands={commands} />
         <div className="crumb" id="crumb">
           {parts.map((p, i) => {
             // As in the demo, only .cseg.link gets a handler: the last segment is the current position.

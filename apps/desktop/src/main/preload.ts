@@ -72,6 +72,11 @@ contextBridge.exposeInMainWorld('meridian', {
     ipcRenderer.on('meridian:open-agent-tutorial', relay)
     return () => { ipcRenderer.off('meridian:open-agent-tutorial', relay) }
   },
+  onOpenPalette(handler: () => void): () => void {
+    const relay = () => handler()
+    ipcRenderer.on('meridian:open-palette', relay)
+    return () => { ipcRenderer.off('meridian:open-palette', relay) }
+  },
   chooseLibraryRoot(): Promise<string | null> {
     return ipcRenderer.invoke('meridian:choose-library-root') as Promise<string | null>
   },
