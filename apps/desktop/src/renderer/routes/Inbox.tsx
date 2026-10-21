@@ -23,18 +23,20 @@ import { LoadingPlaceholder } from '../components/LoadingPlaceholder.js'
 import { plainTitle } from '../components/paper/paper-text.js'
 import { CollapsibleGroup } from '../components/CollapsibleGroup.js'
 import { DateTimeDisplay } from '../components/DateTimeDisplay.js'
-import { SegmentedControl } from '../components/SegmentedControl.js'
+import { SortMenu } from '../components/SortMenu.js'
 import { Tag } from '../components/Tag.js'
 import { useUndo } from '../hooks/useUndo.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
 import { shownSource } from '../lib/watch-source.js'
 import {
-  PageBody, PageError, PageHeader, PageShell, PageTitle, PageToolbar,
+  PageBody, PageError, PageHeader, PageShell, PageTitle,
 } from '../components/PageShell.js'
 import './shell.css'
 
 /** The demo's `.pcard` slide-away: the vault is written only after the card has slid away this long. */
 const LEAVE_MS = 260
+
+const SORTS = ['recommended', 'latest', 'published', 'impact'] as const
 
 /** A watch's label in the Inbox, kind · name, as in the demo's WATCHES. */
 const label = (w: Watch, watchKind: Record<Watch['type'], string>) => `${watchKind[w.type]} · ${w.name}`
@@ -295,6 +297,12 @@ export function Inbox() {
               </>
             ) : null}
             <span className="fetchnote">{stream === 'watch' ? fetchNote(jobs?.fetch ?? null, m) : ''}</span>
+            {rows.length === 0 ? null : (
+              <SortMenu
+                label={m.inbox.sortLabel} current={m.inbox.sort[sort]}
+                options={SORTS.map((order) => ({ label: m.inbox.sort[order], onSelect: () => setSort(order) }))}
+              />
+            )}
             <IconButton
               label={stream === 'discovery' ? m.inbox.discoverySettings : m.inbox.watchSettings}
               onClick={() => openCategory(stream === 'discovery' ? 'delivery-discovery' : 'delivery-watch')}
@@ -318,21 +326,6 @@ export function Inbox() {
       <PageError error={error} />
 
       <PageBody>
-        {rows.length === 0 ? null : (
-          <PageToolbar>
-            <SegmentedControl
-              label={m.inbox.sortLabel}
-              value={sort}
-              options={[
-                { value: 'recommended', label: m.inbox.sort.recommended },
-                { value: 'latest', label: m.inbox.sort.latest },
-                { value: 'published', label: m.inbox.sort.published },
-                { value: 'impact', label: m.inbox.sort.impact },
-              ]}
-              onChange={setSort}
-            />
-          </PageToolbar>
-        )}
         {stream === 'discovery' ? (
           <div className="discovery-summary">
             <p className="discovery-note">

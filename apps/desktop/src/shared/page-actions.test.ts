@@ -133,8 +133,11 @@ const CONTROL_FILES = new Set(['components/SortMenu.tsx', 'components/AddAction.
 
 /** Segmented controls that switch the views of a page, a section or a board, by their accessible name. */
 const VIEW_SWITCHES = new Set(['m.papers.views.aria', 'm.papers.toolbar.groupFieldAria', 'm.later.groupBy',
-  'm.feed.sourceFieldLabel', 'm.inbox.sortLabel', 'm.project.plan.viewLabel', 'm.project.recordViewLabel',
+  'm.feed.sourceFieldLabel', 'm.project.plan.viewLabel', 'm.project.recordViewLabel',
   'm.timeline.scaleGroup', 'm.wiki.ingest.reviewViewLabel'])
+
+/** The message path of a control that sorts a page's list, whichever control draws it. */
+const SORT_LABEL = /^m\.[\w.]+\.sort(Label)?$/
 
 /** Segmented controls that pick one option of a form in a dialog, a popover, Settings or a draft row. */
 const OPTION_SWITCHES = new Set(['f.basisLabel', 'm.project.workspace.kindLabel', 'm.watches.sourceLabel',
@@ -246,6 +249,7 @@ function lookOf(element: Node, source: string, path: string): Look | null {
   if (name === 'DotsMenu') return { operation: 'overflow menu', size: 'nested', variant: 'plain' }
   if (name === 'SegmentedControl') {
     const label = text(expression(attribute(element, 'label')))
+    if (SORT_LABEL.test(label)) return { operation: 'sort', size: literal('size') ?? 'md', variant: 'plain', label }
     const operation = VIEW_SWITCHES.has(label) ? 'view switch' : OPTION_SWITCHES.has(label) ? 'option switch' : null
     return operation === null ? null : { operation, size: literal('size') ?? 'md', variant: 'plain' }
   }
@@ -399,13 +403,10 @@ describe('一个操作一个位置', () => {
     expect(order).toEqual([['components/reader/PaperWikiIngest.tsx', true], ['components/wiki/ReviewQueue.tsx', true]])
   })
 
-  it('一次性的重新排列和收件里一直生效的排序是两个名字，项目和想法的重新排列同名', () => {
+  it('排序只有一个名字:项目和想法的一次排序、收件里一直生效的排序都叫排序,都是屏头的排序菜单', () => {
     const menus = PLACEMENTS.filter((placement) => placement.operation === 'sort')
-    const clashes = menus.flatMap((menu) => (['zh', 'en'] as const)
-      .filter((locale) => textOf(menu.label!, locale) === textOf('m.inbox.sortLabel', locale))
-      .map((locale) => `${menu.at} ${locale}: ${textOf(menu.label!, locale)}`))
-    expect(clashes).toEqual([])
-    expect(new Set(menus.map((menu) => `${textOf(menu.label!, 'zh')} / ${textOf(menu.label!, 'en')}`)).size).toBe(1)
+    expect([...new Set(menus.map((menu) => `${textOf(menu.label!, 'zh')} / ${textOf(menu.label!, 'en')}`))]).toEqual(['排序 / Sort'])
+    expect([...new Set(menus.map((menu) => menu.at.split(':')[0]))].sort()).toEqual(['routes/Ideas.tsx', 'routes/Inbox.tsx', 'routes/Projects.tsx'])
   })
 
   it('详情面板头部的文字按钮都是小号的普通按钮', () => {

@@ -2,7 +2,7 @@
 export const ideas = {
   title: (n: number) => `想法 · ${n}`,
   activeHeading: (n: number) => `进行中 · ${n}`,
-  sort: '重新排列',
+  sort: '排序',
   sortUpdated: '按更新时间',
   create: '新建想法',
   empty: '还没有进行中的想法',

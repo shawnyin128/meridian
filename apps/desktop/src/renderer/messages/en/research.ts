@@ -35,7 +35,7 @@ export const research = {
     title: (n: number) => `Projects · ${n}`,
     create: 'New project',
     empty: 'No active projects yet',
-    sort: 'Rearrange',
+    sort: 'Sort',
     sortPriority: 'By priority',
     sortMilestone: 'By next milestone',
     renameTitle: 'Rename project',

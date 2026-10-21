@@ -4,7 +4,7 @@ import { ideas as zh } from '../zh/ideas.js'
 export const ideas = {
   title: (n: number) => `Ideas · ${n}`,
   activeHeading: (n: number) => `Active · ${n}`,
-  sort: 'Rearrange',
+  sort: 'Sort',
   sortUpdated: 'By updated',
   create: 'New idea',
   empty: 'No active ideas yet',
