@@ -33,8 +33,8 @@ const fixture = vi.hoisted(() => ({
   apply: vi.fn(),
   undo: vi.fn(),
   /** The `onApply` the page hands its claims. */
-  applyClaims: null as null | ((title: string, ops: ProposalOp[], options?: { undoable: boolean }) => Promise<boolean>),
-  writes: [] as { result: unknown; opts?: { action?: (result: never) => { label: string; onAction: () => void } } }[],
+  applyClaims: null as null | ((title: string, ops: ProposalOp[], done: { note: string; undoable?: boolean }) => Promise<boolean>),
+  writes: [] as { result: unknown; opts?: { note?: unknown; action?: (result: never) => { label: string; onAction: () => void } } }[],
 }))
 
 const HOME: WikiHome = {
@@ -180,19 +180,20 @@ describe('Wiki keyboard reach', () => {
     expect([...child.querySelectorAll('.row-actions button')].map((b) => b.getAttribute('aria-label'))).toEqual(['从这一页移出'])
   })
 
-  it('撤回结论写入后的通知带撤销,按下撤销撤回最近变动里记下的那一条;别的结论写入不带', async () => {
+  it('结论写入的通知写结论区给的结果词;撤回的还带撤销,按下撤销撤回最近变动里记下的那一条;别的结论写入不带', async () => {
     fixture.apply.mockResolvedValue({ change: 'c-9' })
     await press(host.querySelector<HTMLElement>('[data-wk="topics/sd"] .tt')!)
     const ops: ProposalOp[] = [{ op: 'retractClaim', page: 'topics/sd', claim: 'knee', reason: '撤回' }]
-    await act(async () => { await fixture.applyClaims!('撤回「推测解码」的一条结论', ops, { undoable: true }) })
+    await act(async () => { await fixture.applyClaims!('撤回「推测解码」的一条结论', ops, { note: '已撤回', undoable: true }) })
     expect(fixture.apply).toHaveBeenLastCalledWith({ source: 'user', title: '撤回「推测解码」的一条结论', ops })
     const { result, opts } = fixture.writes.at(-1)!
+    expect(opts!.note).toBe('已撤回')
     const undo = opts!.action!(result as never)
     expect(undo.label).toBe('撤销')
     await act(async () => { undo.onAction() })
     expect(fixture.undo).toHaveBeenCalledWith('c-9')
-    await act(async () => { await fixture.applyClaims!('给「推测解码」添加结论', ops) })
-    expect(fixture.writes.at(-1)!.opts?.action).toBeUndefined()
+    await act(async () => { await fixture.applyClaims!('给「推测解码」添加结论', ops, { note: '已添加' }) })
+    expect([fixture.writes.at(-1)!.opts?.note, fixture.writes.at(-1)!.opts?.action]).toEqual(['已添加', undefined])
   })
 
   it('比较表每个表头格下面都有一个单元格，自动列在表头用标签标出', async () => {

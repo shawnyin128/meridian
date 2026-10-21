@@ -120,14 +120,15 @@ export function ClaimSide({ item, title, point, links }: {
  * adds, revises, marks and resolves conflicts on, and retracts claims through `onApply`, which submits
  * one titled list of ops and resolves whether it was written. A new claim is drafted last in the list,
  * where it lands; a revision in its claim's place; a conflict under its claim's lines; a resolution
- * under its conflict. A retract is written at once and asks `onApply` for an `undoable` write.
+ * under its conflict. A retract is written at once and asks `onApply` for an `undoable` write. Each
+ * write hands `onApply` the `note` that names its result.
  * `arrival`, a claim id, is brought into view once the claims show, after which `onArrived` is called.
  */
 export function WikiClaims({ page, pending, links, onApply, arrival, onArrived }: {
   page: WikiAggregation
   pending: boolean
   links: ClaimLinks
-  onApply: (title: string, ops: ProposalOp[], options?: { undoable: boolean }) => Promise<boolean>
+  onApply: (title: string, ops: ProposalOp[], done: { note: string; undoable?: boolean }) => Promise<boolean>
   arrival?: string | undefined
   onArrived?: () => void
 }) {
@@ -246,13 +247,14 @@ export function WikiClaims({ page, pending, links, onApply, arrival, onArrived }
 
   const ready = submission()
   /** Writes the drafted form and closes it once written. */
-  const saveDraft = () => (ready === null ? Promise.resolve(false) : onApply(ready.title, ready.ops))
+  const saveDraft = () => (ready === null || form === null ? Promise.resolve(false)
+    : onApply(ready.title, ready.ops, { note: c.done[form.kind] }))
     .then((saved) => { if (saved) close() })
   /** Retracts `claim` at once. A retract stores no reason, yet the op requires one, so it carries the action's name. */
   const retract = (claim: WikiClaim) => {
     void onApply(c.proposals.retract(page.title), [
       { op: 'retractClaim', page: page.id, claim: claim.id, reason: c.retract },
-    ], { undoable: true })
+    ], { note: c.done.retract, undoable: true })
   }
 
   const addDraft = form?.kind !== 'add'

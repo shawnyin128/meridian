@@ -913,7 +913,7 @@ export function Wiki() {
                 />
                 <WikiClaims
                   page={shownAgg} pending={pending} links={claimLinks}
-                  onApply={(note, ops, options) => propose(note, ops, m.wiki.claims.saved, options?.undoable)}
+                  onApply={(title, ops, done) => propose(title, ops, done.note, done.undoable)}
                   arrival={arrival?.page === shownAgg.id ? arrival.claim : undefined} onArrived={arrived}
                 />
                 {bodyHead(shownAgg.title)}

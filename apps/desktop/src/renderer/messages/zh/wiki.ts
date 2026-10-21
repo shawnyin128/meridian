@@ -193,7 +193,7 @@ export const wiki = {
     markConflict: '标记冲突',
     resolve: '处理冲突',
     retract: '撤回',
-    saved: '已写入 Wiki',
+    done: { add: '已添加', revise: '已修订', conflict: '已标记冲突', resolve: '已处理', retract: '已撤回' },
     form: {
       text: '结论',
       textPlaceholder: '一句话写清这条结论',

@@ -230,7 +230,7 @@ export const wiki = {
     markConflict: 'Mark conflict',
     resolve: 'Resolve conflict',
     retract: 'Retract',
-    saved: 'Written to the Wiki',
+    done: { add: 'Added', revise: 'Revised', conflict: 'Conflict marked', resolve: 'Resolved', retract: 'Retracted' },
     form: {
       text: 'Finding',
       textPlaceholder: 'State the finding in one sentence',
