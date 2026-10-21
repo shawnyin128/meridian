@@ -281,7 +281,8 @@ function TextCellEdit({ cell, initial, onSave, onCancel }: {
  * The table holds only the current page: papers.list fetches it by page, papers.facets supplies the
  * group values and counts, and papers.columns says which columns show.
  * A jump from another screen lands on that paper's title: the title goes into the filter box, which
- * leaves only that paper in the table.
+ * leaves only that paper in the table. A jump with the `detail` anchor opens that paper's detail
+ * panel instead and leaves the table as it was.
  */
 export function PaperTable() {
   const m = useMessages()
@@ -445,9 +446,13 @@ export function PaperTable() {
   useEffect(() => {
     if (jump === null || jump.seq === consumed.current) return
     consumed.current = jump.seq
+    if (jump.anchor?.detail === true) {
+      void papers.get(jump.target).then(setDetail).catch(reportError)
+      return
+    }
     setQ(jump.target)
     setPage(1)
-  }, [jump])
+  }, [jump, reportError])
 
   const backToValues = useCallback(() => { setSel(null); setPage(1) }, [])
   const backToUngrouped = useCallback(() => { setGroup('none'); setSel(null); setPage(1) }, [])

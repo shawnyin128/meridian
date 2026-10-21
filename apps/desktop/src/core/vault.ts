@@ -953,11 +953,12 @@ export interface VaultStore {
   setChatArchived(id: string, archived: boolean): void
 
   /**
-   * Returns the hits whose title contains the given query once trimmed,
-   * compared without case, at most SEARCH_LIMIT of them. Aggregations come
-   * first, then projects, chats and papers, each group in
-   * vault order, so a query matching more than the limit loses the later
-   * groups first. A query that is blank once trimmed matches nothing.
+   * Returns at most SEARCH_LIMIT hits for the query over the vault as held in
+   * memory, as `searchHits` matches and ranks them: aggregations with their
+   * page text and conclusions, projects, chats, papers with their authors,
+   * page text, highlights and notes, ideas with their bodies, tasks with their
+   * notes, and read-later entries not in the vault with their authors. A query
+   * that is blank once trimmed matches nothing.
    */
   search(query: string): SearchHit[]
 }

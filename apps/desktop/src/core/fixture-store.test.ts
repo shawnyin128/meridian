@@ -1999,19 +1999,25 @@ describe('fixture store', () => {
   })
 
   it('搜索一次跨四类,每一类给出它那一屏的落点', () => {
+    // The paper's title starts with the query, so it ranks above the project, whose title only holds it.
     expect(store.search('EAGLE-2')).toEqual([
-      { kind: 'project', target: 'repro', title: '项目：复现 EAGLE-2', meta: '进行中 · speculative decoding' },
       {
         kind: 'paper',
-        target: 'EAGLE-2: Faster Inference of Language Models with Dynamic Draft Trees',
+        target: 'Li-et-al-2024-EAGLE-2-Faster-Inference-of-Language-Models-with-Dynamic-Draft-Trees',
         title: '论文：EAGLE-2: Faster Inference of Language Models with Dynamic Draft Trees',
         meta: '2026 arXiv',
+        pdf: false,
       },
+      { kind: 'project', target: 'repro', title: '项目：复现 EAGLE-2', meta: '进行中 · speculative decoding' },
     ])
-    // Aggregations rank first; SpinQuant also matches "rotations" in its title and appears with papers after them.
+    // The aggregation's title is the query; SpinQuant only matches "rotations" in its title and comes after it with the
+    // other papers; last comes a page whose text links to SpinQuant.
     const rotation = store.search('Rotation')
     expect(rotation[0]).toEqual({ kind: 'aggregation', target: 'methods/rotation', title: '方法：Rotation', meta: 'Wiki' })
-    expect(rotation.slice(1).every((h) => h.kind === 'paper')).toBe(true)
+    expect(rotation.slice(1).map((h) => [h.kind, h.snippet])).toEqual([
+      ...Array.from({ length: 6 }, () => ['paper', undefined]),
+      ['aggregation', 'LLM quantization with learned rotations'],
+    ])
     expect(store.search('Distillation-based'))
       .toEqual([{ kind: 'aggregation', target: 'methods/distillation-qat', title: '方法：Distillation-based QAT', meta: 'Wiki' }])
     expect(store.search('摊薄')).toEqual([
@@ -2019,11 +2025,11 @@ describe('fixture store', () => {
     ])
   })
 
-  it('类别前缀也在被搜的那句话里', () => {
-    expect(store.search('对话：').map((h) => h.kind)).toEqual(['chat', 'chat'])
-    expect(store.search('主题：').map((h) => h.target)).toEqual([
-      'topics/kv-cache-quantization', 'topics/long-context-inference', 'topics/ptq',
-      'topics/ptq-weight-activation', 'topics/ptq-weight-only', 'topics/qat', 'topics/quantization',
+  it('类别名不在被搜的那句话里:搜「论文」只给正文里写了它的两页聚合', () => {
+    expect(store.search('对话：')).toEqual([])
+    expect(store.search('主题：')).toEqual([])
+    expect(store.search('论文').map((h) => [h.kind, h.target])).toEqual([
+      ['aggregation', 'topics/ptq-weight-activation'], ['aggregation', 'topics/quantization'],
     ])
   })
 

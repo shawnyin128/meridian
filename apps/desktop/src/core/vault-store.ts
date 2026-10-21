@@ -4,7 +4,7 @@ import type { z } from 'zod'
 import type {
   ChatSession, Conclusion, DeliverySettings, FeedEntry, FeedRun, GraphNode, PaperColumns, PaperImportResult, PaperReading, PaperRow, Proposal,
   ProjectConclusion, ProjectDetail, ProjectWorkspaceBinding, ProposalRecord, ReadingMutation, RelationFields, ResearchGraph,
-  ResearchIdea, SearchHit, Task, TaskFields,
+  ResearchIdea, Task, TaskFields,
   WikiSignal,
 } from '../shared/contract.js'
 import {
@@ -14,7 +14,7 @@ import { projectControlState } from '../shared/project-control.js'
 import { sortRecordsNewestFirst } from '../shared/project-signals.js'
 import { topicDir, topicProposal } from '../shared/topic-proposal.js'
 import {
-  ACTIVE_PROJECT, CHAT_EVENT_PREFIX, FINISHED_PROJECT, PAPER_PAGE, PROJECTS_DIR, READ_STATES, SEARCH_LIMIT,
+  ACTIVE_PROJECT, CHAT_EVENT_PREFIX, FINISHED_PROJECT, PAPER_PAGE, PROJECTS_DIR, READ_STATES,
   TRASH_RETENTION_DAYS, UNREAD_PAPER,
 } from '../shared/vocabulary.js'
 import { CallError } from './call-error.js'
@@ -60,10 +60,11 @@ import {
   isClaimOp, isPaper, pageVersion, projectClaims, projectDisputes,
   readWikiData, readWikiPage, removeClaim, removeMembership, setAggregationMetadata, setBody, setBodyAndTrust,
   setClaim, setColumns, setMembership, setParents, setUpdated, touchedPages, wikiAggregation, wikiCards,
-  wikiHome, wikiPaper, wikiSearchIndex, wikiSignals,
+  wikiHome, wikiPaper, wikiSignals,
   type ClaimWorld, type PointName, type WikiAggregationRecord, type WikiData, type WikiPaperRecord,
 } from './wiki/index.js'
 import { prepareFallbackLibrary } from './workspace-layout.js'
+import { searchHits } from './search.js'
 import { createResearchIdea, updateResearchIdea } from './research-ideas/index.js'
 
 /** Page frontmatter: scalars are strings, sequences are string arrays, and blocks are string maps. */
@@ -696,6 +697,14 @@ export function createVaultStore(
   /** Returns the immutable source referenced by a paper page, or an empty string without `source_id`. */
   const sourceOf = (id: string): string => scalar(readPage(paperFile(id)).front, 'source_id')
 
+  /** Returns the file name of paper `id`'s source PDF under `sources/papers`, or undefined when the vault holds none. */
+  const pdfOf = (id: string): string | undefined => {
+    const source = sourceOf(id)
+    return source === ''
+      ? undefined
+      : readdirSync(join(root, 'sources', 'papers')).find((name) => name.startsWith(`${source}-`) && name.endsWith('.pdf'))
+  }
+
   /** Refreshes a paper record in aggregation data from disk, or removes it when `file` is null. */
   const refreshWikiPage = (id: string, file: string | null): void => {
     const pages = { ...wikiData.pages }
@@ -1256,13 +1265,9 @@ export function createVaultStore(
 
     paperSource(id) {
       if (!papers.has(id)) throw new CallError('not-found', `论文不存在：${id}`)
-      const source = sourceOf(id)
-      const dir = join(root, 'sources', 'papers')
-      const file = source === ''
-        ? undefined
-        : readdirSync(dir).find((name) => name.startsWith(`${source}-`) && name.endsWith('.pdf'))
+      const file = pdfOf(id)
       if (!file) throw new CallError('not-found', `库里没有这一篇的原文：${id}`)
-      return new Uint8Array(readFileSync(join(dir, file)))
+      return new Uint8Array(readFileSync(join(root, 'sources', 'papers', file)))
     },
 
     importPaper: storeUpload,
@@ -2520,20 +2525,10 @@ export function createVaultStore(
     },
 
     search(query) {
-      const needle = query.trim().toLowerCase()
-      if (needle === '') return []
-      const index: SearchHit[] = [
-        ...wikiSearchIndex(wikiData),
-        ...projects().map((p): SearchHit =>
-          ({ kind: 'project', target: p.id, title: `项目：${p.name}`, meta: `${p.status} · ${p.topic}` })),
-        ...chats.filter((c) => c.paperId === undefined || c.messages.length > 0).map((c): SearchHit =>
-          ({ kind: 'chat', target: c.id, title: `对话：${c.title}`, meta: '对话' })),
-        ...[...papers.values()].map((p): SearchHit => ({
-          kind: 'paper', target: p.title, title: `论文：${p.title}`,
-          meta: `${p.year ?? ''} ${p.venue}`.trim(),
-        })),
-      ]
-      return index.filter((hit) => hit.title.toLowerCase().includes(needle)).slice(0, SEARCH_LIMIT)
+      return searchHits({
+        wiki: wikiData, projects: projects(), chats, papers: papers.values(), readings, ideas,
+        later: later.filter((entry) => !pagesOf.has(entry.paper)),
+      }, query, (id) => pdfOf(id) !== undefined)
     },
   }
 

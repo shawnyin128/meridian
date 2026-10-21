@@ -86,6 +86,8 @@ export type JumpAnchor = {
   milestone?: string
   /** Project: the conclusion to open in the Conclusions view, by its id. */
   conclusion?: string
+  /** Papers: the target is a paper id whose detail view opens, not a title to filter the table by. */
+  detail?: true
 }
 export type ScreenJump = {
   screen: ScreenKey

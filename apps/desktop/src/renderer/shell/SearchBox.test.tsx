@@ -16,7 +16,20 @@ const HITS: SearchHit[] = [
   { kind: 'chat', title: '对话：草稿', meta: '1 条', target: 'c1' },
 ]
 
-vi.mock('../ipc.js', () => ({ search: { query: (q: string) => Promise.resolve(q === '无此词' ? [] : HITS) } }))
+/** Hits that each open somewhere else: a paper at a note, a paper with no PDF, a task, a read-later entry. */
+const OPENED: SearchHit[] = [
+  {
+    kind: 'paper', title: '论文：EAGLE', meta: '2024 arXiv', target: 'eagle', pdf: true,
+    snippet: '草稿头只用一层 decoder', anchor: { note: 'note-3', page: 4 },
+  },
+  { kind: 'paper', title: '论文：Switch', meta: '2021 arXiv', target: 'switch', pdf: false },
+  { kind: 'task', title: '任务：跑基线', meta: '压缩实验', target: 'p1', anchor: { task: 'task-9' } },
+  { kind: 'later', title: '稍后阅读：Rotation Revisited', meta: 'ICLR 2026', target: 'later-1' },
+]
+
+vi.mock('../ipc.js', () => ({
+  search: { query: (q: string) => Promise.resolve(q === '无此词' ? [] : q === '打开' ? OPENED : HITS) },
+}))
 
 const { SearchBox } = await import('./SearchBox.js')
 
@@ -33,6 +46,8 @@ async function type(value: string): Promise<void> {
 describe('SearchBox', () => {
   beforeEach(() => { vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} }) })
   let root: Root | null = null
+  /** The screen, target and anchor of each jump a chosen hit asked for. */
+  let jumps: unknown[][]
 
   beforeEach(() => {
     globalThis.IS_REACT_ACT_ENVIRONMENT = true
@@ -46,7 +61,8 @@ describe('SearchBox', () => {
     const host = document.createElement('div')
     document.body.append(host)
     root = createRoot(host)
-    act(() => root!.render(<MessagesProvider><SearchBox onJump={() => {}} /></MessagesProvider>))
+    jumps = []
+    act(() => root!.render(<MessagesProvider><SearchBox onJump={(...jump) => { jumps.push(jump) }} /></MessagesProvider>))
   })
 
   afterEach(() => {
@@ -82,4 +98,25 @@ describe('SearchBox', () => {
     await act(async () => { input.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true })) })
     expect(lit()).toEqual([false, false, true])
   })
+
+  it('正文里命中的那条,第二行写命中的那句话;标题命中的写它的说明', async () => {
+    await type('打开')
+    expect([...document.querySelectorAll('#sRes .rrow .rm')].map((line) => line.textContent))
+      .toEqual(['草稿头只用一层 decoder', '2021 arXiv', '压缩实验', 'ICLR 2026'])
+  })
+
+  it('有原文的论文在阅读器里打开到命中的笔记,没有原文的打开详情,任务在项目里定位,稍后阅读进稍后阅读', async () => {
+    for (const at of [0, 1, 2, 3]) {
+      await type('')
+      await type('打开')
+      await act(async () => { document.querySelectorAll<HTMLElement>('#sRes .rrow')[at]!.click() })
+    }
+    expect(jumps).toEqual([
+      ['reader', 'eagle', { note: 'note-3', page: 4, panel: 'notes' }],
+      ['papers', 'switch', { detail: true }],
+      ['project', 'p1', { task: 'task-9' }],
+      ['later', 'later-1', undefined],
+    ])
+  })
 })
+

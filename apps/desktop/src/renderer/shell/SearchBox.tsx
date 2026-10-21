@@ -4,25 +4,46 @@ import { search } from '../ipc.js'
 import { PickerPopover, PickOption } from '../components/PickerPopover.js'
 import { ClearableInput } from '../components/ClearableInput.js'
 import { EmptyState } from '../components/EmptyState.js'
+import { FadeText } from '../components/FadeText.js'
 import { PaperText } from '../components/paper/PaperText.js'
 import { useCandidateKeys } from '../hooks/useCandidateKeys.js'
 import { useMessages } from '../messages/useMessages.js'
-import type { ScreenKey } from './AppShell.js'
+import type { JumpAnchor, ScreenKey } from './AppShell.js'
 
-/** The screen a clicked hit opens, like each entry's `go` in the demo's searchIndex. */
+/** The screen a chosen hit opens; a paper without a PDF opens in the Papers screen instead. */
 const SCREEN: Record<SearchHit['kind'], ScreenKey> = {
-  aggregation: 'wiki', project: 'project', chat: 'chat', paper: 'papers',
+  aggregation: 'wiki', project: 'project', chat: 'chat', paper: 'reader', idea: 'ideas', task: 'project', later: 'later',
+}
+
+/**
+ * Opens `hit` through `open`, the shell's cross-screen jump: a paper in the reader at the page,
+ * highlight or note it matched, or in its detail view when the vault has no PDF of it; a task in
+ * its project's plan; anything else on its own screen.
+ */
+export function openHit(hit: SearchHit, open: (screen: ScreenKey, target: string, anchor?: JumpAnchor) => void): void {
+  if (hit.kind === 'paper' && hit.pdf !== true) {
+    open('papers', hit.target, { detail: true })
+    return
+  }
+  const at = hit.anchor
+  open(SCREEN[hit.kind], hit.target, at === undefined ? undefined : {
+    ...(at.page === undefined ? {} : { page: at.page }),
+    ...(at.highlight === undefined ? {} : { highlight: at.highlight }),
+    ...(at.note === undefined ? {} : { note: at.note, panel: 'notes' }),
+    ...(at.task === undefined ? {} : { task: at.task }),
+  })
 }
 
 /**
  * The global search at the top of the sidebar: results appear as you type, and clicking one opens
- * that item on its screen. Indexing, matching, ranking and the result limit live in Core; this
+ * that item as `openHit` says. Indexing, matching, ranking and the result limit live in Core; this
  * component only sends the query and shows the few hits search.query returns, holding no vault data.
+ * A hit matched outside its title shows the matching text in place of its secondary line.
  * While the query is not empty the results stay open, saying so when nothing matched, until a pick,
  * Escape or a press outside closes them; typing opens them again. `onJump` is the shell's
  * cross-screen jump, and every hit reaches its screen through it.
  */
-export function SearchBox({ onJump }: { onJump: (screen: ScreenKey, target: string) => void }) {
+export function SearchBox({ onJump }: { onJump: (screen: ScreenKey, target: string, anchor?: JumpAnchor) => void }) {
   const m = useMessages()
   const [q, setQ] = useState('')
   // null until the first hits of a query arrive; later queries keep the shown hits until theirs do.
@@ -44,7 +65,7 @@ export function SearchBox({ onJump }: { onJump: (screen: ScreenKey, target: stri
   // The demo's h.go(): close the results, then jump; the typed query stays.
   const go = (hit: SearchHit) => {
     setShut(true)
-    onJump(SCREEN[hit.kind], hit.target)
+    openHit(hit, onJump)
   }
   const open = hits !== null && !shut
   const shown = open ? hits : []
@@ -71,7 +92,7 @@ export function SearchBox({ onJump }: { onJump: (screen: ScreenKey, target: stri
         content={(
           <>
             <div className="rh">{m.shell.search.results}</div>
-            {/* A paper's target is its title, so same-titled papers share one: kind plus target would collide. */}
+            {/* Tasks of one project share its id as their target: kind plus target would collide. */}
             {shown.length === 0
               ? <div className="sres-empty"><EmptyState variant="section">{m.shell.search.noHits}</EmptyState></div>
               : null}
@@ -81,7 +102,9 @@ export function SearchBox({ onJump }: { onJump: (screen: ScreenKey, target: stri
                 onClick={() => go(hit)}
               >
                 <div className="rt">{hit.kind === 'paper' || hit.kind === 'chat' ? <PaperText text={hit.title} /> : hit.title}</div>
-                <div className="rm">{hit.meta}</div>
+                {hit.snippet === undefined
+                  ? <div className="rm">{hit.meta}</div>
+                  : <FadeText className="rm">{hit.snippet}</FadeText>}
               </PickOption>
             ))}
           </>

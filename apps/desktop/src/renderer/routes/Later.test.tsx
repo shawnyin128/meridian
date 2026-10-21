@@ -6,13 +6,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { LaterEntry } from '../../shared/contract.js'
 import { IconCross } from '../components/icons.js'
 import { MessagesProvider } from '../messages/useMessages.js'
+import type { ScreenJump } from '../shell/AppShell.js'
 import { LANGUAGE_STORAGE_KEY } from '../shell/language.js'
 
 declare global {
   var IS_REACT_ACT_ENVIRONMENT: boolean
 }
 
-const api = vi.hoisted(() => ({ notes: [] as unknown[] }))
+const api = vi.hoisted(() => ({ notes: [] as unknown[], jump: null as ScreenJump | null }))
 
 const ENTRY: LaterEntry = {
   id: 'later-1', title: 'MoE 路由用熵正则代替负载均衡 load balancing', source: 'arXiv', added: '2026-08-25',
@@ -24,7 +25,7 @@ vi.mock('../ipc.js', () => ({
   later: { list: async () => [ENTRY], remove: async () => {} },
 }))
 vi.mock('../shell/AppShell.js', () => ({
-  useJump: () => ({ open: vi.fn() }),
+  useJump: () => ({ jump: api.jump, open: vi.fn() }),
   useNotice: () => ({ success: vi.fn(), refusal: vi.fn() }),
   useVaultRevision: () => ({ revision: 0, bump: vi.fn() }),
 }))
@@ -48,8 +49,21 @@ describe('Later', () => {
     host = document.createElement('div')
     document.body.append(host)
     api.notes.length = 0
+    api.jump = null
   })
   afterEach(() => { host.remove(); vi.unstubAllGlobals() })
+
+  it('从别处跳到一条时,把那一条移到眼前', async () => {
+    const shown: (string | null)[] = []
+    // jsdom lays nothing out and has no scrollIntoView.
+    HTMLElement.prototype.scrollIntoView = function (this: HTMLElement) { shown.push(this.getAttribute('data-pid')) }
+    api.jump = { screen: 'later', target: 'later-1', from: 'feed', seq: 1 }
+    const root = createRoot(host)
+    await act(async () => { root.render(<MessagesProvider><Later /></MessagesProvider>) })
+    expect(shown).toEqual(['later-1'])
+    await act(async () => { root.unmount() })
+    delete (HTMLElement.prototype as Partial<HTMLElement>).scrollIntoView
+  })
 
   it('按时间/按来源是视图切换，放在正文开头的工具栏，屏头只有标题', async () => {
     const root = createRoot(host)

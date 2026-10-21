@@ -4,6 +4,7 @@ import { createRoot, type Root } from 'react-dom/client'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Facet, ListParams, PaperColumns, PaperImportResult, PaperRow } from '../../shared/contract.js'
+import type { ScreenJump } from '../shell/AppShell.js'
 import { PAPER_COLUMNS } from '../../shared/vocabulary.js'
 import { CallError } from '../call-error.js'
 import { IconTrash } from '../components/icons.js'
@@ -89,6 +90,10 @@ let vaultPaperCount: number | null
 /** The group values papers.facets answers with. */
 let facetRows: Facet[]
 let openedScreens: [screen: string, id?: string][]
+/** The jump aimed at the Papers screen. */
+let jumpNow: ScreenJump | null
+/** The paper ids papers.get was asked for, in order. */
+let gotIds: string[]
 /** How many times the table bumped the vault revision. */
 let bumps: number
 
@@ -96,7 +101,7 @@ vi.mock('../ipc.js', () => ({
   papers: {
     list: (params: ListParams) => { listCallCount += 1; listParams.push(params); return listCall.promise },
     facets: () => Promise.resolve(facetRows),
-    get: () => getCall.promise,
+    get: (id: string) => { gotIds.push(id); return getCall.promise },
     update: (id: string, patch: Record<string, unknown>) => {
       if (throwOnNextUpdate) { const e = throwOnNextUpdate; throwOnNextUpdate = null; throw e }
       const c = controlled<void>()
@@ -145,7 +150,7 @@ vi.mock('../shell/AppShell.js', () => ({
   useEscapeLayer: () => {},
   useScreenReentry: () => 0,
   useJump: () => ({
-    jump: null,
+    jump: jumpNow,
     open: (screen: string, id?: string) => { openedScreens.push([screen, id]) },
     returnTo: vi.fn(),
   }),
@@ -286,7 +291,22 @@ describe('PaperTable', () => {
     vaultPaperCount = null
     facetRows = []
     openedScreens = []
+    jumpNow = null
+    gotIds = []
     bumps = 0
+  })
+
+  it('带详情落点跳进来时打开那篇的详情,搜索框不填字', async () => {
+    jumpNow = { screen: 'papers', target: 'p1', from: 'feed', seq: 1, anchor: { detail: true } }
+    const host = mount()
+    columnsCall.resolve(EMPTY_COLUMNS)
+    listCall.resolve({ rows: [ROW], total: 1 })
+    getCall.resolve(ROW)
+    await flush()
+
+    expect(gotIds[0]).toBe('p1')
+    expect(host.querySelector<HTMLInputElement>('#libq')!.value).toBe('')
+    expect(host.querySelector('.pdetail')?.textContent).toContain('一篇论文')
   })
 
   it('defaults to 20 papers and offers only the 20, 30, and 50 page sizes', async () => {

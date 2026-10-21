@@ -2046,17 +2046,32 @@ export const ChatSetArchivedParamsSchema = z.object({
   archived: z.boolean(),
 }).strict()
 
+/** Where in its target a search hit lands: a page with a highlight or note on it, or a project's task. */
+export const SearchAnchorSchema = z.object({
+  page: z.number().int().positive().optional(),
+  highlight: z.string().optional(),
+  note: z.string().optional(),
+  task: z.string().optional(),
+}).strict()
+
 /**
- * Global-search hit. `kind` selects the destination surface; `target` is the
- * entity ID for aggregations, projects, and chats, but the title filter for
- * papers and therefore not necessarily unique. `title` is searchable display
- * text including its type prefix and `meta` is secondary text.
+ * Global-search hit, a call response that is never stored. `kind` selects the
+ * destination surface and `target` the entity ID there: the Wiki page of an
+ * aggregation, the project of a task, the read-later entry of a paper not in
+ * the vault, otherwise the entity itself. `anchor` says where in the target to
+ * land. `title` is display text, the type prefix and the entity's title, and
+ * `meta` secondary text. `snippet` is the text around a match outside the
+ * title, absent for a title match. `pdf`, on paper hits only, says whether the
+ * vault holds the paper's source PDF.
  */
 export const SearchHitSchema = z.object({
-  kind: z.enum(['aggregation', 'project', 'chat', 'paper']),
+  kind: z.enum(['aggregation', 'project', 'chat', 'paper', 'idea', 'task', 'later']),
   target: z.string(),
   title: z.string(),
   meta: z.string(),
+  snippet: z.string().optional(),
+  anchor: SearchAnchorSchema.optional(),
+  pdf: z.boolean().optional(),
 }).strict()
 
 export const SearchParamsSchema = z.object({ query: z.string() }).strict()
@@ -2350,6 +2365,7 @@ export type ResearchIdeaPromoteResult = z.infer<typeof ResearchIdeaPromoteResult
 export type ResearchIdeaGraphPlacement = z.infer<typeof ResearchIdeaGraphPlacementSchema>
 export type ResearchIdeaPlaceOnGraphResult = z.infer<typeof ResearchIdeaPlaceOnGraphResultSchema>
 export type SearchHit = z.infer<typeof SearchHitSchema>
+export type SearchAnchor = z.infer<typeof SearchAnchorSchema>
 export type FeedFields = z.infer<typeof FeedAppendParamsSchema>
 export type LibrarySource = z.infer<typeof LibrarySourceSchema>
 export type LibraryLocation = z.infer<typeof LibraryLocationSchema>
