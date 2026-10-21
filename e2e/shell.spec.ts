@@ -176,7 +176,7 @@ test('切走再切回,分页页码、排序、列宽与详情面板都保持', a
   // would miss a column that drags but is never saved.
   await expect.poll(tableMin).toBe(minBefore + COLUMN_DRAG)
 
-  const nextPage = win.locator('.pager .pgbtn').last()
+  const nextPage = win.locator('.pager [aria-label="下一页"]')
   await nextPage.click()
   await expect(win.locator('.pager .pgbtn.on')).toHaveText('2')
   await nextPage.click()
@@ -215,7 +215,7 @@ test('全应用的齿轮是同一颗:一条闭合轮廓加一个轴孔,四处逐
   expect(await win.locator('.ptable thead [aria-label="列设置"] svg path').getAttribute('d')).toBe(gear)
   // Settings entries no longer crowd the sidebar; the only Watch settings gear is in the Inbox toolbar.
   await expect(win.locator('.sidebar [aria-label="管理关注"]')).toHaveCount(0)
-  await win.locator('[data-inbox="all"]').click()
+  await win.locator('[data-inbox="all"] > .nav-row-label').click()
   expect(await win.locator('.screenslot:not([hidden]) [aria-label="关注设置"] svg path').getAttribute('d'))
     .toBe(gear)
 

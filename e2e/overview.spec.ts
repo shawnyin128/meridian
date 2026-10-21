@@ -378,7 +378,8 @@ test.describe('拖总览菱形改期', () => {
     // The reschedule may have pushed the milestone into the next calendar window; find it again before clicking it.
     const movedDiamond = await revealMilestone(win, 'repro/m2')
     await movedDiamond.click()
-    await expect(win.locator('.ctxmenu .rh')).toHaveText(`里程碑 · ${dshort(moved)}`)
+    await expect(win.locator('.ctxmenu .rh')).toHaveText('里程碑')
+    await expect(win.locator('.ctxmenu .short-text-field .form-button')).toHaveText(dshort(moved))
     await expect(win.locator('.ctxmenu .mi-in input')).toHaveValue(title)
     // The popover is anchored at the click point, here the diamond's center. The diamond is rotated 45°
     // and grows on hover, but both transforms are around its center, so the measured center holds.
@@ -729,7 +730,8 @@ test('总览里程碑弹层:点「删除」收起弹层,里程碑从 core 里删
   const m2 = before.find((m) => m.date === fixtureDay(today, REPRO_M2))!
 
   await diamond.click()
-  await expect(menu.locator('.rh')).toHaveText(`里程碑 · ${dshort(m2.date)}`)
+  await expect(menu.locator('.rh')).toHaveText('里程碑')
+  await expect(menu.locator('.short-text-field .form-button')).toHaveText(dshort(m2.date))
   await menu.locator('.mi.danger').click()
   await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已删除里程碑')
   await expect(menu).toHaveCount(0)

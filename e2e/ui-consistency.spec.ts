@@ -82,9 +82,10 @@ test('内嵌列表和表格不画外框线:末行下方与首行上方都没有�
 
 test('撤不回来的动作才弹确认,弹出来的都是同一个对话框', async ({ win }) => {
   test.slow()
-  await win.locator('[data-inbox="all"]').click()
+  await win.locator('[data-inbox="all"] > .nav-row-label').click()
   await shown(win, '[aria-label="关注设置"]').click()
   await win.locator('.setdlg .wrow').first().waitFor()
+  await win.locator('.setdlg .wrow').first().hover()
   await win.locator('.setdlg .wrow').first().locator('.row-actions [aria-label="移除"]').click()
 
   const dialog = win.locator('.modal.confirm')

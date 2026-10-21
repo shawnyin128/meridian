@@ -206,6 +206,7 @@ test('新建一个项目,重命名、改状态、删掉,再从垃圾桶恢复', 
   await win.locator('[data-desk="trash"]').click()
   await expect(shown(win).locator('.section-heading')).toHaveText('项目 · 1')
   await expect(win.locator('.tgroup .trow .tt2')).toHaveText([RENAMED_PROJECT])
+  await win.locator('.tgroup .trow').hover()
   await win.locator('.tgroup .trow .row-actions [aria-label="恢复"]').click()
   await expect(win.locator('.tgroup .trow')).toHaveCount(0)
 
@@ -313,15 +314,15 @@ test('项目菜单是真菜单;重命名框里打菜单项首字、方向键、H
   await card.hover()
   await expect(card.locator('.dots')).toHaveAttribute('aria-haspopup', 'menu')
   await card.locator('.dots').click()
-  await expect(menu.locator('[role="menuitem"]')).toHaveText(['重命名', '删除'])
+  await expect(menu.locator('[role="menuitem"]')).toHaveText(['重命名', '上移', '下移', '删除'])
   await expect(menu.locator('[role="menuitemradio"]')).toHaveText([...PROJECT_STATUSES])
   await expect(menu.locator('[role="menuitemradio"][aria-checked="true"]')).toHaveText(ACTIVE)
 
   await menu.locator('[role="menuitem"]', { hasText: '重命名' }).click()
   await expect(input).toBeFocused()
   await input.fill('')
-  // The first character of each of the five menu items: Rename, Active, Shelved, Finished, Delete.
-  for (const ch of ['重', '进', '搁', '已', '删']) await typeKey(win, ch)
+  // The first character of each of the seven menu items: Rename, Move up, Move down, Active, Shelved, Finished, Delete.
+  for (const ch of ['重', '上', '下', '进', '搁', '已', '删']) await typeKey(win, ch)
   // If typeahead takes focus on a key, it moves it in a zero-delay setTimeout. Timers with the same delay
   // fire in queue order, so waiting one zero-delay macrotask lets any scheduled focus move run first.
   await win.evaluate(() => new Promise<void>((r) => setTimeout(r, 0)))
@@ -329,7 +330,7 @@ test('项目菜单是真菜单;重命名框里打菜单项首字、方向键、H
   await expect(input).toBeFocused()
   await input.press('Space')
   await input.press('a')
-  await expect(input).toHaveValue('重进搁已删 a')
+  await expect(input).toHaveValue('重上下进搁已删 a')
   await expect(input).toBeFocused()
   // Arrow keys and Home/End only move the caret in the input: Home then x, one right then y, End then z;
   // Tab does not move focus out of the menu.
@@ -344,7 +345,7 @@ test('项目菜单是真菜单;重命名框里打菜单项首字、方向键、H
   // Same reason: assert before press('Tab'), which would otherwise focus the input again first.
   await expect(input).toBeFocused()
   await input.press('Tab')
-  await expect(input).toHaveValue('x重y进搁已删 az')
+  await expect(input).toHaveValue('x重y上下进搁已删 az')
   await expect(input).toBeFocused()
 
   // Esc cancels: the menu closes and the name is unchanged.
