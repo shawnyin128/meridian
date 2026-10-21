@@ -212,8 +212,12 @@ App, the Python package, and the agent plugins. Data formats are compatible in b
 
 ## Tests and Gates
 
-Run the narrowest relevant check after each change, then the gates before you
-finish:
+Each change runs only the checks it can affect: the unit tests of the files it
+changes (`npx vitest related --run <files>`) and of the components it could
+affect, `npm run check`, and the Python gates only when it touches Python,
+`plugins/`, the CLI or the MCP server. Run each check once. The full gates run
+when a batch of changes is integrated for the owner's review, and again before a
+release:
 
 ```bash
 npm run check                    # eslint, comment language, tsc
@@ -234,8 +238,9 @@ itself, and the CLI tests need PyYAML.
   test fails for the reason you expect. A test that cannot fail is worse than
   none.
 - Test names state behavior, not method names.
-- UI changes are checked at several window sizes and in both light and dark
-  themes.
+- UI changes are checked in both light and dark themes, at 1440×900, and also
+  at 1280×800 when the change affects layout. Shoot only the screens a change
+  affects.
 - End-to-end specs (`npm run e2e`, Playwright against the built Electron app)
   run once per release, after the owner approves the build, and only the specs
   covering the changed areas. Components are decoupled so that unit tests can
