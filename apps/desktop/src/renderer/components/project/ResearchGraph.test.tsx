@@ -334,6 +334,21 @@ describe('idea and graph association', () => {
     act(() => root.unmount())
   })
 
+  it('自己写下的关联想法那一行只有标题，不写来源', () => {
+    const host = document.createElement('div')
+    const root = createRoot(host)
+    const own: ResearchIdea = { ...IDEA, source: { chatTitle: '手动添加' } }
+    act(() => root.render(withMessages(
+      <ResearchNodePanel
+        graph={GRAPH} events={[]} ideas={[own]} tasks={[]} node={GRAPH.nodes[0]!}
+        onClose={vi.fn()} onSelect={vi.fn()} onSelectIdea={vi.fn()} onSelectTask={vi.fn()}
+      />,
+    )))
+    expect(host.querySelector('.node-idea-row .node-idea-source')).toBeNull()
+    expect(host.querySelector('.node-idea-row')?.textContent).toBe(own.title)
+    act(() => root.unmount())
+  })
+
   it('names each branch with the same node link as every other screen and opens it on click', () => {
     const host = document.createElement('div')
     const root = createRoot(host)

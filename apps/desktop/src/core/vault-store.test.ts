@@ -1657,6 +1657,14 @@ describe('vault store on the aggregation layout', () => {
     expect(() => reopened.updateIdea('no-such', { title: 'x' })).toThrow(/想法不存在/)
   })
 
+  it('自己写下的想法不从对话来:来源是手动添加,没有对话也没有 agent,不关联项目,建出来就在列表里,重开还在', () => {
+    const created = store.createIdea(undefined, '我自己的想法', '先记下来,之后再验证')
+    expect(created).toMatchObject({ title: '我自己的想法', source: { chatTitle: '手动添加' }, archived: false })
+    expect(created.source).toEqual({ chatTitle: '手动添加' })
+    expect(created.project).toBeUndefined()
+    expect(createVaultStore(vault).listIdeas().find((idea) => idea.id === created.id)).toEqual(created)
+  })
+
   it('coding agent 在项目工作区里记下的想法进到想法列表,只收一次,删了不再回来', () => {
     store.createProject('agent 想法项目')
     const id = store.listProjects().find((project) => project.name === 'agent 想法项目')!.id

@@ -62,6 +62,14 @@ describe('IdeaPanel', () => {
     expect(onClose).toHaveBeenCalledOnce()
   })
 
+  it('自己写下的想法没有来源一节，也不写手动添加', () => {
+    const own: ResearchIdea = { ...IDEA, source: { chatTitle: '手动添加' } }
+    act(() => root.render(<MessagesProvider><IdeaPanel idea={own} onClose={vi.fn()} onOpenSourceChat={vi.fn()} /></MessagesProvider>))
+    expect(headings()).toEqual([own.title, '内容'])
+    expect(host.querySelector('.idea-panel-source')).toBeNull()
+    expect(host.textContent).not.toContain('手动添加')
+  })
+
   it('编辑时编辑器换掉内容那一节', () => {
     act(() => root.render(
       <MessagesProvider>

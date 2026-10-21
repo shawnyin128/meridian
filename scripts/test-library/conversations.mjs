@@ -8,7 +8,7 @@ const say = (role, ...runs) => ({ role, runs: runs.map((run) => (typeof run === 
  * them: two paper chats, ordinary chats, one of them mentioning a Wiki page with `@`, one archived, and
  * a reply whose action records a research record for the KV cache project. Ideas are saved from those
  * chats in every state: placed on the research graph, linked only, archived, promoted to a project,
- * unlinked, and deleted into Trash.
+ * unlinked, and deleted into Trash; one idea the user wrote down without a chat is linked to a project.
  */
 export async function seedConversations(seed, call) {
   const append = (id, messages) => call('chat.append', { id, messages })
@@ -71,4 +71,6 @@ export async function seedConversations(seed, call) {
   })
   await idea(old, 'MoE 路由用熵正则代替负载均衡 loss', '负载均衡 loss 会压低路由的确定性，换成对路由分布的熵正则可能更好。')
   await call('idea.delete', { id: await idea(width, '用 n-gram 草稿处理代码补全', '代码里重复片段多，n-gram 草稿也许有用。') })
+  const own = await call('idea.create', { title: '按 batch 大小校准接受率阈值', body: '同一个阈值在 B=1 和 B=16 下效果差很多，先按 batch 分档校准。' })
+  await call('idea.update', { id: own.id, patch: { project: spec } })
 }

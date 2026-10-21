@@ -1944,6 +1944,13 @@ describe('fixture store', () => {
     expect(() => store.updateIdea('no-such', { title: 'x' })).toThrow(/想法不存在/)
   })
 
+  it('自己写下的想法来源是手动添加,没有对话也没有 agent,建出来就在列表里', () => {
+    const created = store.createIdea(undefined, '我自己的想法', '先记下来')
+    expect(created.source).toEqual({ chatTitle: '手动添加' })
+    expect(created.project).toBeUndefined()
+    expect(store.listIdeas().find((idea) => idea.id === created.id)).toEqual(created)
+  })
+
   it('设了手动顺序后,点到的想法排到前面;没点到的仍按更新时间排在后面', () => {
     const created = store.createIdea('amortize', '排序用的新想法', '仅用于验证手动顺序')
     const before = store.listIdeas().map((idea) => idea.id)

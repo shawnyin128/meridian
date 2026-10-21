@@ -4,7 +4,14 @@ import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ProjectSummary, ResearchIdea } from '../../shared/contract.js'
 import { MessagesProvider } from '../messages/useMessages.js'
+import type { ScreenJump } from '../shell/AppShell.js'
 import { LANGUAGE_STORAGE_KEY } from '../shell/language.js'
+
+/** An idea the user wrote down without a chat, as Core stores it. */
+const OWN: ResearchIdea = {
+  id: 'idea-own', title: '按 batch 校准阈值', body: '先在两个 batch 上试。',
+  source: { chatTitle: '手动添加' }, archived: false, created: '2026-10-21', updated: '2026-10-21',
+}
 
 const api = vi.hoisted(() => ({
   ideas: [
@@ -38,8 +45,11 @@ const api = vi.hoisted(() => ({
   writes: [] as { result: unknown; opts: { note?: unknown; action?: (result: never) => { label: string; onAction: () => void } } }[],
   reorder: vi.fn(async () => {}),
   open: vi.fn(),
+  create: vi.fn<(chatId: string | undefined, title: string, body: string) => Promise<ResearchIdea>>(),
   /** While true the idea list never arrives. */
   loading: false,
+  jump: null as ScreenJump | null,
+  revision: 0,
 }))
 
 vi.mock('../ipc.js', () => ({
@@ -49,6 +59,7 @@ vi.mock('../ipc.js', () => ({
     promote: api.promote,
     delete: api.remove,
     reorder: api.reorder,
+    create: api.create,
   },
   project: { list: async () => structuredClone(api.projects) },
   trash: { restore: async (id: string) => { api.restored.push(id) } },
@@ -56,8 +67,8 @@ vi.mock('../ipc.js', () => ({
 vi.mock('../shell/AppShell.js', () => ({
   useEscapeLayer: () => {},
   useScreenReentry: () => 0,
-  useJump: () => ({ jump: null, open: api.open }),
-  useVaultRevision: () => ({ revision: 0, bump: vi.fn() }),
+  useJump: () => ({ jump: api.jump, open: api.open }),
+  useVaultRevision: () => ({ revision: api.revision, bump: vi.fn() }),
 }))
 vi.mock('../hooks/useVaultWrite.js', () => ({
   useVaultWrite: () => async (work: Promise<unknown>, opts = {}) => { api.writes.push({ result: await work, opts }); return true },
@@ -86,6 +97,7 @@ describe('Ideas', () => {
   afterEach(() => {
     act(() => root.unmount())
     api.loading = false
+    api.jump = null
     vi.unstubAllGlobals()
   })
 
@@ -98,11 +110,71 @@ describe('Ideas', () => {
     expect(host.querySelector('.ideas-list .empty-state')?.className).toBe('empty-state empty-state--section')
   })
 
-  it('重新排列作用于整页的想法，和项目一样放在屏头右端，一种尺寸；进行中的标题不带按钮', async () => {
+  it('重新排列和新建想法作用于整页的想法，和项目一样放在屏头右端，一种尺寸，新建在最后；进行中的标题不带按钮', async () => {
     await act(async () => { root.render(<MessagesProvider><Ideas /></MessagesProvider>) })
     const actions = [...host.querySelectorAll<HTMLButtonElement>('.desk-head > .page-actions > button')]
-    expect(actions.map((b) => [b.textContent, b.className])).toEqual([['重新排列', 'btn sort-menu']])
+    expect(actions.map((b) => [b.textContent, b.className.split(' ').slice(0, 2).join(' ')]))
+      .toEqual([['重新排列', 'btn sort-menu'], ['新建想法', 'btn pri']])
     expect(host.querySelector('.ideas-list .section-heading .section-heading-actions')).toBeNull()
+  })
+
+  it('新建想法打开想法编辑框，只有标题和正文；保存成自己的想法，不关联项目，出现在进行中并在详情里打开', async () => {
+    api.create.mockImplementationOnce(async (_chatId, title, body) => {
+      const idea = { ...OWN, title, body }
+      api.ideas.unshift(idea)
+      return idea
+    })
+    try {
+      await act(async () => { root.render(<MessagesProvider><Ideas /></MessagesProvider>) })
+      await act(async () => {
+        [...host.querySelectorAll<HTMLButtonElement>('.desk-head > .page-actions > button')].at(-1)!.click()
+      })
+      const dialog = document.querySelector<HTMLElement>('.idea-dialog')!
+      expect(dialog.querySelector('.modal-title, h2')?.textContent).toBe('新建想法')
+      expect(dialog.querySelector('.idea-dialog-source')).toBeNull()
+      const type = (field: HTMLInputElement | HTMLTextAreaElement, value: string) => {
+        const proto = field instanceof window.HTMLInputElement ? window.HTMLInputElement.prototype : window.HTMLTextAreaElement.prototype
+        Object.getOwnPropertyDescriptor(proto, 'value')!.set!.call(field, value)
+        field.dispatchEvent(new Event('input', { bubbles: true }))
+      }
+      act(() => {
+        type(dialog.querySelector('input')!, '按 batch 校准阈值')
+        type(dialog.querySelector('textarea')!, '先在两个 batch 上试。')
+      })
+      await act(async () => { dialog.querySelector<HTMLButtonElement>('.btn.pri')!.click() })
+      expect(api.create).toHaveBeenCalledWith(undefined, '按 batch 校准阈值', '先在两个 batch 上试。')
+      expect(api.update).not.toHaveBeenCalled()
+      api.revision += 1
+      await act(async () => { root.render(<MessagesProvider><Ideas /></MessagesProvider>) })
+      expect(host.querySelector('.ideas-list > [data-idea]')?.getAttribute('data-idea')).toBe('idea-own')
+      expect(host.querySelector('.idea-detail-slot')?.getAttribute('data-panel-state')).not.toBe('closed')
+      expect(host.querySelector('.idea-detail-slot .node-document-title')?.textContent).toBe('按 batch 校准阈值')
+    } finally {
+      api.ideas = api.ideas.filter((idea) => idea.id !== OWN.id)
+      api.revision = 0
+    }
+  })
+
+  it('从别处带着新建想法的落点跳进来时打开同一个想法编辑框', async () => {
+    api.jump = { screen: 'ideas', target: '', from: 'feed', seq: 1, anchor: { newIdea: true } }
+    await act(async () => { root.render(<MessagesProvider><Ideas /></MessagesProvider>) })
+    expect(document.querySelector('.idea-dialog .modal-title, .idea-dialog h2')?.textContent).toBe('新建想法')
+  })
+
+  it('自己写下的想法不写来源：卡片上没有来源和来源标签，详情里没有来源一节', async () => {
+    api.ideas.push(OWN)
+    try {
+      await act(async () => { root.render(<MessagesProvider><Ideas /></MessagesProvider>) })
+      expect([...host.querySelector('[data-idea="idea-own"] .idea-card-meta')!.children].map((child) => child.className))
+        .toEqual(['idea-card-updated'])
+      expect(host.querySelector('[data-idea="idea-own"]')!.textContent).not.toContain('手动添加')
+      await act(async () => { host.querySelector<HTMLElement>('[data-idea="idea-own"]')!.click() })
+      expect([...host.querySelectorAll('.idea-detail-panel > .section-heading:not(.idea-panel-head)')].map((h) => h.firstChild!.textContent))
+        .toEqual(['内容', '关联项目'])
+      expect(host.querySelector('.idea-detail-slot')!.textContent).not.toContain('手动添加')
+    } finally {
+      api.ideas = api.ideas.filter((idea) => idea.id !== OWN.id)
+    }
   })
 
   it('列表还没到时显示载入占位，不说还没有想法', async () => {

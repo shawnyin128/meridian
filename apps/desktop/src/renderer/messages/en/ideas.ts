@@ -6,6 +6,7 @@ export const ideas = {
   activeHeading: (n: number) => `Active · ${n}`,
   sort: 'Rearrange',
   sortUpdated: 'By updated',
+  create: 'New idea',
   empty: 'No active ideas yet',
   sourceKind: { chat: 'Chat', paperReading: 'Paper notes' },
   link: {

@@ -949,10 +949,11 @@ export interface VaultStore {
 
   /**
    * Creates an idea from text the user explicitly wrote in the save dialog. Core resolves and
-   * records the source conversation and optional paper instead of treating the last chat message
-   * as the idea itself.
+   * records the source conversation `chatId` and optional paper instead of treating the last chat
+   * message as the idea itself. Without `chatId` the idea is one the user wrote down on their own:
+   * its source is MANUAL_SOURCE, with no chat and no agent. It links to no project.
    */
-  createIdea(chatId: string, title: string, body: string): ResearchIdea
+  createIdea(chatId: string | undefined, title: string, body: string): ResearchIdea
 
   /** Updates content, attention state, or the optional project link of an existing idea. */
   updateIdea(id: string, patch: ResearchIdeaMutation): ResearchIdea

@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import type { ResearchIdea } from '../../../shared/contract.js'
+import { MANUAL_SOURCE } from '../../../shared/vocabulary.js'
 import { useFormat } from '../../lib/format.js'
 import { useMessages } from '../../messages/useMessages.js'
 import { ENTITY_SCREEN, EntityLink } from '../EntityLink.js'
@@ -11,6 +12,10 @@ import { SLOT } from '../TitleNote.js'
 import { Tag } from '../Tag.js'
 import { FadeText } from '../FadeText.js'
 import './IdeaPanel.css'
+
+/** Whether `idea` is one the user wrote down on their own, from no chat and no agent: such an idea shows no source. */
+export const ownIdea = (idea: ResearchIdea): boolean =>
+  idea.source.chatId === undefined && idea.source.agent !== true && idea.source.chatTitle === MANUAL_SOURCE
 
 /** Where an idea came from, as plain text for a tooltip: the conversation, after the paper it was about when there is one. */
 export const ideaSourceLabel = (idea: ResearchIdea) => idea.source.paperTitle === undefined
@@ -49,9 +54,10 @@ export function IdeaSource({ idea, message = (source) => source, onOpenPaper }: 
 /**
  * The one detail panel of an idea, on the Ideas screen and on the project page: the title with the
  * host's `actions` and the close button, the kind and archived tags, the content, the host's own
- * sections (`children`), then the source and the last update. `editor`, when given, takes the
- * content's place. `onOpenSourceChat` adds, to the source heading, the button that opens the
- * conversation the idea came from; `onOpenSourcePaper` makes the paper it came from a link.
+ * sections (`children`), then the source, which an idea the user wrote down on their own does not
+ * have, and the last update. `editor`, when given, takes the content's place. `onOpenSourceChat`
+ * adds, to the source heading, the button that opens the conversation the idea came from;
+ * `onOpenSourcePaper` makes the paper it came from a link.
  */
 export function IdeaPanel({ idea, actions, editor, onClose, onOpenSourceChat, onOpenSourcePaper, children }: {
   idea: ResearchIdea
@@ -83,14 +89,18 @@ export function IdeaPanel({ idea, actions, editor, onClose, onOpenSourceChat, on
         </>
       )}
       {children}
-      <SectionHeading
-        variant="rail"
-        actions={onOpenSourceChat === undefined || chatId === undefined
-          ? undefined
-          : <button className="btn sm idea-panel-open-chat" onClick={() => onOpenSourceChat(chatId)}>{m.ideas.openSourceChat}</button>}
-      >{m.project.sections.source}
-      </SectionHeading>
-      <p className="idea-panel-source"><IdeaSource idea={idea} onOpenPaper={onOpenSourcePaper} /></p>
+      {ownIdea(idea) ? null : (
+        <>
+          <SectionHeading
+            variant="rail"
+            actions={onOpenSourceChat === undefined || chatId === undefined
+              ? undefined
+              : <button className="btn sm idea-panel-open-chat" onClick={() => onOpenSourceChat(chatId)}>{m.ideas.openSourceChat}</button>}
+          >{m.project.sections.source}
+          </SectionHeading>
+          <p className="idea-panel-source"><IdeaSource idea={idea} onOpenPaper={onOpenSourcePaper} /></p>
+        </>
+      )}
       <div className="idea-panel-updated">{m.common.updatedOn(fmt.date(idea.updated))}</div>
     </>
   )

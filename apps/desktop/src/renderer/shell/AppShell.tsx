@@ -94,6 +94,8 @@ export type JumpAnchor = {
   importPdf?: true
   /** Project: show the project list with its new-project row open. */
   newProject?: true
+  /** Ideas: open the editor of a new idea of the user's own. */
+  newIdea?: true
 }
 export type ScreenJump = {
   screen: ScreenKey
@@ -626,6 +628,7 @@ export function AppShell({ screens, settings }: {
   const commands: PaletteCommand[] = [
     { label: m.research.list.create, run: () => jumps.open('project', '', { newProject: true }) },
     { label: m.papers.upload.importAction, run: () => jumps.open('papers', '', { importPdf: true }) },
+    { label: m.ideas.create, run: () => jumps.open('ideas', '', { newIdea: true }) },
     { label: m.shell.titlebar.settings, shortcut: commandShortcut(appMenu.platform(), ','), run: () => setSettingsOpen(true) },
     { label: m.shell.nav.feed, run: () => navigate('feed') },
     { label: m.shell.nav.delivery, run: () => openInbox(ALL_WATCHES) },

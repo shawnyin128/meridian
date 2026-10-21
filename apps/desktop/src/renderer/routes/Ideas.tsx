@@ -10,7 +10,9 @@ import { ChoicePicker, DotsMenu } from '../components/FieldPickers.js'
 import { EditActions } from '../components/EditActions.js'
 import { CollapsibleGroup } from '../components/CollapsibleGroup.js'
 import { EmptyState } from '../components/EmptyState.js'
-import { IdeaPanel, IdeaSource, ideaSourceLabel } from '../components/ideas/IdeaPanel.js'
+import { AddAction } from '../components/AddAction.js'
+import { IdeaEditorDialog } from '../components/ideas/IdeaEditorDialog.js'
+import { IdeaPanel, IdeaSource, ideaSourceLabel, ownIdea } from '../components/ideas/IdeaPanel.js'
 import { LoadingPlaceholder } from '../components/LoadingPlaceholder.js'
 import { DetailPanel } from '../components/DetailPanel.js'
 import { CardOpen, ResearchObjectCard } from '../components/ResearchObjectCard.js'
@@ -98,16 +100,20 @@ function IdeaCard({ idea, linked, selected, menu, onOpen, reorder, dropClassName
         </div>
         <p ref={summary} className={`idea-card-summary fade-lines${summaryCut ? ' clipped' : ''}`}>{idea.body}</p>
         <div className="idea-card-meta">
-          <FadeText className="idea-card-source" label={m.project.idea.sourceTag(ideaSourceLabel(idea))}>
-            <IdeaSource idea={idea} message={m.project.idea.sourceTag} />
-          </FadeText>
-          {idea.source.agent === true
-            ? <AgentLabel className="idea-source-kind" />
-            : (
-              <SourceLabel className="idea-source-kind">
-                {idea.source.paperTitle === undefined ? m.ideas.sourceKind.chat : m.ideas.sourceKind.paperReading}
-              </SourceLabel>
-            )}
+          {ownIdea(idea) ? null : (
+            <>
+              <FadeText className="idea-card-source" label={m.project.idea.sourceTag(ideaSourceLabel(idea))}>
+                <IdeaSource idea={idea} message={m.project.idea.sourceTag} />
+              </FadeText>
+              {idea.source.agent === true
+                ? <AgentLabel className="idea-source-kind" />
+                : (
+                  <SourceLabel className="idea-source-kind">
+                    {idea.source.paperTitle === undefined ? m.ideas.sourceKind.chat : m.ideas.sourceKind.paperReading}
+                  </SourceLabel>
+                )}
+            </>
+          )}
           <span className="idea-card-updated">{m.ideas.updated(fmt.date(idea.updated))}</span>
         </div>
       </div>
@@ -242,6 +248,7 @@ export function Ideas() {
   const [projects, setProjects] = useState<ProjectSummary[]>([])
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [archiveOpen, setArchiveOpen] = useState(false)
+  const [creating, setCreating] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const closeDetail = useCallback(() => setSelectedId(null), [])
 
@@ -260,7 +267,8 @@ export function Ideas() {
   useEffect(() => {
     if (jump === null || jump.seq === consumedJump.current) return
     consumedJump.current = jump.seq
-    setSelectedId(jump.target)
+    if (jump.anchor?.newIdea === true) setCreating(true)
+    else setSelectedId(jump.target)
   }, [jump])
   useEscapeLayer(selectedId !== null, closeDetail)
 
@@ -316,8 +324,13 @@ export function Ideas() {
 
   return (
     <PageShell className="ideas-page">
-      <PageHeader actions={active.length === 0 ? undefined : (
-        <SortMenu label={m.ideas.sort} options={[{ label: m.ideas.sortUpdated, onSelect: sortByUpdated }]} />
+      <PageHeader actions={(
+        <>
+          {active.length === 0
+            ? null
+            : <SortMenu label={m.ideas.sort} options={[{ label: m.ideas.sortUpdated, onSelect: sortByUpdated }]} />}
+          <AddAction variant="page" onClick={() => setCreating(true)}>{m.ideas.create}</AddAction>
+        </>
       )}
       >
         <PageTitle>{m.ideas.title(active.length)}</PageTitle>
@@ -366,6 +379,18 @@ export function Ideas() {
           </DetailPanel>
         </div>
       </PageBody>
+      <IdeaEditorDialog
+        open={creating} onOpenChange={setCreating}
+        onSubmit={(title, body) => {
+          let created: string | null = null
+          return write(ideaApi.create(undefined, title, body).then((idea) => { created = idea.id }), {
+            note: m.chat.ideaSavedNote,
+          }).then((saved) => {
+            if (saved && created !== null) setSelectedId(created)
+            return saved
+          })
+        }}
+      />
     </PageShell>
   )
 }

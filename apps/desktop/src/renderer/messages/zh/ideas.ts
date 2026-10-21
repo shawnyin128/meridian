@@ -4,6 +4,7 @@ export const ideas = {
   activeHeading: (n: number) => `进行中 · ${n}`,
   sort: '重新排列',
   sortUpdated: '按更新时间',
+  create: '新建想法',
   empty: '还没有进行中的想法',
   sourceKind: { chat: '对话', paperReading: '论文阅读' },
   link: {

@@ -2035,8 +2035,9 @@ export const ChatSendResultSchema = z.object({
 export const ChatCancelParamsSchema = z.object({ id: z.string() }).strict()
 export const ChatCancelResultSchema = z.object({ id: z.string(), cancelled: z.boolean() }).strict()
 
+/** Creates an idea from the chat `chatId` names, or, without it, one the user writes down on their own. */
 export const ResearchIdeaCreateParamsSchema = z.object({
-  chatId: z.string(),
+  chatId: z.string().optional(),
   title: ResearchIdeaSchema.shape.title,
   body: ResearchIdeaSchema.shape.body,
 }).strict()

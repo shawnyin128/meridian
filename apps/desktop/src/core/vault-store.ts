@@ -2469,9 +2469,9 @@ export function createVaultStore(
     },
 
     createIdea(chatId, title, body) {
-      const sourceChat = chatOf(chatId)
-      const sourcePaper = sourceChat.paperId === undefined ? undefined : papers.get(sourceChat.paperId)
-      const idea = createResearchIdea(nextId('idea'), title, body, {
+      const sourceChat = chatId === undefined ? undefined : chatOf(chatId)
+      const sourcePaper = sourceChat?.paperId === undefined ? undefined : papers.get(sourceChat.paperId)
+      const idea = createResearchIdea(nextId('idea'), title, body, sourceChat === undefined ? { chatTitle: MANUAL_SOURCE } : {
         chatId: sourceChat.id,
         chatTitle: sourceChat.title,
         ...(sourcePaper === undefined

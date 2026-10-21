@@ -15,6 +15,9 @@ export const FINISHED_PROJECT = '已完成'
 /** Project states in list-group and menu-transition order. */
 export const PROJECT_STATUSES = [ACTIVE_PROJECT, SHELVED_PROJECT, FINISHED_PROJECT] as const
 
+/** The source an item the user added by hand records: a project conclusion, or an idea that came from no chat. */
+export const MANUAL_SOURCE = '手动添加'
+
 /** The `topic` Core stores on a new project, which the App shows as no area. */
 export const DEFAULT_PROJECT_TOPIC = '未分主题'
 

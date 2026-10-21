@@ -6,10 +6,15 @@ import { ModalDialog } from '../ModalDialog.js'
 import { FadeText } from '../FadeText.js'
 import './IdeaEditorDialog.css'
 
+/**
+ * The one idea editor: a title and a body that `onSubmit` saves, closing the dialog when it returns
+ * true. With `idea` it edits that idea; otherwise it saves a new one, from the chat `sourceLabel`
+ * names, or, without it, one the user writes down on their own, which names no source.
+ */
 export function IdeaEditorDialog({ open, idea, sourceLabel, onOpenChange, onSubmit }: {
   open: boolean
   idea?: ResearchIdea
-  sourceLabel: string
+  sourceLabel?: string
   onOpenChange: (open: boolean) => void
   onSubmit: (title: string, body: string) => Promise<boolean>
 }) {
@@ -37,7 +42,7 @@ export function IdeaEditorDialog({ open, idea, sourceLabel, onOpenChange, onSubm
   return (
     <ModalDialog
       open={open} onOpenChange={onOpenChange} size="form" className="idea-dialog"
-      title={idea === undefined ? m.ideas.editor.newTitle : m.ideas.editor.editTitle}
+      title={idea !== undefined ? m.ideas.editor.editTitle : sourceLabel === undefined ? m.ideas.create : m.ideas.editor.newTitle}
       actions={(
         <>
           <button className="btn" disabled={busy} onClick={() => onOpenChange(false)}>{m.common.cancel}</button>
@@ -48,7 +53,9 @@ export function IdeaEditorDialog({ open, idea, sourceLabel, onOpenChange, onSubm
         </>
       )}
     >
-      <FadeText className="idea-dialog-source" label={m.ideas.editor.sourceLabel(sourceLabel)}>{m.ideas.editor.sourceLabel(sourceLabel)}</FadeText>
+      {sourceLabel === undefined
+        ? null
+        : <FadeText className="idea-dialog-source" label={m.ideas.editor.sourceLabel(sourceLabel)}>{m.ideas.editor.sourceLabel(sourceLabel)}</FadeText>}
       <label className="idea-dialog-field">
         <span>{m.ideas.editor.titleLabel}</span>
         <FormInput

@@ -652,5 +652,12 @@ describe('AppShell command palette', () => {
     run('设置…')
     expect(document.querySelector('#settingsProbe')!.textContent).toBe('default')
   })
+
+  it('新建想法打开想法屏,带着打开新建想法编辑框的落点', async () => {
+    await mount(undefined, { ideas: <JumpProbe id="ideasJump" /> })
+    run('新建想法')
+    expect(palette()).toBeNull()
+    expect(shown()).toBe('{"newIdea":true}')
+  })
 })
 
