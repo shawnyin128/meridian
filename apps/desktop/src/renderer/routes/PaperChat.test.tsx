@@ -110,12 +110,12 @@ describe('PaperChat', () => {
     vi.unstubAllGlobals()
   })
 
-  it('记入科研记录后，动态里那一条和提示说的是同一句', async () => {
+  it('记入科研记录后，动态里那一条和提示说的是同一句，项目名带着项目的 id', async () => {
     api.messages.mockResolvedValueOnce([{
       id: 'm1', role: 'ai', runs: [{ kind: 'text', text: '结论' }],
       actions: [{ kind: 'writeBack', label: '记入科研记录', project: 'draft', text: '结论' }],
     }])
-    api.recordAction.mockResolvedValueOnce({ name: '草稿树项目' } as never)
+    api.recordAction.mockResolvedValueOnce({ id: 'draft', name: '草稿树项目' } as never)
     const host = document.createElement('div')
     document.body.append(host)
     root = createRoot(host)
@@ -126,7 +126,10 @@ describe('PaperChat', () => {
     })
     await act(async () => { host.querySelector<HTMLButtonElement>('.macts .btn')!.click() })
     expect(api.feedAppend).toHaveBeenCalledWith({
-      source: 'me', body: { kind: 'runs', runs: [{ kind: 'text', text: '已记入《草稿树项目》的科研记录' }] },
+      source: 'me', body: { kind: 'runs', runs: [
+        { kind: 'text', text: '已记入《' }, { kind: 'text', text: '草稿树项目', target: { kind: 'project', id: 'draft' } },
+        { kind: 'text', text: '》的科研记录' },
+      ] },
     })
   })
 

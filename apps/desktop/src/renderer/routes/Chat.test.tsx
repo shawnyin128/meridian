@@ -24,6 +24,8 @@ const api = vi.hoisted(() => ({
   listPapers: vi.fn((): Promise<{ rows: PaperRow[]; total: number }> => Promise.resolve({ rows: [], total: 0 })),
   messages: vi.fn<() => Promise<ChatMessage[]>>(() => Promise.resolve([])),
   create: vi.fn<(title: string, named: boolean) => Promise<ChatSession>>(),
+  recordAction: vi.fn<() => Promise<{ id: string; name: string }>>(),
+  feedAppend: vi.fn(() => Promise.resolve()),
 }))
 
 const session = vi.hoisted(() => ({ id: 'chat-1', revision: 0 }))
@@ -35,8 +37,8 @@ const nav = vi.hoisted(() => ({ jump: null as ScreenJump | null }))
 const resized: (() => void)[] = []
 
 vi.mock('../ipc.js', () => ({
-  chat: { send: api.send, messages: api.messages, cancel: api.cancel, create: api.create },
-  feed: { append: vi.fn() },
+  chat: { send: api.send, messages: api.messages, cancel: api.cancel, create: api.create, recordAction: api.recordAction },
+  feed: { append: api.feedAppend },
   idea: { create: vi.fn() },
   papers: { list: api.listPapers },
   project: { list: api.listProjects },
@@ -199,6 +201,21 @@ describe('Chat composer', () => {
     await openChat('chat-1')
     act(() => setValue(composer, '@EAGLE'))
     expect([...document.querySelectorAll('#cRes .rm')].map((line) => line.textContent)).toEqual(['2024 · 待读'])
+  })
+
+  it('记入科研记录后在动态里记一条,项目名带着项目的 id', async () => {
+    api.messages.mockResolvedValueOnce([{
+      id: 'm1', role: 'ai', runs: [{ kind: 'text', text: '结论' }],
+      actions: [{ kind: 'writeBack', label: '记入科研记录', project: 'draft', text: '结论' }],
+    }])
+    api.recordAction.mockResolvedValueOnce({ id: 'draft', name: '草稿树项目' })
+    session.revision += 1
+    await openChat('chat-1')
+    await act(async () => { document.querySelector<HTMLButtonElement>('.macts .btn')!.click() })
+    expect(api.feedAppend).toHaveBeenCalledWith({ source: 'me', body: { kind: 'runs', runs: [
+      { kind: 'text', text: '已记入《' }, { kind: 'text', text: '草稿树项目', target: { kind: 'project', id: 'draft' } },
+      { kind: 'text', text: '》的科研记录' },
+    ] } })
   })
 
   it('@ 候选只留在打开它的那条对话里', async () => {

@@ -22,10 +22,14 @@ const summary = (id: string, name: string): ProjectSummary => ({
 
 /** The jump aimed at the Projects screen. */
 const nav = vi.hoisted(() => ({ jump: null as ScreenJump | null }))
+const ipc = vi.hoisted(() => ({
+  append: vi.fn(() => Promise.resolve()),
+  create: vi.fn((name: string) => Promise.resolve(name === '草稿树' ? 'project-9' : 'project-0')),
+}))
 
 vi.mock('../ipc.js', () => ({
-  feed: { append: vi.fn() },
-  project: { list: async () => [summary('a', '项目甲'), summary('b', '项目乙')], reorder: vi.fn() },
+  feed: { append: ipc.append },
+  project: { list: async () => [summary('a', '项目甲'), summary('b', '项目乙')], reorder: vi.fn(), create: ipc.create },
 }))
 
 vi.mock('../shell/AppShell.js', () => ({
@@ -122,6 +126,24 @@ describe('Projects', () => {
 
     await click('[data-proj="a"]')
     expect(shownRecord()).toBe('graph')
+  })
+
+  it('新建一个项目在动态里记一条,点名的项目名带着它的 id', async () => {
+    await click('#projNew')
+    const input = host.querySelector<HTMLInputElement>('.projpanel input.inedit')!
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')!.set!.call(input, '草稿树')
+      input.dispatchEvent(new Event('input', { bubbles: true }))
+    })
+    await act(async () => {
+      input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
+      await Promise.resolve()
+    })
+    expect(ipc.create).toHaveBeenCalledWith('草稿树')
+    expect(ipc.append).toHaveBeenCalledWith({ source: 'me', body: { kind: 'runs', runs: [
+      { kind: 'text', text: '新项目《' }, { kind: 'text', text: '草稿树', target: { kind: 'project', id: 'project-9' } },
+      { kind: 'text', text: '》已创建' },
+    ] } })
   })
 
   it('带新建项目落点跳进来时,从项目详情回到列表并打开新建行;再回到列表时不再打开', async () => {

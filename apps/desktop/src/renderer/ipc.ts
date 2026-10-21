@@ -174,7 +174,7 @@ export const harness = {
 export const project = {
   list: () => call<ProjectSummary[]>('project.list', {}),
   overview: () => call<ProjectOverview[]>('project.overview', {}),
-  create: (name: string) => call<void>('project.create', { name }),
+  create: (name: string) => call<string>('project.create', { name }),
   get: (id: string) => call<ProjectDetail>('project.get', { id }),
   bindWorkspace: (id: string, binding: ProjectWorkspaceBinding | null) =>
     call<ProjectDetail>('project.bindWorkspace', { id, binding }),

@@ -284,9 +284,9 @@ export interface VaultStore {
    * which the screens show before you have chosen either. It holds no tasks,
    * milestones, relations, attachments or agent sessions, its research graph
    * is empty, and it holds exactly one event, dated today, recording that it
-   * was created.
+   * was created. Returns the new project's id.
    */
-  createProject(name: string): void
+  createProject(name: string): string
 
   /**
    * Returns the project with the given id, its tasks, milestones, relations,

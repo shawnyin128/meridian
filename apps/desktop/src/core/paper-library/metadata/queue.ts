@@ -85,7 +85,11 @@ export function createMetadataQueue(deps: {
       : job.found === 'arxiv' ? '已入库，元数据取自 arXiv。'
         : job.found === 'pdf' ? '已入库，标题取自 PDF。'
           : '已入库，没能识别出元数据。'
-    note([{ kind: 'text', text: '你上传的' }, { kind: 'strong', text: `《${job.title}》` }, { kind: 'text', text: said }])
+    note([
+      { kind: 'text', text: '你上传的' },
+      { kind: 'strong', text: `《${job.title}》`, target: { kind: 'paper', id: job.paperId } },
+      { kind: 'text', text: said },
+    ])
     compactUploads()
   }
 

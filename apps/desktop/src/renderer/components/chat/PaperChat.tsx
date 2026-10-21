@@ -7,7 +7,7 @@ import {
 } from '../../shell/AppShell.js'
 import { GripTooltip } from '../../shell/GripTooltip.js'
 import { sendsMessage } from '../../lib/chat.js'
-import { ChatMessageView, plain } from './ChatMessage.js'
+import { ChatMessageView } from './ChatMessage.js'
 import { BackButton } from '../BackButton.js'
 import { FormTextarea } from '../FormControls.js'
 import { Grip } from '../Grip.js'
@@ -20,7 +20,7 @@ import { useGenerations } from '../../hooks/useGenerations.js'
 import { useFollowEnd } from '../../hooks/useFollowEnd.js'
 import { useNoModelChats } from '../../hooks/useNoModelChats.js'
 import { useScrollFade } from '../../hooks/useScrollFade.js'
-import { TitleNote } from '../TitleNote.js'
+import { namedRuns, TitleNote } from '../TitleNote.js'
 import { useVaultWrite } from '../../hooks/useVaultWrite.js'
 import { useMessages } from '../../messages/useMessages.js'
 import { IdeaEditorDialog } from '../ideas/IdeaEditorDialog.js'
@@ -119,9 +119,9 @@ export function PaperChat({ paper, onBack = () => {}, prompt = null }: {
     if (session === null) return
     void chat.recordAction(session.id, message.id).then(async (held) => {
       notice.success(<TitleNote message={m.chat.recordedNote} title={held.name} />)
-      await feed.append({ source: 'me', body: { kind: 'runs', runs: [
-        plain(m.chat.recordedNote(held.name)),
-      ] } })
+      await feed.append({
+        source: 'me', body: { kind: 'runs', runs: namedRuns(m.chat.recordedNote, held.name, { kind: 'project', id: held.id }) },
+      })
       bump()
     }).catch((cause: unknown) => notice.refusal(errorLabel(m, cause)))
   }

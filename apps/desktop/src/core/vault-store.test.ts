@@ -1587,7 +1587,9 @@ describe('vault store on the aggregation layout', () => {
     expect(labTexts()).toEqual([])
     clock = new Date(clock.getTime() + 31_000)
     expect(labTexts()).toEqual(['「动态实验流」完成 延迟探针：p95 降到 40ms'])
-    expect(timed.listFeed()[0]!.source).toBe('lab')
+    expect(timed.listFeed()[0]).toMatchObject({
+      source: 'lab', body: { runs: [{ kind: 'strong', text: '「动态实验流」', target: { kind: 'project', id } }, { kind: 'text' }] },
+    })
 
     clock = new Date(clock.getTime() + 61_000)
     expect(labTexts()).toHaveLength(1)

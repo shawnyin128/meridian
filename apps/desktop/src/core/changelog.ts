@@ -823,11 +823,9 @@ export function withChangelog(ops: VaultOps, log: ChangeLogStore): VaultStore {
     },
 
     createProject(name) {
-      const had = new Set(ops.listProjects().map((p) => p.id))
-      ops.createProject(name)
-      const made = ops.listProjects().find((p) => !had.has(p.id))
-      if (!made) throw new Error('新建项目之后库里没有多出一个项目')
-      push({ kind: 'project', id: made.id }, '新建', 'created', undefined)
+      const id = ops.createProject(name)
+      push({ kind: 'project', id }, '新建', 'created', undefined)
+      return id
     },
 
     updateProject(id, patch) {

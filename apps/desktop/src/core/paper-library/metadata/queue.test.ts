@@ -57,7 +57,8 @@ describe('上传之后的元数据解析', () => {
     expect(store.getPaper(paper.id).title).toBe('Speculative Serving at Scale')
     expect(queue.uploads()[0]).toMatchObject({ step: 'done', found: 'pdf' })
     expect(store.listFeed()[0]?.body).toEqual({ kind: 'runs', runs: [
-      { kind: 'text', text: '你上传的' }, { kind: 'strong', text: '《Speculative Serving at Scale》' },
+      { kind: 'text', text: '你上传的' },
+      { kind: 'strong', text: '《Speculative Serving at Scale》', target: { kind: 'paper', id: paper.id } },
       { kind: 'text', text: '已入库，标题取自 PDF。' },
     ] })
   })

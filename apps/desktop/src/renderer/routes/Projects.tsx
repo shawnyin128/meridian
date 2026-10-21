@@ -43,6 +43,7 @@ import {
   PageBody, PageError, PageHeader, PageShell, PageTitle, SectionHeading,
 } from '../components/PageShell.js'
 import { FadeText } from '../components/FadeText.js'
+import { namedRuns } from '../components/TitleNote.js'
 import './shell.css'
 import './Projects.css'
 
@@ -317,9 +318,9 @@ function ProjectList({ onOpen, newRow, onNewRow }: { onOpen: (id: string) => voi
    * rejected, the row and the typed name stay.
    */
   const createProject = (name: string): boolean | Promise<boolean> =>
-    (name === '' ? false : write(projectApi.create(name).then(() => feed.append({
+    (name === '' ? false : write(projectApi.create(name).then((id) => feed.append({
       source: 'me',
-      body: { kind: 'runs', runs: [{ kind: 'text', text: m.research.list.createdFeedNote(name) }] },
+      body: { kind: 'runs', runs: namedRuns(m.research.list.createdFeedNote, name, { kind: 'project', id }) },
     })), { note: m.research.list.createdNote }))
 
   if (!projects) {

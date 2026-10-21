@@ -11,7 +11,7 @@ import { dnum } from '../../shared/dates.js'
 import { useFormat, type Format } from '../lib/format.js'
 import { useMessages } from '../messages/useMessages.js'
 import type { Catalog } from '../messages/catalog.js'
-import { ChatMessageView, plain } from '../components/chat/ChatMessage.js'
+import { ChatMessageView } from '../components/chat/ChatMessage.js'
 import { FOCUS_KEY } from '../../shared/project-signals.js'
 import { PickerPopover, PickOption } from '../components/PickerPopover.js'
 import { EmptyState } from '../components/EmptyState.js'
@@ -32,7 +32,7 @@ import { IdeaEditorDialog } from '../components/ideas/IdeaEditorDialog.js'
 import { GenerationControl } from '../components/GenerationControl.js'
 import { FadeText } from '../components/FadeText.js'
 import { Toolbar, ToolbarButton } from '../components/Toolbar.js'
-import { TitleNote } from '../components/TitleNote.js'
+import { namedRuns, TitleNote } from '../components/TitleNote.js'
 import { NoModelTag } from '../components/NoModelTag.js'
 import { Tag } from '../components/Tag.js'
 import { Tooltip } from '../components/Tooltip.js'
@@ -214,9 +214,9 @@ export function Chat() {
     if (id === null) return
     void chat.recordAction(id, message.id).then(async (p) => {
       notice.success(<TitleNote message={m.chat.recordedNote} title={p.name} />)
-      await feed.append({ source: 'me', body: { kind: 'runs', runs: [
-        plain(m.chat.recordedNote(p.name)),
-      ] } })
+      await feed.append({
+        source: 'me', body: { kind: 'runs', runs: namedRuns(m.chat.recordedNote, p.name, { kind: 'project', id: p.id }) },
+      })
       bump()
     }).catch((e: unknown) => notice.refusal(errorLabel(m, e)))
   }

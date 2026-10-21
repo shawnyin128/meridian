@@ -48,7 +48,7 @@ describe('createInboxDownloads', () => {
       body: {
         runs: [
           { text: '已入库：' },
-          { text: '《Fast Inference from Transformers via Speculative Decoding》' },
+          { text: '《Fast Inference from Transformers via Speculative Decoding》', target: { kind: 'paper', id: result.paper } },
           { text: '，元数据取自 arXiv。' },
         ],
       },

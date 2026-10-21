@@ -1430,20 +1430,20 @@ export const ChangelogArchiveParamsSchema = z.object({ id: z.string() }).strict(
 export const ChangelogDeleteParamsSchema = z.object({ id: z.string() }).strict()
 
 /**
+ * The entity a feed run names, by id: a `paper`, a `project` or a Wiki `page`. `kind` takes any
+ * string, so a run naming a kind a later version adds still reads, as its text.
+ */
+export const FeedTargetSchema = z.object({ kind: z.string(), id: z.string() }).strict()
+
+/**
  * Feed-body run whose `kind` controls presentation: plain text, emphasized text,
- * or a citation to a vault conclusion or page. This is the run this version writes.
+ * or a citation to a vault conclusion or page. `target` is the entity its text names.
  */
 export const FeedRunSchema = z.object({
   kind: z.enum(['text', 'strong', 'cite']),
   text: z.string(),
+  target: FeedTargetSchema.optional(),
 }).strict()
-
-/**
- * The entity a stored feed run names, by id: a `paper`, a `project` or a Wiki `page`. This version
- * reads it and writes none. `kind` takes any string, so a run naming a kind a later version adds
- * still reads, as its text.
- */
-export const FeedTargetSchema = z.object({ kind: z.string(), id: z.string() }).strict()
 
 /**
  * Briefing item requiring attention. `tag`, `text`, and `action` supply display
@@ -1456,18 +1456,17 @@ export const FeedBriefItemSchema = z.object({
   action: z.string(),
 }).strict()
 
-/** Feed entry body of runs shaped by `run`: either formatted runs or a brief summary with attention items. */
-const feedBody = <Run extends z.ZodType>(run: Run) => z.discriminatedUnion('kind', [
-  z.object({ kind: z.literal('runs'), runs: z.array(run) }).strict(),
+/**
+ * Feed entry body: either formatted runs or a brief summary with attention items.
+ */
+export const FeedBodySchema = z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('runs'), runs: z.array(FeedRunSchema) }).strict(),
   z.object({
     kind: z.literal('brief'),
     heading: z.string(),
     items: z.array(FeedBriefItemSchema),
   }).strict(),
 ])
-
-/** Feed entry body as stored: a run may also hold the entity it names. */
-export const FeedBodySchema = feedBody(FeedRunSchema.extend({ target: FeedTargetSchema.optional() }).strict())
 
 /**
  * Feed entry. `source` is both provenance and filter key; `day` selects the
@@ -2126,12 +2125,8 @@ export const SearchHitSchema = z.object({
 
 export const SearchParamsSchema = z.object({ query: z.string() }).strict()
 
-/**
- * Feed creation accepts source and body, whose runs name no entity; Core supplies ID, date section,
- * and time from the vault date.
- */
+/** Feed creation accepts source and body; Core supplies ID, date section, and time from the vault date. */
 export const FeedAppendParamsSchema = FeedEntrySchema.omit({ id: true, day: true, time: true })
-  .extend({ body: feedBody(FeedRunSchema) })
 
 /** Creates a conclusion with optional originating chat and referenced paper. */
 export const ProjectCreateConclusionParamsSchema = z.object({

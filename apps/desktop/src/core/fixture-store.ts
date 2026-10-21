@@ -909,6 +909,7 @@ export function createFixtureStore(
       projectById.set(project.id, project)
       // Front of whatever order already exists, so a new project outranks the manual order too.
       projectOrder = [project.id, ...(projectOrder ?? [])]
+      return project.id
     },
 
     getProject(id) {
@@ -1861,7 +1862,8 @@ export function createFixtureStore(
             id: nextId('entry'), source: 'lab', day: dayOf(day, day), time: FEED_NOW,
             createdAt: now().toISOString(),
             body: { kind: 'runs', runs: [
-              { kind: 'strong', text: `「${project.name}」` }, { kind: 'text', text: event.text.replace(/^\[agent\] /, '') },
+              { kind: 'strong', text: `「${project.name}」`, target: { kind: 'project', id: project.id } },
+              { kind: 'text', text: event.text.replace(/^\[agent\] /, '') },
             ] },
           }]
         }

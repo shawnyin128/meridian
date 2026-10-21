@@ -906,20 +906,23 @@ export function createVaultStore(
     eventsReadAt = at
     const first = state.feedEvents === undefined
     const seen = new Set(state.feedEvents ?? [])
-    const fresh: { project: string; text: string }[] = []
+    const fresh: { project: ProjectRecord; text: string }[] = []
     for (const project of projects()) {
       if (project.workspaceRoot === undefined && project.workspaceSsh === undefined) continue
       for (const event of readProjectWorkspace(project)?.events ?? []) {
         const key = `${project.id}:${event.date}:${event.text}`
         if (seen.has(key)) continue
         seen.add(key)
-        fresh.push({ project: project.name, text: event.text.replace(/^\[agent\] /, '') })
+        fresh.push({ project, text: event.text.replace(/^\[agent\] /, '') })
       }
     }
     if (!first && fresh.length === 0) return
     if (!first) {
       for (const event of fresh) {
-        appendFeedEntry('lab', [{ kind: 'strong', text: `「${event.project}」` }, { kind: 'text', text: event.text }])
+        appendFeedEntry('lab', [
+          { kind: 'strong', text: `「${event.project.name}」`, target: { kind: 'project', id: event.project.id } },
+          { kind: 'text', text: event.text },
+        ])
       }
     }
     saveState({ ...state, feedEvents: [...seen] })
@@ -1435,6 +1438,7 @@ export function createVaultStore(
       projectById.set(project.id, project)
       // Front of whatever order already exists, so a new project outranks the manual order too.
       saveState({ ...state, projectOrder: [project.id, ...(state.projectOrder ?? [])] })
+      return project.id
     },
 
     putProject(project) {

@@ -1,8 +1,15 @@
+import { cpSync, mkdtempSync, readFileSync, rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join, resolve } from 'node:path'
 import { describe, expect, expectTypeOf, it } from 'vitest'
 import { z } from 'zod'
 import type { FeedFields, FeedRun } from '../shared/contract.js'
 import { FeedAppendParamsSchema, FeedEntrySchema } from '../shared/contract.js'
+import { createVaultStore } from './vault-store.js'
 import { readStoredList } from './vault/stored-records.js'
+
+/** Test vault the store opens. */
+const VAULT = resolve(import.meta.dirname, 'fixtures/vault')
 
 /** The feed-entry schema of App 0.0.15.4 (v0.0.15004), copied with the shapes it reused: every object is strict. */
 const RunSchema0154 = z.object({ kind: z.enum(['text', 'strong', 'cite']), text: z.string() }).strict()
@@ -63,12 +70,35 @@ describe('动态分段点名的实体', () => {
     expect(read.stored(read.rows)).toEqual([NAMING, PLAIN])
   })
 
-  it('这个版本不写 target:追加动态的参数不收,写进去的分段类型里也没有这个字段', () => {
+  it('这个版本写 target:追加动态的参数收它,写进去的分段类型里有这个字段', () => {
     const run = { kind: 'strong', text: '《EAGLE》', target: { kind: 'paper', id: '2401-15077' } }
-    expect(FeedAppendParamsSchema.safeParse({ source: 'me', body: { kind: 'runs', runs: [run] } }).success).toBe(false)
-    expect(FeedAppendParamsSchema.parse({ source: 'me', body: { kind: 'runs', runs: [{ kind: 'strong', text: '《EAGLE》' }] } }))
-      .toEqual({ source: 'me', body: { kind: 'runs', runs: [{ kind: 'strong', text: '《EAGLE》' }] } })
-    expectTypeOf<FeedRun>().not.toHaveProperty('target')
-    expectTypeOf<RunsOf<FeedFields['body']>>().not.toHaveProperty('target')
+    expect(FeedAppendParamsSchema.parse({ source: 'me', body: { kind: 'runs', runs: [run] } }))
+      .toEqual({ source: 'me', body: { kind: 'runs', runs: [run] } })
+    expectTypeOf<FeedRun>().toHaveProperty('target')
+    expectTypeOf<RunsOf<FeedFields['body']>>().toHaveProperty('target')
+  })
+
+  it('这个版本存进 feed.json 的点名分段,App 0.0.15.4 的读法条条读得出、分段照常显示,存回时 target 一个不少', () => {
+    const vault = mkdtempSync(join(tmpdir(), 'meridian-feed-compat-'))
+    try {
+      cpSync(VAULT, vault, { recursive: true })
+      const store = createVaultStore(vault)
+      const project = store.createProject('推测解码加速')
+      const named = { kind: 'text', text: '推测解码加速', target: { kind: 'project', id: project } } as const
+      store.appendFeed({ source: 'me', body: { kind: 'runs', runs: [{ kind: 'text', text: '新项目《' }, named, { kind: 'text', text: '》已创建' }] } })
+      store.appendFeed(PLAIN as FeedFields)
+      const written: unknown[] = JSON.parse(readFileSync(join(vault, '.meridian', 'feed.json'), 'utf8'))
+      expect(written.at(-2)).toMatchObject({ body: { runs: [{}, { target: { kind: 'project', id: expect.stringMatching(/^project-/) } }, {}] } })
+
+      const read = readStoredList('feed.json', written, FeedEntrySchema0154, 'id')
+      expect(read.unreadable).toEqual([])
+      expect(read.rows.slice(-2).map((entry) => entry.body)).toEqual([
+        { kind: 'runs', runs: [{ kind: 'text', text: '新项目《' }, { kind: 'text', text: '推测解码加速' }, { kind: 'text', text: '》已创建' }] },
+        PLAIN.body,
+      ])
+      expect(read.stored(read.rows)).toEqual(written)
+    } finally {
+      rmSync(vault, { recursive: true, force: true })
+    }
   })
 })
