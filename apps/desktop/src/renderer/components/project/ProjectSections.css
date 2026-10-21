@@ -20,7 +20,7 @@
 .wkrel .reladd .inedit{flex:1;min-width:0}
 .wkrel .reladd:has(.urldraft){flex-wrap:wrap}
 .wkrel .reladd .urldraft{display:flex;flex-direction:column;gap:var(--sp-6);flex:1 1 100%;min-width:0}
-.wkrel .reladd .urldraft .inedit{flex:none;width:100%}
+.wkrel .reladd .urldraft .inedit{flex:none}
 .wkrel .tagchip[data-url]{cursor:pointer}
 .wkrel .tagchip[draggable]{cursor:grab}
 .wkrel .tagchip.dragging{opacity:.4}
