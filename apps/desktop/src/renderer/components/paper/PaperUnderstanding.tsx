@@ -31,12 +31,7 @@ export function PaperUnderstanding({ reading, onRead }: {
   const empty = !hasRemark && entries.length === 0
   return (
     <section className="paper-understanding" aria-label={m.papers.understanding.ariaLabel}>
-      <SectionHeading
-        actions={empty
-          ? <button type="button" className="btn sm" onClick={() => onRead()}>{m.papers.understanding.goRead}</button>
-          : undefined}
-      >{m.papers.understanding.heading}
-      </SectionHeading>
+      <SectionHeading>{m.papers.understanding.heading}</SectionHeading>
       {empty ? (
         <EmptyState variant="section">{m.papers.understanding.empty}</EmptyState>
       ) : (

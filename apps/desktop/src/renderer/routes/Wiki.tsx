@@ -636,8 +636,15 @@ export function Wiki() {
       <PageHeader
         actions={shownPaper === null
           ? undefined
-          // Papers filters its table down to this paper by title; the user continues from that row's details.
-          : <button className="btn" onClick={() => jumpTo('papers', shownPaper.title)}>{m.wiki.viewInPaperList}</button>}
+          : (
+            <>
+              {/* Papers filters its table down to this paper by title; the user continues from that row's details. */}
+              <button className="btn" onClick={() => jumpTo('papers', shownPaper.title)}>{m.wiki.viewInPaperList}</button>
+              <button className="btn" onClick={() => jumpTo('reader', shownPaper.id.slice(PAPER_PAGE.length))}>
+                {m.papers.understanding.goRead}
+              </button>
+            </>
+          )}
       >
         {place === null ? null : <BackButton onClick={back} />}
         <PageTitle label={shownAgg?.title ?? (shownPaper === null ? undefined : plainTitle(shownPaper.title))}>{title}</PageTitle>

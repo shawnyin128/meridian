@@ -191,14 +191,17 @@ describe('Wiki keyboard reach', () => {
     expect(fixture.open).toHaveBeenCalledWith('reader', 'p1', { page: 3 })
   })
 
-  it('论文页的「去论文列表查看」是整页的操作,在屏头右端,点它到论文表里找到这篇', async () => {
+  it('论文页的「去论文列表查看」和「去阅读论文」都离开这一页,一起在屏头右端,分别到论文表里这篇和阅读器', async () => {
     expect(host.querySelector('.desk-head .page-actions')).toBeNull()
     await press(host.querySelector<HTMLElement>('[data-wk="papers/p1"] .tt')!)
-    const go = host.querySelector<HTMLButtonElement>('.desk-head > .page-actions > .btn')!
-    expect(go.textContent).toBe('去论文列表查看')
+    const [list, read] = [...host.querySelectorAll<HTMLButtonElement>('.desk-head > .page-actions > .btn')]
+    expect([list!.textContent, read!.textContent]).toEqual(['去论文列表查看', '去阅读论文'])
     expect(host.querySelector('.wkside .btn')).toBeNull()
-    await press(go)
+    expect(host.querySelector('.paper-understanding .section-heading-actions')).toBeNull()
+    await press(list!)
     expect(fixture.open).toHaveBeenCalledWith('papers', 'EAGLE-2')
+    await press(read!)
+    expect(fixture.open).toHaveBeenLastCalledWith('reader', 'p1')
   })
 
   it('比较表格子里的锚点能用 Tab 停上去，悬停或聚焦都在共享 tooltip 里显示原文', async () => {

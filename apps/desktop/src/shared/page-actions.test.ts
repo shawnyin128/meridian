@@ -139,7 +139,7 @@ const VIEW_SWITCHES = new Set(['m.papers.views.aria', 'm.papers.toolbar.groupFie
 const LABELLED: [RegExp, string][] = [
   [/^m\.(common\.(delete|deletePermanently|remove)|project\.attachments\.delete|project\.plan\.delete\w+For|papers\.rowActions\.delete)\b/, 'delete'],
   [/^m\.(inbox\.actions\.dismiss|later\.actions\.removeFrom|wiki\.removeFromPage|common\.removeLink|papers\.tags\.remove)\b/, 'remove'],
-  [/^m\.(papers\.rowActions\.openReader|settings\.archived\.open)\b/, 'open'],
+  [/^m\.(papers\.rowActions\.openReader|settings\.archived\.open|project\.idea\.openIdea|papers\.understanding\.goRead|wiki\.viewInPaperList)\b/, 'open'],
   [/^m\.(common\.(restore|undo)|settings\.archived\.unarchive)\b/, 'restore'],
   [/^m\.(trash\.clear|changelog\.clearArchived)\b/, 'clear'],
   [/^m\.(inbox\.dismissAll|changelog\.archiveAll)\b/, 'dismiss all'],
@@ -174,7 +174,8 @@ const PLACES: Record<string, Place[]> = {
   ],
   open: [
     { slot: 'row actions', size: 'nested', variant: 'plain' },
-    { slot: 'panel head', size: 'default', variant: 'plain', scope: 'a detail panel opens the paper it shows' },
+    { slot: 'panel head', size: 'default', variant: 'plain', scope: 'a detail panel opens what it shows elsewhere' },
+    { slot: 'page header', size: 'md', variant: 'plain', scope: 'a page leaves for the place that holds its subject' },
   ],
   restore: [{ slot: 'row actions', size: 'nested', variant: 'plain' }],
   close: [{ slot: 'panel head', size: 'default', variant: 'plain' }],

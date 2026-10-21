@@ -100,7 +100,7 @@ test('项目反向展示关联想法，点击后在项目右栏就地打开详�
   await expect(page.locator('.node-document-pane')).toContainText(idea!.title)
   await expect(page.locator('.idea-panel-body')).not.toBeEmpty()
   const openIdea = page.locator('.idea-panel-head .project-idea-open-idea')
-  await expect(openIdea).toHaveText('打开想法')
+  await expect(openIdea).toHaveAttribute('aria-label', '打开想法')
   await expect(page.getByRole('button', { name: '打开来源对话' })).toHaveCount(0)
   await expect(row).toHaveClass(/selected/)
 

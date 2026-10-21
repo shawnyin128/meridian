@@ -268,7 +268,7 @@ describe('project idea panel', () => {
   it('shows the shared idea panel: the head, the content, the research node, then the source', () => {
     const panel = mount(<ProjectIdeaPanel idea={idea} graph={graph} workspaceManaged {...handlers()} />)
     expect([...panel.host.querySelectorAll('.section-heading--rail')].map((heading) => heading.textContent))
-      .toEqual(['用动态预算控制校准成本打开想法', '内容', '科研节点关联节点', '来源'])
+      .toEqual(['用动态预算控制校准成本', '内容', '科研节点关联节点', '来源'])
     expect(panel.host.querySelector('.idea-panel-head .project-idea-open-idea')).not.toBeNull()
     expect(panel.host.textContent).not.toContain('工作区科研图只读')
     panel.unmount()
@@ -277,10 +277,12 @@ describe('project idea panel', () => {
   it('opens the idea in Ideas from the panel head, beside the close button', () => {
     const on = handlers()
     const panel = mount(<ProjectIdeaPanel idea={idea} graph={graph} workspaceManaged {...on} />)
-    expect(panel.host.querySelector('.node-document-head > .section-heading-actions')!.textContent).toBe('打开想法')
-    expect(panel.host.querySelector('.node-document-head > .section-heading-actions > .panel-close')).not.toBeNull()
+    const actions = panel.host.querySelector('.node-document-head > .section-heading-actions')!
+    // Like the paper detail's 开始阅读, opening elsewhere from a panel head is an icon button.
+    expect([...actions.querySelectorAll('button')].map((b) => [b.getAttribute('aria-label'), b.className]))
+      .toEqual([['打开想法', 'icbtn project-idea-open-idea'], ['收起详情', 'icbtn panel-close']])
     expect(panel.button('打开来源对话')).toBeUndefined()
-    act(() => panel.button('打开想法')!.click())
+    act(() => actions.querySelector<HTMLButtonElement>('[aria-label="打开想法"]')!.click())
     expect(on.onOpenIdea).toHaveBeenCalledOnce()
     panel.unmount()
   })

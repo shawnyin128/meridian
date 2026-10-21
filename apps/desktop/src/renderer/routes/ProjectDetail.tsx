@@ -22,6 +22,8 @@ import { EmptyState } from '../components/EmptyState.js'
 import { LoadingPlaceholder } from '../components/LoadingPlaceholder.js'
 import { DetailPanel } from '../components/DetailPanel.js'
 import { ChoicePicker, DateButton, DotsMenu, PriorityPicker } from '../components/FieldPickers.js'
+import { IconButton } from '../components/IconButton.js'
+import { IconOpen } from '../components/icons.js'
 import { SegmentedControl } from '../components/SegmentedControl.js'
 import { RowActions, StructuredList, StructuredRow } from '../components/StructuredList.js'
 import { TitleNote } from '../components/TitleNote.js'
@@ -110,7 +112,11 @@ export function ProjectIdeaPanel({
   return (
     <IdeaPanel
       idea={idea} onClose={onClose}
-      actions={<button className="btn sm project-idea-open-idea" onClick={onOpenIdea}>{m.project.idea.openIdea}</button>}
+      actions={(
+        <IconButton label={m.project.idea.openIdea} className="project-idea-open-idea" onClick={onOpenIdea}>
+          <IconOpen />
+        </IconButton>
+      )}
     >
       <NodeAssignment
         node={linkedNode === undefined ? undefined : { id: linkedNode.id, label: linkedNode.label, mode: nodeMode(linkedNode) }}
