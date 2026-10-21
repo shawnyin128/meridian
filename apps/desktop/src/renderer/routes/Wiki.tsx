@@ -33,6 +33,7 @@ import { Pager } from '../components/Pager.js'
 import { PickRow, type PickHit } from '../components/PickRow.js'
 import { nextKey, slugOf } from '../lib/slug.js'
 import { useRowCap } from '../hooks/useRowCap.js'
+import { useUndo } from '../hooks/useUndo.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
 import { useScrollFade } from '../hooks/useScrollFade.js'
 import { PaperUnderstanding } from '../components/paper/PaperUnderstanding.js'
@@ -379,6 +380,7 @@ export function Wiki() {
   const reportError = useCallback((e: unknown) => setError(errorLabel(m, e)), [m])
   const notice = useNotice()
   const write = useVaultWrite()
+  const undo = useUndo()
   const box = useRef<HTMLDivElement>(null)
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -406,14 +408,16 @@ export function Wiki() {
   /**
    * A management operation is a proposal: once it is written, close the input row, bump the vault
    * revision, show `title` as a success notice, and return whether it was written. `pending` is true
-   * while the proposal is in flight. `note` replaces `title` in the notice.
+   * while the proposal is in flight. `note` replaces `title` in the notice; an `undoable` write's
+   * notice offers Undo, which undoes the change entry it recorded.
    */
-  const propose = (title: string, ops: Proposal['ops'], note = title): Promise<boolean> => {
+  const propose = (title: string, ops: Proposal['ops'], note = title, undoable = false): Promise<boolean> => {
     setPending(true)
-    return write(wiki.apply({ source: 'user', title, ops }).then(() => {
+    return write(wiki.apply({ source: 'user', title, ops }).then((recorded) => {
       // The gear's popover is open while adding === 'columns'; a successful save closes it here.
       setAdding(null)
-    }), { note }).finally(() => setPending(false))
+      return recorded
+    }), { note, action: undoable ? undo.change : undefined }).finally(() => setPending(false))
   }
 
   /**
@@ -889,7 +893,7 @@ export function Wiki() {
                 />
                 <WikiClaims
                   page={shownAgg} pending={pending} links={claimLinks}
-                  onApply={(note, ops) => propose(note, ops, m.wiki.claims.saved)}
+                  onApply={(note, ops, options) => propose(note, ops, m.wiki.claims.saved, options?.undoable)}
                   arrival={arrival?.page === shownAgg.id ? arrival.claim : undefined} onArrived={arrived}
                 />
                 {bodyHead(shownAgg.title)}

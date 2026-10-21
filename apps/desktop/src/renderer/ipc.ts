@@ -336,7 +336,7 @@ export const wiki = {
   aggregation: (id: string) => call<WikiAggregation>('wiki.aggregation', { id }),
   paper: (id: string) => call<WikiPaper>('wiki.paper', { id }),
   cards: () => call<WikiAggregationCard[]>('wiki.cards', {}),
-  apply: (proposal: Proposal) => call<void>('wiki.apply', { proposal }),
+  apply: (proposal: Proposal) => call<RecordedChange>('wiki.apply', { proposal }),
   update: (id: string, body: string) => call<void>('wiki.update', { id, body }),
   /** The review queue, newest first; every status when `status` is absent. */
   proposals: (status?: ProposalStatus) =>

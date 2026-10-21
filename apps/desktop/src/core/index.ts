@@ -716,7 +716,8 @@ registerHandler('wiki.cards', (params) => {
 registerHandler('wiki.apply', async (params) => {
   const { proposal } = WikiApplyParamsSchema.parse(params)
   await wikiProposals.checkHumanQuotes(proposal.ops)
-  store.applyProposal(proposal)
+  const { change } = recordChange(store, () => store.applyProposal(proposal))
+  return { change }
 })
 registerHandler('wiki.propose', (params) =>
   wikiProposals.propose(WikiProposeParamsSchema.parse(params).proposal))

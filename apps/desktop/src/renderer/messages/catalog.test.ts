@@ -124,8 +124,7 @@ describe('一个对象一个词', () => {
   const KEYS: Record<Item, string[]> = {
     finding: [
       'wiki.claims.heading', 'wiki.claims.add', 'wiki.claims.addShort', 'wiki.claims.empty', 'wiki.claims.actionsLabel',
-      'wiki.claims.form.addTitle', 'wiki.claims.form.reviseTitle', 'wiki.claims.form.retractTitle', 'wiki.claims.form.text',
-      'wiki.claims.form.textPlaceholder', 'wiki.claims.form.basisLabel', 'wiki.claims.form.noOthers',
+      'wiki.claims.form.text', 'wiki.claims.form.textPlaceholder', 'wiki.claims.form.basisLabel', 'wiki.claims.form.noOthers',
       'wiki.claims.form.outcomes.split', 'wiki.claims.form.splitText', 'wiki.claims.proposals.add', 'wiki.claims.proposals.revise',
       'wiki.claims.proposals.conflict', 'wiki.claims.proposals.resolve', 'wiki.claims.proposals.retract', 'wiki.queue.kinds.addClaim',
       'wiki.queue.kinds.reviseClaim', 'wiki.queue.kinds.retractClaim', 'wiki.queue.outcomes.revised', 'wiki.queue.outcomes.split',

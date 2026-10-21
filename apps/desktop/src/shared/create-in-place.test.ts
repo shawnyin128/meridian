@@ -50,8 +50,6 @@ const NOT_CREATING: Record<string, string> = {
   'shell/CommandPalette.tsx <ModalDialog>': 'searches the vault and runs a command',
   'routes/Settings.tsx <ModalDialog>': 'holds Settings',
   'routes/ProjectDetail.tsx <ModalDialog> m.project.workspace.dialogTitle': 'connects the project to a workspace',
-  'components/wiki/WikiFormDialog.tsx <ModalDialog>': 'the shell of the claim forms that edit a claim',
-  'components/wiki/WikiClaims.tsx <WikiFormDialog> f.conflictTitle f.retractTitle': 'marks a conflict on a claim, or retracts it',
 }
 
 describe('新建就地起草', () => {

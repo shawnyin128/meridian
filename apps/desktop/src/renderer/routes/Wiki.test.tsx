@@ -4,7 +4,7 @@ import { createRoot, type Root } from 'react-dom/client'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type {
-  WikiAggregation, WikiAggregationCard, WikiHome, WikiPaper, WikiProposal, WikiSignal,
+  ProposalOp, WikiAggregation, WikiAggregationCard, WikiHome, WikiPaper, WikiProposal, WikiSignal,
 } from '../../shared/contract.js'
 import { IconTrash } from '../components/icons.js'
 import { TOOLTIP_DELAY } from '../components/Tooltip.js'
@@ -30,6 +30,11 @@ const fixture = vi.hoisted(() => ({
   open: vi.fn(),
   returnTo: vi.fn(),
   jump: null as ScreenJump | null,
+  apply: vi.fn(),
+  undo: vi.fn(),
+  /** The `onApply` the page hands its claims. */
+  applyClaims: null as null | ((title: string, ops: ProposalOp[], options?: { undoable: boolean }) => Promise<boolean>),
+  writes: [] as { result: unknown; opts?: { action?: (result: never) => { label: string; onAction: () => void } } }[],
 }))
 
 const HOME: WikiHome = {
@@ -79,7 +84,9 @@ vi.mock('../ipc.js', () => ({
     paper: fixture.paper,
     backlinks: fixture.backlinks,
     cards: () => Promise.resolve([card('topics/sd', '推测解码')]),
+    apply: fixture.apply,
   },
+  changelog: { undo: fixture.undo },
 }))
 
 vi.mock('../shell/AppShell.js', () => ({
@@ -90,9 +97,17 @@ vi.mock('../shell/AppShell.js', () => ({
   useVaultRevision: () => ({ revision: 0, bump: vi.fn() }),
 }))
 
-vi.mock('../hooks/useVaultWrite.js', () => ({ useVaultWrite: () => async (op: Promise<unknown>) => { await op; return true } }))
+vi.mock('../hooks/useVaultWrite.js', () => ({
+  useVaultWrite: () => async (op: Promise<unknown>, opts?: (typeof fixture.writes)[number]['opts']) => {
+    fixture.writes.push({ result: await op, ...(opts === undefined ? {} : { opts }) })
+    return true
+  },
+}))
 vi.mock('../components/wiki/WikiClaims.js', () => ({
-  WikiClaims: ({ arrival }: { arrival?: string }) => <i className="claims-probe" data-arrival={arrival ?? ''} />,
+  WikiClaims: ({ arrival, onApply }: { arrival?: string; onApply: NonNullable<typeof fixture.applyClaims> }) => {
+    fixture.applyClaims = onApply
+    return <i className="claims-probe" data-arrival={arrival ?? ''} />
+  },
 }))
 
 const { Wiki } = await import('./Wiki.js')
@@ -163,6 +178,21 @@ describe('Wiki keyboard reach', () => {
     const child = host.querySelector('.wkmain .wkcard')!
     expect(child.classList.contains('research-object-card--grid')).toBe(true)
     expect([...child.querySelectorAll('.row-actions button')].map((b) => b.getAttribute('aria-label'))).toEqual(['从这一页移出'])
+  })
+
+  it('撤回结论写入后的通知带撤销,按下撤销撤回最近变动里记下的那一条;别的结论写入不带', async () => {
+    fixture.apply.mockResolvedValue({ change: 'c-9' })
+    await press(host.querySelector<HTMLElement>('[data-wk="topics/sd"] .tt')!)
+    const ops: ProposalOp[] = [{ op: 'retractClaim', page: 'topics/sd', claim: 'knee', reason: '撤回' }]
+    await act(async () => { await fixture.applyClaims!('撤回「推测解码」的一条结论', ops, { undoable: true }) })
+    expect(fixture.apply).toHaveBeenLastCalledWith({ source: 'user', title: '撤回「推测解码」的一条结论', ops })
+    const { result, opts } = fixture.writes.at(-1)!
+    const undo = opts!.action!(result as never)
+    expect(undo.label).toBe('撤销')
+    await act(async () => { undo.onAction() })
+    expect(fixture.undo).toHaveBeenCalledWith('c-9')
+    await act(async () => { await fixture.applyClaims!('给「推测解码」添加结论', ops) })
+    expect(fixture.writes.at(-1)!.opts?.action).toBeUndefined()
   })
 
   it('比较表每个表头格下面都有一个单元格，自动列在表头用标签标出', async () => {

@@ -23,23 +23,18 @@ import { SourceAnchor } from '../SourceAnchor.js'
 import { AgentLabel } from '../SourceLabel.js'
 import { RowActions, StructuredList, StructuredRow } from '../StructuredList.js'
 import { Tag } from '../Tag.js'
-import { WikiFormDialog, WikiFormField } from './WikiFormDialog.js'
 import { PaperText } from '../paper/PaperText.js'
 import './WikiClaims.css'
 
 type Outcome = 'revised' | 'split' | 'retracted' | 'dismissed'
 const OUTCOMES: readonly Outcome[] = ['dismissed', 'revised', 'split', 'retracted']
 
-/**
- * The form open in the claims area of `page`, if any: adding, revising and resolving are drafted in
- * place, marking a conflict and retracting open the claim form dialog.
- */
+/** The form drafted in place in the claims area of `page`, if any. */
 type Form = { page: string } & (
   | { kind: 'add' }
   | { kind: 'revise'; claim: WikiClaim }
   | { kind: 'conflict'; claim: WikiClaim }
   | { kind: 'resolve'; claim: WikiClaim; conflict: WikiConflict }
-  | { kind: 'retract'; claim: WikiClaim }
 )
 
 /** Where the claims area sends the user: a Wiki page, a project, or the reader at a paper page. */
@@ -124,14 +119,15 @@ export function ClaimSide({ item, title, point, links }: {
  * page), its open conflicts with the other side linked, and its earlier versions folded away. The user
  * adds, revises, marks and resolves conflicts on, and retracts claims through `onApply`, which submits
  * one titled list of ops and resolves whether it was written. A new claim is drafted last in the list,
- * where it lands; a revision in its claim's place; a resolution under its conflict. `arrival`, a claim
- * id, is brought into view once the claims show, after which `onArrived` is called.
+ * where it lands; a revision in its claim's place; a conflict under its claim's lines; a resolution
+ * under its conflict. A retract is written at once and asks `onApply` for an `undoable` write.
+ * `arrival`, a claim id, is brought into view once the claims show, after which `onArrived` is called.
  */
 export function WikiClaims({ page, pending, links, onApply, arrival, onArrived }: {
   page: WikiAggregation
   pending: boolean
   links: ClaimLinks
-  onApply: (title: string, ops: ProposalOp[]) => Promise<boolean>
+  onApply: (title: string, ops: ProposalOp[], options?: { undoable: boolean }) => Promise<boolean>
   arrival?: string | undefined
   onArrived?: () => void
 }) {
@@ -156,8 +152,8 @@ export function WikiClaims({ page, pending, links, onApply, arrival, onArrived }
   const [other, setOther] = useState('')
   const [outcome, setOutcome] = useState<Outcome>('dismissed')
   const addRow = useRef<HTMLDivElement>(null)
-  // A revision picked in a claim's menu opens once the menu has closed, so its draft keeps the focus.
-  const revising = useRef<Form | null>(null)
+  // A draft picked in a claim's menu opens once the menu has closed, so it keeps the focus.
+  const opening = useRef<Form | null>(null)
   // A form belongs to the page it was opened on and shows only there.
   const form = held?.page === page.id ? held : null
 
@@ -245,18 +241,19 @@ export function WikiClaims({ page, pending, links, onApply, arrival, onArrived }
           id: claimId(text.trim(), ids), text: text.trim(), evidence: [{ kind: 'personal', text: note.trim() }],
         } }, resolve] }
       }
-      case 'retract':
-        if (note.trim() === '') return null
-        return { title: c.proposals.retract(page.title), ops: [
-          { op: 'retractClaim', page: page.id, claim: claim!.id, reason: note.trim() },
-        ] }
     }
   }
 
   const ready = submission()
-  const apply = () => (ready === null ? Promise.resolve(false) : onApply(ready.title, ready.ops))
   /** Writes the drafted form and closes it once written. */
-  const saveDraft = () => apply().then((saved) => { if (saved) close() })
+  const saveDraft = () => (ready === null ? Promise.resolve(false) : onApply(ready.title, ready.ops))
+    .then((saved) => { if (saved) close() })
+  /** Retracts `claim` at once. A retract stores no reason, yet the op requires one, so it carries the action's name. */
+  const retract = (claim: WikiClaim) => {
+    void onApply(c.proposals.retract(page.title), [
+      { op: 'retractClaim', page: page.id, claim: claim.id, reason: c.retract },
+    ], { undoable: true })
+  }
 
   const addDraft = form?.kind !== 'add'
     ? null
@@ -347,18 +344,20 @@ export function WikiClaims({ page, pending, links, onApply, arrival, onArrived }
                     <DotsMenu
                       label={c.actionsLabel(claim.text)}
                       onCloseAutoFocus={(event) => {
-                        const next = revising.current
-                        revising.current = null
+                        const next = opening.current
+                        opening.current = null
                         if (next === null) return
                         event.preventDefault()
                         open(next)
                       }}
                     >
-                      <MenuItem disabled={pending} onSelect={() => { revising.current = { page: page.id, kind: 'revise', claim } }}>
+                      <MenuItem disabled={pending} onSelect={() => { opening.current = { page: page.id, kind: 'revise', claim } }}>
                         {c.revise}
                       </MenuItem>
-                      <MenuItem disabled={pending} onSelect={() => open({ page: page.id, kind: 'conflict', claim })}>{c.markConflict}</MenuItem>
-                      <MenuItem disabled={pending} onSelect={() => open({ page: page.id, kind: 'retract', claim })}>{c.retract}</MenuItem>
+                      <MenuItem disabled={pending} onSelect={() => { opening.current = { page: page.id, kind: 'conflict', claim } }}>
+                        {c.markConflict}
+                      </MenuItem>
+                      <MenuItem disabled={pending} onSelect={() => retract(claim)}>{c.retract}</MenuItem>
                     </DotsMenu>
                   </RowActions>
                 </div>
@@ -424,6 +423,35 @@ export function WikiClaims({ page, pending, links, onApply, arrival, onArrived }
                         : null}
                     </Fragment>
                   ))}
+                  {form?.kind === 'conflict' && form.claim.id === claim.id
+                    ? (
+                      <li className="wkclaim-marking">
+                        <DraftForm canSave={ready !== null} onSave={saveDraft} onCancel={close}>
+                          {(invalid) => (
+                            <>
+                              <DraftLine label={f.other}>
+                                {others.length === 0
+                                  ? <span className="draft-form-label">{f.noOthers}</span>
+                                  : (
+                                    <ChoicePicker
+                                      appearance="field" aria-label={f.other} placeholder={f.other} value={other}
+                                      aria-invalid={invalid(other === '')} options={others.map((x) => x.id)}
+                                      label={(id) => others.find((x) => x.id === id)?.text ?? id} onPick={setOther}
+                                    />
+                                  )}
+                              </DraftLine>
+                              <DraftLine label={f.note}>
+                                <FormInput
+                                  value={note} placeholder={f.conflictPlaceholder} aria-invalid={invalid(note.trim() === '')}
+                                  onChange={(e) => setNote(e.target.value)}
+                                />
+                              </DraftLine>
+                            </>
+                          )}
+                        </DraftForm>
+                      </li>
+                    )
+                    : null}
                 </ul>
                 {claim.history.length === 0
                   ? null
@@ -441,41 +469,6 @@ export function WikiClaims({ page, pending, links, onApply, arrival, onArrived }
             {addDraft}
           </StructuredList>
         )}
-
-      <WikiFormDialog
-        open={form?.kind === 'conflict' || form?.kind === 'retract'} canSubmit={ready !== null}
-        title={form?.kind === 'conflict' ? f.conflictTitle : f.retractTitle}
-        onOpenChange={(next) => { if (!next) close() }}
-        onSubmit={apply}
-      >
-        {form?.kind === 'conflict'
-          ? (
-            <>
-              {others.length === 0
-                ? <p className="wiki-form-hint">{f.noOthers}</p>
-                : (
-                  <WikiFormField label={f.other}>
-                    <ChoicePicker
-                      appearance="field" aria-label={f.other} placeholder={f.other} value={other}
-                      options={others.map((x) => x.id)} label={(id) => others.find((x) => x.id === id)?.text ?? id}
-                      onPick={setOther}
-                    />
-                  </WikiFormField>
-                )}
-              <WikiFormField label={f.note}>
-                <FormInput appearance="field" value={note} placeholder={f.conflictPlaceholder} onChange={(e) => setNote(e.target.value)} />
-              </WikiFormField>
-            </>
-          )
-          : null}
-        {form?.kind === 'retract'
-          ? (
-            <WikiFormField label={f.reason}>
-              <FormInput appearance="field" autoFocus value={note} placeholder={f.reasonPlaceholder} onChange={(e) => setNote(e.target.value)} />
-            </WikiFormField>
-          )
-          : null}
-      </WikiFormDialog>
     </>
   )
 }

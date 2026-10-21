@@ -90,20 +90,19 @@ describe('WikiClaims', () => {
     host.querySelector(`[data-claim="${claim}"] .dots`)!.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, button: 0 }))
   })
   const menuItem = (text: string) => [...document.querySelectorAll<HTMLElement>('[role="menuitem"]')].find((el) => el.textContent === text)!
-  const dialog = () => document.querySelector<HTMLElement>('.wiki-form')!
   /** The form drafted in place, which stands where its change lands. */
   const draft = () => host.querySelector<HTMLElement>('.draft-form')
   /** The button labelled `label` in `area`. */
   const button = (area: HTMLElement, label: string) => [...area.querySelectorAll<HTMLButtonElement>('button')].find((b) => b.textContent === label)!
-  const save = () => button(document.querySelector<HTMLElement>('.wiki-form') ?? draft()!, '保存')
+  const save = () => button(draft()!, '保存')
   const press = (target: Element, init: KeyboardEventInit) => {
     target.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, cancelable: true, ...init }))
   }
   const expectNoDialog = () => expect(document.querySelector('[role="dialog"]')).toBeNull()
-  /** Opens the `nth` picker of the open dialog or draft and returns the labels of its options. */
+  /** Opens the `nth` picker of the open draft and returns the labels of its options. */
   const openPicker = async (nth: number) => {
     await act(async () => {
-      (document.querySelector<HTMLElement>('.wiki-form') ?? draft()!).querySelectorAll('.choice-picker')[nth]!
+      draft()!.querySelectorAll('.choice-picker')[nth]!
         .dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, button: 0 }))
       await flush()
     })
@@ -116,7 +115,7 @@ describe('WikiClaims', () => {
       await flush()
     })
   }
-  /** Picks the option shown as `label` in the dialog's `nth` picker. */
+  /** Picks the option shown as `label` in the draft's `nth` picker. */
   const pick = async (nth: number, label: string) => {
     await choose((await openPicker(nth)).find((candidate) => candidate.textContent === label)!)
   }
@@ -281,22 +280,38 @@ describe('WikiClaims', () => {
     expect(row.querySelector('.wkclaim-text')!.textContent).toBe('另一条结论')
   })
 
-  it('标记冲突、撤回各发一条对应的 op', async () => {
+  it('标记冲突在那条结论下面就地打开草稿:与哪一条冲突、说明两栏,回车发一条 markConflict,不弹对话框', async () => {
     openMenu('plain')
-    act(() => menuItem('标记冲突').click())
+    await act(async () => { menuItem('标记冲突').click(); await new Promise((done) => setTimeout(done, 0)) })
+    expectNoDialog()
+    const lines = host.querySelector<HTMLElement>('[data-claim="plain"] .wkclaim-lines')!
+    expect(lines.lastElementChild!.contains(draft())).toBe(true)
+    expect([...draft()!.querySelectorAll('.draft-form-label')].map((label) => label.textContent)).toEqual(['与哪一条冲突', '说明'])
+    expect(document.activeElement).toBe(draft()!.querySelector('.choice-picker'))
+    const note = draft()!.querySelector('input')!
+    await act(async () => { press(note, { key: 'Enter' }); await flush() })
+    expect(onApply).not.toHaveBeenCalled()
+    expect(draft()!.querySelectorAll('[aria-invalid="true"]')).toHaveLength(2)
     await pick(0, '拐点在宽度 6')
-    act(() => setValue(dialog().querySelector('input')!, '说法相反'))
-    await act(async () => { save().click(); await flush() })
-    expect(onApply.mock.calls.at(-1)![1]).toEqual([{
+    act(() => setValue(note, '说法相反'))
+    await act(async () => { press(note, { key: 'Enter' }); await flush() })
+    expect(onApply.mock.calls.at(-1)!.slice(1)).toEqual([[{
       op: 'markConflict', page: 'topics/sd', claim: 'plain',
       conflict: { id: 'k1', against: { kind: 'claim', ref: 'topics/sd#knee' }, note: '说法相反' },
-    }])
+    }]])
+    expect(draft()).toBeNull()
+  })
 
+  it('撤回立刻发一条 retractClaim,不弹对话框也不问理由,写入后的通知能撤销', async () => {
     openMenu('plain')
-    act(() => menuItem('撤回').click())
-    act(() => setValue(dialog().querySelector('input')!, '不成立'))
-    await act(async () => { save().click(); await flush() })
-    expect(onApply.mock.calls.at(-1)![1]).toEqual([{ op: 'retractClaim', page: 'topics/sd', claim: 'plain', reason: '不成立' }])
+    await act(async () => { menuItem('撤回').click(); await flush() })
+    expectNoDialog()
+    expect(draft()).toBeNull()
+    expect(onApply.mock.calls).toEqual([[
+      '撤回「Speculative decoding」的一条结论',
+      [{ op: 'retractClaim', page: 'topics/sd', claim: 'plain', reason: '撤回' }],
+      { undoable: true },
+    ]])
   })
 
   it('处理冲突在那条冲突下面就地打开,不弹对话框;不算冲突只发一条,修订或撤回时与对应的 op 一起发', async () => {

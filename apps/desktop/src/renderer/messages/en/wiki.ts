@@ -232,11 +232,6 @@ export const wiki = {
     retract: 'Retract',
     saved: 'Written to the Wiki',
     form: {
-      addTitle: 'Add finding',
-      reviseTitle: 'Revise finding',
-      conflictTitle: 'Mark conflict',
-      resolveTitle: 'Resolve conflict',
-      retractTitle: 'Retract finding',
       text: 'Finding',
       textPlaceholder: 'State the finding in one sentence',
       basis: 'Basis',
@@ -262,10 +257,6 @@ export const wiki = {
       resolvePlaceholder: 'How it was settled',
       revisedText: 'Revised wording',
       splitText: 'New finding',
-      reason: 'Reason',
-      reasonPlaceholder: 'Why it is retracted',
-      save: 'Save',
-      saving: 'Saving…',
     },
     proposals: {
       add: (page: string) => `Add a finding to “${page}”`,

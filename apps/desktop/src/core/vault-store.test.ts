@@ -2087,6 +2087,21 @@ describe('vault store on the aggregation layout', () => {
     expect(() => store.updatePaper('2404.00456', { topics: ['x'] })).toThrow(/归属/)
   })
 
+  it('撤回一条结论记一条能撤销的变动,撤销它把那条结论逐字节放回页上', () => {
+    const file = join(vault, 'wiki', 'topics', 'kv-cache-quantization.md')
+    const before = readFileSync(file, 'utf8')
+    const claims = () => store.wikiAggregation('topics/kv-cache-quantization').claims.map((claim) => claim.id)
+    const { change } = recordChange(store, () => store.applyProposal({
+      source: 'user', title: '撤回「KV cache quantization」的一条结论',
+      ops: [{ op: 'retractClaim', page: 'topics/kv-cache-quantization', claim: 'prefix-schedule', reason: '撤回' }],
+    }))
+    expect(claims()).toEqual(['per-channel-keys'])
+    expect(store.listChanges()[0]).toMatchObject({ id: change, source: '我', undoable: true })
+    store.undoChange(change)
+    expect(readFileSync(file, 'utf8')).toBe(before)
+    expect(claims()).toEqual(['per-channel-keys', 'prefix-schedule'])
+  })
+
   it('加减论文的主题写的是 Wiki 归属:已有的主题归进那一页,没有的照入库的做法新建一页;每笔记一条变动,倒着撤销逐字节还原', () => {
     const paper = join(vault, 'wiki', 'papers', '2401.18079.md')
     const weightOnly = join(vault, 'wiki', 'topics', 'ptq-weight-only.md')

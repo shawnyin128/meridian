@@ -195,11 +195,6 @@ export const wiki = {
     retract: '撤回',
     saved: '已写入 Wiki',
     form: {
-      addTitle: '添加结论',
-      reviseTitle: '修订结论',
-      conflictTitle: '标记冲突',
-      resolveTitle: '处理冲突',
-      retractTitle: '撤回结论',
       text: '结论',
       textPlaceholder: '一句话写清这条结论',
       basis: '依据',
@@ -225,10 +220,6 @@ export const wiki = {
       resolvePlaceholder: '怎么处理的',
       revisedText: '修订后的写法',
       splitText: '新结论',
-      reason: '撤回理由',
-      reasonPlaceholder: '为什么撤回',
-      save: '保存',
-      saving: '正在保存…',
     },
     proposals: {
       add: (page: string) => `给「${page}」添加结论`,
