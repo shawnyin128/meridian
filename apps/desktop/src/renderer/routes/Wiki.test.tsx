@@ -245,7 +245,7 @@ describe('Wiki keyboard reach', () => {
     await press(host.querySelector<HTMLElement>('[data-wk="topics/sd"] .tt')!)
     expect(fixture.backlinks).toHaveBeenLastCalledWith('topics/sd')
     expect(all('.wkside > .section-heading').map((heading) => heading.textContent)).toEqual(['属性', '关联', '反向链接', '目录'])
-    const link = (name: string) => all('.wkside .wkrel .entity-link').find((el) => el.textContent === name)!
+    const link = (name: string) => all('.wkside .rail-links .tagchip').find((el) => el.textContent === name)!
     await press(link('推测解码加速'))
     expect(fixture.open).toHaveBeenLastCalledWith('project', 'p-47')
     await press(link('按接受率调树宽'))
@@ -261,6 +261,19 @@ describe('Wiki keyboard reach', () => {
     fixture.aggregation.mockClear()
     await press(link('推测解码'))
     expect(fixture.aggregation).toHaveBeenLastCalledWith('topics/sd')
+  })
+
+  it('右栏反向链接的行和上面关联的行是同一种:种类在前,后面每个都是同一种标签按钮', async () => {
+    fixture.backlinks.mockResolvedValue([
+      { kind: 'page', id: 'methods/tree', title: '树', kindLabel: '方法' },
+      { kind: 'project', id: 'p-47', title: '推测解码加速' },
+    ])
+    await press(host.querySelector<HTMLElement>('[data-wk="topics/sd"] .tt')!)
+    const rows = all('.wkside .wkrel').map((row) => [
+      row.className, ...[...row.children].map((part) => `${part.tagName} ${part.className}`),
+    ])
+    expect(rows.map((row) => row.slice(1))).toEqual(Array(4).fill(['SPAN rl', 'BUTTON tag tag--chip tag--neutral tagchip']))
+    expect(new Set(rows.map((row) => row[0])).size).toBe(1)
   })
 
   it('没有东西指向这一页时右栏没有反向链接这一块', async () => {

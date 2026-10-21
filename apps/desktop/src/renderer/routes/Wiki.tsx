@@ -2,7 +2,7 @@ import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'rea
 import type { ReactNode, RefObject } from 'react'
 import type {
   PaperFields, PaperReading, PaperRow, Proposal, WikiAggregation, WikiAggregationCard, WikiBacklink, WikiCell, WikiColumn,
-  WikiHome, WikiPaper, WikiProposal, WikiSignal,
+  WikiHome, WikiPaper, WikiProposal, WikiRef, WikiSignal,
 } from '../../shared/contract.js'
 import { PAPER_PAGE } from '../../shared/vocabulary.js'
 import { papers, project, wiki } from '../ipc.js'
@@ -38,6 +38,7 @@ import { useScrollFade } from '../hooks/useScrollFade.js'
 import { PaperUnderstanding } from '../components/paper/PaperUnderstanding.js'
 import { PaperText } from '../components/paper/PaperText.js'
 import { plainTitle } from '../components/paper/paper-text.js'
+import { RailLinks, type RailLink } from '../components/wiki/RailLinks.js'
 import { ReviewQueue } from '../components/wiki/ReviewQueue.js'
 import { WikiBacklinks } from '../components/wiki/WikiBacklinks.js'
 import { WikiClaims, type ClaimLinks } from '../components/wiki/WikiClaims.js'
@@ -541,6 +542,11 @@ export function Wiki() {
     ? reading : null
   const shownBacklinks = backlinks !== null && backlinks.page === place ? backlinks.links : []
 
+  /** The rail link to Wiki page `ref`, which opens it here. */
+  const pageLink = (ref: WikiRef): RailLink => ({
+    key: ref.id, title: ref.title, fullTitle: ref.fullTitle, page: ref.id, onOpen: () => go(ref.id),
+  })
+
   /** Opens what a backlink names: a Wiki page here, a project, an idea or a chat on its own screen. */
   const openBacklink = (link: WikiBacklink) => {
     if (link.kind === 'page') go(link.id)
@@ -906,35 +912,13 @@ export function Wiki() {
                   />
                   <div className="pk">{m.wiki.updatedLabel}</div><div className="pv">{fmt.date(shownAgg.updated)}</div>
                 </div>
-                {shownAgg.parents.length > 0 || shownAgg.related.length > 0
-                  ? <SectionHeading variant="rail">{m.project.sections.links}</SectionHeading>
-                  : null}
-                {shownAgg.parents.length > 0
-                  ? (
-                    <div className="wkrel">
-                      <span className="rl">{m.wiki.belongsTo}</span>
-                      {shownAgg.parents.map((p) => (
-                        <Tooltip key={p.id} label={p.fullTitle}>
-                          <TagButton shape="chip" className="tagchip" data-wk={p.id} onClick={() => go(p.id)}>
-                            {p.title}
-                          </TagButton>
-                        </Tooltip>
-                      ))}
-                    </div>
-                  )
-                  : null}
-                {shownAgg.related.map((r) => (
-                  <div className="wkrel" key={r.label}>
-                    <span className="rl">{r.label}</span>
-                    {r.links.map((l) => (
-                      <Tooltip key={l.id} label={l.fullTitle}>
-                        <TagButton shape="chip" className="tagchip" data-wk={l.id} onClick={() => go(l.id)}>
-                          {l.title}
-                        </TagButton>
-                      </Tooltip>
-                    ))}
-                  </div>
-                ))}
+                <RailLinks
+                  heading={m.project.sections.links}
+                  rows={[
+                    ...shownAgg.parents.length > 0 ? [{ label: m.wiki.belongsTo, links: shownAgg.parents.map(pageLink) }] : [],
+                    ...shownAgg.related.map((r) => ({ label: r.label, links: r.links.map(pageLink) })),
+                  ]}
+                />
                 <WikiBacklinks links={shownBacklinks} onOpen={openBacklink} />
                 <Toc body={shownAgg.body} main={main} />
               </div>
