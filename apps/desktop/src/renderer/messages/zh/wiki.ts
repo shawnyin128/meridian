@@ -236,6 +236,7 @@ export const wiki = {
     kinds: { 'open-conflict': '结论冲突', 'broken-link': '链接失效', 'thin-aggregation': '内容太少', 'unfiled-paper': '未归入主题' },
     pointsTo: '→',
     conflictsWith: '↔',
+    inTrash: '已在垃圾桶',
   },
   queue: {
     entry: '待审阅',

@@ -12,16 +12,20 @@ declare global {
 }
 
 const signal = (kind: WikiSignal['kind'], page: string, related: string[] = []): WikiSignal => ({ kind, page, related, detail: '一句' })
+/** A broken link from `page` to `target`, which Core names `name`, in the trash or not. */
+const broken = (page: string, target: string, name: string, trashed = false): WikiSignal => ({
+  ...signal('broken-link', page, [target]), missing: { name, trashed },
+})
 
 /** Core's order: by kind as write protocol §6.2 lists them, then by page. */
 const SIGNALS: WikiSignal[] = [
   signal('unfiled-paper', 'papers/a'),
   signal('thin-aggregation', 'topics/moe', ['papers/a']),
   signal('single-child', 'topics/root'),
-  signal('broken-link', 'papers/h2o', ['topics/eagle-3']),
-  signal('broken-link', 'papers/h2o', ['topics/eagle-3']),
-  signal('broken-link', 'papers/h2o', ['methods/gone']),
-  signal('broken-link', 'projects/p-47', ['topics/old']),
+  broken('papers/h2o', 'topics/eagle-3', 'EAGLE-3'),
+  broken('papers/h2o', 'topics/eagle-3', 'EAGLE-3'),
+  broken('papers/h2o', 'methods/gone', 'gone'),
+  broken('projects/p-47', 'topics/old', 'old'),
   signal('claim-without-evidence', 'topics/kv'),
   signal('open-conflict', 'topics/kv', ['topics/kv#evict', 'methods/q#two-bit']),
 ]
@@ -59,11 +63,14 @@ describe('WikiTidy', () => {
 
   it('只列结论冲突、链接失效、内容太少、未归入主题,按这个次序,同一种同一页只列一次,带上出错的那几处', () => {
     expect(tidyRows(SIGNALS)).toEqual([
-      { kind: 'open-conflict', page: 'topics/kv', claim: 'topics/kv#evict', targets: ['methods/q#two-bit'] },
-      { kind: 'broken-link', page: 'papers/h2o', targets: ['topics/eagle-3', 'methods/gone'] },
-      { kind: 'broken-link', page: 'projects/p-47', targets: ['topics/old'] },
-      { kind: 'thin-aggregation', page: 'topics/moe', targets: [] },
-      { kind: 'unfiled-paper', page: 'papers/a', targets: [] },
+      { kind: 'open-conflict', page: 'topics/kv', claim: 'topics/kv#evict', targets: ['methods/q#two-bit'], missing: [] },
+      {
+        kind: 'broken-link', page: 'papers/h2o', targets: [],
+        missing: [{ id: 'topics/eagle-3', name: 'EAGLE-3', trashed: false }, { id: 'methods/gone', name: 'gone', trashed: false }],
+      },
+      { kind: 'broken-link', page: 'projects/p-47', targets: [], missing: [{ id: 'topics/old', name: 'old', trashed: false }] },
+      { kind: 'thin-aggregation', page: 'topics/moe', targets: [], missing: [] },
+      { kind: 'unfiled-paper', page: 'papers/a', targets: [], missing: [] },
     ])
   })
 
@@ -71,8 +78,8 @@ describe('WikiTidy', () => {
     render([...SIGNALS, signal('unfiled-paper', 'papers/b')])
     const rows = [...host.querySelectorAll<HTMLElement>('.structured-row')]
     expect(rows.map((row) => [row.querySelector('.tag')!.textContent, row.querySelector('.tidy-open')!.textContent, row.querySelector('.tidy-wrong')?.textContent ?? ''])).toEqual([
-      ['结论冲突', 'KV 压缩', '↔ 2bit 量化更省显存'], ['链接失效', 'H2O', '→ topics/eagle-3 · methods/gone'],
-      ['链接失效', '推测解码加速', '→ topics/old'], ['内容太少', '混合专家', ''], ['未归入主题', 'Paper A', ''], ['未归入主题', 'papers/b', ''],
+      ['结论冲突', 'KV 压缩', '↔ 2bit 量化更省显存'], ['链接失效', 'H2O', '→ EAGLE-3 · gone'],
+      ['链接失效', '推测解码加速', '→ old'], ['内容太少', '混合专家', ''], ['未归入主题', 'Paper A', ''], ['未归入主题', 'papers/b', ''],
     ])
     expect(rows.map((row) => row.querySelector('.tag')!.className)).toEqual([
       'tag tag--label tag--bad', 'tag tag--label tag--bad', 'tag tag--label tag--bad',
@@ -81,6 +88,18 @@ describe('WikiTidy', () => {
     expect(rows.every((row) => !row.textContent!.includes('一句'))).toBe(true)
     expect(rows[4]!.querySelector('.tidy-open strong')!.textContent).toBe('A')
     expect(host.querySelector('.structured-list--scrollable')).toBeNull()
+  })
+
+  it('链接指向垃圾桶里的论文时写它的标题并标上已在垃圾桶,哪里都没有的页写链接里的名字,都不写 id', () => {
+    render([
+      broken('topics/sd', 'papers/2402-13718', 'Dynamic Draft Trees', true),
+      broken('topics/sd', 'methods/gone', '消失的方法'),
+    ])
+    const wrong = host.querySelector<HTMLElement>('.tidy-wrong')!
+    expect(wrong.textContent).toBe('→ Dynamic Draft Trees已在垃圾桶 · 消失的方法')
+    expect([...wrong.querySelectorAll('.tag')].map((tag) => [tag.textContent, tag.className])).toEqual([['已在垃圾桶', 'tag tag--label tag--neutral tidy-trashed']])
+    expect(wrong.textContent).not.toContain('papers/')
+    expect(wrong.textContent).not.toContain('methods/')
   })
 
   it('一行打开它出错的地方:冲突落到那条结论,别的落到页上;冲突里另一条结论是链接,打开它所在的那条', () => {

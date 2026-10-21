@@ -1689,7 +1689,7 @@ export function createFixtureStore(
             ...p.graph.nodes.flatMap((n) => n.writebacks.map((w) => w.page)),
           ],
         })),
-        trashed: new Set(trash.flatMap((item) => (item.kind === 'paper' ? [`${PAPER_PAGE}${item.paper.id}`] : []))),
+        trashed: new Map(trash.flatMap((item) => (item.kind === 'paper' ? [[`${PAPER_PAGE}${item.paper.id}`, item.title] as const] : []))),
         missingRegions: [],
       })
     },

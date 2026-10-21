@@ -273,6 +273,7 @@ export const wiki = {
     kinds: { 'open-conflict': 'Conflicting findings', 'broken-link': 'Broken link', 'thin-aggregation': 'Too little content', 'unfiled-paper': 'Not in a topic' },
     pointsTo: '→',
     conflictsWith: '↔',
+    inTrash: 'In the trash',
   },
   queue: {
     entry: 'To review',

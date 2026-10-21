@@ -6,6 +6,7 @@ import { EntityLink } from '../EntityLink.js'
 import { FadeText } from '../FadeText.js'
 import { LoadingPlaceholder } from '../LoadingPlaceholder.js'
 import { StructuredList, StructuredRow } from '../StructuredList.js'
+import { Tag } from '../Tag.js'
 import { PaperText } from '../paper/PaperText.js'
 import { plainTitle } from '../paper/paper-text.js'
 import { ProjectSignalKind } from '../project/ProjectSignals.js'
@@ -18,28 +19,35 @@ const SHOWN = {
 type ShownKind = keyof typeof SHOWN
 const ORDER = Object.keys(SHOWN) as ShownKind[]
 
+/** A missing page a broken link points to: its id, the name Core gives it, and whether it is in the trash. */
+type MissingPage = { id: string } & NonNullable<WikiSignal['missing']>
+
 /**
  * One tidying row: a signal kind the list shows, the page (or `projects/<id>`) it is about, and where
- * it is wrong: for a broken link the ids of the missing pages it points to; for a conflict the
- * `page#claim` ref of the conflicting claim (`claim`) and of the claims it conflicts with.
+ * it is wrong: for a broken link the `missing` pages it points to; for a conflict the `page#claim` ref
+ * of the conflicting claim (`claim`) and of the claims it conflicts with (`targets`).
  */
-export type TidyRow = { kind: ShownKind; page: string; claim?: string; targets: string[] }
+export type TidyRow = { kind: ShownKind; page: string; claim?: string; targets: string[]; missing: MissingPage[] }
 
 /**
  * The tidying rows `signals` give: conflicts, broken links, thin pages and unfiled papers, in that
- * order and in Core's order within a kind, one row per kind and page, holding the targets of every
- * signal of that kind on that page once; a conflict row lands on the first conflicting claim.
+ * order and in Core's order within a kind, one row per kind and page, holding the targets or missing
+ * pages of every signal of that kind on that page once; a conflict row lands on the first conflicting
+ * claim. Throws on a broken link Core sent without naming its missing page.
  */
 export function tidyRows(signals: WikiSignal[]): TidyRow[] {
   const rows = new Map<string, TidyRow>()
   for (const kind of ORDER) {
     for (const s of signals.filter((held) => held.kind === kind)) {
       const key = `${kind} ${s.page}`
-      const row = rows.get(key) ?? { kind, page: s.page, targets: [] }
+      const row = rows.get(key) ?? { kind, page: s.page, targets: [], missing: [] }
       const [first, ...rest] = s.related
-      const found = kind === 'broken-link' ? s.related : kind === 'open-conflict' ? rest : []
       if (kind === 'open-conflict' && row.claim === undefined && first !== undefined) row.claim = first
-      row.targets = [...new Set([...row.targets, ...found])]
+      if (kind === 'open-conflict') row.targets = [...new Set([...row.targets, ...rest])]
+      if (kind === 'broken-link') {
+        if (s.missing === undefined || first === undefined) throw new Error(`broken link without its missing page: ${s.page}`)
+        if (!row.missing.some((held) => held.id === first)) row.missing.push({ id: first, ...s.missing })
+      }
       rows.set(key, row)
     }
   }
@@ -51,9 +59,10 @@ const pageOf = (ref: string): string => ref.split('#')[0]!
 
 /**
  * The tidying screen's list: one row per entry of `rows`, its kind tag, the page's name and, after it,
- * where it is wrong: the missing pages a broken link points to, or the claims a conflict is with, each a
- * link that opens it. `titles` names pages and claims by id or `page#claim` ref (a paper title may carry
- * LaTeX; an id it does not name shows as written); it is null while the names load. The list scrolls
+ * where it is wrong: the missing pages a broken link points to by name, each one in the trash tagged as
+ * such, or the claims a conflict is with, each a link that opens it. `titles` names pages and claims by
+ * id or `page#claim` ref (a paper title may carry LaTeX; an id it does not name shows as written); it
+ * is null while the names load. The list scrolls
  * with the page and its kind column is as wide as its longest tag. Activating a row hands its page and,
  * for a conflict, its claim to `onOpen`; a claim's link hands that claim's.
  */
@@ -67,6 +76,8 @@ export function TidyList({ rows, titles, onOpen }: {
   if (rows.length === 0) return <EmptyState variant="section">{t.empty}</EmptyState>
   if (titles === null) return <LoadingPlaceholder shape="rows" />
   const name = (id: string): string => titles[id] ?? id
+  /** A missing page's name as plain text, with the trash mark after it when it is in the trash. */
+  const missingText = (page: MissingPage): string => (page.trashed ? `${plainTitle(page.name)} ${t.inTrash}` : plainTitle(page.name))
   return (
     <StructuredList className="attn project-signal-columns tidy-list" variant="embedded" maxVisibleRows="all">
       {rows.map((row) => (
@@ -79,10 +90,26 @@ export function TidyList({ rows, titles, onOpen }: {
             <button type="button" className="tidy-open">
               <FadeText className="attn-text" label={plainTitle(name(row.page))}><PaperText text={name(row.page)} /></FadeText>
             </button>
-            {row.targets.length === 0 ? null : (
-              <FadeText className="tidy-wrong" label={`${row.kind === 'broken-link' ? t.pointsTo : t.conflictsWith} ${row.targets.map((id) => plainTitle(name(id))).join(' · ')}`}>
+            {row.targets.length === 0 && row.missing.length === 0 ? null : (
+              <FadeText
+                className="tidy-wrong"
+                label={row.kind === 'broken-link'
+                  ? `${t.pointsTo} ${row.missing.map(missingText).join(' · ')}`
+                  : `${t.conflictsWith} ${row.targets.map((id) => plainTitle(name(id))).join(' · ')}`}
+              >
                 {row.kind === 'broken-link'
-                  ? `${t.pointsTo} ${row.targets.map(name).join(' · ')}`
+                  ? (
+                    <>
+                      {t.pointsTo}{' '}
+                      {row.missing.map((page, at) => (
+                        <Fragment key={page.id}>
+                          {at === 0 ? null : ' · '}
+                          <PaperText text={page.name} />
+                          {page.trashed ? <Tag className="tidy-trashed">{t.inTrash}</Tag> : null}
+                        </Fragment>
+                      ))}
+                    </>
+                  )
                   : (
                     <>
                       {t.conflictsWith}{' '}

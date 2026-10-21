@@ -387,6 +387,10 @@ describe('Wiki 首页屏头的待审阅与需要整理', () => {
     pages: [], titles: {}, claimTexts: {},
   }) as unknown as WikiProposal
   const signal = (kind: WikiSignal['kind'], page: string, related: string[] = []): WikiSignal => ({ kind, page, related, detail: '一句' })
+  /** A broken link from `page` to `target`, which Core names by the target's last segment. */
+  const broken = (page: string, target: string): WikiSignal => ({
+    ...signal('broken-link', page, [target]), missing: { name: target.split('/').at(-1)!, trashed: false },
+  })
 
   const render = async () => {
     await act(async () => {
@@ -409,7 +413,7 @@ describe('Wiki 首页屏头的待审阅与需要整理', () => {
     fixture.backlinks.mockReset().mockResolvedValue([])
     fixture.proposals.mockReset().mockResolvedValue([proposal('p1', 'queued'), proposal('p2', 'queued'), proposal('p0', 'applied')])
     fixture.signals.mockReset().mockResolvedValue([
-      signal('unfiled-paper', 'papers/p1'), signal('broken-link', 'projects/p-47'), signal('broken-link', 'projects/p-47'),
+      signal('unfiled-paper', 'papers/p1'), broken('projects/p-47', 'topics/old'), broken('projects/p-47', 'topics/old'),
       signal('single-child', 'topics/sd'), signal('open-conflict', 'topics/sd'),
     ])
     fixture.open.mockReset()
@@ -467,7 +471,7 @@ describe('Wiki 首页屏头的待审阅与需要整理', () => {
     expect(host.querySelector('.desk-head .page-actions')).toBeNull()
     const rows = all('.desk-body .structured-row')
     expect(rows.map((row) => [row.querySelector('.tidy-open')!.tagName, row.textContent])).toEqual([
-      ['BUTTON', '结论冲突推测解码'], ['BUTTON', '链接失效推测解码加速'], ['BUTTON', '未归入主题EAGLE-2'],
+      ['BUTTON', '结论冲突推测解码'], ['BUTTON', '链接失效推测解码加速→ old'], ['BUTTON', '未归入主题EAGLE-2'],
     ])
     await press(rows[1]!)
     expect(fixture.open).toHaveBeenCalledWith('project', 'p-47')

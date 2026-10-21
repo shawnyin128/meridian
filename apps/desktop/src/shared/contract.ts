@@ -1591,12 +1591,17 @@ export const WikiSignalKindSchema = z.enum([
   'open-conflict', 'missing-generated-region',
 ])
 
-/** One signal: the page (or `projects/<id>`) it is about, the page ids or claim refs involved, and one plain sentence. */
+/**
+ * One signal: the page (or `projects/<id>`) it is about, the page ids or claim refs involved, and one
+ * plain sentence. A broken link also names the `missing` page it points to: by the title its trash
+ * record holds when it is in the trash, else by the label its link writes or the last segment of its id.
+ */
 export const WikiSignalSchema = z.object({
   kind: WikiSignalKindSchema,
   page: z.string(),
   related: z.array(z.string()),
   detail: z.string(),
+  missing: z.object({ name: z.string(), trashed: z.boolean() }).strict().optional(),
 }).strict()
 
 /**

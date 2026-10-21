@@ -682,8 +682,8 @@ export function createVaultStore(
         ...p.graph.nodes.flatMap((n) => n.writebacks.map((w) => w.page)),
       ],
     })),
-    trashed: new Set(trash.flatMap((item) => (item.kind === 'paper'
-      ? [`${PAPER_PAGE}${basename(item.page, '.md')}`] : []))),
+    trashed: new Map(trash.flatMap((item) => (item.kind === 'paper'
+      ? [[`${PAPER_PAGE}${basename(item.page, '.md')}`, item.title] as const] : []))),
     missingRegions: Object.keys(wikiData.pages).sort()
       .filter((id) => !isPaper(wikiData.pages[id]!) && generatedMissing(wikiFile(id)).some((name) => name !== 'claims')),
   })
