@@ -156,14 +156,16 @@ test('对照表的行是成员论文,格子按契约的列排,悬停看原文;�
       return cell === undefined ? '—' : `${cell.value} p.${cell.page}`
     }),
   )
-  // Hovering a cell's anchor, or focusing it, shows the source text it quotes in the shared tooltip.
+  // Hovering a cell's anchor, or reaching it with Tab from the row head, shows the source text it quotes
+  // in the shared tooltip.
   const filled = agg.columns.find((c) => first.cells[c.key] !== undefined)!
   const anchor = table.locator('tbody tr').first().locator('.source-anchor').first()
   await anchor.hover()
   await expect(win.locator('[role="tooltip"]')).toContainText(first.cells[filled.key]!.quote)
   await parkPointer(win)
-  await win.keyboard.press('Shift')
-  await anchor.focus()
+  await table.locator('tbody tr').first().locator('td.rh [data-wk]').focus()
+  await win.keyboard.press('Tab')
+  await expect(anchor).toBeFocused()
   await expect(win.locator('[role="tooltip"]')).toContainText(first.cells[filled.key]!.quote)
 
   // An [[id]] link without an alias in the body shows that page's display name.
