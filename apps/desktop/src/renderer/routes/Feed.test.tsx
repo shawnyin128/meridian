@@ -18,6 +18,10 @@ vi.mock('../shell/AppShell.js', () => ({
   useToday: () => '2026-09-20',
   useVaultRevision: () => ({ revision: 0, bump: vi.fn() }),
 }))
+// The checklist reads the library and Settings on its own; here it stands in by a marker of where it sits.
+vi.mock('../components/FirstRunChecklist.js', () => ({
+  FirstRunChecklist: ({ className }: { className?: string }) => <div className={`firstrun-stub ${className ?? ''}`} />,
+}))
 
 const { Feed, FeedRows } = await import('./Feed.js')
 
@@ -99,6 +103,21 @@ describe('feed rows', () => {
     expect(html).toContain('<div class="day-heading">Today</div>')
     expect(html).toContain('<div class="day-heading">Earlier</div>')
     expect(html).toMatch(/>Sep 12<.*>09:28 AM</)
+  })
+
+  it('开始使用清单排在动态流的最上面、筛选条之上，和卡片一样宽', async () => {
+    globalThis.IS_REACT_ACT_ENVIRONMENT = true
+    vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} })
+    feedList.rows = [ENTRY]
+    const host = document.createElement('div')
+    document.body.append(host)
+    const root = createRoot(host)
+    await act(async () => { root.render(<MessagesProvider><Feed /></MessagesProvider>) })
+    expect([...host.querySelector('.feedcol > .desk-body > .msgs')!.children].slice(0, 2).map((child) => child.className))
+      .toEqual(['firstrun-stub mwrap', 'page-toolbar mwrap'])
+    await act(async () => { root.unmount() })
+    host.remove()
+    vi.unstubAllGlobals()
   })
 
   it('filtering by source keeps the day headings of the entries it shows', async () => {

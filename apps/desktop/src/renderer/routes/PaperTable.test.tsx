@@ -11,6 +11,7 @@ import { TOOLTIP_DELAY } from '../components/Tooltip.js'
 import { MessagesProvider } from '../messages/useMessages.js'
 import { papers as papersZh } from '../messages/zh/papers.js'
 import { LANGUAGE_STORAGE_KEY } from '../shell/language.js'
+import type { ScreenJump } from '../shell/AppShell.js'
 
 declare global {
   var IS_REACT_ACT_ENVIRONMENT: boolean
@@ -89,6 +90,8 @@ let vaultPaperCount: number | null
 /** The group values papers.facets answers with. */
 let facetRows: Facet[]
 let openedScreens: [screen: string, id?: string][]
+/** The jump useJump hands the table: the screen another one opened it with, or null. */
+let jumpHere: ScreenJump | null
 /** How many times the table bumped the vault revision. */
 let bumps: number
 
@@ -145,7 +148,7 @@ vi.mock('../shell/AppShell.js', () => ({
   useEscapeLayer: () => {},
   useScreenReentry: () => 0,
   useJump: () => ({
-    jump: null,
+    jump: jumpHere,
     open: (screen: string, id?: string) => { openedScreens.push([screen, id]) },
     returnTo: vi.fn(),
   }),
@@ -286,6 +289,7 @@ describe('PaperTable', () => {
     vaultPaperCount = null
     facetRows = []
     openedScreens = []
+    jumpHere = null
     bumps = 0
   })
 
@@ -364,6 +368,24 @@ describe('PaperTable', () => {
     expect(host.querySelector('.pdetail')?.textContent).toContain('新论文')
     expect(host.querySelector<HTMLButtonElement>('.pdfupload')!.disabled).toBe(false)
     expect(listParams.at(-1)).toMatchObject({ page: 1, sort: 'addedAt', direction: 'desc' })
+  })
+
+  it('别的屏要导入时跳过来就打开 PDF 选择框;只是跳到一篇论文时不打开', async () => {
+    const opened = vi.spyOn(HTMLInputElement.prototype, 'click').mockImplementation(function (this: HTMLInputElement) {
+      openedScreens.push(['picker', this.classList.contains('pdfupload-input') ? 'pdfupload-input' : this.className])
+    })
+    jumpHere = { screen: 'papers', target: '一篇论文', from: 'wiki', seq: 1 }
+    mount()
+    columnsCall.resolve(EMPTY_COLUMNS)
+    listCall.resolve({ rows: [ROW], total: 1 })
+    await flush()
+    expect(openedScreens.filter(([screen]) => screen === 'picker')).toEqual([])
+    document.body.innerHTML = ''
+    jumpHere = { screen: 'papers', target: '', from: 'feed', seq: 2, anchor: { import: true } }
+    mount()
+    await flush()
+    expect(openedScreens.filter(([screen]) => screen === 'picker')).toEqual([['picker', 'pdfupload-input']])
+    opened.mockRestore()
   })
 
   it('论文搜索框用尾部叉号一次清空筛选并保留输入焦点', async () => {

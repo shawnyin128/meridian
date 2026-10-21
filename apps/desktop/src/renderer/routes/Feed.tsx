@@ -8,6 +8,7 @@ import { useJump, useVaultRevision } from '../shell/AppShell.js'
 import { CONFLICT_THREAD } from '../lib/chat.js'
 import { DateChip, DateTimeDisplay } from '../components/DateTimeDisplay.js'
 import { DayHeading, daySectionName } from '../components/DayHeading.js'
+import { FirstRunChecklist } from '../components/FirstRunChecklist.js'
 import { LoadingPlaceholder } from '../components/LoadingPlaceholder.js'
 import {
   PageBody, PageError, PageHeader, PageShell, PageTitle, PageToolbar,
@@ -133,9 +134,10 @@ export function FeedRows({ rows, onOpenConflict }: { rows: FeedEntry[]; onOpenCo
 }
 
 /**
- * Feed: everything new in the vault in time order, filterable by source and grouped by date.
- * Entries come from feed.list; this screen never touches the vault itself. Research ideas have
- * their own editable list and no longer appear as feed entries.
+ * Feed: everything new in the vault in time order, filterable by source and grouped by date, under the
+ * first-run checklist while a new library is being set up. Entries come from feed.list; this screen
+ * never touches the vault itself. Research ideas have their own editable list and no longer appear as
+ * feed entries.
  */
 export function Feed() {
   const m = useMessages()
@@ -159,6 +161,7 @@ export function Feed() {
       <PageError error={error} />
       <PageBody>
         <div className="msgs">
+          <FirstRunChecklist className="mwrap" onError={reportError} />
           {/* The switch sits in the stream, so it lines up with the entries' column. */}
           <PageToolbar className="mwrap">
             <SegmentedControl
