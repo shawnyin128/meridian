@@ -159,6 +159,11 @@ describe('WikiClaims', () => {
     expect(links.openPage).toHaveBeenCalledWith('topics/batch')
   })
 
+  it('原文证据里锚点连同它前面的空格是一段不断行的内容,紧贴论文名', () => {
+    const keep = host.querySelector('[data-claim="knee"] .source-anchor')!.parentElement!
+    expect([keep.className, keep.previousSibling?.textContent, keep.textContent]).toEqual(['source-anchor-keep', 'EAGLE-2', ' p.7'])
+  })
+
   it('原文证据的锚点悬停或聚焦时在共享 tooltip 里显示它锚定的原文', () => {
     const anchor = host.querySelector<HTMLButtonElement>('[data-claim="knee"] .source-anchor')!
     const tip = () => document.querySelector('[role="tooltip"]')?.textContent ?? null

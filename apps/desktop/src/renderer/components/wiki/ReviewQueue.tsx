@@ -89,7 +89,7 @@ function Blocks({ p, links, onOpenConclusion, by, context }: {
   const pages = (ids: string[]) => (ids.length === 0 ? m.common.none : ids.map((id) => <span key={id}>{page(id)}</span>))
   const anchor = (paper: string, at: number, quote?: string, highlight?: string) => (
     <SourceAnchor
-      page={at} quote={quote}
+      page={at} quote={quote} separator=" · "
       onOpen={() => links.openReader(paper, { page: at, ...(highlight === undefined ? {} : { highlight }) })}
     />
   )
@@ -114,7 +114,7 @@ function Blocks({ p, links, onOpenConclusion, by, context }: {
       case 'source':
         return {
           key, label: label ?? g.source, quote: <q>{item.quote}</q>,
-          value: <span>{paperName(item.paper)} · {anchor(item.paper, item.page, item.quote, item.highlight)}</span>,
+          value: <span>{paperName(item.paper)}{anchor(item.paper, item.page, item.quote, item.highlight)}</span>,
         }
       case 'claim':
       case 'wiki':
@@ -178,7 +178,7 @@ function Blocks({ p, links, onOpenConclusion, by, context }: {
           { key: 'paper', label: f.paper, value: page(op.paper) },
           ...Object.entries(op.cells).map(([key, cell]) => ({
             key: `cell-${key}`, label: title(`${op.in}#${key}`), quote: <q>{cell.quote}</q>,
-            value: <span>{cell.value} · {anchor(op.paper, cell.page, cell.quote)}</span>,
+            value: <span>{cell.value}{anchor(op.paper, cell.page, cell.quote)}</span>,
           })),
         ],
       }
