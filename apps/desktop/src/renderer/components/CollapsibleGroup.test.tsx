@@ -1,7 +1,13 @@
 // @vitest-environment jsdom
+import { act } from 'react'
+import { createRoot } from 'react-dom/client'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it, vi } from 'vitest'
 import { CollapsibleGroup } from './CollapsibleGroup.js'
+
+declare global {
+  var IS_REACT_ACT_ENVIRONMENT: boolean
+}
 
 describe('CollapsibleGroup', () => {
   it('省略 count 时不写条数,给出 count 时像分节标题一样在标题后写 · N,不画徽标', () => {
@@ -27,5 +33,29 @@ describe('CollapsibleGroup', () => {
       <CollapsibleGroup title="标题" count={1} open={false} onToggle={vi.fn()}>内容</CollapsibleGroup>,
     )
     expect(section).not.toContain('collapsible-group--quiet')
+  })
+
+  it('列表出现时开着的分组和由外部打开的分组都直接整组显示,只有点标题打开的分组才长出来', () => {
+    globalThis.IS_REACT_ACT_ENVIRONMENT = true
+    const host = document.createElement('div')
+    const root = createRoot(host)
+    const body = () => host.querySelector('.collapsible-group-body')
+    const render = (open: boolean) => act(() => root.render(
+      <CollapsibleGroup title="标题" open={open} onToggle={vi.fn()}>内容</CollapsibleGroup>,
+    ))
+    const clickToggle = () => act(() => host.querySelector<HTMLButtonElement>('.collapsible-group-toggle')!.click())
+
+    render(true)
+    expect(body()?.className).toBe('collapsible-group-body')
+    clickToggle()
+    render(false)
+    clickToggle()
+    render(true)
+    expect(body()?.className).toBe('collapsible-group-body is-opening')
+    clickToggle()
+    render(false)
+    render(true)
+    expect(body()?.className).toBe('collapsible-group-body')
+    act(() => root.unmount())
   })
 })

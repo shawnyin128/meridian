@@ -37,6 +37,13 @@ const transitioned = (markup: string, selector: string): string[] => {
     .split(/,(?![^(]*\))/).map((part) => part.trim().split(/\s+/)[0]!).filter(Boolean)
 }
 
+/** The text of the keyframes the element `selector` in the current body animates with, or undefined when it has none. */
+const keyframesOf = (selector: string): string | undefined => {
+  const name = /^\s*([\w-]+)/.exec(getComputedStyle(document.querySelector(selector)).animation)?.[1]
+  return [...document.styleSheets].flatMap((sheet) => [...sheet.cssRules])
+    .find((rule) => rule.constructor.name === 'CSSKeyframesRule' && rule.name === name)?.cssText
+}
+
 describe('面板的动效', () => {
   beforeEach(() => {
     document.head.innerHTML = STYLES.map((path) => `<style>${stylesheet(path)}</style>`).join('')
@@ -67,13 +74,17 @@ describe('面板的动效', () => {
   })
 
   it('收件分组展开时高度经网格行长出来，和 CardTray 一样', () => {
+    document.body.innerHTML = '<section class="collapsible-group"><div class="collapsible-group-body is-opening"><div class="collapsible-group-content"></div></div></section>'
+    expect(getComputedStyle(document.querySelector('.collapsible-group-body')).display).toBe('grid')
+    expect(keyframesOf('.collapsible-group-body')).toMatch(/0% \{ grid-template-rows: 0fr; \}[\s\S]*100% \{ grid-template-rows: 1fr; \}/)
+    expect(keyframesOf('.collapsible-group-content')).toMatch(/overflow: hidden/)
+  })
+
+  it('列表出现时开着的分组整组显示，不从 0fr 长出来，内容也不被裁切', () => {
     document.body.innerHTML = '<section class="collapsible-group"><div class="collapsible-group-body"><div class="collapsible-group-content"></div></div></section>'
-    const body = getComputedStyle(document.querySelector('.collapsible-group-body'))
-    expect(body.display).toBe('grid')
-    const name = /^\s*([\w-]+)/.exec(body.animation)?.[1]
-    const keyframes = [...document.styleSheets].flatMap((sheet) => [...sheet.cssRules])
-      .find((rule) => rule.constructor.name === 'CSSKeyframesRule' && rule.name === name)
-    expect(keyframes?.cssText).toMatch(/0% \{ grid-template-rows: 0fr; \}[\s\S]*100% \{ grid-template-rows: 1fr; \}/)
+    for (const selector of ['.collapsible-group-body', '.collapsible-group-content']) {
+      expect(keyframesOf(selector), selector).toBeUndefined()
+    }
   })
 
   it('表格里 +N 展开的标签一齐出现，不错开', () => {
