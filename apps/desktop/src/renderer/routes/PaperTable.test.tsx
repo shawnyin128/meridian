@@ -4,6 +4,7 @@ import { createRoot, type Root } from 'react-dom/client'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Facet, ListParams, PaperColumns, PaperImportResult, PaperRow } from '../../shared/contract.js'
+import type { ScreenJump } from '../shell/AppShell.js'
 import { PAPER_COLUMNS } from '../../shared/vocabulary.js'
 import { CallError } from '../call-error.js'
 import { IconTrash } from '../components/icons.js'
@@ -94,6 +95,8 @@ let facetRows: Facet[]
 let openedScreens: [screen: string, id?: string][]
 /** The jump useJump hands the table: the screen another one opened it with, or null. */
 let jumpHere: ScreenJump | null
+/** The paper ids papers.get was asked for, in order. */
+let gotIds: string[]
 /** How many times the table bumped the vault revision. */
 let bumps: number
 
@@ -101,7 +104,7 @@ vi.mock('../ipc.js', () => ({
   papers: {
     list: (params: ListParams) => { listCallCount += 1; listParams.push(params); return listCall.promise },
     facets: () => Promise.resolve(facetRows),
-    get: () => getCall.promise,
+    get: (id: string) => { gotIds.push(id); return getCall.promise },
     update: (id: string, patch: Record<string, unknown>) => {
       if (throwOnNextUpdate) { const e = throwOnNextUpdate; throwOnNextUpdate = null; throw e }
       const c = controlled<void>()
@@ -299,7 +302,35 @@ describe('PaperTable', () => {
     facetRows = []
     openedScreens = []
     jumpHere = null
+    gotIds = []
     bumps = 0
+  })
+
+  it('带详情落点跳进来时打开那篇的详情,搜索框不填字', async () => {
+    jumpHere = { screen: 'papers', target: 'p1', from: 'feed', seq: 1, anchor: { detail: true } }
+    const host = mount()
+    columnsCall.resolve(EMPTY_COLUMNS)
+    listCall.resolve({ rows: [ROW], total: 1 })
+    getCall.resolve(ROW)
+    await flush()
+
+    expect(gotIds[0]).toBe('p1')
+    expect(host.querySelector<HTMLInputElement>('#libq')!.value).toBe('')
+    expect(host.querySelector('.pdetail')?.textContent).toContain('一篇论文')
+  })
+
+  it('带导入 PDF 落点跳进来时打开导入的文件选择', async () => {
+    const clicked = vi.spyOn(HTMLInputElement.prototype, 'click').mockImplementation(() => {})
+    jumpHere = { screen: 'papers', target: '', from: 'feed', seq: 1, anchor: { importPdf: true } }
+    mount()
+    columnsCall.resolve(EMPTY_COLUMNS)
+    listCall.resolve({ rows: [ROW], total: 1 })
+    await flush()
+
+    expect(clicked.mock.contexts.map((input) => (input as HTMLInputElement).className)).toEqual([
+      expect.stringContaining('pdfupload-input'),
+    ])
+    clicked.mockRestore()
   })
 
   it('defaults to 20 papers and offers only the 20, 30, and 50 page sizes', async () => {

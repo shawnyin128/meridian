@@ -15,7 +15,6 @@ export {
   wikiCards,
   wikiHome,
   wikiPaper,
-  wikiSearchIndex,
 } from './model.js'
 export type {
   PointName,

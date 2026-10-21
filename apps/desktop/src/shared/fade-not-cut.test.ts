@@ -35,6 +35,7 @@ const FADED: Record<string, [file: string, markup: RegExp][]> = {
   '.wkside': [['routes/Wiki.tsx', /className="wkside" ref=\{railFade\}/]],
   '.cmpwrap': [['routes/Wiki.tsx', /className="cmpwrap" ref=\{wrapFade\}/]],
   '.gwrap': [['components/timeline/TimelineBoard.tsx', /className="gwrap" ref=\{wrapFade\}/]],
+  '.cmdk-list': [['shell/CommandPalette.tsx', /className="cmdk-list" ref=\{listFade\}/]],
   '.pickhits': [['components/PickerPopover.tsx', /<Popover\.Content\s+ref=\{listFade\}/]],
   '.pickhits.cres': [['components/PickerPopover.tsx', /<Popover\.Content\s+ref=\{listFade\}/]],
   '.ctxmenu.choice-picker-menu': [

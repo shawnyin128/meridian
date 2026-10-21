@@ -18,6 +18,8 @@ import { errorLabel } from '../lib/failure-label.js'
 import { commandShortcut, composing } from '../lib/keyboard.js'
 import type { Catalog } from '../messages/catalog.js'
 import { useMessages } from '../messages/useMessages.js'
+import { CommandPalette, type PaletteCommand } from './CommandPalette.js'
+import { openHit } from './SearchBox.js'
 import { Sidebar } from './Sidebar.js'
 import { JobsContext, useJobsPoll } from './useJobs.js'
 import brandmark from '../../../resources/mark-64.png'
@@ -88,6 +90,12 @@ export type JumpAnchor = {
   conclusion?: string
   /** Papers: open the PDF import. */
   import?: true
+  /** Papers: the target is a paper id whose detail view opens, not a title to filter the table by. */
+  detail?: true
+  /** Papers: open the file chooser of the PDF import. */
+  importPdf?: true
+  /** Project: show the project list with its new-project row open. */
+  newProject?: true
 }
 export type ScreenJump = {
   screen: ScreenKey
@@ -390,6 +398,7 @@ export function AppShell({ screens, settings }: {
   // The dialog a menu item asked for, opened only once the menu has closed and handed focus back.
   const wantDialog = useRef<'settings' | 'about' | null>(null)
   const [aboutOpen, setAboutOpen] = useState(false)
+  const [paletteOpen, setPaletteOpen] = useState(false)
 
   // Every sidebar badge counts the whole vault and must be fetched again after each write, so this
   // follows `revision`. The vault's today is fetched here too: a write uses the current day, and a
@@ -480,13 +489,19 @@ export function AppShell({ screens, settings }: {
     openCategory: openSettingsCategory,
   }), [settingsCategory, settingsOpen, openSettingsCategory])
 
-  // Ctrl+B / Cmd+B toggles the sidebar; Escape peels the topmost dismissible layer; "/" outside an
-  // editable element jumps to the nearest search field.
+  // Ctrl+B / Cmd+B toggles the sidebar; the platform's command key with K opens and closes the
+  // command palette; Escape peels the topmost dismissible layer; "/" outside an editable element
+  // jumps to the nearest search field.
   useEffect(() => {
     const key = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && (e.key === 'b' || e.key === 'B')) {
         e.preventDefault()
         setHidden((h) => !h)
+        return
+      }
+      if ((appMenu.platform() === 'darwin' ? e.metaKey : e.ctrlKey) && (e.key === 'k' || e.key === 'K')) {
+        e.preventDefault()
+        setPaletteOpen((open) => !open)
         return
       }
       if (e.key === 'Escape' && !e.defaultPrevented && !composing(e)) {
@@ -610,6 +625,23 @@ export function AppShell({ screens, settings }: {
 
   const crumbs = useMemo(() => crumbsOf(m), [m])
 
+  const commands: PaletteCommand[] = [
+    { label: m.research.list.create, run: () => jumps.open('project', '', { newProject: true }) },
+    { label: m.papers.upload.importAction, run: () => jumps.open('papers', '', { importPdf: true }) },
+    { label: m.shell.titlebar.settings, shortcut: commandShortcut(appMenu.platform(), ','), run: () => setSettingsOpen(true) },
+    { label: m.shell.nav.feed, run: () => navigate('feed') },
+    { label: m.shell.nav.delivery, run: () => openInbox(ALL_WATCHES) },
+    { label: m.shell.nav.discovery, run: () => openInbox(ALL_WATCHES, 'discovery') },
+    { label: m.shell.nav.later, run: () => navigate('later') },
+    { label: m.shell.nav.wiki, run: () => navigate('wiki') },
+    { label: m.shell.nav.papers, run: () => navigate('papers') },
+    { label: m.shell.nav.changelog, run: () => navigate('changelog') },
+    { label: m.shell.nav.overview, run: () => navigate('overview') },
+    { label: m.shell.nav.projects, run: () => navigate('project') },
+    { label: m.shell.nav.ideas, run: () => navigate('ideas') },
+    { label: m.shell.nav.trash, run: () => navigate('trash') },
+  ]
+
   // A screen's own breadcrumbs: the last base segment carries its back action, then its deeper ones.
   const partsOf = (k: ScreenKey): CrumbSeg[] => {
     const base = crumbs[k]
@@ -706,6 +738,9 @@ export function AppShell({ screens, settings }: {
           <MenuItem onSelect={() => { wantDialog.current = 'about' }}>{m.shell.titlebar.about}</MenuItem>
         </ActionMenu>
         <AboutDialog open={aboutOpen} onOpenChange={setAboutOpen} />
+        <CommandPalette
+          open={paletteOpen} onOpenChange={setPaletteOpen} commands={commands} onHit={(hit) => openHit(hit, jumps.open)}
+        />
         <div className="crumb" id="crumb">
           {parts.map((p, i) => {
             // As in the demo, only .cseg.link gets a handler: the last segment is the current position.

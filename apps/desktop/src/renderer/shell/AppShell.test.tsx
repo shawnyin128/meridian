@@ -53,7 +53,9 @@ vi.mock('../ipc.js', () => ({
 }))
 vi.mock('../components/AboutDialog.js', () => ({ AboutDialog: () => null }))
 
-const { AppShell, useCrumbTail, useEscapeLayer, useNotice, usePaperChatCollapsed, useSettingsOpen } = await import('./AppShell.js')
+const {
+  AppShell, useCrumbTail, useEscapeLayer, useJump, useNotice, usePaperChatCollapsed, useSettingsOpen,
+} = await import('./AppShell.js')
 const { TOOLTIP_DELAY } = await import('../components/Tooltip.js')
 
 const TAIL = [{ text: '深层' }]
@@ -77,8 +79,8 @@ const SCREENS = {
 let root: Root | null = null
 let host: HTMLDivElement
 
-/** Mounts the shell with `feed` as the content of its first screen. */
-async function mount(feed: ReactNode = <PaperChatState />): Promise<void> {
+/** Mounts the shell with `feed` as the content of its first screen and `more` as other screens' content. */
+async function mount(feed: ReactNode = <PaperChatState />, more: Partial<Record<keyof typeof SCREENS, ReactNode>> = {}): Promise<void> {
   globalThis.IS_REACT_ACT_ENVIRONMENT = true
   // The breadcrumb's segments measure whether they fit, and jsdom has no ResizeObserver.
   vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} })
@@ -88,7 +90,7 @@ async function mount(feed: ReactNode = <PaperChatState />): Promise<void> {
   document.body.append(host)
   root = createRoot(host)
   await act(async () => {
-    root!.render(<MessagesProvider><AppShell screens={{ ...SCREENS, feed }} settings={null} /></MessagesProvider>)
+    root!.render(<MessagesProvider><AppShell screens={{ ...SCREENS, ...more, feed }} settings={null} /></MessagesProvider>)
     await Promise.resolve()
   })
 }
@@ -597,3 +599,58 @@ describe('AppShell "/" shortcut', () => {
     expect(document.activeElement).toBe(host.querySelector('#sSearch'))
   })
 })
+
+/** Shows the anchor of the jump aimed at its screen. */
+function JumpProbe({ id }: { id: string }) {
+  const { jump } = useJump()
+  return <p id={id}>{JSON.stringify(jump?.anchor ?? null)}</p>
+}
+
+describe('AppShell command palette', () => {
+  const palette = () => document.querySelector('.cmdk')
+  /** Opens the palette with ⌘K and chooses the command row labelled `label`. */
+  const run = (label: string) => {
+    press('k', { metaKey: true })
+    const row = [...document.querySelectorAll<HTMLElement>('.cmdk .rrow')].find((r) => r.textContent?.startsWith(label))!
+    act(() => { row.click() })
+  }
+  const shown = () => document.querySelector('.screenslot:not([hidden])')!.textContent
+
+  beforeEach(() => { HTMLElement.prototype.scrollIntoView = () => {} })
+  afterEach(() => { delete (HTMLElement.prototype as Partial<HTMLElement>).scrollIntoView })
+
+  it('opens over the current screen with ⌘K on macOS and closes with it again; Ctrl+K opens it elsewhere', async () => {
+    await mount()
+    press('k', { ctrlKey: true })
+    expect(palette()).toBeNull()
+    press('k', { metaKey: true })
+    expect(palette()).not.toBeNull()
+    expect(document.activeElement?.id).toBe('cmdkq')
+    press('k', { metaKey: true })
+    expect(palette()).toBeNull()
+
+    act(() => root!.unmount())
+    fixture.platform = 'win32'
+    await mount()
+    press('k', { ctrlKey: true })
+    expect(palette()).not.toBeNull()
+    fixture.platform = 'darwin'
+  })
+
+  it('runs a new project, a PDF import, Settings and the sidebar screens from its commands', async () => {
+    await mount(<SettingsProbe />, {
+      project: <JumpProbe id="projectJump" />, papers: <JumpProbe id="papersJump" />, ideas: <p>ideas</p>,
+    })
+
+    run('新建项目')
+    expect(palette()).toBeNull()
+    expect(shown()).toBe('{"newProject":true}')
+    run('导入 PDF')
+    expect(shown()).toBe('{"importPdf":true}')
+    run('想法')
+    expect(shown()).toBe('ideas')
+    run('设置…')
+    expect(document.querySelector('#settingsProbe')!.textContent).toBe('default')
+  })
+})
+

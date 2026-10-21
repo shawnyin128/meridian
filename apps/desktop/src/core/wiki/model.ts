@@ -1,5 +1,5 @@
 import type {
-  ConflictTarget, Evidence, PageVersion, SearchHit, WikiAggregation, WikiAggregationCard, WikiCell, WikiClaim,
+  ConflictTarget, Evidence, PageVersion, WikiAggregation, WikiAggregationCard, WikiCell, WikiClaim,
   WikiHome, WikiPaper, WikiRef,
 } from '../../shared/contract.js'
 import { CallError } from '../call-error.js'
@@ -447,24 +447,8 @@ export function wikiPaper(data: WikiData, id: string, version: PageVersion): Wik
 }
 
 /**
- * Returns one search hit per aggregation in `data`, kinds in schema order and
- * aggregations in id order: the target is the page id, the title is the kind's
- * label, a colon, and the aggregation's title.
- */
-export function wikiSearchIndex(data: WikiData): SearchHit[] {
-  return Object.entries(data.kinds).flatMap(([key, kind]) => ids(data)
-    .filter((id) => data.pages[id]!.kind === key)
-    .map((id): SearchHit => ({
-      kind: 'aggregation',
-      target: id,
-      title: `${kind.label}：${(data.pages[id] as WikiAggregationRecord).fm.title}`,
-      meta: 'Wiki',
-    })))
-}
-
-/**
  * Returns a card for every aggregation in `data`, kinds in schema order and
- * aggregations in id order — the same order `wikiSearchIndex` lists them.
+ * aggregations in id order.
  */
 export function wikiCards(data: WikiData): WikiAggregationCard[] {
   return Object.keys(data.kinds).flatMap((key) => ids(data)

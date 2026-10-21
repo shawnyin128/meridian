@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useEffect, useState } from 'react'
+import { Fragment, useCallback, useEffect, useRef, useState } from 'react'
 import type { InboxDownloadFailure, LaterEntry } from '../../shared/contract.js'
 import { inbox, later } from '../ipc.js'
 import { useMessages } from '../messages/useMessages.js'
@@ -27,7 +27,8 @@ const MODES: Grouping[] = ['time', 'src']
 
 /**
  * Read Later: a paper already in the vault opens straight in the reader; one with only its source
- * address is downloaded into the vault first. Each entry can be removed from the queue.
+ * address is downloaded into the vault first. Each entry can be removed from the queue. A jump from
+ * another screen brings the entry it names into view.
  */
 export function Later() {
   const m = useMessages()
@@ -37,7 +38,9 @@ export function Later() {
   const [error, setError] = useState<string | null>(null)
 
   const notice = useNotice()
-  const { open } = useJump()
+  const { jump, open } = useJump()
+  const body = useRef<HTMLDivElement>(null)
+  const consumed = useRef(0)
   const { revision, bump } = useVaultRevision()
   const reportError = useCallback((e: unknown) => setError(errorLabel(m, e)), [m])
   const write = useVaultWrite()
@@ -76,6 +79,13 @@ export function Later() {
     void later.list().then(setEntries).catch(reportError)
   }, [revision, reportError])
 
+  // The entry can be scrolled to only once the queue has arrived.
+  useEffect(() => {
+    if (jump === null || jump.seq === consumed.current || entries === null) return
+    consumed.current = jump.seq
+    body.current?.querySelector(`[data-pid="${CSS.escape(jump.target)}"]`)?.scrollIntoView({ block: 'nearest' })
+  }, [jump, entries])
+
   const remove = (entry: LaterEntry) => {
     void write(later.remove(entry.id),
       { note: <TitleNote message={m.later.removed} title={plainTitle(entry.title)} /> })
@@ -98,7 +108,7 @@ export function Later() {
 
       <PageError error={error} />
 
-      <PageBody>
+      <PageBody ref={body}>
         {groups.length === 0 ? null : (
           <PageToolbar>
             <SegmentedControl

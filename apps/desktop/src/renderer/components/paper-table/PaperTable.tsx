@@ -282,6 +282,8 @@ function TextCellEdit({ cell, initial, onSave, onCancel }: {
  * group values and counts, and papers.columns says which columns show.
  * A jump from another screen lands on that paper's title: the title goes into the filter box, which
  * leaves only that paper in the table; a jump with the `import` anchor also opens the PDF import.
+ * A jump with the `detail` anchor opens that paper's detail panel instead and leaves the table as it
+ * was; one with `importPdf` opens the import's file chooser.
  */
 export function PaperTable() {
   const m = useMessages()
@@ -446,10 +448,18 @@ export function PaperTable() {
   useEffect(() => {
     if (jump === null || jump.seq === consumed.current) return
     consumed.current = jump.seq
+    if (jump.anchor?.detail === true) {
+      void papers.get(jump.target).then(setDetail).catch(reportError)
+      return
+    }
+    if (jump.anchor?.importPdf === true) {
+      if (!uploading) uploadInput.current?.click()
+      return
+    }
     setQ(jump.target)
     setPage(1)
     if (jump.anchor?.import === true) uploadInput.current?.click()
-  }, [jump])
+  }, [jump, reportError, uploading])
 
   const backToValues = useCallback(() => { setSel(null); setPage(1) }, [])
   const backToUngrouped = useCallback(() => { setGroup('none'); setSel(null); setPage(1) }, [])

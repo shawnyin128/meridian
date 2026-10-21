@@ -1,4 +1,4 @@
-/** App shell copy: breadcrumbs, sidebar navigation, titlebar, boot failure and global search. */
+/** App shell copy: breadcrumbs, sidebar navigation, titlebar, boot failure, global search and the command palette. */
 export const shell = {
   crumbs: {
     feed: '动态',
@@ -64,4 +64,5 @@ export const shell = {
     results: '搜索结果',
     noHits: '没有找到匹配的内容',
   },
+  palette: { title: '命令面板', placeholder: '搜索或运行命令' },
 } satisfies Record<string, unknown>

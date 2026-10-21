@@ -15,7 +15,7 @@ import { useMessages } from '../messages/useMessages.js'
 import { useAppUpdate } from '../hooks/useAppUpdate.js'
 import { useScrollFade } from '../hooks/useScrollFade.js'
 import { appUpdates } from '../ipc.js'
-import { ALL_WATCHES, type DiscoveryProjectCount, type InboxMode, type ScreenKey } from './AppShell.js'
+import { ALL_WATCHES, type DiscoveryProjectCount, type InboxMode, type JumpAnchor, type ScreenKey } from './AppShell.js'
 import { GripTooltip } from './GripTooltip.js'
 import { SearchBox } from './SearchBox.js'
 import { PaperText } from '../components/paper/PaperText.js'
@@ -154,7 +154,7 @@ export function Sidebar({
 }: {
   screen: ScreenKey
   onNavigate: (next: ScreenKey) => void
-  onJump: (next: ScreenKey, target: string) => void
+  onJump: (next: ScreenKey, target: string, anchor?: JumpAnchor) => void
   paperCount: number | null
   changeCount: number | null
   projectCount: number | null

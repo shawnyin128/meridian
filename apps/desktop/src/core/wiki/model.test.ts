@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { WikiData } from './model.js'
-import { wikiAggregation, wikiCards, wikiHome, wikiPaper, wikiSearchIndex } from './model.js'
+import { wikiAggregation, wikiCards, wikiHome, wikiPaper } from './model.js'
 
 /** A page version the views echo back unchanged. */
 const V = { fm: '0123456789abcdef', body: 'fedcba9876543210' }
@@ -129,17 +129,8 @@ describe('wiki 视图', () => {
     expect(wikiPaper(DATA, 'papers/c', V)).toMatchObject({ short: 'C', venue: '', pdf: '', body: '' })
   })
 
-  it('搜索索引:每页聚合一条,种类按 schema 次序、种类内按 id', () => {
-    expect(wikiSearchIndex(DATA)).toEqual([
-      { kind: 'aggregation', target: 'topics/leaf', title: '问题：Leaf', meta: 'Wiki' },
-      { kind: 'aggregation', target: 'topics/root', title: '问题：Root', meta: 'Wiki' },
-      { kind: 'aggregation', target: 'methods/m', title: '方法：M', meta: 'Wiki' },
-    ])
-  })
-
-  it('卡片列表:每页聚合一张,种类按 schema 次序、种类内按 id,与搜索索引同序', () => {
+  it('卡片列表:每页聚合一张,种类按 schema 次序、种类内按 id', () => {
     expect(wikiCards(DATA).map((c) => c.id)).toEqual(['topics/leaf', 'topics/root', 'methods/m'])
-    expect(wikiCards(DATA).map((c) => c.id)).toEqual(wikiSearchIndex(DATA).map((h) => h.target))
   })
 
   it('不存在的 id 抛出,论文 id 当聚合取也抛出', () => {

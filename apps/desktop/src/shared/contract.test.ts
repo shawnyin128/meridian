@@ -11,7 +11,7 @@ import watches from '../core/fixtures/watches.json' with { type: 'json' }
 import wikiFixture from '../core/fixtures/wiki.json' with { type: 'json' }
 import { createFixtureStore } from '../core/fixture-store.js'
 import {
-  wikiAggregation, wikiPaper, wikiSearchIndex, type WikiData,
+  wikiAggregation, wikiCards, wikiPaper, type WikiData,
 } from '../core/wiki/index.js'
 import {
   AuthorSearchFailedSchema,
@@ -1136,7 +1136,7 @@ describe('contract schemas', () => {
 
   it('wiki 的 fixture 全部符合契约:每页聚合与每篇论文都过得了契约', () => {
     const data = wikiFixture as WikiData
-    const aggregationIds = wikiSearchIndex(data).map((hit) => hit.target)
+    const aggregationIds = wikiCards(data).map((card) => card.id)
     expect(aggregationIds.length).toBeGreaterThan(0)
     const version = { fm: '0123456789abcdef', body: '0123456789abcdef' }
     for (const id of aggregationIds) WikiAggregationSchema.parse(wikiAggregation(data, id, version, {}, () => undefined))
@@ -1145,7 +1145,7 @@ describe('contract schemas', () => {
 
   it('项目里那几处 wiki 跳转的目标都指向真的聚合页', () => {
     const data = wikiFixture as WikiData
-    const ids = new Set(wikiSearchIndex(data).map((hit) => hit.target))
+    const ids = new Set(wikiCards(data).map((card) => card.id))
     const targets = projects.flatMap((p) => [
       ...(p.conflictPage === undefined ? [] : [p.conflictPage]),
       ...p.graph.nodes.flatMap((n) => n.writebacks.map((w) => w.page)),
