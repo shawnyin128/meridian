@@ -147,7 +147,7 @@ test('归一条:它落到「已归档」那一节,屏头与侧栏的数都掉一
   const total = (await sourcesFromCore(win)).length
   await gotoChangelog(win)
   const first = shown(win, '.crow').first()
-  const title = await first.locator('.ct').innerText()
+  const title = (await first.locator('.ct').textContent())!
 
   await first.hover()
   await first.locator('.carch').click()
@@ -181,7 +181,7 @@ test('「全部归档」把未归档清空,写「还没有新的变动」,按钮
 
   await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText(`已归档 ${total} 条`)
   await expect(shown(win, '.desk-head .t')).toHaveText('最近变动 · 0')
-  await expect(win.locator('[data-desk="changelog"] .n')).toHaveText('0')
+  await expect(win.locator('[data-desk="changelog"] .n')).toHaveCount(0)
   await expect(shown(win, '.empty-state')).toHaveText('还没有新的变动')
   // It sits under a section heading with the archived list below it, so it is the one-line variant.
   await expect(shown(win, '.empty-state')).toHaveClass(/empty-state--section/)
