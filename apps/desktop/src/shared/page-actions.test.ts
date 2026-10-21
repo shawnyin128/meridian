@@ -2,7 +2,8 @@ import { readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { parse } from '@babel/parser'
 import { describe, expect, it } from 'vitest'
-import { catalogFor } from '../renderer/messages/catalog.js'
+import { en } from '../renderer/messages/en/index.js'
+import { zh } from '../renderer/messages/zh/index.js'
 
 const RENDERER = join(import.meta.dirname, '..', 'renderer')
 
@@ -368,7 +369,7 @@ const shown = (place: Pick<Place, 'slot' | 'size' | 'variant'>) => `${place.slot
 
 /** The text that a message path such as `m.ideas.sort` names in `locale`. */
 const textOf = (path: string, locale: 'zh' | 'en') => String(path.split('.').slice(1)
-  .reduce<unknown>((held, key) => (held as Record<string, unknown>)[key], catalogFor(locale)))
+  .reduce<unknown>((held, key) => (held as Record<string, unknown>)[key], locale === 'zh' ? zh : en))
 
 describe('一个操作一个位置', () => {
   it('每个操作只在它的位置上出现，同一种尺寸和样式；另一个位置要写明它的作用范围', () => {
