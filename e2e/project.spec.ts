@@ -1055,26 +1055,24 @@ test('属性格进入编辑时不改变右栏和值列宽度,字也不挪位', a
   const props = side.locator('.wkprops')
   const field = props.locator('.pk:text-is("名称") + .metadata-field')
   const name = field.locator('.metadata-editable')
-  // Where the text starts inside its box: the same box with the same inset keeps it in place.
-  const inset = (box: Locator) => box.evaluate((el) => {
+  const boxes = () => Promise.all([side.boundingBox(), props.boundingBox(), field.boundingBox()])
+  // The text lies in the box inside border and padding: the same box and line height keep every line break.
+  const text = (box: Locator) => box.evaluate((el) => {
+    const rect = el.getBoundingClientRect()
     const style = getComputedStyle(el)
-    return [style.paddingLeft, style.paddingTop, style.borderLeftWidth, style.borderTopWidth, style.lineHeight]
+    const left = rect.left + parseFloat(style.borderLeftWidth) + parseFloat(style.paddingLeft)
+    const right = rect.right - parseFloat(style.borderRightWidth) - parseFloat(style.paddingRight)
+    const top = rect.top + parseFloat(style.borderTopWidth) + parseFloat(style.paddingTop)
+    return { left, top, width: right - left, lineHeight: style.lineHeight }
   })
-  const before = await Promise.all([side.boundingBox(), props.boundingBox(), field.boundingBox(), name.boundingBox()])
-  const insetBefore = await inset(name)
-  expect(before[3]?.x).toBe(before[2]?.x)
-  expect(before[3]?.width).toBe(before[2]?.width)
+  const before = await boxes()
+  const textBefore = await text(name)
 
   await name.click()
   const input = field.locator('.metadata-input')
   await expect(input).toBeVisible()
-  const editing = await Promise.all([side.boundingBox(), props.boundingBox(), field.boundingBox(), input.boundingBox()])
-
-  expect(editing.map((box) => box?.width)).toEqual(before.map((box) => box?.width))
-  expect(editing.map((box) => box?.x)).toEqual(before.map((box) => box?.x))
-  expect(editing.map((box) => box?.y)).toEqual(before.map((box) => box?.y))
-  expect(editing[2]?.height).toBe(before[2]?.height)
-  expect(await inset(input)).toEqual(insetBefore)
+  expect(await boxes()).toEqual(before)
+  expect(await text(input)).toEqual(textBefore)
 })
 
 test('属性栏焦点格:焦点移走或点到格外都像回车一样写回,Esc 才放弃', async ({ win }) => {
