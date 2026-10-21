@@ -24,7 +24,6 @@ export const ideas = {
   updated: (date: string) => `Updated ${date}`,
   detailHeading: 'Idea details',
   bodyLabel: 'Idea',
-  saving: 'Saving…',
   restoredNote: 'Idea restored',
   archivedNote: 'Idea archived',
   updatedNote: 'Idea updated',
@@ -35,13 +34,10 @@ export const ideas = {
   },
   openSourceChat: 'Open original chat',
   editor: {
-    newTitle: 'Save as idea',
-    editTitle: 'Edit idea',
     sourceLabel: (source: string) => `Source: ${source}`,
     titleLabel: 'Title',
     titlePlaceholder: 'What problem does this idea solve?',
     bodyPlaceholder: 'Mechanism, hypothesis, or direction…',
-    save: 'Save idea',
   },
   nodeDraft: {
     nodeTitleLabel: 'Node title',

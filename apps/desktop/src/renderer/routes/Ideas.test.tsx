@@ -130,7 +130,7 @@ describe('Ideas', () => {
   const press = (field: Element, key: string, metaKey = false) => act(() => {
     field.dispatchEvent(new KeyboardEvent('keydown', { key, metaKey, bubbles: true, cancelable: true }))
   })
-  const draft = () => host.querySelector<HTMLElement>('.ideas-list > .idea-draft')
+  const draft = () => host.querySelector<HTMLElement>('.ideas-list > .idea-draft-card')
   const openDraft = () => act(async () => {
     [...host.querySelectorAll<HTMLButtonElement>('.desk-head > .page-actions > button')].at(-1)!.click()
   })
@@ -149,6 +149,15 @@ describe('Ideas', () => {
     expect(document.activeElement).toBe(draft()!.querySelector('input'))
     expect(draft()!.querySelector('textarea')).not.toBeNull()
     expect(document.querySelector('[role="dialog"], .idea-dialog')).toBeNull()
+  })
+
+  it('新建想法的草稿卡里是对话存为想法用的同一个草稿表单，取消和保存在它的底部', async () => {
+    await act(async () => { root.render(<MessagesProvider><Ideas /></MessagesProvider>) })
+    await openDraft()
+    const card = host.querySelector('.ideas-list > .section-heading')!.nextElementSibling!
+    expect([card.classList.contains('research-object-card'), card.firstElementChild?.className])
+      .toEqual([true, 'draft-form idea-draft'])
+    expect([...card.querySelectorAll('.draft-form-foot button')].map((button) => button.textContent)).toEqual(['取消', '保存'])
   })
 
   it('在正文里按 ⌘Enter 新建自己的想法、不关联项目；它取代草稿排在进行中最前，并在详情里打开', async () => {
@@ -203,18 +212,19 @@ describe('Ideas', () => {
     await openDraft()
     const title = () => draft()!.querySelector('input')!
     const body = () => draft()!.querySelector('textarea')!
+    const marked = (field: Element) => field.getAttribute('aria-invalid') === 'true'
     act(() => { type(title(), '只有标题') })
     await press(body(), 'Enter', true)
-    expect([title().getAttribute('aria-invalid'), body().getAttribute('aria-invalid')]).toEqual(['false', 'true'])
+    expect([marked(title()), marked(body())]).toEqual([false, true])
     act(() => { type(title(), ''); type(body(), '只有正文') })
     await press(title(), 'Enter')
-    expect([title().getAttribute('aria-invalid'), body().getAttribute('aria-invalid')]).toEqual(['true', 'false'])
+    expect([marked(title()), marked(body())]).toEqual([true, false])
     const shown = draft()!.cloneNode(true) as HTMLElement
     shown.querySelectorAll('textarea').forEach((field) => field.remove())
     expect(shown.textContent).toBe('取消保存')
     expect(api.create).not.toHaveBeenCalled()
     act(() => { type(title(), '补上标题') })
-    expect(title().getAttribute('aria-invalid')).toBe('false')
+    expect(marked(title())).toBe(false)
   })
 
   it('Esc 丢掉草稿，在标题里按和在正文里按一样，不新建', async () => {
@@ -231,12 +241,9 @@ describe('Ideas', () => {
     expect(api.create).not.toHaveBeenCalled()
   })
 
-  it('点到草稿卡外面：空草稿收起；写了字的草稿留着，不新建也不标红', async () => {
+  it('点到草稿卡外面：草稿和写了的字都留着，不新建也不标红', async () => {
     await act(async () => { root.render(<MessagesProvider><Ideas /></MessagesProvider>) })
     const outside = () => act(() => { host.querySelector('.desk-head')!.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true })) })
-    await openDraft()
-    await outside()
-    expect(draft()).toBeNull()
     await openDraft()
     act(() => { type(draft()!.querySelector('textarea')!, '只写了正文') })
     await outside()

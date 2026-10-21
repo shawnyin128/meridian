@@ -22,11 +22,6 @@ export type InlineDraftInputProps = Omit<InputHTMLAttributes<HTMLInputElement>, 
   onCancel: () => void
   normalize?: (value: string) => string
   validate?: (value: string) => boolean
-  /**
-   * Whether the whole draft is empty, for a draft whose area holds other fields too: leaving an empty
-   * draft closes it without calling `onSubmit`. Defaults to this input's normalized text being empty.
-   */
-  isEmpty?: () => boolean
   /** Holds, while this draft is mounted, its `leave`: see `afterLeaving`. */
   leaveRef?: RefObject<(() => Promise<boolean>) | null>
 }
@@ -53,14 +48,12 @@ function assignRef(ref: ForwardedRef<HTMLInputElement>, node: HTMLInputElement |
  * on Esc, and no duplicate submission while an asynchronous submission is pending. Feature
  * components handle only the sibling layout and the write, and no longer write their own keyboard,
  * focus and busy rules. The input carries `data-inline-draft`, so a modal dialog leaves Esc to it.
- * An `aria-invalid` the caller passes replaces the mark a refused leave puts on the input, for a
- * draft whose other fields can be the ones refused.
  */
 export const InlineDraftInput = forwardRef<HTMLInputElement, InlineDraftInputProps>(
   function InlineDraftInput({
     scopeRef, triggers = NO_TRIGGERS, onSubmit, onCancel,
-    normalize = (value) => value.trim(), validate = (value) => value !== '', isEmpty, leaveRef,
-    onKeyDown, autoComplete = 'off', autoFocus = true, 'aria-invalid': invalid, ...props
+    normalize = (value) => value.trim(), validate = (value) => value !== '', leaveRef,
+    onKeyDown, autoComplete = 'off', autoFocus = true, ...props
   }, forwardedRef) {
     const input = useRef<HTMLInputElement>(null)
     const holdInput = useCallback((node: HTMLInputElement | null) => {
@@ -75,7 +68,7 @@ export const InlineDraftInput = forwardRef<HTMLInputElement, InlineDraftInputPro
         const value = normalize(input.current?.value ?? '')
         return validate(value) ? onSubmit(value, leaving) : false
       },
-      isEmpty: isEmpty ?? (() => normalize(input.current?.value ?? '') === ''),
+      isEmpty: () => normalize(input.current?.value ?? '') === '',
     })
     useLayoutEffect(() => {
       if (leaveRef === undefined) return undefined
@@ -91,7 +84,7 @@ export const InlineDraftInput = forwardRef<HTMLInputElement, InlineDraftInputPro
       <FormInput
         {...props} appearance="inline" ref={holdInput} data-inline-draft="" autoComplete={autoComplete}
         autoFocus={autoFocus}
-        aria-invalid={invalid ?? draft.inputProps['aria-invalid']} onInput={draft.inputProps.onInput}
+        aria-invalid={draft.inputProps['aria-invalid']} onInput={draft.inputProps.onInput}
         onKeyDown={handleKeyDown}
       />
     )

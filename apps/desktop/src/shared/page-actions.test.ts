@@ -121,7 +121,7 @@ const SLOT_PROPS: Record<string, Record<string, Slot>> = {
 /** Elements whose children sit in one slot: components by name, plain elements by a class. */
 const SLOT_CHILDREN: Record<string, Slot> = {
   PageToolbar: 'page toolbar', RowActions: 'row actions', Tag: 'chip', tagchip: 'chip', 'pd-h': 'panel head',
-  'th-add': 'table header', ServiceFoot: 'card foot', 'idea-draft-actions': 'card foot',
+  'th-add': 'table header', ServiceFoot: 'card foot',
 }
 
 /** Components whose whole body is one slot wherever they are placed. */
@@ -195,7 +195,6 @@ const PLACES: Record<string, Place[]> = {
   edit: [
     { slot: 'section heading', size: 'sm', variant: 'plain' },
     { slot: 'panel head', size: 'sm', variant: 'plain', scope: 'a detail panel edits the idea it shows' },
-    { slot: 'card foot', size: 'sm', variant: 'plain', scope: "a new idea's draft card saves the idea it drafts" },
   ],
   'overflow menu': [{ slot: 'row actions', size: 'nested', variant: 'plain' }],
   clear: [

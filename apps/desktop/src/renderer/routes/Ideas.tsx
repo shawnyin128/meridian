@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import type { KeyboardEvent, ReactNode, RefObject } from 'react'
+import type { KeyboardEvent, ReactNode } from 'react'
 import type { ProjectSummary, ResearchIdea } from '../../shared/contract.js'
 import { FINISHED_PROJECT } from '../../shared/vocabulary.js'
 import { idea as ideaApi, project as projectApi } from '../ipc.js'
@@ -11,7 +11,7 @@ import { EditActions } from '../components/EditActions.js'
 import { CollapsibleGroup } from '../components/CollapsibleGroup.js'
 import { EmptyState } from '../components/EmptyState.js'
 import { AddAction } from '../components/AddAction.js'
-import { InlineDraftInput } from '../components/InlineDraftInput.js'
+import { IdeaDraft, type IdeaDraftText } from '../components/ideas/IdeaDraft.js'
 import { IdeaPanel, IdeaSource, ideaSourceLabel, ownIdea } from '../components/ideas/IdeaPanel.js'
 import { LoadingPlaceholder } from '../components/LoadingPlaceholder.js'
 import { DetailPanel } from '../components/DetailPanel.js'
@@ -121,73 +121,6 @@ function IdeaCard({ idea, linked, selected, menu, onOpen, reorder, dropClassName
       </div>
       <RowActions><DragHandle {...reorder.handle} />{menu}</RowActions>
     </ResearchObjectCard>
-  )
-}
-
-/**
- * The new-idea card at the top of the active ideas: a title and a body typed in place.
- * Enter in the title, ⌘Enter or Ctrl+Enter in the body, or Save creates the idea; Escape or Cancel
- * drops the draft. Leaving the card keeps a draft that holds text and closes an empty one. A save
- * with an empty field is refused and marks that field. `onCreate` returns whether the idea was
- * written; the parent closes the card then.
- */
-function IdeaCreateCard({ card, triggers, onCreate, onCancel }: {
-  card: RefObject<HTMLDivElement | null>
-  triggers: Array<RefObject<HTMLElement | null>>
-  onCreate: (title: string, body: string) => Promise<boolean>
-  onCancel: () => void
-}) {
-  const m = useMessages()
-  const [title, setTitle] = useState('')
-  const [body, setBody] = useState('')
-  const [refused, setRefused] = useState({ title: false, body: false })
-  const [busy, setBusy] = useState(false)
-  const pending = useRef(false)
-
-  const save = (): boolean | Promise<boolean> => {
-    const empty = { title: title.trim() === '', body: body.trim() === '' }
-    if (empty.title || empty.body) { setRefused(empty); return false }
-    if (pending.current) return false
-    pending.current = true
-    setBusy(true)
-    return onCreate(title.trim(), body.trim()).finally(() => {
-      pending.current = false
-      setBusy(false)
-    })
-  }
-  const onBodyKey = (event: KeyboardEvent<HTMLTextAreaElement>) => {
-    if (composing(event.nativeEvent)) return
-    if (event.key === 'Escape') { event.stopPropagation(); onCancel(); return }
-    if (commitsMultiline(event.nativeEvent)) { event.preventDefault(); void save() }
-  }
-
-  return (
-    <div className="research-object-card idea-card idea-draft" ref={card}>
-      <div className="idea-card-content">
-        <div className="idea-card-title-row">
-          <InlineDraftInput
-            className="inedit idea-card-title" scopeRef={card} triggers={triggers} maxLength={160}
-            aria-label={m.ideas.editor.titleLabel} placeholder={m.ideas.editor.titlePlaceholder}
-            value={title} aria-invalid={refused.title}
-            onChange={(event) => { setTitle(event.target.value); setRefused((held) => ({ ...held, title: false })) }}
-            validate={() => true} isEmpty={() => title.trim() === '' && body.trim() === ''}
-            onSubmit={(_, leaving) => (leaving ? false : save())} onCancel={onCancel}
-          />
-        </div>
-        <div className="idea-draft-body">
-          <FormTextarea
-            appearance="inline" rows={3} maxLength={20_000}
-            aria-label={m.ideas.bodyLabel} placeholder={m.ideas.editor.bodyPlaceholder}
-            value={body} aria-invalid={refused.body}
-            onChange={(event) => { setBody(event.target.value); setRefused((held) => ({ ...held, body: false })) }}
-            onKeyDown={onBodyKey}
-          />
-        </div>
-        <div className="idea-card-meta idea-draft-actions">
-          <EditActions editing saving={busy} onEdit={() => undefined} onCancel={onCancel} onSave={() => void save()} />
-        </div>
-      </div>
-    </div>
   )
 }
 
@@ -314,14 +247,12 @@ export function Ideas() {
   const write = useVaultWrite()
   const undo = useUndo()
   const consumedJump = useRef(0)
-  const draftCard = useRef<HTMLDivElement>(null)
-  const newIdea = useRef<HTMLButtonElement>(null)
-  const draftTriggers = useMemo(() => [newIdea], [])
+  const draftCard = useRef<HTMLElement>(null)
   const [rows, setRows] = useState<ResearchIdea[] | null>(null)
   const [projects, setProjects] = useState<ProjectSummary[]>([])
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [archiveOpen, setArchiveOpen] = useState(false)
-  const [creating, setCreating] = useState(false)
+  const [draft, setDraft] = useState<IdeaDraftText | null>(null)
   const [error, setError] = useState<string | null>(null)
   const closeDetail = useCallback(() => setSelectedId(null), [])
 
@@ -340,7 +271,7 @@ export function Ideas() {
   useEffect(() => {
     if (jump === null || jump.seq === consumedJump.current) return
     consumedJump.current = jump.seq
-    if (jump.anchor?.newIdea === true) setCreating(true)
+    if (jump.anchor?.newIdea === true) setDraft((held) => held ?? { title: '', body: '' })
     else setSelectedId(jump.target)
   }, [jump])
   useEscapeLayer(selectedId !== null, closeDetail)
@@ -375,7 +306,7 @@ export function Ideas() {
   const createIdea = (title: string, body: string) => write(ideaApi.create(undefined, title, body).then((idea) => {
     setRows((held) => [idea, ...(held ?? [])])
     setSelectedId(idea.id)
-    setCreating(false)
+    setDraft(null)
   }), { note: m.chat.ideaSavedNote })
   const remove = (idea: ResearchIdea) => {
     void write(ideaApi.delete(idea.id), { note: m.common.trashed, action: (trashed) => undo.restore([trashed]) }).then((saved) => {
@@ -409,11 +340,11 @@ export function Ideas() {
             ? null
             : <SortMenu label={m.ideas.sort} options={[{ label: m.ideas.sortUpdated, onSelect: sortByUpdated }]} />}
           <AddAction
-            variant="page" ref={newIdea}
+            variant="page"
             onClick={() => {
-              // An open draft is only refocused, keeping what is typed, so this click does not leave it.
-              if (creating) draftCard.current?.querySelector('input')?.focus()
-              else setCreating(true)
+              // An open draft is only refocused, keeping what is typed.
+              if (draft !== null) draftCard.current?.querySelector<HTMLElement>('.form-control')?.focus()
+              else setDraft({ title: '', body: '' })
             }}
           >{m.ideas.create}</AddAction>
         </>
@@ -427,13 +358,17 @@ export function Ideas() {
         <div className={`ideas-workspace${selected === undefined ? '' : ' has-detail'}`}>
           <main className="ideas-list">
             <SectionHeading>{m.ideas.activeHeading(active.length)}</SectionHeading>
-            {creating
-              ? <IdeaCreateCard card={draftCard} triggers={draftTriggers} onCreate={createIdea} onCancel={() => setCreating(false)} />
-              : null}
+            {draft === null
+              ? null
+              : (
+                <ResearchObjectCard className="idea-draft-card" cardRef={draftCard}>
+                  <IdeaDraft draft={draft} onChange={setDraft} onSave={createIdea} onCancel={() => setDraft(null)} />
+                </ResearchObjectCard>
+              )}
             {rows === null ? (
               error === null ? <LoadingPlaceholder shape="cards" /> : null
             ) : active.length === 0
-              ? (creating ? null : <EmptyState variant="section">{m.ideas.empty}</EmptyState>)
+              ? (draft === null ? <EmptyState variant="section">{m.ideas.empty}</EmptyState> : null)
               : active.map(card)}
             {archived.length === 0 ? null : (
               <CollapsibleGroup

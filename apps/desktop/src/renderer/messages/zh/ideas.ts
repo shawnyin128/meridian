@@ -22,7 +22,6 @@ export const ideas = {
   updated: (date: string) => `${date} 更新`,
   detailHeading: '想法详情',
   bodyLabel: '想法',
-  saving: '保存中…',
   restoredNote: '想法已恢复',
   archivedNote: '想法已归档',
   updatedNote: '想法已更新',
@@ -33,13 +32,10 @@ export const ideas = {
   },
   openSourceChat: '打开来源对话',
   editor: {
-    newTitle: '保存为想法',
-    editTitle: '编辑想法',
     sourceLabel: (source: string) => `来源：${source}`,
     titleLabel: '标题',
     titlePlaceholder: '这个想法要解决什么问题？',
     bodyPlaceholder: '机制、假设或方向…',
-    save: '保存想法',
   },
   nodeDraft: {
     nodeTitleLabel: '节点标题',

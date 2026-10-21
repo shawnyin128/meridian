@@ -54,20 +54,12 @@ const NOT_CREATING: Record<string, string> = {
   'components/wiki/WikiClaims.tsx <WikiFormDialog> f.conflictTitle f.retractTitle': 'marks a conflict on a claim, or retracts it',
 }
 
-/** Create actions that still open a dialog, until they are drafted in place. */
-const CREATING_IN_A_DIALOG: Record<string, string> = {
-  'components/ideas/IdeaEditorDialog.tsx <ModalDialog> m.ideas.create m.ideas.editor.editTitle m.ideas.editor.newTitle':
-    'the idea editor',
-  'routes/Ideas.tsx <IdeaEditorDialog>': '新建想法 on the Ideas page',
-}
-
 describe('新建就地起草', () => {
-  it('新建不弹对话框：每个对话框都写明它做什么，没有一个是新建，除了下面点名还没改的', () => {
-    expect(PLACED.filter((dialog) => !(dialog in NOT_CREATING)).sort()).toEqual(Object.keys(CREATING_IN_A_DIALOG).sort())
+  it('新建不弹对话框：每个对话框都写明它做什么，没有一个是新建', () => {
+    expect(PLACED.filter((dialog) => !(dialog in NOT_CREATING)).sort()).toEqual([])
   })
 
   it('点名的对话框都还在源码里', () => {
-    expect([...Object.keys(NOT_CREATING), ...Object.keys(CREATING_IN_A_DIALOG)].filter((dialog) => !PLACED.includes(dialog)))
-      .toEqual([])
+    expect(Object.keys(NOT_CREATING).filter((dialog) => !PLACED.includes(dialog))).toEqual([])
   })
 })
