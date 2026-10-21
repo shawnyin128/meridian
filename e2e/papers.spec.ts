@@ -295,7 +295,7 @@ test('表内给论文加一个主题后,重新取数确认这一行的主题真�
   await expect(win.locator('.tagin')).toHaveCount(0)
 
   // The table refetches by itself when the revision bumps; refetching through Core here proves
-  // papers.update wrote the change, not just an optimistic local state.
+  // papers.setTopic wrote the change, not just an optimistic local state.
   const refetchedTopics = await win.evaluate(async (t) => {
     const result = await (window as unknown as MeridianWindow).meridian
       .call('papers.list', { page: 1, size: 1, sort: 'title', direction: 'asc', filter: t }) as {
@@ -452,7 +452,7 @@ test('标签添加框:提交在路上时点外,写落地前候选层与占位都
   await call(win, 'papers.delete', { id: first.id })
 
   // In one task, click the suggestion to submit, then pointerdown/mousedown/click outside the box.
-  // papers.update crosses IPC and cannot settle within the task, so these land while it is in flight.
+  // papers.setTopic crosses IPC and cannot settle within the task, so these land while it is in flight.
   await win.evaluate(() => {
     document.querySelector<HTMLElement>('.pickhits .rrow')!
       .dispatchEvent(new MouseEvent('click', { bubbles: true }))
@@ -488,7 +488,7 @@ test('标签添加框:回车提交在路上时点外,写落地前占位、打的
   await call(win, 'papers.delete', { id: first.id })
 
   // In one task, press Enter to submit, then pointerdown/mousedown/click outside the box.
-  // papers.update crosses IPC and cannot settle within the task, so these land while it is in flight.
+  // papers.setTopic crosses IPC and cannot settle within the task, so these land while it is in flight.
   await win.evaluate(() => {
     document.querySelector<HTMLElement>('.tagin')!
       .dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))

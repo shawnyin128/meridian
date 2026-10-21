@@ -648,16 +648,14 @@ export function PaperTable() {
   const ariaSort = (key: SortKey) => (sort !== key ? undefined : direction === 'asc' ? 'ascending' : 'descending')
 
   const addTopic = (p: PaperRow, value: string): Promise<boolean> =>
-    write(papers.update(p.id, { topics: [...p.topics, value] }), { note: m.papers.notices.topicAdded, action: undo.change })
+    write(papers.setTopic(p.id, value, true), { note: m.papers.notices.topicAdded, action: undo.change })
 
   const setReadState = (p: PaperRow, readState: ReadState) => {
     void write(papers.update(p.id, { readState }), { note: m.papers.notices.readStateUpdated })
   }
 
   const removeTopic = (p: PaperRow, value: string): Promise<boolean> =>
-    write(papers.update(p.id, { topics: p.topics.filter((held) => held !== value) }), {
-      note: m.papers.notices.updated, action: undo.change,
-    })
+    write(papers.setTopic(p.id, value, false), { note: m.papers.notices.updated, action: undo.change })
 
   const setRating = (p: PaperRow, rating: number | null) => {
     void write(papers.update(p.id, { rating }), rating === null

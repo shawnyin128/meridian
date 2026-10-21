@@ -47,6 +47,7 @@ import {
   PapersRenameOptionParamsSchema,
   PapersSetColumnTypeParamsSchema,
   PapersSetColumnsParamsSchema,
+  PapersSetTopicParamsSchema,
   PapersSourceParamsSchema,
   PapersUpdateParamsSchema,
   ProjectCreateAttachmentParamsSchema,
@@ -427,6 +428,11 @@ registerHandler('papers.get', (params) => store.getPaper(PapersGetParamsSchema.p
 registerHandler('papers.update', (params) => {
   const { id, patch } = PapersUpdateParamsSchema.parse(params)
   const { change } = recordChange(store, () => store.updatePaper(id, definedFields(patch)))
+  return { change }
+})
+registerHandler('papers.setTopic', (params) => {
+  const { id, topic, member } = PapersSetTopicParamsSchema.parse(params)
+  const { change } = recordChange(store, () => store.setPaperTopic(id, topic, member))
   return { change }
 })
 registerHandler('papers.delete', (params) => {

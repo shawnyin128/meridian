@@ -8,6 +8,7 @@ import {
   ChangeEntrySchema, PaperColumnsSchema, PaperHighlightSchema, PaperNoteSchema, PaperRowSchema,
   ProjectDetailSchema,
 } from '../shared/contract.js'
+import { topicDir, topicProposal, topicTitleKey } from '../shared/topic-proposal.js'
 import { COLUMN_TYPE_LABEL, PAPER_PAGE, TRASH_RETENTION_DAYS } from '../shared/vocabulary.js'
 import { CallError } from './call-error.js'
 import { dayOf } from './dates.js'
@@ -571,7 +572,8 @@ function shownLine(line: string, title: (page: string) => string | undefined): D
  * remark, the project writes, and a proposal's writes, and none of the inbox,
  * later-queue, watch, chat, feed, trash, other reading or other paper-table
  * writes — is recorded, and adds
- * the changelog reads and the undo the contract carries. Records are kept in
+ * the changelog reads and the undo the contract carries, and setPaperTopic,
+ * recorded as the proposal it applies. Records are kept in
  * `log`, newest first, and a record is written after its write, by core, so no
  * caller has to say what it changed. Undo writes back the entity as it stood
  * before the recorded write, which for a write that emptied into the trash is
@@ -750,7 +752,7 @@ export function withChangelog(ops: VaultOps, log: ChangeLogStore): VaultStore {
     updatePaper(id, { custom: Object.fromEntries(misfits.map(({ column }) => [column.key, null])) })
   }
 
-  return {
+  const store: VaultStore = {
     ...ops,
 
     updatePaper,
@@ -914,6 +916,18 @@ export function withChangelog(ops: VaultOps, log: ChangeLogStore): VaultStore {
         : onProject(action.project, '记入科研记录', () => ops.recordAction(id, messageId))
     },
 
+    setPaperTopic(id, topic, member) {
+      const paper = ops.getPaper(id)
+      const next = member
+        ? [...paper.topics, topic]
+        : paper.topics.filter((held) => topicTitleKey(held) !== topicTitleKey(topic))
+      const filing = topicProposal(id, paper.title, paper.topics, next, ops.wikiCards(), topicDir(ops.wikiHome()))
+      if (filing === null) {
+        throw new CallError('refused', `「${paper.title}」${member ? '已经' : '不'}在主题「${topic}」里`)
+      }
+      store.applyProposal(filing)
+    },
+
     applyProposal(proposal, producer = { by: BY_ME, source: BY_ME }) {
       const paths = ops.proposalPages(proposal, producer.by)
       const target: ChangeTarget = { kind: 'pages', id: paths.join('\n'), paths }
@@ -1066,4 +1080,5 @@ export function withChangelog(ops: VaultOps, log: ChangeLogStore): VaultStore {
       rows = next
     },
   }
+  return store
 }

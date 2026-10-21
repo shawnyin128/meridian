@@ -67,6 +67,8 @@ let importCall: Controlled<PaperImportResult> & { filename: string; bytes: Uint8
 let setColumnsCalls: (Controlled<void> & { columns: PaperColumns })[]
 /** Each papers.update has its own controlled promise, arranged in the order in which it was initiated. */
 let updateCalls: (Controlled<void> & { id: string; patch: Record<string, unknown> })[]
+/** Each papers.setTopic call's own controlled promise, in the order the calls were made. */
+let setTopicCalls: (Controlled<void> & { id: string; topic: string; member: boolean })[]
 /** The arguments of each papers.renameOption call, in the order the calls were made. */
 let renameOptionCalls: [key: string, from: string, to: string][]
 /** Each papers.setColumnType call's own controlled promise, in the order the calls were made. */
@@ -102,6 +104,12 @@ vi.mock('../ipc.js', () => ({
       const c = controlled<void>()
       updateCalls.push({ ...c, id, patch })
       const change = `change-update-${updateCalls.length}`
+      return c.promise.then(() => ({ change }))
+    },
+    setTopic: (id: string, topic: string, member: boolean) => {
+      const c = controlled<void>()
+      setTopicCalls.push({ ...c, id, topic, member })
+      const change = `change-topic-${setTopicCalls.length}`
       return c.promise.then(() => ({ change }))
     },
     delete: (id: string) => { deletedPapers.push(id); return Promise.resolve({ change: 'change-delete' }) },
@@ -273,6 +281,7 @@ describe('PaperTable', () => {
     importCall = { ...controlled<PaperImportResult>(), filename: '', bytes: new Uint8Array() }
     setColumnsCalls = []
     updateCalls = []
+    setTopicCalls = []
     renameOptionCalls = []
     setColumnTypeCalls = []
     refusals = []
@@ -1080,7 +1089,7 @@ describe('PaperTable', () => {
     return text
   }
 
-  it('移除主题后提示只说已更新，给一个撤销，撤销的是这次写入记下的那条变动', async () => {
+  it('移除主题是把论文移出那个主题，提示只说已更新，给一个撤销，撤销的是这次写入记下的那条变动', async () => {
     const host = mount()
     columnsCall.resolve(EMPTY_COLUMNS)
     listCall.resolve({ rows: [{ ...ROW, topics: ['推理', '检索'] }], total: 1 })
@@ -1090,10 +1099,44 @@ describe('PaperTable', () => {
       [...row.querySelectorAll<HTMLElement>('.tagchip')].find((chip) => chip.textContent === '检索')!
         .querySelector<HTMLButtonElement>('button')!.click()
     })
-    updateCalls.at(-1)!.resolve()
+    expect(setTopicCalls.map(({ id, topic, member }) => [id, topic, member])).toEqual([['p1', '检索', false]])
+    expect(updateCalls).toEqual([])
+    setTopicCalls.at(-1)!.resolve()
     await flush()
     expect(await undoLast()).toBe('已更新')
-    expect(undone).toEqual(['change-update-1'])
+    expect(undone).toEqual(['change-topic-1'])
+  })
+
+  it('表格与详情里添加主题都是把论文归进那个主题，提示已添加，撤销的是这次写入记下的那条变动', async () => {
+    const host = mount()
+    columnsCall.resolve(EMPTY_COLUMNS)
+    listCall.resolve({ rows: [{ ...ROW, topics: ['推理'] }], total: 1 })
+    await flush()
+    /** Types `topic` into the + of the topics in `scope` and presses Enter. */
+    const add = async (scope: HTMLElement, topic: string) => {
+      await act(async () => { scope.querySelector<HTMLButtonElement>('.tagadd')!.click() })
+      const input = document.querySelector<HTMLInputElement>('.tagin')!
+      await act(async () => { setValue(input, topic) })
+      await act(async () => { input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })) })
+    }
+    const row = host.querySelector<HTMLElement>('.ptable tbody tr')!
+    await add(row, '检索')
+    expect(setTopicCalls.map(({ id, topic, member }) => [id, topic, member])).toEqual([['p1', '检索', true]])
+    setTopicCalls.at(-1)!.resolve()
+    await flush()
+    expect(await undoLast()).toBe('已添加主题')
+    expect(undone).toEqual(['change-topic-1'])
+
+    await act(async () => { press(row.querySelector<HTMLElement>('td')!) })
+    getCall.resolve({ ...ROW, topics: ['推理'] })
+    await flush()
+    await add(host.querySelector<HTMLElement>('.pdetail .paper-meta')!, '压缩')
+    expect(setTopicCalls.at(-1)).toMatchObject({ id: 'p1', topic: '压缩', member: true })
+    setTopicCalls.at(-1)!.resolve()
+    await flush()
+    expect(await undoLast()).toBe('已更新主题')
+    expect(undone).toEqual(['change-topic-1', 'change-topic-2'])
+    expect(updateCalls).toEqual([])
   })
 
   it('论文移进垃圾桶后提示只说已移入垃圾桶，撤销按最近变动的那一条把它放回', async () => {
@@ -1135,10 +1178,11 @@ describe('PaperTable', () => {
       [...panel.querySelectorAll<HTMLElement>('.tagchip')].find((chip) => chip.textContent === '检索')!
         .querySelector<HTMLButtonElement>('button')!.click()
     })
-    updateCalls.at(-1)!.resolve()
+    expect(setTopicCalls.at(-1)).toMatchObject({ id: 'p1', topic: '检索', member: false })
+    setTopicCalls.at(-1)!.resolve()
     await flush()
     expect(await undoLast()).toBe('已更新主题')
-    expect(undone).toEqual([`change-update-${updateCalls.length}`])
+    expect(undone).toEqual([`change-topic-${setTopicCalls.length}`])
   })
 
   it('表格和详情用同一组评分、阅读状态与主题编辑：点当前那颗星清空评分，状态是同一个选择器，主题是带 × 的标签加 +', async () => {
@@ -1155,7 +1199,7 @@ describe('PaperTable', () => {
       [...row.querySelectorAll<HTMLElement>('.tagchip')].find((chip) => chip.textContent === '检索')!
         .querySelector<HTMLButtonElement>('button')!.click()
     })
-    expect(updateCalls.at(-1)!.patch).toEqual({ topics: ['推理'] })
+    expect(setTopicCalls.at(-1)).toMatchObject({ id: 'p1', topic: '检索', member: false })
 
     await act(async () => { press(row.querySelector<HTMLElement>('td')!) })
     getCall.resolve(rated)
