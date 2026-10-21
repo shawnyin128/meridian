@@ -99,6 +99,8 @@ let jumpHere: ScreenJump | null
 let gotIds: string[]
 /** How many times the table bumped the vault revision. */
 let bumps: number
+/** The breadcrumb tail the table last set. */
+let crumbTail: { text: string }[]
 
 vi.mock('../ipc.js', () => ({
   papers: {
@@ -155,7 +157,7 @@ vi.mock('../ipc.js', () => ({
 }))
 
 vi.mock('../shell/AppShell.js', () => ({
-  useCrumbTail: () => {},
+  useCrumbTail: (tail: { text: string }[]) => { crumbTail = tail },
   useEscapeLayer: () => {},
   useScreenReentry: () => 0,
   useJump: () => ({
@@ -304,6 +306,7 @@ describe('PaperTable', () => {
     jumpHere = null
     gotIds = []
     bumps = 0
+    crumbTail = []
   })
 
   it('带详情落点跳进来时打开那篇的详情,搜索框不填字', async () => {
@@ -1042,6 +1045,29 @@ describe('PaperTable', () => {
     expect(listParams.at(-1)?.facet).toEqual({ field: 'readState', value: '未读' })
     expect(host.querySelector('.filters .read-state-filter.on')?.textContent).toBe('未读')
     expect(host.querySelector('.lmore')).toBeNull()
+  })
+
+  it('存着稍后阅读的阅读状态处处显示为待读:行里、筛选、分组取值和面包屑,筛选仍按存的值', async () => {
+    facetRows = [{ value: '稍后阅读', count: 2, newestTitle: '一篇论文' }, { value: '未读', count: 1, newestTitle: '一篇论文' }]
+    const host = mount()
+    columnsCall.resolve({ hidden: [], custom: [], groups: ['readState'] })
+    listCall.resolve({ rows: [{ ...ROW, readState: '稍后阅读' }], total: 1 })
+    await flush()
+    expect(host.querySelector('tbody .stchip')?.textContent).toBe('待读')
+
+    await act(async () => {
+      host.querySelector('.filters .read-state-filter')!.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, button: 0 }))
+    })
+    await flush()
+    const items = [...document.querySelectorAll<HTMLElement>('.ctxmenu .mi')]
+    expect(items.map((item) => item.textContent)).toEqual(['全部状态', '未读', '在读', '已读', '待读'])
+    await act(async () => { press(items.at(-1)!) })
+    await flush()
+
+    expect(listParams.at(-1)?.facet).toEqual({ field: 'readState', value: '稍后阅读' })
+    expect(host.querySelector('.filters .read-state-filter.on')?.textContent).toBe('待读')
+    expect(host.querySelector('.gnav .btn')?.textContent).toBe('待读 · 2')
+    expect(crumbTail.map((seg) => seg.text)).toEqual(['阅读状态', '待读'])
   })
 
   it('论文行在当前位置右键即可移到垃圾桶,不依赖横向滚到行尾', async () => {

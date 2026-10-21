@@ -181,22 +181,22 @@ function unknownFields(claim: WikiClaimRecord): Record<string, unknown> {
  * conclusion or the legacy conclusion must be one the user verified.
  */
 function checkExperiment(e: Extract<Evidence, { kind: 'experiment' }>, world: ClaimWorld, asEvidence: boolean): void {
-  if (e.node === undefined && e.conclusion === undefined) throw new CallError('invalid', '实验证据要指明节点或结论')
+  if (e.node === undefined && e.conclusion === undefined) throw new CallError('invalid', '实验证据要指明节点或实验结论')
   const project = world.project(e.project)
   if (project === undefined) throw new CallError('not-found', `项目不存在：${e.project}`)
   if (e.node !== undefined && !project.nodes.includes(e.node)) throw new CallError('not-found', `项目 ${e.project} 里没有节点：${e.node}`)
   if (e.conclusion !== undefined && !project.conclusions.includes(e.conclusion)) {
-    throw new CallError('not-found', `项目 ${e.project} 里没有结论：${e.conclusion}`)
+    throw new CallError('not-found', `项目 ${e.project} 里没有实验结论：${e.conclusion}`)
   }
   if (!asEvidence) return
   if (e.node !== undefined && !project.concluded.includes(e.node)) {
-    throw new CallError('refused', `节点 ${e.node} 还没有结论：先用 record_conclusion 记下它的结论，再拿它当证据`)
+    throw new CallError('refused', `节点 ${e.node} 还没有实验结论：先用 record_conclusion 记下它的实验结论，再拿它当证据`)
   }
   if (world.requireVerified && e.node !== undefined && !project.verified.includes(e.node)) {
-    throw new CallError('refused', `节点 ${e.node} 的结论还没验证：验证之后才能写进 Wiki`)
+    throw new CallError('refused', `节点 ${e.node} 的实验结论还没验证：验证之后才能写进 Wiki`)
   }
   if (world.requireVerified && e.conclusion !== undefined && !project.verifiedConclusions.includes(e.conclusion)) {
-    throw new CallError('refused', `结论 ${e.conclusion} 还没验证：验证之后才能写进 Wiki`)
+    throw new CallError('refused', `实验结论 ${e.conclusion} 还没验证：验证之后才能写进 Wiki`)
   }
 }
 
@@ -231,7 +231,7 @@ function checkEvidence(data: WikiData, items: Evidence[], world: ClaimWorld, hel
 /** Throws when a producer other than the user gives no experiment item: only a project's finding may become an agent's claim. */
 function requireExperiment(items: Evidence[], world: ClaimWorld): void {
   if (world.by !== HUMAN && !items.some((e) => e.kind === 'experiment')) {
-    throw new CallError('invalid', 'agent 提的结论要带实验证据：只有项目实际得到的结论才能写进 Wiki')
+    throw new CallError('invalid', 'agent 提的结论要带实验证据：只有项目实际得到的实验结论才能写进 Wiki')
   }
 }
 

@@ -15,6 +15,12 @@ export const FINISHED_PROJECT = '已完成'
 /** Project states in list-group and menu-transition order. */
 export const PROJECT_STATUSES = [ACTIVE_PROJECT, SHELVED_PROJECT, FINISHED_PROJECT] as const
 
+/** The `topic` Core stores on a new project, which the App shows as no area. */
+export const DEFAULT_PROJECT_TOPIC = '未分主题'
+
+/** How Core's texts name DEFAULT_PROJECT_TOPIC. */
+export const NO_PROJECT_AREA = '未分领域'
+
 /** Default state for a paper with no recorded reading relationship. */
 export const UNREAD_PAPER = '未读'
 
@@ -68,7 +74,7 @@ export const DAY_SECTIONS = { today: '今天', yesterday: '昨天', week: '本�
 export type DaySection = keyof typeof DAY_SECTIONS
 
 /** UI labels for the two watch types. */
-export const WATCH_KINDS = { topic: '主题', author: '作者' } as const
+export const WATCH_KINDS = { topic: '关键词', author: '作者' } as const
 
 /** Prefix for research-log entries saved from chat so their origin remains visible on the project page. */
 export const CHAT_EVENT_PREFIX = '[对话] '

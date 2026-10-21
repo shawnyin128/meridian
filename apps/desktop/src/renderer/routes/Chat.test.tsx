@@ -2,10 +2,12 @@
 import { act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { ChatMessage, ChatSendResult } from '../../shared/contract.js'
+import type { ChatMessage, ChatSendResult, ChatSession, PaperRow } from '../../shared/contract.js'
+import { CONFLICT_THREAD } from '../lib/chat.js'
 import { MessagesProvider } from '../messages/useMessages.js'
 import { LANGUAGE_STORAGE_KEY } from '../shell/language.js'
 import { TOOLTIP_DELAY } from '../components/Tooltip.js'
+import type { ScreenJump } from '../shell/AppShell.js'
 
 declare global {
   var IS_REACT_ACT_ENVIRONMENT: boolean
@@ -19,18 +21,21 @@ const api = vi.hoisted(() => ({
     conclusions: { verified: 0, pending: 0, conflicting: 0 }, paperCount: 0,
     milestones: [], recentEvents: [],
   }])),
-  listPapers: vi.fn(() => Promise.resolve({ rows: [], total: 0 })),
+  listPapers: vi.fn((): Promise<{ rows: PaperRow[]; total: number }> => Promise.resolve({ rows: [], total: 0 })),
   messages: vi.fn<() => Promise<ChatMessage[]>>(() => Promise.resolve([])),
+  create: vi.fn<(title: string, named: boolean) => Promise<ChatSession>>(),
 }))
 
 const session = vi.hoisted(() => ({ id: 'chat-1', revision: 0 }))
 const settings = vi.hoisted(() => ({ openCategory: vi.fn() }))
+/** The jump useJump hands the Chat screen. */
+const nav = vi.hoisted(() => ({ jump: null as ScreenJump | null }))
 
 /** The callbacks of every ResizeObserver made. */
 const resized: (() => void)[] = []
 
 vi.mock('../ipc.js', () => ({
-  chat: { send: api.send, messages: api.messages, cancel: api.cancel, create: vi.fn() },
+  chat: { send: api.send, messages: api.messages, cancel: api.cancel, create: api.create },
   feed: { append: vi.fn() },
   idea: { create: vi.fn() },
   papers: { list: api.listPapers },
@@ -41,7 +46,7 @@ vi.mock('../ipc.js', () => ({
 vi.mock('../shell/AppShell.js', () => ({
   useNotice: () => ({ success: vi.fn(), refusal: vi.fn() }),
   useCrumbTail: () => {},
-  useJump: () => ({ jump: null, open: vi.fn(), returnTo: vi.fn() }),
+  useJump: () => ({ jump: nav.jump, open: vi.fn(), returnTo: vi.fn() }),
   useChatSession: () => ({ id: session.id, title: '讨论', archived: false, select: vi.fn() }),
   useVaultRevision: () => ({ revision: session.revision, bump: vi.fn() }),
   useSettingsOpen: () => ({ open: false, openCategory: settings.openCategory }),
@@ -94,6 +99,7 @@ describe('Chat composer', () => {
   afterEach(() => {
     if (root !== null) act(() => root!.unmount())
     root = null
+    nav.jump = null
   })
 
   const press = (key: string, init: KeyboardEventInit = {}) => {
@@ -110,6 +116,18 @@ describe('Chat composer', () => {
       await Promise.resolve()
     })
   }
+
+  it('从动态看冲突时新开一个叫结论冲突的对话，问这两条结论为什么冲突', async () => {
+    api.create.mockResolvedValueOnce({ id: 'chat-9' } as ChatSession)
+    nav.jump = { screen: 'chat', target: CONFLICT_THREAD, from: 'feed', seq: 1 }
+    await act(async () => {
+      root!.render(<MessagesProvider><Chat /></MessagesProvider>)
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+    expect(api.create).toHaveBeenCalledWith('结论冲突', true)
+    expect(api.send).toHaveBeenCalledWith('chat-9', '为什么说这两条结论冲突？')
+  })
 
   it('回车发送，Shift+回车换行，输入法组字时的回车不发送', async () => {
     act(() => setValue(composer, '为什么'))
@@ -171,6 +189,16 @@ describe('Chat composer', () => {
 
     await openChat('chat-1')
     expect(composer.value).toBe('只问第一条')
+  })
+
+  it('@ 候选里论文的灰字把稍后阅读的阅读状态写成待读', async () => {
+    api.listPapers.mockResolvedValueOnce({
+      rows: [{ id: 'p1', title: 'EAGLE', year: 2024, readState: '稍后阅读' } as PaperRow], total: 1,
+    })
+    session.revision += 1
+    await openChat('chat-1')
+    act(() => setValue(composer, '@EAGLE'))
+    expect([...document.querySelectorAll('#cRes .rm')].map((line) => line.textContent)).toEqual(['2024 · 待读'])
   })
 
   it('@ 候选只留在打开它的那条对话里', async () => {

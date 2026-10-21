@@ -955,6 +955,32 @@ describe('change lines', () => {
     })
   })
 
+  it('新记下的一条用各对象的词:阅读状态写待读,项目写领域,新项目的默认领域写未分领域,验证的是实验结论', () => {
+    expect(linesOf(() => store.updatePaper(READ, { readState: '稍后阅读' }))).toEqual(['- 阅读状态：未读', '+ 阅读状态：待读'])
+    expect(linesOf(() => store.updateProject(PROJECT, { topic: '未分主题' })))
+      .toEqual(['- 领域：speculative decoding', '+ 领域：未分领域'])
+    const knee = () => store.getProject(PROJECT).projectConclusions!.find((c) => c.node === 'knee')!
+    store.verifyConclusion(PROJECT, 'knee', knee().fingerprint!)
+    expect(store.listChanges()[0]).toMatchObject({
+      title: '项目「draft 效率」· 验证实验结论', diff: [`+ 已验证实验结论：${knee().text}`],
+    })
+    store.unverifyConclusion(PROJECT, 'knee')
+    expect(store.listChanges()[0]!.title).toBe('项目「draft 效率」· 取消验证实验结论')
+    expect(store.getProject(PROJECT).topic).toBe('未分主题')
+    expect(store.getPaper(READ).readState).toBe('稍后阅读')
+  })
+
+  it('早先记下的一条用的是旧词:标题与每一行照原样显示', () => {
+    const title = '项目「draft 效率」· 验证结论'
+    const stored = ['- 主题：未分主题', '+ 主题：推理', '+ 已验证结论：宽树净赚', '- 阅读状态：稍后阅读', '+ 阅读状态：在读']
+    const rows: ChangeRecord[] = [{
+      id: 'change-1', title, meta: null, source: '我', diff: [...stored], target: null, after: '',
+      at: Date.UTC(2026, 7, 20), undone: false, archived: false, restore: null,
+    }]
+    const logged = withChangelog(store, { load: () => rows, save: () => {}, nextId: () => 'change-2' })
+    expect(logged.listChanges()[0]).toMatchObject({ title, diff: stored, lines: stored.map((line) => [line]) })
+  })
+
   it('变动标题里的动作和界面用同一个词:添加任务、里程碑、关联与附件,记入科研记录,新建列与选项', () => {
     const titleOf = (write: () => unknown): string => {
       write()

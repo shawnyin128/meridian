@@ -110,7 +110,7 @@ describe('review queue on the fixture library', () => {
   it('引用了没验证的项目结论:照样排队,列表标出待验证的结论,应用被拒且留在队列;验证之后能应用', async () => {
     const [valid] = queue.list('queued')
     expect(valid!.unverified).toEqual(['projects/draft#knee'])
-    await expect(queue.decide(valid!.id, 'apply')).rejects.toThrow('结论待验证：projects/draft#knee。验证之后再应用')
+    await expect(queue.decide(valid!.id, 'apply')).rejects.toThrow('实验结论待验证：projects/draft#knee。验证之后再应用')
     expect(queue.list().find((p) => p.id === valid!.id)!.status).toBe('queued')
     expect((await queue.propose(envelope(store, [addClaim('unverified')]))).status).toBe('queued')
     verify(store, 'draft', 'knee')
@@ -168,7 +168,7 @@ describe('review queue on the fixture library', () => {
       .toEqual({ kind: 'invalid', message: '只有「我」能写个人判断' })
     expect(await reason([{ kind: 'experiment', project: 'nope', node: 'wide' }])).toEqual({ kind: 'invalid', message: '项目不存在：nope' })
     expect(await reason([{ kind: 'experiment', project: 'draft', node: 'wide' }]))
-      .toEqual({ kind: 'invalid', message: '节点 wide 还没有结论：先用 record_conclusion 记下它的结论，再拿它当证据' })
+      .toEqual({ kind: 'invalid', message: '节点 wide 还没有实验结论：先用 record_conclusion 记下它的实验结论，再拿它当证据' })
   })
 
   it('提交:协议版本不对或不是信封的形状就抛错,说清原因', async () => {

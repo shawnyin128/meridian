@@ -32,7 +32,7 @@ const ONE_LINE: Record<string, [file: string, markup: RegExp, count?: number]> =
   'idea-dialog-source': ['components/ideas/IdeaEditorDialog.tsx', /<FadeText className="idea-dialog-source" label=/],
   'idea-graph-dialog-idea': ['components/ideas/IdeaGraphDialog.tsx', /<FadeText className="idea-graph-dialog-idea" label=/],
   'cl': ['components/paper-table/ColumnMenu.tsx', /<FadeText className="cl" label=/g, 3],
-  'read-state-filter': ['components/paper-table/PaperTable.tsx', /<FadeText>\{current \?\? name\}<\/FadeText><\/button>/],
+  'read-state-filter': ['components/paper-table/PaperTable.tsx', /<FadeText>\{current === null \? name : readStateName\(m, current\)\}<\/FadeText><\/button>/],
   'node-document-title': ['components/project/ResearchGraph.tsx', /<FadeText className="node-document-title" label=/],
   'node-document-title (task)': ['components/project/ProjectPlan.tsx', /<FadeText className="node-document-title" label=/],
   'node-document-title (conclusion)': ['components/project/ProjectConclusions.tsx', /<FadeText className="node-document-title" label=/],

@@ -232,7 +232,7 @@ export const settings = {
           examples: [
             {
               label: '搜索 Wiki',
-              prompt: '在我的 Meridian Paper Wiki 中搜索动态与固定缓存淘汰的证据。只返回有依据的结果，说明每个结论由哪些页面支持；如果 Wiki 证据不足，请明确说明。',
+              prompt: '在我的 Meridian Paper Wiki 中搜索动态与固定缓存淘汰的证据。只返回有依据的结果，说明每一点由哪些页面支持；如果 Wiki 证据不足，请明确说明。',
             },
             {
               label: '让 Wiki 协助研究',
@@ -240,7 +240,7 @@ export const settings = {
             },
             {
               label: '更新 Wiki',
-              prompt: '把这个项目已经确定的结论提议写入 Meridian Paper Wiki。找到它所属的主题或方法页，检查它是否修订、冲突或重复已有结论，并附上证明它的实验证据；告诉我提案的 key，它要等我在 App 中审阅后才会进入 Wiki。',
+              prompt: '把这个项目已经确定的实验结论作为结论提议写入 Meridian Paper Wiki。找到它所属的主题或方法页，检查它是否修订、冲突或重复已有结论，并附上证明它的实验证据；告诉我提案的 key，它要等我在 App 中审阅后才会进入 Wiki。',
             },
             {
               label: '检查 Wiki 健康状态',

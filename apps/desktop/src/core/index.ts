@@ -100,6 +100,7 @@ import {
   WikiProposeParamsSchema,
   WikiUpdateParamsSchema,
 } from '../shared/contract.js'
+import { DEFAULT_PROJECT_TOPIC } from '../shared/vocabulary.js'
 import { answerCall, CallError, callFailure } from './call-error.js'
 import { createFixtureStore } from './fixture-store.js'
 import { withUiSampleUpload } from './fixtures/ui-samples.js'
@@ -678,7 +679,7 @@ registerHandler('watch.suggest', (params) => {
   return background.suggestWatches({
     focus,
     seedTopics: [project.topic, ...(profile.wikiTerms ?? []), ...intentTopics]
-      .map((topic) => topic.trim()).filter((topic) => topic !== '' && topic !== '未分主题'),
+      .map((topic) => topic.trim()).filter((topic) => topic !== '' && topic !== DEFAULT_PROJECT_TOPIC),
   })
 })
 registerHandler('watch.create', (params) => {

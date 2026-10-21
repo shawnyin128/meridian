@@ -142,7 +142,7 @@ describe('project conclusions', () => {
     })
     expect(document.querySelector<HTMLTextAreaElement>('.wiki-form textarea')!.value).toBe('Wide trees win at B8')
     await act(async () => { button('保存').click(); await flush() })
-    expect(handlers.onWrite).toHaveBeenCalledWith('项目结论写入「Speculative decoding」', [{
+    expect(handlers.onWrite).toHaveBeenCalledWith('实验结论写成「Speculative decoding」的结论', [{
       op: 'addClaim', page: 'topics/sd', claim: {
         id: 'wide-trees-win-at-b8', text: 'Wide trees win at B8',
         evidence: [{ kind: 'experiment', project: 'draft', node: 't.wide' }],

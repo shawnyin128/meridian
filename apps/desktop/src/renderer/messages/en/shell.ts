@@ -28,7 +28,7 @@ export const shell = {
     inbox: 'Inbox',
     delivery: 'Inmail',
     discovery: 'Discovery',
-    watchTopics: 'Watched topics',
+    watchTopics: 'Watched keywords',
     watchAuthors: 'Watched authors',
     later: 'Read Later',
     chats: 'Chats',
@@ -43,7 +43,7 @@ export const shell = {
     ideas: 'Ideas',
     trash: 'Trash',
   },
-  watchKind: { topic: 'Topic', author: 'Author' },
+  watchKind: { topic: 'Keyword', author: 'Author' },
   sidebar: {
     toggle: 'Collapse or expand the sidebar',
     expand: 'Expand the sidebar',

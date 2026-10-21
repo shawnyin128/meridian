@@ -62,8 +62,8 @@ describe('attnItems', () => {
       lastProgress: '2026-08-17',
     }), TODAY, sm)).toEqual([
       {
-        id: 'conflict', rank: 0, kind: '结论冲突', tone: 'bad',
-        reason: '2 条证据结论互相冲突', action: '检查证据并裁决',
+        id: 'conflict', rank: 0, kind: '实验结论冲突', tone: 'bad',
+        reason: '2 条实验结论有冲突', action: '检查证据并裁决',
       },
       {
         id: 'milestone-m2026-08-28', milestone: 'm2026-08-28', rank: 5, kind: '临近里程碑', tone: 'warn',
@@ -222,9 +222,9 @@ describe('research record view names', () => {
     expect(en.project.recordModes.activity).toBe('Log')
   })
 
-  it('names the conclusions view 结论', () => {
-    expect(zh.project.recordModes.conclusions).toBe('结论')
-    expect(en.project.recordModes.conclusions).toBe('Conclusions')
+  it('names the conclusions view 实验结论', () => {
+    expect(zh.project.recordModes.conclusions).toBe('实验结论')
+    expect(en.project.recordModes.conclusions).toBe('Experiment conclusions')
   })
 })
 

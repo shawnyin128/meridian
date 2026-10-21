@@ -1,6 +1,6 @@
 import { useRef, useState, type ReactNode } from 'react'
 import type { PaperFields, PaperRow, ReadState, RecordedChange } from '../../shared/contract.js'
-import { READ_STATES, READING_PAPER } from '../../shared/vocabulary.js'
+import { LATER_PAPER, READ_STATES, READING_PAPER } from '../../shared/vocabulary.js'
 import { papers } from '../ipc.js'
 import { errorLabel } from '../lib/failure-label.js'
 import type { Catalog } from '../messages/catalog.js'
@@ -45,14 +45,20 @@ export function RatingStars({ value, onChange, disabled = false }: {
   )
 }
 
+/** The name reading status `state` shows: the read-later state by the catalog's name for it, every other one as stored. */
+export function readStateName(m: Catalog, state: string): string {
+  return state === LATER_PAPER ? m.papers.readState.later : state
+}
+
 /** A paper's reading status, the same in the paper table and the detail panel; Reading is highlighted. */
 export function ReadStatePicker({ value, onPick }: {
   value: ReadState
   onPick: (readState: ReadState) => void
 }) {
+  const m = useMessages()
   return (
     <ChoicePicker
-      value={value} options={READ_STATES} onPick={onPick} stopRowActivation
+      value={value} options={READ_STATES} onPick={onPick} label={(state) => readStateName(m, state)} stopRowActivation
       className={tagClass('neutral', 'chip', value === READING_PAPER ? 'stchip on' : 'stchip')}
     />
   )

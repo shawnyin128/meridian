@@ -46,6 +46,7 @@ export const papers = {
   readState: {
     filterAria: (field: string) => `筛选${field}`,
     allStates: '全部状态',
+    later: '待读',
   },
   columnHeader: {
     resize: (column: string) => `「${column}」列宽`,
@@ -143,7 +144,7 @@ export const papers = {
   },
   reading: {
     notes: '笔记',
-    conclusions: '结论',
+    conclusions: '实验结论',
     remarkAndNotes: '随笔与笔记',
     viewAll: (count: number) => `共 ${count} 条 · 阅读器中查看全部`,
     empty: '还没有随笔和笔记',

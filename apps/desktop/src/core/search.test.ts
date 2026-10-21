@@ -121,6 +121,11 @@ describe('全局搜索', () => {
     expect(store.search('项目：')).toEqual([])
   })
 
+  it('新项目存的默认领域在搜索结果里写成未分领域', () => {
+    store.createProject('压缩实验')
+    expect(store.search('压缩实验')[0]).toMatchObject({ kind: 'project', meta: '进行中 · 未分领域' })
+  })
+
   it('论文和与它同名的对话一样好地命中时,论文排在对话前面', () => {
     const chat = store.createChat('Mixtral of Experts', true)
     expect(store.search('Mixtral').map((h) => [h.kind, h.target])).toEqual([

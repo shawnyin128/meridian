@@ -15,7 +15,7 @@ export const project = {
     records: '科研记录',
   },
   recordViewLabel: '科研记录视图',
-  recordModes: { activity: '记录', conclusions: '结论' },
+  recordModes: { activity: '记录', conclusions: '实验结论' },
   records: {
     kind: {
       start: '开始推进',
@@ -28,19 +28,19 @@ export const project = {
     },
   },
   conclusions: {
-    heading: '结论',
+    heading: '实验结论',
     state: { pending: '待验证', verified: '已验证', conflicting: '有冲突' },
-    empty: '还没有结论',
+    empty: '还没有实验结论',
     notWritten: '未写入 Wiki',
     writtenTo: (page: string, version: number) => `${page} v${version}`,
     verify: '验证',
-    verified: '已验证这条结论',
+    verified: '已验证这条实验结论',
     unverify: '取消验证',
     unverified: '已取消验证',
     unverifiedState: '未验证',
     write: '写入 Wiki',
     written: '已写入 Wiki',
-    writeProposal: (page: string) => `项目结论写入「${page}」`,
+    writeProposal: (page: string) => `实验结论写成「${page}」的结论`,
     page: '聚合页',
     pagePick: '选择要写入的聚合页',
     text: '写进 Wiki 的结论',
@@ -92,7 +92,7 @@ export const project = {
   signals: {
     heading: (n: number) => `需要注意 · ${n}`,
     kind: {
-      conflict: '结论冲突',
+      conflict: '实验结论冲突',
       block: '阻塞',
       researchPath: '科研路径',
       milestoneOverdue: '里程碑逾期',
@@ -109,7 +109,7 @@ export const project = {
       chooseDirection: '确认继续、搁置或调整方向',
     },
     reason: {
-      conflictCount: (n: number) => `${n} 条证据结论互相冲突`,
+      conflictCount: (n: number) => `${n} 条实验结论有冲突`,
       overdueTasks: (n: number) => `${n} 条任务已过计划时间`,
       idleDays: (n: number) => `已 ${n} 天无推进`,
       pathBroken: '当前科研路径已断裂',
@@ -123,7 +123,7 @@ export const project = {
     pulse: {
       notCounted: '不计入当前推进',
       blocked: '受阻',
-      conflict: '结论冲突',
+      conflict: '实验结论冲突',
       pathBroken: '路径异常',
       pathMissing: '路径未定',
       waiting: '等待回传',
@@ -137,7 +137,8 @@ export const project = {
     nameLabel: '名称',
     statusLabel: '状态',
     priorityLabel: '优先级',
-    topic: '主题',
+    topic: '领域',
+    noArea: '未分领域',
     // Keyed by shared/project-signals.js's FocusLabelKey; Task 28 introduces project status codes.
     focusLabel: { currentGoal: '当前目标', restartCondition: '重启条件', outcome: '成果' },
     focusWithLabel: (label: string, focus: string) => `${label}：${focus}`,
@@ -146,7 +147,7 @@ export const project = {
     nameUpdated: '已更新项目名称',
     statusUpdated: '已更新状态',
     priorityUpdated: '已更新优先级',
-    topicUpdated: '已更新主题',
+    topicUpdated: '已更新领域',
     focusRequired: (label: string) => `${label}不能为空`,
     focusUpdated: (label: string) => `已更新${label}`,
     startLabel: '开始',

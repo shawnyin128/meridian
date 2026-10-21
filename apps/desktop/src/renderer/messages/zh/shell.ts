@@ -26,7 +26,7 @@ export const shell = {
     inbox: '收件',
     delivery: '论文推送',
     discovery: '发现',
-    watchTopics: '关注·主题',
+    watchTopics: '关注·关键词',
     watchAuthors: '关注·作者',
     later: '稍后阅读',
     chats: '对话',
@@ -41,7 +41,7 @@ export const shell = {
     ideas: '想法',
     trash: '垃圾桶',
   },
-  watchKind: { topic: '主题', author: '作者' },
+  watchKind: { topic: '关键词', author: '作者' },
   sidebar: {
     toggle: '收起/展开侧栏',
     expand: '展开侧栏',

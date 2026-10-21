@@ -1246,7 +1246,7 @@ describe('vault store on the aggregation layout', () => {
         id: 'wide-b8', text: '宽树在 B≥8 时净赚', evidence: [{ kind: 'experiment', project: id, node: 't.A' }],
       },
     }] })
-    expect(write).toThrow(/节点 t.A 的结论还没验证/)
+    expect(write).toThrow(/节点 t.A 的实验结论还没验证/)
     expect(() => store.verifyConclusion(id, 't.B', shown[0]!.fingerprint!)).toThrow(/t.B/)
     expect(counts()).toEqual({ verified: 0, pending: 1, conflicting: 0 })
 
@@ -1370,13 +1370,13 @@ describe('vault store on the aggregation layout', () => {
     const before = readFileSync(page, 'utf8')
     const state = () => store.getProject(id).projectConclusions![0]!.state
     store.verifyConclusion(id, 't.A', store.getProject(id).projectConclusions![0]!.fingerprint!)
-    expect(store.listChanges()[0]).toMatchObject({ title: expect.stringContaining('验证结论'), undoable: true })
+    expect(store.listChanges()[0]).toMatchObject({ title: expect.stringContaining('验证实验结论'), undoable: true })
     store.unverifyConclusion(id, 't.A')
     expect(state()).toBe('pending')
-    expect(store.listChanges()[0]).toMatchObject({ title: expect.stringContaining('取消验证结论'), undoable: true })
+    expect(store.listChanges()[0]).toMatchObject({ title: expect.stringContaining('取消验证实验结论'), undoable: true })
     store.undoChange(store.listChanges()[0]!.id)
     expect(state()).toBe('verified')
-    store.undoChange(store.listChanges().find((c) => c.title.includes('验证结论') && !c.title.includes('取消'))!.id)
+    store.undoChange(store.listChanges().find((c) => c.title.includes('验证实验结论') && !c.title.includes('取消'))!.id)
     expect(state()).toBe('pending')
     expect(readFileSync(page, 'utf8')).toBe(before)
   })

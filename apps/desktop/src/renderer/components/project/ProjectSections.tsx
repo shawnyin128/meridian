@@ -13,6 +13,7 @@ import { EmptyState } from '../EmptyState.js'
 import { MarkdownBox } from '../Markdown.js'
 import { PaperText } from '../paper/PaperText.js'
 import { PickRow, type PickHit } from '../PickRow.js'
+import { areaName } from './ProjectIdentity.js'
 import { useFormat } from '../../lib/format.js'
 import { useInlineDraft } from '../../hooks/useInlineDraft.js'
 import { useMessages } from '../../messages/useMessages.js'
@@ -112,7 +113,7 @@ export function ProjectTopicField({ value, onSave, onError }: {
   if (!editing) {
     return (
       <span className="metadata-field">
-        <button className="pv metadata-editable" onClick={() => setEditing(true)}>{value}</button>
+        <button className="pv metadata-editable" onClick={() => setEditing(true)}>{areaName(m, value)}</button>
       </span>
     )
   }

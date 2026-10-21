@@ -36,6 +36,7 @@ import { TitleNote } from '../components/TitleNote.js'
 import { NoModelTag } from '../components/NoModelTag.js'
 import { Tag } from '../components/Tag.js'
 import { Tooltip } from '../components/Tooltip.js'
+import { readStateName } from '../components/PaperMetadata.js'
 import { PaperText } from '../components/paper/PaperText.js'
 import { plainTitle } from '../components/paper/paper-text.js'
 import './shell.css'
@@ -76,7 +77,7 @@ function mentionsOf(
     ...rows.map((p): Mention => ({
       kind: 'paper',
       title: plainTitle(p.title),
-      meta: p.year === undefined ? p.readState : `${p.year} · ${p.readState}`,
+      meta: p.year === undefined ? readStateName(m, p.readState) : `${p.year} · ${readStateName(m, p.readState)}`,
       entity: p,
     })),
     ...pages.map((p): Mention => ({
@@ -170,7 +171,7 @@ export function Chat() {
       select(jump.target)
       return
     }
-    void chat.create(m.project.signals.kind.conflict, true).then(async (session) => {
+    void chat.create(m.chat.conflictTitle, true).then(async (session) => {
       select(session.id)
       await send(session.id, m.chat.conflictQuestion)
     }).catch((e: unknown) => notice.refusal(errorLabel(m, e)))

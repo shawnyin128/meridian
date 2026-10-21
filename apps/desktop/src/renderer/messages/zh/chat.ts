@@ -5,6 +5,7 @@ export const chat = {
   noDiscussion: '尚无讨论',
   noModel: 'AI 未连接',
   mentionGroup: { project: '项目', paper: '论文', page: 'Wiki' },
+  conflictTitle: '结论冲突',
   conflictQuestion: '为什么说这两条结论冲突？',
   quotePrefix: (quote: string) => `关于这段原文：“${quote}” `,
   composerPlaceholder: '问题或想法',

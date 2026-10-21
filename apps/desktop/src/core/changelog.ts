@@ -9,7 +9,9 @@ import {
   ProjectDetailSchema,
 } from '../shared/contract.js'
 import { topicDir, topicProposal, topicTitleKey } from '../shared/topic-proposal.js'
-import { COLUMN_TYPE_LABEL, PAPER_PAGE, TRASH_RETENTION_DAYS } from '../shared/vocabulary.js'
+import {
+  COLUMN_TYPE_LABEL, DEFAULT_PROJECT_TOPIC, LATER_PAPER, NO_PROJECT_AREA, PAPER_PAGE, TRASH_RETENTION_DAYS,
+} from '../shared/vocabulary.js'
 import { CallError } from './call-error.js'
 import { dayOf } from './dates.js'
 import { liveColumns, misfitCells } from './paper-library/index.js'
@@ -335,6 +337,9 @@ const COLUMN_FIELDS: readonly Field<Omit<PaperColumn, 'key'>>[] = [
 const READ_STATE = '阅读状态'
 const READ_STATE_TAKEN = '状态'
 
+/** How change lines read a read state: the read-later state by the name the App shows for it. */
+const readStateReading = (state: PaperRow['readState']): string => (state === LATER_PAPER ? '待读' : state)
+
 /** The paper fields the user edits; ids, counts, page state and timestamps are the vault's own and not shown. */
 const PAPER_FIELDS: readonly Field<PaperRow>[] = [
   ['标题', (p) => p.title], ['短标题', (p) => p.shortTitle ?? ''], ['作者', (p) => p.authors ?? []],
@@ -342,7 +347,7 @@ const PAPER_FIELDS: readonly Field<PaperRow>[] = [
   ['评分', (p) => (p.rating === undefined ? '' : `${p.rating} 星`)], ['编号', (p) => p.identifier ?? ''],
   ['提交', (p, date) => date(p.submitted)], ['摘要', (p) => p.abstract ?? ''], ['主题', (p) => p.topics],
   ['方法', (p) => p.methods], ['数据集', (p) => p.datasets], ['指标', (p) => p.metrics],
-  [READ_STATE, (p) => p.readState], ['随笔', (p) => p.remark ?? ''],
+  [READ_STATE, (p) => readStateReading(p.readState)], ['随笔', (p) => p.remark ?? ''],
 ]
 
 const NOTE_FIELDS: readonly Field<PaperNote>[] = [['页码', (n) => String(n.page)], ['笔记', (n) => n.text]]
@@ -442,7 +447,7 @@ function projectLines(a: ProjectDetail, b: ProjectDetail, date: DateReading): st
     ...field('名称', (p) => p.name),
     ...field('状态', (p) => p.status),
     ...field('优先级', (p) => PRIORITY[p.priority]),
-    ...field('主题', (p) => p.topic),
+    ...field('领域', (p) => (p.topic === DEFAULT_PROJECT_TOPIC ? NO_PROJECT_AREA : p.topic)),
     ...readingLines(FOCUS[a.status], a.focus, b.focus, FOCUS[b.status]),
     ...field('阻塞', (p) => p.block ?? ''),
     ...field('开始', (p) => date(p.start)),
@@ -455,7 +460,7 @@ function projectLines(a: ProjectDetail, b: ProjectDetail, date: DateReading): st
     ...itemLines(RELATIONS, relations(a), relations(b), date),
     ...itemLines(ATTACHMENTS, a.attachments, b.attachments, date),
     ...itemLines(SESSIONS, a.agentSessions, b.agentSessions, date),
-    ...field('已验证结论', verified),
+    ...field('已验证实验结论', verified),
   ]
 }
 
@@ -839,11 +844,11 @@ export function withChangelog(ops: VaultOps, log: ChangeLogStore): VaultStore {
     },
 
     verifyConclusion(projectId, node, fingerprint) {
-      return onProject(projectId, '验证结论', () => ops.verifyConclusion(projectId, node, fingerprint))
+      return onProject(projectId, '验证实验结论', () => ops.verifyConclusion(projectId, node, fingerprint))
     },
 
     unverifyConclusion(projectId, node) {
-      return onProject(projectId, '取消验证结论', () => ops.unverifyConclusion(projectId, node))
+      return onProject(projectId, '取消验证实验结论', () => ops.unverifyConclusion(projectId, node))
     },
 
     deleteProject(id) {

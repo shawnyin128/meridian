@@ -57,7 +57,10 @@ const trashFromCore = (win: Page) =>
 const paperTotal = (win: Page) =>
   call<{ total: number }>(win, 'papers.list', { page: 1, size: 1 }).then((r) => r.total)
 
-const KIND: Record<'topic' | 'author', string> = { topic: '主题', author: '作者' }
+const KIND: Record<'topic' | 'author', string> = { topic: '关键词', author: '作者' }
+
+/** The kind word the fixture's inbox entries were stored with; an entry keeps the source text it was written with. */
+const STORED_KIND: Record<'topic' | 'author', string> = { topic: '主题', author: '作者' }
 
 /** The topic name typed in the press-Enter-twice test case. */
 const TWICE_WATCH = '两下回车的主题'
@@ -85,7 +88,7 @@ test('侧栏「论文推送」进推送屏,条目、分组与正文都照 demo',
 
   await openInbox(win, 'all')
   await expect(win.locator('[data-inbox="discovery"]')).toContainText('发现')
-  await expect(win.locator('[data-disc="topics"]')).toContainText('关注·主题')
+  await expect(win.locator('[data-disc="topics"]')).toContainText('关注·关键词')
   await expect(win.locator('[data-disc="authors"]')).toContainText('关注·作者')
   await expect(win.locator('#crumb .cseg')).toHaveText(['收件', '论文推送'])
   await expect(shown(win, '.desk-head .t')).toHaveText(`论文推送 · ${demo.length}`)
@@ -96,7 +99,7 @@ test('侧栏「论文推送」进推送屏,条目、分组与正文都照 demo',
   const watches = await watchesFromCore(win)
   const heads = [...new Set(demo.map((d) => d.watch))].map((id) => {
     const w = watches.find((x) => x.id === id)!
-    return `${KIND[w.type]} · ${w.name}`
+    return `${STORED_KIND[w.type]} · ${w.name}`
   })
   expect(await groupTitles(win)).toEqual(heads)
   await expect(shown(win, '.collapsible-group-actions .btn')).toHaveCount(heads.length)
@@ -141,7 +144,7 @@ test('关注与项目发现是两条流,发现解释来源并接受显式反馈'
   await expect.poll(async () => (await discoveryFromCore(win)).length).toBe(before - 1)
 })
 
-test('按主题与作者各筛一档,面包屑与条数都跟着换', async ({ win }) => {
+test('按关键词与作者各筛一档,面包屑与条数都跟着换', async ({ win }) => {
   const entries = await inboxFromCore(win)
   const counted = (await watchesFromCore(win)).map((w) => ({
     ...w, n: entries.filter((e) => e.watch === w.id).length,
@@ -157,7 +160,7 @@ test('按主题与作者各筛一档,面包屑与条数都跟着换', async ({ w
     // A watch's view has one group heading, naming that watch; a watch with no entries shows only the empty state.
     await expect(shown(win, '.collapsible-group')).toHaveCount(w.n === 0 ? 0 : 1)
     await expect(shown(win, '.empty-state')).toHaveCount(w.n === 0 ? 1 : 0)
-    if (w.n > 0) expect(await groupTitles(win)).toEqual([`${KIND[w.type]} · ${w.name}`])
+    if (w.n > 0) expect(await groupTitles(win)).toEqual([`${STORED_KIND[w.type]} · ${w.name}`])
     await expect(win.locator(`[data-watchrow="${w.id}"]`)).toHaveClass(/\bon\b/)
   }
 })
@@ -358,7 +361,7 @@ test('存入稍后阅读:离开推送屏,排到队首,再移出', async ({ win }
   await expect(shown(win, '.pcard h3').first()).toHaveText(title)
   const watched = watches.find((w) => w.id === first.watch)!
   expect((await laterFromCore(win))[0]).toMatchObject({
-    id: first.id, day: '今天', source: `${KIND[watched.type]} · ${watched.name}`,
+    id: first.id, day: '今天', source: `${STORED_KIND[watched.type]} · ${watched.name}`,
   })
 
   await shown(win, '.pcard').first().locator('[aria-label="移出"]').click()
@@ -399,7 +402,7 @@ test('关注管理:暂停、添加与移除都实时改侧栏与推送屏', asyn
 
   const watches = await watchesFromCore(win)
   await expect(settings(win, '.wrow')).toHaveCount(watches.length)
-  await expect(settings(win, '.section-heading')).toContainText(['主题', '作者'])
+  await expect(settings(win, '.section-heading')).toContainText(['关键词', '作者'])
 
   // The category now has its own page-level heading above the two watch-type groups, so scope to the
   // group variant specifically: the first group (topics) is free of a line, the second (authors) draws one.
@@ -428,7 +431,7 @@ test('关注管理:暂停、添加与移除都实时改侧栏与推送屏', asyn
   const topicIds = new Set(watches.filter((w) => w.type === 'topic').map((w) => w.id))
   const topicPapers = entriesBefore.filter((e) => topicIds.has(e.watch)).length
   expect(topicPapers).toBeGreaterThan(0)
-  await settings(win, '.section-heading').filter({ hasText: '主题' }).locator('.btn').click()
+  await settings(win, '.section-heading').filter({ hasText: '关键词' }).locator('.btn').click()
   await expect(settings(win, '.wrow')).toHaveCount(watches.length + 1)
   // A new watch lands first in its group, so the topic group's placeholder is the very first row.
   await expect(settings(win, '.wrow').first()).toHaveClass(/\bnewrow\b/)
@@ -500,7 +503,7 @@ test('没填 Semantic Scholar key 时作者搜索写出缺 key，填了之后先
   await expect(row.locator('.author-id-state')).toHaveText('Stanford University')
 })
 
-test('没填 key 时关注建议从 arXiv 生成主题与按姓名的作者,添加的作者是未确认身份', async ({ win }) => {
+test('没填 key 时关注建议从 arXiv 生成关键词与按姓名的作者,添加的作者是未确认身份', async ({ win }) => {
   await openDeliverySettings(win)
   const section = settings(win, '.watch-suggestions')
   await expect(section).not.toContainText('不调用模型')
@@ -600,7 +603,7 @@ test('关注管理:同一时间只开一个占位,点另一组的加号先存下
   await expect(settings(win, '.wrow')).toHaveCount(watches.length)
   const topics = watches.filter((w) => w.type === 'topic').length
 
-  await settings(win, '.section-heading').filter({ hasText: '主题' }).locator('.btn').click()
+  await settings(win, '.section-heading').filter({ hasText: '关键词' }).locator('.btn').click()
   await settings(win, '.wrow.newrow input').fill('切组前存下的主题')
   await settings(win, '.section-heading').filter({ hasText: '作者' }).locator('.btn').click()
 
@@ -620,7 +623,7 @@ test('关注管理:两下快回车只建出一条关注', async ({ win }) => {
   await expect(settings(win, '.wrow')).toHaveCount(watches.length)
 
   const topics = watches.filter((w) => w.type === 'topic').length
-  await settings(win, '.section-heading').filter({ hasText: '主题' }).locator('.btn').click()
+  await settings(win, '.section-heading').filter({ hasText: '关键词' }).locator('.btn').click()
   await settings(win, '.wrow.newrow input').fill(TWICE_WATCH)
   // The placeholder and its text stay until the write returns. With two real presses, Core may finish
   // writing between them and the race never happens; two keydowns dispatched in one task always
@@ -642,7 +645,7 @@ test.describe('关注管理:切到别的应用', () => {
 
   test('切到别的应用不算放弃:占位与打好的字都留着', async ({ app, win }) => {
     await openDeliverySettings(win)
-    await settings(win, '.section-heading').filter({ hasText: '主题' }).locator('.btn').click()
+    await settings(win, '.section-heading').filter({ hasText: '关键词' }).locator('.btn').click()
     const input = settings(win, '.wrow.newrow input')
     await input.fill('切走之前打的字')
     await expect(input).toBeFocused()

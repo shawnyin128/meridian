@@ -339,7 +339,7 @@ export function createWikiProposals({ store, pdf, now }: {
         if (outcome.status === 'rejected') {
           next = { ...record, status: 'rejected', reason: outcome.reason, decided }
         } else if (unverified.length > 0) {
-          throw new CallError('refused', `结论待验证：${unverified.join('、')}。验证之后再应用`)
+          throw new CallError('refused', `实验结论待验证：${unverified.join('、')}。验证之后再应用`)
         } else {
           store.applyProposal({ source: 'user', title: proposal.title, ops: proposal.ops }, {
             by: byOf(proposal), source: chipOf(proposal),

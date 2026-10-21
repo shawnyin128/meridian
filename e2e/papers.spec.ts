@@ -1,9 +1,12 @@
 import type { Page } from '@playwright/test'
 import type { PaperCell, PaperColumns } from '../apps/desktop/src/shared/contract.js'
 import {
-  DEFAULT_PAPER_GROUPS, READ_STATES, READING_PAPER, UNREAD_PAPER,
+  DEFAULT_PAPER_GROUPS, LATER_PAPER, READ_STATES, READING_PAPER, UNREAD_PAPER,
 } from '../apps/desktop/src/shared/vocabulary.js'
 import { expect, gotoPapers, parkPointer, settle, test, uniqueHeights, type MeridianWindow } from './app.js'
+
+/** The reading statuses as the status menu names them, the read-later state by its shown name. */
+const READ_STATE_NAMES = READ_STATES.map((state) => (state === LATER_PAPER ? '待读' : state))
 
 /** Page state of all 291 paper pages in the fixture vault, a field separate from reading status. */
 const PAGE_STATE = 'draft'
@@ -320,7 +323,7 @@ test('阅读状态列点它选一档就写回 core,页面状态不受影响', as
 
   await chip.click()
   // Clicking the chip only opens the status menu; it is not a row click that opens the details panel.
-  await expect(win.locator('.ctxmenu .mi')).toHaveText([...READ_STATES])
+  await expect(win.locator('.ctxmenu .mi')).toHaveText(READ_STATE_NAMES)
   await expect(win.locator('.pdetail')).toHaveCount(0)
 
   await win.locator('.ctxmenu .mi', { hasText: READING_PAPER }).click()
@@ -1387,7 +1390,7 @@ test('阅读状态浮层是真菜单:四档是 menuitemradio,当前那一档 ari
   await expect(chip).toHaveAttribute('aria-haspopup', 'menu')
   await chip.click()
   const items = win.locator('[role="menu"] [role="menuitemradio"]')
-  await expect(items).toHaveText([...READ_STATES])
+  await expect(items).toHaveText(READ_STATE_NAMES)
   await expect(items.nth(READ_STATES.indexOf(UNREAD_PAPER))).toHaveAttribute('aria-checked', 'true')
   await expect(items.nth(READ_STATES.indexOf(READING_PAPER))).toHaveAttribute('aria-checked', 'false')
 

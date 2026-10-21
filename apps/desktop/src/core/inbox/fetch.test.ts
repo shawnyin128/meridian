@@ -57,6 +57,18 @@ describe('createWatchFetcher', () => {
     expect(counter.writes).toBeGreaterThan(0)
   })
 
+  it('关键词关注带来的新论文,来源写关键词 · 名字,理由写命中关键词;收件里早先的条目照原样', async () => {
+    const { store, fetcher } = setup(async (query) =>
+      query === 'all:"speculative decoding"' ? [paper('2609.00001', 'Tree One')] : [])
+    const before = store.listInbox().map((entry) => entry.source)
+    await fetcher.run()
+    const added = store.listInbox().find((entry) => entry.title === 'Tree One')!
+    expect([added.source, added.reasons.map((reason) => reason.label)])
+      .toEqual(['关键词 · speculative decoding', ['命中关键词「speculative decoding」']])
+    expect(before).toContain('主题 · speculative decoding')
+    expect(store.listInbox().filter((entry) => entry.title !== 'Tree One').map((entry) => entry.source)).toEqual(before)
+  })
+
   it('整轮关注抓取共用单次推送上限', async () => {
     const { store, fetcher, queries } = setup(async () => [
       paper(`2609.${String(queries.length + 1).padStart(5, '0')}`, 'New Paper'),

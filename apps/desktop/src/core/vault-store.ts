@@ -14,7 +14,7 @@ import { projectControlState } from '../shared/project-control.js'
 import { sortRecordsNewestFirst } from '../shared/project-signals.js'
 import { topicDir, topicProposal } from '../shared/topic-proposal.js'
 import {
-  ACTIVE_PROJECT, CHAT_EVENT_PREFIX, FINISHED_PROJECT, PAPER_PAGE, PROJECTS_DIR, READ_STATES,
+  ACTIVE_PROJECT, CHAT_EVENT_PREFIX, DEFAULT_PROJECT_TOPIC, FINISHED_PROJECT, PAPER_PAGE, PROJECTS_DIR, READ_STATES,
   TRASH_RETENTION_DAYS, UNREAD_PAPER,
 } from '../shared/vocabulary.js'
 import { CallError } from './call-error.js'
@@ -1415,7 +1415,7 @@ export function createVaultStore(
         name,
         status: ACTIVE_PROJECT,
         priority: 'p1',
-        topic: '未分主题',
+        topic: DEFAULT_PROJECT_TOPIC,
         focus: '定义第一步',
         start,
         due: new Date(Date.parse(`${start}T00:00:00Z`) + NEW_PROJECT_SPAN_DAYS * 86_400_000)

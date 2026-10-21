@@ -170,8 +170,8 @@ describe('ReviewQueue', () => {
     expect(row('n5').querySelector('.review-note')!.textContent).toBe('提案没有给出它依据的页的版本：Speculative decoding')
   })
 
-  it('引用了没验证的项目结论:标出结论未验证,不另写一句,应用按不了,点结论去验证它', () => {
-    expect(row('p6').querySelector('.tag--warn')!.textContent).toBe('结论未验证')
+  it('引用了没验证的实验结论:标出实验结论未验证,不另写一句,应用按不了,点它去验证', () => {
+    expect(row('p6').querySelector('.tag--warn')!.textContent).toBe('实验结论未验证')
     expect(row('p6').querySelector('.review-note--warn')).toBeNull()
     expect(apply('p6').disabled).toBe(true)
     const chip = row('p6').querySelector<HTMLElement>('.review-unverified .tagchip')!
