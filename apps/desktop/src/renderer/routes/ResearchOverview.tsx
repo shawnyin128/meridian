@@ -22,7 +22,7 @@ import {
 } from '../components/project/ProjectSignals.js'
 import { ProjectNextActionView } from '../components/project/ProjectControl.js'
 import { ProjectIdentity, ProjectLabel } from '../components/project/ProjectIdentity.js'
-import { DAY_SLOT_HOURS } from '../components/timeline/TimelineScale.js'
+import { DAY_SLOT_HOURS, useTimelinePeriod } from '../components/timeline/TimelineScale.js'
 import { TimelineBoard } from '../components/timeline/TimelineBoard.js'
 import { useMilestoneEditor } from '../components/timeline/MilestoneEditor.js'
 import { ToolbarButton } from '../components/Toolbar.js'
@@ -348,15 +348,16 @@ function OverviewGantt({
   const editor = useMilestoneEditor({
     projects: rows, onCreate: onNewMilestone, onUpdate: onUpdateMilestone, onDelete: onDeleteMilestone,
   })
+  const period = useTimelinePeriod(useToday())
 
   return (
     <TimelineBoard
-      projects={visibleProjects}
+      projects={visibleProjects} period={period}
       className="overview-gantt"
       showProjectNames
       foldable
       {...editor.board}
-      headerAction={() => (
+      headerAction={(
         <ToolbarButton
           className="btn ghost sm overview-history-toggle" aria-pressed={showInactive}
           onClick={() => { editor.close(); setShowInactive((shown) => !shown) }}

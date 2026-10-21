@@ -1,15 +1,16 @@
 // @vitest-environment jsdom
-import { act } from 'react'
+import { act, type ComponentProps } from 'react'
 import { createRoot } from 'react-dom/client'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Task } from '../../../shared/contract.js'
 import { MessagesProvider } from '../../messages/useMessages.js'
-import { TodayContext } from '../../shell/AppShell.js'
+import { TodayContext, useToday } from '../../shell/AppShell.js'
 import { LANGUAGE_STORAGE_KEY } from '../../shell/language.js'
 import { ToolbarButton } from '../Toolbar.js'
 import { TOOLTIP_DELAY } from '../Tooltip.js'
 import { TimelineBoard, type TimelineProject } from './TimelineBoard.js'
+import { useTimelinePeriod } from './TimelineScale.js'
 
 declare global {
   var IS_REACT_ACT_ENVIRONMENT: boolean
@@ -25,6 +26,11 @@ class ResizeObserverStub {
 }
 (globalThis as unknown as { ResizeObserver: typeof ResizeObserverStub }).ResizeObserver ??= ResizeObserverStub
 
+/** The board with the period its screen would hold. */
+function Board(props: Omit<ComponentProps<typeof TimelineBoard>, 'period'>) {
+  return <TimelineBoard {...props} period={useTimelinePeriod(useToday())} />
+}
+
 const task = (id: string, title: string): Task => ({
   id, title, start: '2026-09-16', end: '2026-09-18', state: 'act', priority: 'p1',
 })
@@ -37,7 +43,7 @@ function renderBoard(onReorderTasks?: (projectId: string, order: string[]) => vo
   return renderToStaticMarkup(
     <MessagesProvider>
       <TodayContext.Provider value="2026-09-16">
-        <TimelineBoard
+        <Board
           projects={[project]}
           onTaskClick={vi.fn()} onMilestoneClick={vi.fn()} onMilestoneLaneClick={vi.fn()}
           onMoveTask={vi.fn()} onMoveTaskWindow={vi.fn()} onMoveMilestone={vi.fn()}
@@ -59,7 +65,7 @@ function mountBoard(host: HTMLDivElement, overrides: {
   act(() => createRoot(host).render(
     <MessagesProvider>
       <TodayContext.Provider value="2026-09-16">
-        <TimelineBoard
+        <Board
           projects={[project]}
           onTaskClick={overrides.onTaskClick ?? vi.fn()}
           {...(overrides.onTaskLabelClick === undefined ? {} : { onTaskLabelClick: overrides.onTaskLabelClick })}
@@ -87,8 +93,8 @@ describe('TimelineBoard 的头部', () => {
     act(() => root.render(
       <MessagesProvider>
         <TodayContext.Provider value="2026-09-16">
-          <TimelineBoard
-            projects={[project]} headerAction={() => <ToolbarButton className="btn">新建</ToolbarButton>}
+          <Board
+            projects={[project]} headerAction={<ToolbarButton className="btn">新建</ToolbarButton>}
             onTaskClick={vi.fn()} onMilestoneClick={vi.fn()} onMilestoneLaneClick={vi.fn()}
             onMoveTask={vi.fn()} onMoveTaskWindow={vi.fn()} onMoveMilestone={vi.fn()}
           />
@@ -311,7 +317,7 @@ describe('TimelineBoard 只显示当前时间段里的任务', () => {
     act(() => createRoot(host).render(
       <MessagesProvider>
         <TodayContext.Provider value="2026-09-16">
-          <TimelineBoard
+          <Board
             projects={[project]}
             onTaskClick={vi.fn()} onMilestoneClick={vi.fn()} onMilestoneLaneClick={vi.fn()}
             onMoveTask={vi.fn()} onMoveTaskWindow={vi.fn()} onMoveMilestone={vi.fn()}
@@ -380,7 +386,7 @@ describe('TimelineBoard 的提示', () => {
     act(() => createRoot(host).render(
       <MessagesProvider>
         <TodayContext.Provider value="2026-09-16">
-          <TimelineBoard
+          <Board
             projects={[withMilestone]}
             onTaskClick={vi.fn()} onMilestoneClick={vi.fn()} onMilestoneLaneClick={vi.fn()}
             onMoveTask={vi.fn()} onMoveTaskWindow={vi.fn()} onMoveMilestone={vi.fn()}
@@ -419,7 +425,7 @@ describe('TimelineBoard 在总览上标出项目', () => {
     act(() => createRoot(host).render(
       <MessagesProvider>
         <TodayContext.Provider value="2026-09-16">
-          <TimelineBoard
+          <Board
             projects={projects} showProjectNames foldable onProjectLabelClick={vi.fn()} onTaskLabelClick={vi.fn()}
             onTaskClick={vi.fn()} onMilestoneClick={vi.fn()} onMilestoneLaneClick={vi.fn()}
             onMoveTask={vi.fn()} onMoveTaskWindow={vi.fn()} onMoveMilestone={vi.fn()}
@@ -464,7 +470,7 @@ describe('TimelineBoard 的一天任务条', () => {
     act(() => createRoot(host).render(
       <MessagesProvider>
         <TodayContext.Provider value="2026-09-16">
-          <TimelineBoard
+          <Board
             projects={[days]}
             onTaskClick={vi.fn()} onMilestoneClick={vi.fn()} onMilestoneLaneClick={vi.fn()}
             onMoveTask={vi.fn()} onMoveTaskWindow={vi.fn()} onMoveMilestone={vi.fn()}

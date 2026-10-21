@@ -30,6 +30,7 @@ describe('项目页时间线上的里程碑', () => {
   let root: Root | null = null
   let host: HTMLDivElement
   const calls = {
+    onNewTask: vi.fn(),
     onNewMilestone: vi.fn(),
     onCreateMilestone: vi.fn(() => Promise.resolve(true)),
     onUpdateMilestone: vi.fn(() => Promise.resolve(true)),
@@ -50,7 +51,7 @@ describe('项目页时间线上的里程碑', () => {
           <ProjectTimeline
             project={PROJECT} hoverMilestone={null} onHoverMilestone={vi.fn()} onLocateTask={vi.fn()}
             onMoveTask={vi.fn()} onMoveTaskWindow={vi.fn()} onMoveMilestone={vi.fn()} onReorderTasks={vi.fn()}
-            onNewTask={vi.fn()} newActionRef={createRef()}
+            newActionRef={createRef()}
             {...calls}
           />
         </TodayContext.Provider>
@@ -79,6 +80,26 @@ describe('项目页时间线上的里程碑', () => {
     await type(value)
     await enter()
   }
+
+  const addAction = () => host.querySelector<HTMLButtonElement>('[aria-label="添加任务或里程碑"]')!
+
+  it('添加任务或里程碑和计划的添加一样，放在本项目时间线这一节的标题里，时间线自己的工具栏里没有它', () => {
+    const heading = addAction().closest('.section-heading')!
+    expect(heading.firstChild!.textContent).toBe('本项目时间线')
+    expect(addAction().parentElement!.className).toBe('section-heading-actions')
+    expect(addAction().className).toBe('btn sm add-action add-action-section')
+    expect(host.querySelector('.ghead .add-action')).toBeNull()
+  })
+
+  it('日视图里从标题新建任务，落在时间线显示的那一天和上午十点的时段', async () => {
+    const head = host.querySelector<HTMLElement>('.ghead')!
+    await act(async () => { [...head.querySelectorAll<HTMLButtonElement>('.segmented-control>button')].find((b) => b.textContent === '日')!.click() })
+    await act(async () => { head.querySelector<HTMLButtonElement>('[aria-label="下一个周期"]')!.click() })
+    await act(async () => { addAction().dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, button: 0 })) })
+    const task = [...document.querySelectorAll<HTMLElement>('[role="menuitem"]')].find((item) => item.textContent === '任务')!
+    await act(async () => { task.click() })
+    expect(calls.onNewTask).toHaveBeenCalledExactlyOnceWith('2026-09-17', { start: '10:00', end: '12:00' })
+  })
 
   it('在里程碑行用键盘按下，在今天打开新建里程碑的小窗；按 Esc 关掉后焦点回到这一行', async () => {
     const lane = host.querySelector<HTMLButtonElement>('.msrow .glane-new')!

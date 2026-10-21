@@ -13,9 +13,9 @@ import { Toolbar, ToolbarButton } from '../Toolbar.js'
 import { Tooltip } from '../Tooltip.js'
 import {
   DAY_SLOT_HOURS, shiftTaskWindow, timelineDayAt, TimelineControls, TimelineGrid,
-  TimelineNowMarker, timelineTaskSpan, useFittedTimelineWindow, useTimelinePeriod,
+  TimelineNowMarker, timelineTaskSpan, useFittedTimelineWindow,
 } from './TimelineScale.js'
-import type { TimelineScale } from './TimelineScale.js'
+import type { TimelinePeriod } from './TimelineScale.js'
 import { useGanttDrag } from '../../hooks/useGanttDrag.js'
 import { useDragReorder } from '../../hooks/useDragReorder.js'
 import { useScrollFade } from '../../hooks/useScrollFade.js'
@@ -57,26 +57,26 @@ function pointAt(canvas: HTMLElement, clientX: number, clientY: number): Timelin
  * With `foldable`, each project's milestone row carries a caret that hides or shows that project's task rows.
  * With `showProjectNames`, the milestone row's label is the project's name, the one place it is named.
  * A one-day bar narrower than its title draws the title beside it.
- * The full timeline shared by the project page and Overview. The two callers only choose the label
- * content, the header action and what clicks do, through props; the time scale, grid, task and
- * milestone rows, drag and drop, status colors, priorities and overdue warnings live only here.
+ * The full timeline shared by the project page and Overview. The two callers hold the period it shows
+ * (`period`, from `useTimelinePeriod`) and only choose the label content, the header action and what
+ * clicks do, through props; the time scale, grid, task and milestone rows, drag and drop, status
+ * colors, priorities and overdue warnings live only here.
  * The label column and the canvas are one Tab stop each, with the up and down arrow keys between
  * their rows: a label that opens something, a task's bar or edge stub, and a project's milestone
  * lane, where Enter or Space names a new milestone on today's date.
  */
 export function TimelineBoard({
-  projects, className = '', showProjectNames = false, foldable = false, headerAction, canvasOverlay,
+  projects, period, className = '', showProjectNames = false, foldable = false, headerAction, canvasOverlay,
   hoverMilestoneId, onHoverMilestone, onTaskLabelClick, onProjectLabelClick, onTaskClick,
   onMilestoneClick, onMilestoneLaneClick, onMoveTask, onMoveTaskWindow, onMoveMilestone,
   onReorderTasks, onPeriodChange,
 }: {
   projects: TimelineProject[]
+  period: TimelinePeriod
   className?: string
   showProjectNames?: boolean
   foldable?: boolean
-  headerAction?: (context: {
-    scale: TimelineScale; firstDay: string; today: string
-  }) => ReactNode
+  headerAction?: ReactNode
   canvasOverlay?: ReactNode
   hoverMilestoneId?: string | null
   onHoverMilestone?: (projectId: string, milestoneId: string | null) => void
@@ -105,7 +105,6 @@ export function TimelineBoard({
   const wrapFade = useScrollFade('x', wrap)
   const canvas = useRef<HTMLDivElement>(null)
   const todayIso = useToday()
-  const period = useTimelinePeriod(todayIso)
   const { anchor, scale } = period
   const window = useFittedTimelineWindow(wrap, period.window, scale)
   const today = dnum(todayIso)
@@ -222,7 +221,7 @@ export function TimelineBoard({
             onStep={(direction) => { onPeriodChange?.(); period.step(direction) }}
             onToday={() => { onPeriodChange?.(); period.goToday() }}
           />
-          {headerAction?.({ scale, firstDay: isoOf(w0), today: todayIso })}
+          {headerAction}
         </div>
       </Toolbar>
       <div className="gsplit">

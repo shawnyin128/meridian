@@ -106,6 +106,9 @@ export function useTimelinePeriod(today: string) {
   return { anchor, scale, setScale, step, goToday, window: timelineWindow(anchor, scale, fmt, m) }
 }
 
+/** The period a timeline shows; its screen holds it, so the screen's own controls can read it too. */
+export type TimelinePeriod = ReturnType<typeof useTimelinePeriod>
+
 /** Converts a pointer coordinate on a timeline canvas back to its exact day. */
 export function timelineDayAt(
   canvas: HTMLElement, clientX: number, window: Pick<TimelineWindow, 'w0' | 'w1' | 'dayWidth'>,
