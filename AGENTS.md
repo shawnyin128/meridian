@@ -364,6 +364,13 @@ Each of these happened in this repository. The rule after each one is binding.
   bug was invisible; another check compared two transparent wrappers. Before
   trusting a test, confirm its fixture contains the case the issue is about,
   then break the implementation and quote the assertion that goes red.
+- **Per-change checks left the end-to-end specs behind.** In v0.0.16.0, changes
+  to copy, selectors, row actions and shared components ran only their unit
+  tests, and at the release 80 end-to-end cases still asserted the old UI; the
+  same run found two regressions no unit test covered. A change searches `e2e/`
+  and the unit tests for every string, selector, class and behaviour it
+  touches, and updates those specs in the same pull request, even though
+  end-to-end specs run only at the release.
 - **A restyled list drifted from its siblings three times.** It had its own
   chips, padding and hover. Start from the shared component, and compare a
   screenshot of the whole page with the neighbouring sections before handing it
