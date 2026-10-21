@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { act, type ComponentProps } from 'react'
-import { createRoot } from 'react-dom/client'
+import { createRoot, type Root } from 'react-dom/client'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Task } from '../../../shared/contract.js'
@@ -54,15 +54,16 @@ function renderBoard(onReorderTasks?: (projectId: string, order: string[]) => vo
   )
 }
 
-/** Mounts an interactive TimelineBoard into `host` so real mouse events reach its handlers. */
+/** Mounts an interactive TimelineBoard into `host` so real mouse events reach its handlers; returns its root. */
 function mountBoard(host: HTMLDivElement, overrides: {
   onTaskClick?: (projectId: string, taskId: string) => void
   onTaskLabelClick?: (projectId: string, taskId: string) => void
   onProjectLabelClick?: (projectId: string) => void
   onMilestoneLaneClick?: (projectId: string, date: string, point: { left: number; top: number }) => void
   onMoveTask?: (projectId: string, taskId: string, start: string, end: string, days: number) => void
-}) {
-  act(() => createRoot(host).render(
+}): Root {
+  const root = createRoot(host)
+  act(() => root.render(
     <MessagesProvider>
       <TodayContext.Provider value="2026-09-16">
         <Board
@@ -76,6 +77,7 @@ function mountBoard(host: HTMLDivElement, overrides: {
       </TodayContext.Provider>
     </MessagesProvider>,
   ))
+  return root
 }
 
 /** Dispatches a real mouse event so it reaches both React's synthetic handlers and useGanttDrag's own document-level listeners. */
@@ -232,7 +234,7 @@ describe('TimelineBoard 的键盘', () => {
   }
 
   it('标签列和画布各是一个 Tab 停靠点，上下键在行之间走：能打开东西的标签、里程碑那一行、任务条和边缘标记', async () => {
-    mountBoard(host, { onTaskLabelClick: vi.fn() })
+    const root = mountBoard(host, { onTaskLabelClick: vi.fn() })
     const labels = host.querySelector<HTMLElement>('.glabels')!
     const canvas = host.querySelector<HTMLElement>('.gcanvas')!
     expect([...host.querySelectorAll<HTMLElement>('.gsplit, .gsplit *')].filter((element) => element.tabIndex === 0))
@@ -250,6 +252,7 @@ describe('TimelineBoard 的键盘', () => {
       await press('ArrowDown')
     }
     expect(walked).toEqual(['glane-new', 'gbar', 'gstub', 'gbar'])
+    act(() => root.unmount())
   })
 
   it('任务的标签、任务条和边缘标记是按钮：Enter 或空格打开任务，鼠标点一下任务条只打开一次', () => {
