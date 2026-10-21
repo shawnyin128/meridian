@@ -181,6 +181,13 @@ describe('ReviewQueue', () => {
     expect(onOpenConclusion).toHaveBeenCalledWith('draft', 'wide')
   })
 
+  it('卡片里每个标签行是标签和它的链接两部分,链接收在一起放进标签列后面那一列', () => {
+    const rows = [...row('p6').querySelectorAll<HTMLElement>('.wkrel')]
+    expect(rows.map((labelled) => [labelled.querySelector('.rl')!.textContent, [...labelled.children].map((part) => part.className)]))
+      .toEqual([['实验结论', ['rl', 'review-links']], ['写入', ['rl', 'review-links']]])
+    expect(row('p6').querySelector('.review-unverified .review-links .tagchip')?.textContent).toBe('加宽实验')
+  })
+
   it('应用直接交给调用方;拒绝先填可选的原因再确认', () => {
     act(() => [...row('p1').querySelectorAll<HTMLButtonElement>('.review-actions button')].find((b) => b.textContent === '应用')!.click())
     expect(onApply).toHaveBeenCalledWith(PROPOSALS[0])

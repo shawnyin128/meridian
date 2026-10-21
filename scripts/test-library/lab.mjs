@@ -120,8 +120,9 @@ export async function seedLab(seed, call, tasks) {
 
 /**
  * Seeds the Wiki review queue: an agent proposal submitted through `meridian wiki propose` and left
- * pending, one applied after the user verified the node conclusion it cites, one declined, and one
- * Core rejects because its quote is not in the paper.
+ * pending, one left pending because the node conclusion it cites is not verified, one applied after the
+ * user verified the node conclusion it cites, one declined, and one Core rejects because its quote is
+ * not in the paper.
  */
 export async function seedProposals(seed, call, files) {
   const project = seed.projects.spec.id
@@ -137,12 +138,12 @@ export async function seedProposals(seed, call, files) {
   } finally {
     rmSync(dir, { recursive: true, force: true })
   }
-  const propose = async (key, page, claim, quote) => {
+  const propose = async (key, page, claim, quote, cited = experiment) => {
     const { version } = await call('wiki.aggregation', { id: page })
     return call('wiki.propose', { proposal: {
-      protocol: 1, key, producer: { kind: 'ai', id: 'skill.meridian' }, trigger: { kind: 'experiment', project, node: node('A') },
+      protocol: 1, key, producer: { kind: 'ai', id: 'skill.meridian' }, trigger: { kind: 'experiment', project, node: cited.node },
       title: claim.title, base: { [page]: version }, ops: [{ op: 'addClaim', page, claim: { id: claim.id, text: claim.text, evidence: [
-        experiment, { kind: 'source', paper: `papers/${seed.papers[quote.paper]}`, page: 1, quote: quote.text },
+        cited, { kind: 'source', paper: `papers/${seed.papers[quote.paper]}`, page: 1, quote: quote.text },
       ] } }],
     } })
   }
@@ -153,8 +154,11 @@ export async function seedProposals(seed, call, files) {
     { id: 'baseline-kv', title: '把基线实验的结论写进 KV cache 压缩', text: '独立草稿模型的 KV cache 占用可以忽略。' }, eagle)
   await propose('seed-bad-quote', 'topics/speculative-decoding',
     { id: 'bad-quote', title: '引句对不上原文的提案', text: '这条提案的引句不在原文里。' }, { paper: 'eagle', text: '这句话不在 EAGLE 的第一页上。' })
+  await propose('seed-ngram-dead-end', 'topics/speculative-decoding',
+    { id: 'ngram-dead-end', title: '把 n-gram 草稿走不通写进推测解码', text: '在对话任务里，从上下文检索的 n-gram 草稿几乎命中不了。' },
+    eagle, { kind: 'experiment', project, node: node('D') })
   // The App takes agent proposals from its inbox every few seconds.
-  for (let waited = 0; (await call('wiki.proposals', { status: 'queued' })).length < 3; waited += 1) {
+  for (let waited = 0; (await call('wiki.proposals', { status: 'queued' })).length < 4; waited += 1) {
     if (waited > 40) throw new Error('The App did not take the agent proposal from its inbox')
     await new Promise((done) => setTimeout(done, 500))
   }

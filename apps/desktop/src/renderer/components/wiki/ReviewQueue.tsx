@@ -132,7 +132,7 @@ function Changes({ p, links, declined = false }: { p: WikiProposal; links: Claim
       {change.target === changes[at - 1]?.target ? null : (
         <div className="wkrel review-target">
           <span className="rl">{m.wiki.queue.target}</span>
-          <PageChip id={change.target} p={p} links={links} />
+          <span className="review-links"><PageChip id={change.target} p={p} links={links} /></span>
         </div>
       )}
       <DiffLines lines={change.lines.map(lineOf)} declined={declined} />
@@ -213,21 +213,23 @@ export function ReviewQueue({ proposals, pending, onApply, onDecline, links, onO
                 {(p.unverified ?? []).length === 0 ? null : (
                   <div className="wkrel review-unverified">
                     <span className="rl">{r.unverifiedLabel}</span>
-                    {p.unverified!.map((ref) => {
-                      const [project, conclusion] = ref.slice('projects/'.length).split('#') as [string, string]
-                      return (
-                        <TagButton shape="chip" className="tagchip" key={ref} onClick={() => onOpenConclusion(project, conclusion)}>
-                          {p.titles[ref] ?? conclusion}
-                        </TagButton>
-                      )
-                    })}
+                    <span className="review-links">
+                      {p.unverified!.map((ref) => {
+                        const [project, conclusion] = ref.slice('projects/'.length).split('#') as [string, string]
+                        return (
+                          <TagButton shape="chip" className="tagchip" key={ref} onClick={() => onOpenConclusion(project, conclusion)}>
+                            {p.titles[ref] ?? conclusion}
+                          </TagButton>
+                        )
+                      })}
+                    </span>
                   </div>
                 )}
                 <Changes p={p} links={links} />
                 {others(p).length === 0 ? null : (
                   <div className="wkrel">
                     <span className="rl">{r.pages}</span>
-                    {others(p).map((id) => <PageChip key={id} id={id} p={p} links={links} />)}
+                    <span className="review-links">{others(p).map((id) => <PageChip key={id} id={id} p={p} links={links} />)}</span>
                   </div>
                 )}
                 <div className="review-actions">
