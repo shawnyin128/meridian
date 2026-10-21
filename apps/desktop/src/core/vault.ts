@@ -955,8 +955,8 @@ export interface VaultStore {
   /**
    * Returns at most SEARCH_LIMIT hits for the query over the vault as held in
    * memory, as `searchHits` matches and ranks them: aggregations with their
-   * page text and conclusions, projects, chats, papers with their authors,
-   * page text, highlights and notes, ideas with their bodies, tasks with their
+   * page text and conclusions, projects, papers with their authors, page text,
+   * highlights and notes, chats, ideas with their bodies, tasks with their
    * notes, and read-later entries not in the vault with their authors. A query
    * that is blank once trimmed matches nothing.
    */

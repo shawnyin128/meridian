@@ -50,7 +50,7 @@ function plainLines(text: string, titleOf: (id: string) => string): string[] {
     .trim()).filter((line) => line !== '')
 }
 
-/** Every searchable entity in `data`, aggregations first, then projects, chats, papers, ideas, tasks and read-later entries. */
+/** Every searchable entity in `data`, aggregations first, then projects, papers, chats, ideas, tasks and read-later entries. */
 function entries(data: SearchData): Entry[] {
   const pages = data.wiki.pages
   const projects = [...data.projects]
@@ -73,9 +73,6 @@ function entries(data: SearchData): Entry[] {
     ...projects.map((p): Entry => ({
       hit: { kind: 'project', target: p.id, title: `项目：${p.name}`, meta: `${p.status} · ${p.topic}` }, title: p.name, texts: [],
     })),
-    ...[...data.chats].filter((c) => c.paperId === undefined || c.messages.length > 0).map((c): Entry => ({
-      hit: { kind: 'chat', target: c.id, title: `对话：${c.title}`, meta: '对话' }, title: c.title, texts: [],
-    })),
     ...[...data.papers].map((p): Entry => {
       const reading = readings.get(p.id)
       return {
@@ -88,6 +85,9 @@ function entries(data: SearchData): Entry[] {
         ],
       }
     }),
+    ...[...data.chats].filter((c) => c.paperId === undefined || c.messages.length > 0).map((c): Entry => ({
+      hit: { kind: 'chat', target: c.id, title: `对话：${c.title}`, meta: '对话' }, title: c.title, texts: [],
+    })),
     ...[...data.ideas].map((idea): Entry => ({
       hit: {
         kind: 'idea', target: idea.id, title: `想法：${idea.title}`,

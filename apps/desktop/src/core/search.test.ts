@@ -121,6 +121,13 @@ describe('全局搜索', () => {
     expect(store.search('项目：')).toEqual([])
   })
 
+  it('论文和与它同名的对话一样好地命中时,论文排在对话前面', () => {
+    const chat = store.createChat('Mixtral of Experts', true)
+    expect(store.search('Mixtral').map((h) => [h.kind, h.target])).toEqual([
+      ['paper', 'Jiang-et-al-2024-Mixtral-of-Experts'], ['chat', chat.id],
+    ])
+  })
+
   it('标题以查询开头的排最前,词首命中的其次,词中间命中的再次,不论类别', () => {
     store.createProject('复现 Mixtral 路由')
     const project = store.listProjects().find((p) => p.name === '复现 Mixtral 路由')!.id
