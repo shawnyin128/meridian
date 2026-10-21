@@ -247,7 +247,7 @@ export const settings = {
             },
             {
               label: 'Update the Wiki',
-              prompt: 'Propose this project\'s settled finding as a conclusion in my Meridian Paper Wiki. Find the topic or method page it belongs on, check whether it revises, conflicts with, or duplicates an existing conclusion, and attach the experiment evidence that shows it. Give me the proposal key; it reaches the Wiki only after I review it in the App.',
+              prompt: 'Propose this project\'s settled experiment conclusion as a finding in my Meridian Paper Wiki. Find the topic or method page it belongs on, check whether it revises, conflicts with, or duplicates an existing finding, and attach the experiment evidence that shows it. Give me the proposal key; it reaches the Wiki only after I review it in the App.',
             },
             {
               label: 'Check Wiki health',

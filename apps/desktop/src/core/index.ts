@@ -42,11 +42,13 @@ import {
   PapersFacetsParamsSchema,
   PapersGetParamsSchema,
   PapersImportParamsSchema,
+  PapersRetryMetadataParamsSchema,
   PapersMutateReadingParamsSchema,
   PapersReadingParamsSchema,
   PapersRenameOptionParamsSchema,
   PapersSetColumnTypeParamsSchema,
   PapersSetColumnsParamsSchema,
+  PapersSetTopicParamsSchema,
   PapersSourceParamsSchema,
   PapersUpdateParamsSchema,
   ProjectCreateAttachmentParamsSchema,
@@ -91,12 +93,14 @@ import {
   WatchUpdateParamsSchema,
   WikiAggregationParamsSchema,
   WikiApplyParamsSchema,
+  WikiBacklinksParamsSchema,
   WikiDecideParamsSchema,
   WikiPaperParamsSchema,
   WikiProposalsParamsSchema,
   WikiProposeParamsSchema,
   WikiUpdateParamsSchema,
 } from '../shared/contract.js'
+import { DEFAULT_PROJECT_TOPIC } from '../shared/vocabulary.js'
 import { answerCall, CallError, callFailure } from './call-error.js'
 import { createFixtureStore } from './fixture-store.js'
 import { withUiSampleUpload } from './fixtures/ui-samples.js'
@@ -429,6 +433,11 @@ registerHandler('papers.update', (params) => {
   const { change } = recordChange(store, () => store.updatePaper(id, definedFields(patch)))
   return { change }
 })
+registerHandler('papers.setTopic', (params) => {
+  const { id, topic, member } = PapersSetTopicParamsSchema.parse(params)
+  const { change } = recordChange(store, () => store.setPaperTopic(id, topic, member))
+  return { change }
+})
 registerHandler('papers.delete', (params) => {
   const { id } = PapersDeleteParamsSchema.parse(params)
   const { change } = recordChange(store, () => store.deletePaper(id))
@@ -440,6 +449,8 @@ registerHandler('papers.import', (params) => {
   const { filename, bytes } = PapersImportParamsSchema.parse(params)
   return background.importPaper(filename, bytes)
 })
+registerHandler('papers.retryMetadata', (params) =>
+  background.retryMetadata(PapersRetryMetadataParamsSchema.parse(params).id))
 registerHandler('papers.reading', (params) =>
   store.paperReading(PapersReadingParamsSchema.parse(params).id))
 registerHandler('papers.mutateReading', (params) => {
@@ -668,7 +679,7 @@ registerHandler('watch.suggest', (params) => {
   return background.suggestWatches({
     focus,
     seedTopics: [project.topic, ...(profile.wikiTerms ?? []), ...intentTopics]
-      .map((topic) => topic.trim()).filter((topic) => topic !== '' && topic !== '未分主题'),
+      .map((topic) => topic.trim()).filter((topic) => topic !== '' && topic !== DEFAULT_PROJECT_TOPIC),
   })
 })
 registerHandler('watch.create', (params) => {
@@ -705,7 +716,8 @@ registerHandler('wiki.cards', (params) => {
 registerHandler('wiki.apply', async (params) => {
   const { proposal } = WikiApplyParamsSchema.parse(params)
   await wikiProposals.checkHumanQuotes(proposal.ops)
-  store.applyProposal(proposal)
+  const { change } = recordChange(store, () => store.applyProposal(proposal))
+  return { change }
 })
 registerHandler('wiki.propose', (params) =>
   wikiProposals.propose(WikiProposeParamsSchema.parse(params).proposal))
@@ -719,6 +731,8 @@ registerHandler('wiki.signals', (params) => {
   EmptyParamsSchema.parse(params)
   return store.wikiSignals()
 })
+registerHandler('wiki.backlinks', (params) =>
+  store.wikiBacklinks(WikiBacklinksParamsSchema.parse(params).id))
 registerHandler('wiki.update', (params) => {
   const { id, body } = WikiUpdateParamsSchema.parse(params)
   return store.updateWikiPage(id, body)

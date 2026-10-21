@@ -7,7 +7,7 @@ import type {
 } from '../../shared/contract.js'
 import { CallError } from '../call-error.js'
 import { MessagesProvider } from '../messages/useMessages.js'
-import type { SettingsCategory } from '../shell/AppShell.js'
+import type { SettingsCategory } from '../shell/settings-categories.js'
 import { LANGUAGE_STORAGE_KEY } from '../shell/language.js'
 
 const api = vi.hoisted(() => ({

@@ -22,7 +22,7 @@ const STYLES = ['../renderer/components/IconButton.css', '../renderer/components
 const CHIPS = `
   <div class="wkrel"><span class="rl">Wiki</span><span class="tag tag--chip tag--neutral tagchip" data-wk="topics/knee" draggable="true"><span class="fade-text tagchip-text">树宽收益拐点</span><button class="icbtn xs tagchip-edit"></button><button class="icbtn xs rx"></button></span></div>
   <div class="wkrel"><span class="rl">论文</span><span class="tag tag--chip tag--neutral tagchip" data-paper="p1" draggable="true"><span class="fade-text tagchip-text">EAGLE-2</span><button class="icbtn xs rx"></button></span></div>
-  <dl><dd class="paper-meta-projects"><span class="tag tag--chip tag--neutral tagchip" data-project="draft">draft 效率<button class="icbtn xs rx"></button></span></dd></dl>`
+  <dl><dd class="paper-meta-projects"><span class="tag tag--chip tag--neutral tagchip" data-project="draft"><button type="button" class="entity-link entity-link--project">draft 效率</button><button class="icbtn xs rx"></button></span></dd></dl>`
 
 describe('chip 上的移除按钮', () => {
   beforeEach(() => {

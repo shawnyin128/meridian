@@ -35,6 +35,7 @@ const FADED: Record<string, [file: string, markup: RegExp][]> = {
   '.wkside': [['routes/Wiki.tsx', /className="wkside" ref=\{railFade\}/]],
   '.cmpwrap': [['routes/Wiki.tsx', /className="cmpwrap" ref=\{wrapFade\}/]],
   '.gwrap': [['components/timeline/TimelineBoard.tsx', /className="gwrap" ref=\{wrapFade\}/]],
+  '.cmdk-list': [['shell/CommandPalette.tsx', /className="cmdk-list" ref=\{listFade\}/]],
   '.pickhits': [['components/PickerPopover.tsx', /<Popover\.Content\s+ref=\{listFade\}/]],
   '.pickhits.cres': [['components/PickerPopover.tsx', /<Popover\.Content\s+ref=\{listFade\}/]],
   '.ctxmenu.choice-picker-menu': [
@@ -103,7 +104,7 @@ describe('滚动区和吸住的部分都淡出而不是硬切', () => {
     const body = (path: string, selector: string) => RULES.filter((rule) => rule.path === path && rule.selector === selector)
       .map((rule) => rule.body).join(';')
     expect(body('routes/shell.css', '.wiki-body,.project-detail-body')).toMatch(/container-type:\s*size/)
-    expect(source('routes/Wiki.tsx')).toMatch(/<PageBody className="wiki-body">/)
+    expect(source('routes/Wiki.tsx')).toMatch(/<PageBody className="wiki-body"[\s>]/)
     expect(source('routes/ProjectDetail.tsx')).toMatch(/<PageBody className="project-detail-body">/)
     expect(body('routes/shell.css', '.wkside')).toMatch(/max-height:\s*100cqh/)
     expect(body('routes/ProjectDetail.css', '.wkside.node-document-pane')).toMatch(/(^|;)\s*height:\s*100cqh/)

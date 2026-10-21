@@ -3,10 +3,13 @@ import { act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { WikiAggregation, WikiAggregationCard, WikiHome, WikiPaper } from '../../shared/contract.js'
+import type {
+  ProposalOp, WikiAggregation, WikiAggregationCard, WikiHome, WikiPaper, WikiProposal, WikiSignal,
+} from '../../shared/contract.js'
 import { IconTrash } from '../components/icons.js'
 import { TOOLTIP_DELAY } from '../components/Tooltip.js'
 import { MessagesProvider } from '../messages/useMessages.js'
+import type { ScreenJump } from '../shell/AppShell.js'
 import { LANGUAGE_STORAGE_KEY } from '../shell/language.js'
 
 declare global {
@@ -21,7 +24,17 @@ const card = (id: string, title: string): WikiAggregationCard => ({
 const fixture = vi.hoisted(() => ({
   aggregation: vi.fn(),
   paper: vi.fn(),
+  backlinks: vi.fn(),
+  proposals: vi.fn(),
+  signals: vi.fn(),
   open: vi.fn(),
+  returnTo: vi.fn(),
+  jump: null as ScreenJump | null,
+  apply: vi.fn(),
+  undo: vi.fn(),
+  /** The `onApply` the page hands its claims. */
+  applyClaims: null as null | ((title: string, ops: ProposalOp[], done: { note: string; undoable?: boolean }) => Promise<boolean>),
+  writes: [] as { result: unknown; opts?: { note?: unknown; action?: (result: never) => { label: string; onAction: () => void } } }[],
 }))
 
 const HOME: WikiHome = {
@@ -60,26 +73,42 @@ vi.mock('../ipc.js', () => ({
       rows: [{ id: 'p1', title: 'EAGLE-2', venue: 'ICML', topics: [], noteCount: 0, conclusionCount: 0 }], total: 1,
     }),
     reading: () => new Promise(() => {}),
+    get: (id: string) => Promise.resolve({ id, title: id === 'p1' ? 'EAGLE-2' : id }),
   },
+  project: { list: () => Promise.resolve([{ id: 'p-47', name: '推测解码加速' }]) },
   wiki: {
     home: () => Promise.resolve(HOME),
-    proposals: () => Promise.resolve([]),
+    proposals: fixture.proposals,
+    signals: fixture.signals,
     aggregation: fixture.aggregation,
     paper: fixture.paper,
-    cards: () => Promise.resolve([]),
+    backlinks: fixture.backlinks,
+    cards: () => Promise.resolve([card('topics/sd', '推测解码')]),
+    apply: fixture.apply,
   },
+  changelog: { undo: fixture.undo },
 }))
 
 vi.mock('../shell/AppShell.js', () => ({
   useNotice: () => ({ success: vi.fn(), refusal: vi.fn() }),
   useCrumbTail: () => {},
-  useJump: () => ({ jump: null, open: fixture.open, returnTo: vi.fn() }),
+  useJump: () => ({ jump: fixture.jump, open: fixture.open, returnTo: fixture.returnTo }),
   useScreenEntry: () => 0,
   useVaultRevision: () => ({ revision: 0, bump: vi.fn() }),
 }))
 
-vi.mock('../hooks/useVaultWrite.js', () => ({ useVaultWrite: () => async (op: Promise<unknown>) => { await op; return true } }))
-vi.mock('../components/wiki/WikiClaims.js', () => ({ WikiClaims: () => null }))
+vi.mock('../hooks/useVaultWrite.js', () => ({
+  useVaultWrite: () => async (op: Promise<unknown>, opts?: (typeof fixture.writes)[number]['opts']) => {
+    fixture.writes.push({ result: await op, ...(opts === undefined ? {} : { opts }) })
+    return true
+  },
+}))
+vi.mock('../components/wiki/WikiClaims.js', () => ({
+  WikiClaims: ({ arrival, onApply }: { arrival?: string; onApply: NonNullable<typeof fixture.applyClaims> }) => {
+    fixture.applyClaims = onApply
+    return <i className="claims-probe" data-arrival={arrival ?? ''} />
+  },
+}))
 
 const { Wiki } = await import('./Wiki.js')
 
@@ -94,6 +123,9 @@ describe('Wiki keyboard reach', () => {
     window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'zh')
     fixture.aggregation.mockReset().mockResolvedValue(AGG)
     fixture.paper.mockReset().mockResolvedValue(PAPER)
+    fixture.backlinks.mockReset().mockResolvedValue([])
+    fixture.proposals.mockReset().mockResolvedValue([])
+    fixture.signals.mockReset().mockResolvedValue([])
     fixture.open.mockReset()
     document.body.innerHTML = ''
     host = document.createElement('div')
@@ -146,6 +178,22 @@ describe('Wiki keyboard reach', () => {
     const child = host.querySelector('.wkmain .wkcard')!
     expect(child.classList.contains('research-object-card--grid')).toBe(true)
     expect([...child.querySelectorAll('.row-actions button')].map((b) => b.getAttribute('aria-label'))).toEqual(['从这一页移出'])
+  })
+
+  it('结论写入的通知写结论区给的结果词;撤回的还带撤销,按下撤销撤回最近变动里记下的那一条;别的结论写入不带', async () => {
+    fixture.apply.mockResolvedValue({ change: 'c-9' })
+    await press(host.querySelector<HTMLElement>('[data-wk="topics/sd"] .tt')!)
+    const ops: ProposalOp[] = [{ op: 'retractClaim', page: 'topics/sd', claim: 'knee', reason: '撤回' }]
+    await act(async () => { await fixture.applyClaims!('撤回「推测解码」的一条结论', ops, { note: '已撤回', undoable: true }) })
+    expect(fixture.apply).toHaveBeenLastCalledWith({ source: 'user', title: '撤回「推测解码」的一条结论', ops })
+    const { result, opts } = fixture.writes.at(-1)!
+    expect(opts!.note).toBe('已撤回')
+    const undo = opts!.action!(result as never)
+    expect(undo.label).toBe('撤销')
+    await act(async () => { undo.onAction() })
+    expect(fixture.undo).toHaveBeenCalledWith('c-9')
+    await act(async () => { await fixture.applyClaims!('给「推测解码」添加结论', ops, { note: '已添加' }) })
+    expect([fixture.writes.at(-1)!.opts?.note, fixture.writes.at(-1)!.opts?.action]).toEqual(['已添加', undefined])
   })
 
   it('比较表每个表头格下面都有一个单元格，自动列在表头用标签标出', async () => {
@@ -223,6 +271,93 @@ describe('Wiki keyboard reach', () => {
     expect(document.querySelector('#wktip')).toBeNull()
   })
 
+  it('右栏的反向链接在关联(论文页是归属)之下、目录之上;点一页在 Wiki 里打开,点项目、想法、对话去它们自己的屏', async () => {
+    fixture.backlinks.mockResolvedValue([
+      { kind: 'page', id: 'methods/tree', title: '树', kindLabel: '方法' },
+      { kind: 'project', id: 'p-47', title: '推测解码加速' },
+      { kind: 'idea', id: 'idea-1', title: '按接受率调树宽' },
+      { kind: 'chat', id: 'chat-2', title: 'EAGLE 阅读' },
+    ])
+    await press(host.querySelector<HTMLElement>('[data-wk="topics/sd"] .tt')!)
+    expect(fixture.backlinks).toHaveBeenLastCalledWith('topics/sd')
+    expect(all('.wkside > .section-heading').map((heading) => heading.textContent)).toEqual(['属性', '关联', '反向链接', '目录'])
+    const link = (name: string) => all('.wkside .rail-links .tagchip').find((el) => el.textContent === name)!
+    await press(link('推测解码加速'))
+    expect(fixture.open).toHaveBeenLastCalledWith('project', 'p-47')
+    await press(link('按接受率调树宽'))
+    expect(fixture.open).toHaveBeenLastCalledWith('ideas', 'idea-1')
+    await press(link('EAGLE 阅读'))
+    expect(fixture.open).toHaveBeenLastCalledWith('chat', 'chat-2')
+
+    fixture.paper.mockResolvedValue({ ...PAPER, body: '## 要点\n\n略。' })
+    fixture.backlinks.mockResolvedValue([{ kind: 'page', id: 'topics/sd', title: '推测解码', kindLabel: '主题' }])
+    await press(host.querySelector<HTMLElement>('.cmp td.rh .entity-link')!)
+    expect(fixture.backlinks).toHaveBeenLastCalledWith('papers/p1')
+    expect(all('.wkside > .section-heading').map((heading) => heading.textContent)).toEqual(['属性', '归属', '反向链接', '目录'])
+    fixture.aggregation.mockClear()
+    await press(link('推测解码'))
+    expect(fixture.aggregation).toHaveBeenLastCalledWith('topics/sd')
+  })
+
+  it('右栏反向链接的行和上面关联的行是同一种:种类在前,后面每个都是同一种标签按钮', async () => {
+    fixture.backlinks.mockResolvedValue([
+      { kind: 'page', id: 'methods/tree', title: '树', kindLabel: '方法' },
+      { kind: 'project', id: 'p-47', title: '推测解码加速' },
+    ])
+    await press(host.querySelector<HTMLElement>('[data-wk="topics/sd"] .tt')!)
+    const rows = all('.wkside .wkrel').map((row) => [
+      row.className, ...[...row.children].map((part) => `${part.tagName} ${part.className}`),
+    ])
+    expect(rows.map((row) => row.slice(1))).toEqual(Array(4).fill(['SPAN rl', 'BUTTON tag tag--chip tag--neutral tagchip']))
+    expect(new Set(rows.map((row) => row[0])).size).toBe(1)
+  })
+
+  it('从别的屏点链接打开一页时屏头左端有返回,按它回到来的那一屏', async () => {
+    fixture.jump = { screen: 'wiki', target: 'topics/sd', from: 'chat', seq: 9 }
+    try {
+      await act(async () => { root!.render(<MessagesProvider><Wiki /></MessagesProvider>) })
+      await act(async () => { await Promise.resolve() })
+      expect(host.querySelector('.desk-head')!.firstElementChild?.classList.contains('back')).toBe(true)
+      await act(async () => { host.querySelector<HTMLButtonElement>('.desk-head > .back')!.click() })
+      expect(fixture.returnTo).toHaveBeenCalledWith('chat')
+    } finally {
+      fixture.jump = null
+    }
+  })
+
+  it('从关联打开另一页再按返回,回到的那一页等内容出来后回到原来滚到的位置', async () => {
+    fixture.aggregation.mockImplementation(async (id: string) => ({ ...AGG, id, title: id === 'topics/sd' ? '推测解码' : '树' }))
+    const body = () => host.querySelector<HTMLElement>('.wiki-body')!
+    await press(host.querySelector<HTMLElement>('[data-wk="topics/sd"] .tt')!)
+    body().scrollTop = 160
+    await press(all('.wkside .rail-links .tagchip').find((el) => el.textContent === '树')!)
+    expect(host.querySelector('.desk-head .t')!.textContent).toBe('树')
+    body().scrollTop = 40
+    let arrive: (page: WikiAggregation) => void = () => {}
+    fixture.aggregation.mockImplementationOnce(() => new Promise((done) => { arrive = done }))
+    await press(host.querySelector<HTMLElement>('.desk-head > .back')!)
+    // A browser clamps the offset to 0 while the page waits behind its placeholder.
+    body().scrollTop = 0
+    await act(async () => { arrive({ ...AGG, title: '推测解码' }); await Promise.resolve() })
+    expect(host.querySelector('.desk-head .t')!.textContent).toBe('推测解码')
+    expect(body().scrollTop).toBe(160)
+  })
+
+  it('从首页打开一页再按返回,首页回到原来滚到的位置', async () => {
+    const body = () => host.querySelector<HTMLElement>('.wiki-body')!
+    body().scrollTop = 120
+    await press(host.querySelector<HTMLElement>('[data-wk="topics/sd"] .tt')!)
+    body().scrollTop = 0
+    await press(host.querySelector<HTMLElement>('.desk-head > .back')!)
+    expect(host.querySelector('[data-wk="topics/sd"]')).not.toBeNull()
+    expect(body().scrollTop).toBe(120)
+  })
+
+  it('没有东西指向这一页时右栏没有反向链接这一块', async () => {
+    await press(host.querySelector<HTMLElement>('[data-wk="topics/sd"] .tt')!)
+    expect(all('.wkside > .section-heading').map((heading) => heading.textContent)).toEqual(['属性', '关联', '目录'])
+  })
+
   it('opens a paper page membership from a button', async () => {
     await press(host.querySelector<HTMLElement>('[data-wk="papers/p1"] .tt')!)
     expect(fixture.paper).toHaveBeenCalledWith('papers/p1')
@@ -241,6 +376,116 @@ describe('Wiki keyboard reach', () => {
     expect(remove.querySelector('svg')!.outerHTML).toBe(renderToStaticMarkup(<IconTrash />))
     vi.unstubAllGlobals()
   })
+})
+
+describe('Wiki 首页屏头的待审阅与需要整理', () => {
+  let root: Root | null = null
+  let host: HTMLDivElement
+
+  const proposal = (id: string, status: WikiProposal['status']) => ({
+    id, status, received: Date.parse('2026-10-14T08:00:00Z'), reason: null, decided: null, notice: null, staleNow: false,
+    proposal: { title: id, producer: { kind: 'ai', id: 'skill.meridian' }, trigger: { kind: 'manual' }, ops: [] },
+    pages: [], titles: {}, claimTexts: {},
+  }) as unknown as WikiProposal
+  const signal = (kind: WikiSignal['kind'], page: string, related: string[] = []): WikiSignal => ({ kind, page, related, detail: '一句' })
+  /** A broken link from `page` to `target`, which Core names by the target's last segment. */
+  const broken = (page: string, target: string): WikiSignal => ({
+    ...signal('broken-link', page, [target]), missing: { name: target.split('/').at(-1)!, trashed: false },
+  })
+
+  const render = async () => {
+    await act(async () => {
+      root!.render(<MessagesProvider><Wiki /></MessagesProvider>)
+      await Promise.resolve()
+    })
+    for (let i = 0; i < 4; i += 1) await act(async () => { await Promise.resolve() })
+  }
+  const actions = () => [...host.querySelectorAll<HTMLButtonElement>('.desk-head > .page-actions > .btn')]
+  const press = async (el: HTMLElement) => {
+    await act(async () => { el.click() })
+    for (let i = 0; i < 4; i += 1) await act(async () => { await Promise.resolve() })
+  }
+
+  beforeEach(() => {
+    globalThis.IS_REACT_ACT_ENVIRONMENT = true
+    vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} })
+    window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'zh')
+    fixture.aggregation.mockReset().mockResolvedValue(AGG)
+    fixture.backlinks.mockReset().mockResolvedValue([])
+    fixture.proposals.mockReset().mockResolvedValue([proposal('p1', 'queued'), proposal('p2', 'queued'), proposal('p0', 'applied')])
+    fixture.signals.mockReset().mockResolvedValue([
+      signal('unfiled-paper', 'papers/p1'), broken('projects/p-47', 'topics/old'), broken('projects/p-47', 'topics/old'),
+      signal('single-child', 'topics/sd'), signal('open-conflict', 'topics/sd'),
+    ])
+    fixture.open.mockReset()
+    document.body.innerHTML = ''
+    host = document.createElement('div')
+    document.body.append(host)
+    root = createRoot(host)
+  })
+
+  afterEach(() => {
+    if (root !== null) act(() => root!.unmount())
+    root = null
+    vi.unstubAllGlobals()
+  })
+
+  it('屏头右端是「待审阅 N」和「需要整理 N」两个普通按钮,数是灰的计数;正文只有主题、方法、论文,没有单独的待审阅按钮', async () => {
+    await render()
+    expect(actions().map((button) => [button.className, button.textContent, button.querySelector('.count-badge')?.textContent]))
+      .toEqual([['btn', '待审阅2', '2'], ['btn', '需要整理3', '3']])
+    expect(host.querySelector('.desk-body .page-toolbar, .desk-body .btn')).toBeNull()
+    expect(all('.desk-body > .section-heading').map((heading) => heading.textContent)).toEqual(['主题', '论文'])
+  })
+
+  it('数为零的按钮不出现,两个都为零时屏头没有操作', async () => {
+    fixture.signals.mockResolvedValue([signal('single-child', 'topics/sd')])
+    await render()
+    expect(actions().map((button) => button.textContent)).toEqual(['待审阅2'])
+    fixture.proposals.mockResolvedValue([proposal('p0', 'applied')])
+    fixture.signals.mockResolvedValue([signal('thin-aggregation', 'topics/sd')])
+    act(() => root!.unmount())
+    root = createRoot(host)
+    await render()
+    expect(actions().map((button) => button.textContent)).toEqual(['需要整理1'])
+    fixture.signals.mockResolvedValue([])
+    act(() => root!.unmount())
+    root = createRoot(host)
+    await render()
+    expect(host.querySelector('.desk-head .page-actions')).toBeNull()
+  })
+
+  it('需要整理里冲突那一行打开它的页,并落到冲突的那条结论', async () => {
+    fixture.signals.mockResolvedValue([signal('open-conflict', 'topics/sd', ['topics/sd#knee'])])
+    await render()
+    await press(actions().find((button) => button.textContent!.startsWith('需要整理'))!)
+    await press(all('.desk-body .structured-row')[0]!)
+    expect(fixture.aggregation).toHaveBeenLastCalledWith('topics/sd')
+    expect(host.querySelector('.claims-probe')!.getAttribute('data-arrival')).toBe('knee')
+  })
+
+  it('需要整理打开整理页:屏头有返回和「需要整理 · N」,一行一个信号,点一行打开它的页或项目;待审阅打开审阅队列', async () => {
+    await render()
+    await press(actions().find((button) => button.textContent!.startsWith('需要整理'))!)
+    expect(host.querySelector('.desk-head .t')!.textContent).toBe('需要整理 · 3')
+    expect(host.querySelector('.desk-head .back')).not.toBeNull()
+    expect(host.querySelector('.desk-head .page-actions')).toBeNull()
+    const rows = all('.desk-body .structured-row')
+    expect(rows.map((row) => [row.querySelector('.tidy-open')!.tagName, row.textContent])).toEqual([
+      ['BUTTON', '结论冲突推测解码'], ['BUTTON', '链接失效推测解码加速→ old'], ['BUTTON', '未归入主题EAGLE-2'],
+    ])
+    await press(rows[1]!)
+    expect(fixture.open).toHaveBeenCalledWith('project', 'p-47')
+    await press(rows[0]!)
+    expect(fixture.aggregation).toHaveBeenLastCalledWith('topics/sd')
+    expect(host.querySelector('.desk-head .t')!.textContent).toBe('推测解码')
+    await press(host.querySelector<HTMLElement>('.desk-head .back')!)
+    await press(host.querySelector<HTMLElement>('.desk-head .back')!)
+    await press(actions().find((button) => button.textContent!.startsWith('待审阅'))!)
+    expect(host.querySelector('.desk-head .t')!.textContent).toBe('待审阅 · 2')
+  })
+
+  const all = (selector: string) => [...host.querySelectorAll<HTMLElement>(selector)]
 })
 
 describe('论文对比表的五行上限', () => {

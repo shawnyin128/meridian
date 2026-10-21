@@ -13,6 +13,7 @@ import {
   useCrumbTail, useJump, useScreenEntry, useToday, useVaultRevision,
 } from '../shell/AppShell.js'
 import { AddAction } from '../components/AddAction.js'
+import { BackButton } from '../components/BackButton.js'
 import { SortMenu } from '../components/SortMenu.js'
 import {
   MenuItem, MenuRadioGroup, MenuRadioItem, MenuSeparator,
@@ -43,6 +44,7 @@ import {
   PageBody, PageError, PageHeader, PageShell, PageTitle, SectionHeading,
 } from '../components/PageShell.js'
 import { FadeText } from '../components/FadeText.js'
+import { namedRuns } from '../components/TitleNote.js'
 import './shell.css'
 import './Projects.css'
 
@@ -263,9 +265,15 @@ function ProjectRow({ project, onOpen, menu, reorder, dropClassName }: {
  * project a row, each with a management menu at its right end; the first group's heading holds
  * "New project". Data comes from project.list; creating, renaming, changing status and deleting
  * write back through project.create / project.update / project.delete. Clicking a panel or row opens
- * that project's details.
+ * that project's details. `newRow` opens the new-project row, and `onNewRow` reports it has opened.
+ * `onReturn`, when given, is the header's back control to the screen a jump came from.
  */
-function ProjectList({ onOpen }: { onOpen: (id: string) => void }) {
+function ProjectList({ onOpen, newRow, onNewRow, onReturn }: {
+  onOpen: (id: string) => void
+  newRow: boolean
+  onNewRow: () => void
+  onReturn?: (() => void) | undefined
+}) {
   const m = useMessages()
   const [projects, setProjects] = useState<ProjectSummary[] | null>(null)
   const [creating, setCreating] = useState(false)
@@ -297,6 +305,12 @@ function ProjectList({ onOpen }: { onOpen: (id: string) => void }) {
     void projectApi.list().then(setProjects).catch(reportError)
   }, [reportError, revision])
 
+  useEffect(() => {
+    if (!newRow) return
+    setCreating(true)
+    onNewRow()
+  }, [newRow, onNewRow])
+
   /**
    * Finishes a write: closes the new-project row, then lets `write` finish. Creating from the row does
    * not come here: whether the row stays depends on that write's result.
@@ -311,9 +325,9 @@ function ProjectList({ onOpen }: { onOpen: (id: string) => void }) {
    * rejected, the row and the typed name stay.
    */
   const createProject = (name: string): boolean | Promise<boolean> =>
-    (name === '' ? false : write(projectApi.create(name).then(() => feed.append({
+    (name === '' ? false : write(projectApi.create(name).then((id) => feed.append({
       source: 'me',
-      body: { kind: 'runs', runs: [{ kind: 'text', text: m.research.list.createdFeedNote(name) }] },
+      body: { kind: 'runs', runs: namedRuns(m.research.list.createdFeedNote, name, { kind: 'project', id }) },
     })), { note: m.research.list.createdNote }))
 
   if (!projects) {
@@ -370,6 +384,7 @@ function ProjectList({ onOpen }: { onOpen: (id: string) => void }) {
           </>
         )}
       >
+        {onReturn === undefined ? null : <BackButton onClick={onReturn} />}
         <PageTitle>{m.research.list.title(projects.filter((p) => p.status === ACTIVE_PROJECT).length)}</PageTitle>
       </PageHeader>
       <PageError error={error} />
@@ -422,10 +437,13 @@ function ProjectList({ onOpen }: { onOpen: (id: string) => void }) {
  * the list, there is no origin and Back returns to the project list. Both tab groups of the details
  * are kept here, so leaving the project and coming back lands on the last tab, like the demo's
  * module-level projPlanTab / projTab; both are kept per project, and a project not opened yet starts
- * on its tasks and its timeline.
+ * on its tasks and its timeline. A jump with the `newProject` anchor lands on the list with its
+ * new-project row open.
  */
 export function Projects() {
   const [openId, setOpenId] = useState<string | null>(null)
+  const [newRow, setNewRow] = useState(false)
+  const newRowShown = useCallback(() => setNewRow(false), [])
   const [arrivalTask, setArrivalTask] = useState<string | null>(null)
   const [arrivalMilestone, setArrivalMilestone] = useState<string | null>(null)
   const [arrivalConclusion, setArrivalConclusion] = useState<string | null>(null)
@@ -456,16 +474,22 @@ export function Projects() {
   useEffect(() => {
     if (jump === null || jump.seq === consumed.current) return
     consumed.current = jump.seq
+    if (jump.anchor?.newProject === true) {
+      close()
+      setNewRow(true)
+      if (jump.from !== jump.screen) setOrigin(jump.from)
+      return
+    }
     setOpenId(jump.target)
     setOrigin(jump.from)
     setArrivalTask(jump.anchor?.task ?? null)
     setArrivalMilestone(jump.anchor?.milestone ?? null)
     setArrivalConclusion(jump.anchor?.conclusion ?? null)
     if (jump.anchor?.conclusion !== undefined) setRecordTabs((tabs) => ({ ...tabs, [jump.target]: 'concl' }))
-  }, [jump])
+  }, [jump, close])
 
   return openId === null
-    ? <ProjectList onOpen={setOpenId} />
+    ? <ProjectList onOpen={setOpenId} newRow={newRow} onNewRow={newRowShown} onReturn={origin === null ? undefined : back} />
     : (
       <ProjectDetail
         projectId={openId} onBack={close} onReturn={back}

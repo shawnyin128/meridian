@@ -9,7 +9,8 @@ import { join, resolve } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { z } from 'zod'
 import {
-  PaperRowSchema, SearchHitSchema, WikiAggregationCardSchema, WikiHomeSchema, WikiPaperSchema, type Evidence,
+  PaperRowSchema, SearchHitSchema, WikiAggregationCardSchema, WikiBacklinkSchema, WikiHomeSchema, WikiPaperSchema,
+  type Evidence,
 } from '../shared/contract.js'
 import { stableJson } from './changelog.js'
 import { createFixtureStore } from './fixture-store.js'
@@ -19,6 +20,7 @@ import { createDesktopVaultStore, createVaultStore, isGitManaged } from './vault
 import { generatedChildren, generatedTable, pageVersion, readWikiData } from './wiki/index.js'
 import { prepareSelectedLibrary } from './workspace-layout.js'
 import { minimalPdf } from './net/minimal-pdf.js'
+import { recordChange } from './write-receipts.js'
 
 /** Test vault for the real implementation: aggregation layout, two paper pages, two topics, one method, and four sources. */
 const VAULT = resolve(import.meta.dirname, 'fixtures/vault')
@@ -79,6 +81,7 @@ const KNOWLEDGE: Record<string, { call: (store: VaultStore) => unknown; schema: 
     schema: WikiPaperSchema,
   },
   'wiki.cards': { call: (s) => s.wikiCards(), schema: z.array(WikiAggregationCardSchema) },
+  'wiki.backlinks': { call: (s) => s.wikiBacklinks(s.wikiCards()[0]!.id), schema: z.array(WikiBacklinkSchema) },
   'search.query': { call: (s) => s.search('a'), schema: z.array(SearchHitSchema) },
 }
 
@@ -1243,7 +1246,7 @@ describe('vault store on the aggregation layout', () => {
         id: 'wide-b8', text: '宽树在 B≥8 时净赚', evidence: [{ kind: 'experiment', project: id, node: 't.A' }],
       },
     }] })
-    expect(write).toThrow(/节点 t.A 的结论还没验证/)
+    expect(write).toThrow(/节点 t.A 的实验结论还没验证/)
     expect(() => store.verifyConclusion(id, 't.B', shown[0]!.fingerprint!)).toThrow(/t.B/)
     expect(counts()).toEqual({ verified: 0, pending: 1, conflicting: 0 })
 
@@ -1367,13 +1370,13 @@ describe('vault store on the aggregation layout', () => {
     const before = readFileSync(page, 'utf8')
     const state = () => store.getProject(id).projectConclusions![0]!.state
     store.verifyConclusion(id, 't.A', store.getProject(id).projectConclusions![0]!.fingerprint!)
-    expect(store.listChanges()[0]).toMatchObject({ title: expect.stringContaining('验证结论'), undoable: true })
+    expect(store.listChanges()[0]).toMatchObject({ title: expect.stringContaining('验证实验结论'), undoable: true })
     store.unverifyConclusion(id, 't.A')
     expect(state()).toBe('pending')
-    expect(store.listChanges()[0]).toMatchObject({ title: expect.stringContaining('取消验证结论'), undoable: true })
+    expect(store.listChanges()[0]).toMatchObject({ title: expect.stringContaining('取消验证实验结论'), undoable: true })
     store.undoChange(store.listChanges()[0]!.id)
     expect(state()).toBe('verified')
-    store.undoChange(store.listChanges().find((c) => c.title.includes('验证结论') && !c.title.includes('取消'))!.id)
+    store.undoChange(store.listChanges().find((c) => c.title.includes('验证实验结论') && !c.title.includes('取消'))!.id)
     expect(state()).toBe('pending')
     expect(readFileSync(page, 'utf8')).toBe(before)
   })
@@ -1584,7 +1587,9 @@ describe('vault store on the aggregation layout', () => {
     expect(labTexts()).toEqual([])
     clock = new Date(clock.getTime() + 31_000)
     expect(labTexts()).toEqual(['「动态实验流」完成 延迟探针：p95 降到 40ms'])
-    expect(timed.listFeed()[0]!.source).toBe('lab')
+    expect(timed.listFeed()[0]).toMatchObject({
+      source: 'lab', body: { runs: [{ kind: 'strong', text: '「动态实验流」', target: { kind: 'project', id } }, { kind: 'text' }] },
+    })
 
     clock = new Date(clock.getTime() + 61_000)
     expect(labTexts()).toHaveLength(1)
@@ -1652,6 +1657,14 @@ describe('vault store on the aggregation layout', () => {
     expect(() => reopened.updateIdea('no-such', { title: 'x' })).toThrow(/想法不存在/)
   })
 
+  it('自己写下的想法不从对话来:来源是手动添加,没有对话也没有 agent,不关联项目,建出来就在列表里,重开还在', () => {
+    const created = store.createIdea(undefined, '我自己的想法', '先记下来,之后再验证')
+    expect(created).toMatchObject({ title: '我自己的想法', source: { chatTitle: '手动添加' }, archived: false })
+    expect(created.source).toEqual({ chatTitle: '手动添加' })
+    expect(created.project).toBeUndefined()
+    expect(createVaultStore(vault).listIdeas().find((idea) => idea.id === created.id)).toEqual(created)
+  })
+
   it('coding agent 在项目工作区里记下的想法进到想法列表,只收一次,删了不再回来', () => {
     store.createProject('agent 想法项目')
     const id = store.listProjects().find((project) => project.name === 'agent 想法项目')!.id
@@ -1692,6 +1705,16 @@ describe('vault store on the aggregation layout', () => {
     store.bindProjectWorkspace(id, { kind: 'local', root: repo })
     writeFileSync(join(repo, '.meridian/ideas/ideas.json'), '{"schema_version":"meridian.workspace-agent-ideas.v1","ideas":[{"id":"x"}]}')
     expect(store.listIdeas().filter((idea) => idea.source.agent === true)).toEqual([])
+  })
+
+  it('排过手动顺序之后新建的想法排在最前，重开还在；没排过时不写顺序', () => {
+    const session = store.createChat('想法排序会话', true)
+    const first = store.createIdea(session.id, '第一条', '排序用')
+    const second = store.createIdea(session.id, '第二条', '排序用')
+    expect(JSON.parse(readFileSync(join(vault, '.meridian', 'state.json'), 'utf8')).ideaOrder).toBeUndefined()
+    store.reorderIdeas([first.id, second.id])
+    const third = store.createIdea(undefined, '第三条', '排序之后新建')
+    expect(createVaultStore(vault).listIdeas().map((idea) => idea.id)).toEqual([third.id, first.id, second.id])
   })
 
   it('手动设的想法顺序存进 state.json,重开还在;坏 id 被丢弃', () => {
@@ -1790,6 +1813,44 @@ describe('vault store on the aggregation layout', () => {
     expect(() => store.createRelation(id, {
       group: 'Wiki', text: 'x', page: 'topics/nope',
     })).toThrow(/topics\/nope/)
+  })
+
+  it('反向链接只读：正文链到这一页的页、关联它的项目、来自它的想法、读它或 @ 它的对话，读的时候磁盘一个字节不变', () => {
+    store.createProject('引用 QuaRot')
+    const id = store.listProjects().find((project) => project.name === '引用 QuaRot')!.id
+    store.addPaper(id, '2404.00456')
+    store.createRelation(id, { group: 'Wiki', text: 'PTQ', page: 'topics/ptq' })
+    const reading = store.chatForPaper('2404.00456')
+    store.appendChatMessages(reading.id, [{ role: 'you', runs: [{ kind: 'text', text: '旋转之后还要校准吗' }], actions: [] }])
+    const idea = store.createIdea(reading.id, '旋转与 KV 量化叠加', '先旋转再按 token 量化')
+    const asked = store.createChat('问 PTQ', true)
+    store.appendChatMessages(asked.id, [{ role: 'you', runs: [{ kind: 'text', text: '@PTQ 的边界在哪' }], actions: [] }])
+    const files = (): Record<string, string> => Object.fromEntries(
+      (readdirSync(vault, { recursive: true }) as string[]).sort()
+        .filter((name) => statSync(join(vault, name)).isFile())
+        .map((name) => [name, `${statSync(join(vault, name)).mtimeMs} ${readFileSync(join(vault, name), 'base64')}`]),
+    )
+    const before = files()
+
+    const paper = store.wikiBacklinks('papers/2404.00456')
+    const topic = store.wikiBacklinks('topics/ptq')
+
+    expect(files()).toEqual(before)
+    const fixture = createFixtureStore(() => '2026-09-10')
+    expect(paper.filter((link) => link.kind === 'page'))
+      .toEqual(fixture.wikiBacklinks('papers/2404.00456').filter((link) => link.kind === 'page'))
+    // methods/rotation and topics/kv-cache-quantization name the paper only in their generated tables, which are not body text.
+    expect(paper.filter((link) => link.kind === 'page').map((link) => link.id)).toEqual(['topics/ptq-weight-activation'])
+    expect(paper.filter((link) => link.kind !== 'page')).toEqual([
+      { kind: 'project', id, title: '引用 QuaRot' },
+      { kind: 'idea', id: idea.id, title: '旋转与 KV 量化叠加' },
+      { kind: 'chat', id: reading.id, title: reading.title },
+    ])
+    expect(topic.filter((link) => link.kind !== 'page')).toEqual([
+      { kind: 'project', id, title: '引用 QuaRot' },
+      { kind: 'chat', id: asked.id, title: '问 PTQ' },
+    ])
+    expect(() => store.wikiBacklinks('topics/nope')).toThrow(expect.objectContaining({ reason: 'not-found' }))
   })
 
   it('附件记下本机绝对路径,相对路径不收', () => {
@@ -2026,6 +2087,78 @@ describe('vault store on the aggregation layout', () => {
     expect(() => store.updatePaper('2404.00456', { topics: ['x'] })).toThrow(/归属/)
   })
 
+  it('撤回一条结论记一条能撤销的变动,撤销它把那条结论逐字节放回页上', () => {
+    const file = join(vault, 'wiki', 'topics', 'kv-cache-quantization.md')
+    const before = readFileSync(file, 'utf8')
+    const claims = () => store.wikiAggregation('topics/kv-cache-quantization').claims.map((claim) => claim.id)
+    const { change } = recordChange(store, () => store.applyProposal({
+      source: 'user', title: '撤回「KV cache quantization」的一条结论',
+      ops: [{ op: 'retractClaim', page: 'topics/kv-cache-quantization', claim: 'prefix-schedule', reason: '撤回' }],
+    }))
+    expect(claims()).toEqual(['per-channel-keys'])
+    expect(store.listChanges()[0]).toMatchObject({ id: change, source: '我', undoable: true })
+    store.undoChange(change)
+    expect(readFileSync(file, 'utf8')).toBe(before)
+    expect(claims()).toEqual(['per-channel-keys', 'prefix-schedule'])
+  })
+
+  it('加减论文的主题写的是 Wiki 归属:已有的主题归进那一页,没有的照入库的做法新建一页;每笔记一条变动,倒着撤销逐字节还原', () => {
+    const paper = join(vault, 'wiki', 'papers', '2401.18079.md')
+    const weightOnly = join(vault, 'wiki', 'topics', 'ptq-weight-only.md')
+    const kv = join(vault, 'wiki', 'topics', 'kv-cache-quantization.md')
+    const outliers = join(vault, 'wiki', 'topics', 'outlier-channels.md')
+    const before = [paper, weightOnly, kv].map((file) => readFileSync(file, 'utf8'))
+    const members = (topic: string) => store.wikiAggregation(topic).rows.map((row) => row.paper.id)
+
+    const added = recordChange(store, () => store.setPaperTopic('2401.18079', 'Weight-only PTQ', true)).change
+    expect(readFileSync(paper, 'utf8')).toContain('  - in: "topics/ptq-weight-only"')
+    expect(members('topics/ptq-weight-only')).toContain('papers/2401.18079')
+    const created = recordChange(store, () => store.setPaperTopic('2401.18079', 'Outlier channels', true)).change
+    expect(readFileSync(outliers, 'utf8')).toMatch(/^kind: "?topic"?$/m)
+    expect(store.wikiAggregation('topics/outlier-channels').title).toBe('Outlier channels')
+    expect(members('topics/outlier-channels')).toEqual(['papers/2401.18079'])
+    const removed = recordChange(store, () => store.setPaperTopic('2401.18079', 'KV cache quantization', false)).change
+    expect(readFileSync(paper, 'utf8')).not.toContain('topics/kv-cache-quantization')
+    expect(members('topics/kv-cache-quantization')).not.toContain('papers/2401.18079')
+    expect(store.getPaper('2401.18079').topics).toEqual(['Weight-only PTQ', 'Outlier channels'])
+    expect(createVaultStore(vault).getPaper('2401.18079').topics).toEqual(['Weight-only PTQ', 'Outlier channels'])
+    expect(store.listChanges().slice(0, 3)).toMatchObject([
+      { id: removed, source: '我', undoable: true, diff: ['- papers/2401.18079 ∈ topics/kv-cache-quantization'] },
+      {
+        id: created, source: '我', undoable: true,
+        diff: ['+ topics/outlier-channels 新建(topic)', '+ papers/2401.18079 ∈ topics/outlier-channels(0 格)'],
+      },
+      { id: added, source: '我', undoable: true, diff: ['+ papers/2401.18079 ∈ topics/ptq-weight-only(0 格)'] },
+    ])
+
+    for (const change of [removed, created, added]) store.undoChange(change)
+    expect([paper, weightOnly, kv].map((file) => readFileSync(file, 'utf8'))).toEqual(before)
+    expect(existsSync(outliers)).toBe(false)
+    expect(store.getPaper('2401.18079').topics).toEqual(['KV cache quantization'])
+    expect(members('topics/kv-cache-quantization')).toContain('papers/2401.18079')
+  })
+
+  it('论文已在的主题再加、不在的主题去掉都被拒,库里一个字节不动,也不记一条', () => {
+    const paper = join(vault, 'wiki', 'papers', '2401.18079.md')
+    const before = readFileSync(paper, 'utf8')
+    const changes = store.listChanges().length
+    expect(() => store.setPaperTopic('2401.18079', 'kv cache  Quantization', true)).toThrow(/KVQuant/)
+    expect(() => store.setPaperTopic('2401.18079', 'QAT', false)).toThrow(/KVQuant/)
+    expect(readFileSync(paper, 'utf8')).toBe(before)
+    expect(store.listChanges()).toHaveLength(changes)
+  })
+
+  it('加了主题之后,论文行上的随笔与笔记数照旧', () => {
+    store.mutatePaperReading('2401.18079', { kind: 'remark.set', text: '整篇的随想' })
+    store.mutatePaperReading('2401.18079', { kind: 'note.add', page: 1, text: '一条笔记' })
+    const row = store.getPaper('2401.18079')
+    expect(row).toMatchObject({ remark: '整篇的随想', noteCount: 1 })
+    store.setPaperTopic('2401.18079', 'Weight-only PTQ', true)
+    expect(store.getPaper('2401.18079')).toMatchObject({ remark: '整篇的随想', noteCount: 1 })
+    expect(store.listPapers({ page: 1, size: 20 }).rows.find((r) => r.id === '2401.18079'))
+      .toMatchObject({ remark: '整篇的随想', noteCount: 1 })
+  })
+
   it('新布局的页也写得下自定义格,行上读得到,重开还在', () => {
     store.setPaperColumns({ ...emptyColumns(), custom: [NOTE_COLUMN] })
     store.updatePaper('2404.00456', { custom: { note: '读到一半' } })
@@ -2189,6 +2322,27 @@ describe('vault store on the aggregation layout', () => {
       reopened.appendFeed({ source: 'me', body: { kind: 'runs', runs: [{ kind: 'text', text: '新记的一条' }] } })
       expect(held('feed')).toHaveLength(3)
       expect(held('feed').find((row) => row['id'] === 'entry-901')).toEqual(broken)
+    })
+
+    it('动态里后来的版本写下的点名分段:列出时带着它点名的实体;这个版本再记一条时那些分段原样存回,新记的不点名', () => {
+      const naming = {
+        id: 'entry-902', source: 'lab', day: '今天', time: '09:02', createdAt: '2026-09-10T09:02:00.000Z',
+        body: { kind: 'runs', runs: [
+          { kind: 'strong', text: '「draft 效率」', target: { kind: 'project', id: 'draft' } }, { kind: 'text', text: '跑完宽树' },
+        ] },
+      }
+      const plain = {
+        id: 'entry-903', source: 'me', day: '今天', time: '09:03', createdAt: '2026-09-10T09:03:00.000Z',
+        body: { kind: 'runs', runs: [{ kind: 'strong', text: '《GPTQ》' }, { kind: 'text', text: '已入库' }] },
+      }
+      put('feed', [naming, plain])
+      const reopened = reopen()
+      expect(reopened.listFeed().filter((entry) => entry.id.startsWith('entry-90'))).toEqual([plain, naming])
+
+      reopened.appendFeed({ source: 'me', body: { kind: 'runs', runs: [{ kind: 'text', text: '新记的一条' }] } })
+      const [first, second, added] = held('feed')
+      expect([first, second]).toEqual([naming, plain])
+      expect(added!['body']).toEqual({ kind: 'runs', runs: [{ kind: 'text', text: '新记的一条' }] })
     })
 
     it('读不了的关注名下的收件不当成孤儿删掉', () => {

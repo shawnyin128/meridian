@@ -1,9 +1,12 @@
 import type { Page } from '@playwright/test'
 import type { PaperCell, PaperColumns } from '../apps/desktop/src/shared/contract.js'
 import {
-  DEFAULT_PAPER_GROUPS, READ_STATES, READING_PAPER, UNREAD_PAPER,
+  DEFAULT_PAPER_GROUPS, LATER_PAPER, READ_STATES, READING_PAPER, UNREAD_PAPER,
 } from '../apps/desktop/src/shared/vocabulary.js'
 import { expect, gotoPapers, parkPointer, settle, test, uniqueHeights, type MeridianWindow } from './app.js'
+
+/** The reading statuses as the status menu names them, the read-later state by its shown name. */
+const READ_STATE_NAMES = READ_STATES.map((state) => (state === LATER_PAPER ? '待读' : state))
 
 /** Page state of all 291 paper pages in the fixture vault, a field separate from reading status. */
 const PAGE_STATE = 'draft'
@@ -295,7 +298,7 @@ test('表内给论文加一个主题后,重新取数确认这一行的主题真�
   await expect(win.locator('.tagin')).toHaveCount(0)
 
   // The table refetches by itself when the revision bumps; refetching through Core here proves
-  // papers.update wrote the change, not just an optimistic local state.
+  // papers.setTopic wrote the change, not just an optimistic local state.
   const refetchedTopics = await win.evaluate(async (t) => {
     const result = await (window as unknown as MeridianWindow).meridian
       .call('papers.list', { page: 1, size: 1, sort: 'title', direction: 'asc', filter: t }) as {
@@ -320,7 +323,7 @@ test('阅读状态列点它选一档就写回 core,页面状态不受影响', as
 
   await chip.click()
   // Clicking the chip only opens the status menu; it is not a row click that opens the details panel.
-  await expect(win.locator('.ctxmenu .mi')).toHaveText([...READ_STATES])
+  await expect(win.locator('.ctxmenu .mi')).toHaveText(READ_STATE_NAMES)
   await expect(win.locator('.pdetail')).toHaveCount(0)
 
   await win.locator('.ctxmenu .mi', { hasText: READING_PAPER }).click()
@@ -452,7 +455,7 @@ test('标签添加框:提交在路上时点外,写落地前候选层与占位都
   await call(win, 'papers.delete', { id: first.id })
 
   // In one task, click the suggestion to submit, then pointerdown/mousedown/click outside the box.
-  // papers.update crosses IPC and cannot settle within the task, so these land while it is in flight.
+  // papers.setTopic crosses IPC and cannot settle within the task, so these land while it is in flight.
   await win.evaluate(() => {
     document.querySelector<HTMLElement>('.pickhits .rrow')!
       .dispatchEvent(new MouseEvent('click', { bubbles: true }))
@@ -488,7 +491,7 @@ test('标签添加框:回车提交在路上时点外,写落地前占位、打的
   await call(win, 'papers.delete', { id: first.id })
 
   // In one task, press Enter to submit, then pointerdown/mousedown/click outside the box.
-  // papers.update crosses IPC and cannot settle within the task, so these land while it is in flight.
+  // papers.setTopic crosses IPC and cannot settle within the task, so these land while it is in flight.
   await win.evaluate(() => {
     document.querySelector<HTMLElement>('.tagin')!
       .dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
@@ -1387,7 +1390,7 @@ test('阅读状态浮层是真菜单:四档是 menuitemradio,当前那一档 ari
   await expect(chip).toHaveAttribute('aria-haspopup', 'menu')
   await chip.click()
   const items = win.locator('[role="menu"] [role="menuitemradio"]')
-  await expect(items).toHaveText([...READ_STATES])
+  await expect(items).toHaveText(READ_STATE_NAMES)
   await expect(items.nth(READ_STATES.indexOf(UNREAD_PAPER))).toHaveAttribute('aria-checked', 'true')
   await expect(items.nth(READ_STATES.indexOf(READING_PAPER))).toHaveAttribute('aria-checked', 'false')
 

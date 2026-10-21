@@ -15,17 +15,29 @@ export const FINISHED_PROJECT = '已完成'
 /** Project states in list-group and menu-transition order. */
 export const PROJECT_STATUSES = [ACTIVE_PROJECT, SHELVED_PROJECT, FINISHED_PROJECT] as const
 
+/** The source an item the user added by hand records: a project conclusion, or an idea that came from no chat. */
+export const MANUAL_SOURCE = '手动添加'
+
+/** The `topic` Core stores on a new project, which the App shows as no area. */
+export const DEFAULT_PROJECT_TOPIC = '未分主题'
+
+/** How Core's texts name DEFAULT_PROJECT_TOPIC. */
+export const NO_PROJECT_AREA = '未分领域'
+
 /** Default state for a paper with no recorded reading relationship. */
 export const UNREAD_PAPER = '未读'
 
 /** State for papers being read now, shown separately in the paper table. */
 export const READING_PAPER = '在读'
 
+/** State for papers the reader has finished. */
+export const READ_PAPER = '已读'
+
 /** State for papers the reader has set aside to read later. */
 export const LATER_PAPER = '稍后阅读'
 
 /** Reading states in paper-table selector order. */
-export const READ_STATES = [UNREAD_PAPER, READING_PAPER, '已读', LATER_PAPER] as const
+export const READ_STATES = [UNREAD_PAPER, READING_PAPER, READ_PAPER, LATER_PAPER] as const
 
 /**
  * Trash retention in days. Expired records and their content are removed; the
@@ -68,7 +80,10 @@ export const DAY_SECTIONS = { today: '今天', yesterday: '昨天', week: '本�
 export type DaySection = keyof typeof DAY_SECTIONS
 
 /** UI labels for the two watch types. */
-export const WATCH_KINDS = { topic: '主题', author: '作者' } as const
+export const WATCH_KINDS = { topic: '关键词', author: '作者' } as const
+
+/** The word versions before 0.0.16.0 wrote for a keyword watch at the start of an inbox or read-later source. */
+export const OLD_KEYWORD_WATCH = '主题'
 
 /** Prefix for research-log entries saved from chat so their origin remains visible on the project page. */
 export const CHAT_EVENT_PREFIX = '[对话] '

@@ -34,7 +34,7 @@ describe('project conclusions', () => {
   let host: HTMLDivElement
   const handlers = {
     onClose: vi.fn(), onVerify: vi.fn(), onUnverify: vi.fn(), onOpenNode: vi.fn(), onOpenTask: vi.fn(), onOpenPage: vi.fn(),
-    onWrite: vi.fn<(title: string, ops: ProposalOp[]) => Promise<boolean>>(() => Promise.resolve(true)),
+    onWrite: vi.fn<(page: string, title: string, ops: ProposalOp[]) => Promise<boolean>>(() => Promise.resolve(true)),
   }
 
   beforeEach(() => {
@@ -56,10 +56,19 @@ describe('project conclusions', () => {
 
   const panel = async (conclusion: ProjectConclusion) => {
     await act(async () => {
-      root!.render(<MessagesProvider><ProjectConclusionPanel projectId="draft" conclusion={conclusion} node={NODE} {...handlers} /></MessagesProvider>)
+      root!.render(
+        <MessagesProvider>
+          <ProjectConclusionPanel projectId="draft" projectName="draft 效率" conclusion={conclusion} node={NODE} {...handlers} />
+        </MessagesProvider>,
+      )
     })
   }
   const button = (text: string) => [...document.querySelectorAll<HTMLButtonElement>('button')].find((b) => b.textContent === text)!
+  const draft = () => host.querySelector<HTMLElement>('.draft-form')
+  const press = (target: Element, key: string) => act(() => {
+    target.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }))
+  })
+  const VERIFIED = { ...PENDING, state: 'verified' as const, verifiedOn: '2026-09-21' }
 
   it('一行与动态同一套列:状态、日期、节点、结论连同 Wiki 状态、末尾是 agent 标签;点一下打开', () => {
     const onOpen = vi.fn()
@@ -121,16 +130,29 @@ describe('project conclusions', () => {
     expect(looks()).toEqual(['取消验证 btn sm', '写入 Wiki btn sm'])
   })
 
-  it('已验证:选一页写入 Wiki,提交一条以这个节点为证据的结论', async () => {
-    await panel({ ...PENDING, state: 'verified', verifiedOn: '2026-09-21' })
+  it('已验证:能取消验证;写入 Wiki 在结论正下方就地打开草稿,不弹对话框,标明落到哪一页的结论区,摆出要写的结论和它的实验证据', async () => {
+    await panel(VERIFIED)
     expect([...document.querySelectorAll('button')].some((b) => b.textContent === '验证')).toBe(false)
     act(() => button('取消验证').click())
     expect(handlers.onUnverify).toHaveBeenCalledWith('t.wide')
     await act(async () => { button('写入 Wiki').click(); await flush() })
-    expect(document.querySelector('.wiki-form select')).toBeNull()
+    expect(document.querySelector('[role="dialog"]')).toBeNull()
+    expect(host.querySelector('.conclusion-detail-meta')!.nextElementSibling!.contains(draft())).toBe(true)
+    expect(draft()!.querySelector('.draft-form-destination')!.textContent).toBe('→选择要写入的聚合页· 结论')
+    expect(document.activeElement).toBe(draft()!.querySelector('.choice-picker'))
+    expect(draft()!.querySelector('input')!.value).toBe('Wide trees win at B8')
+    expect(draft()!.querySelector('.conclusion-draft-evidence')!.textContent).toBe('实验draft 效率宽树')
+  })
+
+  it('已验证:选一页后在结论上回车,经 onWrite 写入一条以这个节点为证据的结论;没选页时回车不写,页标成无效;Esc 收起', async () => {
+    await panel(VERIFIED)
+    await act(async () => { button('写入 Wiki').click(); await flush() })
+    const text = draft()!.querySelector('input')!
+    await act(async () => { press(text, 'Enter'); await flush() })
+    expect(handlers.onWrite).not.toHaveBeenCalled()
+    expect(draft()!.querySelector('.choice-picker')!.getAttribute('aria-invalid')).toBe('true')
     await act(async () => {
-      document.querySelector('.wiki-form .choice-picker')!
-        .dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, button: 0 }))
+      draft()!.querySelector('.choice-picker')!.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, button: 0 }))
       await flush()
     })
     const page = [...document.querySelectorAll<HTMLElement>('.choice-picker-menu [role="menuitemradio"]')]
@@ -140,14 +162,33 @@ describe('project conclusions', () => {
       page.dispatchEvent(new MouseEvent('click', { bubbles: true }))
       await flush()
     })
-    expect(document.querySelector<HTMLTextAreaElement>('.wiki-form textarea')!.value).toBe('Wide trees win at B8')
-    await act(async () => { button('保存').click(); await flush() })
-    expect(handlers.onWrite).toHaveBeenCalledWith('项目结论写入「Speculative decoding」', [{
+    expect(draft()!.querySelector('.draft-form-destination')!.textContent).toBe('→Speculative decoding· 结论')
+    await act(async () => { press(text, 'Enter'); await flush() })
+    expect(handlers.onWrite).toHaveBeenCalledWith('topics/sd', '实验结论写成「Speculative decoding」的结论', [{
       op: 'addClaim', page: 'topics/sd', claim: {
         id: 'wide-trees-win-at-b8', text: 'Wide trees win at B8',
         evidence: [{ kind: 'experiment', project: 'draft', node: 't.wide' }],
       },
     }])
+    expect(draft()).toBeNull()
+
+    await act(async () => { button('写入 Wiki').click(); await flush() })
+    press(draft()!.querySelector('input')!, 'Escape')
+    expect(draft()).toBeNull()
+    expect(handlers.onWrite).toHaveBeenCalledOnce()
+  })
+
+  it('旧版结论写入 Wiki:证据是那条结论本身', async () => {
+    await panel({ id: 'c1', source: '手动添加', text: '旧的一条', state: 'verified', tasks: [], experiments: [], wiki: [] })
+    await act(async () => { button('写入 Wiki').click(); await flush() })
+    expect(draft()!.querySelector('.conclusion-draft-evidence')!.textContent).toBe('实验draft 效率旧的一条')
+  })
+
+  it('换一条结论时,上一条的草稿不跟过去', async () => {
+    await panel(VERIFIED)
+    await act(async () => { button('写入 Wiki').click(); await flush() })
+    await panel({ ...VERIFIED, id: 't.other', node: 't.other', text: '另一条' })
+    expect(draft()).toBeNull()
   })
 
   it('旧版结论:显示来源,不显示证据链和验证', async () => {

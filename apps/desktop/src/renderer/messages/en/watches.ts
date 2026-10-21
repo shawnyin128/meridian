@@ -24,7 +24,7 @@ export const watches = {
   choose: 'Choose',
   saveByName: 'Watch this name without verification',
   saveUnconfirmed: 'Save as unconfirmed author',
-  suggestHeading: 'Find topics and authors',
+  suggestHeading: 'Find keywords and authors',
   sourceLabel: 'Suggestion source',
   sourceFocus: 'Describe a focus',
   sourceProject: 'Use a project',
@@ -35,10 +35,10 @@ export const watches = {
   suggesting: 'Finding…',
   suggestionFailed: 'Watch suggestions failed',
   allAdded: 'All suggestions added',
-  noneSuggested: 'No new topics or authors found',
+  noneSuggested: 'No new keywords or authors found',
   suggestionBasis: (n: number) => `Based on ${n} relevant ${pluralEn(n, { one: 'paper', other: 'papers' })}`,
   suggestionStale: 'Offline · last suggestions',
-  topicSuggestions: 'Topics worth watching',
+  topicSuggestions: 'Keywords worth watching',
   authorSuggestions: 'Authors worth following',
   relatedPapers: (n: number) => n === 0
     ? 'From your project'
@@ -47,7 +47,7 @@ export const watches = {
     `${relevant} relevant ${pluralEn(relevant, { one: 'paper', other: 'papers' })} · h-index ${hIndex} · ${citations.toLocaleString('en-US')} citations`
   ),
   addAction: 'Add',
-  addAllTopics: 'Add all topics',
+  addAllTopics: 'Add all keywords',
   notices: {
     added: 'Watch added',
     updated: 'Watch updated',

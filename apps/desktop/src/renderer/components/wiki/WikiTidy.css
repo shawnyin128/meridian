@@ -1,0 +1,8 @@
+/* The kind column is as wide as the longest kind tag; every row lays its tag and its text on the list's two columns. */
+.tidy-list{display:grid;grid-template-columns:max-content minmax(0,1fr);column-gap:var(--project-signal-gap)}
+.tidy-list>.tidy-row{grid-column:1/-1;display:grid;grid-template-columns:subgrid}
+.tidy-row .project-signal-kind{width:auto}
+.tidy-what{display:flex;align-items:baseline;gap:var(--sp-8);min-width:0}
+.tidy-open{display:flex;min-width:0;padding:0;border:0;background:none;color:inherit;font:inherit;text-align:left;cursor:inherit}
+.tidy-wrong{flex:0 1 auto;min-width:0;max-width:60%;color:var(--sec);font-size:var(--fs-sm)}
+.tidy-trashed{margin-left:var(--sp-6)}

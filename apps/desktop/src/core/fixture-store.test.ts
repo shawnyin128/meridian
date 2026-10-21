@@ -929,12 +929,19 @@ describe('fixture store', () => {
       .toHaveLength(before + 1)
   })
 
-  it('改论文主题后列表里读到的是新主题', () => {
-    const row = store.listPapers({ page: 1, size: 1 }).rows[0]!
-    store.updatePaper(row.id, { topics: [...row.topics, 'kv cache'] })
-    expect(store.getPaper(row.id).topics).toEqual([...row.topics, 'kv cache'])
-    expect(store.listPapers({ page: 1, size: 1 }).rows[0]!.topics)
-      .toEqual([...row.topics, 'kv cache'])
+  it('加了主题后列表里读到的是新主题,它是 Wiki 归属', () => {
+    const title = store.getPaper('2401.18079').title
+    store.setPaperTopic('2401.18079', 'Weight-only PTQ', true)
+    expect(store.getPaper('2401.18079').topics).toEqual(['KV cache quantization', 'Weight-only PTQ'])
+    expect(store.listPapers({ page: 1, size: 1, filter: title }).rows[0]!.topics)
+      .toEqual(['KV cache quantization', 'Weight-only PTQ'])
+    expect(store.wikiPaper('papers/2401.18079').memberships.map((m) => m.aggregation.id)).toContain('topics/ptq-weight-only')
+  })
+
+  it('主题不能直接改:直接改主题的补丁被拒,论文一字不动', () => {
+    const before = store.getPaper('2401.18079')
+    expect(() => store.updatePaper('2401.18079', { topics: [...before.topics, 'kv cache'] })).toThrow(/归属/)
+    expect(store.getPaper('2401.18079')).toEqual(before)
   })
 
   it('库里没记下阅读状态的按未读呈现,改过之后列表与分组都读到新的那一档', () => {
@@ -1332,11 +1339,12 @@ describe('fixture store', () => {
     const milestonesBefore = other.getProject('draft').milestones.length
     const id = store.listPapers({ page: 1, size: 1 }).rows[0]!.id
 
-    store.updatePaper(id, { topics: ['篡改的话题'] })
+    store.setPaperTopic(id, '篡改的话题', true)
     store.createMilestone('draft', { date: '2026-09-01', title: '新里程碑', done: false })
     store.deletePaper(id)
 
     expect(other.getPaper(id).topics).not.toContain('篡改的话题')
+    expect(other.wikiCards().map((card) => card.title)).not.toContain('篡改的话题')
     expect(other.getProject('draft').milestones).toHaveLength(milestonesBefore)
     expect(other.listPapers({ page: 1, size: 1 }).total).toBe(291)
   })
@@ -1936,6 +1944,20 @@ describe('fixture store', () => {
     expect(() => store.updateIdea('no-such', { title: 'x' })).toThrow(/想法不存在/)
   })
 
+  it('自己写下的想法来源是手动添加,没有对话也没有 agent,建出来就在列表里', () => {
+    const created = store.createIdea(undefined, '我自己的想法', '先记下来')
+    expect(created.source).toEqual({ chatTitle: '手动添加' })
+    expect(created.project).toBeUndefined()
+    expect(store.listIdeas().find((idea) => idea.id === created.id)).toEqual(created)
+  })
+
+  it('排过手动顺序之后新建的想法排在最前，其余仍按手动顺序', () => {
+    const order = store.listIdeas().map((idea) => idea.id).reverse()
+    store.reorderIdeas(order)
+    const created = store.createIdea(undefined, '排序之后的新想法', '应当排在最前')
+    expect(store.listIdeas().map((idea) => idea.id)).toEqual([created.id, ...order])
+  })
+
   it('设了手动顺序后,点到的想法排到前面;没点到的仍按更新时间排在后面', () => {
     const created = store.createIdea('amortize', '排序用的新想法', '仅用于验证手动顺序')
     const before = store.listIdeas().map((idea) => idea.id)
@@ -1999,19 +2021,25 @@ describe('fixture store', () => {
   })
 
   it('搜索一次跨四类,每一类给出它那一屏的落点', () => {
+    // The paper's title starts with the query, so it ranks above the project, whose title only holds it.
     expect(store.search('EAGLE-2')).toEqual([
-      { kind: 'project', target: 'repro', title: '项目：复现 EAGLE-2', meta: '进行中 · speculative decoding' },
       {
         kind: 'paper',
-        target: 'EAGLE-2: Faster Inference of Language Models with Dynamic Draft Trees',
+        target: 'Li-et-al-2024-EAGLE-2-Faster-Inference-of-Language-Models-with-Dynamic-Draft-Trees',
         title: '论文：EAGLE-2: Faster Inference of Language Models with Dynamic Draft Trees',
         meta: '2026 arXiv',
+        pdf: false,
       },
+      { kind: 'project', target: 'repro', title: '项目：复现 EAGLE-2', meta: '进行中 · speculative decoding' },
     ])
-    // Aggregations rank first; SpinQuant also matches "rotations" in its title and appears with papers after them.
+    // The aggregation's title is the query; SpinQuant only matches "rotations" in its title and comes after it with the
+    // other papers; last comes a page whose text links to SpinQuant.
     const rotation = store.search('Rotation')
     expect(rotation[0]).toEqual({ kind: 'aggregation', target: 'methods/rotation', title: '方法：Rotation', meta: 'Wiki' })
-    expect(rotation.slice(1).every((h) => h.kind === 'paper')).toBe(true)
+    expect(rotation.slice(1).map((h) => [h.kind, h.snippet])).toEqual([
+      ...Array.from({ length: 6 }, () => ['paper', undefined]),
+      ['aggregation', 'LLM quantization with learned rotations'],
+    ])
     expect(store.search('Distillation-based'))
       .toEqual([{ kind: 'aggregation', target: 'methods/distillation-qat', title: '方法：Distillation-based QAT', meta: 'Wiki' }])
     expect(store.search('摊薄')).toEqual([
@@ -2019,11 +2047,11 @@ describe('fixture store', () => {
     ])
   })
 
-  it('类别前缀也在被搜的那句话里', () => {
-    expect(store.search('对话：').map((h) => h.kind)).toEqual(['chat', 'chat'])
-    expect(store.search('主题：').map((h) => h.target)).toEqual([
-      'topics/kv-cache-quantization', 'topics/long-context-inference', 'topics/ptq',
-      'topics/ptq-weight-activation', 'topics/ptq-weight-only', 'topics/qat', 'topics/quantization',
+  it('类别名不在被搜的那句话里:搜「论文」只给正文里写了它的两页聚合', () => {
+    expect(store.search('对话：')).toEqual([])
+    expect(store.search('主题：')).toEqual([])
+    expect(store.search('论文').map((h) => [h.kind, h.target])).toEqual([
+      ['aggregation', 'topics/ptq-weight-activation'], ['aggregation', 'topics/quantization'],
     ])
   })
 
@@ -2105,6 +2133,7 @@ describe('fixture store', () => {
       'papers.facets': () => store.facetPapers('topics'),
       'papers.get': () => store.getPaper(store.listPapers({ page: 1, size: 1 }).rows[0]!.id),
       'papers.update': () => store.updatePaper(store.listPapers({ page: 1, size: 1 }).rows[0]!.id, {}),
+      'papers.setTopic': () => store.setPaperTopic('2401.18079', 'Weight-only PTQ', true),
       'papers.delete': () => store.deletePaper(store.listPapers({ page: 1, size: 1 }).rows[0]!.id),
       'project.list': () => store.listProjects(),
       'project.overview': () => store.overviewProjects(),
@@ -2175,6 +2204,7 @@ describe('fixture store', () => {
       }),
       'wiki.update': () => store.updateWikiPage('topics/ptq', '## 问题\n改过的。'),
       'wiki.signals': () => store.wikiSignals(),
+      'wiki.backlinks': () => store.wikiBacklinks('topics/ptq'),
       'trash.list': () => store.listTrash(),
       'trash.restore': () => {
         store.deletePaper(store.listPapers({ page: 1, size: 1 }).rows[0]!.id)
@@ -2284,6 +2314,7 @@ describe('fixture store', () => {
     const coreMethods = new Set([
       'library.location', 'library.configure', 'library.reset', 'library.backups',
       'library.switchBackup', 'library.deleteBackup', 'extensions.status', 'extensions.checkLatest', 'extensions.pluginVersion', 'delivery.semanticKey', 'delivery.setSemanticKey', 'delivery.checkSemanticKey', 'jobs.status', 'inbox.fetch',
+      'papers.retryMetadata',
       'discovery.fetch', 'author.search', 'watch.suggest', 'harness.prepare', 'harness.pendingPaperWiki',
       'harness.start', 'harness.cancel',
       'harness.modelSettings', 'harness.updateModelSettings', 'harness.checkModelConnection',

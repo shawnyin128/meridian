@@ -1,10 +1,6 @@
-.review-entry{display:inline-flex;align-items:center;gap:var(--sp-6)}
 .review-row{padding:var(--sp-12) var(--sp-2)}
-.review-head{display:flex;align-items:baseline;gap:var(--sp-8)}
-.review-title{flex:1;min-width:0;font-size:var(--fs-base);font-weight:var(--fw-medium);overflow-wrap:anywhere}
-.review-meta{margin-top:var(--sp-2);color:var(--ter);font-size:var(--fs-sm)}
-.review-note{margin:var(--sp-6) 0 0;color:var(--sec);font-size:var(--fs-sm);line-height:1.5}
+.review-note{margin:0;color:var(--sec);font-size:var(--fs-sm);line-height:1.5}
 .review-note--warn{color:var(--warn)}
-.review-actions{display:flex;gap:var(--sp-8);margin-top:var(--sp-10)}
+.review-reason{color:var(--sec);overflow-wrap:anywhere}
 .review-decline{display:flex;gap:var(--sp-8);align-items:center;padding:var(--sp-8);width:320px}
 .review-decline .form-input{flex:1}

@@ -67,6 +67,24 @@ describe('review queue on the fixture library', () => {
     expect(queue.list('rejected').map((p) => p.reason?.kind)).toEqual(['declined'])
   })
 
+  it('过期的提案带上它依据的页里先改过的那一页,没过期的不带', () => {
+    expect(queue.list().map((p) => p.stalePage)).toEqual([undefined, 'topics/ptq-weight-only', undefined])
+  })
+
+  it('结论以外的改动也带上名字:归入的页和那一页的列、上级、新建页的种类', async () => {
+    await queue.propose(envelope(store, [
+      { op: 'setMembership', paper: 'papers/2305.17888', in: 'topics/ptq-weight-only', cells: { bits: { value: 'W4', page: 1, quote: 'q' } } },
+      { op: 'createAggregation', kind: 'topic', id: 'topics/new', title: '新页', parents: ['topics/quantization'], columns: [], describe: 'd' },
+      { op: 'setParents', page: 'topics/qat', parents: ['topics/ptq'] },
+    ]))
+    const listed = queue.list().find((p) => p.proposal?.ops[0]?.op === 'setMembership')!
+    expect(listed.status).toBe('rejected')
+    expect(listed.titles).toMatchObject({
+      'topics/ptq-weight-only': 'Weight-only PTQ', 'topics/ptq-weight-only#bits': '位宽', 'topics/ptq-weight-only#backprop': '需要反向传播',
+      topic: '主题', 'topics/quantization': 'Quantization', 'topics/ptq': 'PTQ',
+    })
+  })
+
   it('base 里的页 id 带 . 或 .. 的提案进不了队列', async () => {
     const before = store.proposalRecords().length
     await expect(queue.propose(envelope(store, [addClaim('dots')], { base: { '../x': null } }))).rejects.toThrow('提案的格式不对')
@@ -98,7 +116,7 @@ describe('review queue on the fixture library', () => {
       history: [{ version: 1 }, { version: 2, by: '我' }],
     })
     const change = store.listChanges()[0]!
-    expect(change).toMatchObject({ source: '实验', title: `Wiki · ${valid!.proposal!.title}` })
+    expect(change).toMatchObject({ source: '实验', title: 'Wiki · KV cache quantization · 修订结论' })
     expect(change.diff[0]).toMatch(/^~ topics\/kv-cache-quantization#prefix-schedule v2→v3:/)
     const record = queue.list().find((p) => p.id === valid!.id)!
     expect(record).toMatchObject({ status: 'applied', change: change.id, decided: { at: NOW, by: '我' } })
@@ -110,7 +128,7 @@ describe('review queue on the fixture library', () => {
   it('引用了没验证的项目结论:照样排队,列表标出待验证的结论,应用被拒且留在队列;验证之后能应用', async () => {
     const [valid] = queue.list('queued')
     expect(valid!.unverified).toEqual(['projects/draft#knee'])
-    await expect(queue.decide(valid!.id, 'apply')).rejects.toThrow('结论待验证：projects/draft#knee。验证之后再应用')
+    await expect(queue.decide(valid!.id, 'apply')).rejects.toThrow('实验结论待验证：projects/draft#knee。验证之后再应用')
     expect(queue.list().find((p) => p.id === valid!.id)!.status).toBe('queued')
     expect((await queue.propose(envelope(store, [addClaim('unverified')]))).status).toBe('queued')
     verify(store, 'draft', 'knee')
@@ -168,7 +186,7 @@ describe('review queue on the fixture library', () => {
       .toEqual({ kind: 'invalid', message: '只有「我」能写个人判断' })
     expect(await reason([{ kind: 'experiment', project: 'nope', node: 'wide' }])).toEqual({ kind: 'invalid', message: '项目不存在：nope' })
     expect(await reason([{ kind: 'experiment', project: 'draft', node: 'wide' }]))
-      .toEqual({ kind: 'invalid', message: '节点 wide 还没有结论：先用 record_conclusion 记下它的结论，再拿它当证据' })
+      .toEqual({ kind: 'invalid', message: '节点 wide 还没有实验结论：先用 record_conclusion 记下它的实验结论，再拿它当证据' })
   })
 
   it('提交:协议版本不对或不是信封的形状就抛错,说清原因', async () => {

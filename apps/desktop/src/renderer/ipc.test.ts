@@ -103,6 +103,15 @@ describe('renderer ipc client', () => {
     expect(toggleMaximize).toHaveBeenCalledOnce()
   })
 
+  it('命令面板通过窄 Main 订阅打开', () => {
+    const unsubscribe = vi.fn()
+    const onOpenPalette = vi.fn(() => unsubscribe)
+    vi.stubGlobal('meridian', { call: vi.fn(), onOpenPalette })
+    const handler = vi.fn()
+    expect(appMenu.onOpenPalette(handler)).toBe(unsubscribe)
+    expect(onOpenPalette).toHaveBeenCalledWith(handler)
+  })
+
   it('Help 教程通过窄 Main 订阅打开', () => {
     const unsubscribe = vi.fn()
     const onOpenAgentTutorial = vi.fn(() => unsubscribe)

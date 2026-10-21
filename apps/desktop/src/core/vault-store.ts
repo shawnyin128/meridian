@@ -4,7 +4,7 @@ import type { z } from 'zod'
 import type {
   ChatSession, Conclusion, DeliverySettings, FeedEntry, FeedRun, GraphNode, PaperColumns, PaperImportResult, PaperReading, PaperRow, Proposal,
   ProjectConclusion, ProjectDetail, ProjectWorkspaceBinding, ProposalRecord, ReadingMutation, RelationFields, ResearchGraph,
-  ResearchIdea, SearchHit, Task, TaskFields,
+  ResearchIdea, Task, TaskFields,
   WikiSignal,
 } from '../shared/contract.js'
 import {
@@ -14,7 +14,7 @@ import { projectControlState } from '../shared/project-control.js'
 import { sortRecordsNewestFirst } from '../shared/project-signals.js'
 import { topicDir, topicProposal } from '../shared/topic-proposal.js'
 import {
-  ACTIVE_PROJECT, CHAT_EVENT_PREFIX, FINISHED_PROJECT, PAPER_PAGE, PROJECTS_DIR, READ_STATES, SEARCH_LIMIT,
+  ACTIVE_PROJECT, CHAT_EVENT_PREFIX, DEFAULT_PROJECT_TOPIC, FINISHED_PROJECT, PAPER_PAGE, PROJECTS_DIR, READ_STATES,
   TRASH_RETENTION_DAYS, UNREAD_PAPER,
 } from '../shared/vocabulary.js'
 import { CallError } from './call-error.js'
@@ -60,10 +60,11 @@ import {
   isClaimOp, isPaper, pageVersion, projectClaims, projectDisputes,
   readWikiData, readWikiPage, removeClaim, removeMembership, setAggregationMetadata, setBody, setBodyAndTrust,
   setClaim, setColumns, setMembership, setParents, setUpdated, touchedPages, wikiAggregation, wikiCards,
-  wikiHome, wikiPaper, wikiSearchIndex, wikiSignals,
+  wikiBacklinks, wikiHome, wikiPaper, wikiSignals,
   type ClaimWorld, type PointName, type WikiAggregationRecord, type WikiData, type WikiPaperRecord,
 } from './wiki/index.js'
 import { prepareFallbackLibrary } from './workspace-layout.js'
+import { searchHits } from './search.js'
 import { createResearchIdea, updateResearchIdea } from './research-ideas/index.js'
 
 /** Page frontmatter: scalars are strings, sequences are string arrays, and blocks are string maps. */
@@ -620,7 +621,7 @@ export function createVaultStore(
       const stem = path.slice(PAPER_PAGE.length)
       const page = wikiData.pages[path]
       if (page === undefined) papers.delete(stem)
-      else papers.set(stem, paperRowOf(wikiData, stem, page as WikiPaperRecord))
+      else papers.set(stem, withReadingCount(paperRowOf(wikiData, stem, page as WikiPaperRecord)))
     }
     writeSignals()
   }
@@ -681,8 +682,8 @@ export function createVaultStore(
         ...p.graph.nodes.flatMap((n) => n.writebacks.map((w) => w.page)),
       ],
     })),
-    trashed: new Set(trash.flatMap((item) => (item.kind === 'paper'
-      ? [`${PAPER_PAGE}${basename(item.page, '.md')}`] : []))),
+    trashed: new Map(trash.flatMap((item) => (item.kind === 'paper'
+      ? [[`${PAPER_PAGE}${basename(item.page, '.md')}`, item.title] as const] : []))),
     missingRegions: Object.keys(wikiData.pages).sort()
       .filter((id) => !isPaper(wikiData.pages[id]!) && generatedMissing(wikiFile(id)).some((name) => name !== 'claims')),
   })
@@ -695,6 +696,14 @@ export function createVaultStore(
 
   /** Returns the immutable source referenced by a paper page, or an empty string without `source_id`. */
   const sourceOf = (id: string): string => scalar(readPage(paperFile(id)).front, 'source_id')
+
+  /** Returns the file name of paper `id`'s source PDF under `sources/papers`, or undefined when the vault holds none. */
+  const pdfOf = (id: string): string | undefined => {
+    const source = sourceOf(id)
+    return source === ''
+      ? undefined
+      : readdirSync(join(root, 'sources', 'papers')).find((name) => name.startsWith(`${source}-`) && name.endsWith('.pdf'))
+  }
 
   /** Refreshes a paper record in aggregation data from disk, or removes it when `file` is null. */
   const refreshWikiPage = (id: string, file: string | null): void => {
@@ -897,20 +906,23 @@ export function createVaultStore(
     eventsReadAt = at
     const first = state.feedEvents === undefined
     const seen = new Set(state.feedEvents ?? [])
-    const fresh: { project: string; text: string }[] = []
+    const fresh: { project: ProjectRecord; text: string }[] = []
     for (const project of projects()) {
       if (project.workspaceRoot === undefined && project.workspaceSsh === undefined) continue
       for (const event of readProjectWorkspace(project)?.events ?? []) {
         const key = `${project.id}:${event.date}:${event.text}`
         if (seen.has(key)) continue
         seen.add(key)
-        fresh.push({ project: project.name, text: event.text.replace(/^\[agent\] /, '') })
+        fresh.push({ project, text: event.text.replace(/^\[agent\] /, '') })
       }
     }
     if (!first && fresh.length === 0) return
     if (!first) {
       for (const event of fresh) {
-        appendFeedEntry('lab', [{ kind: 'strong', text: `「${event.project}」` }, { kind: 'text', text: event.text }])
+        appendFeedEntry('lab', [
+          { kind: 'strong', text: `「${event.project.name}」`, target: { kind: 'project', id: event.project.id } },
+          { kind: 'text', text: event.text },
+        ])
       }
     }
     saveState({ ...state, feedEvents: [...seen] })
@@ -1256,13 +1268,9 @@ export function createVaultStore(
 
     paperSource(id) {
       if (!papers.has(id)) throw new CallError('not-found', `论文不存在：${id}`)
-      const source = sourceOf(id)
-      const dir = join(root, 'sources', 'papers')
-      const file = source === ''
-        ? undefined
-        : readdirSync(dir).find((name) => name.startsWith(`${source}-`) && name.endsWith('.pdf'))
+      const file = pdfOf(id)
       if (!file) throw new CallError('not-found', `库里没有这一篇的原文：${id}`)
-      return new Uint8Array(readFileSync(join(dir, file)))
+      return new Uint8Array(readFileSync(join(root, 'sources', 'papers', file)))
     },
 
     importPaper: storeUpload,
@@ -1410,7 +1418,7 @@ export function createVaultStore(
         name,
         status: ACTIVE_PROJECT,
         priority: 'p1',
-        topic: '未分主题',
+        topic: DEFAULT_PROJECT_TOPIC,
         focus: '定义第一步',
         start,
         due: new Date(Date.parse(`${start}T00:00:00Z`) + NEW_PROJECT_SPAN_DAYS * 86_400_000)
@@ -1430,6 +1438,7 @@ export function createVaultStore(
       projectById.set(project.id, project)
       // Front of whatever order already exists, so a new project outranks the manual order too.
       saveState({ ...state, projectOrder: [project.id, ...(state.projectOrder ?? [])] })
+      return project.id
     },
 
     putProject(project) {
@@ -2232,6 +2241,23 @@ export function createVaultStore(
       return signals()
     },
 
+    wikiBacklinks(id) {
+      checkReadable(id)
+      return wikiBacklinks(wikiData, id, {
+        projects: [...projectById.values()].map((p) => ({
+          id: p.id,
+          name: p.name,
+          papers: p.papers,
+          pages: p.relations.flatMap((g) => g.items.flatMap((item) => (item.page === undefined ? [] : [item.page]))),
+        })),
+        ideas: ideas.map((idea) => ({ id: idea.id, title: idea.title, paper: idea.source.paperId })),
+        chats: chats.filter((chat) => chat.messages.length > 0).map((chat) => ({
+          id: chat.id, title: chat.title, paper: chat.paperId,
+          sent: chat.messages.filter((m) => m.role === 'you').map((m) => m.runs.map((r) => r.text).join('')),
+        })),
+      })
+    },
+
     proposalRecords() {
       return structuredClone(proposals)
     },
@@ -2443,9 +2469,9 @@ export function createVaultStore(
     },
 
     createIdea(chatId, title, body) {
-      const sourceChat = chatOf(chatId)
-      const sourcePaper = sourceChat.paperId === undefined ? undefined : papers.get(sourceChat.paperId)
-      const idea = createResearchIdea(nextId('idea'), title, body, {
+      const sourceChat = chatId === undefined ? undefined : chatOf(chatId)
+      const sourcePaper = sourceChat?.paperId === undefined ? undefined : papers.get(sourceChat.paperId)
+      const idea = createResearchIdea(nextId('idea'), title, body, sourceChat === undefined ? { chatTitle: MANUAL_SOURCE } : {
         chatId: sourceChat.id,
         chatTitle: sourceChat.title,
         ...(sourcePaper === undefined
@@ -2453,6 +2479,8 @@ export function createVaultStore(
           : { paperId: sourcePaper.id, paperTitle: sourcePaper.title }),
       }, today())
       ideas = save('ideas', [idea, ...ideas])
+      // Without a manual order the newest idea already leads; with one, it goes to the front of it.
+      if (state.ideaOrder !== undefined) saveState({ ...state, ideaOrder: [idea.id, ...state.ideaOrder] })
       return structuredClone(idea)
     },
 
@@ -2520,20 +2548,10 @@ export function createVaultStore(
     },
 
     search(query) {
-      const needle = query.trim().toLowerCase()
-      if (needle === '') return []
-      const index: SearchHit[] = [
-        ...wikiSearchIndex(wikiData),
-        ...projects().map((p): SearchHit =>
-          ({ kind: 'project', target: p.id, title: `项目：${p.name}`, meta: `${p.status} · ${p.topic}` })),
-        ...chats.filter((c) => c.paperId === undefined || c.messages.length > 0).map((c): SearchHit =>
-          ({ kind: 'chat', target: c.id, title: `对话：${c.title}`, meta: '对话' })),
-        ...[...papers.values()].map((p): SearchHit => ({
-          kind: 'paper', target: p.title, title: `论文：${p.title}`,
-          meta: `${p.year ?? ''} ${p.venue}`.trim(),
-        })),
-      ]
-      return index.filter((hit) => hit.title.toLowerCase().includes(needle)).slice(0, SEARCH_LIMIT)
+      return searchHits({
+        wiki: wikiData, projects: projects(), chats, papers: papers.values(), readings, ideas,
+        later: later.filter((entry) => !pagesOf.has(entry.paper)),
+      }, query, (id) => pdfOf(id) !== undefined)
     },
   }
 

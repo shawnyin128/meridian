@@ -49,6 +49,10 @@ export const papers = {
   readState: {
     filterAria: (field: string) => `Filter by ${field.toLowerCase()}`,
     allStates: 'All statuses',
+    unread: 'Unread',
+    reading: 'Reading',
+    read: 'Read',
+    later: 'To read',
   },
   columnHeader: {
     resize: (column: string) => `${column} column width`,
@@ -145,7 +149,7 @@ export const papers = {
   },
   reading: {
     notes: 'Notes',
-    conclusions: 'Conclusions',
+    conclusions: 'Experiment conclusions',
     remarkAndNotes: 'Thoughts and notes',
     viewAll: (count: number) => `${count} ${pluralEn(count, { one: 'entry', other: 'entries' })} · View all in the reader`,
     empty: 'No thoughts or notes yet',
@@ -157,6 +161,7 @@ export const papers = {
     count: (n: number) => `${n} ${pluralEn(n, { one: 'paper', other: 'papers' })}`,
     progressAria: 'Paper metadata processing progress',
     needsAttention: (n: number) => `${n} ${pluralEn(n, { one: 'paper needs', other: 'papers need' })} a metadata review`,
+    fill: 'Fill in metadata',
     collapse: 'Collapse',
   },
   understanding: {

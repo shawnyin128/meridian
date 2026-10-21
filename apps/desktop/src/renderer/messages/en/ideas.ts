@@ -4,8 +4,9 @@ import { ideas as zh } from '../zh/ideas.js'
 export const ideas = {
   title: (n: number) => `Ideas · ${n}`,
   activeHeading: (n: number) => `Active · ${n}`,
-  sort: 'Rearrange',
+  sort: 'Sort',
   sortUpdated: 'By updated',
+  create: 'New idea',
   empty: 'No active ideas yet',
   sourceKind: { chat: 'Chat', paperReading: 'Paper notes' },
   link: {
@@ -23,7 +24,6 @@ export const ideas = {
   updated: (date: string) => `Updated ${date}`,
   detailHeading: 'Idea details',
   bodyLabel: 'Idea',
-  saving: 'Saving…',
   restoredNote: 'Idea restored',
   archivedNote: 'Idea archived',
   updatedNote: 'Idea updated',
@@ -34,19 +34,14 @@ export const ideas = {
   },
   openSourceChat: 'Open original chat',
   editor: {
-    newTitle: 'Save as idea',
-    editTitle: 'Edit idea',
     sourceLabel: (source: string) => `Source: ${source}`,
     titleLabel: 'Title',
     titlePlaceholder: 'What problem does this idea solve?',
     bodyPlaceholder: 'Mechanism, hypothesis, or direction…',
-    save: 'Save idea',
   },
-  graphDialog: {
-    createTitle: 'Add to research graph',
+  nodeDraft: {
     nodeTitleLabel: 'Node title',
     afterLabel: 'Place after',
     newRootOption: 'Create as a root node',
-    createAndLink: 'Create and link',
   },
 } satisfies typeof zh

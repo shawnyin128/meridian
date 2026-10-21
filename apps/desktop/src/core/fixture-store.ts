@@ -13,7 +13,7 @@ import wikiFixture from './fixtures/wiki.json' with { type: 'json' }
 import proposalFixture from './fixtures/proposals.json' with { type: 'json' }
 import type {
   Attachment, ChangeEntry, ChatMessage, ChatSession, Conclusion, DeliverySettings, FeedEntry, InboxEntry,
-  GraphNode, LaterEntry, PaperColumns, PaperImportResult, PaperReading, PaperRow, ProjectDetail, ReadingMutation, SearchHit,
+  GraphNode, LaterEntry, PaperColumns, PaperImportResult, PaperReading, PaperRow, ProjectDetail, ReadingMutation,
   ProposalRecord, RelationFields, ResearchIdea, Task, TaskFields, TrashEntry, Watch,
 } from '../shared/contract.js'
 import { AgentProposalSchema, DEFAULT_DELIVERY_SETTINGS } from '../shared/contract.js'
@@ -21,7 +21,7 @@ import { projectControlState } from '../shared/project-control.js'
 import { sortRecordsNewestFirst } from '../shared/project-signals.js'
 import { topicDir, topicProposal } from '../shared/topic-proposal.js'
 import {
-  ACTIVE_PROJECT, CHAT_EVENT_PREFIX, FINISHED_PROJECT, PAPER_PAGE, PROJECTS_DIR, SEARCH_LIMIT,
+  ACTIVE_PROJECT, CHAT_EVENT_PREFIX, DEFAULT_PROJECT_TOPIC, FINISHED_PROJECT, PAPER_PAGE, PROJECTS_DIR,
   TRASH_RETENTION_DAYS,
   UNREAD_PAPER,
 } from '../shared/vocabulary.js'
@@ -47,10 +47,11 @@ import {
 import { dayOf, feedNewestFirst, systemToday } from './dates.js'
 import { createResearchIdea, updateResearchIdea } from './research-ideas/index.js'
 import type { MetadataFill, VaultOps, VaultStore } from './vault.js'
+import { searchHits } from './search.js'
 import { digestOf } from './wiki-proposals.js'
 import {
   applyProposal, checkBody, conclusionClaims, describeOp, projectClaims, projectDisputes, HUMAN, isPaper, pageVersion, recordText, touchedPages,
-  wikiAggregation, wikiCards, wikiHome, wikiPaper, wikiSearchIndex, wikiSignals,
+  wikiAggregation, wikiBacklinks, wikiCards, wikiHome, wikiPaper, wikiSignals,
   type ClaimWorld, type PointName, type WikiData, type WikiPaperRecord,
 } from './wiki/index.js'
 
@@ -232,6 +233,9 @@ export function createFixtureStore(
   /** Source referenced by each page and page referencing each source; fixtures map one source to one page. */
   const sourceOf = new Map((papers as PaperRecord[]).map((p) => [p.id, p.sourceId]))
   const pageOf = new Map((papers as PaperRecord[]).map((p) => [p.sourceId, p.id]))
+  /** Returns the file name of `source`'s PDF under the vault's `sources/papers`, or undefined when there is none. */
+  const pdfOf = (source: string): string | undefined => readdirSync(join(vaultRoot(), 'sources', 'papers'))
+    .find((name) => name.startsWith(`${source}-`) && name.endsWith('.pdf'))
   const importedSources = new Map<string, Uint8Array>()
   const readings = new Map<string, PaperReading>()
   const canonicalNoteCount = new Map([...byId].map(([id, paper]) => [id, paper.noteCount]))
@@ -642,6 +646,7 @@ export function createFixtureStore(
     updatePaper(id, patch) {
       const paper = byId.get(id)
       if (!paper) throw new CallError('not-found', `论文不存在：${id}`)
+      if (patch.topics !== undefined) throw new CallError('refused', '这一页的主题由归属决定，改归属')
       const { custom, shortTitle, year, rating, identifier, submitted, ...fields } = patch
       if (custom !== undefined) checkCustom(columns, custom, paper.custom)
       const next: PaperRow = {
@@ -751,12 +756,9 @@ export function createFixtureStore(
       const source = sourceOf.get(id)
       const imported = source === undefined ? undefined : importedSources.get(source)
       if (imported !== undefined) return new Uint8Array(imported)
-      const dir = join(vaultRoot(), 'sources', 'papers')
-      const file = source === undefined
-        ? undefined
-        : readdirSync(dir).find((name) => name.startsWith(`${source}-`) && name.endsWith('.pdf'))
+      const file = source === undefined ? undefined : pdfOf(source)
       if (!file) throw new CallError('not-found', `库里没有这一篇的原文：${id}`)
-      return new Uint8Array(readFileSync(join(dir, file)))
+      return new Uint8Array(readFileSync(join(vaultRoot(), 'sources', 'papers', file)))
     },
 
     importPaper: storeUpload,
@@ -888,7 +890,7 @@ export function createFixtureStore(
         name,
         status: ACTIVE_PROJECT,
         priority: 'p1',
-        topic: '未分主题',
+        topic: DEFAULT_PROJECT_TOPIC,
         focus: '定义第一步',
         start,
         due: new Date(Date.parse(`${start}T00:00:00Z`) + NEW_PROJECT_SPAN_DAYS * 86_400_000)
@@ -907,6 +909,7 @@ export function createFixtureStore(
       projectById.set(project.id, project)
       // Front of whatever order already exists, so a new project outranks the manual order too.
       projectOrder = [project.id, ...(projectOrder ?? [])]
+      return project.id
     },
 
     getProject(id) {
@@ -1686,8 +1689,24 @@ export function createFixtureStore(
             ...p.graph.nodes.flatMap((n) => n.writebacks.map((w) => w.page)),
           ],
         })),
-        trashed: new Set(trash.flatMap((item) => (item.kind === 'paper' ? [`${PAPER_PAGE}${item.paper.id}`] : []))),
+        trashed: new Map(trash.flatMap((item) => (item.kind === 'paper' ? [[`${PAPER_PAGE}${item.paper.id}`, item.title] as const] : []))),
         missingRegions: [],
+      })
+    },
+
+    wikiBacklinks(id) {
+      return wikiBacklinks(wiki, id, {
+        projects: [...projectById.values()].map((p) => ({
+          id: p.id,
+          name: p.name,
+          papers: p.papers,
+          pages: p.relations.flatMap((g) => g.items.flatMap((item) => (item.page === undefined ? [] : [item.page]))),
+        })),
+        ideas: ideas.map((idea) => ({ id: idea.id, title: idea.title, paper: idea.source.paperId })),
+        chats: chats.filter((chat) => chat.messages.length > 0).map((chat) => ({
+          id: chat.id, title: chat.title, paper: chat.paperId,
+          sent: chat.messages.filter((m) => m.role === 'you').map((m) => m.runs.map((r) => r.text).join('')),
+        })),
       })
     },
 
@@ -1843,7 +1862,8 @@ export function createFixtureStore(
             id: nextId('entry'), source: 'lab', day: dayOf(day, day), time: FEED_NOW,
             createdAt: now().toISOString(),
             body: { kind: 'runs', runs: [
-              { kind: 'strong', text: `「${project.name}」` }, { kind: 'text', text: event.text.replace(/^\[agent\] /, '') },
+              { kind: 'strong', text: `「${project.name}」`, target: { kind: 'project', id: project.id } },
+              { kind: 'text', text: event.text.replace(/^\[agent\] /, '') },
             ] },
           }]
         }
@@ -1933,9 +1953,9 @@ export function createFixtureStore(
     },
 
     createIdea(chatId, title, body) {
-      const sourceChat = chatOf(chatId)
-      const sourcePaper = sourceChat.paperId === undefined ? undefined : byId.get(sourceChat.paperId)
-      const idea = createResearchIdea(nextId('idea'), title, body, {
+      const sourceChat = chatId === undefined ? undefined : chatOf(chatId)
+      const sourcePaper = sourceChat?.paperId === undefined ? undefined : byId.get(sourceChat.paperId)
+      const idea = createResearchIdea(nextId('idea'), title, body, sourceChat === undefined ? { chatTitle: MANUAL_SOURCE } : {
         chatId: sourceChat.id,
         chatTitle: sourceChat.title,
         ...(sourcePaper === undefined
@@ -1943,6 +1963,8 @@ export function createFixtureStore(
           : { paperId: sourcePaper.id, paperTitle: sourcePaper.title }),
       }, today())
       ideas = [idea, ...ideas]
+      // Without a manual order the newest idea already leads; with one, it goes to the front of it.
+      if (ideaOrder !== undefined) ideaOrder = [idea.id, ...ideaOrder]
       return structuredClone(idea)
     },
 
@@ -2000,20 +2022,13 @@ export function createFixtureStore(
     },
 
     search(query) {
-      const needle = query.trim().toLowerCase()
-      if (needle === '') return []
-      const index: SearchHit[] = [
-        ...wikiSearchIndex(wiki),
-        ...[...projectById.values()].map((p): SearchHit =>
-          ({ kind: 'project', target: p.id, title: `项目：${p.name}`, meta: `${p.status} · ${p.topic}` })),
-        ...chats.filter((c) => c.paperId === undefined || c.messages.length > 0).map((c): SearchHit =>
-          ({ kind: 'chat', target: c.id, title: `对话：${c.title}`, meta: '对话' })),
-        ...[...byId.values()].map((p): SearchHit => ({
-          kind: 'paper', target: p.title, title: `论文：${p.title}`,
-          meta: `${p.year ?? ''} ${p.venue}`.trim(),
-        })),
-      ]
-      return index.filter((hit) => hit.title.toLowerCase().includes(needle)).slice(0, SEARCH_LIMIT)
+      return searchHits({
+        wiki, projects: projectById.values(), chats, papers: byId.values(), readings: readings.values(), ideas,
+        later: later.filter((entry) => !pageOf.has(entry.paper)),
+      }, query, (id) => {
+        const source = sourceOf.get(id)
+        return source !== undefined && (importedSources.has(source) || pdfOf(source) !== undefined)
+      })
     },
   }
 

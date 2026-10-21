@@ -7,6 +7,7 @@ declare global {
       call(method: ContractMethod, params: unknown): Promise<unknown>
       onOpenSettings(handler: () => void): () => void
       onOpenAgentTutorial(handler: () => void): () => void
+      onOpenPalette(handler: () => void): () => void
       chooseLibraryRoot(): Promise<string | null>
       chooseWorkspaceRoot(): Promise<string | null>
       pathForFile(file: File): string

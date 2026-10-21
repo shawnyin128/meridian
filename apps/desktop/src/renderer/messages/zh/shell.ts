@@ -1,4 +1,4 @@
-/** App shell copy: breadcrumbs, sidebar navigation, titlebar, boot failure and global search. */
+/** App shell copy: breadcrumbs, sidebar navigation, titlebar, boot failure, global search and the command palette. */
 export const shell = {
   crumbs: {
     feed: '动态',
@@ -26,7 +26,7 @@ export const shell = {
     inbox: '收件',
     delivery: '论文推送',
     discovery: '发现',
-    watchTopics: '关注·主题',
+    watchTopics: '关注·关键词',
     watchAuthors: '关注·作者',
     later: '稍后阅读',
     chats: '对话',
@@ -41,7 +41,7 @@ export const shell = {
     ideas: '想法',
     trash: '垃圾桶',
   },
-  watchKind: { topic: '主题', author: '作者' },
+  watchKind: { topic: '关键词', author: '作者' },
   sidebar: {
     toggle: '收起/展开侧栏',
     expand: '展开侧栏',
@@ -52,7 +52,7 @@ export const shell = {
     manageChat: (title: string) => `管理对话：${title}`,
     archive: '归档',
   },
-  titlebar: { settings: '设置…', checkUpdates: '检查更新…', about: '关于 Meridian' },
+  titlebar: { settings: '设置…', palette: '命令面板…', checkUpdates: '检查更新…', about: '关于 Meridian' },
   about: { title: '关于 Meridian', releases: '发布记录', version: (version: string) => `版本 ${version}` },
   bootFailure: {
     title: '论文库打不开',
@@ -64,4 +64,5 @@ export const shell = {
     results: '搜索结果',
     noHits: '没有找到匹配的内容',
   },
+  palette: { title: '命令面板', placeholder: '输入命令', settingsPane: (pane: string) => `设置 · ${pane}` },
 } satisfies Record<string, unknown>

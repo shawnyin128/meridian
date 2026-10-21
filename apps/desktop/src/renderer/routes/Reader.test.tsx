@@ -12,6 +12,7 @@ declare global {
 const shell = vi.hoisted(() => ({
   revision: 0,
   jump: { screen: 'reader', target: 'paper-1', from: 'papers', seq: 1 },
+  returnTo: vi.fn(),
   reading: { paperId: 'paper-1', highlights: [], notes: [], remark: '' } as PaperReading,
 }))
 
@@ -27,14 +28,16 @@ vi.mock('../ipc.js', () => ({
 vi.mock('../shell/AppShell.js', () => ({
   useNotice: () => ({ success: vi.fn(), refusal: vi.fn() }),
   useCrumbTail: () => {},
-  useJump: () => ({ jump: shell.jump, open: vi.fn(), returnTo: vi.fn() }),
+  useJump: () => ({ jump: shell.jump, open: vi.fn(), returnTo: shell.returnTo }),
   useVaultRevision: () => ({ revision: shell.revision, bump: vi.fn() }),
 }))
 
 vi.mock('pdfjs-dist', () => ({ GlobalWorkerOptions: {}, getDocument: vi.fn() }))
 vi.mock('pdfjs-dist/build/pdf.worker.min.mjs?url', () => ({ default: '' }))
 
-vi.mock('../components/chat/PaperChat.js', () => ({ PaperChat: () => null }))
+vi.mock('../components/chat/PaperChat.js', () => ({
+  PaperChat: ({ onBack }: { onBack: () => void }) => <button type="button" className="back" onClick={onBack} />,
+}))
 
 vi.mock('../components/reader/ReaderSidePanel.js', () => ({
   ReaderSidePanel: ({ reading }: { reading: PaperReading | null }) => (
@@ -86,6 +89,14 @@ describe('Reader', () => {
     expect(shown()).toBe('100%')
     await press('Zoom out', 2)
     expect([shown(), button('Zoom in').disabled, button('Zoom out').disabled]).toEqual(['60%', false, true])
+  })
+
+  it('从别的屏点链接打开时,阅读器头上的返回回到来的那一屏', async () => {
+    shell.jump = { screen: 'reader', target: 'paper-1', from: 'feed', seq: 2 }
+    await render()
+    await act(async () => { host.querySelector<HTMLButtonElement>('.back')!.click() })
+    expect(shell.returnTo).toHaveBeenCalledWith('feed')
+    shell.jump = { screen: 'reader', target: 'paper-1', from: 'papers', seq: 1 }
   })
 
   it('别处的写(在最近变动里撤销一条)之后重取阅读记录,放回来的笔记出现在侧栏', async () => {

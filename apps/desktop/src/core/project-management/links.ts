@@ -1,8 +1,7 @@
 import type { ConclusionState, Conclusions, PaperRow } from '../../shared/contract.js'
 import type { ProjectRecord } from './page.js'
 
-/** Source marker for an item added manually from project details. */
-export const MANUAL_SOURCE = '手动添加'
+export { MANUAL_SOURCE } from '../../shared/vocabulary.js'
 
 /** Returns the source a conclusion saved from the chat session titled `title` records. */
 export const chatSource = (title: string): string => `对话「${title}」`

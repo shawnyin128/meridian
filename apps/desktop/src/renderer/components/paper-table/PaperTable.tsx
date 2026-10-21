@@ -18,7 +18,7 @@ import { ColumnMenu } from './ColumnMenu.js'
 import { GroupMenu, groupRows } from './GroupMenu.js'
 import { ParseProgress } from '../ParseProgress.js'
 import { Pager } from '../Pager.js'
-import { PaperMetadata, PaperTitleField, RatingStars, ReadStatePicker } from '../PaperMetadata.js'
+import { PaperMetadata, PaperTitleField, RatingStars, ReadStatePicker, readStateName } from '../PaperMetadata.js'
 import { PaperTopics } from '../PaperTopics.js'
 import { PaperReadingSummary } from './PaperReadingSummary.js'
 import { FormInput } from '../FormControls.js'
@@ -27,12 +27,14 @@ import { PageBody, PageError, PageHeader, PageShell, PageTitle, PageToolbar } fr
 import { NO_TRIGGERS } from '../../hooks/useOnLeave.js'
 import { useInlineDraft } from '../../hooks/useInlineDraft.js'
 import { useUndo } from '../../hooks/useUndo.js'
+import { useJumpOrigin } from '../../hooks/useJumpOrigin.js'
 import { useVaultWrite } from '../../hooks/useVaultWrite.js'
 import { useScrollFade } from '../../hooks/useScrollFade.js'
 import {
   useCrumbTail, useEscapeLayer, useJump, useNotice, usePaperCount, useScreen, useScreenReentry, useVaultRevision,
 } from '../../shell/AppShell.js'
 import { AddAction } from '../AddAction.js'
+import { BackButton } from '../BackButton.js'
 import { IconButton } from '../IconButton.js'
 import { holdRepeatSelection, RowActions, StructuredList, StructuredRow } from '../StructuredList.js'
 import { PanelClose } from '../PanelClose.js'
@@ -195,41 +197,46 @@ function ReadStateFilter({ name, current, onPick }: {
           type="button"
           className={current === null ? 'btn sm read-state-filter' : 'btn sm read-state-filter on'}
           aria-label={m.papers.readState.filterAria(name)}
-        ><FadeText>{current ?? name}</FadeText></button>
+        ><FadeText>{current === null ? name : readStateName(m, current)}</FadeText></button>
       )}
     >
       <MenuRadioGroup value={current ?? 'all'}>
         <MenuRadioItem value="all" onSelect={() => onPick(null)}>{m.papers.readState.allStates}</MenuRadioItem>
         <MenuSeparator />
         {READ_STATES.map((state) => (
-          <MenuRadioItem key={state} value={state} onSelect={() => onPick(state)}>{state}</MenuRadioItem>
+          <MenuRadioItem key={state} value={state} onSelect={() => onPick(state)}>{readStateName(m, state)}</MenuRadioItem>
         ))}
       </MenuRadioGroup>
     </ActionMenu>
   )
 }
 
-/** The picked group value with its paper count; its menu switches to another value of the same group. */
-function GroupValuePicker({ current, facets, onPick }: {
+/**
+ * The picked group value with its paper count; its menu switches to another value of the same group.
+ * `name` gives the name each value shows.
+ */
+function GroupValuePicker({ current, facets, name, onPick }: {
   current: string | null
   facets: Facet[]
+  name: (value: string) => string
   onPick: (value: string) => void
 }) {
   const m = useMessages()
   const count = facets.find((facet) => facet.value === current)?.count
+  const shown = current === null ? null : name(current)
   return (
     <ActionMenu
       align="start"
       trigger={(
         <button type="button" className="btn sm" aria-label={m.papers.toolbar.groupValueAria}>
-          {count === undefined ? current : `${current} · ${count}`}
+          {count === undefined ? shown : `${shown} · ${count}`}
         </button>
       )}
     >
       <MenuRadioGroup value={current ?? ''}>
         {facets.map((facet) => (
           <MenuRadioItem key={facet.value} value={facet.value} onSelect={() => onPick(facet.value)}>
-            {facet.value}
+            {name(facet.value)}
             <span className="mi-key">{facet.count}</span>
           </MenuRadioItem>
         ))}
@@ -281,10 +288,12 @@ function TextCellEdit({ cell, initial, onSave, onCancel }: {
  * The table holds only the current page: papers.list fetches it by page, papers.facets supplies the
  * group values and counts, and papers.columns says which columns show.
  * A jump from another screen lands on that paper's title: the title goes into the filter box, which
- * leaves only that paper in the table.
+ * leaves only that paper in the table. A jump with the `detail` anchor opens that paper's detail
+ * panel instead and leaves the table as it was; one with `importPdf` opens the import's file chooser.
  */
 export function PaperTable() {
   const m = useMessages()
+  const jumpOrigin = useJumpOrigin()
   const [view, setView] = useState<'table' | 'research-map'>('table')
   const [rows, setRows] = useState<PaperRow[]>([])
   const [total, setTotal] = useState(0)
@@ -441,13 +450,22 @@ export function PaperTable() {
   useEffect(() => { setDetail(null) }, [reentry])
 
   // A jump from another screen lands on a paper title: put it in the filter box and go back to the
-  // first page, like `go` in the demo's search.
+  // first page, like `go` in the demo's search. A jump that asks for the import opens the PDF picker;
+  // the click that made the jump still counts as the user gesture the picker needs.
   useEffect(() => {
     if (jump === null || jump.seq === consumed.current) return
     consumed.current = jump.seq
+    if (jump.anchor?.detail === true) {
+      void papers.get(jump.target).then(setDetail).catch(reportError)
+      return
+    }
+    if (jump.anchor?.importPdf === true) {
+      if (!uploading) uploadInput.current?.click()
+      return
+    }
     setQ(jump.target)
     setPage(1)
-  }, [jump])
+  }, [jump, reportError, uploading])
 
   const backToValues = useCallback(() => { setSel(null); setPage(1) }, [])
   const backToUngrouped = useCallback(() => { setGroup('none'); setSel(null); setPage(1) }, [])
@@ -457,6 +475,8 @@ export function PaperTable() {
   // functions from Object.prototype.
   const labelOf = (key: string) => columns.custom.find((c) => c.key === key)?.label
     ?? (Object.hasOwn(names.groupNames, key) ? names.groupNames[key as keyof typeof names.groupNames] : key)
+  /** The name a value of the current grouping shows. */
+  const valueName = (value: string) => (group === 'readState' ? readStateName(m, value) : value)
 
   useCrumbTail(useMemo(() => {
     if (view === 'research-map') return []
@@ -466,7 +486,8 @@ export function PaperTable() {
     const { groupNames } = builtinNames(m, columns)
     const label = columns.custom.find((c) => c.key === group)?.label
       ?? (Object.hasOwn(groupNames, group) ? groupNames[group as keyof typeof groupNames] : group)
-    return sel === null ? [{ text: label }] : [{ text: label, onClick: backToValues }, { text: sel }]
+    const value = sel === null || group !== 'readState' ? sel : readStateName(m, sel)
+    return value === null ? [{ text: label }] : [{ text: label, onClick: backToValues }, { text: value }]
   }, [view, group, sel, columns, backToValues, m]), backToUngrouped)
 
   // When the grouped-by column is unchecked, deleted or made a text column, fall back to "None" at once
@@ -648,16 +669,14 @@ export function PaperTable() {
   const ariaSort = (key: SortKey) => (sort !== key ? undefined : direction === 'asc' ? 'ascending' : 'descending')
 
   const addTopic = (p: PaperRow, value: string): Promise<boolean> =>
-    write(papers.update(p.id, { topics: [...p.topics, value] }), { note: m.papers.notices.topicAdded, action: undo.change })
+    write(papers.setTopic(p.id, value, true), { note: m.papers.notices.topicAdded, action: undo.change })
 
   const setReadState = (p: PaperRow, readState: ReadState) => {
     void write(papers.update(p.id, { readState }), { note: m.papers.notices.readStateUpdated })
   }
 
   const removeTopic = (p: PaperRow, value: string): Promise<boolean> =>
-    write(papers.update(p.id, { topics: p.topics.filter((held) => held !== value) }), {
-      note: m.papers.notices.updated, action: undo.change,
-    })
+    write(papers.setTopic(p.id, value, false), { note: m.papers.notices.updated, action: undo.change })
 
   const setRating = (p: PaperRow, rating: number | null) => {
     void write(papers.update(p.id, { rating }), rating === null
@@ -1208,6 +1227,7 @@ export function PaperTable() {
           </>
         )}
       >
+        {jumpOrigin.origin === null ? null : <BackButton onClick={jumpOrigin.back} />}
         <PageTitle>{m.papers.title(titleCount)}</PageTitle>
       </PageHeader>
 
@@ -1262,6 +1282,7 @@ export function PaperTable() {
           </PageToolbar>
           <ParseProgress
             onParsed={() => bump()}
+            onOpenPaper={(id) => { void papers.get(id).then(setDetail).catch(reportError) }}
           />
 
           <div id="libList">
@@ -1280,7 +1301,7 @@ export function PaperTable() {
                     const newest = m.papers.groupIndex.newest(plainTitle(f.newestTitle))
                     return (
                       <StructuredRow className="gxrow" key={f.value} onActivate={() => { setSel(f.value); setPage(1) }}>
-                        <span className="gx-t">{f.value}</span>
+                        <span className="gx-t">{valueName(f.value)}</span>
                         <FadeText className="gx-m" label={newest}>{newest}</FadeText>
                         <CountBadge className="n" count={f.count} />
                       </StructuredRow>
@@ -1294,7 +1315,7 @@ export function PaperTable() {
                     ? (
                       <div className="gnav">
                         <GroupValuePicker
-                          current={sel} facets={facets} onPick={(value) => { setSel(value); setPage(1) }}
+                          current={sel} facets={facets} name={valueName} onPick={(value) => { setSel(value); setPage(1) }}
                         />
                       </div>
                     )

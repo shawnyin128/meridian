@@ -28,7 +28,7 @@ export const shell = {
     inbox: 'Inbox',
     delivery: 'Inmail',
     discovery: 'Discovery',
-    watchTopics: 'Watched topics',
+    watchTopics: 'Watched keywords',
     watchAuthors: 'Watched authors',
     later: 'Read Later',
     chats: 'Chats',
@@ -43,7 +43,7 @@ export const shell = {
     ideas: 'Ideas',
     trash: 'Trash',
   },
-  watchKind: { topic: 'Topic', author: 'Author' },
+  watchKind: { topic: 'Keyword', author: 'Author' },
   sidebar: {
     toggle: 'Collapse or expand the sidebar',
     expand: 'Expand the sidebar',
@@ -54,7 +54,7 @@ export const shell = {
     manageChat: (title: string) => `Manage chat: ${title}`,
     archive: 'Archive',
   },
-  titlebar: { settings: 'Settings…', checkUpdates: 'Check for Updates…', about: 'About Meridian' },
+  titlebar: { settings: 'Settings…', palette: 'Command Palette…', checkUpdates: 'Check for Updates…', about: 'About Meridian' },
   about: { title: 'About Meridian', releases: 'Release notes', version: (version: string) => `Version ${version}` },
   bootFailure: {
     title: "The library won't open",
@@ -66,4 +66,5 @@ export const shell = {
     results: 'Search results',
     noHits: 'No matches found',
   },
+  palette: { title: 'Command palette', placeholder: 'Type a command', settingsPane: (pane: string) => `Settings · ${pane}` },
 } satisfies typeof zh

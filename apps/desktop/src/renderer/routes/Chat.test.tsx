@@ -2,10 +2,12 @@
 import { act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { ChatMessage, ChatSendResult } from '../../shared/contract.js'
+import type { ChatMessage, ChatSendResult, ChatSession, PaperRow } from '../../shared/contract.js'
+import { CONFLICT_THREAD } from '../lib/chat.js'
 import { MessagesProvider } from '../messages/useMessages.js'
 import { LANGUAGE_STORAGE_KEY } from '../shell/language.js'
 import { TOOLTIP_DELAY } from '../components/Tooltip.js'
+import type { ScreenJump } from '../shell/AppShell.js'
 
 declare global {
   var IS_REACT_ACT_ENVIRONMENT: boolean
@@ -19,19 +21,26 @@ const api = vi.hoisted(() => ({
     conclusions: { verified: 0, pending: 0, conflicting: 0 }, paperCount: 0,
     milestones: [], recentEvents: [],
   }])),
-  listPapers: vi.fn(() => Promise.resolve({ rows: [], total: 0 })),
+  listPapers: vi.fn((): Promise<{ rows: PaperRow[]; total: number }> => Promise.resolve({ rows: [], total: 0 })),
   messages: vi.fn<() => Promise<ChatMessage[]>>(() => Promise.resolve([])),
+  create: vi.fn<(title: string, named: boolean) => Promise<ChatSession>>(),
+  recordAction: vi.fn<() => Promise<{ id: string; name: string }>>(),
+  feedAppend: vi.fn(() => Promise.resolve()),
+  createIdea: vi.fn(() => Promise.resolve({ id: 'idea-1' })),
 }))
 
 const session = vi.hoisted(() => ({ id: 'chat-1', revision: 0 }))
+const settings = vi.hoisted(() => ({ openCategory: vi.fn() }))
+/** The jump useJump hands the Chat screen. */
+const nav = vi.hoisted(() => ({ jump: null as ScreenJump | null, returnTo: vi.fn(), entry: 0 }))
 
 /** The callbacks of every ResizeObserver made. */
 const resized: (() => void)[] = []
 
 vi.mock('../ipc.js', () => ({
-  chat: { send: api.send, messages: api.messages, cancel: api.cancel, create: vi.fn() },
-  feed: { append: vi.fn() },
-  idea: { create: vi.fn() },
+  chat: { send: api.send, messages: api.messages, cancel: api.cancel, create: api.create, recordAction: api.recordAction },
+  feed: { append: api.feedAppend },
+  idea: { create: api.createIdea },
   papers: { list: api.listPapers },
   project: { list: api.listProjects },
   wiki: { cards: () => Promise.resolve([]) },
@@ -40,9 +49,11 @@ vi.mock('../ipc.js', () => ({
 vi.mock('../shell/AppShell.js', () => ({
   useNotice: () => ({ success: vi.fn(), refusal: vi.fn() }),
   useCrumbTail: () => {},
-  useJump: () => ({ jump: null, open: vi.fn(), returnTo: vi.fn() }),
+  useJump: () => ({ jump: nav.jump, open: vi.fn(), returnTo: nav.returnTo }),
+  useScreenEntry: () => nav.entry,
   useChatSession: () => ({ id: session.id, title: '讨论', archived: false, select: vi.fn() }),
   useVaultRevision: () => ({ revision: session.revision, bump: vi.fn() }),
+  useSettingsOpen: () => ({ open: false, openCategory: settings.openCategory }),
 }))
 
 vi.mock('../hooks/useVaultWrite.js', () => ({
@@ -54,8 +65,10 @@ vi.mock('../hooks/useVaultWrite.js', () => ({
 
 const { Chat } = await import('./Chat.js')
 
-function setValue(input: HTMLTextAreaElement, value: string): void {
-  Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value')!.set!.call(input, value)
+function setValue(input: HTMLInputElement | HTMLTextAreaElement, value: string): void {
+  const prototype = input instanceof window.HTMLTextAreaElement ? window.HTMLTextAreaElement.prototype
+    : window.HTMLInputElement.prototype
+  Object.getOwnPropertyDescriptor(prototype, 'value')!.set!.call(input, value)
   input.dispatchEvent(new Event('input', { bubbles: true }))
 }
 
@@ -92,6 +105,9 @@ describe('Chat composer', () => {
   afterEach(() => {
     if (root !== null) act(() => root!.unmount())
     root = null
+    nav.jump = null
+    nav.entry = 0
+    nav.returnTo.mockClear()
   })
 
   const press = (key: string, init: KeyboardEventInit = {}) => {
@@ -109,6 +125,37 @@ describe('Chat composer', () => {
     })
   }
 
+  it('从别的屏点链接来时屏头左端有返回，按它回到来的那一屏；从侧栏进来时没有返回', async () => {
+    const back = () => document.querySelector<HTMLButtonElement>('.desk-head > .back')
+    expect(back()).toBeNull()
+    nav.jump = { screen: 'chat', target: 'chat-2', from: 'wiki', seq: 7 }
+    await openChat('chat-2')
+    expect([...document.querySelector('.desk-head')!.children].map((child) => child.className.split(' ')[0])).toEqual(['icbtn', 'fade-text'])
+    expect(back()?.getAttribute('aria-label')).toBe('返回')
+    act(() => back()!.click())
+    expect(nav.returnTo).toHaveBeenCalledWith('wiki')
+    expect(back()).toBeNull()
+
+    nav.jump = { screen: 'chat', target: 'chat-1', from: 'feed', seq: 8 }
+    await openChat('chat-1')
+    expect(back()).not.toBeNull()
+    nav.entry = 1
+    await openChat('chat-1')
+    expect(back()).toBeNull()
+  })
+
+  it('从动态看冲突时新开一个叫结论冲突的对话，问这两条结论为什么冲突', async () => {
+    api.create.mockResolvedValueOnce({ id: 'chat-9' } as ChatSession)
+    nav.jump = { screen: 'chat', target: CONFLICT_THREAD, from: 'feed', seq: 1 }
+    await act(async () => {
+      root!.render(<MessagesProvider><Chat /></MessagesProvider>)
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+    expect(api.create).toHaveBeenCalledWith('结论冲突', true)
+    expect(api.send).toHaveBeenCalledWith('chat-9', '为什么说这两条结论冲突？')
+  })
+
   it('回车发送，Shift+回车换行，输入法组字时的回车不发送', async () => {
     act(() => setValue(composer, '为什么'))
     expect(press('Enter', { shiftKey: true }).defaultPrevented).toBe(false)
@@ -120,7 +167,7 @@ describe('Chat composer', () => {
     expect(api.send).toHaveBeenCalledWith('chat-1', '为什么')
   })
 
-  it('没配置模型时发送失败，输入框里显示「AI 未连接」的状态；配好后再发一次成功，状态就消失', async () => {
+  it('没配置模型时发送失败，输入框里显示「AI 未连接」的状态，点它打开设置的模型一栏；配好后再发一次成功，状态就消失', async () => {
     api.send.mockResolvedValueOnce({ id: 'chat-1', state: 'failed', reason: 'no-model' })
     const state = () => document.querySelector('.cbox .tag')?.textContent ?? null
     expect(state()).toBeNull()
@@ -128,6 +175,10 @@ describe('Chat composer', () => {
     press('Enter')
     await act(async () => { await Promise.resolve(); await Promise.resolve() })
     expect(state()).toBe('AI 未连接')
+    const tag = document.querySelector<HTMLElement>('.cbox .tag')!
+    expect(tag.tagName).toBe('BUTTON')
+    act(() => tag.click())
+    expect(settings.openCategory).toHaveBeenCalledWith('model')
     act(() => setValue(composer, '再问一次'))
     press('Enter')
     await act(async () => { await Promise.resolve(); await Promise.resolve() })
@@ -165,6 +216,31 @@ describe('Chat composer', () => {
 
     await openChat('chat-1')
     expect(composer.value).toBe('只问第一条')
+  })
+
+  it('@ 候选里论文的灰字把稍后阅读的阅读状态写成待读', async () => {
+    api.listPapers.mockResolvedValueOnce({
+      rows: [{ id: 'p1', title: 'EAGLE', year: 2024, readState: '稍后阅读' } as PaperRow], total: 1,
+    })
+    session.revision += 1
+    await openChat('chat-1')
+    act(() => setValue(composer, '@EAGLE'))
+    expect([...document.querySelectorAll('#cRes .rm')].map((line) => line.textContent)).toEqual(['2024 · 待读'])
+  })
+
+  it('记入科研记录后在动态里记一条,项目名带着项目的 id', async () => {
+    api.messages.mockResolvedValueOnce([{
+      id: 'm1', role: 'ai', runs: [{ kind: 'text', text: '结论' }],
+      actions: [{ kind: 'writeBack', label: '记入科研记录', project: 'draft', text: '结论' }],
+    }])
+    api.recordAction.mockResolvedValueOnce({ id: 'draft', name: '草稿树项目' })
+    session.revision += 1
+    await openChat('chat-1')
+    await act(async () => { document.querySelector<HTMLButtonElement>('.macts .btn')!.click() })
+    expect(api.feedAppend).toHaveBeenCalledWith({ source: 'me', body: { kind: 'runs', runs: [
+      { kind: 'text', text: '已记入《' }, { kind: 'text', text: '草稿树项目', target: { kind: 'project', id: 'draft' } },
+      { kind: 'text', text: '》的科研记录' },
+    ] } })
   })
 
   it('@ 候选只留在打开它的那条对话里', async () => {
@@ -235,6 +311,61 @@ describe('Chat composer', () => {
     expect(save.parentElement!.lastElementChild).toBe(save)
     expect([save.disabled, save.previousElementSibling?.textContent]).toEqual([true, '尚无讨论'])
     expect(document.querySelector('.qsep')).toBeNull()
+  })
+
+  /** Shows the chat `id` holding one message of yours, as the shell does when that chat is picked. */
+  const showChat = async (id: string) => {
+    session.id = id
+    session.revision += 1
+    api.messages.mockResolvedValueOnce([{ id: 'm1', role: 'you', runs: [{ kind: 'text', text: '先讨论机制' }], actions: [] }])
+    await act(async () => {
+      root!.render(<MessagesProvider><Chat /></MessagesProvider>)
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+  }
+  const ideaDraft = () => document.querySelector<HTMLElement>('.idea-draft')
+  const keyIn = (target: Element, key: string, init: KeyboardEventInit = {}) => act(() => {
+    target.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true, ...init }))
+  })
+
+  it('保存为想法在最后一条消息下面就地打开草稿,不弹对话框,标明落到想法和它的来源,焦点在标题', async () => {
+    await showChat('chat-1')
+    act(() => document.querySelector<HTMLButtonElement>('#qaIdea')!.click())
+    expect(document.querySelector('[role="dialog"]')).toBeNull()
+    const msgs = document.querySelector('.msgs')!
+    expect(msgs.lastElementChild!.contains(ideaDraft())).toBe(true)
+    expect(msgs.lastElementChild!.previousElementSibling!.textContent).toContain('先讨论机制')
+    expect(ideaDraft()!.querySelector('.draft-form-destination')!.textContent).toBe('→想法')
+    expect(ideaDraft()!.querySelector('.idea-draft-source')!.textContent).toBe('来源：讨论')
+    expect(document.activeElement).toBe(ideaDraft()!.querySelector('input'))
+  })
+
+  it('想法草稿在正文上按 ⌘Enter 经 idea.create 存进这条对话的想法;Esc 收起,什么也不存', async () => {
+    await showChat('chat-1')
+    act(() => document.querySelector<HTMLButtonElement>('#qaIdea')!.click())
+    act(() => setValue(ideaDraft()!.querySelector('input')!, '批大小拐点'))
+    act(() => setValue(ideaDraft()!.querySelector('textarea')!, '验证最优批大小是否随推理深度稳定迁移。'))
+    keyIn(ideaDraft()!.querySelector('textarea')!, 'Enter')
+    expect(api.createIdea).not.toHaveBeenCalled()
+    await act(async () => { keyIn(ideaDraft()!.querySelector('textarea')!, 'Enter', { metaKey: true }); await Promise.resolve() })
+    expect(api.createIdea).toHaveBeenCalledWith('chat-1', '批大小拐点', '验证最优批大小是否随推理深度稳定迁移。')
+    expect(ideaDraft()).toBeNull()
+
+    act(() => document.querySelector<HTMLButtonElement>('#qaIdea')!.click())
+    keyIn(ideaDraft()!.querySelector('input')!, 'Escape')
+    expect(ideaDraft()).toBeNull()
+    expect(api.createIdea).toHaveBeenCalledOnce()
+  })
+
+  it('想法草稿留在它的对话上:换一条对话时不跟过去,回来时还在', async () => {
+    await showChat('chat-1')
+    act(() => document.querySelector<HTMLButtonElement>('#qaIdea')!.click())
+    act(() => setValue(ideaDraft()!.querySelector('input')!, '只属于这条对话'))
+    await showChat('chat-2')
+    expect(ideaDraft()).toBeNull()
+    await showChat('chat-1')
+    expect(ideaDraft()!.querySelector('input')!.value).toBe('只属于这条对话')
   })
 
   it('快捷引用的名字被截断时，悬停在共享 tooltip 里显示全名，放得下时不弹', () => {

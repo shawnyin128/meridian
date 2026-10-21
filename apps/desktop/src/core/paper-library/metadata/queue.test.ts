@@ -57,7 +57,8 @@ describe('上传之后的元数据解析', () => {
     expect(store.getPaper(paper.id).title).toBe('Speculative Serving at Scale')
     expect(queue.uploads()[0]).toMatchObject({ step: 'done', found: 'pdf' })
     expect(store.listFeed()[0]?.body).toEqual({ kind: 'runs', runs: [
-      { kind: 'text', text: '你上传的' }, { kind: 'strong', text: '《Speculative Serving at Scale》' },
+      { kind: 'text', text: '你上传的' },
+      { kind: 'strong', text: '《Speculative Serving at Scale》', target: { kind: 'paper', id: paper.id } },
       { kind: 'text', text: '已入库，标题取自 PDF。' },
     ] })
   })
@@ -71,6 +72,41 @@ describe('上传之后的元数据解析', () => {
     expect(JSON.stringify(store.listFeed()[0]?.body)).toContain('元数据暂未补全')
     expect(JSON.stringify(store.listFeed()[0]?.body)).not.toContain('网络不可用')
     expect(JSON.stringify(store.listFeed()[0]?.body)).not.toContain('论文表')
+  })
+
+  it('查询失败的论文按它的 id 重试:用上传时的文件名和库里的原文再解析一次,这次补全', async () => {
+    const store = createFixtureStore(() => '2026-08-25')
+    const lookups: string[] = []
+    const queue = createMetadataQueue({
+      store,
+      probe: async () => ({ title: null, subject: null, keywords: null, firstPage: '', pageCount: 1 }),
+      provider: {
+        lookup: async (id) => {
+          lookups.push(id)
+          if (lookups.length === 1) throw new TypeError('fetch failed')
+          return REMOTE
+        },
+      },
+      onWrite: () => {},
+    })
+    const bytes = minimalPdf({ lines: ['scan'] })
+    const paper = store.importPaper('2509.01234.pdf', bytes).paper
+    queue.enqueueUpload(paper.id, '2509.01234.pdf', bytes)
+    await queue.idle()
+    expect(queue.uploads().map((job) => job.step)).toEqual(['failed'])
+
+    queue.retry(paper.id)
+    await queue.idle()
+    // The id comes only from the file name, so the retry found it there again.
+    expect(lookups).toEqual(['2509.01234', '2509.01234'])
+    expect(queue.uploads().map((job) => job.step)).toEqual(['failed', 'done'])
+    expect(store.getPaper(paper.id).title).toBe(REMOTE.title)
+  })
+
+  it('没有在这次运行里上传过的论文不能重试', () => {
+    const { queue, store } = setup()
+    const id = store.listPapers({ page: 1, size: 1 }).rows[0]!.id
+    expect(() => queue.retry(id)).toThrow(expect.objectContaining({ reason: 'not-found' }))
   })
 
   it('保留整个活动批次,并发探测 PDF,再用一次远端批量查询补全', async () => {

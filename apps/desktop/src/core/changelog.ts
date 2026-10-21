@@ -8,7 +8,10 @@ import {
   ChangeEntrySchema, PaperColumnsSchema, PaperHighlightSchema, PaperNoteSchema, PaperRowSchema,
   ProjectDetailSchema,
 } from '../shared/contract.js'
-import { COLUMN_TYPE_LABEL, PAPER_PAGE, TRASH_RETENTION_DAYS } from '../shared/vocabulary.js'
+import { topicDir, topicProposal, topicTitleKey } from '../shared/topic-proposal.js'
+import {
+  COLUMN_TYPE_LABEL, DEFAULT_PROJECT_TOPIC, LATER_PAPER, NO_PROJECT_AREA, PAPER_PAGE, TRASH_RETENTION_DAYS,
+} from '../shared/vocabulary.js'
 import { CallError } from './call-error.js'
 import { dayOf } from './dates.js'
 import { liveColumns, misfitCells } from './paper-library/index.js'
@@ -113,10 +116,10 @@ const RestoreSchema = z.discriminatedUnion('kind', [
  * vault day's UTC midnight and drives retention. Only seeded history stores `meta`; newer rows derive
  * their date bucket from `at`. `archived` defaults to false for files written before archiving existed.
  * `date` is derived from `at` at read time rather than stored twice where it could drift, and so are
- * the shown `lines`, from `diff` and the vault as it stands.
+ * the shown `lines`, from `diff` and the vault as it stands, and `named`, from `title` and `target`.
  */
 export const ChangeRecordSchema = ChangeEntrySchema
-  .omit({ meta: true, undoable: true, date: true, lines: true })
+  .omit({ meta: true, undoable: true, date: true, lines: true, named: true })
   .extend({
     meta: z.string().nullable(),
     target: ChangeTargetSchema.nullable(),
@@ -334,6 +337,9 @@ const COLUMN_FIELDS: readonly Field<Omit<PaperColumn, 'key'>>[] = [
 const READ_STATE = '阅读状态'
 const READ_STATE_TAKEN = '状态'
 
+/** How change lines read a read state: the read-later state by the name the App shows for it. */
+const readStateReading = (state: PaperRow['readState']): string => (state === LATER_PAPER ? '待读' : state)
+
 /** The paper fields the user edits; ids, counts, page state and timestamps are the vault's own and not shown. */
 const PAPER_FIELDS: readonly Field<PaperRow>[] = [
   ['标题', (p) => p.title], ['短标题', (p) => p.shortTitle ?? ''], ['作者', (p) => p.authors ?? []],
@@ -341,7 +347,7 @@ const PAPER_FIELDS: readonly Field<PaperRow>[] = [
   ['评分', (p) => (p.rating === undefined ? '' : `${p.rating} 星`)], ['编号', (p) => p.identifier ?? ''],
   ['提交', (p, date) => date(p.submitted)], ['摘要', (p) => p.abstract ?? ''], ['主题', (p) => p.topics],
   ['方法', (p) => p.methods], ['数据集', (p) => p.datasets], ['指标', (p) => p.metrics],
-  [READ_STATE, (p) => p.readState], ['随笔', (p) => p.remark ?? ''],
+  [READ_STATE, (p) => readStateReading(p.readState)], ['随笔', (p) => p.remark ?? ''],
 ]
 
 const NOTE_FIELDS: readonly Field<PaperNote>[] = [['页码', (n) => String(n.page)], ['笔记', (n) => n.text]]
@@ -441,7 +447,7 @@ function projectLines(a: ProjectDetail, b: ProjectDetail, date: DateReading): st
     ...field('名称', (p) => p.name),
     ...field('状态', (p) => p.status),
     ...field('优先级', (p) => PRIORITY[p.priority]),
-    ...field('主题', (p) => p.topic),
+    ...field('领域', (p) => (p.topic === DEFAULT_PROJECT_TOPIC ? NO_PROJECT_AREA : p.topic)),
     ...readingLines(FOCUS[a.status], a.focus, b.focus, FOCUS[b.status]),
     ...field('阻塞', (p) => p.block ?? ''),
     ...field('开始', (p) => date(p.start)),
@@ -454,7 +460,7 @@ function projectLines(a: ProjectDetail, b: ProjectDetail, date: DateReading): st
     ...itemLines(RELATIONS, relations(a), relations(b), date),
     ...itemLines(ATTACHMENTS, a.attachments, b.attachments, date),
     ...itemLines(SESSIONS, a.agentSessions, b.agentSessions, date),
-    ...field('已验证结论', verified),
+    ...field('已验证实验结论', verified),
   ]
 }
 
@@ -529,6 +535,12 @@ function changeLines(
   }
 }
 
+/**
+ * A change title that names its entity, undone any number of times: a paper's or project's name, up to
+ * the first `」· ` after it, or a Wiki page's title in a body edit's title. The name is group 1 or 2.
+ */
+const NAMED_TITLE = /^(?:撤销[：:])*(?:(?:论文|项目)「(.+?)」· |Wiki · 「(.+)」· 改了正文$)/sd
+
 /** The labels changeLines writes a paper's title under; the rest of such a line is the title. */
 const PAPER_TITLE_LINE = /^([+-] (?:论文|关联论文|标题|短标题)：)(.+)$/s
 
@@ -571,7 +583,8 @@ function shownLine(line: string, title: (page: string) => string | undefined): D
  * remark, the project writes, and a proposal's writes, and none of the inbox,
  * later-queue, watch, chat, feed, trash, other reading or other paper-table
  * writes — is recorded, and adds
- * the changelog reads and the undo the contract carries. Records are kept in
+ * the changelog reads and the undo the contract carries, and setPaperTopic,
+ * recorded as the proposal it applies. Records are kept in
  * `log`, newest first, and a record is written after its write, by core, so no
  * caller has to say what it changed. Undo writes back the entity as it stood
  * before the recorded write, which for a write that emptied into the trash is
@@ -750,7 +763,7 @@ export function withChangelog(ops: VaultOps, log: ChangeLogStore): VaultStore {
     updatePaper(id, { custom: Object.fromEntries(misfits.map(({ column }) => [column.key, null])) })
   }
 
-  return {
+  const store: VaultStore = {
     ...ops,
 
     updatePaper,
@@ -810,11 +823,9 @@ export function withChangelog(ops: VaultOps, log: ChangeLogStore): VaultStore {
     },
 
     createProject(name) {
-      const had = new Set(ops.listProjects().map((p) => p.id))
-      ops.createProject(name)
-      const made = ops.listProjects().find((p) => !had.has(p.id))
-      if (!made) throw new Error('新建项目之后库里没有多出一个项目')
-      push({ kind: 'project', id: made.id }, '新建', 'created', undefined)
+      const id = ops.createProject(name)
+      push({ kind: 'project', id }, '新建', 'created', undefined)
+      return id
     },
 
     updateProject(id, patch) {
@@ -831,11 +842,11 @@ export function withChangelog(ops: VaultOps, log: ChangeLogStore): VaultStore {
     },
 
     verifyConclusion(projectId, node, fingerprint) {
-      return onProject(projectId, '验证结论', () => ops.verifyConclusion(projectId, node, fingerprint))
+      return onProject(projectId, '验证实验结论', () => ops.verifyConclusion(projectId, node, fingerprint))
     },
 
     unverifyConclusion(projectId, node) {
-      return onProject(projectId, '取消验证结论', () => ops.unverifyConclusion(projectId, node))
+      return onProject(projectId, '取消验证实验结论', () => ops.unverifyConclusion(projectId, node))
     },
 
     deleteProject(id) {
@@ -914,6 +925,18 @@ export function withChangelog(ops: VaultOps, log: ChangeLogStore): VaultStore {
         : onProject(action.project, '记入科研记录', () => ops.recordAction(id, messageId))
     },
 
+    setPaperTopic(id, topic, member) {
+      const paper = ops.getPaper(id)
+      const next = member
+        ? [...paper.topics, topic]
+        : paper.topics.filter((held) => topicTitleKey(held) !== topicTitleKey(topic))
+      const filing = topicProposal(id, paper.title, paper.topics, next, ops.wikiCards(), topicDir(ops.wikiHome()))
+      if (filing === null) {
+        throw new CallError('refused', `「${paper.title}」${member ? '已经' : '不'}在主题「${topic}」里`)
+      }
+      store.applyProposal(filing)
+    },
+
     applyProposal(proposal, producer = { by: BY_ME, source: BY_ME }) {
       const paths = ops.proposalPages(proposal, producer.by)
       const target: ChangeTarget = { kind: 'pages', id: paths.join('\n'), paths }
@@ -938,8 +961,27 @@ export function withChangelog(ops: VaultOps, log: ChangeLogStore): VaultStore {
         return aggregations.get(id)
           ?? (id.startsWith(PAPER_PAGE) && ops.pageVersion(id) !== null ? ops.wikiPaper(id).title : undefined)
       }
+      /** The entity of `target` that change title `heading` names, when it names one that is in the vault. */
+      const namedIn = (heading: string, target: ChangeTarget | null): ChangeEntry['named'] => {
+        const name = NAMED_TITLE.exec(heading)?.indices?.slice(1).find((span) => span !== undefined)
+        if (name === undefined || target === null) return undefined
+        const [from, to] = name
+        switch (target.kind) {
+          case 'paper':
+          case 'remark': return ops.hasPaper(target.id) ? { kind: 'paper', id: target.id, from, to } : undefined
+          case 'note':
+          case 'highlight': return ops.hasPaper(target.paper) ? { kind: 'paper', id: target.paper, from, to } : undefined
+          case 'project': return ops.hasProject(target.id) ? { kind: 'project', id: target.id, from, to } : undefined
+          case 'pages': {
+            const page = target.paths.length === 1 ? target.paths[0]! : undefined
+            return page !== undefined && title(page) !== undefined ? { kind: 'page', id: page, from, to } : undefined
+          }
+          default: return undefined
+        }
+      }
       return rows.map((row): ChangeEntry => {
         const date = new Date(row.at).toISOString().slice(0, 10)
+        const named = namedIn(row.title, row.target)
         return {
           id: row.id,
           title: row.title,
@@ -948,6 +990,7 @@ export function withChangelog(ops: VaultOps, log: ChangeLogStore): VaultStore {
           source: row.source,
           diff: [...row.diff],
           lines: row.diff.map((line) => shownLine(line, title)),
+          ...(named === undefined ? {} : { named }),
           undone: row.undone,
           undoable: !row.undone && row.target !== null && row.restore !== null,
           archived: row.archived,
@@ -1066,4 +1109,5 @@ export function withChangelog(ops: VaultOps, log: ChangeLogStore): VaultStore {
       rows = next
     },
   }
+  return store
 }

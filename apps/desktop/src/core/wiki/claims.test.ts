@@ -105,8 +105,8 @@ describe('claim ops', () => {
     expect(add({ id: 'n', text: 'x', evidence: [{ kind: 'wiki', ref: 'topics/sd#gone' }] })).toThrow(/topics\/sd#gone/)
     expect(add({ id: 'n', text: 'x', evidence: [{ kind: 'experiment', project: 'nope', node: 'exp1' }] })).toThrow(/项目不存在：nope/)
     expect(add({ id: 'n', text: 'x', evidence: [{ kind: 'experiment', project: 'draft', node: 'gone' }] })).toThrow(/没有节点：gone/)
-    expect(add({ id: 'n', text: 'x', evidence: [{ kind: 'experiment', project: 'draft', conclusion: 'c9' }] })).toThrow(/没有结论：c9/)
-    expect(add({ id: 'n', text: 'x', evidence: [{ kind: 'experiment', project: 'draft' }] })).toThrow(/节点或结论/)
+    expect(add({ id: 'n', text: 'x', evidence: [{ kind: 'experiment', project: 'draft', conclusion: 'c9' }] })).toThrow(/没有实验结论：c9/)
+    expect(add({ id: 'n', text: 'x', evidence: [{ kind: 'experiment', project: 'draft' }] })).toThrow(/节点或实验结论/)
     expect(add({ id: 'n', text: 'x', evidence: [{ kind: 'note', paper: 'papers/eagle' }] })).toThrow(/只能指一个/)
     expect(add({ id: 'n', text: 'x', evidence: [{ kind: 'note', paper: 'papers/eagle', highlight: 'h-9' }] })).toThrow(/h-9/)
     expect(() => run([{ op: 'addClaim', page: 'papers/eagle', claim: { id: 'n', text: 'x', evidence: [experiment] } }])).toThrow(/聚合不存在/)
@@ -130,12 +130,12 @@ describe('claim ops', () => {
       op: 'addClaim', page: 'topics/sd', claim: { id: 'n', text: 'x', evidence: [evidence] },
     }] }, TODAY, world(by, requireVerified))
     const node = (id: string): Evidence => ({ kind: 'experiment', project: 'draft', node: id })
-    expect(add(node('open'), AGENT, false)).toThrow(/节点 open 还没有结论/)
+    expect(add(node('open'), AGENT, false)).toThrow(/节点 open 还没有实验结论/)
     expect(add(node('fresh'), AGENT, false)).not.toThrow()
-    expect(add(node('fresh'), AGENT)).toThrow(/节点 fresh 的结论还没验证/)
-    expect(add(node('fresh'), '我')).toThrow(/节点 fresh 的结论还没验证/)
+    expect(add(node('fresh'), AGENT)).toThrow(/节点 fresh 的实验结论还没验证/)
+    expect(add(node('fresh'), '我')).toThrow(/节点 fresh 的实验结论还没验证/)
     expect(add(node('wide'), '我')).not.toThrow()
-    expect(add({ kind: 'experiment', project: 'draft', conclusion: 'c2' }, '我')).toThrow(/结论 c2 还没验证/)
+    expect(add({ kind: 'experiment', project: 'draft', conclusion: 'c2' }, '我')).toThrow(/实验结论 c2 还没验证/)
     expect(add({ kind: 'experiment', project: 'draft', conclusion: 'c2' }, AGENT, false)).not.toThrow()
     expect(() => run([{ op: 'markConflict', page: 'topics/sd', claim: 'plain', conflict: {
       id: 'x', against: { kind: 'experiment', project: 'draft', node: 'open' }, note: '实验说法相反',

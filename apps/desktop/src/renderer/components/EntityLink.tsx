@@ -1,6 +1,7 @@
 import type { ReactElement, ReactNode } from 'react'
 import type { GraphNode } from '../../shared/contract.js'
 import { useMessages } from '../messages/useMessages.js'
+import type { ScreenKey } from '../shell/AppShell.js'
 import { FadeText } from './FadeText.js'
 import { IconExternal } from './icons.js'
 import { StatusDot } from './StatusDot.js'
@@ -23,17 +24,22 @@ export type EntityLinkProps = {
   fill?: boolean
 } & { [key: `data-${string}`]: string | undefined } & (
   | { kind: 'node'; mode: NodeMode; onOpen?: () => void }
-  | { kind: 'project' | 'page' | 'paper'; onOpen?: () => void; href?: string }
+  | { kind: 'project' | 'page' | 'paper' | 'idea' | 'chat'; onOpen?: () => void; href?: string }
   | { kind: 'external'; href: string }
 )
+
+/** The screen that opens each kind of entity a link names: a paper in the reader, a project, a Wiki page, an idea, a chat. */
+export const ENTITY_SCREEN = {
+  paper: 'reader', project: 'project', page: 'wiki', idea: 'ideas', chat: 'chat',
+} as const satisfies Record<'paper' | 'project' | 'page' | 'idea' | 'chat', ScreenKey>
 
 /** The one mark that ends a link leaving the App for the browser. */
 export const ExternalMark = () => <span className="entity-link-mark" aria-hidden="true"><IconExternal /></span>
 
 /**
- * The one link to another entity: a research node, a project, a Wiki page or a paper, or an address
- * outside the App. Its label keeps the surrounding text's colour and is underlined while it is a
- * link. A node link leads with the node's state dot, named by the graph legend's word for that
+ * The one link to another entity: a research node, a project, a Wiki page, a paper, an idea or a chat,
+ * or an address outside the App. Its label keeps the surrounding text's colour and is underlined while
+ * it is a link. A node link leads with the node's state dot, named by the graph legend's word for that
  * state, and fades its label when it does not fit, when the tooltip shows it whole. `title` is the
  * tooltip of the whole link. `onOpen` makes it a button that opens the entity; given an in-App `href`
  * as well, it is a link that wraps like the text around it. An `external` link opens `href` in the

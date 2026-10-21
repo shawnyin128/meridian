@@ -17,6 +17,7 @@ import { EmptyState } from '../EmptyState.js'
 import { EntityLink } from '../EntityLink.js'
 import { FadeText } from '../FadeText.js'
 import { IconButton } from '../IconButton.js'
+import { ownIdea } from '../ideas/IdeaPanel.js'
 import { IconMinus, IconPlus } from '../icons.js'
 import { PanelClose } from '../PanelClose.js'
 import { SectionHeading } from '../PageShell.js'
@@ -551,9 +552,11 @@ export function ResearchNodePanel({ graph, events, ideas, tasks, node, onClose, 
                   onActivate={() => onSelectIdea(idea.id)}
                 >
                   <FadeText className="node-idea-title" label={idea.title}>{idea.title}</FadeText>
-                  <FadeText className="node-idea-source" label={m.project.idea.sourceTag(source)}>
-                    {m.project.idea.sourceTag(source)}
-                  </FadeText>
+                  {ownIdea(idea) ? null : (
+                    <FadeText className="node-idea-source" label={m.project.idea.sourceTag(source)}>
+                      {m.project.idea.sourceTag(source)}
+                    </FadeText>
+                  )}
                 </StructuredRow>
               )
             })}

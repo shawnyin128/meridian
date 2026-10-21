@@ -2,8 +2,9 @@
 export const ideas = {
   title: (n: number) => `想法 · ${n}`,
   activeHeading: (n: number) => `进行中 · ${n}`,
-  sort: '重新排列',
+  sort: '排序',
   sortUpdated: '按更新时间',
+  create: '新建想法',
   empty: '还没有进行中的想法',
   sourceKind: { chat: '对话', paperReading: '论文阅读' },
   link: {
@@ -21,7 +22,6 @@ export const ideas = {
   updated: (date: string) => `${date} 更新`,
   detailHeading: '想法详情',
   bodyLabel: '想法',
-  saving: '保存中…',
   restoredNote: '想法已恢复',
   archivedNote: '想法已归档',
   updatedNote: '想法已更新',
@@ -32,19 +32,14 @@ export const ideas = {
   },
   openSourceChat: '打开来源对话',
   editor: {
-    newTitle: '保存为想法',
-    editTitle: '编辑想法',
     sourceLabel: (source: string) => `来源：${source}`,
     titleLabel: '标题',
     titlePlaceholder: '这个想法要解决什么问题？',
     bodyPlaceholder: '机制、假设或方向…',
-    save: '保存想法',
   },
-  graphDialog: {
-    createTitle: '转为科研图节点',
+  nodeDraft: {
     nodeTitleLabel: '节点标题',
     afterLabel: '接在哪个节点后',
     newRootOption: '作为新的根节点',
-    createAndLink: '创建并关联',
   },
 } satisfies Record<string, unknown>

@@ -4,11 +4,12 @@ import { claimAt, claimsOf, isPaper, titleOf } from './model.js'
 
 /**
  * What signals need beyond the Wiki: every project with the pages its relations and node write-backs
- * name, the ids of paper pages now in the trash, and the aggregations missing a generated-region marker pair.
+ * name, the paper pages now in the trash with the title each trash record holds, and the aggregations
+ * missing a generated-region marker pair.
  */
 export type SignalContext = {
   projects: { id: string; pages: string[] }[]
-  trashed: ReadonlySet<string>
+  trashed: ReadonlyMap<string, string>
   missingRegions: string[]
 }
 
@@ -54,6 +55,14 @@ export function wikiSignals(data: WikiData, context: SignalContext): WikiSignal[
   const push = (kind: WikiSignalKind, page: string, related: string[], detail: string): void => {
     out.push({ kind, page, related, detail })
   }
+  /** A broken link from `page` to the missing page `target`, which the link itself names `label`, if it does. */
+  const brokenLink = (page: string, target: string, detail: string, label?: string): void => {
+    const trashed = context.trashed.get(target)
+    out.push({
+      kind: 'broken-link', page, related: [target], detail,
+      missing: { name: trashed ?? (label?.trim() || target.split('/').at(-1)!), trashed: trashed !== undefined },
+    })
+  }
   const ids = Object.keys(data.pages).sort()
   const isAggregation = (id: string): boolean => data.pages[id] !== undefined && !isPaper(data.pages[id])
   const papers = ids.filter((id) => isPaper(data.pages[id]!))
@@ -90,9 +99,9 @@ export function wikiSignals(data: WikiData, context: SignalContext): WikiSignal[
     }
   }
   for (const id of ids) {
-    for (const match of data.pages[id]!.body.matchAll(/\[\[([^\]|\n]+)(?:\|[^\]\n]+)?\]\]/g)) {
+    for (const match of data.pages[id]!.body.matchAll(/\[\[([^\]|\n]+)(?:\|([^\]\n]+))?\]\]/g)) {
       const [target, block] = match[1]!.split('#') as [string, string | undefined]
-      if (data.pages[target] === undefined) push('broken-link', id, [target], `正文链接的页${missing(target)}`)
+      if (data.pages[target] === undefined) brokenLink(id, target, `正文链接的页${missing(target)}`, match[2])
       else if (block?.startsWith('^') && isAggregation(target) && claimAt(data, `${target}#${block.slice(1)}`) === undefined) {
         push('broken-claim-ref', id, [`${target}#${block.slice(1)}`], `正文链接的结论 ${target}#${block.slice(1)} 不存在`)
       }
@@ -103,7 +112,7 @@ export function wikiSignals(data: WikiData, context: SignalContext): WikiSignal[
       for (const e of claim.evidence) {
         if (e.kind !== 'wiki') continue
         const target = e.ref.split('#')[0]!
-        if (data.pages[target] === undefined) push('broken-link', id, [target], `结论 ${claim.id} 的证据指向的页${missing(target)}`)
+        if (data.pages[target] === undefined) brokenLink(id, target, `结论 ${claim.id} 的证据指向的页${missing(target)}`)
         else if (e.ref.includes('#') && claimAt(data, e.ref) === undefined) {
           push('broken-claim-ref', id, [e.ref], `结论 ${claim.id} 的证据指向的结论 ${e.ref} 不存在`)
         }
@@ -117,7 +126,7 @@ export function wikiSignals(data: WikiData, context: SignalContext): WikiSignal[
   }
   for (const project of context.projects) {
     for (const target of project.pages) {
-      if (!isAggregation(target)) push('broken-link', `projects/${project.id}`, [target], `项目引用的 Wiki 页${missing(target)}`)
+      if (!isAggregation(target)) brokenLink(`projects/${project.id}`, target, `项目引用的 Wiki 页${missing(target)}`)
     }
   }
   for (const id of papers) {

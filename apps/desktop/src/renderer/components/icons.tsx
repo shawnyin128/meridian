@@ -161,6 +161,13 @@ export const IconCross = ({ sw = 2 }: { sw?: number }) => (
   </svg>
 )
 
+/** The magnifier at the start of the global search field and the command palette's field. */
+export const IconSearch = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+    <circle cx="11" cy="11" r="7" /><path d="M21 21l-4.3-4.3" />
+  </svg>
+)
+
 /** The three dots of an inline … menu. */
 export const IconDots = () => (
   <svg viewBox="0 0 24 24" fill="currentColor" stroke="none">

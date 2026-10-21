@@ -8,6 +8,7 @@ import { MessagesProvider } from '../messages/useMessages.js'
 import { LANGUAGE_STORAGE_KEY } from '../shell/language.js'
 import type { PlanTab } from '../components/project/ProjectPlan.js'
 import type { RecordTab } from './ProjectDetail.js'
+import type { ScreenJump } from '../shell/AppShell.js'
 
 declare global {
   var IS_REACT_ACT_ENVIRONMENT: boolean
@@ -19,15 +20,22 @@ const summary = (id: string, name: string): ProjectSummary => ({
   control: { next: { source: 'missing', text: '' } }, milestones: [], recentEvents: [],
 })
 
+/** The jump aimed at the Projects screen. */
+const nav = vi.hoisted(() => ({ jump: null as ScreenJump | null, returnTo: vi.fn() }))
+const ipc = vi.hoisted(() => ({
+  append: vi.fn(() => Promise.resolve()),
+  create: vi.fn((name: string) => Promise.resolve(name === '草稿树' ? 'project-9' : 'project-0')),
+}))
+
 vi.mock('../ipc.js', () => ({
-  feed: { append: vi.fn() },
-  project: { list: async () => [summary('a', '项目甲'), summary('b', '项目乙')], reorder: vi.fn() },
+  feed: { append: ipc.append },
+  project: { list: async () => [summary('a', '项目甲'), summary('b', '项目乙')], reorder: vi.fn(), create: ipc.create },
 }))
 
 vi.mock('../shell/AppShell.js', () => ({
   useNotice: () => ({ success: vi.fn(), refusal: vi.fn() }),
   useCrumbTail: () => {},
-  useJump: () => ({ jump: null, returnTo: vi.fn() }),
+  useJump: () => ({ jump: nav.jump, returnTo: nav.returnTo }),
   useScreenEntry: () => 0,
   useToday: () => '2026-10-16',
   useVaultRevision: () => ({ revision: 0, bump: vi.fn() }),
@@ -38,11 +46,13 @@ vi.mock('../hooks/useVaultWrite.js', () => ({
 }))
 
 vi.mock('./ProjectDetail.js', () => ({
-  ProjectDetail: ({ projectId, tab, onTab, record, onRecord, onBack }: {
+  ProjectDetail: ({ projectId, tab, onTab, record, onRecord, onBack, onReturn, arrivalTask }: {
     projectId: string; tab: PlanTab; onTab: (tab: PlanTab) => void
-    record: RecordTab; onRecord: (record: RecordTab) => void; onBack: () => void
+    record: RecordTab; onRecord: (record: RecordTab) => void; onBack: () => void; onReturn: () => void
+    arrivalTask: string | null
   }) => (
-    <div className="detail" data-project={projectId} data-tab={tab} data-record={record}>
+    <div className="detail" data-project={projectId} data-tab={tab} data-record={record} data-task={arrivalTask ?? ''}>
+      <button className="return" onClick={onReturn} />
       <button className="to-ms" onClick={() => onTab('ms')} />
       <button className="to-graph" onClick={() => onRecord('graph')} />
       <button className="to-list" onClick={onBack} />
@@ -81,6 +91,7 @@ describe('Projects', () => {
     act(() => root.unmount())
     host.remove()
     vi.unstubAllGlobals()
+    nav.jump = null
   })
 
   const click = async (selector: string) => {
@@ -118,4 +129,51 @@ describe('Projects', () => {
     await click('[data-proj="a"]')
     expect(shownRecord()).toBe('graph')
   })
+
+  it('新建一个项目在动态里记一条,点名的项目名带着它的 id', async () => {
+    await click('#projNew')
+    const input = host.querySelector<HTMLInputElement>('.projpanel input.inedit')!
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')!.set!.call(input, '草稿树')
+      input.dispatchEvent(new Event('input', { bubbles: true }))
+    })
+    await act(async () => {
+      input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
+      await Promise.resolve()
+    })
+    expect(ipc.create).toHaveBeenCalledWith('草稿树')
+    expect(ipc.append).toHaveBeenCalledWith({ source: 'me', body: { kind: 'runs', runs: [
+      { kind: 'text', text: '新项目《' }, { kind: 'text', text: '草稿树', target: { kind: 'project', id: 'project-9' } },
+      { kind: 'text', text: '》已创建' },
+    ] } })
+  })
+
+  it('从别的屏点链接打开一个项目的任务时,详情的返回回到来的那一屏', async () => {
+    nav.jump = { screen: 'project', target: 'b', from: 'feed', seq: 3, anchor: { task: 'task-7' } }
+    await act(async () => root.render(<MessagesProvider><Projects /></MessagesProvider>))
+    expect(host.querySelector<HTMLElement>('.detail')!.dataset.task).toBe('task-7')
+    await click('.detail .return')
+    expect(nav.returnTo).toHaveBeenCalledWith('feed')
+  })
+
+  it('从别的屏带新建项目落点跳进来时,列表的屏头左端有返回,按它回到来的那一屏', async () => {
+    nav.jump = { screen: 'project', target: '', from: 'wiki', seq: 4, anchor: { newProject: true } }
+    await act(async () => root.render(<MessagesProvider><Projects /></MessagesProvider>))
+    expect(host.querySelector('.desk-head')!.firstElementChild?.classList.contains('back')).toBe(true)
+    await click('.desk-head > .back')
+    expect(nav.returnTo).toHaveBeenCalledWith('wiki')
+  })
+
+  it('带新建项目落点跳进来时,从项目详情回到列表并打开新建行;再回到列表时不再打开', async () => {
+    await click('[data-proj="a"]')
+    nav.jump = { screen: 'project', target: '', from: 'feed', seq: 1, anchor: { newProject: true } }
+    await act(async () => root.render(<MessagesProvider><Projects /></MessagesProvider>))
+    expect(host.querySelector('[data-project]')).toBeNull()
+    expect(host.querySelectorAll('.projpanel .inedit')).toHaveLength(1)
+
+    await click('[data-proj="b"]')
+    await click('.to-list')
+    expect(host.querySelectorAll('.projpanel .inedit')).toHaveLength(0)
+  })
 })
+

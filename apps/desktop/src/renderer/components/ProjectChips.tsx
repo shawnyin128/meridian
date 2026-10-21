@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import type { PaperRow, ProjectSummary } from '../../shared/contract.js'
 import { project } from '../ipc.js'
 import { AddAction } from './AddAction.js'
+import { EntityLink } from './EntityLink.js'
 import { IconButton } from './IconButton.js'
 import { IconCross } from './icons.js'
 import { PickerPopover, PickOption } from './PickerPopover.js'
@@ -12,18 +13,20 @@ import { NO_TRIGGERS } from '../hooks/useOnLeave.js'
 import { useInlineDraft } from '../hooks/useInlineDraft.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
 import { useMessages } from '../messages/useMessages.js'
+import { useJump } from '../shell/AppShell.js'
 import { FormInput } from './FormControls.js'
 
 /**
- * The projects of a paper: one chip per project, whose × removes the paper from that project; the
- * "+" at the end picks a project this paper is not linked to yet. A write bumps the vault revision
- * by itself, and the current screen refetches on its own.
+ * The projects of a paper: one chip per project, whose name opens the project and whose × removes the
+ * paper from that project; the "+" at the end picks a project this paper is not linked to yet. A write
+ * bumps the vault revision by itself, and the current screen refetches on its own.
  */
 export function ProjectChips({ paper, onError }: {
   paper: PaperRow
   onError: (error: Error) => void
 }) {
   const m = useMessages()
+  const { open: jumpTo } = useJump()
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
   const [projects, setProjects] = useState<ProjectSummary[]>([])
@@ -57,7 +60,8 @@ export function ProjectChips({ paper, onError }: {
   return (
     <>
       {paper.projects.map((linked) => (
-        <span className={tagClass('neutral', 'chip', 'tagchip')} key={linked.id} data-project={linked.id}>{linked.name}
+        <span className={tagClass('neutral', 'chip', 'tagchip')} key={linked.id} data-project={linked.id}>
+          <EntityLink kind="project" label={linked.name} onOpen={() => jumpTo('project', linked.id)} />
           <IconButton
             label={m.common.removeLink} size="inline" className="rx"
             onClick={(event) => {

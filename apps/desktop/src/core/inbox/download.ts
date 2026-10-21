@@ -55,7 +55,7 @@ export function createInboxDownloads(deps: {
             kind: 'runs',
             runs: [
               { kind: 'text', text: '已入库：' },
-              { kind: 'strong', text: `《${deps.store.getPaper(result.paper).title}》` },
+              { kind: 'strong', text: `《${deps.store.getPaper(result.paper).title}》`, target: { kind: 'paper', id: result.paper } },
               { kind: 'text', text: '，元数据取自 arXiv。' },
             ],
           },

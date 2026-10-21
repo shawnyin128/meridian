@@ -9,7 +9,7 @@ import type {
   ProjectFields, ProjectOverview, ProjectSummary, ProjectWorkspaceBinding, ReadingMutation,
   RelationFields, ResearchIdea, SearchHit,
   TaskFields, TaskPatch, TrashEntry, Watch, WatchFields, WikiAggregation, WikiAggregationCard, WikiHome,
-  WikiPaper, WikiSignal,
+  WikiBacklink, WikiPaper, WikiSignal,
 } from '../shared/contract.js'
 import type { PageText, PaperSnapshot } from './vault/records.js'
 import type { RemotePaper } from './net/arxiv.js'
@@ -104,8 +104,21 @@ export interface VaultStore {
    * sets to a value the paper does not carry has to name a column the vault
    * holds and match that column's type and options; throws otherwise. A cell it
    * empties, or sets to the value it carries, passes whatever it names.
+   * Throws for a patch carrying `topics`, which are Wiki memberships that
+   * setPaperTopic changes.
    */
   updatePaper(id: string, patch: Partial<PaperFields>): void
+
+  /**
+   * Files the paper with the given id under the Wiki topic page titled `topic`
+   * when `member` is true, and unfiles it from that page when false, by
+   * applying one proposal recorded in the change log, so undoing that record
+   * reverts it. Titles match ignoring case and whitespace. A title no topic
+   * page carries first gets a new topic page, as filing a downloaded paper
+   * under its watch topic does. Throws if no such paper exists, if the paper
+   * already is (or is not) under that topic, or if the proposal is not valid.
+   */
+  setPaperTopic(id: string, topic: string, member: boolean): void
 
   /**
    * Returns what putPaper takes to leave the paper with the given id exactly as
@@ -271,9 +284,9 @@ export interface VaultStore {
    * which the screens show before you have chosen either. It holds no tasks,
    * milestones, relations, attachments or agent sessions, its research graph
    * is empty, and it holds exactly one event, dated today, recording that it
-   * was created.
+   * was created. Returns the new project's id.
    */
-  createProject(name: string): void
+  createProject(name: string): string
 
   /**
    * Returns the project with the given id, its tasks, milestones, relations,
@@ -703,6 +716,14 @@ export interface VaultStore {
   /** Returns the Wiki signals (write protocol §6.2) of the vault as it stands. */
   wikiSignals(): WikiSignal[]
 
+  /**
+   * Returns what refers to the Wiki page with the given id (core/wiki wikiBacklinks): other pages
+   * linking to it in their body, projects whose relations name it or that link the paper, ideas that
+   * came from the paper, and chats that read the paper or mention the page. Reads only what the store
+   * already holds and writes nothing. Throws if no such page exists.
+   */
+  wikiBacklinks(id: string): WikiBacklink[]
+
   /** Returns the review-queue records, newest first. */
   proposalRecords(): ProposalRecord[]
 
@@ -928,10 +949,11 @@ export interface VaultStore {
 
   /**
    * Creates an idea from text the user explicitly wrote in the save dialog. Core resolves and
-   * records the source conversation and optional paper instead of treating the last chat message
-   * as the idea itself.
+   * records the source conversation `chatId` and optional paper instead of treating the last chat
+   * message as the idea itself. Without `chatId` the idea is one the user wrote down on their own:
+   * its source is MANUAL_SOURCE, with no chat and no agent. It links to no project.
    */
-  createIdea(chatId: string, title: string, body: string): ResearchIdea
+  createIdea(chatId: string | undefined, title: string, body: string): ResearchIdea
 
   /** Updates content, attention state, or the optional project link of an existing idea. */
   updateIdea(id: string, patch: ResearchIdeaMutation): ResearchIdea
@@ -953,22 +975,23 @@ export interface VaultStore {
   setChatArchived(id: string, archived: boolean): void
 
   /**
-   * Returns the hits whose title contains the given query once trimmed,
-   * compared without case, at most SEARCH_LIMIT of them. Aggregations come
-   * first, then projects, chats and papers, each group in
-   * vault order, so a query matching more than the limit loses the later
-   * groups first. A query that is blank once trimmed matches nothing.
+   * Returns at most SEARCH_LIMIT hits for the query over the vault as held in
+   * memory, as `searchHits` matches and ranks them: aggregations with their
+   * page text and conclusions, projects, papers with their authors, page text,
+   * highlights and notes, chats, ideas with their bodies, tasks with their
+   * notes, and read-later entries not in the vault with their authors. A query
+   * that is blank once trimmed matches nothing.
    */
   search(query: string): SearchHit[]
 }
 
 /**
- * Everything a store implements on its own. The changelog reads and the undo
- * are not among them: withChangelog adds those over any of these, so that one
- * implementation records the writes of every store. Here, restoreTrash only
- * has to put the trash entry back; emptying the cells a paper's columns no
- * longer take, and recording that as a change, is withChangelog's doing, not
- * the bare store's.
+ * Everything a store implements on its own. The changelog reads, the undo and
+ * setPaperTopic are not among them: withChangelog adds those over any of
+ * these, so that one implementation records the writes of every store. Here,
+ * restoreTrash only has to put the trash entry back; emptying the cells a
+ * paper's columns no longer take, and recording that as a change, is
+ * withChangelog's doing, not the bare store's.
  */
 export type VaultOps = Omit<
   VaultStore,
@@ -979,4 +1002,5 @@ export type VaultOps = Omit<
   | 'deleteChange'
   | 'clearArchivedChanges'
   | 'absorbAgentTasks'
+  | 'setPaperTopic'
 >

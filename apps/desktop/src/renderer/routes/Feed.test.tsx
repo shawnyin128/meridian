@@ -11,12 +11,16 @@ declare global {
   var IS_REACT_ACT_ENVIRONMENT: boolean
 }
 
-const feedList = vi.hoisted(() => ({ rows: [] as FeedEntry[] }))
+const feedList = vi.hoisted(() => ({ rows: [] as FeedEntry[], open: vi.fn() }))
 vi.mock('../ipc.js', () => ({ feed: { list: async () => feedList.rows } }))
 vi.mock('../shell/AppShell.js', () => ({
-  useJump: () => ({ open: vi.fn() }),
+  useJump: () => ({ open: feedList.open }),
   useToday: () => '2026-09-20',
   useVaultRevision: () => ({ revision: 0, bump: vi.fn() }),
+}))
+// The checklist reads the library and Settings on its own; here it stands in by a marker of where it sits.
+vi.mock('../components/FirstRunChecklist.js', () => ({
+  FirstRunChecklist: ({ className }: { className?: string }) => <div className={`firstrun-stub ${className ?? ''}`} />,
 }))
 
 const { Feed, FeedRows } = await import('./Feed.js')
@@ -85,6 +89,40 @@ describe('feed rows', () => {
     expect(html).toMatch(/<b>《<strong>F<\/strong>luxBin <span><span class="katex">.*<\/span><\/span>》<\/b>/)
   })
 
+  it('a run that names its entity is a link that opens it, in the look of its run; a run naming a kind it does not know reads as its text', () => {
+    globalThis.IS_REACT_ACT_ENVIRONMENT = true
+    vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} })
+    const entry: FeedEntry = {
+      ...ENTRY,
+      body: { kind: 'runs', runs: [
+        { kind: 'strong', text: '「推测解码加速」', target: { kind: 'project', id: 'project-57' } },
+        { kind: 'text', text: '读完' },
+        { kind: 'strong', text: '《EAGLE》', target: { kind: 'paper', id: '2401-15077' } },
+        { kind: 'text', text: '，更新了' },
+        { kind: 'text', text: '推测解码', target: { kind: 'page', id: 'topics/sd' } },
+        { kind: 'cite', text: '「树宽收益拐点」', target: { kind: 'claim', id: 'topics/sd#knee' } },
+      ] },
+    }
+    const host = document.createElement('div')
+    document.body.append(host)
+    const root = createRoot(host)
+    act(() => root.render(<MessagesProvider><FeedRows rows={[entry]} onOpenConflict={() => {}} /></MessagesProvider>))
+    const body = host.querySelector('.fbody')!
+    expect(body.textContent).toBe('「推测解码加速」读完《EAGLE》，更新了推测解码「树宽收益拐点」')
+    const links = [...body.querySelectorAll<HTMLAnchorElement>('.entity-link')]
+    expect(links.map((link) => [link.tagName, link.className, link.parentElement!.tagName, link.textContent])).toEqual([
+      ['A', 'entity-link entity-link--project', 'B', '「推测解码加速」'],
+      ['A', 'entity-link entity-link--paper', 'B', '《EAGLE》'],
+      ['A', 'entity-link entity-link--page', 'DIV', '推测解码'],
+    ])
+    feedList.open.mockClear()
+    for (const link of links) act(() => link.click())
+    expect(feedList.open.mock.calls).toEqual([['project', 'project-57'], ['reader', '2401-15077'], ['wiki', 'topics/sd']])
+    act(() => root.unmount())
+    host.remove()
+    vi.unstubAllGlobals()
+  })
+
   it('names the day sections in the interface language and dates entries before today', () => {
     window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'en')
     const earlier = {
@@ -99,6 +137,21 @@ describe('feed rows', () => {
     expect(html).toContain('<div class="day-heading">Today</div>')
     expect(html).toContain('<div class="day-heading">Earlier</div>')
     expect(html).toMatch(/>Sep 12<.*>09:28 AM</)
+  })
+
+  it('开始使用清单排在动态流的最上面、筛选条之上，和卡片一样宽', async () => {
+    globalThis.IS_REACT_ACT_ENVIRONMENT = true
+    vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} })
+    feedList.rows = [ENTRY]
+    const host = document.createElement('div')
+    document.body.append(host)
+    const root = createRoot(host)
+    await act(async () => { root.render(<MessagesProvider><Feed /></MessagesProvider>) })
+    expect([...host.querySelector('.feedcol > .desk-body > .msgs')!.children].slice(0, 2).map((child) => child.className))
+      .toEqual(['firstrun-stub mwrap', 'page-toolbar mwrap'])
+    await act(async () => { root.unmount() })
+    host.remove()
+    vi.unstubAllGlobals()
   })
 
   it('filtering by source keeps the day headings of the entries it shows', async () => {

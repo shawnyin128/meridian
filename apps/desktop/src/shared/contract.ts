@@ -501,6 +501,9 @@ export const PapersImportParamsSchema = z.object({
   bytes: PdfBytesSchema,
 }).strict()
 
+/** Parses the metadata of paper `id` again, as it was uploaded in this run of the App. */
+export const PapersRetryMetadataParamsSchema = z.object({ id: z.string() }).strict()
+
 export const PaperImportResultSchema = z.object({
   kind: z.enum(['added', 'existing']),
   paper: PaperRowSchema,
@@ -921,9 +924,10 @@ export const HarnessModelSettingsUpdateSchema = z.object({
 
 /**
  * Writable paper fields. Users can correct bibliographic frontmatter without
- * changing the immutable PDF and maintain topics, read state, and custom cells.
- * `pageState`, timestamps, counts, and page identity remain system-owned.
- * `custom` is a cell patch keyed by column, with null clearing a cell.
+ * changing the immutable PDF and maintain read state and custom cells. Topics
+ * are Wiki memberships: Core refuses a `topics` patch, and `papers.setTopic`
+ * changes them. `pageState`, timestamps, counts, and page identity remain
+ * system-owned. `custom` is a cell patch keyed by column, with null clearing a cell.
  */
 const PaperFieldsSchema = z.object({
   title: z.string().trim().min(1).max(2_000),
@@ -943,6 +947,13 @@ const PaperFieldsSchema = z.object({
 export const PapersUpdateParamsSchema = z.object({
   id: z.string(),
   patch: PaperFieldsSchema.partial(),
+}).strict()
+
+/** Files a paper under (`member` true) or unfiles it from the Wiki topic page titled `topic`, as one undoable change. */
+export const PapersSetTopicParamsSchema = z.object({
+  id: z.string(),
+  topic: z.string().trim().min(1).max(300),
+  member: z.boolean(),
 }).strict()
 
 export const ProjectGetParamsSchema = z.object({ id: z.string() }).strict()
@@ -1361,10 +1372,23 @@ export const TrashPurgeParamsSchema = z.object({ id: z.string() }).strict()
 export const DiffPieceSchema = z.union([z.string(), z.object({ paper: z.string() }).strict()])
 
 /**
+ * The entity a recent-change title names, while it is in the vault: paper `id` (for a change to its
+ * reading notes, highlights or remark too), project `id` or Wiki page `id`, named by
+ * `title.slice(from, to)`.
+ */
+export const ChangeNamedSchema = z.object({
+  kind: z.enum(['paper', 'project', 'page']),
+  id: z.string(),
+  from: z.number().int(),
+  to: z.number().int(),
+}).strict()
+
+/**
  * Recent-change entry. `meta` is human-readable secondary text while `date`
  * drives day grouping. `source` distinguishes user and agent changes. Diff lines
  * begin with `+` or `-` and are the stored ones; `lines` are the same lines as
  * shown, in pieces, Wiki page ids named by their titles and paper titles marked.
+ * `named` is the entity the title names, which the entry opens.
  * `undone` records completed undo, while `undoable`
  * reflects current snapshot availability. Snapshots and fingerprints remain in
  * Core. `archived` means acknowledged and removes the entry from active counts,
@@ -1378,6 +1402,7 @@ export const ChangeEntrySchema = z.object({
   source: z.enum(['笔记', '实验', 'Meridian', '我']),
   diff: z.array(z.string()),
   lines: z.array(z.array(DiffPieceSchema)),
+  named: ChangeNamedSchema.optional(),
   undone: z.boolean(),
   undoable: z.boolean(),
   archived: z.boolean(),
@@ -1405,12 +1430,19 @@ export const ChangelogArchiveParamsSchema = z.object({ id: z.string() }).strict(
 export const ChangelogDeleteParamsSchema = z.object({ id: z.string() }).strict()
 
 /**
+ * The entity a feed run names, by id: a `paper`, a `project` or a Wiki `page`. `kind` takes any
+ * string, so a run naming a kind a later version adds still reads, as its text.
+ */
+export const FeedTargetSchema = z.object({ kind: z.string(), id: z.string() }).strict()
+
+/**
  * Feed-body run whose `kind` controls presentation: plain text, emphasized text,
- * or a citation to a vault conclusion or page.
+ * or a citation to a vault conclusion or page. `target` is the entity its text names.
  */
 export const FeedRunSchema = z.object({
   kind: z.enum(['text', 'strong', 'cite']),
   text: z.string(),
+  target: FeedTargetSchema.optional(),
 }).strict()
 
 /**
@@ -1559,12 +1591,17 @@ export const WikiSignalKindSchema = z.enum([
   'open-conflict', 'missing-generated-region',
 ])
 
-/** One signal: the page (or `projects/<id>`) it is about, the page ids or claim refs involved, and one plain sentence. */
+/**
+ * One signal: the page (or `projects/<id>`) it is about, the page ids or claim refs involved, and one
+ * plain sentence. A broken link also names the `missing` page it points to: by the title its trash
+ * record holds when it is in the trash, else by the label its link writes or the last segment of its id.
+ */
 export const WikiSignalSchema = z.object({
   kind: WikiSignalKindSchema,
   page: z.string(),
   related: z.array(z.string()),
   detail: z.string(),
+  missing: z.object({ name: z.string(), trashed: z.boolean() }).strict().optional(),
 }).strict()
 
 /**
@@ -1681,6 +1718,23 @@ export const WikiHomeSchema = z.object({
 export const WikiAggregationParamsSchema = z.object({ id: z.string() }).strict()
 
 export const WikiPaperParamsSchema = z.object({ id: z.string() }).strict()
+
+/**
+ * One thing that refers to a Wiki page: another page whose body links to it, a project whose
+ * relations name it or that links the paper, an idea the paper is the source of, or a chat that reads
+ * the paper or mentions the page. `id` is that page's, project's, idea's or chat's id and `title` its
+ * display name; a page also carries `fullTitle` when `title` is a shortened paper title, and an
+ * aggregation page carries its kind's label.
+ */
+export const WikiBacklinkSchema = z.object({
+  kind: z.enum(['page', 'project', 'idea', 'chat']),
+  id: z.string(),
+  title: z.string(),
+  fullTitle: z.string().optional(),
+  kindLabel: z.string().optional(),
+}).strict()
+
+export const WikiBacklinksParamsSchema = z.object({ id: z.string() }).strict()
 
 /** Updates wiki body Markdown only; frontmatter and generated regions do not pass through this input. */
 export const WikiUpdateParamsSchema = z.object({ id: z.string(), body: z.string() }).strict()
@@ -1843,12 +1897,15 @@ export const ProposalRecordSchema = z.object({
 /**
  * A queue record as the review list reads it, plus derived fields: the pages it would write, whether the
  * pages it rests on changed since it was made, the titles of what it names (a page by its id, a project
- * as `projects/<id>`, a node as `projects/<id>#<node>`), and the current text of each claim it names by
+ * as `projects/<id>`, a node as `projects/<id>#<node>`, a column of the page a membership joins as
+ * `<page>#<column key>`, a Wiki kind by its key), and the current text of each claim it names by
  * `<page>#<claim>`. Anything no longer in the vault has no entry.
  */
 export const WikiProposalSchema = ProposalRecordSchema.extend({
   pages: z.array(z.string()),
   staleNow: z.boolean(),
+  /** The first page it rests on whose version changed since it was made, when `staleNow`. */
+  stalePage: z.string().optional(),
   /** `projects/<id>#<node or conclusion>` of each cited project conclusion the user has not verified yet. */
   unverified: z.array(z.string()).optional(),
   titles: z.record(z.string(), z.string()),
@@ -1986,8 +2043,9 @@ export const ChatSendResultSchema = z.object({
 export const ChatCancelParamsSchema = z.object({ id: z.string() }).strict()
 export const ChatCancelResultSchema = z.object({ id: z.string(), cancelled: z.boolean() }).strict()
 
+/** Creates an idea from the chat `chatId` names, or, without it, one the user writes down on their own. */
 export const ResearchIdeaCreateParamsSchema = z.object({
-  chatId: z.string(),
+  chatId: z.string().optional(),
   title: ResearchIdeaSchema.shape.title,
   body: ResearchIdeaSchema.shape.body,
 }).strict()
@@ -2046,17 +2104,32 @@ export const ChatSetArchivedParamsSchema = z.object({
   archived: z.boolean(),
 }).strict()
 
+/** Where in its target a search hit lands: a page with a highlight or note on it, or a project's task. */
+export const SearchAnchorSchema = z.object({
+  page: z.number().int().positive().optional(),
+  highlight: z.string().optional(),
+  note: z.string().optional(),
+  task: z.string().optional(),
+}).strict()
+
 /**
- * Global-search hit. `kind` selects the destination surface; `target` is the
- * entity ID for aggregations, projects, and chats, but the title filter for
- * papers and therefore not necessarily unique. `title` is searchable display
- * text including its type prefix and `meta` is secondary text.
+ * Global-search hit, a call response that is never stored. `kind` selects the
+ * destination surface and `target` the entity ID there: the Wiki page of an
+ * aggregation, the project of a task, the read-later entry of a paper not in
+ * the vault, otherwise the entity itself. `anchor` says where in the target to
+ * land. `title` is display text, the type prefix and the entity's title, and
+ * `meta` secondary text. `snippet` is the text around a match outside the
+ * title, absent for a title match. `pdf`, on paper hits only, says whether the
+ * vault holds the paper's source PDF.
  */
 export const SearchHitSchema = z.object({
-  kind: z.enum(['aggregation', 'project', 'chat', 'paper']),
+  kind: z.enum(['aggregation', 'project', 'chat', 'paper', 'idea', 'task', 'later']),
   target: z.string(),
   title: z.string(),
   meta: z.string(),
+  snippet: z.string().optional(),
+  anchor: SearchAnchorSchema.optional(),
+  pdf: z.boolean().optional(),
 }).strict()
 
 export const SearchParamsSchema = z.object({ query: z.string() }).strict()
@@ -2332,6 +2405,7 @@ export type WikiConflict = z.infer<typeof WikiConflictSchema>
 export type WikiClaim = z.infer<typeof WikiClaimSchema>
 export type WikiSignalKind = z.infer<typeof WikiSignalKindSchema>
 export type WikiSignal = z.infer<typeof WikiSignalSchema>
+export type WikiBacklink = z.infer<typeof WikiBacklinkSchema>
 export type AgentProposal = z.infer<typeof AgentProposalSchema>
 export type ProposalRecord = z.infer<typeof ProposalRecordSchema>
 export type WikiProposal = z.infer<typeof WikiProposalSchema>
@@ -2350,6 +2424,7 @@ export type ResearchIdeaPromoteResult = z.infer<typeof ResearchIdeaPromoteResult
 export type ResearchIdeaGraphPlacement = z.infer<typeof ResearchIdeaGraphPlacementSchema>
 export type ResearchIdeaPlaceOnGraphResult = z.infer<typeof ResearchIdeaPlaceOnGraphResultSchema>
 export type SearchHit = z.infer<typeof SearchHitSchema>
+export type SearchAnchor = z.infer<typeof SearchAnchorSchema>
 export type FeedFields = z.infer<typeof FeedAppendParamsSchema>
 export type LibrarySource = z.infer<typeof LibrarySourceSchema>
 export type LibraryLocation = z.infer<typeof LibraryLocationSchema>
@@ -2383,9 +2458,11 @@ export const CONTRACT_METHODS = [
   'papers.facets',
   'papers.get',
   'papers.update',
+  'papers.setTopic',
   'papers.delete',
   'papers.source',
   'papers.import',
+  'papers.retryMetadata',
   'papers.reading',
   'papers.mutateReading',
   'harness.prepare',
@@ -2460,6 +2537,7 @@ export const CONTRACT_METHODS = [
   'wiki.proposals',
   'wiki.decide',
   'wiki.signals',
+  'wiki.backlinks',
   'trash.list',
   'trash.restore',
   'trash.purge',

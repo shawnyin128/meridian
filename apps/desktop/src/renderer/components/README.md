@@ -18,6 +18,12 @@ Current shared contracts:
 - `InlineDraftInput`: the shared input and lifecycle for placeholder/create rows. Hosts provide row
   layout, sibling controls, trigger refs, and persistence; trimming, validation, focus, Enter/Escape,
   outside cancellation, and async submission locking are implemented once.
+- `DraftForm`: the one form drafted in place, for a new item, or a change to one, that takes more than one
+  field. It opens where the item lands with its first field focused, and Cancel and Save at its foot. Enter
+  in a one-line field or ⌘Enter in a long text saves, Escape cancels, and a press outside keeps the draft.
+  An item that lands elsewhere names its destination after an arrow, on a card of its own. Hosts provide
+  the fields and the write; the refused look of a missing field, input method keys, menu keys and the save
+  lock are implemented once. No create action opens a dialog.
 - `PickerPopover`: the shared anchored surface for input suggestions and compact pickers. It owns
   portal positioning, focus retention, anchor-aware outside interaction, spacing, and optional event
   isolation; picker contents and domain selection policy stay configurable. `PickOption` is the one

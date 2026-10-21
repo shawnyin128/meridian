@@ -6,4 +6,9 @@ export const feed = {
   sourceFieldLabel: 'Source',
   filters: { all: 'All' },
   sources: { steward: 'Meridian', me: 'Me', lab: 'Lab', inbox: 'Inbox' },
+  firstRun: {
+    heading: 'Get started',
+    steps: { library: 'Choose a library', model: 'Set up a model', plugin: 'Install the agent plugin', paper: 'Import a first paper' },
+    dismiss: 'Hide',
+  },
 } satisfies typeof zh

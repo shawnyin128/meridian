@@ -201,11 +201,12 @@ test('把讨论整理成可回看的想法', async ({ win }) => {
   await gotoChat(win)
   await say(win, '@draft 效率 拐点是 batch size 的函数')
 
-  // The dialog renders through a Radix portal outside any screenslot, so address it directly.
   await shown(win, '#qaIdea').click()
-  await win.locator('.idea-dialog .form-input').fill('批大小拐点')
-  await win.locator('.idea-dialog .form-textarea').fill('验证最优批大小是否随推理深度稳定迁移。')
-  await win.locator('.idea-dialog').getByRole('button', { name: '保存想法' }).click()
+  const draft = shown(win, '.msgs .idea-draft')
+  await draft.locator('.form-input').fill('批大小拐点')
+  await draft.locator('.form-textarea').fill('验证最优批大小是否随推理深度稳定迁移。')
+  await draft.getByRole('button', { name: '保存' }).click()
+  await expect(draft).toHaveCount(0)
   await win.locator('[data-desk="ideas"]').click()
   // Target the new idea by its own title: the ideas list holds many fixture cards, not sorted with ours first.
   const ideaCard = shown(win, '.idea-card').filter({ hasText: '批大小拐点' })

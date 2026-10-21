@@ -1,8 +1,10 @@
-import { Fragment, useCallback, useEffect, useState } from 'react'
+import { Fragment, useCallback, useEffect, useRef, useState } from 'react'
 import type { InboxDownloadFailure, LaterEntry } from '../../shared/contract.js'
 import { inbox, later } from '../ipc.js'
 import { useMessages } from '../messages/useMessages.js'
 import { useJump, useNotice, useVaultRevision } from '../shell/AppShell.js'
+import { BackButton } from '../components/BackButton.js'
+import { useJumpOrigin } from '../hooks/useJumpOrigin.js'
 import { useJobs } from '../shell/useJobs.js'
 import { DownloadRing, Icon, IconCross, IconRead } from '../components/icons.js'
 import { IconButton } from '../components/IconButton.js'
@@ -18,6 +20,7 @@ import { useFormat } from '../lib/format.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
 import { PageBody, PageError, PageHeader, PageShell, PageTitle, PageToolbar } from '../components/PageShell.js'
 import { SourceLabel } from '../components/SourceLabel.js'
+import { shownSource } from '../lib/watch-source.js'
 import './shell.css'
 
 /** How entries are grouped: by the day they joined the queue, or by where they came from. */
@@ -27,7 +30,8 @@ const MODES: Grouping[] = ['time', 'src']
 
 /**
  * Read Later: a paper already in the vault opens straight in the reader; one with only its source
- * address is downloaded into the vault first. Each entry can be removed from the queue.
+ * address is downloaded into the vault first. Each entry can be removed from the queue. A jump from
+ * another screen brings the entry it names into view.
  */
 export function Later() {
   const m = useMessages()
@@ -37,7 +41,10 @@ export function Later() {
   const [error, setError] = useState<string | null>(null)
 
   const notice = useNotice()
-  const { open } = useJump()
+  const { jump, open } = useJump()
+  const { origin, back } = useJumpOrigin()
+  const body = useRef<HTMLDivElement>(null)
+  const consumed = useRef(0)
   const { revision, bump } = useVaultRevision()
   const reportError = useCallback((e: unknown) => setError(errorLabel(m, e)), [m])
   const write = useVaultWrite()
@@ -76,13 +83,20 @@ export function Later() {
     void later.list().then(setEntries).catch(reportError)
   }, [revision, reportError])
 
+  // The entry can be scrolled to only once the queue has arrived.
+  useEffect(() => {
+    if (jump === null || jump.seq === consumed.current || entries === null) return
+    consumed.current = jump.seq
+    body.current?.querySelector(`[data-pid="${CSS.escape(jump.target)}"]`)?.scrollIntoView({ block: 'nearest' })
+  }, [jump, entries])
+
   const remove = (entry: LaterEntry) => {
     void write(later.remove(entry.id),
       { note: <TitleNote message={m.later.removed} title={plainTitle(entry.title)} /> })
   }
 
   // Entries arrive newest first by the day they were queued; groups follow the order keys first appear in.
-  const key = (e: LaterEntry) => (grouping === 'time' ? e.day : e.source)
+  const key = (e: LaterEntry) => (grouping === 'time' ? e.day : shownSource(e.source))
   const groups = (entries ?? []).reduce<{ key: string; items: LaterEntry[] }[]>((made, entry) => {
     const seen = made.find((g) => g.key === key(entry))
     if (seen) seen.items.push(entry)
@@ -93,12 +107,13 @@ export function Later() {
   return (
     <PageShell>
       <PageHeader>
+        {origin === null ? null : <BackButton onClick={back} />}
         <PageTitle>{m.later.title(entries?.length ?? 0)}</PageTitle>
       </PageHeader>
 
       <PageError error={error} />
 
-      <PageBody>
+      <PageBody ref={body}>
         {groups.length === 0 ? null : (
           <PageToolbar>
             <SegmentedControl
@@ -157,7 +172,7 @@ export function Later() {
                     <>
                     {x.authors}{x.venue ? <PaperCardBadge>{x.venue}</PaperCardBadge> : null}
                     {grouping === 'time'
-                      ? <SourceLabel>{x.source}</SourceLabel>
+                      ? <SourceLabel>{shownSource(x.source)}</SourceLabel>
                       : <PaperCardBadge>{m.common.addedOn(fmt.date(x.added))}</PaperCardBadge>}
                     </>
                   )}

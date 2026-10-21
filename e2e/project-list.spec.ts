@@ -459,7 +459,7 @@ test('拖一张进行中的卡片到另一张前面,顺序写进库里;别的分
   expect((await listProjects(win)).filter((p) => p.status !== ACTIVE).map((p) => p.id)).toEqual(otherIds)
 })
 
-test('重新排列:按优先级重排后写进库里,与算出来的顺序一致', async ({ win }) => {
+test('排序:按优先级重排后写进库里,与算出来的顺序一致', async ({ win }) => {
   await gotoList(win)
   const active = (await listProjects(win)).filter((p) => p.status === ACTIVE)
   expect(active.length).toBeGreaterThan(1)
@@ -473,7 +473,7 @@ test('重新排列:按优先级重排后写进库里,与算出来的顺序一致
     .sort((a, b) => a.priority.localeCompare(b.priority) || a.i - b.i)
     .map((p) => p.id)
 
-  const sortTrigger = win.locator('.desk-head .page-actions .sort-menu', { hasText: '重新排列' })
+  const sortTrigger = win.locator('.desk-head .page-actions .sort-menu', { hasText: '排序' })
   const sortBox = await sortTrigger.boundingBox()
   const addBox = await win.locator('#projNew').boundingBox()
   // The sort entry sits beside the page's add action and must share its height and baseline.

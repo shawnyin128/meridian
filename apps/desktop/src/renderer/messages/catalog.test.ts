@@ -4,6 +4,14 @@ import { zh } from './zh/index.js'
 
 type Node = Record<string, unknown>
 
+/** Every text of a catalog by key path, a function's text written with placeholder arguments. */
+const texts = (node: Node, prefix = ''): [string, string][] => Object.entries(node).flatMap(([key, value]) => {
+  const path = prefix === '' ? key : `${prefix}.${key}`
+  if (typeof value === 'object' && value !== null) return texts(value as Node, path)
+  if (typeof value === 'function') return [[path, String((value as (...args: unknown[]) => unknown)('X', 'X', 'X'))]]
+  return [[path, String(value)]]
+})
+
 /** Every key path in a catalog, with the kind of value at the leaf. */
 function shape(node: Node, prefix = ''): string[] {
   return Object.entries(node).flatMap(([key, value]) => {
@@ -59,13 +67,6 @@ describe('确认框的文案', () => {
 })
 
 describe('一个概念一个词', () => {
-  /** Every text of the zh catalog by key path, a function's text written with placeholder arguments. */
-  const texts = (node: Node, prefix = ''): [string, string][] => Object.entries(node).flatMap(([key, value]) => {
-    const path = prefix === '' ? key : `${prefix}.${key}`
-    if (typeof value === 'object' && value !== null) return texts(value as Node, path)
-    if (typeof value === 'function') return [[path, String((value as (...args: unknown[]) => unknown)('X', 'X', 'X'))]]
-    return [[path, String(value)]]
-  })
   /** The key paths of the project and research screens' texts that hold `word`. */
   const using = (word: string): string[] => texts({ project: zh.project, research: zh.research } as unknown as Node)
     .filter(([, text]) => text.includes(word)).map(([path]) => path)
@@ -105,6 +106,105 @@ describe('一个概念一个词', () => {
     expect(zh.chat.saveIdeaLabel).toBe('保存为想法')
     expect(zh.reader.selection.note).toBe('批注')
     expect(zh.reader.rail.tabs.highlights).toContain(zh.reader.selection.note)
+  })
+})
+
+describe('一个对象一个词', () => {
+  // Each object's word in each language, and the key paths of the texts that name that object (#185).
+  const WORDS = {
+    finding: { zh: '结论', en: /finding/i },
+    experimentConclusion: { zh: '实验结论', en: /experiment conclusion/i },
+    keyword: { zh: '关键词', en: /keyword/i },
+    area: { zh: '领域', en: /\barea\b/i },
+    toRead: { zh: '待读', en: /to read/i },
+    readLater: { zh: '稍后阅读', en: /later/i },
+    topic: { zh: '主题', en: /topic/i },
+  } as const
+  type Item = keyof typeof WORDS
+  const KEYS: Record<Item, string[]> = {
+    finding: [
+      'wiki.claims.heading', 'wiki.claims.add', 'wiki.claims.addShort', 'wiki.claims.empty', 'wiki.claims.actionsLabel',
+      'wiki.claims.form.text', 'wiki.claims.form.textPlaceholder', 'wiki.claims.form.basisLabel', 'wiki.claims.form.noOthers',
+      'wiki.claims.form.outcomes.split', 'wiki.claims.form.splitText', 'wiki.claims.proposals.add', 'wiki.claims.proposals.revise',
+      'wiki.claims.proposals.conflict', 'wiki.claims.proposals.resolve', 'wiki.claims.proposals.retract', 'wiki.queue.kinds.addClaim',
+      'wiki.queue.kinds.reviseClaim', 'wiki.queue.kinds.retractClaim', 'wiki.queue.outcomes.revised', 'wiki.queue.outcomes.split',
+      'wiki.queue.outcomes.retracted', 'project.conclusions.text', 'chat.conflictTitle', 'chat.conflictQuestion',
+    ],
+    experimentConclusion: [
+      'project.recordModes.conclusions', 'project.conclusions.heading', 'project.conclusions.empty', 'project.conclusions.verified',
+      'project.signals.kind.conflict', 'project.signals.reason.conflictCount', 'project.signals.pulse.conflict',
+      'wiki.claims.form.conclusion', 'wiki.claims.form.conclusionPick', 'wiki.claims.form.noConclusions', 'wiki.queue.unverified',
+      'wiki.queue.grounds.experiment', 'wiki.paperCardFooter', 'papers.reading.conclusions',
+    ],
+    keyword: [
+      'shell.nav.watchTopics', 'shell.watchKind.topic', 'watches.noneSuggested', 'watches.topicSuggestions', 'watches.addAllTopics',
+    ],
+    area: ['project.identity.topic', 'project.identity.topicUpdated', 'project.identity.noArea'],
+    toRead: ['papers.readState.later'],
+    readLater: [
+      'shell.nav.later', 'shell.crumbs.later', 'later.title', 'later.empty', 'later.removed', 'inbox.actions.readLater',
+      'inbox.notices.queued', 'inbox.notices.alreadyQueued',
+    ],
+    topic: [
+      'papers.columns.topics', 'papers.groupNames.topics', 'papers.toolbar.searchPlaceholder', 'papers.tags.add',
+      'papers.tags.existingTopics', 'papers.tags.remove', 'papers.notices.topicAdded', 'papers.metadata.fields.topics',
+      'papers.researchMap.kind.signal', 'papers.researchMap.reason.topic',
+    ],
+  }
+  /** Texts that name a project's experiment conclusion and the finding it becomes in the Wiki. */
+  const BOTH = ['project.conclusions.writeProposal', 'settings.extensions.tutorial.groups.1.examples.2.prompt']
+  const catalogs = { zh: new Map(texts(zh as unknown as Node)), en: new Map(texts(en as unknown as Node)) }
+  /** The text at `path` in `language`'s catalog; a path that names no text fails the test. */
+  const at = (language: 'zh' | 'en', path: string): string => {
+    const text = catalogs[language].get(path)
+    expect(text, `${language} ${path}`).toBeDefined()
+    return text!
+  }
+  /** Whether zh `text` holds `item`'s word, a finding's word counted only outside the experiment conclusion's. */
+  const holdsZh = (text: string, item: Item): boolean => (item === 'finding'
+    ? text.replaceAll(WORDS.experimentConclusion.zh, '').includes(WORDS.finding.zh)
+    : text.includes(WORDS[item].zh))
+  /** Whether en `text` holds `item`'s word, a finding's word also when it says conclusion outside experiment conclusion. */
+  const holdsEn = (text: string, item: Item): boolean => (item === 'finding'
+    ? WORDS.finding.en.test(text) || /conclusion/i.test(text.replace(/experiment conclusions?/gi, ''))
+    : WORDS[item].en.test(text))
+  const items = Object.keys(WORDS) as Item[]
+
+  for (const item of items) {
+    it(`${item}:每个键用它自己的词,不用别的对象的词`, () => {
+      for (const path of KEYS[item]) {
+        const [zhText, enText] = [at('zh', path), at('en', path)]
+        expect(holdsZh(zhText, item), `zh ${path}: ${zhText}`).toBe(true)
+        expect(holdsEn(enText, item), `en ${path}: ${enText}`).toBe(true)
+        for (const other of items.filter((o) => o !== item)) {
+          expect(holdsZh(zhText, other), `zh ${path} says ${other}: ${zhText}`).toBe(false)
+          expect(holdsEn(enText, other), `en ${path} says ${other}: ${enText}`).toBe(false)
+        }
+      }
+    })
+  }
+
+  it('同时说到实验结论和它写进 Wiki 成为的结论时,各用各的词', () => {
+    for (const path of BOTH) {
+      for (const item of ['experimentConclusion', 'finding'] as const) {
+        expect(holdsZh(at('zh', path), item), `zh ${path}`).toBe(true)
+        expect(holdsEn(at('en', path), item), `en ${path}`).toBe(true)
+      }
+    }
+  })
+
+  it('关注页的文字不说主题', () => {
+    for (const language of ['zh', 'en'] as const) {
+      const watch = [...catalogs[language]].filter(([path]) => path.startsWith('watches.') || path.startsWith('shell.watchKind.'))
+      expect(watch.filter(([, text]) => holdsZh(text, 'topic') || holdsEn(text, 'topic'))).toEqual([])
+    }
+  })
+
+  it('新词只出现在它的对象的键上', () => {
+    for (const item of ['experimentConclusion', 'keyword', 'area', 'toRead'] as const) {
+      const holding = [...catalogs.zh].filter(([, text]) => text.includes(WORDS[item].zh)).map(([path]) => path)
+      expect(holding.filter((path) => !KEYS[item].includes(path) && !BOTH.includes(path)), item).toEqual([])
+    }
   })
 })
 

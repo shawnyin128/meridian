@@ -21,6 +21,8 @@ import type { VaultStore } from './vault.js'
 
 export type Background = {
   importPaper(filename: string, bytes: Uint8Array): PaperImportResult
+  /** Parses the metadata of paper `paperId` again (MetadataQueue retry). */
+  retryMetadata(paperId: string): void
   downloadInbox(id: string): Promise<InboxDownloadResult>
   fetchWatches(watchIds?: string[]): Promise<void>
   searchAuthors(query: string): Promise<AuthorCandidate[] | AuthorSearchFailed>
@@ -92,6 +94,7 @@ export function createBackground(deps: {
       }
       return result
     },
+    retryMetadata: (paperId) => metadata.retry(paperId),
     downloadInbox: (id) => downloads.download(id),
     fetchWatches: (watchIds) => fetcher.run(watchIds),
     async searchAuthors(query) {

@@ -7,11 +7,11 @@ import { localDayOf } from '../../shared/dates.js'
 import { appMenu, chat, extensions, library } from '../ipc.js'
 import { errorLabel, reasonLabel } from '../lib/failure-label.js'
 import { useFormat } from '../lib/format.js'
-import type { Catalog } from '../messages/catalog.js'
 import { useMessages } from '../messages/useMessages.js'
 import {
-  useJump, useNotice, useSettingsOpen, useVaultRevision, type SettingsCategory,
+  useJump, useNotice, useSettingsOpen, useVaultRevision,
 } from '../shell/AppShell.js'
+import { SETTINGS_CATEGORIES, SETTINGS_CATEGORY_LABEL, type SettingsCategory } from '../shell/settings-categories.js'
 import { IconOpen, IconRestore } from '../components/icons.js'
 import { IconButton } from '../components/IconButton.js'
 import { EmptyState } from '../components/EmptyState.js'
@@ -41,14 +41,6 @@ import { FadeText } from '../components/FadeText.js'
 import './shell.css'
 import './Settings.css'
 
-/**
- * Settings categories, one row each in the left column. Inmail gathers Watches and the projects'
- * Discovery directions; Archived chats manages the chats that were archived.
- */
-const CATEGORIES = [
-  'appearance', 'storage', 'api', 'model', 'research', 'extensions', 'delivery', 'delivery-watch', 'delivery-discovery',
-  'archived',
-] as const
 const SUB_CATEGORIES: ReadonlySet<CategoryKey> = new Set(['model', 'research', 'delivery-watch', 'delivery-discovery'])
 /**
  * Maps each sub-item to the parent category that groups it in the left column. A sub-item is
@@ -59,18 +51,6 @@ const SUB_PARENT: Partial<Record<CategoryKey, CategoryKey>> = {
   research: 'api',
   'delivery-watch': 'delivery',
   'delivery-discovery': 'delivery',
-}
-const CATEGORY_LABEL: Record<CategoryKey, keyof Catalog['settings']['categories']> = {
-  appearance: 'appearance',
-  storage: 'storage',
-  api: 'api',
-  model: 'model',
-  research: 'research',
-  extensions: 'extensions',
-  delivery: 'delivery',
-  'delivery-watch': 'deliveryWatch',
-  'delivery-discovery': 'deliveryDiscovery',
-  archived: 'archived',
 }
 
 type CategoryKey = SettingsCategory
@@ -87,7 +67,7 @@ export function Settings() {
   const { open, requestedCategory, setOpen } = useSettingsOpen()
   const paneFade = useScrollFade('y')
   const sideFade = useScrollFade('y')
-  const [current, setCurrent] = useState<CategoryKey>(CATEGORIES[0])
+  const [current, setCurrent] = useState<CategoryKey>(SETTINGS_CATEGORIES[0])
   const [chats, setChats] = useState<ChatSession[] | null>(null)
   const [location, setLocation] = useState<LibraryLocation | null>(null)
   const [backups, setBackups] = useState<LibraryBackup[] | null>(null)
@@ -416,7 +396,7 @@ export function Settings() {
   }
 
   const expandedParent = SUB_PARENT[current] ?? current
-  const visibleCategories = CATEGORIES.filter((c) => !SUB_CATEGORIES.has(c) || SUB_PARENT[c] === expandedParent)
+  const visibleCategories = SETTINGS_CATEGORIES.filter((c) => !SUB_CATEGORIES.has(c) || SUB_PARENT[c] === expandedParent)
 
   return (
     <ModalDialog open={open} onOpenChange={setOpen} size="wide" closable className="setdlg">
@@ -426,7 +406,7 @@ export function Settings() {
           <NavRow
             key={c} className={SUB_CATEGORIES.has(c) ? 'srow set-sub' : 'srow'} selected={c === current}
             data-setcat={c} onActivate={() => setCurrent(c)}
-          >{m.settings.categories[CATEGORY_LABEL[c]]}</NavRow>
+          >{m.settings.categories[SETTINGS_CATEGORY_LABEL[c]]}</NavRow>
         ))}
       </div>
 

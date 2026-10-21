@@ -33,6 +33,18 @@ const chipOf = (proposal: AgentProposal): ChangeSource =>
 const byOf = (proposal: AgentProposal): string =>
   (proposal.producer.kind === 'ai' ? `ai:${proposal.producer.id}` : HUMAN)
 
+/** The name a review card's first line gives each op, as the Chinese catalog's `wiki.queue.kinds` writes it. */
+export const PROPOSAL_KIND_NAMES: Record<ProposalOp['op'], string> = {
+  addClaim: '添加结论', reviseClaim: '修订结论', addEvidence: '补充依据', markConflict: '标记冲突',
+  resolveConflict: '处理冲突', retractClaim: '撤回结论', createAggregation: '新建页', setMembership: '归入',
+  removeMembership: '移出', appendEntry: '追加记录', setColumns: '修改列', setParents: '修改上级',
+  setAggregationMetadata: '修改元数据',
+}
+
+/** The page a review card's first line names for `op`: where a membership goes, else the page it writes. */
+const cardTarget = (op: ProposalOp): string => (op.op === 'setMembership' || op.op === 'removeMembership' ? op.in
+  : op.op === 'createAggregation' ? op.id : op.page)
+
 /** Returns the PdfPageText that reads a vault paper's source through `store` with pdf.js. */
 export function pdfPageText(store: Pick<VaultStore, 'paperSource'>): PdfPageText {
   return async (paper, page) => {
@@ -119,19 +131,22 @@ export function createWikiProposals({ store, pdf, now }: {
   pdf: PdfPageText
   now: () => number
 }) {
-  /** The first page of `proposal` whose base version is not the page's version now, with the refusal; null when none. */
+  /** The first page of `proposal` whose base version is not the page's version now; null when none. */
+  const changedPage = (proposal: AgentProposal): string | null => Object.entries(proposal.base).find(([id, base]) => {
+    const current = store.pageVersion(id)
+    return current?.fm !== base?.fm || current?.body !== base?.body
+  })?.[0] ?? null
+
+  /** The refusal for the changedPage of `proposal`; null when none. */
   const staleness = (proposal: AgentProposal): string | null => {
-    for (const [id, base] of Object.entries(proposal.base)) {
-      const current = store.pageVersion(id)
-      if (current?.fm !== base?.fm || current?.body !== base?.body) return staleMessage(id, base, current)
-    }
-    return null
+    const id = changedPage(proposal)
+    return id === null ? null : staleMessage(id, proposal.base[id] ?? null, store.pageVersion(id))
   }
 
   /**
    * The titles and claim texts the review list shows for `proposal` writing `pages` (see
-   * WikiProposalSchema), read from the vault as it stands; a page, project, node or claim that is gone
-   * gets no entry.
+   * WikiProposalSchema), read from the vault as it stands; a page, project, node, column, kind or claim
+   * that is gone gets no entry.
    */
   const labelsOf = (proposal: AgentProposal, pages: string[]): Pick<WikiProposal, 'titles' | 'claimTexts'> => {
     const titles: Record<string, string> = {}
@@ -168,6 +183,15 @@ export function createWikiProposals({ store, pdf, now }: {
     if (proposal.trigger.kind === 'experiment') project(proposal.trigger.project, proposal.trigger)
     for (const id of pages) page(id)
     for (const op of proposal.ops) {
+      if (op.op === 'setMembership' || op.op === 'removeMembership') page(op.in)
+      if (op.op === 'setParents' || op.op === 'createAggregation') op.parents.forEach(page)
+      if (op.op === 'setMembership' && aggregations.has(op.in)) {
+        for (const column of store.wikiAggregation(op.in).columns) titles[`${op.in}#${column.key}`] = column.label
+      }
+      if (op.op === 'createAggregation') {
+        const kind = store.wikiHome().kinds.find((k) => k.key === op.kind)
+        if (kind !== undefined) titles[op.kind] = kind.label
+      }
       if (isClaimOp(op) && op.op !== 'addClaim') claim(`${op.page}#${op.claim}`)
       const items = op.op === 'addClaim' ? op.claim.evidence
         : op.op === 'reviseClaim' || op.op === 'addEvidence' ? op.evidence ?? []
@@ -293,8 +317,8 @@ export function createWikiProposals({ store, pdf, now }: {
 
     /**
      * Returns the queue records with `status` (every record when absent), newest first, each with the
-     * pages it would write, whether its base is stale now, the unverified project conclusions a queued one
-     * cites, and the titles and claim texts it names. A
+     * pages it would write, whether its base is stale now and the page that changed, the unverified
+     * project conclusions a queued one cites, and the titles and claim texts it names. A
      * record whose proposal cannot be read against the vault is listed as unreadable with the cause as
      * its notice, and the others list as usual.
      */
@@ -302,10 +326,12 @@ export function createWikiProposals({ store, pdf, now }: {
       return store.proposalRecords().filter((r) => status === undefined || r.status === status).map((r) => {
         try {
           const pages = r.proposal === null ? [] : store.pagesWritten(r.proposal.ops)
+          const changed = r.proposal === null ? null : changedPage(r.proposal)
           return {
             ...r,
             pages,
-            staleNow: r.proposal !== null && staleness(r.proposal) !== null,
+            staleNow: changed !== null,
+            ...(changed === null ? {} : { stalePage: changed }),
             unverified: r.proposal === null || r.status !== 'queued' ? [] : unverifiedOf(r.proposal),
             ...(r.proposal === null ? { titles: {}, claimTexts: {} } : labelsOf(r.proposal, pages)),
           }
@@ -339,9 +365,13 @@ export function createWikiProposals({ store, pdf, now }: {
         if (outcome.status === 'rejected') {
           next = { ...record, status: 'rejected', reason: outcome.reason, decided }
         } else if (unverified.length > 0) {
-          throw new CallError('refused', `结论待验证：${unverified.join('、')}。验证之后再应用`)
+          throw new CallError('refused', `实验结论待验证：${unverified.join('、')}。验证之后再应用`)
         } else {
-          store.applyProposal({ source: 'user', title: proposal.title, ops: proposal.ops }, {
+          // Recent changes names the change as its card's first line does.
+          const [first] = proposal.ops as [ProposalOp, ...ProposalOp[]]
+          const target = cardTarget(first)
+          const page = first.op === 'createAggregation' ? first.title : labelsOf(proposal, [target]).titles[target] ?? target
+          store.applyProposal({ source: 'user', title: `${page} · ${PROPOSAL_KIND_NAMES[first.op]}`, ops: proposal.ops }, {
             by: byOf(proposal), source: chipOf(proposal),
           })
           next = { ...record, status: 'applied', decided, change: store.listChanges()[0]?.id ?? null, notice: outcome.notice }

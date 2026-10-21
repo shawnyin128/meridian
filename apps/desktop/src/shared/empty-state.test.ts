@@ -47,6 +47,7 @@ const EMPTY = {
   'wiki.noBody': zh.wiki.noBody,
   'wiki.noChildren': zh.wiki.noChildren,
   'wiki.queue.empty': zh.wiki.queue.empty,
+  'wiki.tidy.empty': zh.wiki.tidy.empty,
   'watches.empty': zh.watches.empty('主题'),
   'shell.search.noHits': zh.shell.search.noHits,
 }

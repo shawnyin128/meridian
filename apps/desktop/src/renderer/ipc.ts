@@ -20,7 +20,7 @@ import type {
   ProjectSummary,
   RelationFields, SearchHit, TaskFields, TaskPatch, TrashEntry, TrashedEntry, Watch, WatchFields,
   WatchSuggestionParams, WatchSuggestionResult, WikiAggregation,
-  WikiAggregationCard, WikiHome, WikiPaper, ProposalReceipt, ProposalStatus, WikiProposal,
+  WikiAggregationCard, WikiBacklink, WikiHome, WikiPaper, ProposalReceipt, ProposalStatus, WikiProposal, WikiSignal,
 } from '../shared/contract.js'
 import { CallError } from './call-error.js'
 
@@ -49,6 +49,8 @@ export const appMenu = {
   onOpenSettings: (handler: () => void) => window.meridian.onOpenSettings(handler),
   /** Open the Skill and MCP tutorial from the native Help menu. */
   onOpenAgentTutorial: (handler: () => void) => window.meridian.onOpenAgentTutorial(handler),
+  /** Open the command palette from the native menu, whose accelerator is the palette's shortcut. */
+  onOpenPalette: (handler: () => void) => window.meridian.onOpenPalette(handler),
   /** Open the system directory selector. The page only gets the final path, not any Electron channel. */
   chooseLibraryRoot: () => window.meridian.chooseLibraryRoot(),
   /** Open the system directory selector and connect the code workspace to a project. */
@@ -121,12 +123,17 @@ export const papers = {
   get: (id: string) => call<PaperRow>('papers.get', { id }),
   update: (id: string, patch: Partial<PaperFields>) =>
     call<RecordedChange>('papers.update', { id, patch }),
+  /** Files the paper under (`member` true) or unfiles it from the Wiki topic page titled `topic`. */
+  setTopic: (id: string, topic: string, member: boolean) =>
+    call<RecordedChange>('papers.setTopic', { id, topic, member }),
   delete: (id: string) => call<RecordedChange>('papers.delete', { id }),
   /** Bytes of the paper's original PDF. Rejects when the vault has no source file for this paper. */
   source: (id: string) => call<Uint8Array>('papers.source', { id }),
   /** The uploaded binary is directly structurally cloned to Core without base64. */
   import: (filename: string, bytes: Uint8Array) =>
     call<PaperImportResult>('papers.import', { filename, bytes }),
+  /** Parses the metadata of an upload whose lookup failed again; progress shows in jobs.status. */
+  retryMetadata: (id: string) => call<void>('papers.retryMetadata', { id }),
   reading: (id: string) => call<PaperReading>('papers.reading', { id }),
   mutateReading: (id: string, mutation: ReadingMutation) =>
     call<PaperReading>('papers.mutateReading', { id, mutation }),
@@ -169,7 +176,7 @@ export const harness = {
 export const project = {
   list: () => call<ProjectSummary[]>('project.list', {}),
   overview: () => call<ProjectOverview[]>('project.overview', {}),
-  create: (name: string) => call<void>('project.create', { name }),
+  create: (name: string) => call<string>('project.create', { name }),
   get: (id: string) => call<ProjectDetail>('project.get', { id }),
   bindWorkspace: (id: string, binding: ProjectWorkspaceBinding | null) =>
     call<ProjectDetail>('project.bindWorkspace', { id, binding }),
@@ -261,8 +268,8 @@ export const chat = {
 
 export const idea = {
   list: () => call<ResearchIdea[]>('idea.list', {}),
-  create: (chatId: string, title: string, body: string) =>
-    call<ResearchIdea>('idea.create', { chatId, title, body }),
+  create: (chatId: string | undefined, title: string, body: string) =>
+    call<ResearchIdea>('idea.create', { ...chatId === undefined ? {} : { chatId }, title, body }),
   update: (id: string, patch: ResearchIdeaPatch) =>
     call<ResearchIdea>('idea.update', { id, patch }),
   promote: (id: string) => call<ResearchIdeaPromoteResult>('idea.promote', { id }),
@@ -329,13 +336,17 @@ export const wiki = {
   aggregation: (id: string) => call<WikiAggregation>('wiki.aggregation', { id }),
   paper: (id: string) => call<WikiPaper>('wiki.paper', { id }),
   cards: () => call<WikiAggregationCard[]>('wiki.cards', {}),
-  apply: (proposal: Proposal) => call<void>('wiki.apply', { proposal }),
+  apply: (proposal: Proposal) => call<RecordedChange>('wiki.apply', { proposal }),
   update: (id: string, body: string) => call<void>('wiki.update', { id, body }),
   /** The review queue, newest first; every status when `status` is absent. */
   proposals: (status?: ProposalStatus) =>
     call<WikiProposal[]>('wiki.proposals', status === undefined ? {} : { status }),
   decide: (id: string, decision: 'apply' | 'decline', reason?: string) =>
     call<ProposalReceipt>('wiki.decide', { id, decision, ...(reason === undefined ? {} : { reason }) }),
+  /** The signals of what in the Wiki needs tidying, as the vault stands. */
+  signals: () => call<WikiSignal[]>('wiki.signals', {}),
+  /** What refers to page `id`: other pages, projects, ideas and chats. */
+  backlinks: (id: string) => call<WikiBacklink[]>('wiki.backlinks', { id }),
 }
 
 export const search = {

@@ -7,7 +7,7 @@ const shown = (win: Page, sel: string) => win.locator(`.screenslot:not([hidden])
 /** The contract's SEARCH_LIMIT: the most results one search returns. */
 const SEARCH_LIMIT = 8
 
-/** A paper whose source PDF is in the fixture vault; the paper table is filtered to it to open the reader. */
+/** A paper whose source PDF is in the fixture vault; the paper table is filtered to it, or a search finds it, to open the reader. */
 const READABLE = 'STAR: SPECULATIVE DECODING'
 
 /** Type in the sidebar search box and wait for the instant results panel to appear. */
@@ -31,11 +31,12 @@ async function gotoReader(win: Page): Promise<void> {
 
 test('从动态屏搜:项目与论文两类各出一条,点项目那条进那个项目', async ({ win }) => {
   await search(win, 'EAGLE-2')
+  // The paper's title starts with the query and the project's only holds it, so the paper ranks first.
   await expect(rows(win)).toHaveText([
-    '项目：复现 EAGLE-2',
     '论文：EAGLE-2: Faster Inference of Language Models with Dynamic Draft Trees',
+    '项目：复现 EAGLE-2',
   ])
-  await expect(win.locator('#sRes .rrow .rm')).toHaveText(['进行中 · speculative decoding', '2026 arXiv'])
+  await expect(win.locator('#sRes .rrow .rm')).toHaveText(['2026 arXiv', '进行中 · speculative decoding'])
 
   await win.locator('#sRes .rrow', { hasText: '项目：' }).click()
   // As the demo's h.go() does, the panel closes before navigating.
@@ -83,30 +84,33 @@ test('从 wiki 屏搜聚合:点那条进聚合页,面包屑带上级', async ({ 
   await expect(win.locator('#crumb .cseg')).toHaveText(['我的库', 'Wiki', 'Outlier suppression', 'Rotation'])
 })
 
-test('从最近变动屏搜:命中多于上限时只出 SEARCH_LIMIT 条,点论文那条进论文屏并筛到它', async ({ win }) => {
+test('从最近变动屏搜:命中多于上限时只出 SEARCH_LIMIT 条,没有原文的论文打开详情,有原文的在阅读器里打开', async ({ win }) => {
   await win.locator('[data-desk="changelog"]').click()
   await search(win, 'draft')
 
   const listed = await rows(win).allInnerTexts()
   expect(listed).toHaveLength(SEARCH_LIMIT)
-  // Groups come in the order aggregation page, project, chat, paper, and later groups are cut first; no
-  // aggregation page has draft in its title.
+  // The project's title starts with the query; the papers only have a word starting with it. No aggregation
+  // page has draft in its title.
   expect(listed.map((t) => t.split('：')[0])).toEqual([
     '项目', '论文', '论文', '论文', '论文', '论文', '论文', '论文',
   ])
 
+  // The fixture vault holds no PDF of EAGLE-2: its detail opens and the table is not filtered.
   const title = 'EAGLE-2: Faster Inference of Language Models with Dynamic Draft Trees'
   await win.locator('#sRes .rrow', { hasText: title }).click()
   await expect(win.locator('#crumb .cseg')).toHaveText(['我的库', '论文'])
-  // As in the demo, the paper's title fills the filter box and the table redraws.
-  await expect(win.locator('#libq')).toHaveValue(title)
-  await expect(shown(win, '.ptable tbody tr')).toHaveCount(1)
-  await expect(shown(win, '.ptable tbody tr td.pt-title')).toHaveText(title)
+  await expect(shown(win, '.pdetail')).toContainText(title)
+  await expect(win.locator('#libq')).toHaveValue('')
+
+  await search(win, READABLE)
+  await win.locator('#sRes .rrow').first().click()
+  await shown(win, '.pdfpagebox').first().waitFor()
 })
 
-test('只命中某几类时就只出那几类,搜不到时写没有找到,清空与 Escape 都收起面板', async ({ win }) => {
+test('只命中某几类时就只出那几类,类别名搜不到东西,搜不到时写没有找到,清空与 Escape 都收起面板', async ({ win }) => {
   await search(win, '对话：')
-  await expect(rows(win)).toHaveText(['对话：摊薄的前提是共享前缀吗', '对话：宽树在我们集群上还成立吗'])
+  await expect(win.locator('#sRes .empty-state')).toHaveText('没有找到匹配的内容')
 
   await search(win, 'Distillation-based')
   await expect(rows(win)).toHaveText(['方法：Distillation-based QAT'])
@@ -128,8 +132,8 @@ test('搜索跨边界的只有命中的那几条,不是整库', async ({ win }) 
   const size = await win.evaluate(async () => {
     const call = (method: string, params: unknown) =>
       (window as unknown as MeridianWindow).meridian.call(method, params)
-    // The query, Chinese for "paper", matches every paper in the vault, the largest group a search can hit.
-    const hits = await call('search.query', { query: '论文' }) as unknown[]
+    // A single letter matches nearly every entity in the vault, the largest result a search can have.
+    const hits = await call('search.query', { query: 'a' }) as unknown[]
     const whole = await call('papers.list', { page: 1, size: 200 }) as { rows: unknown[]; total: number }
     return {
       命中条数: hits.length,
@@ -146,7 +150,7 @@ test('搜索跨边界的只有命中的那几条,不是整库', async ({ win }) 
   expect(size.命中字节 * 10).toBeLessThan(size.单次取两百篇的字节)
 
   // The results panel also shows only SEARCH_LIMIT rows.
-  await search(win, '论文')
+  await search(win, 'a')
   await expect(win.locator('#sRes .rrow')).toHaveCount(SEARCH_LIMIT)
 })
 

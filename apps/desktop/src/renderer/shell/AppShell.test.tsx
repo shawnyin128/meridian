@@ -20,6 +20,8 @@ const fixture = vi.hoisted(() => ({
   platform: 'darwin',
   fullScreen: [] as ((on: boolean) => void)[],
   today: () => Promise.resolve('2026-10-18'),
+  /** What the native menu's Command Palette item sends, once the shell has subscribed to it. */
+  openPalette: null as (() => void) | null,
 }))
 
 const none = () => Promise.resolve([])
@@ -27,6 +29,10 @@ const none = () => Promise.resolve([])
 vi.mock('../ipc.js', () => ({
   appMenu: {
     onOpenSettings: () => () => {}, onOpenAgentTutorial: () => () => {}, platform: () => fixture.platform,
+    onOpenPalette: (handler: () => void) => {
+      fixture.openPalette = handler
+      return () => { fixture.openPalette = null }
+    },
     onFullScreen: (handler: (on: boolean) => void) => {
       fixture.fullScreen.push(handler)
       return () => { fixture.fullScreen.splice(fixture.fullScreen.indexOf(handler), 1) }
@@ -53,7 +59,10 @@ vi.mock('../ipc.js', () => ({
 }))
 vi.mock('../components/AboutDialog.js', () => ({ AboutDialog: () => null }))
 
-const { AppShell, useCrumbTail, useEscapeLayer, useNotice, usePaperChatCollapsed, useSettingsOpen } = await import('./AppShell.js')
+const {
+  AppShell, useCrumbTail, useEscapeLayer, useJump, useNotice, usePaperChatCollapsed, useSettingsOpen,
+} = await import('./AppShell.js')
+const { useJumpOrigin } = await import('../hooks/useJumpOrigin.js')
 const { TOOLTIP_DELAY } = await import('../components/Tooltip.js')
 
 const TAIL = [{ text: '深层' }]
@@ -77,8 +86,8 @@ const SCREENS = {
 let root: Root | null = null
 let host: HTMLDivElement
 
-/** Mounts the shell with `feed` as the content of its first screen. */
-async function mount(feed: ReactNode = <PaperChatState />): Promise<void> {
+/** Mounts the shell with `feed` as the content of its first screen and `more` as other screens' content. */
+async function mount(feed: ReactNode = <PaperChatState />, more: Partial<Record<keyof typeof SCREENS, ReactNode>> = {}): Promise<void> {
   globalThis.IS_REACT_ACT_ENVIRONMENT = true
   // The breadcrumb's segments measure whether they fit, and jsdom has no ResizeObserver.
   vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} })
@@ -88,7 +97,7 @@ async function mount(feed: ReactNode = <PaperChatState />): Promise<void> {
   document.body.append(host)
   root = createRoot(host)
   await act(async () => {
-    root!.render(<MessagesProvider><AppShell screens={{ ...SCREENS, feed }} settings={null} /></MessagesProvider>)
+    root!.render(<MessagesProvider><AppShell screens={{ ...SCREENS, ...more, feed }} settings={null} /></MessagesProvider>)
     await Promise.resolve()
   })
 }
@@ -597,3 +606,124 @@ describe('AppShell "/" shortcut', () => {
     expect(document.activeElement).toBe(host.querySelector('#sSearch'))
   })
 })
+
+/** Shows the anchor of the jump aimed at its screen. */
+/** A screen that scrolls and links to a project, as a feed run's name does. */
+function LinkSource() {
+  const { open } = useJump()
+  return <div className="desk-body"><button type="button" id="toProject" onClick={() => open('project', 'p1')}>p1</button></div>
+}
+
+/** A screen a link lands on, with the back control a jump gives it. */
+function BackTarget() {
+  const { origin, back } = useJumpOrigin()
+  return origin === null ? null : <button type="button" id="goBack" onClick={back}>back</button>
+}
+
+describe('AppShell jump and back', () => {
+  it('按链接去别的屏再按返回,来的那一屏还是原来那个滚动区,停在原来滚到的位置', async () => {
+    await mount(<LinkSource />, { project: <BackTarget /> })
+    const scroller = document.querySelector<HTMLElement>('.screenslot:not([hidden]) .desk-body')!
+    scroller.scrollTop = 160
+    act(() => document.querySelector<HTMLButtonElement>('#toProject')!.click())
+    expect(scroller.closest('.screenslot')!.hasAttribute('hidden')).toBe(true)
+    act(() => document.querySelector<HTMLButtonElement>('#goBack')!.click())
+    expect(document.querySelector('.screenslot:not([hidden]) .desk-body')).toBe(scroller)
+    expect(scroller.scrollTop).toBe(160)
+  })
+})
+
+function JumpProbe({ id }: { id: string }) {
+  const { jump } = useJump()
+  return <p id={id}>{JSON.stringify(jump?.anchor ?? null)}</p>
+}
+
+describe('AppShell command palette', () => {
+  const palette = () => document.querySelector('.cmdk')
+  /** Opens the palette from the native menu and chooses the command row labelled `label`. */
+  const run = (label: string) => {
+    act(() => fixture.openPalette!())
+    const row = [...document.querySelectorAll<HTMLElement>('.cmdk .rrow')].find((r) => r.textContent?.startsWith(label))!
+    act(() => { row.click() })
+  }
+  const shown = () => document.querySelector('.screenslot:not([hidden])')!.textContent
+
+  beforeEach(() => { HTMLElement.prototype.scrollIntoView = () => {} })
+  afterEach(() => { delete (HTMLElement.prototype as Partial<HTMLElement>).scrollIntoView })
+
+  it('opens over the current screen from the native menu\'s 命令面板…, and ⌘K or Ctrl+K opens nothing', async () => {
+    await mount()
+    press('k', { metaKey: true })
+    press('k', { ctrlKey: true })
+    expect(palette()).toBeNull()
+    act(() => fixture.openPalette!())
+    expect(palette()).not.toBeNull()
+    expect(document.activeElement?.id).toBe('cmdkq')
+  })
+
+  it('lists 命令面板… after 设置… in the App menu with ⇧⌘P on macOS and Ctrl+Shift+P elsewhere, and opens the palette from it', async () => {
+    /** Opens the title bar's App menu and returns each item's label and shortcut. */
+    const openMenu = () => {
+      act(() => {
+        document.querySelector('.appbtn')!.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, button: 0 }))
+      })
+      return [...document.querySelectorAll('[data-appmenu] .mi')].map((item) => item.textContent)
+    }
+    await mount()
+    expect(openMenu().slice(0, 2)).toEqual(['设置…⌘,', '命令面板…⇧⌘P'])
+    const item = [...document.querySelectorAll<HTMLElement>('[data-appmenu] .mi')].find((mi) => mi.textContent?.startsWith('命令面板'))!
+    await act(async () => {
+      item.click()
+      await new Promise((done) => setTimeout(done, 20))
+    })
+    expect(document.querySelector('[data-appmenu]')).toBeNull()
+    expect(palette()).not.toBeNull()
+
+    act(() => root!.unmount())
+    fixture.platform = 'win32'
+    await mount()
+    expect(openMenu().slice(0, 2)).toEqual(['设置…Ctrl+,', '命令面板…Ctrl+Shift+P'])
+    fixture.platform = 'darwin'
+  })
+
+  it('runs a new project, a PDF import, Settings and the sidebar screens from its commands', async () => {
+    await mount(<SettingsProbe />, {
+      project: <JumpProbe id="projectJump" />, papers: <JumpProbe id="papersJump" />, ideas: <p>ideas</p>,
+    })
+
+    run('新建项目')
+    expect(palette()).toBeNull()
+    expect(shown()).toBe('{"newProject":true}')
+    run('导入 PDF')
+    expect(shown()).toBe('{"importPdf":true}')
+    run('想法')
+    expect(shown()).toBe('ideas')
+    run('设置…')
+    expect(document.querySelector('#settingsProbe')!.textContent).toBe('default')
+  })
+
+  it('lists 设置 · <pane> right after 设置…, one per pane in the Settings side list\'s order, each opening Settings on its pane', async () => {
+    const panes = [
+      ['外观', 'appearance'], ['存储', 'storage'], ['API', 'api'], ['模型', 'model'], ['科研', 'research'],
+      ['扩展', 'extensions'], ['论文推送', 'delivery'], ['关注', 'delivery-watch'], ['发现', 'delivery-discovery'],
+      ['归档的对话', 'archived'],
+    ]
+    await mount(<SettingsProbe />)
+    act(() => fixture.openPalette!())
+    const labels = [...document.querySelectorAll('.cmdk .rrow')].map((row) => row.textContent)
+    const settings = labels.indexOf('设置…⌘,')
+    expect(labels.slice(settings + 1, settings + 1 + panes.length)).toEqual(panes.map(([name]) => `设置 · ${name}`))
+    for (const [name, pane] of panes) {
+      run(`设置 · ${name}`)
+      expect(document.querySelector('#settingsProbe')!.textContent).toBe(pane)
+    }
+  })
+
+  it('新建想法打开想法屏,带着打开新建想法编辑框的落点', async () => {
+    await mount(undefined, { ideas: <JumpProbe id="ideasJump" /> })
+    run('新建想法')
+    expect(palette()).toBeNull()
+    expect(shown()).toBe('{"newIdea":true}')
+  })
+})
+

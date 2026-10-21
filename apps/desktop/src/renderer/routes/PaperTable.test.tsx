@@ -4,6 +4,7 @@ import { createRoot, type Root } from 'react-dom/client'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Facet, ListParams, PaperColumns, PaperImportResult, PaperRow } from '../../shared/contract.js'
+import type { ScreenJump } from '../shell/AppShell.js'
 import { PAPER_COLUMNS } from '../../shared/vocabulary.js'
 import { CallError } from '../call-error.js'
 import { IconTrash } from '../components/icons.js'
@@ -11,6 +12,7 @@ import { TOOLTIP_DELAY } from '../components/Tooltip.js'
 import { MessagesProvider } from '../messages/useMessages.js'
 import { papers as papersZh } from '../messages/zh/papers.js'
 import { LANGUAGE_STORAGE_KEY } from '../shell/language.js'
+import type { ScreenJump } from '../shell/AppShell.js'
 
 declare global {
   var IS_REACT_ACT_ENVIRONMENT: boolean
@@ -67,6 +69,8 @@ let importCall: Controlled<PaperImportResult> & { filename: string; bytes: Uint8
 let setColumnsCalls: (Controlled<void> & { columns: PaperColumns })[]
 /** Each papers.update has its own controlled promise, arranged in the order in which it was initiated. */
 let updateCalls: (Controlled<void> & { id: string; patch: Record<string, unknown> })[]
+/** Each papers.setTopic call's own controlled promise, in the order the calls were made. */
+let setTopicCalls: (Controlled<void> & { id: string; topic: string; member: boolean })[]
 /** The arguments of each papers.renameOption call, in the order the calls were made. */
 let renameOptionCalls: [key: string, from: string, to: string][]
 /** Each papers.setColumnType call's own controlled promise, in the order the calls were made. */
@@ -89,19 +93,33 @@ let vaultPaperCount: number | null
 /** The group values papers.facets answers with. */
 let facetRows: Facet[]
 let openedScreens: [screen: string, id?: string][]
+/** The jump useJump hands the table: the screen another one opened it with, or null. */
+let jumpHere: ScreenJump | null
+/** The paper ids papers.get was asked for, in order. */
+let gotIds: string[]
 /** How many times the table bumped the vault revision. */
 let bumps: number
+/** The breadcrumb tail the table last set. */
+let crumbTail: { text: string }[]
+/** The screens the back control returned to, in order. */
+let returnedTo: string[]
 
 vi.mock('../ipc.js', () => ({
   papers: {
     list: (params: ListParams) => { listCallCount += 1; listParams.push(params); return listCall.promise },
     facets: () => Promise.resolve(facetRows),
-    get: () => getCall.promise,
+    get: (id: string) => { gotIds.push(id); return getCall.promise },
     update: (id: string, patch: Record<string, unknown>) => {
       if (throwOnNextUpdate) { const e = throwOnNextUpdate; throwOnNextUpdate = null; throw e }
       const c = controlled<void>()
       updateCalls.push({ ...c, id, patch })
       const change = `change-update-${updateCalls.length}`
+      return c.promise.then(() => ({ change }))
+    },
+    setTopic: (id: string, topic: string, member: boolean) => {
+      const c = controlled<void>()
+      setTopicCalls.push({ ...c, id, topic, member })
+      const change = `change-topic-${setTopicCalls.length}`
       return c.promise.then(() => ({ change }))
     },
     delete: (id: string) => { deletedPapers.push(id); return Promise.resolve({ change: 'change-delete' }) },
@@ -141,14 +159,15 @@ vi.mock('../ipc.js', () => ({
 }))
 
 vi.mock('../shell/AppShell.js', () => ({
-  useCrumbTail: () => {},
+  useCrumbTail: (tail: { text: string }[]) => { crumbTail = tail },
   useEscapeLayer: () => {},
   useScreenReentry: () => 0,
   useJump: () => ({
-    jump: null,
+    jump: jumpHere,
     open: (screen: string, id?: string) => { openedScreens.push([screen, id]) },
-    returnTo: vi.fn(),
+    returnTo: (screen: string) => { returnedTo.push(screen) },
   }),
+  useScreenEntry: () => 0,
   usePaperCount: () => vaultPaperCount,
   useScreen: () => 'papers',
   useNotice: () => ({
@@ -273,6 +292,7 @@ describe('PaperTable', () => {
     importCall = { ...controlled<PaperImportResult>(), filename: '', bytes: new Uint8Array() }
     setColumnsCalls = []
     updateCalls = []
+    setTopicCalls = []
     renameOptionCalls = []
     setColumnTypeCalls = []
     refusals = []
@@ -286,7 +306,57 @@ describe('PaperTable', () => {
     vaultPaperCount = null
     facetRows = []
     openedScreens = []
+    jumpHere = null
+    gotIds = []
     bumps = 0
+    crumbTail = []
+    returnedTo = []
+  })
+
+  it('从别的屏点链接打开一篇的详情时屏头左端有返回,按它回到来的那一屏;从论文屏自己的搜索打开时没有', async () => {
+    jumpHere = { screen: 'papers', target: 'p1', from: 'feed', seq: 1, anchor: { detail: true } }
+    const host = mount()
+    columnsCall.resolve(EMPTY_COLUMNS)
+    listCall.resolve({ rows: [ROW], total: 1 })
+    getCall.resolve(ROW)
+    await flush()
+    expect(host.querySelector('.desk-head')!.firstElementChild?.classList.contains('back')).toBe(true)
+    await act(async () => { host.querySelector<HTMLButtonElement>('.desk-head > .back')!.click() })
+    expect(returnedTo).toEqual(['feed'])
+    expect(host.querySelector('.desk-head > .back')).toBeNull()
+
+    act(() => mountedRoot!.unmount())
+    jumpHere = { screen: 'papers', target: 'p1', from: 'papers', seq: 2, anchor: { detail: true } }
+    const own = mount()
+    await flush()
+    expect(own.querySelector('.desk-head > .back')).toBeNull()
+  })
+
+  it('带详情落点跳进来时打开那篇的详情,搜索框不填字', async () => {
+    jumpHere = { screen: 'papers', target: 'p1', from: 'feed', seq: 1, anchor: { detail: true } }
+    const host = mount()
+    columnsCall.resolve(EMPTY_COLUMNS)
+    listCall.resolve({ rows: [ROW], total: 1 })
+    getCall.resolve(ROW)
+    await flush()
+
+    expect(gotIds[0]).toBe('p1')
+    expect(host.querySelector<HTMLInputElement>('#libq')!.value).toBe('')
+    expect(host.querySelector('.pdetail')?.textContent).toContain('一篇论文')
+  })
+
+  it('带导入 PDF 落点跳进来时打开导入的文件选择', async () => {
+    const clicked = vi.spyOn(HTMLInputElement.prototype, 'click').mockImplementation(() => {})
+    jumpHere = { screen: 'papers', target: '', from: 'feed', seq: 1, anchor: { importPdf: true } }
+    mount()
+    columnsCall.resolve(EMPTY_COLUMNS)
+    listCall.resolve({ rows: [ROW], total: 1 })
+    await flush()
+
+    expect(clicked.mock.contexts.map((input) => (input as HTMLInputElement).className)).toEqual([
+      expect.stringContaining('pdfupload-input'),
+    ])
+    clicked.mockRestore()
   })
 
   it('defaults to 20 papers and offers only the 20, 30, and 50 page sizes', async () => {
@@ -364,6 +434,24 @@ describe('PaperTable', () => {
     expect(host.querySelector('.pdetail')?.textContent).toContain('新论文')
     expect(host.querySelector<HTMLButtonElement>('.pdfupload')!.disabled).toBe(false)
     expect(listParams.at(-1)).toMatchObject({ page: 1, sort: 'addedAt', direction: 'desc' })
+  })
+
+  it('别的屏要导入时跳过来就打开 PDF 选择框;只是跳到一篇论文时不打开', async () => {
+    const opened = vi.spyOn(HTMLInputElement.prototype, 'click').mockImplementation(function (this: HTMLInputElement) {
+      openedScreens.push(['picker', this.classList.contains('pdfupload-input') ? 'pdfupload-input' : this.className])
+    })
+    jumpHere = { screen: 'papers', target: '一篇论文', from: 'wiki', seq: 1 }
+    mount()
+    columnsCall.resolve(EMPTY_COLUMNS)
+    listCall.resolve({ rows: [ROW], total: 1 })
+    await flush()
+    expect(openedScreens.filter(([screen]) => screen === 'picker')).toEqual([])
+    document.body.innerHTML = ''
+    jumpHere = { screen: 'papers', target: '', from: 'feed', seq: 2, anchor: { importPdf: true } }
+    mount()
+    await flush()
+    expect(openedScreens.filter(([screen]) => screen === 'picker')).toEqual([['picker', 'pdfupload-input']])
+    opened.mockRestore()
   })
 
   it('论文搜索框用尾部叉号一次清空筛选并保留输入焦点', async () => {
@@ -982,6 +1070,49 @@ describe('PaperTable', () => {
     expect(host.querySelector('.lmore')).toBeNull()
   })
 
+  it('存着稍后阅读的阅读状态处处显示为待读:行里、筛选、分组取值和面包屑,筛选仍按存的值', async () => {
+    facetRows = [{ value: '稍后阅读', count: 2, newestTitle: '一篇论文' }, { value: '未读', count: 1, newestTitle: '一篇论文' }]
+    const host = mount()
+    columnsCall.resolve({ hidden: [], custom: [], groups: ['readState'] })
+    listCall.resolve({ rows: [{ ...ROW, readState: '稍后阅读' }], total: 1 })
+    await flush()
+    expect(host.querySelector('tbody .stchip')?.textContent).toBe('待读')
+
+    await act(async () => {
+      host.querySelector('.filters .read-state-filter')!.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, button: 0 }))
+    })
+    await flush()
+    const items = [...document.querySelectorAll<HTMLElement>('.ctxmenu .mi')]
+    expect(items.map((item) => item.textContent)).toEqual(['全部状态', '未读', '在读', '已读', '待读'])
+    await act(async () => { press(items.at(-1)!) })
+    await flush()
+
+    expect(listParams.at(-1)?.facet).toEqual({ field: 'readState', value: '稍后阅读' })
+    expect(host.querySelector('.filters .read-state-filter.on')?.textContent).toBe('待读')
+    expect(host.querySelector('.gnav .btn')?.textContent).toBe('待读 · 2')
+    expect(crumbTail.map((seg) => seg.text)).toEqual(['阅读状态', '待读'])
+  })
+
+  it('英文界面里每个阅读状态都写它的英文名,行里和筛选菜单都是,筛选仍按存的值', async () => {
+    window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'en')
+    const host = mount()
+    columnsCall.resolve({ hidden: [], custom: [], groups: ['readState'] })
+    listCall.resolve({ rows: ['未读', '在读', '已读', '稍后阅读'].map((readState, at) => ({ ...ROW, id: `p${at}`, readState }) as PaperRow), total: 4 })
+    await flush()
+    expect([...host.querySelectorAll('tbody .stchip')].map((chip) => chip.textContent)).toEqual(['Unread', 'Reading', 'Read', 'To read'])
+
+    await act(async () => {
+      host.querySelector('.filters .read-state-filter')!.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, button: 0 }))
+    })
+    await flush()
+    const items = [...document.querySelectorAll<HTMLElement>('.ctxmenu .mi')]
+    expect(items.map((item) => item.textContent)).toEqual(['All statuses', 'Unread', 'Reading', 'Read', 'To read'])
+    await act(async () => { press(items[3]!) })
+    await flush()
+    expect(listParams.at(-1)?.facet).toEqual({ field: 'readState', value: '已读' })
+    expect(host.querySelector('.filters .read-state-filter.on')?.textContent).toBe('Read')
+  })
+
   it('论文行在当前位置右键即可移到垃圾桶,不依赖横向滚到行尾', async () => {
     const host = mount()
     columnsCall.resolve(EMPTY_COLUMNS)
@@ -1080,7 +1211,7 @@ describe('PaperTable', () => {
     return text
   }
 
-  it('移除主题后提示只说已更新，给一个撤销，撤销的是这次写入记下的那条变动', async () => {
+  it('移除主题是把论文移出那个主题，提示只说已更新，给一个撤销，撤销的是这次写入记下的那条变动', async () => {
     const host = mount()
     columnsCall.resolve(EMPTY_COLUMNS)
     listCall.resolve({ rows: [{ ...ROW, topics: ['推理', '检索'] }], total: 1 })
@@ -1090,10 +1221,44 @@ describe('PaperTable', () => {
       [...row.querySelectorAll<HTMLElement>('.tagchip')].find((chip) => chip.textContent === '检索')!
         .querySelector<HTMLButtonElement>('button')!.click()
     })
-    updateCalls.at(-1)!.resolve()
+    expect(setTopicCalls.map(({ id, topic, member }) => [id, topic, member])).toEqual([['p1', '检索', false]])
+    expect(updateCalls).toEqual([])
+    setTopicCalls.at(-1)!.resolve()
     await flush()
     expect(await undoLast()).toBe('已更新')
-    expect(undone).toEqual(['change-update-1'])
+    expect(undone).toEqual(['change-topic-1'])
+  })
+
+  it('表格与详情里添加主题都是把论文归进那个主题，提示已添加，撤销的是这次写入记下的那条变动', async () => {
+    const host = mount()
+    columnsCall.resolve(EMPTY_COLUMNS)
+    listCall.resolve({ rows: [{ ...ROW, topics: ['推理'] }], total: 1 })
+    await flush()
+    /** Types `topic` into the + of the topics in `scope` and presses Enter. */
+    const add = async (scope: HTMLElement, topic: string) => {
+      await act(async () => { scope.querySelector<HTMLButtonElement>('.tagadd')!.click() })
+      const input = document.querySelector<HTMLInputElement>('.tagin')!
+      await act(async () => { setValue(input, topic) })
+      await act(async () => { input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })) })
+    }
+    const row = host.querySelector<HTMLElement>('.ptable tbody tr')!
+    await add(row, '检索')
+    expect(setTopicCalls.map(({ id, topic, member }) => [id, topic, member])).toEqual([['p1', '检索', true]])
+    setTopicCalls.at(-1)!.resolve()
+    await flush()
+    expect(await undoLast()).toBe('已添加主题')
+    expect(undone).toEqual(['change-topic-1'])
+
+    await act(async () => { press(row.querySelector<HTMLElement>('td')!) })
+    getCall.resolve({ ...ROW, topics: ['推理'] })
+    await flush()
+    await add(host.querySelector<HTMLElement>('.pdetail .paper-meta')!, '压缩')
+    expect(setTopicCalls.at(-1)).toMatchObject({ id: 'p1', topic: '压缩', member: true })
+    setTopicCalls.at(-1)!.resolve()
+    await flush()
+    expect(await undoLast()).toBe('已更新主题')
+    expect(undone).toEqual(['change-topic-1', 'change-topic-2'])
+    expect(updateCalls).toEqual([])
   })
 
   it('论文移进垃圾桶后提示只说已移入垃圾桶，撤销按最近变动的那一条把它放回', async () => {
@@ -1135,10 +1300,11 @@ describe('PaperTable', () => {
       [...panel.querySelectorAll<HTMLElement>('.tagchip')].find((chip) => chip.textContent === '检索')!
         .querySelector<HTMLButtonElement>('button')!.click()
     })
-    updateCalls.at(-1)!.resolve()
+    expect(setTopicCalls.at(-1)).toMatchObject({ id: 'p1', topic: '检索', member: false })
+    setTopicCalls.at(-1)!.resolve()
     await flush()
     expect(await undoLast()).toBe('已更新主题')
-    expect(undone).toEqual([`change-update-${updateCalls.length}`])
+    expect(undone).toEqual([`change-topic-${setTopicCalls.length}`])
   })
 
   it('表格和详情用同一组评分、阅读状态与主题编辑：点当前那颗星清空评分，状态是同一个选择器，主题是带 × 的标签加 +', async () => {
@@ -1155,7 +1321,7 @@ describe('PaperTable', () => {
       [...row.querySelectorAll<HTMLElement>('.tagchip')].find((chip) => chip.textContent === '检索')!
         .querySelector<HTMLButtonElement>('button')!.click()
     })
-    expect(updateCalls.at(-1)!.patch).toEqual({ topics: ['推理'] })
+    expect(setTopicCalls.at(-1)).toMatchObject({ id: 'p1', topic: '检索', member: false })
 
     await act(async () => { press(row.querySelector<HTMLElement>('td')!) })
     getCall.resolve(rated)

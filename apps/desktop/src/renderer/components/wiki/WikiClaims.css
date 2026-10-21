@@ -10,3 +10,5 @@
 .wkclaim-note{color:var(--sec);overflow-wrap:anywhere}
 .wkclaim-resolve{margin-left:auto}
 .wkclaim-history{margin-top:var(--sp-6);font-size:var(--fs-sm);color:var(--ter)}
+.wkclaim-head>.draft-form{flex:1}
+.wkclaim-lines>li.wkclaim-resolving,.wkclaim-lines>li.wkclaim-marking{display:block;margin:var(--sp-4) 0 var(--sp-6)}

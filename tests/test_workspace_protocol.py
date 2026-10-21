@@ -13,6 +13,7 @@ from meridian.workspace_protocol import (
     CHANGES_PATH,
     EVENTS_PATH,
     WorkspaceProtocolError,
+    _validate_changes,
     add_workspace_event,
     inspect_project_workspace,
     read_project_plan,
@@ -390,6 +391,33 @@ class WorkspaceProtocolTest(unittest.TestCase):
             self.assertFalse(incremental["baseline_truncated"])
             self.assertEqual(reset["cursor_status"], "reset_required")
             self.assertEqual(idea["idea"]["body"], "Calibrate by batch.")
+
+    def test_change_journal_reads_an_idea_the_user_wrote_down_without_a_chat(self) -> None:
+        def journal(chat_title: str) -> dict[str, object]:
+            return {
+                "schema_version": "meridian.workspace-changes.v1",
+                "project_id": "project-1",
+                "epoch": "feed-a",
+                "next_sequence": 1,
+                "ideas": [
+                    {
+                        "id": "idea-9",
+                        "title": "Own idea",
+                        "body": "Written down by hand.",
+                        "archived": False,
+                        "created": "2026-10-21",
+                        "updated": "2026-10-21",
+                        "source": {"chat_title": chat_title},
+                    }
+                ],
+                "changes": [],
+            }
+
+        # The App writes MANUAL_SOURCE as the chat title of an idea that came from no chat.
+        read = _validate_changes(journal("手动添加"))
+        self.assertEqual(read["ideas"][0]["source"], {"chat_title": "手动添加"})
+        with self.assertRaisesRegex(WorkspaceProtocolError, "chat_title must be a non-empty string"):
+            _validate_changes(journal(""))
 
     def test_change_reader_has_explicit_fallback_for_legacy_workspace(self) -> None:
         with TemporaryDirectory() as tmp:

@@ -174,7 +174,7 @@ test('对照表的行是成员论文,格子按契约的列排,悬停看原文;�
   const paper = await paperFromCore(win, first.paper.id)
   await expect(crumbs(win)).toHaveText(['我的库', 'Wiki', paper.title])
   await expect(shown(win).locator('.desk-head .t')).toHaveText(paper.title)
-  expect(await shown(win).locator('.wkside .section-heading').allTextContents()).toEqual(['属性', '归属', '目录'])
+  expect(await shown(win).locator('.wkside .section-heading').allTextContents()).toEqual(['属性', '归属', '反向链接', '目录'])
   // Side panel headers have their own style, one size smaller than the main area and without a rule:
   // 14px, no top border.
   const sideHeads = shown(win).locator('.wkside .section-heading')

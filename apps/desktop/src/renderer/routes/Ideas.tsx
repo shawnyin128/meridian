@@ -10,7 +10,9 @@ import { ChoicePicker, DotsMenu } from '../components/FieldPickers.js'
 import { EditActions } from '../components/EditActions.js'
 import { CollapsibleGroup } from '../components/CollapsibleGroup.js'
 import { EmptyState } from '../components/EmptyState.js'
-import { IdeaPanel, IdeaSource, ideaSourceLabel } from '../components/ideas/IdeaPanel.js'
+import { AddAction } from '../components/AddAction.js'
+import { IdeaDraft, type IdeaDraftText } from '../components/ideas/IdeaDraft.js'
+import { IdeaPanel, IdeaSource, ideaSourceLabel, ownIdea } from '../components/ideas/IdeaPanel.js'
 import { LoadingPlaceholder } from '../components/LoadingPlaceholder.js'
 import { DetailPanel } from '../components/DetailPanel.js'
 import { CardOpen, ResearchObjectCard } from '../components/ResearchObjectCard.js'
@@ -20,6 +22,8 @@ import {
 } from '../components/PageShell.js'
 import { errorLabel } from '../lib/failure-label.js'
 import { useEscapeLayer, useJump, useScreenReentry, useVaultRevision } from '../shell/AppShell.js'
+import { BackButton } from '../components/BackButton.js'
+import { useJumpOrigin } from '../hooks/useJumpOrigin.js'
 import { useUndo } from '../hooks/useUndo.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
 import { useScrollFade } from '../hooks/useScrollFade.js'
@@ -98,16 +102,20 @@ function IdeaCard({ idea, linked, selected, menu, onOpen, reorder, dropClassName
         </div>
         <p ref={summary} className={`idea-card-summary fade-lines${summaryCut ? ' clipped' : ''}`}>{idea.body}</p>
         <div className="idea-card-meta">
-          <FadeText className="idea-card-source" label={m.project.idea.sourceTag(ideaSourceLabel(idea))}>
-            <IdeaSource idea={idea} message={m.project.idea.sourceTag} />
-          </FadeText>
-          {idea.source.agent === true
-            ? <AgentLabel className="idea-source-kind" />
-            : (
-              <SourceLabel className="idea-source-kind">
-                {idea.source.paperTitle === undefined ? m.ideas.sourceKind.chat : m.ideas.sourceKind.paperReading}
-              </SourceLabel>
-            )}
+          {ownIdea(idea) ? null : (
+            <>
+              <FadeText className="idea-card-source" label={m.project.idea.sourceTag(ideaSourceLabel(idea))}>
+                <IdeaSource idea={idea} message={m.project.idea.sourceTag} />
+              </FadeText>
+              {idea.source.agent === true
+                ? <AgentLabel className="idea-source-kind" />
+                : (
+                  <SourceLabel className="idea-source-kind">
+                    {idea.source.paperTitle === undefined ? m.ideas.sourceKind.chat : m.ideas.sourceKind.paperReading}
+                  </SourceLabel>
+                )}
+            </>
+          )}
           <span className="idea-card-updated">{m.ideas.updated(fmt.date(idea.updated))}</span>
         </div>
       </div>
@@ -124,7 +132,7 @@ function IdeaDetailPanel({ idea, linked, projects, onClose, onSave, onProject, o
   onSave: (title: string, body: string) => Promise<boolean>
   onProject: (projectId: string | null) => void
   onPromote: () => void
-  onOpen: (screen: 'project' | 'chat', id: string) => void
+  onOpen: (screen: 'project' | 'chat' | 'reader', id: string) => void
 }) {
   const m = useMessages()
   const panelFade = useScrollFade('y')
@@ -171,6 +179,7 @@ function IdeaDetailPanel({ idea, linked, projects, onClose, onSave, onProject, o
     <aside className="idea-detail-panel node-document-pane" ref={panelFade} data-fade-paint="" aria-label={m.ideas.detailHeading}>
       <IdeaPanel
         idea={idea} onClose={onClose} onOpenSourceChat={(chatId) => onOpen('chat', chatId)}
+        onOpenSourcePaper={(paperId) => onOpen('reader', paperId)}
         actions={(
           <EditActions
             editing={editing} saving={busy} canSave={title.trim() !== '' && body.trim() !== ''}
@@ -234,13 +243,18 @@ export function Ideas() {
   const m = useMessages()
   const { revision } = useVaultRevision()
   const { jump, open } = useJump()
+  const { origin, back } = useJumpOrigin()
   const write = useVaultWrite()
   const undo = useUndo()
   const consumedJump = useRef(0)
+  const draftCard = useRef<HTMLElement>(null)
+  const newIdea = useRef<HTMLButtonElement>(null)
+  const draftTriggers = useMemo(() => [newIdea], [])
   const [rows, setRows] = useState<ResearchIdea[] | null>(null)
   const [projects, setProjects] = useState<ProjectSummary[]>([])
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [archiveOpen, setArchiveOpen] = useState(false)
+  const [draft, setDraft] = useState<IdeaDraftText | null>(null)
   const [error, setError] = useState<string | null>(null)
   const closeDetail = useCallback(() => setSelectedId(null), [])
 
@@ -259,7 +273,8 @@ export function Ideas() {
   useEffect(() => {
     if (jump === null || jump.seq === consumedJump.current) return
     consumedJump.current = jump.seq
-    setSelectedId(jump.target)
+    if (jump.anchor?.newIdea === true) setDraft((held) => held ?? { title: '', body: '' })
+    else setSelectedId(jump.target)
   }, [jump])
   useEscapeLayer(selectedId !== null, closeDetail)
 
@@ -289,6 +304,12 @@ export function Ideas() {
       { note: idea.archived ? m.ideas.restoredNote : m.ideas.archivedNote },
     )
   }
+  /** Creates the user's own idea; once written it takes the draft card's place and opens in the detail panel. */
+  const createIdea = (title: string, body: string) => write(ideaApi.create(undefined, title, body).then((idea) => {
+    setRows((held) => [idea, ...(held ?? [])])
+    setSelectedId(idea.id)
+    setDraft(null)
+  }), { note: m.chat.ideaSavedNote })
   const remove = (idea: ResearchIdea) => {
     void write(ideaApi.delete(idea.id), { note: m.common.trashed, action: (trashed) => undo.restore([trashed]) }).then((saved) => {
       if (!saved) return
@@ -315,10 +336,23 @@ export function Ideas() {
 
   return (
     <PageShell className="ideas-page">
-      <PageHeader actions={active.length === 0 ? undefined : (
-        <SortMenu label={m.ideas.sort} options={[{ label: m.ideas.sortUpdated, onSelect: sortByUpdated }]} />
+      <PageHeader actions={(
+        <>
+          {active.length === 0
+            ? null
+            : <SortMenu label={m.ideas.sort} options={[{ label: m.ideas.sortUpdated, onSelect: sortByUpdated }]} />}
+          <AddAction
+            variant="page" ref={newIdea}
+            onClick={() => {
+              // An open draft is only refocused, keeping what is typed.
+              if (draft !== null) draftCard.current?.querySelector<HTMLElement>('.form-control')?.focus()
+              else setDraft({ title: '', body: '' })
+            }}
+          >{m.ideas.create}</AddAction>
+        </>
       )}
       >
+        {origin === null ? null : <BackButton onClick={back} />}
         <PageTitle>{m.ideas.title(active.length)}</PageTitle>
       </PageHeader>
       <PageError error={error} />
@@ -326,10 +360,19 @@ export function Ideas() {
         <div className={`ideas-workspace${selected === undefined ? '' : ' has-detail'}`}>
           <main className="ideas-list">
             <SectionHeading>{m.ideas.activeHeading(active.length)}</SectionHeading>
+            {draft === null
+              ? null
+              : (
+                <ResearchObjectCard className="idea-draft-card" cardRef={draftCard}>
+                  <IdeaDraft
+                    draft={draft} triggers={draftTriggers} onChange={setDraft} onSave={createIdea} onCancel={() => setDraft(null)}
+                  />
+                </ResearchObjectCard>
+              )}
             {rows === null ? (
               error === null ? <LoadingPlaceholder shape="cards" /> : null
             ) : active.length === 0
-              ? <EmptyState variant="section">{m.ideas.empty}</EmptyState>
+              ? (draft === null ? <EmptyState variant="section">{m.ideas.empty}</EmptyState> : null)
               : active.map(card)}
             {archived.length === 0 ? null : (
               <CollapsibleGroup

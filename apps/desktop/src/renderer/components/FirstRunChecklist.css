@@ -1,0 +1,6 @@
+.firstrun-row{display:flex;align-items:center;flex-wrap:wrap;gap:var(--sp-8) var(--sp-14);padding:var(--sp-8) var(--sp-14)}
+.firstrun-heading{color:var(--ter);font-size:var(--fs-sm);font-weight:var(--fw-semibold)}
+.firstrun-steps{display:flex;align-items:center;flex-wrap:wrap;gap:var(--sp-6) var(--sp-14);margin:0;padding:0;list-style:none}
+.firstrun-done{display:inline-flex;align-items:center;gap:var(--sp-4);color:var(--ter);font-size:var(--fs-sm)}
+.firstrun-done svg{width:12px;height:12px;color:var(--good)}
+.firstrun-hide{margin-left:auto}

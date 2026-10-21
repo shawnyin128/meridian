@@ -5,7 +5,7 @@ import { changelog } from '../ipc.js'
 import { errorLabel } from '../lib/failure-label.js'
 import type { Catalog } from '../messages/catalog.js'
 import { useMessages } from '../messages/useMessages.js'
-import { useNotice, useToday, useVaultRevision } from '../shell/AppShell.js'
+import { useJump, useNotice, useToday, useVaultRevision } from '../shell/AppShell.js'
 import { useFormat } from '../lib/format.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
 import { CardTray } from '../components/CardTray.js'
@@ -13,6 +13,7 @@ import { ConfirmDialog } from '../components/ConfirmDialog.js'
 import { DayHeading } from '../components/DayHeading.js'
 import { DiffLines } from '../components/DiffLines.js'
 import { EmptyState } from '../components/EmptyState.js'
+import { ENTITY_SCREEN, EntityLink } from '../components/EntityLink.js'
 import { LoadingPlaceholder } from '../components/LoadingPlaceholder.js'
 import { PaperText } from '../components/paper/PaperText.js'
 import { AgentLabel } from '../components/SourceLabel.js'
@@ -55,6 +56,24 @@ function ChangeSource({ source }: { source: ChangeEntry['source'] }) {
   return <AgentLabel className="src" source={source === NOTES_PROPOSAL ? from.notes : from.lab} />
 }
 
+/** A change's title as paper text, the entity it names a link that opens that entity. */
+function ChangeTitle({ entry }: { entry: ChangeEntry }) {
+  const { open } = useJump()
+  const { title, named } = entry
+  if (named === undefined) return <PaperText text={title} />
+  const screen = ENTITY_SCREEN[named.kind]
+  return (
+    <>
+      <PaperText text={title.slice(0, named.from)} />
+      <EntityLink
+        kind={named.kind} label={<PaperText text={title.slice(named.from, named.to)} />}
+        href={`#${screen}:${named.id}`} onOpen={() => open(screen, named.id)}
+      />
+      <PaperText text={title.slice(named.to)} />
+    </>
+  )
+}
+
 function DeleteChangeButton({ entry, onDelete }: {
   entry: ChangeEntry
   onDelete: (id: string) => void
@@ -87,7 +106,8 @@ function ClearArchivedButton({ count, onClear }: { count: number; onClear: () =>
 /**
  * Recent Changes: every change to the vault, where it came from and what it changed. Two sections,
  * current and archived, are each split by day; the date is the day's heading and is not repeated in
- * the entries' grey lines. Clicking an entry expands its diff, independently of the other entries.
+ * the entries' grey lines. Clicking an entry expands its diff, independently of the other entries,
+ * and the paper, project or Wiki page its title names opens from that name.
  * The screen title and the sidebar count only unarchived entries. Each entry has its own Undo, which
  * writes the entity back to how it was before this change and leaves archiving as it is. Entries come
  * from changelog.list; this screen does not hold the vault.
@@ -142,10 +162,10 @@ export function Changelog() {
   const row = (c: ChangeEntry) => (
     <StructuredRow className="crow" key={c.id}>
       <CardTray
-        variant="row"
+        variant="row" composite
         summary={(
           <>
-            <span className="ct"><PaperText text={c.title} /><ChangeSource source={c.source} /></span>
+            <span className="ct"><ChangeTitle entry={c} /><ChangeSource source={c.source} /></span>
             <span className="cm">{[metaBelowHeading(c.meta), hint(c, m.changelog.state)].filter((s) => s !== '').join(SEP)}</span>
           </>
         )}

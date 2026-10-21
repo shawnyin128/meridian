@@ -18,6 +18,8 @@ import { errorLabel } from '../lib/failure-label.js'
 import { commandShortcut, composing } from '../lib/keyboard.js'
 import type { Catalog } from '../messages/catalog.js'
 import { useMessages } from '../messages/useMessages.js'
+import { CommandPalette, type PaletteCommand } from './CommandPalette.js'
+import { SETTINGS_CATEGORIES, SETTINGS_CATEGORY_LABEL, type SettingsCategory } from './settings-categories.js'
 import { Sidebar } from './Sidebar.js'
 import { JobsContext, useJobsPoll } from './useJobs.js'
 import brandmark from '../../../resources/mark-64.png'
@@ -86,6 +88,14 @@ export type JumpAnchor = {
   milestone?: string
   /** Project: the conclusion to open in the Conclusions view, by its id. */
   conclusion?: string
+  /** Papers: the target is a paper id whose detail view opens, not a title to filter the table by. */
+  detail?: true
+  /** Papers: open the file chooser of the PDF import. */
+  importPdf?: true
+  /** Project: show the project list with its new-project row open. */
+  newProject?: true
+  /** Ideas: open the draft of a new idea of the user's own. */
+  newIdea?: true
 }
 export type ScreenJump = {
   screen: ScreenKey
@@ -120,7 +130,6 @@ const JumpContext = createContext<{
 } | null>(null)
 /** The screen these children belong to: every mounted screen keeps running, so each must know its own. */
 const SlotContext = createContext<ScreenKey | null>(null)
-export type SettingsCategory = 'appearance' | 'storage' | 'api' | 'model' | 'research' | 'extensions' | 'delivery' | 'delivery-watch' | 'delivery-discovery' | 'archived'
 const SettingsContext = createContext<{
   open: boolean
   requestedCategory: SettingsCategory | null
@@ -386,8 +395,9 @@ export function AppShell({ screens, settings }: {
   /** Focus before the app menu opened, restored on close; when null, Radix returns focus to the logo button. */
   const appMenuOpener = useRef<HTMLElement | null>(null)
   // The dialog a menu item asked for, opened only once the menu has closed and handed focus back.
-  const wantDialog = useRef<'settings' | 'about' | null>(null)
+  const wantDialog = useRef<'settings' | 'palette' | 'about' | null>(null)
   const [aboutOpen, setAboutOpen] = useState(false)
+  const [paletteOpen, setPaletteOpen] = useState(false)
 
   // Every sidebar badge counts the whole vault and must be fetched again after each write, so this
   // follows `revision`. The vault's today is fetched here too: a write uses the current day, and a
@@ -431,6 +441,9 @@ export function AppShell({ screens, settings }: {
 
   // "Settings…" in the app menu: the main process sends a message; the open state stays in the page.
   useEffect(() => appMenu.onOpenSettings(() => setSettingsOpen(true)), [])
+
+  // "Command Palette…" in the native menu, whose accelerator is the palette's shortcut.
+  useEffect(() => appMenu.onOpenPalette(() => setPaletteOpen(true)), [])
 
   // Help owns one stable entry into the same Extensions surface that reports installation state.
   useEffect(() => appMenu.onOpenAgentTutorial(() => {
@@ -608,6 +621,28 @@ export function AppShell({ screens, settings }: {
 
   const crumbs = useMemo(() => crumbsOf(m), [m])
 
+  const commands: PaletteCommand[] = [
+    { label: m.research.list.create, run: () => jumps.open('project', '', { newProject: true }) },
+    { label: m.papers.upload.importAction, run: () => jumps.open('papers', '', { importPdf: true }) },
+    { label: m.ideas.create, run: () => jumps.open('ideas', '', { newIdea: true }) },
+    { label: m.shell.titlebar.settings, shortcut: commandShortcut(appMenu.platform(), ','), run: () => setSettingsOpen(true) },
+    ...SETTINGS_CATEGORIES.map((category) => ({
+      label: m.shell.palette.settingsPane(m.settings.categories[SETTINGS_CATEGORY_LABEL[category]]),
+      run: () => openSettingsCategory(category),
+    })),
+    { label: m.shell.nav.feed, run: () => navigate('feed') },
+    { label: m.shell.nav.delivery, run: () => openInbox(ALL_WATCHES) },
+    { label: m.shell.nav.discovery, run: () => openInbox(ALL_WATCHES, 'discovery') },
+    { label: m.shell.nav.later, run: () => navigate('later') },
+    { label: m.shell.nav.wiki, run: () => navigate('wiki') },
+    { label: m.shell.nav.papers, run: () => navigate('papers') },
+    { label: m.shell.nav.changelog, run: () => navigate('changelog') },
+    { label: m.shell.nav.overview, run: () => navigate('overview') },
+    { label: m.shell.nav.projects, run: () => navigate('project') },
+    { label: m.shell.nav.ideas, run: () => navigate('ideas') },
+    { label: m.shell.nav.trash, run: () => navigate('trash') },
+  ]
+
   // A screen's own breadcrumbs: the last base segment carries its back action, then its deeper ones.
   const partsOf = (k: ScreenKey): CrumbSeg[] => {
     const base = crumbs[k]
@@ -687,12 +722,16 @@ export function AppShell({ screens, settings }: {
                 const wanted = wantDialog.current
                 wantDialog.current = null
                 if (wanted === 'settings') setSettingsOpen(true)
+                if (wanted === 'palette') setPaletteOpen(true)
                 if (wanted === 'about') setAboutOpen(true)
               },
           }}
         >
           <MenuItem onSelect={() => { wantDialog.current = 'settings' }}>
             {m.shell.titlebar.settings}<span className="mi-key">{commandShortcut(appMenu.platform(), ',')}</span>
+          </MenuItem>
+          <MenuItem onSelect={() => { wantDialog.current = 'palette' }}>
+            {m.shell.titlebar.palette}<span className="mi-key">{commandShortcut(appMenu.platform(), 'P', true)}</span>
           </MenuItem>
           <MenuItem onSelect={() => {
             void appUpdates.check()
@@ -704,6 +743,7 @@ export function AppShell({ screens, settings }: {
           <MenuItem onSelect={() => { wantDialog.current = 'about' }}>{m.shell.titlebar.about}</MenuItem>
         </ActionMenu>
         <AboutDialog open={aboutOpen} onOpenChange={setAboutOpen} />
+        <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} commands={commands} />
         <div className="crumb" id="crumb">
           {parts.map((p, i) => {
             // As in the demo, only .cseg.link gets a handler: the last segment is the current position.

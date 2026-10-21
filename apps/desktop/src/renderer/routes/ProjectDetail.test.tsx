@@ -62,8 +62,8 @@ describe('attnItems', () => {
       lastProgress: '2026-08-17',
     }), TODAY, sm)).toEqual([
       {
-        id: 'conflict', rank: 0, kind: '结论冲突', tone: 'bad',
-        reason: '2 条证据结论互相冲突', action: '检查证据并裁决',
+        id: 'conflict', rank: 0, kind: '实验结论冲突', tone: 'bad',
+        reason: '2 条实验结论有冲突', action: '检查证据并裁决',
       },
       {
         id: 'milestone-m2026-08-28', milestone: 'm2026-08-28', rank: 5, kind: '临近里程碑', tone: 'warn',
@@ -222,9 +222,9 @@ describe('research record view names', () => {
     expect(en.project.recordModes.activity).toBe('Log')
   })
 
-  it('names the conclusions view 结论', () => {
-    expect(zh.project.recordModes.conclusions).toBe('结论')
-    expect(en.project.recordModes.conclusions).toBe('Conclusions')
+  it('names the conclusions view 实验结论', () => {
+    expect(zh.project.recordModes.conclusions).toBe('实验结论')
+    expect(en.project.recordModes.conclusions).toBe('Experiment conclusions')
   })
 })
 
@@ -259,10 +259,28 @@ describe('project idea panel', () => {
       act(() => { button(label)!.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, button: 0 })) })
       return [...document.querySelectorAll<HTMLElement>('[role="menuitemradio"]')]
     }
-    return { host, button, headingActions, pick, unmount: () => { act(() => root.unmount()); vi.unstubAllGlobals() } }
+    return {
+      host, button, headingActions, pick,
+      rerender: (next: ReactNode) => act(() => root.render(withMessages(next))),
+      unmount: () => { act(() => root.unmount()); vi.unstubAllGlobals() },
+    }
   }
   const handlers = () => ({
-    onClose: vi.fn(), onOpenIdea: vi.fn(), onCreateNode: vi.fn(), onOpenNode: vi.fn(), onSetNode: vi.fn(),
+    onClose: vi.fn(), onOpenIdea: vi.fn(), onOpenPaper: vi.fn(), onOpenNode: vi.fn(), onSetNode: vi.fn(),
+    onCreateNode: vi.fn<(label: string, after: string | null) => Promise<boolean>>(() => Promise.resolve(true)),
+  })
+  const press = (target: Element, key: string) => act(() => {
+    target.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }))
+  })
+
+  it('opens the paper the idea came from through its name in the source', () => {
+    const on = handlers()
+    const panel = mount(
+      <ProjectIdeaPanel idea={{ ...idea, source: { ...idea.source, paperId: 'p1', paperTitle: 'EAGLE-2' } }} graph={graph} workspaceManaged {...on} />,
+    )
+    act(() => panel.host.querySelector<HTMLElement>('.idea-panel-source .entity-link')!.click())
+    expect(on.onOpenPaper).toHaveBeenCalledWith('p1')
+    panel.unmount()
   })
 
   it('shows the shared idea panel: the head, the content, the research node, then the source', () => {
@@ -310,9 +328,57 @@ describe('project idea panel', () => {
 
     const own = mount(<ProjectIdeaPanel idea={idea} graph={graph} workspaceManaged={false} {...on} />)
     expect(own.headingActions('科研节点')).toEqual([['转为新节点', '关联节点']])
-    act(() => own.button('转为新节点')!.click())
-    expect(on.onCreateNode).toHaveBeenCalledOnce()
     own.unmount()
+  })
+
+  it('转为新节点在科研节点区里、关联的节点将出现的地方就地打开节点草稿,不弹对话框;标题先是想法的标题,回车才建节点', async () => {
+    const on = handlers()
+    const panel = mount(<ProjectIdeaPanel idea={idea} graph={graph} workspaceManaged={false} {...on} />)
+    act(() => panel.button('转为新节点')!.click())
+    expect(document.querySelector('[role="dialog"]')).toBeNull()
+    const heading = [...panel.host.querySelectorAll('.section-heading')].find((h) => h.textContent?.startsWith('科研节点'))!
+    const draft = panel.host.querySelector<HTMLElement>('.draft-form')!
+    expect(heading.nextElementSibling!.contains(draft)).toBe(true)
+    expect(panel.host.textContent).not.toContain('未关联')
+    const label = draft.querySelector('input')!
+    expect([label.value, document.activeElement]).toEqual(['用动态预算控制校准成本', label])
+    expect(on.onCreateNode).not.toHaveBeenCalled()
+    await act(async () => { press(label, 'Enter'); await Promise.resolve() })
+    expect(on.onCreateNode).toHaveBeenCalledWith('用动态预算控制校准成本', null)
+    expect(panel.host.querySelector('.draft-form')).toBeNull()
+    panel.unmount()
+  })
+
+  it('节点草稿里选它接在哪个节点后,保存时连同标题一起建;Esc 收起,什么也不建', async () => {
+    const on = handlers()
+    const panel = mount(<ProjectIdeaPanel idea={idea} graph={graph} workspaceManaged={false} {...on} />)
+    act(() => panel.button('转为新节点')!.click())
+    const picker = panel.host.querySelector<HTMLElement>('.draft-form .choice-picker')!
+    expect(picker.textContent).toBe('作为新的根节点')
+    await act(async () => {
+      picker.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, button: 0 }))
+      await Promise.resolve()
+    })
+    const items = [...document.querySelectorAll<HTMLElement>('[role="menuitemradio"]')]
+    expect(items.map((item) => item.textContent)).toEqual(['作为新的根节点', '动态预算探针'])
+    await act(async () => { items[1]!.click(); await Promise.resolve() })
+    await act(async () => { panel.button('保存')!.click(); await Promise.resolve() })
+    expect(on.onCreateNode).toHaveBeenCalledWith('用动态预算控制校准成本', 'thread.probe')
+
+    act(() => panel.button('转为新节点')!.click())
+    press(panel.host.querySelector('.draft-form input')!, 'Escape')
+    expect(panel.host.querySelector('.draft-form')).toBeNull()
+    expect(on.onCreateNode).toHaveBeenCalledOnce()
+    panel.unmount()
+  })
+
+  it('换一个想法时,上一个想法的节点草稿不跟过去', () => {
+    const on = handlers()
+    const panel = mount(<ProjectIdeaPanel idea={idea} graph={graph} workspaceManaged={false} {...on} />)
+    act(() => panel.button('转为新节点')!.click())
+    panel.rerender(<ProjectIdeaPanel idea={{ ...idea, id: 'idea-2', title: '另一个想法' }} graph={graph} workspaceManaged={false} {...on} />)
+    expect(panel.host.querySelector('.draft-form')).toBeNull()
+    panel.unmount()
   })
 
   it('lets a linked idea open, change, or remove its current node from the heading', () => {

@@ -33,7 +33,7 @@ describe('不需要注意的状态不带颜色', () => {
         })),
       }],
     }
-    expect(tones(renderToStaticMarkup(<MessagesProvider><PaperWikiProposalReview review={review} /></MessagesProvider>)))
+    expect(tones(renderToStaticMarkup(<MessagesProvider><PaperWikiProposalReview review={review} onJump={() => {}} /></MessagesProvider>)))
       .toEqual(['neutral', 'neutral', 'neutral', 'neutral'])
   })
 })

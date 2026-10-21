@@ -519,7 +519,55 @@ describe('change log', () => {
   it('记录不跨边界带快照与指纹:界面只看得到能不能撤、归没归档', () => {
     store.updateProject(PROJECT, { focus: '改过的焦点' })
     expect(Object.keys(store.listChanges()[0]!).sort())
-      .toEqual(['archived', 'date', 'diff', 'id', 'lines', 'meta', 'source', 'title', 'undoable', 'undone'])
+      .toEqual(['archived', 'date', 'diff', 'id', 'lines', 'meta', 'named', 'source', 'title', 'undoable', 'undone'])
+  })
+
+  /** A change as its title and, when it names one, the entity it opens and the name's text in the title. */
+  const namedOf = (change: ChangeEntry): string[] => (change.named === undefined
+    ? [change.title]
+    : [change.title, change.named.kind, change.named.id, change.title.slice(change.named.from, change.named.to)])
+
+  it('标题点名的论文、项目和 Wiki 页标出名字那一段和打开它的 id;论文表、提案与 fixture 带进来的那几条不点名', () => {
+    store.updateProject(PROJECT, { focus: '改过的焦点' })
+    store.mutatePaperReading(READ, { kind: 'remark.set', text: '随笔' })
+    store.applyProposal({
+      source: 'ingest', title: '给 PTQ 记一条',
+      ops: [{ op: 'appendEntry', page: 'topics/ptq', section: '未解决', date: '2026-08-25', text: '一条' }],
+    })
+    store.updateWikiPage('topics/ptq', '## 问题\n改过。')
+    store.updateWikiPage('papers/2210.17323', '## 这篇说了什么\n改过。')
+    store.setPaperColumns({ ...emptyColumns(), custom: [{ key: 'note', label: '备注', type: 'text', options: [] }] })
+    store.undoChange(recorded().at(-1)!.id)
+    const gptq = store.wikiPaper('papers/2210.17323').title
+    expect(store.listChanges().map(namedOf)).toEqual([
+      ['撤销：项目「draft 效率」· 改了字段', 'project', PROJECT, 'draft 效率'],
+      ['论文表 · 新建列「备注」'],
+      [`Wiki · 「${gptq}」· 改了正文`, 'page', 'papers/2210.17323', gptq],
+      ['Wiki · 「PTQ」· 改了正文', 'page', 'topics/ptq', 'PTQ'],
+      ['Wiki · 给 PTQ 记一条'],
+      ['论文「Mixtral of Experts」· 改了随笔', 'paper', READ, 'Mixtral of Experts'],
+      ['项目「draft 效率」· 改了字段', 'project', PROJECT, 'draft 效率'],
+      ...store.listChanges().slice(-SEEDED).map((change) => [change.title]),
+    ])
+  })
+
+  it('名字里带「」照样整段标出;实体不在库里时不点名;早先版本写下的标题照样认得出名字', () => {
+    store.updatePaper(READ, { title: 'Mixtral「of」Experts' })
+    store.updatePaper(READ, { readState: '在读' })
+    expect(namedOf(recorded()[0]!)).toEqual(['论文「Mixtral「of」Experts」· 改了字段', 'paper', READ, 'Mixtral「of」Experts'])
+    store.deletePaper(READ)
+    store.deleteProject(PROJECT)
+    expect(recorded().map(namedOf)).toEqual([
+      ['项目「draft 效率」· 删掉'], ['论文「Mixtral「of」Experts」· 删掉'],
+      ['论文「Mixtral「of」Experts」· 改了字段'], ['论文「Mixtral of Experts」· 改了字段'],
+    ])
+
+    const older: ChangeRecord = {
+      id: 'change-1', title: '撤销:项目「draft 效率」· 写回 「分支浪费」', meta: null, source: '我', diff: [],
+      target: { kind: 'project', id: PROJECT }, after: '', at: Date.UTC(2026, 7, 20), undone: false, archived: false, restore: null,
+    }
+    const logged = withChangelog(createFixtureStore(today), { load: () => [older], save: () => {}, nextId: () => 'change-2' })
+    expect(namedOf(logged.listChanges()[0]!)).toEqual([older.title, 'project', PROJECT, 'draft 效率'])
   })
 
   it('删掉一列记一条,撤销把列放回,之后改过的显隐、分组与顺序留着,论文里那一格又看得见', () => {
@@ -856,7 +904,7 @@ describe('change lines', () => {
       () => store.updateRelation(PROJECT, store.getProject(PROJECT).relations[0]!.items[0]!.id, { text: '改名' }),
       () => store.createAttachment(PROJECT, { name: '新附件.csv', size: '1 KB', path: resolve('新附件.csv') }),
       () => store.updateTask(PROJECT, 't3', { window: { start: '08:00', end: '10:00' }, note: '先跑基线', priority: 'p0' }),
-      () => store.updatePaper(READ, { rating: 4, topics: ['MoE', 'sparse'], year: 2023 }),
+      () => store.updatePaper(READ, { rating: 4, authors: ['Albert Q. Jiang', 'Alexandre Sablayrolles'], year: 2023 }),
       () => store.setPaperColumns({ ...emptyColumns(), custom: [column] }),
       () => store.updatePaper(READ, { custom: { 'du-fa': '精读' } }),
       () => store.renamePaperOption('du-fa', '精读', '细读'),
@@ -905,6 +953,32 @@ describe('change lines', () => {
       diff: stored,
       lines: [['+ ', { paper: GPTQ }, ' ∈ PTQ(1 格)'], ['~ PTQ 冲突 topics/nope#x'], ['~ topics/gone']],
     })
+  })
+
+  it('新记下的一条用各对象的词:阅读状态写待读,项目写领域,新项目的默认领域写未分领域,验证的是实验结论', () => {
+    expect(linesOf(() => store.updatePaper(READ, { readState: '稍后阅读' }))).toEqual(['- 阅读状态：未读', '+ 阅读状态：待读'])
+    expect(linesOf(() => store.updateProject(PROJECT, { topic: '未分主题' })))
+      .toEqual(['- 领域：speculative decoding', '+ 领域：未分领域'])
+    const knee = () => store.getProject(PROJECT).projectConclusions!.find((c) => c.node === 'knee')!
+    store.verifyConclusion(PROJECT, 'knee', knee().fingerprint!)
+    expect(store.listChanges()[0]).toMatchObject({
+      title: '项目「draft 效率」· 验证实验结论', diff: [`+ 已验证实验结论：${knee().text}`],
+    })
+    store.unverifyConclusion(PROJECT, 'knee')
+    expect(store.listChanges()[0]!.title).toBe('项目「draft 效率」· 取消验证实验结论')
+    expect(store.getProject(PROJECT).topic).toBe('未分主题')
+    expect(store.getPaper(READ).readState).toBe('稍后阅读')
+  })
+
+  it('早先记下的一条用的是旧词:标题与每一行照原样显示', () => {
+    const title = '项目「draft 效率」· 验证结论'
+    const stored = ['- 主题：未分主题', '+ 主题：推理', '+ 已验证结论：宽树净赚', '- 阅读状态：稍后阅读', '+ 阅读状态：在读']
+    const rows: ChangeRecord[] = [{
+      id: 'change-1', title, meta: null, source: '我', diff: [...stored], target: null, after: '',
+      at: Date.UTC(2026, 7, 20), undone: false, archived: false, restore: null,
+    }]
+    const logged = withChangelog(store, { load: () => rows, save: () => {}, nextId: () => 'change-2' })
+    expect(logged.listChanges()[0]).toMatchObject({ title, diff: stored, lines: stored.map((line) => [line]) })
   })
 
   it('变动标题里的动作和界面用同一个词:添加任务、里程碑、关联与附件,记入科研记录,新建列与选项', () => {

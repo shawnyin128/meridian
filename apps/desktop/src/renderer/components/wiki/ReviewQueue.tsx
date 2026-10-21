@@ -1,42 +1,27 @@
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import type { ConflictTarget, DiffPiece, Evidence, ProposalOp, WikiProposal } from '../../../shared/contract.js'
 import { localDayOf } from '../../../shared/dates.js'
 import { PAPER_PAGE } from '../../../shared/vocabulary.js'
 import { useFormat } from '../../lib/format.js'
-import type { Catalog } from '../../messages/catalog.js'
 import { useMessages } from '../../messages/useMessages.js'
 import { ActionPopover } from '../ActionPopover.js'
-import { DiffLines, LinePieces, paperLine, type DiffLine } from '../DiffLines.js'
+import { LinePieces } from '../DiffLines.js'
 import { EmptyState } from '../EmptyState.js'
+import { EntityLink } from '../EntityLink.js'
 import { FormInput } from '../FormControls.js'
 import { LoadingPlaceholder } from '../LoadingPlaceholder.js'
 import { SectionHeading } from '../PageShell.js'
+import { SourceAnchor } from '../SourceAnchor.js'
 import { StructuredList, StructuredRow } from '../StructuredList.js'
 import { AgentLabel } from '../SourceLabel.js'
-import { CountBadge, Tag, TagButton } from '../Tag.js'
+import { Tag, TagButton } from '../Tag.js'
 import { PaperText } from '../paper/PaperText.js'
+import { ProposalCard, ProposalChange, ProposalDecision, ProposalRows, ProposalText, type ProposalRow } from './ProposalChange.js'
+import type { ClaimLinks } from './WikiClaims.js'
 import './ReviewQueue.css'
-
-/** The button that opens the review queue, with the number of proposals waiting. */
-export function ReviewEntry({ count, onOpen }: { count: number; onOpen: () => void }) {
-  const m = useMessages()
-  return (
-    <button type="button" className="btn review-entry" onClick={onOpen}>
-      {m.wiki.queue.entry}
-      {count > 0 ? <CountBadge count={count} /> : null}
-    </button>
-  )
-}
 
 /** Local calendar day, the vault's day, a proposal arrived or was decided, from epoch ms. */
 const dayOf = (ms: number): string => localDayOf(new Date(ms).toISOString())
-
-/** A line's text, or `message` placing the paper title `title` in it. */
-type Titled = string | { message: (title: string) => string; title: string }
-
-/** `text` with `wrap` around it; a paper title it names stays where it was placed. */
-const within = (text: Titled, wrap: (inner: string) => string): Titled =>
-  (typeof text === 'string' ? wrap(text) : { message: (title) => wrap(text.message(title)), title: text.title })
 
 /** A Wiki page id as Core's findings write it. */
 const PAGE_ID = /[\p{L}\p{N}._-]+\/[\p{L}\p{N}._-]+/gu
@@ -57,71 +42,194 @@ function named(text: string, titles: Record<string, string>): DiffPiece[] {
   return [...pieces, text.slice(from)]
 }
 
-/** `text` as a change line, its paper title as paper text. */
-const lineOf = (text: Titled): DiffLine => (typeof text === 'string' ? text : paperLine(text.message, text.title))
+/** The page an op writes, as core/wiki touchedPages names it first, except that a membership goes to the page it joins or leaves. */
+const targetOf = (op: ProposalOp): string => (op.op === 'setMembership' || op.op === 'removeMembership' ? op.in
+  : op.op === 'createAggregation' ? op.id : op.page)
+
+/** The pages the block of `op` names: its target, and the paper of a membership. */
+const blockPages = (op: ProposalOp): string[] =>
+  (op.op === 'setMembership' || op.op === 'removeMembership' ? [op.in, op.paper] : [targetOf(op)])
+
+/** The Lab results the blocks of `ops` show: the experiment evidence they add and the experiments they conflict with. */
+const experimentsOf = (ops: ProposalOp[]): Extract<Evidence, { kind: 'experiment' }>[] => ops.flatMap((op) => {
+  const items: (Evidence | ConflictTarget)[] = op.op === 'addClaim' ? op.claim.evidence
+    : op.op === 'reviseClaim' || op.op === 'addEvidence' ? op.evidence ?? []
+      : op.op === 'markConflict' ? [op.conflict.against] : []
+  return items.flatMap((item) => (item.kind === 'experiment' ? [item] : []))
+})
 
 /**
- * The change lines of `op` in `p`: everything applying it would write, with claims by their current text
- * and pages, papers, projects, nodes and conclusions by their titles (the id stands for one no longer in
- * the vault), paper titles as paper text. A revision shows the old text and the new one; each evidence
- * item gets a line of its own.
+ * The blocks of proposal `p`, one per op, each showing where the op writes, what it writes by current
+ * claim texts and by the titles of pages, papers, projects, nodes, columns and kinds (the id stands for
+ * one no longer in the vault), and what it rests on. `by` and `context` end and follow the first
+ * block's first line. Pages, projects, conclusions and source passages open through `links` and
+ * `onOpenConclusion`.
  */
-function linesOf(op: ProposalOp, p: WikiProposal, w: Catalog['wiki']): Titled[] {
-  const c = w.queue.change
+function Blocks({ p, links, onOpenConclusion, by, context }: {
+  p: WikiProposal
+  links: ClaimLinks
+  onOpenConclusion: (project: string, conclusion: string) => void
+  by: ReactNode
+  context: ReactNode
+}) {
+  const m = useMessages()
+  const r = m.wiki.queue
+  const g = r.grounds
+  const f = r.fields
+  const fmt = useFormat()
   const title = (id: string): string => p.titles[id] ?? id
   const text = (ref: string): string => p.claimTexts[ref] ?? ref.split('#')[1]!
-  const paper = (id: string, message: (title: string) => string = (name) => name): Titled => ({ message, title: title(id) })
-  const side = (item: Evidence | ConflictTarget): [string, Titled] => {
+  const paperName = (id: string) => <PaperText text={title(id)} />
+  const page = (id: string) => (
+    <EntityLink
+      kind="page" data-wk={id} label={id.startsWith(PAPER_PAGE) ? paperName(id) : title(id)}
+      onOpen={() => links.openPage(id)}
+    />
+  )
+  const pages = (ids: string[]) => (ids.length === 0 ? m.common.none : ids.map((id) => <span key={id}>{page(id)}</span>))
+  const anchor = (paper: string, at: number, quote?: string, highlight?: string) => (
+    <SourceAnchor
+      page={at} quote={quote}
+      onOpen={() => links.openReader(paper, { page: at, ...(highlight === undefined ? {} : { highlight }) })}
+    />
+  )
+  /** The row of an evidence item, or with `label` of the other side of a conflict; `state` adds whether a cited conclusion is verified. */
+  const row = (item: Evidence | ConflictTarget, key: string, label?: string, state = false): ProposalRow => {
     switch (item.kind) {
-      case 'source': return [w.claims.evidence, paper(item.paper, (name) => c.quote(name, item.page, item.quote))]
       case 'experiment': {
-        const point = item.node ?? item.conclusion
-        const name = [title(`projects/${item.project}`), ...(point === undefined ? [] : [title(`projects/${item.project}#${point}`)])]
-        return [w.claims.experiment, c.detail(name.join(' · '), item.text ?? '')]
+        const point = (item.node ?? item.conclusion)!
+        const verified = !(p.unverified ?? []).includes(`projects/${item.project}#${point}`)
+        return {
+          key, label: label ?? g.experiment, ...(item.text ? { quote: item.text } : {}),
+          value: (
+            <>
+              <EntityLink kind="project" label={title(`projects/${item.project}`)} onOpen={() => links.openProject(item.project)} />
+              <span className="proposal-sep" aria-hidden="true">›</span>
+              <EntityLink kind="project" label={title(`projects/${item.project}#${point}`)} onOpen={() => onOpenConclusion(item.project, point)} />
+              {state ? <Tag tone={verified ? 'good' : 'warn'}>{verified ? r.verified : r.notVerified}</Tag> : null}
+            </>
+          ),
+        }
       }
-      case 'wiki': return [
-        w.claims.evidence,
-        item.ref.includes('#') ? text(item.ref) : item.ref.startsWith(PAPER_PAGE) ? paper(item.ref) : title(item.ref),
-      ]
-      case 'claim': return [w.claims.conflict, text(item.ref)]
-      case 'note': return [w.claims.note, paper(item.paper)]
-      case 'personal': return [w.claims.personal, item.text]
+      case 'source':
+        return {
+          key, label: label ?? g.source, quote: <q>{item.quote}</q>,
+          value: <span>{paperName(item.paper)} · {anchor(item.paper, item.page, item.quote, item.highlight)}</span>,
+        }
+      case 'claim':
+      case 'wiki':
+        return {
+          key, label: label ?? g.wiki, value: page(item.ref.split('#')[0]!),
+          ...(item.ref.includes('#') ? { quote: text(item.ref) } : {}),
+        }
+      case 'note':
+        return {
+          key, label: g.note,
+          value: (
+            <EntityLink
+              kind="paper" label={paperName(item.paper)}
+              onOpen={() => links.openReader(item.paper, item.highlight === undefined ? { panel: 'notes', note: item.note! } : { highlight: item.highlight })}
+            />
+          ),
+        }
+      case 'personal':
+        return { key, label: g.personal, ...(item.text === '' ? {} : { value: item.text }) }
     }
   }
-  const evidence = (items: Evidence[]): Titled[] => items.map((item) => {
-    const [kind, detail] = side(item)
-    return within(detail, (shown) => c.evidenceLine(kind, shown))
+  const evidence = (items: Evidence[]) => items.map((item, at) => row(item, `e${at}`, undefined, p.status === 'queued'))
+  const claim = (pageId: string, id: string) => <ProposalText role="context">{text(`${pageId}#${id}`)}</ProposalText>
+
+  /** What op `op` writes: its texts, its labelled fields and the rows of what it rests on. */
+  const parts = (op: ProposalOp): { texts?: ReactNode; fields?: ProposalRow[]; grounds?: ProposalRow[] } => {
+    switch (op.op) {
+      case 'addClaim': return { texts: <ProposalText>{op.claim.text}</ProposalText>, grounds: evidence(op.claim.evidence) }
+      case 'reviseClaim': {
+        const held = p.claimTexts[`${op.page}#${op.claim}`]
+        return {
+          texts: <>{held === undefined ? null : <ProposalText role="removed">{held}</ProposalText>}<ProposalText>{op.text}</ProposalText></>,
+          grounds: evidence(op.evidence ?? []),
+        }
+      }
+      case 'addEvidence': return { texts: claim(op.page, op.claim), grounds: evidence(op.evidence) }
+      case 'markConflict': return {
+        texts: claim(op.page, op.claim),
+        fields: [{ key: 'note', label: f.note, value: op.conflict.note }],
+        grounds: [row(op.conflict.against, 'against', g.conflict)],
+      }
+      case 'resolveConflict': return {
+        texts: claim(op.page, op.claim),
+        fields: [{ key: 'outcome', label: f.outcome, value: r.outcomes[op.outcome], quote: op.note }],
+      }
+      case 'retractClaim': return {
+        texts: <ProposalText role="removed">{text(`${op.page}#${op.claim}`)}</ProposalText>,
+        fields: [{ key: 'reason', label: f.reason, value: op.reason }],
+      }
+      case 'createAggregation': return {
+        ...(op.describe === '' ? {} : { texts: <ProposalText>{op.describe}</ProposalText> }),
+        fields: [
+          { key: 'kind', label: f.kind, value: title(op.kind) },
+          { key: 'parents', label: f.parents, value: pages(op.parents) },
+          { key: 'columns', label: f.columns, value: op.columns.length === 0 ? m.common.none : op.columns.map((c) => c.label).join(' · ') },
+          ...(op.splitOn === undefined ? [] : [{ key: 'split', label: f.splitOn, value: op.splitOn }]),
+        ],
+      }
+      case 'setMembership': return {
+        fields: [
+          { key: 'paper', label: f.paper, value: page(op.paper) },
+          ...Object.entries(op.cells).map(([key, cell]) => ({
+            key: `cell-${key}`, label: title(`${op.in}#${key}`), quote: <q>{cell.quote}</q>,
+            value: <span>{cell.value} · {anchor(op.paper, cell.page, cell.quote)}</span>,
+          })),
+        ],
+      }
+      case 'removeMembership': return { fields: [{ key: 'paper', label: f.paper, value: page(op.paper) }] }
+      case 'appendEntry': return {
+        texts: <ProposalText>{op.text}</ProposalText>,
+        fields: [{ key: 'section', label: op.section, value: fmt.date(op.date) }],
+      }
+      case 'setColumns': return {
+        fields: [{ key: 'columns', label: f.columns, value: op.columns.length === 0 ? m.common.none : op.columns.map((c) => c.label).join(' · ') }],
+      }
+      case 'setParents': return { fields: [{ key: 'parents', label: f.parents, value: pages(op.parents) }] }
+      case 'setAggregationMetadata': return {
+        fields: [
+          { key: 'title', label: f.title, value: op.title },
+          { key: 'split', label: f.splitOn, value: op.splitOn ?? m.common.none },
+        ],
+      }
+    }
+  }
+
+  return (p.proposal?.ops ?? []).map((op, at) => {
+    const target = targetOf(op)
+    const { texts, fields, grounds } = parts(op)
+    return (
+      <ProposalChange
+        key={at} kind={r.kinds[op.op]}
+        target={op.op === 'createAggregation' ? <EntityLink kind="page" label={op.title} /> : page(target)}
+        {...(at === 0 ? { by, context } : {})}
+        fields={fields} grounds={grounds} groundsLabel={m.wiki.groundsLabel}
+      >{texts}</ProposalChange>
+    )
   })
-  switch (op.op) {
-    case 'addClaim': return [c.add(op.claim.text), ...evidence(op.claim.evidence)]
-    case 'reviseClaim': {
-      const held = p.claimTexts[`${op.page}#${op.claim}`]
-      return [...(held === undefined ? [] : [c.before(held)]), c.after(op.text), ...evidence(op.evidence ?? [])]
-    }
-    case 'addEvidence': return [c.evidence(text(`${op.page}#${op.claim}`)), ...evidence(op.evidence)]
-    case 'markConflict': {
-      const other = op.conflict.against.kind === 'claim' ? text(op.conflict.against.ref) : side(op.conflict.against)[1]
-      return [within(other, (shown) => c.conflict(text(`${op.page}#${op.claim}`), shown, op.conflict.note))]
-    }
-    case 'resolveConflict': return [c.resolve(text(`${op.page}#${op.claim}`), c.outcomes[op.outcome], op.note)]
-    case 'retractClaim': return [c.retract(text(`${op.page}#${op.claim}`), op.reason)]
-    default: return [c.other]
-  }
 }
 
 /**
- * The review queue: every queued agent proposal with the agent label, what prompted it, its change lines
- * and the pages it would change, flagged when a page it rests on changed since or when it cites a
- * project conclusion the user has not verified (each opens through `onOpenConclusion`); the user
- * applies it or declines it with an optional reason. Decided proposals follow under their own heading,
- * each with its outcome. `proposals` is null while they load.
+ * The review queue: every queued agent proposal as a card of its changes, each with where it goes, what
+ * it writes and what it rests on, the agent label and the date on the card's first line, and any other
+ * page it would write. The user applies it or declines it with an optional reason; when a page it rests
+ * on changed since or it cites a project conclusion the user has not verified, applying is blocked and
+ * the block sits beside the apply button, opening the changed page or the conclusion through `onOpenConclusion`. The
+ * project and node that prompted it show only when no change cites them. Pages, projects and source
+ * passages open through `links`. Decided proposals follow under their own heading, muted, each with its
+ * outcome. `proposals` is null while they load.
  */
-export function ReviewQueue({ proposals, pending, onApply, onDecline, onOpenPage, onOpenConclusion }: {
+export function ReviewQueue({ proposals, pending, onApply, onDecline, links, onOpenConclusion }: {
   proposals: WikiProposal[] | null
   pending: boolean
   onApply: (proposal: WikiProposal) => void
   onDecline: (proposal: WikiProposal, reason: string) => void
-  onOpenPage: (id: string) => void
+  links: ClaimLinks
   onOpenConclusion: (project: string, conclusion: string) => void
 }) {
   const m = useMessages()
@@ -135,16 +243,54 @@ export function ReviewQueue({ proposals, pending, onApply, onDecline, onOpenPage
   // The queue's one primary commit is the apply of the first proposal that can be applied.
   const lead = queued.find(applicable)?.id
 
-  const source = (p: WikiProposal): string => {
-    if (p.proposal === null) return fmt.date(dayOf(p.received))
-    const { trigger } = p.proposal
-    const why = trigger.kind !== 'experiment' ? null : r.trigger(
-      p.titles[`projects/${trigger.project}`] ?? trigger.project,
-      trigger.node === undefined ? null : p.titles[`projects/${trigger.project}#${trigger.node}`] ?? trigger.node,
+  /** The project and node that prompted `p`, unless a change of it cites them. */
+  const origin = (p: WikiProposal): ReactNode => {
+    const trigger = p.proposal?.trigger
+    if (trigger?.kind !== 'experiment') return null
+    const cited = experimentsOf(p.proposal!.ops)
+      .some((e) => e.project === trigger.project && (trigger.node === undefined || (e.node ?? e.conclusion) === trigger.node))
+    if (cited) return null
+    return (
+      <p className="proposal-context">
+        {r.trigger(
+          p.titles[`projects/${trigger.project}`] ?? trigger.project,
+          trigger.node === undefined ? null : p.titles[`projects/${trigger.project}#${trigger.node}`] ?? trigger.node,
+        )}
+      </p>
     )
-    return [why, fmt.date(dayOf(p.received))].filter((part) => part !== null).join(' · ')
   }
-  const lines = (p: WikiProposal): DiffLine[] => (p.proposal?.ops ?? []).flatMap((op) => linesOf(op, p, m.wiki)).map(lineOf)
+  /** The producer's label and the day `p` arrived. */
+  const by = (p: WikiProposal) => (
+    <>{p.proposal?.producer.kind === 'ai' ? <AgentLabel /> : null}<span>{fmt.date(dayOf(p.received))}</span></>
+  )
+  /** The pages `p` would write beyond the ones its blocks name. */
+  const others = (p: WikiProposal): string[] => {
+    const shown = new Set((p.proposal?.ops ?? []).flatMap(blockPages))
+    return p.pages.filter((id) => !shown.has(id))
+  }
+  /** The parts of a card for `p` before its decision row. */
+  const body = (p: WikiProposal) => (
+    <>
+      {p.proposal === null
+        ? <ProposalChange kind={r.unreadable} by={by(p)} />
+        : (
+          <Blocks
+            p={p} links={links} onOpenConclusion={onOpenConclusion} by={by(p)}
+            context={<>{origin(p)}{p.proposal.rationale ? <p className="proposal-context">{p.proposal.rationale}</p> : null}</>}
+          />
+        )}
+      <ProposalRows rows={others(p).length === 0 ? [] : [{
+        key: 'pages', label: r.pages,
+        value: others(p).map((id) => (
+          <EntityLink
+            key={id} kind="page" data-wk={id} onOpen={() => links.openPage(id)}
+            label={id.startsWith(PAPER_PAGE) ? <PaperText text={p.titles[id] ?? id} /> : p.titles[id] ?? id}
+          />
+        )),
+      }]} />
+      {p.notice === null ? null : <p className="review-note review-note--warn"><LinePieces pieces={named(p.notice, p.titles)} /></p>}
+    </>
+  )
 
   return (
     <>
@@ -154,65 +300,50 @@ export function ReviewQueue({ proposals, pending, onApply, onDecline, onOpenPage
         ? <EmptyState variant="section">{r.empty}</EmptyState>
         : (
           <StructuredList variant="embedded" maxVisibleRows="all" className="review-list">
-            {queued.map((p) => (
-              <StructuredRow key={p.id} className="review-row" data-proposal={p.id}>
-                <div className="review-head">
-                  <span className="review-title">{p.proposal ? <PaperText text={p.proposal.title} /> : r.unreadable}</span>
-                  {p.staleNow ? <Tag tone="warn">{r.stale}</Tag> : null}
-                  {(p.unverified ?? []).length > 0 ? <Tag tone="warn">{r.unverified}</Tag> : null}
-                  {p.proposal?.producer.kind === 'ai' ? <AgentLabel /> : null}
-                </div>
-                <div className="review-meta">{source(p)}</div>
-                {p.proposal?.rationale ? <p className="review-note">{p.proposal.rationale}</p> : null}
-                {p.notice === null ? null : <p className="review-note review-note--warn"><LinePieces pieces={named(p.notice, p.titles)} /></p>}
-                {(p.unverified ?? []).length === 0 ? null : (
-                  <div className="wkrel review-unverified">
-                    <span className="rl">{r.unverifiedLabel}</span>
-                    {p.unverified!.map((ref) => {
-                      const [project, conclusion] = ref.slice('projects/'.length).split('#') as [string, string]
-                      return (
-                        <TagButton shape="chip" className="tagchip" key={ref} onClick={() => onOpenConclusion(project, conclusion)}>
-                          {p.titles[ref] ?? conclusion}
-                        </TagButton>
-                      )
-                    })}
-                  </div>
-                )}
-                <DiffLines lines={lines(p)} />
-                <div className="wkrel">
-                  <span className="rl">{r.pages}</span>
-                  {p.pages.map((id) => (
-                    <TagButton shape="chip" className="tagchip" data-wk={id} key={id} onClick={() => onOpenPage(id)}>
-                      {id.startsWith(PAPER_PAGE) ? <PaperText text={p.titles[id] ?? id} /> : p.titles[id] ?? id}
-                    </TagButton>
-                  ))}
-                </div>
-                <div className="review-actions">
-                  <ActionPopover
-                    open={declining === p.id}
-                    onOpenChange={(next) => {
-                      setDeclining(next ? p.id : null)
-                      setReason('')
-                    }}
-                    contentClassName="ctxmenu review-decline" align="start"
-                    trigger={<button type="button" className="btn ghost danger" disabled={pending}>{r.decline}</button>}
-                  >
-                    <FormInput
-                      appearance="field" autoFocus value={reason} placeholder={r.reasonPlaceholder}
-                      onChange={(e) => setReason(e.target.value)}
-                    />
-                    <button
-                      type="button" className="btn danger" disabled={pending}
-                      onClick={() => {
-                        setDeclining(null)
-                        onDecline(p, reason.trim())
-                      }}
-                    >{r.declineConfirm}</button>
-                  </ActionPopover>
-                  <button type="button" className={p.id === lead ? 'btn pri' : 'btn'} disabled={pending || !applicable(p)} onClick={() => onApply(p)}>{r.apply}</button>
-                </div>
-              </StructuredRow>
-            ))}
+            {queued.map((p) => {
+              const [unverified] = p.unverified ?? []
+              return (
+                <StructuredRow key={p.id} className="review-row" data-proposal={p.id}>
+                  <ProposalCard>
+                    {body(p)}
+                    <ProposalDecision>
+                      <ActionPopover
+                        open={declining === p.id}
+                        onOpenChange={(next) => {
+                          setDeclining(next ? p.id : null)
+                          setReason('')
+                        }}
+                        contentClassName="ctxmenu review-decline" align="start"
+                        trigger={<button type="button" className="btn ghost danger" disabled={pending}>{r.decline}</button>}
+                      >
+                        <FormInput
+                          appearance="field" autoFocus value={reason} placeholder={r.reasonPlaceholder}
+                          onChange={(e) => setReason(e.target.value)}
+                        />
+                        <button
+                          type="button" className="btn danger" disabled={pending}
+                          onClick={() => {
+                            setDeclining(null)
+                            onDecline(p, reason.trim())
+                          }}
+                        >{r.declineConfirm}</button>
+                      </ActionPopover>
+                      <button type="button" className={p.id === lead ? 'btn pri' : 'btn'} disabled={pending || !applicable(p)} onClick={() => onApply(p)}>{r.apply}</button>
+                      {p.staleNow ? <TagButton tone="warn" onClick={() => links.openPage(p.stalePage!)}>{r.stale}</TagButton> : null}
+                      {unverified === undefined ? null : (
+                        <TagButton
+                          tone="warn"
+                          onClick={() => {
+                            const [project, conclusion] = unverified.slice('projects/'.length).split('#') as [string, string]
+                            onOpenConclusion(project, conclusion)
+                          }}
+                        >{`${r.unverified} · ${r.verify}`}</TagButton>
+                      )}
+                    </ProposalDecision>
+                  </ProposalCard>
+                </StructuredRow>
+              )
+            })}
           </StructuredList>
         )}
 
@@ -224,25 +355,23 @@ export function ReviewQueue({ proposals, pending, onApply, onDecline, onOpenPage
             <StructuredList variant="embedded" className="review-list">
               {decided.map((p) => (
                 <StructuredRow key={p.id} className="review-row" data-proposal={p.id}>
-                  <div className="review-head">
-                    <span className="review-title">{p.proposal ? <PaperText text={p.proposal.title} /> : r.unreadable}</span>
-                    <Tag tone={p.status === 'applied' ? 'good' : 'neutral'}>
-                      {p.status === 'applied' ? r.applied
-                        : p.reason?.kind === 'declined' ? r.rejected : `${r.rejected} · ${r.reasonKind[p.reason?.kind ?? 'invalid']}`}
-                    </Tag>
-                    {p.proposal?.producer.kind === 'ai' ? <AgentLabel /> : null}
-                  </div>
-                  <div className="review-meta">
-                    {[source(p), p.decided === null ? null : fmt.date(dayOf(p.decided.at))].filter((part) => part !== null).join(' → ')}
-                  </div>
-                  {p.reason === null || p.reason.message === '' ? null : (
-                    <p className="review-note">
-                      {p.reason.kind === 'declined' ? p.reason.message
-                        : p.reason.kind === 'stale' ? r.staleReason
-                          : <LinePieces pieces={named(p.reason.message, p.titles)} />}
-                    </p>
-                  )}
-                  {p.proposal === null ? null : <DiffLines lines={lines(p)} declined={p.status !== 'applied'} />}
+                  <ProposalCard decided declined={p.status !== 'applied'}>
+                    {body(p)}
+                    <ProposalDecision>
+                      <Tag tone={p.status === 'applied' ? 'good' : 'neutral'}>
+                        {p.status === 'applied' ? r.applied
+                          : p.reason?.kind === 'declined' ? r.rejected : `${r.rejected} · ${r.reasonKind[p.reason?.kind ?? 'invalid']}`}
+                      </Tag>
+                      {p.decided === null ? null : <span>{fmt.date(dayOf(p.decided.at))}</span>}
+                      {p.reason === null || p.reason.message === '' ? null : (
+                        <span className="review-reason">
+                          {p.reason.kind === 'declined' ? p.reason.message
+                            : p.reason.kind === 'stale' ? r.staleReason
+                              : <LinePieces pieces={named(p.reason.message, p.titles)} />}
+                        </span>
+                      )}
+                    </ProposalDecision>
+                  </ProposalCard>
                 </StructuredRow>
               ))}
             </StructuredList>

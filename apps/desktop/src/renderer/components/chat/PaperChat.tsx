@@ -7,7 +7,7 @@ import {
 } from '../../shell/AppShell.js'
 import { GripTooltip } from '../../shell/GripTooltip.js'
 import { sendsMessage } from '../../lib/chat.js'
-import { ChatMessageView, plain } from './ChatMessage.js'
+import { ChatMessageView } from './ChatMessage.js'
 import { BackButton } from '../BackButton.js'
 import { FormTextarea } from '../FormControls.js'
 import { Grip } from '../Grip.js'
@@ -20,11 +20,12 @@ import { useGenerations } from '../../hooks/useGenerations.js'
 import { useFollowEnd } from '../../hooks/useFollowEnd.js'
 import { useNoModelChats } from '../../hooks/useNoModelChats.js'
 import { useScrollFade } from '../../hooks/useScrollFade.js'
-import { TitleNote } from '../TitleNote.js'
+import { namedRuns, TitleNote } from '../TitleNote.js'
 import { useVaultWrite } from '../../hooks/useVaultWrite.js'
 import { useMessages } from '../../messages/useMessages.js'
-import { IdeaEditorDialog } from '../ideas/IdeaEditorDialog.js'
+import { IdeaDraft, type IdeaDraftText } from '../ideas/IdeaDraft.js'
 import { GenerationControl } from '../GenerationControl.js'
+import { NoModelTag } from '../NoModelTag.js'
 import { Tag } from '../Tag.js'
 import { PaperText } from '../paper/PaperText.js'
 import { plainTitle } from '../paper/paper-text.js'
@@ -52,7 +53,9 @@ export function PaperChat({ paper, onBack = () => {}, prompt = null }: {
   const [session, setSession] = useState<ChatSession | null>(null)
   const [messages, setMessages] = useState<ChatMessage[] | null>(null)
   const drafts = useDrafts()
-  const [savingIdea, setSavingIdea] = useState(false)
+  // An idea being drafted belongs to its paper, as the question being typed does.
+  const ideaDrafts = useDrafts<IdeaDraftText>()
+  const ideaAt = useRef<HTMLDivElement>(null)
   const { running, run, stop } = useGenerations()
   const { noModel, track } = useNoModelChats()
   const [error, setError] = useState<string | null>(null)
@@ -67,12 +70,12 @@ export function PaperChat({ paper, onBack = () => {}, prompt = null }: {
   const paperId = paper?.id ?? null
   const sessionId = session?.id ?? null
   const draft = paperId === null ? '' : drafts.get(paperId) ?? ''
+  const ideaDraft = paperId === null ? undefined : ideaDrafts.get(paperId)
   const sending = sessionId !== null && running(sessionId)
 
   useEffect(() => {
     setSession(null)
     setMessages(null)
-    setSavingIdea(false)
     setError(null)
     follow()
     if (paperId === null) return
@@ -118,14 +121,20 @@ export function PaperChat({ paper, onBack = () => {}, prompt = null }: {
     if (session === null) return
     void chat.recordAction(session.id, message.id).then(async (held) => {
       notice.success(<TitleNote message={m.chat.recordedNote} title={held.name} />)
-      await feed.append({ source: 'me', body: { kind: 'runs', runs: [
-        plain(m.chat.recordedNote(held.name)),
-      ] } })
+      await feed.append({
+        source: 'me', body: { kind: 'runs', runs: namedRuns(m.chat.recordedNote, held.name, { kind: 'project', id: held.id }) },
+      })
       bump()
     }).catch((cause: unknown) => notice.refusal(errorLabel(m, cause)))
   }
 
   const hasDiscussion = (messages ?? []).some((message) => message.role === 'you')
+
+  const startIdea = () => {
+    if (paperId === null) return
+    if (ideaDraft === undefined) ideaDrafts.set(paperId, { title: '', body: '' })
+    else ideaAt.current?.querySelector<HTMLElement>('.form-control')?.focus()
+  }
 
   return (
     <aside className="paper-chat stream" aria-label={m.chat.paperChatLabel} inert={collapsed}>
@@ -147,6 +156,20 @@ export function PaperChat({ paper, onBack = () => {}, prompt = null }: {
           : messages.map((message) => (
             <ChatMessageView key={message.id} message={message} onAct={() => act(message)} />
           ))}
+        {session === null || paper === null || ideaDraft === undefined
+          ? null
+          : (
+            <div className="mwrap" ref={ideaAt}>
+              <IdeaDraft
+                source={`${plainTitle(paper.title)} · ${plainTitle(session.title)}`} draft={ideaDraft}
+                onChange={(next) => ideaDrafts.set(paper.id, next)} onCancel={() => ideaDrafts.drop(paper.id)}
+                onSave={(title, body) => write(ideaApi.create(session.id, title, body), {
+                  note: m.chat.ideaSavedNote,
+                  action: (idea) => ({ label: m.common.open, onAction: () => open('ideas', idea.id) }),
+                }).then((saved) => { if (saved) ideaDrafts.drop(paper.id) })}
+              />
+            </div>
+          )}
       </div>
       <div className="composer paper-chat-composer">
         <div className="mwrap">
@@ -154,7 +177,7 @@ export function PaperChat({ paper, onBack = () => {}, prompt = null }: {
             {hasDiscussion ? null : <Tag>{m.chat.noDiscussion}</Tag>}
             <button
               className="btn ghost sm save-idea" disabled={session === null || !hasDiscussion}
-              onClick={() => setSavingIdea(true)}
+              onClick={startIdea}
             >{m.chat.saveIdeaLabel}</button>
           </div>
           <div className="cbox">
@@ -168,7 +191,7 @@ export function PaperChat({ paper, onBack = () => {}, prompt = null }: {
                 submit()
               }}
             />
-            {sessionId !== null && noModel(sessionId) ? <Tag>{m.chat.noModel}</Tag> : null}
+            {sessionId !== null && noModel(sessionId) ? <NoModelTag label={m.chat.noModel} /> : null}
             <GenerationControl
               className="send" running={sending} disabled={session === null || draft.trim() === ''}
               onStart={submit} onStop={stopSending}
@@ -177,16 +200,6 @@ export function PaperChat({ paper, onBack = () => {}, prompt = null }: {
         </div>
       </div>
       <GripTooltip label={m.chat.collapsePaperChat}><Grip {...grip} /></GripTooltip>
-      {session === null || paper === null ? null : (
-        <IdeaEditorDialog
-          open={savingIdea} sourceLabel={`${plainTitle(paper.title)} · ${plainTitle(session.title)}`}
-          onOpenChange={setSavingIdea}
-          onSubmit={(title, body) => write(ideaApi.create(session.id, title, body), {
-            note: m.chat.ideaSavedNote,
-            action: (idea) => ({ label: m.common.open, onAction: () => open('ideas', idea.id) }),
-          })}
-        />
-      )}
     </aside>
   )
 }

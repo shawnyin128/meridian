@@ -45,7 +45,7 @@ const DATA: WikiData = {
 describe('wiki signals', () => {
   const signals = wikiSignals(DATA, {
     projects: [{ id: 'draft', pages: ['topics/leaf', 'topics/old'] }],
-    trashed: new Set(['papers/trashed']),
+    trashed: new Map([['papers/trashed', 'Trashed paper']]),
     missingRegions: ['topics/root'],
   })
   const of = (kind: string) => signals.filter((s) => s.kind === kind).map(({ page, related }) => ({ page, related }))
@@ -84,6 +84,34 @@ describe('wiki signals', () => {
     expect(of('claim-without-evidence')).toEqual([{ page: 'topics/leaf', related: ['topics/leaf#c1'] }])
     expect(of('open-conflict')).toEqual([{ page: 'topics/leaf', related: ['topics/leaf#c1', 'topics/root#missing'] }])
     expect(of('missing-generated-region')).toEqual([{ page: 'topics/root', related: [] }])
+  })
+
+  it('链接失效给缺的那一页一个名字:在垃圾桶里的用垃圾桶记下的标题并标明在垃圾桶,别的用链接里写的名字,不带路径', () => {
+    const data: WikiData = { ...DATA, pages: {
+      'papers/a': {
+        kind: 'paper', fm: { title: 'A', updated: '2026-09-01' },
+        body: '[[papers/2402-13718|旧的叫法]] [[methods/gone|消失的方法]] [[topics/old-page#^c3]]',
+      },
+      'topics/leaf': {
+        kind: 'topic', body: '',
+        fm: { title: 'Leaf', updated: '2026-09-01', claims: [{
+          id: 'c2', text: '一条', version: 1, since: '2026-09-01', by: '我',
+          evidence: [{ kind: 'wiki', ref: 'topics/none#c9', added: '2026-09-01', by: '我' }],
+        }] },
+      },
+    } }
+    const named = wikiSignals(data, {
+      projects: [{ id: 'draft', pages: ['topics/old'] }],
+      trashed: new Map([['papers/2402-13718', 'Dynamic Draft Trees: 2–3$\\times$ Speedup']]),
+      missingRegions: [],
+    }).filter((s) => s.kind === 'broken-link').map(({ page, related, missing }) => ({ page, related, missing }))
+    expect(named).toEqual([
+      { page: 'papers/a', related: ['methods/gone'], missing: { name: '消失的方法', trashed: false } },
+      { page: 'papers/a', related: ['papers/2402-13718'], missing: { name: 'Dynamic Draft Trees: 2–3$\\times$ Speedup', trashed: true } },
+      { page: 'papers/a', related: ['topics/old-page'], missing: { name: 'old-page', trashed: false } },
+      { page: 'projects/draft', related: ['topics/old'], missing: { name: 'old', trashed: false } },
+      { page: 'topics/leaf', related: ['topics/none'], missing: { name: 'none', trashed: false } },
+    ])
   })
 
   it('名字键去掉空白、标点与符号并小写', () => {

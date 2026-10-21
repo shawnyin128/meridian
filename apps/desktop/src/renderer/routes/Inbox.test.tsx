@@ -28,12 +28,17 @@ const api = vi.hoisted(() => ({
   watches: [] as Watch[],
   setActive: vi.fn(async () => {}),
   enter: vi.fn(),
+  /** The sort order of each inbox.list call, in order. */
+  sorts: [] as (string | undefined)[],
 }))
 
 vi.mock('../ipc.js', () => ({
   inbox: {
-    list: (params: { kind?: InboxEntry['kind'] }) => (api.loading ? new Promise(() => {}) : Promise.resolve(api.entries
-      .filter((entry) => params.kind === undefined || entry.kind === params.kind))),
+    list: (params: { kind?: InboxEntry['kind']; sort?: string }) => {
+      api.sorts.push(params.sort)
+      return api.loading ? new Promise(() => {}) : Promise.resolve(api.entries
+        .filter((entry) => params.kind === undefined || entry.kind === params.kind))
+    },
     dismiss: api.dismiss, readLater: async () => false,
     download: async (id: string) => api.downloads[id] ?? { kind: 'added', paper: 'p1' },
     fetch: async () => {},
@@ -124,7 +129,7 @@ describe('Inbox', () => {
     const root = createRoot(host)
     await act(async () => { root.render(<MessagesProvider><Inbox /></MessagesProvider>) })
     expect(host.querySelector('.empty-state')).not.toBeNull()
-    expect(host.querySelector('[role="radiogroup"][aria-label="排序"]')).toBeNull()
+    expect(host.querySelector('.sort-menu')).toBeNull()
     expect(host.querySelector('.desk-head > .page-actions [aria-label="关注设置"]')).not.toBeNull()
     await act(async () => { root.unmount() })
   })
@@ -147,7 +152,7 @@ describe('Inbox', () => {
     await act(async () => { root.unmount() })
   })
 
-  it('检查新论文和推送设置是整页的操作,在屏头右端,检查在最后;排序是视图切换,在工具栏', async () => {
+  it('排序、推送设置和检查新论文都是整页的操作,在屏头右端,检查在最后;正文开头没有工具栏', async () => {
     api.entries = [{
       id: 'a1', kind: 'watch', watch: 'w1', project: '', source: '主题 · w1',
       title: 'Paper a1', authors: 'Ada', venue: 'ICLR', abstract: 'Abstract', rec: '',
@@ -156,9 +161,34 @@ describe('Inbox', () => {
     const root = createRoot(host)
     await act(async () => { root.render(<MessagesProvider><Inbox /></MessagesProvider>) })
     const actions = [...host.querySelector('.desk-head > .page-actions')!.children]
-    expect(actions.map((child) => child.getAttribute('aria-label') ?? child.textContent)).toEqual(['', '关注设置', '检查新论文'])
-    expect(actions[1]!.className).toBe('icbtn')
-    expect(host.querySelector('.desk-body > .page-toolbar .segmented-control')!.getAttribute('aria-label')).toBe('排序')
+    expect(actions.map((child) => child.getAttribute('aria-label') ?? child.textContent)).toEqual(['', '排序', '关注设置', '检查新论文'])
+    expect([actions[1]!.className, actions[2]!.className]).toEqual(['btn sort-menu', 'icbtn'])
+    expect(host.querySelector('.desk-body > .page-toolbar')).toBeNull()
+    await act(async () => { root.unmount() })
+  })
+
+  it('屏头的排序菜单列出收件的几种次序,勾着当前的那一种;选一种就一直按它排', async () => {
+    api.entries = [{
+      id: 'a1', kind: 'watch', watch: 'w1', project: '', source: '关键词 · w1',
+      title: 'Paper a1', authors: 'Ada', venue: 'ICLR', abstract: 'Abstract', rec: '',
+      reasons: [], downloaded: false, paper: '', pdf: 'https://arxiv.org/pdf/2609.1',
+    }]
+    api.sorts = []
+    const root = createRoot(host)
+    await act(async () => { root.render(<MessagesProvider><Inbox /></MessagesProvider>) })
+    const open = async () => {
+      await act(async () => {
+        host.querySelector('.desk-head .sort-menu')!.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, button: 0 }))
+      })
+      return [...document.querySelectorAll<HTMLElement>('[role="menuitemradio"]')]
+    }
+    const items = await open()
+    expect(items.map((item) => [item.textContent, item.getAttribute('aria-checked')])).toEqual([
+      ['推荐', 'true'], ['最新', 'false'], ['已发表', 'false'], ['影响力', 'false'],
+    ])
+    await act(async () => { items[1]!.click() })
+    expect(api.sorts.at(-1)).toBe('latest')
+    expect((await open()).map((item) => item.getAttribute('aria-checked'))).toEqual(['false', 'true', 'false', 'false'])
     await act(async () => { root.unmount() })
   })
 
@@ -212,6 +242,21 @@ describe('Inbox', () => {
     expect(groups[0]!.querySelector('.collapsible-group-toggle')?.getAttribute('aria-expanded')).toBe('false')
     expect(groups[0]!.querySelectorAll('.paper-card')).toHaveLength(0)
     expect(groups[1]!.querySelectorAll('.paper-card')).toHaveLength(1)
+    await act(async () => { root.unmount() })
+  })
+
+  it('同一个关键词关注早先存的主题 · 和现在的关键词 · 条目是一组,组名用现在的词,存的来源不改', async () => {
+    const entry = (id: string, source: string): InboxEntry => ({
+      id, kind: 'watch', watch: 'w1', project: '', source,
+      title: `Paper ${id}`, authors: 'Ada', venue: 'ICLR', abstract: 'Abstract', rec: '',
+      reasons: [], downloaded: false, paper: '', pdf: 'https://arxiv.org/pdf/2609.1',
+    })
+    api.entries = [entry('old', '主题 · speculative decoding'), entry('new', '关键词 · speculative decoding')]
+    const root = createRoot(host)
+    await act(async () => { root.render(<MessagesProvider><Inbox /></MessagesProvider>) })
+    expect([...host.querySelectorAll('.collapsible-group-title')].map((title) => title.textContent))
+      .toEqual(['关键词 · speculative decoding'])
+    expect(api.entries.map((held) => held.source)).toEqual(['主题 · speculative decoding', '关键词 · speculative decoding'])
     await act(async () => { root.unmount() })
   })
 
