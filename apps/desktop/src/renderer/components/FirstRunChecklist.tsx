@@ -70,7 +70,7 @@ export function FirstRunChecklist({ className, onError }: {
     { key: 'library', done: setup.steps.library, go: () => openCategory('storage') },
     { key: 'model', done: setup.steps.model, go: () => openCategory('model') },
     { key: 'plugin', done: setup.steps.plugin, go: () => openCategory('extensions') },
-    { key: 'paper', done: papers > 0, go: () => open('papers', '', { import: true }) },
+    { key: 'paper', done: papers > 0, go: () => open('papers', '', { importPdf: true }) },
   ] as const
   const allDone = steps !== null && steps.every((step) => step.done)
 

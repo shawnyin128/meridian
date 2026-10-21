@@ -100,7 +100,7 @@ describe('FirstRunChecklist', () => {
     act(() => button('plugin').click())
     expect(state.openCategory).toHaveBeenLastCalledWith('extensions')
     act(() => button('paper').click())
-    expect(state.jump).toHaveBeenCalledWith('papers', '', { import: true })
+    expect(state.jump).toHaveBeenCalledWith('papers', '', { importPdf: true })
     expect(window.localStorage.getItem(firstRunKey(ROOT))).toBe('open')
   })
 

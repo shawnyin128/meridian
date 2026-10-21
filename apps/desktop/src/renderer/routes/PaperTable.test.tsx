@@ -421,7 +421,7 @@ describe('PaperTable', () => {
     await flush()
     expect(openedScreens.filter(([screen]) => screen === 'picker')).toEqual([])
     document.body.innerHTML = ''
-    jumpHere = { screen: 'papers', target: '', from: 'feed', seq: 2, anchor: { import: true } }
+    jumpHere = { screen: 'papers', target: '', from: 'feed', seq: 2, anchor: { importPdf: true } }
     mount()
     await flush()
     expect(openedScreens.filter(([screen]) => screen === 'picker')).toEqual([['picker', 'pdfupload-input']])
