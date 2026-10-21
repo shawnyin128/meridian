@@ -133,7 +133,7 @@ const CONTROL_FILES = new Set(['components/SortMenu.tsx', 'components/AddAction.
 /** Segmented controls that switch the views of a page, a section or a board, by their accessible name. */
 const VIEW_SWITCHES = new Set(['m.papers.views.aria', 'm.papers.toolbar.groupFieldAria', 'm.later.groupBy',
   'm.feed.sourceFieldLabel', 'm.inbox.sortLabel', 'm.project.plan.viewLabel', 'm.project.recordViewLabel',
-  'm.timeline.scaleGroup'])
+  'm.timeline.scaleGroup', 'm.wiki.ingest.reviewViewLabel'])
 
 /** Icon and text buttons whose operation their label names. */
 const LABELLED: [RegExp, string][] = [
@@ -143,6 +143,9 @@ const LABELLED: [RegExp, string][] = [
   [/^m\.(common\.(restore|undo)|settings\.archived\.unarchive)\b/, 'restore'],
   [/^m\.(trash\.clear|changelog\.clearArchived)\b/, 'clear'],
   [/^m\.(inbox\.dismissAll|changelog\.archiveAll)\b/, 'dismiss all'],
+  // The review queue names its copy `r`, for m.wiki.queue.
+  [/^(r\.decline|m\.wiki\.ingest\.discardProposal)$/, 'decline a proposal'],
+  [/^r\.apply$|\bm\.wiki\.ingest\.confirm\b/, 'apply a proposal'],
 ]
 
 type Look = { operation: string; size: string; variant: string; label?: string }
@@ -187,6 +190,11 @@ const PLACES: Record<string, Place[]> = {
   clear: [
     { slot: 'page header', size: 'md', variant: 'danger' },
     { slot: 'section heading', size: 'sm', variant: 'danger', scope: 'a section clears its own entries' },
+  ],
+  'decline a proposal': [{ slot: 'inline', size: 'md', variant: 'ghost danger' }],
+  'apply a proposal': [
+    { slot: 'inline', size: 'md', variant: 'plain' },
+    { slot: 'inline', size: 'md', variant: 'primary', scope: "the review queue's first applicable proposal, its one primary" },
   ],
   'dismiss all': [
     { slot: 'section heading', size: 'sm', variant: 'plain' },
@@ -358,6 +366,17 @@ describe('一个操作一个位置', () => {
       .filter((place) => !PLACEMENTS.some((placement) => placement.operation === operation && shown(placement) === shown(place)))
       .map((place) => `${operation}: ${shown(place)}`))
     expect(unused).toEqual([])
+  })
+
+  it('决定一份提案时拒绝在前、应用在后，审阅队列和阅读器里都是这样', () => {
+    const at = (placement: Placement) => Number(placement.at.split(':')[1])
+    const files = [...new Set(PLACEMENTS.filter((placement) => placement.operation === 'apply a proposal')
+      .map((placement) => placement.at.split(':')[0]!))]
+    const order = files.map((file) => {
+      const of = (operation: string) => PLACEMENTS.filter((placement) => placement.at.startsWith(`${file}:`) && placement.operation === operation)
+      return [file, Math.max(...of('decline a proposal').map(at)) < Math.min(...of('apply a proposal').map(at))]
+    })
+    expect(order).toEqual([['components/reader/PaperWikiIngest.tsx', true], ['components/wiki/ReviewQueue.tsx', true]])
   })
 
   it('一次性的重新排列和收件里一直生效的排序是两个名字，项目和想法的重新排列同名', () => {

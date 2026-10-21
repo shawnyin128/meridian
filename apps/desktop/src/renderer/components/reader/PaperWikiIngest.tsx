@@ -12,6 +12,7 @@ import type { Catalog } from '../../messages/catalog.js'
 import { ChipToggles } from '../ChipToggles.js'
 import { FormTextarea } from '../FormControls.js'
 import { HarnessAction } from '../HarnessAction.js'
+import { SectionHeading } from '../PageShell.js'
 import { SegmentedControl } from '../SegmentedControl.js'
 import { Tag } from '../Tag.js'
 import { ReaderPanelHeader } from './ReaderPanelHeader.js'
@@ -213,19 +214,20 @@ export function PaperWikiIngest({ paper, reading }: {
         </div>
         {proposal !== undefined && !applied && !rejected ? (
           <div className="wiki-ingest-review">
-            <div className="wiki-ingest-review-head">
-              <strong>{m.wiki.ingest.reviewHeading}</strong>
-              <span>{proposal.action === 'create' ? m.wiki.ingest.newContent : m.wiki.ingest.updateContent}</span>
-            </div>
-            {proposal.review === undefined ? null : (
-              <SegmentedControl
-                className="wiki-ingest-review-mode"
-                label={m.wiki.ingest.reviewViewLabel}
-                value={reviewMode}
-                options={reviewModes(m)}
-                onChange={setReviewMode}
-              />
-            )}
+            <SectionHeading
+              variant="rail"
+              actions={proposal.review === undefined ? undefined : (
+                <SegmentedControl
+                  size="sm" label={m.wiki.ingest.reviewViewLabel} value={reviewMode} options={reviewModes(m)}
+                  onChange={setReviewMode}
+                />
+              )}
+            >
+              {m.wiki.ingest.reviewHeading}
+              <span className="wiki-ingest-review-kind">
+                {proposal.action === 'create' ? m.wiki.ingest.newContent : m.wiki.ingest.updateContent}
+              </span>
+            </SectionHeading>
             {proposal.review !== undefined && reviewMode === 'structured' ? (
               <>
                 {draft === proposal.body ? null : <Tag tone="warn">{m.wiki.ingest.editNote}</Tag>}
@@ -266,7 +268,7 @@ export function PaperWikiIngest({ paper, reading }: {
             ) : (
               <div className="wiki-ingest-actions">
                 {pending?.stale === true ? <Tag tone="warn">{m.wiki.ingest.stalePending}</Tag> : null}
-                <button className="btn" disabled={applying || rejecting}
+                <button className="btn ghost danger" disabled={applying || rejecting}
                   onClick={() => setRejectionOpen(true)}>
                   {m.wiki.ingest.discardProposal}
                 </button>

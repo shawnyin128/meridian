@@ -115,10 +115,7 @@
 .wiki-ingest .wiki-ingest-status.done{color:var(--good)}
 .wiki-ingest-actions{display:flex;justify-content:flex-end;gap:var(--sp-8);margin-top:var(--sp-14)}
 .wiki-ingest-review{margin-top:var(--sp-14);padding-top:var(--sp-14);border-top:1px solid var(--sep2)}
-.wiki-ingest-review-head{display:flex;align-items:center;justify-content:space-between;gap:var(--sp-8);margin-bottom:var(--sp-8)}
-.wiki-ingest-review-head strong{font-size:var(--fs-sm)}
-.wiki-ingest-review-head span{color:var(--ter);font-size:var(--fs-cap)}
-.wiki-ingest-review-mode{margin-bottom:var(--sp-12)}
+.wiki-ingest-review-kind{color:var(--ter);font-size:var(--fs-cap);font-weight:var(--fw-regular)}
 .wiki-ingest-review .form-textarea{width:100%;min-height:360px;font-family:var(--mono);font-size:var(--fs-cap);line-height:1.55}
 .wiki-ingest-body>.tag{align-self:flex-start;margin-top:var(--sp-10)}
 .wiki-ingest-review>.tag{margin-bottom:var(--sp-10)}

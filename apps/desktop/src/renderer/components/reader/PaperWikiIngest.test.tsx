@@ -214,6 +214,22 @@ describe('PaperWikiIngest', () => {
     expect(api.apply).toHaveBeenCalledWith('proposal-old', '# Recovered')
   })
 
+  it('decides a recovered proposal like the review queue: the view switch in the heading, 丢弃提案 first as the red ghost, 确认写入 last and not the primary', async () => {
+    api.pending.mockResolvedValue({
+      proposal: { id: 'proposal-old', targetId: 'p1', action: 'create', body: '# Recovered', review },
+      generatedAt: '2026-09-17T11:00:00.000Z',
+      stale: false,
+    })
+    await act(async () => { root.render(withMessages(<PaperWikiIngest paper={paper} reading={reading} />)) })
+
+    const heading = host.querySelector('.wiki-ingest-review > .section-heading')!
+    expect(heading.querySelector(':scope > .section-heading-actions > .segmented-control')!.getAttribute('aria-label'))
+      .toBe('Wiki 提案审核视图')
+    const decide = [...host.querySelectorAll<HTMLButtonElement>('.wiki-ingest-review > .wiki-ingest-actions > button')]
+    expect(decide.map((button) => `${button.textContent} ${button.className}`))
+      .toEqual(['丢弃提案 btn ghost danger', '确认写入 Wiki btn'])
+  })
+
   it('opens a legacy recovered proposal directly in Markdown mode', async () => {
     api.pending.mockResolvedValue({
       proposal: { id: 'proposal-old', targetId: 'p1', action: 'create', body: '# Legacy' },

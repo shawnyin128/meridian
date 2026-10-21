@@ -188,7 +188,6 @@ export function ReviewQueue({ proposals, pending, onApply, onDecline, onOpenPage
                   ))}
                 </div>
                 <div className="review-actions">
-                  <button type="button" className={p.id === lead ? 'btn pri' : 'btn'} disabled={pending || !applicable(p)} onClick={() => onApply(p)}>{r.apply}</button>
                   <ActionPopover
                     open={declining === p.id}
                     onOpenChange={(next) => {
@@ -210,6 +209,7 @@ export function ReviewQueue({ proposals, pending, onApply, onDecline, onOpenPage
                       }}
                     >{r.declineConfirm}</button>
                   </ActionPopover>
+                  <button type="button" className={p.id === lead ? 'btn pri' : 'btn'} disabled={pending || !applicable(p)} onClick={() => onApply(p)}>{r.apply}</button>
                 </div>
               </StructuredRow>
             ))}
