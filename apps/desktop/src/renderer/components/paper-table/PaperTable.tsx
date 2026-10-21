@@ -1264,6 +1264,7 @@ export function PaperTable() {
           </PageToolbar>
           <ParseProgress
             onParsed={() => bump()}
+            onOpenPaper={(id) => { void papers.get(id).then(setDetail).catch(reportError) }}
           />
 
           <div id="libList">

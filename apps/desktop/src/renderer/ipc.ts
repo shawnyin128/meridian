@@ -127,6 +127,8 @@ export const papers = {
   /** The uploaded binary is directly structurally cloned to Core without base64. */
   import: (filename: string, bytes: Uint8Array) =>
     call<PaperImportResult>('papers.import', { filename, bytes }),
+  /** Parses the metadata of an upload whose lookup failed again; progress shows in jobs.status. */
+  retryMetadata: (id: string) => call<void>('papers.retryMetadata', { id }),
   reading: (id: string) => call<PaperReading>('papers.reading', { id }),
   mutateReading: (id: string, mutation: ReadingMutation) =>
     call<PaperReading>('papers.mutateReading', { id, mutation }),

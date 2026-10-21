@@ -25,6 +25,7 @@ import { useVaultWrite } from '../../hooks/useVaultWrite.js'
 import { useMessages } from '../../messages/useMessages.js'
 import { IdeaEditorDialog } from '../ideas/IdeaEditorDialog.js'
 import { GenerationControl } from '../GenerationControl.js'
+import { NoModelTag } from '../NoModelTag.js'
 import { Tag } from '../Tag.js'
 import { PaperText } from '../paper/PaperText.js'
 import { plainTitle } from '../paper/paper-text.js'
@@ -168,7 +169,7 @@ export function PaperChat({ paper, onBack = () => {}, prompt = null }: {
                 submit()
               }}
             />
-            {sessionId !== null && noModel(sessionId) ? <Tag>{m.chat.noModel}</Tag> : null}
+            {sessionId !== null && noModel(sessionId) ? <NoModelTag label={m.chat.noModel} /> : null}
             <GenerationControl
               className="send" running={sending} disabled={session === null || draft.trim() === ''}
               onStart={submit} onStop={stopSending}

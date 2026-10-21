@@ -1,4 +1,5 @@
 import type { FeedRun, MetadataJob } from '../../../shared/contract.js'
+import { CallError } from '../../call-error.js'
 import type { MetadataProvider, RemotePaper } from '../../net/arxiv.js'
 import { netReason } from '../../net/http.js'
 import type { MetadataFill, VaultStore } from '../../vault.js'
@@ -15,6 +16,11 @@ type Prepared = Pending & { facts: PdfFacts; arxivId: string | null; infoTitle: 
 
 export type MetadataQueue = {
   enqueueUpload(paperId: string, filename: string, bytes: Uint8Array): void
+  /**
+   * Parses paper `paperId` again, as an upload of its stored source under the file name it was
+   * uploaded with. Throws a `not-found` CallError when no upload of that paper is listed.
+   */
+  retry(paperId: string): void
   uploads(): MetadataJob[]
   idle(): Promise<void>
 }
@@ -43,6 +49,8 @@ export function createMetadataQueue(deps: {
 }): MetadataQueue {
   const pending: Pending[] = []
   let uploads: MetadataJob[] = []
+  /** The file name each listed upload's paper arrived under, by paper id. */
+  const filenames = new Map<string, string>()
   let running: Promise<void> = Promise.resolve()
   let busy = false
   let seq = 0
@@ -67,6 +75,9 @@ export function createMetadataQueue(deps: {
       }
     }
     uploads = uploads.filter((job) => kept.has(job.id))
+    for (const paperId of filenames.keys()) {
+      if (!uploads.some((job) => job.paperId === paperId)) filenames.delete(paperId)
+    }
   }
 
   const finishUpload = (job: MetadataJob): void => {
@@ -185,10 +196,11 @@ export function createMetadataQueue(deps: {
     })
   }
 
-  return {
+  const queue: MetadataQueue = {
     enqueueUpload(paperId, filename, bytes) {
       if (uploads.some((held) => held.paperId === paperId && held.step !== 'done' && held.step !== 'failed')) return
       if (!busy && pending.length === 0) batch += 1
+      filenames.set(paperId, filename)
       const job: MetadataJob = {
         id: `parse-${++seq}`, batch, paperId, title: deps.store.getPaper(paperId).title, bytes: bytes.byteLength,
         step: 'read', found: null, error: null,
@@ -198,9 +210,15 @@ export function createMetadataQueue(deps: {
       pending.push({ job, filename, bytes, arrivalTitle: job.title })
       kick()
     },
+    retry(paperId) {
+      const filename = filenames.get(paperId)
+      if (filename === undefined) throw new CallError('not-found', `这篇论文没有可以重试的上传：${paperId}`)
+      queue.enqueueUpload(paperId, filename, deps.store.paperSource(paperId))
+    },
     uploads: () => structuredClone(uploads),
     async idle() {
       while (busy) await running
     },
   }
+  return queue
 }

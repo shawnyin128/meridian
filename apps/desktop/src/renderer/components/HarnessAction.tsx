@@ -2,6 +2,7 @@ import type { HarnessPlan } from '../../shared/contract.js'
 import { useMessages } from '../messages/useMessages.js'
 import { ConfirmDialog } from './ConfirmDialog.js'
 import { GenerationControl } from './GenerationControl.js'
+import { NoModelTag } from './NoModelTag.js'
 import { Tag } from './Tag.js'
 import './HarnessAction.css'
 
@@ -38,13 +39,13 @@ export function HarnessAction({ plan, running, onStart, onCancel }: {
       confirmTone="primary"
       confirmDisabled={!plan.model.configured}
       onConfirm={onStart}
-      state={(
-        <Tag tone={!plan.model.configured || plan.model.billable ? 'warn' : 'good'}>
-          {!plan.model.configured
-            ? m.wiki.harness.notConnectedDetail
-            : plan.model.billable ? m.wiki.harness.billableNote : m.wiki.harness.freeNote}
-        </Tag>
-      )}
+      state={!plan.model.configured
+        ? <NoModelTag tone="warn" label={m.wiki.harness.notConnectedDetail} />
+        : (
+          <Tag tone={plan.model.billable ? 'warn' : 'good'}>
+            {plan.model.billable ? m.wiki.harness.billableNote : m.wiki.harness.freeNote}
+          </Tag>
+        )}
       description={(
         <div className="harness-cost-plan">
           <dl>

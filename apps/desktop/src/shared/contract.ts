@@ -501,6 +501,9 @@ export const PapersImportParamsSchema = z.object({
   bytes: PdfBytesSchema,
 }).strict()
 
+/** Parses the metadata of paper `id` again, as it was uploaded in this run of the App. */
+export const PapersRetryMetadataParamsSchema = z.object({ id: z.string() }).strict()
+
 export const PaperImportResultSchema = z.object({
   kind: z.enum(['added', 'existing']),
   paper: PaperRowSchema,
@@ -2404,6 +2407,7 @@ export const CONTRACT_METHODS = [
   'papers.delete',
   'papers.source',
   'papers.import',
+  'papers.retryMetadata',
   'papers.reading',
   'papers.mutateReading',
   'harness.prepare',

@@ -42,6 +42,7 @@ import {
   PapersFacetsParamsSchema,
   PapersGetParamsSchema,
   PapersImportParamsSchema,
+  PapersRetryMetadataParamsSchema,
   PapersMutateReadingParamsSchema,
   PapersReadingParamsSchema,
   PapersRenameOptionParamsSchema,
@@ -441,6 +442,8 @@ registerHandler('papers.import', (params) => {
   const { filename, bytes } = PapersImportParamsSchema.parse(params)
   return background.importPaper(filename, bytes)
 })
+registerHandler('papers.retryMetadata', (params) =>
+  background.retryMetadata(PapersRetryMetadataParamsSchema.parse(params).id))
 registerHandler('papers.reading', (params) =>
   store.paperReading(PapersReadingParamsSchema.parse(params).id))
 registerHandler('papers.mutateReading', (params) => {

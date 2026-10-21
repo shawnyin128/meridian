@@ -33,6 +33,7 @@ import { GenerationControl } from '../components/GenerationControl.js'
 import { FadeText } from '../components/FadeText.js'
 import { Toolbar, ToolbarButton } from '../components/Toolbar.js'
 import { TitleNote } from '../components/TitleNote.js'
+import { NoModelTag } from '../components/NoModelTag.js'
 import { Tag } from '../components/Tag.js'
 import { Tooltip } from '../components/Tooltip.js'
 import { PaperText } from '../components/paper/PaperText.js'
@@ -297,7 +298,7 @@ export function Chat() {
                       }
                     }}
                   />
-                  {id !== null && noModel(id) ? <Tag>{m.chat.noModel}</Tag> : null}
+                  {id !== null && noModel(id) ? <NoModelTag label={m.chat.noModel} /> : null}
                   <GenerationControl
                     className="send" id="sendBtn" running={sending} disabled={id === null || draft.trim() === ''}
                     onStart={submit} onStop={stopSending}

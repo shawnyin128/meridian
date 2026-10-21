@@ -14,6 +14,7 @@ vi.mock('../../ipc.js', () => ({
 vi.mock('../../shell/AppShell.js', () => ({
   useNotice: () => ({ success: vi.fn(), refusal: vi.fn() }),
   useVaultRevision: () => ({ revision: 0, bump: vi.fn() }),
+  useSettingsOpen: () => ({ open: false, openCategory: vi.fn() }),
 }))
 
 const { ReaderSidePanel } = await import('./ReaderSidePanel.js')

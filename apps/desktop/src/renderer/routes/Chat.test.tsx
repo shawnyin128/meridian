@@ -24,6 +24,7 @@ const api = vi.hoisted(() => ({
 }))
 
 const session = vi.hoisted(() => ({ id: 'chat-1', revision: 0 }))
+const settings = vi.hoisted(() => ({ openCategory: vi.fn() }))
 
 /** The callbacks of every ResizeObserver made. */
 const resized: (() => void)[] = []
@@ -43,6 +44,7 @@ vi.mock('../shell/AppShell.js', () => ({
   useJump: () => ({ jump: null, open: vi.fn(), returnTo: vi.fn() }),
   useChatSession: () => ({ id: session.id, title: '讨论', archived: false, select: vi.fn() }),
   useVaultRevision: () => ({ revision: session.revision, bump: vi.fn() }),
+  useSettingsOpen: () => ({ open: false, openCategory: settings.openCategory }),
 }))
 
 vi.mock('../hooks/useVaultWrite.js', () => ({
@@ -120,7 +122,7 @@ describe('Chat composer', () => {
     expect(api.send).toHaveBeenCalledWith('chat-1', '为什么')
   })
 
-  it('没配置模型时发送失败，输入框里显示「AI 未连接」的状态；配好后再发一次成功，状态就消失', async () => {
+  it('没配置模型时发送失败，输入框里显示「AI 未连接」的状态，点它打开设置的模型一栏；配好后再发一次成功，状态就消失', async () => {
     api.send.mockResolvedValueOnce({ id: 'chat-1', state: 'failed', reason: 'no-model' })
     const state = () => document.querySelector('.cbox .tag')?.textContent ?? null
     expect(state()).toBeNull()
@@ -128,6 +130,10 @@ describe('Chat composer', () => {
     press('Enter')
     await act(async () => { await Promise.resolve(); await Promise.resolve() })
     expect(state()).toBe('AI 未连接')
+    const tag = document.querySelector<HTMLElement>('.cbox .tag')!
+    expect(tag.tagName).toBe('BUTTON')
+    act(() => tag.click())
+    expect(settings.openCategory).toHaveBeenCalledWith('model')
     act(() => setValue(composer, '再问一次'))
     press('Enter')
     await act(async () => { await Promise.resolve(); await Promise.resolve() })

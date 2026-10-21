@@ -19,6 +19,7 @@ vi.mock('../shell/AppShell.js', async (original) => ({
   ...await original<typeof import('../shell/AppShell.js')>(),
   useNotice: () => ({ success: vi.fn(), refusal: vi.fn() }),
   useVaultRevision: () => ({ revision: 0, bump: vi.fn() }),
+  useSettingsOpen: () => ({ open: false, requestedCategory: null, setOpen: vi.fn(), openCategory: vi.fn() }),
 }))
 
 const { ReaderSidePanel } = await import('./reader/ReaderSidePanel.js')

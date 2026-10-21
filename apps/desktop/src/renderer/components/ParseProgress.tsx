@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import type { MetadataJob } from '../../shared/contract.js'
+import { papers } from '../ipc.js'
+import { errorLabel } from '../lib/failure-label.js'
 import { useMessages } from '../messages/useMessages.js'
 import { useNotice } from '../shell/AppShell.js'
 import { useJobs } from '../shell/useJobs.js'
@@ -14,8 +16,15 @@ const PROGRESS: Record<MetadataJob['step'], number> = {
   read: 10, detect: 30, lookup: 65, write: 90, done: 100, failed: 100,
 }
 
-/** Shows one quiet aggregate progress bar; implementation steps and network errors stay internal. */
-export function ParseProgress({ onParsed }: { onParsed: (job: MetadataJob) => void }) {
+/**
+ * Shows one quiet aggregate progress bar; implementation steps and network errors stay internal. The
+ * card of the uploads whose metadata is still missing retries those whose lookup failed, and hands the
+ * first of them to `onOpenPaper` to fill in by hand; either takes those uploads off the card.
+ */
+export function ParseProgress({ onParsed, onOpenPaper }: {
+  onParsed: (job: MetadataJob) => void
+  onOpenPaper: (paperId: string) => void
+}) {
   const m = useMessages()
   const status = useJobs()
   const notice = useNotice()
@@ -42,6 +51,12 @@ export function ParseProgress({ onParsed }: { onParsed: (job: MetadataJob) => vo
   const batchJobs = uploads.filter((job) => job.batch === activeBatch)
   const progress = active.length === 0 ? 100
     : Math.round(batchJobs.reduce((sum, job) => sum + PROGRESS[job.step], 0) / batchJobs.length)
+  const retryable = failed.filter((job) => job.step === 'failed')
+  const close = (jobs: MetadataJob[]) => setClosed((held) => new Set([...held, ...jobs.map((job) => job.id)]))
+  const retry = () => {
+    close(retryable)
+    for (const job of retryable) void papers.retryMetadata(job.paperId).catch((e: unknown) => notice.refusal(errorLabel(m, e)))
+  }
   if (active.length === 0 && failed.length === 0) return null
   return createPortal(
     <aside className="parse-float" aria-label={m.papers.parse.statusAria}>
@@ -60,8 +75,15 @@ export function ParseProgress({ onParsed }: { onParsed: (job: MetadataJob) => vo
             <span>{m.papers.parse.needsAttention(failed.length)}</span>
             <IconButton
               label={m.papers.parse.collapse} size="nested" className="upclose"
-              onClick={() => setClosed((held) => new Set([...held, ...failed.map((job) => job.id)]))}
+              onClick={() => close(failed)}
             ><IconCross /></IconButton>
+          </div>
+          <div className="upacts">
+            {retryable.length === 0 ? null : <button type="button" className="btn sm" onClick={retry}>{m.common.retry}</button>}
+            <button
+              type="button" className="btn sm"
+              onClick={() => { close([failed[0]!]); onOpenPaper(failed[0]!.paperId) }}
+            >{m.papers.parse.fill}</button>
           </div>
         </Card>
       ) : null}
