@@ -135,6 +135,10 @@ const VIEW_SWITCHES = new Set(['m.papers.views.aria', 'm.papers.toolbar.groupFie
   'm.feed.sourceFieldLabel', 'm.inbox.sortLabel', 'm.project.plan.viewLabel', 'm.project.recordViewLabel',
   'm.timeline.scaleGroup', 'm.wiki.ingest.reviewViewLabel'])
 
+/** Segmented controls that pick one option of a form in a dialog, a popover, Settings or a draft row. */
+const OPTION_SWITCHES = new Set(['f.basisLabel', 'm.project.workspace.kindLabel', 'm.watches.sourceLabel',
+  'm.research.schedule.modeLabel', 'm.project.links.groupLabel'])
+
 /** Icon and text buttons whose operation their label names. */
 const LABELLED: [RegExp, string][] = [
   [/^m\.(common\.(delete|deletePermanently|remove)|project\.attachments\.delete|project\.plan\.delete\w+For|papers\.rowActions\.delete)\b/, 'delete'],
@@ -196,6 +200,7 @@ const PLACES: Record<string, Place[]> = {
     { slot: 'inline', size: 'md', variant: 'plain' },
     { slot: 'inline', size: 'md', variant: 'primary', scope: "the review queue's first applicable proposal, its one primary" },
   ],
+  'option switch': [{ slot: 'inline', size: 'md', variant: 'plain' }],
   'settings save': [{ slot: 'card foot', size: 'md', variant: 'primary' }],
   'dismiss all': [
     { slot: 'section heading', size: 'sm', variant: 'plain' },
@@ -236,8 +241,9 @@ function lookOf(element: Node, source: string, path: string): Look | null {
   if (name === 'PanelClose') return { operation: 'close', size: 'default', variant: 'plain' }
   if (name === 'DotsMenu') return { operation: 'overflow menu', size: 'nested', variant: 'plain' }
   if (name === 'SegmentedControl') {
-    return VIEW_SWITCHES.has(text(expression(attribute(element, 'label'))))
-      ? { operation: 'view switch', size: literal('size') ?? 'md', variant: 'plain' } : null
+    const label = text(expression(attribute(element, 'label')))
+    const operation = VIEW_SWITCHES.has(label) ? 'view switch' : OPTION_SWITCHES.has(label) ? 'option switch' : null
+    return operation === null ? null : { operation, size: literal('size') ?? 'md', variant: 'plain' }
   }
   if (name === 'IconButton') {
     const operation = labelled(text(expression(attribute(element, 'label'))))

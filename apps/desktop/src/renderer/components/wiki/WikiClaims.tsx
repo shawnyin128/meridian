@@ -308,7 +308,7 @@ export function WikiClaims({ page, pending, links, onApply }: {
             <>
               <WikiFormField label={f.basis}>
                 <SegmentedControl
-                  label={f.basisLabel} size="sm" value={basis} onChange={setBasis}
+                  label={f.basisLabel} value={basis} onChange={setBasis}
                   options={[{ value: 'personal', label: f.personal }, { value: 'conclusion', label: f.conclusion }]}
                 />
               </WikiFormField>
