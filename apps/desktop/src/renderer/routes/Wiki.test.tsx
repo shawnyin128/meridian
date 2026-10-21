@@ -324,6 +324,34 @@ describe('Wiki keyboard reach', () => {
     }
   })
 
+  it('从关联打开另一页再按返回,回到的那一页等内容出来后回到原来滚到的位置', async () => {
+    fixture.aggregation.mockImplementation(async (id: string) => ({ ...AGG, id, title: id === 'topics/sd' ? '推测解码' : '树' }))
+    const body = () => host.querySelector<HTMLElement>('.wiki-body')!
+    await press(host.querySelector<HTMLElement>('[data-wk="topics/sd"] .tt')!)
+    body().scrollTop = 160
+    await press(all('.wkside .rail-links .tagchip').find((el) => el.textContent === '树')!)
+    expect(host.querySelector('.desk-head .t')!.textContent).toBe('树')
+    body().scrollTop = 40
+    let arrive: (page: WikiAggregation) => void = () => {}
+    fixture.aggregation.mockImplementationOnce(() => new Promise((done) => { arrive = done }))
+    await press(host.querySelector<HTMLElement>('.desk-head > .back')!)
+    // A browser clamps the offset to 0 while the page waits behind its placeholder.
+    body().scrollTop = 0
+    await act(async () => { arrive({ ...AGG, title: '推测解码' }); await Promise.resolve() })
+    expect(host.querySelector('.desk-head .t')!.textContent).toBe('推测解码')
+    expect(body().scrollTop).toBe(160)
+  })
+
+  it('从首页打开一页再按返回,首页回到原来滚到的位置', async () => {
+    const body = () => host.querySelector<HTMLElement>('.wiki-body')!
+    body().scrollTop = 120
+    await press(host.querySelector<HTMLElement>('[data-wk="topics/sd"] .tt')!)
+    body().scrollTop = 0
+    await press(host.querySelector<HTMLElement>('.desk-head > .back')!)
+    expect(host.querySelector('[data-wk="topics/sd"]')).not.toBeNull()
+    expect(body().scrollTop).toBe(120)
+  })
+
   it('没有东西指向这一页时右栏没有反向链接这一块', async () => {
     await press(host.querySelector<HTMLElement>('[data-wk="topics/sd"] .tt')!)
     expect(all('.wkside > .section-heading').map((heading) => heading.textContent)).toEqual(['属性', '关联', '目录'])

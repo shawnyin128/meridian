@@ -62,6 +62,7 @@ vi.mock('../components/AboutDialog.js', () => ({ AboutDialog: () => null }))
 const {
   AppShell, useCrumbTail, useEscapeLayer, useJump, useNotice, usePaperChatCollapsed, useSettingsOpen,
 } = await import('./AppShell.js')
+const { useJumpOrigin } = await import('../hooks/useJumpOrigin.js')
 const { TOOLTIP_DELAY } = await import('../components/Tooltip.js')
 
 const TAIL = [{ text: '深层' }]
@@ -607,6 +608,31 @@ describe('AppShell "/" shortcut', () => {
 })
 
 /** Shows the anchor of the jump aimed at its screen. */
+/** A screen that scrolls and links to a project, as a feed run's name does. */
+function LinkSource() {
+  const { open } = useJump()
+  return <div className="desk-body"><button type="button" id="toProject" onClick={() => open('project', 'p1')}>p1</button></div>
+}
+
+/** A screen a link lands on, with the back control a jump gives it. */
+function BackTarget() {
+  const { origin, back } = useJumpOrigin()
+  return origin === null ? null : <button type="button" id="goBack" onClick={back}>back</button>
+}
+
+describe('AppShell jump and back', () => {
+  it('按链接去别的屏再按返回,来的那一屏还是原来那个滚动区,停在原来滚到的位置', async () => {
+    await mount(<LinkSource />, { project: <BackTarget /> })
+    const scroller = document.querySelector<HTMLElement>('.screenslot:not([hidden]) .desk-body')!
+    scroller.scrollTop = 160
+    act(() => document.querySelector<HTMLButtonElement>('#toProject')!.click())
+    expect(scroller.closest('.screenslot')!.hasAttribute('hidden')).toBe(true)
+    act(() => document.querySelector<HTMLButtonElement>('#goBack')!.click())
+    expect(document.querySelector('.screenslot:not([hidden]) .desk-body')).toBe(scroller)
+    expect(scroller.scrollTop).toBe(160)
+  })
+})
+
 function JumpProbe({ id }: { id: string }) {
   const { jump } = useJump()
   return <p id={id}>{JSON.stringify(jump?.anchor ?? null)}</p>

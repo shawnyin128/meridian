@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode, RefObject } from 'react'
 import type {
   PaperFields, PaperReading, PaperRow, Proposal, WikiAggregation, WikiAggregationCard, WikiBacklink, WikiCell, WikiColumn,
@@ -68,8 +68,8 @@ const TIDY = 'tidy'
 /** The prefix of the page id a Wiki signal gives a project. */
 const PROJECT_PAGE = 'projects/'
 
-/** One entry of the Back stack: the previous Wiki page, or the screen that jumped here. */
-type Step = { place: Place } | { origin: ScreenKey }
+/** One entry of the Back stack: the previous Wiki page and how far it was scrolled, or the screen that jumped here. */
+type Step = { place: Place; scroll: number } | { origin: ScreenKey }
 
 /**
  * The demo's aggCard: kind tag, title, an "N parents" tag when the aggregation has several parents,
@@ -377,6 +377,9 @@ export function Wiki() {
   const [error, setError] = useState<string | null>(null)
   const consumed = useRef(0)
   const main = useRef<HTMLDivElement>(null)
+  const body = useRef<HTMLDivElement>(null)
+  /** The step a Back returned to, until its page shows its content and gets its scroll offset back. */
+  const returning = useRef<{ place: Place; scroll: number } | null>(null)
   const reportError = useCallback((e: unknown) => setError(errorLabel(m, e)), [m])
   const notice = useNotice()
   const write = useVaultWrite()
@@ -435,6 +438,7 @@ export function Wiki() {
   // An entry from the sidebar lands on the Wiki home; a jump from another screen lands on the page it
   // points to, with the origin screen on the stack for Back.
   useEffect(() => {
+    returning.current = null
     if (jump !== null && jump.seq !== consumed.current) {
       consumed.current = jump.seq
       setPlace(jump.target)
@@ -525,9 +529,11 @@ export function Wiki() {
   }, [])
 
   const go = useCallback((next: Place) => {
+    const scroll = body.current?.scrollTop ?? 0
+    returning.current = null
     setPlace((current) => {
       if (next === current) return current
-      setStack((s) => [...s, { place: current }])
+      setStack((s) => [...s, { place: current, scroll }])
       return next
     })
   }, [])
@@ -537,7 +543,10 @@ export function Wiki() {
     setStack((s) => s.slice(0, -1))
     if (top === undefined) setPlace(null)
     else if ('origin' in top) returnTo(top.origin)
-    else setPlace(top.place)
+    else {
+      returning.current = top
+      setPlace(top.place)
+    }
   }
 
   /** Opens the reader at `page` of the paper whose Wiki page is `paper`. */
@@ -554,6 +563,17 @@ export function Wiki() {
   const shownReading = shownPaper !== null && reading?.paperId === shownPaper.id.slice(PAPER_PAGE.length)
     ? reading : null
   const shownBacklinks = backlinks !== null && backlinks.page === place ? backlinks.links : []
+  // Until the place shows its content it is a placeholder, which cannot be scrolled that far.
+  const shown = place === null ? home !== null
+    : place === REVIEW ? proposals !== null
+      : place === TIDY ? signals !== null
+        : shownAgg !== null || (shownPaper !== null && shownReading !== null)
+  useLayoutEffect(() => {
+    const held = returning.current
+    if (held === null || held.place !== place || !shown || body.current === null) return
+    returning.current = null
+    body.current.scrollTop = held.scroll
+  }, [place, shown])
 
   /** The rail link to Wiki page `ref`, which opens it here. */
   const pageLink = (ref: WikiRef): RailLink => ({
@@ -758,7 +778,7 @@ export function Wiki() {
 
       <PageError error={error} />
 
-      <PageBody className="wiki-body">
+      <PageBody className="wiki-body" ref={body}>
         {error === null && (place === null ? home === null : place !== REVIEW && place !== TIDY && shownAgg === null && shownPaper === null)
           ? <LoadingPlaceholder shape="cards" />
           : null}
