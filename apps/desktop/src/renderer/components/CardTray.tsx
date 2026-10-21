@@ -1,7 +1,6 @@
 import { useId, useState } from 'react'
 import type { ReactNode } from 'react'
 import { IconChevron } from './icons.js'
-import { holdRepeatSelection } from './StructuredList.js'
 import { Tooltip } from './Tooltip.js'
 import { FadeText } from './FadeText.js'
 import './CardTray.css'
@@ -12,8 +11,8 @@ import './CardTray.css'
  * one-line tray inside a card, its toggle named by `expandLabel` and `collapseLabel`; `row` draws no
  * surface of its own and leads with the caret, for a list row whose summary is the row itself and
  * names the toggle. A `composite` row's summary holds a control of its own, such as an entity link,
- * so it sits beside the toggle instead of inside it: the caret is the toggle, named by the summary,
- * and a click on the summary that no control in it takes reaches the toggle.
+ * so the toggle, named by the summary, lies over the caret and the summary instead of holding them,
+ * and the control sits above it.
  */
 export function CardTray({
   summary, children, action, variant = 'tray', composite = false, expandLabel, collapseLabel, defaultOpen = false,
@@ -39,11 +38,12 @@ export function CardTray({
       <div className="card-tray-head">
         {composite
           ? (
-            <div className="card-tray-press" onClick={toggle} onMouseDown={holdRepeatSelection}>
+            <div className="card-tray-press">
               <button
                 className="card-tray-toggle" type="button" aria-expanded={open}
-                aria-controls={detailId} aria-labelledby={summaryId}
-              >{chevron}</button>
+                aria-controls={detailId} aria-labelledby={summaryId} onClick={toggle}
+              />
+              {chevron}
               <FadeText className="card-tray-summary" id={summaryId}>{summary}</FadeText>
             </div>
           )

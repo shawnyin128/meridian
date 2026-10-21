@@ -25,10 +25,12 @@
 .card-tray--row .card-tray-toggle:hover,.card-tray--row.is-open .card-tray-toggle,
 .card-tray--row .card-tray-toggle:hover .card-tray-chevron{color:var(--ink)}
 .card-tray--row .card-tray-content{padding-left:var(--sp-24)}
-/* A composite row's caret and summary share the area a click toggles, which hover and focus mark as one. */
-.card-tray-press{display:flex;min-width:0;flex:1;align-items:center;gap:var(--sp-8);cursor:pointer}
-.card-tray-press .card-tray-toggle{flex:none}
+/*
+ * A composite row's toggle lies over its caret and summary, so a click on either toggles and its ring
+ * encloses both; a control in the summary comes later and is positioned, so it paints above the toggle.
+ */
+.card-tray-press{position:relative;display:flex;min-width:0;flex:1;align-items:center;gap:var(--sp-8)}
+.card-tray-press .card-tray-toggle{position:absolute;inset:0}
+.card-tray-press .card-tray-summary :is(a,button){position:relative}
 .card-tray-press:hover,.card-tray--row.is-open .card-tray-press,.card-tray-press:hover .card-tray-chevron{color:var(--ink)}
-.card-tray-press:has(.card-tray-toggle:focus-visible){outline:var(--ring-width) solid var(--ring);outline-offset:var(--ring-offset)}
-.card-tray-press .card-tray-toggle:focus-visible{outline:0}
 .card-tray--row.is-open .card-tray-content{border-top-color:transparent}

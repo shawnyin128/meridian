@@ -90,7 +90,7 @@ describe('最近变动的来源标签', () => {
     api.entries = [{ ...entry('c1', '项目「draft 效率」· 改了字段', '我'), diff: ['- 旧', '+ 新'], lines: [['- 旧'], ['+ 新']] }]
     await act(async () => root.render(<MessagesProvider><Changelog /></MessagesProvider>))
     const toggle = host.querySelector<HTMLButtonElement>('.crow .card-tray-toggle')!
-    expect(toggle.querySelector('.card-tray-chevron svg')).not.toBeNull()
+    expect(toggle.parentElement!.querySelector('.card-tray-chevron svg')).not.toBeNull()
     expect(toggle.getAttribute('aria-label')).toBeNull()
     expect(document.getElementById(toggle.getAttribute('aria-labelledby')!)!.textContent).toContain('项目「draft 效率」· 改了字段')
     expect(toggle.getAttribute('aria-expanded')).toBe('false')
@@ -101,7 +101,7 @@ describe('最近变动的来源标签', () => {
     expect(toggle.getAttribute('aria-expanded')).toBe('false')
   })
 
-  it('标题点名的论文、项目和 Wiki 页是链接:点名字打开它、这一行不展开;点标题的别处照样展开', async () => {
+  it('标题点名的论文、项目和 Wiki 页是链接:点名字打开它、这一行不展开;展开钮照样展开', async () => {
     const named = (title: string, name: string, kind: NonNullable<ChangeEntry['named']>['kind'], id: string): ChangeEntry => ({
       ...entry(id, title, '我'), named: { kind, id, from: title.indexOf(name), to: title.indexOf(name) + name.length },
     })
@@ -126,7 +126,7 @@ describe('最近变动的来源标签', () => {
     expect(api.open.mock.calls).toEqual([['project', 'draft'], ['reader', 'mixtral'], ['wiki', 'topics/ptq']])
     const expanded = () => rows.map((row) => row.querySelector('.card-tray-toggle')!.getAttribute('aria-expanded'))
     expect(expanded()).toEqual(['false', 'false', 'false', 'false'])
-    act(() => rows[0]!.querySelector<HTMLElement>('.ct')!.click())
+    act(() => rows[0]!.querySelector<HTMLElement>('.card-tray-toggle')!.click())
     expect(expanded()).toEqual(['true', 'false', 'false', 'false'])
   })
 
