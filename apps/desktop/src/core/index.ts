@@ -91,6 +91,7 @@ import {
   WatchUpdateParamsSchema,
   WikiAggregationParamsSchema,
   WikiApplyParamsSchema,
+  WikiBacklinksParamsSchema,
   WikiDecideParamsSchema,
   WikiPaperParamsSchema,
   WikiProposalsParamsSchema,
@@ -719,6 +720,8 @@ registerHandler('wiki.signals', (params) => {
   EmptyParamsSchema.parse(params)
   return store.wikiSignals()
 })
+registerHandler('wiki.backlinks', (params) =>
+  store.wikiBacklinks(WikiBacklinksParamsSchema.parse(params).id))
 registerHandler('wiki.update', (params) => {
   const { id, body } = WikiUpdateParamsSchema.parse(params)
   return store.updateWikiPage(id, body)

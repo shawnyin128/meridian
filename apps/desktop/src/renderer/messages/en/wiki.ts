@@ -62,6 +62,10 @@ export const wiki = {
   viewInPaperList: 'View in the paper list',
   membershipHeading: 'Location in Wiki',
   noMembership: 'Not under any page yet',
+  backlinks: {
+    heading: 'Backlinks',
+    kinds: { project: 'Project', idea: 'Idea', chat: 'Chat' },
+  },
   scope: {
     source: 'Source text',
     currentPaper: 'Current paper',

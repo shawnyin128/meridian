@@ -21,6 +21,7 @@ const card = (id: string, title: string): WikiAggregationCard => ({
 const fixture = vi.hoisted(() => ({
   aggregation: vi.fn(),
   paper: vi.fn(),
+  backlinks: vi.fn(),
   open: vi.fn(),
 }))
 
@@ -66,6 +67,7 @@ vi.mock('../ipc.js', () => ({
     proposals: () => Promise.resolve([]),
     aggregation: fixture.aggregation,
     paper: fixture.paper,
+    backlinks: fixture.backlinks,
     cards: () => Promise.resolve([]),
   },
 }))
@@ -94,6 +96,7 @@ describe('Wiki keyboard reach', () => {
     window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'zh')
     fixture.aggregation.mockReset().mockResolvedValue(AGG)
     fixture.paper.mockReset().mockResolvedValue(PAPER)
+    fixture.backlinks.mockReset().mockResolvedValue([])
     fixture.open.mockReset()
     document.body.innerHTML = ''
     host = document.createElement('div')
@@ -221,6 +224,39 @@ describe('Wiki keyboard reach', () => {
     vi.useRealTimers()
     expect(document.querySelector('[role="tooltip"]')?.textContent).toBe('“four bits”')
     expect(document.querySelector('#wktip')).toBeNull()
+  })
+
+  it('右栏的反向链接在关联(论文页是归属)之下、目录之上;点一页在 Wiki 里打开,点项目、想法、对话去它们自己的屏', async () => {
+    fixture.backlinks.mockResolvedValue([
+      { kind: 'page', id: 'methods/tree', title: '树', kindLabel: '方法' },
+      { kind: 'project', id: 'p-47', title: '推测解码加速' },
+      { kind: 'idea', id: 'idea-1', title: '按接受率调树宽' },
+      { kind: 'chat', id: 'chat-2', title: 'EAGLE 阅读' },
+    ])
+    await press(host.querySelector<HTMLElement>('[data-wk="topics/sd"] .tt')!)
+    expect(fixture.backlinks).toHaveBeenLastCalledWith('topics/sd')
+    expect(all('.wkside > .section-heading').map((heading) => heading.textContent)).toEqual(['属性', '关联', '反向链接', '目录'])
+    const link = (name: string) => all('.wkside .wkrel .entity-link').find((el) => el.textContent === name)!
+    await press(link('推测解码加速'))
+    expect(fixture.open).toHaveBeenLastCalledWith('project', 'p-47')
+    await press(link('按接受率调树宽'))
+    expect(fixture.open).toHaveBeenLastCalledWith('ideas', 'idea-1')
+    await press(link('EAGLE 阅读'))
+    expect(fixture.open).toHaveBeenLastCalledWith('chat', 'chat-2')
+
+    fixture.paper.mockResolvedValue({ ...PAPER, body: '## 要点\n\n略。' })
+    fixture.backlinks.mockResolvedValue([{ kind: 'page', id: 'topics/sd', title: '推测解码', kindLabel: '主题' }])
+    await press(host.querySelector<HTMLElement>('.cmp td.rh .entity-link')!)
+    expect(fixture.backlinks).toHaveBeenLastCalledWith('papers/p1')
+    expect(all('.wkside > .section-heading').map((heading) => heading.textContent)).toEqual(['属性', '归属', '反向链接', '目录'])
+    fixture.aggregation.mockClear()
+    await press(link('推测解码'))
+    expect(fixture.aggregation).toHaveBeenLastCalledWith('topics/sd')
+  })
+
+  it('没有东西指向这一页时右栏没有反向链接这一块', async () => {
+    await press(host.querySelector<HTMLElement>('[data-wk="topics/sd"] .tt')!)
+    expect(all('.wkside > .section-heading').map((heading) => heading.textContent)).toEqual(['属性', '关联', '目录'])
   })
 
   it('opens a paper page membership from a button', async () => {

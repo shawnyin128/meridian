@@ -60,7 +60,7 @@ import {
   isClaimOp, isPaper, pageVersion, projectClaims, projectDisputes,
   readWikiData, readWikiPage, removeClaim, removeMembership, setAggregationMetadata, setBody, setBodyAndTrust,
   setClaim, setColumns, setMembership, setParents, setUpdated, touchedPages, wikiAggregation, wikiCards,
-  wikiHome, wikiPaper, wikiSearchIndex, wikiSignals,
+  wikiBacklinks, wikiHome, wikiPaper, wikiSearchIndex, wikiSignals,
   type ClaimWorld, type PointName, type WikiAggregationRecord, type WikiData, type WikiPaperRecord,
 } from './wiki/index.js'
 import { prepareFallbackLibrary } from './workspace-layout.js'
@@ -2230,6 +2230,23 @@ export function createVaultStore(
 
     wikiSignals() {
       return signals()
+    },
+
+    wikiBacklinks(id) {
+      checkReadable(id)
+      return wikiBacklinks(wikiData, id, {
+        projects: [...projectById.values()].map((p) => ({
+          id: p.id,
+          name: p.name,
+          papers: p.papers,
+          pages: p.relations.flatMap((g) => g.items.flatMap((item) => (item.page === undefined ? [] : [item.page]))),
+        })),
+        ideas: ideas.map((idea) => ({ id: idea.id, title: idea.title, paper: idea.source.paperId })),
+        chats: chats.filter((chat) => chat.messages.length > 0).map((chat) => ({
+          id: chat.id, title: chat.title, paper: chat.paperId,
+          sent: chat.messages.filter((m) => m.role === 'you').map((m) => m.runs.map((r) => r.text).join('')),
+        })),
+      })
     },
 
     proposalRecords() {

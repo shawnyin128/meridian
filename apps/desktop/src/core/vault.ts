@@ -9,7 +9,7 @@ import type {
   ProjectFields, ProjectOverview, ProjectSummary, ProjectWorkspaceBinding, ReadingMutation,
   RelationFields, ResearchIdea, SearchHit,
   TaskFields, TaskPatch, TrashEntry, Watch, WatchFields, WikiAggregation, WikiAggregationCard, WikiHome,
-  WikiPaper, WikiSignal,
+  WikiBacklink, WikiPaper, WikiSignal,
 } from '../shared/contract.js'
 import type { PageText, PaperSnapshot } from './vault/records.js'
 import type { RemotePaper } from './net/arxiv.js'
@@ -702,6 +702,14 @@ export interface VaultStore {
 
   /** Returns the Wiki signals (write protocol §6.2) of the vault as it stands. */
   wikiSignals(): WikiSignal[]
+
+  /**
+   * Returns what refers to the Wiki page with the given id (core/wiki wikiBacklinks): other pages
+   * linking to it in their body, projects whose relations name it or that link the paper, ideas that
+   * came from the paper, and chats that read the paper or mention the page. Reads only what the store
+   * already holds and writes nothing. Throws if no such page exists.
+   */
+  wikiBacklinks(id: string): WikiBacklink[]
 
   /** Returns the review-queue records, newest first. */
   proposalRecords(): ProposalRecord[]

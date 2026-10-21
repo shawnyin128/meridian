@@ -9,7 +9,8 @@ import { join, resolve } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { z } from 'zod'
 import {
-  PaperRowSchema, SearchHitSchema, WikiAggregationCardSchema, WikiHomeSchema, WikiPaperSchema, type Evidence,
+  PaperRowSchema, SearchHitSchema, WikiAggregationCardSchema, WikiBacklinkSchema, WikiHomeSchema, WikiPaperSchema,
+  type Evidence,
 } from '../shared/contract.js'
 import { stableJson } from './changelog.js'
 import { createFixtureStore } from './fixture-store.js'
@@ -79,6 +80,7 @@ const KNOWLEDGE: Record<string, { call: (store: VaultStore) => unknown; schema: 
     schema: WikiPaperSchema,
   },
   'wiki.cards': { call: (s) => s.wikiCards(), schema: z.array(WikiAggregationCardSchema) },
+  'wiki.backlinks': { call: (s) => s.wikiBacklinks(s.wikiCards()[0]!.id), schema: z.array(WikiBacklinkSchema) },
   'search.query': { call: (s) => s.search('a'), schema: z.array(SearchHitSchema) },
 }
 
@@ -1790,6 +1792,44 @@ describe('vault store on the aggregation layout', () => {
     expect(() => store.createRelation(id, {
       group: 'Wiki', text: 'x', page: 'topics/nope',
     })).toThrow(/topics\/nope/)
+  })
+
+  it('反向链接只读：正文链到这一页的页、关联它的项目、来自它的想法、读它或 @ 它的对话，读的时候磁盘一个字节不变', () => {
+    store.createProject('引用 QuaRot')
+    const id = store.listProjects().find((project) => project.name === '引用 QuaRot')!.id
+    store.addPaper(id, '2404.00456')
+    store.createRelation(id, { group: 'Wiki', text: 'PTQ', page: 'topics/ptq' })
+    const reading = store.chatForPaper('2404.00456')
+    store.appendChatMessages(reading.id, [{ role: 'you', runs: [{ kind: 'text', text: '旋转之后还要校准吗' }], actions: [] }])
+    const idea = store.createIdea(reading.id, '旋转与 KV 量化叠加', '先旋转再按 token 量化')
+    const asked = store.createChat('问 PTQ', true)
+    store.appendChatMessages(asked.id, [{ role: 'you', runs: [{ kind: 'text', text: '@PTQ 的边界在哪' }], actions: [] }])
+    const files = (): Record<string, string> => Object.fromEntries(
+      (readdirSync(vault, { recursive: true }) as string[]).sort()
+        .filter((name) => statSync(join(vault, name)).isFile())
+        .map((name) => [name, `${statSync(join(vault, name)).mtimeMs} ${readFileSync(join(vault, name), 'base64')}`]),
+    )
+    const before = files()
+
+    const paper = store.wikiBacklinks('papers/2404.00456')
+    const topic = store.wikiBacklinks('topics/ptq')
+
+    expect(files()).toEqual(before)
+    const fixture = createFixtureStore(() => '2026-09-10')
+    expect(paper.filter((link) => link.kind === 'page'))
+      .toEqual(fixture.wikiBacklinks('papers/2404.00456').filter((link) => link.kind === 'page'))
+    // methods/rotation and topics/kv-cache-quantization name the paper only in their generated tables, which are not body text.
+    expect(paper.filter((link) => link.kind === 'page').map((link) => link.id)).toEqual(['topics/ptq-weight-activation'])
+    expect(paper.filter((link) => link.kind !== 'page')).toEqual([
+      { kind: 'project', id, title: '引用 QuaRot' },
+      { kind: 'idea', id: idea.id, title: '旋转与 KV 量化叠加' },
+      { kind: 'chat', id: reading.id, title: reading.title },
+    ])
+    expect(topic.filter((link) => link.kind !== 'page')).toEqual([
+      { kind: 'project', id, title: '引用 QuaRot' },
+      { kind: 'chat', id: asked.id, title: '问 PTQ' },
+    ])
+    expect(() => store.wikiBacklinks('topics/nope')).toThrow(expect.objectContaining({ reason: 'not-found' }))
   })
 
   it('附件记下本机绝对路径,相对路径不收', () => {

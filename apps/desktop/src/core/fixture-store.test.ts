@@ -2175,6 +2175,7 @@ describe('fixture store', () => {
       }),
       'wiki.update': () => store.updateWikiPage('topics/ptq', '## 问题\n改过的。'),
       'wiki.signals': () => store.wikiSignals(),
+      'wiki.backlinks': () => store.wikiBacklinks('topics/ptq'),
       'trash.list': () => store.listTrash(),
       'trash.restore': () => {
         store.deletePaper(store.listPapers({ page: 1, size: 1 }).rows[0]!.id)

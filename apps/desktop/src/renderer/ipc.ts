@@ -20,7 +20,7 @@ import type {
   ProjectSummary,
   RelationFields, SearchHit, TaskFields, TaskPatch, TrashEntry, TrashedEntry, Watch, WatchFields,
   WatchSuggestionParams, WatchSuggestionResult, WikiAggregation,
-  WikiAggregationCard, WikiHome, WikiPaper, ProposalReceipt, ProposalStatus, WikiProposal,
+  WikiAggregationCard, WikiBacklink, WikiHome, WikiPaper, ProposalReceipt, ProposalStatus, WikiProposal,
 } from '../shared/contract.js'
 import { CallError } from './call-error.js'
 
@@ -336,6 +336,8 @@ export const wiki = {
     call<WikiProposal[]>('wiki.proposals', status === undefined ? {} : { status }),
   decide: (id: string, decision: 'apply' | 'decline', reason?: string) =>
     call<ProposalReceipt>('wiki.decide', { id, decision, ...(reason === undefined ? {} : { reason }) }),
+  /** What refers to page `id`: other pages, projects, ideas and chats. */
+  backlinks: (id: string) => call<WikiBacklink[]>('wiki.backlinks', { id }),
 }
 
 export const search = {

@@ -50,7 +50,7 @@ import type { MetadataFill, VaultOps, VaultStore } from './vault.js'
 import { digestOf } from './wiki-proposals.js'
 import {
   applyProposal, checkBody, conclusionClaims, describeOp, projectClaims, projectDisputes, HUMAN, isPaper, pageVersion, recordText, touchedPages,
-  wikiAggregation, wikiCards, wikiHome, wikiPaper, wikiSearchIndex, wikiSignals,
+  wikiAggregation, wikiBacklinks, wikiCards, wikiHome, wikiPaper, wikiSearchIndex, wikiSignals,
   type ClaimWorld, type PointName, type WikiData, type WikiPaperRecord,
 } from './wiki/index.js'
 
@@ -1688,6 +1688,22 @@ export function createFixtureStore(
         })),
         trashed: new Set(trash.flatMap((item) => (item.kind === 'paper' ? [`${PAPER_PAGE}${item.paper.id}`] : []))),
         missingRegions: [],
+      })
+    },
+
+    wikiBacklinks(id) {
+      return wikiBacklinks(wiki, id, {
+        projects: [...projectById.values()].map((p) => ({
+          id: p.id,
+          name: p.name,
+          papers: p.papers,
+          pages: p.relations.flatMap((g) => g.items.flatMap((item) => (item.page === undefined ? [] : [item.page]))),
+        })),
+        ideas: ideas.map((idea) => ({ id: idea.id, title: idea.title, paper: idea.source.paperId })),
+        chats: chats.filter((chat) => chat.messages.length > 0).map((chat) => ({
+          id: chat.id, title: chat.title, paper: chat.paperId,
+          sent: chat.messages.filter((m) => m.role === 'you').map((m) => m.runs.map((r) => r.text).join('')),
+        })),
       })
     },
 

@@ -1,8 +1,8 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode, RefObject } from 'react'
 import type {
-  PaperFields, PaperReading, PaperRow, Proposal, WikiAggregation, WikiAggregationCard, WikiCell, WikiColumn, WikiHome,
-  WikiPaper, WikiProposal,
+  PaperFields, PaperReading, PaperRow, Proposal, WikiAggregation, WikiAggregationCard, WikiBacklink, WikiCell, WikiColumn,
+  WikiHome, WikiPaper, WikiProposal,
 } from '../../shared/contract.js'
 import { PAPER_PAGE } from '../../shared/vocabulary.js'
 import { papers, wiki } from '../ipc.js'
@@ -39,6 +39,7 @@ import { PaperUnderstanding } from '../components/paper/PaperUnderstanding.js'
 import { PaperText } from '../components/paper/PaperText.js'
 import { plainTitle } from '../components/paper/paper-text.js'
 import { ReviewEntry, ReviewQueue } from '../components/wiki/ReviewQueue.js'
+import { WikiBacklinks } from '../components/wiki/WikiBacklinks.js'
 import { WikiClaims } from '../components/wiki/WikiClaims.js'
 import { SourceAnchor } from '../components/SourceAnchor.js'
 import { Tag, TagButton } from '../components/Tag.js'
@@ -358,6 +359,7 @@ export function Wiki() {
   const [paper, setPaper] = useState<WikiPaper | null>(null)
   const [reading, setReading] = useState<PaperReading | null>(null)
   const [proposals, setProposals] = useState<WikiProposal[] | null>(null)
+  const [backlinks, setBacklinks] = useState<{ page: string; links: WikiBacklink[] } | null>(null)
   const [error, setError] = useState<string | null>(null)
   const consumed = useRef(0)
   const main = useRef<HTMLDivElement>(null)
@@ -449,6 +451,15 @@ export function Wiki() {
   }, [place, revision, reportError])
 
   useEffect(() => {
+    if (place === null || place === REVIEW) return
+    let live = true
+    void wiki.backlinks(place)
+      .then((links) => { if (live) setBacklinks({ page: place, links }) })
+      .catch(reportError)
+    return () => { live = false }
+  }, [place, revision, reportError])
+
+  useEffect(() => {
     setReading(null)
     if (place === null || !place.startsWith(PAPER_PAGE)) return
     let live = true
@@ -487,6 +498,13 @@ export function Wiki() {
   const shownPaper = paper !== null && place === paper.id ? paper : null
   const shownReading = shownPaper !== null && reading?.paperId === shownPaper.id.slice(PAPER_PAGE.length)
     ? reading : null
+  const shownBacklinks = backlinks !== null && backlinks.page === place ? backlinks.links : []
+
+  /** Opens what a backlink names: a Wiki page here, a project, an idea or a chat on its own screen. */
+  const openBacklink = (link: WikiBacklink) => {
+    if (link.kind === 'page') go(link.id)
+    else jumpTo(link.kind === 'idea' ? 'ideas' : link.kind, link.id)
+  }
 
   /**
    * Subpage candidates: aggregations of the same kind, other than this page and not yet under it,
@@ -860,6 +878,7 @@ export function Wiki() {
                     ))}
                   </div>
                 ))}
+                <WikiBacklinks links={shownBacklinks} onOpen={openBacklink} />
                 <Toc body={shownAgg.body} main={main} />
               </div>
             </div>
@@ -964,6 +983,7 @@ export function Wiki() {
                       </div>
                     </div>
                   ))}
+                <WikiBacklinks links={shownBacklinks} onOpen={openBacklink} />
                 <Toc body={shownPaper.body} main={main} />
               </div>
             </div>

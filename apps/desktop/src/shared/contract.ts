@@ -1682,6 +1682,23 @@ export const WikiAggregationParamsSchema = z.object({ id: z.string() }).strict()
 
 export const WikiPaperParamsSchema = z.object({ id: z.string() }).strict()
 
+/**
+ * One thing that refers to a Wiki page: another page whose body links to it, a project whose
+ * relations name it or that links the paper, an idea the paper is the source of, or a chat that reads
+ * the paper or mentions the page. `id` is that page's, project's, idea's or chat's id and `title` its
+ * display name; a page also carries `fullTitle` when `title` is a shortened paper title, and an
+ * aggregation page carries its kind's label.
+ */
+export const WikiBacklinkSchema = z.object({
+  kind: z.enum(['page', 'project', 'idea', 'chat']),
+  id: z.string(),
+  title: z.string(),
+  fullTitle: z.string().optional(),
+  kindLabel: z.string().optional(),
+}).strict()
+
+export const WikiBacklinksParamsSchema = z.object({ id: z.string() }).strict()
+
 /** Updates wiki body Markdown only; frontmatter and generated regions do not pass through this input. */
 export const WikiUpdateParamsSchema = z.object({ id: z.string(), body: z.string() }).strict()
 
@@ -2332,6 +2349,7 @@ export type WikiConflict = z.infer<typeof WikiConflictSchema>
 export type WikiClaim = z.infer<typeof WikiClaimSchema>
 export type WikiSignalKind = z.infer<typeof WikiSignalKindSchema>
 export type WikiSignal = z.infer<typeof WikiSignalSchema>
+export type WikiBacklink = z.infer<typeof WikiBacklinkSchema>
 export type AgentProposal = z.infer<typeof AgentProposalSchema>
 export type ProposalRecord = z.infer<typeof ProposalRecordSchema>
 export type WikiProposal = z.infer<typeof WikiProposalSchema>
@@ -2460,6 +2478,7 @@ export const CONTRACT_METHODS = [
   'wiki.proposals',
   'wiki.decide',
   'wiki.signals',
+  'wiki.backlinks',
   'trash.list',
   'trash.restore',
   'trash.purge',
