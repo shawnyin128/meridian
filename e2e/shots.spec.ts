@@ -1,7 +1,7 @@
 import { resolve } from 'node:path'
 import { expect, gotoPapers, gotoProject, parkPointer, test } from './app.js'
 
-const SHOTS = resolve(import.meta.dirname, '../.superpowers/e2e-shots')
+const SHOTS = resolve(import.meta.dirname, '../outputs/e2e/shots')
 
 test('截下论文库表的一组基线图', async ({ win }) => {
   await gotoPapers(win)

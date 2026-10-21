@@ -2,7 +2,7 @@ import { resolve } from 'node:path'
 import type { Locator, Page } from '@playwright/test'
 import { fixtureDay, gotoProject, parkPointer, test, vaultToday, type MeridianWindow } from './app.js'
 
-const SHOTS = resolve(import.meta.dirname, '../.superpowers/e2e-shots/gantt')
+const SHOTS = resolve(import.meta.dirname, '../outputs/e2e/shots/gantt')
 
 const SIZES = [[1280, 720], [1440, 900], [1920, 1080], [2560, 1440]] as const
 const THEMES = [['light', ''], ['dark', 'dark']] as const

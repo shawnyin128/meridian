@@ -7,7 +7,7 @@ import { expect, gotoPapers, parkPointer, test } from './app.js'
  * popover and grouping by topic.
  */
 
-const SHOTS = resolve(import.meta.dirname, '../.superpowers/e2e-shots')
+const SHOTS = resolve(import.meta.dirname, '../outputs/e2e/shots')
 
 /** Go through the four states in turn and take a screenshot of each. The file name is `route-<route>-<state>.png`. */
 async function shootStates(win: Page, route: string): Promise<void> {

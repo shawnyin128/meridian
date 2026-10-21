@@ -867,7 +867,7 @@ test('科研计划:新建任务那一行和已有行同一套样子,日期不折
   expect(input.border).toBe('1px')
   expect(input.background).toBe(await fieldRgb(win))
   expect(input.rowHeight).toBeCloseTo(input.lineHeight, 1)
-  await win.screenshot({ path: resolve(import.meta.dirname, '../.superpowers/e2e-shots/project-task-draft.png') })
+  await win.screenshot({ path: resolve(import.meta.dirname, '../outputs/e2e/shots/project-task-draft.png') })
 })
 
 test('关联:chip 可以拖到同一行的别的位置,顺序写进库里', async ({ win }) => {
@@ -915,7 +915,7 @@ test('关联:可以加一个链接并给它起显示名,点 chip 交给系统浏
   await expect(fields).toHaveCount(2)
   await fields.nth(0).fill('wandb.ai/team/draft')
   await fields.nth(1).fill('实验看板')
-  await win.screenshot({ path: resolve(import.meta.dirname, '../.superpowers/e2e-shots/project-url-draft.png') })
+  await win.screenshot({ path: resolve(import.meta.dirname, '../outputs/e2e/shots/project-url-draft.png') })
   await fields.nth(1).press('Enter')
 
   const chip = linkRow.locator('.tagchip')
@@ -937,7 +937,7 @@ test('关联:可以加一个链接并给它起显示名,点 chip 交给系统浏
   await chip.click()
   await expect.poll(() => app.evaluate(() => (globalThis as { openedUrls?: string[] }).openedUrls))
     .toEqual(['https://wandb.ai/team/draft'])
-  await win.screenshot({ path: resolve(import.meta.dirname, '../.superpowers/e2e-shots/project-url-chip.png') })
+  await win.screenshot({ path: resolve(import.meta.dirname, '../outputs/e2e/shots/project-url-chip.png') })
 })
 
 test('关联:占位 chip 长在它将来待的那一组行首,切组跟着搬', async ({ win }) => {
