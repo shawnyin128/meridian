@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type {
   ConflictTarget, Evidence, ProjectConclusion, ProjectSummary, ProposalOp, WikiAggregation, WikiClaim, WikiConflict,
 } from '../../../shared/contract.js'
@@ -118,19 +118,28 @@ export function ClaimSide({ item, title, point, links }: {
  * agent wrote it, its evidence (experiments open the project, source quotes open the reader at their
  * page), its open conflicts with the other side linked, and its earlier versions folded away. The user
  * adds, revises, marks and resolves conflicts on, and retracts claims through `onApply`, which submits
- * one titled list of ops and resolves whether it was written.
+ * one titled list of ops and resolves whether it was written. `arrival`, a claim id, is brought into
+ * view once the claims show, after which `onArrived` is called.
  */
-export function WikiClaims({ page, pending, links, onApply }: {
+export function WikiClaims({ page, pending, links, onApply, arrival, onArrived }: {
   page: WikiAggregation
   pending: boolean
   links: ClaimLinks
   onApply: (title: string, ops: ProposalOp[]) => Promise<boolean>
+  arrival?: string | undefined
+  onArrived?: () => void
 }) {
   const m = useMessages()
   const c = m.wiki.claims
   const f = c.form
   const fmt = useFormat()
   const [form, setForm] = useState<Form | null>(null)
+  const arrivalRow = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (arrival === undefined) return
+    arrivalRow.current?.scrollIntoView({ block: 'center' })
+    onArrived?.()
+  }, [arrival, page, onArrived])
   const [text, setText] = useState('')
   const [note, setNote] = useState('')
   const [basis, setBasis] = useState<'personal' | 'conclusion'>('personal')
@@ -240,6 +249,7 @@ export function WikiClaims({ page, pending, links, onApply }: {
             {page.claims.map((claim) => (
               <StructuredRow
                 key={claim.id} data-claim={claim.id} className="wkclaim"
+                {...claim.id === arrival ? { rowRef: arrivalRow } : {}}
               >
                 <div className="wkclaim-head">
                   <span className="wkclaim-text">{claim.text}</span>

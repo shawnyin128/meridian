@@ -279,7 +279,9 @@ export const wiki = {
     entry: 'To tidy',
     title: (n: number) => `To tidy · ${n}`,
     empty: 'No pages to tidy yet',
-    kinds: { 'open-conflict': 'Conflict', 'broken-link': 'Broken link', 'thin-aggregation': 'Thin', 'unfiled-paper': 'Unfiled' },
+    kinds: { 'open-conflict': 'Conflicting findings', 'broken-link': 'Broken link', 'thin-aggregation': 'Too little content', 'unfiled-paper': 'Not in a topic' },
+    pointsTo: '→',
+    conflictsWith: '↔',
   },
   queue: {
     entry: 'To review',

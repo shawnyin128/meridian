@@ -167,6 +167,22 @@ describe('WikiClaims', () => {
     expect(tip()).toBe('“wide trees amortize”')
   })
 
+  it('带着要落到的结论打开时,把那条结论移到眼前;没带时不动', async () => {
+    const shown: (string | undefined)[] = []
+    // jsdom lays nothing out and has no scrollIntoView.
+    HTMLElement.prototype.scrollIntoView = function (this: HTMLElement) { shown.push(this.dataset.claim) }
+    try {
+      expect(shown).toEqual([])
+      const claim = PAGE.claims[1]!.id
+      await act(async () => {
+        root!.render(<MessagesProvider><WikiClaims page={PAGE} pending={false} links={links} onApply={onApply} arrival={claim} /></MessagesProvider>)
+      })
+      expect(shown).toEqual([claim])
+    } finally {
+      delete (HTMLElement.prototype as Partial<HTMLElement>).scrollIntoView
+    }
+  })
+
   it('添加结论:个人判断作依据,id 由正文算出', async () => {
     act(() => host.querySelector<HTMLButtonElement>('.add-action')!.click())
     expect(save().disabled).toBe(true)

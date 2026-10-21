@@ -91,7 +91,9 @@ vi.mock('../shell/AppShell.js', () => ({
 }))
 
 vi.mock('../hooks/useVaultWrite.js', () => ({ useVaultWrite: () => async (op: Promise<unknown>) => { await op; return true } }))
-vi.mock('../components/wiki/WikiClaims.js', () => ({ WikiClaims: () => null }))
+vi.mock('../components/wiki/WikiClaims.js', () => ({
+  WikiClaims: ({ arrival }: { arrival?: string }) => <i className="claims-probe" data-arrival={arrival ?? ''} />,
+}))
 
 const { Wiki } = await import('./Wiki.js')
 
@@ -326,7 +328,7 @@ describe('Wiki 首页屏头的待审阅与需要整理', () => {
     proposal: { title: id, producer: { kind: 'ai', id: 'skill.meridian' }, trigger: { kind: 'manual' }, ops: [] },
     pages: [], titles: {}, claimTexts: {},
   }) as unknown as WikiProposal
-  const signal = (kind: WikiSignal['kind'], page: string): WikiSignal => ({ kind, page, related: [], detail: '一句' })
+  const signal = (kind: WikiSignal['kind'], page: string, related: string[] = []): WikiSignal => ({ kind, page, related, detail: '一句' })
 
   const render = async () => {
     await act(async () => {
@@ -390,6 +392,15 @@ describe('Wiki 首页屏头的待审阅与需要整理', () => {
     expect(host.querySelector('.desk-head .page-actions')).toBeNull()
   })
 
+  it('需要整理里冲突那一行打开它的页,并落到冲突的那条结论', async () => {
+    fixture.signals.mockResolvedValue([signal('open-conflict', 'topics/sd', ['topics/sd#knee'])])
+    await render()
+    await press(actions().find((button) => button.textContent!.startsWith('需要整理'))!)
+    await press(all('.desk-body .structured-row')[0]!)
+    expect(fixture.aggregation).toHaveBeenLastCalledWith('topics/sd')
+    expect(host.querySelector('.claims-probe')!.getAttribute('data-arrival')).toBe('knee')
+  })
+
   it('需要整理打开整理页:屏头有返回和「需要整理 · N」,一行一个信号,点一行打开它的页或项目;待审阅打开审阅队列', async () => {
     await render()
     await press(actions().find((button) => button.textContent!.startsWith('需要整理'))!)
@@ -397,8 +408,8 @@ describe('Wiki 首页屏头的待审阅与需要整理', () => {
     expect(host.querySelector('.desk-head .back')).not.toBeNull()
     expect(host.querySelector('.desk-head .page-actions')).toBeNull()
     const rows = all('.desk-body .structured-row')
-    expect(rows.map((row) => [row.tagName, row.textContent])).toEqual([
-      ['BUTTON', '冲突推测解码'], ['BUTTON', '断链推测解码加速'], ['BUTTON', '未归类EAGLE-2'],
+    expect(rows.map((row) => [row.querySelector('.tidy-open')!.tagName, row.textContent])).toEqual([
+      ['BUTTON', '结论冲突推测解码'], ['BUTTON', '链接失效推测解码加速'], ['BUTTON', '未归入主题EAGLE-2'],
     ])
     await press(rows[1]!)
     expect(fixture.open).toHaveBeenCalledWith('project', 'p-47')

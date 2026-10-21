@@ -242,7 +242,9 @@ export const wiki = {
     entry: '需要整理',
     title: (n: number) => `需要整理 · ${n}`,
     empty: '还没有需要整理的页',
-    kinds: { 'open-conflict': '冲突', 'broken-link': '断链', 'thin-aggregation': '内容少', 'unfiled-paper': '未归类' },
+    kinds: { 'open-conflict': '结论冲突', 'broken-link': '链接失效', 'thin-aggregation': '内容太少', 'unfiled-paper': '未归入主题' },
+    pointsTo: '→',
+    conflictsWith: '↔',
   },
   queue: {
     entry: '待审阅',

@@ -370,6 +370,9 @@ export function Wiki() {
   const [backlinks, setBacklinks] = useState<{ page: string; links: WikiBacklink[] } | null>(null)
   const [signals, setSignals] = useState<WikiSignal[] | null>(null)
   const [tidyTitles, setTidyTitles] = useState<Record<string, string> | null>(null)
+  /** The claim a tidying row opens its page at, until the page has brought it into view. */
+  const [arrival, setArrival] = useState<{ page: string; claim: string } | null>(null)
+  const arrived = useCallback(() => setArrival(null), [])
   const [error, setError] = useState<string | null>(null)
   const consumed = useRef(0)
   const main = useRef<HTMLDivElement>(null)
@@ -457,22 +460,28 @@ export function Wiki() {
     void wiki.signals().then(setSignals).catch(reportError)
   }, [revision, reportError])
 
-  // The tidying list names each row's page: aggregations and projects from their lists, papers one by one.
+  // The tidying list names each row's page: aggregations and projects from their lists, papers one by
+  // one; and the claims a conflict is with, from their pages.
   useEffect(() => {
     setTidyTitles(null)
     if (place !== TIDY || signals === null) return
     let live = true
-    const pages = tidyRows(signals).map((row) => row.page)
+    const rows = tidyRows(signals)
+    const pages = rows.map((row) => row.page)
     const paperPages = [...new Set(pages.filter((id) => id.startsWith(PAPER_PAGE)))]
+    const claimPages = [...new Set(rows.filter((row) => row.kind === 'open-conflict')
+      .flatMap((row) => row.targets.map((ref) => ref.split('#')[0]!)))]
     void Promise.all([
       wiki.cards(), project.list(),
       Promise.all(paperPages.map(async (id) => [id, (await papers.get(id.slice(PAPER_PAGE.length))).title] as const)),
-    ]).then(([cards, projects, paperTitles]) => {
+      Promise.all(claimPages.map(async (id) => (await wiki.aggregation(id)).claims.map((c) => [`${id}#${c.id}`, c.text] as const))),
+    ]).then(([cards, projects, paperTitles, claimTexts]) => {
       if (live) {
         setTidyTitles(Object.fromEntries([
           ...cards.map((c) => [c.id, c.title] as const),
           ...projects.map((p) => [`${PROJECT_PAGE}${p.id}`, p.name] as const),
           ...paperTitles,
+          ...claimTexts.flat(),
         ]))
       }
     }).catch(reportError)
@@ -553,10 +562,17 @@ export function Wiki() {
     else jumpTo(ENTITY_SCREEN[link.kind], link.id)
   }
 
-  /** Opens the page a tidying row is about: a Wiki page here, a project on its own screen. */
-  const openSignal = (page: string) => {
-    if (page.startsWith(PROJECT_PAGE)) jumpTo('project', page.slice(PROJECT_PAGE.length))
-    else go(page)
+  /**
+   * Opens the page a tidying row is about: a Wiki page here, at `claim` (a `page#claim` ref) when it
+   * names one, and a project on its own screen.
+   */
+  const openSignal = (page: string, claim?: string) => {
+    if (page.startsWith(PROJECT_PAGE)) {
+      jumpTo('project', page.slice(PROJECT_PAGE.length))
+      return
+    }
+    setArrival(claim === undefined ? null : { page, claim: claim.slice(page.length + 1) })
+    go(page)
   }
 
   /**
@@ -874,6 +890,7 @@ export function Wiki() {
                 <WikiClaims
                   page={shownAgg} pending={pending} links={claimLinks}
                   onApply={(note, ops) => propose(note, ops, m.wiki.claims.saved)}
+                  arrival={arrival?.page === shownAgg.id ? arrival.claim : undefined} onArrived={arrived}
                 />
                 {bodyHead(shownAgg.title)}
                 <MarkdownBox
