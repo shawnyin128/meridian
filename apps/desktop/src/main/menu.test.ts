@@ -35,6 +35,24 @@ describe('menuTemplate', () => {
     expect(clicked).toHaveBeenCalledTimes(3)
   })
 
+  it('三个平台都在「设置…」之后列出「命令面板…」:同一个标签、同一个 CmdOrCtrl+Shift+P、同一个动作', () => {
+    const opened = vi.fn()
+    for (const platform of ['darwin', 'win32', 'linux'] as const) {
+      const menu = menuTemplate(platform, () => {}, MAIN_COPY.zh.menu, () => {}, opened)
+        .find((item) => Array.isArray(item.submenu) && item.submenu.some((sub) => sub.id === 'settings'))!
+      const ids = (menu.submenu as MenuItemConstructorOptions[]).map((item) => item.id)
+      expect(ids[ids.indexOf('settings') + 1]).toBe('palette')
+      // Electron reads CmdOrCtrl as ⌘ on macOS and Ctrl elsewhere: ⇧⌘P and Ctrl+Shift+P.
+      const palette = flatten([menu]).find((item) => item.id === 'palette')
+      expect(palette?.label).toBe('命令面板…')
+      expect(palette?.accelerator).toBe('CmdOrCtrl+Shift+P')
+      palette?.click?.(null as never, undefined, null as never)
+    }
+    expect(opened).toHaveBeenCalledTimes(3)
+    expect(flatten(menuTemplate('darwin', () => {}, MAIN_COPY.en.menu)).find((item) => item.id === 'palette')?.label)
+      .toBe('Command Palette…')
+  })
+
   it('英文菜单使用自然的 Settings 和 Tools 标签', () => {
     for (const platform of ['darwin', 'win32', 'linux'] as const) {
       const settings = flatten(menuTemplate(platform, () => {}, MAIN_COPY.en.menu))
@@ -54,7 +72,7 @@ describe('menuTemplate', () => {
     }
   })
 
-  it('Windows 与 Linux 上「工具」菜单排在视图之后、窗口之前,只装「设置…」一项', () => {
+  it('Windows 与 Linux 上「工具」菜单排在视图之后、窗口之前,只装「设置…」与「命令面板…」两项', () => {
     for (const platform of ['win32', 'linux'] as const) {
       const template = menuTemplate(platform, () => {}, MAIN_COPY.zh.menu)
       expect(template.map((item) => item.label ?? item.role))
@@ -62,7 +80,7 @@ describe('menuTemplate', () => {
 
       const tools = template[3]
       expect(Array.isArray(tools?.submenu) ? tools.submenu.map((i) => i.id) : [])
-        .toEqual(['settings'])
+        .toEqual(['settings', 'palette'])
     }
   })
 
@@ -82,9 +100,9 @@ describe('menuTemplate', () => {
     const template = menuTemplate('darwin', () => {}, MAIN_COPY.zh.menu)
     const appMenu = template[0]
     expect(appMenu?.role).toBe('appMenu')
-    expect(Array.isArray(appMenu?.submenu) ? appMenu.submenu.map((i) => i.role) : [])
+    expect(Array.isArray(appMenu?.submenu) ? appMenu.submenu.map((i) => i.role ?? i.id) : [])
       .toEqual([
-        'about', undefined, undefined, undefined, 'services', undefined,
+        'about', undefined, 'settings', 'palette', undefined, 'services', undefined,
         'hide', 'hideOthers', 'unhide', undefined, 'quit',
       ])
     expect(template[1]?.role).toBe('fileMenu')

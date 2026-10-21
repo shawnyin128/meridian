@@ -27,7 +27,11 @@ export function commitsMultiline(key: Pick<KeyboardEvent, 'key' | 'metaKey' | 'c
   return key.key === 'Enter' && (key.metaKey || key.ctrlKey) && !composing(key)
 }
 
-/** The label of the shortcut that is `key` pressed with the platform's command key: ⌘ on macOS, Ctrl elsewhere. */
-export function commandShortcut(platform: string, key: string): string {
-  return platform === 'darwin' ? `⌘${key}` : `Ctrl+${key}`
+/**
+ * The label of the shortcut that is `key` pressed with the platform's command key, ⌘ on macOS and
+ * Ctrl elsewhere, and with Shift too when `shift` is set: ⇧⌘P on macOS, Ctrl+Shift+P elsewhere.
+ */
+export function commandShortcut(platform: string, key: string, shift = false): string {
+  if (platform === 'darwin') return `${shift ? '⇧' : ''}⌘${key}`
+  return `Ctrl+${shift ? 'Shift+' : ''}${key}`
 }

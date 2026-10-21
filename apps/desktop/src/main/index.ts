@@ -26,6 +26,7 @@ const here = dirname(fileURLToPath(import.meta.url))
 /** Channel used by Main to forward a user request to open Settings; preload exposes only this event. */
 const OPEN_SETTINGS = 'meridian:open-settings'
 const OPEN_AGENT_TUTORIAL = 'meridian:open-agent-tutorial'
+const OPEN_PALETTE = 'meridian:open-palette'
 const CHOOSE_LIBRARY_ROOT = 'meridian:choose-library-root'
 const CHOOSE_WORKSPACE_ROOT = 'meridian:choose-workspace-root'
 const REVEAL_FILE = 'meridian:reveal-file'
@@ -137,6 +138,7 @@ app.whenReady().then(() => {
       () => win.webContents.send(OPEN_SETTINGS),
       copy().menu,
       () => win.webContents.send(OPEN_AGENT_TUTORIAL),
+      () => win.webContents.send(OPEN_PALETTE),
     )))
   installMenu()
 

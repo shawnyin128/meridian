@@ -14,7 +14,7 @@ export type MainCopy = {
 export const MAIN_COPY: Record<UiLocale, MainCopy> = {
   zh: {
     menu: {
-      settings: '设置…', tools: '工具', help: 'Help', agentTutorial: 'Skill 与 MCP 使用教程',
+      settings: '设置…', palette: '命令面板…', tools: '工具', help: 'Help', agentTutorial: 'Skill 与 MCP 使用教程',
     },
     chooseLibrary: { title: '选择 Meridian 论文库根目录', button: '选择' },
     chooseWorkspace: { title: '选择项目目录', button: '连接' },
@@ -31,7 +31,7 @@ export const MAIN_COPY: Record<UiLocale, MainCopy> = {
   },
   en: {
     menu: {
-      settings: 'Settings…', tools: 'Tools', help: 'Help',
+      settings: 'Settings…', palette: 'Command Palette…', tools: 'Tools', help: 'Help',
       agentTutorial: 'Using Skills and MCP…',
     },
     chooseLibrary: { title: 'Choose a Meridian library folder', button: 'Choose' },

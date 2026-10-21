@@ -54,7 +54,7 @@ export const shell = {
     manageChat: (title: string) => `Manage chat: ${title}`,
     archive: 'Archive',
   },
-  titlebar: { settings: 'Settings…', checkUpdates: 'Check for Updates…', about: 'About Meridian' },
+  titlebar: { settings: 'Settings…', palette: 'Command Palette…', checkUpdates: 'Check for Updates…', about: 'About Meridian' },
   about: { title: 'About Meridian', releases: 'Release notes', version: (version: string) => `Version ${version}` },
   bootFailure: {
     title: "The library won't open",
@@ -66,5 +66,5 @@ export const shell = {
     results: 'Search results',
     noHits: 'No matches found',
   },
-  palette: { title: 'Command palette', placeholder: 'Search or run a command' },
+  palette: { title: 'Command palette', placeholder: 'Type a command', settingsPane: (pane: string) => `Settings · ${pane}` },
 } satisfies typeof zh

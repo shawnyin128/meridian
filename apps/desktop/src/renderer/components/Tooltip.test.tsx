@@ -142,4 +142,9 @@ describe('commandShortcut', () => {
     expect(['darwin', 'win32', 'linux'].map((platform) => commandShortcut(platform, 'B')))
       .toEqual(['⌘B', 'Ctrl+B', 'Ctrl+B'])
   })
+
+  it('puts Shift before ⌘ on macOS, as its menus do, and after Ctrl elsewhere', () => {
+    expect(['darwin', 'win32', 'linux'].map((platform) => commandShortcut(platform, 'P', true)))
+      .toEqual(['⇧⌘P', 'Ctrl+Shift+P', 'Ctrl+Shift+P'])
+  })
 })

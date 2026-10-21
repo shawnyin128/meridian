@@ -44,7 +44,7 @@ export function openHit(hit: SearchHit, open: (screen: ScreenKey, target: string
  * Hit `index` of a candidate list driven by `keys`, as a two-line row: its title, then the text it
  * matched in place of its secondary line when it matched outside its title.
  */
-export function HitOption({ hit, keys, index, onChoose }: {
+function HitOption({ hit, keys, index, onChoose }: {
   hit: SearchHit
   keys: Pick<CandidateKeys, 'active' | 'pointAt'>
   index: number
