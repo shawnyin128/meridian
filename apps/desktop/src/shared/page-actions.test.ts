@@ -2,6 +2,7 @@ import { readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { parse } from '@babel/parser'
 import { describe, expect, it } from 'vitest'
+import { catalogFor } from '../renderer/messages/catalog.js'
 
 const RENDERER = join(import.meta.dirname, '..', 'renderer')
 
@@ -144,7 +145,7 @@ const LABELLED: [RegExp, string][] = [
   [/^m\.(inbox\.dismissAll|changelog\.archiveAll)\b/, 'dismiss all'],
 ]
 
-type Look = { operation: string; size: string; variant: string }
+type Look = { operation: string; size: string; variant: string; label?: string }
 type Placement = Look & { slot: Slot; at: string }
 type IconPlacement = { slot: Slot; size: string; at: string }
 type Place = { slot: Slot; size: string; variant: string; scope?: string }
@@ -209,7 +210,9 @@ function lookOf(element: Node, source: string): Look | null {
   const expression = (attr: Node | undefined) => ((attr?.value as Node | undefined)?.expression as Node | undefined)
   const literal = (attr: string) => strings(attribute(element, attr))[0]
   const labelled = (label: string) => LABELLED.find(([pattern]) => pattern.test(label))?.[1]
-  if (name === 'SortMenu') return { operation: 'sort', size: 'md', variant: 'plain' }
+  if (name === 'SortMenu') {
+    return { operation: 'sort', size: 'md', variant: 'plain', label: text(expression(attribute(element, 'label'))) }
+  }
   if (name === 'AddAction') {
     const variant = literal('variant') ?? 'section'
     if (variant === 'page') return { operation: 'create', size: 'md', variant: 'primary' }
@@ -337,6 +340,10 @@ const ICON_SIZES: Partial<Record<Slot, string>> = { 'row actions': 'nested', chi
 
 const shown = (place: Pick<Place, 'slot' | 'size' | 'variant'>) => `${place.slot} · ${place.size} · ${place.variant}`
 
+/** The text that a message path such as `m.ideas.sort` names in `locale`. */
+const textOf = (path: string, locale: 'zh' | 'en') => String(path.split('.').slice(1)
+  .reduce<unknown>((held, key) => (held as Record<string, unknown>)[key], catalogFor(locale)))
+
 describe('一个操作一个位置', () => {
   it('每个操作只在它的位置上出现，同一种尺寸和样式；另一个位置要写明它的作用范围', () => {
     const offenders = PLACEMENTS
@@ -350,6 +357,15 @@ describe('一个操作一个位置', () => {
       .filter((place) => !PLACEMENTS.some((placement) => placement.operation === operation && shown(placement) === shown(place)))
       .map((place) => `${operation}: ${shown(place)}`))
     expect(unused).toEqual([])
+  })
+
+  it('一次性的重新排列和收件里一直生效的排序是两个名字，项目和想法的重新排列同名', () => {
+    const menus = PLACEMENTS.filter((placement) => placement.operation === 'sort')
+    const clashes = menus.flatMap((menu) => (['zh', 'en'] as const)
+      .filter((locale) => textOf(menu.label!, locale) === textOf('m.inbox.sortLabel', locale))
+      .map((locale) => `${menu.at} ${locale}: ${textOf(menu.label!, locale)}`))
+    expect(clashes).toEqual([])
+    expect(new Set(menus.map((menu) => `${textOf(menu.label!, 'zh')} / ${textOf(menu.label!, 'en')}`)).size).toBe(1)
   })
 
   it('一行的图标操作一种尺寸：行里是嵌套尺寸，标签里是行内尺寸', () => {

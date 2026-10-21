@@ -31,7 +31,7 @@ export const research = {
     title: (n: number) => `项目 · ${n}`,
     create: '新建项目',
     empty: '还没有进行中的项目',
-    sort: '排序',
+    sort: '重新排列',
     sortPriority: '按优先级',
     sortMilestone: '按下一个里程碑',
     renameTitle: '重命名项目',

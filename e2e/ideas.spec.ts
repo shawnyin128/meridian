@@ -52,11 +52,11 @@ test('拖一张想法卡片到另一张前面,顺序写进库里', async ({ win 
   await expect.poll(async () => (await listIdeaIds(win)).filter((id) => seeded.has(id))).toEqual(expected)
 })
 
-test('排序按钮点「按更新时间」不报错,菜单收起、列表还在', async ({ win }) => {
+test('重新排列点「按更新时间」不报错,菜单收起、列表还在', async ({ win }) => {
   const seeded = await seedIdea(win, '排序菜单验证')
   await gotoIdeas(win)
 
-  await win.locator('.desk-head .page-actions .sort-menu', { hasText: '排序' }).click()
+  await win.locator('.desk-head .page-actions .sort-menu', { hasText: '重新排列' }).click()
   await win.locator('.ctxmenu .mi', { hasText: '按更新时间' }).click()
 
   await expect(win.locator('.ctxmenu')).toHaveCount(0)

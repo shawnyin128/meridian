@@ -79,7 +79,7 @@ describe('PageShell', () => {
   it('sorts a page from its header at the page weight and adds to a section from its heading at the section weight', () => {
     const html = renderToStaticMarkup(
       <>
-        <PageHeader actions={<SortMenu label="排序" options={[{ label: '按更新时间', onSelect: () => undefined }]} />}>
+        <PageHeader actions={<SortMenu label="重新排列" options={[{ label: '按更新时间', onSelect: () => undefined }]} />}>
           <PageTitle>想法</PageTitle>
         </PageHeader>
         <SectionHeading actions={<AddAction variant="section">任务</AddAction>}>计划</SectionHeading>
