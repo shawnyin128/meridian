@@ -1,4 +1,4 @@
-import { _electron as electron, test as base } from '@playwright/test'
+import { _electron as electron, expect, test as base } from '@playwright/test'
 import type { ElectronApplication, Locator, Page } from '@playwright/test'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -109,6 +109,45 @@ export function uniqueHeights(rows: Locator): Promise<number[]> {
 export async function parkPointer(win: Page): Promise<void> {
   await win.mouse.move(600, 400)
   await win.mouse.move(0, 0)
+}
+
+/**
+ * Where the text inside `box` lies: the left and top of its content box, inside border and padding,
+ * its width and its line height. A text that keeps all four keeps every line break.
+ */
+export function textBox(box: Locator): Promise<{ left: number; top: number; width: number; lineHeight: string }> {
+  return box.evaluate((el) => {
+    const rect = el.getBoundingClientRect()
+    const style = getComputedStyle(el)
+    const left = rect.left + parseFloat(style.borderLeftWidth) + parseFloat(style.paddingLeft)
+    const right = rect.right - parseFloat(style.borderRightWidth) - parseFloat(style.paddingRight)
+    const top = rect.top + parseFloat(style.borderTopWidth) + parseFloat(style.paddingTop)
+    return { left, top, width: right - left, lineHeight: style.lineHeight }
+  })
+}
+
+/**
+ * The property rail `rail`: where its content starts, the edge inside its border past which it clips,
+ * and how far it is scrolled sideways.
+ */
+export function railEdges(rail: Locator): Promise<{ left: number; clip: number; scrollLeft: number }> {
+  return rail.evaluate((el) => {
+    const rect = el.getBoundingClientRect()
+    const style = getComputedStyle(el)
+    return {
+      left: rect.left + parseFloat(style.borderLeftWidth) + parseFloat(style.paddingLeft),
+      clip: rect.right - parseFloat(style.borderRightWidth),
+      scrollLeft: el.scrollLeft,
+    }
+  })
+}
+
+/** Expects `editor` to hold focus and show whole inside the property rail `rail`, which has not scrolled sideways. */
+export async function expectWholeInRail(rail: Locator, editor: Locator): Promise<void> {
+  await expect(editor).toBeFocused()
+  const [box, edges] = await Promise.all([editor.boundingBox(), railEdges(rail)])
+  expect(box!.x + box!.width).toBeLessThanOrEqual(edges.clip)
+  expect(edges.scrollLeft).toBe(0)
 }
 
 /** Finishes every running transition and animation on the element, so computed styles read next are final. */

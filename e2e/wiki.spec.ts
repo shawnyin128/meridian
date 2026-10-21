@@ -1,6 +1,6 @@
 import type { Locator, Page } from '@playwright/test'
 import { PAPER_PAGE } from '../apps/desktop/src/shared/vocabulary.js'
-import { dshort, expect, parkPointer, test, type MeridianWindow } from './app.js'
+import { dshort, expect, expectWholeInRail, parkPointer, test, textBox, type MeridianWindow } from './app.js'
 
 /** Visited screens stay mounted, so selectors every screen has, like the header, target the shown one. */
 const shown = (win: Page) => win.locator('.screenslot:not([hidden])')
@@ -243,6 +243,24 @@ test('论文页的属性里年份与发表分两行,各写各的', async ({ win 
   // sits inside a wrapping .metadata-field span, which is the actual sibling right after .pk.
   await expect(props.locator('.pk:text-is("年份") + .metadata-field .metadata-editable')).toHaveText(String(paper.year))
   await expect(props.locator('.pk:text-is("发表") + .metadata-field .metadata-editable')).toHaveText(paper.venue)
+})
+
+test('论文页右栏的多行和单行值进入编辑时,编辑框整个露在右栏里,右栏不横向滚动,字不挪位', async ({ win }) => {
+  await gotoWiki(win)
+  await shown(win).locator('.wkgrid').last().locator('.wkcard').first().click()
+  const side = shown(win).locator('.wkside')
+  for (const key of ['标题', '年份']) {
+    const field = side.locator(`.wkprops .pk:text-is("${key}") + .metadata-field`)
+    const value = field.locator('.metadata-editable')
+    const before = await textBox(value)
+
+    await value.click()
+    const input = field.locator('.metadata-input')
+    await expectWholeInRail(side, input)
+    expect((await textBox(input)).left).toBe(before.left)
+    await input.press('Escape')
+    await expect(input).toHaveCount(0)
+  }
 })
 
 test('项目详情的关联 chip 也进对应的聚合页', async ({ win }) => {
