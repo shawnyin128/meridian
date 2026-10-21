@@ -2191,6 +2191,27 @@ describe('vault store on the aggregation layout', () => {
       expect(held('feed').find((row) => row['id'] === 'entry-901')).toEqual(broken)
     })
 
+    it('动态里后来的版本写下的点名分段:列出时带着它点名的实体;这个版本再记一条时那些分段原样存回,新记的不点名', () => {
+      const naming = {
+        id: 'entry-902', source: 'lab', day: '今天', time: '09:02', createdAt: '2026-09-10T09:02:00.000Z',
+        body: { kind: 'runs', runs: [
+          { kind: 'strong', text: '「draft 效率」', target: { kind: 'project', id: 'draft' } }, { kind: 'text', text: '跑完宽树' },
+        ] },
+      }
+      const plain = {
+        id: 'entry-903', source: 'me', day: '今天', time: '09:03', createdAt: '2026-09-10T09:03:00.000Z',
+        body: { kind: 'runs', runs: [{ kind: 'strong', text: '《GPTQ》' }, { kind: 'text', text: '已入库' }] },
+      }
+      put('feed', [naming, plain])
+      const reopened = reopen()
+      expect(reopened.listFeed().filter((entry) => entry.id.startsWith('entry-90'))).toEqual([plain, naming])
+
+      reopened.appendFeed({ source: 'me', body: { kind: 'runs', runs: [{ kind: 'text', text: '新记的一条' }] } })
+      const [first, second, added] = held('feed')
+      expect([first, second]).toEqual([naming, plain])
+      expect(added!['body']).toEqual({ kind: 'runs', runs: [{ kind: 'text', text: '新记的一条' }] })
+    })
+
     it('读不了的关注名下的收件不当成孤儿删掉', () => {
       vi.spyOn(console, 'error').mockImplementation(() => {})
       put('watches', [{ id: 'w-1', name: 'NeurIPS', type: 'venue', active: true }])

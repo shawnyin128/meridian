@@ -8,6 +8,7 @@ import { useJump, useVaultRevision } from '../shell/AppShell.js'
 import { CONFLICT_THREAD } from '../lib/chat.js'
 import { DateChip, DateTimeDisplay } from '../components/DateTimeDisplay.js'
 import { DayHeading, daySectionName } from '../components/DayHeading.js'
+import { ENTITY_SCREEN, EntityLink } from '../components/EntityLink.js'
 import { LoadingPlaceholder } from '../components/LoadingPlaceholder.js'
 import {
   PageBody, PageError, PageHeader, PageShell, PageTitle, PageToolbar,
@@ -67,6 +68,27 @@ const FSRC: Record<FeedSource, { icon: ReactNode }> = {
 /** The order of the five buttons on the filter bar is taken from the demo; "all" does not filter, and the others filter one source each. Labels come from the catalog. */
 const FILTERS: (FeedSource | null)[] = [null, 'steward', 'me', 'lab', 'inbox']
 
+type FeedRun = Extract<FeedEntry['body'], { kind: 'runs' }>['runs'][number]
+
+/** Whether a feed run's target names an entity this version opens. */
+const opensHere = (kind: string): kind is keyof typeof ENTITY_SCREEN => Object.hasOwn(ENTITY_SCREEN, kind)
+
+/** One run of a feed paragraph in its kind's look; one that names a paper, project or Wiki page is a link that opens it. */
+function Run({ run }: { run: FeedRun }) {
+  const { open } = useJump()
+  const text = run.kind === 'strong' ? <PaperText text={run.text} /> : run.text
+  const target = run.target !== undefined && opensHere(run.target.kind) ? { kind: run.target.kind, id: run.target.id } : undefined
+  const named = target === undefined
+    ? text
+    : (
+      <EntityLink
+        kind={target.kind} label={text} href={`#${ENTITY_SCREEN[target.kind]}:${target.id}`}
+        onOpen={() => open(ENTITY_SCREEN[target.kind], target.id)}
+      />
+    )
+  return run.kind === 'strong' ? <b>{named}</b> : named
+}
+
 /** A feed entry's body: a formatted paragraph, or a brief. */
 function Body({ body, onOpenConflict }: {
   body: FeedEntry['body']; onOpenConflict: () => void
@@ -88,13 +110,7 @@ function Body({ body, onOpenConflict }: {
       </div>
     )
   }
-  return (
-    <>
-      {body.runs.map((run, at) => (
-        run.kind === 'strong' ? <b key={at}><PaperText text={run.text} /></b> : <Fragment key={at}>{run.text}</Fragment>
-      ))}
-    </>
-  )
+  return <>{body.runs.map((run, at) => <Run key={at} run={run} />)}</>
 }
 
 /**
