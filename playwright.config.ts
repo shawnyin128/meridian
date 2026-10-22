@@ -9,5 +9,5 @@ export default defineConfig({
   testDir: 'e2e',
   workers: 1,
   reporter: [['list']],
-  outputDir: '.superpowers/e2e-artifacts',
+  outputDir: 'outputs/e2e/artifacts',
 })

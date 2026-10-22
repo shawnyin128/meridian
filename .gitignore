@@ -28,3 +28,4 @@ eval/cases/*_calibration_*.jsonl
 /desktop/
 
 .DS_Store
+outputs/

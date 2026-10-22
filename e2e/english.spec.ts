@@ -1,7 +1,7 @@
 import { resolve } from 'node:path'
 import { expect, openSettings, test } from './app.js'
 
-const SHOTS = resolve(import.meta.dirname, '../.superpowers/e2e-shots')
+const SHOTS = resolve(import.meta.dirname, '../outputs/e2e/shots')
 
 /** Sidebar entry selector and the English crumb its screen shows. */
 const SCREENS: readonly (readonly [string, string])[] = [

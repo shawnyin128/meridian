@@ -247,6 +247,11 @@ itself, and the CLI tests need PyYAML.
   cover them; add an end-to-end case only for behaviour no unit test can reach.
   Let a started run finish, and do not re-run specs that already passed on the
   same code.
+- Everything a build, a seed or a test run generates goes under the
+  checkout's `outputs/` folder, which git ignores, never onto the Desktop:
+  unpacked builds in `outputs/builds/`, test libraries in
+  `outputs/test-library/`, end-to-end artifacts and screenshots in
+  `outputs/e2e/`.
 
 ## Test Library
 
@@ -258,9 +263,8 @@ on the reviewing machine.
   `<dir>` from scratch with its own config home and user-data folder;
   `node scripts/test-library.mjs open --out <dir> [--app <build>]` opens it.
   Without `--app` both use the checkout's built `apps/desktop`.
-- Test libraries live in `~/Desktop/meridian-test-library/<display version>/`
-  on macOS and `%USERPROFILE%\Desktop\meridian-test-library\<display version>\`
-  on Windows.
+- Test libraries live in `outputs/test-library/<display version>/` in the
+  checkout, on macOS and Windows alike.
 - A pull request that adds a screen or a stored kind adds its scenario to the
   seed.
 
@@ -304,9 +308,9 @@ checks. This is the order to follow, on the version's release branch and never o
    - Windows (PowerShell): `npx electron-builder --config electron-builder.config.mjs --dir`
      writes `dist\win-unpacked`.
 
-   Copy that output into a new folder for every build (`ditto` on macOS,
-   `Copy-Item -Recurse` on Windows): the owner may still have the previous one
-   open, and overwriting a running build breaks it.
+   Copy that output into a new folder under `outputs/builds/` for every build
+   (`ditto` on macOS, `Copy-Item -Recurse` on Windows): the owner may still have
+   the previous one open, and overwriting a running build breaks it.
 4. **Upgrade smoke.** Copy a real library written by the previous release, the
    `.meridian` folder of every workspace it links, and a config home into a
    temporary directory, and rewrite the copied workspace paths to the copies.
