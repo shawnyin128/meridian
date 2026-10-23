@@ -530,7 +530,8 @@ export interface VaultStore {
    * other in that order. Each entry names the original it stands for; where
    * the vault holds a page for that original the entry carries that page's id
    * instead, which is what opening the original goes by, and where more than
-   * one page names it the first in vault order stands.
+   * one page names it the first in vault order stands. An entry reads as
+   * downloaded exactly while such a page exists.
    */
   listInbox(params?: InboxListParams): InboxEntry[]
 
