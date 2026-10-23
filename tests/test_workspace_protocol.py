@@ -455,6 +455,9 @@ class WorkspaceProtocolTest(unittest.TestCase):
                 "c" * 61: "idea context must be one line of at most 60 characters",
                 "Prefix cache\neviction": "idea context must be one line of at most 60 characters",
                 "2026-10-21 prefix cache discussion": "idea context must not hold a date or time",
+                "Prefix cache, discussed 2026/10/21": "idea context must not hold a date or time",
+                "Prefix cache eviction, 10-21": "idea context must not hold a date or time",
+                "创建于2026-10-21的讨论": "idea context must not hold a date or time",
                 "创建于 10月21日，更新于 10月22日": "idea context must not hold a date or time",
                 "Eviction discussion at 14:30": "idea context must not hold a date or time",
             }
@@ -462,6 +465,25 @@ class WorkspaceProtocolTest(unittest.TestCase):
                 with self.subTest(context=context), self.assertRaisesRegex(WorkspaceProtocolError, reason):
                     self._add_idea(root, context=context)
             self.assertFalse((root / AGENT_IDEAS_PATH).exists())
+
+    def test_agent_idea_context_may_hold_numbers_that_are_not_dates_or_times(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._workspace(root)
+            contexts = [
+                "KV compression at a 1:10 ratio",
+                "16:9 画幅的草稿",
+                "Batch 1024-4096 sweep",
+                "25:61 split of the eval set",
+                "13-14 层剪枝",
+                "B=16 宽度扫描",
+            ]
+
+            for index, context in enumerate(contexts):
+                with self.subTest(context=context):
+                    self.assertEqual(self._add_idea(root, idea_id=f"idea-{index}", context=context)["status"], "created")
+            stored = json.loads((root / AGENT_IDEAS_PATH).read_text(encoding="utf-8"))["ideas"]
+            self.assertEqual([idea["context"] for idea in stored], contexts)
 
     def test_agent_idea_stores_exactly_the_accepted_fields(self) -> None:
         with TemporaryDirectory() as tmp:

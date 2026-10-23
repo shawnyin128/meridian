@@ -70,6 +70,11 @@ describe('IdeaPanel', () => {
     expect(host.lastElementChild).toBe(host.querySelector('.idea-panel-source'))
   })
 
+  it('创建和更新是同一天时只写创建于', () => {
+    act(() => root.render(<MessagesProvider><IdeaPanel idea={{ ...IDEA, updated: IDEA.created }} onClose={vi.fn()} /></MessagesProvider>))
+    expect(host.querySelector('.idea-panel-meta .idea-panel-dates')!.textContent).toBe('创建于 9月17日')
+  })
+
   it('自己写下的想法没有来源一节，也不写手动添加', () => {
     const own: ResearchIdea = { ...IDEA, source: { chatTitle: '手动添加' } }
     act(() => root.render(<MessagesProvider><IdeaPanel idea={own} onClose={vi.fn()} onOpenSourceChat={vi.fn()} /></MessagesProvider>))

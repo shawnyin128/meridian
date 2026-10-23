@@ -41,8 +41,14 @@ _EVENT_TITLE_MAX_LEN = 120
 _EVENT_DETAIL_MAX_LEN = 300
 IDEA_TITLE_MAX_LEN = 80
 IDEA_CONTEXT_MAX_LEN = 60
-# Dates and clock times as agents write them; an idea's day has its own field.
-_DATE_OR_TIME = re.compile(r"\d{4}[-/年]\d{1,2}|\d{1,2}月\d{1,2}日|\d{1,2}:\d{2}")
+_MONTH = r"(?:0?[1-9]|1[0-2])"
+_DAY = r"(?:0?[1-9]|[12]\d|3[01])"
+# A date (2026-10-21, 2026/10/21, 10-21, 10月21日) or a clock time (14:30) not inside a longer
+# number; an idea's day has its own field.
+_DATE_OR_TIME = re.compile(
+    rf"(?<!\d)(?:\d{{4}}[-/]{_MONTH}[-/]{_DAY}|(?:0[1-9]|1[0-2])-(?:0[1-9]|[12]\d|3[01])"
+    rf"|(?:[01]\d|2[0-3]):[0-5]\d|{_MONTH}月{_DAY}[日号])(?!\d)"
+)
 _CHANGE_KINDS = {
     "project.snapshot",
     "project.updated",

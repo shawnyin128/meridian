@@ -53,9 +53,10 @@ export function IdeaSource({ idea, message = (source) => source, onOpenPaper }: 
 
 /**
  * The one detail panel of an idea, on the Ideas screen and on the project page: the title with the
- * host's `actions` and the close button, the kind and archived tags with the created and updated
- * dates, the content, the host's own sections (`children`), then the source, which an idea the user
- * wrote down on their own does not have. `editor`, when given, takes the content's place.
+ * host's `actions` and the close button, the kind and archived tags with the created date and,
+ * when it differs, the updated date, the content, the host's own sections (`children`), then the
+ * source, which an idea the user wrote down on their own does not have. `editor`, when given, takes
+ * the content's place.
  * `onOpenSourceChat` adds, to the source heading, the button that opens the conversation the idea
  * came from; `onOpenSourcePaper` makes the paper it came from a link.
  */
@@ -82,7 +83,8 @@ export function IdeaPanel({ idea, actions, editor, onClose, onOpenSourceChat, on
         <Tag tone="accent">{m.project.idea.kind}</Tag>
         {idea.archived ? <Tag>{m.common.archived}</Tag> : null}
         <span className="idea-panel-dates">
-          {m.common.createdOn(fmt.date(idea.created))} · {m.common.updatedOn(fmt.date(idea.updated))}
+          {m.common.createdOn(fmt.date(idea.created))}
+          {idea.updated === idea.created ? null : ` · ${m.common.updatedOn(fmt.date(idea.updated))}`}
         </span>
       </div>
       {editor ?? (
