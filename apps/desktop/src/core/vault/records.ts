@@ -74,6 +74,9 @@ export type PaperReadingRecord = z.infer<typeof PaperReadingRecordSchema>
  * Trash entry with everything required for restoration; `restorable` derives from destination
  * availability. Deleting a paper or project moves its page to `.meridian/trash/<id>.md`; `page` keeps
  * the original relative path for restoration. Paper entries also retain any reading record they had.
+ * An inbox entry's `feedback` names the discovery feedback that removed it; restoring clears that
+ * feedback from the entry. A read-later entry holds the removed item and its index in the queue, where
+ * restoring puts it back.
  */
 export const TrashRecordSchema = z.discriminatedUnion('kind', [
   TrashBase.extend({
@@ -84,8 +87,17 @@ export const TrashRecordSchema = z.discriminatedUnion('kind', [
   TrashBase.extend({
     kind: z.literal('attachment'), projectId: z.string(), attachment: AttachmentSchema,
   }),
-  TrashBase.extend({ kind: z.literal('inbox'), entryId: z.string() }),
+  TrashBase.extend({
+    kind: z.literal('inbox'), entryId: z.string(), feedback: z.enum(['less', 'known']).optional(),
+  }),
+  TrashBase.extend({ kind: z.literal('later'), later: LaterRecordSchema, position: z.number().int().min(0) }),
 ])
+
+/** One project's discovery preferences: the direction chosen as core and the directions turned off. */
+export const DiscoveryPreferencesRecordSchema = z.object({
+  coreIntentId: z.string().nullable(),
+  disabledIntentIds: z.array(z.string()),
+})
 
 /**
  * `.meridian/state.json` vault state. `seq` assigns ids and only increases, preventing reuse across
@@ -96,8 +108,10 @@ export const TrashRecordSchema = z.discriminatedUnion('kind', [
  * deliveries. `projectOrder` and `ideaOrder` hold a manual display order set by drag or a one-shot
  * sort action; either is omitted until its list is reordered for the first time. `agentIdeas` lists
  * `<project id>:<idea id>` for each workspace agent idea already taken into the idea list, so a
- * deleted one does not come back. Strict, so a key this version does not know is reported to the
- * reader, which keeps it, instead of being dropped.
+ * deleted one does not come back. `discoveryPreferences` holds each project's preferences as stored;
+ * they are read key by key with `DiscoveryPreferencesRecordSchema`, so none of them can keep the vault
+ * from opening. Strict, so a key this version does not know is reported to the reader, which keeps it,
+ * instead of being dropped.
  */
 export const VaultStateSchema = z.object({
   seq: z.number().int(),
@@ -119,10 +133,7 @@ export const VaultStateSchema = z.object({
       fetchedAt: z.number().int(),
     }).strict()).optional(),
   }).strict()).optional(),
-  discoveryPreferences: z.record(z.string(), z.object({
-    coreIntentId: z.string().nullable(),
-    disabledIntentIds: z.array(z.string()),
-  }).strict()).optional(),
+  discoveryPreferences: z.record(z.string(), z.unknown()).optional(),
 }).strict()
 
 export type PaperSnapshot = z.infer<typeof PaperSnapshotSchema>

@@ -46,8 +46,8 @@ import type {
   ChatRecord, InboxRecord, PaperSnapshot, TrashRecord, VaultState,
 } from './vault/records.js'
 import {
-  ChatRecordSchema, InboxRecordSchema, LaterRecordSchema, PaperReadingRecordSchema,
-  TrashRecordSchema, VaultStateSchema,
+  ChatRecordSchema, DiscoveryPreferencesRecordSchema, InboxRecordSchema, LaterRecordSchema,
+  PaperReadingRecordSchema, TrashRecordSchema, VaultStateSchema,
 } from './vault/records.js'
 import { readRecord, readStoredList, withUnknownFields, type StoredList } from './vault/stored-records.js'
 import {
@@ -1162,8 +1162,26 @@ export function createVaultStore(
   const projectDiscoverySeeds = (projectId: string) => (
     recommendationSeedIds(projectDiscoveryProfile(projectId))
   )
+  /**
+   * Reads project `projectId`'s discovery preferences `held`, as `state.json` stores them, key by key:
+   * a key that is missing or cannot be read is reported on stderr and read as no preference.
+   */
+  const readDiscoveryPreferences = (projectId: string, held: unknown): DiscoveryPreferences => {
+    const fields = (typeof held === 'object' && held !== null ? held : {}) as Record<string, unknown>
+    const core = DiscoveryPreferencesRecordSchema.shape.coreIntentId.safeParse(fields['coreIntentId'])
+    const disabled = DiscoveryPreferencesRecordSchema.shape.disabledIntentIds.safeParse(fields['disabledIntentIds'])
+    for (const [key, read] of [['coreIntentId', core], ['disabledIntentIds', disabled]] as const) {
+      if (!read.success) {
+        console.error(`[vault] ${stateFile} 里项目 ${projectId} 的 ${key} 这个版本读不了，按没有设置读（可能要更新 App）：${read.error.message}`)
+      }
+    }
+    return { coreIntentId: core.data ?? null, disabledIntentIds: disabled.data ?? [] }
+  }
+  /** Each project's discovery preferences as read when the vault opened, then as last set. */
+  const preferences = new Map(Object.entries(state.discoveryPreferences ?? {})
+    .map(([projectId, held]) => [projectId, readDiscoveryPreferences(projectId, held)]))
   const discoveryPreferences = (projectId: string): DiscoveryPreferences => (
-    state.discoveryPreferences?.[projectId] ?? { coreIntentId: null, disabledIntentIds: [] }
+    preferences.get(projectId) ?? { coreIntentId: null, disabledIntentIds: [] }
   )
   const projectDiscoveryIntents = (projectId: string) => applyRecommendationPreferences(
     clusterRecommendationProfile(projectDiscoveryProfile(projectId)),
@@ -2069,16 +2087,19 @@ export function createVaultStore(
       const disabled = new Set(held.disabledIntentIds)
       if (action === 'disable') disabled.add(intentId)
       else disabled.delete(intentId)
+      const changed = action === 'set-core'
+        ? { coreIntentId: intentId, disabledIntentIds: [...disabled] }
+        : { disabledIntentIds: [...disabled] }
+      const stored = state.discoveryPreferences?.[projectId]
+      // A key this action leaves alone keeps its stored value, even one this version cannot read.
       saveState({
         ...state,
         discoveryPreferences: {
           ...state.discoveryPreferences,
-          [projectId]: {
-            coreIntentId: action === 'set-core' ? intentId : held.coreIntentId,
-            disabledIntentIds: [...disabled],
-          },
+          [projectId]: { ...held, ...(typeof stored === 'object' && stored !== null ? stored : {}), ...changed },
         },
       })
+      preferences.set(projectId, { ...held, ...changed })
     },
 
     addDiscoveryEntries(projectId, found: DiscoveryPaper[], limit) {
@@ -2364,7 +2385,16 @@ export function createVaultStore(
         projectById.set(projectId, restored)
         if (restored.status === FINISHED_PROJECT) archiveIdeasForProject(projectId)
       } else if (item.kind === 'inbox') {
-        putEntry(item.entryId, { gone: false })
+        inbox = save('inbox', inbox.map((entry) => {
+          if (entry.id !== item.entryId) return entry
+          const restored = { ...entry, gone: false }
+          if (item.feedback !== undefined) delete restored.feedback
+          return restored
+        }))
+      } else if (item.kind === 'later') {
+        later = save('later', [
+          ...later.slice(0, item.position), structuredClone(item.later), ...later.slice(item.position),
+        ])
       } else if (item.kind === 'idea') {
         ideas = save('ideas', [structuredClone(item.idea), ...ideas])
         if (item.idea.project !== undefined) {

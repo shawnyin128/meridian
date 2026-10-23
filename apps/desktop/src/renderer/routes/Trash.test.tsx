@@ -138,6 +138,23 @@ describe('Trash', () => {
     expect(document.querySelector('[role="alertdialog"] .modal-title')!.textContent).toBe('清空垃圾桶？')
   })
 
+  it('移出稍后阅读的条目自成一组，排在论文推送之后、论文之前，标题按论文标题显示', async () => {
+    const held = api.entries
+    const deletedAt = Date.parse('2026-08-25T00:00:00Z')
+    api.entries = [
+      { id: 'trash-5', kind: 'later', title: '\\textbf{L}ater trees', deletedAt, restorable: true },
+      { id: 'trash-6', kind: 'inbox', title: 'Pushed trees', deletedAt, restorable: true },
+      ...held,
+    ]
+    act(() => root!.unmount())
+    root = createRoot(host)
+    await act(async () => { root!.render(<MessagesProvider><Trash /></MessagesProvider>) })
+    api.entries = held
+    expect([...host.querySelectorAll('.section-heading')].map((h) => h.textContent))
+      .toEqual(['论文推送 · 1', '稍后阅读 · 1', '论文 · 2', '附件 · 2'])
+    expect(host.querySelectorAll('.tgroup')[1]!.querySelector('.tt2')!.innerHTML).toMatch(/^<strong>L<\/strong>ater trees/)
+  })
+
   it('彻底删除一条要先确认,确认后才清除', async () => {
     await act(async () => { button(host.querySelector('.trow')!, '彻底删除').click() })
     expect(api.purge).not.toHaveBeenCalled()

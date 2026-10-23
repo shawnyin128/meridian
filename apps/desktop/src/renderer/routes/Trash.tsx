@@ -25,11 +25,12 @@ import './Trash.css'
 
 /**
  * The order of the groups. The demo's order array was Inbox, papers, projects, with attachments
- * outside it, after the ordered kinds; ideas follow projects, and attachments stay last.
+ * outside it, after the ordered kinds; read-later items follow Inbox, ideas follow projects, and
+ * attachments stay last.
  */
-const KINDS: TrashEntry['kind'][] = ['inbox', 'paper', 'project', 'idea', 'attachment']
+const KINDS: TrashEntry['kind'][] = ['inbox', 'later', 'paper', 'project', 'idea', 'attachment']
 /** The kinds whose title is a paper title. */
-const PAPER_KINDS: ReadonlySet<TrashEntry['kind']> = new Set(['inbox', 'paper'])
+const PAPER_KINDS: ReadonlySet<TrashEntry['kind']> = new Set(['inbox', 'later', 'paper'])
 const plainOf = (entry: TrashEntry): string => (PAPER_KINDS.has(entry.kind) ? plainTitle(entry.title) : entry.title)
 
 /**

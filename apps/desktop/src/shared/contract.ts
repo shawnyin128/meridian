@@ -1358,7 +1358,7 @@ export const WatchDeleteParamsSchema = z.object({ id: z.string() }).strict()
  */
 export const TrashEntrySchema = z.object({
   id: z.string(),
-  kind: z.enum(['inbox', 'paper', 'attachment', 'project', 'idea']),
+  kind: z.enum(['inbox', 'later', 'paper', 'attachment', 'project', 'idea']),
   title: z.string(),
   deletedAt: z.number().int(),
   restorable: z.boolean(),
