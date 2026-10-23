@@ -14,7 +14,7 @@ import { MessagesProvider } from '../messages/useMessages.js'
 import { zh } from '../messages/zh/index.js'
 import { LANGUAGE_STORAGE_KEY } from '../shell/language.js'
 import { ProjectTaskPanel } from '../components/project/ProjectPlan.js'
-import { ProjectIdeaPanel, WorkspaceRoot } from './ProjectDetail.js'
+import { ProjectIdeaList, ProjectIdeaPanel, WorkspaceRoot } from './ProjectDetail.js'
 
 const sm = zh.project.signals
 
@@ -390,6 +390,29 @@ describe('project idea panel', () => {
     act(() => panel.button('取消关联')!.click())
     expect(on.onSetNode).toHaveBeenCalledWith(null)
     panel.unmount()
+  })
+  it('只是关联这个项目、不在这里做的想法，详情里没有科研节点一节', () => {
+    const panel = mount(<ProjectIdeaPanel idea={{ ...idea, project: 'other' }} graph={graph} workspaceManaged={false} related {...handlers()} />)
+    expect([...panel.host.querySelectorAll('.section-heading--rail')].map((heading) => heading.textContent))
+      .toEqual(['用动态预算控制校准成本', '内容', '来源'])
+    panel.unmount()
+  })
+
+  it('项目页的想法一节先列在这个项目里做的想法，再列关联这个项目的想法，后者带关联标签；条数算两种', () => {
+    const related: ResearchIdea = {
+      ...idea, id: 'idea-2', title: '关联过来的想法', project: 'other', relations: { projects: ['draft'], pages: [] },
+    }
+    const onSelect = vi.fn()
+    const list = mount(
+      <ProjectIdeaList projectId="draft" ideas={[related, { ...idea, node: 'thread.probe' }]} graph={graph} selectedId={null} onSelect={onSelect} />,
+    )
+    expect(list.host.querySelector('.section-heading')!.textContent).toBe('关联想法 · 2')
+    const rows = [...list.host.querySelectorAll<HTMLElement>('.project-idea-row')]
+    expect(rows.map((row) => [row.dataset['idea'], row.querySelector('.project-idea-flags')!.textContent]))
+      .toEqual([['idea-1', '动态预算探针'], ['idea-2', '关联']])
+    act(() => rows[1]!.click())
+    expect(onSelect).toHaveBeenCalledWith('idea-2')
+    list.unmount()
   })
 })
 
