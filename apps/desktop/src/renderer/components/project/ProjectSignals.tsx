@@ -10,14 +10,14 @@ import { EntityLink } from '../EntityLink.js'
 import { Tooltip } from '../Tooltip.js'
 import './ProjectSignals.css'
 
-/** Stable type column shared by project and overview decision rows and research records; `mut` is neutral. */
+/** Stable type column shared by project and overview decision rows and research records. */
 export function ProjectSignalKind({ tone, children }: {
-  tone: ProjectDecisionItem['tone'] | TagTone
+  tone: TagTone
   children: string
 }) {
   return (
     <span className="project-signal-kind">
-      <Tag tone={tone === 'mut' ? 'neutral' : tone}>{children}</Tag>
+      <Tag tone={tone}>{children}</Tag>
     </span>
   )
 }

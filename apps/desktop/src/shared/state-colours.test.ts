@@ -1,6 +1,9 @@
 import { readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
+import { zh } from '../renderer/messages/zh/index.js'
+import { projectDecisionItems, projectPulseSignal, type ProjectSignalSource } from './project-signals.js'
+import { ACTIVE_PROJECT } from './vocabulary.js'
 
 const RENDERER = join(import.meta.dirname, '..', 'renderer')
 
@@ -28,7 +31,7 @@ const tokens = (body: string): string[] => [...body.matchAll(/var\((--[\w-]+)\)/
 const RED = /^--(?:bad|tint-bad|bad-solid|bad-text|diff-del)$/
 
 describe('红色只标逾期、错误和危险', () => {
-  it('时间线的今天、此刻线和 P0 任务条,日历的今天,项目卡的停滞提示都不用红色', () => {
+  it('时间线的今天、此刻线和 P0 任务条,日历的今天,停滞提示都不用红色', () => {
     const marks = [
       ['components/timeline/TimelineBoard.css', '.gday.today span'],
       ['components/timeline/TimelineBoard.css', '.gtoday'],
@@ -66,6 +69,15 @@ describe('阻塞的色调', () => {
     expect(coloured).toEqual([
       ['components/project/ProjectControl.css', '.project-control-value.blocker .project-control-text', ['--warn-text']],
     ])
+  })
+})
+
+describe('停滞的色调', () => {
+  it('推进停滞在需要注意和项目推进里与项目卡上一样,是共用 Tag 的警示色', () => {
+    const stalled: ProjectSignalSource = { status: ACTIVE_PROJECT, conclusions: { conflicting: 0 }, milestones: [], lastProgress: '2026-10-01' }
+    expect(projectDecisionItems(stalled, '2026-10-23', zh.project.signals).map(({ id, tone }) => [id, tone]))
+      .toEqual([['stale', 'warn']])
+    expect(projectPulseSignal(stalled, '2026-10-23', zh.project.signals).tone).toBe('warn')
   })
 })
 

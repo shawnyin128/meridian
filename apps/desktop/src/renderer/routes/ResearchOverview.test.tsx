@@ -174,6 +174,16 @@ describe('研究总览的需要注意', () => {
     expect(api.open).toHaveBeenLastCalledWith('project', 'spec')
   })
 
+  it('推进停滞在需要注意和项目推进里都是警示色', async () => {
+    api.rows = [{ ...row([]), lastProgress: '2026-10-01' }]
+    await act(async () => root.render(<MessagesProvider><ResearchOverview /></MessagesProvider>))
+    const tone = (tag: Element) => tag.className.split(' ').find((name) => /^tag--(?!label$|chip$)/.test(name))
+    expect([...host.querySelectorAll('.ovlist-row.attention .tag--label')].map((tag) => [tag.textContent, tone(tag)]))
+      .toEqual([['推进停滞', 'tag--warn']])
+    expect([...host.querySelectorAll('.ovpulse-cell.signal .tag')].map((tag) => [tag.textContent, tone(tag)]))
+      .toEqual([['推进停滞', 'tag--warn']])
+  })
+
   it('阻塞在需要决策和项目进展里都是警示色,逾期仍是红色', async () => {
     api.rows = [{
       ...row([]), block: '等 8 卡机器',
