@@ -537,7 +537,7 @@ export function Ideas() {
                 <StructuredList variant="embedded" className="idea-stats">
                   {counts.map(({ project, ideas, active, done: finished }) => (
                     <StructuredRow
-                      className="idea-stats-row" data-proj={project.id} key={project.id}
+                      className="idea-stats-row" key={project.id}
                       onActivate={() => jumpTo('project', project.id)}
                     >
                       <FadeText className="idea-stats-name" label={project.name}>{project.name}</FadeText>
