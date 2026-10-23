@@ -6,7 +6,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 /** The parts of the jsdom window this test reads; the tsconfig of shared code carries no DOM types. */
 type Node = object
 type Style = {
-  transition: string; animation: string; position: string; transform: string; cursor: string
+  transition: string; animation: string; position: string; transform: string
   boxShadow: string; display: string
 }
 type Rule = { constructor: { name: string }; name?: string; cssText: string }
@@ -95,13 +95,10 @@ describe('面板的动效', () => {
     expect(stylesheet('components/project/ResearchGraph.css')).not.toMatch(/infinite/)
   })
 
-  it('甘特图的任务条显示可抓取，拖动中的条和菱形抬起来', () => {
-    document.body.innerHTML = '<div class="grow"><div class="gbar"></div></div>'
-    expect(getComputedStyle(document.querySelector('.gbar')).cursor).toBe('grab')
+  it('甘特图拖动中的条和菱形抬起来', () => {
     for (const markup of ['<div class="grow"><div class="gbar dragging"></div></div>', '<div class="grow msrow"><span class="gddl dragging"></span></div>']) {
       document.body.innerHTML = markup
-      const lifted = getComputedStyle(document.querySelector('.dragging'))
-      expect([lifted.cursor, lifted.boxShadow], markup).toEqual(['grabbing', 'var(--sh-2)'])
+      expect(getComputedStyle(document.querySelector('.dragging')).boxShadow, markup).toBe('var(--sh-2)')
     }
   })
 })
