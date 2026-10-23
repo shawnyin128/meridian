@@ -6,6 +6,7 @@ import { tmpdir } from 'node:os'
 import { dirname, join, resolve, sep } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { TRASH_RETENTION_DAYS } from '../shared/vocabulary.js'
+import { promoteResearchIdea } from './research-ideas/index.js'
 import type { VaultStore } from './vault.js'
 import { createVaultStore } from './vault-store.js'
 
@@ -393,6 +394,37 @@ describe('a vault write that fails', () => {
     expect(store.listIdeas().filter((idea) => idea.title.startsWith('agent 的方向'))).toHaveLength(2)
     expect(store.listFeed().filter((entry) => JSON.stringify(entry).includes('agent 跑完了'))).toHaveLength(2)
     expect(view(open())).toEqual(view(store))
+  })
+
+  it('想法转成项目时哪一次写没写成，库和内存都回到写之前；重来一次写成了，也只多出一个项目', () => {
+    const store = open()
+    const world = seed(store)
+    const idea = store.createIdea(world.chat, '转成项目的方向', '项目从这里开始').id
+    const projects = store.listProjects().length
+    const changes = store.listChanges().length
+    expect(everyStep(() => promoteResearchIdea(store, idea), () => view(store))).toBeGreaterThan(1)
+    expect(store.listChanges()).toHaveLength(changes + 2)
+    for (const read of [store, open()]) {
+      const made = read.listProjects().filter((project) => project.name === '转成项目的方向')
+      expect(made).toHaveLength(1)
+      expect(read.listProjects()).toHaveLength(projects + 1)
+      expect(read.listIdeas().find((held) => held.id === idea)!.project).toBe(made[0]!.id)
+    }
+  })
+
+  it('几次写合成一次写，后面一步没写成时，项目、它的最新进展和最近变动都回到写之前', () => {
+    let day = '2026-09-10'
+    const store = createVaultStore(vault, () => day)
+    const id = store.createProject('合成一次写')
+    day = '2026-09-11'
+    const [project, changes, files] = [store.getProject(id), store.listChanges(), filesOf()]
+    expect(() => store.atomically(() => {
+      store.updateProject(id, { focus: '没落地的目标' })
+      throw new Error('后一步没写成')
+    })).toThrow('后一步没写成')
+    expect(store.getProject(id)).toEqual(project)
+    expect(store.listChanges()).toEqual(changes)
+    expect(filesOf()).toEqual(files)
   })
 
   it('想法从垃圾桶恢复到最后一步没写成，再恢复一次也只有一份', () => {

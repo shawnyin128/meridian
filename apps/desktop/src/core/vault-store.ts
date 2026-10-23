@@ -857,7 +857,7 @@ export function createVaultStore(
    */
   const atomically = <T>(write: () => T): T => {
     if (syncing !== undefined) return write()
-    const held = { wikiData, state, inbox, later, watches, chats, ideas, feed, trash, readings, proposals }
+    const held = { wikiData, state, inbox, later, watches, chats, ideas, feed, trash, readings, proposals, changes }
     const indexes = [papers, pagesOf, projectById].map((index: Map<string, unknown>) => ({ index, was: new Map(index) }))
     const synced = new Set<string>()
     syncing = synced
@@ -865,7 +865,7 @@ export function createVaultStore(
     try {
       result = writeAtomically(staging, write)
     } catch (error) {
-      ({ wikiData, state, inbox, later, watches, chats, ideas, feed, trash, readings, proposals } = held)
+      ({ wikiData, state, inbox, later, watches, chats, ideas, feed, trash, readings, proposals, changes } = held)
       for (const { index, was } of indexes) {
         index.clear()
         for (const [key, value] of was) index.set(key, value)

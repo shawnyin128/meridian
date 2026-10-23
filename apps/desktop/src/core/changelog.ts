@@ -1092,6 +1092,16 @@ export function withChangelog(ops: VaultOps, log: ChangeLogStore): VaultStore {
       if (restore.kind === 'trash' && target.kind === 'paper') dropMisfits(target.id)
     },
 
+    atomically(write) {
+      const held = rows
+      try {
+        return log.atomically(write)
+      } catch (error) {
+        rows = held
+        throw error
+      }
+    },
+
     archiveChange(id) {
       const row = rows.find((r) => r.id === id)
       if (!row) throw new CallError('not-found', `最近变动里没有这一条：${id}`)
