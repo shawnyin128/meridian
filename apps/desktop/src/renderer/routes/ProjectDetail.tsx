@@ -37,7 +37,7 @@ import {
 import { ProjectIdentityFields, ProjectPriorityTag } from '../components/project/ProjectIdentity.js'
 import {
   attachmentSizeText, PROJECT_PAPER_GROUP, PROJECT_RELATION_GROUPS, PROJECT_URL_GROUP, ProjectAgentSessions,
-  ProjectAttachments, ProjectMemo, ProjectRelations, ProjectTopicField, ProjectUrlDraft,
+  ProjectAreasField, ProjectAttachments, ProjectMemo, ProjectRelations, ProjectUrlDraft,
 } from '../components/project/ProjectSections.js'
 import { NodeAssignment } from '../components/project/NodeAssignment.js'
 import { EntityLink } from '../components/EntityLink.js'
@@ -988,11 +988,10 @@ export function ProjectDetail({
                           ><ProjectPriorityTag priority={project.priority} /></PriorityPicker>
                         ),
                         topic: (
-                          <ProjectTopicField
-                            value={project.topic} onError={reportError}
-                            onSave={(topic) => writeProject(
-                              projectApi.update(projectId, { topics: [...new Set([topic, ...projectAreas(project).slice(1)])] }),
-                              m.project.identity.topicUpdated,
+                          <ProjectAreasField
+                            projectId={projectId} areas={projectAreas(project)} onError={reportError}
+                            onSave={(topics) => writeProject(
+                              projectApi.update(projectId, { topics }), m.project.identity.topicUpdated,
                             )}
                           />
                         ),

@@ -44,4 +44,13 @@ describe('ProjectIdentity', () => {
     expect(shown[1]).toContain('领域')
     expect(unfiled.topic).toBe('未分主题')
   })
+
+  it('几个领域按次序全写出来,中文用顿号、英文用逗号连起来,放不下时渐隐', () => {
+    const several = { ...project, topics: ['decoding', 'KV cache', '量化'] }
+    const zhHtml = renderToStaticMarkup(<MessagesProvider><ProjectIdentity project={several} showTopic /></MessagesProvider>)
+    expect(zhHtml).toMatch(/class="fade-text project-identity-topic"[^>]*>decoding、KV cache、量化</)
+    window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'en')
+    const enHtml = renderToStaticMarkup(<MessagesProvider><ProjectIdentityFields project={several} /></MessagesProvider>)
+    expect(enHtml).toContain('decoding, KV cache, 量化')
+  })
 })

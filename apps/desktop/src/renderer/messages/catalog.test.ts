@@ -115,7 +115,7 @@ describe('一个对象一个词', () => {
     finding: { zh: '结论', en: /finding/i },
     experimentConclusion: { zh: '实验结论', en: /experiment conclusion/i },
     keyword: { zh: '关键词', en: /keyword/i },
-    area: { zh: '领域', en: /\barea\b/i },
+    area: { zh: '领域', en: /\bareas?\b/i },
     toRead: { zh: '待读', en: /to read/i },
     readLater: { zh: '稍后阅读', en: /later/i },
     topic: { zh: '主题', en: /topic/i },
@@ -139,7 +139,10 @@ describe('一个对象一个词', () => {
     keyword: [
       'shell.nav.watchTopics', 'shell.watchKind.topic', 'watches.noneSuggested', 'watches.topicSuggestions', 'watches.addAllTopics',
     ],
-    area: ['project.identity.topic', 'project.identity.topicUpdated', 'project.identity.noArea'],
+    area: [
+      'project.identity.topic', 'project.identity.topicUpdated', 'project.identity.noArea', 'project.identity.addArea',
+      'project.identity.existingAreas', 'project.identity.removeArea',
+    ],
     toRead: ['papers.readState.later'],
     readLater: [
       'shell.nav.later', 'shell.crumbs.later', 'later.title', 'later.empty', 'later.removed', 'inbox.actions.readLater',

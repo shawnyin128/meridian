@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import type { ProjectStatus } from '../../../shared/contract.js'
-import { DEFAULT_PROJECT_TOPIC } from '../../../shared/vocabulary.js'
+import { projectAreas } from '../../../shared/project-signals.js'
 import type { Catalog } from '../../messages/catalog.js'
 import { useMessages } from '../../messages/useMessages.js'
 import { FadeText } from '../FadeText.js'
@@ -20,11 +20,13 @@ export type ProjectIdentitySource = {
   status: ProjectStatus
   priority: 'p0' | 'p1' | 'p2'
   topic?: string
+  topics?: readonly string[] | undefined
 }
 
-/** The name project area `topic` shows: the default Core stores on a new project as no area, every other one as stored. */
-export function areaName(m: Catalog, topic: string): string {
-  return topic === DEFAULT_PROJECT_TOPIC ? m.project.identity.noArea : topic
+/** What a project's areas show as one text: every area in order, or no area when it has none. */
+function areasName(m: Catalog, project: { topic: string; topics?: readonly string[] | undefined }): string {
+  const areas = projectAreas(project)
+  return areas.length === 0 ? m.project.identity.noArea : areas.join(m.project.identity.areaSeparator)
 }
 
 export function ProjectStatusTag({ status }: { status: ProjectStatus }) {
@@ -62,7 +64,7 @@ export function ProjectIdentity({
   showTopic?: boolean
 }) {
   const m = useMessages()
-  const area = project.topic ? areaName(m, project.topic) : undefined
+  const area = project.topic ? areasName(m, { ...project, topic: project.topic }) : undefined
   if (variant === 'progress') {
     return (
       <span className="project-identity progress">
@@ -108,7 +110,7 @@ export function ProjectIdentityFields({ project, fields = {} }: {
       <div className="pk">{m.project.identity.priorityLabel}</div>
       {fields.priority ?? <ProjectPriorityTag priority={project.priority} />}
       <div className="pk">{m.project.identity.topic}</div>
-      {fields.topic ?? <div className="pv">{project.topic === undefined ? '—' : areaName(m, project.topic)}</div>}
+      {fields.topic ?? <div className="pv">{project.topic === undefined ? '—' : areasName(m, { ...project, topic: project.topic })}</div>}
     </>
   )
 }

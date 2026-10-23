@@ -139,6 +139,10 @@ export const project = {
     priorityLabel: '优先级',
     topic: '领域',
     noArea: '未分领域',
+    addArea: '添加领域',
+    existingAreas: '已有领域',
+    removeArea: (area: string) => `移除领域「${area}」`,
+    areaSeparator: '、',
     // Keyed by shared/project-signals.js's FocusLabelKey; Task 28 introduces project status codes.
     focusLabel: { currentGoal: '当前目标', restartCondition: '重启条件', outcome: '成果' },
     focusWithLabel: (label: string, focus: string) => `${label}：${focus}`,
