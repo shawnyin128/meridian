@@ -28,8 +28,8 @@ const RULES = STYLESHEETS.flatMap((path) => [...source(path).matchAll(/([^{}]+)\
 
 const STYLES = [
   'shell/tokens.css', 'routes/shell.css', 'components/IconButton.css', 'components/Tag.css', 'components/DragHandle.css',
-  'components/paper-table/PaperTable.css', 'components/project/ProjectSections.css',
-  'components/timeline/TimelineBoard.css', 'components/project/ResearchGraph.css',
+  'components/StructuredList.css', 'components/paper-table/PaperTable.css', 'components/project/ProjectSections.css',
+  'components/project/ProjectPlan.css', 'components/timeline/TimelineBoard.css', 'components/project/ResearchGraph.css',
 ].map(source)
 
 /**
@@ -42,6 +42,8 @@ const SPOTS: Record<string, [markup: string, spot: string, held: string[]]> = {
   '关联 chip': ['<div class="wkrel"><span class="tag tag--chip tag--neutral tagchip" draggable="true"><button type="button" class="tagchip-open">链接</button></span></div>', '.tagchip', ['press']],
   '时间线的任务条': ['<div class="grow"><button type="button" class="gbar"></button></div>', '.gbar', ['press', 'dragging']],
   '时间线的里程碑菱形': ['<div class="grow msrow"><span class="gddl"></span></div>', '.gddl', ['press', 'dragging']],
+  '计划的任务行': ['<div class="project-plan"><div id="taskList"><div class="structured-row structured-row--composite ddlrow task-row" data-row-actions="" draggable="true" data-reorder-item="t1"></div></div></div>', '.task-row', ['press', 'dragging']],
+  '时间线的任务标签行': ['<div class="glabels"><div class="glrow timeline-label-row" draggable="true" data-reorder-item="t1"><button type="button" class="timeline-label-open">任务</button></div></div>', '.glrow', ['press', 'dragging']],
   // ResearchGraph adds `panning` as the pointer goes down on the background.
   '科研图的背景': ['<div class="rgraph"><div class="rgraph-viewport"><svg></svg></div></div>', '.rgraph-viewport', ['panning']],
 }
@@ -75,10 +77,11 @@ describe('拖动处的光标', () => {
   })
 
   it('每个拖动处悬停时显示可拖的光标，按住时显示拖动中的光标', () => {
-    for (const [name, [markup, spot, held]] of Object.entries(SPOTS)) {
-      expect(cursorOf(markup, spot), `${name} 悬停`).toBe('var(--cursor-draggable)')
-      for (const state of held) expect(cursorOf(markup, spot, state), `${name} ${state}`).toBe('var(--cursor-dragging)')
-    }
+    const spots = Object.entries(SPOTS)
+    expect(Object.fromEntries(spots.map(([name, [markup, spot, held]]) =>
+      [name, [cursorOf(markup, spot), ...held.map((state) => cursorOf(markup, spot, state))]])))
+      .toEqual(Object.fromEntries(spots.map(([name, [, , held]]) =>
+        [name, ['var(--cursor-draggable)', ...held.map(() => 'var(--cursor-dragging)')]])))
   })
 
   it('拖动中的光标只在按住或拖动中出现', () => {
