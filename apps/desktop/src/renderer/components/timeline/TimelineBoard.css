@@ -37,7 +37,7 @@
 .gdatecell.first{border-left:0}
 .gstripe{position:absolute;top:0;bottom:0;background:var(--hover);z-index:0}
 .grow{position:relative;height:44px;border-top:1px solid var(--sep2);z-index:2}
-.gbar{position:absolute;top:50%;transform:translateY(-50%);height:27px;box-sizing:border-box;background-color:var(--field);border:1px solid var(--sep);border-radius:var(--r-md);font-size:var(--fs-sm);color:var(--ink);display:flex;align-items:center;padding:0 var(--sp-10);white-space:nowrap;overflow:hidden;cursor:grab;transition:opacity var(--t) var(--e-out)}
+.gbar{position:absolute;top:50%;transform:translateY(-50%);height:27px;box-sizing:border-box;background-color:var(--field);border:1px solid var(--sep);border-radius:var(--r-md);font-size:var(--fs-sm);color:var(--ink);display:flex;align-items:center;padding:0 var(--sp-10);white-space:nowrap;overflow:hidden;cursor:var(--cursor-draggable);transition:opacity var(--t) var(--e-out)}
 .gbar-label{flex:1;min-width:0;overflow:hidden;mask-image:var(--clipfade)}
 /* Bars and stubs are buttons in the board's own type. */
 .gbar,.gstub{font-family:inherit;line-height:inherit;text-align:left}
@@ -53,11 +53,12 @@
 /* A one-day bar narrower than its title keeps the title's box empty and draws the title beside the bar. */
 .gbar.label-beside .gbar-label{visibility:hidden}
 .gbar-aside{position:absolute;top:50%;transform:translateY(-50%);font-size:var(--fs-sm);color:var(--sec);white-space:nowrap;pointer-events:none}
-.gddl{position:absolute;top:18px;width:8px;height:8px;background:var(--warn);transform:rotate(45deg);border-radius:var(--r-2xs);z-index:3;cursor:grab}
+.gddl{position:absolute;top:18px;width:8px;height:8px;background:var(--warn);transform:rotate(45deg);border-radius:var(--r-2xs);z-index:3;cursor:var(--cursor-draggable)}
 .gddl.overdue{background:var(--bad)}
 .gddl.done{background:var(--ter)}
 /* A bar or diamond being dragged lifts above its row. */
-.gbar.dragging,.gddl.dragging{cursor:grabbing;box-shadow:var(--sh-2);z-index:4}
+.gbar.dragging,.gddl.dragging{box-shadow:var(--sh-2);z-index:4}
+.gbar:active,.gddl:active,.gbar.dragging,.gddl.dragging{cursor:var(--cursor-dragging)}
 .glrow.msl,.grow.msrow{height:44px;background:var(--mslane)}
 .gstub{position:absolute;top:50%;transform:translateY(-50%);height:27px;width:20px;box-sizing:border-box;background-color:var(--field);border:1px solid var(--sep);border-radius:var(--r-md);display:flex;align-items:center;justify-content:center;font-size:var(--fs-sm);color:var(--sec);cursor:pointer;z-index:2;user-select:none;transition:opacity var(--t) var(--e-out)}
 .gstub.done:not(:hover){opacity:.45}
