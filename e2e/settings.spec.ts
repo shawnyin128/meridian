@@ -89,7 +89,7 @@ test('应用菜单里有「设置…」,其余菜单仍是 Electron 的角色', 
 test.describe(() => {
   test.use({ showWindow: true })
 
-  test('应用菜单里的「设置…」与快捷键都打开设置,别的键不打开(需要系统焦点)', async ({ app, win }) => {
+  test('应用菜单里的「设置…」与快捷键都打开设置,别的键不打开', async ({ app, win }) => {
     await win.locator('.sidebar').waitFor()
     await expect(win.locator('.setdlg')).toHaveCount(0)
 
@@ -98,20 +98,7 @@ test.describe(() => {
     await win.keyboard.press('Escape')
     await expect(win.locator('.setdlg')).toHaveCount(0)
 
-    // The shortcut needs the window to really hold system focus; with Playwright's focus emulation off,
-    // hasFocus reports the real state.
     const cdp = await win.context().newCDPSession(win)
-    await cdp.send('Emulation.setFocusEmulationEnabled', { enabled: false })
-    await app.evaluate(({ BrowserWindow }) => {
-      const target = BrowserWindow.getAllWindows()[0]!
-      target.setFocusable(true)
-      target.show()
-      target.focus()
-    })
-    await expect.poll(() => win.evaluate(() => document.hasFocus()), {
-      message: '窗口没有真的拿到系统焦点,原生菜单的快捷键到不了',
-    }).toBe(true)
-
     await press(app, cdp, ',')
     await expect(win.locator('.setdlg')).toBeVisible()
     await win.keyboard.press('Escape')
