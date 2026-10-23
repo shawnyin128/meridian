@@ -7,6 +7,7 @@ import type { VaultStore } from '../vault.js'
 /**
  * Applies one user-confirmed idea placement. Idea-to-node associations remain App-owned even
  * when the node comes from a workspace projection; creating workspace nodes remains Lab-owned.
+ * Creating a node and linking the idea to it is one write: a failure leaves no node behind.
  */
 export function placeResearchIdeaOnGraph(
   store: VaultStore,
@@ -17,7 +18,7 @@ export function placeResearchIdeaOnGraph(
   if (held === undefined) throw new CallError('not-found', `想法不存在：${ideaId}`)
   if (held.project === undefined) throw new CallError('refused', '请先把想法关联到项目')
 
-  let project = store.getProject(held.project)
+  const project = store.getProject(held.project)
 
   if (placement.kind === 'unlink') {
     return {
@@ -44,12 +45,14 @@ export function placeResearchIdeaOnGraph(
   }
 
   const before = new Set(project.graph.nodes.map((node) => node.id))
-  project = store.createNode(held.project, placement.label.trim(), placement.after)
-  const node = project.graph.nodes.find((candidate) => !before.has(candidate.id))
-  if (node === undefined) throw new Error('创建科研图节点后没有找到新节点')
-  return {
-    idea: store.updateIdea(held.id, { node: node.id }),
-    project,
-    nodeId: node.id,
-  }
+  return store.atomically(() => {
+    const placed = store.createNode(project.id, placement.label.trim(), placement.after)
+    const node = placed.graph.nodes.find((candidate) => !before.has(candidate.id))
+    if (node === undefined) throw new Error('创建科研图节点后没有找到新节点')
+    return {
+      idea: store.updateIdea(held.id, { node: node.id }),
+      project: placed,
+      nodeId: node.id,
+    }
+  })
 }

@@ -6,7 +6,7 @@ import { tmpdir } from 'node:os'
 import { dirname, join, resolve, sep } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { TRASH_RETENTION_DAYS } from '../shared/vocabulary.js'
-import { promoteResearchIdea } from './research-ideas/index.js'
+import { placeResearchIdeaOnGraph, promoteResearchIdea } from './research-ideas/index.js'
 import type { VaultStore } from './vault.js'
 import { createVaultStore } from './vault-store.js'
 
@@ -409,6 +409,22 @@ describe('a vault write that fails', () => {
       expect(made).toHaveLength(1)
       expect(read.listProjects()).toHaveLength(projects + 1)
       expect(read.listIdeas().find((held) => held.id === idea)!.project).toBe(made[0]!.id)
+    }
+  })
+
+  it('把想法放到新建的科研节点上时哪一次写没写成，库和内存都回到写之前；重来一次写成了，也只多出一个节点', () => {
+    const store = open()
+    const world = seed(store)
+    const nodes = store.getProject(world.project).graph.nodes.length
+    expect(everyStep(() => placeResearchIdeaOnGraph(store, world.idea, {
+      kind: 'create', label: '新的节点', after: world.node,
+    }), () => view(store))).toBeGreaterThan(1)
+    for (const read of [store, open()]) {
+      const { graph } = read.getProject(world.project)
+      const made = graph.nodes.filter((node) => node.label === '新的节点')
+      expect(made).toHaveLength(1)
+      expect(graph.nodes).toHaveLength(nodes + 1)
+      expect(read.listIdeas().find((idea) => idea.id === world.idea)!.node).toBe(made[0]!.id)
     }
   })
 
