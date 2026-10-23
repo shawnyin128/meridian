@@ -32,9 +32,6 @@
 .attrow>svg{width:13px;height:13px;color:var(--ter);flex-shrink:0}
 .attrow .an{display:flex;flex:1;min-width:0;padding:0;border:0;background:none;color:inherit;font:inherit;text-align:left;cursor:pointer}
 .attrow .an:disabled{cursor:default}
-/* The row draws its name's focus ring, around the whole row. */
-.attrow .an:focus-visible{outline:0}
-.attrow:has(.an:focus-visible){outline:var(--ring-width) solid var(--ring);outline-offset:var(--ring-offset)}
 .attrow .as{font-size:var(--fs-sm);color:var(--ter);flex-shrink:0}
 .attrow .row-actions{margin:calc(-1 * var(--sp-4)) 0}
 .attachments{min-width:0;border-radius:var(--r-md);transition:background-color var(--t) var(--e-out),outline-color var(--t) var(--e-out);outline:1px solid transparent}

@@ -13,9 +13,6 @@
 .wkcard .wt{font-size:var(--card-tt);display:flex;align-items:center;gap:var(--sp-6)}
 .wkcard .tt{display:block;flex:1;min-width:0;font-weight:var(--fw-title)}
 .wkcard .tt>.fade-text{display:block}
-/* The card draws the focus ring of a one-line title, around the whole card. */
-.wkcard .tt:has(>.fade-text):focus-visible{outline:0}
-.wkcard:has(button.tt:focus-visible){outline:var(--ring-width) solid var(--ring);outline-offset:var(--ring-offset)}
 .wkcard .sp{margin-left:auto;display:flex;align-items:center;flex-shrink:0}
 .wkcard .wm{font-size:var(--card-fs);color:var(--ter);margin-top:var(--sp-4);line-height:1.5;height:calc(1.5em * var(--card-lines))}
 .wkcard .wf{font-size:var(--fs-sm);color:var(--ter);margin-top:var(--sp-8);display:flex;align-items:center;gap:var(--sp-6)}
