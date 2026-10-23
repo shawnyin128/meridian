@@ -5,12 +5,11 @@ import { NO_TRIGGERS } from '../hooks/useOnLeave.js'
 import { useInlineDraft } from '../hooks/useInlineDraft.js'
 import { AddAction } from './AddAction.js'
 import { FadeText } from './FadeText.js'
-import { FormInput } from './FormControls.js'
+import { FormInput, type FormControlAppearance } from './FormControls.js'
 import { IconButton } from './IconButton.js'
 import { IconCross, IconPlus } from './icons.js'
 import { PickerPopover, PickOption } from './PickerPopover.js'
 import { Tag, tagClass } from './Tag.js'
-import './TagChips.css'
 
 /** What a chip list calls its parts: the `+`, a chip's ×, and the heading over the candidates. */
 export type TagChipLabels = { add: string; remove: (value: string) => string; existing: string }
@@ -35,10 +34,10 @@ type DraftProps = {
  * pending, neither an outside press nor focus leaving closes it, and no second one is sent before the
  * first lands. All closing goes through `useInlineDraft`; Radix only positions the candidates.
  */
-function useChipDraft({ open, initial, className, values, vocabulary, labels, input, onSubmit, onClose, onError }: DraftProps & {
+function useChipDraft({ open, initial, appearance, values, vocabulary, labels, input, onSubmit, onClose, onError }: DraftProps & {
   open: boolean
   initial: string
-  className: string
+  appearance: Extract<FormControlAppearance, 'inline' | 'chip'>
   input: RefObject<HTMLInputElement | null>
   onSubmit: (value: string) => Promise<boolean>
   onClose: () => void
@@ -69,7 +68,7 @@ function useChipDraft({ open, initial, className, values, vocabulary, labels, in
 
   const field = (
     <FormInput
-      appearance="inline" className={className} ref={input} value={q} {...draft.inputProps}
+      appearance={appearance} className="tagin" ref={input} value={q} {...draft.inputProps}
       onClick={(e) => e.stopPropagation()}
       onChange={(e) => setQ(e.target.value)}
       onKeyDown={(e) => { keys.onKeyDown(e); draft.inputProps.onKeyDown(e) }}
@@ -105,7 +104,7 @@ function ChipAdd({ onAdd, ...props }: DraftProps & { onAdd: (value: string) => P
   const [open, setOpen] = useState(false)
   const input = useRef<HTMLInputElement>(null)
   const { field, content } = useChipDraft({
-    ...props, open, initial: '', className: 'tagin', input, onSubmit: onAdd, onClose: () => setOpen(false),
+    ...props, open, initial: '', appearance: 'inline', input, onSubmit: onAdd, onClose: () => setOpen(false),
   })
   return (
     <PickerPopover
@@ -130,7 +129,7 @@ function ChipEdit({ value, onReplace, onClose, ...props }: DraftProps & {
 }) {
   const input = useRef<HTMLInputElement>(null)
   const { field, content } = useChipDraft({
-    ...props, open: true, initial: value, className: 'tagin tagedit', input, onSubmit: onReplace, onClose,
+    ...props, open: true, initial: value, appearance: 'chip', input, onSubmit: onReplace, onClose,
   })
   return <PickerPopover open anchorRef={input} stopClickPropagation content={content} anchor={field} />
 }

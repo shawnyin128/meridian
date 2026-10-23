@@ -1,3 +1,0 @@
-/* A chip being edited: its input takes the chip's place and box, so the text stays where the chip's was. */
-.form-input.form-control-inline.tagin.tagedit{width:auto;min-width:110px;max-width:100%;field-sizing:content;
-  margin:1px var(--sp-4) 1px 0;padding:calc(var(--sp-2) - 1px) calc(var(--sp-8) - 1px);vertical-align:baseline}
