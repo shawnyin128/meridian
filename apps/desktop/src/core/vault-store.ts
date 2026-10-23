@@ -902,7 +902,7 @@ export function createVaultStore(
    * Takes ideas coding agents recorded in bound local workspaces into the idea list, each once and
    * linked to its project; ideas of a finished project arrive archived.
    */
-  const absorbAgentIdeas = (): void => {
+  const absorbAgentIdeas = atomic((): void => {
     const taken = new Set(state.agentIdeas ?? [])
     const added: ResearchIdea[] = []
     const touched: ProjectRecord[] = []
@@ -924,7 +924,7 @@ export function createVaultStore(
     ideas = save('ideas', [...added, ...ideas])
     saveState({ ...state, agentIdeas: [...taken] })
     for (const project of touched) syncProjectWorkspace(project)
-  }
+  })
 
   /** Appends one feed entry dated now. */
   const appendFeedEntry = (source: FeedEntry['source'], runs: FeedRun[]): void => {
@@ -942,7 +942,7 @@ export function createVaultStore(
    * entries, each once. The first pass only marks existing events as seen, so an existing history does
    * not flood the feed; workspaces are read at most once a minute because an SSH binding means a round trip.
    */
-  const absorbWorkspaceEvents = (): void => {
+  const absorbWorkspaceEvents = atomic((): void => {
     const at = now().getTime()
     if (at - eventsReadAt < WORKSPACE_EVENT_READ_MS) return
     eventsReadAt = at
@@ -968,7 +968,7 @@ export function createVaultStore(
       }
     }
     saveState({ ...state, feedEvents: [...seen] })
-  }
+  })
 
   /** Current paper rows augmented with links and conclusions stored on projects. */
   const linkedRows = (): PaperRow[] => {
@@ -1262,7 +1262,7 @@ export function createVaultStore(
       return snapshotOf(readPage(paperFile(id)).front)
     },
 
-    putPaper(id, snapshot) {
+    putPaper: atomic((id, snapshot) => {
       if (!papers.has(id)) throw new CallError('not-found', `论文不存在：${id}`)
       const held = snapshotOf(readPage(paperFile(id)).front)
       // Skip values already present on the page: real-vault writes replace lines, so rewriting an unchanged value would reorder its block.
@@ -1288,7 +1288,7 @@ export function createVaultStore(
       chats = save('chats', chats.map((session) => (session.paperId === id
         ? { ...session, title: restored.title }
         : session)))
-    },
+    }),
 
     deletePaper: atomic((id) => {
       const paper = papers.get(id)
@@ -1317,9 +1317,9 @@ export function createVaultStore(
       return new Uint8Array(readFileSync(join(root, 'sources', 'papers', file)))
     },
 
-    importPaper: storeUpload,
+    importPaper: atomic(storeUpload),
 
-    fillPaperMetadata: fillPaper,
+    fillPaperMetadata: atomic(fillPaper),
 
     paperReading(id) {
       if (!papers.has(id)) throw new CallError('not-found', `论文不存在：${id}`)
@@ -1347,7 +1347,7 @@ export function createVaultStore(
       saveState({ ...state, columns: structuredClone(columns) })
     },
 
-    renamePaperOption(key, from, to) {
+    renamePaperOption: atomic((key, from, to) => {
       const held = heldColumns()
       const options = renamedOptions(held, key, from, to)
       const day = today()
@@ -1364,9 +1364,9 @@ export function createVaultStore(
           custom: held.custom.map((c) => (c.key === key ? { ...c, options } : c)),
         },
       })
-    },
+    }),
 
-    setPaperColumnType(key, type) {
+    setPaperColumnType: atomic((key, type) => {
       const { columns: next, cells } = retypedColumn(heldColumns(), [...papers.values()], key, type)
       const day = today()
       // Writing a page replaces its `papers` entry, so refetch each row by ID immediately before writing it.
@@ -1374,13 +1374,13 @@ export function createVaultStore(
         writePaper(id, { custom: patchedCustom(papers.get(id)!.custom, { [key]: cell ?? null }), updated: day })
       }
       saveState({ ...state, columns: next })
-    },
+    }),
 
     paperCells(key) {
       return structuredClone(columnCells([...papers.values()], key))
     },
 
-    putPaperColumn(column, groupAt, cells) {
+    putPaperColumn: atomic((column, groupAt, cells) => {
       const { columns: next, cells: changed } = restoredColumn(
         heldColumns(), [...papers.values()], column, groupAt, cells)
       const day = today()
@@ -1390,7 +1390,7 @@ export function createVaultStore(
         })
       }
       saveState({ ...state, columns: next })
-    },
+    }),
 
     listProjects() {
       return applyOrder(projects(), state.projectOrder, (p) => p.id).map((p) => {
@@ -1570,7 +1570,7 @@ export function createVaultStore(
       })
     },
 
-    addAgentTask(projectId, request) {
+    addAgentTask: atomic((projectId, request) => {
       const had = new Set(projectOf(projectId).tasks.map((task) => task.id))
       const made = createTask(projectId, {
         title: request.title, start: request.date, end: request.date, state: 'plan', priority: 'p1',
@@ -1579,7 +1579,7 @@ export function createVaultStore(
       const task = made.tasks.find((candidate) => !had.has(candidate.id))!.id
       const project = projectOf(projectId)
       return writeProject({ ...project, agentTasks: { ...project.agentTasks, [request.id]: task } }, ['agentTasks'])
-    },
+    }),
 
     updateTask(projectId, taskId, patch) {
       const project = projectOf(projectId)
@@ -1788,7 +1788,7 @@ export function createVaultStore(
       }, ['graph'])
     },
 
-    deleteNode(projectId, nodeId) {
+    deleteNode: atomic((projectId, nodeId) => {
       const project = projectOf(projectId)
       if (!project.graph.nodes.some((node) => node.id === nodeId)) {
         throw new CallError('not-found', `节点不存在：${nodeId}`)
@@ -1809,7 +1809,7 @@ export function createVaultStore(
       const updatedProject = projectById.get(projectId)
       if (updatedProject !== undefined) syncProjectWorkspace(updatedProject)
       return nextProject
-    },
+    }),
 
     createConclusion(projectId, text, { chat, paper }) {
       const project = projectOf(projectId)
@@ -1898,15 +1898,15 @@ export function createVaultStore(
       return orderInbox(rows, params.sort)
     },
 
-    dismissInbox(id) {
+    dismissInbox: atomic((id) => {
       const entry = liveEntry(id)
       putEntry(id, { gone: true })
       toTrash({
         id: nextId('trash'), kind: 'inbox', title: entry.title, deletedAt: nowMs(), entryId: id,
       })
-    },
+    }),
 
-    readLater(id) {
+    readLater: atomic((id) => {
       const entry = liveEntry(id)
       putEntry(id, { gone: true })
       if (later.some((x) => x.id === id)) return false
@@ -1922,7 +1922,7 @@ export function createVaultStore(
         pdf: entry.pdf,
       }, ...later])
       return true
-    },
+    }),
 
     prepareInboxDownload(id) {
       const entry = downloadableEntry(id)
@@ -1932,7 +1932,7 @@ export function createVaultStore(
       return { kind: 'fetch', url: entry.pdf }
     },
 
-    completeInboxDownload(id, bytes) {
+    completeInboxDownload: atomic((id, bytes) => {
       const entry = downloadableEntry(id)
       const topics = entry.topic === '' ? null : topicDir(wikiHome(wikiData))
       const result = storeUpload(`${entry.title}.pdf`, bytes)
@@ -1958,7 +1958,7 @@ export function createVaultStore(
       )
       if (filing !== null) ops.applyProposal(filing)
       return { kind: 'added', paper: result.paper.id }
-    },
+    }),
 
     listLater() {
       const day = today()
@@ -1999,7 +1999,7 @@ export function createVaultStore(
       watches = save('watches', watches.map((w) => (w.id === id ? { ...w, active } : w)))
     },
 
-    deleteWatch(id) {
+    deleteWatch: atomic((id) => {
       if (!watches.some((w) => w.id === id)) throw new CallError('not-found', `关注不存在：${id}`)
       const removedEntries = new Set(
         inbox.filter((entry) => entry.kind === 'watch' && entry.watch === id).map((entry) => entry.id),
@@ -2007,7 +2007,7 @@ export function createVaultStore(
       watches = save('watches', watches.filter((w) => w.id !== id))
       inbox = save('inbox', inbox.filter((entry) => entry.kind !== 'watch' || entry.watch !== id))
       trash = save('trash', trash.filter((item) => item.kind !== 'inbox' || !removedEntries.has(item.entryId)))
-    },
+    }),
 
     deliverySettings() {
       return structuredClone(state.deliverySettings ?? DEFAULT_DELIVERY_SETTINGS)
@@ -2325,23 +2325,23 @@ export function createVaultStore(
       removePage(join(inboxDir, name))
     },
 
-    updateWikiPage(id, body) {
+    updateWikiPage: atomic((id, body) => {
       checkBody(id, body)
       checkReadable(id)
       if (wikiData.pages[id] === undefined) throw new CallError('not-found', `wiki 页不存在：${id}`)
       setBody(wikiFile(id), body, staging)
       setUpdated(wikiFile(id), today(), staging)
       rereadWiki([id])
-    },
+    }),
 
-    applyPaperWikiDraft(id, body) {
+    applyPaperWikiDraft: atomic((id, body) => {
       checkBody(id, body)
       checkReadable(id)
       if (wikiData.pages[id] === undefined) throw new CallError('not-found', `wiki 页不存在：${id}`)
       setBodyAndTrust(wikiFile(id), body, staging)
       setUpdated(wikiFile(id), today(), staging)
       rereadWiki([id])
-    },
+    }),
 
     proposalPages(proposal, by = HUMAN) {
       const data = wikiData
@@ -2357,7 +2357,7 @@ export function createVaultStore(
       })
     },
 
-    putPages(pages) {
+    putPages: atomic((pages) => {
       for (const { path, text } of pages) {
         const file = wikiFile(path)
         if (text === null) removePage(file)
@@ -2368,7 +2368,7 @@ export function createVaultStore(
         else projectById.set(id, readProjectPage(file, id))
       }
       rereadWiki(pages.map((p) => p.path))
-    },
+    }),
 
     listTrash() {
       dropExpired()
@@ -2511,7 +2511,7 @@ export function createVaultStore(
       saveState({ ...state, ideaOrder: [...order].filter((id) => known.has(id)) })
     },
 
-    createIdea(chatId, title, body) {
+    createIdea: atomic((chatId, title, body) => {
       const sourceChat = chatId === undefined ? undefined : chatOf(chatId)
       const sourcePaper = sourceChat?.paperId === undefined ? undefined : papers.get(sourceChat.paperId)
       const idea = createResearchIdea(nextId('idea'), title, body, sourceChat === undefined ? { chatTitle: MANUAL_SOURCE } : {
@@ -2525,7 +2525,7 @@ export function createVaultStore(
       // Without a manual order the newest idea already leads; with one, it goes to the front of it.
       if (state.ideaOrder !== undefined) saveState({ ...state, ideaOrder: [idea.id, ...state.ideaOrder] })
       return structuredClone(idea)
-    },
+    }),
 
     updateIdea(id, patch) {
       const current = ideas.find((idea) => idea.id === id)
@@ -2552,7 +2552,7 @@ export function createVaultStore(
       return structuredClone(next)
     },
 
-    deleteIdea(id) {
+    deleteIdea: atomic((id) => {
       const idea = ideas.find((held) => held.id === id)
       if (idea === undefined) throw new CallError('not-found', `想法不存在：${id}`)
       ideas = save('ideas', ideas.filter((held) => held !== idea))
@@ -2563,7 +2563,7 @@ export function createVaultStore(
       toTrash({
         id: nextId('trash'), kind: 'idea', title: idea.title, deletedAt: nowMs(), idea,
       })
-    },
+    }),
 
     recordAction: atomic((id, messageId) => {
       const chat = chatOf(id)

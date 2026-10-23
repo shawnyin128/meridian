@@ -1,22 +1,25 @@
 import {
-  chmodSync, cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, renameSync, rmSync, statSync,
-  writeFileSync,
+  chmodSync, cpSync, existsSync, linkSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, renameSync, rmSync,
+  statSync, writeFileSync,
 } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join, resolve, sep } from 'node:path'
+import { dirname, join, resolve, sep } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { TRASH_RETENTION_DAYS } from '../shared/vocabulary.js'
 import type { VaultStore } from './vault.js'
 import { createVaultStore } from './vault-store.js'
 
-// The writer puts every file in place by renaming it there, so counting renames picks which write of an operation fails.
+// The writer puts every file in place by renaming it there, or linking a new source there, so counting those picks which write of an operation fails.
 vi.mock('node:fs', async (importOriginal) => {
   const real = await importOriginal<typeof import('node:fs')>()
-  return { ...real, renameSync: vi.fn(real.renameSync) }
+  return { ...real, renameSync: vi.fn(real.renameSync), linkSync: vi.fn(real.linkSync) }
 })
 
-/** The file system's own rename, which the mock passes every rename to unless a case fails it. */
-const { renameSync: rename } = await vi.importActual<typeof import('node:fs')>('node:fs')
+/** The file system's own rename and link, which the mocks pass every call to unless a case fails it. */
+const { renameSync: rename, linkSync: link } = await vi.importActual<typeof import('node:fs')>('node:fs')
+
+/** The bytes of a PDF that imports. */
+const PDF = Uint8Array.from(Buffer.from('%PDF-1.7\n%%EOF'))
 
 /** Test vault for the real implementation: two paper pages, no projects and no app state. */
 const VAULT = resolve(import.meta.dirname, 'fixtures/vault')
@@ -119,6 +122,28 @@ const REFUSED: [string, string, (store: VaultStore, world: World) => unknown, (s
   ['changelog.json', '清掉已归档的变动', (s) => s.clearArchivedChanges(), (s) => s.listChanges()],
 ]
 
+/** A proposal that files a paper under two topics, writing the paper page and both topic pages. */
+const TWO_TOPICS = {
+  source: 'user' as const, title: '归进两个主题', ops: ['topics/draft-acceptance', 'topics/speculative-decoding'].map((topic) => ({
+    op: 'setMembership' as const, paper: 'papers/Jiang-et-al-2024-Mixtral-of-Experts', in: topic, cells: {},
+  })),
+}
+
+/** Writes `value` as the JSON file at `path` in the workspace `repo`, the way a coding agent does. */
+const plant = (repo: string, path: string, value: unknown): void => {
+  mkdirSync(dirname(join(repo, path)), { recursive: true })
+  writeFileSync(join(repo, path), JSON.stringify(value))
+}
+
+/** Sets up one custom column of `type`, a select or a text column, and fills it on every paper. */
+const fillColumn = (store: VaultStore, type: 'select' | 'text'): void => {
+  const [key, value] = type === 'select' ? ['stage', '精读'] : ['note', '读到一半']
+  store.setPaperColumns({
+    ...store.paperColumns(), custom: [{ key, label: key, type, options: type === 'select' ? ['精读', '略读'] : [] }],
+  })
+  for (const { id } of store.listPapers({ page: 1, size: 10 }).rows) store.updatePaper(id, { custom: { [key]: value } })
+}
+
 /** Trashes what `trash` deletes and returns the id of the trash record it made. */
 const trashed = (store: VaultStore, trash: () => unknown): string => {
   trash()
@@ -126,11 +151,11 @@ const trashed = (store: VaultStore, trash: () => unknown): string => {
 }
 
 /**
- * Each case: a write that writes the vault more than once, what it sets up before the write and
- * returns the write, and whether recent changes record it. The world's project is bound to a local
- * workspace, so every write to it also refreshes that workspace's projection.
+ * Each case: a write that writes the vault more than once, what it sets up before the write, given the
+ * world and the workspace the world's project is bound to, and returns the write, and whether recent
+ * changes record it. Every write to that project also refreshes the workspace's projection.
  */
-const WHOLE: [string, (store: VaultStore, world: World) => () => unknown, boolean][] = [
+const WHOLE: [string, (store: VaultStore, world: World, repo: string) => () => unknown, boolean][] = [
   ['删掉附件', (s, w) => {
     const { id } = s.createAttachment(w.project, { name: '数据.csv', size: '1 KB', path: '/tmp/数据.csv' }).attachments[0]!
     return () => s.deleteAttachment(w.project, id)
@@ -155,11 +180,7 @@ const WHOLE: [string, (store: VaultStore, world: World) => () => unknown, boolea
     const task = s.createTask(w.project, { title: '任务', start: '2026-09-10', end: '2026-09-11', state: 'plan', priority: 'p1' }).tasks[0]!.id
     return () => s.updateTask(w.project, task, { title: '改过的任务', note: '备注' })
   }, true],
-  ['一条提案写好几页', (s) => () => s.applyProposal({
-    source: 'user', title: '归进两个主题', ops: ['topics/draft-acceptance', 'topics/speculative-decoding'].map((topic) => ({
-      op: 'setMembership' as const, paper: 'papers/Jiang-et-al-2024-Mixtral-of-Experts', in: topic, cells: {},
-    })),
-  }), true],
+  ['一条提案写好几页', (s) => () => s.applyProposal(TWO_TOPICS), true],
   ['从垃圾桶恢复连着项目的想法', (s, w) => {
     const id = trashed(s, () => s.deleteIdea(w.idea))
     return () => s.restoreTrash(id)
@@ -179,6 +200,55 @@ const WHOLE: [string, (store: VaultStore, world: World) => () => unknown, boolea
     return () => s.restoreTrash(entry)
   }, false],
   ['从垃圾桶恢复一条推荐', (s, w) => () => s.restoreTrash(w.trashedEntry), false],
+  ['收件里不看一条', (s, w) => () => s.dismissInbox(w.entry), false],
+  ['收件里稍后读一条', (s, w) => () => s.readLater(w.entry), false],
+  ['删掉有推荐的关注', (s, w) => () => s.deleteWatch(w.watch), false],
+  ['删掉连着项目的想法', (s, w) => () => s.deleteIdea(w.idea), false],
+  ['手排过顺序时新建想法', (s) => {
+    s.reorderIdeas(s.listIdeas().map((idea) => idea.id).reverse())
+    return () => s.createIdea(undefined, '新的方向', '验证一下')
+  }, false],
+  ['删掉连着想法的科研节点', (s, w) => () => s.deleteNode(w.project, w.node), false],
+  ['把论文页的 Wiki 草稿写进去', (s, w) => () => s.applyPaperWikiDraft(`papers/${w.paper}`, '读过之后的正文'), false],
+  ['改 Wiki 页的正文', (s) => () => s.updateWikiPage('topics/draft-acceptance', '改过的正文'), true],
+  ['改一个选项的名字，填着它的论文一起改', (s) => {
+    fillColumn(s, 'select')
+    return () => s.renamePaperOption('stage', '精读', '细读')
+  }, true],
+  ['改一列的类型，填着它的论文一起改', (s) => {
+    fillColumn(s, 'text')
+    return () => s.setPaperColumnType('note', 'multi')
+  }, true],
+  ['撤销改一列的类型', (s) => {
+    fillColumn(s, 'text')
+    s.setPaperColumnType('note', 'multi')
+    return () => s.undoChange(s.listChanges()[0]!.id)
+  }, true],
+  ['撤销改有会话的论文的好几项', (s, w) => {
+    s.updatePaper(w.paper, { title: '改过的标题', venue: 'ICML' })
+    return () => s.undoChange(s.listChanges()[0]!.id)
+  }, true],
+  ['撤销一条写好几页的提案', (s) => {
+    s.applyProposal(TWO_TOPICS)
+    return () => s.undoChange(s.listChanges()[0]!.id)
+  }, true],
+  ['导入一篇 PDF', (s) => () => s.importPaper('新的论文.pdf', PDF), false],
+  ['下载稍后读里的一篇', (s, w) => {
+    s.readLater(w.entry)
+    return () => s.completeInboxDownload(w.entry, PDF)
+  }, false],
+  ['给下载的论文补全元数据，稍后读里的那一条跟着改', (s, w) => {
+    s.readLater(w.entry)
+    const { paper } = s.completeInboxDownload(w.entry, PDF)
+    return () => s.fillPaperMetadata(paper, { title: '补全的标题', pageCount: 12 }, s.getPaper(paper).title)
+  }, false],
+  ['收进 agent 要加的一条任务', (s, w, repo) => {
+    plant(repo, '.meridian/tasks/tasks.json', {
+      schema_version: 'meridian.workspace-agent-tasks.v1',
+      tasks: [{ id: 'request-1', date: '2026-09-11', title: 'agent 要跑的实验', note: '跑一遍' }],
+    })
+    return () => s.absorbAgentTasks(w.project)
+  }, true],
 ]
 
 describe('a vault write that fails', () => {
@@ -236,24 +306,31 @@ describe('a vault write that fails', () => {
    */
   const failWrite = (step: number): (() => boolean) => {
     let seen = 0
-    vi.mocked(renameSync).mockImplementation((from, to) => {
+    const refuse = (syscall: string, from: unknown, to: unknown): void => {
       const file = String(to)
       if (file.startsWith(vault + sep) && file !== join(vault, '.meridian', 'changelog.json') && (seen += 1) === step) {
-        throw Object.assign(new Error(`EACCES: permission denied, rename '${String(from)}' -> '${String(to)}'`), {
-          code: 'EACCES', syscall: 'rename',
+        throw Object.assign(new Error(`EACCES: permission denied, ${syscall} '${String(from)}' -> '${file}'`), {
+          code: 'EACCES', syscall,
         })
       }
+    }
+    vi.mocked(renameSync).mockImplementation((from, to) => {
+      refuse('rename', from, to)
       rename(from, to)
+    })
+    vi.mocked(linkSync).mockImplementation((from, to) => {
+      refuse('link', from, to)
+      link(from, to)
     })
     return () => seen >= step
   }
   /**
    * Fails `write` at each vault write it makes, one after another on the same store, and checks after each
-   * failure that every file and everything the store answers are as they were before. Returns the number
-   * of vault writes `write` made once it runs through.
+   * failure that every file and what `read` answers are as they were before. Returns the number of vault
+   * writes `write` made once it runs through.
    */
-  const everyStep = (store: VaultStore, write: () => unknown): number => {
-    const shown = view(store)
+  const everyStep = (write: () => unknown, read: () => unknown): number => {
+    const shown = read()
     const files = filesOf()
     for (let step = 1; ; step += 1) {
       const reached = failWrite(step)
@@ -264,9 +341,10 @@ describe('a vault write that fails', () => {
         if (!reached()) throw error
       } finally {
         vi.mocked(renameSync).mockImplementation(rename)
+        vi.mocked(linkSync).mockImplementation(link)
       }
       expect(filesOf(), `第 ${step} 次写没写成`).toEqual(files)
-      expect(view(store), `第 ${step} 次写没写成`).toEqual(shown)
+      expect(read(), `第 ${step} 次写没写成`).toEqual(shown)
     }
   }
 
@@ -287,13 +365,35 @@ describe('a vault write that fails', () => {
       const store = open()
       const world = seed(store)
       store.bindProjectWorkspace(world.project, { kind: 'local', root: repo })
-      const act = arrange(store, world)
+      const act = arrange(store, world, repo)
       const changes = store.listChanges().length
-      expect(everyStep(store, act)).toBeGreaterThan(1)
+      expect(everyStep(act, () => view(store))).toBeGreaterThan(1)
       expect(store.listChanges()).toHaveLength(changes + (logged ? 1 : 0))
       expect(view(open())).toEqual(view(store))
     })
   }
+
+  it('agent 在工作区记下的想法和科研记录，收进来时哪一次写没写成都不落地，收成之后各只有一份', () => {
+    let clock = Date.parse('2026-09-10T08:00:00Z')
+    // A minute passes between reads, so the once-a-minute limit on reading workspace events never skips one.
+    const store = createVaultStore(vault, () => '2026-09-10', () => new Date(clock += 61_000))
+    const world = seed(store)
+    store.bindProjectWorkspace(world.project, { kind: 'local', root: repo })
+    store.listFeed()
+    plant(repo, '.meridian/ideas/ideas.json', {
+      schema_version: 'meridian.workspace-agent-ideas.v1',
+      ideas: [1, 2].map((n) => ({ id: `agent-idea-${n}`, date: '2026-09-10', title: `agent 的方向 ${n}`, body: '验证这一步' })),
+    })
+    plant(repo, '.meridian/events/events.json', {
+      schema_version: 'meridian.workspace-events.v1',
+      events: [1, 2].map((n) => ({ id: `agent-event-${n}`, date: '2026-09-10', text: `agent 跑完了第 ${n} 组`, source: 'agent' })),
+    })
+    expect(everyStep(() => store.listIdeas(), () => null)).toBeGreaterThan(1)
+    expect(everyStep(() => store.listFeed(), () => null)).toBeGreaterThan(1)
+    expect(store.listIdeas().filter((idea) => idea.title.startsWith('agent 的方向'))).toHaveLength(2)
+    expect(store.listFeed().filter((entry) => JSON.stringify(entry).includes('agent 跑完了'))).toHaveLength(2)
+    expect(view(open())).toEqual(view(store))
+  })
 
   it('想法从垃圾桶恢复到最后一步没写成，再恢复一次也只有一份', () => {
     const store = open()
