@@ -278,10 +278,14 @@ function splitRows(file: string): { front: string[]; body: string[]; close: numb
   return { front: rows.slice(1, close), body: rows.slice(close + 1), close }
 }
 
-/** Line range of a `## heading` body section, from the following line to the next level-two heading. */
+/**
+ * Line range of a `## heading` body section, from the following line to the next level-two heading.
+ * The memo is the last section and runs to the end of the page, so its own headings stay memo text.
+ */
 function sectionRange(rows: string[], heading: string): [number, number] {
   const start = rows.findIndex((row) => withoutCr(row) === `## ${heading}`)
   if (start < 0) throw new Error(`页里没有「${heading}」这一节`)
+  if (heading === MEMO) return [start + 1, rows.length]
   const rest = rows.slice(start + 1).findIndex((row) => row.startsWith('## '))
   return [start + 1, rest < 0 ? rows.length : start + 1 + rest]
 }

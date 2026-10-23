@@ -348,6 +348,32 @@ describe('project page', () => {
     expect(after.filter((row) => !before.includes(row))).toEqual(['- 2026-09-08 记一笔'])
   })
 
+  it('随笔里以 #、## 或 ### 开头的行一行不少:写出、改过、再记一条科研记录之后读回来都一字不差', () => {
+    const memo = '开头一段\n# 一级标题\n## 小结\n小结下面的话\n### 三级标题\n- 最后一行'
+    writePage(file, projectPageText({ ...PROJECT, memo }), staging)
+    expect(readProjectPage(file, 'project-1').memo).toBe(memo)
+
+    const edited = '改过的开头\n## 科研记录\n- 2026-09-09 不是一条科研记录\n## 随笔\n## 新的小结\n结尾'
+    writeProjectFields(file, { ...PROJECT, memo: edited }, ['memo'], staging)
+    expect(readFileSync(file, 'utf8')).not.toContain('小结下面的话')
+    const events = [...PROJECT.events, { date: '2026-09-08', text: '记一笔' }]
+    writeProjectFields(file, { ...PROJECT, memo: edited, events }, ['events'], staging)
+    const read = readProjectPage(file, 'project-1')
+    expect(read.memo).toBe(edited)
+    expect(read.events).toEqual(events)
+  })
+
+  it('旧版本藏在随笔里 ## 行之后的那一截读得出来,改随笔时连同它一起换掉', () => {
+    // The page 0.0.16.1 leaves after a memo holding a `## ` line is edited: it replaced only the
+    // lines above that heading, so the heading and the lines below it stayed on the page unseen.
+    writePage(file, `${projectPageText({ ...PROJECT, memo: '改过的上半段' })}\n## 小结\n下半段\n`, staging)
+    expect(readProjectPage(file, 'project-1').memo).toBe('改过的上半段\n\n## 小结\n下半段')
+
+    writeProjectFields(file, { ...PROJECT, memo: '整段重写' }, ['memo'], staging)
+    expect(readFileSync(file, 'utf8').endsWith('\n## 随笔\n\n整段重写\n')).toBe(true)
+    expect(readProjectPage(file, 'project-1').memo).toBe('整段重写')
+  })
+
   it('用户自己往 frontmatter 里加的键,改别的字段之后还在', () => {
     const rows = readFileSync(file, 'utf8').split('\n')
     writePage(file, [...rows.slice(0, 1), 'my_own_key: "留着"', ...rows.slice(1)].join('\n'), staging)
