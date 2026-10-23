@@ -89,7 +89,7 @@ test('应用菜单里有「设置…」,其余菜单仍是 Electron 的角色', 
 test.describe(() => {
   test.use({ showWindow: true })
 
-  test('应用菜单里的「设置…」与快捷键都打开设置,别的键不打开', async ({ app, win }) => {
+  test('应用菜单里的「设置…」与快捷键都打开设置,别的键不打开(需要系统焦点)', async ({ app, win }) => {
     await win.locator('.sidebar').waitFor()
     await expect(win.locator('.setdlg')).toHaveCount(0)
 
@@ -104,6 +104,7 @@ test.describe(() => {
     await cdp.send('Emulation.setFocusEmulationEnabled', { enabled: false })
     await app.evaluate(({ BrowserWindow }) => {
       const target = BrowserWindow.getAllWindows()[0]!
+      target.setFocusable(true)
       target.show()
       target.focus()
     })

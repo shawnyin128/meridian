@@ -1,5 +1,6 @@
 import {
-  app, BrowserWindow, dialog, ipcMain, MessageChannelMain, Menu, nativeTheme, net, shell, utilityProcess,
+  app, BaseWindow, BrowserWindow, dialog, ipcMain, MessageChannelMain, Menu, nativeTheme, net, shell,
+  utilityProcess,
 } from 'electron'
 import { execFile, spawn } from 'node:child_process'
 import { existsSync, readFileSync } from 'node:fs'
@@ -75,6 +76,9 @@ function configHome(): string {
 // Hide the window only when MERIDIAN_SHOW_WINDOW=0 is explicit. E2E and screenshot scripts set it; development does not.
 const devUrl = process.env['ELECTRON_RENDERER_URL']
 const hidden = devUrl === undefined && process.env['MERIDIAN_SHOW_WINDOW'] === '0'
+// E2E cases that need the window on screen set MERIDIAN_SHOW_WINDOW=isolated: the machine's real keyboard
+// and pointer must not reach the page, while DevTools-protocol input still does.
+const isolated = devUrl === undefined && process.env['MERIDIAN_SHOW_WINDOW'] === 'isolated'
 
 // Installed builds run as a single instance; later launches bring the existing window forward.
 const primary = !app.isPackaged || app.requestSingleInstanceLock()
@@ -101,6 +105,7 @@ app.whenReady().then(() => {
     width: 1440,
     height: 900,
     show: false,
+    focusable: !isolated,
     backgroundColor: windowBackground(nativeTheme.shouldUseDarkColors),
     // Only Windows and Linux use this option for window and taskbar icons; macOS uses the app bundle.
     ...(process.platform === 'darwin' ? {} : { icon }),
@@ -122,7 +127,25 @@ app.whenReady().then(() => {
     },
   })
 
-  win.once('ready-to-show', () => { if (!hidden) win.show() })
+  win.once('ready-to-show', () => {
+    if (!isolated) {
+      if (!hidden) win.show()
+      return
+    }
+    // show() would activate the app. Inactive and unfocusable, the window never becomes key, so the
+    // keyboard keeps typing into whatever app the user is in.
+    win.showInactive()
+    // setIgnoreMouseEvents is not enough on macOS: the page still sees the cursor enter and leave. A
+    // transparent child window over the whole window takes the pointer instead.
+    const shield = new BaseWindow({
+      parent: win, frame: false, transparent: true, hasShadow: false, focusable: false, show: false,
+    })
+    const cover = () => shield.setBounds(win.getBounds())
+    win.on('resize', cover)
+    win.on('move', cover)
+    cover()
+    shield.showInactive()
+  })
 
   win.webContents.setWindowOpenHandler(openLinks((url) => shell.openExternal(url)))
 

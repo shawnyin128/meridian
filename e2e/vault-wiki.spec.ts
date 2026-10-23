@@ -28,7 +28,7 @@ const test = base.extend<{ app: ElectronApplication }>({
         MERIDIAN_VAULT_ROOT: vault,
         MERIDIAN_LIBRARY_ROOT: vault,
         MERIDIAN_CONFIG_HOME: configHome,
-        MERIDIAN_SHOW_WINDOW: showWindow ? '1' : '0',
+        MERIDIAN_SHOW_WINDOW: showWindow ? 'isolated' : '0',
       },
     })
     await use(app)
