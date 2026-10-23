@@ -84,8 +84,8 @@ test('应用菜单里有「设置…」,其余菜单仍是 Electron 的角色', 
   expect(menu.findIndex((top) => top.items.some((item) => item.id === 'settings'))).toBe(mac ? 0 : 3)
 })
 
-// A key the page does not handle goes on to the menu accelerators, and that step is the window's own
-// native menu. An offscreen window cannot take focus, so the key goes nowhere and Ctrl+, does nothing.
+// The window stays on screen because Windows sends the shortcut through sendInputEvent, which has not
+// been verified on an offscreen window.
 test.describe(() => {
   test.use({ showWindow: true })
 
