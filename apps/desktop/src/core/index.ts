@@ -100,6 +100,7 @@ import {
   WikiProposeParamsSchema,
   WikiUpdateParamsSchema,
 } from '../shared/contract.js'
+import { projectAreas } from '../shared/project-signals.js'
 import { DEFAULT_PROJECT_TOPIC } from '../shared/vocabulary.js'
 import { answerCall, CallError, callFailure } from './call-error.js'
 import { createFixtureStore } from './fixture-store.js'
@@ -678,7 +679,7 @@ registerHandler('watch.suggest', (params) => {
     .map((terms) => [...new Set(terms)].slice(0, 6).join(' ')).find((terms) => terms.length >= 3) ?? profile.anchorText
   return background.suggestWatches({
     focus,
-    seedTopics: [project.topic, ...(profile.wikiTerms ?? []), ...intentTopics]
+    seedTopics: [...projectAreas(project), ...(profile.wikiTerms ?? []), ...intentTopics]
       .map((topic) => topic.trim()).filter((topic) => topic !== '' && topic !== DEFAULT_PROJECT_TOPIC),
   })
 })

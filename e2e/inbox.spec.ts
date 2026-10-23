@@ -562,6 +562,11 @@ test('没填 key 时关注建议从 arXiv 生成关键词与按姓名的作者,�
   expect(projectResult.authors[0]?.name).toBeTruthy()
   expect(projectResult.authors[0]?.id).toBeUndefined()
 
+  // Every area of the project seeds the suggestions, not only its first.
+  await call(win, 'project.update', { id: 'draft', patch: { topics: ['speculative decoding', 'kv cache eviction'] } })
+  const areasResult = await call<{ topics: { name: string }[] }>(win, 'watch.suggest', { source: 'project', projectId: 'draft' })
+  expect(areasResult.topics.map((item) => item.name)).toEqual(expect.arrayContaining(['speculative decoding', 'kv cache eviction']))
+
   await section.locator('.watch-suggestion-source').getByRole('radio', { name: '从项目生成' }).click()
   await section.locator('.btn.pri').click()
   await expect(section.locator('.watch-suggestion-row').first()).toBeVisible()
