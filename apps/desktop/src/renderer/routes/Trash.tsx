@@ -9,6 +9,7 @@ import { Icon, IconRestore, IconTrash } from '../components/icons.js'
 import { IconButton } from '../components/IconButton.js'
 import { ConfirmDialog } from '../components/ConfirmDialog.js'
 import { EmptyState } from '../components/EmptyState.js'
+import { FadeText } from '../components/FadeText.js'
 import { LoadingPlaceholder } from '../components/LoadingPlaceholder.js'
 import { PaperText } from '../components/paper/PaperText.js'
 import { plainTitle } from '../components/paper/paper-text.js'
@@ -120,7 +121,7 @@ export function Trash() {
               <StructuredList variant="embedded" maxVisibleRows="all" className="tgroup">
                 {g.items.map((entry) => (
                   <StructuredRow className="trow" key={entry.id}>
-                    <span className="tt2">{PAPER_KINDS.has(entry.kind) ? <PaperText text={entry.title} /> : entry.title}</span>
+                    <FadeText className="tt2">{PAPER_KINDS.has(entry.kind) ? <PaperText text={entry.title} /> : entry.title}</FadeText>
                     <span className="tm2">{m.trash.autoClear(daysLeft(entry.deletedAt, today))}</span>
                     {entry.restorable ? null : <Tag>{m.trash.projectGone}</Tag>}
                     <RowActions>

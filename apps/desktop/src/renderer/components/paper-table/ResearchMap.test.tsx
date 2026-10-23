@@ -58,7 +58,7 @@ describe('ResearchMap', () => {
     vi.unstubAllGlobals()
   })
 
-  it('分组名、选中分组的名字和论文标题放不下时都淡出，不出省略号', () => {
+  it('分组名、选中分组的名字、论文标题和归入理由放不下时都淡出，不出省略号', () => {
     const title = 'Accelerating Large Language Model Decoding with Speculative Sampling'
     const rows = [paper('a', title, { topics: ['Speculative decoding'] }), paper('b', 'Bravo', { topics: ['Speculative decoding'] })]
     const host = document.createElement('div')
@@ -70,7 +70,7 @@ describe('ResearchMap', () => {
     const faded = (selector: string) => [...host.querySelectorAll(`${selector} .fade-text:not(.tag-text)`)].map((line) => line.textContent)
     expect(faded('.research-map-group-copy')).toEqual(['Speculative decoding'])
     expect(faded('.research-map-detail-head')).toEqual(['Speculative decoding'])
-    expect(faded('.research-map-paper')).toEqual([title, 'Bravo'])
+    expect(faded('.research-map-paper')).toEqual([title, '主题：Speculative decoding', 'Bravo', '主题：Speculative decoding'])
     expect([...host.querySelectorAll('.research-map-group-name, .research-map-detail-name')].every((name) => name.matches('.fade-text')))
       .toBe(true)
   })

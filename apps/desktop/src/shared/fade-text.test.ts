@@ -72,6 +72,9 @@ const LINES: Record<string, [file: string, markup: RegExp, measure: RegExp]> = {
     /className=\{`paper-abstract pabs\$\{shut \? ' is-folded fade-lines' : ''\}\$\{overflows \? ' clipped' : ''\}`\}/, /useClipped\(body, text, true\)/],
 }
 
+/** A box marked as cut off: FadeText's `clipped`, and `trunc`, which the paper table sets on a cell it measured cut. */
+const CUT = /\.(clipped|trunc)\b/
+
 describe('放不下的文字淡出,不以省略号结尾', () => {
   it('样式表里没有省略号,写明的例外除外', () => {
     const ellipses = RULES.filter(({ selector, body }) => /text-overflow:\s*ellipsis/.test(body) && !(selector in ELLIPSIS_EXEMPT))
@@ -97,6 +100,14 @@ describe('放不下的文字淡出,不以省略号结尾', () => {
       && /(^|;)\s*mask(-image)?:/.test(body))
     expect(own.map(({ selector }) => selector)).toEqual([])
     expect(source('routes/ResearchOverview.tsx')).toMatch(/<FadeText className="ovlist-main"/)
+  })
+
+  it('文字只在放不下时淡出:每条给文字加遮罩的规则都只落在标明被切掉的元素上', () => {
+    // A sticky cell's or head's pseudo-element fades the content under it, and [data-fade] fades a scroll area's edge.
+    const masked = RULES.filter(({ selector, body }) => /(^|;)\s*(-webkit-)?mask(-image)?:(?!\s*none\s*(;|$))/.test(body)
+      && !/::(before|after)|\[data-fade/.test(selector))
+    const always = masked.filter(({ selector }) => selector.split(',').some((one) => !CUT.test(one)))
+    expect(always.map(({ path, selector }) => `${path}  ${selector}`)).toEqual([])
   })
 
   it('放不下的文字只有两种淡出:一行的用 --clipfade,多行的用共用的 .fade-lines', () => {

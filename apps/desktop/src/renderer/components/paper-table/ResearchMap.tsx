@@ -100,9 +100,9 @@ export function ResearchMap({ rows, total, loading, onOpenPaper, onReadPaper }: 
                               <span className="research-map-paper-meta">
                                 {member.paper.year === undefined ? member.paper.venue : `${member.paper.year} · ${member.paper.venue}`}
                               </span>
-                              <span className="research-map-why">
+                              <FadeText className="research-map-why">
                                 {member.reasons.map((item) => <Tag shape="chip" className="tagchip" key={reasonKey(item)}>{reason(item)}</Tag>)}
-                              </span>
+                              </FadeText>
                             </StructuredRow>
                           )}
                         >

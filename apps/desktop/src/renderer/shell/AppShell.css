@@ -128,14 +128,11 @@ span.sh-caret svg{width:9px;height:9px}
 .srow .ic svg{width:13.5px;height:13.5px}
 .srow .n{margin-left:auto}
 .srow.sub{padding-left:var(--sp-20);font-size:var(--fs-sm)}
-/*
- * A watch row stays on one line: its name takes only the space the badge leaves and, when it
- * overflows, fades out with the shared --clipfade.
- */
-.watch-row .watch-name{flex:1;min-width:0;white-space:nowrap;overflow:hidden;mask-image:var(--clipfade)}
+/* A watch row stays on one line: its name takes only the space the badge leaves. */
+.watch-row .watch-name{flex:1}
 .watch-row .n{margin-left:0}
 .chat-row .nav-row-label{flex:1}
-.chat-row .ct-t{flex:1;min-width:0;white-space:nowrap;overflow:hidden;mask-image:var(--clipfade)}
+.chat-row .ct-t{flex:1}
 /* A sub-row whose icon slot is marked .blank (an archived row) draws no dot. */
 .srow.sub .ic.blank::before{content:none}
 /* Inbox levels: Inmail; Discovery and the watch groups (first indent); single watches (second indent) */

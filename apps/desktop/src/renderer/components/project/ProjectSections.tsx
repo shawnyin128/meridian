@@ -391,7 +391,7 @@ export function ProjectAttachments({ attachments, onAdd, onReveal, onRemove }: {
                   <button
                     type="button" className="an" disabled={attachment.path === undefined}
                     onClick={() => { if (attachment.path !== undefined) onReveal(attachment.path) }}
-                  >{attachment.name}</button>
+                  ><FadeText>{attachment.name}</FadeText></button>
                   {attachment.path === undefined ? <Tag>{m.project.attachments.noPath}</Tag> : null}
                   <span className="as">{attachment.size}</span>
                   <RowActions>

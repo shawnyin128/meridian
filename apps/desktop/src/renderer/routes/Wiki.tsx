@@ -87,16 +87,16 @@ function AggregationCard({ card, onOpen, onRemove, pending }: {
     <ResearchObjectCard variant="grid" className="wkcard" data-wk={card.id} onActivate={onOpen}>
       <div className="wt">
         <Tag tone="wiki" className="wkind">{card.kindLabel}</Tag>
-        <CardOpen className="tt">{card.title}</CardOpen>
+        <CardOpen className="tt"><FadeText>{card.title}</FadeText></CardOpen>
         {card.parentCount > 1 ? <Tag className="wkind">{m.wiki.aggregation.parentCount(card.parentCount)}</Tag> : null}
         <span className="sp" />
       </div>
       <div ref={summary} className={`wm fade-lines${summaryCut ? ' clipped' : ''}`}>{card.summary}</div>
-      <div className="wf">
+      <FadeText className="wf">
         {m.wiki.aggregation.cardFooter(
           card.childCount > 0 ? card.childCount : null, card.memberCount, fmt.date(card.updated),
         )}
-      </div>
+      </FadeText>
       {onRemove === undefined
         ? null
         : (
@@ -131,7 +131,7 @@ function PaperCard({ paper, onOpen }: { paper: PaperRow; onOpen: () => void }) {
         <span className="sp" />
       </div>
       <FadeText className="wm" label={line}>{line}</FadeText>
-      <div className="wf">{m.wiki.paperCardFooter(paper.noteCount, paper.conclusionCount)}</div>
+      <FadeText className="wf">{m.wiki.paperCardFooter(paper.noteCount, paper.conclusionCount)}</FadeText>
     </ResearchObjectCard>
   )
 }
