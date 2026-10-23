@@ -3,7 +3,7 @@ import type { ResearchIdea, ResearchIdeaPatch } from '../../shared/contract.js'
 export { placeResearchIdeaOnGraph } from './graph-placement.js'
 
 export type IdeaSource = ResearchIdea['source']
-export type ResearchIdeaMutation = ResearchIdeaPatch & { node?: string | null }
+export type ResearchIdeaMutation = ResearchIdeaPatch & { node?: string | null; candidateNode?: null }
 
 /** Builds personal research state; it never promotes the text into the canonical Wiki. */
 export function createResearchIdea(
@@ -15,7 +15,10 @@ export function createResearchIdea(
   }
 }
 
-/** Preserves provenance and creation time while the user refines an idea. */
+/**
+ * Preserves provenance and creation time while the user refines an idea. Relations are kept each once,
+ * and relations with no project and no page leave the field out.
+ */
 export function updateResearchIdea(
   idea: ResearchIdea,
   patch: ResearchIdeaMutation,
@@ -32,6 +35,12 @@ export function updateResearchIdea(
   else if (patch.project !== undefined) next.project = patch.project
   if (patch.node === null) delete next.node
   else if (patch.node !== undefined) next.node = patch.node
+  if (patch.candidateNode === null) delete next.candidateNode
+  if (patch.relations !== undefined) {
+    const relations = { projects: [...new Set(patch.relations.projects)], pages: [...new Set(patch.relations.pages)] }
+    if (relations.projects.length === 0 && relations.pages.length === 0) delete next.relations
+    else next.relations = relations
+  }
   return {
     ...next,
   }

@@ -1,9 +1,10 @@
 import { execFileSync } from 'node:child_process'
-import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from 'node:fs'
+import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { z } from 'zod'
+import { readStoredList } from './vault/stored-records.js'
 import type { VaultStore } from './vault.js'
 import { createVaultStore } from './vault-store.js'
 
@@ -13,7 +14,10 @@ const VAULT = resolve(import.meta.dirname, 'fixtures/vault')
 /** Git-managed repository root, whose `src` holds the Python package agents read workspaces with. */
 const REPO = resolve(import.meta.dirname, '../../../..')
 
-/** The research-idea schema of App 0.0.15.4 (v0.0.15004), copied with the date shape it reused. */
+/**
+ * The research-idea schema of App 0.0.15.4 (v0.0.15004), copied with the date shape it reused; App
+ * 0.0.16.1 (v0.0.16001) has the same one.
+ */
 const IsoDate0154 = z.string().regex(/^\d{4}-\d{2}-\d{2}$/)
 const ResearchIdeaSchema0154 = z.object({
   id: z.string(),
@@ -74,5 +78,30 @@ describe('自己写下的想法存下的样子', () => {
       env: { ...process.env, PYTHONPATH: join(REPO, 'src') }, encoding: 'utf8',
     })
     expect(JSON.parse(output)).toEqual(['ready', { chat_title: '手动添加' }])
+  })
+
+  it('带来源项目、候选节点和关联的想法,0.0.16.1 的想法 schema 逐条读得出,新字段原样写回;放进绑了工作区的项目时,工作区里还是旧的样子', () => {
+    const project = store.createProject('来源项目')
+    const repo = join(vault, 'source-project-repo')
+    mkdirSync(join(repo, '.meridian/ideas'), { recursive: true })
+    store.bindProjectWorkspace(project, { kind: 'local', root: repo })
+    writeFileSync(join(repo, '.meridian/ideas/ideas.json'), JSON.stringify({
+      schema_version: 'meridian.workspace-agent-ideas.v1',
+      ideas: [{ id: 'agent-idea', date: '2026-10-21', title: 'agent 记下的想法', body: '正文', node: 'thread.B' }],
+    }))
+    const arrived = store.listIdeas().find((idea) => idea.source.agent === true)!
+    store.updateIdea(arrived.id, { relations: { projects: [project], pages: [] } })
+    store.updateIdea(arrived.id, { project })
+    const changes = JSON.parse(readFileSync(join(repo, '.meridian/control/changes.json'), 'utf8')) as { ideas: object[] }
+    expect(changes.ideas.map((idea) => Object.keys(idea).sort()))
+      .toEqual([['archived', 'body', 'created', 'id', 'source', 'title', 'updated']])
+    const raw = JSON.parse(readFileSync(join(vault, '.meridian', 'ideas.json'), 'utf8')) as Record<string, unknown>[]
+    const written = raw.find((record) => record.id === arrived.id)!
+    expect(written).toMatchObject({ sourceProject: project, candidateNode: 'thread.B', relations: { projects: [project], pages: [] } })
+
+    const read = readStoredList('ideas.json', raw, ResearchIdeaSchema0154, 'id')
+    expect(read.unreadable).toEqual([])
+    expect(read.rows.find((row) => row.id === arrived.id)).not.toHaveProperty('relations')
+    expect(read.stored(read.rows)).toEqual(raw)
   })
 })

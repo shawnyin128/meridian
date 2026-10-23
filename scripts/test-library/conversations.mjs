@@ -9,6 +9,7 @@ const say = (role, ...runs) => ({ role, runs: runs.map((run) => (typeof run === 
  * a reply whose action records a research record for the KV cache project. Ideas are saved from those
  * chats in every state: placed on the research graph, linked only, archived, promoted to a project,
  * unlinked, and deleted into Trash; one idea the user wrote down without a chat is linked to a project.
+ * Two ideas relate to projects and a Wiki page other than where they came from.
  */
 export async function seedConversations(seed, call) {
   const append = (id, messages) => call('chat.append', { id, messages })
@@ -69,8 +70,11 @@ export async function seedConversations(seed, call) {
     seed.projects.promoted = { id: project.id, days: -5 }
     await call('project.update', { id: project.id, patch: { status: '搁置', focus: '等 KV cache 量化的结论出来再继续' } })
   })
-  await idea(old, 'MoE 路由用熵正则代替负载均衡 loss', '负载均衡 loss 会压低路由的确定性，换成对路由分布的熵正则可能更好。')
+  const moeIdea = await idea(old, 'MoE 路由用熵正则代替负载均衡 loss', '负载均衡 loss 会压低路由的确定性，换成对路由分布的熵正则可能更好。')
   await call('idea.delete', { id: await idea(width, '用 n-gram 草稿处理代码补全', '代码里重复片段多，n-gram 草稿也许有用。') })
   const own = await call('idea.create', { title: '按 batch 大小校准接受率阈值', body: '同一个阈值在 B=1 和 B=16 下效果差很多，先按 batch 分档校准。' })
   await call('idea.update', { id: own.id, patch: { project: spec } })
+  const related = await call('idea.create', { title: '用草稿置信度选择 KV 量化位宽', body: '草稿头置信度高的位置用低位宽 KV，低的位置用高位宽，把显存省在不容易出错的地方。' })
+  await call('idea.update', { id: related.id, patch: { relations: { projects: [seed.projects.kv.id], pages: ['methods/kv-quantization'] } } })
+  await call('idea.update', { id: moeIdea, patch: { relations: { projects: [seed.projects.moe.id], pages: [] } } })
 }

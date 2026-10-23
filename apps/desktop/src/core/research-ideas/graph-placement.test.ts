@@ -1,4 +1,7 @@
-import { describe, expect, it } from 'vitest'
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { afterEach, describe, expect, it } from 'vitest'
 import { createFixtureStore } from '../fixture-store.js'
 import { placeResearchIdeaOnGraph } from './graph-placement.js'
 
@@ -13,12 +16,12 @@ describe('idea graph placement', () => {
     const created = placeResearchIdeaOnGraph(store, idea.id, {
       kind: 'create', label: '验证动态预算', after: null,
     })
-    expect(created.project.graph.nodes).toHaveLength(before + 1)
+    expect(created.project!.graph.nodes).toHaveLength(before + 1)
     expect(created.idea.node).toBe(created.nodeId)
-    expect(created.project.graph.nodes.find((node) => node.id === created.nodeId)?.label)
+    expect(created.project!.graph.nodes.find((node) => node.id === created.nodeId)?.label)
       .toBe('验证动态预算')
 
-    const existing = created.project.graph.nodes.find((node) => node.id !== created.nodeId)!
+    const existing = created.project!.graph.nodes.find((node) => node.id !== created.nodeId)!
     const linked = placeResearchIdeaOnGraph(store, idea.id, {
       kind: 'link', nodeId: existing.id,
     })
@@ -71,7 +74,7 @@ describe('idea graph placement', () => {
       kind: 'link', nodeId: workspaceNode.id,
     })
     expect(linked.idea.node).toBe(workspaceNode.id)
-    expect(linked.project.workspace?.graph?.nodes).toEqual([workspaceNode])
+    expect(linked.project!.workspace?.graph?.nodes).toEqual([workspaceNode])
 
     const unlinked = placeResearchIdeaOnGraph(store, idea.id, { kind: 'unlink' })
     expect(unlinked.idea.node).toBeUndefined()
@@ -80,5 +83,56 @@ describe('idea graph placement', () => {
     expect(() => placeResearchIdeaOnGraph(store, idea.id, {
       kind: 'create', label: '新的工作区节点', after: workspaceNode.id,
     })).toThrow(/Lab 更新协议/)
+  })
+
+  /**
+   * A fixture store whose project `draft` is bound to a fresh local workspace in which an agent recorded
+   * one idea, attached to `node`, and `id`, that idea as the store took it in.
+   */
+  const arrived = (node: string) => {
+    const store = createFixtureStore(() => TODAY)
+    const root = mkdtempSync(join(tmpdir(), 'meridian-candidate-'))
+    roots.push(root)
+    mkdirSync(join(root, '.meridian/ideas'), { recursive: true })
+    writeFileSync(join(root, '.meridian/ideas/ideas.json'), JSON.stringify({
+      schema_version: 'meridian.workspace-agent-ideas.v1',
+      ideas: [{ id: 'agent-idea', date: TODAY, title: 'agent 记下的想法', body: '还没放进项目', node }],
+    }))
+    store.bindProjectWorkspace('draft', { kind: 'local', root })
+    const { id } = store.listIdeas().find((idea) => idea.source.agent === true)!
+    return { id, store }
+  }
+  const roots: string[] = []
+  afterEach(() => { for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true }) })
+  const draftNode = () => createFixtureStore(() => TODAY).getProject('draft').graph.nodes[0]!.id
+
+  it('确认 agent 挂的候选节点：想法放进来源项目的那个节点，候选不再留着', () => {
+    const { id, store } = arrived(draftNode())
+    expect(store.listIdeas().find((idea) => idea.id === id)).toMatchObject({ sourceProject: 'draft', candidateNode: draftNode() })
+    const confirmed = placeResearchIdeaOnGraph(store, id, { kind: 'confirm' })
+    expect([confirmed.idea.project, confirmed.idea.node, confirmed.nodeId]).toEqual(['draft', draftNode(), draftNode()])
+    expect(store.listIdeas().find((idea) => idea.id === id)).not.toHaveProperty('candidateNode')
+  })
+
+  it('忽略候选节点只去掉候选，想法仍不在任何项目里', () => {
+    const { id, store } = arrived('draft.whatever')
+    const dismissed = placeResearchIdeaOnGraph(store, id, { kind: 'dismiss' })
+    expect([dismissed.project, dismissed.nodeId]).toEqual([null, null])
+    const held = store.listIdeas().find((idea) => idea.id === id)
+    expect(held).not.toHaveProperty('candidateNode')
+    expect(held).not.toHaveProperty('project')
+  })
+
+  it('没有候选、候选节点不在来源项目的图里、或想法已在别的项目里时，确认不动它', () => {
+    const none = createFixtureStore(() => TODAY)
+    const own = none.createIdea(undefined, '自己的想法', '没有候选')
+    expect(() => placeResearchIdeaOnGraph(none, own.id, { kind: 'confirm' })).toThrow(/没有候选节点/)
+    const missing = arrived('draft.gone')
+    expect(() => placeResearchIdeaOnGraph(missing.store, missing.id, { kind: 'confirm' })).toThrow(/节点不存在/)
+    const elsewhere = arrived(draftNode())
+    const other = elsewhere.store.listProjects().find((project) => project.id !== 'draft')!.id
+    elsewhere.store.updateIdea(elsewhere.id, { project: other })
+    expect(() => placeResearchIdeaOnGraph(elsewhere.store, elsewhere.id, { kind: 'confirm' })).toThrow(/已经放进别的项目/)
+    expect(elsewhere.store.listIdeas().find((idea) => idea.id === elsewhere.id)).toMatchObject({ project: other, candidateNode: draftNode() })
   })
 })

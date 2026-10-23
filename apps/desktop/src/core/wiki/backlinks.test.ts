@@ -31,8 +31,9 @@ const CONTEXT: BacklinkContext = {
     { id: 'p-other', name: '无关项目', papers: ['medusa'], pages: ['topics/quiet-old'] },
   ],
   ideas: [
-    { id: 'i-eagle', title: '从 EAGLE 读出的想法', paper: 'eagle' },
-    { id: 'i-free', title: '与论文无关的想法' },
+    { id: 'i-eagle', title: '从 EAGLE 读出的想法', pages: [] },
+    { id: 'i-sd', title: '关联推测解码的想法', pages: ['topics/quiet', 'topics/sd'] },
+    { id: 'i-free', title: '与论文无关的想法', pages: [] },
   ],
   chats: [
     { id: 'c-read', title: 'EAGLE 阅读', paper: 'eagle', sent: ['草稿头为什么够用？'] },
@@ -46,28 +47,28 @@ const CONTEXT: BacklinkContext = {
 const of = (id: string) => wikiBacklinks(DATA, id, CONTEXT)
 
 describe('wiki backlinks', () => {
-  it('论文页：正文链到它的别的页（主题在论文前）、链接这篇论文的项目、来自它的想法、读它或用 @ 提到它的对话，各一次', () => {
+  it('论文页：正文链到它的别的页（主题在论文前）、链接这篇论文的项目、读它或用 @ 提到它的对话，各一次；从它的对话里来的想法不算', () => {
     expect(of('papers/eagle')).toEqual([
       { kind: 'page', id: 'topics/sd', title: 'Speculative decoding', kindLabel: '主题' },
       { kind: 'page', id: 'papers/medusa', title: 'Medusa' },
       { kind: 'project', id: 'p-links', title: '链接论文的项目' },
-      { kind: 'idea', id: 'i-eagle', title: '从 EAGLE 读出的想法' },
       { kind: 'chat', id: 'c-read', title: 'EAGLE 阅读' },
       { kind: 'chat', id: 'c-short', title: '用短标题提到' },
     ])
   })
 
-  it('聚合页：链到它某条结论的页也算；关联它的项目与 @ 提到它标题的对话；想法只认论文来源', () => {
+  it('聚合页：链到它某条结论的页也算；关联它的项目、关联它的想法与 @ 提到它标题的对话', () => {
     expect(of('topics/sd')).toEqual([
       { kind: 'page', id: 'methods/heads', title: 'Draft heads', kindLabel: '方法' },
       { kind: 'page', id: 'papers/eagle', title: 'EAGLE', fullTitle: 'EAGLE: Speculative Sampling' },
       { kind: 'project', id: 'p-rel', title: '关联主题的项目' },
+      { kind: 'idea', id: 'i-sd', title: '关联推测解码的想法' },
       { kind: 'chat', id: 'c-topic', title: '提到主题' },
     ])
   })
 
-  it('没有任何东西指向的页给空表：同名前缀、没写成链接的 id 和不在开头的 @ 都不算', () => {
-    expect(of('topics/quiet')).toEqual([])
+  it('同名前缀、没写成链接的 id 和不在开头的 @ 都不算指向它', () => {
+    expect(of('topics/quiet')).toEqual([{ kind: 'idea', id: 'i-sd', title: '关联推测解码的想法' }])
     expect(of('papers/medusa')).toEqual([{ kind: 'project', id: 'p-other', title: '无关项目' }])
   })
 

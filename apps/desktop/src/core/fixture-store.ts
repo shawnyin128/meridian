@@ -1701,7 +1701,7 @@ export function createFixtureStore(
           papers: p.papers,
           pages: p.relations.flatMap((g) => g.items.flatMap((item) => (item.page === undefined ? [] : [item.page]))),
         })),
-        ideas: ideas.map((idea) => ({ id: idea.id, title: idea.title, paper: idea.source.paperId })),
+        ideas: ideas.map((idea) => ({ id: idea.id, title: idea.title, pages: idea.relations?.pages ?? [] })),
         chats: chats.filter((chat) => chat.messages.length > 0).map((chat) => ({
           id: chat.id, title: chat.title, paper: chat.paperId,
           sent: chat.messages.filter((m) => m.role === 'you').map((m) => m.runs.map((r) => r.text).join('')),
@@ -1936,8 +1936,7 @@ export function createFixtureStore(
             chatTitle: found.context ?? project.name, agent: true,
           }, found.date)
           ideas = [{
-            ...idea, project: project.id, archived: project.status === FINISHED_PROJECT,
-            ...(found.node === undefined ? {} : { node: found.node }),
+            ...idea, sourceProject: project.id, ...(found.node === undefined ? {} : { candidateNode: found.node }),
           }, ...ideas]
         }
       }
@@ -1977,6 +1976,13 @@ export function createFixtureStore(
       const node = normalized.node === undefined ? current.node : normalized.node ?? undefined
       if (node !== undefined && linked === undefined) {
         throw new CallError('invalid', '科研图节点必须属于想法关联的项目')
+      }
+      for (const related of patch.relations?.projects ?? []) {
+        if (!projectById.has(related)) throw new CallError('not-found', `项目不存在：${related}`)
+      }
+      for (const page of patch.relations?.pages ?? []) {
+        const target = wiki.pages[page]
+        if (target === undefined || isPaper(target)) throw new CallError('not-found', `wiki 聚合不存在：${page}`)
       }
       const completed = linked !== undefined && projectById.get(linked)?.status === FINISHED_PROJECT
       const next = updateResearchIdea(

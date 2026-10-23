@@ -587,7 +587,7 @@ export function ProjectDetail({
     const saved = await write(
       ideaApi.placeOnGraph(idea.id, placement).then((result) => {
         nodeId = result.nodeId
-        setProject(result.project)
+        if (result.project !== null) setProject(result.project)
         setLinkedIdeas((held) => held?.map((candidate) => (
           candidate.id === result.idea.id ? result.idea : candidate
         )) ?? null)

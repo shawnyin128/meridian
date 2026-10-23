@@ -1975,6 +1975,12 @@ export const ChatSessionSchema = z.object({
   paperId: z.string().optional(),
 }).strict()
 
+/** The projects and Wiki pages an idea relates to, each once. */
+export const IdeaRelationsSchema = z.object({
+  projects: z.array(z.string()),
+  pages: z.array(z.string()),
+}).strict()
+
 /**
  * A user-authored research idea distilled from a conversation. It is personal research state, not
  * source evidence or canonical Wiki content. The source link preserves where the reasoning came
@@ -1996,10 +2002,22 @@ export const ResearchIdeaSchema = z.object({
     paperTitle: z.string().optional(),
     agent: z.literal(true).optional(),
   }).strict(),
-  /** Linked project identity; name and status are always read from the project to avoid duplicated state. */
+  /**
+   * The project whose bound workspace a coding agent recorded the idea in: where it was sparked, never
+   * what it relates to or where it is carried out.
+   */
+  sourceProject: z.string().optional(),
+  /** What the idea is about, as only the user chose or confirmed: projects, and Wiki aggregation pages. */
+  relations: IdeaRelationsSchema.optional(),
+  /**
+   * The project the idea is carried out in; name and status are always read from the project to avoid
+   * duplicated state. Without it the idea is not started.
+   */
   project: z.string().optional(),
   /** Optional node inside the linked project's current research graph. */
   node: z.string().optional(),
+  /** A node of `sourceProject`'s research graph an agent attached on arrival; it counts once the user confirms it. */
+  candidateNode: z.string().optional(),
   /** Archiving removes the idea from the active attention queue without deleting it or its provenance. */
   archived: z.boolean().default(false),
   created: IsoDate,
@@ -2056,6 +2074,7 @@ export const ResearchIdeaUpdateParamsSchema = z.object({
     title: ResearchIdeaSchema.shape.title.optional(),
     body: ResearchIdeaSchema.shape.body.optional(),
     project: z.string().nullable().optional(),
+    relations: IdeaRelationsSchema.optional(),
     archived: z.boolean().optional(),
   }).strict().refine((patch) => Object.keys(patch).length > 0, '没有要更新的想法字段'),
 }).strict()
@@ -2071,7 +2090,11 @@ export const ResearchIdeaPromoteResultSchema = z.object({
   project: ProjectDetailSchema,
 }).strict()
 
-/** Explicit placement of a project-linked idea in the project's current research graph. */
+/**
+ * Explicit placement of a project-linked idea in the project's current research graph. `confirm` and
+ * `dismiss` act on the idea's candidate node: confirming carries the idea out in its source project at
+ * that node, dismissing drops the candidate.
+ */
 export const ResearchIdeaGraphPlacementSchema = z.discriminatedUnion('kind', [
   z.object({
     kind: z.literal('create'),
@@ -2080,6 +2103,8 @@ export const ResearchIdeaGraphPlacementSchema = z.discriminatedUnion('kind', [
   }).strict(),
   z.object({ kind: z.literal('link'), nodeId: z.string() }).strict(),
   z.object({ kind: z.literal('unlink') }).strict(),
+  z.object({ kind: z.literal('confirm') }).strict(),
+  z.object({ kind: z.literal('dismiss') }).strict(),
 ])
 
 export const ResearchIdeaPlaceOnGraphParamsSchema = z.object({
@@ -2087,9 +2112,10 @@ export const ResearchIdeaPlaceOnGraphParamsSchema = z.object({
   placement: ResearchIdeaGraphPlacementSchema,
 }).strict()
 
+/** The idea after a placement, with the project whose graph it touched, or null when it touched none. */
 export const ResearchIdeaPlaceOnGraphResultSchema = z.object({
   idea: ResearchIdeaSchema,
-  project: ProjectDetailSchema,
+  project: ProjectDetailSchema.nullable(),
   nodeId: z.string().nullable(),
 }).strict()
 
@@ -2419,6 +2445,7 @@ export type ChatSession = z.infer<typeof ChatSessionSchema>
 export type ChatSendResult = z.infer<typeof ChatSendResultSchema>
 export type ChatCancelResult = z.infer<typeof ChatCancelResultSchema>
 export type ResearchIdea = z.infer<typeof ResearchIdeaSchema>
+export type IdeaRelations = z.infer<typeof IdeaRelationsSchema>
 export type ResearchIdeaPatch = z.infer<typeof ResearchIdeaUpdateParamsSchema>['patch']
 export type ResearchIdeaPromoteResult = z.infer<typeof ResearchIdeaPromoteResultSchema>
 export type ResearchIdeaGraphPlacement = z.infer<typeof ResearchIdeaGraphPlacementSchema>
