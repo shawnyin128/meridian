@@ -102,6 +102,31 @@ describe('论文推送重做后要写的存储形状', () => {
     expect(read('trash')).toEqual([])
   })
 
+  it('移出稍后阅读的垃圾桶记录：列在垃圾桶里，还原回到稍后阅读原来的位置，过了保留期照常清掉', () => {
+    const queued = (id: string) => ({
+      id, title: `Queued ${id}`, source: '项目 · 论文推送', added: store.today(), authors: 'Ada', venue: 'arXiv:2609.94001',
+      abstract: 'A', paper: '', pdf: 'https://arxiv.org/pdf/2609.94001',
+    })
+    const [first, removed, last, expired] = ['inbox-941', 'inbox-942', 'inbox-943', 'inbox-944'].map(queued)
+    const deletedAt = Date.parse(`${store.today()}T00:00:00Z`)
+    write('later', [first, last])
+    write('trash', [
+      { id: 'trash-951', kind: 'later', title: removed!.title, deletedAt, later: removed, position: 1 },
+      { id: 'trash-952', kind: 'later', title: expired!.title, deletedAt: deletedAt - 8 * 86_400_000, later: expired, position: 0 },
+    ])
+    const reported = vi.spyOn(console, 'error')
+
+    const reopened = createVaultStore(vault)
+    expect(reported).not.toHaveBeenCalled()
+    expect(reopened.listTrash()).toEqual([
+      { id: 'trash-951', kind: 'later', title: removed!.title, deletedAt, restorable: true },
+    ])
+    reopened.restoreTrash('trash-951')
+    expect(reopened.listLater().map((entry) => entry.id)).toEqual([first!.id, removed!.id, last!.id])
+    expect(read('later')).toEqual([first, removed, last])
+    expect(read('trash')).toEqual([])
+  })
+
   it('state.json 里项目的推荐偏好多出确认方向和候选方向：照常读出，改启停后原样留着', () => {
     store.updatePaper(SEED_PAPER, { identifier: 'arXiv:2211.17192' })
     store.addPaper(project, SEED_PAPER)
@@ -121,6 +146,36 @@ describe('论文推送重做后要写的存储形状', () => {
     })
     expect(createVaultStore(vault).listDiscoveryProfiles().find((profile) => profile.id === project)!.intents[0])
       .toMatchObject({ id: intent.id, enabled: false })
+  })
+
+  it('state.json 里项目的推荐偏好缺键或值读不了：逐键报出来、按没有设置读，库照常打开，没改的值原样留着', () => {
+    store.updatePaper(SEED_PAPER, { identifier: 'arXiv:2211.17192' })
+    store.addPaper(project, SEED_PAPER)
+    const other = store.createProject('另一个项目')
+    store.addPaper(other, SEED_PAPER)
+    const intentOf = (s: VaultStore, id: string) => s.listDiscoveryProfiles().find((profile) => profile.id === id)!.intents[0]!
+    const intent = intentOf(store, other).id
+    const directions = [{ id: 'direction-1', label: '推测解码', seeds: ['ARXIV:2211.17192'] }]
+    write('state', {
+      ...read('state') as object,
+      discoveryPreferences: {
+        [project]: { directions },
+        [other]: { coreIntentId: { id: 'direction-1' }, disabledIntentIds: [intent] },
+      },
+    })
+    const reported = vi.spyOn(console, 'error')
+
+    const reopened = createVaultStore(vault)
+    expect(reported.mock.calls.map(([line]) => String(line).match(/项目 (project-\d+) 的 (\w+) /)?.slice(1)))
+      .toEqual([[project, 'coreIntentId'], [project, 'disabledIntentIds'], [other, 'coreIntentId']])
+    expect(intentOf(reopened, project)).toMatchObject({ core: true, enabled: true })
+    expect(intentOf(reopened, other)).toMatchObject({ id: intent, enabled: false })
+    reopened.setDiscoveryIntent(project, intentOf(reopened, project).id, 'disable')
+    reopened.setDiscoveryIntent(other, intent, 'enable')
+    expect((read('state') as { discoveryPreferences: unknown }).discoveryPreferences).toEqual({
+      [project]: { coreIntentId: null, disabledIntentIds: [intentOf(reopened, project).id], directions },
+      [other]: { coreIntentId: { id: 'direction-1' }, disabledIntentIds: [] },
+    })
   })
 
   it('.meridian/discovery 下的候选池和 SPECTER2 向量缓存：打开、删项目、清空垃圾桶都不碰它们', () => {
