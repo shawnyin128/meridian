@@ -2364,7 +2364,12 @@ export function createVaultStore(
         projectById.set(projectId, restored)
         if (restored.status === FINISHED_PROJECT) archiveIdeasForProject(projectId)
       } else if (item.kind === 'inbox') {
-        putEntry(item.entryId, { gone: false })
+        inbox = save('inbox', inbox.map((entry) => {
+          if (entry.id !== item.entryId) return entry
+          const restored = { ...entry, gone: false }
+          if (item.feedback !== undefined) delete restored.feedback
+          return restored
+        }))
       } else if (item.kind === 'idea') {
         ideas = save('ideas', [structuredClone(item.idea), ...ideas])
         if (item.idea.project !== undefined) {

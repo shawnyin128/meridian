@@ -74,6 +74,8 @@ export type PaperReadingRecord = z.infer<typeof PaperReadingRecordSchema>
  * Trash entry with everything required for restoration; `restorable` derives from destination
  * availability. Deleting a paper or project moves its page to `.meridian/trash/<id>.md`; `page` keeps
  * the original relative path for restoration. Paper entries also retain any reading record they had.
+ * An inbox entry's `feedback` names the discovery feedback that removed it; restoring clears that
+ * feedback from the entry.
  */
 export const TrashRecordSchema = z.discriminatedUnion('kind', [
   TrashBase.extend({
@@ -84,7 +86,9 @@ export const TrashRecordSchema = z.discriminatedUnion('kind', [
   TrashBase.extend({
     kind: z.literal('attachment'), projectId: z.string(), attachment: AttachmentSchema,
   }),
-  TrashBase.extend({ kind: z.literal('inbox'), entryId: z.string() }),
+  TrashBase.extend({
+    kind: z.literal('inbox'), entryId: z.string(), feedback: z.enum(['less', 'known']).optional(),
+  }),
 ])
 
 /**
