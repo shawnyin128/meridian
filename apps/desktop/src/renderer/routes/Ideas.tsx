@@ -4,7 +4,7 @@ import type { ComponentProps } from 'react'
 import type {
   IdeaRelations as IdeaRelationsValue, ProjectDetail, ProjectSummary, ResearchIdea,
 } from '../../shared/contract.js'
-import { FINISHED_PROJECT } from '../../shared/vocabulary.js'
+import { FINISHED_PROJECT, SHELVED_PROJECT } from '../../shared/vocabulary.js'
 import { idea as ideaApi, project as projectApi, wiki as wikiApi } from '../ipc.js'
 import { MenuItem, MenuSeparator } from '../components/ActionMenu.js'
 import { SortMenu } from '../components/SortMenu.js'
@@ -22,7 +22,8 @@ import { nodeMode } from '../components/project/ResearchGraph.js'
 import { LoadingPlaceholder } from '../components/LoadingPlaceholder.js'
 import { DetailPanel } from '../components/DetailPanel.js'
 import { CardOpen, ResearchObjectCard } from '../components/ResearchObjectCard.js'
-import { RowActions } from '../components/StructuredList.js'
+import { RowActions, StructuredList, StructuredRow } from '../components/StructuredList.js'
+import { ProjectLabel, ProjectStatusTag } from '../components/project/ProjectIdentity.js'
 import {
   PageBody, PageError, PageHeader, PageShell, PageTitle, SectionHeading,
 } from '../components/PageShell.js'
@@ -39,17 +40,82 @@ import { DragHandle } from '../components/DragHandle.js'
 import { useFormat } from '../lib/format.js'
 import { commitsMultiline, composing } from '../lib/keyboard.js'
 import { useMessages } from '../messages/useMessages.js'
-import type { Catalog } from '../messages/catalog.js'
 import { AgentLabel, SourceLabel } from '../components/SourceLabel.js'
 import { Tag } from '../components/Tag.js'
 import { FadeText } from '../components/FadeText.js'
-import { useClipped } from '../hooks/useClipped.js'
 import './Ideas.css'
 
 
-function linkedProjectLabel(idea: ResearchIdea, linked: ProjectSummary | undefined, m: Catalog): string {
-  if (idea.project === undefined) return m.ideas.link.none
-  return linked === undefined ? m.ideas.link.unavailable : m.ideas.link.project(linked.name)
+/**
+ * How far an idea has turned into work: `open` is not started, `active` is carried out in a project,
+ * `done` once that project finished or the idea's node there closed, `archived` set aside before it was
+ * done. An idea carried out in a shelved project is still `active`.
+ */
+type IdeaStatus = 'open' | 'active' | 'done' | 'archived'
+
+/** The status of `idea`, given the project it is carried out in and that project's details, when read. */
+function ideaStatus(idea: ResearchIdea, project: ProjectSummary | undefined, detail: ProjectDetail | undefined): IdeaStatus {
+  const graph = detail?.workspace?.graph ?? detail?.graph
+  const nodeDone = idea.node !== undefined && graph?.nodes.find((node) => node.id === idea.node)?.state === 'done'
+  if (idea.project !== undefined && (project?.status === FINISHED_PROJECT || nodeDone)) return 'done'
+  if (idea.archived) return 'archived'
+  return idea.project === undefined ? 'open' : 'active'
+}
+
+/** Every project in `projects` order with the ideas sparked in it and how many of those are in progress or done, most first. */
+function ideasByProject(ideas: readonly { idea: ResearchIdea; status: IdeaStatus }[], projects: readonly ProjectSummary[]) {
+  return projects
+    .map((project) => {
+      const sparked = ideas.filter(({ idea }) => idea.sourceProject === project.id)
+      return {
+        project,
+        ideas: sparked.length,
+        active: sparked.filter(({ status }) => status === 'active').length,
+        done: sparked.filter(({ status }) => status === 'done').length,
+      }
+    })
+    .sort((a, b) => b.ideas - a.ideas)
+}
+
+/** What an idea is about, as one tag per related project and Wiki page. */
+function IdeaRelationTags({ idea, projectsById, pageTitles }: {
+  idea: ResearchIdea
+  projectsById: ReadonlyMap<string, ProjectSummary>
+  pageTitles: ReadonlyMap<string, string>
+}) {
+  const m = useMessages()
+  return (
+    <>
+      {(idea.relations?.projects ?? []).map((id) => (
+        <Tag shape="chip" className="idea-relation-tag" key={id}>
+          {m.ideas.link.project(projectsById.get(id)?.name ?? m.ideas.link.unavailable)}
+        </Tag>
+      ))}
+      {(idea.relations?.pages ?? []).map((id) => (
+        <Tag shape="chip" className="idea-relation-tag" key={id}>{m.ideas.relation.page(pageTitles.get(id) ?? id)}</Tag>
+      ))}
+    </>
+  )
+}
+
+/** Where an idea came from with the label of its kind; an idea of the user's own from no project shows nothing. */
+function IdeaOrigin({ idea, sourceProject }: { idea: ResearchIdea; sourceProject: string | undefined }) {
+  const m = useMessages()
+  if (ownIdea(idea) && sourceProject === undefined) return null
+  return (
+    <>
+      <FadeText className="idea-card-source" label={m.project.idea.sourceTag(ideaSourceLabel(idea, sourceProject))}>
+        <IdeaSource idea={idea} sourceProject={sourceProject} message={m.project.idea.sourceTag} />
+      </FadeText>
+      {idea.source.agent === true
+        ? <AgentLabel className="idea-source-kind" />
+        : ownIdea(idea) ? null : (
+          <SourceLabel className="idea-source-kind">
+            {idea.source.paperTitle === undefined ? m.ideas.sourceKind.chat : m.ideas.sourceKind.paperReading}
+          </SourceLabel>
+        )}
+    </>
+  )
 }
 
 /**
@@ -81,9 +147,11 @@ function IdeaMenu({ idea, linked, onMove, canMove, onArchive, onDelete }: {
   )
 }
 
-function IdeaCard({ idea, linked, selected, menu, onOpen, reorder, dropClassName }: {
+/** An idea as a card, title first: what it relates to, then where it came from and when it last changed. */
+function IdeaCard({ idea, projectsById, pageTitles, selected, menu, onOpen, reorder, dropClassName }: {
   idea: ResearchIdea
-  linked: ProjectSummary | undefined
+  projectsById: ReadonlyMap<string, ProjectSummary>
+  pageTitles: ReadonlyMap<string, string>
   selected: boolean
   menu: ReactNode
   onOpen: () => void
@@ -92,8 +160,6 @@ function IdeaCard({ idea, linked, selected, menu, onOpen, reorder, dropClassName
 }) {
   const fmt = useFormat()
   const m = useMessages()
-  const summary = useRef<HTMLParagraphElement>(null)
-  const summaryCut = useClipped(summary, idea.body, true)
   return (
     <ResearchObjectCard
       className={`idea-card${dropClassName ? ` ${dropClassName}` : ''}`} selected={selected} muted={idea.archived}
@@ -102,32 +168,50 @@ function IdeaCard({ idea, linked, selected, menu, onOpen, reorder, dropClassName
       <div className="idea-card-content">
         <div className="idea-card-title-row">
           <CardOpen><FadeText className="idea-card-title" label={idea.title}>{idea.title}</FadeText></CardOpen>
-          <Tag
-            tone={linked === undefined && idea.project !== undefined ? 'bad' : 'neutral'}
-            className="idea-project-tag"
-          >{linkedProjectLabel(idea, linked, m)}</Tag>
+          <IdeaRelationTags idea={idea} projectsById={projectsById} pageTitles={pageTitles} />
         </div>
-        <p ref={summary} className={`idea-card-summary fade-lines${summaryCut ? ' clipped' : ''}`}>{idea.body}</p>
         <div className="idea-card-meta">
-          {ownIdea(idea) ? null : (
-            <>
-              <FadeText className="idea-card-source" label={m.project.idea.sourceTag(ideaSourceLabel(idea))}>
-                <IdeaSource idea={idea} message={m.project.idea.sourceTag} />
-              </FadeText>
-              {idea.source.agent === true
-                ? <AgentLabel className="idea-source-kind" />
-                : (
-                  <SourceLabel className="idea-source-kind">
-                    {idea.source.paperTitle === undefined ? m.ideas.sourceKind.chat : m.ideas.sourceKind.paperReading}
-                  </SourceLabel>
-                )}
-            </>
-          )}
+          <IdeaOrigin idea={idea} sourceProject={idea.sourceProject === undefined ? undefined : projectsById.get(idea.sourceProject)?.name} />
           <span className="idea-card-updated">{m.ideas.updated(fmt.date(idea.updated))}</span>
         </div>
       </div>
       <RowActions><DragHandle {...reorder.handle} />{menu}</RowActions>
     </ResearchObjectCard>
+  )
+}
+
+/**
+ * A started idea as a row: its title, the project it is carried out in, with that project's status tag
+ * while it is shelved, and where it came from.
+ */
+function IdeaRow({ idea, projectsById, selected, menu, onOpen, reorder, dropClassName }: {
+  idea: ResearchIdea
+  projectsById: ReadonlyMap<string, ProjectSummary>
+  selected: boolean
+  menu: ReactNode
+  onOpen: () => void
+  reorder: Reorderable
+  dropClassName: string
+}) {
+  const fmt = useFormat()
+  const m = useMessages()
+  const work = idea.project === undefined ? undefined : projectsById.get(idea.project)
+  return (
+    <StructuredRow
+      composite className={`idea-row${dropClassName ? ` ${dropClassName}` : ''}`} selected={selected}
+      data-idea={idea.id} onActivate={onOpen} {...reorder.item}
+    >
+      <button type="button" className="idea-row-open"><FadeText className="idea-row-title" label={idea.title}>{idea.title}</FadeText></button>
+      <span className="idea-row-work">
+        {work === undefined ? null : <ProjectLabel name={work.name} />}
+        {work?.status === SHELVED_PROJECT ? <ProjectStatusTag status={work.status} /> : null}
+      </span>
+      <span className="idea-row-meta">
+        <IdeaOrigin idea={idea} sourceProject={idea.sourceProject === undefined ? undefined : projectsById.get(idea.sourceProject)?.name} />
+      </span>
+      <span className="idea-card-updated">{m.ideas.updated(fmt.date(idea.updated))}</span>
+      <RowActions><DragHandle {...reorder.handle} />{menu}</RowActions>
+    </StructuredRow>
   )
 }
 
@@ -265,7 +349,7 @@ function IdeaDetailPanel({
 export function Ideas() {
   const m = useMessages()
   const { revision } = useVaultRevision()
-  const { jump, open } = useJump()
+  const { jump, open: jumpTo } = useJump()
   const { origin, back } = useJumpOrigin()
   const write = useVaultWrite()
   const undo = useUndo()
@@ -277,6 +361,7 @@ export function Ideas() {
   const [projects, setProjects] = useState<ProjectSummary[]>([])
   const [pageTitles, setPageTitles] = useState<ReadonlyMap<string, string>>(new Map())
   const [candidateSource, setCandidateSource] = useState<ProjectDetail | null>(null)
+  const [details, setDetails] = useState<ReadonlyMap<string, ProjectDetail>>(new Map())
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [archiveOpen, setArchiveOpen] = useState(false)
   const [draft, setDraft] = useState<IdeaDraftText | null>(null)
@@ -284,9 +369,13 @@ export function Ideas() {
   const closeDetail = useCallback(() => setSelectedId(null), [])
 
   const load = useCallback(() => {
-    void Promise.all([ideaApi.list(), projectApi.list(), wikiApi.cards()]).then(([ideas, projectRows, cards]) => {
+    void Promise.all([ideaApi.list(), projectApi.list(), wikiApi.cards()]).then(async ([ideas, projectRows, cards]) => {
+      // A node's state lives in its project's graph, so the projects holding an idea's node are read whole.
+      const holding = [...new Set(ideas.flatMap((idea) => (idea.node === undefined || idea.project === undefined ? [] : [idea.project])))]
+      const held = await Promise.all(holding.map((id) => projectApi.get(id)))
       setRows(ideas)
       setProjects(projectRows)
+      setDetails(new Map(held.map((detail) => [detail.id, detail])))
       setPageTitles(new Map(cards.map((card) => [card.id, card.title])))
       setSelectedId((held) => held !== null && ideas.some((idea) => idea.id === held) ? held : null)
       setError(null)
@@ -320,15 +409,22 @@ export function Ideas() {
   const candidateNode = selected?.candidateNode === undefined || candidateSource === null || candidateSource.id !== candidateProject
     ? undefined
     : (candidateSource.workspace?.graph ?? candidateSource.graph).nodes.find((node) => node.id === selected.candidateNode)
-  const active = listed.filter((idea) => !idea.archived)
-  const archived = listed.filter((idea) => idea.archived)
+  const current = listed.filter((idea) => !idea.archived)
+  const statuses = useMemo(() => new Map(listed.map((idea) => [idea.id, ideaStatus(
+    idea,
+    idea.project === undefined ? undefined : projectsById.get(idea.project),
+    idea.project === undefined ? undefined : details.get(idea.project),
+  )])), [listed, projectsById, details])
+  const statusOf = useCallback((id: string): IdeaStatus => statuses.get(id)!, [statuses])
+  const inStatus = (status: IdeaStatus) => listed.filter((idea) => statusOf(idea.id) === status)
+  const open = inStatus('open')
+  const started = inStatus('active')
+  const done = inStatus('done')
+  const archived = inStatus('archived')
+  const counts = ideasByProject(listed.map((idea) => ({ idea, status: statusOf(idea.id) })), projects)
 
   const ids = useMemo(() => listed.map((idea) => idea.id), [listed])
-  const archivedOf = useMemo(() => new Map(listed.map((idea) => [idea.id, idea.archived])), [listed])
-  const reorder = useDragReorder(
-    ids, (id) => (archivedOf.get(id) ? 'archived' : 'active'),
-    (order) => { void write(ideaApi.reorder(order)) },
-  )
+  const reorder = useDragReorder(ids, statusOf, (order) => { void write(ideaApi.reorder(order)) })
   const sortByUpdated = () => {
     const order = [...listed].sort((a, b) => b.updated.localeCompare(a.updated)).map((idea) => idea.id)
     void write(ideaApi.reorder(order))
@@ -352,29 +448,39 @@ export function Ideas() {
       if (selectedId === idea.id) setSelectedId(null)
     })
   }
-  const card = (idea: ResearchIdea) => {
-    const linked = idea.project === undefined ? undefined : projectsById.get(idea.project)
-    return (
-      <IdeaCard
-        idea={idea} linked={linked} selected={selectedId === idea.id} key={idea.id}
-        onOpen={() => setSelectedId(idea.id)}
-        menu={(
-          <IdeaMenu
-            idea={idea} linked={linked} onArchive={() => archive(idea)} onDelete={() => remove(idea)}
-            onMove={(by) => reorder.move(idea.id, by)} canMove={(by) => reorder.canMove(idea.id, by)}
-          />
-        )}
-        reorder={{ item: reorder.itemProps(idea.id), handle: reorder.handleProps(idea.id) }}
-        dropClassName={reorder.dropClass(idea.id)}
-      />
-    )
-  }
+  const menuOf = (idea: ResearchIdea) => (
+    <IdeaMenu
+      idea={idea} linked={idea.project === undefined ? undefined : projectsById.get(idea.project)}
+      onArchive={() => archive(idea)} onDelete={() => remove(idea)}
+      onMove={(by) => reorder.move(idea.id, by)} canMove={(by) => reorder.canMove(idea.id, by)}
+    />
+  )
+  /** The props an idea's card and row share besides its menu: its selection and its drag handles. */
+  const shared = (idea: ResearchIdea) => ({
+    idea, projectsById, selected: selectedId === idea.id,
+    onOpen: () => setSelectedId(idea.id),
+    reorder: { item: reorder.itemProps(idea.id), handle: reorder.handleProps(idea.id) },
+    dropClassName: reorder.dropClass(idea.id),
+  })
+  const card = (idea: ResearchIdea) => <IdeaCard key={idea.id} {...shared(idea)} pageTitles={pageTitles} menu={menuOf(idea)} />
+  const row = (idea: ResearchIdea) => <IdeaRow key={idea.id} {...shared(idea)} menu={menuOf(idea)} />
+  const rowGroup = (heading: string, ideas: ResearchIdea[], empty: string) => (
+    <>
+      <SectionHeading>{heading}</SectionHeading>
+      {rows === null
+        ? (error === null ? <LoadingPlaceholder shape="rows" count={2} /> : null)
+        : ideas.length === 0
+          ? <EmptyState variant="section">{empty}</EmptyState>
+          : <StructuredList variant="embedded" maxVisibleRows="all">{ideas.map(row)}</StructuredList>}
+    </>
+  )
+  const b = m.ideas.byProject
 
   return (
     <PageShell className="ideas-page">
       <PageHeader actions={(
         <>
-          {active.length === 0
+          {current.length === 0
             ? null
             : <SortMenu label={m.ideas.sort} options={[{ label: m.ideas.sortUpdated, onSelect: sortByUpdated }]} />}
           <AddAction
@@ -389,13 +495,13 @@ export function Ideas() {
       )}
       >
         {origin === null ? null : <BackButton onClick={back} />}
-        <PageTitle>{m.ideas.title(active.length)}</PageTitle>
+        <PageTitle>{m.ideas.title(current.length)}</PageTitle>
       </PageHeader>
       <PageError error={error} />
       <PageBody className="ideas-body">
         <div className={`ideas-workspace${selected === undefined ? '' : ' has-detail'}`}>
           <main className="ideas-list">
-            <SectionHeading>{m.ideas.activeHeading(active.length)}</SectionHeading>
+            <SectionHeading>{m.ideas.groups.open(open.length)}</SectionHeading>
             {draft === null
               ? null
               : (
@@ -407,17 +513,41 @@ export function Ideas() {
               )}
             {rows === null ? (
               error === null ? <LoadingPlaceholder shape="cards" /> : null
-            ) : active.length === 0
-              ? (draft === null ? <EmptyState variant="section">{m.ideas.empty}</EmptyState> : null)
-              : active.map(card)}
+            ) : open.length === 0
+              ? (draft === null ? <EmptyState variant="section">{m.ideas.emptyGroup.open}</EmptyState> : null)
+              : open.map(card)}
+            {rowGroup(m.ideas.groups.active(started.length), started, m.ideas.emptyGroup.active)}
+            {rowGroup(m.ideas.groups.done(done.length), done, m.ideas.emptyGroup.done)}
             {archived.length === 0 ? null : (
               <CollapsibleGroup
                 variant="quiet" title={m.common.archived} count={archived.length}
                 open={archiveOpen || archived.some((idea) => idea.id === selectedId)}
-                onToggle={() => setArchiveOpen((open) => !open)}
+                onToggle={() => setArchiveOpen((held) => !held)}
               >
                 {archived.map(card)}
               </CollapsibleGroup>
+            )}
+
+            {counts.every((count) => count.ideas === 0) ? null : (
+              <>
+                <SectionHeading>{b.heading}</SectionHeading>
+                <div className="idea-stats-head" aria-hidden="true">
+                  <span /><span>{b.ideas}</span><span>{b.active}</span><span>{b.done}</span>
+                </div>
+                <StructuredList variant="embedded" className="idea-stats">
+                  {counts.map(({ project, ideas, active, done: finished }) => (
+                    <StructuredRow
+                      className="idea-stats-row" data-proj={project.id} key={project.id}
+                      onActivate={() => jumpTo('project', project.id)}
+                    >
+                      <FadeText className="idea-stats-name" label={project.name}>{project.name}</FadeText>
+                      {[[b.ideas, ideas], [b.active, active], [b.done, finished]].map(([label, count]) => (
+                        <span className={`idea-stats-n${count === 0 ? ' zero' : ''}`} aria-label={`${label} ${count}`} key={label}>{count}</span>
+                      ))}
+                    </StructuredRow>
+                  ))}
+                </StructuredList>
+              </>
             )}
           </main>
 
@@ -447,7 +577,7 @@ export function Ideas() {
                 onPromote={() => void write(
                   ideaApi.promote(selected.id), { note: m.ideas.promote.createdNote },
                 )}
-                onOpen={open}
+                onOpen={jumpTo}
               />
             )}
           </DetailPanel>

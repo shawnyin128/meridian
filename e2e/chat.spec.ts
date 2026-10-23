@@ -217,9 +217,8 @@ test('把讨论整理成可回看的想法', async ({ win }) => {
   // Target the new idea by its own title: the ideas list holds many fixture cards, not sorted with ours first.
   const ideaCard = shown(win, '.idea-card').filter({ hasText: '批大小拐点' })
   await expect(ideaCard).toContainText('批大小拐点')
-  await expect(ideaCard).toContainText('未关联项目')
-  // The card now previews the idea's body as its own summary line, not just in the detail panel.
-  await expect(ideaCard).toContainText('验证最优批大小是否随推理深度稳定迁移。')
+  // A new idea is not started: its card leads with the title and keeps the body for the detail panel.
+  await expect(ideaCard).not.toContainText('验证最优批大小是否随推理深度稳定迁移。')
   await ideaCard.click()
   await expect(shown(win, '.idea-detail-panel'))
     .toContainText('验证最优批大小是否随推理深度稳定迁移。')

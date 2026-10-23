@@ -17,7 +17,9 @@ const sectionRule = FILES.find((file) => file.path.endsWith('EmptyState.css'))!.
 const EMPTY = {
   'changelog.empty': zh.changelog.empty,
   'chat.empty': zh.chat.empty,
-  'ideas.empty': zh.ideas.empty,
+  'ideas.emptyGroup.open': zh.ideas.emptyGroup.open,
+  'ideas.emptyGroup.active': zh.ideas.emptyGroup.active,
+  'ideas.emptyGroup.done': zh.ideas.emptyGroup.done,
   'inbox.empty.discoveryNone': zh.inbox.empty.discoveryNone,
   'inbox.empty.discoveryNoSeeds': zh.inbox.empty.discoveryNoSeeds,
   'inbox.empty.watch': zh.inbox.empty.watch,

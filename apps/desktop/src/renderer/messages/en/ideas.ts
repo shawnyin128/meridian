@@ -3,19 +3,23 @@ import { ideas as zh } from '../zh/ideas.js'
 /** English counterpart of `zh/ideas`. */
 export const ideas = {
   title: (n: number) => `Ideas · ${n}`,
-  activeHeading: (n: number) => `Active · ${n}`,
+  groups: {
+    open: (n: number) => `Not started · ${n}`,
+    active: (n: number) => `In progress · ${n}`,
+    done: (n: number) => `Done · ${n}`,
+  },
   sort: 'Sort',
   sortUpdated: 'By updated',
   create: 'New idea',
-  empty: 'No active ideas yet',
+  emptyGroup: { open: 'No unstarted ideas yet', active: 'No ideas in progress yet', done: 'No finished ideas yet' },
+  byProject: { heading: 'Ideas by project', ideas: 'Ideas', active: 'In progress', done: 'Done' },
   sourceKind: { chat: 'Chat', paperReading: 'Paper notes' },
   link: {
-    none: 'No linked project',
     unavailable: 'Linked project unavailable',
     project: (name: string) => `Project · ${name}`,
     originalUnavailable: 'The original linked project is unavailable',
   },
-  relation: { rows: { projects: 'Projects', pages: 'Wiki' }, candidate: 'Source' },
+  relation: { rows: { projects: 'Projects', pages: 'Wiki' }, candidate: 'Source', page: (title: string) => `Wiki · ${title}` },
   work: {
     heading: 'Carried out in',
     none: 'Not in a project',

@@ -1,19 +1,23 @@
 /** ideas screen copy. */
 export const ideas = {
   title: (n: number) => `想法 · ${n}`,
-  activeHeading: (n: number) => `进行中 · ${n}`,
+  groups: {
+    open: (n: number) => `未开始 · ${n}`,
+    active: (n: number) => `进行中 · ${n}`,
+    done: (n: number) => `已完成 · ${n}`,
+  },
   sort: '排序',
   sortUpdated: '按更新时间',
   create: '新建想法',
-  empty: '还没有进行中的想法',
+  emptyGroup: { open: '还没有未开始的想法', active: '还没有进行中的想法', done: '还没有已完成的想法' },
+  byProject: { heading: '各项目的想法', ideas: '想法', active: '进行中', done: '已完成' },
   sourceKind: { chat: '对话', paperReading: '论文阅读' },
   link: {
-    none: '未关联项目',
     unavailable: '关联项目不可用',
     project: (name: string) => `项目 · ${name}`,
     originalUnavailable: '原关联项目当前不可用',
   },
-  relation: { rows: { projects: '项目', pages: 'Wiki' }, candidate: '来源' },
+  relation: { rows: { projects: '项目', pages: 'Wiki' }, candidate: '来源', page: (title: string) => `Wiki · ${title}` },
   work: {
     heading: '所在项目',
     none: '未放进项目',

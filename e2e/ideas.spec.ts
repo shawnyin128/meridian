@@ -102,7 +102,7 @@ test('coding agent 在项目工作区记下的想法出现在想法页,标着 ag
     await expect(card).toHaveCount(1)
     await expect(card.locator('.idea-source-kind')).toHaveText('agent')
     await expect(ideaCount).toHaveText(String(before + 1))
-    await expect(card.locator('.idea-project-tag')).toHaveText('未关联项目')
+    await expect(card.locator('.idea-card-source')).toHaveText('来源 · draft 效率 · 缓存淘汰的实现讨论')
     await card.click()
     const detail = shown(win).locator('.idea-detail-panel')
     await expect(detail.locator('.idea-panel-source')).toHaveText('draft 效率 · 缓存淘汰的实现讨论')

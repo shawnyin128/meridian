@@ -8,13 +8,25 @@
 .idea-card-content{flex:1;min-width:0}
 .idea-card-title-row{display:flex;align-items:center;gap:var(--sp-8);min-width:0}
 .idea-card-title{font-size:var(--fs-card-title);font-weight:var(--fw-title)}
-.idea-project-tag{max-width:220px}
-.idea-card-summary{max-height:calc(2 * 1lh);margin:var(--sp-10) 0 0;color:var(--sec);font-size:var(--fs-sm);line-height:1.55;
-  overflow-wrap:anywhere}
-.idea-card-meta{display:flex;min-width:0;align-items:center;gap:var(--sp-8);margin-top:var(--sp-10);padding-top:var(--sp-8);border-top:1px solid var(--sep)}
+.idea-relation-tag{max-width:220px}
+.idea-card-meta{display:flex;min-width:0;align-items:center;gap:var(--sp-8);margin-top:var(--sp-8)}
 .idea-card-source{color:var(--ter);font-size:var(--fs-cap)}
 .idea-card-updated{flex:none;margin-left:auto;color:var(--ter);font-size:var(--fs-cap);font-variant-numeric:tabular-nums}
 .idea-card>.row-actions{margin-top:calc(-1 * var(--sp-4))}
+
+/* A started idea is one row, with the padding of the project list's rows; its columns line up from row to row. */
+.idea-row{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,.6fr) minmax(0,1.3fr) max-content max-content;align-items:center;
+  column-gap:var(--sp-12);padding:var(--sp-8) var(--sp-12);font-size:var(--fs-base)}
+.idea-row-open{display:flex;min-width:0;padding:0;border:0;background:none;color:inherit;font:inherit;text-align:left;cursor:inherit}
+.idea-row-work{display:flex;min-width:0;align-items:center;gap:var(--sp-6)}
+.idea-row-meta{display:flex;min-width:0;align-items:center;gap:var(--sp-8)}
+
+/* Ideas by project: the name, then three counts spread over the list's width, under their column labels. */
+.idea-stats-head,.idea-stats-row{display:grid;grid-template-columns:minmax(0,2fr) repeat(3,minmax(0,1fr));align-items:center;column-gap:var(--sp-16)}
+.idea-stats-head{padding:0 var(--sp-12) var(--sp-6);color:var(--ter);font-size:var(--fs-cap);text-align:right}
+.idea-stats-row{padding:var(--sp-8) var(--sp-12);font-size:var(--fs-base)}
+.idea-stats-n{color:var(--sec);text-align:right;font-variant-numeric:tabular-nums}
+.idea-stats-n.zero{color:var(--ter)}
 
 /*
  * The detail panel follows a research graph node's layout, content on the left and its document on
