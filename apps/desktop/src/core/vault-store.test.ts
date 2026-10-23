@@ -1766,7 +1766,7 @@ describe('vault store on the aggregation layout', () => {
     expect(createVaultStore(vault).listIdeas().find((idea) => idea.id === created.id)).toEqual(created)
   })
 
-  it('coding agent 在项目工作区里记下的想法进到想法列表,只收一次,删了不再回来', () => {
+  it('coding agent 在项目工作区里记下的想法进到想法列表:记下是在哪个项目里冒出来的,agent 挂的节点只是候选,不算放进这个项目;只收一次,删了不再回来', () => {
     store.createProject('agent 想法项目')
     const id = store.listProjects().find((project) => project.name === 'agent 想法项目')!.id
     const repo = join(vault, 'agent-ideas-repo')
@@ -1788,10 +1788,15 @@ describe('vault store on the aggregation layout', () => {
 
     const taken = store.listIdeas().filter((idea) => idea.source.agent === true)
     expect(taken).toEqual([expect.objectContaining({
-      title: '按复用距离淘汰前缀缓存', body: '用复用距离替代 LRU。', project: id, node: 'direction.A',
+      title: '按复用距离淘汰前缀缓存', body: '用复用距离替代 LRU。', sourceProject: id, candidateNode: 'direction.A',
       archived: false, created: '2026-09-21',
       source: { chatTitle: '缓存淘汰的实现讨论', agent: true },
     })])
+    expect(taken[0]).not.toHaveProperty('project')
+    expect(taken[0]).not.toHaveProperty('node')
+    expect(taken[0]).not.toHaveProperty('relations')
+    const changes = JSON.parse(readFileSync(join(repo, '.meridian/control/changes.json'), 'utf8')) as { ideas: unknown[] }
+    expect(changes.ideas).toEqual([])
     expect(createVaultStore(vault).listIdeas().filter((idea) => idea.source.agent === true)).toHaveLength(1)
 
     store.deleteIdea(taken[0]!.id)
@@ -1820,6 +1825,65 @@ describe('vault store on the aggregation layout', () => {
     }
     const projected = changes.ideas.find((idea) => idea.id === taken.id)!
     expect([projected.title, projected.body, projected.source.chat_title]).toEqual([title, body, context])
+  })
+
+  it('0.0.16.1 收进来、挂在工作区项目上的 agent 想法读作在那个项目里冒出来,仍算在那个项目里做;读的时候不写盘', () => {
+    store.createProject('旧版 agent 项目')
+    const id = store.listProjects().find((project) => project.name === '旧版 agent 项目')!.id
+    const file = join(vault, '.meridian/ideas.json')
+    writeFileSync(file, `${JSON.stringify([
+      {
+        id: 'idea-legacy-agent', title: '旧版收进来的 agent 想法', body: '正文', source: { chatTitle: '实现讨论', agent: true },
+        project: id, node: 'thread.B', archived: false, created: '2026-10-20', updated: '2026-10-20',
+      },
+      {
+        id: 'idea-legacy-chat', title: '旧版关联到项目的对话想法', body: '正文', source: { chatId: 'chat-x', chatTitle: '讨论' },
+        project: id, archived: false, created: '2026-10-20', updated: '2026-10-20',
+      },
+      {
+        id: 'idea-legacy-unlinked', title: '没挂项目的 agent 想法', body: '正文', source: { chatTitle: '实现讨论', agent: true },
+        archived: false, created: '2026-10-20', updated: '2026-10-20',
+      },
+    ], null, 2)}\n`)
+    const before = readFileSync(file, 'utf8')
+    const read = createVaultStore(vault).listIdeas()
+    expect(read.find((idea) => idea.id === 'idea-legacy-agent')).toMatchObject({ sourceProject: id, project: id, node: 'thread.B' })
+    expect(read.find((idea) => idea.id === 'idea-legacy-chat')).not.toHaveProperty('sourceProject')
+    expect(read.find((idea) => idea.id === 'idea-legacy-unlinked')).not.toHaveProperty('sourceProject')
+    expect(readFileSync(file, 'utf8')).toBe(before)
+  })
+
+  it('在项目页写下的想法记下它在哪个项目里冒出来,不算放进那个项目;项目不存在时不收', () => {
+    store.createProject('冒出想法的项目')
+    const id = store.listProjects().find((project) => project.name === '冒出想法的项目')!.id
+    const created = store.createIdea(undefined, '项目页写下的想法', '先记下来', id)
+    expect(created).toMatchObject({ source: { chatTitle: '手动添加' }, sourceProject: id })
+    expect(created).not.toHaveProperty('project')
+    expect(createVaultStore(vault).listIdeas().find((idea) => idea.id === created.id)).toEqual(created)
+    expect(() => store.createIdea(undefined, '不存在的项目', '正文', 'project-nope'))
+      .toThrow(expect.objectContaining({ reason: 'not-found' }))
+  })
+
+  it('想法关联的项目和 Wiki 页只按用户选的写,写在想法记录的顶层;不存在的项目、页和论文页不收,清空后不留字段', () => {
+    store.createProject('被关联的项目')
+    const id = store.listProjects().find((project) => project.name === '被关联的项目')!.id
+    const idea = store.createIdea(undefined, '关联到别处的想法', '它讲的是另一个项目和一个主题')
+    const related = store.updateIdea(idea.id, { relations: { projects: [id, id], pages: ['topics/ptq'] } })
+    expect(related.relations).toEqual({ projects: [id], pages: ['topics/ptq'] })
+    expect(related).not.toHaveProperty('project')
+    const stored = (JSON.parse(readFileSync(join(vault, '.meridian/ideas.json'), 'utf8')) as Record<string, unknown>[])
+      .find((record) => record.id === idea.id)!
+    expect(stored['relations']).toEqual({ projects: [id], pages: ['topics/ptq'] })
+    expect(createVaultStore(vault).listIdeas().find((held) => held.id === idea.id)?.relations)
+      .toEqual({ projects: [id], pages: ['topics/ptq'] })
+
+    expect(() => store.updateIdea(idea.id, { relations: { projects: ['project-nope'], pages: [] } }))
+      .toThrow(expect.objectContaining({ reason: 'not-found' }))
+    expect(() => store.updateIdea(idea.id, { relations: { projects: [], pages: ['topics/nope'] } }))
+      .toThrow(expect.objectContaining({ reason: 'not-found' }))
+    expect(() => store.updateIdea(idea.id, { relations: { projects: [], pages: ['papers/2404.00456'] } }))
+      .toThrow(expect.objectContaining({ reason: 'not-found' }))
+    expect(store.updateIdea(idea.id, { relations: { projects: [], pages: [] } })).not.toHaveProperty('relations')
   })
 
   it('agent 想法文件格式不对时,想法列表照常列出,不把坏文件当想法', () => {
@@ -1969,7 +2033,7 @@ describe('vault store on the aggregation layout', () => {
     })).toThrow(/topics\/nope/)
   })
 
-  it('反向链接只读：正文链到这一页的页、关联它的项目、来自它的想法、读它或 @ 它的对话，读的时候磁盘一个字节不变', () => {
+  it('反向链接只读：正文链到这一页的页、关联它的项目、关联它的想法、读它或 @ 它的对话，读的时候磁盘一个字节不变；从论文对话里来的想法不挂在论文页下', () => {
     store.createProject('引用 QuaRot')
     const id = store.listProjects().find((project) => project.name === '引用 QuaRot')!.id
     store.addPaper(id, '2404.00456')
@@ -1977,6 +2041,7 @@ describe('vault store on the aggregation layout', () => {
     const reading = store.chatForPaper('2404.00456')
     store.appendChatMessages(reading.id, [{ role: 'you', runs: [{ kind: 'text', text: '旋转之后还要校准吗' }], actions: [] }])
     const idea = store.createIdea(reading.id, '旋转与 KV 量化叠加', '先旋转再按 token 量化')
+    store.updateIdea(idea.id, { relations: { projects: [], pages: ['topics/ptq'] } })
     const asked = store.createChat('问 PTQ', true)
     store.appendChatMessages(asked.id, [{ role: 'you', runs: [{ kind: 'text', text: '@PTQ 的边界在哪' }], actions: [] }])
     const files = (): Record<string, string> => Object.fromEntries(
@@ -1997,11 +2062,11 @@ describe('vault store on the aggregation layout', () => {
     expect(paper.filter((link) => link.kind === 'page').map((link) => link.id)).toEqual(['topics/ptq-weight-activation'])
     expect(paper.filter((link) => link.kind !== 'page')).toEqual([
       { kind: 'project', id, title: '引用 QuaRot' },
-      { kind: 'idea', id: idea.id, title: '旋转与 KV 量化叠加' },
       { kind: 'chat', id: reading.id, title: reading.title },
     ])
     expect(topic.filter((link) => link.kind !== 'page')).toEqual([
       { kind: 'project', id, title: '引用 QuaRot' },
+      { kind: 'idea', id: idea.id, title: '旋转与 KV 量化叠加' },
       { kind: 'chat', id: asked.id, title: '问 PTQ' },
     ])
     expect(() => store.wikiBacklinks('topics/nope')).toThrow(expect.objectContaining({ reason: 'not-found' }))

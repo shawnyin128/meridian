@@ -45,7 +45,7 @@ import {
   type DiscoveryPaper, type DiscoveryPreferences, type DiscoverySchedule,
 } from './recommendation/index.js'
 import { dayOf, feedNewestFirst, systemToday } from './dates.js'
-import { createResearchIdea, updateResearchIdea } from './research-ideas/index.js'
+import { createResearchIdea, readResearchIdea, updateResearchIdea } from './research-ideas/index.js'
 import type { MetadataFill, VaultOps, VaultStore } from './vault.js'
 import { searchHits } from './search.js'
 import { digestOf } from './wiki-proposals.js'
@@ -1709,7 +1709,7 @@ export function createFixtureStore(
           papers: p.papers,
           pages: p.relations.flatMap((g) => g.items.flatMap((item) => (item.page === undefined ? [] : [item.page]))),
         })),
-        ideas: ideas.map((idea) => ({ id: idea.id, title: idea.title, paper: idea.source.paperId })),
+        ideas: ideas.map((idea) => ({ id: idea.id, title: idea.title, pages: idea.relations?.pages ?? [] })),
         chats: chats.filter((chat) => chat.messages.length > 0).map((chat) => ({
           id: chat.id, title: chat.title, paper: chat.paperId,
           sent: chat.messages.filter((m) => m.role === 'you').map((m) => m.runs.map((r) => r.text).join('')),
@@ -1946,14 +1946,13 @@ export function createFixtureStore(
             chatTitle: found.context ?? project.name, agent: true,
           }, found.date)
           ideas = [{
-            ...idea, project: project.id, archived: project.status === FINISHED_PROJECT,
-            ...(found.node === undefined ? {} : { node: found.node }),
+            ...idea, sourceProject: project.id, ...(found.node === undefined ? {} : { candidateNode: found.node }),
           }, ...ideas]
         }
       }
       const sorted = [...ideas]
         .sort((a, b) => b.updated.localeCompare(a.updated) || b.id.localeCompare(a.id, undefined, { numeric: true }))
-      return applyOrder(sorted, ideaOrder, (idea) => idea.id).map((idea) => structuredClone(idea))
+      return applyOrder(sorted, ideaOrder, (idea) => idea.id).map((idea) => structuredClone(readResearchIdea(idea)))
     },
 
     reorderIdeas(order) {
@@ -1961,7 +1960,8 @@ export function createFixtureStore(
       ideaOrder = [...order].filter((id) => known.has(id))
     },
 
-    createIdea(chatId, title, body) {
+    createIdea(chatId, title, body, sourceProject) {
+      if (sourceProject !== undefined && !projectById.has(sourceProject)) throw new CallError('not-found', `项目不存在：${sourceProject}`)
       const sourceChat = chatId === undefined ? undefined : chatOf(chatId)
       const sourcePaper = sourceChat?.paperId === undefined ? undefined : byId.get(sourceChat.paperId)
       const idea = createResearchIdea(nextId('idea'), title, body, sourceChat === undefined ? { chatTitle: MANUAL_SOURCE } : {
@@ -1970,7 +1970,7 @@ export function createFixtureStore(
         ...(sourcePaper === undefined
           ? {}
           : { paperId: sourcePaper.id, paperTitle: sourcePaper.title }),
-      }, today())
+      }, today(), sourceProject)
       ideas = [idea, ...ideas]
       // Without a manual order the newest idea already leads; with one, it goes to the front of it.
       if (ideaOrder !== undefined) ideaOrder = [idea.id, ...ideaOrder]
@@ -1987,6 +1987,13 @@ export function createFixtureStore(
       const node = normalized.node === undefined ? current.node : normalized.node ?? undefined
       if (node !== undefined && linked === undefined) {
         throw new CallError('invalid', '科研图节点必须属于想法关联的项目')
+      }
+      for (const related of patch.relations?.projects ?? []) {
+        if (!projectById.has(related)) throw new CallError('not-found', `项目不存在：${related}`)
+      }
+      for (const page of patch.relations?.pages ?? []) {
+        const target = wiki.pages[page]
+        if (target === undefined || isPaper(target)) throw new CallError('not-found', `wiki 聚合不存在：${page}`)
       }
       const completed = linked !== undefined && projectById.get(linked)?.status === FINISHED_PROJECT
       const next = updateResearchIdea(

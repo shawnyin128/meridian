@@ -1974,6 +1974,14 @@ describe('fixture store', () => {
     expect(() => store.updateIdea('no-such', { title: 'x' })).toThrow(/想法不存在/)
   })
 
+  it('在项目页写下的想法记下冒出它的项目,不放进那个项目;项目不存在时不收', () => {
+    const store = createFixtureStore(() => '2026-09-18')
+    const created = store.createIdea(undefined, '项目页写下的想法', '先记下来', 'draft')
+    expect(created).toMatchObject({ sourceProject: 'draft', source: { chatTitle: '手动添加' } })
+    expect(created).not.toHaveProperty('project')
+    expect(() => store.createIdea(undefined, '不存在的项目', '正文', 'project-nope')).toThrow(/项目不存在/)
+  })
+
   it('自己写下的想法来源是手动添加,没有对话也没有 agent,建出来就在列表里', () => {
     const created = store.createIdea(undefined, '我自己的想法', '先记下来')
     expect(created.source).toEqual({ chatTitle: '手动添加' })

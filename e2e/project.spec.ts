@@ -115,6 +115,30 @@ test('项目反向展示关联想法，点击后在项目右栏就地打开详�
   await expect(win.locator('.screenslot:not([hidden])').getByRole('button', { name: '打开来源对话' })).toBeVisible()
 })
 
+test('在项目页的想法一节就地写下想法：存好就落在草稿那一行，记下冒出它的项目，不放进项目，也出现在想法页的未开始里', async ({ win }) => {
+  await gotoProject(win)
+  const page = win.locator('.screenslot:not([hidden])')
+  await page.locator('.section-heading', { hasText: '关联想法' }).getByRole('button', { name: '新建想法' }).click()
+  const slots = () => page.locator('.project-ideas > .structured-row').evaluateAll((rows) => rows.map((row) =>
+    (row as HTMLElement).dataset['idea'] ?? (row.querySelector('.idea-draft') === null ? '?' : 'draft')))
+  const draftAt = (await slots()).indexOf('draft')
+  expect(draftAt).toBeGreaterThan(-1)
+  const draft = page.locator('.idea-draft')
+  await draft.locator('.form-input').fill('项目页写下的想法')
+  await draft.locator('.form-textarea').fill('先在 draft 效率里记下来。')
+  await draft.getByRole('button', { name: '保存' }).click()
+  await expect(draft).toHaveCount(0)
+  const made = await call<{ id: string; title: string; sourceProject?: string; project?: string }[]>(win, 'idea.list', {})
+    .then((rows) => rows.find((row) => row.title === '项目页写下的想法'))
+  expect([made?.sourceProject, made?.project]).toEqual(['draft', undefined])
+  await expect.poll(async () => (await slots())[draftAt]).toBe(made!.id)
+  await expect(page.locator(`.project-idea-row[data-idea="${made!.id}"] .project-idea-flags`)).toHaveText('来源')
+  await win.locator('[data-desk="ideas"]').click()
+  const card = page.locator('.idea-card', { hasText: '项目页写下的想法' })
+  await expect(card).toContainText('来源 · draft 效率')
+  await expect(page.locator('.ideas-list > .section-heading').first()).toHaveText(/^未开始/)
+})
+
 test('想法在科研图中动态标出关联节点，节点详情反向展示想法', async ({ win }) => {
   const idea = await call<{ id: string; title: string; project?: string }[]>(win, 'idea.list', {})
     .then((rows) => rows.find((row) => row.project === 'draft'))

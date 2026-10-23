@@ -65,7 +65,7 @@ import {
 } from './wiki/index.js'
 import { prepareFallbackLibrary } from './workspace-layout.js'
 import { searchHits } from './search.js'
-import { createResearchIdea, updateResearchIdea } from './research-ideas/index.js'
+import { createResearchIdea, readResearchIdea, updateResearchIdea } from './research-ideas/index.js'
 
 /** Page frontmatter: scalars are strings, sequences are string arrays, and blocks are string maps. */
 type Frontmatter = Record<string, string | string[] | Record<string, string | string[]>>
@@ -899,13 +899,13 @@ export function createVaultStore(
   }
 
   /**
-   * Takes ideas coding agents recorded in bound local workspaces into the idea list, each once and
-   * linked to its project; ideas of a finished project arrive archived.
+   * Takes ideas coding agents recorded in bound local workspaces into the idea list, each once, not
+   * started, with the bound project as the project it was sparked in; a node the agent attached is
+   * kept as a candidate.
    */
   const absorbAgentIdeas = atomic((): void => {
     const taken = new Set(state.agentIdeas ?? [])
     const added: ResearchIdea[] = []
-    const touched: ProjectRecord[] = []
     for (const project of projects()) {
       const fresh = readWorkspaceAgentIdeas(project.workspaceRoot).filter((found) => !taken.has(`${project.id}:${found.id}`))
       for (const found of fresh) {
@@ -913,17 +913,12 @@ export function createVaultStore(
         const idea = createResearchIdea(nextId('idea'), found.title, found.body, {
           chatTitle: found.context ?? project.name, agent: true,
         }, found.date)
-        added.push({
-          ...idea, project: project.id, archived: project.status === FINISHED_PROJECT,
-          ...(found.node === undefined ? {} : { node: found.node }),
-        })
+        added.push({ ...idea, sourceProject: project.id, ...(found.node === undefined ? {} : { candidateNode: found.node }) })
       }
-      if (fresh.length > 0) touched.push(project)
     }
     if (added.length === 0) return
     ideas = save('ideas', [...added, ...ideas])
     saveState({ ...state, agentIdeas: [...taken] })
-    for (const project of touched) syncProjectWorkspace(project)
   })
 
   /** Appends one feed entry dated now. */
@@ -2327,7 +2322,7 @@ export function createVaultStore(
           papers: p.papers,
           pages: p.relations.flatMap((g) => g.items.flatMap((item) => (item.page === undefined ? [] : [item.page]))),
         })),
-        ideas: ideas.map((idea) => ({ id: idea.id, title: idea.title, paper: idea.source.paperId })),
+        ideas: ideas.map((idea) => ({ id: idea.id, title: idea.title, pages: idea.relations?.pages ?? [] })),
         chats: chats.filter((chat) => chat.messages.length > 0).map((chat) => ({
           id: chat.id, title: chat.title, paper: chat.paperId,
           sent: chat.messages.filter((m) => m.role === 'you').map((m) => m.runs.map((r) => r.text).join('')),
@@ -2549,7 +2544,7 @@ export function createVaultStore(
       absorbAgentIdeas()
       const sorted = [...ideas]
         .sort((a, b) => b.updated.localeCompare(a.updated) || b.id.localeCompare(a.id, undefined, { numeric: true }))
-      return applyOrder(sorted, state.ideaOrder, (idea) => idea.id).map((idea) => structuredClone(idea))
+      return applyOrder(sorted, state.ideaOrder, (idea) => idea.id).map((idea) => structuredClone(readResearchIdea(idea)))
     },
 
     reorderIdeas(order) {
@@ -2557,7 +2552,8 @@ export function createVaultStore(
       saveState({ ...state, ideaOrder: [...order].filter((id) => known.has(id)) })
     },
 
-    createIdea: atomic((chatId, title, body) => {
+    createIdea: atomic((chatId, title, body, sourceProject) => {
+      if (sourceProject !== undefined) projectOf(sourceProject)
       const sourceChat = chatId === undefined ? undefined : chatOf(chatId)
       const sourcePaper = sourceChat?.paperId === undefined ? undefined : papers.get(sourceChat.paperId)
       const idea = createResearchIdea(nextId('idea'), title, body, sourceChat === undefined ? { chatTitle: MANUAL_SOURCE } : {
@@ -2566,7 +2562,7 @@ export function createVaultStore(
         ...(sourcePaper === undefined
           ? {}
           : { paperId: sourcePaper.id, paperTitle: sourcePaper.title }),
-      }, today())
+      }, today(), sourceProject)
       ideas = save('ideas', [idea, ...ideas])
       // Without a manual order the newest idea already leads; with one, it goes to the front of it.
       if (state.ideaOrder !== undefined) saveState({ ...state, ideaOrder: [idea.id, ...state.ideaOrder] })
@@ -2583,6 +2579,13 @@ export function createVaultStore(
       const node = normalized.node === undefined ? current.node : normalized.node ?? undefined
       if (node !== undefined && linked === undefined) {
         throw new CallError('invalid', '科研图节点必须属于想法关联的项目')
+      }
+      for (const related of patch.relations?.projects ?? []) {
+        if (!projectById.has(related)) throw new CallError('not-found', `项目不存在：${related}`)
+      }
+      for (const page of patch.relations?.pages ?? []) {
+        const target = wikiData.pages[page]
+        if (target === undefined || isPaper(target)) throw new CallError('not-found', `wiki 聚合不存在：${page}`)
       }
       const completed = linked !== undefined && projectById.get(linked)?.status === FINISHED_PROJECT
       const next = updateResearchIdea(

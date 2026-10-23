@@ -8,6 +8,9 @@ import type { VaultStore } from '../vault.js'
  * Applies one user-confirmed idea placement. Idea-to-node associations remain App-owned even
  * when the node comes from a workspace projection; creating workspace nodes remains Lab-owned.
  * Creating a node and linking the idea to it is one write: a failure leaves no node behind.
+ * Dismissing a candidate node touches no project, so its result carries none. Confirming one throws
+ * `refused` when the idea has no candidate or is carried out in another project, and `not-found` when
+ * the candidate is no longer in its source project's graph.
  */
 export function placeResearchIdeaOnGraph(
   store: VaultStore,
@@ -16,6 +19,27 @@ export function placeResearchIdeaOnGraph(
 ): ResearchIdeaPlaceOnGraphResult {
   const held = store.listIdeas().find((idea) => idea.id === ideaId)
   if (held === undefined) throw new CallError('not-found', `想法不存在：${ideaId}`)
+
+  if (placement.kind === 'dismiss') {
+    return { idea: store.updateIdea(held.id, { candidateNode: null }), project: null, nodeId: null }
+  }
+  if (placement.kind === 'confirm') {
+    const { sourceProject, candidateNode } = held
+    if (sourceProject === undefined || candidateNode === undefined) throw new CallError('refused', '这个想法没有候选节点')
+    if (held.project !== undefined && held.project !== sourceProject) {
+      throw new CallError('refused', '这个想法已经放进别的项目')
+    }
+    const source = store.getProject(sourceProject)
+    if (!(source.workspace?.graph ?? source.graph).nodes.some((node) => node.id === candidateNode)) {
+      throw new CallError('not-found', `节点不存在：${candidateNode}`)
+    }
+    return {
+      idea: store.updateIdea(held.id, { project: sourceProject, node: candidateNode, candidateNode: null }),
+      project: source,
+      nodeId: candidateNode,
+    }
+  }
+
   if (held.project === undefined) throw new CallError('refused', '请先把想法关联到项目')
 
   const project = store.getProject(held.project)

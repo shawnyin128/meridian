@@ -45,6 +45,7 @@ import { ProjectConclusionPanel, ProjectConclusionRow } from '../components/proj
 import { ProjectTimeline } from '../components/project/ProjectTimeline.js'
 import { nodeMode, ResearchGraph, ResearchNodePanel } from '../components/project/ResearchGraph.js'
 import { IdeaPanel, IdeaSource, ideaSourceLabel, ownIdea } from '../components/ideas/IdeaPanel.js'
+import { IdeaDraft, type IdeaDraftText } from '../components/ideas/IdeaDraft.js'
 import { ProjectPlan, ProjectTaskPanel } from '../components/project/ProjectPlan.js'
 import type { PlanCreating, PlanTab } from '../components/project/ProjectPlan.js'
 import { BackButton } from '../components/BackButton.js'
@@ -98,14 +99,16 @@ export function WorkspaceRoot({ state, name, root, onOpen }: {
 /**
  * A linked idea in the project's detail panel. Its research-node section links a node of `graph`, or,
  * unless the workspace manages the graph, drafts a new node in place, titled as the idea and after a
- * node or as a root, which `onCreateNode` creates and links, resolving whether it did.
+ * node or as a root, which `onCreateNode` creates and links, resolving whether it did. A `related`
+ * idea, one that relates to the project but is not carried out in it, has no research-node section.
  */
 export function ProjectIdeaPanel({
-  idea, graph, workspaceManaged, onClose, onOpenIdea, onOpenPaper, onCreateNode, onOpenNode, onSetNode,
+  idea, graph, workspaceManaged, related = false, onClose, onOpenIdea, onOpenPaper, onCreateNode, onOpenNode, onSetNode,
 }: {
   idea: ResearchIdea
   graph: ResearchGraphData
   workspaceManaged: boolean
+  related?: boolean
   onClose: () => void
   onOpenIdea: () => void
   onOpenPaper: (paperId: string) => void
@@ -133,39 +136,134 @@ export function ProjectIdeaPanel({
         </IconButton>
       )}
     >
-      <NodeAssignment
-        node={linkedNode === undefined ? undefined : { id: linkedNode.id, label: linkedNode.label, mode: nodeMode(linkedNode) }}
-        nodes={graph.nodes} canUnlink onOpen={onOpenNode} onSet={onSetNode}
-        create={workspaceManaged ? undefined : <button className="btn sm" onClick={startNode}>{m.project.idea.createNode}</button>}
-        draft={draft === null ? undefined : (
-          <div ref={draftAt}>
-            <DraftForm
-              canSave={draft.label.trim() !== ''} onCancel={() => setDraft(null)}
-              onSave={() => onCreateNode(draft.label.trim(), draft.after === '' ? null : draft.after)
-                .then((created) => { if (created) setDraft(null) })}
-            >
-              {(invalid) => (
-                <>
-                  <FormInput
-                    value={draft.label} maxLength={160} aria-label={g.nodeTitleLabel}
-                    aria-invalid={invalid(draft.label.trim() === '')}
-                    onChange={(event) => setDraft({ ...draft, label: event.target.value })}
-                  />
-                  <DraftLine label={g.afterLabel}>
-                    <ChoicePicker
-                      appearance="field" aria-label={g.afterLabel} value={draft.after}
-                      options={['', ...graph.nodes.map((node) => node.id)]}
-                      label={(id) => (id === '' ? g.newRootOption : graph.nodes.find((node) => node.id === id)?.label ?? id)}
-                      onPick={(after) => setDraft({ ...draft, after })}
+      {related ? null : (
+        <NodeAssignment
+          node={linkedNode === undefined ? undefined : { id: linkedNode.id, label: linkedNode.label, mode: nodeMode(linkedNode) }}
+          nodes={graph.nodes} canUnlink onOpen={onOpenNode} onSet={onSetNode}
+          create={workspaceManaged ? undefined : <button className="btn sm" onClick={startNode}>{m.project.idea.createNode}</button>}
+          draft={draft === null ? undefined : (
+            <div ref={draftAt}>
+              <DraftForm
+                canSave={draft.label.trim() !== ''} onCancel={() => setDraft(null)}
+                onSave={() => onCreateNode(draft.label.trim(), draft.after === '' ? null : draft.after)
+                  .then((created) => { if (created) setDraft(null) })}
+              >
+                {(invalid) => (
+                  <>
+                    <FormInput
+                      value={draft.label} maxLength={160} aria-label={g.nodeTitleLabel}
+                      aria-invalid={invalid(draft.label.trim() === '')}
+                      onChange={(event) => setDraft({ ...draft, label: event.target.value })}
                     />
-                  </DraftLine>
-                </>
-              )}
-            </DraftForm>
-          </div>
-        )}
-      />
+                    <DraftLine label={g.afterLabel}>
+                      <ChoicePicker
+                        appearance="field" aria-label={g.afterLabel} value={draft.after}
+                        options={['', ...graph.nodes.map((node) => node.id)]}
+                        label={(id) => (id === '' ? g.newRootOption : graph.nodes.find((node) => node.id === id)?.label ?? id)}
+                        onPick={(after) => setDraft({ ...draft, after })}
+                      />
+                    </DraftLine>
+                  </>
+                )}
+              </DraftForm>
+            </div>
+          )}
+        />
+      )}
     </IdeaPanel>
+  )
+}
+
+/** Newest first, by creation day, then by id, which later ideas take higher numbers in. */
+const newestFirst = (a: ResearchIdea, b: ResearchIdea) =>
+  b.created.localeCompare(a.created) || b.id.localeCompare(a.id, undefined, { numeric: true })
+
+/**
+ * The ideas section of a project page, each idea once and in the first group it belongs to: the ideas
+ * carried out in project `projectId`, then the ones related to it, tagged as related, then the ones
+ * sparked in it, tagged with their source; newest first within each group. `ideas` is null while they
+ * load. A carried-out idea shows its node in `graph`. Activating a row selects that idea through
+ * `onSelect`. The heading's new-idea action drafts an idea sparked in the project first in that last
+ * group, where it lands; `onCreate` writes it and settles whether it was written.
+ */
+export function ProjectIdeaList({ projectId, ideas, graph, selectedId, onSelect, onCreate }: {
+  projectId: string
+  ideas: readonly ResearchIdea[] | null
+  graph: ResearchGraphData
+  selectedId: string | null
+  onSelect: (ideaId: string) => void
+  onCreate: (title: string, body: string) => Promise<boolean>
+}) {
+  const m = useMessages()
+  const [draft, setDraft] = useState<IdeaDraftText | null>(null)
+  const draftAt = useRef<HTMLDivElement>(null)
+  const add = useRef<HTMLButtonElement>(null)
+  const triggers = useMemo(() => [add], [])
+  const carried = (ideas ?? []).filter((idea) => idea.project === projectId)
+  const related = (ideas ?? []).filter((idea) => idea.project !== projectId && idea.relations?.projects.includes(projectId) === true)
+  const sparked = (ideas ?? []).filter((idea) => !carried.includes(idea) && !related.includes(idea) && idea.sourceProject === projectId)
+  const row = (idea: ResearchIdea, tag: string | null) => {
+    const source = ideaSourceLabel(idea)
+    const ideaNode = tag === null ? graph.nodes.find((node) => node.id === idea.node) : undefined
+    return (
+      <StructuredRow
+        className="project-idea-row" selected={selectedId === idea.id}
+        data-idea={idea.id} key={idea.id} onActivate={() => onSelect(idea.id)}
+      >
+        <FadeText className="project-idea-title" label={idea.title}>{idea.title}</FadeText>
+        <span className="project-idea-flags">
+          {ideaNode === undefined
+            ? null
+            : (
+              <EntityLink kind="node" label={ideaNode.label} mode={nodeMode(ideaNode)} />
+            )}
+          {tag === null ? null : <Tag>{tag}</Tag>}
+          {idea.archived ? <Tag>{m.common.archived}</Tag> : null}
+        </span>
+        {ownIdea(idea) ? null : (
+          <FadeText className="project-idea-source" label={m.project.idea.sourceTag(source)}>
+            <IdeaSource idea={idea} message={m.project.idea.sourceTag} />
+          </FadeText>
+        )}
+      </StructuredRow>
+    )
+  }
+  const shown = carried.length + related.length + sparked.length
+  return (
+    <>
+      <SectionHeading
+        actions={(
+          <AddAction
+            variant="section" ref={add} label={m.ideas.create}
+            onClick={() => {
+              // An open draft is only refocused, keeping what is typed.
+              if (draft !== null) draftAt.current?.querySelector<HTMLElement>('.form-control')?.focus()
+              else setDraft({ title: '', body: '' })
+            }}
+          >{m.project.idea.kind}</AddAction>
+        )}
+      >{m.project.linkedIdeas(shown)}
+      </SectionHeading>
+      {ideas === null
+        ? <LoadingPlaceholder shape="rows" count={2} />
+        : shown === 0 && draft === null
+        ? <EmptyState variant="section">{m.project.noLinkedIdeas}</EmptyState>
+        : (
+          <StructuredList className="project-ideas" variant="embedded">
+            {[...carried].sort(newestFirst).map((idea) => row(idea, null))}
+            {[...related].sort(newestFirst).map((idea) => row(idea, m.project.sections.links))}
+            {draft === null ? null : (
+              <StructuredRow className="project-idea-draft" rowRef={draftAt}>
+                <IdeaDraft
+                  draft={draft} triggers={triggers} onChange={setDraft} onCancel={() => setDraft(null)}
+                  onSave={(title, body) => onCreate(title, body).then((created) => { if (created) setDraft(null) })}
+                />
+              </StructuredRow>
+            )}
+            {[...sparked].sort(newestFirst).map((idea) => row(idea, m.project.sections.source))}
+          </StructuredList>
+        )}
+    </>
   )
 }
 
@@ -288,10 +386,12 @@ export function ProjectDetail({
     void projectApi.get(projectId).then(setProject).catch(reportError)
   }, [projectId, reportError, revision])
 
-  // An idea stores its project's id; project details look the link up from this side, so it shows at both ends.
+  // An idea stores the project it is carried out in, the projects it relates to and the one it was
+  // sparked in; project details look all three up from this side, so they show at both ends.
   useEffect(() => {
     void ideaApi.list()
-      .then((ideas) => setLinkedIdeas(ideas.filter((idea) => idea.project === projectId)))
+      .then((ideas) => setLinkedIdeas(ideas.filter((idea) => idea.project === projectId
+        || idea.relations?.projects.includes(projectId) === true || idea.sourceProject === projectId)))
       .catch(reportError)
   }, [projectId, reportError, revision])
 
@@ -587,7 +687,7 @@ export function ProjectDetail({
     const saved = await write(
       ideaApi.placeOnGraph(idea.id, placement).then((result) => {
         nodeId = result.nodeId
-        setProject(result.project)
+        if (result.project !== null) setProject(result.project)
         setLinkedIdeas((held) => held?.map((candidate) => (
           candidate.id === result.idea.id ? result.idea : candidate
         )) ?? null)
@@ -828,7 +928,7 @@ export function ProjectDetail({
                   <ResearchGraph
                     graph={displayedGraph}
                     selected={selectedNode}
-                    ideaNodeIds={selectedIdea?.node === undefined ? [] : [selectedIdea.node]}
+                    ideaNodeIds={selectedIdea?.node === undefined || selectedIdea.project !== projectId ? [] : [selectedIdea.node]}
                     onSelect={(nodeId) => {
                       setSelectedIdeaId(null)
                       setSelectedConclusion(null)
@@ -839,46 +939,18 @@ export function ProjectDetail({
               )}
             </div>
 
-            <SectionHeading>{m.project.linkedIdeas(linkedIdeas?.length ?? 0)}</SectionHeading>
-            {linkedIdeas === null
-              ? <LoadingPlaceholder shape="rows" count={2} />
-              : linkedIdeas.length === 0
-              ? <EmptyState variant="section">{m.project.noLinkedIdeas}</EmptyState>
-              : (
-                <StructuredList className="project-ideas" variant="embedded">
-                  {linkedIdeas.map((idea) => {
-                    const source = ideaSourceLabel(idea)
-                    const ideaNode = displayedGraph.nodes.find((node) => node.id === idea.node)
-                    return (
-                      <StructuredRow
-                        className="project-idea-row" selected={selectedIdeaId === idea.id}
-                        data-idea={idea.id} key={idea.id}
-                        onActivate={() => {
-                          setSelectedNode(null)
-                          setSelectedConclusion(null)
-                          setSelectedIdeaId(idea.id)
-                          discardOpenEdits()
-                        }}
-                      >
-                        <FadeText className="project-idea-title" label={idea.title}>{idea.title}</FadeText>
-                        <span className="project-idea-flags">
-                          {ideaNode === undefined
-                            ? null
-                            : (
-                              <EntityLink kind="node" label={ideaNode.label} mode={nodeMode(ideaNode)} />
-                            )}
-                          {idea.archived ? <Tag>{m.common.archived}</Tag> : null}
-                        </span>
-                        {ownIdea(idea) ? null : (
-                          <FadeText className="project-idea-source" label={m.project.idea.sourceTag(source)}>
-                            <IdeaSource idea={idea} message={m.project.idea.sourceTag} />
-                          </FadeText>
-                        )}
-                      </StructuredRow>
-                    )
-                  })}
-                </StructuredList>
-              )}
+            <ProjectIdeaList
+              projectId={projectId} ideas={linkedIdeas} graph={displayedGraph} selectedId={selectedIdeaId}
+              onCreate={(title, body) => write(ideaApi.create(undefined, title, body, projectId).then((idea) => {
+                setLinkedIdeas((held) => [idea, ...(held ?? [])])
+              }), { note: m.chat.ideaSavedNote })}
+              onSelect={(ideaId) => {
+                setSelectedNode(null)
+                setSelectedConclusion(null)
+                setSelectedIdeaId(ideaId)
+                discardOpenEdits()
+              }}
+            />
 
             <ProjectMemo
               text={project.memo} editing={memoEditing} onEditing={setMemoEditing} onOpen={openWikiPage}
@@ -911,6 +983,7 @@ export function ProjectDetail({
                   idea={selectedIdea}
                   graph={displayedGraph}
                   workspaceManaged={project.workspace !== undefined}
+                  related={selectedIdea.project !== projectId}
                   onClose={clearIdea}
                   onOpenIdea={() => jumpTo('ideas', selectedIdea.id)}
                   onOpenPaper={(paperId) => jumpTo('reader', paperId)}
@@ -1207,7 +1280,7 @@ export function ProjectDetail({
               : (
                 <ResearchNodePanel
                   graph={displayedGraph} events={visibleEvents}
-                  ideas={(linkedIdeas ?? []).filter((idea) => idea.node === node.id)} node={node}
+                  ideas={(linkedIdeas ?? []).filter((idea) => idea.project === projectId && idea.node === node.id)} node={node}
                   tasks={project.tasks.filter((task) => node.tasks?.includes(task.id))}
                   onSelectTask={openTask}
                   onClose={clearNode}

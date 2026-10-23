@@ -14,7 +14,7 @@ import { MessagesProvider } from '../messages/useMessages.js'
 import { zh } from '../messages/zh/index.js'
 import { LANGUAGE_STORAGE_KEY } from '../shell/language.js'
 import { ProjectTaskPanel } from '../components/project/ProjectPlan.js'
-import { ProjectIdeaPanel, WorkspaceRoot } from './ProjectDetail.js'
+import { ProjectIdeaList, ProjectIdeaPanel, WorkspaceRoot } from './ProjectDetail.js'
 
 const sm = zh.project.signals
 
@@ -390,6 +390,79 @@ describe('project idea panel', () => {
     act(() => panel.button('取消关联')!.click())
     expect(on.onSetNode).toHaveBeenCalledWith(null)
     panel.unmount()
+  })
+  it('只是关联这个项目、不在这里做的想法，详情里没有科研节点一节', () => {
+    const panel = mount(<ProjectIdeaPanel idea={{ ...idea, project: 'other' }} graph={graph} workspaceManaged={false} related {...handlers()} />)
+    expect([...panel.host.querySelectorAll('.section-heading--rail')].map((heading) => heading.textContent))
+      .toEqual(['用动态预算控制校准成本', '内容', '来源'])
+    panel.unmount()
+  })
+
+  it('项目页的想法一节先列在这个项目里做的想法，再列关联它的，再列在它这里冒出来的，各组新的在前；一个想法只出现在它的第一组', () => {
+    const related: ResearchIdea = {
+      ...idea, id: 'idea-2', title: '关联过来的想法', project: 'other', relations: { projects: ['draft'], pages: [] },
+    }
+    const sparked = (id: string, created: string, extra: Partial<ResearchIdea> = {}): ResearchIdea => ({
+      ...idea, id, title: `冒出来的 ${id}`, project: undefined, sourceProject: 'draft', created, updated: created, ...extra,
+    })
+    const onSelect = vi.fn()
+    const list = mount(
+      <ProjectIdeaList
+        projectId="draft" graph={graph} selectedId={null} onSelect={onSelect} onCreate={vi.fn()}
+        ideas={[
+          sparked('idea-old', '2026-09-01'), related, { ...idea, node: 'thread.probe', sourceProject: 'draft' },
+          sparked('idea-new', '2026-09-20'), sparked('idea-both', '2026-09-25', { relations: { projects: ['draft'], pages: [] } }),
+        ]}
+      />,
+    )
+    expect(list.host.querySelector('.section-heading')!.firstChild!.textContent).toBe('关联想法 · 5')
+    const rows = [...list.host.querySelectorAll<HTMLElement>('.project-idea-row')]
+    expect(rows.map((row) => [row.dataset['idea'], row.querySelector('.project-idea-flags')!.textContent]))
+      .toEqual([['idea-1', '动态预算探针'], ['idea-both', '关联'], ['idea-2', '关联'], ['idea-new', '来源'], ['idea-old', '来源']])
+    act(() => rows[3]!.click())
+    expect(onSelect).toHaveBeenCalledWith('idea-new')
+    list.unmount()
+  })
+
+  it('想法一节标题右端有新建想法，草稿就地开在这个项目冒出来的那组最前面；⌘Enter 新建，存好的想法就落在草稿那一行', async () => {
+    const onCreate = vi.fn<(title: string, body: string) => Promise<boolean>>(() => Promise.resolve(true))
+    const held: ResearchIdea[] = [
+      { ...idea, id: 'idea-here' },
+      { ...idea, id: 'idea-old', project: undefined, sourceProject: 'draft', created: '2026-09-01', updated: '2026-09-01' },
+    ]
+    const list = mount(
+      <ProjectIdeaList projectId="draft" ideas={held} graph={graph} selectedId={null} onSelect={vi.fn()} onCreate={onCreate} />,
+    )
+    expect(list.headingActions('关联想法')).toEqual([['想法']])
+    const add = list.host.querySelector<HTMLButtonElement>('.section-heading-actions .add-action')!
+    expect([add.getAttribute('aria-label'), add.className.split(' ').slice(0, 2).join(' ')]).toEqual(['新建想法', 'btn sm'])
+    act(() => add.click())
+    expect(document.querySelector('.modal-body')).toBeNull()
+    const slots = () => [...list.host.querySelectorAll<HTMLElement>('.project-ideas > .structured-row')]
+      .map((row) => row.dataset['idea'] ?? (row.querySelector('.idea-draft') === null ? '?' : 'draft'))
+    expect(slots()).toEqual(['idea-here', 'draft', 'idea-old'])
+    const draft = list.host.querySelector<HTMLElement>('.draft-form.idea-draft')!
+    expect(document.activeElement).toBe(draft.querySelector('input'))
+    const type = (field: HTMLInputElement | HTMLTextAreaElement, value: string) => {
+      const proto = field instanceof window.HTMLInputElement ? window.HTMLInputElement.prototype : window.HTMLTextAreaElement.prototype
+      Object.getOwnPropertyDescriptor(proto, 'value')!.set!.call(field, value)
+      field.dispatchEvent(new Event('input', { bubbles: true }))
+    }
+    act(() => {
+      type(draft.querySelector('input')!, '项目页写下的想法')
+      type(draft.querySelector('textarea')!, '先记下来。')
+    })
+    await act(async () => {
+      draft.querySelector('textarea')!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', metaKey: true, bubbles: true, cancelable: true }))
+      await Promise.resolve()
+    })
+    expect(onCreate).toHaveBeenCalledWith('项目页写下的想法', '先记下来。')
+    const saved: ResearchIdea = { ...idea, id: 'idea-saved', project: undefined, sourceProject: 'draft', created: '2026-09-18', updated: '2026-09-18' }
+    list.rerender(
+      <ProjectIdeaList projectId="draft" ideas={[saved, ...held]} graph={graph} selectedId={null} onSelect={vi.fn()} onCreate={onCreate} />,
+    )
+    expect(slots()).toEqual(['idea-here', 'idea-saved', 'idea-old'])
+    list.unmount()
   })
 })
 

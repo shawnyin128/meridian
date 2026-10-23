@@ -61,8 +61,6 @@ const ONE_LINE: Record<string, [file: string, markup: RegExp, count?: number]> =
  * line, and the measurement that finds where that line ends.
  */
 const LINES: Record<string, [file: string, markup: RegExp, measure: RegExp]> = {
-  '.idea-card-summary': ['routes/Ideas.tsx', /className=\{`idea-card-summary fade-lines\$\{summaryCut \? ' clipped' : ''\}`\}/,
-    /useClipped\(summary, idea\.body, true\)/],
   '.highlight-card blockquote': ['components/reader/ReadingNotes.tsx', /<blockquote ref=\{quote\} className=\{`fade-lines\$\{quoteCut \? ' clipped' : ''\}`\}>/,
     /useClipped\(quote, highlight\.quote, true\)/],
   '.wkcard .wm': ['routes/Wiki.tsx', /className=\{`wm fade-lines\$\{summaryCut \? ' clipped' : ''\}`\}/, /useClipped\(summary, card\.summary, true\)/],
