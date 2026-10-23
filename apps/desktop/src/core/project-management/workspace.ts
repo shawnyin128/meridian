@@ -108,19 +108,24 @@ type IdeaProjection = z.infer<typeof IdeaProjectionSchema>
 type WorkspaceChange = z.infer<typeof WorkspaceChangeSchema>
 type WorkspaceChanges = z.infer<typeof WorkspaceChangesSchema>
 
+const WorkspaceEventSchema = z.object({
+  id: z.string(),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  text: z.string().trim().min(1),
+  source: z.string().trim().min(1),
+  node: z.string().optional(),
+  kind: WorkspaceEventKindSchema.optional(),
+  detail: z.string().trim().min(1).max(300).optional(),
+  at: z.string().optional(),
+})
+
 const WorkspaceEventFileSchema = z.object({
   schema_version: z.literal(WORKSPACE_EVENTS_SCHEMA),
-  events: z.array(z.object({
-    id: z.string(),
-    date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-    text: z.string().trim().min(1),
-    source: z.string().trim().min(1),
-    node: z.string().optional(),
-    kind: WorkspaceEventKindSchema.optional(),
-    detail: z.string().trim().min(1).max(300).optional(),
-    at: z.string().optional(),
-  })),
+  events: z.array(z.unknown()),
 })
+
+/** Why a surface or record that does not match this version's schema cannot be read. */
+const UNKNOWN_FORMAT = '格式是这个版本的 Meridian 不认识的，请更新 App'
 
 type JsonObject = Record<string, unknown>
 type SshBinding = Extract<ProjectWorkspaceBinding, { kind: 'ssh' }>
@@ -682,18 +687,30 @@ function legacyEventKind(source: string): 'result' | 'note' {
   return source.startsWith(EXPERIMENTS_PREFIX) ? 'result' : 'note'
 }
 
-function readEventsJson(text: string | undefined): ProjectWorkspace['events'] {
+/**
+ * Reads the events file `text` event by event: each event this version cannot read is reported in
+ * `issues` with its position and skipped. Throws when `text` is not an events file.
+ */
+function readEventsJson(text: string | undefined, issues: string[]): ProjectWorkspace['events'] {
   if (text === undefined) return []
   const parsed = WorkspaceEventFileSchema.parse(JSON.parse(text))
-  return parsed.events.map((event) => ({
-    date: event.date,
-    text: event.text,
-    origin: 'agent' as const,
-    ...(event.node === undefined ? {} : { node: event.node }),
-    kind: event.kind ?? legacyEventKind(event.source),
-    ...(event.detail === undefined ? {} : { detail: event.detail }),
-    ...(event.at === undefined ? {} : { at: event.at }),
-  }))
+  return parsed.events.flatMap((raw, index) => {
+    const read = WorkspaceEventSchema.safeParse(raw)
+    if (!read.success) {
+      issues.push(`科研记录第 ${index + 1} 条读不了：${UNKNOWN_FORMAT}`)
+      return []
+    }
+    const event = read.data
+    return [{
+      date: event.date,
+      text: event.text,
+      origin: 'agent' as const,
+      ...(event.node === undefined ? {} : { node: event.node }),
+      kind: event.kind ?? legacyEventKind(event.source),
+      ...(event.detail === undefined ? {} : { detail: event.detail }),
+      ...(event.at === undefined ? {} : { at: event.at }),
+    }]
+  })
 }
 
 function projectWorkspaceFromFiles(
@@ -709,7 +726,7 @@ function projectWorkspaceFromFiles(
   const revision = str(plan?.['revision'])
   const issues: string[] = []
   const external = readSurface('科研图', () => readGraphJson(files.get(manifest.surfaces.graph.path)), issues)
-  const events = readSurface('科研记录', () => readEventsJson(files.get(manifest.surfaces.events.path)), issues)
+  const events = readSurface('科研记录', () => readEventsJson(files.get(manifest.surfaces.events.path), issues), issues)
   return {
     ...base,
     state: 'ready',
@@ -733,7 +750,7 @@ function readSurface<T>(label: string, read: () => T, issues: string[]): T | und
     return read()
   } catch (error) {
     const why = error instanceof z.ZodError
-      ? '格式是这个版本的 Meridian 不认识的，请更新 App'
+      ? UNKNOWN_FORMAT
       : error instanceof Error ? error.message : String(error)
     issues.push(`${label}读不了：${why}`)
     return undefined

@@ -306,6 +306,27 @@ describe('project workspace protocol', () => {
     expect(workspace?.issue).toBe('科研记录读不了：格式是这个版本的 Meridian 不认识的，请更新 App')
   })
 
+  it('科研记录里一条读不了时,其余照常显示,写明第几条读不了、为什么,文件一字不改', () => {
+    const root = temporary()
+    const held = project(root)
+    writeProjectWorkspace(held)
+    mkdirSync(join(root, '.meridian/events'), { recursive: true })
+    const file = join(root, '.meridian/events/events.json')
+    const text = JSON.stringify({
+      schema_version: 'meridian.workspace-events.v1',
+      events: [
+        { id: 'event-1', date: '2026-09-15', text: 'Probe passed', source: '.meridian/threads/t.md', kind: 'result' },
+        { id: 'event-2', date: '9月16日', text: 'Date written by hand', source: '.meridian/threads/t.md' },
+      ],
+    })
+    writeFileSync(file, text, 'utf8')
+
+    const workspace = readProjectWorkspace(held)
+    expect(workspace?.events.map((event) => event.text)).toEqual(['Probe passed'])
+    expect(workspace?.issue).toBe('科研记录第 2 条读不了：格式是这个版本的 Meridian 不认识的，请更新 App')
+    expect(readFileSync(file, 'utf8')).toBe(text)
+  })
+
   it('reads active_nodes directly, marking every listed id act and leaving ancestors and other repairable nodes idle', () => {
     const root = temporary()
     const held = project(root)
