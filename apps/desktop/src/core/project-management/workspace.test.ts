@@ -327,6 +327,45 @@ describe('project workspace protocol', () => {
     expect(readFileSync(file, 'utf8')).toBe(text)
   })
 
+  it('科研图里读不了的节点和端点不在图里的关系不显示,逐条写明第几个、为什么;上级不在图里的节点照常显示,文件一字不改', () => {
+    const root = temporary()
+    const held = project(root)
+    writeProjectWorkspace(held)
+    mkdirSync(join(root, '.meridian/graph'), { recursive: true })
+    const file = join(root, '.meridian/graph/graph.json')
+    const text = JSON.stringify({
+      schema: 'meridian.lab.graph.v1',
+      active_nodes: ['t.B'],
+      nodes: [
+        { id: 't.A', label: 'Root', state: 'unresolved' },
+        { id: 't.B', label: 'Child', state: 'unresolved' },
+        { label: 'No id' },
+        { id: 't.A', label: 'Duplicate' },
+        { id: 't.C', label: 'Parent missing', state: 'unresolved' },
+      ],
+      edges: [
+        { source: 't.A', target: 't.B', kind: 'continues' },
+        { source: 't.Z', target: 't.C', kind: 'continues' },
+        'not an edge',
+      ],
+      health: { status: 'fail' },
+    })
+    writeFileSync(file, text, 'utf8')
+
+    const workspace = readProjectWorkspace(held)
+    expect(workspace?.graph?.nodes.map((node) => [node.id, node.label, node.x])).toEqual([
+      ['t.A', 'Root', 20], ['t.B', 'Child', 240], ['t.C', 'Parent missing', 20],
+    ])
+    expect(workspace?.graph?.edges).toEqual([['t.A', 't.B']])
+    expect(workspace?.issue?.split(';')).toEqual([
+      '科研图第 3 个节点读不了：没有可用的 id',
+      '科研图第 4 个节点读不了：id「t.A」与第 1 个节点重复',
+      '科研图第 2 条关系读不了：节点「t.Z」不在科研图里',
+      '科研图第 3 条关系读不了：没有起点或终点',
+    ])
+    expect(readFileSync(file, 'utf8')).toBe(text)
+  })
+
   it('reads active_nodes directly, marking every listed id act and leaving ancestors and other repairable nodes idle', () => {
     const root = temporary()
     const held = project(root)

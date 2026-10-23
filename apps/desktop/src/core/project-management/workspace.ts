@@ -563,8 +563,13 @@ const LAB_NODE_MODES = new Set(['unresolved', 'repairable', 'supported', 'dead']
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/
 const LAB_BRANCH_EDGE_KINDS = new Set(['continues', 'branches_from'])
 
-/** Adapts the generated Lab graph into the small, layout-bearing graph the desktop already draws. */
-function readGraphJson(text: string | undefined): {
+/**
+ * Adapts the generated Lab graph into the small, layout-bearing graph the desktop already draws,
+ * record by record: a node without a usable id or repeating an earlier id, and a relation whose end
+ * is not a readable node, are left out and reported in `issues` with their position. A node whose
+ * parent is left out stays, as a root. Throws when `text` is not a Lab graph.
+ */
+function readGraphJson(text: string | undefined, issues: string[]): {
   graph: ResearchGraph
   generatedAt?: string
   health: NonNullable<ProjectWorkspace['graphHealth']>
@@ -574,18 +579,37 @@ function readGraphJson(text: string | undefined): {
   if (raw === undefined || raw['schema'] !== 'meridian.lab.graph.v1') {
     throw new Error('科研图不是 meridian.lab.graph.v1')
   }
-  const sourceNodes = Array.isArray(raw['nodes']) ? raw['nodes'].map(obj).filter((n) => n !== undefined) : []
-  const ids = new Set(sourceNodes.flatMap((node) => {
-    const id = str(node['id'])
-    return id === undefined ? [] : [id]
-  }))
-  const sourceEdges = (Array.isArray(raw['edges']) ? raw['edges'] : []).flatMap((edge) => {
+  const positions = new Map<string, number>()
+  const sourceNodes = (Array.isArray(raw['nodes']) ? raw['nodes'] : []).flatMap((value, index) => {
+    const node = obj(value)
+    const id = str(node?.['id'])
+    if (node === undefined || id === undefined) {
+      issues.push(`科研图第 ${index + 1} 个节点读不了：没有可用的 id`)
+      return []
+    }
+    const first = positions.get(id)
+    if (first !== undefined) {
+      issues.push(`科研图第 ${index + 1} 个节点读不了：id「${id}」与第 ${first} 个节点重复`)
+      return []
+    }
+    positions.set(id, index + 1)
+    return [{ node, id }]
+  })
+  const ids = new Set(positions.keys())
+  const sourceEdges = (Array.isArray(raw['edges']) ? raw['edges'] : []).flatMap((edge, index) => {
     const row = obj(edge)
     const source = str(row?.['source'])
     const target = str(row?.['target'])
-    return source !== undefined && target !== undefined && ids.has(source) && ids.has(target)
-      ? [{ source, target, kind: str(row?.['kind']) }]
-      : []
+    if (source === undefined || target === undefined) {
+      issues.push(`科研图第 ${index + 1} 条关系读不了：没有起点或终点`)
+      return []
+    }
+    const missing = [source, target].find((end) => !ids.has(end))
+    if (missing !== undefined) {
+      issues.push(`科研图第 ${index + 1} 条关系读不了：节点「${missing}」不在科研图里`)
+      return []
+    }
+    return [{ source, target, kind: str(row?.['kind']) }]
   })
   // The project graph is an approach tree. Semantic relations such as `contradicts`
   // remain in the node document until the UI can label them; treating them as parent
@@ -617,9 +641,7 @@ function readGraphJson(text: string | undefined): {
     if (!changed) break
   }
   const lane = new Map<number, number>()
-  const nodes = sourceNodes.flatMap((node) => {
-    const id = str(node['id'])
-    if (id === undefined) return []
+  const nodes = sourceNodes.map(({ node, id }) => {
     const column = depth.get(id) ?? 0
     const row = lane.get(column) ?? 0
     lane.set(column, row + 1)
@@ -644,7 +666,7 @@ function readGraphJson(text: string | undefined): {
       : activeSet.has(id)
         ? 'act' as const
         : 'idle' as const
-    return [{
+    return {
       id,
       label: str(node['label']) ?? str(node['title']) ?? id,
       state,
@@ -668,7 +690,7 @@ function readGraphJson(text: string | undefined): {
           ...(revision === undefined ? {} : { revision }),
         },
       }),
-    }]
+    }
   })
   const health = obj(raw['health'])
   const generatedAt = str(raw['generated_at'])
@@ -725,7 +747,7 @@ function projectWorkspaceFromFiles(
   const plan = obj(JSON.parse(planText))
   const revision = str(plan?.['revision'])
   const issues: string[] = []
-  const external = readSurface('科研图', () => readGraphJson(files.get(manifest.surfaces.graph.path)), issues)
+  const external = readSurface('科研图', () => readGraphJson(files.get(manifest.surfaces.graph.path), issues), issues)
   const events = readSurface('科研记录', () => readEventsJson(files.get(manifest.surfaces.events.path), issues), issues)
   return {
     ...base,
