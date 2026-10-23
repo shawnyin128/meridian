@@ -787,8 +787,9 @@ export interface VaultStore {
    * deleted exactly that many days ago is already out; an entry whose
    * retention has run out is dropped along with what it holds, so it is
    * neither listed nor restorable. Each entry's `restorable` says whether it
-   * can go back right now: only an attachment can be unrestorable, and only
-   * while the project it was deleted from is itself deleted.
+   * can go back right now: an attachment cannot while the project it was
+   * deleted from is itself deleted, nor a paper while another page stands where
+   * its page goes back.
    */
   listTrash(): TrashEntry[]
 
@@ -797,7 +798,9 @@ export interface VaultStore {
    * deleted from and drops the entry. Throws if no such entry exists, which
    * includes one whose retention has run out, and throws for an attachment
    * whose project is no longer in the vault — that entry stays in the trash,
-   * restorable again once the project is. Restoring never discards what the
+   * restorable again once the project is — and for a paper or project whose
+   * page's place another page holds, which stays in the trash too, so a page
+   * is never overwritten. Restoring never discards what the
    * entry holds and never puts it anywhere but where it came from. A paper put
    * back holding cells some column as the vault holds it now could not have been
    * filled through then has those cells emptied through updatePaper, recorded as

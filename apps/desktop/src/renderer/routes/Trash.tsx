@@ -124,7 +124,7 @@ export function Trash() {
                   <StructuredRow className="trow" key={entry.id}>
                     <FadeText className="tt2">{PAPER_KINDS.has(entry.kind) ? <PaperText text={entry.title} /> : entry.title}</FadeText>
                     <span className="tm2">{m.trash.autoClear(daysLeft(entry.deletedAt, today))}</span>
-                    {entry.restorable ? null : <Tag>{m.trash.projectGone}</Tag>}
+                    {entry.restorable ? null : <Tag>{entry.kind === 'paper' ? m.trash.paperTaken : m.trash.projectGone}</Tag>}
                     <RowActions>
                       <IconButton
                         label={m.common.restore} size="nested" disabled={!entry.restorable} onClick={() => restore(entry)}

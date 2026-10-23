@@ -1802,13 +1802,14 @@ export function createFixtureStore(
 
     listTrash() {
       dropExpired()
-      // Only attachments restore into another entity and become unrestorable when their original project is gone.
+      // An attachment cannot return after its project is deleted, nor a paper while another paper holds its id.
       return trash.map((item) => ({
         id: item.id,
         kind: item.kind,
         title: item.title,
         deletedAt: item.deletedAt,
-        restorable: item.kind !== 'attachment' || projectById.has(item.projectId),
+        restorable: item.kind === 'attachment' ? projectById.has(item.projectId)
+          : item.kind !== 'paper' || !byId.has(item.paper.id),
       }))
     },
 
@@ -1822,6 +1823,7 @@ export function createFixtureStore(
       const item = trash.find((entry) => entry.id === id)
       if (!item) throw new CallError('not-found', `垃圾桶里没有这一条：${id}`)
       if (item.kind === 'paper') {
+        if (byId.has(item.paper.id)) throw new CallError('refused', `原来的位置已经被另一篇占了，恢复会盖掉它：${item.paper.id}`)
         byId.set(item.paper.id, item.paper)
         sourceOf.set(item.paper.id, item.source)
         pageOf.set(item.source, item.paper.id)

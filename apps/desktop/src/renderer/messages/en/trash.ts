@@ -10,6 +10,7 @@ export const trash = {
   },
   autoClear: (days: number) => `Deletes automatically in ${days} ${pluralEn(days, { one: 'day', other: 'days' })}`,
   projectGone: 'Project deleted',
+  paperTaken: 'Same name in library',
   restored: (title: string) => `Restored “${title}”`,
   purged: 'Deleted permanently',
   clear: 'Empty trash',
