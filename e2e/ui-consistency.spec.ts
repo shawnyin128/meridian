@@ -136,7 +136,7 @@ test('收起钮全应用一个说法,Escape 一层一层剥,「/」跳到输入�
   await expect(shown(win, '.pdetail')).toHaveCount(0)
 
   await win.locator('[data-desk="ideas"]').click()
-  await shown(win, '.idea-card').first().click()
+  await shown(win, '[data-idea]').first().click()
   await expect(shown(win, '.idea-detail-panel .panel-close')).toHaveCount(1)
   await win.keyboard.press('Escape')
   await expect(shown(win, '.idea-detail-panel')).toHaveCount(0)

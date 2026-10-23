@@ -45,6 +45,45 @@ test('不传 MERIDIAN_SHOW_WINDOW 时窗口上屏', async ({ configHome }) => {
   }
 })
 
+test.describe('用例要上屏时', () => {
+  test.use({ showWindow: true })
+
+  test('窗口上屏但不把应用切到前台,也拿不到系统焦点;一层跟着窗口大小的透明子窗盖在上面接走真实指针', async ({ app }) => {
+    // macOS reports activation only as an event. The window shows after the renderer's first paint,
+    // long after this call returns, so the listener is in place before any activation could happen.
+    await app.evaluate(({ app: electronApp }) => {
+      const seen = globalThis as { activated?: boolean }
+      seen.activated = false
+      electronApp.on('did-become-active', () => { seen.activated = true })
+    })
+    const win = await app.firstWindow()
+    await win.locator('.sidebar').waitFor()
+    await expect.poll(() => visible(app)).toBe(true)
+    const windows = () => app.evaluate(({ BrowserWindow }) => {
+      const target = BrowserWindow.getAllWindows()[0]!
+      return {
+        activated: (globalThis as { activated?: boolean }).activated,
+        focusable: target.isFocusable(),
+        focused: BrowserWindow.getFocusedWindow() !== null,
+        bounds: target.getBounds(),
+        shields: target.getChildWindows().map((child) => ({
+          bounds: child.getBounds(), visible: child.isVisible(), focusable: child.isFocusable(),
+        })),
+      }
+    })
+    const opened = await windows()
+    expect(opened.activated).toBe(false)
+    expect(opened.focused).toBe(false)
+    expect(opened.focusable).toBe(false)
+    expect(opened.shields).toEqual([{ bounds: opened.bounds, visible: true, focusable: false }])
+
+    await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]!.setContentSize(1600, 820))
+    const resized = await windows()
+    expect(resized.bounds).not.toEqual(opened.bounds)
+    expect(resized.shields.map((shield) => shield.bounds)).toEqual([resized.bounds])
+  })
+})
+
 /** The environment minus every MERIDIAN_ variable: each test case picks its own vault, not the outer shell. */
 const cleanEnv = () => Object.fromEntries(Object.entries(process.env).filter(
   (e): e is [string, string] => e[1] !== undefined && !e[0].startsWith('MERIDIAN_')))

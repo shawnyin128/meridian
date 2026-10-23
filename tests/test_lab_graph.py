@@ -74,6 +74,19 @@ class LabGraphTests(unittest.TestCase):
                 self.assertIn("Do not hand-edit generated graph files", skill_text)
                 self.assertIn("passive, read-only visibility into Agent work", skill_text)
 
+    def test_lab_skill_reads_how_several_ideas_relate_before_building_the_graph(self) -> None:
+        skill = (Path(__file__).resolve().parents[1] / "plugins/codex/meridian/skills/lab/SKILL.md").read_text(encoding="utf-8")
+        placement = " ".join(skill.split("### New Idea Placement / Thread Seed", 1)[1].split("\n### ", 1)[0].split())
+
+        self.assertIn("several ideas at once, read how each pair relates before building", placement)
+        for relation in ("`prerequisite`", "`branch`", "`alternative`", "`independent`"):
+            self.assertIn(relation, placement)
+        self.assertIn("is the other's `parent` in its `create_node`, listed before it", placement)
+        self.assertIn("alternatives share a parent", placement)
+        self.assertIn("`create_edge` with `kind: blocks`", placement)
+        self.assertIn("in the same ask that confirms `create_node`", placement)
+        self.assertIn("ask about that pair instead of guessing", placement)
+
     def test_materialize_graph_uses_core_research_nodes_only(self) -> None:
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -295,6 +308,33 @@ class LabGraphTests(unittest.TestCase):
             codes = [finding["code"] for finding in result.health["findings"]]
             self.assertIn("dangling_edge_target", codes)
             self.assertEqual(result.health["status"], "fail")
+
+    def test_graph_health_fails_on_every_record_the_app_leaves_out(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._write_minimal_lab(root)
+            from meridian.lab.graph import check_lab_graph_payload
+
+            result = materialize_lab_graph(root)
+            graph = result.graph
+            graph["nodes"] = [*graph["nodes"], {"label": "No id"}, dict(graph["nodes"][0])]
+            graph["edges"] = [
+                *graph["edges"],
+                {"id": "dangling", "source": "kv-compression.Z", "target": "kv-compression.A", "kind": "continues"},
+                "not an edge",
+            ]
+            findings = check_lab_graph_payload(graph, result.lab_root)["findings"]
+
+            errors = {(finding["code"], finding["path"]) for finding in findings if finding["severity"] == "error"}
+            self.assertTrue(
+                {
+                    ("missing_node_field", "nodes/1/id"),
+                    ("duplicate_node_id", "nodes/2/id"),
+                    ("dangling_edge_source", "edges/0/source"),
+                    ("invalid_edge", "edges/1"),
+                }.issubset(errors),
+                errors,
+            )
 
     def test_graph_health_allows_two_sibling_nodes_active_at_once(self) -> None:
         # The retired active_path chain check rejected two active ids with no
@@ -1083,6 +1123,75 @@ class LabGraphTests(unittest.TestCase):
             )
             self.assertEqual(graph["active_nodes"], ["kv-compression.A", "kv-compression.B"])
             self.assertTrue(next(edge for edge in graph["edges"] if edge["target"] == "kv-compression.B")["on_active_path"])
+
+    def _several_ideas_packet(self, changes: list[dict[str, str]] | None = None, status: str = "accepted") -> dict:
+        # Three ideas read as: B grows from A; C refines B; D is an alternative to B, and C also needs D.
+        return {
+            "schema": "meridian.lab.update.v1",
+            "intent": "build_from_ideas",
+            "target_thread": "kv-compression",
+            "changes": changes or [
+                {"op": "create_node", "node_id": "kv-compression.B", "title": "Dynamic eviction budget", "parent": "A"},
+                {"op": "create_node", "node_id": "kv-compression.C", "title": "Per-layer budget", "parent": "B"},
+                {"op": "create_node", "node_id": "kv-compression.D", "title": "Static per-head budget", "parent": "A"},
+                {"op": "create_edge", "source": "kv-compression.D", "kind": "blocks", "target": "kv-compression.C"},
+            ],
+            "user_confirmation": {"required_for": ["create_node"], "status": status},
+        }
+
+    def test_apply_update_builds_several_ideas_as_a_tree_with_their_relations(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._write_minimal_lab(root)
+            from meridian.lab.graph import apply_lab_update
+
+            result = apply_lab_update(root, self._several_ideas_packet())
+
+            self.assertEqual(result["status"], "applied")
+            thread = (root / ".meridian/threads/kv-compression.md").read_text(encoding="utf-8")
+            self.assertIn("### Node C: Per-layer budget\n\n- mode: `unresolved`\n- parent: B\n", thread)
+            self.assertIn("- `kv-compression.D` blocks `kv-compression.C`", thread)
+            graph = json.loads((root / ".meridian/graph/graph.json").read_text(encoding="utf-8"))
+            self.assertEqual(
+                {edge["target"]: edge["source"] for edge in graph["edges"] if edge["kind"] == "continues"},
+                {"kv-compression.B": "kv-compression.A", "kv-compression.C": "kv-compression.B", "kv-compression.D": "kv-compression.A"},
+            )
+            self.assertEqual(
+                [(edge["source"], edge["target"]) for edge in graph["edges"] if edge["kind"] == "blocks"],
+                [("kv-compression.D", "kv-compression.C")],
+            )
+            self.assertEqual(result["graph_health"]["status"], "pass")
+
+    def test_apply_update_rejects_several_ideas_unconfirmed_or_with_a_child_before_its_parent(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._write_minimal_lab(root)
+            thread = root / ".meridian/threads/kv-compression.md"
+            before = thread.read_bytes()
+            from meridian.lab.graph import apply_lab_update
+
+            unconfirmed = apply_lab_update(root, self._several_ideas_packet(status="proposed"))
+            child_first = apply_lab_update(
+                root,
+                self._several_ideas_packet(
+                    [
+                        {"op": "create_node", "node_id": "kv-compression.C", "title": "Per-layer budget", "parent": "B"},
+                        {"op": "create_node", "node_id": "kv-compression.B", "title": "Dynamic eviction budget", "parent": "A"},
+                    ]
+                ),
+            )
+
+            self.assertEqual((unconfirmed["status"], child_first["status"]), ("rejected", "rejected"))
+            self.assertEqual(
+                [finding["path"] for finding in unconfirmed["validation"]["findings"] if finding["code"] == "confirmation_required"],
+                ["changes[0]", "changes[1]", "changes[2]"],
+            )
+            self.assertEqual(
+                [(finding["code"], finding["path"]) for finding in child_first["validation"]["findings"]],
+                [("create_node_parent_missing", "changes[0].parent")],
+            )
+            self.assertEqual(thread.read_bytes(), before)
+            self.assertFalse((root / ".meridian/graph/graph.json").exists())
 
     def test_apply_update_rejects_create_node_without_confirmation_or_title(self) -> None:
         with TemporaryDirectory() as tmp:

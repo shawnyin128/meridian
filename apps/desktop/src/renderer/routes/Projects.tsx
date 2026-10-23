@@ -24,6 +24,7 @@ import { InlineDraftInput } from '../components/InlineDraftInput.js'
 import { LoadingPlaceholder } from '../components/LoadingPlaceholder.js'
 import { ShortTextEditor } from '../components/ShortTextEditor.js'
 import { ProjectBlockerView, ProjectNextActionView } from '../components/project/ProjectControl.js'
+import { useAreaFilter } from '../components/project/ProjectAreaFilter.js'
 import { ProjectIdentity } from '../components/project/ProjectIdentity.js'
 import { EventText } from '../components/project/ProjectSignals.js'
 import { CardOpen, ResearchObjectCard } from '../components/ResearchObjectCard.js'
@@ -42,7 +43,7 @@ import type { NoticeAction } from '../components/Notice.js'
 import { useDragReorder, type Reorderable } from '../hooks/useDragReorder.js'
 import { DragHandle } from '../components/DragHandle.js'
 import {
-  PageBody, PageError, PageHeader, PageShell, PageTitle, SectionHeading,
+  PageBody, PageError, PageHeader, PageShell, PageTitle, PageToolbar, SectionHeading,
 } from '../components/PageShell.js'
 import { FadeText } from '../components/FadeText.js'
 import { namedRuns } from '../components/TitleNote.js'
@@ -288,12 +289,16 @@ function ProjectList({ onOpen, newRow, onNewRow, onReturn }: {
   const createRow = useRef<HTMLDivElement>(null)
   const projNew = useRef<HTMLButtonElement>(null)
   const newTriggers = useMemo(() => [projNew], [])
+  const { filter, shown } = useAreaFilter(projects ?? [])
   const statusOf = useMemo(
     () => new Map((projects ?? []).map((p) => [p.id, p.status])), [projects],
   )
   const ids = useMemo(() => (projects ?? []).map((p) => p.id), [projects])
+  const shownIds = new Set(shown.map((p) => p.id))
+  // Each project the filter hides is a scope of its own, so moving a shown one leaves it where it is.
   const reorder = useDragReorder(
-    ids, (id) => statusOf.get(id) ?? '', (order) => { void write(projectApi.reorder(order)) },
+    ids, (id) => (shownIds.has(id) ? statusOf.get(id) ?? '' : `hidden ${id}`),
+    (order) => { void write(projectApi.reorder(order)) },
   )
   const sortBy = (key: ProjectSortKey) => {
     if (projects === null) return
@@ -342,7 +347,7 @@ function ProjectList({ onOpen, newRow, onNewRow, onReturn }: {
   }
 
   const groups = PROJECT_STATUSES
-    .map((status) => ({ status, items: projects.filter((p) => p.status === status) }))
+    .map((status) => ({ status, items: shown.filter((p) => p.status === status) }))
     // Always keep the ongoing group: a project created from the header, and its input row, land in it,
     // so neither shows under another status when the vault holds only finished projects.
     .filter((g) => g.items.length > 0 || g.status === ACTIVE_PROJECT)
@@ -386,11 +391,12 @@ function ProjectList({ onOpen, newRow, onNewRow, onReturn }: {
         )}
       >
         {onReturn === undefined ? null : <BackButton onClick={onReturn} />}
-        <PageTitle>{m.research.list.title(projects.filter((p) => p.status === ACTIVE_PROJECT).length)}</PageTitle>
+        <PageTitle>{m.research.list.title(shown.filter((p) => p.status === ACTIVE_PROJECT).length)}</PageTitle>
       </PageHeader>
       <PageError error={error} />
 
       <PageBody>
+        {projects.length === 0 ? null : <PageToolbar>{filter}</PageToolbar>}
         {groups.map((g, i) => (
           <Fragment key={g.status}>
             <SectionHeading>{m.research.list.groupHeading(g.status, g.items.length)}</SectionHeading>

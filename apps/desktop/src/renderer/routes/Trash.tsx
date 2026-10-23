@@ -9,6 +9,7 @@ import { Icon, IconRestore, IconTrash } from '../components/icons.js'
 import { IconButton } from '../components/IconButton.js'
 import { ConfirmDialog } from '../components/ConfirmDialog.js'
 import { EmptyState } from '../components/EmptyState.js'
+import { FadeText } from '../components/FadeText.js'
 import { LoadingPlaceholder } from '../components/LoadingPlaceholder.js'
 import { PaperText } from '../components/paper/PaperText.js'
 import { plainTitle } from '../components/paper/paper-text.js'
@@ -25,11 +26,12 @@ import './Trash.css'
 
 /**
  * The order of the groups. The demo's order array was Inbox, papers, projects, with attachments
- * outside it, after the ordered kinds; ideas follow projects, and attachments stay last.
+ * outside it, after the ordered kinds; read-later items follow Inbox, ideas follow projects, and
+ * attachments stay last.
  */
-const KINDS: TrashEntry['kind'][] = ['inbox', 'paper', 'project', 'idea', 'attachment']
+const KINDS: TrashEntry['kind'][] = ['inbox', 'later', 'paper', 'project', 'idea', 'attachment']
 /** The kinds whose title is a paper title. */
-const PAPER_KINDS: ReadonlySet<TrashEntry['kind']> = new Set(['inbox', 'paper'])
+const PAPER_KINDS: ReadonlySet<TrashEntry['kind']> = new Set(['inbox', 'later', 'paper'])
 const plainOf = (entry: TrashEntry): string => (PAPER_KINDS.has(entry.kind) ? plainTitle(entry.title) : entry.title)
 
 /**
@@ -120,9 +122,9 @@ export function Trash() {
               <StructuredList variant="embedded" maxVisibleRows="all" className="tgroup">
                 {g.items.map((entry) => (
                   <StructuredRow className="trow" key={entry.id}>
-                    <span className="tt2">{PAPER_KINDS.has(entry.kind) ? <PaperText text={entry.title} /> : entry.title}</span>
+                    <FadeText className="tt2">{PAPER_KINDS.has(entry.kind) ? <PaperText text={entry.title} /> : entry.title}</FadeText>
                     <span className="tm2">{m.trash.autoClear(daysLeft(entry.deletedAt, today))}</span>
-                    {entry.restorable ? null : <Tag>{m.trash.projectGone}</Tag>}
+                    {entry.restorable ? null : <Tag>{entry.kind === 'paper' ? m.trash.paperTaken : m.trash.projectGone}</Tag>}
                     <RowActions>
                       <IconButton
                         label={m.common.restore} size="nested" disabled={!entry.restorable} onClick={() => restore(entry)}

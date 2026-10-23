@@ -233,6 +233,22 @@ describe('fixture store', () => {
     expect(store.getProject('draft').attachments).toContainEqual(attachment)
   })
 
+  it('删掉的论文重新导入后占了原来的 id，从垃圾桶恢复被拒，新导入的那篇不动，垃圾桶里那一条还在', () => {
+    const bytes = Uint8Array.from(Buffer.from('%PDF-1.7\n%%EOF'))
+    const deleted = store.importPaper('A Useful Paper.pdf', bytes).paper
+    store.deletePaper(deleted.id)
+    const entry = store.listTrash()[0]!
+    const again = store.importPaper('A Useful Paper.pdf', bytes).paper
+    expect(again.id).toBe(deleted.id)
+    store.updatePaper(again.id, { title: '重新导入的那篇' })
+    expect(store.listTrash().find((item) => item.id === entry.id)!.restorable).toBe(false)
+    expect(() => store.restoreTrash(entry.id)).toThrow(/占/)
+    expect(store.getPaper(again.id).title).toBe('重新导入的那篇')
+    expect(store.listTrash().map((item) => item.id)).toContain(entry.id)
+    store.deletePaper(again.id)
+    expect(store.listTrash().find((item) => item.id === entry.id)!.restorable).toBe(true)
+  })
+
   it('原项目也被删掉时那条附件恢复不了,项目恢复回来它跟着能恢复', () => {
     const attachment = store.getProject('draft').attachments[0]!
     store.deleteAttachment('draft', attachment.id)
@@ -1956,6 +1972,14 @@ describe('fixture store', () => {
       title: '新方向', body: '加入消融实验', source: { chatId: 'amortize' },
     })
     expect(() => store.updateIdea('no-such', { title: 'x' })).toThrow(/想法不存在/)
+  })
+
+  it('在项目页写下的想法记下冒出它的项目,不放进那个项目;项目不存在时不收', () => {
+    const store = createFixtureStore(() => '2026-09-18')
+    const created = store.createIdea(undefined, '项目页写下的想法', '先记下来', 'draft')
+    expect(created).toMatchObject({ sourceProject: 'draft', source: { chatTitle: '手动添加' } })
+    expect(created).not.toHaveProperty('project')
+    expect(() => store.createIdea(undefined, '不存在的项目', '正文', 'project-nope')).toThrow(/项目不存在/)
   })
 
   it('自己写下的想法来源是手动添加,没有对话也没有 agent,建出来就在列表里', () => {

@@ -1,0 +1,10 @@
+/*
+ * CodeMirror's base theme brings its own font, line height, padding, caret and focus outline; the editor takes the field's.
+ * As a MarkdownBox source editor it shows focus as .md.src does: no ring, and tokens.css's text-editor rule on its content.
+ */
+.md.src .md-editor .cm-editor.cm-focused{outline:none}
+.md-editor .cm-editor .cm-scroller{font-family:inherit;line-height:inherit}
+.md-editor .cm-editor .cm-content{padding:0;caret-color:var(--ink)}
+.md-editor .cm-editor .cm-line{padding:0}
+/* A rendered block keeps its margins inside, so the editor measures the height it shows, and lays out its text as the rendered result does. */
+.md-editor .md-block{display:flow-root;white-space:normal;cursor:text}

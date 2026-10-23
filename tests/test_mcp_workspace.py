@@ -336,6 +336,35 @@ class MCPWorkspaceTests(unittest.TestCase):
             self.assertEqual(stored["ideas"][0]["context"], "Claude Code session on cache eviction")
             self.assertEqual(plan.read_bytes(), plan_before)
 
+    def test_idea_add_rejects_arguments_outside_its_schema_and_overlong_text(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._workspace(root)
+            server = MeridianMCPServer(default_workspace_root=root)
+            arguments = {
+                "idea_id": "prefix-cache-eviction",
+                "title": "Evict prefix cache by reuse distance",
+                "body": "Replace LRU with reuse-distance scoring for shared prefixes.",
+            }
+            definition = next(
+                tool for tool in server.handle_message({"jsonrpc": "2.0", "id": 1, "method": "tools/list"})["result"]["tools"]
+                if tool["name"] == "meridian.workspace_idea_add"
+            )
+
+            extra, extra_payload = self._call(
+                server, "meridian.workspace_idea_add", {**arguments, "created": "2026-09-21", "source": "chat"},
+            )
+            long_title, _ = self._call(server, "meridian.workspace_idea_add", {**arguments, "title": "t" * 81})
+            long_context, _ = self._call(server, "meridian.workspace_idea_add", {**arguments, "context": "c" * 61})
+
+            self.assertTrue(extra["isError"])
+            self.assertIn("does not take created, source", extra_payload["message"])
+            self.assertTrue(long_title["isError"])
+            self.assertTrue(long_context["isError"])
+            self.assertFalse((root / ".meridian/ideas/ideas.json").exists())
+            properties = definition["inputSchema"]["properties"]
+            self.assertEqual((properties["title"]["maxLength"], properties["context"]["maxLength"]), (80, 60))
+
     def test_task_add_records_agent_tasks_idempotently_and_leaves_the_plan_alone(self) -> None:
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -366,6 +395,31 @@ class MCPWorkspaceTests(unittest.TestCase):
                 }],
             })
             self.assertEqual(plan.read_bytes(), plan_before)
+
+    def test_task_add_keeps_a_stored_task_it_cannot_read_and_still_records_a_new_one(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._workspace(root)
+            good = {"id": "rerun-sweep", "date": "2026-09-24", "title": "Rerun the width sweep at B=16"}
+            malformed = {"id": "bad", "date": "9月24日", "title": ["not", "a", "string"]}
+            tasks = root / ".meridian/tasks/tasks.json"
+            tasks.parent.mkdir(parents=True)
+            tasks.write_text(
+                json.dumps({"schema_version": "meridian.workspace-agent-tasks.v1", "tasks": [good, malformed]}),
+                encoding="utf-8",
+            )
+            server = MeridianMCPServer(default_workspace_root=root)
+
+            result, payload = self._call(
+                server, "meridian.workspace_task_add", {"task_id": "new", "date": "2026-09-25", "title": "Write up"},
+            )
+
+            self.assertNotIn("isError", result)
+            self.assertEqual(payload["status"], "created")
+            stored = json.loads(tasks.read_text(encoding="utf-8"))["tasks"]
+            self.assertEqual(stored[:2], [good, malformed])
+            self.assertEqual([task["id"] for task in stored], ["rerun-sweep", "bad", "new"])
+
 
     def test_coding_context_reads_cursor_then_expands_only_referenced_entities(self) -> None:
         with TemporaryDirectory() as tmp:
@@ -911,6 +965,32 @@ class MCPWorkspaceTests(unittest.TestCase):
                 self.assertEqual(
                     sorted(path.relative_to(root).as_posix() for path in root.rglob("*")), before
                 )
+
+    def test_idea_add_keeps_a_stored_idea_it_cannot_read_and_still_records_a_new_one(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._workspace(root)
+            good = {"id": "good", "date": "2026-10-21", "title": "Evict by reuse distance", "body": "Score by reuse."}
+            malformed = {"id": "bad", "date": "10月21日", "title": ["not", "a", "string"]}
+            ideas = root / ".meridian/ideas/ideas.json"
+            ideas.parent.mkdir(parents=True)
+            ideas.write_text(
+                json.dumps({"schema_version": "meridian.workspace-agent-ideas.v1", "ideas": [good, malformed]}),
+                encoding="utf-8",
+            )
+            server = MeridianMCPServer(default_workspace_root=root)
+
+            result, payload = self._call(
+                server,
+                "meridian.workspace_idea_add",
+                {"idea_id": "new", "date": "2026-10-22", "title": "Share shallow KV", "body": "Reuse the target's KV."},
+            )
+
+            self.assertNotIn("isError", result)
+            self.assertEqual(payload["status"], "created")
+            stored = json.loads(ideas.read_text(encoding="utf-8"))["ideas"]
+            self.assertEqual(stored[:2], [good, malformed])
+            self.assertEqual([idea["id"] for idea in stored], ["good", "bad", "new"])
 
 
 if __name__ == "__main__":

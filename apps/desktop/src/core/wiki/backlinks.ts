@@ -6,13 +6,13 @@ import { isPaper, labelOf, titleOf } from './model.js'
 
 /**
  * What refers to Wiki pages from outside the Wiki: every project with its name, the ids of the papers
- * it links and the pages its relations name; every idea with its title and the id of the paper it came
- * from; every chat with its title, the id of the paper it reads and the text of each message the user
+ * it links and the pages its relations name; every idea with its title and the pages its relations
+ * name; every chat with its title, the id of the paper it reads and the text of each message the user
  * sent in it.
  */
 export type BacklinkContext = {
   projects: { id: string; name: string; papers: string[]; pages: string[] }[]
-  ideas: { id: string; title: string; paper?: string | undefined }[]
+  ideas: { id: string; title: string; pages: readonly string[] }[]
   chats: { id: string; title: string; paper?: string | undefined; sent: string[] }[]
 }
 
@@ -30,7 +30,7 @@ const mentions = (text: string, name: string): boolean => {
  * Returns what refers to Wiki page `id`, each once, in this order: the other pages whose body links to
  * it (a link to one of its claims counts), aggregations by kind in schema order before papers, each
  * kind by page id; the projects whose relations name it or, for a paper page, that link the paper; the
- * ideas that came from a paper page; and the chats that read a paper page or in which the user sent a
+ * ideas whose relations name it; and the chats that read a paper page or in which the user sent a
  * message opening with an `@` mention of the page's title (or a paper's short title). Throws a
  * `not-found` CallError if the Wiki has no page `id`.
  */
@@ -63,8 +63,8 @@ export function wikiBacklinks(data: WikiData, id: string, context: BacklinkConte
   const projects = context.projects
     .filter((p) => p.pages.includes(id) || (paper !== undefined && p.papers.includes(paper)))
     .map((p): WikiBacklink => ({ kind: 'project', id: p.id, title: p.name }))
-  const ideas = paper === undefined ? [] : context.ideas
-    .filter((idea) => idea.paper === paper)
+  const ideas = context.ideas
+    .filter((idea) => idea.pages.includes(id))
     .map((idea): WikiBacklink => ({ kind: 'idea', id: idea.id, title: idea.title }))
   const chats = context.chats
     .filter((chat) => (paper !== undefined && chat.paper === paper)

@@ -15,6 +15,9 @@
 /* A chip's name is its button; the chip forwards a click anywhere else on it. */
 .tagchip-open{display:flex;min-width:0;padding:0;border:0;background:none;color:inherit;font:inherit;cursor:inherit}
 .tagchip-open:hover{color:var(--ink)}
+/* A project's areas: the + stays shown, and a click on an area edits it, as on any other property. */
+.project-areas .tagchip.tagadd{opacity:1;pointer-events:auto}
+.project-areas .tagchip-open{cursor:pointer}
 .wkrel .reladd{display:flex;align-items:center;gap:var(--sp-6);flex:1 1 auto;min-width:190px}
 .wkrel .reladd .segmented-control{flex-shrink:0}
 .wkrel .reladd .inedit{flex:1;min-width:0}
@@ -30,10 +33,8 @@
 
 .attrow{display:flex;align-items:center;gap:var(--sp-8);font-size:var(--fs-sm);padding:var(--sp-6) var(--sp-2)}
 .attrow>svg{width:13px;height:13px;color:var(--ter);flex-shrink:0}
-.attrow .an{flex:1;min-width:0;padding:0;border:0;background:none;color:inherit;font:inherit;text-align:left;overflow:hidden;white-space:nowrap;mask-image:var(--clipfade);cursor:pointer}
+.attrow .an{display:flex;flex:1;min-width:0;padding:0;border:0;background:none;color:inherit;font:inherit;text-align:left;cursor:pointer}
 .attrow .an:disabled{cursor:default}
-/* The name's fade mask hides its own focus ring, so the row draws it. */
-.attrow:has(.an:focus-visible){outline:var(--ring-width) solid var(--ring);outline-offset:var(--ring-offset)}
 .attrow .as{font-size:var(--fs-sm);color:var(--ter);flex-shrink:0}
 .attrow .row-actions{margin:calc(-1 * var(--sp-4)) 0}
 .attachments{min-width:0;border-radius:var(--r-md);transition:background-color var(--t) var(--e-out),outline-color var(--t) var(--e-out);outline:1px solid transparent}

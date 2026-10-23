@@ -21,6 +21,7 @@ import {
   EventText, ProjectSignalDate, ProjectSignalKind, RECORD_TONE,
 } from '../components/project/ProjectSignals.js'
 import { ProjectNextActionView } from '../components/project/ProjectControl.js'
+import { useAreaFilter } from '../components/project/ProjectAreaFilter.js'
 import { ProjectIdentity, ProjectLabel } from '../components/project/ProjectIdentity.js'
 import { DAY_SLOT_HOURS, useTimelinePeriod } from '../components/timeline/TimelineScale.js'
 import { TimelineBoard } from '../components/timeline/TimelineBoard.js'
@@ -29,7 +30,7 @@ import { ToolbarButton } from '../components/Toolbar.js'
 import { Tooltip } from '../components/Tooltip.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
 import {
-  PageBody, PageError, PageHeader, PageShell, PageTitle, SectionHeading,
+  PageBody, PageError, PageHeader, PageShell, PageTitle, PageToolbar, SectionHeading,
 } from '../components/PageShell.js'
 import './shell.css'
 import './ResearchOverview.css'
@@ -108,7 +109,7 @@ function OverviewRow({ when, kind, main, meta, project, projectId, variant, onOp
       <ProjectLabel name={project} className="ovlist-project" />
       <span className="ovlist-when">{when}</span>
       <span className="ovlist-kind">{kind}</span>
-      <span className="ovlist-main">{main}</span>
+      <FadeText className="ovlist-main" expand>{main}</FadeText>
       {meta ? <span className="ovlist-meta">{meta}</span> : null}
     </StructuredRow>
   )
@@ -239,9 +240,7 @@ function ProjectProgress({ rows, onOpen }: {
 /** Recent research log: all projects' research records, newest first: "what happened while I was away". */
 function Recent({ rows, onOpen }: { rows: ProjectOverview[]; onOpen: (projectId: string) => void }) {
   const m = useMessages()
-  const events = rows
-    .flatMap((p) => p.events.map((e) => ({ ...e, projectId: p.id, name: p.name })))
-    .sort((a, b) => dnum(b.date) - dnum(a.date))
+  const events = sortRecordsNewestFirst(rows.flatMap((p) => p.events.map((e) => ({ ...e, projectId: p.id, name: p.name }))))
     .slice(0, RECENT_EVENTS)
   if (events.length === 0) return null
   return (
@@ -390,6 +389,7 @@ export function ResearchOverview() {
   const { open: jumpTo } = useJump()
   const reportError = useCallback((e: unknown) => setError(errorLabel(m, e)), [m])
   const write = useVaultWrite()
+  const { filter, shown } = useAreaFilter(rows ?? [])
 
   useEffect(() => {
     void projectApi.overview().then(setRows).catch(reportError)
@@ -457,20 +457,21 @@ export function ResearchOverview() {
         ? <PageBody>{error === null ? <LoadingPlaceholder shape="cards" /> : null}</PageBody>
         : (
           <PageBody>
+            {rows.length === 0 ? null : <PageToolbar>{filter}</PageToolbar>}
             <SectionHeading>{m.research.overview.timelineHeading}</SectionHeading>
             <OverviewGantt
-              rows={rows} onOpenProject={openProject} onOpenTask={openTask} onMoveTask={moveTask}
+              rows={shown} onOpenProject={openProject} onOpenTask={openTask} onMoveTask={moveTask}
               onMoveTaskWindow={moveTaskWindow}
               onMoveMilestone={moveMilestone} onUpdateMilestone={updateMilestone}
               onDeleteMilestone={deleteMilestone} onNewMilestone={newMilestone}
             />
             <SectionHeading>{m.research.overview.statsHeading}</SectionHeading>
-            <Stats rows={rows} />
-            <DecisionQueue rows={rows} onOpen={openDecision} />
-            <ProjectProgress rows={rows} onOpen={openProject} />
+            <Stats rows={shown} />
+            <DecisionQueue rows={shown} onOpen={openDecision} />
+            <ProjectProgress rows={shown} onOpen={openProject} />
             <div className="ovcols">
-              <div><Recent rows={rows} onOpen={openProject} /></div>
-              <div><Upcoming rows={rows} onOpen={openProject} /></div>
+              <div><Recent rows={shown} onOpen={openProject} /></div>
+              <div><Upcoming rows={shown} onOpen={openProject} /></div>
             </div>
           </PageBody>
         )}

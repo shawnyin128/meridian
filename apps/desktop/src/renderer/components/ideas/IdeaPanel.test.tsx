@@ -57,9 +57,22 @@ describe('IdeaPanel', () => {
     const order = [...host.querySelectorAll('.idea-panel-body, .probe, .idea-panel-source')].map((el) => el.className)
     expect(order).toEqual(['idea-panel-body', 'probe', 'idea-panel-source'])
     expect(host.querySelector('.idea-panel-source')!.textContent).toBe('EAGLE-2 · 论文讨论')
-    expect(host.querySelector('.idea-panel-updated')!.textContent).toBe('更新于 9月18日')
     act(() => head.querySelector<HTMLButtonElement>('.panel-close')!.click())
     expect(onClose).toHaveBeenCalledOnce()
+  })
+
+  it('创建和更新日期在顶部，跟在类型标签后面；正文和来源之后不再写日期', () => {
+    act(() => root.render(<MessagesProvider><IdeaPanel idea={IDEA} onClose={vi.fn()} /></MessagesProvider>))
+    const meta = host.querySelector('.idea-panel-meta')!
+    expect(meta.previousElementSibling).toBe(host.querySelector('.idea-panel-head'))
+    expect(meta.querySelector('.idea-panel-dates')!.textContent).toBe('创建于 9月17日 · 更新于 9月18日')
+    expect([...meta.children].map((child) => child.className.split(' ')[0])).toEqual(['tag', 'tag', 'idea-panel-dates'])
+    expect(host.lastElementChild).toBe(host.querySelector('.idea-panel-source'))
+  })
+
+  it('创建和更新是同一天时只写创建于', () => {
+    act(() => root.render(<MessagesProvider><IdeaPanel idea={{ ...IDEA, updated: IDEA.created }} onClose={vi.fn()} /></MessagesProvider>))
+    expect(host.querySelector('.idea-panel-meta .idea-panel-dates')!.textContent).toBe('创建于 9月17日')
   })
 
   it('自己写下的想法没有来源一节，也不写手动添加', () => {

@@ -146,18 +146,22 @@ with a stable `task_id`, a one-line `title`, and a `note` saying what done
 means. The App puts it in the project plan at once, marked as added by an
 agent; the user deletes what they do not want, so do not ask first. A general
 direction or hypothesis ("prefix reuse may matter more than width", "look into
-dynamic thresholds") is not a task: place it as a Lab node or record it as an
-idea. Once the App has taken the task, `meridian.workspace_plan` lists its plan
-task id under `agent_tasks[<task_id>]`; use that id to link it to its node.
+dynamic thresholds") is not a task: place it as a Lab node, or as an idea only
+when it could stand alone (see Ideas). Once the App has taken the task,
+`meridian.workspace_plan` lists its plan task id under `agent_tasks[<task_id>]`;
+use that id to link it to its node.
 
-**Ideas.** When the discussion produces a new research direction, hypothesis
-or mechanism worth revisiting later, and it is not already a linked idea or a
-Lab node, call `meridian.workspace_idea_add` once (or
-`python -m meridian workspace idea-add`) with a stable `idea_id`, a one-line `title`, a
-`body` that states the idea itself, and a `context` naming the work it came up
-in. Pass `node` when it grows out of a Lab node. The App adds it to the
-project's idea list marked as coming from a coding agent. Do not record
-implementation details, TODOs, bug notes, or restatements of an existing idea.
+**Ideas.** Record an idea only when it could stand alone as a research
+contribution: a method, hypothesis or question a project of its own could start
+from. An observation, result or design choice from the current work is not an
+idea; record it on its Lab node or as a research record. For a new idea that is
+not already a linked idea or a Lab node, call `meridian.workspace_idea_add` once
+(or `python -m meridian workspace idea-add`) with a stable `idea_id`, a `title`
+of at most 80 characters that names the idea on its own, a `body` that states
+it, and a `context` of at most 60 characters naming the work it came up in,
+without dates, times or agent names; the App records those. Pass `node` when it
+grows out of a Lab node. Do not record implementation details, TODOs, bug
+notes, or restatements of an existing idea.
 
 ## Research Graph Generated View
 
@@ -501,6 +505,16 @@ Minimum completion:
 - Ask the user to choose `root`, `child`, `sibling`, or `link`.
 - Create a thread seed for `root` or `link`; attach to the existing thread for
   `child` or `sibling`.
+- When the user brings several ideas at once, read how each pair relates before
+  building: `prerequisite` (one needs the other's result first), `branch` (one
+  refines or varies the other), `alternative` (both answer the same question
+  another way) or `independent`. In one `meridian.lab_update` packet, the
+  prerequisite or the idea a branch grows from is the other's `parent` in its
+  `create_node`, listed before it; alternatives share a parent; a second
+  prerequisite is a `create_edge` with `kind: blocks`; independent ideas are
+  separate roots. Show this tree, each idea with its parent and edges, in the
+  same ask that confirms `create_node`; for a relation you are unsure of, name
+  the pair and ask about that pair instead of guessing.
 - After placement, run the Research Prior Gate before feasibility or experiment
   planning if the idea contains method, prompt, metric, eval, ablation, probe,
   failure, or baseline slots.
@@ -514,6 +528,15 @@ Example:
 The user gets a tokenizer-pruning idea while thinking about KV-cache
 compression. Compare it against existing research threads, ask where it belongs,
 create a thread seed if needed, then use Paper Wiki only after placement.
+```
+
+```text
+The user brings three speculative-decoding ideas: dynamic tree width, draft
+length adapted to token difficulty, and a draft head sharing the target's
+shallow KV. Draft length builds on the width controller; the shared-KV head is
+another way to raise acceptance than dynamic width. Propose under baseline A:
+B dynamic width (parent A), C adaptive length (parent B), D shared-KV head
+(parent A). After the user confirms, apply create_node B, C, D in that order.
 ```
 
 ### Wiki-Grounded Feasibility Review

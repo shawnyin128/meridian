@@ -30,7 +30,7 @@ vi.mock('../hooks/useVaultWrite.js', () => ({
 const { ResearchOverview } = await import('./ResearchOverview.js')
 
 const row = (events: ProjectOverview['events']): ProjectOverview => ({
-  id: 'spec', name: '推测解码加速', status: '进行中', priority: 'p0', focus: '动态树宽度原型',
+  id: 'spec', name: '推测解码加速', status: '进行中', priority: 'p0', topic: '推理加速', focus: '动态树宽度原型',
   start: '2026-09-26', due: '2026-11-10', conclusions: { verified: 0, pending: 0, conflicting: 0 },
   tasks: [], milestones: [], events, lastProgress: '2026-10-16',
   research: { pathState: 'empty', activeNodes: [], branches: { active: 0, supported: 0, failed: 0, shelved: 0 } },
@@ -88,6 +88,24 @@ describe('研究总览的项目推进', () => {
     expect(cells[1]!.querySelector('.ovpulse-latest')!.textContent).toBe('后写的记录')
   })
 
+  it('最近科研记录里同一天的记录和项目页一样按时间新的在前,没有时间的按写下的先后', async () => {
+    api.rows = [
+      row([
+        { date: '2026-10-15', text: '昨天' },
+        { date: '2026-10-16', text: '早上', at: '2026-10-16T08:00:00+08:00' },
+        { date: '2026-10-16', text: '晚上', at: '2026-10-16T21:00:00+08:00' },
+      ]),
+      { ...row([
+        { date: '2026-10-16', text: '中午', at: '2026-10-16T12:00:00+08:00' },
+        { date: '2026-10-14', text: '先写的' },
+        { date: '2026-10-14', text: '后写的' },
+      ]), id: 'kv', name: 'KV cache 量化' },
+    ]
+    await act(async () => root.render(<MessagesProvider><ResearchOverview /></MessagesProvider>))
+    expect([...host.querySelectorAll('.ovcols .ovlist-row .ovlist-main')].map((main) => main.textContent))
+      .toEqual(['晚上', '中午', '早上', '昨天', '后写的', '先写的'])
+  })
+
   it('最近科研记录和项目推进里 agent 写的记录都在那一行的末尾带 agent 标签,我写的不带', async () => {
     api.rows = [row([
       { date: '2026-10-15', text: '我记的', kind: 'note' },
@@ -121,6 +139,22 @@ describe('研究总览的项目推进', () => {
     expect(rowElement.textContent).toContain(next)
   })
 
+  it('需要注意、最近科研记录和接下来的里程碑的正文放不下时和项目页的科研记录一样就地展开整段,不弹 tooltip', async () => {
+    api.rows = [{
+      ...row([{ date: '2026-10-16', text: '宽度扫描：B=16 时动态树宽比固定宽度 4 快 2.6×，长回答上的接受率也更稳', kind: 'result' }]),
+      block: '等 8 卡机器排期，排到之后先跑完 B=16 的宽度扫描再定树宽上限',
+      milestones: [{ id: 'm1', date: '2026-10-18', title: '动态树原型：在 13B 与 70B 两个尺寸上都跑通并写完对比报告', done: false }],
+    }]
+    await act(async () => root.render(<MessagesProvider><ResearchOverview /></MessagesProvider>))
+    const mains = [...host.querySelectorAll('.ovlist-row.attention, .ovlist-row.dated')].map((line) => line.querySelector('.ovlist-main')!)
+    expect(mains.map((main) => [main.textContent, main.classList.contains('fade-expand'), main.querySelector('[data-state]')])).toEqual([
+      ['等 8 卡机器排期，排到之后先跑完 B=16 的宽度扫描再定树宽上限', true, null],
+      ['动态树原型：在 13B 与 70B 两个尺寸上都跑通并写完对比报告', true, null],
+      ['宽度扫描：B=16 时动态树宽比固定宽度 4 快 2.6×，长回答上的接受率也更稳', true, null],
+      ['动态树原型：在 13B 与 70B 两个尺寸上都跑通并写完对比报告', true, null],
+    ])
+  })
+
   it('最近科研记录给每条记录标上项目页科研记录的类型名和色调,没有类型的旧记录标成记录', async () => {
     api.rows = [row([
       { date: '2026-10-13', text: '旧记录' },
@@ -135,6 +169,54 @@ describe('研究总览的项目推进', () => {
       '实验结果 tag tag--label tag--good', '决定 tag tag--label tag--accent',
       '开始推进 tag tag--label tag--info', '记录 tag tag--label tag--neutral',
     ])
+  })
+})
+
+describe('研究总览按领域筛', () => {
+  let host: HTMLDivElement
+  let root: Root
+
+  beforeEach(() => {
+    globalThis.IS_REACT_ACT_ENVIRONMENT = true
+    window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'zh')
+    vi.stubGlobal('ResizeObserver', class { observe() {} unobserve() {} disconnect() {} })
+    host = document.createElement('div')
+    document.body.append(host)
+    root = createRoot(host)
+  })
+
+  afterEach(() => {
+    act(() => root.unmount())
+    host.remove()
+  })
+
+  it('页面工具栏里的领域筛选让每一块都只算那个领域的项目,再选全部领域就全回来', async () => {
+    api.rows = [
+      { ...row([{ date: '2026-10-15', text: '推测解码的记录' }]), milestones: [{ id: 'm1', date: '2026-10-20', title: '推测解码的里程碑', done: false }] },
+      { ...row([{ date: '2026-10-14', text: 'KV 的记录' }]), id: 'kv', name: 'KV cache 量化', topic: 'KV cache', topics: ['KV cache', '量化'],
+        milestones: [{ id: 'm2', date: '2026-10-21', title: 'KV 的里程碑', done: false }] },
+      { ...row([]), id: 'shelf', name: '搁置的项目', status: '搁置', topic: '未分主题' },
+    ]
+    await act(async () => { root.render(<MessagesProvider><ResearchOverview /></MessagesProvider>) })
+    const filter = () => host.querySelector<HTMLButtonElement>('.desk-body .page-toolbar .filter-menu')!
+    const pick = async (label: string) => {
+      await act(async () => { filter().dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, button: 0 })) })
+      const item = [...document.querySelectorAll<HTMLElement>('[role="menu"] [role="menuitemradio"]')].find((option) => option.textContent === label)!
+      await act(async () => { item.click() })
+    }
+    const stats = () => [...host.querySelectorAll('.ovstat b')].map((value) => value.textContent)
+    expect(stats()).toEqual(['2', '1', '2', '2'])
+
+    await pick('量化')
+    expect(stats()).toEqual(['1', '0', '1', '1'])
+    expect(host.querySelector('.ovcols')!.textContent).toContain('KV 的记录')
+    expect(host.querySelector('.ovcols')!.textContent).not.toContain('推测解码')
+    expect([...host.querySelectorAll('.ovpulse [data-proj]')].map((item) => item.getAttribute('data-proj'))).toEqual(['kv'])
+
+    await pick('未分领域')
+    expect(stats()).toEqual(['0', '1', '0', '0'])
+    await pick('全部领域')
+    expect(stats()).toEqual(['2', '1', '2', '2'])
   })
 })
 
@@ -172,6 +254,16 @@ describe('研究总览的需要注意', () => {
     expect(api.open).toHaveBeenLastCalledWith('project', 'spec', { milestone: 'm-late' })
     await act(async () => { decision('等 8 卡机器').click() })
     expect(api.open).toHaveBeenLastCalledWith('project', 'spec')
+  })
+
+  it('推进停滞在需要注意和项目推进里都是警示色', async () => {
+    api.rows = [{ ...row([]), lastProgress: '2026-10-01' }]
+    await act(async () => root.render(<MessagesProvider><ResearchOverview /></MessagesProvider>))
+    const tone = (tag: Element) => tag.className.split(' ').find((name) => /^tag--(?!label$|chip$)/.test(name))
+    expect([...host.querySelectorAll('.ovlist-row.attention .tag--label')].map((tag) => [tag.textContent, tone(tag)]))
+      .toEqual([['推进停滞', 'tag--warn']])
+    expect([...host.querySelectorAll('.ovpulse-cell.signal .tag')].map((tag) => [tag.textContent, tone(tag)]))
+      .toEqual([['推进停滞', 'tag--warn']])
   })
 
   it('阻塞在需要决策和项目进展里都是警示色,逾期仍是红色', async () => {

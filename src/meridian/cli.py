@@ -18,6 +18,8 @@ from meridian.setup.repair import apply_mcp_repair
 from meridian.wiki.workspace import default_user_config_path, init_workspace, resolve_workspace, workspace_for_cli
 from meridian.workspace_protocol import (
     EVENT_KINDS,
+    IDEA_CONTEXT_MAX_LEN,
+    IDEA_TITLE_MAX_LEN,
     add_workspace_agent_idea,
     add_workspace_agent_task,
     add_workspace_event,
@@ -196,13 +198,20 @@ def build_parser() -> argparse.ArgumentParser:
 
     workspace_idea_add = workspace_subparsers.add_parser(
         "idea-add",
-        help="Record a research idea found while working, for the Meridian App's idea list.",
+        help="Record an idea that could stand alone as a research contribution, for the Meridian App's idea list.",
     )
     workspace_idea_add.add_argument("--root", type=Path, default=Path.cwd(), help="Repository or .meridian root.")
     workspace_idea_add.add_argument("--id", required=True, help="Stable idea identifier.")
-    workspace_idea_add.add_argument("--title", required=True, help="The idea in one line.")
-    workspace_idea_add.add_argument("--body", required=True, help="The mechanism, hypothesis or direction.")
-    workspace_idea_add.add_argument("--context", default=None, help="What the work was about when it came up.")
+    workspace_idea_add.add_argument(
+        "--title", required=True, help=f"One line of at most {IDEA_TITLE_MAX_LEN} characters that names the idea."
+    )
+    workspace_idea_add.add_argument("--body", required=True, help="The idea itself: the method, hypothesis or question.")
+    workspace_idea_add.add_argument(
+        "--context",
+        default=None,
+        help=f"Shown as its source: the work it came up in, one line of at most {IDEA_CONTEXT_MAX_LEN} characters, "
+        "with no date or time.",
+    )
     workspace_idea_add.add_argument("--date", default=None, help="Idea date in YYYY-MM-DD; defaults to today.")
     workspace_idea_add.add_argument("--node", default=None, help="Optional Lab graph node id.")
     workspace_idea_add.add_argument("--json-out", type=Path, default=None, help="Optional write result JSON path.")

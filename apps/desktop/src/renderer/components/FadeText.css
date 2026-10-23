@@ -7,3 +7,6 @@
 .fade-lines{overflow:hidden}
 .fade-lines.clipped{mask:linear-gradient(#000,#000) 0 0/100% calc(100% - 1lh) no-repeat,
   linear-gradient(to right,#000 calc(var(--line-end,100%) - var(--clipfade-width)),transparent var(--line-end,100%)) 0 100%/100% 1lh no-repeat}
+/* A text that opens in place is one wrapped line high until it opens downward to its whole height. */
+.fade-expand{display:block;white-space:normal;height:1lh;interpolate-size:allow-keywords;transition:height var(--t) var(--e-out)}
+.fade-expand.is-open{height:auto}

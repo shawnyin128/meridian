@@ -324,7 +324,10 @@ export const ProjectDetailSchema = z.object({
   name: z.string(),
   status: ProjectStatusSchema,
   priority: z.enum(['p0', 'p1', 'p2']),
+  /** The project's area, or DEFAULT_PROJECT_TOPIC when it has none; with several areas, the first of `topics`. */
   topic: z.string(),
+  /** Every area of a project that has several, in order; absent while it has one or none. */
+  topics: z.array(z.string()).optional(),
   focus: z.string(),
   /** Current blocker, omitted when the project is not blocked. */
   block: z.string().optional(),
@@ -375,7 +378,7 @@ export const ProjectDetailSchema = z.object({
  * and notes are omitted.
  */
 export const ProjectSummarySchema = ProjectDetailSchema.pick({
-  id: true, name: true, status: true, priority: true, topic: true, focus: true, block: true,
+  id: true, name: true, status: true, priority: true, topic: true, topics: true, focus: true, block: true,
   conflictPage: true, conclusions: true, paperCount: true, lastProgress: true,
 }).extend({
   /** List pages consume the shared control projection instead of reinterpreting focus, tasks, or graph state. */
@@ -395,10 +398,10 @@ export const ProjectSummarySchema = ProjectDetailSchema.pick({
  * Research-overview project record with schedule, research-log, and compact
  * graph projections. Overview and project timelines share real task dates and
  * windows; project start and due remain attributes rather than synthetic tasks.
- * Topics, paper count, conflict page, and other details do not cross this boundary.
+ * Areas cross for the overview's filter; paper count, conflict page, and other details do not.
  */
 export const ProjectOverviewSchema = ProjectDetailSchema.pick({
-  id: true, name: true, status: true, priority: true, focus: true, block: true,
+  id: true, name: true, status: true, priority: true, topic: true, topics: true, focus: true, block: true,
   start: true, due: true, conclusions: true,
   tasks: true, milestones: true, events: true, lastProgress: true,
 }).extend({
@@ -969,15 +972,20 @@ export const ProjectCreateParamsSchema = z.object({ name: z.string() }).strict()
 
 export const ProjectDeleteParamsSchema = z.object({ id: z.string() }).strict()
 
-/** Writable project fields; `block: null` clears the blocker. */
+/**
+ * Writable project fields; `block: null` clears the blocker. `topics` sets every area at once, in
+ * order, and an empty list leaves the project with none.
+ */
 const ProjectFieldsSchema = ProjectDetailSchema.omit({
   id: true, tasks: true, taskNodes: true, milestones: true, events: true, relations: true, attachments: true,
   conclusions: true, conclusionList: true, conclusionClaims: true, projectConclusions: true, verifiedConclusions: true,
   paperCount: true, papers: true,
   paperTitles: true, graph: true, agentSessions: true, block: true,
-  conflictPage: true, workspace: true, lastProgress: true,
+  conflictPage: true, workspace: true, lastProgress: true, topic: true, topics: true,
 }).extend({
   block: z.string().trim().min(1).max(500).nullable(),
+  topics: z.array(z.string().trim().min(1).max(300))
+    .refine((topics) => new Set(topics).size === topics.length, { message: '同一个领域只能有一个' }),
 })
 
 export const ProjectUpdateParamsSchema = z.object({
@@ -1354,11 +1362,12 @@ export const WatchDeleteParamsSchema = z.object({ id: z.string() }).strict()
  * `kind` preserves the former type and `title` its display name. `deletedAt` is
  * UTC midnight for the vault date and starts retention. `restorable` is false
  * when the original destination is missing, such as an attachment whose project
- * remains deleted.
+ * remains deleted, or taken, such as a paper whose page's place another page
+ * holds.
  */
 export const TrashEntrySchema = z.object({
   id: z.string(),
-  kind: z.enum(['inbox', 'paper', 'attachment', 'project', 'idea']),
+  kind: z.enum(['inbox', 'later', 'paper', 'attachment', 'project', 'idea']),
   title: z.string(),
   deletedAt: z.number().int(),
   restorable: z.boolean(),
@@ -1975,6 +1984,12 @@ export const ChatSessionSchema = z.object({
   paperId: z.string().optional(),
 }).strict()
 
+/** The projects and Wiki pages an idea relates to, each once. */
+export const IdeaRelationsSchema = z.object({
+  projects: z.array(z.string()),
+  pages: z.array(z.string()),
+}).strict()
+
 /**
  * A user-authored research idea distilled from a conversation. It is personal research state, not
  * source evidence or canonical Wiki content. The source link preserves where the reasoning came
@@ -1996,10 +2011,22 @@ export const ResearchIdeaSchema = z.object({
     paperTitle: z.string().optional(),
     agent: z.literal(true).optional(),
   }).strict(),
-  /** Linked project identity; name and status are always read from the project to avoid duplicated state. */
+  /**
+   * The project whose bound workspace a coding agent recorded the idea in: where it was sparked, never
+   * what it relates to or where it is carried out.
+   */
+  sourceProject: z.string().optional(),
+  /** What the idea is about, as only the user chose or confirmed: projects, and Wiki aggregation pages. */
+  relations: IdeaRelationsSchema.optional(),
+  /**
+   * The project the idea is carried out in; name and status are always read from the project to avoid
+   * duplicated state. Without it the idea is not started.
+   */
   project: z.string().optional(),
   /** Optional node inside the linked project's current research graph. */
   node: z.string().optional(),
+  /** A node of `sourceProject`'s research graph an agent attached on arrival; it counts once the user confirms it. */
+  candidateNode: z.string().optional(),
   /** Archiving removes the idea from the active attention queue without deleting it or its provenance. */
   archived: z.boolean().default(false),
   created: IsoDate,
@@ -2043,9 +2070,13 @@ export const ChatSendResultSchema = z.object({
 export const ChatCancelParamsSchema = z.object({ id: z.string() }).strict()
 export const ChatCancelResultSchema = z.object({ id: z.string(), cancelled: z.boolean() }).strict()
 
-/** Creates an idea from the chat `chatId` names, or, without it, one the user writes down on their own. */
+/**
+ * Creates an idea from the chat `chatId` names, or, without it, one the user writes down on their own;
+ * `sourceProject` names the project whose page it was written down on.
+ */
 export const ResearchIdeaCreateParamsSchema = z.object({
   chatId: z.string().optional(),
+  sourceProject: z.string().optional(),
   title: ResearchIdeaSchema.shape.title,
   body: ResearchIdeaSchema.shape.body,
 }).strict()
@@ -2056,6 +2087,7 @@ export const ResearchIdeaUpdateParamsSchema = z.object({
     title: ResearchIdeaSchema.shape.title.optional(),
     body: ResearchIdeaSchema.shape.body.optional(),
     project: z.string().nullable().optional(),
+    relations: IdeaRelationsSchema.optional(),
     archived: z.boolean().optional(),
   }).strict().refine((patch) => Object.keys(patch).length > 0, '没有要更新的想法字段'),
 }).strict()
@@ -2071,7 +2103,11 @@ export const ResearchIdeaPromoteResultSchema = z.object({
   project: ProjectDetailSchema,
 }).strict()
 
-/** Explicit placement of a project-linked idea in the project's current research graph. */
+/**
+ * Explicit placement of a project-linked idea in the project's current research graph. `confirm` and
+ * `dismiss` act on the idea's candidate node: confirming carries the idea out in its source project at
+ * that node, dismissing drops the candidate.
+ */
 export const ResearchIdeaGraphPlacementSchema = z.discriminatedUnion('kind', [
   z.object({
     kind: z.literal('create'),
@@ -2080,6 +2116,8 @@ export const ResearchIdeaGraphPlacementSchema = z.discriminatedUnion('kind', [
   }).strict(),
   z.object({ kind: z.literal('link'), nodeId: z.string() }).strict(),
   z.object({ kind: z.literal('unlink') }).strict(),
+  z.object({ kind: z.literal('confirm') }).strict(),
+  z.object({ kind: z.literal('dismiss') }).strict(),
 ])
 
 export const ResearchIdeaPlaceOnGraphParamsSchema = z.object({
@@ -2087,9 +2125,10 @@ export const ResearchIdeaPlaceOnGraphParamsSchema = z.object({
   placement: ResearchIdeaGraphPlacementSchema,
 }).strict()
 
+/** The idea after a placement, with the project whose graph it touched, or null when it touched none. */
 export const ResearchIdeaPlaceOnGraphResultSchema = z.object({
   idea: ResearchIdeaSchema,
-  project: ProjectDetailSchema,
+  project: ProjectDetailSchema.nullable(),
   nodeId: z.string().nullable(),
 }).strict()
 
@@ -2419,6 +2458,7 @@ export type ChatSession = z.infer<typeof ChatSessionSchema>
 export type ChatSendResult = z.infer<typeof ChatSendResultSchema>
 export type ChatCancelResult = z.infer<typeof ChatCancelResultSchema>
 export type ResearchIdea = z.infer<typeof ResearchIdeaSchema>
+export type IdeaRelations = z.infer<typeof IdeaRelationsSchema>
 export type ResearchIdeaPatch = z.infer<typeof ResearchIdeaUpdateParamsSchema>['patch']
 export type ResearchIdeaPromoteResult = z.infer<typeof ResearchIdeaPromoteResultSchema>
 export type ResearchIdeaGraphPlacement = z.infer<typeof ResearchIdeaGraphPlacementSchema>

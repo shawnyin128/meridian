@@ -8,9 +8,10 @@ import {
   ChangeEntrySchema, PaperColumnsSchema, PaperHighlightSchema, PaperNoteSchema, PaperRowSchema,
   ProjectDetailSchema,
 } from '../shared/contract.js'
+import { projectAreas } from '../shared/project-signals.js'
 import { topicDir, topicProposal, topicTitleKey } from '../shared/topic-proposal.js'
 import {
-  COLUMN_TYPE_LABEL, DEFAULT_PROJECT_TOPIC, LATER_PAPER, NO_PROJECT_AREA, PAPER_PAGE, TRASH_RETENTION_DAYS,
+  COLUMN_TYPE_LABEL, LATER_PAPER, NO_PROJECT_AREA, PAPER_PAGE, TRASH_RETENTION_DAYS,
 } from '../shared/vocabulary.js'
 import { CallError } from './call-error.js'
 import { dayOf } from './dates.js'
@@ -42,7 +43,7 @@ const NOT_PROGRESS: ReadonlySet<string> = new Set([REORDER_TASKS, MOVE_RELATION,
  * and other project research state outside undo history.
  */
 export const PROJECT_FIELDS: (keyof ProjectRecord & keyof ProjectDetail)[] = [
-  'name', 'status', 'priority', 'topic', 'focus', 'block', 'start', 'due', 'memo',
+  'name', 'status', 'priority', 'topic', 'topics', 'focus', 'block', 'start', 'due', 'memo',
   'papers', 'tasks', 'milestones', 'events', 'relations', 'attachments',
   'agentSessions', 'verifiedConclusions',
 ]
@@ -51,7 +52,7 @@ export const PROJECT_FIELDS: (keyof ProjectRecord & keyof ProjectDetail)[] = [
  * Project fields added after fingerprints were first stored. They are left out of a fingerprint while
  * absent, so a project that never set one keeps the fingerprint older records hold.
  */
-const LATER_PROJECT_FIELDS: ReadonlySet<string> = new Set(['verifiedConclusions'])
+const LATER_PROJECT_FIELDS: ReadonlySet<string> = new Set(['verifiedConclusions', 'topics'])
 
 /**
  * Entity changed by one record. Before undo, resolve its current shape and compare it with the stored
@@ -228,11 +229,15 @@ type Entity =
   | { kind: 'highlight'; paper: string; title: string; at: number; highlight: PaperHighlight }
   | { kind: 'remark'; paper: string; title: string; remark: string }
 
-/** Change-log storage: `.meridian` for real vaults and memory for fixtures. */
+/**
+ * Change-log storage: `.meridian` for real vaults and memory for fixtures. `atomically` runs a write
+ * that may write the vault more than once so that it lands as a whole or not at all.
+ */
 export type ChangeLogStore = {
   load(): ChangeRecord[]
   save(rows: ChangeRecord[]): void
   nextId(): string
+  atomically<T>(write: () => T): T
 }
 
 /** Target and title tail of a reading command recorded as a change, undefined for a command that is not recorded. */
@@ -447,7 +452,7 @@ function projectLines(a: ProjectDetail, b: ProjectDetail, date: DateReading): st
     ...field('名称', (p) => p.name),
     ...field('状态', (p) => p.status),
     ...field('优先级', (p) => PRIORITY[p.priority]),
-    ...field('领域', (p) => (p.topic === DEFAULT_PROJECT_TOPIC ? NO_PROJECT_AREA : p.topic)),
+    ...field('领域', (p) => (projectAreas(p).length === 0 ? [NO_PROJECT_AREA] : projectAreas(p))),
     ...readingLines(FOCUS[a.status], a.focus, b.focus, FOCUS[b.status]),
     ...field('阻塞', (p) => p.block ?? ''),
     ...field('开始', (p) => date(p.start)),
@@ -595,7 +600,8 @@ function shownLine(line: string, title: (page: string) => string | undefined): D
  * snapshot holds a cell the columns as they stand now could not take. A paper
  * put back from the trash, by restoring it or by undoing its deletion, has the
  * cells those columns could not take emptied through updatePaper, recorded as a
- * change of its own. When the log itself cannot be written, a record of a write
+ * change of its own. A write and the drawing of its record's id land together
+ * or not at all. When the log itself cannot be written, a record of a write
  * that landed stays in `log` and is written with the next save, while archiving,
  * deleting or expiring records leaves `log` as it was.
  */
@@ -704,16 +710,22 @@ export function withChangelog(ops: VaultOps, log: ChangeLogStore): VaultStore {
     }
   }
 
-  /** Record one entry at the front of the log; `source` is its chip. */
+  /** Runs `write` and draws the id of the record that will record it as one write; returns what `write` returns and the id. */
+  const drawn = <T>(write: () => T): [T, string] => log.atomically(() => {
+    const result = write()
+    return [result, log.nextId()]
+  })
+
+  /** Record one entry with id `id` at the front of the log; `source` is its chip. */
   const push = (
-    target: ChangeTarget, what: string, keep: Keep, before: Entity | undefined, diff?: string[],
+    id: string, target: ChangeTarget, what: string, keep: Keep, before: Entity | undefined, diff?: string[],
     source: ChangeSource = BY_ME,
   ): void => {
     const after = entityOf(target)
     const named = before ?? after
     if (!named) throw new Error('这次写的前后库里都没有这个实体，记不下它是什么')
     rows = [{
-      id: log.nextId(),
+      id,
       title: target.kind === 'pages' || target.kind === 'columns' || target.kind === 'columnType'
         || target.kind === 'customColumns'
         ? what
@@ -736,8 +748,8 @@ export function withChangelog(ops: VaultOps, log: ChangeLogStore): VaultStore {
     target: ChangeTarget, what: string, keep: Keep, write: () => T, diff?: string[],
   ): T => {
     const before = entityOf(target)
-    const result = write()
-    push(target, what, keep, before, diff)
+    const [result, change] = drawn(write)
+    push(change, target, what, keep, before, diff)
     return result
   }
 
@@ -795,9 +807,9 @@ export function withChangelog(ops: VaultOps, log: ChangeLogStore): VaultStore {
       const before = entityOf(target)
       if (before?.kind !== 'columnType') throw new CallError('not-found', `论文表里没有这一列：${key}`)
       const groupAt = ops.paperColumns().groups.indexOf(key)
-      ops.setPaperColumnType(key, type)
+      const [, change] = drawn(() => ops.setPaperColumnType(key, type))
       push(
-        target,
+        change, target,
         `论文表 · 列「${before.column.label}」的类型 ${COLUMN_TYPE_LABEL[before.column.type]} → ${COLUMN_TYPE_LABEL[type]}`,
         { kind: 'columnType', column: before.column, groupAt: type === 'text' && groupAt >= 0 ? groupAt : null, cells: before.cells },
         before,
@@ -823,8 +835,8 @@ export function withChangelog(ops: VaultOps, log: ChangeLogStore): VaultStore {
     },
 
     createProject(name) {
-      const id = ops.createProject(name)
-      push({ kind: 'project', id }, '新建', 'created', undefined)
+      const [id, change] = drawn(() => ops.createProject(name))
+      push(change, { kind: 'project', id }, '新建', 'created', undefined)
       return id
     },
 
@@ -836,8 +848,8 @@ export function withChangelog(ops: VaultOps, log: ChangeLogStore): VaultStore {
       for (const { project, request } of ops.agentTaskRequests(projectId)) {
         const target: ChangeTarget = { kind: 'project', id: project }
         const before = entityOf(target)
-        ops.addAgentTask(project, request)
-        push(target, '添加任务', 'snapshot', before, undefined, 'Meridian')
+        const [, change] = drawn(() => ops.addAgentTask(project, request))
+        push(change, target, '添加任务', 'snapshot', before, undefined, 'Meridian')
       }
     },
 
@@ -942,8 +954,8 @@ export function withChangelog(ops: VaultOps, log: ChangeLogStore): VaultStore {
       const target: ChangeTarget = { kind: 'pages', id: paths.join('\n'), paths }
       const before = entityOf(target)
       const diff = ops.describeProposal(proposal.ops)
-      ops.applyProposal(proposal, producer)
-      push(target, `Wiki · ${proposal.title}`, 'snapshot', before, diff, producer.source)
+      const [, change] = drawn(() => ops.applyProposal(proposal, producer))
+      push(change, target, `Wiki · ${proposal.title}`, 'snapshot', before, diff, producer.source)
     },
 
     updateWikiPage(id, body) {
@@ -1033,29 +1045,31 @@ export function withChangelog(ops: VaultOps, log: ChangeLogStore): VaultStore {
         }
       }
 
-      if (restore.kind === 'trash') ops.restoreTrash(restore.entry)
-      else if (restore.kind === 'created') ops.deleteProject(target.id)
-      else if (restore.kind === 'paper') ops.putPaper(target.id, restore.snapshot)
-      else if (restore.kind === 'option') ops.renamePaperOption(restore.key, restore.from, restore.to)
-      else if (restore.kind === 'columnType') ops.putPaperColumn(restore.column, restore.groupAt, restore.cells)
-      else if (restore.kind === 'pages') ops.putPages(restore.pages)
-      else if (restore.kind === 'customColumns') {
-        ops.setPaperColumns(liveColumns({ ...ops.paperColumns(), custom: restore.columns }))
-      }
-      else if (restore.kind === 'note') {
-        const held = ops.paperReading(restore.paper)
-        ops.putPaperReading(restore.paper, { ...held, notes: putBack(held.notes, restore.at, restore.note) })
-      } else if (restore.kind === 'highlight') {
-        const held = ops.paperReading(restore.paper)
-        ops.putPaperReading(restore.paper, { ...held, highlights: putBack(held.highlights, restore.at, restore.highlight) })
-      } else if (restore.kind === 'remark') {
-        ops.putPaperReading(restore.paper, { ...ops.paperReading(restore.paper), remark: restore.text })
-      } else ops.putProject(restore.project)
+      const [, change] = drawn(() => {
+        if (restore.kind === 'trash') ops.restoreTrash(restore.entry)
+        else if (restore.kind === 'created') ops.deleteProject(target.id)
+        else if (restore.kind === 'paper') ops.putPaper(target.id, restore.snapshot)
+        else if (restore.kind === 'option') ops.renamePaperOption(restore.key, restore.from, restore.to)
+        else if (restore.kind === 'columnType') ops.putPaperColumn(restore.column, restore.groupAt, restore.cells)
+        else if (restore.kind === 'pages') ops.putPages(restore.pages)
+        else if (restore.kind === 'customColumns') {
+          ops.setPaperColumns(liveColumns({ ...ops.paperColumns(), custom: restore.columns }))
+        }
+        else if (restore.kind === 'note') {
+          const held = ops.paperReading(restore.paper)
+          ops.putPaperReading(restore.paper, { ...held, notes: putBack(held.notes, restore.at, restore.note) })
+        } else if (restore.kind === 'highlight') {
+          const held = ops.paperReading(restore.paper)
+          ops.putPaperReading(restore.paper, { ...held, highlights: putBack(held.highlights, restore.at, restore.highlight) })
+        } else if (restore.kind === 'remark') {
+          ops.putPaperReading(restore.paper, { ...ops.paperReading(restore.paper), remark: restore.text })
+        } else ops.putProject(restore.project)
+      })
 
       rows = rows.map((r) => (r.id === id ? { ...r, undone: true } : r))
       const after = entityOf(target)
       rows = [{
-        id: log.nextId(),
+        id: change,
         title: `撤销：${row.title}`,
         meta: null,
         source: BY_ME,
@@ -1077,6 +1091,16 @@ export function withChangelog(ops: VaultOps, log: ChangeLogStore): VaultStore {
       log.save(rows)
       // Undoing deletion mirrors trash restoration: restore the paper, record the undo, then clear incompatible cells in a separate entry.
       if (restore.kind === 'trash' && target.kind === 'paper') dropMisfits(target.id)
+    },
+
+    atomically(write) {
+      const held = rows
+      try {
+        return log.atomically(write)
+      } catch (error) {
+        rows = held
+        throw error
+      }
     },
 
     archiveChange(id) {

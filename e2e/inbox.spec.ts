@@ -562,6 +562,11 @@ test('没填 key 时关注建议从 arXiv 生成关键词与按姓名的作者,�
   expect(projectResult.authors[0]?.name).toBeTruthy()
   expect(projectResult.authors[0]?.id).toBeUndefined()
 
+  // Every area of the project seeds the suggestions, not only its first.
+  await call(win, 'project.update', { id: 'draft', patch: { topics: ['speculative decoding', 'kv cache eviction'] } })
+  const areasResult = await call<{ topics: { name: string }[] }>(win, 'watch.suggest', { source: 'project', projectId: 'draft' })
+  expect(areasResult.topics.map((item) => item.name)).toEqual(expect.arrayContaining(['speculative decoding', 'kv cache eviction']))
+
   await section.locator('.watch-suggestion-source').getByRole('radio', { name: '从项目生成' }).click()
   await section.locator('.btn.pri').click()
   await expect(section.locator('.watch-suggestion-row').first()).toBeVisible()
@@ -671,7 +676,7 @@ test.describe('关注管理:切到别的应用', () => {
   // The window must be on screen and hold system focus for the main process's blur() to take it away.
   test.use({ showWindow: true })
 
-  test('切到别的应用不算放弃:占位与打好的字都留着', async ({ app, win }) => {
+  test('切到别的应用不算放弃:占位与打好的字都留着(需要系统焦点)', async ({ app, win }) => {
     await openDeliverySettings(win)
     await settings(win, '.section-heading').filter({ hasText: '关键词' }).locator('.btn').click()
     const input = settings(win, '.wrow.newrow input')
@@ -685,6 +690,7 @@ test.describe('关注管理:切到别的应用', () => {
     // blur() below take it away.
     await app.evaluate(({ BrowserWindow }) => {
       const target = BrowserWindow.getAllWindows()[0]!
+      target.setFocusable(true)
       target.show()
       target.focus()
     })

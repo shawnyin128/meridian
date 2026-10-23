@@ -229,7 +229,7 @@
 .research-map-paper{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:var(--sp-4) var(--sp-16);min-height:78px;padding:var(--sp-10) 0}
 .research-map-paper-title{font-weight:var(--fw-title)}
 .research-map-paper-meta{color:var(--ter);font-size:var(--fs-sm);white-space:nowrap}
-.research-map-why{display:flex;grid-column:1/-1;align-items:center;gap:var(--sp-4);min-width:0;color:var(--ter);font-size:var(--fs-cap);overflow:hidden;white-space:nowrap;mask-image:var(--clipfade)}
+.research-map-why{display:flex;grid-column:1/-1;align-items:center;gap:var(--sp-4);color:var(--ter);font-size:var(--fs-cap)}
 .research-map-why>.tagchip{margin:0}
 
 @media (max-width:900px){

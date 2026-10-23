@@ -374,7 +374,7 @@ export function TimelineBoard({
                         // A pointer press opens the task through the drag, which swallows the click after it,
                         // so only Enter and Space reach this click.
                         onClick={() => onTaskClick(project.id, task.id)}
-                      ><span className="gbar-label">{task.title}</span></ToolbarButton>
+                      ><FadeText className="gbar-label">{task.title}</FadeText></ToolbarButton>
                     </Tooltip>
                     {titleWidth === undefined
                       ? null

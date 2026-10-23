@@ -787,8 +787,9 @@ export interface VaultStore {
    * deleted exactly that many days ago is already out; an entry whose
    * retention has run out is dropped along with what it holds, so it is
    * neither listed nor restorable. Each entry's `restorable` says whether it
-   * can go back right now: only an attachment can be unrestorable, and only
-   * while the project it was deleted from is itself deleted.
+   * can go back right now: an attachment cannot while the project it was
+   * deleted from is itself deleted, nor a paper while another page stands where
+   * its page goes back.
    */
   listTrash(): TrashEntry[]
 
@@ -797,7 +798,9 @@ export interface VaultStore {
    * deleted from and drops the entry. Throws if no such entry exists, which
    * includes one whose retention has run out, and throws for an attachment
    * whose project is no longer in the vault — that entry stays in the trash,
-   * restorable again once the project is. Restoring never discards what the
+   * restorable again once the project is — and for a paper or project whose
+   * page's place another page holds, which stays in the trash too, so a page
+   * is never overwritten. Restoring never discards what the
    * entry holds and never puts it anywhere but where it came from. A paper put
    * back holding cells some column as the vault holds it now could not have been
    * filled through then has those cells emptied through updatePaper, recorded as
@@ -859,6 +862,14 @@ export interface VaultStore {
    * emptying the cells that no longer fit the same way.
    */
   undoChange(id: string): void
+
+  /**
+   * Runs `write`, which makes several of this store's writes, so that they land as a whole or not at
+   * all: when it throws, every file they wrote, everything this store holds in memory and every change
+   * entry they recorded go back to how they stood, and the error is rethrown. Returns what `write`
+   * returns.
+   */
+  atomically<T>(write: () => T): T
 
   /**
    * Archives the change entry with the given id: the entry stays and reads the
@@ -952,9 +963,11 @@ export interface VaultStore {
    * Creates an idea from text the user explicitly wrote in the save dialog. Core resolves and
    * records the source conversation `chatId` and optional paper instead of treating the last chat
    * message as the idea itself. Without `chatId` the idea is one the user wrote down on their own:
-   * its source is MANUAL_SOURCE, with no chat and no agent. It links to no project.
+   * its source is MANUAL_SOURCE, with no chat and no agent. `sourceProject` records the project the
+   * idea was sparked in, written down on that project's page; it is not carried out there, so the idea
+   * links to no project. Throws `not-found` when `sourceProject` names no project.
    */
-  createIdea(chatId: string | undefined, title: string, body: string): ResearchIdea
+  createIdea(chatId: string | undefined, title: string, body: string, sourceProject?: string): ResearchIdea
 
   /** Updates content, attention state, or the optional project link of an existing idea. */
   updateIdea(id: string, patch: ResearchIdeaMutation): ResearchIdea
@@ -987,9 +1000,10 @@ export interface VaultStore {
 }
 
 /**
- * Everything a store implements on its own. The changelog reads, the undo and
- * setPaperTopic are not among them: withChangelog adds those over any of
- * these, so that one implementation records the writes of every store. Here,
+ * Everything a store implements on its own. The changelog reads, the undo,
+ * setPaperTopic and atomically are not among them: withChangelog adds those
+ * over any of these, so that one implementation records the writes of every
+ * store. Here,
  * restoreTrash only has to put the trash entry back; emptying the cells a
  * paper's columns no longer take, and recording that as a change, is
  * withChangelog's doing, not the bare store's.
@@ -1004,4 +1018,5 @@ export type VaultOps = Omit<
   | 'clearArchivedChanges'
   | 'absorbAgentTasks'
   | 'setPaperTopic'
+  | 'atomically'
 >

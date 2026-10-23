@@ -110,6 +110,7 @@ const SLOT_PROPS: Record<string, Record<string, Slot>> = {
   IdeaPanel: { actions: 'panel head' },
   PaperCard: { actions: 'row actions' },
   IdeaCard: { menu: 'row actions' },
+  IdeaRow: { menu: 'row actions' },
   ProjectPanel: { menu: 'row actions' },
   ProjectRow: { menu: 'row actions' },
   Table: { head: 'table header' },

@@ -516,6 +516,15 @@ describe('contract schemas', () => {
       .toThrow()
   })
 
+  it('改项目的领域一次给全部:去掉首尾空白,空串、重复的不收,不再单收 topic', () => {
+    expect(ProjectUpdateParamsSchema.parse({ id: 'draft', patch: { topics: [' KV cache ', '量化'] } }).patch.topics)
+      .toEqual(['KV cache', '量化'])
+    expect(ProjectUpdateParamsSchema.parse({ id: 'draft', patch: { topics: [] } }).patch.topics).toEqual([])
+    expect(() => ProjectUpdateParamsSchema.parse({ id: 'draft', patch: { topics: ['量化', ' '] } })).toThrow()
+    expect(() => ProjectUpdateParamsSchema.parse({ id: 'draft', patch: { topics: ['量化', ' 量化'] } })).toThrow()
+    expect(() => ProjectUpdateParamsSchema.parse({ id: 'draft', patch: { topic: '量化' } })).toThrow()
+  })
+
   it('项目概要只带列表屏读的那些字段,成列的内容不跨边界', () => {
     const summary = {
       id: 'draft', name: 'draft 效率', status: '进行中', priority: 'p0',
@@ -541,9 +550,9 @@ describe('contract schemas', () => {
     })).toThrow()
   })
 
-  it('总览的一条项目带计划、科研记录与紧凑科研图投影,其余详情不跨边界', () => {
+  it('总览的一条项目带领域、计划、科研记录与紧凑科研图投影,其余详情不跨边界', () => {
     const row = {
-      id: 'draft', name: 'draft 效率', status: '进行中', priority: 'p0', focus: '宽树实验补 B≥8',
+      id: 'draft', name: 'draft 效率', status: '进行中', priority: 'p0', topic: 'speculative decoding', focus: '宽树实验补 B≥8',
       start: '2026-06-02', due: '2026-09-15',
       conclusions: { verified: 1, pending: 0, conflicting: 1 },
       tasks: [{
@@ -564,9 +573,12 @@ describe('contract schemas', () => {
     expect(ProjectOverviewSchema.parse(row)).toEqual(row)
     expect(ProjectOverviewSchema.parse({ ...row, block: '等 A100 机时(周四释放)' }).block)
       .toBe('等 A100 机时(周四释放)')
-    // Overview omits topics, paper count, conflict page, and other detailed collections.
+    expect(ProjectOverviewSchema.parse({ ...row, topics: ['speculative decoding', 'KV cache'] }).topics)
+      .toEqual(['speculative decoding', 'KV cache'])
+    expect(() => ProjectOverviewSchema.parse({ ...row, topic: undefined })).toThrow()
+    // Overview omits paper count, conflict page, and other detailed collections.
     for (const extra of [
-      { topic: 'speculative decoding' }, { paperCount: 4 }, { conflictPage: 'knee' },
+      { paperCount: 4 }, { conflictPage: 'knee' },
       { conclusionList: [] }, { memo: '' }, { relations: [] }, { attachments: [] },
       { graph: { nodes: [], edges: [] } }, { agentSessions: [] },
     ]) {

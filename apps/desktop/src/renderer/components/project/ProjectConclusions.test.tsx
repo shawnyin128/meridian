@@ -70,7 +70,7 @@ describe('project conclusions', () => {
   })
   const VERIFIED = { ...PENDING, state: 'verified' as const, verifiedOn: '2026-09-21' }
 
-  it('一行与动态同一套列:状态、日期、节点、结论连同 Wiki 状态、末尾是 agent 标签;点一下打开', () => {
+  it('一行与科研记录同一套列:状态、日期、结论连同 Wiki 状态、节点、末尾是 agent 标签;点一下打开', () => {
     const onOpen = vi.fn()
     const written = { ...PENDING, state: 'verified' as const, verifiedOn: '2026-09-21', wiki: [{ page: 'topics/sd', title: 'Speculative decoding', claim: 'wide-b8', version: 2 }] }
     act(() => root!.render(
@@ -80,9 +80,9 @@ describe('project conclusions', () => {
       </MessagesProvider>,
     ))
     const [pending, verified] = [...host.querySelectorAll<HTMLElement>('.record-row')]
-    expect(pending!.className).toContain('project-signal-columns record-row with-node')
+    expect(pending!.className).toContain('attnrow record-row conclusion-row')
     expect([...pending!.children].map((cell) => cell.className)).toEqual([
-      'project-signal-kind', 'project-signal-date', 'record-node', 'attn-text record-text', 'record-who',
+      'project-signal-kind', 'project-signal-date', 'attn-text record-text', 'record-node', 'record-who',
     ])
     expect(pending!.querySelector('.tag--warn')!.textContent).toBe('待验证')
     expect(pending!.querySelector('.entity-link--node')!.textContent).toBe('宽树')

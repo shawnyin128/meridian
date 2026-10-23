@@ -39,6 +39,16 @@ _APP_OR_GENERATED_SURFACES = {
 EVENT_KINDS = {"start", "reopen", "result", "decision", "complete", "note"}
 _EVENT_TITLE_MAX_LEN = 120
 _EVENT_DETAIL_MAX_LEN = 300
+IDEA_TITLE_MAX_LEN = 80
+IDEA_CONTEXT_MAX_LEN = 60
+_MONTH = r"(?:0?[1-9]|1[0-2])"
+_DAY = r"(?:0?[1-9]|[12]\d|3[01])"
+# A date (2026-10-21, 2026/10/21, 10-21, 10月21日) or a clock time (14:30) not inside a longer
+# number; an idea's day has its own field.
+_DATE_OR_TIME = re.compile(
+    rf"(?<!\d)(?:\d{{4}}[-/]{_MONTH}[-/]{_DAY}|(?:0[1-9]|1[0-2])-(?:0[1-9]|[12]\d|3[01])"
+    rf"|(?:[01]\d|2[0-3]):[0-5]\d|{_MONTH}月{_DAY}[日号])(?!\d)"
+)
 _CHANGE_KINDS = {
     "project.snapshot",
     "project.updated",
@@ -408,8 +418,11 @@ def add_workspace_agent_idea(
 ) -> dict[str, Any]:
     """Record one idea a coding agent found, for the Meridian App to pick up into its idea list.
 
-    Writing the same id with the same content again is a no-op; the same id with different
-    content raises :class:`WorkspaceProtocolError`.
+    ``title`` is one line of at most ``IDEA_TITLE_MAX_LEN`` characters. ``context``, shown as the
+    idea's source, names the work the idea came up in: one line of at most ``IDEA_CONTEXT_MAX_LEN``
+    characters holding no date or time. Ideas already in the file are kept as written. Writing the
+    same id with the same content again is a no-op; the same id with different content, or a
+    title or context outside these limits, raises :class:`WorkspaceProtocolError`.
     """
 
     repository = _repository_root(root)
@@ -419,8 +432,11 @@ def add_workspace_agent_idea(
         raise WorkspaceProtocolError("idea id must be 1-128 URL-safe identifier characters")
     normalized_title = title.strip()
     normalized_body = body.strip()
-    if not normalized_title or len(normalized_title) > 160:
-        raise WorkspaceProtocolError("idea title must be 1-160 characters")
+    if len(normalized_title.splitlines()) != 1 or len(normalized_title) > IDEA_TITLE_MAX_LEN:
+        raise WorkspaceProtocolError(
+            f"idea title must be one line of 1-{IDEA_TITLE_MAX_LEN} characters that names the idea; "
+            "put the detail in body"
+        )
     if not normalized_body or len(normalized_body) > 20_000:
         raise WorkspaceProtocolError("idea body must be 1-20000 characters")
     idea: dict[str, str] = {
@@ -430,7 +446,17 @@ def add_workspace_agent_idea(
         "body": normalized_body,
     }
     if context is not None and context.strip():
-        idea["context"] = context.strip()
+        normalized_context = context.strip()
+        if len(normalized_context.splitlines()) != 1 or len(normalized_context) > IDEA_CONTEXT_MAX_LEN:
+            raise WorkspaceProtocolError(
+                f"idea context must be one line of at most {IDEA_CONTEXT_MAX_LEN} characters "
+                "naming the work the idea came up in"
+            )
+        if _DATE_OR_TIME.search(normalized_context):
+            raise WorkspaceProtocolError(
+                "idea context must not hold a date or time; pass the idea's day as date"
+            )
+        idea["context"] = normalized_context
     if node is not None and node.strip():
         idea["node"] = node.strip()
 
@@ -439,7 +465,9 @@ def add_workspace_agent_idea(
         payload = _validate_agent_ideas(_read_json(target, label="workspace agent ideas"))
     else:
         payload = {"schema_version": WORKSPACE_AGENT_IDEAS_SCHEMA_VERSION, "ideas": []}
-    prior = next((item for item in payload["ideas"] if item["id"] == normalized_id), None)
+    prior = next(
+        (item for item in payload["ideas"] if isinstance(item, dict) and item.get("id") == normalized_id), None
+    )
     if prior is not None:
         if prior != idea:
             raise WorkspaceProtocolError(f"idea id already exists with different content: {normalized_id}")
@@ -490,7 +518,9 @@ def add_workspace_agent_task(
         payload = _validate_agent_tasks(_read_json(target, label="workspace agent tasks"))
     else:
         payload = {"schema_version": WORKSPACE_AGENT_TASKS_SCHEMA_VERSION, "tasks": []}
-    prior = next((item for item in payload["tasks"] if item["id"] == normalized_id), None)
+    prior = next(
+        (item for item in payload["tasks"] if isinstance(item, dict) and item.get("id") == normalized_id), None
+    )
     if prior is not None:
         if prior != task:
             raise WorkspaceProtocolError(f"task id already exists with different content: {normalized_id}")
@@ -508,47 +538,34 @@ def add_workspace_agent_task(
 
 
 def _validate_agent_tasks(value: Any) -> dict[str, Any]:
+    """Validate the agent tasks file itself and return it with its tasks exactly as stored.
+
+    Stored tasks are not revalidated: one this version cannot read must not block a new task, and
+    the App reads the file task by task.
+    """
+
     payload = _object(value, "workspace agent tasks")
     _required_keys(payload, {"schema_version", "tasks"}, "workspace agent tasks")
     if payload.get("schema_version") != WORKSPACE_AGENT_TASKS_SCHEMA_VERSION:
         raise WorkspaceProtocolError("workspace agent tasks are not meridian.workspace-agent-tasks.v1")
-    tasks = payload.get("tasks")
-    if not isinstance(tasks, list):
+    if not isinstance(payload.get("tasks"), list):
         raise WorkspaceProtocolError("workspace agent tasks must be a JSON array")
-    ids: set[str] = set()
-    for index, raw in enumerate(tasks):
-        item = _object(raw, f"workspace agent task {index}")
-        if not {"id", "date", "title"}.issubset(item):
-            raise WorkspaceProtocolError(f"workspace agent task {index} is missing required fields")
-        task_id = _nonempty_string(item.get("id"), f"workspace agent task {index} id")
-        if not _EVENT_ID.fullmatch(task_id) or task_id in ids:
-            raise WorkspaceProtocolError(f"workspace agent task {index} id is invalid or duplicated")
-        ids.add(task_id)
-        _event_date(_nonempty_string(item.get("date"), f"workspace agent task {index} date"))
-        _nonempty_string(item.get("title"), f"workspace agent task {index} title")
     return payload
 
 
 def _validate_agent_ideas(value: Any) -> dict[str, Any]:
+    """Validate the agent ideas file itself and return it with its ideas exactly as stored.
+
+    Stored ideas are not revalidated: one this version cannot read must not block a new idea, and
+    the App reads the file idea by idea.
+    """
+
     payload = _object(value, "workspace agent ideas")
     _required_keys(payload, {"schema_version", "ideas"}, "workspace agent ideas")
     if payload.get("schema_version") != WORKSPACE_AGENT_IDEAS_SCHEMA_VERSION:
         raise WorkspaceProtocolError("workspace agent ideas are not meridian.workspace-agent-ideas.v1")
-    ideas = payload.get("ideas")
-    if not isinstance(ideas, list):
+    if not isinstance(payload.get("ideas"), list):
         raise WorkspaceProtocolError("workspace agent ideas must be a JSON array")
-    ids: set[str] = set()
-    for index, raw in enumerate(ideas):
-        item = _object(raw, f"workspace agent idea {index}")
-        if not {"id", "date", "title", "body"}.issubset(item):
-            raise WorkspaceProtocolError(f"workspace agent idea {index} is missing required fields")
-        idea_id = _nonempty_string(item.get("id"), f"workspace agent idea {index} id")
-        if not _EVENT_ID.fullmatch(idea_id) or idea_id in ids:
-            raise WorkspaceProtocolError(f"workspace agent idea {index} id is invalid or duplicated")
-        ids.add(idea_id)
-        _event_date(_nonempty_string(item.get("date"), f"workspace agent idea {index} date"))
-        _nonempty_string(item.get("title"), f"workspace agent idea {index} title")
-        _nonempty_string(item.get("body"), f"workspace agent idea {index} body")
     return payload
 
 

@@ -1,8 +1,9 @@
 import { beforeEach, describe, expect, it } from 'vitest'
+import { createHash } from 'node:crypto'
 import { resolve } from 'node:path'
 import type { ChangeEntry } from '../shared/contract.js'
 import { TRASH_RETENTION_DAYS } from '../shared/vocabulary.js'
-import { type ChangeRecord, withChangelog } from './changelog.js'
+import { type ChangeRecord, stableJson, withChangelog } from './changelog.js'
 import { createFixtureStore } from './fixture-store.js'
 import { minimalPdf } from './net/minimal-pdf.js'
 import { emptyColumns } from './paper-library/index.js'
@@ -566,7 +567,9 @@ describe('change log', () => {
       id: 'change-1', title: '撤销:项目「draft 效率」· 写回 「分支浪费」', meta: null, source: '我', diff: [],
       target: { kind: 'project', id: PROJECT }, after: '', at: Date.UTC(2026, 7, 20), undone: false, archived: false, restore: null,
     }
-    const logged = withChangelog(createFixtureStore(today), { load: () => [older], save: () => {}, nextId: () => 'change-2' })
+    const logged = withChangelog(createFixtureStore(today), {
+      load: () => [older], save: () => {}, nextId: () => 'change-2', atomically: (write) => write(),
+    })
     expect(namedOf(logged.listChanges()[0]!)).toEqual([older.title, 'project', PROJECT, 'draft 效率'])
   })
 
@@ -837,7 +840,10 @@ describe('change log', () => {
         if (corrupt && id === PROJECT) throw new Error(corruption)
         return fixture.getProject(id)
       },
-    }, { load: () => rows, save: (next) => { rows = next }, nextId: () => `change-${rows.length + 1}` })
+    }, {
+      load: () => rows, save: (next) => { rows = next }, nextId: () => `change-${rows.length + 1}`,
+      atomically: (write) => write(),
+    })
     logged.updateProject(PROJECT, { focus: '改过的焦点' })
     const change = logged.listChanges()[0]!
 
@@ -948,7 +954,9 @@ describe('change lines', () => {
       id: 'change-1', title: 'Wiki · 早先的一条', meta: null, source: '笔记', diff: [...stored], target: null, after: '',
       at: Date.UTC(2026, 7, 20), undone: false, archived: false, restore: null,
     }]
-    const logged = withChangelog(store, { load: () => rows, save: () => {}, nextId: () => 'change-2' })
+    const logged = withChangelog(store, {
+      load: () => rows, save: () => {}, nextId: () => 'change-2', atomically: (write) => write(),
+    })
     expect(logged.listChanges()[0]).toMatchObject({
       diff: stored,
       lines: [['+ ', { paper: GPTQ }, ' ∈ PTQ(1 格)'], ['~ PTQ 冲突 topics/nope#x'], ['~ topics/gone']],
@@ -957,7 +965,7 @@ describe('change lines', () => {
 
   it('新记下的一条用各对象的词:阅读状态写待读,项目写领域,新项目的默认领域写未分领域,验证的是实验结论', () => {
     expect(linesOf(() => store.updatePaper(READ, { readState: '稍后阅读' }))).toEqual(['- 阅读状态：未读', '+ 阅读状态：待读'])
-    expect(linesOf(() => store.updateProject(PROJECT, { topic: '未分主题' })))
+    expect(linesOf(() => store.updateProject(PROJECT, { topics: [] })))
       .toEqual(['- 领域：speculative decoding', '+ 领域：未分领域'])
     const knee = () => store.getProject(PROJECT).projectConclusions!.find((c) => c.node === 'knee')!
     store.verifyConclusion(PROJECT, 'knee', knee().fingerprint!)
@@ -970,6 +978,41 @@ describe('change lines', () => {
     expect(store.getPaper(READ).readState).toBe('稍后阅读')
   })
 
+  it('领域加一个只记加的那个,去掉一个只记去的那个;撤销回到原来那几个', () => {
+    expect(linesOf(() => store.updateProject(PROJECT, { topics: ['speculative decoding', 'KV cache'] })))
+      .toEqual(['+ 领域：KV cache'])
+    const added = store.listChanges()[0]!.id
+    expect(linesOf(() => store.updateProject(PROJECT, { topics: ['KV cache'] })))
+      .toEqual(['- 领域：speculative decoding'])
+    store.undoChange(store.listChanges()[0]!.id)
+    expect(store.getProject(PROJECT)).toMatchObject({ topic: 'speculative decoding', topics: ['speculative decoding', 'KV cache'] })
+    store.undoChange(added)
+    expect(store.getProject(PROJECT).topic).toBe('speculative decoding')
+    expect(store.getProject(PROJECT).topics).toBeUndefined()
+  })
+
+  it('0.0.16.1 记下的一条:只有一个领域的项目,它存的指纹照样对得上,撤得了', () => {
+    const before = store.getProject(PROJECT)
+    delete before.lastProgress
+    store.updateProject(PROJECT, { focus: '改过的焦点' })
+    // The fields 0.0.16.1 fingerprinted, `verifiedConclusions` only once set.
+    const fields0016 = ['name', 'status', 'priority', 'topic', 'focus', 'block', 'start', 'due', 'memo',
+      'papers', 'tasks', 'milestones', 'events', 'relations', 'attachments', 'agentSessions', 'verifiedConclusions'] as const
+    const now = store.getProject(PROJECT)
+    const after = createHash('sha256').update(stableJson(Object.fromEntries(fields0016
+      .filter((key) => key !== 'verifiedConclusions' || now[key] !== undefined).map((key) => [key, now[key]]))))
+      .digest('hex').slice(0, 16)
+    let rows: ChangeRecord[] = [{
+      id: 'change-1', title: '项目「draft 效率」· 改了字段', meta: null, source: '我', diff: [], target: { kind: 'project', id: PROJECT },
+      after, at: Date.UTC(2026, 7, 25), undone: false, archived: false, restore: { kind: 'project', project: before },
+    }]
+    const logged = withChangelog(store, {
+      load: () => rows, save: (next) => { rows = next }, nextId: () => 'change-2', atomically: (write) => write(),
+    })
+    logged.undoChange('change-1')
+    expect(store.getProject(PROJECT).focus).toBe(before.focus)
+  })
+
   it('早先记下的一条用的是旧词:标题与每一行照原样显示', () => {
     const title = '项目「draft 效率」· 验证结论'
     const stored = ['- 主题：未分主题', '+ 主题：推理', '+ 已验证结论：宽树净赚', '- 阅读状态：稍后阅读', '+ 阅读状态：在读']
@@ -977,7 +1020,9 @@ describe('change lines', () => {
       id: 'change-1', title, meta: null, source: '我', diff: [...stored], target: null, after: '',
       at: Date.UTC(2026, 7, 20), undone: false, archived: false, restore: null,
     }]
-    const logged = withChangelog(store, { load: () => rows, save: () => {}, nextId: () => 'change-2' })
+    const logged = withChangelog(store, {
+      load: () => rows, save: () => {}, nextId: () => 'change-2', atomically: (write) => write(),
+    })
     expect(logged.listChanges()[0]).toMatchObject({ title, diff: stored, lines: stored.map((line) => [line]) })
   })
 

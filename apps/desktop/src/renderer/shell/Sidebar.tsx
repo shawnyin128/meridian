@@ -10,7 +10,7 @@ import { Icon, IconNorthStar, IconPlus } from '../components/icons.js'
 import { NavRow } from '../components/NavRow.js'
 import { CountBadge } from '../components/Tag.js'
 import { Toolbar } from '../components/Toolbar.js'
-import { Tooltip } from '../components/Tooltip.js'
+import { FadeText } from '../components/FadeText.js'
 import { useMessages } from '../messages/useMessages.js'
 import { useAppUpdate } from '../hooks/useAppUpdate.js'
 import { useScrollFade } from '../hooks/useScrollFade.js'
@@ -48,7 +48,7 @@ function WatchRow({ watch, count, on, onOpen }: {
       onActivate={onOpen}
     >
       <span className="ic" />
-      <Tooltip label={watch.name} whenClipped><span className="watch-name">{watch.name}</span></Tooltip>
+      <FadeText className="watch-name" label={watch.name}>{watch.name}</FadeText>
       {count > 0 ? <CountBadge className="n" count={count} /> : null}
     </NavRow>
   )
@@ -71,9 +71,7 @@ function ChatRow({ session, on, onOpen, onArchive }: {
           <span className="ic">
             <Icon><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></Icon>
           </span>
-          <Tooltip label={plainTitle(session.title)} whenClipped>
-            <span className="ct-t"><PaperText text={session.title} /></span>
-          </Tooltip>
+          <FadeText className="ct-t" label={plainTitle(session.title)}><PaperText text={session.title} /></FadeText>
         </>
       )}
     >
@@ -250,7 +248,7 @@ export function Sidebar({
                       data-discovery-project={held.id} onActivate={() => onOpenInbox(held.id, 'discovery')}
                     >
                       <span className="ic" />
-                      <Tooltip label={held.name} whenClipped><span className="watch-name">{held.name}</span></Tooltip>
+                      <FadeText className="watch-name" label={held.name}>{held.name}</FadeText>
                       <CountBadge className="n" count={held.count} />
                     </NavRow>
                   ))}

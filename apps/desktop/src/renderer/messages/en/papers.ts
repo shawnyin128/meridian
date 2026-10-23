@@ -24,7 +24,6 @@ export const papers = {
     group: 'Group',
     groupFieldAria: 'Group field',
     groupValueAria: 'Group value',
-    filter: 'Filter',
   },
   views: { aria: 'Paper library view', table: 'Table', researchMap: 'Research Map' },
   researchMap: {

@@ -1,11 +1,14 @@
 import type { PaperReading, PaperRow, ResearchIdea, SearchAnchor, SearchHit, Task } from '../shared/contract.js'
-import { DEFAULT_PROJECT_TOPIC, NO_PROJECT_AREA, PAPER_PAGE, SEARCH_LIMIT } from '../shared/vocabulary.js'
+import { projectAreas } from '../shared/project-signals.js'
+import { NO_PROJECT_AREA, PAPER_PAGE, SEARCH_LIMIT } from '../shared/vocabulary.js'
 import type { WikiAggregationRecord, WikiData } from './wiki/index.js'
 
 /** The vault entities a search reads, as a store holds them in memory. */
 export type SearchData = {
   wiki: WikiData
-  projects: Iterable<{ id: string; name: string; status: string; topic: string; tasks: readonly Task[] }>
+  projects: Iterable<{
+    id: string; name: string; status: string; topic: string; topics?: readonly string[] | undefined; tasks: readonly Task[]
+  }>
   chats: Iterable<{ id: string; title: string; paperId?: string | undefined; messages: readonly unknown[] }>
   papers: Iterable<PaperRow>
   readings: Iterable<PaperReading>
@@ -73,7 +76,7 @@ function entries(data: SearchData): Entry[] {
     ...projects.map((p): Entry => ({
       hit: {
         kind: 'project', target: p.id, title: `项目：${p.name}`,
-        meta: `${p.status} · ${p.topic === DEFAULT_PROJECT_TOPIC ? NO_PROJECT_AREA : p.topic}`,
+        meta: `${p.status} · ${projectAreas(p).join('、') || NO_PROJECT_AREA}`,
       },
       title: p.name, texts: [],
     })),

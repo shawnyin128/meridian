@@ -117,6 +117,22 @@ describe('Trash', () => {
       .toEqual([[false, null], [false, null], [true, '项目已删除'], [false, null]])
   })
 
+  it('论文原来的位置被同名论文占了时恢复按不了，行上写着库中已有同名论文', async () => {
+    const held = api.entries
+    api.entries = [{
+      id: 'trash-5', kind: 'paper', title: 'Draft trees', deletedAt: Date.parse('2026-08-25T00:00:00Z'), restorable: false,
+    }]
+    try {
+      act(() => root!.unmount())
+      root = createRoot(host)
+      await act(async () => { root!.render(<MessagesProvider><Trash /></MessagesProvider>) })
+      const row = host.querySelector('.trow')!
+      expect([button(row, '恢复').disabled, row.querySelector(':scope > .tag')?.textContent]).toEqual([true, '库中已有同名论文'])
+    } finally {
+      api.entries = held
+    }
+  })
+
   it('每一类条目是页面上的嵌入列表，不套卡片外框', () => {
     expect([...host.querySelectorAll('.tgroup')].map((list) => list.className))
       .toEqual(['structured-list structured-list--embedded tgroup', 'structured-list structured-list--embedded tgroup'])
@@ -136,6 +152,23 @@ describe('Trash', () => {
     expect([...host.querySelectorAll('.section-heading')].map((h) => h.textContent)).toEqual(['论文 · 2', '附件 · 2'])
     await act(async () => { button(actions, '清空垃圾桶').click() })
     expect(document.querySelector('[role="alertdialog"] .modal-title')!.textContent).toBe('清空垃圾桶？')
+  })
+
+  it('移出稍后阅读的条目自成一组，排在论文推送之后、论文之前，标题按论文标题显示', async () => {
+    const held = api.entries
+    const deletedAt = Date.parse('2026-08-25T00:00:00Z')
+    api.entries = [
+      { id: 'trash-5', kind: 'later', title: '\\textbf{L}ater trees', deletedAt, restorable: true },
+      { id: 'trash-6', kind: 'inbox', title: 'Pushed trees', deletedAt, restorable: true },
+      ...held,
+    ]
+    act(() => root!.unmount())
+    root = createRoot(host)
+    await act(async () => { root!.render(<MessagesProvider><Trash /></MessagesProvider>) })
+    api.entries = held
+    expect([...host.querySelectorAll('.section-heading')].map((h) => h.textContent))
+      .toEqual(['论文推送 · 1', '稍后阅读 · 1', '论文 · 2', '附件 · 2'])
+    expect(host.querySelectorAll('.tgroup')[1]!.querySelector('.tt2')!.innerHTML).toMatch(/^<strong>L<\/strong>ater trees/)
   })
 
   it('彻底删除一条要先确认,确认后才清除', async () => {

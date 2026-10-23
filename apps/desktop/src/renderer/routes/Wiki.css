@@ -11,12 +11,11 @@
  */
 .wkgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(var(--cardw),1fr));gap:var(--sp-10);margin:var(--sp-6) 0 var(--sp-6)}
 .wkcard .wt{font-size:var(--card-tt);display:flex;align-items:center;gap:var(--sp-6)}
-.wkcard .tt{display:block;flex:1;min-width:0;font-weight:var(--fw-title);overflow:hidden;white-space:nowrap;mask-image:var(--clipfade)}
-/* The title's fade mask hides its own focus ring, so the card draws it. */
-.wkcard:has(button.tt:focus-visible){outline:var(--ring-width) solid var(--ring);outline-offset:var(--ring-offset)}
+.wkcard .tt{display:block;flex:1;min-width:0;font-weight:var(--fw-title)}
+.wkcard .tt>.fade-text{display:block}
 .wkcard .sp{margin-left:auto;display:flex;align-items:center;flex-shrink:0}
 .wkcard .wm{font-size:var(--card-fs);color:var(--ter);margin-top:var(--sp-4);line-height:1.5;height:calc(1.5em * var(--card-lines))}
-.wkcard .wf{font-size:var(--fs-sm);color:var(--ter);margin-top:var(--sp-8);white-space:nowrap;overflow:hidden;mask-image:var(--clipfade);display:flex;align-items:center;gap:var(--sp-6)}
+.wkcard .wf{font-size:var(--fs-sm);color:var(--ter);margin-top:var(--sp-8);display:flex;align-items:center;gap:var(--sp-6)}
 /*
  * A paper card's title takes up to two lines, always the height of two so every card in the grid keeps
  * one height, and its year, venue and topics take one line under it.
