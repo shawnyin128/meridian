@@ -51,7 +51,7 @@ import {
 } from './vault/records.js'
 import { readRecord, readStoredList, withUnknownFields, type StoredList } from './vault/stored-records.js'
 import {
-  movePage, removePage, replacePage, writeImmutable, writeJson, writePage,
+  movePage, removePage, replacePage, writeAtomically, writeImmutable, writeJson, writePage,
 } from './vault/writer.js'
 import type { MetadataFill, VaultOps, VaultStore } from './vault.js'
 import {
@@ -846,9 +846,51 @@ export function createVaultStore(
     if (changed) ideas = save('ideas', next)
   }
 
+  /** Projects whose workspace projection the running atomically call refreshes once all of it lands. */
+  let syncing: Set<string> | undefined
+
+  /**
+   * Runs `write`, which writes the vault more than once, so that it lands as a whole or not at all: when
+   * it throws, writeAtomically puts back the writes of it that landed, every list and index this store
+   * holds goes back to what it held before, and the error is rethrown. The workspace projections it
+   * refreshes are refreshed only once all of it has landed. A call made inside another joins that one.
+   */
+  const atomically = <T>(write: () => T): T => {
+    if (syncing !== undefined) return write()
+    const held = { wikiData, state, inbox, later, watches, chats, ideas, feed, trash, readings, proposals }
+    const indexes = [papers, pagesOf, projectById].map((index: Map<string, unknown>) => ({ index, was: new Map(index) }))
+    const synced = new Set<string>()
+    syncing = synced
+    let result: T
+    try {
+      result = writeAtomically(staging, write)
+    } catch (error) {
+      ({ wikiData, state, inbox, later, watches, chats, ideas, feed, trash, readings, proposals } = held)
+      for (const { index, was } of indexes) {
+        index.clear()
+        for (const [key, value] of was) index.set(key, value)
+      }
+      throw error
+    } finally {
+      syncing = undefined
+    }
+    for (const id of synced) {
+      const project = projectById.get(id)
+      if (project !== undefined) syncProjectWorkspace(project)
+    }
+    return result
+  }
+
+  /** `op` made one write by atomically. */
+  const atomic = <A extends unknown[], R>(op: (...args: A) => R) => (...args: A): R => atomically(() => op(...args))
+
   /** Refreshes the App-owned workspace projection without making project edits depend on transport health. */
   const syncProjectWorkspace = (project: ProjectRecord): void => {
     if (project.workspaceRoot === undefined && project.workspaceSsh === undefined) return
+    if (syncing !== undefined) {
+      syncing.add(project.id)
+      return
+    }
     try {
       writeProjectWorkspaceState(project, ideas)
     } catch (error) {
@@ -943,16 +985,18 @@ export function createVaultStore(
   }
 
   /**
-   * Writes only the modified project fields to its page and returns the updated detail. Throws when
-   * the page cannot be written, still holding the previous record and neither archiving ideas nor
-   * syncing the workspace.
+   * Writes only the modified project fields to its page, archiving the project's ideas when it is
+   * finished, and returns the updated detail. Throws when any of it cannot be written, leaving the page,
+   * the ideas and the record held as they stood and the workspace unsynced.
    */
   const writeProject = (
     project: ProjectRecord, fields: (keyof ProjectRecord)[], syncWorkspace = true,
   ): ProjectDetail => {
-    writeProjectFields(projectFile(project.id), project, fields, staging)
-    projectById.set(project.id, project)
-    if (project.status === FINISHED_PROJECT) archiveIdeasForProject(project.id)
+    atomically(() => {
+      writeProjectFields(projectFile(project.id), project, fields, staging)
+      projectById.set(project.id, project)
+      if (project.status === FINISHED_PROJECT) archiveIdeasForProject(project.id)
+    })
     if (syncWorkspace) syncProjectWorkspace(project)
     return detailOf(project)
   }
@@ -1194,7 +1238,7 @@ export function createVaultStore(
       return papers.has(id)
     },
 
-    updatePaper(id, patch) {
+    updatePaper: atomic((id, patch) => {
       const paper = papers.get(id)
       if (!paper) throw new CallError('not-found', `论文不存在：${id}`)
       if (patch.topics !== undefined) throw new CallError('refused', '这一页的主题由归属决定，改归属')
@@ -1211,7 +1255,7 @@ export function createVaultStore(
           ? { ...session, title: fresh.title }
           : session)))
       }
-    },
+    }),
 
     paperSnapshot(id) {
       if (!papers.has(id)) throw new CallError('not-found', `论文不存在：${id}`)
@@ -1246,7 +1290,7 @@ export function createVaultStore(
         : session)))
     },
 
-    deletePaper(id) {
+    deletePaper: atomic((id) => {
       const paper = papers.get(id)
       if (!paper) throw new CallError('not-found', `论文不存在：${id}`)
       const entry = nextId('trash')
@@ -1264,7 +1308,7 @@ export function createVaultStore(
         page: `wiki/papers/${id}.md`,
         ...(reading === undefined ? {} : { reading }),
       })
-    },
+    }),
 
     paperSource(id) {
       if (!papers.has(id)) throw new CallError('not-found', `论文不存在：${id}`)
@@ -1410,7 +1454,7 @@ export function createVaultStore(
       })
     },
 
-    createProject(name) {
+    createProject: atomic((name) => {
       const start = today()
       const project: ProjectRecord = {
         id: nextId('project'),
@@ -1439,7 +1483,7 @@ export function createVaultStore(
       // Front of whatever order already exists, so a new project outranks the manual order too.
       saveState({ ...state, projectOrder: [project.id, ...(state.projectOrder ?? [])] })
       return project.id
-    },
+    }),
 
     putProject(project) {
       const fields = Object.fromEntries(PROJECT_FIELDS.map((key) => [key, project[key]]))
@@ -1496,7 +1540,7 @@ export function createVaultStore(
       return writeProject(next, Object.keys(patch) as (keyof ProjectRecord)[])
     },
 
-    deleteProject(id) {
+    deleteProject: atomic((id) => {
       const project = projectOf(id)
       const entry = nextId('trash')
       movePage(projectFile(id), trashPage(entry))
@@ -1513,7 +1557,7 @@ export function createVaultStore(
         id: entry, kind: 'project', title: project.name, deletedAt: nowMs(),
         page: `wiki/${PROJECTS_DIR}/${id}.md`,
       })
-    },
+    }),
 
     createTask,
 
@@ -1692,7 +1736,7 @@ export function createVaultStore(
       }, ['attachments'])
     },
 
-    deleteAttachment(projectId, attachmentId) {
+    deleteAttachment: atomic((projectId, attachmentId) => {
       const project = projectOf(projectId)
       const attachment = project.attachments.find((a) => a.id === attachmentId)
       if (!attachment) throw new CallError('not-found', `附件不存在：${attachmentId}`)
@@ -1705,7 +1749,7 @@ export function createVaultStore(
         projectId, attachment,
       })
       return next
-    },
+    }),
 
     createEvent(projectId, text, node) {
       return appendEvent(projectId, text, node)
@@ -2147,7 +2191,7 @@ export function createVaultStore(
       return wikiCards(wikiData)
     },
 
-    applyProposal(proposal, producer) {
+    applyProposal: atomic((proposal, producer) => {
       const data = wikiData
       const day = today()
       for (const id of touchedPages(proposal, data)) checkReadable(id)
@@ -2217,7 +2261,7 @@ export function createVaultStore(
         }, staging)
       }
       rereadWiki(touchedPages(proposal, data))
-    },
+    }),
 
     checkProposal(ops, by) {
       for (const id of touchedPages({ ops }, wikiData)) checkReadable(id)
@@ -2343,7 +2387,7 @@ export function createVaultStore(
       return item?.kind === 'paper' ? basename(item.page, '.md') : undefined
     },
 
-    restoreTrash(id) {
+    restoreTrash: atomic((id) => {
       dropExpired()
       const item = trash.find((entry) => entry.id === id)
       if (!item) throw new CallError('not-found', `垃圾桶里没有这一条：${id}`)
@@ -2379,7 +2423,7 @@ export function createVaultStore(
         )
       }
       trash = save('trash', trash.filter((entry) => entry !== item))
-    },
+    }),
 
     purgeTrash(id) {
       dropExpired()
@@ -2521,7 +2565,7 @@ export function createVaultStore(
       })
     },
 
-    recordAction(id, messageId) {
+    recordAction: atomic((id, messageId) => {
       const chat = chatOf(id)
       const message = chat.messages.find((held) => held.id === messageId)
       if (!message) throw new CallError('not-found', `消息不存在：${messageId}`)
@@ -2539,7 +2583,7 @@ export function createVaultStore(
         })),
       })))
       return detail
-    },
+    }),
 
     setChatArchived(id, archived) {
       const chat = chatOf(id)
@@ -2568,5 +2612,6 @@ export function createVaultStore(
       changes = rows
     },
     nextId: () => nextId('change'),
+    atomically,
   })
 }

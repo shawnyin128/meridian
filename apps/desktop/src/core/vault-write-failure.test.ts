@@ -1,12 +1,22 @@
 import {
-  chmodSync, cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync,
+  chmodSync, cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, renameSync, rmSync, statSync,
+  writeFileSync,
 } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join, resolve } from 'node:path'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { join, resolve, sep } from 'node:path'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { TRASH_RETENTION_DAYS } from '../shared/vocabulary.js'
 import type { VaultStore } from './vault.js'
 import { createVaultStore } from './vault-store.js'
+
+// The writer puts every file in place by renaming it there, so counting renames picks which write of an operation fails.
+vi.mock('node:fs', async (importOriginal) => {
+  const real = await importOriginal<typeof import('node:fs')>()
+  return { ...real, renameSync: vi.fn(real.renameSync) }
+})
+
+/** The file system's own rename, which the mock passes every rename to unless a case fails it. */
+const { renameSync: rename } = await vi.importActual<typeof import('node:fs')>('node:fs')
 
 /** Test vault for the real implementation: two paper pages, no projects and no app state. */
 const VAULT = resolve(import.meta.dirname, 'fixtures/vault')
@@ -55,7 +65,7 @@ type World = ReturnType<typeof seed>
 
 /**
  * Each case: the `.meridian` file that refuses writes, what the write does, the write, and the lists it
- * changes. Writes a case makes before it reaches that file still land.
+ * changes.
  */
 const REFUSED: [string, string, (store: VaultStore, world: World) => unknown, (store: VaultStore, world: World) => unknown][] = [
   ['inbox.json', '收件里不看一条', (s, w) => s.dismissInbox(w.entry), (s) => s.listInbox()],
@@ -109,6 +119,68 @@ const REFUSED: [string, string, (store: VaultStore, world: World) => unknown, (s
   ['changelog.json', '清掉已归档的变动', (s) => s.clearArchivedChanges(), (s) => s.listChanges()],
 ]
 
+/** Trashes what `trash` deletes and returns the id of the trash record it made. */
+const trashed = (store: VaultStore, trash: () => unknown): string => {
+  trash()
+  return store.listTrash()[0]!.id
+}
+
+/**
+ * Each case: a write that writes the vault more than once, what it sets up before the write and
+ * returns the write, and whether recent changes record it. The world's project is bound to a local
+ * workspace, so every write to it also refreshes that workspace's projection.
+ */
+const WHOLE: [string, (store: VaultStore, world: World) => () => unknown, boolean][] = [
+  ['删掉附件', (s, w) => {
+    const { id } = s.createAttachment(w.project, { name: '数据.csv', size: '1 KB', path: '/tmp/数据.csv' }).attachments[0]!
+    return () => s.deleteAttachment(w.project, id)
+  }, true],
+  ['删掉记过笔记的论文', (s, w) => {
+    s.mutatePaperReading(w.paper, { kind: 'note.add', page: 1, text: '笔记' })
+    return () => s.deletePaper(w.paper)
+  }, true],
+  ['删掉有论文发现的项目', (s, w) => {
+    s.addDiscoveryEntries(w.project, [{ ...remote('2609.10020'), semanticId: 's-20' }, { ...remote('2609.10021'), semanticId: 's-21' }])
+    s.dismissInbox(s.listInbox({ kind: 'discovery' })[0]!.id)
+    return () => s.deleteProject(w.project)
+  }, true],
+  ['项目完成，连着的想法跟着归档', (s, w) => () => s.updateProject(w.project, { status: '已完成' }), true],
+  ['把一句话记入科研记录', (s, w) => () => s.recordAction(w.chat, w.message), true],
+  ['改有会话的论文的标题', (s, w) => () => s.updatePaper(w.paper, { title: '改过的标题' }), true],
+  ['新建项目', (s) => () => s.createProject('新的项目'), true],
+  ['一次改项目的好几项', (s, w) => () => s.updateProject(w.project, {
+    name: '改过的名字', focus: '新目标', priority: 'p0', block: '等数据', memo: '随笔',
+  }), true],
+  ['一次改任务的名字和备注', (s, w) => {
+    const task = s.createTask(w.project, { title: '任务', start: '2026-09-10', end: '2026-09-11', state: 'plan', priority: 'p1' }).tasks[0]!.id
+    return () => s.updateTask(w.project, task, { title: '改过的任务', note: '备注' })
+  }, true],
+  ['一条提案写好几页', (s) => () => s.applyProposal({
+    source: 'user', title: '归进两个主题', ops: ['topics/draft-acceptance', 'topics/speculative-decoding'].map((topic) => ({
+      op: 'setMembership' as const, paper: 'papers/Jiang-et-al-2024-Mixtral-of-Experts', in: topic, cells: {},
+    })),
+  }), true],
+  ['从垃圾桶恢复连着项目的想法', (s, w) => {
+    const id = trashed(s, () => s.deleteIdea(w.idea))
+    return () => s.restoreTrash(id)
+  }, false],
+  ['从垃圾桶恢复记过笔记的论文', (s, w) => {
+    s.mutatePaperReading(w.paper, { kind: 'note.add', page: 1, text: '笔记' })
+    const id = trashed(s, () => s.deletePaper(w.paper))
+    return () => s.restoreTrash(id)
+  }, false],
+  ['从垃圾桶恢复项目', (s) => {
+    const id = trashed(s, () => s.deleteProject(s.listProjects().find((p) => p.name === '另一个')!.id))
+    return () => s.restoreTrash(id)
+  }, false],
+  ['从垃圾桶恢复附件', (s, w) => {
+    const { id } = s.createAttachment(w.project, { name: '数据.csv', size: '1 KB', path: '/tmp/数据.csv' }).attachments[0]!
+    const entry = trashed(s, () => s.deleteAttachment(w.project, id))
+    return () => s.restoreTrash(entry)
+  }, false],
+  ['从垃圾桶恢复一条推荐', (s, w) => () => s.restoreTrash(w.trashedEntry), false],
+]
+
 describe('a vault write that fails', () => {
   let vault: string
   /** Directories a case made read-only, given relative to the vault. */
@@ -136,14 +208,103 @@ describe('a vault write that fails', () => {
   const projectNamed = (store: VaultStore, name: string): string =>
     store.listProjects().find((project) => project.name === name)!.id
 
+  /** A local workspace a case binds a project to, outside the vault. */
+  let repo: string
+  /** Every file of the vault and of the workspace with its text, the writer's staging folder left out. */
+  const filesOf = (): Record<string, string> => Object.fromEntries([vault, repo].flatMap((root) =>
+    readdirSync(root, { recursive: true, encoding: 'utf8' }).map((name) => join(root, name))
+      .filter((file) => statSync(file).isFile() && !file.startsWith(join(vault, '.meridian', 'tmp', sep)))
+      .map((file) => [file, readFileSync(file, 'utf8')])))
+  /** Everything the store answers about what the WHOLE cases write. */
+  const view = (store: VaultStore) => {
+    const projects = store.listProjects()
+    const papers = store.listPapers({ page: 1, size: 100 }).rows
+    return {
+      projects, details: projects.map((project) => store.getProject(project.id)), overview: store.overviewProjects(),
+      papers, readings: papers.map((paper) => store.paperReading(paper.id)),
+      pages: store.wikiCards().map((card) => store.wikiAggregation(card.id)), signals: store.wikiSignals(),
+      inbox: store.listInbox(), later: store.listLater(), trash: store.listTrash(), ideas: store.listIdeas(),
+      chats: store.listChats().map((chat) => ({ ...chat, messages: store.chatMessages(chat.id) })),
+      feed: store.listFeed(), changes: store.listChanges(),
+    }
+  }
+  /**
+   * Makes the `step`th file the writer puts in place in the vault from now on fail as a read-only folder
+   * refuses it, and lets every other one through. The change log is not counted: its record is written
+   * after the write and kept when it cannot be (see the changelog.json case below). Returns whether that
+   * write has been reached.
+   */
+  const failWrite = (step: number): (() => boolean) => {
+    let seen = 0
+    vi.mocked(renameSync).mockImplementation((from, to) => {
+      const file = String(to)
+      if (file.startsWith(vault + sep) && file !== join(vault, '.meridian', 'changelog.json') && (seen += 1) === step) {
+        throw Object.assign(new Error(`EACCES: permission denied, rename '${String(from)}' -> '${String(to)}'`), {
+          code: 'EACCES', syscall: 'rename',
+        })
+      }
+      rename(from, to)
+    })
+    return () => seen >= step
+  }
+  /**
+   * Fails `write` at each vault write it makes, one after another on the same store, and checks after each
+   * failure that every file and everything the store answers are as they were before. Returns the number
+   * of vault writes `write` made once it runs through.
+   */
+  const everyStep = (store: VaultStore, write: () => unknown): number => {
+    const shown = view(store)
+    const files = filesOf()
+    for (let step = 1; ; step += 1) {
+      const reached = failWrite(step)
+      try {
+        write()
+        return step - 1
+      } catch (error) {
+        if (!reached()) throw error
+      } finally {
+        vi.mocked(renameSync).mockImplementation(rename)
+      }
+      expect(filesOf(), `第 ${step} 次写没写成`).toEqual(files)
+      expect(view(store), `第 ${step} 次写没写成`).toEqual(shown)
+    }
+  }
+
   beforeEach(() => {
     vault = mkdtempSync(join(tmpdir(), 'meridian-write-failure-'))
     cpSync(VAULT, vault, { recursive: true })
+    repo = mkdtempSync(join(tmpdir(), 'meridian-write-failure-repo-'))
   })
 
   afterEach(() => {
     unlock()
     rmSync(vault, { recursive: true, force: true })
+    rmSync(repo, { recursive: true, force: true })
+  })
+
+  for (const [write, arrange, logged] of WHOLE) {
+    it(`${write}时哪一次写没写成，库和内存都回到写之前；写成时整个落盘${logged ? '，最近变动记下一条' : ''}`, () => {
+      const store = open()
+      const world = seed(store)
+      store.bindProjectWorkspace(world.project, { kind: 'local', root: repo })
+      const act = arrange(store, world)
+      const changes = store.listChanges().length
+      expect(everyStep(store, act)).toBeGreaterThan(1)
+      expect(store.listChanges()).toHaveLength(changes + (logged ? 1 : 0))
+      expect(view(open())).toEqual(view(store))
+    })
+  }
+
+  it('想法从垃圾桶恢复到最后一步没写成，再恢复一次也只有一份', () => {
+    const store = open()
+    const world = seed(store)
+    const ideas = store.listIdeas()
+    refuse('trash.json')
+    expect(() => store.restoreTrash(world.trashedIdea)).toThrow()
+    expect(store.listIdeas()).toEqual(ideas)
+    allow('trash.json')
+    store.restoreTrash(world.trashedIdea)
+    expect(open().listIdeas().filter((idea) => idea.title === '删掉的方向')).toHaveLength(1)
   })
 
   it('项目页没写成时，项目仍是写之前的样子，与重开库读到的一样', () => {
