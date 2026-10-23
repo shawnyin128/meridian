@@ -17,6 +17,26 @@ async function createProject(seed, call, key, name, days) {
   })
 }
 
+/**
+ * Sets project `id`'s areas to `areas`. An App that takes no `topics`, 0.0.16.1 and older, rejects
+ * that key as invalid and gets the first area as `topic` instead; `seed.areas` records which one the
+ * App takes once the first call has asked it. Returns the areas the App stored.
+ */
+export async function setAreas(seed, call, id, areas) {
+  if (seed.areas !== false) {
+    try {
+      await call('project.update', { id, patch: { topics: areas } })
+      seed.areas = true
+      return areas
+    } catch (error) {
+      if (seed.areas === true || !String(error).includes('project.update: {"reason":"invalid"}')) throw error
+      seed.areas = false
+    }
+  }
+  await call('project.update', { id, patch: { topic: areas[0] } })
+  return areas.slice(0, 1)
+}
+
 /** Adds tasks `[title, start, end, state, priority, extra]`, dated in days from the seed's today, and returns their ids by title. */
 async function addTasks(seed, call, projectId, tasks) {
   const ids = {}
@@ -43,16 +63,18 @@ async function attach(seed, call, projectId, name, text) {
  * Seeds the projects: speculative decoding, bound to `<out>/workspaces/spec-decoding`, with tasks in
  * every state and priority, milestones, every relation group, attachments and conclusions; KV cache
  * quantization, whose last research record is 30 days old but whose plan changed today; MoE routing,
- * untouched for 30 days and in two areas, one of them speculative decoding's; a finished project; and
- * one deleted into Trash. Returns the speculative decoding project's task ids by title.
+ * untouched for 30 days and in two areas, one of them speculative decoding's, or only its first on an
+ * App that takes one; a finished project; and one deleted into Trash. Returns the speculative
+ * decoding project's task ids by title.
  */
 export async function seedProjects(seed, call) {
   const spec = await createProject(seed, call, 'spec', '推测解码加速', -20)
   const workspace = join(seed.out, 'workspaces', 'spec-decoding')
   const tasks = await onDay(seed, -20, async () => {
     await call('project.update', { id: spec, patch: {
-      priority: 'p0', topics: ['推理加速'], focus: '动态树宽度原型', start: dayFrom(seed.today, -20), due: dayFrom(seed.today, 25),
+      priority: 'p0', focus: '动态树宽度原型', start: dayFrom(seed.today, -20), due: dayFrom(seed.today, 25),
     } })
+    await setAreas(seed, call, spec, ['推理加速'])
     await call('project.bindWorkspace', { id: spec, binding: { kind: 'local', root: workspace } })
     await call('project.createMilestone', { projectId: spec, milestone: { date: dayFrom(seed.today, -10), title: '基线复现完成', done: true } })
     await call('project.createMilestone', { projectId: spec, milestone: { date: dayFrom(seed.today, 14), title: '动态树原型', done: false } })
@@ -98,8 +120,9 @@ export async function seedProjects(seed, call) {
   const kv = await createProject(seed, call, 'kv', 'KV cache 量化', -30)
   await onDay(seed, -30, async () => {
     await call('project.update', { id: kv, patch: {
-      topics: ['KV cache'], focus: 'K 按通道的 2bit 量化', start: dayFrom(seed.today, -30), due: dayFrom(seed.today, 30),
+      focus: 'K 按通道的 2bit 量化', start: dayFrom(seed.today, -30), due: dayFrom(seed.today, 30),
     } })
+    await setAreas(seed, call, kv, ['KV cache'])
     for (const key of ['kivi', 'h2o', 'vllm']) await call('project.addPaper', { projectId: kv, paperId: seed.papers[key] })
     await call('project.createConclusion', { projectId: kv, text: '2bit 下 K 必须按通道分组。', paper: seed.papers.kivi })
   })
@@ -113,9 +136,10 @@ export async function seedProjects(seed, call) {
   const moe = await createProject(seed, call, 'moe', 'MoE 路由分析', -30)
   await onDay(seed, -30, async () => {
     await call('project.update', { id: moe, patch: {
-      priority: 'p2', topics: ['混合专家', '推理加速'], focus: '统计各层路由的负载分布', block: '等 8 卡机器排期',
+      priority: 'p2', focus: '统计各层路由的负载分布', block: '等 8 卡机器排期',
       start: dayFrom(seed.today, -30), due: dayFrom(seed.today, 10),
     } })
+    await setAreas(seed, call, moe, ['混合专家', '推理加速'])
     await call('project.addPaper', { projectId: moe, paperId: seed.papers.switch })
     await addTasks(seed, call, moe, [['统计各层专家负载', -29, -25, 'done', 'p2'], ['画路由热力图', -24, -20, 'plan', 'p2']])
     await call('project.createMilestone', { projectId: moe, milestone: { date: dayFrom(seed.today, -5), title: '负载分析初稿', done: false } })

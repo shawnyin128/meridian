@@ -162,6 +162,7 @@ function planBody(project: ProjectRecord): JsonObject {
       status: project.status,
       priority: project.priority,
       topic: project.topic,
+      ...(project.topics === undefined ? {} : { topics: project.topics }),
       focus: project.focus,
       ...(project.block === undefined ? {} : { block: project.block }),
       start: project.start,

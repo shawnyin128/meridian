@@ -210,6 +210,13 @@ describe('vault store', () => {
       .toEqual(['ARXIV:2211.17192', 'semantic-new'])
   })
 
+  it('项目发现的锚点带上项目的每一个领域,没有领域时不带新项目的默认值', () => {
+    const id = store.createProject('发现锚点')
+    expect(store.discoveryProfile(id).anchorText).not.toContain(DEFAULT_PROJECT_TOPIC)
+    store.updateProject(id, { topics: ['KV cache', '低比特量化'] })
+    expect(store.discoveryProfile(id).anchorText).toMatch(/KV cache · 低比特量化/)
+  })
+
   it('推荐方向的核心与启停偏好重开后仍保留,且不写入 Wiki 页面', () => {
     store.updatePaper(WITH_SOURCE, { identifier: 'arXiv:2211.17192' })
     const imported = store.importPaper(

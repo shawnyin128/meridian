@@ -11,7 +11,7 @@ import {
   DEFAULT_DELIVERY_SETTINGS, FeedEntrySchema, ProposalRecordSchema, ResearchIdeaSchema, WatchSchema,
 } from '../shared/contract.js'
 import { projectControlState } from '../shared/project-control.js'
-import { sortRecordsNewestFirst } from '../shared/project-signals.js'
+import { projectAreas, sortRecordsNewestFirst } from '../shared/project-signals.js'
 import { topicDir, topicProposal } from '../shared/topic-proposal.js'
 import {
   ACTIVE_PROJECT, CHAT_EVENT_PREFIX, DEFAULT_PROJECT_TOPIC, FINISHED_PROJECT, PAPER_PAGE, PROJECTS_DIR, READ_STATES,
@@ -1137,7 +1137,7 @@ export function createVaultStore(
       projectId: project.id,
       projectName: project.name,
       anchorText: [
-        project.name, project.topic, project.focus,
+        project.name, ...projectAreas(project), project.focus,
         ...(project.graph.activeNodes ?? []).flatMap((id) => {
           const node = project.graph.nodes.find((held) => held.id === id)
           return node === undefined ? [] : [node.label, node.nextAction ?? '']
