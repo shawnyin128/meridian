@@ -19,7 +19,7 @@ const RULES = STYLESHEETS.flatMap((path) => [...source(path).replace(/\/\*[\s\S]
 const FADED: Record<string, [file: string, markup: RegExp][]> = {
   '.sb-top': [['shell/Sidebar.tsx', /className="sb-top" ref=\{navFade\}/]],
   '.desk-body': [['components/PageShell.tsx', /ref=\{attach\} className=\{classes\('desk-body', className\)\}/]],
-  '.set-main': [['routes/Settings.tsx', /className="set-main" ref=\{paneFade\}/]],
+  '.set-body': [['routes/Settings.tsx', /className="set-body" ref=\{paneFade\}/]],
   '.set-side': [['routes/Settings.tsx', /className="set-side" ref=\{sideFade\}/]],
   '.structured-list--scrollable': [['components/StructuredList.tsx', /list\.current = node\n\s*fade\(node\)/]],
   '.modal-body': [['components/ModalDialog.tsx', /className="modal-body" ref=\{bodyFade\}/]],

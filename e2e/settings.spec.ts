@@ -264,6 +264,41 @@ test('一条归档都没有时,右栏给空态而不是只剩一个标题', asyn
   await expect(win.locator('.setdlg .set-main .empty-state')).toHaveCount(1)
 })
 
+test('设置右栏滚动时,标题留在上面,滚动条从标题下面起、止于圆角之上,右上角的关闭按钮照样点得到', async ({ app, win }) => {
+  await openSettings(app, win)
+  await win.locator('.setdlg .srow[data-setcat="extensions"]').click()
+  await win.locator('.setdlg [data-extension]').first().waitFor()
+
+  const layout = await win.evaluate(() => {
+    const dialog = document.querySelector('.setdlg')!
+    const column = dialog.querySelector('.set-main')!
+    const area = [column, ...column.querySelectorAll('*')].find((box) => getComputedStyle(box).overflowY === 'auto') as HTMLElement
+    area.scrollTop = (area.scrollHeight - area.clientHeight) / 2
+    // An offscreen window gets no frames to fire scroll events in, so the case sends its own.
+    area.dispatchEvent(new Event('scroll'))
+    const title = column.querySelector('.section-heading')!
+    const close = dialog.querySelector('.modal-close')!
+    const button = close.getBoundingClientRect()
+    const scroller = area.getBoundingClientRect()
+    const corner = dialog.getBoundingClientRect().bottom - parseFloat(getComputedStyle(dialog).borderBottomRightRadius)
+    // Layout edges are fractional, and painting snaps them to whole pixels.
+    const px = Math.round
+    return {
+      fade: area.dataset.fade,
+      hitsClose: close.contains(document.elementFromPoint(button.left + button.width / 2, button.top + button.height / 2)),
+      titleScrolls: area.contains(title),
+      startsBelowTitleAndClose: px(scroller.top) >= px(title.getBoundingClientRect().bottom) && px(scroller.top) >= px(button.bottom),
+      endsAboveCorner: px(scroller.bottom) <= px(corner),
+    }
+  })
+  expect(layout).toEqual({
+    fade: 'top bottom', hitsClose: true, titleScrolls: false, startsBelowTitleAndClose: true, endsAboveCorner: true,
+  })
+
+  await win.locator('.setdlg .modal-close').click()
+  await expect(win.locator('.setdlg')).toHaveCount(0)
+})
+
 test('取消归档弹出的提示盖在设置模态之上', async ({ app, win }) => {
   await win.locator('.sidebar').waitFor()
   const target = (await core<Session[]>(win, 'chat.list', {})).find((s) => !s.archived)!
