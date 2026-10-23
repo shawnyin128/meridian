@@ -671,7 +671,7 @@ test.describe('关注管理:切到别的应用', () => {
   // The window must be on screen and hold system focus for the main process's blur() to take it away.
   test.use({ showWindow: true })
 
-  test('切到别的应用不算放弃:占位与打好的字都留着', async ({ app, win }) => {
+  test('切到别的应用不算放弃:占位与打好的字都留着(需要系统焦点)', async ({ app, win }) => {
     await openDeliverySettings(win)
     await settings(win, '.section-heading').filter({ hasText: '关键词' }).locator('.btn').click()
     const input = settings(win, '.wrow.newrow input')
@@ -685,6 +685,7 @@ test.describe('关注管理:切到别的应用', () => {
     // blur() below take it away.
     await app.evaluate(({ BrowserWindow }) => {
       const target = BrowserWindow.getAllWindows()[0]!
+      target.setFocusable(true)
       target.show()
       target.focus()
     })

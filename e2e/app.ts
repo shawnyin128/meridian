@@ -26,6 +26,10 @@ const ENV = Object.fromEntries(Object.entries(process.env).filter(
  * compositor: rAF drops to once per second, so Playwright waits two seconds per actionability check
  * and one second per element screenshot, and menu accelerators reach only a window on screen. Cases
  * that hit either limit set `test.use({ showWindow: true })`; the rest leave it off.
+ * A shown window opens isolated: it never takes system focus and a transparent child window takes the
+ * real pointer, so typing or moving the mouse on the machine cannot change what a running case sees.
+ * Playwright's input goes through the DevTools protocol and still reaches the page. A case that needs
+ * real system focus calls `setFocusable(true)` before `focus()`, and its title says so.
  */
 export const test = base.extend<{
   app: ElectronApplication; win: Page; showWindow: boolean; configHome: string
@@ -47,7 +51,7 @@ export const test = base.extend<{
         MERIDIAN_CONFIG_HOME: configHome,
         // Write '0' explicitly: a case that did not ask for a window stays off screen even when the
         // outer shell sets this variable.
-        MERIDIAN_SHOW_WINDOW: showWindow ? '1' : '0',
+        MERIDIAN_SHOW_WINDOW: showWindow ? 'isolated' : '0',
       },
     })
     await use(app)

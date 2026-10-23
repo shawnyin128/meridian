@@ -1212,7 +1212,7 @@ test.describe('属性栏焦点格:切到别的应用', () => {
   // The window must be visible and hold system focus, or the main process's blur()/focus() cannot move it.
   test.use({ showWindow: true })
 
-  test('切回来不重新全选:接着打字接在原字后面,不是把原字替掉', async ({ app, win }) => {
+  test('切回来不重新全选:接着打字接在原字后面,不是把原字替掉(需要系统焦点)', async ({ app, win }) => {
     await gotoProject(win)
     const before = await call<{ focus: string }>(win, 'project.get', { id: 'draft' }).then((p) => p.focus)
     const side = win.locator('.screenslot:not([hidden]) .wkside')
@@ -1228,6 +1228,7 @@ test.describe('属性栏焦点格:切到别的应用', () => {
     await cdp.send('Emulation.setFocusEmulationEnabled', { enabled: false })
     await app.evaluate(({ BrowserWindow }) => {
       const target = BrowserWindow.getAllWindows()[0]!
+      target.setFocusable(true)
       target.show()
       target.focus()
     })

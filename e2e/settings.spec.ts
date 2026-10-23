@@ -84,8 +84,8 @@ test('应用菜单里有「设置…」,其余菜单仍是 Electron 的角色', 
   expect(menu.findIndex((top) => top.items.some((item) => item.id === 'settings'))).toBe(mac ? 0 : 3)
 })
 
-// A key the page does not handle goes on to the menu accelerators, and that step is the window's own
-// native menu. An offscreen window cannot take focus, so the key goes nowhere and Ctrl+, does nothing.
+// The window stays on screen because Windows sends the shortcut through sendInputEvent, which has not
+// been verified on an offscreen window.
 test.describe(() => {
   test.use({ showWindow: true })
 
@@ -98,19 +98,7 @@ test.describe(() => {
     await win.keyboard.press('Escape')
     await expect(win.locator('.setdlg')).toHaveCount(0)
 
-    // The shortcut needs the window to really hold system focus; with Playwright's focus emulation off,
-    // hasFocus reports the real state.
     const cdp = await win.context().newCDPSession(win)
-    await cdp.send('Emulation.setFocusEmulationEnabled', { enabled: false })
-    await app.evaluate(({ BrowserWindow }) => {
-      const target = BrowserWindow.getAllWindows()[0]!
-      target.show()
-      target.focus()
-    })
-    await expect.poll(() => win.evaluate(() => document.hasFocus()), {
-      message: '窗口没有真的拿到系统焦点,原生菜单的快捷键到不了',
-    }).toBe(true)
-
     await press(app, cdp, ',')
     await expect(win.locator('.setdlg')).toBeVisible()
     await win.keyboard.press('Escape')
