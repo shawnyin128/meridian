@@ -465,7 +465,9 @@ def add_workspace_agent_idea(
         payload = _validate_agent_ideas(_read_json(target, label="workspace agent ideas"))
     else:
         payload = {"schema_version": WORKSPACE_AGENT_IDEAS_SCHEMA_VERSION, "ideas": []}
-    prior = next((item for item in payload["ideas"] if item["id"] == normalized_id), None)
+    prior = next(
+        (item for item in payload["ideas"] if isinstance(item, dict) and item.get("id") == normalized_id), None
+    )
     if prior is not None:
         if prior != idea:
             raise WorkspaceProtocolError(f"idea id already exists with different content: {normalized_id}")
@@ -556,25 +558,18 @@ def _validate_agent_tasks(value: Any) -> dict[str, Any]:
 
 
 def _validate_agent_ideas(value: Any) -> dict[str, Any]:
+    """Validate the agent ideas file itself and return it with its ideas exactly as stored.
+
+    Stored ideas are not revalidated: one this version cannot read must not block a new idea, and
+    the App reads the file idea by idea.
+    """
+
     payload = _object(value, "workspace agent ideas")
     _required_keys(payload, {"schema_version", "ideas"}, "workspace agent ideas")
     if payload.get("schema_version") != WORKSPACE_AGENT_IDEAS_SCHEMA_VERSION:
         raise WorkspaceProtocolError("workspace agent ideas are not meridian.workspace-agent-ideas.v1")
-    ideas = payload.get("ideas")
-    if not isinstance(ideas, list):
+    if not isinstance(payload.get("ideas"), list):
         raise WorkspaceProtocolError("workspace agent ideas must be a JSON array")
-    ids: set[str] = set()
-    for index, raw in enumerate(ideas):
-        item = _object(raw, f"workspace agent idea {index}")
-        if not {"id", "date", "title", "body"}.issubset(item):
-            raise WorkspaceProtocolError(f"workspace agent idea {index} is missing required fields")
-        idea_id = _nonempty_string(item.get("id"), f"workspace agent idea {index} id")
-        if not _EVENT_ID.fullmatch(idea_id) or idea_id in ids:
-            raise WorkspaceProtocolError(f"workspace agent idea {index} id is invalid or duplicated")
-        ids.add(idea_id)
-        _event_date(_nonempty_string(item.get("date"), f"workspace agent idea {index} date"))
-        _nonempty_string(item.get("title"), f"workspace agent idea {index} title")
-        _nonempty_string(item.get("body"), f"workspace agent idea {index} body")
     return payload
 
 

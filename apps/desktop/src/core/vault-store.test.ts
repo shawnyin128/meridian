@@ -1803,6 +1803,35 @@ describe('vault store on the aggregation layout', () => {
     expect(store.listIdeas().filter((idea) => idea.source.agent === true)).toEqual([])
   })
 
+  it('agent 想法文件里一条坏了：其余照常进想法列表，坏的那条连同第几条和原因报到 stderr、跳过，文件一字不改', () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+    try {
+      store.createProject('一条坏想法项目')
+      const id = store.listProjects().find((project) => project.name === '一条坏想法项目')!.id
+      const repo = join(vault, 'one-bad-idea-repo')
+      mkdirSync(join(repo, '.meridian/ideas'), { recursive: true })
+      store.bindProjectWorkspace(id, { kind: 'local', root: repo })
+      const file = join(repo, '.meridian/ideas/ideas.json')
+      const text = JSON.stringify({
+        schema_version: 'meridian.workspace-agent-ideas.v1',
+        ideas: [
+          { id: 'good', date: '2026-10-21', title: '按复用距离淘汰前缀缓存', body: '用复用距离替代 LRU。' },
+          { id: 'bad', date: '10月21日', title: '日期写坏了', body: '这条读不了。' },
+        ],
+      })
+      writeFileSync(file, text)
+
+      expect(store.listIdeas().filter((idea) => idea.source.agent === true).map((idea) => idea.title))
+        .toEqual(['按复用距离淘汰前缀缓存'])
+      const reported = error.mock.calls.map(([line]) => String(line)).filter((line) => line.includes(file))
+      expect(reported).toEqual([expect.stringContaining('第 2 条')])
+      expect(reported[0]).toContain('"date"')
+      expect(readFileSync(file, 'utf8')).toBe(text)
+    } finally {
+      error.mockRestore()
+    }
+  })
+
   it('排过手动顺序之后新建的想法排在最前，重开还在；没排过时不写顺序', () => {
     const session = store.createChat('想法排序会话', true)
     const first = store.createIdea(session.id, '第一条', '排序用')

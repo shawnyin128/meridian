@@ -9,6 +9,7 @@ import type {
   ProjectWorkspace, ProjectWorkspaceBinding, ResearchGraph, ResearchIdea,
 } from '../../shared/contract.js'
 import { CallError } from '../call-error.js'
+import { readStoredList } from '../vault/stored-records.js'
 import type { ProjectRecord } from './page.js'
 
 export const WORKSPACE_SCHEMA = 'meridian.workspace.v1'
@@ -748,16 +749,18 @@ function localFiles(root: string): Map<string, string> {
   }))
 }
 
+const AgentIdeaSchema = z.object({
+  id: z.string().min(1),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  title: z.string().trim().min(1).max(160),
+  body: z.string().trim().min(1).max(20_000),
+  context: z.string().trim().min(1).optional(),
+  node: z.string().min(1).optional(),
+})
+
 const AgentIdeasFileSchema = z.object({
   schema_version: z.literal(WORKSPACE_AGENT_IDEAS_SCHEMA),
-  ideas: z.array(z.object({
-    id: z.string().min(1),
-    date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-    title: z.string().trim().min(1).max(160),
-    body: z.string().trim().min(1).max(20_000),
-    context: z.string().trim().min(1).optional(),
-    node: z.string().min(1).optional(),
-  })),
+  ideas: z.array(z.unknown()),
 })
 
 const AgentTasksFileSchema = z.object({
@@ -791,19 +794,21 @@ export function readWorkspaceAgentTasks(root: string | undefined): WorkspaceAgen
 }
 
 /** One idea a coding agent recorded in a project workspace. */
-export type WorkspaceAgentIdea = z.infer<typeof AgentIdeasFileSchema>['ideas'][number]
+export type WorkspaceAgentIdea = z.infer<typeof AgentIdeaSchema>
 
 /**
- * Returns the ideas coding agents recorded in the local workspace at `root`, in file order. It is
- * empty when `root` is undefined (unbound or SSH) and when the file is absent; a file that breaks
- * the schema is reported on stderr and read as empty, so one bad file does not block the idea list.
+ * Returns the ideas coding agents recorded in the local workspace at `root` that this version can
+ * read, in file order. It is empty when `root` is undefined (unbound or SSH) and when the file is
+ * absent. An idea that breaks the schema is reported on stderr with its position and reason and
+ * skipped; a file that is not an ideas file is reported and read as empty. The file is never written.
  */
 export function readWorkspaceAgentIdeas(root: string | undefined): WorkspaceAgentIdea[] {
   if (root === undefined) return []
   const file = join(root, AGENT_IDEAS)
   if (!existsSync(file)) return []
   try {
-    return AgentIdeasFileSchema.parse(JSON.parse(readFileSync(file, 'utf8'))).ideas
+    const { ideas } = AgentIdeasFileSchema.parse(JSON.parse(readFileSync(file, 'utf8')))
+    return readStoredList(file, ideas, AgentIdeaSchema, 'id').rows
   } catch (error) {
     console.error(`[workspace] ${file}: ${error instanceof Error ? error.message : String(error)}`)
     return []
