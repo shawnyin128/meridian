@@ -88,6 +88,24 @@ describe('研究总览的项目推进', () => {
     expect(cells[1]!.querySelector('.ovpulse-latest')!.textContent).toBe('后写的记录')
   })
 
+  it('最近科研记录里同一天的记录和项目页一样按时间新的在前,没有时间的按写下的先后', async () => {
+    api.rows = [
+      row([
+        { date: '2026-10-15', text: '昨天' },
+        { date: '2026-10-16', text: '早上', at: '2026-10-16T08:00:00+08:00' },
+        { date: '2026-10-16', text: '晚上', at: '2026-10-16T21:00:00+08:00' },
+      ]),
+      { ...row([
+        { date: '2026-10-16', text: '中午', at: '2026-10-16T12:00:00+08:00' },
+        { date: '2026-10-14', text: '先写的' },
+        { date: '2026-10-14', text: '后写的' },
+      ]), id: 'kv', name: 'KV cache 量化' },
+    ]
+    await act(async () => root.render(<MessagesProvider><ResearchOverview /></MessagesProvider>))
+    expect([...host.querySelectorAll('.ovcols .ovlist-row .ovlist-main')].map((main) => main.textContent))
+      .toEqual(['晚上', '中午', '早上', '昨天', '后写的', '先写的'])
+  })
+
   it('最近科研记录和项目推进里 agent 写的记录都在那一行的末尾带 agent 标签,我写的不带', async () => {
     api.rows = [row([
       { date: '2026-10-15', text: '我记的', kind: 'note' },
