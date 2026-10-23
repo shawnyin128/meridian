@@ -40,7 +40,8 @@ function DialogClose({ onClose }: { onClose: () => void }) {
  * input method is composing does not close it. `title` heads the surface; a dialog that places its
  * title itself omits it and uses `ModalTitle` in `children`. `children` is the body, which scrolls
  * when it is taller than the window allows, and `actions` stay pinned below it. `closable` puts the
- * dialog's close control in the surface's top-right corner. `className` names the layout inside.
+ * dialog's close control in the surface's top-right corner, above anything the body holds. `className`
+ * names the layout inside.
  */
 export function ModalDialog({
   open, onOpenChange, size, title, actions, closable = false, className, overlayClassName = 'scrim', children,

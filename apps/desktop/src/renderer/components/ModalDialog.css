@@ -14,9 +14,12 @@
 .modal.wide{--modal-w:820px}
 .modal-title{margin:0;font-size:var(--fs-dialog-title);font-weight:var(--fw-semibold);line-height:var(--lh-tight);color:var(--ink)}
 .modal>.modal-title{padding:0 var(--sp-20) var(--sp-8)}
-/* The side padding lives inside the scrolling body, so focus rings next to its edges are not clipped. */
-.modal-body{flex:1 1 auto;min-height:0;overflow:auto;padding:var(--sp-4) var(--sp-20)}
+/*
+ * The side padding lives inside the scrolling body, so focus rings next to its edges are not clipped.
+ * The body is a stacking layer of its own, so nothing it fades or stacks rises above the close control.
+ */
+.modal-body{flex:1 1 auto;min-height:0;overflow:auto;padding:var(--sp-4) var(--sp-20);isolation:isolate}
 .modal-detail{margin:0;color:var(--sec);font-size:var(--fs-base);line-height:var(--lh-ui)}
 .modal-actions{flex:none;display:flex;justify-content:flex-end;gap:var(--sp-8);padding:var(--sp-16) var(--sp-20) 0}
 .modal-actions-state{display:flex;align-items:center}
-.modal-close{position:absolute;top:var(--sp-12);right:var(--sp-12)}
+.modal-close{position:absolute;top:var(--sp-12);right:var(--sp-12);z-index:1}
