@@ -241,7 +241,7 @@ describe('Settings', () => {
 
   it('设置右栏放不下时，只在藏着内容的那一边淡出', async () => {
     await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
-    const pane = document.querySelector<HTMLElement>('.setdlg .set-main')!
+    const pane = document.querySelector<HTMLElement>('.setdlg .set-body')!
     let offset = 0
     Object.defineProperty(pane, 'clientHeight', { configurable: true, get: () => 400 })
     Object.defineProperty(pane, 'scrollHeight', { configurable: true, get: () => 900 })
@@ -250,6 +250,29 @@ describe('Settings', () => {
     expect(pane.dataset.fade).toBe('bottom')
     act(() => { offset = 200; pane.dispatchEvent(new Event('scroll')) })
     expect(pane.dataset.fade).toBe('top bottom')
+  })
+
+  it('设置右栏放不下时，每个分类的标题都留在滚动区上面，标题以外的内容都在滚动区里', async () => {
+    const titles: Record<SettingsCategory, string> = {
+      appearance: '外观', storage: '存储', api: 'API', model: '模型', research: '科研', extensions: '扩展',
+      delivery: '论文推送', 'delivery-watch': '关注', 'delivery-discovery': '发现', archived: '归档的对话 · 0',
+    }
+    for (const [category, title] of Object.entries(titles) as [SettingsCategory, string][]) {
+      api.requestedCategory = category
+      await act(async () => { root.render(<MessagesProvider key={category}><Settings /></MessagesProvider>) })
+      const column = document.querySelector<HTMLElement>('.setdlg .set-main')!
+      for (const box of [column, ...column.querySelectorAll<HTMLElement>('*')]) {
+        Object.defineProperty(box, 'clientHeight', { configurable: true, get: () => 400 })
+        Object.defineProperty(box, 'scrollHeight', { configurable: true, get: () => 900 })
+      }
+      act(() => { window.dispatchEvent(new Event('resize')) })
+      const scrolling = [column, ...column.querySelectorAll<HTMLElement>('[data-fade]')]
+        .filter((box) => box.dataset.fade !== undefined && box.parentElement?.closest('[data-fade]') === null)
+      expect(scrolling, category).toHaveLength(1)
+      const fixed = [...column.querySelectorAll('.section-heading')].filter((heading) => !scrolling[0]!.contains(heading))
+      expect(fixed.map((heading) => heading.textContent), category).toEqual([title])
+      expect(column.textContent, category).toBe(`${title}${scrolling[0]!.textContent}`)
+    }
   })
 
   it('每个设置分类都是按钮，键盘能聚焦和打开', async () => {

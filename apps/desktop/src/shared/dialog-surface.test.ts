@@ -59,6 +59,12 @@ describe('对话框的面', () => {
     expect(value(ruleOf('.modal-actions'), 'flex')).toBe('none')
   })
 
+  it('关闭按钮排在正文之上:正文自成一层,里面怎样淡出、怎样叠放都盖不住它', () => {
+    expect(value(ruleOf('.modal-body'), 'isolation')).toBe('isolate')
+    expect(value(ruleOf('.modal-close'), 'position')).toBe('absolute')
+    expect(Number(value(ruleOf('.modal-close'), 'z-index'))).toBeGreaterThan(0)
+  })
+
   it('只由 ModalDialog 画:各个对话框不再自定底色、圆角、阴影、宽度、层级或位置', () => {
     const copies = SELECTORS
       .filter((rule) => styles(rule.selector, SURFACES) && declares(rule.body, [

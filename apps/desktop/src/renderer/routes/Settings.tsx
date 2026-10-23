@@ -58,9 +58,10 @@ type CategoryKey = SettingsCategory
 /**
  * Settings: app-level configuration that belongs to no content group, opened from the app menu
  * as a dialog over the current screen. The left column lists the categories, and the right column
- * shows the selected one. Storage exposes only whole Paper Wiki roots and app-created backups;
- * Core owns layout and every filesystem mutation. Choosing a different root only registers it for
- * next startup. The overlay, focus and Escape are owned by Radix.
+ * shows the selected one: its title stays above its content, which scrolls on its own. Storage
+ * exposes only whole Paper Wiki roots and app-created backups; Core owns layout and every filesystem
+ * mutation. Choosing a different root only registers it for next startup. The overlay, focus and
+ * Escape are owned by Radix.
  */
 export function Settings() {
   const m = useMessages()
@@ -192,10 +193,22 @@ export function Settings() {
     )
   }
 
+  const titles: Record<CategoryKey, string> = {
+    appearance: m.settings.appearance.heading,
+    storage: m.settings.storage.heading,
+    api: m.settings.api.heading,
+    research: m.settings.research.heading,
+    model: m.settings.model.heading,
+    extensions: m.settings.extensions.heading,
+    delivery: m.settings.delivery.heading,
+    'delivery-watch': m.settings.categories.deliveryWatch,
+    'delivery-discovery': m.settings.discovery.heading,
+    archived: m.settings.archived.heading(archived.length),
+  }
+
   const panes: Record<CategoryKey, ReactNode> = {
     appearance: (
       <>
-        <SectionHeading>{m.settings.appearance.heading}</SectionHeading>
         <AppearanceSettings />
         <SectionHeading>{m.settings.language.heading}</SectionHeading>
         <LanguageSettings />
@@ -203,7 +216,6 @@ export function Settings() {
     ),
     storage: (
       <>
-        <SectionHeading>{m.settings.storage.heading}</SectionHeading>
         <Card className="storage-card">
           <div className="storage-head">
             <div>
@@ -310,25 +322,21 @@ export function Settings() {
     ),
     api: (
       <>
-        <SectionHeading>{m.settings.api.heading}</SectionHeading>
         <ApiOverview onOpen={setCurrent} />
       </>
     ),
     research: (
       <>
-        <SectionHeading>{m.settings.research.heading}</SectionHeading>
         <SemanticKeySettings />
       </>
     ),
     model: (
       <>
-        <SectionHeading>{m.settings.model.heading}</SectionHeading>
         <ModelSettings />
       </>
     ),
     extensions: (
       <>
-        <SectionHeading>{m.settings.extensions.heading}</SectionHeading>
         <ExtensionSettings
           statuses={extensionStatus} onCopy={copyExtensionCommand} onCopyPrompt={copyAgentPrompt}
           plugin={pluginVersion === null ? undefined : {
@@ -351,25 +359,21 @@ export function Settings() {
     ),
     delivery: (
       <>
-        <SectionHeading>{m.settings.delivery.heading}</SectionHeading>
         <DeliverySettings />
       </>
     ),
     'delivery-watch': (
       <>
-        <SectionHeading>{m.settings.categories.deliveryWatch}</SectionHeading>
         <WatchSettings />
       </>
     ),
     'delivery-discovery': (
       <>
-        <SectionHeading>{m.settings.discovery.heading}</SectionHeading>
         <DiscoverySettings />
       </>
     ),
     archived: (
       <>
-        <SectionHeading>{m.settings.archived.heading(archived.length)}</SectionHeading>
         {chats === null
           ? <LoadingPlaceholder shape="rows" count={2} />
           : archived.length === 0
@@ -410,9 +414,12 @@ export function Settings() {
         ))}
       </div>
 
-      <div className="set-main" ref={paneFade}>
-        <PageError error={errors[current]} />
-        {panes[current]}
+      <div className="set-main">
+        <div className="set-head">
+          <PageError error={errors[current]} />
+          <SectionHeading>{titles[current]}</SectionHeading>
+        </div>
+        <div className="set-body" ref={paneFade}>{panes[current]}</div>
       </div>
     </ModalDialog>
   )
