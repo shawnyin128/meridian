@@ -9,6 +9,7 @@ import type {
   ProjectWorkspace, ProjectWorkspaceBinding, ResearchGraph, ResearchIdea,
 } from '../../shared/contract.js'
 import { CallError } from '../call-error.js'
+import { readStoredList } from '../vault/stored-records.js'
 import type { ProjectRecord } from './page.js'
 
 export const WORKSPACE_SCHEMA = 'meridian.workspace.v1'
@@ -759,30 +760,34 @@ const AgentIdeasFileSchema = z.object({
   })),
 })
 
+const AgentTaskSchema = z.object({
+  id: z.string().min(1),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  title: z.string().trim().min(1).max(160),
+  note: z.string().trim().min(1).max(20_000).optional(),
+})
+
 const AgentTasksFileSchema = z.object({
   schema_version: z.literal(WORKSPACE_AGENT_TASKS_SCHEMA),
-  tasks: z.array(z.object({
-    id: z.string().min(1),
-    date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-    title: z.string().trim().min(1).max(160),
-    note: z.string().trim().min(1).max(20_000).optional(),
-  })),
+  tasks: z.array(z.unknown()),
 })
 
 /** One next step a coding agent asked to add to a project's plan. */
-export type WorkspaceAgentTask = z.infer<typeof AgentTasksFileSchema>['tasks'][number]
+export type WorkspaceAgentTask = z.infer<typeof AgentTaskSchema>
 
 /**
- * Returns the tasks coding agents asked to add in the local workspace at `root`, in file order. It is
- * empty when `root` is undefined (unbound or SSH) and when the file is absent; a file that breaks the
- * schema is reported on stderr and read as empty, so one bad file does not block the plan.
+ * Returns the tasks coding agents asked to add in the local workspace at `root` that this version can
+ * read, in file order. It is empty when `root` is undefined (unbound or SSH) and when the file is
+ * absent. A task that breaks the schema is reported on stderr with its position and reason and
+ * skipped; a file that is not a tasks file is reported and read as empty. The file is never written.
  */
 export function readWorkspaceAgentTasks(root: string | undefined): WorkspaceAgentTask[] {
   if (root === undefined) return []
   const file = join(root, AGENT_TASKS)
   if (!existsSync(file)) return []
   try {
-    return AgentTasksFileSchema.parse(JSON.parse(readFileSync(file, 'utf8'))).tasks
+    const { tasks } = AgentTasksFileSchema.parse(JSON.parse(readFileSync(file, 'utf8')))
+    return readStoredList(file, tasks, AgentTaskSchema, 'id').rows
   } catch (error) {
     console.error(`[workspace] ${file}: ${error instanceof Error ? error.message : String(error)}`)
     return []

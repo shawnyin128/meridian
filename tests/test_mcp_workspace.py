@@ -912,6 +912,30 @@ class MCPWorkspaceTests(unittest.TestCase):
                     sorted(path.relative_to(root).as_posix() for path in root.rglob("*")), before
                 )
 
+    def test_task_add_keeps_a_stored_task_it_cannot_read_and_still_records_a_new_one(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._workspace(root)
+            good = {"id": "rerun-sweep", "date": "2026-09-24", "title": "Rerun the width sweep at B=16"}
+            malformed = {"id": "bad", "date": "9月24日", "title": ["not", "a", "string"]}
+            tasks = root / ".meridian/tasks/tasks.json"
+            tasks.parent.mkdir(parents=True)
+            tasks.write_text(
+                json.dumps({"schema_version": "meridian.workspace-agent-tasks.v1", "tasks": [good, malformed]}),
+                encoding="utf-8",
+            )
+            server = MeridianMCPServer(default_workspace_root=root)
+
+            result, payload = self._call(
+                server, "meridian.workspace_task_add", {"task_id": "new", "date": "2026-09-25", "title": "Write up"},
+            )
+
+            self.assertNotIn("isError", result)
+            self.assertEqual(payload["status"], "created")
+            stored = json.loads(tasks.read_text(encoding="utf-8"))["tasks"]
+            self.assertEqual(stored[:2], [good, malformed])
+            self.assertEqual([task["id"] for task in stored], ["rerun-sweep", "bad", "new"])
+
 
 if __name__ == "__main__":
     unittest.main()

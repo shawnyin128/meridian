@@ -490,7 +490,9 @@ def add_workspace_agent_task(
         payload = _validate_agent_tasks(_read_json(target, label="workspace agent tasks"))
     else:
         payload = {"schema_version": WORKSPACE_AGENT_TASKS_SCHEMA_VERSION, "tasks": []}
-    prior = next((item for item in payload["tasks"] if item["id"] == normalized_id), None)
+    prior = next(
+        (item for item in payload["tasks"] if isinstance(item, dict) and item.get("id") == normalized_id), None
+    )
     if prior is not None:
         if prior != task:
             raise WorkspaceProtocolError(f"task id already exists with different content: {normalized_id}")
@@ -508,24 +510,18 @@ def add_workspace_agent_task(
 
 
 def _validate_agent_tasks(value: Any) -> dict[str, Any]:
+    """Validate the agent tasks file itself and return it with its tasks exactly as stored.
+
+    Stored tasks are not revalidated: one this version cannot read must not block a new task, and
+    the App reads the file task by task.
+    """
+
     payload = _object(value, "workspace agent tasks")
     _required_keys(payload, {"schema_version", "tasks"}, "workspace agent tasks")
     if payload.get("schema_version") != WORKSPACE_AGENT_TASKS_SCHEMA_VERSION:
         raise WorkspaceProtocolError("workspace agent tasks are not meridian.workspace-agent-tasks.v1")
-    tasks = payload.get("tasks")
-    if not isinstance(tasks, list):
+    if not isinstance(payload.get("tasks"), list):
         raise WorkspaceProtocolError("workspace agent tasks must be a JSON array")
-    ids: set[str] = set()
-    for index, raw in enumerate(tasks):
-        item = _object(raw, f"workspace agent task {index}")
-        if not {"id", "date", "title"}.issubset(item):
-            raise WorkspaceProtocolError(f"workspace agent task {index} is missing required fields")
-        task_id = _nonempty_string(item.get("id"), f"workspace agent task {index} id")
-        if not _EVENT_ID.fullmatch(task_id) or task_id in ids:
-            raise WorkspaceProtocolError(f"workspace agent task {index} id is invalid or duplicated")
-        ids.add(task_id)
-        _event_date(_nonempty_string(item.get("date"), f"workspace agent task {index} date"))
-        _nonempty_string(item.get("title"), f"workspace agent task {index} title")
     return payload
 
 
