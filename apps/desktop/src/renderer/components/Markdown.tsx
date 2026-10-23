@@ -179,8 +179,9 @@ export function headingsOf(src: string): Heading[] {
  * empty; with it true it is a contentEditable holding the source, focused on entry, where Esc calls
  * `onCancel` and ⌘Enter or Ctrl+Enter calls `onSave`, unless an input method is composing.
  * The caller places EditActions and reads `box`'s `innerText` on save. With `live`, the source is
- * edited in a MarkdownEditor inside the container instead, under the same keys, and the caller saves
- * the source it last received through `live.onChange`. `className` is appended to the container.
+ * edited in a MarkdownEditor inside the container instead, under the same keys, which renders every
+ * block the cursor is not on as the rendered result does; the caller saves the source it last
+ * received through `live.onChange`. `className` is appended to the container.
  */
 export function MarkdownBox({ text, editing, box, onCancel, onSave, onOpen, onAnchor, titles, empty, className, live }: {
   text: string
@@ -208,20 +209,21 @@ export function MarkdownBox({ text, editing, box, onCancel, onSave, onOpen, onAn
     e.stopPropagation()
     if (!composing(e.nativeEvent)) onCancel()
   }
+  // Under exactOptionalPropertyTypes an absent onOpen cannot be passed as undefined; it must be left out.
+  const links = {
+    ...(onOpen === undefined ? {} : { onOpen }), ...(onAnchor === undefined ? {} : { onAnchor }),
+    ...(titles === undefined ? {} : { titles }),
+  }
   if (editing && live !== undefined) {
-    return <div className={classes} ref={box} onKeyDown={keys}><MarkdownEditor text={text} onChange={live.onChange} /></div>
+    return (
+      <div className={classes} ref={box} onKeyDown={keys}>
+        <MarkdownEditor text={text} onChange={live.onChange} preview={(source) => <Markdown src={source} {...links} />} />
+      </div>
+    )
   }
   return editing
     ? <div className={classes} contentEditable suppressContentEditableWarning ref={box} onKeyDown={keys}>{text}</div>
-    // Under exactOptionalPropertyTypes an absent onOpen cannot be passed as undefined; it must be left out.
     : text === ''
       ? empty
-      : (
-        <div className={classes}>
-          <Markdown
-            src={text} {...(onOpen === undefined ? {} : { onOpen })} {...(onAnchor === undefined ? {} : { onAnchor })}
-            {...(titles === undefined ? {} : { titles })}
-          />
-        </div>
-      )
+      : <div className={classes}><Markdown src={text} {...links} /></div>
 }

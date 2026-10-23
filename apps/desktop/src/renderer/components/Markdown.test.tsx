@@ -273,6 +273,43 @@ describe('MarkdownBox 实时编辑', () => {
     expect(view().state.doc.toString()).toBe('第一行\n第二行')
   })
 
+  it('光标不在的块渲染得和看的时候一模一样,光标所在的块是原文;打完「# 标题」回车,标题马上渲染', () => {
+    act(() => root.render(
+      <MessagesProvider>
+        <MarkdownBox
+          text={'# 标题\n\n- 甲 [[topics/ptq|PTQ]]\n- 乙\n\n`code` 与 $x^2$'} editing box={{ current: null }}
+          onCancel={cancel} onSave={save} empty={null} onOpen={vi.fn()} live={{ onChange: change }}
+        />
+      </MessagesProvider>,
+    ))
+    const blocks = () => [...host.querySelectorAll<HTMLElement>('.cm-editor .md-block')]
+    const lines = () => [...host.querySelectorAll<HTMLElement>('.cm-editor .cm-line')].map((line) => line.textContent)
+    /** The markup the read view renders for `src`. */
+    const asRead = (src: string) => {
+      const read = document.createElement('div')
+      const reader = createRoot(read)
+      act(() => reader.render(<MessagesProvider><Markdown src={src} onOpen={vi.fn()} /></MessagesProvider>))
+      const markup = read.innerHTML
+      act(() => reader.unmount())
+      return markup
+    }
+
+    expect(lines()).toEqual(['# 标题', '', ''])
+    expect(blocks().map((block) => block.innerHTML))
+      .toEqual([asRead('- 甲 [[topics/ptq|PTQ]]'), asRead('- 乙'), asRead('`code` 与 $x^2$')])
+
+    act(() => view().dispatch({ selection: { anchor: view().state.doc.length } }))
+    expect(blocks()[0]!.innerHTML).toBe(asRead('# 标题'))
+    expect(lines().at(-1)).toBe('`code` 与 $x^2$')
+
+    const typed = '\n\n# 新标题\n'
+    act(() => view().dispatch({
+      changes: { from: view().state.doc.length, insert: typed }, selection: { anchor: view().state.doc.length + typed.length },
+    }))
+    expect(blocks().map((block) => block.querySelector('h1')?.textContent).filter(Boolean)).toEqual(['标题', '新标题'])
+    expect(lines().at(-1)).toBe('')
+  })
+
   it('打的字可以在编辑器里撤回再重做,每一步都把当时的原文交给调用方', () => {
     act(() => view().dispatch({ changes: { from: 7, insert: '加一句' }, userEvent: 'input.type' }))
     expect(change).toHaveBeenLastCalledWith('第一行\n第二行加一句')
