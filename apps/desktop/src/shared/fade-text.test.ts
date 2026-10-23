@@ -75,6 +75,31 @@ const LINES: Record<string, [file: string, markup: RegExp, measure: RegExp]> = {
 /** A box marked as cut off: FadeText's `clipped`, and `trunc`, which the paper table sets on a cell it measured cut. */
 const CUT = /\.(clipped|trunc)\b/
 
+/**
+ * Every rule that keeps its text on one line and hides what overflows, by its selector: the selector of
+ * the clipped-only fade that the same element carries, or why it never cuts text on screen.
+ */
+const ONE_LINE_CLIP: Record<string, { fade: string } | { never: string }> = {
+  '.fade-text': { fade: '.fade-text.clipped' },
+  '.ptable td .ci': { fade: '.ptable td.trunc:not(:hover) .ci:not(:has(.tagchip)):not(:focus-visible)' },
+  // The text box of a needs-attention row is a FadeText; a record row's holds one that takes its width.
+  '.attn-text': { never: 'a FadeText or holds one' },
+  // Its segments are FadeTexts with a cap that shrink and fade first; only the fixed separators keep their width.
+  '.crumb': { never: 'segments fade' },
+  // The palette's title is for assistive technology only: a 1px box clipped away.
+  '.cmdk-title': { never: 'visually hidden' },
+  // A placeholder takes no mask of its own, and a mask on the field would fade the typed text and the caret too.
+  '.cbox textarea::placeholder': { never: 'placeholder' },
+  // Its column is as wide as the widest date chip in it, and the chip's own text is a FadeText.
+  '.milestone-row>.plan-date-button': { never: 'fits its column' },
+  // Its label is a FadeText that shrinks and fades; the fold button, folded count and priority keep their width.
+  '.glrow': { never: 'label fades' },
+  // Its title is a FadeText that fades; a one-day bar too short for its title draws it beside the bar.
+  '.gbar': { never: 'title fades' },
+  // Its content is a .ci that fades when the table marks the cell trunc, or chips that hide whole behind a count.
+  '.ptable td': { never: 'content fades' },
+}
+
 describe('放不下的文字淡出,不以省略号结尾', () => {
   it('样式表里没有省略号,写明的例外除外', () => {
     const ellipses = RULES.filter(({ selector, body }) => /text-overflow:\s*ellipsis/.test(body) && !(selector in ELLIPSIS_EXEMPT))
@@ -108,6 +133,15 @@ describe('放不下的文字淡出,不以省略号结尾', () => {
       && !/::(before|after)|\[data-fade/.test(selector))
     const always = masked.filter(({ selector }) => selector.split(',').some((one) => !CUT.test(one)))
     expect(always.map(({ path, selector }) => `${path}  ${selector}`)).toEqual([])
+  })
+
+  it('只留一行、藏起溢出部分的规则都在放不下时淡出,或写明它在屏幕上切不到文字的原因', () => {
+    const clips = RULES.filter(({ body }) => /(^|;)\s*overflow(-x)?:\s*hidden/.test(body) && /(^|;)\s*white-space:\s*nowrap/.test(body))
+    expect(clips.filter(({ selector }) => !(selector in ONE_LINE_CLIP)).map(({ path, selector }) => `${path}  ${selector}`)).toEqual([])
+    const fades = Object.entries(ONE_LINE_CLIP).flatMap(([selector, why]) => ('fade' in why ? [[selector, why.fade]] : []))
+    const missing = fades.filter(([, fade]) => !RULES.some(({ selector, body }) => selector === fade && CUT.test(selector)
+      && /(^|;)\s*mask(-image)?:\s*var\(--clipfade\)/.test(body)))
+    expect(missing.map(([selector]) => selector)).toEqual([])
   })
 
   it('放不下的文字只有两种淡出:一行的用 --clipfade,多行的用共用的 .fade-lines', () => {
