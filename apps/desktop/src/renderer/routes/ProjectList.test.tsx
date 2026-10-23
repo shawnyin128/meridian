@@ -123,6 +123,18 @@ describe('项目列表的卡片', () => {
   it('还没有推进时写还没有记录', async () => {
     expect(await recentProgress(summary({}))).toBe('最近推进还没有记录')
   })
+
+  it('停滞超过 7 天的项目在卡片头里、名字那一行的后面挂一个警示标签写着几天无推进,卡片底下不再多一行', async () => {
+    api.projects = [
+      summary({ id: 'spec', priority: 'p2', lastProgress: '2026-10-06' }),
+      summary({ id: 'kv', name: 'KV cache 量化', priority: 'p2', lastProgress: '2026-10-09' }),
+    ]
+    await act(async () => root.render(<MessagesProvider><Projects /></MessagesProvider>))
+    const afterName = (id: string) => host.querySelector(`[data-proj="${id}"] .pp-h > .research-object-card-open`)!.nextElementSibling!
+    expect([afterName('spec').className, afterName('spec').textContent]).toEqual(['tag tag--label tag--warn', '已 10 天无推进'])
+    expect(afterName('kv').className).toBe('dd')
+    expect(host.querySelectorAll('.project-card-alert')).toHaveLength(0)
+  })
 })
 
 describe('Project list', () => {

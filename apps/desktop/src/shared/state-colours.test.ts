@@ -36,7 +36,7 @@ describe('红色只标逾期、错误和危险', () => {
       ['components/timeline/TimelineBoard.css', '.gnow::after'],
       ['components/timeline/TimelineBoard.css', '.gbar.priority-p0'],
       ['components/FieldPickers.css', '.cd.today'],
-      ['routes/Projects.css', '.project-card-alert'],
+      ['components/Tag.css', '.tag--warn'],
     ] as const
     expect(marks.map(([path, selector]) => [selector, tokens(bodyOf(path, selector)).filter((t) => RED.test(t))]))
       .toEqual(marks.map(([, selector]) => [selector, []]))
