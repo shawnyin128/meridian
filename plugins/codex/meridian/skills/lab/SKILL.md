@@ -505,6 +505,16 @@ Minimum completion:
 - Ask the user to choose `root`, `child`, `sibling`, or `link`.
 - Create a thread seed for `root` or `link`; attach to the existing thread for
   `child` or `sibling`.
+- When the user brings several ideas at once, read how each pair relates before
+  building: `prerequisite` (one needs the other's result first), `branch` (one
+  refines or varies the other), `alternative` (both answer the same question
+  another way) or `independent`. In one `meridian.lab_update` packet, the
+  prerequisite or the idea a branch grows from is the other's `parent` in its
+  `create_node`, listed before it; alternatives share a parent; a second
+  prerequisite is a `create_edge` with `kind: blocks`; independent ideas are
+  separate roots. Show this tree, each idea with its parent and edges, in the
+  same ask that confirms `create_node`; for a relation you are unsure of, name
+  the pair and ask about that pair instead of guessing.
 - After placement, run the Research Prior Gate before feasibility or experiment
   planning if the idea contains method, prompt, metric, eval, ablation, probe,
   failure, or baseline slots.
@@ -518,6 +528,15 @@ Example:
 The user gets a tokenizer-pruning idea while thinking about KV-cache
 compression. Compare it against existing research threads, ask where it belongs,
 create a thread seed if needed, then use Paper Wiki only after placement.
+```
+
+```text
+The user brings three speculative-decoding ideas: dynamic tree width, draft
+length adapted to token difficulty, and a draft head sharing the target's
+shallow KV. Draft length builds on the width controller; the shared-KV head is
+another way to raise acceptance than dynamic width. Propose under baseline A:
+B dynamic width (parent A), C adaptive length (parent B), D shared-KV head
+(parent A). After the user confirms, apply create_node B, C, D in that order.
 ```
 
 ### Wiki-Grounded Feasibility Review
