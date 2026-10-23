@@ -48,6 +48,11 @@ describe('FormControls', () => {
     expect(select).toContain('form-control-inline')
   })
 
+  it('gives a chip being edited its own appearance, beside the feature class it keeps', () => {
+    const input = renderToStaticMarkup(<FormInput appearance="chip" className="tagin" value="KV cache" readOnly />)
+    expect(input).toContain('class="form-control form-input form-control-chip tagin"')
+  })
+
   it('provides a field-shaped button for values that enter editing on activation', () => {
     const button = renderToStaticMarkup(<FormButton appearance="field">saved value</FormButton>)
     expect(button).toContain('class="form-control form-button form-control-field"')

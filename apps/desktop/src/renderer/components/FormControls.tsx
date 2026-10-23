@@ -12,10 +12,11 @@ import './FormControls.css'
 
 /**
  * `field` is the boxed field of forms, dialogs, popovers and filters; `inline` edits a value in the
- * place of its text in a row, cell or property list. `plain` draws no field, for a control inside a
- * host that draws one around it, such as the chat composer.
+ * place of its text in a row, cell or property list; `chip` edits a chip's value in the chip's place
+ * and box. `plain` draws no field, for a control inside a host that draws one around it, such as the
+ * chat composer.
  */
-export type FormControlAppearance = 'plain' | 'field' | 'inline'
+export type FormControlAppearance = 'plain' | 'field' | 'inline' | 'chip'
 
 type ControlAppearanceProps = {
   appearance?: FormControlAppearance

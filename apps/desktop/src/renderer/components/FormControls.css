@@ -23,7 +23,8 @@
  * focus rule in tokens.css, which turns a focused field's border --sep-strong, applies to both.
  */
 .form-control-field,
-.form-control-inline{
+.form-control-inline,
+.form-control-chip{
   border:1px solid var(--sep2);
   border-radius:var(--r-control);
   background:var(--field);
@@ -60,6 +61,23 @@
 .form-select.form-control-inline{appearance:none}
 .form-input.form-control-inline::-webkit-datetime-edit,
 .form-input.form-control-inline::-webkit-datetime-edit-fields-wrapper{padding:0}
+
+/*
+ * A chip being edited takes the chip's place and box: its margin, its height and, inside the border,
+ * its padding, so the text stays where the chip's was. It grows with the text from the width of a
+ * new chip's input.
+ */
+.form-input.form-control-chip{
+  display:inline-block;
+  width:auto;
+  min-width:110px;
+  max-width:100%;
+  field-sizing:content;
+  margin:1px var(--sp-4) 1px 0;
+  padding:calc(var(--sp-2) - 1px) calc(var(--sp-8) - 1px);
+  line-height:inherit;
+  vertical-align:baseline;
+}
 
 /*
  * A save refused on leaving the field: a red frame drawn inside the box and a short shake, the frame
