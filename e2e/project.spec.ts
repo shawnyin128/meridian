@@ -115,6 +115,25 @@ test('项目反向展示关联想法，点击后在项目右栏就地打开详�
   await expect(win.locator('.screenslot:not([hidden])').getByRole('button', { name: '打开来源对话' })).toBeVisible()
 })
 
+test('在项目页的想法一节就地写下想法：记下冒出它的项目，不放进项目，出现在想法页的未开始里', async ({ win }) => {
+  await gotoProject(win)
+  const page = win.locator('.screenslot:not([hidden])')
+  await page.locator('.section-heading', { hasText: '关联想法' }).getByRole('button', { name: '新建想法' }).click()
+  const draft = page.locator('.idea-draft')
+  await expect(draft).toContainText('来源：draft 效率')
+  await draft.locator('.form-input').fill('项目页写下的想法')
+  await draft.locator('.form-textarea').fill('先在 draft 效率里记下来。')
+  await draft.getByRole('button', { name: '保存' }).click()
+  await expect(draft).toHaveCount(0)
+  const made = await call<{ title: string; sourceProject?: string; project?: string }[]>(win, 'idea.list', {})
+    .then((rows) => rows.find((row) => row.title === '项目页写下的想法'))
+  expect([made?.sourceProject, made?.project]).toEqual(['draft', undefined])
+  await win.locator('[data-desk="ideas"]').click()
+  const card = page.locator('.idea-card', { hasText: '项目页写下的想法' })
+  await expect(card).toContainText('来源 · draft 效率')
+  await expect(page.locator('.ideas-list > .section-heading').first()).toHaveText(/^未开始/)
+})
+
 test('想法在科研图中动态标出关联节点，节点详情反向展示想法', async ({ win }) => {
   const idea = await call<{ id: string; title: string; project?: string }[]>(win, 'idea.list', {})
     .then((rows) => rows.find((row) => row.project === 'draft'))

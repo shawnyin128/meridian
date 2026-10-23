@@ -404,14 +404,50 @@ describe('project idea panel', () => {
     }
     const onSelect = vi.fn()
     const list = mount(
-      <ProjectIdeaList projectId="draft" ideas={[related, { ...idea, node: 'thread.probe' }]} graph={graph} selectedId={null} onSelect={onSelect} />,
+      <ProjectIdeaList
+        projectId="draft" projectName="draft 效率" ideas={[related, { ...idea, node: 'thread.probe' }]} graph={graph}
+        selectedId={null} onSelect={onSelect} onCreate={vi.fn()}
+      />,
     )
-    expect(list.host.querySelector('.section-heading')!.textContent).toBe('关联想法 · 2')
+    expect(list.host.querySelector('.section-heading')!.firstChild!.textContent).toBe('关联想法 · 2')
     const rows = [...list.host.querySelectorAll<HTMLElement>('.project-idea-row')]
     expect(rows.map((row) => [row.dataset['idea'], row.querySelector('.project-idea-flags')!.textContent]))
       .toEqual([['idea-1', '动态预算探针'], ['idea-2', '关联']])
     act(() => rows[1]!.click())
     expect(onSelect).toHaveBeenCalledWith('idea-2')
+    list.unmount()
+  })
+
+  it('想法一节标题右端有新建想法，就地打开草稿，写着来源是这个项目、落在想法页；⌘Enter 新建，不弹对话框', async () => {
+    const onCreate = vi.fn<(title: string, body: string) => Promise<boolean>>(() => Promise.resolve(true))
+    const list = mount(
+      <ProjectIdeaList projectId="draft" projectName="draft 效率" ideas={[]} graph={graph} selectedId={null} onSelect={vi.fn()} onCreate={onCreate} />,
+    )
+    expect(list.headingActions('关联想法')).toEqual([['想法']])
+    const add = list.host.querySelector<HTMLButtonElement>('.section-heading-actions .add-action')!
+    expect([add.getAttribute('aria-label'), add.className.split(' ').slice(0, 2).join(' ')]).toEqual(['新建想法', 'btn sm'])
+    act(() => add.click())
+    expect(document.querySelector('.modal-body')).toBeNull()
+    const heading = list.host.querySelector('.section-heading')!
+    const draft = heading.nextElementSibling!.querySelector<HTMLElement>('.draft-form.idea-draft')!
+    expect(draft.textContent).toContain('来源：draft 效率')
+    expect(draft.textContent).toContain('想法')
+    expect(document.activeElement).toBe(draft.querySelector('input'))
+    const type = (field: HTMLInputElement | HTMLTextAreaElement, value: string) => {
+      const proto = field instanceof window.HTMLInputElement ? window.HTMLInputElement.prototype : window.HTMLTextAreaElement.prototype
+      Object.getOwnPropertyDescriptor(proto, 'value')!.set!.call(field, value)
+      field.dispatchEvent(new Event('input', { bubbles: true }))
+    }
+    act(() => {
+      type(draft.querySelector('input')!, '项目页写下的想法')
+      type(draft.querySelector('textarea')!, '先记下来。')
+    })
+    await act(async () => {
+      draft.querySelector('textarea')!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', metaKey: true, bubbles: true, cancelable: true }))
+      await Promise.resolve()
+    })
+    expect(onCreate).toHaveBeenCalledWith('项目页写下的想法', '先记下来。')
+    expect(list.host.querySelector('.idea-draft')).toBeNull()
     list.unmount()
   })
 })

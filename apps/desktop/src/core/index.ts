@@ -797,8 +797,8 @@ registerHandler('idea.list', (params) => {
   return store.listIdeas()
 })
 registerHandler('idea.create', (params) => {
-  const { chatId, title, body } = ResearchIdeaCreateParamsSchema.parse(params)
-  return store.createIdea(chatId, title, body)
+  const { chatId, title, body, sourceProject } = ResearchIdeaCreateParamsSchema.parse(params)
+  return store.createIdea(chatId, title, body, sourceProject)
 })
 registerHandler('idea.update', (params) => {
   const { id, patch } = ResearchIdeaUpdateParamsSchema.parse(params)

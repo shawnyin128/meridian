@@ -1702,6 +1702,43 @@ describe('vault store on the aggregation layout', () => {
     expect(createVaultStore(vault).listIdeas().filter((idea) => idea.source.agent === true)).toEqual([])
   })
 
+  it('0.0.16.1 收进来、挂在工作区项目上的 agent 想法读作在那个项目里冒出来,仍算在那个项目里做;读的时候不写盘', () => {
+    store.createProject('旧版 agent 项目')
+    const id = store.listProjects().find((project) => project.name === '旧版 agent 项目')!.id
+    const file = join(vault, '.meridian/ideas.json')
+    writeFileSync(file, `${JSON.stringify([
+      {
+        id: 'idea-legacy-agent', title: '旧版收进来的 agent 想法', body: '正文', source: { chatTitle: '实现讨论', agent: true },
+        project: id, node: 'thread.B', archived: false, created: '2026-10-20', updated: '2026-10-20',
+      },
+      {
+        id: 'idea-legacy-chat', title: '旧版关联到项目的对话想法', body: '正文', source: { chatId: 'chat-x', chatTitle: '讨论' },
+        project: id, archived: false, created: '2026-10-20', updated: '2026-10-20',
+      },
+      {
+        id: 'idea-legacy-unlinked', title: '没挂项目的 agent 想法', body: '正文', source: { chatTitle: '实现讨论', agent: true },
+        archived: false, created: '2026-10-20', updated: '2026-10-20',
+      },
+    ], null, 2)}\n`)
+    const before = readFileSync(file, 'utf8')
+    const read = createVaultStore(vault).listIdeas()
+    expect(read.find((idea) => idea.id === 'idea-legacy-agent')).toMatchObject({ sourceProject: id, project: id, node: 'thread.B' })
+    expect(read.find((idea) => idea.id === 'idea-legacy-chat')).not.toHaveProperty('sourceProject')
+    expect(read.find((idea) => idea.id === 'idea-legacy-unlinked')).not.toHaveProperty('sourceProject')
+    expect(readFileSync(file, 'utf8')).toBe(before)
+  })
+
+  it('在项目页写下的想法记下它在哪个项目里冒出来,不算放进那个项目;项目不存在时不收', () => {
+    store.createProject('冒出想法的项目')
+    const id = store.listProjects().find((project) => project.name === '冒出想法的项目')!.id
+    const created = store.createIdea(undefined, '项目页写下的想法', '先记下来', id)
+    expect(created).toMatchObject({ source: { chatTitle: '手动添加' }, sourceProject: id })
+    expect(created).not.toHaveProperty('project')
+    expect(createVaultStore(vault).listIdeas().find((idea) => idea.id === created.id)).toEqual(created)
+    expect(() => store.createIdea(undefined, '不存在的项目', '正文', 'project-nope'))
+      .toThrow(expect.objectContaining({ reason: 'not-found' }))
+  })
+
   it('想法关联的项目和 Wiki 页只按用户选的写,写在想法记录的顶层;不存在的项目、页和论文页不收,清空后不留字段', () => {
     store.createProject('被关联的项目')
     const id = store.listProjects().find((project) => project.name === '被关联的项目')!.id

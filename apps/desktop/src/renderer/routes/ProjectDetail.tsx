@@ -45,6 +45,7 @@ import { ProjectConclusionPanel, ProjectConclusionRow } from '../components/proj
 import { ProjectTimeline } from '../components/project/ProjectTimeline.js'
 import { nodeMode, ResearchGraph, ResearchNodePanel } from '../components/project/ResearchGraph.js'
 import { IdeaPanel, IdeaSource, ideaSourceLabel, ownIdea } from '../components/ideas/IdeaPanel.js'
+import { IdeaDraft, type IdeaDraftText } from '../components/ideas/IdeaDraft.js'
 import { ProjectPlan, ProjectTaskPanel } from '../components/project/ProjectPlan.js'
 import type { PlanCreating, PlanTab } from '../components/project/ProjectPlan.js'
 import { BackButton } from '../components/BackButton.js'
@@ -176,23 +177,51 @@ export function ProjectIdeaPanel({
 /**
  * The ideas section of a project page: the ideas carried out in project `projectId`, then the ones
  * that only relate to it, tagged as related; `ideas` is null while they load. A carried-out idea shows
- * its node in `graph`. Activating a row selects that idea through `onSelect`.
+ * its node in `graph`. Activating a row selects that idea through `onSelect`. The heading's new-idea
+ * action drafts, first in the section, an idea sparked in the project named `projectName`, which lands
+ * among the ideas; `onCreate` writes it and settles once it is written or refused.
  */
-export function ProjectIdeaList({ projectId, ideas, graph, selectedId, onSelect }: {
+export function ProjectIdeaList({ projectId, projectName, ideas, graph, selectedId, onSelect, onCreate }: {
   projectId: string
+  projectName: string
   ideas: readonly ResearchIdea[] | null
   graph: ResearchGraphData
   selectedId: string | null
   onSelect: (ideaId: string) => void
+  onCreate: (title: string, body: string) => Promise<boolean>
 }) {
   const m = useMessages()
+  const [draft, setDraft] = useState<IdeaDraftText | null>(null)
+  const draftAt = useRef<HTMLDivElement>(null)
+  const add = useRef<HTMLButtonElement>(null)
+  const triggers = useMemo(() => [add], [])
   const ordered = ideas === null ? null : [
     ...ideas.filter((idea) => idea.project === projectId),
     ...ideas.filter((idea) => idea.project !== projectId),
   ]
   return (
     <>
-      <SectionHeading>{m.project.linkedIdeas(ideas?.length ?? 0)}</SectionHeading>
+      <SectionHeading
+        actions={(
+          <AddAction
+            variant="section" ref={add} label={m.ideas.create}
+            onClick={() => {
+              // An open draft is only refocused, keeping what is typed.
+              if (draft !== null) draftAt.current?.querySelector<HTMLElement>('.form-control')?.focus()
+              else setDraft({ title: '', body: '' })
+            }}
+          >{m.project.idea.kind}</AddAction>
+        )}
+      >{m.project.linkedIdeas(ideas?.length ?? 0)}
+      </SectionHeading>
+      {draft === null ? null : (
+        <div ref={draftAt}>
+          <IdeaDraft
+            source={projectName} draft={draft} triggers={triggers} onChange={setDraft} onCancel={() => setDraft(null)}
+            onSave={(title, body) => onCreate(title, body).then((created) => { if (created) setDraft(null) })}
+          />
+        </div>
+      )}
       {ordered === null
         ? <LoadingPlaceholder shape="rows" count={2} />
         : ordered.length === 0
@@ -905,7 +934,8 @@ export function ProjectDetail({
             </div>
 
             <ProjectIdeaList
-              projectId={projectId} ideas={linkedIdeas} graph={displayedGraph} selectedId={selectedIdeaId}
+              projectId={projectId} projectName={project.name} ideas={linkedIdeas} graph={displayedGraph} selectedId={selectedIdeaId}
+              onCreate={(title, body) => write(ideaApi.create(undefined, title, body, projectId), { note: m.chat.ideaSavedNote })}
               onSelect={(ideaId) => {
                 setSelectedNode(null)
                 setSelectedConclusion(null)

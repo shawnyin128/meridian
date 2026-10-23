@@ -9,7 +9,8 @@ const say = (role, ...runs) => ({ role, runs: runs.map((run) => (typeof run === 
  * a reply whose action records a research record for the KV cache project. Ideas are saved from those
  * chats in every state: placed on the research graph, linked only, archived, promoted to a project,
  * unlinked, and deleted into Trash; one idea the user wrote down without a chat is linked to a project.
- * Two ideas relate to projects and a Wiki page other than where they came from.
+ * Two ideas relate to projects and a Wiki page other than where they came from, and one is written
+ * down on the KV cache project's page.
  */
 export async function seedConversations(seed, call) {
   const append = (id, messages) => call('chat.append', { id, messages })
@@ -77,4 +78,7 @@ export async function seedConversations(seed, call) {
   const related = await call('idea.create', { title: '用草稿置信度选择 KV 量化位宽', body: '草稿头置信度高的位置用低位宽 KV，低的位置用高位宽，把显存省在不容易出错的地方。' })
   await call('idea.update', { id: related.id, patch: { relations: { projects: [seed.projects.kv.id], pages: ['methods/kv-quantization'] } } })
   await call('idea.update', { id: moeIdea, patch: { relations: { projects: [seed.projects.moe.id], pages: [] } } })
+  await call('idea.create', {
+    title: '按层分配 KV 位宽预算', body: '浅层对量化误差更敏感，给定总位宽时按层分配，而不是每层一样。', sourceProject: seed.projects.kv.id,
+  })
 }

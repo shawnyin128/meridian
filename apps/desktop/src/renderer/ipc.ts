@@ -268,8 +268,10 @@ export const chat = {
 
 export const idea = {
   list: () => call<ResearchIdea[]>('idea.list', {}),
-  create: (chatId: string | undefined, title: string, body: string) =>
-    call<ResearchIdea>('idea.create', { ...chatId === undefined ? {} : { chatId }, title, body }),
+  create: (chatId: string | undefined, title: string, body: string, sourceProject?: string) =>
+    call<ResearchIdea>('idea.create', {
+      ...chatId === undefined ? {} : { chatId }, ...sourceProject === undefined ? {} : { sourceProject }, title, body,
+    }),
   update: (id: string, patch: ResearchIdeaPatch) =>
     call<ResearchIdea>('idea.update', { id, patch }),
   promote: (id: string) => call<ResearchIdeaPromoteResult>('idea.promote', { id }),

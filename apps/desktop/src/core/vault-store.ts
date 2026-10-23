@@ -65,7 +65,7 @@ import {
 } from './wiki/index.js'
 import { prepareFallbackLibrary } from './workspace-layout.js'
 import { searchHits } from './search.js'
-import { createResearchIdea, updateResearchIdea } from './research-ideas/index.js'
+import { createResearchIdea, readResearchIdea, updateResearchIdea } from './research-ideas/index.js'
 
 /** Page frontmatter: scalars are strings, sequences are string arrays, and blocks are string maps. */
 type Frontmatter = Record<string, string | string[] | Record<string, string | string[]>>
@@ -2454,7 +2454,7 @@ export function createVaultStore(
       absorbAgentIdeas()
       const sorted = [...ideas]
         .sort((a, b) => b.updated.localeCompare(a.updated) || b.id.localeCompare(a.id, undefined, { numeric: true }))
-      return applyOrder(sorted, state.ideaOrder, (idea) => idea.id).map((idea) => structuredClone(idea))
+      return applyOrder(sorted, state.ideaOrder, (idea) => idea.id).map((idea) => structuredClone(readResearchIdea(idea)))
     },
 
     reorderIdeas(order) {
@@ -2462,7 +2462,8 @@ export function createVaultStore(
       saveState({ ...state, ideaOrder: [...order].filter((id) => known.has(id)) })
     },
 
-    createIdea(chatId, title, body) {
+    createIdea(chatId, title, body, sourceProject) {
+      if (sourceProject !== undefined) projectOf(sourceProject)
       const sourceChat = chatId === undefined ? undefined : chatOf(chatId)
       const sourcePaper = sourceChat?.paperId === undefined ? undefined : papers.get(sourceChat.paperId)
       const idea = createResearchIdea(nextId('idea'), title, body, sourceChat === undefined ? { chatTitle: MANUAL_SOURCE } : {
@@ -2471,7 +2472,7 @@ export function createVaultStore(
         ...(sourcePaper === undefined
           ? {}
           : { paperId: sourcePaper.id, paperTitle: sourcePaper.title }),
-      }, today())
+      }, today(), sourceProject)
       ideas = save('ideas', [idea, ...ideas])
       // Without a manual order the newest idea already leads; with one, it goes to the front of it.
       if (state.ideaOrder !== undefined) saveState({ ...state, ideaOrder: [idea.id, ...state.ideaOrder] })

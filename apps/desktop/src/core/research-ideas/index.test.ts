@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { createResearchIdea, updateResearchIdea } from './index.js'
+import { createResearchIdea, readResearchIdea, updateResearchIdea } from './index.js'
 
 describe('research ideas', () => {
   it('keeps explicit text and source provenance separate', () => {
@@ -21,5 +21,14 @@ describe('research ideas', () => {
     expect(placed.node).toBe('node-1')
     expect(updateResearchIdea(placed, { node: null }, '2026-09-19').node).toBeUndefined()
     expect(updateResearchIdea(linked, { project: null }, '2026-09-19').project).toBeUndefined()
+  })
+
+  it('reads an agent idea an older version attached to its workspace project as sparked there, and nothing else', () => {
+    const agent = createResearchIdea('idea-2', '旧 agent 想法', '正文', { chatTitle: '讨论', agent: true }, '2026-10-20')
+    expect(readResearchIdea({ ...agent, project: 'project-1' })).toMatchObject({ sourceProject: 'project-1', project: 'project-1' })
+    expect(readResearchIdea({ ...agent, project: 'project-1', sourceProject: 'project-2' }).sourceProject).toBe('project-2')
+    expect(readResearchIdea(agent)).not.toHaveProperty('sourceProject')
+    const chat = createResearchIdea('idea-3', '对话想法', '正文', { chatId: 'chat-1', chatTitle: '讨论' }, '2026-10-20')
+    expect(readResearchIdea({ ...chat, project: 'project-1' })).not.toHaveProperty('sourceProject')
   })
 })
