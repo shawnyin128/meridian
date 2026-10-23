@@ -44,9 +44,10 @@ import { Toolbar, ToolbarButton } from '../Toolbar.js'
 import { Tooltip } from '../Tooltip.js'
 import { DetailPanel } from '../DetailPanel.js'
 import { FadeText } from '../FadeText.js'
-import { ActionMenu, MenuRadioGroup, MenuRadioItem, MenuSeparator } from '../ActionMenu.js'
+import { ActionMenu, MenuRadioGroup, MenuRadioItem } from '../ActionMenu.js'
 import { SegmentedControl } from '../SegmentedControl.js'
 import { ContextMenu, ContextMenuItem, ContextMenuSeparator } from '../ContextMenu.js'
+import { FilterMenu } from '../FilterMenu.js'
 import { PaperText } from '../paper/PaperText.js'
 import { plainTitle } from '../paper/paper-text.js'
 import { ResearchMap } from './ResearchMap.js'
@@ -177,37 +178,6 @@ function SortArrow({ direction }: { direction: SortDirection }) {
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
       <path d={ARROW_PATH[direction]} />
     </svg>
-  )
-}
-
-/**
- * The reading status shortcut in the paper library toolbar. It applies the existing readState facet
- * instead of adding a second "unread" area. `name` is the read state's name, the one its column shows.
- */
-function ReadStateFilter({ name, current, onPick }: {
-  name: string
-  current: ReadState | null
-  onPick: (readState: ReadState | null) => void
-}) {
-  const m = useMessages()
-  return (
-    <ActionMenu
-      trigger={(
-        <button
-          type="button"
-          className={current === null ? 'btn sm read-state-filter' : 'btn sm read-state-filter on'}
-          aria-label={m.papers.readState.filterAria(name)}
-        ><FadeText>{current === null ? name : readStateName(m, current)}</FadeText></button>
-      )}
-    >
-      <MenuRadioGroup value={current ?? 'all'}>
-        <MenuRadioItem value="all" onSelect={() => onPick(null)}>{m.papers.readState.allStates}</MenuRadioItem>
-        <MenuSeparator />
-        {READ_STATES.map((state) => (
-          <MenuRadioItem key={state} value={state} onSelect={() => onPick(state)}>{readStateName(m, state)}</MenuRadioItem>
-        ))}
-      </MenuRadioGroup>
-    </ActionMenu>
   )
 }
 
@@ -1263,9 +1233,10 @@ export function PaperTable() {
                 {columns.groups.includes('readState')
                   ? (
                     <>
-                      <span className="pt-dim">{m.papers.toolbar.filter}</span>
-                      <ReadStateFilter
-                        name={names.columns.st}
+                      <FilterMenu
+                        className="read-state-filter" name={names.columns.st}
+                        label={m.papers.readState.filterAria(names.columns.st)} all={m.papers.readState.allStates}
+                        options={READ_STATES.map((state) => ({ value: state, label: readStateName(m, state) }))}
                         current={group === 'readState' ? sel as ReadState | null : null}
                         onPick={(state) => {
                           setGroup(state === null ? 'none' : 'readState')

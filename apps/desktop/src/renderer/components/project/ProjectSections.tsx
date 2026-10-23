@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import type { DragEvent as ReactDragEvent, KeyboardEvent as ReactKeyboardEvent, ReactNode, RefObject } from 'react'
 import type { AgentSession, Attachment, RelationGroup } from '../../../shared/contract.js'
-import { papers } from '../../ipc.js'
+import { projectAreas } from '../../../shared/project-signals.js'
+import { project as projectApi } from '../../ipc.js'
 import { AddAction } from '../AddAction.js'
 import { CardTray } from '../CardTray.js'
 import { FadeText } from '../FadeText.js'
@@ -12,8 +13,6 @@ import { ExternalMark } from '../EntityLink.js'
 import { EmptyState } from '../EmptyState.js'
 import { MarkdownBox } from '../Markdown.js'
 import { PaperText } from '../paper/PaperText.js'
-import { PickRow, type PickHit } from '../PickRow.js'
-import { areaName } from './ProjectIdentity.js'
 import { useFormat } from '../../lib/format.js'
 import { useInlineDraft } from '../../hooks/useInlineDraft.js'
 import { useMessages } from '../../messages/useMessages.js'
@@ -22,6 +21,7 @@ import { SectionHeading } from '../PageShell.js'
 import { SegmentedControl } from '../SegmentedControl.js'
 import { RowActions, StructuredList, StructuredRow } from '../StructuredList.js'
 import { Tag, tagClass } from '../Tag.js'
+import { TagChips } from '../TagChips.js'
 import { Tooltip } from '../Tooltip.js'
 import './ProjectSections.css'
 
@@ -86,43 +86,31 @@ export function ProjectUrlDraft({ row, triggers, initial, onSubmit, onCancel, on
   )
 }
 
-const NO_TRIGGERS: Array<RefObject<HTMLElement | null>> = []
 const CLIP_PATH = 'M21.4 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48'
 
-/** Project topic editor backed by the library's existing topic vocabulary. */
-export function ProjectTopicField({ value, onSave, onError }: {
-  value: string
-  onSave: (topic: string) => Promise<boolean>
+/**
+ * Project `projectId`'s areas in its property rail: a chip per area, which a click edits in place and
+ * whose × removes it, then the `+` that adds one where it lands. Every input offers the areas the
+ * other projects use that this one lacks, asked of project.list each time it opens. `onSave`
+ * receives the whole new list and returns whether the write completed.
+ */
+export function ProjectAreasField({ projectId, areas, onSave, onError }: {
+  projectId: string
+  areas: string[]
+  onSave: (areas: string[]) => Promise<boolean>
   onError: (error: Error) => void
 }) {
   const m = useMessages()
-  const [editing, setEditing] = useState(false)
-  const [topics, setTopics] = useState<string[] | null>(null)
-  const row = useRef<HTMLSpanElement>(null)
-  const stop = useCallback(() => setEditing(false), [])
-
-  useEffect(() => {
-    if (!editing) return
-    void papers.facets('topics').then((facets) => setTopics(facets.map((facet) => facet.value))).catch(onError)
-  }, [editing, onError])
-
-  const suggest = useCallback(async (query: string): Promise<PickHit[]> => (topics ?? [])
-    .filter((topic) => topic.toLowerCase().includes(query.toLowerCase()))
-    .map((topic) => ({ id: topic, title: topic })), [topics])
-
-  if (!editing) {
-    return (
-      <span className="metadata-field">
-        <button className="pv metadata-editable" onClick={() => setEditing(true)}>{areaName(m, value)}</button>
-      </span>
-    )
-  }
+  const vocabulary = useCallback(() => projectApi.list().then((projects) => [...new Set(projects
+    .filter((other) => other.id !== projectId).flatMap(projectAreas))]), [projectId])
   return (
-    <span className="metadata-field" ref={row}>
-      <PickRow
-        row={row} triggers={NO_TRIGGERS} allowNew placeholder={m.project.identity.topic} suggest={suggest}
-        inputClassName="metadata-input" cancelOnLeave
-        onPick={(hit) => onSave(hit.title)} onNew={onSave} onCancel={stop} onError={onError}
+    <span className="metadata-field project-areas">
+      <TagChips
+        values={areas} vocabulary={vocabulary} onError={onError}
+        labels={{ add: m.project.identity.addArea, remove: m.project.identity.removeArea, existing: m.project.identity.existingAreas }}
+        onAdd={(area) => onSave([...new Set([...areas, area])])}
+        onRemove={(area) => onSave(areas.filter((held) => held !== area))}
+        onReplace={(from, to) => onSave([...new Set(areas.map((held) => (held === from ? to : held)))])}
       />
     </span>
   )

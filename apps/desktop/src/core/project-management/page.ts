@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs'
 import { z } from 'zod'
 import type { ProjectDetail } from '../../shared/contract.js'
 import { ProjectDetailSchema, TaskSchema, VerifiedConclusionSchema } from '../../shared/contract.js'
+import { DEFAULT_PROJECT_TOPIC } from '../../shared/vocabulary.js'
 import { spliceLines } from '../vault/writer.js'
 
 /** Values representable in frontmatter. */
@@ -116,6 +117,8 @@ const ProjectPageSchema = z.object({
   status: detail.status,
   priority: detail.priority,
   topic: detail.topic,
+  /** Every area, written only while there are several; an older App reads and writes `topic` alone. */
+  topics: detail.topics,
   focus: detail.focus,
   block: detail.block,
   conflict_page: detail.conflictPage,
@@ -160,6 +163,19 @@ function legacyActiveNodes(
   if (graph.active_nodes !== undefined) return graph.active_nodes
   if (graph.active_path !== undefined) return graph.active_path.length === 0 ? [] : [graph.active_path.at(-1)!]
   return undefined
+}
+
+/**
+ * A project's areas from its page: `topic`, then `topics` after its first, which this version
+ * writes equal to `topic`; an older App edits `topic` alone, so its value replaces that first area.
+ * The default topic and repeats drop out. `topics` is left out while one area or none remains, and
+ * `topic` is then that area or the stored value.
+ */
+function areasOf(topic: string, topics: string[] | undefined): Pick<ProjectRecord, 'topic' | 'topics'> {
+  if (topics === undefined) return { topic }
+  const areas = [...new Set([topic, ...topics.slice(1)])].filter((area) => area !== DEFAULT_PROJECT_TOPIC)
+  if (areas.length < 2) return { topic: areas[0] ?? topic }
+  return { topic: areas[0]!, topics: areas }
 }
 
 /** Remove a trailing CR from one line; only external editors can introduce it. */
@@ -345,6 +361,7 @@ function frontOf(project: ProjectRecord): Record<string, Json> {
     status: project.status,
     priority: project.priority,
     topic: project.topic,
+    ...(project.topics === undefined ? {} : { topics: project.topics }),
     focus: project.focus,
     ...(project.block === undefined ? {} : { block: project.block }),
     ...(project.conflictPage === undefined ? {} : { conflict_page: project.conflictPage }),
@@ -425,7 +442,7 @@ export function readProjectPage(file: string, id: string): ProjectRecord {
     name: page.name,
     status: page.status,
     priority: page.priority,
-    topic: page.topic,
+    ...areasOf(page.topic, page.topics),
     focus: page.focus,
     ...(page.block === undefined ? {} : { block: page.block }),
     ...(page.conflict_page === undefined ? {} : { conflictPage: page.conflict_page }),
@@ -531,7 +548,7 @@ export function writeProjectFields(
     const value = front[key]
     if (value === undefined && (
       field === 'block' || field === 'workspaceRoot' || field === 'workspaceSsh' || field === 'verifiedConclusions'
-      || field === 'taskNodes'
+      || field === 'taskNodes' || field === 'topics'
     )) {
       const removable = field in PAGE_KEYS ? PAGE_KEYS[field as keyof typeof PAGE_KEYS] : field
       dropProjectPageKeys(file, [removable], staging)

@@ -8,9 +8,10 @@ import {
   ChangeEntrySchema, PaperColumnsSchema, PaperHighlightSchema, PaperNoteSchema, PaperRowSchema,
   ProjectDetailSchema,
 } from '../shared/contract.js'
+import { projectAreas } from '../shared/project-signals.js'
 import { topicDir, topicProposal, topicTitleKey } from '../shared/topic-proposal.js'
 import {
-  COLUMN_TYPE_LABEL, DEFAULT_PROJECT_TOPIC, LATER_PAPER, NO_PROJECT_AREA, PAPER_PAGE, TRASH_RETENTION_DAYS,
+  COLUMN_TYPE_LABEL, LATER_PAPER, NO_PROJECT_AREA, PAPER_PAGE, TRASH_RETENTION_DAYS,
 } from '../shared/vocabulary.js'
 import { CallError } from './call-error.js'
 import { dayOf } from './dates.js'
@@ -42,7 +43,7 @@ const NOT_PROGRESS: ReadonlySet<string> = new Set([REORDER_TASKS, MOVE_RELATION,
  * and other project research state outside undo history.
  */
 export const PROJECT_FIELDS: (keyof ProjectRecord & keyof ProjectDetail)[] = [
-  'name', 'status', 'priority', 'topic', 'focus', 'block', 'start', 'due', 'memo',
+  'name', 'status', 'priority', 'topic', 'topics', 'focus', 'block', 'start', 'due', 'memo',
   'papers', 'tasks', 'milestones', 'events', 'relations', 'attachments',
   'agentSessions', 'verifiedConclusions',
 ]
@@ -51,7 +52,7 @@ export const PROJECT_FIELDS: (keyof ProjectRecord & keyof ProjectDetail)[] = [
  * Project fields added after fingerprints were first stored. They are left out of a fingerprint while
  * absent, so a project that never set one keeps the fingerprint older records hold.
  */
-const LATER_PROJECT_FIELDS: ReadonlySet<string> = new Set(['verifiedConclusions'])
+const LATER_PROJECT_FIELDS: ReadonlySet<string> = new Set(['verifiedConclusions', 'topics'])
 
 /**
  * Entity changed by one record. Before undo, resolve its current shape and compare it with the stored
@@ -447,7 +448,7 @@ function projectLines(a: ProjectDetail, b: ProjectDetail, date: DateReading): st
     ...field('名称', (p) => p.name),
     ...field('状态', (p) => p.status),
     ...field('优先级', (p) => PRIORITY[p.priority]),
-    ...field('领域', (p) => (p.topic === DEFAULT_PROJECT_TOPIC ? NO_PROJECT_AREA : p.topic)),
+    ...field('领域', (p) => (projectAreas(p).length === 0 ? [NO_PROJECT_AREA] : projectAreas(p))),
     ...readingLines(FOCUS[a.status], a.focus, b.focus, FOCUS[b.status]),
     ...field('阻塞', (p) => p.block ?? ''),
     ...field('开始', (p) => date(p.start)),

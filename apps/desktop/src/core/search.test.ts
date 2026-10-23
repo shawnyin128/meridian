@@ -126,6 +126,12 @@ describe('全局搜索', () => {
     expect(store.search('压缩实验')[0]).toMatchObject({ kind: 'project', meta: '进行中 · 未分领域' })
   })
 
+  it('项目有几个领域时,搜索结果的说明按次序全列出来', () => {
+    const id = store.createProject('压缩实验')
+    store.updateProject(id, { topics: ['KV cache', '量化'] })
+    expect(store.search('压缩实验')[0]).toMatchObject({ kind: 'project', meta: '进行中 · KV cache、量化' })
+  })
+
   it('论文和与它同名的对话一样好地命中时,论文排在对话前面', () => {
     const chat = store.createChat('Mixtral of Experts', true)
     expect(store.search('Mixtral').map((h) => [h.kind, h.target])).toEqual([

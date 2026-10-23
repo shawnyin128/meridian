@@ -12,6 +12,7 @@ import {
   PaperRowSchema, SearchHitSchema, WikiAggregationCardSchema, WikiBacklinkSchema, WikiHomeSchema, WikiPaperSchema,
   type Evidence,
 } from '../shared/contract.js'
+import { DEFAULT_PROJECT_TOPIC } from '../shared/vocabulary.js'
 import { stableJson } from './changelog.js'
 import { createFixtureStore } from './fixture-store.js'
 import { emptyColumns } from './paper-library/index.js'
@@ -209,6 +210,13 @@ describe('vault store', () => {
       .toEqual(['ARXIV:2211.17192', 'semantic-new'])
   })
 
+  it('项目发现的锚点带上项目的每一个领域,没有领域时不带新项目的默认值', () => {
+    const id = store.createProject('发现锚点')
+    expect(store.discoveryProfile(id).anchorText).not.toContain(DEFAULT_PROJECT_TOPIC)
+    store.updateProject(id, { topics: ['KV cache', '低比特量化'] })
+    expect(store.discoveryProfile(id).anchorText).toMatch(/KV cache · 低比特量化/)
+  })
+
   it('推荐方向的核心与启停偏好重开后仍保留,且不写入 Wiki 页面', () => {
     store.updatePaper(WITH_SOURCE, { identifier: 'arXiv:2211.17192' })
     const imported = store.importPaper(
@@ -265,6 +273,21 @@ describe('vault store', () => {
     expect(createVaultStore(vault).getProject(id).memo).toBe(memo)
     store.undoChange(store.listChanges()[0]!.id)
     expect(createVaultStore(vault).getProject(id).memo).toBe('改之前的想法')
+    expect(readFileSync(file, 'utf8')).toBe(before)
+  })
+
+  it('领域:给几个时页上 topic 是第一个、topics 是全部,清空回到新项目的默认值;重开库读出来一样', () => {
+    const id = store.createProject('领域')
+    const file = join(vault, 'wiki', 'projects', `${id}.md`)
+    const before = readFileSync(file, 'utf8')
+    expect(store.updateProject(id, { topics: ['KV cache', '量化'] })).toMatchObject({ topic: 'KV cache', topics: ['KV cache', '量化'] })
+    expect(readFileSync(file, 'utf8')).toMatch(/^topic: "KV cache"\n[^]*^topics:\n {2}- "KV cache"\n {2}- "量化"\n/m)
+    expect(createVaultStore(vault).getProject(id)).toMatchObject({ topic: 'KV cache', topics: ['KV cache', '量化'] })
+    expect(store.listProjects().find((project) => project.id === id)).toMatchObject({ topics: ['KV cache', '量化'] })
+    expect(store.overviewProjects().find((project) => project.id === id)).toMatchObject({ topic: 'KV cache', topics: ['KV cache', '量化'] })
+    const cleared = store.updateProject(id, { topics: [] })
+    expect(cleared.topic).toBe(DEFAULT_PROJECT_TOPIC)
+    expect('topics' in cleared).toBe(false)
     expect(readFileSync(file, 'utf8')).toBe(before)
   })
 

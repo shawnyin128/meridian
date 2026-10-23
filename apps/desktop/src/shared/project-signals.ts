@@ -1,6 +1,6 @@
 import type { EventKind, ProjectOverview, ProjectStatus, RecordEvent, Task } from './contract.js'
 import { dnum } from './dates.js'
-import { ACTIVE_PROJECT } from './vocabulary.js'
+import { ACTIVE_PROJECT, DEFAULT_PROJECT_TOPIC } from './vocabulary.js'
 
 /** English-safe catalog key for the focus field label, so the catalog itself needs no Chinese-keyed lookup. */
 export type FocusLabelKey = 'currentGoal' | 'restartCondition' | 'outcome'
@@ -15,6 +15,10 @@ export const recordKind = (record: Pick<RecordEvent, 'kind'>): EventKind => reco
 
 /** A record written before `origin` existed came from the user, not an agent. */
 export const recordOrigin = (record: Pick<RecordEvent, 'origin'>): 'agent' | 'user' => record.origin ?? 'user'
+
+/** A project's areas in order: all of `topics` when it has several, else its `topic` unless that is the default, which is none. */
+export const projectAreas = (project: { topic: string; topics?: readonly string[] | undefined }): string[] => (
+  project.topics !== undefined ? [...project.topics] : project.topic === DEFAULT_PROJECT_TOPIC ? [] : [project.topic])
 
 const recordTimestamp = (record: Pick<RecordEvent, 'date' | 'at'>): number => Date.parse(record.at ?? record.date)
 

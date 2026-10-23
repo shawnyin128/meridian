@@ -11,7 +11,7 @@ import {
   DEFAULT_DELIVERY_SETTINGS, FeedEntrySchema, ProposalRecordSchema, ResearchIdeaSchema, WatchSchema,
 } from '../shared/contract.js'
 import { projectControlState } from '../shared/project-control.js'
-import { sortRecordsNewestFirst } from '../shared/project-signals.js'
+import { projectAreas, sortRecordsNewestFirst } from '../shared/project-signals.js'
 import { topicDir, topicProposal } from '../shared/topic-proposal.js'
 import {
   ACTIVE_PROJECT, CHAT_EVENT_PREFIX, DEFAULT_PROJECT_TOPIC, FINISHED_PROJECT, PAPER_PAGE, PROJECTS_DIR, READ_STATES,
@@ -1137,7 +1137,7 @@ export function createVaultStore(
       projectId: project.id,
       projectName: project.name,
       anchorText: [
-        project.name, project.topic, project.focus,
+        project.name, ...projectAreas(project), project.focus,
         ...(project.graph.activeNodes ?? []).flatMap((id) => {
           const node = project.graph.nodes.find((held) => held.id === id)
           return node === undefined ? [] : [node.label, node.nextAction ?? '']
@@ -1377,6 +1377,7 @@ export function createVaultStore(
           status: p.status,
           priority: p.priority,
           topic: p.topic,
+          ...(p.topics === undefined ? {} : { topics: p.topics }),
           focus: p.focus,
           ...(p.block === undefined ? {} : { block: p.block }),
           ...(p.conflictPage === undefined ? {} : { conflictPage: p.conflictPage }),
@@ -1411,6 +1412,8 @@ export function createVaultStore(
           name: p.name,
           status: p.status,
           priority: p.priority,
+          topic: p.topic,
+          ...(p.topics === undefined ? {} : { topics: p.topics }),
           focus: p.focus,
           ...(p.block === undefined ? {} : { block: p.block }),
           start: p.start,
@@ -1505,13 +1508,18 @@ export function createVaultStore(
     },
 
     updateProject(id, patch) {
-      const { block, ...fields } = patch
+      const { block, topics, ...fields } = patch
       const next: ProjectRecord = { ...projectOf(id), ...fields }
       if (block === null) delete next.block
       if (typeof block === 'string') next.block = block
+      if (topics !== undefined) {
+        next.topic = topics[0] ?? DEFAULT_PROJECT_TOPIC
+        if (topics.length > 1) next.topics = topics
+        else delete next.topics
+      }
       // The contract guarantees fixed-width ISO dates, so lexical order is chronological order.
       if (next.due < next.start) throw new CallError('invalid', `项目截止日期早于开始日期：${next.start} – ${next.due}`)
-      return writeProject(next, Object.keys(patch) as (keyof ProjectRecord)[])
+      return writeProject(next, [...Object.keys(patch), ...(topics === undefined ? [] : ['topic'])] as (keyof ProjectRecord)[])
     },
 
     deleteProject(id) {

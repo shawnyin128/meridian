@@ -28,9 +28,9 @@ const STYLESHEETS = readdirSync(RENDERER, { recursive: true, encoding: 'utf8' })
 
 /**
  * Classes written next to `btn` that the set does not judge: its own variant, size and state
- * classes, and the read-state filter, a menu trigger whose applied state takes the selected tint.
+ * classes, and the filter menu, a menu trigger whose applied state takes the selected tint.
  */
-const SET_CLASSES = new Set(['btn', 'pri', 'ghost', 'danger', 'sm', 'on', 'read-state-filter'])
+const SET_CLASSES = new Set(['btn', 'pri', 'ghost', 'danger', 'sm', 'on', 'filter-menu'])
 
 /** The JSX opening tag that starts at `from`, up to its `>` outside any `{}` expression. */
 const openingTag = (source: string, from: number): string => {

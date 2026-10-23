@@ -30,7 +30,7 @@ vi.mock('../hooks/useVaultWrite.js', () => ({
 const { ResearchOverview } = await import('./ResearchOverview.js')
 
 const row = (events: ProjectOverview['events']): ProjectOverview => ({
-  id: 'spec', name: '推测解码加速', status: '进行中', priority: 'p0', focus: '动态树宽度原型',
+  id: 'spec', name: '推测解码加速', status: '进行中', priority: 'p0', topic: '推理加速', focus: '动态树宽度原型',
   start: '2026-09-26', due: '2026-11-10', conclusions: { verified: 0, pending: 0, conflicting: 0 },
   tasks: [], milestones: [], events, lastProgress: '2026-10-16',
   research: { pathState: 'empty', activeNodes: [], branches: { active: 0, supported: 0, failed: 0, shelved: 0 } },
@@ -135,6 +135,54 @@ describe('研究总览的项目推进', () => {
       '实验结果 tag tag--label tag--good', '决定 tag tag--label tag--accent',
       '开始推进 tag tag--label tag--info', '记录 tag tag--label tag--neutral',
     ])
+  })
+})
+
+describe('研究总览按领域筛', () => {
+  let host: HTMLDivElement
+  let root: Root
+
+  beforeEach(() => {
+    globalThis.IS_REACT_ACT_ENVIRONMENT = true
+    window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'zh')
+    vi.stubGlobal('ResizeObserver', class { observe() {} unobserve() {} disconnect() {} })
+    host = document.createElement('div')
+    document.body.append(host)
+    root = createRoot(host)
+  })
+
+  afterEach(() => {
+    act(() => root.unmount())
+    host.remove()
+  })
+
+  it('页面工具栏里的领域筛选让每一块都只算那个领域的项目,再选全部领域就全回来', async () => {
+    api.rows = [
+      { ...row([{ date: '2026-10-15', text: '推测解码的记录' }]), milestones: [{ id: 'm1', date: '2026-10-20', title: '推测解码的里程碑', done: false }] },
+      { ...row([{ date: '2026-10-14', text: 'KV 的记录' }]), id: 'kv', name: 'KV cache 量化', topic: 'KV cache', topics: ['KV cache', '量化'],
+        milestones: [{ id: 'm2', date: '2026-10-21', title: 'KV 的里程碑', done: false }] },
+      { ...row([]), id: 'shelf', name: '搁置的项目', status: '搁置', topic: '未分主题' },
+    ]
+    await act(async () => { root.render(<MessagesProvider><ResearchOverview /></MessagesProvider>) })
+    const filter = () => host.querySelector<HTMLButtonElement>('.desk-body .page-toolbar .filter-menu')!
+    const pick = async (label: string) => {
+      await act(async () => { filter().dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, button: 0 })) })
+      const item = [...document.querySelectorAll<HTMLElement>('[role="menu"] [role="menuitemradio"]')].find((option) => option.textContent === label)!
+      await act(async () => { item.click() })
+    }
+    const stats = () => [...host.querySelectorAll('.ovstat b')].map((value) => value.textContent)
+    expect(stats()).toEqual(['2', '1', '2', '2'])
+
+    await pick('量化')
+    expect(stats()).toEqual(['1', '0', '1', '1'])
+    expect(host.querySelector('.ovcols')!.textContent).toContain('KV 的记录')
+    expect(host.querySelector('.ovcols')!.textContent).not.toContain('推测解码')
+    expect([...host.querySelectorAll('.ovpulse [data-proj]')].map((item) => item.getAttribute('data-proj'))).toEqual(['kv'])
+
+    await pick('未分领域')
+    expect(stats()).toEqual(['0', '1', '0', '0'])
+    await pick('全部领域')
+    expect(stats()).toEqual(['2', '1', '2', '2'])
   })
 })
 

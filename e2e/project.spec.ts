@@ -1087,20 +1087,34 @@ test('属性格进入编辑时不改变右栏和值列宽度,字也不挪位', a
   expect(await textBox(input)).toEqual(textBefore)
 })
 
-for (const [key, kind] of [['当前目标', '多行'], ['领域', '单行']]) {
-  test(`属性栏${kind}的值(${key})进入编辑时,编辑框整个露在右栏里,右栏不横向滚动,字不挪位`, async ({ win }) => {
-    await gotoProject(win)
-    const side = win.locator('.screenslot:not([hidden]) .wkside')
-    const field = side.locator(`.pk:text-is("${key}") + .metadata-field`)
-    const value = field.locator('.metadata-editable')
-    const before = await textBox(value)
+test('属性栏多行的值(当前目标)进入编辑时,编辑框整个露在右栏里,右栏不横向滚动,字不挪位', async ({ win }) => {
+  await gotoProject(win)
+  const side = win.locator('.screenslot:not([hidden]) .wkside')
+  const field = side.locator('.pk:text-is("当前目标") + .metadata-field')
+  const value = field.locator('.metadata-editable')
+  const before = await textBox(value)
 
-    await value.click()
-    const input = field.locator('.metadata-input')
-    await expectWholeInRail(side, input)
-    expect((await textBox(input)).left).toBe(before.left)
-  })
-}
+  await value.click()
+  const input = field.locator('.metadata-input')
+  await expectWholeInRail(side, input)
+  expect((await textBox(input)).left).toBe(before.left)
+})
+
+test('属性栏点一个领域就地改它:编辑框里是它的字,整个露在右栏里,右栏不横向滚动,字不挪位', async ({ win }) => {
+  await gotoProject(win)
+  const side = win.locator('.screenslot:not([hidden]) .wkside')
+  const field = side.locator('.pk:text-is("领域") + .project-areas')
+  const chip = field.locator('.tagchip-open').first()
+  const text = await chip.innerText()
+  const before = await textBox(chip.locator('.tagchip-text'))
+
+  await chip.click()
+  const input = field.locator('.tagin')
+  await expect(input).toHaveValue(text)
+  await expectWholeInRail(side, input)
+  const after = await textBox(input)
+  expect([after.left, after.top]).toEqual([before.left, before.top])
+})
 
 test('关联里加一条:页面和链接的就地输入框都整个露在右栏里,右栏不横向滚动,链接两格的字从右栏内容左缘起', async ({ win }) => {
   await gotoProject(win)

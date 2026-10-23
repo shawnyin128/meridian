@@ -136,6 +136,32 @@ describe('project workspace protocol', () => {
     expect(JSON.parse(output)).toEqual(['ready', ['task-1']])
   })
 
+  it('项目有几个领域时计划面的项目带上全部领域,插件的 Python 读得出;只有一个时计划面与原来一样,不记一条变动', () => {
+    const root = temporary()
+    const held = project(root)
+    writeProjectWorkspace(held)
+    const planFile = join(root, '.meridian/control/plan.json')
+    const single = JSON.parse(readFileSync(planFile, 'utf8')) as { revision: string; project: Record<string, unknown> }
+    expect('topics' in single.project).toBe(false)
+    writeProjectWorkspace(held)
+    expect((JSON.parse(readFileSync(planFile, 'utf8')) as { revision: string }).revision).toBe(single.revision)
+
+    writeProjectWorkspace({ ...held, topics: ['speculative decoding', 'KV cache'] })
+    const script = [
+      'import json, sys',
+      'from pathlib import Path',
+      'from meridian.mcp.server import MeridianMCPServer, _call_workspace_plan',
+      'plan = _call_workspace_plan(MeridianMCPServer(), {"workspace_root": sys.argv[1]})',
+      'print(json.dumps([plan["project"]["topic"], plan["project"]["topics"]]))',
+    ].join('\n')
+    const output = execFileSync('python', ['-c', script, root], {
+      env: { ...process.env, PYTHONPATH: join(REPO, 'src') }, encoding: 'utf8',
+    })
+    expect(JSON.parse(output)).toEqual(['speculative decoding', ['speculative decoding', 'KV cache']])
+    const changes = JSON.parse(readFileSync(join(root, '.meridian/control/changes.json'), 'utf8')) as { changes: { kind: string }[] }
+    expect(changes.changes.map((change) => change.kind)).toEqual(['project.snapshot', 'project.updated'])
+  })
+
   it('keeps current linked ideas and records only incremental association changes', () => {
     const root = temporary()
     const held = project(root)

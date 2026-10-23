@@ -21,7 +21,6 @@ export const papers = {
     group: '分组',
     groupFieldAria: '分组字段',
     groupValueAria: '分组取值',
-    filter: '筛选',
   },
   views: { aria: '论文库视图', table: '列表', researchMap: '研究地图' },
   researchMap: {
