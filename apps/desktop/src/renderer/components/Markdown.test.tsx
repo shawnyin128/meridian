@@ -95,6 +95,31 @@ describe('Markdown', () => {
     vi.useRealTimers()
   })
 
+  const parts = (src: string, block: string) => {
+    globalThis.IS_REACT_ACT_ENVIRONMENT = true
+    const host = document.createElement('div')
+    const root = createRoot(host)
+    act(() => root.render(<MessagesProvider><Markdown src={src} onAnchor={() => undefined} /></MessagesProvider>))
+    const out = [...host.querySelector(block)!.childNodes]
+      .map((node) => (node instanceof Element ? `${node.className || node.localName}|${node.textContent}` : node.textContent))
+    act(() => root.unmount())
+    return out
+  }
+
+  it('(p.N) 前面的空白连同锚点是一段不断行的内容,锚点紧贴前面文字的最后一个字', () => {
+    expect(parts('草稿头只需要一层解码 (p.8)', 'p')).toEqual(['草稿头只需要一层解码', 'source-anchor-keep| p.8'])
+    expect(parts('as reported in Table 2 (p.7).', 'p')).toEqual(['as reported in Table 2', 'source-anchor-keep| p.7', '.'])
+    expect(parts('第一行\n(p.3)', 'p')).toEqual(['第一行', 'source-anchor-keep|\np.3'])
+    expect(parts('**一层解码器** (p.5)', 'p')).toEqual(['strong|一层解码器', 'source-anchor-keep| p.5'])
+    expect(parts('- 特征层自回归 (p.2)', 'li')).toEqual(['特征层自回归', 'source-anchor-keep| p.2'])
+  })
+
+  it('前面没有空白的 (p.N) 和段首的 (p.N) 照旧;打不开原文时 (p.N) 前面的空白仍是文字里的空格', () => {
+    expect(parts('接受率更要紧。(p.4)', 'p')).toEqual(['接受率更要紧。', 'source-anchor-keep|p.4'])
+    expect(parts('(p.1) 开头的锚点', 'p')).toEqual(['source-anchor-keep|p.1', ' 开头的锚点'])
+    expect(html('见 (p.3)。')).toContain('<p>见 p.3。</p>')
+  })
+
   it('没给 titles 的随笔一律当链接;给了 titles 的页上,原文标记后面的 (p.N) 仍是锚点', () => {
     expect(html('[[papers/z]]')).toContain('<span class="entity-link entity-link--page" data-wk="papers/z">papers/z</span>')
     const out = renderToStaticMarkup(
