@@ -27,6 +27,7 @@ export const common = {
   none: 'None',
   all: 'All',
   trashed: 'Moved to Trash',
+  createdOn: (date: string) => `Created ${date}`,
   updatedOn: (date: string) => `Updated ${date}`,
   addedOn: (date: string) => `Added ${date}`,
   overdue: 'Overdue',

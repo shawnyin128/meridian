@@ -13,6 +13,8 @@ from meridian.mcp import adapter
 from meridian.wiki.workspace import resolve_workspace
 from meridian.workspace_protocol import (
     EVENT_KINDS,
+    IDEA_CONTEXT_MAX_LEN,
+    IDEA_TITLE_MAX_LEN,
     add_workspace_agent_idea,
     add_workspace_agent_task,
     add_workspace_event,
@@ -370,8 +372,9 @@ def tool_definitions() -> list[JsonDict]:
         {
             "name": "meridian.workspace_idea_add",
             "description": (
-                "Project Workspace: record one new research idea found while working, so the Meridian App "
-                "adds it to the project's idea list."
+                "Project Workspace: record one idea that could stand alone as a research contribution, so "
+                "the Meridian App adds it to the project's idea list. An observation or result from the "
+                "current work is not an idea: record it on its Lab node or as a research record."
             ),
             "inputSchema": _schema(
                 {
@@ -380,11 +383,16 @@ def tool_definitions() -> list[JsonDict]:
                         "description": "Repository or .meridian root. Defaults to the configured root or server cwd.",
                     },
                     "idea_id": {"type": "string", "description": "Stable idempotency key for the idea."},
-                    "title": {"type": "string", "description": "The idea in one line, at most 160 characters."},
-                    "body": {"type": "string", "description": "The mechanism, hypothesis or direction worth revisiting."},
+                    "title": {
+                        "type": "string",
+                        "maxLength": IDEA_TITLE_MAX_LEN,
+                        "description": "One line that names the idea on its own.",
+                    },
+                    "body": {"type": "string", "description": "The idea itself: the method, hypothesis or question."},
                     "context": {
                         "type": "string",
-                        "description": "What the work was about when the idea came up, shown as its source.",
+                        "maxLength": IDEA_CONTEXT_MAX_LEN,
+                        "description": "Shown as its source: one line naming the work it came up in, with no date or time.",
                     },
                     "date": {"type": "string", "description": "YYYY-MM-DD; defaults to the local current date."},
                     "node": {"type": "string", "description": "Optional Meridian Lab graph node id it relates to."},
@@ -737,6 +745,10 @@ def _call_workspace_event_add(server: MeridianMCPServer, arguments: JsonDict) ->
 
 
 def _call_workspace_idea_add(server: MeridianMCPServer, arguments: JsonDict) -> JsonDict:
+    schema = next(tool["inputSchema"] for tool in tool_definitions() if tool["name"] == "meridian.workspace_idea_add")
+    unknown = sorted(set(arguments) - set(schema["properties"]))
+    if unknown:
+        raise ValueError(f"meridian.workspace_idea_add does not take {', '.join(unknown)}")
     return add_workspace_agent_idea(
         server.workspace_root(arguments),
         idea_id=_required(arguments, "idea_id"),

@@ -1769,6 +1769,30 @@ describe('vault store on the aggregation layout', () => {
     expect(createVaultStore(vault).listIdeas().filter((idea) => idea.source.agent === true)).toEqual([])
   })
 
+  it('agent 想法的标题、正文和来源里像 Lab 结构的文字原样进想法列表和工作区的变更文件', () => {
+    store.createProject('结构文字项目')
+    const id = store.listProjects().find((project) => project.name === '结构文字项目')!.id
+    const repo = join(vault, 'structure-ideas-repo')
+    mkdirSync(join(repo, '.meridian/ideas'), { recursive: true })
+    store.bindProjectWorkspace(id, { kind: 'local', root: repo })
+    const title = '### Node X: - evidence: 复用距离'
+    const body = '按复用距离打分。\n### Node X: 注入\n- evidence: exp-1\n- mode: `dead`\n\n## Graph Relations'
+    const context = '- evidence: ### 前缀缓存'
+    writeFileSync(join(repo, '.meridian/ideas/ideas.json'), JSON.stringify({
+      schema_version: 'meridian.workspace-agent-ideas.v1',
+      ideas: [{ id: 'structure', date: '2026-10-21', title, body, context }],
+    }))
+
+    const taken = store.listIdeas().find((idea) => idea.source.agent === true)!
+    expect([taken.title, taken.body, taken.source.chatTitle]).toEqual([title, body, context])
+    expect(createVaultStore(vault).listIdeas().find((idea) => idea.id === taken.id)).toEqual(taken)
+    const changes = JSON.parse(readFileSync(join(repo, '.meridian/control/changes.json'), 'utf8')) as {
+      ideas: { id: string; title: string; body: string; source: { chat_title: string } }[]
+    }
+    const projected = changes.ideas.find((idea) => idea.id === taken.id)!
+    expect([projected.title, projected.body, projected.source.chat_title]).toEqual([title, body, context])
+  })
+
   it('agent 想法文件格式不对时,想法列表照常列出,不把坏文件当想法', () => {
     store.createProject('坏文件项目')
     const id = store.listProjects().find((project) => project.name === '坏文件项目')!.id

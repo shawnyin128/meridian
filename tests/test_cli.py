@@ -2177,6 +2177,24 @@ class CliTests(unittest.TestCase):
         self.assertIn("supported when valid evidence supports it", text)
         self.assertIn("repairable or dead only after asking the user", text)
 
+    def test_agents_record_only_contribution_level_ideas_within_the_tool_limits(self) -> None:
+        from meridian.lab import meridian_agents_contract_block
+        from meridian.workspace_protocol import IDEA_CONTEXT_MAX_LEN, IDEA_TITLE_MAX_LEN
+
+        for skill_name in ("lab", "meridian-coding"):
+            text = (CODEX_PLUGIN_SKILL_ROOT / skill_name / "SKILL.md").read_text(encoding="utf-8")
+            ideas = " ".join(text.split("**Ideas.**", 1)[1].split("\n\n", 1)[0].split())
+            with self.subTest(skill=skill_name):
+                self.assertIn("only when it could stand alone as a research contribution", ideas)
+                self.assertIn("from the current work is not an idea; record it on its Lab node or as a research record", ideas)
+                self.assertIn(f"a `title` of at most {IDEA_TITLE_MAX_LEN} characters", ideas)
+                self.assertIn(f"a `context` of at most {IDEA_CONTEXT_MAX_LEN} characters", ideas)
+                self.assertIn("without dates, times or agent names", ideas)
+        block = " ".join(meridian_agents_contract_block().split())
+        self.assertIn("an idea that could stand alone as a research contribution", block)
+        self.assertIn("an observation or result from the current work goes on its Lab node", block)
+        self.assertNotIn("worth revisiting", block)
+
     def test_meridian_agents_contract_replacement_preserves_surrounding_text_exactly(self) -> None:
         from meridian.lab import (
             MERIDIAN_AGENTS_CONTRACT_END,

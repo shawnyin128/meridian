@@ -24,6 +24,7 @@ export const common = {
   none: '暂无',
   all: '全部',
   trashed: '已移入垃圾桶',
+  createdOn: (date: string) => `创建于 ${date}`,
   updatedOn: (date: string) => `更新于 ${date}`,
   addedOn: (date: string) => `加入于 ${date}`,
   overdue: '已逾期',
