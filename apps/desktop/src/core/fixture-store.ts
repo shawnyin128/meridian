@@ -1814,6 +1814,7 @@ export function createFixtureStore(
       const item = trash.find((entry) => entry.id === id)
       if (!item) throw new CallError('not-found', `垃圾桶里没有这一条：${id}`)
       if (item.kind === 'paper') {
+        if (byId.has(item.paper.id)) throw new CallError('refused', `原来的位置已经被另一篇占了，恢复会盖掉它：${item.paper.id}`)
         byId.set(item.paper.id, item.paper)
         sourceOf.set(item.paper.id, item.source)
         pageOf.set(item.source, item.paper.id)

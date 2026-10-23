@@ -1020,6 +1020,11 @@ export function createVaultStore(
     for (const item of expired) discard(item)
   }
 
+  /** Throws, before anything is written, when a page already stands where the page `item` holds goes back. */
+  const checkPlaceFree = (item: Extract<TrashRecord, { kind: 'paper' | 'project' }>): void => {
+    if (existsSync(join(root, item.page))) throw new CallError('refused', `原来的位置已经被另一页占了，恢复会盖掉它：${item.page}`)
+  }
+
   /** Adds a record to trash with the most recently deleted item first. */
   const toTrash = (item: TrashRecord): void => {
     trash = save('trash', [item, ...trash])
@@ -2348,6 +2353,7 @@ export function createVaultStore(
       const item = trash.find((entry) => entry.id === id)
       if (!item) throw new CallError('not-found', `垃圾桶里没有这一条：${id}`)
       if (item.kind === 'paper') {
+        checkPlaceFree(item)
         const back = join(root, item.page)
         movePage(trashPage(id), back)
         if (item.reading !== undefined) {
@@ -2357,6 +2363,7 @@ export function createVaultStore(
         refreshWikiPage(page.id, back)
         indexPaper(page)
       } else if (item.kind === 'project') {
+        checkPlaceFree(item)
         const back = join(root, item.page)
         const projectId = basename(item.page, '.md')
         movePage(trashPage(id), back)

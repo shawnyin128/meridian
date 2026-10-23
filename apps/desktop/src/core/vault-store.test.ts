@@ -461,6 +461,36 @@ describe('vault store', () => {
     expect(createVaultStore(vault).getPaper(added.paper.id).title).toBe('A Useful Paper, Parsed')
   })
 
+  it('删掉的论文重新导入后占了原来的文件名，从垃圾桶恢复被拒，新导入的那页一个字节不动，垃圾桶里那一条还在', () => {
+    const bytes = Uint8Array.from(Buffer.from('%PDF-1.7\n1 0 obj\n<<>>\nendobj\n%%EOF'))
+    const deleted = store.importPaper('A Useful Paper.pdf', bytes).paper
+    store.deletePaper(deleted.id)
+    const entry = store.listTrash()[0]!
+    const again = store.importPaper('A Useful Paper.pdf', bytes).paper
+    expect(again.id).toBe(deleted.id)
+    store.updatePaper(again.id, { title: '重新导入的那篇' })
+    const page = join(vault, 'wiki', 'papers', `${again.id}.md`)
+    const held = readFileSync(page, 'utf8')
+    expect(() => store.restoreTrash(entry.id)).toThrow(/占/)
+    expect(readFileSync(page, 'utf8')).toBe(held)
+    expect(store.getPaper(again.id).title).toBe('重新导入的那篇')
+    expect(store.listTrash().map((item) => item.id)).toContain(entry.id)
+    expect(existsSync(join(vault, '.meridian', 'trash', `${entry.id}.md`))).toBe(true)
+    expect(createVaultStore(vault).getPaper(again.id).title).toBe('重新导入的那篇')
+  })
+
+  it('删掉的项目原来的页位置被别的程序写了一页时，从垃圾桶恢复被拒，那一页一个字节不动，垃圾桶里那一条还在', () => {
+    const id = store.createProject('删掉的项目')
+    store.deleteProject(id)
+    const entry = store.listTrash()[0]!
+    const page = join(vault, 'wiki', 'projects', `${id}.md`)
+    writeFileSync(page, '---\ntype: "project"\n---\n# 别的程序写的\n', 'utf8')
+    expect(() => store.restoreTrash(entry.id)).toThrow(/占/)
+    expect(readFileSync(page, 'utf8')).toBe('---\ntype: "project"\n---\n# 别的程序写的\n')
+    expect(store.listTrash().map((item) => item.id)).toContain(entry.id)
+    expect(existsSync(join(vault, '.meridian', 'trash', `${entry.id}.md`))).toBe(true)
+  })
+
   it('阅读高亮与笔记由 Core 指派身份并持久化,重开库仍能读到', () => {
     const highlighted = store.mutatePaperReading(WITH_SOURCE, {
       kind: 'highlight.add', page: 2, quote: 'target-aware refinement', color: 'yellow',

@@ -233,6 +233,19 @@ describe('fixture store', () => {
     expect(store.getProject('draft').attachments).toContainEqual(attachment)
   })
 
+  it('删掉的论文重新导入后占了原来的 id，从垃圾桶恢复被拒，新导入的那篇不动，垃圾桶里那一条还在', () => {
+    const bytes = Uint8Array.from(Buffer.from('%PDF-1.7\n%%EOF'))
+    const deleted = store.importPaper('A Useful Paper.pdf', bytes).paper
+    store.deletePaper(deleted.id)
+    const entry = store.listTrash()[0]!
+    const again = store.importPaper('A Useful Paper.pdf', bytes).paper
+    expect(again.id).toBe(deleted.id)
+    store.updatePaper(again.id, { title: '重新导入的那篇' })
+    expect(() => store.restoreTrash(entry.id)).toThrow(/占/)
+    expect(store.getPaper(again.id).title).toBe('重新导入的那篇')
+    expect(store.listTrash().map((item) => item.id)).toContain(entry.id)
+  })
+
   it('原项目也被删掉时那条附件恢复不了,项目恢复回来它跟着能恢复', () => {
     const attachment = store.getProject('draft').attachments[0]!
     store.deleteAttachment('draft', attachment.id)
