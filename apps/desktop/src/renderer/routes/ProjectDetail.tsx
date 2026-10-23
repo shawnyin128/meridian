@@ -174,16 +174,20 @@ export function ProjectIdeaPanel({
   )
 }
 
+/** Newest first, by creation day, then by id, which later ideas take higher numbers in. */
+const newestFirst = (a: ResearchIdea, b: ResearchIdea) =>
+  b.created.localeCompare(a.created) || b.id.localeCompare(a.id, undefined, { numeric: true })
+
 /**
- * The ideas section of a project page: the ideas carried out in project `projectId`, then the ones
- * that only relate to it, tagged as related; `ideas` is null while they load. A carried-out idea shows
- * its node in `graph`. Activating a row selects that idea through `onSelect`. The heading's new-idea
- * action drafts, first in the section, an idea sparked in the project named `projectName`, which lands
- * among the ideas; `onCreate` writes it and settles once it is written or refused.
+ * The ideas section of a project page, each idea once and in the first group it belongs to: the ideas
+ * carried out in project `projectId`, then the ones related to it, tagged as related, then the ones
+ * sparked in it, tagged with their source; newest first within each group. `ideas` is null while they
+ * load. A carried-out idea shows its node in `graph`. Activating a row selects that idea through
+ * `onSelect`. The heading's new-idea action drafts an idea sparked in the project first in that last
+ * group, where it lands; `onCreate` writes it and settles whether it was written.
  */
-export function ProjectIdeaList({ projectId, projectName, ideas, graph, selectedId, onSelect, onCreate }: {
+export function ProjectIdeaList({ projectId, ideas, graph, selectedId, onSelect, onCreate }: {
   projectId: string
-  projectName: string
   ideas: readonly ResearchIdea[] | null
   graph: ResearchGraphData
   selectedId: string | null
@@ -195,10 +199,36 @@ export function ProjectIdeaList({ projectId, projectName, ideas, graph, selected
   const draftAt = useRef<HTMLDivElement>(null)
   const add = useRef<HTMLButtonElement>(null)
   const triggers = useMemo(() => [add], [])
-  const ordered = ideas === null ? null : [
-    ...ideas.filter((idea) => idea.project === projectId),
-    ...ideas.filter((idea) => idea.project !== projectId),
-  ]
+  const carried = (ideas ?? []).filter((idea) => idea.project === projectId)
+  const related = (ideas ?? []).filter((idea) => idea.project !== projectId && idea.relations?.projects.includes(projectId) === true)
+  const sparked = (ideas ?? []).filter((idea) => !carried.includes(idea) && !related.includes(idea) && idea.sourceProject === projectId)
+  const row = (idea: ResearchIdea, tag: string | null) => {
+    const source = ideaSourceLabel(idea)
+    const ideaNode = tag === null ? graph.nodes.find((node) => node.id === idea.node) : undefined
+    return (
+      <StructuredRow
+        className="project-idea-row" selected={selectedId === idea.id}
+        data-idea={idea.id} key={idea.id} onActivate={() => onSelect(idea.id)}
+      >
+        <FadeText className="project-idea-title" label={idea.title}>{idea.title}</FadeText>
+        <span className="project-idea-flags">
+          {ideaNode === undefined
+            ? null
+            : (
+              <EntityLink kind="node" label={ideaNode.label} mode={nodeMode(ideaNode)} />
+            )}
+          {tag === null ? null : <Tag>{tag}</Tag>}
+          {idea.archived ? <Tag>{m.common.archived}</Tag> : null}
+        </span>
+        {ownIdea(idea) ? null : (
+          <FadeText className="project-idea-source" label={m.project.idea.sourceTag(source)}>
+            <IdeaSource idea={idea} message={m.project.idea.sourceTag} />
+          </FadeText>
+        )}
+      </StructuredRow>
+    )
+  }
+  const shown = carried.length + related.length + sparked.length
   return (
     <>
       <SectionHeading
@@ -212,49 +242,25 @@ export function ProjectIdeaList({ projectId, projectName, ideas, graph, selected
             }}
           >{m.project.idea.kind}</AddAction>
         )}
-      >{m.project.linkedIdeas(ideas?.length ?? 0)}
+      >{m.project.linkedIdeas(shown)}
       </SectionHeading>
-      {draft === null ? null : (
-        <div ref={draftAt}>
-          <IdeaDraft
-            source={projectName} draft={draft} triggers={triggers} onChange={setDraft} onCancel={() => setDraft(null)}
-            onSave={(title, body) => onCreate(title, body).then((created) => { if (created) setDraft(null) })}
-          />
-        </div>
-      )}
-      {ordered === null
+      {ideas === null
         ? <LoadingPlaceholder shape="rows" count={2} />
-        : ordered.length === 0
+        : shown === 0 && draft === null
         ? <EmptyState variant="section">{m.project.noLinkedIdeas}</EmptyState>
         : (
           <StructuredList className="project-ideas" variant="embedded">
-            {ordered.map((idea) => {
-              const source = ideaSourceLabel(idea)
-              const carried = idea.project === projectId
-              const ideaNode = carried ? graph.nodes.find((node) => node.id === idea.node) : undefined
-              return (
-                <StructuredRow
-                  className="project-idea-row" selected={selectedId === idea.id}
-                  data-idea={idea.id} key={idea.id} onActivate={() => onSelect(idea.id)}
-                >
-                  <FadeText className="project-idea-title" label={idea.title}>{idea.title}</FadeText>
-                  <span className="project-idea-flags">
-                    {ideaNode === undefined
-                      ? null
-                      : (
-                        <EntityLink kind="node" label={ideaNode.label} mode={nodeMode(ideaNode)} />
-                      )}
-                    {carried ? null : <Tag>{m.project.sections.links}</Tag>}
-                    {idea.archived ? <Tag>{m.common.archived}</Tag> : null}
-                  </span>
-                  {ownIdea(idea) ? null : (
-                    <FadeText className="project-idea-source" label={m.project.idea.sourceTag(source)}>
-                      <IdeaSource idea={idea} message={m.project.idea.sourceTag} />
-                    </FadeText>
-                  )}
-                </StructuredRow>
-              )
-            })}
+            {[...carried].sort(newestFirst).map((idea) => row(idea, null))}
+            {[...related].sort(newestFirst).map((idea) => row(idea, m.project.sections.links))}
+            {draft === null ? null : (
+              <StructuredRow className="project-idea-draft" rowRef={draftAt}>
+                <IdeaDraft
+                  draft={draft} triggers={triggers} onChange={setDraft} onCancel={() => setDraft(null)}
+                  onSave={(title, body) => onCreate(title, body).then((created) => { if (created) setDraft(null) })}
+                />
+              </StructuredRow>
+            )}
+            {[...sparked].sort(newestFirst).map((idea) => row(idea, m.project.sections.source))}
           </StructuredList>
         )}
     </>
@@ -380,12 +386,12 @@ export function ProjectDetail({
     void projectApi.get(projectId).then(setProject).catch(reportError)
   }, [projectId, reportError, revision])
 
-  // An idea stores the project it is carried out in and the projects it relates to; project details look
-  // both up from this side, so they show at both ends.
+  // An idea stores the project it is carried out in, the projects it relates to and the one it was
+  // sparked in; project details look all three up from this side, so they show at both ends.
   useEffect(() => {
     void ideaApi.list()
       .then((ideas) => setLinkedIdeas(ideas.filter((idea) => idea.project === projectId
-        || idea.relations?.projects.includes(projectId) === true)))
+        || idea.relations?.projects.includes(projectId) === true || idea.sourceProject === projectId)))
       .catch(reportError)
   }, [projectId, reportError, revision])
 
@@ -934,8 +940,10 @@ export function ProjectDetail({
             </div>
 
             <ProjectIdeaList
-              projectId={projectId} projectName={project.name} ideas={linkedIdeas} graph={displayedGraph} selectedId={selectedIdeaId}
-              onCreate={(title, body) => write(ideaApi.create(undefined, title, body, projectId), { note: m.chat.ideaSavedNote })}
+              projectId={projectId} ideas={linkedIdeas} graph={displayedGraph} selectedId={selectedIdeaId}
+              onCreate={(title, body) => write(ideaApi.create(undefined, title, body, projectId).then((idea) => {
+                setLinkedIdeas((held) => [idea, ...(held ?? [])])
+              }), { note: m.chat.ideaSavedNote })}
               onSelect={(ideaId) => {
                 setSelectedNode(null)
                 setSelectedConclusion(null)
