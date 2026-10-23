@@ -39,6 +39,9 @@ const api = vi.hoisted(() => ({
     { id: 'project-completed', name: '已完成实验', status: '已完成' },
   ] as unknown as ProjectSummary[],
   update: vi.fn(async () => {}),
+  place: vi.fn(async () => ({ idea: {}, project: null, nodeId: null })),
+  /** The project details `project.get` answers with, by id. */
+  details: {} as Record<string, unknown>,
   promote: vi.fn(async () => ({ idea: {}, project: {} })),
   remove: vi.fn(async () => ({ trash: 'trash-idea' })),
   restored: [] as string[],
@@ -57,12 +60,14 @@ vi.mock('../ipc.js', () => ({
   idea: {
     list: () => (api.loading ? new Promise(() => {}) : Promise.resolve(structuredClone(api.ideas))),
     update: api.update,
+    placeOnGraph: api.place,
     promote: api.promote,
     delete: api.remove,
     reorder: api.reorder,
     create: api.create,
   },
-  project: { list: async () => structuredClone(api.projects) },
+  project: { list: async () => structuredClone(api.projects), get: async (id: string) => structuredClone(api.details[id]) },
+  wiki: { cards: async () => [{ id: 'topics/sd', title: '推测解码' }, { id: 'topics/kv', title: 'KV 量化' }] },
   trash: { restore: async (id: string) => { api.restored.push(id) } },
 }))
 vi.mock('../shell/AppShell.js', () => ({
@@ -92,6 +97,7 @@ describe('Ideas', () => {
     document.body.append(host)
     root = createRoot(host)
     api.update.mockClear()
+    api.place.mockClear()
     api.promote.mockClear()
     api.open.mockClear()
     api.create.mockClear()
@@ -287,7 +293,7 @@ describe('Ideas', () => {
       expect(host.querySelector('[data-idea="idea-own"]')!.textContent).not.toContain('手动添加')
       await act(async () => { host.querySelector<HTMLElement>('[data-idea="idea-own"]')!.click() })
       expect([...host.querySelectorAll('.idea-detail-panel > .section-heading:not(.idea-panel-head)')].map((h) => h.firstChild!.textContent))
-        .toEqual(['内容', '关联项目'])
+        .toEqual(['内容', '关联', '所在项目'])
       expect(host.querySelector('.idea-detail-slot')!.textContent).not.toContain('手动添加')
     } finally {
       api.ideas = api.ideas.filter((idea) => idea.id !== OWN.id)
@@ -374,7 +380,7 @@ describe('Ideas', () => {
     expect(detail.querySelector('.idea-panel-head .node-document-title')!.textContent)
       .toBe('用可学习性信号动态分配 draft model 的蒸馏预算')
     expect([...detail.querySelectorAll('.section-heading--rail')].map((heading) => heading.textContent))
-      .toEqual(['用可学习性信号动态分配 draft model 的蒸馏预算编辑', '内容', '关联项目打开项目', '来源打开来源对话'])
+      .toEqual(['用可学习性信号动态分配 draft model 的蒸馏预算编辑', '内容', '关联关联', '所在项目打开项目', '来源打开来源对话'])
     expect(detail.textContent).toContain('只对 disagreement 高且可学习的 token 加大蒸馏权重。')
     const edit = [...detail.querySelectorAll<HTMLButtonElement>('button')]
       .find((item) => item.textContent === '编辑')!
@@ -409,7 +415,7 @@ describe('Ideas', () => {
         .dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, button: 0 }))
     })
     const none = [...document.querySelectorAll<HTMLElement>('.choice-picker-menu [role="menuitemradio"]')]
-      .find((item) => item.textContent === '未关联项目')!
+      .find((item) => item.textContent === '未放进项目')!
     await act(async () => {
       none.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }))
       none.dispatchEvent(new MouseEvent('click', { bubbles: true }))
@@ -486,7 +492,81 @@ describe('Ideas', () => {
         [...heading.querySelectorAll(':scope > .section-heading-actions > .btn')].map((button) => button.textContent),
       ])
     }
-    expect(await headings('idea-linked')).toEqual([['内容', []], ['关联项目', ['打开项目']], ['来源', ['打开来源对话']]])
-    expect(await headings('idea-independent')).toEqual([['内容', []], ['关联项目', ['转为项目']], ['来源', ['打开来源对话']]])
+    expect(await headings('idea-linked'))
+      .toEqual([['内容', []], ['关联', ['关联']], ['所在项目', ['打开项目']], ['来源', ['打开来源对话']]])
+    expect(await headings('idea-independent'))
+      .toEqual([['内容', []], ['关联', ['关联']], ['所在项目', ['转为项目']], ['来源', ['打开来源对话']]])
+  })
+
+  /** Renders the page with `idea` added to the list and opens its detail panel. */
+  const openWith = async (idea: ResearchIdea) => {
+    const held = api.ideas
+    api.ideas = [idea, ...held]
+    await act(async () => { root.render(<MessagesProvider><Ideas /></MessagesProvider>) })
+    await act(async () => { host.querySelector<HTMLElement>(`[data-idea="${idea.id}"]`)!.click() })
+    api.ideas = held
+    return host.querySelector<HTMLElement>('.idea-detail-panel')!
+  }
+  const SPARKED: ResearchIdea = {
+    ...OWN, id: 'idea-sparked', title: '在推测解码里冒出来的想法', sourceProject: 'project-active',
+    relations: { projects: ['project-completed'], pages: ['topics/sd'] },
+  }
+
+  it('关联一节按行列出想法关联的项目和 Wiki 页；来源写它冒出来的那个项目，和关联、所在项目分开', async () => {
+    const detail = await openWith(SPARKED)
+    const row = (kind: string) => [...detail.querySelectorAll(`[data-relations="${kind}"] .tagchip`)].map((chip) => chip.textContent)
+    expect([row('projects'), row('pages')]).toEqual([['已完成实验'], ['推测解码']])
+    expect(detail.querySelector('.idea-panel-source')!.textContent).toBe('推测解码')
+    expect(detail.querySelector('.idea-link-picker')!.textContent).toBe('未放进项目')
+    await act(async () => { detail.querySelector<HTMLElement>('[data-relations="pages"] .tagchip-open')!.click() })
+    expect(api.open).toHaveBeenCalledWith('wiki', 'topics/sd')
+  })
+
+  it('添加关联在项目那一行就地打开草稿，来源项目作为候选排在最前；选中就写下整组关联，移除也一样', async () => {
+    const detail = await openWith(SPARKED)
+    const add = [...detail.querySelectorAll<HTMLButtonElement>('.section-heading-actions .btn')].find((button) => button.textContent === '关联')!
+    await act(async () => { add.click() })
+    expect(document.querySelector('.modal-body')).toBeNull()
+    const draftRow = detail.querySelector('[data-relations="projects"]')!
+    expect(draftRow.querySelector('.reladd input')).not.toBeNull()
+    await act(async () => { await new Promise((settle) => setTimeout(settle, 0)) })
+    const hits = [...document.querySelectorAll<HTMLElement>('.pickhits .mi')]
+    expect(hits.map((hit) => hit.textContent)).toEqual(['推测解码来源'])
+    await act(async () => { hits[0]!.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true })) })
+    expect(api.update).toHaveBeenCalledWith('idea-sparked', {
+      relations: { projects: ['project-completed', 'project-active'], pages: ['topics/sd'] },
+    })
+    api.update.mockClear()
+    await act(async () => { detail.querySelector<HTMLElement>('[data-relations="pages"] .rx')!.click() })
+    expect(api.update).toHaveBeenCalledWith('idea-sparked', { relations: { projects: ['project-completed'], pages: [] } })
+  })
+
+  it('agent 挂的候选节点在科研节点一节，确认放进来源项目的那个节点，忽略只去掉候选；没有候选时没有这一节', async () => {
+    api.details['project-active'] = {
+      id: 'project-active', graph: { nodes: [{ id: 'node-1', label: '动态树宽', state: 'act', x: 0, y: 0, width: 100, writebacks: [] }], edges: [] },
+    }
+    const detail = await openWith({
+      ...OWN, id: 'idea-agent', title: 'agent 记下的想法', sourceProject: 'project-active', candidateNode: 'node-1',
+      source: { chatTitle: '树宽讨论', agent: true },
+    })
+    const heading = [...detail.querySelectorAll<HTMLElement>('.section-heading')].find((item) => item.firstChild!.textContent === '科研节点')!
+    expect([...heading.querySelectorAll('.section-heading-actions .btn')].map((button) => button.textContent)).toEqual(['忽略', '确认'])
+    expect(heading.nextElementSibling!.textContent).toBe('动态树宽agent')
+    expect(detail.querySelector('.idea-panel-source')!.textContent).toBe('推测解码 · 树宽讨论')
+    const action = (label: string) => [...heading.querySelectorAll<HTMLButtonElement>('.btn')].find((button) => button.textContent === label)!
+    await act(async () => { action('确认').click() })
+    expect(api.place).toHaveBeenLastCalledWith('idea-agent', { kind: 'confirm' })
+    await act(async () => { action('忽略').click() })
+    expect(api.place).toHaveBeenLastCalledWith('idea-agent', { kind: 'dismiss' })
+
+    await act(async () => { host.querySelector<HTMLElement>('[data-idea="idea-linked"]')!.click() })
+    expect([...host.querySelectorAll('.idea-detail-panel .section-heading')].map((item) => item.firstChild!.textContent)).not.toContain('科研节点')
+  })
+
+  it('论文对话的标题就是论文名时，来源只写一次', async () => {
+    const detail = await openWith({
+      ...OWN, id: 'idea-paper', source: { chatId: 'chat-9', chatTitle: 'EAGLE', paperId: 'paper-9', paperTitle: 'EAGLE' },
+    })
+    expect(detail.querySelector('.idea-panel-source')!.textContent).toBe('EAGLE')
   })
 })

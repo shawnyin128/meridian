@@ -1,8 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { KeyboardEvent, ReactNode } from 'react'
-import type { ProjectSummary, ResearchIdea } from '../../shared/contract.js'
+import type { ComponentProps } from 'react'
+import type {
+  IdeaRelations as IdeaRelationsValue, ProjectDetail, ProjectSummary, ResearchIdea,
+} from '../../shared/contract.js'
 import { FINISHED_PROJECT } from '../../shared/vocabulary.js'
-import { idea as ideaApi, project as projectApi } from '../ipc.js'
+import { idea as ideaApi, project as projectApi, wiki as wikiApi } from '../ipc.js'
 import { MenuItem, MenuSeparator } from '../components/ActionMenu.js'
 import { SortMenu } from '../components/SortMenu.js'
 import { FormInput, FormTextarea } from '../components/FormControls.js'
@@ -13,6 +16,9 @@ import { EmptyState } from '../components/EmptyState.js'
 import { AddAction } from '../components/AddAction.js'
 import { IdeaDraft, type IdeaDraftText } from '../components/ideas/IdeaDraft.js'
 import { IdeaPanel, IdeaSource, ideaSourceLabel, ownIdea } from '../components/ideas/IdeaPanel.js'
+import { IdeaNodeCandidate } from '../components/ideas/IdeaNodeCandidate.js'
+import { IdeaRelations } from '../components/ideas/IdeaRelations.js'
+import { nodeMode } from '../components/project/ResearchGraph.js'
 import { LoadingPlaceholder } from '../components/LoadingPlaceholder.js'
 import { DetailPanel } from '../components/DetailPanel.js'
 import { CardOpen, ResearchObjectCard } from '../components/ResearchObjectCard.js'
@@ -23,6 +29,7 @@ import {
 import { errorLabel } from '../lib/failure-label.js'
 import { useEscapeLayer, useJump, useScreenReentry, useVaultRevision } from '../shell/AppShell.js'
 import { BackButton } from '../components/BackButton.js'
+import { TitleNote } from '../components/TitleNote.js'
 import { useJumpOrigin } from '../hooks/useJumpOrigin.js'
 import { useUndo } from '../hooks/useUndo.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
@@ -124,15 +131,23 @@ function IdeaCard({ idea, linked, selected, menu, onOpen, reorder, dropClassName
   )
 }
 
-function IdeaDetailPanel({ idea, linked, projects, onClose, onSave, onProject, onPromote, onOpen }: {
+function IdeaDetailPanel({
+  idea, linked, projects, pageTitles, candidate, onClose, onSave, onRelations, onProject, onPromote, onPlace, onOpen, onError,
+}: {
   idea: ResearchIdea
   linked: ProjectSummary | undefined
   projects: ProjectSummary[]
+  pageTitles: ReadonlyMap<string, string>
+  /** The idea's candidate node as its source project's graph names it, while one is shown. */
+  candidate: ComponentProps<typeof IdeaNodeCandidate>['node'] | undefined
   onClose: () => void
   onSave: (title: string, body: string) => Promise<boolean>
+  onRelations: (relations: IdeaRelationsValue, removed?: string) => Promise<boolean>
   onProject: (projectId: string | null) => void
   onPromote: () => void
-  onOpen: (screen: 'project' | 'chat' | 'reader', id: string) => void
+  onPlace: (kind: 'confirm' | 'dismiss') => void
+  onOpen: (screen: 'project' | 'chat' | 'reader' | 'wiki', id: string) => void
+  onError: (error: Error) => void
 }) {
   const m = useMessages()
   const panelFade = useScrollFade('y')
@@ -179,6 +194,7 @@ function IdeaDetailPanel({ idea, linked, projects, onClose, onSave, onProject, o
     <aside className="idea-detail-panel node-document-pane" ref={panelFade} data-fade-paint="" aria-label={m.ideas.detailHeading}>
       <IdeaPanel
         idea={idea} onClose={onClose} onOpenSourceChat={(chatId) => onOpen('chat', chatId)}
+        sourceProject={idea.sourceProject === undefined ? undefined : projects.find((project) => project.id === idea.sourceProject)?.name}
         onOpenSourcePaper={(paperId) => onOpen('reader', paperId)}
         actions={(
           <EditActions
@@ -207,6 +223,10 @@ function IdeaDetailPanel({ idea, linked, projects, onClose, onSave, onProject, o
           )
           : undefined}
       >
+        <IdeaRelations
+          idea={idea} projects={projects} pages={pageTitles} onChange={onRelations} onError={onError}
+          onOpenProject={(projectId) => onOpen('project', projectId)} onOpenPage={(page) => onOpen('wiki', page)}
+        />
         <SectionHeading
           variant="rail"
           actions={idea.project === undefined
@@ -214,10 +234,10 @@ function IdeaDetailPanel({ idea, linked, projects, onClose, onSave, onProject, o
             : linked === undefined
               ? undefined
               : <button className="btn sm" onClick={() => onOpen('project', linked.id)}>{m.ideas.promote.openProject}</button>}
-        >{m.ideas.link.heading}
+        >{m.ideas.work.heading}
         </SectionHeading>
         <ChoicePicker
-          appearance="field" className="idea-link-picker" aria-label={m.ideas.link.selectAriaLabel(idea.title)}
+          appearance="field" className="idea-link-picker" aria-label={m.ideas.work.selectAriaLabel(idea.title)}
           value={idea.project ?? ''}
           options={[
             '',
@@ -225,7 +245,7 @@ function IdeaDetailPanel({ idea, linked, projects, onClose, onSave, onProject, o
             ...projects.map((project) => project.id),
           ]}
           label={(id) => {
-            if (id === '') return m.ideas.link.none
+            if (id === '') return m.ideas.work.none
             const project = projects.find((candidate) => candidate.id === id)
             return project === undefined ? m.ideas.link.originalUnavailable : `${project.name} · ${project.status}`
           }}
@@ -234,6 +254,9 @@ function IdeaDetailPanel({ idea, linked, projects, onClose, onSave, onProject, o
         {idea.project !== undefined && linked === undefined
           ? <div className="idea-missing-project">{m.ideas.link.originalUnavailable}</div>
           : null}
+        {candidate === undefined
+          ? null
+          : <IdeaNodeCandidate node={candidate} onConfirm={() => onPlace('confirm')} onDismiss={() => onPlace('dismiss')} />}
       </IdeaPanel>
     </aside>
   )
@@ -252,6 +275,8 @@ export function Ideas() {
   const draftTriggers = useMemo(() => [newIdea], [])
   const [rows, setRows] = useState<ResearchIdea[] | null>(null)
   const [projects, setProjects] = useState<ProjectSummary[]>([])
+  const [pageTitles, setPageTitles] = useState<ReadonlyMap<string, string>>(new Map())
+  const [candidateSource, setCandidateSource] = useState<ProjectDetail | null>(null)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [archiveOpen, setArchiveOpen] = useState(false)
   const [draft, setDraft] = useState<IdeaDraftText | null>(null)
@@ -259,9 +284,10 @@ export function Ideas() {
   const closeDetail = useCallback(() => setSelectedId(null), [])
 
   const load = useCallback(() => {
-    void Promise.all([ideaApi.list(), projectApi.list()]).then(([ideas, projectRows]) => {
+    void Promise.all([ideaApi.list(), projectApi.list(), wikiApi.cards()]).then(([ideas, projectRows, cards]) => {
       setRows(ideas)
       setProjects(projectRows)
+      setPageTitles(new Map(cards.map((card) => [card.id, card.title])))
       setSelectedId((held) => held !== null && ideas.some((idea) => idea.id === held) ? held : null)
       setError(null)
     }).catch((cause: unknown) => setError(errorLabel(m, cause)))
@@ -284,6 +310,16 @@ export function Ideas() {
   )
   const listed = useMemo(() => rows ?? [], [rows])
   const selected = selectedId === null ? undefined : listed.find((idea) => idea.id === selectedId)
+  // A candidate node is named in its source project's graph, read for the selected idea only.
+  const candidateProject = selected?.candidateNode === undefined ? undefined : selected.sourceProject
+  useEffect(() => {
+    setCandidateSource(null)
+    if (candidateProject === undefined) return
+    void projectApi.get(candidateProject).then(setCandidateSource).catch((cause: unknown) => setError(errorLabel(m, cause)))
+  }, [candidateProject, revision, m])
+  const candidateNode = selected?.candidateNode === undefined || candidateSource === null || candidateSource.id !== candidateProject
+    ? undefined
+    : (candidateSource.workspace?.graph ?? candidateSource.graph).nodes.find((node) => node.id === selected.candidateNode)
   const active = listed.filter((idea) => !idea.archived)
   const archived = listed.filter((idea) => idea.archived)
 
@@ -391,13 +427,22 @@ export function Ideas() {
                 idea={selected}
                 linked={selected.project === undefined ? undefined : projectsById.get(selected.project)}
                 projects={projects}
+                pageTitles={pageTitles}
+                candidate={candidateNode === undefined ? undefined : { id: candidateNode.id, label: candidateNode.label, mode: nodeMode(candidateNode) }}
                 onClose={closeDetail}
+                onRelations={(relations, removed) => write(ideaApi.update(selected.id, { relations }), {
+                  note: removed === undefined ? m.project.links.added : <TitleNote message={m.project.links.removed} title={removed} />,
+                })}
+                onPlace={(kind) => void write(ideaApi.placeOnGraph(selected.id, { kind }), {
+                  note: kind === 'confirm' ? m.ideas.candidate.confirmed : m.ideas.candidate.dismissed,
+                })}
+                onError={(cause) => setError(errorLabel(m, cause))}
                 onSave={(title, body) => write(
                   ideaApi.update(selected.id, { title, body }), { note: m.ideas.updatedNote },
                 )}
                 onProject={(projectId) => void write(
                   ideaApi.update(selected.id, { project: projectId }),
-                  { note: projectId === null ? m.ideas.link.cleared : m.ideas.link.linked },
+                  { note: projectId === null ? m.ideas.work.cleared : m.ideas.work.placed },
                 )}
                 onPromote={() => void write(
                   ideaApi.promote(selected.id), { note: m.ideas.promote.createdNote },
