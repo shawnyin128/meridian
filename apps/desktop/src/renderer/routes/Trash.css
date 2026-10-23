@@ -5,5 +5,5 @@
 
 .tgroup{margin:var(--sp-6) 0 0}
 .trow{display:flex;align-items:center;gap:var(--sp-10);padding:var(--sp-8) var(--sp-2);font-size:var(--fs-base)}
-.trow .tt2{flex:1;min-width:0;white-space:nowrap;overflow:hidden;mask-image:var(--clipfade)}
+.trow .tt2{flex:1}
 .trow .tm2{font-size:var(--fs-sm);color:var(--ter);font-variant-numeric:tabular-nums;flex-shrink:0;margin-right:var(--sp-4)}

@@ -33,9 +33,10 @@
 
 .attrow{display:flex;align-items:center;gap:var(--sp-8);font-size:var(--fs-sm);padding:var(--sp-6) var(--sp-2)}
 .attrow>svg{width:13px;height:13px;color:var(--ter);flex-shrink:0}
-.attrow .an{flex:1;min-width:0;padding:0;border:0;background:none;color:inherit;font:inherit;text-align:left;overflow:hidden;white-space:nowrap;mask-image:var(--clipfade);cursor:pointer}
+.attrow .an{display:flex;flex:1;min-width:0;padding:0;border:0;background:none;color:inherit;font:inherit;text-align:left;cursor:pointer}
 .attrow .an:disabled{cursor:default}
-/* The name's fade mask hides its own focus ring, so the row draws it. */
+/* The row draws its name's focus ring, around the whole row. */
+.attrow .an:focus-visible{outline:0}
 .attrow:has(.an:focus-visible){outline:var(--ring-width) solid var(--ring);outline-offset:var(--ring-offset)}
 .attrow .as{font-size:var(--fs-sm);color:var(--ter);flex-shrink:0}
 .attrow .row-actions{margin:calc(-1 * var(--sp-4)) 0}
