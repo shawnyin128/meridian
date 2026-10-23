@@ -2043,5 +2043,6 @@ export function createFixtureStore(
     load: () => changelog,
     save: (rows) => { changelog = rows },
     nextId: () => nextId('change'),
+    atomically: (write) => write(),
   })
 }

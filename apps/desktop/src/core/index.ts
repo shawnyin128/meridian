@@ -129,7 +129,7 @@ import {
   createHarnessModelConfig, createHarnessProposalAudit,
   createMainCredentialVault, createPaperWikiHarnessRunner,
 } from './harness/index.js'
-import { placeResearchIdeaOnGraph } from './research-ideas/index.js'
+import { placeResearchIdeaOnGraph, promoteResearchIdea } from './research-ideas/index.js'
 import { createWikiProposals, pdfPageText } from './wiki-proposals.js'
 
 type Handler = (params: unknown) => unknown
@@ -807,17 +807,7 @@ registerHandler('idea.update', (params) => {
 })
 registerHandler('idea.promote', (params) => {
   const { id } = ResearchIdeaPromoteParamsSchema.parse(params)
-  const held = store.listIdeas().find((idea) => idea.id === id)
-  if (held === undefined) throw new CallError('not-found', `想法不存在：${id}`)
-  if (held.project !== undefined) throw new CallError('refused', '这个想法已经关联项目')
-  const before = new Set(store.listProjects().map((project) => project.id))
-  store.createProject(held.title)
-  const made = store.listProjects().find((project) => !before.has(project.id))
-  if (made === undefined) throw new Error('由想法创建项目后没有找到新项目')
-  const project = store.updateProject(made.id, {
-    memo: `## 起点想法\n\n${held.body}\n\n来源对话：${held.source.chatTitle}`,
-  })
-  return { idea: store.updateIdea(id, { project: project.id }), project }
+  return promoteResearchIdea(store, id)
 })
 registerHandler('idea.placeOnGraph', (params) => {
   const { id, placement } = ResearchIdeaPlaceOnGraphParamsSchema.parse(params)

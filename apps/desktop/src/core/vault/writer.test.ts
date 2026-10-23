@@ -1,13 +1,15 @@
 import { spawn } from 'node:child_process'
 import { once } from 'node:events'
 import {
-  existsSync, fsyncSync, linkSync, mkdtempSync, readdirSync, readFileSync, renameSync, rmSync,
+  existsSync, fsyncSync, linkSync, mkdtempSync, readdirSync, readFileSync, renameSync, rmSync, statSync,
   writeFileSync,
 } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { movePage, removePage, spliceLines, writeImmutable, writeJson, writePage } from './writer.js'
+import {
+  isWriteFailure, movePage, removePage, spliceLines, writeAtomically, writeImmutable, writeJson, writePage,
+} from './writer.js'
 
 // Flush and rename leave no directly inspectable trace, so verify whether they run and in which order.
 vi.mock('node:fs', async (importOriginal) => {
@@ -221,5 +223,53 @@ describe('vault writer', () => {
     writePage(file, PAGE, staging)
     removePage(file)
     expect(() => readFileSync(file, 'utf8')).toThrow()
+  })
+  /** Every file under `dir` with its bytes, by its path under `dir`. */
+  const filesOf = (): Record<string, string> => Object.fromEntries(
+    readdirSync(dir, { recursive: true, encoding: 'utf8' }).filter((name) => statSync(join(dir, name)).isFile())
+      .map((name) => [name, readFileSync(join(dir, name)).toString('base64')]),
+  )
+
+  it('一次写里有一步没写成，已经落地的几步都放回原样：换过的页、新写的页、挪走的页、删掉的页、新存的原文', () => {
+    const page = join(dir, 'page.md')
+    writeFileSync(page, PAGE, 'utf8')
+    writeFileSync(join(dir, 'moved.md'), 'moved', 'utf8')
+    writeFileSync(join(dir, 'removed.md'), 'removed', 'utf8')
+    const before = filesOf()
+    expect(() => writeAtomically(staging, () => {
+      spliceLines(page, 3, 4, ['status: "搁置"'], staging)
+      writeJson(join(dir, 'created.json'), { seq: 1 }, staging)
+      movePage(join(dir, 'moved.md'), join(dir, 'trash', 'moved.md'))
+      removePage(join(dir, 'removed.md'))
+      writeImmutable(join(dir, 'sources', 'paper.pdf'), Uint8Array.from([1, 2, 3]), staging)
+      spliceLines(page, 4, 5, ['tasks: ["一项"]'], staging)
+      throw new Error('最后一步没写成')
+    })).toThrow('最后一步没写成')
+    expect(filesOf()).toEqual(before)
+  })
+
+  it('有一步放不回原样时，其余几步照样放回，放不回的连同原来的写失败一起抛出', () => {
+    writeFileSync(join(dir, 'first.md'), 'first', 'utf8')
+    writeFileSync(join(dir, 'second.md'), 'second', 'utf8')
+    const full = Object.assign(new Error('ENOSPC: no space left on device, write'), { code: 'ENOSPC', syscall: 'write' })
+    const refused = Object.assign(new Error('EACCES: permission denied, rename'), { code: 'EACCES', syscall: 'rename' })
+    let thrown: unknown
+    try {
+      writeAtomically(staging, () => {
+        writePage(join(dir, 'first.md'), 'first 2', staging)
+        writePage(join(dir, 'second.md'), 'second 2', staging)
+        // The newest write is put back first, so the next rename is the one putting back second.md.
+        vi.mocked(renameSync).mockImplementationOnce(() => { throw refused })
+        throw full
+      })
+    } catch (error) {
+      thrown = error
+    }
+    expect(thrown).toBeInstanceOf(AggregateError)
+    expect((thrown as AggregateError).errors).toEqual([refused])
+    expect((thrown as AggregateError).cause).toBe(full)
+    expect(isWriteFailure(thrown)).toBe(true)
+    expect(readFileSync(join(dir, 'first.md'), 'utf8')).toBe('first')
+    expect(readFileSync(join(dir, 'second.md'), 'utf8')).toBe('second 2')
   })
 })

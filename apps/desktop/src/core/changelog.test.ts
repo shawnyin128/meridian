@@ -567,7 +567,9 @@ describe('change log', () => {
       id: 'change-1', title: '撤销:项目「draft 效率」· 写回 「分支浪费」', meta: null, source: '我', diff: [],
       target: { kind: 'project', id: PROJECT }, after: '', at: Date.UTC(2026, 7, 20), undone: false, archived: false, restore: null,
     }
-    const logged = withChangelog(createFixtureStore(today), { load: () => [older], save: () => {}, nextId: () => 'change-2' })
+    const logged = withChangelog(createFixtureStore(today), {
+      load: () => [older], save: () => {}, nextId: () => 'change-2', atomically: (write) => write(),
+    })
     expect(namedOf(logged.listChanges()[0]!)).toEqual([older.title, 'project', PROJECT, 'draft 效率'])
   })
 
@@ -838,7 +840,10 @@ describe('change log', () => {
         if (corrupt && id === PROJECT) throw new Error(corruption)
         return fixture.getProject(id)
       },
-    }, { load: () => rows, save: (next) => { rows = next }, nextId: () => `change-${rows.length + 1}` })
+    }, {
+      load: () => rows, save: (next) => { rows = next }, nextId: () => `change-${rows.length + 1}`,
+      atomically: (write) => write(),
+    })
     logged.updateProject(PROJECT, { focus: '改过的焦点' })
     const change = logged.listChanges()[0]!
 
@@ -949,7 +954,9 @@ describe('change lines', () => {
       id: 'change-1', title: 'Wiki · 早先的一条', meta: null, source: '笔记', diff: [...stored], target: null, after: '',
       at: Date.UTC(2026, 7, 20), undone: false, archived: false, restore: null,
     }]
-    const logged = withChangelog(store, { load: () => rows, save: () => {}, nextId: () => 'change-2' })
+    const logged = withChangelog(store, {
+      load: () => rows, save: () => {}, nextId: () => 'change-2', atomically: (write) => write(),
+    })
     expect(logged.listChanges()[0]).toMatchObject({
       diff: stored,
       lines: [['+ ', { paper: GPTQ }, ' ∈ PTQ(1 格)'], ['~ PTQ 冲突 topics/nope#x'], ['~ topics/gone']],
@@ -1011,7 +1018,9 @@ describe('change lines', () => {
       id: 'change-1', title, meta: null, source: '我', diff: [...stored], target: null, after: '',
       at: Date.UTC(2026, 7, 20), undone: false, archived: false, restore: null,
     }]
-    const logged = withChangelog(store, { load: () => rows, save: () => {}, nextId: () => 'change-2' })
+    const logged = withChangelog(store, {
+      load: () => rows, save: () => {}, nextId: () => 'change-2', atomically: (write) => write(),
+    })
     expect(logged.listChanges()[0]).toMatchObject({ title, diff: stored, lines: stored.map((line) => [line]) })
   })
 

@@ -861,6 +861,14 @@ export interface VaultStore {
   undoChange(id: string): void
 
   /**
+   * Runs `write`, which makes several of this store's writes, so that they land as a whole or not at
+   * all: when it throws, every file they wrote, everything this store holds in memory and every change
+   * entry they recorded go back to how they stood, and the error is rethrown. Returns what `write`
+   * returns.
+   */
+  atomically<T>(write: () => T): T
+
+  /**
    * Archives the change entry with the given id: the entry stays and reads the
    * same, and only stops counting as one you have yet to look at. Archiving is
    * not itself recorded as a change, and an entry already archived is left as
@@ -987,9 +995,10 @@ export interface VaultStore {
 }
 
 /**
- * Everything a store implements on its own. The changelog reads, the undo and
- * setPaperTopic are not among them: withChangelog adds those over any of
- * these, so that one implementation records the writes of every store. Here,
+ * Everything a store implements on its own. The changelog reads, the undo,
+ * setPaperTopic and atomically are not among them: withChangelog adds those
+ * over any of these, so that one implementation records the writes of every
+ * store. Here,
  * restoreTrash only has to put the trash entry back; emptying the cells a
  * paper's columns no longer take, and recording that as a change, is
  * withChangelog's doing, not the bare store's.
@@ -1004,4 +1013,5 @@ export type VaultOps = Omit<
   | 'clearArchivedChanges'
   | 'absorbAgentTasks'
   | 'setPaperTopic'
+  | 'atomically'
 >

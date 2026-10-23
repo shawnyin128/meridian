@@ -1,5 +1,5 @@
 import {
-  closeSync, fsyncSync, linkSync, mkdirSync, openSync, readFileSync, renameSync, rmSync,
+  closeSync, existsSync, fsyncSync, linkSync, mkdirSync, openSync, readFileSync, renameSync, rmSync,
   writeFileSync,
 } from 'node:fs'
 import { basename, dirname, join } from 'node:path'
@@ -48,6 +48,73 @@ function renameOver(staged: string, file: string): void {
   }
 }
 
+/** Puts back one write that landed. */
+type Undo = () => void
+
+/** The running writeAtomically call: where it stages put-back writes, and the undo of each write it landed, oldest first. */
+let running: { staging: string; landed: Undo[] } | undefined
+
+/**
+ * Runs `write`, which may write several files through this writer, so that
+ * it lands as a whole or leaves every file as it stood: when it throws, each
+ * write it landed is put back, newest first (a replaced file gets its bytes
+ * back, a new file or source is removed, a moved page moves back, a removed
+ * page returns), and the error is rethrown. The put-back writes are staged
+ * under `staging`; when one of them fails the rest are still put back, and an
+ * AggregateError of the failures, caused by the original error, is thrown
+ * instead. Directories created on the way are left. A call made while another
+ * runs joins it.
+ */
+export function writeAtomically<T>(staging: string, write: () => T): T {
+  if (running !== undefined) return write()
+  const landed: Undo[] = []
+  running = { staging, landed }
+  try {
+    return write()
+  } catch (error) {
+    const failed: unknown[] = []
+    for (const undo of landed.reverse()) {
+      try {
+        undo()
+      } catch (undoError) {
+        failed.push(undoError)
+      }
+    }
+    if (failed.length > 0) throw new AggregateError(failed, `写到一半没写成，有 ${failed.length} 处没能放回原样`, { cause: error })
+    throw error
+  } finally {
+    running = undefined
+  }
+}
+
+/**
+ * Inside writeAtomically, how to put the file at `file` back as it stands
+ * now, its bytes or its absence; outside one, undefined.
+ */
+function undoOf(file: string): Undo | undefined {
+  if (running === undefined) return undefined
+  const { staging } = running
+  if (!existsSync(file)) return () => rmSync(file)
+  const bytes = readFileSync(file)
+  return () => install(file, bytes, staging)
+}
+
+/** Writes `data` under `staging`, flushes it and renames it over the file at `file`, building the directories above it. */
+function install(file: string, data: string | Uint8Array, staging: string): void {
+  ensureDir(file)
+  mkdirSync(staging, { recursive: true })
+  const staged = join(staging, `${basename(file)}.tmp`)
+  const handle = openSync(staged, 'w')
+  try {
+    writeFileSync(handle, data)
+    // Rename is atomic, but pre-rename bytes may remain only in page cache; power loss could otherwise install an empty or partial file.
+    fsyncSync(handle)
+  } finally {
+    closeSync(handle)
+  }
+  renameOver(staged, file)
+}
+
 /**
  * Replaces the whole of the file at `file` with `text`, building the
  * directories above it: written under `staging`, flushed, and renamed over the
@@ -55,18 +122,9 @@ function renameOver(staged: string, file: string): void {
  * stood. Throws if another program holds the page open through every retry.
  */
 export function replacePage(file: string, text: string, staging: string): void {
-  ensureDir(file)
-  mkdirSync(staging, { recursive: true })
-  const staged = join(staging, `${basename(file)}.tmp`)
-  const handle = openSync(staged, 'w')
-  try {
-    writeFileSync(handle, text, 'utf8')
-    // Rename is atomic, but pre-rename bytes may remain only in page cache; power loss could otherwise install an empty or partial file.
-    fsyncSync(handle)
-  } finally {
-    closeSync(handle)
-  }
-  renameOver(staged, file)
+  const undo = undoOf(file)
+  install(file, text, staging)
+  if (undo !== undefined) running?.landed.push(undo)
 }
 
 /**
@@ -130,15 +188,19 @@ export function writeImmutable(file: string, bytes: Uint8Array, staging: string)
   } finally {
     rmSync(staged, { force: true })
   }
+  running?.landed.push(() => rmSync(file))
 }
 
 /** Moves a page, building the directories above its destination. */
 export function movePage(file: string, to: string): void {
   ensureDir(to)
   renameSync(file, to)
+  running?.landed.push(() => renameSync(to, file))
 }
 
 /** Removes a page. Throws if the page is not there. */
 export function removePage(file: string): void {
+  const undo = undoOf(file)
   rmSync(file)
+  if (undo !== undefined) running?.landed.push(undo)
 }
