@@ -124,7 +124,7 @@ export type ProjectDecisionItem = {
   id: string
   rank: number
   kind: string
-  tone: 'bad' | 'warn' | 'mut'
+  tone: 'bad' | 'warn'
   reason: string
   action: string
   date?: string
@@ -213,7 +213,7 @@ export function projectDecisionItems(
   const idle = idleDays(project.lastProgress, todayIso)
   if (idle !== null && idle > STALE_DAYS) {
     items.push({
-      id: 'stale', rank: 6, kind: m.kind.stale, tone: 'mut',
+      id: 'stale', rank: 6, kind: m.kind.stale, tone: 'warn',
       reason: m.reason.idleDays(idle), action: m.action.chooseDirection,
     })
   }
@@ -239,7 +239,7 @@ export function projectPulseSignal(
   if (first?.id === 'path-broken') return { tone: 'risk', label: m.pulse.pathBroken, detail: first.reason }
   if (first?.id === 'path-missing') return { tone: 'warn', label: m.pulse.pathMissing, detail: first.reason }
   if (first) return {
-    tone: first.tone === 'bad' ? 'risk' : first.tone === 'warn' ? 'warn' : 'quiet',
+    tone: first.tone === 'bad' ? 'risk' : 'warn',
     label: first.kind,
     detail: first.reason,
   }

@@ -70,7 +70,7 @@ describe('attnItems', () => {
         date: '2026-08-28', reason: '宽树实验补 B≥8', action: '确认交付准备',
       },
       {
-        id: 'stale', rank: 6, kind: '推进停滞', tone: 'mut',
+        id: 'stale', rank: 6, kind: '推进停滞', tone: 'warn',
         reason: '已 8 天无推进', action: '确认继续、搁置或调整方向',
       },
     ])
@@ -91,7 +91,7 @@ describe('attnItems', () => {
         date: '2026-08-28', reason: '宽树实验补 B≥8', action: '确认交付准备',
       },
       {
-        id: 'stale', rank: 6, kind: '推进停滞', tone: 'mut',
+        id: 'stale', rank: 6, kind: '推进停滞', tone: 'warn',
         reason: '已 8 天无推进', action: '确认继续、搁置或调整方向',
       },
     ])
@@ -194,7 +194,7 @@ describe('attnItems', () => {
   it('停滞超过 7 天才报,正好 7 天不报', () => {
     expect(attnItems(project({ lastProgress: '2026-08-17' }), TODAY, sm)).toEqual([
       {
-        id: 'stale', rank: 6, kind: '推进停滞', tone: 'mut',
+        id: 'stale', rank: 6, kind: '推进停滞', tone: 'warn',
         reason: '已 8 天无推进', action: '确认继续、搁置或调整方向',
       },
     ])
