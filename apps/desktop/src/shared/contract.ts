@@ -1354,7 +1354,8 @@ export const WatchDeleteParamsSchema = z.object({ id: z.string() }).strict()
  * `kind` preserves the former type and `title` its display name. `deletedAt` is
  * UTC midnight for the vault date and starts retention. `restorable` is false
  * when the original destination is missing, such as an attachment whose project
- * remains deleted.
+ * remains deleted, or taken, such as a paper whose page's place another page
+ * holds.
  */
 export const TrashEntrySchema = z.object({
   id: z.string(),

@@ -241,9 +241,12 @@ describe('fixture store', () => {
     const again = store.importPaper('A Useful Paper.pdf', bytes).paper
     expect(again.id).toBe(deleted.id)
     store.updatePaper(again.id, { title: '重新导入的那篇' })
+    expect(store.listTrash().find((item) => item.id === entry.id)!.restorable).toBe(false)
     expect(() => store.restoreTrash(entry.id)).toThrow(/占/)
     expect(store.getPaper(again.id).title).toBe('重新导入的那篇')
     expect(store.listTrash().map((item) => item.id)).toContain(entry.id)
+    store.deletePaper(again.id)
+    expect(store.listTrash().find((item) => item.id === entry.id)!.restorable).toBe(true)
   })
 
   it('原项目也被删掉时那条附件恢复不了,项目恢复回来它跟着能恢复', () => {

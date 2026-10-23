@@ -2333,13 +2333,14 @@ export function createVaultStore(
 
     listTrash() {
       dropExpired()
-      // Only attachments require another live owner for restoration; they cannot return after their original project is deleted.
+      // An attachment cannot return after its project is deleted, nor a paper while another page stands where its page goes back.
       return trash.map((item) => ({
         id: item.id,
         kind: item.kind,
         title: item.title,
         deletedAt: item.deletedAt,
-        restorable: item.kind !== 'attachment' || projectById.has(item.projectId),
+        restorable: item.kind === 'attachment' ? projectById.has(item.projectId)
+          : item.kind !== 'paper' || !existsSync(join(root, item.page)),
       }))
     },
 

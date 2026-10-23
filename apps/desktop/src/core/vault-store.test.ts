@@ -471,12 +471,17 @@ describe('vault store', () => {
     store.updatePaper(again.id, { title: '重新导入的那篇' })
     const page = join(vault, 'wiki', 'papers', `${again.id}.md`)
     const held = readFileSync(page, 'utf8')
+    expect(store.listTrash().find((item) => item.id === entry.id)!.restorable).toBe(false)
     expect(() => store.restoreTrash(entry.id)).toThrow(/占/)
     expect(readFileSync(page, 'utf8')).toBe(held)
     expect(store.getPaper(again.id).title).toBe('重新导入的那篇')
     expect(store.listTrash().map((item) => item.id)).toContain(entry.id)
     expect(existsSync(join(vault, '.meridian', 'trash', `${entry.id}.md`))).toBe(true)
     expect(createVaultStore(vault).getPaper(again.id).title).toBe('重新导入的那篇')
+    store.deletePaper(again.id)
+    expect(store.listTrash().find((item) => item.id === entry.id)!.restorable).toBe(true)
+    store.restoreTrash(entry.id)
+    expect(store.getPaper(deleted.id).title).toBe('A Useful Paper')
   })
 
   it('删掉的项目原来的页位置被别的程序写了一页时，从垃圾桶恢复被拒，那一页一个字节不动，垃圾桶里那一条还在', () => {

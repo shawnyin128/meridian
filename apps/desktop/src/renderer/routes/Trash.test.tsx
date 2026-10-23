@@ -117,6 +117,22 @@ describe('Trash', () => {
       .toEqual([[false, null], [false, null], [true, '项目已删除'], [false, null]])
   })
 
+  it('论文原来的位置被同名论文占了时恢复按不了，行上写着库中已有同名论文', async () => {
+    const held = api.entries
+    api.entries = [{
+      id: 'trash-5', kind: 'paper', title: 'Draft trees', deletedAt: Date.parse('2026-08-25T00:00:00Z'), restorable: false,
+    }]
+    try {
+      act(() => root!.unmount())
+      root = createRoot(host)
+      await act(async () => { root!.render(<MessagesProvider><Trash /></MessagesProvider>) })
+      const row = host.querySelector('.trow')!
+      expect([button(row, '恢复').disabled, row.querySelector(':scope > .tag')?.textContent]).toEqual([true, '库中已有同名论文'])
+    } finally {
+      api.entries = held
+    }
+  })
+
   it('每一类条目是页面上的嵌入列表，不套卡片外框', () => {
     expect([...host.querySelectorAll('.tgroup')].map((list) => list.className))
       .toEqual(['structured-list structured-list--embedded tgroup', 'structured-list structured-list--embedded tgroup'])

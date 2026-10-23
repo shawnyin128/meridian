@@ -7,6 +7,7 @@ export const trash = {
   },
   autoClear: (days: number) => `${days} 天后自动清除`,
   projectGone: '项目已删除',
+  paperTaken: '库中已有同名论文',
   restored: (title: string) => `已恢复「${title}」`,
   purged: '已彻底删除',
   clear: '清空垃圾桶',

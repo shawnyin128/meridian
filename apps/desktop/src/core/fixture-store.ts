@@ -1794,13 +1794,14 @@ export function createFixtureStore(
 
     listTrash() {
       dropExpired()
-      // Only attachments restore into another entity and become unrestorable when their original project is gone.
+      // An attachment cannot return after its project is deleted, nor a paper while another paper holds its id.
       return trash.map((item) => ({
         id: item.id,
         kind: item.kind,
         title: item.title,
         deletedAt: item.deletedAt,
-        restorable: item.kind !== 'attachment' || projectById.has(item.projectId),
+        restorable: item.kind === 'attachment' ? projectById.has(item.projectId)
+          : item.kind !== 'paper' || !byId.has(item.paper.id),
       }))
     },
 
