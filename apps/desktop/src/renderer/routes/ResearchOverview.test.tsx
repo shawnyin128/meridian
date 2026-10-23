@@ -121,12 +121,20 @@ describe('研究总览的项目推进', () => {
     expect(rowElement.textContent).toContain(next)
   })
 
-  it('最近科研记录的正文放不下时和项目页的科研记录一样就地展开整段,不弹 tooltip', async () => {
-    api.rows = [row([{ date: '2026-10-16', text: '宽度扫描：B=16 时动态树宽比固定宽度 4 快 2.6×，长回答上的接受率也更稳', kind: 'result' }])]
+  it('需要注意、最近科研记录和接下来的里程碑的正文放不下时和项目页的科研记录一样就地展开整段,不弹 tooltip', async () => {
+    api.rows = [{
+      ...row([{ date: '2026-10-16', text: '宽度扫描：B=16 时动态树宽比固定宽度 4 快 2.6×，长回答上的接受率也更稳', kind: 'result' }]),
+      block: '等 8 卡机器排期，排到之后先跑完 B=16 的宽度扫描再定树宽上限',
+      milestones: [{ id: 'm1', date: '2026-10-18', title: '动态树原型：在 13B 与 70B 两个尺寸上都跑通并写完对比报告', done: false }],
+    }]
     await act(async () => root.render(<MessagesProvider><ResearchOverview /></MessagesProvider>))
-    const main = host.querySelector('.ovcols .ovlist-row .ovlist-main')!
-    expect(main.querySelector('.fade-expand')?.textContent).toBe('宽度扫描：B=16 时动态树宽比固定宽度 4 快 2.6×，长回答上的接受率也更稳')
-    expect(main.querySelector('[data-state]')).toBeNull()
+    const mains = [...host.querySelectorAll('.ovlist-row.attention, .ovlist-row.dated')].map((line) => line.querySelector('.ovlist-main')!)
+    expect(mains.map((main) => [main.textContent, main.classList.contains('fade-expand'), main.querySelector('[data-state]')])).toEqual([
+      ['等 8 卡机器排期，排到之后先跑完 B=16 的宽度扫描再定树宽上限', true, null],
+      ['动态树原型：在 13B 与 70B 两个尺寸上都跑通并写完对比报告', true, null],
+      ['宽度扫描：B=16 时动态树宽比固定宽度 4 快 2.6×，长回答上的接受率也更稳', true, null],
+      ['动态树原型：在 13B 与 70B 两个尺寸上都跑通并写完对比报告', true, null],
+    ])
   })
 
   it('最近科研记录给每条记录标上项目页科研记录的类型名和色调,没有类型的旧记录标成记录', async () => {

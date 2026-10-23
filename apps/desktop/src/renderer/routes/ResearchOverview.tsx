@@ -108,7 +108,7 @@ function OverviewRow({ when, kind, main, meta, project, projectId, variant, onOp
       <ProjectLabel name={project} className="ovlist-project" />
       <span className="ovlist-when">{when}</span>
       <span className="ovlist-kind">{kind}</span>
-      <span className="ovlist-main">{main}</span>
+      <FadeText className="ovlist-main" expand>{main}</FadeText>
       {meta ? <span className="ovlist-meta">{meta}</span> : null}
     </StructuredRow>
   )
@@ -259,7 +259,7 @@ function Recent({ rows, onOpen }: { rows: ProjectOverview[]; onOpen: (projectId:
                   {m.project.records.kind[e.kind ?? 'note']}
                 </ProjectSignalKind>
               )}
-              main={<FadeText expand>{e.text}</FadeText>}
+              main={e.text}
               meta={e.origin === 'agent' ? <AgentLabel /> : undefined}
               project={e.name}
               projectId={e.projectId}
