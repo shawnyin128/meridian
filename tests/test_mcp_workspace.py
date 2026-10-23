@@ -912,6 +912,32 @@ class MCPWorkspaceTests(unittest.TestCase):
                     sorted(path.relative_to(root).as_posix() for path in root.rglob("*")), before
                 )
 
+    def test_idea_add_keeps_a_stored_idea_it_cannot_read_and_still_records_a_new_one(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._workspace(root)
+            good = {"id": "good", "date": "2026-10-21", "title": "Evict by reuse distance", "body": "Score by reuse."}
+            malformed = {"id": "bad", "date": "10月21日", "title": ["not", "a", "string"]}
+            ideas = root / ".meridian/ideas/ideas.json"
+            ideas.parent.mkdir(parents=True)
+            ideas.write_text(
+                json.dumps({"schema_version": "meridian.workspace-agent-ideas.v1", "ideas": [good, malformed]}),
+                encoding="utf-8",
+            )
+            server = MeridianMCPServer(default_workspace_root=root)
+
+            result, payload = self._call(
+                server,
+                "meridian.workspace_idea_add",
+                {"idea_id": "new", "date": "2026-10-22", "title": "Share shallow KV", "body": "Reuse the target's KV."},
+            )
+
+            self.assertNotIn("isError", result)
+            self.assertEqual(payload["status"], "created")
+            stored = json.loads(ideas.read_text(encoding="utf-8"))["ideas"]
+            self.assertEqual(stored[:2], [good, malformed])
+            self.assertEqual([idea["id"] for idea in stored], ["good", "bad", "new"])
+
 
 if __name__ == "__main__":
     unittest.main()
