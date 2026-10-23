@@ -1,0 +1,5 @@
+/* CodeMirror's base theme brings its own font, line height, padding, caret and focus outline; the editor takes the field's. */
+.md-editor .cm-editor.cm-focused{outline:none}
+.md-editor .cm-editor .cm-scroller{font-family:inherit;line-height:inherit}
+.md-editor .cm-editor .cm-content{padding:0;caret-color:var(--ink)}
+.md-editor .cm-editor .cm-line{padding:0}
