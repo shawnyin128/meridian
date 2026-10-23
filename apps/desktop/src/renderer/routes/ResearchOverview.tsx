@@ -240,9 +240,7 @@ function ProjectProgress({ rows, onOpen }: {
 /** Recent research log: all projects' research records, newest first: "what happened while I was away". */
 function Recent({ rows, onOpen }: { rows: ProjectOverview[]; onOpen: (projectId: string) => void }) {
   const m = useMessages()
-  const events = rows
-    .flatMap((p) => p.events.map((e) => ({ ...e, projectId: p.id, name: p.name })))
-    .sort((a, b) => dnum(b.date) - dnum(a.date))
+  const events = sortRecordsNewestFirst(rows.flatMap((p) => p.events.map((e) => ({ ...e, projectId: p.id, name: p.name }))))
     .slice(0, RECENT_EVENTS)
   if (events.length === 0) return null
   return (
