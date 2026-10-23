@@ -1820,6 +1820,7 @@ describe('vault store on the aggregation layout', () => {
     const taken = store.listIdeas().find((idea) => idea.source.agent === true)!
     expect([taken.title, taken.body, taken.source.chatTitle]).toEqual([title, body, context])
     expect(createVaultStore(vault).listIdeas().find((idea) => idea.id === taken.id)).toEqual(taken)
+    store.updateIdea(taken.id, { project: id })
     const changes = JSON.parse(readFileSync(join(repo, '.meridian/control/changes.json'), 'utf8')) as {
       ideas: { id: string; title: string; body: string; source: { chat_title: string } }[]
     }
