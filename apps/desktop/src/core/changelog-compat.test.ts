@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { parseChangeRecords } from './changelog.js'
+import { ProjectDetailSchema } from '../shared/contract.js'
+import { type ChangeRecord, parseChangeRecords, withChangelog } from './changelog.js'
 import { createFixtureStore } from './fixture-store.js'
+import { readRecord } from './vault/stored-records.js'
 
 /** A project change record shaped the way 0.0.13 wrote it: graphs carried `activePath`, not `activeNodes`. */
 function legacyProjectRecord(): Record<string, unknown> {
@@ -43,6 +45,22 @@ describe('reading change logs older versions wrote', () => {
     }
     const [record] = parseChangeRecords([applied]).rows
     expect(record).toMatchObject({ title: 'Wiki · 宽树实验的结论', restore: { kind: 'pages' } })
+  })
+
+  it('这个版本记下的几个领域的项目快照,0.0.16.1 的项目形状照样读得出,只是不认识 topics', () => {
+    let saved: ChangeRecord[] = []
+    const store = withChangelog(createFixtureStore(() => '2026-08-25'), {
+      load: () => saved, save: (rows) => { saved = rows }, nextId: () => `change-${saved.length + 1}`,
+    })
+    store.updateProject('draft', { topics: ['speculative decoding', 'KV cache'] })
+    store.updateProject('draft', { focus: '改过的焦点' })
+    const snapshot = JSON.parse(JSON.stringify(saved[0]!.restore)) as { project: Record<string, unknown> }
+    expect(snapshot.project['topics']).toEqual(['speculative decoding', 'KV cache'])
+    // 0.0.16.1's project shape is this version's without `topics`.
+    const read = readRecord(ProjectDetailSchema.omit({ topics: true }).strict(), snapshot.project)
+    expect('error' in read).toBe(false)
+    expect('error' in read ? [] : read.unknown.map((field) => field.key)).toEqual(['topics'])
+    expect('error' in read ? undefined : read.value.topic).toBe('speculative decoding')
   })
 
   it('撤销数据读不了的一条留作历史、不能撤销;整条读不了的跳过;其余照常', () => {

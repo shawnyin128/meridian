@@ -516,6 +516,15 @@ describe('contract schemas', () => {
       .toThrow()
   })
 
+  it('改项目的领域一次给全部:去掉首尾空白,空串、重复的不收,不再单收 topic', () => {
+    expect(ProjectUpdateParamsSchema.parse({ id: 'draft', patch: { topics: [' KV cache ', '量化'] } }).patch.topics)
+      .toEqual(['KV cache', '量化'])
+    expect(ProjectUpdateParamsSchema.parse({ id: 'draft', patch: { topics: [] } }).patch.topics).toEqual([])
+    expect(() => ProjectUpdateParamsSchema.parse({ id: 'draft', patch: { topics: ['量化', ' '] } })).toThrow()
+    expect(() => ProjectUpdateParamsSchema.parse({ id: 'draft', patch: { topics: ['量化', ' 量化'] } })).toThrow()
+    expect(() => ProjectUpdateParamsSchema.parse({ id: 'draft', patch: { topic: '量化' } })).toThrow()
+  })
+
   it('项目概要只带列表屏读的那些字段,成列的内容不跨边界', () => {
     const summary = {
       id: 'draft', name: 'draft 效率', status: '进行中', priority: 'p0',

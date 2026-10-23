@@ -12,6 +12,7 @@ import {
   PaperRowSchema, SearchHitSchema, WikiAggregationCardSchema, WikiBacklinkSchema, WikiHomeSchema, WikiPaperSchema,
   type Evidence,
 } from '../shared/contract.js'
+import { DEFAULT_PROJECT_TOPIC } from '../shared/vocabulary.js'
 import { stableJson } from './changelog.js'
 import { createFixtureStore } from './fixture-store.js'
 import { emptyColumns } from './paper-library/index.js'
@@ -252,6 +253,20 @@ describe('vault store', () => {
     expect(readFileSync(file, 'utf8')).toBe(before)
     store.undoChange(store.listChanges()[0]!.id)
     expect(createVaultStore(vault).getProject(id).block).toBe('等 A100 机时')
+  })
+
+  it('领域:给几个时页上 topic 是第一个、topics 是全部,清空回到新项目的默认值;重开库读出来一样', () => {
+    const id = store.createProject('领域')
+    const file = join(vault, 'wiki', 'projects', `${id}.md`)
+    const before = readFileSync(file, 'utf8')
+    expect(store.updateProject(id, { topics: ['KV cache', '量化'] })).toMatchObject({ topic: 'KV cache', topics: ['KV cache', '量化'] })
+    expect(readFileSync(file, 'utf8')).toMatch(/^topic: "KV cache"\n[^]*^topics:\n {2}- "KV cache"\n {2}- "量化"\n/m)
+    expect(createVaultStore(vault).getProject(id)).toMatchObject({ topic: 'KV cache', topics: ['KV cache', '量化'] })
+    expect(store.listProjects().find((project) => project.id === id)).toMatchObject({ topics: ['KV cache', '量化'] })
+    const cleared = store.updateProject(id, { topics: [] })
+    expect(cleared.topic).toBe(DEFAULT_PROJECT_TOPIC)
+    expect('topics' in cleared).toBe(false)
+    expect(readFileSync(file, 'utf8')).toBe(before)
   })
 
   it('测试库与新建的库同一个结构,聚合页的生成区就是 Core 回填出来的样子', () => {

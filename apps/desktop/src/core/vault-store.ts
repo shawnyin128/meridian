@@ -1359,6 +1359,7 @@ export function createVaultStore(
           status: p.status,
           priority: p.priority,
           topic: p.topic,
+          ...(p.topics === undefined ? {} : { topics: p.topics }),
           focus: p.focus,
           ...(p.block === undefined ? {} : { block: p.block }),
           ...(p.conflictPage === undefined ? {} : { conflictPage: p.conflictPage }),
@@ -1487,13 +1488,18 @@ export function createVaultStore(
     },
 
     updateProject(id, patch) {
-      const { block, ...fields } = patch
+      const { block, topics, ...fields } = patch
       const next: ProjectRecord = { ...projectOf(id), ...fields }
       if (block === null) delete next.block
       if (typeof block === 'string') next.block = block
+      if (topics !== undefined) {
+        next.topic = topics[0] ?? DEFAULT_PROJECT_TOPIC
+        if (topics.length > 1) next.topics = topics
+        else delete next.topics
+      }
       // The contract guarantees fixed-width ISO dates, so lexical order is chronological order.
       if (next.due < next.start) throw new CallError('invalid', `项目截止日期早于开始日期：${next.start} – ${next.due}`)
-      return writeProject(next, Object.keys(patch) as (keyof ProjectRecord)[])
+      return writeProject(next, [...Object.keys(patch), ...(topics === undefined ? [] : ['topic'])] as (keyof ProjectRecord)[])
     },
 
     deleteProject(id) {

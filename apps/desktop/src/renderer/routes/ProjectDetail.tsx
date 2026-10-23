@@ -8,7 +8,7 @@ import { projectControlState } from '../../shared/project-control.js'
 import { researchPathState } from '../../shared/research-path.js'
 import { withTaskNodes } from '../../shared/task-nodes.js'
 import {
-  FOCUS_KEY, projectDecisionItems, recordKind, recordOrigin, sortRecordsNewestFirst,
+  FOCUS_KEY, projectAreas, projectDecisionItems, recordKind, recordOrigin, sortRecordsNewestFirst,
 } from '../../shared/project-signals.js'
 import { PROJECT_STATUSES } from '../../shared/vocabulary.js'
 import { appMenu, files, idea as ideaApi, papers, project as projectApi, wiki } from '../ipc.js'
@@ -991,7 +991,8 @@ export function ProjectDetail({
                           <ProjectTopicField
                             value={project.topic} onError={reportError}
                             onSave={(topic) => writeProject(
-                              projectApi.update(projectId, { topic }), m.project.identity.topicUpdated,
+                              projectApi.update(projectId, { topics: [...new Set([topic, ...projectAreas(project).slice(1)])] }),
+                              m.project.identity.topicUpdated,
                             )}
                           />
                         ),

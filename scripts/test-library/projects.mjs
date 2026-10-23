@@ -43,15 +43,15 @@ async function attach(seed, call, projectId, name, text) {
  * Seeds the projects: speculative decoding, bound to `<out>/workspaces/spec-decoding`, with tasks in
  * every state and priority, milestones, every relation group, attachments and conclusions; KV cache
  * quantization, whose last research record is 30 days old but whose plan changed today; MoE routing,
- * untouched for 30 days; a finished project; and one deleted into Trash. Returns the speculative
- * decoding project's task ids by title.
+ * untouched for 30 days and in two areas, one of them speculative decoding's; a finished project; and
+ * one deleted into Trash. Returns the speculative decoding project's task ids by title.
  */
 export async function seedProjects(seed, call) {
   const spec = await createProject(seed, call, 'spec', '推测解码加速', -20)
   const workspace = join(seed.out, 'workspaces', 'spec-decoding')
   const tasks = await onDay(seed, -20, async () => {
     await call('project.update', { id: spec, patch: {
-      priority: 'p0', topic: '推理加速', focus: '动态树宽度原型', start: dayFrom(seed.today, -20), due: dayFrom(seed.today, 25),
+      priority: 'p0', topics: ['推理加速'], focus: '动态树宽度原型', start: dayFrom(seed.today, -20), due: dayFrom(seed.today, 25),
     } })
     await call('project.bindWorkspace', { id: spec, binding: { kind: 'local', root: workspace } })
     await call('project.createMilestone', { projectId: spec, milestone: { date: dayFrom(seed.today, -10), title: '基线复现完成', done: true } })
@@ -98,7 +98,7 @@ export async function seedProjects(seed, call) {
   const kv = await createProject(seed, call, 'kv', 'KV cache 量化', -30)
   await onDay(seed, -30, async () => {
     await call('project.update', { id: kv, patch: {
-      topic: 'KV cache', focus: 'K 按通道的 2bit 量化', start: dayFrom(seed.today, -30), due: dayFrom(seed.today, 30),
+      topics: ['KV cache'], focus: 'K 按通道的 2bit 量化', start: dayFrom(seed.today, -30), due: dayFrom(seed.today, 30),
     } })
     for (const key of ['kivi', 'h2o', 'vllm']) await call('project.addPaper', { projectId: kv, paperId: seed.papers[key] })
     await call('project.createConclusion', { projectId: kv, text: '2bit 下 K 必须按通道分组。', paper: seed.papers.kivi })
@@ -113,7 +113,7 @@ export async function seedProjects(seed, call) {
   const moe = await createProject(seed, call, 'moe', 'MoE 路由分析', -30)
   await onDay(seed, -30, async () => {
     await call('project.update', { id: moe, patch: {
-      priority: 'p2', topic: '混合专家', focus: '统计各层路由的负载分布', block: '等 8 卡机器排期',
+      priority: 'p2', topics: ['混合专家', '推理加速'], focus: '统计各层路由的负载分布', block: '等 8 卡机器排期',
       start: dayFrom(seed.today, -30), due: dayFrom(seed.today, 10),
     } })
     await call('project.addPaper', { projectId: moe, paperId: seed.papers.switch })

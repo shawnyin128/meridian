@@ -324,7 +324,10 @@ export const ProjectDetailSchema = z.object({
   name: z.string(),
   status: ProjectStatusSchema,
   priority: z.enum(['p0', 'p1', 'p2']),
+  /** The project's area, or DEFAULT_PROJECT_TOPIC when it has none; with several areas, the first of `topics`. */
   topic: z.string(),
+  /** Every area of a project that has several, in order; absent while it has one or none. */
+  topics: z.array(z.string()).optional(),
   focus: z.string(),
   /** Current blocker, omitted when the project is not blocked. */
   block: z.string().optional(),
@@ -375,7 +378,7 @@ export const ProjectDetailSchema = z.object({
  * and notes are omitted.
  */
 export const ProjectSummarySchema = ProjectDetailSchema.pick({
-  id: true, name: true, status: true, priority: true, topic: true, focus: true, block: true,
+  id: true, name: true, status: true, priority: true, topic: true, topics: true, focus: true, block: true,
   conflictPage: true, conclusions: true, paperCount: true, lastProgress: true,
 }).extend({
   /** List pages consume the shared control projection instead of reinterpreting focus, tasks, or graph state. */
@@ -969,15 +972,20 @@ export const ProjectCreateParamsSchema = z.object({ name: z.string() }).strict()
 
 export const ProjectDeleteParamsSchema = z.object({ id: z.string() }).strict()
 
-/** Writable project fields; `block: null` clears the blocker. */
+/**
+ * Writable project fields; `block: null` clears the blocker. `topics` sets every area at once, in
+ * order, and an empty list leaves the project with none.
+ */
 const ProjectFieldsSchema = ProjectDetailSchema.omit({
   id: true, tasks: true, taskNodes: true, milestones: true, events: true, relations: true, attachments: true,
   conclusions: true, conclusionList: true, conclusionClaims: true, projectConclusions: true, verifiedConclusions: true,
   paperCount: true, papers: true,
   paperTitles: true, graph: true, agentSessions: true, block: true,
-  conflictPage: true, workspace: true, lastProgress: true,
+  conflictPage: true, workspace: true, lastProgress: true, topic: true, topics: true,
 }).extend({
   block: z.string().trim().min(1).max(500).nullable(),
+  topics: z.array(z.string().trim().min(1).max(300))
+    .refine((topics) => new Set(topics).size === topics.length, { message: '同一个领域只能有一个' }),
 })
 
 export const ProjectUpdateParamsSchema = z.object({
