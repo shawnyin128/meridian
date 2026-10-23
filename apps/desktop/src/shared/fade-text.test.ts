@@ -92,6 +92,13 @@ describe('放不下的文字淡出,不以省略号结尾', () => {
     expect(missing.map(([selector]) => selector)).toEqual([])
   })
 
+  it('总览列表的正文交给 FadeText,放得下时不淡出', () => {
+    const own = RULES.filter(({ path, selector, body }) => path === 'routes/ResearchOverview.css' && /\.ovlist-main\b/.test(selector)
+      && /(^|;)\s*mask(-image)?:/.test(body))
+    expect(own.map(({ selector }) => selector)).toEqual([])
+    expect(source('routes/ResearchOverview.tsx')).toMatch(/<FadeText className="ovlist-main"/)
+  })
+
   it('放不下的文字只有两种淡出:一行的用 --clipfade,多行的用共用的 .fade-lines', () => {
     // A sticky cell's or head's pseudo-element fades the content under it, and [data-fade] fades a scroll area's edge.
     const own = RULES.filter(({ selector, body }) => /(^|;)\s*mask(-image)?:/.test(body) && !/::(before|after)|\[data-fade/.test(selector))

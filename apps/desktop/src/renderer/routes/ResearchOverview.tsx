@@ -108,7 +108,7 @@ function OverviewRow({ when, kind, main, meta, project, projectId, variant, onOp
       <ProjectLabel name={project} className="ovlist-project" />
       <span className="ovlist-when">{when}</span>
       <span className="ovlist-kind">{kind}</span>
-      <span className="ovlist-main">{main}</span>
+      <FadeText className="ovlist-main">{main}</FadeText>
       {meta ? <span className="ovlist-meta">{meta}</span> : null}
     </StructuredRow>
   )

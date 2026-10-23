@@ -30,7 +30,7 @@
 .ovlist-project{grid-column:1;justify-self:start;max-width:120px}
 .ovlist-when{grid-column:2;display:flex;align-items:center;min-width:0;height:22px;color:var(--ter);font-size:var(--fs-sm)}
 .ovlist-kind{grid-column:3;display:flex;align-items:center;gap:var(--sp-6);min-width:0;height:22px}
-.ovlist-main{grid-column:4;display:block;min-width:0;overflow:hidden;white-space:nowrap;mask-image:var(--clipfade)}
+.ovlist-main{grid-column:4;min-width:0}
 .ovlist-meta{grid-column:5;color:var(--ter);font-size:var(--fs-sm);white-space:nowrap}
 .ovlist-prefix{color:var(--ter);margin-right:var(--sp-4)}
 .ovlist-row.progress .ovlist-kind{display:grid;grid-template-columns:7px 32px;justify-content:start}
