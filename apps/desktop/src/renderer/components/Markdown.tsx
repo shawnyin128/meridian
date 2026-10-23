@@ -49,6 +49,27 @@ function remarkHeadingIds() {
   return (tree: Root) => visit(tree)
 }
 
+/**
+ * remark plugin: moves the whitespace that ends the text right before a source anchor out of that
+ * text and onto the anchor as its `separator`, which the anchor renders inside its no-wrap box.
+ */
+function remarkAnchorSeparators() {
+  const visit = (node: Parent): void => {
+    node.children.forEach((child, at) => {
+      const before = node.children[at - 1]
+      if (child.type === 'link' && child.url.startsWith(CITE) && before?.type === 'text') {
+        const space = /\s+$/.exec(before.value)
+        if (space !== null) {
+          before.value = before.value.slice(0, space.index)
+          child.data = { ...child.data, hProperties: { separator: space[0] } }
+        }
+      }
+      if ('children' in child) visit(child as Parent)
+    })
+  }
+  return (tree: Root) => visit(tree)
+}
+
 /** A Markdown code block or table, which scrolls sideways when it is too wide and fades the side it hides. */
 function Sideways({ as: Element, children }: { as: 'pre' | 'table'; children?: ReactNode }) {
   return <Element ref={useScrollFade('x')}>{children}</Element>
@@ -67,7 +88,7 @@ function components(
   return {
     pre: ({ children }) => <Sideways as="pre">{children}</Sideways>,
     table: ({ children }) => <Sideways as="table">{children}</Sideways>,
-    a: ({ href, children }) => {
+    a: ({ href, children, node }) => {
       // urlTransform empties URLs with protocols such as javascript:; an emptied link must not render as one
       if (!href) return <>{children}</>
       if (href.startsWith(WIKI)) {
@@ -85,7 +106,11 @@ function components(
       }
       if (href.startsWith(CITE)) {
         const page = Number(href.slice(CITE.length))
-        return onAnchor === undefined ? <>{children}</> : <SourceAnchor page={page} onOpen={() => onAnchor(page)} />
+        // Set by remarkAnchorSeparators when whitespace was written before the anchor.
+        const separator = node?.properties.separator as string | undefined
+        return onAnchor === undefined
+          ? <>{separator}{children}</>
+          : <SourceAnchor page={page} {...(separator === undefined ? {} : { separator })} onOpen={() => onAnchor(page)} />
       }
       return <EntityLink kind="external" label={children} href={href} />
     },
@@ -116,8 +141,8 @@ export function Markdown({ src, onOpen, onAnchor, titles, latexText = false }: {
   return (
     <ReactMarkdown
       remarkPlugins={latexText
-        ? [[remarkGfm, { singleTilde: false }], remarkMath, remarkHeadingIds, remarkPaperText]
-        : [remarkGfm, remarkMath, remarkHeadingIds]}
+        ? [[remarkGfm, { singleTilde: false }], remarkMath, remarkHeadingIds, remarkPaperText, remarkAnchorSeparators]
+        : [remarkGfm, remarkMath, remarkHeadingIds, remarkAnchorSeparators]}
       rehypePlugins={[rehypeKatex]} components={parts}
     >
       {desugar(src, titles)}
