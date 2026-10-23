@@ -1411,6 +1411,35 @@ describe('vault store on the aggregation layout', () => {
     expect(createVaultStore(vault).getProject(id).tasks).toEqual([])
   })
 
+  it('agent 任务文件里一条坏了：其余照常进计划，坏的那条连同第几条和原因报到 stderr、跳过，文件一字不改', () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+    try {
+      store.createProject('一条坏任务')
+      const id = store.listProjects().find((p) => p.name === '一条坏任务')!.id
+      const repo = join(vault, 'one-bad-task-repo')
+      mkdirSync(join(repo, '.meridian', 'tasks'), { recursive: true })
+      store.bindProjectWorkspace(id, { kind: 'local', root: repo })
+      const file = join(repo, '.meridian', 'tasks', 'tasks.json')
+      const text = JSON.stringify({
+        schema_version: 'meridian.workspace-agent-tasks.v1',
+        tasks: [
+          { id: 'rerun-sweep', date: '2026-09-12', title: '在 B=16 重跑宽度扫描' },
+          { id: 'bad', date: '9月12日', title: '日期写坏了' },
+        ],
+      })
+      writeFileSync(file, text)
+
+      store.absorbAgentTasks(id)
+      expect(store.getProject(id).tasks.map((task) => task.title)).toEqual(['在 B=16 重跑宽度扫描'])
+      const reported = error.mock.calls.map(([line]) => String(line)).filter((line) => line.includes(file))
+      expect(reported).toEqual([expect.stringContaining('第 2 条')])
+      expect(reported[0]).toContain('"date"')
+      expect(readFileSync(file, 'utf8')).toBe(text)
+    } finally {
+      error.mockRestore()
+    }
+  })
+
   it('旧版本记下的项目变动在没验证过结论的项目上照样能撤销', () => {
     store.createProject('旧记录')
     const id = store.listProjects().find((p) => p.name === '旧记录')!.id
