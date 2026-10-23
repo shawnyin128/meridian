@@ -51,6 +51,7 @@ describe('reading change logs older versions wrote', () => {
     let saved: ChangeRecord[] = []
     const store = withChangelog(createFixtureStore(() => '2026-08-25'), {
       load: () => saved, save: (rows) => { saved = rows }, nextId: () => `change-${saved.length + 1}`,
+      atomically: (write) => write(),
     })
     store.updateProject('draft', { topics: ['speculative decoding', 'KV cache'] })
     store.updateProject('draft', { focus: '改过的焦点' })

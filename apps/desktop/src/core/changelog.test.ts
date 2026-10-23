@@ -1006,7 +1006,9 @@ describe('change lines', () => {
       id: 'change-1', title: '项目「draft 效率」· 改了字段', meta: null, source: '我', diff: [], target: { kind: 'project', id: PROJECT },
       after, at: Date.UTC(2026, 7, 25), undone: false, archived: false, restore: { kind: 'project', project: before },
     }]
-    const logged = withChangelog(store, { load: () => rows, save: (next) => { rows = next }, nextId: () => 'change-2' })
+    const logged = withChangelog(store, {
+      load: () => rows, save: (next) => { rows = next }, nextId: () => 'change-2', atomically: (write) => write(),
+    })
     logged.undoChange('change-1')
     expect(store.getProject(PROJECT).focus).toBe(before.focus)
   })
