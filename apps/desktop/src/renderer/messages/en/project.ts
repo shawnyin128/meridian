@@ -155,6 +155,8 @@ export const project = {
     existingAreas: 'Existing areas',
     removeArea: (area: string) => `Remove area "${area}"`,
     areaSeparator: ', ',
+    allAreas: 'All areas',
+    filterArea: 'Filter by area',
     focusLabel: { currentGoal: 'Current goal', restartCondition: 'Restart condition', outcome: 'Outcome' },
     focusWithLabel: (label: string, focus: string) => `${label}: ${focus}`,
     nameFieldLabel: 'Project name',

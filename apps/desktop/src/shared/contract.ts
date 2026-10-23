@@ -398,10 +398,10 @@ export const ProjectSummarySchema = ProjectDetailSchema.pick({
  * Research-overview project record with schedule, research-log, and compact
  * graph projections. Overview and project timelines share real task dates and
  * windows; project start and due remain attributes rather than synthetic tasks.
- * Topics, paper count, conflict page, and other details do not cross this boundary.
+ * Areas cross for the overview's filter; paper count, conflict page, and other details do not.
  */
 export const ProjectOverviewSchema = ProjectDetailSchema.pick({
-  id: true, name: true, status: true, priority: true, focus: true, block: true,
+  id: true, name: true, status: true, priority: true, topic: true, topics: true, focus: true, block: true,
   start: true, due: true, conclusions: true,
   tasks: true, milestones: true, events: true, lastProgress: true,
 }).extend({

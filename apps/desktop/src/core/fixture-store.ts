@@ -868,6 +868,8 @@ export function createFixtureStore(
         name: p.name,
         status: p.status,
         priority: p.priority,
+        topic: p.topic,
+        ...(p.topics === undefined ? {} : { topics: p.topics }),
         focus: p.focus,
         ...(p.block === undefined ? {} : { block: p.block }),
         start: p.start,

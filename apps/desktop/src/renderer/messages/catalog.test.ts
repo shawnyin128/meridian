@@ -141,7 +141,8 @@ describe('一个对象一个词', () => {
     ],
     area: [
       'project.identity.topic', 'project.identity.topicUpdated', 'project.identity.noArea', 'project.identity.addArea',
-      'project.identity.existingAreas', 'project.identity.removeArea',
+      'project.identity.existingAreas', 'project.identity.removeArea', 'project.identity.allAreas',
+      'project.identity.filterArea',
     ],
     toRead: ['papers.readState.later'],
     readLater: [

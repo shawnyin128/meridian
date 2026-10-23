@@ -260,3 +260,60 @@ describe('项目的排序', () => {
     expect(await reorder()).not.toHaveBeenCalled()
   })
 })
+
+describe('项目列表按领域筛', () => {
+  const listed = [
+    summary({ id: 'spec', name: '推测解码加速', status: '进行中', topic: '推理加速' }),
+    summary({ id: 'kv', name: 'KV cache 量化', status: '进行中', topic: 'KV cache' }),
+    summary({ id: 'moe', name: 'MoE 路由分析', status: '进行中', topic: '混合专家', topics: ['混合专家', '推理加速'] }),
+    summary({ id: 'fresh', name: '新项目', status: '进行中', topic: '未分主题' }),
+    summary({ id: 'flash', name: 'FlashAttention 复现', status: '搁置', topic: '推理加速', focus: '等 H100' }),
+  ]
+  const mount = async () => {
+    api.projects = listed
+    await act(async () => root.render(<MessagesProvider><Projects /></MessagesProvider>))
+  }
+  const filter = () => host.querySelector<HTMLButtonElement>('.desk-body .page-toolbar .filter-menu')!
+  const options = async () => {
+    await act(async () => { filter().dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, button: 0 })) })
+    return [...document.querySelectorAll<HTMLElement>('[role="menu"] [role="menuitemradio"]')]
+  }
+  const pick = async (label: string) => {
+    const item = (await options()).find((option) => option.textContent === label)!
+    await act(async () => { item.click() })
+  }
+  const shown = () => [...host.querySelectorAll('[data-proj]')].map((item) => item.getAttribute('data-proj'))
+
+  it('页面工具栏里是和论文表同一个筛选:筛选二字加一个按钮,选项是全部领域、用到的每个领域,最后是未分领域', async () => {
+    await mount()
+    expect(host.querySelector('.desk-body .page-toolbar')!.textContent).toBe('筛选领域')
+    expect(filter().classList.contains('on')).toBe(false)
+    expect((await options()).map((option) => option.textContent)).toEqual(['全部领域', '推理加速', 'KV cache', '混合专家', '未分领域'])
+  })
+
+  it('选一个领域只剩带着它的项目,有几个领域的也在,屏头的数跟着变;再选全部领域就全回来', async () => {
+    await mount()
+    await pick('推理加速')
+    expect(shown()).toEqual(['spec', 'moe', 'flash'])
+    expect([filter().textContent, filter().classList.contains('on')]).toEqual(['推理加速', true])
+    expect(host.querySelector('.desk-head .t')!.textContent).toBe('项目 · 2')
+    await pick('全部领域')
+    expect(shown()).toEqual(['spec', 'kv', 'moe', 'fresh', 'flash'])
+  })
+
+  it('选未分领域只剩还没有领域的项目', async () => {
+    await mount()
+    await pick('未分领域')
+    expect(shown()).toEqual(['fresh'])
+  })
+
+  it('筛着的时候挪动一个项目,存下的顺序里藏起来的项目都在原位', async () => {
+    await mount()
+    await pick('推理加速')
+    const reorder = vi.mocked((await import('../ipc.js')).project.reorder)
+    reorder.mockClear()
+    const open = host.querySelector<HTMLElement>('[data-proj="spec"] button')!
+    await act(async () => { open.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', altKey: true, bubbles: true })) })
+    expect(reorder).toHaveBeenCalledWith(['moe', 'kv', 'spec', 'fresh', 'flash'])
+  })
+})

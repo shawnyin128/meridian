@@ -31,7 +31,7 @@ const ONE_LINE: Record<string, [file: string, markup: RegExp, count?: number]> =
   'project-identity-topic': ['components/project/ProjectIdentity.tsx', /<FadeText className="project-identity-topic" label=/g, 2],
   'idea-draft-source': ['components/ideas/IdeaDraft.tsx', /<FadeText className="idea-draft-source" label=/],
   'cl': ['components/paper-table/ColumnMenu.tsx', /<FadeText className="cl" label=/g, 3],
-  'read-state-filter': ['components/paper-table/PaperTable.tsx', /<FadeText>\{current === null \? name : readStateName\(m, current\)\}<\/FadeText><\/button>/],
+  'filter-menu': ['components/FilterMenu.tsx', /<FadeText>\{at < 0 \? name : options\[at\]!\.label\}<\/FadeText><\/button>/],
   'node-document-title': ['components/project/ResearchGraph.tsx', /<FadeText className="node-document-title" label=/],
   'node-document-title (task)': ['components/project/ProjectPlan.tsx', /<FadeText className="node-document-title" label=/],
   'node-document-title (conclusion)': ['components/project/ProjectConclusions.tsx', /<FadeText className="node-document-title" label=/],

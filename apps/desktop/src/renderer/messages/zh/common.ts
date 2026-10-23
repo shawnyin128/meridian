@@ -6,6 +6,7 @@ export const common = {
   edit: '编辑',
   confirm: '确认',
   retry: '重试',
+  filter: '筛选',
   delete: '删除',
   deletePermanently: '彻底删除',
   remove: '移除',

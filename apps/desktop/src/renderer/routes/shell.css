@@ -30,8 +30,8 @@
 .btn:enabled:active{background-image:linear-gradient(var(--press),var(--press))}
 .btn.pri:enabled:active{background-image:linear-gradient(var(--press-solid),var(--press-solid))}
 .btn:disabled{opacity:.45;cursor:default;box-shadow:none}
-/* An applied read-state filter looks pressed; solid accent is kept for primary actions. */
-.read-state-filter.on{background-color:var(--selected-strong);border-color:transparent;color:var(--on-selected)}
+/* An applied filter looks pressed; solid accent is kept for primary actions. */
+.filter-menu.on{background-color:var(--selected-strong);border-color:transparent;color:var(--on-selected)}
 .add-action{display:inline-flex;align-items:center;justify-content:center;gap:var(--sp-6);white-space:nowrap}
 .add-action>svg{width:12px;height:12px;flex:none}
 

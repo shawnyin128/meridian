@@ -270,6 +270,7 @@ describe('vault store', () => {
     expect(readFileSync(file, 'utf8')).toMatch(/^topic: "KV cache"\n[^]*^topics:\n {2}- "KV cache"\n {2}- "量化"\n/m)
     expect(createVaultStore(vault).getProject(id)).toMatchObject({ topic: 'KV cache', topics: ['KV cache', '量化'] })
     expect(store.listProjects().find((project) => project.id === id)).toMatchObject({ topics: ['KV cache', '量化'] })
+    expect(store.overviewProjects().find((project) => project.id === id)).toMatchObject({ topic: 'KV cache', topics: ['KV cache', '量化'] })
     const cleared = store.updateProject(id, { topics: [] })
     expect(cleared.topic).toBe(DEFAULT_PROJECT_TOPIC)
     expect('topics' in cleared).toBe(false)
