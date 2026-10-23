@@ -1,5 +1,5 @@
 import { useEffect, useMemo } from 'react'
-import type { ReactNode, RefObject } from 'react'
+import type { KeyboardEvent as ReactKeyboardEvent, ReactNode, RefObject } from 'react'
 import { useScrollFade } from '../hooks/useScrollFade.js'
 import type { Parent, Root } from 'mdast'
 import ReactMarkdown from 'react-markdown'
@@ -11,6 +11,7 @@ import 'katex/dist/katex.min.css'
 import type { WikiRef } from '../../shared/contract.js'
 import { commitsMultiline, composing } from '../lib/keyboard.js'
 import { EntityLink } from './EntityLink.js'
+import { MarkdownEditor } from './MarkdownEditor.js'
 import { remarkPaperText } from './paper/paper-text.js'
 import { SourceAnchor } from './SourceAnchor.js'
 
@@ -177,10 +178,12 @@ export function headingsOf(src: string): Heading[] {
  * false it renders `text` as Markdown, or `empty` alone, outside the container, when the string is
  * empty; with it true it is a contentEditable holding the source, focused on entry, where Esc calls
  * `onCancel` and ⌘Enter or Ctrl+Enter calls `onSave`, unless an input method is composing.
- * The caller places EditActions and reads `box`'s `innerText` on save. `className` is appended to the
- * container.
+ * The caller places EditActions and reads `box`'s `innerText` on save. With `live`, the source is
+ * edited in a MarkdownEditor inside the container instead, under the same keys, which renders every
+ * block the cursor is not on as the rendered result does; the caller saves the source it last
+ * received through `live.onChange`. `className` is appended to the container.
  */
-export function MarkdownBox({ text, editing, box, onCancel, onSave, onOpen, onAnchor, titles, empty, className }: {
+export function MarkdownBox({ text, editing, box, onCancel, onSave, onOpen, onAnchor, titles, empty, className, live }: {
   text: string
   editing: boolean
   box: RefObject<HTMLDivElement | null>
@@ -192,34 +195,35 @@ export function MarkdownBox({ text, editing, box, onCancel, onSave, onOpen, onAn
   titles?: Record<string, WikiRef>
   empty: ReactNode
   className?: string
+  live?: { onChange: (text: string) => void }
 }) {
-  useEffect(() => { if (editing) box.current?.focus() }, [editing, box])
+  useEffect(() => { if (editing && live === undefined) box.current?.focus() }, [editing, box, live])
   const classes = `md${editing ? ' src' : ''}${className === undefined ? '' : ` ${className}`}`
-  return editing
-    ? (
-      <div
-        className={classes} contentEditable suppressContentEditableWarning ref={box}
-        onKeyDown={(e) => {
-          if (commitsMultiline(e.nativeEvent)) {
-            e.preventDefault()
-            onSave()
-            return
-          }
-          if (e.key !== 'Escape') return
-          e.stopPropagation()
-          if (!composing(e.nativeEvent)) onCancel()
-        }}
-      >{text}</div>
+  const keys = (e: ReactKeyboardEvent) => {
+    if (commitsMultiline(e.nativeEvent)) {
+      e.preventDefault()
+      onSave()
+      return
+    }
+    if (e.key !== 'Escape') return
+    e.stopPropagation()
+    if (!composing(e.nativeEvent)) onCancel()
+  }
+  // Under exactOptionalPropertyTypes an absent onOpen cannot be passed as undefined; it must be left out.
+  const links = {
+    ...(onOpen === undefined ? {} : { onOpen }), ...(onAnchor === undefined ? {} : { onAnchor }),
+    ...(titles === undefined ? {} : { titles }),
+  }
+  if (editing && live !== undefined) {
+    return (
+      <div className={classes} ref={box} onKeyDown={keys}>
+        <MarkdownEditor text={text} onChange={live.onChange} preview={(source) => <Markdown src={source} {...links} />} />
+      </div>
     )
-    // Under exactOptionalPropertyTypes an absent onOpen cannot be passed as undefined; it must be left out.
+  }
+  return editing
+    ? <div className={classes} contentEditable suppressContentEditableWarning ref={box} onKeyDown={keys}>{text}</div>
     : text === ''
       ? empty
-      : (
-        <div className={classes}>
-          <Markdown
-            src={text} {...(onOpen === undefined ? {} : { onOpen })} {...(onAnchor === undefined ? {} : { onAnchor })}
-            {...(titles === undefined ? {} : { titles })}
-          />
-        </div>
-      )
+      : <div className={classes}><Markdown src={text} {...links} /></div>
 }

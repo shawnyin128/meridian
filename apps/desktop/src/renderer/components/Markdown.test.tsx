@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 import { act, useRef } from 'react'
 import { createRoot } from 'react-dom/client'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { EditorView } from '@codemirror/view'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { MessagesProvider } from '../messages/useMessages.js'
 import { LANGUAGE_STORAGE_KEY } from '../shell/language.js'
@@ -194,6 +195,128 @@ describe('MarkdownBox', () => {
     act(() => box.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })))
     expect(cancel).toHaveBeenCalledTimes(1)
     act(() => root.unmount())
+  })
+})
+
+describe('MarkdownBox 实时编辑', () => {
+  let host: HTMLElement
+  let root: ReturnType<typeof createRoot>
+  const save = vi.fn()
+  const cancel = vi.fn()
+  const change = vi.fn()
+
+  beforeEach(() => {
+    globalThis.IS_REACT_ACT_ENVIRONMENT = true
+    save.mockClear(); cancel.mockClear(); change.mockClear()
+    function Probe() {
+      const box = useRef<HTMLDivElement>(null)
+      return (
+        <MarkdownBox
+          text={'第一行\n第二行'} editing box={box} onCancel={cancel} onSave={save} empty={null}
+          live={{ onChange: change }}
+        />
+      )
+    }
+    host = document.createElement('div')
+    document.body.append(host)
+    root = createRoot(host)
+    act(() => root.render(<Probe />))
+  })
+
+  afterEach(() => {
+    act(() => root.unmount())
+    host.remove()
+  })
+
+  const view = () => EditorView.findFromDOM(host.querySelector<HTMLElement>('.md.src .cm-editor')!)!
+  /** Sends a keydown to the editor, as the browser does, and returns it to read whether it was claimed. */
+  const key = (init: KeyboardEventInit) => {
+    const event = new KeyboardEvent('keydown', { bubbles: true, cancelable: true, ...init })
+    act(() => { view().contentDOM.dispatchEvent(event) })
+    return event
+  }
+
+  it('输入法组字时的 ⌘回车和 Esc 归输入法,既不保存也不撤掉编辑;组完字后 ⌘回车才保存,Esc 才撤', () => {
+    key({ key: 'Enter', metaKey: true, isComposing: true })
+    key({ key: 'Escape', isComposing: true })
+    expect(save).not.toHaveBeenCalled()
+    expect(cancel).not.toHaveBeenCalled()
+
+    key({ key: 'Enter', metaKey: true })
+    expect(save).toHaveBeenCalledTimes(1)
+    key({ key: 'Escape' })
+    expect(cancel).toHaveBeenCalledTimes(1)
+  })
+
+  it('⌘回车只保存,不往原文里插空行;单按回车是换行,不保存', () => {
+    key({ key: 'Enter', ctrlKey: true })
+    expect(save).toHaveBeenCalledTimes(1)
+    expect(view().state.doc.toString()).toBe('第一行\n第二行')
+
+    act(() => view().dispatch({ selection: { anchor: 3 } }))
+    key({ key: 'Enter' })
+    expect(save).toHaveBeenCalledTimes(1)
+    expect(change).toHaveBeenLastCalledWith('第一行\n\n第二行')
+  })
+
+  it('Esc 撤掉编辑就停在这里,外层面板不跟着收起', () => {
+    const outer = vi.fn()
+    document.addEventListener('keydown', outer)
+    key({ key: 'Escape' })
+    document.removeEventListener('keydown', outer)
+    expect(cancel).toHaveBeenCalledTimes(1)
+    expect(outer).not.toHaveBeenCalled()
+  })
+
+  it('Tab 不被编辑器拿走,焦点照常移到下一个控件,原文不变', () => {
+    expect(key({ key: 'Tab' }).defaultPrevented).toBe(false)
+    expect(view().state.doc.toString()).toBe('第一行\n第二行')
+  })
+
+  it('光标不在的块渲染得和看的时候一模一样,光标所在的块是原文;打完「# 标题」回车,标题马上渲染', () => {
+    act(() => root.render(
+      <MessagesProvider>
+        <MarkdownBox
+          text={'# 标题\n\n- 甲 [[topics/ptq|PTQ]]\n- 乙\n\n`code` 与 $x^2$'} editing box={{ current: null }}
+          onCancel={cancel} onSave={save} empty={null} onOpen={vi.fn()} live={{ onChange: change }}
+        />
+      </MessagesProvider>,
+    ))
+    const blocks = () => [...host.querySelectorAll<HTMLElement>('.cm-editor .md-block')]
+    const lines = () => [...host.querySelectorAll<HTMLElement>('.cm-editor .cm-line')].map((line) => line.textContent)
+    /** The markup the read view renders for `src`. */
+    const asRead = (src: string) => {
+      const read = document.createElement('div')
+      const reader = createRoot(read)
+      act(() => reader.render(<MessagesProvider><Markdown src={src} onOpen={vi.fn()} /></MessagesProvider>))
+      const markup = read.innerHTML
+      act(() => reader.unmount())
+      return markup
+    }
+
+    expect(lines()).toEqual(['# 标题', '', ''])
+    expect(blocks().map((block) => block.innerHTML))
+      .toEqual([asRead('- 甲 [[topics/ptq|PTQ]]'), asRead('- 乙'), asRead('`code` 与 $x^2$')])
+
+    act(() => view().dispatch({ selection: { anchor: view().state.doc.length } }))
+    expect(blocks()[0]!.innerHTML).toBe(asRead('# 标题'))
+    expect(lines().at(-1)).toBe('`code` 与 $x^2$')
+
+    const typed = '\n\n# 新标题\n'
+    act(() => view().dispatch({
+      changes: { from: view().state.doc.length, insert: typed }, selection: { anchor: view().state.doc.length + typed.length },
+    }))
+    expect(blocks().map((block) => block.querySelector('h1')?.textContent).filter(Boolean)).toEqual(['标题', '新标题'])
+    expect(lines().at(-1)).toBe('')
+  })
+
+  it('打的字可以在编辑器里撤回再重做,每一步都把当时的原文交给调用方', () => {
+    act(() => view().dispatch({ changes: { from: 7, insert: '加一句' }, userEvent: 'input.type' }))
+    expect(change).toHaveBeenLastCalledWith('第一行\n第二行加一句')
+    key({ key: 'z', ctrlKey: true })
+    expect(change).toHaveBeenLastCalledWith('第一行\n第二行')
+    key({ key: 'y', ctrlKey: true })
+    expect(change).toHaveBeenLastCalledWith('第一行\n第二行加一句')
   })
 })
 

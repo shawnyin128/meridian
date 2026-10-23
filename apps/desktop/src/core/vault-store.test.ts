@@ -254,6 +254,20 @@ describe('vault store', () => {
     expect(createVaultStore(vault).getProject(id).block).toBe('等 A100 机时')
   })
 
+  it('随笔里有 #、## 或 ### 开头的行:存下、重开都是整段随笔,撤销后页上只剩改之前那段', () => {
+    store.createProject('随笔小标题')
+    const id = store.listProjects().find((project) => project.name === '随笔小标题')!.id
+    const file = join(vault, 'wiki', 'projects', `${id}.md`)
+    store.updateProject(id, { memo: '改之前的想法' })
+    const before = readFileSync(file, 'utf8')
+    const memo = '## 小结\n\n小结下面的话\n\n# 一级标题\n### 三级标题'
+    store.updateProject(id, { memo })
+    expect(createVaultStore(vault).getProject(id).memo).toBe(memo)
+    store.undoChange(store.listChanges()[0]!.id)
+    expect(createVaultStore(vault).getProject(id).memo).toBe('改之前的想法')
+    expect(readFileSync(file, 'utf8')).toBe(before)
+  })
+
   it('测试库与新建的库同一个结构,聚合页的生成区就是 Core 回填出来的样子', () => {
     const parent = mkdtempSync(join(tmpdir(), 'meridian-made-'))
     try {

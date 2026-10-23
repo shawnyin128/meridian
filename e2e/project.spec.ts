@@ -1270,6 +1270,60 @@ test('属性栏焦点格保存后,照旧收起其他正在编辑的东西(随笔
   await expect(memoActions).toHaveText(['编辑'])
 })
 
+test('项目随笔边写边渲染:写完「# 标题」回车,标题马上渲染,光标回到那一行又是原文,⌘回车照常存下', async ({ win }) => {
+  await gotoProject(win)
+  const main = win.locator('.screenslot:not([hidden]) .wkmain')
+  const memo = main.locator('.memo')
+  await main.locator('.section-heading', { hasText: '项目随笔' }).locator('button', { hasText: '编辑' }).click()
+  await expect(memo.locator('.cm-content')).toBeFocused()
+  // The cursor starts in the first paragraph; the display formula further down already renders.
+  await expect(memo.locator('.md-block .katex-display')).toHaveCount(1)
+
+  await win.keyboard.press('ControlOrMeta+End')
+  await win.keyboard.press('Enter')
+  await win.keyboard.press('Enter')
+  await win.keyboard.type('# 边写边渲染')
+  await expect(memo.locator('.cm-line', { hasText: '# 边写边渲染' })).toHaveCount(1)
+  await win.keyboard.press('Enter')
+  await expect(memo.locator('.md-block h1')).toHaveText('边写边渲染')
+  await expect(memo.locator('.cm-line', { hasText: '# 边写边渲染' })).toHaveCount(0)
+
+  await win.keyboard.press('ArrowUp')
+  await expect(memo.locator('.md-block h1')).toHaveCount(0)
+  await expect(memo.locator('.cm-line', { hasText: '# 边写边渲染' })).toHaveCount(1)
+
+  await win.keyboard.press('ControlOrMeta+Enter')
+  await expect(memo.locator('.cm-editor')).toHaveCount(0)
+  await expect(memo.locator('h1')).toHaveText('边写边渲染')
+  expect((await call<{ memo: string }>(win, 'project.get', { id: 'draft' })).memo).toMatch(/重跑一遍再下结论。\n\n# 边写边渲染$/)
+})
+
+test('项目随笔里输入法组字时的回车和 ⌘回车归输入法:不换行、不保存,编辑器还开着', async ({ win }) => {
+  await gotoProject(win)
+  const main = win.locator('.screenslot:not([hidden]) .wkmain')
+  const memo = main.locator('.memo')
+  await main.locator('.section-heading', { hasText: '项目随笔' }).locator('button', { hasText: '编辑' }).click()
+  await expect(memo.locator('.cm-content')).toBeFocused()
+  await win.keyboard.press('ControlOrMeta+End')
+  await win.keyboard.press('Enter')
+  await win.keyboard.press('Enter')
+  const lines = await memo.locator('.cm-line').count()
+
+  // Chromium's own input-method path: keys pressed while this composition is open arrive with
+  // isComposing set, as a real Chinese input method sends them.
+  const platform = await win.evaluate(() => (window as unknown as MeridianWindow).meridian.platform)
+  const cdp = await win.context().newCDPSession(win)
+  await cdp.send('Input.imeSetComposition', { text: 'zhong', selectionStart: 5, selectionEnd: 5 })
+  // CDP's modifier bits: 2 is Ctrl and 4 is Meta, the command key on macOS.
+  for (const modifiers of [0, platform === 'darwin' ? 4 : 2]) {
+    await cdp.send('Input.dispatchKeyEvent', { type: 'rawKeyDown', key: 'Enter', code: 'Enter', modifiers, windowsVirtualKeyCode: 229 })
+    await cdp.send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Enter', code: 'Enter', modifiers, windowsVirtualKeyCode: 229 })
+  }
+  await expect(memo.locator('.cm-editor')).toHaveCount(1)
+  await expect(memo.locator('.cm-line')).toHaveCount(lines)
+  await expect(memo.locator('.cm-line').last()).toHaveText('zhong')
+})
+
 test('项目列表点进详情,内容导航行的返回钮退回列表', async ({ win }) => {
   await win.locator('[data-desk="resproj"]').click()
   await win.locator('[data-proj="draft"]').click()

@@ -138,23 +138,26 @@ export function ProjectMemo({ text, editing, onEditing, onSave, onOpen }: {
 }) {
   const m = useMessages()
   const box = useRef<HTMLDivElement>(null)
+  const draft = useRef(text)
+  const edit = () => {
+    draft.current = text
+    onEditing(true)
+  }
   const save = () => {
-    const next = box.current?.innerText.trim() ?? ''
     onEditing(false)
-    onSave(next)
+    onSave(draft.current.trim())
   }
   return (
     <>
       <SectionHeading
         actions={(
-          <EditActions
-            editing={editing} onEdit={() => onEditing(true)} onCancel={() => onEditing(false)} onSave={save}
-          />
+          <EditActions editing={editing} onEdit={edit} onCancel={() => onEditing(false)} onSave={save} />
         )}
       >{m.project.sections.remark}
       </SectionHeading>
       <MarkdownBox
         className="memo" text={text} editing={editing} box={box}
+        live={{ onChange: (next) => { draft.current = next } }}
         onCancel={() => onEditing(false)} onSave={save} onOpen={onOpen}
         empty={<EmptyState variant="section">{m.project.remarkEmpty}</EmptyState>}
       />
