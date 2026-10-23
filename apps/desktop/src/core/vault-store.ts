@@ -1112,7 +1112,7 @@ export function createVaultStore(
   const downloadableEntry = (id: string): InboxRecord => {
     const entry = inbox.find((held) => held.id === id)
     if (!entry) throw new CallError('not-found', `收件里没有这一条：${id}`)
-    if (entry.downloaded) throw new CallError('refused', `这一条已经入库：${id}`)
+    if (pagesOf.has(entry.paper)) throw new CallError('refused', `这一条已经入库：${id}`)
     return entry
   }
 
@@ -1846,7 +1846,7 @@ export function createVaultStore(
         rec: e.rec,
         reasons: structuredClone(e.reasons),
         ...(e.feedback === undefined ? {} : { feedback: e.feedback }),
-        downloaded: e.downloaded,
+        downloaded: pagesOf.has(e.paper),
         paper: paperOf(e.paper),
         pdf: e.pdf,
         ...(e.ranking === undefined ? {} : { ranking: structuredClone(e.ranking) }),
@@ -1882,8 +1882,7 @@ export function createVaultStore(
 
     prepareInboxDownload(id) {
       const entry = downloadableEntry(id)
-      const known = pagesOf.get(entry.paper)?.[0]
-        ?? [...papers.values()].find((paper) => paper.identifier === `arXiv:${entry.arxiv}`)?.id
+      const known = [...papers.values()].find((paper) => paper.identifier === `arXiv:${entry.arxiv}`)?.id
       if (known !== undefined) return { kind: 'existing', paper: known, title: papers.get(known)!.title }
       if (entry.pdf === '') throw new CallError('refused', '这一条没有原文地址')
       return { kind: 'fetch', url: entry.pdf }

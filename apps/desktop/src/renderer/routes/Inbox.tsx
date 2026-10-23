@@ -78,9 +78,9 @@ export function Inbox() {
   const [profiles, setProfiles] = useState<DiscoveryProfile[]>([])
   const [leaving, setLeaving] = useState<ReadonlySet<string>>(new Set())
   const [error, setError] = useState<string | null>(null)
-  // A download that hit a paper already in the vault: that paper's title, shown on the card with a
-  // link to open it.
-  const [collided, setCollided] = useState<ReadonlyMap<string, string>>(new Map())
+  // A download that hit a paper already in the vault: that paper's id and title, shown on the card
+  // with a link to open it.
+  const [collided, setCollided] = useState<ReadonlyMap<string, { paper: string; title: string }>>(new Map())
 
   const notice = useNotice()
   const { openCategory } = useSettingsOpen()
@@ -173,7 +173,7 @@ export function Inbox() {
         return
       }
       if (result.kind === 'existing') {
-        setCollided((seen) => new Map(seen).set(id, result.title))
+        setCollided((seen) => new Map(seen).set(id, { paper: result.paper, title: result.title }))
         notice.success(m.inbox.notices.duplicateToast)
         return
       }
@@ -253,8 +253,8 @@ export function Inbox() {
         <>
           {collided.has(p.id) ? (
             <PaperCardNotice action={(
-              <button className="btn ghost sm" onClick={() => open('reader', p.paper)}>{m.inbox.actions.open}</button>
-            )}>{m.inbox.notices.alreadyInLibrary(plainTitle(collided.get(p.id) ?? ''))}</PaperCardNotice>
+              <button className="btn ghost sm" onClick={() => open('reader', collided.get(p.id)!.paper)}>{m.inbox.actions.open}</button>
+            )}>{m.inbox.notices.alreadyInLibrary(plainTitle(collided.get(p.id)!.title))}</PaperCardNotice>
           ) : null}
           {failed.has(p.id) ? (
             <PaperCardNotice tone="error" action={(

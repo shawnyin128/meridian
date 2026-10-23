@@ -14,9 +14,8 @@ import { minimalPdf } from './net/minimal-pdf.js'
 /** Test vault for the real implementation: aggregation layout, two papers, two topics, one method, and four sources. */
 const VAULT = resolve(import.meta.dirname, 'fixtures/vault')
 
-/** Page backed by a source PDF. Its id is the filename and `PAPER_SOURCE` is the referenced source. */
+/** Page backed by a source PDF. Its id is the filename. */
 const PAPER = '13979-STAR-Speculative-Decodin'
-const PAPER_SOURCE = 'paper-pdf-a6b750e25a61'
 const PAPER_PAGE = 'wiki/papers/13979-STAR-Speculative-Decodin.md'
 const PAPER_PDF = 'sources/papers/paper-pdf-a6b750e25a61-13979-STAR-Speculative-Decodin.pdf'
 
@@ -33,7 +32,10 @@ const VAULT_GITIGNORE = [
   '',
 ].join('\n')
 
-/** Two inbox entries: one points to an existing paper and one to a source not yet in the library. */
+/**
+ * Two inbox entries: one recommends a paper already in the vault and, as Core writes a new entry,
+ * names no paper; the other points to a source not yet in the vault.
+ */
 const INBOX = [
   {
     id: 'in-dup',
@@ -45,7 +47,7 @@ const INBOX = [
     abstract: '……',
     rec: '与你在读的那条线重合',
     downloaded: false,
-    paper: PAPER_SOURCE,
+    paper: '',
     pdf: 'https://arxiv.org/pdf/2609.10001',
     topic: 'speculative decoding',
     gone: false,
@@ -328,12 +330,28 @@ describe('vault app state', () => {
     })
 
     it('入库撞上库里已有的那一篇时不重复入库,给出的是那一篇的落点', () => {
+      store.updatePaper(PAPER, { identifier: 'arXiv:2609.10001' })
       const before = store.listPapers({ page: 1, size: 10 }).total
       expect(store.prepareInboxDownload('in-dup')).toEqual({
         kind: 'existing', paper: PAPER, title: store.getPaper(PAPER).title,
       })
-      expect(store.listPapers({ page: 1, size: 10 }).total).toBe(before)
-      expect(store.listInbox().find((e) => e.id === 'in-dup')?.downloaded).toBe(false)
+      // A PDF imported directly is found by its source when the entry's download brings the same bytes.
+      const bytes = minimalPdf({ lines: ['STAR again'] })
+      const held = store.importPaper('STAR again.pdf', bytes).paper
+      expect(store.completeInboxDownload('in-dup', bytes))
+        .toEqual({ kind: 'existing', paper: held.id, title: held.title })
+      expect(store.listPapers({ page: 1, size: 10 }).total).toBe(before + 1)
+      expect(store.listInbox().find((e) => e.id === 'in-dup')).toMatchObject({ downloaded: false, paper: '' })
+    })
+
+    it('入库的那一篇从库里删掉后,这一条回到可入库;从垃圾桶恢复后又是已入库', () => {
+      const { paper } = store.completeInboxDownload('in-new', minimalPdf({ lines: ['Medusa'] }))
+      store.deletePaper(paper)
+      expect(reopen().listInbox().find((e) => e.id === 'in-new')?.downloaded).toBe(false)
+      expect(store.prepareInboxDownload('in-new')).toEqual({ kind: 'fetch', url: 'https://arxiv.org/pdf/2609.10002' })
+
+      store.restoreTrash(store.listTrash().find((item) => item.kind === 'paper')!.id)
+      expect(store.listInbox().find((e) => e.id === 'in-new')).toMatchObject({ downloaded: true, paper })
     })
   })
 

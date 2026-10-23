@@ -477,6 +477,8 @@ test('同一篇再进来按当下的库重取,不吃上一次的结果', async (
   await cardAction(win, target.id, '下载并入库')
   await cardAction(win, target.id, '开始阅读')
   await expectPainted(win, INGESTED.pages)
+  const paper = (await call<{ id: string; paper: string }[]>(win, 'inbox.list', {}))
+    .find((e) => e.id === target.id)!.paper
 
   // Delete the paper from Papers: the reader stays open on the same paper, which is no longer in the vault.
   await shown(win, '.paper-chat-head .back').click()
@@ -487,8 +489,11 @@ test('同一篇再进来按当下的库重取,不吃上一次的结果', async (
   await win.locator('.ptable tbody tr .rowx').click()
   await expect(win.locator('.ptable tbody tr')).toHaveCount(0)
 
+  // The card follows the vault and offers adding again; the feed's link to the paper still opens it.
   await openInbox(win)
-  await cardAction(win, target.id, '开始阅读')
+  await expect(shown(win, `.pcard[data-pid="${target.id}"] [aria-label="下载并入库"]`)).toHaveCount(1)
+  await win.locator('[data-desk="feed"]').click()
+  await shown(win, `.entity-link--paper[href="#reader:${paper}"]`).first().click()
   await expect(shown(win, '.pdfload')).toHaveText('这一项已不存在')
 
   // Restored from the Trash, the same paper opens without the earlier error. The global sidebar is

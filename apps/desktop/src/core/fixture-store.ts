@@ -615,7 +615,7 @@ export function createFixtureStore(
   const downloadableEntry = (id: string): InboxRecord => {
     const entry = inbox.find((held) => held.id === id)
     if (!entry) throw new CallError('not-found', `收件里没有这一条：${id}`)
-    if (entry.downloaded) throw new CallError('refused', `这一条已经入库：${id}`)
+    if (pageOf.has(entry.paper)) throw new CallError('refused', `这一条已经入库：${id}`)
     return entry
   }
 
@@ -1362,7 +1362,7 @@ export function createFixtureStore(
         rec: e.rec,
         reasons: structuredClone(e.reasons),
         ...(e.feedback === undefined ? {} : { feedback: e.feedback }),
-        downloaded: e.downloaded,
+        downloaded: pageOf.has(e.paper),
         paper: paperOf(e.paper),
         pdf: e.pdf,
         ...(e.ranking === undefined ? {} : { ranking: structuredClone(e.ranking) }),
@@ -1399,8 +1399,7 @@ export function createFixtureStore(
 
     prepareInboxDownload(id) {
       const entry = downloadableEntry(id)
-      const known = pageOf.get(entry.paper)
-        ?? [...byId.values()].find((paper) => paper.identifier === `arXiv:${entry.vault.arxiv}`)?.id
+      const known = [...byId.values()].find((paper) => paper.identifier === `arXiv:${entry.vault.arxiv}`)?.id
       if (known !== undefined) return { kind: 'existing', paper: known, title: byId.get(known)!.title }
       if (entry.pdf === '') throw new CallError('refused', '这一条没有原文地址')
       return { kind: 'fetch', url: entry.pdf }

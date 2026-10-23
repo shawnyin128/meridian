@@ -27,7 +27,7 @@
     "abstract": "Speculative decoding reduces LLM decoding latency by verifying multiple drafted tokens in parallel, but tree-structured drafting is believed to stop paying off beyond a modest width. We revisit this knee-point result in batched long-context serving and show that with shared prefixes, verification cost is amortized across the batch; wider trees remain net-positive well beyond prior reports, yielding up to 2.4× end-to-end speedup.",
     "rec": "把「宽树拐点」从方法属性重述为服务场景属性——如果成立,批量部署下的树宽设计都要重算。",
     "downloaded": false,
-    "paper": "paper-pdf-a66fb13e3879",
+    "paper": "",
     "pdf": "https://arxiv.org/pdf/2607.01428",
     "vault": {
       "topic": "speculative decoding",
