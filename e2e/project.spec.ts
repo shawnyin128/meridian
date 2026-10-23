@@ -221,6 +221,100 @@ test('需要注意的类型、日期和正文使用统一列宽与间隔', async
   })).toEqual(['0px', '0px'])
 })
 
+test('科研记录的正文紧跟日期、与需要注意的正文对齐,节点和 agent 各成一列,细节用小号次要字', async ({ win }) => {
+  await gotoProject(win)
+  const page = win.locator('.screenslot:not([hidden])')
+  const geometry = await page.locator('.evlist .record-row').evaluateAll((rows) => rows.map((row) => {
+    const box = (selector: string) => row.querySelector(selector)!.getBoundingClientRect()
+    return {
+      dateRight: box('.project-signal-date').right, text: box('.record-text').left,
+      node: box('.record-node').left, who: box('.record-who').left,
+      hasNode: row.querySelector('.record-node .entity-link') !== null,
+    }
+  }))
+  // The draft's records include ones without a node, whose text used to sit after an empty node cell.
+  expect(new Set(geometry.map((row) => row.hasNode))).toEqual(new Set([true, false]))
+  const gap = await page.locator('.attn .attnrow').first().evaluate((row) => parseFloat(getComputedStyle(row).columnGap))
+  expect(geometry.map((row) => Math.round(row.text - row.dateRight))).toEqual(geometry.map(() => gap))
+  for (const cell of ['text', 'node', 'who'] as const) {
+    expect(new Set(geometry.map((row) => Math.round(row[cell]))).size, `${cell} 应落在同一列`).toBe(1)
+  }
+  const attentionText = await page.locator('.attn .attn-text').first().evaluate((text) => text.getBoundingClientRect().left)
+  expect(Math.round(geometry[0]!.text)).toBe(Math.round(attentionText))
+
+  const look = await page.locator('.evlist .record-row', { has: win.locator('.record-detail') }).first()
+    .evaluate((row) => {
+      const role = (property: 'color' | 'fontSize', value: string) => {
+        const probe = document.createElement('span')
+        probe.style[property] = value
+        row.append(probe)
+        const resolved = getComputedStyle(probe)[property]
+        probe.remove()
+        return resolved
+      }
+      const style = (selector: string) => getComputedStyle(row.querySelector(selector)!)
+      return {
+        title: [style('.record-line').color, style('.record-line').fontSize],
+        detail: [style('.record-detail').color, style('.record-detail').fontSize],
+        body: [role('color', 'var(--ink)'), role('fontSize', 'var(--fs-base)')],
+        meta: [role('color', 'var(--ter)'), role('fontSize', 'var(--fs-sm)')],
+      }
+    })
+  expect(look.title).toEqual(look.body)
+  expect(look.detail).toEqual(look.meta)
+})
+
+test('任务行开头的日期、时段、优先级和状态按需要注意的列距隔开,任务名再隔开一档', async ({ win }) => {
+  await gotoProject(win)
+  const page = win.locator('.screenslot:not([hidden])')
+  const gap = await page.locator('.attn .attnrow').first().evaluate((row) => parseFloat(getComputedStyle(row).columnGap))
+  const rows = await page.locator('#taskList .task-row').evaluateAll((items) => items.map((row) => {
+    const edges = ['.task-date-part', '.task-clock-part', '.plan-priority', '.state-cell', '.plan-name']
+      .map((selector) => row.querySelector(selector)!.getBoundingClientRect())
+    return edges.slice(1).map((edge, index) => Math.round(edge.left - edges[index]!.right))
+  }))
+  expect(rows).toEqual(rows.map(() => [gap, gap, gap, 2 * gap]))
+})
+
+test.describe(() => {
+  // The record opens through a height transition, which an offscreen window, without frames, does not run.
+  test.use({ showWindow: true })
+
+  test('放不下的科研记录停在上面一会儿就向下展开整段,不弹 tooltip,移开就收回', async ({ app, win }) => {
+    await gotoProject(win)
+    await app.evaluate(({ BrowserWindow }) => { BrowserWindow.getAllWindows()[0]!.setContentSize(1100, 900) })
+    const page = win.locator('.screenslot:not([hidden])')
+    const rows = page.locator('.evlist .record-row')
+    await expect(page.locator('.evlist .record-line.clipped').first()).toBeVisible()
+    const index = await rows.evaluateAll((items) => items.findIndex((row) => row.querySelector('.record-line.clipped') !== null))
+    const row = rows.nth(index)
+    const text = row.locator('.record-line')
+    await text.scrollIntoViewIfNeeded()
+    const shape = () => row.evaluate((element) => {
+      const box = element.getBoundingClientRect()
+      const line = element.querySelector('.record-line')!
+      return {
+        top: Math.round(box.top), height: Math.round(box.height),
+        kindTop: Math.round(element.querySelector('.project-signal-kind')!.getBoundingClientRect().top),
+        whole: line.scrollWidth <= line.clientWidth + 1 && line.scrollHeight <= line.clientHeight + 1,
+      }
+    })
+    const rest = await shape()
+    expect(rest.whole).toBe(false)
+
+    await text.hover()
+    await expect.poll(async () => (await shape()).whole).toBe(true)
+    const open = await shape()
+    expect(open.height).toBeGreaterThan(rest.height)
+    expect([open.top, open.kindTop]).toEqual([rest.top, rest.kindTop])
+    await expect(win.locator('.tooltip')).toHaveCount(0)
+
+    await win.mouse.move(1, 1)
+    await expect.poll(async () => (await shape()).height).toBe(rest.height)
+    expect((await shape()).whole).toBe(false)
+  })
+})
+
 test('任务条在时间格内上下居中', async ({ win }) => {
   await gotoProject(win)
   const centers = await win.locator('.gantt .gbar').evaluateAll((bars) => bars.map((bar) => {

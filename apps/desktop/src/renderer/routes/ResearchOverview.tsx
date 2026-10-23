@@ -259,7 +259,7 @@ function Recent({ rows, onOpen }: { rows: ProjectOverview[]; onOpen: (projectId:
                   {m.project.records.kind[e.kind ?? 'note']}
                 </ProjectSignalKind>
               )}
-              main={e.text}
+              main={<FadeText expand>{e.text}</FadeText>}
               meta={e.origin === 'agent' ? <AgentLabel /> : undefined}
               project={e.name}
               projectId={e.projectId}

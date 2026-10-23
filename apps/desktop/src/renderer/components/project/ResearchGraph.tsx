@@ -26,7 +26,7 @@ import { StructuredList, StructuredRow } from '../StructuredList.js'
 import { AgentLabel } from '../SourceLabel.js'
 import { ToggleGroup, ToggleItem, Toolbar, ToolbarButton } from '../Toolbar.js'
 import { Tooltip } from '../Tooltip.js'
-import { ProjectEventRow } from './ProjectSignals.js'
+import { ProjectEventList, ProjectEventRow } from './ProjectSignals.js'
 import './ResearchGraph.css'
 
 type GraphNode = Graph['nodes'][number]
@@ -566,14 +566,14 @@ export function ResearchNodePanel({ graph, events, ideas, tasks, node, onClose, 
       {nodeEvents.length === 0 ? null : (
         <>
           <SectionHeading variant="rail">{m.project.graph.records(nodeEvents.length)}</SectionHeading>
-          <StructuredList className="node-event-list" variant="embedded">
+          <ProjectEventList className="node-event-list">
             {nodeEvents.map((event, index) => (
               <ProjectEventRow
                 key={`${event.date} ${index}`}
                 kind={recordKind(event)} date={event.date} title={event.text} detail={event.detail} origin={recordOrigin(event)}
               />
             ))}
-          </StructuredList>
+          </ProjectEventList>
         </>
       )}
 

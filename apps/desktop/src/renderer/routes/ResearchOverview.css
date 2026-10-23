@@ -31,6 +31,9 @@
 .ovlist-when{grid-column:2;display:flex;align-items:center;min-width:0;height:22px;color:var(--ter);font-size:var(--fs-sm)}
 .ovlist-kind{grid-column:3;display:flex;align-items:center;gap:var(--sp-6);min-width:0;height:22px}
 .ovlist-main{grid-column:4;display:block;min-width:0;overflow:hidden;white-space:nowrap;mask-image:var(--clipfade)}
+/* A record's text opens in place, keeping the row's other cells on its first line. */
+.ovlist-main:has(>.fade-expand){mask-image:none}
+.ovlist-row:has(>.ovlist-main>.fade-expand){align-items:baseline}
 .ovlist-meta{grid-column:5;color:var(--ter);font-size:var(--fs-sm);white-space:nowrap}
 .ovlist-prefix{color:var(--ter);margin-right:var(--sp-4)}
 .ovlist-row.progress .ovlist-kind{display:grid;grid-template-columns:7px 32px;justify-content:start}

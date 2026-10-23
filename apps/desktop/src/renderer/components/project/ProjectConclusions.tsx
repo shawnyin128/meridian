@@ -16,7 +16,6 @@ import { PanelClose } from '../PanelClose.js'
 import { AgentLabel } from '../SourceLabel.js'
 import { StructuredList, StructuredRow } from '../StructuredList.js'
 import { Tag } from '../Tag.js'
-import { Tooltip } from '../Tooltip.js'
 import { EntityLink } from '../EntityLink.js'
 import { ProjectSignalDate, ProjectSignalKind } from './ProjectSignals.js'
 import './ProjectConclusions.css'
@@ -28,9 +27,10 @@ const STATE_TONE: Record<ConclusionState, 'warn' | 'good' | 'bad'> = {
 type NodeLook = { label: string; mode: NonNullable<GraphNode['mode']> }
 
 /**
- * One conclusion row on the research-record columns: the state chip, the date, the source node (left
- * empty for a legacy conclusion), the conclusion and where it stands in the Wiki in one line, and the
- * agent label of a node's conclusion, which an agent wrote.
+ * One conclusion row of a `ProjectEventList` with its node column: the state chip, the date, the
+ * conclusion and where it stands in the Wiki in one line, opening in place when it does not fit, the
+ * source node (left empty for a legacy conclusion) and the agent label of a node's conclusion, which an
+ * agent wrote.
  */
 export function ProjectConclusionRow({ conclusion, node, selected, onOpen }: {
   conclusion: ProjectConclusion
@@ -44,20 +44,18 @@ export function ProjectConclusionRow({ conclusion, node, selected, onOpen }: {
   const wikiState = written === undefined ? c.notWritten : c.writtenTo(written.title, written.version)
   return (
     <StructuredRow
-      className="attnrow project-signal-columns record-row with-node conclusion-row" selected={selected}
+      className="attnrow record-row conclusion-row" selected={selected}
       data-conclusion={conclusion.id} onActivate={onOpen}
     >
       <ProjectSignalKind tone={STATE_TONE[conclusion.state]}>{c.state[conclusion.state]}</ProjectSignalKind>
       <ProjectSignalDate date={conclusion.date} />
+      <span className="attn-text record-text">
+        <FadeText className="record-line" expand>
+          {conclusion.text}<span className="record-detail"> · {wikiState}</span>
+        </FadeText>
+      </span>
       <span className="record-node">
         {node === undefined ? null : <EntityLink kind="node" label={node.label} mode={node.mode} fill />}
-      </span>
-      <span className="attn-text record-text">
-        <Tooltip label={`${conclusion.text} · ${wikiState}`} whenClipped>
-          <FadeText className="record-line">
-            {conclusion.text}<span className="record-detail"> · {wikiState}</span>
-          </FadeText>
-        </Tooltip>
       </span>
       <span className="record-who">{conclusion.node === undefined ? null : <AgentLabel />}</span>
     </StructuredRow>

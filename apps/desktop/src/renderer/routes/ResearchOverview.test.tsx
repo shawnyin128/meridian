@@ -121,6 +121,14 @@ describe('研究总览的项目推进', () => {
     expect(rowElement.textContent).toContain(next)
   })
 
+  it('最近科研记录的正文放不下时和项目页的科研记录一样就地展开整段,不弹 tooltip', async () => {
+    api.rows = [row([{ date: '2026-10-16', text: '宽度扫描：B=16 时动态树宽比固定宽度 4 快 2.6×，长回答上的接受率也更稳', kind: 'result' }])]
+    await act(async () => root.render(<MessagesProvider><ResearchOverview /></MessagesProvider>))
+    const main = host.querySelector('.ovcols .ovlist-row .ovlist-main')!
+    expect(main.querySelector('.fade-expand')?.textContent).toBe('宽度扫描：B=16 时动态树宽比固定宽度 4 快 2.6×，长回答上的接受率也更稳')
+    expect(main.querySelector('[data-state]')).toBeNull()
+  })
+
   it('最近科研记录给每条记录标上项目页科研记录的类型名和色调,没有类型的旧记录标成记录', async () => {
     api.rows = [row([
       { date: '2026-10-13', text: '旧记录' },
