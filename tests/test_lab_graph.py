@@ -309,6 +309,33 @@ class LabGraphTests(unittest.TestCase):
             self.assertIn("dangling_edge_target", codes)
             self.assertEqual(result.health["status"], "fail")
 
+    def test_graph_health_fails_on_every_record_the_app_leaves_out(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._write_minimal_lab(root)
+            from meridian.lab.graph import check_lab_graph_payload
+
+            result = materialize_lab_graph(root)
+            graph = result.graph
+            graph["nodes"] = [*graph["nodes"], {"label": "No id"}, dict(graph["nodes"][0])]
+            graph["edges"] = [
+                *graph["edges"],
+                {"id": "dangling", "source": "kv-compression.Z", "target": "kv-compression.A", "kind": "continues"},
+                "not an edge",
+            ]
+            findings = check_lab_graph_payload(graph, result.lab_root)["findings"]
+
+            errors = {(finding["code"], finding["path"]) for finding in findings if finding["severity"] == "error"}
+            self.assertTrue(
+                {
+                    ("missing_node_field", "nodes/1/id"),
+                    ("duplicate_node_id", "nodes/2/id"),
+                    ("dangling_edge_source", "edges/0/source"),
+                    ("invalid_edge", "edges/1"),
+                }.issubset(errors),
+                errors,
+            )
+
     def test_graph_health_allows_two_sibling_nodes_active_at_once(self) -> None:
         # The retired active_path chain check rejected two active ids with no
         # edge between them; active_nodes is a set, so unrelated siblings may
