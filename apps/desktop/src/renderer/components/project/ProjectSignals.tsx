@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import type { EventKind, GraphNode } from '../../../shared/contract.js'
 import type { ProjectDecisionItem } from '../../../shared/project-signals.js'
 import { useMessages } from '../../messages/useMessages.js'
@@ -88,10 +89,27 @@ export const RECORD_TONE: Record<EventKind, TagTone> = {
 }
 
 /**
- * One research-record row on the same columns as the project's decision rows: the kind chip, the
- * date chip, the node tag column, one line holding the title and the muted detail, and who wrote it.
- * Without `onSelectNode` (the node panel, whose own node would be redundant) the node column is left
- * out; a record without a node leaves its cell empty so titles stay aligned.
+ * A list of research records whose rows share one set of columns, the first two those of the
+ * project's decision rows. `withNode` gives it the node column, for rows given `onSelectNode`.
+ */
+export function ProjectEventList({ withNode = false, className, children }: {
+  withNode?: boolean
+  className: string
+  children: ReactNode
+}) {
+  return (
+    <StructuredList
+      className={`project-signal-columns record-list${withNode ? ' with-node' : ''} ${className}`} variant="embedded"
+    >{children}
+    </StructuredList>
+  )
+}
+
+/**
+ * One research-record row of a `ProjectEventList`: the kind chip, the date chip, the title with its
+ * detail after it in smaller muted type, opening in place when it does not fit, the node tag and who
+ * wrote it. Without `onSelectNode` (the node panel, whose own node would be redundant) the node
+ * column is left out; a record without a node leaves its cell empty.
  */
 export function ProjectEventRow({
   kind, date, title, detail, node, onSelectNode, origin,
@@ -106,9 +124,15 @@ export function ProjectEventRow({
 }) {
   const m = useMessages()
   return (
-    <StructuredRow className={`attnrow project-signal-columns record-row${onSelectNode === undefined ? '' : ' with-node'}`}>
+    <StructuredRow className="attnrow record-row">
       <ProjectSignalKind tone={RECORD_TONE[kind]}>{m.project.records.kind[kind]}</ProjectSignalKind>
       <ProjectSignalDate date={date} />
+      <span className="attn-text record-text">
+        <FadeText className="record-line" expand>
+          {title}
+          {detail === undefined ? null : <span className="record-detail"> · {detail}</span>}
+        </FadeText>
+      </span>
       {onSelectNode === undefined ? null : (
         <span className="record-node">
           {node === undefined ? null : (
@@ -116,14 +140,6 @@ export function ProjectEventRow({
           )}
         </span>
       )}
-      <span className="attn-text record-text">
-        <Tooltip label={detail === undefined ? title : `${title} · ${detail}`} whenClipped>
-          <FadeText className="record-line">
-            {title}
-            {detail === undefined ? null : <span className="record-detail"> · {detail}</span>}
-          </FadeText>
-        </Tooltip>
-      </span>
       <span className="record-who">{origin === 'agent' ? <AgentLabel /> : null}</span>
     </StructuredRow>
   )

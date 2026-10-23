@@ -29,7 +29,7 @@ import { SegmentedControl } from '../components/SegmentedControl.js'
 import { RowActions, StructuredList, StructuredRow } from '../components/StructuredList.js'
 import { TitleNote } from '../components/TitleNote.js'
 import {
-  ProjectAttention, ProjectEventRow,
+  ProjectAttention, ProjectEventList, ProjectEventRow,
 } from '../components/project/ProjectSignals.js'
 import {
   ProjectBlockerView, ProjectNextActionView,
@@ -785,7 +785,7 @@ export function ProjectDetail({
               ? (sortedRecords.length === 0
                 ? <EmptyState variant="section">{m.project.graph.noRecords}</EmptyState>
                 : (
-                <StructuredList className="evlist" variant="embedded">
+                <ProjectEventList withNode className="evlist">
                   {sortedRecords.map((ev, index) => {
                     const graphNode = ev.node === undefined
                       ? undefined
@@ -802,13 +802,13 @@ export function ProjectDetail({
                       />
                     )
                   })}
-                </StructuredList>
+                </ProjectEventList>
                 ))
               : record === 'concl'
               ? (conclusions.length === 0
                 ? <EmptyState variant="section">{m.project.conclusions.empty}</EmptyState>
                 : (
-                  <StructuredList className="evlist" variant="embedded">
+                  <ProjectEventList withNode className="evlist">
                     {conclusions.map((item) => (
                       <ProjectConclusionRow
                         key={item.id} conclusion={item} node={nodeLook(item.node)}
@@ -821,7 +821,7 @@ export function ProjectDetail({
                         }}
                       />
                     ))}
-                  </StructuredList>
+                  </ProjectEventList>
                 ))
               : (
                 <>

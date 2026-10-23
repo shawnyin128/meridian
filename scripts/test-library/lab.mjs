@@ -98,6 +98,9 @@ export async function seedLab(seed, call, tasks) {
     ['width-start', -6, 'start', '树形草稿 + 动态宽度', undefined],
     ['width-cap', -4, 'decision', '树宽上限定为 8', '超过 8 之后验证开销抵消收益'],
     ['sweep-turn', -1, 'note', '转向 B=16 扫描：先确认宽度收益的拐点', undefined],
+    // Long enough to be cut off on the project page at 1440 by 900, so the record opens in place on hover.
+    ['width-sweep', 0, 'result', '宽度扫描：B=16 时动态树宽比固定宽度 4 快 2.6×，长回答上的接受率也更稳',
+      'γ=4，温度 0；宽度 2、4、8 的接受率 0.71、0.66、0.58，加速 1.8×、2.4×、2.6×；宽度超过 8 之后验证开销抵消收益'],
   ]) {
     meridian(seed.out, ['workspace', 'event-add', '--root', workspaceOf(seed), '--id', id, '--text', text, '--kind', kind,
       '--source', thread, '--date', dayFrom(seed.today, days), '--node', node('B'), ...(detail === undefined ? [] : ['--detail', detail])])

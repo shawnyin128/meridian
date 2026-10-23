@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { MessagesProvider } from '../../messages/useMessages.js'
 import { LANGUAGE_STORAGE_KEY } from '../../shell/language.js'
 import {
-  EventText, ProjectAttention, ProjectEventRow, ProjectSignalDate, ProjectSignalKind,
+  EventText, ProjectAttention, ProjectEventList, ProjectEventRow, ProjectSignalDate, ProjectSignalKind,
 } from './ProjectSignals.js'
 
 describe('ProjectSignals', () => {
@@ -77,7 +77,7 @@ describe('ProjectEventRow', () => {
   })
   afterEach(() => { vi.unstubAllGlobals() })
 
-  it('跟决策行同一套列:类型标签、日期标签、节点标签、标题与细节、谁写的;点节点标签报出节点 id', () => {
+  it('一行写类型标签、日期标签、标题与细节、节点标签、谁写的;点节点标签报出节点 id', () => {
     const host = document.createElement('div')
     const root = createRoot(host)
     const onSelectNode = vi.fn()
@@ -91,17 +91,44 @@ describe('ProjectEventRow', () => {
     ))
 
     const row = host.querySelector('.record-row')
-    expect(row?.className).toContain('attnrow project-signal-columns')
+    expect(row?.className).toBe('structured-row attnrow record-row')
     expect(host.querySelector('.project-signal-kind .tag--good')?.textContent).toBe('实验结果')
     expect(host.querySelector('.project-signal-date .date-chip')).not.toBeNull()
     expect(host.querySelector('.record-line')?.textContent).toBe('第一个探针支持假设 · p99 从 80ms 降到 62ms')
     expect(host.querySelector('.record-who .source-label')?.textContent).toBe('agent')
-    expect(row?.className).toContain('with-node')
     const tag = host.querySelector('.record-node button.entity-link--node.entity-link--fill')
     expect(tag?.textContent).toBe('延迟探针')
     expect(tag?.querySelector('.status-dot--warn')?.getAttribute('aria-label')).toBe('待修复')
     act(() => { tag!.dispatchEvent(new MouseEvent('click', { bubbles: true })) })
     expect(onSelectNode).toHaveBeenCalledWith('thread.B')
+    act(() => root.unmount())
+  })
+
+  it('记录正文紧跟在日期后面，节点和谁写的排在正文之后；放不下的正文停在上面时就地展开，不弹 tooltip', () => {
+    const host = document.createElement('div')
+    const root = createRoot(host)
+    act(() => root.render(
+      <MessagesProvider>
+        <ProjectEventList withNode className="evlist">
+          <ProjectEventRow kind="project" date="2026-09-01" title="创建项目" origin="user" onSelectNode={vi.fn()} />
+          <ProjectEventRow
+            kind="result" date="2026-09-22" title="第一个探针支持假设" detail="p99 从 80ms 降到 62ms"
+            node={{ id: 'thread.B', label: '延迟探针', mode: 'repairable' }} onSelectNode={vi.fn()} origin="agent"
+          />
+        </ProjectEventList>
+      </MessagesProvider>,
+    ))
+
+    const list = host.querySelector('.evlist')!
+    expect(list.className).toBe('structured-list structured-list--embedded project-signal-columns record-list with-node evlist')
+    expect([...list.querySelectorAll('.record-row')].map((row) => [...row.children].map((cell) => cell.className))).toEqual([
+      ['project-signal-kind', 'project-signal-date', 'attn-text record-text', 'record-node', 'record-who'],
+      ['project-signal-kind', 'project-signal-date', 'attn-text record-text', 'record-node', 'record-who'],
+    ])
+    for (const text of list.querySelectorAll('.record-text')) {
+      expect(text.querySelector('.record-line')?.classList.contains('fade-expand')).toBe(true)
+      expect(text.querySelector('[data-state]')).toBeNull()
+    }
     act(() => root.unmount())
   })
 
