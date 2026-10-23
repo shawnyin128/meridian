@@ -28,6 +28,7 @@ const api = vi.hoisted(() => ({
   watches: [] as Watch[],
   setActive: vi.fn(async () => {}),
   enter: vi.fn(),
+  open: vi.fn(),
   /** The sort order of each inbox.list call, in order. */
   sorts: [] as (string | undefined)[],
 }))
@@ -60,7 +61,7 @@ vi.mock('../shell/AppShell.js', () => ({
   useCrumbTail: () => {},
   useInboxMode: () => api.mode,
   useInboxScope: () => api.scope,
-  useJump: () => ({ open: vi.fn(), enter: api.enter }),
+  useJump: () => ({ open: api.open, enter: api.enter }),
   useSettingsOpen: () => ({
     open: false, requestedCategory: null, setOpen: vi.fn(), openCategory: api.openCategory,
   }),
@@ -89,6 +90,7 @@ describe('Inbox', () => {
     api.feedback.mockClear()
     api.setIntent.mockClear()
     api.openCategory.mockClear()
+    api.open.mockClear()
   })
   afterEach(() => {
     host.remove()
@@ -370,6 +372,24 @@ describe('Inbox', () => {
     expect(card('a2').querySelector('.pfail span')?.textContent).toBe('下载失败 · 服务器出错')
     expect(card('a3').querySelector('.pfail span')?.textContent).toBe('下载失败 · 没能写入论文库')
     expect(card('a1').querySelector('.pfail .btn')?.textContent).toBe('重试')
+    await act(async () => { root.unmount() })
+  })
+
+  it('入库撞上库里已有的那一篇时,提示里的打开进的是库里那一篇', async () => {
+    // As Core writes a new entry, it names no paper.
+    api.entries = [{
+      id: 'a1', kind: 'watch', watch: 'w1', project: '', source: '主题 · w1',
+      title: 'Paper a1', authors: 'Ada', venue: 'ICLR', abstract: 'Abstract', rec: '',
+      reasons: [], downloaded: false, paper: '', pdf: 'https://arxiv.org/pdf/2609.1',
+    }]
+    api.downloads = { a1: { kind: 'existing', paper: 'Held-Paper', title: 'Held Paper' } }
+    const root = createRoot(host)
+    await act(async () => { root.render(<MessagesProvider><Inbox /></MessagesProvider>) })
+    const card = host.querySelector<HTMLElement>('.paper-card[data-pid="a1"]')!
+    await act(async () => { card.querySelector<HTMLButtonElement>('[aria-label="下载并入库"]')!.click() })
+    expect(card.querySelector('.pdup span')?.textContent).toBe('库里已经有这一篇：「Held Paper」')
+    await act(async () => { card.querySelector<HTMLButtonElement>('.pdup .btn')!.click() })
+    expect(api.open).toHaveBeenCalledWith('reader', 'Held-Paper')
     await act(async () => { root.unmount() })
   })
 

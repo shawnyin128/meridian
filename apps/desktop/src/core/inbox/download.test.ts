@@ -3,6 +3,7 @@ import { resolve } from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
 import { createFixtureStore } from '../fixture-store.js'
 import { createCannedGet, type CannedTable } from '../net/canned-http.js'
+import { minimalPdf } from '../net/minimal-pdf.js'
 import { createInboxDownloads, type InboxDownloads } from './download.js'
 
 const VAULT = resolve(import.meta.dirname, '../fixtures/vault')
@@ -76,10 +77,12 @@ describe('createInboxDownloads', () => {
   })
 
   it('库里已有同一原文或同一 arXiv 编号时不再下载', async () => {
-    const { store, downloads } = setup({})
-    const sourcePaper = store.listInbox().find((entry) => entry.id === 'longspec')!.paper
+    const pdf = { lines: ['LongSpec: Long-Context Lossless Speculative Decoding'] }
+    const { store, downloads } = setup({ 'https://arxiv.org/pdf/2607.01428': { status: 200, pdf } })
+    // Like every entry Core writes, longspec names no paper; the same PDF was imported directly.
+    const held = store.importPaper('LongSpec.pdf', minimalPdf(pdf)).paper
     expect(await downloads.download('longspec'))
-      .toEqual({ kind: 'existing', paper: sourcePaper, title: store.getPaper(sourcePaper).title })
+      .toEqual({ kind: 'existing', paper: held.id, title: held.title })
 
     const target = store.listPapers({ page: 1, size: 1 }).rows[0]!
     store.fillPaperMetadata(target.id, { identifier: 'arXiv:2407.08608' }, null)

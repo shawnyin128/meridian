@@ -1496,13 +1496,27 @@ describe('fixture store', () => {
   })
 
   it('入库撞上库里已有的那一篇时不重复入库,给出的是那一篇的落点', () => {
-    // The longspec recommendation points to an existing paper; the same source derives the same paper id.
-    const paper = store.listInbox().find((e) => e.id === 'longspec')!.paper
+    // Like every entry Core writes, longspec names no paper; the user then imports the same PDF directly.
+    const bytes = minimalPdf({ lines: ['LongSpec: Long-Context Lossless Speculative Decoding'] })
+    const held = store.importPaper('LongSpec.pdf', bytes).paper
     const before = store.listPapers({ page: 1, size: 1 }).total
+    expect(store.completeInboxDownload('longspec', bytes))
+      .toEqual({ kind: 'existing', paper: held.id, title: held.title })
+    store.updatePaper(held.id, { identifier: 'arXiv:2607.01428' })
     expect(store.prepareInboxDownload('longspec'))
-      .toEqual({ kind: 'existing', paper, title: store.getPaper(paper).title })
+      .toEqual({ kind: 'existing', paper: held.id, title: held.title })
     expect(store.listPapers({ page: 1, size: 1 }).total).toBe(before)
-    expect(store.listInbox().find((e) => e.id === 'longspec')?.downloaded).toBe(false)
+    expect(store.listInbox().find((e) => e.id === 'longspec')).toMatchObject({ downloaded: false, paper: '' })
+  })
+
+  it('入库的那一篇从库里删掉后,这一条回到可入库;从垃圾桶恢复后又是已入库', () => {
+    const { paper } = store.completeInboxDownload('specdec', minimalPdf({ lines: ['Speculative Decoding'] }))
+    store.deletePaper(paper)
+    expect(store.listInbox().find((e) => e.id === 'specdec')?.downloaded).toBe(false)
+    expect(store.prepareInboxDownload('specdec')).toEqual({ kind: 'fetch', url: 'https://arxiv.org/pdf/2211.17192' })
+
+    store.restoreTrash(store.listTrash().find((item) => item.kind === 'paper')!.id)
+    expect(store.listInbox().find((e) => e.id === 'specdec')).toMatchObject({ downloaded: true, paper })
   })
 
   it('入库的论文能按它那一页的 id 取到原文', () => {

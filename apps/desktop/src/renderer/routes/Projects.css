@@ -15,7 +15,6 @@
 .project-card-fact{display:flex;min-width:0;align-items:center;gap:var(--sp-8)}
 .project-card-recent>span:last-child{min-width:0}
 .project-card-empty{color:var(--ter)}
-.project-card-alert{margin-top:var(--sp-8);color:var(--sec);font-size:var(--fs-sm)}
 .msbar{display:inline-flex;gap:var(--sp-2);vertical-align:-1px;margin:0 var(--sp-4)}
 .msbar i{width:15px;height:5px;border-radius:var(--r-xs);background:var(--field)}
 .msbar i.done{background:var(--ink)}

@@ -28,6 +28,7 @@ import { ProjectIdentity } from '../components/project/ProjectIdentity.js'
 import { EventText } from '../components/project/ProjectSignals.js'
 import { CardOpen, ResearchObjectCard } from '../components/ResearchObjectCard.js'
 import { RowActions, StructuredList, StructuredRow } from '../components/StructuredList.js'
+import { Tag } from '../components/Tag.js'
 import { dnum } from '../../shared/dates.js'
 import { useFormat } from '../lib/format.js'
 import { useMessages } from '../messages/useMessages.js'
@@ -175,6 +176,7 @@ function ProjectPanel({ project, onOpen, menu, reorder, dropClassName }: {
     >
       <div className="pp-h">
         <CardOpen><ProjectIdentity project={project} showTopic /></CardOpen>
+        {stale ? <Tag tone="warn">{m.research.panel.staleAlert(idle!)}</Tag> : null}
         <span className="dd">
           {next && left !== null
             ? (
@@ -227,7 +229,6 @@ function ProjectPanel({ project, onOpen, menu, reorder, dropClassName }: {
             )}
         </span>
       </div>
-      {stale ? <div className="project-card-alert">{m.research.panel.staleAlert(idle!)}</div> : null}
     </ResearchObjectCard>
   )
 }

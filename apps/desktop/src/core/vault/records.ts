@@ -29,6 +29,7 @@ export const PaperSnapshotSchema = PaperRowSchema
 /**
  * Stored inbox recommendation: cross-boundary fields plus archived topics from topic watches, whether
  * it has left inbox, its arXiv id, and bibliographic metadata used during download/import.
+ * `downloaded` is still written for older Apps; listing derives it from the vault's paper pages.
  */
 export const InboxRecordSchema = InboxEntrySchema.extend({
   pdf: z.string().default(''),

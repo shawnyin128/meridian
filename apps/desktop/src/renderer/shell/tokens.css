@@ -8,7 +8,7 @@
  * 2. The tokens added beyond the demo (--accent-solid / --press / --press-solid / --hover-solid /
  *    --bad-solid / --bad-text / --good-text / --warn-text / --accent-text / --ring* / --sel / --selected /
  *    --on-selected / --tint-* / --star / --hl-* / --paper / --scrim / --raised / --chip / --track / --r-* /
- *    --pad-* / --sp-* / --row-* / --fs-* / --fw-* / --lh-* / --t-* / --e-* / --window-buttons-*)
+ *    --pad-* / --sp-* / --row-* / --fs-* / --fw-* / --lh-* / --t-* / --e-* / --window-buttons-* / --cursor-*)
  *    and the split into --sh-1 / --sh-2 / --sh-3 / --sh-paper are not in the demo: the demo is the
  *    reference for layout and behavior, not for the finished look, so the two differ on these.
  * 3. --accent-solid / --bad-solid / --press-solid / --hover-solid / --ring / --star / --hl-* /
@@ -87,6 +87,8 @@
    * darken in both themes: lightening a solid accent surface would drop its white text to 3.78:1.
    */
   --press:rgba(17,17,17,.06); --press-solid:rgba(0,0,0,.18); --hover-solid:rgba(0,0,0,.08);
+  /* Every drag spot: the pointing hand of every clickable element, and the closed hand while it is held. */
+  --cursor-draggable:pointer; --cursor-dragging:grabbing;
   /*
    * The solid danger surface, darker than --bad so white text on it passes 4.5:1, and danger text on
    * a soft red tint, the neutral chip or a card, darker in light and lighter in dark for the same reason.

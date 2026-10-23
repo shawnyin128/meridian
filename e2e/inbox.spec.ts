@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import type { Locator, Page } from '@playwright/test'
+import { minimalPdf } from '../apps/desktop/src/core/net/minimal-pdf.js'
 import { expect, gotoPapers, test, type MeridianWindow } from './app.js'
 
 /** Screens stay mounted once visited, so selectors every screen has, such as cards, are scoped to the visible one. */
@@ -8,6 +9,11 @@ const shown = (win: Page, sel: string) => win.locator(`.screenslot:not([hidden])
 const settings = (win: Page, sel: string) => win.locator(`.setdlg ${sel}`)
 
 const DEMO = resolve(import.meta.dirname, 'fixtures/platform-shell-demo.html')
+
+/** The responses fixture mode serves instead of the network, by URL. */
+const CANNED_NET = JSON.parse(readFileSync(
+  resolve(import.meta.dirname, '../apps/desktop/src/core/fixtures/net.json'), 'utf8',
+)) as Record<string, { pdf?: { title?: string; lines: string[] } }>
 
 /** One Inmail entry of the demo, with field names spelled as in the demo so they compare side by side. */
 type DemoEntry = {
@@ -261,11 +267,18 @@ test('入库:论文进库,按钮就地变开始阅读', async ({ win }) => {
 })
 
 test('入库撞上库里已有的那一篇:不重复入库,就地给出打开那一篇的入口', async ({ win }) => {
-  const entries = await call<{ id: string; title: string; paper: string }[]>(win, 'inbox.list', {})
-  // An Inmail entry whose paper the vault already has; the two are matched by paper ID.
-  const dup = (await Promise.all(entries.map(async (e) =>
-    ({ e, known: await inLibrary(win, e.paper) })))).find((x) => x.known)!.e
-  const known = await call<{ title: string }>(win, 'papers.get', { id: dup.paper })
+  // Like every entry Core writes, this one names no paper; the user has since imported directly the
+  // same PDF that adding it downloads.
+  const dup = (await inboxFromCore(win)).find((e) => e.id === 'longspec')!
+  expect(dup.paper).toBe('')
+  const bytes = [...minimalPdf(CANNED_NET[dup.pdf]!.pdf!)]
+  const held = await win.evaluate((pdf) => (window as unknown as MeridianWindow).meridian.call(
+    'papers.import', { filename: 'LongSpec.pdf', bytes: new Uint8Array(pdf) },
+  ), bytes) as { paper: { id: string } }
+  // The import's metadata parse may still retitle the paper, so the title is read once it settles.
+  await expect.poll(async () => (await call<{ uploads: { step: string }[] }>(win, 'jobs.status', {})).uploads
+    .every((job) => job.step === 'done' || job.step === 'failed')).toBe(true)
+  const known = await call<{ title: string }>(win, 'papers.get', { id: held.paper.id })
   const before = await paperTotal(win)
 
   await openInbox(win, 'all')
