@@ -39,6 +39,10 @@ _APP_OR_GENERATED_SURFACES = {
 EVENT_KINDS = {"start", "reopen", "result", "decision", "complete", "note"}
 _EVENT_TITLE_MAX_LEN = 120
 _EVENT_DETAIL_MAX_LEN = 300
+IDEA_TITLE_MAX_LEN = 80
+IDEA_CONTEXT_MAX_LEN = 60
+# Dates and clock times as agents write them; an idea's day has its own field.
+_DATE_OR_TIME = re.compile(r"\d{4}[-/年]\d{1,2}|\d{1,2}月\d{1,2}日|\d{1,2}:\d{2}")
 _CHANGE_KINDS = {
     "project.snapshot",
     "project.updated",
@@ -408,8 +412,11 @@ def add_workspace_agent_idea(
 ) -> dict[str, Any]:
     """Record one idea a coding agent found, for the Meridian App to pick up into its idea list.
 
-    Writing the same id with the same content again is a no-op; the same id with different
-    content raises :class:`WorkspaceProtocolError`.
+    ``title`` is one line of at most ``IDEA_TITLE_MAX_LEN`` characters. ``context``, shown as the
+    idea's source, names the work the idea came up in: one line of at most ``IDEA_CONTEXT_MAX_LEN``
+    characters holding no date or time. Ideas already in the file are kept as written. Writing the
+    same id with the same content again is a no-op; the same id with different content, or a
+    title or context outside these limits, raises :class:`WorkspaceProtocolError`.
     """
 
     repository = _repository_root(root)
@@ -419,8 +426,11 @@ def add_workspace_agent_idea(
         raise WorkspaceProtocolError("idea id must be 1-128 URL-safe identifier characters")
     normalized_title = title.strip()
     normalized_body = body.strip()
-    if not normalized_title or len(normalized_title) > 160:
-        raise WorkspaceProtocolError("idea title must be 1-160 characters")
+    if len(normalized_title.splitlines()) != 1 or len(normalized_title) > IDEA_TITLE_MAX_LEN:
+        raise WorkspaceProtocolError(
+            f"idea title must be one line of 1-{IDEA_TITLE_MAX_LEN} characters that names the idea; "
+            "put the detail in body"
+        )
     if not normalized_body or len(normalized_body) > 20_000:
         raise WorkspaceProtocolError("idea body must be 1-20000 characters")
     idea: dict[str, str] = {
@@ -430,7 +440,17 @@ def add_workspace_agent_idea(
         "body": normalized_body,
     }
     if context is not None and context.strip():
-        idea["context"] = context.strip()
+        normalized_context = context.strip()
+        if len(normalized_context.splitlines()) != 1 or len(normalized_context) > IDEA_CONTEXT_MAX_LEN:
+            raise WorkspaceProtocolError(
+                f"idea context must be one line of at most {IDEA_CONTEXT_MAX_LEN} characters "
+                "naming the work the idea came up in"
+            )
+        if _DATE_OR_TIME.search(normalized_context):
+            raise WorkspaceProtocolError(
+                "idea context must not hold a date or time; pass the idea's day as date"
+            )
+        idea["context"] = normalized_context
     if node is not None and node.strip():
         idea["node"] = node.strip()
 

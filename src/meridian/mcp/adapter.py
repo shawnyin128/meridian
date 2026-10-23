@@ -138,7 +138,7 @@ def capabilities(*, detail: str = "summary") -> dict[str, Any]:
         {
             "name": "meridian.workspace_idea_add",
             "workflow": "Project Workspace",
-            "summary": "Record an idempotent research idea found while working, for the App's idea list.",
+            "summary": "Record an idempotent idea that could stand alone as a research contribution, for the App's idea list.",
             "inputs": ["workspace_root", "idea_id", "title", "body", "context", "date", "node"],
             "outputs": ["status", "path", "idea"],
         },

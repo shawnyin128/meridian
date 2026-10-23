@@ -146,18 +146,22 @@ with a stable `task_id`, a one-line `title`, and a `note` saying what done
 means. The App puts it in the project plan at once, marked as added by an
 agent; the user deletes what they do not want, so do not ask first. A general
 direction or hypothesis ("prefix reuse may matter more than width", "look into
-dynamic thresholds") is not a task: place it as a Lab node or record it as an
-idea. Once the App has taken the task, `meridian.workspace_plan` lists its plan
-task id under `agent_tasks[<task_id>]`; use that id to link it to its node.
+dynamic thresholds") is not a task: place it as a Lab node, or as an idea only
+when it could stand alone (see Ideas). Once the App has taken the task,
+`meridian.workspace_plan` lists its plan task id under `agent_tasks[<task_id>]`;
+use that id to link it to its node.
 
-**Ideas.** When the discussion produces a new research direction, hypothesis
-or mechanism worth revisiting later, and it is not already a linked idea or a
-Lab node, call `meridian.workspace_idea_add` once (or
-`python -m meridian workspace idea-add`) with a stable `idea_id`, a one-line `title`, a
-`body` that states the idea itself, and a `context` naming the work it came up
-in. Pass `node` when it grows out of a Lab node. The App adds it to the
-project's idea list marked as coming from a coding agent. Do not record
-implementation details, TODOs, bug notes, or restatements of an existing idea.
+**Ideas.** Record an idea only when it could stand alone as a research
+contribution: a method, hypothesis or question a project of its own could start
+from. An observation, result or design choice from the current work is not an
+idea; record it on its Lab node or as a research record. For a new idea that is
+not already a linked idea or a Lab node, call `meridian.workspace_idea_add` once
+(or `python -m meridian workspace idea-add`) with a stable `idea_id`, a `title`
+of at most 80 characters that names the idea on its own, a `body` that states
+it, and a `context` of at most 60 characters naming the work it came up in,
+without dates, times or agent names; the App records those. Pass `node` when it
+grows out of a Lab node. Do not record implementation details, TODOs, bug
+notes, or restatements of an existing idea.
 
 ## Research Graph Generated View
 

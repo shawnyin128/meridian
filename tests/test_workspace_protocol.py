@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 import unittest
-from contextlib import redirect_stdout
+from contextlib import redirect_stderr, redirect_stdout
 from datetime import datetime
 from io import StringIO
 from pathlib import Path
@@ -10,10 +10,13 @@ from tempfile import TemporaryDirectory
 
 from meridian.cli import main
 from meridian.workspace_protocol import (
+    AGENT_IDEAS_PATH,
     CHANGES_PATH,
     EVENTS_PATH,
     WorkspaceProtocolError,
+    _validate_agent_ideas,
     _validate_changes,
+    add_workspace_agent_idea,
     add_workspace_event,
     inspect_project_workspace,
     read_project_plan,
@@ -418,6 +421,131 @@ class WorkspaceProtocolTest(unittest.TestCase):
         self.assertEqual(read["ideas"][0]["source"], {"chat_title": "手动添加"})
         with self.assertRaisesRegex(WorkspaceProtocolError, "chat_title must be a non-empty string"):
             _validate_changes(journal(""))
+
+    def _add_idea(self, root: Path, **overrides: str) -> dict[str, object]:
+        arguments = {
+            "idea_id": "reuse-distance",
+            "title": "Evict prefix cache by reuse distance",
+            "body": "Score shared prefixes by reuse distance instead of recency.",
+            "context": "Prefix cache eviction",
+            "idea_date": "2026-10-21",
+            **overrides,
+        }
+        return add_workspace_agent_idea(root, **arguments)
+
+    def test_agent_idea_title_must_be_one_line_of_at_most_80_characters(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._workspace(root)
+
+            for title in ("t" * 81, "Evict by reuse distance\nthen tune the window", "Evict by\u2028reuse distance", "  "):
+                with (
+                    self.subTest(title=title),
+                    self.assertRaisesRegex(WorkspaceProtocolError, "idea title must be one line of 1-80 characters"),
+                ):
+                    self._add_idea(root, title=title)
+            self.assertFalse((root / AGENT_IDEAS_PATH).exists())
+
+    def test_agent_idea_context_names_the_work_in_one_short_line_without_dates_or_times(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._workspace(root)
+
+            cases = {
+                "c" * 61: "idea context must be one line of at most 60 characters",
+                "Prefix cache\neviction": "idea context must be one line of at most 60 characters",
+                "2026-10-21 prefix cache discussion": "idea context must not hold a date or time",
+                "创建于 10月21日，更新于 10月22日": "idea context must not hold a date or time",
+                "Eviction discussion at 14:30": "idea context must not hold a date or time",
+            }
+            for context, reason in cases.items():
+                with self.subTest(context=context), self.assertRaisesRegex(WorkspaceProtocolError, reason):
+                    self._add_idea(root, context=context)
+            self.assertFalse((root / AGENT_IDEAS_PATH).exists())
+
+    def test_agent_idea_stores_exactly_the_accepted_fields(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._workspace(root)
+
+            result = self._add_idea(root, title="t" * 80, context="c" * 60, node="kv.A")
+
+            self.assertEqual(result["status"], "created")
+            self.assertEqual(
+                json.loads((root / AGENT_IDEAS_PATH).read_text(encoding="utf-8")),
+                {
+                    "schema_version": "meridian.workspace-agent-ideas.v1",
+                    "ideas": [
+                        {
+                            "id": "reuse-distance",
+                            "date": "2026-10-21",
+                            "title": "t" * 80,
+                            "body": "Score shared prefixes by reuse distance instead of recency.",
+                            "context": "c" * 60,
+                            "node": "kv.A",
+                        }
+                    ],
+                },
+            )
+
+    def test_agent_idea_text_that_looks_like_lab_structure_round_trips_unchanged(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._workspace(root)
+            title = "### Node X: - evidence: reuse distance"
+            body = "Score by reuse distance.\n### Node X: injected\n- evidence: exp-1\n- mode: `dead`\n\n## Graph Relations"
+            context = "- evidence: ### prefix cache"
+
+            created = self._add_idea(root, title=title, body=body, context=context)
+            repeated = self._add_idea(root, title=title, body=body, context=context)
+
+            self.assertEqual((created["status"], repeated["status"]), ("created", "unchanged"))
+            stored = _validate_agent_ideas(json.loads((root / AGENT_IDEAS_PATH).read_text(encoding="utf-8")))
+            self.assertEqual(
+                [(idea["title"], idea["body"], idea["context"]) for idea in stored["ideas"]],
+                [(title, body, context)],
+            )
+
+    def test_agent_idea_add_keeps_older_ideas_that_break_the_new_limits(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._workspace(root)
+            older = {
+                "id": "older",
+                "date": "2026-09-01",
+                "title": "An older idea whose title runs on " + "x" * 120,
+                "body": "Written by an older plugin.",
+                "context": "Claude Code session, created 2026-09-01 09:30\nupdated 2026-09-02",
+            }
+            self._write_json(
+                root / AGENT_IDEAS_PATH,
+                {"schema_version": "meridian.workspace-agent-ideas.v1", "ideas": [older]},
+            )
+
+            self._add_idea(root)
+
+            stored = json.loads((root / AGENT_IDEAS_PATH).read_text(encoding="utf-8"))["ideas"]
+            self.assertEqual([idea["id"] for idea in stored], ["older", "reuse-distance"])
+            self.assertEqual(stored[0], older)
+
+    def test_cli_idea_add_rejects_a_context_holding_a_time_with_its_reason(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._workspace(root)
+            stderr = StringIO()
+
+            with redirect_stderr(stderr):
+                code = main(
+                    [
+                        "workspace", "idea-add", "--root", str(root), "--id", "reuse-distance",
+                        "--title", "Evict prefix cache by reuse distance", "--body", "Score by reuse distance.",
+                        "--context", "Eviction discussion at 14:30",
+                    ]
+                )
+
+            self.assertEqual(code, 1)
+            self.assertIn("idea context must not hold a date or time", stderr.getvalue())
+            self.assertFalse((root / AGENT_IDEAS_PATH).exists())
 
     def test_change_reader_has_explicit_fallback_for_legacy_workspace(self) -> None:
         with TemporaryDirectory() as tmp:
