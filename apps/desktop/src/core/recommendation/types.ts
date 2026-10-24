@@ -92,6 +92,11 @@ export type RecommendationProvider = {
   recommend(
     positive: RecommendationSeed[], negativePaperIds: string[], source?: RecommendationSource, page?: number,
   ): Promise<DiscoveryPaper[]>
+  /**
+   * A key that is equal for two calls of `recommend` with these arguments exactly when they make the
+   * same request; undefined when every seed, source and page makes a different one.
+   */
+  queryKey?(positive: RecommendationSeed[], source: RecommendationSource, page: number): string | undefined
 }
 
 export type PaperImpact = {

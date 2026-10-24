@@ -69,12 +69,17 @@ const ranked = (
  * phrases over the last few years by relevance. arXiv keeps no citations, so citation and reference
  * requests return the newest papers on the same phrases, labelled as similarity. Author follows the
  * first and last author of the first seed arXiv knows. Page `page` of any of them reads arXiv's results
- * from `page` batches of TOPICAL_BATCH on. Every candidate must be textually close to a seed; negative
+ * from `page` batches of TOPICAL_BATCH on. Citation and reference requests share a query key. Every candidate must be textually close to a seed; negative
  * seeds only act through Core's own exclusion.
  */
 export function createArxivRecommendations(deps: { arxiv: Arxiv; now: () => number }): RecommendationProvider {
   const currentYear = () => new Date(deps.now()).getUTCFullYear()
   return {
+    queryKey(positive, source, page) {
+      const start = page * TOPICAL_BATCH
+      if (source === 'author') return `author ${positive.find((seed) => ARXIV_SEED.test(seed.paperId))?.paperId} ${start}`
+      return `${source === 'similarity' ? 'relevance' : 'newest'} ${topicQuery(positive)} ${start}`
+    },
     async recommend(positive, _negativePaperIds, source = 'similarity', page = 0) {
       if (positive.length === 0) return []
       const start = page * TOPICAL_BATCH

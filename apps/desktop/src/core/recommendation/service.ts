@@ -53,6 +53,26 @@ const firstStep = (intent: RecommendationIntent, negative: string[], schedule: D
   return step
 }
 
+/**
+ * The first rotation step from `step` on whose query `provider` does not already make at an earlier
+ * step of the same cycle, the cycle being one pass of every seed through every source at one page.
+ */
+const distinctStep = (intent: RecommendationIntent, step: number, provider: RecommendationProvider): number => {
+  const keyOf = (at: number): string | undefined => {
+    const query = recommendationQuery(intent, at)
+    return provider.queryKey?.(query.intent.seeds, query.source, query.page)
+  }
+  const cycle = intent.seeds.length * QUERY_SOURCES.length
+  for (let at = step; ; at += 1) {
+    const key = keyOf(at)
+    let repeated = false
+    for (let earlier = at - (at % cycle); key !== undefined && earlier < at && !repeated; earlier += 1) {
+      repeated = keyOf(earlier) === key
+    }
+    if (!repeated) return at
+  }
+}
+
 export type RecommendationService = {
   discover(projectId?: string, force?: boolean): Promise<DiscoveryFetchResult>
 }
@@ -140,7 +160,9 @@ export function createRecommendationService(deps: {
           cachedIntents += 1
           continue
         }
-        const step = plan.steps[intent.id] ?? firstStep(intent, plan.negative, plan.schedule)
+        const step = distinctStep(
+          intent, plan.steps[intent.id] ?? firstStep(intent, plan.negative, plan.schedule), deps.provider,
+        )
         const query = recommendationQuery(intent, step)
         try {
           const found = await deps.provider.recommend(query.intent.seeds, plan.negative, query.source, query.page)

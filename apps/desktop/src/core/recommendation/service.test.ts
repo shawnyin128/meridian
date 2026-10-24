@@ -3,6 +3,8 @@ import { createFixtureStore } from '../fixture-store.js'
 import { minimalPdf } from '../net/minimal-pdf.js'
 import { ON_POLICY_DISTILLATION_SAMPLE, type DiscoverySamplePaper } from './fixtures/on-policy-distillation.js'
 import { clusterRecommendationProfile, recommendationFingerprint } from './profile.js'
+import { createArxivRecommendations } from './providers/arxiv.js'
+import { createFallbackRecommendations } from './providers/fallback.js'
 import { createRecommendationService, DISCOVERY_COOLDOWN_MS } from './service.js'
 import type {
   DiscoveryPaper, DiscoverySchedule, RecommendationIntent, RecommendationProfile, RecommendationProvider,
@@ -627,5 +629,37 @@ describe('project recommendation service', () => {
     await expect(service.discover(project, true)).resolves.toMatchObject({
       failedIntents: 1, nothingNew: false, lastFetchedAt: fetchedAt,
     })
+  })
+
+  it('没有 key 时 arXiv 不会在一轮里把同一个查询再问一次:引用和参考文献是同一个查询,只问一次', async () => {
+    const store = createFixtureStore(() => '2026-09-17')
+    const [seed] = ON_POLICY_DISTILLATION_SAMPLE.seeds
+    const project = seededProject(store, '没有 key 的项目', [seed!])
+    const asked: string[] = []
+    const arxivProvider = createArxivRecommendations({
+      now: () => Date.UTC(2026, 8, 17),
+      arxiv: {
+        search: async () => [],
+        lookup: async () => null,
+        lookupMany: async () => new Map([[seed!.arxiv, {
+          id: seed!.arxiv, title: seed!.title, authors: seed!.authors, abstract: seed!.abstract,
+          submitted: '2026-05-01', journalRef: null, pdf: `https://arxiv.org/pdf/${seed!.arxiv}`,
+        }]]),
+        searchTopical: async (query, sinceYear, order, start) => {
+          asked.push(`${order} ${sinceYear} ${start ?? 0} ${query}`)
+          return []
+        },
+      },
+    })
+    const service = createRecommendationService({
+      store, provider: createFallbackRecommendations(() => [arxivProvider]), onWrite: vi.fn(), now: () => 1,
+    })
+
+    for (let run = 0; run < 4; run += 1) await service.discover(project, true)
+    expect(asked).toHaveLength(4)
+    expect(new Set(asked).size).toBe(4)
+    expect(asked.map((request) => request.split(' ').slice(0, 3).join(' '))).toEqual([
+      'relevance 2022 0', 'submittedDate 2025 0', 'submittedDate 2025 0', 'relevance 2022 50',
+    ])
   })
 })
