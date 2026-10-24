@@ -398,6 +398,23 @@ describe('project idea panel', () => {
     panel.unmount()
   })
 
+  it('来源对话删掉了的想法，项目页想法一节那一行带着对话已删除标签，详情的来源后面也跟着它', () => {
+    const kept: ResearchIdea = { ...idea, id: 'idea-kept', source: { chatId: 'chat-kept', chatTitle: '还在的对话' } }
+    const list = mount(
+      <ProjectIdeaList
+        projectId="draft" graph={graph} selectedId={null} onSelect={vi.fn()} onCreate={vi.fn()}
+        ideas={[idea, kept]} chatDeleted={(held) => held.id === idea.id}
+      />,
+    )
+    expect([...list.host.querySelectorAll<HTMLElement>('.project-idea-row')].map((row) => [
+      row.dataset['idea'], [...row.querySelectorAll('.tag')].map((tag) => tag.textContent),
+    ])).toEqual([['idea-kept', []], ['idea-1', ['对话已删除']]])
+    list.unmount()
+    const panel = mount(<ProjectIdeaPanel idea={idea} graph={graph} workspaceManaged sourceChatDeleted {...handlers()} />)
+    expect(panel.host.querySelector('.idea-panel-source')!.textContent).toBe('论文讨论对话已删除')
+    panel.unmount()
+  })
+
   it('项目页的想法一节先列在这个项目里做的想法，再列关联它的，再列在它这里冒出来的，各组新的在前；一个想法只出现在它的第一组', () => {
     const related: ResearchIdea = {
       ...idea, id: 'idea-2', title: '关联过来的想法', project: 'other', relations: { projects: ['draft'], pages: [] },

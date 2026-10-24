@@ -78,24 +78,27 @@ export function PaperChat({ paper, onBack = () => {}, prompt = null }: {
     setMessages(null)
     setError(null)
     follow()
+  }, [paperId, follow])
+
+  // The paper's chat is looked up again after every vault write, before its messages are read:
+  // deleting that chat or restoring it from the trash changes which chat the paper has.
+  const shownSession = useRef<string | null>(null)
+  useEffect(() => {
     if (paperId === null) return
     let live = true
-    void chat.forPaper(paperId).then((value) => {
+    void chat.forPaper(paperId).then(async (value) => {
+      const held = await chat.messages(value.id)
       if (!live) return
       setSession(value)
+      setMessages(held)
+      if (shownSession.current === value.id) return
+      shownSession.current = value.id
       // Opening it the first time may create a session, so refresh the shell's chat list; Core hides
       // empty paper sessions for now.
       bump()
     }).catch(reportError)
     return () => { live = false }
-  }, [paperId, bump, reportError, follow])
-
-  useEffect(() => {
-    if (sessionId === null) return
-    let live = true
-    void chat.messages(sessionId).then((value) => { if (live) setMessages(value) }).catch(reportError)
-    return () => { live = false }
-  }, [sessionId, revision, reportError])
+  }, [paperId, revision, bump, reportError])
 
   useEffect(() => {
     if (prompt === null || paperId === null) return

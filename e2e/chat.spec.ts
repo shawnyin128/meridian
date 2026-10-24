@@ -168,7 +168,7 @@ test('归档把会话移出侧栏,设置里取消归档把它放回', async ({ a
 
   await win.locator(`#chatList [data-chat="${target.id}"]`).hover()
   await win.locator(`#chatList [data-chat="${target.id}"] .dots`).click()
-  await win.locator('.ctxmenu .mi').click()
+  await win.getByRole('menuitem', { name: '归档' }).click()
   await expect(win.locator('.sidebar .chat-row')).toHaveCount(listed - 1)
   await expect(win.locator(`.sidebar [data-chat="${target.id}"]`)).toHaveCount(0)
   expect(await isArchived(win, target.id)).toBe(true)
@@ -186,6 +186,27 @@ test('归档把会话移出侧栏,设置里取消归档把它放回', async ({ a
   await expect(win.locator(`#chatList [data-chat="${target.id}"]`)).toHaveCount(1)
   await expect(win.locator('.sidebar .chat-row')).toHaveCount(listed)
   expect(await isArchived(win, target.id)).toBe(false)
+})
+
+test('侧栏删掉的会话不弹确认就进垃圾桶的对话一组,恢复后回到侧栏原来的位置,消息一条不少', async ({ win }) => {
+  await win.locator('#chatList .chat-row').first().waitFor()
+  const order = (await core<Session[]>(win, 'chat.list', {})).filter((s) => !s.archived)
+  const target = order[0]!
+
+  await win.locator(`#chatList [data-chat="${target.id}"]`).hover()
+  await win.locator(`#chatList [data-chat="${target.id}"] .dots`).click()
+  await win.getByRole('menuitem', { name: '删除' }).click()
+  await expect(win.locator('[role="alertdialog"]')).toHaveCount(0)
+  await expect(win.locator('#notice .notice-text')).toHaveText('已移入垃圾桶')
+  await expect(win.locator(`#chatList [data-chat="${target.id}"]`)).toHaveCount(0)
+
+  await win.locator('[data-desk="trash"]').click()
+  await expect(shown(win, '.section-heading')).toContainText(['对话 · 1'])
+  const row = shown(win, '.trow').filter({ hasText: target.title })
+  await row.hover()
+  await row.getByRole('button', { name: '恢复' }).click()
+  await expect(win.locator('#chatList .chat-row .ct-t')).toHaveText(order.map((s) => s.title))
+  expect((await core<Session[]>(win, 'chat.list', {})).find((s) => s.id === target.id)!.messageCount).toBe(target.messageCount)
 })
 
 test('设置里「打开」进那条归档的会话,模态让开且屏上标出它是归档的', async ({ app, win }) => {
@@ -225,7 +246,7 @@ test('把讨论整理成可回看的想法', async ({ win }) => {
   await expect(win.locator('#qaConcl')).toHaveCount(0)
 })
 
-test('会话行的更多菜单是真菜单:触发器报 menu,下键高亮归档,回车归档且不进那条会话', async ({ win }) => {
+test('会话行的更多菜单是真菜单:触发器报 menu,归档之后是删除,下键高亮归档,回车归档且不进那条会话', async ({ win }) => {
   await win.locator('#chatList .chat-row').first().waitFor()
   const target = (await core<Session[]>(win, 'chat.list', {})).find((s) => !s.archived)!
   const row = win.locator(`#chatList [data-chat="${target.id}"]`)
@@ -234,7 +255,7 @@ test('会话行的更多菜单是真菜单:触发器报 menu,下键高亮归档,
   await expect(row.locator('.dots')).toHaveAttribute('aria-haspopup', 'menu')
   await row.locator('.dots').click()
   const items = win.locator('[role="menu"] [role="menuitem"]')
-  await expect(items).toHaveText(['归档'])
+  await expect(items).toHaveText(['归档', '删除'])
   await win.keyboard.press('ArrowDown')
   await expect(items.first()).toHaveAttribute('data-highlighted', '')
   await win.keyboard.press('Enter')

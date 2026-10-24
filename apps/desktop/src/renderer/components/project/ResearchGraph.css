@@ -63,6 +63,7 @@
 .node-ideas{display:grid}
 .node-idea-row{display:grid;gap:var(--sp-4);min-height:54px;padding:var(--sp-8) var(--sp-2)}
 .node-idea-title{font-weight:var(--fw-semibold)}
+.node-idea-source-line{display:flex;align-items:center;gap:var(--sp-6);min-width:0}
 .node-idea-source{color:var(--ter);font-size:var(--fs-sm)}
 .node-document-source{display:block;margin-top:var(--sp-24);padding-top:var(--sp-10);border-top:1px solid var(--sep2);color:var(--ter);
   font-family:var(--mono);font-size:var(--fs-cap)}

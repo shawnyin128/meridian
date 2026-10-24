@@ -171,6 +171,27 @@ describe('Trash', () => {
     expect(host.querySelectorAll('.tgroup')[1]!.querySelector('.tt2')!.innerHTML).toMatch(/^<strong>L<\/strong>ater trees/)
   })
 
+  it('删掉的对话自成一组，排在想法之后、附件之前，标题按论文标题显示；论文已有新对话时恢复按不了，行上写着论文已有新的对话', async () => {
+    const held = api.entries
+    const deletedAt = Date.parse('2026-08-25T00:00:00Z')
+    api.entries = [
+      { id: 'trash-7', kind: 'chat', title: '\\textbf{C}hat trees', deletedAt, restorable: false },
+      { id: 'trash-8', kind: 'chat', title: '推测解码的树宽怎么定', deletedAt, restorable: true },
+      { id: 'trash-9', kind: 'idea', title: '按接受率调整树宽', deletedAt, restorable: true },
+      ...held,
+    ]
+    act(() => root!.unmount())
+    root = createRoot(host)
+    await act(async () => { root!.render(<MessagesProvider><Trash /></MessagesProvider>) })
+    api.entries = held
+    expect([...host.querySelectorAll('.section-heading')].map((h) => h.textContent))
+      .toEqual(['论文 · 2', '想法 · 1', '对话 · 2', '附件 · 2'])
+    const rows = [...host.querySelectorAll('.tgroup')[2]!.querySelectorAll('.trow')]
+    expect(rows[0]!.querySelector('.tt2')!.innerHTML).toMatch(/^<strong>C<\/strong>hat trees/)
+    expect(rows.map((row) => [button(row, '恢复').disabled, row.querySelector(':scope > .tag')?.textContent ?? null]))
+      .toEqual([[true, '论文已有新的对话'], [false, null]])
+  })
+
   it('彻底删除一条要先确认,确认后才清除', async () => {
     await act(async () => { button(host.querySelector('.trow')!, '彻底删除').click() })
     expect(api.purge).not.toHaveBeenCalled()

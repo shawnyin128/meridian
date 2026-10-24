@@ -65,6 +65,7 @@ type TrashRecord = Omit<TrashEntry, 'restorable'> & (
   | { kind: 'idea'; idea: ResearchIdea }
   | { kind: 'attachment'; projectId: string; attachment: Attachment }
   | { kind: 'inbox'; entryId: string }
+  | { kind: 'chat'; chat: ChatRecord; position: number }
 )
 
 /** Seeded fixture change with cross-boundary fields but no undo/archive fields because it predates them. */
@@ -495,6 +496,10 @@ export function createFixtureStore(
     id, title, archived, messageCount: messages.length,
     ...(paperId === undefined ? {} : { paperId }),
   })
+
+  /** The chat the paper of the paper chat `item` holds has now, or undefined when it has none or `item` holds an ordinary chat. */
+  const paperChatNow = (item: Extract<TrashRecord, { kind: 'chat' }>): ChatRecord | undefined =>
+    (item.chat.paperId === undefined ? undefined : chats.find((held) => held.paperId === item.chat.paperId))
 
   /** Append a research record dated with vault today, optionally linked to a research-graph node. */
   const appendEvent = (projectId: string, text: string, node?: string): ProjectDetail => {
@@ -1802,13 +1807,15 @@ export function createFixtureStore(
 
     listTrash() {
       dropExpired()
-      // An attachment cannot return after its project is deleted, nor a paper while another paper holds its id.
+      // An attachment cannot return after its project is deleted, nor a paper while another paper holds its id,
+      // nor a paper chat while its paper's chat holds messages.
       return trash.map((item) => ({
         id: item.id,
         kind: item.kind,
         title: item.title,
         deletedAt: item.deletedAt,
         restorable: item.kind === 'attachment' ? projectById.has(item.projectId)
+          : item.kind === 'chat' ? (paperChatNow(item)?.messages.length ?? 0) === 0
           : item.kind !== 'paper' || !byId.has(item.paper.id),
       }))
     },
@@ -1836,6 +1843,12 @@ export function createFixtureStore(
       }
       else if (item.kind === 'inbox') gone.delete(item.entryId)
       else if (item.kind === 'idea') ideas = [structuredClone(item.idea), ...ideas]
+      else if (item.kind === 'chat') {
+        const held = paperChatNow(item)
+        if ((held?.messages.length ?? 0) > 0) throw new CallError('refused', `这篇论文已经有了新的对话：${item.title}`)
+        const rest = chats.filter((chat) => chat !== held)
+        chats = [...rest.slice(0, item.position), structuredClone(item.chat), ...rest.slice(item.position)]
+      }
       else {
         const project = projectById.get(item.projectId)
         if (!project) throw new CallError('not-found', `项目不存在：${item.projectId}`)
@@ -2035,6 +2048,13 @@ export function createFixtureStore(
     setChatArchived(id, archived) {
       const chat = chatOf(id)
       chats = chats.map((c) => (c === chat ? { ...c, archived } : c))
+    },
+
+    deleteChat(id) {
+      const chat = chatOf(id)
+      const position = chats.indexOf(chat)
+      chats = chats.filter((held) => held !== chat)
+      trash = [{ id: nextId('trash'), kind: 'chat', title: chat.title, deletedAt: nowMs(), chat, position }, ...trash]
     },
 
     search(query) {

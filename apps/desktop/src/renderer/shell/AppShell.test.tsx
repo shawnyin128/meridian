@@ -16,6 +16,8 @@ const fixture = vi.hoisted(() => ({
   discovery: [{ id: 'e1', kind: 'discovery', watch: '', project: 'p1', source: '推理项目' }],
   delivered: [] as { id: string; kind: 'watch'; watch: string; title: string }[],
   chats: [{ id: 'c1', title: '讨论', archived: false, messageCount: 1 }],
+  deleteChat: vi.fn(async () => ({ trash: 'trash-9' })),
+  restoreTrash: vi.fn(async () => {}),
   back: vi.fn(),
   platform: 'darwin',
   fullScreen: [] as ((on: boolean) => void)[],
@@ -44,6 +46,7 @@ vi.mock('../ipc.js', () => ({
   colourThemes: { list: none },
   chat: {
     list: () => Promise.resolve(fixture.chats), create: () => new Promise(() => {}), setArchived: vi.fn(),
+    delete: fixture.deleteChat,
   },
   extensions: { checkLatest: vi.fn() },
   idea: { list: none },
@@ -53,7 +56,7 @@ vi.mock('../ipc.js', () => ({
   papers: { list: () => Promise.resolve({ rows: [], total: 0 }) },
   project: { list: () => Promise.resolve(fixture.projects) },
   search: { query: none },
-  trash: { list: none },
+  trash: { list: none, restore: fixture.restoreTrash },
   vault: { today: () => fixture.today() },
   watch: { list: () => Promise.resolve(fixture.watches) },
   wiki: { home: () => Promise.resolve({ aggregationCount: 0 }) },
@@ -728,3 +731,42 @@ describe('AppShell command palette', () => {
   })
 })
 
+
+describe('侧栏对话行的删除', () => {
+  /** Opens the More menu of chat `id`'s sidebar row and returns its items. */
+  async function chatMenu(id: string): Promise<HTMLElement[]> {
+    await act(async () => {
+      document.querySelector(`#chatList [data-chat="${id}"] .dots`)!
+        .dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, button: 0 }))
+    })
+    return [...document.querySelectorAll<HTMLElement>('[role="menu"] [role="menuitem"]')]
+  }
+
+  beforeEach(() => {
+    fixture.deleteChat.mockClear()
+    fixture.restoreTrash.mockClear()
+  })
+
+  it('更多菜单里归档之后是标红的删除；删除不弹确认，提示已移入垃圾桶，撤销把垃圾桶里那一条放回', async () => {
+    await mount()
+    const items = await chatMenu('c1')
+    expect(items.map((item) => [item.textContent, item.classList.contains('danger')])).toEqual([['归档', false], ['删除', true]])
+    await act(async () => { items[1]!.click() })
+    expect(fixture.deleteChat).toHaveBeenCalledExactlyOnceWith('c1')
+    expect(document.querySelector('[role="alertdialog"]')).toBeNull()
+    expect(document.querySelector('#notice .notice-text')!.textContent).toBe('已移入垃圾桶')
+    const undo = document.querySelector<HTMLButtonElement>('#notice button')!
+    expect(undo.textContent).toBe('撤销')
+    await act(async () => { undo.click() })
+    expect(fixture.restoreTrash).toHaveBeenCalledExactlyOnceWith('trash-9')
+  })
+
+  it('删掉对话屏正打开着的那段对话，像归档一样回到动态', async () => {
+    await mount()
+    await act(async () => { controlOf('#chatList [data-chat="c1"]').click() })
+    expect(crumbs()).toEqual(['对话'])
+    const items = await chatMenu('c1')
+    await act(async () => { items.find((item) => item.textContent === '删除')!.click() })
+    expect(crumbs()).toEqual(['动态'])
+  })
+})

@@ -9,10 +9,10 @@ import { errorLabel, reasonLabel } from '../lib/failure-label.js'
 import { useFormat } from '../lib/format.js'
 import { useMessages } from '../messages/useMessages.js'
 import {
-  useJump, useNotice, useSettingsOpen, useVaultRevision,
+  useChatSession, useJump, useNotice, useSettingsOpen, useVaultRevision,
 } from '../shell/AppShell.js'
 import { SETTINGS_CATEGORIES, SETTINGS_CATEGORY_LABEL, type SettingsCategory } from '../shell/settings-categories.js'
-import { IconOpen, IconRestore } from '../components/icons.js'
+import { IconOpen, IconRestore, IconTrash } from '../components/icons.js'
 import { IconButton } from '../components/IconButton.js'
 import { EmptyState } from '../components/EmptyState.js'
 import { LoadingPlaceholder } from '../components/LoadingPlaceholder.js'
@@ -89,6 +89,7 @@ export function Settings() {
   const [errors, setErrors] = useState<Partial<Record<CategoryKey, string>>>({})
 
   const { open: jumpTo } = useJump()
+  const { remove: deleteChat } = useChatSession()
   const { revision } = useVaultRevision()
   const notice = useNotice()
   const format = useFormat()
@@ -411,6 +412,9 @@ export function Settings() {
                     </IconButton>
                     <IconButton label={m.settings.archived.unarchive} size="nested" onClick={() => unarchive(s)}>
                       <IconRestore />
+                    </IconButton>
+                    <IconButton label={m.common.delete} size="nested" tone="danger" onClick={() => deleteChat(s.id)}>
+                      <IconTrash />
                     </IconButton>
                   </RowActions>
                 </StructuredRow>

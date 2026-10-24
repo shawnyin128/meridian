@@ -15,7 +15,7 @@ import { CollapsibleGroup } from '../components/CollapsibleGroup.js'
 import { EmptyState } from '../components/EmptyState.js'
 import { AddAction } from '../components/AddAction.js'
 import { IdeaDraft, type IdeaDraftText } from '../components/ideas/IdeaDraft.js'
-import { IdeaPanel, IdeaSource, ideaSourceLabel, ownIdea } from '../components/ideas/IdeaPanel.js'
+import { IdeaPanel, IdeaSource, ideaSourceLabel, ownIdea, SourceChatDeleted } from '../components/ideas/IdeaPanel.js'
 import { IdeaNodeCandidate } from '../components/ideas/IdeaNodeCandidate.js'
 import { IdeaRelations } from '../components/ideas/IdeaRelations.js'
 import { nodeMode } from '../components/project/ResearchGraph.js'
@@ -35,6 +35,7 @@ import { useJumpOrigin } from '../hooks/useJumpOrigin.js'
 import { useUndo } from '../hooks/useUndo.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
 import { useScrollFade } from '../hooks/useScrollFade.js'
+import { useSourceChatDeleted } from '../hooks/useSourceChatDeleted.js'
 import { useDragReorder, type Reorderable } from '../hooks/useDragReorder.js'
 import { DragHandle } from '../components/DragHandle.js'
 import { useFormat } from '../lib/format.js'
@@ -98,8 +99,11 @@ function IdeaRelationTags({ idea, projectsById, pageTitles }: {
   )
 }
 
-/** Where an idea came from with the label of its kind; an idea of the user's own from no project shows nothing. */
-function IdeaOrigin({ idea, sourceProject }: { idea: ResearchIdea; sourceProject: string | undefined }) {
+/**
+ * Where an idea came from with the label of its kind, then, when `chatDeleted`, the tag saying the chat
+ * it came from is deleted; an idea of the user's own from no project shows nothing.
+ */
+function IdeaOrigin({ idea, sourceProject, chatDeleted }: { idea: ResearchIdea; sourceProject: string | undefined; chatDeleted: boolean }) {
   const m = useMessages()
   if (ownIdea(idea) && sourceProject === undefined) return null
   return (
@@ -114,6 +118,7 @@ function IdeaOrigin({ idea, sourceProject }: { idea: ResearchIdea; sourceProject
             {idea.source.paperTitle === undefined ? m.ideas.sourceKind.chat : m.ideas.sourceKind.paperReading}
           </SourceLabel>
         )}
+      {chatDeleted ? <SourceChatDeleted /> : null}
     </>
   )
 }
@@ -148,8 +153,9 @@ function IdeaMenu({ idea, linked, onMove, canMove, onArchive, onDelete }: {
 }
 
 /** An idea as a card, title first: what it relates to, then where it came from and when it last changed. */
-function IdeaCard({ idea, projectsById, pageTitles, selected, menu, onOpen, reorder, dropClassName }: {
+function IdeaCard({ idea, chatDeleted, projectsById, pageTitles, selected, menu, onOpen, reorder, dropClassName }: {
   idea: ResearchIdea
+  chatDeleted: boolean
   projectsById: ReadonlyMap<string, ProjectSummary>
   pageTitles: ReadonlyMap<string, string>
   selected: boolean
@@ -171,7 +177,10 @@ function IdeaCard({ idea, projectsById, pageTitles, selected, menu, onOpen, reor
           <IdeaRelationTags idea={idea} projectsById={projectsById} pageTitles={pageTitles} />
         </div>
         <div className="idea-card-meta">
-          <IdeaOrigin idea={idea} sourceProject={idea.sourceProject === undefined ? undefined : projectsById.get(idea.sourceProject)?.name} />
+          <IdeaOrigin
+            idea={idea} chatDeleted={chatDeleted}
+            sourceProject={idea.sourceProject === undefined ? undefined : projectsById.get(idea.sourceProject)?.name}
+          />
           <span className="idea-card-updated">{m.ideas.updated(fmt.date(idea.updated))}</span>
         </div>
       </div>
@@ -184,8 +193,9 @@ function IdeaCard({ idea, projectsById, pageTitles, selected, menu, onOpen, reor
  * A started idea as a row: its title, the project it is carried out in, with that project's status tag
  * while it is shelved, and where it came from.
  */
-function IdeaRow({ idea, projectsById, selected, menu, onOpen, reorder, dropClassName }: {
+function IdeaRow({ idea, chatDeleted, projectsById, selected, menu, onOpen, reorder, dropClassName }: {
   idea: ResearchIdea
+  chatDeleted: boolean
   projectsById: ReadonlyMap<string, ProjectSummary>
   selected: boolean
   menu: ReactNode
@@ -207,7 +217,10 @@ function IdeaRow({ idea, projectsById, selected, menu, onOpen, reorder, dropClas
         {work?.status === SHELVED_PROJECT ? <ProjectStatusTag status={work.status} /> : null}
       </span>
       <span className="idea-row-meta">
-        <IdeaOrigin idea={idea} sourceProject={idea.sourceProject === undefined ? undefined : projectsById.get(idea.sourceProject)?.name} />
+        <IdeaOrigin
+          idea={idea} chatDeleted={chatDeleted}
+          sourceProject={idea.sourceProject === undefined ? undefined : projectsById.get(idea.sourceProject)?.name}
+        />
       </span>
       <span className="idea-card-updated">{m.ideas.updated(fmt.date(idea.updated))}</span>
       <RowActions><DragHandle {...reorder.handle} />{menu}</RowActions>
@@ -216,9 +229,12 @@ function IdeaRow({ idea, projectsById, selected, menu, onOpen, reorder, dropClas
 }
 
 function IdeaDetailPanel({
-  idea, linked, projects, pageTitles, candidate, onClose, onSave, onRelations, onProject, onPromote, onPlace, onOpen, onError,
+  idea, sourceChatDeleted, linked, projects, pageTitles, candidate, onClose, onSave, onRelations, onProject, onPromote, onPlace,
+  onOpen, onError,
 }: {
   idea: ResearchIdea
+  /** Whether the chat the idea came from is deleted. */
+  sourceChatDeleted: boolean
   linked: ProjectSummary | undefined
   projects: ProjectSummary[]
   pageTitles: ReadonlyMap<string, string>
@@ -277,7 +293,7 @@ function IdeaDetailPanel({
   return (
     <aside className="idea-detail-panel node-document-pane" ref={panelFade} data-fade-paint="" aria-label={m.ideas.detailHeading}>
       <IdeaPanel
-        idea={idea} onClose={onClose} onOpenSourceChat={(chatId) => onOpen('chat', chatId)}
+        idea={idea} onClose={onClose} onOpenSourceChat={(chatId) => onOpen('chat', chatId)} sourceChatDeleted={sourceChatDeleted}
         sourceProject={idea.sourceProject === undefined ? undefined : projects.find((project) => project.id === idea.sourceProject)?.name}
         onOpenSourcePaper={(paperId) => onOpen('reader', paperId)}
         actions={(
@@ -360,6 +376,7 @@ export function Ideas() {
   const [rows, setRows] = useState<ResearchIdea[] | null>(null)
   const [projects, setProjects] = useState<ProjectSummary[]>([])
   const [pageTitles, setPageTitles] = useState<ReadonlyMap<string, string>>(new Map())
+  const chatDeleted = useSourceChatDeleted()
   const [candidateSource, setCandidateSource] = useState<ProjectDetail | null>(null)
   const [details, setDetails] = useState<ReadonlyMap<string, ProjectDetail>>(new Map())
   const [selectedId, setSelectedId] = useState<string | null>(null)
@@ -457,7 +474,7 @@ export function Ideas() {
   )
   /** The props an idea's card and row share besides its menu: its selection and its drag handles. */
   const shared = (idea: ResearchIdea) => ({
-    idea, projectsById, selected: selectedId === idea.id,
+    idea, chatDeleted: chatDeleted(idea), projectsById, selected: selectedId === idea.id,
     onOpen: () => setSelectedId(idea.id),
     reorder: { item: reorder.itemProps(idea.id), handle: reorder.handleProps(idea.id) },
     dropClassName: reorder.dropClass(idea.id),
@@ -555,6 +572,7 @@ export function Ideas() {
             {selected === undefined ? null : (
               <IdeaDetailPanel
                 idea={selected}
+                sourceChatDeleted={chatDeleted(selected)}
                 linked={selected.project === undefined ? undefined : projectsById.get(selected.project)}
                 projects={projects}
                 pageTitles={pageTitles}

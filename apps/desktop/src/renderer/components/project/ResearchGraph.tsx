@@ -17,7 +17,7 @@ import { EmptyState } from '../EmptyState.js'
 import { EntityLink } from '../EntityLink.js'
 import { FadeText } from '../FadeText.js'
 import { IconButton } from '../IconButton.js'
-import { ownIdea } from '../ideas/IdeaPanel.js'
+import { ownIdea, SourceChatDeleted } from '../ideas/IdeaPanel.js'
 import { IconMinus, IconPlus } from '../icons.js'
 import { PanelClose } from '../PanelClose.js'
 import { SectionHeading } from '../PageShell.js'
@@ -451,8 +451,13 @@ export function splitNodeDocument(markdown: string | undefined): {
   return { metadata, body: lines.slice(cursor).join('\n').trim() }
 }
 
-/** Read-only projection of the Agent-maintained node document, with App-owned idea associations. */
-export function ResearchNodePanel({ graph, events, ideas, tasks, node, onClose, onSelect, onSelectIdea, onSelectTask }: {
+/**
+ * Read-only projection of the Agent-maintained node document, with App-owned idea associations; a
+ * linked idea for which `chatDeleted` holds shows, after its source, that the chat it came from is deleted.
+ */
+export function ResearchNodePanel({
+  graph, events, ideas, tasks, node, onClose, onSelect, onSelectIdea, onSelectTask, chatDeleted = () => false,
+}: {
   graph: Graph
   events: Project['events']
   ideas: ResearchIdea[]
@@ -463,6 +468,7 @@ export function ResearchNodePanel({ graph, events, ideas, tasks, node, onClose, 
   onSelect: (nodeId: string) => void
   onSelectIdea: (ideaId: string) => void
   onSelectTask: (taskId: string) => void
+  chatDeleted?: (idea: ResearchIdea) => boolean
 }) {
   const m = useMessages()
   const byId = new Map(graph.nodes.map((candidate) => [candidate.id, candidate]))
@@ -553,9 +559,12 @@ export function ResearchNodePanel({ graph, events, ideas, tasks, node, onClose, 
                 >
                   <FadeText className="node-idea-title" label={idea.title}>{idea.title}</FadeText>
                   {ownIdea(idea) ? null : (
-                    <FadeText className="node-idea-source" label={m.project.idea.sourceTag(source)}>
-                      {m.project.idea.sourceTag(source)}
-                    </FadeText>
+                    <span className="node-idea-source-line">
+                      <FadeText className="node-idea-source" label={m.project.idea.sourceTag(source)}>
+                        {m.project.idea.sourceTag(source)}
+                      </FadeText>
+                      {chatDeleted(idea) ? <SourceChatDeleted /> : null}
+                    </span>
                   )}
                 </StructuredRow>
               )

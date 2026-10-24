@@ -3,6 +3,7 @@ import { act, type ReactNode } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ChatMessage, PaperRow } from '../../shared/contract.js'
+import { CallError } from '../call-error.js'
 import { MessagesProvider } from '../messages/useMessages.js'
 import { LANGUAGE_STORAGE_KEY } from '../shell/language.js'
 import { TOOLTIP_DELAY } from '../components/Tooltip.js'
@@ -329,6 +330,39 @@ describe('PaperChat', () => {
     act(() => control().click())
     expect(api.cancel).toHaveBeenCalledExactlyOnceWith('chat-paper-1')
     await act(async () => { finish(); await Promise.resolve() })
+  })
+
+  it('这篇论文的对话在别处删掉后，对话栏换成论文新开的空对话，不报会话不存在；从垃圾桶恢复后又是原来那段', async () => {
+    const asked: ChatMessage[] = [{ id: 'm1', role: 'you', runs: [{ kind: 'text', text: '删之前问的' }], actions: [] }]
+    // The chats Core holds by id; the paper's chat is whichever of them is listed first.
+    let held: Record<string, ChatMessage[]> = { 'chat-paper-1': asked }
+    const forPaper = api.forPaper.getMockImplementation()!
+    const messages = api.messages.getMockImplementation()!
+    api.forPaper.mockImplementation(async (paperId: string) => ({
+      id: Object.keys(held)[0]!, title: 'Paper One', archived: false, messageCount: 0, paperId,
+    }))
+    api.messages.mockImplementation((async (id: string) => {
+      if (held[id] === undefined) throw new CallError('chat.messages', 'not-found')
+      return held[id]
+    }) as () => Promise<ChatMessage[]>)
+    const shown = (host: HTMLElement) => [host.querySelector('.paper-chat .ipcerror'), host.querySelector('.paper-chat .msgs')!.textContent]
+    try {
+      const host = await mountChat()
+      expect(shown(host)).toEqual([null, '删之前问的'])
+
+      held = { 'chat-paper-2': [] }
+      api.revision = 1
+      await showPaper(PAPER)
+      expect(shown(host)).toEqual([null, '还没有对话'])
+
+      held = { 'chat-paper-1': asked }
+      api.revision = 2
+      await showPaper(PAPER)
+      expect(shown(host)).toEqual([null, '删之前问的'])
+    } finally {
+      api.forPaper.mockImplementation(forPaper)
+      api.messages.mockImplementation(messages)
+    }
   })
 
   it('想法草稿留在它的论文上：换一篇时不跟过去，回到原篇草稿还在；Esc 收起', async () => {

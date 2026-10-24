@@ -119,6 +119,7 @@ const ChatSessionContext = createContext<{
   title: string | null
   archived: boolean
   select: (id: string) => void
+  remove: (id: string) => void
 } | null>(null)
 const VaultRevisionContext = createContext<{ revision: number; bump: () => void } | null>(null)
 /** Exported only so tests can supply a today value to components that call `useToday` without mounting all of AppShell. */
@@ -299,12 +300,15 @@ export function useInboxMode(): InboxMode {
  * sidebar's chat list picks it, so like the current screen it is shell navigation state; `select`
  * makes another chat the current one. `archived` tells whether the chat is archived: an archived chat
  * is not in the sidebar list and opens only from Settings, so the screen has to show that it is.
+ * `remove` deletes a chat into the trash, with Undo in the notice, and when it is the current one
+ * leaves for the Feed, as archiving it from the sidebar does.
  */
 export function useChatSession(): {
   id: string | null
   title: string | null
   archived: boolean
   select: (id: string) => void
+  remove: (id: string) => void
 } {
   const state = useContext(ChatSessionContext)
   if (!state) throw new Error('useChatSession needs AppShell')
@@ -597,6 +601,25 @@ export function AppShell({ screens, settings }: {
     }).catch((e: unknown) => notify.refusal(errorLabel(m, e)))
   }
 
+  // Deletes a chat into the trash with Undo in the notice and, if it is the open one, goes to the Feed as archiving does.
+  const deleteChat = useCallback((id: string) => {
+    void chat.delete(id).then(({ trash: entry }) => {
+      bump()
+      notify.success(m.common.trashed, {
+        label: m.common.undo,
+        onAction: () => {
+          void trash.restore(entry).then(() => {
+            bump()
+            notify.success(m.changelog.undoneNote)
+          }).catch((e: unknown) => notify.refusal(errorLabel(m, e)))
+        },
+      })
+      if (id !== chatId) return
+      setChatId(null)
+      navigate('feed')
+    }).catch((e: unknown) => notify.refusal(errorLabel(m, e)))
+  }, [chatId, navigate, notify, bump, m])
+
   const chatSession = useMemo(() => {
     const open = chats.find((s) => s.id === chatId)
     return {
@@ -604,8 +627,9 @@ export function AppShell({ screens, settings }: {
       title: open?.title ?? null,
       archived: open?.archived ?? false,
       select: setChatId,
+      remove: deleteChat,
     }
-  }, [chatId, chats])
+  }, [chatId, chats, deleteChat])
 
   const jumps = useMemo(() => ({
     jump,
@@ -781,7 +805,7 @@ export function AppShell({ screens, settings }: {
           inboxCounts={inboxCounts} discoveryCount={discoveryCount} discoveryProjects={discoveryProjects}
           laterCount={laterCount}
           chats={chats} chatId={screen === 'chat' ? chatId : null} onOpenChat={openChat}
-          onNewChat={newChat} onArchiveChat={archiveChat}
+          onNewChat={newChat} onArchiveChat={archiveChat} onDeleteChat={deleteChat}
           grip={sidebarGrip} collapsed={hidden}
         />
         {hidden ? (

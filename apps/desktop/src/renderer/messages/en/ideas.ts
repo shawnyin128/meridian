@@ -42,6 +42,7 @@ export const ideas = {
     createdNote: 'Project created and linked to this idea',
   },
   openSourceChat: 'Open original chat',
+  sourceChatDeleted: 'Chat deleted',
   editor: {
     sourceLabel: (source: string) => `Source: ${source}`,
     titleLabel: 'Title',

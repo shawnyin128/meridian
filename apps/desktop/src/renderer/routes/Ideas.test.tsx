@@ -44,6 +44,8 @@ const api = vi.hoisted(() => ({
       source: { chatId: 'chat-5', chatTitle: '放下' }, archived: true, created: '2026-09-14', updated: '2026-09-14',
     },
   ] as ResearchIdea[],
+  /** The chats Core still holds; an idea whose source chat is not among them came from a deleted chat. */
+  chats: ['chat-1', 'chat-2', 'chat-3', 'chat-4', 'chat-5', 'chat-9'].map((id) => ({ id, title: id, archived: false, messageCount: 1 })),
   projects: [
     { id: 'project-active', name: '推测解码', status: '进行中' },
     { id: 'project-completed', name: '已完成实验', status: '已完成' },
@@ -79,6 +81,7 @@ vi.mock('../ipc.js', () => ({
   },
   project: { list: async () => structuredClone(api.projects), get: async (id: string) => structuredClone(api.details[id]) },
   wiki: { cards: async () => [{ id: 'topics/sd', title: '推测解码' }, { id: 'topics/kv', title: 'KV 量化' }] },
+  chat: { list: async () => structuredClone(api.chats) },
   trash: { restore: async (id: string) => { api.restored.push(id) } },
 }))
 vi.mock('../shell/AppShell.js', () => ({
@@ -389,7 +392,7 @@ describe('Ideas', () => {
   it('来源标签跟在来源后面：对话和论文阅读写来源的种类，agent 记下的只写 agent', async () => {
     api.ideas.push({
       id: 'idea-agent', title: 'agent 记下的想法', body: '按接受率调宽度。',
-      source: { chatId: 'agent-1', chatTitle: '动态树宽度的实现讨论', agent: true },
+      source: { chatTitle: '动态树宽度的实现讨论', agent: true },
       archived: false, created: '2026-09-17', updated: '2026-09-17',
     })
     try {
@@ -546,6 +549,29 @@ describe('Ideas', () => {
       .toEqual([['内容', []], ['关联', ['关联']], ['所在项目', ['打开项目']], ['来源', ['打开来源对话']]])
     expect(await headings('idea-independent'))
       .toEqual([['内容', []], ['关联', ['关联']], ['所在项目', ['转为项目']], ['来源', ['打开来源对话']]])
+  })
+
+  it('来源对话删掉了的想法，卡片的来源后面和详情的来源后面都写着对话已删除，详情没有打开来源对话；对话还在的照常能打开', async () => {
+    const chats = api.chats
+    api.chats = chats.filter((held) => held.id !== 'chat-2')
+    try {
+      await act(async () => { root.render(<MessagesProvider><Ideas /></MessagesProvider>) })
+      expect([...host.querySelectorAll<HTMLElement>('[data-idea="idea-independent"] .tag, [data-idea="idea-linked"] .tag')]
+        .filter((tag) => tag.textContent === '对话已删除').map((tag) => tag.closest<HTMLElement>('[data-idea]')!.dataset['idea']))
+        .toEqual(['idea-independent'])
+      const source = async (id: string) => {
+        await act(async () => { host.querySelector<HTMLElement>(`[data-idea="${id}"]`)!.click() })
+        const detail = host.querySelector('.idea-detail-panel')!
+        return [
+          [...detail.querySelectorAll('.section-heading-actions .idea-panel-open-chat')].map((button) => button.textContent),
+          [...detail.querySelectorAll('.idea-panel-source .tag')].map((tag) => tag.textContent),
+        ]
+      }
+      expect(await source('idea-independent')).toEqual([[], ['对话已删除']])
+      expect(await source('idea-linked')).toEqual([['打开来源对话'], []])
+    } finally {
+      api.chats = chats
+    }
   })
 
   /** Renders the page with `idea` added to the list and opens its detail panel. */
