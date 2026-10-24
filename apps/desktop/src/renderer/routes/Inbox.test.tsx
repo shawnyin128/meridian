@@ -489,6 +489,25 @@ describe('Inbox', () => {
     await act(async () => { all.unmount() })
   })
 
+  it('从一条关注的那一档换到一个项目的那一档,新的列表还没到时不画上一档的卡片,也不出错', async () => {
+    api.entries = [{
+      id: 'w-only', kind: 'watch', watch: 'w1', project: '', source: '关键词 · w1',
+      title: 'Watch Paper', authors: 'Ada', venue: 'ICLR', abstract: 'Abstract', rec: '',
+      reasons: [], downloaded: false, paper: '', pdf: 'https://arxiv.org/pdf/2609.1',
+    }]
+    api.scope = 'w1'
+    const root = createRoot(host)
+    await act(async () => { root.render(<MessagesProvider><Inbox /></MessagesProvider>) })
+    expect(host.querySelectorAll('.paper-card')).toHaveLength(1)
+    api.mode = 'discovery'
+    api.scope = 'p1'
+    api.loading = true
+    await act(async () => { root.render(<MessagesProvider><Inbox /></MessagesProvider>) })
+    expect(host.querySelector('.ipcerror, .page-error')).toBeNull()
+    expect(host.querySelectorAll('.paper-card')).toHaveLength(0)
+    await act(async () => { root.unmount() })
+  })
+
   it('上次检查的时刻像全 App 的时间一样写成日期与时刻', async () => {
     status = {
       writes: 0, uploads: [], downloads: [], fetch: { state: 'idle', checkedAt: new Date(2026, 8, 20, 14, 5).getTime(), reason: null },

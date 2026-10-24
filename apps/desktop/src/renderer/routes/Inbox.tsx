@@ -124,7 +124,10 @@ export function Inbox() {
   }, [loadProfiles, revision, reportError, scope, sort, stream])
 
   const watched = watches.find((w) => w.id === scope)
-  const rows = useMemo(() => entries ?? [], [entries])
+  // Until the list for a new stream or scope arrives, the one held may name entries it does not list.
+  const rows = useMemo(() => (entries ?? []).filter((entry) => (
+    listingsOf(entry, stream).some((listing) => scope === ALL_WATCHES || listing.id === scope)
+  )), [entries, scope, stream])
   // A card shows under the scope in view, or else under the first stream of this kind that lists it.
   const groups = useMemo(() => {
     const byKey = new Map<string, { key: string; title: string; rows: InboxEntry[] }>()
