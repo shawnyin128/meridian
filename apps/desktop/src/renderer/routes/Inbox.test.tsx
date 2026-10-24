@@ -472,6 +472,7 @@ describe('Inbox', () => {
     status = {
       writes: 0, uploads: [], downloads: [],
       fetch: { state: 'idle', checkedAt: new Date(2026, 8, 20, 14, 5).getTime(), reason: null, last: { watches: ['w1'], added: 0, at } },
+      generating: [],
     }
     api.scope = 'w1'
     const root = createRoot(host)
