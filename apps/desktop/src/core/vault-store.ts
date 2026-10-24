@@ -43,11 +43,11 @@ import {
 import type { Json } from './vault/frontmatter.js'
 import { emitKey } from './vault/frontmatter.js'
 import type {
-  ChatRecord, InboxRecord, PaperSnapshot, TrashRecord, VaultState,
+  ChatRecord, InboxRecord, PaperSnapshot, RefreshProgressRecord, TrashRecord, VaultState,
 } from './vault/records.js'
 import {
   ChatRecordSchema, DiscoveryPreferencesRecordSchema, InboxRecordSchema, LaterRecordSchema,
-  PaperReadingRecordSchema, TrashRecordSchema, VaultStateSchema,
+  PaperReadingRecordSchema, RefreshProgressRecordSchema, TrashRecordSchema, VaultStateSchema,
 } from './vault/records.js'
 import { readRecord, readStoredList, withUnknownFields, type StoredList } from './vault/stored-records.js'
 import {
@@ -445,6 +445,7 @@ export function createVaultStore(
   }
   let trash = load('trash', TrashRecordSchema)
   let readings = load('paper-readings', PaperReadingRecordSchema, 'paperId')
+  let progress: RefreshProgressRecord[] = load('discovery/progress', RefreshProgressRecordSchema)
   // Another App version may have written queue records this one cannot read; keep those as written.
   const heldProposals: unknown[] = existsSync(join(meridian, 'proposals.json'))
     ? JSON.parse(readFileSync(join(meridian, 'proposals.json'), 'utf8')) as unknown[] : []
@@ -2128,6 +2129,29 @@ export function createVaultStore(
         ...state,
         discoverySchedules: { ...state.discoverySchedules, [projectId]: schedule },
       })
+    },
+
+    refreshProgress(scope) {
+      projectOf(scope.id)
+      const held = progress.find((row) => row.id === `${scope.kind}:${scope.id}`)
+      return {
+        steps: { ...held?.steps }, candidates: structuredClone(held?.candidates ?? []),
+        favouredAt: held?.favouredAt ?? null,
+      }
+    },
+
+    setRefreshProgress(scope, next) {
+      projectOf(scope.id)
+      const id = `${scope.kind}:${scope.id}`
+      const gone = (row: RefreshProgressRecord): boolean => {
+        const project = /^project:(.*)$/.exec(row.id)?.[1]
+        return project !== undefined && !projectById.has(project) && !unreadableProjects.has(project)
+      }
+      const record: RefreshProgressRecord = {
+        id, steps: { ...next.steps }, candidates: structuredClone(next.candidates),
+        ...(next.favouredAt === null ? {} : { favouredAt: next.favouredAt }),
+      }
+      progress = save('discovery/progress', [...progress.filter((row) => row.id !== id && !gone(row)), record])
     },
 
     setDiscoveryIntent(projectId, intentId, action) {

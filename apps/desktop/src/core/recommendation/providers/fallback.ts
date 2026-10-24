@@ -9,8 +9,8 @@ export function createFallbackRecommendations(
   providers: () => readonly RecommendationProvider[],
 ): RecommendationProvider {
   return {
-    recommend: (positive, negativePaperIds, source) => firstAnswer(
-      providers(), (provider) => provider.recommend(positive, negativePaperIds, source),
+    recommend: (positive, negativePaperIds, source, page) => firstAnswer(
+      providers(), (provider) => provider.recommend(positive, negativePaperIds, source, page),
     ),
   }
 }

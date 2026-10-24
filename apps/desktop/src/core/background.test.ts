@@ -76,7 +76,7 @@ describe('createBackground', () => {
     const result = await background.fetchDiscoveries('draft')
     expect(result).toEqual({
       projects: 1, intents: 3, added: 2, deferredProjects: 0,
-      cachedIntents: 0, failedIntents: 0,
+      cachedIntents: 0, failedIntents: 0, nothingNew: false, lastFetchedAt: 0,
     })
     const rows = store.listInbox({ kind: 'discovery', project: 'draft' })
     expect(rows).toHaveLength(2)
