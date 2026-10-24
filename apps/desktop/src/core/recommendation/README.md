@@ -52,8 +52,9 @@ refresh retries the same query before the project is treated as current.
 
 When a direction becomes due, its single provider-call slot runs the next query of its rotation: its
 seeds in anchor order, each through similarity, downstream citations, references and same-author
-papers, and then all of them again one page further. arXiv pages with `start`; Semantic Scholar
-ignores the page. Each direction's rotation step is stored in `.meridian/discovery/progress.json`,
+papers, and then all of them again one page further. arXiv pages with `start`, and Semantic
+Scholar citations and references with `offset`; Semantic Scholar similarity and same-author papers
+ignore the page. Each direction's rotation step is stored in `.meridian/discovery/progress.json`,
 which versions before 0.0.19.0 never read; a direction without a step continues past the sources
 older versions recorded in `state.json`. The rotation does not add a second scheduler or multiply the
 12/3 call limits. Every accepted candidate freezes factual source provenance and any actually matched
