@@ -1186,7 +1186,7 @@ test('详情面板保留完整列与列操作,Escape 收的是详情面板', asy
   await expect(win.locator('[data-radix-popper-content-wrapper]')).toHaveCount(0)
 })
 
-test('详情面板头部的长标题只在首行给打开和收起让位,第二行起占满头部的整行宽度', async ({ win }) => {
+test('详情面板头部的打开和收起在标题上方单独一行靠右,长标题每一行都占满头部的整行宽度', async ({ win }) => {
   await win.locator('[data-desk="papers"]').waitFor()
   // Han text breaks between any two characters, so every full line ends less than a character short of the space it has.
   const title = '树形草稿在批量推理下的动态宽度选择与接受率分析以及验证开销随草稿深度增长的拆分测量和端到端加速比的对照'
@@ -1204,11 +1204,13 @@ test('详情面板头部的长标题只在首行给打开和收起让位,第二�
     .toEqual([['开始阅读', 30, 30], ['收起详情', 30, 30]])
   expect(Math.abs(head.actions[1]!.right - head.content.right)).toBeLessThan(1)
   expect(head.actions.map((action) => Math.round(action.top - head.content.top))).toEqual([0, 0])
-  const [first, second] = head.title.lines
+  expect(head.actions.map((action) => action.top + action.height <= head.title.top)).toEqual([true, true])
+  expect([head.title.left - head.content.left, head.content.right - head.title.right].map(Math.round)).toEqual([0, 0])
   expect(head.title.lines.length).toBeGreaterThanOrEqual(3)
-  expect(first!.right).toBeLessThanOrEqual(head.actions[0]!.left)
-  expect(Math.abs(second!.left - head.content.left)).toBeLessThan(1)
-  expect(head.content.right - second!.right).toBeLessThan(head.title.fontSize)
+  expect(head.title.lines.slice(0, -1).map((line) => ({
+    starts: Math.abs(line.left - head.content.left) < 1,
+    fills: head.content.right - line.right < head.title.fontSize,
+  }))).toEqual(head.title.lines.slice(0, -1).map(() => ({ starts: true, fills: true })))
 })
 
 test('建列被 core 拒绝:占位格与打好的列名都留着,改了再回车才建出来', async ({ win }) => {
