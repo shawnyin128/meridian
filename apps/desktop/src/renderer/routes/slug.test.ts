@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { claimId, nextKey, slugOf } from '../lib/slug.js'
+import { claimId, colourThemeId, nextKey, slugOf } from '../lib/slug.js'
 
 describe('slugOf', () => {
   it('字母数字留着,其余连续字符并成一个 -,ASCII 转小写', () => {
@@ -32,5 +32,17 @@ describe('claimId', () => {
     expect(claimId('knee', ['knee', 'knee-2'])).toBe('knee-3')
     expect(claimId('拐点', ['c1'])).toBe('c2')
     expect(claimId('x - y', [])).toBe('x-y')
+  })
+})
+
+describe('colourThemeId', () => {
+  it('只留 a-z、0-9 与 -,截到 40 个字符;撞上了加序号;名字里没有这些字符就用 theme', () => {
+    expect(colourThemeId('My Theme', [])).toBe('my-theme')
+    expect(colourThemeId('My Theme', ['my-theme', 'my-theme-2'])).toBe('my-theme-3')
+    expect(colourThemeId('Default', ['default'])).toBe('default-2')
+    expect(colourThemeId('青瓷', [])).toBe('theme')
+    expect(colourThemeId('青瓷 2', ['theme'])).toBe('2')
+    expect(colourThemeId('雨过天青', ['theme'])).toBe('theme-2')
+    expect(colourThemeId('a'.repeat(80), [])).toHaveLength(40)
   })
 })

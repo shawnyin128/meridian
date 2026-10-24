@@ -97,3 +97,11 @@
 .directory-field-action:hover{background:var(--hover);color:var(--ink)}
 .directory-field-action:disabled{cursor:default;opacity:.45;background:transparent;color:var(--ter)}
 .directory-field-action svg{width:16px;height:16px}
+
+/* A colour and its system picker form a single field: the picker is the swatch at the field's start. */
+.colour-field{--colour-swatch:20px;position:relative;display:block;width:140px}
+.colour-field .form-input{width:100%;padding-left:calc(var(--sp-6) + var(--colour-swatch) + var(--sp-8));font-family:var(--mono);font-size:var(--fs-sm)}
+.colour-field-picker{position:absolute;top:calc((30px - var(--colour-swatch)) / 2);left:var(--sp-6);width:var(--colour-swatch);height:var(--colour-swatch);
+  padding:0;border:0;border-radius:var(--r-xs);background:none;cursor:pointer;appearance:none}
+.colour-field-picker::-webkit-color-swatch-wrapper{padding:0}
+.colour-field-picker::-webkit-color-swatch{border:1px solid var(--sep2);border-radius:var(--r-xs)}

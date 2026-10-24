@@ -4,6 +4,8 @@ import {
   type InputHTMLAttributes,
   type SelectHTMLAttributes,
   type TextareaHTMLAttributes,
+  useEffect,
+  useState,
 } from 'react'
 import { useMessages } from '../messages/useMessages.js'
 import { IconFolder } from './icons.js'
@@ -109,3 +111,42 @@ export const FormSelect = forwardRef<
     return <select ref={ref} className={classes('form-select', className, appearance)} {...props} />
   },
 )
+
+const HEX_COLOUR = /^#[0-9a-f]{6}$/i
+
+/**
+ * A `#RRGGBB` colour as one field: its leading swatch opens the system colour picker, and the rest is
+ * the value as text. `onChange` receives, in lower case, every colour the picker gives and every text
+ * that is `#` and six hex digits; any other text changes nothing and shows refused once the field
+ * loses focus, until it is edited. `pickLabel` and `valueLabel` name the picker and the text.
+ */
+export function ColourField({ value, onChange, pickLabel, valueLabel }: {
+  value: string
+  onChange: (value: string) => void
+  pickLabel: string
+  valueLabel: string
+}) {
+  const [text, setText] = useState(value.toUpperCase())
+  const [refused, setRefused] = useState(false)
+  useEffect(() => {
+    setText(value.toUpperCase())
+    setRefused(false)
+  }, [value])
+  return (
+    <span className="colour-field">
+      <input
+        type="color" className="colour-field-picker" value={value.toLowerCase()} aria-label={pickLabel}
+        onChange={(event) => onChange(event.target.value.toLowerCase())}
+      />
+      <FormInput
+        value={text} aria-label={valueLabel} aria-invalid={refused || undefined} spellCheck={false} maxLength={7}
+        onChange={(event) => {
+          setText(event.target.value)
+          setRefused(false)
+          if (HEX_COLOUR.test(event.target.value)) onChange(event.target.value.toLowerCase())
+        }}
+        onBlur={() => setRefused(!HEX_COLOUR.test(text))}
+      />
+    </span>
+  )
+}

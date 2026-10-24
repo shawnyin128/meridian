@@ -1,10 +1,15 @@
 // @vitest-environment jsdom
-import { createRef } from 'react'
+import { act, createRef, useState } from 'react'
+import { createRoot } from 'react-dom/client'
 import { renderToStaticMarkup } from 'react-dom/server'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { MessagesProvider } from '../messages/useMessages.js'
 import { LANGUAGE_STORAGE_KEY } from '../shell/language.js'
-import { DirectoryField, FormButton, FormInput, FormSelect, FormTextarea } from './FormControls.js'
+import { ColourField, DirectoryField, FormButton, FormInput, FormSelect, FormTextarea } from './FormControls.js'
+
+declare global {
+  var IS_REACT_ACT_ENVIRONMENT: boolean
+}
 
 describe('FormControls', () => {
   beforeEach(() => { window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'zh') })
@@ -91,5 +96,46 @@ describe('FormControls', () => {
     )
     expect(disabled).toMatch(/form-input[^>]*disabled=""/)
     expect(disabled).toMatch(/directory-field-action[^>]*disabled=""/)
+  })
+})
+
+describe('ColourField', () => {
+  /** Sets `input`'s value as typing does, so React sees the change. */
+  const type = (input: HTMLInputElement, value: string) => act(() => {
+    Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')!.set!.call(input, value)
+    input.dispatchEvent(new Event('input', { bubbles: true }))
+  })
+
+  it('色值框只收 #RRGGBB:别的写法不改颜色,离开时标成被拒;系统取色器和合法的色值都交给 onChange', () => {
+    globalThis.IS_REACT_ACT_ENVIRONMENT = true
+    const picked = vi.fn()
+    function Host() {
+      const [value, setValue] = useState('#3568ff')
+      return <ColourField value={value} onChange={(next) => { picked(next); setValue(next) }} pickLabel="选取颜色" valueLabel="色值" />
+    }
+    const host = document.createElement('div')
+    document.body.append(host)
+    const root = createRoot(host)
+    act(() => root.render(<Host />))
+    const text = host.querySelector<HTMLInputElement>('input[aria-label="色值"]')!
+    const picker = host.querySelector<HTMLInputElement>('input[type="color"][aria-label="选取颜色"]')!
+    expect(text.value).toBe('#3568FF')
+
+    for (const refused of ['red', '3568ff', '#35f', '#35680G', '#3568f']) {
+      type(text, refused)
+      act(() => text.dispatchEvent(new FocusEvent('focusout', { bubbles: true })))
+      expect([text.value, text.getAttribute('aria-invalid')], refused).toEqual([refused, 'true'])
+    }
+    expect(picked).not.toHaveBeenCalled()
+    expect(picker.value).toBe('#3568ff')
+
+    type(text, '#A64436')
+    expect(picked).toHaveBeenLastCalledWith('#a64436')
+    expect([text.value, text.getAttribute('aria-invalid'), picker.value]).toEqual(['#A64436', null, '#a64436'])
+
+    type(picker, '#517d7b')
+    expect(picked).toHaveBeenLastCalledWith('#517d7b')
+    expect(text.value).toBe('#517D7B')
+    act(() => root.unmount())
   })
 })

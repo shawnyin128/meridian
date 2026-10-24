@@ -122,12 +122,12 @@ const HUED = 0.01
 
 /**
  * Where `target` lands when `source` stands where `reference` stood: its OKLab lightness moves by
- * the same amount; its chroma scales and its hue turns with the source's, or, when the reference is a
- * grey, its a and b move by the source's.
+ * the same amount, unless `keepLightness`; its chroma scales and its hue turns with the source's, or,
+ * when the reference is a grey, its a and b move by the source's.
  */
-function follow(source: Colour, reference: Colour, target: Colour): Colour {
+function follow(source: Colour, reference: Colour, target: Colour, keepLightness = false): Colour {
   const [s, r, t] = [oklab(source), oklab(reference), oklab(target)]
-  const L = t.L + s.L - r.L
+  const L = keepLightness ? t.L : t.L + s.L - r.L
   const chroma = Math.hypot(r.a, r.b)
   if (chroma < HUED) return fromLab({ L, a: t.a + s.a - r.a, b: t.b + s.b - r.b })
   const scale = Math.hypot(s.a, s.b) / chroma
@@ -149,6 +149,20 @@ function follow(source: Colour, reference: Colour, target: Colour): Colour {
  */
 export function colourFollowing(modules: ColourThemeModules, mode: ColourMode, module: ColourModule, target: string): string {
   return hexOf(follow(parse(modules[module]), parse(DEFAULT_COLOUR_THEME[mode][module]), parse(target)))
+}
+
+const TEXT_MODULES: ReadonlySet<ColourModule> = new Set(['ink', 'inkSecondary', 'inkTertiary'])
+
+/**
+ * A dark mode for the light module colours `light`, from the theme `base`: each module moves from
+ * `base`'s dark one as `light`'s moves from `base`'s light one, as derived tokens move, except that
+ * the three text modules keep the OKLab lightness of `base`'s dark text, which reads on dark surfaces.
+ * @returns The thirteen dark module colours, `#rrggbb`; `base.dark` for `base.light`.
+ */
+export function deriveDarkModules(light: ColourThemeModules, base: ColourTheme): ColourThemeModules {
+  const moved = (module: ColourModule) =>
+    hexOf(follow(parse(light[module]), parse(base.light[module]), parse(base.dark[module]), TEXT_MODULES.has(module)))
+  return Object.fromEntries((Object.keys(base.dark) as ColourModule[]).map((module) => [module, moved(module)])) as ColourThemeModules
 }
 
 /** `color-mix(in srgb, x p%, y)` of two opaque colours, written out as that expression. */
@@ -250,8 +264,10 @@ function shadows(modules: ColourThemeModules, mode: ColourMode): Record<ShadowTo
 const TEXT = 4.5
 const MARK = 3
 
+/** One layer of a ground: a token, or a token laid at an opacity over the layers below it. */
+type Layer = ColourToken | readonly [ColourToken, number]
 /** A contrast target: `fg` over the bottom-to-top `ground` stack reaches `min`; a shortfall belongs to `module`. */
-export type ContrastCheck = { module: ColourModule; fg: ColourToken; ground: readonly ColourToken[]; min: number }
+export type ContrastCheck = { module: ColourModule; fg: ColourToken; ground: readonly Layer[]; min: number }
 
 /** The grounds text and tags sit on: canvas, card, floating layer, window, and hovered and selected rows. */
 const SURFACES: readonly (readonly ColourToken[])[] = [
@@ -261,8 +277,11 @@ const SURFACES: readonly (readonly ColourToken[])[] = [
 ]
 const CHIPS = SURFACES.map((ground) => [...ground, '--chip'] as const)
 
-const over = (module: ColourModule, fg: ColourToken, grounds: readonly (readonly ColourToken[])[], min = TEXT): ContrastCheck[] =>
+const over = (module: ColourModule, fg: ColourToken, grounds: readonly (readonly Layer[])[], min = TEXT): ContrastCheck[] =>
   grounds.map((ground) => ({ module, fg, ground, min }))
+
+/** The reading highlight as the Reader fills a highlighted passage: the highlight at 30% (Reader.css). */
+const HIGHLIGHTED: Layer = ['--hl-yellow', 0.3]
 
 /** Every contrast target of one mode: what derivation repairs toward and `contrastShortfalls` reports. */
 function contrastChecks(mode: ColourMode): ContrastCheck[] {
@@ -285,6 +304,7 @@ function contrastChecks(mode: ColourMode): ContrastCheck[] {
     ...over('error', '--bad-text', [...CHIPS, ['--content', '--tint-bad'], ['--card', '--tint-bad'], ['--card'], ['--raised']]),
     ...over('warning', '--warn-text', CHIPS),
     ...over('done', '--good-text', CHIPS),
+    ...over('highlight', '--ink', [['--card', HIGHLIGHTED], ['--content', HIGHLIGHTED]]),
   ]
 }
 
@@ -304,10 +324,13 @@ function contrastRatio(x: Colour, y: Colour): number {
   return (high + 0.05) / (low + 0.05)
 }
 
-/** The ratio `check` reaches; every foreground a check names is opaque. */
+const layerOf = (values: ColourValues, layer: Layer): Colour =>
+  (typeof layer === 'string' ? values[layer] : alpha(values[layer[0]], layer[1]))
+
+/** The ratio `check` reaches; every foreground a check names is opaque, and so is its bottom layer. */
 const ratioOf = (values: ColourValues, check: ContrastCheck): number => contrastRatio(
   values[check.fg],
-  check.ground.slice(1).reduce((below, token) => composite(below, values[token]), values[check.ground[0]!]),
+  check.ground.slice(1).reduce((below, layer) => composite(below, layerOf(values, layer)), layerOf(values, check.ground[0]!)),
 )
 
 /**
@@ -366,11 +389,15 @@ export function deriveColourTokens(modules: ColourThemeModules, mode: ColourMode
 export type ContrastShortfall = ContrastCheck & { ratio: number }
 
 /**
- * Lists every contrast target the derived tokens of `modules` miss in `mode`, after repair.
+ * Lists every contrast target the derived tokens of `modules` miss in `mode`, after repair. A target
+ * over a layer laid at an opacity counts only when its foreground meets it on the surface without
+ * that layer; otherwise the foreground's own targets report the shortfall.
  * @returns The missed targets in `contrastChecks` order; empty when every one is met.
  */
 export function contrastShortfalls(modules: ColourThemeModules, mode: ColourMode): ContrastShortfall[] {
   const values = repaired(modules, mode)
+  const surface = (check: ContrastCheck): ContrastCheck => ({ ...check, ground: check.ground.filter((layer) => typeof layer === 'string') })
   return contrastChecks(mode).map((check) => ({ ...check, ratio: ratioOf(values, check) }))
-    .filter((check) => check.ratio < check.min)
+    .filter((check) => check.ratio < check.min
+      && (check.ground.every((layer) => typeof layer === 'string') || ratioOf(values, surface(check)) >= check.min))
 }
