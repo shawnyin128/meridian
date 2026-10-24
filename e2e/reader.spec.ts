@@ -1,4 +1,5 @@
 import type { Page } from '@playwright/test'
+import { minimalPdf } from '../apps/desktop/src/core/net/minimal-pdf.js'
 import { expect, gotoPapers, settle, test, type MeridianWindow } from './app.js'
 
 /** Visited screens stay mounted, so reader selectors are scoped to the screen shown. */
@@ -578,4 +579,151 @@ test('内化到 Wiki 先展示完整费用范围,明确确认后才消费一次�
 
   await dialog.getByRole('button', { name: '开始生成' }).click()
   await expect(shown(win, '.wiki-ingest')).toContainText('授权门验证完成')
+})
+
+/**
+ * A page of body text set as tightly as a two-column paper's, 10 pt type on 12 pt leading. Chromium
+ * paints a selection over each line's text-layer span taller than the leading, so the paint of
+ * neighbouring lines overlaps.
+ */
+const TIGHT = {
+  title: 'Tightly set lines',
+  lines: [
+    'Autoregressive decoding makes the inference of',
+    'Large Language Models time-consuming. In this',
+    'paper, we reconsider speculative sampling and',
+    'derive two key observations about the features.',
+  ],
+  size: 10,
+  leading: 12,
+}
+
+/** Imports TIGHT through Core, opens it in the reader from the paper table and waits until its page is drawn. */
+async function openTight(win: Page): Promise<void> {
+  const held = await win.evaluate((pdf) => (window as unknown as MeridianWindow).meridian.call(
+    'papers.import', { filename: 'Tight.pdf', bytes: new Uint8Array(pdf) },
+  ), [...minimalPdf(TIGHT)]) as { paper: { id: string } }
+  // The import's metadata parse may still retitle the paper, so the title is read once it settles.
+  await expect.poll(async () => (await call<{ uploads: { step: string }[] }>(win, 'jobs.status', {})).uploads
+    .every((job) => job.step === 'done' || job.step === 'failed')).toBe(true)
+  const { title } = await call<{ title: string }>(win, 'papers.get', { id: held.paper.id })
+  await gotoPapers(win)
+  await selectPaper(win, title)
+  await shown(win, '.pdetail [aria-label="开始阅读"]').click()
+  await expect(shown(win, '.pdfpagebox[data-painted="1"]')).toHaveCount(1)
+}
+
+/** The client box of each line of text on the page shown, top to bottom. */
+const textLines = (win: Page) => shown(win, '.pdfpagebox .textLayer span').evaluateAll((spans) => spans
+  .map((span) => span.getBoundingClientRect())
+  .map(({ left, right, top, bottom }) => ({ left, right, top, bottom }))
+  .sort((a, b) => a.top - b.top))
+
+/** Drags the mouse from the start of the first of `lines` to the end of the last. */
+async function dragAcross(win: Page, lines: { left: number; right: number; top: number; bottom: number }[]): Promise<void> {
+  const [first, last] = [lines[0]!, lines.at(-1)!]
+  await win.mouse.move(first.left + 1, (first.top + first.bottom) / 2)
+  await win.mouse.down()
+  await win.mouse.move(last.right - 1, (last.top + last.bottom) / 2, { steps: 8 })
+  await win.mouse.up()
+}
+
+/**
+ * The paint in the client box `box` with the page's canvas hidden, so that only what lies over the
+ * white paper shows: the pixels painted at all (any channel below 250), and those painted darker
+ * than the most common painted colour by more than ten levels a channel on average, which is where
+ * two translucent layers overlap; a second layer of the selection's paint is over 25 levels darker.
+ */
+async function paintOver(win: Page, box: { left: number; right: number; top: number; bottom: number }) {
+  const canvas = shown(win, '.pdfpagebox canvas')
+  await canvas.evaluate((element) => { element.style.visibility = 'hidden' })
+  await win.evaluate(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done))))
+  const shot = await win.screenshot({ clip: { x: box.left, y: box.top, width: box.right - box.left, height: box.bottom - box.top } })
+  await canvas.evaluate((element) => { element.style.visibility = '' })
+  return win.evaluate(async (b64) => {
+    const img = new Image()
+    img.src = `data:image/png;base64,${b64}`
+    await img.decode()
+    const canvas = document.createElement('canvas')
+    canvas.width = img.naturalWidth
+    canvas.height = img.naturalHeight
+    const ctx = canvas.getContext('2d')!
+    ctx.drawImage(img, 0, 0)
+    const { data } = ctx.getImageData(0, 0, canvas.width, canvas.height)
+    const counts = new Map<string, number>()
+    const painted: [number, number, number][] = []
+    for (let at = 0; at < data.length; at += 4) {
+      const rgb: [number, number, number] = [data[at]!, data[at + 1]!, data[at + 2]!]
+      if (rgb.every((channel) => channel >= 250)) continue
+      painted.push(rgb)
+      counts.set(rgb.join(), (counts.get(rgb.join()) ?? 0) + 1)
+    }
+    const sum = (rgb: number[]) => rgb[0]! + rgb[1]! + rgb[2]!
+    const common = sum([...counts].sort((a, b) => b[1] - a[1])[0]?.[0].split(',').map(Number) ?? [255, 255, 255])
+    const doubled = painted.filter((rgb) => sum(rgb) < common - 30).length
+    return { painted: painted.length, doubled }
+  }, shot.toString('base64'))
+}
+
+// Pixel checks take screenshots of the window, which need a visible one.
+test.describe('选中文字时的选区', () => {
+  test.use({ showWindow: true })
+
+  test('拖选时阅读器按高亮的行画出选区:文字层里 Chromium 自己不画,相邻两行相接处没有叠深的一道', async ({ win }) => {
+    await openTight(win)
+    const lines = (await textLines(win)).slice(0, 3)
+    await dragAcross(win, lines)
+    await win.keyboard.press('Escape')
+    await expect(win.locator('.selection-tools')).toHaveCount(0)
+    const area = {
+      left: Math.min(...lines.map((line) => line.left)), right: Math.max(...lines.map((line) => line.right)),
+      top: lines[0]!.top, bottom: lines.at(-1)!.bottom,
+    }
+
+    const drawn = await paintOver(win, area)
+    expect(drawn.painted, '选区画出来了').toBeGreaterThan(0)
+    expect(drawn.doubled, '相邻两行相接处没有叠深的一道').toBe(0)
+
+    // What shows is the reader's drawing, one rectangle per line in one shape, and with it hidden the
+    // text layer shows no paint of Chromium's own.
+    const drawing = shown(win, '.pdfpagebox .paper-selection')
+    await expect(drawing.locator('svg')).toHaveCount(1)
+    expect((await drawing.locator('path').getAttribute('d'))?.match(/M/g)).toHaveLength(3)
+    await drawing.evaluate((layer) => { layer.style.visibility = 'hidden' })
+    expect((await paintOver(win, area)).painted, '文字层里 Chromium 不画选区').toBe(0)
+
+    // The page holds the case: with Chromium's own paint forced back on, one line's paint overlaps the next.
+    await win.evaluate(() => {
+      const style = document.createElement('style')
+      style.id = 'chromium-selection-paint'
+      style.textContent = '.textLayer ::selection{background:rgb(0 0 0/.3)!important}'
+      document.head.append(style)
+    })
+    expect((await paintOver(win, area)).doubled, 'Chromium 自己画选区时相邻两行叠出一道深色').toBeGreaterThan(0)
+    await win.evaluate(() => document.getElementById('chromium-selection-paint')!.remove())
+    await drawing.evaluate((layer) => { layer.style.visibility = '' })
+  })
+
+  test('选区照旧能复制、照旧出工具条,划成的高亮和拖选时画的是同一个形状', async ({ app, win }) => {
+    await openTight(win)
+    await dragAcross(win, (await textLines(win)).slice(0, 3))
+    await expect(win.locator('.selection-tools')).toBeVisible()
+    const drawn = await shown(win, '.pdfpagebox .paper-selection path').getAttribute('d')
+
+    const selected = await win.evaluate(() => document.getSelection()!.toString())
+    expect(selected.replace(/\s+/g, ' ').trim()).toBe(TIGHT.lines.slice(0, 3).join(' '))
+    // The Edit menu's Copy runs webContents.copy(); the machine's clipboard is put back afterwards.
+    const kept = await app.evaluate(({ clipboard }) => clipboard.readText())
+    try {
+      await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]!.webContents.copy())
+      await expect.poll(() => app.evaluate(({ clipboard }) => clipboard.readText())).toBe(selected)
+    } finally {
+      await app.evaluate(({ clipboard }, text) => clipboard.writeText(text), kept)
+    }
+
+    await win.locator('.selection-tools .mi', { hasText: '高亮' }).click()
+    await expect(shown(win, '.pdfpagebox .paper-highlight path')).toHaveCount(1)
+    expect(await shown(win, '.pdfpagebox .paper-highlight path').getAttribute('d')).toBe(drawn)
+    await expect(shown(win, '.pdfpagebox .paper-selection svg')).toHaveCount(0)
+  })
 })

@@ -127,10 +127,11 @@ describe('Reader', () => {
       delete (Range.prototype as Partial<Range>).getClientRects
     })
 
-    /** Puts one page with a text layer on the sheet, selects its words and releases the mouse. */
+    /** Puts one page with a selection layer and a text layer on the sheet, selects its words and releases the mouse. */
     const select = async () => {
       const sheet = host.querySelector('.pdfsheet')!
-      sheet.innerHTML = '<div class="pdfpagebox" data-page="1"><div class="textLayer"><span>Speculative decoding</span></div></div>'
+      sheet.innerHTML = '<div class="pdfpagebox" data-page="1"><div class="paper-selection"></div>'
+        + '<div class="textLayer"><span>Speculative decoding</span></div></div>'
       const range = document.createRange()
       range.selectNodeContents(sheet.querySelector('.textLayer span')!)
       window.getSelection()!.removeAllRanges()
@@ -164,6 +165,42 @@ describe('Reader', () => {
       expect(tools()).not.toBeNull()
       await act(async () => { document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })) })
       expect(tools()).toBeNull()
+    })
+
+    it('选区一变就按高亮的画法画在页上：一页一个形状，一行一个矩形；选区收起就擦掉', async () => {
+      await render()
+      const sheet = host.querySelector('.pdfsheet')!
+      sheet.innerHTML = '<div class="pdfpagebox" data-page="1"><div class="paper-selection"></div>'
+        + '<div class="textLayer"><span>Speculative decoding</span><br><span>drafts tokens</span></div></div>'
+      // Two lines 18px apart whose text boxes overlap by 2px, as a page's tightly set lines do.
+      const lines = new Map([
+        ['Speculative decoding', DOMRect.fromRect({ x: 160, y: 250, width: 240, height: 20 })],
+        ['drafts tokens', DOMRect.fromRect({ x: 160, y: 268, width: 150, height: 20 })],
+      ])
+      Range.prototype.getClientRects = function (this: Range) { return [lines.get(this.toString())!] as unknown as DOMRectList }
+      const range = document.createRange()
+      range.selectNodeContents(sheet.querySelector('.textLayer')!)
+      const changed = async () => {
+        await act(async () => {
+          document.dispatchEvent(new Event('selectionchange'))
+          await new Promise((done) => requestAnimationFrame(() => done(undefined)))
+        })
+      }
+      window.getSelection()!.removeAllRanges()
+      window.getSelection()!.addRange(range)
+      await changed()
+
+      const shapes = [...sheet.querySelectorAll<SVGSVGElement>('.paper-selection svg')]
+      expect(shapes).toHaveLength(1)
+      const paths = [...shapes[0]!.querySelectorAll('path')]
+      expect(paths).toHaveLength(1)
+      // One closed rectangle per line, in the page's own units, both in one shape.
+      expect(paths[0]!.getAttribute('d')).toBe('M0.1 0.25h0.4v0.025h-0.4zM0.1 0.2725h0.25v0.025h-0.25z')
+      expect([shapes[0]!.style.left, shapes[0]!.style.top, shapes[0]!.style.width]).toEqual(['10%', '25%', '40%'])
+
+      window.getSelection()!.removeAllRanges()
+      await changed()
+      expect(sheet.querySelectorAll('.paper-selection svg')).toHaveLength(0)
     })
 
     it('缩放页面时收起', async () => {
