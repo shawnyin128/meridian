@@ -1216,11 +1216,12 @@ describe('Settings', () => {
     expect(document.querySelector('.setdlg .set-body')!.textContent).toContain('Codex')
   })
 
-  it('读论文库位置失败时，存储一栏不停在读取占位上，屏头写出原因', async () => {
+  it('读论文库位置失败时，原因写在论文库那张卡片里，不再停在读取占位上，也不在屏头重复', async () => {
     api.requestedCategory = 'storage'
     api.libraryLocation.mockRejectedValueOnce(newer('library.location'))
     await render()
-    expect(shownFailure()).toEqual(['需要更新 App', null, 0])
+    expect(shownFailure()).toEqual([null, '需要更新 App', 0])
+    expect(document.querySelector('.setdlg .storage-card .ipcerror')?.textContent).toBe('需要更新 App')
   })
 
   it('读对话列表失败时，归档的对话一栏不停在读取占位上，屏头写出原因', async () => {

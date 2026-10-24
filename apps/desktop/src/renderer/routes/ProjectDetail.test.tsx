@@ -419,7 +419,7 @@ describe('project idea panel', () => {
     const kept: ResearchIdea = { ...idea, id: 'idea-kept', source: { chatId: 'chat-kept', chatTitle: '还在的对话' } }
     const list = mount(
       <ProjectIdeaList
-        projectId="draft" failed={false} graph={graph} selectedId={null} onSelect={vi.fn()} onCreate={vi.fn()}
+        projectId="draft" error={null} graph={graph} selectedId={null} onSelect={vi.fn()} onCreate={vi.fn()}
         ideas={[idea, kept]} chatDeleted={(held) => held.id === idea.id}
       />,
     )
@@ -432,11 +432,12 @@ describe('project idea panel', () => {
     panel.unmount()
   })
 
-  it('读关联想法失败时，想法一节不停在读取占位上', () => {
+  it('读关联想法失败时，原因写在想法一节里，不再停在读取占位上', () => {
     const list = mount(
-      <ProjectIdeaList projectId="draft" ideas={null} failed graph={graph} selectedId={null} onSelect={vi.fn()} onCreate={vi.fn()} />,
+      <ProjectIdeaList projectId="draft" ideas={null} error="需要更新 App" graph={graph} selectedId={null} onSelect={vi.fn()} onCreate={vi.fn()} />,
     )
-    expect(list.host.querySelectorAll('.loading-placeholder')).toHaveLength(0)
+    expect([list.host.querySelector('.ipcerror')?.textContent, list.host.querySelectorAll('.loading-placeholder').length])
+      .toEqual(['需要更新 App', 0])
     list.unmount()
   })
 
@@ -450,7 +451,7 @@ describe('project idea panel', () => {
     const onSelect = vi.fn()
     const list = mount(
       <ProjectIdeaList
-        projectId="draft" failed={false} graph={graph} selectedId={null} onSelect={onSelect} onCreate={vi.fn()}
+        projectId="draft" error={null} graph={graph} selectedId={null} onSelect={onSelect} onCreate={vi.fn()}
         ideas={[
           sparked('idea-old', '2026-09-01'), related, { ...idea, node: 'thread.probe', sourceProject: 'draft' },
           sparked('idea-new', '2026-09-20'), sparked('idea-both', '2026-09-25', { relations: { projects: ['draft'], pages: [] } }),
@@ -473,7 +474,7 @@ describe('project idea panel', () => {
       { ...idea, id: 'idea-old', project: undefined, sourceProject: 'draft', created: '2026-09-01', updated: '2026-09-01' },
     ]
     const list = mount(
-      <ProjectIdeaList projectId="draft" ideas={held} failed={false} graph={graph} selectedId={null} onSelect={vi.fn()} onCreate={onCreate} />,
+      <ProjectIdeaList projectId="draft" ideas={held} error={null} graph={graph} selectedId={null} onSelect={vi.fn()} onCreate={onCreate} />,
     )
     expect(list.headingActions('关联想法')).toEqual([['想法']])
     const add = list.host.querySelector<HTMLButtonElement>('.section-heading-actions .add-action')!
@@ -501,7 +502,7 @@ describe('project idea panel', () => {
     expect(onCreate).toHaveBeenCalledWith('项目页写下的想法', '先记下来。')
     const saved: ResearchIdea = { ...idea, id: 'idea-saved', project: undefined, sourceProject: 'draft', created: '2026-09-18', updated: '2026-09-18' }
     list.rerender(
-      <ProjectIdeaList projectId="draft" ideas={[saved, ...held]} failed={false} graph={graph} selectedId={null} onSelect={vi.fn()} onCreate={onCreate} />,
+      <ProjectIdeaList projectId="draft" ideas={[saved, ...held]} error={null} graph={graph} selectedId={null} onSelect={vi.fn()} onCreate={onCreate} />,
     )
     expect(slots()).toEqual(['idea-here', 'idea-saved', 'idea-old'])
     list.unmount()
@@ -535,6 +536,8 @@ describe('项目页跟着工作区刷新', () => {
   let answers: (() => Promise<ProjectDetail>)[] = []
   let gets = 0
   let commits = 0
+  /** What idea.list rejects with instead of answering, when a case makes it fail. */
+  let ideasError: unknown = null
   let unmount = () => {}
 
   beforeEach(async () => {
@@ -545,10 +548,12 @@ describe('项目页跟着工作区刷新', () => {
     shell.shown = true
     gets = 0
     commits = 0
+    ideasError = null
     answers = [async () => bound()]
     vi.stubGlobal('meridian', {
       call: (method: string) => {
         if (method === 'project.get') return answers[gets++]?.() ?? new Promise(() => {})
+        if (method === 'idea.list' && ideasError !== null) return Promise.reject(ideasError)
         if (method === 'idea.list' || method === 'chat.list') return Promise.resolve([])
         return new Promise(() => {})
       },
@@ -581,6 +586,14 @@ describe('项目页跟着工作区刷新', () => {
     return host
   }
   const wait = (ms: number) => act(async () => { await vi.advanceTimersByTimeAsync(ms) })
+
+  it('读关联想法失败时，原因只写在想法一节的标题下，页头不再重复', async () => {
+    ideasError = { reason: 'newer-version' }
+    const host = await mount()
+    expect([...host.querySelectorAll('.ipcerror')].map((banner) => [
+      banner.previousElementSibling?.textContent?.startsWith('关联想法') ?? false, banner.textContent,
+    ])).toEqual([[true, '需要更新 App']])
+  })
 
   it('一次只读一回：上一次还没回来时，到点了也不再读', async () => {
     await mount()
