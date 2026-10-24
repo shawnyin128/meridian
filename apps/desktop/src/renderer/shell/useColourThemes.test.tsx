@@ -4,7 +4,9 @@ import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { BUILT_IN_COLOUR_THEMES } from '../../shared/colour-theme.js'
 import type { ColourTheme, ColourThemeFile } from '../../shared/contract.js'
-import { COLOUR_THEME_STORAGE_KEY } from './appearance.js'
+import {
+  COLOUR_THEME_CACHE_KEY, COLOUR_THEME_STORAGE_KEY, initializeAppearance, setColourThemePreference,
+} from './appearance.js'
 import { useColourThemeFilesPoll } from './useColourThemes.js'
 
 const files = vi.hoisted(() => ({ current: [] as ColourThemeFile[] }))
@@ -32,6 +34,7 @@ describe('自定义主题文件的轮询', () => {
     document.getElementById('meridian-colour-theme')?.remove()
     delete document.documentElement.dataset.colourTheme
     root = createRoot(document.createElement('div'))
+    vi.stubGlobal('matchMedia', vi.fn(() => ({ matches: false, addEventListener: vi.fn(), removeEventListener: vi.fn() })))
   })
 
   afterEach(() => {
@@ -57,6 +60,24 @@ describe('自定义主题文件的轮询', () => {
     files.current = [readable(mine)]
     await act(async () => { await vi.advanceTimersByTimeAsync(2000) })
     expect(canvas()).toBe(mine.light.ground)
+  })
+
+  it('上次套用的自定义主题在启动时、读主题文件之前就套上;它的文件不见了就退回默认并丢掉缓存', async () => {
+    setColourThemePreference(mine)
+    document.getElementById('meridian-colour-theme')?.remove()
+    delete document.documentElement.dataset.colourTheme
+
+    initializeAppearance()
+    expect(canvas()).toBe(mine.light.ground)
+
+    files.current = [{ state: 'unreadable', file: 'mine.json', reason: 'syntax' }]
+    await act(async () => { root.render(<Poll />) })
+    expect(canvas()).toBeNull()
+    expect(window.localStorage.getItem(COLOUR_THEME_CACHE_KEY)).toBeNull()
+    expect(window.localStorage.getItem(COLOUR_THEME_STORAGE_KEY)).toBe('mine')
+
+    initializeAppearance()
+    expect(canvas()).toBeNull()
   })
 
   it('选中的是内置主题时,自定义主题文件变了也不动当前的颜色', async () => {

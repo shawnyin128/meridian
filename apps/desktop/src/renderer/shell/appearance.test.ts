@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { BUILT_IN_COLOUR_THEMES, DEFAULT_COLOUR_THEME } from '../../shared/colour-theme.js'
 import {
   APPEARANCE_STORAGE_KEY,
+  COLOUR_THEME_CACHE_KEY,
   COLOUR_THEME_STORAGE_KEY,
   initializeAppearance,
   readAppearancePreference,
@@ -92,6 +93,20 @@ describe('appearance preference', () => {
     setColourThemePreference(DEFAULT_COLOUR_THEME)
     expect(document.documentElement.dataset.colourTheme).toBeUndefined()
     expect(themeRules()).toEqual([])
+  })
+
+  it('starts with today\'s palette and drops the cache when the cached theme is not the chosen one or not JSON', () => {
+    setColourThemePreference({ ...BUILT_IN_COLOUR_THEMES.find((theme) => theme.id === 'luodian')!, id: 'mine', name: 'mine' })
+    window.localStorage.setItem(COLOUR_THEME_STORAGE_KEY, 'other')
+    initializeAppearance()
+    expect(themeRules()).toEqual([])
+    expect(window.localStorage.getItem(COLOUR_THEME_CACHE_KEY)).toBeNull()
+
+    window.localStorage.setItem(COLOUR_THEME_STORAGE_KEY, 'mine')
+    window.localStorage.setItem(COLOUR_THEME_CACHE_KEY, '{"id": "mine",')
+    initializeAppearance()
+    expect(themeRules()).toEqual([])
+    expect(window.localStorage.getItem(COLOUR_THEME_CACHE_KEY)).toBeNull()
   })
 
   it('shows today\'s palette for a saved theme that is not built in and keeps the saved choice', () => {

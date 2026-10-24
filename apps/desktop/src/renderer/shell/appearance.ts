@@ -7,6 +7,7 @@ export const APPEARANCE_STORAGE_KEY = 'meridian.appearance'
 export const APPEARANCE_CHANGE_EVENT = 'meridian:appearance-change'
 export const COLOUR_THEME_STORAGE_KEY = 'meridian.colour-theme'
 export const COLOUR_THEME_CHANGE_EVENT = 'meridian:colour-theme-change'
+export const COLOUR_THEME_CACHE_KEY = 'meridian.colour-theme-cache'
 const COLOUR_THEME_STYLE = 'meridian-colour-theme'
 
 const PREFER_DARK = '(prefers-color-scheme: dark)'
@@ -64,14 +65,32 @@ export function readColourThemePreference(): string {
   }
 }
 
+/** The custom theme applied last, as applyColourTheme caches it, when it is the one `id` names. */
+function cachedColourTheme(id: string): ColourTheme | undefined {
+  try {
+    const cached = JSON.parse(window.localStorage.getItem(COLOUR_THEME_CACHE_KEY) ?? 'null') as ColourTheme | null
+    return cached?.id === id ? cached : undefined
+  } catch {
+    return undefined
+  }
+}
+
 /**
  * Applies `theme` in both modes: its derived colour tokens go into one style element above
  * tokens.css, which already holds today's palette, so that palette removes the element.
- * `data-colour-theme` on the root names every theme but today's palette.
+ * `data-colour-theme` on the root names every theme but today's palette. A custom theme is cached
+ * beside the stored choice so the next start can apply it before the first paint; a built-in one
+ * drops that cache.
  */
 export function applyColourTheme(theme: ColourTheme): void {
   const root = document.documentElement
   document.getElementById(COLOUR_THEME_STYLE)?.remove()
+  try {
+    if (BUILT_IN_COLOUR_THEMES.some((builtIn) => builtIn.id === theme.id)) window.localStorage.removeItem(COLOUR_THEME_CACHE_KEY)
+    else window.localStorage.setItem(COLOUR_THEME_CACHE_KEY, JSON.stringify(theme))
+  } catch {
+    // A blocked storage backend only costs the next start its early custom theme.
+  }
   if (theme.id === DEFAULT_COLOUR_THEME.id) {
     delete root.dataset.colourTheme
     return
@@ -100,8 +119,9 @@ export function setColourThemePreference(theme: ColourTheme): void {
 }
 
 /**
- * Applies the saved choices before React renders and keeps system mode synchronized. A saved colour
- * theme that is not built in shows today's palette until it is applied.
+ * Applies the saved choices before React renders and keeps system mode synchronized. A saved custom
+ * colour theme applies from the cache of the last applied theme; without that cache it shows today's
+ * palette, and the cache drops, until the themes folder is read.
  */
 export function initializeAppearance(): () => void {
   const media = window.matchMedia(PREFER_DARK)
@@ -111,7 +131,7 @@ export function initializeAppearance(): () => void {
   }
   applyAppearance(readAppearancePreference())
   const chosen = readColourThemePreference()
-  applyColourTheme(BUILT_IN_COLOUR_THEMES.find((theme) => theme.id === chosen) ?? DEFAULT_COLOUR_THEME)
+  applyColourTheme(BUILT_IN_COLOUR_THEMES.find((theme) => theme.id === chosen) ?? cachedColourTheme(chosen) ?? DEFAULT_COLOUR_THEME)
   media.addEventListener('change', synchronize)
   return () => media.removeEventListener('change', synchronize)
 }
