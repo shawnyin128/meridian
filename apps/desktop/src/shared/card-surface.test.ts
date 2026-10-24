@@ -60,7 +60,6 @@ describe('卡片只有一种面', () => {
 const SEPARATED: [file: string, selector: string, border: string][] = [
   ['routes/Feed.css', '.fitem', '1px solid var(--sep2)'],
   ['components/paper/PaperCard.css', '.paper-card', '1px solid var(--sep)'],
-  ['components/paper-table/PaperTable.css', '.research-map-intro', '1px solid var(--sep)'],
   ['components/paper-table/PaperTable.css', '.research-map-detail', '1px solid var(--sep)'],
   ['routes/ResearchOverview.css', '.ovstat', '1px solid var(--sep)'],
   ['components/project/ProjectSections.css', '.agcard', '1px solid var(--sep)'],

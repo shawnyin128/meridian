@@ -408,7 +408,7 @@ describe('PaperTable', () => {
     await flush()
 
     expect(listParams.at(-1)).toMatchObject({ page: 1, size: 200, sort: 'addedAt', direction: 'desc' })
-    expect(host.querySelector('.research-map-title')?.textContent).toContain('自适应研究地图')
+    expect(host.querySelector('.research-map')?.firstElementChild?.className).toBe('research-map-layout')
     expect(host.querySelector('.research-map-groups')?.textContent).toContain('Speculative decoding')
     expect(host.querySelector('.research-map-detail')?.textContent).toContain('主题：Speculative decoding')
     expect(host.querySelector('.pagebar')).toBeNull()

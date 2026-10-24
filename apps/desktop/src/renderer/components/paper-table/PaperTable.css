@@ -196,14 +196,10 @@
 /* Research Map is a peer view of the table. It composes the shared list and segmented
  * controls; these rules only define its two-column domain layout and information hierarchy. */
 .research-map{display:flex;min-height:0;flex:1;flex-direction:column;gap:var(--sp-14);overflow:auto;padding:var(--sp-2) var(--sp-2) var(--sp-20)}
-.research-map-intro{display:flex;align-items:flex-start;gap:var(--sp-24);padding:var(--sp-16) var(--sp-20);border:1px solid var(--sep);border-radius:var(--r-card);background:var(--card)}
-.research-map-copy{min-width:0;flex:1}
-.research-map-title{display:flex;align-items:center;gap:var(--sp-8);font-size:var(--fs-read)}
-.research-map-stats{display:flex;flex:0 0 auto;align-items:stretch;gap:var(--sp-8)}
-.research-map-stats>span{display:flex;min-width:72px;flex-direction:column;gap:var(--sp-2);padding:var(--sp-8) var(--sp-10);border-radius:var(--r-md);background:var(--field);color:var(--ter);font-size:var(--fs-cap)}
-.research-map-stats strong{color:var(--ink);font-size:var(--fs-read)}
 .research-map-limit{color:var(--ter);font-size:var(--fs-sm)}
 .research-map-layout{display:grid;min-height:0;grid-template-columns:minmax(220px,310px) minmax(0,1fr);gap:var(--sp-16);align-items:start}
+/* The groups, then the cross-group and ungrouped rows in a list of their own below them. */
+.research-map-index{display:flex;min-width:0;flex-direction:column;gap:var(--sp-12)}
 .research-map-groups{min-width:0}
 .research-map-group{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:var(--sp-12);min-height:54px;padding:var(--sp-8) var(--sp-12)}
 .research-map-group-copy{display:flex;min-width:0;flex-direction:column;gap:var(--sp-4)}
@@ -226,7 +222,6 @@
 .research-map-why>.tagchip{margin:0}
 
 @media (max-width:900px){
-  .research-map-intro{flex-direction:column}.research-map-stats{width:100%}.research-map-stats>span{flex:1}
   .research-map-layout{grid-template-columns:1fr}.research-map-groups{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
   .research-map-groups>.structured-row:nth-child(2){border-top:0}
 }

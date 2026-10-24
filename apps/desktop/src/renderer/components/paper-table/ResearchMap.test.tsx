@@ -92,8 +92,6 @@ describe('ResearchMap', () => {
         <ResearchMap rows={rows} total={7} loading={false} onOpenPaper={() => {}} onReadPaper={() => {}} {...NO_WRITES} />
       </MessagesProvider>,
     )
-    expect(host.querySelector('.research-map-copy p')).toBeNull()
-    expect(host.querySelector('.research-map-title .tag')).toBeNull()
     expect(host.querySelector('.research-map-limit')?.textContent).toBe('5 / 7 篇')
     const kinds = [...host.querySelectorAll('.research-map-group')]
       .map((group) => [
@@ -178,5 +176,109 @@ describe('ResearchMap', () => {
     expect(onOpenPaper).not.toHaveBeenCalled()
     act(() => root.unmount())
     vi.unstubAllGlobals()
+  })
+
+  it('不放概况卡：分组列表和详情直接排在视图切换下面，只在地图只取了一部分论文时写出取了多少', () => {
+    const rows = [paper('a', 'Alpha', { topics: ['Speculative decoding'] }), paper('b', 'Bravo', { topics: ['Speculative decoding'] })]
+    const render = (total: number) => {
+      const host = document.createElement('div')
+      host.innerHTML = renderToStaticMarkup(
+        <MessagesProvider>
+          <ResearchMap rows={rows} total={total} loading={false} onOpenPaper={() => {}} onReadPaper={() => {}} {...NO_WRITES} />
+        </MessagesProvider>,
+      )
+      return host.querySelector('.research-map')!
+    }
+    expect([...render(2).children].map((child) => child.className)).toEqual(['research-map-layout'])
+    expect([...render(9).children].map((child) => child.className)).toEqual(['research-map-limit', 'research-map-layout'])
+    expect(render(9).textContent).not.toContain('自适应研究地图')
+  })
+
+  it('每个分组行在名字下面画一条没有文字的已读进度线，读屏读出已读几篇', () => {
+    const rows = [
+      paper('a', 'Alpha', { topics: ['Speculative decoding'], readState: '已读' }),
+      paper('b', 'Bravo', { topics: ['Speculative decoding'] }),
+      paper('c', 'Charlie', { topics: ['Speculative decoding', 'KV cache'], readState: '在读' }),
+      paper('d', 'Delta', { topics: ['KV cache'], readState: '已读' }),
+    ]
+    const host = document.createElement('div')
+    host.innerHTML = renderToStaticMarkup(
+      <MessagesProvider>
+        <ResearchMap rows={rows} total={rows.length} loading={false} onOpenPaper={() => {}} onReadPaper={() => {}} {...NO_WRITES} />
+      </MessagesProvider>,
+    )
+    const lines = [...host.querySelectorAll('.research-map-groups')[0]!.querySelectorAll('.research-map-group')].map((group) => {
+      const line = group.querySelector('.research-map-group-copy>.research-map-group-name+[role="progressbar"]')
+      return [
+        group.querySelector('.research-map-group-name')?.textContent, line?.getAttribute('aria-label'),
+        line?.getAttribute('aria-valuenow'), line?.textContent,
+      ]
+    })
+    expect(lines).toEqual([['Speculative decoding', '已读 1/3', '33', ''], ['KV cache', '已读 1/2', '50', '']])
+  })
+
+  it('分组之后另起一组：跨组列出属于两个以上分组的论文并标出所在分组，未归组列出不在任何分组的论文', async () => {
+    globalThis.IS_REACT_ACT_ENVIRONMENT = true
+    vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} })
+    const rows = [
+      paper('a', 'Alpha', { topics: ['Speculative decoding', 'KV cache'], readState: '已读' }),
+      paper('b', 'Bravo', { topics: ['Speculative decoding'] }),
+      paper('c', 'Charlie', { topics: ['Speculative decoding'] }),
+      paper('d', 'Delta', { topics: ['KV cache'] }),
+      paper('e', 'Echo'),
+    ]
+    const host = document.createElement('div')
+    document.body.append(host)
+    const root = createRoot(host)
+    await act(async () => root.render(
+      <MessagesProvider>
+        <ResearchMap rows={rows} total={rows.length} loading={false} onOpenPaper={() => {}} onReadPaper={() => {}} {...NO_WRITES} />
+      </MessagesProvider>,
+    ))
+
+    const lists = [...host.querySelectorAll('.research-map-groups')]
+    const rowsOf = (list: Element) => [...list.querySelectorAll<HTMLElement>('.research-map-group')]
+      .map((group) => [group.querySelector('.research-map-group-name')?.textContent, group.querySelector('.count-badge')?.textContent])
+    expect(lists.map(rowsOf)).toEqual([
+      [['Speculative decoding', '3'], ['KV cache', '2']],
+      [['跨组', '1'], ['未归组', '1']],
+    ])
+    expect(lists[1]!.querySelector('[role="progressbar"]')?.getAttribute('aria-label')).toBe('已读 1/1')
+
+    const pick = async (name: string) => {
+      const row = [...host.querySelectorAll<HTMLElement>('.research-map-group')].find((group) => group.textContent?.startsWith(name))!
+      await act(async () => { row.click() })
+      expect(row.getAttribute('aria-pressed')).toBe('true')
+      const detail = host.querySelector('.research-map-detail')!
+      return {
+        head: detail.querySelector('.research-map-detail-head')?.textContent,
+        papers: [...detail.querySelectorAll('.research-map-paper')].map((item) => [
+          item.querySelector('.research-map-paper-title')?.textContent,
+          [...item.querySelectorAll('.research-map-why .tag')].map((tag) => tag.textContent),
+        ]),
+      }
+    }
+    expect(await pick('跨组')).toEqual({ head: '跨组1 篇论文', papers: [['Alpha', ['Speculative decoding', 'KV cache']]] })
+    expect(await pick('未归组')).toEqual({ head: '未归组1 篇论文', papers: [['Echo', []]] })
+    act(() => root.unmount())
+    host.remove()
+    vi.unstubAllGlobals()
+  })
+
+  it('每篇论文都在某个分组里时不画未归组那一行', () => {
+    const rows = [
+      paper('a', 'Alpha', { topics: ['Speculative decoding', 'KV cache'] }),
+      paper('b', 'Bravo', { topics: ['Speculative decoding'] }),
+      paper('c', 'Charlie', { topics: ['KV cache'] }),
+    ]
+    const host = document.createElement('div')
+    host.innerHTML = renderToStaticMarkup(
+      <MessagesProvider>
+        <ResearchMap rows={rows} total={rows.length} loading={false} onOpenPaper={() => {}} onReadPaper={() => {}} {...NO_WRITES} />
+      </MessagesProvider>,
+    )
+    const names = [...host.querySelectorAll('.research-map-groups')[1]!.querySelectorAll('.research-map-group-name')]
+      .map((name) => name.textContent)
+    expect(names).toEqual(['跨组'])
   })
 })

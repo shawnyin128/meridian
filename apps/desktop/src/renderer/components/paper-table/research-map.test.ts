@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { PaperRow } from '../../../shared/contract.js'
-import { buildResearchMap } from './research-map.js'
+import { buildResearchMap, readCount } from './research-map.js'
 
 const paper = (id: string, title: string, patch: Partial<PaperRow> = {}): PaperRow => ({
   id, title, venue: 'arXiv', topics: [], methods: [], datasets: [], metrics: [], pageState: 'draft',
@@ -31,7 +31,7 @@ describe('buildResearchMap', () => {
     expect(speculative?.members.find((member) => member.paper.id === 'a')?.reasons)
       .toContainEqual({ kind: 'topic', label: 'Speculative decoding' })
     expect(project?.members.map((member) => member.paper.id)).toEqual(expect.arrayContaining(['a', 'b', 'd']))
-    expect(map.overlapping).toBeGreaterThan(0)
+    expect(map.crossGroup.length).toBeGreaterThan(0)
     expect(rows).toEqual(before)
   })
 
@@ -41,5 +41,33 @@ describe('buildResearchMap', () => {
       paper('b', 'Different subject'),
     ])
     expect(map.groups.some((group) => group.label === 'Only once')).toBe(false)
+  })
+
+  it('lists the papers of two or more groups with those groups, and the papers of none', () => {
+    const rows = [
+      paper('a', 'Alpha', { year: 2023, topics: ['Speculative decoding'], projects: [{ id: 'p', name: 'Faster inference' }] }),
+      paper('b', 'Bravo', { year: 2024, topics: ['Speculative decoding'], projects: [{ id: 'p', name: 'Faster inference' }] }),
+      paper('c', 'Charlie', { topics: ['Speculative decoding'] }),
+      paper('d', 'Delta', { projects: [{ id: 'p', name: 'Faster inference' }] }),
+      paper('e', 'Echo'),
+      paper('f', 'Foxtrot', { topics: ['Only once'] }),
+    ]
+
+    const map = buildResearchMap(rows)
+
+    expect(map.groups.map((group) => group.label)).toEqual(['Faster inference', 'Speculative decoding'])
+    expect(map.crossGroup.map((member) => [member.paper.id, member.groups.map((group) => group.label)])).toEqual([
+      ['b', ['Faster inference', 'Speculative decoding']],
+      ['a', ['Faster inference', 'Speculative decoding']],
+    ])
+    expect(map.ungrouped.map((item) => item.id)).toEqual(['e', 'f'])
+  })
+
+  it('counts the papers whose reading state is 已读', () => {
+    expect(readCount([
+      paper('a', 'Alpha', { readState: '已读' }), paper('b', 'Bravo', { readState: '在读' }),
+      paper('c', 'Charlie'), paper('d', 'Delta', { readState: '已读' }), paper('e', 'Echo', { readState: '稍后阅读' }),
+    ])).toBe(2)
+    expect(readCount([])).toBe(0)
   })
 })

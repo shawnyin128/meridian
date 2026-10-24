@@ -215,8 +215,9 @@ test('研究地图从真实论文元数据形成可切换、可解释的重叠�
   await firstPage(win)
   await win.getByRole('radio', { name: '研究地图', exact: true }).click()
 
-  await expect(win.locator('.research-map-title')).toContainText('自适应研究地图')
-  await expect(win.locator('.research-map-group')).not.toHaveCount(0)
+  await expect(win.locator('.research-map-groups').first().locator('.research-map-group')).not.toHaveCount(0)
+  await expect(win.locator('.research-map-groups').nth(1).locator('.research-map-group-name').first()).toHaveText('跨组')
+  await expect(win.locator('.research-map-group [role="progressbar"]').first()).toHaveAttribute('aria-label', /^已读 \d+\/\d+$/)
   await expect(win.locator('.research-map-detail .research-map-why .tag').first()).toBeVisible()
   await expect(win.locator('.pagebar')).toHaveCount(0)
 

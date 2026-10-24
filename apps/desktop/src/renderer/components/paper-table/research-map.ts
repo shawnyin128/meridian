@@ -1,4 +1,5 @@
 import type { PaperRow } from '../../../shared/contract.js'
+import { READ_PAPER } from '../../../shared/vocabulary.js'
 
 export type ResearchMapReasonKind = 'topic' | 'method' | 'project' | 'title'
 
@@ -19,10 +20,18 @@ export type ResearchMapGroup = {
   members: ResearchMapMember[]
 }
 
+export type ResearchMapCrossMember = {
+  paper: PaperRow
+  /** The groups the paper belongs to, in the order of the map's groups. */
+  groups: ResearchMapGroup[]
+}
+
 export type ResearchMap = {
   groups: ResearchMapGroup[]
-  covered: number
-  overlapping: number
+  /** The papers in two or more groups. */
+  crossGroup: ResearchMapCrossMember[]
+  /** The papers in no group. */
+  ungrouped: PaperRow[]
 }
 
 type Candidate = {
@@ -54,6 +63,12 @@ const isUsefulToken = (token: string): boolean => token.length >= 4 && !STOP_WOR
 function titleLabel(key: string): string {
   return key.charAt(0).toLocaleUpperCase() + key.slice(1)
 }
+
+const newestFirst = (left: PaperRow, right: PaperRow): number =>
+  (right.year ?? 0) - (left.year ?? 0) || left.title.localeCompare(right.title)
+
+/** How many of `papers` the reader has finished (`READ_PAPER`). */
+export const readCount = (papers: PaperRow[]): number => papers.filter((paper) => paper.readState === READ_PAPER).length
 
 function memberOverlap(left: Candidate, right: Candidate): number {
   const leftIds = new Set(left.members.keys())
@@ -142,16 +157,20 @@ export function buildResearchMap(rows: PaperRow[], maxGroups = 8): ResearchMap {
         const paper = byId.get(id)
         return paper === undefined ? [] : [{ paper, reasons }]
       })
-      .sort((left, right) => (right.paper.year ?? 0) - (left.paper.year ?? 0) || left.paper.title.localeCompare(right.paper.title)),
+      .sort((left, right) => newestFirst(left.paper, right.paper)),
   }))
 
-  const memberships = new Map<string, number>()
+  const memberships = new Map<string, ResearchMapGroup[]>()
   for (const group of groups) {
-    for (const member of group.members) memberships.set(member.paper.id, (memberships.get(member.paper.id) ?? 0) + 1)
+    for (const member of group.members) memberships.set(member.paper.id, [...memberships.get(member.paper.id) ?? [], group])
   }
+  const sorted = [...rows].sort(newestFirst)
   return {
     groups,
-    covered: memberships.size,
-    overlapping: [...memberships.values()].filter((count) => count > 1).length,
+    crossGroup: sorted.flatMap((paper) => {
+      const held = memberships.get(paper.id) ?? []
+      return held.length > 1 ? [{ paper, groups: held }] : []
+    }),
+    ungrouped: sorted.filter((paper) => !memberships.has(paper.id)),
   }
 }
