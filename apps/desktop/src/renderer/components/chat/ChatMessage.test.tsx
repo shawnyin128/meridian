@@ -44,6 +44,23 @@ describe('ChatMessageView', () => {
     ])
   })
 
+  it('发出的消息里的引用和输入框里一样是共享的 chip，夹在前后的字中间', () => {
+    show({
+      id: 'm3', role: 'you', actions: [],
+      runs: [{ kind: 'text', text: '看看 ' }, { kind: 'mention', text: '@草稿树项目' }, { kind: 'text', text: ' 这条线还剩什么' }],
+    })
+    const bubble = host.querySelector('.msg.you .bubble')!
+    expect(bubble.textContent).toBe('看看 @草稿树项目 这条线还剩什么')
+    expect([...bubble.querySelectorAll('.tag')].map((pill) => [pill.className, pill.textContent]))
+      .toEqual([['tag tag--chip tag--neutral', '@草稿树项目']])
+  })
+
+  it('0.0.18.0 存下的引用是正文里的字，照原样显示成文字', () => {
+    show({ id: 'm4', role: 'you', actions: [], runs: [{ kind: 'text', text: '@推测解码 里说加速比取决于接受率，长回答也是这样吗？' }] })
+    const bubble = host.querySelector('.msg.you .bubble')!
+    expect([bubble.textContent, bubble.querySelector('.tag')]).toEqual(['@推测解码 里说加速比取决于接受率，长回答也是这样吗？', null])
+  })
+
   it('状态行以图标开头，没有身份标签', () => {
     show({ id: 'm2', role: 'status', runs: [{ kind: 'text', text: 'AI 尚未接入。' }], actions: [] })
     const line = host.querySelector('.msg .event')!

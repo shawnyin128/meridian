@@ -101,11 +101,10 @@ export function PaperChat({ paper, onBack = () => {}, prompt = null }: {
   }, [prompt, m])
 
   const submit = () => {
-    const text = draftText(draft).trim()
-    if (text === '' || paperId === null || session === null || sending) return
+    if (draftText(draft).trim() === '' || paperId === null || session === null || sending) return
     drafts.drop(paperId)
     follow()
-    void run(write(track(session.id, chat.send(session.id, text))))
+    void run(write(track(session.id, chat.send(session.id, draft))))
   }
 
   const stopSending = () => {

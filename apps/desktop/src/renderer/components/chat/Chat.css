@@ -11,7 +11,6 @@
 .bubble,.answer{font-size:var(--fs-base)}
 .msg.you .bubble{background:var(--field);color:var(--ink);padding:var(--sp-12) var(--sp-16);border-radius:var(--r-bubble);border-bottom-right-radius:var(--r-sm);width:fit-content;max-width:85%;margin-left:auto}
 .msg-who{margin-bottom:var(--sp-6)}
-.mention{font-weight:var(--fw-semibold);text-decoration:underline;text-underline-offset:2px}
 /* Neither your message nor an answer: a status line, an inline note whose icon sits on its first line. */
 .event{display:flex;align-items:flex-start;gap:var(--sp-6);font-size:var(--fs-sm);color:var(--sec)}
 .event-icon{flex:none;display:flex;align-items:center;height:1lh;color:var(--ter)}

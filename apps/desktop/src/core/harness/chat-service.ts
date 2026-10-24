@@ -1,13 +1,19 @@
-import type { ChatMessageFields, ChatSendResult } from '../../shared/contract.js'
+import type { ChatMessageFields, ChatRun, ChatSendResult } from '../../shared/contract.js'
 import { CallError, callFailure } from '../call-error.js'
 import type { VaultStore } from '../vault.js'
 import type { ChatHarnessRunner } from './chat.js'
 import type { HarnessModelConfig } from './model-config.js'
 
 const textRun = (text: string) => [{ kind: 'text' as const, text }]
-const userMessage = (text: string): ChatMessageFields => ({
-  role: 'you', runs: textRun(text), actions: [],
-})
+/** `runs`, one or more, without the whitespace that starts or ends the turn and the text runs that leaves empty. */
+function trimmed(runs: readonly ChatRun[]): ChatRun[] {
+  const copied = runs.map((run) => ({ ...run }))
+  const first = copied[0]!
+  const last = copied.at(-1)!
+  if (first.kind === 'text') first.text = first.text.trimStart()
+  if (last.kind === 'text') last.text = last.text.trimEnd()
+  return copied.filter((run) => run.kind !== 'text' || run.text !== '')
+}
 const answerMessage = (text: string): ChatMessageFields => ({
   role: 'ai', runs: textRun(text), actions: [],
 })
@@ -24,10 +30,12 @@ export function createChatService(options: {
   const running = new Map<string, AbortController>()
 
   return {
-    async send(id: string, text: string): Promise<ChatSendResult> {
+    async send(id: string, written: readonly ChatRun[]): Promise<ChatSendResult> {
       if (running.has(id)) throw new CallError('busy', '这段对话仍在生成，请先停止或等待完成')
       options.store.chatSession(id)
-      options.store.appendChatMessages(id, [userMessage(text)])
+      const runs = trimmed(written)
+      const text = runs.map((run) => run.text).join('')
+      options.store.appendChatMessages(id, [{ role: 'you', runs, actions: [] }])
       if (!options.model.settings().configured || options.runner === null) return { id, state: 'failed', reason: 'no-model' }
 
       const controller = new AbortController()

@@ -5,18 +5,19 @@ import type {
 import { useMessages } from '../../messages/useMessages.js'
 import { Icon } from '../icons.js'
 import { AgentLabel } from '../SourceLabel.js'
+import { Tag } from '../Tag.js'
 
 export const plain = (text: string): { kind: 'text'; text: string } => ({ kind: 'text', text })
 export const said = (runs: ChatRun[]): ChatMessageFields => ({ role: 'you', runs, actions: [] })
 export const answer = (runs: ChatRun[], actions: ChatAction[] = []): ChatMessageFields =>
   ({ role: 'ai', runs, actions })
 
-/** The text of a message; each run renders by its own kind. */
+/** The text of a message; each run renders by its own kind, a mention as the chip the composer shows it as. */
 function Runs({ runs }: { runs: ChatRun[] }) {
   return (
     <>
       {runs.map((run, at) => (run.kind === 'mention'
-        ? <span className="mention" key={at}>{run.text}</span>
+        ? <Tag shape="chip" key={at}>{run.text}</Tag>
         : <Fragment key={at}>{run.text}</Fragment>))}
     </>
   )

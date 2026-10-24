@@ -806,8 +806,8 @@ registerHandler('chat.append', (params) => {
   return store.appendChatMessages(id, messages)
 })
 registerHandler('chat.send', (params) => {
-  const { id, text } = ChatSendParamsSchema.parse(params)
-  return chatService.send(id, text)
+  const { id, runs } = ChatSendParamsSchema.parse(params)
+  return chatService.send(id, runs)
 })
 registerHandler('chat.cancel', (params) =>
   chatService.cancel(ChatCancelParamsSchema.parse(params).id))

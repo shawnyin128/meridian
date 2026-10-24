@@ -56,6 +56,21 @@ async function say(win: Page, value: string): Promise<void> {
   await expect(shown(win, '.msg').last()).toHaveClass(/\byou\b/)
 }
 
+/**
+ * Sends `before`, then the mention picked by typing `@` and `query`, the candidate whose name starts
+ * with `name`, then `after`, and waits until the message is the last one.
+ */
+async function sayWith(win: Page, before: string, query: string, name: string, after: string): Promise<void> {
+  const count = await shown(win, '.msg').count()
+  const composer = shown(win, '#composer')
+  await composer.fill(before)
+  await composer.pressSequentially(`@${query}`)
+  await win.locator('#cRes .rrow').filter({ has: win.locator('.rt', { hasText: `@${name}` }) }).first().click()
+  await composer.pressSequentially(after)
+  await shown(win, '#sendBtn').click()
+  await expect(shown(win, '.msg')).toHaveCount(count + 1)
+}
+
 /** Starts a new chat with the + on the sidebar's Chats heading. */
 async function newChat(win: Page): Promise<void> {
   await win.locator('.sidebar .sb-add[aria-label="新对话"]').click()
@@ -95,25 +110,28 @@ test('动态的「看看」建立结论冲突会话，未配置模型时给明�
   await expect(win.locator('#chatList .ct-t').first()).toHaveText('结论冲突')
 })
 
-test('@ 引用项目、论文与 wiki 页都交给真实对话链路', async ({ win }) => {
+test('@ 引用项目、论文与 wiki 页都交给真实对话链路,发出的消息里引用是和输入框里一样的引用块', async ({ win }) => {
   await gotoChat(win)
+  const lastSaid = () => shown(win, '.msg.you .bubble').last()
 
   const projects = await core<{ id: string; name: string }[]>(win, 'project.list', {})
   const p = projects.find((x) => x.id === 'draft')!
-  await say(win, `@${p.name} 这条线还剩什么`)
-  await expect(shown(win, '.msg.you .bubble').last()).toContainText(`@${p.name}`)
+  await sayWith(win, '先说 ', p.name, p.name, '这条线还剩什么')
+  await expect(lastSaid()).toHaveText(`先说 @${p.name} 这条线还剩什么`)
+  await expect(lastSaid().locator('.tag')).toHaveText([`@${p.name}`])
   await expect(shown(win, '.cbox .tag')).toHaveText(NO_MODEL)
 
   const page = (await core<{ id: string; title: string; kindLabel: string; updated: string; summary: string }[]>(
     win, 'wiki.cards', {}))[0]!
-  await say(win, `@${page.title} 这一页怎么说`)
-  await expect(shown(win, '.msg.you .bubble').last()).toContainText(`@${page.title}`)
+  await sayWith(win, '', page.title, page.title, '这一页怎么说')
+  await expect(lastSaid().locator('.tag')).toHaveText([`@${page.title}`])
   await expect(shown(win, '.cbox .tag')).toHaveText(NO_MODEL)
 
   const paper = (await core<{ rows: { title: string }[] }>(
     win, 'papers.list', { page: 1, size: 1 })).rows[0]!
-  await say(win, `@${paper.title.split(':')[0]} 这篇讲了什么`)
-  await expect(shown(win, '.msg.you .bubble').last()).toContainText(`@${paper.title.split(':')[0]}`)
+  const lead = paper.title.split(':')[0]!
+  await sayWith(win, '', lead, lead, '这篇讲了什么')
+  await expect(lastSaid().locator('.tag')).toContainText([`@${lead}`])
   await expect(shown(win, '.cbox .tag')).toHaveText(NO_MODEL)
 })
 

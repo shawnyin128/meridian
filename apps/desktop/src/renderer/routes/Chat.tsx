@@ -125,9 +125,9 @@ export function Chat() {
   // Empty until the vault data arrives, after which an `@` already typed opens the picker by itself.
   const mentions = useMemo(() => mentionsOf(projects, rows, pages, fmt, m), [projects, rows, pages, fmt, m])
 
-  const send = useCallback((session: string, text: string) => {
+  const send = useCallback((session: string, runs: ChatRun[]) => {
     follow()
-    return run(write(track(session, chat.send(session, text))))
+    return run(write(track(session, chat.send(session, runs))))
   }, [follow, run, write, track])
 
   const stopSending = () => {
@@ -145,15 +145,14 @@ export function Chat() {
     }
     void chat.create(m.chat.conflictTitle, true).then(async (session) => {
       select(session.id)
-      await send(session.id, m.chat.conflictQuestion)
+      await send(session.id, [{ kind: 'text', text: m.chat.conflictQuestion }])
     }).catch((e: unknown) => notice.refusal(errorLabel(m, e)))
   }, [jump, select, send, notice, m])
 
   const submit = () => {
-    const text = draftText(draft).trim()
-    if (text === '' || id === null || sending) return
+    if (draftText(draft).trim() === '' || id === null || sending) return
     drafts.set(id, [])
-    void send(id, text)
+    void send(id, draft)
   }
 
   const act = (message: ChatMessage) => {

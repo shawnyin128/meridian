@@ -202,7 +202,7 @@ describe('Chat composer', () => {
       await Promise.resolve()
     })
     expect(api.create).toHaveBeenCalledWith('结论冲突', true)
-    expect(api.send).toHaveBeenCalledWith('chat-9', '为什么说这两条结论冲突？')
+    expect(api.send).toHaveBeenCalledWith('chat-9', [{ kind: 'text', text: '为什么说这两条结论冲突？' }])
   })
 
   it('回车发送，Shift+回车换行，输入法组字时的回车不发送', async () => {
@@ -215,7 +215,7 @@ describe('Chat composer', () => {
     type('为什么')
     expect(press('Enter').defaultPrevented).toBe(true)
     await act(async () => { await Promise.resolve() })
-    expect(api.send).toHaveBeenCalledWith('chat-1', '为什么')
+    expect(api.send).toHaveBeenCalledWith('chat-1', [{ kind: 'text', text: '为什么' }])
   })
 
   it('没配置模型时发送失败，输入框里显示「AI 未连接」的状态，点它打开设置的模型一栏；配好后再发一次成功，状态就消失', async () => {
@@ -287,13 +287,15 @@ describe('Chat composer', () => {
     expect([typed(), pills()]).toEqual(['看看 @草稿树项目 ', ['@草稿树项目']])
   })
 
-  it('引用后面照常打字，发出去的是带着引用名字的整句', async () => {
+  it('引用后面照常打字，发出去的整句里引用还是引用', async () => {
     type('看看 @')
     press('Enter')
     typeOn('这条线还剩什么')
     press('Enter')
     await act(async () => { await Promise.resolve() })
-    expect(api.send).toHaveBeenCalledWith('chat-1', '看看 @草稿树项目 这条线还剩什么')
+    expect(api.send).toHaveBeenCalledWith('chat-1', [
+      { kind: 'text', text: '看看 ' }, { kind: 'mention', text: '@草稿树项目' }, { kind: 'text', text: ' 这条线还剩什么' },
+    ])
     expect([typed(), pills()]).toEqual(['', []])
   })
 
@@ -384,7 +386,7 @@ describe('Chat composer', () => {
     type('第二条的问题')
     press('Enter')
     await act(async () => { await Promise.resolve() })
-    expect(api.send).toHaveBeenLastCalledWith('chat-2', '第二条的问题')
+    expect(api.send).toHaveBeenLastCalledWith('chat-2', [{ kind: 'text', text: '第二条的问题' }])
     await finish()
   })
 

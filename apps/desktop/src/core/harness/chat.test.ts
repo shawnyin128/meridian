@@ -27,6 +27,13 @@ describe('Harness chat context budgets', () => {
     expect(history.some((turn) => turn.text.includes('internal status'))).toBe(false)
   })
 
+  it('packs a turn holding a mention as the sentence the user wrote', () => {
+    expect(packChatHistory([{
+      id: 'mention', role: 'you', actions: [],
+      runs: [{ kind: 'text', text: '看看 ' }, { kind: 'mention', text: '@推测解码加速' }, { kind: 'text', text: ' 这条线还剩什么' }],
+    }])).toEqual([{ role: 'user', text: '看看 @推测解码加速 这条线还剩什么' }])
+  })
+
   it('caps turn count independently from the character budget', () => {
     const messages = Array.from({ length: 30 }, (_, index) => (
       message(String(index), index % 2 === 0 ? 'you' : 'ai', `turn-${index}`)

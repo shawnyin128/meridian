@@ -2054,11 +2054,18 @@ export const ChatAppendParamsSchema = z.object({
   messages: z.array(ChatMessageFieldsSchema),
 }).strict()
 
-/** One explicit send is one billable model turn; Core owns persistence, context, and cancellation. */
+/**
+ * One explicit send is one billable model turn; Core owns persistence, context, and cancellation.
+ * `runs` is what the user wrote, each mention as a run of its own, `@` and the name on one line; the
+ * whole text holds at most 20,000 characters and more than whitespace.
+ */
 export const ChatSendParamsSchema = z.object({
   id: z.string(),
-  text: z.string().trim().min(1).max(20_000),
-}).strict()
+  runs: z.array(ChatRunSchema.refine((run) => run.kind === 'text' || /^@[^\n]+$/.test(run.text))).min(1),
+}).strict().refine(({ runs }) => {
+  const text = runs.map((run) => run.text).join('')
+  return text.trim() !== '' && text.length <= 20_000
+})
 
 export const ChatSendResultSchema = z.object({
   id: z.string(),

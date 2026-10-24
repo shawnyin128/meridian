@@ -24,6 +24,7 @@ import {
   ChatForPaperParamsSchema,
   ChatMessageSchema,
   ChatMessagesParamsSchema,
+  ChatSendParamsSchema,
   ChatSessionSchema,
   ChatSetArchivedParamsSchema,
   DeliverySettingsSchema,
@@ -1167,6 +1168,18 @@ describe('contract schemas', () => {
     for (const target of targets) expect(ids.has(target)).toBe(true)
     const store = createFixtureStore()
     for (const project of projects) ProjectDetailSchema.parse(store.getProject(project.id))
+  })
+
+  it('发送收的是用户写下的各段：引用是 @ 加一行名字，整句不能只有空白，也不能超过两万字', () => {
+    const runs = [{ kind: 'text', text: '看看 ' }, { kind: 'mention', text: '@推测解码加速' }, { kind: 'text', text: ' 还剩什么' }]
+    expect(ChatSendParamsSchema.parse({ id: 'chat-1', runs })).toEqual({ id: 'chat-1', runs })
+    expect(() => ChatSendParamsSchema.parse({ id: 'chat-1', runs: [] })).toThrow()
+    expect(() => ChatSendParamsSchema.parse({ id: 'chat-1', runs: [{ kind: 'text', text: ' \n ' }] })).toThrow()
+    expect(() => ChatSendParamsSchema.parse({ id: 'chat-1', runs: [{ kind: 'text', text: 'x'.repeat(20_001) }] })).toThrow()
+    for (const text of ['推测解码加速', '@', '@推测\n解码']) {
+      expect(() => ChatSendParamsSchema.parse({ id: 'chat-1', runs: [{ kind: 'mention', text }] })).toThrow()
+    }
+    expect(() => ChatSendParamsSchema.parse({ id: 'chat-1', text: '看看' })).toThrow()
   })
 
   it('恢复与彻底删除只收一个垃圾桶条目 id', () => {
