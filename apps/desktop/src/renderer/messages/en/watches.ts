@@ -1,3 +1,4 @@
+import { formatNumber } from '../../lib/number.js'
 import { pluralEn } from '../../lib/plural.js'
 import { watches as zh } from '../zh/watches.js'
 
@@ -19,7 +20,7 @@ export const watches = {
   noMatches: 'No confirmable authors found',
   authorSearchFailed: 'Author search failed',
   candidateInfo: (papers: number, citations: number, hIndex: number) =>
-    `${papers} ${pluralEn(papers, { one: 'paper', other: 'papers' })} · ${citations} ${pluralEn(citations, { one: 'citation', other: 'citations' })} · h-index ${hIndex}`,
+    `${papers} ${pluralEn(papers, { one: 'paper', other: 'papers' })} · ${formatNumber('en', citations)} ${pluralEn(citations, { one: 'citation', other: 'citations' })} · h-index ${hIndex}`,
   follow: 'Watch',
   choose: 'Choose',
   saveByName: 'Watch this name without verification',
@@ -44,7 +45,7 @@ export const watches = {
     ? 'From your project'
     : `${n} relevant ${pluralEn(n, { one: 'paper', other: 'papers' })}`,
   suggestedAuthorInfo: (relevant: number, hIndex: number, citations: number) => (
-    `${relevant} relevant ${pluralEn(relevant, { one: 'paper', other: 'papers' })} · h-index ${hIndex} · ${citations.toLocaleString('en-US')} citations`
+    `${relevant} relevant ${pluralEn(relevant, { one: 'paper', other: 'papers' })} · h-index ${hIndex} · ${formatNumber('en', citations)} citations`
   ),
   addAction: 'Add',
   addAllTopics: 'Add all keywords',

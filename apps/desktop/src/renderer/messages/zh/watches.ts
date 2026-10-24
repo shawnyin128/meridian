@@ -1,3 +1,5 @@
+import { formatNumber } from '../../lib/number.js'
+
 /** Watch settings (topics and authors) screen copy. */
 export const watches = {
   add: (kind: string) => `添加${kind}`,
@@ -16,7 +18,7 @@ export const watches = {
   noMatches: '没有找到可确认的作者',
   authorSearchFailed: '搜索作者失败',
   candidateInfo: (papers: number, citations: number, hIndex: number) =>
-    `${papers} 篇论文 · ${citations} 次引用 · h-index ${hIndex}`,
+    `${papers} 篇论文 · ${formatNumber('zh', citations)} 次引用 · h-index ${hIndex}`,
   follow: '关注',
   choose: '选择',
   saveByName: '暂不确认，按姓名关注',
@@ -39,7 +41,7 @@ export const watches = {
   authorSuggestions: '值得关注的作者',
   relatedPapers: (n: number) => n === 0 ? '来自项目' : `${n} 篇相关论文`,
   suggestedAuthorInfo: (relevant: number, hIndex: number, citations: number) => (
-    `${relevant} 篇相关论文 · h-index ${hIndex} · ${citations.toLocaleString('zh-CN')} 次引用`
+    `${relevant} 篇相关论文 · h-index ${hIndex} · ${formatNumber('zh', citations)} 次引用`
   ),
   addAction: '添加',
   addAllTopics: '添加全部关键词',
