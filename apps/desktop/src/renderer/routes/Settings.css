@@ -38,6 +38,9 @@
 .appearance-choice[aria-checked="true"] .appearance-label{color:var(--on-selected)}
 /* The theme radios share the grid with the card that creates a theme, which takes a preview's size. */
 .appearance-radios{display:contents}
+/* A custom theme's … menu sits at the end of its name's line. */
+.appearance-custom{position:relative;display:grid;min-width:0}
+.appearance-custom-actions{position:absolute;right:0;bottom:calc(-1 * var(--sp-4))}
 .appearance-add{height:94px;padding:0;border:0;border-radius:var(--r-card);background-color:var(--field);box-shadow:inset 0 0 0 1px var(--sep2);
   color:var(--ter);cursor:pointer;transition:box-shadow var(--t-fast) var(--e-out),color var(--t-fast) var(--e-out)}
 .appearance-add:hover{box-shadow:inset 0 0 0 1px var(--sep-strong);color:var(--ink)}

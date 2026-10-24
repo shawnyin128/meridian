@@ -55,6 +55,7 @@ describe('确认框的文案', () => {
     [m.settings.storage.resetTitle, m.settings.storage.resetDescription],
     [m.settings.storage.backupDeleteTitle('9月15日 18:28'), m.settings.storage.backupDeleteDescription],
     [m.settings.appearance.editor.leaveTitle, m.settings.appearance.editor.leaveDescription],
+    [m.settings.appearance.editor.deleteTitle('青瓷'), m.settings.appearance.editor.deleteDescription],
   ] as const
 
   for (const [language, catalog] of [['zh', zh], ['en', en]] as const) {

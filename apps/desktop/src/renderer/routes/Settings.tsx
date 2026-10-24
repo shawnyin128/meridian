@@ -218,7 +218,7 @@ export function Settings() {
       <>
         <AppearanceSettings />
         <SectionHeading>{m.settings.appearance.themeHeading}</SectionHeading>
-        <ColourThemeSettings onEdit={(theme) => setEditingTheme({ theme })} />
+        <ColourThemeSettings onEdit={(theme) => setEditingTheme({ theme })} onError={reportTo('appearance')} />
         <SectionHeading>{m.settings.language.heading}</SectionHeading>
         <LanguageSettings />
       </>

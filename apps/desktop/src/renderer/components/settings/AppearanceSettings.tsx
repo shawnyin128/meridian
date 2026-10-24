@@ -4,6 +4,7 @@ import {
   BUILT_IN_COLOUR_THEMES, DEFAULT_COLOUR_THEME, colourFollowing, type ColourMode, type ColourModule,
 } from '../../../shared/colour-theme.js'
 import type { ColourTheme } from '../../../shared/contract.js'
+import { colourThemes } from '../../ipc.js'
 import type { Catalog } from '../../messages/catalog.js'
 import { useMessages } from '../../messages/useMessages.js'
 import {
@@ -16,9 +17,13 @@ import {
   type AppearancePreference,
 } from '../../shell/appearance.js'
 import { useColourThemeFiles, useColourThemes } from '../../shell/useColourThemes.js'
+import { MenuItem } from '../ActionMenu.js'
 import { AddAction } from '../AddAction.js'
 import { Card } from '../Card.js'
+import { ConfirmDialog } from '../ConfirmDialog.js'
 import { FadeText } from '../FadeText.js'
+import { DotsMenu } from '../FieldPickers.js'
+import { RowActions } from '../StructuredList.js'
 import { Tag } from '../Tag.js'
 
 const OPTIONS: readonly AppearancePreference[] = ['light', 'dark', 'system']
@@ -121,36 +126,78 @@ export function useColourThemeName(): (theme: ColourTheme) => string {
   return (theme) => (BUILT_IN_COLOUR_THEMES.includes(theme) ? m.settings.appearance.themes[theme.id as BuiltInName] : theme.name)
 }
 
+/** The … menu of a custom theme card: Edit, and Delete after a confirmation, as its file cannot be restored. */
+function ColourThemeMenu({ name, onEdit, onDelete }: { name: string; onEdit: () => void; onDelete: () => void }) {
+  const m = useMessages()
+  const t = m.settings.appearance.editor
+  const [open, setOpen] = useState(false)
+  return (
+    <DotsMenu label={t.manage(name)} open={open} onOpenChange={setOpen}>
+      <MenuItem onSelect={onEdit}>{m.common.edit}</MenuItem>
+      <ConfirmDialog
+        // Selecting the item keeps the menu, and so the confirmation inside it, open.
+        trigger={<MenuItem className="mi danger" onSelect={(event) => event.preventDefault()}>{m.common.delete}</MenuItem>}
+        title={t.deleteTitle(name)} description={t.deleteDescription} confirmLabel={m.common.delete}
+        onConfirm={() => { setOpen(false); onDelete() }}
+      />
+    </DotsMenu>
+  )
+}
+
 /**
  * Device-local colour theme selector: the built-in themes, then the custom theme files, each
- * previewed in light and dark; a file that cannot be used shows its reason. The card that creates
- * a theme comes last; `onEdit` opens the theme editor, on a new theme with null. It changes only
- * renderer tokens.
+ * previewed in light and dark; a file that cannot be used shows its reason. A custom theme's card
+ * has a … menu to edit or delete it; deleting the theme in use returns the App to today's palette.
+ * The card that creates a theme comes last. `onEdit` opens the theme editor on a theme, or on a new
+ * one with null; `onError` receives a failed deletion. It changes only renderer tokens.
  */
-export function ColourThemeSettings({ onEdit }: { onEdit: (theme: ColourTheme | null) => void }) {
+export function ColourThemeSettings({ onEdit, onError }: {
+  onEdit: (theme: ColourTheme | null) => void
+  onError: (error: unknown) => void
+}) {
   const m = useMessages()
   const themes = useColourThemes()
   const chosen = useColourTheme(themes)
-  const unusable = (useColourThemeFiles().files ?? []).flatMap((file) => (file.state === 'unreadable' ? [file] : []))
+  const { files, refresh } = useColourThemeFiles()
+  const unusable = (files ?? []).flatMap((file) => (file.state === 'unreadable' ? [file] : []))
   const name = useColourThemeName()
+  const remove = async (theme: ColourTheme) => {
+    try {
+      await colourThemes.delete(theme.id)
+      if (chosen.id === theme.id) setColourThemePreference(DEFAULT_COLOUR_THEME)
+      await refresh()
+    } catch (caught) {
+      onError(caught)
+    }
+  }
 
   return (
     <Card className="appearance-settings-card">
       <div className="appearance-options">
         <div className="appearance-radios" role="radiogroup" aria-label={m.settings.appearance.themeHeading}>
-          {themes.map((theme) => (
-            <button
-              type="button" role="radio" aria-checked={chosen.id === theme.id}
-              className="appearance-choice" data-colour-theme={theme.id} key={theme.id}
-              onClick={() => setColourThemePreference(theme)}
-            >
-              <span className="appearance-preview pair" aria-hidden="true">
-                <Preview tone="light" theme={theme} />
-                <Preview tone="dark" theme={theme} />
-              </span>
-              <FadeText className="appearance-label" label={name(theme)}>{name(theme)}</FadeText>
-            </button>
-          ))}
+          {themes.map((theme) => {
+            const card = (
+              <button
+                type="button" role="radio" aria-checked={chosen.id === theme.id}
+                className="appearance-choice" data-colour-theme={theme.id} key={theme.id}
+                onClick={() => setColourThemePreference(theme)}
+              >
+                <span className="appearance-preview pair" aria-hidden="true">
+                  <Preview tone="light" theme={theme} />
+                  <Preview tone="dark" theme={theme} />
+                </span>
+                <FadeText className="appearance-label" label={name(theme)}>{name(theme)}</FadeText>
+              </button>
+            )
+            return BUILT_IN_COLOUR_THEMES.includes(theme) ? card : (
+              <div className="appearance-custom" data-row-actions="" key={theme.id}>
+                {card}
+                <RowActions className="appearance-custom-actions">
+                  <ColourThemeMenu name={theme.name} onEdit={() => onEdit(theme)} onDelete={() => { void remove(theme) }} />
+                </RowActions>
+              </div>
+            )
+          })}
           {unusable.map((file) => (
             <span className="appearance-problem" data-colour-theme-file={file.file} key={file.file}>
               <span className="appearance-preview problem">

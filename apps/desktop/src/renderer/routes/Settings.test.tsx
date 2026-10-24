@@ -3,7 +3,7 @@ import { act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type {
-  HarnessModelConnectionCheckResult, LibraryBackup, LibraryLocation, SemanticKeyCheckResult, SemanticKeyStatus,
+  ColourTheme, HarnessModelConnectionCheckResult, LibraryBackup, LibraryLocation, SemanticKeyCheckResult, SemanticKeyStatus,
 } from '../../shared/contract.js'
 import { CallError } from '../call-error.js'
 import { MessagesProvider } from '../messages/useMessages.js'
@@ -59,6 +59,8 @@ const api = vi.hoisted(() => ({
     root: '/tmp/meridian', backupRoot: '/tmp/meridian-backup-current',
   })),
   deleteBackup: vi.fn(async () => null),
+  deleteTheme: vi.fn(async () => {}),
+  refreshThemes: vi.fn(async () => {}),
   restartApp: vi.fn(),
   success: vi.fn(),
   chatList: vi.fn(async () => [] as unknown[]),
@@ -89,6 +91,7 @@ vi.mock('../ipc.js', () => ({
     checkModelConnection: api.checkModelConnection,
   },
   extensions: { status: api.extensionStatus, pluginVersion: api.pluginVersion, checkLatest: api.checkLatest },
+  colourThemes: { save: vi.fn(async () => {}), delete: api.deleteTheme },
 }))
 vi.mock('../shell/AppShell.js', () => ({
   useNotice: () => ({ success: api.success, refusal: vi.fn() }),
@@ -173,6 +176,8 @@ describe('Settings', () => {
     api.libraryBackups.mockResolvedValue([])
     api.switchBackup.mockClear()
     api.deleteBackup.mockClear()
+    api.deleteTheme.mockReset()
+    api.refreshThemes.mockClear()
     api.restartApp.mockClear()
     api.success.mockClear()
   })
@@ -591,6 +596,82 @@ describe('Settings', () => {
     await act(async () => { dialog.querySelector<HTMLButtonElement>('button[aria-label="返回"]')!.click() })
     expect(dialog.querySelector('[data-module]')).toBeNull()
     expect(dialog.querySelector('[data-setcat="appearance"]')!.classList.contains('on')).toBe(true)
+  })
+
+  /** Renders Settings on its Appearance pane with `themes` as the custom theme files, and returns the dialog. */
+  const appearanceWith = async (themes: ColourTheme[]) => {
+    await act(async () => {
+      root.render(
+        <MessagesProvider>
+          <ColourThemeFilesContext.Provider value={{
+            files: themes.map((theme) => ({ state: 'readable', file: `${theme.id}.json`, theme })), refresh: api.refreshThemes,
+          }}>
+            <Settings />
+          </ColourThemeFilesContext.Provider>
+        </MessagesProvider>,
+      )
+    })
+    const dialog = document.querySelector('.setdlg')!
+    await act(async () => { dialog.querySelector<HTMLElement>('[data-setcat="appearance"]')!.click() })
+    return dialog
+  }
+  /** Opens the … menu of the custom theme card named `name` and returns its items. */
+  const openThemeMenu = async (dialog: Element, name: string) => {
+    await act(async () => {
+      dialog.querySelector(`button[aria-label="管理「${name}」"]`)!
+        .dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, button: 0 }))
+    })
+    return [...document.querySelectorAll<HTMLElement>('[role="menu"] [role="menuitem"]')]
+  }
+  const luodian = BUILT_IN_COLOUR_THEMES.find((theme) => theme.id === 'luodian')!
+  const celadon: ColourTheme = { ...luodian, id: 'celadon', name: '青瓷', basedOn: 'luodian', light: { ...luodian.light, accent: '#3f7a6a' } }
+  const ink: ColourTheme = { ...luodian, id: 'ink', name: '墨' }
+
+  it('自定义主题卡的 … 菜单里是编辑和删除,内置主题卡没有;编辑打开这个主题的编辑页', async () => {
+    const dialog = await appearanceWith([celadon])
+    expect(dialog.querySelector('[role="radiogroup"][aria-label="外观主题"]')!.querySelectorAll('.appearance-choice')).toHaveLength(6)
+    expect(dialog.querySelectorAll('button[aria-label^="管理"]')).toHaveLength(1)
+    expect(dialog.querySelector('[data-colour-theme="celadon"]')!.closest('[data-row-actions]')!
+      .querySelector('.row-actions button[aria-label="管理「青瓷」"]')).not.toBeNull()
+
+    const items = await openThemeMenu(dialog, '青瓷')
+    expect(items.map((item) => item.textContent)).toEqual(['编辑', '删除'])
+    await act(async () => { items[0]!.click() })
+    expect(dialog.querySelector<HTMLInputElement>('input[aria-label="名称"]')!.value).toBe('青瓷')
+    expect(dialog.querySelector<HTMLInputElement>('input[aria-label="色值"]')!.value).toBe(celadon.light.ground.toUpperCase())
+  })
+
+  it('删除先确认;确认后删掉主题文件,删的是正在用的主题就退回默认,删别的不动当前主题', async () => {
+    window.localStorage.setItem('meridian.colour-theme', 'celadon')
+    const dialog = await appearanceWith([celadon, ink])
+
+    await act(async () => { (await openThemeMenu(dialog, '墨'))[1]!.click() })
+    expect(document.querySelector('[role="alertdialog"] .modal-title')!.textContent).toBe('删除外观主题「墨」？')
+    await act(async () => { [...document.querySelectorAll<HTMLButtonElement>('[role="alertdialog"] button')].find((button) => button.textContent === '取消')!.click() })
+    expect(api.deleteTheme).not.toHaveBeenCalled()
+
+    // Cancelling leaves the menu open.
+    await act(async () => { [...document.querySelectorAll<HTMLElement>('[role="menu"] [role="menuitem"]')][1]!.click() })
+    await act(async () => { document.querySelector<HTMLButtonElement>('[role="alertdialog"] .btn.pri.danger')!.click() })
+    expect(api.deleteTheme).toHaveBeenLastCalledWith('ink')
+    expect(api.refreshThemes).toHaveBeenCalled()
+    expect(window.localStorage.getItem('meridian.colour-theme')).toBe('celadon')
+
+    await act(async () => { (await openThemeMenu(dialog, '青瓷'))[1]!.click() })
+    await act(async () => { document.querySelector<HTMLButtonElement>('[role="alertdialog"] .btn.pri.danger')!.click() })
+    expect(api.deleteTheme).toHaveBeenLastCalledWith('celadon')
+    expect(window.localStorage.getItem('meridian.colour-theme')).toBe('default')
+    expect(document.documentElement.dataset.colourTheme).toBeUndefined()
+  })
+
+  it('删除失败时外观页报出原因,当前主题不动', async () => {
+    window.localStorage.setItem('meridian.colour-theme', 'celadon')
+    api.deleteTheme.mockRejectedValue(new CallError('themes.delete', 'not-found'))
+    const dialog = await appearanceWith([celadon])
+    await act(async () => { (await openThemeMenu(dialog, '青瓷'))[1]!.click() })
+    await act(async () => { document.querySelector<HTMLButtonElement>('[role="alertdialog"] .btn.pri.danger')!.click() })
+    expect(dialog.querySelector('.set-head')!.textContent).toContain('这一项已不存在')
+    expect(window.localStorage.getItem('meridian.colour-theme')).toBe('celadon')
   })
 
   it('每个设置页只有标题和控件，标题下不写介绍句子', async () => {
