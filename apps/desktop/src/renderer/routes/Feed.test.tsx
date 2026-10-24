@@ -11,17 +11,24 @@ declare global {
   var IS_REACT_ACT_ENVIRONMENT: boolean
 }
 
-const feedList = vi.hoisted(() => ({ rows: [] as FeedEntry[], open: vi.fn() }))
+const feedList = vi.hoisted(() => ({ rows: [] as FeedEntry[], open: vi.fn(), setupShown: true }))
 vi.mock('../ipc.js', () => ({ feed: { list: async () => feedList.rows } }))
 vi.mock('../shell/AppShell.js', () => ({
   useJump: () => ({ open: feedList.open }),
   useToday: () => '2026-09-20',
   useVaultRevision: () => ({ revision: 0, bump: vi.fn() }),
 }))
-// The checklist reads the library and Settings on its own; here it stands in by a marker of where it sits.
-vi.mock('../components/FirstRunChecklist.js', () => ({
-  FirstRunChecklist: ({ className }: { className?: string }) => <div className={`firstrun-stub ${className ?? ''}`} />,
-}))
+// The checklist reads the library and Settings on its own; here it stands in by a marker of where it
+// sits, shown as `feedList.setupShown` says and telling the feed so.
+vi.mock('../components/FirstRunChecklist.js', async () => {
+  const { useEffect } = await import('react')
+  return {
+    FirstRunChecklist: ({ className, onShown }: { className?: string; onShown?: (shown: boolean) => void }) => {
+      useEffect(() => onShown?.(feedList.setupShown), [onShown])
+      return feedList.setupShown ? <div className={`firstrun-stub ${className ?? ''}`} /> : null
+    },
+  }
+})
 
 const { Feed, FeedRows } = await import('./Feed.js')
 
@@ -35,7 +42,10 @@ const ENTRY: FeedEntry = {
 }
 
 describe('feed rows', () => {
-  beforeEach(() => window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'zh'))
+  beforeEach(() => {
+    window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'zh')
+    feedList.setupShown = true
+  })
 
   it('aligns the day heading with the card column and shows the time as the date and time pair', () => {
     const html = renderToStaticMarkup(
@@ -181,6 +191,7 @@ describe('feed rows', () => {
   it('选中的来源没有条目时，筛选条下面是共享的整屏空态，不是一片空白', async () => {
     globalThis.IS_REACT_ACT_ENVIRONMENT = true
     vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} })
+    feedList.setupShown = false
     feedList.rows = [{ ...ENTRY, id: 'a', source: 'lab' }]
     const host = document.createElement('div')
     document.body.append(host)
@@ -193,6 +204,20 @@ describe('feed rows', () => {
     const empty = host.querySelector('.msgs > .page-toolbar + .empty-state')
     expect([empty?.className, empty?.textContent, empty?.querySelectorAll('svg').length])
       .toEqual(['empty-state empty-state--page', '还没有动态', 1])
+    await act(async () => { root.unmount() })
+    host.remove()
+    vi.unstubAllGlobals()
+  })
+
+  it('开始使用清单显示时，它就是这一屏的空态，下面不再写还没有动态', async () => {
+    globalThis.IS_REACT_ACT_ENVIRONMENT = true
+    vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} })
+    feedList.rows = []
+    const host = document.createElement('div')
+    document.body.append(host)
+    const root = createRoot(host)
+    await act(async () => { root.render(<MessagesProvider><Feed /></MessagesProvider>) })
+    expect([host.querySelectorAll('.firstrun-stub').length, host.querySelectorAll('.empty-state').length]).toEqual([1, 0])
     await act(async () => { root.unmount() })
     host.remove()
     vi.unstubAllGlobals()
