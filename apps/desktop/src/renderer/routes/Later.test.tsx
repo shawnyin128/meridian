@@ -4,7 +4,7 @@ import { createRoot } from 'react-dom/client'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { LaterEntry } from '../../shared/contract.js'
-import { IconCross } from '../components/icons.js'
+import { IconCross, IconTrash } from '../components/icons.js'
 import { MessagesProvider } from '../messages/useMessages.js'
 import type { ScreenJump } from '../shell/AppShell.js'
 import { LANGUAGE_STORAGE_KEY } from '../shell/language.js'
@@ -112,10 +112,13 @@ describe('Later', () => {
     await act(async () => { root.unmount() })
   })
 
-  it('移出只是从队列里拿走，用表示移开的叉，不用进垃圾桶的图标', async () => {
+  it('移出进垃圾桶,用的是论文推送里忽略那个进垃圾桶的图标,不是表示移开的叉', async () => {
     const root = createRoot(host)
     await act(async () => { root.render(<MessagesProvider><Later /></MessagesProvider>) })
-    expect(host.querySelector('button[aria-label="移出"] svg')!.outerHTML).toBe(renderToStaticMarkup(<IconCross />))
+    const remove = host.querySelector('button[aria-label="移出"]')!
+    expect(remove.querySelector('svg')!.outerHTML).toBe(renderToStaticMarkup(<IconTrash />))
+    expect(remove.querySelector('svg')!.outerHTML).not.toBe(renderToStaticMarkup(<IconCross />))
+    expect(remove.classList.contains('danger')).toBe(false)
     await act(async () => { root.unmount() })
   })
 

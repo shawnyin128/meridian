@@ -389,17 +389,18 @@ describe('vault app state', () => {
       expect(store.listInbox()).toEqual([])
     })
 
-    it('没有共同的编号时按规范化标题加年份认:年份不同不算同一篇,库里没记年份的只看标题', () => {
+    it('没有共同的编号时按规范化标题加年份认:年份差一年以内算同一篇,差得更多不算,库里没记年份的只看标题', () => {
       const titled = (id: string, title: string, submitted: string) => ({
         ...INBOX[1], id, title, arxiv: `2609.2000${id.length}`, pdf: '', meta: { ...INBOX[1]!.meta, submitted },
       })
       writeFileSync(join(vault, '.meridian', 'inbox.json'), JSON.stringify([
-        titled('mixtral', 'MIXTRAL of Experts.', '2024-01-08'), titled('mixtral-1999', 'Mixtral — of experts', '1999-05-01'),
+        titled('mixtral', 'MIXTRAL of Experts.', '2024-01-08'), titled('mixtral-23', 'Mixtral of experts', '2023-12-11'),
+        titled('mixtral-1999', 'Mixtral — of experts', '1999-05-01'), titled('mixtral-2022', 'Mixtral of Experts', '2022-06-01'),
       ]), 'utf8')
       store = reopen()
       expect(store.listInbox()).toEqual([])
       store.updatePaper(MIXTRAL, { year: 2024 })
-      expect(store.listInbox().map((e) => e.id)).toEqual(['mixtral-1999'])
+      expect(store.listInbox().map((e) => e.id)).toEqual(['mixtral-1999', 'mixtral-2022'])
     })
 
     it('忽略、稍后阅读、减少类似和已经了解都让卡片离开并记下原因,恢复时一并撤掉;更多类似留着', () => {

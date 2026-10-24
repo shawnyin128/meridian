@@ -26,6 +26,11 @@ const arxivKey = (id: string): string | null => {
   return bare === '' ? null : bare
 }
 
+/** Returns `{ doi }` when `paper` carries a DOI, else nothing, to spread into a record or an identity. */
+export const doiField = (paper: { title: string; doi?: string | undefined }): { doi?: string } => (
+  paper.doi === undefined ? {} : { doi: paper.doi }
+)
+
 /**
  * Returns the identity of a paper from what a record holds: any of its arXiv id, DOI and Semantic
  * Scholar id, its title, and its year, or else the date it was submitted, as `YYYY-MM-DD`.
@@ -74,7 +79,8 @@ export function libraryIdentity(paper: PaperRow): PaperIdentity {
 /**
  * Builds an index of the papers added to it, each with a value, that finds the value of the paper
  * an identity names: the first paper added that shares a key with it, or else the first whose title
- * is the same and whose year is the same or unknown on either side.
+ * is the same and whose year is at most one apart, as a preprint's and its publication's often are,
+ * or unknown on either side.
  */
 export function createPaperIndex<T>(): {
   add(identity: PaperIdentity, value: T): void
@@ -94,7 +100,7 @@ export function createPaperIndex<T>(): {
         if (value !== undefined) return value
       }
       return byTitle.get(identity.title)?.find(({ year }) => (
-        year === null || identity.year === null || year === identity.year
+        year === null || identity.year === null || Math.abs(year - identity.year) <= 1
       ))?.value
     },
   }
