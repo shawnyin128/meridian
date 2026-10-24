@@ -11,9 +11,11 @@ import type { VaultStore } from './vault.js'
 import { createVaultStore } from './vault-store.js'
 
 // The writer puts every file in place by renaming it there, or linking a new source there, so counting those picks which write of an operation fails.
+// fsyncSync does nothing here: these cases check what a failed write leaves on disk and in memory, not durability across a power loss,
+// and an fsync for every file of every repeated step is most of their time.
 vi.mock('node:fs', async (importOriginal) => {
   const real = await importOriginal<typeof import('node:fs')>()
-  return { ...real, renameSync: vi.fn(real.renameSync), linkSync: vi.fn(real.linkSync) }
+  return { ...real, renameSync: vi.fn(real.renameSync), linkSync: vi.fn(real.linkSync), fsyncSync: vi.fn() }
 })
 
 /** The file system's own rename and link, which the mocks pass every call to unless a case fails it. */
