@@ -7,7 +7,7 @@ import { EmptyState } from '../EmptyState.js'
 import { FadeText } from '../FadeText.js'
 import { LoadingPlaceholder } from '../LoadingPlaceholder.js'
 import { RatingStars, ReadStatePicker } from '../PaperMetadata.js'
-import { ProgressFill } from '../ProgressFill.js'
+import { ReadDots } from '../ReadDots.js'
 import { StructuredList, StructuredRow } from '../StructuredList.js'
 import { CountBadge, Tag } from '../Tag.js'
 import { Toolbar, ToolbarButton } from '../Toolbar.js'
@@ -71,27 +71,24 @@ export function ResearchMap({ rows, total, loading, onOpenPaper, onReadPaper, on
     if (selectedId !== null && !entries.all.some((entry) => entry.id === selectedId)) setSelectedId(null)
   }, [entries, selectedId])
 
-  const entryRow = (entry: MapEntry) => {
-    const read = readCount(entry.papers.map((item) => item.paper))
-    return (
-      <StructuredRow
-        key={entry.id}
-        className="research-map-group" selected={selected?.id === entry.id}
-        aria-pressed={selected?.id === entry.id}
-        onActivate={() => setSelectedId(entry.id)}
-      >
-        <span className="research-map-group-copy">
-          <FadeText className="research-map-group-name" label={entry.label}>{entry.label}</FadeText>
-          <ProgressFill
-            look="line" percent={Math.round((read / entry.papers.length) * 100)}
-            label={m.papers.researchMap.readProgress(read, entry.papers.length)}
-          />
-          {entry.kind === undefined ? null : <span>{entry.kind}</span>}
-        </span>
-        <CountBadge count={entry.papers.length} />
-      </StructuredRow>
-    )
-  }
+  const entryRow = (entry: MapEntry) => (
+    <StructuredRow
+      key={entry.id}
+      className="research-map-group" selected={selected?.id === entry.id}
+      aria-pressed={selected?.id === entry.id}
+      onActivate={() => setSelectedId(entry.id)}
+    >
+      <span className="research-map-group-copy">
+        <FadeText className="research-map-group-name" label={entry.label}>{entry.label}</FadeText>
+        <ReadDots
+          states={entry.papers.map((item) => item.paper.readState)}
+          label={m.papers.researchMap.readProgress(readCount(entry.papers.map((item) => item.paper)), entry.papers.length)}
+        />
+        {entry.kind === undefined ? null : <span>{entry.kind}</span>}
+      </span>
+      <CountBadge count={entry.papers.length} />
+    </StructuredRow>
+  )
 
   return (
     <section className="research-map" ref={mapFade} aria-label={m.papers.views.researchMap}>

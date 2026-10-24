@@ -101,7 +101,10 @@ Current shared contracts:
   `TagButton` is the clickable tag and `tagClass` gives a trigger another component renders the same classes.
   `CountBadge` is the one count beside a label. A host places and sizes these through `className` but never
   sets their fill, colour, border, radius or padding.
-- `StatusDot`: the one state dot, in two sizes. A dot whose state no nearby text names carries a `label`.
+- `StatusDot`: the one state dot, in two sizes, filled, half-filled or a ring. A dot whose state no nearby text names
+  carries a `label`.
+- `ReadDots`: one neutral `StatusDot` per paper's reading state on one fading line, read first, then reading, then
+  the rest, named by its `label`.
 - `Tooltip`: the one tooltip, under the one `TooltipProvider` at the renderer root. Its text is the element's
   name plus the platform's shortcut (`commandShortcut`); it opens after one delay on hover and at once on
   keyboard focus, and with `whenClipped` only while a cut-off text needs showing whole. `IconButton`'s `label`

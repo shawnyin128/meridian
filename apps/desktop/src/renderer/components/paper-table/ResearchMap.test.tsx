@@ -70,7 +70,7 @@ describe('ResearchMap', () => {
         <ResearchMap rows={rows} total={rows.length} loading={false} onOpenPaper={() => {}} onReadPaper={() => {}} {...NO_WRITES} />
       </MessagesProvider>,
     )
-    const faded = (selector: string) => [...host.querySelectorAll(`${selector} .fade-text:not(.tag-text)`)].map((line) => line.textContent)
+    const faded = (selector: string) => [...host.querySelectorAll(`${selector} .fade-text:not(.tag-text, .read-dots)`)].map((line) => line.textContent)
     expect(faded('.research-map-group-copy')).toEqual(['Speculative decoding'])
     expect(faded('.research-map-detail-head')).toEqual(['Speculative decoding'])
     expect(faded('.research-map-paper')).toEqual([title, '主题：Speculative decoding', 'Bravo', '主题：Speculative decoding'])
@@ -96,7 +96,7 @@ describe('ResearchMap', () => {
     const kinds = [...host.querySelectorAll('.research-map-group')]
       .map((group) => [
         group.querySelector('.research-map-group-name')?.textContent,
-        group.querySelector('.research-map-group-copy>span:not(.research-map-group-name)')?.textContent ?? null,
+        group.querySelector('.research-map-group-copy>span:not(.research-map-group-name, .read-dots)')?.textContent ?? null,
       ])
     expect(kinds).toContainEqual(['Speculative decoding', '主题或方法信号'])
     expect(kinds).toContainEqual(['Kernel fusion', null])
@@ -194,7 +194,7 @@ describe('ResearchMap', () => {
     expect(render(9).textContent).not.toContain('自适应研究地图')
   })
 
-  it('每个分组行在名字下面画一条没有文字的已读进度线，读屏读出已读几篇', () => {
+  it('每个分组行在名字下面给每篇论文画一个点，已读的在前，读屏读出已读几篇，不写文字', () => {
     const rows = [
       paper('a', 'Alpha', { topics: ['Speculative decoding'], readState: '已读' }),
       paper('b', 'Bravo', { topics: ['Speculative decoding'] }),
@@ -208,13 +208,16 @@ describe('ResearchMap', () => {
       </MessagesProvider>,
     )
     const lines = [...host.querySelectorAll('.research-map-groups')[0]!.querySelectorAll('.research-map-group')].map((group) => {
-      const line = group.querySelector('.research-map-group-copy>.research-map-group-name+[role="progressbar"]')
+      const line = group.querySelector('.research-map-group-copy>.research-map-group-name+.read-dots')
       return [
-        group.querySelector('.research-map-group-name')?.textContent, line?.getAttribute('aria-label'),
-        line?.getAttribute('aria-valuenow'), line?.textContent,
+        group.querySelector('.research-map-group-name')?.textContent, line?.getAttribute('aria-label'), line?.textContent,
+        [...line?.children ?? []].map((dot) => /status-dot--(half|ring)/.exec(dot.className)?.[1] ?? 'full'),
       ]
     })
-    expect(lines).toEqual([['Speculative decoding', '已读 1/3', '33', ''], ['KV cache', '已读 1/2', '50', '']])
+    expect(lines).toEqual([
+      ['Speculative decoding', '已读 1/3', '', ['full', 'half', 'ring']],
+      ['KV cache', '已读 1/2', '', ['full', 'half']],
+    ])
   })
 
   it('分组之后另起一组：跨组列出属于两个以上分组的论文并标出所在分组，未归组列出不在任何分组的论文', async () => {
@@ -243,7 +246,8 @@ describe('ResearchMap', () => {
       [['Speculative decoding', '3'], ['KV cache', '2']],
       [['跨组', '1'], ['未归组', '1']],
     ])
-    expect(lists[1]!.querySelector('[role="progressbar"]')?.getAttribute('aria-label')).toBe('已读 1/1')
+    expect([...lists[1]!.querySelectorAll('.read-dots')].map((line) => [line.getAttribute('aria-label'), line.children.length]))
+      .toEqual([['已读 1/1', 1], ['已读 0/1', 1]])
 
     const pick = async (name: string) => {
       const row = [...host.querySelectorAll<HTMLElement>('.research-map-group')].find((group) => group.textContent?.startsWith(name))!
