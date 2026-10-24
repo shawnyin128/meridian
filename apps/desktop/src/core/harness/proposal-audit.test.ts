@@ -58,6 +58,28 @@ describe('Harness proposal audit', () => {
     expect(audit.pending()).toEqual([])
   })
 
+  it('lists each proposal whose last event is a write that recorded its change entry, as generated, until it is logged as generated again', () => {
+    const root = mkdtempSync(join(tmpdir(), 'meridian-proposal-audit-'))
+    const audit = createHarnessProposalAudit(root)
+    const generated = {
+      event: 'generated' as const, proposalId: 'proposal-1', targetId: 'p1', scopeDigest: 'digest',
+      at: '2026-09-17T12:00:00.000Z', body: '# Draft', action: 'create' as const, review, quality,
+    }
+    audit.record(generated)
+    audit.record({ ...generated, event: 'applied', at: '2026-09-17T12:01:00.000Z', body: '# Edited', change: 'change-9' })
+    audit.record({ ...generated, proposalId: 'proposal-2', at: '2026-09-17T12:02:00.000Z' })
+    audit.record({ ...generated, proposalId: 'proposal-2', event: 'applied', at: '2026-09-17T12:03:00.000Z' })
+    expect(audit.applied()).toEqual([{
+      id: 'proposal-1', targetId: 'p1', scopeDigest: 'digest', generatedAt: '2026-09-17T12:00:00.000Z',
+      body: '# Draft', action: 'create', review, quality, change: 'change-9',
+    }])
+    expect(audit.pending()).toEqual([])
+
+    audit.record(generated)
+    expect(audit.applied()).toEqual([])
+    expect(audit.pending().map((proposal) => [proposal.id, proposal.body])).toEqual([['proposal-1', '# Draft']])
+  })
+
   it('rejects an invalid persisted review projection', () => {
     const root = mkdtempSync(join(tmpdir(), 'meridian-proposal-audit-invalid-'))
     const audit = createHarnessProposalAudit(root)

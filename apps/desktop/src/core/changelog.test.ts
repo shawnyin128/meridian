@@ -260,7 +260,7 @@ describe('change log', () => {
     expect(store.listChanges()).toEqual(before)
   })
 
-  it('改变持久知识的那 27 个写各记一条', () => {
+  it('改变持久知识的那 26 个写各记一条', () => {
     const writes: [string, () => unknown][] = [
       ['papers.update', () => store.updatePaper('Jiang-et-al-2024-Mixtral-of-Experts', { readState: '在读' })],
       ['papers.mutateReading note.delete', () => store.mutatePaperReading(READ, {
@@ -292,7 +292,6 @@ describe('change log', () => {
         ops: [{ op: 'appendEntry', page: 'topics/ptq', section: '未解决', date: '2026-08-25', text: '一条' }],
       })],
       ['wiki.update', () => store.updateWikiPage('topics/ptq', '## 问题\n改过。')],
-      ['harness.applyPaperWiki', () => store.applyPaperWikiDraft('papers/2210.17323', '## 概览\nHarness 生成的正文。')],
       ['project.create', () => store.createProject('新项目')],
       ['project.update', () => store.updateProject(PROJECT, { focus: '换个焦点' })],
       ['project.createTask', () => store.createTask(PROJECT, {
@@ -319,7 +318,7 @@ describe('change log', () => {
       ['project.createEvent', () => store.createEvent(PROJECT, '[对话] 来自对话的结论')],
       ['project.delete', () => store.deleteProject(PROJECT)],
     ]
-    expect(writes).toHaveLength(27)
+    expect(writes).toHaveLength(26)
 
     for (const [method, write] of writes) {
       const before = store.listChanges().length
@@ -526,6 +525,21 @@ describe('change log', () => {
     rows[0]!.diff[0] = '篡改后的 diff'
     expect(store.listChanges()[0]!.title).not.toBe('篡改后的标题')
     expect(store.listChanges()[0]!.diff[0]).not.toBe('篡改后的 diff')
+  })
+
+  it('写入 Wiki 提案像审阅队列里应用的提案一样记一条:标题是页名和卡片第一行的改动,来源 Meridian;撤销整页写回', () => {
+    const pages = store.listPapers({ page: 1, size: 200 }).rows.map((row) => `papers/${row.id}`)
+    const blank = pages.find((id) => store.wikiPaper(id).body.trim() === '')!
+    const written = pages.find((id) => store.wikiPaper(id).body.trim() !== '')!
+    const before = store.readPages([blank, written])
+    store.applyPaperWikiDraft(blank, '## 概览\nHarness 生成的正文。')
+    store.applyPaperWikiDraft(written, '## 概览\nHarness 更新的正文。')
+    expect(recorded().map(({ title, source, diff, undoable, named }) => ({ title, source, diff, undoable, named }))).toEqual([
+      { title: `Wiki · ${store.wikiPaper(written).title} · 更新内容`, source: 'Meridian', diff: [`~ ${written}`], undoable: true, named: undefined },
+      { title: `Wiki · ${store.wikiPaper(blank).title} · 新建内容`, source: 'Meridian', diff: [`~ ${blank}`], undoable: true, named: undefined },
+    ])
+    for (const change of recorded().map((row) => row.id)) store.undoChange(change)
+    expect(store.readPages([blank, written])).toEqual(before)
   })
 
   it('记录不跨边界带快照与指纹:界面只看得到能不能撤、归没归档', () => {

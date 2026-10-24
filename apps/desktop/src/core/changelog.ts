@@ -25,6 +25,12 @@ import type { VaultOps, VaultStore } from './vault.js'
 /** Changes made by the user in the UI; a proposal applied from the review queue records its own chip. */
 const BY_ME: ChangeSource = '我'
 
+/**
+ * What the first line of the reader's Wiki proposal card calls writing a proposal to a paper page
+ * without a body and to one with a body, as the Chinese catalog's `wiki.ingest` writes them.
+ */
+export const PAPER_WIKI_DRAFT_KINDS = { create: '新建内容', update: '更新内容' } as const
+
 /** Number of leading SHA-256 hexadecimal characters used for a fingerprint. */
 const FINGERPRINT_CHARS = 16
 
@@ -769,12 +775,6 @@ export function withChangelog(ops: VaultOps, log: ChangeLogStore): VaultStore {
     return { ...project, ...lastProgressOf(rows, id, [...project.events, ...project.workspace?.events ?? []]) }
   }
 
-  /** Runs `write`, which replaces the body of Wiki page `id`, and records it as one change to that page. */
-  const onPageBody = (id: string, write: () => void): void => {
-    const title = id.startsWith(PAPER_PAGE) ? ops.wikiPaper(id).title : ops.wikiAggregation(id).title
-    wrote({ kind: 'pages', id, paths: [id] }, `Wiki · 「${title}」· 改了正文`, 'snapshot', write, [`~ ${id}`])
-  }
-
   /** Paper-field write that records the paper's pre-change shape. */
   const updatePaper = (id: string, patch: Partial<PaperFields>): void =>
     wrote({ kind: 'paper', id }, '改了字段', 'snapshot', () => ops.updatePaper(id, patch))
@@ -970,11 +970,18 @@ export function withChangelog(ops: VaultOps, log: ChangeLogStore): VaultStore {
     },
 
     updateWikiPage(id, body) {
-      onPageBody(id, () => ops.updateWikiPage(id, body))
+      const title = id.startsWith(PAPER_PAGE) ? ops.wikiPaper(id).title : ops.wikiAggregation(id).title
+      return wrote({ kind: 'pages', id, paths: [id] }, `Wiki · 「${title}」· 改了正文`, 'snapshot', () => ops.updateWikiPage(id, body), [`~ ${id}`])
     },
 
     applyPaperWikiDraft(id, body) {
-      onPageBody(id, () => ops.applyPaperWikiDraft(id, body))
+      // Recorded as an applied queue proposal is: titled by its card's first line, under the chip of an ingest.
+      const target: ChangeTarget = { kind: 'pages', id, paths: [id] }
+      const before = entityOf(target)
+      const page = ops.wikiPaper(id)
+      const kind = page.body.trim() === '' ? PAPER_WIKI_DRAFT_KINDS.create : PAPER_WIKI_DRAFT_KINDS.update
+      const [, change] = drawn(() => ops.applyPaperWikiDraft(id, body))
+      push(change, target, `Wiki · ${page.title} · ${kind}`, 'snapshot', before, [`~ ${id}`], 'Meridian')
     },
 
     listChanges() {

@@ -2440,7 +2440,7 @@ describe('fixture store', () => {
       'themes.list', 'themes.save', 'themes.delete',
       'papers.retryMetadata',
       'discovery.fetch', 'author.search', 'watch.suggest', 'harness.prepare', 'harness.pendingPaperWiki',
-      'harness.start', 'harness.cancel',
+      'harness.start', 'harness.cancel', 'harness.dismissFailure',
       'harness.modelSettings', 'harness.updateModelSettings', 'harness.checkModelConnection',
       'harness.applyPaperWiki',
       'harness.rejectPaperWiki', 'chat.send', 'chat.cancel',

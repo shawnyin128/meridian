@@ -24,7 +24,7 @@ const { GenerationsContext } = await import('../../hooks/useGenerations.js')
 /** A shell in which Core is generating nothing. */
 const IDLE = {
   running: () => false, run: async (work: Promise<unknown>) => { await work }, stop: vi.fn(),
-  wikiRunning: () => false, stopWiki: vi.fn(async () => {}),
+  wikiRunning: () => false, stopWiki: vi.fn(async () => {}), wikiFailure: () => undefined, dismissWiki: vi.fn(async () => {}),
 }
 type ReaderSideTab = import('./ReaderSidePanel.js').ReaderSideTab
 

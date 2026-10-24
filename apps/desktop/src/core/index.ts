@@ -23,6 +23,7 @@ import {
   SemanticKeySetParamsSchema,
   FeedAppendParamsSchema,
   HarnessCancelParamsSchema,
+  HarnessDismissFailureParamsSchema,
   HarnessPendingPaperWikiParamsSchema,
   HarnessPrepareParamsSchema,
   HarnessApplyPaperWikiParamsSchema,
@@ -253,6 +254,15 @@ const pendingHarnessProposals = (() => {
     return []
   }
 })()
+const appliedHarnessProposals = (() => {
+  if (proposalAudit === null) return []
+  try {
+    return proposalAudit.applied()
+  } catch (error) {
+    console.error(`[harness] 已写入的提案无法恢复，撤销后不会回到待审核：${error instanceof Error ? error.message : String(error)}`)
+    return []
+  }
+})()
 process.once('exit', () => {
   paperWikiHarness?.close()
   chatHarness.close()
@@ -272,6 +282,7 @@ const harness = createHarnessCostGate({
     : paperWikiHarness.run,
   applyWiki: (id, body) => recordChange(store, () => store.applyPaperWikiDraft(id, body)),
   initialProposals: pendingHarnessProposals,
+  initialApplied: appliedHarnessProposals,
   ...(proposalAudit === null ? {} : { recordProposal: proposalAudit.record }),
 })
 const wikiProposals = createWikiProposals({ store, pdf: pdfPageText(store), now: Date.now })
@@ -489,6 +500,10 @@ registerHandler('harness.start', (params) =>
   harness.start(HarnessStartParamsSchema.parse(params)))
 registerHandler('harness.cancel', (params) =>
   harness.cancel(HarnessCancelParamsSchema.parse(params).paperId))
+registerHandler('harness.dismissFailure', (params) => {
+  harness.dismissFailure(HarnessDismissFailureParamsSchema.parse(params).paperId)
+  return null
+})
 registerHandler('harness.modelSettings', (params) => {
   EmptyParamsSchema.parse(params)
   return harnessModel.settings()
@@ -787,8 +802,11 @@ registerHandler('changelog.list', (params) => {
   EmptyParamsSchema.parse(params)
   return store.listChanges()
 })
-registerHandler('changelog.undo', (params) =>
-  store.undoChange(ChangelogUndoParamsSchema.parse(params).id))
+registerHandler('changelog.undo', (params) => {
+  const { id } = ChangelogUndoParamsSchema.parse(params)
+  store.undoChange(id)
+  harness.reopenPaperWiki(id)
+})
 registerHandler('changelog.archive', (params) =>
   store.archiveChange(ChangelogArchiveParamsSchema.parse(params).id))
 registerHandler('changelog.archiveAll', (params) => {
@@ -866,7 +884,10 @@ registerHandler('chat.delete', (params) => chatService.delete(ChatDeleteParamsSc
 registerHandler('search.query', (params) => store.search(SearchParamsSchema.parse(params).query))
 registerHandler('jobs.status', (params) => {
   EmptyParamsSchema.parse(params)
-  const status = { ...background.status(), generating: chatService.generating(), generatingWiki: harness.generating() }
+  const status = {
+    ...background.status(),
+    generating: chatService.generating(), generatingWiki: harness.generating(), wikiFailures: harness.failed(),
+  }
   return showUiSamples ? withUiSampleUpload(status, Date.now()) : status
 })
 
