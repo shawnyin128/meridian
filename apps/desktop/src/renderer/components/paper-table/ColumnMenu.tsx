@@ -10,6 +10,7 @@ import { builtinNames, takenLabel } from './column-key.js'
 import { COLUMNS } from './PaperTable.js'
 import { afterLeaving, InlineDraftInput } from '../InlineDraftInput.js'
 import { FadeText } from '../FadeText.js'
+import { RowActions } from '../StructuredList.js'
 
 /**
  * The column menu, opened from the gear at the end of the table header. Built-in columns take one
@@ -94,7 +95,7 @@ export function ColumnMenu({ columns, onChange, onRenameOption, onRetype }: {
         setRetyping(null)
       }}
       sticky="always" trigger={(
-        <IconButton label={m.papers.columnMenu.settings} size="nested" className="colbtn"><IconGear /></IconButton>
+        <IconButton label={m.papers.columnMenu.settings} size="nested"><IconGear /></IconButton>
       )}
       contentProps={{
           // Radix takes Esc in the document's capture phase, so the input cannot stop it; during a
@@ -126,7 +127,7 @@ export function ColumnMenu({ columns, onChange, onRenameOption, onRetype }: {
           })}
           {columns.custom.map((c) => (
             <div key={c.key}>
-              <div className="mi colrow">
+              <div className="mi colrow" data-row-actions="">
                 <span className="ck" />
                 {renaming === c.key
                   ? (
@@ -154,24 +155,26 @@ export function ColumnMenu({ columns, onChange, onRenameOption, onRetype }: {
                       onClick={() => setOpened((k) => (k === c.key ? null : c.key))}
                     ><IconChevron /></IconButton>
                   )}
-                <IconButton
-                  label={m.papers.columnMenu.changeType} size="nested" className={retyping === c.key ? 'cmx typex on' : 'cmx typex'}
-                  onClick={() => setRetyping((k) => (k === c.key ? null : c.key))}
-                ><ColumnTypeIcon type={c.type} /></IconButton>
-                <IconButton
-                  label={m.papers.columnMenu.rename} size="nested" className="cmx"
-                  onClick={() => afterLeaving(leaveRename, () => setRenaming(c.key))}
-                ><IconPencil /></IconButton>
-                {/* Core rejects group keys with no column, so a deleted column leaves the groups too. */}
-                <IconButton
-                  label={m.papers.columnMenu.deleteColumn} size="nested" tone="danger" className="cmx"
-                  onClick={() => onChange((base) => ({
-                    ...base,
-                    custom: base.custom.filter((x) => x.key !== c.key),
-                    groups: base.groups.filter((g) => g !== c.key),
-                    order: base.order?.filter((key) => key !== c.key),
-                  }))}
-                ><IconTrash /></IconButton>
+                <RowActions>
+                  <IconButton
+                    label={m.papers.columnMenu.changeType} size="nested" className="cmx typex" aria-expanded={retyping === c.key}
+                    onClick={() => setRetyping((k) => (k === c.key ? null : c.key))}
+                  ><ColumnTypeIcon type={c.type} /></IconButton>
+                  <IconButton
+                    label={m.papers.columnMenu.rename} size="nested" className="cmx"
+                    onClick={() => afterLeaving(leaveRename, () => setRenaming(c.key))}
+                  ><IconPencil /></IconButton>
+                  {/* Core rejects group keys with no column, so a deleted column leaves the groups too. */}
+                  <IconButton
+                    label={m.papers.columnMenu.deleteColumn} size="nested" tone="danger" className="cmx"
+                    onClick={() => onChange((base) => ({
+                      ...base,
+                      custom: base.custom.filter((x) => x.key !== c.key),
+                      groups: base.groups.filter((g) => g !== c.key),
+                      order: base.order?.filter((key) => key !== c.key),
+                    }))}
+                  ><IconTrash /></IconButton>
+                </RowActions>
               </div>
               {retyping === c.key
                 ? (
@@ -187,7 +190,7 @@ export function ColumnMenu({ columns, onChange, onRenameOption, onRetype }: {
                 : c.options.length === 0
                   ? <div className="mi optrow optnone">{m.papers.columnMenu.noOptionsHint}</div>
                   : c.options.map((o) => (
-                    <div key={o} className="mi optrow">
+                    <div key={o} className="mi optrow" data-row-actions="">
                       {renamingOption?.key === c.key && renamingOption.from === o
                         ? (
                           <InlineDraftInput
@@ -202,21 +205,23 @@ export function ColumnMenu({ columns, onChange, onRenameOption, onRetype }: {
                           />
                         )
                         : <FadeText className="cl" label={o}>{o}</FadeText>}
-                      <IconButton
-                        label={m.papers.columnMenu.renameOption} size="nested" className="cmx"
-                        onClick={() => afterLeaving(
-                          leaveOptionRename, () => setRenamingOption({ key: c.key, from: o }),
-                        )}
-                      ><IconPencil /></IconButton>
-                      <IconButton
-                        label={m.papers.columnMenu.deleteOption} size="nested" tone="danger" className="cmx"
-                        onClick={() => onChange((base) => ({
-                          ...base,
-                          custom: base.custom.map((x) => (x.key === c.key
-                            ? { ...x, options: x.options.filter((v) => v !== o) }
-                            : x)),
-                        }))}
-                      ><IconTrash /></IconButton>
+                      <RowActions>
+                        <IconButton
+                          label={m.papers.columnMenu.renameOption} size="nested" className="cmx"
+                          onClick={() => afterLeaving(
+                            leaveOptionRename, () => setRenamingOption({ key: c.key, from: o }),
+                          )}
+                        ><IconPencil /></IconButton>
+                        <IconButton
+                          label={m.papers.columnMenu.deleteOption} size="nested" tone="danger" className="cmx"
+                          onClick={() => onChange((base) => ({
+                            ...base,
+                            custom: base.custom.map((x) => (x.key === c.key
+                              ? { ...x, options: x.options.filter((v) => v !== o) }
+                              : x)),
+                          }))}
+                        ><IconTrash /></IconButton>
+                      </RowActions>
                     </div>
                   ))}
             </div>

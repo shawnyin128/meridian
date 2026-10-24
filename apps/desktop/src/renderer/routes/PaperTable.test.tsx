@@ -1966,6 +1966,27 @@ describe('PaperTable', () => {
     expect(headTexts(host)).not.toContain('备注')
   })
 
+  it('表头的建列与列设置、列菜单行尾的按钮都在操作槽里：表头那一行和每个列行都是槽的宿主，改类型展开时报出展开', async () => {
+    const host = mount()
+    columnsCall.resolve(SELECT_COLUMNS)
+    listCall.resolve({ rows: [ROW], total: 1 })
+    await flush()
+    /** The labels of the buttons in each row-actions slot of `row`, and whether `row` hosts the slot. */
+    const slots = (row: Element) => [row.hasAttribute('data-row-actions'), [...row.querySelectorAll('.row-actions')]
+      .map((slot) => [...slot.querySelectorAll('button')].map((button) => button.getAttribute('aria-label')))]
+    expect(slots(host.querySelector('.ptable thead tr')!)).toEqual([true, [['新建列', '列设置']]])
+
+    await act(async () => { host.querySelector<HTMLButtonElement>('[aria-label="列设置"]')!.click() })
+    const row = document.querySelector('.mi.colrow:has([aria-label="选项"])')!
+    expect(slots(row)).toEqual([true, [['改类型', '重命名列', '删除列']]])
+    const retype = row.querySelector('[aria-label="改类型"]')!
+    expect(retype.getAttribute('aria-expanded')).toBe('false')
+    await act(async () => { (retype as HTMLButtonElement).click() })
+    expect(retype.getAttribute('aria-expanded')).toBe('true')
+    await act(async () => { row.querySelector<HTMLButtonElement>('[aria-label="选项"]')!.click() })
+    expect(slots(document.querySelector('.mi.optrow')!)).toEqual([true, [['重命名选项', '删除选项']]])
+  })
+
   it('列菜单里改列名、改选项名,点到菜单外都像回车一样改掉', async () => {
     const host = mount()
     columnsCall.resolve(SELECT_COLUMNS)

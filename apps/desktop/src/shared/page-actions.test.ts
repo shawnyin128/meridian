@@ -356,7 +356,9 @@ function placementsIn(path: string): { actions: Placement[]; icons: IconPlacemen
         visit(attr.value, slot === 'chip' ? slot : own ?? slot, inside)
       }
       const holds = SLOT_CHILDREN[name] ?? classes.map((word) => SLOT_CHILDREN[word]).find(Boolean)
-      visit(held.children, slot === 'chip' ? slot : holds ?? slot, inside)
+      // A table header cell reveals its buttons through a row-actions slot; they still act on the table.
+      const kept = slot === 'chip' || (slot === 'table header' && holds === 'row actions')
+      visit(held.children, kept ? slot : holds ?? slot, inside)
       enter(name, slot)
       return
     }

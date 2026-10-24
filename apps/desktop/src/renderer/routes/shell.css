@@ -97,9 +97,9 @@
 
 /*
  * Last header cell of both tables: the add-column + and the column-settings gear, nested icon
- * buttons that stay hidden until the pointer enters the header or the button itself. Two 24px
- * buttons fit in 52px once the cell's padding drops from the 10px of .ptable th / .cmp th to 2px,
- * which also keeps the header no taller than one with text only.
+ * buttons in the header row's actions slot. Two 24px buttons and the slot's gap fit in 52px once the
+ * cell's padding drops from the 10px of .ptable th / .cmp th to 2px, which also keeps the header no
+ * taller than one with text only.
  */
 .th-add{width:52px;white-space:nowrap}
 /*
@@ -107,8 +107,7 @@
  * override has to name the table too.
  */
 .ptable th.th-add,.cmp th.th-add{padding:var(--sp-2)}
-.colbtn{opacity:0;pointer-events:none;vertical-align:middle}
-thead:hover .colbtn,.colbtn:hover,.colbtn:focus-visible{opacity:1;pointer-events:auto}
+.th-add .row-actions{vertical-align:middle}
 
 /* A menu surface takes focus only to hand it to an item, and a Radix item's highlight is its focus. */
 .ctxmenu:focus-visible,.mi[data-highlighted]:focus-visible{outline:0}

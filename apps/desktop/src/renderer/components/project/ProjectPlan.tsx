@@ -216,10 +216,12 @@ function TaskNameCell({ task, onSave }: { task: Task; onSave: (patch: TaskPatch)
       rest={(edit) => (
         <>
           <ToolbarButton className="plan-cell plan-name plan-open"><FadeText>{task.title}</FadeText></ToolbarButton>
-          <IconButton
-            label={m.project.plan.renameTaskFor(task.title)} size="nested"
-            className="plan-rename" onClick={(event) => { event.stopPropagation(); edit() }}
-          ><IconPencil /></IconButton>
+          <RowActions>
+            <IconButton
+              label={m.project.plan.renameTaskFor(task.title)} size="nested"
+              className="plan-rename" onClick={(event) => { event.stopPropagation(); edit() }}
+            ><IconPencil /></IconButton>
+          </RowActions>
         </>
       )}
     />
