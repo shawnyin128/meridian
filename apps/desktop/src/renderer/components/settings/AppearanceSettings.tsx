@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { CSSProperties } from 'react'
 import {
   BUILT_IN_COLOUR_THEMES, DEFAULT_COLOUR_THEME, colourFollowing, type ColourMode, type ColourModule,
@@ -126,21 +126,34 @@ export function useColourThemeName(): (theme: ColourTheme) => string {
   return (theme) => (BUILT_IN_COLOUR_THEMES.includes(theme) ? m.settings.appearance.themes[theme.id as BuiltInName] : theme.name)
 }
 
-/** The … menu of a custom theme card: Edit, and Delete after a confirmation, as its file cannot be restored. */
+/**
+ * The … menu of a custom theme card: Edit, and Delete after a confirmation, as its file cannot be
+ * restored. The confirmation opens once the menu has closed, and cancelling it returns focus to the
+ * menu's button.
+ */
 function ColourThemeMenu({ name, onEdit, onDelete }: { name: string; onEdit: () => void; onDelete: () => void }) {
   const m = useMessages()
   const t = m.settings.appearance.editor
-  const [open, setOpen] = useState(false)
+  const deleting = useRef(false)
+  const [confirming, setConfirming] = useState(false)
   return (
-    <DotsMenu label={t.manage(name)} open={open} onOpenChange={setOpen}>
-      <MenuItem onSelect={onEdit}>{m.common.edit}</MenuItem>
+    <>
+      <DotsMenu
+        label={t.manage(name)}
+        onCloseAutoFocus={() => {
+          if (!deleting.current) return
+          deleting.current = false
+          setConfirming(true)
+        }}
+      >
+        <MenuItem onSelect={onEdit}>{m.common.edit}</MenuItem>
+        <MenuItem className="mi danger" onSelect={() => { deleting.current = true }}>{m.common.delete}</MenuItem>
+      </DotsMenu>
       <ConfirmDialog
-        // Selecting the item keeps the menu, and so the confirmation inside it, open.
-        trigger={<MenuItem className="mi danger" onSelect={(event) => event.preventDefault()}>{m.common.delete}</MenuItem>}
-        title={t.deleteTitle(name)} description={t.deleteDescription} confirmLabel={m.common.delete}
-        onConfirm={() => { setOpen(false); onDelete() }}
+        open={confirming} onOpenChange={setConfirming}
+        title={t.deleteTitle(name)} description={t.deleteDescription} confirmLabel={m.common.delete} onConfirm={onDelete}
       />
-    </DotsMenu>
+    </>
   )
 }
 

@@ -415,8 +415,22 @@ test('外观主题从新建、保存、套用,到重新加载后还在、在卡�
     await expect(win.locator('.setdlg input[aria-label="名称"]')).toHaveValue('晨雾')
     await win.locator('.setdlg [data-module="ground"]').click()
     await win.locator('.setdlg input[aria-label="色值"]').fill('#f6f8fb')
+    // Every way out of the editor asks the same question while it holds unsaved edits.
+    const confirmation = win.locator('[role="alertdialog"] .modal-title')
+    const ways: [string, () => Promise<void>][] = [
+      ['Esc', () => win.keyboard.press('Escape')],
+      ['关闭', () => win.locator('.setdlg .modal-close').click()],
+      ['遮罩', () => win.mouse.click(40, 450)],
+    ]
+    for (const [way, leave] of ways) {
+      await leave()
+      await expect(confirmation, way).toHaveText('放弃未保存的修改？')
+      await win.locator('[role="alertdialog"] .btn', { hasText: '取消' }).click()
+      await expect(confirmation, way).toHaveCount(0)
+      await expect(win.locator('.setdlg [data-module]'), way).toHaveCount(13)
+    }
     await win.locator('.setdlg button[aria-label="返回"]').click()
-    await expect(win.locator('[role="alertdialog"] .modal-title')).toHaveText('放弃未保存的修改？')
+    await expect(confirmation).toHaveText('放弃未保存的修改？')
     await win.locator('[role="alertdialog"] .btn.pri.danger').click()
     await expect(themes.locator('.appearance-choice')).toHaveCount(6)
     expect(JSON.parse(readFileSync(file, 'utf8')).light.ground).not.toBe('#f6f8fb')
@@ -424,6 +438,11 @@ test('外观主题从新建、保存、套用,到重新加载后还在、在卡�
     await menu()
     await win.locator('[role="menu"] [role="menuitem"]', { hasText: '删除' }).click()
     await expect(win.locator('[role="alertdialog"] .modal-title')).toHaveText('删除外观主题「晨雾」？')
+    await expect(win.locator('[role="menu"]')).toHaveCount(0)
+    await win.locator('[role="alertdialog"] .btn', { hasText: '取消' }).click()
+    await expect(win.locator('.setdlg button[aria-label="管理「晨雾」"]')).toBeFocused()
+    await menu()
+    await win.locator('[role="menu"] [role="menuitem"]', { hasText: '删除' }).click()
     await win.locator('[role="alertdialog"] .btn.pri.danger').click()
     await expect(themes.locator('.appearance-choice')).toHaveText(['默认', '朱漆', '螺钿', '秋叶', '流霞'])
     await expect(themes.locator('[data-colour-theme="default"]')).toHaveAttribute('aria-checked', 'true')
