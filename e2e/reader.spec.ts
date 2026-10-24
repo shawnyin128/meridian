@@ -1,6 +1,6 @@
 import type { Page } from '@playwright/test'
 import { minimalPdf } from '../apps/desktop/src/core/net/minimal-pdf.js'
-import { expect, gotoPapers, settle, test, type MeridianWindow } from './app.js'
+import { expect, gotoPapers, popupMenus, settle, test, type MeridianWindow } from './app.js'
 
 /** Visited screens stay mounted, so reader selectors are scoped to the screen shown. */
 const shown = (win: Page, sel: string) => win.locator(`.screenslot:not([hidden]) ${sel}`)
@@ -665,6 +665,20 @@ async function paintOver(win: Page, box: { left: number; right: number; top: num
     return { painted: painted.length, doubled }
   }, shot.toString('base64'))
 }
+
+test('右键阅读器里选中的字弹出能复制的系统菜单(macOS 上先能查询),选区不变', async ({ app, win }) => {
+  await openTight(win)
+  const [line] = await textLines(win)
+  await dragAcross(win, [line!])
+  const selected = await win.evaluate(() => document.getSelection()!.toString())
+  expect(selected.trim()).toBe(TIGHT.lines[0])
+
+  await win.mouse.click((line!.left + line!.right) / 2, (line!.top + line!.bottom) / 2, { button: 'right' })
+  await expect.poll(() => popupMenus(app)).toEqual([
+    process.platform === 'darwin' ? [`查询“${TIGHT.lines[0]}”`, '—', '复制'] : ['复制'],
+  ])
+  expect(await win.evaluate(() => document.getSelection()!.toString())).toBe(selected)
+})
 
 // Pixel checks take screenshots of the window, which need a visible one.
 test.describe('选中文字时的选区', () => {

@@ -1,10 +1,11 @@
 import type { CredentialVaultCopy } from './credential-vault.js'
-import type { MenuCopy } from './menu.js'
+import type { EditMenuCopy, MenuCopy } from './menu.js'
 
 export type UiLocale = 'zh' | 'en'
 
 export type MainCopy = {
   menu: MenuCopy
+  editMenu: EditMenuCopy
   chooseLibrary: { title: string; button: string }
   chooseWorkspace: { title: string; button: string }
   credentials: CredentialVaultCopy
@@ -16,6 +17,7 @@ export const MAIN_COPY: Record<UiLocale, MainCopy> = {
     menu: {
       settings: '设置…', palette: '命令面板…', tools: '工具', help: 'Help', agentTutorial: 'Skill 与 MCP 使用教程',
     },
+    editMenu: { cut: '剪切', copy: '复制', paste: '粘贴', selectAll: '全选', lookUp: (text) => `查询“${text}”` },
     chooseLibrary: { title: '选择 Meridian 论文库根目录', button: '选择' },
     chooseWorkspace: { title: '选择项目目录', button: '连接' },
     credentials: {
@@ -34,6 +36,7 @@ export const MAIN_COPY: Record<UiLocale, MainCopy> = {
       settings: 'Settings…', palette: 'Command Palette…', tools: 'Tools', help: 'Help',
       agentTutorial: 'Using Skills and MCP…',
     },
+    editMenu: { cut: 'Cut', copy: 'Copy', paste: 'Paste', selectAll: 'Select All', lookUp: (text) => `Look Up “${text}”` },
     chooseLibrary: { title: 'Choose a Meridian library folder', button: 'Choose' },
     chooseWorkspace: { title: 'Choose a project folder', button: 'Connect' },
     credentials: {

@@ -7,7 +7,7 @@ import { existsSync, readFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { fileURLToPath } from 'node:url'
 import { dirname, join, resolve } from 'node:path'
-import { menuTemplate } from './menu.js'
+import { editMenuTemplate, menuTemplate } from './menu.js'
 import { openLinks } from './links.js'
 import { packagedHarnessEnvironment } from './harness-sidecar.js'
 import { attachCredentialVault } from './credential-vault.js'
@@ -164,6 +164,16 @@ app.whenReady().then(() => {
       () => win.webContents.send(OPEN_PALETTE),
     )))
   installMenu()
+
+  // A secondary click on text opens the edit menu. A click the page handles itself, such as a paper
+  // row's own context menu, prevents the default and never reaches Main.
+  win.webContents.on('context-menu', (_event, params) => {
+    const items = editMenuTemplate(process.platform, params, copy().editMenu, {
+      replaceMisspelling: (word) => win.webContents.replaceMisspelling(word),
+      lookUp: () => win.webContents.showDefinitionForSelection(),
+    })
+    if (items.length > 0) Menu.buildFromTemplate(items).popup({ window: win })
+  })
 
   // Folder selection is Main's only OS integration; Core validates vaults and persists configuration.
   ipcMain.handle(CHOOSE_LIBRARY_ROOT, async (event) => {
