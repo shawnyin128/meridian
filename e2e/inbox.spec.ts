@@ -405,7 +405,7 @@ test('检查新论文按关注抓取一次,新论文进入相应分组且标题�
   await openInbox(win, 'all')
   const before = await inboxFromCore(win)
   await shown(win, '.desk-head .btn').filter({ hasText: '检查新论文' }).click()
-  // The vault's Mixtral of Experts records another year, so by its title and year it is another paper.
+  // The vault's Mixtral of Experts records 2026 and arXiv's 2024, more than a year apart, so it is another paper.
   await expect(shown(win, '.pcard')).toHaveCount(before.length + 3)
   await expect(shown(win, '.desk-head .fetchnote')).toHaveText(/^上次检查 \d+月\d+日\d{2}:\d{2}$/)
   await expect(shown(win, '.desk-head .fetchnote .date-chip')).toHaveCount(2)

@@ -43,7 +43,7 @@ import {
   combinedReasons, listedUnder, orderListing, sortFound, withoutStreams, withStream, type StoredStream,
 } from './inbox/delivery.js'
 import {
-  createPaperIndex, libraryArxivId, libraryIdentity, paperIdentity, type PaperIdentity,
+  createPaperIndex, doiField, libraryArxivId, libraryIdentity, paperIdentity, type PaperIdentity,
 } from './inbox/identity.js'
 import type { RemotePaper } from './net/arxiv.js'
 import {
@@ -96,6 +96,7 @@ type FixtureProject = Omit<
 type InboxRecord = Omit<InboxEntry, 'also'> & {
   also?: StoredStream[] | undefined
   semanticId: string
+  doi?: string
   vault: {
     topic: string
     arxiv: string
@@ -426,7 +427,8 @@ export function createFixtureStore(
 
   /** The identity of the paper an inbox entry delivers. */
   const entryIdentity = (entry: InboxRecord): PaperIdentity => paperIdentity({
-    arxiv: entry.vault.arxiv, semanticId: entry.semanticId, title: entry.title, submitted: entry.vault.meta.submitted,
+    arxiv: entry.vault.arxiv, ...doiField(entry), semanticId: entry.semanticId, title: entry.title,
+    submitted: entry.vault.meta.submitted,
   })
 
   /**
@@ -1560,11 +1562,11 @@ export function createFixtureStore(
       const watch = watches.find((w) => w.id === watchId)
       if (!watch) throw new CallError('not-found', `关注不存在：${watchId}`)
       const added = deliver(found, limit, (paper) => paperIdentity({
-        arxiv: paper.id, title: paper.title, submitted: paper.submitted,
+        arxiv: paper.id, ...doiField(paper), title: paper.title, submitted: paper.submitted,
       }), (paper) => {
         const { topic, arxiv, meta, ...entry } = inboxFields(watch, paper)
         return {
-          id: nextId('inbox'), watch: watch.id, downloaded: false, paper: '', semanticId: '', ...entry,
+          id: nextId('inbox'), watch: watch.id, downloaded: false, paper: '', semanticId: '', ...doiField(paper), ...entry,
           vault: { topic, arxiv, meta },
         }
       }, (entry, paper) => {
@@ -1579,7 +1581,7 @@ export function createFixtureStore(
 
     undelivered(found) {
       return sortFound(found, (paper) => paperIdentity({
-        arxiv: paper.id, ...(paper.semanticId === undefined ? {} : { semanticId: paper.semanticId }),
+        arxiv: paper.id, ...doiField(paper), ...(paper.semanticId === undefined ? {} : { semanticId: paper.semanticId }),
         title: paper.title, submitted: paper.submitted,
       }), known()).fresh
     },
@@ -1672,7 +1674,7 @@ export function createFixtureStore(
       const seeds = projectDiscoverySeeds(projectId)
       const source = `项目 · ${project.name}`
       return deliver(found, limit, (paper) => paperIdentity({
-        arxiv: paper.id, semanticId: paper.semanticId, title: paper.title, submitted: paper.submitted,
+        arxiv: paper.id, ...doiField(paper), semanticId: paper.semanticId, title: paper.title, submitted: paper.submitted,
       }), (paper) => ({
         id: nextId('inbox'),
         kind: 'discovery',
@@ -1689,6 +1691,7 @@ export function createFixtureStore(
         paper: '',
         pdf: paper.pdf,
         semanticId: paper.semanticId,
+        ...doiField(paper),
         ...(paper.ranking === undefined ? {} : { ranking: paper.ranking }),
         vault: {
           topic: '',

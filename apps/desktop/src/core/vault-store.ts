@@ -40,7 +40,7 @@ import {
   combinedReasons, listedUnder, orderListing, sortFound, withoutStreams, withStream,
 } from './inbox/delivery.js'
 import {
-  createPaperIndex, libraryArxivId, libraryIdentity, paperIdentity, type PaperIdentity,
+  createPaperIndex, doiField, libraryArxivId, libraryIdentity, paperIdentity, type PaperIdentity,
 } from './inbox/identity.js'
 import {
   applyRecommendationPreferences, buildRecommendationProfile, clusterRecommendationProfile,
@@ -457,7 +457,7 @@ export function createVaultStore(
 
   /** The identity of the paper a stored inbox entry delivers. */
   const entryIdentity = (entry: InboxRecord): PaperIdentity => paperIdentity({
-    arxiv: entry.arxiv, ...(entry.doi === undefined ? {} : { doi: entry.doi }), semanticId: entry.semanticId,
+    arxiv: entry.arxiv, ...doiField(entry), semanticId: entry.semanticId,
     title: entry.title, submitted: entry.meta.submitted,
   })
 
@@ -2098,10 +2098,10 @@ export function createVaultStore(
       const watch = watches.find((w) => w.id === watchId)
       if (!watch) throw new CallError('not-found', `关注不存在：${watchId}`)
       const added = deliver(found, limit, (paper) => paperIdentity({
-        arxiv: paper.id, title: paper.title, submitted: paper.submitted,
+        arxiv: paper.id, ...doiField(paper), title: paper.title, submitted: paper.submitted,
       }), (paper) => ({
         id: nextId('inbox'), watch: watch.id, downloaded: false, paper: '', gone: false,
-        semanticId: '',
+        semanticId: '', ...doiField(paper),
         ...inboxFields(watch, paper),
       }), (entry, paper) => {
         const fields = inboxFields(watch, paper)
@@ -2115,7 +2115,7 @@ export function createVaultStore(
 
     undelivered(found) {
       return sortFound(found, (paper) => paperIdentity({
-        arxiv: paper.id, ...(paper.semanticId === undefined ? {} : { semanticId: paper.semanticId }),
+        arxiv: paper.id, ...doiField(paper), ...(paper.semanticId === undefined ? {} : { semanticId: paper.semanticId }),
         title: paper.title, submitted: paper.submitted,
       }), known()).fresh
     },
@@ -2219,7 +2219,7 @@ export function createVaultStore(
       const seeds = projectDiscoverySeeds(projectId)
       const source = `项目 · ${project.name}`
       return deliver(found, limit, (paper) => paperIdentity({
-        arxiv: paper.id, semanticId: paper.semanticId, title: paper.title, submitted: paper.submitted,
+        arxiv: paper.id, ...doiField(paper), semanticId: paper.semanticId, title: paper.title, submitted: paper.submitted,
       }), (paper) => ({
         id: nextId('inbox'),
         kind: 'discovery',
@@ -2240,6 +2240,7 @@ export function createVaultStore(
         gone: false,
         arxiv: paper.id,
         semanticId: paper.semanticId,
+        ...doiField(paper),
         meta: { authors: paper.authors, submitted: paper.submitted, journalRef: paper.journalRef },
       }), (entry, paper) => {
         const listed = withStream(entry, {

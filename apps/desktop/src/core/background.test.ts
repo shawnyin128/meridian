@@ -63,7 +63,7 @@ describe('createBackground', () => {
     const running = background.fetchWatches()
     expect(background.status().fetch.state).toBe('checking')
     await running
-    // The vault's Mixtral of Experts records another year, so by its title and year it is another paper.
+    // The vault's Mixtral of Experts records 2026 and arXiv's 2024, more than a year apart, so it is another paper.
     expect(store.listInbox()).toHaveLength(before + 3)
     expect(store.listInbox().map((entry) => entry.title)).toEqual(expect.arrayContaining([
       'Tree Width in Batched Serving', 'Attention Kernels for Shared Prefixes', 'Mixtral of Experts',

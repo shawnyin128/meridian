@@ -622,7 +622,7 @@ export interface VaultStore {
    * would still deliver as new cards: the vault does not hold them and no stream delivered them
    * before, including a watch or project since deleted. Writes nothing.
    */
-  undelivered<P extends RemotePaper & { semanticId?: string }>(found: P[]): P[]
+  undelivered<P extends RemotePaper & { semanticId?: string; doi?: string }>(found: P[]): P[]
 
   /** Refreshes ranking/venue metadata for inbox history belonging to one watch. */
   updateInboxEntries(watchId: string, found: RemotePaper[]): number

@@ -171,6 +171,19 @@ describe('vault store', () => {
         expect(s.listInbox()).toEqual(expect.not.arrayContaining([expect.objectContaining({ title: 'Shared 2609.22002' })]))
       })
 
+      it(`${name}:两个项目以不同的标题送来同一个 DOI 的论文,只是一张卡片,两个项目下都列着它,DOI 存在记录上`, () => {
+        const s = make()
+        const one = s.createProject('DOI 一')
+        const two = s.createProject('DOI 二')
+        expect(s.addDiscoveryEntries(one, [Object.assign(discovered('', 'semantic-doi-a', 'A Title'), { doi: '10.1145/3600006.3613165' })])).toBe(1)
+        expect(s.addDiscoveryEntries(two, [Object.assign(discovered('', 'semantic-doi-b', 'Another Title'), { doi: 'https://doi.org/10.1145/3600006.3613165' })])).toBe(0)
+        const cards = s.listInbox({ kind: 'discovery' }).filter((entry) => entry.title === 'A Title' || entry.title === 'Another Title')
+        expect(cards.map((entry) => [entry.title, entry.also?.map((stream) => stream.id)])).toEqual([['A Title', [two]]])
+        const library = s.listPapers({ page: 1, size: 1 }).rows[0]!
+        s.updatePaper(library.id, { identifier: 'doi:10.1145/3600006.3613165' })
+        expect(s.listInbox({ kind: 'discovery' }).map((entry) => entry.title)).not.toContain('A Title')
+      })
+
       it(`${name}:删掉卡片最先来自的那条关注,卡片留在另一个找到它的范围下,只带那边的理由`, () => {
         const s = make()
         s.createWatch({ type: 'topic', name: 'first' })
@@ -225,6 +238,13 @@ describe('vault store', () => {
       expect(store.undelivered([discovered('2609.27001'), discovered('2609.27002')]).map((paper) => paper.id)).toEqual(['2609.27002'])
       expect(['inbox.json', 'discovery/delivered.json', 'state.json']
         .map((name) => readFileSync(join(vault, '.meridian', name), 'utf8'))).toEqual(before)
+    })
+
+    it('真实实现:送来的论文带 DOI 时,收件记录顶层存着它', () => {
+      const project = store.createProject('存 DOI')
+      store.addDiscoveryEntries(project, [Object.assign(discovered('2609.21201'), { doi: '10.1145/3600006.3613166' })])
+      expect((JSON.parse(readFileSync(join(vault, '.meridian', 'inbox.json'), 'utf8')) as Record<string, unknown>[])
+        .find((entry) => entry['arxiv'] === '2609.21201')).toMatchObject({ doi: '10.1145/3600006.3613166' })
     })
 
     it('真实实现:送过的论文记在 .meridian/discovery/delivered.json,删掉关注、重开库之后也不再送', () => {

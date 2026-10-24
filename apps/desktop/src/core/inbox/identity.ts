@@ -26,6 +26,11 @@ const arxivKey = (id: string): string | null => {
   return bare === '' ? null : bare
 }
 
+/** Returns `{ doi }` when `paper` carries a DOI, else nothing, to spread into a record or an identity. */
+export const doiField = (paper: { title: string; doi?: string | undefined }): { doi?: string } => (
+  paper.doi === undefined ? {} : { doi: paper.doi }
+)
+
 /**
  * Returns the identity of a paper from what a record holds: any of its arXiv id, DOI and Semantic
  * Scholar id, its title, and its year, or else the date it was submitted, as `YYYY-MM-DD`.
