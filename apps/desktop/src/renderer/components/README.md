@@ -30,7 +30,8 @@ Current shared contracts:
   candidate row: menu item anatomy, lit only as the active row, and the row under the pointer is it.
 - `ActionMenu` and `ActionPopover`: the two shared interactive-surface shells. Menus own action and
   radio-item semantics, and radio and checkbox items draw the one checked mark themselves; popovers
-  retain normal focus for calendars and configuration forms. Routes provide triggers, contents, and
+  retain normal focus for calendars, configuration forms and the reader's selection toolbar, which a
+  popover places against a box it measures (`anchorBox`). Routes provide triggers, contents, and
   capability flags instead of assembling Radix roots and portals. Every menu and popover keeps
   `COLLISION_PADDING` from the window edge.
 - `ContextMenu`: the shared right-click menu of one element, opened by the pointer or by the
@@ -70,6 +71,8 @@ Current shared contracts:
   picks a value, on its own or inside a toolbar. A paper row, the row-actions slot and the rating stars use them.
 - `ChipToggles`: a multi-select of short values as chips that each turn on or off, with the same one Tab
   stop and arrow keys. A choice among many values is a menu picker, not a segment per value.
+- `Swatches`: the one row of colour circles that picks a colour, the theme editor's presets and the reader's
+  highlight colours. A picked circle wears the neutral picked ring, never the accent.
 - `Switch`: a binary setting that takes effect as soon as it flips. Its name stays the same in both states;
   a button whose label flips between two actions is not used for a setting.
 - `Notice`: the app's one notice. AppShell places it on the canvas and screens show it through

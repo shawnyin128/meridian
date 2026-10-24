@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest'
 import type { PaperHighlightRect } from '../../shared/contract.js'
 import {
   highlightLines, highlightShape, normalizedHighlightRects, selectedLinesByPage, selectedTextRanges, selectionBox,
+  uncoveredLines,
 } from './highlight-geometry.js'
 
 /** A US Letter page at the reader's fit scale (830 / 612), as the page box's client rectangle. */
@@ -124,6 +125,17 @@ describe('highlight geometry', () => {
     expect(lines[0]!.width).toBeCloseTo(0.3987, 4)
     expect(lines[0]!.height).toBeCloseTo(0.0156, 4)
     expect(lines[1]).toEqual(stored[4])
+  })
+
+  it('后来的高亮盖住的那一截从先前的高亮里剪掉,同一行上可能剪成两段,被盖满的行不剩;下一行不受上一行的影响', () => {
+    const line = (x: number, width: number, y: number) => ({ x, y, width, height: 1 / 64 })
+    // The second line's box overlaps the first one's a little, as tightly set lines do.
+    const older = [line(0.125, 0.5, 0.25), line(0.125, 0.25, 0.25 + 7 / 512), line(0.5, 0.125, 0.5)]
+    const newer = [line(0.25, 0.125, 0.25), line(0.375, 0.5, 0.5)]
+    expect(uncoveredLines(older, newer)).toEqual([
+      line(0.125, 0.125, 0.25), line(0.375, 0.25, 0.25), line(0.125, 0.25, 0.25 + 7 / 512),
+    ])
+    expect(uncoveredLines(older, [])).toEqual(older)
   })
 
   it('高亮的填色每行一个矩形，批注的底线每行一条，沿着同一行的底边', () => {

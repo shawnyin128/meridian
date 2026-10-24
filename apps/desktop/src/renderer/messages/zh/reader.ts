@@ -33,6 +33,7 @@ export const reader = {
   },
   selection: {
     highlight: '高亮',
+    colours: { yellow: '黄色', green: '绿色', blue: '蓝色', pink: '粉色' },
     note: '批注',
     askAi: '问 AI',
   },

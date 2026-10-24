@@ -134,6 +134,17 @@ export const IconNorthStar = () => (
   </Icon>
 )
 
+/** A chat's speech bubble, the glyph of the sidebar's chat rows and of the mark that asks the paper chat. */
+export const CHAT_BUBBLE_PATH = 'M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z'
+
+/** Asks the paper chat about the text selected in the reader: the chat bubble with a small sparkle in it. */
+export const IconAskAi = () => (
+  <Icon>
+    <path d={CHAT_BUBBLE_PATH} />
+    <path d="M12 5l1.3 3.7 3.7 1.3-3.7 1.3-1.3 3.7-1.3-3.7-3.7-1.3 3.7-1.3z" fill="currentColor" stroke="none" />
+  </Icon>
+)
+
 /** The plus sign's path, shared by the bare IconPlus and anything drawing it in the generic Icon shell. */
 export const PLUS_PATH = 'M12 5v14M5 12h14'
 

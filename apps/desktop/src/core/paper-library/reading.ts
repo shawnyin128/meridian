@@ -1,6 +1,7 @@
 import type {
   PaperHighlight, PaperNote, PaperReading, ReadingMutation,
 } from '../../shared/contract.js'
+import { sharesText } from '../../shared/highlight-overlap.js'
 import { CallError } from '../call-error.js'
 
 /** Reading state for a paper with no reading interactions yet. */
@@ -11,7 +12,8 @@ export function emptyPaperReading(paperId: string): PaperReading {
 /**
  * Applies one semantic reading command. IDs and dates are supplied by Core,
  * never trusted from the renderer. The returned object is detached from the
- * previous snapshot so persistence can atomically replace it.
+ * previous snapshot so persistence can atomically replace it. A highlight.add
+ * over text a highlight on the same page already covers is refused.
  */
 export function applyReadingMutation(
   held: PaperReading,
@@ -21,6 +23,8 @@ export function applyReadingMutation(
 ): PaperReading {
   const reading = structuredClone(held)
   if (mutation.kind === 'highlight.add') {
+    const covering = reading.highlights.find((item) => item.page === mutation.page && sharesText(item.rects, mutation.rects))
+    if (covering !== undefined) throw new CallError('refused', `这段文字已有高亮：${covering.id}`)
     const highlight: PaperHighlight = {
       id: nextId('highlight'),
       page: mutation.page,
