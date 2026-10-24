@@ -194,6 +194,10 @@ describe('Reader', () => {
       return kept
     }
     const frame = () => act(async () => { await new Promise((done) => requestAnimationFrame(() => done(undefined))) })
+    /** A click outside the toolbar; Radix dismisses on the click that follows the press. */
+    const clickOutside = () => act(async () => {
+      for (const type of ['pointerdown', 'click']) document.body.dispatchEvent(new MouseEvent(type, { bubbles: true }))
+    })
 
     it('用共享的浮层面,贴着选中的文字放', async () => {
       await render()
@@ -343,13 +347,41 @@ describe('Reader', () => {
       expect(tools()).toBeNull()
       await select()
       await click(control('Green'))
-      // Radix dismisses on the click that follows a press outside.
-      await act(async () => {
-        for (const type of ['pointerdown', 'click']) document.body.dispatchEvent(new MouseEvent(type, { bubbles: true }))
-      })
+      await clickOutside()
       expect(tools()).toBeNull()
       expect(shell.writes.map((write) => write.kind)).toEqual(['highlight.add', 'highlight.add'])
       expect(highlights()).toEqual([{ color: 'yellow', note: '' }, { color: 'green', note: '' }])
+    })
+
+    it('点工具条外面时批注框里写了字,就像 Enter 一样存下:没选颜色划成带它的黄色高亮,选了颜色记到那段高亮上', async () => {
+      await render()
+      await select()
+      await write('点外面也留着')
+      await clickOutside()
+      expect(tools()).toBeNull()
+      expect(shell.writes).toEqual([{ ...ADDED, color: 'yellow' }, { kind: 'highlight.update', id: 'highlight-1', note: '点外面也留着' }])
+
+      await select()
+      await click(control('Blue'))
+      await write('选了颜色再写')
+      await clickOutside()
+      expect(shell.writes.slice(2)).toEqual([
+        { ...ADDED, color: 'blue' }, { kind: 'highlight.update', id: 'highlight-2', note: '选了颜色再写' },
+      ])
+      expect(highlights()).toEqual([{ color: 'yellow', note: '点外面也留着' }, { color: 'blue', note: '选了颜色再写' }])
+    })
+
+    it('页面滚动收起或问 AI 时,批注框里写的字也存下', async () => {
+      await render()
+      await select()
+      await write('滚走之前写的')
+      await act(async () => { host.querySelector('.pdfwrap')!.dispatchEvent(new Event('scroll')) })
+      expect(tools()).toBeNull()
+      await select()
+      await write('问之前写的')
+      await click(control('Ask AI'))
+      expect(host.querySelector('.back')!.getAttribute('data-asked')).toBe('Speculative decoding')
+      expect(highlights()).toEqual([{ color: 'yellow', note: '滚走之前写的' }, { color: 'yellow', note: '问之前写的' }])
     })
 
     it('点问 AI 的标记,和原来的「问 AI」一样把选中的话交给论文对话并收起', async () => {

@@ -8,6 +8,7 @@ import { papers } from '../ipc.js'
 import { sendsMessage } from '../lib/chat.js'
 import { errorLabel } from '../lib/failure-label.js'
 import { useMessages } from '../messages/useMessages.js'
+import { useOnLeave } from '../hooks/useOnLeave.js'
 import {
   useCrumbTail, useJump, useNotice, useVaultRevision, type CrumbSeg, type ScreenKey, type JumpAnchor,
 } from '../shell/AppShell.js'
@@ -212,6 +213,8 @@ export function Reader() {
   const [zoom, setZoom] = useState(1)
   const [currentPage, setCurrentPage] = useState(1)
   const [pending, setPending] = useState<PendingHighlight | null>(null)
+  // What the selection toolbar's note box holds.
+  const [noteDraft, setNoteDraft] = useState('')
   const [sideTab, setSideTab] = useState<ReaderSideTab | null>(null)
   const [focusHighlightId, setFocusHighlightId] = useState<string | null>(null)
   const [chatPrompt, setChatPrompt] = useState<PaperChatPrompt | null>(null)
@@ -220,6 +223,9 @@ export function Reader() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const scroller = useRef<HTMLDivElement>(null)
+  const tools = useRef<HTMLDivElement>(null)
+  // Closes the selection toolbar as leaving it does; set once `leaveTools` is defined below.
+  const leave = useRef(() => {})
   const selectionAnchor = useRef<AnchorBox | null>(null)
   selectionAnchor.current = pending?.box ?? null
   const sheet = useRef<HTMLDivElement>(null)
@@ -570,7 +576,7 @@ export function Reader() {
    * only becomes the zoom they are laid out at.
    */
   const zoomTo = useCallback((target: number, point: { x: number; y: number }) => {
-    setPending(null)
+    leave.current()
     shownZoom.current = clampZoom(target)
     if (slots.current.size === 0) {
       zoomRef.current = shownZoom.current
@@ -698,6 +704,7 @@ export function Reader() {
     if (pagebox === null) return
     const rects = selectedLinesByPage(range).get(pagebox) ?? []
     const quote = selection.toString().replace(/\s+/g, ' ').trim()
+    setNoteDraft('')
     setPending(quote === '' || rects.length === 0 ? null : {
       page: Number(pagebox.dataset.page), quote, rects,
       box: { getBoundingClientRect: () => selectionBox(pagebox.getBoundingClientRect(), rects) },
@@ -709,7 +716,7 @@ export function Reader() {
   useEffect(() => {
     const view = scroller.current
     if (pending === null || view === null) return
-    const close = () => setPending(null)
+    const close = () => leave.current()
     view.addEventListener('scroll', close, { passive: true })
     return () => view.removeEventListener('scroll', close)
   }, [pending])
@@ -744,7 +751,7 @@ export function Reader() {
    * moved to another selection meanwhile.
    */
   const keepMade = (selection: PendingHighlight, made: PaperHighlight) =>
-    setPending((held) => (held === selection ? { ...selection, made } : held))
+    setPending((held) => (held?.box === selection.box ? { ...held, made } : held))
 
   /** Writes the toolbar's `selection` as a new highlight in `color`; returns it, or null when Core refused. */
   const highlightSelection = async (selection: PendingHighlight, color: PaperHighlight['color']) => {
@@ -782,14 +789,29 @@ export function Reader() {
     const made = selection.made ?? await highlightSelection(selection, 'yellow')
     if (made === null) return
     if (selection.made === null) keepMade(selection, made)
-    if (note === '' || await mutateReading({ kind: 'highlight.update', id: made.id, note }) !== null) setPending(null)
+    if (note === '' || await mutateReading({ kind: 'highlight.update', id: made.id, note }) !== null) {
+      setPending((held) => (held?.box === selection.box ? null : held))
+    }
   }
+
+  /**
+   * Closes the selection toolbar the way a draft is left: what its note box holds is saved as Enter
+   * saves it. Escape is the one way to close the toolbar that drops the typed text.
+   */
+  const leaveTools = () => {
+    if (pending === null) return
+    const note = noteDraft.trim()
+    setPending(null)
+    if (note !== '') void saveNote(note)
+  }
+  leave.current = leaveTools
+  useOnLeave(tools, leaveTools)
 
   const askAi = () => {
     if (pending === null) return
     setChatPrompt({ seq: Date.now(), quote: pending.quote })
     window.getSelection()?.removeAllRanges()
-    setPending(null)
+    leaveTools()
   }
 
   const jumpToPage = (page: number) => {
@@ -825,10 +847,12 @@ export function Reader() {
             contentProps={{
               // Opening leaves focus where it is, so the selection can still be copied.
               onOpenAutoFocus: (event) => event.preventDefault(),
+              // A press outside or focus leaving goes through useOnLeave, which saves the note first.
+              onInteractOutside: (event) => event.preventDefault(),
             }}
           >
             {pending === null ? null : (
-              <>
+              <div ref={tools} className="selection-tools-body">
                 <Toolbar>
                   <div className="selection-tools-row">
                     <IconButton label={m.reader.selection.askAi} size="nested" onClick={askAi}><IconAskAi /></IconButton>
@@ -842,14 +866,15 @@ export function Reader() {
                   </div>
                 </Toolbar>
                 <FormTextarea
-                  aria-label={m.reader.selection.note} rows={1}
+                  aria-label={m.reader.selection.note} rows={1} value={noteDraft}
+                  onChange={(event) => setNoteDraft(event.target.value)}
                   onKeyDown={(event) => {
                     if (!sendsMessage(event.nativeEvent)) return
                     event.preventDefault()
-                    void saveNote(event.currentTarget.value.trim())
+                    void saveNote(noteDraft.trim())
                   }}
                 />
-              </>
+              </div>
             )}
           </ActionPopover>
 
