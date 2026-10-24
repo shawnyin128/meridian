@@ -44,7 +44,4 @@
 .project-plan .ddlrow.flash{animation:plan-row-flash var(--t-flash) var(--e-inout) 2}
 .project-plan .task-row[draggable]{cursor:var(--cursor-draggable)}
 .project-plan .task-row[draggable]:active,.project-plan .task-row.dragging{cursor:var(--cursor-dragging)}
-.project-plan .task-row.dragging{opacity:.4}
-.project-plan .task-row.drag-over-before{box-shadow:0 -2px 0 0 var(--ink)}
-.project-plan .task-row.drag-over-after{box-shadow:0 2px 0 0 var(--ink)}
 .project-plan .row-actions{margin-left:var(--sp-2)}
