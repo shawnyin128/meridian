@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import type { Page } from '@playwright/test'
-import { expect, test, type MeridianWindow } from './app.js'
+import { belowHeader, expect, test, type MeridianWindow } from './app.js'
 
 /** Screens stay mounted once visited, so selectors every screen has, such as items, are scoped to the visible one. */
 const shown = (win: Page, sel: string) => win.locator(`.screenslot:not([hidden]) ${sel}`)
@@ -102,4 +102,11 @@ test('五个筛选档各自的条数与按来源分档的计数一致,筛过的�
     await expect(shown(win, '.fitem')).toHaveCount(kept(source).length)
     await expect(shown(win, '.day-heading')).toHaveCount(new Set(kept(source).map((e) => e.day)).size)
   }
+})
+
+test('动态的第一项和别的屏的第一项一样，从屏头下同一处开始', async ({ win }) => {
+  await win.locator('[data-desk="changelog"]').click()
+  const elsewhere = await belowHeader(shown(win, '.desk-body > :first-child'))
+  await win.locator('[data-desk="feed"]').click()
+  expect(await belowHeader(shown(win, '.desk-body > .msgs > :first-child'))).toBeCloseTo(elsewhere, 0)
 })

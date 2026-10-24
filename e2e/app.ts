@@ -154,6 +154,12 @@ export async function expectWholeInRail(rail: Locator, editor: Locator): Promise
   expect(edges.scrollLeft).toBe(0)
 }
 
+/** How far below its screen's header the top of `content` lies, in px. */
+export function belowHeader(content: Locator): Promise<number> {
+  return content.evaluate((el) => el.getBoundingClientRect().top
+    - el.closest('.desk')!.querySelector('.desk-head')!.getBoundingClientRect().bottom)
+}
+
 /** Finishes every running transition and animation on the element, so computed styles read next are final. */
 export function settle(locator: Locator): Promise<void> {
   return locator.evaluate((el) => { el.getAnimations().forEach((a) => { a.finish() }) })
