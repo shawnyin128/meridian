@@ -1363,11 +1363,11 @@ export const WatchDeleteParamsSchema = z.object({ id: z.string() }).strict()
  * UTC midnight for the vault date and starts retention. `restorable` is false
  * when the original destination is missing, such as an attachment whose project
  * remains deleted, or taken, such as a paper whose page's place another page
- * holds.
+ * holds, or a paper chat whose paper has started another chat.
  */
 export const TrashEntrySchema = z.object({
   id: z.string(),
-  kind: z.enum(['inbox', 'later', 'paper', 'attachment', 'project', 'idea']),
+  kind: z.enum(['inbox', 'later', 'paper', 'attachment', 'project', 'idea', 'chat']),
   title: z.string(),
   deletedAt: z.number().int(),
   restorable: z.boolean(),
@@ -2143,6 +2143,9 @@ export const ChatSetArchivedParamsSchema = z.object({
   archived: z.boolean(),
 }).strict()
 
+/** Moves a chat into the trash; a reply it is generating stops first. */
+export const ChatDeleteParamsSchema = z.object({ id: z.string() }).strict()
+
 /** Where in its target a search hit lands: a page with a highlight or note on it, or a project's task. */
 export const SearchAnchorSchema = z.object({
   page: z.number().int().positive().optional(),
@@ -2667,6 +2670,7 @@ export const CONTRACT_METHODS = [
   'idea.reorder',
   'chat.recordAction',
   'chat.setArchived',
+  'chat.delete',
   'search.query',
   'jobs.status',
 ] as const

@@ -2044,6 +2044,37 @@ describe('fixture store', () => {
     expect(() => store.setChatArchived('nope', true)).toThrow()
   })
 
+  it('删掉的会话进垃圾桶，恢复回到原来的位置，归档的仍是归档的；论文的新会话有了消息就占着位置，那一条恢复不了', () => {
+    store.deleteChat('widthknee')
+    store.deleteChat('amortize')
+    expect(store.listChats()).toEqual([])
+    expect(store.listTrash().map(({ kind, title, restorable }) => ({ kind, title, restorable }))).toEqual([
+      { kind: 'chat', title: '摊薄的前提是共享前缀吗', restorable: true },
+      { kind: 'chat', title: '宽树在我们集群上还成立吗', restorable: true },
+    ])
+    for (const entry of store.listTrash().reverse()) store.restoreTrash(entry.id)
+    expect(store.listChats()).toEqual([
+      { id: 'amortize', title: '摊薄的前提是共享前缀吗', archived: false, messageCount: 2 },
+      { id: 'widthknee', title: '宽树在我们集群上还成立吗', archived: true, messageCount: 2 },
+    ])
+    expect(() => store.deleteChat('nope')).toThrow(/会话不存在/)
+
+    const paper = store.listPapers({ page: 1, size: 1 }).rows[0]!
+    const reading = store.chatForPaper(paper.id)
+    const said = { role: 'you' as const, runs: [{ kind: 'text' as const, text: '这篇论文的假设是什么?' }], actions: [] }
+    store.appendChatMessages(reading.id, [said])
+    store.deleteChat(reading.id)
+    const placeholder = store.chatForPaper(paper.id).id
+    store.restoreTrash(store.listTrash()[0]!.id)
+    expect(store.chatForPaper(paper.id)).toEqual({ ...reading, messageCount: 1 })
+    expect(() => store.chatSession(placeholder)).toThrow(/会话不存在/)
+    store.deleteChat(reading.id)
+    store.appendChatMessages(store.chatForPaper(paper.id).id, [said])
+    const held = store.listTrash()[0]!
+    expect(held.restorable).toBe(false)
+    expect(() => store.restoreTrash(held.id)).toThrow(/新的对话/)
+  })
+
   it('取出来的消息与会话是深拷贝,改它不动库', () => {
     const messages = store.chatMessages('amortize')
     messages[0]!.runs[0]!.text = '改过了'
@@ -2312,6 +2343,7 @@ describe('fixture store', () => {
         return store.recordAction(session.id, store.chatMessages(session.id).at(-1)!.id)
       },
       'chat.setArchived': () => store.setChatArchived('amortize', true),
+      'chat.delete': () => store.deleteChat(store.createChat('待删除', true).id),
       'papers.source': () => store.paperSource(WITH_SOURCE),
       'papers.import': () => store.importPaper('uploaded.pdf', Uint8Array.from(Buffer.from('%PDF-1.7\n%%EOF'))),
       'papers.reading': () => store.paperReading(WITH_SOURCE),

@@ -7,6 +7,7 @@ import {
   ChatAppendParamsSchema,
   ChatCancelParamsSchema,
   ChatCreateParamsSchema,
+  ChatDeleteParamsSchema,
   ChatForPaperParamsSchema,
   ChatMessagesParamsSchema,
   ChatSendParamsSchema,
@@ -845,6 +846,7 @@ registerHandler('chat.setArchived', (params) => {
   const { id, archived } = ChatSetArchivedParamsSchema.parse(params)
   return store.setChatArchived(id, archived)
 })
+registerHandler('chat.delete', (params) => chatService.delete(ChatDeleteParamsSchema.parse(params).id))
 registerHandler('search.query', (params) => store.search(SearchParamsSchema.parse(params).query))
 registerHandler('jobs.status', (params) => {
   EmptyParamsSchema.parse(params)

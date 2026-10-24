@@ -26,12 +26,12 @@ import './Trash.css'
 
 /**
  * The order of the groups. The demo's order array was Inbox, papers, projects, with attachments
- * outside it, after the ordered kinds; read-later items follow Inbox, ideas follow projects, and
- * attachments stay last.
+ * outside it, after the ordered kinds; read-later items follow Inbox, ideas follow projects, chats
+ * follow ideas, and attachments stay last.
  */
-const KINDS: TrashEntry['kind'][] = ['inbox', 'later', 'paper', 'project', 'idea', 'attachment']
-/** The kinds whose title is a paper title. */
-const PAPER_KINDS: ReadonlySet<TrashEntry['kind']> = new Set(['inbox', 'later', 'paper'])
+const KINDS: TrashEntry['kind'][] = ['inbox', 'later', 'paper', 'project', 'idea', 'chat', 'attachment']
+/** The kinds whose title is, or for a chat can be, a paper title. */
+const PAPER_KINDS: ReadonlySet<TrashEntry['kind']> = new Set(['inbox', 'later', 'paper', 'chat'])
 const plainOf = (entry: TrashEntry): string => (PAPER_KINDS.has(entry.kind) ? plainTitle(entry.title) : entry.title)
 
 /**
@@ -124,7 +124,9 @@ export function Trash() {
                   <StructuredRow className="trow" key={entry.id}>
                     <FadeText className="tt2">{PAPER_KINDS.has(entry.kind) ? <PaperText text={entry.title} /> : entry.title}</FadeText>
                     <span className="tm2">{m.trash.autoClear(daysLeft(entry.deletedAt, today))}</span>
-                    {entry.restorable ? null : <Tag>{entry.kind === 'paper' ? m.trash.paperTaken : m.trash.projectGone}</Tag>}
+                    {entry.restorable ? null : (
+                      <Tag>{entry.kind === 'paper' ? m.trash.paperTaken : entry.kind === 'chat' ? m.trash.chatTaken : m.trash.projectGone}</Tag>
+                    )}
                     <RowActions>
                       <IconButton
                         label={m.common.restore} size="nested" disabled={!entry.restorable} onClick={() => restore(entry)}

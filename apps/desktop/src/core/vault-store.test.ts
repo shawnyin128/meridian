@@ -1982,6 +1982,114 @@ describe('vault store on the aggregation layout', () => {
     })
   })
 
+  describe('删除对话', () => {
+    const said = (text: string) => ({ role: 'you' as const, runs: [{ kind: 'text' as const, text }], actions: [] })
+    /** A paper of the example vault. */
+    const PAPER = '2404.00456'
+    const trashFile = () => readFileSync(join(vault, '.meridian', 'trash.json'), 'utf8')
+
+    it('删掉的对话进垃圾桶：对话列表、搜索和反向链接里都没有它，从它存下的想法还在；恢复回到原来的位置，消息一条不少，重开库还在', () => {
+      const older = store.createChat('更早的对话', true)
+      const asked = store.createChat('问 PTQ 的边界', true)
+      const newer = store.createChat('更新的对话', true)
+      store.appendChatMessages(asked.id, [said('@PTQ 的边界在哪')])
+      const idea = store.createIdea(asked.id, '旋转与 KV 量化叠加', '先旋转再按 token 量化')
+      const messages = store.chatMessages(asked.id)
+      const order = [newer.id, asked.id, older.id]
+      expect(store.listChats().map((chat) => chat.id)).toEqual(order)
+      expect(store.search('问 PTQ').filter((hit) => hit.kind === 'chat').map((hit) => hit.target)).toEqual([asked.id])
+      expect(store.wikiBacklinks('topics/ptq').filter((link) => link.kind === 'chat').map((link) => link.id)).toEqual([asked.id])
+
+      store.deleteChat(asked.id)
+
+      expect(store.listChats().map((chat) => chat.id)).toEqual([newer.id, older.id])
+      expect(() => store.chatMessages(asked.id)).toThrow(expect.objectContaining({ reason: 'not-found' }))
+      expect(store.search('问 PTQ').filter((hit) => hit.kind === 'chat')).toEqual([])
+      expect(store.wikiBacklinks('topics/ptq').filter((link) => link.kind === 'chat')).toEqual([])
+      expect(store.listIdeas().find((held) => held.id === idea.id)!.source).toEqual({ chatId: asked.id, chatTitle: '问 PTQ 的边界' })
+      const deletedAt = Date.parse(`${store.today()}T00:00:00Z`)
+      const entry = store.listTrash()[0]!
+      expect(entry).toEqual({ id: entry.id, kind: 'chat', title: '问 PTQ 的边界', deletedAt, restorable: true })
+      expect(JSON.parse(trashFile())).toEqual([{
+        id: entry.id, kind: 'chat', title: '问 PTQ 的边界', deletedAt, position: 1,
+        chat: { id: asked.id, title: '问 PTQ 的边界', named: true, archived: false, messages },
+      }])
+      expect(() => store.deleteChat(asked.id)).toThrow(expect.objectContaining({ reason: 'not-found' }))
+
+      store.restoreTrash(entry.id)
+
+      expect(store.listChats().map((chat) => chat.id)).toEqual(order)
+      expect(store.chatMessages(asked.id)).toEqual(messages)
+      expect(store.listTrash()).toEqual([])
+      const reopened = createVaultStore(vault)
+      expect(reopened.listChats().map((chat) => chat.id)).toEqual(order)
+      expect(reopened.chatMessages(asked.id)).toEqual(messages)
+    })
+
+    it('归档的对话删掉再恢复，回来还是归档的', () => {
+      const old = store.createChat('旧的 MoE 讨论', true)
+      store.appendChatMessages(old.id, [said('容量因子取多少合适')])
+      store.setChatArchived(old.id, true)
+
+      store.deleteChat(old.id)
+      expect(store.listChats().map((chat) => chat.id)).not.toContain(old.id)
+      store.restoreTrash(store.listTrash()[0]!.id)
+
+      expect(createVaultStore(vault).listChats().find((chat) => chat.id === old.id))
+        .toEqual({ id: old.id, title: '旧的 MoE 讨论', archived: true, messageCount: 1 })
+    })
+
+    it('论文对话删掉再恢复回到它的论文：这期间论文开出的空对话让位；新对话有了消息就占着位置，那一条恢复不了、留在垃圾桶里', () => {
+      const reading = store.chatForPaper(PAPER)
+      store.appendChatMessages(reading.id, [said('草稿头为什么只要一层')])
+      store.deleteChat(reading.id)
+      const fresh = store.chatForPaper(PAPER)
+      expect(fresh).toMatchObject({ messageCount: 0, paperId: PAPER })
+      expect(fresh.id).not.toBe(reading.id)
+      const entry = store.listTrash()[0]!
+      expect(entry.restorable).toBe(true)
+
+      store.restoreTrash(entry.id)
+      expect(store.chatForPaper(PAPER)).toEqual({ ...reading, messageCount: 1 })
+      expect(() => store.chatSession(fresh.id)).toThrow(expect.objectContaining({ reason: 'not-found' }))
+
+      store.deleteChat(reading.id)
+      const taken = store.chatForPaper(PAPER)
+      store.appendChatMessages(taken.id, [said('换个问法')])
+      const held = store.listTrash()[0]!
+      expect(held.restorable).toBe(false)
+      expect(() => store.restoreTrash(held.id)).toThrow(expect.objectContaining({ reason: 'refused' }))
+      expect(store.listTrash().map((item) => item.id)).toContain(held.id)
+      expect(store.chatForPaper(PAPER)).toMatchObject({ id: taken.id, messageCount: 1 })
+    })
+
+    it('彻底删除、过了保留期和清空垃圾桶都把删掉的对话连同消息一起清掉，再也恢复不了', () => {
+      let day = '2026-09-10'
+      const dated = createVaultStore(vault, () => day)
+      const deleted = (title: string) => {
+        const chat = dated.createChat(title, true)
+        dated.appendChatMessages(chat.id, [said(`${title}的消息`)])
+        dated.deleteChat(chat.id)
+        return dated.listTrash()[0]!.id
+      }
+      const purged = deleted('彻底删的')
+      const expired = deleted('过期的')
+      dated.purgeTrash(purged)
+      expect(trashFile()).not.toContain('彻底删的的消息')
+      day = '2026-09-12'
+      const cleared = deleted('清空的')
+      day = '2026-09-17'
+      expect(dated.listTrash().map((item) => item.id)).toEqual([cleared])
+      expect(trashFile()).not.toContain('过期的的消息')
+      dated.clearTrash()
+      expect(trashFile()).not.toContain('清空的的消息')
+      for (const id of [purged, expired, cleared]) {
+        expect(() => dated.restoreTrash(id)).toThrow(expect.objectContaining({ reason: 'not-found' }))
+      }
+      expect(createVaultStore(vault, () => day).listChats()).toEqual([])
+    })
+  })
+
   it('记入科研记录:写进项目、把按钮记成已记,再记一次就抛,重开库仍是已记', () => {
     store.createProject('记录目标')
     const projectId = store.listProjects().find((project) => project.name === '记录目标')!.id

@@ -1064,6 +1064,10 @@ export function createVaultStore(
     if (existsSync(join(root, item.page))) throw new CallError('refused', `原来的位置已经被另一页占了，恢复会盖掉它：${item.page}`)
   }
 
+  /** The chat the paper of the paper chat `item` holds has now, or undefined when it has none or `item` holds an ordinary chat. */
+  const paperChatNow = (item: Extract<TrashRecord, { kind: 'chat' }>): ChatRecord | undefined =>
+    (item.chat.paperId === undefined ? undefined : chats.find((held) => held.paperId === item.chat.paperId))
+
   /** Adds a record to trash with the most recently deleted item first. */
   const toTrash = (item: TrashRecord): void => {
     trash = save('trash', [item, ...trash])
@@ -2401,13 +2405,15 @@ export function createVaultStore(
 
     listTrash() {
       dropExpired()
-      // An attachment cannot return after its project is deleted, nor a paper while another page stands where its page goes back.
+      // An attachment cannot return after its project is deleted, nor a paper while another page stands where its page goes back,
+      // nor a paper chat while its paper's chat holds messages.
       return trash.map((item) => ({
         id: item.id,
         kind: item.kind,
         title: item.title,
         deletedAt: item.deletedAt,
         restorable: item.kind === 'attachment' ? projectById.has(item.projectId)
+          : item.kind === 'chat' ? (paperChatNow(item)?.messages.length ?? 0) === 0
           : item.kind !== 'paper' || !existsSync(join(root, item.page)),
       }))
     },
@@ -2450,6 +2456,11 @@ export function createVaultStore(
         later = save('later', [
           ...later.slice(0, item.position), structuredClone(item.later), ...later.slice(item.position),
         ])
+      } else if (item.kind === 'chat') {
+        const held = paperChatNow(item)
+        if ((held?.messages.length ?? 0) > 0) throw new CallError('refused', `这篇论文已经有了新的对话：${item.title}`)
+        const rest = chats.filter((chat) => chat !== held)
+        chats = save('chats', [...rest.slice(0, item.position), structuredClone(item.chat), ...rest.slice(item.position)])
       } else if (item.kind === 'idea') {
         ideas = save('ideas', [structuredClone(item.idea), ...ideas])
         if (item.idea.project !== undefined) {
@@ -2638,6 +2649,13 @@ export function createVaultStore(
       const chat = chatOf(id)
       chats = save('chats', chats.map((c) => (c === chat ? { ...c, archived } : c)))
     },
+
+    deleteChat: atomic((id) => {
+      const chat = chatOf(id)
+      const position = chats.indexOf(chat)
+      chats = save('chats', chats.filter((held) => held !== chat))
+      toTrash({ id: nextId('trash'), kind: 'chat', title: chat.title, deletedAt: nowMs(), chat, position })
+    }),
 
     search(query) {
       return searchHits({
