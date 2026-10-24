@@ -326,7 +326,7 @@ describe('Inbox', () => {
     await act(async () => { again.unmount() })
   })
 
-  it('发现的卡片也能忽略,忽略和关注卡片在同一个位置;提示里的撤销把它放回;分组标题上没有「全部忽略」', async () => {
+  it('发现的卡片也能忽略,忽略和关注卡片在同一个位置;提示里的撤销把它放回;发现的分组和关注的一样有「全部忽略」', async () => {
     const entry = (kind: InboxEntry['kind']): InboxEntry => ({
       id: kind, kind, watch: kind === 'watch' ? 'w1' : '', project: kind === 'watch' ? '' : 'p1',
       source: kind === 'watch' ? '主题 · w1' : '项目 · 项目一', title: `Paper ${kind}`, authors: 'Ada', venue: 'ICLR',
@@ -344,7 +344,7 @@ describe('Inbox', () => {
     const root = createRoot(host)
     await act(async () => { root.render(<MessagesProvider><Inbox /></MessagesProvider>) })
     expect(lastAction()).toBe('忽略')
-    expect(host.querySelector('.collapsible-group-actions')).toBeNull()
+    expect([...host.querySelectorAll('.collapsible-group-actions .btn')].map((button) => button.textContent)).toEqual(['全部忽略'])
     await act(async () => { host.querySelector<HTMLButtonElement>('[aria-label="忽略"]')!.click() })
     expect(host.querySelector('.paper-card')!.classList.contains('is-leaving')).toBe(true)
     await act(async () => { await new Promise((done) => { setTimeout(done, 300) }) })
