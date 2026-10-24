@@ -6,8 +6,9 @@ import type { PaperReading, PaperRow } from '../../../shared/contract.js'
 import { MessagesProvider } from '../../messages/useMessages.js'
 import { LANGUAGE_STORAGE_KEY } from '../../shell/language.js'
 
+const pendingPaperWiki = vi.hoisted(() => vi.fn())
 vi.mock('../../ipc.js', () => ({
-  harness: { pendingPaperWiki: () => new Promise(() => {}), preparePaperWiki: vi.fn() },
+  harness: { pendingPaperWiki, preparePaperWiki: vi.fn() },
   papers: { update: vi.fn(), get: vi.fn() },
   project: { list: () => new Promise(() => {}), addPaper: vi.fn(), removePaper: vi.fn() },
 }))
@@ -19,6 +20,12 @@ vi.mock('../../shell/AppShell.js', () => ({
 }))
 
 const { ReaderSidePanel } = await import('./ReaderSidePanel.js')
+const { GenerationsContext } = await import('../../hooks/useGenerations.js')
+/** A shell in which Core is generating nothing. */
+const IDLE = {
+  running: () => false, run: async (work: Promise<unknown>) => { await work }, stop: vi.fn(),
+  wikiRunning: () => false, stopWiki: vi.fn(async () => {}),
+}
 type ReaderSideTab = import('./ReaderSidePanel.js').ReaderSideTab
 
 declare global {
@@ -64,6 +71,7 @@ describe('ReaderSidePanel', () => {
 
   beforeEach(() => {
     globalThis.IS_REACT_ACT_ENVIRONMENT = true
+    pendingPaperWiki.mockReset().mockReturnValue(new Promise(() => {}))
     window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'zh')
     document.body.innerHTML = ''
     host = document.createElement('div')
@@ -81,10 +89,12 @@ describe('ReaderSidePanel', () => {
     tab: ReaderSideTab | null, held: PaperReading, onSave = async () => true, paper: PaperRow | null = null,
   ) => act(() => root!.render(
     <MessagesProvider>
-      <ReaderSidePanel
-        tab={tab} onTab={vi.fn()} paper={paper} onPaper={vi.fn()} reading={held} currentPage={1}
-        saving={false} onMutate={onSave} onSaveRemark={onSave} onJump={vi.fn()} focusHighlightId={null}
-      />
+      <GenerationsContext.Provider value={IDLE}>
+        <ReaderSidePanel
+          tab={tab} onTab={vi.fn()} paper={paper} onPaper={vi.fn()} reading={held} currentPage={1}
+          saving={false} onMutate={onSave} onSaveRemark={onSave} onJump={vi.fn()} focusHighlightId={null}
+        />
+      </GenerationsContext.Provider>
     </MessagesProvider>,
   ))
   const field = (selector: string) => host.querySelector<HTMLTextAreaElement>(selector)!
@@ -181,6 +191,21 @@ describe('ReaderSidePanel', () => {
     await act(async () => { host.querySelector<HTMLButtonElement>('.remark-compose .btn')!.click() })
     show('remark', { ...saved, remark: '整篇的随想' })
     expect(field(REMARK).value).toBe('整篇的随想')
+  })
+
+  it('改过的 Wiki 提案草稿留在这篇论文上：切到别的面板再回来还在', async () => {
+    pendingPaperWiki.mockResolvedValue({
+      proposal: { id: 'proposal-1', targetId: PAPER.id, action: 'create', body: '# 草稿' },
+      generatedAt: '2026-09-17T11:00:00.000Z', stale: false,
+    })
+    const WIKI = '[aria-label="Wiki 提案内容"]'
+    show('wiki', PAPER_ONE, undefined, PAPER)
+    await act(async () => {})
+    type(WIKI, '# 我改过的草稿')
+    show('notes', PAPER_ONE, undefined, PAPER)
+    show('wiki', PAPER_ONE, undefined, PAPER)
+    await act(async () => {})
+    expect(field(WIKI).value).toBe('# 我改过的草稿')
   })
 
   it('回来时库里的文字已被改过：草稿照旧显示但标为保存被拒，接着打字也一样，保存不写入，Esc 丢掉草稿露出库里的文字', async () => {

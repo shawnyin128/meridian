@@ -487,7 +487,7 @@ registerHandler('harness.pendingPaperWiki', (params) =>
 registerHandler('harness.start', (params) =>
   harness.start(HarnessStartParamsSchema.parse(params)))
 registerHandler('harness.cancel', (params) =>
-  harness.cancel(HarnessCancelParamsSchema.parse(params).planId))
+  harness.cancel(HarnessCancelParamsSchema.parse(params).paperId))
 registerHandler('harness.modelSettings', (params) => {
   EmptyParamsSchema.parse(params)
   return harnessModel.settings()
@@ -857,7 +857,7 @@ registerHandler('chat.delete', (params) => chatService.delete(ChatDeleteParamsSc
 registerHandler('search.query', (params) => store.search(SearchParamsSchema.parse(params).query))
 registerHandler('jobs.status', (params) => {
   EmptyParamsSchema.parse(params)
-  const status = { ...background.status(), generating: chatService.generating() }
+  const status = { ...background.status(), generating: chatService.generating(), generatingWiki: harness.generating() }
   return showUiSamples ? withUiSampleUpload(status, Date.now()) : status
 })
 

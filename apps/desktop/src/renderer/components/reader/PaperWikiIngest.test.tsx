@@ -1,18 +1,34 @@
 // @vitest-environment jsdom
-import { act, type ReactNode } from 'react'
+import { act, useCallback, useState, type ReactNode } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type {
-  HarnessPaperWikiQuality, HarnessPlan, PaperReading, PaperRow,
+  HarnessPaperWikiQuality, HarnessPlan, JobsStatus, PaperReading, PaperRow,
 } from '../../../shared/contract.js'
 import { CallError } from '../../call-error.js'
+import type { EditDraft } from '../../hooks/useDrafts.js'
 import type { NoticeAction } from '../Notice.js'
 import { MessagesProvider } from '../../messages/useMessages.js'
 import { LANGUAGE_STORAGE_KEY } from '../../shell/language.js'
 
+/** The papers Core is running a Wiki proposal for, and how to make the shell ask Core for a new report now. */
+const core = vi.hoisted(() => ({ runs: new Set<string>(), poll: () => {} }))
+
+/** The shell's generations over Core's reported runs, as AppShell provides them. */
+function Shell({ children }: { children: ReactNode }) {
+  const reported = (): JobsStatus => ({
+    writes: 0, uploads: [], downloads: [], fetch: { state: 'idle', checkedAt: null, reason: null },
+    generating: [], generatingWiki: [...core.runs],
+  })
+  const [status, setStatus] = useState(reported)
+  const refresh = useCallback(() => setStatus(reported()), [])
+  core.poll = refresh
+  return <GenerationsContext.Provider value={useCoreGenerations(status, refresh)}>{children}</GenerationsContext.Provider>
+}
+
 const withMessages = (node: ReactNode) => {
   window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'zh')
-  return <MessagesProvider>{node}</MessagesProvider>
+  return <MessagesProvider><Shell>{node}</Shell></MessagesProvider>
 }
 
 const review = {
@@ -52,8 +68,15 @@ vi.mock('../../ipc.js', () => ({
   harness: {
     pendingPaperWiki: api.pending,
     preparePaperWiki: api.prepare,
-    start: api.start,
-    cancel: api.cancel,
+    // Core counts a paper's run from its start until it settles or is stopped.
+    start: (plan: HarnessPlan) => {
+      core.runs.add(plan.targetId)
+      return Promise.resolve(api.start(plan)).finally(() => core.runs.delete(plan.targetId))
+    },
+    cancel: (paperId: string) => {
+      core.runs.delete(paperId)
+      return api.cancel(paperId)
+    },
     applyPaperWiki: api.apply,
     rejectPaperWiki: api.reject,
   },
@@ -83,6 +106,13 @@ vi.mock('../HarnessAction.js', () => ({
 }))
 
 const { PaperWikiIngest } = await import('./PaperWikiIngest.js')
+const { GenerationsContext, useCoreGenerations } = await import('../../hooks/useGenerations.js')
+const { useDrafts } = await import('../../hooks/useDrafts.js')
+
+/** The panel with the drafts the reader's rail keeps for it. */
+function Panel(props: Omit<Parameters<typeof PaperWikiIngest>[0], 'edits'>) {
+  return <PaperWikiIngest {...props} edits={useDrafts<EditDraft>()} />
+}
 
 const paper = {
   id: 'p1', title: 'Paper', authors: ['A'], venue: 'arXiv', abstract: '', topics: [], methods: [],
@@ -121,7 +151,8 @@ describe('PaperWikiIngest', () => {
         id: 'proposal-1', targetId: 'p1', action: 'create', body: '# Draft', review, quality,
       },
     })
-    api.cancel.mockReset().mockResolvedValue({ planId: 'plan-1', cancelled: true })
+    api.cancel.mockReset().mockResolvedValue({ paperId: 'p1', cancelled: true })
+    core.runs.clear()
     api.apply.mockReset().mockResolvedValue({
       proposalId: 'proposal-1', wikiId: 'papers/p1', appliedAt: '2026-09-17T12:01:00.000Z',
     })
@@ -134,7 +165,7 @@ describe('PaperWikiIngest', () => {
   afterEach(() => act(() => root.unmount()))
 
   it('shows the generated proposal without applying until the user reviews and confirms', async () => {
-    await act(async () => { root.render(withMessages(<PaperWikiIngest paper={paper} reading={reading} onJump={api.jump} />)) })
+    await act(async () => { root.render(withMessages(<Panel paper={paper} reading={reading} onJump={api.jump} />)) })
     await act(async () => {
       host.querySelector<HTMLButtonElement>('[data-testid="start-harness"]')!.click()
     })
@@ -177,7 +208,7 @@ describe('PaperWikiIngest', () => {
     api.apply.mockResolvedValueOnce({
       proposalId: 'proposal-1', wikiId: 'papers/p1', appliedAt: '2026-09-17T12:01:00.000Z', change: 'change-9',
     })
-    await act(async () => { root.render(withMessages(<PaperWikiIngest paper={paper} reading={reading} onJump={api.jump} />)) })
+    await act(async () => { root.render(withMessages(<Panel paper={paper} reading={reading} onJump={api.jump} />)) })
     await act(async () => {
       host.querySelector<HTMLButtonElement>('[data-testid="start-harness"]')!.click()
     })
@@ -197,7 +228,7 @@ describe('PaperWikiIngest', () => {
       startedAt: '2026-09-17T12:00:00.000Z', state: 'proposal-ready', message: '请审核', warning: 'write',
       proposal: { id: 'proposal-1', targetId: 'p1', action: 'create', body: '# Draft', review, quality },
     })
-    await act(async () => { root.render(withMessages(<PaperWikiIngest paper={paper} reading={reading} onJump={api.jump} />)) })
+    await act(async () => { root.render(withMessages(<Panel paper={paper} reading={reading} onJump={api.jump} />)) })
     await act(async () => {
       host.querySelector<HTMLButtonElement>('[data-testid="start-harness"]')!.click()
     })
@@ -208,7 +239,7 @@ describe('PaperWikiIngest', () => {
 
   it('states that no model is connected in the neutral status tone, not as an error', async () => {
     api.prepare.mockResolvedValue({ ...plan, model: { ...plan.model, configured: false } })
-    await act(async () => { root.render(withMessages(<PaperWikiIngest paper={paper} reading={reading} onJump={api.jump} />)) })
+    await act(async () => { root.render(withMessages(<Panel paper={paper} reading={reading} onJump={api.jump} />)) })
     const tag = [...host.querySelectorAll('.tag')].find((t) => t.textContent === 'AI 未连接')!
     expect(tag.className).toBe('tag tag--label tag--neutral')
   })
@@ -217,7 +248,7 @@ describe('PaperWikiIngest', () => {
     api.settingsOpen = false
     api.openCategory.mockReset()
     api.prepare.mockResolvedValue({ ...plan, model: { ...plan.model, configured: false } })
-    const render = () => act(async () => { root.render(withMessages(<PaperWikiIngest paper={paper} reading={reading} onJump={api.jump} />)) })
+    const render = () => act(async () => { root.render(withMessages(<Panel paper={paper} reading={reading} onJump={api.jump} />)) })
     await render()
     const tag = [...host.querySelectorAll<HTMLElement>('.tag')].find((t) => t.textContent === 'AI 未连接')!
     expect(tag.tagName).toBe('BUTTON')
@@ -236,12 +267,12 @@ describe('PaperWikiIngest', () => {
   it('lets the user stop an in-flight run and requires a fresh confirmation afterward', async () => {
     let rejectRun: ((cause: CallError) => void) | undefined
     api.start.mockImplementation(() => new Promise((_resolve, reject) => { rejectRun = reject }))
-    await act(async () => { root.render(withMessages(<PaperWikiIngest paper={paper} reading={reading} onJump={api.jump} />)) })
+    await act(async () => { root.render(withMessages(<Panel paper={paper} reading={reading} onJump={api.jump} />)) })
     act(() => host.querySelector<HTMLButtonElement>('[data-testid="start-harness"]')!.click())
     await act(async () => {
       host.querySelector<HTMLButtonElement>('[data-testid="cancel-harness"]')!.click()
     })
-    expect(api.cancel).toHaveBeenCalledWith('plan-1')
+    expect(api.cancel).toHaveBeenCalledWith('p1')
 
     await act(async () => {
       rejectRun!(new CallError('harness.start', 'cancelled'))
@@ -249,6 +280,34 @@ describe('PaperWikiIngest', () => {
     expect(host.textContent).toContain('已停止生成')
     expect(host.querySelector('[data-testid="start-harness"]')).toBeNull()
     expect(host.textContent).toContain('重新准备')
+  })
+
+  it('shows a run Core reports for the paper as running when it opens, with Stop and no Start, and Stop stops that run', async () => {
+    core.runs.add('p1')
+    await act(async () => { root.render(withMessages(<Panel paper={paper} reading={reading} onJump={api.jump} />)) })
+
+    expect(host.querySelector('[data-testid="start-harness"]')).toBeNull()
+    await act(async () => { host.querySelector<HTMLButtonElement>('[data-testid="cancel-harness"]')!.click() })
+    expect(api.cancel).toHaveBeenCalledExactlyOnceWith('p1')
+    expect(api.start).not.toHaveBeenCalled()
+    expect(host.querySelector('[data-testid="start-harness"]')).not.toBeNull()
+  })
+
+  it('once a run it did not start ends, shows the proposal that run made without another run', async () => {
+    core.runs.add('p1')
+    await act(async () => { root.render(withMessages(<Panel paper={paper} reading={reading} onJump={api.jump} />)) })
+    expect(host.querySelector('[data-testid="cancel-harness"]')).not.toBeNull()
+
+    core.runs.delete('p1')
+    api.pending.mockResolvedValue({
+      proposal: { id: 'proposal-1', targetId: 'p1', action: 'create', body: '# Draft', review, quality },
+      generatedAt: '2026-09-17T12:00:00.000Z',
+      stale: false,
+    })
+    await act(async () => { core.poll() })
+    expect(api.start).not.toHaveBeenCalled()
+    expect(host.textContent).toContain('记住什么')
+    expect(host.querySelector('[data-testid="start-harness"]')).toBeNull()
   })
 
   it('recovers an unreviewed proposal without preparing or calling the model again', async () => {
@@ -259,7 +318,7 @@ describe('PaperWikiIngest', () => {
       generatedAt: '2026-09-17T11:00:00.000Z',
       stale: false,
     })
-    await act(async () => { root.render(withMessages(<PaperWikiIngest paper={paper} reading={reading} onJump={api.jump} />)) })
+    await act(async () => { root.render(withMessages(<Panel paper={paper} reading={reading} onJump={api.jump} />)) })
 
     expect(api.prepare).not.toHaveBeenCalled()
     expect(api.start).not.toHaveBeenCalled()
@@ -279,7 +338,7 @@ describe('PaperWikiIngest', () => {
       generatedAt: '2026-09-17T11:00:00.000Z',
       stale: false,
     })
-    await act(async () => { root.render(withMessages(<PaperWikiIngest paper={paper} reading={reading} onJump={api.jump} />)) })
+    await act(async () => { root.render(withMessages(<Panel paper={paper} reading={reading} onJump={api.jump} />)) })
 
     const heading = host.querySelector('.wiki-ingest-review > .section-heading')!
     expect(heading.querySelector(':scope > .section-heading-actions > .segmented-control')!.getAttribute('aria-label'))
@@ -295,7 +354,7 @@ describe('PaperWikiIngest', () => {
       generatedAt: '2026-09-17T11:00:00.000Z',
       stale: false,
     })
-    await act(async () => { root.render(withMessages(<PaperWikiIngest paper={paper} reading={reading} onJump={api.jump} />)) })
+    await act(async () => { root.render(withMessages(<Panel paper={paper} reading={reading} onJump={api.jump} />)) })
 
     expect(host.querySelector<HTMLTextAreaElement>('[aria-label="Wiki 提案内容"]')?.value)
       .toBe('# Legacy')
@@ -308,7 +367,7 @@ describe('PaperWikiIngest', () => {
       generatedAt: '2026-09-17T11:00:00.000Z',
       stale: true,
     })
-    await act(async () => { root.render(withMessages(<PaperWikiIngest paper={paper} reading={reading} onJump={api.jump} />)) })
+    await act(async () => { root.render(withMessages(<Panel paper={paper} reading={reading} onJump={api.jump} />)) })
 
     const apply = [...host.querySelectorAll<HTMLButtonElement>('button')]
       .find((button) => button.textContent === '确认写入 Wiki')!
@@ -326,7 +385,7 @@ describe('PaperWikiIngest', () => {
       generatedAt: '2026-09-17T11:00:00.000Z',
       stale: false,
     })
-    await act(async () => { root.render(withMessages(<PaperWikiIngest paper={paper} reading={reading} onJump={api.jump} />)) })
+    await act(async () => { root.render(withMessages(<Panel paper={paper} reading={reading} onJump={api.jump} />)) })
 
     const card = host.querySelector('.wiki-ingest-review .proposal-card')!
     const where = card.querySelector('.proposal-change > .proposal-where')!
@@ -341,7 +400,7 @@ describe('PaperWikiIngest', () => {
 
   it('states a missing model as a short tag, never a sentence', async () => {
     api.prepare.mockResolvedValue({ ...plan, model: { ...plan.model, configured: false } })
-    await act(async () => { root.render(withMessages(<PaperWikiIngest paper={paper} reading={reading} onJump={api.jump} />)) })
+    await act(async () => { root.render(withMessages(<Panel paper={paper} reading={reading} onJump={api.jump} />)) })
     expect(states()).toEqual(['无阅读记录', 'AI 未连接'])
     expect(host.querySelector('.wiki-ingest-status')).toBeNull()
   })
@@ -349,14 +408,14 @@ describe('PaperWikiIngest', () => {
   it('states the reading records it includes as a short tag, never a sentence', async () => {
     const notes = [1, 2].map((page) => ({ id: `n${page}`, page, text: '笔记', created: '2026-09-14', updated: '2026-09-14' }))
     await act(async () => {
-      root.render(withMessages(<PaperWikiIngest paper={paper} reading={{ ...reading, notes, remark: '随笔' }} onJump={api.jump} />))
+      root.render(withMessages(<Panel paper={paper} reading={{ ...reading, notes, remark: '随笔' }} onJump={api.jump} />))
     })
     expect(states()).toEqual(['3 条阅读记录'])
     expect(host.querySelector('.wiki-ingest-tip')).toBeNull()
   })
 
   it('collects optional local feedback before rejecting a proposal', async () => {
-    await act(async () => { root.render(withMessages(<PaperWikiIngest paper={paper} reading={reading} onJump={api.jump} />)) })
+    await act(async () => { root.render(withMessages(<Panel paper={paper} reading={reading} onJump={api.jump} />)) })
     await act(async () => {
       host.querySelector<HTMLButtonElement>('[data-testid="start-harness"]')!.click()
     })
@@ -394,7 +453,7 @@ describe('PaperWikiIngest', () => {
   })
 
   it('offers the rejection reasons as chips that each toggle on their own, not as segments', async () => {
-    await act(async () => { root.render(withMessages(<PaperWikiIngest paper={paper} reading={reading} onJump={api.jump} />)) })
+    await act(async () => { root.render(withMessages(<Panel paper={paper} reading={reading} onJump={api.jump} />)) })
     await act(async () => {
       host.querySelector<HTMLButtonElement>('[data-testid="start-harness"]')!.click()
     })
@@ -414,7 +473,7 @@ describe('PaperWikiIngest', () => {
   })
 
   it('allows rejecting without providing feedback', async () => {
-    await act(async () => { root.render(withMessages(<PaperWikiIngest paper={paper} reading={reading} onJump={api.jump} />)) })
+    await act(async () => { root.render(withMessages(<Panel paper={paper} reading={reading} onJump={api.jump} />)) })
     await act(async () => {
       host.querySelector<HTMLButtonElement>('[data-testid="start-harness"]')!.click()
     })

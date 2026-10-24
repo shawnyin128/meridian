@@ -94,6 +94,7 @@ function scopeOf(snapshot: PaperWikiSnapshot): HarnessPlan['scope'] {
 /**
  * Core-owned one-shot cost gate. Preparing is deterministic and free. Starting requires the exact
  * plan digest, checks that its scope has not changed, consumes it once, and only then calls Harness.
+ * A paper has at most one run going at a time.
  */
 export function createHarnessCostGate(deps: Dependencies) {
   const now = deps.now ?? (() => new Date())
@@ -104,6 +105,7 @@ export function createHarnessCostGate(deps: Dependencies) {
     proposal.id,
     { ...proposal, used: false },
   ]))
+  /** The controller of the run going for each paper, by paper id. */
   const running = new Map<string, AbortController>()
 
   const configuredModel = () => typeof deps.model === 'function' ? deps.model() : deps.model
@@ -175,13 +177,16 @@ export function createHarnessCostGate(deps: Dependencies) {
       if (digestOf(current) !== held.plan.scopeDigest) {
         throw new CallError('changed', '论文、笔记或 Wiki 已发生变化，请重新确认范围')
       }
+      if (running.has(held.plan.targetId)) {
+        throw new CallError('busy', '这篇论文的 Wiki 提案仍在生成，请先停止或等待完成')
+      }
 
       // Consume before crossing the cost boundary. A provider error may already have spent tokens,
       // so retrying always requires a fresh user-confirmed plan.
       held.used = true
       const startedAt = now().toISOString()
       const controller = new AbortController()
-      running.set(held.plan.id, controller)
+      running.set(held.plan.targetId, controller)
       let result: Awaited<ReturnType<HarnessRunner>>
       try {
         result = await deps.run({
@@ -191,7 +196,7 @@ export function createHarnessCostGate(deps: Dependencies) {
           limits: { maxOutputTokens: MAX_OUTPUT_TOKENS, maxModelCalls: MAX_MODEL_CALLS },
         })
       } finally {
-        if (running.get(held.plan.id) === controller) running.delete(held.plan.id)
+        if (running.get(held.plan.targetId) === controller) running.delete(held.plan.targetId)
       }
       const receipt: HarnessRunReceipt = {
         id: nextId('run'),
@@ -244,11 +249,18 @@ export function createHarnessCostGate(deps: Dependencies) {
       return receipt
     },
 
-    cancel(planId: string): HarnessCancelResult {
-      const controller = running.get(planId)
+    /** Stops the run going for paper `paperId`; from then on the paper no longer counts as generating. */
+    cancel(paperId: string): HarnessCancelResult {
+      const controller = running.get(paperId)
       if (controller === undefined) throw new CallError('refused', '这项 AI 任务当前没有在运行')
       controller.abort()
-      return { planId, cancelled: true }
+      running.delete(paperId)
+      return { paperId, cancelled: true }
+    },
+
+    /** The ids of the papers whose Wiki proposal is being generated. */
+    generating(): string[] {
+      return [...running.keys()]
     },
 
     applyPaperWiki(params: HarnessApplyPaperWikiParams): HarnessApplyPaperWikiResult {

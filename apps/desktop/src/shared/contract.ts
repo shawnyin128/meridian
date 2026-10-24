@@ -657,12 +657,13 @@ export const HarnessStartParamsSchema = z.object({
   acknowledgeCost: z.literal(true),
 }).strict()
 
+/** Stops the Wiki run going for paper `paperId`. */
 export const HarnessCancelParamsSchema = z.object({
-  planId: z.string().min(1),
+  paperId: z.string().min(1),
 }).strict()
 
 export const HarnessCancelResultSchema = z.object({
-  planId: z.string().min(1),
+  paperId: z.string().min(1),
   cancelled: z.literal(true),
 }).strict()
 
@@ -2287,13 +2288,17 @@ export const DownloadProgressSchema = z.object({
   total: z.number().int().nullable(),
 }).strict()
 
-/** Current state of Core work that outlives a single call; `generating` holds the ids of the chats whose reply is being generated. */
+/**
+ * Current state of Core work that outlives a single call; `generating` holds the ids of the chats whose
+ * reply is being generated, and `generatingWiki` the ids of the papers whose Wiki proposal is.
+ */
 export const JobsStatusSchema = z.object({
   writes: z.number().int(),
   uploads: z.array(MetadataJobSchema),
   downloads: z.array(DownloadProgressSchema),
   fetch: FetchStatusSchema,
   generating: z.array(z.string()),
+  generatingWiki: z.array(z.string()),
 }).strict()
 
 /** Input for no-argument methods: renderer sends an empty object and the boundary rejects extra keys. */

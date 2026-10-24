@@ -124,13 +124,72 @@ describe('Harness cost gate', () => {
     })
     await vi.waitFor(() => expect(run).toHaveBeenCalledOnce())
 
-    expect(costGate.cancel(plan.id)).toEqual({ planId: plan.id, cancelled: true })
+    expect(costGate.cancel('p1')).toEqual({ paperId: 'p1', cancelled: true })
     expect(observedSignal?.aborted).toBe(true)
     await expect(result).rejects.toThrow('cancelled')
-    expect(() => costGate.cancel(plan.id)).toThrow('没有在运行')
+    expect(() => costGate.cancel('p1')).toThrow('没有在运行')
     await expect(costGate.start({
       planId: plan.id, scopeDigest: plan.scopeDigest, acknowledgeCost: true,
     })).rejects.toThrow('已经使用过')
+  })
+
+  it('reports a paper as generating from the moment its run starts until it settles or is stopped', async () => {
+    let finish: () => void = () => {}
+    const run = vi.fn(({ signal }: { signal: AbortSignal }) => new Promise<{ state: 'demo-complete'; message: string }>((resolve, reject) => {
+      finish = () => resolve({ state: 'demo-complete', message: '完成' })
+      signal.addEventListener('abort', () => reject(new Error('cancelled')), { once: true })
+    }))
+    const costGate = createHarnessCostGate({
+      paper: () => structuredClone(paper),
+      reading: () => structuredClone(reading),
+      wiki: () => structuredClone(wiki),
+      model: { provider: 'Provider', name: 'model', configured: true, billable: true },
+      run,
+      applyWiki: vi.fn(),
+      now: () => new Date('2026-09-17T12:00:00.000Z'),
+    })
+    expect(costGate.generating()).toEqual([])
+    const first = costGate.prepare('p1')
+    const finished = costGate.start({ planId: first.id, scopeDigest: first.scopeDigest, acknowledgeCost: true })
+    expect(costGate.generating()).toEqual(['p1'])
+    finish()
+    await finished
+    expect(costGate.generating()).toEqual([])
+
+    const second = costGate.prepare('p1')
+    const stopped = costGate.start({ planId: second.id, scopeDigest: second.scopeDigest, acknowledgeCost: true })
+    costGate.cancel('p1')
+    expect(costGate.generating()).toEqual([])
+    await expect(stopped).rejects.toThrow('cancelled')
+  })
+
+  it('refuses a second paid run for a paper while one runs, and leaves the refused plan unused', async () => {
+    const finishes: (() => void)[] = []
+    const run = vi.fn(() => new Promise<{ state: 'demo-complete'; message: string }>((resolve) => {
+      finishes.push(() => resolve({ state: 'demo-complete', message: '完成' }))
+    }))
+    const costGate = createHarnessCostGate({
+      paper: () => structuredClone(paper),
+      reading: () => structuredClone(reading),
+      wiki: () => structuredClone(wiki),
+      model: { provider: 'Provider', name: 'model', configured: true, billable: true },
+      run,
+      applyWiki: vi.fn(),
+      now: () => new Date('2026-09-17T12:00:00.000Z'),
+    })
+    const first = costGate.prepare('p1')
+    const running = costGate.start({ planId: first.id, scopeDigest: first.scopeDigest, acknowledgeCost: true })
+    const again = costGate.prepare('p1')
+    const refused = costGate.start({ planId: again.id, scopeDigest: again.scopeDigest, acknowledgeCost: true })
+    expect(run).toHaveBeenCalledOnce()
+    await expect(refused).rejects.toMatchObject({ reason: 'busy' })
+
+    finishes[0]!()
+    await running
+    const later = costGate.start({ planId: again.id, scopeDigest: again.scopeDigest, acknowledgeCost: true })
+    expect(run).toHaveBeenCalledTimes(2)
+    finishes[1]!()
+    await later
   })
 
   it('rejects a direct start without explicit cost acknowledgement', async () => {

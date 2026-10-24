@@ -37,8 +37,11 @@ export type Background = {
    * arms nothing while no vault is open.
    */
   armSchedule(): () => void
-  /** The jobs status without the chats being generated, which the chat service reports. */
-  status(): Omit<JobsStatus, 'generating'>
+  /**
+   * The jobs status without the chats and Wiki proposals being generated, which the chat service and
+   * the Harness cost gate report.
+   */
+  status(): Omit<JobsStatus, 'generating' | 'generatingWiki'>
   idle(): Promise<void>
 }
 

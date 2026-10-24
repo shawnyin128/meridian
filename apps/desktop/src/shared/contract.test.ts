@@ -169,9 +169,10 @@ describe('contract schemas', () => {
     expect(() => HarnessStartParamsSchema.parse({
       planId: 'plan-1', scopeDigest: 'digest', acknowledgeCost: false,
     })).toThrow()
-    expect(HarnessCancelParamsSchema.parse({ planId: 'plan-1' })).toEqual({ planId: 'plan-1' })
-    expect(HarnessCancelResultSchema.parse({ planId: 'plan-1', cancelled: true }))
-      .toEqual({ planId: 'plan-1', cancelled: true })
+    expect(HarnessCancelParamsSchema.parse({ paperId: 'p1' })).toEqual({ paperId: 'p1' })
+    expect(() => HarnessCancelParamsSchema.parse({ planId: 'plan-1' })).toThrow()
+    expect(HarnessCancelResultSchema.parse({ paperId: 'p1', cancelled: true }))
+      .toEqual({ paperId: 'p1', cancelled: true })
     expect(HarnessRunReceiptSchema.parse({
       id: 'run-1', planId: 'plan-1', workflow: 'paper-wiki', targetId: 'p1',
       startedAt: '2026-09-17T12:00:00.000Z', state: 'demo-complete', message: 'done',

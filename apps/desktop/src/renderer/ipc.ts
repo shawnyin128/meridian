@@ -163,8 +163,8 @@ export const harness = {
     scopeDigest: plan.scopeDigest,
     acknowledgeCost: true,
   }),
-  /** Stops accepting a running result; an already-issued provider request may still be billable. */
-  cancel: (planId: string) => call<HarnessCancelResult>('harness.cancel', { planId }),
+  /** Stops the Wiki run going for paper `paperId`; an already-issued provider request may still be billable. */
+  cancel: (paperId: string) => call<HarnessCancelResult>('harness.cancel', { paperId }),
   applyPaperWiki: (proposalId: string, body: string) =>
     call<HarnessApplyPaperWikiResult>('harness.applyPaperWiki', { proposalId, body }),
   rejectPaperWiki: (proposalId: string, feedback?: HarnessPaperWikiRejectionFeedback) =>
