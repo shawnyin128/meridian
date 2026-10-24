@@ -215,8 +215,9 @@ test('研究地图从真实论文元数据形成可切换、可解释的重叠�
   await firstPage(win)
   await win.getByRole('radio', { name: '研究地图', exact: true }).click()
 
-  await expect(win.locator('.research-map-title')).toContainText('自适应研究地图')
-  await expect(win.locator('.research-map-group')).not.toHaveCount(0)
+  await expect(win.locator('.research-map-groups').first().locator('.research-map-group')).not.toHaveCount(0)
+  await expect(win.locator('.research-map-groups').nth(1).locator('.research-map-group-name').first()).toHaveText('跨组')
+  await expect(win.locator('.research-map-group .read-dots').first()).toHaveAttribute('aria-label', /^已读 \d+\/\d+$/)
   await expect(win.locator('.research-map-detail .research-map-why .tag').first()).toBeVisible()
   await expect(win.locator('.pagebar')).toHaveCount(0)
 
@@ -245,7 +246,7 @@ test('研究地图详情卡里悬停的论文行铺到卡片的内边，行间�
     const list = card.querySelector<HTMLElement>('.research-map-papers')!
     const [hovered, next] = [...list.querySelectorAll('.research-map-paper')]
     const head = card.querySelector('.research-map-detail-head>div')!
-    // A list longer than five rows scrolls, and its scrollbar takes the card's inner right edge.
+    // A paper list taller than the card's room scrolls, and its scrollbar takes the card's inner right edge.
     const scrollbar = list.offsetWidth - list.clientWidth
     return {
       card: inner(card), list: edges(list),
@@ -266,6 +267,51 @@ test('研究地图详情卡里悬停的论文行铺到卡片的内边，行间�
   expect(geometry.next).toEqual(geometry.reach)
   expect(geometry.divider).toBe('1px')
   expect(geometry.content).toEqual(geometry.head)
+})
+
+test('研究地图左右两栏都铺到视图底边，在同一高度开始各自在栏内滚动，详情卡的头留在卡顶，裁掉的边淡出', async ({ app, win }) => {
+  await gotoPapers(win)
+  await firstPage(win)
+  await win.getByRole('radio', { name: '研究地图', exact: true }).click()
+  await expect(win.locator('.research-map-detail .research-map-paper').nth(5)).toBeVisible()
+
+  for (const [width, height] of [[1440, 900], [1280, 800]] as const) {
+    await app.evaluate(({ BrowserWindow }, size) => BrowserWindow.getAllWindows()[0]!.setContentSize(size.width, size.height), { width, height })
+    await expect.poll(() => win.evaluate(() => window.innerHeight)).toBe(height)
+    const columns = await win.evaluate(() => {
+      const index = document.querySelector<HTMLElement>('.research-map-index')!
+      const papers = document.querySelector<HTMLElement>('.research-map-papers')!
+      const head = document.querySelector<HTMLElement>('.research-map-detail-head')!
+      const bottom = (el: Element) => Math.round(el.getBoundingClientRect().bottom)
+      // The column keeps the focus-ring room inside its edges and reaches out by as much, so its lists end above that room.
+      const indexEnd = Math.round(index.getBoundingClientRect().bottom - parseFloat(getComputedStyle(index).paddingBottom))
+      const headTop = head.getBoundingClientRect().top
+      const before = { index: index.dataset.fade, papers: papers.dataset.fade }
+      papers.scrollTop = papers.scrollHeight
+      index.scrollTop = index.scrollHeight
+      papers.dispatchEvent(new Event('scroll'))
+      index.dispatchEvent(new Event('scroll'))
+      return {
+        view: bottom(document.querySelector('#libList')!), index: indexEnd, detail: bottom(document.querySelector('.research-map-detail')!),
+        indexScrolls: index.scrollHeight > index.clientHeight, papersScroll: papers.scrollHeight > papers.clientHeight,
+        headStays: head.getBoundingClientRect().top === headTop,
+        fades: { before, after: { index: index.dataset.fade, papers: papers.dataset.fade } },
+      }
+    })
+    // At 1440×900 the fixture's ten groups fit the column, so only the paper list has more to show.
+    const groupsOverflow = height === 800
+    expect(columns, `${width}×${height}`).toEqual({
+      view: columns.view, index: columns.view, detail: columns.view,
+      indexScrolls: groupsOverflow, papersScroll: true, headStays: true,
+      fades: {
+        before: { index: groupsOverflow ? 'bottom' : undefined, papers: 'bottom' },
+        after: { index: groupsOverflow ? 'top' : undefined, papers: 'top' },
+      },
+    })
+    await win.evaluate(() => {
+      for (const selector of ['.research-map-index', '.research-map-papers']) document.querySelector(selector)!.scrollTop = 0
+    })
+  }
 })
 
 test('论文表首列是冻结列', async ({ win }) => {
