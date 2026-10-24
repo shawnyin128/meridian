@@ -60,9 +60,11 @@
 .textLayer{z-index:2}
 .textLayer ::selection{background:transparent}
 .paper-highlights,.paper-selection{position:absolute;inset:0;z-index:1;pointer-events:none;overflow:hidden}
-.paper-highlight,.paper-selected{position:absolute;overflow:visible}
+.paper-highlight,.paper-selected,.paper-highlight-outline{position:absolute;overflow:visible}
 .paper-highlight path{fill:color-mix(in srgb,var(--mark) 30%,transparent)}
 .paper-selected path{fill:var(--hl-sel)}
+/* The highlight selected by a click, outlined in the paper's ink, which no theme flips. */
+.paper-highlight-outline path{fill:none;stroke:var(--hl-note);stroke-width:1.5px;stroke-linejoin:round;vector-effect:non-scaling-stroke}
 .paper-highlight .paper-highlight-note{fill:none;stroke:var(--hl-note);stroke-width:2.5px;vector-effect:non-scaling-stroke}
 /*
  * The selection toolbar, on the shared menu surface: the AI mark and the highlight colours in one row,
@@ -85,6 +87,8 @@
 .reading-list{flex:1;overflow:auto;padding:var(--sp-12);display:flex;flex-direction:column;gap:var(--sp-10)}
 .reading-card{border:1px solid var(--sep2);border-radius:var(--r-card);padding:var(--sp-10);background:var(--card);display:flex;flex-direction:column;gap:var(--sp-8)}
 .highlight-card{border-left:3px solid var(--mark)}
+/* The highlight selected on the page, in the selected look of rows and cards. */
+.reading-card.selected{background-color:var(--selected);color:var(--on-selected)}
 .reading-page{width:max-content}
 .reading-card-head{display:flex;align-items:center;justify-content:space-between;gap:var(--sp-8)}
 .reading-actions{display:flex;align-items:center;justify-content:flex-end}

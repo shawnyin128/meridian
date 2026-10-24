@@ -19,6 +19,8 @@ type IconButtonProps = Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'aria-label
   tone?: 'neutral' | 'danger'
   /** Makes the button a toggle and shows whether it is on. */
   pressed?: boolean
+  /** Makes it a circle on the neutral chip fill with the glyph in ink, for a row of round controls such as colour circles. */
+  round?: boolean
   /** The glyph; the size sets its width and height. */
   children: ReactNode
 }
@@ -31,10 +33,10 @@ const SIZE_CLASS: Record<IconButtonSize, string> = { default: '', nested: 'sm', 
  * the toolbar's controls.
  */
 export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(function IconButton({
-  label, shortcut, note, size = 'default', tone = 'neutral', pressed, className, type = 'button', children, ...props
+  label, shortcut, note, size = 'default', tone = 'neutral', pressed, round = false, className, type = 'button', children, ...props
 }, ref) {
   const asItem = useToolbarItem()
-  const classes = ['icbtn', SIZE_CLASS[size], tone === 'danger' ? 'danger' : '', className].filter(Boolean).join(' ')
+  const classes = ['icbtn', SIZE_CLASS[size], tone === 'danger' ? 'danger' : '', round ? 'round' : '', className].filter(Boolean).join(' ')
   return (
     <Tooltip label={label} shortcut={shortcut} note={note}>
       {asItem(

@@ -24,10 +24,11 @@ function RailIcon({ tab }: { tab: ReaderSideTab }) {
 /**
  * The collapsible reader rail reserves document width only after the user opens a panel. It keeps
  * the panels' unsaved text per paper, note and highlight while panels close and other papers open.
+ * `selectedHighlightId` is the highlight selected on the page, which its list shows as selected.
  */
 export function ReaderSidePanel({
   tab, onTab, paper, onPaper, reading, currentPage, saving, onMutate, onSaveRemark, onJump,
-  focusHighlightId,
+  focusHighlightId, selectedHighlightId,
 }: {
   tab: ReaderSideTab | null
   onTab: (tab: ReaderSideTab | null) => void
@@ -40,6 +41,7 @@ export function ReaderSidePanel({
   onSaveRemark: (text: string) => Promise<boolean>
   onJump: (page: number) => void
   focusHighlightId: string | null
+  selectedHighlightId: string | null
 }) {
   const m = useMessages()
   // The scope and the live targets both come from the reading shown, so they always name one paper.
@@ -67,7 +69,8 @@ export function ReaderSidePanel({
         ? (
           <ReadingNotes
             reading={reading} currentPage={currentPage} saving={saving} onMutate={onMutate}
-            onJump={onJump} mode={tab} focusHighlightId={focusHighlightId} drafts={drafts} edits={edits}
+            onJump={onJump} mode={tab} focusHighlightId={focusHighlightId}
+            selectedHighlightId={selectedHighlightId} drafts={drafts} edits={edits}
           />
         )
         : null}

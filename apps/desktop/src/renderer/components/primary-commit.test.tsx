@@ -98,7 +98,7 @@ describe('每个屏幕只有一个主操作', () => {
       await show(
         <ReaderSidePanel
           tab={tab} onTab={vi.fn()} paper={PAPER} onPaper={vi.fn()} reading={READING} currentPage={1}
-          saving={false} onMutate={vi.fn()} onSaveRemark={vi.fn()} onJump={vi.fn()} focusHighlightId={null}
+          saving={false} onMutate={vi.fn()} onSaveRemark={vi.fn()} onJump={vi.fn()} focusHighlightId={null} selectedHighlightId={null}
         />,
       )
       expect(solid(host).map((element) => element.textContent), tab).toEqual([])
@@ -113,7 +113,7 @@ describe('每个屏幕只有一个主操作', () => {
     await show(
       <ReaderSidePanel
         tab="wiki" onTab={vi.fn()} paper={PAPER} onPaper={vi.fn()} reading={READING} currentPage={1}
-        saving={false} onMutate={vi.fn()} onSaveRemark={vi.fn()} onJump={vi.fn()} focusHighlightId={null}
+        saving={false} onMutate={vi.fn()} onSaveRemark={vi.fn()} onJump={vi.fn()} focusHighlightId={null} selectedHighlightId={null}
       />,
     )
     expect(host.textContent).toContain('确认写入 Wiki')

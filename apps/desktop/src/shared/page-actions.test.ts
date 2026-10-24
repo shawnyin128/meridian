@@ -100,7 +100,7 @@ describe('屏头的按钮', () => {
 
 /** Where an action sits on the screen; its slot says which scope the action acts on. */
 type Slot = 'page header' | 'page toolbar' | 'section heading' | 'panel head' | 'group heading' | 'row actions'
-  | 'chip' | 'table header' | 'timeline toolbar' | 'dialog actions' | 'card foot' | 'sidebar heading' | 'inline'
+  | 'chip' | 'table header' | 'timeline toolbar' | 'dialog actions' | 'card foot' | 'sidebar heading' | 'selection toolbar' | 'inline'
 
 /** Props whose content a component renders in one slot. */
 const SLOT_PROPS: Record<string, Record<string, Slot>> = {
@@ -123,7 +123,7 @@ const SLOT_PROPS: Record<string, Record<string, Slot>> = {
 /** Elements whose children sit in one slot: components by name, plain elements by a class. */
 const SLOT_CHILDREN: Record<string, Slot> = {
   PageToolbar: 'page toolbar', RowActions: 'row actions', Tag: 'chip', tagchip: 'chip', 'pd-h': 'panel head',
-  'th-add': 'table header', ServiceFoot: 'card foot',
+  'th-add': 'table header', ServiceFoot: 'card foot', 'selection-tools-row': 'selection toolbar',
 }
 
 /** Components whose whole body is one slot wherever they are placed. */
@@ -184,7 +184,10 @@ const PLACES: Record<string, Place[]> = {
     { slot: 'section heading', size: 'sm', variant: 'plain', scope: 'a section switches its own content' },
     { slot: 'timeline toolbar', size: 'sm', variant: 'plain', scope: 'a timeline switches its own scale' },
   ],
-  delete: [{ slot: 'row actions', size: 'nested', variant: 'danger' }],
+  delete: [
+    { slot: 'row actions', size: 'nested', variant: 'danger' },
+    { slot: 'selection toolbar', size: 'nested', variant: 'danger', scope: "the reader's selection toolbar deletes the highlight a click selected" },
+  ],
   remove: [
     { slot: 'row actions', size: 'nested', variant: 'plain' },
     { slot: 'chip', size: 'inline', variant: 'plain', scope: 'a chip takes itself out of its field' },

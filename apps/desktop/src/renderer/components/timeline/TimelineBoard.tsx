@@ -232,14 +232,11 @@ export function TimelineBoard({
               const key = row.kind === 'milestones'
                 ? `${row.project.id}/milestones`
                 : `${row.project.id}/task/${row.task.id}`
-              const dropClass = row.kind === 'task' && onReorderTasks !== undefined
-                ? labelReorder.dropClass(row.task.id) : ''
               const open = openLabel(row)
               const text = <FadeText className="timeline-item-label">{labelFor(row)}</FadeText>
               return (
                 <div
-                  className={`${row.kind === 'milestones' ? 'glrow msl timeline-label-row' : 'glrow timeline-label-row'}${
-                    dropClass ? ` ${dropClass}` : ''}`}
+                  className={row.kind === 'milestones' ? 'glrow msl timeline-label-row' : 'glrow timeline-label-row'}
                   data-proj={row.project.id}
                   data-task={row.kind === 'task' ? row.task.id : undefined}
                   key={key}

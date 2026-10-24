@@ -1,4 +1,4 @@
-import type { PaperHighlightRect } from '../../shared/contract.js'
+import type { PaperHighlight, PaperHighlightRect } from '../../shared/contract.js'
 import { onOneLine } from '../../shared/highlight-overlap.js'
 
 type Rect = Pick<DOMRect, 'left' | 'top' | 'width' | 'height'>
@@ -110,6 +110,74 @@ export function uncoveredLines(lines: PaperHighlightRect[], over: PaperHighlight
     ].filter((part) => part.width > 0)),
     [line],
   ))
+}
+
+/**
+ * The lines each of `highlights`, all on one page and in stored order, is drawn with: its lines
+ * where no later one in the list, a newer one, covers them on the same line; one covered whole gets
+ * none. `aspect` is the page's width over its height.
+ */
+export function drawnLines(highlights: readonly PaperHighlight[], aspect: number): PaperHighlightRect[][] {
+  const newer: PaperHighlightRect[] = []
+  const drawn: PaperHighlightRect[][] = []
+  for (let at = highlights.length - 1; at >= 0; at -= 1) {
+    const lines = highlightLines(highlights[at]!.rects, aspect)
+    drawn[at] = uncoveredLines(lines, newer)
+    newer.push(...lines)
+  }
+  return drawn
+}
+
+/**
+ * The highlight of `highlights`, all on one page and in stored order, drawn at `point` in page
+ * fractions, the newest where drawn lines meet, or null where none is drawn.
+ */
+export function highlightAt(
+  highlights: readonly PaperHighlight[], aspect: number, point: { x: number; y: number },
+): PaperHighlight | null {
+  const drawn = drawnLines(highlights, aspect)
+  for (let at = highlights.length - 1; at >= 0; at -= 1) {
+    const hit = drawn[at]!.some((line) => point.x >= line.x && point.x <= line.x + line.width
+      && point.y >= line.y && point.y <= line.y + line.height)
+    if (hit) return highlights[at]!
+  }
+  return null
+}
+
+/**
+ * The SVG path that traces the outline of `lines`, a highlight's lines top to bottom as drawnLines
+ * gives them: one closed outline for each run of lines that each touch or overlap the next and share
+ * a stretch across with it, stepping where the wider of two lines ends, and one rectangle for a line
+ * that joins neither neighbour.
+ */
+export function highlightOutline(lines: PaperHighlightRect[]): string {
+  const right = (line: PaperHighlightRect) => line.x + line.width
+  const bottom = (line: PaperHighlightRect) => line.y + line.height
+  const runs: PaperHighlightRect[][] = []
+  for (const line of lines) {
+    const run = runs.at(-1)
+    const above = run?.at(-1)
+    const joins = above !== undefined && line.y > above.y && line.y <= bottom(above)
+      && line.x < right(above) && above.x < right(line)
+    if (joins) run!.push(line)
+    else runs.push([line])
+  }
+  return runs.map((run) => {
+    const points: [number, number][] = [[run[0]!.x, run[0]!.y], [right(run[0]!), run[0]!.y]]
+    for (let at = 0; at < run.length - 1; at += 1) {
+      const [a, b] = [run[at]!, run[at + 1]!]
+      const step = right(b) > right(a) ? b.y : bottom(a)
+      points.push([right(a), step], [right(b), step])
+    }
+    const last = run.at(-1)!
+    points.push([right(last), bottom(last)], [last.x, bottom(last)])
+    for (let at = run.length - 2; at >= 0; at -= 1) {
+      const [a, b] = [run[at]!, run[at + 1]!]
+      const step = b.x < a.x ? b.y : bottom(a)
+      points.push([b.x, step], [a.x, step])
+    }
+    return `${points.map(([x, y], at) => `${at === 0 ? 'M' : 'L'}${x} ${y}`).join('')}Z`
+  }).join('')
 }
 
 /**
