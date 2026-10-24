@@ -7,7 +7,6 @@ import {
 } from '../../shared/project-signals.js'
 import { project as projectApi } from '../ipc.js'
 import { ACTIVE_PROJECT, FINISHED_PROJECT, SHELVED_PROJECT } from '../../shared/vocabulary.js'
-import { errorLabel } from '../lib/failure-label.js'
 import { useJump, useToday, useVaultRevision, type JumpAnchor } from '../shell/AppShell.js'
 import { LoadingPlaceholder } from '../components/LoadingPlaceholder.js'
 import { AgentLabel } from '../components/SourceLabel.js'
@@ -28,6 +27,7 @@ import { TimelineBoard } from '../components/timeline/TimelineBoard.js'
 import { useMilestoneEditor } from '../components/timeline/MilestoneEditor.js'
 import { ToolbarButton } from '../components/Toolbar.js'
 import { Tooltip } from '../components/Tooltip.js'
+import { useScreenLoad } from '../hooks/useScreenLoad.js'
 import { useUndo } from '../hooks/useUndo.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
 import {
@@ -385,17 +385,14 @@ export function ResearchOverview() {
   const fmt = useFormat()
   const m = useMessages()
   const [rows, setRows] = useState<ProjectOverview[] | null>(null)
-  const [error, setError] = useState<string | null>(null)
   const { revision } = useVaultRevision()
   const { open: jumpTo } = useJump()
-  const reportError = useCallback((e: unknown) => setError(errorLabel(m, e)), [m])
+  const { error, load } = useScreenLoad()
   const write = useVaultWrite()
   const undo = useUndo()
   const { filter, shown } = useAreaFilter(rows ?? [])
 
-  useEffect(() => {
-    void projectApi.overview().then(setRows).catch(reportError)
-  }, [revision, reportError])
+  useEffect(() => load('rows', projectApi.overview(), setRows), [revision, load])
 
   const openProject = useCallback((id: string) => jumpTo('project', id), [jumpTo])
   const openTask = useCallback((id: string, task: string) => jumpTo('project', id, { task }), [jumpTo])

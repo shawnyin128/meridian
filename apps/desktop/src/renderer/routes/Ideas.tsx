@@ -27,11 +27,11 @@ import { ProjectLabel, ProjectStatusTag } from '../components/project/ProjectIde
 import {
   PageBody, PageError, PageHeader, PageShell, PageTitle, SectionHeading,
 } from '../components/PageShell.js'
-import { errorLabel } from '../lib/failure-label.js'
 import { useEscapeLayer, useJump, useScreenReentry, useVaultRevision } from '../shell/AppShell.js'
 import { BackButton } from '../components/BackButton.js'
 import { TitleNote } from '../components/TitleNote.js'
 import { useJumpOrigin } from '../hooks/useJumpOrigin.js'
+import { useScreenLoad } from '../hooks/useScreenLoad.js'
 import { useUndo } from '../hooks/useUndo.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
 import { useScrollFade } from '../hooks/useScrollFade.js'
@@ -382,23 +382,23 @@ export function Ideas() {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [archiveOpen, setArchiveOpen] = useState(false)
   const [draft, setDraft] = useState<IdeaDraftText | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  const { error, load, report } = useScreenLoad()
   const closeDetail = useCallback(() => setSelectedId(null), [])
 
-  const load = useCallback(() => {
-    void Promise.all([ideaApi.list(), projectApi.list(), wikiApi.cards()]).then(async ([ideas, projectRows, cards]) => {
+  useEffect(() => {
+    const read = Promise.all([ideaApi.list(), projectApi.list(), wikiApi.cards()]).then(async ([ideas, projectRows, cards]) => {
       // A node's state lives in its project's graph, so the projects holding an idea's node are read whole.
       const holding = [...new Set(ideas.flatMap((idea) => (idea.node === undefined || idea.project === undefined ? [] : [idea.project])))]
-      const held = await Promise.all(holding.map((id) => projectApi.get(id)))
+      return { ideas, projectRows, cards, held: await Promise.all(holding.map((id) => projectApi.get(id))) }
+    })
+    return load('ideas', read, ({ ideas, projectRows, cards, held }) => {
       setRows(ideas)
       setProjects(projectRows)
       setDetails(new Map(held.map((detail) => [detail.id, detail])))
       setPageTitles(new Map(cards.map((card) => [card.id, card.title])))
       setSelectedId((held) => held !== null && ideas.some((idea) => idea.id === held) ? held : null)
-      setError(null)
-    }).catch((cause: unknown) => setError(errorLabel(m, cause)))
-  }, [])
-  useEffect(load, [load, revision])
+    })
+  }, [load, revision])
   // Clicking the sidebar while this screen is shown lands on the plain list: an open detail closes.
   const reentry = useScreenReentry()
   useEffect(() => { setSelectedId(null) }, [reentry])
@@ -421,8 +421,8 @@ export function Ideas() {
   useEffect(() => {
     setCandidateSource(null)
     if (candidateProject === undefined) return
-    void projectApi.get(candidateProject).then(setCandidateSource).catch((cause: unknown) => setError(errorLabel(m, cause)))
-  }, [candidateProject, revision, m])
+    return load('candidate', projectApi.get(candidateProject), setCandidateSource)
+  }, [candidateProject, revision, load])
   const candidateNode = selected?.candidateNode === undefined || candidateSource === null || candidateSource.id !== candidateProject
     ? undefined
     : (candidateSource.workspace?.graph ?? candidateSource.graph).nodes.find((node) => node.id === selected.candidateNode)
@@ -584,7 +584,7 @@ export function Ideas() {
                 onPlace={(kind) => void write(ideaApi.placeOnGraph(selected.id, { kind }), {
                   note: kind === 'confirm' ? m.ideas.candidate.confirmed : m.ideas.candidate.dismissed,
                 })}
-                onError={(cause) => setError(errorLabel(m, cause))}
+                onError={report}
                 onSave={(title, body) => write(
                   ideaApi.update(selected.id, { title, body }), { note: m.ideas.updatedNote },
                 )}

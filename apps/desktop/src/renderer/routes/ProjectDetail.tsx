@@ -12,7 +12,6 @@ import {
 } from '../../shared/project-signals.js'
 import { PROJECT_STATUSES } from '../../shared/vocabulary.js'
 import { appMenu, files, idea as ideaApi, papers, project as projectApi, wiki } from '../ipc.js'
-import { errorLabel } from '../lib/failure-label.js'
 import {
   useCrumbTail, useEscapeLayer, useJump, useNotice, useToday, useVaultRevision,
 } from '../shell/AppShell.js'
@@ -66,6 +65,8 @@ import { StatusDot } from '../components/StatusDot.js'
 import { Tag } from '../components/Tag.js'
 import { Tooltip } from '../components/Tooltip.js'
 import { NO_TRIGGERS } from '../hooks/useOnLeave.js'
+import { useScreenLoad } from '../hooks/useScreenLoad.js'
+import { useScreenPoll } from '../hooks/useScreenPoll.js'
 import { useUndo } from '../hooks/useUndo.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
 import { useScrollFade } from '../hooks/useScrollFade.js'
@@ -187,15 +188,16 @@ const newestFirst = (a: ResearchIdea, b: ResearchIdea) =>
 /**
  * The ideas section of a project page, each idea once and in the first group it belongs to: the ideas
  * carried out in project `projectId`, then the ones related to it, tagged as related, then the ones
- * sparked in it, tagged with their source; newest first within each group. `ideas` is null while they
- * load. A carried-out idea shows its node in `graph`. Activating a row selects that idea through
+ * sparked in it, tagged with their source; newest first within each group. `ideas` is null until they
+ * are read: a loading placeholder, or `error`, why reading them failed. A carried-out idea shows its node in `graph`. Activating a row selects that idea through
  * `onSelect`. The heading's new-idea action drafts an idea sparked in the project first in that last
  * group, where it lands; `onCreate` writes it and settles whether it was written. An idea for which
  * `chatDeleted` holds carries the tag saying the chat it came from is deleted.
  */
-export function ProjectIdeaList({ projectId, ideas, graph, selectedId, onSelect, onCreate, chatDeleted = () => false }: {
+export function ProjectIdeaList({ projectId, ideas, error, graph, selectedId, onSelect, onCreate, chatDeleted = () => false }: {
   projectId: string
   ideas: readonly ResearchIdea[] | null
+  error: string | null
   graph: ResearchGraphData
   selectedId: string | null
   onSelect: (ideaId: string) => void
@@ -254,7 +256,7 @@ export function ProjectIdeaList({ projectId, ideas, graph, selectedId, onSelect,
       >{m.project.linkedIdeas(shown)}
       </SectionHeading>
       {ideas === null
-        ? <LoadingPlaceholder shape="rows" count={2} />
+        ? (error === null ? <LoadingPlaceholder shape="rows" count={2} /> : <PageError variant="section" error={error} />)
         : shown === 0 && draft === null
         ? <EmptyState variant="section">{m.project.noLinkedIdeas}</EmptyState>
         : (
@@ -325,7 +327,6 @@ export function ProjectDetail({
   const [selectedIdeaId, setSelectedIdeaId] = useState<string | null>(null)
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
   const [selectedConclusion, setSelectedConclusion] = useState<string | null>(null)
-  const [error, setError] = useState<string | null>(null)
   const [workspaceOpen, setWorkspaceOpen] = useState(false)
   const [workspaceMode, setWorkspaceMode] = useState<'local' | 'ssh'>('local')
   const [localPath, setLocalPath] = useState('')
@@ -364,7 +365,7 @@ export function ProjectDetail({
   const chatDeleted = useSourceChatDeleted()
   const { open: jumpTo } = useJump()
   const openWikiPage = (page: string) => jumpTo('wiki', page)
-  const reportError = useCallback((e: unknown) => setError(errorLabel(m, e)), [m])
+  const { error, failure, load, report } = useScreenLoad(['ideas'])
   const write = useVaultWrite()
   const undo = useUndo()
   const heldPapers = project?.papers
@@ -393,18 +394,12 @@ export function ProjectDetail({
 
   // Writes outside this screen can change this project too (restoring an attachment from the Trash),
   // so fetch again on every revision.
-  useEffect(() => {
-    void projectApi.get(projectId).then(setProject).catch(reportError)
-  }, [projectId, reportError, revision])
+  useEffect(() => load('project', projectApi.get(projectId), setProject), [projectId, load, revision])
 
   // An idea stores the project it is carried out in, the projects it relates to and the one it was
   // sparked in; project details look all three up from this side, so they show at both ends.
-  useEffect(() => {
-    void ideaApi.list()
-      .then((ideas) => setLinkedIdeas(ideas.filter((idea) => idea.project === projectId
-        || idea.relations?.projects.includes(projectId) === true || idea.sourceProject === projectId)))
-      .catch(reportError)
-  }, [projectId, reportError, revision])
+  useEffect(() => load('ideas', ideaApi.list(), (ideas) => setLinkedIdeas(ideas.filter((idea) => idea.project === projectId
+    || idea.relations?.projects.includes(projectId) === true || idea.sourceProject === projectId))), [projectId, load, revision])
 
   // While project details are open, follow what external writers put in the workspace; SSH needs a
   // process and a network connection, so it polls less often than a local folder.
@@ -412,13 +407,10 @@ export function ProjectDetail({
     ? undefined
     : [project.workspace.kind, project.workspace.host, project.workspace.port, project.workspace.root].join(':')
   const workspaceKind = project?.workspace?.kind
-  useEffect(() => {
-    if (workspaceKey === undefined) return
-    const timer = window.setInterval(() => {
-      void projectApi.get(projectId).then(setProject).catch(reportError)
-    }, workspaceKind === 'ssh' ? 15_000 : 2000)
-    return () => window.clearInterval(timer)
-  }, [projectId, reportError, workspaceKey, workspaceKind])
+  useScreenPoll(
+    load, 'project', () => projectApi.get(projectId), setProject,
+    workspaceKey === undefined ? null : workspaceKind === 'ssh' ? 15_000 : 2000,
+  )
 
   useEffect(() => {
     setSelectedNode(null)
@@ -570,7 +562,7 @@ export function ProjectDetail({
   }
 
   const refreshWorkspace = () => {
-    void projectApi.get(projectId).then(setProject).catch(reportError)
+    load('project', projectApi.get(projectId), setProject)
   }
 
   const locatePlanRow = useCallback((kind: PlanTab, id: string) => {
@@ -974,7 +966,7 @@ export function ProjectDetail({
             />
 
             <ProjectIdeaList
-              projectId={projectId} ideas={linkedIdeas} graph={displayedGraph} selectedId={selectedIdeaId} chatDeleted={chatDeleted}
+              projectId={projectId} ideas={linkedIdeas} error={failure('ideas')} graph={displayedGraph} selectedId={selectedIdeaId} chatDeleted={chatDeleted}
               onCreate={(title, body) => write(ideaApi.create(undefined, title, body, projectId).then((idea) => {
                 setLinkedIdeas((held) => [idea, ...(held ?? [])])
               }), { note: m.chat.ideaSavedNote })}
@@ -1096,7 +1088,7 @@ export function ProjectDetail({
                         ),
                         topic: (
                           <ProjectAreasField
-                            projectId={projectId} areas={projectAreas(project)} onError={reportError}
+                            projectId={projectId} areas={projectAreas(project)} onError={report}
                             onSave={(topics) => writeProject(updateProject({ topics }), m.project.identity.topicUpdated)}
                             onRemove={(topics) => writeRemoval(
                               projectApi.update(projectId, { topics }), m.project.identity.topicUpdated,
@@ -1229,7 +1221,7 @@ export function ProjectDetail({
                               key="paper" row={relRow} triggers={relTriggers} allowNew={false}
                               placeholder={m.project.links.paperPlaceholder} suggest={suggestPapers}
                               onNew={() => false}
-                              onCancel={stopRel} onError={reportError}
+                              onCancel={stopRel} onError={report}
                               onPick={(hit) => writeProject(
                                 projectApi.addPaper(projectId, hit.id),
                                 <TitleNote message={m.project.links.paperLinked} title={plainTitle(hit.title)} />,
@@ -1250,7 +1242,7 @@ export function ProjectDetail({
                             <PickRow
                               key="page" row={relRow} triggers={relTriggers} allowNew
                               placeholder={m.project.links.pagePlaceholder} suggest={suggestPages}
-                              onCancel={stopRel} onError={reportError}
+                              onCancel={stopRel} onError={report}
                               onPick={(hit) => writeProject(projectApi.createRelation(projectId, {
                                 group: 'Wiki', text: hit.title, page: hit.id,
                               }), m.project.links.added)}
@@ -1280,7 +1272,7 @@ export function ProjectDetail({
                             <PickRow
                               row={relEditRow} triggers={NO_TRIGGERS} allowNew initialText={relEditing.text}
                               placeholder={m.project.links.pagePlaceholder} suggest={suggestPages}
-                              onCancel={stopRelEdit} onError={reportError}
+                              onCancel={stopRelEdit} onError={report}
                               onPick={(hit) => writeProject(projectApi.updateRelation(projectId, relEditing.id, {
                                 text: hit.title, page: hit.id,
                               }), m.project.links.updated)}

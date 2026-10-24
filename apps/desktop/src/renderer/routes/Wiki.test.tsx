@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type {
   ProposalOp, WikiAggregation, WikiAggregationCard, WikiHome, WikiPaper, WikiProposal, WikiSignal,
 } from '../../shared/contract.js'
+import { CallError } from '../call-error.js'
 import { IconTrash } from '../components/icons.js'
 import { TOOLTIP_DELAY } from '../components/Tooltip.js'
 import { MessagesProvider } from '../messages/useMessages.js'
@@ -35,6 +36,9 @@ const fixture = vi.hoisted(() => ({
   /** The `onApply` the page hands its claims. */
   applyClaims: null as null | ((title: string, ops: ProposalOp[], done: { note: string; undoable?: boolean }) => Promise<boolean>),
   writes: [] as { result: unknown; opts?: { note?: unknown; action?: (result: never) => { label: string; onAction: () => void } } }[],
+  /** What papers.reading and wiki.cards reject with instead of answering, when a test makes them fail. */
+  readingError: null as unknown,
+  cardsError: null as unknown,
 }))
 
 const HOME: WikiHome = {
@@ -72,7 +76,7 @@ vi.mock('../ipc.js', () => ({
     list: () => Promise.resolve({
       rows: [{ id: 'p1', title: 'EAGLE-2', venue: 'ICML', topics: [], noteCount: 0, conclusionCount: 0 }], total: 1,
     }),
-    reading: () => new Promise(() => {}),
+    reading: () => (fixture.readingError === null ? new Promise(() => {}) : Promise.reject(fixture.readingError)),
     get: (id: string) => Promise.resolve({ id, title: id === 'p1' ? 'EAGLE-2' : id }),
   },
   project: { list: () => Promise.resolve([{ id: 'p-47', name: '推测解码加速' }]) },
@@ -83,7 +87,8 @@ vi.mock('../ipc.js', () => ({
     aggregation: fixture.aggregation,
     paper: fixture.paper,
     backlinks: fixture.backlinks,
-    cards: () => Promise.resolve([card('topics/sd', '推测解码')]),
+    cards: () => (fixture.cardsError === null
+      ? Promise.resolve([card('topics/sd', '推测解码')]) : Promise.reject(fixture.cardsError)),
     apply: fixture.apply,
   },
   changelog: { undo: fixture.undo },
@@ -544,6 +549,43 @@ describe('Wiki 首页屏头的待审阅与需要整理', () => {
     await press(host.querySelector<HTMLElement>('.desk-head .back')!)
     await press(actions().find((button) => button.textContent!.startsWith('待审阅'))!)
     expect(host.querySelector('.desk-head .t')!.textContent).toBe('待审阅 · 2')
+  })
+
+  /** Opens Wiki place `target` as a jump from another screen would, with what failed in `fail`. */
+  const openFailing = async (target: string, fail: () => void) => {
+    fail()
+    fixture.jump = { screen: 'wiki', target, from: 'project', seq: 30 }
+    try {
+      await render()
+    } finally {
+      fixture.jump = null
+      fixture.readingError = null
+      fixture.cardsError = null
+    }
+    return [host.querySelector('.ipcerror')?.textContent, host.querySelectorAll('.desk-body .loading-placeholder').length]
+  }
+  const newer = (method: 'wiki.proposals' | 'wiki.signals' | 'wiki.cards' | 'papers.reading') => new CallError(method, 'newer-version')
+
+  it('读审阅队列失败时，待审阅不停在读取占位上，只写出原因', async () => {
+    expect(await openFailing('review', () => fixture.proposals.mockReset().mockRejectedValue(newer('wiki.proposals'))))
+      .toEqual(['需要更新 App', 0])
+  })
+
+  it('读整理信号失败时，需要整理不停在读取占位上，只写出原因', async () => {
+    expect(await openFailing('tidy', () => fixture.signals.mockReset().mockRejectedValue(newer('wiki.signals'))))
+      .toEqual(['需要更新 App', 0])
+  })
+
+  it('读整理各行的页名失败时，需要整理不停在读取占位上，只写出原因', async () => {
+    expect(await openFailing('tidy', () => { fixture.cardsError = newer('wiki.cards') })).toEqual(['需要更新 App', 0])
+  })
+
+  it('读论文的阅读记录失败时，原因写在论文页的阅读一节里，不再停在读取占位上，也不在页头重复', async () => {
+    fixture.paper.mockReset().mockResolvedValue(PAPER)
+    await openFailing('papers/p1', () => { fixture.readingError = newer('papers.reading') })
+    expect([...host.querySelectorAll('.ipcerror')].map((banner) => [banner.closest('.paper-understanding') !== null, banner.textContent]))
+      .toEqual([[true, '需要更新 App']])
+    expect(host.querySelectorAll('.desk-body .loading-placeholder')).toHaveLength(0)
   })
 
   const all = (selector: string) => [...host.querySelectorAll<HTMLElement>(selector)]

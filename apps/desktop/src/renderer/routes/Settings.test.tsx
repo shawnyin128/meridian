@@ -66,6 +66,7 @@ const api = vi.hoisted(() => ({
   success: vi.fn(),
   chatList: vi.fn(async () => [] as unknown[]),
   removeChat: vi.fn(),
+  revision: 0,
 }))
 
 vi.mock('../ipc.js', () => ({
@@ -102,7 +103,7 @@ vi.mock('../shell/AppShell.js', () => ({
   useSettingsOpen: () => ({
     open: true, requestedCategory: api.requestedCategory, setOpen: api.setOpen, openCategory: vi.fn(),
   }),
-  useVaultRevision: () => ({ revision: 0, bump: vi.fn() }),
+  useVaultRevision: () => ({ revision: api.revision, bump: vi.fn() }),
 }))
 vi.mock('../hooks/useVaultWrite.js', () => ({
   useVaultWrite: () => async (work: Promise<unknown>) => { await work; return true },
@@ -161,6 +162,7 @@ describe('Settings', () => {
     document.body.append(host)
     root = createRoot(host)
     api.requestedCategory = 'delivery-watch'
+    api.revision = 0
     api.updateDeliverySettings.mockClear()
     api.updateModelSettings.mockClear()
     api.checkModelConnection.mockClear()
@@ -1246,5 +1248,74 @@ describe('Settings', () => {
     expect(dialog.querySelector('[aria-label="模板连接信息"]')?.textContent)
       .toContain('Responses API · 无需认证')
     expect(dialog.querySelector('[aria-label="模型 API Key"]')).toBeNull()
+  })
+
+  const newer = (method: 'extensions.status' | 'library.location' | 'chat.list' | 'harness.modelSettings' | 'delivery.semanticKey') =>
+    new CallError(method, 'newer-version')
+  const render = (revision = api.revision) => {
+    api.revision = revision
+    return act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
+  }
+  const shownFailure = () => {
+    const dialog = document.querySelector('.setdlg')!
+    return [
+      dialog.querySelector('.set-head .ipcerror')?.textContent ?? null,
+      dialog.querySelector('.set-body .ipcerror')?.textContent ?? null,
+      dialog.querySelectorAll('.set-body .loading-placeholder').length,
+    ]
+  }
+
+  it('读扩展状态失败时，扩展一栏不停在读取占位上，屏头写出原因；下一次读成功时原因收起', async () => {
+    api.requestedCategory = 'extensions'
+    api.extensionStatus.mockRejectedValueOnce(newer('extensions.status'))
+    await render()
+    expect(shownFailure()).toEqual(['需要更新 App', null, 0])
+    await render(1)
+    expect(shownFailure()).toEqual([null, null, 0])
+    expect(document.querySelector('.setdlg .set-body')!.textContent).toContain('Codex')
+  })
+
+  it('读论文库位置失败时，原因写在论文库那张卡片里，不再停在读取占位上，也不在屏头重复', async () => {
+    api.requestedCategory = 'storage'
+    api.libraryLocation.mockRejectedValueOnce(newer('library.location'))
+    await render()
+    expect(shownFailure()).toEqual([null, '需要更新 App', 0])
+    expect(document.querySelector('.setdlg .storage-card .ipcerror')?.textContent).toBe('需要更新 App')
+  })
+
+  it('读对话列表失败时，归档的对话一栏不停在读取占位上，屏头写出原因', async () => {
+    api.requestedCategory = 'archived'
+    api.chatList.mockRejectedValueOnce(newer('chat.list'))
+    await render()
+    expect(shownFailure()).toEqual(['需要更新 App', null, 0])
+  })
+
+  it('前一次读取的失败晚到，不盖过后一次已经读成功的', async () => {
+    api.requestedCategory = 'extensions'
+    let failEarlier: (cause: unknown) => void = () => {}
+    api.extensionStatus.mockImplementationOnce(() => new Promise((_, reject) => { failEarlier = reject }))
+    await render()
+    await render(1)
+    await act(async () => { failEarlier(newer('extensions.status')) })
+    expect(shownFailure()).toEqual([null, null, 0])
+  })
+
+  it('读模型设置失败时，模型一栏写出原因，不停在读取占位上；回到这一栏再读成功时原因收起', async () => {
+    api.requestedCategory = 'model'
+    api.modelSettings.mockRejectedValueOnce(newer('harness.modelSettings'))
+    await render()
+    expect(shownFailure()).toEqual([null, '需要更新 App', 0])
+    const dialog = document.querySelector('.setdlg')!
+    await act(async () => { dialog.querySelector<HTMLElement>('[data-setcat="research"]')!.click() })
+    await act(async () => { dialog.querySelector<HTMLElement>('[data-setcat="model"]')!.click() })
+    expect(shownFailure()).toEqual([null, null, 0])
+    expect(dialog.querySelector('[aria-label="模型协议"]')).not.toBeNull()
+  })
+
+  it('读 Semantic Scholar key 失败时，这一栏写出原因，而不是什么都不显示', async () => {
+    api.requestedCategory = 'research'
+    api.semanticKey.mockRejectedValueOnce(newer('delivery.semanticKey'))
+    await render()
+    expect(shownFailure()).toEqual([null, '需要更新 App', 0])
   })
 })

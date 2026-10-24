@@ -92,6 +92,8 @@ let listParams: ListParams[]
 let vaultPaperCount: number | null
 /** The group values papers.facets answers with. */
 let facetRows: Facet[]
+/** The call papers.facets answers through instead, when a test holds its answer back. */
+let facetCall: Controlled<Facet[]> | null
 let openedScreens: [screen: string, id?: string][]
 /** The jump useJump hands the table: the screen another one opened it with, or null. */
 let jumpHere: ScreenJump | null
@@ -107,7 +109,7 @@ let returnedTo: string[]
 vi.mock('../ipc.js', () => ({
   papers: {
     list: (params: ListParams) => { listCallCount += 1; listParams.push(params); return listCall.promise },
-    facets: () => Promise.resolve(facetRows),
+    facets: () => facetCall?.promise ?? Promise.resolve(facetRows),
     get: (id: string) => { gotIds.push(id); return getCall.promise },
     update: (id: string, patch: Record<string, unknown>) => {
       if (throwOnNextUpdate) { const e = throwOnNextUpdate; throwOnNextUpdate = null; throw e }
@@ -307,6 +309,7 @@ describe('PaperTable', () => {
     listParams = []
     vaultPaperCount = null
     facetRows = []
+    facetCall = null
     openedScreens = []
     jumpHere = null
     gotIds = []
@@ -567,6 +570,49 @@ describe('PaperTable', () => {
     await flush()
     expect(listParams.at(-1)?.facet).toEqual({ field: 'topics', value: 'speculative decoding' })
     expect(title()).toBe('论文 · 4')
+  })
+
+  it('搜索时先发的查询晚回来，表格仍是最后那个查询的行和篇数', async () => {
+    const host = mount()
+    columnsCall.resolve(EMPTY_COLUMNS)
+    listCall.resolve({ rows: [ROW], total: 1 })
+    await flush()
+    const input = host.querySelector<HTMLInputElement>('#libq')!
+    const older = listCall = controlled()
+    act(() => setValue(input, 's'))
+    const newer = listCall = controlled()
+    act(() => setValue(input, 'spec'))
+    newer.resolve({ rows: [{ ...ROW, id: 'p2', title: 'Speculative decoding' }], total: 1 })
+    await flush()
+    older.resolve({ rows: [ROW, { ...ROW, id: 'p3', title: 'Switch Transformers' }], total: 2 })
+    await flush()
+
+    expect(listParams.slice(-2).map((params) => params.filter)).toEqual(['s', 'spec'])
+    expect([...host.querySelectorAll('.ptable tbody tr .pt-title')].map((cell) => cell.textContent)).toEqual(['Speculative decoding'])
+    expect(host.querySelector('.desk-head .t')?.textContent).toBe('论文 · 1')
+  })
+
+  it('分组索引上搜索时先发的查询晚回来，索引仍是最后那个查询的分组值', async () => {
+    const host = mount()
+    columnsCall.resolve({ hidden: [], custom: [], groups: ['topics'] })
+    listCall.resolve({ rows: [ROW], total: 1 })
+    await flush()
+    await act(async () => {
+      [...host.querySelectorAll<HTMLElement>('.filters .segmented-control > button')].find((button) => button.textContent === '主题')!.click()
+    })
+    await flush()
+    const input = host.querySelector<HTMLInputElement>('#libq')!
+    const older = facetCall = controlled()
+    act(() => setValue(input, 's'))
+    const newer = facetCall = controlled()
+    act(() => setValue(input, 'spec'))
+    newer.resolve([{ value: '推测解码', count: 1, newestTitle: 'Speculative decoding' }])
+    await flush()
+    older.resolve([{ value: '推理', count: 5, newestTitle: 'Switch Transformers' }, { value: '推测解码', count: 3, newestTitle: 'Speculative decoding' }])
+    await flush()
+
+    expect([...host.querySelectorAll('.gxrow')].map((row) => [row.querySelector('.gx-t')!.textContent, row.querySelector('.n')!.textContent]))
+      .toEqual([['推测解码', '1']])
   })
 
   it('论文搜索框与关注屏的一句话添加框是同一种带框的字段输入框', async () => {
