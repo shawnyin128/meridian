@@ -45,7 +45,7 @@ export function rankedPaper(
   }
 }
 
-const impactScore = (entry: InboxEntry): number => {
+const impactScore = (entry: Pick<InboxEntry, 'ranking'>): number => {
   const rank = entry.ranking
   if (rank === undefined) return 0
   const citations = Math.min(1, Math.log10(rank.citationCount + 1) / 3)
@@ -61,7 +61,7 @@ type RankValues = {
 }
 
 /** One score shared by every recommendation UI projection. Relevance remains dominant. */
-export function recommendationScore(entry: InboxEntry, now = Date.now()): number {
+export function recommendationScore(entry: Pick<InboxEntry, 'ranking'>, now = Date.now()): number {
   const rank = entry.ranking
   if (rank === undefined) return 0
   const submitted = Date.parse(`${rank.submitted}T00:00:00Z`)
@@ -93,13 +93,17 @@ const compare = (mode: NonNullable<InboxListParams['sort']>) => (
   return b.values.recommended - a.values.recommended
 }
 
-/** Sorts inside each source group while preserving group order and stable ties. */
+/**
+ * Sorts inside each group while preserving group order and stable ties. An entry's group is the one
+ * `groupOf` names, by default the stream that delivered it first.
+ */
 export function orderInbox(
   entries: InboxEntry[], mode: NonNullable<InboxListParams['sort']> = 'recommended', now = Date.now(),
+  groupOf: (entry: InboxEntry) => string = (entry) => (entry.kind === 'discovery' ? entry.project : entry.watch),
 ): InboxEntry[] {
   const groups = new Map<string, { entry: InboxEntry; values: RankValues }[]>()
   for (const entry of entries) {
-    const key = entry.kind === 'discovery' ? entry.project : entry.watch
+    const key = groupOf(entry)
     const ranked = { entry, values: valuesOf(entry, now) }
     const group = groups.get(key)
     if (group === undefined) groups.set(key, [ranked])

@@ -14,6 +14,12 @@ async function cardAction(win: Page, pid: string, label: string): Promise<void> 
   await card.locator(`[aria-label="${label}"]`).click()
 }
 
+/** Adds inbox card `pid` to the vault, then opens the paper from the notice that reports it. */
+async function addAndRead(win: Page, pid: string): Promise<void> {
+  await cardAction(win, pid, '下载并入库')
+  await win.locator('#notice .btn', { hasText: '开始阅读' }).click()
+}
+
 const call = <T>(win: Page, method: string, params: unknown) => win.evaluate(
   ([m, p]) => (window as unknown as MeridianWindow).meridian.call(m as string, p) as Promise<T>,
   [method, params] as const,
@@ -345,8 +351,7 @@ test.describe(() => {
     const entries = await call<{ id: string; title: string; paper: string }[]>(win, 'inbox.list', {})
     const target = entries.find((e) => e.id === INGESTED.entry)!
     await openInbox(win)
-    await cardAction(win, target.id, '下载并入库')
-    await cardAction(win, target.id, '开始阅读')
+    await addAndRead(win, target.id)
     await expectPainted(win, INGESTED.pages)
     await shown(win, '.paper-chat-head .back').click()
 
@@ -474,11 +479,11 @@ test('同一篇再进来按当下的库重取,不吃上一次的结果', async (
   const target = entries.find((e) => e.id === INGESTED.entry)!
 
   await openInbox(win)
-  await cardAction(win, target.id, '下载并入库')
-  await cardAction(win, target.id, '开始阅读')
+  await addAndRead(win, target.id)
   await expectPainted(win, INGESTED.pages)
-  const paper = (await call<{ id: string; paper: string }[]>(win, 'inbox.list', {}))
-    .find((e) => e.id === target.id)!.paper
+  const paper = (await call<{ rows: { id: string }[] }>(win, 'papers.list', {
+    page: 1, size: 2, filter: target.title.slice(0, 24),
+  })).rows[0]!.id
 
   // Delete the paper from Papers: the reader stays open on the same paper, which is no longer in the vault.
   await shown(win, '.paper-chat-head .back').click()
@@ -489,9 +494,7 @@ test('同一篇再进来按当下的库重取,不吃上一次的结果', async (
   await win.locator('.ptable tbody tr .rowx').click()
   await expect(win.locator('.ptable tbody tr')).toHaveCount(0)
 
-  // The card follows the vault and offers adding again; the feed's link to the paper still opens it.
-  await openInbox(win)
-  await expect(shown(win, `.pcard[data-pid="${target.id}"] [aria-label="下载并入库"]`)).toHaveCount(1)
+  // The card left the feed when it was added; the feed's link to the paper still opens it.
   await win.locator('[data-desk="feed"]').click()
   await shown(win, `.entity-link--paper[href="#reader:${paper}"]`).first().click()
   await expect(shown(win, '.pdfload')).toHaveText('这一项已不存在')
@@ -502,8 +505,8 @@ test('同一篇再进来按当下的库重取,不吃上一次的结果', async (
   await win.locator('[data-desk="trash"]').click()
   await win.locator('.tgroup .trow').hover()
   await win.locator('.tgroup .trow .row-actions [aria-label="恢复"]').click()
-  await openInbox(win)
-  await cardAction(win, target.id, '开始阅读')
+  await win.locator('[data-desk="feed"]').click()
+  await shown(win, `.entity-link--paper[href="#reader:${paper}"]`).first().click()
   await expect(shown(win, '.pdfload')).toHaveCount(0)
   await expect(shown(win, '.pdfpagebox')).toHaveCount(INGESTED.pages)
 })
@@ -519,7 +522,7 @@ test('放大一档,页面按新的比例重画,百分比跟着变', async ({ win
     .toHaveJSProperty('clientWidth', Math.floor(PAGE.width * FIT * 1.2))
 })
 
-test('收件里下载入库那一条的「开始阅读」进阅读器,入库那一篇的原文真的画了出来', async ({ win }) => {
+test('收件里下载入库那一条,提示里的「开始阅读」进阅读器,入库那一篇的原文真的画了出来', async ({ win }) => {
   const entries = await call<{ id: string; title: string; paper: string; downloaded: boolean }[]>(
     win, 'inbox.list', {})
   const target = entries.find((e) => !e.downloaded)!
@@ -528,8 +531,7 @@ test('收件里下载入库那一条的「开始阅读」进阅读器,入库那�
   expect(target.paper).toMatch(/^paper-pdf-[0-9a-f]{12}$/)
 
   await openInbox(win)
-  await cardAction(win, target.id, '下载并入库')
-  await cardAction(win, target.id, '开始阅读')
+  await addAndRead(win, target.id)
 
   await expect(win.locator('#crumb .cseg'))
     .toHaveText(['收件', '论文推送', target.title.split(':')[0]!])
@@ -543,8 +545,7 @@ test('从某一条关注那一档进阅读器,面包屑是那一档的三段加�
   const target = entries.find((e) => e.watch === watched.id)!
 
   await win.locator(`[data-inbox="${watched.id}"]`).click()
-  await cardAction(win, target.id, '下载并入库')
-  await cardAction(win, target.id, '开始阅读')
+  await addAndRead(win, target.id)
 
   await expect(win.locator('#crumb .cseg'))
     .toHaveText(['收件', '关键词', watched.name, target.title.split(':')[0]!])

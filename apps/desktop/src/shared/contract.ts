@@ -1196,12 +1196,21 @@ export const RecommendationReasonSchema = z.object({
   paperId: z.string().optional(),
 }).strict()
 
+/** A stream that lists an inbox entry: a watch, or a project's discovery, by id, with the group label it shows under. */
+export const InboxStreamSchema = z.object({
+  kind: z.enum(['watch', 'discovery']),
+  id: z.string(),
+  source: z.string(),
+}).strict()
+
 /**
  * Inbox candidate. `kind` distinguishes deterministic watch matches from
  * personalized discovery; legacy records migrate to watch matches. `watch` and
- * `project` identify the owning stream, `source` freezes the group label,
- * `reasons` contains structured Core rationale, and `rec` remains for legacy
- * compatibility. Feedback and ranking metadata stay in app state.
+ * `project` identify the stream that delivered it first, `source` freezes its
+ * group label, and `also` lists every other stream that delivered the same
+ * paper, in order. `reasons` contains structured Core rationale from all of
+ * them, and `rec` remains for legacy compatibility. Feedback and ranking
+ * metadata stay in app state.
  */
 export const InboxEntrySchema = z.object({
   id: z.string(),
@@ -1215,6 +1224,7 @@ export const InboxEntrySchema = z.object({
   abstract: z.string(),
   rec: z.string(),
   reasons: z.array(RecommendationReasonSchema).default([]),
+  also: z.array(InboxStreamSchema).optional(),
   feedback: z.enum(['more', 'less', 'known']).optional(),
   downloaded: z.boolean(),
   paper: z.string(),
@@ -1228,8 +1238,10 @@ export const InboxEntrySchema = z.object({
   }).strict().optional(),
 }).strict()
 
+/** Entries of one stream kind, of the one watch or project among them when named, which then sort as one group. */
 export const InboxListParamsSchema = z.object({
   kind: z.enum(['watch', 'discovery']).optional(),
+  watch: z.string().optional(),
   project: z.string().optional(),
   sort: z.enum(['recommended', 'latest', 'published', 'impact']).optional(),
 }).strict()
@@ -1275,12 +1287,19 @@ export const DiscoveryFeedbackParamsSchema = z.object({
   id: z.string(), feedback: z.enum(['more', 'less', 'known']),
 }).strict()
 
-/** Recommendation settings shared by watch and project-discovery streams. */
+/**
+ * Recommendation settings shared by watch and project-discovery streams: how many new papers one run
+ * delivers, and how many cards each watch or project shows after a refresh, absent in settings an
+ * older App saved, which then read as the default.
+ */
 export const DeliverySettingsSchema = z.object({
   maxItemsPerRun: z.number().int().min(1).max(100),
+  maxShownPerScope: z.number().int().min(1).max(100).optional(),
 }).strict()
 
-export const DEFAULT_DELIVERY_SETTINGS = { maxItemsPerRun: 10 } satisfies z.infer<typeof DeliverySettingsSchema>
+export const DEFAULT_DELIVERY_SETTINGS = {
+  maxItemsPerRun: 10, maxShownPerScope: 20,
+} satisfies z.infer<typeof DeliverySettingsSchema>
 
 /**
  * Read-later entry. `source` is frozen when queued; `added` is the queue date and
@@ -1307,6 +1326,9 @@ export const InboxDismissParamsSchema = z.object({ id: z.string() }).strict()
 export const InboxReadLaterParamsSchema = z.object({ id: z.string() }).strict()
 
 export const InboxDownloadParamsSchema = z.object({ id: z.string() }).strict()
+
+/** Which watch to fetch; without one, every active watch. */
+export const InboxFetchParamsSchema = z.object({ watchId: z.string().optional() }).strict()
 
 /** Why the PDF of an inbox entry could not be fetched, or, once fetched, could not be written into the vault. */
 export const InboxDownloadFailureSchema = z.enum([...NetFailureSchema.options, 'not-pdf', 'write'])
@@ -2220,11 +2242,20 @@ export const MetadataJobSchema = z.object({
   error: z.string().nullable(),
 }).strict()
 
-/** Current state of a watch-driven fetch; `reason` says why the last fetch failed. */
+/**
+ * Current state of a watch-driven fetch; `reason` says why the last fetch failed. `last` is the last
+ * finished run, absent before the first: the watches it fetched, null for every active one, how many
+ * new papers it delivered, and when it finished.
+ */
 export const FetchStatusSchema = z.object({
   state: z.enum(['idle', 'checking', 'failed']),
   checkedAt: z.number().int().nullable(),
   reason: NetFailureSchema.nullable(),
+  last: z.object({
+    watches: z.array(z.string()).nullable(),
+    added: z.number().int().min(0),
+    at: z.number().int(),
+  }).strict().optional(),
 }).strict()
 
 /** Source currently downloading with byte progress. */
@@ -2449,6 +2480,7 @@ export type WatchAuthorSuggestion = z.infer<typeof WatchAuthorSuggestionSchema>
 export type WatchSuggestionResult = z.infer<typeof WatchSuggestionResultSchema>
 export type WatchSuggestionParams = z.infer<typeof WatchSuggestionParamsSchema>
 export type InboxEntry = z.infer<typeof InboxEntrySchema>
+export type InboxStream = z.infer<typeof InboxStreamSchema>
 export type InboxListParams = z.infer<typeof InboxListParamsSchema>
 export type InboxDownloadFailure = z.infer<typeof InboxDownloadFailureSchema>
 export type InboxDownloadResult = z.infer<typeof InboxDownloadResultSchema>

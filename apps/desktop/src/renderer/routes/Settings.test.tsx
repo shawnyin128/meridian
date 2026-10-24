@@ -214,7 +214,7 @@ describe('Settings', () => {
     const save = dialog.querySelector<HTMLButtonElement>('.delivery-settings-card > .service-foot > .service-actions > .btn')!
     expect(dialog.querySelector('.delivery-setting-control .btn')).toBeNull()
     await act(async () => { save.click() })
-    expect(api.updateDeliverySettings).toHaveBeenCalledWith({ maxItemsPerRun: 12 })
+    expect(api.updateDeliverySettings).toHaveBeenCalledWith({ maxItemsPerRun: 12, maxShownPerScope: 20 })
     expect(save.textContent).toBe('已保存')
   })
 
@@ -232,7 +232,7 @@ describe('Settings', () => {
     await pressEnter({ isComposing: true })
     expect(api.updateDeliverySettings).not.toHaveBeenCalled()
     await pressEnter({})
-    expect(api.updateDeliverySettings).toHaveBeenCalledExactlyOnceWith({ maxItemsPerRun: 12 })
+    expect(api.updateDeliverySettings).toHaveBeenCalledExactlyOnceWith({ maxItemsPerRun: 12, maxShownPerScope: 20 })
   })
 
   it('归档的对话那一行的打开和取消归档是行尾操作槽里的图标钮', async () => {

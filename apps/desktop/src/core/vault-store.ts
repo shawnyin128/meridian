@@ -2,7 +2,8 @@ import { existsSync, readdirSync, readFileSync, rmSync, statSync } from 'node:fs
 import { basename, isAbsolute, join } from 'node:path'
 import type { z } from 'zod'
 import type {
-  ChatSession, Conclusion, DeliverySettings, FeedEntry, FeedRun, GraphNode, PaperColumns, PaperImportResult, PaperReading, PaperRow, Proposal,
+  ChatSession, Conclusion, DeliverySettings, FeedEntry, FeedRun, GraphNode, InboxStream, PaperColumns, PaperImportResult,
+  PaperReading, PaperRow, Proposal,
   ProjectConclusion, ProjectDetail, ProjectWorkspaceBinding, ProposalRecord, ReadingMutation, RelationFields, ResearchGraph,
   ResearchIdea, Task, TaskFields,
   WikiSignal,
@@ -34,19 +35,26 @@ import {
   readProjectWorkspace, readWorkspaceAgentIdeas, readWorkspaceAgentTasks, withProjectLinks, writeProjectFields,
   writeProjectWorkspaceState, type ProjectRecord,
 } from './project-management/index.js'
-import { inboxFields, unseenPapers } from './inbox/dedup.js'
+import { inboxFields } from './inbox/dedup.js'
+import {
+  combinedReasons, cutBelow, listedUnder, orderListing, sortFound, withoutStreams, withStream,
+} from './inbox/delivery.js'
+import {
+  createPaperIndex, doiField, libraryArxivId, libraryIdentity, paperIdentity, type PaperIdentity,
+} from './inbox/identity.js'
 import {
   applyRecommendationPreferences, buildRecommendationProfile, clusterRecommendationProfile,
-  discoveryReasons, orderInbox, recommendationSeedIds,
+  discoveryReasons, recommendationSeedIds,
   type DiscoveryPaper, type DiscoveryPreferences,
 } from './recommendation/index.js'
+import type { RemotePaper } from './net/arxiv.js'
 import type { Json } from './vault/frontmatter.js'
 import { emitKey } from './vault/frontmatter.js'
 import type {
-  ChatRecord, InboxRecord, PaperSnapshot, TrashRecord, VaultState,
+  ChatRecord, InboxLeft, InboxRecord, PaperSnapshot, TrashRecord, VaultState,
 } from './vault/records.js'
 import {
-  ChatRecordSchema, DiscoveryPreferencesRecordSchema, InboxRecordSchema, LaterRecordSchema,
+  ChatRecordSchema, DeliveredRecordSchema, DiscoveryPreferencesRecordSchema, InboxRecordSchema, LaterRecordSchema,
   PaperReadingRecordSchema, TrashRecordSchema, VaultStateSchema,
 } from './vault/records.js'
 import { readRecord, readStoredList, withUnknownFields, type StoredList } from './vault/stored-records.js'
@@ -444,7 +452,43 @@ export function createVaultStore(
     save('feed', feed)
   }
   let trash = load('trash', TrashRecordSchema)
+  let delivered = load('discovery/delivered', DeliveredRecordSchema)
   let readings = load('paper-readings', PaperReadingRecordSchema, 'paperId')
+
+  /** The identity of the paper a stored inbox entry delivers. */
+  const entryIdentity = (entry: InboxRecord): PaperIdentity => paperIdentity({
+    arxiv: entry.arxiv, ...doiField(entry), semanticId: entry.semanticId,
+    title: entry.title, submitted: entry.meta.submitted,
+  })
+
+  /** Remembers the papers `entries` deliver as delivered, each entry once. */
+  const remember = (entries: InboxRecord[]): void => {
+    const held = new Set(delivered.map((record) => record.id))
+    const added = entries.filter((entry) => !held.has(entry.id))
+      .map((entry) => ({ id: entry.id, ...entryIdentity(entry) }))
+    if (added.length > 0) delivered = save('discovery/delivered', [...delivered, ...added])
+  }
+
+  /**
+   * Takes the streams `gone` names off every inbox entry. An entry no stream lists anymore is removed
+   * with its trash entries, and its paper remembered as delivered. Writes only what changed.
+   */
+  const dropStreams = (gone: (stream: InboxStream) => boolean): void => {
+    const removed: InboxRecord[] = []
+    let changed = false
+    const next = inbox.flatMap((entry) => {
+      const kept = withoutStreams(entry, gone)
+      if (kept !== entry) changed = true
+      if (kept === null) removed.push(entry)
+      return kept === null ? [] : [kept]
+    })
+    if (!changed) return
+    remember(removed)
+    inbox = save('inbox', next)
+    const ids = new Set(removed.map((entry) => entry.id))
+    const kept = trash.filter((item) => item.kind !== 'inbox' || !ids.has(item.entryId))
+    if (kept.length !== trash.length) trash = save('trash', kept)
+  }
   // Another App version may have written queue records this one cannot read; keep those as written.
   const heldProposals: unknown[] = existsSync(join(meridian, 'proposals.json'))
     ? JSON.parse(readFileSync(join(meridian, 'proposals.json'), 'utf8')) as unknown[] : []
@@ -467,19 +511,7 @@ export function createVaultStore(
     ...watches.map((watch) => watch.id),
     ...(lists.get('watches')?.unreadable ?? []).map((watch) => (watch as { id?: unknown }).id),
   ])
-  const orphanInbox = new Set(
-    inbox.filter((entry) => entry.kind === 'watch' && !knownWatches.has(entry.watch))
-      .map((entry) => entry.id),
-  )
-  if (orphanInbox.size > 0) {
-    inbox = inbox.filter((entry) => !orphanInbox.has(entry.id))
-    const nextTrash = trash.filter((item) => item.kind !== 'inbox' || !orphanInbox.has(item.entryId))
-    save('inbox', inbox)
-    if (nextTrash.length !== trash.length) {
-      trash = nextTrash
-      save('trash', trash)
-    }
-  }
+  dropStreams((stream) => stream.kind === 'watch' && !knownWatches.has(stream.id))
 
   const projectById = new Map<string, ProjectRecord>()
   /** Ids of the project pages this version cannot read; they are left out and never written. */
@@ -494,17 +526,7 @@ export function createVaultStore(
     }
   }
 
-  const orphanDiscoveries = new Set(
-    inbox.filter((entry) => entry.kind === 'discovery' && !projectById.has(entry.project)
-      && !unreadableProjects.has(entry.project))
-      .map((entry) => entry.id),
-  )
-  if (orphanDiscoveries.size > 0) {
-    inbox = inbox.filter((entry) => !orphanDiscoveries.has(entry.id))
-    trash = trash.filter((item) => item.kind !== 'inbox' || !orphanDiscoveries.has(item.entryId))
-    save('inbox', inbox)
-    save('trash', trash)
-  }
+  dropStreams((stream) => stream.kind === 'discovery' && !projectById.has(stream.id) && !unreadableProjects.has(stream.id))
 
   const paperScan = scan(paperDir, (stem) => wikiData.pages[PAPER_PAGE + stem] !== undefined)
 
@@ -857,7 +879,7 @@ export function createVaultStore(
    */
   const atomically = <T>(write: () => T): T => {
     if (syncing !== undefined) return write()
-    const held = { wikiData, state, inbox, later, watches, chats, ideas, feed, trash, readings, proposals, changes }
+    const held = { wikiData, state, inbox, later, watches, chats, ideas, feed, trash, delivered, readings, proposals, changes }
     const indexes = [papers, pagesOf, projectById].map((index: Map<string, unknown>) => ({ index, was: new Map(index) }))
     const synced = new Set<string>()
     syncing = synced
@@ -865,7 +887,7 @@ export function createVaultStore(
     try {
       result = writeAtomically(staging, write)
     } catch (error) {
-      ({ wikiData, state, inbox, later, watches, chats, ideas, feed, trash, readings, proposals, changes } = held)
+      ({ wikiData, state, inbox, later, watches, chats, ideas, feed, trash, delivered, readings, proposals, changes } = held)
       for (const { index, was } of indexes) {
         index.clear()
         for (const [key, value] of was) index.set(key, value)
@@ -1006,6 +1028,11 @@ export function createVaultStore(
   /** Applies a patch to an inbox entry and persists the list. */
   const putEntry = (id: string, patch: Partial<InboxRecord>): void => {
     inbox = save('inbox', inbox.map((e) => (e.id === id ? { ...e, ...patch } : e)))
+  }
+
+  /** Takes an inbox entry out of the feed for good, recording `left` as why, along with `patch`. */
+  const leaveEntry = (id: string, left: InboxLeft, patch: Partial<InboxRecord> = {}): void => {
+    putEntry(id, { ...patch, gone: true, left })
   }
 
   /** Returns a chat by ID. Throws when the vault has no such chat. */
@@ -1160,16 +1187,9 @@ export function createVaultStore(
     return entry
   }
 
-  const arxivSeed = (paper: PaperRow | undefined): string | null => {
-    if (paper === undefined) return null
-    const named = paper.identifier?.match(/^arXiv:(.+)$/i)?.[1]?.replace(/v\d+$/, '')
-    if (named) return named
-    return /^\d{4}\.\d{4,5}(?:v\d+)?$/.test(paper.id) ? paper.id.replace(/v\d+$/, '') : null
-  }
-
   const projectDiscoveryProfile = (projectId: string) => {
     const project = projectOf(projectId)
-    const discovered = inbox.filter((entry) => entry.kind === 'discovery' && entry.project === projectId)
+    const discovered = inbox.filter((entry) => listedUnder(entry, 'discovery', projectId))
     const linkedPapers = project.papers.flatMap((id) => {
       const paper = papers.get(id)
       return paper === undefined ? [] : [paper]
@@ -1189,7 +1209,7 @@ export function createVaultStore(
       ].filter(Boolean).join(' · '),
       wikiTerms,
       projectPapers: linkedPapers.flatMap((paper) => {
-        const seed = arxivSeed(paper)
+        const seed = libraryArxivId(paper)
         return seed === null ? [] : [{
           paperId: `ARXIV:${seed}`, title: paper.title, abstract: paper.abstract ?? '',
           wikiTerms: [...paper.topics, ...paper.methods],
@@ -1231,6 +1251,54 @@ export function createVaultStore(
     clusterRecommendationProfile(projectDiscoveryProfile(projectId)),
     discoveryPreferences(projectId),
   )
+
+  /** Returns whether an inbox entry shows in the feed: it has not left, and the vault does not hold its paper. */
+  const inFeed = (): ((entry: InboxRecord) => boolean) => {
+    const owned = createPaperIndex<true>()
+    for (const paper of papers.values()) owned.add(libraryIdentity(paper), true)
+    return (entry) => !entry.gone && !pagesOf.has(entry.paper) && owned.find(entryIdentity(entry)) === undefined
+  }
+
+  /** What a found paper may turn out to be: in the vault, a live card, or delivered before. */
+  const known = () => ({
+    owned: [...papers.values()].map(libraryIdentity),
+    live: inbox.filter((entry) => !entry.gone).map((entry) => ({ id: entry.id, identity: entryIdentity(entry) })),
+    seen: [...inbox.filter((entry) => entry.gone).map(entryIdentity), ...delivered],
+  })
+
+  /**
+   * Delivers the papers a stream found that no stream delivered before, at most `limit` and each once,
+   * as the records `make` builds, which `place` puts among the entries held; and lists the stream, by
+   * `listed`, on each live card it found again. Remembers what it delivered and returns those records.
+   * Papers the vault holds are skipped. Throws, leaving the inbox as it stood, when it cannot write.
+   */
+  const deliver = <P extends RemotePaper>(
+    scope: Pick<InboxStream, 'kind' | 'id'>, found: P[], limit: number | undefined,
+    identityOf: (paper: P) => PaperIdentity, make: (paper: P) => InboxRecord,
+    listed: (entry: InboxRecord, paper: P) => InboxRecord,
+    place: (fresh: InboxRecord[], held: InboxRecord[]) => InboxRecord[],
+  ): InboxRecord[] => {
+    const { fresh, merged } = sortFound(found, identityOf, known())
+    let changed = false
+    const held = inbox.map((entry) => {
+      const paper = merged.get(entry.id)
+      const next = paper === undefined ? entry : listed(entry, paper)
+      if (next !== entry) changed = true
+      return next
+    })
+    const shown = inFeed()
+    const { kept, folded } = cutBelow(
+      held.filter((entry) => shown(entry) && listedUnder(entry, scope.kind, scope.id)),
+      limit === undefined ? fresh : fresh.slice(0, limit),
+      ops.deliverySettings().maxShownPerScope ?? DEFAULT_DELIVERY_SETTINGS.maxShownPerScope, now().getTime(),
+    )
+    const added = kept.map(make)
+    if (added.length === 0 && !changed && folded.size === 0) return []
+    const fold = (entry: InboxRecord): InboxRecord => (folded.has(entry.id) ? { ...entry, gone: true, left: 'folded' } : entry)
+    inbox = save('inbox', place(added, held.map(fold)))
+    remember(added)
+    return added
+  }
 
   const ops: VaultOps = {
     today,
@@ -1571,14 +1639,7 @@ export function createVaultStore(
       const entry = nextId('trash')
       movePage(projectFile(id), trashPage(entry))
       projectById.delete(id)
-      const removedEntries = new Set(
-        inbox.filter((held) => held.kind === 'discovery' && held.project === id)
-          .map((held) => held.id),
-      )
-      if (removedEntries.size > 0) {
-        inbox = save('inbox', inbox.filter((held) => !removedEntries.has(held.id)))
-        trash = save('trash', trash.filter((item) => item.kind !== 'inbox' || !removedEntries.has(item.entryId)))
-      }
+      dropStreams((stream) => stream.kind === 'discovery' && stream.id === id)
       toTrash({
         id: entry, kind: 'project', title: project.name, deletedAt: nowMs(),
         page: `wiki/${PROJECTS_DIR}/${id}.md`,
@@ -1900,9 +1961,10 @@ export function createVaultStore(
     },
 
     listInbox(params = {}) {
-      const rows = inbox.filter((e) => !e.gone)
-        .filter((e) => params.kind === undefined || e.kind === params.kind)
-        .filter((e) => params.project === undefined || e.project === params.project)
+      const rows = inbox.filter(inFeed())
+        .filter((e) => params.kind === undefined || listedUnder(e, params.kind))
+        .filter((e) => params.project === undefined || listedUnder(e, 'discovery', params.project))
+        .filter((e) => params.watch === undefined || listedUnder(e, 'watch', params.watch))
         .map((e) => ({
         id: e.id,
         kind: e.kind,
@@ -1914,19 +1976,20 @@ export function createVaultStore(
         venue: e.venue,
         abstract: e.abstract,
         rec: e.rec,
-        reasons: structuredClone(e.reasons),
+        reasons: structuredClone(combinedReasons(e)),
+        ...(e.also === undefined ? {} : { also: e.also.map(({ kind, id, source }) => ({ kind, id, source })) }),
         ...(e.feedback === undefined ? {} : { feedback: e.feedback }),
         downloaded: pagesOf.has(e.paper),
         paper: paperOf(e.paper),
         pdf: e.pdf,
         ...(e.ranking === undefined ? {} : { ranking: structuredClone(e.ranking) }),
       }))
-      return orderInbox(rows, params.sort)
+      return orderListing(rows, params)
     },
 
     dismissInbox: atomic((id) => {
       const entry = liveEntry(id)
-      putEntry(id, { gone: true })
+      leaveEntry(id, 'dismissed')
       toTrash({
         id: nextId('trash'), kind: 'inbox', title: entry.title, deletedAt: nowMs(), entryId: id,
       })
@@ -1934,7 +1997,7 @@ export function createVaultStore(
 
     readLater: atomic((id) => {
       const entry = liveEntry(id)
-      putEntry(id, { gone: true })
+      leaveEntry(id, 'later')
       if (later.some((x) => x.id === id)) return false
       later = save('later', [{
         id: entry.id,
@@ -1962,12 +2025,12 @@ export function createVaultStore(
       const entry = downloadableEntry(id)
       const topics = entry.topic === '' ? null : topicDir(wikiHome(wikiData))
       const result = storeUpload(`${entry.title}.pdf`, bytes)
+      const source = sourceOf(result.paper.id)
+      leaveEntry(id, 'library', { downloaded: true, paper: source })
+      later = save('later', later.map((queued) => (queued.id === id ? { ...queued, paper: source } : queued)))
       if (result.kind === 'existing') {
         return { kind: 'existing', paper: result.paper.id, title: result.paper.title }
       }
-      const source = sourceOf(result.paper.id)
-      putEntry(id, { downloaded: true, paper: source })
-      later = save('later', later.map((queued) => (queued.id === id ? { ...queued, paper: source } : queued)))
       fillPaper(result.paper.id, remoteMetadata({
         id: entry.arxiv,
         title: entry.title,
@@ -1998,10 +2061,15 @@ export function createVaultStore(
         }))
     },
 
-    removeLater(id) {
-      if (!later.some((x) => x.id === id)) throw new CallError('not-found', `稍后阅读里没有这一条：${id}`)
+    removeLater: atomic((id) => {
+      const position = later.findIndex((x) => x.id === id)
+      if (position < 0) throw new CallError('not-found', `稍后阅读里没有这一条：${id}`)
+      const removed = later[position]!
       later = save('later', later.filter((x) => x.id !== id))
-    },
+      toTrash({
+        id: nextId('trash'), kind: 'later', title: removed.title, deletedAt: nowMs(), later: removed, position,
+      })
+    }),
 
     listWatches() {
       return watches.map((w) => structuredClone(w))
@@ -2027,37 +2095,49 @@ export function createVaultStore(
 
     deleteWatch: atomic((id) => {
       if (!watches.some((w) => w.id === id)) throw new CallError('not-found', `关注不存在：${id}`)
-      const removedEntries = new Set(
-        inbox.filter((entry) => entry.kind === 'watch' && entry.watch === id).map((entry) => entry.id),
-      )
       watches = save('watches', watches.filter((w) => w.id !== id))
-      inbox = save('inbox', inbox.filter((entry) => entry.kind !== 'watch' || entry.watch !== id))
-      trash = save('trash', trash.filter((item) => item.kind !== 'inbox' || !removedEntries.has(item.entryId)))
+      dropStreams((stream) => stream.kind === 'watch' && stream.id === id)
     }),
 
     deliverySettings() {
-      return structuredClone(state.deliverySettings ?? DEFAULT_DELIVERY_SETTINGS)
+      const held = state.deliverySettings
+      return {
+        maxItemsPerRun: held?.maxItemsPerRun ?? DEFAULT_DELIVERY_SETTINGS.maxItemsPerRun,
+        maxShownPerScope: state.maxShownPerScope ?? held?.maxShownPerScope ?? DEFAULT_DELIVERY_SETTINGS.maxShownPerScope,
+      }
     },
 
     setDeliverySettings(settings: DeliverySettings) {
-      saveState({ ...state, deliverySettings: structuredClone(settings) })
+      const next: VaultState = { ...state, deliverySettings: { maxItemsPerRun: settings.maxItemsPerRun } }
+      if (settings.maxShownPerScope === undefined) delete next.maxShownPerScope
+      else next.maxShownPerScope = settings.maxShownPerScope
+      saveState(next)
     },
 
-    addInboxEntries(watchId, found, limit) {
+    addInboxEntries: atomic((watchId, found, limit) => {
       const watch = watches.find((w) => w.id === watchId)
       if (!watch) throw new CallError('not-found', `关注不存在：${watchId}`)
-      const unseen = unseenPapers(
-        found, inbox.filter((entry) => entry.kind === 'watch').map((entry) => entry.arxiv), papers.values(),
-      )
-      const added: InboxRecord[] = (limit === undefined ? unseen : unseen.slice(0, limit)).map((paper) => ({
-          id: nextId('inbox'), watch: watch.id, downloaded: false, paper: '', gone: false,
-          semanticId: '',
-          ...inboxFields(watch, paper),
-        }))
-      if (added.length === 0) return []
-      const at = inbox.findIndex((entry) => entry.watch === watch.id)
-      inbox = save('inbox', at < 0 ? [...inbox, ...added] : [...inbox.slice(0, at), ...added, ...inbox.slice(at)])
+      const added = deliver({ kind: 'watch', id: watch.id }, found, limit, (paper) => paperIdentity({
+        arxiv: paper.id, ...doiField(paper), title: paper.title, submitted: paper.submitted,
+      }), (paper) => ({
+        id: nextId('inbox'), watch: watch.id, downloaded: false, paper: '', gone: false,
+        semanticId: '', ...doiField(paper),
+        ...inboxFields(watch, paper),
+      }), (entry, paper) => {
+        const fields = inboxFields(watch, paper)
+        return withStream(entry, { kind: 'watch', id: watch.id, source: fields.source, reasons: fields.reasons })
+      }, (fresh, held) => {
+        const at = held.findIndex((entry) => entry.watch === watch.id)
+        return at < 0 ? [...held, ...fresh] : [...held.slice(0, at), ...fresh, ...held.slice(at)]
+      })
       return added.map((entry) => entry.arxiv)
+    }),
+
+    undelivered(found) {
+      return sortFound(found, (paper) => paperIdentity({
+        arxiv: paper.id, ...doiField(paper), ...(paper.semanticId === undefined ? {} : { semanticId: paper.semanticId }),
+        title: paper.title, submitted: paper.submitted,
+      }), known()).fresh
     },
 
     updateInboxEntries(watchId, found) {
@@ -2089,7 +2169,7 @@ export function createVaultStore(
         .map((project) => {
           const profile = projectDiscoveryProfile(project.id)
           const seeds = recommendationSeedIds(profile)
-          const base = project.papers.filter((id) => arxivSeed(papers.get(id)) !== null).length
+          const base = project.papers.filter((id) => libraryArxivId(papers.get(id)) !== null).length
           const intents = projectDiscoveryIntents(project.id)
           return {
             id: project.id,
@@ -2154,18 +2234,18 @@ export function createVaultStore(
       preferences.set(projectId, { ...held, ...changed })
     },
 
-    addDiscoveryEntries(projectId, found: DiscoveryPaper[], limit) {
+    addDiscoveryEntries: atomic((projectId, found: DiscoveryPaper[], limit) => {
       const project = projectOf(projectId)
       const seeds = projectDiscoverySeeds(projectId)
-      const seen = inbox.filter((entry) => entry.kind === 'discovery' && entry.project === projectId)
-        .map((entry) => entry.arxiv)
-      const unseen = unseenPapers(found, seen, papers.values())
-      const added: InboxRecord[] = (limit === undefined ? unseen : unseen.slice(0, limit)).map((paper) => ({
+      const source = `项目 · ${project.name}`
+      return deliver({ kind: 'discovery', id: project.id }, found, limit, (paper) => paperIdentity({
+        arxiv: paper.id, ...doiField(paper), semanticId: paper.semanticId, title: paper.title, submitted: paper.submitted,
+      }), (paper) => ({
         id: nextId('inbox'),
         kind: 'discovery',
         watch: '',
         project: project.id,
-        source: `项目 · ${project.name}`,
+        source,
         title: paper.title,
         authors: paper.authors.join(', '),
         venue: paper.journalRef ?? `arXiv:${paper.id}`,
@@ -2180,18 +2260,28 @@ export function createVaultStore(
         gone: false,
         arxiv: paper.id,
         semanticId: paper.semanticId,
+        ...doiField(paper),
         meta: { authors: paper.authors, submitted: paper.submitted, journalRef: paper.journalRef },
-      }))
-      if (added.length === 0) return 0
-      inbox = save('inbox', [...added, ...inbox])
-      return added.length
-    },
+      }), (entry, paper) => {
+        const listed = withStream(entry, {
+          kind: 'discovery', id: project.id, source, reasons: discoveryReasons(project.name, seeds.positive.length, paper),
+        })
+        return listed.semanticId === '' && paper.semanticId !== '' ? { ...listed, semanticId: paper.semanticId } : listed
+      }, (fresh, held) => [...fresh, ...held]).length
+    }),
 
-    feedbackDiscovery(id, feedback) {
+    feedbackDiscovery: atomic((id, feedback) => {
       const entry = liveEntry(id)
-      if (entry.kind !== 'discovery') throw new CallError('invalid', `这一条不是论文发现：${id}`)
-      putEntry(id, { feedback, gone: feedback === 'more' ? false : true })
-    },
+      if (!listedUnder(entry, 'discovery')) throw new CallError('invalid', `这一条不是论文发现：${id}`)
+      if (feedback === 'more') {
+        putEntry(id, { feedback })
+        return
+      }
+      leaveEntry(id, feedback, { feedback })
+      toTrash({
+        id: nextId('trash'), kind: 'inbox', title: entry.title, deletedAt: nowMs(), entryId: id, feedback,
+      })
+    }),
 
     lastFetch() {
       return state.fetchedAt ?? null
@@ -2443,6 +2533,7 @@ export function createVaultStore(
         inbox = save('inbox', inbox.map((entry) => {
           if (entry.id !== item.entryId) return entry
           const restored = { ...entry, gone: false }
+          delete restored.left
           if (item.feedback !== undefined) delete restored.feedback
           return restored
         }))

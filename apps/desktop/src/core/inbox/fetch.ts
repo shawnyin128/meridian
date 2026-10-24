@@ -17,6 +17,7 @@ export function createWatchFetcher(deps: {
   let tail: Promise<void> = Promise.resolve()
   let pending = 0
   let reason: NetFailure | null = null
+  let last: FetchStatus['last']
 
   const fetchWatches = async (watchIds: string[] | undefined): Promise<void> => {
     const watches = deps.store.listWatches()
@@ -55,6 +56,7 @@ export function createWatchFetcher(deps: {
     }
     reason = failure
     const total = counts.reduce((sum, count) => sum + count.added, 0)
+    last = { watches: watchIds ?? null, added: total, at: deps.now() }
     if (total > 0) {
       const runs: FeedRun[] = [
         { kind: 'text', text: '抓取：' },
@@ -81,6 +83,7 @@ export function createWatchFetcher(deps: {
       state: pending > 0 ? 'checking' : reason !== null ? 'failed' : 'idle',
       checkedAt: deps.store.lastFetch(),
       reason,
+      ...(last === undefined ? {} : { last: structuredClone(last) }),
     }),
   }
 }

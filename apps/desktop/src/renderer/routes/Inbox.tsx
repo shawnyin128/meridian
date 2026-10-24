@@ -3,6 +3,7 @@ import type {
   DiscoveryFetchResult, DiscoveryProfile, FetchStatus, InboxDownloadFailure, InboxEntry,
   InboxListParams, Watch,
 } from '../../shared/contract.js'
+import { listingsOf } from '../../shared/inbox-streams.js'
 import { discovery, inbox, watch } from '../ipc.js'
 import {
   ALL_WATCHES, useCrumbTail, useInboxMode, useInboxScope, useJump, useNotice, useSettingsOpen, useVaultRevision,
@@ -12,7 +13,7 @@ import { errorLabel, failureLabel } from '../lib/failure-label.js'
 import type { Catalog } from '../messages/catalog.js'
 import { useMessages } from '../messages/useMessages.js'
 import {
-  DownloadRing, Icon, IconDownload, IconGear, IconLater, IconRead, IconSeen, IconTrash,
+  DownloadRing, Icon, IconDownload, IconGear, IconLater, IconSeen, IconTrash,
 } from '../components/icons.js'
 import { IconButton } from '../components/IconButton.js'
 import {
@@ -20,7 +21,6 @@ import {
 } from '../components/paper/PaperCard.js'
 import { EmptyState } from '../components/EmptyState.js'
 import { LoadingPlaceholder } from '../components/LoadingPlaceholder.js'
-import { plainTitle } from '../components/paper/paper-text.js'
 import { CollapsibleGroup } from '../components/CollapsibleGroup.js'
 import { DateTimeDisplay } from '../components/DateTimeDisplay.js'
 import { SortMenu } from '../components/SortMenu.js'
@@ -45,29 +45,45 @@ const label = (w: Watch, watchKind: Record<Watch['type'], string>) => `${watchKi
 const streamLabel = (m: Catalog, stream: 'watch' | 'discovery'): string =>
   (stream === 'watch' ? m.inbox.streamLabel.watch : m.inbox.streamLabel.discovery)
 
-function fetchNote(status: FetchStatus | null, m: Catalog): ReactNode {
+/**
+ * The watch fetch's status line for `scope`: the time of the last finished run when it fetched that
+ * scope, saying first when it brought nothing new, or else the time of the last full fetch.
+ */
+function fetchNote(status: FetchStatus | null, scope: string, m: Catalog): ReactNode {
   if (status === null) return ''
   if (status.state === 'checking') return m.inbox.check.checking
   if (status.state === 'failed') return failureLabel(m, m.inbox.check.failed, status.reason ?? 'unknown')
-  if (status.checkedAt === null) return ''
-  return <>{m.inbox.check.lastChecked}{' '}<DateTimeDisplay at={status.checkedAt} /></>
+  const last = status.last
+  const fetched = last?.watches === null ? scope === ALL_WATCHES : last?.watches.length === 1 && last.watches[0] === scope
+  const at = last !== undefined && fetched ? last.at : status.checkedAt
+  if (at === null) return ''
+  return (
+    <>
+      {last !== undefined && fetched && last.added === 0 ? `${m.inbox.check.noneNew} · ` : null}
+      {m.inbox.check.lastChecked}{' '}<DateTimeDisplay at={at} />
+    </>
+  )
 }
 
-function discoveryResultNote(result: DiscoveryFetchResult, m: Catalog): string {
-  const parts = [
-    result.added === 0 ? m.settings.discovery.noNewPapers : m.settings.discovery.newFound(result.added),
-    m.settings.discovery.requested(result.intents),
-  ]
+/** What a discovery refresh brought; with nothing new, `lastFetchedAt` is when the scope was last refreshed. */
+function discoveryResultNote(result: DiscoveryFetchResult, lastFetchedAt: number | null, m: Catalog): ReactNode {
+  const parts = [m.settings.discovery.requested(result.intents)]
   if (result.cachedIntents > 0) parts.push(m.settings.discovery.cooling(result.cachedIntents))
   if (result.failedIntents > 0) parts.push(m.settings.discovery.failed(result.failedIntents))
   if (result.deferredProjects > 0) parts.push(m.settings.discovery.deferred(result.deferredProjects))
-  return parts.join(' · ')
+  if (result.added > 0) return [m.settings.discovery.newFound(result.added), ...parts].join(' · ')
+  if (lastFetchedAt === null) return [m.settings.discovery.noNewPapers, ...parts].join(' · ')
+  return (
+    <>
+      {m.settings.discovery.noNewPapers} · {m.inbox.lastRefreshed}{' '}<DateTimeDisplay at={lastFetchedAt} />
+      {parts.map((part) => ` · ${part}`).join('')}
+    </>
+  )
 }
 
 /**
  * Inbox: papers fetched for your watches (Inmail) or recommended for your projects (Discovery),
- * shown in groups. Each paper can be downloaded into the vault or saved to Read Later; Inmail
- * papers can also be dismissed.
+ * shown in groups. Each paper can be downloaded into the vault, saved to Read Later or dismissed.
  */
 export function Inbox() {
   const m = useMessages()
@@ -78,9 +94,6 @@ export function Inbox() {
   const [profiles, setProfiles] = useState<DiscoveryProfile[]>([])
   const [leaving, setLeaving] = useState<ReadonlySet<string>>(new Set())
   const [error, setError] = useState<string | null>(null)
-  // A download that hit a paper already in the vault: that paper's id and title, shown on the card
-  // with a link to open it.
-  const [collided, setCollided] = useState<ReadonlyMap<string, { paper: string; title: string }>>(new Map())
 
   const notice = useNotice()
   const { openCategory } = useSettingsOpen()
@@ -99,31 +112,34 @@ export function Inbox() {
     void discovery.profiles().then(setProfiles).catch(reportError)
   }, [reportError])
 
+  // Discovery is scoped by project and paper delivery by watch; the sidebar sets the scope for either stream.
   useEffect(() => {
-    void inbox.list({ kind: stream, sort }).then((rows) => {
+    const scoped = scope === ALL_WATCHES ? {} : stream === 'discovery' ? { project: scope } : { watch: scope }
+    void inbox.list({ kind: stream, sort, ...scoped }).then((rows) => {
       setEntries(rows)
       setLeaving(new Set())
     }).catch(reportError)
     void watch.list().then(setWatches).catch(reportError)
     loadProfiles()
-  }, [loadProfiles, revision, reportError, sort, stream])
+  }, [loadProfiles, revision, reportError, scope, sort, stream])
 
   const watched = watches.find((w) => w.id === scope)
-  // Discovery is scoped by project and paper delivery by watch; the sidebar sets the scope for either stream.
-  const groupOf = useCallback((entry: InboxEntry) => (stream === 'discovery' ? entry.project : entry.watch), [stream])
-  const rows = useMemo(() => (
-    scope === ALL_WATCHES ? entries ?? [] : (entries ?? []).filter((e) => groupOf(e) === scope)
-  ), [entries, groupOf, scope])
+  // Until the list for a new stream or scope arrives, the one held may name entries it does not list.
+  const rows = useMemo(() => (entries ?? []).filter((entry) => (
+    listingsOf(entry, stream).some((listing) => scope === ALL_WATCHES || listing.id === scope)
+  )), [entries, scope, stream])
+  // A card shows under the scope in view, or else under the first stream of this kind that lists it.
   const groups = useMemo(() => {
     const byKey = new Map<string, { key: string; title: string; rows: InboxEntry[] }>()
     for (const row of rows) {
-      const key = groupOf(row)
-      const group = byKey.get(key) ?? { key, title: shownSource(row.source), rows: [] }
+      const listings = listingsOf(row, stream)
+      const listing = listings.find((held) => held.id === scope) ?? listings[0]!
+      const group = byKey.get(listing.id) ?? { key: listing.id, title: shownSource(listing.source), rows: [] }
       group.rows.push(row)
-      byKey.set(key, group)
+      byKey.set(listing.id, group)
     }
     return [...byKey.values()]
-  }, [groupOf, rows])
+  }, [rows, scope, stream])
   const scopedProject = stream === 'discovery' && scope !== ALL_WATCHES ? groups[0]?.title ?? '' : null
   const [folded, setFolded] = useState<ReadonlySet<string>>(new Set())
   const toggleGroup = (key: string) => setFolded((held) => {
@@ -172,13 +188,12 @@ export function Inbox() {
         setFailed((held) => new Map(held).set(id, result.reason))
         return
       }
-      if (result.kind === 'existing') {
-        setCollided((seen) => new Map(seen).set(id, { paper: result.paper, title: result.title }))
-        notice.success(m.inbox.notices.duplicateToast)
-        return
-      }
-      bump()
-      notice.success(m.inbox.notices.downloaded)
+      leave([id])
+      notice.success(
+        result.kind === 'added' ? m.inbox.notices.downloaded : m.inbox.notices.duplicateToast,
+        { label: m.papers.rowActions.openReader, onAction: () => open('reader', result.paper) },
+      )
+      window.setTimeout(bump, LEAVE_MS)
     }).catch((e: unknown) => notice.refusal(errorLabel(m, e))).finally(() => {
       setBusy((held) => {
         const next = new Set(held)
@@ -190,18 +205,30 @@ export function Inbox() {
 
   const refreshDiscovery = () => {
     setDiscovering(true)
-    void discovery.fetch().then((result) => {
-      notice.success(discoveryResultNote(result, m))
+    void (scope === ALL_WATCHES ? discovery.fetch() : discovery.fetch(scope, true)).then(async (result) => {
+      const refreshed = result.added > 0 ? [] : (await discovery.profiles())
+        .filter((profile) => scope === ALL_WATCHES || profile.id === scope)
+        .flatMap((profile) => (profile.lastFetchedAt === null ? [] : [profile.lastFetchedAt]))
+      notice.success(discoveryResultNote(result, refreshed.length === 0 ? null : Math.max(...refreshed), m))
       bump()
     }).catch((e: unknown) => notice.refusal(errorLabel(m, e))).finally(() => setDiscovering(false))
   }
 
   const feedback = (id: string, value: 'more' | 'less' | 'known') => {
-    if (value !== 'more') leave([id])
-    void discovery.feedback(id, value).then(() => {
-      notice.success(value === 'known' ? m.inbox.notices.known : m.inbox.notices.remembered)
-      window.setTimeout(bump, value === 'more' ? 0 : LEAVE_MS)
-    }).catch((e: unknown) => notice.refusal(errorLabel(m, e)))
+    if (value === 'more') {
+      void discovery.feedback(id, value).then(() => {
+        notice.success(m.inbox.notices.remembered)
+        bump()
+      }).catch((e: unknown) => notice.refusal(errorLabel(m, e)))
+      return
+    }
+    leave([id])
+    window.setTimeout(() => {
+      void write(
+        discovery.feedback(id, value).then((trashed) => (trashed === null ? [] : [trashed])),
+        { note: value === 'known' ? m.inbox.notices.known : m.inbox.notices.remembered, action: undo.restore },
+      )
+    }, LEAVE_MS)
   }
 
   const card = (p: InboxEntry) => (
@@ -222,47 +249,30 @@ export function Inbox() {
             </IconButton>
           </>
         ) : null}
-        {p.downloaded
+        {busy.has(p.id)
           ? (
-            <IconButton label={m.papers.rowActions.openReader} size="nested" onClick={() => open('reader', p.paper)}>
-              <IconRead />
+            <IconButton label={m.later.actions.downloading} size="nested" className="busy" disabled>
+              <DownloadRing progress={jobs?.downloads?.find((item) => item.id === p.id) ?? null} />
             </IconButton>
           )
-          : busy.has(p.id)
-            ? (
-              <IconButton label={m.later.actions.downloading} size="nested" className="busy" disabled>
-                <DownloadRing progress={jobs?.downloads?.find((item) => item.id === p.id) ?? null} />
-              </IconButton>
-            )
-            : (
-              <IconButton label={m.inbox.actions.download} size="nested" onClick={() => ingest(p.id)}>
-                <IconDownload />
-              </IconButton>
-            )}
+          : (
+            <IconButton label={m.inbox.actions.download} size="nested" onClick={() => ingest(p.id)}>
+              <IconDownload />
+            </IconButton>
+          )}
         <IconButton label={m.inbox.actions.readLater} size="nested" onClick={() => queue(p.id)}>
           <IconLater />
         </IconButton>
-        {stream === 'watch' ? (
-          <IconButton label={m.inbox.actions.dismiss} size="nested" onClick={() => dismiss([p.id], m.inbox.notices.dismissed)}>
-            <IconTrash />
-          </IconButton>
-        ) : null}
+        <IconButton label={m.inbox.actions.dismiss} size="nested" onClick={() => dismiss([p.id], m.inbox.notices.dismissed)}>
+          <IconTrash />
+        </IconButton>
         </>
       )}
-      notices={(
-        <>
-          {collided.has(p.id) ? (
-            <PaperCardNotice action={(
-              <button className="btn ghost sm" onClick={() => open('reader', collided.get(p.id)!.paper)}>{m.inbox.actions.open}</button>
-            )}>{m.inbox.notices.alreadyInLibrary(plainTitle(collided.get(p.id)!.title))}</PaperCardNotice>
-          ) : null}
-          {failed.has(p.id) ? (
-            <PaperCardNotice tone="error" action={(
-              <button className="btn ghost sm" onClick={() => ingest(p.id)}>{m.common.retry}</button>
-            )}>{failureLabel(m, m.inbox.notices.downloadFailed, failed.get(p.id)!)}</PaperCardNotice>
-          ) : null}
-        </>
-      )}
+      notices={failed.has(p.id) ? (
+        <PaperCardNotice tone="error" action={(
+          <button className="btn ghost sm" onClick={() => ingest(p.id)}>{m.common.retry}</button>
+        )}>{failureLabel(m, m.inbox.notices.downloadFailed, failed.get(p.id)!)}</PaperCardNotice>
+      ) : null}
       metadata={(
         <>
           {p.authors}{p.venue ? <PaperCardBadge>{p.venue}</PaperCardBadge> : null}
@@ -271,7 +281,7 @@ export function Inbox() {
         </>
       )}
       abstract={p.abstract} {...(
-        stream === 'discovery' && p.reasons.length > 0
+        (stream === 'discovery' || p.also !== undefined) && p.reasons.length > 0
           ? { recommendation: p.reasons.map((reason) => reason.label).join(' · ') }
           : p.rec === '' ? {} : { recommendation: p.rec }
       )}
@@ -296,7 +306,7 @@ export function Inbox() {
                 >{m.watches.resume}</button>
               </>
             ) : null}
-            <span className="fetchnote">{stream === 'watch' ? fetchNote(jobs?.fetch ?? null, m) : ''}</span>
+            <span className="fetchnote">{stream === 'watch' ? fetchNote(jobs?.fetch ?? null, scope, m) : ''}</span>
             {rows.length === 0 ? null : (
               <SortMenu
                 label={m.inbox.sortLabel} current={m.inbox.sort[sort]}
@@ -310,7 +320,9 @@ export function Inbox() {
             {stream === 'watch' ? (
               <button
                 className="btn" disabled={jobs?.fetch?.state === 'checking'}
-                onClick={() => { void inbox.fetch().catch((e: unknown) => notice.refusal(errorLabel(m, e))) }}
+                onClick={() => {
+                  void inbox.fetch(scope === ALL_WATCHES ? undefined : scope).catch((e: unknown) => notice.refusal(errorLabel(m, e)))
+                }}
               >{jobs?.fetch?.state === 'failed' ? m.common.retry : m.inbox.checkNewPapers}</button>
             ) : (
               <button className="btn" disabled={discovering} onClick={refreshDiscovery}>
@@ -364,12 +376,12 @@ export function Inbox() {
                 <CollapsibleGroup
                   key={group.key} data-group={group.key} title={group.title} count={group.rows.length}
                   open={!folded.has(group.key)} onToggle={() => toggleGroup(group.key)}
-                  actions={stream === 'watch' ? (
+                  actions={(
                     <button
                       className="btn sm"
                       onClick={() => dismiss(group.rows.map((r) => r.id), m.inbox.notices.dismissedAll)}
                     >{m.inbox.dismissAll}</button>
-                  ) : undefined}
+                  )}
                 >
                   {group.rows.map(card)}
                 </CollapsibleGroup>
