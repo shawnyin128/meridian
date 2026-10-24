@@ -794,7 +794,7 @@ registerHandler('chat.list', (params) => {
   return store.listChats()
 })
 registerHandler('chat.messages', (params) =>
-  store.chatMessages(ChatMessagesParamsSchema.parse(params).id))
+  chatService.messages(ChatMessagesParamsSchema.parse(params).id))
 registerHandler('chat.create', (params) => {
   const { title, named } = ChatCreateParamsSchema.parse(params)
   return store.createChat(title, named)

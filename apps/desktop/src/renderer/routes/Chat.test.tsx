@@ -287,14 +287,15 @@ describe('Chat composer', () => {
     expect([typed(), pills()]).toEqual(['看看 @草稿树项目 ', ['@草稿树项目']])
   })
 
-  it('引用后面照常打字，发出去的整句里引用还是引用', async () => {
+  it('引用后面照常打字，发出去的整句里引用还是引用，带着它点名的项目', async () => {
     type('看看 @')
     press('Enter')
     typeOn('这条线还剩什么')
     press('Enter')
     await act(async () => { await Promise.resolve() })
     expect(api.send).toHaveBeenCalledWith('chat-1', [
-      { kind: 'text', text: '看看 ' }, { kind: 'mention', text: '@草稿树项目' }, { kind: 'text', text: ' 这条线还剩什么' },
+      { kind: 'text', text: '看看 ' }, { kind: 'mention', text: '@草稿树项目', target: { kind: 'project', id: 'draft' } },
+      { kind: 'text', text: ' 这条线还剩什么' },
     ])
     expect([typed(), pills()]).toEqual(['', []])
   })

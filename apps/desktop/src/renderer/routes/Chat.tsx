@@ -62,17 +62,17 @@ function mentionsOf(
   }
   return [
     ...[...projects].sort((a, b) => advanced(b) - advanced(a)).map((p): MentionCandidate => ({
-      kind: 'project', title: p.name,
+      kind: 'project', id: p.id, title: p.name,
       meta: `${p.status} · ${m.project.identity.focusLabel[FOCUS_KEY[p.status]]}:${p.focus}`, label: p.name,
     })),
     ...rows.map((p): MentionCandidate => ({
-      kind: 'paper',
+      kind: 'paper', id: p.id,
       title: plainTitle(p.title),
       meta: p.year === undefined ? readStateName(m, p.readState) : `${p.year} · ${readStateName(m, p.readState)}`,
       label: <PaperText text={p.title} />,
     })),
     ...pages.map((p): MentionCandidate => ({
-      kind: 'page', title: p.title, meta: `${p.kindLabel} · ${m.common.updatedOn(fmt.date(p.updated))}`, label: p.title,
+      kind: 'page', id: p.id, title: p.title, meta: `${p.kindLabel} · ${m.common.updatedOn(fmt.date(p.updated))}`, label: p.title,
     })),
   ]
 }
@@ -230,7 +230,7 @@ export function Chat() {
                     ...mentions.filter((mention) => mention.kind === 'paper').slice(0, QUICK_MENTIONS),
                   ].map((mention) => (
                     <Tooltip key={mention.title} label={mention.title} whenClipped side="top">
-                      <ToolbarButton className="btn ghost sm qm" onClick={() => composer.current?.mention(mention.title)}>
+                      <ToolbarButton className="btn ghost sm qm" onClick={() => composer.current?.mention(mention)}>
                         <FadeText>@{mention.label}</FadeText>
                       </ToolbarButton>
                     </Tooltip>

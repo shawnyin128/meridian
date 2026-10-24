@@ -6,30 +6,33 @@ import { Decoration, EditorView, WidgetType } from '@codemirror/view'
 import type { ChatRun } from '../../../shared/contract.js'
 import type { WidgetSlots } from '../widget-slots.js'
 
-/** A mention in the composer's text: the range it covers and its text, `@` and the name. */
-type Placed = { from: number; to: number; text: string }
+/** A mention: its text, `@` and the name, and the entity it names. */
+export type Mention = Pick<ChatRun, 'text' | 'target'>
+
+/** A mention in the composer's text and the range it covers. */
+type Placed = { from: number; to: number; mention: Mention }
 
 /** The mention being typed: where its `@` is and the text typed after it, up to the caret. */
 export type MentionQuery = { from: number; typed: string }
 
 const place = StateEffect.define<Placed>({
-  map: ({ from, to, text }, change) => {
+  map: ({ from, to, mention }, change) => {
     const start = change.mapPos(from, 1)
     const end = change.mapPos(to, -1)
-    return start < end ? { from: start, to: end, text } : undefined
+    return start < end ? { from: start, to: end, mention } : undefined
   },
 })
 
-/** A mention in the editor: an empty element that `slots` fills with the pill for `text`. */
+/** A mention in the editor: an empty element that `slots` fills with the pill for the mention's text. */
 class MentionPill extends WidgetType {
-  constructor(readonly text: string, readonly slots: WidgetSlots) { super() }
+  constructor(readonly mention: Mention, readonly slots: WidgetSlots) { super() }
 
-  override eq(other: MentionPill): boolean { return other.text === this.text }
+  override eq(other: MentionPill): boolean { return JSON.stringify(other.mention) === JSON.stringify(this.mention) }
 
   toDOM(): HTMLElement {
     const dom = document.createElement('span')
     dom.className = 'composer-mention'
-    this.slots.add(dom, this.text)
+    this.slots.add(dom, this.mention.text)
     return dom
   }
 
@@ -38,23 +41,23 @@ class MentionPill extends WidgetType {
   override ignoreEvent(): boolean { return false }
 }
 
-const textOf = (pill: Decoration): string => (pill.spec.widget as MentionPill).text
+const mentionOf = (pill: Decoration): Mention => (pill.spec.widget as MentionPill).mention
 
 /**
  * Mentions as atomic pills in a chat composer, each shown through an element handed to `slots`: the
  * caret steps over a pill and a deletion takes it whole, a mention whose text is edited stops being
- * one, and undo and redo bring a pill back with its text.
+ * one, and undo and redo bring a pill back with its text and entity.
  */
 export function composerMentions(slots: WidgetSlots) {
-  const pill = ({ from, to, text }: Placed) => Decoration.replace({ widget: new MentionPill(text, slots) }).range(from, to)
+  const pill = ({ from, to, mention }: Placed) => Decoration.replace({ widget: new MentionPill(mention, slots) }).range(from, to)
   const pills = StateField.define<DecorationSet>({
     create: () => Decoration.none,
     update: (held, transaction) => {
       const { state } = transaction
       const kept = transaction.docChanged
-        ? held.map(transaction.changes).update({ filter: (from, to, value) => state.sliceDoc(from, to) === textOf(value) })
+        ? held.map(transaction.changes).update({ filter: (from, to, value) => state.sliceDoc(from, to) === mentionOf(value).text })
         : held
-      const added = transaction.effects.flatMap((effect) => (effect.is(place) && state.sliceDoc(effect.value.from, effect.value.to) === effect.value.text
+      const added = transaction.effects.flatMap((effect) => (effect.is(place) && state.sliceDoc(effect.value.from, effect.value.to) === effect.value.mention.text
         ? [pill(effect.value)] : []))
       return added.length === 0 ? kept : kept.update({ add: added, sort: true })
     },
@@ -66,7 +69,7 @@ export function composerMentions(slots: WidgetSlots) {
     const held = transaction.startState.field(pills)
     transaction.changes.iterChangedRanges((fromA, toA) => {
       held.between(fromA, toA, (from, to, value) => {
-        if (from < toA && to > fromA) lost.push(place.of({ from, to, text: textOf(value) }))
+        if (from < toA && to > fromA) lost.push(place.of({ from, to, mention: mentionOf(value) }))
       })
     })
     return lost
@@ -80,9 +83,9 @@ export function composerMentions(slots: WidgetSlots) {
     stateOf(runs: readonly ChatRun[], extensions: Extension): EditorState {
       let doc = ''
       const placed: Placed[] = []
-      for (const run of runs) {
-        if (run.kind === 'mention') placed.push({ from: doc.length, to: doc.length + run.text.length, text: run.text })
-        doc += run.text
+      for (const { kind, ...mention } of runs) {
+        if (kind === 'mention') placed.push({ from: doc.length, to: doc.length + mention.text.length, mention })
+        doc += mention.text
       }
       const state = EditorState.create({ doc, selection: EditorSelection.cursor(doc.length), extensions: [extensions, extension] })
       return placed.length === 0 ? state : state.update({
@@ -96,7 +99,7 @@ export function composerMentions(slots: WidgetSlots) {
       let at = 0
       state.field(pills).between(0, state.doc.length, (from, to, value) => {
         if (from > at) runs.push({ kind: 'text', text: state.sliceDoc(at, from) })
-        runs.push({ kind: 'mention', text: textOf(value) })
+        runs.push({ kind: 'mention', ...mentionOf(value) })
         at = to
       })
       if (at < state.doc.length) runs.push({ kind: 'text', text: state.sliceDoc(at) })
@@ -117,15 +120,16 @@ export function composerMentions(slots: WidgetSlots) {
     },
 
     /**
-     * Replaces `from`–`to` in `view` with the mention `text` and puts the caret after it, past a
-     * space typed after it unless whitespace already follows. Undo takes the mention back on its own.
+     * Replaces `from`–`to` in `view` with `mention` and puts the caret after it, past a space typed
+     * after it unless whitespace already follows. Undo takes the mention back on its own.
      */
-    mention(view: EditorView, from: number, to: number, text: string): void {
+    mention(view: EditorView, from: number, to: number, mention: Mention): void {
+      const { text } = mention
       const spaced = /^\s/.test(view.state.sliceDoc(to, to + 1))
       const insert = spaced ? text : `${text} `
       view.dispatch({
         changes: { from, to, insert },
-        effects: place.of({ from, to: from + text.length, text }),
+        effects: place.of({ from, to: from + text.length, mention }),
         selection: EditorSelection.cursor(from + insert.length + (spaced ? 1 : 0)),
         userEvent: 'input.complete',
         annotations: isolateHistory.of('full'),

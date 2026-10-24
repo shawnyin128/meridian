@@ -110,9 +110,10 @@ test('动态的「看看」建立结论冲突会话，未配置模型时给明�
   await expect(win.locator('#chatList .ct-t').first()).toHaveText('结论冲突')
 })
 
-test('@ 引用项目、论文与 wiki 页都交给真实对话链路,发出的消息里引用是和输入框里一样的引用块', async ({ win }) => {
+test('@ 引用项目、论文与 wiki 页都交给真实对话链路,发出的消息里引用是和输入框里一样的引用块,点它打开它点名的实体,返回回到对话', async ({ win }) => {
   await gotoChat(win)
   const lastSaid = () => shown(win, '.msg.you .bubble').last()
+  const crumb = await win.locator('#crumb .cseg').allTextContents()
 
   const projects = await core<{ id: string; name: string }[]>(win, 'project.list', {})
   const p = projects.find((x) => x.id === 'draft')!
@@ -120,6 +121,12 @@ test('@ 引用项目、论文与 wiki 页都交给真实对话链路,发出的�
   await expect(lastSaid()).toHaveText(`先说 @${p.name} 这条线还剩什么`)
   await expect(lastSaid().locator('.tag')).toHaveText([`@${p.name}`])
   await expect(shown(win, '.cbox .tag')).toHaveText(NO_MODEL)
+
+  await lastSaid().locator('.tag .entity-link--project').click()
+  await expect(win.locator('#crumb .cseg')).toHaveText(['研究', '项目', p.name])
+  await shown(win, '.desk-head .back').click()
+  await expect(win.locator('#crumb .cseg')).toHaveText(crumb)
+  await expect(lastSaid().locator('.tag')).toHaveText([`@${p.name}`])
 
   const page = (await core<{ id: string; title: string; kindLabel: string; updated: string; summary: string }[]>(
     win, 'wiki.cards', {}))[0]!

@@ -15,19 +15,25 @@ import { NoModelTag } from '../NoModelTag.js'
 import { PickerPopover, PickOption } from '../PickerPopover.js'
 import { Tag } from '../Tag.js'
 import { useWidgetSlots } from '../widget-slots.js'
-import { composerMentions, type MentionQuery } from './composer-mentions.js'
+import { composerMentions, type Mention, type MentionQuery } from './composer-mentions.js'
 
 /** The mentionUI of the demo: Each group can list up to this many items. */
 const MENTION_PER_GROUP = 4
 
-/** One candidate in the `@` picker: its group, its name, the gray line under it and how its name shows. */
-export type MentionCandidate = { kind: 'project' | 'paper' | 'page'; title: string; meta: string; label: ReactNode }
+/**
+ * One candidate in the `@` picker: the kind and `id` of the entity it names, its name, the gray line
+ * under it and how its name shows.
+ */
+export type MentionCandidate = { kind: 'project' | 'paper' | 'page'; id: string; title: string; meta: string; label: ReactNode }
+
+/** The mention a pick of `candidate` puts in. */
+const mentionOf = ({ kind, id, title }: MentionCandidate): Mention => ({ text: `@${title}`, target: { kind, id } })
 
 /** What a screen can do to its composer from outside it. */
 export type ChatComposerHandle = {
   focus: () => void
-  /** Puts the mention of `title` at the caret, keeping the rest of the draft, and focuses the composer. */
-  mention: (title: string) => void
+  /** Puts the mention of `candidate` at the caret, keeping the rest of the draft, and focuses the composer. */
+  mention: (candidate: MentionCandidate) => void
 }
 
 /** The text a draft sends: its runs, mentions as their text, in order. */
@@ -127,18 +133,18 @@ export function ChatComposer({
   }, [draft])
 
   const hits = query === null || dismissed ? [] : hitsOf(query.typed, mentions)
-  const pick = (title: string) => {
+  const pick = (candidate: MentionCandidate) => {
     const editor = view.current!
-    if (query !== null) tools.mention(editor, query.from, editor.state.selection.main.head, `@${title}`)
+    if (query !== null) tools.mention(editor, query.from, editor.state.selection.main.head, mentionOf(candidate))
     editor.focus()
   }
-  const keys = useCandidateKeys(hits.length, (at) => pick(hits[at]!.title))
+  const keys = useCandidateKeys(hits.length, (at) => pick(hits[at]!))
   useImperativeHandle(ref, () => ({
     focus: () => view.current?.focus(),
-    mention: (title) => {
+    mention: (candidate) => {
       const editor = view.current!
       const { from, to } = editor.state.selection.main
-      tools.mention(editor, from, to, `@${title}`)
+      tools.mention(editor, from, to, mentionOf(candidate))
       editor.focus()
     },
   }), [tools])
@@ -178,7 +184,7 @@ export function ChatComposer({
             {hits.map((hit, at) => (
               <Fragment key={`${hit.kind}${hit.title}`}>
                 {hits[at - 1]?.kind === hit.kind ? null : <div className="rg">{m.chat.mentionGroup[hit.kind]}</div>}
-                <PickOption keys={keys} index={at} className="two-line" onClick={() => pick(hit.title)}>
+                <PickOption keys={keys} index={at} className="two-line" onClick={() => pick(hit)}>
                   <div className="rt">@{hit.label}</div>
                   <div className="rm">{hit.meta}</div>
                 </PickOption>

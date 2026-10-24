@@ -76,13 +76,33 @@ describe('Core chat service', () => {
     const service = createChatService({ store, model: await configuredModel(), runner })
     const before = store.chatMessages('amortize').length
 
-    await service.send('amortize', [
-      { kind: 'text', text: '  看看 ' }, { kind: 'mention', text: '@推测解码加速' }, { kind: 'text', text: ' 这条线还剩什么 \n' },
-    ])
+    const mention = { kind: 'mention' as const, text: '@草稿树项目', target: { kind: 'project', id: 'draft' } }
+    await service.send('amortize', [{ kind: 'text', text: '  看看 ' }, mention, { kind: 'text', text: ' 这条线还剩什么 \n' }])
     expect(store.chatMessages('amortize')[before]!.runs).toEqual([
-      { kind: 'text', text: '看看 ' }, { kind: 'mention', text: '@推测解码加速' }, { kind: 'text', text: ' 这条线还剩什么' },
+      { kind: 'text', text: '看看 ' }, mention, { kind: 'text', text: ' 这条线还剩什么' },
     ])
-    expect(runner.answer).toHaveBeenCalledWith('amortize', '看看 @推测解码加速 这条线还剩什么', expect.anything())
+    expect(runner.answer).toHaveBeenCalledWith('amortize', '看看 @草稿树项目 这条线还剩什么', expect.anything())
+  })
+
+  it('hands over a mention with the entity it names while that entity is in the vault, and as its text once it is gone', async () => {
+    const store = createFixtureStore()
+    const service = createChatService({ store, model: await configuredModel(), runner: null })
+    const named = [
+      { kind: 'mention' as const, text: '@草稿树项目', target: { kind: 'project', id: 'draft' } },
+      { kind: 'mention' as const, text: '@SmoothQuant', target: { kind: 'paper', id: '2210.17323' } },
+      { kind: 'mention' as const, text: '@KV cache 量化', target: { kind: 'page', id: 'topics/kv-cache-quantization' } },
+    ]
+    const gone = [
+      { kind: 'mention' as const, text: '@删掉的项目', target: { kind: 'project', id: 'no-such-project' } },
+      { kind: 'mention' as const, text: '@删掉的论文', target: { kind: 'paper', id: 'no-such-paper' } },
+      { kind: 'mention' as const, text: '@删掉的页', target: { kind: 'page', id: 'topics/no-such-page' } },
+    ]
+    store.appendChatMessages('amortize', [{ role: 'you', runs: [...named, ...gone], actions: [] }])
+
+    expect(service.messages('amortize').at(-1)!.runs).toEqual([
+      ...named, ...gone.map(({ kind, text }) => ({ kind, text })),
+    ])
+    expect(store.chatMessages('amortize').at(-1)!.runs).toEqual([...named, ...gone])
   })
 
   it('keeps the user turn and emits no fake answer when cancelled', async () => {

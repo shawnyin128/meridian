@@ -1439,8 +1439,8 @@ export const ChangelogArchiveParamsSchema = z.object({ id: z.string() }).strict(
 export const ChangelogDeleteParamsSchema = z.object({ id: z.string() }).strict()
 
 /**
- * The entity a feed run names, by id: a `paper`, a `project` or a Wiki `page`. `kind` takes any
- * string, so a run naming a kind a later version adds still reads, as its text.
+ * The entity a feed run or a chat mention names, by id: a `paper`, a `project` or a Wiki `page`.
+ * `kind` takes any string, so a run naming a kind a later version adds still reads, as its text.
  */
 export const FeedTargetSchema = z.object({ kind: z.string(), id: z.string() }).strict()
 
@@ -1942,11 +1942,14 @@ export const WikiDecideParamsSchema = z.object({
 }).strict()
 
 /**
- * Chat message run whose `kind` distinguishes plain text from an entered `@` mention.
+ * Chat message run whose `kind` distinguishes plain text from an entered `@` mention. A mention's
+ * `target` is the entity it names; the messages Core hands over leave it out once that entity is no
+ * longer in the vault.
  */
 export const ChatRunSchema = z.object({
   kind: z.enum(['text', 'mention']),
   text: z.string(),
+  target: FeedTargetSchema.optional(),
 }).strict()
 
 /**
@@ -2056,12 +2059,15 @@ export const ChatAppendParamsSchema = z.object({
 
 /**
  * One explicit send is one billable model turn; Core owns persistence, context, and cancellation.
- * `runs` is what the user wrote, each mention as a run of its own, `@` and the name on one line; the
- * whole text holds at most 20,000 characters and more than whitespace.
+ * `runs` is what the user wrote, each mention as a run of its own, `@` and the name on one line,
+ * naming the project, paper or Wiki page it mentions; the whole text holds at most 20,000
+ * characters and more than whitespace.
  */
 export const ChatSendParamsSchema = z.object({
   id: z.string(),
-  runs: z.array(ChatRunSchema.refine((run) => run.kind === 'text' || /^@[^\n]+$/.test(run.text))).min(1),
+  runs: z.array(ChatRunSchema.refine((run) => (run.kind === 'text'
+    ? run.target === undefined
+    : /^@[^\n]+$/.test(run.text) && ['project', 'paper', 'page'].includes(run.target?.kind ?? '')))).min(1),
 }).strict().refine(({ runs }) => {
   const text = runs.map((run) => run.text).join('')
   return text.trim() !== '' && text.length <= 20_000

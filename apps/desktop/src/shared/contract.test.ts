@@ -1170,14 +1170,24 @@ describe('contract schemas', () => {
     for (const project of projects) ProjectDetailSchema.parse(store.getProject(project.id))
   })
 
-  it('发送收的是用户写下的各段：引用是 @ 加一行名字，整句不能只有空白，也不能超过两万字', () => {
-    const runs = [{ kind: 'text', text: '看看 ' }, { kind: 'mention', text: '@推测解码加速' }, { kind: 'text', text: ' 还剩什么' }]
+  it('发送收的是用户写下的各段：引用是 @ 加一行名字和它点名的项目、论文或 Wiki 页，整句不能只有空白，也不能超过两万字', () => {
+    const target = { kind: 'project', id: 'project-1' }
+    const runs = [{ kind: 'text', text: '看看 ' }, { kind: 'mention', text: '@推测解码加速', target }, { kind: 'text', text: ' 还剩什么' }]
     expect(ChatSendParamsSchema.parse({ id: 'chat-1', runs })).toEqual({ id: 'chat-1', runs })
     expect(() => ChatSendParamsSchema.parse({ id: 'chat-1', runs: [] })).toThrow()
     expect(() => ChatSendParamsSchema.parse({ id: 'chat-1', runs: [{ kind: 'text', text: ' \n ' }] })).toThrow()
     expect(() => ChatSendParamsSchema.parse({ id: 'chat-1', runs: [{ kind: 'text', text: 'x'.repeat(20_001) }] })).toThrow()
     for (const text of ['推测解码加速', '@', '@推测\n解码']) {
-      expect(() => ChatSendParamsSchema.parse({ id: 'chat-1', runs: [{ kind: 'mention', text }] })).toThrow()
+      expect(() => ChatSendParamsSchema.parse({ id: 'chat-1', runs: [{ kind: 'mention', text, target }] })).toThrow()
+    }
+    for (const kind of ['paper', 'page']) {
+      expect(ChatSendParamsSchema.parse({ id: 'chat-1', runs: [{ kind: 'mention', text: '@x', target: { kind, id: 'x' } }] }).runs[0]!.target!.kind).toBe(kind)
+    }
+    for (const run of [
+      { kind: 'mention', text: '@推测解码加速' }, { kind: 'mention', text: '@推测解码加速', target: { kind: 'idea', id: 'idea-1' } },
+      { kind: 'text', text: '看看', target },
+    ]) {
+      expect(() => ChatSendParamsSchema.parse({ id: 'chat-1', runs: [run] })).toThrow()
     }
     expect(() => ChatSendParamsSchema.parse({ id: 'chat-1', text: '看看' })).toThrow()
   })

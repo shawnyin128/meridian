@@ -1,4 +1,4 @@
-import type { ChatMessageFields, ChatRun, ChatSendResult } from '../../shared/contract.js'
+import type { ChatMessage, ChatMessageFields, ChatRun, ChatSendResult } from '../../shared/contract.js'
 import { CallError, callFailure } from '../call-error.js'
 import type { VaultStore } from '../vault.js'
 import type { ChatHarnessRunner } from './chat.js'
@@ -61,6 +61,20 @@ export function createChatService(options: {
       controller.abort()
       running.delete(id)
       return { id, cancelled: true }
+    },
+    /** The messages of chat `id`, each mention naming its entity only while that entity is in the vault. */
+    messages(id: string): ChatMessage[] {
+      let pages: Set<string> | undefined
+      const inVault = ({ kind, id: entity }: NonNullable<ChatRun['target']>): boolean => {
+        if (kind === 'project') return options.store.hasProject(entity)
+        if (kind === 'paper') return options.store.hasPaper(entity)
+        pages ??= new Set(options.store.wikiCards().map((card) => card.id))
+        return kind === 'page' && pages.has(entity)
+      }
+      return options.store.chatMessages(id).map((message) => ({
+        ...message,
+        runs: message.runs.map((run) => (run.target === undefined || inVault(run.target) ? run : { kind: run.kind, text: run.text })),
+      }))
     },
     /** The ids of the chats whose reply is being generated. */
     generating(): string[] {
