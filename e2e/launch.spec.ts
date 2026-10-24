@@ -12,9 +12,13 @@ const FIXTURE_VAULT = resolve(APP_DIR, 'src/core/fixtures/vault')
 /** Launch arguments for a case that reads the UI's Chinese copy: the app must not follow the host's language. */
 const ZH_ARGS = [APP_DIR, '--lang=zh-CN']
 
-/** Whether the app's first window is on screen right now. */
+/** Whether the app's first window is shown right now. */
 const visible = (app: ElectronApplication) =>
   app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]!.isVisible())
+
+/** Whether the App has an icon in the macOS Dock; other systems have no Dock. */
+const inDock = (app: ElectronApplication) =>
+  app.evaluate(({ app: electronApp }) => electronApp.dock?.isVisible() ?? false)
 
 test('打包后的应用启动出一个窗口', async ({ win }) => {
   const mark = win.locator('.titlebar .appbtn .brandmark')
@@ -23,9 +27,10 @@ test('打包后的应用启动出一个窗口', async ({ win }) => {
   expect(await mark.evaluate((el) => (el as HTMLImageElement).naturalWidth)).toBeGreaterThan(0)
 })
 
-test('自动化传 MERIDIAN_SHOW_WINDOW=0 时窗口不上屏', async ({ app, win }) => {
+test('自动化传 MERIDIAN_SHOW_WINDOW=0 时窗口不上屏,Dock 里也没有应用图标', async ({ app, win }) => {
   await win.locator('.sidebar').waitFor()
   expect(await visible(app)).toBe(false)
+  expect(await inDock(app)).toBe(false)
 })
 
 test('不传 MERIDIAN_SHOW_WINDOW 时窗口上屏', async ({ configHome }) => {
@@ -45,10 +50,10 @@ test('不传 MERIDIAN_SHOW_WINDOW 时窗口上屏', async ({ configHome }) => {
   }
 })
 
-test.describe('用例要上屏时', () => {
+test.describe('用例要窗口出画面时', () => {
   test.use({ showWindow: true })
 
-  test('窗口上屏但不把应用切到前台,也拿不到系统焦点;一层跟着窗口大小的透明子窗盖在上面接走真实指针', async ({ app }) => {
+  test('窗口在所有显示器之外照常出画面:不把应用切到前台,拿不到系统焦点,Dock 里也没有应用图标', async ({ app }) => {
     // macOS reports activation only as an event. The window shows after the renderer's first paint,
     // long after this call returns, so the listener is in place before any activation could happen.
     await app.evaluate(({ app: electronApp }) => {
@@ -59,28 +64,30 @@ test.describe('用例要上屏时', () => {
     const win = await app.firstWindow()
     await win.locator('.sidebar').waitFor()
     await expect.poll(() => visible(app)).toBe(true)
-    const windows = () => app.evaluate(({ BrowserWindow }) => {
+    const windows = () => app.evaluate(({ app: electronApp, BrowserWindow, screen }) => {
       const target = BrowserWindow.getAllWindows()[0]!
+      const at = target.getBounds()
+      const overlap = (from: number, size: number, start: number, length: number) =>
+        Math.max(0, Math.min(from + size, start + length) - Math.max(from, start))
       return {
         activated: (globalThis as { activated?: boolean }).activated,
+        inDock: electronApp.dock?.isVisible() ?? false,
         focusable: target.isFocusable(),
         focused: BrowserWindow.getFocusedWindow() !== null,
-        bounds: target.getBounds(),
-        shields: target.getChildWindows().map((child) => ({
-          bounds: child.getBounds(), visible: child.isVisible(), focusable: child.isFocusable(),
-        })),
+        onDisplays: screen.getAllDisplays().reduce((area, { bounds }) =>
+          area + overlap(at.x, at.width, bounds.x, bounds.width) * overlap(at.y, at.height, bounds.y, bounds.height), 0),
+        content: target.getContentSize(),
       }
     })
-    const opened = await windows()
-    expect(opened.activated).toBe(false)
-    expect(opened.focused).toBe(false)
-    expect(opened.focusable).toBe(false)
-    expect(opened.shields).toEqual([{ bounds: opened.bounds, visible: true, focusable: false }])
+    expect(await windows()).toMatchObject({ activated: false, inDock: false, focusable: false, focused: false, onDisplays: 0 })
 
-    await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]!.setContentSize(1600, 820))
-    const resized = await windows()
-    expect(resized.bounds).not.toEqual(opened.bounds)
-    expect(resized.shields.map((shield) => shield.bounds)).toEqual([resized.bounds])
+    await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]!.setContentSize(1600, 1300))
+    expect(await windows()).toMatchObject({ onDisplays: 0, content: [1600, 1300] })
+    // The page still paints there: a screenshot comes back at the new size, in device pixels. A PNG
+    // stores its width and height at bytes 16 and 20.
+    const shot = await win.screenshot()
+    const scale = await win.evaluate(() => devicePixelRatio)
+    expect([shot.readUInt32BE(16), shot.readUInt32BE(20)]).toEqual([1600 * scale, 1300 * scale])
   })
 })
 

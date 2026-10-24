@@ -39,7 +39,9 @@ export function readsCannedNetFile(app) {
 /**
  * The environment an App on test library `out` runs with. `network: false` keeps Core off the
  * network, answering from its canned responses and those in the file `canned`, `bootstrap` lets
- * Core initialize an empty library, `show` puts the window on screen.
+ * Core initialize an empty library, `show` opens a normal window for the owner. Without `show` the
+ * window is isolated: it paints right of every display, never takes focus, and on macOS the App has
+ * no Dock icon and never becomes the active app.
  */
 function appEnv(out, { show = false, network = false, bootstrap = false, canned }) {
   const env = { ...process.env }
@@ -52,7 +54,7 @@ function appEnv(out, { show = false, network = false, bootstrap = false, canned 
     ...env,
     MERIDIAN_VAULT_ROOT: join(out, 'library'),
     MERIDIAN_CONFIG_HOME: join(out, 'config'),
-    MERIDIAN_SHOW_WINDOW: show ? '1' : '0',
+    MERIDIAN_SHOW_WINDOW: show ? '1' : 'isolated',
     ...(network ? {} : { MERIDIAN_CANNED_NET: '1' }),
     ...(canned === undefined ? {} : { MERIDIAN_CANNED_NET_FILE: canned }),
     ...(bootstrap ? { MERIDIAN_BOOTSTRAP_VAULT: '1' } : {}),
@@ -62,7 +64,7 @@ function appEnv(out, { show = false, network = false, bootstrap = false, canned 
 const appArgs = (out) => [`--user-data-dir=${join(out, 'user-data')}`, '--lang=zh-CN']
 
 /**
- * Launches `app` off screen on test library `out`, runs `steps` with `call(method, params)`, which
+ * Launches `app` isolated on test library `out`, runs `steps` with `call(method, params)`, which
  * calls Core through `window.meridian.call`, and closes the App. Rejects with an Error naming the
  * method and the reason Core gave when a call fails; Core logs its own text to the App's stdout.
  */

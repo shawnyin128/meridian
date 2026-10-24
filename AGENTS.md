@@ -247,6 +247,19 @@ itself, and the CLI tests need PyYAML.
   cover them; add an end-to-end case only for behaviour no unit test can reach.
   Let a started run finish, and do not re-run specs that already passed on the
   same code.
+- Automated launches never take the owner's keyboard focus or cover the
+  owner's screen: the owner works on the same machine while agents build, seed,
+  screenshot and run end-to-end cases. Every automated launch sets
+  `MERIDIAN_SHOW_WINDOW`, `0` for a hidden window and `isolated` for one that
+  paints, as the e2e fixture and `scripts/test-library/app.mjs` already do. On
+  macOS both run the App without a Dock icon and never make it the active app;
+  an isolated window is unfocusable and sits right of every display. Nothing
+  automated calls `show()`, `focus()`, `setFocusable(true)` or `app.focus()`; a
+  case about the window losing focus uses `appSwitcher` in `e2e/app.ts`. The
+  only normal windows are the one opened for the owner's review
+  (`node scripts/test-library.mjs open`) and the launch case that proves an
+  App started without the variable still shows its window, which runs only in
+  the release run.
 - Everything a build, a seed or a test run generates goes under the
   checkout's `outputs/` folder, which git ignores, never onto the Desktop:
   unpacked builds in `outputs/builds/`, test libraries in
@@ -324,8 +337,8 @@ checks. This is the order to follow, on the version's release branch and never o
    and a build sharing that folder quits at once. Unset `ELECTRON_RUN_AS_NODE`
    first; shells started from VS Code extensions set it, and the build then runs
    as plain Node.
-   - macOS: `env -u ELECTRON_RUN_AS_NODE MERIDIAN_VAULT_ROOT=<copy>/library MERIDIAN_CONFIG_HOME=<copy>/config <build>/Meridian.app/Contents/MacOS/Meridian --user-data-dir=<copy>/user-data`
-   - Windows (PowerShell): `Remove-Item Env:ELECTRON_RUN_AS_NODE -ErrorAction Ignore; $env:MERIDIAN_VAULT_ROOT = '<copy>\library'; $env:MERIDIAN_CONFIG_HOME = '<copy>\config'; & '<build>\Meridian.exe' --user-data-dir='<copy>\user-data'`
+   - macOS: `env -u ELECTRON_RUN_AS_NODE MERIDIAN_SHOW_WINDOW=0 MERIDIAN_VAULT_ROOT=<copy>/library MERIDIAN_CONFIG_HOME=<copy>/config <build>/Meridian.app/Contents/MacOS/Meridian --user-data-dir=<copy>/user-data`
+   - Windows (PowerShell): `Remove-Item Env:ELECTRON_RUN_AS_NODE -ErrorAction Ignore; $env:MERIDIAN_SHOW_WINDOW = '0'; $env:MERIDIAN_VAULT_ROOT = '<copy>\library'; $env:MERIDIAN_CONFIG_HOME = '<copy>\config'; & '<build>\Meridian.exe' --user-data-dir='<copy>\user-data'`
 
    `library.location`, `vault.today`, `project.list`, `project.get` for every
    project, `wiki.home`, `wiki.proposals`, `wiki.signals` and `feed.list` must
@@ -403,6 +416,13 @@ Each of these happened in this repository. The rule after each one is binding.
   with a recursive delete: `cmd /c rmdir <path>` on Windows, `rm <path>` with no
   `-r` and no trailing slash on macOS.
 - **Several Electron apps at once exhausted the desktop.** Launches failed with
-  `0xC0000142`. Do not run end-to-end suites from several worktrees at once. An
-  offscreen window can also time out on screenshots and report styles from
-  before a transition; take visual checks with a visible window.
+  `0xC0000142`. Do not run end-to-end suites from several worktrees at once. A
+  hidden window can also time out on screenshots and report styles from before
+  a transition; take visual checks with an isolated window, which paints.
+- **Automated launches took the owner's keyboard focus and covered their
+  screen.** Screenshot drivers opened normal windows, whose `show()` makes
+  Meridian the active app; two e2e cases called `focus()` on purpose; isolated
+  windows still appeared over the owner's work; and every launch put an icon in
+  the Dock. Launch only in the modes under Tests and Gates, and before trusting
+  a new kind of launch, record the frontmost app, the Dock and the windows on
+  the displays while it runs.

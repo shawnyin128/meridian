@@ -20,16 +20,16 @@ const ENV = Object.fromEntries(Object.entries(process.env).filter(
 /**
  * Each test case gets its own Electron instance: `app` is the main-process handle (used to resize the
  * window), `win` is its first window. The whole app is closed after the case finishes.
- * `showWindow` says whether the case needs a real window on screen. It defaults to false: one
- * regression round launches the app more than a hundred times, and windows grabbing focus again and
- * again make the computer hard to use. The cost is that an offscreen window gets no frames from the
- * compositor: rAF drops to once per second, so Playwright waits two seconds per actionability check
- * and one second per element screenshot, and menu accelerators reach only a window on screen. Cases
- * that hit either limit set `test.use({ showWindow: true })`; the rest leave it off.
- * A shown window opens isolated: it never takes system focus and a transparent child window takes the
- * real pointer, so typing or moving the mouse on the machine cannot change what a running case sees.
- * Playwright's input goes through the DevTools protocol and still reaches the page. A case that needs
- * real system focus calls `setFocusable(true)` before `focus()`, and its title says so.
+ * `showWindow` says whether the case needs a shown window. It defaults to false, a hidden window. The
+ * cost is that a hidden window gets no frames from the compositor: rAF drops to once per second, so
+ * Playwright waits two seconds per actionability check and one second per element screenshot, and menu
+ * accelerators reach only a shown window. Cases that hit either limit set `test.use({ showWindow: true })`;
+ * the rest leave it off.
+ * Neither window gets in the way of someone using the machine: on macOS the App has no Dock icon and
+ * never becomes the active app. A shown window opens isolated, unfocusable and right of every display,
+ * so it never covers another window, takes system focus or sees the machine's real keyboard and pointer.
+ * Playwright's input goes through the DevTools protocol and still reaches the page, and `appSwitcher`
+ * moves the page's focus the way switching to another app and back does.
  */
 export const test = base.extend<{
   app: ElectronApplication; win: Page; showWindow: boolean; configHome: string
@@ -80,6 +80,22 @@ export const test = base.extend<{
 })
 
 export { expect } from '@playwright/test'
+
+/**
+ * Prepares a case about the App going to the background and coming back, without system focus:
+ * `away()` takes focus from the page the way switching to another app does, with blur and a focusout
+ * that has no related target, and `back()` returns it the way switching back does. The page's own focus
+ * is taken once here, so from then on Playwright's focus emulation alone decides whether the page has
+ * focus; `away()` turns it off and `back()` on.
+ */
+export async function appSwitcher(app: ElectronApplication, win: Page): Promise<{
+  away(): Promise<void>; back(): Promise<void>
+}> {
+  await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]!.blurWebView())
+  const cdp = await win.context().newCDPSession(win)
+  const emulate = async (enabled: boolean) => { await cdp.send('Emulation.setFocusEmulationEnabled', { enabled }) }
+  return { away: () => emulate(false), back: () => emulate(true) }
+}
 
 /** The API preload exposes to the page; inside `page.evaluate` it calls Core by contract method, bypassing the UI. */
 export type MeridianWindow = Window & {
