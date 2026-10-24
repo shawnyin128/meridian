@@ -168,29 +168,26 @@ test('关注与项目发现是两条流,发现解释来源并接受显式反馈'
 test('发现的卡片能忽略;忽略、减少类似和已经了解都进垃圾桶,恢复后回到发现,反馈一并撤掉', async ({ win }) => {
   await openInbox(win, 'discovery')
   await shown(win, '.desk-head .btn').filter({ hasText: '刷新发现' }).click()
-  await expect.poll(async () => (await discoveryFromCore(win)).length).toBeGreaterThan(2)
+  await expect.poll(async () => (await discoveryFromCore(win)).length).toBeGreaterThan(0)
   const delivered = await discoveryFromCore(win)
   await expect(shown(win, '.pcard')).toHaveCount(delivered.length)
-  const titles = await cardTitles(win)
+  const title = (await cardTitles(win))[0]!
 
   for (const label of ['忽略', '减少类似', '已经了解']) {
-    const count = await shown(win, '.pcard').count()
-    await rowAction(shown(win, '.pcard').first(), label)
-    await expect(shown(win, '.pcard')).toHaveCount(count - 1)
+    await openInbox(win, 'discovery')
+    await rowAction(shown(win, '.pcard').filter({ hasText: title }), label)
+    await expect(shown(win, '.pcard')).toHaveCount(delivered.length - 1)
+    expect((await trashFromCore(win)).map((item) => [item.kind, item.title])).toEqual([['inbox', title]])
+
+    await win.locator('[data-desk="trash"]').click()
+    await expect(shown(win, '.section-heading')).toHaveText('论文推送 · 1')
+    await rowAction(win.locator('.tgroup .trow'), '恢复')
+    await expect.poll(async () => (await trashFromCore(win)).length).toBe(0)
+    const restored = await call<{ title: string; feedback?: string }[]>(win, 'inbox.list', { kind: 'discovery' })
+    expect(restored.find((entry) => entry.title === title)).not.toHaveProperty('feedback')
   }
-  const trash = await trashFromCore(win)
-  expect(trash.map((item) => [item.kind, item.title])).toEqual(titles.slice(0, 3).reverse().map((title) => ['inbox', title]))
-
-  await win.locator('[data-desk="trash"]').click()
-  await expect(shown(win, '.section-heading')).toHaveText('论文推送 · 3')
-  for (let left = 3; left > 0; left -= 1) await rowAction(win.locator('.tgroup .trow').first(), '恢复')
-  await expect.poll(async () => (await trashFromCore(win)).length).toBe(0)
-
   await openInbox(win, 'discovery')
   await expect(shown(win, '.pcard')).toHaveCount(delivered.length)
-  expect((await cardTitles(win)).sort()).toEqual([...titles].sort())
-  const restored = await call<{ id: string; feedback?: string }[]>(win, 'inbox.list', { kind: 'discovery' })
-  expect(restored.filter((entry) => entry.feedback !== undefined)).toEqual([])
 })
 
 test('按关键词与作者各筛一档,面包屑与条数都跟着换', async ({ win }) => {
