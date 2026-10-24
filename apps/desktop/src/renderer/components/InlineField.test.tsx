@@ -2,9 +2,12 @@
 import { act, type ReactNode } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { DraftsProvider } from '../hooks/useDrafts.js'
 import { MessagesProvider } from '../messages/useMessages.js'
 import { LANGUAGE_STORAGE_KEY } from '../shell/language.js'
 import { InlineField, InlineMetadataField } from './InlineField.js'
+
+vi.mock('../ipc.js', () => ({ library: { location: () => Promise.resolve({ root: '/vaults/a' }) } }))
 
 declare global {
   var IS_REACT_ACT_ENVIRONMENT: boolean
@@ -137,4 +140,30 @@ describe('InlineMetadataField', () => {
     expect(save).toHaveBeenCalledWith('新任务')
   })
 
+  it('留着草稿的字段:改到一半关掉 App 再打开,字段仍开着、是打的字;Esc 收起后再打开 App 不再带回', async () => {
+    window.localStorage.removeItem('meridian.drafts:/vaults/a')
+    const start = () => act(async () => {
+      root!.render(withMessages(
+        <DraftsProvider>
+          <InlineMetadataField label="标题" value="旧标题" onSave={vi.fn()} keep={{ scope: ['paper', 'p1'], target: 'field:title' }} />
+        </DraftsProvider>,
+      ))
+      await Promise.resolve()
+    })
+    const restart = async () => {
+      act(() => root!.unmount())
+      root = createRoot(host)
+      await start()
+    }
+    const input = () => host.querySelector<HTMLTextAreaElement>('[aria-label="编辑标题"]')
+    await start()
+    act(() => host.querySelector<HTMLButtonElement>('.metadata-editable')!.click())
+    act(() => setValue(input()!, '没存的标题'))
+    await restart()
+    expect(input()?.value).toBe('没存的标题')
+    act(() => { input()!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })) })
+    expect(input()).toBeNull()
+    await restart()
+    expect([input(), host.querySelector('.metadata-editable')!.textContent]).toEqual([null, '旧标题'])
+  })
 })

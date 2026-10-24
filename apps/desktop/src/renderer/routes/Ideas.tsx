@@ -5,7 +5,7 @@ import type {
   IdeaRelations as IdeaRelationsValue, ProjectDetail, ProjectSummary, ResearchIdea,
 } from '../../shared/contract.js'
 import { FINISHED_PROJECT, SHELVED_PROJECT } from '../../shared/vocabulary.js'
-import { idea as ideaApi, project as projectApi, wiki as wikiApi } from '../ipc.js'
+import { appMenu, idea as ideaApi, project as projectApi, wiki as wikiApi } from '../ipc.js'
 import { MenuItem, MenuSeparator } from '../components/ActionMenu.js'
 import { SortMenu } from '../components/SortMenu.js'
 import { FormInput, FormTextarea } from '../components/FormControls.js'
@@ -30,6 +30,7 @@ import {
 import { useEscapeLayer, useJump, useScreenReentry, useVaultRevision } from '../shell/AppShell.js'
 import { BackButton } from '../components/BackButton.js'
 import { TitleNote } from '../components/TitleNote.js'
+import { useDraft } from '../hooks/useDrafts.js'
 import { useJumpOrigin } from '../hooks/useJumpOrigin.js'
 import { useScreenLoad } from '../hooks/useScreenLoad.js'
 import { useUndo } from '../hooks/useUndo.js'
@@ -251,43 +252,33 @@ function IdeaDetailPanel({
 }) {
   const m = useMessages()
   const panelFade = useScrollFade('y')
-  const [editing, setEditing] = useState(false)
-  const [title, setTitle] = useState(idea.title)
-  const [body, setBody] = useState(idea.body)
+  // The edit keeps the title and body it started from; once the idea's own have changed it is stale and is not saved.
+  const [edit, setEdit] = useDraft<{ title: string; body: string; base: { title: string; body: string } }>(['idea', idea.id], 'edit')
+  const editing = edit !== null
+  const title = edit?.title ?? idea.title
+  const body = edit?.body ?? idea.body
+  const stale = edit !== null && (edit.base.title !== idea.title || edit.base.body !== idea.body)
   const [busy, setBusy] = useState(false)
 
-  useEffect(() => {
-    setEditing(false)
-    setTitle(idea.title)
-    setBody(idea.body)
-    setBusy(false)
-  }, [idea.id, idea.title, idea.body])
+  useEffect(() => { setBusy(false) }, [idea.id])
 
-  const startEditing = () => {
-    setTitle(idea.title)
-    setBody(idea.body)
-    setEditing(true)
-  }
-  const cancelEditing = () => {
-    setTitle(idea.title)
-    setBody(idea.body)
-    setEditing(false)
-  }
+  const startEditing = () => setEdit({ title: idea.title, body: idea.body, base: { title: idea.title, body: idea.body } })
+  const cancelEditing = () => setEdit(null)
   const save = () => {
     const nextTitle = title.trim()
     const nextBody = body.trim()
-    if (busy || nextTitle === '' || nextBody === '') return
+    if (busy || stale || nextTitle === '' || nextBody === '') return
     setBusy(true)
     void onSave(nextTitle, nextBody).then((saved) => {
       setBusy(false)
-      if (saved) setEditing(false)
+      if (saved) setEdit(null)
     })
   }
-  /** Enter commits the title, ⌘Enter or Ctrl+Enter the body, and Escape restores both. */
+  /** Enter commits the title, ⌘Enter on macOS or Ctrl+Enter elsewhere the body, and Escape restores both. */
   const commitOrCancel = (multiline: boolean) => (event: KeyboardEvent<HTMLElement>) => {
     if (composing(event.nativeEvent)) return
     if (event.key === 'Escape') { event.stopPropagation(); cancelEditing(); return }
-    if (multiline ? commitsMultiline(event.nativeEvent) : event.key === 'Enter') { event.preventDefault(); save() }
+    if (multiline ? commitsMultiline(appMenu.platform(), event.nativeEvent) : event.key === 'Enter') { event.preventDefault(); save() }
   }
 
   return (
@@ -298,7 +289,7 @@ function IdeaDetailPanel({
         onOpenSourcePaper={(paperId) => onOpen('reader', paperId)}
         actions={(
           <EditActions
-            editing={editing} saving={busy} canSave={title.trim() !== '' && body.trim() !== ''}
+            editing={editing} saving={busy} canSave={!stale && title.trim() !== '' && body.trim() !== ''}
             onEdit={startEditing} onCancel={cancelEditing} onSave={save}
           />
         )}
@@ -309,14 +300,14 @@ function IdeaDetailPanel({
                 <span>{m.ideas.editor.titleLabel}</span>
                 <FormInput
                   autoFocus value={title} maxLength={160}
-                  onChange={(event) => setTitle(event.target.value)} onKeyDown={commitOrCancel(false)}
+                  onChange={(event) => setEdit({ ...edit!, title: event.target.value })} onKeyDown={commitOrCancel(false)}
                 />
               </label>
               <label>
                 <span>{m.ideas.bodyLabel}</span>
                 <FormTextarea
                   value={body} maxLength={20_000}
-                  onChange={(event) => setBody(event.target.value)} onKeyDown={commitOrCancel(true)}
+                  onChange={(event) => setEdit({ ...edit!, body: event.target.value })} onKeyDown={commitOrCancel(true)}
                 />
               </label>
             </section>

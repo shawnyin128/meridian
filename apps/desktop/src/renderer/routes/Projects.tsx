@@ -36,6 +36,7 @@ import type { Catalog } from '../messages/catalog.js'
 import { ProjectDetail } from './ProjectDetail.js'
 import type { RecordTab } from './ProjectDetail.js'
 import type { PlanTab } from '../components/project/ProjectPlan.js'
+import { useDrafts, type KeptText } from '../hooks/useDrafts.js'
 import { useScreenLoad } from '../hooks/useScreenLoad.js'
 import { useUndo } from '../hooks/useUndo.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
@@ -83,17 +84,21 @@ function ProjectMenu({ project, onRename, onMove, canMove, onStatus, onDelete }:
   onDelete: () => void
 }) {
   const m = useMessages()
+  // A rename being typed is kept with its project, and reopens the menu where it was typed.
+  const kept = useDrafts<string>(['project', project.id])
+  const renaming = kept.get('rename') !== undefined
   const [open, setOpen] = useState(false)
-  const [renaming, setRenaming] = useState(false)
-  const close = () => { setOpen(false); setRenaming(false) }
+  const close = () => {
+    setOpen(false)
+    kept.drop('rename')
+  }
 
   return (
     <DotsMenu
-      open={open}
+      open={open || renaming}
       onOpenChange={(next) => {
         if (!next && renaming) return
         setOpen(next)
-        if (!next) setRenaming(false)
       }}
       contentClassName={renaming ? 'ctxmenu drop' : 'ctxmenu'} stopRowActivation
     >
@@ -102,13 +107,13 @@ function ProjectMenu({ project, onRename, onMove, canMove, onStatus, onDelete }:
               <ShortTextEditor
                 title={m.research.list.renameTitle} initialValue={project.name}
                 placeholder={m.project.identity.nameFieldLabel}
-                onSubmit={onRename} onClose={close}
+                onSubmit={onRename} onClose={close} kept={{ drafts: kept, target: 'rename' }}
               />
             )
             : (
               <>
                 {/* Selecting "Rename" does not close the menu: it replaces the contents of the same menu */}
-                <MenuItem onSelect={(e) => { e.preventDefault(); setRenaming(true) }}>
+                <MenuItem onSelect={(e) => { e.preventDefault(); kept.set('rename', project.name) }}>
                   {m.research.list.rename}
                 </MenuItem>
                 <MenuItem disabled={!canMove(-1)} onSelect={() => onMove(-1)}>{m.common.moveUp}</MenuItem>
@@ -133,11 +138,12 @@ function ProjectMenu({ project, onRename, onMove, canMove, onStatus, onDelete }:
  * an empty row closes it. A click on the page header's "New project" does not count as outside.
  * `onCreate` returns whether the row is done.
  */
-function ProjectCreateRow({ row, triggers, onCreate, onCancel }: {
+function ProjectCreateRow({ row, triggers, onCreate, onCancel, kept }: {
   row: RefObject<HTMLDivElement | null>
   triggers: Array<RefObject<HTMLElement | null>>
   onCreate: (name: string) => boolean | Promise<boolean>
   onCancel: () => void
+  kept: KeptText
 }) {
   const m = useMessages()
   return (
@@ -145,7 +151,7 @@ function ProjectCreateRow({ row, triggers, onCreate, onCancel }: {
       <div className="pp-h">
         <InlineDraftInput
           className="inedit" scopeRef={row} triggers={triggers} placeholder={m.project.identity.nameFieldLabel}
-          onSubmit={onCreate} onCancel={onCancel}
+          onSubmit={onCreate} onCancel={onCancel} kept={kept}
         />
       </div>
     </div>
@@ -278,13 +284,19 @@ function ProjectList({ onOpen, newRow, onNewRow, onReturn }: {
 }) {
   const m = useMessages()
   const [projects, setProjects] = useState<ProjectSummary[] | null>(null)
-  const [creating, setCreating] = useState(false)
+  // The new-project row is open while its name is kept as a draft.
+  const drafts = useDrafts<string>(['projects'])
+  const creating = drafts.get('new') !== undefined
+  const setCreating = useCallback((open: boolean) => {
+    if (!open) drafts.drop('new')
+    else if (drafts.get('new') === undefined) drafts.set('new', '')
+  }, [drafts])
   const today = useToday()
   const { revision } = useVaultRevision()
   const { error, load } = useScreenLoad()
   const write = useVaultWrite()
   const undo = useUndo()
-  const stopCreating = useCallback(() => setCreating(false), [])
+  const stopCreating = useCallback(() => setCreating(false), [setCreating])
   const createRow = useRef<HTMLDivElement>(null)
   const projNew = useRef<HTMLButtonElement>(null)
   const newTriggers = useMemo(() => [projNew], [])
@@ -312,7 +324,7 @@ function ProjectList({ onOpen, newRow, onNewRow, onReturn }: {
     if (!newRow) return
     setCreating(true)
     onNewRow()
-  }, [newRow, onNewRow])
+  }, [newRow, onNewRow, setCreating])
 
   /**
    * Finishes a write: closes the new-project row, then lets `write` finish. Creating from the row does
@@ -401,7 +413,7 @@ function ProjectList({ onOpen, newRow, onNewRow, onReturn }: {
               ? (
                 <ProjectCreateRow
                   row={createRow} triggers={newTriggers}
-                  onCancel={stopCreating} onCreate={createProject}
+                  onCancel={stopCreating} onCreate={createProject} kept={{ drafts, target: 'new' }}
                 />
               )
               : g.items.length === 0 ? <EmptyState variant="section">{m.research.list.empty}</EmptyState> : null}

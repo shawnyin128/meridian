@@ -262,6 +262,7 @@ describe('project idea panel', () => {
   const mount = (panel: ReactNode) => {
     globalThis.IS_REACT_ACT_ENVIRONMENT = true
     vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} })
+    vi.stubGlobal('meridian', { platform: 'darwin' })
     document.body.innerHTML = ''
     const host = document.createElement('div')
     document.body.append(host)
@@ -326,7 +327,7 @@ describe('project idea panel', () => {
     const on = handlers()
     const task = mount(
       <ProjectTaskPanel
-        task={{ id: 't1', title: '宽树实验', start: '2026-09-16', end: '2026-09-16', priority: 'p1', state: 'act' }}
+        projectId="p1" task={{ id: 't1', title: '宽树实验', start: '2026-09-16', end: '2026-09-16', priority: 'p1', state: 'act' }}
         node={undefined} nodes={graph.nodes} handSet={false}
         onClose={vi.fn()} onSaveNote={vi.fn()} onOpenNode={vi.fn()} onSetNode={vi.fn()}
       />,

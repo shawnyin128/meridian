@@ -15,6 +15,7 @@ import { Notice, type NoticeAction, type NoticeContent, type NoticeTone } from '
 import { PageFailure } from '../components/PageShell.js'
 import { ScreenBoundary } from '../components/ScreenBoundary.js'
 import { Tooltip } from '../components/Tooltip.js'
+import { usePruneDrafts } from '../hooks/useDrafts.js'
 import { GenerationsContext, useCoreGenerations } from '../hooks/useGenerations.js'
 import { errorLabel } from '../lib/failure-label.js'
 import { commandShortcut, composing, pressesCommand } from '../lib/keyboard.js'
@@ -394,6 +395,9 @@ export function AppShell({ screens, settings }: {
   const [jump, setJump] = useState<ScreenJump | null>(null)
   const [watches, setWatches] = useState<Watch[]>([])
   const [chats, setChats] = useState<ChatSession[]>([])
+  const [chatsRead, setChatsRead] = useState(false)
+  const [projectIds, setProjectIds] = useState<string[] | null>(null)
+  const [ideaIds, setIdeaIds] = useState<string[] | null>(null)
   const [chatId, setChatId] = useState<string | null>(null)
   const [inboxWatches, setInboxWatches] = useState<string[][]>([])
   const [discoveryCount, setDiscoveryCount] = useState(0)
@@ -420,13 +424,18 @@ export function AppShell({ screens, settings }: {
   useEffect(() => {
     void vault.today().then(setToday).catch((e: unknown) => setBootError(errorLabel(m, e)))
     void papers.list({ page: 1, size: 1 }).then((r) => setPaperCount(r.total))
-    void project.list().then((rows) =>
-      setProjectCount(rows.filter((p) => p.status === ACTIVE_PROJECT).length))
+    void project.list().then((rows) => {
+      setProjectCount(rows.filter((p) => p.status === ACTIVE_PROJECT).length)
+      setProjectIds(rows.map((p) => p.id))
+    })
     void trash.list().then((entries) => setTrashCount(entries.length))
     void changelog.list().then((entries) => setChangeCount(entries.filter((c) => !c.archived).length))
     void wiki.home().then((h) => setWikiCount(h.aggregationCount))
     void watch.list().then(setWatches)
-    void chat.list().then(setChats)
+    void chat.list().then((rows) => {
+      setChats(rows)
+      setChatsRead(true)
+    })
     void later.list().then((entries) => setLaterCount(entries.length))
     void inbox.list({ kind: 'watch' }).then((entries) => setInboxWatches(
       entries.map((entry) => listingsOf(entry, 'watch').map((listing) => listing.id)),
@@ -443,9 +452,19 @@ export function AppShell({ screens, settings }: {
     })
   }, [revision])
 
+  // A kept draft of a chat, project or idea that is gone is dropped whenever their list is read, one
+  // of a paper that is gone once per session, when the kept drafts are read.
+  usePruneDrafts(['chat'], chatsRead ? chats.map((session) => session.id) : null)
+  usePruneDrafts(['project'], projectIds)
+  usePruneDrafts(['idea'], ideaIds)
+  usePruneDrafts(['paper'], papers.allIds)
+
   // Reading ideas also takes in those a coding agent recorded, which is not a write here, so recount on every screen change too.
   useEffect(() => {
-    void idea.list().then((rows) => setIdeaCount(rows.filter((item) => !item.archived).length))
+    void idea.list().then((rows) => {
+      setIdeaCount(rows.filter((item) => !item.archived).length)
+      setIdeaIds(rows.map((item) => item.id))
+    })
   }, [revision, screen])
 
   // After a watch is removed, the Inbox must not stay scoped to a watch that no longer exists.

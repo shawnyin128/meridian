@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Milestone, Task } from '../../../shared/contract.js'
 import { MessagesProvider } from '../../messages/useMessages.js'
 import { LANGUAGE_STORAGE_KEY } from '../../shell/language.js'
-import { ProjectPlan, ProjectTaskPanel, type PlanCreating } from './ProjectPlan.js'
+import { newPlanRow, ProjectPlan, ProjectTaskPanel, type PlanCreating } from './ProjectPlan.js'
 
 const task: Task = {
   id: 'task-1', title: '校准批次', start: '2026-09-16', end: '2026-09-16',
@@ -36,11 +36,11 @@ function renderPlan(tab: 'task' | 'ms', options: {
   return renderToStaticMarkup(
     <MessagesProvider>
       <ProjectPlan
-        project={{ tasks, milestones }} tab={tab} today="2026-09-16"
+        projectId="p1" project={{ tasks, milestones }} tab={tab} today="2026-09-16"
         creating={creating} flashId={flashId} selectedTaskId={null}
         listRef={createRef()} addRef={createRef()} timelineAddRef={createRef()}
         onTab={vi.fn()} onDiscardOpenEdits={vi.fn()} onStartTask={vi.fn()} onStartMilestone={vi.fn()}
-        onCancelCreate={vi.fn()} onCreateTask={vi.fn()} onCreateMilestone={vi.fn()}
+        onCreating={vi.fn()} onCancelCreate={vi.fn()} onCreateTask={vi.fn()} onCreateMilestone={vi.fn()}
         onUpdateTask={vi.fn()} onDeleteTask={vi.fn()} onReorderTasks={vi.fn()} onOpenTask={vi.fn()}
         onUpdateMilestone={vi.fn()}
         onDeleteMilestone={vi.fn()} onHoverMilestone={vi.fn()}
@@ -105,11 +105,11 @@ describe('ProjectPlan', () => {
     act(() => root.render(
       <MessagesProvider>
         <ProjectPlan
-          project={{ tasks: [task, rangeTask, doneTask], milestones: [] }} tab="task" today="2026-09-16"
+          projectId="p1" project={{ tasks: [task, rangeTask, doneTask], milestones: [] }} tab="task" today="2026-09-16"
           creating={null} flashId={null} selectedTaskId={null}
           listRef={createRef()} addRef={createRef()} timelineAddRef={createRef()}
           onTab={vi.fn()} onDiscardOpenEdits={vi.fn()} onStartTask={vi.fn()} onStartMilestone={vi.fn()}
-          onCancelCreate={vi.fn()} onCreateTask={vi.fn()} onCreateMilestone={vi.fn()}
+          onCreating={vi.fn()} onCancelCreate={vi.fn()} onCreateTask={vi.fn()} onCreateMilestone={vi.fn()}
           onUpdateTask={vi.fn()} onDeleteTask={vi.fn()} onReorderTasks={onReorderTasks} onOpenTask={vi.fn()}
           onUpdateMilestone={vi.fn()} onDeleteMilestone={vi.fn()} onHoverMilestone={vi.fn()}
         />
@@ -148,7 +148,7 @@ describe('ProjectPlan', () => {
   })
 
   it('新建任务的输入行出现在列表最前,和新任务落下的位置一致', () => {
-    const output = renderPlan('task', { creating: { kind: 'task', date: '2026-09-16', window: null } })
+    const output = renderPlan('task', { creating: newPlanRow('task', '2026-09-16') })
     expect(output.indexOf('task-create-row')).toBeGreaterThan(-1)
     expect(output.indexOf('task-create-row')).toBeLessThan(output.indexOf('data-row="task-1"'))
     expect(output).toMatch(/task-create-row[\s\S]*<input[^>]*class="form-control form-input form-control-inline/)
@@ -208,11 +208,11 @@ describe('ProjectPlan', () => {
       act(() => root!.render(
         <MessagesProvider>
           <ProjectPlan
-            project={{ tasks: [task], milestones: [] }} tab="task" today="2026-09-16"
+            projectId="p1" project={{ tasks: [task], milestones: [] }} tab="task" today="2026-09-16"
             creating={null} flashId={null} selectedTaskId={null}
             listRef={createRef()} addRef={createRef()} timelineAddRef={createRef()}
             onTab={vi.fn()} onDiscardOpenEdits={vi.fn()} onStartTask={vi.fn()} onStartMilestone={vi.fn()}
-            onCancelCreate={vi.fn()} onCreateTask={vi.fn()} onCreateMilestone={vi.fn()}
+            onCreating={vi.fn()} onCancelCreate={vi.fn()} onCreateTask={vi.fn()} onCreateMilestone={vi.fn()}
             onUpdateTask={onUpdateTask} onDeleteTask={vi.fn()} onReorderTasks={vi.fn()} onOpenTask={onOpenTask}
             onUpdateMilestone={vi.fn()} onDeleteMilestone={vi.fn()} onHoverMilestone={vi.fn()}
           />
@@ -293,7 +293,7 @@ function renderTaskPanel(
   return renderToStaticMarkup(
     <MessagesProvider>
       <ProjectTaskPanel
-        task={{ ...task, ...taskOverrides }} node={node} nodes={[]} handSet={false}
+        projectId="p1" task={{ ...task, ...taskOverrides }} node={node} nodes={[]} handSet={false}
         onClose={vi.fn()} onSaveNote={vi.fn()} onOpenNode={vi.fn()} onSetNode={vi.fn()}
       />
     </MessagesProvider>,
@@ -342,6 +342,7 @@ describe('ProjectTaskPanel', () => {
   it('备注按长文本的同一套约定编辑:编辑的位置换成取消和保存,取消或 Esc 还原不写,保存或 ⌘回车写回', async () => {
     globalThis.IS_REACT_ACT_ENVIRONMENT = true
     vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} })
+    vi.stubGlobal('meridian', { platform: 'darwin' })
     const host = document.createElement('div')
     document.body.append(host)
     const onSaveNote = vi.fn(async () => true)
@@ -349,7 +350,7 @@ describe('ProjectTaskPanel', () => {
     act(() => root.render(
       <MessagesProvider>
         <ProjectTaskPanel
-          task={{ ...task, note: '原备注' }} node={undefined} nodes={[]} handSet={false}
+          projectId="p1" task={{ ...task, note: '原备注' }} node={undefined} nodes={[]} handSet={false}
           onClose={vi.fn()} onSaveNote={onSaveNote} onOpenNode={vi.fn()} onSetNode={vi.fn()}
         />
       </MessagesProvider>,
@@ -408,7 +409,7 @@ describe('ProjectTaskPanel', () => {
       act(() => root!.render(
         <MessagesProvider>
           <ProjectTaskPanel
-            task={task} node={props.node} nodes={props.nodes ?? nodes} handSet={props.handSet ?? false}
+            projectId="p1" task={task} node={props.node} nodes={props.nodes ?? nodes} handSet={props.handSet ?? false}
             onClose={vi.fn()} onSaveNote={vi.fn()} onOpenNode={vi.fn()} onSetNode={onSetNode}
           />
         </MessagesProvider>,

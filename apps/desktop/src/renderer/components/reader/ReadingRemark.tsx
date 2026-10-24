@@ -1,5 +1,6 @@
 import type { PaperReading } from '../../../shared/contract.js'
 import { editField, type Drafts, type EditDraft } from '../../hooks/useDrafts.js'
+import { appMenu } from '../../ipc.js'
 import { useMessages } from '../../messages/useMessages.js'
 import { commitsMultiline } from '../../lib/keyboard.js'
 import { FormTextarea } from '../FormControls.js'
@@ -33,7 +34,7 @@ export function ReadingRemark({ reading, saving, onSave, edits }: {
           aria-label={m.reader.rail.tabs.remark} placeholder={m.reader.remark.placeholder}
           {...edit.fieldProps}
           onKeyDown={(event) => {
-            if (commitsMultiline(event.nativeEvent)) { event.preventDefault(); save(); return }
+            if (commitsMultiline(appMenu.platform(), event.nativeEvent)) { event.preventDefault(); save(); return }
             edit.fieldProps.onKeyDown(event)
           }}
         />

@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
-import { act, useRef, type ReactNode } from 'react'
+import { act, useRef, useState, type ReactNode } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { useDrafts } from '../hooks/useDrafts.js'
 import { PickRow } from './PickRow.js'
 import type { PickHit } from './PickRow.js'
 
@@ -239,5 +240,40 @@ describe('PickRow', () => {
     const host = mount(() => true, () => {})
     await flush()
     expect(host.querySelector('input')!.classList).toContain('form-control-inline')
+  })
+
+  it('keeps what is typed as a draft that a reopened row starts from, and drops it when the row closes', async () => {
+    const onCancel = vi.fn()
+    let show!: (open: boolean) => void
+    /** A host that holds the drafts and shows the row while open. */
+    function Host() {
+      const drafts = useDrafts<string>(['project', 'p1', 'relation'])
+      const row = useRef<HTMLDivElement>(null)
+      const [open, setOpen] = useState(true)
+      show = setOpen
+      return open
+        ? (
+          <div ref={row}>
+            <PickRow
+              row={row} triggers={[]} placeholder="挑一个" suggest={() => Promise.resolve([])} allowNew={false}
+              onPick={() => true} onNew={() => false} onCancel={onCancel} onError={() => {}}
+              kept={{ drafts, target: 'add:Wiki' }}
+            />
+          </div>
+        )
+        : null
+    }
+    render(<Host />)
+    await type('打了一半')
+    act(() => show(false))
+    act(() => show(true))
+    await flush()
+    const input = () => document.querySelector<HTMLInputElement>('input')!
+    expect(input().value).toBe('打了一半')
+    act(() => { input().dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })) })
+    expect(onCancel).toHaveBeenCalledOnce()
+    act(() => show(false))
+    act(() => show(true))
+    expect(input().value).toBe('')
   })
 })

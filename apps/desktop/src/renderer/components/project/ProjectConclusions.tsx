@@ -2,6 +2,7 @@ import { useRef, useState } from 'react'
 import type {
   ConclusionState, GraphNode, ProjectConclusion, ProposalOp, WikiAggregationCard,
 } from '../../../shared/contract.js'
+import { useDraft } from '../../hooks/useDrafts.js'
 import { wiki } from '../../ipc.js'
 import { claimId } from '../../lib/slug.js'
 import { useFormat } from '../../lib/format.js'
@@ -89,18 +90,17 @@ export function ProjectConclusionPanel({
   const m = useMessages()
   const c = m.project.conclusions
   const fmt = useFormat()
-  const [held, setDraft] = useState<{ conclusion: string; page: string; text: string } | null>(null)
+  // A draft belongs to the conclusion it was opened from and shows only with it.
+  const [draft, setDraft] = useDraft<{ page: string; text: string }>(['project', projectId, 'conclusion', conclusion.id], 'claim')
   const [pages, setPages] = useState<WikiAggregationCard[]>([])
   const draftAt = useRef<HTMLDivElement>(null)
-  // A draft belongs to the conclusion it was opened from and shows only with it.
-  const draft = held?.conclusion === conclusion.id ? held : null
 
   const startWriting = () => {
     if (draft !== null) {
       draftAt.current?.querySelector<HTMLElement>('.form-control')?.focus()
       return
     }
-    setDraft({ conclusion: conclusion.id, page: '', text: conclusion.text })
+    setDraft({ page: '', text: conclusion.text })
     void wiki.cards().then((cards) => setPages([...cards].sort((a, b) => a.title.localeCompare(b.title))))
   }
 

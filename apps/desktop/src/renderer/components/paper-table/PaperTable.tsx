@@ -24,6 +24,7 @@ import { PaperReadingSummary } from './PaperReadingSummary.js'
 import { FormInput } from '../FormControls.js'
 import { ClearableInput } from '../ClearableInput.js'
 import { PageBody, PageError, PageHeader, PageShell, PageTitle, PageToolbar } from '../PageShell.js'
+import { useDrafts, useKeptTargets } from '../../hooks/useDrafts.js'
 import { NO_TRIGGERS } from '../../hooks/useOnLeave.js'
 import { useInlineDraft } from '../../hooks/useInlineDraft.js'
 import { useUndo } from '../../hooks/useUndo.js'
@@ -230,15 +231,18 @@ function opensPaperFrom(target: EventTarget | null): boolean {
  * input's text to `onSave`; Esc calls `onCancel` without writing the typed text. `onSave` returns
  * whether this edit is finished.
  */
-function TextCellEdit({ cell, initial, onSave, onCancel }: {
+function TextCellEdit({ cell, initial, keep, onSave, onCancel }: {
   cell: RefObject<HTMLTableCellElement | null>
   initial: string
+  /** Keeps what is typed as a draft under `target` of `scope`, which the input starts from; closing drops it. */
+  keep: { scope: readonly string[]; target: string }
   onSave: (value: string) => boolean | Promise<boolean>
   onCancel: () => void
 }) {
   const input = useRef<HTMLInputElement>(null)
+  const kept = useDrafts<string>(keep.scope)
   const draft = useInlineDraft({
-    row: cell, triggers: NO_TRIGGERS, onCancel,
+    row: cell, triggers: NO_TRIGGERS, onCancel, kept: { drafts: kept, target: keep.target },
     onSubmit: () => onSave(input.current!.value),
   })
   return (
@@ -246,7 +250,11 @@ function TextCellEdit({ cell, initial, onSave, onCancel }: {
       appearance="inline" className="celledit paper-text-cell-input"
       ref={input}
       {...draft.inputProps}
-      defaultValue={initial}
+      onInput={(event) => {
+        draft.inputProps.onInput()
+        kept.set(keep.target, event.currentTarget.value)
+      }}
+      defaultValue={kept.get(keep.target) ?? initial}
     />
   )
 }
@@ -289,14 +297,26 @@ export function PaperTable() {
   // Tail of the column chain: column configuration refetches and column set writes queue behind it,
   // each starting only after the previous one has settled.
   const columnChain = useRef<Promise<unknown>>(Promise.resolve())
-  const [newCol, setNewCol] = useState(false)
+  // The new column's name and an edited cell's text are kept as drafts, and reopen where they were.
+  const tableDrafts = useDrafts<string>(['papers'])
+  const newCol = tableDrafts.get('new-column') !== undefined
+  const setNewCol = useCallback((open: boolean) => {
+    if (!open) tableDrafts.drop('new-column')
+    else if (tableDrafts.get('new-column') === undefined) tableDrafts.set('new-column', '')
+  }, [tableDrafts])
   const colAdd = useRef<HTMLButtonElement>(null)
   const newColCell = useRef<HTMLTableCellElement>(null)
   // Identity of the current column-creation attempt; closing the draft in any way (Esc, outside
   // press, focus leaving, opening the detail panel) replaces it with null.
   const columnDraftToken = useRef<object | null>(null)
-  // The custom cell being edited in place
-  const [editingCell, setEditingCell] = useState<{ id: string; key: string } | null>(null)
+  // The custom cell being edited in place, or else one whose kept text belongs to a paper on the page shown
+  const [ownEditingCell, setEditingCell] = useState<{ id: string; key: string } | null>(null)
+  const keptCells = useKeptTargets(['paper'], 'cell:')
+  const keptCell = keptCells.find(({ scope }) => rows.some((row) => row.id === scope[1]))
+  const keptId = keptCell?.scope[1] ?? null
+  const keptKey = keptCell?.target.slice('cell:'.length) ?? null
+  const restoredCell = useMemo(() => (keptId === null || keptKey === null ? null : { id: keptId, key: keptKey }), [keptId, keptKey])
+  const editingCell = ownEditingCell ?? restoredCell
   const editingTd = useRef<HTMLTableCellElement>(null)
   const [detail, setDetail] = useState<PaperRow | null>(null)
   const [uploading, setUploading] = useState(false)
@@ -721,8 +741,11 @@ export function PaperTable() {
     void uploadFiles([...event.dataTransfer.files])
   }
 
-  /** Close the cell being edited. */
+  /** Close the cell being edited, and forget what was kept of it. */
   const closeCell = () => {
+    if (editingCell !== null) {
+      keptCells.find(({ scope, target }) => scope[1] === editingCell.id && target === `cell:${editingCell.key}`)?.drop()
+    }
     setEditingCell(null)
   }
 
@@ -940,7 +963,7 @@ export function PaperTable() {
     if (column.type === 'text') {
       return (
         <TextCellEdit
-          cell={editingTd} initial={values[0] ?? ''}
+          cell={editingTd} initial={values[0] ?? ''} keep={{ scope: ['paper', p.id], target: `cell:${column.key}` }}
           onSave={(value) => holdCellSave(saveCell(p, column.key, value))}
           // Another cell may have been clicked before the write came back; close this cell only if it
           // is still the one being edited.
@@ -950,7 +973,7 @@ export function PaperTable() {
     }
     return (
       <CellPicker
-        column={column} values={values} onClose={closeCell}
+        column={column} values={values} onClose={closeCell} keep={{ scope: ['paper', p.id], target: `cell:${column.key}` }}
         onCommit={(value, created) => savePick(p, column, value, created)}
       />
     )
@@ -984,7 +1007,7 @@ export function PaperTable() {
           {editing
             ? (
               <TextCellEdit
-                cell={editingTd} initial={p.remark ?? ''}
+                cell={editingTd} initial={p.remark ?? ''} keep={{ scope: ['paper', p.id], target: `cell:${k}` }}
                 onSave={(value) => holdCellSave(saveRemark(p, value))}
                 onCancel={() => setEditingCell((held) => (
                   held !== null && held.id === p.id && held.key === k ? null : held
@@ -1008,7 +1031,8 @@ export function PaperTable() {
       <td key={k}>
         <span className="ci">
           <PaperTopics
-            topics={p.topics} onError={report} onAdd={(v) => addTopic(p, v)} onRemove={(v) => removeTopic(p, v)}
+            topics={p.topics} keep={['paper', p.id, 'topics-cell']} onError={report}
+            onAdd={(v) => addTopic(p, v)} onRemove={(v) => removeTopic(p, v)}
           />
         </span>
       </td>
@@ -1094,7 +1118,7 @@ export function PaperTable() {
             {newCol
               ? (
                 <NewColumnHead
-                  cell={newColCell} triggers={[colAdd]} pickType
+                  cell={newColCell} triggers={[colAdd]} pickType kept={{ drafts: tableDrafts, target: 'new-column' }}
                   onCreate={createColumn}
                   onCancel={() => { columnDraftToken.current = null; setNewCol(false) }}
                 />

@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react'
 import type { KeyboardEvent as ReactKeyboardEvent, ReactElement, RefObject } from 'react'
 import type { PaperColumn } from '../../../shared/contract.js'
+import type { KeptText } from '../../hooks/useDrafts.js'
 import { useMessages } from '../../messages/useMessages.js'
 import { ActionPopover } from '../ActionPopover.js'
 import { InlineDraftInput } from '../InlineDraftInput.js'
@@ -86,12 +87,14 @@ export function ColumnTypeIcon({ type }: { type: PaperColumn['type'] }) {
  * Shift+Tab in the group also returns to the column name input, and Esc in the group cancels
  * outright, as it does in the input.
  */
-export function NewColumnHead({ cell, triggers, onCreate, onCancel, pickType }: {
+export function NewColumnHead({ cell, triggers, onCreate, onCancel, pickType, kept }: {
   cell: RefObject<HTMLTableCellElement | null>
   triggers: Array<RefObject<HTMLElement | null>>
   onCreate: (label: string, type: PaperColumn['type']) => boolean | Promise<boolean>
   onCancel: () => void
   pickType?: boolean
+  /** Keeps the name being typed as a draft there; see `InlineDraftInput`. */
+  kept?: KeptText | undefined
 }) {
   const m = useMessages()
   const input = useRef<HTMLInputElement>(null)
@@ -103,6 +106,7 @@ export function NewColumnHead({ cell, triggers, onCreate, onCancel, pickType }: 
       <InlineDraftInput
         className="celledit" ref={input} scopeRef={cell} triggers={triggers}
         placeholder={m.papers.columnAdd.namePlaceholder} onSubmit={(label) => onCreate(label, type)} onCancel={onCancel}
+        kept={kept}
         onKeyDown={(e) => {
           // The type popover is portaled to the end of the body, out of reach of the native Tab order,
           // so focus is moved there by hand.

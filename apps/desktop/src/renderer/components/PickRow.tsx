@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { RefObject } from 'react'
 import { useCandidateKeys } from '../hooks/useCandidateKeys.js'
+import type { KeptText } from '../hooks/useDrafts.js'
 import { useInlineDraft } from '../hooks/useInlineDraft.js'
 import { PickerPopover, PickOption } from './PickerPopover.js'
 import { FormInput, type FormControlAppearance } from './FormControls.js'
@@ -24,13 +25,14 @@ const LIMIT = 8
  * unchanged, or at all with `cancelOnLeave`, closes it.
  * `row` is the element that counts as inside the draft, mounted on it by the caller; pressing or
  * focusing one of the `triggers`, the buttons that open this draft, does not count as outside. A
- * failed `suggest` goes to `onError`. The input starts out holding `initialText`.
+ * failed `suggest` goes to `onError`. The input starts out holding `initialText`. With `kept`, what is
+ * typed is kept there as a draft, which the input starts from instead; the draft closing drops it.
  */
 export function PickRow({
   row, triggers, placeholder, initialText = '', suggest, allowNew, onPick, onNew, onCancel, onError,
   inputClassName = 'inedit',
   inputAppearance = 'inline',
-  cancelOnLeave = false,
+  cancelOnLeave = false, kept,
 }: {
   row: RefObject<HTMLElement | null>
   triggers: Array<RefObject<HTMLElement | null>>
@@ -45,8 +47,13 @@ export function PickRow({
   inputClassName?: string
   inputAppearance?: FormControlAppearance
   cancelOnLeave?: boolean
+  kept?: KeptText | undefined
 }) {
-  const [text, setText] = useState(initialText)
+  const [text, setOwnText] = useState(kept?.drafts.get(kept.target) ?? initialText)
+  const setText = (next: string) => {
+    setOwnText(next)
+    kept?.drafts.set(kept.target, next)
+  }
   const [hits, setHits] = useState<PickHit[]>([])
   const [answered, setAnswered] = useState('')
   const seq = useRef(0)
@@ -76,7 +83,7 @@ export function PickRow({
     return false
   }
   const draft = useInlineDraft({
-    row, triggers, onSubmit: pick, onCancel,
+    row, triggers, onSubmit: pick, onCancel, kept,
     isEmpty: () => cancelOnLeave || text.trim() === '' || text.trim() === initialText.trim(),
   })
   // A stale result set must not be selected by Enter; the input's own onSubmit (pick) re-checks

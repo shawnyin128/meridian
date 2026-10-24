@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react'
 import type { PaperColumn, PaperColumns } from '../../../shared/contract.js'
 import { LOCKED_PAPER_COLUMNS } from '../../../shared/vocabulary.js'
+import { useDrafts } from '../../hooks/useDrafts.js'
 import { useMessages } from '../../messages/useMessages.js'
 import { ActionPopover } from '../ActionPopover.js'
 import { IconButton } from '../IconButton.js'
@@ -42,13 +43,33 @@ export function ColumnMenu({ columns, onChange, onRenameOption, onRetype }: {
 }) {
   const m = useMessages()
   const names = builtinNames(m, columns).columns
-  const [open, setOpen] = useState(false)
+  // A rename being typed is kept as a draft, and reopens the menu at its column or option.
+  const kept = useDrafts<string>(['papers', 'columns'], [
+    ...columns.custom.map((c) => `name:${c.key}`),
+    ...columns.custom.flatMap((c) => c.options.map((o) => `option:${c.key}:${o}`)),
+  ])
+  const keptName = columns.custom.find((c) => kept.get(`name:${c.key}`) !== undefined)?.key ?? null
+  const keptOption = columns.custom.flatMap((c) => c.options.map((from) => ({ key: c.key, from })))
+    .find((option) => kept.get(`option:${option.key}:${option.from}`) !== undefined) ?? null
+  const [ownOpen, setOpen] = useState(false)
+  const open = ownOpen || keptName !== null || keptOption !== null
   // The key of the column being renamed
-  const [renaming, setRenaming] = useState<string | null>(null)
+  const [ownRenaming, setOwnRenaming] = useState<string | null>(null)
+  const renaming = ownRenaming ?? keptName
+  const setRenaming = (next: string | null) => {
+    if (next === null && renaming !== null) kept.drop(`name:${renaming}`)
+    setOwnRenaming(next)
+  }
   // The key of the column whose options are being expanded
-  const [opened, setOpened] = useState<string | null>(null)
+  const [ownOpened, setOpened] = useState<string | null>(null)
+  const opened = ownOpened ?? keptOption?.key ?? null
   // The option being renamed
-  const [renamingOption, setRenamingOption] = useState<{ key: string; from: string } | null>(null)
+  const [ownRenamingOption, setOwnRenamingOption] = useState<{ key: string; from: string } | null>(null)
+  const renamingOption = ownRenamingOption ?? keptOption
+  const setRenamingOption = (next: { key: string; from: string } | null) => {
+    if (next === null && renamingOption !== null) kept.drop(`option:${renamingOption.key}:${renamingOption.from}`)
+    setOwnRenamingOption(next)
+  }
   const leaveRename = useRef<(() => Promise<boolean>) | null>(null)
   const leaveOptionRename = useRef<(() => Promise<boolean>) | null>(null)
   // The key of the column whose type options are expanded
@@ -133,6 +154,7 @@ export function ColumnMenu({ columns, onChange, onRenameOption, onRetype }: {
                   ? (
                     <InlineDraftInput
                       className="celledit" defaultValue={c.label} leaveRef={leaveRename}
+                      kept={{ drafts: kept, target: `name:${c.key}` }}
                       onCancel={() => setRenaming(null)}
                       onSubmit={(label) => {
                         if (label === c.label) return true
@@ -152,7 +174,7 @@ export function ColumnMenu({ columns, onChange, onRenameOption, onRetype }: {
                   : (
                     <IconButton
                       label={m.papers.columnMenu.options} size="nested" className={opened === c.key ? 'cmx optx on' : 'cmx optx'}
-                      onClick={() => setOpened((k) => (k === c.key ? null : c.key))}
+                      onClick={() => setOpened(opened === c.key ? null : c.key)}
                     ><IconChevron /></IconButton>
                   )}
                 <RowActions>
@@ -195,6 +217,7 @@ export function ColumnMenu({ columns, onChange, onRenameOption, onRetype }: {
                         ? (
                           <InlineDraftInput
                             className="celledit" defaultValue={o} leaveRef={leaveOptionRename}
+                            kept={{ drafts: kept, target: `option:${c.key}:${o}` }}
                             onCancel={() => setRenamingOption(null)}
                             onSubmit={(to) => {
                               if (to === o) return true

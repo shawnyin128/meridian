@@ -118,7 +118,7 @@ const { useDrafts } = await import('../../hooks/useDrafts.js')
 
 /** The panel with the drafts the reader's rail keeps for it. */
 function Panel(props: Omit<Parameters<typeof PaperWikiIngest>[0], 'edits'>) {
-  return <PaperWikiIngest {...props} edits={useDrafts<EditDraft>()} />
+  return <PaperWikiIngest {...props} edits={useDrafts<EditDraft>(['paper', props.paper.id, 'wiki-ingest'])} />
 }
 
 const paper = {

@@ -378,4 +378,17 @@ describe('WikiClaims', () => {
     })
     expect(draft()).toBeNull()
   })
+
+  it('修订到一半那条结论从页上没了,它的草稿就丢掉;结论回来时也不带回草稿', async () => {
+    openMenu('plain')
+    await act(async () => { menuItem('修订').click(); await new Promise((done) => setTimeout(done, 0)) })
+    act(() => setValue(draft()!.querySelector('input')!, '改到一半'))
+    const show = (page: typeof PAGE) => act(async () => {
+      root!.render(<MessagesProvider><WikiClaims page={page} pending={false} links={links} onApply={onApply} /></MessagesProvider>)
+    })
+    await show({ ...PAGE, claims: PAGE.claims.filter((claim) => claim.id !== 'plain') })
+    expect(draft()).toBeNull()
+    await show(PAGE)
+    expect(draft()).toBeNull()
+  })
 })

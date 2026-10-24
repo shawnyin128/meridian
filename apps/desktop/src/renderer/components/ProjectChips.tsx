@@ -10,6 +10,7 @@ import { tagClass } from './Tag.js'
 import { TitleNote } from './TitleNote.js'
 import { useCandidateKeys } from '../hooks/useCandidateKeys.js'
 import { NO_TRIGGERS } from '../hooks/useOnLeave.js'
+import { useDrafts } from '../hooks/useDrafts.js'
 import { useInlineDraft } from '../hooks/useInlineDraft.js'
 import { useUndo } from '../hooks/useUndo.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
@@ -28,16 +29,17 @@ export function ProjectChips({ paper, onError }: {
 }) {
   const m = useMessages()
   const { open: jumpTo } = useJump()
-  const [open, setOpen] = useState(false)
-  const [query, setQuery] = useState('')
+  // The project name being typed is kept as a draft of the paper, and opens the input again.
+  const kept = useDrafts<string>(['paper', paper.id])
+  const query = kept.get('add-project') ?? ''
+  const open = kept.get('add-project') !== undefined
+  const setOpen = (next: boolean) => { if (next) kept.set('add-project', query) }
+  const setQuery = (next: string) => kept.set('add-project', next)
   const [projects, setProjects] = useState<ProjectSummary[]>([])
   const input = useRef<HTMLInputElement>(null)
   const write = useVaultWrite()
   const undo = useUndo()
-  const close = useCallback(() => {
-    setOpen(false)
-    setQuery('')
-  }, [])
+  const close = useCallback(() => kept.drop('add-project'), [kept])
 
   useEffect(() => {
     if (!open) return

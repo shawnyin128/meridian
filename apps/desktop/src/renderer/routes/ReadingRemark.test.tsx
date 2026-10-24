@@ -18,7 +18,7 @@ const READING: PaperReading = {
 
 /** The remark panel with the drafts the reader rail holds for it. */
 function Remark(props: Omit<ComponentProps<typeof ReadingRemark>, 'edits'>) {
-  return <ReadingRemark {...props} edits={useDrafts<EditDraft>()} />
+  return <ReadingRemark {...props} edits={useDrafts<EditDraft>(['paper', 'p1', 'edits'])} />
 }
 
 function setValue(input: HTMLTextAreaElement, value: string): void {
@@ -32,12 +32,14 @@ describe('ReadingRemark', () => {
 
   beforeEach(() => {
     globalThis.IS_REACT_ACT_ENVIRONMENT = true
+    vi.stubGlobal('meridian', { platform: 'darwin' })
     window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'zh')
     document.body.innerHTML = ''
   })
 
   afterEach(() => {
     for (const root of roots.splice(0)) act(() => root.unmount())
+    vi.unstubAllGlobals()
   })
 
   it('没改过时保存按不动,改过之后存的是去掉首尾空白的整段', async () => {

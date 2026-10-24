@@ -8,6 +8,7 @@ import { LANGUAGE_STORAGE_KEY } from '../../shell/language.js'
 
 const pendingPaperWiki = vi.hoisted(() => vi.fn())
 vi.mock('../../ipc.js', () => ({
+  appMenu: { platform: () => 'darwin' },
   harness: { pendingPaperWiki, preparePaperWiki: vi.fn() },
   papers: { update: vi.fn(), get: vi.fn() },
   project: { list: () => new Promise(() => {}), addPaper: vi.fn(), removePaper: vi.fn() },

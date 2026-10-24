@@ -2,6 +2,7 @@
 import { act, type ReactNode } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { useDrafts } from '../hooks/useDrafts.js'
 import { MessagesProvider } from '../messages/useMessages.js'
 import { LANGUAGE_STORAGE_KEY } from '../shell/language.js'
 import { FloatingTextEditor } from './FloatingTextEditor.js'
@@ -287,5 +288,29 @@ describe('ShortTextEditor', () => {
     await act(async () => { finish!(true); await Promise.resolve() })
     expect(close).not.toHaveBeenCalled()
     expect(host.textContent).toContain('新编辑器')
+  })
+
+  it('keeps typed text as a draft that a closed and reopened editor starts from, until it closes itself', async () => {
+    const onClose = vi.fn()
+    /** A host that holds the drafts and shows the editor while `open`, closing it without the editor as a period change does. */
+    function Host({ open }: { open: boolean }) {
+      const drafts = useDrafts<string>(['project', 'p1', 'milestone'])
+      return open
+        ? <ShortTextEditor title="里程碑" initialValue="原名" placeholder="名称" onSubmit={() => true} onClose={onClose} kept={{ drafts, target: 'm1' }} />
+        : null
+    }
+    const show = (open: boolean) => act(() => root!.render(withMessages(<Host open={open} />)))
+    const input = () => host.querySelector('input')!
+    show(true)
+    expect(input().value).toBe('原名')
+    act(() => setValue(input(), '没存的名'))
+    show(false)
+    show(true)
+    expect(input().value).toBe('没存的名')
+    act(() => { input().dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true })) })
+    expect(onClose).toHaveBeenCalledOnce()
+    show(false)
+    show(true)
+    expect(input().value).toBe('原名')
   })
 })

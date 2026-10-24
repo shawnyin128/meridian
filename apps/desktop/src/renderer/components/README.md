@@ -113,6 +113,10 @@ Current shared contracts:
 - `DayHeading`: the small heading that opens one day in a list grouped by day, with an optional count.
 - `hooks/useCandidateKeys`: arrow-key, pointer and Enter handling for a candidate list, shared by every
   suggestion and picker dropdown.
+- `hooks/useDrafts`: the one home of unsaved text. Every editor holds what is typed in `useDrafts`, scoped by
+  the item it belongs to, so the draft is kept on this machine as it is typed, comes back in its place
+  after a restart, and goes once it is saved or cancelled; a host that loads a list passes its ids
+  (`live`, `usePruneDrafts`) so a kept draft of a deleted item is dropped.
 - `hooks/useWheelZoom`: the one wheel rule of a zoomable view, shared by the reader and the research graph:
   a pinch or a Ctrl- or ⌘-scroll zooms about the pointer, and every other scroll scrolls the page.
 - `ResearchObjectCard`: one list-card shell for first-class research objects such as projects and ideas;

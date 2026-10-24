@@ -88,9 +88,9 @@ export function Chat() {
   const { revision, bump } = useVaultRevision()
   const notice = useNotice()
   const [messages, setMessages] = useState<ChatMessage[] | null>(null)
-  const drafts = useDrafts<ChatRun[]>()
-  // An idea being drafted belongs to its chat, as the message being typed does.
-  const ideaDrafts = useDrafts<IdeaDraftText>()
+  // The message being typed and an idea being drafted belong to their chat.
+  const drafts = useDrafts<ChatRun[]>(['chat', id ?? ''])
+  const ideaDrafts = useDrafts<IdeaDraftText>(['chat', id ?? ''])
   const ideaAt = useRef<HTMLDivElement>(null)
   const { running, run, stop } = useGenerations()
   const { noModel, track } = useNoModelChats()
@@ -103,8 +103,8 @@ export function Chat() {
   const consumed = useRef(0)
   const { error, load } = useScreenLoad()
   const write = useVaultWrite()
-  const draft = id === null ? [] : drafts.get(id) ?? []
-  const ideaDraft = id === null ? undefined : ideaDrafts.get(id)
+  const draft = id === null ? [] : drafts.get('message') ?? []
+  const ideaDraft = id === null ? undefined : ideaDrafts.get('idea')
   const sending = id !== null && running(id)
 
   useEffect(() => load('projects', project.list(), setProjects), [revision, load])
@@ -149,7 +149,7 @@ export function Chat() {
 
   const submit = () => {
     if (draftText(draft).trim() === '' || id === null || sending) return
-    drafts.set(id, [])
+    drafts.set('message', [])
     void send(id, draft)
   }
 
@@ -167,7 +167,7 @@ export function Chat() {
 
   const startIdea = () => {
     if (id === null) return
-    if (ideaDraft === undefined) ideaDrafts.set(id, { title: '', body: '' })
+    if (ideaDraft === undefined) ideaDrafts.set('idea', { title: '', body: '' })
     else ideaAt.current?.querySelector<HTMLElement>('.form-control')?.focus()
   }
 
@@ -205,11 +205,11 @@ export function Chat() {
                 <div className="mwrap" ref={ideaAt}>
                   <IdeaDraft
                     source={title === null ? m.chat.currentChat : plainTitle(title)} draft={ideaDraft}
-                    onChange={(next) => ideaDrafts.set(id, next)} onCancel={() => ideaDrafts.drop(id)}
+                    onChange={(next) => ideaDrafts.set('idea', next)} onCancel={() => ideaDrafts.drop('idea')}
                     onSave={(ideaTitle, body) => write(ideaApi.create(id, ideaTitle, body), {
                       note: m.chat.ideaSavedNote,
                       action: (idea) => ({ label: m.common.open, onAction: () => open('ideas', idea.id) }),
-                    }).then((saved) => { if (saved) ideaDrafts.drop(id) })}
+                    }).then((saved) => { if (saved) ideaDrafts.drop('idea') })}
                   />
                 </div>
               )}
@@ -244,7 +244,7 @@ export function Chat() {
 
             <ChatComposer
               key={id} ref={composer} id="composer" sendId="sendBtn" placeholder={m.chat.composerPlaceholder}
-              draft={draft} onDraft={(next) => { if (id !== null) drafts.set(id, next) }} unavailable={id === null}
+              draft={draft} onDraft={(next) => { if (id !== null) drafts.set('message', next) }} unavailable={id === null}
               running={sending} noModel={id !== null && noModel(id)} onSend={submit} onStop={stopSending}
               mentions={mentions}
             />

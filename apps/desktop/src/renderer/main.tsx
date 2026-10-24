@@ -14,6 +14,7 @@ import { Settings } from './routes/Settings.js'
 import { Trash } from './routes/Trash.js'
 import { Wiki } from './routes/Wiki.js'
 import { TooltipProvider } from './components/Tooltip.js'
+import { DraftsProvider } from './hooks/useDrafts.js'
 import { MessagesProvider } from './messages/useMessages.js'
 import { AppShell } from './shell/AppShell.js'
 import { initializeAppearance } from './shell/appearance.js'
@@ -27,15 +28,17 @@ createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <MessagesProvider>
       <TooltipProvider>
-        <AppShell
-          screens={{
-            feed: <Feed />, inbox: <Inbox />, later: <Later />,
-            papers: <PaperTable />, wiki: <Wiki />, changelog: <Changelog />,
-            ideas: <Ideas />, overview: <ResearchOverview />, project: <Projects />,
-            trash: <Trash />, chat: <Chat />, reader: <Reader />,
-          }}
-          settings={<Settings />}
-        />
+        <DraftsProvider>
+          <AppShell
+            screens={{
+              feed: <Feed />, inbox: <Inbox />, later: <Later />,
+              papers: <PaperTable />, wiki: <Wiki />, changelog: <Changelog />,
+              ideas: <Ideas />, overview: <ResearchOverview />, project: <Projects />,
+              trash: <Trash />, chat: <Chat />, reader: <Reader />,
+            }}
+            settings={<Settings />}
+          />
+        </DraftsProvider>
       </TooltipProvider>
     </MessagesProvider>
   </StrictMode>,

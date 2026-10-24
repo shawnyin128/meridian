@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useDrafts } from '../hooks/useDrafts.js'
 import { NO_TRIGGERS } from '../hooks/useOnLeave.js'
 import { useInlineDraft } from '../hooks/useInlineDraft.js'
 import { useMessages } from '../messages/useMessages.js'
@@ -25,7 +26,14 @@ export type InlineFieldProps = {
    * it: renders the value at rest, given `edit`, which opens the editor from an explicit control.
    */
   rest?: (edit: () => void) => ReactNode
+  /**
+   * Keeps the value being typed as a draft under `target` of `scope` (see `useDrafts`): the field is
+   * open while that draft exists, so it comes back open after a restart, and closing drops it.
+   */
+  keep?: { scope: readonly string[]; target: string }
 }
+
+const UNKEPT: readonly string[] = []
 
 /**
  * Zotero-style single-value editor: at rest it is a plain property value whose whole cell shows
@@ -35,22 +43,31 @@ export type InlineFieldProps = {
  * count as leaving. An unchanged value closes without calling `onSave`. `onSave` returns whether
  * the new value is accepted; when a write fails the editor stays open, so the three pages that use
  * it do not each implement their own async duplicate-submit guard. A click inside the open editor
- * stays there, so it never activates the row or card around the field.
+ * stays there, so it never activates the row or card around the field. See `keep` for keeping
+ * the value being typed.
  */
 export function InlineField({
   label, value, display, type = 'text', inputMode, onSave,
   wrapperClassName = 'metadata-field', buttonClassName = 'metadata-editable',
   inputClassName = 'metadata-input', inputAppearance = 'plain', emptyText, normalize = (next) => next,
-  validate = () => true, multiline = false, rest,
+  validate = () => true, multiline = false, rest, keep,
 }: InlineFieldProps) {
   const m = useMessages()
   const empty = emptyText ?? m.common.field.emptyValue
-  const [editing, setEditing] = useState(false)
-  const [draft, setDraft] = useState(value)
+  const kept = useDrafts<string>(keep?.scope ?? UNKEPT)
+  const keptText = keep === undefined ? undefined : kept.get(keep.target)
+  const [ownEditing, setEditing] = useState(false)
+  const [ownDraft, setOwnDraft] = useState(value)
+  const editing = keep === undefined ? ownEditing : keptText !== undefined
+  const draft = keep === undefined ? ownDraft : keptText ?? value
+  const setDraft = (next: string) => {
+    if (keep === undefined) setOwnDraft(next)
+    else kept.set(keep.target, next)
+  }
   const control = useRef<HTMLInputElement | HTMLTextAreaElement>(null)
 
   useEffect(() => {
-    if (!editing) setDraft(value)
+    if (!editing) setOwnDraft(value)
   }, [editing, value])
 
   useEffect(() => {
@@ -60,6 +77,7 @@ export function InlineField({
 
   const draftField = useInlineDraft({
     row: control, triggers: NO_TRIGGERS, onCancel: () => setEditing(false),
+    kept: keep === undefined ? undefined : { drafts: kept, target: keep.target },
     onSubmit: () => {
       const next = normalize(draft)
       if (!validate(next)) return false

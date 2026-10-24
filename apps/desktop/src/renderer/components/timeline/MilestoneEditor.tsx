@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react'
 import type { ReactNode } from 'react'
 import type { Milestone } from '../../../shared/contract.js'
+import { useDrafts } from '../../hooks/useDrafts.js'
 import { useMessages } from '../../messages/useMessages.js'
 import { DateButton } from '../FieldPickers.js'
 import { FloatingTextEditor } from '../FloatingTextEditor.js'
@@ -19,7 +20,9 @@ type MilestoneEdit =
  * project's milestone lane opens it at the click to name a new milestone on that day, and Enter or
  * Space on the lane opens it on today's date; a click on a diamond opens it at the diamond to rename,
  * re-date or delete that milestone. Its date field picks the day either way. Enter saves and then
- * closes it; leaving saves a changed name or date.
+ * closes it; leaving saves a changed name or date. A name typed and not saved is kept with its
+ * milestone, or with its project's milestone lane for a new one, and comes back when the editor opens
+ * there again.
  * A rejected write keeps the editor and the typed text; if the editor moves to another milestone
  * while a write is in flight, that write finishing does not close the one it moved to. Esc closes it
  * from whichever element inside has focus, and so does a change of the board's period.
@@ -43,6 +46,7 @@ export function useMilestoneEditor({ projects, onCreate, onUpdate, onDelete }: {
   const m = useMessages()
   const [edit, setEdit] = useState<MilestoneEdit | null>(null)
   const close = useCallback(() => setEdit(null), [])
+  const names = useDrafts<string>(['project', edit?.projectId ?? '', 'milestone'])
 
   const overlay = (
     <FloatingTextEditor
@@ -66,6 +70,7 @@ export function useMilestoneEditor({ projects, onCreate, onUpdate, onDelete }: {
           ? onUpdate(edit.projectId, edit.milestoneId, { title, date: edit.date })
           : onCreate(edit.projectId, edit.date, title)}
       onClose={close}
+      kept={edit === null ? undefined : { drafts: names, target: edit.kind === 'edit' ? edit.milestoneId : 'new' }}
       {...(edit?.kind === 'edit'
         ? { onDelete: () => onDelete(edit.projectId, edit.milestoneId) }
         : {})}

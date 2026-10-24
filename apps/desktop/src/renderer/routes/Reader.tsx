@@ -12,6 +12,7 @@ import { useWheelZoom } from '../hooks/useWheelZoom.js'
 import { sendsMessage } from '../lib/chat.js'
 import { errorLabel } from '../lib/failure-label.js'
 import { useMessages } from '../messages/useMessages.js'
+import { useDrafts } from '../hooks/useDrafts.js'
 import { useOnLeave } from '../hooks/useOnLeave.js'
 import {
   useCrumbTail, useJump, useNotice, useVaultRevision, type CrumbSeg, type ScreenKey, type JumpAnchor,
@@ -71,6 +72,9 @@ type PendingHighlight = {
   /** The selected text's box on screen, measured from its page each time it is read. */
   box: AnchorBox
 }
+
+/** A note being typed in the selection toolbar, kept as a draft with the selection it is about. */
+type SelectionNote = Pick<PendingHighlight, 'page' | 'quote' | 'rects'> & { note: string }
 
 const emptyReading = (paperId: string): PaperReading => ({ paperId, highlights: [], notes: [], remark: '' })
 
@@ -230,8 +234,14 @@ export function Reader() {
   const [zoom, setZoom] = useState(1)
   const [currentPage, setCurrentPage] = useState(1)
   const [pending, setPending] = useState<PendingHighlight | null>(null)
-  // What the selection toolbar's note box holds.
+  // What the selection toolbar's note box holds. While typed, it is kept as a draft by paper, and a
+  // paper opened with one lands on its selection with the toolbar open again.
   const [noteDraft, setNoteDraft] = useState('')
+  const selectionNotes = useDrafts<SelectionNote>(['paper'])
+  const toolsPaper = useRef<string | null>(null)
+  // A new selection replaces the toolbar's, and with it the note kept for the one before.
+  const dropSelectionNote = useRef(() => {})
+  dropSelectionNote.current = () => { if (opened !== null) selectionNotes.drop(opened) }
   const [sideTab, setSideTab] = useState<ReaderSideTab | null>(null)
   const [focusHighlightId, setFocusHighlightId] = useState<string | null>(null)
   const [chatPrompt, setChatPrompt] = useState<PaperChatPrompt | null>(null)
@@ -538,11 +548,25 @@ export function Reader() {
     const mark = arrival.highlight === undefined
       ? null
       : view.querySelector(`.paper-highlight[data-highlight="${arrival.highlight}"]`)
+    const note = arrival.page === undefined && arrival.highlight === undefined && opened !== null
+      ? selectionNotes.get(opened) : undefined
     if (mark !== null) mark.scrollIntoView({ block: 'center' })
     else {
-      const page = arrival.page ?? reading.lastPage ?? 1
+      const page = note?.page ?? arrival.page ?? reading.lastPage ?? 1
       view.querySelector<HTMLElement>(`.pdfpagebox[data-page="${page}"]`)
-        ?.scrollIntoView({ block: 'start' })
+        ?.scrollIntoView({ block: note === undefined ? 'start' : 'center' })
+    }
+    // The toolbar opens once the landing's scroll has been handled, as a scroll closes it.
+    if (note !== undefined) {
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        const pagebox = view.querySelector<HTMLElement>(`.pdfpagebox[data-page="${note.page}"]`)
+        if (pagebox === null) return
+        setNoteDraft(note.note)
+        setPending({
+          page: note.page, quote: note.quote, rects: note.rects,
+          box: { getBoundingClientRect: () => selectionBox(pagebox.getBoundingClientRect(), note.rects) },
+        })
+      }))
     }
     const notedOnly = reading.notes.length === 0
       && reading.highlights.some((highlight) => highlight.note.trim() !== '')
@@ -551,7 +575,17 @@ export function Reader() {
     }
     if (arrival.highlight !== undefined) setFocusHighlightId(arrival.highlight)
     setArrival(null)
-  }, [arrival, painted, reading])
+  }, [arrival, painted, reading, opened, selectionNotes])
+
+  // Closing the toolbar, by saving its note, leaving it or Escape, drops the note's kept copy.
+  useEffect(() => {
+    if (pending !== null) {
+      toolsPaper.current = opened
+      return
+    }
+    if (toolsPaper.current !== null) selectionNotes.drop(toolsPaper.current)
+    toolsPaper.current = null
+  }, [pending, opened, selectionNotes])
 
   /**
    * Once zooming and scrolling pause, lays every page out at the zoom shown, which ends the CSS
@@ -715,6 +749,7 @@ export function Reader() {
     const quote = selection.toString().replace(/\s+/g, ' ').trim()
     const page = Number(pagebox.dataset.page)
     const covered = highlightsOver(readingRef.current, page, rects)
+    dropSelectionNote.current()
     setNoteDraft(covered.length === 1 ? covered[0]!.note : '')
     setPending(quote === '' || rects.length === 0 ? null : {
       page, quote, rects,
@@ -897,7 +932,14 @@ export function Reader() {
                 {touched.length > 1 ? null : (
                   <FormTextarea
                     aria-label={m.reader.selection.note} rows={1} value={noteDraft}
-                    onChange={(event) => setNoteDraft(event.target.value)}
+                    onChange={(event) => {
+                      setNoteDraft(event.target.value)
+                      if (opened !== null) {
+                        selectionNotes.set(opened, {
+                          page: pending.page, quote: pending.quote, rects: pending.rects, note: event.target.value,
+                        })
+                      }
+                    }}
                     onKeyDown={(event) => {
                       if (!sendsMessage(event.nativeEvent)) return
                       event.preventDefault()

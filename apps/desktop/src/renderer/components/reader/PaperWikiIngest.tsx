@@ -6,7 +6,7 @@ import type {
 import { localDayOf } from '../../../shared/dates.js'
 import { PAPER_PAGE } from '../../../shared/vocabulary.js'
 import { harness } from '../../ipc.js'
-import { editField, type Drafts, type EditDraft } from '../../hooks/useDrafts.js'
+import { editField, useDrafts, type Drafts, type EditDraft } from '../../hooks/useDrafts.js'
 import { useGenerations } from '../../hooks/useGenerations.js'
 import { useUndo } from '../../hooks/useUndo.js'
 import { useVaultWrite } from '../../hooks/useVaultWrite.js'
@@ -76,9 +76,8 @@ export function PaperWikiIngest({ paper, reading, onJump, edits }: {
   const [reviewMode, setReviewMode] = useState<ReviewMode>('markdown')
   const [applying, setApplying] = useState(false)
   const [rejecting, setRejecting] = useState(false)
-  const [rejectionOpen, setRejectionOpen] = useState(false)
-  const [rejectionReasons, setRejectionReasons] = useState<HarnessPaperWikiRejectionReason[]>([])
-  const [rejectionNote, setRejectionNote] = useState('')
+  // The discard feedback being written is kept per proposal until the proposal is applied or discarded.
+  const rejections = useDrafts<{ reasons: HarnessPaperWikiRejectionReason[]; note: string }>(['paper', paper.id, 'wiki-rejection'])
   const [applied, setApplied] = useState(false)
   const [rejected, setRejected] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -99,9 +98,6 @@ export function PaperWikiIngest({ paper, reading, onJump, edits }: {
     setReceipt(null)
     setCancelling(false)
     setReviewMode('markdown')
-    setRejectionOpen(false)
-    setRejectionReasons([])
-    setRejectionNote('')
     setApplied(false)
     setRejected(false)
     setError(null)
@@ -183,6 +179,14 @@ export function PaperWikiIngest({ paper, reading, onJump, edits }: {
   const proposal = receipt?.proposal ?? pending?.proposal
   const edit = proposal === undefined ? undefined : editField(edits, `wiki:${proposal.id}`, proposal.body)
   const draft = edit?.text ?? ''
+  const rejection = proposal === undefined ? undefined : rejections.get(proposal.id)
+  const rejectionReasons = rejection?.reasons ?? []
+  const rejectionNote = rejection?.note ?? ''
+  const setRejection = (next: { reasons: HarnessPaperWikiRejectionReason[]; note: string } | null) => {
+    if (proposal === undefined) return
+    if (next === null) rejections.drop(proposal.id)
+    else rejections.set(proposal.id, next)
+  }
 
   const apply = async () => {
     if (proposal === undefined || applying || draft.trim() === '' || pending?.stale === true) return
@@ -196,6 +200,7 @@ export function PaperWikiIngest({ paper, reading, onJump, edits }: {
     const saved = await write(operation, { note: m.wiki.ingest.writeNote, action: undo.change })
     // The edits stay in the drafts: an undo of this write brings the proposal back as it was reviewed.
     if (saved) {
+      rejections.drop(proposal.id)
       setApplied(true)
       if (warning !== undefined) setError(failureLabel(m, m.wiki.ingest.auditFailed, warning))
     }
@@ -209,6 +214,7 @@ export function PaperWikiIngest({ paper, reading, onJump, edits }: {
     try {
       const result = await harness.rejectPaperWiki(proposal.id, feedback)
       edit?.drop()
+      rejections.drop(proposal.id)
       setRejected(true)
       if (result.warning !== undefined) setError(failureLabel(m, m.wiki.ingest.auditFailed, result.warning))
     } catch (cause) {
@@ -263,7 +269,7 @@ export function PaperWikiIngest({ paper, reading, onJump, edits }: {
           <FormTextarea appearance="field" aria-label={m.wiki.ingest.proposalContentLabel} {...edit?.fieldProps} />
         )}
       </ProposalChange>
-      {rejectionOpen ? (
+      {rejection !== undefined ? (
         <div className="wiki-ingest-rejection" aria-label={m.wiki.ingest.rejectionFeedbackLabel}>
           <div className="wiki-ingest-rejection-head">
             <strong>{m.wiki.ingest.rejectionPrompt}</strong>
@@ -271,15 +277,15 @@ export function PaperWikiIngest({ paper, reading, onJump, edits }: {
           <ChipToggles
             className="wiki-ingest-rejection-reasons" label={m.wiki.ingest.rejectReasonsLabel}
             value={rejectionReasons} options={rejectReasonOptions(m)} disabled={rejecting}
-            onChange={setRejectionReasons}
+            onChange={(reasons) => setRejection({ reasons, note: rejectionNote })}
           />
           <FormTextarea appearance="field" rows={2} maxLength={500}
             aria-label={m.wiki.ingest.rejectionNoteLabel} placeholder={m.wiki.ingest.rejectionNotePlaceholder}
             disabled={rejecting}
-            value={rejectionNote} onChange={(event) => setRejectionNote(event.target.value)} />
+            value={rejectionNote} onChange={(event) => setRejection({ reasons: rejectionReasons, note: event.target.value })} />
           <div className="wiki-ingest-actions">
             <button type="button" className="btn" disabled={rejecting}
-              onClick={() => setRejectionOpen(false)}>{m.wiki.ingest.backToReview}</button>
+              onClick={() => setRejection(null)}>{m.wiki.ingest.backToReview}</button>
             <button type="button" className="btn danger" disabled={rejecting}
               onClick={submitRejection}>
               {rejecting
@@ -293,7 +299,7 @@ export function PaperWikiIngest({ paper, reading, onJump, edits }: {
       ) : (
         <ProposalDecision>
           <button className="btn ghost danger" disabled={applying || rejecting}
-            onClick={() => setRejectionOpen(true)}>
+            onClick={() => setRejection({ reasons: [], note: '' })}>
             {m.wiki.ingest.discardProposal}
           </button>
           <button className="btn"
@@ -303,7 +309,7 @@ export function PaperWikiIngest({ paper, reading, onJump, edits }: {
           </button>
           {pending?.stale === true
             ? (
-              <TagButton tone="warn" disabled={applying || rejecting} onClick={() => setRejectionOpen(true)}>
+              <TagButton tone="warn" disabled={applying || rejecting} onClick={() => setRejection({ reasons: [], note: '' })}>
                 {`${m.wiki.queue.stale} · ${m.wiki.ingest.discard}`}
               </TagButton>
             )

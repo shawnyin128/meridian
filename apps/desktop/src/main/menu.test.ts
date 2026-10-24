@@ -180,6 +180,14 @@ describe('editMenuTemplate', () => {
     expect(short?.label).toBe('查询“推测解码 草稿”')
   })
 
+  it('macOS 上像系统的右键菜单一样不显示快捷键;Windows 与 Linux 保留 Electron 角色默认的快捷键', () => {
+    const field = target({ isEditable: true, selectionText: 'KV' })
+    const shortcuts = (platform: NodeJS.Platform) => editMenuTemplate(platform, field, MAIN_COPY.zh.editMenu, noActions)
+      .filter((item) => item.role !== undefined).map((item) => item.accelerator)
+    expect(shortcuts('darwin')).toEqual(['', '', '', ''])
+    for (const platform of ['win32', 'linux'] as const) expect(shortcuts(platform)).toEqual([undefined, undefined, undefined, undefined])
+  })
+
   it('既不是文本框也没选中字时,右键不弹菜单', () => {
     for (const platform of ['darwin', 'win32', 'linux'] as const) {
       expect(editMenuTemplate(platform, target({}), MAIN_COPY.zh.editMenu, noActions)).toEqual([])

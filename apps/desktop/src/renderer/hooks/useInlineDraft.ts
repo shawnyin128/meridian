@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react'
 import type { KeyboardEvent as ReactKeyboardEvent, RefObject } from 'react'
 import { composing } from '../lib/keyboard.js'
+import type { KeptText } from './useDrafts.js'
 import { useOnLeave } from './useOnLeave.js'
 
 /**
@@ -30,13 +31,16 @@ import { useOnLeave } from './useOnLeave.js'
  * elements wrapping `row` do. Pressing `triggers` or such a popper, or moving
  * focus to them, does not leave the draft. While `row` is not mounted, neither the outside press
  * nor focus leaving counts. Spread the returned `inputProps` onto the draft's input.
+ * With `kept`, the text the caller keeps there as the draft is dropped whenever the draft closes,
+ * cancelled or consumed; the caller keeps it as it is typed.
  */
-export function useInlineDraft({ row, triggers, onSubmit, onCancel, isEmpty }: {
+export function useInlineDraft({ row, triggers, onSubmit, onCancel, isEmpty, kept }: {
   row: RefObject<HTMLElement | null>
   triggers: Array<RefObject<HTMLElement | null>>
   onSubmit: (leaving: boolean) => boolean | Promise<boolean>
   onCancel: () => void
   isEmpty?: () => boolean
+  kept?: KeptText | undefined
 }): {
   inputProps: {
     autoComplete: 'off'
@@ -65,6 +69,7 @@ export function useInlineDraft({ row, triggers, onSubmit, onCancel, isEmpty }: {
   }
   const close = () => {
     clearInvalid()
+    kept?.drafts.drop(kept.target)
     onCancel()
   }
   const submit = (attempt: () => boolean | Promise<boolean>, leaving = false) => {

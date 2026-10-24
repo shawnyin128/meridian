@@ -31,6 +31,7 @@ import { headingsOf, MarkdownBox } from '../components/Markdown.js'
 import { Pager } from '../components/Pager.js'
 import { PickRow, type PickHit } from '../components/PickRow.js'
 import { nextKey, slugOf } from '../lib/slug.js'
+import { editText, useDraft, useDrafts, usePruneDrafts, type EditDraft } from '../hooks/useDrafts.js'
 import { useRowCap } from '../hooks/useRowCap.js'
 import { useScreenLoad } from '../hooks/useScreenLoad.js'
 import { useUndo } from '../hooks/useUndo.js'
@@ -256,15 +257,16 @@ function Table({ agg, onOpen, onAnchor, onRemove, pending, adding, head }: {
 }
 
 /**
- * Column settings: rename or delete existing columns one by one. Save hands over the whole set of
- * columns and is disabled while any column name is empty. It renders in the popover of the gear at
- * the end of the header row; adding a column is not here but on the + next to it.
+ * Column settings: rename or delete existing columns one by one, as a view of `rows`, which each
+ * change replaces through `onRows`. Save hands over the whole set of columns and is disabled while
+ * any column name is empty or while `stale`. It renders in the popover of the gear at the end of the
+ * header row; adding a column is not here but on the + next to it.
  */
-function ColumnsEditor({ columns, onSave, onCancel }: {
-  columns: WikiColumn[]; onSave: (columns: WikiColumn[]) => void; onCancel: () => void
+function ColumnsEditor({ rows, stale, onRows, onSave, onCancel }: {
+  rows: WikiColumn[]; stale: boolean; onRows: (rows: WikiColumn[]) => void; onSave: (columns: WikiColumn[]) => void; onCancel: () => void
 }) {
   const m = useMessages()
-  const [rows, setRows] = useState(columns)
+  const setRows = onRows
   return (
     <div className="coledit">
       <div className="ch">{m.wiki.columnSettings}</div>
@@ -283,7 +285,7 @@ function ColumnsEditor({ columns, onSave, onCancel }: {
       <div className="acts">
         <button className="btn" onClick={onCancel}>{m.common.cancel}</button>
         <button
-          className="btn pri" disabled={rows.some((c) => c.label.trim() === '')}
+          className="btn pri" disabled={stale || rows.some((c) => c.label.trim() === '')}
           onClick={() => onSave(rows.map((c) => ({ key: c.key, label: c.label.trim() })))}
         >{m.common.save}</button>
       </div>
@@ -349,6 +351,12 @@ function Toc({ body, main }: { body: string; main: RefObject<HTMLDivElement | nu
  * This screen holds no vault data of its own. Back follows history: when another screen jumped here,
  * that screen is on the stack too, and going back past the last page returns to it.
  */
+/** The id of every Wiki page: each aggregation's, and each paper's page. */
+async function wikiPageIds(): Promise<string[]> {
+  const [cards, paperIds] = await Promise.all([wiki.cards(), papers.allIds()])
+  return [...cards.map((card) => card.id), ...paperIds.map((id) => `${PAPER_PAGE}${id}`)]
+}
+
 export function Wiki() {
   const fmt = useFormat()
   const m = useMessages()
@@ -384,11 +392,26 @@ export function Wiki() {
   const write = useVaultWrite()
   const undo = useUndo()
   const box = useRef<HTMLDivElement>(null)
-  const [editing, setEditing] = useState(false)
+  const bodies = useDrafts<EditDraft>(['wiki', place ?? ''])
+  usePruneDrafts(['wiki'], wikiPageIds)
   const [saving, setSaving] = useState(false)
   const [pending, setPending] = useState(false)
-  const [adding, setAdding] = useState<'child' | 'paper' | 'columns' | null>(null)
-  const [newCol, setNewCol] = useState(false)
+  // A page keeps its open add row, the new column's name and the column settings being typed as drafts.
+  const adds = useDrafts<string>(['wiki', place ?? ''])
+  const [columnsDraft, setColumnsDraft] = useDraft<{ rows: WikiColumn[]; base: WikiColumn[] }>(['wiki', place ?? ''], 'columns')
+  const adding = adds.get('add-child') !== undefined ? 'child'
+    : adds.get('add-paper') !== undefined ? 'paper' : columnsDraft !== null ? 'columns' : null
+  const setAdding = (what: 'child' | 'paper' | null) => {
+    if (what !== 'child') adds.drop('add-child')
+    if (what !== 'paper') adds.drop('add-paper')
+    setColumnsDraft(null)
+    if (what !== null && adds.get(`add-${what}`) === undefined) adds.set(`add-${what}`, '')
+  }
+  const newCol = adds.get('new-column') !== undefined
+  const setNewCol = (open: boolean) => {
+    if (!open) adds.drop('new-column')
+    else if (!newCol) adds.set('new-column', '')
+  }
   const addRow = useRef<HTMLElement>(null)
   const newPaperRow = useRef<HTMLTableRowElement>(null)
   const newColCell = useRef<HTMLTableCellElement>(null)
@@ -396,16 +419,6 @@ export function Wiki() {
   const paperBtn = useRef<HTMLButtonElement>(null)
   const colBtn = useRef<HTMLButtonElement>(null)
   const colAdd = useRef<HTMLButtonElement>(null)
-
-  // A page change or vault write discards the source being edited: as with Project notes, anything
-  // that re-renders the whole screen discards it.
-  useEffect(() => setEditing(false), [place, revision])
-
-  // A page change or vault write also closes whichever add row or column editor is open.
-  useEffect(() => {
-    setAdding(null)
-    setNewCol(false)
-  }, [place, revision])
 
   /**
    * A management operation is a proposal: once it is written, close the input row, bump the vault
@@ -541,6 +554,7 @@ export function Wiki() {
   const shownReading = shownPaper !== null && reading?.paperId === shownPaper.id.slice(PAPER_PAGE.length)
     ? reading : null
   const shownBacklinks = backlinks !== null && backlinks.page === place ? backlinks.links : []
+  const bodyEdit = editText(bodies, 'body', shownAgg?.body ?? shownPaper?.body ?? '')
   // Until the place shows its content it is a placeholder, which cannot be scrolled that far.
   const shown = place === null ? home !== null
     : place === REVIEW ? proposals !== null
@@ -691,11 +705,11 @@ export function Wiki() {
    * page fetch again.
    */
   const saveBody = () => {
-    if (saving) return
+    if (saving || bodyEdit.stale) return
     const next = box.current?.innerText.trim() ?? ''
     setSaving(true)
     void write(wiki.update(place!, next).then(() => {
-      setEditing(false)
+      bodyEdit.drop()
     }), { note: m.wiki.saved }).finally(() => setSaving(false))
   }
 
@@ -704,7 +718,7 @@ export function Wiki() {
     <SectionHeading
       actions={(
         <EditActions
-          editing={editing} saving={saving} onEdit={() => setEditing(true)} onCancel={() => setEditing(false)}
+          editing={bodyEdit.editing} saving={saving} canSave={!bodyEdit.stale} onEdit={bodyEdit.start} onCancel={bodyEdit.drop}
           onSave={saveBody}
         />
       )}
@@ -794,6 +808,7 @@ export function Wiki() {
                                 placeholder={m.wiki.kindNamePlaceholder(shownAgg.kindLabel)}
                                 suggest={suggestChildren} onPick={mount} onNew={create}
                                 onCancel={() => setAdding(null)} onError={report}
+                                kept={{ drafts: adds, target: 'add-child' }}
                               />
                             </div>
                             <div className="wf" />
@@ -822,7 +837,7 @@ export function Wiki() {
                           row={newPaperRow} triggers={[childBtn, paperBtn, colBtn]} allowNew={false}
                           placeholder={m.project.links.paperPlaceholder}
                           suggest={suggestPapers} onNew={() => false} onCancel={() => setAdding(null)}
-                          onError={report}
+                          onError={report} kept={{ drafts: adds, target: 'add-paper' }}
                           onPick={(hit) => propose(m.wiki.proposals.addPaper(hit.title, shownAgg.title), [
                             { op: 'setMembership', paper: hit.id, in: shownAgg.id, cells: {} },
                           ])}
@@ -846,7 +861,10 @@ export function Wiki() {
                           />
                           <ActionPopover
                             open={adding === 'columns'}
-                            onOpenChange={(next) => setAdding(next ? 'columns' : null)}
+                            onOpenChange={(next) => {
+                              setAdding(null)
+                              if (next) setColumnsDraft({ rows: shownAgg.columns, base: shownAgg.columns })
+                            }}
                             contentClassName="ctxmenu colpop" sticky="always"
                             trigger={(
                               <IconButton
@@ -859,7 +877,10 @@ export function Wiki() {
                               * popover stays inside the window, like the paper table's column menu.
                               */}
                                 <ColumnsEditor
-                                  columns={shownAgg.columns} onCancel={() => setAdding(null)}
+                                  rows={columnsDraft?.rows ?? shownAgg.columns}
+                                  stale={columnsDraft !== null && JSON.stringify(columnsDraft.base) !== JSON.stringify(shownAgg.columns)}
+                                  onRows={(rows) => { if (columnsDraft !== null) setColumnsDraft({ ...columnsDraft, rows }) }}
+                                  onCancel={() => setAdding(null)}
                                   onSave={(columns) => {
                                     if (pending) return
                                     propose(
@@ -878,7 +899,7 @@ export function Wiki() {
                         : (
                           <NewColumnHead
                             cell={newColCell} triggers={[colAdd]}
-                            onCreate={createColumn} onCancel={() => setNewCol(false)}
+                            onCreate={createColumn} onCancel={() => setNewCol(false)} kept={{ drafts: adds, target: 'new-column' }}
                           />
                         ),
                     }}
@@ -900,8 +921,8 @@ export function Wiki() {
                 />
                 {bodyHead(shownAgg.title)}
                 <MarkdownBox
-                  text={shownAgg.body} editing={editing} box={box} onCancel={() => setEditing(false)} onSave={saveBody}
-                  onOpen={go}
+                  text={bodyEdit.text} editing={bodyEdit.editing} box={box} onCancel={bodyEdit.drop} onSave={saveBody}
+                  onType={bodyEdit.change} onOpen={go}
                   titles={shownAgg.titles} empty={<EmptyState variant="section">{m.wiki.noBody}</EmptyState>}
                 />
               </div>
@@ -911,7 +932,7 @@ export function Wiki() {
                   <div className="pk">{m.project.identity.typeLabel}</div><div className="pv">{shownAgg.kindLabel}</div>
                   <div className="pk">{m.project.identity.nameLabel}</div>
                   <InlineMetadataField
-                    label={m.wiki.nameFieldLabel} value={shownAgg.title}
+                    label={m.wiki.nameFieldLabel} value={shownAgg.title} keep={{ scope: ['wiki', shownAgg.id], target: 'title' }}
                     onSave={(title) => {
                       const next = title.trim()
                       if (next === '') { notice.refusal(m.wiki.nameRequired); return false }
@@ -927,7 +948,7 @@ export function Wiki() {
                   </div>
                   <div className="pk">{m.wiki.splitOnLabel}</div>
                   <InlineMetadataField
-                    label={m.wiki.splitOnLabel} value={shownAgg.splitOn ?? ''}
+                    label={m.wiki.splitOnLabel} value={shownAgg.splitOn ?? ''} keep={{ scope: ['wiki', shownAgg.id], target: 'splitOn' }}
                     onSave={(splitOn) => propose(m.wiki.proposals.editMetadata(shownAgg.title), [{
                       op: 'setAggregationMetadata', page: shownAgg.id, title: shownAgg.title,
                       splitOn: splitOn.trim() || null,
@@ -961,8 +982,8 @@ export function Wiki() {
                 />
                 {bodyHead(m.wiki.internalizedContent)}
                 <MarkdownBox
-                  text={shownPaper.body} editing={editing} box={box} onCancel={() => setEditing(false)} onSave={saveBody}
-                  onOpen={go} onAnchor={(page) => openSource(shownPaper.id, page)}
+                  text={bodyEdit.text} editing={bodyEdit.editing} box={box} onCancel={bodyEdit.drop} onSave={saveBody}
+                  onType={bodyEdit.change} onOpen={go} onAnchor={(page) => openSource(shownPaper.id, page)}
                   titles={shownPaper.titles}
                   empty={<EmptyState variant="section">{m.wiki.noInternalizedContent}</EmptyState>}
                 />
@@ -973,7 +994,7 @@ export function Wiki() {
                   <div className="pk">{m.project.identity.typeLabel}</div><div className="pv">{m.wiki.paperKind}</div>
                   <div className="pk">{m.wiki.titleLabel}</div>
                   <InlineMetadataField
-                    label={m.wiki.titleLabel} value={shownPaper.title}
+                    label={m.wiki.titleLabel} value={shownPaper.title} keep={{ scope: ['wiki', shownPaper.id], target: 'title' }}
                     onSave={(title) => {
                       const next = title.trim()
                       if (next === '') { notice.refusal(m.wiki.titleRequired); return false }
@@ -982,14 +1003,14 @@ export function Wiki() {
                   />
                   <div className="pk">{m.wiki.shortTitleLabel}</div>
                   <InlineMetadataField
-                    label={m.wiki.shortTitleLabel} value={shownPaper.short}
+                    label={m.wiki.shortTitleLabel} value={shownPaper.short} keep={{ scope: ['wiki', shownPaper.id], target: 'short' }}
                     onSave={(shortTitle) => updateWikiPaper(
                       { shortTitle: shortTitle.trim() || null }, m.wiki.shortTitleLabel,
                     )}
                   />
                   <div className="pk">{m.wiki.authorsLabel}</div>
                   <InlineMetadataField
-                    label={m.wiki.authorsLabel} value={shownPaper.authors.join(', ')}
+                    label={m.wiki.authorsLabel} value={shownPaper.authors.join(', ')} keep={{ scope: ['wiki', shownPaper.id], target: 'authors' }}
                     onSave={(authors) => updateWikiPaper({
                       authors: authors.split(/[,，;；\n]/).map((item) => item.trim()).filter(Boolean),
                     }, m.wiki.authorsLabel)}
@@ -997,6 +1018,7 @@ export function Wiki() {
                   <div className="pk">{m.wiki.yearLabel}</div>
                   <InlineMetadataField
                     label={m.wiki.yearLabel} value={shownPaper.year?.toString() ?? ''} inputMode="numeric"
+                    keep={{ scope: ['wiki', shownPaper.id], target: 'year' }}
                     onSave={(year) => {
                       const text = year.trim()
                       if (text === '') return updateWikiPaper({ year: null }, m.wiki.yearLabel)
@@ -1010,7 +1032,7 @@ export function Wiki() {
                   />
                   <div className="pk">{m.wiki.venueLabel}</div>
                   <InlineMetadataField
-                    label={m.wiki.venueLabel} value={shownPaper.venue}
+                    label={m.wiki.venueLabel} value={shownPaper.venue} keep={{ scope: ['wiki', shownPaper.id], target: 'venue' }}
                     onSave={(venue) => updateWikiPaper({ venue: venue.trim() }, m.wiki.venueLabel)}
                   />
                   {shownPaper.pdf === ''
