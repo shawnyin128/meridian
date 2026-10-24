@@ -155,7 +155,7 @@ test('关注与项目发现是两条流,发现解释来源并接受显式反馈'
   await expect(shown(win, '.collapsible-group')).toHaveCount(1)
   await openInbox(win, 'discovery')
 
-  // 更多类似 keeps the card, pressed; 减少类似 then takes it out.
+  // More-like-this feedback keeps the card, pressed; less-like-this feedback then takes it out.
   const first = shown(win, '.pcard').first()
   await rowAction(first, '更多类似')
   await expect(first.locator('[aria-label="更多类似"]')).toHaveAttribute('aria-pressed', 'true')
