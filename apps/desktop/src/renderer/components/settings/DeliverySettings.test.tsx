@@ -62,14 +62,14 @@ describe('DeliverySettings', () => {
     const root = createRoot(host)
     await act(async () => { root.render(<MessagesProvider><DeliverySettings /></MessagesProvider>) })
     expect([...host.querySelectorAll('.delivery-setting-copy')].map((copy) => copy.textContent))
-      .toEqual(['单次推送上限', '每条关注或项目显示上限'])
+      .toEqual(['单次推送上限', '显示上限'])
     await act(async () => { root.unmount() })
   })
 
-  it('每条关注或项目显示上限就在单次推送上限旁边,默认 20,和它一起保存;超出范围不能保存', async () => {
+  it('显示上限就在单次推送上限旁边,默认 20,和它一起保存;超出范围不能保存', async () => {
     const root = createRoot(host)
     await act(async () => { root.render(<MessagesProvider><DeliverySettings /></MessagesProvider>) })
-    const shown = host.querySelector<HTMLInputElement>('[aria-label="每条关注或项目显示上限"]')!
+    const shown = host.querySelector<HTMLInputElement>('[aria-label="显示上限"]')!
     const button = host.querySelector<HTMLButtonElement>('button')!
     expect(shown.value).toBe('20')
     type(shown, '0')
