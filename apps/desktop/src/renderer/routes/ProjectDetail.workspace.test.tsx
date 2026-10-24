@@ -64,7 +64,7 @@ async function openWorkspaceDialog(): Promise<HTMLElement> {
   await act(async () => root!.render(
     <MessagesProvider>
       <ProjectDetail
-        projectId="draft" onBack={vi.fn()} onReturn={vi.fn()} tab="task" onTab={vi.fn()} record="events" onRecord={vi.fn()}
+        projectId="draft" onBack={vi.fn()} onReturn={vi.fn()} tab="task" onTab={vi.fn()} record="tl" onRecord={vi.fn()}
       />
     </MessagesProvider>,
   ))
