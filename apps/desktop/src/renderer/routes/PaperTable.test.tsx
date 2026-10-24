@@ -409,6 +409,50 @@ describe('PaperTable', () => {
     expect(host.querySelector('.pagebar')).toBeNull()
   })
 
+  it('研究地图的论文行和论文表一样写出评分、短标题和阅读状态，星和状态是论文表的同一组控件，改了写回且不打开详情', async () => {
+    const host = mount()
+    const mappedRows = [
+      {
+        ...ROW, id: 'p1', title: 'EAGLE: Speculative Sampling Requires Rethinking Feature Uncertainty', shortTitle: 'EAGLE',
+        year: 2024, rating: 4, readState: '在读', topics: ['Speculative decoding'],
+      },
+      { ...ROW, id: 'p2', title: 'Reliable speculative decoding', year: 2023, topics: ['Speculative decoding'] },
+    ]
+    columnsCall.resolve(EMPTY_COLUMNS)
+    listCall.resolve({ rows: mappedRows, total: 2 })
+    await flush()
+    const chipLook = (chip: Element | null) =>
+      [chip?.tagName, chip?.className, chip?.getAttribute('aria-haspopup'), chip?.textContent]
+    const tableRows = [...host.querySelectorAll<HTMLElement>('.ptable tbody tr')]
+    const tableStars = tableRows.map((row) => row.querySelector('.rating-stars')!.outerHTML)
+    const tableStatus = tableRows.map((row) => chipLook(row.querySelector('.stchip')))
+    expect(tableRows.map((row) => row.querySelectorAll('.rating-stars .rated').length)).toEqual([4, 0])
+    expect(tableStatus.map((look) => look[3])).toEqual(['在读', '未读'])
+
+    const mapSwitch = [...host.querySelectorAll<HTMLButtonElement>('.paper-view-toolbar .segmented-control button')]
+      .find((button) => button.textContent === '研究地图')!
+    await act(async () => { mapSwitch.click() })
+    await flush()
+
+    const mapped = [...host.querySelectorAll<HTMLElement>('.research-map-paper')]
+    expect(mapped.map((row) => row.querySelector('.research-map-paper-meta')?.textContent))
+      .toEqual(['EAGLE · 2024 · arXiv', '2023 · arXiv'])
+    expect(mapped.map((row) => row.querySelector('.rating-stars')?.outerHTML)).toEqual(tableStars)
+    expect(mapped.map((row) => chipLook(row.querySelector('.stchip')))).toEqual(tableStatus)
+
+    const opened = gotIds.length
+    await act(async () => { mapped[0]!.querySelector<HTMLButtonElement>('.rating-stars [aria-label="5 星"]')!.click() })
+    expect(updateCalls.at(-1)).toMatchObject({ id: 'p1', patch: { rating: 5 } })
+    await act(async () => {
+      mapped[1]!.querySelector('.stchip')!.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, button: 0 }))
+    })
+    await flush()
+    const read = [...document.querySelectorAll<HTMLElement>('.ctxmenu .mi')].find((item) => item.textContent === '已读')!
+    await act(async () => { press(read) })
+    expect(updateCalls.at(-1)).toMatchObject({ id: 'p2', patch: { readState: '已读' } })
+    expect(gotIds).toHaveLength(opened)
+  })
+
   it('上传把 PDF 交给 Core,落地后清掉搜索并由最近添加排序把它留在第一页', async () => {
     const host = mount()
     columnsCall.resolve(EMPTY_COLUMNS)

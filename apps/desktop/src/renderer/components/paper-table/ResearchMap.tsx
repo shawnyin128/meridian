@@ -1,25 +1,29 @@
 import { useEffect, useMemo, useState } from 'react'
-import type { PaperRow } from '../../../shared/contract.js'
+import type { PaperRow, ReadState } from '../../../shared/contract.js'
 import { useMessages } from '../../messages/useMessages.js'
 import { useScrollFade } from '../../hooks/useScrollFade.js'
 import { ContextMenu, ContextMenuItem } from '../ContextMenu.js'
 import { EmptyState } from '../EmptyState.js'
 import { FadeText } from '../FadeText.js'
 import { LoadingPlaceholder } from '../LoadingPlaceholder.js'
+import { RatingStars, ReadStatePicker } from '../PaperMetadata.js'
 import { StructuredList, StructuredRow } from '../StructuredList.js'
 import { CountBadge, Tag } from '../Tag.js'
+import { Toolbar, ToolbarButton } from '../Toolbar.js'
 import { PaperText } from '../paper/PaperText.js'
 import { plainTitle } from '../paper/paper-text.js'
 import { buildResearchMap, type ResearchMapReason } from './research-map.js'
 
 const reasonKey = (reason: ResearchMapReason): string => `${reason.kind}:${reason.label}`
 
-export function ResearchMap({ rows, total, loading, onOpenPaper, onReadPaper }: {
+export function ResearchMap({ rows, total, loading, onOpenPaper, onReadPaper, onRate, onPickReadState }: {
   rows: PaperRow[]
   total: number
   loading: boolean
   onOpenPaper: (paper: PaperRow) => void
   onReadPaper: (paper: PaperRow) => void
+  onRate: (paper: PaperRow, rating: number | null) => void
+  onPickReadState: (paper: PaperRow, readState: ReadState) => void
 }) {
   const m = useMessages()
   const mapFade = useScrollFade('y')
@@ -93,17 +97,29 @@ export function ResearchMap({ rows, total, loading, onOpenPaper, onReadPaper }: 
                         <ContextMenu
                           key={member.paper.id} label={m.papers.contextMenu.label(plainTitle(member.paper.title))}
                           trigger={(
-                            <StructuredRow className="research-map-paper" onActivate={() => onOpenPaper(member.paper)}>
-                              <FadeText className="research-map-paper-title" label={plainTitle(member.paper.title)}>
-                                <PaperText text={member.paper.title} />
-                              </FadeText>
-                              <span className="research-map-paper-meta">
-                                {member.paper.year === undefined ? member.paper.venue : `${member.paper.year} · ${member.paper.venue}`}
-                              </span>
-                              <FadeText className="research-map-why">
-                                {member.reasons.map((item) => <Tag shape="chip" className="tagchip" key={reasonKey(item)}>{reason(item)}</Tag>)}
-                              </FadeText>
-                            </StructuredRow>
+                            // The row is the toolbar of its own controls, from its title to its reading status.
+                            <Toolbar label={plainTitle(member.paper.title)}>
+                              <StructuredRow composite className="research-map-paper" onActivate={() => onOpenPaper(member.paper)}>
+                                <ToolbarButton className="research-map-paper-open">
+                                  <FadeText className="research-map-paper-title" label={plainTitle(member.paper.title)}>
+                                    <PaperText text={member.paper.title} />
+                                  </FadeText>
+                                </ToolbarButton>
+                                <span className="research-map-paper-marks">
+                                  <RatingStars value={member.paper.rating} onChange={(rating) => onRate(member.paper, rating)} />
+                                  <ReadStatePicker
+                                    value={member.paper.readState} onPick={(readState) => onPickReadState(member.paper, readState)}
+                                  />
+                                </span>
+                                <span className="research-map-paper-meta">
+                                  {[member.paper.shortTitle, member.paper.year, member.paper.venue]
+                                    .filter((part) => part !== undefined).join(' · ')}
+                                </span>
+                                <FadeText className="research-map-why">
+                                  {member.reasons.map((item) => <Tag shape="chip" className="tagchip" key={reasonKey(item)}>{reason(item)}</Tag>)}
+                                </FadeText>
+                              </StructuredRow>
+                            </Toolbar>
                           )}
                         >
                           <ContextMenuItem onSelect={() => onOpenPaper(member.paper)}>{m.papers.contextMenu.openDetail}</ContextMenuItem>
