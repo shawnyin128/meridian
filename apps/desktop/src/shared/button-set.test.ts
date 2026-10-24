@@ -62,6 +62,8 @@ const PAIRED = new Set(readdirSync(RENDERER, { recursive: true, encoding: 'utf8'
 
 /** The stylesheet that owns the button set. */
 const BUTTON_SET = join('routes', 'shell.css')
+/** The running ring's stylesheet, which colours the ring inside the buttons that hold it. */
+const RING_SHEET = join('components', 'icons.css')
 
 const STYLES = [join('shell', 'tokens.css'), BUTTON_SET].map((path) => readFileSync(join(RENDERER, path), 'utf8'))
 
@@ -224,6 +226,8 @@ describe('按钮组', () => {
       .filter(([selector, body]) => names.test(selector) && LOOK.test(body))
       .filter(([selector]) => path !== BUTTON_SET
         || !selector.split(',').every((part) => /^(?::where\()?\.btn(?![\w-])/.test(part.trim())))
+      // A rule whose every selector ends at the ring styles the ring, not the button around it.
+      .filter(([selector]) => path !== RING_SHEET || !selector.split(',').every((part) => /\s\.ring$/.test(part.trim())))
       .map(([selector]) => `${path}  ${selector}`))
     expect(offenders).toEqual([])
   })
