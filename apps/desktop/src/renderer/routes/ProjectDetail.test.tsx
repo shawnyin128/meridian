@@ -536,6 +536,8 @@ describe('项目页跟着工作区刷新', () => {
   let answers: (() => Promise<ProjectDetail>)[] = []
   let gets = 0
   let commits = 0
+  /** What idea.list rejects with instead of answering, when a case makes it fail. */
+  let ideasError: unknown = null
   let unmount = () => {}
 
   beforeEach(async () => {
@@ -546,10 +548,12 @@ describe('项目页跟着工作区刷新', () => {
     shell.shown = true
     gets = 0
     commits = 0
+    ideasError = null
     answers = [async () => bound()]
     vi.stubGlobal('meridian', {
       call: (method: string) => {
         if (method === 'project.get') return answers[gets++]?.() ?? new Promise(() => {})
+        if (method === 'idea.list' && ideasError !== null) return Promise.reject(ideasError)
         if (method === 'idea.list' || method === 'chat.list') return Promise.resolve([])
         return new Promise(() => {})
       },
@@ -582,6 +586,14 @@ describe('项目页跟着工作区刷新', () => {
     return host
   }
   const wait = (ms: number) => act(async () => { await vi.advanceTimersByTimeAsync(ms) })
+
+  it('读关联想法失败时，原因只写在想法一节的标题下，页头不再重复', async () => {
+    ideasError = { reason: 'newer-version' }
+    const host = await mount()
+    expect([...host.querySelectorAll('.ipcerror')].map((banner) => [
+      banner.previousElementSibling?.textContent?.startsWith('关联想法') ?? false, banner.textContent,
+    ])).toEqual([[true, '需要更新 App']])
+  })
 
   it('一次只读一回：上一次还没回来时，到点了也不再读', async () => {
     await mount()
