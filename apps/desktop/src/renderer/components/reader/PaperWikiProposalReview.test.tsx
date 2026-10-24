@@ -56,8 +56,43 @@ describe('PaperWikiProposalReview', () => {
     const html = renderToStaticMarkup(
       <MessagesProvider><PaperWikiProposalReview review={review} onJump={() => {}} /></MessagesProvider>,
     )
-    expect(html).toContain('没有原文依据的局限。')
+    expect(html).toContain('本提案没有提取到有原文依据的局限。')
     expect(html).not.toContain('structured-list')
+  })
+
+  /** The heading and empty statement of each section a review of `ids`, as Core stores it, shows in `language`. */
+  const sectionTexts = (language: 'zh' | 'en', ids: string[]) => {
+    window.localStorage.setItem(LANGUAGE_STORAGE_KEY, language)
+    const review: HarnessPaperWikiReview = {
+      schemaVersion: 'meridian.paper-wiki-review.v1',
+      sections: ids.map((id) => ({ id, title: `Core 存下的「${id}」`, emptyLabel: `Core 存下的「${id}」空白`, groups: [] })),
+    }
+    const host = document.createElement('div')
+    host.innerHTML = renderToStaticMarkup(
+      <MessagesProvider><PaperWikiProposalReview review={review} onJump={() => {}} /></MessagesProvider>,
+    )
+    return [...host.querySelectorAll('.paper-wiki-review-section')].map((section) => [
+      section.querySelector('h4')!.textContent, section.querySelector('.empty-state')?.textContent,
+    ])
+  }
+
+  it('names each section by its identifier in the catalog, in zh and en, whatever words Core stored', () => {
+    const ids = [
+      'remember', 'retrieve', 'mechanism', 'mechanism-details', 'evidence', 'implementation', 'limitations',
+      'user-insights', 'open-questions',
+    ]
+    expect(sectionTexts('zh', ids).map(([title]) => title)).toEqual([
+      '记住什么', '何时检索', '机制', '待核对的机制细节', '证据', '实现入口', '局限与不确定性', '你的阅读洞见', '开放问题',
+    ])
+    expect(sectionTexts('en', ids).map(([title]) => title)).toEqual([
+      'What to remember', 'When to retrieve', 'Mechanism', 'Mechanism details to check', 'Evidence',
+      'Implementation entry points', 'Limitations and uncertainty', 'Your reading insights', 'Open questions',
+    ])
+    for (const [title, empty] of sectionTexts('en', ids)) expect(`${title} ${empty}`).not.toMatch(/[\u3400-\u9fff]/)
+  })
+
+  it('keeps the words Core stored for a section this version does not know', () => {
+    expect(sectionTexts('en', ['later-section'])).toEqual([['Core 存下的「later-section」', 'Core 存下的「later-section」空白']])
   })
 
   it('states a passing deterministic report by its title alone, with no note about what it means', () => {

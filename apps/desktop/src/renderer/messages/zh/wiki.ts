@@ -111,6 +111,17 @@ export const wiki = {
     written: '已写入 Wiki。',
     discarded: '提案已丢弃',
   },
+  reviewSections: {
+    remember: { title: '记住什么', empty: '本提案没有可审核的核心摘要。' },
+    retrieve: { title: '何时检索', empty: '本提案没有检索建议。' },
+    mechanism: { title: '机制', empty: '本提案没有机制条目。' },
+    'mechanism-details': { title: '待核对的机制细节', empty: '没有待核对的机制细节。' },
+    evidence: { title: '证据', empty: '本提案没有证据条目。' },
+    implementation: { title: '实现入口', empty: '本提案没有实现入口。' },
+    limitations: { title: '局限与不确定性', empty: '本提案没有提取到有原文依据的局限。' },
+    'user-insights': { title: '你的阅读洞见', empty: '本提案没有纳入个人阅读记录。' },
+    'open-questions': { title: '开放问题', empty: '本提案没有开放问题。' },
+  },
   provenance: {
     'paper-source': '论文原文',
     'wiki-synthesis': 'Wiki 综合',

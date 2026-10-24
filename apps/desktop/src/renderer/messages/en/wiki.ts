@@ -118,6 +118,17 @@ export const wiki = {
     written: 'Saved to Wiki.',
     discarded: 'Draft discarded',
   },
+  reviewSections: {
+    remember: { title: 'What to remember', empty: 'No key points to review.' },
+    retrieve: { title: 'When to retrieve', empty: 'No retrieval suggestions.' },
+    mechanism: { title: 'Mechanism', empty: 'No mechanism entries.' },
+    'mechanism-details': { title: 'Mechanism details to check', empty: 'No mechanism details to check.' },
+    evidence: { title: 'Evidence', empty: 'No evidence entries.' },
+    implementation: { title: 'Implementation entry points', empty: 'No implementation entry points.' },
+    limitations: { title: 'Limitations and uncertainty', empty: 'No source-grounded limitations.' },
+    'user-insights': { title: 'Your reading insights', empty: 'No personal reading records included.' },
+    'open-questions': { title: 'Open questions', empty: 'No open questions.' },
+  },
   provenance: {
     'paper-source': 'Paper source',
     'wiki-synthesis': 'Wiki synthesis',

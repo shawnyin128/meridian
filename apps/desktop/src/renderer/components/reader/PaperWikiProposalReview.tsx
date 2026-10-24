@@ -97,34 +97,40 @@ function QualityReport({ quality }: { quality: HarnessPaperWikiQuality }) {
 
 /**
  * Read-only, provenance-visible review of the Core-authored proposal projection; a page a group rests
- * on opens the reader there through `onJump`.
+ * on opens the reader there through `onJump`. Each section is named by its id in the catalog, or by
+ * the words Core stored for an id this version does not know.
  */
 export function PaperWikiProposalReview({ review, quality, onJump }: {
   review: HarnessPaperWikiReview
   quality?: HarnessPaperWikiQuality
   onJump: (page: number) => void
 }) {
+  const m = useMessages()
+  const named: Record<string, { title: string; empty: string }> = m.wiki.reviewSections
   return (
     <div className="paper-wiki-structured-review">
       {quality === undefined ? null : <QualityReport quality={quality} />}
-      {review.sections.map((section) => (
-        <section className="paper-wiki-review-section" key={section.id}>
-          <div className="paper-wiki-review-section-head">
-            <h4>{section.title}</h4>
-            <span>{section.groups.length}</span>
-          </div>
-          {section.groups.length === 0 ? (
-            <EmptyState variant="section">{section.emptyLabel}</EmptyState>
-          ) : (
-            <StructuredList
-              variant="embedded"
-              aria-label={section.title}
-            >
-              {section.groups.map((group) => <ReviewGroup group={group} key={group.id} onJump={onJump} />)}
-            </StructuredList>
-          )}
-        </section>
-      ))}
+      {review.sections.map((section) => {
+        const words = named[section.id] ?? { title: section.title, empty: section.emptyLabel }
+        return (
+          <section className="paper-wiki-review-section" key={section.id}>
+            <div className="paper-wiki-review-section-head">
+              <h4>{words.title}</h4>
+              <span>{section.groups.length}</span>
+            </div>
+            {section.groups.length === 0 ? (
+              <EmptyState variant="section">{words.empty}</EmptyState>
+            ) : (
+              <StructuredList
+                variant="embedded"
+                aria-label={words.title}
+              >
+                {section.groups.map((group) => <ReviewGroup group={group} key={group.id} onJump={onJump} />)}
+              </StructuredList>
+            )}
+          </section>
+        )
+      })}
     </div>
   )
 }
