@@ -16,6 +16,7 @@ import {
   type AppearancePreference,
 } from '../../shell/appearance.js'
 import { useColourThemeFiles, useColourThemes } from '../../shell/useColourThemes.js'
+import { AddAction } from '../AddAction.js'
 import { Card } from '../Card.js'
 import { FadeText } from '../FadeText.js'
 import { Tag } from '../Tag.js'
@@ -114,48 +115,58 @@ export function AppearanceSettings() {
 
 type BuiltInName = keyof Catalog['settings']['appearance']['themes']
 
+/** The name a colour theme shows under: a built-in one's in the App's language, a custom one's own. */
+export function useColourThemeName(): (theme: ColourTheme) => string {
+  const m = useMessages()
+  return (theme) => (BUILT_IN_COLOUR_THEMES.includes(theme) ? m.settings.appearance.themes[theme.id as BuiltInName] : theme.name)
+}
+
 /**
  * Device-local colour theme selector: the built-in themes, then the custom theme files, each
- * previewed in light and dark; a file that cannot be used shows its reason. It changes only
+ * previewed in light and dark; a file that cannot be used shows its reason. The card that creates
+ * a theme comes last; `onEdit` opens the theme editor, on a new theme with null. It changes only
  * renderer tokens.
  */
-export function ColourThemeSettings() {
+export function ColourThemeSettings({ onEdit }: { onEdit: (theme: ColourTheme | null) => void }) {
   const m = useMessages()
   const themes = useColourThemes()
   const chosen = useColourTheme(themes)
   const unusable = (useColourThemeFiles() ?? []).flatMap((file) => (file.state === 'unreadable' ? [file] : []))
-  const name = (theme: ColourTheme) => (BUILT_IN_COLOUR_THEMES.includes(theme)
-    ? m.settings.appearance.themes[theme.id as BuiltInName]
-    : theme.name)
+  const name = useColourThemeName()
 
   return (
     <Card className="appearance-settings-card">
-      <div className="appearance-options" role="radiogroup" aria-label={m.settings.appearance.themeHeading}>
-        {themes.map((theme) => (
-          <button
-            type="button" role="radio" aria-checked={chosen.id === theme.id}
-            className="appearance-choice" data-colour-theme={theme.id} key={theme.id}
-            onClick={() => setColourThemePreference(theme)}
-          >
-            <span className="appearance-preview pair" aria-hidden="true">
-              <Preview tone="light" theme={theme} />
-              <Preview tone="dark" theme={theme} />
+      <div className="appearance-options">
+        <div className="appearance-radios" role="radiogroup" aria-label={m.settings.appearance.themeHeading}>
+          {themes.map((theme) => (
+            <button
+              type="button" role="radio" aria-checked={chosen.id === theme.id}
+              className="appearance-choice" data-colour-theme={theme.id} key={theme.id}
+              onClick={() => setColourThemePreference(theme)}
+            >
+              <span className="appearance-preview pair" aria-hidden="true">
+                <Preview tone="light" theme={theme} />
+                <Preview tone="dark" theme={theme} />
+              </span>
+              <FadeText className="appearance-label" label={name(theme)}>{name(theme)}</FadeText>
+            </button>
+          ))}
+          {unusable.map((file) => (
+            <span className="appearance-problem" data-colour-theme-file={file.file} key={file.file}>
+              <span className="appearance-preview problem">
+                <Tag tone="bad">
+                  {file.path === undefined
+                    ? m.settings.appearance.themeProblems[file.reason]
+                    : m.settings.appearance.themeProblemAt(m.settings.appearance.themeProblems[file.reason], file.path)}
+                </Tag>
+              </span>
+              <FadeText className="appearance-label" label={file.file}>{file.file}</FadeText>
             </span>
-            <FadeText className="appearance-label" label={name(theme)}>{name(theme)}</FadeText>
-          </button>
-        ))}
-        {unusable.map((file) => (
-          <span className="appearance-problem" data-colour-theme-file={file.file} key={file.file}>
-            <span className="appearance-preview problem">
-              <Tag tone="bad">
-                {file.path === undefined
-                  ? m.settings.appearance.themeProblems[file.reason]
-                  : m.settings.appearance.themeProblemAt(m.settings.appearance.themeProblems[file.reason], file.path)}
-              </Tag>
-            </span>
-            <FadeText className="appearance-label" label={file.file}>{file.file}</FadeText>
-          </span>
-        ))}
+          ))}
+        </div>
+        <AddAction
+          variant="chip" label={m.settings.appearance.editor.create} className="appearance-add" onClick={() => onEdit(null)}
+        />
       </div>
     </Card>
   )

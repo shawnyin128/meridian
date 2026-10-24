@@ -570,6 +570,26 @@ describe('Settings', () => {
     expect(choices[5]!.getAttribute('aria-checked')).toBe('true')
   })
 
+  it('外观主题最后一张是只有加号的卡,点它编辑页换掉设置的两栏;返回回到外观', async () => {
+    await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
+    const dialog = document.querySelector('.setdlg')!
+    await act(async () => {
+      dialog.querySelector<HTMLElement>('[data-setcat="appearance"]')!.click()
+    })
+    const themes = dialog.querySelector('[role="radiogroup"][aria-label="外观主题"]')!
+    const add = themes.nextElementSibling as HTMLButtonElement
+    expect([add.getAttribute('aria-label'), add.textContent, add.nextElementSibling]).toEqual(['新建外观主题', '', null])
+
+    await act(async () => { add.click() })
+    expect(dialog.querySelector('[data-setcat]')).toBeNull()
+    expect(dialog.querySelector('.set-side .set-t')!.textContent).toBe('外观主题')
+    expect([...dialog.querySelectorAll('[data-module]')]).toHaveLength(13)
+
+    await act(async () => { dialog.querySelector<HTMLButtonElement>('button[aria-label="返回"]')!.click() })
+    expect(dialog.querySelector('[data-module]')).toBeNull()
+    expect(dialog.querySelector('[data-setcat="appearance"]')!.classList.contains('on')).toBe(true)
+  })
+
   it('每个设置页只有标题和控件，标题下不写介绍句子', async () => {
     api.libraryLocation.mockResolvedValue({
       root: '/tmp/meridian', source: 'configured', locked: false, restartRequired: false, openError: null,

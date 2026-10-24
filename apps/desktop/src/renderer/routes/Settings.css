@@ -36,6 +36,12 @@
 .appearance-choice[aria-checked="true"] .appearance-preview{background-color:var(--selected)}
 .appearance-label{display:block;margin-top:var(--sp-8);font-size:var(--fs-sm);font-weight:var(--fw-medium);color:var(--sec)}
 .appearance-choice[aria-checked="true"] .appearance-label{color:var(--on-selected)}
+/* The theme radios share the grid with the card that creates a theme, which takes a preview's size. */
+.appearance-radios{display:contents}
+.appearance-add{height:94px;padding:0;border:0;border-radius:var(--r-card);background-color:var(--field);box-shadow:inset 0 0 0 1px var(--sep2);
+  color:var(--ter);cursor:pointer;transition:box-shadow var(--t-fast) var(--e-out),color var(--t-fast) var(--e-out)}
+.appearance-add:hover{box-shadow:inset 0 0 0 1px var(--sep-strong);color:var(--ink)}
+.add-action.appearance-add>svg{width:16px;height:16px}
 .appearance-preview.system,.appearance-preview.pair{display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-2)}
 .appearance-preview.system>.appearance-mini,.appearance-preview.pair>.appearance-mini{min-width:0}
 /* A theme file that cannot be used: the card's place and size, its reason where the preview goes. */
