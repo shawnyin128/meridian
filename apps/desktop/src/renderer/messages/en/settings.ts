@@ -51,7 +51,7 @@ export const settings = {
       hex: 'Hex value',
       changedOutside: 'Changed outside the App',
       leaveTitle: 'Discard unsaved changes?',
-      leaveDescription: 'Going back does not keep them.',
+      leaveDescription: 'They are not kept once you leave.',
       leave: 'Discard changes',
       modules: {
         ground: 'Window', sidebar: 'Sidebar', card: 'Cards', field: 'Fields', separator: 'Separators',
