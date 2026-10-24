@@ -30,7 +30,7 @@ describe('ResearchMap', () => {
     expect(html).toContain('loading-placeholder')
   })
 
-  it('scrolls the selected group\'s papers inside the list after the fifth row', async () => {
+  it('lets the selected group\'s papers take the detail card\'s height and scroll inside it, not stop at five rows', async () => {
     globalThis.IS_REACT_ACT_ENVIRONMENT = true
     vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} })
     // Every row draws a 78px box, stacked from the top of its list.
@@ -53,8 +53,9 @@ describe('ResearchMap', () => {
 
     const list = host.querySelector<HTMLElement>('.research-map-papers')!
     expect(list.querySelectorAll('.research-map-paper')).toHaveLength(grouped.length)
-    expect(list.classList.contains('structured-list--scrollable')).toBe(true)
-    expect(list.style.maxHeight).toBe(`${78 * 5}px`)
+    expect(list.classList.contains('structured-list--fill')).toBe(true)
+    expect(list.style.maxHeight).toBe('')
+    expect(host.querySelector('.research-map-index')?.classList.contains('list-column')).toBe(true)
     act(() => root.unmount())
     host.remove()
     vi.restoreAllMocks()

@@ -1,14 +1,13 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { PaperRow, ReadState } from '../../../shared/contract.js'
 import { useMessages } from '../../messages/useMessages.js'
-import { useScrollFade } from '../../hooks/useScrollFade.js'
 import { ContextMenu, ContextMenuItem } from '../ContextMenu.js'
 import { EmptyState } from '../EmptyState.js'
 import { FadeText } from '../FadeText.js'
 import { LoadingPlaceholder } from '../LoadingPlaceholder.js'
 import { RatingStars, ReadStatePicker } from '../PaperMetadata.js'
 import { ReadDots } from '../ReadDots.js'
-import { StructuredList, StructuredRow } from '../StructuredList.js'
+import { ListColumn, StructuredList, StructuredRow } from '../StructuredList.js'
 import { CountBadge, Tag } from '../Tag.js'
 import { Toolbar, ToolbarButton } from '../Toolbar.js'
 import { PaperText } from '../paper/PaperText.js'
@@ -39,7 +38,6 @@ export function ResearchMap({ rows, total, loading, onOpenPaper, onReadPaper, on
   onPickReadState: (paper: PaperRow, readState: ReadState) => void
 }) {
   const m = useMessages()
-  const mapFade = useScrollFade('y')
   const map = useMemo(() => buildResearchMap(rows), [rows])
   const [selectedId, setSelectedId] = useState<string | null>(null)
 
@@ -91,7 +89,7 @@ export function ResearchMap({ rows, total, loading, onOpenPaper, onReadPaper, on
   )
 
   return (
-    <section className="research-map" ref={mapFade} aria-label={m.papers.views.researchMap}>
+    <section className="research-map" aria-label={m.papers.views.researchMap}>
       {total > rows.length
         ? <div className="research-map-limit">{m.papers.researchMap.limit(rows.length, total)}</div>
         : null}
@@ -102,14 +100,14 @@ export function ResearchMap({ rows, total, loading, onOpenPaper, onReadPaper, on
           ? <EmptyState variant="page">{m.papers.researchMap.empty}</EmptyState>
           : (
             <div className="research-map-layout">
-              <div className="research-map-index">
+              <ListColumn className="research-map-index">
                 <StructuredList className="research-map-groups" aria-label={m.papers.researchMap.groupListAria}>
                   {entries.groups.map(entryRow)}
                 </StructuredList>
                 {entries.beyond.length === 0
                   ? null
                   : <StructuredList className="research-map-groups">{entries.beyond.map(entryRow)}</StructuredList>}
-              </div>
+              </ListColumn>
 
               {selected === undefined
                 ? null
@@ -122,7 +120,7 @@ export function ResearchMap({ rows, total, loading, onOpenPaper, onReadPaper, on
                       </div>
                     </div>
                     <StructuredList
-                      variant="embedded" className="research-map-papers"
+                      variant="embedded" maxVisibleRows="fill" className="research-map-papers"
                       aria-label={m.papers.researchMap.paperListAria(selected.label)}
                     >
                       {selected.papers.map((member) => (

@@ -24,13 +24,15 @@ export function StructuredList({
   /**
    * Embedded lists show five rows by default, then keep the surrounding page stable with internal
    * scrolling; the cap is the height of the first five rows as rendered. `'all'` is for a list that
-   * is the page's own content and scrolls with the page.
+   * is the page's own content and scrolls with the page. `'fill'` is for a list that takes the rest of
+   * its flex container's height: it keeps its own height while its rows fit and scrolls inside once
+   * they do not.
    */
-  maxVisibleRows?: number | 'all'
+  maxVisibleRows?: number | 'all' | 'fill'
   style?: CSSProperties
 } & Omit<HTMLAttributes<HTMLDivElement>, 'children' | 'className' | 'style'>) {
   const fade = useScrollFade('y')
-  const rowLimit = maxVisibleRows === 'all'
+  const rowLimit = maxVisibleRows === 'all' || maxVisibleRows === 'fill'
     ? undefined
     : maxVisibleRows ?? (variant === 'embedded' ? EMBEDDED_LIST_ROW_LIMIT : undefined)
   const list = useRef<HTMLDivElement | null>(null)
@@ -41,7 +43,7 @@ export function StructuredList({
   }, [fade])
 
   const variantClass = variant === 'embedded' ? ' structured-list--embedded' : ''
-  const scrollClass = cap === null ? '' : ' structured-list--scrollable'
+  const scrollClass = maxVisibleRows === 'fill' ? ' structured-list--fill' : cap === null ? '' : ' structured-list--scrollable'
   const listStyle = cap === null ? style : { ...style, maxHeight: cap }
   return (
     <div
@@ -51,6 +53,16 @@ export function StructuredList({
       {children}
     </div>
   )
+}
+
+/**
+ * A column of lists that takes the height its container gives it and scrolls them together once they
+ * do not fit, fading at the edges it clips. It keeps the focus-ring room inside its edges and reaches
+ * out by as much, so its lists sit where they would without it.
+ */
+export function ListColumn({ children, className = '' }: { children: ReactNode; className?: string }) {
+  const fade = useScrollFade<HTMLDivElement>('y')
+  return <div ref={fade} className={`list-column${className ? ` ${className}` : ''}`}>{children}</div>
 }
 
 /**

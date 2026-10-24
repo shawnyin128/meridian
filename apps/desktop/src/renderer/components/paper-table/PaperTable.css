@@ -195,24 +195,26 @@
 
 /* Research Map is a peer view of the table. It composes the shared list and segmented
  * controls; these rules only define its two-column domain layout and information hierarchy. */
-.research-map{display:flex;min-height:0;flex:1;flex-direction:column;gap:var(--sp-14);overflow:auto;padding:var(--sp-2) var(--sp-2) var(--sp-20)}
+/* The map takes the view's remaining height; each of its two columns scrolls inside itself. */
+.research-map{display:flex;min-height:0;flex:1;flex-direction:column;gap:var(--sp-14);padding:var(--sp-2) var(--sp-2) 0}
 .research-map-limit{color:var(--ter);font-size:var(--fs-sm)}
-.research-map-layout{display:grid;min-height:0;grid-template-columns:minmax(220px,310px) minmax(0,1fr);gap:var(--sp-16);align-items:start}
+.research-map-layout{display:grid;flex:1;min-height:0;grid-template-columns:minmax(220px,310px) minmax(0,1fr);grid-template-rows:minmax(0,1fr);gap:var(--sp-16)}
 /* The groups, then the cross-group and ungrouped rows in a list of their own below them. */
-.research-map-index{display:flex;min-width:0;flex-direction:column;gap:var(--sp-12)}
+.research-map-index{min-width:0;gap:var(--sp-12)}
 .research-map-groups{min-width:0}
 .research-map-group{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:var(--sp-12);min-height:54px;padding:var(--sp-8) var(--sp-12)}
 .research-map-group-copy{display:flex;min-width:0;flex-direction:column;gap:var(--sp-4)}
 /* A name is a span beside the span of its kind or count line, and keeps its own type and colour. */
 .research-map-group-copy .research-map-group-name{color:inherit;font-size:var(--fs-base);font-weight:var(--fw-title)}
 .research-map-group-copy>span{color:var(--ter);font-size:var(--fs-cap)}
-.research-map-detail{min-width:0;border:1px solid var(--sep);border-radius:var(--r-card);background:var(--card);overflow:hidden}
-.research-map-detail-head{display:flex;align-items:flex-start;gap:var(--sp-12);padding:var(--sp-14) var(--sp-16);border-bottom:1px solid var(--sep2)}
+/* The detail card is as tall as its papers up to the column's height, then its paper list scrolls under its head. */
+.research-map-detail{display:flex;min-width:0;max-height:100%;align-self:start;flex-direction:column;border:1px solid var(--sep);border-radius:var(--r-card);background:var(--card);overflow:hidden}
+.research-map-detail-head{display:flex;flex:none;align-items:flex-start;gap:var(--sp-12);padding:var(--sp-14) var(--sp-16);border-bottom:1px solid var(--sep2)}
 .research-map-detail-head>div{display:flex;min-width:0;flex:1;flex-direction:column;gap:var(--sp-4)}
 .research-map-detail-head .research-map-detail-name{color:inherit;font-size:var(--fs-group);font-weight:var(--fw-title)}
 .research-map-detail-head>div>span{color:var(--ter);font-size:var(--fs-cap)}
-/* The card clips at its edges, so a scrolling paper list keeps no ring room there; its controls sit inside the rows' inset. */
-.research-map-detail>.research-map-papers.structured-list--scrollable{padding:0;margin-inline:0}
+/* The card clips at its edges, so its paper list keeps no ring room there; its controls sit inside the rows' inset. */
+.research-map-detail>.research-map-papers.structured-list--fill{padding:0;margin-inline:0}
 .research-map-paper{display:grid;grid-template-columns:auto minmax(0,1fr) auto;grid-template-areas:"open open marks" "meta why why";align-items:center;gap:var(--sp-4) var(--sp-16);min-height:78px;padding:var(--sp-10) var(--sp-16)}
 .research-map-paper-open{grid-area:open;display:flex;min-width:0;padding:0;border:0;background:none;color:inherit;font:inherit;text-align:left;cursor:inherit}
 .research-map-paper-title{font-weight:var(--fw-title)}
@@ -222,6 +224,6 @@
 .research-map-why>.tagchip{margin:0}
 
 @media (max-width:900px){
-  .research-map-layout{grid-template-columns:1fr}.research-map-groups{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
+  .research-map-layout{grid-template-columns:1fr;grid-template-rows:fit-content(50%) minmax(0,1fr)}.research-map-groups{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
   .research-map-groups>.structured-row:nth-child(2){border-top:0}
 }
