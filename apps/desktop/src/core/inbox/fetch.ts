@@ -87,6 +87,7 @@ export function createWatchFetcher(deps: {
         && newest[at]!.join('\n') === held.newest.join('\n')) continue
       deps.store.setRefreshProgress({ kind: 'watch', id: watch.id }, {
         steps: held.steps, candidates: pool, favouredAt: favoured ? deps.now() : held.favouredAt, newest: newest[at]!,
+        poolStalled: held.poolStalled,
       })
     }
     const arxivIds = [...new Set(batches.flatMap((batch) => batch.found.map((paper) => paper.id)))]

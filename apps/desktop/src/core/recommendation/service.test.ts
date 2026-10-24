@@ -29,7 +29,8 @@ function seededProject(
 
 /** Store methods for a fake store that keeps no refresh progress between runs. */
 const noProgress = {
-  refreshProgress: () => ({ steps: {}, candidates: [], favouredAt: null, newest: [] }), setRefreshProgress: () => {},
+  refreshProgress: () => ({ steps: {}, candidates: [], favouredAt: null, newest: [], poolStalled: false }),
+  setRefreshProgress: () => {},
 }
 
 /** The cooldown record an earlier fetch of `intent` leaves, keyed by its anchor seed and no negatives. */
@@ -594,7 +595,7 @@ describe('project recommendation service', () => {
     })
     store.addInboxEntries('spec', [candidate(1)])
     store.setRefreshProgress({ kind: 'project', id: project }, {
-      steps: {}, candidates: [candidate(1)], favouredAt: null, newest: [],
+      steps: {}, candidates: [candidate(1)], favouredAt: null, newest: [], poolStalled: false,
     })
     const recommend = vi.fn<RecommendationProvider['recommend']>(async () => [candidate(2)])
     const service = createRecommendationService({ store, provider: { recommend }, onWrite: vi.fn(), now: () => 1 })
@@ -603,6 +604,41 @@ describe('project recommendation service', () => {
     expect(recommend).toHaveBeenCalledTimes(1)
     expect(store.listInbox({ kind: 'discovery', project }).map((entry) => entry.title)).toEqual(['Stale pool candidate 2'])
     expect(store.refreshProgress({ kind: 'project', id: project }).candidates).toEqual([])
+  })
+
+  it('候选池够一轮时,只有上一次靠候选池的那轮送出过卡片才不请求 provider;池里的都排在显示的卡片之下、一张没送出,下一轮照常请求', async () => {
+    const store = createFixtureStore(() => '2026-09-17')
+    const project = seededProject(store, '候选池送不出', ON_POLICY_DISTILLATION_SAMPLE.seeds.slice(0, 1))
+    store.setDeliverySettings({ maxItemsPerRun: 1, maxShownPerScope: 2 })
+    const candidate = (at: number): DiscoveryPaper => ({
+      ...ON_POLICY_DISTILLATION_SAMPLE.expected,
+      semanticId: `stalled-${at}`, id: `2609.${74_000 + at}`, title: `Stalled candidate ${at}`,
+    })
+    const seed = `ARXIV:${ON_POLICY_DISTILLATION_SAMPLE.seeds[0]!.arxiv}`
+    const ours = (positive: RecommendationSeed[]) => positive.some((held) => held.paperId === seed)
+    const recommend = vi.fn<RecommendationProvider['recommend']>(async (positive) => (
+      ours(positive) ? [1, 2, 3, 4].map(candidate) : []
+    ))
+    const asked = () => recommend.mock.calls.filter(([positive]) => ours(positive)).length
+    let now = 1
+    const service = createRecommendationService({ store, provider: { recommend }, onWrite: vi.fn(), now: () => now })
+    const titles = () => store.listInbox({ kind: 'discovery', project }).map((entry) => entry.title)
+
+    await expect(service.discover(project)).resolves.toMatchObject({ added: 1, intents: 1 })
+    now += DISCOVERY_COOLDOWN_MS + 1
+    await expect(service.discover(project)).resolves.toMatchObject({ added: 1, intents: 0 })
+    expect(asked()).toBe(1)
+    expect(titles().sort()).toEqual(['Stalled candidate 1', 'Stalled candidate 2'])
+
+    now += DISCOVERY_COOLDOWN_MS + 1
+    await expect(service.discover(project)).resolves.toMatchObject({ added: 0, intents: 0 })
+    expect(asked()).toBe(1)
+    expect(store.refreshProgress({ kind: 'project', id: project }).candidates.map((paper) => paper.title))
+      .toEqual(['Stalled candidate 3', 'Stalled candidate 4'])
+
+    now += DISCOVERY_COOLDOWN_MS + 1
+    await service.discover()
+    expect(asked()).toBe(2)
   })
 
   it('全局刷新把单次上限平分给各项目,除不尽的那篇轮流给,而不是总给列在前面的项目', async () => {
@@ -628,7 +664,7 @@ describe('project recommendation service', () => {
       ),
       setDiscoverySchedule: (projectId: string, schedule: DiscoverySchedule) => { schedules.set(projectId, schedule) },
       refreshProgress: ({ id }: RefreshScope) => structuredClone(
-        progress.get(id) ?? { steps: {}, candidates: [], favouredAt: null, newest: [] },
+        progress.get(id) ?? { steps: {}, candidates: [], favouredAt: null, newest: [], poolStalled: false },
       ),
       setRefreshProgress: ({ id }: RefreshScope, next: RefreshProgress) => { progress.set(id, structuredClone(next)) },
       addDiscoveryEntries: (projectId: string, found: DiscoveryPaper[], limit?: number) => {

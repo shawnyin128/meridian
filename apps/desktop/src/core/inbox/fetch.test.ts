@@ -150,7 +150,7 @@ describe('createWatchFetcher', () => {
     store.setDeliverySettings({ maxItemsPerRun: 1 })
     store.addInboxEntries('spec', [paper('2609.51002', 'Delivered Elsewhere')])
     store.setRefreshProgress({ kind: 'watch', id: watch }, {
-      steps: {}, favouredAt: null, newest: [],
+      steps: {}, favouredAt: null, newest: [], poolStalled: false,
       candidates: [paper('2609.51001', 'Pooled Fresh'), paper('2609.51002', 'Delivered Elsewhere'), paper('2609.51003', 'Pooled Later')]
         .map((found) => ({ ...found, semanticId: '' })),
     })

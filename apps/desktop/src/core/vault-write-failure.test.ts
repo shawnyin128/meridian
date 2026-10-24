@@ -117,7 +117,7 @@ const REFUSED: [string, string, (store: VaultStore, world: World) => unknown, (s
   ['state.json', '记下项目发现的进度', (s, w) => s.setDiscoverySchedule(w.project, { lastFetchedAt: 1, cursor: 1, requests: {} }), (s, w) => s.discoverySchedule(w.project)],
   ['state.json', '记下拉取时间', (s) => s.setLastFetch(1), (s) => s.lastFetch()],
   ['discovery/progress.json', '记下项目发现轮到哪一步', (s, w) => s.setRefreshProgress(
-    { kind: 'project', id: w.project }, { steps: { 'intent-a': 1 }, candidates: [], favouredAt: null, newest: [] },
+    { kind: 'project', id: w.project }, { steps: { 'intent-a': 1 }, candidates: [], favouredAt: null, newest: [], poolStalled: false },
   ), (s, w) => s.refreshProgress({ kind: 'project', id: w.project })],
   ['state.json', '调想法顺序', (s) => s.reorderIdeas(s.listIdeas().map((idea) => idea.id).reverse()), (s) => s.listIdeas()],
   ['changelog.json', '归档一条变动', (s) => s.archiveChange(s.listChanges().find((c) => !c.archived)!.id), (s) => s.listChanges()],

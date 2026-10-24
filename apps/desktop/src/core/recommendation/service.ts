@@ -31,6 +31,8 @@ type ProjectPlan = {
   /** The candidates this run offered to the feed. */
   offered: DiscoveryPaper[]
   favouredAt: number | null
+  /** Whether the last run that served the project from its pool delivered nothing. */
+  poolStalled: boolean
   results: IntentResult[]
   successfulRequests: Record<string, { fingerprint: string; fetchedAt: number }>
   failed: number
@@ -121,13 +123,14 @@ export function createRecommendationService(deps: {
           directionIds: directions.map((intent) => intent.id),
           selected: [], nextCursor: schedule.cursor, schedule,
           steps: progress.steps, pool: deps.store.undelivered(progress.candidates), offered: [],
-          favouredAt: progress.favouredAt,
+          favouredAt: progress.favouredAt, poolStalled: progress.poolStalled,
           results: [], successfulRequests: {}, failed: 0,
         }
       })
 
-      // A project whose pool covers a whole run is served from it without provider calls, unless forced.
-      const fetching = plans.filter((plan) => force || plan.pool.length < cap)
+      // A project whose pool covers a whole run is served from it without provider calls, unless forced
+      // or the last run served that way delivered nothing.
+      const fetching = plans.filter((plan) => force || plan.pool.length < cap || plan.poolStalled)
       // Give every project one turn before assigning a second or third. This uses spare budget
       // without letting an early project's secondary directions crowd out another project's core.
       const allocations = new Map<ProjectPlan, number>()
@@ -197,6 +200,7 @@ export function createRecommendationService(deps: {
           const { delivered, rest, favoured } = shares[at]!
           const pool = [...deps.store.undelivered(plan.offered), ...rest].slice(0, POOL_LIMIT)
           const refreshed = fetched.has(plan) || delivered > 0
+          const poolStalled = fetching.includes(plan) ? plan.poolStalled : delivered === 0
           const fetchedAt = plan.failed === 0 && refreshed ? now : plan.schedule.lastFetchedAt
           // A project whose selected directions were all cooling still moves its cursor on to the next ones.
           if (refreshed || (plan.failed === 0 && plan.nextCursor !== plan.schedule.cursor)) {
@@ -207,7 +211,7 @@ export function createRecommendationService(deps: {
             })
             wrote = true
           }
-          if (refreshed || pool.length !== plan.pool.length) {
+          if (refreshed || pool.length !== plan.pool.length || poolStalled !== plan.poolStalled) {
             deps.store.setRefreshProgress({ kind: 'project', id: plan.id }, {
               steps: Object.fromEntries(plan.directionIds.flatMap((id) => (
                 plan.steps[id] === undefined ? [] : [[id, plan.steps[id]]]
@@ -215,6 +219,7 @@ export function createRecommendationService(deps: {
               candidates: pool,
               favouredAt: favoured ? now : plan.favouredAt,
               newest: [],
+              poolStalled,
             })
             wrote = true
           }

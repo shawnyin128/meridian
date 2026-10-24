@@ -147,7 +147,8 @@ export const CandidateRecordSchema = z.object({
  * `project:<project id>` or `watch:<watch id>`; `steps` holds, per discovery direction id, how many queries it has run;
  * `candidates` holds the papers fetched beyond a run's cap, offered first by the next run; `favouredAt`
  * is when the scope last delivered more than an even split of a run's cap; `newest` holds the arXiv ids
- * of the newest page a watch fetched last. Each is absent until set.
+ * of the newest page a watch fetched last; `poolStalled` is true when the last run that served the
+ * scope from its pool, without provider calls, delivered nothing. Each is absent until set.
  */
 export const RefreshProgressRecordSchema = z.object({
   id: z.string(),
@@ -155,6 +156,7 @@ export const RefreshProgressRecordSchema = z.object({
   candidates: z.array(CandidateRecordSchema).optional(),
   favouredAt: z.number().int().optional(),
   newest: z.array(z.string()).optional(),
+  poolStalled: z.boolean().optional(),
 }).strict()
 
 /**

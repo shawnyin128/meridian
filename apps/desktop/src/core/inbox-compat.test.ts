@@ -193,11 +193,11 @@ describe('论文推送重做后要写的存储形状', () => {
 
     const reopened = createVaultStore(vault)
     expect(reopened.refreshProgress({ kind: 'project', id: project })).toEqual({
-      steps: { 'intent-a': 3 }, candidates: later, favouredAt: 1_792_000_000_000, newest: [],
+      steps: { 'intent-a': 3 }, candidates: later, favouredAt: 1_792_000_000_000, newest: [], poolStalled: false,
     })
     reopened.deleteProject(other)
     const trashed = readFileSync(join(vault, '.meridian', 'state.json'), 'utf8')
-    const next = { steps: { 'intent-a': 4, 'intent-d': 1 }, candidates: [refound('2609.95002')], favouredAt: null, newest: [] }
+    const next = { steps: { 'intent-a': 4, 'intent-d': 1 }, candidates: [refound('2609.95002')], favouredAt: null, newest: [], poolStalled: false }
     reopened.setRefreshProgress({ kind: 'project', id: project }, next)
     expect(readFileSync(join(vault, '.meridian', 'state.json'), 'utf8')).toBe(trashed)
     expect(trashed).not.toBe(state)
@@ -211,9 +211,26 @@ describe('论文推送重做后要写的存储形状', () => {
   it('候选池里的论文带着 DOI：存下再读回来，DOI 还在', () => {
     const withDoi = { ...refound('2609.97001'), doi: '10.48550/arXiv.2609.97001' }
     store.setRefreshProgress({ kind: 'project', id: project }, {
-      steps: {}, candidates: [withDoi], favouredAt: null, newest: [],
+      steps: {}, candidates: [withDoi], favouredAt: null, newest: [], poolStalled: false,
     })
     expect(createVaultStore(vault).refreshProgress({ kind: 'project', id: project }).candidates).toEqual([withDoi])
+  })
+
+  it('上一次靠候选池的那轮一张没送出时，标记存在 progress.json 这条进度的顶层：重开后读回来，清掉后不再写', () => {
+    const stalled = {
+      steps: { 'intent-a': 1 }, candidates: [refound('2609.98001')], favouredAt: null, newest: [], poolStalled: true,
+    }
+    store.setRefreshProgress({ kind: 'project', id: project }, stalled)
+    expect(read('discovery/progress')).toEqual([
+      { id: `project:${project}`, steps: stalled.steps, candidates: stalled.candidates, poolStalled: true },
+    ])
+    expect(createVaultStore(vault).refreshProgress({ kind: 'project', id: project })).toEqual(stalled)
+
+    store.setRefreshProgress({ kind: 'project', id: project }, { ...stalled, poolStalled: false })
+    expect(read('discovery/progress')).toEqual([
+      { id: `project:${project}`, steps: stalled.steps, candidates: stalled.candidates },
+    ])
+    expect(createVaultStore(vault).refreshProgress({ kind: 'project', id: project }).poolStalled).toBe(false)
   })
 
   it('关注的候选池也存在 progress.json：删掉的关注下次写时不留，这个版本读不了的关注照留', () => {
@@ -229,7 +246,7 @@ describe('论文推送重做后要写的存储形状', () => {
 
     const reopened = createVaultStore(vault)
     reopened.deleteWatch(removed)
-    const pooled = { steps: {}, candidates: [refound('2609.96003')], favouredAt: null, newest: [] }
+    const pooled = { steps: {}, candidates: [refound('2609.96003')], favouredAt: null, newest: [], poolStalled: false }
     reopened.setRefreshProgress({ kind: 'watch', id: kept }, pooled)
     expect(read('discovery/progress')).toEqual([future, { id: `watch:${kept}`, steps: {}, candidates: pooled.candidates }])
     expect(createVaultStore(vault).refreshProgress({ kind: 'watch', id: kept })).toEqual(pooled)
