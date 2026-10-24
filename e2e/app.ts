@@ -274,6 +274,39 @@ export async function expectWholeInRail(rail: Locator, editor: Locator): Promise
   expect(edges.scrollLeft).toBe(0)
 }
 
+/**
+ * The tags inside `scope` that do not show whole: one narrower than its text, unless it is capped
+ * (`tag--capped`) and fades its long text at its cap, and one that has yielded and hides. Each comes with
+ * its text, its width and the width its text needs.
+ */
+export function unfitTags(scope: Locator): Promise<{ text: string; width: number; needs: number; hidden: boolean }[]> {
+  return scope.evaluateAll((roots) => roots.flatMap((root) => [...root.querySelectorAll('.tag')]
+    .filter((tag) => tag.getClientRects().length > 0)
+    .map((tag) => {
+      const text = tag.querySelector(':scope > .tag-text') ?? tag
+      const width = tag.getBoundingClientRect().width
+      return {
+        text: tag.textContent!.trim(), width, needs: width - text.clientWidth + text.scrollWidth,
+        hidden: getComputedStyle(tag).visibility === 'hidden', capped: tag.classList.contains('tag--capped'),
+      }
+    })
+    .filter((tag) => tag.hidden || (!tag.capped && tag.needs > tag.width + 0.5))
+    .map(({ text, width, needs, hidden }) => ({ text, width, needs, hidden }))))
+}
+
+/**
+ * The shown boxes among `titles` that are narrower than the least a list row keeps for its title,
+ * twelve characters of body text (12 × --fs-base), each with its text and width.
+ */
+export function narrowTitles(titles: Locator): Promise<{ text: string; width: number }[]> {
+  return titles.evaluateAll((boxes) => {
+    const least = 12 * parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--fs-base'))
+    return boxes.filter((box) => box.getClientRects().length > 0)
+      .map((box) => ({ text: box.textContent!.trim(), width: box.getBoundingClientRect().width }))
+      .filter((title) => title.width < least - 0.5)
+  })
+}
+
 /** How far below its screen's header the top of `content` lies, in px. */
 export function belowHeader(content: Locator): Promise<number> {
   return content.evaluate((el) => el.getBoundingClientRect().top

@@ -3,7 +3,7 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { LANGUAGE_STORAGE_KEY } from '../shell/language.js'
 import { MessagesProvider } from '../messages/useMessages.js'
-import { DateChip, DateTimeDisplay } from './DateTimeDisplay.js'
+import { DateChip, DateTimeDisplay, TrailingDate } from './DateTimeDisplay.js'
 
 describe('DateTimeDisplay', () => {
   beforeEach(() => { window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'zh') })
@@ -33,5 +33,15 @@ describe('DateTimeDisplay', () => {
       <MessagesProvider><DateTimeDisplay at={new Date(2026, 8, 16, 7, 45).getTime()} /></MessagesProvider>,
     )
     expect([...html.matchAll(/<span class="fade-text tag-text"[^>]*>([^<]*)<\/span>/g)].map((m) => m[1])).toEqual(['9月16日', '07:45'])
+  })
+
+  it('a trailing date shows its label and reserves the label of every month with a two-digit day, the widest of the locale', () => {
+    document.body.innerHTML = renderToStaticMarkup(
+      <MessagesProvider><TrailingDate date="2026-10-04" label={(date) => `${date} 更新`} /></MessagesProvider>,
+    )
+    const slot = document.querySelector('.trailing-date')!
+    expect(slot.textContent).toBe('10月4日 更新')
+    expect(slot.getAttribute('data-widest')!.split('\n'))
+      .toEqual(Array.from({ length: 12 }, (_, month) => `${month + 1}月28日 更新`))
   })
 })
