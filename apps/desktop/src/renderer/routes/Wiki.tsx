@@ -379,7 +379,7 @@ export function Wiki() {
   const body = useRef<HTMLDivElement>(null)
   /** The step a Back returned to, until its page shows its content and gets its scroll offset back. */
   const returning = useRef<{ place: Place; scroll: number } | null>(null)
-  const { error, load, report } = useScreenLoad()
+  const { error, failure, load, report } = useScreenLoad(['reading'])
   const notice = useNotice()
   const write = useVaultWrite()
   const undo = useUndo()
@@ -950,7 +950,7 @@ export function Wiki() {
             <div className="wkpage">
               <div className="wkmain" ref={main}>
                 <PaperUnderstanding
-                  reading={shownReading} failed={error !== null}
+                  reading={shownReading} error={failure('reading')}
                   onRead={(anchor) => jumpTo(
                     'reader', shownPaper.id.slice(PAPER_PAGE.length), anchor,
                   )}

@@ -5,10 +5,12 @@ import { useMessages } from '../messages/useMessages.js'
 /** The failure `report` shows, kept apart from every load key. */
 const REPORTED = Symbol('reported')
 
-/** A screen's Core reads and the one error it shows for them; see `useScreenLoad`. */
+/** A screen's Core reads and the errors it shows for them; see `useScreenLoad`. */
 export type ScreenLoad = {
-  /** The label of the latest failure still standing, or null when none is. */
+  /** The label of the latest failure still standing outside the screen's sections, or null when none is. */
   error: string | null
+  /** The label of the failure of load `key` still standing, or null; a section shows its own key's here. */
+  failure: (key: string) => string | null
   /**
    * Waits for `call`, the read of the screen's load `key`, and hands its value to `apply`. The answer
    * and the failure of a call are ignored once a later load of the same `key` started or the returned
@@ -22,10 +24,12 @@ export type ScreenLoad = {
 }
 
 /**
- * Owns the Core reads of one screen and the error it shows for them: each failure stands until the
- * load that failed succeeds, and a late answer never replaces a newer one.
+ * Owns the Core reads of one screen and the errors it shows for them: each failure stands until the
+ * load that failed succeeds, and a late answer never replaces a newer one. The loads named in
+ * `sections` feed a section that shows its failure in place, through `failure`, so `error`, the
+ * screen's banner, leaves them out.
  */
-export function useScreenLoad(): ScreenLoad {
+export function useScreenLoad(sections: readonly string[] = []): ScreenLoad {
   const m = useMessages()
   const [failures, setFailures] = useState<ReadonlyMap<string | symbol, string>>(new Map())
   const latest = useRef(new Map<string, number>())
@@ -71,5 +75,6 @@ export function useScreenLoad(): ScreenLoad {
     fail(REPORTED, cause)
   }, [fail])
 
-  return { error: [...failures.values()].at(-1) ?? null, load, report }
+  const shown = [...failures].filter(([key]) => typeof key !== 'string' || !sections.includes(key))
+  return { error: shown.at(-1)?.[1] ?? null, failure: (key) => failures.get(key) ?? null, load, report }
 }

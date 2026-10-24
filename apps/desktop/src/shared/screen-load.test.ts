@@ -12,12 +12,12 @@ const SOURCES = readdirSync(RENDERER, { recursive: true, encoding: 'utf8' })
 
 /**
  * Every screen: each route and Settings pane that calls Core and each source that shows a page
- * error.
+ * error; a section that shows the error its screen hands it is not one.
  */
 const SCREENS = SOURCES
   .filter(({ path, source }) => (path.startsWith('routes/') && source.includes("from '../ipc.js'"))
     || (path.startsWith('components/settings/') && source.includes("from '../../ipc.js'"))
-    || source.includes('<PageError'))
+    || /<PageError(?![^>]*variant="section")/.test(source))
 
 /** The screens whose error is not a screen load's, each with what its error is. */
 const OWN_ERROR: Record<string, string> = {
@@ -33,7 +33,7 @@ type Node = { type: string; start: number; end: number; [key: string]: unknown }
 
 /**
  * Every loading placeholder in the source file `path` that no condition naming a failure (an
- * `error` or `failed` value) guards, as `<path>:<line>`.
+ * `error`, `failed` or `failure` value) guards, as `<path>:<line>`.
  */
 function unguardedPlaceholders(path: string, source: string): string[] {
   const found: string[] = []
@@ -42,7 +42,7 @@ function unguardedPlaceholders(path: string, source: string): string[] {
     if (Array.isArray(node)) { node.forEach((item) => visit(item, guards)); return }
     const held = node as Node
     const name = held.type === 'JSXElement' ? ((held['openingElement'] as Node)['name'] as Node)['name'] : null
-    if (name === 'LoadingPlaceholder' && !guards.some((test) => /(error|Error|failed)\b/.test(test))) {
+    if (name === 'LoadingPlaceholder' && !guards.some((test) => /(error|Error|failed|[fF]ailure)\b/.test(test))) {
       found.push(`${path}:${(held['loc'] as { start: { line: number } }).start.line}`)
     }
     const test = held.type === 'ConditionalExpression' || held.type === 'IfStatement' ? held['test'] as Node
@@ -69,7 +69,7 @@ describe('屏的读取错误', () => {
   })
 
   it('每个屏都从 useScreenLoad 取它的读取和错误', () => {
-    expect(SCREENS.filter(({ path, source }) => !(path in OWN_ERROR) && !source.includes('useScreenLoad()'))
+    expect(SCREENS.filter(({ path, source }) => !(path in OWN_ERROR) && !source.includes('useScreenLoad('))
       .map(({ path }) => path).sort()).toEqual([])
   })
 
