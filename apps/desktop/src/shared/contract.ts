@@ -1265,6 +1265,10 @@ export const DiscoveryFetchResultSchema = z.object({
   deferredProjects: z.number().int().min(0),
   cachedIntents: z.number().int().min(0),
   failedIntents: z.number().int().min(0),
+  /** True when no project in the run's scope had a paper left to deliver, none was put off and no direction failed. */
+  nothingNew: z.boolean(),
+  /** The latest time a project in the run's scope was refreshed, or null if none ever was. */
+  lastFetchedAt: z.number().int().nullable(),
 }).strict()
 export const DiscoveryIntentUpdateParamsSchema = z.object({
   projectId: z.string(),
