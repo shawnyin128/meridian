@@ -97,6 +97,7 @@ describe('拖动中的行和落点', () => {
   const ROWS: Record<string, [sheet: string, markup: string]> = {
     '项目行': ['routes/Projects.css', '<div class="structured-row structured-row--composite prow" data-reorder-item="p1"></div>'],
     '想法行': ['routes/Ideas.css', '<div class="structured-row structured-row--composite idea-row" data-reorder-item="i1"></div>'],
+    '计划的任务行': ['components/project/ProjectPlan.css', '<div class="project-plan"><div class="structured-row structured-row--composite ddlrow task-row" draggable="true" data-reorder-item="t1"></div></div>'],
   }
   /** The opacity and box shadow of the row in `markup` under `sheets`, held, then with the drop line above and below. */
   const feedback = (sheets: string[], markup: string) => ['dragging', 'drag-over-before', 'drag-over-after'].map((state) => {
@@ -108,7 +109,7 @@ describe('拖动中的行和落点', () => {
     return [style.opacity, style.boxShadow]
   })
 
-  it('项目行和想法行拖动时变淡、落点画线,都只来自共享的拖动样式', () => {
+  it('项目行、想法行和计划的任务行拖动时变淡、落点画线,都只来自共享的拖动样式', () => {
     const rows = Object.entries(ROWS)
     expect(Object.fromEntries(rows.map(([name, [sheet, markup]]) => [name, [
       feedback(['components/StructuredList.css', sheet], markup),
