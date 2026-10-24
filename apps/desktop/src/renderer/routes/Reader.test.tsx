@@ -79,6 +79,13 @@ vi.mock('../components/reader/ReaderSidePanel.js', () => ({
 const { Reader } = await import('./Reader.js')
 
 const note = (id: string, text: string) => ({ id, page: 1, text, created: '2026-10-18', updated: '2026-10-18' })
+/**
+ * A stored highlight on page 1 in `color` with `note`, one line from `x` across `width` on the line
+ * the cases below select, which runs from 0.1 across 0.2 at 0.25 down, 0.0175 high.
+ */
+const stored = (id: string, color: 'yellow' | 'green' | 'blue' | 'pink', note: string, x: number, width = 0.2, y = 0.25) => ({
+  id, page: 1, quote: 'Speculative', rects: [{ x, y, width, height: 0.0175 }], color, note, created: '2026-10-18', updated: '2026-10-18',
+})
 
 describe('Reader', () => {
   let root: Root
@@ -180,6 +187,8 @@ describe('Reader', () => {
     const picked = () => [...tools()!.querySelectorAll('[aria-checked="true"]')].map((circle) => circle.getAttribute('aria-label'))
     const highlights = () => shell.reading.highlights.map(({ color, note }) => ({ color, note }))
     const ADDED = { kind: 'highlight.add', page: 1, quote: 'Speculative decoding', rects: expect.any(Array) }
+    /** The names of the toolbar's controls, in order. */
+    const names = () => [...tools()!.querySelectorAll('button, textarea')].map((control) => control.getAttribute('aria-label'))
     /** Writes `text` into the note box as typing does. */
     const write = (text: string) => act(async () => {
       Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')!.set!.call(noteBox(), text)
@@ -260,7 +269,6 @@ describe('Reader', () => {
     it('两行,一个字也不写:上面是问 AI 的标记和四个高亮颜色圈,下面是批注框;每个控件都有中英文的名字', async () => {
       await render()
       await select()
-      const names = () => [...tools()!.querySelectorAll('button, textarea')].map((control) => control.getAttribute('aria-label'))
       expect(tools()!.textContent).toBe('')
       expect(noteBox().placeholder).toBe('')
       expect(names()).toEqual(['Ask AI', 'Yellow', 'Green', 'Blue', 'Pink', 'Annotation'])
@@ -341,6 +349,7 @@ describe('Reader', () => {
       await write('还没写完')
       await press('Escape')
       expect(tools()).toBeNull()
+      // The same words again: the toolbar edits the highlight they now carry.
       await select()
       await click(control('Green'))
       // Radix dismisses on the click that follows a press outside.
@@ -348,8 +357,8 @@ describe('Reader', () => {
         for (const type of ['pointerdown', 'click']) document.body.dispatchEvent(new MouseEvent(type, { bubbles: true }))
       })
       expect(tools()).toBeNull()
-      expect(shell.writes.map((write) => write.kind)).toEqual(['highlight.add', 'highlight.add'])
-      expect(highlights()).toEqual([{ color: 'yellow', note: '' }, { color: 'green', note: '' }])
+      expect(shell.writes.map((write) => write.kind)).toEqual(['highlight.add', 'highlight.update'])
+      expect(highlights()).toEqual([{ color: 'green', note: '' }])
     })
 
     it('点问 AI 的标记,和原来的「问 AI」一样把选中的话交给论文对话并收起', async () => {
@@ -376,6 +385,60 @@ describe('Reader', () => {
       await click(control('Yellow'))
       await frame()
       expect(drawn()).toBe(0)
+    })
+
+    it('选区碰到一段高亮时不另划:圈显示它的颜色、批注框里是它的批注,点颜色给它换色,Enter 改它的批注', async () => {
+      shell.reading = { ...shell.reading, highlights: [stored('highlight-9', 'green', '旧批注', 0.15)] }
+      await render()
+      await select()
+      expect(picked()).toEqual(['Green'])
+      expect(noteBox().value).toBe('旧批注')
+      await click(control('Pink'))
+      expect(shell.writes).toEqual([{ kind: 'highlight.update', id: 'highlight-9', note: '旧批注', color: 'pink' }])
+      expect(picked()).toEqual(['Pink'])
+      await write('新批注')
+      await press('Enter')
+      expect(shell.writes.slice(1)).toEqual([{ kind: 'highlight.update', id: 'highlight-9', note: '新批注' }])
+      expect(highlights()).toEqual([{ color: 'pink', note: '新批注' }])
+      expect(tools()).toBeNull()
+    })
+
+    it('选区碰到两段高亮时只给问 AI 的标记', async () => {
+      shell.reading = {
+        ...shell.reading, highlights: [stored('highlight-8', 'yellow', '', 0.05, 0.1), stored('highlight-9', 'green', '', 0.25)],
+      }
+      await render()
+      await select()
+      expect(names()).toEqual(['Ask AI'])
+      await click(control('Ask AI'))
+      expect(host.querySelector('.back')!.getAttribute('data-asked')).toBe('Speculative decoding')
+      expect(shell.writes).toEqual([])
+    })
+
+    it('下一行或同一行紧挨着的高亮不算碰到,照常另划一段', async () => {
+      shell.reading = {
+        ...shell.reading, highlights: [stored('highlight-8', 'yellow', '上一段', 0.3), stored('highlight-9', 'green', '下一行', 0.1, 0.2, 0.25 + 0.0155)],
+      }
+      await render()
+      await select()
+      expect([picked(), noteBox().value]).toEqual([[], ''])
+      await click(control('Blue'))
+      expect(shell.writes).toEqual([{ ...ADDED, color: 'blue' }])
+    })
+
+    it('旧版本存下的两段重叠高亮都留着,重叠的那一截只画后来的那一段', async () => {
+      shell.reading = {
+        ...shell.reading, highlights: [stored('highlight-8', 'yellow', '', 0.125, 0.25), stored('highlight-9', 'green', '', 0.25, 0.25)],
+      }
+      await render()
+      await select()
+      // Fetching the reading again paints the highlights on the page now on the sheet.
+      shell.revision = 1
+      await render()
+      const fill = (id: string) => host.querySelector(`.paper-highlight[data-highlight="${id}"] path`)!.getAttribute('d')
+      expect(fill('highlight-8')).toBe('M0.125 0.25h0.125v0.0175h-0.125z')
+      expect(fill('highlight-9')).toBe('M0.25 0.25h0.25v0.0175h-0.25z')
+      expect([...host.querySelectorAll('.highlights li')].map((li) => li.className)).toEqual(['yellow', 'green'])
     })
 
     it('缩放页面时收起', async () => {

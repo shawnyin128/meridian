@@ -598,8 +598,11 @@ const TIGHT = {
   leading: 12,
 }
 
-/** Imports TIGHT through Core, opens it in the reader from the paper table and waits until its page is drawn. */
-async function openTight(win: Page): Promise<void> {
+/**
+ * Imports TIGHT through Core, opens it in the reader from the paper table and waits until its page
+ * is drawn; returns its paper id.
+ */
+async function openTight(win: Page): Promise<string> {
   const held = await win.evaluate((pdf) => (window as unknown as MeridianWindow).meridian.call(
     'papers.import', { filename: 'Tight.pdf', bytes: new Uint8Array(pdf) },
   ), [...minimalPdf(TIGHT)]) as { paper: { id: string } }
@@ -611,6 +614,7 @@ async function openTight(win: Page): Promise<void> {
   await selectPaper(win, title)
   await shown(win, '.pdetail [aria-label="开始阅读"]').click()
   await expect(shown(win, '.pdfpagebox[data-painted="1"]')).toHaveCount(1)
+  return held.paper.id
 }
 
 /** The client box of each line of text on the page shown, top to bottom. */
@@ -752,5 +756,40 @@ test.describe('选中文字时的选区', () => {
     await expect(shown(win, '.pdfpagebox .paper-selection svg')).toHaveCount(0)
     await shown(win, '.reader-rail [aria-label="高亮与批注"]').click()
     await expect(shown(win, '.highlight-card.yellow textarea')).toHaveValue('第一行\n第二行')
+  })
+
+  test('选区碰到已有的高亮时不另划:圈显示它的颜色,换色和批注都落在它身上;Core 也拒绝在它上面再划一段', async ({ win }) => {
+    const id = await openTight(win)
+    const lines = (await textLines(win)).slice(0, 2)
+    await dragAcross(win, lines)
+    await win.locator('.selection-tools [aria-label="黄色"]').click()
+    await expect(shown(win, '.pdfpagebox .paper-highlight.yellow')).toHaveCount(1)
+    await win.keyboard.press('Escape')
+    await expect(win.locator('.selection-tools')).toHaveCount(0)
+
+    await dragAcross(win, lines.slice(1))
+    await expect(win.locator('.selection-tools [aria-label="黄色"]')).toHaveAttribute('aria-checked', 'true')
+    await win.locator('.selection-tools [aria-label="蓝色"]').click()
+    await expect(shown(win, '.pdfpagebox .paper-highlight.blue')).toHaveCount(1)
+    const box = win.locator('.selection-tools textarea')
+    await box.click()
+    await box.pressSequentially('落在原来那一段上')
+    await box.press('Enter')
+    await expect(win.locator('.selection-tools')).toHaveCount(0)
+    await expect(shown(win, '.pdfpagebox .paper-highlight')).toHaveCount(1)
+
+    type Held = { highlights: { quote: string; rects: unknown[]; color: string; note: string }[] }
+    const held = (await call<Held>(win, 'papers.reading', { id })).highlights
+    expect(held.map(({ color, note }) => ({ color, note }))).toEqual([{ color: 'blue', note: '落在原来那一段上' }])
+    const refused = await win.evaluate(async (mutation) => {
+      try {
+        await (window as unknown as MeridianWindow).meridian.call('papers.mutateReading', mutation)
+        return 'written'
+      } catch (rejected) {
+        return (rejected as { reason: string }).reason
+      }
+    }, { id, mutation: { kind: 'highlight.add', page: 1, quote: held[0]!.quote, rects: held[0]!.rects, color: 'pink' } })
+    expect(refused).toBe('refused')
+    expect((await call<Held>(win, 'papers.reading', { id })).highlights).toHaveLength(1)
   })
 })

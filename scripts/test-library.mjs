@@ -5,7 +5,7 @@ import { DESKTOP, openApp, readJson, readsCannedNetFile, redate, session, writeJ
 import { seedConversations } from './test-library/conversations.mjs'
 import { redateLater, seedInbox, seedWatches, writeInbox } from './test-library/feed.mjs'
 import { prepareWorkspace, redateEvents, seedLab, seedProposals } from './test-library/lab.mjs'
-import { arxivMetadata, importPapers, paperFiles, redatePapers, seedPapers } from './test-library/papers.mjs'
+import { arxivMetadata, importPapers, paperFiles, redatePapers, seedPapers, writeLegacyOverlap } from './test-library/papers.mjs'
 import { discoveryRecords, redateProjects, seedProjects } from './test-library/projects.mjs'
 import { relocate } from './test-library/relocate.mjs'
 import { checkOut, MARKER, protectedRoots } from './test-library/safety.mjs'
@@ -72,6 +72,7 @@ async function seed(out, app, today) {
     await call('discovery.feedback', { id: 'seed-discovery-kvquant', feedback: 'more' })
     await call('feed.list')
   })
+  await writeLegacyOverlap(state, files)
   redatePapers(state, titles)
   redateProjects(state, stamped)
   redateEvents(state)
