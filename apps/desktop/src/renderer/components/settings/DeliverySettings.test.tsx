@@ -66,6 +66,15 @@ describe('DeliverySettings', () => {
     await act(async () => { root.unmount() })
   })
 
+  it('英文界面里两个上限也只有字段名', async () => {
+    window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'en')
+    const root = createRoot(host)
+    await act(async () => { root.render(<MessagesProvider><DeliverySettings /></MessagesProvider>) })
+    expect([...host.querySelectorAll('.delivery-setting-copy')].map((copy) => copy.textContent))
+      .toEqual(['Papers per check', 'Shown limit'])
+    await act(async () => { root.unmount() })
+  })
+
   it('显示上限就在单次推送上限旁边,默认 20,和它一起保存;超出范围不能保存', async () => {
     const root = createRoot(host)
     await act(async () => { root.render(<MessagesProvider><DeliverySettings /></MessagesProvider>) })
