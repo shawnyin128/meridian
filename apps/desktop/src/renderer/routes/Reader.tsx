@@ -29,7 +29,7 @@ import { Swatches } from '../components/Swatches.js'
 import { Toolbar, ToolbarButton } from '../components/Toolbar.js'
 import { Tooltip } from '../components/Tooltip.js'
 import {
-  drawnLines, highlightAt, highlightLines, highlightShape, selectedLinesByPage, selectionBox,
+  drawnLines, highlightAt, highlightLines, highlightOutline, highlightShape, selectedLinesByPage, selectionBox,
 } from './highlight-geometry.js'
 import {
   ZOOM_MAX, ZOOM_MIN, clampZoom, keptScroll, pageScale, scaledAbout, type SheetTransform,
@@ -549,6 +549,23 @@ export function Reader() {
     if (box !== null) paintHighlights(box, reading)
   }, [reading])
 
+  // The highlight a click selected is outlined along the lines it is drawn with, until it is deselected.
+  const outlined = selected?.id ?? null
+  useEffect(() => {
+    const box = sheet.current
+    if (box === null || reading === null) return
+    box.querySelectorAll('.paper-highlight-outline').forEach((mark) => mark.remove())
+    const highlight = reading.highlights.find((item) => item.id === outlined)
+    const pagebox = highlight === undefined ? null : box.querySelector<HTMLElement>(`.pdfpagebox[data-page="${highlight.page}"]`)
+    if (highlight === undefined || pagebox === null) return
+    const highlights = highlightsOn(reading, highlight.page)
+    const lines = drawnLines(highlights, Number(pagebox.dataset.aspect))[highlights.indexOf(highlight)]!
+    if (lines.length === 0) return
+    const mark = linesMark(lines, 'paper-highlight-outline')
+    mark.querySelector('path')!.setAttribute('d', highlightOutline(lines))
+    pagebox.querySelector('.paper-highlights')!.append(mark)
+  }, [reading, outlined, painted])
+
   // Landing on the jump's anchor waits until the PDF pages and the reading state are ready. The
   // anchor is cleared once used, so later zooms and redraws do not move the view.
   useEffect(() => {
@@ -901,17 +918,17 @@ export function Reader() {
   leave.current = leaveTools
   useOnLeave(tools, leaveTools)
 
-  /** Deletes the highlight a click selected and closes the toolbar; the notice offers Undo. */
-  const deleteSelected = () => {
-    if (selected === null) return
+  /** Deletes the one existing highlight the toolbar acts on and closes the toolbar; the notice offers Undo. */
+  const deleteEdited = () => {
+    if (edited === null) return
     setPending(null)
-    void removeFromReading({ kind: 'highlight.delete', id: selected.id })
+    void removeFromReading({ kind: 'highlight.delete', id: edited.id })
   }
-  const deleteKey = useRef(deleteSelected)
-  deleteKey.current = deleteSelected
-  // Delete and Backspace delete the highlight a click selected, unless focus is where text is typed.
+  const deleteKey = useRef(deleteEdited)
+  deleteKey.current = deleteEdited
+  // Delete and Backspace delete that highlight, unless focus is where text is typed.
   useEffect(() => {
-    if (selected === null) return
+    if (edited === null) return
     const press = (event: KeyboardEvent) => {
       if ((event.key !== 'Delete' && event.key !== 'Backspace') || typesText(event.target)) return
       event.preventDefault()
@@ -919,7 +936,7 @@ export function Reader() {
     }
     document.addEventListener('keydown', press)
     return () => document.removeEventListener('keydown', press)
-  }, [selected?.id])
+  }, [edited?.id])
 
   const askAi = () => {
     if (pending === null) return
@@ -979,8 +996,8 @@ export function Reader() {
                         onPick={(colour) => { void pickColour(colour) }}
                       />
                     )}
-                    {selected === null ? null : (
-                      <IconButton label={m.common.delete} size="nested" round tone="danger" onClick={deleteSelected}>
+                    {edited === null ? null : (
+                      <IconButton label={m.common.delete} size="nested" round tone="danger" onClick={deleteEdited}>
                         <IconTrash />
                       </IconButton>
                     )}

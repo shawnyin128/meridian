@@ -2,8 +2,8 @@
 import { describe, expect, it, vi } from 'vitest'
 import type { PaperHighlightRect } from '../../shared/contract.js'
 import {
-  drawnLines, highlightAt, highlightLines, highlightShape, normalizedHighlightRects, selectedLinesByPage, selectedTextRanges,
-  selectionBox, uncoveredLines,
+  drawnLines, highlightAt, highlightLines, highlightOutline, highlightShape, normalizedHighlightRects, selectedLinesByPage,
+  selectedTextRanges, selectionBox, uncoveredLines,
 } from './highlight-geometry.js'
 
 /** A US Letter page at the reader's fit scale (830 / 612), as the page box's client rectangle. */
@@ -161,6 +161,24 @@ describe('highlight geometry', () => {
     const above = highlight('above', [line(0.125, 0.5, 0.25)])
     const below = highlight('below', [line(0.125, 0.5, 0.25 + 7 / 512)])
     expect(highlightAt([above, below], 1, { x: 0.2, y: 0.265 })?.id).toBe('below')
+  })
+
+  it('选中高亮的轮廓沿着它画出来的行走一圈:相连的行合成一个轮廓,在宽出去的那一行处拐弯;隔开的行各自一个框', () => {
+    const line = (x: number, width: number, y: number) => ({ x, y, width, height: 1 / 16 })
+    expect(highlightOutline([line(0.25, 0.5, 0.25)])).toBe('M0.25 0.25L0.75 0.25L0.75 0.3125L0.25 0.3125Z')
+    // A paragraph's middle: the first line starts late and ends at the margin, the last ends early;
+    // the second line overlaps the first a little, as tightly set lines do.
+    expect(highlightOutline([line(0.5, 0.375, 0.25), line(0.125, 0.75, 0.3125 - 1 / 64), line(0.125, 0.25, 0.375 - 1 / 32)])).toBe(
+      'M0.5 0.25L0.875 0.25L0.875 0.3125L0.875 0.3125L0.875 0.359375L0.375 0.359375L0.375 0.40625L0.125 0.40625'
+      + 'L0.125 0.359375L0.125 0.359375L0.125 0.296875L0.5 0.296875Z',
+    )
+    // Lines a gap apart, or side by side without sharing any stretch across, are outlined each on its own.
+    expect(highlightOutline([line(0.25, 0.25, 0.25), line(0.25, 0.25, 0.5)])).toBe(
+      'M0.25 0.25L0.5 0.25L0.5 0.3125L0.25 0.3125ZM0.25 0.5L0.5 0.5L0.5 0.5625L0.25 0.5625Z',
+    )
+    expect(highlightOutline([line(0.125, 0.25, 0.25), line(0.5, 0.25, 0.25 + 1 / 32)])).toBe(
+      'M0.125 0.25L0.375 0.25L0.375 0.3125L0.125 0.3125ZM0.5 0.28125L0.75 0.28125L0.75 0.34375L0.5 0.34375Z',
+    )
   })
 
   it('高亮的填色每行一个矩形，批注的底线每行一条，沿着同一行的底边', () => {

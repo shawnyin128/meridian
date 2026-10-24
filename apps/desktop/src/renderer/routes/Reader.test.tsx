@@ -105,6 +105,7 @@ vi.mock('../components/reader/ReaderSidePanel.js', () => ({
 }))
 
 const { Reader } = await import('./Reader.js')
+const { highlightLines, highlightOutline } = await import('./highlight-geometry.js')
 
 const note = (id: string, text: string) => ({ id, page: 1, text, created: '2026-10-18', updated: '2026-10-18' })
 /**
@@ -630,13 +631,26 @@ describe('Reader', () => {
         expect(picked()).toEqual(['Yellow'])
       })
 
-      it('从高亮里面拖选照旧是选文字:工具条对着选中的字,没有删除', async () => {
+      it('从高亮里面拖选照旧是选文字:工具条对着选中的字,它盖住的那段照样能删,但不描轮廓', async () => {
         shell.reading = { ...shell.reading, highlights: [stored('highlight-9', 'green', '旧批注', 0.15)] }
         await render()
         await select()
-        expect(names()).toEqual(['Ask AI', 'Yellow', 'Green', 'Blue', 'Pink', 'Annotation'])
+        expect(names()).toEqual(['Ask AI', 'Yellow', 'Green', 'Blue', 'Pink', 'Delete', 'Annotation'])
         expect(window.getSelection()!.toString()).toBe('Speculative decoding')
-        expect(selectedInPanel()).toBeNull()
+        expect([selectedInPanel(), host.querySelector('.paper-highlight-outline')]).toEqual([null, null])
+        await act(async () => { document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'Backspace', bubbles: true, cancelable: true })) })
+        expect(shell.writes).toEqual([{ kind: 'highlight.delete', id: 'highlight-9' }])
+        expect(tools()).toBeNull()
+      })
+
+      it('单击选中的高亮在页上沿它画出来的行描出轮廓,取消选中就擦掉', async () => {
+        shell.reading = { ...shell.reading, highlights: [stored('highlight-9', 'green', '', 0.15)] }
+        await render()
+        await clickPage(0.2, 0.255)
+        const outline = () => [...host.querySelectorAll('.pdfpagebox .paper-highlight-outline path')].map((path) => path.getAttribute('d'))
+        expect(outline()).toEqual([highlightOutline(highlightLines(shell.reading.highlights[0]!.rects, 0.75))])
+        await act(async () => { document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })) })
+        expect(outline()).toEqual([])
       })
     })
 

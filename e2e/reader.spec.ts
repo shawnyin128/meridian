@@ -942,6 +942,17 @@ test.describe('选中文字时的选区', () => {
     await expect(tools.locator('[aria-label="删除"]')).toBeVisible()
     await expect(shown(win, '.highlight-card.green.selected')).toHaveCount(1)
     expect(await win.evaluate(() => document.getSelection()!.toString())).toBe('')
+    // The selected highlight is outlined on the page in the paper's ink, never the accent.
+    const outline = shown(win, '.pdfpagebox .paper-highlight-outline path')
+    await expect(outline).toHaveCount(1)
+    expect(await outline.evaluate((path) => {
+      const probe = document.createElement('div')
+      probe.style.color = 'var(--hl-note)'
+      document.body.append(probe)
+      const ink = getComputedStyle(probe).color
+      probe.remove()
+      return [getComputedStyle(path).stroke === ink, getComputedStyle(path).fill]
+    })).toEqual([true, 'none'])
 
     await tools.locator('[aria-label="蓝色"]').click()
     await expect(shown(win, '.pdfpagebox .paper-highlight.blue')).toHaveCount(1)
@@ -949,12 +960,13 @@ test.describe('选中文字时的选区', () => {
     await tools.locator('textarea').press('Enter')
     await expect(tools).toHaveCount(0)
     await expect(shown(win, '.highlight-card.selected')).toHaveCount(0)
+    await expect(shown(win, '.pdfpagebox .paper-highlight-outline')).toHaveCount(0)
     type Held = { highlights: { color: string; note: string }[] }
     expect((await call<Held>(win, 'papers.reading', { id })).highlights.map(({ color, note }) => ({ color, note })))
       .toEqual([{ color: 'blue', note: '改过的批注' }])
   })
 
-  test('从高亮里面拖选照旧是选文字;单击选中它后按 Delete 删掉,通知里撤销放回来', async ({ win }) => {
+  test('从高亮里面拖选照旧是选文字,工具条也能删它;单击选中它后按 Delete 删掉,通知里撤销放回来', async ({ win }) => {
     await openTight(win)
     const lines = await textLines(win)
     const tools = win.locator('.selection-tools')
@@ -971,7 +983,9 @@ test.describe('选中文字时的选区', () => {
     await win.mouse.up()
     await expect(tools).toBeVisible()
     expect(await win.evaluate(() => document.getSelection()!.toString())).not.toBe('')
-    await expect(tools.locator('[aria-label="删除"]')).toHaveCount(0)
+    // The selection covers one highlight, which the toolbar can delete; only a click outlines it.
+    await expect(tools.locator('[aria-label="删除"]')).toBeVisible()
+    await expect(shown(win, '.pdfpagebox .paper-highlight-outline')).toHaveCount(0)
     await win.keyboard.press('Escape')
     await win.evaluate(() => document.getSelection()!.removeAllRanges())
 

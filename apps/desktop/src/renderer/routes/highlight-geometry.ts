@@ -145,6 +145,42 @@ export function highlightAt(
 }
 
 /**
+ * The SVG path that traces the outline of `lines`, a highlight's lines top to bottom as drawnLines
+ * gives them: one closed outline for each run of lines that each touch or overlap the next and share
+ * a stretch across with it, stepping where the wider of two lines ends, and one rectangle for a line
+ * that joins neither neighbour.
+ */
+export function highlightOutline(lines: PaperHighlightRect[]): string {
+  const right = (line: PaperHighlightRect) => line.x + line.width
+  const bottom = (line: PaperHighlightRect) => line.y + line.height
+  const runs: PaperHighlightRect[][] = []
+  for (const line of lines) {
+    const run = runs.at(-1)
+    const above = run?.at(-1)
+    const joins = above !== undefined && line.y > above.y && line.y <= bottom(above)
+      && line.x < right(above) && above.x < right(line)
+    if (joins) run!.push(line)
+    else runs.push([line])
+  }
+  return runs.map((run) => {
+    const points: [number, number][] = [[run[0]!.x, run[0]!.y], [right(run[0]!), run[0]!.y]]
+    for (let at = 0; at < run.length - 1; at += 1) {
+      const [a, b] = [run[at]!, run[at + 1]!]
+      const step = right(b) > right(a) ? b.y : bottom(a)
+      points.push([right(a), step], [right(b), step])
+    }
+    const last = run.at(-1)!
+    points.push([right(last), bottom(last)], [last.x, bottom(last)])
+    for (let at = run.length - 2; at >= 0; at -= 1) {
+      const [a, b] = [run[at]!, run[at + 1]!]
+      const step = b.x < a.x ? b.y : bottom(a)
+      points.push([b.x, step], [a.x, step])
+    }
+    return `${points.map(([x, y], at) => `${at === 0 ? 'M' : 'L'}${x} ${y}`).join('')}Z`
+  }).join('')
+}
+
+/**
  * The SVG drawing of a highlight's lines: `box` is their union in page coordinates, which places
  * the drawing and serves as its viewBox, `fill` fills every line as one shape, and `underline` draws
  * one line along the bottom of each line, the mark of a highlight with a note.
