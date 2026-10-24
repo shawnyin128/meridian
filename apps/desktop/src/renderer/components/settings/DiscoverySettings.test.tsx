@@ -3,6 +3,7 @@ import { act } from 'react'
 import { createRoot } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { DiscoveryProfile } from '../../../shared/contract.js'
+import { CallError } from '../../call-error.js'
 import { MessagesProvider } from '../../messages/useMessages.js'
 import { LANGUAGE_STORAGE_KEY } from '../../shell/language.js'
 
@@ -17,18 +18,26 @@ const api = vi.hoisted(() => ({
     ],
   }] as DiscoveryProfile[],
   setIntent: vi.fn(async () => {}),
+  /** What the next profiles read throws instead of answering. */
+  profilesError: null as unknown,
+  revision: 0,
 }))
 
 vi.mock('../../ipc.js', () => ({
   discovery: {
-    profiles: async () => structuredClone(api.profiles),
+    profiles: async () => {
+      const thrown = api.profilesError
+      api.profilesError = null
+      if (thrown !== null) throw thrown
+      return structuredClone(api.profiles)
+    },
     setIntent: api.setIntent,
     fetch: vi.fn(),
   },
 }))
 vi.mock('../../shell/AppShell.js', () => ({
   useNotice: () => ({ success: vi.fn(), refusal: vi.fn() }),
-  useVaultRevision: () => ({ revision: 0, bump: vi.fn() }),
+  useVaultRevision: () => ({ revision: api.revision, bump: vi.fn() }),
 }))
 
 const { DiscoverySettings } = await import('./DiscoverySettings.js')
@@ -43,6 +52,8 @@ describe('DiscoverySettings', () => {
     host = document.createElement('div')
     document.body.append(host)
     api.setIntent.mockClear()
+    api.profilesError = null
+    api.revision = 0
   })
   afterEach(() => { host.remove() })
 
@@ -76,5 +87,30 @@ describe('DiscoverySettings', () => {
     expect(api.setIntent).toHaveBeenLastCalledWith('spec', 'next', 'disable')
 
     await act(async () => { root.unmount() })
+  })
+
+  it('读发现方向失败过一次，下一次读成功时错误收起，方向照常列出', async () => {
+    const root = createRoot(host)
+    const render = () => act(async () => { root.render(<MessagesProvider><DiscoverySettings /></MessagesProvider>) })
+    api.profilesError = new CallError('discovery.profiles', 'newer-version')
+    await render()
+    expect(host.querySelector('.err')?.textContent).toBe('需要更新 App')
+
+    api.revision = 1
+    await render()
+    expect([host.querySelector('.err'), host.querySelectorAll('.direction-row').length]).toEqual([null, 3])
+    act(() => root.unmount())
+  })
+
+  it('改方向被拒的原因留在这一栏，等下一次读到方向时收起', async () => {
+    const root = createRoot(host)
+    await act(async () => { root.render(<MessagesProvider><DiscoverySettings /></MessagesProvider>) })
+    api.setIntent.mockRejectedValueOnce(new CallError('discovery.intent', 'changed'))
+    await act(async () => { row('草稿头').querySelector<HTMLButtonElement>('[role="switch"]')!.click() })
+    expect(host.querySelector('.err')?.textContent).toBe('内容已变化')
+
+    await act(async () => { row('草稿头').querySelector<HTMLButtonElement>('[role="switch"]')!.click() })
+    expect(host.querySelector('.err')).toBeNull()
+    act(() => root.unmount())
   })
 })
