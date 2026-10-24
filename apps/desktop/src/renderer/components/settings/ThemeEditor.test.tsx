@@ -26,14 +26,16 @@ const readable = (of: ColourTheme): ColourThemeFile => ({ state: 'readable', fil
 /** Holds the theme files as the shell would, so a case can change them as a file edited outside the App. */
 const shell: { setFiles: (files: ColourThemeFile[]) => void } = { setFiles: () => {} }
 
-function Host({ editing, initial, onBack }: { editing: ColourTheme | null; initial: ColourThemeFile[]; onBack: () => void }) {
+function Host({ editing, initial, onBack, onDirtyChange }: {
+  editing: ColourTheme | null; initial: ColourThemeFile[]; onBack: () => void; onDirtyChange: (dirty: boolean) => void
+}) {
   const [files, setFiles] = useState(initial)
   shell.setFiles = setFiles
   return (
     <MessagesProvider>
       <ColourThemeFilesContext.Provider value={{ files, refresh: api.refresh }}>
         <ModalDialog open onOpenChange={() => {}} size="wide" className="setdlg">
-          <ThemeEditor theme={editing} onBack={onBack} />
+          <ThemeEditor theme={editing} onBack={onBack} onDirtyChange={onDirtyChange} />
         </ModalDialog>
       </ColourThemeFilesContext.Provider>
     </MessagesProvider>
@@ -73,6 +75,7 @@ async function pick(label: string, text: string): Promise<void> {
 describe('外观主题编辑页', () => {
   let root: Root
   const onBack = vi.fn()
+  const onDirtyChange = vi.fn()
 
   beforeEach(() => {
     vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} })
@@ -87,12 +90,13 @@ describe('外观主题编辑页', () => {
     api.save.mockClear()
     api.refresh.mockClear()
     onBack.mockClear()
+    onDirtyChange.mockClear()
   })
 
   afterEach(() => { act(() => root.unmount()) })
 
   const open = (editing: ColourTheme | null, files: ColourThemeFile[] = []) =>
-    act(async () => { root.render(<Host editing={editing} initial={files} onBack={onBack} />) })
+    act(async () => { root.render(<Host editing={editing} initial={files} onBack={onBack} onDirtyChange={onDirtyChange} />) })
 
   it('新主题从当前的外观主题开始;保存写进 themes/<id>.json 并套用,id 由名字生成、不和已有文件重名,页面留在编辑页', async () => {
     window.localStorage.setItem(COLOUR_THEME_STORAGE_KEY, 'cinnabar')
@@ -120,26 +124,20 @@ describe('外观主题编辑页', () => {
     expect(api.save).toHaveBeenLastCalledWith({ ...saved, name: 'Renamed' })
   })
 
-  it('改过还没保存时返回先确认:取消留在编辑页,确认才回去;没改过或保存过就直接回去', async () => {
+  it('告诉宿主有没有没保存的修改:改了就有,改回原样或保存后就没有;返回键只交给宿主', async () => {
     await open(celadon, [readable(celadon)])
-    await click($('button[aria-label="返回"]'))
-    expect(onBack).toHaveBeenCalledTimes(1)
-    expect(document.querySelector('[role="alertdialog"]')).toBeNull()
+    expect(onDirtyChange).toHaveBeenLastCalledWith(false)
+    await paint('ground', '#f1f6f4')
+    expect(onDirtyChange).toHaveBeenLastCalledWith(true)
+    await type(hex(), celadon.light.ground)
+    expect(onDirtyChange).toHaveBeenLastCalledWith(false)
 
     await paint('ground', '#f1f6f4')
     await click($('button[aria-label="返回"]'))
-    expect($('[role="alertdialog"] .modal-title').textContent).toBe('放弃未保存的修改？')
-    await click(buttonOf('取消'))
     expect(onBack).toHaveBeenCalledTimes(1)
-    expect(hex().value).toBe('#F1F6F4')
-
-    await click($('button[aria-label="返回"]'))
-    await click(buttonOf('放弃修改'))
-    expect(onBack).toHaveBeenCalledTimes(2)
-
+    expect(document.querySelector('[role="alertdialog"]')).toBeNull()
     await click(buttonOf('保存'))
-    await click($('button[aria-label="返回"]'))
-    expect(onBack).toHaveBeenCalledTimes(3)
+    expect(onDirtyChange).toHaveBeenLastCalledWith(false)
   })
 
   it('换「基于」的主题,浅色和深色两套颜色都换成它的', async () => {

@@ -14,7 +14,6 @@ import { useColourThemeFiles, useColourThemes } from '../../shell/useColourTheme
 import { useScrollFade } from '../../hooks/useScrollFade.js'
 import { BackButton } from '../BackButton.js'
 import { Card } from '../Card.js'
-import { ConfirmDialog } from '../ConfirmDialog.js'
 import { ChoicePicker } from '../FieldPickers.js'
 import { ColourField, FormInput } from '../FormControls.js'
 import { Icon } from '../icons.js'
@@ -109,10 +108,14 @@ function ThemePreview({ modules, mode }: { modules: ColourThemeModules; mode: Co
  * module's colour on the right. Save writes `<config home>/themes/<id>.json` and makes it the App's
  * theme. When that file changes outside the App, the editor reads it again while it holds no
  * unsaved edits, and otherwise keeps them and marks the file changed. `theme` is the custom theme
- * to edit, or null for a new one, which starts from the theme in use; `onBack` returns to the
- * Appearance pane, after a confirmation while there are unsaved edits.
+ * to edit, or null for a new one, which starts from the theme in use; the back button calls
+ * `onBack`, and `onDirtyChange` hears whether the editor holds unsaved edits, false once it unmounts.
  */
-export function ThemeEditor({ theme, onBack }: { theme: ColourTheme | null; onBack: () => void }) {
+export function ThemeEditor({ theme, onBack, onDirtyChange }: {
+  theme: ColourTheme | null
+  onBack: () => void
+  onDirtyChange: (dirty: boolean) => void
+}) {
   const m = useMessages()
   const t = m.settings.appearance.editor
   const themes = useColourThemes()
@@ -143,6 +146,10 @@ export function ThemeEditor({ theme, onBack }: { theme: ColourTheme | null; onBa
     return file?.state === 'readable' ? file.theme : null
   }, [files, form.id])
   const listed = useRef(disk)
+  useEffect(() => {
+    onDirtyChange(dirty)
+    return () => onDirtyChange(false)
+  }, [dirty, onDirtyChange])
   useEffect(() => {
     const previous = listed.current
     listed.current = disk
@@ -188,14 +195,7 @@ export function ThemeEditor({ theme, onBack }: { theme: ColourTheme | null; onBa
     <>
       <div className="set-side theme-modules" ref={sideFade} data-fade-paint="">
         <div className="theme-editor-title">
-          {dirty
-            ? (
-              <ConfirmDialog
-                trigger={<BackButton />} title={t.leaveTitle} description={t.leaveDescription} confirmLabel={t.leave}
-                onConfirm={onBack}
-              />
-            )
-            : <BackButton onClick={onBack} />}
+          <BackButton onClick={onBack} />
           <ModalTitle className="set-t">{m.settings.appearance.themeHeading}</ModalTitle>
         </div>
         {GROUPS.map((keys) => (

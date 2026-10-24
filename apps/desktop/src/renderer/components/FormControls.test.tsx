@@ -106,7 +106,7 @@ describe('ColourField', () => {
     input.dispatchEvent(new Event('input', { bubbles: true }))
   })
 
-  it('色值框只收 #RRGGBB:别的写法不改颜色,离开时标成被拒;系统取色器和合法的色值都交给 onChange', () => {
+  it('色值框收 #RRGGBB、RRGGBB 和三位简写,带不带 # 都行、不分大小写,交给 onChange 的一律是 #rrggbb;别的写法不改颜色,离开时标成被拒', () => {
     globalThis.IS_REACT_ACT_ENVIRONMENT = true
     const picked = vi.fn()
     function Host() {
@@ -121,17 +121,30 @@ describe('ColourField', () => {
     const picker = host.querySelector<HTMLInputElement>('input[type="color"][aria-label="选取颜色"]')!
     expect(text.value).toBe('#3568FF')
 
-    for (const refused of ['red', '3568ff', '#35f', '#35680G', '#3568f']) {
+    for (const refused of ['red', '#35680G', '#3568f', '#35f0', '##35f', ' #35f', '3568ff0']) {
+      act(() => text.focus())
       type(text, refused)
-      act(() => text.dispatchEvent(new FocusEvent('focusout', { bubbles: true })))
+      act(() => text.blur())
       expect([text.value, text.getAttribute('aria-invalid')], refused).toEqual([refused, 'true'])
     }
     expect(picked).not.toHaveBeenCalled()
     expect(picker.value).toBe('#3568ff')
 
-    type(text, '#A64436')
-    expect(picked).toHaveBeenLastCalledWith('#a64436')
-    expect([text.value, text.getAttribute('aria-invalid'), picker.value]).toEqual(['#A64436', null, '#a64436'])
+    for (const [typed, colour] of [['#A64436', '#a64436'], ['517d7b', '#517d7b'], ['#35F', '#3355ff'], ['fa0', '#ffaa00']] as const) {
+      act(() => text.focus())
+      type(text, typed)
+      expect(picked, typed).toHaveBeenLastCalledWith(colour)
+      expect([text.value, text.getAttribute('aria-invalid'), picker.value], typed).toEqual([typed, null, colour])
+      act(() => text.blur())
+      expect(text.value, typed).toBe(colour.toUpperCase())
+    }
+
+    act(() => text.focus())
+    type(text, '35f')
+    type(text, '35f0a0')
+    expect(picked.mock.calls.slice(-2)).toEqual([['#3355ff'], ['#35f0a0']])
+    expect(text.value).toBe('35f0a0')
+    act(() => text.blur())
 
     type(picker, '#517d7b')
     expect(picked).toHaveBeenLastCalledWith('#517d7b')

@@ -45,7 +45,9 @@ Current shared contracts:
 - `DateTimeDisplay`: the app-wide `M月D日` date and optional time pair.
 - `ConfirmDialog`: one confirmation/destructive-action contract for wording order, focus, and button
   presentation, on the dialog surface's `confirm` step. Routes provide the consequence, the callback and,
-  when the confirmation has one, a short `state` beside the buttons (a `Tag`, such as its cost).
+  when the confirmation has one, a short `state` beside the buttons (a `Tag`, such as its cost). The
+  trigger opens it, or, when several ways lead to the same confirmation, the host holds it open and focus
+  returns to where it was.
 - `ShortTextEditor`: the shared create/rename popover body, including fixed input geometry, focus,
   Enter/Escape, async acceptance, and optional deletion.
 - `StructuredList`: list shell and actionable/static row semantics; routes only supply columns and cells.

@@ -373,7 +373,7 @@ test('新建外观主题:保存写进配置目录的 themes/<id>.json 并套用;
     await hex.fill('#2f6fbf')
     writeFileSync(file, JSON.stringify({ ...written, light: { ...written.light, accent: '#112233' } }))
     await expect(win.locator('.setdlg')).toContainText('文件已在 App 外修改', { timeout: 10_000 })
-    await expect(hex).toHaveValue('#2F6FBF')
+    await expect(hex).toHaveValue(/^#2f6fbf$/i)
   } finally {
     await forgetColourTheme(win)
   }
