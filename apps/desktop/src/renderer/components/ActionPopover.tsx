@@ -1,7 +1,7 @@
 import * as Popover from '@radix-ui/react-popover'
-import type { ReactElement, ReactNode } from 'react'
+import type { ReactElement, ReactNode, RefObject } from 'react'
 import { ignoreComposingEscape } from '../lib/keyboard.js'
-import { COLLISION_PADDING } from './floating-layer.js'
+import { COLLISION_PADDING, type AnchorBox } from './floating-layer.js'
 import { OutsideToolbar } from './Toolbar.js'
 
 type ContentProps = Omit<Popover.PopoverContentProps,
@@ -16,7 +16,8 @@ export type ActionPopoverAlign = Popover.PopoverContentProps['align']
  * input suggestions, it keeps the native focus flow inside the popover, which suits calendars,
  * column settings and multi-control forms; callers only provide the trigger, the content and the
  * controlled open/close policy. It keeps the shared gap from the window edge. An Escape pressed while an input method is composing neither closes
- * the popover nor reaches `contentProps.onEscapeKeyDown`.
+ * the popover nor reaches `contentProps.onEscapeKeyDown`. It opens from `trigger`, or is placed
+ * against `anchor`, which it renders, or against `anchorBox`, which the caller measures itself.
  */
 type ActionPopoverBaseProps = {
   children: ReactNode
@@ -31,8 +32,9 @@ type ActionPopoverBaseProps = {
 }
 
 export type ActionPopoverProps = ActionPopoverBaseProps & (
-  | { trigger: ReactElement; anchor?: never }
-  | { anchor: ReactElement; trigger?: never }
+  | { trigger: ReactElement; anchor?: never; anchorBox?: never }
+  | { anchor: ReactElement; trigger?: never; anchorBox?: never }
+  | { anchorBox: RefObject<AnchorBox | null>; trigger?: never; anchor?: never }
 )
 
 export function ActionPopover(props: ActionPopoverProps) {
@@ -49,7 +51,9 @@ export function ActionPopover(props: ActionPopoverProps) {
     <Popover.Root {...rootProps}>
       {'trigger' in props
         ? <Popover.Trigger asChild>{props.trigger}</Popover.Trigger>
-        : <Popover.Anchor asChild>{props.anchor}</Popover.Anchor>}
+        : props.anchorBox === undefined
+          ? <Popover.Anchor asChild>{props.anchor}</Popover.Anchor>
+          : <Popover.Anchor virtualRef={props.anchorBox} />}
       <Popover.Portal>
         <Popover.Content
           collisionPadding={COLLISION_PADDING} {...contentProps} onEscapeKeyDown={ignoreComposingEscape(contentProps?.onEscapeKeyDown)}

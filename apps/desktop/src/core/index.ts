@@ -120,7 +120,7 @@ import { sleep } from './net/http.js'
 import { unopenedStore } from './unopened-store.js'
 import type { VaultStore } from './vault.js'
 import { createDesktopVaultStore, createVaultStore } from './vault-store.js'
-import { recordChange, trashedEntry } from './write-receipts.js'
+import { recordChange, recordChangeIfAny, trashedEntry } from './write-receipts.js'
 import {
   deleteLibraryBackup, listLibraryBackups, resetLibrary, switchLibraryBackup,
 } from './workspace-layout.js'
@@ -476,7 +476,8 @@ registerHandler('papers.reading', (params) =>
   store.paperReading(PapersReadingParamsSchema.parse(params).id))
 registerHandler('papers.mutateReading', (params) => {
   const { id, mutation } = PapersMutateReadingParamsSchema.parse(params)
-  return store.mutatePaperReading(id, mutation)
+  const { result, change } = recordChangeIfAny(store, () => store.mutatePaperReading(id, mutation))
+  return { reading: result, change }
 })
 registerHandler('harness.prepare', (params) => {
   const { paperId } = HarnessPrepareParamsSchema.parse(params)
@@ -506,8 +507,11 @@ registerHandler('papers.columns', (params) => {
   EmptyParamsSchema.parse(params)
   return store.paperColumns()
 })
-registerHandler('papers.setColumns', (params) =>
-  store.setPaperColumns(PapersSetColumnsParamsSchema.parse(params).columns))
+registerHandler('papers.setColumns', (params) => {
+  const { columns } = PapersSetColumnsParamsSchema.parse(params)
+  const { change } = recordChangeIfAny(store, () => store.setPaperColumns(columns))
+  return { change }
+})
 registerHandler('papers.renameOption', (params) => {
   const { key, from, to } = PapersRenameOptionParamsSchema.parse(params)
   const { change } = recordChange(store, () => store.renamePaperOption(key, from, to))
@@ -541,7 +545,8 @@ registerHandler('project.bindWorkspace', (params) => {
 })
 registerHandler('project.update', (params) => {
   const { id, patch } = ProjectUpdateParamsSchema.parse(params)
-  return store.updateProject(id, definedFields(patch))
+  const { result, change } = recordChange(store, () => store.updateProject(id, definedFields(patch)))
+  return { project: result, change }
 })
 registerHandler('project.delete', (params) => {
   const { id } = ProjectDeleteParamsSchema.parse(params)
@@ -558,7 +563,8 @@ registerHandler('project.updateTask', (params) => {
 })
 registerHandler('project.deleteTask', (params) => {
   const { projectId, taskId } = ProjectDeleteTaskParamsSchema.parse(params)
-  return store.deleteTask(projectId, taskId)
+  const { result, change } = recordChange(store, () => store.deleteTask(projectId, taskId))
+  return { project: result, change }
 })
 registerHandler('project.reorderTasks', (params) => {
   const { projectId, order } = ProjectReorderTasksParamsSchema.parse(params)
@@ -578,7 +584,8 @@ registerHandler('project.updateMilestone', (params) => {
 })
 registerHandler('project.deleteMilestone', (params) => {
   const { projectId, milestoneId } = ProjectDeleteMilestoneParamsSchema.parse(params)
-  return store.deleteMilestone(projectId, milestoneId)
+  const { result, change } = recordChange(store, () => store.deleteMilestone(projectId, milestoneId))
+  return { project: result, change }
 })
 registerHandler('project.createRelation', (params) => {
   const { projectId, relation } = ProjectCreateRelationParamsSchema.parse(params)
@@ -586,7 +593,8 @@ registerHandler('project.createRelation', (params) => {
 })
 registerHandler('project.deleteRelation', (params) => {
   const { projectId, relationId } = ProjectDeleteRelationParamsSchema.parse(params)
-  return store.deleteRelation(projectId, relationId)
+  const { result, change } = recordChange(store, () => store.deleteRelation(projectId, relationId))
+  return { project: result, change }
 })
 registerHandler('project.updateRelation', (params) => {
   const { projectId, relationId, relation } = ProjectUpdateRelationParamsSchema.parse(params)
@@ -598,7 +606,8 @@ registerHandler('project.addPaper', (params) => {
 })
 registerHandler('project.removePaper', (params) => {
   const { projectId, paperId } = ProjectPaperParamsSchema.parse(params)
-  return store.removePaper(projectId, paperId)
+  const { result, change } = recordChange(store, () => store.removePaper(projectId, paperId))
+  return { project: result, change }
 })
 registerHandler('project.moveRelation', (params) => {
   const { projectId, id, index } = ProjectMoveRelationParamsSchema.parse(params)

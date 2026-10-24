@@ -7,7 +7,7 @@ import { useMessages } from '../../messages/useMessages.js'
 import { useNotice, useVaultRevision } from '../../shell/AppShell.js'
 import { EmptyState } from '../EmptyState.js'
 import { LoadingPlaceholder } from '../LoadingPlaceholder.js'
-import { SectionHeading } from '../PageShell.js'
+import { PageError, SectionHeading } from '../PageShell.js'
 import { PaperText } from '../paper/PaperText.js'
 import { Switch } from '../Switch.js'
 import { Tag } from '../Tag.js'
@@ -70,7 +70,7 @@ export function DiscoverySettings() {
       <SectionHeading variant="group">
         {m.settings.discovery.directionsHeading(enabled)}
       </SectionHeading>
-      {error === null ? null : <div className="err">{error}</div>}
+      <PageError error={error} variant="section" />
       <Card flush className="direction-panel">
         {profiles === null && error === null ? <LoadingPlaceholder shape="rows" count={2} /> : null}
         {profiles?.length === 0 ? <EmptyState variant="section">{m.settings.discovery.noDirections}</EmptyState> : null}

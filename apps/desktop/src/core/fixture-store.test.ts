@@ -233,6 +233,17 @@ describe('fixture store', () => {
     expect(store.getProject('draft').attachments).toContainEqual(attachment)
   })
 
+  it('删掉的附件从垃圾桶恢复、或撤销这次删除时,回到它原来的位置', () => {
+    const before = store.getProject('draft').attachments
+    expect(before.length).toBeGreaterThan(1)
+    store.deleteAttachment('draft', before[0]!.id)
+    store.restoreTrash(store.listTrash()[0]!.id)
+    expect(store.getProject('draft').attachments).toEqual(before)
+    store.deleteAttachment('draft', before[0]!.id)
+    store.undoChange(store.listChanges()[0]!.id)
+    expect(store.getProject('draft').attachments).toEqual(before)
+  })
+
   it('删掉的论文重新导入后占了原来的 id，从垃圾桶恢复被拒，新导入的那篇不动，垃圾桶里那一条还在', () => {
     const bytes = Uint8Array.from(Buffer.from('%PDF-1.7\n%%EOF'))
     const deleted = store.importPaper('A Useful Paper.pdf', bytes).paper
@@ -403,8 +414,8 @@ describe('fixture store', () => {
     store.deleteAttachment('draft', attachment.id)
     store.restoreTrash(store.listTrash()[0]!.id)
     const project = store.getProject('draft')
-    project.attachments.at(-1)!.name = '篡改后的附件'
-    expect(store.getProject('draft').attachments.at(-1)!.name).toBe(attachment.name)
+    project.attachments[0]!.name = '篡改后的附件'
+    expect(store.getProject('draft').attachments[0]!.name).toBe(attachment.name)
   })
 
   it('新建的任务带上了 id 并进入项目', () => {

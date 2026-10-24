@@ -3,6 +3,7 @@ import { act } from 'react'
 import { createRoot } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { DiscoveryProfile } from '../../../shared/contract.js'
+import { CallError } from '../../call-error.js'
 import { MessagesProvider } from '../../messages/useMessages.js'
 import { LANGUAGE_STORAGE_KEY } from '../../shell/language.js'
 
@@ -17,13 +18,14 @@ const api = vi.hoisted(() => ({
     ],
   }] as DiscoveryProfile[],
   setIntent: vi.fn(async () => {}),
+  fetch: vi.fn(),
 }))
 
 vi.mock('../../ipc.js', () => ({
   discovery: {
     profiles: async () => structuredClone(api.profiles),
     setIntent: api.setIntent,
-    fetch: vi.fn(),
+    fetch: api.fetch,
   },
 }))
 vi.mock('../../shell/AppShell.js', () => ({
@@ -74,6 +76,19 @@ describe('DiscoverySettings', () => {
     const on = row('验证策略').querySelector<HTMLButtonElement>('[role="switch"]')!
     await act(async () => { on.click() })
     expect(api.setIntent).toHaveBeenLastCalledWith('spec', 'next', 'disable')
+
+    await act(async () => { root.unmount() })
+  })
+
+  it('刷新一个项目失败时，原因落在共享的错误框里，和别的设置页的错误一样', async () => {
+    api.fetch.mockRejectedValueOnce(new CallError('discovery.fetch', 'newer-version'))
+    const root = createRoot(host)
+    await act(async () => { root.render(<MessagesProvider><DiscoverySettings /></MessagesProvider>) })
+
+    const refresh = host.querySelector<HTMLButtonElement>('.direction-project header button')!
+    await act(async () => { refresh.click() })
+    const alert = host.querySelector('.delivery-directions [role="alert"]')
+    expect([alert?.className, alert?.textContent]).toEqual(['ipcerror ipcerror--section', '需要更新 App'])
 
     await act(async () => { root.unmount() })
   })

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import type { ReactNode } from 'react'
 import type {
   ProjectDetail as Project, ProjectWorkspace, RelationGroup, ResearchGraph as ResearchGraphData, ResearchIdea,
-  ResearchIdeaGraphPlacement, TaskWindow,
+  ProjectFields, ProjectRecordedChange, ResearchIdeaGraphPlacement, TaskWindow,
 } from '../../shared/contract.js'
 import { projectControlState } from '../../shared/project-control.js'
 import { researchPathState } from '../../shared/research-path.js'
@@ -16,6 +16,7 @@ import { errorLabel } from '../lib/failure-label.js'
 import {
   useCrumbTail, useEscapeLayer, useJump, useNotice, useToday, useVaultRevision,
 } from '../shell/AppShell.js'
+import { ActionButton } from '../components/ActionButton.js'
 import { AddAction } from '../components/AddAction.js'
 import { DraftForm, DraftLine } from '../components/DraftForm.js'
 import { MenuItem } from '../components/ActionMenu.js'
@@ -331,6 +332,7 @@ export function ProjectDetail({
   const [sshHost, setSshHost] = useState('')
   const [sshPath, setSshPath] = useState('')
   const [sshPort, setSshPort] = useState('')
+  const [binding, setBinding] = useState<'local' | 'ssh' | null>(null)
   const planList = useRef<HTMLDivElement>(null)
   const planAdd = useRef<HTMLButtonElement>(null)
   const ganttAdd = useRef<HTMLButtonElement>(null)
@@ -507,6 +509,26 @@ export function ProjectDetail({
     void writeProject(op, note)
   }
 
+  /**
+   * Finishes a removal the change log records as writeProject finishes a write, and its notice also
+   * offers Undo of the change it recorded.
+   */
+  const writeRemoval = (op: Promise<ProjectRecordedChange>, note: ReactNode): Promise<boolean> =>
+    write(op.then((removed) => {
+      setProject(removed.project)
+      return removed
+    }), { note, action: undo.change })
+
+  /** A removal not made from a placeholder: first discards any open editor, as applyWrite does. */
+  const applyRemoval = (op: Promise<ProjectRecordedChange>, note: ReactNode) => {
+    discardOpenEdits()
+    void writeRemoval(op, note)
+  }
+
+  /** Writes `patch` to this project through project.update and answers the project after the write. */
+  const updateProject = (patch: Partial<ProjectFields>): Promise<Project> =>
+    projectApi.update(projectId, patch).then(({ project: updated }) => updated)
+
   /** Persists a drag-reordering of the task list, shared by the plan's task rows and the Gantt's labels. */
   const reorderTasks = (order: string[]) => { void writeProject(projectApi.reorderTasks(projectId, order)) }
 
@@ -516,10 +538,12 @@ export function ProjectDetail({
   }
 
   const connectLocalWorkspace = async () => {
+    setBinding('local')
     const connected = await writeProject(
       projectApi.bindWorkspace(projectId, { kind: 'local', root: localPath.trim() }),
       m.project.workspace.connected,
     )
+    setBinding(null)
     if (connected) setWorkspaceOpen(false)
   }
 
@@ -536,10 +560,12 @@ export function ProjectDetail({
 
   const connectSshWorkspace = async () => {
     const port = sshPort.trim() === '' ? undefined : Number(sshPort)
+    setBinding('ssh')
     const connected = await writeProject(projectApi.bindWorkspace(projectId, {
       kind: 'ssh', host: sshHost.trim(), path: sshPath.trim(),
       ...(port === undefined ? {} : { port }),
     }), m.project.workspace.sshConnected)
+    setBinding(null)
     if (connected) setWorkspaceOpen(false)
   }
 
@@ -726,8 +752,18 @@ export function ProjectDetail({
           <>
             <button type="button" className="btn" onClick={() => setWorkspaceOpen(false)}>{m.common.cancel}</button>
             {workspaceMode === 'local'
-              ? <button type="submit" form="workspaceLocal" className="workspace-local btn pri">{m.project.workspace.add}</button>
-              : <button type="submit" form="workspaceSsh" className="btn pri">{m.project.workspace.connect}</button>}
+              ? (
+                <ActionButton
+                  type="submit" form="workspaceLocal" className="workspace-local btn pri" disabled={binding !== null}
+                  busy={binding === 'local'} busyLabel={m.project.workspace.adding}
+                >{m.project.workspace.add}</ActionButton>
+              )
+              : (
+                <ActionButton
+                  type="submit" form="workspaceSsh" className="btn pri" disabled={binding !== null}
+                  busy={binding === 'ssh'} busyLabel={m.project.workspace.connecting}
+                >{m.project.workspace.connect}</ActionButton>
+              )}
           </>
         )}
       >
@@ -810,7 +846,7 @@ export function ProjectDetail({
           onUpdateMilestone={(milestoneId, patch) => writeProject(
             projectApi.updateMilestone(projectId, milestoneId, patch), m.project.plan.milestoneUpdated,
           )}
-          onDeleteMilestone={(milestoneId) => applyWrite(
+          onDeleteMilestone={(milestoneId) => applyRemoval(
             projectApi.deleteMilestone(projectId, milestoneId), m.project.plan.milestoneDeleted,
           )}
           newActionRef={ganttAdd}
@@ -853,7 +889,7 @@ export function ProjectDetail({
               onUpdateTask={(taskId, patch) => writeProject(
                 projectApi.updateTask(projectId, taskId, patch), m.project.plan.taskUpdated,
               )}
-              onDeleteTask={(taskId) => applyWrite(
+              onDeleteTask={(taskId) => applyRemoval(
                 projectApi.deleteTask(projectId, taskId), m.project.plan.taskDeleted,
               )}
               onReorderTasks={reorderTasks}
@@ -861,7 +897,7 @@ export function ProjectDetail({
               onUpdateMilestone={(milestoneId, patch) => writeProject(
                 projectApi.updateMilestone(projectId, milestoneId, patch), m.project.plan.milestoneUpdated,
               )}
-              onDeleteMilestone={(milestoneId) => applyWrite(
+              onDeleteMilestone={(milestoneId) => applyRemoval(
                 projectApi.deleteMilestone(projectId, milestoneId), m.project.plan.milestoneDeleted,
               )}
             />
@@ -952,7 +988,7 @@ export function ProjectDetail({
 
             <ProjectMemo
               text={project.memo} editing={memoEditing} onEditing={setMemoEditing} onOpen={openWikiPage}
-              onSave={(memo) => applyWrite(projectApi.update(projectId, { memo }), m.project.remarkSaved)}
+              onSave={(memo) => applyWrite(updateProject({ memo }), m.project.remarkSaved)}
             />
           </div>
 
@@ -1037,7 +1073,7 @@ export function ProjectDetail({
                               const next = name.trim()
                               if (next === '') { notice.refusal(m.project.identity.nameRequired); return false }
                               return writeProject(
-                                projectApi.update(projectId, { name: next }), m.project.identity.nameUpdated,
+                                updateProject({ name: next }), m.project.identity.nameUpdated,
                               )
                             }}
                           />
@@ -1046,7 +1082,7 @@ export function ProjectDetail({
                           <ChoicePicker
                             value={project.status} options={PROJECT_STATUSES}
                             onPick={(status) => applyWrite(
-                              projectApi.update(projectId, { status }), m.project.identity.statusUpdated,
+                              updateProject({ status }), m.project.identity.statusUpdated,
                             )}
                           />
                         ),
@@ -1054,14 +1090,15 @@ export function ProjectDetail({
                           <PriorityPicker
                             value={project.priority} className="pv metadata-editable"
                             onPick={(priority) => applyWrite(
-                              projectApi.update(projectId, { priority }), m.project.identity.priorityUpdated,
+                              updateProject({ priority }), m.project.identity.priorityUpdated,
                             )}
                           ><ProjectPriorityTag priority={project.priority} /></PriorityPicker>
                         ),
                         topic: (
                           <ProjectAreasField
                             projectId={projectId} areas={projectAreas(project)} onError={reportError}
-                            onSave={(topics) => writeProject(
+                            onSave={(topics) => writeProject(updateProject({ topics }), m.project.identity.topicUpdated)}
+                            onRemove={(topics) => writeRemoval(
                               projectApi.update(projectId, { topics }), m.project.identity.topicUpdated,
                             )}
                           />
@@ -1079,7 +1116,7 @@ export function ProjectDetail({
                         // this field closes is left to InlineMetadataField, which follows the write's result
                         discardOpenEdits()
                         return writeProject(
-                          projectApi.update(projectId, { focus: next }), m.project.identity.focusUpdated(label),
+                          updateProject({ focus: next }), m.project.identity.focusUpdated(label),
                         )
                       }}
                     />
@@ -1092,7 +1129,7 @@ export function ProjectDetail({
                       onSave={(value) => {
                         const next = value.trim()
                         return writeProject(
-                          projectApi.update(projectId, { block: next === '' ? null : next }),
+                          updateProject({ block: next === '' ? null : next }),
                           next === '' ? m.project.control.blockerCleared : m.project.control.blockerUpdated,
                         )
                       }}
@@ -1105,7 +1142,7 @@ export function ProjectDetail({
                           notice.refusal(m.project.identity.startAfterDue)
                           return
                         }
-                        applyWrite(projectApi.update(projectId, { start }), m.project.identity.dateUpdated)
+                        applyWrite(updateProject({ start }), m.project.identity.dateUpdated)
                       }}
                     />
                     <div className="pk">{m.project.identity.dueLabel}</div>
@@ -1116,7 +1153,7 @@ export function ProjectDetail({
                           notice.refusal(m.project.identity.dueBeforeStart)
                           return
                         }
-                        applyWrite(projectApi.update(projectId, { due }), m.project.identity.dateUpdated)
+                        applyWrite(updateProject({ due }), m.project.identity.dateUpdated)
                       }}
                     />
                     <div className="pk">{m.project.sections.papers}</div>
@@ -1175,7 +1212,7 @@ export function ProjectDetail({
                       .map((id) => ({ id, title: project.paperTitles[id]! }))}
                     onOpenPage={openWikiPage}
                     onOpenPaper={(paperId) => jumpTo('reader', paperId)}
-                    onRemovePaper={(paperId, title) => applyWrite(
+                    onRemovePaper={(paperId, title) => applyRemoval(
                       projectApi.removePaper(projectId, paperId),
                       <TitleNote message={m.project.links.paperRemoved} title={plainTitle(title)} />,
                     )}
@@ -1254,7 +1291,7 @@ export function ProjectDetail({
                           ),
                       }}
                     onEdit={setRelEditing}
-                    onRemove={(relationId, text) => applyWrite(
+                    onRemove={(relationId, text) => applyRemoval(
                       projectApi.deleteRelation(projectId, relationId),
                       <TitleNote message={m.project.links.removed} title={text} />,
                     )}
@@ -1265,13 +1302,9 @@ export function ProjectDetail({
                     onReveal={(path) => void files.reveal(path).then((found) => {
                       if (!found) notice.refusal(m.project.attachments.missing)
                     })}
-                    onRemove={(attachmentId) => {
-                      discardOpenEdits()
-                      void write(projectApi.deleteAttachment(projectId, attachmentId).then((deleted) => {
-                        setProject(deleted.project)
-                        return deleted
-                      }), { note: m.common.trashed, action: undo.change })
-                    }}
+                    onRemove={(attachmentId) => applyRemoval(
+                      projectApi.deleteAttachment(projectId, attachmentId), m.common.trashed,
+                    )}
                   />
                 </>
               )

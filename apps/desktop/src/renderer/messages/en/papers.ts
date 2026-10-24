@@ -1,3 +1,4 @@
+import { formatNumber } from '../../lib/number.js'
 import { pluralEn } from '../../lib/plural.js'
 import { papers as zh } from '../zh/papers.js'
 
@@ -177,7 +178,7 @@ export const papers = {
   card: {
     abstractLabel: 'Abstract',
     recommendationLabel: 'Why recommended',
-    citations: (n: number) => `${n} ${pluralEn(n, { one: 'citation', other: 'citations' })}`,
+    citations: (n: number) => `${formatNumber('en', n)} ${pluralEn(n, { one: 'citation', other: 'citations' })}`,
     expandAbstract: 'Show full abstract',
     collapseAbstract: 'Show less',
   },

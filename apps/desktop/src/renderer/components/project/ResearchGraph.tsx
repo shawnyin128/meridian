@@ -8,6 +8,7 @@ import type {
   ResearchIdea,
   Task,
 } from '../../../shared/contract.js'
+import { useWheelZoom } from '../../hooks/useWheelZoom.js'
 import { useMessages } from '../../messages/useMessages.js'
 import { activeRoutes } from '../../../shared/research-path.js'
 import { recordKind, recordOrigin, sortRecordsNewestFirst } from '../../../shared/project-signals.js'
@@ -261,24 +262,10 @@ export function ResearchGraph({ graph, selected, ideaNodeIds = [], onSelect }: {
       : bottom > GRAPH_VIEW_HEIGHT - margin ? GRAPH_VIEW_HEIGHT - margin - bottom : 0
     return dx === 0 && dy === 0 ? current : { ...current, x: current.x + dx, y: current.y + dy }
   })
-  const wheelZoom = useRef<(event: WheelEvent) => void>(() => {})
-  wheelZoom.current = (event) => {
-    event.preventDefault()
-    const rect = (event.currentTarget as HTMLElement).getBoundingClientRect()
-    zoomAt(
-      view.zoom * Math.exp(-event.deltaY * .0015),
-      event.clientX - rect.left,
-      event.clientY - rect.top,
-    )
-  }
-  // React registers wheel listeners as passive, where preventDefault is ignored and the page scrolls too.
-  useEffect(() => {
-    const element = viewport.current
-    if (element === null) return
-    const onWheel = (event: WheelEvent) => wheelZoom.current(event)
-    element.addEventListener('wheel', onWheel, { passive: false })
-    return () => element.removeEventListener('wheel', onWheel)
-  }, [viewport])
+  useWheelZoom(viewport, (factor, point) => {
+    const rect = viewport.current!.getBoundingClientRect()
+    zoomAt(view.zoom * factor, point.x - rect.left, point.y - rect.top)
+  })
   const startPan = (event: ReactPointerEvent<HTMLDivElement>) => {
     if ((event.target as Element).closest('.rgn,.graph-view-controls')) return
     panStart.current = {

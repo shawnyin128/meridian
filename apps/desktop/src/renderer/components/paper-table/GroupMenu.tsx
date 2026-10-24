@@ -35,7 +35,7 @@ export function GroupMenu({ columns, onChange }: {
   return (
     <ActionMenu
       trigger={(
-        <IconButton label={m.papers.groupMenu.chooseFields} size="nested" className="colbtn grpgear"><IconGear /></IconButton>
+        <IconButton label={m.papers.groupMenu.chooseFields} size="nested" className="grpgear"><IconGear /></IconButton>
       )}
       align="start"
     >

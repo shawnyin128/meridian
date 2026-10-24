@@ -359,6 +359,11 @@ const NOTE_FIELDS: readonly Field<PaperNote>[] = [['页码', (n) => String(n.pag
 const HIGHLIGHT_FIELDS: readonly Field<PaperHighlight>[] = [
   ['页码', (h) => String(h.page)], ['高亮', (h) => h.quote], ['批注', (h) => h.note],
 ]
+const HIGHLIGHT_COLOUR_LABEL: Record<PaperHighlight['color'], string> = { yellow: '黄色', green: '绿色', blue: '蓝色', pink: '粉色' }
+/** The fields a change to a highlight lists: its colour too, which a highlight added or deleted does not list. */
+const CHANGED_HIGHLIGHT_FIELDS: readonly Field<PaperHighlight>[] = [
+  ...HIGHLIGHT_FIELDS, ['颜色', (h) => HIGHLIGHT_COLOUR_LABEL[h.color]],
+]
 
 const TASKS: Items<Task> = {
   label: '任务', id: (t) => t.id, name: (t) => t.title,
@@ -530,7 +535,7 @@ function changeLines(
       const [a, b] = sides('highlight')
       return a === undefined || b === undefined
         ? sideLines(sign, HIGHLIGHT_FIELDS, one.highlight, date)
-        : fieldLines(HIGHLIGHT_FIELDS, a.highlight, b.highlight, date)
+        : fieldLines(CHANGED_HIGHLIGHT_FIELDS, a.highlight, b.highlight, date)
     }
     case 'remark': {
       const [a, b] = sides('remark')

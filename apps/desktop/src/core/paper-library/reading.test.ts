@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest'
+import type { PaperHighlightRect } from '../../shared/contract.js'
+import { CallError } from '../call-error.js'
 import { applyReadingMutation, emptyPaperReading, readingNoteCount } from './reading.js'
 
 describe('paper reading', () => {
@@ -71,5 +73,28 @@ describe('paper reading', () => {
     expect(() => applyReadingMutation(empty, {
       kind: 'note.delete', id: 'missing',
     }, nextId, '2026-09-14')).toThrow('笔记不存在：missing')
+  })
+
+  it('这一页上已有高亮盖住同一段文字时拒绝再划一段,什么也不写;相邻的词、相邻的行和别的页照常', () => {
+    const line = (x: number, y = 0.25): PaperHighlightRect => ({ x, y, width: 0.2, height: 0.0175 })
+    const add = (page: number, rects: PaperHighlightRect[]) => ({ kind: 'highlight.add' as const, page, quote: 'text', color: 'yellow' as const, rects })
+    const held = applyReadingMutation(emptyPaperReading('paper-3'), add(1, [line(0.1)]), nextId, '2026-10-24')
+
+    let refusal: unknown = null
+    try {
+      applyReadingMutation(held, add(1, [line(0.4), line(0.2, 0.25 + 0.0155), line(0.25)]), nextId, '2026-10-24')
+    } catch (error) {
+      refusal = error
+    }
+    expect(refusal).toBeInstanceOf(CallError)
+    expect((refusal as CallError).reason).toBe('refused')
+    expect(held.highlights).toHaveLength(1)
+
+    const beside = applyReadingMutation(held, add(1, [line(0.3)]), nextId, '2026-10-24')
+    const below = applyReadingMutation(beside, add(1, [line(0.1, 0.25 + 0.0155)]), nextId, '2026-10-24')
+    const elsewhere = applyReadingMutation(below, add(2, [line(0.1)]), nextId, '2026-10-24')
+    expect(elsewhere.highlights.map(({ page, rects }) => [page, rects[0]!.x, rects[0]!.y])).toEqual([
+      [1, 0.1, 0.25], [1, 0.3, 0.25], [1, 0.1, 0.25 + 0.0155], [2, 0.1, 0.25],
+    ])
   })
 })
