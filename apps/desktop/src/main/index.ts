@@ -3,7 +3,7 @@ import {
   utilityProcess,
 } from 'electron'
 import { execFile, spawn } from 'node:child_process'
-import { existsSync, readFileSync } from 'node:fs'
+import { existsSync, readFileSync, writeSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { fileURLToPath } from 'node:url'
 import { dirname, join, resolve } from 'node:path'
@@ -83,6 +83,15 @@ const isolated = devUrl === undefined && process.env['MERIDIAN_SHOW_WINDOW'] ===
 // Automated launches run while the user works on the same Mac: an accessory app has no Dock icon and is
 // never made the active app.
 if ((hidden || isolated) && process.platform === 'darwin') app.setActivationPolicy('accessory')
+// An automated launch on the App's own profile would read and overwrite the user's settings and drafts,
+// so it stops here, before Chromium has written anything there. The reason is written synchronously: the
+// process ends before an asynchronous write to a pipe lands.
+const ownProfile = join(app.getPath('appData'), app.getName())
+if ((hidden || isolated) && app.getPath('userData') === ownProfile) {
+  writeSync(2, `[main] Refusing to start: MERIDIAN_SHOW_WINDOW=${process.env['MERIDIAN_SHOW_WINDOW']} is an automated `
+    + `launch, which needs its own --user-data-dir instead of the App's own profile at ${ownProfile}\n`)
+  app.exit(1)
+}
 
 // Installed builds run as a single instance; later launches bring the existing window forward.
 const primary = !app.isPackaged || app.requestSingleInstanceLock()

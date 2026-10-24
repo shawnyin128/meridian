@@ -1,16 +1,23 @@
 import { _electron as electron } from '@playwright/test'
 import type { ElectronApplication, Page } from '@playwright/test'
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
+import { spawnSync } from 'node:child_process'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
+import { createRequire } from 'node:module'
 import { tmpdir } from 'node:os'
-import { join, resolve } from 'node:path'
+import { join, relative, resolve } from 'node:path'
 import { prepareSelectedLibrary } from '../apps/desktop/src/core/workspace-layout.js'
 import { expect, LAUNCH_SWITCHES, openSettings, test } from './app.js'
 
 const APP_DIR = resolve(import.meta.dirname, '../apps/desktop')
 const FIXTURE_VAULT = resolve(APP_DIR, 'src/core/fixtures/vault')
+/** The Electron executable Playwright launches by default. */
+const ELECTRON = createRequire(import.meta.url)('electron') as string
 
-/** Launch arguments for a case that reads the UI's Chinese copy: the app must not follow the host's language. */
-const ZH_ARGS = [APP_DIR, '--lang=zh-CN', ...LAUNCH_SWITCHES]
+/**
+ * Launch arguments for a case that reads the UI's Chinese copy, on user-data folder `profile`: the app
+ * must not follow the host's language.
+ */
+const zhArgs = (profile: string) => [APP_DIR, '--lang=zh-CN', `--user-data-dir=${profile}`, ...LAUNCH_SWITCHES]
 
 /** Whether the app's first window is shown right now. */
 const visible = (app: ElectronApplication) =>
@@ -40,6 +47,43 @@ async function storedSwatch(win: Page): Promise<number[]> {
   }, png)
 }
 
+test('自动化启动用这一例自己的临时 user-data 目录,不是应用自己的那份', async ({ app }) => {
+  const paths = await app.evaluate(({ app: electronApp }) => ({
+    userData: electronApp.getPath('userData'), appData: electronApp.getPath('appData'), name: electronApp.getName(),
+  }))
+  expect(paths.userData).not.toBe(join(paths.appData, paths.name))
+  expect(realpathSync(paths.userData).startsWith(realpathSync(tmpdir()))).toBe(true)
+})
+
+for (const mode of ['0', 'isolated']) {
+  test(`MERIDIAN_SHOW_WINDOW=${mode} 却没给自己的 user-data 目录时,应用说出原因就退出,默认目录里什么也没写`, async ({ configHome }) => {
+    const home = mkdtempSync(join(tmpdir(), 'meridian-e2e-default-profile-'))
+    // The App's code under a package of its own name: its default profile lies apart from the App's on
+    // every system, and on macOS CFFIXED_USER_HOME moves the Application Support folder holding it here.
+    const wrapper = join(home, 'package')
+    mkdirSync(wrapper)
+    writeFileSync(join(wrapper, 'package.json'), JSON.stringify({
+      name: `meridian-e2e-default-profile-${process.pid}`, main: relative(wrapper, join(APP_DIR, 'out', 'main', 'index.js')),
+    }))
+    const run = spawnSync(ELECTRON, [wrapper, '--lang=zh-CN', ...LAUNCH_SWITCHES], {
+      encoding: 'utf8', timeout: 20_000,
+      env: {
+        ...cleanEnv(), MERIDIAN_SHOW_WINDOW: mode, MERIDIAN_LIBRARY_ROOT: FIXTURE_VAULT, MERIDIAN_CONFIG_HOME: configHome,
+        CFFIXED_USER_HOME: home,
+      },
+    })
+    const refused = run.stderr.match(/instead of the App's own profile at (.+)$/m)?.[1]
+    try {
+      expect(run.status).toBe(1)
+      expect(refused).toBeDefined()
+      expect(readdirSync(refused!)).toEqual([])
+    } finally {
+      rmSync(home, { recursive: true, force: true })
+      if (refused?.includes(`meridian-e2e-default-profile-${process.pid}`)) rmSync(refused, { recursive: true, force: true })
+    }
+  })
+}
+
 test('打包后的应用启动出一个窗口', async ({ win }) => {
   const mark = win.locator('.titlebar .appbtn .brandmark')
   await expect(mark).toHaveCount(1)
@@ -54,12 +98,12 @@ test('自动化传 MERIDIAN_SHOW_WINDOW=0 时窗口不上屏,Dock 里也没有�
   expect(await storedSwatch(win)).toEqual([53, 104, 255])
 })
 
-test('不传 MERIDIAN_SHOW_WINDOW 时窗口上屏', async ({ configHome }) => {
+test('不传 MERIDIAN_SHOW_WINDOW 时窗口上屏', async ({ configHome, profile }) => {
   const env = Object.fromEntries(Object.entries(process.env).filter(
     (e): e is [string, string] => e[1] !== undefined && !e[0].startsWith('MERIDIAN_')))
   // Point at the fixture vault: without it, the app would open the user's real vault from their configuration.
   const app = await electron.launch({
-    args: [APP_DIR], env: { ...env, MERIDIAN_LIBRARY_ROOT: FIXTURE_VAULT, MERIDIAN_CONFIG_HOME: configHome },
+    args: [APP_DIR, `--user-data-dir=${profile}`], env: { ...env, MERIDIAN_LIBRARY_ROOT: FIXTURE_VAULT, MERIDIAN_CONFIG_HOME: configHome },
   })
   try {
     const win = await app.firstWindow()
@@ -117,10 +161,10 @@ test.describe('用例要窗口出画面时', () => {
 const cleanEnv = () => Object.fromEntries(Object.entries(process.env).filter(
   (e): e is [string, string] => e[1] !== undefined && !e[0].startsWith('MERIDIAN_')))
 
-test('指定的库里没有论文页目录时,内容区报出原因的标签而不带路径,设置仍打得开', async ({ configHome }) => {
+test('指定的库里没有论文页目录时,内容区报出原因的标签而不带路径,设置仍打得开', async ({ configHome, profile }) => {
   const bare = mkdtempSync(join(tmpdir(), 'meridian-e2e-bare-'))
   const app = await electron.launch({
-    args: ZH_ARGS,
+    args: zhArgs(profile),
     env: { ...cleanEnv(), MERIDIAN_VAULT_ROOT: bare, MERIDIAN_CONFIG_HOME: configHome, MERIDIAN_SHOW_WINDOW: '0' },
   })
   try {
@@ -138,11 +182,11 @@ test('指定的库里没有论文页目录时,内容区报出原因的标签而�
   }
 })
 
-test('指定的库没有 Wiki 结构文件时,内容区报出原因的标签而不带路径', async ({ configHome }) => {
+test('指定的库没有 Wiki 结构文件时,内容区报出原因的标签而不带路径', async ({ configHome, profile }) => {
   const legacy = mkdtempSync(join(tmpdir(), 'meridian-e2e-noschema-'))
   mkdirSync(join(legacy, 'wiki', 'papers'), { recursive: true })
   const app = await electron.launch({
-    args: ZH_ARGS,
+    args: zhArgs(profile),
     env: { ...cleanEnv(), MERIDIAN_VAULT_ROOT: legacy, MERIDIAN_CONFIG_HOME: configHome, MERIDIAN_SHOW_WINDOW: '0' },
   })
   try {
@@ -154,12 +198,12 @@ test('指定的库没有 Wiki 结构文件时,内容区报出原因的标签而�
   }
 })
 
-test('用户配置登记的库打不开时报错,不悄悄换成应用自己的库', async () => {
+test('用户配置登记的库打不开时报错,不悄悄换成应用自己的库', async ({ profile }) => {
   const home = mkdtempSync(join(tmpdir(), 'meridian-e2e-home-'))
   const missing = join(home, 'missing-library')
   writeFileSync(join(home, 'paper-wiki-workspaces.json'), JSON.stringify({ active_library_root: missing }), 'utf8')
   const app = await electron.launch({
-    args: ZH_ARGS, env: { ...cleanEnv(), MERIDIAN_CONFIG_HOME: home, MERIDIAN_SHOW_WINDOW: '0' },
+    args: zhArgs(profile), env: { ...cleanEnv(), MERIDIAN_CONFIG_HOME: home, MERIDIAN_SHOW_WINDOW: '0' },
   })
   try {
     const win = await app.firstWindow()
@@ -176,14 +220,14 @@ test('用户配置登记的库打不开时报错,不悄悄换成应用自己的�
 const KEEP_PAGE = '---\ntype: "paper"\ntitle: "Keep"\nstatus: "draft"\ncreated: "2026-09-15"\n'
   + 'updated: "2026-09-15"\nsource_id: "keep"\nmemberships: []\n---\n# Keep\n'
 
-test('设置可重置、切换和删除论文库备份', async ({ configHome }) => {
+test('设置可重置、切换和删除论文库备份', async ({ configHome, profile }) => {
   const parent = mkdtempSync(join(tmpdir(), 'meridian-e2e-reset-'))
   const root = join(parent, 'library')
   prepareSelectedLibrary(root, new Date('2026-09-15T12:00:00Z'))
   writeFileSync(join(root, 'sources', 'papers', 'keep.pdf'), 'source bytes', 'utf8')
   writeFileSync(join(root, 'wiki', 'papers', 'keep.md'), KEEP_PAGE, 'utf8')
   const app = await electron.launch({
-    args: ZH_ARGS,
+    args: zhArgs(profile),
     env: {
       ...cleanEnv(), MERIDIAN_VAULT_ROOT: root, MERIDIAN_CONFIG_HOME: configHome, MERIDIAN_CANNED_NET: '1',
       MERIDIAN_SHOW_WINDOW: '0',

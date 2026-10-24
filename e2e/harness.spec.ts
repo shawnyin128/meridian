@@ -34,7 +34,7 @@ realHarnessTest('真实 Electron/Core/Python Harness 零费用链路停在审核
 
   const app = await electron.launch({
     // The case asserts Chinese copy, so the app must not follow the host's language.
-    args: [APP_DIR, '--lang=zh-CN', ...LAUNCH_SWITCHES],
+    args: [APP_DIR, '--lang=zh-CN', `--user-data-dir=${join(root, 'user-data')}`, ...LAUNCH_SWITCHES],
     env: {
       ...process.env,
       MERIDIAN_VAULT_ROOT: vault,

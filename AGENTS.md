@@ -205,8 +205,11 @@ App, the Python package, and the agent plugins. Data formats are compatible in b
   Keys are entered in Settings and stored encrypted by the OS through the
   main process.
 - Never log, print, commit, or put in a URL any key, token, or personal data.
-- Tests never touch the user's real vault or `~/.meridian`. End-to-end cases
-  run against fixtures with an isolated config home.
+- Tests never touch the user's real vault, `~/.meridian` or the App's
+  user-data folder (`~/Library/Application Support/@meridian/desktop` on
+  macOS, `%APPDATA%\@meridian\desktop` on Windows), where the App keeps the
+  user's settings and drafts. End-to-end cases run against fixtures with an
+  isolated config home and their own `--user-data-dir`.
 - Do not add network calls, telemetry, or new external services without the
   human's approval.
 
@@ -251,9 +254,11 @@ itself, and the CLI tests need PyYAML.
   owner's screen: the owner works on the same machine while agents build, seed,
   screenshot and run end-to-end cases. Every automated launch sets
   `MERIDIAN_SHOW_WINDOW`, `0` for a hidden window and `isolated` for one that
-  paints, and passes `--force-color-profile=srgb` so screenshots store the
-  page's own colours, as the e2e fixture (`LAUNCH_SWITCHES` in `e2e/app.ts`)
-  and `scripts/test-library/app.mjs` already do. On macOS both run the App
+  paints, passes `--force-color-profile=srgb` so screenshots store the page's
+  own colours, and passes its own `--user-data-dir`, a temporary folder removed
+  afterwards, as the e2e fixture (`LAUNCH_SWITCHES` and `profile` in
+  `e2e/app.ts`) and `scripts/test-library/app.mjs` already do. The App refuses
+  to start an automated launch on its own user-data folder. On macOS both run the App
   without a Dock icon and never make it the active app; an isolated window is
   unfocusable and sits right of every display. Nothing automated calls
   `show()`, `focus()`, `setFocusable(true)` or `app.focus()`; a case about the
@@ -438,3 +443,10 @@ Each of these happened in this repository. The rule after each one is binding.
   the Dock. Launch only in the modes under Tests and Gates, and before trusting
   a new kind of launch, record the frontmost app, the Dock and the windows on
   the displays while it runs.
+- **End-to-end runs used the owner's real App profile.** No launch passed
+  `--user-data-dir`, so every case ran in the App's own user-data folder: the
+  fixture cleared the owner's language and drafts before each case, specs wrote
+  their themes into it, and `english.spec.ts` left the next spec in English.
+  Every automated launch passes its own `--user-data-dir`. Prove a change to how
+  the App is launched with the profile's modification times, never by reading
+  or writing it.
