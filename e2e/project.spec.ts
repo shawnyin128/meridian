@@ -2,8 +2,8 @@ import { resolve } from 'node:path'
 import type { Locator, Page } from '@playwright/test'
 import { ACTIVE_PROJECT, PROJECT_STATUSES, SHELVED_PROJECT } from '../apps/desktop/src/shared/vocabulary.js'
 import {
-  dshort, expect, expectWholeInRail, fixtureDay, gotoProject, overlaps, railEdges, readDraft, test, textBox,
-  timelinePeriod, uniqueHeights, vaultToday, type MeridianWindow,
+  appSwitcher, dshort, expect, expectWholeInRail, fixtureDay, gotoProject, overlaps, panelHead, railEdges, readDraft, test,
+  textBox, timelinePeriod, uniqueHeights, vaultToday, type MeridianWindow,
 } from './app.js'
 
 const call = <T>(win: Page, method: string, params: unknown) => win.evaluate(
@@ -301,7 +301,7 @@ test('任务行开头的日期、时段、优先级和状态按需要注意的�
 })
 
 test.describe(() => {
-  // The record opens through a height transition, which an offscreen window, without frames, does not run.
+  // The record opens through a height transition, which runs over frames; see `showWindow` in app.ts.
   test.use({ showWindow: true })
 
   test('放不下的科研记录停在上面一会儿就向下展开整段,不弹 tooltip,移开就收回', async ({ app, win }) => {
@@ -591,7 +591,7 @@ test('拖完任务条那一下不算点击,单击只定位闪烁,名称格仍可
   await expect(row.locator('.plan-name-input')).toHaveCount(0)
   await expect(win.locator('.plan-time-pop')).toHaveCount(0)
 
-  await row.locator('.plan-rename').click()
+  await rowAction(row, '.plan-rename')
   await row.locator('.plan-name-input').fill(EDITED_TASK_TITLE)
   await row.locator('.plan-name-input').press('Enter')
   await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已更新任务')
@@ -720,6 +720,122 @@ test('新建一个任务再删掉,任务数前后一致', async ({ win }) => {
   await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已删除任务')
   await expect(win.locator('#taskList .ddlrow')).toHaveCount(ACTIVE_TASK_ROWS)
   expect((await readDraft(win)).tasks.some((t) => t.title === NEW_TASK_TITLE)).toBe(false)
+})
+
+/** The parts of the draft project a removal on its page can take away, read from Core, bypassing the UI. */
+const removable = (win: Page) => call<{
+  tasks: unknown[]; milestones: unknown[]; relations: unknown[]; papers: string[]; attachments: unknown[]
+}>(win, 'project.get', { id: 'draft' })
+
+/** Clicks Undo on the notice the last write showed, and waits for the notice saying it was undone. */
+async function undoFromNotice(win: Page): Promise<void> {
+  const undo = win.locator('#notice .btn')
+  await expect(undo).toHaveText('撤销')
+  await undo.click()
+  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已撤销')
+}
+
+test('删掉一条任务,提示里的撤销把它原样放回计划', async ({ win }) => {
+  await gotoProject(win)
+  const before = (await removable(win)).tasks
+  const row = win.locator('#taskList .ddlrow[data-row="t2"]')
+  await rowAction(row, '.row-delete')
+  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已删除任务')
+  await expect(row).toHaveCount(0)
+
+  await undoFromNotice(win)
+  await expect(row).toHaveCount(1)
+  expect((await removable(win)).tasks).toEqual(before)
+})
+
+test('在计划里删掉一个里程碑,提示里的撤销把它原样放回', async ({ win }) => {
+  await gotoProject(win)
+  await win.locator('.section-heading-actions .segmented-control>button', { hasText: '里程碑' }).click()
+  const before = (await removable(win)).milestones
+  const row = win.locator('#msList .milestone-row[data-row="m2"]')
+  await rowAction(row, '.row-delete')
+  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已删除里程碑')
+  await expect(row).toHaveCount(0)
+
+  await undoFromNotice(win)
+  await expect(row).toHaveCount(1)
+  expect((await removable(win)).milestones).toEqual(before)
+})
+
+test('在时间线上删掉一个里程碑,提示里的撤销把它放回时间线', async ({ win }) => {
+  await gotoProject(win)
+  const before = (await removable(win)).milestones
+  const diamond = await revealMilestone(win, 'draft/m2')
+  await diamond.click()
+  await expect(win.locator('.ctxmenu .rh')).toHaveText('里程碑')
+  await win.locator('.ctxmenu .mi.danger').click()
+  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已删除里程碑')
+  await expect(diamond).toHaveCount(0)
+
+  await undoFromNotice(win)
+  await expect(diamond).toBeVisible()
+  expect((await removable(win)).milestones).toEqual(before)
+})
+
+test('移除一条关联,提示里的撤销把它放回原处', async ({ win }) => {
+  await gotoProject(win)
+  const side = win.locator('.screenslot:not([hidden]) .wkside')
+  const before = (await removable(win)).relations
+  const first = side.locator('.wkrel .tagchip[data-wk]').first()
+  const [page, text] = [(await first.getAttribute('data-wk'))!, await first.innerText()]
+  const chip = side.locator(`.wkrel .tagchip[data-wk="${page}"]`)
+  await rowAction(chip, '.rx')
+  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText(`已移除关联「${text}」`)
+  await expect(chip).toHaveCount(0)
+
+  await undoFromNotice(win)
+  await expect(chip).toHaveCount(1)
+  expect((await removable(win)).relations).toEqual(before)
+})
+
+test('移除一篇关联论文,提示里的撤销把它放回', async ({ win }) => {
+  await gotoProject(win)
+  const side = win.locator('.screenslot:not([hidden]) .wkside')
+  const before = (await removable(win)).papers
+  const paper = (await side.locator('.wkrel [data-paper]').first().getAttribute('data-paper'))!
+  const chip = side.locator(`.wkrel [data-paper="${paper}"]`)
+  await rowAction(chip, '.rx')
+  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText(/^已移除关联「.+」$/)
+  await expect(chip).toHaveCount(0)
+
+  await undoFromNotice(win)
+  await expect(chip).toHaveCount(1)
+  expect((await removable(win)).papers).toEqual(before)
+})
+
+test('删掉一个附件,提示里的撤销把它放回', async ({ win }) => {
+  await gotoProject(win)
+  const rows = win.locator('.screenslot:not([hidden]) .attachment-list .attrow')
+  const before = (await removable(win)).attachments
+  await expect(rows).toHaveCount(before.length)
+  await rowAction(rows.first(), '.ax')
+  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已移入垃圾桶')
+  await expect(rows).toHaveCount(before.length - 1)
+
+  await undoFromNotice(win)
+  await expect(rows).toHaveCount(before.length)
+  expect((await removable(win)).attachments).toEqual(before)
+})
+
+test('移除一个领域,提示里的撤销把它放回', async ({ win }) => {
+  await win.locator('[data-desk="resproj"]').waitFor()
+  await call(win, 'project.update', { id: 'draft', patch: { topics: ['speculative decoding', 'kv cache eviction'] } })
+  await gotoProject(win)
+  const chips = win.locator('.screenslot:not([hidden]) .project-areas .tagchip:not(.tagadd)')
+  await expect(chips).toHaveCount(2)
+  await rowAction(chips.first(), '.rx')
+  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已更新领域')
+  await expect(chips).toHaveText(['kv cache eviction'])
+
+  await undoFromNotice(win)
+  await expect(chips).toHaveText(['speculative decoding', 'kv cache eviction'])
+  const { topics } = await call<{ topics: string[] }>(win, 'project.get', { id: 'draft' })
+  expect(topics).toEqual(['speculative decoding', 'kv cache eviction'])
 })
 
 test('科研图展示多个活跃节点,节点以只读 Markdown、分支结果与 Agent 记录呈现', async ({ win }) => {
@@ -869,6 +985,25 @@ test('节点阅读态保留科研图并扩宽右栏,可直接切换节点', asyn
   await expect(side.locator('.section-heading').first()).toHaveText('属性')
 })
 
+test('任务详情头部的长标题仍是一行,在收起按钮前淡出,收起按钮在头部右上角', async ({ win }) => {
+  const title = '汇总今天的宽度扫描结果并把每个树宽下的接受率和端到端加速比整理成一张对比表交给组会'
+  // The plan's list shows the open tasks; this one is the first of them.
+  const task = (await readDraft(win)).tasks.find((held) => held.title === '宽树实验 B≥8')!
+  await call(win, 'project.updateTask', { projectId: 'draft', taskId: task.id, patch: { title } })
+  await gotoProject(win)
+  await win.locator(`#taskList .ddlrow[data-row="${task.id}"] .plan-name`).click()
+  const side = win.locator('.screenslot:not([hidden]) .wkside')
+  await expect(side.locator('.node-document-title')).toHaveText(title)
+  await expect(side.locator('.node-document-title')).toHaveClass(/\bclipped\b/)
+
+  const head = await panelHead(side.locator('.node-document-head'), '.node-document-title', '.section-heading-actions .icbtn')
+  expect(head.actions.map(({ label, width, height }) => [label, width, height])).toEqual([['收起详情', 30, 30]])
+  expect(Math.abs(head.actions[0]!.right - head.content.right)).toBeLessThan(1)
+  expect(Math.round(head.actions[0]!.top - head.content.top)).toBe(0)
+  expect(head.title.lines).toHaveLength(1)
+  expect(head.title.right).toBeLessThanOrEqual(head.actions[0]!.left)
+})
+
 test('在项目详情里再点侧栏的「项目」,回到项目列表;返回键在页头标题左边', async ({ win }) => {
   await gotoProject(win)
   const shown = win.locator('.screenslot:not([hidden])')
@@ -905,6 +1040,40 @@ test('科研记录在记录和科研图之间切换,标题留在原处,记录短
   if (!atEnd) expect(await top()).toBe(held)
   expect(await viewHeight()).toBeLessThan(graphHeight)
   expect(await page.locator('.record-view').evaluate((el) => getComputedStyle(el).minHeight)).toBe('0px')
+})
+
+test('标签页组里有一行的标签页和空着的一样高:科研计划与科研记录切换时下面的小标题不动', async ({ win }) => {
+  await win.locator('[data-desk="resproj"]').click()
+  await win.locator('[data-proj="moe"]').click()
+  const page = win.locator('.screenslot:not([hidden]) .wkpage')
+  await page.locator('#taskList').waitFor()
+  // moe has one task and no milestone, one record, one conclusion and no research graph.
+  const groups = [
+    { heading: '科研计划', next: '科研记录', tabs: { 任务: 'row', 里程碑: 'empty' } },
+    { heading: '科研记录', next: '关联想法', tabs: { 记录: 'row', 实验结论: 'row', 科研图: 'empty' } },
+  ] as const
+  const rowHeight = await win.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--row-list-h').trim())
+  for (const group of groups) {
+    const heading = page.locator('.section-heading', { hasText: group.heading })
+    const shown: Record<string, { content: string; panel: number; next: number }> = {}
+    for (const tab of Object.keys(group.tabs)) {
+      await heading.locator('.segmented-control>button', { hasText: tab }).click()
+      shown[tab] = await heading.evaluate((el, next) => {
+        const panel = el.nextElementSibling!
+        const following = [...document.querySelectorAll('.screenslot:not([hidden]) .wkpage .section-heading')]
+          .find((candidate) => candidate.textContent!.startsWith(next))!
+        const rows = panel.querySelectorAll('.structured-row').length
+        return {
+          content: rows === 1 ? 'row' : rows === 0 && panel.querySelector('.empty-state') !== null ? 'empty' : `${rows} rows`,
+          panel: panel.getBoundingClientRect().height,
+          next: following.getBoundingClientRect().top - el.getBoundingClientRect().top,
+        }
+      }, group.next)
+    }
+    expect(Object.fromEntries(Object.entries(shown).map(([tab, held]) => [tab, held.content])), group.heading).toEqual(group.tabs)
+    expect(Object.values(shown).map((held) => `${held.panel}px`), group.heading).toEqual(Object.keys(group.tabs).map(() => rowHeight))
+    expect(new Set(Object.values(shown).map((held) => held.next)).size, group.heading).toBe(1)
+  }
 })
 
 test('切换科研图节点:右栏高度不随内容变,页面不跟着跳,新节点从顶部读起', async ({ win }) => {
@@ -1252,8 +1421,7 @@ test('关联里加一条:页面和链接的就地输入框都整个露在右栏�
 })
 
 test('属性栏焦点格:焦点移走或点到格外都像回车一样写回,Esc 才放弃', async ({ win }) => {
-  // Three edits, each checked in Core; an offscreen window waits two seconds per actionability
-  // check, so the default 30 s is too short.
+  // Three edits, each checked in Core: many actionability checks for a hidden window; see `showWindow` in app.ts.
   test.slow()
   await gotoProject(win)
   const focusNow = () => call<{ focus: string }>(win, 'project.get', { id: 'draft' }).then((p) => p.focus)
@@ -1341,10 +1509,7 @@ test('就地输入框:关联占位与属性栏焦点格都是共用的原位外�
 })
 
 test.describe('属性栏焦点格:切到别的应用', () => {
-  // The window must be visible and hold system focus, or the main process's blur()/focus() cannot move it.
-  test.use({ showWindow: true })
-
-  test('切回来不重新全选:接着打字接在原字后面,不是把原字替掉(需要系统焦点)', async ({ app, win }) => {
+  test('切回来不重新全选:接着打字接在原字后面,不是把原字替掉', async ({ app, win }) => {
     await gotoProject(win)
     const before = await call<{ focus: string }>(win, 'project.get', { id: 'draft' }).then((p) => p.focus)
     const side = win.locator('.screenslot:not([hidden]) .wkside')
@@ -1354,28 +1519,13 @@ test.describe('属性栏焦点格:切到别的应用', () => {
     await edit.click()
     await pin.fill('切走前打的字')
 
-    // Turn off Playwright's focus emulation: while on, the page always believes it has focus, so the
-    // real window losing or regaining focus never reaches it.
-    const cdp = await win.context().newCDPSession(win)
-    await cdp.send('Emulation.setFocusEmulationEnabled', { enabled: false })
-    await app.evaluate(({ BrowserWindow }) => {
-      const target = BrowserWindow.getAllWindows()[0]!
-      target.setFocusable(true)
-      target.show()
-      target.focus()
-    })
-    await expect.poll(() => win.evaluate(() => document.hasFocus()), {
-      message: '窗口没有真的拿到系统焦点,后面的 blur()/focus() 无从谈起',
-    }).toBe(true)
-
     // Switch to another app and back: .metadata-input stayed mounted, so Blink gives focus back to it.
-    await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]!.blur())
-    await expect.poll(() => win.evaluate(() => document.hasFocus())).toBe(false)
-    await app.evaluate(({ BrowserWindow }) => {
-      const target = BrowserWindow.getAllWindows()[0]!
-      target.show()
-      target.focus()
-    })
+    const switcher = await appSwitcher(app, win)
+    await switcher.away()
+    await expect.poll(() => win.evaluate(() => document.hasFocus()), {
+      message: '页面没有失去焦点,切走无从谈起',
+    }).toBe(false)
+    await switcher.back()
     await expect.poll(() => win.evaluate(() => document.hasFocus())).toBe(true)
 
     await pin.pressSequentially('后')
@@ -1499,7 +1649,7 @@ test('任务四列各自编辑,点击行或任务名只打开任务详情,不改
   await win.keyboard.press('Escape')
   await expect(side.locator('.node-document-title')).toHaveCount(0)
 
-  await row.locator('.plan-rename').click()
+  await rowAction(row, '.plan-rename')
   await expect(row.locator('.plan-name-input')).toHaveCount(1)
   await expect(win.locator('.schedule-form')).toHaveCount(0)
   await win.keyboard.press('Escape')
@@ -1645,7 +1795,7 @@ test('节点面板由 Agent 管理:标题、状态、记录与分支都不可在
 test('节点面板开着时 Esc 先关任务名称格,再按一次才收面板', async ({ win }) => {
   const head = await openNodePanel(win)
   const row = win.locator('#taskList .ddlrow').first()
-  await row.locator('.plan-rename').click()
+  await rowAction(row, '.plan-rename')
   await expect(row.locator('.plan-name-input')).toHaveCount(1)
   await win.keyboard.press('Escape')
   await expect(row.locator('.plan-name-input')).toHaveCount(0)

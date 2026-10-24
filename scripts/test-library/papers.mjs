@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import tls from 'node:tls'
-import { dayFrom, onDay, writeJson } from './app.mjs'
+import { dayFrom, onDay, readJson, writeJson } from './app.mjs'
 import { stubPdf, textLines } from './pdf.mjs'
 
 // Trust the system's certificates as the App does, so a TLS-inspecting proxy does not break the downloads.
@@ -40,6 +40,12 @@ export const PAPERS = [
     fields: {
       title: 'Dynamic Draft Trees: \\emph{Adaptive} Width for Speculative Decoding at~95\\% Acceptance with \\textbf{2--3$\\times$} Speedup',
       shortTitle: 'Dynamic Draft Trees', authors: ['Meridian 测试库'], year: 2026, venue: '测试数据',
+    } },
+  // The research map's one ungrouped paper: it shares no title word, topic, method or project with another paper.
+  { key: 'ddpm', days: -2, claim: 'A diffusion model learns to reverse a fixed noising process step by step.',
+    fields: {
+      title: 'Denoising Diffusion Probabilistic Models', shortTitle: 'DDPM',
+      authors: ['Jonathan Ho', 'Ajay Jain', 'Pieter Abbeel'], year: 2020, venue: 'NeurIPS',
     } },
 ]
 
@@ -189,7 +195,7 @@ export async function seedPapers(seed, call, files) {
     await onDay(seed, paper.days >= -3 ? 0 : -9, () => call('papers.update', { id: seed.papers[paper.key], patch: paper.fields }))
   }
   const eagle = seed.papers.eagle
-  const reading = (id, mutation) => call('papers.mutateReading', { id, mutation })
+  const reading = (id, mutation) => call('papers.mutateReading', { id, mutation }).then((written) => written.reading)
   const highlight = async (key, pattern, count, color) =>
     reading(seed.papers[key], { kind: 'highlight.add', page: 1, ...await passage(files[key], pattern, count), color })
   await highlight('eagle', /reconsider speculative sampling/, 2, 'yellow')
@@ -206,13 +212,30 @@ export async function seedPapers(seed, call, files) {
   await reading(seed.papers.h2o, { kind: 'note.add', page: 1, text: '重击者 token 留 20% 就够，和我们的 KV 预算估计一致。' })
   const dropped = await reading(seed.papers.h2o, { kind: 'note.add', page: 2, text: '这条记错了，删掉。' })
   await reading(seed.papers.h2o, { kind: 'note.delete', id: dropped.notes.at(-1).id })
-  const misplaced = await highlight('kivi', /value cache should/, 1, 'pink')
+  const misplaced = await highlight('kivi', /findings indicate that the key cache/, 1, 'pink')
   await reading(seed.papers.kivi, { kind: 'highlight.delete', id: misplaced.highlights.at(-1).id })
 
   await call('papers.update', { id: seed.papers.switch, patch: { rating: 1 } })
   await call('changelog.undo', { id: (await call('changelog.list'))[0].id })
   await call('changelog.archive', { id: (await call('changelog.list')).find((row) => row.title.includes('PagedAttention')).id })
   await call('papers.delete', { id: seed.papers.infbench })
+}
+
+/**
+ * Stores on EAGLE, with the App closed, a pink highlight over the first line of its yellow one, the
+ * overlap App 0.0.18.0 could write and Core now refuses. Its id comes from the vault's sequence as
+ * Core draws one. The reader keeps both highlights and draws only the pink one on that line.
+ */
+export async function writeLegacyOverlap(seed, files) {
+  const meridian = join(seed.out, 'library', '.meridian')
+  const state = readJson(join(meridian, 'state.json'))
+  writeJson(join(meridian, 'state.json'), { ...state, seq: state.seq + 1 })
+  const readings = readJson(join(meridian, 'paper-readings.json'))
+  const { quote, rects } = await passage(files.eagle, /reconsider speculative sampling/, 1)
+  readings.find((reading) => reading.paperId === seed.papers.eagle).highlights.push({
+    id: `highlight-${state.seq + 1}`, page: 1, quote, rects, color: 'pink', note: '', created: seed.today, updated: seed.today,
+  })
+  writeJson(join(meridian, 'paper-readings.json'), readings)
 }
 
 /**

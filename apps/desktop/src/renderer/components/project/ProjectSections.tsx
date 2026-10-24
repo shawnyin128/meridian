@@ -14,6 +14,7 @@ import { EmptyState } from '../EmptyState.js'
 import { MarkdownBox } from '../Markdown.js'
 import { PaperText } from '../paper/PaperText.js'
 import { useFormat } from '../../lib/format.js'
+import type { KeptText, TextEdit } from '../../hooks/useDrafts.js'
 import { useInlineDraft } from '../../hooks/useInlineDraft.js'
 import { useMessages } from '../../messages/useMessages.js'
 import { FormInput } from '../FormControls.js'
@@ -39,21 +40,27 @@ export const urlDisplayName = (url: string) => url.replace(/^https?:\/\//i, '').
  * `initial` at first. Enter in either field or leaving `row` submits, Escape cancels, and leaving
  * both fields empty closes the row, as does leaving an `initial` draft unchanged or without an
  * address. `onSubmit` receives a normalized http(s) address and resolves true when the row should
- * close.
+ * close. With `kept`, the address is kept as a draft under its target and the name under the target
+ * followed by `:name`; the fields start from them, and the row closing drops both.
  */
-export function ProjectUrlDraft({ row, triggers, initial, onSubmit, onCancel, onInvalid }: {
+export function ProjectUrlDraft({ row, triggers, initial, onSubmit, onCancel, onInvalid, kept }: {
   row: RefObject<HTMLElement | null>
   triggers: Array<RefObject<HTMLElement | null>>
   initial?: { url: string; text: string }
   onSubmit: (url: string, name: string) => boolean | Promise<boolean>
   onCancel: () => void
   onInvalid: () => void
+  kept?: KeptText | undefined
 }) {
   const m = useMessages()
   const address = useRef<HTMLInputElement>(null)
   const label = useRef<HTMLInputElement>(null)
   const draft = useInlineDraft({
-    row, triggers, onCancel,
+    row, triggers, kept,
+    onCancel: () => {
+      kept?.drafts.drop(`${kept.target}:name`)
+      onCancel()
+    },
     isEmpty: () => {
       const typed = address.current?.value.trim() ?? ''
       const name = label.current?.value.trim() ?? ''
@@ -74,13 +81,21 @@ export function ProjectUrlDraft({ row, triggers, initial, onSubmit, onCancel, on
     <div className="urldraft">
       <FormInput
         ref={address} appearance="inline" className="inedit" placeholder={m.project.links.urlPlaceholder}
-        defaultValue={initial?.url}
+        defaultValue={kept?.drafts.get(kept.target) ?? initial?.url}
         {...draft.inputProps}
+        onInput={(event) => {
+          draft.inputProps.onInput()
+          kept?.drafts.set(kept.target, event.currentTarget.value)
+        }}
       />
       <FormInput
         ref={label} appearance="inline" className="inedit" placeholder={m.project.links.urlNamePlaceholder}
-        defaultValue={initial?.text}
+        defaultValue={kept?.drafts.get(`${kept.target}:name`) ?? initial?.text}
         {...draft.inputProps} autoFocus={false}
+        onInput={(event) => {
+          draft.inputProps.onInput()
+          kept?.drafts.set(`${kept.target}:name`, event.currentTarget.value)
+        }}
       />
     </div>
   )
@@ -91,13 +106,15 @@ const CLIP_PATH = 'M21.4 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 
 /**
  * Project `projectId`'s areas in its property rail: a chip per area, which a click edits in place and
  * whose × removes it, then the `+` that adds one where it lands. Every input offers the areas the
- * other projects use that this one lacks, asked of project.list each time it opens. `onSave`
- * receives the whole new list and returns whether the write completed.
+ * other projects use that this one lacks, asked of project.list each time it opens. `onSave` receives
+ * the whole new list after an add or an edit, `onRemove` the list after a removal; each returns whether
+ * the write completed.
  */
-export function ProjectAreasField({ projectId, areas, onSave, onError }: {
+export function ProjectAreasField({ projectId, areas, onSave, onRemove, onError }: {
   projectId: string
   areas: string[]
   onSave: (areas: string[]) => Promise<boolean>
+  onRemove: (areas: string[]) => Promise<boolean>
   onError: (error: Error) => void
 }) {
   const m = useMessages()
@@ -106,47 +123,45 @@ export function ProjectAreasField({ projectId, areas, onSave, onError }: {
   return (
     <span className="metadata-field project-areas">
       <TagChips
-        values={areas} vocabulary={vocabulary} onError={onError}
+        values={areas} vocabulary={vocabulary} onError={onError} keep={['project', projectId, 'areas']}
         labels={{ add: m.project.identity.addArea, remove: m.project.identity.removeArea, existing: m.project.identity.existingAreas }}
         onAdd={(area) => onSave([...new Set([...areas, area])])}
-        onRemove={(area) => onSave(areas.filter((held) => held !== area))}
+        onRemove={(area) => onRemove(areas.filter((held) => held !== area))}
         onReplace={(from, to) => onSave([...new Set(areas.map((held) => (held === from ? to : held)))])}
       />
     </span>
   )
 }
 
-/** Rendered Markdown and its source editor share one stable project-memo shell. */
-export function ProjectMemo({ text, editing, onEditing, onSave, onOpen }: {
-  text: string
-  editing: boolean
-  onEditing: (editing: boolean) => void
+/**
+ * Rendered Markdown and its source editor share one stable project-memo shell. `edit` is the memo's
+ * kept edit (see `editText`); a stale one is not saved.
+ */
+export function ProjectMemo({ edit, onSave, onOpen }: {
+  edit: TextEdit
   onSave: (next: string) => void
   onOpen: (id: string) => void
 }) {
   const m = useMessages()
   const box = useRef<HTMLDivElement>(null)
-  const draft = useRef(text)
-  const edit = () => {
-    draft.current = text
-    onEditing(true)
-  }
   const save = () => {
-    onEditing(false)
-    onSave(draft.current.trim())
+    if (edit.stale) return
+    const next = edit.text.trim()
+    edit.drop()
+    onSave(next)
   }
   return (
     <>
       <SectionHeading
         actions={(
-          <EditActions editing={editing} onEdit={edit} onCancel={() => onEditing(false)} onSave={save} />
+          <EditActions editing={edit.editing} canSave={!edit.stale} onEdit={edit.start} onCancel={edit.drop} onSave={save} />
         )}
       >{m.project.sections.remark}
       </SectionHeading>
       <MarkdownBox
-        className="memo" text={text} editing={editing} box={box}
-        live={{ onChange: (next) => { draft.current = next } }}
-        onCancel={() => onEditing(false)} onSave={save} onOpen={onOpen}
+        className="memo" text={edit.text} editing={edit.editing} box={box}
+        live={{ onChange: edit.change }}
+        onCancel={edit.drop} onSave={save} onOpen={onOpen}
         empty={<EmptyState variant="section">{m.project.remarkEmpty}</EmptyState>}
       />
     </>

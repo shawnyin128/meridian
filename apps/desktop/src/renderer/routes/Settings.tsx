@@ -9,10 +9,10 @@ import { errorLabel, reasonLabel } from '../lib/failure-label.js'
 import { useFormat } from '../lib/format.js'
 import { useMessages } from '../messages/useMessages.js'
 import {
-  useJump, useNotice, useSettingsOpen, useVaultRevision,
+  useChatSession, useJump, useNotice, useSettingsOpen, useVaultRevision,
 } from '../shell/AppShell.js'
 import { SETTINGS_CATEGORIES, SETTINGS_CATEGORY_LABEL, type SettingsCategory } from '../shell/settings-categories.js'
-import { IconOpen, IconRestore } from '../components/icons.js'
+import { IconOpen, IconRestore, IconTrash } from '../components/icons.js'
 import { IconButton } from '../components/IconButton.js'
 import { EmptyState } from '../components/EmptyState.js'
 import { LoadingPlaceholder } from '../components/LoadingPlaceholder.js'
@@ -26,12 +26,14 @@ import { DeliverySettings } from '../components/settings/DeliverySettings.js'
 import { ModelSettings } from '../components/settings/ModelSettings.js'
 import { ApiOverview } from '../components/settings/ApiOverview.js'
 import { ExtensionSettings } from '../components/settings/ExtensionSettings.js'
+import { ActionButton } from '../components/ActionButton.js'
 import { ConfirmDialog } from '../components/ConfirmDialog.js'
 import { DateTimeDisplay } from '../components/DateTimeDisplay.js'
 import { ModalDialog, ModalTitle } from '../components/ModalDialog.js'
 import { NavRow } from '../components/NavRow.js'
 import { RowActions, StructuredList, StructuredRow } from '../components/StructuredList.js'
 import { PageError, SectionHeading } from '../components/PageShell.js'
+import { useScreenLoad } from '../hooks/useScreenLoad.js'
 import { useScrollFade } from '../hooks/useScrollFade.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
 import { WatchSettings } from './Watches.js'
@@ -85,36 +87,46 @@ export function Settings() {
   const [themeDirty, setThemeDirty] = useState(false)
   /** Where leaving the theme editor with unsaved edits goes once confirmed: back to Appearance, or out of Settings. */
   const [leaving, setLeaving] = useState<'back' | 'close' | null>(null)
-  // Each fetch and action reports into the pane it belongs to, so an error shows only on its own pane.
-  const [errors, setErrors] = useState<Partial<Record<CategoryKey, string>>>({})
+  // Each read and action reports into the pane it belongs to, so an error shows only on its own pane.
+  const [actionErrors, setActionErrors] = useState<Partial<Record<CategoryKey, string>>>({})
+  const { error: archivedError, load: loadArchived } = useScreenLoad()
+  const { error: storageError, failure: storageFailure, load: loadStorage } = useScreenLoad(['location'])
+  const { error: extensionsError, load: loadExtensions } = useScreenLoad()
+  const readErrors: Partial<Record<CategoryKey, string | null>> = {
+    archived: archivedError, storage: storageError, extensions: extensionsError,
+  }
 
   const { open: jumpTo } = useJump()
+  const { remove: deleteChat } = useChatSession()
   const { revision } = useVaultRevision()
   const notice = useNotice()
   const format = useFormat()
-  const setError = useCallback((pane: CategoryKey, message: string | null) => setErrors((held) => {
+  const setActionError = useCallback((pane: CategoryKey, message: string | null) => setActionErrors((held) => {
     const next = { ...held }
     if (message === null) delete next[pane]
     else next[pane] = message
     return next
   }), [])
   const reportTo = useCallback((pane: CategoryKey) => (e: unknown) => {
-    setError(pane, errorLabel(m, e))
-  }, [setError, m])
+    setActionError(pane, errorLabel(m, e))
+  }, [setActionError, m])
   const write = useVaultWrite()
 
   // Fetch nothing while closed: this dialog stays mounted, so without this check every vault write
   // would fetch the chat list again.
   useEffect(() => {
     if (!open) return
-    setErrors({})
+    setActionErrors({})
     setBackups(null)
-    void chat.list().then(setChats).catch(reportTo('archived'))
-    void library.location().then(setLocation).catch(reportTo('storage'))
-    void library.backups().then(setBackups).catch(reportTo('storage'))
-    void extensions.status().then(setExtensionStatus).catch(reportTo('extensions'))
-    void extensions.pluginVersion().then(setPluginVersion).catch(reportTo('extensions'))
-  }, [open, revision, reportTo])
+    const drops = [
+      loadArchived('chats', chat.list(), setChats),
+      loadStorage('location', library.location(), setLocation),
+      loadStorage('backups', library.backups(), setBackups),
+      loadExtensions('status', extensions.status(), setExtensionStatus),
+      loadExtensions('plugin', extensions.pluginVersion(), setPluginVersion),
+    ]
+    return () => { for (const drop of drops) drop() }
+  }, [open, revision, loadArchived, loadStorage, loadExtensions])
 
   useEffect(() => {
     if (open && requestedCategory !== null) setCurrent(requestedCategory)
@@ -147,7 +159,7 @@ export function Settings() {
 
   const chooseLibrary = async () => {
     setChoosing(true)
-    setError('storage', null)
+    setActionError('storage', null)
     try {
       const root = await appMenu.chooseLibraryRoot()
       if (root === null) return
@@ -163,7 +175,7 @@ export function Settings() {
 
   const resetLibrary = async () => {
     setResetting(true)
-    setError('storage', null)
+    setActionError('storage', null)
     try {
       await library.reset()
       appMenu.restartApp()
@@ -175,7 +187,7 @@ export function Settings() {
 
   const switchBackup = async (backup: LibraryBackup) => {
     setSwitchingBackup(backup.id)
-    setError('storage', null)
+    setActionError('storage', null)
     try {
       await library.switchBackup(backup.id)
       appMenu.restartApp()
@@ -187,7 +199,7 @@ export function Settings() {
 
   const deleteBackup = async (backup: LibraryBackup) => {
     setDeletingBackup(backup.id)
-    setError('storage', null)
+    setActionError('storage', null)
     try {
       await library.deleteBackup(backup.id)
       setBackups((currentBackups) => currentBackups?.filter((item) => item.id !== backup.id) ?? [])
@@ -246,7 +258,9 @@ export function Settings() {
             {location === null ? null : <Tag>{m.settings.storage.source[location.source]}</Tag>}
           </div>
           {location === null
-            ? <LoadingPlaceholder shape="lines" count={2} />
+            ? (storageFailure('location') === null
+              ? <LoadingPlaceholder shape="lines" count={2} />
+              : <PageError variant="section" error={storageFailure('location')} />)
             : (
               <>
                 <PageError
@@ -282,14 +296,14 @@ export function Settings() {
             <span>{m.settings.storage.resetLabel}</span>
             <ConfirmDialog
               trigger={(
-                <button
+                <ActionButton
                   className="btn danger" disabled={location === null || location.source === 'fixture'
-                    || location.restartRequired || resetting}
-                >{m.settings.storage.resetAction}</button>
+                    || location.restartRequired}
+                  busy={resetting} busyLabel={m.settings.storage.resetting}
+                >{m.settings.storage.resetAction}</ActionButton>
               )}
               title={m.settings.storage.resetTitle} description={m.settings.storage.resetDescription}
-              confirmLabel={resetting ? m.settings.storage.resetting : m.settings.storage.resetConfirm}
-              confirmDisabled={resetting}
+              confirmLabel={m.settings.storage.resetConfirm}
               onConfirm={() => { void resetLibrary() }}
             />
           </div>
@@ -320,17 +334,15 @@ export function Settings() {
                         </button>
                         <ConfirmDialog
                           trigger={(
-                            <button
+                            <ActionButton
                               className="btn danger sm"
                               disabled={busy || location?.restartRequired === true}
-                            >{m.settings.storage.backupDelete}</button>
+                              busy={deletingBackup === backup.id} busyLabel={m.settings.storage.backupDeleting}
+                            >{m.settings.storage.backupDelete}</ActionButton>
                           )}
                           title={m.settings.storage.backupDeleteTitle(label)}
                           description={m.settings.storage.backupDeleteDescription}
-                          confirmLabel={deletingBackup === backup.id
-                            ? m.settings.storage.backupDeleting
-                            : m.settings.storage.backupDelete}
-                          confirmDisabled={deletingBackup === backup.id}
+                          confirmLabel={m.settings.storage.backupDelete}
                           onConfirm={() => { void deleteBackup(backup) }}
                         />
                       </div>
@@ -360,7 +372,8 @@ export function Settings() {
     extensions: (
       <>
         <ExtensionSettings
-          statuses={extensionStatus} onCopy={copyExtensionCommand} onCopyPrompt={copyAgentPrompt}
+          statuses={extensionStatus} failed={extensionsError !== null}
+          onCopy={copyExtensionCommand} onCopyPrompt={copyAgentPrompt}
           plugin={pluginVersion === null ? undefined : {
             plugin: pluginVersion,
             checking: checkingPlugin,
@@ -397,7 +410,7 @@ export function Settings() {
     archived: (
       <>
         {chats === null
-          ? <LoadingPlaceholder shape="rows" count={2} />
+          ? (archivedError === null ? <LoadingPlaceholder shape="rows" count={2} /> : null)
           : archived.length === 0
           ? <EmptyState variant="section">{m.settings.archived.empty}</EmptyState>
           : (
@@ -411,6 +424,9 @@ export function Settings() {
                     </IconButton>
                     <IconButton label={m.settings.archived.unarchive} size="nested" onClick={() => unarchive(s)}>
                       <IconRestore />
+                    </IconButton>
+                    <IconButton label={m.common.delete} size="nested" tone="danger" onClick={() => deleteChat(s.id)}>
+                      <IconTrash />
                     </IconButton>
                   </RowActions>
                 </StructuredRow>
@@ -454,7 +470,7 @@ export function Settings() {
 
             <div className="set-main">
               <div className="set-head">
-                <PageError error={errors[current]} />
+                <PageError error={actionErrors[current] ?? readErrors[current]} />
                 <SectionHeading>{titles[current]}</SectionHeading>
               </div>
               <div className="set-body" ref={paneFade}>{panes[current]}</div>

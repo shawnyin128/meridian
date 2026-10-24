@@ -2,7 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import type { ReactNode } from 'react'
 import type {
   ProjectDetail as Project, ProjectWorkspace, RelationGroup, ResearchGraph as ResearchGraphData, ResearchIdea,
-  ResearchIdeaGraphPlacement, TaskWindow,
+  ProjectFields, ProjectRecordedChange, ResearchIdeaGraphPlacement, TaskWindow,
 } from '../../shared/contract.js'
 import { projectControlState } from '../../shared/project-control.js'
 import { researchPathState } from '../../shared/research-path.js'
@@ -12,10 +12,10 @@ import {
 } from '../../shared/project-signals.js'
 import { PROJECT_STATUSES } from '../../shared/vocabulary.js'
 import { appMenu, files, idea as ideaApi, papers, project as projectApi, wiki } from '../ipc.js'
-import { errorLabel } from '../lib/failure-label.js'
 import {
   useCrumbTail, useEscapeLayer, useJump, useNotice, useToday, useVaultRevision,
 } from '../shell/AppShell.js'
+import { ActionButton } from '../components/ActionButton.js'
 import { AddAction } from '../components/AddAction.js'
 import { DraftForm, DraftLine } from '../components/DraftForm.js'
 import { MenuItem } from '../components/ActionMenu.js'
@@ -26,6 +26,7 @@ import { ChoicePicker, DateButton, DotsMenu, PriorityPicker } from '../component
 import { IconButton } from '../components/IconButton.js'
 import { IconOpen } from '../components/icons.js'
 import { SegmentedControl } from '../components/SegmentedControl.js'
+import { TabbedSection } from '../components/TabbedSection.js'
 import { RowActions, StructuredList, StructuredRow } from '../components/StructuredList.js'
 import { TitleNote } from '../components/TitleNote.js'
 import {
@@ -44,9 +45,9 @@ import { EntityLink } from '../components/EntityLink.js'
 import { ProjectConclusionPanel, ProjectConclusionRow } from '../components/project/ProjectConclusions.js'
 import { ProjectTimeline } from '../components/project/ProjectTimeline.js'
 import { nodeMode, ResearchGraph, ResearchNodePanel } from '../components/project/ResearchGraph.js'
-import { IdeaPanel, IdeaSource, ideaSourceLabel, ownIdea } from '../components/ideas/IdeaPanel.js'
+import { IdeaPanel, IdeaSource, ideaSourceLabel, ownIdea, SourceChatDeleted } from '../components/ideas/IdeaPanel.js'
 import { IdeaDraft, type IdeaDraftText } from '../components/ideas/IdeaDraft.js'
-import { ProjectPlan, ProjectTaskPanel } from '../components/project/ProjectPlan.js'
+import { newPlanRow, ProjectPlan, ProjectTaskPanel } from '../components/project/ProjectPlan.js'
 import type { PlanCreating, PlanTab } from '../components/project/ProjectPlan.js'
 import { BackButton } from '../components/BackButton.js'
 import { dnum } from '../../shared/dates.js'
@@ -63,10 +64,14 @@ import { plainTitle } from '../components/paper/paper-text.js'
 import { StatusDot } from '../components/StatusDot.js'
 import { Tag } from '../components/Tag.js'
 import { Tooltip } from '../components/Tooltip.js'
+import { editText, useDraft, useDrafts, usePruneDrafts, type EditDraft } from '../hooks/useDrafts.js'
 import { NO_TRIGGERS } from '../hooks/useOnLeave.js'
+import { useScreenLoad } from '../hooks/useScreenLoad.js'
+import { useScreenPoll } from '../hooks/useScreenPoll.js'
 import { useUndo } from '../hooks/useUndo.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
 import { useScrollFade } from '../hooks/useScrollFade.js'
+import { useSourceChatDeleted } from '../hooks/useSourceChatDeleted.js'
 import { FadeText } from '../components/FadeText.js'
 import './shell.css'
 import './ProjectDetail.css'
@@ -101,14 +106,17 @@ export function WorkspaceRoot({ state, name, root, onOpen }: {
  * unless the workspace manages the graph, drafts a new node in place, titled as the idea and after a
  * node or as a root, which `onCreateNode` creates and links, resolving whether it did. A `related`
  * idea, one that relates to the project but is not carried out in it, has no research-node section.
+ * `sourceChatDeleted` says the chat the idea came from is deleted.
  */
 export function ProjectIdeaPanel({
-  idea, graph, workspaceManaged, related = false, onClose, onOpenIdea, onOpenPaper, onCreateNode, onOpenNode, onSetNode,
+  idea, graph, workspaceManaged, related = false, sourceChatDeleted = false,
+  onClose, onOpenIdea, onOpenPaper, onCreateNode, onOpenNode, onSetNode,
 }: {
   idea: ResearchIdea
   graph: ResearchGraphData
   workspaceManaged: boolean
   related?: boolean
+  sourceChatDeleted?: boolean
   onClose: () => void
   onOpenIdea: () => void
   onOpenPaper: (paperId: string) => void
@@ -119,17 +127,16 @@ export function ProjectIdeaPanel({
   const m = useMessages()
   const g = m.ideas.nodeDraft
   const linkedNode = graph.nodes.find((node) => node.id === idea.node)
-  const [held, setDraft] = useState<{ idea: string; label: string; after: string } | null>(null)
-  const draftAt = useRef<HTMLDivElement>(null)
   // A node draft belongs to the idea it was opened for and shows only with it.
-  const draft = held?.idea === idea.id ? held : null
+  const [draft, setDraft] = useDraft<{ label: string; after: string }>(['idea', idea.id], 'node')
+  const draftAt = useRef<HTMLDivElement>(null)
   const startNode = () => {
-    if (draft === null) setDraft({ idea: idea.id, label: idea.title, after: '' })
+    if (draft === null) setDraft({ label: idea.title, after: '' })
     else draftAt.current?.querySelector<HTMLElement>('.form-control')?.focus()
   }
   return (
     <IdeaPanel
-      idea={idea} onClose={onClose} onOpenSourcePaper={onOpenPaper}
+      idea={idea} onClose={onClose} onOpenSourcePaper={onOpenPaper} sourceChatDeleted={sourceChatDeleted}
       actions={(
         <IconButton label={m.project.idea.openIdea} className="project-idea-open-idea" onClick={onOpenIdea}>
           <IconOpen />
@@ -181,21 +188,24 @@ const newestFirst = (a: ResearchIdea, b: ResearchIdea) =>
 /**
  * The ideas section of a project page, each idea once and in the first group it belongs to: the ideas
  * carried out in project `projectId`, then the ones related to it, tagged as related, then the ones
- * sparked in it, tagged with their source; newest first within each group. `ideas` is null while they
- * load. A carried-out idea shows its node in `graph`. Activating a row selects that idea through
+ * sparked in it, tagged with their source; newest first within each group. `ideas` is null until they
+ * are read: a loading placeholder, or `error`, why reading them failed. A carried-out idea shows its node in `graph`. Activating a row selects that idea through
  * `onSelect`. The heading's new-idea action drafts an idea sparked in the project first in that last
- * group, where it lands; `onCreate` writes it and settles whether it was written.
+ * group, where it lands; `onCreate` writes it and settles whether it was written. An idea for which
+ * `chatDeleted` holds carries the tag saying the chat it came from is deleted.
  */
-export function ProjectIdeaList({ projectId, ideas, graph, selectedId, onSelect, onCreate }: {
+export function ProjectIdeaList({ projectId, ideas, error, graph, selectedId, onSelect, onCreate, chatDeleted = () => false }: {
   projectId: string
   ideas: readonly ResearchIdea[] | null
+  error: string | null
   graph: ResearchGraphData
   selectedId: string | null
   onSelect: (ideaId: string) => void
   onCreate: (title: string, body: string) => Promise<boolean>
+  chatDeleted?: (idea: ResearchIdea) => boolean
 }) {
   const m = useMessages()
-  const [draft, setDraft] = useState<IdeaDraftText | null>(null)
+  const [draft, setDraft] = useDraft<IdeaDraftText>(['project', projectId], 'idea')
   const draftAt = useRef<HTMLDivElement>(null)
   const add = useRef<HTMLButtonElement>(null)
   const triggers = useMemo(() => [add], [])
@@ -219,6 +229,7 @@ export function ProjectIdeaList({ projectId, ideas, graph, selectedId, onSelect,
             )}
           {tag === null ? null : <Tag>{tag}</Tag>}
           {idea.archived ? <Tag>{m.common.archived}</Tag> : null}
+          {chatDeleted(idea) ? <SourceChatDeleted /> : null}
         </span>
         {ownIdea(idea) ? null : (
           <FadeText className="project-idea-source" label={m.project.idea.sourceTag(source)}>
@@ -245,7 +256,7 @@ export function ProjectIdeaList({ projectId, ideas, graph, selectedId, onSelect,
       >{m.project.linkedIdeas(shown)}
       </SectionHeading>
       {ideas === null
-        ? <LoadingPlaceholder shape="rows" count={2} />
+        ? (error === null ? <LoadingPlaceholder shape="rows" count={2} /> : <PageError variant="section" error={error} />)
         : shown === 0 && draft === null
         ? <EmptyState variant="section">{m.project.noLinkedIdeas}</EmptyState>
         : (
@@ -304,25 +315,31 @@ export function ProjectDetail({
   const railFade = useScrollFade('y')
   const [project, setProject] = useState<Project | null>(null)
   const [linkedIdeas, setLinkedIdeas] = useState<ResearchIdea[] | null>(null)
-  const [relAdding, setRelAdding] = useState(false)
-  const [relGroup, setRelGroup] = useState<string>(PROJECT_RELATION_GROUPS[0])
-  const [relEditing, setRelEditing] = useState<RelationGroup['items'][number] | null>(null)
-  const [creating, setCreating] = useState<PlanCreating | null>(null)
+  const [ownRelAdding, setRelAdding] = useState(false)
+  const [ownRelGroup, setOwnRelGroup] = useState<string>(PROJECT_RELATION_GROUPS[0])
+  const [ownRelEditing, setRelEditing] = useState<RelationGroup['items'][number] | null>(null)
   // A new object on every locate: clicking the same row again changes its identity, so the effect below reruns.
   const [flash, setFlash] = useState<{ id: string } | null>(null)
   const [hoverMilestone, setHoverMilestone] = useState<string | null>(null)
-  const [memoEditing, setMemoEditing] = useState(false)
+  const edits = useDrafts<EditDraft>(['project', projectId])
+  const [creating, setCreating] = useDraft<PlanCreating>(['project', projectId], 'new-row')
+  const shownProject = project?.id === projectId ? project : null
+  usePruneDrafts(['project', projectId, 'task'], shownProject === null ? null : shownProject.tasks.map((task) => task.id))
+  usePruneDrafts(['project', projectId, 'conclusion'], shownProject === null ? null
+    : (shownProject.projectConclusions ?? []).map((conclusion) => conclusion.id))
+  usePruneDrafts(['project', projectId, 'milestone'], shownProject === null ? null
+    : ['new', ...shownProject.milestones.map((milestone) => milestone.id)])
   const [selectedNode, setSelectedNode] = useState<string | null>(null)
   const [selectedIdeaId, setSelectedIdeaId] = useState<string | null>(null)
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
   const [selectedConclusion, setSelectedConclusion] = useState<string | null>(null)
-  const [error, setError] = useState<string | null>(null)
   const [workspaceOpen, setWorkspaceOpen] = useState(false)
   const [workspaceMode, setWorkspaceMode] = useState<'local' | 'ssh'>('local')
   const [localPath, setLocalPath] = useState('')
   const [sshHost, setSshHost] = useState('')
   const [sshPath, setSshPath] = useState('')
   const [sshPort, setSshPort] = useState('')
+  const [binding, setBinding] = useState<'local' | 'ssh' | null>(null)
   const planList = useRef<HTMLDivElement>(null)
   const planAdd = useRef<HTMLButtonElement>(null)
   const ganttAdd = useRef<HTMLButtonElement>(null)
@@ -331,10 +348,36 @@ export function ProjectDetail({
   const relTriggers = useMemo(() => [relAdd], [])
   const relEditRow = useRef<HTMLDivElement>(null)
 
+  // A relation being added or edited is kept as a draft of the project, and reopens where it was.
+  const relationItems = project?.id === projectId ? project.relations.flatMap((group) => group.items) : null
+  const relations = useDrafts<string>(['project', projectId, 'relation'], relationItems === null ? null : [
+    ...PROJECT_RELATION_GROUPS.map((group) => `add:${group}`), `add:${PROJECT_URL_GROUP}:name`,
+    ...relationItems.flatMap((item) => [`edit:${item.id}`, `edit:${item.id}:name`]),
+  ])
+  const keptAddGroup = PROJECT_RELATION_GROUPS.find((group) => relations.get(`add:${group}`) !== undefined)
+  const relAdding = ownRelAdding || keptAddGroup !== undefined
+  const relGroup = ownRelAdding ? ownRelGroup : keptAddGroup ?? ownRelGroup
+  const relEditing = ownRelEditing ?? relationItems?.find((item) => relations.get(`edit:${item.id}`) !== undefined) ?? null
+  const dropAdds = useCallback(() => {
+    for (const group of PROJECT_RELATION_GROUPS) relations.drop(`add:${group}`)
+    relations.drop(`add:${PROJECT_URL_GROUP}:name`)
+  }, [relations])
+  const setRelGroup = (group: string) => {
+    dropAdds()
+    setRelAdding(true)
+    setOwnRelGroup(group)
+  }
   const stopRel = useCallback(() => {
+    dropAdds()
     setRelAdding(false)
-  }, [])
-  const stopRelEdit = useCallback(() => setRelEditing(null), [])
+  }, [dropAdds])
+  const stopRelEdit = useCallback(() => {
+    if (relEditing !== null) {
+      relations.drop(`edit:${relEditing.id}`)
+      relations.drop(`edit:${relEditing.id}:name`)
+    }
+    setRelEditing(null)
+  }, [relations, relEditing])
   const notice = useNotice()
   const today = useToday()
   const clearNode = useCallback(() => setSelectedNode(null), [])
@@ -351,9 +394,10 @@ export function ProjectDetail({
     setSelectedTaskId(taskId)
   }, [])
   const { revision } = useVaultRevision()
+  const chatDeleted = useSourceChatDeleted()
   const { open: jumpTo } = useJump()
   const openWikiPage = (page: string) => jumpTo('wiki', page)
-  const reportError = useCallback((e: unknown) => setError(errorLabel(m, e)), [m])
+  const { error, failure, load, report } = useScreenLoad(['ideas'])
   const write = useVaultWrite()
   const undo = useUndo()
   const heldPapers = project?.papers
@@ -382,18 +426,12 @@ export function ProjectDetail({
 
   // Writes outside this screen can change this project too (restoring an attachment from the Trash),
   // so fetch again on every revision.
-  useEffect(() => {
-    void projectApi.get(projectId).then(setProject).catch(reportError)
-  }, [projectId, reportError, revision])
+  useEffect(() => load('project', projectApi.get(projectId), setProject), [projectId, load, revision])
 
   // An idea stores the project it is carried out in, the projects it relates to and the one it was
   // sparked in; project details look all three up from this side, so they show at both ends.
-  useEffect(() => {
-    void ideaApi.list()
-      .then((ideas) => setLinkedIdeas(ideas.filter((idea) => idea.project === projectId
-        || idea.relations?.projects.includes(projectId) === true || idea.sourceProject === projectId)))
-      .catch(reportError)
-  }, [projectId, reportError, revision])
+  useEffect(() => load('ideas', ideaApi.list(), (ideas) => setLinkedIdeas(ideas.filter((idea) => idea.project === projectId
+    || idea.relations?.projects.includes(projectId) === true || idea.sourceProject === projectId))), [projectId, load, revision])
 
   // While project details are open, follow what external writers put in the workspace; SSH needs a
   // process and a network connection, so it polls less often than a local folder.
@@ -401,13 +439,10 @@ export function ProjectDetail({
     ? undefined
     : [project.workspace.kind, project.workspace.host, project.workspace.port, project.workspace.root].join(':')
   const workspaceKind = project?.workspace?.kind
-  useEffect(() => {
-    if (workspaceKey === undefined) return
-    const timer = window.setInterval(() => {
-      void projectApi.get(projectId).then(setProject).catch(reportError)
-    }, workspaceKind === 'ssh' ? 15_000 : 2000)
-    return () => window.clearInterval(timer)
-  }, [projectId, reportError, workspaceKey, workspaceKind])
+  useScreenPoll(
+    load, 'project', () => projectApi.get(projectId), setProject,
+    workspaceKey === undefined ? null : workspaceKind === 'ssh' ? 15_000 : 2000,
+  )
 
   useEffect(() => {
     setSelectedNode(null)
@@ -477,8 +512,8 @@ export function ProjectDetail({
     setCreating(null)
     stopRel()
     stopRelEdit()
-    setMemoEditing(false)
-  }, [stopRel, stopRelEdit])
+    edits.drop('memo')
+  }, [setCreating, stopRel, stopRelEdit, edits])
 
   /**
    * Finishes a write that returns the project: the project goes into state, then `write` bumps the
@@ -498,6 +533,26 @@ export function ProjectDetail({
     void writeProject(op, note)
   }
 
+  /**
+   * Finishes a removal the change log records as writeProject finishes a write, and its notice also
+   * offers Undo of the change it recorded.
+   */
+  const writeRemoval = (op: Promise<ProjectRecordedChange>, note: ReactNode): Promise<boolean> =>
+    write(op.then((removed) => {
+      setProject(removed.project)
+      return removed
+    }), { note, action: undo.change })
+
+  /** A removal not made from a placeholder: first discards any open editor, as applyWrite does. */
+  const applyRemoval = (op: Promise<ProjectRecordedChange>, note: ReactNode) => {
+    discardOpenEdits()
+    void writeRemoval(op, note)
+  }
+
+  /** Writes `patch` to this project through project.update and answers the project after the write. */
+  const updateProject = (patch: Partial<ProjectFields>): Promise<Project> =>
+    projectApi.update(projectId, patch).then(({ project: updated }) => updated)
+
   /** Persists a drag-reordering of the task list, shared by the plan's task rows and the Gantt's labels. */
   const reorderTasks = (order: string[]) => { void writeProject(projectApi.reorderTasks(projectId, order)) }
 
@@ -507,10 +562,12 @@ export function ProjectDetail({
   }
 
   const connectLocalWorkspace = async () => {
+    setBinding('local')
     const connected = await writeProject(
       projectApi.bindWorkspace(projectId, { kind: 'local', root: localPath.trim() }),
       m.project.workspace.connected,
     )
+    setBinding(null)
     if (connected) setWorkspaceOpen(false)
   }
 
@@ -527,15 +584,17 @@ export function ProjectDetail({
 
   const connectSshWorkspace = async () => {
     const port = sshPort.trim() === '' ? undefined : Number(sshPort)
+    setBinding('ssh')
     const connected = await writeProject(projectApi.bindWorkspace(projectId, {
       kind: 'ssh', host: sshHost.trim(), path: sshPath.trim(),
       ...(port === undefined ? {} : { port }),
     }), m.project.workspace.sshConnected)
+    setBinding(null)
     if (connected) setWorkspaceOpen(false)
   }
 
   const refreshWorkspace = () => {
-    void projectApi.get(projectId).then(setProject).catch(reportError)
+    load('project', projectApi.get(projectId), setProject)
   }
 
   const locatePlanRow = useCallback((kind: PlanTab, id: string) => {
@@ -596,13 +655,13 @@ export function ProjectDetail({
   const startTask = (date = today, window: TaskWindow | null = null) => {
     onTab('task')
     if (focusOpenRow('task')) return
-    setCreating({ kind: 'task', date, window })
+    setCreating(newPlanRow('task', date, window))
   }
 
   const startMilestone = (date: string) => {
     onTab('ms')
     if (focusOpenRow('ms')) return
-    setCreating({ kind: 'ms', date })
+    setCreating(newPlanRow('ms', date))
   }
 
   /**
@@ -717,8 +776,18 @@ export function ProjectDetail({
           <>
             <button type="button" className="btn" onClick={() => setWorkspaceOpen(false)}>{m.common.cancel}</button>
             {workspaceMode === 'local'
-              ? <button type="submit" form="workspaceLocal" className="workspace-local btn pri">{m.project.workspace.add}</button>
-              : <button type="submit" form="workspaceSsh" className="btn pri">{m.project.workspace.connect}</button>}
+              ? (
+                <ActionButton
+                  type="submit" form="workspaceLocal" className="workspace-local btn pri" disabled={binding !== null}
+                  busy={binding === 'local'} busyLabel={m.project.workspace.adding}
+                >{m.project.workspace.add}</ActionButton>
+              )
+              : (
+                <ActionButton
+                  type="submit" form="workspaceSsh" className="btn pri" disabled={binding !== null}
+                  busy={binding === 'ssh'} busyLabel={m.project.workspace.connecting}
+                >{m.project.workspace.connect}</ActionButton>
+              )}
           </>
         )}
       >
@@ -801,7 +870,7 @@ export function ProjectDetail({
           onUpdateMilestone={(milestoneId, patch) => writeProject(
             projectApi.updateMilestone(projectId, milestoneId, patch), m.project.plan.milestoneUpdated,
           )}
-          onDeleteMilestone={(milestoneId) => applyWrite(
+          onDeleteMilestone={(milestoneId) => applyRemoval(
             projectApi.deleteMilestone(projectId, milestoneId), m.project.plan.milestoneDeleted,
           )}
           newActionRef={ganttAdd}
@@ -826,12 +895,12 @@ export function ProjectDetail({
               : null}
 
             <ProjectPlan
-              project={project} tab={tab} today={today} creating={creating}
+              projectId={projectId} project={project} tab={tab} today={today} creating={creating}
               flashId={flash?.id ?? null} selectedTaskId={selectedTaskId}
               listRef={planList} addRef={planAdd} timelineAddRef={ganttAdd}
               onTab={onTab} onDiscardOpenEdits={discardOpenEdits}
               onStartTask={() => startTask()} onStartMilestone={startMilestone}
-              onCancelCreate={() => setCreating(null)} onHoverMilestone={setHoverMilestone}
+              onCreating={setCreating} onCancelCreate={() => setCreating(null)} onHoverMilestone={setHoverMilestone}
               onCreateTask={({ window, ...draft }) => writeProject(
                 projectApi.createTask(projectId, {
                   ...draft, ...(window === null ? {} : { window }),
@@ -844,7 +913,7 @@ export function ProjectDetail({
               onUpdateTask={(taskId, patch) => writeProject(
                 projectApi.updateTask(projectId, taskId, patch), m.project.plan.taskUpdated,
               )}
-              onDeleteTask={(taskId) => applyWrite(
+              onDeleteTask={(taskId) => applyRemoval(
                 projectApi.deleteTask(projectId, taskId), m.project.plan.taskDeleted,
               )}
               onReorderTasks={reorderTasks}
@@ -852,95 +921,84 @@ export function ProjectDetail({
               onUpdateMilestone={(milestoneId, patch) => writeProject(
                 projectApi.updateMilestone(projectId, milestoneId, patch), m.project.plan.milestoneUpdated,
               )}
-              onDeleteMilestone={(milestoneId) => applyWrite(
+              onDeleteMilestone={(milestoneId) => applyRemoval(
                 projectApi.deleteMilestone(projectId, milestoneId), m.project.plan.milestoneDeleted,
               )}
             />
 
-            <SectionHeading
-              ref={recordHeading}
-              actions={(
-                <SegmentedControl
-                  size="sm" label={m.project.recordViewLabel}
-                  value={record}
-                  options={[
-                    { value: 'tl', label: m.project.recordModes.activity },
-                    { value: 'concl', label: m.project.recordModes.conclusions },
-                    { value: 'graph', label: m.project.sections.graph },
-                  ]}
-                  onChange={(value) => {
-                    holdRecordHeading()
-                    onRecord(value)
-                    if (value !== 'graph') setSelectedNode(null)
-                    if (value !== 'concl') setSelectedConclusion(null)
-                    discardOpenEdits()
-                  }}
-                />
-              )}
-            >{m.project.sections.records}
-            </SectionHeading>
-            <div className="record-view">
-            <PageError error={project.workspace?.issue} variant="section" />
-            {record === 'tl'
-              ? (sortedRecords.length === 0
-                ? <EmptyState variant="section">{m.project.graph.noRecords}</EmptyState>
-                : (
-                <ProjectEventList withNode className="evlist">
-                  {sortedRecords.map((ev, index) => {
-                    const graphNode = ev.node === undefined
-                      ? undefined
-                      : displayedGraph.nodes.find((candidate) => candidate.id === ev.node)
-                    return (
-                      <ProjectEventRow
-                        key={`${ev.date} ${index}`}
-                        kind={recordKind(ev)} date={ev.date} title={ev.text} detail={ev.detail}
-                        origin={recordOrigin(ev)}
-                        node={graphNode === undefined
+            <TabbedSection
+              heading={m.project.sections.records} label={m.project.recordViewLabel} value={record}
+              headingRef={recordHeading} panelClassName="record-view" error={project.workspace?.issue}
+              onChange={(value) => {
+                holdRecordHeading()
+                onRecord(value)
+                if (value !== 'graph') setSelectedNode(null)
+                if (value !== 'concl') setSelectedConclusion(null)
+                discardOpenEdits()
+              }}
+              tabs={[
+                {
+                  value: 'tl', label: m.project.recordModes.activity, empty: m.project.graph.noRecords,
+                  content: sortedRecords.length === 0 ? null : (
+                    <ProjectEventList withNode className="evlist">
+                      {sortedRecords.map((ev, index) => {
+                        const graphNode = ev.node === undefined
                           ? undefined
-                          : { id: graphNode.id, label: graphNode.label, mode: nodeMode(graphNode) }}
-                        onSelectNode={goToRecordNode}
-                      />
-                    )
-                  })}
-                </ProjectEventList>
-                ))
-              : record === 'concl'
-              ? (conclusions.length === 0
-                ? <EmptyState variant="section">{m.project.conclusions.empty}</EmptyState>
-                : (
-                  <ProjectEventList withNode className="evlist">
-                    {conclusions.map((item) => (
-                      <ProjectConclusionRow
-                        key={item.id} conclusion={item} node={nodeLook(item.node)}
-                        selected={item.id === selectedConclusion}
-                        onOpen={() => {
-                          setSelectedNode(null)
-                          setSelectedIdeaId(null)
-                          setSelectedConclusion(item.id)
-                          discardOpenEdits()
-                        }}
-                      />
-                    ))}
-                  </ProjectEventList>
-                ))
-              : (
-                <>
-                  <ResearchGraph
-                    graph={displayedGraph}
-                    selected={selectedNode}
-                    ideaNodeIds={selectedIdea?.node === undefined || selectedIdea.project !== projectId ? [] : [selectedIdea.node]}
-                    onSelect={(nodeId) => {
-                      setSelectedIdeaId(null)
-                      setSelectedConclusion(null)
-                      setSelectedNode(nodeId)
-                    }}
-                  />
-                </>
-              )}
-            </div>
+                          : displayedGraph.nodes.find((candidate) => candidate.id === ev.node)
+                        return (
+                          <ProjectEventRow
+                            key={`${ev.date} ${index}`}
+                            kind={recordKind(ev)} date={ev.date} title={ev.text} detail={ev.detail}
+                            origin={recordOrigin(ev)}
+                            node={graphNode === undefined
+                              ? undefined
+                              : { id: graphNode.id, label: graphNode.label, mode: nodeMode(graphNode) }}
+                            onSelectNode={goToRecordNode}
+                          />
+                        )
+                      })}
+                    </ProjectEventList>
+                  ),
+                },
+                {
+                  value: 'concl', label: m.project.recordModes.conclusions, empty: m.project.conclusions.empty,
+                  content: conclusions.length === 0 ? null : (
+                    <ProjectEventList withNode className="evlist">
+                      {conclusions.map((item) => (
+                        <ProjectConclusionRow
+                          key={item.id} conclusion={item} node={nodeLook(item.node)}
+                          selected={item.id === selectedConclusion}
+                          onOpen={() => {
+                            setSelectedNode(null)
+                            setSelectedIdeaId(null)
+                            setSelectedConclusion(item.id)
+                            discardOpenEdits()
+                          }}
+                        />
+                      ))}
+                    </ProjectEventList>
+                  ),
+                },
+                {
+                  value: 'graph', label: m.project.sections.graph, empty: m.project.graph.empty,
+                  content: displayedGraph.nodes.length === 0 ? null : (
+                    <ResearchGraph
+                      graph={displayedGraph}
+                      selected={selectedNode}
+                      ideaNodeIds={selectedIdea?.node === undefined || selectedIdea.project !== projectId ? [] : [selectedIdea.node]}
+                      onSelect={(nodeId) => {
+                        setSelectedIdeaId(null)
+                        setSelectedConclusion(null)
+                        setSelectedNode(nodeId)
+                      }}
+                    />
+                  ),
+                },
+              ]}
+            />
 
             <ProjectIdeaList
-              projectId={projectId} ideas={linkedIdeas} graph={displayedGraph} selectedId={selectedIdeaId}
+              projectId={projectId} ideas={linkedIdeas} error={failure('ideas')} graph={displayedGraph} selectedId={selectedIdeaId} chatDeleted={chatDeleted}
               onCreate={(title, body) => write(ideaApi.create(undefined, title, body, projectId).then((idea) => {
                 setLinkedIdeas((held) => [idea, ...(held ?? [])])
               }), { note: m.chat.ideaSavedNote })}
@@ -953,8 +1011,8 @@ export function ProjectDetail({
             />
 
             <ProjectMemo
-              text={project.memo} editing={memoEditing} onEditing={setMemoEditing} onOpen={openWikiPage}
-              onSave={(memo) => applyWrite(projectApi.update(projectId, { memo }), m.project.remarkSaved)}
+              edit={editText(edits, 'memo', project.memo)} onOpen={openWikiPage}
+              onSave={(memo) => applyWrite(updateProject({ memo }), m.project.remarkSaved)}
             />
           </div>
 
@@ -965,7 +1023,7 @@ export function ProjectDetail({
             {selectedTask !== undefined
               ? (
                 <ProjectTaskPanel
-                  task={selectedTask} onClose={clearTask} onOpenNode={goToRecordNode}
+                  projectId={projectId} task={selectedTask} onClose={clearTask} onOpenNode={goToRecordNode}
                   node={nodeLook(taskGraph.nodes.find((candidate) => candidate.tasks?.includes(selectedTask.id))?.id)}
                   nodes={displayedGraph.nodes}
                   handSet={displayedGraph.nodes.some((candidate) => candidate.id === project.taskNodes?.[selectedTask.id])}
@@ -983,7 +1041,7 @@ export function ProjectDetail({
                   idea={selectedIdea}
                   graph={displayedGraph}
                   workspaceManaged={project.workspace !== undefined}
-                  related={selectedIdea.project !== projectId}
+                  related={selectedIdea.project !== projectId} sourceChatDeleted={chatDeleted(selectedIdea)}
                   onClose={clearIdea}
                   onOpenIdea={() => jumpTo('ideas', selectedIdea.id)}
                   onOpenPaper={(paperId) => jumpTo('reader', paperId)}
@@ -1034,12 +1092,12 @@ export function ProjectDetail({
                       fields={{
                         name: (
                           <InlineMetadataField
-                            label={m.project.identity.nameFieldLabel} value={project.name}
+                            label={m.project.identity.nameFieldLabel} value={project.name} keep={{ scope: ['project', projectId], target: 'name' }}
                             onSave={(name) => {
                               const next = name.trim()
                               if (next === '') { notice.refusal(m.project.identity.nameRequired); return false }
                               return writeProject(
-                                projectApi.update(projectId, { name: next }), m.project.identity.nameUpdated,
+                                updateProject({ name: next }), m.project.identity.nameUpdated,
                               )
                             }}
                           />
@@ -1048,7 +1106,7 @@ export function ProjectDetail({
                           <ChoicePicker
                             value={project.status} options={PROJECT_STATUSES}
                             onPick={(status) => applyWrite(
-                              projectApi.update(projectId, { status }), m.project.identity.statusUpdated,
+                              updateProject({ status }), m.project.identity.statusUpdated,
                             )}
                           />
                         ),
@@ -1056,14 +1114,15 @@ export function ProjectDetail({
                           <PriorityPicker
                             value={project.priority} className="pv metadata-editable"
                             onPick={(priority) => applyWrite(
-                              projectApi.update(projectId, { priority }), m.project.identity.priorityUpdated,
+                              updateProject({ priority }), m.project.identity.priorityUpdated,
                             )}
                           ><ProjectPriorityTag priority={project.priority} /></PriorityPicker>
                         ),
                         topic: (
                           <ProjectAreasField
-                            projectId={projectId} areas={projectAreas(project)} onError={reportError}
-                            onSave={(topics) => writeProject(
+                            projectId={projectId} areas={projectAreas(project)} onError={report}
+                            onSave={(topics) => writeProject(updateProject({ topics }), m.project.identity.topicUpdated)}
+                            onRemove={(topics) => writeRemoval(
                               projectApi.update(projectId, { topics }), m.project.identity.topicUpdated,
                             )}
                           />
@@ -1073,6 +1132,7 @@ export function ProjectDetail({
                     <div className="pk">{m.project.identity.focusLabel[FOCUS_KEY[project.status]]}</div>
                     <InlineMetadataField
                       label={m.project.identity.focusLabel[FOCUS_KEY[project.status]]} value={project.focus}
+                      keep={{ scope: ['project', projectId], target: 'focus' }}
                       onSave={(focus) => {
                         const next = focus.trim()
                         const label = m.project.identity.focusLabel[FOCUS_KEY[project.status]]
@@ -1081,7 +1141,7 @@ export function ProjectDetail({
                         // this field closes is left to InlineMetadataField, which follows the write's result
                         discardOpenEdits()
                         return writeProject(
-                          projectApi.update(projectId, { focus: next }), m.project.identity.focusUpdated(label),
+                          updateProject({ focus: next }), m.project.identity.focusUpdated(label),
                         )
                       }}
                     />
@@ -1089,12 +1149,12 @@ export function ProjectDetail({
                     <ProjectNextActionView action={controlState.next} />
                     <div className="pk">{m.project.control.blocker}</div>
                     <InlineMetadataField
-                      label={m.project.control.blocker} value={project.block ?? ''}
+                      label={m.project.control.blocker} value={project.block ?? ''} keep={{ scope: ['project', projectId], target: 'block' }}
                       display={<ProjectBlockerView blocker={controlState.blocker} />}
                       onSave={(value) => {
                         const next = value.trim()
                         return writeProject(
-                          projectApi.update(projectId, { block: next === '' ? null : next }),
+                          updateProject({ block: next === '' ? null : next }),
                           next === '' ? m.project.control.blockerCleared : m.project.control.blockerUpdated,
                         )
                       }}
@@ -1107,7 +1167,7 @@ export function ProjectDetail({
                           notice.refusal(m.project.identity.startAfterDue)
                           return
                         }
-                        applyWrite(projectApi.update(projectId, { start }), m.project.identity.dateUpdated)
+                        applyWrite(updateProject({ start }), m.project.identity.dateUpdated)
                       }}
                     />
                     <div className="pk">{m.project.identity.dueLabel}</div>
@@ -1118,7 +1178,7 @@ export function ProjectDetail({
                           notice.refusal(m.project.identity.dueBeforeStart)
                           return
                         }
-                        applyWrite(projectApi.update(projectId, { due }), m.project.identity.dateUpdated)
+                        applyWrite(updateProject({ due }), m.project.identity.dateUpdated)
                       }}
                     />
                     <div className="pk">{m.project.sections.papers}</div>
@@ -1165,7 +1225,10 @@ export function ProjectDetail({
                         variant="section" ref={relAdd} label={m.project.links.addTitle}
                         onClick={() => {
                           if (relAdding) relRow.current?.querySelector('input')?.focus()
-                          else setRelAdding(true)
+                          else {
+                            setOwnRelGroup(relGroup)
+                            setRelAdding(true)
+                          }
                         }}
                       >{m.project.sections.links}</AddAction>
                     )}
@@ -1177,7 +1240,7 @@ export function ProjectDetail({
                       .map((id) => ({ id, title: project.paperTitles[id]! }))}
                     onOpenPage={openWikiPage}
                     onOpenPaper={(paperId) => jumpTo('reader', paperId)}
-                    onRemovePaper={(paperId, title) => applyWrite(
+                    onRemovePaper={(paperId, title) => applyRemoval(
                       projectApi.removePaper(projectId, paperId),
                       <TitleNote message={m.project.links.paperRemoved} title={plainTitle(title)} />,
                     )}
@@ -1193,8 +1256,8 @@ export function ProjectDetail({
                             <PickRow
                               key="paper" row={relRow} triggers={relTriggers} allowNew={false}
                               placeholder={m.project.links.paperPlaceholder} suggest={suggestPapers}
-                              onNew={() => false}
-                              onCancel={stopRel} onError={reportError}
+                              onNew={() => false} kept={{ drafts: relations, target: `add:${PROJECT_PAPER_GROUP}` }}
+                              onCancel={stopRel} onError={report}
                               onPick={(hit) => writeProject(
                                 projectApi.addPaper(projectId, hit.id),
                                 <TitleNote message={m.project.links.paperLinked} title={plainTitle(hit.title)} />,
@@ -1205,6 +1268,7 @@ export function ProjectDetail({
                             ? (
                               <ProjectUrlDraft
                                 key="url" row={relRow} triggers={relTriggers} onCancel={stopRel}
+                                kept={{ drafts: relations, target: `add:${PROJECT_URL_GROUP}` }}
                                 onInvalid={() => notice.refusal(m.project.links.urlInvalid)}
                                 onSubmit={(url, text) => writeProject(projectApi.createRelation(projectId, {
                                   group: PROJECT_URL_GROUP, text, url,
@@ -1215,7 +1279,7 @@ export function ProjectDetail({
                             <PickRow
                               key="page" row={relRow} triggers={relTriggers} allowNew
                               placeholder={m.project.links.pagePlaceholder} suggest={suggestPages}
-                              onCancel={stopRel} onError={reportError}
+                              onCancel={stopRel} onError={report} kept={{ drafts: relations, target: 'add:Wiki' }}
                               onPick={(hit) => writeProject(projectApi.createRelation(projectId, {
                                 group: 'Wiki', text: hit.title, page: hit.id,
                               }), m.project.links.added)}
@@ -1235,6 +1299,7 @@ export function ProjectDetail({
                             <ProjectUrlDraft
                               row={relEditRow} triggers={NO_TRIGGERS} onCancel={stopRelEdit}
                               initial={{ url: relEditing.url, text: relEditing.text }}
+                              kept={{ drafts: relations, target: `edit:${relEditing.id}` }}
                               onInvalid={() => notice.refusal(m.project.links.urlInvalid)}
                               onSubmit={(url, text) => writeProject(projectApi.updateRelation(
                                 projectId, relEditing.id, { text, url },
@@ -1245,7 +1310,7 @@ export function ProjectDetail({
                             <PickRow
                               row={relEditRow} triggers={NO_TRIGGERS} allowNew initialText={relEditing.text}
                               placeholder={m.project.links.pagePlaceholder} suggest={suggestPages}
-                              onCancel={stopRelEdit} onError={reportError}
+                              onCancel={stopRelEdit} onError={report} kept={{ drafts: relations, target: `edit:${relEditing.id}` }}
                               onPick={(hit) => writeProject(projectApi.updateRelation(projectId, relEditing.id, {
                                 text: hit.title, page: hit.id,
                               }), m.project.links.updated)}
@@ -1256,7 +1321,7 @@ export function ProjectDetail({
                           ),
                       }}
                     onEdit={setRelEditing}
-                    onRemove={(relationId, text) => applyWrite(
+                    onRemove={(relationId, text) => applyRemoval(
                       projectApi.deleteRelation(projectId, relationId),
                       <TitleNote message={m.project.links.removed} title={text} />,
                     )}
@@ -1267,13 +1332,9 @@ export function ProjectDetail({
                     onReveal={(path) => void files.reveal(path).then((found) => {
                       if (!found) notice.refusal(m.project.attachments.missing)
                     })}
-                    onRemove={(attachmentId) => {
-                      discardOpenEdits()
-                      void write(projectApi.deleteAttachment(projectId, attachmentId).then((deleted) => {
-                        setProject(deleted.project)
-                        return deleted
-                      }), { note: m.common.trashed, action: undo.change })
-                    }}
+                    onRemove={(attachmentId) => applyRemoval(
+                      projectApi.deleteAttachment(projectId, attachmentId), m.common.trashed,
+                    )}
                   />
                 </>
               )
@@ -1282,7 +1343,7 @@ export function ProjectDetail({
                   graph={displayedGraph} events={visibleEvents}
                   ideas={(linkedIdeas ?? []).filter((idea) => idea.project === projectId && idea.node === node.id)} node={node}
                   tasks={project.tasks.filter((task) => node.tasks?.includes(task.id))}
-                  onSelectTask={openTask}
+                  onSelectTask={openTask} chatDeleted={chatDeleted}
                   onClose={clearNode}
                   onSelect={(nodeId) => {
                     setSelectedIdeaId(null)

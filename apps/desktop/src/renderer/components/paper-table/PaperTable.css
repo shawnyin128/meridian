@@ -136,8 +136,7 @@
 .mi.colrow .cl{flex:1}
 .mi.locked{cursor:default;opacity:.45}
 /* The 24px buttons reach into the menu row's padding, so custom-column rows stay as tall as the others. */
-.cmx{margin:calc(-1 * var(--sp-4)) 0;opacity:0;pointer-events:none}
-.mi.colrow:hover .cmx,.cmx:focus-visible{opacity:1;pointer-events:auto}
+.cmx{margin:calc(-1 * var(--sp-4)) 0}
 
 /* The type options below the new-column draft: text/select/multi-select icons side by side, the selected one has .on */
 .mi-in.ctrow{display:flex;gap:var(--sp-6);padding-bottom:0}
@@ -145,19 +144,15 @@
 .ctbtn:hover{color:var(--ink)}
 .ctbtn.on{background:var(--selected-strong);border-color:transparent;color:var(--on-selected)}
 .ctbtn svg{width:12px;height:12px}
-/* Options: expand below the column row, one level deeper; the toggle is always visible, not only on row hover, or nobody would find it */
-.cmx.optx{opacity:1;pointer-events:auto}
 /* Column row labels start from 10px padding + 13px tick + 10px spacing = 33px, and option rows are indented 20px more */
 .mi.optrow{padding-left:calc(var(--row-menu-pad) + var(--row-menu-check) + var(--sp-10) + var(--sp-20));font-size:var(--fs-sm);color:var(--sec)}
 .mi.optrow .cl{flex:1}
-.mi.optrow:hover .cmx{opacity:1;pointer-events:auto}
 .mi.optrow.optnone{color:var(--ter);cursor:default}
 /*
  * Change type: the type options expand under the column row, in line with option text once their own
- * row's 8px inset is added; while open, the row's type button stays visible
+ * row's 8px inset is added
  */
 .typerow{padding-left:calc(var(--row-menu-pad) + var(--row-menu-check) + var(--sp-10) + var(--sp-20) - var(--sp-8))}
-.cmx.typex.on{opacity:1;pointer-events:auto}
 
 /*
  * The cell of a row's actions and the header's add cell stick to the table's right edge, so the
@@ -178,8 +173,12 @@
   background:var(--content);z-index:5}
 .pdetail{height:100%;box-sizing:border-box;overflow:auto;overscroll-behavior:contain;padding:var(--sp-16)}
 .desk-body.withdetail,.desk-foot.withdetail{margin-right:var(--detailw)}
-.pd-h{display:flex;align-items:flex-start;gap:var(--sp-8);margin-bottom:var(--sp-12)}
-.pd-t{font-size:var(--fs-section);font-weight:var(--fw-title);line-height:var(--lh-ui);flex:1;min-width:0}
+/*
+ * The buttons take a row of their own at the head's right end, and the title the whole row below them.
+ * The title comes first in the markup, so Tab still reaches it before the buttons.
+ */
+.pd-h{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:var(--sp-4) var(--sp-8);margin-bottom:var(--sp-12)}
+.pd-t{order:1;width:100%;font-size:var(--fs-section);font-weight:var(--fw-title);line-height:var(--lh-ui)}
 /* The title is the panel's head, in the head's ink rather than a property value's grey. */
 .pd-t .metadata-editable{color:inherit}
 .pdetail .wkprops{grid-template-columns:52px 1fr;font-size:var(--fs-sm)}
@@ -197,43 +196,38 @@
 .libbar .filters>.pt-dim{font-size:var(--fs-sm)}
 /* Fixed width, so the toolbar layout does not shift when the label changes from "Reading status" to "Unread" or another value. */
 .libbar .read-state-filter{width:78px;box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;white-space:nowrap}
-/*
- * pointer-events is inherit rather than auto: normally that inherits the parent's default auto, and
- * when the whole page is disabled it inherits none and is disabled with it.
- */
-.colbtn.grpgear{opacity:1;pointer-events:inherit}
 
-/* Research Map is a read-only peer view of the table. It composes the shared list and segmented
+/* Research Map is a peer view of the table. It composes the shared list and segmented
  * controls; these rules only define its two-column domain layout and information hierarchy. */
-.research-map{display:flex;min-height:0;flex:1;flex-direction:column;gap:var(--sp-14);overflow:auto;padding:var(--sp-2) var(--sp-2) var(--sp-20)}
-.research-map-intro{display:flex;align-items:flex-start;gap:var(--sp-24);padding:var(--sp-16) var(--sp-20);border:1px solid var(--sep);border-radius:var(--r-card);background:var(--card)}
-.research-map-copy{min-width:0;flex:1}
-.research-map-title{display:flex;align-items:center;gap:var(--sp-8);font-size:var(--fs-read)}
-.research-map-stats{display:flex;flex:0 0 auto;align-items:stretch;gap:var(--sp-8)}
-.research-map-stats>span{display:flex;min-width:72px;flex-direction:column;gap:var(--sp-2);padding:var(--sp-8) var(--sp-10);border-radius:var(--r-md);background:var(--field);color:var(--ter);font-size:var(--fs-cap)}
-.research-map-stats strong{color:var(--ink);font-size:var(--fs-read)}
+/* The map takes the view's remaining height; each of its two columns scrolls inside itself. */
+.research-map{display:flex;min-height:0;flex:1;flex-direction:column;gap:var(--sp-14);padding:var(--sp-2) var(--sp-2) 0}
 .research-map-limit{color:var(--ter);font-size:var(--fs-sm)}
-.research-map-layout{display:grid;min-height:0;grid-template-columns:minmax(220px,310px) minmax(0,1fr);gap:var(--sp-16);align-items:start}
+.research-map-layout{display:grid;flex:1;min-height:0;grid-template-columns:minmax(220px,310px) minmax(0,1fr);grid-template-rows:minmax(0,1fr);gap:var(--sp-16)}
+/* The groups, then the cross-group and ungrouped rows in a list of their own below them. */
+.research-map-index{min-width:0;gap:var(--sp-12)}
 .research-map-groups{min-width:0}
 .research-map-group{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:var(--sp-12);min-height:54px;padding:var(--sp-8) var(--sp-12)}
 .research-map-group-copy{display:flex;min-width:0;flex-direction:column;gap:var(--sp-4)}
 /* A name is a span beside the span of its kind or count line, and keeps its own type and colour. */
 .research-map-group-copy .research-map-group-name{color:inherit;font-size:var(--fs-base);font-weight:var(--fw-title)}
 .research-map-group-copy>span{color:var(--ter);font-size:var(--fs-cap)}
-.research-map-detail{min-width:0;border:1px solid var(--sep);border-radius:var(--r-card);background:var(--card);overflow:hidden}
-.research-map-detail-head{display:flex;align-items:flex-start;gap:var(--sp-12);padding:var(--sp-14) var(--sp-16);border-bottom:1px solid var(--sep2)}
+/* The detail card is as tall as its papers up to the column's height, then its paper list scrolls under its head. */
+.research-map-detail{display:flex;min-width:0;max-height:100%;align-self:start;flex-direction:column;border:1px solid var(--sep);border-radius:var(--r-card);background:var(--card);overflow:hidden}
+.research-map-detail-head{display:flex;flex:none;align-items:flex-start;gap:var(--sp-12);padding:var(--sp-14) var(--sp-16);border-bottom:1px solid var(--sep2)}
 .research-map-detail-head>div{display:flex;min-width:0;flex:1;flex-direction:column;gap:var(--sp-4)}
 .research-map-detail-head .research-map-detail-name{color:inherit;font-size:var(--fs-group);font-weight:var(--fw-title)}
 .research-map-detail-head>div>span{color:var(--ter);font-size:var(--fs-cap)}
-.research-map-papers{padding:0 var(--sp-16)}
-.research-map-paper{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:var(--sp-4) var(--sp-16);min-height:78px;padding:var(--sp-10) 0}
+/* The card clips at its edges, so its paper list keeps no ring room there; its controls sit inside the rows' inset. */
+.research-map-detail>.research-map-papers.structured-list--fill{padding:0;margin-inline:0}
+.research-map-paper{display:grid;grid-template-columns:auto minmax(0,1fr) auto;grid-template-areas:"open open marks" "meta why why";align-items:center;gap:var(--sp-4) var(--sp-16);min-height:78px;padding:var(--sp-10) var(--sp-16)}
+.research-map-paper-open{grid-area:open;display:flex;min-width:0;padding:0;border:0;background:none;color:inherit;font:inherit;text-align:left;cursor:inherit}
 .research-map-paper-title{font-weight:var(--fw-title)}
-.research-map-paper-meta{color:var(--ter);font-size:var(--fs-sm);white-space:nowrap}
-.research-map-why{display:flex;grid-column:1/-1;align-items:center;gap:var(--sp-4);color:var(--ter);font-size:var(--fs-cap)}
+.research-map-paper-marks{grid-area:marks;display:flex;align-items:center;gap:var(--sp-8)}
+.research-map-paper-meta{grid-area:meta;color:var(--ter);font-size:var(--fs-sm);white-space:nowrap}
+.research-map-why{display:flex;grid-area:why;align-items:center;gap:var(--sp-4);color:var(--ter);font-size:var(--fs-cap)}
 .research-map-why>.tagchip{margin:0}
 
 @media (max-width:900px){
-  .research-map-intro{flex-direction:column}.research-map-stats{width:100%}.research-map-stats>span{flex:1}
-  .research-map-layout{grid-template-columns:1fr}.research-map-groups{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
+  .research-map-layout{grid-template-columns:1fr;grid-template-rows:fit-content(50%) minmax(0,1fr)}.research-map-groups{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
   .research-map-groups>.structured-row:nth-child(2){border-top:0}
 }

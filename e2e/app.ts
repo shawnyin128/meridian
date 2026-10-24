@@ -18,21 +18,29 @@ const ENV = Object.fromEntries(Object.entries(process.env).filter(
   (e): e is [string, string] => e[1] !== undefined && e[0] !== 'MERIDIAN_VAULT_ROOT'))
 
 /**
+ * Chromium switches every automated launch passes. A window off every display or hidden paints in the
+ * primary display's colour profile and tags its screenshots with it; forced sRGB keeps the stored
+ * values equal to the page's own colours, as a window on a display returns them. The main process
+ * cannot set this switch: Chromium reads it before the main script runs.
+ */
+export const LAUNCH_SWITCHES = ['--force-color-profile=srgb']
+
+/**
  * Each test case gets its own Electron instance: `app` is the main-process handle (used to resize the
  * window), `win` is its first window. The whole app is closed after the case finishes.
- * `showWindow` says whether the case needs a real window on screen. It defaults to false: one
- * regression round launches the app more than a hundred times, and windows grabbing focus again and
- * again make the computer hard to use. The cost is that an offscreen window gets no frames from the
- * compositor: rAF drops to once per second, so Playwright waits two seconds per actionability check
- * and one second per element screenshot, and menu accelerators reach only a window on screen. Cases
- * that hit either limit set `test.use({ showWindow: true })`; the rest leave it off.
- * A shown window opens isolated: it never takes system focus and a transparent child window takes the
- * real pointer, so typing or moving the mouse on the machine cannot change what a running case sees.
- * Playwright's input goes through the DevTools protocol and still reaches the page. A case that needs
- * real system focus calls `setFocusable(true)` before `focus()`, and its title says so.
+ * `showWindow` says whether the case needs a shown window. It defaults to false, a hidden window.
+ * Measured on macOS, a hidden window gets frames at the display's rate: a click or an element screenshot
+ * takes under 0.1 s, a transition ends on time, and menu accelerators reach it. Windows has not been
+ * measured, so cases that wait for many frames, take element screenshots or press menu accelerators
+ * still set `test.use({ showWindow: true })`, and long ones `test.slow()`.
+ * Neither window gets in the way of someone using the machine: on macOS the App has no Dock icon and
+ * never becomes the active app. A shown window opens isolated, unfocusable and right of every display,
+ * so it never covers another window, takes system focus or sees the machine's real keyboard and pointer.
+ * Playwright's input goes through the DevTools protocol and still reaches the page, and `appSwitcher`
+ * moves the page's focus the way switching to another app and back does.
  */
 export const test = base.extend<{
-  app: ElectronApplication; win: Page; showWindow: boolean; configHome: string
+  app: ElectronApplication; win: Page; showWindow: boolean; configHome: string; profile: string
 }>({
   showWindow: [false, { option: true }],
   // A fresh config home per case keeps the user's own ~/.meridian (keys, model settings) out of reach.
@@ -41,41 +49,98 @@ export const test = base.extend<{
     await use(configHome)
     rmSync(configHome, { recursive: true, force: true })
   },
-  app: async ({ showWindow, configHome }, use) => {
-    const app = await electron.launch({
-      // The specs assert Chinese copy, so the app must not follow the host's language.
-      args: [APP_DIR, '--lang=zh-CN'],
-      env: {
-        ...ENV,
-        MERIDIAN_LIBRARY_ROOT: VAULT,
-        MERIDIAN_CONFIG_HOME: configHome,
-        // Write '0' explicitly: a case that did not ask for a window stays off screen even when the
-        // outer shell sets this variable.
-        MERIDIAN_SHOW_WINDOW: showWindow ? 'isolated' : '0',
-      },
-    })
+  // A fresh user-data folder per case keeps the App's own profile (settings, drafts) out of reach and
+  // gives every case the profile of a first launch.
+  profile: async ({}, use) => {
+    const profile = mkdtempSync(join(tmpdir(), 'meridian-e2e-profile-'))
+    await use(profile)
+    rmSync(profile, { recursive: true, force: true })
+  },
+  app: async ({ showWindow, configHome, profile }, use) => {
+    const app = await launchApp(showWindow, configHome, profile)
     await use(app)
     await app.close()
   },
   win: async ({ app }, use) => {
-    const win = await app.firstWindow()
-    // The profile outlives a run, so a language picked by an earlier spec is cleared before this one.
-    const stale = await win.evaluate(() => {
-      const had = window.localStorage.getItem('meridian.language') !== null
-      window.localStorage.removeItem('meridian.language')
-      return had
-    })
-    if (stale) await win.reload()
-    await use(win)
+    await use(await app.firstWindow())
   },
 })
 
+/**
+ * Starts the App on the fixture vault with config home `configHome` and user-data folder `profile`, on
+ * screen (isolated) when `showWindow`.
+ */
+async function launchApp(showWindow: boolean, configHome: string, profile: string): Promise<ElectronApplication> {
+  const app = await electron.launch({
+    // The specs assert Chinese copy, so the app must not follow the host's language.
+    args: [APP_DIR, '--lang=zh-CN', `--user-data-dir=${profile}`, ...LAUNCH_SWITCHES],
+    env: {
+      ...ENV,
+      MERIDIAN_LIBRARY_ROOT: VAULT,
+      MERIDIAN_CONFIG_HOME: configHome,
+      // Write '0' explicitly: a case that did not ask for a window stays off screen even when the
+      // outer shell sets this variable.
+      MERIDIAN_SHOW_WINDOW: showWindow ? 'isolated' : '0',
+    },
+  })
+  // Native popup menus are recorded instead of shown: an open one keeps Main in its tracking loop
+  // until it is dismissed, which nothing in a case does, and the App could not quit.
+  await app.evaluate(({ Menu }) => {
+    const shown: string[][] = []
+    Object.assign(globalThis, { popupMenus: shown })
+    Menu.prototype.popup = function record(this: InstanceType<typeof Menu>) {
+      shown.push(this.items.map((item) => (item.type === 'separator' ? '—' : item.label)))
+    }
+  })
+  return app
+}
+
+/**
+ * Quits `app` as ⌘Q does and starts the App again on the same vault, config home `configHome` and
+ * user-data folder `profile`, keeping what the profile holds; returns the new App and its first window
+ * once the preload is up. The caller closes the new App.
+ */
+export async function relaunch(
+  app: ElectronApplication, configHome: string, profile: string,
+): Promise<{ app: ElectronApplication; win: Page }> {
+  const closed = app.waitForEvent('close')
+  await app.evaluate(({ app: running }) => { setTimeout(() => running.quit(), 0) })
+  await closed
+  const next = await launchApp(false, configHome, profile)
+  const win = await next.firstWindow()
+  await win.waitForFunction(() => (window as unknown as MeridianWindow).meridian !== undefined)
+  return { app: next, win }
+}
+
 export { expect } from '@playwright/test'
+
+/**
+ * Prepares a case about the App going to the background and coming back, without system focus:
+ * `away()` takes focus from the page the way switching to another app does, with blur and a focusout
+ * that has no related target, and `back()` returns it the way switching back does. The page's own focus
+ * is taken once here, so from then on Playwright's focus emulation alone decides whether the page has
+ * focus; `away()` turns it off and `back()` on.
+ */
+export async function appSwitcher(app: ElectronApplication, win: Page): Promise<{
+  away(): Promise<void>; back(): Promise<void>
+}> {
+  await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]!.blurWebView())
+  const cdp = await win.context().newCDPSession(win)
+  const emulate = async (enabled: boolean) => { await cdp.send('Emulation.setFocusEmulationEnabled', { enabled }) }
+  return { away: () => emulate(false), back: () => emulate(true) }
+}
 
 /** The API preload exposes to the page; inside `page.evaluate` it calls Core by contract method, bypassing the UI. */
 export type MeridianWindow = Window & {
   meridian: { call(method: string, params: unknown): Promise<unknown>; platform: NodeJS.Platform }
 }
+
+/**
+ * The native menus Main has popped up in this case, in order: each one's item labels, with '—' for a
+ * separator. The `app` fixture records them instead of showing them.
+ */
+export const popupMenus = (app: ElectronApplication): Promise<string[][]> =>
+  app.evaluate(() => (globalThis as unknown as { popupMenus: string[][] }).popupMenus)
 
 /**
  * Clicks the brand mark in the title bar to open the app menu, then "Settings…". Returns once the
@@ -130,6 +195,61 @@ export function textBox(box: Locator): Promise<{ left: number; top: number; widt
   })
 }
 
+type Box = { left: number; right: number; top: number }
+
+/**
+ * Where the parts of the panel head `head` lie: its content box inside border and padding; the title,
+ * the first element inside it matching `title`, as its box, the lines its text runs over and its font
+ * size; and each element inside it matching `actions`, with its box and accessible name, in order.
+ */
+export function panelHead(head: Locator, title: string, actions: string): Promise<{
+  content: Box
+  title: Box & { lines: Box[]; fontSize: number }
+  actions: (Box & { label: string; width: number; height: number })[]
+}> {
+  return head.evaluate((el, [titleSelector, actionSelector]) => {
+    const rect = el.getBoundingClientRect()
+    const style = getComputedStyle(el)
+    const content = {
+      left: rect.left + parseFloat(style.borderLeftWidth) + parseFloat(style.paddingLeft),
+      right: rect.right - parseFloat(style.borderRightWidth) - parseFloat(style.paddingRight),
+      top: rect.top + parseFloat(style.borderTopWidth) + parseFloat(style.paddingTop),
+    }
+    const titleElement = el.querySelector(titleSelector)!
+    const fragments: DOMRect[] = []
+    const texts = document.createTreeWalker(titleElement, NodeFilter.SHOW_TEXT)
+    for (let text = texts.nextNode(); text !== null; text = texts.nextNode()) {
+      const range = document.createRange()
+      range.selectNodeContents(text)
+      fragments.push(...[...range.getClientRects()].filter((fragment) => fragment.width > 0))
+    }
+    // Fragments of one line overlap the middle of that line's first fragment.
+    const lines: (Box & { bottom: number })[] = []
+    for (const fragment of fragments) {
+      const middle = (fragment.top + fragment.bottom) / 2
+      const line = lines.find((held) => middle > held.top && middle < held.bottom)
+      if (line === undefined) lines.push({ left: fragment.left, right: fragment.right, top: fragment.top, bottom: fragment.bottom })
+      else Object.assign(line, { left: Math.min(line.left, fragment.left), right: Math.max(line.right, fragment.right) })
+    }
+    const titleRect = titleElement.getBoundingClientRect()
+    return {
+      content,
+      title: {
+        left: titleRect.left, right: titleRect.right, top: titleRect.top,
+        lines: lines.sort((a, b) => a.top - b.top).map(({ left, right, top }) => ({ left, right, top })),
+        fontSize: parseFloat(getComputedStyle(titleElement).fontSize),
+      },
+      actions: [...el.querySelectorAll(actionSelector)].map((action) => {
+        const box = action.getBoundingClientRect()
+        return {
+          label: action.getAttribute('aria-label') ?? '', left: box.left, right: box.right, top: box.top,
+          width: box.width, height: box.height,
+        }
+      }),
+    }
+  }, [title, actions] as const)
+}
+
 /**
  * The property rail `rail`: where its content starts, the edge inside its border past which it clips,
  * and how far it is scrolled sideways.
@@ -152,6 +272,45 @@ export async function expectWholeInRail(rail: Locator, editor: Locator): Promise
   const [box, edges] = await Promise.all([editor.boundingBox(), railEdges(rail)])
   expect(box!.x + box!.width).toBeLessThanOrEqual(edges.clip)
   expect(edges.scrollLeft).toBe(0)
+}
+
+/**
+ * The tags inside `scope` that do not show whole: one narrower than its text, unless it is capped
+ * (`tag--capped`) and fades its long text at its cap, and one that has yielded and hides. Each comes with
+ * its text, its width and the width its text needs.
+ */
+export function unfitTags(scope: Locator): Promise<{ text: string; width: number; needs: number; hidden: boolean }[]> {
+  return scope.evaluateAll((roots) => roots.flatMap((root) => [...root.querySelectorAll('.tag')]
+    .filter((tag) => tag.getClientRects().length > 0)
+    .map((tag) => {
+      const text = tag.querySelector(':scope > .tag-text') ?? tag
+      const width = tag.getBoundingClientRect().width
+      return {
+        text: tag.textContent!.trim(), width, needs: width - text.clientWidth + text.scrollWidth,
+        hidden: getComputedStyle(tag).visibility === 'hidden', capped: tag.classList.contains('tag--capped'),
+      }
+    })
+    .filter((tag) => tag.hidden || (!tag.capped && tag.needs > tag.width + 0.5))
+    .map(({ text, width, needs, hidden }) => ({ text, width, needs, hidden }))))
+}
+
+/**
+ * The shown boxes among `titles` that are narrower than the least a list row keeps for its title,
+ * twelve characters of body text (12 × --fs-base), each with its text and width.
+ */
+export function narrowTitles(titles: Locator): Promise<{ text: string; width: number }[]> {
+  return titles.evaluateAll((boxes) => {
+    const least = 12 * parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--fs-base'))
+    return boxes.filter((box) => box.getClientRects().length > 0)
+      .map((box) => ({ text: box.textContent!.trim(), width: box.getBoundingClientRect().width }))
+      .filter((title) => title.width < least - 0.5)
+  })
+}
+
+/** How far below its screen's header the top of `content` lies, in px. */
+export function belowHeader(content: Locator): Promise<number> {
+  return content.evaluate((el) => el.getBoundingClientRect().top
+    - el.closest('.desk')!.querySelector('.desk-head')!.getBoundingClientRect().bottom)
 }
 
 /** Finishes every running transition and animation on the element, so computed styles read next are final. */

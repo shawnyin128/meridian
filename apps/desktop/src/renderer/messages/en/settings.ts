@@ -336,6 +336,7 @@ export const settings = {
   delivery: {
     heading: 'Inmail',
     limitHeading: 'Papers per check',
+    shownHeading: 'Shown limit',
     unit: 'papers',
     saving: 'Saving…',
     rangeError: (min: number, max: number) => `Enter an integer between ${min} and ${max}`,

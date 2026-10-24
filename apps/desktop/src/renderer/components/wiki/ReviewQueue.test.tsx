@@ -87,7 +87,7 @@ describe('ReviewQueue', () => {
 
   const render = (proposals: WikiProposal[]) => act(() => root!.render(
     <MessagesProvider>
-      <ReviewQueue proposals={proposals} pending={false} onApply={onApply} onDecline={onDecline} links={links} onOpenConclusion={onOpenConclusion} />
+      <ReviewQueue proposals={proposals} failed={false} pending={false} onApply={onApply} onDecline={onDecline} links={links} onOpenConclusion={onOpenConclusion} />
     </MessagesProvider>,
   ))
 

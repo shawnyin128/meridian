@@ -9,6 +9,14 @@ import { LANGUAGE_STORAGE_KEY } from '../shell/language.js'
 import { headingsOf, Markdown, MarkdownBox } from './Markdown.js'
 import { TOOLTIP_DELAY } from './Tooltip.js'
 
+/** The platform the preload reports, which decides the commit key; `window.meridian` stands in for the preload. */
+let platform = 'darwin'
+beforeEach(() => {
+  platform = 'darwin'
+  vi.stubGlobal('meridian', { get platform() { return platform } })
+})
+afterEach(() => { vi.unstubAllGlobals() })
+
 declare global {
   var IS_REACT_ACT_ENVIRONMENT: boolean
 }
@@ -249,7 +257,7 @@ describe('MarkdownBox 实时编辑', () => {
   })
 
   it('⌘回车只保存,不往原文里插空行;单按回车是换行,不保存', () => {
-    key({ key: 'Enter', ctrlKey: true })
+    key({ key: 'Enter', metaKey: true })
     expect(save).toHaveBeenCalledTimes(1)
     expect(view().state.doc.toString()).toBe('第一行\n第二行')
 
@@ -257,6 +265,14 @@ describe('MarkdownBox 实时编辑', () => {
     key({ key: 'Enter' })
     expect(save).toHaveBeenCalledTimes(1)
     expect(change).toHaveBeenLastCalledWith('第一行\n\n第二行')
+  })
+
+  it('macOS 上 Control-回车不保存;其他平台 Ctrl+回车保存', () => {
+    key({ key: 'Enter', ctrlKey: true })
+    expect(save).not.toHaveBeenCalled()
+    platform = 'win32'
+    key({ key: 'Enter', ctrlKey: true })
+    expect(save).toHaveBeenCalledTimes(1)
   })
 
   it('Esc 撤掉编辑就停在这里,外层面板不跟着收起', () => {

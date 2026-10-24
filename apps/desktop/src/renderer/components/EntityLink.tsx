@@ -33,6 +33,9 @@ export const ENTITY_SCREEN = {
   paper: 'reader', project: 'project', page: 'wiki', idea: 'ideas', chat: 'chat',
 } as const satisfies Record<'paper' | 'project' | 'page' | 'idea' | 'chat', ScreenKey>
 
+/** Whether an entity of `kind`, as a stored target names it, opens on a screen of this version. */
+export const opensHere = (kind: string): kind is keyof typeof ENTITY_SCREEN => Object.hasOwn(ENTITY_SCREEN, kind)
+
 /** The one mark that ends a link leaving the App for the browser. */
 export const ExternalMark = () => <span className="entity-link-mark" aria-hidden="true"><IconExternal /></span>
 

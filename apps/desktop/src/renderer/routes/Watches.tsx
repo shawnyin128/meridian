@@ -5,7 +5,7 @@ import type {
   WatchSuggestionResult,
 } from '../../shared/contract.js'
 import { author, project, watch } from '../ipc.js'
-import { errorLabel, failureLabel, failureOf } from '../lib/failure-label.js'
+import { failureLabel, failureOf } from '../lib/failure-label.js'
 import { useVaultRevision } from '../shell/AppShell.js'
 import { useMessages } from '../messages/useMessages.js'
 import { AddAction } from '../components/AddAction.js'
@@ -22,6 +22,8 @@ import { PageError, SectionHeading } from '../components/PageShell.js'
 import { SegmentedControl } from '../components/SegmentedControl.js'
 import { Switch } from '../components/Switch.js'
 import { Tag } from '../components/Tag.js'
+import { useDraft } from '../hooks/useDrafts.js'
+import { useScreenLoad } from '../hooks/useScreenLoad.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
 import { composing } from '../lib/keyboard.js'
 import { FadeText } from '../components/FadeText.js'
@@ -40,12 +42,14 @@ const suggestedAuthorKey = (item: WatchAuthorSuggestion): string => (
 
 /**
  * One group of watches, with a plus button at the right of its heading that opens a new row at the
- * top of the group's list. `watches` is null while it loads. `editor` is the row being filled in: the
- * draft row wears the `.wrow` styles, and the caller renders and submits the input inside it.
+ * top of the group's list. `watches` is null until it is read, shown as loading unless the screen's
+ * read `failed`. `editor` is the row being filled in: the draft row wears the `.wrow` styles, and
+ * the caller renders and submits the input inside it.
  */
-function WatchGroup({ type, watches, add, editor, onOpen, onEdit, onSetActive, onRemove }: {
+function WatchGroup({ type, watches, failed, add, editor, onOpen, onEdit, onSetActive, onRemove }: {
   type: Watch['type']
   watches: Watch[] | null
+  failed: boolean
   add: RefObject<HTMLButtonElement | null>
   editor?: { id?: string; row: RefObject<HTMLDivElement | null>; input: ReactNode } | undefined
   onOpen: () => void
@@ -62,7 +66,7 @@ function WatchGroup({ type, watches, add, editor, onOpen, onEdit, onSetActive, o
       >{m.shell.watchKind[type]}
       </SectionHeading>
       {watches === null
-        ? <LoadingPlaceholder shape="rows" count={2} />
+        ? (failed ? null : <LoadingPlaceholder shape="rows" count={2} />)
         : watches.length === 0 && editor === undefined
         ? <EmptyState variant="section">{m.watches.empty(m.shell.watchKind[type])}</EmptyState>
         : (
@@ -114,18 +118,25 @@ export function WatchSettings() {
   const watches = useMemo(() => listed ?? [], [listed])
   const [projects, setProjects] = useState<ProjectSummary[]>([])
   const [suggestionSource, setSuggestionSource] = useState<SuggestionSource>('focus')
-  const [focus, setFocus] = useState('')
+  const [keptFocus, setKeptFocus] = useDraft<string>(['watches'], 'focus')
+  const focus = keptFocus ?? ''
+  const setFocus = (next: string) => setKeptFocus(next === '' ? null : next)
   const [projectId, setProjectId] = useState('')
   const [suggestions, setSuggestions] = useState<WatchSuggestionResult | null>(null)
   const [hadSuggestions, setHadSuggestions] = useState(false)
   const [suggesting, setSuggesting] = useState(false)
   const [suggestionError, setSuggestionError] = useState<string | null>(null)
   const [addingSuggestion, setAddingSuggestion] = useState<string | null>(null)
-  const [error, setError] = useState<string | null>(null)
   // The screen, not each group, holds the draft row, so "only one open at a time" spans both groups:
   // if each group held its own, neither could close the other's.
-  const [editor, setEditor] = useState<{ type: Watch['type']; id?: string } | null>(null)
-  const [name, setName] = useState('')
+  // The open draft row and its name are kept as a draft, and the row reopens with them.
+  const [kept, setKept] = useDraft<{ type: Watch['type']; id?: string; name: string }>(['watches'], 'editor')
+  const keptType = kept?.type
+  const keptId = kept?.id
+  const editor = useMemo(() => (keptType === undefined ? null
+    : { type: keptType, ...(keptId === undefined ? {} : { id: keptId }) }), [keptType, keptId])
+  const name = kept?.name ?? ''
+  const setName = (next: string) => { if (kept !== null) setKept({ ...kept, name: next }) }
   const [authorMatches, setAuthorMatches] = useState<AuthorCandidate[]>([])
   const [authorSearching, setAuthorSearching] = useState(false)
   const [authorSearchError, setAuthorSearchError] = useState<string | AuthorSearchFailed | null>(null)
@@ -142,24 +153,25 @@ export function WatchSettings() {
   const triggers = useMemo(() => [addTopic, addAuthor], [])
 
   const { revision } = useVaultRevision()
-  const reportError = useCallback((e: unknown) => setError(errorLabel(m, e)), [m])
+  const { error, load } = useScreenLoad()
   const write = useVaultWrite()
 
   const stop = useCallback(() => {
     authorSearchRevision.current += 1
-    setEditor(null)
-    setName('')
+    setKept(null)
     setAuthorMatches([])
     setAuthorSearching(false)
     setAuthorSearchError(null)
-  }, [])
+  }, [setKept])
+  // A kept edit of a watch the list no longer holds is dropped.
   useEffect(() => {
-    void watch.list().then(setListed).catch(reportError)
-    void project.list().then((items) => {
-      setProjects(items)
-      setProjectId((current) => current || items[0]?.id || '')
-    }).catch(reportError)
-  }, [revision, reportError])
+    if (keptId !== undefined && listed !== null && !listed.some((item) => item.id === keptId)) setKept(null)
+  }, [keptId, listed, setKept])
+  useEffect(() => load('watches', watch.list(), setListed), [revision, load])
+  useEffect(() => load('projects', project.list(), (items) => {
+    setProjects(items)
+    setProjectId((current) => current || items[0]?.id || '')
+  }), [revision, load])
 
   useEffect(() => {
     const query = name.trim()
@@ -218,15 +230,13 @@ export function WatchSettings() {
       return
     }
     afterLeaving(leaveDraft, () => {
-      setEditor({ type })
-      setName('')
+      setKept({ type, name: '' })
       setAuthorSearchNonce(0)
     })
   }
 
   const edit = (item: Watch) => afterLeaving(leaveDraft, () => {
-    setEditor({ type: item.type, id: item.id })
-    setName(item.name)
+    setKept({ type: item.type, id: item.id, name: item.name })
     setAuthorMatches([])
     setAuthorSearchError(null)
     setAuthorSearchNonce(0)
@@ -447,10 +457,11 @@ export function WatchSettings() {
 
   return (
     <div className="watch-settings">
-      <PageError error={error} />
+      <PageError error={error} variant="section" />
       {GROUPS.map((type) => (
         <WatchGroup
           key={type} type={type} watches={listed === null ? null : watches.filter((w) => w.type === type)}
+          failed={error !== null}
           add={type === 'topic' ? addTopic : addAuthor} onOpen={() => open(type)} onEdit={edit}
           editor={editor?.type !== type || editorInput === null
             ? undefined : { ...(editor.id === undefined ? {} : { id: editor.id }), row, input: editorInput }}

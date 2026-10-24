@@ -166,6 +166,7 @@ function PaperFieldEditor({ paper, field, display, save }: {
   return (
     <InlineMetadataField
       label={m.papers.metadata.fields[field]} value={draftOf(paper, field)} display={display || '—'}
+      keep={{ scope: ['paper', paper.id], target: `field:${field}` }}
       type={field === 'submitted' ? 'date' : 'text'}
       inputMode={field === 'year' ? 'numeric' : 'text'}
       onSave={(value) => {
@@ -244,7 +245,7 @@ export function PaperMetadata({ paper, readStateLabel, onSaved, titled = true }:
         <dt>{labels.topics}</dt>
         <dd className="paper-meta-topics">
           <PaperTopics
-            topics={paper.topics} onError={(error) => notice.refusal(errorLabel(m, error))}
+            topics={paper.topics} keep={['paper', paper.id, 'topics']} onError={(error) => notice.refusal(errorLabel(m, error))}
             onAdd={(topic) => saveTopic(topic, true)}
             onRemove={(topic) => saveTopic(topic, false)}
           />

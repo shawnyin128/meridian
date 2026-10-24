@@ -3,6 +3,7 @@ import { act } from 'react'
 import { createRoot } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Watch } from '../../shared/contract.js'
+import { CallError } from '../call-error.js'
 import { MessagesProvider } from '../messages/useMessages.js'
 import { LANGUAGE_STORAGE_KEY } from '../shell/language.js'
 
@@ -27,15 +28,22 @@ const api = vi.hoisted(() => ({
   })),
   update: vi.fn(async () => {}),
   setActive: vi.fn(async () => {}),
+  projects: vi.fn(async (): Promise<unknown> => [{ id: 'project-1', name: 'Draft-tree serving' }]),
+  /** What the next watch list read throws instead of answering. */
+  listError: null as unknown,
+  revision: 0,
 }))
 
 vi.mock('../ipc.js', () => ({
   author: { search: api.search },
-  project: {
-    list: vi.fn(async () => [{ id: 'project-1', name: 'Draft-tree serving' }]),
-  },
+  project: { list: api.projects },
   watch: {
-    list: async () => structuredClone(api.watches),
+    list: async () => {
+      const thrown = api.listError
+      api.listError = null
+      if (thrown !== null) throw thrown
+      return structuredClone(api.watches)
+    },
     suggest: api.suggest,
     create: api.create,
     update: api.update,
@@ -45,7 +53,7 @@ vi.mock('../ipc.js', () => ({
 }))
 vi.mock('../shell/AppShell.js', () => ({
   useNotice: () => ({ success: vi.fn(), refusal: vi.fn() }),
-  useVaultRevision: () => ({ revision: 0, bump: vi.fn() }),
+  useVaultRevision: () => ({ revision: api.revision, bump: vi.fn() }),
 }))
 vi.mock('../hooks/useVaultWrite.js', () => ({
   useVaultWrite: () => async (work: Promise<unknown>) => work.then(() => true, () => false),
@@ -78,8 +86,30 @@ describe('WatchSettings', () => {
     api.search.mockClear()
     api.suggest.mockClear()
     api.update.mockClear()
+    api.listError = null
+    api.revision = 0
   })
   afterEach(() => { host.remove() })
+
+  it('读关注失败时两组不再停在读取占位上，只写出原因', async () => {
+    const root = createRoot(host)
+    api.listError = new CallError('watch.list', 'newer-version')
+    await act(async () => { root.render(<MessagesProvider><WatchSettings /></MessagesProvider>) })
+    expect([host.querySelector('.ipcerror')?.textContent, host.querySelectorAll('.loading-placeholder').length])
+      .toEqual(['需要更新 App', 0])
+    await act(async () => { root.unmount() })
+  })
+
+  it('读关注失败过一次，下一次读成功时原因收起，关注照常列出', async () => {
+    const root = createRoot(host)
+    const render = () => act(async () => { root.render(<MessagesProvider><WatchSettings /></MessagesProvider>) })
+    api.listError = new CallError('watch.list', 'newer-version')
+    await render()
+    api.revision = 1
+    await render()
+    expect([host.querySelector('.ipcerror'), host.querySelectorAll('[data-w]').length]).toEqual([null, 3])
+    await act(async () => { root.unmount() })
+  })
 
   it('新建关注的输入行出现在该组最前,和新关注落下的位置一致', async () => {
     const root = createRoot(host)
@@ -89,6 +119,17 @@ describe('WatchSettings', () => {
     const add = topicList.previousElementSibling!.querySelector<HTMLButtonElement>('button')!
     await act(async () => { add.click() })
     expect(topicList.firstElementChild!.classList.contains('newrow')).toBe(true)
+
+    await act(async () => { root.unmount() })
+  })
+
+  it('读不到时，原因落在共享的错误框里，和发现、API 一样与列表齐平', async () => {
+    api.projects.mockRejectedValueOnce(new CallError('project.list', 'newer-version'))
+    const root = createRoot(host)
+    await act(async () => { root.render(<MessagesProvider><WatchSettings /></MessagesProvider>) })
+
+    const alert = host.querySelector('.watch-settings [role="alert"]')
+    expect([alert?.className, alert?.textContent]).toEqual(['ipcerror ipcerror--section', '需要更新 App'])
 
     await act(async () => { root.unmount() })
   })

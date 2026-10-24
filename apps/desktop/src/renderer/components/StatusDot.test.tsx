@@ -20,6 +20,12 @@ describe('StatusDot', () => {
     expect(renderToStaticMarkup(<StatusDot tone="warn" size="md" />)).toContain('status-dot--md status-dot--warn')
   })
 
+  it('is filled by default, or half-filled or a hollow ring in its tone', () => {
+    expect(renderToStaticMarkup(<StatusDot tone="neutral" fill="half" />))
+      .toBe('<span class="status-dot status-dot--sm status-dot--neutral status-dot--half" aria-hidden="true"></span>')
+    expect(renderToStaticMarkup(<StatusDot tone="neutral" fill="ring" />)).toContain('status-dot--neutral status-dot--ring')
+  })
+
   it('writes its label after the dot, so the state does not rest on colour alone', () => {
     expect(renderToStaticMarkup(<StatusDot tone="bad" label="未找到" />)).toBe(
       '<span class="status-dot-labelled"><span class="status-dot status-dot--sm status-dot--bad" aria-hidden="true"></span>'

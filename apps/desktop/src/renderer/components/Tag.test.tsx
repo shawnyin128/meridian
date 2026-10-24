@@ -25,6 +25,12 @@ describe('Tag', () => {
     expect(tagClass('ghost', 'chip')).toBe('tag tag--chip tag--ghost')
   })
 
+  it('marks a tag whose placement caps its width, so it fades its long text there instead of yielding', () => {
+    expect(renderToStaticMarkup(<Tag shape="chip" capped className="idea-relation-tag">Wiki · KV 量化</Tag>))
+      .toContain('class="tag tag--chip tag--neutral tag--capped idea-relation-tag"')
+    expect(renderToStaticMarkup(<TagButton capped>KV cache</TagButton>)).toContain('class="tag tag--label tag--neutral tag--capped"')
+  })
+
   it('renders a clickable tag as a plain button with the same classes', () => {
     const html = renderToStaticMarkup(<TagButton shape="chip" data-wk="topics/kv" onClick={() => {}}>KV cache</TagButton>)
     expect(html).toBe('<button type="button" class="tag tag--chip tag--neutral" data-wk="topics/kv"><span class="fade-text tag-text" data-state="closed">KV cache</span></button>')

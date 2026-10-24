@@ -1,10 +1,10 @@
 // @vitest-environment jsdom
-import { act } from 'react'
+import { act, type ReactNode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type {
-  DiscoveryProfile, InboxDownloadResult, InboxEntry, JobsStatus, Watch,
+  DiscoveryFetchResult, DiscoveryProfile, InboxDownloadResult, InboxEntry, JobsStatus, Watch,
 } from '../../shared/contract.js'
 import { IconCheck, IconSeen, IconTrash } from '../components/icons.js'
 import { MessagesProvider } from '../messages/useMessages.js'
@@ -19,7 +19,7 @@ const api = vi.hoisted(() => ({
   restored: [] as string[],
   writes: [] as { result: unknown; opts: { note?: unknown; action?: (result: never) => { label: string; onAction: () => void } } }[],
   downloads: {} as Record<string, InboxDownloadResult>,
-  feedback: vi.fn(async () => {}),
+  feedback: vi.fn(async (id: string, value: string) => (value === 'more' ? null : { trash: `trash-${id}` })),
   setIntent: vi.fn(async () => {}),
   openCategory: vi.fn(),
   /** While true the inbox list never arrives. */
@@ -31,25 +31,39 @@ const api = vi.hoisted(() => ({
   open: vi.fn(),
   /** The sort order of each inbox.list call, in order. */
   sorts: [] as (string | undefined)[],
+  /** The parameters of each inbox.list call, in order. */
+  lists: [] as Record<string, unknown>[],
+  checks: vi.fn<(watchId?: string) => Promise<void>>(async () => {}),
+  discoveries: vi.fn<(projectId?: string, force?: boolean) => Promise<DiscoveryFetchResult>>(async () => ({
+    projects: 1, intents: 1, added: 0, deferredProjects: 0, cachedIntents: 0, failedIntents: 0,
+    nothingNew: true, lastFetchedAt: null,
+  })),
+  notice: {
+    success: vi.fn<(text: unknown, action?: { label: string; onAction: () => void }) => void>(),
+    refusal: vi.fn(),
+  },
 }))
 
 vi.mock('../ipc.js', () => ({
   inbox: {
-    list: (params: { kind?: InboxEntry['kind']; sort?: string }) => {
+    list: (params: { kind?: InboxEntry['kind']; sort?: string; watch?: string; project?: string }) => {
       api.sorts.push(params.sort)
-      return api.loading ? new Promise(() => {}) : Promise.resolve(api.entries
-        .filter((entry) => params.kind === undefined || entry.kind === params.kind))
+      api.lists.push(params)
+      const streams = (entry: InboxEntry) => [
+        { kind: entry.kind, id: entry.kind === 'watch' ? entry.watch : entry.project }, ...(entry.also ?? []),
+      ]
+      return api.loading ? new Promise(() => {}) : Promise.resolve(api.entries.filter((entry) => streams(entry).some((stream) => (
+        (params.kind === undefined || stream.kind === params.kind)
+        && (params.watch ?? params.project ?? stream.id) === stream.id
+      ))))
     },
     dismiss: api.dismiss, readLater: async () => false,
     download: async (id: string) => api.downloads[id] ?? { kind: 'added', paper: 'p1' },
-    fetch: async () => {},
+    fetch: api.checks,
   },
   discovery: {
     profiles: async () => api.profiles,
-    fetch: async () => ({
-      projects: api.profiles.length, intents: 0, added: 0, deferredProjects: 0,
-      cachedIntents: 0, failedIntents: 0,
-    }),
+    fetch: api.discoveries,
     setIntent: api.setIntent,
     feedback: api.feedback,
   },
@@ -65,7 +79,7 @@ vi.mock('../shell/AppShell.js', () => ({
   useSettingsOpen: () => ({
     open: false, requestedCategory: null, setOpen: vi.fn(), openCategory: api.openCategory,
   }),
-  useNotice: () => ({ success: vi.fn(), refusal: vi.fn() }),
+  useNotice: () => api.notice,
   useVaultRevision: () => ({ revision: 0, bump: vi.fn() }),
 }))
 vi.mock('../shell/useJobs.js', () => ({ useJobs: () => status }))
@@ -91,6 +105,7 @@ describe('Inbox', () => {
     api.setIntent.mockClear()
     api.openCategory.mockClear()
     api.open.mockClear()
+    api.notice.success.mockClear()
   })
   afterEach(() => {
     host.remove()
@@ -313,24 +328,219 @@ describe('Inbox', () => {
     await act(async () => { again.unmount() })
   })
 
-  it('发现的卡片不能忽略，分组标题上也没有「全部忽略」', async () => {
-    api.entries = [{
-      id: 'd1', kind: 'discovery', watch: '', project: 'p1', source: '项目 · 项目一',
-      title: 'A Discovery', authors: 'Ada', venue: 'ICLR', abstract: 'Abstract', rec: '',
-      reasons: [], downloaded: false, paper: '', pdf: 'https://arxiv.org/pdf/2609.1',
-    }]
+  it('发现的卡片也能忽略,忽略和关注卡片在同一个位置;提示里的撤销把它放回;发现的分组和关注的一样有「全部忽略」', async () => {
+    const entry = (kind: InboxEntry['kind']): InboxEntry => ({
+      id: kind, kind, watch: kind === 'watch' ? 'w1' : '', project: kind === 'watch' ? '' : 'p1',
+      source: kind === 'watch' ? '主题 · w1' : '项目 · 项目一', title: `Paper ${kind}`, authors: 'Ada', venue: 'ICLR',
+      abstract: 'Abstract', rec: '', reasons: [], downloaded: false, paper: '', pdf: 'https://arxiv.org/pdf/2609.1',
+    })
+    const lastAction = () => [...host.querySelectorAll('.paper-card-actions [aria-label]')].at(-1)!.getAttribute('aria-label')
+    api.entries = [entry('watch')]
+    const watching = createRoot(host)
+    await act(async () => { watching.render(<MessagesProvider><Inbox /></MessagesProvider>) })
+    expect(lastAction()).toBe('忽略')
+    await act(async () => { watching.unmount() })
+
+    api.entries = [entry('discovery')]
     api.mode = 'discovery'
     const root = createRoot(host)
     await act(async () => { root.render(<MessagesProvider><Inbox /></MessagesProvider>) })
-    expect(host.querySelectorAll('.collapsible-group')).toHaveLength(1)
-    expect(host.querySelector('[aria-label="忽略"]')).toBeNull()
-    expect(host.querySelector('.collapsible-group-actions')).toBeNull()
+    expect(lastAction()).toBe('忽略')
+    expect([...host.querySelectorAll('.collapsible-group-actions .btn')].map((button) => button.textContent)).toEqual(['全部忽略'])
+    await act(async () => { host.querySelector<HTMLButtonElement>('[aria-label="忽略"]')!.click() })
+    expect(host.querySelector('.paper-card')!.classList.contains('is-leaving')).toBe(true)
+    await act(async () => { await new Promise((done) => { setTimeout(done, 300) }) })
+    expect(api.dismiss).toHaveBeenCalledWith('discovery')
+    const dismissed = api.writes.at(-1)!
+    const action = dismissed.opts.action!(dismissed.result as never)
+    expect([dismissed.opts.note, action.label]).toEqual(['已忽略', '撤销'])
+    await act(async () => { action.onAction() })
+    expect(api.restored).toContain('trash-discovery')
+    await act(async () => { root.unmount() })
+  })
+
+  it('减少类似和已经了解让卡片离开,提示里的撤销从垃圾桶把它放回;更多类似留在原处', async () => {
+    const entry = (id: string): InboxEntry => ({
+      id, kind: 'discovery', watch: '', project: 'p1', source: '项目 · 项目一', title: `Paper ${id}`,
+      authors: 'Ada', venue: 'ICLR', abstract: 'Abstract', rec: '', reasons: [], downloaded: false, paper: '',
+      pdf: 'https://arxiv.org/pdf/2609.1',
+    })
+    api.entries = [entry('d1'), entry('d2'), entry('d3')]
+    api.mode = 'discovery'
+    const root = createRoot(host)
+    await act(async () => { root.render(<MessagesProvider><Inbox /></MessagesProvider>) })
+    const card = (id: string) => host.querySelector<HTMLElement>(`.paper-card[data-pid="${id}"]`)!
+    for (const [id, label, note] of [['d1', '减少类似', '已记住'], ['d2', '已经了解', '已标记为已经了解']] as const) {
+      await act(async () => { card(id).querySelector<HTMLButtonElement>(`[aria-label="${label}"]`)!.click() })
+      expect(card(id).classList.contains('is-leaving')).toBe(true)
+      await act(async () => { await new Promise((done) => { setTimeout(done, 300) }) })
+      const written = api.writes.at(-1)!
+      const action = written.opts.action!(written.result as never)
+      expect([written.opts.note, action.label]).toEqual([note, '撤销'])
+      await act(async () => { action.onAction() })
+      expect(api.restored.at(-1)).toBe(`trash-${id}`)
+    }
+    await act(async () => { card('d3').querySelector<HTMLButtonElement>('[aria-label="更多类似"]')!.click() })
+    expect(card('d3').classList.contains('is-leaving')).toBe(false)
+    expect(api.feedback).toHaveBeenLastCalledWith('d3', 'more')
+    await act(async () => { root.unmount() })
+  })
+
+  it('几条关注和项目都送来的论文只是一张卡片:全部里出现一次,理由合在一起;它的每个范围里都列着它,组名是那个范围', async () => {
+    const shared: InboxEntry = {
+      id: 's1', kind: 'watch', watch: 'w1', project: '', source: '关键词 · w1',
+      title: 'Shared Paper', authors: 'Ada', venue: 'ICLR', abstract: 'Abstract', rec: '',
+      reasons: [{ kind: 'watch', label: '命中关键词「w1」' }, { kind: 'watch', label: '命中作者「w2」' }],
+      also: [{ kind: 'watch', id: 'w2', source: '作者 · w2' }, { kind: 'discovery', id: 'p1', source: '项目 · 项目一' }],
+      downloaded: false, paper: '', pdf: 'https://arxiv.org/pdf/2609.1',
+    }
+    const single: InboxEntry = {
+      ...shared, id: 's2', title: 'Single Paper', reasons: [{ kind: 'watch', label: '命中关键词「w1」' }],
+    }
+    delete single.also
+    api.entries = [shared, single]
+    const root = createRoot(host)
+    await act(async () => { root.render(<MessagesProvider><Inbox /></MessagesProvider>) })
+    expect([...host.querySelectorAll('.collapsible-group-title')].map((title) => title.textContent)).toEqual(['关键词 · w1'])
+    expect(host.querySelectorAll('.paper-card')).toHaveLength(2)
+    const card = (id: string) => host.querySelector(`.paper-card[data-pid="${id}"]`)!
+    expect(card('s1').querySelector('.prec')?.textContent).toBe('命中关键词「w1」 · 命中作者「w2」')
+    expect(card('s2').querySelector('.prec')).toBeNull()
+    await act(async () => { root.unmount() })
+
+    api.scope = 'w2'
+    const scoped = createRoot(host)
+    await act(async () => { scoped.render(<MessagesProvider><Inbox /></MessagesProvider>) })
+    expect(api.lists.at(-1)).toMatchObject({ kind: 'watch', watch: 'w2' })
+    expect([...host.querySelectorAll('.collapsible-group-title')].map((title) => title.textContent)).toEqual(['作者 · w2'])
+    expect([...host.querySelectorAll('.paper-card')].map((held) => held.getAttribute('data-pid'))).toEqual(['s1'])
+    await act(async () => { scoped.unmount() })
+
+    api.scope = 'p1'
+    api.mode = 'discovery'
+    const discovering = createRoot(host)
+    await act(async () => { discovering.render(<MessagesProvider><Inbox /></MessagesProvider>) })
+    expect(api.lists.at(-1)).toMatchObject({ kind: 'discovery', project: 'p1' })
+    expect(host.querySelector('.desk-head .t')?.textContent).toBe('项目 · 项目一 · 1')
+    expect(host.querySelector('[aria-label="减少类似"]')).not.toBeNull()
+    await act(async () => { discovering.unmount() })
+  })
+
+  it('检查新论文和刷新发现只管侧栏里选中的范围:一条关注、一个项目,或者全部;刷新一个项目不等冷却期', async () => {
+    const press = async (label: string) => {
+      const button = [...host.querySelectorAll<HTMLButtonElement>('.desk-head .btn')].find((held) => held.textContent === label)!
+      await act(async () => { button.click() })
+    }
+    for (const [mode, scope, label, called, expected] of [
+      ['watch', 'w1', '检查新论文', api.checks, ['w1']], ['watch', 'all', '检查新论文', api.checks, [undefined]],
+      ['discovery', 'p1', '刷新发现', api.discoveries, ['p1', true]], ['discovery', 'all', '刷新发现', api.discoveries, []],
+    ] as const) {
+      api.mode = mode
+      api.scope = scope
+      called.mockClear()
+      const root = createRoot(host)
+      await act(async () => { root.render(<MessagesProvider><Inbox /></MessagesProvider>) })
+      await press(label)
+      expect(called.mock.calls).toEqual([expected])
+      await act(async () => { root.unmount() })
+    }
+  })
+
+  it('刷新发现的结果说真的没有新论文时,提示说没有新的,并写出结果带回的这个范围上次刷新的日期与时刻', async () => {
+    api.mode = 'discovery'
+    api.scope = 'p1'
+    const at = new Date(2026, 9, 23, 9, 30).getTime()
+    api.profiles = [
+      { id: 'p1', name: '项目一', seedCount: 1, positiveCount: 0, negativeCount: 0, intentCount: 1, lastFetchedAt: at - 3_600_000, intents: [] },
+      { id: 'p2', name: '项目二', seedCount: 1, positiveCount: 0, negativeCount: 0, intentCount: 1, lastFetchedAt: at + 3_600_000, intents: [] },
+    ]
+    api.discoveries.mockResolvedValueOnce({
+      projects: 1, intents: 1, added: 0, deferredProjects: 0, cachedIntents: 0, failedIntents: 0,
+      nothingNew: true, lastFetchedAt: at,
+    })
+    const root = createRoot(host)
+    await act(async () => { root.render(<MessagesProvider><Inbox /></MessagesProvider>) })
+    const refresh = [...host.querySelectorAll<HTMLButtonElement>('.desk-head .btn')].find((held) => held.textContent === '刷新发现')!
+    await act(async () => { refresh.click() })
+    const toast = document.createElement('div')
+    const shown = createRoot(toast)
+    act(() => shown.render(<MessagesProvider>{api.notice.success.mock.calls.at(-1)![0] as ReactNode}</MessagesProvider>))
+    expect(toast.textContent).toMatch(/^没有发现新的论文 · 上次刷新 /)
+    expect([...toast.querySelectorAll('.date-chip')].map((chip) => chip.textContent)).toEqual(['10月23日', '09:30'])
+    act(() => shown.unmount())
+    await act(async () => { root.unmount() })
+  })
+
+  it('刷新发现没送来论文、但有方向失败时,结果不算真的没有新论文,提示不写上次刷新的时刻', async () => {
+    api.mode = 'discovery'
+    api.scope = 'p1'
+    const at = new Date(2026, 9, 23, 9, 30).getTime()
+    api.profiles = [
+      { id: 'p1', name: '项目一', seedCount: 1, positiveCount: 0, negativeCount: 0, intentCount: 1, lastFetchedAt: at, intents: [] },
+    ]
+    api.discoveries.mockResolvedValueOnce({
+      projects: 0, intents: 0, added: 0, deferredProjects: 0, cachedIntents: 0, failedIntents: 1,
+      nothingNew: false, lastFetchedAt: at,
+    })
+    const root = createRoot(host)
+    await act(async () => { root.render(<MessagesProvider><Inbox /></MessagesProvider>) })
+    const refresh = [...host.querySelectorAll<HTMLButtonElement>('.desk-head .btn')].find((held) => held.textContent === '刷新发现')!
+    await act(async () => { refresh.click() })
+    const toast = document.createElement('div')
+    const shown = createRoot(toast)
+    act(() => shown.render(<MessagesProvider>{api.notice.success.mock.calls.at(-1)![0] as ReactNode}</MessagesProvider>))
+    expect(toast.textContent).toBe('没有发现新的论文 · 请求 0 个方向 · 1 个方向失败 · 下轮优先重试')
+    expect(toast.querySelectorAll('.date-chip')).toHaveLength(0)
+    act(() => shown.unmount())
+    await act(async () => { root.unmount() })
+  })
+
+  it('屏头写这一档上次检查的时刻,没带来新论文时先说没有新论文;别的档照常写整轮检查的时刻', async () => {
+    const at = new Date(2026, 8, 21, 8, 15).getTime()
+    status = {
+      writes: 0, uploads: [], downloads: [],
+      fetch: { state: 'idle', checkedAt: new Date(2026, 8, 20, 14, 5).getTime(), reason: null, last: { watches: ['w1'], added: 0, at } },
+      generating: [], generatingWiki: [], wikiFailures: {},
+    }
+    api.scope = 'w1'
+    const root = createRoot(host)
+    await act(async () => { root.render(<MessagesProvider><Inbox /></MessagesProvider>) })
+    expect(host.querySelector('.fetchnote')!.textContent).toBe('没有新论文 · 上次检查 9月21日08:15')
+    await act(async () => { root.unmount() })
+    status.fetch!.last = { watches: ['w1'], added: 2, at }
+    const added = createRoot(host)
+    await act(async () => { added.render(<MessagesProvider><Inbox /></MessagesProvider>) })
+    expect(host.querySelector('.fetchnote')!.textContent).toBe('上次检查 9月21日08:15')
+    await act(async () => { added.unmount() })
+    api.scope = 'all'
+    const all = createRoot(host)
+    await act(async () => { all.render(<MessagesProvider><Inbox /></MessagesProvider>) })
+    expect(host.querySelector('.fetchnote')!.textContent).toBe('上次检查 9月20日14:05')
+    await act(async () => { all.unmount() })
+  })
+
+  it('从一条关注的那一档换到一个项目的那一档,新的列表还没到时不画上一档的卡片,也不出错', async () => {
+    api.entries = [{
+      id: 'w-only', kind: 'watch', watch: 'w1', project: '', source: '关键词 · w1',
+      title: 'Watch Paper', authors: 'Ada', venue: 'ICLR', abstract: 'Abstract', rec: '',
+      reasons: [], downloaded: false, paper: '', pdf: 'https://arxiv.org/pdf/2609.1',
+    }]
+    api.scope = 'w1'
+    const root = createRoot(host)
+    await act(async () => { root.render(<MessagesProvider><Inbox /></MessagesProvider>) })
+    expect(host.querySelectorAll('.paper-card')).toHaveLength(1)
+    api.mode = 'discovery'
+    api.scope = 'p1'
+    api.loading = true
+    await act(async () => { root.render(<MessagesProvider><Inbox /></MessagesProvider>) })
+    expect(host.querySelector('.ipcerror, .page-error')).toBeNull()
+    expect(host.querySelectorAll('.paper-card')).toHaveLength(0)
     await act(async () => { root.unmount() })
   })
 
   it('上次检查的时刻像全 App 的时间一样写成日期与时刻', async () => {
     status = {
-      writes: 0, uploads: [], downloads: [], fetch: { state: 'idle', checkedAt: new Date(2026, 8, 20, 14, 5).getTime(), reason: null },
+      writes: 0, uploads: [], downloads: [], fetch: { state: 'idle', checkedAt: new Date(2026, 8, 20, 14, 5).getTime(), reason: null }, generating: [], generatingWiki: [], wikiFailures: {},
     }
     const root = createRoot(host)
     await act(async () => { root.render(<MessagesProvider><Inbox /></MessagesProvider>) })
@@ -342,7 +552,7 @@ describe('Inbox', () => {
 
   it('检查新论文失败时状态行只显示失败原因', async () => {
     status = {
-      writes: 0, uploads: [], downloads: [], fetch: { state: 'failed', checkedAt: null, reason: 'unavailable' },
+      writes: 0, uploads: [], downloads: [], fetch: { state: 'failed', checkedAt: null, reason: 'unavailable' }, generating: [], generatingWiki: [], wikiFailures: {},
     }
     const root = createRoot(host)
     await act(async () => { root.render(<MessagesProvider><Inbox /></MessagesProvider>) })
@@ -375,21 +585,31 @@ describe('Inbox', () => {
     await act(async () => { root.unmount() })
   })
 
-  it('入库撞上库里已有的那一篇时,提示里的打开进的是库里那一篇', async () => {
+  it('入库之后卡片离开论文推送,提示写已入库,提示里的开始阅读打开入库的那一篇;撞上库里已有的那一篇也一样', async () => {
     // As Core writes a new entry, it names no paper.
-    api.entries = [{
-      id: 'a1', kind: 'watch', watch: 'w1', project: '', source: '主题 · w1',
-      title: 'Paper a1', authors: 'Ada', venue: 'ICLR', abstract: 'Abstract', rec: '',
+    const entry = (id: string): InboxEntry => ({
+      id, kind: 'watch', watch: 'w1', project: '', source: '主题 · w1',
+      title: `Paper ${id}`, authors: 'Ada', venue: 'ICLR', abstract: 'Abstract', rec: '',
       reasons: [], downloaded: false, paper: '', pdf: 'https://arxiv.org/pdf/2609.1',
-    }]
-    api.downloads = { a1: { kind: 'existing', paper: 'Held-Paper', title: 'Held Paper' } }
+    })
+    api.entries = [entry('a1'), entry('a2')]
+    api.downloads = {
+      a1: { kind: 'added', paper: 'Added-Paper' },
+      a2: { kind: 'existing', paper: 'Held-Paper', title: 'Held Paper' },
+    }
     const root = createRoot(host)
     await act(async () => { root.render(<MessagesProvider><Inbox /></MessagesProvider>) })
-    const card = host.querySelector<HTMLElement>('.paper-card[data-pid="a1"]')!
-    await act(async () => { card.querySelector<HTMLButtonElement>('[aria-label="下载并入库"]')!.click() })
-    expect(card.querySelector('.pdup span')?.textContent).toBe('库里已经有这一篇：「Held Paper」')
-    await act(async () => { card.querySelector<HTMLButtonElement>('.pdup .btn')!.click() })
-    expect(api.open).toHaveBeenCalledWith('reader', 'Held-Paper')
+    const card = (id: string) => host.querySelector<HTMLElement>(`.paper-card[data-pid="${id}"]`)!
+    for (const [id, text, paper] of [['a1', '已入库', 'Added-Paper'], ['a2', '库里已有这一篇', 'Held-Paper']] as const) {
+      await act(async () => { card(id).querySelector<HTMLButtonElement>('[aria-label="下载并入库"]')!.click() })
+      expect(card(id).classList.contains('is-leaving')).toBe(true)
+      expect(card(id).querySelector('.pdup')).toBeNull()
+      const [said, action] = api.notice.success.mock.calls.at(-1)!
+      expect([said, action?.label]).toEqual([text, '开始阅读'])
+      act(() => action!.onAction())
+      expect(api.open).toHaveBeenLastCalledWith('reader', paper)
+    }
+    expect(host.querySelector('[aria-label="开始阅读"]')).toBeNull()
     await act(async () => { root.unmount() })
   })
 

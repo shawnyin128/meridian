@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { PaperReading, PaperRow } from '../../../shared/contract.js'
 import { papers } from '../../ipc.js'
-import { errorLabel } from '../../lib/failure-label.js'
+import { useScreenLoad } from '../../hooks/useScreenLoad.js'
 import { useMessages } from '../../messages/useMessages.js'
 import { useVaultRevision, type JumpAnchor } from '../../shell/AppShell.js'
 import { entryAnchor, readingEntries } from './reading-entries.js'
@@ -24,16 +24,9 @@ export function PaperReadingSummary({ paper, onRead, onConclusions }: {
   const m = useMessages()
   const { revision } = useVaultRevision()
   const [reading, setReading] = useState<PaperReading | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  const { error, load } = useScreenLoad()
 
-  useEffect(() => {
-    let live = true
-    setError(null)
-    void papers.reading(paper.id)
-      .then((value) => { if (live) setReading(value) })
-      .catch((cause: unknown) => { if (live) setError(errorLabel(m, cause)) })
-    return () => { live = false }
-  }, [paper.id, revision])
+  useEffect(() => load('reading', papers.reading(paper.id), setReading), [paper.id, revision, load])
 
   const held = reading?.paperId === paper.id ? reading : null
   const entries = held === null ? [] : readingEntries(held)

@@ -1,11 +1,14 @@
 /**
  * Returns the bytes of a one-page Letter PDF showing `lines` top to bottom in
- * Helvetica, with `title` in its info dictionary when given. The same
- * arguments give the same bytes. Fixture network responses and tests use it.
+ * Helvetica, `size` pt type on `leading` pt lines, with `title` in its info
+ * dictionary when given. The same arguments give the same bytes. Fixture
+ * network responses and tests use it.
  */
-export function minimalPdf({ title, lines }: { title?: string; lines: string[] }): Uint8Array {
+export function minimalPdf({ title, lines, size = 12, leading = 18 }: {
+  title?: string; lines: string[]; size?: number; leading?: number
+}): Uint8Array {
   const escape = (text: string): string => text.replace(/[\\()]/g, (c) => `\\${c}`)
-  const content = lines.map((line, at) => `BT /F1 12 Tf 72 ${720 - at * 18} Td (${escape(line)}) Tj ET`).join('\n')
+  const content = lines.map((line, at) => `BT /F1 ${size} Tf 72 ${720 - at * leading} Td (${escape(line)}) Tj ET`).join('\n')
   const objects = [
     '<< /Type /Catalog /Pages 2 0 R >>',
     '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',

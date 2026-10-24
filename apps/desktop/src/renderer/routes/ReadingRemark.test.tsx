@@ -18,7 +18,7 @@ const READING: PaperReading = {
 
 /** The remark panel with the drafts the reader rail holds for it. */
 function Remark(props: Omit<ComponentProps<typeof ReadingRemark>, 'edits'>) {
-  return <ReadingRemark {...props} edits={useDrafts<EditDraft>()} />
+  return <ReadingRemark {...props} edits={useDrafts<EditDraft>(['paper', 'p1', 'edits'])} />
 }
 
 function setValue(input: HTMLTextAreaElement, value: string): void {
@@ -32,12 +32,14 @@ describe('ReadingRemark', () => {
 
   beforeEach(() => {
     globalThis.IS_REACT_ACT_ENVIRONMENT = true
+    vi.stubGlobal('meridian', { platform: 'darwin' })
     window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'zh')
     document.body.innerHTML = ''
   })
 
   afterEach(() => {
     for (const root of roots.splice(0)) act(() => root.unmount())
+    vi.unstubAllGlobals()
   })
 
   it('没改过时保存按不动,改过之后存的是去掉首尾空白的整段', async () => {
@@ -81,5 +83,24 @@ describe('ReadingRemark', () => {
     act(() => setValue(textarea, '新的随想'))
     await act(async () => { key({ key: 'Enter', metaKey: true }) })
     expect(onSave).toHaveBeenCalledWith('新的随想')
+  })
+
+  it('输入法选字时按 Esc 只归输入法，随笔的草稿还在；选完字再按 Esc 才还原', () => {
+    const host = document.createElement('div')
+    document.body.append(host)
+    const root = createRoot(host)
+    roots.push(root)
+    act(() => root.render(
+      <MessagesProvider><Remark reading={READING} saving={false} onSave={vi.fn(async () => true)} /></MessagesProvider>,
+    ))
+    const textarea = host.querySelector('textarea')!
+    const key = (init: KeyboardEventInit) => act(() => {
+      textarea.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, cancelable: true, ...init }))
+    })
+    act(() => setValue(textarea, '新的随想'))
+    key({ key: 'Escape', isComposing: true })
+    expect(textarea.value).toBe('新的随想')
+    key({ key: 'Escape' })
+    expect(textarea.value).toBe('原来的随想')
   })
 })

@@ -1,7 +1,8 @@
-import { useState, type ReactNode } from 'react'
+import type { ReactNode } from 'react'
 import type { ConflictTarget, DiffPiece, Evidence, ProposalOp, WikiProposal } from '../../../shared/contract.js'
 import { localDayOf } from '../../../shared/dates.js'
 import { PAPER_PAGE } from '../../../shared/vocabulary.js'
+import { useDrafts } from '../../hooks/useDrafts.js'
 import { useFormat } from '../../lib/format.js'
 import { useMessages } from '../../messages/useMessages.js'
 import { ActionPopover } from '../ActionPopover.js'
@@ -222,10 +223,12 @@ function Blocks({ p, links, onOpenConclusion, by, context }: {
  * the block sits beside the apply button, opening the changed page or the conclusion through `onOpenConclusion`. The
  * project and node that prompted it show only when no change cites them. Pages, projects and source
  * passages open through `links`. Decided proposals follow under their own heading, muted, each with its
- * outcome. `proposals` is null while they load.
+ * outcome. `proposals` is null until they are read; the queue then shows its loading placeholder, or
+ * nothing once `failed`.
  */
-export function ReviewQueue({ proposals, pending, onApply, onDecline, links, onOpenConclusion }: {
+export function ReviewQueue({ proposals, failed, pending, onApply, onDecline, links, onOpenConclusion }: {
   proposals: WikiProposal[] | null
+  failed: boolean
   pending: boolean
   onApply: (proposal: WikiProposal) => void
   onDecline: (proposal: WikiProposal, reason: string) => void
@@ -235,9 +238,11 @@ export function ReviewQueue({ proposals, pending, onApply, onDecline, links, onO
   const m = useMessages()
   const r = m.wiki.queue
   const fmt = useFormat()
-  const [declining, setDeclining] = useState<string | null>(null)
-  const [reason, setReason] = useState('')
   const queued = (proposals ?? []).filter((p) => p.status === 'queued')
+  // A decline reason being typed is kept as a draft of its proposal, and reopens its popover.
+  const reasons = useDrafts<string>(['wiki', 'review'], proposals === null ? null : queued.map((p) => p.id))
+  const declining = queued.find((p) => reasons.get(p.id) !== undefined)?.id ?? null
+  const reason = declining === null ? '' : reasons.get(declining) ?? ''
   const decided = (proposals ?? []).filter((p) => p.status !== 'queued')
   const applicable = (p: WikiProposal): boolean => p.proposal !== null && !p.staleNow && (p.unverified ?? []).length === 0
   // The queue's one primary commit is the apply of the first proposal that can be applied.
@@ -295,7 +300,7 @@ export function ReviewQueue({ proposals, pending, onApply, onDecline, links, onO
   return (
     <>
       {proposals === null
-        ? <LoadingPlaceholder shape="rows" />
+        ? (failed ? null : <LoadingPlaceholder shape="rows" />)
         : queued.length === 0
         ? <EmptyState variant="section">{r.empty}</EmptyState>
         : (
@@ -310,20 +315,20 @@ export function ReviewQueue({ proposals, pending, onApply, onDecline, links, onO
                       <ActionPopover
                         open={declining === p.id}
                         onOpenChange={(next) => {
-                          setDeclining(next ? p.id : null)
-                          setReason('')
+                          if (declining !== null) reasons.drop(declining)
+                          if (next) reasons.set(p.id, '')
                         }}
                         contentClassName="ctxmenu review-decline" align="start"
                         trigger={<button type="button" className="btn ghost danger" disabled={pending}>{r.decline}</button>}
                       >
                         <FormInput
                           appearance="field" autoFocus value={reason} placeholder={r.reasonPlaceholder}
-                          onChange={(e) => setReason(e.target.value)}
+                          onChange={(e) => reasons.set(p.id, e.target.value)}
                         />
                         <button
                           type="button" className="btn danger" disabled={pending}
                           onClick={() => {
-                            setDeclining(null)
+                            reasons.drop(p.id)
                             onDecline(p, reason.trim())
                           }}
                         >{r.declineConfirm}</button>

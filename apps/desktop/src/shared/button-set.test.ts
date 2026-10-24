@@ -8,6 +8,7 @@ type Node = { dispatchEvent(event: object): boolean }
 type Style = {
   opacity: string; cursor: string; height: string; borderTopWidth: string; borderTopStyle: string
   boxShadow: string; transition: string; backgroundColor: string; color: string; background: string
+  position: string; display: string; visibility: string
 }
 type Window = {
   document: {
@@ -16,7 +17,7 @@ type Window = {
     querySelector(selector: string): Node
   }
   MouseEvent: new (type: string, init: { bubbles: boolean }) => object
-  getComputedStyle(element: Node): Style
+  getComputedStyle(element: Node): Style & { getPropertyValue(name: string): string }
 }
 const { document, MouseEvent, getComputedStyle } = globalThis as unknown as Window
 
@@ -61,6 +62,8 @@ const PAIRED = new Set(readdirSync(RENDERER, { recursive: true, encoding: 'utf8'
 
 /** The stylesheet that owns the button set. */
 const BUTTON_SET = join('routes', 'shell.css')
+/** The running ring's stylesheet, which colours the ring inside the buttons that hold it. */
+const RING_SHEET = join('components', 'icons.css')
 
 const STYLES = [join('shell', 'tokens.css'), BUTTON_SET].map((path) => readFileSync(join(RENDERER, path), 'utf8'))
 
@@ -172,6 +175,42 @@ describe('按钮组', () => {
     expect(new Set(heights)).toEqual(new Set(['30px']))
   })
 
+  describe('忙着的动作按钮', () => {
+    beforeEach(() => {
+      document.head.innerHTML += ['ActionButton.css', 'icons.css']
+        .map((name) => `<style>${readFileSync(join(RENDERER, 'components', name), 'utf8')}</style>`).join('')
+    })
+
+    /** The computed styles of a busy ActionButton of `classes`, its hidden label, its ring and the ring's track. */
+    const busy = (classes: string) => {
+      document.body.innerHTML = `<button type="button" class="action-button ${classes}" aria-busy="true" disabled aria-label="正在重置…">`
+        + '<span class="action-label">重置库…</span><svg class="ring spin"><circle /><circle class="arc" /></svg></button>'
+      return ['button', '.action-label', '.ring', '.ring circle:not(.arc)']
+        .map((selector) => getComputedStyle(document.querySelector(selector)))
+    }
+
+    it('宽度不变：原来的字照旧排在按钮里只是看不见，转圈叠在按钮正中，不占位置', () => {
+      const [button, label, ring] = busy('btn danger')
+      expect([button!.position, label!.display, label!.visibility, ring!.position]).toEqual(['relative', 'contents', 'hidden', 'absolute'])
+    })
+
+    it('不像禁用那样变淡；实心按钮上的转圈是按钮的字色、底圈淡下去，别的按钮上转圈仍是强调色', () => {
+      const look = (classes: string) => {
+        const [button, , ring, track] = busy(classes)
+        return [button!.opacity, ring!.color, track!.getPropertyValue('stroke-opacity')]
+      }
+      expect(Object.fromEntries(Object.entries(VARIANTS).map(([variant, classes]) => [variant, look(classes)]))).toEqual({
+        secondary: ['1', 'var(--accent)', '1'],
+        primary: ['1', 'var(--on-accent)', '0.35'],
+        ghost: ['1', 'var(--accent)', '1'],
+        danger: ['1', 'var(--accent)', '1'],
+        solidDanger: ['1', 'var(--on-accent)', '0.35'],
+        ghostDanger: ['1', 'var(--accent)', '1'],
+        nested: ['1', 'var(--accent)', '1'],
+      })
+    })
+  })
+
   it('按下的开关按钮是选中的样子：--selected 的底配 --on-selected 的字', () => {
     document.body.innerHTML = '<button type="button" class="btn ghost sm" aria-pressed="true">历史项目</button><button type="button" class="btn ghost sm" aria-pressed="false">历史项目</button>'
     const [on, off] = ['[aria-pressed="true"]', '[aria-pressed="false"]'].map((selector) => {
@@ -187,6 +226,8 @@ describe('按钮组', () => {
       .filter(([selector, body]) => names.test(selector) && LOOK.test(body))
       .filter(([selector]) => path !== BUTTON_SET
         || !selector.split(',').every((part) => /^(?::where\()?\.btn(?![\w-])/.test(part.trim())))
+      // A rule whose every selector ends at the ring styles the ring, not the button around it.
+      .filter(([selector]) => path !== RING_SHEET || !selector.split(',').every((part) => /\s\.ring$/.test(part.trim())))
       .map(([selector]) => `${path}  ${selector}`))
     expect(offenders).toEqual([])
   })

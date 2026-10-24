@@ -24,10 +24,12 @@ import { PaperReadingSummary } from './PaperReadingSummary.js'
 import { FormInput } from '../FormControls.js'
 import { ClearableInput } from '../ClearableInput.js'
 import { PageBody, PageError, PageHeader, PageShell, PageTitle, PageToolbar } from '../PageShell.js'
+import { useDrafts, useKeptTargets } from '../../hooks/useDrafts.js'
 import { NO_TRIGGERS } from '../../hooks/useOnLeave.js'
 import { useInlineDraft } from '../../hooks/useInlineDraft.js'
 import { useUndo } from '../../hooks/useUndo.js'
 import { useJumpOrigin } from '../../hooks/useJumpOrigin.js'
+import { useScreenLoad } from '../../hooks/useScreenLoad.js'
 import { useVaultWrite } from '../../hooks/useVaultWrite.js'
 import { useScrollFade } from '../../hooks/useScrollFade.js'
 import {
@@ -229,15 +231,18 @@ function opensPaperFrom(target: EventTarget | null): boolean {
  * input's text to `onSave`; Esc calls `onCancel` without writing the typed text. `onSave` returns
  * whether this edit is finished.
  */
-function TextCellEdit({ cell, initial, onSave, onCancel }: {
+function TextCellEdit({ cell, initial, keep, onSave, onCancel }: {
   cell: RefObject<HTMLTableCellElement | null>
   initial: string
+  /** Keeps what is typed as a draft under `target` of `scope`, which the input starts from; closing drops it. */
+  keep: { scope: readonly string[]; target: string }
   onSave: (value: string) => boolean | Promise<boolean>
   onCancel: () => void
 }) {
   const input = useRef<HTMLInputElement>(null)
+  const kept = useDrafts<string>(keep.scope)
   const draft = useInlineDraft({
-    row: cell, triggers: NO_TRIGGERS, onCancel,
+    row: cell, triggers: NO_TRIGGERS, onCancel, kept: { drafts: kept, target: keep.target },
     onSubmit: () => onSave(input.current!.value),
   })
   return (
@@ -245,7 +250,11 @@ function TextCellEdit({ cell, initial, onSave, onCancel }: {
       appearance="inline" className="celledit paper-text-cell-input"
       ref={input}
       {...draft.inputProps}
-      defaultValue={initial}
+      onInput={(event) => {
+        draft.inputProps.onInput()
+        kept.set(keep.target, event.currentTarget.value)
+      }}
+      defaultValue={kept.get(keep.target) ?? initial}
     />
   )
 }
@@ -288,17 +297,28 @@ export function PaperTable() {
   // Tail of the column chain: column configuration refetches and column set writes queue behind it,
   // each starting only after the previous one has settled.
   const columnChain = useRef<Promise<unknown>>(Promise.resolve())
-  const [newCol, setNewCol] = useState(false)
+  // The new column's name and an edited cell's text are kept as drafts, and reopen where they were.
+  const tableDrafts = useDrafts<string>(['papers'])
+  const newCol = tableDrafts.get('new-column') !== undefined
+  const setNewCol = useCallback((open: boolean) => {
+    if (!open) tableDrafts.drop('new-column')
+    else if (tableDrafts.get('new-column') === undefined) tableDrafts.set('new-column', '')
+  }, [tableDrafts])
   const colAdd = useRef<HTMLButtonElement>(null)
   const newColCell = useRef<HTMLTableCellElement>(null)
   // Identity of the current column-creation attempt; closing the draft in any way (Esc, outside
   // press, focus leaving, opening the detail panel) replaces it with null.
   const columnDraftToken = useRef<object | null>(null)
-  // The custom cell being edited in place
-  const [editingCell, setEditingCell] = useState<{ id: string; key: string } | null>(null)
+  // The custom cell being edited in place, or else one whose kept text belongs to a paper on the page shown
+  const [ownEditingCell, setEditingCell] = useState<{ id: string; key: string } | null>(null)
+  const keptCells = useKeptTargets(['paper'], 'cell:')
+  const keptCell = keptCells.find(({ scope }) => rows.some((row) => row.id === scope[1]))
+  const keptId = keptCell?.scope[1] ?? null
+  const keptKey = keptCell?.target.slice('cell:'.length) ?? null
+  const restoredCell = useMemo(() => (keptId === null || keptKey === null ? null : { id: keptId, key: keptKey }), [keptId, keptKey])
+  const editingCell = ownEditingCell ?? restoredCell
   const editingTd = useRef<HTMLTableCellElement>(null)
   const [detail, setDetail] = useState<PaperRow | null>(null)
-  const [error, setError] = useState<string | null>(null)
   const [uploading, setUploading] = useState(false)
   const [dropActive, setDropActive] = useState(false)
   const uploadInput = useRef<HTMLInputElement>(null)
@@ -324,7 +344,8 @@ export function PaperTable() {
   // The revision is bumped after a write so the grouping and row-fetch effects run again, like the
   // demo's renderLibRows call after a submit.
   const { revision, bump } = useVaultRevision()
-  const reportError = useCallback((e: unknown) => setError(errorLabel(m, e)), [m])
+  const { error, load, report } = useScreenLoad()
+  const openDetail = (id: string) => { load('detail', papers.get(id), setDetail) }
   const closeDetail = useCallback(() => setDetail(null), [])
   const write = useVaultWrite()
   const undo = useUndo()
@@ -334,8 +355,8 @@ export function PaperTable() {
   // must be refetched.
   useEffect(() => {
     if (detailId === undefined) return
-    void papers.get(detailId).then(setDetail).catch(reportError)
-  }, [detailId, revision, reportError])
+    return load('detail', papers.get(detailId), setDetail)
+  }, [detailId, revision, load])
 
   // Opening a paper is a separate navigation action, so discard an unfinished column-header draft.
   // The established columns remain mounted and horizontally scrollable beside the inspector.
@@ -371,8 +392,8 @@ export function PaperTable() {
     columnChain.current = columnChain.current.then(() => papers.columns().then((live) => {
       confirmedColumns.current = live
       setColumns(live)
-    }).catch(reportError))
-  }, [revision, reportError])
+    }).catch(report))
+  }, [revision, report])
 
   // Editing another cell drops the previous cell's write queue; the next cell's first pick computes
   // from the current column configuration and row again.
@@ -383,8 +404,8 @@ export function PaperTable() {
       setFacets([])
       return
     }
-    void papers.facets(group, filter).then(setFacets).catch(reportError)
-  }, [group, filter, revision, reportError])
+    return load('facets', papers.facets(group, filter), setFacets)
+  }, [group, filter, revision, load])
 
   useEffect(() => {
     if (view !== 'table' || !listed) return
@@ -393,11 +414,11 @@ export function PaperTable() {
       ...(filter ? { filter } : {}),
       ...(sel === null || group === 'none' ? {} : { facet: { field: group, value: sel } }),
     }
-    void papers.list(params).then((r) => {
+    return load('rows', papers.list(params), (r) => {
       setRows(r.rows)
       setTotal(r.total)
-    }).catch(reportError)
-  }, [view, listed, shownPage, size, sort, direction, filter, group, sel, revision, reportError])
+    })
+  }, [view, listed, shownPage, size, sort, direction, filter, group, sel, revision, load])
 
   useEffect(() => {
     if (view !== 'research-map') return
@@ -411,9 +432,9 @@ export function PaperTable() {
       if (!active) return
       setMapRows(result.rows)
       setMapTotal(result.total)
-    }).catch(reportError).finally(() => { if (active) setMapLoading(false) })
+    }).catch(report).finally(() => { if (active) setMapLoading(false) })
     return () => { active = false }
-  }, [view, filter, revision, reportError])
+  }, [view, filter, revision, report])
 
   // Clicking the sidebar while this screen is shown lands on the plain table: an open detail panel closes.
   const reentry = useScreenReentry()
@@ -426,7 +447,7 @@ export function PaperTable() {
     if (jump === null || jump.seq === consumed.current) return
     consumed.current = jump.seq
     if (jump.anchor?.detail === true) {
-      void papers.get(jump.target).then(setDetail).catch(reportError)
+      load('detail', papers.get(jump.target), setDetail)
       return
     }
     if (jump.anchor?.importPdf === true) {
@@ -435,7 +456,7 @@ export function PaperTable() {
     }
     setQ(jump.target)
     setPage(1)
-  }, [jump, reportError, uploading])
+  }, [jump, load, uploading])
 
   const backToValues = useCallback(() => { setSel(null); setPage(1) }, [])
   const backToUngrouped = useCallback(() => { setGroup('none'); setSel(null); setPage(1) }, [])
@@ -676,7 +697,6 @@ export function PaperTable() {
       return
     }
     setUploading(true)
-    setError(null)
     try {
       const result = await papers.import(file.name, new Uint8Array(await file.arrayBuffer()))
       if (result.kind === 'added') bump()
@@ -721,8 +741,11 @@ export function PaperTable() {
     void uploadFiles([...event.dataTransfer.files])
   }
 
-  /** Close the cell being edited. */
+  /** Close the cell being edited, and forget what was kept of it. */
   const closeCell = () => {
+    if (editingCell !== null) {
+      keptCells.find(({ scope, target }) => scope[1] === editingCell.id && target === `cell:${editingCell.key}`)?.drop()
+    }
     setEditingCell(null)
   }
 
@@ -844,7 +867,7 @@ export function PaperTable() {
         await papers.columns().then((live) => {
           confirmedColumns.current = live
           setColumns(live)
-        }).catch(reportError)
+        }).catch(report)
         return false
       }
     })
@@ -856,14 +879,14 @@ export function PaperTable() {
    * A column configuration change, queued on the column chain: when its turn comes, `update` computes
    * the new configuration from the last confirmed column set and it is handed to Core. It takes effect
    * only once written (`onApplied` is called synchronously at that moment), bumps the vault revision,
-   * shows its success notice, and drops a deleted column's width along with the column. Returns whether it was
-   * written.
+   * shows its success notice, which offers Undo when the change deletes a column or an option, and drops
+   * a deleted column's width along with the column. Returns whether it was written.
    */
   const changeColumns = (
     update: (base: PaperColumns) => PaperColumns, onApplied?: () => void,
   ): Promise<boolean> => writeColumns(async (base) => {
     const next = update(base)
-    await papers.setColumns(next)
+    const written = await papers.setColumns(next)
     bump()
     const gone = base.custom.find((c) => !next.custom.some((n) => n.key === c.key))
     if (gone) {
@@ -874,7 +897,10 @@ export function PaperTable() {
       })
     }
     const note = columnsNote(base, next, m.papers.notices)
-    if (note !== undefined) notice.success(note)
+    const dropped = gone !== undefined || next.custom.some((column) => base.custom
+      .find((held) => held.key === column.key)?.options.some((option) => !column.options.includes(option)))
+    // Core records every change to the custom columns, so a deletion always has a change to undo.
+    if (note !== undefined) notice.success(note, dropped ? undo.change({ change: written.change! }) : undefined)
     return next
   }, onApplied)
 
@@ -932,12 +958,12 @@ export function PaperTable() {
     const editing = editingCell?.id === p.id && editingCell.key === column.key
     if (!editing) {
       if (column.type === 'text') return <span className="ci">{values[0] ?? ''}</span>
-      return <span className="ci">{values.map((v) => <Tag shape="chip" className="tagchip" key={v}>{v}</Tag>)}</span>
+      return <span className="ci">{values.map((v) => <Tag shape="chip" capped className="tagchip" key={v}>{v}</Tag>)}</span>
     }
     if (column.type === 'text') {
       return (
         <TextCellEdit
-          cell={editingTd} initial={values[0] ?? ''}
+          cell={editingTd} initial={values[0] ?? ''} keep={{ scope: ['paper', p.id], target: `cell:${column.key}` }}
           onSave={(value) => holdCellSave(saveCell(p, column.key, value))}
           // Another cell may have been clicked before the write came back; close this cell only if it
           // is still the one being edited.
@@ -947,7 +973,7 @@ export function PaperTable() {
     }
     return (
       <CellPicker
-        column={column} values={values} onClose={closeCell}
+        column={column} values={values} onClose={closeCell} keep={{ scope: ['paper', p.id], target: `cell:${column.key}` }}
         onCommit={(value, created) => savePick(p, column, value, created)}
       />
     )
@@ -981,7 +1007,7 @@ export function PaperTable() {
           {editing
             ? (
               <TextCellEdit
-                cell={editingTd} initial={p.remark ?? ''}
+                cell={editingTd} initial={p.remark ?? ''} keep={{ scope: ['paper', p.id], target: `cell:${k}` }}
                 onSave={(value) => holdCellSave(saveRemark(p, value))}
                 onCancel={() => setEditingCell((held) => (
                   held !== null && held.id === p.id && held.key === k ? null : held
@@ -1005,7 +1031,8 @@ export function PaperTable() {
       <td key={k}>
         <span className="ci">
           <PaperTopics
-            topics={p.topics} onError={reportError} onAdd={(v) => addTopic(p, v)} onRemove={(v) => removeTopic(p, v)}
+            topics={p.topics} keep={['paper', p.id, 'topics-cell']} onError={report}
+            onAdd={(v) => addTopic(p, v)} onRemove={(v) => removeTopic(p, v)}
           />
         </span>
       </td>
@@ -1045,7 +1072,7 @@ export function PaperTable() {
           <col data-cw="x" style={{ width: `${widthOf('x')}px` }} />
         </colgroup>
         <thead>
-          <tr>
+          <tr data-row-actions="">
             {/* A sortable header sorts on click; its button is the keyboard's way to that click. */}
             <th data-k="title" aria-sort={ariaSort('title')} onClick={() => clickHeader('title')}>
               <button type="button" className="thsort">
@@ -1091,24 +1118,26 @@ export function PaperTable() {
             {newCol
               ? (
                 <NewColumnHead
-                  cell={newColCell} triggers={[colAdd]} pickType
+                  cell={newColCell} triggers={[colAdd]} pickType kept={{ drafts: tableDrafts, target: 'new-column' }}
                   onCreate={createColumn}
                   onCancel={() => { columnDraftToken.current = null; setNewCol(false) }}
                 />
               )
               : null}
             <th className="th-add">
-              <AddAction
-                variant="icon" className="colbtn" ref={colAdd} label={m.papers.columnHeader.addColumn}
-                onClick={() => {
-                  if (newCol) { newColCell.current?.querySelector('input')?.focus(); return }
-                  setNewCol(true)
-                }}
-              />
-              <ColumnMenu
-                columns={columns} onChange={(update) => { void changeColumns(update) }}
-                onRenameOption={renameOption} onRetype={setColumnType}
-              />
+              <RowActions>
+                <AddAction
+                  variant="icon" ref={colAdd} label={m.papers.columnHeader.addColumn}
+                  onClick={() => {
+                    if (newCol) { newColCell.current?.querySelector('input')?.focus(); return }
+                    setNewCol(true)
+                  }}
+                />
+                <ColumnMenu
+                  columns={columns} onChange={(update) => { void changeColumns(update) }}
+                  onRenameOption={renameOption} onRetype={setColumnType}
+                />
+              </RowActions>
             </th>
           </tr>
         </thead>
@@ -1122,14 +1151,14 @@ export function PaperTable() {
                   <tr
                     className={detail?.id === p.id ? 'selected' : undefined} data-row-actions=""
                     aria-current={detail?.id === p.id ? 'true' : undefined}
-                    onClick={() => { void papers.get(p.id).then(setDetail).catch(reportError) }}
+                    onClick={() => openDetail(p.id)}
                     onMouseDown={holdRepeatSelection}
                     onDoubleClick={(event) => {
                       if (opensPaperFrom(event.target)) open('reader', p.id)
                     }}
                     onKeyDown={(event) => {
                       if (event.key === 'Enter' && event.target === event.currentTarget) {
-                        void papers.get(p.id).then(setDetail).catch(reportError)
+                        openDetail(p.id)
                       }
                     }}
                   >
@@ -1148,7 +1177,7 @@ export function PaperTable() {
                 </Toolbar>
               )}
             >
-              <ContextMenuItem onSelect={() => { void papers.get(p.id).then(setDetail).catch(reportError) }}>
+              <ContextMenuItem onSelect={() => openDetail(p.id)}>
                 {m.papers.contextMenu.openDetail}
               </ContextMenuItem>
               <ContextMenuItem onSelect={() => open('reader', p.id)}>{m.papers.contextMenu.openReader}</ContextMenuItem>
@@ -1253,7 +1282,7 @@ export function PaperTable() {
           </PageToolbar>
           <ParseProgress
             onParsed={() => bump()}
-            onOpenPaper={(id) => { void papers.get(id).then(setDetail).catch(reportError) }}
+            onOpenPaper={openDetail}
           />
 
           <div id="libList">
@@ -1261,8 +1290,9 @@ export function PaperTable() {
               ? (
                 <ResearchMap
                   rows={mapRows} total={mapTotal} loading={mapLoading}
-                  onOpenPaper={(paper) => { void papers.get(paper.id).then(setDetail).catch(reportError) }}
+                  onOpenPaper={(paper) => openDetail(paper.id)}
                   onReadPaper={(paper) => open('reader', paper.id)}
+                  onRate={setRating} onPickReadState={setReadState}
                 />
               )
               : !listed

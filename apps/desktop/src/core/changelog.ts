@@ -25,6 +25,12 @@ import type { VaultOps, VaultStore } from './vault.js'
 /** Changes made by the user in the UI; a proposal applied from the review queue records its own chip. */
 const BY_ME: ChangeSource = '我'
 
+/**
+ * What the first line of the reader's Wiki proposal card calls writing a proposal to a paper page
+ * without a body and to one with a body, as the Chinese catalog's `wiki.ingest` writes them.
+ */
+export const PAPER_WIKI_DRAFT_KINDS = { create: '新建内容', update: '更新内容' } as const
+
 /** Number of leading SHA-256 hexadecimal characters used for a fingerprint. */
 const FINGERPRINT_CHARS = 16
 
@@ -359,6 +365,11 @@ const NOTE_FIELDS: readonly Field<PaperNote>[] = [['页码', (n) => String(n.pag
 const HIGHLIGHT_FIELDS: readonly Field<PaperHighlight>[] = [
   ['页码', (h) => String(h.page)], ['高亮', (h) => h.quote], ['批注', (h) => h.note],
 ]
+const HIGHLIGHT_COLOUR_LABEL: Record<PaperHighlight['color'], string> = { yellow: '黄色', green: '绿色', blue: '蓝色', pink: '粉色' }
+/** The fields a change to a highlight lists: its colour too, which a highlight added or deleted does not list. */
+const CHANGED_HIGHLIGHT_FIELDS: readonly Field<PaperHighlight>[] = [
+  ...HIGHLIGHT_FIELDS, ['颜色', (h) => HIGHLIGHT_COLOUR_LABEL[h.color]],
+]
 
 const TASKS: Items<Task> = {
   label: '任务', id: (t) => t.id, name: (t) => t.title,
@@ -530,7 +541,7 @@ function changeLines(
       const [a, b] = sides('highlight')
       return a === undefined || b === undefined
         ? sideLines(sign, HIGHLIGHT_FIELDS, one.highlight, date)
-        : fieldLines(HIGHLIGHT_FIELDS, a.highlight, b.highlight, date)
+        : fieldLines(CHANGED_HIGHLIGHT_FIELDS, a.highlight, b.highlight, date)
     }
     case 'remark': {
       const [a, b] = sides('remark')
@@ -961,6 +972,16 @@ export function withChangelog(ops: VaultOps, log: ChangeLogStore): VaultStore {
     updateWikiPage(id, body) {
       const title = id.startsWith(PAPER_PAGE) ? ops.wikiPaper(id).title : ops.wikiAggregation(id).title
       return wrote({ kind: 'pages', id, paths: [id] }, `Wiki · 「${title}」· 改了正文`, 'snapshot', () => ops.updateWikiPage(id, body), [`~ ${id}`])
+    },
+
+    applyPaperWikiDraft(id, body) {
+      // Recorded as an applied queue proposal is: titled by its card's first line, under the chip of an ingest.
+      const target: ChangeTarget = { kind: 'pages', id, paths: [id] }
+      const before = entityOf(target)
+      const page = ops.wikiPaper(id)
+      const kind = page.body.trim() === '' ? PAPER_WIKI_DRAFT_KINDS.create : PAPER_WIKI_DRAFT_KINDS.update
+      const [, change] = drawn(() => ops.applyPaperWikiDraft(id, body))
+      push(change, target, `Wiki · ${page.title} · ${kind}`, 'snapshot', before, [`~ ${id}`], 'Meridian')
     },
 
     listChanges() {

@@ -14,6 +14,11 @@
 .structured-list.structured-list--scrollable{padding:var(--ring-room);margin-inline:calc(-1 * var(--ring-room))}
 .desk .desk-body>.structured-list.structured-list--scrollable{max-width:none;
   margin-inline:max(calc(-1 * var(--ring-room)),calc((100% - var(--pagew)) / 2 - var(--ring-room)))}
+/* A list that fills its container shrinks to the room it is given, and clips and keeps ring room as a scrolling list does. */
+.structured-list--fill{flex:0 1 auto;min-height:0;overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain}
+.structured-list.structured-list--fill{padding:var(--ring-room);margin-inline:calc(-1 * var(--ring-room))}
+.list-column{display:flex;min-height:0;flex-direction:column;overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;
+  padding:var(--ring-room);margin:calc(-1 * var(--ring-room))}
 .structured-row{box-sizing:border-box;width:100%;border:0;border-top:1px solid var(--sep2);background:transparent;color:var(--ink);font:inherit;text-align:left}
 .structured-row:first-child{border-top:0}
 .structured-list--embedded>.structured-row{border-top:0}
@@ -31,11 +36,11 @@ button.structured-row:hover,.structured-row--composite:hover,.structured-row:has
 
 /*
  * The row-actions slot: hidden and not clickable at rest, shown while its host (an element marked
- * data-row-actions) is hovered or holds focus, while one of its menus or dialogs is open, and while
- * one of its buttons shows a state (a running download, a pressed toggle). Hosts do not write their
- * own reveal.
+ * data-row-actions) is hovered or holds focus, while one of its menus, dialogs or expanded parts is
+ * open, and while one of its buttons shows a state (a running download, a pressed toggle). Hosts do
+ * not write their own reveal.
  */
 .row-actions{display:inline-flex;flex:none;align-items:center;gap:var(--sp-4);opacity:0;pointer-events:none;
   transition:opacity var(--t-fast) var(--e-out)}
 [data-row-actions]:hover .row-actions,[data-row-actions]:focus-within .row-actions,
-.row-actions:has([data-state="open"],.busy,[aria-pressed="true"]){opacity:1;pointer-events:auto}
+.row-actions:has([data-state="open"],[aria-expanded="true"],.busy,[aria-pressed="true"]){opacity:1;pointer-events:auto}

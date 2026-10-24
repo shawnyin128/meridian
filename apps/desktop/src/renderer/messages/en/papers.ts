@@ -1,3 +1,4 @@
+import { formatNumber } from '../../lib/number.js'
 import { pluralEn } from '../../lib/plural.js'
 import { papers as zh } from '../zh/papers.js'
 
@@ -27,17 +28,15 @@ export const papers = {
   },
   views: { aria: 'Paper library view', table: 'Table', researchMap: 'Research Map' },
   researchMap: {
-    title: 'Adaptive Research Map',
-    summaryAria: 'Research Map summary',
-    groups: 'groups',
-    covered: (total: number) => `/ ${total} papers covered`,
-    overlapping: 'papers in multiple groups',
     limit: (shown: number, total: number) => `${shown} / ${total} ${pluralEn(total, { one: 'paper', other: 'papers' })}`,
     empty: 'No papers to group yet',
     groupListAria: 'Automatic research groups',
     kind: { signal: 'Topic or method signal', project: 'Project connection' },
     paperCount: (count: number) => `${count} ${pluralEn(count, { one: 'paper', other: 'papers' })}`,
     paperListAria: (group: string) => `Papers in ${group}`,
+    crossGroup: 'Cross-group',
+    ungrouped: 'Ungrouped',
+    readProgress: (read: number, total: number) => `Read ${read}/${total}`,
     reason: {
       topic: (value: string) => `Topic: ${value}`,
       method: (value: string) => `Method: ${value}`,
@@ -177,7 +176,7 @@ export const papers = {
   card: {
     abstractLabel: 'Abstract',
     recommendationLabel: 'Why recommended',
-    citations: (n: number) => `${n} ${pluralEn(n, { one: 'citation', other: 'citations' })}`,
+    citations: (n: number) => `${formatNumber('en', n)} ${pluralEn(n, { one: 'citation', other: 'citations' })}`,
     expandAbstract: 'Show full abstract',
     collapseAbstract: 'Show less',
   },

@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import type { Page } from '@playwright/test'
-import { expect, openSettings, settle, test, type MeridianWindow } from './app.js'
+import { belowHeader, expect, openSettings, settle, test, type MeridianWindow } from './app.js'
 
 /** Screens stay mounted once visited, so selectors every screen has, such as messages, are scoped to the visible one. */
 const shown = (win: Page, sel: string) => win.locator(`.screenslot:not([hidden]) ${sel}`)
@@ -56,6 +56,21 @@ async function say(win: Page, value: string): Promise<void> {
   await expect(shown(win, '.msg').last()).toHaveClass(/\byou\b/)
 }
 
+/**
+ * Sends `before`, then the mention picked by typing `@` and `query`, the candidate whose name starts
+ * with `name`, then `after`, and waits until the message is the last one.
+ */
+async function sayWith(win: Page, before: string, query: string, name: string, after: string): Promise<void> {
+  const count = await shown(win, '.msg').count()
+  const composer = shown(win, '#composer')
+  await composer.fill(before)
+  await composer.pressSequentially(`@${query}`)
+  await win.locator('#cRes .rrow').filter({ has: win.locator('.rt', { hasText: `@${name}` }) }).first().click()
+  await composer.pressSequentially(after)
+  await shown(win, '#sendBtn').click()
+  await expect(shown(win, '.msg')).toHaveCount(count + 1)
+}
+
 /** Starts a new chat with the + on the sidebar's Chats heading. */
 async function newChat(win: Page): Promise<void> {
   await win.locator('.sidebar .sb-add[aria-label="新对话"]').click()
@@ -95,26 +110,53 @@ test('动态的「看看」建立结论冲突会话，未配置模型时给明�
   await expect(win.locator('#chatList .ct-t').first()).toHaveText('结论冲突')
 })
 
-test('@ 引用项目、论文与 wiki 页都交给真实对话链路', async ({ win }) => {
+test('@ 引用项目、论文与 wiki 页都交给真实对话链路,发出的消息里引用是和输入框里一样的引用块,点它打开它点名的实体,返回回到对话', async ({ win }) => {
   await gotoChat(win)
+  const lastSaid = () => shown(win, '.msg.you .bubble').last()
+  const crumb = await win.locator('#crumb .cseg').allTextContents()
 
   const projects = await core<{ id: string; name: string }[]>(win, 'project.list', {})
   const p = projects.find((x) => x.id === 'draft')!
-  await say(win, `@${p.name} 这条线还剩什么`)
-  await expect(shown(win, '.msg.you .bubble').last()).toContainText(`@${p.name}`)
+  await sayWith(win, '先说 ', p.name, p.name, '这条线还剩什么')
+  await expect(lastSaid()).toHaveText(`先说 @${p.name} 这条线还剩什么`)
+  await expect(lastSaid().locator('.tag')).toHaveText([`@${p.name}`])
   await expect(shown(win, '.cbox .tag')).toHaveText(NO_MODEL)
+
+  await lastSaid().locator('.tag .entity-link--project').click()
+  await expect(win.locator('#crumb .cseg')).toHaveText(['研究', '项目', p.name])
+  await shown(win, '.desk-head .back').click()
+  await expect(win.locator('#crumb .cseg')).toHaveText(crumb)
+  await expect(lastSaid().locator('.tag')).toHaveText([`@${p.name}`])
 
   const page = (await core<{ id: string; title: string; kindLabel: string; updated: string; summary: string }[]>(
     win, 'wiki.cards', {}))[0]!
-  await say(win, `@${page.title} 这一页怎么说`)
-  await expect(shown(win, '.msg.you .bubble').last()).toContainText(`@${page.title}`)
+  await sayWith(win, '', page.title, page.title, '这一页怎么说')
+  await expect(lastSaid().locator('.tag')).toHaveText([`@${page.title}`])
   await expect(shown(win, '.cbox .tag')).toHaveText(NO_MODEL)
 
   const paper = (await core<{ rows: { title: string }[] }>(
     win, 'papers.list', { page: 1, size: 1 })).rows[0]!
-  await say(win, `@${paper.title.split(':')[0]} 这篇讲了什么`)
-  await expect(shown(win, '.msg.you .bubble').last()).toContainText(`@${paper.title.split(':')[0]}`)
+  const lead = paper.title.split(':')[0]!
+  await sayWith(win, '', lead, lead, '这篇讲了什么')
+  await expect(lastSaid().locator('.tag')).toContainText([`@${lead}`])
   await expect(shown(win, '.cbox .tag')).toHaveText(NO_MODEL)
+})
+
+test('对话的第一条消息和别的屏的第一项一样，从屏头下同一处开始；发出的新消息仍然滚到底', async ({ app, win }) => {
+  await win.locator('[data-desk="changelog"]').click()
+  const elsewhere = await belowHeader(shown(win, '.desk-body > :first-child'))
+  await gotoChat(win)
+  expect(await belowHeader(shown(win, '.desk-body > .stream > .msgs > :first-child'))).toBeCloseTo(elsewhere, 0)
+
+  // A short window and a few more messages make the conversation taller than its page body, so following the end is observable.
+  await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]!.setSize(1280, 560))
+  const body = shown(win, '.desk-body')
+  const overflows = () => body.evaluate((element) => element.scrollHeight > element.clientHeight)
+  for (let sent = 1; sent <= 6 && !await overflows(); sent++) await say(win, `新消息跟到底 ${sent}`)
+  expect(await overflows()).toBe(true)
+  await say(win, '最后一条也在视野里')
+  await expect.poll(() => body.evaluate((element) => element.scrollHeight - element.clientHeight - element.scrollTop))
+    .toBeLessThanOrEqual(1)
 })
 
 test('问一个一般问题,输入框显示「AI 未连接」的状态而不是回答', async ({ win }) => {
@@ -137,16 +179,27 @@ test('短输入也会真正发送，不再被当成未实现的搜索词', async
   await expect(shown(win, '.msg.you .bubble')).toHaveText('测试')
 })
 
-test('@ 下拉按项目、论文、Wiki 三组列候选,点一条填进输入框', async ({ win }) => {
+test('@ 下拉按项目、论文、Wiki 三组列候选,在句子中间点一条,它成了光标处的引用块,前后的字都留着', async ({ win }) => {
   await gotoChat(win)
-  await shown(win, '#composer').fill('@')
+  const composer = shown(win, '#composer')
+  await composer.fill('先看看  再说')
+  await composer.press('Home')
+  for (let step = 0; step < 4; step += 1) await composer.press('ArrowRight')
+  await composer.pressSequentially('@')
   await expect(win.locator('#cRes .rg')).toHaveText(['项目', '论文', 'Wiki'])
 
   const first = win.locator('#cRes .rrow').first()
   const picked = await first.locator('.rt').textContent()
   await first.click()
-  await expect(shown(win, '#composer')).toHaveValue(`${picked} `)
+  await expect(composer.locator('.composer-mention')).toHaveText([picked!])
+  await expect(composer).toHaveText(`先看看 ${picked} 再说`)
   await expect(win.locator('#cRes')).toHaveCount(0)
+
+  // The mention goes as one piece: one Backspace after it takes it whole.
+  await composer.press('ArrowLeft')
+  await composer.press('Backspace')
+  await expect(composer.locator('.composer-mention')).toHaveCount(0)
+  await expect(composer).toHaveText('先看看  再说')
 })
 
 /** Asks Core directly whether the chat is archived now. */
@@ -168,7 +221,7 @@ test('归档把会话移出侧栏,设置里取消归档把它放回', async ({ a
 
   await win.locator(`#chatList [data-chat="${target.id}"]`).hover()
   await win.locator(`#chatList [data-chat="${target.id}"] .dots`).click()
-  await win.locator('.ctxmenu .mi').click()
+  await win.getByRole('menuitem', { name: '归档' }).click()
   await expect(win.locator('.sidebar .chat-row')).toHaveCount(listed - 1)
   await expect(win.locator(`.sidebar [data-chat="${target.id}"]`)).toHaveCount(0)
   expect(await isArchived(win, target.id)).toBe(true)
@@ -186,6 +239,27 @@ test('归档把会话移出侧栏,设置里取消归档把它放回', async ({ a
   await expect(win.locator(`#chatList [data-chat="${target.id}"]`)).toHaveCount(1)
   await expect(win.locator('.sidebar .chat-row')).toHaveCount(listed)
   expect(await isArchived(win, target.id)).toBe(false)
+})
+
+test('侧栏删掉的会话不弹确认就进垃圾桶的对话一组,恢复后回到侧栏原来的位置,消息一条不少', async ({ win }) => {
+  await win.locator('#chatList .chat-row').first().waitFor()
+  const order = (await core<Session[]>(win, 'chat.list', {})).filter((s) => !s.archived)
+  const target = order[0]!
+
+  await win.locator(`#chatList [data-chat="${target.id}"]`).hover()
+  await win.locator(`#chatList [data-chat="${target.id}"] .dots`).click()
+  await win.getByRole('menuitem', { name: '删除' }).click()
+  await expect(win.locator('[role="alertdialog"]')).toHaveCount(0)
+  await expect(win.locator('#notice .notice-text')).toHaveText('已移入垃圾桶')
+  await expect(win.locator(`#chatList [data-chat="${target.id}"]`)).toHaveCount(0)
+
+  await win.locator('[data-desk="trash"]').click()
+  await expect(shown(win, '.section-heading')).toContainText(['对话 · 1'])
+  const row = shown(win, '.trow').filter({ hasText: target.title })
+  await row.hover()
+  await row.getByRole('button', { name: '恢复' }).click()
+  await expect(win.locator('#chatList .chat-row .ct-t')).toHaveText(order.map((s) => s.title))
+  expect((await core<Session[]>(win, 'chat.list', {})).find((s) => s.id === target.id)!.messageCount).toBe(target.messageCount)
 })
 
 test('设置里「打开」进那条归档的会话,模态让开且屏上标出它是归档的', async ({ app, win }) => {
@@ -225,7 +299,7 @@ test('把讨论整理成可回看的想法', async ({ win }) => {
   await expect(win.locator('#qaConcl')).toHaveCount(0)
 })
 
-test('会话行的更多菜单是真菜单:触发器报 menu,下键高亮归档,回车归档且不进那条会话', async ({ win }) => {
+test('会话行的更多菜单是真菜单:触发器报 menu,归档之后是删除,下键高亮归档,回车归档且不进那条会话', async ({ win }) => {
   await win.locator('#chatList .chat-row').first().waitFor()
   const target = (await core<Session[]>(win, 'chat.list', {})).find((s) => !s.archived)!
   const row = win.locator(`#chatList [data-chat="${target.id}"]`)
@@ -234,7 +308,7 @@ test('会话行的更多菜单是真菜单:触发器报 menu,下键高亮归档,
   await expect(row.locator('.dots')).toHaveAttribute('aria-haspopup', 'menu')
   await row.locator('.dots').click()
   const items = win.locator('[role="menu"] [role="menuitem"]')
-  await expect(items).toHaveText(['归档'])
+  await expect(items).toHaveText(['归档', '删除'])
   await win.keyboard.press('ArrowDown')
   await expect(items.first()).toHaveAttribute('data-highlighted', '')
   await win.keyboard.press('Enter')

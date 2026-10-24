@@ -92,6 +92,8 @@ let listParams: ListParams[]
 let vaultPaperCount: number | null
 /** The group values papers.facets answers with. */
 let facetRows: Facet[]
+/** The call papers.facets answers through instead, when a test holds its answer back. */
+let facetCall: Controlled<Facet[]> | null
 let openedScreens: [screen: string, id?: string][]
 /** The jump useJump hands the table: the screen another one opened it with, or null. */
 let jumpHere: ScreenJump | null
@@ -107,7 +109,7 @@ let returnedTo: string[]
 vi.mock('../ipc.js', () => ({
   papers: {
     list: (params: ListParams) => { listCallCount += 1; listParams.push(params); return listCall.promise },
-    facets: () => Promise.resolve(facetRows),
+    facets: () => facetCall?.promise ?? Promise.resolve(facetRows),
     get: (id: string) => { gotIds.push(id); return getCall.promise },
     update: (id: string, patch: Record<string, unknown>) => {
       if (throwOnNextUpdate) { const e = throwOnNextUpdate; throwOnNextUpdate = null; throw e }
@@ -134,10 +136,12 @@ vi.mock('../ipc.js', () => ({
     setColumns: (columns: PaperColumns) => {
       const c = controlled<void>()
       setColumnsCalls.push({ ...c, columns })
+      const change = `change-columns-${setColumnsCalls.length}`
       // As in Core, the columns a landed write sent are what papers.columns answers from then on.
       return c.promise.then(() => {
         columnsCall = controlled()
         columnsCall.resolve(columns)
+        return { change }
       })
     },
     renameOption: (key: string, from: string, to: string) => {
@@ -305,6 +309,7 @@ describe('PaperTable', () => {
     listParams = []
     vaultPaperCount = null
     facetRows = []
+    facetCall = null
     openedScreens = []
     jumpHere = null
     gotIds = []
@@ -403,10 +408,54 @@ describe('PaperTable', () => {
     await flush()
 
     expect(listParams.at(-1)).toMatchObject({ page: 1, size: 200, sort: 'addedAt', direction: 'desc' })
-    expect(host.querySelector('.research-map-title')?.textContent).toContain('自适应研究地图')
+    expect(host.querySelector('.research-map')?.firstElementChild?.className).toBe('research-map-layout')
     expect(host.querySelector('.research-map-groups')?.textContent).toContain('Speculative decoding')
     expect(host.querySelector('.research-map-detail')?.textContent).toContain('主题：Speculative decoding')
     expect(host.querySelector('.pagebar')).toBeNull()
+  })
+
+  it('研究地图的论文行和论文表一样写出评分、短标题和阅读状态，星和状态是论文表的同一组控件，改了写回且不打开详情', async () => {
+    const host = mount()
+    const mappedRows = [
+      {
+        ...ROW, id: 'p1', title: 'EAGLE: Speculative Sampling Requires Rethinking Feature Uncertainty', shortTitle: 'EAGLE',
+        year: 2024, rating: 4, readState: '在读', topics: ['Speculative decoding'],
+      },
+      { ...ROW, id: 'p2', title: 'Reliable speculative decoding', year: 2023, topics: ['Speculative decoding'] },
+    ]
+    columnsCall.resolve(EMPTY_COLUMNS)
+    listCall.resolve({ rows: mappedRows, total: 2 })
+    await flush()
+    const chipLook = (chip: Element | null) =>
+      [chip?.tagName, chip?.className, chip?.getAttribute('aria-haspopup'), chip?.textContent]
+    const tableRows = [...host.querySelectorAll<HTMLElement>('.ptable tbody tr')]
+    const tableStars = tableRows.map((row) => row.querySelector('.rating-stars')!.outerHTML)
+    const tableStatus = tableRows.map((row) => chipLook(row.querySelector('.stchip')))
+    expect(tableRows.map((row) => row.querySelectorAll('.rating-stars .rated').length)).toEqual([4, 0])
+    expect(tableStatus.map((look) => look[3])).toEqual(['在读', '未读'])
+
+    const mapSwitch = [...host.querySelectorAll<HTMLButtonElement>('.paper-view-toolbar .segmented-control button')]
+      .find((button) => button.textContent === '研究地图')!
+    await act(async () => { mapSwitch.click() })
+    await flush()
+
+    const mapped = [...host.querySelectorAll<HTMLElement>('.research-map-paper')]
+    expect(mapped.map((row) => row.querySelector('.research-map-paper-meta')?.textContent))
+      .toEqual(['EAGLE · 2024 · arXiv', '2023 · arXiv'])
+    expect(mapped.map((row) => row.querySelector('.rating-stars')?.outerHTML)).toEqual(tableStars)
+    expect(mapped.map((row) => chipLook(row.querySelector('.stchip')))).toEqual(tableStatus)
+
+    const opened = gotIds.length
+    await act(async () => { mapped[0]!.querySelector<HTMLButtonElement>('.rating-stars [aria-label="5 星"]')!.click() })
+    expect(updateCalls.at(-1)).toMatchObject({ id: 'p1', patch: { rating: 5 } })
+    await act(async () => {
+      mapped[1]!.querySelector('.stchip')!.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, button: 0 }))
+    })
+    await flush()
+    const read = [...document.querySelectorAll<HTMLElement>('.ctxmenu .mi')].find((item) => item.textContent === '已读')!
+    await act(async () => { press(read) })
+    expect(updateCalls.at(-1)).toMatchObject({ id: 'p2', patch: { readState: '已读' } })
+    expect(gotIds).toHaveLength(opened)
   })
 
   it('上传把 PDF 交给 Core,落地后清掉搜索并由最近添加排序把它留在第一页', async () => {
@@ -521,6 +570,49 @@ describe('PaperTable', () => {
     await flush()
     expect(listParams.at(-1)?.facet).toEqual({ field: 'topics', value: 'speculative decoding' })
     expect(title()).toBe('论文 · 4')
+  })
+
+  it('搜索时先发的查询晚回来，表格仍是最后那个查询的行和篇数', async () => {
+    const host = mount()
+    columnsCall.resolve(EMPTY_COLUMNS)
+    listCall.resolve({ rows: [ROW], total: 1 })
+    await flush()
+    const input = host.querySelector<HTMLInputElement>('#libq')!
+    const older = listCall = controlled()
+    act(() => setValue(input, 's'))
+    const newer = listCall = controlled()
+    act(() => setValue(input, 'spec'))
+    newer.resolve({ rows: [{ ...ROW, id: 'p2', title: 'Speculative decoding' }], total: 1 })
+    await flush()
+    older.resolve({ rows: [ROW, { ...ROW, id: 'p3', title: 'Switch Transformers' }], total: 2 })
+    await flush()
+
+    expect(listParams.slice(-2).map((params) => params.filter)).toEqual(['s', 'spec'])
+    expect([...host.querySelectorAll('.ptable tbody tr .pt-title')].map((cell) => cell.textContent)).toEqual(['Speculative decoding'])
+    expect(host.querySelector('.desk-head .t')?.textContent).toBe('论文 · 1')
+  })
+
+  it('分组索引上搜索时先发的查询晚回来，索引仍是最后那个查询的分组值', async () => {
+    const host = mount()
+    columnsCall.resolve({ hidden: [], custom: [], groups: ['topics'] })
+    listCall.resolve({ rows: [ROW], total: 1 })
+    await flush()
+    await act(async () => {
+      [...host.querySelectorAll<HTMLElement>('.filters .segmented-control > button')].find((button) => button.textContent === '主题')!.click()
+    })
+    await flush()
+    const input = host.querySelector<HTMLInputElement>('#libq')!
+    const older = facetCall = controlled()
+    act(() => setValue(input, 's'))
+    const newer = facetCall = controlled()
+    act(() => setValue(input, 'spec'))
+    newer.resolve([{ value: '推测解码', count: 1, newestTitle: 'Speculative decoding' }])
+    await flush()
+    older.resolve([{ value: '推理', count: 5, newestTitle: 'Switch Transformers' }, { value: '推测解码', count: 3, newestTitle: 'Speculative decoding' }])
+    await flush()
+
+    expect([...host.querySelectorAll('.gxrow')].map((row) => [row.querySelector('.gx-t')!.textContent, row.querySelector('.n')!.textContent]))
+      .toEqual([['推测解码', '1']])
   })
 
   it('论文搜索框与关注屏的一句话添加框是同一种带框的字段输入框', async () => {
@@ -1920,6 +2012,56 @@ describe('PaperTable', () => {
     await flush()
     expect(bumps).toBe(before + 1)
     expect(headTexts(host)).not.toContain('备注')
+  })
+
+  it('删一列,提示带撤销,撤销的是这次删除记下的那条变动', async () => {
+    const host = mount()
+    columnsCall.resolve(NOTE_COLUMNS)
+    listCall.resolve({ rows: [ROW], total: 1 })
+    await flush()
+    await act(async () => { host.querySelector<HTMLButtonElement>('[aria-label="列设置"]')!.click() })
+    await act(async () => { document.querySelector<HTMLButtonElement>('[aria-label="删除列"]')!.click() })
+    await act(async () => { setColumnsCalls[0]!.resolve() })
+    await flush()
+    expect(await undoLast()).toBe('已删除列「备注」')
+    expect(undone).toEqual(['change-columns-1'])
+  })
+
+  it('删一个选项,提示带撤销,撤销的是这次删除记下的那条变动', async () => {
+    const host = mount()
+    columnsCall.resolve({ ...SELECT_COLUMNS, custom: [{ ...SELECT_COLUMNS.custom[0]!, options: ['existing', 'spare'] }] })
+    listCall.resolve({ rows: [ROW], total: 1 })
+    await flush()
+    await act(async () => { host.querySelector<HTMLButtonElement>('[aria-label="列设置"]')!.click() })
+    await act(async () => { document.querySelector<HTMLButtonElement>('[aria-label="选项"]')!.click() })
+    const spare = [...document.querySelectorAll('.mi.optrow')].find((row) => row.textContent?.includes('spare'))!
+    await act(async () => { spare.querySelector<HTMLButtonElement>('[aria-label="删除选项"]')!.click() })
+    expect(setColumnsCalls.map((c) => c.columns.custom[0]!.options)).toEqual([['existing']])
+    await act(async () => { setColumnsCalls[0]!.resolve() })
+    await flush()
+    expect(await undoLast()).toBe('已删除选项')
+    expect(undone).toEqual(['change-columns-1'])
+  })
+
+  it('表头的建列与列设置、列菜单行尾的按钮都在操作槽里：表头那一行和每个列行都是槽的宿主，改类型展开时报出展开', async () => {
+    const host = mount()
+    columnsCall.resolve(SELECT_COLUMNS)
+    listCall.resolve({ rows: [ROW], total: 1 })
+    await flush()
+    /** The labels of the buttons in each row-actions slot of `row`, and whether `row` hosts the slot. */
+    const slots = (row: Element) => [row.hasAttribute('data-row-actions'), [...row.querySelectorAll('.row-actions')]
+      .map((slot) => [...slot.querySelectorAll('button')].map((button) => button.getAttribute('aria-label')))]
+    expect(slots(host.querySelector('.ptable thead tr')!)).toEqual([true, [['新建列', '列设置']]])
+
+    await act(async () => { host.querySelector<HTMLButtonElement>('[aria-label="列设置"]')!.click() })
+    const row = document.querySelector('.mi.colrow:has([aria-label="选项"])')!
+    expect(slots(row)).toEqual([true, [['改类型', '重命名列', '删除列']]])
+    const retype = row.querySelector('[aria-label="改类型"]')!
+    expect(retype.getAttribute('aria-expanded')).toBe('false')
+    await act(async () => { (retype as HTMLButtonElement).click() })
+    expect(retype.getAttribute('aria-expanded')).toBe('true')
+    await act(async () => { row.querySelector<HTMLButtonElement>('[aria-label="选项"]')!.click() })
+    expect(slots(document.querySelector('.mi.optrow')!)).toEqual([true, [['重命名选项', '删除选项']]])
   })
 
   it('列菜单里改列名、改选项名,点到菜单外都像回车一样改掉', async () => {

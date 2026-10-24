@@ -1,30 +1,43 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import type { MouseEvent as ReactMouseEvent } from 'react'
 import type { PDFDocumentProxy, PDFPageProxy, PageViewport, RenderTask, TextLayer } from 'pdfjs-dist'
 import workerSrc from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
 import type {
-  PaperHighlightRect, PaperReading, PaperRow, ReadingMutation,
+  PaperHighlight, PaperHighlightRect, PaperReading, PaperRow, ReadingMutation,
 } from '../../shared/contract.js'
+import { sharesText } from '../../shared/highlight-overlap.js'
 import { papers } from '../ipc.js'
+import { useUndo } from '../hooks/useUndo.js'
+import { useVaultWrite } from '../hooks/useVaultWrite.js'
+import { useWheelZoom } from '../hooks/useWheelZoom.js'
+import { sendsMessage } from '../lib/chat.js'
 import { errorLabel } from '../lib/failure-label.js'
+import { typesText } from '../lib/keyboard.js'
 import { useMessages } from '../messages/useMessages.js'
+import { useDrafts } from '../hooks/useDrafts.js'
+import { useOnLeave } from '../hooks/useOnLeave.js'
 import {
   useCrumbTail, useJump, useNotice, useVaultRevision, type CrumbSeg, type ScreenKey, type JumpAnchor,
 } from '../shell/AppShell.js'
+import { ActionPopover } from '../components/ActionPopover.js'
+import type { AnchorBox } from '../components/floating-layer.js'
+import { FormTextarea } from '../components/FormControls.js'
 import { IconButton } from '../components/IconButton.js'
-import { IconMinus, IconPlus } from '../components/icons.js'
+import { IconAskAi, IconMinus, IconPlus, IconTrash } from '../components/icons.js'
 import { LoadingPlaceholder } from '../components/LoadingPlaceholder.js'
-import { PickerPopover, type AnchorBox } from '../components/PickerPopover.js'
+import { Swatches } from '../components/Swatches.js'
 import { Toolbar, ToolbarButton } from '../components/Toolbar.js'
 import { Tooltip } from '../components/Tooltip.js'
 import {
-  highlightLines, highlightShape, normalizedHighlightRects, selectedTextRanges, selectionBox,
+  drawnLines, highlightAt, highlightLines, highlightOutline, highlightShape, selectedLinesByPage, selectionBox,
 } from './highlight-geometry.js'
 import {
-  ZOOM_MAX, ZOOM_MIN, clampZoom, keptScroll, pageScale, scaledAbout, wheelZoom, type SheetTransform,
+  ZOOM_MAX, ZOOM_MIN, clampZoom, keptScroll, pageScale, scaledAbout, type SheetTransform,
 } from './reader-zoom.js'
 import { PaperChat, type PaperChatPrompt } from '../components/chat/PaperChat.js'
 import { ReaderSidePanel, type ReaderSideTab } from '../components/reader/ReaderSidePanel.js'
 import { PageShell } from '../components/PageShell.js'
+import { useScreenLoad } from '../hooks/useScreenLoad.js'
 import { plainTitle } from '../components/paper/paper-text.js'
 import './shell.css'
 import './Reader.css'
@@ -37,6 +50,10 @@ const PROGRESS_MS = 800
 const DOC_CACHE = 2
 const SVG_NS = 'http://www.w3.org/2000/svg'
 const UNSCALED: SheetTransform = { x: 0, y: 0, scale: 1 }
+/** Each stored highlight colour and the token that paints it, in the selection toolbar's order. */
+const HIGHLIGHT_COLOURS: readonly (readonly [PaperHighlight['color'], string])[] = [
+  ['yellow', 'var(--hl-yellow)'], ['green', 'var(--hl-green)'], ['blue', 'var(--hl-blue)'], ['pink', 'var(--hl-pink)'],
+]
 
 /**
  * One PDF page on the sheet: its box, the scale its canvas holds or is being drawn at, the canvas
@@ -56,37 +73,87 @@ type PendingHighlight = {
   rects: PaperHighlightRect[]
   /** The selected text's box on screen, measured from its page each time it is read. */
   box: AnchorBox
+  /** The highlight a click on it selected, which the toolbar edits; absent for selected text. */
+  highlight?: string
 }
+
+/** A note being typed in the selection toolbar, kept as a draft with the selection it is about. */
+type SelectionNote = Pick<PendingHighlight, 'page' | 'quote' | 'rects'> & { note: string }
 
 const emptyReading = (paperId: string): PaperReading => ({ paperId, highlights: [], notes: [], remark: '' })
 
-/** Redraws every highlight through one path; called when the PDF first loads and when the reading state updates. */
+/** The highlights of `reading` on page `page`, in stored order. */
+const highlightsOn = (reading: PaperReading, page: number): PaperHighlight[] =>
+  reading.highlights.filter((highlight) => highlight.page === page)
+
+/** The highlights of `reading` on page `page` that cover some of the text `rects` cover. */
+const highlightsOver = (reading: PaperReading | null, page: number, rects: PaperHighlightRect[]): PaperHighlight[] =>
+  reading?.highlights.filter((highlight) => highlight.page === page && sharesText(highlight.rects, rects)) ?? []
+
+/**
+ * The SVG drawing of `lines` on their page as one filled shape, placed over the page box in
+ * percentages of its size, with class `className`; `underline` adds one line along the bottom of
+ * each line.
+ */
+function linesMark(lines: PaperHighlightRect[], className: string, underline = false): SVGSVGElement {
+  const shape = highlightShape(lines)
+  const mark = document.createElementNS(SVG_NS, 'svg')
+  mark.setAttribute('class', className)
+  mark.setAttribute('viewBox', `${shape.box.x} ${shape.box.y} ${shape.box.width} ${shape.box.height}`)
+  mark.setAttribute('preserveAspectRatio', 'none')
+  mark.style.left = `${shape.box.x * 100}%`
+  mark.style.top = `${shape.box.y * 100}%`
+  mark.style.width = `${shape.box.width * 100}%`
+  mark.style.height = `${shape.box.height * 100}%`
+  const fill = document.createElementNS(SVG_NS, 'path')
+  fill.setAttribute('d', shape.fill)
+  mark.append(fill)
+  if (underline) {
+    const note = document.createElementNS(SVG_NS, 'path')
+    note.setAttribute('class', 'paper-highlight-note')
+    note.setAttribute('d', shape.underline)
+    mark.append(note)
+  }
+  return mark
+}
+
+/**
+ * Redraws every highlight through one path; called when the PDF first loads and when the reading
+ * state updates. Where highlights an older version stored overlap, only the newest, the later one in
+ * the list, is drawn on the stretch they share, and one covered whole is not drawn.
+ */
 function paintHighlights(box: ParentNode, reading: PaperReading | null): void {
   box.querySelectorAll<HTMLElement>('.paper-highlights').forEach((marks) => marks.replaceChildren())
   if (reading === null) return
-  for (const highlight of reading.highlights) {
-    const pagebox = box.querySelector<HTMLElement>(`.pdfpagebox[data-page="${highlight.page}"]`)
+  for (const page of new Set(reading.highlights.map((highlight) => highlight.page))) {
+    const pagebox = box.querySelector<HTMLElement>(`.pdfpagebox[data-page="${page}"]`)
     if (pagebox === null) continue
-    const { box: bounds, fill, underline } = highlightShape(highlightLines(highlight.rects, Number(pagebox.dataset.aspect)))
-    const mark = document.createElementNS(SVG_NS, 'svg')
-    mark.setAttribute('class', `paper-highlight ${highlight.color}`)
-    mark.dataset.highlight = highlight.id
-    mark.setAttribute('viewBox', `${bounds.x} ${bounds.y} ${bounds.width} ${bounds.height}`)
-    mark.setAttribute('preserveAspectRatio', 'none')
-    mark.style.left = `${bounds.x * 100}%`
-    mark.style.top = `${bounds.y * 100}%`
-    mark.style.width = `${bounds.width * 100}%`
-    mark.style.height = `${bounds.height * 100}%`
-    const shape = document.createElementNS(SVG_NS, 'path')
-    shape.setAttribute('d', fill)
-    mark.append(shape)
-    if (highlight.note.trim() !== '') {
-      const note = document.createElementNS(SVG_NS, 'path')
-      note.setAttribute('class', 'paper-highlight-note')
-      note.setAttribute('d', underline)
-      mark.append(note)
-    }
-    pagebox.querySelector('.paper-highlights')!.append(mark)
+    const highlights = highlightsOn(reading, page)
+    drawnLines(highlights, Number(pagebox.dataset.aspect)).forEach((lines, at) => {
+      if (lines.length === 0) return
+      const highlight = highlights[at]!
+      const mark = linesMark(lines, `paper-highlight ${highlight.color}`, highlight.note.trim() !== '')
+      mark.dataset.highlight = highlight.id
+      pagebox.querySelector('.paper-highlights')!.append(mark)
+    })
+  }
+}
+
+/**
+ * Redraws the document's selection on the pages of `sheet` it covers, as a highlight of it would be
+ * drawn, in each page's `.paper-selection` layer; while the document's selection covers no page,
+ * `held` is drawn in its place.
+ */
+function paintSelection(sheet: HTMLElement, held: PendingHighlight | null): void {
+  sheet.querySelectorAll<HTMLElement>('.paper-selection').forEach((layer) => layer.replaceChildren())
+  const selection = document.getSelection()
+  const live = selection === null || selection.isCollapsed || selection.rangeCount === 0
+    ? new Map<HTMLElement, PaperHighlightRect[]>()
+    : selectedLinesByPage(selection.getRangeAt(0))
+  const heldPage = held === null ? null : sheet.querySelector<HTMLElement>(`.pdfpagebox[data-page="${held.page}"]`)
+  const drawn = live.size > 0 || held === null || heldPage === null ? live : new Map([[heldPage, held.rects]])
+  for (const [pagebox, lines] of drawn) {
+    pagebox.querySelector('.paper-selection')!.append(linesMark(lines, 'paper-selected'))
   }
 }
 
@@ -173,14 +240,24 @@ export function Reader() {
   const [zoom, setZoom] = useState(1)
   const [currentPage, setCurrentPage] = useState(1)
   const [pending, setPending] = useState<PendingHighlight | null>(null)
+  // What the selection toolbar's note box holds. While typed, it is kept as a draft by paper, and a
+  // paper opened with one lands on its selection with the toolbar open again.
+  const [noteDraft, setNoteDraft] = useState('')
+  const selectionNotes = useDrafts<SelectionNote>(['paper'])
+  const toolsPaper = useRef<string | null>(null)
+  // A new selection replaces the toolbar's, and with it the note kept for the one before.
+  const dropSelectionNote = useRef(() => {})
+  dropSelectionNote.current = () => { if (opened !== null) selectionNotes.drop(opened) }
   const [sideTab, setSideTab] = useState<ReaderSideTab | null>(null)
   const [focusHighlightId, setFocusHighlightId] = useState<string | null>(null)
   const [chatPrompt, setChatPrompt] = useState<PaperChatPrompt | null>(null)
   const [arrival, setArrival] = useState<JumpAnchor | null>(null)
   const [painted, setPainted] = useState(0)
   const [saving, setSaving] = useState(false)
-  const [error, setError] = useState<string | null>(null)
   const scroller = useRef<HTMLDivElement>(null)
+  const tools = useRef<HTMLDivElement>(null)
+  // Closes the selection toolbar as leaving it does; set once `leaveTools` is defined below.
+  const leave = useRef(() => {})
   const selectionAnchor = useRef<AnchorBox | null>(null)
   selectionAnchor.current = pending?.box ?? null
   const sheet = useRef<HTMLDivElement>(null)
@@ -202,7 +279,7 @@ export function Reader() {
   const loadingDocs = useRef(new Set<string>())
   const openedRef = useRef(opened)
   openedRef.current = opened
-  const reportError = useCallback((cause: unknown) => setError(errorLabel(m, cause)), [m])
+  const { error, load, report } = useScreenLoad()
 
   useEffect(() => {
     if (jump === null || jump.seq === consumed.current) return
@@ -228,20 +305,13 @@ export function Reader() {
 
   useEffect(() => {
     if (opened === null) return
-    setError(null)
-    let live = true
-    void papers.get(opened).then((value) => { if (live) setPaper(value) }).catch(reportError)
-    return () => { live = false }
-  }, [opened, revision, reportError])
+    return load('paper', papers.get(opened), setPaper)
+  }, [opened, revision, load])
 
   useEffect(() => {
     if (opened === null) return
-    let live = true
-    void papers.reading(opened)
-      .then((value) => { if (live) setReading(value) })
-      .catch(reportError)
-    return () => { live = false }
-  }, [opened, revision, reportError])
+    return load('reading', papers.reading(opened), setReading)
+  }, [opened, revision, load])
 
   useEffect(() => {
     if (opened === null) return
@@ -272,9 +342,9 @@ export function Reader() {
       setDoc(value)
     }).catch((cause: Error) => {
       loadingDocs.current.delete(id)
-      if (openedRef.current === id) reportError(cause)
+      if (openedRef.current === id) report(cause)
     })
-  }, [opened, reportError])
+  }, [opened, report])
 
   // A kept document whose paper has left the library is dropped, so a later paper taking the same id never shows the old source.
   useEffect(() => {
@@ -308,10 +378,10 @@ export function Reader() {
       if (rect.bottom <= frame.top || rect.top >= frame.bottom) continue
       slot.text!.update({ viewport: slot.pdf.getViewport({ scale: laidOutScale(slot) }) })
       void drawCanvas(slot).catch((cause: unknown) => {
-        if (!cancelled(cause)) reportError(cause as Error)
+        if (!cancelled(cause)) report(cause as Error)
       })
     }
-  }, [reportError])
+  }, [report])
 
   useEffect(() => {
     const view = scroller.current
@@ -347,6 +417,9 @@ export function Reader() {
         const marks = document.createElement('div')
         marks.className = 'paper-highlights'
         pagebox.append(marks)
+        const selected = document.createElement('div')
+        selected.className = 'paper-selection'
+        pagebox.append(selected)
         const text = document.createElement('div')
         text.className = 'textLayer'
         text.dataset.page = String(pdf.pageNumber)
@@ -395,7 +468,7 @@ export function Reader() {
         await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()))
       }
     })().catch((cause: unknown) => {
-      if (live && !cancelled(cause)) reportError(cause as Error)
+      if (live && !cancelled(cause)) report(cause as Error)
     })
     return () => {
       live = false
@@ -409,7 +482,7 @@ export function Reader() {
       transform.current = UNSCALED
       shownZoom.current = zoomRef.current
     }
-  }, [doc, reportError, redrawVisible])
+  }, [doc, report, redrawVisible])
 
   // pdf.js's TextLayerBuilder selection support: a text layer is `.selecting` from a press on it, or
   // while a selection being made covers it, until the pointer or key is released; its endOfContent
@@ -440,11 +513,58 @@ export function Reader() {
     return () => listening.abort()
   }, [])
 
+  // The highlights the toolbar's selection covers text of: none, the one it edits, or several, which
+  // it offers only to ask AI about. A highlight selected by a click is the one it edits.
+  const touched = pending === null ? []
+    : pending.highlight === undefined ? highlightsOver(reading, pending.page, pending.rects)
+      : reading?.highlights.filter((highlight) => highlight.id === pending.highlight) ?? []
+  const edited = touched.length === 1 ? touched[0]! : null
+  const selected = pending?.highlight === undefined ? null : edited
+
+  // Chromium paints a selection line by line over the text layer's spans, and on tightly set text one
+  // line's paint overlaps the next, which shows darker there; the text layer paints none, and the
+  // selection is drawn as a highlight is, at most once a frame while it changes. Focus in the
+  // toolbar's note box takes the document's selection, so the toolbar's stays drawn until it
+  // covers a highlight.
+  const heldSelection = touched.length === 0 ? pending : null
+  useEffect(() => {
+    const box = sheet.current
+    if (box === null) return
+    let frame = 0
+    const repaint = () => {
+      cancelAnimationFrame(frame)
+      frame = requestAnimationFrame(() => paintSelection(box, heldSelection))
+    }
+    repaint()
+    document.addEventListener('selectionchange', repaint)
+    return () => {
+      document.removeEventListener('selectionchange', repaint)
+      cancelAnimationFrame(frame)
+    }
+  }, [heldSelection])
+
   // Highlights are independent overlays; when you change notes or add new highlights, you only change these small rectangles and do not redraw the PDF canvas / text layer.
   useEffect(() => {
     const box = sheet.current
     if (box !== null) paintHighlights(box, reading)
   }, [reading])
+
+  // The highlight a click selected is outlined along the lines it is drawn with, until it is deselected.
+  const outlined = selected?.id ?? null
+  useEffect(() => {
+    const box = sheet.current
+    if (box === null || reading === null) return
+    box.querySelectorAll('.paper-highlight-outline').forEach((mark) => mark.remove())
+    const highlight = reading.highlights.find((item) => item.id === outlined)
+    const pagebox = highlight === undefined ? null : box.querySelector<HTMLElement>(`.pdfpagebox[data-page="${highlight.page}"]`)
+    if (highlight === undefined || pagebox === null) return
+    const highlights = highlightsOn(reading, highlight.page)
+    const lines = drawnLines(highlights, Number(pagebox.dataset.aspect))[highlights.indexOf(highlight)]!
+    if (lines.length === 0) return
+    const mark = linesMark(lines, 'paper-highlight-outline')
+    mark.querySelector('path')!.setAttribute('d', highlightOutline(lines))
+    pagebox.querySelector('.paper-highlights')!.append(mark)
+  }, [reading, outlined, painted])
 
   // Landing on the jump's anchor waits until the PDF pages and the reading state are ready. The
   // anchor is cleared once used, so later zooms and redraws do not move the view.
@@ -454,11 +574,25 @@ export function Reader() {
     const mark = arrival.highlight === undefined
       ? null
       : view.querySelector(`.paper-highlight[data-highlight="${arrival.highlight}"]`)
+    const note = arrival.page === undefined && arrival.highlight === undefined && opened !== null
+      ? selectionNotes.get(opened) : undefined
     if (mark !== null) mark.scrollIntoView({ block: 'center' })
     else {
-      const page = arrival.page ?? reading.lastPage ?? 1
+      const page = note?.page ?? arrival.page ?? reading.lastPage ?? 1
       view.querySelector<HTMLElement>(`.pdfpagebox[data-page="${page}"]`)
-        ?.scrollIntoView({ block: 'start' })
+        ?.scrollIntoView({ block: note === undefined ? 'start' : 'center' })
+    }
+    // The toolbar opens once the landing's scroll has been handled, as a scroll closes it.
+    if (note !== undefined) {
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        const pagebox = view.querySelector<HTMLElement>(`.pdfpagebox[data-page="${note.page}"]`)
+        if (pagebox === null) return
+        setNoteDraft(note.note)
+        setPending({
+          page: note.page, quote: note.quote, rects: note.rects,
+          box: { getBoundingClientRect: () => selectionBox(pagebox.getBoundingClientRect(), note.rects) },
+        })
+      }))
     }
     const notedOnly = reading.notes.length === 0
       && reading.highlights.some((highlight) => highlight.note.trim() !== '')
@@ -467,7 +601,17 @@ export function Reader() {
     }
     if (arrival.highlight !== undefined) setFocusHighlightId(arrival.highlight)
     setArrival(null)
-  }, [arrival, painted, reading])
+  }, [arrival, painted, reading, opened, selectionNotes])
+
+  // Closing the toolbar, by saving its note, leaving it or Escape, drops the note's kept copy.
+  useEffect(() => {
+    if (pending !== null) {
+      toolsPaper.current = opened
+      return
+    }
+    if (toolsPaper.current !== null) selectionNotes.drop(toolsPaper.current)
+    toolsPaper.current = null
+  }, [pending, opened, selectionNotes])
 
   /**
    * Once zooming and scrolling pause, lays every page out at the zoom shown, which ends the CSS
@@ -506,7 +650,7 @@ export function Reader() {
    * only becomes the zoom they are laid out at.
    */
   const zoomTo = useCallback((target: number, point: { x: number; y: number }) => {
-    setPending(null)
+    leave.current()
     shownZoom.current = clampZoom(target)
     if (slots.current.size === 0) {
       zoomRef.current = shownZoom.current
@@ -533,23 +677,18 @@ export function Reader() {
     })
   }
 
+  useWheelZoom(scroller, (factor, point) => zoomTo(shownZoom.current * factor, point))
+
   useEffect(() => {
     const view = scroller.current
     if (view === null) return
-    const wheel = (event: WheelEvent) => {
-      if (!event.ctrlKey) return
-      event.preventDefault()
-      zoomTo(wheelZoom(shownZoom.current, event.deltaY), { x: event.clientX, y: event.clientY })
-    }
-    view.addEventListener('wheel', wheel, { passive: false })
     // Pages scrolled into view after a zoom are drawn at it once scrolling pauses.
     view.addEventListener('scroll', settleLater, { passive: true })
     return () => {
-      view.removeEventListener('wheel', wheel)
       view.removeEventListener('scroll', settleLater)
       window.clearTimeout(settleTimer.current)
     }
-  }, [zoomTo, settleLater])
+  }, [settleLater])
 
   // Opening or closing the paper chat or a rail tab, or resizing the window, changes the room the
   // pages fit; they are laid out again with the page at the top of the view kept in place.
@@ -583,7 +722,7 @@ export function Reader() {
     if (reading.lastPage === undefined && currentPage === 1) return
     const timer = window.setTimeout(() => {
       void papers.mutateReading(opened, { kind: 'progress.set', page: currentPage })
-        .then(setReading)
+        .then((written) => setReading(written.reading))
         .catch((cause: unknown) => notice.refusal(errorLabel(m, cause)))
     }, PROGRESS_MS)
     return () => window.clearTimeout(timer)
@@ -611,12 +750,35 @@ export function Reader() {
 
   /**
    * Turns the browser's native selection into normalized rectangles on its page; a selection that
-   * spans pages is dropped for the user to reselect.
+   * spans pages is dropped for the user to reselect. A plain click, which selects no text, selects
+   * the highlight drawn where it lands, if any.
    */
-  const captureSelection = useCallback(() => {
+  const captureSelection = useCallback((event: ReactMouseEvent) => {
     const selection = window.getSelection()
     if (selection === null || selection.isCollapsed || selection.rangeCount === 0) {
-      setPending(null)
+      const pagebox = (event.target as Element).closest<HTMLElement>('.pdfpagebox')
+      const held = readingRef.current
+      if (pagebox === null || held === null) {
+        setPending(null)
+        return
+      }
+      const frame = pagebox.getBoundingClientRect()
+      const page = Number(pagebox.dataset.page)
+      const aspect = Number(pagebox.dataset.aspect)
+      const hit = highlightAt(highlightsOn(held, page), aspect, {
+        x: (event.clientX - frame.left) / frame.width, y: (event.clientY - frame.top) / frame.height,
+      })
+      if (hit === null) {
+        setPending(null)
+        return
+      }
+      const lines = highlightLines(hit.rects, aspect)
+      dropSelectionNote.current()
+      setNoteDraft(hit.note)
+      setPending({
+        page, quote: hit.quote, rects: hit.rects, highlight: hit.id,
+        box: { getBoundingClientRect: () => selectionBox(pagebox.getBoundingClientRect(), lines) },
+      })
       return
     }
     const range = selection.getRangeAt(0)
@@ -632,12 +794,14 @@ export function Reader() {
     }
     const pagebox = start.closest<HTMLElement>('.pdfpagebox')
     if (pagebox === null) return
-    const bounds = pagebox.getBoundingClientRect()
-    const rects = normalizedHighlightRects(
-      bounds, selectedTextRanges(range).flatMap((piece) => [...piece.getClientRects()]))
+    const rects = selectedLinesByPage(range).get(pagebox) ?? []
     const quote = selection.toString().replace(/\s+/g, ' ').trim()
+    const page = Number(pagebox.dataset.page)
+    const covered = highlightsOver(readingRef.current, page, rects)
+    dropSelectionNote.current()
+    setNoteDraft(covered.length === 1 ? covered[0]!.note : '')
     setPending(quote === '' || rects.length === 0 ? null : {
-      page: Number(pagebox.dataset.page), quote, rects,
+      page, quote, rects,
       box: { getBoundingClientRect: () => selectionBox(pagebox.getBoundingClientRect(), rects) },
     })
   }, [])
@@ -646,7 +810,7 @@ export function Reader() {
   useEffect(() => {
     const view = scroller.current
     if (pending === null || view === null) return
-    const close = () => setPending(null)
+    const close = () => leave.current()
     view.addEventListener('scroll', close, { passive: true })
     return () => view.removeEventListener('scroll', close)
   }, [pending])
@@ -655,7 +819,7 @@ export function Reader() {
     if (opened === null || saving) return null
     setSaving(true)
     try {
-      const next = await papers.mutateReading(opened, mutation)
+      const { reading: next } = await papers.mutateReading(opened, mutation)
       setReading(next)
       bump()
       return next
@@ -667,8 +831,33 @@ export function Reader() {
     }
   }, [opened, saving, bump, notice])
 
+  const write = useVaultWrite()
+  const undo = useUndo()
+  /**
+   * Deletes a note or a highlight: puts the reading after it into state and shows a notice offering
+   * Undo of the change Core recorded. Returns whether it was written.
+   */
+  const removeFromReading = useCallback(async (
+    mutation: Extract<ReadingMutation, { kind: 'note.delete' | 'highlight.delete' }>,
+  ): Promise<boolean> => {
+    if (opened === null || saving) return false
+    setSaving(true)
+    const removed = await write(papers.mutateReading(opened, mutation).then(({ reading: next, change }) => {
+      setReading(next)
+      // Core records every deletion of a note or a highlight.
+      return { change: change! }
+    }), {
+      note: mutation.kind === 'note.delete' ? m.reader.notes.deleted : m.reader.highlights.deleted,
+      action: undo.change,
+    })
+    setSaving(false)
+    return removed
+  }, [opened, saving, write, undo, m])
+
   const mutate = useCallback(async (mutation: ReadingMutation): Promise<boolean> =>
-    await mutateReading(mutation) !== null, [mutateReading])
+    mutation.kind === 'note.delete' || mutation.kind === 'highlight.delete'
+      ? removeFromReading(mutation)
+      : await mutateReading(mutation) !== null, [mutateReading, removeFromReading])
 
   const saveRemark = async (text: string): Promise<boolean> => {
     const ok = await mutate({ kind: 'remark.set', text })
@@ -676,29 +865,84 @@ export function Reader() {
     return ok
   }
 
-  const addHighlight = async (withNote: boolean) => {
-    if (pending === null) return
-    const selection = pending
+  /** Writes the toolbar's `selection` as a new highlight in `color`; returns it, or null when Core refused. */
+  const highlightSelection = async (selection: PendingHighlight, color: PaperHighlight['color']) => {
     const previous = new Set(reading?.highlights.map((highlight) => highlight.id) ?? [])
-    // First remove the blue selection of the browser; do not let it continue to cover the persistent highlight while Core is writing.
+    // The document's selection gives way to the highlight made of it.
     window.getSelection()?.removeAllRanges()
-    setPending(null)
     const next = await mutateReading({
-      kind: 'highlight.add', page: selection.page, quote: selection.quote, rects: selection.rects, color: 'yellow',
+      kind: 'highlight.add', page: selection.page, quote: selection.quote, rects: selection.rects, color,
     })
-    if (next === null) return
-    if (withNote) {
-      const created = next.highlights.find((highlight) => !previous.has(highlight.id))
-      setFocusHighlightId(created?.id ?? null)
-      setSideTab('highlights')
+    return next === null ? null : next.highlights.find((highlight) => !previous.has(highlight.id))!
+  }
+
+  /**
+   * Highlights the toolbar's selection in `color`, or recolours the one highlight it covers; the
+   * toolbar stays open.
+   */
+  const pickColour = async (color: PaperHighlight['color']) => {
+    if (pending === null) return
+    if (edited === null) {
+      await highlightSelection(pending, color)
+      return
+    }
+    window.getSelection()?.removeAllRanges()
+    await mutateReading({ kind: 'highlight.update', id: edited.id, note: edited.note, color })
+  }
+
+  /**
+   * Saves `note` onto the one highlight the toolbar's selection covers, or onto a new yellow
+   * highlight of the selection when it covers none, then closes the toolbar. An empty note on a
+   * selection that covers no highlight does nothing.
+   */
+  const saveNote = async (note: string) => {
+    if (pending === null || (note === '' && edited === null)) return
+    const selection = pending
+    const target = edited ?? await highlightSelection(selection, 'yellow')
+    if (target === null) return
+    if (note === target.note || await mutateReading({ kind: 'highlight.update', id: target.id, note }) !== null) {
+      setPending((held) => (held?.box === selection.box ? null : held))
     }
   }
+
+  /**
+   * Closes the selection toolbar the way a draft is left: what its note box holds is saved as Enter
+   * saves it. Escape is the one way to close the toolbar that drops the typed text.
+   */
+  const leaveTools = () => {
+    if (pending === null) return
+    const note = noteDraft.trim()
+    setPending(null)
+    if (note !== '') void saveNote(note)
+  }
+  leave.current = leaveTools
+  useOnLeave(tools, leaveTools)
+
+  /** Deletes the one existing highlight the toolbar acts on and closes the toolbar; the notice offers Undo. */
+  const deleteEdited = () => {
+    if (edited === null) return
+    setPending(null)
+    void removeFromReading({ kind: 'highlight.delete', id: edited.id })
+  }
+  const deleteKey = useRef(deleteEdited)
+  deleteKey.current = deleteEdited
+  // Delete and Backspace delete that highlight, unless focus is where text is typed.
+  useEffect(() => {
+    if (edited === null) return
+    const press = (event: KeyboardEvent) => {
+      if ((event.key !== 'Delete' && event.key !== 'Backspace') || typesText(event.target)) return
+      event.preventDefault()
+      deleteKey.current()
+    }
+    document.addEventListener('keydown', press)
+    return () => document.removeEventListener('keydown', press)
+  }, [edited?.id])
 
   const askAi = () => {
     if (pending === null) return
     setChatPrompt({ seq: Date.now(), quote: pending.quote })
     window.getSelection()?.removeAllRanges()
-    setPending(null)
+    leaveTools()
   }
 
   const jumpToPage = (page: number) => {
@@ -727,26 +971,65 @@ export function Reader() {
             {loading ? <LoadingPlaceholder shape="sheet" /> : null}
           </div>
 
-          <PickerPopover
+          <ActionPopover
             open={pending !== null} anchorBox={selectionAnchor}
             onOpenChange={(open) => { if (!open) setPending(null) }}
             contentClassName="ctxmenu selection-tools" side="bottom" align="center" sideOffset={10}
-            content={pending === null ? null : (
-              <Toolbar>
-                <div className="selection-tools-row">
-                  <ToolbarButton className="mi" onClick={() => { void addHighlight(false) }}>{m.reader.selection.highlight}</ToolbarButton>
-                  <ToolbarButton className="mi" onClick={() => { void addHighlight(true) }}>{m.reader.selection.note}</ToolbarButton>
-                  <ToolbarButton className="mi" onClick={askAi}>{m.reader.selection.askAi}</ToolbarButton>
-                </div>
-              </Toolbar>
+            contentProps={{
+              // Opening leaves focus where it is, so the selection can still be copied.
+              onOpenAutoFocus: (event) => event.preventDefault(),
+              // A press outside or focus leaving goes through useOnLeave, which saves the note first.
+              onInteractOutside: (event) => event.preventDefault(),
+            }}
+          >
+            {pending === null ? null : (
+              <div ref={tools} className="selection-tools-body">
+                <Toolbar>
+                  <div className="selection-tools-row">
+                    <IconButton label={m.reader.selection.askAi} size="nested" round onClick={askAi}><IconAskAi /></IconButton>
+                    {touched.length > 1 ? null : (
+                      <Swatches
+                        label={m.reader.selection.highlight} value={edited?.color ?? ''}
+                        swatches={HIGHLIGHT_COLOURS.map(([colour, token]) => ({
+                          value: colour, colour: token, label: m.reader.selection.colours[colour],
+                        }))}
+                        onPick={(colour) => { void pickColour(colour) }}
+                      />
+                    )}
+                    {edited === null ? null : (
+                      <IconButton label={m.common.delete} size="nested" round tone="danger" onClick={deleteEdited}>
+                        <IconTrash />
+                      </IconButton>
+                    )}
+                  </div>
+                </Toolbar>
+                {touched.length > 1 ? null : (
+                  <FormTextarea
+                    aria-label={m.reader.selection.note} rows={1} value={noteDraft}
+                    onChange={(event) => {
+                      setNoteDraft(event.target.value)
+                      if (opened !== null) {
+                        selectionNotes.set(opened, {
+                          page: pending.page, quote: pending.quote, rects: pending.rects, note: event.target.value,
+                        })
+                      }
+                    }}
+                    onKeyDown={(event) => {
+                      if (!sendsMessage(event.nativeEvent)) return
+                      event.preventDefault()
+                      void saveNote(noteDraft.trim())
+                    }}
+                  />
+                )}
+              </div>
             )}
-          />
+          </ActionPopover>
 
           <ReaderSidePanel
             tab={sideTab} onTab={(tab) => { setSideTab(tab); setFocusHighlightId(null) }}
             paper={paper} onPaper={setPaper} reading={heldReading} currentPage={currentPage}
             saving={saving} onMutate={mutate} onSaveRemark={saveRemark}
-            onJump={jumpToPage} focusHighlightId={focusHighlightId}
+            onJump={jumpToPage} focusHighlightId={focusHighlightId} selectedHighlightId={selected?.id ?? null}
           />
 
           <Toolbar>

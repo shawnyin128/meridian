@@ -22,15 +22,16 @@ const FADED: Record<string, [file: string, markup: RegExp][]> = {
   '.set-body': [['routes/Settings.tsx', /className="set-body" ref=\{paneFade\}/]],
   '.set-side': [['routes/Settings.tsx', /className="set-side" ref=\{sideFade\}/]],
   '.structured-list--scrollable': [['components/StructuredList.tsx', /list\.current = node\n\s*fade\(node\)/]],
+  '.structured-list--fill': [['components/StructuredList.tsx', /list\.current = node\n\s*fade\(node\)/]],
+  '.list-column': [['components/StructuredList.tsx', /<div ref=\{fade\} className=\{`list-column/]],
   '.modal-body': [['components/ModalDialog.tsx', /className="modal-body" ref=\{bodyFade\}/]],
   '.tblwrap': [['components/paper-table/PaperTable.tsx', /className="tblwrap" ref=\{tableFade\}/]],
   '.pdetail': [['components/paper-table/PaperTable.tsx', /className="pdetail" ref=\{detailFade\}/]],
-  '.research-map': [['components/paper-table/ResearchMap.tsx', /className="research-map" ref=\{mapFade\}/]],
   '.paper-meta-list': [['components/PaperMetadata.tsx', /className="paper-meta-list" ref=\{listFade\}/]],
   '.reading-list': [['components/reader/ReadingNotes.tsx', /className="reading-list" ref=\{listFade\}/]],
   '.wiki-ingest': [['components/reader/PaperWikiIngest.tsx', /className="wiki-ingest" ref=\{ingestFade\}/]],
-  // On the Chat and Feed screens the stream grows with its content inside the page body, which fades it.
-  '.msgs': [['components/chat/PaperChat.tsx', /streamFade\(area\)[\s\S]*className="msgs" ref=\{stream\}/]],
+  // Only the paper chat's stream scrolls; on the Chat and Feed screens it grows inside the page body, which fades it.
+  '.paper-chat .msgs': [['components/chat/PaperChat.tsx', /streamFade\(area\)[\s\S]*className="msgs" ref=\{stream\}/]],
   '.idea-detail-panel': [['routes/Ideas.tsx', /className="idea-detail-panel node-document-pane" ref=\{panelFade\}/]],
   '.wkside': [['routes/Wiki.tsx', /className="wkside" ref=\{railFade\}/]],
   '.cmpwrap': [['routes/Wiki.tsx', /className="cmpwrap" ref=\{wrapFade\}/]],
@@ -51,7 +52,7 @@ const EXEMPT: Record<string, string> = {
   // The reader's pages are sheets on the desk; a page reaching past the view is not a cut line of text.
   '.pdfwrap': 'reader pages',
   // Fading a text input would hide the caret and the selection at its edges.
-  '.cbox textarea': 'text input',
+  '.chat-composer .cm-scroller': 'text input',
   // The command wraps at any character, so nothing is ever hidden past its edges.
   '.extension-command-code': 'wraps',
 }

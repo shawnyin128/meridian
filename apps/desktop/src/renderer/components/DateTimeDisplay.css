@@ -1,1 +1,5 @@
 .date-time-display{display:inline-flex;align-items:center;gap:var(--sp-6);min-width:0;white-space:nowrap}
+/* The widest labels, one per line with no height, keep the slot as wide as the widest of them. */
+.trailing-date{display:inline-flex;flex:none;flex-direction:column;margin-left:auto;color:var(--ter);font-size:var(--fs-cap);
+  font-variant-numeric:tabular-nums;white-space:nowrap}
+.trailing-date::after{content:attr(data-widest);height:0;overflow:hidden;visibility:hidden;white-space:pre}

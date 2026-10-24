@@ -9,7 +9,7 @@
 .main.sbhide .paper-chat{position:absolute;top:0;bottom:0;left:0;width:var(--rrw,300px);z-index:8;transform:translateX(-100%);opacity:0;pointer-events:none}
 .paper-chat-head{height:46px;box-sizing:border-box;padding:0 var(--sp-10);border-bottom:1px solid var(--sep);display:flex;align-items:center;gap:var(--sp-8);min-width:0;background:var(--sidebar)}
 .paper-chat-head .paper-chat-title{font-size:var(--fs-sm);font-weight:var(--fw-title);color:var(--sec)}
-.paper-chat .msgs{padding:var(--sp-16) 0;gap:var(--sp-14)}
+.paper-chat .msgs{flex:1;overflow:auto;padding:var(--sp-16) 0;gap:var(--sp-14)}
 .paper-chat .mwrap{width:calc(100% - 24px)}
 .paper-chat .bubble,.paper-chat .answer,.paper-chat .event{font-size:var(--fs-sm);line-height:1.5}
 .paper-chat .composer{padding:var(--sp-10) 0 var(--sp-12)}
@@ -53,17 +53,28 @@
 .textLayer br::selection{background:transparent}
 .textLayer .endOfContent{display:block;position:absolute;inset:100% 0 0;z-index:0;cursor:default;-webkit-user-select:none;user-select:none}
 .textLayer.selecting .endOfContent{top:0}
-/* Meridian's own: the text layer stacks over the highlight overlay, and a selection takes the app's blue. */
+/*
+ * Meridian's own: the text layer stacks over the highlight overlay and paints no selection; the
+ * reader draws the selection in its own layer the way it draws a highlight.
+ */
 .textLayer{z-index:2}
-.textLayer ::selection{background:rgb(46 119 246/.3)}
-.paper-highlights{position:absolute;inset:0;z-index:1;pointer-events:none;overflow:hidden}
-.paper-highlight{position:absolute;overflow:visible}
+.textLayer ::selection{background:transparent}
+.paper-highlights,.paper-selection{position:absolute;inset:0;z-index:1;pointer-events:none;overflow:hidden}
+.paper-highlight,.paper-selected,.paper-highlight-outline{position:absolute;overflow:visible}
 .paper-highlight path{fill:color-mix(in srgb,var(--mark) 30%,transparent)}
+.paper-selected path{fill:var(--hl-sel)}
+/* The highlight selected by a click, outlined in the paper's ink, which no theme flips. */
+.paper-highlight-outline path{fill:none;stroke:var(--hl-note);stroke-width:1.5px;stroke-linejoin:round;vector-effect:non-scaling-stroke}
 .paper-highlight .paper-highlight-note{fill:none;stroke:var(--hl-note);stroke-width:2.5px;vector-effect:non-scaling-stroke}
-/* The selection toolbar: the shared menu surface and items, laid out in one row. */
-.ctxmenu.selection-tools{display:flex;min-width:0}
-.selection-tools-row{display:flex}
-.selection-tools .mi{width:auto;white-space:nowrap}
+/*
+ * The selection toolbar, on the shared menu surface: the AI mark and the highlight colours in one row,
+ * the note box under them as wide as the row, which grows with its lines; a long note wraps instead
+ * of widening the toolbar.
+ */
+.ctxmenu.selection-tools{width:min-content;min-width:0}
+.selection-tools-body{display:flex;flex-direction:column;gap:var(--sp-8)}
+.selection-tools-row{display:flex;align-items:center;gap:var(--sp-10)}
+.selection-tools .form-textarea{width:100%;resize:none;field-sizing:content;max-height:calc(6lh + 2 * var(--sp-8) + 2px)}
 
 .reading-notes{width:320px;min-width:320px;box-sizing:border-box;border-left:1px solid var(--sep);background:var(--content);display:flex;flex-direction:column;overflow:hidden}
 /* The heading bar of every reader rail panel */
@@ -76,6 +87,8 @@
 .reading-list{flex:1;overflow:auto;padding:var(--sp-12);display:flex;flex-direction:column;gap:var(--sp-10)}
 .reading-card{border:1px solid var(--sep2);border-radius:var(--r-card);padding:var(--sp-10);background:var(--card);display:flex;flex-direction:column;gap:var(--sp-8)}
 .highlight-card{border-left:3px solid var(--mark)}
+/* The highlight selected on the page, in the selected look of rows and cards. */
+.reading-card.selected{background-color:var(--selected);color:var(--on-selected)}
 .reading-page{width:max-content}
 .reading-card-head{display:flex;align-items:center;justify-content:space-between;gap:var(--sp-8)}
 .reading-actions{display:flex;align-items:center;justify-content:flex-end}

@@ -1,3 +1,5 @@
+import { formatNumber } from '../../lib/number.js'
+
 /** Paper table, paper detail metadata, and paper card copy. */
 export const papers = {
   title: (count: number | null) => count === null ? '论文' : `论文 · ${count}`,
@@ -24,17 +26,15 @@ export const papers = {
   },
   views: { aria: '论文库视图', table: '列表', researchMap: '研究地图' },
   researchMap: {
-    title: '自适应研究地图',
-    summaryAria: '研究地图概况',
-    groups: '个分组',
-    covered: (total: number) => `/ ${total} 篇已覆盖`,
-    overlapping: '篇跨组',
     limit: (shown: number, total: number) => `${shown} / ${total} 篇`,
     empty: '还没有能分组的论文',
     groupListAria: '自动研究分组',
     kind: { signal: '主题或方法信号', project: '项目关联' },
     paperCount: (count: number) => `${count} 篇论文`,
     paperListAria: (group: string) => `${group}中的论文`,
+    crossGroup: '跨组',
+    ungrouped: '未归组',
+    readProgress: (read: number, total: number) => `已读 ${read}/${total}`,
     reason: {
       topic: (value: string) => `主题：${value}`,
       method: (value: string) => `方法：${value}`,
@@ -175,7 +175,7 @@ export const papers = {
   card: {
     abstractLabel: '摘要',
     recommendationLabel: '推荐理由',
-    citations: (n: number) => `${n} 引用`,
+    citations: (n: number) => `${formatNumber('zh', n)} 引用`,
     expandAbstract: '展开摘要',
     collapseAbstract: '收起摘要',
   },

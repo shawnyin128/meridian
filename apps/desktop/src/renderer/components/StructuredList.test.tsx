@@ -4,7 +4,7 @@ import type { ReactNode } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { EMBEDDED_LIST_ROW_LIMIT, RowActions, StructuredList, StructuredRow } from './StructuredList.js'
+import { EMBEDDED_LIST_ROW_LIMIT, ListColumn, RowActions, StructuredList, StructuredRow } from './StructuredList.js'
 
 declare global {
   var IS_REACT_ACT_ENVIRONMENT: boolean
@@ -164,6 +164,37 @@ describe('嵌入列表的五行上限', () => {
   it('行高不一时也按前五行量，不按固定行高算', async () => {
     const list = await mount([170, 120, 170, 96, 170, 170, 170])
     expect(list.style.maxHeight).toBe('726px')
+  })
+
+  it('铺满容器的列表不按五行封顶，在容器给的高度里滚动并淡出', async () => {
+    await act(async () => root.render(
+      <StructuredList variant="embedded" maxVisibleRows="fill">
+        {[41, 41, 41, 41, 41, 41, 41].map((h, index) => <StructuredRow key={index} data-h={h}>{`行 ${index + 1}`}</StructuredRow>)}
+      </StructuredList>,
+    ))
+    const list = host.querySelector<HTMLElement>('.structured-list')!
+    expect([...list.classList]).toEqual(['structured-list', 'structured-list--embedded', 'structured-list--fill'])
+    expect(list.style.maxHeight).toBe('')
+    Object.defineProperty(list, 'clientHeight', { configurable: true, get: () => 200 })
+    Object.defineProperty(list, 'scrollHeight', { configurable: true, get: () => 287 })
+    act(() => { list.dispatchEvent(new Event('scroll')) })
+    expect(list.dataset.fade).toBe('bottom')
+  })
+
+  it('一栏列表在容器给的高度里一起滚动，裁掉的边淡出', async () => {
+    await act(async () => root.render(
+      <ListColumn className="groups">
+        <StructuredList><StructuredRow data-h={41}>行 1</StructuredRow></StructuredList>
+        <StructuredList><StructuredRow data-h={41}>行 2</StructuredRow></StructuredList>
+      </ListColumn>,
+    ))
+    const column = host.querySelector<HTMLElement>('.list-column')!
+    expect([column.className, column.querySelectorAll(':scope>.structured-list').length]).toEqual(['list-column groups', 2])
+    Object.defineProperty(column, 'clientHeight', { configurable: true, get: () => 60 })
+    Object.defineProperty(column, 'scrollHeight', { configurable: true, get: () => 90 })
+    Object.defineProperty(column, 'scrollTop', { configurable: true, get: () => 30 })
+    act(() => { column.dispatchEvent(new Event('scroll')) })
+    expect(column.dataset.fade).toBe('top')
   })
 
   it('分组里的行也算行，收起的分组里的行不算', async () => {

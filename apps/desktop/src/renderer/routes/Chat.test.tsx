@@ -1,8 +1,10 @@
 // @vitest-environment jsdom
-import { act } from 'react'
+import { act, type ReactNode } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
+import { redo, undo } from '@codemirror/commands'
+import { EditorView } from '@codemirror/view'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { ChatMessage, ChatSendResult, ChatSession, PaperRow } from '../../shared/contract.js'
+import type { ChatMessage, ChatSendResult, ChatSession, JobsStatus, PaperRow } from '../../shared/contract.js'
 import { CONFLICT_THREAD } from '../lib/chat.js'
 import { MessagesProvider } from '../messages/useMessages.js'
 import { LANGUAGE_STORAGE_KEY } from '../shell/language.js'
@@ -14,8 +16,10 @@ declare global {
 }
 
 const api = vi.hoisted(() => ({
+  /** The chats Core is generating a reply in. */
+  generating: new Set<string>(),
   send: vi.fn((): Promise<ChatSendResult> => Promise.resolve({ id: 'chat-1', state: 'complete' })),
-  cancel: vi.fn(() => Promise.resolve({ id: 'chat-1', cancelled: true })),
+  cancel: vi.fn((id: string) => Promise.resolve({ id, cancelled: api.generating.delete(id) })),
   listProjects: vi.fn(() => Promise.resolve([{
     id: 'draft', name: '草稿树项目', status: '进行中', priority: 'p1', topic: '推理', focus: '验证',
     conclusions: { verified: 0, pending: 0, conflicting: 0 }, paperCount: 0,
@@ -38,9 +42,16 @@ const nav = vi.hoisted(() => ({ jump: null as ScreenJump | null, returnTo: vi.fn
 const resized: (() => void)[] = []
 
 vi.mock('../ipc.js', () => ({
+  appMenu: { platform: () => 'darwin' },
   chat: { send: api.send, messages: api.messages, cancel: api.cancel, create: api.create, recordAction: api.recordAction },
   feed: { append: api.feedAppend },
   idea: { create: api.createIdea },
+  jobs: {
+    status: (): Promise<JobsStatus> => Promise.resolve({
+      writes: 0, uploads: [], downloads: [], fetch: { state: 'idle', checkedAt: null, reason: null },
+      generating: [...api.generating], generatingWiki: [], wikiFailures: {},
+    }),
+  },
   papers: { list: api.listPapers },
   project: { list: api.listProjects },
   wiki: { cards: () => Promise.resolve([]) },
@@ -64,6 +75,16 @@ vi.mock('../hooks/useVaultWrite.js', () => ({
 }))
 
 const { Chat } = await import('./Chat.js')
+const { GenerationsContext, useCoreGenerations } = await import('../hooks/useGenerations.js')
+const { useJobsPoll } = await import('../shell/useJobs.js')
+
+const noBump = () => {}
+/** The shell around the screen: the jobs poll and the generations it reports. */
+function Shell({ children }: { children: ReactNode }) {
+  const { status, refresh } = useJobsPoll(noBump)
+  return <GenerationsContext.Provider value={useCoreGenerations(status, refresh)}>{children}</GenerationsContext.Provider>
+}
+const screen = () => <MessagesProvider><Shell><Chat /></Shell></MessagesProvider>
 
 function setValue(input: HTMLInputElement | HTMLTextAreaElement, value: string): void {
   const prototype = input instanceof window.HTMLTextAreaElement ? window.HTMLTextAreaElement.prototype
@@ -74,7 +95,6 @@ function setValue(input: HTMLInputElement | HTMLTextAreaElement, value: string):
 
 describe('Chat composer', () => {
   let root: Root | null = null
-  let composer: HTMLTextAreaElement
 
   beforeEach(async () => {
     globalThis.IS_REACT_ACT_ENVIRONMENT = true
@@ -87,19 +107,18 @@ describe('Chat composer', () => {
     window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'zh')
     document.body.innerHTML = ''
     vi.clearAllMocks()
+    api.generating.clear()
     session.id = 'chat-1'
     session.revision = 0
     const host = document.createElement('div')
     document.body.append(host)
     root = createRoot(host)
     await act(async () => {
-      root!.render(<MessagesProvider><Chat /></MessagesProvider>)
+      root!.render(screen())
       await Promise.resolve()
       await Promise.resolve()
     })
-    const field = host.querySelector('#composer')
-    expect(field).toBeInstanceOf(window.HTMLTextAreaElement)
-    composer = field as HTMLTextAreaElement
+    expect(['role', 'aria-label'].map((name) => host.querySelector('#composer')!.getAttribute(name))).toEqual(['textbox', '问题或想法'])
   })
 
   afterEach(() => {
@@ -110,9 +129,40 @@ describe('Chat composer', () => {
     nav.returnTo.mockClear()
   })
 
+  /** The composer's editable text; switching chats mounts a new one. */
+  const field = () => document.querySelector<HTMLElement>('#composer')!
+  const editor = () => EditorView.findFromDOM(field().closest<HTMLElement>('.cm-editor')!)!
+  /** Replaces the draft with `text` as typing it would, leaving the caret at `caret`, or at its end. */
+  const type = (text: string, caret = text.length) => act(() => {
+    const view = editor()
+    view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: text }, selection: { anchor: caret }, userEvent: 'input.type' })
+  })
+  /** The draft as the composer shows it, each pill as its text. */
+  const typed = () => editor().state.doc.toString()
+  /** The pills in the composer, in order. */
+  const pills = () => [...field().querySelectorAll('.composer-mention')].map((pill) => pill.textContent)
+  const locked = () => field().getAttribute('contenteditable') === 'false'
+  /** Types `text` at the caret. */
+  const typeOn = (text: string) => act(() => {
+    const view = editor()
+    view.dispatch(view.state.replaceSelection(text), { userEvent: 'input.type' })
+  })
+  /**
+   * Presses `key` in the composer and returns whether the key reached the editor unclaimed: a
+   * listener on the editor's text sees it before the editor acts on it, after the composer has.
+   */
+  const reaches = (key: string, init: KeyboardEventInit = {}) => {
+    let free: boolean | null = null
+    const see = (event: Event) => { free = !event.defaultPrevented }
+    field().addEventListener('keydown', see, { capture: true })
+    press(key, init)
+    field().removeEventListener('keydown', see, { capture: true })
+    return free
+  }
+
   const press = (key: string, init: KeyboardEventInit = {}) => {
     const event = new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true, ...init })
-    act(() => { composer.dispatchEvent(event) })
+    act(() => { field().dispatchEvent(event) })
     return event
   }
 
@@ -120,7 +170,7 @@ describe('Chat composer', () => {
   const openChat = async (id: string) => {
     session.id = id
     await act(async () => {
-      root!.render(<MessagesProvider><Chat /></MessagesProvider>)
+      root!.render(screen())
       await Promise.resolve()
     })
   }
@@ -148,30 +198,32 @@ describe('Chat composer', () => {
     api.create.mockResolvedValueOnce({ id: 'chat-9' } as ChatSession)
     nav.jump = { screen: 'chat', target: CONFLICT_THREAD, from: 'feed', seq: 1 }
     await act(async () => {
-      root!.render(<MessagesProvider><Chat /></MessagesProvider>)
+      root!.render(screen())
       await Promise.resolve()
       await Promise.resolve()
     })
     expect(api.create).toHaveBeenCalledWith('结论冲突', true)
-    expect(api.send).toHaveBeenCalledWith('chat-9', '为什么说这两条结论冲突？')
+    expect(api.send).toHaveBeenCalledWith('chat-9', [{ kind: 'text', text: '为什么说这两条结论冲突？' }])
   })
 
   it('回车发送，Shift+回车换行，输入法组字时的回车不发送', async () => {
-    act(() => setValue(composer, '为什么'))
-    expect(press('Enter', { shiftKey: true }).defaultPrevented).toBe(false)
-    expect(press('Enter', { isComposing: true }).defaultPrevented).toBe(false)
+    type('为什么')
+    press('Enter', { shiftKey: true })
+    expect(typed()).toBe('为什么\n')
+    expect(reaches('Enter', { isComposing: true })).toBe(true)
     expect(api.send).not.toHaveBeenCalled()
 
+    type('为什么')
     expect(press('Enter').defaultPrevented).toBe(true)
     await act(async () => { await Promise.resolve() })
-    expect(api.send).toHaveBeenCalledWith('chat-1', '为什么')
+    expect(api.send).toHaveBeenCalledWith('chat-1', [{ kind: 'text', text: '为什么' }])
   })
 
   it('没配置模型时发送失败，输入框里显示「AI 未连接」的状态，点它打开设置的模型一栏；配好后再发一次成功，状态就消失', async () => {
     api.send.mockResolvedValueOnce({ id: 'chat-1', state: 'failed', reason: 'no-model' })
     const state = () => document.querySelector('.cbox .tag')?.textContent ?? null
     expect(state()).toBeNull()
-    act(() => setValue(composer, '为什么'))
+    type('为什么')
     press('Enter')
     await act(async () => { await Promise.resolve(); await Promise.resolve() })
     expect(state()).toBe('AI 未连接')
@@ -179,14 +231,14 @@ describe('Chat composer', () => {
     expect(tag.tagName).toBe('BUTTON')
     act(() => tag.click())
     expect(settings.openCategory).toHaveBeenCalledWith('model')
-    act(() => setValue(composer, '再问一次'))
+    type('再问一次')
     press('Enter')
     await act(async () => { await Promise.resolve(); await Promise.resolve() })
     expect(state()).toBeNull()
   })
 
   it('@ 候选开着时输入法组字的 Esc 不收起候选，组完字后的 Esc 才收起', () => {
-    act(() => setValue(composer, '@'))
+    type('@')
     expect(document.querySelector('#cRes')).not.toBeNull()
     press('Escape', { isComposing: true })
     expect(document.querySelector('#cRes')).not.toBeNull()
@@ -194,28 +246,79 @@ describe('Chat composer', () => {
     expect(document.querySelector('#cRes')).toBeNull()
   })
 
-  it('有 @ 候选时回车填入候选而不发送；没有候选时上下键留给光标在行间移动', () => {
-    act(() => setValue(composer, '@'))
+  it('有 @ 候选时上下键和回车归候选，回车填入候选而不发送；没有候选时上下键留给光标在行间移动', () => {
+    type('@')
     expect(document.querySelector('#cRes')).not.toBeNull()
+    expect(reaches('ArrowDown')).toBe(false)
     expect(press('Enter').defaultPrevented).toBe(true)
-    expect(composer.value).toBe('@草稿树项目 ')
+    expect([typed(), pills()]).toEqual(['@草稿树项目 ', ['@草稿树项目']])
     expect(api.send).not.toHaveBeenCalled()
 
-    act(() => setValue(composer, '第一行\n第二行'))
-    expect(press('ArrowUp').defaultPrevented).toBe(false)
-    expect(press('ArrowDown').defaultPrevented).toBe(false)
+    type('第一行\n第二行')
+    expect(reaches('ArrowUp')).toBe(true)
+    expect(reaches('ArrowDown')).toBe(true)
   })
 
-  it('草稿属于它的对话：换到另一条对话后回车不把它发过去，输入框是空的，切回来草稿还在', async () => {
-    act(() => setValue(composer, '只问第一条'))
+  it('在句子中间输入 @ 也打开候选，回车把引用插在 @ 处，前面写的字留着', () => {
+    type('先问问 @')
+    expect(document.querySelector('#cRes')).not.toBeNull()
+    expect(press('Enter').defaultPrevented).toBe(true)
+    expect(api.send).not.toHaveBeenCalled()
+    expect([typed(), pills()]).toEqual(['先问问 @草稿树项目 ', ['@草稿树项目']])
+  })
+
+  it('光标停在 @ 后面、后面还有字时也打开候选，选中后把引用插在光标处，后面的字原样留着', () => {
+    type('@ 这条线还剩什么', 1)
+    expect(document.querySelector('#cRes')).not.toBeNull()
+    press('Enter')
+    expect([typed(), pills()]).toEqual(['@草稿树项目 这条线还剩什么', ['@草稿树项目']])
+  })
+
+  it('引用是一个整体：在它后面退格一次就整个删掉，撤销把它原样带回来，再撤销回到选它之前，重做又是引用', () => {
+    type('看看 @')
+    press('Enter')
+    act(() => editor().dispatch({ selection: { anchor: '看看 @草稿树项目'.length } }))
+    press('Backspace')
+    expect([typed(), pills()]).toEqual(['看看  ', []])
+    act(() => { undo(editor()) })
+    expect([typed(), pills()]).toEqual(['看看 @草稿树项目 ', ['@草稿树项目']])
+    act(() => { undo(editor()) })
+    expect([typed(), pills()]).toEqual(['看看 @', []])
+    act(() => { redo(editor()) })
+    expect([typed(), pills()]).toEqual(['看看 @草稿树项目 ', ['@草稿树项目']])
+  })
+
+  it('引用后面照常打字，发出去的整句里引用还是引用，带着它点名的项目', async () => {
+    type('看看 @')
+    press('Enter')
+    typeOn('这条线还剩什么')
+    press('Enter')
+    await act(async () => { await Promise.resolve() })
+    expect(api.send).toHaveBeenCalledWith('chat-1', [
+      { kind: 'text', text: '看看 ' }, { kind: 'mention', text: '@草稿树项目', target: { kind: 'project', id: 'draft' } },
+      { kind: 'text', text: ' 这条线还剩什么' },
+    ])
+    expect([typed(), pills()]).toEqual(['', []])
+  })
+
+  it('快捷引用把引用插在光标处，草稿其余部分保留', () => {
+    type('先看 再说', 3)
+    act(() => document.querySelector<HTMLButtonElement>('#qmChips button')!.click())
+    expect([typed(), pills()]).toEqual(['先看 @草稿树项目 再说', ['@草稿树项目']])
+    expect(document.activeElement).toBe(field())
+  })
+
+  it('草稿属于它的对话：换到另一条对话后回车不把它发过去，输入框是空的，切回来草稿和其中的引用都还在', async () => {
+    type('只问第一条 @')
+    press('Enter')
     await openChat('chat-2')
     press('Enter')
     await act(async () => { await Promise.resolve() })
     expect(api.send).not.toHaveBeenCalled()
-    expect(composer.value).toBe('')
+    expect(typed()).toBe('')
 
     await openChat('chat-1')
-    expect(composer.value).toBe('只问第一条')
+    expect([typed(), pills()]).toEqual(['只问第一条 @草稿树项目 ', ['@草稿树项目']])
   })
 
   it('@ 候选里论文的灰字把稍后阅读的阅读状态写成待读', async () => {
@@ -224,7 +327,7 @@ describe('Chat composer', () => {
     })
     session.revision += 1
     await openChat('chat-1')
-    act(() => setValue(composer, '@EAGLE'))
+    type('@EAGLE')
     expect([...document.querySelectorAll('#cRes .rm')].map((line) => line.textContent)).toEqual(['2024 · 待读'])
   })
 
@@ -244,46 +347,75 @@ describe('Chat composer', () => {
   })
 
   it('@ 候选只留在打开它的那条对话里', async () => {
-    act(() => setValue(composer, '@'))
+    type('@')
     expect(document.querySelector('#cRes')).not.toBeNull()
     await openChat('chat-2')
     expect(document.querySelector('#cRes')).toBeNull()
   })
 
+  /** Lets every pending call to Core answer and the screen render what it answered. */
+  const settle = () => act(async () => {
+    for (let turn = 0; turn < 5; turn += 1) await Promise.resolve()
+  })
+
   /** Sends `text` from the open chat and leaves its reply generating until the returned call. */
-  const sendPending = (text: string) => {
+  const sendPending = async (text: string) => {
     let finish = () => {}
-    api.send.mockImplementationOnce(() => new Promise((resolve) => {
-      finish = () => resolve({ id: session.id, state: 'complete' })
-    }))
-    act(() => setValue(composer, text))
+    api.send.mockImplementationOnce(() => {
+      const id = session.id
+      api.generating.add(id)
+      return new Promise((resolve) => {
+        finish = () => {
+          api.generating.delete(id)
+          resolve({ id, state: 'complete' })
+        }
+      })
+    })
+    type(text)
     press('Enter')
+    await settle()
     return async () => { await act(async () => { finish(); await Promise.resolve() }) }
   }
   const control = () => document.querySelector<HTMLButtonElement>('#sendBtn')!
 
+  it('换到另一条对话后，前一条晚到的消息不会顶替这一条的', async () => {
+    const said = (text: string): ChatMessage[] => [{ id: text, role: 'you', runs: [{ kind: 'text', text }], actions: [] }]
+    let answerFirst: (messages: ChatMessage[]) => void = () => {}
+    api.messages
+      .mockImplementationOnce(() => new Promise((resolve) => { answerFirst = resolve }))
+      .mockResolvedValueOnce(said('第二条的消息'))
+    session.revision = 1
+    await openChat('chat-1')
+    await openChat('chat-2')
+    expect(document.querySelector('.msgs')!.textContent).toBe('第二条的消息')
+
+    await act(async () => { answerFirst(said('第一条的消息')) })
+    expect(document.querySelector('.msgs')!.textContent).toBe('第二条的消息')
+  })
+
   it('一条对话还在生成时，换到另一条对话照常可以输入和发送', async () => {
-    const finish = sendPending('第一条的问题')
+    const finish = await sendPending('第一条的问题')
     expect(control().getAttribute('aria-label')).toBe('正在生成，点击停止')
 
     await openChat('chat-2')
-    expect(composer.disabled).toBe(false)
+    expect(locked()).toBe(false)
     expect(control().getAttribute('aria-label')).toBe('发送')
-    act(() => setValue(composer, '第二条的问题'))
+    type('第二条的问题')
     press('Enter')
     await act(async () => { await Promise.resolve() })
-    expect(api.send).toHaveBeenLastCalledWith('chat-2', '第二条的问题')
+    expect(api.send).toHaveBeenLastCalledWith('chat-2', [{ kind: 'text', text: '第二条的问题' }])
     await finish()
   })
 
   it('停止停的是正在生成的那条对话，别的对话不显示停止', async () => {
-    const finish = sendPending('第一条的问题')
+    const finish = await sendPending('第一条的问题')
     await openChat('chat-2')
     expect(control().getAttribute('aria-label')).toBe('发送')
 
     await openChat('chat-1')
     expect(control().getAttribute('aria-label')).toBe('正在生成，点击停止')
     act(() => control().click())
+    await settle()
     expect(api.cancel).toHaveBeenCalledExactlyOnceWith('chat-1')
     expect(control().getAttribute('aria-label')).toBe('发送')
     await finish()
@@ -291,12 +423,12 @@ describe('Chat composer', () => {
 
   it('草稿去掉空白后为空时发送钮不可点，生成中的停止仍可点', async () => {
     expect(control().disabled).toBe(true)
-    act(() => setValue(composer, ' \n '))
+    type(' \n ')
     expect(control().disabled).toBe(true)
-    act(() => setValue(composer, '为什么'))
+    type('为什么')
     expect(control().disabled).toBe(false)
 
-    const finish = sendPending('为什么')
+    const finish = await sendPending('为什么')
     expect(control().getAttribute('aria-label')).toBe('正在生成，点击停止')
     expect(control().disabled).toBe(false)
     await finish()
@@ -319,7 +451,7 @@ describe('Chat composer', () => {
     session.revision += 1
     api.messages.mockResolvedValueOnce([{ id: 'm1', role: 'you', runs: [{ kind: 'text', text: '先讨论机制' }], actions: [] }])
     await act(async () => {
-      root!.render(<MessagesProvider><Chat /></MessagesProvider>)
+      root!.render(screen())
       await Promise.resolve()
       await Promise.resolve()
     })
@@ -410,7 +542,7 @@ describe('Chat composer', () => {
       session.revision += 1
       length += 200
       await act(async () => {
-        root!.render(<MessagesProvider><Chat /></MessagesProvider>)
+        root!.render(screen())
         await Promise.resolve()
       })
       act(() => { for (const callback of resized) callback() })
@@ -425,7 +557,7 @@ describe('Chat composer', () => {
     await arrive()
     expect(body.scrollTop).toBe(100)
 
-    act(() => setValue(composer, '为什么'))
+    type('为什么')
     press('Enter')
     await act(async () => { await Promise.resolve() })
     expect(body.scrollTop).toBe(700)

@@ -2,7 +2,7 @@ import type { PaperReading } from '../../../shared/contract.js'
 import type { JumpAnchor } from '../../shell/AppShell.js'
 import { useFormat } from '../../lib/format.js'
 import { useMessages } from '../../messages/useMessages.js'
-import { SectionHeading } from '../PageShell.js'
+import { PageError, SectionHeading } from '../PageShell.js'
 import { StructuredList, StructuredRow } from '../StructuredList.js'
 import { EmptyState } from '../EmptyState.js'
 import { LoadingPlaceholder } from '../LoadingPlaceholder.js'
@@ -10,9 +10,14 @@ import { entryAnchor, readingEntries } from '../paper-table/reading-entries.js'
 import { FadeText } from '../FadeText.js'
 import './PaperUnderstanding.css'
 
-/** Personal reading state shown beside, but never merged into, canonical Wiki content. */
-export function PaperUnderstanding({ reading, onRead }: {
+/**
+ * Personal reading state shown beside, but never merged into, canonical Wiki content. `reading` is
+ * null until it is read; the section then shows its loading placeholder, or `error`, why reading it
+ * failed.
+ */
+export function PaperUnderstanding({ reading, error, onRead }: {
   reading: PaperReading | null
+  error: string | null
   onRead: (anchor?: JumpAnchor) => void
 }) {
   const m = useMessages()
@@ -21,7 +26,7 @@ export function PaperUnderstanding({ reading, onRead }: {
     return (
       <section className="paper-understanding" aria-label={m.papers.understanding.ariaLabel}>
         <SectionHeading>{m.papers.understanding.heading}</SectionHeading>
-        <LoadingPlaceholder shape="lines" count={2} />
+        {error === null ? <LoadingPlaceholder shape="lines" count={2} /> : <PageError variant="section" error={error} />}
       </section>
     )
   }

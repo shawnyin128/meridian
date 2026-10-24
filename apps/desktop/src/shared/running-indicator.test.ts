@@ -25,6 +25,24 @@ describe('运行中的指示', () => {
     expect(uses[0]).toMatch(/animation:ringspin var\(--t-spin\) linear infinite/)
   })
 
+  it('铺实心强调色的地方，转圈都用底上的字色，底圈淡下去：规则只在转圈自己的样式表里，每一处实心强调底都在其中', () => {
+    /** The selectors of every rule in `css` whose declarations match `body`. */
+    const selectorsOf = (css: string, body: RegExp) => [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)]
+      .filter((match) => body.test(match[2]!)).flatMap((match) => match[1]!.split(',').map((part) => part.trim()))
+    const solid = SHEETS.flatMap(({ css }) => selectorsOf(css, /(?:^|;)\s*background(?:-color)?:var\(--accent-solid\)/))
+    const ring = SHEETS.find(({ path }) => path === join('components', 'icons.css'))!.css
+    const hostsOf = (suffix: string, body: RegExp) => selectorsOf(ring, body)
+      .filter((selector) => selector.endsWith(suffix)).map((selector) => selector.slice(0, -suffix.length))
+    expect([
+      hostsOf(' .ring', /^color:var\(--on-accent\)$/).sort(),
+      hostsOf(' .ring circle:not(.arc)', /^stroke:currentColor;stroke-opacity:\.35$/).sort(),
+    ]).toEqual([solid.sort(), solid.sort()])
+    const elsewhere = SHEETS.filter(({ path }) => path !== join('components', 'icons.css'))
+      .flatMap(({ path, css }) => selectorsOf(css, /(?:^|;)\s*(?:color|stroke[\w-]*)\s*:/)
+        .filter((selector) => /\.ring(?![\w-])/.test(selector)).map((selector) => `${path}: ${selector}`))
+    expect(elsewhere).toEqual([])
+  })
+
   it('减少动态效果时没有哪处单独把它停下', () => {
     const stops = SHEETS.flatMap(({ path, css }) => [...css.matchAll(/@media \(prefers-reduced-motion:reduce\)\{([^{}]*\{[^{}]*\})*\}/g)]
       .filter((match) => /\.ring|spinner/.test(match[0]))

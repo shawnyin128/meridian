@@ -5,7 +5,7 @@ import type {
   IdeaRelations as IdeaRelationsValue, ProjectDetail, ProjectSummary, ResearchIdea,
 } from '../../shared/contract.js'
 import { FINISHED_PROJECT, SHELVED_PROJECT } from '../../shared/vocabulary.js'
-import { idea as ideaApi, project as projectApi, wiki as wikiApi } from '../ipc.js'
+import { appMenu, idea as ideaApi, project as projectApi, wiki as wikiApi } from '../ipc.js'
 import { MenuItem, MenuSeparator } from '../components/ActionMenu.js'
 import { SortMenu } from '../components/SortMenu.js'
 import { FormInput, FormTextarea } from '../components/FormControls.js'
@@ -15,29 +15,31 @@ import { CollapsibleGroup } from '../components/CollapsibleGroup.js'
 import { EmptyState } from '../components/EmptyState.js'
 import { AddAction } from '../components/AddAction.js'
 import { IdeaDraft, type IdeaDraftText } from '../components/ideas/IdeaDraft.js'
-import { IdeaPanel, IdeaSource, ideaSourceLabel, ownIdea } from '../components/ideas/IdeaPanel.js'
+import { IdeaPanel, IdeaSource, ideaSourceLabel, ownIdea, SourceChatDeleted } from '../components/ideas/IdeaPanel.js'
 import { IdeaNodeCandidate } from '../components/ideas/IdeaNodeCandidate.js'
 import { IdeaRelations } from '../components/ideas/IdeaRelations.js'
 import { nodeMode } from '../components/project/ResearchGraph.js'
 import { LoadingPlaceholder } from '../components/LoadingPlaceholder.js'
 import { DetailPanel } from '../components/DetailPanel.js'
+import { TrailingDate } from '../components/DateTimeDisplay.js'
 import { CardOpen, ResearchObjectCard } from '../components/ResearchObjectCard.js'
 import { RowActions, StructuredList, StructuredRow } from '../components/StructuredList.js'
 import { ProjectLabel, ProjectStatusTag } from '../components/project/ProjectIdentity.js'
 import {
   PageBody, PageError, PageHeader, PageShell, PageTitle, SectionHeading,
 } from '../components/PageShell.js'
-import { errorLabel } from '../lib/failure-label.js'
 import { useEscapeLayer, useJump, useScreenReentry, useVaultRevision } from '../shell/AppShell.js'
 import { BackButton } from '../components/BackButton.js'
 import { TitleNote } from '../components/TitleNote.js'
+import { useDraft } from '../hooks/useDrafts.js'
 import { useJumpOrigin } from '../hooks/useJumpOrigin.js'
+import { useScreenLoad } from '../hooks/useScreenLoad.js'
 import { useUndo } from '../hooks/useUndo.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
 import { useScrollFade } from '../hooks/useScrollFade.js'
+import { useSourceChatDeleted } from '../hooks/useSourceChatDeleted.js'
 import { useDragReorder, type Reorderable } from '../hooks/useDragReorder.js'
 import { DragHandle } from '../components/DragHandle.js'
-import { useFormat } from '../lib/format.js'
 import { commitsMultiline, composing } from '../lib/keyboard.js'
 import { useMessages } from '../messages/useMessages.js'
 import { AgentLabel, SourceLabel } from '../components/SourceLabel.js'
@@ -87,19 +89,22 @@ function IdeaRelationTags({ idea, projectsById, pageTitles }: {
   return (
     <>
       {(idea.relations?.projects ?? []).map((id) => (
-        <Tag shape="chip" className="idea-relation-tag" key={id}>
+        <Tag shape="chip" capped className="idea-relation-tag" key={id}>
           {m.ideas.link.project(projectsById.get(id)?.name ?? m.ideas.link.unavailable)}
         </Tag>
       ))}
       {(idea.relations?.pages ?? []).map((id) => (
-        <Tag shape="chip" className="idea-relation-tag" key={id}>{m.ideas.relation.page(pageTitles.get(id) ?? id)}</Tag>
+        <Tag shape="chip" capped className="idea-relation-tag" key={id}>{m.ideas.relation.page(pageTitles.get(id) ?? id)}</Tag>
       ))}
     </>
   )
 }
 
-/** Where an idea came from with the label of its kind; an idea of the user's own from no project shows nothing. */
-function IdeaOrigin({ idea, sourceProject }: { idea: ResearchIdea; sourceProject: string | undefined }) {
+/**
+ * Where an idea came from with the label of its kind, then, when `chatDeleted`, the tag saying the chat
+ * it came from is deleted; an idea of the user's own from no project shows nothing.
+ */
+function IdeaOrigin({ idea, sourceProject, chatDeleted }: { idea: ResearchIdea; sourceProject: string | undefined; chatDeleted: boolean }) {
   const m = useMessages()
   if (ownIdea(idea) && sourceProject === undefined) return null
   return (
@@ -114,6 +119,7 @@ function IdeaOrigin({ idea, sourceProject }: { idea: ResearchIdea; sourceProject
             {idea.source.paperTitle === undefined ? m.ideas.sourceKind.chat : m.ideas.sourceKind.paperReading}
           </SourceLabel>
         )}
+      {chatDeleted ? <SourceChatDeleted /> : null}
     </>
   )
 }
@@ -148,21 +154,20 @@ function IdeaMenu({ idea, linked, onMove, canMove, onArchive, onDelete }: {
 }
 
 /** An idea as a card, title first: what it relates to, then where it came from and when it last changed. */
-function IdeaCard({ idea, projectsById, pageTitles, selected, menu, onOpen, reorder, dropClassName }: {
+function IdeaCard({ idea, chatDeleted, projectsById, pageTitles, selected, menu, onOpen, reorder }: {
   idea: ResearchIdea
+  chatDeleted: boolean
   projectsById: ReadonlyMap<string, ProjectSummary>
   pageTitles: ReadonlyMap<string, string>
   selected: boolean
   menu: ReactNode
   onOpen: () => void
   reorder: Reorderable
-  dropClassName: string
 }) {
-  const fmt = useFormat()
   const m = useMessages()
   return (
     <ResearchObjectCard
-      className={`idea-card${dropClassName ? ` ${dropClassName}` : ''}`} selected={selected} muted={idea.archived}
+      className="idea-card" selected={selected} muted={idea.archived}
       data-idea={idea.id} onActivate={onOpen} {...reorder.item}
     >
       <div className="idea-card-content">
@@ -171,8 +176,11 @@ function IdeaCard({ idea, projectsById, pageTitles, selected, menu, onOpen, reor
           <IdeaRelationTags idea={idea} projectsById={projectsById} pageTitles={pageTitles} />
         </div>
         <div className="idea-card-meta">
-          <IdeaOrigin idea={idea} sourceProject={idea.sourceProject === undefined ? undefined : projectsById.get(idea.sourceProject)?.name} />
-          <span className="idea-card-updated">{m.ideas.updated(fmt.date(idea.updated))}</span>
+          <IdeaOrigin
+            idea={idea} chatDeleted={chatDeleted}
+            sourceProject={idea.sourceProject === undefined ? undefined : projectsById.get(idea.sourceProject)?.name}
+          />
+          <TrailingDate date={idea.updated} label={m.ideas.updated} />
         </div>
       </div>
       <RowActions><DragHandle {...reorder.handle} />{menu}</RowActions>
@@ -184,21 +192,20 @@ function IdeaCard({ idea, projectsById, pageTitles, selected, menu, onOpen, reor
  * A started idea as a row: its title, the project it is carried out in, with that project's status tag
  * while it is shelved, and where it came from.
  */
-function IdeaRow({ idea, projectsById, selected, menu, onOpen, reorder, dropClassName }: {
+function IdeaRow({ idea, chatDeleted, projectsById, selected, menu, onOpen, reorder }: {
   idea: ResearchIdea
+  chatDeleted: boolean
   projectsById: ReadonlyMap<string, ProjectSummary>
   selected: boolean
   menu: ReactNode
   onOpen: () => void
   reorder: Reorderable
-  dropClassName: string
 }) {
-  const fmt = useFormat()
   const m = useMessages()
   const work = idea.project === undefined ? undefined : projectsById.get(idea.project)
   return (
     <StructuredRow
-      composite className={`idea-row${dropClassName ? ` ${dropClassName}` : ''}`} selected={selected}
+      composite className="idea-row" selected={selected}
       data-idea={idea.id} onActivate={onOpen} {...reorder.item}
     >
       <button type="button" className="idea-row-open"><FadeText className="idea-row-title" label={idea.title}>{idea.title}</FadeText></button>
@@ -207,18 +214,24 @@ function IdeaRow({ idea, projectsById, selected, menu, onOpen, reorder, dropClas
         {work?.status === SHELVED_PROJECT ? <ProjectStatusTag status={work.status} /> : null}
       </span>
       <span className="idea-row-meta">
-        <IdeaOrigin idea={idea} sourceProject={idea.sourceProject === undefined ? undefined : projectsById.get(idea.sourceProject)?.name} />
+        <IdeaOrigin
+          idea={idea} chatDeleted={chatDeleted}
+          sourceProject={idea.sourceProject === undefined ? undefined : projectsById.get(idea.sourceProject)?.name}
+        />
       </span>
-      <span className="idea-card-updated">{m.ideas.updated(fmt.date(idea.updated))}</span>
+      <TrailingDate date={idea.updated} label={m.ideas.updated} />
       <RowActions><DragHandle {...reorder.handle} />{menu}</RowActions>
     </StructuredRow>
   )
 }
 
 function IdeaDetailPanel({
-  idea, linked, projects, pageTitles, candidate, onClose, onSave, onRelations, onProject, onPromote, onPlace, onOpen, onError,
+  idea, sourceChatDeleted, linked, projects, pageTitles, candidate, onClose, onSave, onRelations, onProject, onPromote, onPlace,
+  onOpen, onError,
 }: {
   idea: ResearchIdea
+  /** Whether the chat the idea came from is deleted. */
+  sourceChatDeleted: boolean
   linked: ProjectSummary | undefined
   projects: ProjectSummary[]
   pageTitles: ReadonlyMap<string, string>
@@ -235,54 +248,44 @@ function IdeaDetailPanel({
 }) {
   const m = useMessages()
   const panelFade = useScrollFade('y')
-  const [editing, setEditing] = useState(false)
-  const [title, setTitle] = useState(idea.title)
-  const [body, setBody] = useState(idea.body)
+  // The edit keeps the title and body it started from; once the idea's own have changed it is stale and is not saved.
+  const [edit, setEdit] = useDraft<{ title: string; body: string; base: { title: string; body: string } }>(['idea', idea.id], 'edit')
+  const editing = edit !== null
+  const title = edit?.title ?? idea.title
+  const body = edit?.body ?? idea.body
+  const stale = edit !== null && (edit.base.title !== idea.title || edit.base.body !== idea.body)
   const [busy, setBusy] = useState(false)
 
-  useEffect(() => {
-    setEditing(false)
-    setTitle(idea.title)
-    setBody(idea.body)
-    setBusy(false)
-  }, [idea.id, idea.title, idea.body])
+  useEffect(() => { setBusy(false) }, [idea.id])
 
-  const startEditing = () => {
-    setTitle(idea.title)
-    setBody(idea.body)
-    setEditing(true)
-  }
-  const cancelEditing = () => {
-    setTitle(idea.title)
-    setBody(idea.body)
-    setEditing(false)
-  }
+  const startEditing = () => setEdit({ title: idea.title, body: idea.body, base: { title: idea.title, body: idea.body } })
+  const cancelEditing = () => setEdit(null)
   const save = () => {
     const nextTitle = title.trim()
     const nextBody = body.trim()
-    if (busy || nextTitle === '' || nextBody === '') return
+    if (busy || stale || nextTitle === '' || nextBody === '') return
     setBusy(true)
     void onSave(nextTitle, nextBody).then((saved) => {
       setBusy(false)
-      if (saved) setEditing(false)
+      if (saved) setEdit(null)
     })
   }
-  /** Enter commits the title, ⌘Enter or Ctrl+Enter the body, and Escape restores both. */
+  /** Enter commits the title, ⌘Enter on macOS or Ctrl+Enter elsewhere the body, and Escape restores both. */
   const commitOrCancel = (multiline: boolean) => (event: KeyboardEvent<HTMLElement>) => {
     if (composing(event.nativeEvent)) return
     if (event.key === 'Escape') { event.stopPropagation(); cancelEditing(); return }
-    if (multiline ? commitsMultiline(event.nativeEvent) : event.key === 'Enter') { event.preventDefault(); save() }
+    if (multiline ? commitsMultiline(appMenu.platform(), event.nativeEvent) : event.key === 'Enter') { event.preventDefault(); save() }
   }
 
   return (
     <aside className="idea-detail-panel node-document-pane" ref={panelFade} data-fade-paint="" aria-label={m.ideas.detailHeading}>
       <IdeaPanel
-        idea={idea} onClose={onClose} onOpenSourceChat={(chatId) => onOpen('chat', chatId)}
+        idea={idea} onClose={onClose} onOpenSourceChat={(chatId) => onOpen('chat', chatId)} sourceChatDeleted={sourceChatDeleted}
         sourceProject={idea.sourceProject === undefined ? undefined : projects.find((project) => project.id === idea.sourceProject)?.name}
         onOpenSourcePaper={(paperId) => onOpen('reader', paperId)}
         actions={(
           <EditActions
-            editing={editing} saving={busy} canSave={title.trim() !== '' && body.trim() !== ''}
+            editing={editing} saving={busy} canSave={!stale && title.trim() !== '' && body.trim() !== ''}
             onEdit={startEditing} onCancel={cancelEditing} onSave={save}
           />
         )}
@@ -293,14 +296,14 @@ function IdeaDetailPanel({
                 <span>{m.ideas.editor.titleLabel}</span>
                 <FormInput
                   autoFocus value={title} maxLength={160}
-                  onChange={(event) => setTitle(event.target.value)} onKeyDown={commitOrCancel(false)}
+                  onChange={(event) => setEdit({ ...edit!, title: event.target.value })} onKeyDown={commitOrCancel(false)}
                 />
               </label>
               <label>
                 <span>{m.ideas.bodyLabel}</span>
                 <FormTextarea
                   value={body} maxLength={20_000}
-                  onChange={(event) => setBody(event.target.value)} onKeyDown={commitOrCancel(true)}
+                  onChange={(event) => setEdit({ ...edit!, body: event.target.value })} onKeyDown={commitOrCancel(true)}
                 />
               </label>
             </section>
@@ -360,28 +363,29 @@ export function Ideas() {
   const [rows, setRows] = useState<ResearchIdea[] | null>(null)
   const [projects, setProjects] = useState<ProjectSummary[]>([])
   const [pageTitles, setPageTitles] = useState<ReadonlyMap<string, string>>(new Map())
+  const chatDeleted = useSourceChatDeleted()
   const [candidateSource, setCandidateSource] = useState<ProjectDetail | null>(null)
   const [details, setDetails] = useState<ReadonlyMap<string, ProjectDetail>>(new Map())
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [archiveOpen, setArchiveOpen] = useState(false)
   const [draft, setDraft] = useState<IdeaDraftText | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  const { error, load, report } = useScreenLoad()
   const closeDetail = useCallback(() => setSelectedId(null), [])
 
-  const load = useCallback(() => {
-    void Promise.all([ideaApi.list(), projectApi.list(), wikiApi.cards()]).then(async ([ideas, projectRows, cards]) => {
+  useEffect(() => {
+    const read = Promise.all([ideaApi.list(), projectApi.list(), wikiApi.cards()]).then(async ([ideas, projectRows, cards]) => {
       // A node's state lives in its project's graph, so the projects holding an idea's node are read whole.
       const holding = [...new Set(ideas.flatMap((idea) => (idea.node === undefined || idea.project === undefined ? [] : [idea.project])))]
-      const held = await Promise.all(holding.map((id) => projectApi.get(id)))
+      return { ideas, projectRows, cards, held: await Promise.all(holding.map((id) => projectApi.get(id))) }
+    })
+    return load('ideas', read, ({ ideas, projectRows, cards, held }) => {
       setRows(ideas)
       setProjects(projectRows)
       setDetails(new Map(held.map((detail) => [detail.id, detail])))
       setPageTitles(new Map(cards.map((card) => [card.id, card.title])))
       setSelectedId((held) => held !== null && ideas.some((idea) => idea.id === held) ? held : null)
-      setError(null)
-    }).catch((cause: unknown) => setError(errorLabel(m, cause)))
-  }, [])
-  useEffect(load, [load, revision])
+    })
+  }, [load, revision])
   // Clicking the sidebar while this screen is shown lands on the plain list: an open detail closes.
   const reentry = useScreenReentry()
   useEffect(() => { setSelectedId(null) }, [reentry])
@@ -404,8 +408,8 @@ export function Ideas() {
   useEffect(() => {
     setCandidateSource(null)
     if (candidateProject === undefined) return
-    void projectApi.get(candidateProject).then(setCandidateSource).catch((cause: unknown) => setError(errorLabel(m, cause)))
-  }, [candidateProject, revision, m])
+    return load('candidate', projectApi.get(candidateProject), setCandidateSource)
+  }, [candidateProject, revision, load])
   const candidateNode = selected?.candidateNode === undefined || candidateSource === null || candidateSource.id !== candidateProject
     ? undefined
     : (candidateSource.workspace?.graph ?? candidateSource.graph).nodes.find((node) => node.id === selected.candidateNode)
@@ -457,21 +461,23 @@ export function Ideas() {
   )
   /** The props an idea's card and row share besides its menu: its selection and its drag handles. */
   const shared = (idea: ResearchIdea) => ({
-    idea, projectsById, selected: selectedId === idea.id,
+    idea, chatDeleted: chatDeleted(idea), projectsById, selected: selectedId === idea.id,
     onOpen: () => setSelectedId(idea.id),
     reorder: { item: reorder.itemProps(idea.id), handle: reorder.handleProps(idea.id) },
-    dropClassName: reorder.dropClass(idea.id),
   })
   const card = (idea: ResearchIdea) => <IdeaCard key={idea.id} {...shared(idea)} pageTitles={pageTitles} menu={menuOf(idea)} />
   const row = (idea: ResearchIdea) => <IdeaRow key={idea.id} {...shared(idea)} menu={menuOf(idea)} />
-  const rowGroup = (heading: string, ideas: ResearchIdea[], empty: string) => (
+  /** A group's rows, or its placeholder while they load, or its empty state. */
+  const groupRows = (ideas: ResearchIdea[], empty: string) => (rows === null
+    ? (error === null ? <LoadingPlaceholder shape="rows" count={2} /> : null)
+    : ideas.length === 0
+      ? <EmptyState variant="section">{empty}</EmptyState>
+      : <StructuredList variant="embedded" maxVisibleRows="all" className="idea-rows">{ideas.map(row)}</StructuredList>)
+  const rowGroups = (
     <>
-      <SectionHeading>{heading}</SectionHeading>
-      {rows === null
-        ? (error === null ? <LoadingPlaceholder shape="rows" count={2} /> : null)
-        : ideas.length === 0
-          ? <EmptyState variant="section">{empty}</EmptyState>
-          : <StructuredList variant="embedded" maxVisibleRows="all">{ideas.map(row)}</StructuredList>}
+      {groupRows(started, m.ideas.emptyGroup.active)}
+      <SectionHeading>{m.ideas.groups.done(done.length)}</SectionHeading>
+      {groupRows(done, m.ideas.emptyGroup.done)}
     </>
   )
   const b = m.ideas.byProject
@@ -516,8 +522,9 @@ export function Ideas() {
             ) : open.length === 0
               ? (draft === null ? <EmptyState variant="section">{m.ideas.emptyGroup.open}</EmptyState> : null)
               : open.map(card)}
-            {rowGroup(m.ideas.groups.active(started.length), started, m.ideas.emptyGroup.active)}
-            {rowGroup(m.ideas.groups.done(done.length), done, m.ideas.emptyGroup.done)}
+            <SectionHeading>{m.ideas.groups.active(started.length)}</SectionHeading>
+            {/* Loaded rows of both groups lay out on one grid, so their columns line up across the groups. */}
+            {rows === null ? rowGroups : <div className="idea-row-groups">{rowGroups}</div>}
             {archived.length === 0 ? null : (
               <CollapsibleGroup
                 variant="quiet" title={m.common.archived} count={archived.length}
@@ -555,6 +562,7 @@ export function Ideas() {
             {selected === undefined ? null : (
               <IdeaDetailPanel
                 idea={selected}
+                sourceChatDeleted={chatDeleted(selected)}
                 linked={selected.project === undefined ? undefined : projectsById.get(selected.project)}
                 projects={projects}
                 pageTitles={pageTitles}
@@ -566,7 +574,7 @@ export function Ideas() {
                 onPlace={(kind) => void write(ideaApi.placeOnGraph(selected.id, { kind }), {
                   note: kind === 'confirm' ? m.ideas.candidate.confirmed : m.ideas.candidate.dismissed,
                 })}
-                onError={(cause) => setError(errorLabel(m, cause))}
+                onError={report}
                 onSave={(title, body) => write(
                   ideaApi.update(selected.id, { title, body }), { note: m.ideas.updatedNote },
                 )}

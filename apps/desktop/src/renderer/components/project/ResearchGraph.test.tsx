@@ -281,6 +281,24 @@ describe('idea and graph association', () => {
       act(() => root.unmount())
     })
 
+    it('leaves a scroll over the graph to the page and zooms on a pinch or a Ctrl- or ⌘-scroll', () => {
+      const { host, root, view } = open(chain, 1200)
+      const viewport = host.querySelector<HTMLElement>('.rgraph-viewport')!
+      /** Turns the wheel over the graph; returns whether the graph kept the event from scrolling the page. */
+      const wheel = (init: WheelEventInit) => {
+        const event = new WheelEvent('wheel', { deltaY: -100, bubbles: true, cancelable: true, ...init })
+        act(() => { viewport.dispatchEvent(event) })
+        return event.defaultPrevented
+      }
+      expect([wheel({}), wheel({ deltaX: 80, deltaY: 0 }), view().zoom]).toEqual([false, false, 1])
+      expect(wheel({ ctrlKey: true })).toBe(true)
+      const pinched = view().zoom
+      expect(pinched).toBeGreaterThan(1)
+      expect(wheel({ metaKey: true })).toBe(true)
+      expect(view().zoom).toBeGreaterThan(pinched)
+      act(() => root.unmount())
+    })
+
     it('puts the view it opened with back when the view is reset', () => {
       const { host, root, view } = open(chain, 600)
       const opened = view()
@@ -331,6 +349,22 @@ describe('idea and graph association', () => {
 
     act(() => (host.querySelector('.node-idea-row') as HTMLButtonElement).click())
     expect(onSelectIdea).toHaveBeenCalledWith('idea-1')
+    act(() => root.unmount())
+  })
+
+  it('来源对话删掉了的关联想法，那一行的来源后面跟着中性的对话已删除标签；对话还在的不跟', () => {
+    const host = document.createElement('div')
+    const root = createRoot(host)
+    const kept: ResearchIdea = { ...IDEA, id: 'idea-2', source: { chatId: 'chat-kept', chatTitle: '还在的对话' } }
+    act(() => root.render(withMessages(
+      <ResearchNodePanel
+        graph={GRAPH} events={[]} ideas={[IDEA, kept]} tasks={[]} node={GRAPH.nodes[0]!}
+        onClose={vi.fn()} onSelect={vi.fn()} onSelectIdea={vi.fn()} onSelectTask={vi.fn()}
+        chatDeleted={(idea) => idea.id === IDEA.id}
+      />,
+    )))
+    expect([...host.querySelectorAll('.node-idea-row')].map((row) => [...row.querySelectorAll('.tag')].map((tag) => [tag.textContent, tag.className])))
+      .toEqual([[['对话已删除', 'tag tag--label tag--neutral']], []])
     act(() => root.unmount())
   })
 

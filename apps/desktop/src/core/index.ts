@@ -7,6 +7,7 @@ import {
   ChatAppendParamsSchema,
   ChatCancelParamsSchema,
   ChatCreateParamsSchema,
+  ChatDeleteParamsSchema,
   ChatForPaperParamsSchema,
   ChatMessagesParamsSchema,
   ChatSendParamsSchema,
@@ -22,6 +23,7 @@ import {
   SemanticKeySetParamsSchema,
   FeedAppendParamsSchema,
   HarnessCancelParamsSchema,
+  HarnessDismissFailureParamsSchema,
   HarnessPendingPaperWikiParamsSchema,
   HarnessPrepareParamsSchema,
   HarnessApplyPaperWikiParamsSchema,
@@ -34,6 +36,7 @@ import {
   DeliverySettingsSchema,
   InboxDismissParamsSchema,
   InboxDownloadParamsSchema,
+  InboxFetchParamsSchema,
   InboxListParamsSchema,
   InboxReadLaterParamsSchema,
   LibraryBackupParamsSchema,
@@ -118,7 +121,7 @@ import { sleep } from './net/http.js'
 import { unopenedStore } from './unopened-store.js'
 import type { VaultStore } from './vault.js'
 import { createDesktopVaultStore, createVaultStore } from './vault-store.js'
-import { recordChange, trashedEntry } from './write-receipts.js'
+import { recordChange, recordChangeIfAny, trashedEntry } from './write-receipts.js'
 import {
   deleteLibraryBackup, listLibraryBackups, resetLibrary, switchLibraryBackup,
 } from './workspace-layout.js'
@@ -251,6 +254,15 @@ const pendingHarnessProposals = (() => {
     return []
   }
 })()
+const appliedHarnessProposals = (() => {
+  if (proposalAudit === null) return []
+  try {
+    return proposalAudit.applied()
+  } catch (error) {
+    console.error(`[harness] 已写入的提案无法恢复，撤销后不会回到待审核：${error instanceof Error ? error.message : String(error)}`)
+    return []
+  }
+})()
 process.once('exit', () => {
   paperWikiHarness?.close()
   chatHarness.close()
@@ -268,8 +280,9 @@ const harness = createHarnessCostGate({
       message: '授权门验证完成：演示模式没有调用模型，也没有修改 Wiki。',
     })
     : paperWikiHarness.run,
-  applyWiki: (id, body) => store.applyPaperWikiDraft(id, body),
+  applyWiki: (id, body) => recordChange(store, () => store.applyPaperWikiDraft(id, body)),
   initialProposals: pendingHarnessProposals,
+  initialApplied: appliedHarnessProposals,
   ...(proposalAudit === null ? {} : { recordProposal: proposalAudit.record }),
 })
 const wikiProposals = createWikiProposals({ store, pdf: pdfPageText(store), now: Date.now })
@@ -474,7 +487,8 @@ registerHandler('papers.reading', (params) =>
   store.paperReading(PapersReadingParamsSchema.parse(params).id))
 registerHandler('papers.mutateReading', (params) => {
   const { id, mutation } = PapersMutateReadingParamsSchema.parse(params)
-  return store.mutatePaperReading(id, mutation)
+  const { result, change } = recordChangeIfAny(store, () => store.mutatePaperReading(id, mutation))
+  return { reading: result, change }
 })
 registerHandler('harness.prepare', (params) => {
   const { paperId } = HarnessPrepareParamsSchema.parse(params)
@@ -485,7 +499,11 @@ registerHandler('harness.pendingPaperWiki', (params) =>
 registerHandler('harness.start', (params) =>
   harness.start(HarnessStartParamsSchema.parse(params)))
 registerHandler('harness.cancel', (params) =>
-  harness.cancel(HarnessCancelParamsSchema.parse(params).planId))
+  harness.cancel(HarnessCancelParamsSchema.parse(params).paperId))
+registerHandler('harness.dismissFailure', (params) => {
+  harness.dismissFailure(HarnessDismissFailureParamsSchema.parse(params).paperId)
+  return null
+})
 registerHandler('harness.modelSettings', (params) => {
   EmptyParamsSchema.parse(params)
   return harnessModel.settings()
@@ -504,8 +522,11 @@ registerHandler('papers.columns', (params) => {
   EmptyParamsSchema.parse(params)
   return store.paperColumns()
 })
-registerHandler('papers.setColumns', (params) =>
-  store.setPaperColumns(PapersSetColumnsParamsSchema.parse(params).columns))
+registerHandler('papers.setColumns', (params) => {
+  const { columns } = PapersSetColumnsParamsSchema.parse(params)
+  const { change } = recordChangeIfAny(store, () => store.setPaperColumns(columns))
+  return { change }
+})
 registerHandler('papers.renameOption', (params) => {
   const { key, from, to } = PapersRenameOptionParamsSchema.parse(params)
   const { change } = recordChange(store, () => store.renamePaperOption(key, from, to))
@@ -539,7 +560,8 @@ registerHandler('project.bindWorkspace', (params) => {
 })
 registerHandler('project.update', (params) => {
   const { id, patch } = ProjectUpdateParamsSchema.parse(params)
-  return store.updateProject(id, definedFields(patch))
+  const { result, change } = recordChange(store, () => store.updateProject(id, definedFields(patch)))
+  return { project: result, change }
 })
 registerHandler('project.delete', (params) => {
   const { id } = ProjectDeleteParamsSchema.parse(params)
@@ -556,7 +578,8 @@ registerHandler('project.updateTask', (params) => {
 })
 registerHandler('project.deleteTask', (params) => {
   const { projectId, taskId } = ProjectDeleteTaskParamsSchema.parse(params)
-  return store.deleteTask(projectId, taskId)
+  const { result, change } = recordChange(store, () => store.deleteTask(projectId, taskId))
+  return { project: result, change }
 })
 registerHandler('project.reorderTasks', (params) => {
   const { projectId, order } = ProjectReorderTasksParamsSchema.parse(params)
@@ -576,7 +599,8 @@ registerHandler('project.updateMilestone', (params) => {
 })
 registerHandler('project.deleteMilestone', (params) => {
   const { projectId, milestoneId } = ProjectDeleteMilestoneParamsSchema.parse(params)
-  return store.deleteMilestone(projectId, milestoneId)
+  const { result, change } = recordChange(store, () => store.deleteMilestone(projectId, milestoneId))
+  return { project: result, change }
 })
 registerHandler('project.createRelation', (params) => {
   const { projectId, relation } = ProjectCreateRelationParamsSchema.parse(params)
@@ -584,7 +608,8 @@ registerHandler('project.createRelation', (params) => {
 })
 registerHandler('project.deleteRelation', (params) => {
   const { projectId, relationId } = ProjectDeleteRelationParamsSchema.parse(params)
-  return store.deleteRelation(projectId, relationId)
+  const { result, change } = recordChange(store, () => store.deleteRelation(projectId, relationId))
+  return { project: result, change }
 })
 registerHandler('project.updateRelation', (params) => {
   const { projectId, relationId, relation } = ProjectUpdateRelationParamsSchema.parse(params)
@@ -596,7 +621,8 @@ registerHandler('project.addPaper', (params) => {
 })
 registerHandler('project.removePaper', (params) => {
   const { projectId, paperId } = ProjectPaperParamsSchema.parse(params)
-  return store.removePaper(projectId, paperId)
+  const { result, change } = recordChange(store, () => store.removePaper(projectId, paperId))
+  return { project: result, change }
 })
 registerHandler('project.moveRelation', (params) => {
   const { projectId, id, index } = ProjectMoveRelationParamsSchema.parse(params)
@@ -645,8 +671,8 @@ registerHandler('inbox.readLater', (params) =>
 registerHandler('inbox.download', (params) =>
   background.downloadInbox(InboxDownloadParamsSchema.parse(params).id))
 registerHandler('inbox.fetch', (params) => {
-  EmptyParamsSchema.parse(params)
-  void background.fetchWatches()
+  const { watchId } = InboxFetchParamsSchema.parse(params)
+  void background.fetchWatches(watchId === undefined ? undefined : [watchId])
 })
 registerHandler('delivery.settings', (params) => {
   EmptyParamsSchema.parse(params)
@@ -670,14 +696,20 @@ registerHandler('discovery.intent', (params) => {
 })
 registerHandler('discovery.feedback', (params) => {
   const { id, feedback } = DiscoveryFeedbackParamsSchema.parse(params)
-  return store.feedbackDiscovery(id, feedback)
+  if (feedback === 'more') {
+    store.feedbackDiscovery(id, feedback)
+    return null
+  }
+  return trashedEntry(store, () => store.feedbackDiscovery(id, feedback))
 })
 registerHandler('later.list', (params) => {
   EmptyParamsSchema.parse(params)
   return store.listLater()
 })
-registerHandler('later.remove', (params) =>
-  store.removeLater(LaterRemoveParamsSchema.parse(params).id))
+registerHandler('later.remove', (params) => {
+  const { id } = LaterRemoveParamsSchema.parse(params)
+  return trashedEntry(store, () => store.removeLater(id))
+})
 registerHandler('watch.list', (params) => {
   EmptyParamsSchema.parse(params)
   return store.listWatches()
@@ -770,8 +802,11 @@ registerHandler('changelog.list', (params) => {
   EmptyParamsSchema.parse(params)
   return store.listChanges()
 })
-registerHandler('changelog.undo', (params) =>
-  store.undoChange(ChangelogUndoParamsSchema.parse(params).id))
+registerHandler('changelog.undo', (params) => {
+  const { id } = ChangelogUndoParamsSchema.parse(params)
+  store.undoChange(id)
+  harness.reopenPaperWiki(id)
+})
 registerHandler('changelog.archive', (params) =>
   store.archiveChange(ChangelogArchiveParamsSchema.parse(params).id))
 registerHandler('changelog.archiveAll', (params) => {
@@ -794,7 +829,7 @@ registerHandler('chat.list', (params) => {
   return store.listChats()
 })
 registerHandler('chat.messages', (params) =>
-  store.chatMessages(ChatMessagesParamsSchema.parse(params).id))
+  chatService.messages(ChatMessagesParamsSchema.parse(params).id))
 registerHandler('chat.create', (params) => {
   const { title, named } = ChatCreateParamsSchema.parse(params)
   return store.createChat(title, named)
@@ -806,8 +841,8 @@ registerHandler('chat.append', (params) => {
   return store.appendChatMessages(id, messages)
 })
 registerHandler('chat.send', (params) => {
-  const { id, text } = ChatSendParamsSchema.parse(params)
-  return chatService.send(id, text)
+  const { id, runs } = ChatSendParamsSchema.parse(params)
+  return chatService.send(id, runs)
 })
 registerHandler('chat.cancel', (params) =>
   chatService.cancel(ChatCancelParamsSchema.parse(params).id))
@@ -845,10 +880,14 @@ registerHandler('chat.setArchived', (params) => {
   const { id, archived } = ChatSetArchivedParamsSchema.parse(params)
   return store.setChatArchived(id, archived)
 })
+registerHandler('chat.delete', (params) => chatService.delete(ChatDeleteParamsSchema.parse(params).id))
 registerHandler('search.query', (params) => store.search(SearchParamsSchema.parse(params).query))
 registerHandler('jobs.status', (params) => {
   EmptyParamsSchema.parse(params)
-  const status = background.status()
+  const status = {
+    ...background.status(),
+    generating: chatService.generating(), generatingWiki: harness.generating(), wikiFailures: harness.failed(),
+  }
   return showUiSamples ? withUiSampleUpload(status, Date.now()) : status
 })
 

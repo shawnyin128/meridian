@@ -30,7 +30,8 @@ Current shared contracts:
   candidate row: menu item anatomy, lit only as the active row, and the row under the pointer is it.
 - `ActionMenu` and `ActionPopover`: the two shared interactive-surface shells. Menus own action and
   radio-item semantics, and radio and checkbox items draw the one checked mark themselves; popovers
-  retain normal focus for calendars and configuration forms. Routes provide triggers, contents, and
+  retain normal focus for calendars, configuration forms and the reader's selection toolbar, which a
+  popover places against a box it measures (`anchorBox`). Routes provide triggers, contents, and
   capability flags instead of assembling Radix roots and portals. Every menu and popover keeps
   `COLLISION_PADDING` from the window edge.
 - `ContextMenu`: the shared right-click menu of one element, opened by the pointer or by the
@@ -43,6 +44,8 @@ Current shared contracts:
   a height cap with a scrolling body and pinned `actions`, the title role (`title` or `ModalTitle`),
   the shared close control (`closable`), and stacking above the dialog that opened it.
 - `DateTimeDisplay`: the app-wide `M月D日` date and optional time pair.
+- `TrailingDate`: an item's date at the end of its card or row, as wide as the widest date of the locale, so
+  the trailing dates of cards and rows on one page start and end at one x.
 - `ConfirmDialog`: one confirmation/destructive-action contract for wording order, focus, and button
   presentation, on the dialog surface's `confirm` step. Routes provide the consequence, the callback and,
   when the confirmation has one, a short `state` beside the buttons (a `Tag`, such as its cost). The
@@ -58,6 +61,11 @@ Current shared contracts:
 - `SegmentedControl`: the only switch between peer views in the app, including the timeline scale: a track of
   equal segments with a raised thumb that slides to the picked one, radio-group semantics, and one Tab stop
   with arrow keys inside. The `.fchip` and `.segbtn` pill rows are retired.
+- `TabbedSection`: the one section whose content switches between peer tabs: its heading, its `SegmentedControl`
+  first in the heading's actions slot and then the section's own actions, and the picked tab's panel. A tab with
+  nothing shows its sentence as the section `EmptyState`; that state and every row of the list a tab shows are
+  one list row high, so switching between a tab with one row and an empty tab moves nothing below. Routes supply
+  only the tabs, each tab's content and its empty sentence.
 - `Toolbar`: the one roving group, on Radix Toolbar: a group of controls is one Tab stop, the arrow keys move
   between them, and Tab comes back to the one focused last. IconButton, AddAction, ChoicePicker's trigger and
   `ToolbarButton` join the toolbar they render in; a toolbar inside one of the same orientation joins it, and a
@@ -65,6 +73,8 @@ Current shared contracts:
   picks a value, on its own or inside a toolbar. A paper row, the row-actions slot and the rating stars use them.
 - `ChipToggles`: a multi-select of short values as chips that each turn on or off, with the same one Tab
   stop and arrow keys. A choice among many values is a menu picker, not a segment per value.
+- `Swatches`: the one row of colour circles that picks a colour, the theme editor's presets and the reader's
+  highlight colours. A picked circle wears the neutral picked ring, never the accent.
 - `Switch`: a binary setting that takes effect as soon as it flips. Its name stays the same in both states;
   a button whose label flips between two actions is not used for a setting.
 - `Notice`: the app's one notice. AppShell places it on the canvas and screens show it through
@@ -91,13 +101,20 @@ Current shared contracts:
   `warn`, `bad`, `info`, `paper`, `wiki`, and `ghost` for the slot that adds a tag to a row) and `shape` the
   box (`label` for a status, kind, priority or source word; `chip` for a name, topic, date or value).
   `TagButton` is the clickable tag and `tagClass` gives a trigger another component renders the same classes.
+  A tag keeps the width of its text: the text beside it gives way first, and when its row still has no
+  room the tag hides as a whole. Only a `capped` tag, whose placement caps it for a long value, fades its text.
   `CountBadge` is the one count beside a label. A host places and sizes these through `className` but never
   sets their fill, colour, border, radius or padding.
-- `StatusDot`: the one state dot, in two sizes. A dot whose state no nearby text names carries a `label`.
+- `StatusDot`: the one state dot, in two sizes, filled, half-filled or a ring. A dot whose state no nearby text names
+  carries a `label`.
+- `ReadDots`: one neutral `StatusDot` per paper's reading state on one fading line, read first, then reading, then
+  the rest, named by its `label`.
 - `Tooltip`: the one tooltip, under the one `TooltipProvider` at the renderer root. Its text is the element's
   name plus the platform's shortcut (`commandShortcut`); it opens after one delay on hover and at once on
   keyboard focus, and with `whenClipped` only while a cut-off text needs showing whole. `IconButton`'s `label`
-  is its tooltip.
+  is its tooltip, and its `note` the line under it: a disabled button that has a reason, such as a Trash row's
+  Restore, states it there, never as a tag or a sentence beside the button. The pointer still opens the tooltip of
+  a disabled button.
 - `PanelClose`: the close button of a detail panel, with one label and one glyph everywhere.
 - `DetailPanel`: the shared open/closed state and motion contract for right-side details. Its `inline`,
   `overlay`, and `resize` modes cover panels that join layout, slide over it, or widen an existing rail;
@@ -105,6 +122,12 @@ Current shared contracts:
 - `DayHeading`: the small heading that opens one day in a list grouped by day, with an optional count.
 - `hooks/useCandidateKeys`: arrow-key, pointer and Enter handling for a candidate list, shared by every
   suggestion and picker dropdown.
+- `hooks/useDrafts`: the one home of unsaved text. Every editor holds what is typed in `useDrafts`, scoped by
+  the item it belongs to, so the draft is kept on this machine as it is typed, comes back in its place
+  after a restart, and goes once it is saved or cancelled; a host that loads a list passes its ids
+  (`live`, `usePruneDrafts`) so a kept draft of a deleted item is dropped.
+- `hooks/useWheelZoom`: the one wheel rule of a zoomable view, shared by the reader and the research graph:
+  a pinch or a Ctrl- or ⌘-scroll zooms about the pointer, and every other scroll scrolls the page.
 - `ResearchObjectCard`: one list-card shell for first-class research objects such as projects and ideas;
   routes provide their domain-specific identity and metadata without redefining width, spacing, borders,
   selection, management-menu visibility, or keyboard activation.
@@ -117,9 +140,13 @@ Current shared contracts:
   library search configure the same focus restoration, icon geometry, and accessible naming.
 - `GenerationControl`: the shared idle, spinning, and hover-to-stop button contract for model-backed
   actions. Chat composers and Wiki Harness generation do not define independent running animations.
+- `ActionButton`: the busy state of a text button that starts an action. While `busy` it keeps its width and
+  shows the `RunningRing`, in full colour, in place of its text; its busy label is only its accessible name. It
+  is marked `aria-busy` and disabled, so a second press cannot start the action again.
 - `RunningRing` (in `icons`): the one running indicator, `DownloadRing` without a total, turning once per
-  `--t-spin` in the colour of the text around it. GenerationControl and About use it; a running job is
-  never drawn in a danger tone.
+  `--t-spin` in the colour of the text around it. GenerationControl, ActionButton and About use it; on a
+  solid accent fill (a primary button, the composer's send) it turns in the fill's ink, by its own rule in
+  `icons.css`, and a running job is never drawn in a danger tone.
 - `CardTray`: progressive disclosure for secondary card details. It keeps a one-line summary visible,
   expands details below the host without moving its primary identity, and owns the shared animation,
   keyboard semantics, and reduced-motion behavior.

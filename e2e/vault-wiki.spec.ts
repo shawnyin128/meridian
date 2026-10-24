@@ -3,7 +3,7 @@ import type { ElectronApplication, Page } from '@playwright/test'
 import { cpSync, mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
-import { test as base, type MeridianWindow } from './app.js'
+import { LAUNCH_SWITCHES, test as base, type MeridianWindow } from './app.js'
 
 const APP_DIR = resolve(import.meta.dirname, '../apps/desktop')
 const EXAMPLE = resolve(import.meta.dirname, '../apps/desktop/src/core/fixtures/wiki-example-vault')
@@ -12,17 +12,17 @@ const EXAMPLE = resolve(import.meta.dirname, '../apps/desktop/src/core/fixtures/
  * The `app` fixture of app.ts on a vault with the aggregation layout: each case copies the example
  * vault into `wiki/` of a temporary directory, and `MERIDIAN_VAULT_ROOT` makes Core open that copy
  * with the vault store instead of the fixture store. The copy is deleted after the case, and the
- * case's config home is the temporary one from app.ts.
+ * case's config home and user-data folder are the temporary ones from app.ts.
  */
 const test = base.extend<{ app: ElectronApplication }>({
-  app: async ({ showWindow, configHome }, use) => {
+  app: async ({ showWindow, configHome, profile }, use) => {
     const vault = mkdtempSync(join(tmpdir(), 'meridian-e2e-vault-'))
     for (const name of ['schema.yaml', 'papers', 'topics', 'methods']) {
       cpSync(join(EXAMPLE, name), join(vault, 'wiki', name), { recursive: true })
     }
     const app = await electron.launch({
       // The specs assert Chinese copy, so the app must not follow the host's language.
-      args: [APP_DIR, '--lang=zh-CN'],
+      args: [APP_DIR, '--lang=zh-CN', `--user-data-dir=${profile}`, ...LAUNCH_SWITCHES],
       env: {
         ...Object.fromEntries(Object.entries(process.env).filter((e): e is [string, string] => e[1] !== undefined)),
         MERIDIAN_VAULT_ROOT: vault,
@@ -44,7 +44,8 @@ const call = <T>(win: Page, method: string, params: unknown) => win.evaluate(
 )
 
 test('真实库的 store 读新布局:首页按两种聚合计数;一条提案写进库,页上出现,撤销后消失', async ({ win }) => {
-  // Before writing, after writing, and after undoing, you need to walk through the aggregation tree and click more than a dozen times; the window that is not on the screen needs to wait two seconds for each operation.
+  // Before writing, after writing and after undoing, the case walks the aggregation tree with more than
+  // a dozen clicks; see `showWindow` in app.ts.
   test.slow()
   await win.locator('[data-desk="wiki"]').click()
   await expect(shown(win).locator('.desk-head .t')).toHaveText('Wiki · 13')

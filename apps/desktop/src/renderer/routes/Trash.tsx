@@ -1,8 +1,7 @@
-import { Fragment, useCallback, useEffect, useState } from 'react'
+import { Fragment, useEffect, useState } from 'react'
 import type { TrashEntry } from '../../shared/contract.js'
 import { TRASH_RETENTION_DAYS } from '../../shared/vocabulary.js'
 import { trash } from '../ipc.js'
-import { errorLabel } from '../lib/failure-label.js'
 import { useMessages } from '../messages/useMessages.js'
 import { useToday, useVaultRevision } from '../shell/AppShell.js'
 import { Icon, IconRestore, IconTrash } from '../components/icons.js'
@@ -14,24 +13,23 @@ import { LoadingPlaceholder } from '../components/LoadingPlaceholder.js'
 import { PaperText } from '../components/paper/PaperText.js'
 import { plainTitle } from '../components/paper/paper-text.js'
 import { RowActions, StructuredList, StructuredRow } from '../components/StructuredList.js'
-import { Tag } from '../components/Tag.js'
 import { TitleNote } from '../components/TitleNote.js'
 import {
   PageBody, PageError, PageHeader, PageShell, PageTitle, SectionHeading,
 } from '../components/PageShell.js'
 import { D1, dnum } from '../../shared/dates.js'
+import { useScreenLoad } from '../hooks/useScreenLoad.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
 import './shell.css'
 import './Trash.css'
 
 /**
- * The order of the groups. The demo's order array was Inbox, papers, projects, with attachments
- * outside it, after the ordered kinds; read-later items follow Inbox, ideas follow projects, and
- * attachments stay last.
+ * The order of the groups: the order of each kind's row in the sidebar, top to bottom. Attachments
+ * have no row there and come last.
  */
-const KINDS: TrashEntry['kind'][] = ['inbox', 'later', 'paper', 'project', 'idea', 'attachment']
-/** The kinds whose title is a paper title. */
-const PAPER_KINDS: ReadonlySet<TrashEntry['kind']> = new Set(['inbox', 'later', 'paper'])
+const KINDS: TrashEntry['kind'][] = ['inbox', 'later', 'chat', 'paper', 'project', 'idea', 'attachment']
+/** The kinds whose title is, or for a chat can be, a paper title. */
+const PAPER_KINDS: ReadonlySet<TrashEntry['kind']> = new Set(['inbox', 'later', 'paper', 'chat'])
 const plainOf = (entry: TrashEntry): string => (PAPER_KINDS.has(entry.kind) ? plainTitle(entry.title) : entry.title)
 
 /**
@@ -63,16 +61,13 @@ function ClearButton({ count, onClear }: { count: number; onClear: () => void })
 export function Trash() {
   const m = useMessages()
   const [entries, setEntries] = useState<TrashEntry[] | null>(null)
-  const [error, setError] = useState<string | null>(null)
 
   const today = useToday()
   const { revision } = useVaultRevision()
-  const reportError = useCallback((e: unknown) => setError(errorLabel(m, e)), [m])
+  const { error, load } = useScreenLoad()
   const write = useVaultWrite()
 
-  useEffect(() => {
-    void trash.list().then(setEntries).catch(reportError)
-  }, [revision, reportError])
+  useEffect(() => load('entries', trash.list(), setEntries), [revision, load])
 
   const restore = (entry: TrashEntry) => {
     void write(trash.restore(entry.id),
@@ -124,10 +119,12 @@ export function Trash() {
                   <StructuredRow className="trow" key={entry.id}>
                     <FadeText className="tt2">{PAPER_KINDS.has(entry.kind) ? <PaperText text={entry.title} /> : entry.title}</FadeText>
                     <span className="tm2">{m.trash.autoClear(daysLeft(entry.deletedAt, today))}</span>
-                    {entry.restorable ? null : <Tag>{entry.kind === 'paper' ? m.trash.paperTaken : m.trash.projectGone}</Tag>}
                     <RowActions>
                       <IconButton
                         label={m.common.restore} size="nested" disabled={!entry.restorable} onClick={() => restore(entry)}
+                        note={entry.restorable
+                          ? undefined
+                          : entry.kind === 'paper' ? m.trash.paperTaken : entry.kind === 'chat' ? m.trash.chatTaken : m.trash.projectGone}
                       ><IconRestore /></IconButton>
                       <ConfirmDialog
                         trigger={(

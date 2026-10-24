@@ -4,7 +4,7 @@ import type {
 } from '../shared/contract.js'
 import { createInboxDownloads } from './inbox/download.js'
 import { createWatchFetcher } from './inbox/fetch.js'
-import { armFetchSchedule } from './inbox/schedule.js'
+import { armDiscoverySchedule, armFetchSchedule } from './inbox/schedule.js'
 import { createArxiv } from './net/arxiv.js'
 import type { HttpGet } from './net/http.js'
 import { createRateLimitedGet, netFailure } from './net/http.js'
@@ -12,6 +12,7 @@ import { createSemanticAuthors } from './net/semantic-authors.js'
 import { createArxivSuggestionSource, createWatchSuggestions } from './net/watch-suggestions.js'
 import { createAuthorSearch, type ScholarSource } from './net/scholar-sources.js'
 import { checkSemanticKey, createSemanticSearch } from './net/semantic-search.js'
+import { isUnopenedStore } from './unopened-store.js'
 import { createMetadataQueue, type PdfProbe } from './paper-library/index.js'
 import {
   createArxivRecommendations, createFallbackRecommendations, createRecommendationService,
@@ -27,11 +28,20 @@ export type Background = {
   fetchWatches(watchIds?: string[]): Promise<void>
   searchAuthors(query: string): Promise<AuthorCandidate[] | AuthorSearchFailed>
   suggestWatches(input: { focus: string; seedTopics?: string[] }): Promise<WatchSuggestionResult | NetFailed>
+  /** Runs one discovery after any discovery already running has finished. */
   fetchDiscoveries(projectId?: string, force?: boolean): Promise<DiscoveryFetchResult>
   /** One Semantic Scholar request with the saved key; fails as authentication when no key is saved. */
   checkSemanticKey(): Promise<SemanticKeyCheckResult>
+  /**
+   * Arms the six-hour watch schedule and the daily discovery schedule and returns their stop function;
+   * arms nothing while no vault is open.
+   */
   armSchedule(): () => void
-  status(): JobsStatus
+  /**
+   * The jobs status without the chats and Wiki proposals being generated and the failed Wiki runs,
+   * which the chat service and the Harness cost gate report.
+   */
+  status(): Omit<JobsStatus, 'generating' | 'generatingWiki' | 'wikiFailures'>
   idle(): Promise<void>
 }
 
@@ -81,11 +91,34 @@ export function createBackground(deps: {
     )),
   })
   const metadata = createMetadataQueue({ store: deps.store, probe: deps.probe, provider: arxiv, onWrite })
-  const downloads = createInboxDownloads({ store: deps.store, get: deps.get, onWrite })
+  const downloads = createInboxDownloads({ store: deps.store, get: deps.get, probe: deps.probe, onWrite })
   const fetcher = createWatchFetcher({
     store: deps.store, arxiv, scholar, now: deps.now, onWrite,
     authorPapers: (identity) => authors.papers(identity.id),
   })
+  let discoveryTail: Promise<unknown> = Promise.resolve()
+  let discovering = 0
+  const fetchDiscoveries = async (projectId?: string, force?: boolean): Promise<DiscoveryFetchResult> => {
+    discovering += 1
+    const run = discoveryTail.then(() => recommendation.discover(projectId, force)).finally(() => { discovering -= 1 })
+    discoveryTail = run.catch(() => undefined)
+    const result = await run
+    if (result.added > 0) {
+      deps.store.appendFeed({
+        source: 'inbox',
+        body: {
+          kind: 'runs',
+          runs: [
+            { kind: 'text', text: '发现：' },
+            { kind: 'strong', text: `${result.added} 篇新论文推荐` },
+            { kind: 'text', text: `（${result.projects} 个项目）。` },
+          ],
+        },
+      })
+      onWrite()
+    }
+    return result
+  }
   return {
     importPaper(filename, bytes) {
       const result = deps.store.importPaper(filename, bytes)
@@ -112,28 +145,27 @@ export function createBackground(deps: {
         return { kind: 'failed', reason: netFailure(error) }
       }
     },
-    async fetchDiscoveries(projectId, force) {
-      const result = await recommendation.discover(projectId, force)
-      if (result.added > 0) {
-        deps.store.appendFeed({
-          source: 'inbox',
-          body: {
-            kind: 'runs',
-            runs: [
-              { kind: 'text', text: '发现：' },
-              { kind: 'strong', text: `${result.added} 篇新论文推荐` },
-              { kind: 'text', text: `（${result.projects} 个项目）。` },
-            ],
-          },
-        })
-        onWrite()
-      }
-      return result
-    },
+    fetchDiscoveries,
     checkSemanticKey: () => (semanticKey() === undefined
       ? Promise.resolve({ state: 'failed', reason: 'authentication', detail: '还没有保存 key' })
       : checkSemanticKey(semanticGet)),
-    armSchedule: () => armFetchSchedule(fetcher, deps.now),
+    armSchedule() {
+      if (isUnopenedStore(deps.store)) return () => {}
+      const stopWatches = armFetchSchedule(fetcher, deps.now)
+      const stopDiscovery = armDiscoverySchedule({
+        running: () => discovering > 0,
+        refreshedAt: () => deps.store.listDiscoveryProfiles()
+          .filter((profile) => profile.seedCount + profile.positiveCount > 0 && profile.intentCount > 0)
+          .map((profile) => profile.lastFetchedAt),
+        run: () => fetchDiscoveries().catch((error: unknown) => {
+          console.error(`[discovery] 定时刷新论文发现失败：${error instanceof Error ? error.message : String(error)}`)
+        }),
+      }, deps.now)
+      return () => {
+        stopWatches()
+        stopDiscovery()
+      }
+    },
     status: () => ({
       writes,
       uploads: metadata.uploads(),

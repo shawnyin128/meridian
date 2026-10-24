@@ -1,8 +1,9 @@
 // @vitest-environment jsdom
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import type { PaperHighlightRect } from '../../shared/contract.js'
 import {
-  highlightLines, highlightShape, normalizedHighlightRects, selectedTextRanges, selectionBox,
+  drawnLines, highlightAt, highlightLines, highlightOutline, highlightShape, normalizedHighlightRects, selectedLinesByPage,
+  selectedTextRanges, selectionBox, uncoveredLines,
 } from './highlight-geometry.js'
 
 /** A US Letter page at the reader's fit scale (830 / 612), as the page box's client rectangle. */
@@ -20,13 +21,14 @@ const SUPERSCRIPT = { ascent: 13.6, height: 12 }
 const text = (left: number, right: number, baseline: number, face = SERIF) =>
   ({ left, top: baseline - face.ascent, width: right - left, height: face.height })
 
-/** A stored rectangle mapped back to client pixels, rounded to tenths of a pixel. */
-const onScreen = (rect: PaperHighlightRect) => ({
-  left: Math.round((PAGE.left + rect.x * PAGE.width) * 10) / 10,
-  right: Math.round((PAGE.left + (rect.x + rect.width) * PAGE.width) * 10) / 10,
-  top: Math.round((PAGE.top + rect.y * PAGE.height) * 10) / 10,
-  bottom: Math.round((PAGE.top + (rect.y + rect.height) * PAGE.height) * 10) / 10,
+/** A stored rectangle mapped back to client pixels on `page`, rounded to tenths of a pixel. */
+const onScreenOf = (page: typeof PAGE) => (rect: PaperHighlightRect) => ({
+  left: Math.round((page.left + rect.x * page.width) * 10) / 10,
+  right: Math.round((page.left + (rect.x + rect.width) * page.width) * 10) / 10,
+  top: Math.round((page.top + rect.y * page.height) * 10) / 10,
+  bottom: Math.round((page.top + (rect.y + rect.height) * page.height) * 10) / 10,
 })
+const onScreen = onScreenOf(PAGE)
 
 /**
  * A two-column section under a full-width figure: the left column's text runs from 193 to 524 px,
@@ -125,6 +127,60 @@ describe('highlight geometry', () => {
     expect(lines[1]).toEqual(stored[4])
   })
 
+  it('后来的高亮盖住的那一截从先前的高亮里剪掉,同一行上可能剪成两段,被盖满的行不剩;下一行不受上一行的影响', () => {
+    const line = (x: number, width: number, y: number) => ({ x, y, width, height: 1 / 64 })
+    // The second line's box overlaps the first one's a little, as tightly set lines do.
+    const older = [line(0.125, 0.5, 0.25), line(0.125, 0.25, 0.25 + 7 / 512), line(0.5, 0.125, 0.5)]
+    const newer = [line(0.25, 0.125, 0.25), line(0.375, 0.5, 0.5)]
+    expect(uncoveredLines(older, newer)).toEqual([
+      line(0.125, 0.125, 0.25), line(0.375, 0.25, 0.25), line(0.125, 0.25, 0.25 + 7 / 512),
+    ])
+    expect(uncoveredLines(older, [])).toEqual(older)
+  })
+
+  it('一页上每段高亮按画出来的行算:后来的盖住的那一截不算前面那段的;点在哪一行上就是哪段,行外不算', () => {
+    const line = (x: number, width: number, y: number) => ({ x, y, width, height: 1 / 64 })
+    const highlight = (id: string, rects: PaperHighlightRect[]) => ({
+      id, page: 1, quote: id, rects, color: 'yellow' as const, note: '', created: '2026-10-24', updated: '2026-10-24',
+    })
+    const older = highlight('older', [line(0.125, 0.5, 0.25), line(0.125, 0.25, 0.25 + 7 / 512)])
+    const newer = highlight('newer', [line(0.25, 0.125, 0.25)])
+    const whole = highlight('whole', [line(0.125, 0.125, 0.5)])
+    const over = highlight('over', [line(0.125, 0.125, 0.5)])
+    expect(drawnLines([older, newer, whole, over], 1)).toEqual([
+      [line(0.125, 0.125, 0.25), line(0.375, 0.25, 0.25), line(0.125, 0.25, 0.25 + 7 / 512)],
+      [line(0.25, 0.125, 0.25)], [], [line(0.125, 0.125, 0.5)],
+    ])
+    const at = (x: number, y: number) => highlightAt([older, newer, whole, over], 1, { x, y })?.id ?? null
+    // On the stretch both cover, the newer wins; beside it on the same line, the older one.
+    expect([at(0.3, 0.255), at(0.2, 0.255), at(0.5, 0.255), at(0.2, 0.27)]).toEqual(['newer', 'older', 'older', 'older'])
+    // A highlight covered whole is never hit; past the end of a line and between lines nothing is.
+    expect([at(0.2, 0.505), at(0.7, 0.255), at(0.2, 0.4)]).toEqual(['over', null, null])
+
+    // Where the boxes of two neighbouring lines overlap, as on tightly set text, the newer one is hit.
+    const above = highlight('above', [line(0.125, 0.5, 0.25)])
+    const below = highlight('below', [line(0.125, 0.5, 0.25 + 7 / 512)])
+    expect(highlightAt([above, below], 1, { x: 0.2, y: 0.265 })?.id).toBe('below')
+  })
+
+  it('选中高亮的轮廓沿着它画出来的行走一圈:相连的行合成一个轮廓,在宽出去的那一行处拐弯;隔开的行各自一个框', () => {
+    const line = (x: number, width: number, y: number) => ({ x, y, width, height: 1 / 16 })
+    expect(highlightOutline([line(0.25, 0.5, 0.25)])).toBe('M0.25 0.25L0.75 0.25L0.75 0.3125L0.25 0.3125Z')
+    // A paragraph's middle: the first line starts late and ends at the margin, the last ends early;
+    // the second line overlaps the first a little, as tightly set lines do.
+    expect(highlightOutline([line(0.5, 0.375, 0.25), line(0.125, 0.75, 0.3125 - 1 / 64), line(0.125, 0.25, 0.375 - 1 / 32)])).toBe(
+      'M0.5 0.25L0.875 0.25L0.875 0.3125L0.875 0.3125L0.875 0.359375L0.375 0.359375L0.375 0.40625L0.125 0.40625'
+      + 'L0.125 0.359375L0.125 0.359375L0.125 0.296875L0.5 0.296875Z',
+    )
+    // Lines a gap apart, or side by side without sharing any stretch across, are outlined each on its own.
+    expect(highlightOutline([line(0.25, 0.25, 0.25), line(0.25, 0.25, 0.5)])).toBe(
+      'M0.25 0.25L0.5 0.25L0.5 0.3125L0.25 0.3125ZM0.25 0.5L0.5 0.5L0.5 0.5625L0.25 0.5625Z',
+    )
+    expect(highlightOutline([line(0.125, 0.25, 0.25), line(0.5, 0.25, 0.25 + 1 / 32)])).toBe(
+      'M0.125 0.25L0.375 0.25L0.375 0.3125L0.125 0.3125ZM0.5 0.28125L0.75 0.28125L0.75 0.34375L0.5 0.34375Z',
+    )
+  })
+
   it('高亮的填色每行一个矩形，批注的底线每行一条，沿着同一行的底边', () => {
     const lines = normalizedHighlightRects(PAGE, TWO_COLUMNS).slice(0, 2)
     const shape = highlightShape(lines)
@@ -168,5 +224,42 @@ describe('highlight geometry', () => {
     inside.setStart(words, 2)
     inside.setEnd(words, 7)
     expect(selectedTextRanges(inside).map((piece) => piece.toString())).toEqual(['afts'])
+  })
+
+  it('选区按页给出选中的行：每页按自己的页框换算，跨栏的每栏每行一个矩形，页外和文字层外的字不算', () => {
+    document.body.innerHTML = '<div class="pdfsheet">'
+      + '<div class="pdfpagebox"><div class="textLayer"><span>Speculative</span><span>decoding</span><span>drafts</span></div></div>'
+      + '<div class="pdfpagebox"><div class="paper-selection"><span>drawn</span></div><div class="textLayer"><span>tokens</span></div></div>'
+      + '</div><aside><p>side panel</p></aside>'
+    const pages = [...document.querySelectorAll<HTMLElement>('.pdfpagebox')]
+    const next = { ...PAGE, top: PAGE.top + PAGE.height + 24 }
+    const boxes = new Map([[pages[0], PAGE], [pages[1], next]])
+    // jsdom lays nothing out: each page box and each selected word report the box they have on screen.
+    const words = new Map([
+      ['Speculative', text(350, 470, 905)], ['decoding', text(547, 700, 905)], ['drafts', text(193, 410, 923.4)],
+      ['drawn', text(193, 300, next.top + 40)], ['tokens', text(193, 300, next.top + 60)], ['side panel', text(10, 90, 300)],
+    ])
+    const box = ({ left, top, width, height }: { left: number; top: number; width: number; height: number }) =>
+      DOMRect.fromRect({ x: left, y: top, width, height })
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+      return box(boxes.get(this) ?? { left: 0, top: 0, width: 0, height: 0 })
+    })
+    Range.prototype.getClientRects = function (this: Range) { return [box(words.get(this.toString())!)] as unknown as DOMRectList }
+    const range = document.createRange()
+    range.setStart(pages[0]!.querySelector('span')!.firstChild!, 0)
+    range.setEnd(document.querySelector('aside p')!.firstChild!, 4)
+
+    const lines = selectedLinesByPage(range)
+    expect([...lines.keys()]).toEqual(pages)
+    expect(lines.get(pages[0]!)!.map(onScreen)).toEqual([
+      { left: 350, right: 470, top: 891.7, bottom: 908.2 },
+      { left: 547, right: 700, top: 891.7, bottom: 908.2 },
+      { left: 193, right: 410, top: 910.1, bottom: 926.6 },
+    ])
+    expect(lines.get(pages[1]!)!.map(onScreenOf(next))).toEqual([
+      { left: 193, right: 300, top: next.top + 46.7, bottom: next.top + 63.2 },
+    ])
+    vi.restoreAllMocks()
+    delete (Range.prototype as Partial<Range>).getClientRects
   })
 })

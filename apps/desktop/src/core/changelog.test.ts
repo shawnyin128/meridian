@@ -444,6 +444,16 @@ describe('change log', () => {
     expect(store.paperReading(READ).highlights).toEqual(before.highlights)
   })
 
+  it('给一条高亮换色记一条,diff 写出前后的颜色;撤销换回原来的颜色', () => {
+    const before = store.mutatePaperReading(READ, { kind: 'highlight.add', page: 3, quote: '换色的那句', rects: RECTS, color: 'yellow' })
+    store.mutatePaperReading(READ, { kind: 'highlight.update', id: before.highlights[0]!.id, note: '', color: 'pink' })
+    const change = recorded()[0]!
+    expect(change.diff).toEqual(['- 颜色：黄色', '+ 颜色：粉色'])
+
+    store.undoChange(change.id)
+    expect(store.paperReading(READ).highlights).toEqual(before.highlights)
+  })
+
   it('改一条关联记下一条,撤销把它的名字和指向还原', () => {
     const before = store.getProject(PROJECT).relations
     const item = before[0]!.items[0]!
@@ -515,6 +525,21 @@ describe('change log', () => {
     rows[0]!.diff[0] = '篡改后的 diff'
     expect(store.listChanges()[0]!.title).not.toBe('篡改后的标题')
     expect(store.listChanges()[0]!.diff[0]).not.toBe('篡改后的 diff')
+  })
+
+  it('写入 Wiki 提案像审阅队列里应用的提案一样记一条:标题是页名和卡片第一行的改动,来源 Meridian;撤销整页写回', () => {
+    const pages = store.listPapers({ page: 1, size: 200 }).rows.map((row) => `papers/${row.id}`)
+    const blank = pages.find((id) => store.wikiPaper(id).body.trim() === '')!
+    const written = pages.find((id) => store.wikiPaper(id).body.trim() !== '')!
+    const before = store.readPages([blank, written])
+    store.applyPaperWikiDraft(blank, '## 概览\nHarness 生成的正文。')
+    store.applyPaperWikiDraft(written, '## 概览\nHarness 更新的正文。')
+    expect(recorded().map(({ title, source, diff, undoable, named }) => ({ title, source, diff, undoable, named }))).toEqual([
+      { title: `Wiki · ${store.wikiPaper(written).title} · 更新内容`, source: 'Meridian', diff: [`~ ${written}`], undoable: true, named: undefined },
+      { title: `Wiki · ${store.wikiPaper(blank).title} · 新建内容`, source: 'Meridian', diff: [`~ ${blank}`], undoable: true, named: undefined },
+    ])
+    for (const change of recorded().map((row) => row.id)) store.undoChange(change)
+    expect(store.readPages([blank, written])).toEqual(before)
   })
 
   it('记录不跨边界带快照与指纹:界面只看得到能不能撤、归没归档', () => {

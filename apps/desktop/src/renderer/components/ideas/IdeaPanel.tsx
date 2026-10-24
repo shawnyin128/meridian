@@ -60,6 +60,12 @@ export function IdeaSource({ idea, sourceProject, message = (source) => source, 
   )
 }
 
+/** The neutral tag that follows an idea's source wherever it shows, once the chat the idea came from is deleted. */
+export function SourceChatDeleted({ className }: { className?: string }) {
+  const m = useMessages()
+  return <Tag className={className}>{m.ideas.sourceChatDeleted}</Tag>
+}
+
 /**
  * The one detail panel of an idea, on the Ideas screen and on the project page: the title with the
  * host's `actions` and the close button, the kind and archived tags with the created date and,
@@ -67,9 +73,12 @@ export function IdeaSource({ idea, sourceProject, message = (source) => source, 
  * source, which an idea the user wrote down on their own does not have. `editor`, when given, takes
  * the content's place.
  * `onOpenSourceChat` adds, to the source heading, the button that opens the conversation the idea
- * came from; `onOpenSourcePaper` makes the paper it came from a link.
+ * came from; `sourceChatDeleted` says that conversation is deleted, so there is no such button and the
+ * source ends with a tag saying so. `onOpenSourcePaper` makes the paper it came from a link.
  */
-export function IdeaPanel({ idea, sourceProject, actions, editor, onClose, onOpenSourceChat, onOpenSourcePaper, children }: {
+export function IdeaPanel({
+  idea, sourceProject, actions, editor, onClose, onOpenSourceChat, sourceChatDeleted = false, onOpenSourcePaper, children,
+}: {
   idea: ResearchIdea
   /** The name of the project the idea was sparked in; when given, it leads the source, which then shows for the user's own idea too. */
   sourceProject?: string | undefined
@@ -77,6 +86,7 @@ export function IdeaPanel({ idea, sourceProject, actions, editor, onClose, onOpe
   editor?: ReactNode
   onClose: () => void
   onOpenSourceChat?: (chatId: string) => void
+  sourceChatDeleted?: boolean
   onOpenSourcePaper?: (paperId: string) => void
   children?: ReactNode
 }) {
@@ -109,12 +119,15 @@ export function IdeaPanel({ idea, sourceProject, actions, editor, onClose, onOpe
         <>
           <SectionHeading
             variant="rail"
-            actions={onOpenSourceChat === undefined || chatId === undefined
+            actions={onOpenSourceChat === undefined || chatId === undefined || sourceChatDeleted
               ? undefined
               : <button className="btn sm idea-panel-open-chat" onClick={() => onOpenSourceChat(chatId)}>{m.ideas.openSourceChat}</button>}
           >{m.project.sections.source}
           </SectionHeading>
-          <p className="idea-panel-source"><IdeaSource idea={idea} sourceProject={sourceProject} onOpenPaper={onOpenSourcePaper} /></p>
+          <p className="idea-panel-source">
+            <IdeaSource idea={idea} sourceProject={sourceProject} onOpenPaper={onOpenSourcePaper} />
+            {sourceChatDeleted ? <SourceChatDeleted className="idea-panel-source-gone" /> : null}
+          </p>
         </>
       )}
     </>

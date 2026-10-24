@@ -3,7 +3,7 @@ import type { PaperCell, PaperColumns } from '../apps/desktop/src/shared/contrac
 import {
   DEFAULT_PAPER_GROUPS, LATER_PAPER, READ_STATES, READING_PAPER, UNREAD_PAPER,
 } from '../apps/desktop/src/shared/vocabulary.js'
-import { expect, gotoPapers, parkPointer, settle, test, uniqueHeights, type MeridianWindow } from './app.js'
+import { expect, gotoPapers, panelHead, parkPointer, settle, test, uniqueHeights, type MeridianWindow } from './app.js'
 
 /** The reading statuses as the status menu names them, the read-later state by its shown name. */
 const READ_STATE_NAMES = READ_STATES.map((state) => (state === LATER_PAPER ? '待读' : state))
@@ -215,8 +215,9 @@ test('研究地图从真实论文元数据形成可切换、可解释的重叠�
   await firstPage(win)
   await win.getByRole('radio', { name: '研究地图', exact: true }).click()
 
-  await expect(win.locator('.research-map-title')).toContainText('自适应研究地图')
-  await expect(win.locator('.research-map-group')).not.toHaveCount(0)
+  await expect(win.locator('.research-map-groups').first().locator('.research-map-group')).not.toHaveCount(0)
+  await expect(win.locator('.research-map-groups').nth(1).locator('.research-map-group-name').first()).toHaveText('跨组')
+  await expect(win.locator('.research-map-group .read-dots').first()).toHaveAttribute('aria-label', /^已读 \d+\/\d+$/)
   await expect(win.locator('.research-map-detail .research-map-why .tag').first()).toBeVisible()
   await expect(win.locator('.pagebar')).toHaveCount(0)
 
@@ -224,6 +225,93 @@ test('研究地图从真实论文元数据形成可切换、可解释的重叠�
   const firstLabel = await groups.first().locator('.research-map-group-name').innerText()
   await groups.nth(1).click()
   await expect(win.locator('.research-map-detail-head .research-map-detail-name')).not.toHaveText(firstLabel)
+})
+
+test('研究地图详情卡里悬停的论文行铺到卡片的内边，行间分隔线也是，行里的内容和卡片标题一样缩进', async ({ win }) => {
+  await gotoPapers(win)
+  await firstPage(win)
+  await win.getByRole('radio', { name: '研究地图', exact: true }).click()
+  const papers = win.locator('.research-map-detail .research-map-paper')
+  await expect(papers.nth(1)).toBeVisible()
+  await papers.first().hover()
+
+  const geometry = await win.locator('.research-map-detail').evaluate((card) => {
+    const at = (value: number) => +value.toFixed(2)
+    const box = (el: Element) => el.getBoundingClientRect()
+    const inner = (el: Element) => {
+      const style = getComputedStyle(el)
+      return { left: at(box(el).left + parseFloat(style.borderLeftWidth)), right: at(box(el).right - parseFloat(style.borderRightWidth)) }
+    }
+    const edges = (el: Element) => ({ left: at(box(el).left), right: at(box(el).right) })
+    const list = card.querySelector<HTMLElement>('.research-map-papers')!
+    const [hovered, next] = [...list.querySelectorAll('.research-map-paper')]
+    const head = card.querySelector('.research-map-detail-head>div')!
+    // A paper list taller than the card's room scrolls, and its scrollbar takes the card's inner right edge.
+    const scrollbar = list.offsetWidth - list.clientWidth
+    return {
+      card: inner(card), list: edges(list),
+      reach: { left: inner(card).left, right: at(inner(card).right - scrollbar) },
+      hovered: edges(hovered!), next: edges(next!),
+      fill: getComputedStyle(hovered!).backgroundImage,
+      divider: getComputedStyle(next!).borderTopWidth,
+      head: { start: at(box(head).left - inner(card).left), end: at(inner(card).right - box(head).right) },
+      content: {
+        start: at(box(hovered!.querySelector('.research-map-paper-title')!).left - box(hovered!).left),
+        end: at(box(hovered!).right - box(hovered!.querySelector('.research-map-paper-marks')!).right),
+      },
+    }
+  })
+  expect(geometry.fill).not.toBe('none')
+  expect(geometry.list).toEqual(geometry.card)
+  expect(geometry.hovered).toEqual(geometry.reach)
+  expect(geometry.next).toEqual(geometry.reach)
+  expect(geometry.divider).toBe('1px')
+  expect(geometry.content).toEqual(geometry.head)
+})
+
+test('研究地图左右两栏都铺到视图底边，在同一高度开始各自在栏内滚动，详情卡的头留在卡顶，裁掉的边淡出', async ({ app, win }) => {
+  await gotoPapers(win)
+  await firstPage(win)
+  await win.getByRole('radio', { name: '研究地图', exact: true }).click()
+  await expect(win.locator('.research-map-detail .research-map-paper').nth(5)).toBeVisible()
+
+  for (const [width, height] of [[1440, 900], [1280, 800]] as const) {
+    await app.evaluate(({ BrowserWindow }, size) => BrowserWindow.getAllWindows()[0]!.setContentSize(size.width, size.height), { width, height })
+    await expect.poll(() => win.evaluate(() => window.innerHeight)).toBe(height)
+    const columns = await win.evaluate(() => {
+      const index = document.querySelector<HTMLElement>('.research-map-index')!
+      const papers = document.querySelector<HTMLElement>('.research-map-papers')!
+      const head = document.querySelector<HTMLElement>('.research-map-detail-head')!
+      const bottom = (el: Element) => Math.round(el.getBoundingClientRect().bottom)
+      // The column keeps the focus-ring room inside its edges and reaches out by as much, so its lists end above that room.
+      const indexEnd = Math.round(index.getBoundingClientRect().bottom - parseFloat(getComputedStyle(index).paddingBottom))
+      const headTop = head.getBoundingClientRect().top
+      const before = { index: index.dataset.fade, papers: papers.dataset.fade }
+      papers.scrollTop = papers.scrollHeight
+      index.scrollTop = index.scrollHeight
+      papers.dispatchEvent(new Event('scroll'))
+      index.dispatchEvent(new Event('scroll'))
+      return {
+        view: bottom(document.querySelector('#libList')!), index: indexEnd, detail: bottom(document.querySelector('.research-map-detail')!),
+        indexScrolls: index.scrollHeight > index.clientHeight, papersScroll: papers.scrollHeight > papers.clientHeight,
+        headStays: head.getBoundingClientRect().top === headTop,
+        fades: { before, after: { index: index.dataset.fade, papers: papers.dataset.fade } },
+      }
+    })
+    // At 1440×900 the fixture's ten groups fit the column, so only the paper list has more to show.
+    const groupsOverflow = height === 800
+    expect(columns, `${width}×${height}`).toEqual({
+      view: columns.view, index: columns.view, detail: columns.view,
+      indexScrolls: groupsOverflow, papersScroll: true, headStays: true,
+      fades: {
+        before: { index: groupsOverflow ? 'bottom' : undefined, papers: 'bottom' },
+        after: { index: groupsOverflow ? 'top' : undefined, papers: 'top' },
+      },
+    })
+    await win.evaluate(() => {
+      for (const selector of ['.research-map-index', '.research-map-papers']) document.querySelector(selector)!.scrollTop = 0
+    })
+  }
 })
 
 test('论文表首列是冻结列', async ({ win }) => {
@@ -558,8 +646,8 @@ test('标签添加框:点联想项写成功后,输入框与候选层都收起', 
 })
 
 test('文本格:改完焦点移走或点到格外都像回车一样写,Esc 才放弃', async ({ win }) => {
-  // Creates a column, then makes three edits each checked in Core; an offscreen window waits two
-  // seconds per actionability check, so the default 30 s is too short.
+  // Creates a column, then makes three edits each checked in Core: many actionability checks for a
+  // hidden window; see `showWindow` in app.ts.
   test.slow()
   await gotoPapers(win)
   await firstPage(win)
@@ -661,8 +749,8 @@ test('文本格开着时按住表格自己的竖直滚动条,不算点到格外:
 })
 
 test('列管理:内置列显隐持久到离开再回来,固定列藏不了;自定义列新建、填格、撤销、改名、删除', async ({ win }) => {
-  // One test creates a column, fills a cell, undoes, renames and deletes; an offscreen window waits
-  // two seconds per actionability check, so the default 30 s is too short.
+  // One test creates a column, fills a cell, undoes, renames and deletes: many actionability checks
+  // for a hidden window; see `showWindow` in app.ts.
   test.slow()
   await gotoPapers(win)
   await firstPage(win)
@@ -745,9 +833,56 @@ test('列管理:内置列显隐持久到离开再回来,固定列藏不了;自�
   await expect.poll(head).not.toContain('批注')
 })
 
+/** Clicks Undo on the notice the last write showed, and waits for the notice saying it was undone. */
+async function undoFromNotice(win: Page): Promise<void> {
+  const undo = win.locator('#notice .btn')
+  await expect(undo).toHaveText('撤销')
+  await undo.click()
+  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已撤销')
+}
+
+test('删掉一列,提示里的撤销把它放回,格子里的值还在', async ({ win }) => {
+  await seed(win, [{ key: 'note', label: '备注', type: 'text', options: [] }], [{ note: '删列前写下的值' }])
+  const before = await call<PaperColumns>(win, 'papers.columns', {})
+  await gotoPapers(win)
+  await firstPage(win)
+  const head = () => win.locator('.ptable thead th').allTextContents()
+  const menu = win.locator('[data-radix-popper-content-wrapper] .mi.colrow')
+  await win.locator('.ptable thead').hover()
+  await win.locator('.ptable thead [aria-label="列设置"]').click()
+  await menu.filter({ hasText: '备注' }).hover()
+  await menu.filter({ hasText: '备注' }).locator('[aria-label="删除列"]').click()
+  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已删除列「备注」')
+  await expect.poll(head).not.toContain('备注')
+
+  await undoFromNotice(win)
+  await expect.poll(head).toContain('备注')
+  await expect(win.locator('.ptable tbody tr').first().locator('td.pt-cust')).toHaveText('删列前写下的值')
+  expect((await call<PaperColumns>(win, 'papers.columns', {})).custom).toEqual(before.custom)
+})
+
+test('删掉一个没人用的选项,提示里的撤销把它放回', async ({ win }) => {
+  await seed(win, [{ key: 'pick', label: '读法', type: 'select', options: ['精读', '略读'] }], [{ pick: '精读' }])
+  const before = await call<PaperColumns>(win, 'papers.columns', {})
+  await gotoPapers(win)
+  await firstPage(win)
+  const menu = win.locator('[data-radix-popper-content-wrapper] .mi.colrow')
+  await win.locator('.ptable thead').hover()
+  await win.locator('.ptable thead [aria-label="列设置"]').click()
+  await menu.filter({ hasText: '读法' }).locator('.cmx.optx').click()
+  const spare = win.locator('[data-radix-popper-content-wrapper] .mi.optrow', { hasText: '略读' })
+  await spare.hover()
+  await spare.locator('[aria-label="删除选项"]').click()
+  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已删除选项')
+  await expect(spare).toHaveCount(0)
+
+  await undoFromNotice(win)
+  await expect.poll(async () => (await call<PaperColumns>(win, 'papers.columns', {})).custom).toEqual(before.custom)
+})
+
 test('多选格:连着提交两次都留得住,点输入框本身不关弹层', async ({ win }) => {
-  // Creates a column and writes one cell twice in a row; an offscreen window waits two seconds per
-  // actionability check, so the default 30 s is too short.
+  // Creates a column and writes one cell twice in a row: many actionability checks for a hidden
+  // window; see `showWindow` in app.ts.
   test.slow()
   await gotoPapers(win)
   await firstPage(win)
@@ -795,8 +930,8 @@ test('多选格:连着提交两次都留得住,点输入框本身不关弹层', 
 })
 
 test('列类型:建单选列、格子里建选项、按它分组、改名与撤销、删还在用的选项被拒', async ({ win }) => {
-  // One test creates a column, fills two cells, groups, renames, undoes and deletes; an offscreen
-  // window waits two seconds per actionability check.
+  // One test creates a column, fills two cells, groups, renames, undoes and deletes: many
+  // actionability checks for a hidden window; see `showWindow` in app.ts.
   test.slow()
   await gotoPapers(win)
   await firstPage(win)
@@ -997,8 +1132,8 @@ test('分页条两端对齐:条数贴左缘,页码与每页档位挨着贴右缘
 })
 
 test('年份与发表分两列:年份只写年份、仍按它排序,发表只写出处、紧跟年份、可隐藏;详情里两行各写各的,详情开着时表只剩标题、作者与年份', async ({ win }) => {
-  // Two sorts, one hide and opening details; an offscreen window waits two seconds per
-  // actionability check, so the default 30 s is too short.
+  // Two sorts, one hide and opening details: many actionability checks for a hidden window;
+  // see `showWindow` in app.ts.
   test.slow()
   await gotoPapers(win)
   await firstPage(win)
@@ -1097,9 +1232,36 @@ test('详情面板保留完整列与列操作,Escape 收的是详情面板', asy
   await expect(win.locator('[data-radix-popper-content-wrapper]')).toHaveCount(0)
 })
 
+test('详情面板头部的打开和收起在标题上方单独一行靠右,长标题每一行都占满头部的整行宽度', async ({ win }) => {
+  await win.locator('[data-desk="papers"]').waitFor()
+  // Han text breaks between any two characters, so every full line ends less than a character short of the space it has.
+  const title = '树形草稿在批量推理下的动态宽度选择与接受率分析以及验证开销随草稿深度增长的拆分测量和端到端加速比的对照'
+  const id = await call<{ rows: { id: string }[] }>(
+    win, 'papers.list', { page: 1, size: 1, sort: 'addedAt', direction: 'desc' },
+  ).then((r) => r.rows[0]!.id)
+  await call(win, 'papers.update', { id, patch: { title } })
+  await gotoPapers(win)
+  await firstPage(win)
+  await win.locator('.ptable tbody tr').first().locator('td.pt-title').click()
+  await expect(win.locator('.pdetail .pd-t')).toHaveText(title)
+
+  const head = await panelHead(win.locator('.pdetail .pd-h'), '.pd-t', '.icbtn')
+  expect(head.actions.map(({ label, width, height }) => [label, width, height]))
+    .toEqual([['开始阅读', 30, 30], ['收起详情', 30, 30]])
+  expect(Math.abs(head.actions[1]!.right - head.content.right)).toBeLessThan(1)
+  expect(head.actions.map((action) => Math.round(action.top - head.content.top))).toEqual([0, 0])
+  expect(head.actions.map((action) => action.top + action.height <= head.title.top)).toEqual([true, true])
+  expect([head.title.left - head.content.left, head.content.right - head.title.right].map(Math.round)).toEqual([0, 0])
+  expect(head.title.lines.length).toBeGreaterThanOrEqual(3)
+  expect(head.title.lines.slice(0, -1).map((line) => ({
+    starts: Math.abs(line.left - head.content.left) < 1,
+    fills: head.content.right - line.right < head.title.fontSize,
+  }))).toEqual(head.title.lines.slice(0, -1).map(() => ({ starts: true, fills: true })))
+})
+
 test('建列被 core 拒绝:占位格与打好的列名都留着,改了再回车才建出来', async ({ win }) => {
-  // Creates a column, fills two values, deletes the column and creates two more; an offscreen
-  // window waits two seconds per actionability check, so the default 30 s is too short.
+  // Creates a column, fills two values, deletes the column and creates two more: many actionability
+  // checks for a hidden window; see `showWindow` in app.ts.
   test.slow()
   await gotoPapers(win)
   await firstPage(win)
@@ -1470,7 +1632,7 @@ test('选中行的冻结标题格不透底,阅读状态菜单开着时整行是�
   expect(await paint()).toEqual(hovered)
 })
 
-// Pixel checks take element screenshots, which need a visible window.
+// Pixel checks take element screenshots, so they run in a shown window; see `showWindow` in app.ts.
 test.describe(() => {
   test.use({ showWindow: true })
 
@@ -1522,7 +1684,7 @@ test.describe(() => {
   })
 })
 
-// This test needs a visible window; an offscreen window cannot reproduce the behaviour.
+// This test needs a shown window; a hidden window cannot reproduce the behaviour.
 test.describe(() => {
   test.use({ showWindow: true })
 
@@ -1572,7 +1734,7 @@ test('分组齿轮是真菜单:每行是 menuitemcheckbox,勾选跟着分组栏;
   await expect(win.locator('.filters .segmented-control>button')).toHaveText(['无', '项目'])
 })
 
-// This test needs a visible window; an offscreen window cannot reproduce the behaviour.
+// This test needs a shown window; a hidden window cannot reproduce the behaviour.
 test.describe(() => {
   test.use({ showWindow: true })
 
@@ -1772,10 +1934,8 @@ test('改类型:列菜单里只用键盘把文本列改成单选', async ({ win 
   for (let n = await toggles.count(); n > 0; n -= 1) await win.keyboard.press('Tab')
   await expect(menu.locator('.mi.colrow', { hasText: '备注' }).locator('[aria-label="改类型"]')).toBeFocused()
   await win.keyboard.press('Enter')
-  // Of the expanded type options only the current one is in the Tab order; after Change type come
-  // the rename pen, the delete × and then that option.
-  await win.keyboard.press('Tab')
-  await win.keyboard.press('Tab')
+  // Of the expanded type options only the current one is in the Tab order. Change type, the rename
+  // pen and the delete × are the row's actions slot, one Tab stop, so the next Tab reaches that option.
   await win.keyboard.press('Tab')
   const selectBtn = menu.locator('.typerow .ctbtn[aria-label="单选"]')
   await expect(menu.locator('.typerow .ctbtn[aria-label="文本"]')).toBeFocused()

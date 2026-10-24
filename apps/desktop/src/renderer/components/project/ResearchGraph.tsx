@@ -8,6 +8,7 @@ import type {
   ResearchIdea,
   Task,
 } from '../../../shared/contract.js'
+import { useWheelZoom } from '../../hooks/useWheelZoom.js'
 import { useMessages } from '../../messages/useMessages.js'
 import { activeRoutes } from '../../../shared/research-path.js'
 import { recordKind, recordOrigin, sortRecordsNewestFirst } from '../../../shared/project-signals.js'
@@ -17,7 +18,7 @@ import { EmptyState } from '../EmptyState.js'
 import { EntityLink } from '../EntityLink.js'
 import { FadeText } from '../FadeText.js'
 import { IconButton } from '../IconButton.js'
-import { ownIdea } from '../ideas/IdeaPanel.js'
+import { ownIdea, SourceChatDeleted } from '../ideas/IdeaPanel.js'
 import { IconMinus, IconPlus } from '../icons.js'
 import { PanelClose } from '../PanelClose.js'
 import { SectionHeading } from '../PageShell.js'
@@ -172,8 +173,8 @@ export function layoutResearchTree(graph: Graph): { nodes: Graph['nodes']; edges
 }
 
 /**
- * Interactive research DAG. View transforms are local presentation state and never write back
- * into the Agent-owned graph.
+ * Interactive research DAG of a graph with at least one node. View transforms are local presentation
+ * state and never write back into the Agent-owned graph.
  */
 export function ResearchGraph({ graph, selected, ideaNodeIds = [], onSelect }: {
   graph: Graph
@@ -214,9 +215,6 @@ export function ResearchGraph({ graph, selected, ideaNodeIds = [], onSelect }: {
   }, [graphKey])
   useEffect(() => { if (!moved.current) setView(fitted) }, [viewportWidth])
 
-  if (graph.nodes.length === 0) {
-    return <EmptyState variant="section">{m.project.graph.empty}</EmptyState>
-  }
   const nodes = layout.nodes
   // The arrow keys move between nodes in document order: down each column, then on to the next one.
   const readingOrder = [...nodes].sort((a, b) => a.x - b.x || a.y - b.y)
@@ -264,24 +262,10 @@ export function ResearchGraph({ graph, selected, ideaNodeIds = [], onSelect }: {
       : bottom > GRAPH_VIEW_HEIGHT - margin ? GRAPH_VIEW_HEIGHT - margin - bottom : 0
     return dx === 0 && dy === 0 ? current : { ...current, x: current.x + dx, y: current.y + dy }
   })
-  const wheelZoom = useRef<(event: WheelEvent) => void>(() => {})
-  wheelZoom.current = (event) => {
-    event.preventDefault()
-    const rect = (event.currentTarget as HTMLElement).getBoundingClientRect()
-    zoomAt(
-      view.zoom * Math.exp(-event.deltaY * .0015),
-      event.clientX - rect.left,
-      event.clientY - rect.top,
-    )
-  }
-  // React registers wheel listeners as passive, where preventDefault is ignored and the page scrolls too.
-  useEffect(() => {
-    const element = viewport.current
-    if (element === null) return
-    const onWheel = (event: WheelEvent) => wheelZoom.current(event)
-    element.addEventListener('wheel', onWheel, { passive: false })
-    return () => element.removeEventListener('wheel', onWheel)
-  }, [viewport])
+  useWheelZoom(viewport, (factor, point) => {
+    const rect = viewport.current!.getBoundingClientRect()
+    zoomAt(view.zoom * factor, point.x - rect.left, point.y - rect.top)
+  })
   const startPan = (event: ReactPointerEvent<HTMLDivElement>) => {
     if ((event.target as Element).closest('.rgn,.graph-view-controls')) return
     panStart.current = {
@@ -451,8 +435,13 @@ export function splitNodeDocument(markdown: string | undefined): {
   return { metadata, body: lines.slice(cursor).join('\n').trim() }
 }
 
-/** Read-only projection of the Agent-maintained node document, with App-owned idea associations. */
-export function ResearchNodePanel({ graph, events, ideas, tasks, node, onClose, onSelect, onSelectIdea, onSelectTask }: {
+/**
+ * Read-only projection of the Agent-maintained node document, with App-owned idea associations; a
+ * linked idea for which `chatDeleted` holds shows, after its source, that the chat it came from is deleted.
+ */
+export function ResearchNodePanel({
+  graph, events, ideas, tasks, node, onClose, onSelect, onSelectIdea, onSelectTask, chatDeleted = () => false,
+}: {
   graph: Graph
   events: Project['events']
   ideas: ResearchIdea[]
@@ -463,6 +452,7 @@ export function ResearchNodePanel({ graph, events, ideas, tasks, node, onClose, 
   onSelect: (nodeId: string) => void
   onSelectIdea: (ideaId: string) => void
   onSelectTask: (taskId: string) => void
+  chatDeleted?: (idea: ResearchIdea) => boolean
 }) {
   const m = useMessages()
   const byId = new Map(graph.nodes.map((candidate) => [candidate.id, candidate]))
@@ -553,9 +543,12 @@ export function ResearchNodePanel({ graph, events, ideas, tasks, node, onClose, 
                 >
                   <FadeText className="node-idea-title" label={idea.title}>{idea.title}</FadeText>
                   {ownIdea(idea) ? null : (
-                    <FadeText className="node-idea-source" label={m.project.idea.sourceTag(source)}>
-                      {m.project.idea.sourceTag(source)}
-                    </FadeText>
+                    <span className="node-idea-source-line">
+                      <FadeText className="node-idea-source" label={m.project.idea.sourceTag(source)}>
+                        {m.project.idea.sourceTag(source)}
+                      </FadeText>
+                      {chatDeleted(idea) ? <SourceChatDeleted /> : null}
+                    </span>
                   )}
                 </StructuredRow>
               )

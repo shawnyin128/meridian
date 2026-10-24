@@ -1,5 +1,6 @@
 import type { Page } from '@playwright/test'
-import { expect, gotoPapers, settle, test, type MeridianWindow } from './app.js'
+import { minimalPdf } from '../apps/desktop/src/core/net/minimal-pdf.js'
+import { expect, gotoPapers, popupMenus, settle, test, type MeridianWindow } from './app.js'
 
 /** Visited screens stay mounted, so reader selectors are scoped to the screen shown. */
 const shown = (win: Page, sel: string) => win.locator(`.screenslot:not([hidden]) ${sel}`)
@@ -12,6 +13,12 @@ async function cardAction(win: Page, pid: string, label: string): Promise<void> 
   const card = shown(win, `.pcard[data-pid="${pid}"]`)
   await card.hover()
   await card.locator(`[aria-label="${label}"]`).click()
+}
+
+/** Adds inbox card `pid` to the vault, then opens the paper from the notice that reports it. */
+async function addAndRead(win: Page, pid: string): Promise<void> {
+  await cardAction(win, pid, '下载并入库')
+  await win.locator('#notice .btn', { hasText: '开始阅读' }).click()
 }
 
 const call = <T>(win: Page, method: string, params: unknown) => win.evaluate(
@@ -139,7 +146,7 @@ test('阅读器右栏一下子定好宽度、内容淡入,收起后只保留工�
     .toBeLessThan(60)
 })
 
-test('对话栏右缘的把手悬停显形、拖动在 240–480px 间调宽、按住不动松开什么也不做；收起后留一条带把手的窄边，窄边、Ctrl+B 与标题栏按钮都能再开合', async ({ win }) => {
+test('对话栏右缘的把手悬停显形、拖动在 240–480px 间调宽、按住不动松开什么也不做；收起后留一条带把手的窄边，窄边、⌘B(其他平台 Ctrl+B)与标题栏按钮都能再开合', async ({ win }) => {
   await openFromPapers(win)
   const chat = shown(win, '.paper-chat')
   const grip = shown(win, '.paper-chat > #rrgrip')
@@ -169,7 +176,7 @@ test('对话栏右缘的把手悬停显形、拖动在 240–480px 间调宽、�
   await grip.dblclick()
   expect(await width()).toBe(300)
 
-  await win.keyboard.press('Control+b')
+  await win.keyboard.press('ControlOrMeta+b')
   await expect(edge).toBeVisible()
   await settle(chat)
   expect(await opacity()).toBe('0')
@@ -180,7 +187,7 @@ test('对话栏右缘的把手悬停显形、拖动在 240–480px 间调宽、�
   expect(await opacity()).toBe('1')
   expect(await width()).toBe(300)
 
-  await win.keyboard.press('Control+b')
+  await win.keyboard.press('ControlOrMeta+b')
   await expect(edge).toBeVisible()
   await win.locator('#sbBtn').click()
   await expect(edge).toHaveCount(0)
@@ -318,8 +325,7 @@ test('换一篇读,新篇解析期间屏上没有上一篇的页', async ({ win 
 })
 
 // These tests take twenty actions over five papers, and before each one Playwright waits for the
-// element to be stable, comparing its position in two consecutive frames. Offscreen a frame takes one
-// second, so each wait takes two, and twenty of them do not fit the 30-second test budget.
+// element to be stable, comparing its position in two consecutive frames; see `showWindow` in app.ts.
 test.describe(() => {
   test.use({ showWindow: true })
 
@@ -345,8 +351,7 @@ test.describe(() => {
     const entries = await call<{ id: string; title: string; paper: string }[]>(win, 'inbox.list', {})
     const target = entries.find((e) => e.id === INGESTED.entry)!
     await openInbox(win)
-    await cardAction(win, target.id, '下载并入库')
-    await cardAction(win, target.id, '开始阅读')
+    await addAndRead(win, target.id)
     await expectPainted(win, INGESTED.pages)
     await shown(win, '.paper-chat-head .back').click()
 
@@ -430,6 +435,63 @@ test('阅读器顶栏与面包屑写的是这一篇,面包屑上一段回到论�
   await expect(shown(win, '.ptable')).toHaveCount(1)
 })
 
+/** The readable paper's id in the fixture vault. */
+const READABLE_ID = '13979-STAR-Speculative-Decodin'
+
+/** The readable paper's notes and highlights as Core holds them, read directly, bypassing the UI. */
+const readingOf = (win: Page) =>
+  call<{ notes: unknown[]; highlights: unknown[] }>(win, 'papers.reading', { id: READABLE_ID })
+
+/** Clicks Undo on the notice the last write showed, and waits for the notice saying it was undone. */
+async function undoFromNotice(win: Page): Promise<void> {
+  const undo = win.locator('#notice .btn')
+  await expect(undo).toHaveText('撤销')
+  await undo.click()
+  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已撤销')
+}
+
+test('删掉一条笔记,提示里的撤销把它放回', async ({ win }) => {
+  await win.locator('[data-desk="papers"]').waitFor()
+  await call(win, 'papers.mutateReading', { id: READABLE_ID, mutation: { kind: 'note.add', page: 1, text: '删掉又放回的笔记' } })
+  const before = (await readingOf(win)).notes
+  await openFromPapers(win)
+  await shown(win, '.reader-rail [aria-label="阅读笔记"]').click()
+  const card = shown(win, '.reading-notes .reading-card')
+  await expect(card).toHaveCount(1)
+  await card.hover()
+  await card.locator('.reading-delete').click()
+  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已删除笔记')
+  await expect(card).toHaveCount(0)
+
+  await undoFromNotice(win)
+  await expect(card).toHaveCount(1)
+  expect((await readingOf(win)).notes).toEqual(before)
+})
+
+test('删掉一处高亮,提示里的撤销把它放回', async ({ win }) => {
+  await win.locator('[data-desk="papers"]').waitFor()
+  await call(win, 'papers.mutateReading', {
+    id: READABLE_ID,
+    mutation: {
+      kind: 'highlight.add', page: 1, quote: 'SPECULATIVE DECODING', color: 'yellow',
+      rects: [{ x: 0.1, y: 0.1, width: 0.3, height: 0.02 }],
+    },
+  })
+  const before = (await readingOf(win)).highlights
+  await openFromPapers(win)
+  await shown(win, '.reader-rail [aria-label="高亮与批注"]').click()
+  const card = shown(win, '.reading-notes .highlight-card')
+  await expect(card).toHaveCount(1)
+  await card.hover()
+  await card.locator('.reading-delete').click()
+  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已删除高亮')
+  await expect(card).toHaveCount(0)
+
+  await undoFromNotice(win)
+  await expect(card).toHaveCount(1)
+  expect((await readingOf(win)).highlights).toEqual(before)
+})
+
 test('返回钮回到来路那一屏,阅读器里读到哪一篇还留着', async ({ win }) => {
   await openFromPapers(win)
   await expect(shown(win, '.pdfpagebox')).toHaveCount(READABLE.pages)
@@ -474,11 +536,11 @@ test('同一篇再进来按当下的库重取,不吃上一次的结果', async (
   const target = entries.find((e) => e.id === INGESTED.entry)!
 
   await openInbox(win)
-  await cardAction(win, target.id, '下载并入库')
-  await cardAction(win, target.id, '开始阅读')
+  await addAndRead(win, target.id)
   await expectPainted(win, INGESTED.pages)
-  const paper = (await call<{ id: string; paper: string }[]>(win, 'inbox.list', {}))
-    .find((e) => e.id === target.id)!.paper
+  const paper = (await call<{ rows: { id: string }[] }>(win, 'papers.list', {
+    page: 1, size: 2, filter: target.title.slice(0, 24),
+  })).rows[0]!.id
 
   // Delete the paper from Papers: the reader stays open on the same paper, which is no longer in the vault.
   await shown(win, '.paper-chat-head .back').click()
@@ -489,9 +551,7 @@ test('同一篇再进来按当下的库重取,不吃上一次的结果', async (
   await win.locator('.ptable tbody tr .rowx').click()
   await expect(win.locator('.ptable tbody tr')).toHaveCount(0)
 
-  // The card follows the vault and offers adding again; the feed's link to the paper still opens it.
-  await openInbox(win)
-  await expect(shown(win, `.pcard[data-pid="${target.id}"] [aria-label="下载并入库"]`)).toHaveCount(1)
+  // The card left the feed when it was added; the feed's link to the paper still opens it.
   await win.locator('[data-desk="feed"]').click()
   await shown(win, `.entity-link--paper[href="#reader:${paper}"]`).first().click()
   await expect(shown(win, '.pdfload')).toHaveText('这一项已不存在')
@@ -502,8 +562,8 @@ test('同一篇再进来按当下的库重取,不吃上一次的结果', async (
   await win.locator('[data-desk="trash"]').click()
   await win.locator('.tgroup .trow').hover()
   await win.locator('.tgroup .trow .row-actions [aria-label="恢复"]').click()
-  await openInbox(win)
-  await cardAction(win, target.id, '开始阅读')
+  await win.locator('[data-desk="feed"]').click()
+  await shown(win, `.entity-link--paper[href="#reader:${paper}"]`).first().click()
   await expect(shown(win, '.pdfload')).toHaveCount(0)
   await expect(shown(win, '.pdfpagebox')).toHaveCount(INGESTED.pages)
 })
@@ -519,7 +579,7 @@ test('放大一档,页面按新的比例重画,百分比跟着变', async ({ win
     .toHaveJSProperty('clientWidth', Math.floor(PAGE.width * FIT * 1.2))
 })
 
-test('收件里下载入库那一条的「开始阅读」进阅读器,入库那一篇的原文真的画了出来', async ({ win }) => {
+test('收件里下载入库那一条,提示里的「开始阅读」进阅读器,入库那一篇的原文真的画了出来', async ({ win }) => {
   const entries = await call<{ id: string; title: string; paper: string; downloaded: boolean }[]>(
     win, 'inbox.list', {})
   const target = entries.find((e) => !e.downloaded)!
@@ -528,8 +588,7 @@ test('收件里下载入库那一条的「开始阅读」进阅读器,入库那�
   expect(target.paper).toMatch(/^paper-pdf-[0-9a-f]{12}$/)
 
   await openInbox(win)
-  await cardAction(win, target.id, '下载并入库')
-  await cardAction(win, target.id, '开始阅读')
+  await addAndRead(win, target.id)
 
   await expect(win.locator('#crumb .cseg'))
     .toHaveText(['收件', '论文推送', target.title.split(':')[0]!])
@@ -543,8 +602,7 @@ test('从某一条关注那一档进阅读器,面包屑是那一档的三段加�
   const target = entries.find((e) => e.watch === watched.id)!
 
   await win.locator(`[data-inbox="${watched.id}"]`).click()
-  await cardAction(win, target.id, '下载并入库')
-  await cardAction(win, target.id, '开始阅读')
+  await addAndRead(win, target.id)
 
   await expect(win.locator('#crumb .cseg'))
     .toHaveText(['收件', '关键词', watched.name, target.title.split(':')[0]!])
@@ -578,4 +636,365 @@ test('内化到 Wiki 先展示完整费用范围,明确确认后才消费一次�
 
   await dialog.getByRole('button', { name: '开始生成' }).click()
   await expect(shown(win, '.wiki-ingest')).toContainText('授权门验证完成')
+})
+
+/**
+ * A page of body text set as tightly as a two-column paper's, 10 pt type on 12 pt leading. Chromium
+ * paints a selection over each line's text-layer span taller than the leading, so the paint of
+ * neighbouring lines overlaps.
+ */
+const TIGHT = {
+  title: 'Tightly set lines',
+  lines: [
+    'Autoregressive decoding makes the inference of',
+    'Large Language Models time-consuming. In this',
+    'paper, we reconsider speculative sampling and',
+    'derive two key observations about the features.',
+  ],
+  size: 10,
+  leading: 12,
+}
+
+/**
+ * Imports TIGHT through Core, opens it in the reader from the paper table and waits until its page
+ * is drawn; returns its paper id.
+ */
+async function openTight(win: Page): Promise<string> {
+  const held = await win.evaluate((pdf) => (window as unknown as MeridianWindow).meridian.call(
+    'papers.import', { filename: 'Tight.pdf', bytes: new Uint8Array(pdf) },
+  ), [...minimalPdf(TIGHT)]) as { paper: { id: string } }
+  // The import's metadata parse may still retitle the paper, so the title is read once it settles.
+  await expect.poll(async () => (await call<{ uploads: { step: string }[] }>(win, 'jobs.status', {})).uploads
+    .every((job) => job.step === 'done' || job.step === 'failed')).toBe(true)
+  const { title } = await call<{ title: string }>(win, 'papers.get', { id: held.paper.id })
+  await gotoPapers(win)
+  await selectPaper(win, title)
+  await shown(win, '.pdetail [aria-label="开始阅读"]').click()
+  await expect(shown(win, '.pdfpagebox[data-painted="1"]')).toHaveCount(1)
+  return held.paper.id
+}
+
+/** The client box of each line of text on the page shown, top to bottom. */
+const textLines = (win: Page) => shown(win, '.pdfpagebox .textLayer span').evaluateAll((spans) => spans
+  .map((span) => span.getBoundingClientRect())
+  .map(({ left, right, top, bottom }) => ({ left, right, top, bottom }))
+  .sort((a, b) => a.top - b.top))
+
+/** Drags the mouse from the start of the first of `lines` to the end of the last. */
+async function dragAcross(win: Page, lines: { left: number; right: number; top: number; bottom: number }[]): Promise<void> {
+  const [first, last] = [lines[0]!, lines.at(-1)!]
+  await win.mouse.move(first.left + 1, (first.top + first.bottom) / 2)
+  await win.mouse.down()
+  await win.mouse.move(last.right - 1, (last.top + last.bottom) / 2, { steps: 8 })
+  await win.mouse.up()
+}
+
+/**
+ * The paint in the client box `box` with the page's canvas hidden, so that only what lies over the
+ * white paper shows: the pixels painted at all (any channel below 250), and those painted darker
+ * than the most common painted colour by more than ten levels a channel on average, which is where
+ * two translucent layers overlap; a second layer of the selection's paint is over 25 levels darker.
+ */
+async function paintOver(win: Page, box: { left: number; right: number; top: number; bottom: number }) {
+  const canvas = shown(win, '.pdfpagebox canvas')
+  await canvas.evaluate((element) => { element.style.visibility = 'hidden' })
+  await win.evaluate(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done))))
+  const shot = await win.screenshot({ clip: { x: box.left, y: box.top, width: box.right - box.left, height: box.bottom - box.top } })
+  await canvas.evaluate((element) => { element.style.visibility = '' })
+  return win.evaluate(async (b64) => {
+    const img = new Image()
+    img.src = `data:image/png;base64,${b64}`
+    await img.decode()
+    const canvas = document.createElement('canvas')
+    canvas.width = img.naturalWidth
+    canvas.height = img.naturalHeight
+    const ctx = canvas.getContext('2d')!
+    ctx.drawImage(img, 0, 0)
+    const { data } = ctx.getImageData(0, 0, canvas.width, canvas.height)
+    const counts = new Map<string, number>()
+    const painted: [number, number, number][] = []
+    for (let at = 0; at < data.length; at += 4) {
+      const rgb: [number, number, number] = [data[at]!, data[at + 1]!, data[at + 2]!]
+      if (rgb.every((channel) => channel >= 250)) continue
+      painted.push(rgb)
+      counts.set(rgb.join(), (counts.get(rgb.join()) ?? 0) + 1)
+    }
+    const sum = (rgb: number[]) => rgb[0]! + rgb[1]! + rgb[2]!
+    const common = sum([...counts].sort((a, b) => b[1] - a[1])[0]?.[0].split(',').map(Number) ?? [255, 255, 255])
+    const doubled = painted.filter((rgb) => sum(rgb) < common - 30).length
+    return { painted: painted.length, doubled }
+  }, shot.toString('base64'))
+}
+
+test('右键阅读器里选中的字弹出能复制的系统菜单(macOS 上先能查询),选区不变', async ({ app, win }) => {
+  await openTight(win)
+  const [line] = await textLines(win)
+  await dragAcross(win, [line!])
+  const selected = await win.evaluate(() => document.getSelection()!.toString())
+  expect(selected.trim()).toBe(TIGHT.lines[0])
+
+  await win.mouse.click((line!.left + line!.right) / 2, (line!.top + line!.bottom) / 2, { button: 'right' })
+  await expect.poll(() => popupMenus(app)).toEqual([
+    process.platform === 'darwin' ? [`查询“${TIGHT.lines[0]}”`, '—', '复制'] : ['复制'],
+  ])
+  expect(await win.evaluate(() => document.getSelection()!.toString())).toBe(selected)
+})
+
+/** A note line far longer than the selection toolbar is wide. */
+const LONG = '第二行写得很长，长到工具条那么宽放不下，要在批注框里折成好几行'
+
+// Pixel checks take screenshots of the window, so they run in a shown one; see `showWindow` in app.ts.
+test.describe('选中文字时的选区', () => {
+  test.use({ showWindow: true })
+
+  test('拖选时阅读器按高亮的行画出选区:文字层里 Chromium 自己不画,相邻两行相接处没有叠深的一道', async ({ win }) => {
+    await openTight(win)
+    const lines = (await textLines(win)).slice(0, 3)
+    await dragAcross(win, lines)
+    await win.keyboard.press('Escape')
+    await expect(win.locator('.selection-tools')).toHaveCount(0)
+    const area = {
+      left: Math.min(...lines.map((line) => line.left)), right: Math.max(...lines.map((line) => line.right)),
+      top: lines[0]!.top, bottom: lines.at(-1)!.bottom,
+    }
+
+    const drawn = await paintOver(win, area)
+    expect(drawn.painted, '选区画出来了').toBeGreaterThan(0)
+    expect(drawn.doubled, '相邻两行相接处没有叠深的一道').toBe(0)
+
+    // What shows is the reader's drawing, one rectangle per line in one shape, and with it hidden the
+    // text layer shows no paint of Chromium's own.
+    const drawing = shown(win, '.pdfpagebox .paper-selection')
+    await expect(drawing.locator('svg')).toHaveCount(1)
+    expect((await drawing.locator('path').getAttribute('d'))?.match(/M/g)).toHaveLength(3)
+    await drawing.evaluate((layer) => { layer.style.visibility = 'hidden' })
+    expect((await paintOver(win, area)).painted, '文字层里 Chromium 不画选区').toBe(0)
+
+    // The page holds the case: with Chromium's own paint forced back on, one line's paint overlaps the next.
+    await win.evaluate(() => {
+      const style = document.createElement('style')
+      style.id = 'chromium-selection-paint'
+      style.textContent = '.textLayer ::selection{background:rgb(0 0 0/.3)!important}'
+      document.head.append(style)
+    })
+    expect((await paintOver(win, area)).doubled, 'Chromium 自己画选区时相邻两行叠出一道深色').toBeGreaterThan(0)
+    await win.evaluate(() => document.getElementById('chromium-selection-paint')!.remove())
+    await drawing.evaluate((layer) => { layer.style.visibility = '' })
+  })
+
+  test('选区照旧能复制、照旧出工具条,划成的高亮和拖选时画的是同一个形状', async ({ app, win }) => {
+    await openTight(win)
+    await dragAcross(win, (await textLines(win)).slice(0, 3))
+    await expect(win.locator('.selection-tools')).toBeVisible()
+    const drawn = await shown(win, '.pdfpagebox .paper-selection path').getAttribute('d')
+
+    const selected = await win.evaluate(() => document.getSelection()!.toString())
+    expect(selected.replace(/\s+/g, ' ').trim()).toBe(TIGHT.lines.slice(0, 3).join(' '))
+    // The Edit menu's Copy runs webContents.copy(); the machine's clipboard is put back afterwards.
+    const kept = await app.evaluate(({ clipboard }) => clipboard.readText())
+    try {
+      await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]!.webContents.copy())
+      await expect.poll(() => app.evaluate(({ clipboard }) => clipboard.readText())).toBe(selected)
+    } finally {
+      await app.evaluate(({ clipboard }, text) => clipboard.writeText(text), kept)
+    }
+
+    await win.locator('.selection-tools [aria-label="黄色"]').click()
+    await expect(shown(win, '.pdfpagebox .paper-highlight path')).toHaveCount(1)
+    expect(await shown(win, '.pdfpagebox .paper-highlight path').getAttribute('d')).toBe(drawn)
+    await expect(shown(win, '.pdfpagebox .paper-selection svg')).toHaveCount(0)
+    await expect(win.locator('.selection-tools')).toBeVisible()
+  })
+
+  test('在工具条的批注框里写:选区照旧画着,Shift+Enter 换行,Enter 划成带这条批注的黄色高亮并收起,侧栏里看得到', async ({ win }) => {
+    await openTight(win)
+    await dragAcross(win, (await textLines(win)).slice(0, 2))
+    const drawn = await shown(win, '.pdfpagebox .paper-selection path').getAttribute('d')
+
+    // Focus in the box takes the document's selection; the selected lines stay drawn all the same. The
+    // drawing follows the selection a frame later, so it is read once frames have passed.
+    const box = win.locator('.selection-tools textarea[aria-label="批注"]')
+    await box.click()
+    await expect.poll(() => win.evaluate(() => document.getSelection()!.isCollapsed)).toBe(true)
+    const width = (await win.locator('.selection-tools').boundingBox())!.width
+    await box.pressSequentially('第一行')
+    await box.press('Shift+Enter')
+    await box.pressSequentially(LONG)
+    await expect(box).toHaveValue(`第一行\n${LONG}`)
+    // A line longer than the toolbar wraps in the box instead of widening it.
+    expect((await win.locator('.selection-tools').boundingBox())!.width).toBe(width)
+    await win.evaluate(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done))))
+    expect(await shown(win, '.pdfpagebox .paper-selection path').getAttribute('d', { timeout: 1000 })).toBe(drawn)
+    await box.press('Enter')
+
+    await expect(win.locator('.selection-tools')).toHaveCount(0)
+    await expect(shown(win, '.pdfpagebox .paper-highlight.yellow .paper-highlight-note')).toHaveCount(1)
+    expect(await shown(win, '.pdfpagebox .paper-highlight path').first().getAttribute('d')).toBe(drawn)
+    await expect(shown(win, '.pdfpagebox .paper-selection svg')).toHaveCount(0)
+    await shown(win, '.reader-rail [aria-label="高亮与批注"]').click()
+    await expect(shown(win, '.highlight-card.yellow textarea')).toHaveValue(`第一行\n${LONG}`)
+  })
+
+  test('选区碰到已有的高亮时不另划:圈显示它的颜色,换色和批注都落在它身上;Core 也拒绝在它上面再划一段', async ({ win }) => {
+    const id = await openTight(win)
+    const lines = (await textLines(win)).slice(0, 2)
+    await dragAcross(win, lines)
+    await win.locator('.selection-tools [aria-label="黄色"]').click()
+    await expect(shown(win, '.pdfpagebox .paper-highlight.yellow')).toHaveCount(1)
+    await win.keyboard.press('Escape')
+    await expect(win.locator('.selection-tools')).toHaveCount(0)
+
+    await dragAcross(win, lines.slice(1))
+    await expect(win.locator('.selection-tools [aria-label="黄色"]')).toHaveAttribute('aria-checked', 'true')
+    await win.locator('.selection-tools [aria-label="蓝色"]').click()
+    await expect(shown(win, '.pdfpagebox .paper-highlight.blue')).toHaveCount(1)
+    const box = win.locator('.selection-tools textarea')
+    await box.click()
+    await box.pressSequentially('落在原来那一段上')
+    await box.press('Enter')
+    await expect(win.locator('.selection-tools')).toHaveCount(0)
+    await expect(shown(win, '.pdfpagebox .paper-highlight')).toHaveCount(1)
+
+    type Held = { highlights: { quote: string; rects: unknown[]; color: string; note: string }[] }
+    const held = (await call<Held>(win, 'papers.reading', { id })).highlights
+    expect(held.map(({ color, note }) => ({ color, note }))).toEqual([{ color: 'blue', note: '落在原来那一段上' }])
+    const refused = await win.evaluate(async (mutation) => {
+      try {
+        await (window as unknown as MeridianWindow).meridian.call('papers.mutateReading', mutation)
+        return 'written'
+      } catch (rejected) {
+        return (rejected as { reason: string }).reason
+      }
+    }, { id, mutation: { kind: 'highlight.add', page: 1, quote: held[0]!.quote, rects: held[0]!.rects, color: 'pink' } })
+    expect(refused).toBe('refused')
+    expect((await call<Held>(win, 'papers.reading', { id })).highlights).toHaveLength(1)
+  })
+
+  test('批注框里写了字再点页上别处,像 Enter 一样存下;按 Esc 丢掉写的字,已经划的高亮留着;问 AI 的标记是和颜色圈一样大的中性色圆', async ({ win }) => {
+    await openTight(win)
+    const lines = await textLines(win)
+    await dragAcross(win, lines.slice(0, 2))
+    const tools = win.locator('.selection-tools')
+    // The AI mark is a circle the size of a colour circle, filled with the neutral chip token.
+    const looks = await tools.evaluate((bar) => {
+      const probe = document.createElement('div')
+      probe.style.backgroundColor = 'var(--chip)'
+      bar.append(probe)
+      const look = (element: Element) => {
+        const { width, height } = element.getBoundingClientRect()
+        return { width, height, radius: getComputedStyle(element).borderRadius }
+      }
+      const result = {
+        mark: look(bar.querySelector('.icbtn')!), circle: look(bar.querySelector('.swatch')!),
+        fill: getComputedStyle(bar.querySelector('.icbtn')!).backgroundColor, chip: getComputedStyle(probe).backgroundColor,
+      }
+      probe.remove()
+      return result
+    })
+    expect(looks.mark).toEqual(looks.circle)
+    expect([looks.mark.width, looks.mark.height]).toEqual([24, 24])
+    expect(looks.fill).toBe(looks.chip)
+
+    await tools.locator('textarea').click()
+    await tools.locator('textarea').pressSequentially('点外面也留着')
+    const page = (await shown(win, '.pdfpagebox').boundingBox())!
+    await win.mouse.click(page.x + page.width / 2, page.y + page.height - 40)
+    await expect(tools).toHaveCount(0)
+    await expect(shown(win, '.pdfpagebox .paper-highlight.yellow .paper-highlight-note')).toHaveCount(1)
+
+    await dragAcross(win, lines.slice(3, 4))
+    await tools.locator('[aria-label="绿色"]').click()
+    await tools.locator('textarea').click()
+    await tools.locator('textarea').pressSequentially('按了 Esc')
+    await win.keyboard.press('Escape')
+    await expect(tools).toHaveCount(0)
+    await expect(shown(win, '.pdfpagebox .paper-highlight.green')).toHaveCount(1)
+    await expect(shown(win, '.pdfpagebox .paper-highlight.green .paper-highlight-note')).toHaveCount(0)
+    await shown(win, '.reader-rail [aria-label="高亮与批注"]').click()
+    await expect(shown(win, '.highlight-card.yellow textarea')).toHaveValue('点外面也留着')
+    await expect(shown(win, '.highlight-card.green textarea')).toHaveValue('')
+  })
+
+  test('单击页上的一段高亮选中它:圈显示它的颜色、批注框是它的批注、侧栏里它选中;换色和改批注都落在它身上', async ({ win }) => {
+    const id = await openTight(win)
+    // The side panel is open first: opening it lays the pages out again.
+    await shown(win, '.reader-rail [aria-label="高亮与批注"]').click()
+    let laid = ''
+    await expect.poll(async () => {
+      const now = JSON.stringify(await textLines(win))
+      const settled = now === laid
+      laid = now
+      return settled
+    }).toBe(true)
+    const lines = await textLines(win)
+    const tools = win.locator('.selection-tools')
+    await dragAcross(win, lines.slice(0, 2))
+    await tools.locator('[aria-label="绿色"]').click()
+    await tools.locator('textarea').click()
+    await tools.locator('textarea').pressSequentially('原来的批注')
+    await tools.locator('textarea').press('Enter')
+    await expect(tools).toHaveCount(0)
+
+    const [first] = lines
+    await win.mouse.click((first!.left + first!.right) / 2, (first!.top + first!.bottom) / 2)
+    await expect(tools.locator('[aria-label="绿色"]')).toHaveAttribute('aria-checked', 'true')
+    await expect(tools.locator('textarea')).toHaveValue('原来的批注')
+    await expect(tools.locator('[aria-label="删除"]')).toBeVisible()
+    await expect(shown(win, '.highlight-card.green.selected')).toHaveCount(1)
+    expect(await win.evaluate(() => document.getSelection()!.toString())).toBe('')
+    // The selected highlight is outlined on the page in the paper's ink, never the accent.
+    const outline = shown(win, '.pdfpagebox .paper-highlight-outline path')
+    await expect(outline).toHaveCount(1)
+    expect(await outline.evaluate((path) => {
+      const probe = document.createElement('div')
+      probe.style.color = 'var(--hl-note)'
+      document.body.append(probe)
+      const ink = getComputedStyle(probe).color
+      probe.remove()
+      return [getComputedStyle(path).stroke === ink, getComputedStyle(path).fill]
+    })).toEqual([true, 'none'])
+
+    await tools.locator('[aria-label="蓝色"]').click()
+    await expect(shown(win, '.pdfpagebox .paper-highlight.blue')).toHaveCount(1)
+    await tools.locator('textarea').fill('改过的批注')
+    await tools.locator('textarea').press('Enter')
+    await expect(tools).toHaveCount(0)
+    await expect(shown(win, '.highlight-card.selected')).toHaveCount(0)
+    await expect(shown(win, '.pdfpagebox .paper-highlight-outline')).toHaveCount(0)
+    type Held = { highlights: { color: string; note: string }[] }
+    expect((await call<Held>(win, 'papers.reading', { id })).highlights.map(({ color, note }) => ({ color, note })))
+      .toEqual([{ color: 'blue', note: '改过的批注' }])
+  })
+
+  test('从高亮里面拖选照旧是选文字,工具条也能删它;单击选中它后按 Delete 删掉,通知里撤销放回来', async ({ win }) => {
+    await openTight(win)
+    const lines = await textLines(win)
+    const tools = win.locator('.selection-tools')
+    await dragAcross(win, lines.slice(0, 2))
+    await tools.locator('[aria-label="黄色"]').click()
+    await win.keyboard.press('Escape')
+    await expect(tools).toHaveCount(0)
+
+    const [first] = lines
+    const middle = (first!.top + first!.bottom) / 2
+    await win.mouse.move(first!.left + 1, middle)
+    await win.mouse.down()
+    await win.mouse.move((first!.left + first!.right) / 2, middle, { steps: 6 })
+    await win.mouse.up()
+    await expect(tools).toBeVisible()
+    expect(await win.evaluate(() => document.getSelection()!.toString())).not.toBe('')
+    // The selection covers one highlight, which the toolbar can delete; only a click outlines it.
+    await expect(tools.locator('[aria-label="删除"]')).toBeVisible()
+    await expect(shown(win, '.pdfpagebox .paper-highlight-outline')).toHaveCount(0)
+    await win.keyboard.press('Escape')
+    await win.evaluate(() => document.getSelection()!.removeAllRanges())
+
+    await win.mouse.click((first!.left + first!.right) / 2, middle)
+    await expect(tools.locator('[aria-label="删除"]')).toBeVisible()
+    await win.keyboard.press('Delete')
+    await expect(tools).toHaveCount(0)
+    await expect(shown(win, '.pdfpagebox .paper-highlight')).toHaveCount(0)
+    await win.locator('#notice').getByRole('button', { name: '撤销' }).click()
+    await expect(shown(win, '.pdfpagebox .paper-highlight.yellow')).toHaveCount(1)
+  })
 })

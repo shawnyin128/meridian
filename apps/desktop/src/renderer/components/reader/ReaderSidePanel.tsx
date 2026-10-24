@@ -24,10 +24,11 @@ function RailIcon({ tab }: { tab: ReaderSideTab }) {
 /**
  * The collapsible reader rail reserves document width only after the user opens a panel. It keeps
  * the panels' unsaved text per paper, note and highlight while panels close and other papers open.
+ * `selectedHighlightId` is the highlight selected on the page, which its list shows as selected.
  */
 export function ReaderSidePanel({
   tab, onTab, paper, onPaper, reading, currentPage, saving, onMutate, onSaveRemark, onJump,
-  focusHighlightId,
+  focusHighlightId, selectedHighlightId,
 }: {
   tab: ReaderSideTab | null
   onTab: (tab: ReaderSideTab | null) => void
@@ -40,10 +41,20 @@ export function ReaderSidePanel({
   onSaveRemark: (text: string) => Promise<boolean>
   onJump: (page: number) => void
   focusHighlightId: string | null
+  selectedHighlightId: string | null
 }) {
   const m = useMessages()
-  const drafts = useDrafts()
-  const edits = useDrafts<EditDraft>()
+  // The scope and the live targets both come from the reading shown, so they always name one paper.
+  const paperId = reading?.paperId ?? ''
+  const drafts = useDrafts(['paper', paperId])
+  // A proposal's edited Markdown outlasts its write, so an undo brings it back; it has a scope of its
+  // own, which the reading's notes and highlights do not prune.
+  const ingestEdits = useDrafts<EditDraft>(['paper', paperId, 'wiki-ingest'])
+  const edits = useDrafts<EditDraft>(['paper', paperId, 'edits'], reading === null ? null : [
+    `remark:${reading.paperId}`,
+    ...reading.notes.map((note) => `note:${note.id}`),
+    ...reading.highlights.map((highlight) => `highlight:${highlight.id}`),
+  ])
   return (
     <aside className={tab === null ? 'reader-side collapsed' : 'reader-side'}>
       {tab === 'metadata' && paper !== null
@@ -58,7 +69,8 @@ export function ReaderSidePanel({
         ? (
           <ReadingNotes
             reading={reading} currentPage={currentPage} saving={saving} onMutate={onMutate}
-            onJump={onJump} mode={tab} focusHighlightId={focusHighlightId} drafts={drafts} edits={edits}
+            onJump={onJump} mode={tab} focusHighlightId={focusHighlightId}
+            selectedHighlightId={selectedHighlightId} drafts={drafts} edits={edits}
           />
         )
         : null}
@@ -66,7 +78,7 @@ export function ReaderSidePanel({
         ? <ReadingRemark reading={reading} saving={saving} onSave={onSaveRemark} edits={edits} />
         : null}
       {tab === 'wiki' && paper !== null && reading !== null
-        ? <PaperWikiIngest paper={paper} reading={reading} onJump={onJump} />
+        ? <PaperWikiIngest paper={paper} reading={reading} onJump={onJump} edits={ingestEdits} />
         : null}
       <ToggleGroup
         label={m.reader.rail.label} className="reader-rail" value={tab ?? ''}

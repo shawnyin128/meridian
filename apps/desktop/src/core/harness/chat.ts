@@ -35,7 +35,7 @@ type StoredChatMessage = ReturnType<VaultStore['chatMessages']>[number]
 type StoredPaperReading = ReturnType<VaultStore['paperReading']>
 
 const messageText = (message: StoredChatMessage) =>
-  message.runs.map((run) => run.text).join(' ').trim()
+  message.runs.map((run) => run.text).join('').trim()
 
 function clipMiddle(value: string, limit: number): string {
   const text = value.trim()

@@ -6,18 +6,20 @@ import './StatusDot.css'
 export type StatusDotTone = 'good' | 'warn' | 'bad' | 'neutral'
 
 /**
- * The one status dot, `sm` beside a line of text or inside a tag and `md` as a legend key. Without
+ * The one status dot, `sm` beside a line of text or inside a tag and `md` as a legend key, filled
+ * with its tone, or with `fill` half-filled or a hollow ring in it. Without
  * `label` it is decorative and must sit next to text that names its state. With `label` it writes the
  * state's name after itself; `labelHidden` keeps that name as the dot's accessible name and tooltip
  * instead, for a dense row whose visible text names something else.
  */
-export function StatusDot({ tone, size = 'sm', label, labelHidden = false }: {
+export function StatusDot({ tone, size = 'sm', fill = 'full', label, labelHidden = false }: {
   tone: StatusDotTone
   size?: 'sm' | 'md'
+  fill?: 'full' | 'half' | 'ring'
   label?: string
   labelHidden?: boolean
 }) {
-  const className = `status-dot status-dot--${size} status-dot--${tone}`
+  const className = `status-dot status-dot--${size} status-dot--${tone}${fill === 'full' ? '' : ` status-dot--${fill}`}`
   if (label === undefined) return <span className={className} aria-hidden="true" />
   if (labelHidden) return <Tooltip label={label}><span className={className} role="img" aria-label={label} /></Tooltip>
   return (

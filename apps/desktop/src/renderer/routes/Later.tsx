@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useEffect, useRef, useState } from 'react'
+import { Fragment, useEffect, useRef, useState } from 'react'
 import type { InboxDownloadFailure, LaterEntry } from '../../shared/contract.js'
 import { inbox, later } from '../ipc.js'
 import { useMessages } from '../messages/useMessages.js'
@@ -6,7 +6,7 @@ import { useJump, useNotice, useVaultRevision } from '../shell/AppShell.js'
 import { BackButton } from '../components/BackButton.js'
 import { useJumpOrigin } from '../hooks/useJumpOrigin.js'
 import { useJobs } from '../shell/useJobs.js'
-import { DownloadRing, Icon, IconCross, IconRead } from '../components/icons.js'
+import { DownloadRing, Icon, IconRead, IconTrash } from '../components/icons.js'
 import { IconButton } from '../components/IconButton.js'
 import { PaperCard, PaperCardBadge, PaperCardNotice } from '../components/paper/PaperCard.js'
 import { plainTitle } from '../components/paper/paper-text.js'
@@ -17,6 +17,8 @@ import { SegmentedControl } from '../components/SegmentedControl.js'
 import { errorLabel, failureLabel } from '../lib/failure-label.js'
 import { TitleNote } from '../components/TitleNote.js'
 import { useFormat } from '../lib/format.js'
+import { useScreenLoad } from '../hooks/useScreenLoad.js'
+import { useUndo } from '../hooks/useUndo.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
 import { PageBody, PageError, PageHeader, PageShell, PageTitle, PageToolbar } from '../components/PageShell.js'
 import { SourceLabel } from '../components/SourceLabel.js'
@@ -38,7 +40,6 @@ export function Later() {
   const fmt = useFormat()
   const [entries, setEntries] = useState<LaterEntry[] | null>(null)
   const [grouping, setGrouping] = useState<Grouping>('time')
-  const [error, setError] = useState<string | null>(null)
 
   const notice = useNotice()
   const { jump, open } = useJump()
@@ -46,8 +47,9 @@ export function Later() {
   const body = useRef<HTMLDivElement>(null)
   const consumed = useRef(0)
   const { revision, bump } = useVaultRevision()
-  const reportError = useCallback((e: unknown) => setError(errorLabel(m, e)), [m])
+  const { error, load } = useScreenLoad()
   const write = useVaultWrite()
+  const undo = useUndo()
   const jobs = useJobs()
   const [busy, setBusy] = useState<ReadonlySet<string>>(new Set())
   const [failed, setFailed] = useState<ReadonlyMap<string, InboxDownloadFailure>>(new Map())
@@ -79,9 +81,7 @@ export function Later() {
     })
   }
 
-  useEffect(() => {
-    void later.list().then(setEntries).catch(reportError)
-  }, [revision, reportError])
+  useEffect(() => load('entries', later.list(), setEntries), [revision, load])
 
   // The entry can be scrolled to only once the queue has arrived.
   useEffect(() => {
@@ -91,8 +91,9 @@ export function Later() {
   }, [jump, entries])
 
   const remove = (entry: LaterEntry) => {
-    void write(later.remove(entry.id),
-      { note: <TitleNote message={m.later.removed} title={plainTitle(entry.title)} /> })
+    void write(later.remove(entry.id).then((trashed) => [trashed]), {
+      note: <TitleNote message={m.later.removed} title={plainTitle(entry.title)} />, action: undo.restore,
+    })
   }
 
   // Entries arrive newest first by the day they were queued; groups follow the order keys first appear in.
@@ -159,7 +160,7 @@ export function Later() {
                         )
                         : null}
                     <IconButton label={m.later.actions.removeFrom} size="nested" onClick={() => remove(x)}>
-                      <IconCross />
+                      <IconTrash />
                     </IconButton>
                     </>
                   )}

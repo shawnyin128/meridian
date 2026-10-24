@@ -1,7 +1,7 @@
 import type { AppUpdateStatus } from '../shared/app-update.js'
 import type {
   AttachmentFields, AuthorCandidate, AuthorSearchFailed, CallRejection, ChangeEntry, ChatCancelResult,
-  ChatMessage, ChatMessageFields, ChatSendResult, ChatSession, ColourTheme, ColourThemeFile, ConclusionState,
+  ChatMessage, ChatMessageFields, ChatRun, ChatSendResult, ChatSession, ColourTheme, ColourThemeFile, ConclusionState,
   ContractMethod, Facet, PluginVersion, SemanticKeyCheckResult, SemanticKeyStatus,
   DeliverySettings, DiscoveryFeedback, DiscoveryFetchResult, DiscoveryIntentAction, DiscoveryProfile,
   ExtensionStatus, FeedEntry, FeedFields,
@@ -12,7 +12,8 @@ import type {
   HarnessRejectPaperWikiResult, HarnessRunReceipt,
   LibraryBackup, LibraryLocation, LibraryResetResult, ListResult,
   MilestoneFields, NetFailed, PaperColumn, PaperColumns, PaperFields, PaperImportResult, PaperReading, PaperRow,
-  Proposal, ProjectDetail, ProjectFields, ProjectRecordedChange, ProjectWorkspaceBinding, ReadingMutation, RecordedChange,
+  Proposal, ProjectDetail, ProjectFields, ProjectRecordedChange, ProjectWorkspaceBinding, ReadingMutation,
+  OptionalRecordedChange, ReadingRecordedChange, RecordedChange,
   ResearchIdea,
   ResearchIdeaGraphPlacement, ResearchIdeaPatch, ResearchIdeaPlaceOnGraphResult,
   ResearchIdeaPromoteResult,
@@ -118,6 +119,15 @@ export const vault = {
 
 export const papers = {
   list: (params: ListParams) => call<ListResult>('papers.list', params),
+  /** The id of every paper in the vault, read page by page. */
+  allIds: async (): Promise<string[]> => {
+    const ids: string[] = []
+    for (let page = 1; ; page += 1) {
+      const { rows, total } = await call<ListResult>('papers.list', { page, size: 200 })
+      ids.push(...rows.map((row) => row.id))
+      if (rows.length === 0 || ids.length >= total) return ids
+    }
+  },
   facets: (field: string, filter?: string) =>
     call<Facet[]>('papers.facets', { field, ...(filter ? { filter } : {}) }),
   get: (id: string) => call<PaperRow>('papers.get', { id }),
@@ -136,9 +146,9 @@ export const papers = {
   retryMetadata: (id: string) => call<void>('papers.retryMetadata', { id }),
   reading: (id: string) => call<PaperReading>('papers.reading', { id }),
   mutateReading: (id: string, mutation: ReadingMutation) =>
-    call<PaperReading>('papers.mutateReading', { id, mutation }),
+    call<ReadingRecordedChange>('papers.mutateReading', { id, mutation }),
   columns: () => call<PaperColumns>('papers.columns', {}),
-  setColumns: (columns: PaperColumns) => call<void>('papers.setColumns', { columns }),
+  setColumns: (columns: PaperColumns) => call<OptionalRecordedChange>('papers.setColumns', { columns }),
   renameOption: (key: string, from: string, to: string) =>
     call<RecordedChange>('papers.renameOption', { key, from, to }),
   setColumnType: (key: string, type: PaperColumn['type']) =>
@@ -163,8 +173,10 @@ export const harness = {
     scopeDigest: plan.scopeDigest,
     acknowledgeCost: true,
   }),
-  /** Stops accepting a running result; an already-issued provider request may still be billable. */
-  cancel: (planId: string) => call<HarnessCancelResult>('harness.cancel', { planId }),
+  /** Stops the Wiki run going for paper `paperId`; an already-issued provider request may still be billable. */
+  cancel: (paperId: string) => call<HarnessCancelResult>('harness.cancel', { paperId }),
+  /** Forgets why the last Wiki run of paper `paperId` failed. */
+  dismissFailure: (paperId: string) => call<null>('harness.dismissFailure', { paperId }),
   applyPaperWiki: (proposalId: string, body: string) =>
     call<HarnessApplyPaperWikiResult>('harness.applyPaperWiki', { proposalId, body }),
   rejectPaperWiki: (proposalId: string, feedback?: HarnessPaperWikiRejectionFeedback) =>
@@ -181,14 +193,14 @@ export const project = {
   bindWorkspace: (id: string, binding: ProjectWorkspaceBinding | null) =>
     call<ProjectDetail>('project.bindWorkspace', { id, binding }),
   update: (id: string, patch: Partial<ProjectFields>) =>
-    call<ProjectDetail>('project.update', { id, patch }),
+    call<ProjectRecordedChange>('project.update', { id, patch }),
   delete: (id: string) => call<RecordedChange>('project.delete', { id }),
   createTask: (projectId: string, task: TaskFields) =>
     call<ProjectDetail>('project.createTask', { projectId, task }),
   updateTask: (projectId: string, taskId: string, patch: TaskPatch) =>
     call<ProjectDetail>('project.updateTask', { projectId, taskId, patch }),
   deleteTask: (projectId: string, taskId: string) =>
-    call<ProjectDetail>('project.deleteTask', { projectId, taskId }),
+    call<ProjectRecordedChange>('project.deleteTask', { projectId, taskId }),
   reorderTasks: (projectId: string, order: string[]) =>
     call<ProjectDetail>('project.reorderTasks', { projectId, order }),
   setTaskNode: (projectId: string, taskId: string, nodeId: string | null) =>
@@ -198,17 +210,17 @@ export const project = {
   updateMilestone: (projectId: string, milestoneId: string, patch: Partial<MilestoneFields>) =>
     call<ProjectDetail>('project.updateMilestone', { projectId, milestoneId, patch }),
   deleteMilestone: (projectId: string, milestoneId: string) =>
-    call<ProjectDetail>('project.deleteMilestone', { projectId, milestoneId }),
+    call<ProjectRecordedChange>('project.deleteMilestone', { projectId, milestoneId }),
   createRelation: (projectId: string, relation: RelationFields) =>
     call<ProjectDetail>('project.createRelation', { projectId, relation }),
   deleteRelation: (projectId: string, relationId: string) =>
-    call<ProjectDetail>('project.deleteRelation', { projectId, relationId }),
+    call<ProjectRecordedChange>('project.deleteRelation', { projectId, relationId }),
   updateRelation: (projectId: string, relationId: string, relation: Omit<RelationFields, 'group'>) =>
     call<ProjectDetail>('project.updateRelation', { projectId, relationId, relation }),
   addPaper: (projectId: string, paperId: string) =>
     call<ProjectDetail>('project.addPaper', { projectId, paperId }),
   removePaper: (projectId: string, paperId: string) =>
-    call<ProjectDetail>('project.removePaper', { projectId, paperId }),
+    call<ProjectRecordedChange>('project.removePaper', { projectId, paperId }),
   moveRelation: (projectId: string, id: string, index: number) =>
     call<ProjectDetail>('project.moveRelation', { projectId, id, index }),
   reorder: (order: string[]) => call<void>('project.reorder', { order }),
@@ -258,12 +270,14 @@ export const chat = {
   forPaper: (paperId: string) => call<ChatSession>('chat.forPaper', { paperId }),
   append: (id: string, messages: ChatMessageFields[]) =>
     call<void>('chat.append', { id, messages }),
-  send: (id: string, text: string) => call<ChatSendResult>('chat.send', { id, text }),
+  /** Sends what the user wrote in `runs`, each mention as a run of its own. */
+  send: (id: string, runs: ChatRun[]) => call<ChatSendResult>('chat.send', { id, runs }),
   cancel: (id: string) => call<ChatCancelResult>('chat.cancel', { id }),
   recordAction: (id: string, messageId: string) =>
     call<ProjectDetail>('chat.recordAction', { id, messageId }),
   setArchived: (id: string, archived: boolean) =>
     call<void>('chat.setArchived', { id, archived }),
+  delete: (id: string) => call<TrashedEntry>('chat.delete', { id }),
 }
 
 export const idea = {
@@ -287,8 +301,8 @@ export const inbox = {
   readLater: (id: string) => call<boolean>('inbox.readLater', { id }),
   /** Adds the paper to the vault; whether it was added or already there tells the UI how to open the entry. */
   download: (id: string) => call<InboxDownloadResult>('inbox.download', { id }),
-  /** Starts one full fetch of every active watch and returns immediately. */
-  fetch: () => call<void>('inbox.fetch', {}),
+  /** Starts one fetch of the watch `watchId`, or of every active watch, and returns immediately. */
+  fetch: (watchId?: string) => call<void>('inbox.fetch', watchId === undefined ? {} : { watchId }),
 }
 
 export const discovery = {
@@ -301,8 +315,9 @@ export const discovery = {
   ),
   setIntent: (projectId: string, intentId: string, action: DiscoveryIntentAction) =>
     call<void>('discovery.intent', { projectId, intentId, action }),
+  /** Records the feedback; `less` and `known` move the entry to the trash and answer that trash entry. */
   feedback: (id: string, feedback: DiscoveryFeedback) =>
-    call<void>('discovery.feedback', { id, feedback }),
+    call<TrashedEntry | null>('discovery.feedback', { id, feedback }),
 }
 
 export const delivery = {
@@ -326,7 +341,7 @@ export const colourThemes = {
 
 export const later = {
   list: () => call<LaterEntry[]>('later.list', {}),
-  remove: (id: string) => call<void>('later.remove', { id }),
+  remove: (id: string) => call<TrashedEntry>('later.remove', { id }),
 }
 
 export const watch = {

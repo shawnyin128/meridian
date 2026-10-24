@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useEffect, useState } from 'react'
+import { Fragment, useEffect, useState } from 'react'
 import type { ChangeEntry } from '../../shared/contract.js'
 import { HUMAN_PRODUCER, NOTES_PROPOSAL } from '../../shared/vocabulary.js'
 import { changelog } from '../ipc.js'
@@ -7,6 +7,7 @@ import type { Catalog } from '../messages/catalog.js'
 import { useMessages } from '../messages/useMessages.js'
 import { useJump, useNotice, useToday, useVaultRevision } from '../shell/AppShell.js'
 import { useFormat } from '../lib/format.js'
+import { useScreenLoad } from '../hooks/useScreenLoad.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
 import { CardTray } from '../components/CardTray.js'
 import { ConfirmDialog } from '../components/ConfirmDialog.js'
@@ -115,18 +116,15 @@ function ClearArchivedButton({ count, onClear }: { count: number; onClear: () =>
 export function Changelog() {
   const m = useMessages()
   const [entries, setEntries] = useState<ChangeEntry[] | null>(null)
-  const [error, setError] = useState<string | null>(null)
 
   const today = useToday()
   const fmt = useFormat()
   const notice = useNotice()
   const { revision, bump } = useVaultRevision()
-  const reportError = useCallback((e: unknown) => setError(errorLabel(m, e)), [m])
+  const { error, load } = useScreenLoad()
   const write = useVaultWrite()
 
-  useEffect(() => {
-    void changelog.list().then(setEntries).catch(reportError)
-  }, [revision, reportError])
+  useEffect(() => load('entries', changelog.list(), setEntries), [revision, load])
 
   // An undo is often rejected (the entity changed again after this change), so the reason shows as a
   // refusal notice instead of becoming a page-wide error.

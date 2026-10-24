@@ -76,6 +76,11 @@ test('应用菜单里有「设置…」,其余菜单仍是 Electron 的角色', 
   expect(menu.map((top) => top.role)).toEqual(mac
     ? ['appmenu', 'filemenu', 'editmenu', 'viewmenu', 'windowmenu', null]
     : [null, 'editmenu', 'viewmenu', null, 'windowmenu', null])
+  // In zh every title and item is named in Chinese; macOS titles the application menu with the app's name.
+  expect(menu.slice(mac ? 1 : 0).map((top) => top.label))
+    .toEqual(mac ? ['文件', '编辑', '视图', '窗口', '帮助'] : ['文件', '编辑', '视图', '工具', '窗口', '帮助'])
+  expect(menu.flatMap((top) => top.items).map((item) => item.label)
+    .filter((label) => /[A-Za-z]/.test(label.replace(/Meridian|Skill|MCP/g, '')))).toEqual([])
 
   const settings = menu.flatMap((top) => top.items).filter((item) => item.id === 'settings')
   expect(settings).toHaveLength(1)
@@ -86,8 +91,8 @@ test('应用菜单里有「设置…」,其余菜单仍是 Electron 的角色', 
   expect(menu.findIndex((top) => top.items.some((item) => item.id === 'settings'))).toBe(mac ? 0 : 3)
 })
 
-// The window stays on screen because Windows sends the shortcut through sendInputEvent, which has not
-// been verified on an offscreen window.
+// The window is shown because Windows sends the shortcut through sendInputEvent, which has not been
+// verified on a hidden window.
 test.describe(() => {
   test.use({ showWindow: true })
 
@@ -266,7 +271,8 @@ test('设置右栏滚动时,标题留在上面,滚动条从标题下面起、止
     const column = dialog.querySelector('.set-main')!
     const area = [column, ...column.querySelectorAll('*')].find((box) => getComputedStyle(box).overflowY === 'auto') as HTMLElement
     area.scrollTop = (area.scrollHeight - area.clientHeight) / 2
-    // An offscreen window gets no frames to fire scroll events in, so the case sends its own.
+    // A scroll event fires only in the next rendering update, after the reads below, so the case sends
+    // its own.
     area.dispatchEvent(new Event('scroll'))
     const title = column.querySelector('.section-heading')!
     const close = dialog.querySelector('.modal-close')!

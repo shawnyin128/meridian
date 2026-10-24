@@ -2,6 +2,7 @@ import { forwardRef, useCallback, useLayoutEffect, useRef } from 'react'
 import type {
   ForwardedRef, InputHTMLAttributes, KeyboardEvent as ReactKeyboardEvent, RefObject,
 } from 'react'
+import type { KeptText } from '../hooks/useDrafts.js'
 import { NO_TRIGGERS } from '../hooks/useOnLeave.js'
 import { useInlineDraft } from '../hooks/useInlineDraft.js'
 import { FormInput } from './FormControls.js'
@@ -24,6 +25,8 @@ export type InlineDraftInputProps = Omit<InputHTMLAttributes<HTMLInputElement>, 
   validate?: (value: string) => boolean
   /** Holds, while this draft is mounted, its `leave`: see `afterLeaving`. */
   leaveRef?: RefObject<(() => Promise<boolean>) | null>
+  /** Keeps what is typed as a draft there, which the input starts from; the draft closing drops it. */
+  kept?: KeptText | undefined
 }
 
 /**
@@ -53,7 +56,7 @@ export const InlineDraftInput = forwardRef<HTMLInputElement, InlineDraftInputPro
   function InlineDraftInput({
     scopeRef, triggers = NO_TRIGGERS, onSubmit, onCancel,
     normalize = (value) => value.trim(), validate = (value) => value !== '', leaveRef,
-    onKeyDown, autoComplete = 'off', autoFocus = true, ...props
+    onKeyDown, autoComplete = 'off', autoFocus = true, kept, defaultValue, ...props
   }, forwardedRef) {
     const input = useRef<HTMLInputElement>(null)
     const holdInput = useCallback((node: HTMLInputElement | null) => {
@@ -69,6 +72,7 @@ export const InlineDraftInput = forwardRef<HTMLInputElement, InlineDraftInputPro
         return validate(value) ? onSubmit(value, leaving) : false
       },
       isEmpty: () => normalize(input.current?.value ?? '') === '',
+      kept,
     })
     useLayoutEffect(() => {
       if (leaveRef === undefined) return undefined
@@ -83,8 +87,12 @@ export const InlineDraftInput = forwardRef<HTMLInputElement, InlineDraftInputPro
     return (
       <FormInput
         {...props} appearance="inline" ref={holdInput} data-inline-draft="" autoComplete={autoComplete}
-        autoFocus={autoFocus}
-        aria-invalid={draft.inputProps['aria-invalid']} onInput={draft.inputProps.onInput}
+        autoFocus={autoFocus} defaultValue={kept?.drafts.get(kept.target) ?? defaultValue}
+        aria-invalid={draft.inputProps['aria-invalid']}
+        onInput={(event) => {
+          draft.inputProps.onInput()
+          kept?.drafts.set(kept.target, event.currentTarget.value)
+        }}
         onKeyDown={handleKeyDown}
       />
     )

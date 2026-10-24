@@ -1,15 +1,17 @@
-import { Fragment, useCallback, useEffect, useState } from 'react'
+import { Fragment, useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import type { FeedEntry, FeedSource } from '../../shared/contract.js'
 import { feed } from '../ipc.js'
-import { errorLabel } from '../lib/failure-label.js'
+import { useScreenLoad } from '../hooks/useScreenLoad.js'
 import { useMessages } from '../messages/useMessages.js'
 import { useJump, useVaultRevision } from '../shell/AppShell.js'
 import { CONFLICT_THREAD } from '../lib/chat.js'
 import { DateChip, DateTimeDisplay } from '../components/DateTimeDisplay.js'
 import { DayHeading, daySectionName } from '../components/DayHeading.js'
-import { ENTITY_SCREEN, EntityLink } from '../components/EntityLink.js'
+import { EmptyState } from '../components/EmptyState.js'
+import { ENTITY_SCREEN, EntityLink, opensHere } from '../components/EntityLink.js'
 import { FirstRunChecklist } from '../components/FirstRunChecklist.js'
+import { Icon } from '../components/icons.js'
 import { LoadingPlaceholder } from '../components/LoadingPlaceholder.js'
 import {
   PageBody, PageError, PageHeader, PageShell, PageTitle, PageToolbar,
@@ -70,9 +72,6 @@ const FSRC: Record<FeedSource, { icon: ReactNode }> = {
 const FILTERS: (FeedSource | null)[] = [null, 'steward', 'me', 'lab', 'inbox']
 
 type FeedRun = Extract<FeedEntry['body'], { kind: 'runs' }>['runs'][number]
-
-/** Whether a feed run's target names an entity this version opens. */
-const opensHere = (kind: string): kind is keyof typeof ENTITY_SCREEN => Object.hasOwn(ENTITY_SCREEN, kind)
 
 /** One run of a feed paragraph in its kind's look; one that names a paper, project or Wiki page is a link that opens it. */
 function Run({ run }: { run: FeedRun }) {
@@ -160,14 +159,11 @@ export function Feed() {
   const { revision } = useVaultRevision()
   const { open } = useJump()
   const [entries, setEntries] = useState<FeedEntry[] | null>(null)
-  const [error, setError] = useState<string | null>(null)
   const [source, setSource] = useState<FeedSource | null>(null)
+  const [setupShown, setSetupShown] = useState<boolean | null>(null)
+  const { error, load, report } = useScreenLoad()
 
-  const reportError = useCallback((e: unknown) => setError(errorLabel(m, e)), [m])
-
-  useEffect(() => {
-    void feed.list().then(setEntries).catch(reportError)
-  }, [revision, reportError])
+  useEffect(() => load('entries', feed.list(), setEntries), [revision, load])
 
   const rows = source === null ? entries ?? [] : (entries ?? []).filter((e) => e.source === source)
 
@@ -177,7 +173,7 @@ export function Feed() {
       <PageError error={error} />
       <PageBody>
         <div className="msgs">
-          <FirstRunChecklist className="mwrap" onError={reportError} />
+          <FirstRunChecklist className="mwrap" onError={report} onShown={setSetupShown} />
           {/* The switch sits in the stream, so it lines up with the entries' column. */}
           <PageToolbar className="mwrap">
             <SegmentedControl
@@ -187,8 +183,16 @@ export function Feed() {
               onChange={(value) => setSource(value === 'all' ? null : value as FeedSource)}
             />
           </PageToolbar>
-          {entries === null && error === null ? <LoadingPlaceholder shape="cards" /> : null}
-          <FeedRows rows={rows} onOpenConflict={() => open('chat', CONFLICT_THREAD)} />
+          {entries === null
+            ? (error === null ? <LoadingPlaceholder shape="cards" /> : null)
+            : rows.length === 0
+              // The first-run checklist, while it shows, is this screen's empty state.
+              ? (setupShown === false ? (
+                <EmptyState variant="page" icon={<Icon sw={1.4}><path d="M22 12h-4l-3 8L9 4l-3 8H2" /></Icon>}>
+                  {m.feed.empty}
+                </EmptyState>
+              ) : null)
+              : <FeedRows rows={rows} onOpenConflict={() => open('chat', CONFLICT_THREAD)} />}
         </div>
       </PageBody>
     </PageShell>

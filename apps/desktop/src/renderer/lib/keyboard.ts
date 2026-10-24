@@ -20,11 +20,12 @@ export function ignoreComposingEscape(then?: (event: KeyboardEvent) => void): (e
 }
 
 /**
- * Whether a keydown commits a multi-line text: ⌘Enter or Ctrl+Enter outside an input method
- * composition. A plain Enter starts a new line there.
+ * Whether a keydown commits a multi-line text: Enter with the platform's command key (see
+ * `pressesCommand`), ⌘Enter on macOS and Ctrl+Enter elsewhere, outside an input method composition.
+ * A plain Enter starts a new line there.
  */
-export function commitsMultiline(key: Pick<KeyboardEvent, 'key' | 'metaKey' | 'ctrlKey' | 'isComposing'>): boolean {
-  return key.key === 'Enter' && (key.metaKey || key.ctrlKey) && !composing(key)
+export function commitsMultiline(platform: string, key: Pick<KeyboardEvent, 'key' | 'metaKey' | 'ctrlKey' | 'isComposing'>): boolean {
+  return pressesCommand(platform, key, 'Enter') && !composing(key)
 }
 
 /**
@@ -34,4 +35,22 @@ export function commitsMultiline(key: Pick<KeyboardEvent, 'key' | 'metaKey' | 'c
 export function commandShortcut(platform: string, key: string, shift = false): string {
   if (platform === 'darwin') return `${shift ? '⇧' : ''}⌘${key}`
   return `Ctrl+${shift ? 'Shift+' : ''}${key}`
+}
+
+/**
+ * Whether a keydown is `letter` pressed with the platform's command key, the shortcut
+ * `commandShortcut(platform, letter)` names: ⌘ on macOS, Ctrl elsewhere. On macOS a Control-letter
+ * belongs to the text system, where Control-B moves the caret back one character.
+ */
+export function pressesCommand(platform: string, key: Pick<KeyboardEvent, 'key' | 'metaKey' | 'ctrlKey'>, letter: string): boolean {
+  return (platform === 'darwin' ? key.metaKey : key.ctrlKey) && key.key.toLowerCase() === letter.toLowerCase()
+}
+
+/**
+ * Whether `target` is a place text is typed in: a field, a select or editable content. Keys that edit
+ * text there, such as Backspace, or that move its caret, such as Alt+Arrow, belong to it.
+ */
+export function typesText(target: EventTarget | null): boolean {
+  return target instanceof HTMLElement
+    && (target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName))
 }

@@ -27,6 +27,12 @@ const { ReaderSidePanel } = await import('./reader/ReaderSidePanel.js')
 const { ChatMessageView } = await import('./chat/ChatMessage.js')
 const { ReviewQueue } = await import('./wiki/ReviewQueue.js')
 const { Sidebar } = await import('../shell/Sidebar.js')
+const { GenerationsContext } = await import('../hooks/useGenerations.js')
+/** A shell in which Core is generating nothing. */
+const IDLE = {
+  running: () => false, run: async (work: Promise<unknown>) => { await work }, stop: vi.fn(),
+  wikiRunning: () => false, stopWiki: vi.fn(async () => {}), wikiFailure: () => undefined, dismissWiki: vi.fn(async () => {}),
+}
 
 declare global {
   var IS_REACT_ACT_ENVIRONMENT: boolean
@@ -83,14 +89,16 @@ describe('每个屏幕只有一个主操作', () => {
   })
   afterEach(() => act(() => root.unmount()))
 
-  const show = (node: ReactNode) => act(async () => { root.render(<MessagesProvider>{node}</MessagesProvider>) })
+  const show = (node: ReactNode) => act(async () => {
+    root.render(<MessagesProvider><GenerationsContext.Provider value={IDLE}>{node}</GenerationsContext.Provider></MessagesProvider>)
+  })
 
   it('阅读器右栏的每个面板都不放实心强调色:这一屏的主操作是论文对话的发送', async () => {
     for (const tab of ['highlights', 'notes', 'remark', 'wiki'] as const) {
       await show(
         <ReaderSidePanel
           tab={tab} onTab={vi.fn()} paper={PAPER} onPaper={vi.fn()} reading={READING} currentPage={1}
-          saving={false} onMutate={vi.fn()} onSaveRemark={vi.fn()} onJump={vi.fn()} focusHighlightId={null}
+          saving={false} onMutate={vi.fn()} onSaveRemark={vi.fn()} onJump={vi.fn()} focusHighlightId={null} selectedHighlightId={null}
         />,
       )
       expect(solid(host).map((element) => element.textContent), tab).toEqual([])
@@ -105,7 +113,7 @@ describe('每个屏幕只有一个主操作', () => {
     await show(
       <ReaderSidePanel
         tab="wiki" onTab={vi.fn()} paper={PAPER} onPaper={vi.fn()} reading={READING} currentPage={1}
-        saving={false} onMutate={vi.fn()} onSaveRemark={vi.fn()} onJump={vi.fn()} focusHighlightId={null}
+        saving={false} onMutate={vi.fn()} onSaveRemark={vi.fn()} onJump={vi.fn()} focusHighlightId={null} selectedHighlightId={null}
       />,
     )
     expect(host.textContent).toContain('确认写入 Wiki')
@@ -124,7 +132,7 @@ describe('每个屏幕只有一个主操作', () => {
   it('审阅队列只有第一条能应用的提案的应用是实心强调色', async () => {
     await show(
       <ReviewQueue
-        proposals={[PROPOSAL('p1', { staleNow: true }), PROPOSAL('p2'), PROPOSAL('p3')]} pending={false}
+        proposals={[PROPOSAL('p1', { staleNow: true }), PROPOSAL('p2'), PROPOSAL('p3')]} failed={false} pending={false}
         onApply={vi.fn()} onDecline={vi.fn()} links={{ openPage: vi.fn(), openProject: vi.fn(), openReader: vi.fn() }}
         onOpenConclusion={vi.fn()}
       />,
@@ -138,8 +146,8 @@ describe('每个屏幕只有一个主操作', () => {
       <Sidebar
         screen="feed" onNavigate={vi.fn()} onJump={vi.fn()} paperCount={0} changeCount={0} projectCount={0}
         trashCount={0} wikiCount={0} ideaCount={0} inboxScope="all" inboxMode="watch" onOpenInbox={vi.fn()}
-        watches={[]} inboxCounts={{}} discoveryCount={0} discoveryProjects={[]} laterCount={0} chats={[]}
-        chatId={null} onOpenChat={vi.fn()} onNewChat={vi.fn()} onArchiveChat={vi.fn()}
+        watches={[]} inboxWatches={[]} discoveryCount={0} discoveryProjects={[]} laterCount={0} chats={[]}
+        chatId={null} onOpenChat={vi.fn()} onNewChat={vi.fn()} onArchiveChat={vi.fn()} onDeleteChat={vi.fn()}
         grip={{ label: '侧栏宽度', value: 232, min: 180, max: 360, onResize: vi.fn(), onReset: vi.fn() }} collapsed={false}
       />,
     )

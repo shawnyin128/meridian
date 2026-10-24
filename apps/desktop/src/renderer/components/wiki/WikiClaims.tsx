@@ -3,6 +3,7 @@ import type {
   ConflictTarget, Evidence, ProjectConclusion, ProjectSummary, ProposalOp, WikiAggregation, WikiClaim, WikiConflict,
 } from '../../../shared/contract.js'
 import { HUMAN_PRODUCER } from '../../../shared/vocabulary.js'
+import { useDraft } from '../../hooks/useDrafts.js'
 import { project as projectApi } from '../../ipc.js'
 import { useFormat } from '../../lib/format.js'
 import { claimId } from '../../lib/slug.js'
@@ -36,6 +37,20 @@ type Form = { page: string } & (
   | { kind: 'conflict'; claim: WikiClaim }
   | { kind: 'resolve'; claim: WikiClaim; conflict: WikiConflict }
 )
+
+/** A drafted form as it is kept: its kind, the ids of the claim and conflict it is about, and its fields. */
+type ClaimDraft = {
+  kind: Form['kind']
+  claim: string | null
+  conflict: string | null
+  text: string
+  note: string
+  basis: 'personal' | 'conclusion'
+  projectId: string
+  conclusionId: string
+  other: string
+  outcome: Outcome
+}
 
 /** Where the claims area sends the user: a Wiki page, a project, or the reader at a paper page. */
 export type ClaimLinks = {
@@ -136,43 +151,51 @@ export function WikiClaims({ page, pending, links, onApply, arrival, onArrived }
   const c = m.wiki.claims
   const f = c.form
   const fmt = useFormat()
-  const [held, setForm] = useState<Form | null>(null)
+  const [draft, setDraft] = useDraft<ClaimDraft>(['wiki', page.id], 'claim')
   const arrivalRow = useRef<HTMLDivElement>(null)
   useEffect(() => {
     if (arrival === undefined) return
     arrivalRow.current?.scrollIntoView({ block: 'center' })
     onArrived?.()
   }, [arrival, page, onArrived])
-  const [text, setText] = useState('')
-  const [note, setNote] = useState('')
-  const [basis, setBasis] = useState<'personal' | 'conclusion'>('personal')
   const [projects, setProjects] = useState<ProjectSummary[]>([])
-  const [projectId, setProjectId] = useState('')
   const [conclusions, setConclusions] = useState<ProjectConclusion[]>([])
-  const [conclusionId, setConclusionId] = useState('')
-  const [other, setOther] = useState('')
-  const [outcome, setOutcome] = useState<Outcome>('dismissed')
   const addRow = useRef<HTMLDivElement>(null)
   // A draft picked in a claim's menu opens once the menu has closed, so it keeps the focus.
   const opening = useRef<Form | null>(null)
-  // A form belongs to the page it was opened on and shows only there.
-  const form = held?.page === page.id ? held : null
+  const formClaim = draft?.claim === null ? undefined : page.claims.find((x) => x.id === draft?.claim)
+  const formConflict = formClaim?.conflicts.find((x) => x.id === draft?.conflict)
+  const form: Form | null = draft === null ? null
+    : draft.kind === 'add' ? { page: page.id, kind: 'add' }
+      : formClaim === undefined ? null
+        : draft.kind === 'resolve'
+          ? formConflict === undefined ? null : { page: page.id, kind: 'resolve', claim: formClaim, conflict: formConflict }
+          : { page: page.id, kind: draft.kind, claim: formClaim }
+  // A kept form about a claim or conflict the page no longer holds is dropped.
+  useEffect(() => { if (draft !== null && form === null) setDraft(null) })
+  const text = draft?.text ?? ''
+  const note = draft?.note ?? ''
+  const basis = draft?.basis ?? 'personal'
+  const projectId = draft?.projectId ?? ''
+  const conclusionId = draft?.conclusionId ?? ''
+  const other = draft?.other ?? ''
+  const outcome = draft?.outcome ?? 'dismissed'
+  const patch = (fields: Partial<ClaimDraft>) => { if (draft !== null) setDraft({ ...draft, ...fields }) }
 
   const open = (next: Form) => {
     if (next.kind === 'add' && form?.kind === 'add') {
       addRow.current?.querySelector<HTMLElement>('.form-control')?.focus()
       return
     }
-    setForm(next)
-    setText(next.kind === 'revise' || next.kind === 'resolve' ? next.claim.text : '')
-    setNote('')
-    setBasis('personal')
-    setProjectId('')
-    setConclusionId('')
-    setOther('')
-    setOutcome('dismissed')
+    setDraft({
+      kind: next.kind,
+      claim: next.kind === 'add' ? null : next.claim.id,
+      conflict: next.kind === 'resolve' ? next.conflict.id : null,
+      text: next.kind === 'revise' || next.kind === 'resolve' ? next.claim.text : '',
+      note: '', basis: 'personal', projectId: '', conclusionId: '', other: '', outcome: 'dismissed',
+    })
   }
-  const close = () => setForm(null)
+  const close = () => setDraft(null)
 
   useEffect(() => {
     if (form?.kind !== 'add' || basis !== 'conclusion') return
@@ -266,17 +289,17 @@ export function WikiClaims({ page, pending, links, onApply, arrival, onArrived }
             <>
               <FormInput
                 value={text} placeholder={f.textPlaceholder} aria-label={f.text} aria-invalid={invalid(text.trim() === '')}
-                onChange={(e) => setText(e.target.value)}
+                onChange={(e) => patch({ text: e.target.value })}
               />
               <DraftLine label={f.basis}>
                 <SegmentedControl
-                  label={f.basisLabel} value={basis} onChange={setBasis}
+                  label={f.basisLabel} value={basis} onChange={(next) => patch({ basis: next })}
                   options={[{ value: 'personal', label: f.personal }, { value: 'conclusion', label: f.conclusion }]}
                 />
                 {basis === 'personal'
                   ? (
                     <FormInput
-                      value={note} placeholder={f.personalPlaceholder} aria-label={f.personal} onChange={(e) => setNote(e.target.value)}
+                      value={note} placeholder={f.personalPlaceholder} aria-label={f.personal} onChange={(e) => patch({ note: e.target.value })}
                     />
                   )
                   : (
@@ -285,7 +308,7 @@ export function WikiClaims({ page, pending, links, onApply, arrival, onArrived }
                         appearance="field" aria-label={f.project} placeholder={f.projectPick} value={projectId}
                         aria-invalid={invalid(projectId === '')} options={projects.map((p) => p.id)}
                         label={(id) => projects.find((p) => p.id === id)?.name ?? id}
-                        onPick={(id) => { setProjectId(id); setConclusionId('') }}
+                        onPick={(id) => patch({ projectId: id, conclusionId: '' })}
                       />
                       {projectId === ''
                         ? null
@@ -298,9 +321,8 @@ export function WikiClaims({ page, pending, links, onApply, arrival, onArrived }
                               options={conclusions.map((x) => x.id)}
                               label={(id) => conclusions.find((x) => x.id === id)?.text ?? id}
                               onPick={(id) => {
-                                setConclusionId(id)
                                 const picked = conclusions.find((x) => x.id === id)
-                                if (picked !== undefined && text.trim() === '') setText(picked.text)
+                                patch({ conclusionId: id, ...(picked !== undefined && text.trim() === '' ? { text: picked.text } : {}) })
                               }}
                             />
                           )}
@@ -335,7 +357,7 @@ export function WikiClaims({ page, pending, links, onApply, arrival, onArrived }
                         {(invalid) => (
                           <FormInput
                             value={text} aria-label={f.text} aria-invalid={invalid(textMissing)}
-                            onChange={(e) => setText(e.target.value)}
+                            onChange={(e) => patch({ text: e.target.value })}
                           />
                         )}
                       </DraftForm>
@@ -395,10 +417,7 @@ export function WikiClaims({ page, pending, links, onApply, arrival, onArrived }
                                     <ChoicePicker
                                       appearance="field" aria-label={f.outcome} value={outcome}
                                       options={OUTCOMES} label={(o) => f.outcomes[o]}
-                                      onPick={(next) => {
-                                        setOutcome(next)
-                                        setText(next === 'revised' ? claim.text : '')
-                                      }}
+                                      onPick={(next) => patch({ outcome: next, text: next === 'revised' ? claim.text : '' })}
                                     />
                                   </DraftLine>
                                   {outcome === 'revised' || outcome === 'split'
@@ -406,7 +425,7 @@ export function WikiClaims({ page, pending, links, onApply, arrival, onArrived }
                                       <DraftLine label={outcome === 'revised' ? f.revisedText : f.splitText}>
                                         <FormInput
                                           value={text} aria-invalid={invalid(textMissing)}
-                                          onChange={(e) => setText(e.target.value)}
+                                          onChange={(e) => patch({ text: e.target.value })}
                                         />
                                       </DraftLine>
                                     )
@@ -414,7 +433,7 @@ export function WikiClaims({ page, pending, links, onApply, arrival, onArrived }
                                   <DraftLine label={f.note}>
                                     <FormInput
                                       value={note} placeholder={f.resolvePlaceholder} aria-invalid={invalid(note.trim() === '')}
-                                      onChange={(e) => setNote(e.target.value)}
+                                      onChange={(e) => patch({ note: e.target.value })}
                                     />
                                   </DraftLine>
                                 </>
@@ -438,14 +457,14 @@ export function WikiClaims({ page, pending, links, onApply, arrival, onArrived }
                                     <ChoicePicker
                                       appearance="field" aria-label={f.other} placeholder={f.other} value={other}
                                       aria-invalid={invalid(other === '')} options={others.map((x) => x.id)}
-                                      label={(id) => others.find((x) => x.id === id)?.text ?? id} onPick={setOther}
+                                      label={(id) => others.find((x) => x.id === id)?.text ?? id} onPick={(id) => patch({ other: id })}
                                     />
                                   )}
                               </DraftLine>
                               <DraftLine label={f.note}>
                                 <FormInput
                                   value={note} placeholder={f.conflictPlaceholder} aria-invalid={invalid(note.trim() === '')}
-                                  onChange={(e) => setNote(e.target.value)}
+                                  onChange={(e) => patch({ note: e.target.value })}
                                 />
                               </DraftLine>
                             </>

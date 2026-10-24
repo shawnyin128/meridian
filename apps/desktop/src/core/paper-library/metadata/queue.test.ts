@@ -74,6 +74,17 @@ describe('上传之后的元数据解析', () => {
     expect(JSON.stringify(store.listFeed()[0]?.body)).not.toContain('论文表')
   })
 
+  it('arXiv 查询失败时,探测出的页数照样写上,其余书目字段留待重试', async () => {
+    const { store, queue, upload } = setup({
+      facts: { firstPage: 'arXiv:2509.01234v1', pageCount: 9 }, error: new TypeError('fetch failed'),
+    })
+    const paper = upload('draft-trees.pdf')
+    await queue.idle()
+    expect(store.getPaper(paper.id)).toMatchObject({ pageCount: 9, title: 'draft-trees' })
+    expect(store.getPaper(paper.id).identifier).toBeUndefined()
+    expect(queue.uploads()[0]).toMatchObject({ step: 'failed', error: '网络不可用' })
+  })
+
   it('查询失败的论文按它的 id 重试:用上传时的文件名和库里的原文再解析一次,这次补全', async () => {
     const store = createFixtureStore(() => '2026-08-25')
     const lookups: string[] = []

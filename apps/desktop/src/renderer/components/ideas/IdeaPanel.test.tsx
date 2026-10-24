@@ -106,6 +106,16 @@ describe('IdeaPanel', () => {
     expect(onOpenSourceChat).toHaveBeenCalledWith('chat-1')
   })
 
+  it('来源对话删掉了：没有打开来源对话的按钮，来源后面跟着中性的对话已删除标签', () => {
+    act(() => root.render(
+      <MessagesProvider><IdeaPanel idea={IDEA} onClose={vi.fn()} onOpenSourceChat={vi.fn()} sourceChatDeleted /></MessagesProvider>,
+    ))
+    expect(host.textContent).not.toContain('打开来源对话')
+    const tag = host.querySelector('.idea-panel-source .tag')!
+    expect([tag.textContent, tag.className]).toEqual(['对话已删除', 'tag tag--label tag--neutral idea-panel-source-gone'])
+    expect(host.querySelector('.idea-panel-source')!.textContent).toBe('EAGLE-2 · 论文讨论对话已删除')
+  })
+
   it('给了打开论文的去处时，来源里的论文名是链接，点它打开那篇论文；对话名不是链接，没给去处时论文名也不是', () => {
     const onOpenSourcePaper = vi.fn()
     act(() => root.render(<MessagesProvider><IdeaPanel idea={IDEA} onClose={vi.fn()} /></MessagesProvider>))

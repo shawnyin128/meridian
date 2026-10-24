@@ -49,7 +49,7 @@ describe('DeliverySettings', () => {
     type(input, '30')
     expect(button.textContent).toBe('保存')
     await act(async () => { button.click() })
-    expect(api.updateSettings).toHaveBeenCalledWith({ maxItemsPerRun: 30 })
+    expect(api.updateSettings).toHaveBeenCalledWith({ maxItemsPerRun: 30, maxShownPerScope: 20 })
     expect(button.textContent).toBe('已保存')
     expect(api.notice.success).not.toHaveBeenCalled()
 
@@ -61,7 +61,32 @@ describe('DeliverySettings', () => {
   it('上限只有字段名，不写说明', async () => {
     const root = createRoot(host)
     await act(async () => { root.render(<MessagesProvider><DeliverySettings /></MessagesProvider>) })
-    expect(host.querySelector('.delivery-setting-copy')!.textContent).toBe('单次推送上限')
+    expect([...host.querySelectorAll('.delivery-setting-copy')].map((copy) => copy.textContent))
+      .toEqual(['单次推送上限', '显示上限'])
+    await act(async () => { root.unmount() })
+  })
+
+  it('英文界面里两个上限也只有字段名', async () => {
+    window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'en')
+    const root = createRoot(host)
+    await act(async () => { root.render(<MessagesProvider><DeliverySettings /></MessagesProvider>) })
+    expect([...host.querySelectorAll('.delivery-setting-copy')].map((copy) => copy.textContent))
+      .toEqual(['Papers per check', 'Shown limit'])
+    await act(async () => { root.unmount() })
+  })
+
+  it('显示上限就在单次推送上限旁边,默认 20,和它一起保存;超出范围不能保存', async () => {
+    const root = createRoot(host)
+    await act(async () => { root.render(<MessagesProvider><DeliverySettings /></MessagesProvider>) })
+    const shown = host.querySelector<HTMLInputElement>('[aria-label="显示上限"]')!
+    const button = host.querySelector<HTMLButtonElement>('button')!
+    expect(shown.value).toBe('20')
+    type(shown, '0')
+    expect(button.disabled).toBe(true)
+    expect(host.querySelector('.delivery-setting-error')?.textContent).toBe('请输入 1–100 之间的整数')
+    type(shown, '8')
+    await act(async () => { button.click() })
+    expect(api.updateSettings).toHaveBeenLastCalledWith({ maxItemsPerRun: 20, maxShownPerScope: 8 })
     await act(async () => { root.unmount() })
   })
 })

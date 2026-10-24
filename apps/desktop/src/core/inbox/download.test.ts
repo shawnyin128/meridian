@@ -9,11 +9,14 @@ import { createInboxDownloads, type InboxDownloads } from './download.js'
 const VAULT = resolve(import.meta.dirname, '../fixtures/vault')
 const FAST_INFERENCE = 'sources/papers/paper-pdf-e0b2ea3a1a54-Fast-Inference-from-Transformers-via-Speculative-Decoding.pdf'
 
+/** What the PDF probe reads from every downloaded PDF here: twelve pages and nothing else. */
+const probe = vi.fn(async () => ({ title: null, subject: null, keywords: null, firstPage: '', pageCount: 12 }))
+
 function setup(table: CannedTable) {
   const store = createFixtureStore(() => '2026-08-25')
   const counter = { writes: 0 }
   const downloads = createInboxDownloads({
-    store, get: createCannedGet(table, VAULT), onWrite: () => { counter.writes += 1 },
+    store, get: createCannedGet(table, VAULT), probe, onWrite: () => { counter.writes += 1 },
   })
   return { store, downloads, counter }
 }
@@ -42,8 +45,7 @@ describe('createInboxDownloads', () => {
     })
     expect(Buffer.from(store.paperSource(result.paper)))
       .toEqual(readFileSync(resolve(VAULT, FAST_INFERENCE)))
-    expect(store.listInbox().find((entry) => entry.id === 'specdec'))
-      .toMatchObject({ downloaded: true, paper: result.paper })
+    expect(store.listInbox().map((entry) => entry.id)).not.toContain('specdec')
     expect(store.listFeed()[0]).toMatchObject({
       source: 'me',
       body: {
@@ -56,6 +58,28 @@ describe('createInboxDownloads', () => {
     })
     expect(counter.writes).toBe(1)
     await expect(downloads.download('specdec')).rejects.toThrow('这一条已经入库：specdec')
+  })
+
+  it('取回来的原文由 PDF 读出页数,同一次写进论文页', async () => {
+    const { store, downloads, counter } = setup({
+      'https://arxiv.org/pdf/2211.17192': { status: 200, file: FAST_INFERENCE },
+    })
+    const result = await imported(downloads, 'specdec')
+    expect(probe).toHaveBeenLastCalledWith(new Uint8Array(readFileSync(resolve(VAULT, FAST_INFERENCE))))
+    expect(store.getPaper(result.paper).pageCount).toBe(12)
+    expect(counter.writes).toBe(1)
+  })
+
+  it('PDF 读不出页数时照样入库,不带页数,并报出原因', async () => {
+    const { store, downloads } = setup({
+      'https://arxiv.org/pdf/2211.17192': { status: 200, file: FAST_INFERENCE },
+    })
+    probe.mockRejectedValueOnce(new Error('Invalid PDF structure'))
+    const reported = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const result = await imported(downloads, 'specdec')
+    expect(store.getPaper(result.paper).pageCount).toBe(0)
+    expect(String(reported.mock.calls[0]![0])).toContain('Invalid PDF structure')
+    reported.mockRestore()
   })
 
   it('主题关注归进对应主题且复用同一页;作者关注不归主题;都不进入最近变动', async () => {
@@ -102,7 +126,7 @@ describe('createInboxDownloads', () => {
     expect(await downloads.download('sequoia2')).toEqual({ kind: 'failed', reason: 'server' })
     expect(await downloads.download('drafterlite')).toEqual({ kind: 'failed', reason: 'not-pdf' })
     const failing = (error: Error) => createInboxDownloads({
-      store, get: async () => { throw error }, onWrite: () => {},
+      store, get: async () => { throw error }, probe, onWrite: () => {},
     })
     expect(await failing(new TypeError('fetch failed')).download('thunderkv'))
       .toEqual({ kind: 'failed', reason: 'unavailable' })

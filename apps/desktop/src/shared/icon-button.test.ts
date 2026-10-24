@@ -7,7 +7,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 type Node = { dispatchEvent(event: object): boolean; querySelector(selector: string): Node }
 type Style = {
   width: string; height: string; opacity: string; cursor: string; boxShadow: string; transition: string
-  color: string; backgroundColor: string
+  color: string; backgroundColor: string; borderRadius: string
 }
 type Window = {
   document: {
@@ -126,9 +126,17 @@ describe('图标按钮', () => {
       .toEqual(new Set(['var(--selected) var(--on-selected)']))
   })
 
+  it('圆形的图标按钮是中性底的圆，图标用正文色；按下时仍是选中的样子', () => {
+    const round = (button: Node) => { (button as unknown as { classList: { add(name: string): void } }).classList.add('round') }
+    expect(new Set(Object.values(each((button) => `${button.borderRadius} ${button.backgroundColor} ${button.color}`, '', round))))
+      .toEqual(new Set(['var(--r-full) var(--chip) var(--ink)']))
+    expect(new Set(Object.values(each((button) => button.backgroundColor, 'aria-pressed="true"', round))))
+      .toEqual(new Set(['var(--selected)']))
+  })
+
   it('别的样式表不改图标按钮的尺寸、颜色、边框或光标，只管放在哪里和显不显', () => {
     expect([...HOOKS]).toEqual(expect.arrayContaining([
-      'back', 'rowx', 'busy', 'dots', 'colbtn', 'rx', 'tagchip-edit', 'cmx', 'ax', 'row-delete', 'plan-rename',
+      'back', 'rowx', 'busy', 'dots', 'rx', 'tagchip-edit', 'cmx', 'ax', 'row-delete', 'plan-rename',
       'timeline-fold', 'tbtn', 'appbtn', 'sb-add', 'upclose',
     ]))
     const names = new RegExp(`\\.(?:${['icbtn', ...HOOKS].join('|')})(?![\\w-])`)
@@ -141,6 +149,6 @@ describe('图标按钮', () => {
   it('表头末格的加号和齿轮只在一处定义', () => {
     const defining = (name: string) => STYLESHEETS.filter((path) => rulesOf(read(path))
       .some(([selector]) => selector.split(',').some((part) => part.trim() === `.${name}`)))
-    expect([defining('th-add'), defining('colbtn')]).toEqual([[join('routes', 'shell.css')], [join('routes', 'shell.css')]])
+    expect(defining('th-add')).toEqual([join('routes', 'shell.css')])
   })
 })

@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react'
 import type { PaperColumn, PaperColumns } from '../../../shared/contract.js'
 import { LOCKED_PAPER_COLUMNS } from '../../../shared/vocabulary.js'
+import { useDrafts } from '../../hooks/useDrafts.js'
 import { useMessages } from '../../messages/useMessages.js'
 import { ActionPopover } from '../ActionPopover.js'
 import { IconButton } from '../IconButton.js'
@@ -10,6 +11,7 @@ import { builtinNames, takenLabel } from './column-key.js'
 import { COLUMNS } from './PaperTable.js'
 import { afterLeaving, InlineDraftInput } from '../InlineDraftInput.js'
 import { FadeText } from '../FadeText.js'
+import { RowActions } from '../StructuredList.js'
 
 /**
  * The column menu, opened from the gear at the end of the table header. Built-in columns take one
@@ -41,13 +43,33 @@ export function ColumnMenu({ columns, onChange, onRenameOption, onRetype }: {
 }) {
   const m = useMessages()
   const names = builtinNames(m, columns).columns
-  const [open, setOpen] = useState(false)
+  // A rename being typed is kept as a draft, and reopens the menu at its column or option.
+  const kept = useDrafts<string>(['papers', 'columns'], [
+    ...columns.custom.map((c) => `name:${c.key}`),
+    ...columns.custom.flatMap((c) => c.options.map((o) => `option:${c.key}:${o}`)),
+  ])
+  const keptName = columns.custom.find((c) => kept.get(`name:${c.key}`) !== undefined)?.key ?? null
+  const keptOption = columns.custom.flatMap((c) => c.options.map((from) => ({ key: c.key, from })))
+    .find((option) => kept.get(`option:${option.key}:${option.from}`) !== undefined) ?? null
+  const [ownOpen, setOpen] = useState(false)
+  const open = ownOpen || keptName !== null || keptOption !== null
   // The key of the column being renamed
-  const [renaming, setRenaming] = useState<string | null>(null)
+  const [ownRenaming, setOwnRenaming] = useState<string | null>(null)
+  const renaming = ownRenaming ?? keptName
+  const setRenaming = (next: string | null) => {
+    if (next === null && renaming !== null) kept.drop(`name:${renaming}`)
+    setOwnRenaming(next)
+  }
   // The key of the column whose options are being expanded
-  const [opened, setOpened] = useState<string | null>(null)
+  const [ownOpened, setOpened] = useState<string | null>(null)
+  const opened = ownOpened ?? keptOption?.key ?? null
   // The option being renamed
-  const [renamingOption, setRenamingOption] = useState<{ key: string; from: string } | null>(null)
+  const [ownRenamingOption, setOwnRenamingOption] = useState<{ key: string; from: string } | null>(null)
+  const renamingOption = ownRenamingOption ?? keptOption
+  const setRenamingOption = (next: { key: string; from: string } | null) => {
+    if (next === null && renamingOption !== null) kept.drop(`option:${renamingOption.key}:${renamingOption.from}`)
+    setOwnRenamingOption(next)
+  }
   const leaveRename = useRef<(() => Promise<boolean>) | null>(null)
   const leaveOptionRename = useRef<(() => Promise<boolean>) | null>(null)
   // The key of the column whose type options are expanded
@@ -94,7 +116,7 @@ export function ColumnMenu({ columns, onChange, onRenameOption, onRetype }: {
         setRetyping(null)
       }}
       sticky="always" trigger={(
-        <IconButton label={m.papers.columnMenu.settings} size="nested" className="colbtn"><IconGear /></IconButton>
+        <IconButton label={m.papers.columnMenu.settings} size="nested"><IconGear /></IconButton>
       )}
       contentProps={{
           // Radix takes Esc in the document's capture phase, so the input cannot stop it; during a
@@ -126,12 +148,13 @@ export function ColumnMenu({ columns, onChange, onRenameOption, onRetype }: {
           })}
           {columns.custom.map((c) => (
             <div key={c.key}>
-              <div className="mi colrow">
+              <div className="mi colrow" data-row-actions="">
                 <span className="ck" />
                 {renaming === c.key
                   ? (
                     <InlineDraftInput
                       className="celledit" defaultValue={c.label} leaveRef={leaveRename}
+                      kept={{ drafts: kept, target: `name:${c.key}` }}
                       onCancel={() => setRenaming(null)}
                       onSubmit={(label) => {
                         if (label === c.label) return true
@@ -151,27 +174,29 @@ export function ColumnMenu({ columns, onChange, onRenameOption, onRetype }: {
                   : (
                     <IconButton
                       label={m.papers.columnMenu.options} size="nested" className={opened === c.key ? 'cmx optx on' : 'cmx optx'}
-                      onClick={() => setOpened((k) => (k === c.key ? null : c.key))}
+                      onClick={() => setOpened(opened === c.key ? null : c.key)}
                     ><IconChevron /></IconButton>
                   )}
-                <IconButton
-                  label={m.papers.columnMenu.changeType} size="nested" className={retyping === c.key ? 'cmx typex on' : 'cmx typex'}
-                  onClick={() => setRetyping((k) => (k === c.key ? null : c.key))}
-                ><ColumnTypeIcon type={c.type} /></IconButton>
-                <IconButton
-                  label={m.papers.columnMenu.rename} size="nested" className="cmx"
-                  onClick={() => afterLeaving(leaveRename, () => setRenaming(c.key))}
-                ><IconPencil /></IconButton>
-                {/* Core rejects group keys with no column, so a deleted column leaves the groups too. */}
-                <IconButton
-                  label={m.papers.columnMenu.deleteColumn} size="nested" tone="danger" className="cmx"
-                  onClick={() => onChange((base) => ({
-                    ...base,
-                    custom: base.custom.filter((x) => x.key !== c.key),
-                    groups: base.groups.filter((g) => g !== c.key),
-                    order: base.order?.filter((key) => key !== c.key),
-                  }))}
-                ><IconTrash /></IconButton>
+                <RowActions>
+                  <IconButton
+                    label={m.papers.columnMenu.changeType} size="nested" className="cmx typex" aria-expanded={retyping === c.key}
+                    onClick={() => setRetyping((k) => (k === c.key ? null : c.key))}
+                  ><ColumnTypeIcon type={c.type} /></IconButton>
+                  <IconButton
+                    label={m.papers.columnMenu.rename} size="nested" className="cmx"
+                    onClick={() => afterLeaving(leaveRename, () => setRenaming(c.key))}
+                  ><IconPencil /></IconButton>
+                  {/* Core rejects group keys with no column, so a deleted column leaves the groups too. */}
+                  <IconButton
+                    label={m.papers.columnMenu.deleteColumn} size="nested" tone="danger" className="cmx"
+                    onClick={() => onChange((base) => ({
+                      ...base,
+                      custom: base.custom.filter((x) => x.key !== c.key),
+                      groups: base.groups.filter((g) => g !== c.key),
+                      order: base.order?.filter((key) => key !== c.key),
+                    }))}
+                  ><IconTrash /></IconButton>
+                </RowActions>
               </div>
               {retyping === c.key
                 ? (
@@ -187,11 +212,12 @@ export function ColumnMenu({ columns, onChange, onRenameOption, onRetype }: {
                 : c.options.length === 0
                   ? <div className="mi optrow optnone">{m.papers.columnMenu.noOptionsHint}</div>
                   : c.options.map((o) => (
-                    <div key={o} className="mi optrow">
+                    <div key={o} className="mi optrow" data-row-actions="">
                       {renamingOption?.key === c.key && renamingOption.from === o
                         ? (
                           <InlineDraftInput
                             className="celledit" defaultValue={o} leaveRef={leaveOptionRename}
+                            kept={{ drafts: kept, target: `option:${c.key}:${o}` }}
                             onCancel={() => setRenamingOption(null)}
                             onSubmit={(to) => {
                               if (to === o) return true
@@ -202,21 +228,23 @@ export function ColumnMenu({ columns, onChange, onRenameOption, onRetype }: {
                           />
                         )
                         : <FadeText className="cl" label={o}>{o}</FadeText>}
-                      <IconButton
-                        label={m.papers.columnMenu.renameOption} size="nested" className="cmx"
-                        onClick={() => afterLeaving(
-                          leaveOptionRename, () => setRenamingOption({ key: c.key, from: o }),
-                        )}
-                      ><IconPencil /></IconButton>
-                      <IconButton
-                        label={m.papers.columnMenu.deleteOption} size="nested" tone="danger" className="cmx"
-                        onClick={() => onChange((base) => ({
-                          ...base,
-                          custom: base.custom.map((x) => (x.key === c.key
-                            ? { ...x, options: x.options.filter((v) => v !== o) }
-                            : x)),
-                        }))}
-                      ><IconTrash /></IconButton>
+                      <RowActions>
+                        <IconButton
+                          label={m.papers.columnMenu.renameOption} size="nested" className="cmx"
+                          onClick={() => afterLeaving(
+                            leaveOptionRename, () => setRenamingOption({ key: c.key, from: o }),
+                          )}
+                        ><IconPencil /></IconButton>
+                        <IconButton
+                          label={m.papers.columnMenu.deleteOption} size="nested" tone="danger" className="cmx"
+                          onClick={() => onChange((base) => ({
+                            ...base,
+                            custom: base.custom.map((x) => (x.key === c.key
+                              ? { ...x, options: x.options.filter((v) => v !== o) }
+                              : x)),
+                          }))}
+                        ><IconTrash /></IconButton>
+                      </RowActions>
                     </div>
                   ))}
             </div>

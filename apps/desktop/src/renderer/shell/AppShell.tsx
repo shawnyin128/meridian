@@ -1,6 +1,7 @@
 import { createContext, Fragment, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import type { CSSProperties, MouseEvent as ReactMouseEvent, ReactNode } from 'react'
 import type { ChatSession, Watch } from '../../shared/contract.js'
+import { listingsOf } from '../../shared/inbox-streams.js'
 import { ACTIVE_PROJECT } from '../../shared/vocabulary.js'
 import {
   appMenu, appUpdates, changelog, chat, extensions, idea, inbox, later, papers, project, trash, vault, watch, wiki,
@@ -14,8 +15,10 @@ import { Notice, type NoticeAction, type NoticeContent, type NoticeTone } from '
 import { PageFailure } from '../components/PageShell.js'
 import { ScreenBoundary } from '../components/ScreenBoundary.js'
 import { Tooltip } from '../components/Tooltip.js'
+import { usePruneDrafts } from '../hooks/useDrafts.js'
+import { GenerationsContext, useCoreGenerations } from '../hooks/useGenerations.js'
 import { errorLabel } from '../lib/failure-label.js'
-import { commandShortcut, composing } from '../lib/keyboard.js'
+import { commandShortcut, composing, pressesCommand } from '../lib/keyboard.js'
 import type { Catalog } from '../messages/catalog.js'
 import { useMessages } from '../messages/useMessages.js'
 import { CommandPalette, type PaletteCommand } from './CommandPalette.js'
@@ -119,6 +122,7 @@ const ChatSessionContext = createContext<{
   title: string | null
   archived: boolean
   select: (id: string) => void
+  remove: (id: string) => void
 } | null>(null)
 const VaultRevisionContext = createContext<{ revision: number; bump: () => void } | null>(null)
 /** Exported only so tests can supply a today value to components that call `useToday` without mounting all of AppShell. */
@@ -255,6 +259,14 @@ export function useScreen(): ScreenKey {
   return state.screen
 }
 
+/** Whether the caller's screen is the one shown; a screen once entered stays mounted while hidden. */
+export function useScreenShown(): boolean {
+  const state = useContext(ScreenContext)
+  const slot = useContext(SlotContext)
+  if (!state) throw new Error('useScreenShown needs AppShell')
+  return state.screen === slot
+}
+
 /**
  * Returns the number of sidebar navigations. A screen uses it to decide when an entry takes it back to
  * its top level: only a sidebar click counts as an entry. A cross-screen jump and the return from one
@@ -299,12 +311,15 @@ export function useInboxMode(): InboxMode {
  * sidebar's chat list picks it, so like the current screen it is shell navigation state; `select`
  * makes another chat the current one. `archived` tells whether the chat is archived: an archived chat
  * is not in the sidebar list and opens only from Settings, so the screen has to show that it is.
+ * `remove` deletes a chat into the trash, with Undo in the notice, and when it is the current one
+ * leaves for the Feed, as archiving it from the sidebar does.
  */
 export function useChatSession(): {
   id: string | null
   title: string | null
   archived: boolean
   select: (id: string) => void
+  remove: (id: string) => void
 } {
   const state = useContext(ChatSessionContext)
   if (!state) throw new Error('useChatSession needs AppShell')
@@ -380,8 +395,11 @@ export function AppShell({ screens, settings }: {
   const [jump, setJump] = useState<ScreenJump | null>(null)
   const [watches, setWatches] = useState<Watch[]>([])
   const [chats, setChats] = useState<ChatSession[]>([])
+  const [chatsRead, setChatsRead] = useState(false)
+  const [projectIds, setProjectIds] = useState<string[] | null>(null)
+  const [ideaIds, setIdeaIds] = useState<string[] | null>(null)
   const [chatId, setChatId] = useState<string | null>(null)
-  const [inboxCounts, setInboxCounts] = useState<Record<string, number>>({})
+  const [inboxWatches, setInboxWatches] = useState<string[][]>([])
   const [discoveryCount, setDiscoveryCount] = useState(0)
   const [discoveryProjects, setDiscoveryProjects] = useState<DiscoveryProjectCount[]>([])
   const [laterCount, setLaterCount] = useState(0)
@@ -406,31 +424,47 @@ export function AppShell({ screens, settings }: {
   useEffect(() => {
     void vault.today().then(setToday).catch((e: unknown) => setBootError(errorLabel(m, e)))
     void papers.list({ page: 1, size: 1 }).then((r) => setPaperCount(r.total))
-    void project.list().then((rows) =>
-      setProjectCount(rows.filter((p) => p.status === ACTIVE_PROJECT).length))
+    void project.list().then((rows) => {
+      setProjectCount(rows.filter((p) => p.status === ACTIVE_PROJECT).length)
+      setProjectIds(rows.map((p) => p.id))
+    })
     void trash.list().then((entries) => setTrashCount(entries.length))
     void changelog.list().then((entries) => setChangeCount(entries.filter((c) => !c.archived).length))
     void wiki.home().then((h) => setWikiCount(h.aggregationCount))
     void watch.list().then(setWatches)
-    void chat.list().then(setChats)
+    void chat.list().then((rows) => {
+      setChats(rows)
+      setChatsRead(true)
+    })
     void later.list().then((entries) => setLaterCount(entries.length))
-    void inbox.list({ kind: 'watch' }).then((entries) => setInboxCounts(entries.reduce<Record<string, number>>(
-      (counts, e) => ({ ...counts, [e.watch]: (counts[e.watch] ?? 0) + 1 }), {})))
+    void inbox.list({ kind: 'watch' }).then((entries) => setInboxWatches(
+      entries.map((entry) => listingsOf(entry, 'watch').map((listing) => listing.id)),
+    ))
     void Promise.all([inbox.list({ kind: 'discovery' }), project.list()]).then(([entries, projects]) => {
       setDiscoveryCount(entries.length)
       const names = new Map(projects.map((held) => [held.id, held.name]))
       const counts = new Map<string, DiscoveryProjectCount>()
-      for (const entry of entries) {
-        const held = counts.get(entry.project) ?? { id: entry.project, name: names.get(entry.project) ?? entry.source, count: 0 }
-        counts.set(entry.project, { ...held, count: held.count + 1 })
+      for (const listing of entries.flatMap((entry) => listingsOf(entry, 'discovery'))) {
+        const held = counts.get(listing.id) ?? { id: listing.id, name: names.get(listing.id) ?? listing.source, count: 0 }
+        counts.set(listing.id, { ...held, count: held.count + 1 })
       }
       setDiscoveryProjects([...counts.values()])
     })
   }, [revision])
 
+  // A kept draft of a chat, project or idea that is gone is dropped whenever their list is read, one
+  // of a paper that is gone once per session, when the kept drafts are read.
+  usePruneDrafts(['chat'], chatsRead ? chats.map((session) => session.id) : null)
+  usePruneDrafts(['project'], projectIds)
+  usePruneDrafts(['idea'], ideaIds)
+  usePruneDrafts(['paper'], papers.allIds)
+
   // Reading ideas also takes in those a coding agent recorded, which is not a write here, so recount on every screen change too.
   useEffect(() => {
-    void idea.list().then((rows) => setIdeaCount(rows.filter((item) => !item.archived).length))
+    void idea.list().then((rows) => {
+      setIdeaCount(rows.filter((item) => !item.archived).length)
+      setIdeaIds(rows.map((item) => item.id))
+    })
   }, [revision, screen])
 
   // After a watch is removed, the Inbox must not stay scoped to a watch that no longer exists.
@@ -477,7 +511,8 @@ export function AppShell({ screens, settings }: {
     }
     return { success: of('success'), refusal: of('refusal') }
   }, [])
-  const jobsStatus = useJobsPoll(bump)
+  const { status: jobsStatus, refresh: refreshJobs } = useJobsPoll(bump)
+  const generations = useCoreGenerations(jobsStatus, refreshJobs)
   const colourThemeFiles = useColourThemeFilesPoll()
   const paperCountState = useMemo(() => ({ count: paperCount }), [paperCount])
   const screenState = useMemo(() => ({ screen, entry, reentry }), [screen, entry, reentry])
@@ -493,11 +528,11 @@ export function AppShell({ screens, settings }: {
     openCategory: openSettingsCategory,
   }), [settingsCategory, settingsOpen, openSettingsCategory])
 
-  // Ctrl+B / Cmd+B toggles the sidebar; Escape peels the topmost dismissible layer; "/" outside an
-  // editable element jumps to the nearest search field.
+  // ⌘B on macOS, Ctrl+B elsewhere, toggles the sidebar; Escape peels the topmost dismissible layer;
+  // "/" outside an editable element jumps to the nearest search field.
   useEffect(() => {
     const key = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && (e.key === 'b' || e.key === 'B')) {
+      if (pressesCommand(appMenu.platform(), e, 'B')) {
         e.preventDefault()
         setHidden((h) => !h)
         return
@@ -597,6 +632,25 @@ export function AppShell({ screens, settings }: {
     }).catch((e: unknown) => notify.refusal(errorLabel(m, e)))
   }
 
+  // Deletes a chat into the trash with Undo in the notice and, if it is the open one, goes to the Feed as archiving does.
+  const deleteChat = useCallback((id: string) => {
+    void chat.delete(id).then(({ trash: entry }) => {
+      bump()
+      notify.success(m.common.trashed, {
+        label: m.common.undo,
+        onAction: () => {
+          void trash.restore(entry).then(() => {
+            bump()
+            notify.success(m.changelog.undoneNote)
+          }).catch((e: unknown) => notify.refusal(errorLabel(m, e)))
+        },
+      })
+      if (id !== chatId) return
+      setChatId(null)
+      navigate('feed')
+    }).catch((e: unknown) => notify.refusal(errorLabel(m, e)))
+  }, [chatId, navigate, notify, bump, m])
+
   const chatSession = useMemo(() => {
     const open = chats.find((s) => s.id === chatId)
     return {
@@ -604,8 +658,9 @@ export function AppShell({ screens, settings }: {
       title: open?.title ?? null,
       archived: open?.archived ?? false,
       select: setChatId,
+      remove: deleteChat,
     }
-  }, [chatId, chats])
+  }, [chatId, chats, deleteChat])
 
   const jumps = useMemo(() => ({
     jump,
@@ -778,10 +833,10 @@ export function AppShell({ screens, settings }: {
           changeCount={changeCount} projectCount={projectCount} trashCount={trashCount}
           wikiCount={wikiCount} ideaCount={ideaCount}
           inboxScope={inboxScope} inboxMode={inboxMode} onOpenInbox={openInbox} watches={watches}
-          inboxCounts={inboxCounts} discoveryCount={discoveryCount} discoveryProjects={discoveryProjects}
+          inboxWatches={inboxWatches} discoveryCount={discoveryCount} discoveryProjects={discoveryProjects}
           laterCount={laterCount}
           chats={chats} chatId={screen === 'chat' ? chatId : null} onOpenChat={openChat}
-          onNewChat={newChat} onArchiveChat={archiveChat}
+          onNewChat={newChat} onArchiveChat={archiveChat} onDeleteChat={deleteChat}
           grip={sidebarGrip} collapsed={hidden}
         />
         {hidden ? (
@@ -797,6 +852,7 @@ export function AppShell({ screens, settings }: {
         ) : null}
         <NoticeContext.Provider value={notify}>
           <JobsContext.Provider value={jobsStatus}>
+            <GenerationsContext.Provider value={generations}>
             <PaperCountContext.Provider value={paperCountState}>
               <VaultRevisionContext.Provider value={vaultRevision}>
                 <ScreenContext.Provider value={screenState}>
@@ -844,6 +900,7 @@ export function AppShell({ screens, settings }: {
                 </ScreenContext.Provider>
               </VaultRevisionContext.Provider>
             </PaperCountContext.Provider>
+            </GenerationsContext.Provider>
           </JobsContext.Provider>
         </NoticeContext.Provider>
         <Notice notice={notice} />

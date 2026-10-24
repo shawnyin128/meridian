@@ -59,11 +59,14 @@ const api = vi.hoisted(() => ({
     root: '/tmp/meridian', backupRoot: '/tmp/meridian-backup-current',
   })),
   deleteBackup: vi.fn(async () => null),
+  resetLibrary: vi.fn(async () => ({})),
   deleteTheme: vi.fn(async () => {}),
   refreshThemes: vi.fn(async () => {}),
   restartApp: vi.fn(),
   success: vi.fn(),
   chatList: vi.fn(async () => [] as unknown[]),
+  removeChat: vi.fn(),
+  revision: 0,
 }))
 
 vi.mock('../ipc.js', () => ({
@@ -76,7 +79,7 @@ vi.mock('../ipc.js', () => ({
     backups: api.libraryBackups,
     switchBackup: api.switchBackup,
     deleteBackup: api.deleteBackup,
-    configure: vi.fn(), reset: vi.fn(),
+    configure: vi.fn(), reset: api.resetLibrary,
   },
   delivery: {
     settings: api.deliverySettings,
@@ -96,10 +99,11 @@ vi.mock('../ipc.js', () => ({
 vi.mock('../shell/AppShell.js', () => ({
   useNotice: () => ({ success: api.success, refusal: vi.fn() }),
   useJump: () => ({ open: vi.fn() }),
+  useChatSession: () => ({ remove: api.removeChat }),
   useSettingsOpen: () => ({
     open: true, requestedCategory: api.requestedCategory, setOpen: api.setOpen, openCategory: vi.fn(),
   }),
-  useVaultRevision: () => ({ revision: 0, bump: vi.fn() }),
+  useVaultRevision: () => ({ revision: api.revision, bump: vi.fn() }),
 }))
 vi.mock('../hooks/useVaultWrite.js', () => ({
   useVaultWrite: () => async (work: Promise<unknown>) => { await work; return true },
@@ -158,6 +162,7 @@ describe('Settings', () => {
     document.body.append(host)
     root = createRoot(host)
     api.requestedCategory = 'delivery-watch'
+    api.revision = 0
     api.updateDeliverySettings.mockClear()
     api.updateModelSettings.mockClear()
     api.checkModelConnection.mockClear()
@@ -176,6 +181,7 @@ describe('Settings', () => {
     api.libraryBackups.mockResolvedValue([])
     api.switchBackup.mockClear()
     api.deleteBackup.mockClear()
+    api.resetLibrary.mockClear()
     api.deleteTheme.mockReset()
     api.refreshThemes.mockClear()
     api.restartApp.mockClear()
@@ -214,7 +220,7 @@ describe('Settings', () => {
     const save = dialog.querySelector<HTMLButtonElement>('.delivery-settings-card > .service-foot > .service-actions > .btn')!
     expect(dialog.querySelector('.delivery-setting-control .btn')).toBeNull()
     await act(async () => { save.click() })
-    expect(api.updateDeliverySettings).toHaveBeenCalledWith({ maxItemsPerRun: 12 })
+    expect(api.updateDeliverySettings).toHaveBeenCalledWith({ maxItemsPerRun: 12, maxShownPerScope: 20 })
     expect(save.textContent).toBe('已保存')
   })
 
@@ -232,10 +238,10 @@ describe('Settings', () => {
     await pressEnter({ isComposing: true })
     expect(api.updateDeliverySettings).not.toHaveBeenCalled()
     await pressEnter({})
-    expect(api.updateDeliverySettings).toHaveBeenCalledExactlyOnceWith({ maxItemsPerRun: 12 })
+    expect(api.updateDeliverySettings).toHaveBeenCalledExactlyOnceWith({ maxItemsPerRun: 12, maxShownPerScope: 20 })
   })
 
-  it('归档的对话那一行的打开和取消归档是行尾操作槽里的图标钮', async () => {
+  it('归档的对话那一行的打开、取消归档和删除是行尾操作槽里的图标钮，删除标红、不弹确认，交给删对话的那一处', async () => {
     const { chat } = await import('../ipc.js')
     vi.mocked(chat.list).mockResolvedValueOnce([{ id: 'chat-1', title: '树宽讨论', archived: true, messageCount: 2 }])
     api.requestedCategory = 'archived'
@@ -245,7 +251,10 @@ describe('Settings', () => {
       item.getAttribute('aria-label'), item.textContent, item.classList.contains('icbtn'), item.classList.contains('danger'),
     ])
     expect(row.hasAttribute('data-row-actions')).toBe(true)
-    expect(slot(row)).toEqual([['打开', '', true, false], ['取消归档', '', true, false]])
+    expect(slot(row)).toEqual([['打开', '', true, false], ['取消归档', '', true, false], ['删除', '', true, true]])
+    await act(async () => { row.querySelector<HTMLButtonElement>('.row-actions button[aria-label="删除"]')!.click() })
+    expect(document.querySelector('[role="alertdialog"]')).toBeNull()
+    expect(api.removeChat).toHaveBeenCalledExactlyOnceWith('chat-1')
   })
 
   it('设置右栏放不下时，只在藏着内容的那一边淡出', async () => {
@@ -313,6 +322,15 @@ describe('Settings', () => {
     const dialog = document.querySelector('.setdlg')!
     await act(async () => { dialog.querySelector<HTMLElement>('[data-setcat="api"]')!.click() })
     expect(dialog.querySelector('[data-api="research"] .api-state')?.textContent).toBe('Semantic Scholar')
+  })
+
+  it('API 总览读不到当前状态时，原因落在共享的错误框里，和别的设置页的错误一样', async () => {
+    api.semanticKey.mockRejectedValueOnce(new CallError('delivery.semanticKey', 'newer-version'))
+    await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
+    const dialog = document.querySelector('.setdlg')!
+    await act(async () => { dialog.querySelector<HTMLElement>('[data-setcat="api"]')!.click() })
+    const alert = dialog.querySelector('.set-body [role="alert"]')
+    expect([alert?.className, alert?.textContent]).toEqual(['ipcerror ipcerror--section', '需要更新 App'])
   })
 
   it('API 与论文推送的子分类默认收起，点开父级或直接进入子级都会展开', async () => {
@@ -898,6 +916,60 @@ describe('Settings', () => {
     expect(api.success).toHaveBeenCalledWith('备份已删除')
   })
 
+  it('确认删除备份后确认框关上，删除还没完成时那一行的删除按钮在原处转圈、按不动，名字是正在删除', async () => {
+    api.libraryLocation.mockResolvedValueOnce({
+      root: '/tmp/meridian', source: 'configured', locked: false, restartRequired: false, openError: null,
+    })
+    api.libraryBackups.mockResolvedValueOnce([{
+      id: 'meridian-backup-20260915-182838Z',
+      path: '/tmp/meridian-backup-20260915-182838Z',
+      createdAt: '2026-09-15T18:28:38.000Z',
+    }])
+    let finish = () => {}
+    api.deleteBackup.mockImplementationOnce(() => new Promise((resolve) => { finish = () => resolve(null) }))
+    await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
+    const dialog = document.querySelector('.setdlg')!
+    await act(async () => { dialog.querySelector<HTMLElement>('[data-setcat="storage"]')!.click() })
+    await act(async () => { dialog.querySelector<HTMLButtonElement>('.storage-backup-actions .btn.danger')!.click() })
+    const confirm = [...document.querySelectorAll<HTMLButtonElement>('.modal.confirm .btn')]
+      .find((button) => button.textContent === '删除')!
+    await act(async () => { confirm.click() })
+
+    expect(document.querySelector('.modal.confirm')).toBeNull()
+    const trigger = dialog.querySelector<HTMLButtonElement>('.storage-backup-actions .btn.danger')!
+    expect([
+      trigger.getAttribute('aria-label'), trigger.textContent, trigger.querySelector('.ring.spin') !== null, trigger.disabled,
+      trigger.getAttribute('aria-busy'),
+    ]).toEqual(['正在删除…', '删除', true, true, 'true'])
+    await act(async () => { finish() })
+    expect(dialog.querySelector('.storage-backup-list')).toBeNull()
+  })
+
+  it('确认重置论文库后确认框关上，重置还没完成时重置按钮在原处转圈、按不动，名字是正在重置，完成后才重启', async () => {
+    api.libraryLocation.mockResolvedValueOnce({
+      root: '/tmp/meridian', source: 'configured', locked: false, restartRequired: false, openError: null,
+    })
+    let finish = () => {}
+    api.resetLibrary.mockImplementationOnce(() => new Promise((resolve) => { finish = () => resolve({}) }))
+    await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
+    const dialog = document.querySelector('.setdlg')!
+    await act(async () => { dialog.querySelector<HTMLElement>('[data-setcat="storage"]')!.click() })
+    await act(async () => { dialog.querySelector<HTMLButtonElement>('.storage-reset .btn.danger')!.click() })
+    const confirm = [...document.querySelectorAll<HTMLButtonElement>('.modal.confirm .btn')]
+      .find((button) => button.textContent === '重置并重启')!
+    await act(async () => { confirm.click() })
+
+    expect(document.querySelector('.modal.confirm')).toBeNull()
+    const trigger = dialog.querySelector<HTMLButtonElement>('.storage-reset .btn.danger')!
+    expect([
+      trigger.getAttribute('aria-label'), trigger.textContent, trigger.querySelector('.ring.spin') !== null, trigger.disabled,
+      trigger.getAttribute('aria-busy'),
+    ]).toEqual(['正在重置…', '重置库…', true, true, 'true'])
+    expect(api.restartApp).not.toHaveBeenCalled()
+    await act(async () => { finish() })
+    expect(api.restartApp).toHaveBeenCalledOnce()
+  })
+
   // With every dialog layer at one z-index (shared/dialog-surface.test.ts), document order decides
   // which paints on top.
   it('设置里弹出的确认框与它的遮罩都排在设置之后,用对话框的面', async () => {
@@ -1182,5 +1254,74 @@ describe('Settings', () => {
     expect(dialog.querySelector('[aria-label="模板连接信息"]')?.textContent)
       .toContain('Responses API · 无需认证')
     expect(dialog.querySelector('[aria-label="模型 API Key"]')).toBeNull()
+  })
+
+  const newer = (method: 'extensions.status' | 'library.location' | 'chat.list' | 'harness.modelSettings' | 'delivery.semanticKey') =>
+    new CallError(method, 'newer-version')
+  const render = (revision = api.revision) => {
+    api.revision = revision
+    return act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
+  }
+  const shownFailure = () => {
+    const dialog = document.querySelector('.setdlg')!
+    return [
+      dialog.querySelector('.set-head .ipcerror')?.textContent ?? null,
+      dialog.querySelector('.set-body .ipcerror')?.textContent ?? null,
+      dialog.querySelectorAll('.set-body .loading-placeholder').length,
+    ]
+  }
+
+  it('读扩展状态失败时，扩展一栏不停在读取占位上，屏头写出原因；下一次读成功时原因收起', async () => {
+    api.requestedCategory = 'extensions'
+    api.extensionStatus.mockRejectedValueOnce(newer('extensions.status'))
+    await render()
+    expect(shownFailure()).toEqual(['需要更新 App', null, 0])
+    await render(1)
+    expect(shownFailure()).toEqual([null, null, 0])
+    expect(document.querySelector('.setdlg .set-body')!.textContent).toContain('Codex')
+  })
+
+  it('读论文库位置失败时，原因写在论文库那张卡片里，不再停在读取占位上，也不在屏头重复', async () => {
+    api.requestedCategory = 'storage'
+    api.libraryLocation.mockRejectedValueOnce(newer('library.location'))
+    await render()
+    expect(shownFailure()).toEqual([null, '需要更新 App', 0])
+    expect(document.querySelector('.setdlg .storage-card .ipcerror')?.textContent).toBe('需要更新 App')
+  })
+
+  it('读对话列表失败时，归档的对话一栏不停在读取占位上，屏头写出原因', async () => {
+    api.requestedCategory = 'archived'
+    api.chatList.mockRejectedValueOnce(newer('chat.list'))
+    await render()
+    expect(shownFailure()).toEqual(['需要更新 App', null, 0])
+  })
+
+  it('前一次读取的失败晚到，不盖过后一次已经读成功的', async () => {
+    api.requestedCategory = 'extensions'
+    let failEarlier: (cause: unknown) => void = () => {}
+    api.extensionStatus.mockImplementationOnce(() => new Promise((_, reject) => { failEarlier = reject }))
+    await render()
+    await render(1)
+    await act(async () => { failEarlier(newer('extensions.status')) })
+    expect(shownFailure()).toEqual([null, null, 0])
+  })
+
+  it('读模型设置失败时，模型一栏写出原因，不停在读取占位上；回到这一栏再读成功时原因收起', async () => {
+    api.requestedCategory = 'model'
+    api.modelSettings.mockRejectedValueOnce(newer('harness.modelSettings'))
+    await render()
+    expect(shownFailure()).toEqual([null, '需要更新 App', 0])
+    const dialog = document.querySelector('.setdlg')!
+    await act(async () => { dialog.querySelector<HTMLElement>('[data-setcat="research"]')!.click() })
+    await act(async () => { dialog.querySelector<HTMLElement>('[data-setcat="model"]')!.click() })
+    expect(shownFailure()).toEqual([null, null, 0])
+    expect(dialog.querySelector('[aria-label="模型协议"]')).not.toBeNull()
+  })
+
+  it('读 Semantic Scholar key 失败时，这一栏写出原因，而不是什么都不显示', async () => {
+    api.requestedCategory = 'research'
+    api.semanticKey.mockRejectedValueOnce(newer('delivery.semanticKey'))
+    await render()
+    expect(shownFailure()).toEqual([null, '需要更新 App', 0])
   })
 })
