@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
+import { BUILT_IN_COLOUR_THEMES, DEFAULT_COLOUR_THEME, deriveColourTokens } from './colour-theme.js'
 
 const tokens = readFileSync(new URL('../renderer/shell/tokens.css', import.meta.url), 'utf8')
 
@@ -8,6 +9,17 @@ type Colour = { r: number; g: number; b: number; a: number }
 
 /** A contrast case: foreground token, bottom-to-top background token stack, and required ratio. */
 type Pair = { theme: 'light' | 'dark'; label: string; fg: string; ground: string[]; min: number }
+
+/** One built-in colour theme in one mode. */
+type Theme = { id: string; mode: 'light' | 'dark' }
+
+const THEMES: Theme[] = BUILT_IN_COLOUR_THEMES.flatMap(({ id }) => (['light', 'dark'] as const).map((mode) => ({ id, mode })))
+const LIGHT_THEMES = THEMES.filter((theme) => theme.mode === 'light')
+const DARK_THEMES = THEMES.filter((theme) => theme.mode === 'dark')
+const DEFAULT_LIGHT: Theme = { id: DEFAULT_COLOUR_THEME.id, mode: 'light' }
+
+/** A theme in a test title: its mode's label, after the theme's id unless it is today's palette. */
+const named = ({ id, mode }: Theme): string => `${id === DEFAULT_COLOUR_THEME.id ? '' : `${id} `}${mode === 'dark' ? '暗色' : '亮色'}`
 
 /** Text combinations use the WCAG AA body-text threshold. */
 const TEXT = 4.5
@@ -36,15 +48,21 @@ const declarations = (selector: string): Map<string, string> => {
 
 const ROOT = declarations(':root')
 const DARK = declarations('[data-theme="dark"]')
+const DERIVED = new Map(THEMES.map((theme) => {
+  const { light, dark } = BUILT_IN_COLOUR_THEMES.find(({ id }) => id === theme.id)!
+  return [`${theme.id} ${theme.mode}`, new Map(Object.entries(deriveColourTokens(theme.mode === 'light' ? light : dark, theme.mode)))]
+}))
 
 /**
- * Resolves a token to its final theme value, recursively following `var()`.
- * Dark mode falls back to `:root`, matching CSS cascading behavior.
- * @throws When neither theme block defines the token.
+ * Resolves a token to its final value in `theme`, recursively following `var()`. Today's palette reads
+ * tokens.css alone, dark falling back to `:root` as the cascade does; another theme's derived colour
+ * tokens win over tokens.css, as the rules the renderer adds for it do.
+ * @throws When neither the derived tokens nor tokens.css define the token.
  */
-const resolve = (theme: 'light' | 'dark', name: string): string => {
-  const value = theme === 'dark' ? DARK.get(name) ?? ROOT.get(name) : ROOT.get(name)
-  if (value === undefined) throw new Error(`tokens.css 的 ${theme} 里没有 ${name}`)
+const resolve = (theme: Theme, name: string): string => {
+  const derived = theme.id === DEFAULT_COLOUR_THEME.id ? undefined : DERIVED.get(`${theme.id} ${theme.mode}`)!.get(name)
+  const value = derived ?? (theme.mode === 'dark' ? DARK.get(name) ?? ROOT.get(name) : ROOT.get(name))
+  if (value === undefined) throw new Error(`tokens.css 的${named(theme)}里没有 ${name}`)
   const indirect = /^var\((--[\w-]+)\)$/.exec(value)
   return indirect ? resolve(theme, indirect[1]!) : value
 }
@@ -54,9 +72,9 @@ const resolve = (theme: 'light' | 'dark', name: string): string => {
  * and `color-mix(in srgb, A P%, B)` whose parts are any of these or a `var()`.
  * @throws When the value uses an unsupported representation.
  */
-const colour = (theme: 'light' | 'dark', name: string): Colour => parse(theme, name, resolve(theme, name))
+const colour = (theme: Theme, name: string): Colour => parse(theme, name, resolve(theme, name))
 
-const parse = (theme: 'light' | 'dark', name: string, value: string): Colour => {
+const parse = (theme: Theme, name: string, value: string): Colour => {
   if (value === 'transparent') return { r: 0, g: 0, b: 0, a: 0 }
   const token = /^var\((--[\w-]+)\)$/.exec(value)
   if (token) return colour(theme, token[1]!)
@@ -79,7 +97,7 @@ const parse = (theme: 'light' | 'dark', name: string, value: string): Colour => 
     }
   }
   const fn = /^rgba?\(([^)]+)\)$/.exec(value)
-  if (!fn) throw new Error(`${name} 在 ${theme} 下不是本测试认得的颜色:${value}`)
+  if (!fn) throw new Error(`${name} 在${named(theme)}下不是本测试认得的颜色:${value}`)
   const parts = fn[1]!.split(',').map((n) => Number(n))
   return { r: parts[0]!, g: parts[1]!, b: parts[2]!, a: parts[3] ?? 1 }
 }
@@ -88,7 +106,7 @@ const parse = (theme: 'light' | 'dark', name: string, value: string): Colour => 
  * Alpha-composites a background stack from bottom to top into one opaque color.
  * @throws When the bottom layer is not opaque.
  */
-const flatten = (theme: 'light' | 'dark', stack: string[]): Colour => {
+const flatten = (theme: Theme, stack: string[]): Colour => {
   const floor = colour(theme, stack[0]!)
   if (floor.a !== 1) throw new Error(`${stack[0]} 不是不透明的背板,压在它上面的合成结果没有意义`)
   return stack.map((name) => colour(theme, name)).reduce((below, above) => ({
@@ -194,13 +212,50 @@ const PAIRS: Pair[] = [
   { theme: 'dark', label: '选中侧栏行的图标', fg: '--on-selected', ground: ['--window', '--sidebar', '--selected'], min: MARK },
 ]
 
-describe('tokens.css 的对比度', () => {
-  for (const pair of PAIRS) {
-    it(`${pair.theme === 'dark' ? '暗色' : '亮色'}的${pair.label}不低于 ${pair.min}:1`, () => {
-      const got = contrast(colour(pair.theme, pair.fg), flatten(pair.theme, pair.ground))
-      expect(got, `${pair.fg} 压在 ${pair.ground.join(' + ')} 上是 ${got.toFixed(2)}:1`)
-        .toBeGreaterThanOrEqual(pair.min)
+/** One shadow of a shadow list: its lengths, then one rgba() colour. */
+const SHADOW = /^((?:-?[\d.]+(?:px)? ){2,4})(rgba\([^)]*\))$/
+
+/**
+ * What a colour token of `theme` holds, read from `value`: one colour, or each shadow's lengths and
+ * colour; undefined for a token that holds neither, such as a size or a mask.
+ */
+const colourView = (theme: Theme, name: string, value: string): Colour | [string, Colour][] | undefined => {
+  try {
+    return parse(theme, name, value)
+  } catch {
+    const shadows = value.split(/,\s+(?=-?\d)/).map((part) => SHADOW.exec(part))
+    return shadows.every((shadow) => shadow !== null)
+      ? shadows.map((shadow) => [shadow![1]!.trim(), parse(theme, name, shadow![2]!)])
+      : undefined
+  }
+}
+
+describe('默认主题的推导', () => {
+  for (const mode of ['light', 'dark'] as const) {
+    it(`默认主题${mode === 'dark' ? '暗色' : '亮色'}的 13 个模块色推导出的颜色 token,和 tokens.css 的每个颜色 token 一个不多一个不少、值完全相同`, () => {
+      const theme: Theme = { id: DEFAULT_COLOUR_THEME.id, mode }
+      const names = [...new Set([...ROOT.keys(), ...(mode === 'dark' ? DARK.keys() : [])])]
+      const expected = Object.fromEntries(names.flatMap((name) => {
+        const view = colourView(theme, name, resolve(theme, name))
+        return view === undefined ? [] : [[name, view]]
+      }))
+      const derived = Object.fromEntries(Object.entries(deriveColourTokens(DEFAULT_COLOUR_THEME[mode], mode))
+        .map(([name, value]) => [name, colourView(theme, name, value)]))
+      expect(derived).toEqual(expected)
     })
+  }
+})
+
+describe('tokens.css 的对比度', () => {
+  for (const { id } of BUILT_IN_COLOUR_THEMES) {
+    for (const pair of PAIRS) {
+      const theme: Theme = { id, mode: pair.theme }
+      it(`${named(theme)}的${pair.label}不低于 ${pair.min}:1`, () => {
+        const got = contrast(colour(theme, pair.fg), flatten(theme, pair.ground))
+        expect(got, `${pair.fg} 压在 ${pair.ground.join(' + ')} 上是 ${got.toFixed(2)}:1`)
+          .toBeGreaterThanOrEqual(pair.min)
+      })
+    }
   }
 })
 
@@ -226,8 +281,8 @@ describe('主操作', () => {
     expect(PRIMARY.map(([path, selector]) => lookOf(path, selector))).toEqual(['--accent-solid --on-accent', '--accent-solid --on-accent'])
   })
 
-  for (const theme of ['light', 'dark'] as const) {
-    it(`${theme === 'dark' ? '暗色' : '亮色'}的主操作静止、悬停和按下时字都不低于 4.5:1,悬停和按下让底色至少变 1.1:1`, () => {
+  for (const theme of THEMES) {
+    it(`${named(theme)}的主操作静止、悬停和按下时字都不低于 4.5:1,悬停和按下让底色至少变 1.1:1`, () => {
       for (const [path, selector] of PRIMARY) {
         const [fill, text] = lookOf(path, selector).split(' ') as [string, string]
         const rest = flatten(theme, [fill])
@@ -246,34 +301,38 @@ describe('主操作', () => {
 })
 
 describe('亮色的文字', () => {
-  for (const text of ['--ink', '--sec', '--ter']) {
-    it(`亮色的 ${text} 铺在每种底面上、也压在这些底面上的中性标签底上,都不低于 4.5:1`, () => {
-      for (const [where, ground] of SURFACES) {
-        for (const [on, stack] of [['', ground], ['的标签底', [...ground, '--chip']]] as [string, string[]][]) {
-          const got = contrast(colour('light', text), flatten('light', stack))
-          expect(got, `${text} 压在${where}${on}上是 ${got.toFixed(2)}:1`).toBeGreaterThanOrEqual(TEXT)
+  for (const theme of LIGHT_THEMES) {
+    for (const text of ['--ink', '--sec', '--ter']) {
+      it(`${named(theme)}的 ${text} 铺在每种底面上、也压在这些底面上的中性标签底上,都不低于 4.5:1`, () => {
+        for (const [where, ground] of SURFACES) {
+          for (const [on, stack] of [['', ground], ['的标签底', [...ground, '--chip']]] as [string, string[]][]) {
+            const got = contrast(colour(theme, text), flatten(theme, stack))
+            expect(got, `${text} 压在${where}${on}上是 ${got.toFixed(2)}:1`).toBeGreaterThanOrEqual(TEXT)
+          }
         }
+      })
+    }
+  }
+})
+
+describe('暗色的三级文字', () => {
+  for (const theme of DARK_THEMES) {
+    it(`${named(theme)}的 --ter 铺在每种底面上不低于 4.5:1,压在画布、卡片、浮层和窗口底上的标签底上也不低于 4.5:1`, () => {
+      for (const [where, ground] of SURFACES) {
+        const got = contrast(colour(theme, '--ter'), flatten(theme, ground))
+        expect(got, `--ter 压在${where}上是 ${got.toFixed(2)}:1`).toBeGreaterThanOrEqual(TEXT)
+      }
+      for (const [where, ground] of SURFACES.slice(0, 4)) {
+        const got = contrast(colour(theme, '--ter'), flatten(theme, [...ground, '--chip']))
+        expect(got, `--ter 压在${where}的标签底上是 ${got.toFixed(2)}:1`).toBeGreaterThanOrEqual(TEXT)
       }
     })
   }
 })
 
-describe('暗色的三级文字', () => {
-  it('暗色的 --ter 铺在每种底面上不低于 4.5:1,压在画布、卡片、浮层和窗口底上的标签底上也不低于 4.5:1', () => {
-    for (const [where, ground] of SURFACES) {
-      const got = contrast(colour('dark', '--ter'), flatten('dark', ground))
-      expect(got, `--ter 压在${where}上是 ${got.toFixed(2)}:1`).toBeGreaterThanOrEqual(TEXT)
-    }
-    for (const [where, ground] of SURFACES.slice(0, 4)) {
-      const got = contrast(colour('dark', '--ter'), flatten('dark', [...ground, '--chip']))
-      expect(got, `--ter 压在${where}的标签底上是 ${got.toFixed(2)}:1`).toBeGreaterThanOrEqual(TEXT)
-    }
-  })
-})
-
 describe('出错的提示框', () => {
-  for (const theme of ['light', 'dark'] as const) {
-    it(`${theme === 'dark' ? '暗色' : '亮色'}的错误提示框里的红字压在它自己的浅红底上,铺在画布和卡片上都不低于 4.5:1`, () => {
+  for (const theme of THEMES) {
+    it(`${named(theme)}的错误提示框里的红字压在它自己的浅红底上,铺在画布和卡片上都不低于 4.5:1`, () => {
       const [fill, text] = lookOf('components/PageShell.css', '.ipcerror').split(' ') as [string, string]
       for (const ground of ['--content', '--card']) {
         const got = contrast(colour(theme, text), flatten(theme, [ground, fill]))
@@ -295,9 +354,9 @@ describe('标签', () => {
       .toEqual(Object.fromEntries(Object.entries(TAG_TEXT).map(([tone, text]) => [tone, `--chip ${text}`])))
   })
 
-  for (const theme of ['light', 'dark'] as const) {
+  for (const theme of THEMES) {
     for (const tone of Object.keys(TAG_TEXT)) {
-      it(`${theme === 'dark' ? '暗色' : '亮色'}的 ${tone} 标签的字压在它自己的底上,铺在每种底面上都不低于 4.5:1`, () => {
+      it(`${named(theme)}的 ${tone} 标签的字压在它自己的底上,铺在每种底面上都不低于 4.5:1`, () => {
         const [fill, text] = lookOf('components/Tag.css', `.tag--${tone}`).split(' ') as [string, string]
         for (const [where, ground] of SURFACES) {
           const got = contrast(colour(theme, text), flatten(theme, [...ground, fill]))
@@ -309,8 +368,8 @@ describe('标签', () => {
 })
 
 describe('强调色的字', () => {
-  for (const theme of ['light', 'dark'] as const) {
-    it(`${theme === 'dark' ? '暗色' : '亮色'}侧栏当前行的字,静止和悬停时都不低于 4.5:1`, () => {
+  for (const theme of THEMES) {
+    it(`${named(theme)}侧栏当前行的字,静止和悬停时都不低于 4.5:1`, () => {
       const [fill, text] = lookOf('shell/AppShell.css', '.srow.on').split(' ') as [string, string]
       for (const ground of [['--window', '--sidebar', fill], ['--window', '--sidebar', fill, '--hover']]) {
         const got = contrast(colour(theme, text), flatten(theme, ground))
@@ -319,13 +378,15 @@ describe('强调色的字', () => {
     })
   }
 
-  it('亮色侧栏当前行上的计数,字压在它的标签底上不低于 4.5:1', () => {
-    const [row] = lookOf('shell/AppShell.css', '.srow.on').split(' ') as [string]
-    const [fill, text] = lookOf('components/Tag.css', '.count-badge').split(' ') as [string, string]
-    const ground = ['--window', '--sidebar', row, fill]
-    const got = contrast(colour('light', text), flatten('light', ground))
-    expect(got, `${text} 压在 ${ground.join(' + ')} 上是 ${got.toFixed(2)}:1`).toBeGreaterThanOrEqual(TEXT)
-  })
+  for (const theme of LIGHT_THEMES) {
+    it(`${named(theme)}侧栏当前行上的计数,字压在它的标签底上不低于 4.5:1`, () => {
+      const [row] = lookOf('shell/AppShell.css', '.srow.on').split(' ') as [string]
+      const [fill, text] = lookOf('components/Tag.css', '.count-badge').split(' ') as [string, string]
+      const ground = ['--window', '--sidebar', row, fill]
+      const got = contrast(colour(theme, text), flatten(theme, ground))
+      expect(got, `${text} 压在 ${ground.join(' + ')} 上是 ${got.toFixed(2)}:1`).toBeGreaterThanOrEqual(TEXT)
+    })
+  }
 })
 
 describe('选中、当前、已应用和按下的状态', () => {
@@ -356,13 +417,13 @@ describe('选中、当前、已应用和按下的状态', () => {
       .toEqual(FILLED_ON.map(() => '--selected-strong --on-selected'))
   })
 
-  for (const theme of ['light', 'dark'] as const) {
-    it(`${theme === 'dark' ? '暗色' : '亮色'}的这些开着的样子对关着的输入底至少 1.2:1,对悬停至少 1.15:1,字不低于 4.5:1`, () => {
+  for (const theme of THEMES) {
+    it(`${named(theme)}的这些开着的样子对关着的输入底至少 1.2:1,对悬停至少 1.15:1,字不低于 4.5:1`, () => {
       const off = flatten(theme, ['--field'])
       const hover = flatten(theme, ['--field', '--hover'])
       for (const ground of [['--content'], ['--card'], ['--raised'], ['--window', '--sidebar']]) {
         const on = flatten(theme, [...ground, '--selected-strong'])
-        const where = `${theme} ${ground.join(' + ')}`
+        const where = `${named(theme)} ${ground.join(' + ')}`
         expect(contrast(on, off), `${where} 开对关`).toBeGreaterThanOrEqual(1.2)
         expect(contrast(on, hover), `${where} 开对悬停`).toBeGreaterThanOrEqual(1.15)
         expect(contrast(colour(theme, '--on-selected'), on), `${where} 字`).toBeGreaterThanOrEqual(TEXT)
@@ -380,7 +441,7 @@ describe('tokens.css 的决定值', () => {
 
   it('亮色的画布、卡片和浮层都是白色,窗口底和侧栏是中性的浅灰', () => {
     // The owner's decision on #157 (2026-10-20): a clean light theme, white canvas and a neutral light grey frame.
-    expect(['--content', '--card', '--raised', '--window', '--sidebar'].map((name) => resolve('light', name)))
+    expect(['--content', '--card', '--raised', '--window', '--sidebar'].map((name) => resolve(DEFAULT_LIGHT, name)))
       .toEqual(['#ffffff', '#ffffff', '#ffffff', '#f8f8f8', 'rgba(248,248,248,.85)'])
   })
 
@@ -388,24 +449,26 @@ describe('tokens.css 的决定值', () => {
     const greys = ['--desktop', '--window', '--sidebar', '--content', '--card', '--raised', '--ink', '--sec', '--ter',
       '--sep', '--sep2', '--sep-strong', '--field', '--hover', '--press', '--chip', '--track', '--tint-mut',
       '--selected', '--sel', '--sbthumb', '--sbthumb-h', '--scrim', '--q-bg', '--hl-note', '--mslane']
-    const tinted = greys.filter((name) => { const { r, g, b } = colour('light', name); return r !== g || g !== b })
-    const shadows = ['--sh-1', '--sh-2', '--sh-3', '--sh-paper'].filter((name) => [...resolve('light', name)
+    const tinted = greys.filter((name) => { const { r, g, b } = colour(DEFAULT_LIGHT, name); return r !== g || g !== b })
+    const shadows = ['--sh-1', '--sh-2', '--sh-3', '--sh-paper'].filter((name) => [...resolve(DEFAULT_LIGHT, name)
       .matchAll(/rgba\((\d+),(\d+),(\d+),/g)].some(([, r, g, b]) => r !== g || g !== b))
     expect([...tinted, ...shadows]).toEqual([])
   })
 
-  it('暗色时间线的里程碑行和别的叠层一样是中性的,不带黄色', () => {
-    const { r, g, b } = colour('dark', '--mslane')
-    const ink = colour('dark', '--ink')
-    expect({ r, g, b }).toEqual({ r: ink.r, g: ink.g, b: ink.b })
-  })
+  for (const theme of DARK_THEMES) {
+    it(`${named(theme)}时间线的里程碑行和别的叠层一样是中性的,不带黄色`, () => {
+      const { r, g, b } = colour(theme, '--mslane')
+      const ink = colour(theme, '--ink')
+      expect({ r, g, b }).toEqual({ r: ink.r, g: ink.g, b: ink.b })
+    })
+  }
 
   it('选中是一块中性的底配 --ink 的字,在两种主题下都比悬停和输入底深一级,对比至少 1.1:1', () => {
-    for (const theme of ['light', 'dark'] as const) {
-      expect(colour(theme, '--on-selected'), theme).toEqual(colour(theme, '--ink'))
+    for (const theme of THEMES) {
+      expect(colour(theme, '--on-selected'), named(theme)).toEqual(colour(theme, '--ink'))
       const selected = flatten(theme, ['--card', '--selected'])
       for (const [label, ground] of [['悬停', ['--card', '--hover']], ['输入底', ['--field']]] as const) {
-        expect(contrast(selected, flatten(theme, [...ground])), `${theme} 选中对${label}`).toBeGreaterThanOrEqual(1.1)
+        expect(contrast(selected, flatten(theme, [...ground])), `${named(theme)} 选中对${label}`).toBeGreaterThanOrEqual(1.1)
       }
     }
   })
@@ -415,25 +478,25 @@ describe('tokens.css 的决定值', () => {
     const [off, on] = [fill('.switch'), fill('.switch[data-state="checked"]')]
     const thumbs = [fill('.switch-thumb'), fill('.switch-thumb[data-state="checked"]')]
     expect([off, on, ...thumbs]).toEqual(['--sep-strong', '--accent', '--on-accent', '--on-accent'])
-    for (const theme of ['light', 'dark'] as const) {
+    for (const theme of THEMES) {
       for (const ground of ['--content', '--card', '--raised']) {
-        expect(contrast(colour(theme, on), flatten(theme, [ground])), `${theme} ${ground}`).toBeGreaterThanOrEqual(MARK)
+        expect(contrast(colour(theme, on), flatten(theme, [ground])), `${named(theme)} ${ground}`).toBeGreaterThanOrEqual(MARK)
       }
-      expect(contrast(colour(theme, thumbs[1]!), colour(theme, on)), theme).toBeGreaterThanOrEqual(MARK)
+      expect(contrast(colour(theme, thumbs[1]!), colour(theme, on)), named(theme)).toBeGreaterThanOrEqual(MARK)
     }
   })
 
   it('浮层的每档阴影在两种主题下都以一圈 1px 的边开头,浮层不必再自画边框', () => {
-    for (const theme of ['light', 'dark'] as const) {
-      for (const name of ['--sh-2', '--sh-3']) expect(resolve(theme, name), `${theme} ${name}`).toMatch(/^0 0 0 1px rgba\(/)
+    for (const theme of THEMES) {
+      for (const name of ['--sh-2', '--sh-3']) expect(resolve(theme, name), `${named(theme)} ${name}`).toMatch(/^0 0 0 1px rgba\(/)
     }
   })
 
   it('全局焦点环的颜色、粗细和间距都取自 --ring 一组变量', () => {
     const rules = tokens.replace(/\/\*[\s\S]*?\*\//g, '')
     expect(rules).toContain(':focus-visible{outline:var(--ring-width) solid var(--ring);outline-offset:var(--ring-offset)}')
-    expect(resolve('light', '--ring-width')).toBe('2px')
-    expect(resolve('light', '--ring-offset')).toBe('2px')
+    expect(resolve(DEFAULT_LIGHT, '--ring-width')).toBe('2px')
+    expect(resolve(DEFAULT_LIGHT, '--ring-offset')).toBe('2px')
   })
 
   it('减弱动态效果时停下所有关键帧动画,只留运行中的转圈', () => {
@@ -445,12 +508,12 @@ describe('tokens.css 的决定值', () => {
   it('中性标签的底在悬停的行上仍高出一级:亮色更深、暗色更亮,对比至少 1.1:1', () => {
     const CHIP = '--chip'
     const grounds = [['--content'], ['--card'], ['--window', '--sidebar']]
-    for (const theme of ['light', 'dark'] as const) {
+    for (const theme of THEMES) {
       for (const ground of grounds) {
         const row = flatten(theme, [...ground, '--hover'])
         const chip = flatten(theme, [...ground, '--hover', CHIP])
-        const away = theme === 'light' ? luminance(chip) < luminance(row) : luminance(chip) > luminance(row)
-        const label = `${theme} ${ground.join(' + ')} 悬停行上的 ${CHIP}`
+        const away = theme.mode === 'light' ? luminance(chip) < luminance(row) : luminance(chip) > luminance(row)
+        const label = `${named(theme)} ${ground.join(' + ')} 悬停行上的 ${CHIP}`
         expect(away, `${label} 朝错了方向`).toBe(true)
         expect(contrast(chip, row), label).toBeGreaterThanOrEqual(1.1)
       }
@@ -459,18 +522,18 @@ describe('tokens.css 的决定值', () => {
 
   it('评分星的颜色来自 --star,两种主题下都解得出颜色', () => {
     expect(lookOf('components/PaperMetadata.css', '.rating-stars button.rated')).toBe('无 --star')
-    for (const theme of ['light', 'dark'] as const) expect(colour(theme, '--star').a, theme).toBe(1)
+    for (const theme of THEMES) expect(colour(theme, '--star').a, named(theme)).toBe(1)
   })
 
   it('分段控件的轨道在两种主题下都比它所在的面深一级,滑块在轨道上浅一级,对比都至少 1.1:1', () => {
     const segmented = readFileSync(new URL('../renderer/components/SegmentedControl.css', import.meta.url), 'utf8')
     expect(segmented).toMatch(/\.segmented-control\{[^}]*background:var\(--track\)/)
-    for (const theme of ['light', 'dark'] as const) {
+    for (const theme of THEMES) {
       for (const ground of ['--content', '--card', '--raised']) {
         const surface = flatten(theme, [ground])
         const track = flatten(theme, [ground, '--track'])
         const thumb = flatten(theme, ['--raised'])
-        const label = `${theme} ${ground} 上的 --track`
+        const label = `${named(theme)} ${ground} 上的 --track`
         expect(luminance(track) < luminance(surface), `${label} 不比面深`).toBe(true)
         expect(contrast(track, surface), label).toBeGreaterThanOrEqual(1.1)
         expect(luminance(thumb) > luminance(track), `${label} 上的滑块不比轨道浅`).toBe(true)

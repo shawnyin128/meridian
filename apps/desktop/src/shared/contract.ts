@@ -2288,6 +2288,35 @@ export const SemanticKeyStatusSchema = z.object({
 /** Saves an optional Semantic Scholar API key; null or blank removes the saved key. */
 export const SemanticKeySetParamsSchema = z.object({ apiKey: z.string().max(200).nullable() }).strict()
 
+const ThemeColourSchema = z.string().regex(/^#[0-9a-fA-F]{6}$/, '颜色必须是 #RRGGBB')
+const ColourThemeIdSchema = z.string().regex(/^[a-z0-9-]{1,64}$/, '主题 id 只能用小写字母、数字和连字符')
+
+/**
+ * The thirteen module colours of one appearance mode: window ground, sidebar, cards, fields, the
+ * three text steps, separators, the accent, the error, warning and done states, and the reading
+ * highlight. Every other colour token is derived from them.
+ */
+export const ColourThemeModulesSchema = z.object({
+  ground: ThemeColourSchema, sidebar: ThemeColourSchema, card: ThemeColourSchema, field: ThemeColourSchema,
+  ink: ThemeColourSchema, inkSecondary: ThemeColourSchema, inkTertiary: ThemeColourSchema,
+  separator: ThemeColourSchema, accent: ThemeColourSchema,
+  error: ThemeColourSchema, warning: ThemeColourSchema, done: ThemeColourSchema, highlight: ThemeColourSchema,
+})
+
+/**
+ * A colour theme, built in or the user's `<config home>/themes/<id>.json`, in light and dark. Not
+ * strict: a file another version wrote keeps loading with its unknown keys dropped. `basedOn` names
+ * the theme it started from.
+ */
+export const ColourThemeSchema = z.object({
+  schema: z.literal('meridian.theme.v1'),
+  id: ColourThemeIdSchema,
+  name: z.string().trim().min(1).max(80),
+  basedOn: ColourThemeIdSchema.optional(),
+  light: ColourThemeModulesSchema,
+  dark: ColourThemeModulesSchema,
+})
+
 /** The outcome of one Semantic Scholar request made with the saved key. */
 export const SemanticKeyCheckResultSchema = z.discriminatedUnion('state', [
   z.object({ state: z.literal('connected') }).strict(),
@@ -2475,6 +2504,8 @@ export type ExtensionStatus = z.infer<typeof ExtensionStatusSchema>
 export type PluginVersion = z.infer<typeof PluginVersionSchema>
 export type SemanticKeyStatus = z.infer<typeof SemanticKeyStatusSchema>
 export type SemanticKeyCheckResult = z.infer<typeof SemanticKeyCheckResultSchema>
+export type ColourThemeModules = z.infer<typeof ColourThemeModulesSchema>
+export type ColourTheme = z.infer<typeof ColourThemeSchema>
 
 /** Facet value with paper count and title of the newest matching paper. */
 export type Facet = { value: string; count: number; newestTitle: string }
