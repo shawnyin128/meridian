@@ -46,11 +46,17 @@ export function createChatService(options: {
         if (running.get(id) === controller) running.delete(id)
       }
     },
+    /** Stops the reply being generated in `id`; from then on the chat no longer counts as generating. */
     cancel(id: string) {
       const controller = running.get(id)
       if (controller === undefined) return { id, cancelled: false }
       controller.abort()
+      running.delete(id)
       return { id, cancelled: true }
+    },
+    /** The ids of the chats whose reply is being generated. */
+    generating(): string[] {
+      return [...running.keys()]
     },
   }
 }

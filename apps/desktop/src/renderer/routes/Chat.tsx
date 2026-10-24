@@ -159,13 +159,11 @@ export function Chat() {
 
   const send = useCallback((session: string, text: string) => {
     follow()
-    return run(session, write(track(session, chat.send(session, text))))
+    return run(write(track(session, chat.send(session, text))))
   }, [follow, run, write, track])
 
   const stopSending = () => {
-    if (id === null) return
-    stop(id)
-    void chat.cancel(id)
+    if (id !== null) stop(id)
   }
 
   // The conflict brief in the Feed starts a new chat and asks the preset question, as in the demo.
