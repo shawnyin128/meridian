@@ -3,7 +3,7 @@ import type { HTMLAttributes, ReactElement, ReactNode, RefObject } from 'react'
 import { useScrollFade } from '../hooks/useScrollFade.js'
 import type { CandidateKeys } from '../hooks/useCandidateKeys.js'
 import { ignoreComposingEscape } from '../lib/keyboard.js'
-import { COLLISION_PADDING } from './floating-layer.js'
+import { COLLISION_PADDING, type AnchorBox } from './floating-layer.js'
 import { OutsideToolbar } from './Toolbar.js'
 
 /** PickerPopover's focus guard, kept beside it so pages never touch the Radix event contract. */
@@ -18,9 +18,6 @@ function pressGuard(
     },
   }
 }
-
-/** Anything the popover can be placed against: an element, or a box that is not one. */
-export type AnchorBox = { getBoundingClientRect: () => DOMRect }
 
 type PickerPopoverBaseProps = {
   open: boolean

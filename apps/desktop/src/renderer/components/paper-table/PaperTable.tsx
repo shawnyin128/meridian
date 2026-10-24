@@ -1045,7 +1045,7 @@ export function PaperTable() {
           <col data-cw="x" style={{ width: `${widthOf('x')}px` }} />
         </colgroup>
         <thead>
-          <tr>
+          <tr data-row-actions="">
             {/* A sortable header sorts on click; its button is the keyboard's way to that click. */}
             <th data-k="title" aria-sort={ariaSort('title')} onClick={() => clickHeader('title')}>
               <button type="button" className="thsort">
@@ -1098,17 +1098,19 @@ export function PaperTable() {
               )
               : null}
             <th className="th-add">
-              <AddAction
-                variant="icon" className="colbtn" ref={colAdd} label={m.papers.columnHeader.addColumn}
-                onClick={() => {
-                  if (newCol) { newColCell.current?.querySelector('input')?.focus(); return }
-                  setNewCol(true)
-                }}
-              />
-              <ColumnMenu
-                columns={columns} onChange={(update) => { void changeColumns(update) }}
-                onRenameOption={renameOption} onRetype={setColumnType}
-              />
+              <RowActions>
+                <AddAction
+                  variant="icon" ref={colAdd} label={m.papers.columnHeader.addColumn}
+                  onClick={() => {
+                    if (newCol) { newColCell.current?.querySelector('input')?.focus(); return }
+                    setNewCol(true)
+                  }}
+                />
+                <ColumnMenu
+                  columns={columns} onChange={(update) => { void changeColumns(update) }}
+                  onRenameOption={renameOption} onRetype={setColumnType}
+                />
+              </RowActions>
             </th>
           </tr>
         </thead>

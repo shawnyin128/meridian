@@ -599,8 +599,11 @@ const TIGHT = {
   leading: 12,
 }
 
-/** Imports TIGHT through Core, opens it in the reader from the paper table and waits until its page is drawn. */
-async function openTight(win: Page): Promise<void> {
+/**
+ * Imports TIGHT through Core, opens it in the reader from the paper table and waits until its page
+ * is drawn; returns its paper id.
+ */
+async function openTight(win: Page): Promise<string> {
   const held = await win.evaluate((pdf) => (window as unknown as MeridianWindow).meridian.call(
     'papers.import', { filename: 'Tight.pdf', bytes: new Uint8Array(pdf) },
   ), [...minimalPdf(TIGHT)]) as { paper: { id: string } }
@@ -612,6 +615,7 @@ async function openTight(win: Page): Promise<void> {
   await selectPaper(win, title)
   await shown(win, '.pdetail [aria-label="开始阅读"]').click()
   await expect(shown(win, '.pdfpagebox[data-painted="1"]')).toHaveCount(1)
+  return held.paper.id
 }
 
 /** The client box of each line of text on the page shown, top to bottom. */
@@ -680,6 +684,9 @@ test('右键阅读器里选中的字弹出能复制的系统菜单(macOS 上先�
   expect(await win.evaluate(() => document.getSelection()!.toString())).toBe(selected)
 })
 
+/** A note line far longer than the selection toolbar is wide. */
+const LONG = '第二行写得很长，长到工具条那么宽放不下，要在批注框里折成好几行'
+
 // Pixel checks take screenshots of the window, which need a visible one.
 test.describe('选中文字时的选区', () => {
   test.use({ showWindow: true })
@@ -736,9 +743,106 @@ test.describe('选中文字时的选区', () => {
       await app.evaluate(({ clipboard }, text) => clipboard.writeText(text), kept)
     }
 
-    await win.locator('.selection-tools .mi', { hasText: '高亮' }).click()
+    await win.locator('.selection-tools [aria-label="黄色"]').click()
     await expect(shown(win, '.pdfpagebox .paper-highlight path')).toHaveCount(1)
     expect(await shown(win, '.pdfpagebox .paper-highlight path').getAttribute('d')).toBe(drawn)
     await expect(shown(win, '.pdfpagebox .paper-selection svg')).toHaveCount(0)
+    await expect(win.locator('.selection-tools')).toBeVisible()
+  })
+
+  test('在工具条的批注框里写:选区照旧画着,Shift+Enter 换行,Enter 划成带这条批注的黄色高亮并收起,侧栏里看得到', async ({ win }) => {
+    await openTight(win)
+    await dragAcross(win, (await textLines(win)).slice(0, 2))
+    const drawn = await shown(win, '.pdfpagebox .paper-selection path').getAttribute('d')
+
+    // Focus in the box takes the document's selection; the selected lines stay drawn all the same. The
+    // drawing follows the selection a frame later, so it is read once frames have passed.
+    const box = win.locator('.selection-tools textarea[aria-label="批注"]')
+    await box.click()
+    await expect.poll(() => win.evaluate(() => document.getSelection()!.isCollapsed)).toBe(true)
+    const width = (await win.locator('.selection-tools').boundingBox())!.width
+    await box.pressSequentially('第一行')
+    await box.press('Shift+Enter')
+    await box.pressSequentially(LONG)
+    await expect(box).toHaveValue(`第一行\n${LONG}`)
+    // A line longer than the toolbar wraps in the box instead of widening it.
+    expect((await win.locator('.selection-tools').boundingBox())!.width).toBe(width)
+    await win.evaluate(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done))))
+    expect(await shown(win, '.pdfpagebox .paper-selection path').getAttribute('d', { timeout: 1000 })).toBe(drawn)
+    await box.press('Enter')
+
+    await expect(win.locator('.selection-tools')).toHaveCount(0)
+    await expect(shown(win, '.pdfpagebox .paper-highlight.yellow .paper-highlight-note')).toHaveCount(1)
+    expect(await shown(win, '.pdfpagebox .paper-highlight path').first().getAttribute('d')).toBe(drawn)
+    await expect(shown(win, '.pdfpagebox .paper-selection svg')).toHaveCount(0)
+    await shown(win, '.reader-rail [aria-label="高亮与批注"]').click()
+    await expect(shown(win, '.highlight-card.yellow textarea')).toHaveValue(`第一行\n${LONG}`)
+  })
+
+  test('选区碰到已有的高亮时不另划:圈显示它的颜色,换色和批注都落在它身上;Core 也拒绝在它上面再划一段', async ({ win }) => {
+    const id = await openTight(win)
+    const lines = (await textLines(win)).slice(0, 2)
+    await dragAcross(win, lines)
+    await win.locator('.selection-tools [aria-label="黄色"]').click()
+    await expect(shown(win, '.pdfpagebox .paper-highlight.yellow')).toHaveCount(1)
+    await win.keyboard.press('Escape')
+    await expect(win.locator('.selection-tools')).toHaveCount(0)
+
+    await dragAcross(win, lines.slice(1))
+    await expect(win.locator('.selection-tools [aria-label="黄色"]')).toHaveAttribute('aria-checked', 'true')
+    await win.locator('.selection-tools [aria-label="蓝色"]').click()
+    await expect(shown(win, '.pdfpagebox .paper-highlight.blue')).toHaveCount(1)
+    const box = win.locator('.selection-tools textarea')
+    await box.click()
+    await box.pressSequentially('落在原来那一段上')
+    await box.press('Enter')
+    await expect(win.locator('.selection-tools')).toHaveCount(0)
+    await expect(shown(win, '.pdfpagebox .paper-highlight')).toHaveCount(1)
+
+    type Held = { highlights: { quote: string; rects: unknown[]; color: string; note: string }[] }
+    const held = (await call<Held>(win, 'papers.reading', { id })).highlights
+    expect(held.map(({ color, note }) => ({ color, note }))).toEqual([{ color: 'blue', note: '落在原来那一段上' }])
+    const refused = await win.evaluate(async (mutation) => {
+      try {
+        await (window as unknown as MeridianWindow).meridian.call('papers.mutateReading', mutation)
+        return 'written'
+      } catch (rejected) {
+        return (rejected as { reason: string }).reason
+      }
+    }, { id, mutation: { kind: 'highlight.add', page: 1, quote: held[0]!.quote, rects: held[0]!.rects, color: 'pink' } })
+    expect(refused).toBe('refused')
+    expect((await call<Held>(win, 'papers.reading', { id })).highlights).toHaveLength(1)
+  })
+
+  test('批注框里写了字再点页上别处,像 Enter 一样存下;按 Esc 丢掉写的字,已经划的高亮留着;问 AI 的标记和颜色圈一样高', async ({ win }) => {
+    await openTight(win)
+    const lines = await textLines(win)
+    await dragAcross(win, lines.slice(0, 2))
+    const tools = win.locator('.selection-tools')
+    // The AI mark is as tall as a colour circle, its glyph the size of the reader's other nested icon buttons.
+    const mark = (await tools.locator('.icbtn').boundingBox())!
+    const circle = (await tools.locator('.swatch').first().boundingBox())!
+    expect(mark.height).toBe(circle.height)
+    expect((await tools.locator('.icbtn svg').boundingBox())!.height)
+      .toBe((await shown(win, '.zoomctl .icbtn svg').first().boundingBox())!.height)
+
+    await tools.locator('textarea').click()
+    await tools.locator('textarea').pressSequentially('点外面也留着')
+    const page = (await shown(win, '.pdfpagebox').boundingBox())!
+    await win.mouse.click(page.x + page.width / 2, page.y + page.height - 40)
+    await expect(tools).toHaveCount(0)
+    await expect(shown(win, '.pdfpagebox .paper-highlight.yellow .paper-highlight-note')).toHaveCount(1)
+
+    await dragAcross(win, lines.slice(3, 4))
+    await tools.locator('[aria-label="绿色"]').click()
+    await tools.locator('textarea').click()
+    await tools.locator('textarea').pressSequentially('按了 Esc')
+    await win.keyboard.press('Escape')
+    await expect(tools).toHaveCount(0)
+    await expect(shown(win, '.pdfpagebox .paper-highlight.green')).toHaveCount(1)
+    await expect(shown(win, '.pdfpagebox .paper-highlight.green .paper-highlight-note')).toHaveCount(0)
+    await shown(win, '.reader-rail [aria-label="高亮与批注"]').click()
+    await expect(shown(win, '.highlight-card.yellow textarea')).toHaveValue('点外面也留着')
+    await expect(shown(win, '.highlight-card.green textarea')).toHaveValue('')
   })
 })

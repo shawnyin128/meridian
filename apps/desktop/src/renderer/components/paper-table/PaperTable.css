@@ -136,8 +136,7 @@
 .mi.colrow .cl{flex:1}
 .mi.locked{cursor:default;opacity:.45}
 /* The 24px buttons reach into the menu row's padding, so custom-column rows stay as tall as the others. */
-.cmx{margin:calc(-1 * var(--sp-4)) 0;opacity:0;pointer-events:none}
-.mi.colrow:hover .cmx,.cmx:focus-visible{opacity:1;pointer-events:auto}
+.cmx{margin:calc(-1 * var(--sp-4)) 0}
 
 /* The type options below the new-column draft: text/select/multi-select icons side by side, the selected one has .on */
 .mi-in.ctrow{display:flex;gap:var(--sp-6);padding-bottom:0}
@@ -145,19 +144,15 @@
 .ctbtn:hover{color:var(--ink)}
 .ctbtn.on{background:var(--selected-strong);border-color:transparent;color:var(--on-selected)}
 .ctbtn svg{width:12px;height:12px}
-/* Options: expand below the column row, one level deeper; the toggle is always visible, not only on row hover, or nobody would find it */
-.cmx.optx{opacity:1;pointer-events:auto}
 /* Column row labels start from 10px padding + 13px tick + 10px spacing = 33px, and option rows are indented 20px more */
 .mi.optrow{padding-left:calc(var(--row-menu-pad) + var(--row-menu-check) + var(--sp-10) + var(--sp-20));font-size:var(--fs-sm);color:var(--sec)}
 .mi.optrow .cl{flex:1}
-.mi.optrow:hover .cmx{opacity:1;pointer-events:auto}
 .mi.optrow.optnone{color:var(--ter);cursor:default}
 /*
  * Change type: the type options expand under the column row, in line with option text once their own
- * row's 8px inset is added; while open, the row's type button stays visible
+ * row's 8px inset is added
  */
 .typerow{padding-left:calc(var(--row-menu-pad) + var(--row-menu-check) + var(--sp-10) + var(--sp-20) - var(--sp-8))}
-.cmx.typex.on{opacity:1;pointer-events:auto}
 
 /*
  * The cell of a row's actions and the header's add cell stick to the table's right edge, so the
@@ -197,11 +192,6 @@
 .libbar .filters>.pt-dim{font-size:var(--fs-sm)}
 /* Fixed width, so the toolbar layout does not shift when the label changes from "Reading status" to "Unread" or another value. */
 .libbar .read-state-filter{width:78px;box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;white-space:nowrap}
-/*
- * pointer-events is inherit rather than auto: normally that inherits the parent's default auto, and
- * when the whole page is disabled it inherits none and is disabled with it.
- */
-.colbtn.grpgear{opacity:1;pointer-events:inherit}
 
 /* Research Map is a peer view of the table. It composes the shared list and segmented
  * controls; these rules only define its two-column domain layout and information hierarchy. */

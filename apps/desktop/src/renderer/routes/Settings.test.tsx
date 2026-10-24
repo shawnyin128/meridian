@@ -59,6 +59,7 @@ const api = vi.hoisted(() => ({
     root: '/tmp/meridian', backupRoot: '/tmp/meridian-backup-current',
   })),
   deleteBackup: vi.fn(async () => null),
+  resetLibrary: vi.fn(async () => ({})),
   deleteTheme: vi.fn(async () => {}),
   refreshThemes: vi.fn(async () => {}),
   restartApp: vi.fn(),
@@ -77,7 +78,7 @@ vi.mock('../ipc.js', () => ({
     backups: api.libraryBackups,
     switchBackup: api.switchBackup,
     deleteBackup: api.deleteBackup,
-    configure: vi.fn(), reset: vi.fn(),
+    configure: vi.fn(), reset: api.resetLibrary,
   },
   delivery: {
     settings: api.deliverySettings,
@@ -178,6 +179,7 @@ describe('Settings', () => {
     api.libraryBackups.mockResolvedValue([])
     api.switchBackup.mockClear()
     api.deleteBackup.mockClear()
+    api.resetLibrary.mockClear()
     api.deleteTheme.mockReset()
     api.refreshThemes.mockClear()
     api.restartApp.mockClear()
@@ -318,6 +320,15 @@ describe('Settings', () => {
     const dialog = document.querySelector('.setdlg')!
     await act(async () => { dialog.querySelector<HTMLElement>('[data-setcat="api"]')!.click() })
     expect(dialog.querySelector('[data-api="research"] .api-state')?.textContent).toBe('Semantic Scholar')
+  })
+
+  it('API 总览读不到当前状态时，原因落在共享的错误框里，和别的设置页的错误一样', async () => {
+    api.semanticKey.mockRejectedValueOnce(new CallError('delivery.semanticKey', 'newer-version'))
+    await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
+    const dialog = document.querySelector('.setdlg')!
+    await act(async () => { dialog.querySelector<HTMLElement>('[data-setcat="api"]')!.click() })
+    const alert = dialog.querySelector('.set-body [role="alert"]')
+    expect([alert?.className, alert?.textContent]).toEqual(['ipcerror ipcerror--section', '需要更新 App'])
   })
 
   it('API 与论文推送的子分类默认收起，点开父级或直接进入子级都会展开', async () => {
@@ -901,6 +912,54 @@ describe('Settings', () => {
     expect(dialog.querySelector('.storage-backup-list')).toBeNull()
     expect(dialog.textContent).not.toContain('论文库备份 ·')
     expect(api.success).toHaveBeenCalledWith('备份已删除')
+  })
+
+  it('确认删除备份后确认框关上，删除还没完成时那一行的删除按钮显示正在删除、按不动', async () => {
+    api.libraryLocation.mockResolvedValueOnce({
+      root: '/tmp/meridian', source: 'configured', locked: false, restartRequired: false, openError: null,
+    })
+    api.libraryBackups.mockResolvedValueOnce([{
+      id: 'meridian-backup-20260915-182838Z',
+      path: '/tmp/meridian-backup-20260915-182838Z',
+      createdAt: '2026-09-15T18:28:38.000Z',
+    }])
+    let finish = () => {}
+    api.deleteBackup.mockImplementationOnce(() => new Promise((resolve) => { finish = () => resolve(null) }))
+    await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
+    const dialog = document.querySelector('.setdlg')!
+    await act(async () => { dialog.querySelector<HTMLElement>('[data-setcat="storage"]')!.click() })
+    await act(async () => { dialog.querySelector<HTMLButtonElement>('.storage-backup-actions .btn.danger')!.click() })
+    const confirm = [...document.querySelectorAll<HTMLButtonElement>('.modal.confirm .btn')]
+      .find((button) => button.textContent === '删除')!
+    await act(async () => { confirm.click() })
+
+    expect(document.querySelector('.modal.confirm')).toBeNull()
+    const trigger = dialog.querySelector<HTMLButtonElement>('.storage-backup-actions .btn.danger')!
+    expect([trigger.textContent, trigger.disabled, trigger.getAttribute('aria-busy')]).toEqual(['正在删除…', true, 'true'])
+    await act(async () => { finish() })
+    expect(dialog.querySelector('.storage-backup-list')).toBeNull()
+  })
+
+  it('确认重置论文库后确认框关上，重置还没完成时重置按钮显示正在重置、按不动，完成后才重启', async () => {
+    api.libraryLocation.mockResolvedValueOnce({
+      root: '/tmp/meridian', source: 'configured', locked: false, restartRequired: false, openError: null,
+    })
+    let finish = () => {}
+    api.resetLibrary.mockImplementationOnce(() => new Promise((resolve) => { finish = () => resolve({}) }))
+    await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
+    const dialog = document.querySelector('.setdlg')!
+    await act(async () => { dialog.querySelector<HTMLElement>('[data-setcat="storage"]')!.click() })
+    await act(async () => { dialog.querySelector<HTMLButtonElement>('.storage-reset .btn.danger')!.click() })
+    const confirm = [...document.querySelectorAll<HTMLButtonElement>('.modal.confirm .btn')]
+      .find((button) => button.textContent === '重置并重启')!
+    await act(async () => { confirm.click() })
+
+    expect(document.querySelector('.modal.confirm')).toBeNull()
+    const trigger = dialog.querySelector<HTMLButtonElement>('.storage-reset .btn.danger')!
+    expect([trigger.textContent, trigger.disabled, trigger.getAttribute('aria-busy')]).toEqual(['正在重置…', true, 'true'])
+    expect(api.restartApp).not.toHaveBeenCalled()
+    await act(async () => { finish() })
+    expect(api.restartApp).toHaveBeenCalledOnce()
   })
 
   // With every dialog layer at one z-index (shared/dialog-surface.test.ts), document order decides

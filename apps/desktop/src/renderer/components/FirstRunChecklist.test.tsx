@@ -56,6 +56,7 @@ describe('FirstRunChecklist', () => {
   let root: Root
   let host: HTMLDivElement
   const onError = vi.fn()
+  const onShown = vi.fn()
 
   beforeEach(() => {
     globalThis.IS_REACT_ACT_ENVIRONMENT = true
@@ -74,7 +75,7 @@ describe('FirstRunChecklist', () => {
   })
 
   const render = async () => {
-    act(() => root.render(<MessagesProvider><FirstRunChecklist onError={onError} /></MessagesProvider>))
+    act(() => root.render(<MessagesProvider><FirstRunChecklist onError={onError} onShown={onShown} /></MessagesProvider>))
     await flush()
   }
   const remount = async () => {
@@ -102,6 +103,19 @@ describe('FirstRunChecklist', () => {
     act(() => button('paper').click())
     expect(state.jump).toHaveBeenCalledWith('papers', '', { importPdf: true })
     expect(window.localStorage.getItem(firstRunKey(ROOT))).toBe('open')
+  })
+
+  it('读到之后告诉页面它显示没显示：空库上显示，有论文的库上不显示', async () => {
+    await render()
+    expect(onShown.mock.calls).toEqual([[true]])
+    act(() => root.unmount())
+    root = createRoot(host)
+    onShown.mockClear()
+    window.localStorage.clear()
+    window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'zh')
+    state.papers = 4
+    await render()
+    expect(onShown.mock.calls).toEqual([[false]])
   })
 
   it('不是空库、也没在空库上显示过时不出现', async () => {

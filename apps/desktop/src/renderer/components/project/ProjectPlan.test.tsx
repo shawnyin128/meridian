@@ -73,13 +73,15 @@ describe('ProjectPlan', () => {
     expect(output).not.toContain('完成首轮校准')
   })
 
-  it('任务行和里程碑行的删除是行尾操作槽里的图标钮，悬停时标红', () => {
+  it('任务行和里程碑行的删除是行尾操作槽里的图标钮，悬停时标红；任务行的改名铅笔也在操作槽里', () => {
     const host = document.createElement('div')
     host.innerHTML = renderPlan('task')
     const slot = (row: Element) => [...row.querySelectorAll('.row-actions button')].map((item) => [
       item.getAttribute('aria-label'), item.textContent, item.classList.contains('icbtn'), item.classList.contains('danger'),
     ])
-    expect(slot(host.querySelector('.task-row')!)).toEqual([['删除任务：校准批次', '', true, true]])
+    expect(slot(host.querySelector('.task-row')!)).toEqual([
+      ['重命名任务：校准批次', '', true, false], ['删除任务：校准批次', '', true, true],
+    ])
     host.innerHTML = renderPlan('ms')
     expect(slot(host.querySelector('.milestone-row')!)).toEqual([['删除里程碑：完成首轮校准', '', true, true]])
   })

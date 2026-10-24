@@ -84,4 +84,23 @@ describe('ReadingRemark', () => {
     await act(async () => { key({ key: 'Enter', metaKey: true }) })
     expect(onSave).toHaveBeenCalledWith('新的随想')
   })
+
+  it('输入法选字时按 Esc 只归输入法，随笔的草稿还在；选完字再按 Esc 才还原', () => {
+    const host = document.createElement('div')
+    document.body.append(host)
+    const root = createRoot(host)
+    roots.push(root)
+    act(() => root.render(
+      <MessagesProvider><Remark reading={READING} saving={false} onSave={vi.fn(async () => true)} /></MessagesProvider>,
+    ))
+    const textarea = host.querySelector('textarea')!
+    const key = (init: KeyboardEventInit) => act(() => {
+      textarea.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, cancelable: true, ...init }))
+    })
+    act(() => setValue(textarea, '新的随想'))
+    key({ key: 'Escape', isComposing: true })
+    expect(textarea.value).toBe('新的随想')
+    key({ key: 'Escape' })
+    expect(textarea.value).toBe('原来的随想')
+  })
 })

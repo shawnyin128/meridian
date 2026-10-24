@@ -34,8 +34,3 @@
 
 .theme-module-card{margin-top:var(--sp-12)}
 .theme-module-colour{display:flex;align-items:center;gap:var(--sp-24)}
-.theme-swatches{display:flex;gap:var(--sp-10)}
-.theme-swatch{width:24px;height:24px;padding:0;border:0;border-radius:var(--r-full);box-shadow:inset 0 0 0 1px var(--sep2);cursor:pointer;
-  transition:box-shadow var(--t-fast) var(--e-out)}
-.theme-swatch:hover{box-shadow:inset 0 0 0 1px var(--sep-strong)}
-.theme-swatch.on{box-shadow:inset 0 0 0 1px var(--sep2),0 0 0 2px var(--card),0 0 0 4px var(--sec)}
