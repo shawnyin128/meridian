@@ -82,6 +82,9 @@ export function Settings() {
   const [deletingBackup, setDeletingBackup] = useState<string | null>(null)
   /** The theme the theme editor shows in place of the columns: a custom theme, or null for a new one. */
   const [editingTheme, setEditingTheme] = useState<{ theme: ColourTheme | null } | null>(null)
+  const [themeDirty, setThemeDirty] = useState(false)
+  /** Where leaving the theme editor with unsaved edits goes once confirmed: back to Appearance, or out of Settings. */
+  const [leaving, setLeaving] = useState<'back' | 'close' | null>(null)
   // Each fetch and action reports into the pane it belongs to, so an error shows only on its own pane.
   const [errors, setErrors] = useState<Partial<Record<CategoryKey, string>>>({})
 
@@ -122,6 +125,16 @@ export function Settings() {
   }, [open])
 
   const archived = (chats ?? []).filter((s) => s.archived)
+
+  const leave = (to: 'back' | 'close') => {
+    if (to === 'back') setEditingTheme(null)
+    else setOpen(false)
+  }
+  // Back, the close button, Escape and the scrim all leave the editor the same way.
+  const requestLeave = (to: 'back' | 'close') => {
+    if (editingTheme !== null && themeDirty) setLeaving(to)
+    else leave(to)
+  }
 
   const unarchive = (session: ChatSession) => {
     void write(chat.setArchived(session.id, false), { note: m.settings.archived.unarchived })
@@ -412,9 +425,21 @@ export function Settings() {
   const visibleCategories = SETTINGS_CATEGORIES.filter((c) => !SUB_CATEGORIES.has(c) || SUB_PARENT[c] === expandedParent)
 
   return (
-    <ModalDialog open={open} onOpenChange={setOpen} size="wide" closable className="setdlg">
+    <ModalDialog
+      open={open} onOpenChange={(next) => { if (next) setOpen(true); else requestLeave('close') }}
+      size="wide" closable className="setdlg"
+    >
       {editingTheme !== null
-        ? <ThemeEditor theme={editingTheme.theme} onBack={() => setEditingTheme(null)} />
+        ? (
+          <>
+            <ThemeEditor theme={editingTheme.theme} onBack={() => requestLeave('back')} onDirtyChange={setThemeDirty} />
+            <ConfirmDialog
+              open={leaving !== null} onOpenChange={(next) => { if (!next) setLeaving(null) }}
+              title={m.settings.appearance.editor.leaveTitle} description={m.settings.appearance.editor.leaveDescription}
+              confirmLabel={m.settings.appearance.editor.leave} onConfirm={() => { if (leaving !== null) leave(leaving) }}
+            />
+          </>
+        )
         : (
           <>
             <div className="set-side" ref={sideFade} data-fade-paint="">

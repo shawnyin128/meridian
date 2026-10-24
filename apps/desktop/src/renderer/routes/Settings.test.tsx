@@ -593,6 +593,60 @@ describe('Settings', () => {
     expect(dialog.querySelector('[data-setcat="appearance"]')!.classList.contains('on')).toBe(true)
   })
 
+  it('编辑页有没保存的修改时,返回、右上角关闭、Esc 和点遮罩都先问同一个确认:取消留在编辑页,确认才离开;没改过就直接离开', async () => {
+    api.setOpen.mockClear()
+    await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
+    const settings = document.querySelector<HTMLElement>('[role="dialog"]')!
+    await act(async () => { settings.querySelector<HTMLElement>('[data-setcat="appearance"]')!.click() })
+    await act(async () => { settings.querySelector<HTMLButtonElement>('.appearance-add')!.click() })
+    const close = settings.querySelector<HTMLButtonElement>(':scope > .modal-close')!
+    await act(async () => { close.click() })
+    expect(api.setOpen).toHaveBeenCalledExactlyOnceWith(false)
+    api.setOpen.mockClear()
+
+    await act(async () => { settings.querySelector<HTMLElement>('[data-module="ground"]')!.click() })
+    const hex = settings.querySelector<HTMLInputElement>('input[aria-label="色值"]')!
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')!.set!.call(hex, '#f1f6f4')
+      hex.dispatchEvent(new Event('input', { bubbles: true }))
+    })
+    const confirmation = () => document.querySelector('[role="alertdialog"] .modal-title')?.textContent ?? null
+    const answer = (label: string) => act(async () => {
+      [...document.querySelectorAll<HTMLButtonElement>('[role="alertdialog"] button')].find((button) => button.textContent === label)!.click()
+    })
+    const attempts: [string, () => void | Promise<void>][] = [
+      ['返回', () => settings.querySelector<HTMLButtonElement>('button[aria-label="返回"]')!.click()],
+      ['关闭', () => close.click()],
+      ['Esc', () => hex.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))],
+      ['遮罩', async () => {
+        // Radix starts listening for a press outside the dialog one task after the dialog mounts, and
+        // dismisses on the click that ends the press.
+        await new Promise((settled) => setTimeout(settled, 0))
+        const scrim = document.querySelector('.scrim')!
+        for (const type of ['pointerdown', 'mousedown', 'pointerup', 'mouseup', 'click']) {
+          scrim.dispatchEvent(new MouseEvent(type, { bubbles: true, button: 0 }))
+        }
+        await new Promise((settled) => setTimeout(settled, 0))
+      }],
+    ]
+    for (const [how, attempt] of attempts) {
+      await act(async () => { await attempt() })
+      expect(confirmation(), how).toBe('放弃未保存的修改？')
+      await answer('取消')
+      expect([confirmation(), settings.querySelectorAll('[data-module]').length], how).toEqual([null, 13])
+    }
+    expect(api.setOpen).not.toHaveBeenCalled()
+
+    await act(async () => { hex.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })) })
+    await answer('放弃修改')
+    expect(api.setOpen).toHaveBeenCalledExactlyOnceWith(false)
+
+    await act(async () => { settings.querySelector<HTMLButtonElement>('button[aria-label="返回"]')!.click() })
+    await answer('放弃修改')
+    expect(settings.querySelector('[data-module]')).toBeNull()
+    expect(settings.querySelector('[data-setcat="appearance"]')!.classList.contains('on')).toBe(true)
+  })
+
   it('每个设置页只有标题和控件，标题下不写介绍句子', async () => {
     api.libraryLocation.mockResolvedValue({
       root: '/tmp/meridian', source: 'configured', locked: false, restartRequired: false, openError: null,

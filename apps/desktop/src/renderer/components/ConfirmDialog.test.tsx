@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act } from 'react'
+import { act, useState } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { MessagesProvider } from '../messages/useMessages.js'
@@ -81,6 +81,35 @@ describe('ConfirmDialog', () => {
     expect(document.querySelector('[role="alertdialog"]')).not.toBeNull()
 
     act(() => focused.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })))
+    expect(document.querySelector('[role="alertdialog"]')).toBeNull()
+  })
+
+  it('without a trigger the host opens and closes it, and closing returns focus to what held it when it opened', async () => {
+    const confirm = vi.fn()
+    function Host() {
+      const [open, setOpen] = useState(false)
+      return (
+        <MessagesProvider>
+          <button onClick={() => setOpen(true)}>离开</button>
+          <ConfirmDialog open={open} onOpenChange={setOpen} title="放弃修改？" description="修改不会保留。" onConfirm={confirm} />
+        </MessagesProvider>
+      )
+    }
+    act(() => root!.render(<Host />))
+    const leave = host.querySelector<HTMLButtonElement>('button')!
+    expect(document.querySelector('[role="alertdialog"]')).toBeNull()
+
+    act(() => { leave.focus(); leave.click() })
+    expect(document.querySelector('[role="alertdialog"] .modal-title')!.textContent).toBe('放弃修改？')
+    act(() => [...document.querySelectorAll<HTMLButtonElement>('.modal-actions button')].find((button) => button.textContent === '取消')!.click())
+    expect(document.querySelector('[role="alertdialog"]')).toBeNull()
+    expect(confirm).not.toHaveBeenCalled()
+    // Radix hands focus back in a task of its own after the dialog unmounts.
+    await vi.waitFor(() => expect(document.activeElement).toBe(leave))
+
+    act(() => leave.click())
+    act(() => document.querySelector<HTMLButtonElement>('.modal-actions .btn.pri')!.click())
+    expect(confirm).toHaveBeenCalledTimes(1)
     expect(document.querySelector('[role="alertdialog"]')).toBeNull()
   })
 })
