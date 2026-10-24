@@ -41,12 +41,14 @@ const suggestedAuthorKey = (item: WatchAuthorSuggestion): string => (
 
 /**
  * One group of watches, with a plus button at the right of its heading that opens a new row at the
- * top of the group's list. `watches` is null while it loads. `editor` is the row being filled in: the
- * draft row wears the `.wrow` styles, and the caller renders and submits the input inside it.
+ * top of the group's list. `watches` is null until it is read, shown as loading unless the screen's
+ * read `failed`. `editor` is the row being filled in: the draft row wears the `.wrow` styles, and
+ * the caller renders and submits the input inside it.
  */
-function WatchGroup({ type, watches, add, editor, onOpen, onEdit, onSetActive, onRemove }: {
+function WatchGroup({ type, watches, failed, add, editor, onOpen, onEdit, onSetActive, onRemove }: {
   type: Watch['type']
   watches: Watch[] | null
+  failed: boolean
   add: RefObject<HTMLButtonElement | null>
   editor?: { id?: string; row: RefObject<HTMLDivElement | null>; input: ReactNode } | undefined
   onOpen: () => void
@@ -63,7 +65,7 @@ function WatchGroup({ type, watches, add, editor, onOpen, onEdit, onSetActive, o
       >{m.shell.watchKind[type]}
       </SectionHeading>
       {watches === null
-        ? <LoadingPlaceholder shape="rows" count={2} />
+        ? (failed ? null : <LoadingPlaceholder shape="rows" count={2} />)
         : watches.length === 0 && editor === undefined
         ? <EmptyState variant="section">{m.watches.empty(m.shell.watchKind[type])}</EmptyState>
         : (
@@ -449,6 +451,7 @@ export function WatchSettings() {
       {GROUPS.map((type) => (
         <WatchGroup
           key={type} type={type} watches={listed === null ? null : watches.filter((w) => w.type === type)}
+          failed={error !== null}
           add={type === 'topic' ? addTopic : addAuthor} onOpen={() => open(type)} onEdit={edit}
           editor={editor?.type !== type || editorInput === null
             ? undefined : { ...(editor.id === undefined ? {} : { id: editor.id }), row, input: editorInput }}
