@@ -613,10 +613,12 @@ export interface VaultStore {
   /**
    * Delivers for one watch at most `limit` of the arXiv results `found` that no stream delivered
    * before and the vault does not hold; a result that is already a live card is listed under this
-   * watch on that card instead. The new cards and the watch's cards in the feed are then ranked by
-   * recommendation score, and those after the delivery settings' `maxShownPerScope` are folded away
-   * as seen, new ones included. Returns the arXiv ids of the new cards that show. Throws if no such
-   * watch exists.
+   * watch on that card instead. These papers and the watch's cards in the feed are then ranked by
+   * recommendation score down to the delivery settings' `maxShownPerScope`, a card given `more`
+   * feedback always staying: a card ranked below is folded away as seen, and a paper ranked below is
+   * not delivered at all, neither a card nor remembered, so a later run may still deliver it, and
+   * `undelivered` still names it. Returns the arXiv ids of exactly the papers delivered. Throws if
+   * no such watch exists.
    */
   addInboxEntries(watchId: string, found: RemotePaper[], limit?: number): string[]
 
@@ -653,9 +655,10 @@ export interface VaultStore {
 
   /**
    * Delivers to one project's discovery at most `limit` of the provider results `found` that no
-   * stream delivered before and the vault does not hold, folding away its cards the way
-   * addInboxEntries does for a watch, and returns how many new cards show; a result that is already a
-   * live card is listed under this project on that card instead. Throws if no such project exists.
+   * stream delivered before and the vault does not hold, cutting the project's cards and these
+   * papers to its limit the way addInboxEntries does for a watch, and returns how many papers it
+   * delivered, exactly; a result that is already a live card is listed under this project on that
+   * card instead. Throws if no such project exists.
    */
   addDiscoveryEntries(projectId: string, found: DiscoveryPaper[], limit?: number): number
 

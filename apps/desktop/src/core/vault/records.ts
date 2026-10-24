@@ -124,7 +124,8 @@ export const DiscoveryPreferencesRecordSchema = z.object({
  * `sharedSources` stores the last reported count of sources referenced by multiple pages; both are
  * absent before first report. `columns` is omitted until paper columns are customized. `fetchedAt`
  * records the last complete fetch of enabled watches. `deliverySettings` limits watched and discovered
- * deliveries. `projectOrder` and `ideaOrder` hold a manual display order set by drag or a one-shot
+ * deliveries, its per-scope limit stored at the top level beside it and read inside it only from data
+ * written while that limit was in development. `projectOrder` and `ideaOrder` hold a manual display order set by drag or a one-shot
  * sort action; either is omitted until its list is reordered for the first time. `agentIdeas` lists
  * `<project id>:<idea id>` for each workspace agent idea already taken into the idea list, so a
  * deleted one does not come back. `discoveryPreferences` holds each project's preferences as stored;
@@ -144,6 +145,8 @@ export const VaultStateSchema = z.object({
   /** Research-record events already copied into the feed, as `project:date:text` keys. */
   feedEvents: z.array(z.string()).optional(),
   deliverySettings: DeliverySettingsSchema.optional(),
+  /** How many cards each watch or project shows after a refresh; absent means the default. */
+  maxShownPerScope: DeliverySettingsSchema.shape.maxShownPerScope,
   discoverySchedules: z.record(z.string(), z.object({
     lastFetchedAt: z.number().int().nullable(),
     cursor: z.number().int().min(0),

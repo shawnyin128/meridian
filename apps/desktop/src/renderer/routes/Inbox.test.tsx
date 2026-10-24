@@ -34,7 +34,7 @@ const api = vi.hoisted(() => ({
   /** The parameters of each inbox.list call, in order. */
   lists: [] as Record<string, unknown>[],
   checks: vi.fn<(watchId?: string) => Promise<void>>(async () => {}),
-  discoveries: vi.fn<(projectId?: string) => Promise<DiscoveryFetchResult>>(async () => ({
+  discoveries: vi.fn<(projectId?: string, force?: boolean) => Promise<DiscoveryFetchResult>>(async () => ({
     projects: 1, intents: 1, added: 0, deferredProjects: 0, cachedIntents: 0, failedIntents: 0,
   })),
   notice: {
@@ -425,14 +425,14 @@ describe('Inbox', () => {
     await act(async () => { discovering.unmount() })
   })
 
-  it('检查新论文和刷新发现只管侧栏里选中的范围:一条关注、一个项目,或者全部', async () => {
+  it('检查新论文和刷新发现只管侧栏里选中的范围:一条关注、一个项目,或者全部;刷新一个项目不等冷却期', async () => {
     const press = async (label: string) => {
       const button = [...host.querySelectorAll<HTMLButtonElement>('.desk-head .btn')].find((held) => held.textContent === label)!
       await act(async () => { button.click() })
     }
     for (const [mode, scope, label, called, expected] of [
-      ['watch', 'w1', '检查新论文', api.checks, 'w1'], ['watch', 'all', '检查新论文', api.checks, undefined],
-      ['discovery', 'p1', '刷新发现', api.discoveries, 'p1'], ['discovery', 'all', '刷新发现', api.discoveries, undefined],
+      ['watch', 'w1', '检查新论文', api.checks, ['w1']], ['watch', 'all', '检查新论文', api.checks, [undefined]],
+      ['discovery', 'p1', '刷新发现', api.discoveries, ['p1', true]], ['discovery', 'all', '刷新发现', api.discoveries, []],
     ] as const) {
       api.mode = mode
       api.scope = scope
@@ -440,7 +440,7 @@ describe('Inbox', () => {
       const root = createRoot(host)
       await act(async () => { root.render(<MessagesProvider><Inbox /></MessagesProvider>) })
       await press(label)
-      expect(called).toHaveBeenCalledExactlyOnceWith(expected)
+      expect(called.mock.calls).toEqual([expected])
       await act(async () => { root.unmount() })
     }
   })

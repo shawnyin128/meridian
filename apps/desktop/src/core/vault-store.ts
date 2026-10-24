@@ -37,7 +37,7 @@ import {
 } from './project-management/index.js'
 import { inboxFields } from './inbox/dedup.js'
 import {
-  combinedReasons, foldedBelow, listedUnder, orderListing, sortFound, withoutStreams, withStream,
+  combinedReasons, cutBelow, listedUnder, orderListing, sortFound, withoutStreams, withStream,
 } from './inbox/delivery.js'
 import {
   createPaperIndex, doiField, libraryArxivId, libraryIdentity, paperIdentity, type PaperIdentity,
@@ -1286,18 +1286,18 @@ export function createVaultStore(
       if (next !== entry) changed = true
       return next
     })
-    const made = (limit === undefined ? fresh : fresh.slice(0, limit)).map(make)
     const shown = inFeed()
-    const folded = foldedBelow(
-      held.filter((entry) => shown(entry) && listedUnder(entry, scope.kind, scope.id)), made,
+    const { kept, folded } = cutBelow(
+      held.filter((entry) => shown(entry) && listedUnder(entry, scope.kind, scope.id)),
+      limit === undefined ? fresh : fresh.slice(0, limit),
       ops.deliverySettings().maxShownPerScope ?? DEFAULT_DELIVERY_SETTINGS.maxShownPerScope, now().getTime(),
     )
-    if (made.length === 0 && !changed && folded.size === 0) return []
+    const added = kept.map(make)
+    if (added.length === 0 && !changed && folded.size === 0) return []
     const fold = (entry: InboxRecord): InboxRecord => (folded.has(entry.id) ? { ...entry, gone: true, left: 'folded' } : entry)
-    const added = made.map(fold)
     inbox = save('inbox', place(added, held.map(fold)))
     remember(added)
-    return added.filter((entry) => !entry.gone)
+    return added
   }
 
   const ops: VaultOps = {
@@ -2100,11 +2100,18 @@ export function createVaultStore(
     }),
 
     deliverySettings() {
-      return { ...DEFAULT_DELIVERY_SETTINGS, ...structuredClone(state.deliverySettings) }
+      const held = state.deliverySettings
+      return {
+        maxItemsPerRun: held?.maxItemsPerRun ?? DEFAULT_DELIVERY_SETTINGS.maxItemsPerRun,
+        maxShownPerScope: state.maxShownPerScope ?? held?.maxShownPerScope ?? DEFAULT_DELIVERY_SETTINGS.maxShownPerScope,
+      }
     },
 
     setDeliverySettings(settings: DeliverySettings) {
-      saveState({ ...state, deliverySettings: structuredClone(settings) })
+      const next: VaultState = { ...state, deliverySettings: { maxItemsPerRun: settings.maxItemsPerRun } }
+      if (settings.maxShownPerScope === undefined) delete next.maxShownPerScope
+      else next.maxShownPerScope = settings.maxShownPerScope
+      saveState(next)
     },
 
     addInboxEntries: atomic((watchId, found, limit) => {

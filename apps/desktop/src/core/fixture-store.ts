@@ -40,7 +40,7 @@ import {
 } from './project-management/index.js'
 import { inboxFields } from './inbox/dedup.js'
 import {
-  combinedReasons, foldedBelow, listedUnder, orderListing, sortFound, withoutStreams, withStream, type StoredStream,
+  combinedReasons, cutBelow, listedUnder, orderListing, sortFound, withoutStreams, withStream, type StoredStream,
 } from './inbox/delivery.js'
 import {
   createPaperIndex, doiField, libraryArxivId, libraryIdentity, paperIdentity, type PaperIdentity,
@@ -479,16 +479,17 @@ export function createFixtureStore(
       const paper = merged.get(entry.id)
       return paper === undefined ? entry : listed(entry, paper)
     })
-    const added = (limit === undefined ? fresh : fresh.slice(0, limit)).map(make)
     const shown = inFeed()
-    const folded = foldedBelow(
-      held.filter((entry) => shown(entry) && listedUnder(entry, scope.kind, scope.id)), added,
+    const { kept, folded } = cutBelow(
+      held.filter((entry) => shown(entry) && listedUnder(entry, scope.kind, scope.id)),
+      limit === undefined ? fresh : fresh.slice(0, limit),
       ops.deliverySettings().maxShownPerScope ?? DEFAULT_DELIVERY_SETTINGS.maxShownPerScope, nowMs(),
     )
+    const added = kept.map(make)
     for (const id of folded) gone.add(id)
     inbox = place(added, held)
     delivered.push(...added.map(entryIdentity))
-    return added.filter((entry) => !folded.has(entry.id))
+    return added
   }
 
   /** Live inbox entry. Throw when the id is absent from the inbox. */

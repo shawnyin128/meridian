@@ -252,11 +252,24 @@ describe('vault store', () => {
           .toEqual(['Ranked 2609.28001', 'Ranked 2609.28005', 'Ranked 2609.28003'])
         expect(titles(s.listInbox({ kind: 'watch', watch: watchOf(s, 'other') }))).toEqual(['Ranked 2609.28009'])
         expect(s.addInboxEntries(watchOf(s, 'capped'), [ranked('2609.28002', 0.2), ranked('2609.28004', 0.1)])).toEqual([])
-        expect(s.undelivered([discovered('2609.28002'), discovered('2609.28004')])).toEqual([])
+        // A new paper ranked below the limit is not delivered, so a later run may still deliver it.
+        expect(s.undelivered([discovered('2609.28002'), discovered('2609.28004')]).map((paper) => paper.id)).toEqual(['2609.28004'])
+      })
+
+      it(`${name}:按过更多类似的卡片刷新时从不折叠,它占着一个位置`, () => {
+        const s = make()
+        s.setDeliverySettings({ ...s.deliverySettings(), maxShownPerScope: 2 })
+        const project = s.createProject('按过更多类似')
+        const rankedFind = (id: string, relevance: number) => Object.assign(discovered(id), { ranking: ranked(id, relevance).ranking })
+        expect(s.addDiscoveryEntries(project, [rankedFind('2609.28101', 0.1), rankedFind('2609.28102', 0.2)])).toBe(2)
+        const liked = s.listInbox({ kind: 'discovery', project }).find((entry) => entry.title === 'Shared 2609.28101')!
+        s.feedbackDiscovery(liked.id, 'more')
+        expect(s.addDiscoveryEntries(project, [rankedFind('2609.28103', 0.9), rankedFind('2609.28104', 0.5)])).toBe(1)
+        expect(titles(s.listInbox({ kind: 'discovery', project }))).toEqual(['Shared 2609.28103', 'Shared 2609.28101'])
       })
     }
 
-    it('真实实现:折叠的卡片和一来就排在后面的新论文都存成 gone 加 left: folded,不进垃圾桶', () => {
+    it('真实实现:落到上限以下的卡片存成 gone 加 left: folded,不进垃圾桶;落到上限以下的新论文不送,不进收件也不记作送过', () => {
       store.setDeliverySettings({ maxItemsPerRun: 10, maxShownPerScope: 1 })
       store.createWatch({ type: 'topic', name: 'folding' })
       store.addInboxEntries(watchOf(store, 'folding'), [ranked('2609.29001', 0.2)])
@@ -264,9 +277,9 @@ describe('vault store', () => {
         .toEqual(['2609.29002'])
       const stored = (JSON.parse(readFileSync(join(vault, '.meridian', 'inbox.json'), 'utf8')) as Record<string, unknown>[])
         .map(({ arxiv, gone, left }) => [arxiv, gone, left])
-      expect(stored).toEqual(expect.arrayContaining([
-        ['2609.29001', true, 'folded'], ['2609.29002', false, undefined], ['2609.29003', true, 'folded'],
-      ]))
+      expect(stored).toEqual(expect.arrayContaining([['2609.29001', true, 'folded'], ['2609.29002', false, undefined]]))
+      expect(stored.map(([arxiv]) => arxiv)).not.toContain('2609.29003')
+      expect(readFileSync(join(vault, '.meridian', 'discovery', 'delivered.json'), 'utf8')).not.toContain('2609.29003')
       expect(store.listTrash()).toEqual([])
     })
 
@@ -868,15 +881,26 @@ describe('vault store', () => {
     expect(store.listProjects()[0]!.id).toBe(c.id)
   })
 
-  it('论文推送配置有默认值，写进 state.json 后重开仍保留', () => {
+  it('论文推送配置有默认值，写进 state.json 后重开仍保留;每个范围的显示上限存在 state.json 顶层', () => {
+    const state = () => JSON.parse(readFileSync(join(vault, '.meridian', 'state.json'), 'utf8')) as Record<string, unknown>
     expect(store.deliverySettings()).toEqual({ maxItemsPerRun: 10, maxShownPerScope: 20 })
     store.setDeliverySettings({ maxItemsPerRun: 7, maxShownPerScope: 12 })
     expect(createVaultStore(vault).deliverySettings()).toEqual({ maxItemsPerRun: 7, maxShownPerScope: 12 })
-    expect(JSON.parse(readFileSync(join(vault, '.meridian', 'state.json'), 'utf8')))
-      .toMatchObject({ deliverySettings: { maxItemsPerRun: 7, maxShownPerScope: 12 } })
-    // Settings an older App saved, without a per-scope limit, read with the default one.
+    expect(state()).toMatchObject({ deliverySettings: { maxItemsPerRun: 7 }, maxShownPerScope: 12 })
+    expect(state()['deliverySettings']).toEqual({ maxItemsPerRun: 7 })
     store.setDeliverySettings({ maxItemsPerRun: 5 })
     expect(createVaultStore(vault).deliverySettings()).toEqual({ maxItemsPerRun: 5, maxShownPerScope: 20 })
+    expect(state()).not.toHaveProperty('maxShownPerScope')
+  })
+
+  it('开发中写进 deliverySettings 里的每个范围显示上限照样读出,下次保存时搬到顶层', () => {
+    const file = join(vault, '.meridian', 'state.json')
+    writeFileSync(file, JSON.stringify({ seq: 0, deliverySettings: { maxItemsPerRun: 6, maxShownPerScope: 9 } }), 'utf8')
+    const reopened = createVaultStore(vault)
+    expect(reopened.deliverySettings()).toEqual({ maxItemsPerRun: 6, maxShownPerScope: 9 })
+    reopened.setDeliverySettings(reopened.deliverySettings())
+    expect(JSON.parse(readFileSync(file, 'utf8'))).toMatchObject({ deliverySettings: { maxItemsPerRun: 6 }, maxShownPerScope: 9 })
+    expect((JSON.parse(readFileSync(file, 'utf8')) as { deliverySettings: object }).deliverySettings).toEqual({ maxItemsPerRun: 6 })
   })
 
   it('上一批存下的列配置没有 type / options / groups,开库补齐', () => {

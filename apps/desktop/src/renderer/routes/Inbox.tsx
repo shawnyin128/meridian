@@ -205,7 +205,7 @@ export function Inbox() {
 
   const refreshDiscovery = () => {
     setDiscovering(true)
-    void discovery.fetch(scope === ALL_WATCHES ? undefined : scope).then(async (result) => {
+    void (scope === ALL_WATCHES ? discovery.fetch() : discovery.fetch(scope, true)).then(async (result) => {
       const refreshed = result.added > 0 ? [] : (await discovery.profiles())
         .filter((profile) => scope === ALL_WATCHES || profile.id === scope)
         .flatMap((profile) => (profile.lastFetchedAt === null ? [] : [profile.lastFetchedAt]))

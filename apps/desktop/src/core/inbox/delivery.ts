@@ -79,14 +79,28 @@ export function withoutStreams<E extends StreamEntry>(entry: E, gone: (stream: I
 }
 
 /**
- * Returns the ids of the cards a refresh of one scope folds away: it ranks `live`, the cards the scope
- * shows, together with `fresh`, the ones it delivers now, by recommendation score at `now`, and folds
- * every card after the first `shown`. Ties keep live cards first, each list in its own order.
+ * Cuts a refresh of one scope to `shown` cards. `live` are the cards the scope shows and `fresh` the
+ * papers it found to deliver; a live card given `more` feedback always stays and takes a place, and
+ * the rest are ranked by recommendation score at `now`, ties keeping live cards first, each list in
+ * its own order. Returns the fresh papers that make the cut, in their order, and the ids of the live
+ * cards that do not.
  */
-export function foldedBelow(live: InboxEntry[], fresh: InboxEntry[], shown: number, now: number): Set<string> {
-  const ranked = [...live, ...fresh].map((entry, order) => ({ entry, order, score: recommendationScore(entry, now) }))
-  ranked.sort((left, right) => right.score - left.score || left.order - right.order)
-  return new Set(ranked.slice(shown).map(({ entry }) => entry.id))
+export function cutBelow<P extends Pick<InboxEntry, 'ranking'>>(
+  live: Pick<InboxEntry, 'id' | 'feedback' | 'ranking'>[], fresh: P[], shown: number, now: number,
+): { kept: P[]; folded: Set<string> } {
+  const pinned = live.filter((card) => card.feedback === 'more').length
+  const ranked: { card?: string; paper?: P; score: number }[] = [
+    ...live.filter((card) => card.feedback !== 'more').map((card) => ({ card: card.id, score: recommendationScore(card, now) })),
+    ...fresh.map((paper) => ({ paper, score: recommendationScore(paper, now) })),
+  ]
+  const order = new Map(ranked.map((item, at) => [item, at]))
+  ranked.sort((left, right) => right.score - left.score || order.get(left)! - order.get(right)!)
+  const slots = Math.max(0, shown - pinned)
+  const kept = new Set(ranked.slice(0, slots).flatMap(({ paper }) => (paper === undefined ? [] : [paper])))
+  return {
+    kept: fresh.filter((paper) => kept.has(paper)),
+    folded: new Set(ranked.slice(slots).flatMap(({ card }) => (card === undefined ? [] : [card]))),
+  }
 }
 
 /** What a found paper turns out to be: in the library, delivered before, or the live card with id `id`. */
