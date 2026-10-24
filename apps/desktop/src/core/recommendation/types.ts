@@ -78,8 +78,6 @@ export type DiscoveryPreferences = {
 /** Provider-neutral discovery result stored by Meridian after an external recommendation call. */
 export type DiscoveryPaper = RemotePaper & {
   semanticId: string
-  /** The paper's DOI as Semantic Scholar gives it; absent when it gives none. */
-  doi?: string
   /** Added by Core after per-intent retrieval; providers never manufacture explanations. */
   matches?: RecommendationMatch[]
   /** Added by a source adapter and merged by Core when the same paper arrives more than once. */

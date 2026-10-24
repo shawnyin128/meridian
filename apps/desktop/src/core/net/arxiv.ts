@@ -25,6 +25,8 @@ export type RemotePaper = {
   submitted: string
   journalRef: string | null
   pdf: string
+  /** The paper's DOI, when its source gives one. */
+  doi?: string
   ranking?: {
     relevance: number
     published: boolean
