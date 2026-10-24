@@ -31,7 +31,7 @@ type ProjectPlan = {
   /** The candidates this run offered to the feed. */
   offered: DiscoveryPaper[]
   favouredAt: number | null
-  /** Whether the last run that served the project from its pool delivered nothing. */
+  /** Whether a run served the project from its pool and delivered nothing, and no run delivered since. */
   poolStalled: boolean
   results: IntentResult[]
   successfulRequests: Record<string, { fingerprint: string; fetchedAt: number }>
@@ -129,7 +129,7 @@ export function createRecommendationService(deps: {
       })
 
       // A project whose pool covers a whole run is served from it without provider calls, unless forced
-      // or the last run served that way delivered nothing.
+      // or a run served that way delivered nothing and no run has delivered since.
       const fetching = plans.filter((plan) => force || plan.pool.length < cap || plan.poolStalled)
       // Give every project one turn before assigning a second or third. This uses spare budget
       // without letting an early project's secondary directions crowd out another project's core.
@@ -200,7 +200,7 @@ export function createRecommendationService(deps: {
           const { delivered, rest, favoured } = shares[at]!
           const pool = [...deps.store.undelivered(plan.offered), ...rest].slice(0, POOL_LIMIT)
           const refreshed = fetched.has(plan) || delivered > 0
-          const poolStalled = fetching.includes(plan) ? plan.poolStalled : delivered === 0
+          const poolStalled = delivered === 0 && (plan.poolStalled || !fetching.includes(plan))
           const fetchedAt = plan.failed === 0 && refreshed ? now : plan.schedule.lastFetchedAt
           // A project whose selected directions were all cooling still moves its cursor on to the next ones.
           if (refreshed || (plan.failed === 0 && plan.nextCursor !== plan.schedule.cursor)) {

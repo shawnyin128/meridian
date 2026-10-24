@@ -68,7 +68,10 @@ export type RefreshProgress = {
   favouredAt: number | null
   /** The arXiv ids of the newest page a watch fetched last; empty before its first fetch and for projects. */
   newest: string[]
-  /** Whether the last run that served the scope from its pool, without provider calls, delivered nothing. */
+  /**
+   * Whether a run served the scope from its pool, without provider calls, and delivered nothing, and no
+   * run delivered since.
+   */
   poolStalled: boolean
 }
 

@@ -641,6 +641,40 @@ describe('project recommendation service', () => {
     expect(asked()).toBe(2)
   })
 
+  it('候选池送不出卡片之后,哪一轮送出了卡片就清掉这个标记,后面候选池够一轮时又不请求 provider', async () => {
+    const store = createFixtureStore(() => '2026-09-17')
+    const project = seededProject(store, '候选池又能用', ON_POLICY_DISTILLATION_SAMPLE.seeds.slice(0, 1))
+    store.setDeliverySettings({ maxItemsPerRun: 1, maxShownPerScope: 2 })
+    const candidate = (at: number): DiscoveryPaper => ({
+      ...ON_POLICY_DISTILLATION_SAMPLE.expected,
+      semanticId: `cleared-${at}`, id: `2609.${75_000 + at}`, title: `Cleared candidate ${at}`,
+    })
+    const recommend = vi.fn<RecommendationProvider['recommend']>(async () => [1, 2, 3, 4].map(candidate))
+    let now = 1
+    const service = createRecommendationService({ store, provider: { recommend }, onWrite: vi.fn(), now: () => now })
+    const refresh = () => {
+      now += DISCOVERY_COOLDOWN_MS + 1
+      return service.discover(project)
+    }
+
+    await refresh()
+    await refresh()
+    await expect(refresh()).resolves.toMatchObject({ added: 0, intents: 0 })
+    expect(recommend).toHaveBeenCalledTimes(1)
+    // A run that fetches and delivers nothing keeps the project fetching.
+    await expect(refresh()).resolves.toMatchObject({ added: 0, intents: 1 })
+    await expect(refresh()).resolves.toMatchObject({ added: 0, intents: 1 })
+    expect(recommend).toHaveBeenCalledTimes(3)
+
+    const first = store.listInbox({ kind: 'discovery', project }).find((entry) => entry.title === 'Cleared candidate 1')!
+    store.dismissInbox(first.id)
+    await expect(refresh()).resolves.toMatchObject({ added: 1, intents: 1 })
+    expect(recommend).toHaveBeenCalledTimes(4)
+
+    await expect(refresh()).resolves.toMatchObject({ intents: 0 })
+    expect(recommend).toHaveBeenCalledTimes(4)
+  })
+
   it('全局刷新把单次上限平分给各项目,除不尽的那篇轮流给,而不是总给列在前面的项目', async () => {
     const ids = ['early', 'late']
     const profileFor = (projectId: string): RecommendationProfile => ({

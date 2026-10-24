@@ -65,9 +65,9 @@ Wiki term into structured recommendation reasons.
 Candidates a run fetched beyond its cap, or offered but ranked below the project's cut, stay in the
 project's pool in the same file, up to 60, and the next run offers them before anything it fetches,
 except those the feed would no longer deliver as new cards. A project whose pool already covers a
-whole run is served from it without provider calls, unless the user force-refreshes or the last run
-served that way delivered nothing, which the project's record notes as `poolStalled`. One run's cap
-is split evenly over its projects; the odd shares go first to the projects that have gone longest
-without one, so no project takes the cap by its place in the list. A run that finds nothing left
-to deliver anywhere in its scope, with nothing put off and nothing failed, says so in `nothingNew`,
-beside the latest refresh time of its projects.
+whole run is served from it without provider calls, unless the user force-refreshes or a run served
+that way delivered nothing, which the project's record notes as `poolStalled` until a run delivers
+again. One run's cap is split evenly over its projects; the odd shares go first to the projects that
+have gone longest without one, so no project takes the cap by its place in the list. A run that
+finds nothing left to deliver anywhere in its scope, with nothing put off and nothing failed, says
+so in `nothingNew`, beside the latest refresh time of its projects.
