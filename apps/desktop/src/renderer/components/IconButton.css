@@ -1,13 +1,15 @@
 /*
  * The one icon-only button, a ghost square. Its size sets the box and the glyph: 30px with a 15px
  * glyph, .sm 24px with 13px, .xs 16px with 10px, where a transparent ::before widens the hit area
- * to 24px. Hover and press lie over the box the way they do on the button set.
+ * to 24px. .round makes it a circle on the neutral chip fill with an ink glyph. Hover and press lie
+ * over the box the way they do on the button set.
  */
 .icbtn{--icbtn-box:30px;--icbtn-glyph:15px;position:relative;flex:none;display:inline-grid;place-items:center;width:var(--icbtn-box);height:var(--icbtn-box);padding:0;border:0;border-radius:var(--r-control);background-color:transparent;color:var(--sec);cursor:pointer;transition:box-shadow var(--t-fast) var(--e-out),color var(--t-fast) var(--e-out),opacity var(--t-fast) var(--e-out)}
 .icbtn>svg{display:block;width:var(--icbtn-glyph);height:var(--icbtn-glyph)}
 .icbtn.sm{--icbtn-box:24px;--icbtn-glyph:13px;border-radius:var(--r-sm)}
 .icbtn.xs{--icbtn-box:16px;--icbtn-glyph:10px;border-radius:var(--r-xs)}
 .icbtn.xs::before{content:"";position:absolute;inset:-4px}
+.icbtn.round{border-radius:var(--r-full);background-color:var(--chip);color:var(--ink)}
 :where(.icbtn):hover{color:var(--ink);box-shadow:inset 0 0 0 100vmax var(--hover)}
 :where(.icbtn.danger):hover{color:var(--bad)}
 .icbtn[aria-pressed="true"]{background-color:var(--selected);color:var(--on-selected)}

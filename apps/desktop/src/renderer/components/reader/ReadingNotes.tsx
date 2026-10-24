@@ -52,13 +52,15 @@ function NoteCard({ note, edits, onSave, onDelete, onJump }: {
   )
 }
 
-function HighlightCard({ highlight, edits, onSave, onDelete, onJump, focus }: {
+function HighlightCard({ highlight, edits, onSave, onDelete, onJump, focus, selected }: {
   highlight: PaperHighlight
   edits: Drafts<EditDraft>
   onSave: (note: string) => Promise<boolean>
   onDelete: () => Promise<boolean>
   onJump: () => void
   focus: boolean
+  /** Whether it is the highlight selected on the page: it shows as selected and scrolls into view. */
+  selected: boolean
 }) {
   const m = useMessages()
   const edit = editField(edits, `highlight:${highlight.id}`, highlight.note)
@@ -66,9 +68,14 @@ function HighlightCard({ highlight, edits, onSave, onDelete, onJump, focus }: {
   const input = useRef<HTMLTextAreaElement>(null)
   const quote = useRef<HTMLQuoteElement>(null)
   const quoteCut = useClipped(quote, highlight.quote, true)
+  const card = useRef<HTMLElement>(null)
   useEffect(() => { if (focus) input.current?.focus() }, [focus])
+  useEffect(() => { if (selected) card.current?.scrollIntoView({ block: 'nearest' }) }, [selected])
   return (
-    <article className={`reading-card highlight-card ${highlight.color}`} data-row-actions="">
+    <article
+      ref={card} className={`reading-card highlight-card ${highlight.color}${selected ? ' selected' : ''}`} data-row-actions=""
+      aria-current={selected || undefined}
+    >
       <div className="reading-card-head">
         <span className="reading-page"><SourceAnchor page={highlight.page} quote={highlight.quote} onOpen={onJump} /></span>
         <ReadingDelete onDelete={onDelete} />
@@ -94,7 +101,7 @@ function HighlightCard({ highlight, edits, onSave, onDelete, onJump, focus }: {
  * mutations and knows nothing of how the PDF or Core stores them.
  */
 export function ReadingNotes({
-  reading, currentPage, saving, onMutate, onJump, mode = 'all', focusHighlightId = null, drafts, edits,
+  reading, currentPage, saving, onMutate, onJump, mode = 'all', focusHighlightId = null, selectedHighlightId = null, drafts, edits,
 }: {
   reading: PaperReading
   currentPage: number
@@ -103,6 +110,7 @@ export function ReadingNotes({
   onJump: (page: number) => void
   mode?: 'all' | 'highlights' | 'notes'
   focusHighlightId?: string | null
+  selectedHighlightId?: string | null
   drafts: Drafts
   edits: Drafts<EditDraft>
 }) {
@@ -135,7 +143,7 @@ export function ReadingNotes({
         {mode === 'notes' ? null : reading.highlights.map((highlight) => (
           <HighlightCard
             key={highlight.id} highlight={highlight} edits={edits} onJump={() => onJump(highlight.page)}
-            focus={focusHighlightId === highlight.id}
+            focus={focusHighlightId === highlight.id} selected={selectedHighlightId === highlight.id}
             onSave={(note) => onMutate({ kind: 'highlight.update', id: highlight.id, note })}
             onDelete={() => onMutate({ kind: 'highlight.delete', id: highlight.id })}
           />

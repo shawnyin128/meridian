@@ -165,10 +165,11 @@ describe('阅读器里的高亮', () => {
       .toEqual(colours.map((name) => ['--mark', [`--hl-${name}`]]))
   })
 
-  it('有批注的高亮保留自己的底色,批注另用一条中性的底线标出', () => {
+  it('有批注的高亮保留自己的底色,批注另用一条中性的底线标出;单击选中的高亮的轮廓也只用这种中性色', () => {
     const fills = rules('routes/Reader.css').filter(({ selectors }) => selectors.some((s) => s.startsWith('.paper-highlight')))
-    expect(fills.filter(({ body }) => /fill:none/.test(body)).map(({ selectors }) => selectors.join(',')))
-      .toEqual(['.paper-highlight .paper-highlight-note'])
+    expect(fills.filter(({ body }) => /fill:none/.test(body)).map(({ selectors }) => selectors.join(',')).sort())
+      .toEqual(['.paper-highlight .paper-highlight-note', '.paper-highlight-outline path'])
     expect(tokens(bodyOf('routes/Reader.css', '.paper-highlight .paper-highlight-note'))).toEqual(['--hl-note'])
+    expect(tokens(bodyOf('routes/Reader.css', '.paper-highlight-outline path'))).toEqual(['--hl-note'])
   })
 })

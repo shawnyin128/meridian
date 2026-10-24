@@ -93,7 +93,7 @@ describe('ReaderSidePanel', () => {
       <GenerationsContext.Provider value={IDLE}>
         <ReaderSidePanel
           tab={tab} onTab={vi.fn()} paper={paper} onPaper={vi.fn()} reading={held} currentPage={1}
-          saving={false} onMutate={onSave} onSaveRemark={onSave} onJump={vi.fn()} focusHighlightId={null}
+          saving={false} onMutate={onSave} onSaveRemark={onSave} onJump={vi.fn()} focusHighlightId={null} selectedHighlightId={null}
         />
       </GenerationsContext.Provider>
     </MessagesProvider>,
@@ -111,7 +111,7 @@ describe('ReaderSidePanel', () => {
       <MessagesProvider>
         <ReaderSidePanel
           tab="notes" onTab={onTab} paper={PAPER} onPaper={vi.fn()} reading={PAPER_ONE} currentPage={1}
-          saving={false} onMutate={vi.fn()} onSaveRemark={vi.fn()} onJump={vi.fn()} focusHighlightId={null}
+          saving={false} onMutate={vi.fn()} onSaveRemark={vi.fn()} onJump={vi.fn()} focusHighlightId={null} selectedHighlightId={null}
         />
       </MessagesProvider>,
     ))

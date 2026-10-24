@@ -2,8 +2,8 @@
 import { describe, expect, it, vi } from 'vitest'
 import type { PaperHighlightRect } from '../../shared/contract.js'
 import {
-  highlightLines, highlightShape, normalizedHighlightRects, selectedLinesByPage, selectedTextRanges, selectionBox,
-  uncoveredLines,
+  drawnLines, highlightAt, highlightLines, highlightOutline, highlightShape, normalizedHighlightRects, selectedLinesByPage,
+  selectedTextRanges, selectionBox, uncoveredLines,
 } from './highlight-geometry.js'
 
 /** A US Letter page at the reader's fit scale (830 / 612), as the page box's client rectangle. */
@@ -136,6 +136,49 @@ describe('highlight geometry', () => {
       line(0.125, 0.125, 0.25), line(0.375, 0.25, 0.25), line(0.125, 0.25, 0.25 + 7 / 512),
     ])
     expect(uncoveredLines(older, [])).toEqual(older)
+  })
+
+  it('一页上每段高亮按画出来的行算:后来的盖住的那一截不算前面那段的;点在哪一行上就是哪段,行外不算', () => {
+    const line = (x: number, width: number, y: number) => ({ x, y, width, height: 1 / 64 })
+    const highlight = (id: string, rects: PaperHighlightRect[]) => ({
+      id, page: 1, quote: id, rects, color: 'yellow' as const, note: '', created: '2026-10-24', updated: '2026-10-24',
+    })
+    const older = highlight('older', [line(0.125, 0.5, 0.25), line(0.125, 0.25, 0.25 + 7 / 512)])
+    const newer = highlight('newer', [line(0.25, 0.125, 0.25)])
+    const whole = highlight('whole', [line(0.125, 0.125, 0.5)])
+    const over = highlight('over', [line(0.125, 0.125, 0.5)])
+    expect(drawnLines([older, newer, whole, over], 1)).toEqual([
+      [line(0.125, 0.125, 0.25), line(0.375, 0.25, 0.25), line(0.125, 0.25, 0.25 + 7 / 512)],
+      [line(0.25, 0.125, 0.25)], [], [line(0.125, 0.125, 0.5)],
+    ])
+    const at = (x: number, y: number) => highlightAt([older, newer, whole, over], 1, { x, y })?.id ?? null
+    // On the stretch both cover, the newer wins; beside it on the same line, the older one.
+    expect([at(0.3, 0.255), at(0.2, 0.255), at(0.5, 0.255), at(0.2, 0.27)]).toEqual(['newer', 'older', 'older', 'older'])
+    // A highlight covered whole is never hit; past the end of a line and between lines nothing is.
+    expect([at(0.2, 0.505), at(0.7, 0.255), at(0.2, 0.4)]).toEqual(['over', null, null])
+
+    // Where the boxes of two neighbouring lines overlap, as on tightly set text, the newer one is hit.
+    const above = highlight('above', [line(0.125, 0.5, 0.25)])
+    const below = highlight('below', [line(0.125, 0.5, 0.25 + 7 / 512)])
+    expect(highlightAt([above, below], 1, { x: 0.2, y: 0.265 })?.id).toBe('below')
+  })
+
+  it('选中高亮的轮廓沿着它画出来的行走一圈:相连的行合成一个轮廓,在宽出去的那一行处拐弯;隔开的行各自一个框', () => {
+    const line = (x: number, width: number, y: number) => ({ x, y, width, height: 1 / 16 })
+    expect(highlightOutline([line(0.25, 0.5, 0.25)])).toBe('M0.25 0.25L0.75 0.25L0.75 0.3125L0.25 0.3125Z')
+    // A paragraph's middle: the first line starts late and ends at the margin, the last ends early;
+    // the second line overlaps the first a little, as tightly set lines do.
+    expect(highlightOutline([line(0.5, 0.375, 0.25), line(0.125, 0.75, 0.3125 - 1 / 64), line(0.125, 0.25, 0.375 - 1 / 32)])).toBe(
+      'M0.5 0.25L0.875 0.25L0.875 0.3125L0.875 0.3125L0.875 0.359375L0.375 0.359375L0.375 0.40625L0.125 0.40625'
+      + 'L0.125 0.359375L0.125 0.359375L0.125 0.296875L0.5 0.296875Z',
+    )
+    // Lines a gap apart, or side by side without sharing any stretch across, are outlined each on its own.
+    expect(highlightOutline([line(0.25, 0.25, 0.25), line(0.25, 0.25, 0.5)])).toBe(
+      'M0.25 0.25L0.5 0.25L0.5 0.3125L0.25 0.3125ZM0.25 0.5L0.5 0.5L0.5 0.5625L0.25 0.5625Z',
+    )
+    expect(highlightOutline([line(0.125, 0.25, 0.25), line(0.5, 0.25, 0.25 + 1 / 32)])).toBe(
+      'M0.125 0.25L0.375 0.25L0.375 0.3125L0.125 0.3125ZM0.5 0.28125L0.75 0.28125L0.75 0.34375L0.5 0.34375Z',
+    )
   })
 
   it('高亮的填色每行一个矩形，批注的底线每行一条，沿着同一行的底边', () => {
