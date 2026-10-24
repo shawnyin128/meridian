@@ -24,10 +24,12 @@ export const reader = {
     newAria: 'New note',
     placeholder: (page: number) => `Add a note about page ${page}…`,
     pageAria: (page: number) => `Page ${page} note`,
+    deleted: 'Note deleted',
   },
   highlights: {
     noteAria: (page: number) => `Page ${page} highlight annotation`,
     annotate: 'Annotation for this highlight',
+    deleted: 'Highlight deleted',
   },
   remark: {
     heading: 'Thoughts on this paper',
@@ -35,7 +37,8 @@ export const reader = {
   },
   selection: {
     highlight: 'Highlight',
-    note: 'Annotate',
+    colours: { yellow: 'Yellow', green: 'Green', blue: 'Blue', pink: 'Pink' },
+    note: 'Annotation',
     askAi: 'Ask AI',
   },
   zoom: {

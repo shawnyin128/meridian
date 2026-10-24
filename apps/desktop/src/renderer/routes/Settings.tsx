@@ -26,6 +26,7 @@ import { DeliverySettings } from '../components/settings/DeliverySettings.js'
 import { ModelSettings } from '../components/settings/ModelSettings.js'
 import { ApiOverview } from '../components/settings/ApiOverview.js'
 import { ExtensionSettings } from '../components/settings/ExtensionSettings.js'
+import { ActionButton } from '../components/ActionButton.js'
 import { ConfirmDialog } from '../components/ConfirmDialog.js'
 import { DateTimeDisplay } from '../components/DateTimeDisplay.js'
 import { ModalDialog, ModalTitle } from '../components/ModalDialog.js'
@@ -295,14 +296,14 @@ export function Settings() {
             <span>{m.settings.storage.resetLabel}</span>
             <ConfirmDialog
               trigger={(
-                <button
+                <ActionButton
                   className="btn danger" disabled={location === null || location.source === 'fixture'
-                    || location.restartRequired || resetting}
-                >{m.settings.storage.resetAction}</button>
+                    || location.restartRequired}
+                  busy={resetting} busyLabel={m.settings.storage.resetting}
+                >{m.settings.storage.resetAction}</ActionButton>
               )}
               title={m.settings.storage.resetTitle} description={m.settings.storage.resetDescription}
-              confirmLabel={resetting ? m.settings.storage.resetting : m.settings.storage.resetConfirm}
-              confirmDisabled={resetting}
+              confirmLabel={m.settings.storage.resetConfirm}
               onConfirm={() => { void resetLibrary() }}
             />
           </div>
@@ -333,17 +334,15 @@ export function Settings() {
                         </button>
                         <ConfirmDialog
                           trigger={(
-                            <button
+                            <ActionButton
                               className="btn danger sm"
                               disabled={busy || location?.restartRequired === true}
-                            >{m.settings.storage.backupDelete}</button>
+                              busy={deletingBackup === backup.id} busyLabel={m.settings.storage.backupDeleting}
+                            >{m.settings.storage.backupDelete}</ActionButton>
                           )}
                           title={m.settings.storage.backupDeleteTitle(label)}
                           description={m.settings.storage.backupDeleteDescription}
-                          confirmLabel={deletingBackup === backup.id
-                            ? m.settings.storage.backupDeleting
-                            : m.settings.storage.backupDelete}
-                          confirmDisabled={deletingBackup === backup.id}
+                          confirmLabel={m.settings.storage.backupDelete}
                           onConfirm={() => { void deleteBackup(backup) }}
                         />
                       </div>

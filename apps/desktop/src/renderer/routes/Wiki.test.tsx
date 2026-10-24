@@ -379,6 +379,60 @@ describe('Wiki keyboard reach', () => {
     expect(fixture.aggregation).toHaveBeenLastCalledWith('topics/sd')
   })
 
+  /** Lets the write chain a click started run to its end. */
+  const settle = () => act(async () => { await new Promise((done) => setTimeout(done, 0)) })
+
+  /** The last write's notice text and the label of the action it offers; runs that action once. */
+  const undoLast = async (): Promise<[unknown, string | undefined]> => {
+    const { result, opts } = fixture.writes.at(-1)!
+    const action = opts?.action?.(result as never)
+    await act(async () => { action?.onAction() })
+    return [opts?.note, action?.label]
+  }
+
+  it('从这一页移出一个细分页,提示带撤销,撤销的是这次写入记下的那一条', async () => {
+    fixture.apply.mockResolvedValue({ change: 'c-page' })
+    await press(host.querySelector<HTMLElement>('[data-wk="topics/sd"] .tt')!)
+    fixture.aggregation.mockResolvedValue({
+      ...AGG, ...card('topics/tree', '树形草稿'), parents: [{ id: 'topics/sd', title: '推测解码' }],
+    })
+    await press(host.querySelector<HTMLElement>('.wkmain .wkcard .rx')!)
+    await settle()
+    expect(fixture.apply).toHaveBeenLastCalledWith({
+      source: 'user', title: '把 树形草稿 从 推测解码 下移出', ops: [{ op: 'setParents', page: 'topics/tree', parents: [] }],
+    })
+    expect(await undoLast()).toEqual(['把 树形草稿 从 推测解码 下移出', '撤销'])
+    expect(fixture.undo).toHaveBeenLastCalledWith('c-page')
+  })
+
+  it('从这一页移出一篇论文,提示带撤销,撤销的是这次写入记下的那一条', async () => {
+    fixture.apply.mockResolvedValue({ change: 'c-paper' })
+    await press(host.querySelector<HTMLElement>('[data-wk="topics/sd"] .tt')!)
+    await press(host.querySelector<HTMLElement>('.cmp td.rx button')!)
+    await settle()
+    expect(fixture.apply).toHaveBeenLastCalledWith({
+      source: 'user', title: '把 EAGLE-2 从 推测解码 移出', ops: [{ op: 'removeMembership', paper: 'papers/p1', in: 'topics/sd' }],
+    })
+    expect(await undoLast()).toEqual(['把 EAGLE-2 从 推测解码 移出', '撤销'])
+    expect(fixture.undo).toHaveBeenLastCalledWith('c-paper')
+  })
+
+  it('列设置里删掉一列再保存,提示带撤销,撤销的是这次写入记下的那一条', async () => {
+    vi.stubGlobal('ResizeObserver', class { observe() {} unobserve() {} disconnect() {} })
+    fixture.apply.mockResolvedValue({ change: 'c-column' })
+    await press(host.querySelector<HTMLElement>('[data-wk="topics/sd"] .tt')!)
+    await press(host.querySelector<HTMLElement>('.cmp thead [aria-label="列设置"]')!)
+    await press(document.querySelector<HTMLElement>('.coledit .row [aria-label="删除列"]')!)
+    await press(document.querySelector<HTMLElement>('.coledit .btn.pri')!)
+    await settle()
+    expect(fixture.apply).toHaveBeenLastCalledWith({
+      source: 'user', title: '改 推测解码 的列', ops: [{ op: 'setColumns', page: 'topics/sd', columns: [] }],
+    })
+    expect(await undoLast()).toEqual(['改 推测解码 的列', '撤销'])
+    expect(fixture.undo).toHaveBeenLastCalledWith('c-column')
+    vi.unstubAllGlobals()
+  })
+
   it('列设置里删除一列的是共享的图标按钮，图标有尺寸，不再是一个空方块', async () => {
     vi.stubGlobal('ResizeObserver', class { observe() {} unobserve() {} disconnect() {} })
     await press(host.querySelector<HTMLElement>('[data-wk="topics/sd"] .tt')!)

@@ -1,4 +1,4 @@
-import { expect, gotoPapers, gotoProject, test, type MeridianWindow } from './app.js'
+import { expect, gotoPapers, gotoProject, popupMenus, test, type MeridianWindow } from './app.js'
 
 /** How far to drag the Title column wider than its default 300px. */
 const COLUMN_DRAG = 60
@@ -39,6 +39,28 @@ test('平台名写进了 data-os,与 preload 报的一致', async ({ win }) => {
   }))
   expect(seen.attr).toBe(seen.bridge)
   expect(seen.attr, 'data-os 空着的话按平台分的留白就全落空了').toBeTruthy()
+})
+
+test('右键文本框弹出系统的编辑菜单,右键选中的 Markdown 能复制(macOS 上先能查询);论文行只出 Meridian 自己的右键菜单', async ({ app, win }) => {
+  const page = win.locator('.screenslot:not([hidden])')
+
+  await gotoPapers(win)
+  await page.locator('.ptable tbody tr').first().click({ button: 'right' })
+  await expect(win.locator('.ctxmenu')).toBeVisible()
+  await win.keyboard.press('Escape')
+  await page.locator('#libq').click({ button: 'right' })
+  // The row's own menu reaches Main as nothing: the only native menu is the field's.
+  await expect.poll(() => popupMenus(app)).toEqual([['剪切', '复制', '粘贴', '全选']])
+
+  await win.locator('[data-desk="wiki"]').click()
+  await page.locator('[data-wk="topics/quantization"]').click()
+  const heading = page.locator('.wkmain .md h2').first()
+  await heading.evaluate((element) => document.getSelection()!.selectAllChildren(element))
+  await heading.click({ button: 'right' })
+  const text = (await heading.textContent())!
+  await expect.poll(async () => (await popupMenus(app)).at(-1)).toEqual(
+    process.platform === 'darwin' ? [`查询“${text}”`, '—', '复制'] : ['复制'],
+  )
 })
 
 test('标题栏的品牌标记是应用菜单的入口,落在栏内', async ({ win }) => {

@@ -1,3 +1,5 @@
+import { formatNumber } from '../../lib/number.js'
+
 /** Paper table, paper detail metadata, and paper card copy. */
 export const papers = {
   title: (count: number | null) => count === null ? '论文' : `论文 · ${count}`,
@@ -175,7 +177,7 @@ export const papers = {
   card: {
     abstractLabel: '摘要',
     recommendationLabel: '推荐理由',
-    citations: (n: number) => `${n} 引用`,
+    citations: (n: number) => `${formatNumber('zh', n)} 引用`,
     expandAbstract: '展开摘要',
     collapseAbstract: '收起摘要',
   },

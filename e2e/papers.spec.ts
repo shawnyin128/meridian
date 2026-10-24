@@ -226,6 +226,48 @@ test('研究地图从真实论文元数据形成可切换、可解释的重叠�
   await expect(win.locator('.research-map-detail-head .research-map-detail-name')).not.toHaveText(firstLabel)
 })
 
+test('研究地图详情卡里悬停的论文行铺到卡片的内边，行间分隔线也是，行里的内容和卡片标题一样缩进', async ({ win }) => {
+  await gotoPapers(win)
+  await firstPage(win)
+  await win.getByRole('radio', { name: '研究地图', exact: true }).click()
+  const papers = win.locator('.research-map-detail .research-map-paper')
+  await expect(papers.nth(1)).toBeVisible()
+  await papers.first().hover()
+
+  const geometry = await win.locator('.research-map-detail').evaluate((card) => {
+    const at = (value: number) => +value.toFixed(2)
+    const box = (el: Element) => el.getBoundingClientRect()
+    const inner = (el: Element) => {
+      const style = getComputedStyle(el)
+      return { left: at(box(el).left + parseFloat(style.borderLeftWidth)), right: at(box(el).right - parseFloat(style.borderRightWidth)) }
+    }
+    const edges = (el: Element) => ({ left: at(box(el).left), right: at(box(el).right) })
+    const list = card.querySelector<HTMLElement>('.research-map-papers')!
+    const [hovered, next] = [...list.querySelectorAll('.research-map-paper')]
+    const head = card.querySelector('.research-map-detail-head>div')!
+    // A list longer than five rows scrolls, and its scrollbar takes the card's inner right edge.
+    const scrollbar = list.offsetWidth - list.clientWidth
+    return {
+      card: inner(card), list: edges(list),
+      reach: { left: inner(card).left, right: at(inner(card).right - scrollbar) },
+      hovered: edges(hovered!), next: edges(next!),
+      fill: getComputedStyle(hovered!).backgroundImage,
+      divider: getComputedStyle(next!).borderTopWidth,
+      head: { start: at(box(head).left - inner(card).left), end: at(inner(card).right - box(head).right) },
+      content: {
+        start: at(box(hovered!.querySelector('.research-map-paper-title')!).left - box(hovered!).left),
+        end: at(box(hovered!).right - box(hovered!.querySelector('.research-map-paper-marks')!).right),
+      },
+    }
+  })
+  expect(geometry.fill).not.toBe('none')
+  expect(geometry.list).toEqual(geometry.card)
+  expect(geometry.hovered).toEqual(geometry.reach)
+  expect(geometry.next).toEqual(geometry.reach)
+  expect(geometry.divider).toBe('1px')
+  expect(geometry.content).toEqual(geometry.head)
+})
+
 test('论文表首列是冻结列', async ({ win }) => {
   await gotoPapers(win)
   await firstPage(win)
@@ -743,6 +785,53 @@ test('列管理:内置列显隐持久到离开再回来,固定列藏不了;自�
   await menu.filter({ hasText: '批注' }).hover()
   await menu.filter({ hasText: '批注' }).locator('.cmx.danger').click()
   await expect.poll(head).not.toContain('批注')
+})
+
+/** Clicks Undo on the notice the last write showed, and waits for the notice saying it was undone. */
+async function undoFromNotice(win: Page): Promise<void> {
+  const undo = win.locator('#notice .btn')
+  await expect(undo).toHaveText('撤销')
+  await undo.click()
+  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已撤销')
+}
+
+test('删掉一列,提示里的撤销把它放回,格子里的值还在', async ({ win }) => {
+  await seed(win, [{ key: 'note', label: '备注', type: 'text', options: [] }], [{ note: '删列前写下的值' }])
+  const before = await call<PaperColumns>(win, 'papers.columns', {})
+  await gotoPapers(win)
+  await firstPage(win)
+  const head = () => win.locator('.ptable thead th').allTextContents()
+  const menu = win.locator('[data-radix-popper-content-wrapper] .mi.colrow')
+  await win.locator('.ptable thead').hover()
+  await win.locator('.ptable thead [aria-label="列设置"]').click()
+  await menu.filter({ hasText: '备注' }).hover()
+  await menu.filter({ hasText: '备注' }).locator('[aria-label="删除列"]').click()
+  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已删除列「备注」')
+  await expect.poll(head).not.toContain('备注')
+
+  await undoFromNotice(win)
+  await expect.poll(head).toContain('备注')
+  await expect(win.locator('.ptable tbody tr').first().locator('td.pt-cust')).toHaveText('删列前写下的值')
+  expect((await call<PaperColumns>(win, 'papers.columns', {})).custom).toEqual(before.custom)
+})
+
+test('删掉一个没人用的选项,提示里的撤销把它放回', async ({ win }) => {
+  await seed(win, [{ key: 'pick', label: '读法', type: 'select', options: ['精读', '略读'] }], [{ pick: '精读' }])
+  const before = await call<PaperColumns>(win, 'papers.columns', {})
+  await gotoPapers(win)
+  await firstPage(win)
+  const menu = win.locator('[data-radix-popper-content-wrapper] .mi.colrow')
+  await win.locator('.ptable thead').hover()
+  await win.locator('.ptable thead [aria-label="列设置"]').click()
+  await menu.filter({ hasText: '读法' }).locator('.cmx.optx').click()
+  const spare = win.locator('[data-radix-popper-content-wrapper] .mi.optrow', { hasText: '略读' })
+  await spare.hover()
+  await spare.locator('[aria-label="删除选项"]').click()
+  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已删除选项')
+  await expect(spare).toHaveCount(0)
+
+  await undoFromNotice(win)
+  await expect.poll(async () => (await call<PaperColumns>(win, 'papers.columns', {})).custom).toEqual(before.custom)
 })
 
 test('多选格:连着提交两次都留得住,点输入框本身不关弹层', async ({ win }) => {
@@ -1772,10 +1861,8 @@ test('改类型:列菜单里只用键盘把文本列改成单选', async ({ win 
   for (let n = await toggles.count(); n > 0; n -= 1) await win.keyboard.press('Tab')
   await expect(menu.locator('.mi.colrow', { hasText: '备注' }).locator('[aria-label="改类型"]')).toBeFocused()
   await win.keyboard.press('Enter')
-  // Of the expanded type options only the current one is in the Tab order; after Change type come
-  // the rename pen, the delete × and then that option.
-  await win.keyboard.press('Tab')
-  await win.keyboard.press('Tab')
+  // Of the expanded type options only the current one is in the Tab order. Change type, the rename
+  // pen and the delete × are the row's actions slot, one Tab stop, so the next Tab reaches that option.
   await win.keyboard.press('Tab')
   const selectBtn = menu.locator('.typerow .ctbtn[aria-label="单选"]')
   await expect(menu.locator('.typerow .ctbtn[aria-label="文本"]')).toBeFocused()

@@ -18,6 +18,7 @@ const api = vi.hoisted(() => ({
     ],
   }] as DiscoveryProfile[],
   setIntent: vi.fn(async () => {}),
+  fetch: vi.fn(),
   /** What the next profiles read throws instead of answering. */
   profilesError: null as unknown,
   revision: 0,
@@ -32,7 +33,7 @@ vi.mock('../../ipc.js', () => ({
       return structuredClone(api.profiles)
     },
     setIntent: api.setIntent,
-    fetch: vi.fn(),
+    fetch: api.fetch,
   },
 }))
 vi.mock('../../shell/AppShell.js', () => ({
@@ -94,11 +95,11 @@ describe('DiscoverySettings', () => {
     const render = () => act(async () => { root.render(<MessagesProvider><DiscoverySettings /></MessagesProvider>) })
     api.profilesError = new CallError('discovery.profiles', 'newer-version')
     await render()
-    expect(host.querySelector('.err')?.textContent).toBe('需要更新 App')
+    expect(host.querySelector('.delivery-directions .ipcerror')?.textContent).toBe('需要更新 App')
 
     api.revision = 1
     await render()
-    expect([host.querySelector('.err'), host.querySelectorAll('.direction-row').length]).toEqual([null, 3])
+    expect([host.querySelector('.delivery-directions .ipcerror'), host.querySelectorAll('.direction-row').length]).toEqual([null, 3])
     act(() => root.unmount())
   })
 
@@ -107,10 +108,23 @@ describe('DiscoverySettings', () => {
     await act(async () => { root.render(<MessagesProvider><DiscoverySettings /></MessagesProvider>) })
     api.setIntent.mockRejectedValueOnce(new CallError('discovery.intent', 'changed'))
     await act(async () => { row('草稿头').querySelector<HTMLButtonElement>('[role="switch"]')!.click() })
-    expect(host.querySelector('.err')?.textContent).toBe('内容已变化')
+    expect(host.querySelector('.delivery-directions .ipcerror')?.textContent).toBe('内容已变化')
 
     await act(async () => { row('草稿头').querySelector<HTMLButtonElement>('[role="switch"]')!.click() })
-    expect(host.querySelector('.err')).toBeNull()
+    expect(host.querySelector('.delivery-directions .ipcerror')).toBeNull()
     act(() => root.unmount())
+  })
+
+  it('刷新一个项目失败时，原因落在共享的错误框里，和别的设置页的错误一样', async () => {
+    api.fetch.mockRejectedValueOnce(new CallError('discovery.fetch', 'newer-version'))
+    const root = createRoot(host)
+    await act(async () => { root.render(<MessagesProvider><DiscoverySettings /></MessagesProvider>) })
+
+    const refresh = host.querySelector<HTMLButtonElement>('.direction-project header button')!
+    await act(async () => { refresh.click() })
+    const alert = host.querySelector('.delivery-directions [role="alert"]')
+    expect([alert?.className, alert?.textContent]).toEqual(['ipcerror ipcerror--section', '需要更新 App'])
+
+    await act(async () => { root.unmount() })
   })
 })

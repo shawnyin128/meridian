@@ -3,6 +3,7 @@ import type { HarnessModelSettings, SemanticKeyStatus } from '../../../shared/co
 import { delivery, harness } from '../../ipc.js'
 import { useScreenLoad } from '../../hooks/useScreenLoad.js'
 import { useMessages } from '../../messages/useMessages.js'
+import { PageError } from '../PageShell.js'
 import { StructuredList, StructuredRow } from '../StructuredList.js'
 import { FadeText } from '../FadeText.js'
 import './ApiOverview.css'
@@ -33,7 +34,7 @@ export function ApiOverview({ onOpen }: { onOpen: (category: 'model' | 'research
 
   return (
     <>
-      {error === null ? null : <div className="err">{error}</div>}
+      <PageError error={error} variant="section" />
       <StructuredList className="wlist">
         {rows.map((row) => (
           <StructuredRow composite className="wrow" data-api={row.key} key={row.key} onActivate={() => onOpen(row.key)}>

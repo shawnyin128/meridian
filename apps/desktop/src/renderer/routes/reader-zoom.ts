@@ -7,8 +7,6 @@ export const ZOOM_MAX = 2.4
 const PAGE_WIDTH = 830
 /** The most a page is enlarged to fit at 100% zoom, so a small page is not blown up. */
 const MAX_FIT = 1.6
-/** Zoom change per pixel of wheel or pinch delta, the rate the project graph uses. */
-const WHEEL_RATE = 0.0015
 
 /** A CSS transform of the sheet: translate by `x`, `y` pixels, then scale from its top-left corner. */
 export type SheetTransform = { x: number; y: number; scale: number }
@@ -25,14 +23,6 @@ export function pageScale(pageWidth: number, room: number, zoom: number): number
 /** `zoom` held within the reader's zoom limits. */
 export function clampZoom(zoom: number): number {
   return Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, zoom))
-}
-
-/**
- * The zoom a ctrl-wheel or pinch event with vertical delta `deltaY` leads to from `zoom`: the delta
- * scales the zoom exponentially, so small steps add up to one large step, within the zoom limits.
- */
-export function wheelZoom(zoom: number, deltaY: number): number {
-  return clampZoom(zoom * Math.exp(-deltaY * WHEEL_RATE))
 }
 
 /**

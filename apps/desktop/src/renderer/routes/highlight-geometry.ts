@@ -1,4 +1,5 @@
 import type { PaperHighlightRect } from '../../shared/contract.js'
+import { onOneLine } from '../../shared/highlight-overlap.js'
 
 type Rect = Pick<DOMRect, 'left' | 'top' | 'width' | 'height'>
 
@@ -95,6 +96,20 @@ export function highlightLines(rects: PaperHighlightRect[], aspect: number): Pap
     lines.push(line)
   }
   return lines.sort((a, b) => a.y - b.y || a.x - b.x)
+}
+
+/**
+ * What remains of `lines` where no line of `over` on the same line covers them: each line loses the
+ * stretch across that every such line of `over` spans, which can split it in two or leave nothing.
+ */
+export function uncoveredLines(lines: PaperHighlightRect[], over: PaperHighlightRect[]): PaperHighlightRect[] {
+  return lines.flatMap((line) => over.filter((cover) => onOneLine(line, cover)).reduce<PaperHighlightRect[]>(
+    (pieces, cover) => pieces.flatMap((piece) => [
+      { ...piece, width: Math.min(piece.x + piece.width, cover.x) - piece.x },
+      { ...piece, x: Math.max(piece.x, cover.x + cover.width), width: piece.x + piece.width - Math.max(piece.x, cover.x + cover.width) },
+    ].filter((part) => part.width > 0)),
+    [line],
+  ))
 }
 
 /**

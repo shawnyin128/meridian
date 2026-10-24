@@ -281,6 +281,24 @@ describe('idea and graph association', () => {
       act(() => root.unmount())
     })
 
+    it('leaves a scroll over the graph to the page and zooms on a pinch or a Ctrl- or ⌘-scroll', () => {
+      const { host, root, view } = open(chain, 1200)
+      const viewport = host.querySelector<HTMLElement>('.rgraph-viewport')!
+      /** Turns the wheel over the graph; returns whether the graph kept the event from scrolling the page. */
+      const wheel = (init: WheelEventInit) => {
+        const event = new WheelEvent('wheel', { deltaY: -100, bubbles: true, cancelable: true, ...init })
+        act(() => { viewport.dispatchEvent(event) })
+        return event.defaultPrevented
+      }
+      expect([wheel({}), wheel({ deltaX: 80, deltaY: 0 }), view().zoom]).toEqual([false, false, 1])
+      expect(wheel({ ctrlKey: true })).toBe(true)
+      const pinched = view().zoom
+      expect(pinched).toBeGreaterThan(1)
+      expect(wheel({ metaKey: true })).toBe(true)
+      expect(view().zoom).toBeGreaterThan(pinched)
+      act(() => root.unmount())
+    })
+
     it('puts the view it opened with back when the view is reset', () => {
       const { host, root, view } = open(chain, 600)
       const opened = view()

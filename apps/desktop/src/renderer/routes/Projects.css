@@ -28,9 +28,6 @@
 /* Shelved and completed projects: one StructuredRow each */
 .prow{display:flex;align-items:center;gap:var(--sp-10);padding:var(--sp-8) var(--sp-12);font-size:var(--fs-base)}
 .prow-open{display:flex;min-width:0;padding:0;border:0;background:none;color:inherit;font:inherit;text-align:left;cursor:inherit}
-.prow.dragging{opacity:.4}
-.prow.drag-over-before{box-shadow:0 -2px 0 0 var(--ink)}
-.prow.drag-over-after{box-shadow:0 2px 0 0 var(--ink)}
 .prow .m{flex:1;color:var(--ter);font-size:var(--fs-sm)}
 
 .projpanel .row-actions{margin-left:var(--sp-2)}

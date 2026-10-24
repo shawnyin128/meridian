@@ -54,6 +54,15 @@ export const test = base.extend<{
         MERIDIAN_SHOW_WINDOW: showWindow ? 'isolated' : '0',
       },
     })
+    // Native popup menus are recorded instead of shown: an open one keeps Main in its tracking loop
+    // until it is dismissed, which nothing in a case does, and the App could not quit.
+    await app.evaluate(({ Menu }) => {
+      const shown: string[][] = []
+      Object.assign(globalThis, { popupMenus: shown })
+      Menu.prototype.popup = function record(this: InstanceType<typeof Menu>) {
+        shown.push(this.items.map((item) => (item.type === 'separator' ? '—' : item.label)))
+      }
+    })
     await use(app)
     await app.close()
   },
@@ -76,6 +85,13 @@ export { expect } from '@playwright/test'
 export type MeridianWindow = Window & {
   meridian: { call(method: string, params: unknown): Promise<unknown>; platform: NodeJS.Platform }
 }
+
+/**
+ * The native menus Main has popped up in this case, in order: each one's item labels, with '—' for a
+ * separator. The `app` fixture records them instead of showing them.
+ */
+export const popupMenus = (app: ElectronApplication): Promise<string[][]> =>
+  app.evaluate(() => (globalThis as unknown as { popupMenus: string[][] }).popupMenus)
 
 /**
  * Clicks the brand mark in the title bar to open the app menu, then "Settings…". Returns once the
@@ -152,6 +168,12 @@ export async function expectWholeInRail(rail: Locator, editor: Locator): Promise
   const [box, edges] = await Promise.all([editor.boundingBox(), railEdges(rail)])
   expect(box!.x + box!.width).toBeLessThanOrEqual(edges.clip)
   expect(edges.scrollLeft).toBe(0)
+}
+
+/** How far below its screen's header the top of `content` lies, in px. */
+export function belowHeader(content: Locator): Promise<number> {
+  return content.evaluate((el) => el.getBoundingClientRect().top
+    - el.closest('.desk')!.querySelector('.desk-head')!.getBoundingClientRect().bottom)
 }
 
 /** Finishes every running transition and animation on the element, so computed styles read next are final. */

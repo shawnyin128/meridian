@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { dnum } from '../../shared/dates.js'
 import { useLocale } from '../messages/useMessages.js'
+import { formatNumber } from './number.js'
 import type { Locale } from '../shell/language.js'
 
 /** Locale-aware display formatting for dates, numbers and English plurals. */
@@ -41,7 +42,6 @@ export function createFormat(locale: Locale): Format {
   const monthYearEn = new Intl.DateTimeFormat('en-US', { timeZone: 'UTC', year: 'numeric', month: 'long' })
   const weekday = new Intl.DateTimeFormat('en-US', { timeZone: 'UTC', weekday: 'short' })
   const clock = new Intl.DateTimeFormat(locale === 'zh' ? 'zh-CN' : 'en-US', { hour: '2-digit', minute: '2-digit' })
-  const numbers = new Intl.NumberFormat(locale === 'zh' ? 'zh-CN' : 'en-US')
   const plurals = new Intl.PluralRules(locale === 'zh' ? 'zh-CN' : 'en-US')
 
   const zhMonthDay = (value: Date): string =>
@@ -81,7 +81,7 @@ export function createFormat(locale: Locale): Format {
         : `${zhWithYear(from)}–${zhWithYear(to)}`
     },
     clock: (at) => clock.format(new Date(at)),
-    number: (value) => numbers.format(value),
+    number: (value) => formatNumber(locale, value),
     plural: (count, forms) => (plurals.select(count) === 'one' ? forms.one : forms.other),
   }
 }

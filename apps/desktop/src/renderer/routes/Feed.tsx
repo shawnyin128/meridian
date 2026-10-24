@@ -8,8 +8,10 @@ import { useJump, useVaultRevision } from '../shell/AppShell.js'
 import { CONFLICT_THREAD } from '../lib/chat.js'
 import { DateChip, DateTimeDisplay } from '../components/DateTimeDisplay.js'
 import { DayHeading, daySectionName } from '../components/DayHeading.js'
+import { EmptyState } from '../components/EmptyState.js'
 import { ENTITY_SCREEN, EntityLink, opensHere } from '../components/EntityLink.js'
 import { FirstRunChecklist } from '../components/FirstRunChecklist.js'
+import { Icon } from '../components/icons.js'
 import { LoadingPlaceholder } from '../components/LoadingPlaceholder.js'
 import {
   PageBody, PageError, PageHeader, PageShell, PageTitle, PageToolbar,
@@ -158,6 +160,7 @@ export function Feed() {
   const { open } = useJump()
   const [entries, setEntries] = useState<FeedEntry[] | null>(null)
   const [source, setSource] = useState<FeedSource | null>(null)
+  const [setupShown, setSetupShown] = useState<boolean | null>(null)
   const { error, load, report } = useScreenLoad()
 
   useEffect(() => load('entries', feed.list(), setEntries), [revision, load])
@@ -170,7 +173,7 @@ export function Feed() {
       <PageError error={error} />
       <PageBody>
         <div className="msgs">
-          <FirstRunChecklist className="mwrap" onError={report} />
+          <FirstRunChecklist className="mwrap" onError={report} onShown={setSetupShown} />
           {/* The switch sits in the stream, so it lines up with the entries' column. */}
           <PageToolbar className="mwrap">
             <SegmentedControl
@@ -180,8 +183,16 @@ export function Feed() {
               onChange={(value) => setSource(value === 'all' ? null : value as FeedSource)}
             />
           </PageToolbar>
-          {entries === null && error === null ? <LoadingPlaceholder shape="cards" /> : null}
-          <FeedRows rows={rows} onOpenConflict={() => open('chat', CONFLICT_THREAD)} />
+          {entries === null
+            ? (error === null ? <LoadingPlaceholder shape="cards" /> : null)
+            : rows.length === 0
+              // The first-run checklist, while it shows, is this screen's empty state.
+              ? (setupShown === false ? (
+                <EmptyState variant="page" icon={<Icon sw={1.4}><path d="M22 12h-4l-3 8L9 4l-3 8H2" /></Icon>}>
+                  {m.feed.empty}
+                </EmptyState>
+              ) : null)
+              : <FeedRows rows={rows} onOpenConflict={() => open('chat', CONFLICT_THREAD)} />}
         </div>
       </PageBody>
     </PageShell>

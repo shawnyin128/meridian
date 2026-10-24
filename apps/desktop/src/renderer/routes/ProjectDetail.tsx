@@ -2,7 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import type { ReactNode } from 'react'
 import type {
   ProjectDetail as Project, ProjectWorkspace, RelationGroup, ResearchGraph as ResearchGraphData, ResearchIdea,
-  ResearchIdeaGraphPlacement, TaskWindow,
+  ProjectFields, ProjectRecordedChange, ResearchIdeaGraphPlacement, TaskWindow,
 } from '../../shared/contract.js'
 import { projectControlState } from '../../shared/project-control.js'
 import { researchPathState } from '../../shared/research-path.js'
@@ -15,6 +15,7 @@ import { appMenu, files, idea as ideaApi, papers, project as projectApi, wiki } 
 import {
   useCrumbTail, useEscapeLayer, useJump, useNotice, useToday, useVaultRevision,
 } from '../shell/AppShell.js'
+import { ActionButton } from '../components/ActionButton.js'
 import { AddAction } from '../components/AddAction.js'
 import { DraftForm, DraftLine } from '../components/DraftForm.js'
 import { MenuItem } from '../components/ActionMenu.js'
@@ -25,6 +26,7 @@ import { ChoicePicker, DateButton, DotsMenu, PriorityPicker } from '../component
 import { IconButton } from '../components/IconButton.js'
 import { IconOpen } from '../components/icons.js'
 import { SegmentedControl } from '../components/SegmentedControl.js'
+import { TabbedSection } from '../components/TabbedSection.js'
 import { RowActions, StructuredList, StructuredRow } from '../components/StructuredList.js'
 import { TitleNote } from '../components/TitleNote.js'
 import {
@@ -331,6 +333,7 @@ export function ProjectDetail({
   const [sshHost, setSshHost] = useState('')
   const [sshPath, setSshPath] = useState('')
   const [sshPort, setSshPort] = useState('')
+  const [binding, setBinding] = useState<'local' | 'ssh' | null>(null)
   const planList = useRef<HTMLDivElement>(null)
   const planAdd = useRef<HTMLButtonElement>(null)
   const ganttAdd = useRef<HTMLButtonElement>(null)
@@ -498,6 +501,26 @@ export function ProjectDetail({
     void writeProject(op, note)
   }
 
+  /**
+   * Finishes a removal the change log records as writeProject finishes a write, and its notice also
+   * offers Undo of the change it recorded.
+   */
+  const writeRemoval = (op: Promise<ProjectRecordedChange>, note: ReactNode): Promise<boolean> =>
+    write(op.then((removed) => {
+      setProject(removed.project)
+      return removed
+    }), { note, action: undo.change })
+
+  /** A removal not made from a placeholder: first discards any open editor, as applyWrite does. */
+  const applyRemoval = (op: Promise<ProjectRecordedChange>, note: ReactNode) => {
+    discardOpenEdits()
+    void writeRemoval(op, note)
+  }
+
+  /** Writes `patch` to this project through project.update and answers the project after the write. */
+  const updateProject = (patch: Partial<ProjectFields>): Promise<Project> =>
+    projectApi.update(projectId, patch).then(({ project: updated }) => updated)
+
   /** Persists a drag-reordering of the task list, shared by the plan's task rows and the Gantt's labels. */
   const reorderTasks = (order: string[]) => { void writeProject(projectApi.reorderTasks(projectId, order)) }
 
@@ -507,10 +530,12 @@ export function ProjectDetail({
   }
 
   const connectLocalWorkspace = async () => {
+    setBinding('local')
     const connected = await writeProject(
       projectApi.bindWorkspace(projectId, { kind: 'local', root: localPath.trim() }),
       m.project.workspace.connected,
     )
+    setBinding(null)
     if (connected) setWorkspaceOpen(false)
   }
 
@@ -527,10 +552,12 @@ export function ProjectDetail({
 
   const connectSshWorkspace = async () => {
     const port = sshPort.trim() === '' ? undefined : Number(sshPort)
+    setBinding('ssh')
     const connected = await writeProject(projectApi.bindWorkspace(projectId, {
       kind: 'ssh', host: sshHost.trim(), path: sshPath.trim(),
       ...(port === undefined ? {} : { port }),
     }), m.project.workspace.sshConnected)
+    setBinding(null)
     if (connected) setWorkspaceOpen(false)
   }
 
@@ -717,8 +744,18 @@ export function ProjectDetail({
           <>
             <button type="button" className="btn" onClick={() => setWorkspaceOpen(false)}>{m.common.cancel}</button>
             {workspaceMode === 'local'
-              ? <button type="submit" form="workspaceLocal" className="workspace-local btn pri">{m.project.workspace.add}</button>
-              : <button type="submit" form="workspaceSsh" className="btn pri">{m.project.workspace.connect}</button>}
+              ? (
+                <ActionButton
+                  type="submit" form="workspaceLocal" className="workspace-local btn pri" disabled={binding !== null}
+                  busy={binding === 'local'} busyLabel={m.project.workspace.adding}
+                >{m.project.workspace.add}</ActionButton>
+              )
+              : (
+                <ActionButton
+                  type="submit" form="workspaceSsh" className="btn pri" disabled={binding !== null}
+                  busy={binding === 'ssh'} busyLabel={m.project.workspace.connecting}
+                >{m.project.workspace.connect}</ActionButton>
+              )}
           </>
         )}
       >
@@ -801,7 +838,7 @@ export function ProjectDetail({
           onUpdateMilestone={(milestoneId, patch) => writeProject(
             projectApi.updateMilestone(projectId, milestoneId, patch), m.project.plan.milestoneUpdated,
           )}
-          onDeleteMilestone={(milestoneId) => applyWrite(
+          onDeleteMilestone={(milestoneId) => applyRemoval(
             projectApi.deleteMilestone(projectId, milestoneId), m.project.plan.milestoneDeleted,
           )}
           newActionRef={ganttAdd}
@@ -844,7 +881,7 @@ export function ProjectDetail({
               onUpdateTask={(taskId, patch) => writeProject(
                 projectApi.updateTask(projectId, taskId, patch), m.project.plan.taskUpdated,
               )}
-              onDeleteTask={(taskId) => applyWrite(
+              onDeleteTask={(taskId) => applyRemoval(
                 projectApi.deleteTask(projectId, taskId), m.project.plan.taskDeleted,
               )}
               onReorderTasks={reorderTasks}
@@ -852,92 +889,81 @@ export function ProjectDetail({
               onUpdateMilestone={(milestoneId, patch) => writeProject(
                 projectApi.updateMilestone(projectId, milestoneId, patch), m.project.plan.milestoneUpdated,
               )}
-              onDeleteMilestone={(milestoneId) => applyWrite(
+              onDeleteMilestone={(milestoneId) => applyRemoval(
                 projectApi.deleteMilestone(projectId, milestoneId), m.project.plan.milestoneDeleted,
               )}
             />
 
-            <SectionHeading
-              ref={recordHeading}
-              actions={(
-                <SegmentedControl
-                  size="sm" label={m.project.recordViewLabel}
-                  value={record}
-                  options={[
-                    { value: 'tl', label: m.project.recordModes.activity },
-                    { value: 'concl', label: m.project.recordModes.conclusions },
-                    { value: 'graph', label: m.project.sections.graph },
-                  ]}
-                  onChange={(value) => {
-                    holdRecordHeading()
-                    onRecord(value)
-                    if (value !== 'graph') setSelectedNode(null)
-                    if (value !== 'concl') setSelectedConclusion(null)
-                    discardOpenEdits()
-                  }}
-                />
-              )}
-            >{m.project.sections.records}
-            </SectionHeading>
-            <div className="record-view">
-            <PageError error={project.workspace?.issue} variant="section" />
-            {record === 'tl'
-              ? (sortedRecords.length === 0
-                ? <EmptyState variant="section">{m.project.graph.noRecords}</EmptyState>
-                : (
-                <ProjectEventList withNode className="evlist">
-                  {sortedRecords.map((ev, index) => {
-                    const graphNode = ev.node === undefined
-                      ? undefined
-                      : displayedGraph.nodes.find((candidate) => candidate.id === ev.node)
-                    return (
-                      <ProjectEventRow
-                        key={`${ev.date} ${index}`}
-                        kind={recordKind(ev)} date={ev.date} title={ev.text} detail={ev.detail}
-                        origin={recordOrigin(ev)}
-                        node={graphNode === undefined
+            <TabbedSection
+              heading={m.project.sections.records} label={m.project.recordViewLabel} value={record}
+              headingRef={recordHeading} panelClassName="record-view" error={project.workspace?.issue}
+              onChange={(value) => {
+                holdRecordHeading()
+                onRecord(value)
+                if (value !== 'graph') setSelectedNode(null)
+                if (value !== 'concl') setSelectedConclusion(null)
+                discardOpenEdits()
+              }}
+              tabs={[
+                {
+                  value: 'tl', label: m.project.recordModes.activity, empty: m.project.graph.noRecords,
+                  content: sortedRecords.length === 0 ? null : (
+                    <ProjectEventList withNode className="evlist">
+                      {sortedRecords.map((ev, index) => {
+                        const graphNode = ev.node === undefined
                           ? undefined
-                          : { id: graphNode.id, label: graphNode.label, mode: nodeMode(graphNode) }}
-                        onSelectNode={goToRecordNode}
-                      />
-                    )
-                  })}
-                </ProjectEventList>
-                ))
-              : record === 'concl'
-              ? (conclusions.length === 0
-                ? <EmptyState variant="section">{m.project.conclusions.empty}</EmptyState>
-                : (
-                  <ProjectEventList withNode className="evlist">
-                    {conclusions.map((item) => (
-                      <ProjectConclusionRow
-                        key={item.id} conclusion={item} node={nodeLook(item.node)}
-                        selected={item.id === selectedConclusion}
-                        onOpen={() => {
-                          setSelectedNode(null)
-                          setSelectedIdeaId(null)
-                          setSelectedConclusion(item.id)
-                          discardOpenEdits()
-                        }}
-                      />
-                    ))}
-                  </ProjectEventList>
-                ))
-              : (
-                <>
-                  <ResearchGraph
-                    graph={displayedGraph}
-                    selected={selectedNode}
-                    ideaNodeIds={selectedIdea?.node === undefined || selectedIdea.project !== projectId ? [] : [selectedIdea.node]}
-                    onSelect={(nodeId) => {
-                      setSelectedIdeaId(null)
-                      setSelectedConclusion(null)
-                      setSelectedNode(nodeId)
-                    }}
-                  />
-                </>
-              )}
-            </div>
+                          : displayedGraph.nodes.find((candidate) => candidate.id === ev.node)
+                        return (
+                          <ProjectEventRow
+                            key={`${ev.date} ${index}`}
+                            kind={recordKind(ev)} date={ev.date} title={ev.text} detail={ev.detail}
+                            origin={recordOrigin(ev)}
+                            node={graphNode === undefined
+                              ? undefined
+                              : { id: graphNode.id, label: graphNode.label, mode: nodeMode(graphNode) }}
+                            onSelectNode={goToRecordNode}
+                          />
+                        )
+                      })}
+                    </ProjectEventList>
+                  ),
+                },
+                {
+                  value: 'concl', label: m.project.recordModes.conclusions, empty: m.project.conclusions.empty,
+                  content: conclusions.length === 0 ? null : (
+                    <ProjectEventList withNode className="evlist">
+                      {conclusions.map((item) => (
+                        <ProjectConclusionRow
+                          key={item.id} conclusion={item} node={nodeLook(item.node)}
+                          selected={item.id === selectedConclusion}
+                          onOpen={() => {
+                            setSelectedNode(null)
+                            setSelectedIdeaId(null)
+                            setSelectedConclusion(item.id)
+                            discardOpenEdits()
+                          }}
+                        />
+                      ))}
+                    </ProjectEventList>
+                  ),
+                },
+                {
+                  value: 'graph', label: m.project.sections.graph, empty: m.project.graph.empty,
+                  content: displayedGraph.nodes.length === 0 ? null : (
+                    <ResearchGraph
+                      graph={displayedGraph}
+                      selected={selectedNode}
+                      ideaNodeIds={selectedIdea?.node === undefined || selectedIdea.project !== projectId ? [] : [selectedIdea.node]}
+                      onSelect={(nodeId) => {
+                        setSelectedIdeaId(null)
+                        setSelectedConclusion(null)
+                        setSelectedNode(nodeId)
+                      }}
+                    />
+                  ),
+                },
+              ]}
+            />
 
             <ProjectIdeaList
               projectId={projectId} ideas={linkedIdeas} error={failure('ideas')} graph={displayedGraph} selectedId={selectedIdeaId} chatDeleted={chatDeleted}
@@ -954,7 +980,7 @@ export function ProjectDetail({
 
             <ProjectMemo
               text={project.memo} editing={memoEditing} onEditing={setMemoEditing} onOpen={openWikiPage}
-              onSave={(memo) => applyWrite(projectApi.update(projectId, { memo }), m.project.remarkSaved)}
+              onSave={(memo) => applyWrite(updateProject({ memo }), m.project.remarkSaved)}
             />
           </div>
 
@@ -1039,7 +1065,7 @@ export function ProjectDetail({
                               const next = name.trim()
                               if (next === '') { notice.refusal(m.project.identity.nameRequired); return false }
                               return writeProject(
-                                projectApi.update(projectId, { name: next }), m.project.identity.nameUpdated,
+                                updateProject({ name: next }), m.project.identity.nameUpdated,
                               )
                             }}
                           />
@@ -1048,7 +1074,7 @@ export function ProjectDetail({
                           <ChoicePicker
                             value={project.status} options={PROJECT_STATUSES}
                             onPick={(status) => applyWrite(
-                              projectApi.update(projectId, { status }), m.project.identity.statusUpdated,
+                              updateProject({ status }), m.project.identity.statusUpdated,
                             )}
                           />
                         ),
@@ -1056,14 +1082,15 @@ export function ProjectDetail({
                           <PriorityPicker
                             value={project.priority} className="pv metadata-editable"
                             onPick={(priority) => applyWrite(
-                              projectApi.update(projectId, { priority }), m.project.identity.priorityUpdated,
+                              updateProject({ priority }), m.project.identity.priorityUpdated,
                             )}
                           ><ProjectPriorityTag priority={project.priority} /></PriorityPicker>
                         ),
                         topic: (
                           <ProjectAreasField
                             projectId={projectId} areas={projectAreas(project)} onError={report}
-                            onSave={(topics) => writeProject(
+                            onSave={(topics) => writeProject(updateProject({ topics }), m.project.identity.topicUpdated)}
+                            onRemove={(topics) => writeRemoval(
                               projectApi.update(projectId, { topics }), m.project.identity.topicUpdated,
                             )}
                           />
@@ -1081,7 +1108,7 @@ export function ProjectDetail({
                         // this field closes is left to InlineMetadataField, which follows the write's result
                         discardOpenEdits()
                         return writeProject(
-                          projectApi.update(projectId, { focus: next }), m.project.identity.focusUpdated(label),
+                          updateProject({ focus: next }), m.project.identity.focusUpdated(label),
                         )
                       }}
                     />
@@ -1094,7 +1121,7 @@ export function ProjectDetail({
                       onSave={(value) => {
                         const next = value.trim()
                         return writeProject(
-                          projectApi.update(projectId, { block: next === '' ? null : next }),
+                          updateProject({ block: next === '' ? null : next }),
                           next === '' ? m.project.control.blockerCleared : m.project.control.blockerUpdated,
                         )
                       }}
@@ -1107,7 +1134,7 @@ export function ProjectDetail({
                           notice.refusal(m.project.identity.startAfterDue)
                           return
                         }
-                        applyWrite(projectApi.update(projectId, { start }), m.project.identity.dateUpdated)
+                        applyWrite(updateProject({ start }), m.project.identity.dateUpdated)
                       }}
                     />
                     <div className="pk">{m.project.identity.dueLabel}</div>
@@ -1118,7 +1145,7 @@ export function ProjectDetail({
                           notice.refusal(m.project.identity.dueBeforeStart)
                           return
                         }
-                        applyWrite(projectApi.update(projectId, { due }), m.project.identity.dateUpdated)
+                        applyWrite(updateProject({ due }), m.project.identity.dateUpdated)
                       }}
                     />
                     <div className="pk">{m.project.sections.papers}</div>
@@ -1177,7 +1204,7 @@ export function ProjectDetail({
                       .map((id) => ({ id, title: project.paperTitles[id]! }))}
                     onOpenPage={openWikiPage}
                     onOpenPaper={(paperId) => jumpTo('reader', paperId)}
-                    onRemovePaper={(paperId, title) => applyWrite(
+                    onRemovePaper={(paperId, title) => applyRemoval(
                       projectApi.removePaper(projectId, paperId),
                       <TitleNote message={m.project.links.paperRemoved} title={plainTitle(title)} />,
                     )}
@@ -1256,7 +1283,7 @@ export function ProjectDetail({
                           ),
                       }}
                     onEdit={setRelEditing}
-                    onRemove={(relationId, text) => applyWrite(
+                    onRemove={(relationId, text) => applyRemoval(
                       projectApi.deleteRelation(projectId, relationId),
                       <TitleNote message={m.project.links.removed} title={text} />,
                     )}
@@ -1267,13 +1294,9 @@ export function ProjectDetail({
                     onReveal={(path) => void files.reveal(path).then((found) => {
                       if (!found) notice.refusal(m.project.attachments.missing)
                     })}
-                    onRemove={(attachmentId) => {
-                      discardOpenEdits()
-                      void write(projectApi.deleteAttachment(projectId, attachmentId).then((deleted) => {
-                        setProject(deleted.project)
-                        return deleted
-                      }), { note: m.common.trashed, action: undo.change })
-                    }}
+                    onRemove={(attachmentId) => applyRemoval(
+                      projectApi.deleteAttachment(projectId, attachmentId), m.common.trashed,
+                    )}
                   />
                 </>
               )

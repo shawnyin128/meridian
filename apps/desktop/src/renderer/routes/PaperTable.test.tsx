@@ -136,10 +136,12 @@ vi.mock('../ipc.js', () => ({
     setColumns: (columns: PaperColumns) => {
       const c = controlled<void>()
       setColumnsCalls.push({ ...c, columns })
+      const change = `change-columns-${setColumnsCalls.length}`
       // As in Core, the columns a landed write sent are what papers.columns answers from then on.
       return c.promise.then(() => {
         columnsCall = controlled()
         columnsCall.resolve(columns)
+        return { change }
       })
     },
     renameOption: (key: string, from: string, to: string) => {
@@ -2010,6 +2012,56 @@ describe('PaperTable', () => {
     await flush()
     expect(bumps).toBe(before + 1)
     expect(headTexts(host)).not.toContain('备注')
+  })
+
+  it('删一列,提示带撤销,撤销的是这次删除记下的那条变动', async () => {
+    const host = mount()
+    columnsCall.resolve(NOTE_COLUMNS)
+    listCall.resolve({ rows: [ROW], total: 1 })
+    await flush()
+    await act(async () => { host.querySelector<HTMLButtonElement>('[aria-label="列设置"]')!.click() })
+    await act(async () => { document.querySelector<HTMLButtonElement>('[aria-label="删除列"]')!.click() })
+    await act(async () => { setColumnsCalls[0]!.resolve() })
+    await flush()
+    expect(await undoLast()).toBe('已删除列「备注」')
+    expect(undone).toEqual(['change-columns-1'])
+  })
+
+  it('删一个选项,提示带撤销,撤销的是这次删除记下的那条变动', async () => {
+    const host = mount()
+    columnsCall.resolve({ ...SELECT_COLUMNS, custom: [{ ...SELECT_COLUMNS.custom[0]!, options: ['existing', 'spare'] }] })
+    listCall.resolve({ rows: [ROW], total: 1 })
+    await flush()
+    await act(async () => { host.querySelector<HTMLButtonElement>('[aria-label="列设置"]')!.click() })
+    await act(async () => { document.querySelector<HTMLButtonElement>('[aria-label="选项"]')!.click() })
+    const spare = [...document.querySelectorAll('.mi.optrow')].find((row) => row.textContent?.includes('spare'))!
+    await act(async () => { spare.querySelector<HTMLButtonElement>('[aria-label="删除选项"]')!.click() })
+    expect(setColumnsCalls.map((c) => c.columns.custom[0]!.options)).toEqual([['existing']])
+    await act(async () => { setColumnsCalls[0]!.resolve() })
+    await flush()
+    expect(await undoLast()).toBe('已删除选项')
+    expect(undone).toEqual(['change-columns-1'])
+  })
+
+  it('表头的建列与列设置、列菜单行尾的按钮都在操作槽里：表头那一行和每个列行都是槽的宿主，改类型展开时报出展开', async () => {
+    const host = mount()
+    columnsCall.resolve(SELECT_COLUMNS)
+    listCall.resolve({ rows: [ROW], total: 1 })
+    await flush()
+    /** The labels of the buttons in each row-actions slot of `row`, and whether `row` hosts the slot. */
+    const slots = (row: Element) => [row.hasAttribute('data-row-actions'), [...row.querySelectorAll('.row-actions')]
+      .map((slot) => [...slot.querySelectorAll('button')].map((button) => button.getAttribute('aria-label')))]
+    expect(slots(host.querySelector('.ptable thead tr')!)).toEqual([true, [['新建列', '列设置']]])
+
+    await act(async () => { host.querySelector<HTMLButtonElement>('[aria-label="列设置"]')!.click() })
+    const row = document.querySelector('.mi.colrow:has([aria-label="选项"])')!
+    expect(slots(row)).toEqual([true, [['改类型', '重命名列', '删除列']]])
+    const retype = row.querySelector('[aria-label="改类型"]')!
+    expect(retype.getAttribute('aria-expanded')).toBe('false')
+    await act(async () => { (retype as HTMLButtonElement).click() })
+    expect(retype.getAttribute('aria-expanded')).toBe('true')
+    await act(async () => { row.querySelector<HTMLButtonElement>('[aria-label="选项"]')!.click() })
+    expect(slots(document.querySelector('.mi.optrow')!)).toEqual([true, [['重命名选项', '删除选项']]])
   })
 
   it('列菜单里改列名、改选项名,点到菜单外都像回车一样改掉', async () => {

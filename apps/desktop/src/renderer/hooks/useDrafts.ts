@@ -1,4 +1,5 @@
 import { useState, type ChangeEvent, type KeyboardEvent } from 'react'
+import { composing } from '../lib/keyboard.js'
 
 /** Unsent drafts held per target; see `useDrafts`. */
 export type Drafts<D = string> = {
@@ -34,7 +35,7 @@ export function useDrafts<D = string>(): Drafts<D> {
 /**
  * The field that edits `stored`, with its draft kept in `drafts` under `target`. `text` is the
  * draft, or `stored` when there is none; typing keeps the stored text the draft started from, and
- * Esc drops the draft so the stored text shows again. `stale` is true when the stored text has
+ * Esc drops the draft so the stored text shows again, except while an input method is composing. `stale` is true when the stored text has
  * changed since the draft started: the field is then marked as a refused save (`aria-invalid`), and
  * the caller must not save it. `drop` forgets the draft once it has been saved. Spread `fieldProps`
  * onto the field.
@@ -62,7 +63,7 @@ export function editField(drafts: Drafts<EditDraft>, target: string, stored: str
       'aria-invalid': stale || undefined,
       onChange: (event) => drafts.set(target, { text: event.target.value, base: draft?.base ?? stored }),
       onKeyDown: (event) => {
-        if (event.key !== 'Escape' || draft === undefined) return
+        if (event.key !== 'Escape' || draft === undefined || composing(event.nativeEvent)) return
         event.stopPropagation()
         drafts.drop(target)
       },

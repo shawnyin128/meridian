@@ -29,11 +29,13 @@ type Setup = { root: string; stored: string | null; steps: { library: boolean; m
  * install the agent plugin, import a first paper. Each step is done or not as the library and Settings
  * stand, read again on every vault write and whenever Settings closes, and a step not done opens where
  * it is done. The checklist closes for good on this machine, per library, once every step is done or
- * the user hides it. `className` places it; `onError` receives a read that failed.
+ * the user hides it. `className` places it; `onError` receives a read that failed; `onShown` hears
+ * whether it shows, each time that is known anew.
  */
-export function FirstRunChecklist({ className, onError }: {
+export function FirstRunChecklist({ className, onError, onShown }: {
   className?: string
   onError: (error: unknown) => void
+  onShown: (shown: boolean) => void
 }) {
   const m = useMessages()
   const f = m.feed.firstRun
@@ -87,7 +89,13 @@ export function FirstRunChecklist({ className, onError }: {
     if (next !== null) keep(setup!.root, next)
   }, [next, setup])
 
-  if (setup === null || steps === null || !firstRunShown(setup.stored, papers!, steps.map((step) => step.done))) return null
+  const shown = setup === null || papers === null ? null
+    : steps !== null && firstRunShown(setup.stored, papers, steps.map((step) => step.done))
+  useEffect(() => {
+    if (shown !== null) onShown(shown)
+  }, [shown, onShown])
+
+  if (!shown || setup === null || steps === null) return null
   return (
     <Card as="section" flush className={className === undefined ? 'firstrun' : `firstrun ${className}`} aria-label={f.heading}>
       <div className="firstrun-row">

@@ -444,6 +444,16 @@ describe('change log', () => {
     expect(store.paperReading(READ).highlights).toEqual(before.highlights)
   })
 
+  it('给一条高亮换色记一条,diff 写出前后的颜色;撤销换回原来的颜色', () => {
+    const before = store.mutatePaperReading(READ, { kind: 'highlight.add', page: 3, quote: '换色的那句', rects: RECTS, color: 'yellow' })
+    store.mutatePaperReading(READ, { kind: 'highlight.update', id: before.highlights[0]!.id, note: '', color: 'pink' })
+    const change = recorded()[0]!
+    expect(change.diff).toEqual(['- 颜色：黄色', '+ 颜色：粉色'])
+
+    store.undoChange(change.id)
+    expect(store.paperReading(READ).highlights).toEqual(before.highlights)
+  })
+
   it('改一条关联记下一条,撤销把它的名字和指向还原', () => {
     const before = store.getProject(PROJECT).relations
     const item = before[0]!.items[0]!
