@@ -2,7 +2,7 @@
 import { act, type ReactNode } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { ChatMessage, PaperRow } from '../../shared/contract.js'
+import type { ChatMessage, ChatSendResult, JobsStatus, PaperRow } from '../../shared/contract.js'
 import { MessagesProvider } from '../messages/useMessages.js'
 import { LANGUAGE_STORAGE_KEY } from '../shell/language.js'
 import { TOOLTIP_DELAY } from '../components/Tooltip.js'
@@ -11,11 +11,13 @@ declare global {
   var IS_REACT_ACT_ENVIRONMENT: boolean
 }
 
-const withMessages = (node: ReactNode) => <MessagesProvider>{node}</MessagesProvider>
+const withMessages = (node: ReactNode) => <MessagesProvider><Shell>{node}</Shell></MessagesProvider>
 
 const api = vi.hoisted(() => ({
-  send: vi.fn(() => Promise.resolve({ id: 'chat-paper-1', state: 'complete' })),
-  cancel: vi.fn(() => Promise.resolve({ id: 'chat-paper-1', cancelled: true })),
+  /** The chats Core is generating a reply in. */
+  generating: new Set<string>(),
+  send: vi.fn((): Promise<ChatSendResult> => Promise.resolve({ id: 'chat-paper-1', state: 'complete' })),
+  cancel: vi.fn((id: string) => Promise.resolve({ id, cancelled: api.generating.delete(id) })),
   forPaper: vi.fn((paperId: string) => Promise.resolve({
     id: `chat-${paperId}`, title: 'Paper One', archived: false, messageCount: 0, paperId,
   })),
@@ -50,6 +52,12 @@ vi.mock('../ipc.js', () => ({
   },
   idea: { create: api.createIdea },
   feed: { append: api.feedAppend },
+  jobs: {
+    status: (): Promise<JobsStatus> => Promise.resolve({
+      writes: 0, uploads: [], downloads: [], fetch: { state: 'idle', checkedAt: null, reason: null },
+      generating: [...api.generating],
+    }),
+  },
   project: { list: api.listProjects, createConclusion: api.createConclusion },
 }))
 
@@ -71,6 +79,35 @@ vi.mock('../hooks/useVaultWrite.js', () => ({
 }))
 
 const { PaperChat } = await import('../components/chat/PaperChat.js')
+const { GenerationsContext, useCoreGenerations } = await import('../hooks/useGenerations.js')
+const { useJobsPoll } = await import('../shell/useJobs.js')
+
+const noBump = () => {}
+/** The shell around the paper chat: the jobs poll and the generations it reports. */
+function Shell({ children }: { children: ReactNode }) {
+  const { status, refresh } = useJobsPoll(noBump)
+  return <GenerationsContext.Provider value={useCoreGenerations(status, refresh)}>{children}</GenerationsContext.Provider>
+}
+
+/** Lets every pending call to Core answer and the chat render what it answered. */
+const settle = () => act(async () => {
+  for (let turn = 0; turn < 5; turn += 1) await Promise.resolve()
+})
+
+/** Makes the next send leave its reply generating until the returned call. */
+function pendingReply(): () => Promise<void> {
+  let finish = () => {}
+  api.send.mockImplementationOnce(() => {
+    api.generating.add('chat-paper-1')
+    return new Promise((resolve) => {
+      finish = () => {
+        api.generating.delete('chat-paper-1')
+        resolve({ id: 'chat-paper-1', state: 'complete' })
+      }
+    })
+  })
+  return async () => { await act(async () => { finish(); await Promise.resolve() }) }
+}
 
 const PAPER: PaperRow = {
   id: 'paper-1', title: 'Paper One', venue: '', topics: [], methods: [], datasets: [], metrics: [],
@@ -99,6 +136,7 @@ describe('PaperChat', () => {
     window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'zh')
     document.body.innerHTML = ''
     vi.clearAllMocks()
+    api.generating.clear()
     api.writes.length = 0
     api.collapsed = false
     api.revision = 0
@@ -200,10 +238,7 @@ describe('PaperChat', () => {
   })
 
   it('提交未完成时发送箭头变为可停止的旋转控件', async () => {
-    let finish = () => {}
-    api.send.mockImplementationOnce(() => new Promise((resolve) => {
-      finish = () => resolve({ id: 'chat-paper-1', state: 'complete' })
-    }))
+    const finish = pendingReply()
     const host = document.createElement('div')
     document.body.append(host)
     root = createRoot(host)
@@ -216,15 +251,17 @@ describe('PaperChat', () => {
     const input = host.querySelector<HTMLInputElement>('[aria-label="向当前论文提问"]')!
     act(() => setValue(input, 'What is the mechanism?'))
     act(() => host.querySelector<HTMLButtonElement>('.paper-chat .send')!.click())
+    await settle()
     const control = host.querySelector<HTMLButtonElement>('.paper-chat .send')!
     expect(control.getAttribute('aria-label')).toBe('正在生成，点击停止')
     expect(control.querySelector('.ring.spin')).not.toBeNull()
     expect(control.querySelector('.generation-stop')).not.toBeNull()
 
     act(() => control.click())
+    await settle()
     expect(control.getAttribute('aria-label')).toBe('发送')
     expect(api.cancel).toHaveBeenCalledWith('chat-paper-1')
-    await act(async () => { finish(); await Promise.resolve() })
+    await finish()
   })
 
   it('论文对话把用户明确整理的标题和正文存为可回看的想法', async () => {
@@ -307,15 +344,13 @@ describe('PaperChat', () => {
   })
 
   it('上一篇还在生成时换一篇论文，这一篇照常可以提问，停止只停正在生成的那篇', async () => {
-    let finish = () => {}
-    api.send.mockImplementationOnce(() => new Promise((resolve) => {
-      finish = () => resolve({ id: 'chat-paper-1', state: 'complete' })
-    }))
+    const finish = pendingReply()
     const host = await mountChat()
     const input = host.querySelector<HTMLTextAreaElement>('[aria-label="向当前论文提问"]')!
     const control = () => host.querySelector<HTMLButtonElement>('.paper-chat .send')!
     act(() => setValue(input, '这篇的关键假设是什么？'))
     act(() => control().click())
+    await settle()
     expect(control().getAttribute('aria-label')).toBe('正在生成，点击停止')
 
     await showPaper(null)
@@ -328,7 +363,7 @@ describe('PaperChat', () => {
     expect(control().getAttribute('aria-label')).toBe('正在生成，点击停止')
     act(() => control().click())
     expect(api.cancel).toHaveBeenCalledExactlyOnceWith('chat-paper-1')
-    await act(async () => { finish(); await Promise.resolve() })
+    await finish()
   })
 
   it('想法草稿留在它的论文上：换一篇时不跟过去，回到原篇草稿还在；Esc 收起', async () => {

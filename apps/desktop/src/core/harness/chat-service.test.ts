@@ -117,6 +117,49 @@ describe('Core chat service', () => {
     await first
   })
 
+  it('reports a chat as generating from the moment its send starts until its reply arrives, and no other chat', async () => {
+    const store = createFixtureStore()
+    let reply: (answer: string) => void = () => {}
+    const runner: ChatHarnessRunner = {
+      checkConnection: vi.fn(async () => ({
+        state: 'connected' as const, modelCalls: 1 as const, maxOutputTokens: 1 as const,
+      })),
+      answer: vi.fn(() => new Promise<string>((resolve) => { reply = resolve })),
+      close: vi.fn(),
+    }
+    const service = createChatService({ store, model: await configuredModel(), runner })
+    expect(service.generating()).toEqual([])
+
+    const sending = service.send('amortize', '第一句')
+    expect(service.generating()).toEqual(['amortize'])
+    reply('回答')
+    await sending
+    expect(service.generating()).toEqual([])
+  })
+
+  it('stops counting a stopped chat as generating at once, before its model call has wound down', async () => {
+    const store = createFixtureStore()
+    const runner: ChatHarnessRunner = {
+      checkConnection: vi.fn(async () => ({
+        state: 'connected' as const, modelCalls: 1 as const, maxOutputTokens: 1 as const,
+      })),
+      answer: vi.fn((_id, _text, signal) => new Promise<string>((_resolve, reject) => {
+        signal.addEventListener('abort', () => reject(new Error('cancelled')), { once: true })
+      })),
+      close: vi.fn(),
+    }
+    const service = createChatService({ store, model: await configuredModel(), runner })
+    const stopped = service.send('amortize', '停止这个请求')
+
+    service.cancel('amortize')
+    expect(service.generating()).toEqual([])
+    const next = service.send('amortize', '再问一次')
+    await stopped
+    expect(service.generating()).toEqual(['amortize'])
+    service.cancel('amortize')
+    await next
+  })
+
   it('without a model keeps only the user turn and reports no-model, writing no status sentence of its own', async () => {
     const store = createFixtureStore()
     const model = await createHarnessModelConfig(

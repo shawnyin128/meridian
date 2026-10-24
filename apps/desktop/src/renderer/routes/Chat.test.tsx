@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
-import { act } from 'react'
+import { act, type ReactNode } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { ChatMessage, ChatSendResult, ChatSession, PaperRow } from '../../shared/contract.js'
+import type { ChatMessage, ChatSendResult, ChatSession, JobsStatus, PaperRow } from '../../shared/contract.js'
 import { CONFLICT_THREAD } from '../lib/chat.js'
 import { MessagesProvider } from '../messages/useMessages.js'
 import { LANGUAGE_STORAGE_KEY } from '../shell/language.js'
@@ -14,8 +14,10 @@ declare global {
 }
 
 const api = vi.hoisted(() => ({
+  /** The chats Core is generating a reply in. */
+  generating: new Set<string>(),
   send: vi.fn((): Promise<ChatSendResult> => Promise.resolve({ id: 'chat-1', state: 'complete' })),
-  cancel: vi.fn(() => Promise.resolve({ id: 'chat-1', cancelled: true })),
+  cancel: vi.fn((id: string) => Promise.resolve({ id, cancelled: api.generating.delete(id) })),
   listProjects: vi.fn(() => Promise.resolve([{
     id: 'draft', name: '草稿树项目', status: '进行中', priority: 'p1', topic: '推理', focus: '验证',
     conclusions: { verified: 0, pending: 0, conflicting: 0 }, paperCount: 0,
@@ -41,6 +43,12 @@ vi.mock('../ipc.js', () => ({
   chat: { send: api.send, messages: api.messages, cancel: api.cancel, create: api.create, recordAction: api.recordAction },
   feed: { append: api.feedAppend },
   idea: { create: api.createIdea },
+  jobs: {
+    status: (): Promise<JobsStatus> => Promise.resolve({
+      writes: 0, uploads: [], downloads: [], fetch: { state: 'idle', checkedAt: null, reason: null },
+      generating: [...api.generating],
+    }),
+  },
   papers: { list: api.listPapers },
   project: { list: api.listProjects },
   wiki: { cards: () => Promise.resolve([]) },
@@ -64,6 +72,16 @@ vi.mock('../hooks/useVaultWrite.js', () => ({
 }))
 
 const { Chat } = await import('./Chat.js')
+const { GenerationsContext, useCoreGenerations } = await import('../hooks/useGenerations.js')
+const { useJobsPoll } = await import('../shell/useJobs.js')
+
+const noBump = () => {}
+/** The shell around the screen: the jobs poll and the generations it reports. */
+function Shell({ children }: { children: ReactNode }) {
+  const { status, refresh } = useJobsPoll(noBump)
+  return <GenerationsContext.Provider value={useCoreGenerations(status, refresh)}>{children}</GenerationsContext.Provider>
+}
+const screen = () => <MessagesProvider><Shell><Chat /></Shell></MessagesProvider>
 
 function setValue(input: HTMLInputElement | HTMLTextAreaElement, value: string): void {
   const prototype = input instanceof window.HTMLTextAreaElement ? window.HTMLTextAreaElement.prototype
@@ -87,13 +105,14 @@ describe('Chat composer', () => {
     window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'zh')
     document.body.innerHTML = ''
     vi.clearAllMocks()
+    api.generating.clear()
     session.id = 'chat-1'
     session.revision = 0
     const host = document.createElement('div')
     document.body.append(host)
     root = createRoot(host)
     await act(async () => {
-      root!.render(<MessagesProvider><Chat /></MessagesProvider>)
+      root!.render(screen())
       await Promise.resolve()
       await Promise.resolve()
     })
@@ -120,7 +139,7 @@ describe('Chat composer', () => {
   const openChat = async (id: string) => {
     session.id = id
     await act(async () => {
-      root!.render(<MessagesProvider><Chat /></MessagesProvider>)
+      root!.render(screen())
       await Promise.resolve()
     })
   }
@@ -148,7 +167,7 @@ describe('Chat composer', () => {
     api.create.mockResolvedValueOnce({ id: 'chat-9' } as ChatSession)
     nav.jump = { screen: 'chat', target: CONFLICT_THREAD, from: 'feed', seq: 1 }
     await act(async () => {
-      root!.render(<MessagesProvider><Chat /></MessagesProvider>)
+      root!.render(screen())
       await Promise.resolve()
       await Promise.resolve()
     })
@@ -250,20 +269,33 @@ describe('Chat composer', () => {
     expect(document.querySelector('#cRes')).toBeNull()
   })
 
+  /** Lets every pending call to Core answer and the screen render what it answered. */
+  const settle = () => act(async () => {
+    for (let turn = 0; turn < 5; turn += 1) await Promise.resolve()
+  })
+
   /** Sends `text` from the open chat and leaves its reply generating until the returned call. */
-  const sendPending = (text: string) => {
+  const sendPending = async (text: string) => {
     let finish = () => {}
-    api.send.mockImplementationOnce(() => new Promise((resolve) => {
-      finish = () => resolve({ id: session.id, state: 'complete' })
-    }))
+    api.send.mockImplementationOnce(() => {
+      const id = session.id
+      api.generating.add(id)
+      return new Promise((resolve) => {
+        finish = () => {
+          api.generating.delete(id)
+          resolve({ id, state: 'complete' })
+        }
+      })
+    })
     act(() => setValue(composer, text))
     press('Enter')
+    await settle()
     return async () => { await act(async () => { finish(); await Promise.resolve() }) }
   }
   const control = () => document.querySelector<HTMLButtonElement>('#sendBtn')!
 
   it('一条对话还在生成时，换到另一条对话照常可以输入和发送', async () => {
-    const finish = sendPending('第一条的问题')
+    const finish = await sendPending('第一条的问题')
     expect(control().getAttribute('aria-label')).toBe('正在生成，点击停止')
 
     await openChat('chat-2')
@@ -277,13 +309,14 @@ describe('Chat composer', () => {
   })
 
   it('停止停的是正在生成的那条对话，别的对话不显示停止', async () => {
-    const finish = sendPending('第一条的问题')
+    const finish = await sendPending('第一条的问题')
     await openChat('chat-2')
     expect(control().getAttribute('aria-label')).toBe('发送')
 
     await openChat('chat-1')
     expect(control().getAttribute('aria-label')).toBe('正在生成，点击停止')
     act(() => control().click())
+    await settle()
     expect(api.cancel).toHaveBeenCalledExactlyOnceWith('chat-1')
     expect(control().getAttribute('aria-label')).toBe('发送')
     await finish()
@@ -296,7 +329,7 @@ describe('Chat composer', () => {
     act(() => setValue(composer, '为什么'))
     expect(control().disabled).toBe(false)
 
-    const finish = sendPending('为什么')
+    const finish = await sendPending('为什么')
     expect(control().getAttribute('aria-label')).toBe('正在生成，点击停止')
     expect(control().disabled).toBe(false)
     await finish()
@@ -319,7 +352,7 @@ describe('Chat composer', () => {
     session.revision += 1
     api.messages.mockResolvedValueOnce([{ id: 'm1', role: 'you', runs: [{ kind: 'text', text: '先讨论机制' }], actions: [] }])
     await act(async () => {
-      root!.render(<MessagesProvider><Chat /></MessagesProvider>)
+      root!.render(screen())
       await Promise.resolve()
       await Promise.resolve()
     })
@@ -410,7 +443,7 @@ describe('Chat composer', () => {
       session.revision += 1
       length += 200
       await act(async () => {
-        root!.render(<MessagesProvider><Chat /></MessagesProvider>)
+        root!.render(screen())
         await Promise.resolve()
       })
       act(() => { for (const callback of resized) callback() })

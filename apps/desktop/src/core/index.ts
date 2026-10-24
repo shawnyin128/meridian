@@ -848,7 +848,7 @@ registerHandler('chat.setArchived', (params) => {
 registerHandler('search.query', (params) => store.search(SearchParamsSchema.parse(params).query))
 registerHandler('jobs.status', (params) => {
   EmptyParamsSchema.parse(params)
-  const status = background.status()
+  const status = { ...background.status(), generating: chatService.generating() }
   return showUiSamples ? withUiSampleUpload(status, Date.now()) : status
 })
 

@@ -31,7 +31,8 @@ export type Background = {
   /** One Semantic Scholar request with the saved key; fails as authentication when no key is saved. */
   checkSemanticKey(): Promise<SemanticKeyCheckResult>
   armSchedule(): () => void
-  status(): JobsStatus
+  /** The jobs status without the chats being generated, which the chat service reports. */
+  status(): Omit<JobsStatus, 'generating'>
   idle(): Promise<void>
 }
 
