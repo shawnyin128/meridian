@@ -1,6 +1,7 @@
 import { createContext, Fragment, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import type { CSSProperties, MouseEvent as ReactMouseEvent, ReactNode } from 'react'
 import type { ChatSession, Watch } from '../../shared/contract.js'
+import { listingsOf } from '../../shared/inbox-streams.js'
 import { ACTIVE_PROJECT } from '../../shared/vocabulary.js'
 import {
   appMenu, appUpdates, changelog, chat, extensions, idea, inbox, later, papers, project, trash, vault, watch, wiki,
@@ -386,7 +387,7 @@ export function AppShell({ screens, settings }: {
   const [watches, setWatches] = useState<Watch[]>([])
   const [chats, setChats] = useState<ChatSession[]>([])
   const [chatId, setChatId] = useState<string | null>(null)
-  const [inboxCounts, setInboxCounts] = useState<Record<string, number>>({})
+  const [inboxWatches, setInboxWatches] = useState<string[][]>([])
   const [discoveryCount, setDiscoveryCount] = useState(0)
   const [discoveryProjects, setDiscoveryProjects] = useState<DiscoveryProjectCount[]>([])
   const [laterCount, setLaterCount] = useState(0)
@@ -419,15 +420,16 @@ export function AppShell({ screens, settings }: {
     void watch.list().then(setWatches)
     void chat.list().then(setChats)
     void later.list().then((entries) => setLaterCount(entries.length))
-    void inbox.list({ kind: 'watch' }).then((entries) => setInboxCounts(entries.reduce<Record<string, number>>(
-      (counts, e) => ({ ...counts, [e.watch]: (counts[e.watch] ?? 0) + 1 }), {})))
+    void inbox.list({ kind: 'watch' }).then((entries) => setInboxWatches(
+      entries.map((entry) => listingsOf(entry, 'watch').map((listing) => listing.id)),
+    ))
     void Promise.all([inbox.list({ kind: 'discovery' }), project.list()]).then(([entries, projects]) => {
       setDiscoveryCount(entries.length)
       const names = new Map(projects.map((held) => [held.id, held.name]))
       const counts = new Map<string, DiscoveryProjectCount>()
-      for (const entry of entries) {
-        const held = counts.get(entry.project) ?? { id: entry.project, name: names.get(entry.project) ?? entry.source, count: 0 }
-        counts.set(entry.project, { ...held, count: held.count + 1 })
+      for (const listing of entries.flatMap((entry) => listingsOf(entry, 'discovery'))) {
+        const held = counts.get(listing.id) ?? { id: listing.id, name: names.get(listing.id) ?? listing.source, count: 0 }
+        counts.set(listing.id, { ...held, count: held.count + 1 })
       }
       setDiscoveryProjects([...counts.values()])
     })
@@ -804,7 +806,7 @@ export function AppShell({ screens, settings }: {
           changeCount={changeCount} projectCount={projectCount} trashCount={trashCount}
           wikiCount={wikiCount} ideaCount={ideaCount}
           inboxScope={inboxScope} inboxMode={inboxMode} onOpenInbox={openInbox} watches={watches}
-          inboxCounts={inboxCounts} discoveryCount={discoveryCount} discoveryProjects={discoveryProjects}
+          inboxWatches={inboxWatches} discoveryCount={discoveryCount} discoveryProjects={discoveryProjects}
           laterCount={laterCount}
           chats={chats} chatId={screen === 'chat' ? chatId : null} onOpenChat={openChat}
           onNewChat={newChat} onArchiveChat={archiveChat} onDeleteChat={deleteChat}

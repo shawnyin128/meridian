@@ -14,7 +14,7 @@ const fixture = vi.hoisted(() => ({
   watches: [{ id: 'w-topic', type: 'topic', name: '推测解码', active: true }],
   projects: [{ id: 'p1', name: '推理项目', status: '进行中' }],
   discovery: [{ id: 'e1', kind: 'discovery', watch: '', project: 'p1', source: '推理项目' }],
-  delivered: [] as { id: string; kind: 'watch'; watch: string; title: string }[],
+  delivered: [] as { id: string; kind: 'watch'; watch: string; title: string; also?: { kind: string; id: string; source: string }[] }[],
   chats: [{ id: 'c1', title: '讨论', archived: false, messageCount: 1 }],
   deleteChat: vi.fn(async () => ({ trash: 'trash-9' })),
   restoreTrash: vi.fn(async () => {}),
@@ -197,9 +197,12 @@ function controlOf(selector: string): HTMLElement {
 
 describe('侧栏论文推送的计数', () => {
   const watches = fixture.watches
+  const { discovery, projects } = fixture
   afterEach(() => {
     fixture.watches = watches
     fixture.delivered = []
+    fixture.discovery = discovery
+    fixture.projects = projects
   })
 
   /** The text of the count badge in each of `rows`, or null where a row has none. */
@@ -223,6 +226,35 @@ describe('侧栏论文推送的计数', () => {
         '#rowInboxAll': '4', '[data-disc="topics"]': '4', '[data-watchrow="w-topic"]': '3', '[data-watchrow="w-moe"]': '1',
         '[data-disc="authors"]': null, '[data-watchrow="w-dao"]': null,
       })
+  })
+
+  it('几条关注都送来的一篇在每条关注下各算一次,在分组和全部里只算一次;几个项目都找到的一篇在每个项目下各算一次', async () => {
+    fixture.watches = [
+      { id: 'w-topic', type: 'topic', name: '推测解码', active: true },
+      { id: 'w-moe', type: 'topic', name: '专家混合', active: true },
+      { id: 'w-dao', type: 'author', name: 'Tri Dao', active: true },
+    ]
+    fixture.delivered = [
+      {
+        id: 'i1', kind: 'watch', watch: 'w-topic', title: 'EAGLE',
+        also: [{ kind: 'watch', id: 'w-moe', source: '关键词 · 专家混合' }, { kind: 'watch', id: 'w-dao', source: '作者 · Tri Dao' }],
+      },
+      { id: 'i2', kind: 'watch', watch: 'w-moe', title: 'Medusa' },
+    ]
+    fixture.projects = [{ id: 'p1', name: '推理项目', status: '进行中' }, { id: 'p2', name: '量化项目', status: '进行中' }]
+    fixture.discovery = [{
+      id: 'e1', kind: 'discovery', watch: '', project: 'p1', source: '推理项目',
+      also: [{ kind: 'discovery', id: 'p2', source: '项目 · 量化项目' }],
+    } as typeof discovery[number]]
+    await mount()
+    expect(counts([
+      '#rowInboxAll', '[data-disc="topics"]', '[data-watchrow="w-topic"]', '[data-watchrow="w-moe"]', '[data-disc="authors"]',
+      '[data-watchrow="w-dao"]', '[data-inbox="discovery"]', '[data-discovery-project="p1"]', '[data-discovery-project="p2"]',
+    ])).toEqual({
+      '#rowInboxAll': '2', '[data-disc="topics"]': '2', '[data-watchrow="w-topic"]': '1', '[data-watchrow="w-moe"]': '2',
+      '[data-disc="authors"]': '1', '[data-watchrow="w-dao"]': '1',
+      '[data-inbox="discovery"]': '1', '[data-discovery-project="p1"]': '1', '[data-discovery-project="p2"]': '1',
+    })
   })
 
   it('暂停的关注照样显示它推来的条数,只是变灰', async () => {

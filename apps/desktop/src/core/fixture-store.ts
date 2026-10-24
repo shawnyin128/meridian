@@ -12,7 +12,7 @@ import watchList from './fixtures/watches.json' with { type: 'json' }
 import wikiFixture from './fixtures/wiki.json' with { type: 'json' }
 import proposalFixture from './fixtures/proposals.json' with { type: 'json' }
 import type {
-  Attachment, ChangeEntry, ChatMessage, ChatSession, Conclusion, DeliverySettings, FeedEntry, InboxEntry,
+  Attachment, ChangeEntry, ChatMessage, ChatSession, Conclusion, DeliverySettings, FeedEntry, InboxEntry, InboxStream,
   GraphNode, LaterEntry, PaperColumns, PaperImportResult, PaperReading, PaperRow, ProjectDetail, ReadingMutation,
   ProposalRecord, RelationFields, ResearchIdea, Task, TaskFields, TrashEntry, Watch,
 } from '../shared/contract.js'
@@ -38,10 +38,17 @@ import {
   chatSource, CONCLUSION_CHANGED, concludedNodes, conclusionCounts, conclusionFingerprint, MANUAL_SOURCE,
   overviewResearch, placeNode, projectConclusions, readWorkspaceAgentIdeas, verifiedNodes, withProjectLinks,
 } from './project-management/index.js'
-import { inboxFields, unseenPapers } from './inbox/dedup.js'
+import { inboxFields } from './inbox/dedup.js'
+import {
+  combinedReasons, cutBelow, listedUnder, orderListing, sortFound, withoutStreams, withStream, type StoredStream,
+} from './inbox/delivery.js'
+import {
+  createPaperIndex, doiField, libraryArxivId, libraryIdentity, paperIdentity, type PaperIdentity,
+} from './inbox/identity.js'
+import type { RemotePaper } from './net/arxiv.js'
 import {
   applyRecommendationPreferences, buildRecommendationProfile, clusterRecommendationProfile,
-  discoveryReasons, orderInbox, recommendationSeedIds,
+  discoveryReasons, recommendationSeedIds,
   type DiscoveryPaper, type DiscoveryPreferences, type DiscoverySchedule,
 } from './recommendation/index.js'
 import { dayOf, feedNewestFirst, systemToday } from './dates.js'
@@ -64,7 +71,8 @@ type TrashRecord = Omit<TrashEntry, 'restorable'> & (
   | { kind: 'project'; project: FixtureProject }
   | { kind: 'idea'; idea: ResearchIdea }
   | { kind: 'attachment'; projectId: string; attachment: Attachment }
-  | { kind: 'inbox'; entryId: string }
+  | { kind: 'inbox'; entryId: string; feedback?: 'less' | 'known' }
+  | { kind: 'later'; later: LaterRecord; position: number }
   | { kind: 'chat'; chat: ChatRecord; position: number }
 )
 
@@ -82,9 +90,14 @@ type FixtureProject = Omit<
   ProjectDetail, 'paperCount' | 'paperTitles' | 'conclusions' | 'conclusionClaims' | 'projectConclusions'
 >
 
-/** Stored inbox recommendation: cross-boundary fields plus topics written to the paper page on import. */
-type InboxRecord = InboxEntry & {
+/**
+ * Stored inbox recommendation: cross-boundary fields plus topics written to the paper page on import.
+ * `reasons` are those of the stream that delivered it first, and each stream in `also` holds its own.
+ */
+type InboxRecord = Omit<InboxEntry, 'also'> & {
+  also?: StoredStream[] | undefined
   semanticId: string
+  doi?: string
   vault: {
     topic: string
     arxiv: string
@@ -327,6 +340,8 @@ export function createFixtureStore(
   let feedEvents: Set<string> | null = null
   // Dismissal and read-later both hide an inbox item while preserving its original slot for restoration.
   const gone = new Set<string>()
+  // Every paper delivered, including those whose entry left with its watch or project.
+  const delivered: PaperIdentity[] = []
   // Track papers with an explicit read state so undo can distinguish absent state from stored unread.
   const stated = new Set<string>()
   let seq = 0
@@ -411,6 +426,73 @@ export function createFixtureStore(
     ))
   }
 
+  /** The identity of the paper an inbox entry delivers. */
+  const entryIdentity = (entry: InboxRecord): PaperIdentity => paperIdentity({
+    arxiv: entry.vault.arxiv, ...doiField(entry), semanticId: entry.semanticId, title: entry.title,
+    submitted: entry.vault.meta.submitted,
+  })
+
+  /**
+   * Takes the streams `gone` names off every inbox entry. An entry no stream lists anymore is removed
+   * with its trash entries, and its paper remembered as delivered.
+   */
+  const dropStreams = (dropped: (stream: InboxStream) => boolean): void => {
+    const removed = new Set<string>()
+    inbox = inbox.flatMap((entry) => {
+      const kept = withoutStreams(entry, dropped)
+      if (kept !== null) return [kept]
+      removed.add(entry.id)
+      delivered.push(entryIdentity(entry))
+      gone.delete(entry.id)
+      return []
+    })
+    trash = trash.filter((item) => item.kind !== 'inbox' || !removed.has(item.entryId))
+  }
+
+  /** Returns whether an inbox entry shows in the feed: it has not left, and the vault does not hold its paper. */
+  const inFeed = (): ((entry: InboxRecord) => boolean) => {
+    const owned = createPaperIndex<true>()
+    for (const paper of byId.values()) owned.add(libraryIdentity(paper), true)
+    return (entry) => !gone.has(entry.id) && !pageOf.has(entry.paper) && owned.find(entryIdentity(entry)) === undefined
+  }
+
+  /** What a found paper may turn out to be: in the vault, a live card, or delivered before. */
+  const known = () => ({
+    owned: [...byId.values()].map(libraryIdentity),
+    live: inbox.filter((entry) => !gone.has(entry.id)).map((entry) => ({ id: entry.id, identity: entryIdentity(entry) })),
+    seen: [...inbox.filter((entry) => gone.has(entry.id)).map(entryIdentity), ...delivered],
+  })
+
+  /**
+   * Delivers the papers a stream found that no stream delivered before, at most `limit` and each once,
+   * as the records `make` builds, which `place` puts among the entries held; and lists the stream, by
+   * `listed`, on each live card it found again. Papers the vault holds are skipped. Returns the records
+   * delivered.
+   */
+  const deliver = <P extends RemotePaper>(
+    scope: Pick<InboxStream, 'kind' | 'id'>, found: P[], limit: number | undefined,
+    identityOf: (paper: P) => PaperIdentity, make: (paper: P) => InboxRecord,
+    listed: (entry: InboxRecord, paper: P) => InboxRecord,
+    place: (fresh: InboxRecord[], held: InboxRecord[]) => InboxRecord[],
+  ): InboxRecord[] => {
+    const { fresh, merged } = sortFound(found, identityOf, known())
+    const held = inbox.map((entry) => {
+      const paper = merged.get(entry.id)
+      return paper === undefined ? entry : listed(entry, paper)
+    })
+    const shown = inFeed()
+    const { kept, folded } = cutBelow(
+      held.filter((entry) => shown(entry) && listedUnder(entry, scope.kind, scope.id)),
+      limit === undefined ? fresh : fresh.slice(0, limit),
+      ops.deliverySettings().maxShownPerScope ?? DEFAULT_DELIVERY_SETTINGS.maxShownPerScope, nowMs(),
+    )
+    const added = kept.map(make)
+    for (const id of folded) gone.add(id)
+    inbox = place(added, held)
+    delivered.push(...added.map(entryIdentity))
+    return added
+  }
+
   /** Live inbox entry. Throw when the id is absent from the inbox. */
   const liveEntry = (id: string): InboxRecord => {
     const entry = inbox.find((e) => e.id === id && !gone.has(e.id))
@@ -433,17 +515,10 @@ export function createFixtureStore(
    */
   const paperOf = (source: string): string => pageOf.get(source) ?? source
 
-  const arxivSeed = (paper: PaperRow | undefined): string | null => {
-    if (paper === undefined) return null
-    const named = paper.identifier?.match(/^arXiv:(.+)$/i)?.[1]?.replace(/v\d+$/, '')
-    if (named) return named
-    return /^\d{4}\.\d{4,5}(?:v\d+)?$/.test(paper.id) ? paper.id.replace(/v\d+$/, '') : null
-  }
-
   const projectDiscoveryProfile = (projectId: string) => {
     const project = projectById.get(projectId)
     if (!project) throw new CallError('not-found', `项目不存在：${projectId}`)
-    const discovered = inbox.filter((entry) => entry.kind === 'discovery' && entry.project === projectId)
+    const discovered = inbox.filter((entry) => listedUnder(entry, 'discovery', projectId))
     const linkedPapers = project.papers.flatMap((id) => {
       const paper = byId.get(id)
       return paper === undefined ? [] : [paper]
@@ -463,7 +538,7 @@ export function createFixtureStore(
       ].filter(Boolean).join(' · '),
       wikiTerms,
       projectPapers: linkedPapers.flatMap((paper) => {
-        const seed = arxivSeed(paper)
+        const seed = libraryArxivId(paper)
         return seed === null ? [] : [{
           paperId: `ARXIV:${seed}`, title: paper.title, abstract: paper.abstract ?? '',
           wikiTerms: [...paper.topics, ...paper.methods],
@@ -982,13 +1057,7 @@ export function createFixtureStore(
       const project = projectById.get(id)
       if (!project) throw new CallError('not-found', `项目不存在：${id}`)
       projectById.delete(id)
-      const removedEntries = new Set(
-        inbox.filter((entry) => entry.kind === 'discovery' && entry.project === id)
-          .map((entry) => entry.id),
-      )
-      inbox = inbox.filter((entry) => !removedEntries.has(entry.id))
-      for (const entryId of removedEntries) gone.delete(entryId)
-      trash = trash.filter((item) => item.kind !== 'inbox' || !removedEntries.has(item.entryId))
+      dropStreams((stream) => stream.kind === 'discovery' && stream.id === id)
       trash = [
         { id: nextId('trash'), kind: 'project', title: project.name, deletedAt: nowMs(), project },
         ...trash,
@@ -1359,9 +1428,10 @@ export function createFixtureStore(
     },
 
     listInbox(params = {}) {
-      const rows = inbox.filter((e) => !gone.has(e.id))
-        .filter((e) => params.kind === undefined || e.kind === params.kind)
-        .filter((e) => params.project === undefined || e.project === params.project)
+      const rows = inbox.filter(inFeed())
+        .filter((e) => params.kind === undefined || listedUnder(e, params.kind))
+        .filter((e) => params.project === undefined || listedUnder(e, 'discovery', params.project))
+        .filter((e) => params.watch === undefined || listedUnder(e, 'watch', params.watch))
         .map((e) => ({
         id: e.id,
         kind: e.kind,
@@ -1373,14 +1443,15 @@ export function createFixtureStore(
         venue: e.venue,
         abstract: e.abstract,
         rec: e.rec,
-        reasons: structuredClone(e.reasons),
+        reasons: structuredClone(combinedReasons(e)),
+        ...(e.also === undefined ? {} : { also: e.also.map(({ kind, id, source }) => ({ kind, id, source })) }),
         ...(e.feedback === undefined ? {} : { feedback: e.feedback }),
         downloaded: pageOf.has(e.paper),
         paper: paperOf(e.paper),
         pdf: e.pdf,
         ...(e.ranking === undefined ? {} : { ranking: structuredClone(e.ranking) }),
       }))
-      return orderInbox(rows, params.sort)
+      return orderListing(rows, params)
     },
 
     dismissInbox(id) {
@@ -1422,12 +1493,13 @@ export function createFixtureStore(
       const entry = downloadableEntry(id)
       const topics = entry.vault.topic === '' ? null : topicDir(wikiHome(wiki))
       const result = storeUpload(`${entry.title}.pdf`, bytes)
+      const source = sourceOf.get(result.paper.id)!
+      inbox = inbox.map((held) => (held.id === id ? { ...held, downloaded: true, paper: source } : held))
+      gone.add(id)
+      later = later.map((queued) => (queued.id === id ? { ...queued, paper: source } : queued))
       if (result.kind === 'existing') {
         return { kind: 'existing', paper: result.paper.id, title: result.paper.title }
       }
-      const source = sourceOf.get(result.paper.id)!
-      inbox = inbox.map((held) => (held.id === id ? { ...held, downloaded: true, paper: source } : held))
-      later = later.map((queued) => (queued.id === id ? { ...queued, paper: source } : queued))
       fillPaper(result.paper.id, remoteMetadata({
         id: entry.vault.arxiv,
         title: entry.title,
@@ -1458,8 +1530,14 @@ export function createFixtureStore(
     },
 
     removeLater(id) {
-      if (!later.some((x) => x.id === id)) throw new CallError('not-found', `稍后阅读里没有这一条：${id}`)
+      const position = later.findIndex((x) => x.id === id)
+      if (position < 0) throw new CallError('not-found', `稍后阅读里没有这一条：${id}`)
+      const removed = later[position]!
       later = later.filter((x) => x.id !== id)
+      trash = [
+        { id: nextId('trash'), kind: 'later', title: removed.title, deletedAt: nowMs(), later: removed, position },
+        ...trash,
+      ]
     },
 
     listWatches() {
@@ -1486,17 +1564,12 @@ export function createFixtureStore(
 
     deleteWatch(id) {
       if (!watches.some((w) => w.id === id)) throw new CallError('not-found', `关注不存在：${id}`)
-      const removedEntries = new Set(
-        inbox.filter((entry) => entry.kind === 'watch' && entry.watch === id).map((entry) => entry.id),
-      )
       watches = watches.filter((w) => w.id !== id)
-      inbox = inbox.filter((entry) => entry.kind !== 'watch' || entry.watch !== id)
-      for (const entryId of removedEntries) gone.delete(entryId)
-      trash = trash.filter((item) => item.kind !== 'inbox' || !removedEntries.has(item.entryId))
+      dropStreams((stream) => stream.kind === 'watch' && stream.id === id)
     },
 
     deliverySettings() {
-      return structuredClone(deliveryConfig)
+      return { ...DEFAULT_DELIVERY_SETTINGS, ...structuredClone(deliveryConfig) }
     },
 
     setDeliverySettings(settings) {
@@ -1506,20 +1579,29 @@ export function createFixtureStore(
     addInboxEntries(watchId, found, limit) {
       const watch = watches.find((w) => w.id === watchId)
       if (!watch) throw new CallError('not-found', `关注不存在：${watchId}`)
-      const unseen = unseenPapers(
-        found, inbox.filter((entry) => entry.kind === 'watch').map((entry) => entry.vault.arxiv), byId.values(),
-      )
-      const added: InboxRecord[] = (limit === undefined ? unseen : unseen.slice(0, limit)).map((paper) => {
+      const added = deliver({ kind: 'watch', id: watch.id }, found, limit, (paper) => paperIdentity({
+        arxiv: paper.id, ...doiField(paper), title: paper.title, submitted: paper.submitted,
+      }), (paper) => {
         const { topic, arxiv, meta, ...entry } = inboxFields(watch, paper)
         return {
-          id: nextId('inbox'), watch: watch.id, downloaded: false, paper: '', semanticId: '', ...entry,
+          id: nextId('inbox'), watch: watch.id, downloaded: false, paper: '', semanticId: '', ...doiField(paper), ...entry,
           vault: { topic, arxiv, meta },
         }
+      }, (entry, paper) => {
+        const fields = inboxFields(watch, paper)
+        return withStream(entry, { kind: 'watch', id: watch.id, source: fields.source, reasons: fields.reasons })
+      }, (fresh, held) => {
+        const at = held.findIndex((entry) => entry.watch === watch.id)
+        return at < 0 ? [...held, ...fresh] : [...held.slice(0, at), ...fresh, ...held.slice(at)]
       })
-      if (added.length === 0) return []
-      const at = inbox.findIndex((entry) => entry.watch === watch.id)
-      inbox = at < 0 ? [...inbox, ...added] : [...inbox.slice(0, at), ...added, ...inbox.slice(at)]
       return added.map((entry) => entry.vault.arxiv)
+    },
+
+    undelivered(found) {
+      return sortFound(found, (paper) => paperIdentity({
+        arxiv: paper.id, ...doiField(paper), ...(paper.semanticId === undefined ? {} : { semanticId: paper.semanticId }),
+        title: paper.title, submitted: paper.submitted,
+      }), known()).fresh
     },
 
     updateInboxEntries(watchId, found) {
@@ -1552,7 +1634,7 @@ export function createFixtureStore(
         .map((project) => {
           const profile = projectDiscoveryProfile(project.id)
           const seeds = recommendationSeedIds(profile)
-          const base = project.papers.filter((id) => arxivSeed(byId.get(id)) !== null).length
+          const base = project.papers.filter((id) => libraryArxivId(byId.get(id)) !== null).length
           const intents = projectDiscoveryIntents(project.id)
           return {
             id: project.id,
@@ -1608,15 +1690,15 @@ export function createFixtureStore(
       const project = projectById.get(projectId)
       if (!project) throw new CallError('not-found', `项目不存在：${projectId}`)
       const seeds = projectDiscoverySeeds(projectId)
-      const seen = inbox.filter((entry) => entry.kind === 'discovery' && entry.project === projectId)
-        .map((entry) => entry.vault.arxiv)
-      const unseen = unseenPapers(found, seen, byId.values())
-      const added: InboxRecord[] = (limit === undefined ? unseen : unseen.slice(0, limit)).map((paper) => ({
+      const source = `项目 · ${project.name}`
+      return deliver({ kind: 'discovery', id: project.id }, found, limit, (paper) => paperIdentity({
+        arxiv: paper.id, ...doiField(paper), semanticId: paper.semanticId, title: paper.title, submitted: paper.submitted,
+      }), (paper) => ({
         id: nextId('inbox'),
         kind: 'discovery',
         watch: '',
         project: project.id,
-        source: `项目 · ${project.name}`,
+        source,
         title: paper.title,
         authors: paper.authors.join(', '),
         venue: paper.journalRef ?? `arXiv:${paper.id}`,
@@ -1627,22 +1709,31 @@ export function createFixtureStore(
         paper: '',
         pdf: paper.pdf,
         semanticId: paper.semanticId,
+        ...doiField(paper),
         ...(paper.ranking === undefined ? {} : { ranking: paper.ranking }),
         vault: {
           topic: '',
           arxiv: paper.id,
           meta: { authors: paper.authors, submitted: paper.submitted, journalRef: paper.journalRef },
         },
-      }))
-      if (added.length > 0) inbox = [...added, ...inbox]
-      return added.length
+      }), (entry, paper) => {
+        const listed = withStream(entry, {
+          kind: 'discovery', id: project.id, source, reasons: discoveryReasons(project.name, seeds.positive.length, paper),
+        })
+        return listed.semanticId === '' && paper.semanticId !== '' ? { ...listed, semanticId: paper.semanticId } : listed
+      }, (fresh, held) => [...fresh, ...held]).length
     },
 
     feedbackDiscovery(id, feedback) {
       const entry = liveEntry(id)
-      if (entry.kind !== 'discovery') throw new CallError('invalid', `这一条不是论文发现：${id}`)
+      if (!listedUnder(entry, 'discovery')) throw new CallError('invalid', `这一条不是论文发现：${id}`)
       inbox = inbox.map((held) => held.id === id ? { ...held, feedback } : held)
-      if (feedback !== 'more') gone.add(id)
+      if (feedback === 'more') return
+      gone.add(id)
+      trash = [
+        { id: nextId('trash'), kind: 'inbox', title: entry.title, deletedAt: nowMs(), entryId: id, feedback },
+        ...trash,
+      ]
     },
 
     lastFetch() {
@@ -1841,7 +1932,18 @@ export function createFixtureStore(
         projectById.set(item.project.id, item.project)
         if (item.project.status === FINISHED_PROJECT) archiveIdeasForProject(item.project.id)
       }
-      else if (item.kind === 'inbox') gone.delete(item.entryId)
+      else if (item.kind === 'inbox') {
+        gone.delete(item.entryId)
+        if (item.feedback !== undefined) {
+          inbox = inbox.map((held) => {
+            if (held.id !== item.entryId) return held
+            const restored = { ...held }
+            delete restored.feedback
+            return restored
+          })
+        }
+      }
+      else if (item.kind === 'later') later = [...later.slice(0, item.position), item.later, ...later.slice(item.position)]
       else if (item.kind === 'idea') ideas = [structuredClone(item.idea), ...ideas]
       else if (item.kind === 'chat') {
         const held = paperChatNow(item)

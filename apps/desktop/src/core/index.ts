@@ -35,6 +35,7 @@ import {
   DeliverySettingsSchema,
   InboxDismissParamsSchema,
   InboxDownloadParamsSchema,
+  InboxFetchParamsSchema,
   InboxListParamsSchema,
   InboxReadLaterParamsSchema,
   LibraryBackupParamsSchema,
@@ -646,8 +647,8 @@ registerHandler('inbox.readLater', (params) =>
 registerHandler('inbox.download', (params) =>
   background.downloadInbox(InboxDownloadParamsSchema.parse(params).id))
 registerHandler('inbox.fetch', (params) => {
-  EmptyParamsSchema.parse(params)
-  void background.fetchWatches()
+  const { watchId } = InboxFetchParamsSchema.parse(params)
+  void background.fetchWatches(watchId === undefined ? undefined : [watchId])
 })
 registerHandler('delivery.settings', (params) => {
   EmptyParamsSchema.parse(params)
@@ -671,14 +672,20 @@ registerHandler('discovery.intent', (params) => {
 })
 registerHandler('discovery.feedback', (params) => {
   const { id, feedback } = DiscoveryFeedbackParamsSchema.parse(params)
-  return store.feedbackDiscovery(id, feedback)
+  if (feedback === 'more') {
+    store.feedbackDiscovery(id, feedback)
+    return null
+  }
+  return trashedEntry(store, () => store.feedbackDiscovery(id, feedback))
 })
 registerHandler('later.list', (params) => {
   EmptyParamsSchema.parse(params)
   return store.listLater()
 })
-registerHandler('later.remove', (params) =>
-  store.removeLater(LaterRemoveParamsSchema.parse(params).id))
+registerHandler('later.remove', (params) => {
+  const { id } = LaterRemoveParamsSchema.parse(params)
+  return trashedEntry(store, () => store.removeLater(id))
+})
 registerHandler('watch.list', (params) => {
   EmptyParamsSchema.parse(params)
   return store.listWatches()

@@ -289,8 +289,8 @@ export const inbox = {
   readLater: (id: string) => call<boolean>('inbox.readLater', { id }),
   /** Adds the paper to the vault; whether it was added or already there tells the UI how to open the entry. */
   download: (id: string) => call<InboxDownloadResult>('inbox.download', { id }),
-  /** Starts one full fetch of every active watch and returns immediately. */
-  fetch: () => call<void>('inbox.fetch', {}),
+  /** Starts one fetch of the watch `watchId`, or of every active watch, and returns immediately. */
+  fetch: (watchId?: string) => call<void>('inbox.fetch', watchId === undefined ? {} : { watchId }),
 }
 
 export const discovery = {
@@ -303,8 +303,9 @@ export const discovery = {
   ),
   setIntent: (projectId: string, intentId: string, action: DiscoveryIntentAction) =>
     call<void>('discovery.intent', { projectId, intentId, action }),
+  /** Records the feedback; `less` and `known` move the entry to the trash and answer that trash entry. */
   feedback: (id: string, feedback: DiscoveryFeedback) =>
-    call<void>('discovery.feedback', { id, feedback }),
+    call<TrashedEntry | null>('discovery.feedback', { id, feedback }),
 }
 
 export const delivery = {
@@ -328,7 +329,7 @@ export const colourThemes = {
 
 export const later = {
   list: () => call<LaterEntry[]>('later.list', {}),
-  remove: (id: string) => call<void>('later.remove', { id }),
+  remove: (id: string) => call<TrashedEntry>('later.remove', { id }),
 }
 
 export const watch = {

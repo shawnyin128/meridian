@@ -136,9 +136,9 @@ function UpdateRow() {
  * the global search, and clicking a result opens that item on its screen.
  * No row shows a 0: a row whose count is 0, or null while it loads, has no badge, like the demo's
  * `TRASH.length||''`.
- * `watches` fills the Watched topics and Watched authors groups under the Inbox; `inboxCounts` gives
- * each watch's number of delivered papers by watch id, and a watch missing from it counts as 0. Core
- * puts an arXiv paper under one watch only, so a group row counts its watches' papers by adding them.
+ * `watches` fills the Watched topics and Watched authors groups under the Inbox; `inboxWatches` holds,
+ * for each paper the watches delivered, the ids of the watches that list it. A watch's row counts the
+ * papers listed under it, and a group row, like the Inmail row, counts each paper once.
  * `inboxMode` tells the Discovery stream from the watch stream and `inboxScope` is the scope shown in
  * it; together they decide which row is selected.
  * `chats` fills the list under Chats; archived chats are not here but in Settings. `chatId` is the
@@ -149,7 +149,7 @@ function UpdateRow() {
  */
 export function Sidebar({
   screen, onNavigate, onJump, paperCount, changeCount, projectCount, trashCount, wikiCount, ideaCount,
-  inboxScope, inboxMode, onOpenInbox, watches, inboxCounts, discoveryCount, discoveryProjects, laterCount,
+  inboxScope, inboxMode, onOpenInbox, watches, inboxWatches, discoveryCount, discoveryProjects, laterCount,
   chats, chatId, onOpenChat, onNewChat, onArchiveChat, onDeleteChat, grip, collapsed,
 }: {
   screen: ScreenKey
@@ -165,7 +165,7 @@ export function Sidebar({
   inboxMode: InboxMode
   onOpenInbox: (scope: string, mode?: InboxMode) => void
   watches: Watch[]
-  inboxCounts: Record<string, number>
+  inboxWatches: string[][]
   discoveryCount: number
   discoveryProjects: DiscoveryProjectCount[]
   laterCount: number
@@ -188,9 +188,9 @@ export function Sidebar({
   const topics = watches.filter((w) => w.type === 'topic')
   const authors = watches.filter((w) => w.type === 'author')
   const active = chats.filter((s) => !s.archived)
-  // The Inmail row counts the papers every watch delivered, the demo's allN = unread.spec + unread.dao.
-  const pushed = Object.values(inboxCounts).reduce((sum, n) => sum + n, 0)
-  const delivered = (group: Watch[]) => group.reduce((sum, w) => sum + (inboxCounts[w.id] ?? 0), 0)
+  const pushed = inboxWatches.length
+  const delivered = (group: Watch[]) => inboxWatches.filter((ids) => group.some((w) => ids.includes(w.id))).length
+  const deliveredBy = (id: string) => inboxWatches.filter((ids) => ids.includes(id)).length
   const topicPapers = delivered(topics)
   const authorPapers = delivered(authors)
   const onWatch = (id: string) => screen === 'inbox' && inboxMode === 'watch' && inboxScope === id
@@ -270,7 +270,7 @@ export function Sidebar({
                 <div className={wgroup('topics')} id="g-topics">
                   {topics.map((w) => (
                     <WatchRow
-                      key={w.id} watch={w} count={inboxCounts[w.id] ?? 0} on={onWatch(w.id)}
+                      key={w.id} watch={w} count={deliveredBy(w.id)} on={onWatch(w.id)}
                       onOpen={() => onOpenInbox(w.id)}
                     />
                   ))}
@@ -286,7 +286,7 @@ export function Sidebar({
                 <div className={wgroup('authors')} id="g-authors">
                   {authors.map((w) => (
                     <WatchRow
-                      key={w.id} watch={w} count={inboxCounts[w.id] ?? 0} on={onWatch(w.id)}
+                      key={w.id} watch={w} count={deliveredBy(w.id)} on={onWatch(w.id)}
                       onOpen={() => onOpenInbox(w.id)}
                     />
                   ))}
