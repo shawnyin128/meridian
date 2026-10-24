@@ -18,7 +18,8 @@ const isObject = (value: unknown): value is Record<string, unknown> =>
 
 /** Reads the theme file `name` at `path` on its own. */
 function readThemeFile(path: string, name: string): ColourThemeFile {
-  const unreadable = (reason: ColourThemeProblem): ColourThemeFile => ({ state: 'unreadable', file: name, reason })
+  const unreadable = (reason: ColourThemeProblem, path?: string): ColourThemeFile =>
+    ({ state: 'unreadable', file: name, reason, ...(path === undefined || path === '' ? {} : { path }) })
   let text: string
   try {
     text = readFileSync(path, 'utf8')
@@ -29,12 +30,12 @@ function readThemeFile(path: string, name: string): ColourThemeFile {
   if (raw === undefined) return unreadable('syntax')
   const schema = isObject(raw) ? raw['schema'] : undefined
   if (typeof schema === 'string' && schema.startsWith('meridian.theme.') && schema !== COLOUR_THEME_SCHEMA) {
-    return unreadable('version')
+    return unreadable('version', 'schema')
   }
   const result = ColourThemeSchema.safeParse(raw)
-  if (!result.success) return unreadable('format')
-  if (`${result.data.id}.json` !== name) return unreadable('id')
-  if (BUILT_IN.has(result.data.id)) return unreadable('built-in')
+  if (!result.success) return unreadable('format', result.error.issues[0]?.path.join('.'))
+  if (`${result.data.id}.json` !== name) return unreadable('id', 'id')
+  if (BUILT_IN.has(result.data.id)) return unreadable('built-in', 'id')
   return { state: 'readable', file: name, theme: result.data }
 }
 

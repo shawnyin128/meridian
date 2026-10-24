@@ -44,12 +44,12 @@ describe('配置目录里的主题文件', () => {
 
     expect(listColourThemes(home)).toEqual([
       { state: 'unreadable', file: 'broken.json', reason: 'syntax' },
-      { state: 'unreadable', file: 'cinnabar.json', reason: 'built-in' },
+      { state: 'unreadable', file: 'cinnabar.json', reason: 'built-in', path: 'id' },
       { state: 'unreadable', file: 'folder.json', reason: 'unreadable' },
-      { state: 'unreadable', file: 'future.json', reason: 'version' },
+      { state: 'unreadable', file: 'future.json', reason: 'version', path: 'schema' },
       { state: 'readable', file: 'mine.json', theme: mine },
-      { state: 'unreadable', file: 'other.json', reason: 'id' },
-      { state: 'unreadable', file: 'pale.json', reason: 'format' },
+      { state: 'unreadable', file: 'other.json', reason: 'id', path: 'id' },
+      { state: 'unreadable', file: 'pale.json', reason: 'format', path: 'light.accent' },
     ])
   })
 

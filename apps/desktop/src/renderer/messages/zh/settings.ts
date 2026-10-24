@@ -31,6 +31,7 @@ export const settings = {
       unreadable: '无法读取', syntax: '不是 JSON', version: '需要更新 App', format: '格式不符',
       id: 'id 与文件名不符', 'built-in': '与内置主题重名',
     },
+    themeProblemAt: (problem: string, path: string) => `${problem} · ${path}`,
   },
   storage: {
     heading: '存储',

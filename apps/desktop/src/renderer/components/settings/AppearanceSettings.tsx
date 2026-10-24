@@ -147,7 +147,11 @@ export function ColourThemeSettings() {
         {unusable.map((file) => (
           <span className="appearance-problem" data-colour-theme-file={file.file} key={file.file}>
             <span className="appearance-preview problem">
-              <Tag tone="bad">{m.settings.appearance.themeProblems[file.reason]}</Tag>
+              <Tag tone="bad">
+                {file.path === undefined
+                  ? m.settings.appearance.themeProblems[file.reason]
+                  : m.settings.appearance.themeProblemAt(m.settings.appearance.themeProblems[file.reason], file.path)}
+              </Tag>
             </span>
             <FadeText className="appearance-label" label={file.file}>{file.file}</FadeText>
           </span>

@@ -38,6 +38,7 @@ export const settings = {
       unreadable: 'Cannot be read', syntax: 'Not JSON', version: 'Needs a newer App', format: 'Not a theme',
       id: 'Id differs from file name', 'built-in': 'Built-in theme id',
     },
+    themeProblemAt: (problem: string, path: string) => `${problem} · ${path}`,
   },
   storage: {
     heading: 'Storage',

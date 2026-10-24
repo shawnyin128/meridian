@@ -542,6 +542,7 @@ describe('Settings', () => {
         <MessagesProvider>
           <ColourThemeFilesContext.Provider value={[
             { state: 'unreadable', file: 'broken.json', reason: 'syntax' },
+            { state: 'unreadable', file: 'pale.json', reason: 'format', path: 'light.accent' },
             { state: 'readable', file: 'celadon.json', theme: celadon },
           ]}>
             <Settings />
@@ -560,8 +561,8 @@ describe('Settings', () => {
     expect(choices[5]!.querySelector<HTMLElement>('.appearance-mini.light')!.style.getPropertyValue('--ap-accent')).toBe('#3f7a6a')
     const problems = [...themes.querySelectorAll('.appearance-problem')]
     expect(problems.map((problem) => [problem.querySelector('.tag--bad')?.textContent, problem.querySelector('.appearance-label')?.textContent]))
-      .toEqual([['不是 JSON', 'broken.json']])
-    expect(themes.lastElementChild).toBe(problems[0])
+      .toEqual([['不是 JSON', 'broken.json'], ['格式不符 · light.accent', 'pale.json']])
+    expect(themes.lastElementChild).toBe(problems[1])
 
     await act(async () => { choices[5]!.click() })
     expect(window.localStorage.getItem('meridian.colour-theme')).toBe('celadon')

@@ -2324,10 +2324,16 @@ export const ColourThemeSchema = z.object({
  */
 export const ColourThemeProblemSchema = z.enum(['unreadable', 'syntax', 'version', 'format', 'id', 'built-in'])
 
-/** One `.json` file in `<config home>/themes`, by file name: its theme, or why it cannot be used. */
+/**
+ * One `.json` file in `<config home>/themes`, by file name: its theme, or why it cannot be used and,
+ * when one key is at fault, that key's dotted path, such as `light.accent`.
+ */
 export const ColourThemeFileSchema = z.discriminatedUnion('state', [
   z.object({ state: z.literal('readable'), file: z.string().min(1), theme: ColourThemeSchema }).strict(),
-  z.object({ state: z.literal('unreadable'), file: z.string().min(1), reason: ColourThemeProblemSchema }).strict(),
+  z.object({
+    state: z.literal('unreadable'), file: z.string().min(1), reason: ColourThemeProblemSchema,
+    path: z.string().min(1).optional(),
+  }).strict(),
 ])
 
 /** Writes one custom theme to `<config home>/themes/<id>.json`, replacing the file of that id. */
