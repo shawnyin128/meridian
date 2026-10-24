@@ -526,9 +526,12 @@ describe('Wiki 首页屏头的待审阅与需要整理', () => {
     expect(await openFailing('tidy', () => { fixture.cardsError = newer('wiki.cards') })).toEqual(['需要更新 App', 0])
   })
 
-  it('读论文的阅读记录失败时，论文页的阅读一节不停在读取占位上，只写出原因', async () => {
+  it('读论文的阅读记录失败时，原因写在论文页的阅读一节里，不再停在读取占位上，也不在页头重复', async () => {
     fixture.paper.mockReset().mockResolvedValue(PAPER)
-    expect(await openFailing('papers/p1', () => { fixture.readingError = newer('papers.reading') })).toEqual(['需要更新 App', 0])
+    await openFailing('papers/p1', () => { fixture.readingError = newer('papers.reading') })
+    expect([...host.querySelectorAll('.ipcerror')].map((banner) => [banner.closest('.paper-understanding') !== null, banner.textContent]))
+      .toEqual([[true, '需要更新 App']])
+    expect(host.querySelectorAll('.desk-body .loading-placeholder')).toHaveLength(0)
   })
 
   const all = (selector: string) => [...host.querySelectorAll<HTMLElement>(selector)]

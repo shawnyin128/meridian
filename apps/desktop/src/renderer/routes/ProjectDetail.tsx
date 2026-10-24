@@ -186,15 +186,15 @@ const newestFirst = (a: ResearchIdea, b: ResearchIdea) =>
  * The ideas section of a project page, each idea once and in the first group it belongs to: the ideas
  * carried out in project `projectId`, then the ones related to it, tagged as related, then the ones
  * sparked in it, tagged with their source; newest first within each group. `ideas` is null until they
- * are read: a loading placeholder, or nothing once `failed`. A carried-out idea shows its node in `graph`. Activating a row selects that idea through
+ * are read: a loading placeholder, or `error`, why reading them failed. A carried-out idea shows its node in `graph`. Activating a row selects that idea through
  * `onSelect`. The heading's new-idea action drafts an idea sparked in the project first in that last
  * group, where it lands; `onCreate` writes it and settles whether it was written. An idea for which
  * `chatDeleted` holds carries the tag saying the chat it came from is deleted.
  */
-export function ProjectIdeaList({ projectId, ideas, failed, graph, selectedId, onSelect, onCreate, chatDeleted = () => false }: {
+export function ProjectIdeaList({ projectId, ideas, error, graph, selectedId, onSelect, onCreate, chatDeleted = () => false }: {
   projectId: string
   ideas: readonly ResearchIdea[] | null
-  failed: boolean
+  error: string | null
   graph: ResearchGraphData
   selectedId: string | null
   onSelect: (ideaId: string) => void
@@ -253,7 +253,7 @@ export function ProjectIdeaList({ projectId, ideas, failed, graph, selectedId, o
       >{m.project.linkedIdeas(shown)}
       </SectionHeading>
       {ideas === null
-        ? (failed ? null : <LoadingPlaceholder shape="rows" count={2} />)
+        ? (error === null ? <LoadingPlaceholder shape="rows" count={2} /> : <PageError variant="section" error={error} />)
         : shown === 0 && draft === null
         ? <EmptyState variant="section">{m.project.noLinkedIdeas}</EmptyState>
         : (
@@ -361,7 +361,7 @@ export function ProjectDetail({
   const chatDeleted = useSourceChatDeleted()
   const { open: jumpTo } = useJump()
   const openWikiPage = (page: string) => jumpTo('wiki', page)
-  const { error, load, report } = useScreenLoad()
+  const { error, failure, load, report } = useScreenLoad(['ideas'])
   const write = useVaultWrite()
   const undo = useUndo()
   const heldPapers = project?.papers
@@ -942,7 +942,7 @@ export function ProjectDetail({
             </div>
 
             <ProjectIdeaList
-              projectId={projectId} ideas={linkedIdeas} failed={error !== null} graph={displayedGraph} selectedId={selectedIdeaId} chatDeleted={chatDeleted}
+              projectId={projectId} ideas={linkedIdeas} error={failure('ideas')} graph={displayedGraph} selectedId={selectedIdeaId} chatDeleted={chatDeleted}
               onCreate={(title, body) => write(ideaApi.create(undefined, title, body, projectId).then((idea) => {
                 setLinkedIdeas((held) => [idea, ...(held ?? [])])
               }), { note: m.chat.ideaSavedNote })}

@@ -89,7 +89,7 @@ export function Settings() {
   // Each read and action reports into the pane it belongs to, so an error shows only on its own pane.
   const [actionErrors, setActionErrors] = useState<Partial<Record<CategoryKey, string>>>({})
   const { error: archivedError, load: loadArchived } = useScreenLoad()
-  const { error: storageError, load: loadStorage } = useScreenLoad()
+  const { error: storageError, failure: storageFailure, load: loadStorage } = useScreenLoad(['location'])
   const { error: extensionsError, load: loadExtensions } = useScreenLoad()
   const readErrors: Partial<Record<CategoryKey, string | null>> = {
     archived: archivedError, storage: storageError, extensions: extensionsError,
@@ -257,7 +257,9 @@ export function Settings() {
             {location === null ? null : <Tag>{m.settings.storage.source[location.source]}</Tag>}
           </div>
           {location === null
-            ? (storageError === null ? <LoadingPlaceholder shape="lines" count={2} /> : null)
+            ? (storageFailure('location') === null
+              ? <LoadingPlaceholder shape="lines" count={2} />
+              : <PageError variant="section" error={storageFailure('location')} />)
             : (
               <>
                 <PageError

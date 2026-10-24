@@ -20,17 +20,17 @@ function deferred<T>() {
 }
 
 /** Renders nothing; hands the hook from the latest render to the test. */
-function Probe({ onRender }: { onRender: (screen: ScreenLoad) => void }) {
-  onRender(useScreenLoad())
+function Probe({ sections, onRender }: { sections?: readonly string[] | undefined; onRender: (screen: ScreenLoad) => void }) {
+  onRender(useScreenLoad(sections))
   return null
 }
 
-/** Mounts the probe and returns the hook as last rendered. */
-function mount(): () => ScreenLoad {
+/** Mounts the probe, with the section keys `sections` when given, and returns the hook as last rendered. */
+function mount(sections?: readonly string[]): () => ScreenLoad {
   const host = document.createElement('div')
   document.body.append(host)
   let screen: ScreenLoad | undefined
-  act(() => { createRoot(host).render(<MessagesProvider><Probe onRender={(held) => { screen = held }} /></MessagesProvider>) })
+  act(() => { createRoot(host).render(<MessagesProvider><Probe sections={sections} onRender={(held) => { screen = held }} /></MessagesProvider>) })
   return () => screen!
 }
 
@@ -127,5 +127,21 @@ describe('useScreenLoad', () => {
     expect(screen().error).toBe('这一项已不存在')
     await next.answer('重新读到的')
     expect([screen().error, shown]).toEqual([null, ['重新读到的']])
+  })
+
+  it('一节自己的读取失败写在那一节里：屏头的错误不算它，按键取得到它，下次读成功就清掉', async () => {
+    const screen = mount(['ideas'])
+    act(() => { screen().load('ideas', Promise.reject(newer), () => {}) })
+    await act(async () => {})
+    expect([screen().error, screen().failure('ideas')]).toEqual([null, '需要更新 App'])
+
+    act(() => { screen().load('project', Promise.reject(notFound), () => {}) })
+    await act(async () => {})
+    expect([screen().error, screen().failure('ideas'), screen().failure('project')])
+      .toEqual(['这一项已不存在', '需要更新 App', '这一项已不存在'])
+
+    act(() => { screen().load('ideas', Promise.resolve('想法'), () => {}) })
+    await act(async () => {})
+    expect(screen().failure('ideas')).toBeNull()
   })
 })
