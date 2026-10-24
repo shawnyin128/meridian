@@ -24,12 +24,13 @@ function Probe({ ids, scopeOf, onReorder, onReady }: {
   return null
 }
 
-/** A drag event stub carrying only what the hook reads: a settable dataTransfer, position and target rect. */
-function dragEvent<T extends Element = Element>(y = 0, rectTop = 0, rectHeight = 20) {
+/** A drag event stub on `currentTarget` carrying only what the hook reads: a settable dataTransfer and the pointer's position. */
+function dragEvent<T extends Element = Element>(currentTarget: Element, y = 0) {
   return {
     dataTransfer: { effectAllowed: '', setData: vi.fn(), setDragImage: vi.fn() },
+    clientX: 0,
     clientY: y,
-    currentTarget: { getBoundingClientRect: () => ({ top: rectTop, height: rectHeight }), closest: () => null },
+    currentTarget,
     preventDefault: vi.fn(),
   } as unknown as ReactDragEvent<T>
 }
@@ -52,15 +53,31 @@ describe('useDragReorder', () => {
     document.body.append(host)
   })
 
+  /** How many times the hook's caller rendered. */
+  let renders = 0
   const mount = (ids: string[], scopeOf: (id: string) => string, onReorder: (order: string[]) => void) => {
+    renders = 0
     act(() => createRoot(host).render(
-      <Probe ids={ids} scopeOf={scopeOf} onReorder={onReorder} onReady={(next) => { reorder = next }} />,
+      <Probe ids={ids} scopeOf={scopeOf} onReorder={onReorder} onReady={(next) => { reorder = next; renders += 1 }} />,
     ))
   }
-  const start = (id: string) => act(() => reorder.handleProps(id).onDragStart(dragEvent<HTMLElement>()))
-  const over = (id: string, y: number) => act(() => reorder.itemProps(id).onDragOver(dragEvent<HTMLElement>(y, 0, 20)))
-  const drop = (id: string) => act(() => reorder.itemProps(id).onDrop(dragEvent()))
+  /** The item element of `id`, a 20px-tall box at the top holding its drag handle. */
+  const item = (id: string): HTMLElement => {
+    const found = host.querySelector<HTMLElement>(`[data-reorder-item="${id}"]`)
+    if (found !== null) return found
+    const made = document.createElement('div')
+    made.dataset['reorderItem'] = id
+    made.getBoundingClientRect = () => ({ top: 0, left: 0, height: 20, width: 100 }) as DOMRect
+    made.append(document.createElement('span'))
+    host.append(made)
+    return made
+  }
+  const start = (id: string) => act(() => reorder.handleProps(id).onDragStart(dragEvent<HTMLElement>(item(id).firstElementChild!)))
+  const over = (id: string, y: number) => act(() => reorder.itemProps(id).onDragOver(dragEvent<HTMLElement>(item(id), y)))
+  const drop = (id: string) => act(() => reorder.itemProps(id).onDrop(dragEvent(item(id))))
   const end = (id: string) => act(() => reorder.handleProps(id).onDragEnd())
+  /** The drop feedback classes on each of `ids`' items. */
+  const feedback = (...ids: string[]) => ids.map((id) => [...item(id).classList].join(' '))
 
   it('只有把手能拖，条目本身只接住放下', () => {
     mount(['a', 'b'], () => 'x', vi.fn())
@@ -105,13 +122,47 @@ describe('useDragReorder', () => {
     expect(onReorder).not.toHaveBeenCalled()
   })
 
-  it('dropClass 标出正被拖动的条目,和悬停目标该在它前面还是后面', () => {
+  it('被拖的条目变淡,指针下的条目在被拖条目会落下的一侧画线,线跟着指针走,松手后都清掉', () => {
     mount(['a', 'b', 'c'], () => 'x', vi.fn())
     start('a')
     over('c', 2)
-    expect(reorder.dropClass('a')).toBe('dragging')
-    expect(reorder.dropClass('c')).toBe('drag-over-before')
-    expect(reorder.dropClass('b')).toBe('')
+    expect(feedback('a', 'b', 'c')).toEqual(['dragging', '', 'drag-over-before'])
+    over('c', 15)
+    expect(feedback('a', 'b', 'c')).toEqual(['dragging', '', 'drag-over-after'])
+    over('b', 2)
+    expect(feedback('a', 'b', 'c')).toEqual(['dragging', 'drag-over-before', ''])
+    end('a')
+    expect(feedback('a', 'b', 'c')).toEqual(['', '', ''])
+  })
+
+  it('拖动中 React 改写了条目的 class,下一次 dragover 把变淡和落点线都补回来', () => {
+    mount(['a', 'b', 'c'], () => 'x', vi.fn())
+    start('a')
+    over('c', 2)
+    // A render that changes an item's className sets the whole attribute, without the drag marks.
+    item('a').className = ''
+    item('c').className = ''
+    over('c', 3)
+    expect(feedback('a', 'b', 'c')).toEqual(['dragging', '', 'drag-over-before'])
+  })
+
+  it('放下后被拖条目和落点的标记都清掉', () => {
+    mount(['a', 'b', 'c'], () => 'x', vi.fn())
+    start('a')
+    over('c', 15)
+    drop('c')
+    expect(feedback('a', 'b', 'c')).toEqual(['', '', ''])
+  })
+
+  it('开始拖动和拖过条目都不让调用方重新渲染,整张列表不跟着每次 dragover 重画', () => {
+    mount(['a', 'b', 'c'], () => 'x', vi.fn())
+    const before = renders
+    start('a')
+    over('c', 2)
+    over('c', 3)
+    over('c', 15)
+    over('b', 2)
+    expect(renders - before).toBe(0)
   })
 
   it('上移下移只在本作用域里挪一格，到了头就不能再挪', () => {

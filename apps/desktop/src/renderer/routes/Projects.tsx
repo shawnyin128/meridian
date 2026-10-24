@@ -163,9 +163,9 @@ export function projectPaperCountLabel(count: number, m: Catalog): string {
 }
 
 /** Ongoing projects expose the decisions a researcher needs before secondary counts and history. */
-function ProjectPanel({ project, onOpen, menu, reorder, dropClassName }: {
+function ProjectPanel({ project, onOpen, menu, reorder }: {
   project: ProjectSummary; onOpen: () => void; menu: ReactNode
-  reorder: Reorderable; dropClassName: string
+  reorder: Reorderable
 }) {
   const today = useToday()
   const fmt = useFormat()
@@ -178,7 +178,7 @@ function ProjectPanel({ project, onOpen, menu, reorder, dropClassName }: {
 
   return (
     <ResearchObjectCard
-      className={`projpanel${dropClassName ? ` ${dropClassName}` : ''}`}
+      className="projpanel"
       data-proj={project.id} onActivate={onOpen} {...reorder.item}
     >
       <div className="pp-h">
@@ -245,15 +245,15 @@ function ProjectPanel({ project, onOpen, menu, reorder, dropClassName }: {
  * focus and time since the last progress. The identity is the row's button; a click anywhere else on
  * the row opens it too.
  */
-function ProjectRow({ project, onOpen, menu, reorder, dropClassName }: {
+function ProjectRow({ project, onOpen, menu, reorder }: {
   project: ProjectSummary; onOpen: () => void; menu: ReactNode
-  reorder: Reorderable; dropClassName: string
+  reorder: Reorderable
 }) {
   const { idle } = signals(project, useToday())
   const m = useMessages()
   return (
     <StructuredRow
-      composite className={`prow${dropClassName ? ` ${dropClassName}` : ''}`}
+      composite className="prow"
       data-proj={project.id} onActivate={onOpen} {...reorder.item}
     >
       <button type="button" className="prow-open">
@@ -422,7 +422,6 @@ function ProjectList({ onOpen, newRow, onNewRow, onReturn }: {
                 <ProjectPanel
                   project={p} onOpen={() => onOpen(p.id)} menu={menuOf(p)} key={p.id}
                   reorder={{ item: reorder.itemProps(p.id), handle: reorder.handleProps(p.id) }}
-                  dropClassName={reorder.dropClass(p.id)}
                 />
               ))
               : (
@@ -431,7 +430,6 @@ function ProjectList({ onOpen, newRow, onNewRow, onReturn }: {
                     <ProjectRow
                       project={p} onOpen={() => onOpen(p.id)} menu={menuOf(p)} key={p.id}
                       reorder={{ item: reorder.itemProps(p.id), handle: reorder.handleProps(p.id) }}
-                      dropClassName={reorder.dropClass(p.id)}
                     />
                   ))}
                 </StructuredList>

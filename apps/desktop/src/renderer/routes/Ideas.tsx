@@ -154,7 +154,7 @@ function IdeaMenu({ idea, linked, onMove, canMove, onArchive, onDelete }: {
 }
 
 /** An idea as a card, title first: what it relates to, then where it came from and when it last changed. */
-function IdeaCard({ idea, chatDeleted, projectsById, pageTitles, selected, menu, onOpen, reorder, dropClassName }: {
+function IdeaCard({ idea, chatDeleted, projectsById, pageTitles, selected, menu, onOpen, reorder }: {
   idea: ResearchIdea
   chatDeleted: boolean
   projectsById: ReadonlyMap<string, ProjectSummary>
@@ -163,13 +163,12 @@ function IdeaCard({ idea, chatDeleted, projectsById, pageTitles, selected, menu,
   menu: ReactNode
   onOpen: () => void
   reorder: Reorderable
-  dropClassName: string
 }) {
   const fmt = useFormat()
   const m = useMessages()
   return (
     <ResearchObjectCard
-      className={`idea-card${dropClassName ? ` ${dropClassName}` : ''}`} selected={selected} muted={idea.archived}
+      className="idea-card" selected={selected} muted={idea.archived}
       data-idea={idea.id} onActivate={onOpen} {...reorder.item}
     >
       <div className="idea-card-content">
@@ -194,7 +193,7 @@ function IdeaCard({ idea, chatDeleted, projectsById, pageTitles, selected, menu,
  * A started idea as a row: its title, the project it is carried out in, with that project's status tag
  * while it is shelved, and where it came from.
  */
-function IdeaRow({ idea, chatDeleted, projectsById, selected, menu, onOpen, reorder, dropClassName }: {
+function IdeaRow({ idea, chatDeleted, projectsById, selected, menu, onOpen, reorder }: {
   idea: ResearchIdea
   chatDeleted: boolean
   projectsById: ReadonlyMap<string, ProjectSummary>
@@ -202,14 +201,13 @@ function IdeaRow({ idea, chatDeleted, projectsById, selected, menu, onOpen, reor
   menu: ReactNode
   onOpen: () => void
   reorder: Reorderable
-  dropClassName: string
 }) {
   const fmt = useFormat()
   const m = useMessages()
   const work = idea.project === undefined ? undefined : projectsById.get(idea.project)
   return (
     <StructuredRow
-      composite className={`idea-row${dropClassName ? ` ${dropClassName}` : ''}`} selected={selected}
+      composite className="idea-row" selected={selected}
       data-idea={idea.id} onActivate={onOpen} {...reorder.item}
     >
       <button type="button" className="idea-row-open"><FadeText className="idea-row-title" label={idea.title}>{idea.title}</FadeText></button>
@@ -468,7 +466,6 @@ export function Ideas() {
     idea, chatDeleted: chatDeleted(idea), projectsById, selected: selectedId === idea.id,
     onOpen: () => setSelectedId(idea.id),
     reorder: { item: reorder.itemProps(idea.id), handle: reorder.handleProps(idea.id) },
-    dropClassName: reorder.dropClass(idea.id),
   })
   const card = (idea: ResearchIdea) => <IdeaCard key={idea.id} {...shared(idea)} pageTitles={pageTitles} menu={menuOf(idea)} />
   const row = (idea: ResearchIdea) => <IdeaRow key={idea.id} {...shared(idea)} menu={menuOf(idea)} />
