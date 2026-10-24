@@ -136,15 +136,6 @@ export const wiki = {
     'open-question': 'Open question',
   },
   quality: {
-    dimension: {
-      grounding: 'Source support',
-      separation: 'Content separation',
-      retrieval: 'Search questions',
-      mechanism: 'Mechanism description',
-      evidence: 'Evidence description',
-      implementation: 'Implementation entry point',
-      uncertainty: 'Limitations and uncertainty',
-    },
     heading: 'Automatic checks',
     passedTitle: 'No formatting or citation issues found',
     findingsTitle: (n: number) => `${n} ${pluralEn(n, { one: 'item needs', other: 'items need' })} review`,

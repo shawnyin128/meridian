@@ -81,12 +81,9 @@ function QualityReport({ quality }: { quality: HarnessPaperWikiQuality }) {
             return (
               <StructuredRow className="paper-wiki-quality-finding"
                 key={`${finding.dimension}-${finding.code}-${finding.path}-${index}`}>
-                <div>
-                  <Tooltip label={copy?.detail ?? finding.message}>
-                    <strong>{copy?.title ?? m.wiki.quality.needsReviewFallback}</strong>
-                  </Tooltip>
-                  <span>{m.wiki.quality.dimension[finding.dimension]}</span>
-                </div>
+                <Tooltip label={copy?.detail ?? finding.message}>
+                  <strong>{copy?.title ?? m.wiki.quality.needsReviewFallback}</strong>
+                </Tooltip>
                 {place === undefined ? null : <span className="paper-wiki-quality-place">{place}</span>}
               </StructuredRow>
             )
