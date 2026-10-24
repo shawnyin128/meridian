@@ -65,8 +65,7 @@ function discoveryResultNote(result: DiscoveryFetchResult, m: Catalog): string {
 
 /**
  * Inbox: papers fetched for your watches (Inmail) or recommended for your projects (Discovery),
- * shown in groups. Each paper can be downloaded into the vault or saved to Read Later; Inmail
- * papers can also be dismissed.
+ * shown in groups. Each paper can be downloaded into the vault, saved to Read Later or dismissed.
  */
 export function Inbox() {
   const m = useMessages()
@@ -192,11 +191,20 @@ export function Inbox() {
   }
 
   const feedback = (id: string, value: 'more' | 'less' | 'known') => {
-    if (value !== 'more') leave([id])
-    void discovery.feedback(id, value).then(() => {
-      notice.success(value === 'known' ? m.inbox.notices.known : m.inbox.notices.remembered)
-      window.setTimeout(bump, value === 'more' ? 0 : LEAVE_MS)
-    }).catch((e: unknown) => notice.refusal(errorLabel(m, e)))
+    if (value === 'more') {
+      void discovery.feedback(id, value).then(() => {
+        notice.success(m.inbox.notices.remembered)
+        bump()
+      }).catch((e: unknown) => notice.refusal(errorLabel(m, e)))
+      return
+    }
+    leave([id])
+    window.setTimeout(() => {
+      void write(
+        discovery.feedback(id, value).then((trashed) => (trashed === null ? [] : [trashed])),
+        { note: value === 'known' ? m.inbox.notices.known : m.inbox.notices.remembered, action: undo.restore },
+      )
+    }, LEAVE_MS)
   }
 
   const card = (p: InboxEntry) => (
@@ -231,11 +239,9 @@ export function Inbox() {
         <IconButton label={m.inbox.actions.readLater} size="nested" onClick={() => queue(p.id)}>
           <IconLater />
         </IconButton>
-        {stream === 'watch' ? (
-          <IconButton label={m.inbox.actions.dismiss} size="nested" onClick={() => dismiss([p.id], m.inbox.notices.dismissed)}>
-            <IconTrash />
-          </IconButton>
-        ) : null}
+        <IconButton label={m.inbox.actions.dismiss} size="nested" onClick={() => dismiss([p.id], m.inbox.notices.dismissed)}>
+          <IconTrash />
+        </IconButton>
         </>
       )}
       notices={failed.has(p.id) ? (

@@ -4,8 +4,8 @@ import { dayFrom, onDay, readJson, writeJson } from './app.mjs'
 /**
  * Recommendations a watch fetch would have brought from arXiv, by stored id: the watch name they
  * came from, the paper, and what happens to them in the seed. `later` moves one to read-later on
- * that day, `dismiss` moves it to Trash. EAGLE is a paper the library already holds, which the App
- * keeps out of the feed.
+ * that day, `dismiss` moves it to Trash, and `unqueue` then takes it out of read-later into Trash.
+ * EAGLE is a paper the library already holds, which the App keeps out of the feed.
  */
 const RECOMMENDATIONS = [
   { id: 'seed-inbox-sequoia', watch: 'speculative decoding', arxiv: '2402.12374', submitted: '2024-02-19',
@@ -24,6 +24,10 @@ const RECOMMENDATIONS = [
     title: 'Draft & Verify: Lossless Large Language Model Acceleration via Self-Speculative Decoding',
     authors: ['Jun Zhang', 'Jue Wang', 'Huan Li', 'Lidan Shou', 'Ke Chen', 'Gang Chen', 'Sharad Mehrotra'],
     abstract: 'The model drafts by skipping some of its own intermediate layers and then verifies the draft with the full model, with no extra network.' },
+  { id: 'seed-inbox-osd', watch: 'speculative decoding', arxiv: '2310.07177', submitted: '2023-10-11', later: -2, unqueue: true,
+    title: 'Online Speculative Decoding',
+    authors: ['Xiaoxuan Liu', 'Lanxiang Hu', 'Peter Bailis', 'Alvin Cheung', 'Zhijie Deng', 'Ion Stoica', 'Hao Zhang'],
+    abstract: 'Online speculative decoding keeps distilling the draft model on the queries the service sees, raising its acceptance rate as traffic shifts.' },
   { id: 'seed-inbox-lookahead', watch: 'speculative decoding', arxiv: '2402.02057', submitted: '2024-02-03', dismiss: true,
     title: 'Break the Sequential Dependency of LLM Inference Using Lookahead Decoding',
     authors: ['Yichao Fu', 'Peter Bailis', 'Ion Stoica', 'Hao Zhang'],
@@ -48,8 +52,8 @@ export async function seedWatches(seed, call) {
   seed.watches = Object.fromEntries(watches.map((watch) => [watch.name, watch]))
   // The App posts this summary when a watch fetch over the network brings new papers.
   await onDay(seed, -1, () => call('feed.append', { source: 'inbox', body: { kind: 'runs', runs: [
-    { kind: 'text', text: '抓取：' }, { kind: 'strong', text: '7 篇新论文入队' },
-    { kind: 'text', text: '（speculative decoding ×6 · Tri Dao ×1）。' },
+    { kind: 'text', text: '抓取：' }, { kind: 'strong', text: '8 篇新论文入队' },
+    { kind: 'text', text: '（speculative decoding ×7 · Tri Dao ×1）。' },
   ] } }))
 }
 
@@ -73,7 +77,7 @@ export function writeInbox(seed, extra = []) {
   writeJson(join(seed.out, 'library', '.meridian', 'inbox.json'), [...records, ...extra])
 }
 
-/** Moves recommendations to read-later and to Trash through the inbox's own methods. */
+/** Moves recommendations to read-later and to Trash through the inbox's and read-later's own methods. */
 export async function seedInbox(seed, call) {
   for (const paper of RECOMMENDATIONS) {
     if (paper.later !== undefined) {
@@ -81,6 +85,7 @@ export async function seedInbox(seed, call) {
       seed.days.later.set(paper.id, paper.later)
     }
     if (paper.dismiss) await call('inbox.dismiss', { id: paper.id })
+    if (paper.unqueue) await call('later.remove', { id: paper.id })
   }
 }
 

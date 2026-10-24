@@ -15,6 +15,8 @@ declare global {
 
 const api = vi.hoisted(() => ({
   notes: [] as unknown[], jump: null as ScreenJump | null, entries: null as LaterEntry[] | null, returnTo: vi.fn(),
+  writes: [] as { result: unknown; opts: { note?: unknown; action?: (result: never) => { label: string; onAction: () => void } } }[],
+  restored: [] as string[],
 }))
 
 const ENTRY: LaterEntry = {
@@ -24,7 +26,9 @@ const ENTRY: LaterEntry = {
 
 vi.mock('../ipc.js', () => ({
   inbox: { download: async () => ({ kind: 'added', paper: ENTRY.paper }) },
-  later: { list: async () => api.entries ?? [ENTRY], remove: async () => {} },
+  later: { list: async () => api.entries ?? [ENTRY], remove: async (id: string) => ({ trash: `trash-${id}` }) },
+  trash: { restore: async (id: string) => { api.restored.push(id) } },
+  changelog: {},
 }))
 vi.mock('../shell/AppShell.js', () => ({
   useJump: () => ({ jump: api.jump, open: vi.fn(), returnTo: api.returnTo }),
@@ -35,7 +39,7 @@ vi.mock('../shell/AppShell.js', () => ({
 vi.mock('../shell/useJobs.js', () => ({ useJobs: () => null }))
 vi.mock('../hooks/useVaultWrite.js', () => ({
   useVaultWrite: () => async (work: Promise<unknown>, opts: { note?: unknown } = {}) => {
-    await work
+    api.writes.push({ result: await work, opts })
     api.notes.push(opts.note)
     return true
   },
@@ -52,6 +56,8 @@ describe('Later', () => {
     host = document.createElement('div')
     document.body.append(host)
     api.notes.length = 0
+    api.writes.length = 0
+    api.restored.length = 0
     api.jump = null
     api.entries = null
   })
@@ -132,6 +138,18 @@ describe('Later', () => {
     expect(toast.textContent).toBe('已移出稍后阅读「MoE 路由用熵正则代替负载均衡 load balancing」')
     expect(toast.querySelector('.fade-text')!.textContent).toBe('MoE 路由用熵正则代替负载均衡 load balancing')
     act(() => shown.unmount())
+    await act(async () => { root.unmount() })
+  })
+
+  it('移出的那一条进垃圾桶,提示里的撤销把它放回队列', async () => {
+    const root = createRoot(host)
+    await act(async () => { root.render(<MessagesProvider><Later /></MessagesProvider>) })
+    await act(async () => { host.querySelector<HTMLButtonElement>('button[aria-label="移出"]')!.click() })
+    const written = api.writes.at(-1)!
+    const action = written.opts.action!(written.result as never)
+    expect(action.label).toBe('撤销')
+    await act(async () => { action.onAction() })
+    expect(api.restored).toEqual([`trash-${ENTRY.id}`])
     await act(async () => { root.unmount() })
   })
 })

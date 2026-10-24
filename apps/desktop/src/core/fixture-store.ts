@@ -65,7 +65,8 @@ type TrashRecord = Omit<TrashEntry, 'restorable'> & (
   | { kind: 'project'; project: FixtureProject }
   | { kind: 'idea'; idea: ResearchIdea }
   | { kind: 'attachment'; projectId: string; attachment: Attachment }
-  | { kind: 'inbox'; entryId: string }
+  | { kind: 'inbox'; entryId: string; feedback?: 'less' | 'known' }
+  | { kind: 'later'; later: LaterRecord; position: number }
 )
 
 /** Seeded fixture change with cross-boundary fields but no undo/archive fields because it predates them. */
@@ -1452,8 +1453,14 @@ export function createFixtureStore(
     },
 
     removeLater(id) {
-      if (!later.some((x) => x.id === id)) throw new CallError('not-found', `稍后阅读里没有这一条：${id}`)
+      const position = later.findIndex((x) => x.id === id)
+      if (position < 0) throw new CallError('not-found', `稍后阅读里没有这一条：${id}`)
+      const removed = later[position]!
       later = later.filter((x) => x.id !== id)
+      trash = [
+        { id: nextId('trash'), kind: 'later', title: removed.title, deletedAt: nowMs(), later: removed, position },
+        ...trash,
+      ]
     },
 
     listWatches() {
@@ -1636,7 +1643,12 @@ export function createFixtureStore(
       const entry = liveEntry(id)
       if (entry.kind !== 'discovery') throw new CallError('invalid', `这一条不是论文发现：${id}`)
       inbox = inbox.map((held) => held.id === id ? { ...held, feedback } : held)
-      if (feedback !== 'more') gone.add(id)
+      if (feedback === 'more') return
+      gone.add(id)
+      trash = [
+        { id: nextId('trash'), kind: 'inbox', title: entry.title, deletedAt: nowMs(), entryId: id, feedback },
+        ...trash,
+      ]
     },
 
     lastFetch() {
@@ -1833,7 +1845,18 @@ export function createFixtureStore(
         projectById.set(item.project.id, item.project)
         if (item.project.status === FINISHED_PROJECT) archiveIdeasForProject(item.project.id)
       }
-      else if (item.kind === 'inbox') gone.delete(item.entryId)
+      else if (item.kind === 'inbox') {
+        gone.delete(item.entryId)
+        if (item.feedback !== undefined) {
+          inbox = inbox.map((held) => {
+            if (held.id !== item.entryId) return held
+            const restored = { ...held }
+            delete restored.feedback
+            return restored
+          })
+        }
+      }
+      else if (item.kind === 'later') later = [...later.slice(0, item.position), item.later, ...later.slice(item.position)]
       else if (item.kind === 'idea') ideas = [structuredClone(item.idea), ...ideas]
       else {
         const project = projectById.get(item.projectId)

@@ -19,7 +19,7 @@ const api = vi.hoisted(() => ({
   restored: [] as string[],
   writes: [] as { result: unknown; opts: { note?: unknown; action?: (result: never) => { label: string; onAction: () => void } } }[],
   downloads: {} as Record<string, InboxDownloadResult>,
-  feedback: vi.fn(async () => {}),
+  feedback: vi.fn(async (id: string, value: string) => (value === 'more' ? null : { trash: `trash-${id}` })),
   setIntent: vi.fn(async () => {}),
   openCategory: vi.fn(),
   /** While true the inbox list never arrives. */
@@ -318,18 +318,61 @@ describe('Inbox', () => {
     await act(async () => { again.unmount() })
   })
 
-  it('发现的卡片不能忽略，分组标题上也没有「全部忽略」', async () => {
-    api.entries = [{
-      id: 'd1', kind: 'discovery', watch: '', project: 'p1', source: '项目 · 项目一',
-      title: 'A Discovery', authors: 'Ada', venue: 'ICLR', abstract: 'Abstract', rec: '',
-      reasons: [], downloaded: false, paper: '', pdf: 'https://arxiv.org/pdf/2609.1',
-    }]
+  it('发现的卡片也能忽略,忽略和关注卡片在同一个位置;提示里的撤销把它放回;分组标题上没有「全部忽略」', async () => {
+    const entry = (kind: InboxEntry['kind']): InboxEntry => ({
+      id: kind, kind, watch: kind === 'watch' ? 'w1' : '', project: kind === 'watch' ? '' : 'p1',
+      source: kind === 'watch' ? '主题 · w1' : '项目 · 项目一', title: `Paper ${kind}`, authors: 'Ada', venue: 'ICLR',
+      abstract: 'Abstract', rec: '', reasons: [], downloaded: false, paper: '', pdf: 'https://arxiv.org/pdf/2609.1',
+    })
+    const lastAction = () => [...host.querySelectorAll('.paper-card-actions [aria-label]')].at(-1)!.getAttribute('aria-label')
+    api.entries = [entry('watch')]
+    const watching = createRoot(host)
+    await act(async () => { watching.render(<MessagesProvider><Inbox /></MessagesProvider>) })
+    expect(lastAction()).toBe('忽略')
+    await act(async () => { watching.unmount() })
+
+    api.entries = [entry('discovery')]
     api.mode = 'discovery'
     const root = createRoot(host)
     await act(async () => { root.render(<MessagesProvider><Inbox /></MessagesProvider>) })
-    expect(host.querySelectorAll('.collapsible-group')).toHaveLength(1)
-    expect(host.querySelector('[aria-label="忽略"]')).toBeNull()
+    expect(lastAction()).toBe('忽略')
     expect(host.querySelector('.collapsible-group-actions')).toBeNull()
+    await act(async () => { host.querySelector<HTMLButtonElement>('[aria-label="忽略"]')!.click() })
+    expect(host.querySelector('.paper-card')!.classList.contains('is-leaving')).toBe(true)
+    await act(async () => { await new Promise((done) => { setTimeout(done, 300) }) })
+    expect(api.dismiss).toHaveBeenCalledWith('discovery')
+    const dismissed = api.writes.at(-1)!
+    const action = dismissed.opts.action!(dismissed.result as never)
+    expect([dismissed.opts.note, action.label]).toEqual(['已忽略', '撤销'])
+    await act(async () => { action.onAction() })
+    expect(api.restored).toContain('trash-discovery')
+    await act(async () => { root.unmount() })
+  })
+
+  it('减少类似和已经了解让卡片离开,提示里的撤销从垃圾桶把它放回;更多类似留在原处', async () => {
+    const entry = (id: string): InboxEntry => ({
+      id, kind: 'discovery', watch: '', project: 'p1', source: '项目 · 项目一', title: `Paper ${id}`,
+      authors: 'Ada', venue: 'ICLR', abstract: 'Abstract', rec: '', reasons: [], downloaded: false, paper: '',
+      pdf: 'https://arxiv.org/pdf/2609.1',
+    })
+    api.entries = [entry('d1'), entry('d2'), entry('d3')]
+    api.mode = 'discovery'
+    const root = createRoot(host)
+    await act(async () => { root.render(<MessagesProvider><Inbox /></MessagesProvider>) })
+    const card = (id: string) => host.querySelector<HTMLElement>(`.paper-card[data-pid="${id}"]`)!
+    for (const [id, label, note] of [['d1', '减少类似', '已记住'], ['d2', '已经了解', '已标记为已经了解']] as const) {
+      await act(async () => { card(id).querySelector<HTMLButtonElement>(`[aria-label="${label}"]`)!.click() })
+      expect(card(id).classList.contains('is-leaving')).toBe(true)
+      await act(async () => { await new Promise((done) => { setTimeout(done, 300) }) })
+      const written = api.writes.at(-1)!
+      const action = written.opts.action!(written.result as never)
+      expect([written.opts.note, action.label]).toEqual([note, '撤销'])
+      await act(async () => { action.onAction() })
+      expect(api.restored.at(-1)).toBe(`trash-${id}`)
+    }
+    await act(async () => { card('d3').querySelector<HTMLButtonElement>('[aria-label="更多类似"]')!.click() })
+    expect(card('d3').classList.contains('is-leaving')).toBe(false)
+    expect(api.feedback).toHaveBeenLastCalledWith('d3', 'more')
     await act(async () => { root.unmount() })
   })
 

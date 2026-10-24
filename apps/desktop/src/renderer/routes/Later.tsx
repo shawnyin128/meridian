@@ -17,6 +17,7 @@ import { SegmentedControl } from '../components/SegmentedControl.js'
 import { errorLabel, failureLabel } from '../lib/failure-label.js'
 import { TitleNote } from '../components/TitleNote.js'
 import { useFormat } from '../lib/format.js'
+import { useUndo } from '../hooks/useUndo.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
 import { PageBody, PageError, PageHeader, PageShell, PageTitle, PageToolbar } from '../components/PageShell.js'
 import { SourceLabel } from '../components/SourceLabel.js'
@@ -48,6 +49,7 @@ export function Later() {
   const { revision, bump } = useVaultRevision()
   const reportError = useCallback((e: unknown) => setError(errorLabel(m, e)), [m])
   const write = useVaultWrite()
+  const undo = useUndo()
   const jobs = useJobs()
   const [busy, setBusy] = useState<ReadonlySet<string>>(new Set())
   const [failed, setFailed] = useState<ReadonlyMap<string, InboxDownloadFailure>>(new Map())
@@ -91,8 +93,9 @@ export function Later() {
   }, [jump, entries])
 
   const remove = (entry: LaterEntry) => {
-    void write(later.remove(entry.id),
-      { note: <TitleNote message={m.later.removed} title={plainTitle(entry.title)} /> })
+    void write(later.remove(entry.id).then((trashed) => [trashed]), {
+      note: <TitleNote message={m.later.removed} title={plainTitle(entry.title)} />, action: undo.restore,
+    })
   }
 
   // Entries arrive newest first by the day they were queued; groups follow the order keys first appear in.

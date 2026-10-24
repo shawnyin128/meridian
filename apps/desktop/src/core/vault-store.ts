@@ -2002,10 +2002,15 @@ export function createVaultStore(
         }))
     },
 
-    removeLater(id) {
-      if (!later.some((x) => x.id === id)) throw new CallError('not-found', `稍后阅读里没有这一条：${id}`)
+    removeLater: atomic((id) => {
+      const position = later.findIndex((x) => x.id === id)
+      if (position < 0) throw new CallError('not-found', `稍后阅读里没有这一条：${id}`)
+      const removed = later[position]!
       later = save('later', later.filter((x) => x.id !== id))
-    },
+      toTrash({
+        id: nextId('trash'), kind: 'later', title: removed.title, deletedAt: nowMs(), later: removed, position,
+      })
+    }),
 
     listWatches() {
       return watches.map((w) => structuredClone(w))
@@ -2191,12 +2196,18 @@ export function createVaultStore(
       return added.length
     },
 
-    feedbackDiscovery(id, feedback) {
+    feedbackDiscovery: atomic((id, feedback) => {
       const entry = liveEntry(id)
       if (entry.kind !== 'discovery') throw new CallError('invalid', `这一条不是论文发现：${id}`)
-      if (feedback === 'more') putEntry(id, { feedback })
-      else leaveEntry(id, feedback, { feedback })
-    },
+      if (feedback === 'more') {
+        putEntry(id, { feedback })
+        return
+      }
+      leaveEntry(id, feedback, { feedback })
+      toTrash({
+        id: nextId('trash'), kind: 'inbox', title: entry.title, deletedAt: nowMs(), entryId: id, feedback,
+      })
+    }),
 
     lastFetch() {
       return state.fetchedAt ?? null

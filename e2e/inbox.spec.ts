@@ -164,6 +164,34 @@ test('关注与项目发现是两条流,发现解释来源并接受显式反馈'
   await expect.poll(async () => (await discoveryFromCore(win)).length).toBe(before - 1)
 })
 
+test('发现的卡片能忽略;忽略、减少类似和已经了解都进垃圾桶,恢复后回到发现,反馈一并撤掉', async ({ win }) => {
+  await openInbox(win, 'discovery')
+  await shown(win, '.desk-head .btn').filter({ hasText: '刷新发现' }).click()
+  await expect.poll(async () => (await discoveryFromCore(win)).length).toBeGreaterThan(2)
+  const delivered = await discoveryFromCore(win)
+  await expect(shown(win, '.pcard')).toHaveCount(delivered.length)
+  const titles = await cardTitles(win)
+
+  for (const label of ['忽略', '减少类似', '已经了解']) {
+    const count = await shown(win, '.pcard').count()
+    await rowAction(shown(win, '.pcard').first(), label)
+    await expect(shown(win, '.pcard')).toHaveCount(count - 1)
+  }
+  const trash = await trashFromCore(win)
+  expect(trash.map((item) => [item.kind, item.title])).toEqual(titles.slice(0, 3).reverse().map((title) => ['inbox', title]))
+
+  await win.locator('[data-desk="trash"]').click()
+  await expect(shown(win, '.section-heading')).toHaveText('论文推送 · 3')
+  for (let left = 3; left > 0; left -= 1) await rowAction(win.locator('.tgroup .trow').first(), '恢复')
+  await expect.poll(async () => (await trashFromCore(win)).length).toBe(0)
+
+  await openInbox(win, 'discovery')
+  await expect(shown(win, '.pcard')).toHaveCount(delivered.length)
+  expect((await cardTitles(win)).sort()).toEqual([...titles].sort())
+  const restored = await call<{ id: string; feedback?: string }[]>(win, 'inbox.list', { kind: 'discovery' })
+  expect(restored.filter((entry) => entry.feedback !== undefined)).toEqual([])
+})
+
 test('按关键词与作者各筛一档,面包屑与条数都跟着换', async ({ win }) => {
   const entries = await inboxFromCore(win)
   const counted = (await watchesFromCore(win)).map((w) => ({
@@ -416,6 +444,14 @@ test('存入稍后阅读:离开推送屏,排到队首,再移出', async ({ win }
   await rowAction(shown(win, '.pcard').first(), '移出')
   await expect(shown(win, '.desk-head .t')).toHaveText(`稍后阅读 · ${queued.length}`)
   expect((await laterFromCore(win)).map((e) => e.id)).toEqual(queued.map((e) => e.id))
+
+  // The removal went to the trash; restoring it puts the entry back at the head of the queue.
+  expect(await trashFromCore(win)).toEqual([expect.objectContaining({ kind: 'later', title })])
+  await win.locator('[data-desk="trash"]').click()
+  await rowAction(win.locator('.tgroup .trow'), '恢复')
+  await win.locator('#rowLater').click()
+  await expect(shown(win, '.desk-head .t')).toHaveText(`稍后阅读 · ${queued.length + 1}`)
+  expect((await laterFromCore(win)).map((e) => e.id)).toEqual([first.id, ...queued.map((e) => e.id)])
 })
 
 test('稍后阅读里有原文地址的条目可以直接开始阅读并在需要时先下载', async ({ win }) => {
