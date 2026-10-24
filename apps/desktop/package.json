@@ -2,7 +2,7 @@
   "name": "@meridian/desktop",
   "private": true,
   "license": "PolyForm-Noncommercial-1.0.0",
-  "version": "0.0.18000",
+  "version": "0.0.19000",
   "type": "module",
   "main": "out/main/index.js",
   "scripts": {
