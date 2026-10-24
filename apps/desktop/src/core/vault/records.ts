@@ -100,6 +100,15 @@ export const DiscoveryPreferencesRecordSchema = z.object({
 })
 
 /**
+ * One `.meridian/discovery/progress.json` record: how far one scope's refreshes have got. `id` is
+ * `project:<project id>`; `steps` holds, per discovery direction id, how many queries it has run.
+ */
+export const RefreshProgressRecordSchema = z.object({
+  id: z.string(),
+  steps: z.record(z.string(), z.number().int().min(0)),
+}).strict()
+
+/**
  * `.meridian/state.json` vault state. `seq` assigns ids and only increases, preventing reuse across
  * restarts. `gitManaged` stores the last Git-management conclusion shown to the user, while
  * `sharedSources` stores the last reported count of sources referenced by multiple pages; both are
@@ -142,6 +151,7 @@ export type LaterRecord = z.infer<typeof LaterRecordSchema>
 export type ChatRecord = z.infer<typeof ChatRecordSchema>
 export type TrashRecord = z.infer<typeof TrashRecordSchema>
 export type VaultState = z.infer<typeof VaultStateSchema>
+export type RefreshProgressRecord = z.infer<typeof RefreshProgressRecordSchema>
 
 /** Full page text; null means the page did not exist. Proposal undo restores these snapshots. */
 export const PageTextSchema = z.object({ path: z.string(), text: z.string().nullable() }).strict()
