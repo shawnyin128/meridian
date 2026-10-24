@@ -45,23 +45,37 @@ const label = (w: Watch, watchKind: Record<Watch['type'], string>) => `${watchKi
 const streamLabel = (m: Catalog, stream: 'watch' | 'discovery'): string =>
   (stream === 'watch' ? m.inbox.streamLabel.watch : m.inbox.streamLabel.discovery)
 
-function fetchNote(status: FetchStatus | null, m: Catalog): ReactNode {
+/**
+ * The watch fetch's status line for `scope`: when the last finished run fetched that scope and brought
+ * nothing new, it says so with the time of that run.
+ */
+function fetchNote(status: FetchStatus | null, scope: string, m: Catalog): ReactNode {
   if (status === null) return ''
   if (status.state === 'checking') return m.inbox.check.checking
   if (status.state === 'failed') return failureLabel(m, m.inbox.check.failed, status.reason ?? 'unknown')
+  const last = status.last
+  const fetched = last?.watches === null ? scope === ALL_WATCHES : last?.watches.length === 1 && last.watches[0] === scope
+  if (last !== undefined && last.added === 0 && fetched) {
+    return <>{m.inbox.check.noneNew} · {m.inbox.check.lastChecked}{' '}<DateTimeDisplay at={last.at} /></>
+  }
   if (status.checkedAt === null) return ''
   return <>{m.inbox.check.lastChecked}{' '}<DateTimeDisplay at={status.checkedAt} /></>
 }
 
-function discoveryResultNote(result: DiscoveryFetchResult, m: Catalog): string {
-  const parts = [
-    result.added === 0 ? m.settings.discovery.noNewPapers : m.settings.discovery.newFound(result.added),
-    m.settings.discovery.requested(result.intents),
-  ]
+/** What a discovery refresh brought; with nothing new, `lastFetchedAt` is when the scope was last refreshed. */
+function discoveryResultNote(result: DiscoveryFetchResult, lastFetchedAt: number | null, m: Catalog): ReactNode {
+  const parts = [m.settings.discovery.requested(result.intents)]
   if (result.cachedIntents > 0) parts.push(m.settings.discovery.cooling(result.cachedIntents))
   if (result.failedIntents > 0) parts.push(m.settings.discovery.failed(result.failedIntents))
   if (result.deferredProjects > 0) parts.push(m.settings.discovery.deferred(result.deferredProjects))
-  return parts.join(' · ')
+  if (result.added > 0) return [m.settings.discovery.newFound(result.added), ...parts].join(' · ')
+  if (lastFetchedAt === null) return [m.settings.discovery.noNewPapers, ...parts].join(' · ')
+  return (
+    <>
+      {m.settings.discovery.noNewPapers} · {m.inbox.lastRefreshed}{' '}<DateTimeDisplay at={lastFetchedAt} />
+      {parts.map((part) => ` · ${part}`).join('')}
+    </>
+  )
 }
 
 /**
@@ -185,8 +199,11 @@ export function Inbox() {
 
   const refreshDiscovery = () => {
     setDiscovering(true)
-    void discovery.fetch().then((result) => {
-      notice.success(discoveryResultNote(result, m))
+    void discovery.fetch(scope === ALL_WATCHES ? undefined : scope).then(async (result) => {
+      const refreshed = result.added > 0 ? [] : (await discovery.profiles())
+        .filter((profile) => scope === ALL_WATCHES || profile.id === scope)
+        .flatMap((profile) => (profile.lastFetchedAt === null ? [] : [profile.lastFetchedAt]))
+      notice.success(discoveryResultNote(result, refreshed.length === 0 ? null : Math.max(...refreshed), m))
       bump()
     }).catch((e: unknown) => notice.refusal(errorLabel(m, e))).finally(() => setDiscovering(false))
   }
@@ -283,7 +300,7 @@ export function Inbox() {
                 >{m.watches.resume}</button>
               </>
             ) : null}
-            <span className="fetchnote">{stream === 'watch' ? fetchNote(jobs?.fetch ?? null, m) : ''}</span>
+            <span className="fetchnote">{stream === 'watch' ? fetchNote(jobs?.fetch ?? null, scope, m) : ''}</span>
             {rows.length === 0 ? null : (
               <SortMenu
                 label={m.inbox.sortLabel} current={m.inbox.sort[sort]}
@@ -297,7 +314,9 @@ export function Inbox() {
             {stream === 'watch' ? (
               <button
                 className="btn" disabled={jobs?.fetch?.state === 'checking'}
-                onClick={() => { void inbox.fetch().catch((e: unknown) => notice.refusal(errorLabel(m, e))) }}
+                onClick={() => {
+                  void inbox.fetch(scope === ALL_WATCHES ? undefined : scope).catch((e: unknown) => notice.refusal(errorLabel(m, e)))
+                }}
               >{jobs?.fetch?.state === 'failed' ? m.common.retry : m.inbox.checkNewPapers}</button>
             ) : (
               <button className="btn" disabled={discovering} onClick={refreshDiscovery}>

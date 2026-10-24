@@ -40,7 +40,7 @@ import {
 } from './project-management/index.js'
 import { inboxFields } from './inbox/dedup.js'
 import {
-  combinedReasons, listedUnder, orderListing, sortFound, withoutStreams, withStream, type StoredStream,
+  combinedReasons, foldedBelow, listedUnder, orderListing, sortFound, withoutStreams, withStream, type StoredStream,
 } from './inbox/delivery.js'
 import {
   createPaperIndex, libraryArxivId, libraryIdentity, paperIdentity, type PaperIdentity,
@@ -446,6 +446,13 @@ export function createFixtureStore(
     trash = trash.filter((item) => item.kind !== 'inbox' || !removed.has(item.entryId))
   }
 
+  /** Returns whether an inbox entry shows in the feed: it has not left, and the vault does not hold its paper. */
+  const inFeed = (): ((entry: InboxRecord) => boolean) => {
+    const owned = createPaperIndex<true>()
+    for (const paper of byId.values()) owned.add(libraryIdentity(paper), true)
+    return (entry) => !gone.has(entry.id) && !pageOf.has(entry.paper) && owned.find(entryIdentity(entry)) === undefined
+  }
+
   /** What a found paper may turn out to be: in the vault, a live card, or delivered before. */
   const known = () => ({
     owned: [...byId.values()].map(libraryIdentity),
@@ -460,8 +467,9 @@ export function createFixtureStore(
    * delivered.
    */
   const deliver = <P extends RemotePaper>(
-    found: P[], limit: number | undefined, identityOf: (paper: P) => PaperIdentity,
-    make: (paper: P) => InboxRecord, listed: (entry: InboxRecord, paper: P) => InboxRecord,
+    scope: Pick<InboxStream, 'kind' | 'id'>, found: P[], limit: number | undefined,
+    identityOf: (paper: P) => PaperIdentity, make: (paper: P) => InboxRecord,
+    listed: (entry: InboxRecord, paper: P) => InboxRecord,
     place: (fresh: InboxRecord[], held: InboxRecord[]) => InboxRecord[],
   ): InboxRecord[] => {
     const { fresh, merged } = sortFound(found, identityOf, known())
@@ -470,9 +478,15 @@ export function createFixtureStore(
       return paper === undefined ? entry : listed(entry, paper)
     })
     const added = (limit === undefined ? fresh : fresh.slice(0, limit)).map(make)
+    const shown = inFeed()
+    const folded = foldedBelow(
+      held.filter((entry) => shown(entry) && listedUnder(entry, scope.kind, scope.id)), added,
+      ops.deliverySettings().maxShownPerScope ?? DEFAULT_DELIVERY_SETTINGS.maxShownPerScope, nowMs(),
+    )
+    for (const id of folded) gone.add(id)
     inbox = place(added, held)
     delivered.push(...added.map(entryIdentity))
-    return added
+    return added.filter((entry) => !folded.has(entry.id))
   }
 
   /** Live inbox entry. Throw when the id is absent from the inbox. */
@@ -1406,9 +1420,7 @@ export function createFixtureStore(
     },
 
     listInbox(params = {}) {
-      const owned = createPaperIndex<true>()
-      for (const paper of byId.values()) owned.add(libraryIdentity(paper), true)
-      const rows = inbox.filter((e) => !gone.has(e.id) && !pageOf.has(e.paper) && owned.find(entryIdentity(e)) === undefined)
+      const rows = inbox.filter(inFeed())
         .filter((e) => params.kind === undefined || listedUnder(e, params.kind))
         .filter((e) => params.project === undefined || listedUnder(e, 'discovery', params.project))
         .filter((e) => params.watch === undefined || listedUnder(e, 'watch', params.watch))
@@ -1549,7 +1561,7 @@ export function createFixtureStore(
     },
 
     deliverySettings() {
-      return structuredClone(deliveryConfig)
+      return { ...DEFAULT_DELIVERY_SETTINGS, ...structuredClone(deliveryConfig) }
     },
 
     setDeliverySettings(settings) {
@@ -1559,7 +1571,7 @@ export function createFixtureStore(
     addInboxEntries(watchId, found, limit) {
       const watch = watches.find((w) => w.id === watchId)
       if (!watch) throw new CallError('not-found', `关注不存在：${watchId}`)
-      const added = deliver(found, limit, (paper) => paperIdentity({
+      const added = deliver({ kind: 'watch', id: watch.id }, found, limit, (paper) => paperIdentity({
         arxiv: paper.id, title: paper.title, submitted: paper.submitted,
       }), (paper) => {
         const { topic, arxiv, meta, ...entry } = inboxFields(watch, paper)
@@ -1671,7 +1683,7 @@ export function createFixtureStore(
       if (!project) throw new CallError('not-found', `项目不存在：${projectId}`)
       const seeds = projectDiscoverySeeds(projectId)
       const source = `项目 · ${project.name}`
-      return deliver(found, limit, (paper) => paperIdentity({
+      return deliver({ kind: 'discovery', id: project.id }, found, limit, (paper) => paperIdentity({
         arxiv: paper.id, semanticId: paper.semanticId, title: paper.title, submitted: paper.submitted,
       }), (paper) => ({
         id: nextId('inbox'),

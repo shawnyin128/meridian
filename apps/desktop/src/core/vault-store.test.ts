@@ -217,6 +217,46 @@ describe('vault store', () => {
       })
     }
 
+    /** An arXiv result with ranking metadata whose only difference from its siblings is `relevance`. */
+    const ranked = (id: string, relevance: number) => ({
+      ...found(id, `Ranked ${id}`),
+      ranking: { relevance, published: false, citationCount: 0, influentialCitationCount: 0, submitted: '2026-09-01' },
+    })
+
+    for (const [name, make] of [['真实实现', () => store], ['fixture', () => createFixtureStore()]] as const) {
+      it(`${name}:刷新时新来的和这个范围里还没读的一起按推荐分排,只留前几张,其余折叠为看过:不删、不再送,别的范围不动`, () => {
+        const s = make()
+        s.setDeliverySettings({ ...s.deliverySettings(), maxShownPerScope: 3 })
+        s.createWatch({ type: 'topic', name: 'capped' })
+        s.createWatch({ type: 'topic', name: 'other' })
+        s.addInboxEntries(watchOf(s, 'other'), [ranked('2609.28009', 0.1)])
+        expect(s.addInboxEntries(watchOf(s, 'capped'), [ranked('2609.28001', 0.9), ranked('2609.28002', 0.2)]))
+          .toEqual(['2609.28001', '2609.28002'])
+        expect(s.addInboxEntries(watchOf(s, 'capped'), [
+          ranked('2609.28003', 0.5), ranked('2609.28004', 0.1), ranked('2609.28005', 0.8),
+        ])).toEqual(['2609.28003', '2609.28005'])
+        expect(titles(s.listInbox({ kind: 'watch', watch: watchOf(s, 'capped') })))
+          .toEqual(['Ranked 2609.28001', 'Ranked 2609.28005', 'Ranked 2609.28003'])
+        expect(titles(s.listInbox({ kind: 'watch', watch: watchOf(s, 'other') }))).toEqual(['Ranked 2609.28009'])
+        expect(s.addInboxEntries(watchOf(s, 'capped'), [ranked('2609.28002', 0.2), ranked('2609.28004', 0.1)])).toEqual([])
+        expect(s.undelivered([discovered('2609.28002'), discovered('2609.28004')])).toEqual([])
+      })
+    }
+
+    it('真实实现:折叠的卡片和一来就排在后面的新论文都存成 gone 加 left: folded,不进垃圾桶', () => {
+      store.setDeliverySettings({ maxItemsPerRun: 10, maxShownPerScope: 1 })
+      store.createWatch({ type: 'topic', name: 'folding' })
+      store.addInboxEntries(watchOf(store, 'folding'), [ranked('2609.29001', 0.2)])
+      expect(store.addInboxEntries(watchOf(store, 'folding'), [ranked('2609.29002', 0.9), ranked('2609.29003', 0.1)]))
+        .toEqual(['2609.29002'])
+      const stored = (JSON.parse(readFileSync(join(vault, '.meridian', 'inbox.json'), 'utf8')) as Record<string, unknown>[])
+        .map(({ arxiv, gone, left }) => [arxiv, gone, left])
+      expect(stored).toEqual(expect.arrayContaining([
+        ['2609.29001', true, 'folded'], ['2609.29002', false, undefined], ['2609.29003', true, 'folded'],
+      ]))
+      expect(store.listTrash()).toEqual([])
+    })
+
     it('真实实现:问哪些候选还会送出不写库', () => {
       store.createWatch({ type: 'topic', name: 'asked' })
       store.addInboxEntries(watchOf(store, 'asked'), [found('2609.27001')])
@@ -809,11 +849,14 @@ describe('vault store', () => {
   })
 
   it('论文推送配置有默认值，写进 state.json 后重开仍保留', () => {
-    expect(store.deliverySettings()).toEqual({ maxItemsPerRun: 10 })
-    store.setDeliverySettings({ maxItemsPerRun: 7 })
-    expect(createVaultStore(vault).deliverySettings()).toEqual({ maxItemsPerRun: 7 })
+    expect(store.deliverySettings()).toEqual({ maxItemsPerRun: 10, maxShownPerScope: 20 })
+    store.setDeliverySettings({ maxItemsPerRun: 7, maxShownPerScope: 12 })
+    expect(createVaultStore(vault).deliverySettings()).toEqual({ maxItemsPerRun: 7, maxShownPerScope: 12 })
     expect(JSON.parse(readFileSync(join(vault, '.meridian', 'state.json'), 'utf8')))
-      .toMatchObject({ deliverySettings: { maxItemsPerRun: 7 } })
+      .toMatchObject({ deliverySettings: { maxItemsPerRun: 7, maxShownPerScope: 12 } })
+    // Settings an older App saved, without a per-scope limit, read with the default one.
+    store.setDeliverySettings({ maxItemsPerRun: 5 })
+    expect(createVaultStore(vault).deliverySettings()).toEqual({ maxItemsPerRun: 5, maxShownPerScope: 20 })
   })
 
   it('上一批存下的列配置没有 type / options / groups,开库补齐', () => {
@@ -2741,7 +2784,7 @@ describe('vault store on the aggregation layout', () => {
     it('state.json 里有这个版本不认识的字段,含嵌套的:照常开库,改设置存回时那些字段还在', () => {
       put('state', { ...held('state') as object, deliverySettings: { maxItemsPerRun: 7, digest: 'weekly' }, focus: { since: '2026-09-01' } })
       const reopened = reopen()
-      expect(reopened.deliverySettings()).toEqual({ maxItemsPerRun: 7 })
+      expect(reopened.deliverySettings()).toEqual({ maxItemsPerRun: 7, maxShownPerScope: 20 })
 
       reopened.setDeliverySettings({ maxItemsPerRun: 3 })
       expect(held('state')).toMatchObject({ deliverySettings: { maxItemsPerRun: 3, digest: 'weekly' }, focus: { since: '2026-09-01' } })

@@ -1,10 +1,10 @@
 // @vitest-environment jsdom
-import { act } from 'react'
+import { act, type ReactNode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type {
-  DiscoveryProfile, InboxDownloadResult, InboxEntry, JobsStatus, Watch,
+  DiscoveryFetchResult, DiscoveryProfile, InboxDownloadResult, InboxEntry, JobsStatus, Watch,
 } from '../../shared/contract.js'
 import { IconCheck, IconSeen, IconTrash } from '../components/icons.js'
 import { MessagesProvider } from '../messages/useMessages.js'
@@ -33,6 +33,10 @@ const api = vi.hoisted(() => ({
   sorts: [] as (string | undefined)[],
   /** The parameters of each inbox.list call, in order. */
   lists: [] as Record<string, unknown>[],
+  checks: vi.fn<(watchId?: string) => Promise<void>>(async () => {}),
+  discoveries: vi.fn<(projectId?: string) => Promise<DiscoveryFetchResult>>(async () => ({
+    projects: 1, intents: 1, added: 0, deferredProjects: 0, cachedIntents: 0, failedIntents: 0,
+  })),
   notice: {
     success: vi.fn<(text: unknown, action?: { label: string; onAction: () => void }) => void>(),
     refusal: vi.fn(),
@@ -54,14 +58,11 @@ vi.mock('../ipc.js', () => ({
     },
     dismiss: api.dismiss, readLater: async () => false,
     download: async (id: string) => api.downloads[id] ?? { kind: 'added', paper: 'p1' },
-    fetch: async () => {},
+    fetch: api.checks,
   },
   discovery: {
     profiles: async () => api.profiles,
-    fetch: async () => ({
-      projects: api.profiles.length, intents: 0, added: 0, deferredProjects: 0,
-      cachedIntents: 0, failedIntents: 0,
-    }),
+    fetch: api.discoveries,
     setIntent: api.setIntent,
     feedback: api.feedback,
   },
@@ -422,6 +423,65 @@ describe('Inbox', () => {
     expect(host.querySelector('.desk-head .t')?.textContent).toBe('项目 · 项目一 · 1')
     expect(host.querySelector('[aria-label="减少类似"]')).not.toBeNull()
     await act(async () => { discovering.unmount() })
+  })
+
+  it('检查新论文和刷新发现只管侧栏里选中的范围:一条关注、一个项目,或者全部', async () => {
+    const press = async (label: string) => {
+      const button = [...host.querySelectorAll<HTMLButtonElement>('.desk-head .btn')].find((held) => held.textContent === label)!
+      await act(async () => { button.click() })
+    }
+    for (const [mode, scope, label, called, expected] of [
+      ['watch', 'w1', '检查新论文', api.checks, 'w1'], ['watch', 'all', '检查新论文', api.checks, undefined],
+      ['discovery', 'p1', '刷新发现', api.discoveries, 'p1'], ['discovery', 'all', '刷新发现', api.discoveries, undefined],
+    ] as const) {
+      api.mode = mode
+      api.scope = scope
+      called.mockClear()
+      const root = createRoot(host)
+      await act(async () => { root.render(<MessagesProvider><Inbox /></MessagesProvider>) })
+      await press(label)
+      expect(called).toHaveBeenCalledExactlyOnceWith(expected)
+      await act(async () => { root.unmount() })
+    }
+  })
+
+  it('刷新发现没带来新论文时,提示说没有新的,并写出这个范围上次刷新的日期与时刻', async () => {
+    api.mode = 'discovery'
+    api.scope = 'p1'
+    const at = new Date(2026, 9, 23, 9, 30).getTime()
+    api.profiles = [
+      { id: 'p1', name: '项目一', seedCount: 1, positiveCount: 0, negativeCount: 0, intentCount: 1, lastFetchedAt: at, intents: [] },
+      { id: 'p2', name: '项目二', seedCount: 1, positiveCount: 0, negativeCount: 0, intentCount: 1, lastFetchedAt: at + 3_600_000, intents: [] },
+    ]
+    const root = createRoot(host)
+    await act(async () => { root.render(<MessagesProvider><Inbox /></MessagesProvider>) })
+    const refresh = [...host.querySelectorAll<HTMLButtonElement>('.desk-head .btn')].find((held) => held.textContent === '刷新发现')!
+    await act(async () => { refresh.click() })
+    const toast = document.createElement('div')
+    const shown = createRoot(toast)
+    act(() => shown.render(<MessagesProvider>{api.notice.success.mock.calls.at(-1)![0] as ReactNode}</MessagesProvider>))
+    expect(toast.textContent).toMatch(/^没有发现新的论文 · 上次刷新 /)
+    expect([...toast.querySelectorAll('.date-chip')].map((chip) => chip.textContent)).toEqual(['10月23日', '09:30'])
+    act(() => shown.unmount())
+    await act(async () => { root.unmount() })
+  })
+
+  it('检查新论文没带来新论文时,屏头写没有新论文和这一档上次检查的时刻;别的档照常写上次检查', async () => {
+    const at = new Date(2026, 8, 21, 8, 15).getTime()
+    status = {
+      writes: 0, uploads: [], downloads: [],
+      fetch: { state: 'idle', checkedAt: new Date(2026, 8, 20, 14, 5).getTime(), reason: null, last: { watches: ['w1'], added: 0, at } },
+    }
+    api.scope = 'w1'
+    const root = createRoot(host)
+    await act(async () => { root.render(<MessagesProvider><Inbox /></MessagesProvider>) })
+    expect(host.querySelector('.fetchnote')!.textContent).toBe('没有新论文 · 上次检查 9月21日08:15')
+    await act(async () => { root.unmount() })
+    api.scope = 'all'
+    const all = createRoot(host)
+    await act(async () => { all.render(<MessagesProvider><Inbox /></MessagesProvider>) })
+    expect(host.querySelector('.fetchnote')!.textContent).toBe('上次检查 9月20日14:05')
+    await act(async () => { all.unmount() })
   })
 
   it('上次检查的时刻像全 App 的时间一样写成日期与时刻', async () => {

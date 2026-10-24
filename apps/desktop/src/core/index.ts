@@ -34,6 +34,7 @@ import {
   DeliverySettingsSchema,
   InboxDismissParamsSchema,
   InboxDownloadParamsSchema,
+  InboxFetchParamsSchema,
   InboxListParamsSchema,
   InboxReadLaterParamsSchema,
   LibraryBackupParamsSchema,
@@ -645,8 +646,8 @@ registerHandler('inbox.readLater', (params) =>
 registerHandler('inbox.download', (params) =>
   background.downloadInbox(InboxDownloadParamsSchema.parse(params).id))
 registerHandler('inbox.fetch', (params) => {
-  EmptyParamsSchema.parse(params)
-  void background.fetchWatches()
+  const { watchId } = InboxFetchParamsSchema.parse(params)
+  void background.fetchWatches(watchId === undefined ? undefined : [watchId])
 })
 registerHandler('delivery.settings', (params) => {
   EmptyParamsSchema.parse(params)

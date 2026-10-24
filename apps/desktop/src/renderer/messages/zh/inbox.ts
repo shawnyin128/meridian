@@ -6,8 +6,10 @@ export const inbox = {
   check: {
     checking: '正在检查新论文…',
     failed: '检查失败',
+    noneNew: '没有新论文',
     lastChecked: '上次检查',
   },
+  lastRefreshed: '上次刷新',
   checkNewPapers: '检查新论文',
   discovering: '正在发现…',
   refreshDiscovery: '刷新发现',

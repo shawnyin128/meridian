@@ -287,8 +287,8 @@ export const inbox = {
   readLater: (id: string) => call<boolean>('inbox.readLater', { id }),
   /** Adds the paper to the vault; whether it was added or already there tells the UI how to open the entry. */
   download: (id: string) => call<InboxDownloadResult>('inbox.download', { id }),
-  /** Starts one full fetch of every active watch and returns immediately. */
-  fetch: () => call<void>('inbox.fetch', {}),
+  /** Starts one fetch of the watch `watchId`, or of every active watch, and returns immediately. */
+  fetch: (watchId?: string) => call<void>('inbox.fetch', watchId === undefined ? {} : { watchId }),
 }
 
 export const discovery = {

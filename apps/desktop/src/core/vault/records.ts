@@ -158,8 +158,11 @@ export const VaultStateSchema = z.object({
 export type PaperSnapshot = z.infer<typeof PaperSnapshotSchema>
 export type InboxRecord = z.infer<typeof InboxRecordSchema>
 export type DeliveredRecord = z.infer<typeof DeliveredRecordSchema>
-/** Why an inbox entry left the feed: added to the vault, queued to read later, dismissed, or given `less` or `known` feedback. */
-export type InboxLeft = 'library' | 'later' | 'dismissed' | 'less' | 'known'
+/**
+ * Why an inbox entry left the feed: added to the vault, queued to read later, dismissed, given `less`
+ * or `known` feedback, or folded away as seen when a refresh ranked it below its scope's limit.
+ */
+export type InboxLeft = 'library' | 'later' | 'dismissed' | 'less' | 'known' | 'folded'
 export type LaterRecord = z.infer<typeof LaterRecordSchema>
 export type ChatRecord = z.infer<typeof ChatRecordSchema>
 export type TrashRecord = z.infer<typeof TrashRecordSchema>

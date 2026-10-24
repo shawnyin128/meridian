@@ -37,7 +37,7 @@ import {
 } from './project-management/index.js'
 import { inboxFields } from './inbox/dedup.js'
 import {
-  combinedReasons, listedUnder, orderListing, sortFound, withoutStreams, withStream,
+  combinedReasons, foldedBelow, listedUnder, orderListing, sortFound, withoutStreams, withStream,
 } from './inbox/delivery.js'
 import {
   createPaperIndex, libraryArxivId, libraryIdentity, paperIdentity, type PaperIdentity,
@@ -1252,6 +1252,13 @@ export function createVaultStore(
     discoveryPreferences(projectId),
   )
 
+  /** Returns whether an inbox entry shows in the feed: it has not left, and the vault does not hold its paper. */
+  const inFeed = (): ((entry: InboxRecord) => boolean) => {
+    const owned = createPaperIndex<true>()
+    for (const paper of papers.values()) owned.add(libraryIdentity(paper), true)
+    return (entry) => !entry.gone && !pagesOf.has(entry.paper) && owned.find(entryIdentity(entry)) === undefined
+  }
+
   /** What a found paper may turn out to be: in the vault, a live card, or delivered before. */
   const known = () => ({
     owned: [...papers.values()].map(libraryIdentity),
@@ -1266,8 +1273,9 @@ export function createVaultStore(
    * Papers the vault holds are skipped. Throws, leaving the inbox as it stood, when it cannot write.
    */
   const deliver = <P extends RemotePaper>(
-    found: P[], limit: number | undefined, identityOf: (paper: P) => PaperIdentity,
-    make: (paper: P) => InboxRecord, listed: (entry: InboxRecord, paper: P) => InboxRecord,
+    scope: Pick<InboxStream, 'kind' | 'id'>, found: P[], limit: number | undefined,
+    identityOf: (paper: P) => PaperIdentity, make: (paper: P) => InboxRecord,
+    listed: (entry: InboxRecord, paper: P) => InboxRecord,
     place: (fresh: InboxRecord[], held: InboxRecord[]) => InboxRecord[],
   ): InboxRecord[] => {
     const { fresh, merged } = sortFound(found, identityOf, known())
@@ -1278,11 +1286,18 @@ export function createVaultStore(
       if (next !== entry) changed = true
       return next
     })
-    const added = (limit === undefined ? fresh : fresh.slice(0, limit)).map(make)
-    if (added.length === 0 && !changed) return []
-    inbox = save('inbox', place(added, held))
+    const made = (limit === undefined ? fresh : fresh.slice(0, limit)).map(make)
+    const shown = inFeed()
+    const folded = foldedBelow(
+      held.filter((entry) => shown(entry) && listedUnder(entry, scope.kind, scope.id)), made,
+      ops.deliverySettings().maxShownPerScope ?? DEFAULT_DELIVERY_SETTINGS.maxShownPerScope, now().getTime(),
+    )
+    if (made.length === 0 && !changed && folded.size === 0) return []
+    const fold = (entry: InboxRecord): InboxRecord => (folded.has(entry.id) ? { ...entry, gone: true, left: 'folded' } : entry)
+    const added = made.map(fold)
+    inbox = save('inbox', place(added, held.map(fold)))
     remember(added)
-    return added
+    return added.filter((entry) => !entry.gone)
   }
 
   const ops: VaultOps = {
@@ -1946,9 +1961,7 @@ export function createVaultStore(
     },
 
     listInbox(params = {}) {
-      const owned = createPaperIndex<true>()
-      for (const paper of papers.values()) owned.add(libraryIdentity(paper), true)
-      const rows = inbox.filter((e) => !e.gone && !pagesOf.has(e.paper) && owned.find(entryIdentity(e)) === undefined)
+      const rows = inbox.filter(inFeed())
         .filter((e) => params.kind === undefined || listedUnder(e, params.kind))
         .filter((e) => params.project === undefined || listedUnder(e, 'discovery', params.project))
         .filter((e) => params.watch === undefined || listedUnder(e, 'watch', params.watch))
@@ -2087,7 +2100,7 @@ export function createVaultStore(
     }),
 
     deliverySettings() {
-      return structuredClone(state.deliverySettings ?? DEFAULT_DELIVERY_SETTINGS)
+      return { ...DEFAULT_DELIVERY_SETTINGS, ...structuredClone(state.deliverySettings) }
     },
 
     setDeliverySettings(settings: DeliverySettings) {
@@ -2097,7 +2110,7 @@ export function createVaultStore(
     addInboxEntries: atomic((watchId, found, limit) => {
       const watch = watches.find((w) => w.id === watchId)
       if (!watch) throw new CallError('not-found', `关注不存在：${watchId}`)
-      const added = deliver(found, limit, (paper) => paperIdentity({
+      const added = deliver({ kind: 'watch', id: watch.id }, found, limit, (paper) => paperIdentity({
         arxiv: paper.id, title: paper.title, submitted: paper.submitted,
       }), (paper) => ({
         id: nextId('inbox'), watch: watch.id, downloaded: false, paper: '', gone: false,
@@ -2218,7 +2231,7 @@ export function createVaultStore(
       const project = projectOf(projectId)
       const seeds = projectDiscoverySeeds(projectId)
       const source = `项目 · ${project.name}`
-      return deliver(found, limit, (paper) => paperIdentity({
+      return deliver({ kind: 'discovery', id: project.id }, found, limit, (paper) => paperIdentity({
         arxiv: paper.id, semanticId: paper.semanticId, title: paper.title, submitted: paper.submitted,
       }), (paper) => ({
         id: nextId('inbox'),

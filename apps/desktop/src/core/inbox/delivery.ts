@@ -1,6 +1,6 @@
 import type { InboxEntry, InboxListParams, InboxStream } from '../../shared/contract.js'
 import { listingsOf } from '../../shared/inbox-streams.js'
-import { orderInbox } from '../recommendation/index.js'
+import { orderInbox, recommendationScore } from '../recommendation/index.js'
 import { createPaperIndex, type PaperIdentity } from './identity.js'
 
 type Reason = InboxEntry['reasons'][number]
@@ -76,6 +76,17 @@ export function withoutStreams<E extends StreamEntry>(entry: E, gone: (stream: I
   }
   if (rest.length === 0) delete next.also
   return next
+}
+
+/**
+ * Returns the ids of the cards a refresh of one scope folds away: it ranks `live`, the cards the scope
+ * shows, together with `fresh`, the ones it delivers now, by recommendation score at `now`, and folds
+ * every card after the first `shown`. Ties keep live cards first, each list in its own order.
+ */
+export function foldedBelow(live: InboxEntry[], fresh: InboxEntry[], shown: number, now: number): Set<string> {
+  const ranked = [...live, ...fresh].map((entry, order) => ({ entry, order, score: recommendationScore(entry, now) }))
+  ranked.sort((left, right) => right.score - left.score || left.order - right.order)
+  return new Set(ranked.slice(shown).map(({ entry }) => entry.id))
 }
 
 /** What a found paper turns out to be: in the library, delivered before, or the live card with id `id`. */

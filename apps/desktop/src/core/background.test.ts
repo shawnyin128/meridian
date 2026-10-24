@@ -68,7 +68,9 @@ describe('createBackground', () => {
     expect(store.listInbox().map((entry) => entry.title)).toEqual(expect.arrayContaining([
       'Tree Width in Batched Serving', 'Attention Kernels for Shared Prefixes', 'Mixtral of Experts',
     ]))
-    expect(background.status().fetch).toEqual({ state: 'idle', checkedAt: 0, reason: null })
+    expect(background.status().fetch).toEqual({
+      state: 'idle', checkedAt: 0, reason: null, last: { watches: null, added: 3, at: 0 },
+    })
     expect(background.status().writes).toBeGreaterThan(0)
   })
 

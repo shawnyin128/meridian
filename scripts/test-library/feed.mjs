@@ -6,7 +6,8 @@ import { dayFrom, onDay, readJson, writeJson } from './app.mjs'
  * came from, the paper, and what happens to them in the seed. `later` moves one to read-later on
  * that day, `dismiss` moves it to Trash, and `unqueue` then takes it out of read-later into Trash.
  * `alsoProject` names the seeded project whose discovery found the same paper, which then shows as
- * one card under both. EAGLE is a paper the library already holds, which the App keeps out of the feed.
+ * one card under both, and `folded` stores one a refresh folded away as seen. EAGLE is a paper the
+ * library already holds, which the App keeps out of the feed.
  */
 const RECOMMENDATIONS = [
   { id: 'seed-inbox-sequoia', watch: 'speculative decoding', arxiv: '2402.12374', submitted: '2024-02-19', alsoProject: 'spec',
@@ -29,6 +30,10 @@ const RECOMMENDATIONS = [
     title: 'Online Speculative Decoding',
     authors: ['Xiaoxuan Liu', 'Lanxiang Hu', 'Peter Bailis', 'Alvin Cheung', 'Zhijie Deng', 'Ion Stoica', 'Hao Zhang'],
     abstract: 'Online speculative decoding keeps distilling the draft model on the queries the service sees, raising its acceptance rate as traffic shifts.' },
+  { id: 'seed-inbox-streaming', watch: 'speculative decoding', arxiv: '2402.11131', submitted: '2024-02-16', folded: true,
+    title: 'Speculative Streaming: Fast LLM Inference without Auxiliary Models',
+    authors: ['Nikhil Bhendawade', 'Irina Belousova', 'Qichen Fu', 'Henry Mason', 'Mohammad Rastegari', 'Mahyar Najibi'],
+    abstract: 'Speculative streaming fuses drafting into the target model by predicting future n-grams instead of the next token.' },
   { id: 'seed-inbox-lookahead', watch: 'speculative decoding', arxiv: '2402.02057', submitted: '2024-02-03', dismiss: true,
     title: 'Break the Sequential Dependency of LLM Inference Using Lookahead Decoding',
     authors: ['Yichao Fu', 'Peter Bailis', 'Ion Stoica', 'Hao Zhang'],
@@ -53,8 +58,8 @@ export async function seedWatches(seed, call) {
   seed.watches = Object.fromEntries(watches.map((watch) => [watch.name, watch]))
   // The App posts this summary when a watch fetch over the network brings new papers.
   await onDay(seed, -1, () => call('feed.append', { source: 'inbox', body: { kind: 'runs', runs: [
-    { kind: 'text', text: '抓取：' }, { kind: 'strong', text: '8 篇新论文入队' },
-    { kind: 'text', text: '（speculative decoding ×7 · Tri Dao ×1）。' },
+    { kind: 'text', text: '抓取：' }, { kind: 'strong', text: '9 篇新论文入队' },
+    { kind: 'text', text: '（speculative decoding ×8 · Tri Dao ×1）。' },
   ] } }))
 }
 
@@ -77,7 +82,8 @@ export function writeInbox(seed, extra = []) {
       id: paper.id, kind: 'watch', watch: watch.id, project: '', source: `${kind} · ${watch.name}`,
       title: paper.title, authors: paper.authors.join(', '), venue: `arXiv:${paper.arxiv}`, abstract: paper.abstract,
       rec: '', reasons: [{ kind: 'watch', label: `命中${kind}「${watch.name}」` }], downloaded: false, paper: '',
-      pdf: `https://arxiv.org/pdf/${paper.arxiv}`, topic: watch.type === 'topic' ? watch.name : '', gone: false,
+      pdf: `https://arxiv.org/pdf/${paper.arxiv}`, topic: watch.type === 'topic' ? watch.name : '', gone: paper.folded === true,
+      ...(paper.folded === true ? { left: 'folded' } : {}),
       arxiv: paper.arxiv, semanticId: '', meta: { authors: paper.authors, submitted: paper.submitted, journalRef: null },
       ...(paper.alsoProject === undefined ? {} : { also: [alsoFound(seed.projects[paper.alsoProject])] }),
     }

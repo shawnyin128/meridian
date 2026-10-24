@@ -414,6 +414,39 @@ test('检查新论文按关注抓取一次,新论文进入相应分组且标题�
   await expect(win.locator('#rowInboxAll .n')).toHaveText(String(before.length + 3))
 })
 
+test('在一条关注那一档里检查新论文只抓这一条;再抓没有新的,屏头写没有新论文和这一次的时刻', async ({ win }) => {
+  const before = await inboxFromCore(win)
+  const elsewhere = before.filter((e) => !listedUnder(e, 'watch').includes('spec')).map((e) => e.id)
+  await openInbox(win, 'spec')
+  const shownBefore = await shown(win, '.pcard').count()
+  await shown(win, '.desk-head .btn').filter({ hasText: '检查新论文' }).click()
+  await expect(shown(win, '.pcard')).toHaveCount(shownBefore + 1)
+  expect((await cardTitles(win))).toContain('Tree Width in Batched Serving')
+  const after = await inboxFromCore(win)
+  expect(after.filter((e) => !listedUnder(e, 'watch').includes('spec')).map((e) => e.id)).toEqual(elsewhere)
+
+  await shown(win, '.desk-head .btn').filter({ hasText: '检查新论文' }).click()
+  await expect(shown(win, '.desk-head .fetchnote')).toHaveText(/^没有新论文 · 上次检查 \d+月\d+日\d{2}:\d{2}$/)
+  await expect(shown(win, '.pcard')).toHaveCount(shownBefore + 1)
+  // The full check, which has not run, keeps its own status line.
+  await openInbox(win, 'all')
+  await expect(shown(win, '.desk-head .fetchnote')).not.toContainText('没有新论文')
+})
+
+test('在一个项目那一档里刷新发现只刷这个项目;没有新的时,提示写出它上次刷新的时刻', async ({ win }) => {
+  await openInbox(win, 'discovery')
+  await shown(win, '.desk-head .btn').filter({ hasText: '刷新发现' }).click()
+  await expect.poll(async () => (await discoveryFromCore(win)).length).toBeGreaterThan(0)
+  const project = listedUnder((await discoveryFromCore(win))[0]!, 'discovery')[0]!
+  await win.locator(`[data-discovery-project="${project}"]`).click()
+  const count = await shown(win, '.pcard').count()
+
+  await shown(win, '.desk-head .btn').filter({ hasText: '刷新发现' }).click()
+  await expect(win.locator('#notice[data-tone="success"] .notice-text'))
+    .toHaveText(/^没有发现新的论文 · 上次刷新 \d+月\d+日\d{2}:\d{2} · /)
+  await expect(shown(win, '.pcard')).toHaveCount(count)
+})
+
 test('存入稍后阅读:离开推送屏,排到队首,再移出', async ({ win }) => {
   const queued = await laterFromCore(win)
   const watches = await watchesFromCore(win)

@@ -9,8 +9,10 @@ export const inbox = {
   check: {
     checking: 'Checking for new papers…',
     failed: 'Check failed',
+    noneNew: 'No new papers',
     lastChecked: 'Last checked',
   },
+  lastRefreshed: 'Last refreshed',
   checkNewPapers: 'Check for new papers',
   discovering: 'Discovering…',
   refreshDiscovery: 'Refresh discovery',

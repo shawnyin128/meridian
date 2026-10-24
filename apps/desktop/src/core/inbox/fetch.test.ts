@@ -53,7 +53,9 @@ describe('createWatchFetcher', () => {
         ],
       },
     })
-    expect(fetcher.status()).toEqual({ state: 'idle', checkedAt: 1_000, reason: null })
+    expect(fetcher.status()).toEqual({
+      state: 'idle', checkedAt: 1_000, reason: null, last: { watches: null, added: 2, at: 1_000 },
+    })
     expect(counter.writes).toBeGreaterThan(0)
   })
 
@@ -91,7 +93,9 @@ describe('createWatchFetcher', () => {
       return [paper('2609.00003', 'Topic Paper')]
     })
     await fetcher.run()
-    expect(fetcher.status()).toEqual({ state: 'failed', checkedAt: null, reason: 'unavailable' })
+    expect(fetcher.status()).toEqual({
+      state: 'failed', checkedAt: null, reason: 'unavailable', last: { watches: null, added: 1, at: 1_000 },
+    })
     expect(store.listInbox().filter((entry) => entry.title === 'Topic Paper')).toHaveLength(1)
   })
 
@@ -150,6 +154,17 @@ describe('createWatchFetcher', () => {
     await fetcher.run(['spec'])
     expect(queries).toEqual(['all:"speculative decoding"'])
     expect(store.lastFetch()).toBeNull()
+  })
+
+  it('每轮抓完记下抓了哪几条关注、送来几篇和抓完的时刻,没抓过时不记', async () => {
+    const { fetcher } = setup(async (query) => (query === 'all:"speculative decoding"' ? [paper('2609.00011', 'Tree Eleven')] : []))
+    expect(fetcher.status()).not.toHaveProperty('last')
+    await fetcher.run(['spec'])
+    expect(fetcher.status().last).toEqual({ watches: ['spec'], added: 1, at: 1_000 })
+    await fetcher.run(['spec'])
+    expect(fetcher.status().last).toEqual({ watches: ['spec'], added: 0, at: 1_000 })
+    await fetcher.run()
+    expect(fetcher.status().last).toEqual({ watches: null, added: 0, at: 1_000 })
   })
 
   it('已确认的作者按稳定 id 抓论文,不再把同名姓名交给 arXiv 模糊搜索', async () => {
