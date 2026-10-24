@@ -171,7 +171,7 @@ describe('Trash', () => {
     expect(host.querySelectorAll('.tgroup')[1]!.querySelector('.tt2')!.innerHTML).toMatch(/^<strong>L<\/strong>ater trees/)
   })
 
-  it('删掉的对话自成一组，排在想法之后、附件之前，标题按论文标题显示；论文已有新对话时恢复按不了，行上写着论文已有新的对话', async () => {
+  it('删掉的对话自成一组，排在论文之前，标题按论文标题显示；论文已有新对话时恢复按不了，行上写着论文已有新的对话', async () => {
     const held = api.entries
     const deletedAt = Date.parse('2026-08-25T00:00:00Z')
     api.entries = [
@@ -185,8 +185,8 @@ describe('Trash', () => {
     await act(async () => { root!.render(<MessagesProvider><Trash /></MessagesProvider>) })
     api.entries = held
     expect([...host.querySelectorAll('.section-heading')].map((h) => h.textContent))
-      .toEqual(['论文 · 2', '想法 · 1', '对话 · 2', '附件 · 2'])
-    const rows = [...host.querySelectorAll('.tgroup')[2]!.querySelectorAll('.trow')]
+      .toEqual(['对话 · 2', '论文 · 2', '想法 · 1', '附件 · 2'])
+    const rows = [...host.querySelectorAll('.tgroup')[0]!.querySelectorAll('.trow')]
     expect(rows[0]!.querySelector('.tt2')!.innerHTML).toMatch(/^<strong>C<\/strong>hat trees/)
     expect(rows.map((row) => [button(row, '恢复').disabled, row.querySelector(':scope > .tag')?.textContent ?? null]))
       .toEqual([[true, '论文已有新的对话'], [false, null]])
