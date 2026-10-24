@@ -226,7 +226,7 @@ function colours(modules: ColourThemeModules, mode: ColourMode) {
     '--hl': alpha(moved('highlight', '#ffd60a'), light ? 0.45 : 0.35),
     '--paper': WHITE, '--scrim': light ? alpha(shadowOf(modules), 0.42) : alpha(desktop, 0.55),
     '--hl-yellow': own('highlight'), '--hl-green': parse('#87d99a'), '--hl-blue': parse('#82c7f2'),
-    '--hl-pink': parse('#f0a0be'), '--hl-note': parse('#111111', 0.55),
+    '--hl-pink': parse('#f0a0be'), '--hl-note': parse('#111111', 0.55), '--hl-sel': parse('#111111', 0.14),
   } satisfies Record<string, Colour>
 }
 

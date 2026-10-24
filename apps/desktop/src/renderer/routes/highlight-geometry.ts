@@ -49,6 +49,26 @@ export function normalizedHighlightRects(page: Rect, selected: Rect[]): PaperHig
 }
 
 /**
+ * The lines `range` selects on each page it covers, keyed by the page's `.pdfpagebox`: the selected
+ * glyphs of the page's text layer, normalized against the page box as a highlight of them would be.
+ * Text outside a page's text layer does not count, and a page with no selected glyphs is left out.
+ */
+export function selectedLinesByPage(range: Range): Map<HTMLElement, PaperHighlightRect[]> {
+  const boxes = new Map<HTMLElement, DOMRect[]>()
+  for (const piece of selectedTextRanges(range)) {
+    const page = piece.startContainer.parentElement?.closest('.textLayer')?.closest<HTMLElement>('.pdfpagebox')
+    if (page === null || page === undefined) continue
+    boxes.set(page, [...(boxes.get(page) ?? []), ...piece.getClientRects()])
+  }
+  const lines = new Map<HTMLElement, PaperHighlightRect[]>()
+  for (const [page, selected] of boxes) {
+    const fitted = normalizedHighlightRects(page.getBoundingClientRect(), selected)
+    if (fitted.length > 0) lines.set(page, fitted)
+  }
+  return lines
+}
+
+/**
  * Joins page-relative rectangles into one per line of text, sorted top to bottom, then left to
  * right. Two rectangles share a line when they overlap vertically by at least half the shorter one
  * and the horizontal gap between them is less than the shorter one's height, so the same row of
