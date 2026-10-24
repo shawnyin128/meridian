@@ -34,7 +34,10 @@ user can inspect their seed papers, set the core direction, disable or re-enable
 force-refresh one project. These preferences live in `.meridian/state.json`; the derived cluster
 identity remains reproducible from project papers and feedback.
 
-One explicit refresh makes at most 12 provider calls globally and at most 3 for one project.
+Discovery also refreshes on its own: Background's schedule runs a global refresh once a project it
+can refresh was last refreshed a day ago or never, and one discovery runs at a time, so a scheduled
+refresh and a user's refresh never overlap. One refresh makes at most 12 provider calls globally and
+at most 3 for one project.
 Projects that have never been fetched, then the least-recently fetched projects, receive the budget
 first. The persisted direction cursor always protects the anchored core direction while rotating
 bounded secondary slots. This makes adding projects or directions increase refresh latency rather
