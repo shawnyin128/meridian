@@ -14,7 +14,7 @@ import type {
 import type { PageText, PaperSnapshot } from './vault/records.js'
 import type { RemotePaper } from './net/arxiv.js'
 import type {
-  DiscoveryPaper, DiscoverySchedule, RecommendationIntent, RecommendationProfile,
+  DiscoveryPaper, DiscoverySchedule, RecommendationIntent, RecommendationProfile, RefreshProgress, RefreshScope,
 } from './recommendation/index.js'
 import type { WorkspaceAgentTask } from './project-management/index.js'
 import type { ResearchIdeaMutation } from './research-ideas/index.js'
@@ -649,6 +649,12 @@ export interface VaultStore {
 
   /** Advances one project's refresh time and secondary-intent rotation cursor. */
   setDiscoverySchedule(projectId: string, schedule: DiscoverySchedule): void
+
+  /** How far the refreshes of `scope` have got; no steps before its first refresh. Throws if it does not exist. */
+  refreshProgress(scope: RefreshScope): RefreshProgress
+
+  /** Replaces the progress of `scope`. Throws if it does not exist. */
+  setRefreshProgress(scope: RefreshScope, progress: RefreshProgress): void
 
   /** Persists one user-owned core/enable decision without mutating Wiki knowledge. */
   setDiscoveryIntent(projectId: string, intentId: string, action: DiscoveryIntentAction): void

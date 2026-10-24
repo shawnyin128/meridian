@@ -27,7 +27,7 @@ type ApiPaper = {
   year?: unknown
   citationCount?: unknown
   influentialCitationCount?: unknown
-  externalIds?: { ArXiv?: unknown } | null
+  externalIds?: { ArXiv?: unknown; DOI?: unknown } | null
   publicationTypes?: unknown
 }
 
@@ -62,6 +62,7 @@ export function parseAuthorPapers(body: Uint8Array): RemotePaper[] {
       const title = text(paper.title)
       if (id === '' || title === '') return []
       const submitted = submittedOf(paper)
+      const doi = text(paper.externalIds?.DOI)
       const venue = text(paper.venue)
       const types = Array.isArray(paper.publicationTypes)
         ? paper.publicationTypes.filter((type): type is string => typeof type === 'string') : []
@@ -75,6 +76,7 @@ export function parseAuthorPapers(body: Uint8Array): RemotePaper[] {
         id, title, authors, abstract: text(paper.abstract), submitted,
         journalRef: venue === '' ? null : venue,
         pdf: `https://arxiv.org/pdf/${encodeURIComponent(id)}`,
+        ...(doi === '' ? {} : { doi }),
         ranking: {
           relevance: 1,
           published: types.some((type) => reviewedTypes.has(type))

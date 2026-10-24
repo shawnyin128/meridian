@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { ON_POLICY_DISTILLATION_SAMPLE } from './fixtures/on-policy-distillation.js'
 import {
   applyRecommendationPreferences, buildRecommendationProfile, clusterRecommendationProfile,
-  recommendationFingerprint, recommendationQueryIntent, selectRecommendationIntents,
+  recommendationFingerprint, recommendationQuery, selectRecommendationIntents,
 } from './index.js'
 
 describe('recommendation project profile', () => {
@@ -101,7 +101,7 @@ describe('recommendation project profile', () => {
       .not.toBe(recommendationFingerprint(intent, ['changed']))
   })
 
-  it('聚类保留全部论文,检索只使用与项目锚点最接近的代表种子', () => {
+  it('检索一次只用一篇种子:先用最贴近项目锚点的那篇轮完四种来源,再换下一篇,都轮完后翻到下一页', () => {
     const profile = buildRecommendationProfile({
       projectId: 'opd', projectName: 'OPD 与 speculative drafter',
       anchorText: 'speculative decoding stronger draft models',
@@ -112,7 +112,14 @@ describe('recommendation project profile', () => {
     })
     const intent = clusterRecommendationProfile(profile)[0]!
     expect(intent.seeds).toHaveLength(3)
-    expect(recommendationQueryIntent(intent).seeds.map((seed) => seed.paperId))
-      .toEqual(['ARXIV:2605.29343'])
+    const [anchor, second, third] = intent.seeds.map((seed) => seed.paperId)
+    expect(anchor).toBe('ARXIV:2605.29343')
+    const sources = ['similarity', 'citation', 'reference', 'author']
+    expect(Array.from({ length: 13 }, (_, step) => recommendationQuery(intent, step)).map((query) => (
+      [query.intent.seeds.map((seed) => seed.paperId), query.source, query.page]
+    ))).toEqual([
+      ...[anchor, second, third].flatMap((seed) => sources.map((source) => [[seed], source, 0])),
+      [[anchor], 'similarity', 1],
+    ])
   })
 })

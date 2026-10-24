@@ -192,6 +192,31 @@ export function discoveryRecords(seed) {
 }
 
 /**
+ * The refresh progress of the KV cache project as project discovery stores it in
+ * `.meridian/discovery/progress.json`: two candidates a run fetched beyond its cap, which the next
+ * refresh of the project delivers first.
+ */
+export function discoveryProgress(seed) {
+  const candidate = (arxiv, title, authors, submitted, abstract) => ({
+    id: arxiv, title, authors, abstract, submitted, journalRef: null, pdf: `https://arxiv.org/pdf/${arxiv}`,
+    ranking: { relevance: 0.7, published: false, citationCount: 0, influentialCitationCount: 0, submitted },
+    semanticId: `ARXIV:${arxiv}`,
+    origins: [{ source: 'similarity', seedPaperIds: ['ARXIV:2402.02750'] }],
+  })
+  return [{
+    id: `project:${seed.projects.kv.id}`,
+    candidates: [
+      candidate('2403.05527', 'GEAR: An Efficient KV Cache Compression Recipe for Near-Lossless Generative Inference of LLM',
+        ['Hao Kang', 'Qingru Zhang', 'Souvik Kundu', 'Geonhwan Jeong', 'Zaoxing Liu', 'Tushar Krishna', 'Tuo Zhao'],
+        '2024-03-08', 'GEAR quantizes most KV cache entries to ultra-low precision and recovers the error with a low-rank matrix and a sparse matrix.'),
+      candidate('2402.12065', 'WKVQuant: Quantizing Weight and Key/Value Cache for Large Language Models Gains More',
+        ['Yuxuan Yue', 'Zhihang Yuan', 'Haojie Duanmu', 'Sifan Zhou', 'Jianlong Wu', 'Liqiang Nie'],
+        '2024-02-19', 'WKVQuant quantizes weights and the key/value cache together, with past-only quantization and two-dimensional quantization of the cache.'),
+    ],
+  }]
+}
+
+/**
  * Moves each project's creation, and every research record Core stamped on the project page on day
  * `stamped`, to the day the project was created. Run with the App closed.
  */

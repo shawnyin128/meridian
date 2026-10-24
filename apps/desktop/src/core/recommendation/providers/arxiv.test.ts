@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { Arxiv, RemotePaper, TopicalOrder } from '../../net/arxiv.js'
+import { TOPICAL_BATCH, type Arxiv, type RemotePaper, type TopicalOrder } from '../../net/arxiv.js'
 import type { RecommendationSeed } from '../types.js'
 import { createArxivRecommendations } from './arxiv.js'
 import { keyPhrases, seedSimilarity } from './seed-text.js'
@@ -22,7 +22,7 @@ const seeds = [
 ]
 
 const fakeArxiv = (found: RemotePaper[], known: RemotePaper[] = []) => {
-  const asked: { query: string; sinceYear: number; order: TopicalOrder }[] = []
+  const asked: { query: string; sinceYear: number; order: TopicalOrder; start?: number }[] = []
   const looked: string[][] = []
   const arxiv: Pick<Arxiv, 'searchTopical' | 'lookupMany'> & Arxiv = {
     search: async () => [],
@@ -31,8 +31,8 @@ const fakeArxiv = (found: RemotePaper[], known: RemotePaper[] = []) => {
       looked.push([...ids])
       return new Map(known.map((item) => [item.id, item]))
     },
-    searchTopical: async (query, sinceYear, order) => {
-      asked.push({ query, sinceYear, order })
+    searchTopical: async (query, sinceYear, order, start) => {
+      asked.push({ query, sinceYear, order, ...(start === undefined ? {} : { start }) })
       return structuredClone(found)
     },
   }
@@ -77,7 +77,9 @@ describe('arXiv recommendations', () => {
     const provider = createArxivRecommendations({ arxiv, now: () => NOW })
     const found = await provider.recommend(seeds, [], 'author')
     expect(looked).toEqual([['2101.03961']])
-    expect(asked[0]).toEqual({ query: 'au:"William Fedus" OR au:"Noam Shazeer"', sinceYear: 2025, order: 'submittedDate' })
+    expect(asked[0]).toEqual({
+      query: 'au:"William Fedus" OR au:"Noam Shazeer"', sinceYear: 2025, order: 'submittedDate', start: 0,
+    })
     expect(found.map((item) => [item.id, item.origins?.[0]?.source])).toEqual([['2402.00001', 'author']])
   })
 
@@ -96,6 +98,15 @@ describe('arXiv recommendations', () => {
       .recommend(seeds, [], 'author')
     expect(similar.map((item) => item.id)).toEqual(['2402.00003'])
     expect(sameAuthor).toEqual([])
+  })
+
+  it('往后翻页：第几页就从第几批的位置开始取，第一页从头取', async () => {
+    const { arxiv, asked } = fakeArxiv([onTopic])
+    const provider = createArxivRecommendations({ arxiv, now: () => NOW })
+    await provider.recommend(seeds, [], 'similarity', 2)
+    await provider.recommend(seeds, [], 'citation', 1)
+    await provider.recommend(seeds, [], 'similarity')
+    expect(asked.map((ask) => ask.start)).toEqual([2 * TOPICAL_BATCH, TOPICAL_BATCH, 0])
   })
 
   it('没有 arXiv 种子时不搜同作者', async () => {

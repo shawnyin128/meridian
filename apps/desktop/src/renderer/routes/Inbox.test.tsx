@@ -36,6 +36,7 @@ const api = vi.hoisted(() => ({
   checks: vi.fn<(watchId?: string) => Promise<void>>(async () => {}),
   discoveries: vi.fn<(projectId?: string, force?: boolean) => Promise<DiscoveryFetchResult>>(async () => ({
     projects: 1, intents: 1, added: 0, deferredProjects: 0, cachedIntents: 0, failedIntents: 0,
+    nothingNew: true, lastFetchedAt: null,
   })),
   notice: {
     success: vi.fn<(text: unknown, action?: { label: string; onAction: () => void }) => void>(),

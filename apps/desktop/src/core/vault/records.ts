@@ -119,6 +119,44 @@ export const DiscoveryPreferencesRecordSchema = z.object({
   disabledIntentIds: z.array(z.string()),
 })
 
+/** A candidate paper kept for a later run: the provider-neutral discovery paper, as fetched. */
+export const CandidateRecordSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  authors: z.array(z.string()),
+  abstract: z.string(),
+  submitted: z.string(),
+  journalRef: z.string().nullable(),
+  pdf: z.string(),
+  ranking: InboxEntrySchema.shape.ranking.unwrap().exactOptional(),
+  semanticId: z.string(),
+  doi: z.string().exactOptional(),
+  matches: z.array(z.object({
+    intentId: z.string(), intentLabel: z.string(), seedPaperIds: z.array(z.string()), core: z.boolean(),
+  }).strict()).exactOptional(),
+  origins: z.array(z.object({
+    source: z.enum(['similarity', 'citation', 'reference', 'author']),
+    seedPaperIds: z.array(z.string()),
+    provider: z.literal('arxiv').exactOptional(),
+  }).strict()).exactOptional(),
+  wikiTerms: z.array(z.string()).exactOptional(),
+}).strict()
+
+/**
+ * One `.meridian/discovery/progress.json` record: how far one scope's refreshes have got. `id` is
+ * `project:<project id>` or `watch:<watch id>`; `steps` holds, per discovery direction id, how many queries it has run;
+ * `candidates` holds the papers fetched beyond a run's cap, offered first by the next run; `favouredAt`
+ * is when the scope last delivered more than an even split of a run's cap; `newest` holds the arXiv ids
+ * of the newest page a watch fetched last. Each is absent until set.
+ */
+export const RefreshProgressRecordSchema = z.object({
+  id: z.string(),
+  steps: z.record(z.string(), z.number().int().min(0)).optional(),
+  candidates: z.array(CandidateRecordSchema).optional(),
+  favouredAt: z.number().int().optional(),
+  newest: z.array(z.string()).optional(),
+}).strict()
+
 /**
  * `.meridian/state.json` vault state. `seq` assigns ids and only increases, preventing reuse across
  * restarts. `gitManaged` stores the last Git-management conclusion shown to the user, while
@@ -171,6 +209,7 @@ export type LaterRecord = z.infer<typeof LaterRecordSchema>
 export type ChatRecord = z.infer<typeof ChatRecordSchema>
 export type TrashRecord = z.infer<typeof TrashRecordSchema>
 export type VaultState = z.infer<typeof VaultStateSchema>
+export type RefreshProgressRecord = z.infer<typeof RefreshProgressRecordSchema>
 
 /** Full page text; null means the page did not exist. Proposal undo restores these snapshots. */
 export const PageTextSchema = z.object({ path: z.string(), text: z.string().nullable() }).strict()

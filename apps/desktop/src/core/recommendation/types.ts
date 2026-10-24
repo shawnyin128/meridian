@@ -55,6 +55,21 @@ export type DiscoverySchedule = {
   requests: Record<string, DiscoveryIntentCache>
 }
 
+/** One project or watch whose refreshes Core keeps progress for. */
+export type RefreshScope = { kind: 'project' | 'watch'; id: string }
+
+/** How far a scope's refreshes have got. */
+export type RefreshProgress = {
+  /** Per discovery direction id, how many queries it has run; the next one runs at that rotation step. */
+  steps: Record<string, number>
+  /** Candidates fetched beyond a run's delivery cap, in the order a later run offers them first. */
+  candidates: DiscoveryPaper[]
+  /** When the scope last delivered more than an even split of a run's cap, or null if it never did. */
+  favouredAt: number | null
+  /** The arXiv ids of the newest page a watch fetched last; empty before its first fetch and for projects. */
+  newest: string[]
+}
+
 export type DiscoveryPreferences = {
   coreIntentId: string | null
   disabledIntentIds: string[]
@@ -71,11 +86,19 @@ export type DiscoveryPaper = RemotePaper & {
   wikiTerms?: string[]
 }
 
-/** Replaceable boundary for any project-seeded paper recommendation backend. */
+/**
+ * Replaceable boundary for any project-seeded paper recommendation backend. `page` counts from 0 and
+ * asks for the results after the first `page` batches; a backend that cannot page ignores it.
+ */
 export type RecommendationProvider = {
   recommend(
-    positive: RecommendationSeed[], negativePaperIds: string[], source?: RecommendationSource,
+    positive: RecommendationSeed[], negativePaperIds: string[], source?: RecommendationSource, page?: number,
   ): Promise<DiscoveryPaper[]>
+  /**
+   * A key that is equal for two calls of `recommend` with these arguments exactly when they make the
+   * same request; undefined when every seed, source and page makes a different one.
+   */
+  queryKey?(positive: RecommendationSeed[], source: RecommendationSource, page: number): string | undefined
 }
 
 export type PaperImpact = {
