@@ -65,14 +65,15 @@ function fetchNote(status: FetchStatus | null, scope: string, m: Catalog): React
   )
 }
 
-/** What a discovery refresh brought; with nothing new, `lastFetchedAt` is when the scope was last refreshed. */
-function discoveryResultNote(result: DiscoveryFetchResult, lastFetchedAt: number | null, m: Catalog): ReactNode {
+/** What a discovery refresh brought; when the result says nothing is new, also when the scope was last refreshed. */
+function discoveryResultNote(result: DiscoveryFetchResult, m: Catalog): ReactNode {
   const parts = [m.settings.discovery.requested(result.intents)]
   if (result.cachedIntents > 0) parts.push(m.settings.discovery.cooling(result.cachedIntents))
   if (result.failedIntents > 0) parts.push(m.settings.discovery.failed(result.failedIntents))
   if (result.deferredProjects > 0) parts.push(m.settings.discovery.deferred(result.deferredProjects))
   if (result.added > 0) return [m.settings.discovery.newFound(result.added), ...parts].join(' · ')
-  if (lastFetchedAt === null) return [m.settings.discovery.noNewPapers, ...parts].join(' · ')
+  const { lastFetchedAt } = result
+  if (!result.nothingNew || lastFetchedAt === null) return [m.settings.discovery.noNewPapers, ...parts].join(' · ')
   return (
     <>
       {m.settings.discovery.noNewPapers} · {m.inbox.lastRefreshed}{' '}<DateTimeDisplay at={lastFetchedAt} />
@@ -205,11 +206,8 @@ export function Inbox() {
 
   const refreshDiscovery = () => {
     setDiscovering(true)
-    void (scope === ALL_WATCHES ? discovery.fetch() : discovery.fetch(scope, true)).then(async (result) => {
-      const refreshed = result.added > 0 ? [] : (await discovery.profiles())
-        .filter((profile) => scope === ALL_WATCHES || profile.id === scope)
-        .flatMap((profile) => (profile.lastFetchedAt === null ? [] : [profile.lastFetchedAt]))
-      notice.success(discoveryResultNote(result, refreshed.length === 0 ? null : Math.max(...refreshed), m))
+    void (scope === ALL_WATCHES ? discovery.fetch() : discovery.fetch(scope, true)).then((result) => {
+      notice.success(discoveryResultNote(result, m))
       bump()
     }).catch((e: unknown) => notice.refusal(errorLabel(m, e))).finally(() => setDiscovering(false))
   }

@@ -132,6 +132,7 @@ describe('createWatchFetcher', () => {
 
     await fetcher.run([watch])
     expect(titles()).toEqual(['Above The Cut'])
+    expect(fetcher.status().last).toEqual({ watches: [watch], added: 1, at: 1_000 })
     expect(store.refreshProgress({ kind: 'watch', id: watch }).candidates.map((found) => found.title))
       .toEqual(['Below The Cut'])
 
@@ -139,6 +140,7 @@ describe('createWatchFetcher', () => {
     answer = []
     await fetcher.run([watch])
     expect(titles()).toEqual(['Below The Cut'])
+    expect(fetcher.status().last).toEqual({ watches: [watch], added: 1, at: 1_000 })
   })
 
   it('候选池里别处已经送过的候选拿掉,不再留在池里', async () => {

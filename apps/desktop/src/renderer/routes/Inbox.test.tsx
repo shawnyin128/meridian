@@ -446,14 +446,18 @@ describe('Inbox', () => {
     }
   })
 
-  it('刷新发现没带来新论文时,提示说没有新的,并写出这个范围上次刷新的日期与时刻', async () => {
+  it('刷新发现的结果说真的没有新论文时,提示说没有新的,并写出结果带回的这个范围上次刷新的日期与时刻', async () => {
     api.mode = 'discovery'
     api.scope = 'p1'
     const at = new Date(2026, 9, 23, 9, 30).getTime()
     api.profiles = [
-      { id: 'p1', name: '项目一', seedCount: 1, positiveCount: 0, negativeCount: 0, intentCount: 1, lastFetchedAt: at, intents: [] },
+      { id: 'p1', name: '项目一', seedCount: 1, positiveCount: 0, negativeCount: 0, intentCount: 1, lastFetchedAt: at - 3_600_000, intents: [] },
       { id: 'p2', name: '项目二', seedCount: 1, positiveCount: 0, negativeCount: 0, intentCount: 1, lastFetchedAt: at + 3_600_000, intents: [] },
     ]
+    api.discoveries.mockResolvedValueOnce({
+      projects: 1, intents: 1, added: 0, deferredProjects: 0, cachedIntents: 0, failedIntents: 0,
+      nothingNew: true, lastFetchedAt: at,
+    })
     const root = createRoot(host)
     await act(async () => { root.render(<MessagesProvider><Inbox /></MessagesProvider>) })
     const refresh = [...host.querySelectorAll<HTMLButtonElement>('.desk-head .btn')].find((held) => held.textContent === '刷新发现')!
@@ -463,6 +467,30 @@ describe('Inbox', () => {
     act(() => shown.render(<MessagesProvider>{api.notice.success.mock.calls.at(-1)![0] as ReactNode}</MessagesProvider>))
     expect(toast.textContent).toMatch(/^没有发现新的论文 · 上次刷新 /)
     expect([...toast.querySelectorAll('.date-chip')].map((chip) => chip.textContent)).toEqual(['10月23日', '09:30'])
+    act(() => shown.unmount())
+    await act(async () => { root.unmount() })
+  })
+
+  it('刷新发现没送来论文、但有方向失败时,结果不算真的没有新论文,提示不写上次刷新的时刻', async () => {
+    api.mode = 'discovery'
+    api.scope = 'p1'
+    const at = new Date(2026, 9, 23, 9, 30).getTime()
+    api.profiles = [
+      { id: 'p1', name: '项目一', seedCount: 1, positiveCount: 0, negativeCount: 0, intentCount: 1, lastFetchedAt: at, intents: [] },
+    ]
+    api.discoveries.mockResolvedValueOnce({
+      projects: 0, intents: 0, added: 0, deferredProjects: 0, cachedIntents: 0, failedIntents: 1,
+      nothingNew: false, lastFetchedAt: at,
+    })
+    const root = createRoot(host)
+    await act(async () => { root.render(<MessagesProvider><Inbox /></MessagesProvider>) })
+    const refresh = [...host.querySelectorAll<HTMLButtonElement>('.desk-head .btn')].find((held) => held.textContent === '刷新发现')!
+    await act(async () => { refresh.click() })
+    const toast = document.createElement('div')
+    const shown = createRoot(toast)
+    act(() => shown.render(<MessagesProvider>{api.notice.success.mock.calls.at(-1)![0] as ReactNode}</MessagesProvider>))
+    expect(toast.textContent).toBe('没有发现新的论文 · 请求 0 个方向 · 1 个方向失败 · 下轮优先重试')
+    expect(toast.querySelectorAll('.date-chip')).toHaveLength(0)
     act(() => shown.unmount())
     await act(async () => { root.unmount() })
   })
