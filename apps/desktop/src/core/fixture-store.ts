@@ -39,6 +39,7 @@ import {
   overviewResearch, placeNode, projectConclusions, readWorkspaceAgentIdeas, verifiedNodes, withProjectLinks,
 } from './project-management/index.js'
 import { inboxFields, unseenPapers } from './inbox/dedup.js'
+import { createPaperIndex, libraryArxivId, libraryIdentity, paperIdentity } from './inbox/identity.js'
 import {
   applyRecommendationPreferences, buildRecommendationProfile, clusterRecommendationProfile,
   discoveryReasons, orderInbox, recommendationSeedIds,
@@ -64,7 +65,8 @@ type TrashRecord = Omit<TrashEntry, 'restorable'> & (
   | { kind: 'project'; project: FixtureProject }
   | { kind: 'idea'; idea: ResearchIdea }
   | { kind: 'attachment'; projectId: string; attachment: Attachment }
-  | { kind: 'inbox'; entryId: string }
+  | { kind: 'inbox'; entryId: string; feedback?: 'less' | 'known' }
+  | { kind: 'later'; later: LaterRecord; position: number }
 )
 
 /** Seeded fixture change with cross-boundary fields but no undo/archive fields because it predates them. */
@@ -432,13 +434,6 @@ export function createFixtureStore(
    */
   const paperOf = (source: string): string => pageOf.get(source) ?? source
 
-  const arxivSeed = (paper: PaperRow | undefined): string | null => {
-    if (paper === undefined) return null
-    const named = paper.identifier?.match(/^arXiv:(.+)$/i)?.[1]?.replace(/v\d+$/, '')
-    if (named) return named
-    return /^\d{4}\.\d{4,5}(?:v\d+)?$/.test(paper.id) ? paper.id.replace(/v\d+$/, '') : null
-  }
-
   const projectDiscoveryProfile = (projectId: string) => {
     const project = projectById.get(projectId)
     if (!project) throw new CallError('not-found', `项目不存在：${projectId}`)
@@ -462,7 +457,7 @@ export function createFixtureStore(
       ].filter(Boolean).join(' · '),
       wikiTerms,
       projectPapers: linkedPapers.flatMap((paper) => {
-        const seed = arxivSeed(paper)
+        const seed = libraryArxivId(paper)
         return seed === null ? [] : [{
           paperId: `ARXIV:${seed}`, title: paper.title, abstract: paper.abstract ?? '',
           wikiTerms: [...paper.topics, ...paper.methods],
@@ -1354,7 +1349,11 @@ export function createFixtureStore(
     },
 
     listInbox(params = {}) {
-      const rows = inbox.filter((e) => !gone.has(e.id))
+      const owned = createPaperIndex<true>()
+      for (const paper of byId.values()) owned.add(libraryIdentity(paper), true)
+      const rows = inbox.filter((e) => !gone.has(e.id) && !pageOf.has(e.paper) && owned.find(paperIdentity({
+        arxiv: e.vault.arxiv, semanticId: e.semanticId, title: e.title, submitted: e.vault.meta.submitted,
+      })) === undefined)
         .filter((e) => params.kind === undefined || e.kind === params.kind)
         .filter((e) => params.project === undefined || e.project === params.project)
         .map((e) => ({
@@ -1417,12 +1416,13 @@ export function createFixtureStore(
       const entry = downloadableEntry(id)
       const topics = entry.vault.topic === '' ? null : topicDir(wikiHome(wiki))
       const result = storeUpload(`${entry.title}.pdf`, bytes)
+      const source = sourceOf.get(result.paper.id)!
+      inbox = inbox.map((held) => (held.id === id ? { ...held, downloaded: true, paper: source } : held))
+      gone.add(id)
+      later = later.map((queued) => (queued.id === id ? { ...queued, paper: source } : queued))
       if (result.kind === 'existing') {
         return { kind: 'existing', paper: result.paper.id, title: result.paper.title }
       }
-      const source = sourceOf.get(result.paper.id)!
-      inbox = inbox.map((held) => (held.id === id ? { ...held, downloaded: true, paper: source } : held))
-      later = later.map((queued) => (queued.id === id ? { ...queued, paper: source } : queued))
       fillPaper(result.paper.id, remoteMetadata({
         id: entry.vault.arxiv,
         title: entry.title,
@@ -1453,8 +1453,14 @@ export function createFixtureStore(
     },
 
     removeLater(id) {
-      if (!later.some((x) => x.id === id)) throw new CallError('not-found', `稍后阅读里没有这一条：${id}`)
+      const position = later.findIndex((x) => x.id === id)
+      if (position < 0) throw new CallError('not-found', `稍后阅读里没有这一条：${id}`)
+      const removed = later[position]!
       later = later.filter((x) => x.id !== id)
+      trash = [
+        { id: nextId('trash'), kind: 'later', title: removed.title, deletedAt: nowMs(), later: removed, position },
+        ...trash,
+      ]
     },
 
     listWatches() {
@@ -1547,7 +1553,7 @@ export function createFixtureStore(
         .map((project) => {
           const profile = projectDiscoveryProfile(project.id)
           const seeds = recommendationSeedIds(profile)
-          const base = project.papers.filter((id) => arxivSeed(byId.get(id)) !== null).length
+          const base = project.papers.filter((id) => libraryArxivId(byId.get(id)) !== null).length
           const intents = projectDiscoveryIntents(project.id)
           return {
             id: project.id,
@@ -1637,7 +1643,12 @@ export function createFixtureStore(
       const entry = liveEntry(id)
       if (entry.kind !== 'discovery') throw new CallError('invalid', `这一条不是论文发现：${id}`)
       inbox = inbox.map((held) => held.id === id ? { ...held, feedback } : held)
-      if (feedback !== 'more') gone.add(id)
+      if (feedback === 'more') return
+      gone.add(id)
+      trash = [
+        { id: nextId('trash'), kind: 'inbox', title: entry.title, deletedAt: nowMs(), entryId: id, feedback },
+        ...trash,
+      ]
     },
 
     lastFetch() {
@@ -1834,7 +1845,18 @@ export function createFixtureStore(
         projectById.set(item.project.id, item.project)
         if (item.project.status === FINISHED_PROJECT) archiveIdeasForProject(item.project.id)
       }
-      else if (item.kind === 'inbox') gone.delete(item.entryId)
+      else if (item.kind === 'inbox') {
+        gone.delete(item.entryId)
+        if (item.feedback !== undefined) {
+          inbox = inbox.map((held) => {
+            if (held.id !== item.entryId) return held
+            const restored = { ...held }
+            delete restored.feedback
+            return restored
+          })
+        }
+      }
+      else if (item.kind === 'later') later = [...later.slice(0, item.position), item.later, ...later.slice(item.position)]
       else if (item.kind === 'idea') ideas = [structuredClone(item.idea), ...ideas]
       else {
         const project = projectById.get(item.projectId)

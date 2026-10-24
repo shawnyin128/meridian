@@ -154,7 +154,19 @@ export async function seedProjects(seed, call) {
   return tasks
 }
 
-/** Recommendations project discovery would have brought for the KV cache project, in the stored shape it writes. */
+/** A recommendation project discovery would have brought for the KV cache project, in the stored shape it writes. */
+const discovered = (seed, id, arxiv, submitted, title, authors, abstract) => ({
+  id, kind: 'discovery', watch: '', project: seed.projects.kv.id, source: '项目 · KV cache 量化',
+  title, authors: authors.join(', '), venue: `arXiv:${arxiv}`, abstract, rec: '',
+  reasons: [{ kind: 'project', label: '来自项目「KV cache 量化」' }, { kind: 'source', label: '由相似论文召回' }],
+  downloaded: false, paper: '', pdf: `https://arxiv.org/pdf/${arxiv}`, topic: '', gone: false,
+  arxiv, semanticId: '', meta: { authors, submitted, journalRef: null },
+})
+
+/**
+ * Recommendations project discovery would have brought for the KV cache project, in the stored shape it
+ * writes. The seed gives SnapKV `less` and Scissorhands `known` feedback, which put both in the trash.
+ */
 export function discoveryRecords(seed) {
   const authors = ['Coleman Hooper', 'Sehoon Kim', 'Hiva Mohammadzadeh', 'Michael W. Mahoney', 'Yakun Sophia Shao', 'Kurt Keutzer', 'Amir Gholami']
   return [{
@@ -168,7 +180,15 @@ export function discoveryRecords(seed) {
     ],
     downloaded: false, paper: '', pdf: 'https://arxiv.org/pdf/2401.18079', topic: '', gone: false,
     arxiv: '2401.18079', semanticId: '', meta: { authors, submitted: '2024-01-31', journalRef: null },
-  }]
+  }, discovered(seed, 'seed-discovery-snapkv', '2404.14469', '2024-04-22',
+    'SnapKV: LLM Knows What You are Looking for Before Generation',
+    ['Yuhong Li', 'Yingbing Huang', 'Bowen Yang', 'Bharat Venkitesh', 'Acyr Locatelli', 'Hanchen Ye', 'Tianle Cai', 'Patrick Lewis', 'Deming Chen'],
+    'SnapKV keeps, for each attention head, the prompt positions an observation window at the end of the prompt attends to most.',
+  ), discovered(seed, 'seed-discovery-scissorhands', '2305.17118', '2023-05-26',
+    'Scissorhands: Exploiting the Persistence of Importance Hypothesis for LLM KV Cache Compression at Test Time',
+    ['Zichang Liu', 'Aditya Desai', 'Fangshuo Liao', 'Weitao Wang', 'Victor Xie', 'Zhaozhuo Xu', 'Anastasios Kyrillidis', 'Anshumali Shrivastava'],
+    'Tokens that drew high attention once keep drawing it, so Scissorhands keeps a fixed budget of the pivotal tokens in the KV cache.',
+  )]
 }
 
 /**

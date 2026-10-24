@@ -1439,6 +1439,35 @@ describe('fixture store', () => {
     expect(store.listTrash()).toHaveLength(0)
   })
 
+  it('减少类似和已经了解进垃圾桶,恢复后卡片回到发现,反馈一并撤掉', () => {
+    const found = (arxiv: string) => ({
+      semanticId: `semantic-${arxiv}`, id: arxiv, title: `Found ${arxiv}`, authors: ['Ada'], abstract: 'A',
+      submitted: '2026-09-08', journalRef: null, pdf: `https://arxiv.org/pdf/${arxiv}`,
+    })
+    store.addDiscoveryEntries('draft', ['2609.31001', '2609.31002'].map(found))
+    const [less, known] = store.listInbox({ kind: 'discovery' }).map((e) => e.id)
+    store.feedbackDiscovery(less!, 'less')
+    store.feedbackDiscovery(known!, 'known')
+    expect(store.listInbox({ kind: 'discovery' })).toEqual([])
+    expect(store.listTrash().map(({ kind, title }) => [kind, title]))
+      .toEqual([['inbox', 'Found 2609.31002'], ['inbox', 'Found 2609.31001']])
+    expect(store.discoverySeeds('draft').negative).toEqual(['semantic-2609.31001'])
+
+    for (const item of store.listTrash()) store.restoreTrash(item.id)
+    expect(store.listInbox({ kind: 'discovery' }).map((e) => [e.id, e.feedback])).toEqual([[less, undefined], [known, undefined]])
+    expect(store.discoverySeeds('draft').negative).toEqual([])
+  })
+
+  it('从稍后阅读移出进垃圾桶,恢复后回到队列里原来的位置', () => {
+    const order = store.listLater().map((e) => e.id)
+    store.removeLater(order[1]!)
+    expect(store.listLater().map((e) => e.id)).toEqual(order.filter((id) => id !== order[1]))
+    expect(store.listTrash()).toEqual([expect.objectContaining({ kind: 'later', restorable: true })])
+    store.restoreTrash(store.listTrash()[0]!.id)
+    expect(store.listLater().map((e) => e.id)).toEqual(order)
+    expect(store.listTrash()).toEqual([])
+  })
+
   it('存入稍后阅读:离开收件、排到队首,已经在队列里的不重复入队', () => {
     const paper = store.listInbox().find((e) => e.id === 'specdec')!.paper
     expect(store.readLater('specdec')).toBe(true)
@@ -1479,7 +1508,7 @@ describe('fixture store', () => {
     expect(JSON.stringify(store.listLater())).toBe(before)
   })
 
-  it('下载入库:论文按标题落成库里的一页,收件那条留在原处并记下已入库', () => {
+  it('下载入库:论文按标题落成库里的一页,收件那条离开论文推送', () => {
     const before = store.listPapers({ page: 1, size: 1 }).total
     // The inbox entry stores a source id and no page references it yet, so that source id is returned.
     expect(store.listInbox().find((e) => e.id === 'specdec')!.paper)
@@ -1498,7 +1527,7 @@ describe('fixture store', () => {
     })
     // A recommendation id identifies the inbox entry, not a paper, so no paper appears under it.
     expect(() => store.getPaper('specdec')).toThrow(/specdec/)
-    expect(store.listInbox().find((e) => e.id === 'specdec')?.downloaded).toBe(true)
+    expect(store.listInbox().map((e) => e.id)).not.toContain('specdec')
     expect(() => store.prepareInboxDownload('specdec')).toThrow(/specdec/)
   })
 
@@ -1518,21 +1547,34 @@ describe('fixture store', () => {
     const before = store.listPapers({ page: 1, size: 1 }).total
     expect(store.completeInboxDownload('longspec', bytes))
       .toEqual({ kind: 'existing', paper: held.id, title: held.title })
-    store.updatePaper(held.id, { identifier: 'arXiv:2607.01428' })
-    expect(store.prepareInboxDownload('longspec'))
+    expect(() => store.prepareInboxDownload('longspec')).toThrow(/已经入库/)
+    store.updatePaper(held.id, { identifier: 'arXiv:2608.00417' })
+    expect(store.prepareInboxDownload('sequoia2'))
       .toEqual({ kind: 'existing', paper: held.id, title: held.title })
     expect(store.listPapers({ page: 1, size: 1 }).total).toBe(before)
-    expect(store.listInbox().find((e) => e.id === 'longspec')).toMatchObject({ downloaded: false, paper: '' })
+    expect(store.listInbox().map((e) => e.id)).not.toContain('longspec')
   })
 
-  it('入库的那一篇从库里删掉后,这一条回到可入库;从垃圾桶恢复后又是已入库', () => {
+  it('入库的那一篇从库里删掉后,这一条也不回论文推送,恢复论文也一样', () => {
     const { paper } = store.completeInboxDownload('specdec', minimalPdf({ lines: ['Speculative Decoding'] }))
     store.deletePaper(paper)
-    expect(store.listInbox().find((e) => e.id === 'specdec')?.downloaded).toBe(false)
+    expect(store.listInbox().map((e) => e.id)).not.toContain('specdec')
     expect(store.prepareInboxDownload('specdec')).toEqual({ kind: 'fetch', url: 'https://arxiv.org/pdf/2211.17192' })
 
     store.restoreTrash(store.listTrash().find((item) => item.kind === 'paper')!.id)
-    expect(store.listInbox().find((e) => e.id === 'specdec')).toMatchObject({ downloaded: true, paper })
+    expect(store.listInbox().map((e) => e.id)).not.toContain('specdec')
+  })
+
+  it('论文从别处进了库,它那条推送就不再列出:按 arXiv 编号、DOI 或标题加年份认出', () => {
+    const order = store.listInbox().map((e) => e.id)
+    const [first, second] = store.listPapers({ page: 1, size: 2 }).rows
+    store.updatePaper(first!.id, { identifier: 'arXiv:2211.17192v3' })
+    store.updatePaper(second!.id, { identifier: 'doi:10.48550/arXiv.2607.01428' })
+    const imported = store.importPaper('Sequoia-2.pdf', minimalPdf({ lines: ['sequoia-2'] })).paper
+    store.updatePaper(imported.id, {
+      title: 'Sequoia-2: Hardware-Aware Adaptive Tree Construction for Speculative Decoding', year: 2026,
+    })
+    expect(store.listInbox().map((e) => e.id)).toEqual(order.filter((id) => !['specdec', 'longspec', 'sequoia2'].includes(id)))
   })
 
   it('入库的论文能按它那一页的 id 取到原文', () => {

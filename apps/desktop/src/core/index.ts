@@ -670,14 +670,20 @@ registerHandler('discovery.intent', (params) => {
 })
 registerHandler('discovery.feedback', (params) => {
   const { id, feedback } = DiscoveryFeedbackParamsSchema.parse(params)
-  return store.feedbackDiscovery(id, feedback)
+  if (feedback === 'more') {
+    store.feedbackDiscovery(id, feedback)
+    return null
+  }
+  return trashedEntry(store, () => store.feedbackDiscovery(id, feedback))
 })
 registerHandler('later.list', (params) => {
   EmptyParamsSchema.parse(params)
   return store.listLater()
 })
-registerHandler('later.remove', (params) =>
-  store.removeLater(LaterRemoveParamsSchema.parse(params).id))
+registerHandler('later.remove', (params) => {
+  const { id } = LaterRemoveParamsSchema.parse(params)
+  return trashedEntry(store, () => store.removeLater(id))
+})
 registerHandler('watch.list', (params) => {
   EmptyParamsSchema.parse(params)
   return store.listWatches()

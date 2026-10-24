@@ -568,8 +568,9 @@ export interface VaultStore {
   listLater(): LaterEntry[]
 
   /**
-   * Removes the entry with the given id from the later queue. It does not go
-   * to the trash. Throws if the queue holds no such entry.
+   * Moves the entry with the given id from the later queue into the trash;
+   * restoring its trash entry puts it back where it sat in the queue. Throws if
+   * the queue holds no such entry.
    */
   removeLater(id: string): void
 
@@ -639,7 +640,12 @@ export interface VaultStore {
   /** Adds at most `limit` unseen provider results to one project's discovery feed. */
   addDiscoveryEntries(projectId: string, found: DiscoveryPaper[], limit?: number): number
 
-  /** Persists explicit discovery feedback; less/known items leave the visible feed. */
+  /**
+   * Persists explicit discovery feedback on the live discovery entry with the
+   * given id. A `more` entry stays in the feed; a `less` or `known` one leaves
+   * it into the trash, and restoring its trash entry puts it back without the
+   * feedback. Throws if no such live entry exists or it is not a discovery.
+   */
   feedbackDiscovery(id: string, feedback: DiscoveryFeedback): void
 
   /** Returns the last completed full fetch time, or null before any full fetch. */
