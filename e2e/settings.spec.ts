@@ -1,4 +1,6 @@
 import type { CDPSession, ElectronApplication, Page } from '@playwright/test'
+import { existsSync, readFileSync, writeFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { expect, openSettings, test, type MeridianWindow } from './app.js'
 
 /** Tab presses in the focus walk: enough to pass every focusable element in Settings and wrap around. */
@@ -196,7 +198,9 @@ test('设置是左右分栏:左栏是分类,右栏是选中那一类的内容', 
   console.log(`左栏分类 ${JSON.stringify(labels)}`)
   expect(labels).toEqual(['外观', '存储', 'API', '扩展', '论文推送', '归档的对话'])
   await expect(win.locator('.setdlg .set-side .srow.on')).toHaveCount(1)
-  await expect(win.locator('.setdlg .appearance-choice')).toHaveText(['浅色', '深色', '跟随系统'])
+  await expect(win.getByRole('radiogroup', { name: '外观', exact: true }).locator('.appearance-choice')).toHaveText(['浅色', '深色', '跟随系统'])
+  await expect(win.getByRole('radiogroup', { name: '外观主题', exact: true }).locator('.appearance-choice'))
+    .toHaveText(['默认', '朱漆', '螺钿', '秋叶', '流霞'])
   await expect(win.locator('#themeBtn')).toHaveCount(0)
   await cats.filter({ hasText: '存储' }).click()
   await expect(win.locator('.setdlg .storage-reset')).toContainText('重置论文库')
@@ -333,4 +337,122 @@ test('设置模态:屏上其余部分隐掉,Tab 不跑到模态外,Esc 之后焦
   await expect(win.locator('#root')).not.toHaveAttribute('aria-hidden', 'true')
   // Focus returns in a timeout after the modal unmounts; the element being gone does not mean it is back.
   await expect.poll(() => win.evaluate(() => document.activeElement?.id ?? '')).toBe('sbBtn')
+})
+
+/** Forgets the colour theme a case chose, which the shared profile would otherwise carry into later cases. */
+const forgetColourTheme = (win: Page) => win.evaluate(() => {
+  window.localStorage.removeItem('meridian.colour-theme')
+  window.localStorage.removeItem('meridian.colour-theme-cache')
+})
+
+test('新建外观主题:保存写进配置目录的 themes/<id>.json 并套用;编辑时在 App 外改了文件,没改过就重读,改过就留着修改并标出', async ({ app, win, configHome }) => {
+  try {
+    await openSettings(app, win)
+    await win.locator('.setdlg .appearance-add').click()
+    await win.locator('.setdlg input[aria-label="名称"]').fill('E2E Theme')
+    await win.locator('.setdlg [data-module="accent"]').click()
+    const hex = win.locator('.setdlg input[aria-label="色值"]')
+    await hex.fill('#2f6fbf')
+    const save = win.locator('.setdlg .theme-module-card .btn.pri')
+    await save.click()
+    await expect(save).toHaveText('已保存')
+
+    const file = join(configHome, 'themes', 'e2e-theme.json')
+    const written = JSON.parse(readFileSync(file, 'utf8'))
+    expect([written.schema, written.id, written.name, written.basedOn, written.light.accent])
+      .toEqual(['meridian.theme.v1', 'e2e-theme', 'E2E Theme', 'default', '#2f6fbf'])
+    const rootAccent = () => win.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--accent').trim())
+    await expect.poll(rootAccent).toBe('#2f6fbf')
+    await expect(win.locator('.setdlg [data-module]')).toHaveCount(13)
+
+    writeFileSync(file, JSON.stringify({ ...written, light: { ...written.light, accent: '#336655' } }))
+    await expect(hex).toHaveValue('#336655', { timeout: 10_000 })
+    await expect.poll(rootAccent, { timeout: 10_000 }).toBe('#336655')
+    await expect(win.locator('.setdlg')).not.toContainText('文件已在 App 外修改')
+
+    await hex.fill('#2f6fbf')
+    writeFileSync(file, JSON.stringify({ ...written, light: { ...written.light, accent: '#112233' } }))
+    await expect(win.locator('.setdlg')).toContainText('文件已在 App 外修改', { timeout: 10_000 })
+    await expect(hex).toHaveValue(/^#2f6fbf$/i)
+  } finally {
+    await forgetColourTheme(win)
+  }
+})
+
+test('外观主题从新建、保存、套用,到重新加载后还在、在卡片的 … 菜单里重新编辑和删除', async ({ app, win, configHome }) => {
+  try {
+    await openSettings(app, win)
+    await win.locator('.setdlg .appearance-add').click()
+    await win.locator('.setdlg input[aria-label="名称"]').fill('晨雾')
+    await win.locator('.setdlg [data-module="accent"]').click()
+    await win.locator('.setdlg input[aria-label="色值"]').fill('#2f6fbf')
+    const save = win.locator('.setdlg .theme-module-card .btn.pri')
+    await save.click()
+    await expect(save).toHaveText('已保存')
+    const file = join(configHome, 'themes', 'theme.json')
+    expect(JSON.parse(readFileSync(file, 'utf8')).name).toBe('晨雾')
+
+    await win.locator('.setdlg button[aria-label="返回"]').click()
+    await expect(win.locator('[role="alertdialog"]')).toHaveCount(0)
+    const themes = win.getByRole('radiogroup', { name: '外观主题', exact: true })
+    await expect(themes.locator('.appearance-choice')).toHaveText(['默认', '朱漆', '螺钿', '秋叶', '流霞', '晨雾'])
+    await expect(themes.locator('[data-colour-theme="theme"]')).toHaveAttribute('aria-checked', 'true')
+
+    await win.reload()
+    const rootAccent = () => win.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--accent').trim())
+    await expect.poll(rootAccent).toBe('#2f6fbf')
+    await expect(win.locator('html')).toHaveAttribute('data-colour-theme', 'theme')
+
+    await openSettings(app, win)
+    const card = themes.locator('[data-colour-theme="theme"]')
+    const menu = async () => {
+      await card.hover()
+      await win.locator('.setdlg button[aria-label="管理「晨雾」"]').click()
+    }
+    await menu()
+    await expect(win.locator('[role="menu"] [role="menuitem"]')).toHaveText(['编辑', '删除'])
+    await win.locator('[role="menu"] [role="menuitem"]', { hasText: '编辑' }).click()
+    await expect(win.locator('.setdlg input[aria-label="名称"]')).toHaveValue('晨雾')
+    await win.locator('.setdlg [data-module="ground"]').click()
+    await win.locator('.setdlg input[aria-label="色值"]').fill('#f6f8fb')
+    // Every way out of the editor asks the same question while it holds unsaved edits. The scrim goes
+    // first: for a moment after a confirmation closes, Radix is not yet listening for a press outside.
+    const confirmation = win.locator('[role="alertdialog"] .modal-title')
+    const ways: [string, () => Promise<void>][] = [
+      ['遮罩', () => win.mouse.click(40, 450)],
+      ['Esc', () => win.keyboard.press('Escape')],
+      ['关闭', () => win.locator('.setdlg .modal-close').click()],
+    ]
+    for (const [way, leave] of ways) {
+      await leave()
+      await expect(confirmation, way).toHaveText('放弃未保存的修改？')
+      await win.locator('[role="alertdialog"] .btn', { hasText: '取消' }).click()
+      await expect(confirmation, way).toHaveCount(0)
+      await expect(win.locator('.setdlg [data-module]'), way).toHaveCount(13)
+    }
+    await win.locator('.setdlg button[aria-label="返回"]').click()
+    await expect(confirmation).toHaveText('放弃未保存的修改？')
+    await win.locator('[role="alertdialog"] .btn.pri.danger').click()
+    await expect(themes.locator('.appearance-choice')).toHaveCount(6)
+    expect(JSON.parse(readFileSync(file, 'utf8')).light.ground).not.toBe('#f6f8fb')
+
+    await menu()
+    await win.locator('[role="menu"] [role="menuitem"]', { hasText: '删除' }).click()
+    await expect(win.locator('[role="alertdialog"] .modal-title')).toHaveText('删除外观主题「晨雾」？')
+    await expect(win.locator('[role="menu"]')).toHaveCount(0)
+    await win.locator('[role="alertdialog"] .btn', { hasText: '取消' }).click()
+    await expect(win.locator('.setdlg button[aria-label="管理「晨雾」"]')).toBeFocused()
+    await menu()
+    await win.locator('[role="menu"] [role="menuitem"]', { hasText: '删除' }).click()
+    await win.locator('[role="alertdialog"] .btn.pri.danger').click()
+    await expect(themes.locator('.appearance-choice')).toHaveText(['默认', '朱漆', '螺钿', '秋叶', '流霞'])
+    await expect(themes.locator('[data-colour-theme="default"]')).toHaveAttribute('aria-checked', 'true')
+    await expect(win.locator('html')).not.toHaveAttribute('data-colour-theme', /./)
+    expect(existsSync(file)).toBe(false)
+    // The menu and its confirmation leave nothing behind that blocks the pointer.
+    await themes.locator('[data-colour-theme="cinnabar"]').click()
+    await expect(win.locator('html')).toHaveAttribute('data-colour-theme', 'cinnabar')
+  } finally {
+    await forgetColourTheme(win)
+  }
 })

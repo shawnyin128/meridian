@@ -9,6 +9,7 @@ import { arxivMetadata, importPapers, paperFiles, redatePapers, seedPapers } fro
 import { discoveryRecords, redateProjects, seedProjects } from './test-library/projects.mjs'
 import { relocate } from './test-library/relocate.mjs'
 import { checkOut, MARKER, protectedRoots } from './test-library/safety.mjs'
+import { seedColourTheme } from './test-library/themes.mjs'
 import { seedWiki } from './test-library/wiki.mjs'
 
 const USAGE = `Builds a Meridian test library that covers every screen, or opens one for review.
@@ -45,6 +46,7 @@ async function seed(out, app, today) {
   writeJson(join(out, MARKER), { root: out, app, today, seededAt: new Date().toISOString() })
   // A fresh check time keeps the App's plugin-version check off GitHub while the seed runs.
   writeJson(join(out, 'config', 'plugin-latest.json'), { version: '0.0.0', checkedAt: new Date().toISOString() })
+  seedColourTheme(out)
   const state = { out, today, papers: {}, projects: {}, days: { feed: new Map(), changelog: new Map(), later: new Map() } }
   const stamped = systemToday()
   const files = await paperFiles(out)

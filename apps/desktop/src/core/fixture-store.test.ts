@@ -2352,6 +2352,7 @@ describe('fixture store', () => {
     const coreMethods = new Set([
       'library.location', 'library.configure', 'library.reset', 'library.backups',
       'library.switchBackup', 'library.deleteBackup', 'extensions.status', 'extensions.checkLatest', 'extensions.pluginVersion', 'delivery.semanticKey', 'delivery.setSemanticKey', 'delivery.checkSemanticKey', 'jobs.status', 'inbox.fetch',
+      'themes.list', 'themes.save', 'themes.delete',
       'papers.retryMetadata',
       'discovery.fetch', 'author.search', 'watch.suggest', 'harness.prepare', 'harness.pendingPaperWiki',
       'harness.start', 'harness.cancel',

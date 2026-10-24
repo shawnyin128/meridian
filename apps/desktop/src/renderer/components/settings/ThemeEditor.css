@@ -1,0 +1,41 @@
+/*
+ * The theme editor takes the Settings columns: .set-side lists the modules and .set-main holds the
+ * name, the preview and the picked module's colour.
+ */
+/* The module column is wider than the categories', so a four-character name keeps one line beside its low-contrast mark. */
+.set-side.theme-modules{flex-basis:210px}
+.theme-module-name{white-space:nowrap}
+.theme-editor-title{display:flex;align-items:center;gap:var(--sp-4);margin:calc(-1 * var(--sp-6)) 0 var(--sp-6)}
+.theme-editor-title .set-t{margin:0;padding:0}
+.theme-module-group+.theme-module-group{margin-top:var(--sp-12)}
+.theme-module-swatch{width:12px;height:12px;border-radius:var(--r-full);box-shadow:inset 0 0 0 1px var(--sep-strong)}
+
+.theme-editor-head{display:flex;align-items:center;gap:var(--sp-16)}
+.theme-editor-name{width:200px}
+.theme-editor-base{display:inline-flex;align-items:center;gap:var(--sp-8);color:var(--sec);font-size:var(--fs-sm)}
+.theme-editor-base-picker{width:120px}
+.theme-editor-modes{display:flex;align-items:center;gap:var(--sp-12);margin-bottom:var(--sp-12)}
+
+/* The preview reads the tokens set on its own box, so everything inside it is drawn in the edited theme. */
+.theme-preview{display:flex;overflow:hidden;border-radius:var(--r-card);background:var(--window);color:var(--ink);
+  box-shadow:0 0 0 1px var(--sep)}
+.theme-preview-side{flex:0 0 156px;padding:var(--sp-12) var(--sp-10);background:var(--sidebar);border-right:1px solid var(--sep)}
+.theme-preview-canvas{flex:1;min-width:0;display:flex;flex-direction:column;gap:var(--sp-12);padding:var(--sp-16);background:var(--content)}
+.theme-preview-title{font-size:var(--fs-card-title);font-weight:var(--fw-title)}
+.theme-preview-tags{display:flex;gap:var(--sp-6);margin-top:var(--sp-8)}
+.theme-preview-body{margin:var(--sp-8) 0 0;color:var(--sec);font-size:var(--fs-sm)}
+/* The reading highlight as the Reader lays it over text. */
+.theme-preview-mark{color:var(--ink);background:color-mix(in srgb,var(--hl-yellow) 30%,transparent)}
+.theme-preview-meta{margin:var(--sp-6) 0 0;color:var(--ter);font-size:var(--fs-cap)}
+.theme-preview-controls{display:flex;align-items:center;gap:var(--sp-10)}
+.theme-preview-field{width:140px}
+/* The keyboard focus ring of tokens.css, shown at rest. */
+.theme-preview-focus{outline:var(--ring-width) solid var(--ring);outline-offset:var(--ring-offset)}
+
+.theme-module-card{margin-top:var(--sp-12)}
+.theme-module-colour{display:flex;align-items:center;gap:var(--sp-24)}
+.theme-swatches{display:flex;gap:var(--sp-10)}
+.theme-swatch{width:24px;height:24px;padding:0;border:0;border-radius:var(--r-full);box-shadow:inset 0 0 0 1px var(--sep2);cursor:pointer;
+  transition:box-shadow var(--t-fast) var(--e-out)}
+.theme-swatch:hover{box-shadow:inset 0 0 0 1px var(--sep-strong)}
+.theme-swatch.on{box-shadow:inset 0 0 0 1px var(--sep2),0 0 0 2px var(--card),0 0 0 4px var(--sec)}

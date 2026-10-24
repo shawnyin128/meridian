@@ -4,6 +4,9 @@ import {
   type InputHTMLAttributes,
   type SelectHTMLAttributes,
   type TextareaHTMLAttributes,
+  useEffect,
+  useRef,
+  useState,
 } from 'react'
 import { useMessages } from '../messages/useMessages.js'
 import { IconFolder } from './icons.js'
@@ -109,3 +112,57 @@ export const FormSelect = forwardRef<
     return <select ref={ref} className={classes('form-select', className, appearance)} {...props} />
   },
 )
+
+/** `#rrggbb` for a colour written `#RRGGBB`, `RRGGBB`, `#RGB` or `RGB` in either case; null for any other text. */
+const hexColour = (text: string): string | null => {
+  const digits = /^#?([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(text)?.[1]?.toLowerCase()
+  if (digits === undefined) return null
+  return `#${digits.length === 3 ? [...digits].map((digit) => digit + digit).join('') : digits}`
+}
+
+/**
+ * A colour as one field: its leading swatch opens the system colour picker, and the rest is the value
+ * as text, shown as `#RRGGBB`. `onChange` receives `#rrggbb` for every colour the picker gives and
+ * every text written `#RRGGBB`, `RRGGBB`, `#RGB` or `RGB` in either case; the text stays as typed
+ * until the field loses focus. Any other text changes nothing and shows refused once the field loses
+ * focus, until it is edited. `pickLabel` and `valueLabel` name the picker and the text.
+ */
+export function ColourField({ value, onChange, pickLabel, valueLabel }: {
+  value: string
+  onChange: (value: string) => void
+  pickLabel: string
+  valueLabel: string
+}) {
+  const [text, setText] = useState(value.toUpperCase())
+  const [refused, setRefused] = useState(false)
+  // A short colour is the start of a long one, so the text is not rewritten while it is being typed.
+  const typing = useRef(false)
+  useEffect(() => {
+    if (typing.current) return
+    setText(value.toUpperCase())
+    setRefused(false)
+  }, [value])
+  return (
+    <span className="colour-field">
+      <input
+        type="color" className="colour-field-picker" value={value.toLowerCase()} aria-label={pickLabel}
+        onChange={(event) => onChange(event.target.value.toLowerCase())}
+      />
+      <FormInput
+        value={text} aria-label={valueLabel} aria-invalid={refused || undefined} spellCheck={false} maxLength={7}
+        onFocus={() => { typing.current = true }}
+        onChange={(event) => {
+          setText(event.target.value)
+          setRefused(false)
+          const colour = hexColour(event.target.value)
+          if (colour !== null) onChange(colour)
+        }}
+        onBlur={() => {
+          typing.current = false
+          if (hexColour(text) === null) setRefused(true)
+          else setText(value.toUpperCase())
+        }}
+      />
+    </span>
+  )
+}

@@ -2288,6 +2288,60 @@ export const SemanticKeyStatusSchema = z.object({
 /** Saves an optional Semantic Scholar API key; null or blank removes the saved key. */
 export const SemanticKeySetParamsSchema = z.object({ apiKey: z.string().max(200).nullable() }).strict()
 
+const ThemeColourSchema = z.string().regex(/^#[0-9a-fA-F]{6}$/, '颜色必须是 #RRGGBB')
+const ColourThemeIdSchema = z.string().regex(/^[a-z0-9-]{1,64}$/, '主题 id 只能用小写字母、数字和连字符')
+
+/**
+ * The thirteen module colours of one appearance mode: window ground, sidebar, cards, fields, the
+ * three text steps, separators, the accent, the error, warning and done states, and the reading
+ * highlight. Every other colour token is derived from them.
+ */
+export const ColourThemeModulesSchema = z.object({
+  ground: ThemeColourSchema, sidebar: ThemeColourSchema, card: ThemeColourSchema, field: ThemeColourSchema,
+  ink: ThemeColourSchema, inkSecondary: ThemeColourSchema, inkTertiary: ThemeColourSchema,
+  separator: ThemeColourSchema, accent: ThemeColourSchema,
+  error: ThemeColourSchema, warning: ThemeColourSchema, done: ThemeColourSchema, highlight: ThemeColourSchema,
+})
+
+/**
+ * A colour theme, built in or the user's `<config home>/themes/<id>.json`, in light and dark. Not
+ * strict: a file another version wrote keeps loading with its unknown keys dropped. `basedOn` names
+ * the theme it started from.
+ */
+export const ColourThemeSchema = z.object({
+  schema: z.literal('meridian.theme.v1'),
+  id: ColourThemeIdSchema,
+  name: z.string().trim().min(1).max(80),
+  basedOn: ColourThemeIdSchema.optional(),
+  light: ColourThemeModulesSchema,
+  dark: ColourThemeModulesSchema,
+})
+
+/**
+ * Why a file in `<config home>/themes` cannot be used: it cannot be read, is not JSON, carries
+ * another theme schema version, does not match the theme format, names another id than its file,
+ * or takes a built-in theme's id.
+ */
+export const ColourThemeProblemSchema = z.enum(['unreadable', 'syntax', 'version', 'format', 'id', 'built-in'])
+
+/**
+ * One `.json` file in `<config home>/themes`, by file name: its theme, or why it cannot be used and,
+ * when one key is at fault, that key's dotted path, such as `light.accent`.
+ */
+export const ColourThemeFileSchema = z.discriminatedUnion('state', [
+  z.object({ state: z.literal('readable'), file: z.string().min(1), theme: ColourThemeSchema }).strict(),
+  z.object({
+    state: z.literal('unreadable'), file: z.string().min(1), reason: ColourThemeProblemSchema,
+    path: z.string().min(1).optional(),
+  }).strict(),
+])
+
+/** Writes one custom theme to `<config home>/themes/<id>.json`, replacing the file of that id. */
+export const ColourThemeSaveParamsSchema = z.object({ theme: ColourThemeSchema }).strict()
+
+/** Deletes the file of one custom theme. */
+export const ColourThemeDeleteParamsSchema = z.object({ id: ColourThemeIdSchema }).strict()
+
 /** The outcome of one Semantic Scholar request made with the saved key. */
 export const SemanticKeyCheckResultSchema = z.discriminatedUnion('state', [
   z.object({ state: z.literal('connected') }).strict(),
@@ -2475,6 +2529,10 @@ export type ExtensionStatus = z.infer<typeof ExtensionStatusSchema>
 export type PluginVersion = z.infer<typeof PluginVersionSchema>
 export type SemanticKeyStatus = z.infer<typeof SemanticKeyStatusSchema>
 export type SemanticKeyCheckResult = z.infer<typeof SemanticKeyCheckResultSchema>
+export type ColourThemeModules = z.infer<typeof ColourThemeModulesSchema>
+export type ColourTheme = z.infer<typeof ColourThemeSchema>
+export type ColourThemeProblem = z.infer<typeof ColourThemeProblemSchema>
+export type ColourThemeFile = z.infer<typeof ColourThemeFileSchema>
 
 /** Facet value with paper count and title of the newest matching paper. */
 export type Facet = { value: string; count: number; newestTitle: string }
@@ -2493,6 +2551,9 @@ export const CONTRACT_METHODS = [
   'delivery.semanticKey',
   'delivery.setSemanticKey',
   'delivery.checkSemanticKey',
+  'themes.list',
+  'themes.save',
+  'themes.delete',
   'vault.today',
   'papers.list',
   'papers.facets',

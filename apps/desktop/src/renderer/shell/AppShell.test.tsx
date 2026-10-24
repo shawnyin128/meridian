@@ -41,6 +41,7 @@ vi.mock('../ipc.js', () => ({
   },
   appUpdates: { check: vi.fn(), status: () => new Promise(() => {}), onChange: () => () => {}, install: vi.fn() },
   changelog: { list: none },
+  colourThemes: { list: none },
   chat: {
     list: () => Promise.resolve(fixture.chats), create: () => new Promise(() => {}), setArchived: vi.fn(),
   },

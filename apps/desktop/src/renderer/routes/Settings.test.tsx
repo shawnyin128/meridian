@@ -3,12 +3,14 @@ import { act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type {
-  HarnessModelConnectionCheckResult, LibraryBackup, LibraryLocation, SemanticKeyCheckResult, SemanticKeyStatus,
+  ColourTheme, HarnessModelConnectionCheckResult, LibraryBackup, LibraryLocation, SemanticKeyCheckResult, SemanticKeyStatus,
 } from '../../shared/contract.js'
 import { CallError } from '../call-error.js'
 import { MessagesProvider } from '../messages/useMessages.js'
 import type { SettingsCategory } from '../shell/settings-categories.js'
 import { LANGUAGE_STORAGE_KEY } from '../shell/language.js'
+import { ColourThemeFilesContext } from '../shell/useColourThemes.js'
+import { BUILT_IN_COLOUR_THEMES } from '../../shared/colour-theme.js'
 
 const api = vi.hoisted(() => ({
   setOpen: vi.fn(),
@@ -57,6 +59,8 @@ const api = vi.hoisted(() => ({
     root: '/tmp/meridian', backupRoot: '/tmp/meridian-backup-current',
   })),
   deleteBackup: vi.fn(async () => null),
+  deleteTheme: vi.fn(async () => {}),
+  refreshThemes: vi.fn(async () => {}),
   restartApp: vi.fn(),
   success: vi.fn(),
   chatList: vi.fn(async () => [] as unknown[]),
@@ -87,6 +91,7 @@ vi.mock('../ipc.js', () => ({
     checkModelConnection: api.checkModelConnection,
   },
   extensions: { status: api.extensionStatus, pluginVersion: api.pluginVersion, checkLatest: api.checkLatest },
+  colourThemes: { save: vi.fn(async () => {}), delete: api.deleteTheme },
 }))
 vi.mock('../shell/AppShell.js', () => ({
   useNotice: () => ({ success: api.success, refusal: vi.fn() }),
@@ -139,6 +144,8 @@ describe('Settings', () => {
     window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'zh')
     delete document.documentElement.dataset.theme
     delete document.documentElement.dataset.appearance
+    delete document.documentElement.dataset.colourTheme
+    document.getElementById('meridian-colour-theme')?.remove()
     vi.stubGlobal('matchMedia', vi.fn(() => ({
       matches: false,
       media: '(prefers-color-scheme: dark)',
@@ -169,6 +176,8 @@ describe('Settings', () => {
     api.libraryBackups.mockResolvedValue([])
     api.switchBackup.mockClear()
     api.deleteBackup.mockClear()
+    api.deleteTheme.mockReset()
+    api.refreshThemes.mockClear()
     api.restartApp.mockClear()
     api.success.mockClear()
   })
@@ -472,10 +481,11 @@ describe('Settings', () => {
       dialog.querySelector<HTMLElement>('[data-setcat="appearance"]')!.click()
     })
 
-    const choices = [...dialog.querySelectorAll<HTMLButtonElement>('.appearance-choice')]
+    const modes = dialog.querySelector('[role="radiogroup"][aria-label="外观"]')!
+    const choices = [...modes.querySelectorAll<HTMLButtonElement>('.appearance-choice')]
     expect(choices.map((choice) => choice.textContent)).toEqual(['浅色', '深色', '跟随系统'])
-    expect(dialog.querySelectorAll('.appearance-preview')).toHaveLength(3)
-    expect(dialog.querySelectorAll('.appearance-preview.system .appearance-mini')).toHaveLength(2)
+    expect(modes.querySelectorAll('.appearance-preview')).toHaveLength(3)
+    expect(modes.querySelectorAll('.appearance-preview.system .appearance-mini')).toHaveLength(2)
     expect(choices[2]!.getAttribute('aria-checked')).toBe('true')
 
     await act(async () => { choices[1]!.click() })
@@ -486,6 +496,243 @@ describe('Settings', () => {
     await act(async () => { choices[0]!.click() })
     expect(document.documentElement.dataset.theme).toBeUndefined()
     expect(document.documentElement.dataset.appearance).toBe('light')
+  })
+
+  /** The colours a preview draws, as `<mode> <window> <sidebar> <line> <accent>`. */
+  const previewColours = (preview: Element): string => {
+    const style = (preview as HTMLElement).style
+    return [preview.classList.contains('dark') ? 'dark' : 'light',
+      ...['--ap-window', '--ap-sidebar', '--ap-line', '--ap-accent'].map((part) => style.getPropertyValue(part))].join(' ')
+  }
+
+  it('外观主题用五张卡选择默认和四种漆色主题,每张都并排预览它的浅色和深色;选中后整套颜色和三张外观预览都换成它', async () => {
+    await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
+    const dialog = document.querySelector('.setdlg')!
+    await act(async () => {
+      dialog.querySelector<HTMLElement>('[data-setcat="appearance"]')!.click()
+    })
+
+    const themes = dialog.querySelector('[role="radiogroup"][aria-label="外观主题"]')!
+    const choices = [...themes.querySelectorAll<HTMLButtonElement>('.appearance-choice')]
+    expect(choices.map((choice) => choice.textContent)).toEqual(['默认', '朱漆', '螺钿', '秋叶', '流霞'])
+    expect(choices.map((choice) => [...choice.querySelectorAll('.appearance-mini')].map((preview) => preview.classList.contains('dark') ? 'dark' : 'light')))
+      .toEqual(choices.map(() => ['light', 'dark']))
+    expect(previewColours(choices[1]!.querySelector('.appearance-mini.light')!)).toBe('light #f7f0e4 #ede6da #d3ccbf #a64436')
+    expect(choices.map((choice) => choice.getAttribute('aria-checked'))).toEqual(['true', 'false', 'false', 'false', 'false'])
+    const modes = dialog.querySelector('[role="radiogroup"][aria-label="外观"]')!
+    const modePreviews = () => [...modes.querySelectorAll('.appearance-mini')].map(previewColours)
+    expect(modePreviews()).toEqual([
+      'light #f8f8f8 #eeeeee #d2d2d2 #3568ff', 'dark #07111f #0d1b2d #394a62 #558cff',
+      'light #f8f8f8 #eeeeee #d2d2d2 #3568ff', 'dark #07111f #0d1b2d #394a62 #558cff',
+    ])
+
+    await act(async () => { choices[1]!.click() })
+    expect(document.documentElement.dataset.colourTheme).toBe('cinnabar')
+    expect(window.localStorage.getItem('meridian.colour-theme')).toBe('cinnabar')
+    expect(document.getElementById('meridian-colour-theme')!.textContent).toContain('--accent:#a64436')
+    expect(choices.map((choice) => choice.getAttribute('aria-checked'))).toEqual(['false', 'true', 'false', 'false', 'false'])
+    expect(modePreviews().map((colours) => colours.split(' ').at(-1))).toEqual(['#a64436', '#b35041', '#a64436', '#b35041'])
+
+    await act(async () => { choices[0]!.click() })
+    expect(document.documentElement.dataset.colourTheme).toBeUndefined()
+    expect(document.getElementById('meridian-colour-theme')).toBeNull()
+    expect(window.localStorage.getItem('meridian.colour-theme')).toBe('default')
+  })
+
+  it('外观主题在五个内置主题之后列出能读的自定义主题文件,用它自己的名字;读不了的文件只显示文件名和原因标签', async () => {
+    const luodian = BUILT_IN_COLOUR_THEMES.find((theme) => theme.id === 'luodian')!
+    const celadon = { ...luodian, id: 'celadon', name: '青瓷', basedOn: 'luodian', light: { ...luodian.light, accent: '#3f7a6a' } }
+    await act(async () => {
+      root.render(
+        <MessagesProvider>
+          <ColourThemeFilesContext.Provider value={{
+            files: [
+              { state: 'unreadable', file: 'broken.json', reason: 'syntax' },
+              { state: 'unreadable', file: 'pale.json', reason: 'format', path: 'light.accent' },
+              { state: 'readable', file: 'celadon.json', theme: celadon },
+            ],
+            refresh: async () => {},
+          }}>
+            <Settings />
+          </ColourThemeFilesContext.Provider>
+        </MessagesProvider>,
+      )
+    })
+    const dialog = document.querySelector('.setdlg')!
+    await act(async () => {
+      dialog.querySelector<HTMLElement>('[data-setcat="appearance"]')!.click()
+    })
+
+    const themes = dialog.querySelector('[role="radiogroup"][aria-label="外观主题"]')!
+    const choices = [...themes.querySelectorAll<HTMLButtonElement>('.appearance-choice')]
+    expect(choices.map((choice) => choice.textContent)).toEqual(['默认', '朱漆', '螺钿', '秋叶', '流霞', '青瓷'])
+    expect(choices[5]!.querySelector<HTMLElement>('.appearance-mini.light')!.style.getPropertyValue('--ap-accent')).toBe('#3f7a6a')
+    const problems = [...themes.querySelectorAll('.appearance-problem')]
+    expect(problems.map((problem) => [problem.querySelector('.tag--bad')?.textContent, problem.querySelector('.appearance-label')?.textContent]))
+      .toEqual([['不是 JSON', 'broken.json'], ['格式不符 · light.accent', 'pale.json']])
+    expect(themes.lastElementChild).toBe(problems[1])
+
+    await act(async () => { choices[5]!.click() })
+    expect(window.localStorage.getItem('meridian.colour-theme')).toBe('celadon')
+    expect(document.documentElement.dataset.colourTheme).toBe('celadon')
+    expect(choices[5]!.getAttribute('aria-checked')).toBe('true')
+  })
+
+  it('外观主题最后一张是只有加号的卡,点它编辑页换掉设置的两栏;返回回到外观', async () => {
+    await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
+    const dialog = document.querySelector('.setdlg')!
+    await act(async () => {
+      dialog.querySelector<HTMLElement>('[data-setcat="appearance"]')!.click()
+    })
+    const themes = dialog.querySelector('[role="radiogroup"][aria-label="外观主题"]')!
+    const add = themes.nextElementSibling as HTMLButtonElement
+    expect([add.getAttribute('aria-label'), add.textContent, add.nextElementSibling]).toEqual(['新建外观主题', '', null])
+
+    await act(async () => { add.click() })
+    expect(dialog.querySelector('[data-setcat]')).toBeNull()
+    expect(dialog.querySelector('.set-side .set-t')!.textContent).toBe('外观主题')
+    expect([...dialog.querySelectorAll('[data-module]')]).toHaveLength(13)
+
+    await act(async () => { dialog.querySelector<HTMLButtonElement>('button[aria-label="返回"]')!.click() })
+    expect(dialog.querySelector('[data-module]')).toBeNull()
+    expect(dialog.querySelector('[data-setcat="appearance"]')!.classList.contains('on')).toBe(true)
+  })
+
+  /** Renders Settings on its Appearance pane with `themes` as the custom theme files, and returns the dialog. */
+  const appearanceWith = async (themes: ColourTheme[]) => {
+    await act(async () => {
+      root.render(
+        <MessagesProvider>
+          <ColourThemeFilesContext.Provider value={{
+            files: themes.map((theme) => ({ state: 'readable', file: `${theme.id}.json`, theme })), refresh: api.refreshThemes,
+          }}>
+            <Settings />
+          </ColourThemeFilesContext.Provider>
+        </MessagesProvider>,
+      )
+    })
+    const dialog = document.querySelector('.setdlg')!
+    await act(async () => { dialog.querySelector<HTMLElement>('[data-setcat="appearance"]')!.click() })
+    return dialog
+  }
+  /** Opens the … menu of the custom theme card named `name` and returns its items. */
+  const openThemeMenu = async (dialog: Element, name: string) => {
+    await act(async () => {
+      dialog.querySelector(`button[aria-label="管理「${name}」"]`)!
+        .dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, button: 0 }))
+    })
+    return [...document.querySelectorAll<HTMLElement>('[role="menu"] [role="menuitem"]')]
+  }
+  /** Picks Delete in the … menu of the card named `name`; the menu closes, then the confirmation opens. */
+  const pickDelete = async (dialog: Element, name: string) => {
+    await act(async () => { (await openThemeMenu(dialog, name))[1]!.click() })
+    await vi.waitFor(() => expect(document.querySelector('[role="alertdialog"]')).not.toBeNull())
+  }
+  const luodian = BUILT_IN_COLOUR_THEMES.find((theme) => theme.id === 'luodian')!
+  const celadon: ColourTheme = { ...luodian, id: 'celadon', name: '青瓷', basedOn: 'luodian', light: { ...luodian.light, accent: '#3f7a6a' } }
+  const ink: ColourTheme = { ...luodian, id: 'ink', name: '墨' }
+
+  it('自定义主题卡的 … 菜单里是编辑和删除,内置主题卡没有;编辑打开这个主题的编辑页', async () => {
+    const dialog = await appearanceWith([celadon])
+    expect(dialog.querySelector('[role="radiogroup"][aria-label="外观主题"]')!.querySelectorAll('.appearance-choice')).toHaveLength(6)
+    expect(dialog.querySelectorAll('button[aria-label^="管理"]')).toHaveLength(1)
+    expect(dialog.querySelector('[data-colour-theme="celadon"]')!.closest('[data-row-actions]')!
+      .querySelector('.row-actions button[aria-label="管理「青瓷」"]')).not.toBeNull()
+
+    const items = await openThemeMenu(dialog, '青瓷')
+    expect(items.map((item) => item.textContent)).toEqual(['编辑', '删除'])
+    await act(async () => { items[0]!.click() })
+    expect(dialog.querySelector<HTMLInputElement>('input[aria-label="名称"]')!.value).toBe('青瓷')
+    expect(dialog.querySelector<HTMLInputElement>('input[aria-label="色值"]')!.value).toBe(celadon.light.ground.toUpperCase())
+  })
+
+  it('删除先关掉菜单再问确认;取消后菜单也不在,焦点回到 … 按钮;确认后删掉主题文件,删的是正在用的主题就退回默认,删别的不动当前主题', async () => {
+    window.localStorage.setItem('meridian.colour-theme', 'celadon')
+    const dialog = await appearanceWith([celadon, ink])
+
+    await pickDelete(dialog, '墨')
+    expect(document.querySelector('[role="menu"]')).toBeNull()
+    expect(document.querySelector('[role="alertdialog"] .modal-title')!.textContent).toBe('删除外观主题「墨」？')
+    await act(async () => { [...document.querySelectorAll<HTMLButtonElement>('[role="alertdialog"] button')].find((button) => button.textContent === '取消')!.click() })
+    expect([document.querySelector('[role="alertdialog"]'), document.querySelector('[role="menu"]')]).toEqual([null, null])
+    expect(api.deleteTheme).not.toHaveBeenCalled()
+    await vi.waitFor(() => expect(document.activeElement).toBe(dialog.querySelector('button[aria-label="管理「墨」"]')))
+
+    await pickDelete(dialog, '墨')
+    await act(async () => { document.querySelector<HTMLButtonElement>('[role="alertdialog"] .btn.pri.danger')!.click() })
+    expect(api.deleteTheme).toHaveBeenLastCalledWith('ink')
+    expect(api.refreshThemes).toHaveBeenCalled()
+    expect(window.localStorage.getItem('meridian.colour-theme')).toBe('celadon')
+
+    await pickDelete(dialog, '青瓷')
+    await act(async () => { document.querySelector<HTMLButtonElement>('[role="alertdialog"] .btn.pri.danger')!.click() })
+    expect(api.deleteTheme).toHaveBeenLastCalledWith('celadon')
+    expect(window.localStorage.getItem('meridian.colour-theme')).toBe('default')
+    expect(document.documentElement.dataset.colourTheme).toBeUndefined()
+  })
+
+  it('删除失败时外观页报出原因,当前主题不动', async () => {
+    window.localStorage.setItem('meridian.colour-theme', 'celadon')
+    api.deleteTheme.mockRejectedValue(new CallError('themes.delete', 'not-found'))
+    const dialog = await appearanceWith([celadon])
+    await pickDelete(dialog, '青瓷')
+    await act(async () => { document.querySelector<HTMLButtonElement>('[role="alertdialog"] .btn.pri.danger')!.click() })
+    expect(dialog.querySelector('.set-head')!.textContent).toContain('这一项已不存在')
+    expect(window.localStorage.getItem('meridian.colour-theme')).toBe('celadon')
+  })
+
+  it('编辑页有没保存的修改时,返回、右上角关闭、Esc 和点遮罩都先问同一个确认:取消留在编辑页,确认才离开;没改过就直接离开', async () => {
+    api.setOpen.mockClear()
+    await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
+    const settings = document.querySelector<HTMLElement>('[role="dialog"]')!
+    await act(async () => { settings.querySelector<HTMLElement>('[data-setcat="appearance"]')!.click() })
+    await act(async () => { settings.querySelector<HTMLButtonElement>('.appearance-add')!.click() })
+    const close = settings.querySelector<HTMLButtonElement>(':scope > .modal-close')!
+    await act(async () => { close.click() })
+    expect(api.setOpen).toHaveBeenCalledExactlyOnceWith(false)
+    api.setOpen.mockClear()
+
+    await act(async () => { settings.querySelector<HTMLElement>('[data-module="ground"]')!.click() })
+    const hex = settings.querySelector<HTMLInputElement>('input[aria-label="色值"]')!
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')!.set!.call(hex, '#f1f6f4')
+      hex.dispatchEvent(new Event('input', { bubbles: true }))
+    })
+    const confirmation = () => document.querySelector('[role="alertdialog"] .modal-title')?.textContent ?? null
+    const answer = (label: string) => act(async () => {
+      [...document.querySelectorAll<HTMLButtonElement>('[role="alertdialog"] button')].find((button) => button.textContent === label)!.click()
+    })
+    const attempts: [string, () => void | Promise<void>][] = [
+      ['返回', () => settings.querySelector<HTMLButtonElement>('button[aria-label="返回"]')!.click()],
+      ['关闭', () => close.click()],
+      ['Esc', () => hex.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))],
+      ['遮罩', async () => {
+        // Radix starts listening for a press outside the dialog one task after the dialog mounts, and
+        // dismisses on the click that ends the press.
+        await new Promise((settled) => setTimeout(settled, 0))
+        const scrim = document.querySelector('.scrim')!
+        for (const type of ['pointerdown', 'mousedown', 'pointerup', 'mouseup', 'click']) {
+          scrim.dispatchEvent(new MouseEvent(type, { bubbles: true, button: 0 }))
+        }
+        await new Promise((settled) => setTimeout(settled, 0))
+      }],
+    ]
+    for (const [how, attempt] of attempts) {
+      await act(async () => { await attempt() })
+      expect(confirmation(), how).toBe('放弃未保存的修改？')
+      await answer('取消')
+      expect([confirmation(), settings.querySelectorAll('[data-module]').length], how).toEqual([null, 13])
+    }
+    expect(api.setOpen).not.toHaveBeenCalled()
+
+    await act(async () => { hex.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })) })
+    await answer('放弃修改')
+    expect(api.setOpen).toHaveBeenCalledExactlyOnceWith(false)
+
+    await act(async () => { settings.querySelector<HTMLButtonElement>('button[aria-label="返回"]')!.click() })
+    await answer('放弃修改')
+    expect(settings.querySelector('[data-module]')).toBeNull()
+    expect(settings.querySelector('[data-setcat="appearance"]')!.classList.contains('on')).toBe(true)
   })
 
   it('每个设置页只有标题和控件，标题下不写介绍句子', async () => {

@@ -15,6 +15,8 @@ import {
   ChangelogDeleteParamsSchema,
   ChangelogUndoParamsSchema,
   ChatSetArchivedParamsSchema,
+  ColourThemeDeleteParamsSchema,
+  ColourThemeSaveParamsSchema,
   CONTRACT_METHODS,
   EmptyParamsSchema,
   SemanticKeySetParamsSchema,
@@ -124,6 +126,7 @@ import { extensionStatuses } from './extensions/status.js'
 import { noteVersionChanges } from './extensions/notices.js'
 import { createPluginVersionCheck } from './extensions/latest.js'
 import { openSemanticKeyStore } from './net/semantic-key.js'
+import { deleteColourTheme, listColourThemes, saveColourTheme } from './colour-themes.js'
 import {
   createChatHarnessRunner, createChatService, createHarnessCostGate,
   createHarnessModelConfig, createHarnessProposalAudit,
@@ -407,6 +410,21 @@ registerHandler('delivery.setSemanticKey', async (params) => {
 registerHandler('delivery.checkSemanticKey', (params) => {
   EmptyParamsSchema.parse(params)
   return background.checkSemanticKey()
+})
+
+registerHandler('themes.list', (params) => {
+  EmptyParamsSchema.parse(params)
+  return listColourThemes(configHome)
+})
+
+registerHandler('themes.save', (params) => {
+  saveColourTheme(configHome, ColourThemeSaveParamsSchema.parse(params).theme)
+  return null
+})
+
+registerHandler('themes.delete', (params) => {
+  deleteColourTheme(configHome, ColourThemeDeleteParamsSchema.parse(params).id)
+  return null
 })
 
 registerHandler('extensions.pluginVersion', (params) => {

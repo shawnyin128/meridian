@@ -1,7 +1,7 @@
 import type { AppUpdateStatus } from '../shared/app-update.js'
 import type {
   AttachmentFields, AuthorCandidate, AuthorSearchFailed, CallRejection, ChangeEntry, ChatCancelResult,
-  ChatMessage, ChatMessageFields, ChatSendResult, ChatSession, ConclusionState,
+  ChatMessage, ChatMessageFields, ChatSendResult, ChatSession, ColourTheme, ColourThemeFile, ConclusionState,
   ContractMethod, Facet, PluginVersion, SemanticKeyCheckResult, SemanticKeyStatus,
   DeliverySettings, DiscoveryFeedback, DiscoveryFetchResult, DiscoveryIntentAction, DiscoveryProfile,
   ExtensionStatus, FeedEntry, FeedFields,
@@ -313,6 +313,15 @@ export const delivery = {
   setSemanticKey: (apiKey: string | null) => call<SemanticKeyStatus>('delivery.setSemanticKey', { apiKey }),
   /** Makes one Semantic Scholar request with the saved key and reports how it went. */
   checkSemanticKey: () => call<SemanticKeyCheckResult>('delivery.checkSemanticKey', {}),
+}
+
+export const colourThemes = {
+  /** Every file in the config home's themes folder: its theme, or why it cannot be used. */
+  list: () => call<ColourThemeFile[]>('themes.list', {}),
+  /** Writes one custom theme to its file, replacing the file of the same id. */
+  save: (theme: ColourTheme) => call<void>('themes.save', { theme }),
+  /** Deletes the file of one custom theme; it cannot be undone. */
+  delete: (id: string) => call<void>('themes.delete', { id }),
 }
 
 export const later = {
