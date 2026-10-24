@@ -64,6 +64,7 @@ import { Tag } from '../components/Tag.js'
 import { Tooltip } from '../components/Tooltip.js'
 import { NO_TRIGGERS } from '../hooks/useOnLeave.js'
 import { useScreenLoad } from '../hooks/useScreenLoad.js'
+import { useScreenPoll } from '../hooks/useScreenPoll.js'
 import { useUndo } from '../hooks/useUndo.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
 import { useScrollFade } from '../hooks/useScrollFade.js'
@@ -402,13 +403,10 @@ export function ProjectDetail({
     ? undefined
     : [project.workspace.kind, project.workspace.host, project.workspace.port, project.workspace.root].join(':')
   const workspaceKind = project?.workspace?.kind
-  useEffect(() => {
-    if (workspaceKey === undefined) return
-    const timer = window.setInterval(() => {
-      load('project', projectApi.get(projectId), setProject)
-    }, workspaceKind === 'ssh' ? 15_000 : 2000)
-    return () => window.clearInterval(timer)
-  }, [projectId, load, workspaceKey, workspaceKind])
+  useScreenPoll(
+    load, 'project', () => projectApi.get(projectId), setProject,
+    workspaceKey === undefined ? null : workspaceKind === 'ssh' ? 15_000 : 2000,
+  )
 
   useEffect(() => {
     setSelectedNode(null)

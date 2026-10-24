@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
-import { act, type ReactNode } from 'react'
+import { act, Profiler, type ReactNode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { renderToStaticMarkup } from 'react-dom/server'
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type {
   Milestone, ProjectDetail, ResearchGraph, ResearchIdea,
 } from '../../shared/contract.js'
@@ -14,7 +14,24 @@ import { MessagesProvider } from '../messages/useMessages.js'
 import { zh } from '../messages/zh/index.js'
 import { LANGUAGE_STORAGE_KEY } from '../shell/language.js'
 import { ProjectTaskPanel } from '../components/project/ProjectPlan.js'
-import { ProjectIdeaList, ProjectIdeaPanel, WorkspaceRoot } from './ProjectDetail.js'
+import { ProjectDetail as ProjectScreen, ProjectIdeaList, ProjectIdeaPanel, WorkspaceRoot } from './ProjectDetail.js'
+
+declare global {
+  var IS_REACT_ACT_ENVIRONMENT: boolean
+}
+
+/** Whether the project's screen is the one shown, and the shell around the project page. */
+const shell = vi.hoisted(() => ({ shown: true }))
+vi.mock('../shell/AppShell.js', async (importOriginal) => ({
+  ...await importOriginal<typeof import('../shell/AppShell.js')>(),
+  useCrumbTail: () => {},
+  useEscapeLayer: () => {},
+  useJump: () => ({ jump: null, open: () => {}, returnTo: () => {}, enter: () => {} }),
+  useNotice: () => ({ success: () => {}, refusal: () => {} }),
+  useScreenShown: () => shell.shown,
+  useToday: () => '2026-08-25',
+  useVaultRevision: () => ({ revision: 0, bump: () => {} }),
+}))
 
 const sm = zh.project.signals
 
@@ -499,5 +516,109 @@ describe('the workspace field', () => {
   it('keeps a connected workspace quiet: the green dot carries its state as its name and tooltip', () => {
     expect(field('ready')).toContain('class="status-dot status-dot--sm status-dot--good" role="img" aria-label="已连接" data-state="closed"')
     expect(field('ready')).not.toContain('status-dot-label')
+  })
+})
+
+describe('项目页跟着工作区刷新', () => {
+  const bound = (): ProjectDetail => project({
+    workspace: { kind: 'local', root: '/work/spec-decoding', state: 'ready', planPath: 'plan.md', events: [] },
+  })
+  /** The project each project.get call answers, in order; a call past the end never answers. */
+  let answers: (() => Promise<ProjectDetail>)[] = []
+  let gets = 0
+  let commits = 0
+  let unmount = () => {}
+
+  beforeEach(async () => {
+    globalThis.IS_REACT_ACT_ENVIRONMENT = true
+    vi.useFakeTimers()
+    vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} })
+    window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'zh')
+    shell.shown = true
+    gets = 0
+    commits = 0
+    answers = [async () => bound()]
+    vi.stubGlobal('meridian', {
+      call: (method: string) => {
+        if (method === 'project.get') return answers[gets++]?.() ?? new Promise(() => {})
+        if (method === 'idea.list' || method === 'chat.list') return Promise.resolve([])
+        return new Promise(() => {})
+      },
+    })
+  })
+
+  afterEach(() => {
+    unmount()
+    vi.useRealTimers()
+    vi.unstubAllGlobals()
+  })
+
+  let render = async () => {}
+  const mount = async () => {
+    const host = document.createElement('div')
+    document.body.append(host)
+    const root = createRoot(host)
+    render = () => act(async () => {
+      root.render(withMessages(
+        <Profiler id="project" onRender={() => { commits += 1 }}>
+          <ProjectScreen
+            projectId="draft" onBack={() => {}} onReturn={() => {}}
+            tab="task" onTab={() => {}} record="tl" onRecord={() => {}}
+          />
+        </Profiler>,
+      ))
+    })
+    await render()
+    unmount = () => { act(() => root.unmount()); host.remove() }
+    return host
+  }
+  const wait = (ms: number) => act(async () => { await vi.advanceTimersByTimeAsync(ms) })
+
+  it('一次只读一回：上一次还没回来时，到点了也不再读', async () => {
+    await mount()
+    await wait(10_000)
+    expect(gets).toBe(2)
+  })
+
+  it('项目不在屏上时不读', async () => {
+    shell.shown = false
+    await mount()
+    await wait(10_000)
+    expect(gets).toBe(1)
+  })
+
+  it('离开项目页后不再读，正在读的那次回来也不再排下一次；回到项目页接着读', async () => {
+    let answerTick: (value: ProjectDetail) => void = () => {}
+    answers = [async () => bound(), () => new Promise((resolve) => { answerTick = resolve }), async () => bound()]
+    await mount()
+    await wait(2_000)
+    shell.shown = false
+    await render()
+    await act(async () => { answerTick(bound()) })
+    await wait(10_000)
+    expect(gets).toBe(2)
+
+    shell.shown = true
+    await render()
+    await wait(2_000)
+    expect(gets).toBe(3)
+  })
+
+  it('读回来的项目没变时不重新渲染', async () => {
+    answers = Array.from({ length: 4 }, () => async () => bound())
+    await mount()
+    const settled = commits
+    await wait(6_500)
+    expect([gets, commits]).toEqual([4, settled])
+  })
+
+  it('一次读失败，错误横幅等下一次读成功就收起', async () => {
+    // Core rejects a call with its reason as plain data.
+    answers = [async () => bound(), () => Promise.reject({ reason: 'newer-version' }), async () => bound()]
+    const host = await mount()
+    await wait(2_000)
+    expect(host.querySelector('.ipcerror')?.textContent).toBe('需要更新 App')
+    await wait(2_000)
+    expect([gets, host.querySelector('.ipcerror')]).toEqual([3, null])
   })
 })
