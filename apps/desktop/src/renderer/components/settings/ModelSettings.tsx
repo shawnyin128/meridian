@@ -10,6 +10,7 @@ import { useMessages } from '../../messages/useMessages.js'
 import { ChoicePicker } from '../FieldPickers.js'
 import { FormInput } from '../FormControls.js'
 import { LoadingPlaceholder } from '../LoadingPlaceholder.js'
+import { PageError } from '../PageShell.js'
 import { Tag } from '../Tag.js'
 import {
   ServiceActions, ServiceCard, ServiceClearKeyButton, ServiceConnectionStatus, ServiceError, ServiceField,
@@ -134,7 +135,7 @@ export function ModelSettings() {
   const [clearApiKey, setClearApiKey] = useState(false)
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
-  const { load } = useScreenLoad()
+  const { error, load } = useScreenLoad()
   const [connectionCheck, setConnectionCheck] = useState<ConnectionCheckState>({ state: 'idle' })
 
   const resetCredentialDraft = () => {
@@ -250,7 +251,9 @@ export function ModelSettings() {
     }
   }
 
-  if (settings === null) return <LoadingPlaceholder shape="cards" count={1} />
+  if (settings === null) {
+    return error === null ? <LoadingPlaceholder shape="cards" count={1} /> : <PageError variant="section" error={error} />
+  }
 
   const selected = { ...PROVIDERS[provider], ...m.settings.model.providers[provider] }
   const selectedCompatibleTemplate = compatibleTemplate !== 'choose' && compatibleTemplate !== 'custom'
