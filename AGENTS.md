@@ -351,9 +351,14 @@ checks. This is the order to follow, on the version's release branch and never o
    project, `wiki.home`, `wiki.proposals`, `wiki.signals` and `feed.list` must
    all succeed. Never point a test at the original library, the App's user data
    folder, or `~/.meridian`. Beside the real-library copy, copy the test library
-   the previous release seeded to a temporary folder and open the copy with
-   `node scripts/test-library.mjs open --out <copy> --app <build>`; the same
-   calls must succeed there.
+   the previous release seeded to a temporary folder `<testlib>`, point the
+   paths it stores at the copy with
+   `node scripts/test-library.mjs relocate --out <testlib>`, and launch the build
+   on it the same quiet way:
+   - macOS: `env -u ELECTRON_RUN_AS_NODE MERIDIAN_SHOW_WINDOW=0 MERIDIAN_VAULT_ROOT=<testlib>/library MERIDIAN_CONFIG_HOME=<testlib>/config <build>/Meridian.app/Contents/MacOS/Meridian --user-data-dir=<testlib>/user-data --force-color-profile=srgb`
+   - Windows (PowerShell): `Remove-Item Env:ELECTRON_RUN_AS_NODE -ErrorAction Ignore; $env:MERIDIAN_SHOW_WINDOW = '0'; $env:MERIDIAN_VAULT_ROOT = '<testlib>\library'; $env:MERIDIAN_CONFIG_HOME = '<testlib>\config'; & '<build>\Meridian.exe' --user-data-dir='<testlib>\user-data' --force-color-profile=srgb`
+
+   The same calls must succeed there, made the same way.
 5. **Owner review.** Hand the owner the unpacked build with a list of what to
    check, issue by issue. Nothing is tagged until the owner approves. Any change
    after that means a new build in a new folder and another review.
