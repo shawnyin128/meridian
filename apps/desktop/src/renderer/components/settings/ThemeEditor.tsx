@@ -1,16 +1,20 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { CSSProperties } from 'react'
 import {
-  BUILT_IN_COLOUR_THEMES, DEFAULT_COLOUR_THEME, contrastShortfalls, deriveColourTokens, deriveDarkModules,
-  type ColourMode, type ColourModule,
+  BUILT_IN_COLOUR_THEMES, COLOUR_THEME_SCHEMA, DEFAULT_COLOUR_THEME, contrastShortfalls, deriveColourTokens,
+  deriveDarkModules, type ColourMode, type ColourModule,
 } from '../../../shared/colour-theme.js'
 import type { ColourTheme, ColourThemeModules } from '../../../shared/contract.js'
+import { colourThemes } from '../../ipc.js'
+import { errorLabel } from '../../lib/failure-label.js'
+import { colourThemeId } from '../../lib/slug.js'
 import { useMessages } from '../../messages/useMessages.js'
-import { readColourThemePreference } from '../../shell/appearance.js'
-import { useColourThemes } from '../../shell/useColourThemes.js'
+import { readColourThemePreference, setColourThemePreference } from '../../shell/appearance.js'
+import { useColourThemeFiles, useColourThemes } from '../../shell/useColourThemes.js'
 import { useScrollFade } from '../../hooks/useScrollFade.js'
 import { BackButton } from '../BackButton.js'
 import { Card } from '../Card.js'
+import { ConfirmDialog } from '../ConfirmDialog.js'
 import { ChoicePicker } from '../FieldPickers.js'
 import { ColourField, FormInput } from '../FormControls.js'
 import { Icon } from '../icons.js'
@@ -23,6 +27,7 @@ import { Tag } from '../Tag.js'
 import { ToggleGroup, ToggleItem } from '../Toolbar.js'
 import { Tooltip } from '../Tooltip.js'
 import { useColourThemeName } from './AppearanceSettings.js'
+import { ServiceActions, ServiceError, ServiceFoot } from './ServiceCard.js'
 import './ThemeEditor.css'
 
 /** The modules in the left column, in groups that sit apart: surfaces, text, accents, states. */
@@ -32,12 +37,24 @@ const GROUPS: readonly (readonly ColourModule[])[] = [
   ['accent', 'highlight'],
   ['error', 'warning', 'done'],
 ]
+const MODULES = GROUPS.flat()
 
 /** What the editor edits of a theme: all but its schema and its id. */
 type Draft = Pick<ColourTheme, 'name' | 'basedOn' | 'light' | 'dark'>
 
 const draftOf = ({ name, basedOn, light, dark }: ColourTheme): Draft =>
   ({ name, ...(basedOn === undefined ? {} : { basedOn }), light, dark })
+
+const same = (a: Draft, b: Draft): boolean => a.name === b.name && a.basedOn === b.basedOn
+  && MODULES.every((key) => a.light[key] === b.light[key] && a.dark[key] === b.dark[key])
+
+/**
+ * The editor's state. `id` is null until a new theme is first saved; `loaded` is the draft as last
+ * read from or written to its file, and `outside` whether that file changed outside the App since.
+ */
+type Form = { id: string | null; draft: Draft; loaded: Draft; outside: boolean; saved: boolean }
+
+const formOf = (id: string | null, draft: Draft): Form => ({ id, draft, loaded: draft, outside: false, saved: false })
 
 /** A stroke glyph of the sidebar's, for a preview row. */
 const Glyph = ({ d }: { d: string }) => <span className="ic"><Icon><path d={d} /></Icon></span>
@@ -89,40 +106,96 @@ function ThemePreview({ modules, mode }: { modules: ColourThemeModules; mode: Co
 /**
  * The theme editor of the Appearance pane, in place of the Settings columns: the modules on the left,
  * the name, the theme it is based on, a live preview of the mode being edited and the picked
- * module's colour on the right. `theme` is the custom theme to edit, or null for a new one, which
- * starts from the theme in use; `onBack` returns to the Appearance pane.
+ * module's colour on the right. Save writes `<config home>/themes/<id>.json` and makes it the App's
+ * theme. When that file changes outside the App, the editor reads it again while it holds no
+ * unsaved edits, and otherwise keeps them and marks the file changed. `theme` is the custom theme
+ * to edit, or null for a new one, which starts from the theme in use; `onBack` returns to the
+ * Appearance pane, after a confirmation while there are unsaved edits.
  */
 export function ThemeEditor({ theme, onBack }: { theme: ColourTheme | null; onBack: () => void }) {
   const m = useMessages()
   const t = m.settings.appearance.editor
   const themes = useColourThemes()
+  const { files, refresh } = useColourThemeFiles()
   const name = useColourThemeName()
-  const [draft, setDraft] = useState<Draft>(() => {
-    if (theme !== null) return draftOf(theme)
+  const [form, setForm] = useState<Form>(() => {
+    if (theme !== null) return formOf(theme.id, draftOf(theme))
     const start = themes.find((candidate) => candidate.id === readColourThemePreference()) ?? DEFAULT_COLOUR_THEME
-    return { name: '', basedOn: start.id, light: start.light, dark: start.dark }
+    return formOf(null, { name: '', basedOn: start.id, light: start.light, dark: start.dark })
   })
   const [mode, setMode] = useState<ColourMode>(() => (document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light'))
   const [module, setModule] = useState<ColourModule>('ground')
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const sideFade = useScrollFade('y')
   const bodyFade = useScrollFade('y')
+  const { draft } = form
   const colours = draft[mode]
+  const dirty = !same(draft, form.loaded)
   const weak = useMemo(() => new Set(contrastShortfalls(colours, mode).map((shortfall) => shortfall.module)), [colours, mode])
-  const bases = themes.filter((candidate) => candidate.id !== theme?.id)
+  const bases = themes.filter((candidate) => candidate.id !== form.id)
   const base = themes.find((candidate) => candidate.id === draft.basedOn) ?? DEFAULT_COLOUR_THEME
 
-  const change = (next: Partial<Draft>) => setDraft((held) => ({ ...held, ...next }))
+  // The file as last listed: undefined while there is none to follow, null while it is missing or unreadable.
+  const disk = useMemo(() => {
+    if (form.id === null || files === null) return undefined
+    const file = files.find((entry) => entry.file === `${form.id}.json`)
+    return file?.state === 'readable' ? file.theme : null
+  }, [files, form.id])
+  const listed = useRef(disk)
+  useEffect(() => {
+    const previous = listed.current
+    listed.current = disk
+    if (previous === undefined || disk === undefined || disk === previous) return
+    setForm((held) => {
+      if (disk !== null && same(draftOf(disk), held.loaded)) return held
+      if (disk !== null && same(held.draft, held.loaded)) return formOf(held.id, draftOf(disk))
+      return { ...held, outside: true }
+    })
+  }, [disk])
+
+  const change = (next: Partial<Draft>) => setForm((held) => ({ ...held, draft: { ...held.draft, ...next }, saved: false }))
   const paint = (value: string) => change({ [mode]: { ...colours, [module]: value } })
   const swatches = [...BUILT_IN_COLOUR_THEMES.reduce((found, builtIn) => {
     const value = builtIn[mode][module]
     return found.has(value) ? found : found.set(value, builtIn)
   }, new Map<string, ColourTheme>())]
 
+  const save = async () => {
+    const sent = draft
+    const id = form.id ?? colourThemeId(sent.name, [
+      ...BUILT_IN_COLOUR_THEMES.map((builtIn) => builtIn.id), ...(files ?? []).map((file) => file.file.replace(/\.json$/, '')),
+    ])
+    const written: Draft = { ...sent, name: sent.name.trim() }
+    const next: ColourTheme = { schema: COLOUR_THEME_SCHEMA, id, ...written }
+    setSaving(true)
+    setError(null)
+    try {
+      await colourThemes.save(next)
+      setColourThemePreference(next)
+      await refresh()
+      setForm((held) => (held.draft === sent
+        ? { ...formOf(id, written), saved: true }
+        : { ...held, id, loaded: written, outside: false }))
+    } catch (caught) {
+      setError(errorLabel(m, caught))
+    } finally {
+      setSaving(false)
+    }
+  }
+
   return (
     <>
       <div className="set-side theme-modules" ref={sideFade} data-fade-paint="">
         <div className="theme-editor-title">
-          <BackButton onClick={onBack} />
+          {dirty
+            ? (
+              <ConfirmDialog
+                trigger={<BackButton />} title={t.leaveTitle} description={t.leaveDescription} confirmLabel={t.leave}
+                onConfirm={onBack}
+              />
+            )
+            : <BackButton onClick={onBack} />}
           <ModalTitle className="set-t">{m.settings.appearance.themeHeading}</ModalTitle>
         </div>
         {GROUPS.map((keys) => (
@@ -190,6 +263,16 @@ export function ThemeEditor({ theme, onBack }: { theme: ColourTheme | null; onBa
               </ToggleGroup>
               <ColourField value={colours[module]} onChange={paint} pickLabel={t.pick} valueLabel={t.hex} />
             </div>
+            {error === null ? null : <ServiceError>{error}</ServiceError>}
+            <ServiceFoot>
+              {form.outside ? <Tag tone="warn">{t.changedOutside}</Tag> : null}
+              <ServiceActions>
+                <button
+                  type="button" className="btn pri" disabled={saving || draft.name.trim() === '' || !(dirty || form.outside)}
+                  onClick={() => { void save() }}
+                >{form.saved ? m.common.saved : m.common.save}</button>
+              </ServiceActions>
+            </ServiceFoot>
           </Card>
         </div>
       </div>

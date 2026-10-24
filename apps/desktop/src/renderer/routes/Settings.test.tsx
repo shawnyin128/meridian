@@ -540,11 +540,14 @@ describe('Settings', () => {
     await act(async () => {
       root.render(
         <MessagesProvider>
-          <ColourThemeFilesContext.Provider value={[
-            { state: 'unreadable', file: 'broken.json', reason: 'syntax' },
-            { state: 'unreadable', file: 'pale.json', reason: 'format', path: 'light.accent' },
-            { state: 'readable', file: 'celadon.json', theme: celadon },
-          ]}>
+          <ColourThemeFilesContext.Provider value={{
+            files: [
+              { state: 'unreadable', file: 'broken.json', reason: 'syntax' },
+              { state: 'unreadable', file: 'pale.json', reason: 'format', path: 'light.accent' },
+              { state: 'readable', file: 'celadon.json', theme: celadon },
+            ],
+            refresh: async () => {},
+          }}>
             <Settings />
           </ColourThemeFilesContext.Provider>
         </MessagesProvider>,

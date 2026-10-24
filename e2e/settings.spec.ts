@@ -1,4 +1,6 @@
 import type { CDPSession, ElectronApplication, Page } from '@playwright/test'
+import { readFileSync, writeFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { expect, openSettings, test, type MeridianWindow } from './app.js'
 
 /** Tab presses in the focus walk: enough to pass every focusable element in Settings and wrap around. */
@@ -335,4 +337,44 @@ test('设置模态:屏上其余部分隐掉,Tab 不跑到模态外,Esc 之后焦
   await expect(win.locator('#root')).not.toHaveAttribute('aria-hidden', 'true')
   // Focus returns in a timeout after the modal unmounts; the element being gone does not mean it is back.
   await expect.poll(() => win.evaluate(() => document.activeElement?.id ?? '')).toBe('sbBtn')
+})
+
+/** Forgets the colour theme a case chose, which the shared profile would otherwise carry into later cases. */
+const forgetColourTheme = (win: Page) => win.evaluate(() => {
+  window.localStorage.removeItem('meridian.colour-theme')
+  window.localStorage.removeItem('meridian.colour-theme-cache')
+})
+
+test('新建外观主题:保存写进配置目录的 themes/<id>.json 并套用;编辑时在 App 外改了文件,没改过就重读,改过就留着修改并标出', async ({ app, win, configHome }) => {
+  try {
+    await openSettings(app, win)
+    await win.locator('.setdlg .appearance-add').click()
+    await win.locator('.setdlg input[aria-label="名称"]').fill('E2E Theme')
+    await win.locator('.setdlg [data-module="accent"]').click()
+    const hex = win.locator('.setdlg input[aria-label="色值"]')
+    await hex.fill('#2f6fbf')
+    const save = win.locator('.setdlg .theme-module-card .btn.pri')
+    await save.click()
+    await expect(save).toHaveText('已保存')
+
+    const file = join(configHome, 'themes', 'e2e-theme.json')
+    const written = JSON.parse(readFileSync(file, 'utf8'))
+    expect([written.schema, written.id, written.name, written.basedOn, written.light.accent])
+      .toEqual(['meridian.theme.v1', 'e2e-theme', 'E2E Theme', 'default', '#2f6fbf'])
+    const rootAccent = () => win.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--accent').trim())
+    await expect.poll(rootAccent).toBe('#2f6fbf')
+    await expect(win.locator('.setdlg [data-module]')).toHaveCount(13)
+
+    writeFileSync(file, JSON.stringify({ ...written, light: { ...written.light, accent: '#336655' } }))
+    await expect(hex).toHaveValue('#336655', { timeout: 10_000 })
+    await expect.poll(rootAccent, { timeout: 10_000 }).toBe('#336655')
+    await expect(win.locator('.setdlg')).not.toContainText('文件已在 App 外修改')
+
+    await hex.fill('#2f6fbf')
+    writeFileSync(file, JSON.stringify({ ...written, light: { ...written.light, accent: '#112233' } }))
+    await expect(win.locator('.setdlg')).toContainText('文件已在 App 外修改', { timeout: 10_000 })
+    await expect(hex).toHaveValue('#2F6FBF')
+  } finally {
+    await forgetColourTheme(win)
+  }
 })

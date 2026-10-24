@@ -42,6 +42,10 @@ export const settings = {
       swatches: '预设颜色',
       pick: '选取颜色',
       hex: '色值',
+      changedOutside: '文件已在 App 外修改',
+      leaveTitle: '放弃未保存的修改？',
+      leaveDescription: '返回后这些修改不会保留。',
+      leave: '放弃修改',
       modules: {
         ground: '窗口底色', sidebar: '侧栏', card: '卡片', field: '输入框', separator: '分隔线',
         ink: '文字', inkSecondary: '次要文字', inkTertiary: '辅助文字',

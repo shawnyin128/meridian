@@ -49,6 +49,10 @@ export const settings = {
       swatches: 'Preset colours',
       pick: 'Pick a colour',
       hex: 'Hex value',
+      changedOutside: 'Changed outside the App',
+      leaveTitle: 'Discard unsaved changes?',
+      leaveDescription: 'Going back does not keep them.',
+      leave: 'Discard changes',
       modules: {
         ground: 'Window', sidebar: 'Sidebar', card: 'Cards', field: 'Fields', separator: 'Separators',
         ink: 'Text', inkSecondary: 'Secondary text', inkTertiary: 'Tertiary text',

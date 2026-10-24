@@ -19,8 +19,11 @@ const readable = (theme: ColourTheme): ColourThemeFile => ({ state: 'readable', 
 /** The light canvas colour the applied theme's rules set, or null when only tokens.css applies. */
 const canvas = () => /^:root:root\{[^}]*--content:([^;}]+)/.exec(document.getElementById('meridian-colour-theme')?.textContent ?? '')?.[1] ?? null
 
+/** The latest read of the poll, with its refresh, as the shell hands them to Settings. */
+const polled = vi.hoisted(() => ({ current: null as ReturnType<typeof useColourThemeFilesPoll> | null }))
+
 function Poll() {
-  useColourThemeFilesPoll()
+  polled.current = useColourThemeFilesPoll()
   return null
 }
 
@@ -78,6 +81,16 @@ describe('自定义主题文件的轮询', () => {
 
     initializeAppearance()
     expect(canvas()).toBeNull()
+  })
+
+  it('刷新马上重读主题文件夹,不等下一轮轮询', async () => {
+    files.current = []
+    await act(async () => { root.render(<Poll />) })
+    expect(polled.current!.files).toEqual([])
+
+    files.current = [readable(mine)]
+    await act(async () => { await polled.current!.refresh() })
+    expect(polled.current!.files).toEqual([readable(mine)])
   })
 
   it('选中的是内置主题时,自定义主题文件变了也不动当前的颜色', async () => {

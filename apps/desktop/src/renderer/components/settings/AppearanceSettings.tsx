@@ -131,7 +131,7 @@ export function ColourThemeSettings({ onEdit }: { onEdit: (theme: ColourTheme | 
   const m = useMessages()
   const themes = useColourThemes()
   const chosen = useColourTheme(themes)
-  const unusable = (useColourThemeFiles() ?? []).flatMap((file) => (file.state === 'unreadable' ? [file] : []))
+  const unusable = (useColourThemeFiles().files ?? []).flatMap((file) => (file.state === 'unreadable' ? [file] : []))
   const name = useColourThemeName()
 
   return (

@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act } from 'react'
+import { act, useState } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
@@ -12,6 +12,9 @@ import { LANGUAGE_STORAGE_KEY } from '../../shell/language.js'
 import { ColourThemeFilesContext } from '../../shell/useColourThemes.js'
 import { ModalDialog } from '../ModalDialog.js'
 
+const api = vi.hoisted(() => ({ save: vi.fn(async () => {}), refresh: vi.fn(async () => {}) }))
+vi.mock('../../ipc.js', () => ({ colourThemes: { save: api.save } }))
+
 const { ThemeEditor } = await import('./ThemeEditor.js')
 
 const theme = (id: string) => BUILT_IN_COLOUR_THEMES.find((candidate) => candidate.id === id)!
@@ -20,10 +23,15 @@ const luodian = theme('luodian')
 const celadon: ColourTheme = { ...luodian, id: 'celadon', name: '青瓷', basedOn: 'luodian', light: { ...luodian.light, accent: '#3f7a6a' } }
 const readable = (of: ColourTheme): ColourThemeFile => ({ state: 'readable', file: `${of.id}.json`, theme: of })
 
-function Host({ editing, files, onBack }: { editing: ColourTheme | null; files: ColourThemeFile[]; onBack: () => void }) {
+/** Holds the theme files as the shell would, so a case can change them as a file edited outside the App. */
+const shell: { setFiles: (files: ColourThemeFile[]) => void } = { setFiles: () => {} }
+
+function Host({ editing, initial, onBack }: { editing: ColourTheme | null; initial: ColourThemeFile[]; onBack: () => void }) {
+  const [files, setFiles] = useState(initial)
+  shell.setFiles = setFiles
   return (
     <MessagesProvider>
-      <ColourThemeFilesContext.Provider value={files}>
+      <ColourThemeFilesContext.Provider value={{ files, refresh: api.refresh }}>
         <ModalDialog open onOpenChange={() => {}} size="wide" className="setdlg">
           <ThemeEditor theme={editing} onBack={onBack} />
         </ModalDialog>
@@ -76,13 +84,63 @@ describe('外观主题编辑页', () => {
     delete document.documentElement.dataset.theme
     document.body.innerHTML = ''
     root = createRoot(document.body.appendChild(document.createElement('div')))
+    api.save.mockClear()
+    api.refresh.mockClear()
     onBack.mockClear()
   })
 
   afterEach(() => { act(() => root.unmount()) })
 
   const open = (editing: ColourTheme | null, files: ColourThemeFile[] = []) =>
-    act(async () => { root.render(<Host editing={editing} files={files} onBack={onBack} />) })
+    act(async () => { root.render(<Host editing={editing} initial={files} onBack={onBack} />) })
+
+  it('新主题从当前的外观主题开始;保存写进 themes/<id>.json 并套用,id 由名字生成、不和已有文件重名,页面留在编辑页', async () => {
+    window.localStorage.setItem(COLOUR_THEME_STORAGE_KEY, 'cinnabar')
+    await open(null, [{ state: 'unreadable', file: 'my-theme.json', reason: 'syntax' }])
+    expect(buttonOf('保存').disabled).toBe(true)
+
+    await type($<HTMLInputElement>('input[aria-label="名称"]'), ' My Theme ')
+    await paint('accent', '#2f6fbf')
+    await click(buttonOf('保存'))
+
+    const saved: ColourTheme = {
+      schema: 'meridian.theme.v1', id: 'my-theme-2', name: 'My Theme', basedOn: 'cinnabar',
+      light: { ...cinnabar.light, accent: '#2f6fbf' }, dark: cinnabar.dark,
+    }
+    expect(api.save).toHaveBeenCalledWith(saved)
+    expect(api.refresh).toHaveBeenCalled()
+    expect(window.localStorage.getItem(COLOUR_THEME_STORAGE_KEY)).toBe('my-theme-2')
+    expect(document.documentElement.dataset.colourTheme).toBe('my-theme-2')
+    expect($('#meridian-colour-theme').textContent).toContain('--accent:#2f6fbf')
+    expect(buttonOf('已保存').disabled).toBe(true)
+    expect($<HTMLInputElement>('input[aria-label="名称"]').value).toBe('My Theme')
+
+    await type($<HTMLInputElement>('input[aria-label="名称"]'), 'Renamed')
+    await click(buttonOf('保存'))
+    expect(api.save).toHaveBeenLastCalledWith({ ...saved, name: 'Renamed' })
+  })
+
+  it('改过还没保存时返回先确认:取消留在编辑页,确认才回去;没改过或保存过就直接回去', async () => {
+    await open(celadon, [readable(celadon)])
+    await click($('button[aria-label="返回"]'))
+    expect(onBack).toHaveBeenCalledTimes(1)
+    expect(document.querySelector('[role="alertdialog"]')).toBeNull()
+
+    await paint('ground', '#f1f6f4')
+    await click($('button[aria-label="返回"]'))
+    expect($('[role="alertdialog"] .modal-title').textContent).toBe('放弃未保存的修改？')
+    await click(buttonOf('取消'))
+    expect(onBack).toHaveBeenCalledTimes(1)
+    expect(hex().value).toBe('#F1F6F4')
+
+    await click($('button[aria-label="返回"]'))
+    await click(buttonOf('放弃修改'))
+    expect(onBack).toHaveBeenCalledTimes(2)
+
+    await click(buttonOf('保存'))
+    await click($('button[aria-label="返回"]'))
+    expect(onBack).toHaveBeenCalledTimes(3)
+  })
 
   it('换「基于」的主题,浅色和深色两套颜色都换成它的', async () => {
     await open(celadon, [readable(celadon)])
@@ -91,6 +149,8 @@ describe('外观主题编辑页', () => {
     expect(hex().value).toBe(cinnabar.light.accent.toUpperCase())
     await click(buttonOf('深色'))
     expect(hex().value).toBe(cinnabar.dark.accent.toUpperCase())
+    await click(buttonOf('保存'))
+    expect(api.save).toHaveBeenCalledWith({ ...celadon, basedOn: 'cinnabar', light: cinnabar.light, dark: cinnabar.dark })
   })
 
   it('由浅色生成深色:按基于的主题把浅色的修改带到深色,换到深色接着调', async () => {
@@ -136,5 +196,22 @@ describe('外观主题编辑页', () => {
     expect(hex().value).toBe(luodian.light.accent.toUpperCase())
     await click(module('highlight'))
     expect(document.querySelectorAll('[aria-label="预设颜色"] button')).toHaveLength(1)
+  })
+
+  it('编辑时主题文件在 App 外改了:没改过就重读文件;改过就留下修改,标出文件已改,保存后标记消失', async () => {
+    await open(celadon, [readable(celadon)])
+    await click(module('accent'))
+    await act(async () => { shell.setFiles([readable({ ...celadon, light: { ...celadon.light, accent: '#336655' } })]) })
+    expect(hex().value).toBe('#336655')
+    expect(document.body.textContent).not.toContain('文件已在 App 外修改')
+
+    await type(hex(), '#2f6fbf')
+    await act(async () => { shell.setFiles([readable({ ...celadon, light: { ...celadon.light, accent: '#112233' } })]) })
+    expect(hex().value).toBe('#2F6FBF')
+    expect(document.body.textContent).toContain('文件已在 App 外修改')
+
+    await click(buttonOf('保存'))
+    expect(api.save).toHaveBeenCalledWith({ ...celadon, light: { ...celadon.light, accent: '#2f6fbf' } })
+    expect(document.body.textContent).not.toContain('文件已在 App 外修改')
   })
 })
