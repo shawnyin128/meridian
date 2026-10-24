@@ -6,6 +6,7 @@ import type {
 import { localDayOf } from '../../../shared/dates.js'
 import { PAPER_PAGE } from '../../../shared/vocabulary.js'
 import { harness } from '../../ipc.js'
+import { useUndo } from '../../hooks/useUndo.js'
 import { useVaultWrite } from '../../hooks/useVaultWrite.js'
 import { useScrollFade } from '../../hooks/useScrollFade.js'
 import { errorLabel, failureLabel } from '../../lib/failure-label.js'
@@ -78,6 +79,7 @@ export function PaperWikiIngest({ paper, reading, onJump }: {
   /** Bumped to prepare the plan again, as when Settings closes on a plan prepared without a model. */
   const [preparations, setPreparations] = useState(0)
   const write = useVaultWrite()
+  const undo = useUndo()
   const readingScope = JSON.stringify({
     highlights: reading.highlights,
     notes: reading.notes,
@@ -162,9 +164,7 @@ export function PaperWikiIngest({ paper, reading, onJump }: {
       warning = result.warning
       return result
     })
-    const saved = await write(operation, {
-      note: m.wiki.ingest.writeNote,
-    })
+    const saved = await write(operation, { note: m.wiki.ingest.writeNote, action: undo.change })
     if (saved) {
       setApplied(true)
       if (warning !== undefined) setError(failureLabel(m, m.wiki.ingest.auditFailed, warning))

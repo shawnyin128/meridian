@@ -782,6 +782,8 @@ export const HarnessApplyPaperWikiResultSchema = z.object({
   proposalId: z.string().min(1),
   wikiId: z.string().min(1),
   appliedAt: IsoTimestamp,
+  /** The change entry the Wiki write recorded, the one `changelog.undo` takes to undo it. */
+  change: z.string(),
   /** Why the audit record of the applied proposal could not be written; the Wiki page is written. */
   warning: CallFailureSchema.optional(),
 }).strict()

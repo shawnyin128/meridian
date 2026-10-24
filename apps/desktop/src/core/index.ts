@@ -270,7 +270,7 @@ const harness = createHarnessCostGate({
       message: '授权门验证完成：演示模式没有调用模型，也没有修改 Wiki。',
     })
     : paperWikiHarness.run,
-  applyWiki: (id, body) => store.applyPaperWikiDraft(id, body),
+  applyWiki: (id, body) => recordChange(store, () => store.applyPaperWikiDraft(id, body)),
   initialProposals: pendingHarnessProposals,
   ...(proposalAudit === null ? {} : { recordProposal: proposalAudit.record }),
 })

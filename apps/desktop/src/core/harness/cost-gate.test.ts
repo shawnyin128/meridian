@@ -169,8 +169,8 @@ describe('Harness cost gate', () => {
     expect(changed.run).not.toHaveBeenCalled()
   })
 
-  it('holds a generated draft until an explicit, scope-checked apply', async () => {
-    const applyWiki = vi.fn()
+  it('holds a generated draft until an explicit, scope-checked apply, then names the change entry the write recorded', async () => {
+    const applyWiki = vi.fn(() => ({ change: 'change-9' }))
     const run = vi.fn(async () => ({
       state: 'proposal-ready' as const,
       message: '提案已生成',
@@ -201,6 +201,7 @@ describe('Harness cost gate', () => {
     const applied = costGate.applyPaperWiki({ proposalId: receipt.proposal!.id, body: '# Edited' })
     expect(applyWiki).toHaveBeenCalledWith('papers/p1', '# Edited')
     expect(applied.wikiId).toBe('papers/p1')
+    expect(applied.change).toBe('change-9')
     expect(() => costGate.applyPaperWiki({
       proposalId: receipt.proposal!.id, body: '# Again',
     })).toThrow('已经写入过')
@@ -208,7 +209,7 @@ describe('Harness cost gate', () => {
 
   it('restores a durable pending proposal without another Harness run', () => {
     const reference = gate().costGate.prepare('p1')
-    const applyWiki = vi.fn()
+    const applyWiki = vi.fn(() => ({ change: 'change-9' }))
     const run = vi.fn()
     const restored = createHarnessCostGate({
       paper: () => structuredClone(paper),

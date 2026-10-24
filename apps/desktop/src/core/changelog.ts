@@ -764,6 +764,12 @@ export function withChangelog(ops: VaultOps, log: ChangeLogStore): VaultStore {
     return { ...project, ...lastProgressOf(rows, id, [...project.events, ...project.workspace?.events ?? []]) }
   }
 
+  /** Runs `write`, which replaces the body of Wiki page `id`, and records it as one change to that page. */
+  const onPageBody = (id: string, write: () => void): void => {
+    const title = id.startsWith(PAPER_PAGE) ? ops.wikiPaper(id).title : ops.wikiAggregation(id).title
+    wrote({ kind: 'pages', id, paths: [id] }, `Wiki · 「${title}」· 改了正文`, 'snapshot', write, [`~ ${id}`])
+  }
+
   /** Paper-field write that records the paper's pre-change shape. */
   const updatePaper = (id: string, patch: Partial<PaperFields>): void =>
     wrote({ kind: 'paper', id }, '改了字段', 'snapshot', () => ops.updatePaper(id, patch))
@@ -959,8 +965,11 @@ export function withChangelog(ops: VaultOps, log: ChangeLogStore): VaultStore {
     },
 
     updateWikiPage(id, body) {
-      const title = id.startsWith(PAPER_PAGE) ? ops.wikiPaper(id).title : ops.wikiAggregation(id).title
-      return wrote({ kind: 'pages', id, paths: [id] }, `Wiki · 「${title}」· 改了正文`, 'snapshot', () => ops.updateWikiPage(id, body), [`~ ${id}`])
+      onPageBody(id, () => ops.updateWikiPage(id, body))
+    },
+
+    applyPaperWikiDraft(id, body) {
+      onPageBody(id, () => ops.applyPaperWikiDraft(id, body))
     },
 
     listChanges() {

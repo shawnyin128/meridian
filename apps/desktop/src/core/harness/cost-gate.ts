@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto'
 import type {
   HarnessApplyPaperWikiParams, HarnessApplyPaperWikiResult, HarnessCancelResult, HarnessPlan, HarnessRunReceipt,
   HarnessPaperWikiQuality, HarnessPaperWikiReview, HarnessPendingPaperWikiResult, HarnessRejectPaperWikiResult,
-  HarnessRejectPaperWikiParams, HarnessStartParams, PaperReading, PaperRow, WikiPaper,
+  HarnessRejectPaperWikiParams, HarnessStartParams, PaperReading, PaperRow, RecordedChange, WikiPaper,
 } from '../../shared/contract.js'
 import { CallError, callFailure } from '../call-error.js'
 import type { HarnessProposalAuditEvent, PendingHarnessProposal } from './proposal-audit.js'
@@ -43,7 +43,8 @@ type Dependencies = {
   wiki: (id: string) => WikiPaper
   model: HarnessModel | (() => HarnessModel)
   run: HarnessRunner
-  applyWiki: (id: string, body: string) => void
+  /** Writes `body` to Wiki page `id` and returns the change entry that write recorded. */
+  applyWiki: (id: string, body: string) => RecordedChange
   recordProposal?: (event: Omit<HarnessProposalAuditEvent, 'schemaVersion'>) => void
   initialProposals?: readonly PendingHarnessProposal[]
   now?: () => Date
@@ -258,12 +259,13 @@ export function createHarnessCostGate(deps: Dependencies) {
       if (digestOf(current) !== proposal.scopeDigest) {
         throw new CallError('changed', '论文、笔记或 Wiki 已发生变化，请重新生成提案')
       }
-      deps.applyWiki(`papers/${proposal.targetId}`, params.body)
+      const { change } = deps.applyWiki(`papers/${proposal.targetId}`, params.body)
       proposal.used = true
       const result: HarnessApplyPaperWikiResult = {
         proposalId: proposal.id,
         wikiId: `papers/${proposal.targetId}`,
         appliedAt: now().toISOString(),
+        change,
       }
       try {
         deps.recordProposal?.({

@@ -260,7 +260,7 @@ describe('change log', () => {
     expect(store.listChanges()).toEqual(before)
   })
 
-  it('改变持久知识的那 26 个写各记一条', () => {
+  it('改变持久知识的那 27 个写各记一条', () => {
     const writes: [string, () => unknown][] = [
       ['papers.update', () => store.updatePaper('Jiang-et-al-2024-Mixtral-of-Experts', { readState: '在读' })],
       ['papers.mutateReading note.delete', () => store.mutatePaperReading(READ, {
@@ -292,6 +292,7 @@ describe('change log', () => {
         ops: [{ op: 'appendEntry', page: 'topics/ptq', section: '未解决', date: '2026-08-25', text: '一条' }],
       })],
       ['wiki.update', () => store.updateWikiPage('topics/ptq', '## 问题\n改过。')],
+      ['harness.applyPaperWiki', () => store.applyPaperWikiDraft('papers/2210.17323', '## 概览\nHarness 生成的正文。')],
       ['project.create', () => store.createProject('新项目')],
       ['project.update', () => store.updateProject(PROJECT, { focus: '换个焦点' })],
       ['project.createTask', () => store.createTask(PROJECT, {
@@ -318,7 +319,7 @@ describe('change log', () => {
       ['project.createEvent', () => store.createEvent(PROJECT, '[对话] 来自对话的结论')],
       ['project.delete', () => store.deleteProject(PROJECT)],
     ]
-    expect(writes).toHaveLength(26)
+    expect(writes).toHaveLength(27)
 
     for (const [method, write] of writes) {
       const before = store.listChanges().length

@@ -6,6 +6,7 @@ import type {
   HarnessPaperWikiQuality, HarnessPlan, PaperReading, PaperRow,
 } from '../../../shared/contract.js'
 import { CallError } from '../../call-error.js'
+import type { NoticeAction } from '../Notice.js'
 import { MessagesProvider } from '../../messages/useMessages.js'
 import { LANGUAGE_STORAGE_KEY } from '../../shell/language.js'
 
@@ -39,6 +40,8 @@ const api = vi.hoisted(() => ({
   cancel: vi.fn(),
   apply: vi.fn(),
   reject: vi.fn(),
+  undo: vi.fn(),
+  notices: [] as { note: unknown; action: NoticeAction | undefined }[],
   settingsOpen: false,
   openCategory: vi.fn(),
   open: vi.fn(),
@@ -54,13 +57,21 @@ vi.mock('../../ipc.js', () => ({
     applyPaperWiki: api.apply,
     rejectPaperWiki: api.reject,
   },
+  changelog: { undo: api.undo },
+  trash: { restore: vi.fn() },
 }))
 vi.mock('../../shell/AppShell.js', () => ({
   useSettingsOpen: () => ({ open: api.settingsOpen, openCategory: api.openCategory }),
   useJump: () => ({ jump: null, open: api.open }),
 }))
 vi.mock('../../hooks/useVaultWrite.js', () => ({
-  useVaultWrite: () => async (operation: Promise<unknown>) => { await operation; return true },
+  useVaultWrite: () => async (operation: Promise<unknown>, opts?: {
+    note?: unknown; action?: (result: unknown) => NoticeAction
+  }) => {
+    const result = await operation
+    api.notices.push({ note: opts?.note, action: opts?.action?.(result) })
+    return true
+  },
 }))
 vi.mock('../HarnessAction.js', () => ({
   HarnessAction: ({ running, onStart, onCancel }: {
@@ -117,6 +128,8 @@ describe('PaperWikiIngest', () => {
     api.reject.mockReset().mockResolvedValue({
       proposalId: 'proposal-1', rejectedAt: '2026-09-17T12:01:00.000Z',
     })
+    api.undo.mockReset().mockResolvedValue(undefined)
+    api.notices = []
   })
   afterEach(() => act(() => root.unmount()))
 
@@ -158,6 +171,24 @@ describe('PaperWikiIngest', () => {
     })
     expect(api.apply).toHaveBeenCalledWith('proposal-1', '# Reviewed')
     expect(host.textContent).toContain('已写入 Wiki')
+  })
+
+  it('offers Undo in the notice of the Wiki write, undoing the change entry that write recorded', async () => {
+    api.apply.mockResolvedValueOnce({
+      proposalId: 'proposal-1', wikiId: 'papers/p1', appliedAt: '2026-09-17T12:01:00.000Z', change: 'change-9',
+    })
+    await act(async () => { root.render(withMessages(<PaperWikiIngest paper={paper} reading={reading} onJump={api.jump} />)) })
+    await act(async () => {
+      host.querySelector<HTMLButtonElement>('[data-testid="start-harness"]')!.click()
+    })
+    await act(async () => {
+      [...host.querySelectorAll<HTMLButtonElement>('button')]
+        .find((button) => button.textContent === '确认写入 Wiki')!.click()
+    })
+
+    expect(api.notices.map(({ note, action }) => [note, action?.label])).toEqual([['Wiki 提案已写入论文页', '撤销']])
+    await act(async () => { api.notices[0]!.action!.onAction() })
+    expect(api.undo).toHaveBeenCalledExactlyOnceWith('change-9')
   })
 
   it('names an audit record that could not be written by its reason, next to the ready proposal', async () => {
