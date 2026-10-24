@@ -101,6 +101,8 @@ Current shared contracts:
   `warn`, `bad`, `info`, `paper`, `wiki`, and `ghost` for the slot that adds a tag to a row) and `shape` the
   box (`label` for a status, kind, priority or source word; `chip` for a name, topic, date or value).
   `TagButton` is the clickable tag and `tagClass` gives a trigger another component renders the same classes.
+  A tag keeps the width of its text: the text beside it gives way first, and when its row still has no
+  room the tag hides as a whole. Only a `capped` tag, whose placement caps it for a long value, fades its text.
   `CountBadge` is the one count beside a label. A host places and sizes these through `className` but never
   sets their fill, colour, border, radius or padding.
 - `StatusDot`: the one state dot, in two sizes. A dot whose state no nearby text names carries a `label`.

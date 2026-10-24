@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { Page } from '@playwright/test'
-import { expect, test, type MeridianWindow } from './app.js'
+import { expect, test, unfitTags, type MeridianWindow } from './app.js'
 
 /** Screens stay mounted once visited, so selectors every screen has are scoped to the visible one. */
 const shown = (win: Page) => win.locator('.screenslot:not([hidden])')
@@ -211,5 +211,33 @@ test('未开始的卡片和进行中的行,末尾的更新日期起点和右边�
     }
   } finally {
     rmSync(repo, { recursive: true, force: true })
+  }
+})
+
+test('项目名很长、行又放不下时,行里的标签都完整显示:标题和来源先让位,标签不被挤成一条缝', async ({ app, win }) => {
+  const idea = await seedIdea(win, '挤压标签用想法')
+  // A shelved project with a long name: its row shows the name and the shelved status tag side by side.
+  await win.evaluate(async (ideaId) => {
+    const meridian = (window as unknown as MeridianWindow).meridian
+    const name = '推测解码和 KV 量化联合优化'
+    await meridian.call('project.create', { name })
+    const projects = await meridian.call('project.list', {}) as { id: string; name: string }[]
+    const id = projects.find((project) => project.name === name)!.id
+    await meridian.call('project.update', { id, patch: { status: '搁置' } })
+    await meridian.call('idea.update', { id: ideaId, patch: { project: id } })
+  }, idea.id)
+  await gotoIdeas(win)
+  const row = shown(win).locator(`.idea-row[data-idea="${idea.id}"]`)
+  await expect(row.locator('.idea-row-work .tag')).toHaveText(['推测解码和 KV 量化联合优化', '搁置'])
+
+  for (const [width, height] of [[1440, 900], [1280, 800]] as const) {
+    await app.evaluate(({ BrowserWindow }, size) => BrowserWindow.getAllWindows()[0]!.setContentSize(size.width, size.height), { width, height })
+    await expect.poll(() => win.evaluate(() => window.innerWidth)).toBe(width)
+    expect(await unfitTags(shown(win).locator('.ideas-list')), `${width}×${height}`).toEqual([])
+    await row.click()
+    await expect(shown(win).locator('.idea-detail-panel')).toHaveCount(1)
+    expect(await unfitTags(shown(win).locator('.ideas-list')), `${width}×${height} 详情开着`).toEqual([])
+    await shown(win).locator('.idea-detail-panel .panel-close').click()
+    await expect(shown(win).locator('.idea-detail-panel')).toHaveCount(0)
   }
 })

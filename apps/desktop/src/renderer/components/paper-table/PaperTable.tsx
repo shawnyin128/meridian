@@ -958,7 +958,7 @@ export function PaperTable() {
     const editing = editingCell?.id === p.id && editingCell.key === column.key
     if (!editing) {
       if (column.type === 'text') return <span className="ci">{values[0] ?? ''}</span>
-      return <span className="ci">{values.map((v) => <Tag shape="chip" className="tagchip" key={v}>{v}</Tag>)}</span>
+      return <span className="ci">{values.map((v) => <Tag shape="chip" capped className="tagchip" key={v}>{v}</Tag>)}</span>
     }
     if (column.type === 'text') {
       return (

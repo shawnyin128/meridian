@@ -137,7 +137,7 @@ describe('Ideas', () => {
 
   it('想法按做到哪一步分组：未开始是卡片，进行中和已完成是行，放下的收进已归档；搁置项目里的想法算进行中，带搁置标签', async () => {
     await act(async () => { root.render(<MessagesProvider><Ideas /></MessagesProvider>) })
-    const groups = [...host.querySelectorAll<HTMLElement>('.ideas-list > .section-heading')].map((heading) => heading.textContent)
+    const groups = [...host.querySelectorAll<HTMLElement>('.ideas-list .section-heading')].map((heading) => heading.textContent)
     expect(groups).toEqual(['未开始 · 1', '进行中 · 2', '已完成 · 1', '各项目的想法'])
     const row = (id: string) => host.querySelector<HTMLElement>(`[data-idea="${id}"]`)!
     expect(row('idea-independent').classList.contains('research-object-card')).toBe(true)

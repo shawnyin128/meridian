@@ -89,12 +89,12 @@ function IdeaRelationTags({ idea, projectsById, pageTitles }: {
   return (
     <>
       {(idea.relations?.projects ?? []).map((id) => (
-        <Tag shape="chip" className="idea-relation-tag" key={id}>
+        <Tag shape="chip" capped className="idea-relation-tag" key={id}>
           {m.ideas.link.project(projectsById.get(id)?.name ?? m.ideas.link.unavailable)}
         </Tag>
       ))}
       {(idea.relations?.pages ?? []).map((id) => (
-        <Tag shape="chip" className="idea-relation-tag" key={id}>{m.ideas.relation.page(pageTitles.get(id) ?? id)}</Tag>
+        <Tag shape="chip" capped className="idea-relation-tag" key={id}>{m.ideas.relation.page(pageTitles.get(id) ?? id)}</Tag>
       ))}
     </>
   )
@@ -470,14 +470,17 @@ export function Ideas() {
   })
   const card = (idea: ResearchIdea) => <IdeaCard key={idea.id} {...shared(idea)} pageTitles={pageTitles} menu={menuOf(idea)} />
   const row = (idea: ResearchIdea) => <IdeaRow key={idea.id} {...shared(idea)} menu={menuOf(idea)} />
-  const rowGroup = (heading: string, ideas: ResearchIdea[], empty: string) => (
+  /** A group's rows, or its placeholder while they load, or its empty state. */
+  const groupRows = (ideas: ResearchIdea[], empty: string) => (rows === null
+    ? (error === null ? <LoadingPlaceholder shape="rows" count={2} /> : null)
+    : ideas.length === 0
+      ? <EmptyState variant="section">{empty}</EmptyState>
+      : <StructuredList variant="embedded" maxVisibleRows="all" className="idea-rows">{ideas.map(row)}</StructuredList>)
+  const rowGroups = (
     <>
-      <SectionHeading>{heading}</SectionHeading>
-      {rows === null
-        ? (error === null ? <LoadingPlaceholder shape="rows" count={2} /> : null)
-        : ideas.length === 0
-          ? <EmptyState variant="section">{empty}</EmptyState>
-          : <StructuredList variant="embedded" maxVisibleRows="all">{ideas.map(row)}</StructuredList>}
+      {groupRows(started, m.ideas.emptyGroup.active)}
+      <SectionHeading>{m.ideas.groups.done(done.length)}</SectionHeading>
+      {groupRows(done, m.ideas.emptyGroup.done)}
     </>
   )
   const b = m.ideas.byProject
@@ -522,8 +525,9 @@ export function Ideas() {
             ) : open.length === 0
               ? (draft === null ? <EmptyState variant="section">{m.ideas.emptyGroup.open}</EmptyState> : null)
               : open.map(card)}
-            {rowGroup(m.ideas.groups.active(started.length), started, m.ideas.emptyGroup.active)}
-            {rowGroup(m.ideas.groups.done(done.length), done, m.ideas.emptyGroup.done)}
+            <SectionHeading>{m.ideas.groups.active(started.length)}</SectionHeading>
+            {/* Loaded rows of both groups lay out on one grid, so their columns line up across the groups. */}
+            {rows === null ? rowGroups : <div className="idea-row-groups">{rowGroups}</div>}
             {archived.length === 0 ? null : (
               <CollapsibleGroup
                 variant="quiet" title={m.common.archived} count={archived.length}

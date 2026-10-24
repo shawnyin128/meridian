@@ -18,6 +18,8 @@ button.tag:hover{color:var(--ink);background-image:linear-gradient(var(--hover),
 button.tag:active{background-image:linear-gradient(var(--press),var(--press))}
 button.tag--ghost:hover{border-color:var(--sec);background-image:none}
 button.tag:disabled{cursor:default;opacity:.45;background-image:none}
+/* A tag that yields hides as a whole and keeps its box, so nothing moves. */
+.tag--yielded{visibility:hidden}
 
 .count-badge{display:inline-flex;align-items:center;justify-content:center;flex:none;box-sizing:border-box;
   min-width:var(--sp-20);height:var(--sp-20);padding:0 var(--sp-6);border-radius:var(--r-chip);background:var(--chip);

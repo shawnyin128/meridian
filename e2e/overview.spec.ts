@@ -1,6 +1,6 @@
 import type { Page } from '@playwright/test'
 import {
-  dshort, expect, fixtureDay, overlaps, test, timelinePeriod, vaultToday, type MeridianWindow,
+  dshort, expect, fixtureDay, overlaps, test, timelinePeriod, unfitTags, vaultToday, type MeridianWindow,
 } from './app.js'
 
 /** At this window content width, the Gantt viewport is only a little over 300 pixels wide. */
@@ -756,4 +756,26 @@ test('总览里删掉的里程碑,提示里的撤销把它放回 core 和时间�
   await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已撤销')
   await expect(diamond).toBeVisible()
   expect(await milestonesOf(win, 'repro')).toEqual(before)
+})
+
+test('项目名很长时,项目进展和需要注意的行里项目标签完整显示,列随最宽的项目变宽', async ({ app, win }) => {
+  // Overview fetches when it mounts, so the long-named project is created before it opens; its blocker
+  // puts it among the rows that need attention as well.
+  await win.evaluate(async () => {
+    const meridian = (window as unknown as MeridianWindow).meridian
+    const name = '推测解码和 KV 量化联合优化'
+    await meridian.call('project.create', { name })
+    const projects = await meridian.call('project.list', {}) as { id: string; name: string }[]
+    await meridian.call('project.update', { id: projects.find((project) => project.name === name)!.id, patch: { block: '等机器' } })
+  })
+  await gotoOverview(win)
+  for (const list of ['.ovpulse', '.ovlist-row.attention']) {
+    await expect(shown(win).locator(`${list} .project-label`, { hasText: '推测解码和 KV 量化联合优化' })).toHaveCount(1)
+  }
+
+  for (const [width, height] of [[1440, 900], [1280, 800]] as const) {
+    await app.evaluate(({ BrowserWindow }, size) => BrowserWindow.getAllWindows()[0]!.setContentSize(size.width, size.height), { width, height })
+    await expect.poll(() => win.evaluate(() => window.innerWidth)).toBe(width)
+    expect(await unfitTags(shown(win).locator('.ovpulse, .ovlist')), `${width}×${height}`).toEqual([])
+  }
 })

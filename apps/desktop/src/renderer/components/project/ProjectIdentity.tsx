@@ -41,7 +41,7 @@ export function ProjectPriorityTag({ priority, className }: {
   return <Tag tone={PRIORITY_TONE[priority]} className={className}>{priority.toUpperCase()}</Tag>
 }
 
-/** The one project-name label for lists that tag a row with its project; it yields width before its neighbours. */
+/** The one project-name label for lists that tag a row with its project; like every tag, it keeps its width. */
 export function ProjectLabel({ name, className }: { name: string; className?: string }) {
   return (
     <Tooltip label={name} whenClipped>

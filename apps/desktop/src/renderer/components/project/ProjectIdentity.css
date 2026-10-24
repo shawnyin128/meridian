@@ -3,5 +3,4 @@
 .project-identity-topic{color:var(--ter);font-size:var(--fs-sm)}
 .project-identity.progress{display:flex;min-width:0;flex-direction:column;align-items:stretch;justify-content:center;gap:var(--sp-6)}
 .project-identity-line{display:flex;min-width:0;align-items:center;gap:var(--sp-8)}
-.project-label{flex:0 1 auto}
 .project-identity-sub{color:var(--ter);font-size:var(--fs-sm)}
