@@ -16,6 +16,7 @@ import { errorLabel } from '../lib/failure-label.js'
 import {
   useCrumbTail, useEscapeLayer, useJump, useNotice, useToday, useVaultRevision,
 } from '../shell/AppShell.js'
+import { ActionButton } from '../components/ActionButton.js'
 import { AddAction } from '../components/AddAction.js'
 import { DraftForm, DraftLine } from '../components/DraftForm.js'
 import { MenuItem } from '../components/ActionMenu.js'
@@ -331,6 +332,7 @@ export function ProjectDetail({
   const [sshHost, setSshHost] = useState('')
   const [sshPath, setSshPath] = useState('')
   const [sshPort, setSshPort] = useState('')
+  const [binding, setBinding] = useState<'local' | 'ssh' | null>(null)
   const planList = useRef<HTMLDivElement>(null)
   const planAdd = useRef<HTMLButtonElement>(null)
   const ganttAdd = useRef<HTMLButtonElement>(null)
@@ -516,10 +518,12 @@ export function ProjectDetail({
   }
 
   const connectLocalWorkspace = async () => {
+    setBinding('local')
     const connected = await writeProject(
       projectApi.bindWorkspace(projectId, { kind: 'local', root: localPath.trim() }),
       m.project.workspace.connected,
     )
+    setBinding(null)
     if (connected) setWorkspaceOpen(false)
   }
 
@@ -536,10 +540,12 @@ export function ProjectDetail({
 
   const connectSshWorkspace = async () => {
     const port = sshPort.trim() === '' ? undefined : Number(sshPort)
+    setBinding('ssh')
     const connected = await writeProject(projectApi.bindWorkspace(projectId, {
       kind: 'ssh', host: sshHost.trim(), path: sshPath.trim(),
       ...(port === undefined ? {} : { port }),
     }), m.project.workspace.sshConnected)
+    setBinding(null)
     if (connected) setWorkspaceOpen(false)
   }
 
@@ -726,8 +732,18 @@ export function ProjectDetail({
           <>
             <button type="button" className="btn" onClick={() => setWorkspaceOpen(false)}>{m.common.cancel}</button>
             {workspaceMode === 'local'
-              ? <button type="submit" form="workspaceLocal" className="workspace-local btn pri">{m.project.workspace.add}</button>
-              : <button type="submit" form="workspaceSsh" className="btn pri">{m.project.workspace.connect}</button>}
+              ? (
+                <ActionButton
+                  type="submit" form="workspaceLocal" className="workspace-local btn pri" disabled={binding !== null}
+                  busy={binding === 'local'} busyLabel={m.project.workspace.adding}
+                >{m.project.workspace.add}</ActionButton>
+              )
+              : (
+                <ActionButton
+                  type="submit" form="workspaceSsh" className="btn pri" disabled={binding !== null}
+                  busy={binding === 'ssh'} busyLabel={m.project.workspace.connecting}
+                >{m.project.workspace.connect}</ActionButton>
+              )}
           </>
         )}
       >

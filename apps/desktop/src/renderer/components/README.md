@@ -122,6 +122,8 @@ Current shared contracts:
   library search configure the same focus restoration, icon geometry, and accessible naming.
 - `GenerationControl`: the shared idle, spinning, and hover-to-stop button contract for model-backed
   actions. Chat composers and Wiki Harness generation do not define independent running animations.
+- `ActionButton`: the busy state of a text button that starts an action. While `busy` it reads its busy label,
+  is marked `aria-busy`, and is disabled, so a second press cannot start the action again.
 - `RunningRing` (in `icons`): the one running indicator, `DownloadRing` without a total, turning once per
   `--t-spin` in the colour of the text around it. GenerationControl and About use it; a running job is
   never drawn in a danger tone.
