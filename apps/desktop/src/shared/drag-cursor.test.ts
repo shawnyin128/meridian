@@ -12,7 +12,7 @@ type Window = {
     querySelector(selector: string): Node
   }
   MouseEvent: new (type: string, init: { bubbles: boolean; buttons: number }) => object
-  getComputedStyle(element: Node): { cursor: string }
+  getComputedStyle(element: Node): { cursor: string; opacity: string; boxShadow: string }
 }
 const { document, MouseEvent, getComputedStyle } = globalThis as unknown as Window
 
@@ -89,5 +89,33 @@ describe('拖动处的光标', () => {
       .flatMap((rule) => rule.selector.split(/,(?![^(]*\))/).map((selector) => `${rule.path}: ${selector.trim()}`))
       .filter((selector) => !/:active|\.dragging\b|\.panning\b/.test(selector))
     expect(atRest).toEqual([])
+  })
+})
+
+describe('拖动中的行和落点', () => {
+  /** Each reorderable row: its own stylesheet and its markup as its component renders it. */
+  const ROWS: Record<string, [sheet: string, markup: string]> = {
+    '项目行': ['routes/Projects.css', '<div class="structured-row structured-row--composite prow" data-reorder-item="p1"></div>'],
+    '想法行': ['routes/Ideas.css', '<div class="structured-row structured-row--composite idea-row" data-reorder-item="i1"></div>'],
+  }
+  /** The opacity and box shadow of the row in `markup` under `sheets`, held, then with the drop line above and below. */
+  const feedback = (sheets: string[], markup: string) => ['dragging', 'drag-over-before', 'drag-over-after'].map((state) => {
+    document.head.innerHTML = sheets.map(source).map((css) => `<style>${css}</style>`).join('')
+    document.body.innerHTML = markup
+    const row = document.querySelector('[data-reorder-item]')
+    row.classList.add(state)
+    const style = getComputedStyle(row)
+    return [style.opacity, style.boxShadow]
+  })
+
+  it('项目行和想法行拖动时变淡、落点画线,都只来自共享的拖动样式', () => {
+    const rows = Object.entries(ROWS)
+    expect(Object.fromEntries(rows.map(([name, [sheet, markup]]) => [name, [
+      feedback(['components/StructuredList.css', sheet], markup),
+      feedback(['components/StructuredList.css', sheet, 'components/DragHandle.css'], markup),
+    ]]))).toEqual(Object.fromEntries(rows.map(([name]) => [name, [
+      [['1', ''], ['1', ''], ['1', '']],
+      [['0.4', ''], ['1', '0 -2px 0 0 var(--ink)'], ['1', '0 2px 0 0 var(--ink)']],
+    ]])))
   })
 })
