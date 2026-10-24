@@ -2,6 +2,7 @@
 import { act, useRef, type ReactNode } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
+import type { TrashEntry } from '../../shared/contract.js'
 import { MarkdownBox } from '../components/Markdown.js'
 import { MessagesProvider } from '../messages/useMessages.js'
 import { LANGUAGE_STORAGE_KEY } from './language.js'
@@ -18,6 +19,7 @@ const fixture = vi.hoisted(() => ({
   chats: [{ id: 'c1', title: '讨论', archived: false, messageCount: 1 }],
   deleteChat: vi.fn(async () => ({ trash: 'trash-9' })),
   restoreTrash: vi.fn(async () => {}),
+  trash: [] as TrashEntry[],
   back: vi.fn(),
   platform: 'darwin',
   fullScreen: [] as ((on: boolean) => void)[],
@@ -56,7 +58,7 @@ vi.mock('../ipc.js', () => ({
   papers: { list: () => Promise.resolve({ rows: [], total: 0 }) },
   project: { list: () => Promise.resolve(fixture.projects) },
   search: { query: none },
-  trash: { list: none, restore: fixture.restoreTrash },
+  trash: { list: () => Promise.resolve(fixture.trash), restore: fixture.restoreTrash },
   vault: { today: () => fixture.today() },
   watch: { list: () => Promise.resolve(fixture.watches) },
   wiki: { home: () => Promise.resolve({ aggregationCount: 0 }) },
@@ -67,6 +69,7 @@ const {
   AppShell, useCrumbTail, useEscapeLayer, useJump, useNotice, usePaperChatCollapsed, useSettingsOpen,
 } = await import('./AppShell.js')
 const { useJumpOrigin } = await import('../hooks/useJumpOrigin.js')
+const { Trash } = await import('../routes/Trash.js')
 const { TOOLTIP_DELAY } = await import('../components/Tooltip.js')
 
 const TAIL = [{ text: '深层' }]
@@ -800,5 +803,34 @@ describe('侧栏对话行的删除', () => {
     const items = await chatMenu('c1')
     await act(async () => { items.find((item) => item.textContent === '删除')!.click() })
     expect(crumbs()).toEqual(['动态'])
+  })
+})
+
+describe('垃圾桶的分组顺序', () => {
+  /** The sidebar row each trash kind's group stands for; null for a kind the sidebar has no row for. */
+  const SIDEBAR_ROW: Record<TrashEntry['kind'], string | null> = {
+    attachment: null, chat: '[data-sect="chats"]', idea: '[data-desk="ideas"]', inbox: '#rowInboxAll',
+    later: '[data-desk="later"]', paper: '[data-desk="papers"]', project: '[data-desk="resproj"]',
+  }
+
+  afterEach(() => { fixture.trash = [] })
+
+  it('垃圾桶的分组按侧栏里各自那一行的先后排，侧栏没有的附件排最后', async () => {
+    const kinds = Object.keys(SIDEBAR_ROW) as TrashEntry['kind'][]
+    const deletedAt = Date.parse('2026-10-18T00:00:00Z')
+    fixture.trash = kinds.map((kind) => ({ id: `trash-${kind}`, kind, title: kind, deletedAt, restorable: true }))
+    await mount(undefined, { trash: <Trash /> })
+    await act(async () => { controlOf('[data-desk="trash"]').click() })
+
+    const sidebar = [...document.querySelectorAll('#sidebar *')]
+    const place = (kind: TrashEntry['kind']): number => {
+      const selector = SIDEBAR_ROW[kind]
+      if (selector === null) return sidebar.length
+      const row = document.querySelector(selector)
+      expect(sidebar, kind).toContain(row)
+      return sidebar.indexOf(row!)
+    }
+    const groups = [...document.querySelectorAll('.tgroup')].map((list) => list.querySelector('.tt2')!.textContent)
+    expect(groups).toEqual([...kinds].sort((a, b) => place(a) - place(b)))
   })
 })
