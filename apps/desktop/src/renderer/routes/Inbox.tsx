@@ -46,8 +46,8 @@ const streamLabel = (m: Catalog, stream: 'watch' | 'discovery'): string =>
   (stream === 'watch' ? m.inbox.streamLabel.watch : m.inbox.streamLabel.discovery)
 
 /**
- * The watch fetch's status line for `scope`: when the last finished run fetched that scope and brought
- * nothing new, it says so with the time of that run.
+ * The watch fetch's status line for `scope`: the time of the last finished run when it fetched that
+ * scope, saying first when it brought nothing new, or else the time of the last full fetch.
  */
 function fetchNote(status: FetchStatus | null, scope: string, m: Catalog): ReactNode {
   if (status === null) return ''
@@ -55,11 +55,14 @@ function fetchNote(status: FetchStatus | null, scope: string, m: Catalog): React
   if (status.state === 'failed') return failureLabel(m, m.inbox.check.failed, status.reason ?? 'unknown')
   const last = status.last
   const fetched = last?.watches === null ? scope === ALL_WATCHES : last?.watches.length === 1 && last.watches[0] === scope
-  if (last !== undefined && last.added === 0 && fetched) {
-    return <>{m.inbox.check.noneNew} · {m.inbox.check.lastChecked}{' '}<DateTimeDisplay at={last.at} /></>
-  }
-  if (status.checkedAt === null) return ''
-  return <>{m.inbox.check.lastChecked}{' '}<DateTimeDisplay at={status.checkedAt} /></>
+  const at = last !== undefined && fetched ? last.at : status.checkedAt
+  if (at === null) return ''
+  return (
+    <>
+      {last !== undefined && fetched && last.added === 0 ? `${m.inbox.check.noneNew} · ` : null}
+      {m.inbox.check.lastChecked}{' '}<DateTimeDisplay at={at} />
+    </>
+  )
 }
 
 /** What a discovery refresh brought; with nothing new, `lastFetchedAt` is when the scope was last refreshed. */

@@ -466,7 +466,7 @@ describe('Inbox', () => {
     await act(async () => { root.unmount() })
   })
 
-  it('检查新论文没带来新论文时,屏头写没有新论文和这一档上次检查的时刻;别的档照常写上次检查', async () => {
+  it('屏头写这一档上次检查的时刻,没带来新论文时先说没有新论文;别的档照常写整轮检查的时刻', async () => {
     const at = new Date(2026, 8, 21, 8, 15).getTime()
     status = {
       writes: 0, uploads: [], downloads: [],
@@ -477,6 +477,11 @@ describe('Inbox', () => {
     await act(async () => { root.render(<MessagesProvider><Inbox /></MessagesProvider>) })
     expect(host.querySelector('.fetchnote')!.textContent).toBe('没有新论文 · 上次检查 9月21日08:15')
     await act(async () => { root.unmount() })
+    status.fetch!.last = { watches: ['w1'], added: 2, at }
+    const added = createRoot(host)
+    await act(async () => { added.render(<MessagesProvider><Inbox /></MessagesProvider>) })
+    expect(host.querySelector('.fetchnote')!.textContent).toBe('上次检查 9月21日08:15')
+    await act(async () => { added.unmount() })
     api.scope = 'all'
     const all = createRoot(host)
     await act(async () => { all.render(<MessagesProvider><Inbox /></MessagesProvider>) })
