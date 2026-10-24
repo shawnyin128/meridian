@@ -96,6 +96,30 @@ describe('Semantic Scholar recommendations', () => {
   })
 })
 
+describe('Semantic Scholar DOIs', () => {
+  it('passes each candidate\'s DOI through from externalIds, and leaves it out when the API has none', async () => {
+    const paper = (paperId: string, externalIds: Record<string, string>) => ({
+      paperId, title: paperId, year: 2026, externalIds,
+    })
+    const canned = {
+      recommendations: bytes({ recommendedPapers: [
+        paper('with-doi', { ArXiv: '2609.00001', DOI: ' 10.48550/arXiv.2609.00001 ' }),
+        paper('without-doi', { ArXiv: '2609.00002' }),
+      ] }),
+      citations: bytes({ data: [{ citingPaper: paper('citing', { ArXiv: '2609.00003', DOI: '10.1145/3600006.3613165' }) }] }),
+    }
+    const get: HttpGet = async (url) => ({
+      status: 200, body: url.includes('/recommendations/') ? canned.recommendations : canned.citations,
+    })
+    const client = createSemanticRecommendations({ get, sleep: async () => {} })
+    const similar = await client.recommend([seed('ARXIV:2605.29343')], [])
+    const citing = await client.recommend([seed('ARXIV:2605.29343')], [], 'citation')
+    expect(similar.map((found) => found.doi)).toEqual(['10.48550/arXiv.2609.00001', undefined])
+    expect('doi' in similar[1]!).toBe(false)
+    expect(citing[0]?.doi).toBe('10.1145/3600006.3613165')
+  })
+})
+
 describe('Semantic Scholar paging', () => {
   it('pages citations and references by offset, one batch per page, leaving the first page address unchanged', async () => {
     const urls: string[] = []

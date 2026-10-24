@@ -57,7 +57,7 @@ type ApiPaper = {
   year?: unknown
   citationCount?: unknown
   influentialCitationCount?: unknown
-  externalIds?: { ArXiv?: unknown } | null
+  externalIds?: { ArXiv?: unknown; DOI?: unknown } | null
   publicationTypes?: unknown
 }
 
@@ -80,6 +80,7 @@ const discoveryPaper = (paper: ApiPaper, relevance: number): DiscoveryPaper | nu
   const title = text(paper.title)
   const semanticId = text(paper.paperId)
   if (arxiv === '' || title === '' || semanticId === '') return null
+  const doi = text(paper.externalIds?.DOI)
   const submitted = submittedOf(paper)
   const venue = text(paper.venue)
   const types = Array.isArray(paper.publicationTypes)
@@ -94,6 +95,7 @@ const discoveryPaper = (paper: ApiPaper, relevance: number): DiscoveryPaper | nu
     }) : []
   return {
     semanticId,
+    ...(doi === '' ? {} : { doi }),
     id: arxiv,
     title,
     authors,

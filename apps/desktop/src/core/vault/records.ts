@@ -110,6 +110,7 @@ export const CandidateRecordSchema = z.object({
   pdf: z.string(),
   ranking: InboxEntrySchema.shape.ranking.unwrap().exactOptional(),
   semanticId: z.string(),
+  doi: z.string().exactOptional(),
   matches: z.array(z.object({
     intentId: z.string(), intentLabel: z.string(), seedPaperIds: z.array(z.string()), core: z.boolean(),
   }).strict()).exactOptional(),

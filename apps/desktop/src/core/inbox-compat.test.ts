@@ -208,6 +208,14 @@ describe('论文推送重做后要写的存储形状', () => {
     expect(createVaultStore(vault).refreshProgress({ kind: 'project', id: project })).toEqual(next)
   })
 
+  it('候选池里的论文带着 DOI：存下再读回来，DOI 还在', () => {
+    const withDoi = { ...refound('2609.97001'), doi: '10.48550/arXiv.2609.97001' }
+    store.setRefreshProgress({ kind: 'project', id: project }, {
+      steps: {}, candidates: [withDoi], favouredAt: null, newest: [],
+    })
+    expect(createVaultStore(vault).refreshProgress({ kind: 'project', id: project }).candidates).toEqual([withDoi])
+  })
+
   it('关注的候选池也存在 progress.json：删掉的关注下次写时不留，这个版本读不了的关注照留', () => {
     store.createWatch({ type: 'topic', name: 'kv cache' })
     store.createWatch({ type: 'topic', name: 'speculative decoding' })
