@@ -2,7 +2,7 @@ import { resolve } from 'node:path'
 import type { Locator, Page } from '@playwright/test'
 import { ACTIVE_PROJECT, PROJECT_STATUSES, SHELVED_PROJECT } from '../apps/desktop/src/shared/vocabulary.js'
 import {
-  appSwitcher, dshort, expect, expectWholeInRail, fixtureDay, gotoProject, overlaps, railEdges, readDraft, test,
+  appSwitcher, dshort, expect, expectWholeInRail, fixtureDay, gotoProject, overlaps, panelHead, railEdges, readDraft, test,
   textBox, timelinePeriod, uniqueHeights, vaultToday, type MeridianWindow,
 } from './app.js'
 
@@ -983,6 +983,25 @@ test('节点阅读态保留科研图并扩宽右栏,可直接切换节点', asyn
   await side.locator('button[aria-label="收起详情"]').click()
   await expect(page).not.toHaveClass(/\bnode-reading\b/)
   await expect(side.locator('.section-heading').first()).toHaveText('属性')
+})
+
+test('任务详情头部的长标题仍是一行,在收起按钮前淡出,收起按钮在头部右上角', async ({ win }) => {
+  const title = '汇总今天的宽度扫描结果并把每个树宽下的接受率和端到端加速比整理成一张对比表交给组会'
+  // The plan's list shows the open tasks; this one is the first of them.
+  const task = (await readDraft(win)).tasks.find((held) => held.title === '宽树实验 B≥8')!
+  await call(win, 'project.updateTask', { projectId: 'draft', taskId: task.id, patch: { title } })
+  await gotoProject(win)
+  await win.locator(`#taskList .ddlrow[data-row="${task.id}"] .plan-name`).click()
+  const side = win.locator('.screenslot:not([hidden]) .wkside')
+  await expect(side.locator('.node-document-title')).toHaveText(title)
+  await expect(side.locator('.node-document-title')).toHaveClass(/\bclipped\b/)
+
+  const head = await panelHead(side.locator('.node-document-head'), '.node-document-title', '.section-heading-actions .icbtn')
+  expect(head.actions.map(({ label, width, height }) => [label, width, height])).toEqual([['收起详情', 30, 30]])
+  expect(Math.abs(head.actions[0]!.right - head.content.right)).toBeLessThan(1)
+  expect(Math.round(head.actions[0]!.top - head.content.top)).toBe(0)
+  expect(head.title.lines).toHaveLength(1)
+  expect(head.title.right).toBeLessThanOrEqual(head.actions[0]!.left)
 })
 
 test('在项目详情里再点侧栏的「项目」,回到项目列表;返回键在页头标题左边', async ({ win }) => {

@@ -182,7 +182,10 @@ function PaperFieldEditor({ paper, field, display, save }: {
 export function PaperTitleField({ paper, onSaved }: { paper: PaperRow; onSaved: (paper: PaperRow) => void }) {
   const m = useMessages()
   const { patch: save } = usePaperSave(paper, onSaved, m.papers.metadata.fields)
-  return <PaperFieldEditor key={paper.id} paper={paper} field="title" display={<PaperText text={paper.title} />} save={save} />
+  // The room that keeps the first line clear of the head's buttons goes inside the button the title rests
+  // in: the button lays its text out on its own, so no room outside it reaches that line.
+  const display = <><span className="pd-room" aria-hidden="true" /><PaperText text={paper.title} /></>
+  return <PaperFieldEditor key={paper.id} paper={paper} field="title" display={display} save={save} />
 }
 
 /**

@@ -3,7 +3,7 @@ import type { PaperCell, PaperColumns } from '../apps/desktop/src/shared/contrac
 import {
   DEFAULT_PAPER_GROUPS, LATER_PAPER, READ_STATES, READING_PAPER, UNREAD_PAPER,
 } from '../apps/desktop/src/shared/vocabulary.js'
-import { expect, gotoPapers, parkPointer, settle, test, uniqueHeights, type MeridianWindow } from './app.js'
+import { expect, gotoPapers, panelHead, parkPointer, settle, test, uniqueHeights, type MeridianWindow } from './app.js'
 
 /** The reading statuses as the status menu names them, the read-later state by its shown name. */
 const READ_STATE_NAMES = READ_STATES.map((state) => (state === LATER_PAPER ? '待读' : state))
@@ -1184,6 +1184,31 @@ test('详情面板保留完整列与列操作,Escape 收的是详情面板', asy
   // Closing the details opens no popover; an add-column popover opened while the details were open
   // would show up now.
   await expect(win.locator('[data-radix-popper-content-wrapper]')).toHaveCount(0)
+})
+
+test('详情面板头部的长标题只在首行给打开和收起让位,第二行起占满头部的整行宽度', async ({ win }) => {
+  await win.locator('[data-desk="papers"]').waitFor()
+  // Han text breaks between any two characters, so every full line ends less than a character short of the space it has.
+  const title = '树形草稿在批量推理下的动态宽度选择与接受率分析以及验证开销随草稿深度增长的拆分测量和端到端加速比的对照'
+  const id = await call<{ rows: { id: string }[] }>(
+    win, 'papers.list', { page: 1, size: 1, sort: 'addedAt', direction: 'desc' },
+  ).then((r) => r.rows[0]!.id)
+  await call(win, 'papers.update', { id, patch: { title } })
+  await gotoPapers(win)
+  await firstPage(win)
+  await win.locator('.ptable tbody tr').first().locator('td.pt-title').click()
+  await expect(win.locator('.pdetail .pd-t')).toHaveText(title)
+
+  const head = await panelHead(win.locator('.pdetail .pd-h'), '.pd-t', '.icbtn')
+  expect(head.actions.map(({ label, width, height }) => [label, width, height]))
+    .toEqual([['开始阅读', 30, 30], ['收起详情', 30, 30]])
+  expect(Math.abs(head.actions[1]!.right - head.content.right)).toBeLessThan(1)
+  expect(head.actions.map((action) => Math.round(action.top - head.content.top))).toEqual([0, 0])
+  const [first, second] = head.title.lines
+  expect(head.title.lines.length).toBeGreaterThanOrEqual(3)
+  expect(first!.right).toBeLessThanOrEqual(head.actions[0]!.left)
+  expect(Math.abs(second!.left - head.content.left)).toBeLessThan(1)
+  expect(head.content.right - second!.right).toBeLessThan(head.title.fontSize)
 })
 
 test('建列被 core 拒绝:占位格与打好的列名都留着,改了再回车才建出来', async ({ win }) => {

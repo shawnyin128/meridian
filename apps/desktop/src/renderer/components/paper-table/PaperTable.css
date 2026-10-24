@@ -173,8 +173,15 @@
   background:var(--content);z-index:5}
 .pdetail{height:100%;box-sizing:border-box;overflow:auto;overscroll-behavior:contain;padding:var(--sp-16)}
 .desk-body.withdetail,.desk-foot.withdetail{margin-right:var(--detailw)}
-.pd-h{display:flex;align-items:flex-start;gap:var(--sp-8);margin-bottom:var(--sp-12)}
+/* --pd-buttons is the width of the head's two icon buttons and the gaps before them. */
+.pd-h{--pd-buttons:calc(2 * (30px + var(--sp-8)));display:flex;align-items:flex-start;gap:var(--sp-8);margin-bottom:var(--sp-12)}
 .pd-t{font-size:var(--fs-section);font-weight:var(--fw-title);line-height:var(--lh-ui);flex:1;min-width:0}
+/*
+ * At rest the title runs on under the buttons, which lie over it at the top right, and its room keeps
+ * the first line clear of them. Edited in a field, whose text cannot flow around them, it stays beside them.
+ */
+.pd-t:has(.pd-room){margin-right:calc(-1 * var(--pd-buttons))}
+.pd-room{float:right;width:var(--pd-buttons);height:1lh}
 /* The title is the panel's head, in the head's ink rather than a property value's grey. */
 .pd-t .metadata-editable{color:inherit}
 .pdetail .wkprops{grid-template-columns:52px 1fr;font-size:var(--fs-sm)}

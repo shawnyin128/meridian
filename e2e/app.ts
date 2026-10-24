@@ -195,6 +195,61 @@ export function textBox(box: Locator): Promise<{ left: number; top: number; widt
   })
 }
 
+type Box = { left: number; right: number; top: number }
+
+/**
+ * Where the parts of the panel head `head` lie: its content box inside border and padding; the title,
+ * the first element inside it matching `title`, as its box, the lines its text runs over and its font
+ * size; and each element inside it matching `actions`, with its box and accessible name, in order.
+ */
+export function panelHead(head: Locator, title: string, actions: string): Promise<{
+  content: Box
+  title: Box & { lines: Box[]; fontSize: number }
+  actions: (Box & { label: string; width: number; height: number })[]
+}> {
+  return head.evaluate((el, [titleSelector, actionSelector]) => {
+    const rect = el.getBoundingClientRect()
+    const style = getComputedStyle(el)
+    const content = {
+      left: rect.left + parseFloat(style.borderLeftWidth) + parseFloat(style.paddingLeft),
+      right: rect.right - parseFloat(style.borderRightWidth) - parseFloat(style.paddingRight),
+      top: rect.top + parseFloat(style.borderTopWidth) + parseFloat(style.paddingTop),
+    }
+    const titleElement = el.querySelector(titleSelector)!
+    const fragments: DOMRect[] = []
+    const texts = document.createTreeWalker(titleElement, NodeFilter.SHOW_TEXT)
+    for (let text = texts.nextNode(); text !== null; text = texts.nextNode()) {
+      const range = document.createRange()
+      range.selectNodeContents(text)
+      fragments.push(...[...range.getClientRects()].filter((fragment) => fragment.width > 0))
+    }
+    // Fragments of one line overlap the middle of that line's first fragment.
+    const lines: (Box & { bottom: number })[] = []
+    for (const fragment of fragments) {
+      const middle = (fragment.top + fragment.bottom) / 2
+      const line = lines.find((held) => middle > held.top && middle < held.bottom)
+      if (line === undefined) lines.push({ left: fragment.left, right: fragment.right, top: fragment.top, bottom: fragment.bottom })
+      else Object.assign(line, { left: Math.min(line.left, fragment.left), right: Math.max(line.right, fragment.right) })
+    }
+    const titleRect = titleElement.getBoundingClientRect()
+    return {
+      content,
+      title: {
+        left: titleRect.left, right: titleRect.right, top: titleRect.top,
+        lines: lines.sort((a, b) => a.top - b.top).map(({ left, right, top }) => ({ left, right, top })),
+        fontSize: parseFloat(getComputedStyle(titleElement).fontSize),
+      },
+      actions: [...el.querySelectorAll(actionSelector)].map((action) => {
+        const box = action.getBoundingClientRect()
+        return {
+          label: action.getAttribute('aria-label') ?? '', left: box.left, right: box.right, top: box.top,
+          width: box.width, height: box.height,
+        }
+      }),
+    }
+  }, [title, actions] as const)
+}
+
 /**
  * The property rail `rail`: where its content starts, the edge inside its border past which it clips,
  * and how far it is scrolled sideways.
