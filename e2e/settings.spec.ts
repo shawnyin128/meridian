@@ -76,6 +76,7 @@ test('应用菜单里有「设置…」,其余菜单仍是 Electron 的角色', 
   expect(menu.map((top) => top.role)).toEqual(mac
     ? ['appmenu', 'filemenu', 'editmenu', 'viewmenu', 'windowmenu', null]
     : [null, 'editmenu', 'viewmenu', null, 'windowmenu', null])
+  expect(menu.at(-1)!.label).toBe('帮助')
 
   const settings = menu.flatMap((top) => top.items).filter((item) => item.id === 'settings')
   expect(settings).toHaveLength(1)
