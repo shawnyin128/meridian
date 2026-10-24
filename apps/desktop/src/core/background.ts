@@ -12,6 +12,7 @@ import { createSemanticAuthors } from './net/semantic-authors.js'
 import { createArxivSuggestionSource, createWatchSuggestions } from './net/watch-suggestions.js'
 import { createAuthorSearch, type ScholarSource } from './net/scholar-sources.js'
 import { checkSemanticKey, createSemanticSearch } from './net/semantic-search.js'
+import { isUnopenedStore } from './unopened-store.js'
 import { createMetadataQueue, type PdfProbe } from './paper-library/index.js'
 import {
   createArxivRecommendations, createFallbackRecommendations, createRecommendationService,
@@ -30,6 +31,7 @@ export type Background = {
   fetchDiscoveries(projectId?: string, force?: boolean): Promise<DiscoveryFetchResult>
   /** One Semantic Scholar request with the saved key; fails as authentication when no key is saved. */
   checkSemanticKey(): Promise<SemanticKeyCheckResult>
+  /** Arms the six-hour watch schedule and returns its stop function; arms nothing while no vault is open. */
   armSchedule(): () => void
   status(): JobsStatus
   idle(): Promise<void>
@@ -133,7 +135,7 @@ export function createBackground(deps: {
     checkSemanticKey: () => (semanticKey() === undefined
       ? Promise.resolve({ state: 'failed', reason: 'authentication', detail: '还没有保存 key' })
       : checkSemanticKey(semanticGet)),
-    armSchedule: () => armFetchSchedule(fetcher, deps.now),
+    armSchedule: () => (isUnopenedStore(deps.store) ? () => {} : armFetchSchedule(fetcher, deps.now)),
     status: () => ({
       writes,
       uploads: metadata.uploads(),
