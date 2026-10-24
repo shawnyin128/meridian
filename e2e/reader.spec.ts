@@ -665,6 +665,9 @@ async function paintOver(win: Page, box: { left: number; right: number; top: num
   }, shot.toString('base64'))
 }
 
+/** A note line far longer than the selection toolbar is wide. */
+const LONG = '第二行写得很长，长到工具条那么宽放不下，要在批注框里折成好几行'
+
 // Pixel checks take screenshots of the window, which need a visible one.
 test.describe('选中文字时的选区', () => {
   test.use({ showWindow: true })
@@ -738,10 +741,13 @@ test.describe('选中文字时的选区', () => {
     const box = win.locator('.selection-tools textarea[aria-label="批注"]')
     await box.click()
     await expect.poll(() => win.evaluate(() => document.getSelection()!.isCollapsed)).toBe(true)
+    const width = (await win.locator('.selection-tools').boundingBox())!.width
     await box.pressSequentially('第一行')
     await box.press('Shift+Enter')
-    await box.pressSequentially('第二行')
-    await expect(box).toHaveValue('第一行\n第二行')
+    await box.pressSequentially(LONG)
+    await expect(box).toHaveValue(`第一行\n${LONG}`)
+    // A line longer than the toolbar wraps in the box instead of widening it.
+    expect((await win.locator('.selection-tools').boundingBox())!.width).toBe(width)
     await win.evaluate(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done))))
     expect(await shown(win, '.pdfpagebox .paper-selection path').getAttribute('d', { timeout: 1000 })).toBe(drawn)
     await box.press('Enter')
@@ -751,6 +757,6 @@ test.describe('选中文字时的选区', () => {
     expect(await shown(win, '.pdfpagebox .paper-highlight path').first().getAttribute('d')).toBe(drawn)
     await expect(shown(win, '.pdfpagebox .paper-selection svg')).toHaveCount(0)
     await shown(win, '.reader-rail [aria-label="高亮与批注"]').click()
-    await expect(shown(win, '.highlight-card.yellow textarea')).toHaveValue('第一行\n第二行')
+    await expect(shown(win, '.highlight-card.yellow textarea')).toHaveValue(`第一行\n${LONG}`)
   })
 })
