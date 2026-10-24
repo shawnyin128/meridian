@@ -1,6 +1,7 @@
 import { useLayoutEffect, useRef, useState } from 'react'
 import type { KeyboardEvent, ReactNode, RefObject } from 'react'
 import { NO_TRIGGERS, useOnLeave } from '../hooks/useOnLeave.js'
+import { appMenu } from '../ipc.js'
 import { commitsMultiline, composing } from '../lib/keyboard.js'
 import { Card } from './Card.js'
 import { EditActions } from './EditActions.js'
@@ -12,7 +13,7 @@ export type DraftInvalid = (missing: boolean) => true | undefined
 /**
  * The one form drafted in place: a new item, or a change to one, with its fields where it lands and
  * Cancel and Save at its foot. It opens with its first field focused. Enter in a one-line field, or
- * ⌘Enter / Ctrl+Enter in a long text, saves as Save does; Escape cancels; the keys of an input method
+ * ⌘Enter on macOS and Ctrl+Enter elsewhere in a long text, saves as Save does; Escape cancels; the keys of an input method
  * composition, and those of a menu opened from a field, are not the draft's. Leaving the draft, by a
  * press outside it or focus moving out of it, neither saves nor cancels, except that it cancels a
  * draft its host calls `empty`; a press on `triggers`, the controls that open the draft, is not
@@ -68,7 +69,7 @@ export function DraftForm({ destination, canSave, onSave, onCancel, empty = fals
       return
     }
     const commits = target instanceof HTMLTextAreaElement
-      ? commitsMultiline(event.nativeEvent)
+      ? commitsMultiline(appMenu.platform(), event.nativeEvent)
       : target instanceof HTMLInputElement && event.key === 'Enter'
     if (!commits) return
     event.preventDefault()

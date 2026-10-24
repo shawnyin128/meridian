@@ -5,7 +5,7 @@ import type {
   IdeaRelations as IdeaRelationsValue, ProjectDetail, ProjectSummary, ResearchIdea,
 } from '../../shared/contract.js'
 import { FINISHED_PROJECT, SHELVED_PROJECT } from '../../shared/vocabulary.js'
-import { idea as ideaApi, project as projectApi, wiki as wikiApi } from '../ipc.js'
+import { appMenu, idea as ideaApi, project as projectApi, wiki as wikiApi } from '../ipc.js'
 import { MenuItem, MenuSeparator } from '../components/ActionMenu.js'
 import { SortMenu } from '../components/SortMenu.js'
 import { FormInput, FormTextarea } from '../components/FormControls.js'
@@ -283,11 +283,11 @@ function IdeaDetailPanel({
       if (saved) setEditing(false)
     })
   }
-  /** Enter commits the title, ⌘Enter or Ctrl+Enter the body, and Escape restores both. */
+  /** Enter commits the title, ⌘Enter on macOS or Ctrl+Enter elsewhere the body, and Escape restores both. */
   const commitOrCancel = (multiline: boolean) => (event: KeyboardEvent<HTMLElement>) => {
     if (composing(event.nativeEvent)) return
     if (event.key === 'Escape') { event.stopPropagation(); cancelEditing(); return }
-    if (multiline ? commitsMultiline(event.nativeEvent) : event.key === 'Enter') { event.preventDefault(); save() }
+    if (multiline ? commitsMultiline(appMenu.platform(), event.nativeEvent) : event.key === 'Enter') { event.preventDefault(); save() }
   }
 
   return (

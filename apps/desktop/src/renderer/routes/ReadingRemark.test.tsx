@@ -32,12 +32,14 @@ describe('ReadingRemark', () => {
 
   beforeEach(() => {
     globalThis.IS_REACT_ACT_ENVIRONMENT = true
+    vi.stubGlobal('meridian', { platform: 'darwin' })
     window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'zh')
     document.body.innerHTML = ''
   })
 
   afterEach(() => {
     for (const root of roots.splice(0)) act(() => root.unmount())
+    vi.unstubAllGlobals()
   })
 
   it('没改过时保存按不动,改过之后存的是去掉首尾空白的整段', async () => {
