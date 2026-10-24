@@ -4,6 +4,7 @@ import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { TrashEntry } from '../../shared/contract.js'
 import { CallError } from '../call-error.js'
+import { TOOLTIP_DELAY } from '../components/Tooltip.js'
 import { MessagesProvider } from '../messages/useMessages.js'
 import { LANGUAGE_STORAGE_KEY } from '../shell/language.js'
 
@@ -63,6 +64,32 @@ function button(scope: ParentNode, label: string): HTMLButtonElement {
     .find((item) => item.textContent === label || item.getAttribute('aria-label') === label)
   if (found === undefined) throw new Error(`找不到按钮 ${label}`)
   return found
+}
+
+/**
+ * What a row shows about restoring it: whether its Restore is disabled, the tag on the row, and the
+ * name and note of the tooltip the pointer opens on Restore, which is closed again afterwards.
+ */
+function restoreState(row: Element): [boolean, string | null, [string | null, string | null] | null] {
+  const restore = button(row, '恢复')
+  vi.useFakeTimers()
+  try {
+    act(() => { restore.dispatchEvent(new PointerEvent('pointermove', { bubbles: true, pointerType: 'mouse' })) })
+    act(() => { vi.advanceTimersByTime(TOOLTIP_DELAY) })
+    const tip = document.querySelector('[role="tooltip"]')
+    const shown = tip === null
+      ? null
+      : [tip.childNodes[0]?.textContent ?? null, tip.querySelector('.tooltip-note')?.textContent ?? null] as [string | null, string | null]
+    act(() => {
+      restore.dispatchEvent(new PointerEvent('pointerout', { bubbles: true, pointerType: 'mouse', relatedTarget: document.body }))
+      restore.dispatchEvent(new PointerEvent('pointerleave', { pointerType: 'mouse' }))
+    })
+    act(() => { document.dispatchEvent(new PointerEvent('pointermove', { clientX: 400, clientY: 400, pointerType: 'mouse' })) })
+    act(() => { vi.runAllTimers() })
+    return [restore.disabled, row.querySelector('.tag')?.textContent ?? null, shown]
+  } finally {
+    vi.useRealTimers()
+  }
 }
 
 describe('Trash', () => {
@@ -127,13 +154,14 @@ describe('Trash', () => {
     expect(host.querySelector('.desk-foot')).toBeNull()
   })
 
-  it('附件所属项目已删除时恢复按不了，行上写着项目已删除；能恢复的不写', () => {
+  it('附件所属项目已删除时恢复按不了，原因项目已删除写在恢复的提示里，行上没有标签；能恢复的提示只有恢复', () => {
     const rows = [...host.querySelectorAll('.trow')]
-    expect(rows.map((row) => [button(row, '恢复').disabled, row.querySelector(':scope > .tag')?.textContent ?? null]))
-      .toEqual([[false, null], [false, null], [true, '项目已删除'], [false, null]])
+    expect(rows.map(restoreState)).toEqual([
+      [false, null, ['恢复', null]], [false, null, ['恢复', null]], [true, null, ['恢复', '项目已删除']], [false, null, ['恢复', null]],
+    ])
   })
 
-  it('论文原来的位置被同名论文占了时恢复按不了，行上写着库中已有同名论文', async () => {
+  it('论文原来的位置被同名论文占了时恢复按不了，原因库中已有同名论文写在恢复的提示里，行上没有标签', async () => {
     const held = api.entries
     api.entries = [{
       id: 'trash-5', kind: 'paper', title: 'Draft trees', deletedAt: Date.parse('2026-08-25T00:00:00Z'), restorable: false,
@@ -142,8 +170,7 @@ describe('Trash', () => {
       act(() => root!.unmount())
       root = createRoot(host)
       await act(async () => { root!.render(<MessagesProvider><Trash /></MessagesProvider>) })
-      const row = host.querySelector('.trow')!
-      expect([button(row, '恢复').disabled, row.querySelector(':scope > .tag')?.textContent]).toEqual([true, '库中已有同名论文'])
+      expect(restoreState(host.querySelector('.trow')!)).toEqual([true, null, ['恢复', '库中已有同名论文']])
     } finally {
       api.entries = held
     }
@@ -187,7 +214,7 @@ describe('Trash', () => {
     expect(host.querySelectorAll('.tgroup')[1]!.querySelector('.tt2')!.innerHTML).toMatch(/^<strong>L<\/strong>ater trees/)
   })
 
-  it('删掉的对话自成一组，排在论文之前，标题按论文标题显示；论文已有新对话时恢复按不了，行上写着论文已有新的对话', async () => {
+  it('删掉的对话自成一组，排在论文之前，标题按论文标题显示；论文已有新对话时恢复按不了，原因论文已有新的对话写在恢复的提示里，行上没有标签', async () => {
     const held = api.entries
     const deletedAt = Date.parse('2026-08-25T00:00:00Z')
     api.entries = [
@@ -204,8 +231,7 @@ describe('Trash', () => {
       .toEqual(['对话 · 2', '论文 · 2', '想法 · 1', '附件 · 2'])
     const rows = [...host.querySelectorAll('.tgroup')[0]!.querySelectorAll('.trow')]
     expect(rows[0]!.querySelector('.tt2')!.innerHTML).toMatch(/^<strong>C<\/strong>hat trees/)
-    expect(rows.map((row) => [button(row, '恢复').disabled, row.querySelector(':scope > .tag')?.textContent ?? null]))
-      .toEqual([[true, '论文已有新的对话'], [false, null]])
+    expect(rows.map(restoreState)).toEqual([[true, null, ['恢复', '论文已有新的对话']], [false, null, ['恢复', null]]])
   })
 
   it('彻底删除一条要先确认,确认后才清除', async () => {

@@ -188,6 +188,12 @@ test('原项目还在垃圾桶里时,那条附件恢复不回去,项目回来才
   // than clickable into an IPC error.
   await expect(attachmentRow.locator('.row-actions [aria-label="恢复"]')).toBeDisabled()
   await expect(projectRow.locator('.row-actions [aria-label="恢复"]')).toBeEnabled()
+  // The reason is the tooltip of the disabled Restore, which the pointer still opens, not a tag on the row.
+  await expect(attachmentRow.locator('.tag')).toHaveCount(0)
+  await attachmentRow.hover()
+  await attachmentRow.locator('.row-actions [aria-label="恢复"]').hover()
+  await expect(win.locator('[role="tooltip"]')).toHaveText('恢复项目已删除')
+  await expect(win.locator('[role="tooltip"] .tooltip-note')).toHaveText('项目已删除')
 
   await restore(projectRow)
   await expect(attachmentRow.locator('.row-actions [aria-label="恢复"]')).toBeEnabled()

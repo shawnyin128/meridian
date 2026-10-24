@@ -105,7 +105,9 @@ Current shared contracts:
 - `Tooltip`: the one tooltip, under the one `TooltipProvider` at the renderer root. Its text is the element's
   name plus the platform's shortcut (`commandShortcut`); it opens after one delay on hover and at once on
   keyboard focus, and with `whenClipped` only while a cut-off text needs showing whole. `IconButton`'s `label`
-  is its tooltip.
+  is its tooltip, and its `note` the line under it: a disabled button that has a reason, such as a Trash row's
+  Restore, states it there, never as a tag or a sentence beside the button. The pointer still opens the tooltip of
+  a disabled button.
 - `PanelClose`: the close button of a detail panel, with one label and one glyph everywhere.
 - `DetailPanel`: the shared open/closed state and motion contract for right-side details. Its `inline`,
   `overlay`, and `resize` modes cover panels that join layout, slide over it, or widen an existing rail;
