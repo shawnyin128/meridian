@@ -8,7 +8,7 @@ import { useJump, useVaultRevision } from '../shell/AppShell.js'
 import { CONFLICT_THREAD } from '../lib/chat.js'
 import { DateChip, DateTimeDisplay } from '../components/DateTimeDisplay.js'
 import { DayHeading, daySectionName } from '../components/DayHeading.js'
-import { ENTITY_SCREEN, EntityLink } from '../components/EntityLink.js'
+import { ENTITY_SCREEN, EntityLink, opensHere } from '../components/EntityLink.js'
 import { FirstRunChecklist } from '../components/FirstRunChecklist.js'
 import { LoadingPlaceholder } from '../components/LoadingPlaceholder.js'
 import {
@@ -70,9 +70,6 @@ const FSRC: Record<FeedSource, { icon: ReactNode }> = {
 const FILTERS: (FeedSource | null)[] = [null, 'steward', 'me', 'lab', 'inbox']
 
 type FeedRun = Extract<FeedEntry['body'], { kind: 'runs' }>['runs'][number]
-
-/** Whether a feed run's target names an entity this version opens. */
-const opensHere = (kind: string): kind is keyof typeof ENTITY_SCREEN => Object.hasOwn(ENTITY_SCREEN, kind)
 
 /** One run of a feed paragraph in its kind's look; one that names a paper, project or Wiki page is a link that opens it. */
 function Run({ run }: { run: FeedRun }) {

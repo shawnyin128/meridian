@@ -1,6 +1,6 @@
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type {
-  ChatMessage, PaperRow, ProjectSummary, WikiAggregationCard,
+  ChatMessage, ChatRun, PaperRow, ProjectSummary, WikiAggregationCard,
 } from '../../shared/contract.js'
 import { chat, feed, idea as ideaApi, papers, project, wiki } from '../ipc.js'
 import { errorLabel } from '../lib/failure-label.js'
@@ -12,30 +12,27 @@ import { useFormat, type Format } from '../lib/format.js'
 import { useMessages } from '../messages/useMessages.js'
 import type { Catalog } from '../messages/catalog.js'
 import { ChatMessageView } from '../components/chat/ChatMessage.js'
+import {
+  ChatComposer, draftText, type ChatComposerHandle, type MentionCandidate,
+} from '../components/chat/ChatComposer.js'
 import { FOCUS_KEY } from '../../shared/project-signals.js'
-import { PickerPopover, PickOption } from '../components/PickerPopover.js'
 import { EmptyState } from '../components/EmptyState.js'
-import { FormTextarea } from '../components/FormControls.js'
 import { LoadingPlaceholder } from '../components/LoadingPlaceholder.js'
 import {
   PageBody, PageError, PageFooter, PageHeader, PageShell, PageTitle,
 } from '../components/PageShell.js'
-import { useCandidateKeys } from '../hooks/useCandidateKeys.js'
 import { useDrafts } from '../hooks/useDrafts.js'
 import { useFollowEnd } from '../hooks/useFollowEnd.js'
 import { useGenerations } from '../hooks/useGenerations.js'
 import { useNoModelChats } from '../hooks/useNoModelChats.js'
 import { useJumpOrigin } from '../hooks/useJumpOrigin.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
-import { CONFLICT_THREAD, sendsMessage } from '../lib/chat.js'
-import { composing } from '../lib/keyboard.js'
+import { CONFLICT_THREAD } from '../lib/chat.js'
 import { IdeaDraft, type IdeaDraftText } from '../components/ideas/IdeaDraft.js'
-import { GenerationControl } from '../components/GenerationControl.js'
 import { BackButton } from '../components/BackButton.js'
 import { FadeText } from '../components/FadeText.js'
 import { Toolbar, ToolbarButton } from '../components/Toolbar.js'
 import { namedRuns, TitleNote } from '../components/TitleNote.js'
-import { NoModelTag } from '../components/NoModelTag.js'
 import { Tag } from '../components/Tag.js'
 import { Tooltip } from '../components/Tooltip.js'
 import { readStateName } from '../components/PaperMetadata.js'
@@ -46,19 +43,11 @@ import '../components/chat/Chat.css'
 
 /** How many recently added papers `@` offers, as in the demo's mentionEntities. */
 const MENTION_PAPERS = 5
-/** The mentionUI of the demo: Each group can list up to this many items. */
-const MENTION_PER_GROUP = 4
 /**
  * The demo's renderQuickMentions: the quick `@` buttons above the composer take this many
  * projects and this many papers.
  */
 const QUICK_MENTIONS = 2
-
-/** One candidate in the `@` picker; `entity` is the vault entity it names. */
-type Mention =
-  | { kind: 'project'; title: string; meta: string; entity: ProjectSummary }
-  | { kind: 'paper'; title: string; meta: string; entity: PaperRow }
-  | { kind: 'page'; title: string; meta: string; entity: WikiAggregationCard }
 
 /**
  * The entities `@` can reference, as in the demo's mentionEntities: projects first, by most recent
@@ -66,42 +55,26 @@ type Mention =
  */
 function mentionsOf(
   projects: ProjectSummary[], rows: PaperRow[], pages: WikiAggregationCard[], fmt: Format, m: Catalog,
-): Mention[] {
+): MentionCandidate[] {
   const advanced = (p: ProjectSummary) => {
     const last = p.recentEvents.at(-1)
     return last === undefined ? 0 : dnum(last.date)
   }
   return [
-    ...[...projects].sort((a, b) => advanced(b) - advanced(a)).map((p): Mention => ({
-      kind: 'project', title: p.name,
-      meta: `${p.status} · ${m.project.identity.focusLabel[FOCUS_KEY[p.status]]}:${p.focus}`, entity: p,
+    ...[...projects].sort((a, b) => advanced(b) - advanced(a)).map((p): MentionCandidate => ({
+      kind: 'project', id: p.id, title: p.name,
+      meta: `${p.status} · ${m.project.identity.focusLabel[FOCUS_KEY[p.status]]}:${p.focus}`, label: p.name,
     })),
-    ...rows.map((p): Mention => ({
-      kind: 'paper',
+    ...rows.map((p): MentionCandidate => ({
+      kind: 'paper', id: p.id,
       title: plainTitle(p.title),
       meta: p.year === undefined ? readStateName(m, p.readState) : `${p.year} · ${readStateName(m, p.readState)}`,
-      entity: p,
+      label: <PaperText text={p.title} />,
     })),
-    ...pages.map((p): Mention => ({
-      kind: 'page', title: p.title, meta: `${p.kindLabel} · ${m.common.updatedOn(fmt.date(p.updated))}`, entity: p,
+    ...pages.map((p): MentionCandidate => ({
+      kind: 'page', id: p.id, title: p.title, meta: `${p.kindLabel} · ${m.common.updatedOn(fmt.date(p.updated))}`, label: p.title,
     })),
   ]
-}
-
-/**
- * The `@` picker's candidates for the current input, as in the demo's mentionUI: an item matches
- * when the text typed after `@` appears in its name or its gray meta line, and each group keeps at
- * most MENTION_PER_GROUP matches.
- */
-function hitsOf(typed: string, all: Mention[]): Mention[] {
-  const needle = typed.slice(1).toLowerCase()
-  const perGroup: Record<string, number> = {}
-  return all
-    .filter((m) => !needle || m.title.toLowerCase().includes(needle) || m.meta.toLowerCase().includes(needle))
-    .filter((m) => {
-      perGroup[m.kind] = (perGroup[m.kind] ?? 0) + 1
-      return perGroup[m.kind]! <= MENTION_PER_GROUP
-    })
 }
 
 /** Persistent conversation UI. Core owns context and writes; each explicit send runs one Harness turn. */
@@ -114,9 +87,7 @@ export function Chat() {
   const { revision, bump } = useVaultRevision()
   const notice = useNotice()
   const [messages, setMessages] = useState<ChatMessage[] | null>(null)
-  const drafts = useDrafts()
-  // The `@` picker, like the draft, belongs to the chat it was opened in.
-  const [mentionIn, setMentionIn] = useState<string | null>(null)
+  const drafts = useDrafts<ChatRun[]>()
   // An idea being drafted belongs to its chat, as the message being typed does.
   const ideaDrafts = useDrafts<IdeaDraftText>()
   const ideaAt = useRef<HTMLDivElement>(null)
@@ -128,13 +99,12 @@ export function Chat() {
   const [error, setError] = useState<string | null>(null)
   // The page body, not the message list, scrolls the conversation.
   const { ref: followRef, follow } = useFollowEnd<HTMLDivElement>()
-  const composer = useRef<HTMLTextAreaElement>(null)
+  const composer = useRef<ChatComposerHandle>(null)
   const consumed = useRef(0)
   const reportError = useCallback((e: unknown) => setError(errorLabel(m, e)), [m])
   const write = useVaultWrite()
-  const draft = id === null ? '' : drafts.get(id) ?? ''
+  const draft = id === null ? [] : drafts.get(id) ?? []
   const ideaDraft = id === null ? undefined : ideaDrafts.get(id)
-  const mentioning = id !== null && mentionIn === id
   const sending = id !== null && running(id)
 
   useEffect(() => {
@@ -152,20 +122,16 @@ export function Chat() {
     void chat.messages(id).then(setMessages).catch(reportError)
   }, [id, revision, reportError])
 
+  // Empty until the vault data arrives, after which an `@` already typed opens the picker by itself.
   const mentions = useMemo(() => mentionsOf(projects, rows, pages, fmt, m), [projects, rows, pages, fmt, m])
-  // Candidates come from the current input and the loaded vault data: empty until the data arrives,
-  // after which the picker opens by itself.
-  const suggest = useMemo(() => (mentioning ? hitsOf(draft.trim(), mentions) : []), [mentioning, draft, mentions])
 
-  const send = useCallback((session: string, text: string) => {
+  const send = useCallback((session: string, runs: ChatRun[]) => {
     follow()
-    return run(session, write(track(session, chat.send(session, text))))
+    return run(write(track(session, chat.send(session, runs))))
   }, [follow, run, write, track])
 
   const stopSending = () => {
-    if (id === null) return
-    stop(id)
-    void chat.cancel(id)
+    if (id !== null) stop(id)
   }
 
   // The conflict brief in the Feed starts a new chat and asks the preset question, as in the demo.
@@ -179,41 +145,14 @@ export function Chat() {
     }
     void chat.create(m.chat.conflictTitle, true).then(async (session) => {
       select(session.id)
-      await send(session.id, m.chat.conflictQuestion)
+      await send(session.id, [{ kind: 'text', text: m.chat.conflictQuestion }])
     }).catch((e: unknown) => notice.refusal(errorLabel(m, e)))
   }, [jump, select, send, notice, m])
 
-  const setDraft = (text: string) => { if (id !== null) drafts.set(id, text) }
-  const setMentioning = (on: boolean) => setMentionIn(on ? id : null)
-
-  const type = (value: string) => {
-    setDraft(value)
-    setMentioning(value.trim().startsWith('@'))
-  }
-
-  // A row of the demo's cRes picker: replace the whole input with this mention
-  const pick = (name: string) => {
-    setDraft(`@${name} `)
-    setMentioning(false)
-    composer.current?.focus()
-  }
-  const keys = useCandidateKeys(suggest.length, (i) => pick(suggest[i]!.title))
-
-  // The demo's quick @: replace the leading mention and keep the text typed after it.
-  const quick = (name: string) => {
-    setDraft(`@${name} ${draft.replace(/^@\S+\s*/, '')}`)
-    composer.current?.focus()
-  }
-
   const submit = () => {
-    const v = draft.trim()
-    if (v === '' || id === null || sending) return
-    const mention = [...mentions].sort((a, b) => b.title.length - a.title.length)
-      .find((m) => v.toLowerCase().startsWith(`@${m.title}`.toLowerCase()))
-    if (v.startsWith('@') && mention === undefined) { setMentioning(true); return }
-    setDraft('')
-    setMentioning(false)
-    void send(id, v)
+    if (draftText(draft).trim() === '' || id === null || sending) return
+    drafts.set(id, [])
+    void send(id, draft)
   }
 
   const act = (message: ChatMessage) => {
@@ -291,8 +230,8 @@ export function Chat() {
                     ...mentions.filter((mention) => mention.kind === 'paper').slice(0, QUICK_MENTIONS),
                   ].map((mention) => (
                     <Tooltip key={mention.title} label={mention.title} whenClipped side="top">
-                      <ToolbarButton className="btn ghost sm qm" onClick={() => quick(mention.title)}>
-                        <FadeText>@{mention.kind === 'paper' ? <PaperText text={mention.entity.title} /> : mention.title}</FadeText>
+                      <ToolbarButton className="btn ghost sm qm" onClick={() => composer.current?.mention(mention)}>
+                        <FadeText>@{mention.label}</FadeText>
                       </ToolbarButton>
                     </Tooltip>
                   ))}
@@ -305,50 +244,11 @@ export function Chat() {
               </div>
             </Toolbar>
 
-            <PickerPopover
-              open={suggest.length > 0} onOpenChange={(open) => { if (!open) setMentioning(false) }}
-              contentClassName="pickhits cres" contentId="cRes" side="top" align="center" sideOffset={6}
-              anchor={(
-                <div className="cbox" id="cbox">
-                  <FormTextarea
-                    appearance="plain" id="composer" ref={composer} value={draft} rows={1} autoComplete="off"
-                    placeholder={m.chat.composerPlaceholder} disabled={sending || id === null}
-                    onChange={(e) => type(e.target.value)}
-                    onKeyDown={(e) => {
-                      // Only open candidates take the arrow keys; otherwise they move the caret between lines.
-                      if (suggest.length > 0) {
-                        if (composing(e.nativeEvent)) return
-                        keys.onKeyDown(e)
-                        if (e.key === 'Enter') e.preventDefault()
-                      } else if (sendsMessage(e.nativeEvent)) {
-                        e.preventDefault()
-                        submit()
-                      }
-                    }}
-                  />
-                  {id !== null && noModel(id) ? <NoModelTag label={m.chat.noModel} /> : null}
-                  <GenerationControl
-                    className="send" id="sendBtn" running={sending} disabled={id === null || draft.trim() === ''}
-                    onStart={submit} onStop={stopSending}
-                  />
-                </div>
-              )}
-              content={(
-                <>
-                  <div className="rh">{m.chat.mentionPickerHeading}</div>
-                  {suggest.map((hit, at) => (
-                    <Fragment key={`${hit.kind}${hit.title}`}>
-                      {suggest[at - 1]?.kind === hit.kind
-                        ? null
-                        : <div className="rg">{m.chat.mentionGroup[hit.kind]}</div>}
-                      <PickOption keys={keys} index={at} className="two-line" onClick={() => pick(hit.title)}>
-                        <div className="rt">@{hit.kind === 'paper' ? <PaperText text={hit.entity.title} /> : hit.title}</div>
-                        <div className="rm">{hit.meta}</div>
-                      </PickOption>
-                    </Fragment>
-                  ))}
-                </>
-              )}
+            <ChatComposer
+              key={id} ref={composer} id="composer" sendId="sendBtn" placeholder={m.chat.composerPlaceholder}
+              draft={draft} onDraft={(next) => { if (id !== null) drafts.set(id, next) }} unavailable={id === null}
+              running={sending} noModel={id !== null && noModel(id)} onSend={submit} onStop={stopSending}
+              mentions={mentions}
             />
           </div>
         </div>

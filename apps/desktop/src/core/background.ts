@@ -33,7 +33,8 @@ export type Background = {
   checkSemanticKey(): Promise<SemanticKeyCheckResult>
   /** Arms the six-hour watch schedule and returns its stop function; arms nothing while no vault is open. */
   armSchedule(): () => void
-  status(): JobsStatus
+  /** The jobs status without the chats being generated, which the chat service reports. */
+  status(): Omit<JobsStatus, 'generating'>
   idle(): Promise<void>
 }
 

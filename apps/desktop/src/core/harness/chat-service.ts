@@ -1,4 +1,4 @@
-import type { ChatMessageFields, ChatSendResult, TrashedEntry } from '../../shared/contract.js'
+import type { ChatMessage, ChatMessageFields, ChatRun, ChatSendResult, TrashedEntry } from '../../shared/contract.js'
 import { CallError, callFailure } from '../call-error.js'
 import type { VaultStore } from '../vault.js'
 import { trashedEntry } from '../write-receipts.js'
@@ -6,9 +6,15 @@ import type { ChatHarnessRunner } from './chat.js'
 import type { HarnessModelConfig } from './model-config.js'
 
 const textRun = (text: string) => [{ kind: 'text' as const, text }]
-const userMessage = (text: string): ChatMessageFields => ({
-  role: 'you', runs: textRun(text), actions: [],
-})
+/** `runs`, one or more, without the whitespace that starts or ends the turn and the text runs that leaves empty. */
+function trimmed(runs: readonly ChatRun[]): ChatRun[] {
+  const copied = runs.map((run) => ({ ...run }))
+  const first = copied[0]!
+  const last = copied.at(-1)!
+  if (first.kind === 'text') first.text = first.text.trimStart()
+  if (last.kind === 'text') last.text = last.text.trimEnd()
+  return copied.filter((run) => run.kind !== 'text' || run.text !== '')
+}
 const answerMessage = (text: string): ChatMessageFields => ({
   role: 'ai', runs: textRun(text), actions: [],
 })
@@ -25,10 +31,12 @@ export function createChatService(options: {
   const running = new Map<string, AbortController>()
 
   return {
-    async send(id: string, text: string): Promise<ChatSendResult> {
+    async send(id: string, written: readonly ChatRun[]): Promise<ChatSendResult> {
       if (running.has(id)) throw new CallError('busy', '这段对话仍在生成，请先停止或等待完成')
       options.store.chatSession(id)
-      options.store.appendChatMessages(id, [userMessage(text)])
+      const runs = trimmed(written)
+      const text = runs.map((run) => run.text).join('')
+      options.store.appendChatMessages(id, [{ role: 'you', runs, actions: [] }])
       if (!options.model.settings().configured || options.runner === null) return { id, state: 'failed', reason: 'no-model' }
 
       const controller = new AbortController()
@@ -47,16 +55,36 @@ export function createChatService(options: {
         if (running.get(id) === controller) running.delete(id)
       }
     },
+    /** Stops the reply being generated in `id`; from then on the chat no longer counts as generating. */
     cancel(id: string) {
       const controller = running.get(id)
       if (controller === undefined) return { id, cancelled: false }
       controller.abort()
+      running.delete(id)
       return { id, cancelled: true }
     },
     /** Stops the reply chat `id` is generating, if any, then moves the chat into the trash; throws when there is no such chat. */
     delete(id: string): TrashedEntry {
       running.get(id)?.abort()
       return trashedEntry(options.store, () => options.store.deleteChat(id))
+    },
+    /** The messages of chat `id`, each mention naming its entity only while that entity is in the vault. */
+    messages(id: string): ChatMessage[] {
+      let pages: Set<string> | undefined
+      const inVault = ({ kind, id: entity }: NonNullable<ChatRun['target']>): boolean => {
+        if (kind === 'project') return options.store.hasProject(entity)
+        if (kind === 'paper') return options.store.hasPaper(entity)
+        pages ??= new Set(options.store.wikiCards().map((card) => card.id))
+        return kind === 'page' && pages.has(entity)
+      }
+      return options.store.chatMessages(id).map((message) => ({
+        ...message,
+        runs: message.runs.map((run) => (run.target === undefined || inVault(run.target) ? run : { kind: run.kind, text: run.text })),
+      }))
+    },
+    /** The ids of the chats whose reply is being generated. */
+    generating(): string[] {
+      return [...running.keys()]
     },
   }
 }

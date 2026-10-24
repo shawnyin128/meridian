@@ -795,7 +795,7 @@ registerHandler('chat.list', (params) => {
   return store.listChats()
 })
 registerHandler('chat.messages', (params) =>
-  store.chatMessages(ChatMessagesParamsSchema.parse(params).id))
+  chatService.messages(ChatMessagesParamsSchema.parse(params).id))
 registerHandler('chat.create', (params) => {
   const { title, named } = ChatCreateParamsSchema.parse(params)
   return store.createChat(title, named)
@@ -807,8 +807,8 @@ registerHandler('chat.append', (params) => {
   return store.appendChatMessages(id, messages)
 })
 registerHandler('chat.send', (params) => {
-  const { id, text } = ChatSendParamsSchema.parse(params)
-  return chatService.send(id, text)
+  const { id, runs } = ChatSendParamsSchema.parse(params)
+  return chatService.send(id, runs)
 })
 registerHandler('chat.cancel', (params) =>
   chatService.cancel(ChatCancelParamsSchema.parse(params).id))
@@ -850,7 +850,7 @@ registerHandler('chat.delete', (params) => chatService.delete(ChatDeleteParamsSc
 registerHandler('search.query', (params) => store.search(SearchParamsSchema.parse(params).query))
 registerHandler('jobs.status', (params) => {
   EmptyParamsSchema.parse(params)
-  const status = background.status()
+  const status = { ...background.status(), generating: chatService.generating() }
   return showUiSamples ? withUiSampleUpload(status, Date.now()) : status
 })
 

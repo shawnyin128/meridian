@@ -1,35 +1,13 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useSyncExternalStore } from 'react'
+import { useEffect, useRef } from 'react'
 import type { ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { defaultKeymap, history, historyKeymap } from '@codemirror/commands'
 import { EditorState, Prec } from '@codemirror/state'
 import { EditorView, keymap } from '@codemirror/view'
 import { commitsMultiline } from '../lib/keyboard.js'
-import { livePreview, type PreviewSlots } from './markdown-preview.js'
+import { livePreview } from './markdown-preview.js'
+import { useWidgetSlots } from './widget-slots.js'
 import './MarkdownEditor.css'
-
-/** A rendered block's element and the source to render into it; `key` tells the blocks apart for React. */
-type Slot = { key: number; dom: HTMLElement; source: string }
-
-/** The rendered blocks an editor shows, as a store React subscribes to. */
-function previewSlots(): PreviewSlots & { subscribe: (listener: () => void) => () => void; current: () => readonly Slot[] } {
-  let slots: readonly Slot[] = []
-  let next = 0
-  const listeners = new Set<() => void>()
-  const changed = (to: readonly Slot[]) => {
-    slots = to
-    for (const listener of listeners) listener()
-  }
-  return {
-    add: (dom, source) => changed([...slots, { key: next++, dom, source }]),
-    remove: (dom) => changed(slots.filter((slot) => slot.dom !== dom)),
-    subscribe: (listener) => {
-      listeners.add(listener)
-      return () => listeners.delete(listener)
-    },
-    current: () => slots,
-  }
-}
 
 /**
  * A CodeMirror editor over the Markdown source `text` with live preview: each block the cursor is
@@ -48,9 +26,7 @@ export function MarkdownEditor({ text, onChange, preview }: {
   const view = useRef<EditorView | null>(null)
   const changed = useRef(onChange)
   changed.current = onChange
-  const slots = useMemo(previewSlots, [])
-  // A store update renders synchronously, so a block never shows empty for a frame.
-  const shown = useSyncExternalStore(slots.subscribe, slots.current)
+  const { slots, shown } = useWidgetSlots(view)
 
   useEffect(() => {
     const editor = new EditorView({
@@ -75,8 +51,6 @@ export function MarkdownEditor({ text, onChange, preview }: {
     editor.focus()
     return () => editor.destroy()
   }, [])
-  // The editor measured the rendered blocks before React filled them.
-  useLayoutEffect(() => { view.current?.requestMeasure() }, [shown])
 
   return (
     <div className="md-editor" ref={host}>
