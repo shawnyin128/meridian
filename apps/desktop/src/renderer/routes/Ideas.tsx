@@ -5,7 +5,7 @@ import type {
   IdeaRelations as IdeaRelationsValue, ProjectDetail, ProjectSummary, ResearchIdea,
 } from '../../shared/contract.js'
 import { FINISHED_PROJECT, SHELVED_PROJECT } from '../../shared/vocabulary.js'
-import { idea as ideaApi, project as projectApi, wiki as wikiApi } from '../ipc.js'
+import { chat as chatApi, idea as ideaApi, project as projectApi, wiki as wikiApi } from '../ipc.js'
 import { MenuItem, MenuSeparator } from '../components/ActionMenu.js'
 import { SortMenu } from '../components/SortMenu.js'
 import { FormInput, FormTextarea } from '../components/FormControls.js'
@@ -216,9 +216,12 @@ function IdeaRow({ idea, projectsById, selected, menu, onOpen, reorder, dropClas
 }
 
 function IdeaDetailPanel({
-  idea, linked, projects, pageTitles, candidate, onClose, onSave, onRelations, onProject, onPromote, onPlace, onOpen, onError,
+  idea, sourceChatDeleted, linked, projects, pageTitles, candidate, onClose, onSave, onRelations, onProject, onPromote, onPlace,
+  onOpen, onError,
 }: {
   idea: ResearchIdea
+  /** Whether the chat the idea came from is deleted. */
+  sourceChatDeleted: boolean
   linked: ProjectSummary | undefined
   projects: ProjectSummary[]
   pageTitles: ReadonlyMap<string, string>
@@ -277,7 +280,7 @@ function IdeaDetailPanel({
   return (
     <aside className="idea-detail-panel node-document-pane" ref={panelFade} data-fade-paint="" aria-label={m.ideas.detailHeading}>
       <IdeaPanel
-        idea={idea} onClose={onClose} onOpenSourceChat={(chatId) => onOpen('chat', chatId)}
+        idea={idea} onClose={onClose} onOpenSourceChat={(chatId) => onOpen('chat', chatId)} sourceChatDeleted={sourceChatDeleted}
         sourceProject={idea.sourceProject === undefined ? undefined : projects.find((project) => project.id === idea.sourceProject)?.name}
         onOpenSourcePaper={(paperId) => onOpen('reader', paperId)}
         actions={(
@@ -360,6 +363,7 @@ export function Ideas() {
   const [rows, setRows] = useState<ResearchIdea[] | null>(null)
   const [projects, setProjects] = useState<ProjectSummary[]>([])
   const [pageTitles, setPageTitles] = useState<ReadonlyMap<string, string>>(new Map())
+  const [chatIds, setChatIds] = useState<ReadonlySet<string>>(new Set())
   const [candidateSource, setCandidateSource] = useState<ProjectDetail | null>(null)
   const [details, setDetails] = useState<ReadonlyMap<string, ProjectDetail>>(new Map())
   const [selectedId, setSelectedId] = useState<string | null>(null)
@@ -369,7 +373,7 @@ export function Ideas() {
   const closeDetail = useCallback(() => setSelectedId(null), [])
 
   const load = useCallback(() => {
-    void Promise.all([ideaApi.list(), projectApi.list(), wikiApi.cards()]).then(async ([ideas, projectRows, cards]) => {
+    void Promise.all([ideaApi.list(), projectApi.list(), wikiApi.cards(), chatApi.list()]).then(async ([ideas, projectRows, cards, chats]) => {
       // A node's state lives in its project's graph, so the projects holding an idea's node are read whole.
       const holding = [...new Set(ideas.flatMap((idea) => (idea.node === undefined || idea.project === undefined ? [] : [idea.project])))]
       const held = await Promise.all(holding.map((id) => projectApi.get(id)))
@@ -377,6 +381,7 @@ export function Ideas() {
       setProjects(projectRows)
       setDetails(new Map(held.map((detail) => [detail.id, detail])))
       setPageTitles(new Map(cards.map((card) => [card.id, card.title])))
+      setChatIds(new Set(chats.map((chat) => chat.id)))
       setSelectedId((held) => held !== null && ideas.some((idea) => idea.id === held) ? held : null)
       setError(null)
     }).catch((cause: unknown) => setError(errorLabel(m, cause)))
@@ -555,6 +560,7 @@ export function Ideas() {
             {selected === undefined ? null : (
               <IdeaDetailPanel
                 idea={selected}
+                sourceChatDeleted={selected.source.chatId !== undefined && !chatIds.has(selected.source.chatId)}
                 linked={selected.project === undefined ? undefined : projectsById.get(selected.project)}
                 projects={projects}
                 pageTitles={pageTitles}

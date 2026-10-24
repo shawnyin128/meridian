@@ -9,6 +9,7 @@ const say = (role, ...runs) => ({ role, runs: runs.map((run) => (typeof run === 
  * a reply whose action records a research record for the KV cache project. Ideas are saved from those
  * chats in every state: placed on the research graph, linked only, archived, promoted to a project,
  * unlinked, and deleted into Trash; one idea the user wrote down without a chat is linked to a project.
+ * One chat an idea was saved from is then deleted into Trash, so that idea's source is a deleted chat.
  * Two ideas relate to projects and a Wiki page other than where they came from, and one is written
  * down on the KV cache project's page.
  */
@@ -81,4 +82,11 @@ export async function seedConversations(seed, call) {
   await call('idea.create', {
     title: '按层分配 KV 位宽预算', body: '浅层对量化误差更敏感，给定总位宽时按层分配，而不是每层一样。', sourceProject: seed.projects.kv.id,
   })
+
+  const temperature = await call('chat.create', { title: '草稿采样的温度要不要调', named: true })
+  await append(temperature.id, [
+    say('you', '草稿模型的采样温度和目标模型一样设吗？'), say('ai', '不必：草稿温度低一点接受率更高，但分布偏得太远会被拒绝得更多。'),
+  ])
+  await idea(temperature, '按接受率自动调草稿温度', '接受率掉下来时把草稿温度往目标模型的温度拉，接受率高时再放低。')
+  await call('chat.delete', { id: temperature.id })
 }
