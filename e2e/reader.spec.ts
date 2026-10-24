@@ -798,4 +798,36 @@ test.describe('选中文字时的选区', () => {
     expect(refused).toBe('refused')
     expect((await call<Held>(win, 'papers.reading', { id })).highlights).toHaveLength(1)
   })
+
+  test('批注框里写了字再点页上别处,像 Enter 一样存下;按 Esc 丢掉写的字,已经划的高亮留着;问 AI 的标记和颜色圈一样高', async ({ win }) => {
+    await openTight(win)
+    const lines = await textLines(win)
+    await dragAcross(win, lines.slice(0, 2))
+    const tools = win.locator('.selection-tools')
+    // The AI mark is as tall as a colour circle, its glyph the size of the reader's other nested icon buttons.
+    const mark = (await tools.locator('.icbtn').boundingBox())!
+    const circle = (await tools.locator('.swatch').first().boundingBox())!
+    expect(mark.height).toBe(circle.height)
+    expect((await tools.locator('.icbtn svg').boundingBox())!.height)
+      .toBe((await shown(win, '.zoomctl .icbtn svg').first().boundingBox())!.height)
+
+    await tools.locator('textarea').click()
+    await tools.locator('textarea').pressSequentially('点外面也留着')
+    const page = (await shown(win, '.pdfpagebox').boundingBox())!
+    await win.mouse.click(page.x + page.width / 2, page.y + page.height - 40)
+    await expect(tools).toHaveCount(0)
+    await expect(shown(win, '.pdfpagebox .paper-highlight.yellow .paper-highlight-note')).toHaveCount(1)
+
+    await dragAcross(win, lines.slice(3, 4))
+    await tools.locator('[aria-label="绿色"]').click()
+    await tools.locator('textarea').click()
+    await tools.locator('textarea').pressSequentially('按了 Esc')
+    await win.keyboard.press('Escape')
+    await expect(tools).toHaveCount(0)
+    await expect(shown(win, '.pdfpagebox .paper-highlight.green')).toHaveCount(1)
+    await expect(shown(win, '.pdfpagebox .paper-highlight.green .paper-highlight-note')).toHaveCount(0)
+    await shown(win, '.reader-rail [aria-label="高亮与批注"]').click()
+    await expect(shown(win, '.highlight-card.yellow textarea')).toHaveValue('点外面也留着')
+    await expect(shown(win, '.highlight-card.green textarea')).toHaveValue('')
+  })
 })

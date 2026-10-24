@@ -9,6 +9,7 @@ import { papers } from '../ipc.js'
 import { sendsMessage } from '../lib/chat.js'
 import { errorLabel } from '../lib/failure-label.js'
 import { useMessages } from '../messages/useMessages.js'
+import { useOnLeave } from '../hooks/useOnLeave.js'
 import {
   useCrumbTail, useJump, useNotice, useVaultRevision, type CrumbSeg, type ScreenKey, type JumpAnchor,
 } from '../shell/AppShell.js'
@@ -235,6 +236,9 @@ export function Reader() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const scroller = useRef<HTMLDivElement>(null)
+  const tools = useRef<HTMLDivElement>(null)
+  // Closes the selection toolbar as leaving it does; set once `leaveTools` is defined below.
+  const leave = useRef(() => {})
   const selectionAnchor = useRef<AnchorBox | null>(null)
   selectionAnchor.current = pending?.box ?? null
   const sheet = useRef<HTMLDivElement>(null)
@@ -590,7 +594,7 @@ export function Reader() {
    * only becomes the zoom they are laid out at.
    */
   const zoomTo = useCallback((target: number, point: { x: number; y: number }) => {
-    setPending(null)
+    leave.current()
     shownZoom.current = clampZoom(target)
     if (slots.current.size === 0) {
       zoomRef.current = shownZoom.current
@@ -731,7 +735,7 @@ export function Reader() {
   useEffect(() => {
     const view = scroller.current
     if (pending === null || view === null) return
-    const close = () => setPending(null)
+    const close = () => leave.current()
     view.addEventListener('scroll', close, { passive: true })
     return () => view.removeEventListener('scroll', close)
   }, [pending])
@@ -793,16 +797,32 @@ export function Reader() {
    */
   const saveNote = async (note: string) => {
     if (pending === null || (note === '' && edited === null)) return
-    const target = edited ?? await highlightSelection(pending, 'yellow')
+    const selection = pending
+    const target = edited ?? await highlightSelection(selection, 'yellow')
     if (target === null) return
-    if (note === target.note || await mutateReading({ kind: 'highlight.update', id: target.id, note }) !== null) setPending(null)
+    if (note === target.note || await mutateReading({ kind: 'highlight.update', id: target.id, note }) !== null) {
+      setPending((held) => (held?.box === selection.box ? null : held))
+    }
   }
+
+  /**
+   * Closes the selection toolbar the way a draft is left: what its note box holds is saved as Enter
+   * saves it. Escape is the one way to close the toolbar that drops the typed text.
+   */
+  const leaveTools = () => {
+    if (pending === null) return
+    const note = noteDraft.trim()
+    setPending(null)
+    if (note !== '') void saveNote(note)
+  }
+  leave.current = leaveTools
+  useOnLeave(tools, leaveTools)
 
   const askAi = () => {
     if (pending === null) return
     setChatPrompt({ seq: Date.now(), quote: pending.quote })
     window.getSelection()?.removeAllRanges()
-    setPending(null)
+    leaveTools()
   }
 
   const jumpToPage = (page: number) => {
@@ -838,10 +858,12 @@ export function Reader() {
             contentProps={{
               // Opening leaves focus where it is, so the selection can still be copied.
               onOpenAutoFocus: (event) => event.preventDefault(),
+              // A press outside or focus leaving goes through useOnLeave, which saves the note first.
+              onInteractOutside: (event) => event.preventDefault(),
             }}
           >
             {pending === null ? null : (
-              <>
+              <div ref={tools} className="selection-tools-body">
                 <Toolbar>
                   <div className="selection-tools-row">
                     <IconButton label={m.reader.selection.askAi} size="nested" onClick={askAi}><IconAskAi /></IconButton>
@@ -867,7 +889,7 @@ export function Reader() {
                     }}
                   />
                 )}
-              </>
+              </div>
             )}
           </ActionPopover>
 

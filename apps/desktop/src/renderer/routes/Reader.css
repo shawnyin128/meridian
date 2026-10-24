@@ -69,7 +69,8 @@
  * the note box under them as wide as the row, which grows with its lines; a long note wraps instead
  * of widening the toolbar.
  */
-.ctxmenu.selection-tools{display:flex;flex-direction:column;gap:var(--sp-8);width:min-content;min-width:0}
+.ctxmenu.selection-tools{width:min-content;min-width:0}
+.selection-tools-body{display:flex;flex-direction:column;gap:var(--sp-8)}
 .selection-tools-row{display:flex;align-items:center;gap:var(--sp-10)}
 .selection-tools .form-textarea{width:100%;resize:none;field-sizing:content;max-height:calc(6lh + 2 * var(--sp-8) + 2px)}
 
