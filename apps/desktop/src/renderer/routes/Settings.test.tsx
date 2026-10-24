@@ -326,7 +326,7 @@ describe('Settings', () => {
     const dialog = document.querySelector('.setdlg')!
     await act(async () => { dialog.querySelector<HTMLElement>('[data-setcat="api"]')!.click() })
     const alert = dialog.querySelector('.set-body [role="alert"]')
-    expect([alert?.className, alert?.textContent]).toEqual(['ipcerror ipcerror--page', '需要更新 App'])
+    expect([alert?.className, alert?.textContent]).toEqual(['ipcerror ipcerror--section', '需要更新 App'])
   })
 
   it('API 与论文推送的子分类默认收起，点开父级或直接进入子级都会展开', async () => {

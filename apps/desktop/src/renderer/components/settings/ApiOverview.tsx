@@ -36,7 +36,7 @@ export function ApiOverview({ onOpen }: { onOpen: (category: 'model' | 'research
 
   return (
     <>
-      <PageError error={error} />
+      <PageError error={error} variant="section" />
       <StructuredList className="wlist">
         {rows.map((row) => (
           <StructuredRow composite className="wrow" data-api={row.key} key={row.key} onActivate={() => onOpen(row.key)}>
