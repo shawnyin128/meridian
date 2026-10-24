@@ -177,4 +177,24 @@ describe('feed rows', () => {
     host.remove()
     vi.unstubAllGlobals()
   })
+
+  it('选中的来源没有条目时，筛选条下面是共享的整屏空态，不是一片空白', async () => {
+    globalThis.IS_REACT_ACT_ENVIRONMENT = true
+    vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} })
+    feedList.rows = [{ ...ENTRY, id: 'a', source: 'lab' }]
+    const host = document.createElement('div')
+    document.body.append(host)
+    const root = createRoot(host)
+    await act(async () => { root.render(<MessagesProvider><Feed /></MessagesProvider>) })
+    expect(host.querySelector('.empty-state')).toBeNull()
+    const me = [...host.querySelectorAll<HTMLButtonElement>('.page-toolbar button')].find((b) => b.textContent === '我')!
+    await act(async () => { me.click() })
+    expect(host.querySelectorAll('.fitem')).toHaveLength(0)
+    const empty = host.querySelector('.msgs > .page-toolbar + .empty-state')
+    expect([empty?.className, empty?.textContent, empty?.querySelectorAll('svg').length])
+      .toEqual(['empty-state empty-state--page', '还没有动态', 1])
+    await act(async () => { root.unmount() })
+    host.remove()
+    vi.unstubAllGlobals()
+  })
 })
