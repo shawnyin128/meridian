@@ -226,6 +226,48 @@ test('研究地图从真实论文元数据形成可切换、可解释的重叠�
   await expect(win.locator('.research-map-detail-head .research-map-detail-name')).not.toHaveText(firstLabel)
 })
 
+test('研究地图详情卡里悬停的论文行铺到卡片的内边，行间分隔线也是，行里的内容和卡片标题一样缩进', async ({ win }) => {
+  await gotoPapers(win)
+  await firstPage(win)
+  await win.getByRole('radio', { name: '研究地图', exact: true }).click()
+  const papers = win.locator('.research-map-detail .research-map-paper')
+  await expect(papers.nth(1)).toBeVisible()
+  await papers.first().hover()
+
+  const geometry = await win.locator('.research-map-detail').evaluate((card) => {
+    const at = (value: number) => +value.toFixed(2)
+    const box = (el: Element) => el.getBoundingClientRect()
+    const inner = (el: Element) => {
+      const style = getComputedStyle(el)
+      return { left: at(box(el).left + parseFloat(style.borderLeftWidth)), right: at(box(el).right - parseFloat(style.borderRightWidth)) }
+    }
+    const edges = (el: Element) => ({ left: at(box(el).left), right: at(box(el).right) })
+    const list = card.querySelector<HTMLElement>('.research-map-papers')!
+    const [hovered, next] = [...list.querySelectorAll('.research-map-paper')]
+    const head = card.querySelector('.research-map-detail-head>div')!
+    // A list longer than five rows scrolls, and its scrollbar takes the card's inner right edge.
+    const scrollbar = list.offsetWidth - list.clientWidth
+    return {
+      card: inner(card), list: edges(list),
+      reach: { left: inner(card).left, right: at(inner(card).right - scrollbar) },
+      hovered: edges(hovered!), next: edges(next!),
+      fill: getComputedStyle(hovered!).backgroundImage,
+      divider: getComputedStyle(next!).borderTopWidth,
+      head: { start: at(box(head).left - inner(card).left), end: at(inner(card).right - box(head).right) },
+      content: {
+        start: at(box(hovered!.querySelector('.research-map-paper-title')!).left - box(hovered!).left),
+        end: at(box(hovered!).right - box(hovered!.querySelector('.research-map-paper-marks')!).right),
+      },
+    }
+  })
+  expect(geometry.fill).not.toBe('none')
+  expect(geometry.list).toEqual(geometry.card)
+  expect(geometry.hovered).toEqual(geometry.reach)
+  expect(geometry.next).toEqual(geometry.reach)
+  expect(geometry.divider).toBe('1px')
+  expect(geometry.content).toEqual(geometry.head)
+})
+
 test('论文表首列是冻结列', async ({ win }) => {
   await gotoPapers(win)
   await firstPage(win)
