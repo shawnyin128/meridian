@@ -42,8 +42,7 @@ describe('createInboxDownloads', () => {
     })
     expect(Buffer.from(store.paperSource(result.paper)))
       .toEqual(readFileSync(resolve(VAULT, FAST_INFERENCE)))
-    expect(store.listInbox().find((entry) => entry.id === 'specdec'))
-      .toMatchObject({ downloaded: true, paper: result.paper })
+    expect(store.listInbox().map((entry) => entry.id)).not.toContain('specdec')
     expect(store.listFeed()[0]).toMatchObject({
       source: 'me',
       body: {

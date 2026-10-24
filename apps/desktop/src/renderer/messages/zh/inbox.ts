@@ -30,7 +30,6 @@ export const inbox = {
     download: '下载并入库',
     readLater: '稍后阅读',
     dismiss: '忽略',
-    open: '打开',
   },
   notices: {
     queued: '已存入稍后阅读',
@@ -38,8 +37,7 @@ export const inbox = {
     dismissedAll: '已全部忽略',
     dismissed: '已忽略',
     duplicateToast: '库里已有这一篇',
-    alreadyInLibrary: (title: string) => `库里已经有这一篇：「${title}」`,
-    downloaded: '已下载入库 · 可阅读',
+    downloaded: '已入库',
     downloadFailed: '下载失败',
     remembered: '已记住',
     known: '已标记为已经了解',

@@ -31,6 +31,10 @@ const api = vi.hoisted(() => ({
   open: vi.fn(),
   /** The sort order of each inbox.list call, in order. */
   sorts: [] as (string | undefined)[],
+  notice: {
+    success: vi.fn<(text: unknown, action?: { label: string; onAction: () => void }) => void>(),
+    refusal: vi.fn(),
+  },
 }))
 
 vi.mock('../ipc.js', () => ({
@@ -65,7 +69,7 @@ vi.mock('../shell/AppShell.js', () => ({
   useSettingsOpen: () => ({
     open: false, requestedCategory: null, setOpen: vi.fn(), openCategory: api.openCategory,
   }),
-  useNotice: () => ({ success: vi.fn(), refusal: vi.fn() }),
+  useNotice: () => api.notice,
   useVaultRevision: () => ({ revision: 0, bump: vi.fn() }),
 }))
 vi.mock('../shell/useJobs.js', () => ({ useJobs: () => status }))
@@ -91,6 +95,7 @@ describe('Inbox', () => {
     api.setIntent.mockClear()
     api.openCategory.mockClear()
     api.open.mockClear()
+    api.notice.success.mockClear()
   })
   afterEach(() => {
     host.remove()
@@ -375,21 +380,31 @@ describe('Inbox', () => {
     await act(async () => { root.unmount() })
   })
 
-  it('入库撞上库里已有的那一篇时,提示里的打开进的是库里那一篇', async () => {
+  it('入库之后卡片离开论文推送,提示写已入库,提示里的开始阅读打开入库的那一篇;撞上库里已有的那一篇也一样', async () => {
     // As Core writes a new entry, it names no paper.
-    api.entries = [{
-      id: 'a1', kind: 'watch', watch: 'w1', project: '', source: '主题 · w1',
-      title: 'Paper a1', authors: 'Ada', venue: 'ICLR', abstract: 'Abstract', rec: '',
+    const entry = (id: string): InboxEntry => ({
+      id, kind: 'watch', watch: 'w1', project: '', source: '主题 · w1',
+      title: `Paper ${id}`, authors: 'Ada', venue: 'ICLR', abstract: 'Abstract', rec: '',
       reasons: [], downloaded: false, paper: '', pdf: 'https://arxiv.org/pdf/2609.1',
-    }]
-    api.downloads = { a1: { kind: 'existing', paper: 'Held-Paper', title: 'Held Paper' } }
+    })
+    api.entries = [entry('a1'), entry('a2')]
+    api.downloads = {
+      a1: { kind: 'added', paper: 'Added-Paper' },
+      a2: { kind: 'existing', paper: 'Held-Paper', title: 'Held Paper' },
+    }
     const root = createRoot(host)
     await act(async () => { root.render(<MessagesProvider><Inbox /></MessagesProvider>) })
-    const card = host.querySelector<HTMLElement>('.paper-card[data-pid="a1"]')!
-    await act(async () => { card.querySelector<HTMLButtonElement>('[aria-label="下载并入库"]')!.click() })
-    expect(card.querySelector('.pdup span')?.textContent).toBe('库里已经有这一篇：「Held Paper」')
-    await act(async () => { card.querySelector<HTMLButtonElement>('.pdup .btn')!.click() })
-    expect(api.open).toHaveBeenCalledWith('reader', 'Held-Paper')
+    const card = (id: string) => host.querySelector<HTMLElement>(`.paper-card[data-pid="${id}"]`)!
+    for (const [id, text, paper] of [['a1', '已入库', 'Added-Paper'], ['a2', '库里已有这一篇', 'Held-Paper']] as const) {
+      await act(async () => { card(id).querySelector<HTMLButtonElement>('[aria-label="下载并入库"]')!.click() })
+      expect(card(id).classList.contains('is-leaving')).toBe(true)
+      expect(card(id).querySelector('.pdup')).toBeNull()
+      const [said, action] = api.notice.success.mock.calls.at(-1)!
+      expect([said, action?.label]).toEqual([text, '开始阅读'])
+      act(() => action!.onAction())
+      expect(api.open).toHaveBeenLastCalledWith('reader', paper)
+    }
+    expect(host.querySelector('[aria-label="开始阅读"]')).toBeNull()
     await act(async () => { root.unmount() })
   })
 

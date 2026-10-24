@@ -35,6 +35,7 @@ import {
   writeProjectWorkspaceState, type ProjectRecord,
 } from './project-management/index.js'
 import { inboxFields, unseenPapers } from './inbox/dedup.js'
+import { createPaperIndex, libraryArxivId, libraryIdentity, paperIdentity } from './inbox/identity.js'
 import {
   applyRecommendationPreferences, buildRecommendationProfile, clusterRecommendationProfile,
   discoveryReasons, orderInbox, recommendationSeedIds,
@@ -43,7 +44,7 @@ import {
 import type { Json } from './vault/frontmatter.js'
 import { emitKey } from './vault/frontmatter.js'
 import type {
-  ChatRecord, InboxRecord, PaperSnapshot, TrashRecord, VaultState,
+  ChatRecord, InboxLeft, InboxRecord, PaperSnapshot, TrashRecord, VaultState,
 } from './vault/records.js'
 import {
   ChatRecordSchema, DiscoveryPreferencesRecordSchema, InboxRecordSchema, LaterRecordSchema,
@@ -1008,6 +1009,11 @@ export function createVaultStore(
     inbox = save('inbox', inbox.map((e) => (e.id === id ? { ...e, ...patch } : e)))
   }
 
+  /** Takes an inbox entry out of the feed for good, recording `left` as why, along with `patch`. */
+  const leaveEntry = (id: string, left: InboxLeft, patch: Partial<InboxRecord> = {}): void => {
+    putEntry(id, { ...patch, gone: true, left })
+  }
+
   /** Returns a chat by ID. Throws when the vault has no such chat. */
   const chatOf = (id: string): ChatRecord => {
     const chat = chats.find((c) => c.id === id)
@@ -1160,13 +1166,6 @@ export function createVaultStore(
     return entry
   }
 
-  const arxivSeed = (paper: PaperRow | undefined): string | null => {
-    if (paper === undefined) return null
-    const named = paper.identifier?.match(/^arXiv:(.+)$/i)?.[1]?.replace(/v\d+$/, '')
-    if (named) return named
-    return /^\d{4}\.\d{4,5}(?:v\d+)?$/.test(paper.id) ? paper.id.replace(/v\d+$/, '') : null
-  }
-
   const projectDiscoveryProfile = (projectId: string) => {
     const project = projectOf(projectId)
     const discovered = inbox.filter((entry) => entry.kind === 'discovery' && entry.project === projectId)
@@ -1189,7 +1188,7 @@ export function createVaultStore(
       ].filter(Boolean).join(' · '),
       wikiTerms,
       projectPapers: linkedPapers.flatMap((paper) => {
-        const seed = arxivSeed(paper)
+        const seed = libraryArxivId(paper)
         return seed === null ? [] : [{
           paperId: `ARXIV:${seed}`, title: paper.title, abstract: paper.abstract ?? '',
           wikiTerms: [...paper.topics, ...paper.methods],
@@ -1900,7 +1899,12 @@ export function createVaultStore(
     },
 
     listInbox(params = {}) {
-      const rows = inbox.filter((e) => !e.gone)
+      const owned = createPaperIndex<true>()
+      for (const paper of papers.values()) owned.add(libraryIdentity(paper), true)
+      const rows = inbox.filter((e) => !e.gone && !pagesOf.has(e.paper) && owned.find(paperIdentity({
+        arxiv: e.arxiv, ...(e.doi === undefined ? {} : { doi: e.doi }), semanticId: e.semanticId,
+        title: e.title, submitted: e.meta.submitted,
+      })) === undefined)
         .filter((e) => params.kind === undefined || e.kind === params.kind)
         .filter((e) => params.project === undefined || e.project === params.project)
         .map((e) => ({
@@ -1926,7 +1930,7 @@ export function createVaultStore(
 
     dismissInbox: atomic((id) => {
       const entry = liveEntry(id)
-      putEntry(id, { gone: true })
+      leaveEntry(id, 'dismissed')
       toTrash({
         id: nextId('trash'), kind: 'inbox', title: entry.title, deletedAt: nowMs(), entryId: id,
       })
@@ -1934,7 +1938,7 @@ export function createVaultStore(
 
     readLater: atomic((id) => {
       const entry = liveEntry(id)
-      putEntry(id, { gone: true })
+      leaveEntry(id, 'later')
       if (later.some((x) => x.id === id)) return false
       later = save('later', [{
         id: entry.id,
@@ -1962,12 +1966,12 @@ export function createVaultStore(
       const entry = downloadableEntry(id)
       const topics = entry.topic === '' ? null : topicDir(wikiHome(wikiData))
       const result = storeUpload(`${entry.title}.pdf`, bytes)
+      const source = sourceOf(result.paper.id)
+      leaveEntry(id, 'library', { downloaded: true, paper: source })
+      later = save('later', later.map((queued) => (queued.id === id ? { ...queued, paper: source } : queued)))
       if (result.kind === 'existing') {
         return { kind: 'existing', paper: result.paper.id, title: result.paper.title }
       }
-      const source = sourceOf(result.paper.id)
-      putEntry(id, { downloaded: true, paper: source })
-      later = save('later', later.map((queued) => (queued.id === id ? { ...queued, paper: source } : queued)))
       fillPaper(result.paper.id, remoteMetadata({
         id: entry.arxiv,
         title: entry.title,
@@ -2089,7 +2093,7 @@ export function createVaultStore(
         .map((project) => {
           const profile = projectDiscoveryProfile(project.id)
           const seeds = recommendationSeedIds(profile)
-          const base = project.papers.filter((id) => arxivSeed(papers.get(id)) !== null).length
+          const base = project.papers.filter((id) => libraryArxivId(papers.get(id)) !== null).length
           const intents = projectDiscoveryIntents(project.id)
           return {
             id: project.id,
@@ -2190,7 +2194,8 @@ export function createVaultStore(
     feedbackDiscovery(id, feedback) {
       const entry = liveEntry(id)
       if (entry.kind !== 'discovery') throw new CallError('invalid', `这一条不是论文发现：${id}`)
-      putEntry(id, { feedback, gone: feedback === 'more' ? false : true })
+      if (feedback === 'more') putEntry(id, { feedback })
+      else leaveEntry(id, feedback, { feedback })
     },
 
     lastFetch() {
@@ -2443,6 +2448,7 @@ export function createVaultStore(
         inbox = save('inbox', inbox.map((entry) => {
           if (entry.id !== item.entryId) return entry
           const restored = { ...entry, gone: false }
+          delete restored.left
           if (item.feedback !== undefined) delete restored.feedback
           return restored
         }))

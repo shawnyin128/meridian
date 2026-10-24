@@ -244,56 +244,77 @@ test('「全部忽略」只清空自己这一组,逐组清完出空态,忽略的
   await expect(win.locator('#rowInboxAll .n')).toHaveCount(0)
 })
 
-test('入库:论文进库,按钮就地变开始阅读', async ({ win }) => {
+test('入库:论文进库,卡片离开论文推送和它的条数,提示里的开始阅读打开那一篇', async ({ win }) => {
   await openInbox(win, 'all')
-  await expect(shown(win, '.pcard')).toHaveCount((await inboxFromCore(win)).length)
+  const entries = await inboxFromCore(win)
+  await expect(shown(win, '.pcard')).toHaveCount(entries.length)
   const before = await paperTotal(win)
   const title = (await cardTitles(win))[0]!
 
-  const card = shown(win, '.pcard').first()
-  await rowAction(card, '下载并入库')
-  await expect(card.locator('[aria-label="开始阅读"]')).toHaveCount(1)
-  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已下载入库 · 可阅读')
-  await expect(card.locator('[aria-label="下载并入库"]')).toHaveCount(0)
+  await rowAction(shown(win, '.pcard').first(), '下载并入库')
+  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已入库')
+  await expect(shown(win, '.pcard')).toHaveCount(entries.length - 1)
+  expect(await cardTitles(win)).not.toContain(title)
 
   expect(await paperTotal(win)).toBe(before + 1)
-  expect((await inboxFromCore(win)).filter((e) => e.downloaded)).toHaveLength(1)
+  expect(await inboxFromCore(win)).toHaveLength(entries.length - 1)
+  await expect(win.locator('#rowInboxAll .n')).toHaveText(String(entries.length - 1))
   await expect(win.locator('[data-desk="papers"] .n')).toHaveText(String(before + 1))
 
-  // The paper added is the card's: filtering the paper table by its title shows it as the one row.
-  await win.locator('[data-desk="papers"]').click()
-  await win.locator('#libq').fill(title.slice(0, 24))
-  await expect(win.locator('.ptable tbody tr .pt-title .ci')).toHaveText([title])
+  // The paper the notice opens is the card's: the reader header shows the card's title.
+  await win.locator('#notice .btn', { hasText: '开始阅读' }).click()
+  await expect(win.locator('#crumb .cseg').last()).toHaveText(title)
 })
 
-test('入库撞上库里已有的那一篇:不重复入库,就地给出打开那一篇的入口', async ({ win }) => {
-  // Like every entry Core writes, this one names no paper; the user has since imported directly the
-  // same PDF that adding it downloads.
-  const dup = (await inboxFromCore(win)).find((e) => e.id === 'longspec')!
-  expect(dup.paper).toBe('')
-  const bytes = [...minimalPdf(CANNED_NET[dup.pdf]!.pdf!)]
+/**
+ * Imports directly, bypassing the UI, the PDF that adding the `longspec` inbox entry downloads, and
+ * returns the paper once the import's metadata parse, which may still retitle it, has settled.
+ */
+async function importLongSpec(win: Page): Promise<{ id: string; title: string }> {
+  const entry = (await inboxFromCore(win)).find((e) => e.id === 'longspec')!
+  const bytes = [...minimalPdf(CANNED_NET[entry.pdf]!.pdf!)]
   const held = await win.evaluate((pdf) => (window as unknown as MeridianWindow).meridian.call(
     'papers.import', { filename: 'LongSpec.pdf', bytes: new Uint8Array(pdf) },
   ), bytes) as { paper: { id: string } }
-  // The import's metadata parse may still retitle the paper, so the title is read once it settles.
   await expect.poll(async () => (await call<{ uploads: { step: string }[] }>(win, 'jobs.status', {})).uploads
     .every((job) => job.step === 'done' || job.step === 'failed')).toBe(true)
-  const known = await call<{ title: string }>(win, 'papers.get', { id: held.paper.id })
+  return call<{ id: string; title: string }>(win, 'papers.get', { id: held.paper.id })
+}
+
+test('论文从别处进了库:它那张卡片离开论文推送和侧栏条数', async ({ win }) => {
+  await openInbox(win, 'all')
+  const entries = await inboxFromCore(win)
+  await expect(shown(win, '.pcard')).toHaveCount(entries.length)
+  await expect(shown(win, '.pcard[data-pid="longspec"]')).toHaveCount(1)
+
+  // The PDF carries the card's title, which is how the vault's paper is recognized.
+  await importLongSpec(win)
+
+  await expect(shown(win, '.pcard[data-pid="longspec"]')).toHaveCount(0)
+  await expect(shown(win, '.pcard')).toHaveCount(entries.length - 1)
+  await expect(win.locator('#rowInboxAll .n')).toHaveText(String(entries.length - 1))
+})
+
+test('入库撞上库里已有的同一份原文:不重复入库,卡片离开,提示里的开始阅读打开库里那一篇', async ({ win }) => {
+  // Like every entry Core writes, this one names no paper. The user has imported directly the same PDF
+  // that adding it downloads, and retitled it, so only the PDF's bytes tell it is the same paper.
+  expect((await inboxFromCore(win)).find((e) => e.id === 'longspec')?.paper).toBe('')
+  const held = await importLongSpec(win)
+  await call(win, 'papers.update', { id: held.id, patch: { title: '我那一份 LongSpec' } })
   const before = await paperTotal(win)
 
   await openInbox(win, 'all')
-  const card = shown(win, `.pcard[data-pid="${dup.id}"]`)
+  const card = shown(win, '.pcard[data-pid="longspec"]')
   await rowAction(card, '下载并入库')
 
   await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('库里已有这一篇')
-  await expect(card.locator('.pdup span')).toHaveText(`库里已经有这一篇：「${known.title}」`)
-  // The vault has no extra paper, and the entry is not marked as added.
+  await expect(card).toHaveCount(0)
   expect(await paperTotal(win)).toBe(before)
-  expect((await inboxFromCore(win)).find((e) => e.id === dup.id)?.downloaded).toBe(false)
+  expect((await inboxFromCore(win)).map((e) => e.id)).not.toContain('longspec')
 
   // That entry point really opens the vault's paper: the reader header shows that paper's full title.
-  await card.locator('.pdup .btn', { hasText: '打开' }).click()
-  await expect(win.locator('#crumb .cseg').last()).toHaveText(known.title)
+  await win.locator('#notice .btn', { hasText: '开始阅读' }).click()
+  await expect(win.locator('#crumb .cseg').last()).toHaveText('我那一份 LongSpec')
 })
 
 test.describe('这一条推送已经在别处入过库', () => {
@@ -321,14 +342,14 @@ test.describe('这一条推送已经在别处入过库', () => {
   })
 })
 
-test('下载并入库时显示进度环,完成后就地变成开始阅读', async ({ win }) => {
+test('下载并入库时显示进度环,完成后卡片离开论文推送', async ({ win }) => {
   await openInbox(win, 'all')
   const card = shown(win, '.pcard[data-pid="drafterlite"]')
   await rowAction(card, '下载并入库')
   await expect(card.locator('.icbtn.busy[aria-label="从 arXiv 下载中"] .ring')).toHaveCount(1)
-  await expect(card.locator('[aria-label="开始阅读"]')).toHaveCount(1, { timeout: 10_000 })
-  await expect(card.locator('.ring')).toHaveCount(0)
-  expect((await inboxFromCore(win)).find((entry) => entry.id === 'drafterlite')?.downloaded).toBe(true)
+  await expect(card).toHaveCount(0, { timeout: 10_000 })
+  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已入库')
+  expect((await inboxFromCore(win)).map((entry) => entry.id)).not.toContain('drafterlite')
 })
 
 test('下载失败在卡片内给原因和重试,不占用全页错误', async ({ win }) => {
@@ -418,7 +439,7 @@ test('稍后阅读里有原文地址的条目可以直接开始阅读并在需�
   const source = entries.find((x) => x.paper === shared.paper)!
   await openInbox(win, 'all')
   await rowAction(shown(win, `.pcard[data-pid="${source.id}"]`), '下载并入库')
-  await expect(shown(win, `.pcard[data-pid="${source.id}"] [aria-label="开始阅读"]`)).toHaveCount(1)
+  await expect(shown(win, `.pcard[data-pid="${source.id}"]`)).toHaveCount(0)
 
   await win.locator('#rowLater').click()
   await expect(shown(win, `.pcard[data-pid="${shared.id}"] [aria-label="开始阅读"]`)).toHaveCount(1)

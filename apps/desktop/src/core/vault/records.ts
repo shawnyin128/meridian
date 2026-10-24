@@ -30,14 +30,19 @@ export const PaperSnapshotSchema = PaperRowSchema
  * Stored inbox recommendation: cross-boundary fields plus archived topics from topic watches, whether
  * it has left inbox, its arXiv id, and bibliographic metadata used during download/import.
  * `downloaded` is still written for older Apps; listing derives it from the vault's paper pages.
+ * `left` says why a `gone` entry left, as one of `InboxLeft` when this version wrote it; `gone` stays
+ * the truth, since an older App restoring an entry from the trash leaves `left` as it was.
  */
 export const InboxRecordSchema = InboxEntrySchema.extend({
   pdf: z.string().default(''),
   topic: z.string(),
   gone: z.boolean(),
+  left: z.string().optional(),
   arxiv: z.string().default(''),
-  /** Semantic Scholar paper id, used only to feed explicit discovery feedback back into ranking. */
+  /** Semantic Scholar paper id, used to feed explicit discovery feedback back into ranking and to tell papers apart. */
   semanticId: z.string().default(''),
+  /** DOI, used only to tell papers apart. */
+  doi: z.string().optional(),
   meta: z.object({
     authors: z.array(z.string()),
     submitted: z.string(),
@@ -138,6 +143,8 @@ export const VaultStateSchema = z.object({
 
 export type PaperSnapshot = z.infer<typeof PaperSnapshotSchema>
 export type InboxRecord = z.infer<typeof InboxRecordSchema>
+/** Why an inbox entry left the feed: added to the vault, queued to read later, dismissed, or given `less` or `known` feedback. */
+export type InboxLeft = 'library' | 'later' | 'dismissed' | 'less' | 'known'
 export type LaterRecord = z.infer<typeof LaterRecordSchema>
 export type ChatRecord = z.infer<typeof ChatRecordSchema>
 export type TrashRecord = z.infer<typeof TrashRecordSchema>

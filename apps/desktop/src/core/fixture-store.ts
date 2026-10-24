@@ -39,6 +39,7 @@ import {
   overviewResearch, placeNode, projectConclusions, readWorkspaceAgentIdeas, verifiedNodes, withProjectLinks,
 } from './project-management/index.js'
 import { inboxFields, unseenPapers } from './inbox/dedup.js'
+import { createPaperIndex, libraryArxivId, libraryIdentity, paperIdentity } from './inbox/identity.js'
 import {
   applyRecommendationPreferences, buildRecommendationProfile, clusterRecommendationProfile,
   discoveryReasons, orderInbox, recommendationSeedIds,
@@ -432,13 +433,6 @@ export function createFixtureStore(
    */
   const paperOf = (source: string): string => pageOf.get(source) ?? source
 
-  const arxivSeed = (paper: PaperRow | undefined): string | null => {
-    if (paper === undefined) return null
-    const named = paper.identifier?.match(/^arXiv:(.+)$/i)?.[1]?.replace(/v\d+$/, '')
-    if (named) return named
-    return /^\d{4}\.\d{4,5}(?:v\d+)?$/.test(paper.id) ? paper.id.replace(/v\d+$/, '') : null
-  }
-
   const projectDiscoveryProfile = (projectId: string) => {
     const project = projectById.get(projectId)
     if (!project) throw new CallError('not-found', `项目不存在：${projectId}`)
@@ -462,7 +456,7 @@ export function createFixtureStore(
       ].filter(Boolean).join(' · '),
       wikiTerms,
       projectPapers: linkedPapers.flatMap((paper) => {
-        const seed = arxivSeed(paper)
+        const seed = libraryArxivId(paper)
         return seed === null ? [] : [{
           paperId: `ARXIV:${seed}`, title: paper.title, abstract: paper.abstract ?? '',
           wikiTerms: [...paper.topics, ...paper.methods],
@@ -1354,7 +1348,11 @@ export function createFixtureStore(
     },
 
     listInbox(params = {}) {
-      const rows = inbox.filter((e) => !gone.has(e.id))
+      const owned = createPaperIndex<true>()
+      for (const paper of byId.values()) owned.add(libraryIdentity(paper), true)
+      const rows = inbox.filter((e) => !gone.has(e.id) && !pageOf.has(e.paper) && owned.find(paperIdentity({
+        arxiv: e.vault.arxiv, semanticId: e.semanticId, title: e.title, submitted: e.vault.meta.submitted,
+      })) === undefined)
         .filter((e) => params.kind === undefined || e.kind === params.kind)
         .filter((e) => params.project === undefined || e.project === params.project)
         .map((e) => ({
@@ -1417,12 +1415,13 @@ export function createFixtureStore(
       const entry = downloadableEntry(id)
       const topics = entry.vault.topic === '' ? null : topicDir(wikiHome(wiki))
       const result = storeUpload(`${entry.title}.pdf`, bytes)
+      const source = sourceOf.get(result.paper.id)!
+      inbox = inbox.map((held) => (held.id === id ? { ...held, downloaded: true, paper: source } : held))
+      gone.add(id)
+      later = later.map((queued) => (queued.id === id ? { ...queued, paper: source } : queued))
       if (result.kind === 'existing') {
         return { kind: 'existing', paper: result.paper.id, title: result.paper.title }
       }
-      const source = sourceOf.get(result.paper.id)!
-      inbox = inbox.map((held) => (held.id === id ? { ...held, downloaded: true, paper: source } : held))
-      later = later.map((queued) => (queued.id === id ? { ...queued, paper: source } : queued))
       fillPaper(result.paper.id, remoteMetadata({
         id: entry.vault.arxiv,
         title: entry.title,
@@ -1547,7 +1546,7 @@ export function createFixtureStore(
         .map((project) => {
           const profile = projectDiscoveryProfile(project.id)
           const seeds = recommendationSeedIds(profile)
-          const base = project.papers.filter((id) => arxivSeed(byId.get(id)) !== null).length
+          const base = project.papers.filter((id) => libraryArxivId(byId.get(id)) !== null).length
           const intents = projectDiscoveryIntents(project.id)
           return {
             id: project.id,

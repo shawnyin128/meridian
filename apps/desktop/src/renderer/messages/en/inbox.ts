@@ -34,7 +34,6 @@ export const inbox = {
     download: 'Download and add to library',
     readLater: 'Read later',
     dismiss: 'Dismiss',
-    open: 'Open',
   },
   notices: {
     queued: 'Saved for later',
@@ -42,8 +41,7 @@ export const inbox = {
     dismissedAll: 'All dismissed',
     dismissed: 'Dismissed',
     duplicateToast: 'Already in the library',
-    alreadyInLibrary: (title: string) => `Already in the library: "${title}"`,
-    downloaded: 'Downloaded and added to library · ready to read',
+    downloaded: 'Added to library',
     downloadFailed: 'Download failed',
     remembered: 'Got it',
     known: 'Marked as familiar',

@@ -4,7 +4,8 @@ import { dayFrom, onDay, readJson, writeJson } from './app.mjs'
 /**
  * Recommendations a watch fetch would have brought from arXiv, by stored id: the watch name they
  * came from, the paper, and what happens to them in the seed. `later` moves one to read-later on
- * that day, `dismiss` moves it to Trash.
+ * that day, `dismiss` moves it to Trash. EAGLE is a paper the library already holds, which the App
+ * keeps out of the feed.
  */
 const RECOMMENDATIONS = [
   { id: 'seed-inbox-sequoia', watch: 'speculative decoding', arxiv: '2402.12374', submitted: '2024-02-19',
@@ -27,6 +28,10 @@ const RECOMMENDATIONS = [
     title: 'Break the Sequential Dependency of LLM Inference Using Lookahead Decoding',
     authors: ['Yichao Fu', 'Peter Bailis', 'Ion Stoica', 'Hao Zhang'],
     abstract: 'Lookahead decoding generates and verifies n-grams in parallel through Jacobi iteration, without a draft model.' },
+  { id: 'seed-inbox-eagle', watch: 'speculative decoding', arxiv: '2401.15077', submitted: '2024-01-26',
+    title: 'EAGLE: Speculative Sampling Requires Rethinking Feature Uncertainty',
+    authors: ['Yuhui Li', 'Fangyun Wei', 'Chao Zhang', 'Hongyang Zhang'],
+    abstract: 'EAGLE drafts at the feature level of the second-to-top layer and resolves feature uncertainty with the token sampled one step ahead.' },
   { id: 'seed-inbox-fa3', watch: 'Tri Dao', arxiv: '2407.08608', submitted: '2024-07-11',
     title: 'FlashAttention-3: Fast and Accurate Attention with Asynchrony and Low-precision',
     authors: ['Jay Shah', 'Ganesh Bikshandi', 'Ying Zhang', 'Vijay Thakkar', 'Pradeep Ramani', 'Tri Dao'],
@@ -43,8 +48,8 @@ export async function seedWatches(seed, call) {
   seed.watches = Object.fromEntries(watches.map((watch) => [watch.name, watch]))
   // The App posts this summary when a watch fetch over the network brings new papers.
   await onDay(seed, -1, () => call('feed.append', { source: 'inbox', body: { kind: 'runs', runs: [
-    { kind: 'text', text: '抓取：' }, { kind: 'strong', text: '6 篇新论文入队' },
-    { kind: 'text', text: '（speculative decoding ×5 · Tri Dao ×1）。' },
+    { kind: 'text', text: '抓取：' }, { kind: 'strong', text: '7 篇新论文入队' },
+    { kind: 'text', text: '（speculative decoding ×6 · Tri Dao ×1）。' },
   ] } }))
 }
 

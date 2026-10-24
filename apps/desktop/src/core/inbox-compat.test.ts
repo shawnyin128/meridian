@@ -70,7 +70,7 @@ describe('论文推送重做后要写的存储形状', () => {
     ])
     expect(reopened.addDiscoveryEntries(project, ['2609.90001', '2609.90002', '2609.90003'].map(refound))).toBe(0)
     reopened.dismissInbox('inbox-903')
-    expect(read('inbox')).toEqual([left, folded, { ...live, gone: true }])
+    expect(read('inbox')).toEqual([left, folded, { ...live, gone: true, left: 'dismissed' }])
   })
 
   it('减少类似和已经了解的垃圾桶记录：列在垃圾桶里，还原后卡片回到论文推送，反馈一并撤掉', () => {
