@@ -917,7 +917,7 @@ export function Reader() {
               <div ref={tools} className="selection-tools-body">
                 <Toolbar>
                   <div className="selection-tools-row">
-                    <IconButton label={m.reader.selection.askAi} size="nested" onClick={askAi}><IconAskAi /></IconButton>
+                    <IconButton label={m.reader.selection.askAi} size="nested" round onClick={askAi}><IconAskAi /></IconButton>
                     {touched.length > 1 ? null : (
                       <Swatches
                         label={m.reader.selection.highlight} value={edited?.color ?? ''}

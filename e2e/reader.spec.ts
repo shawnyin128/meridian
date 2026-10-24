@@ -870,17 +870,30 @@ test.describe('选中文字时的选区', () => {
     expect((await call<Held>(win, 'papers.reading', { id })).highlights).toHaveLength(1)
   })
 
-  test('批注框里写了字再点页上别处,像 Enter 一样存下;按 Esc 丢掉写的字,已经划的高亮留着;问 AI 的标记和颜色圈一样高', async ({ win }) => {
+  test('批注框里写了字再点页上别处,像 Enter 一样存下;按 Esc 丢掉写的字,已经划的高亮留着;问 AI 的标记是和颜色圈一样大的中性色圆', async ({ win }) => {
     await openTight(win)
     const lines = await textLines(win)
     await dragAcross(win, lines.slice(0, 2))
     const tools = win.locator('.selection-tools')
-    // The AI mark is as tall as a colour circle, its glyph the size of the reader's other nested icon buttons.
-    const mark = (await tools.locator('.icbtn').boundingBox())!
-    const circle = (await tools.locator('.swatch').first().boundingBox())!
-    expect(mark.height).toBe(circle.height)
-    expect((await tools.locator('.icbtn svg').boundingBox())!.height)
-      .toBe((await shown(win, '.zoomctl .icbtn svg').first().boundingBox())!.height)
+    // The AI mark is a circle the size of a colour circle, filled with the neutral chip token.
+    const looks = await tools.evaluate((bar) => {
+      const probe = document.createElement('div')
+      probe.style.backgroundColor = 'var(--chip)'
+      bar.append(probe)
+      const look = (element: Element) => {
+        const { width, height } = element.getBoundingClientRect()
+        return { width, height, radius: getComputedStyle(element).borderRadius }
+      }
+      const result = {
+        mark: look(bar.querySelector('.icbtn')!), circle: look(bar.querySelector('.swatch')!),
+        fill: getComputedStyle(bar.querySelector('.icbtn')!).backgroundColor, chip: getComputedStyle(probe).backgroundColor,
+      }
+      probe.remove()
+      return result
+    })
+    expect(looks.mark).toEqual(looks.circle)
+    expect([looks.mark.width, looks.mark.height]).toEqual([24, 24])
+    expect(looks.fill).toBe(looks.chip)
 
     await tools.locator('textarea').click()
     await tools.locator('textarea').pressSequentially('点外面也留着')

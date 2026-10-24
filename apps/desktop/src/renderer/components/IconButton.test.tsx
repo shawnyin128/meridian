@@ -10,12 +10,13 @@ describe('IconButton', () => {
       .toBe(`<button type="button" class="icbtn" aria-label="收起详情" data-state="closed">${renderToStaticMarkup(<IconCross />)}</button>`)
   })
 
-  it('takes one size class, a danger tone and the classes that place it', () => {
+  it('takes one size class, a danger tone, the round shape and the classes that place it', () => {
     const classOf = (html: string) => /class="([^"]*)"/.exec(html)![1]
     expect([
       classOf(renderToStaticMarkup(<IconButton label="x" size="nested"><IconCross /></IconButton>)),
       classOf(renderToStaticMarkup(<IconButton label="x" size="inline" tone="danger" className="rx"><IconCross /></IconButton>)),
-    ]).toEqual(['icbtn sm', 'icbtn xs danger rx'])
+      classOf(renderToStaticMarkup(<IconButton label="x" size="nested" round><IconCross /></IconButton>)),
+    ]).toEqual(['icbtn sm', 'icbtn xs danger rx', 'icbtn sm round'])
   })
 
   it('reports a pressed toggle only when it is one', () => {
