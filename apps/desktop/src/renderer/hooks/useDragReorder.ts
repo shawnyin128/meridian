@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef } from 'react'
 import type { DragEvent as ReactDragEvent, KeyboardEvent as ReactKeyboardEvent } from 'react'
 
 /** Native drag attributes of an item's drag handle, the only part of the item a drag starts from. */
@@ -26,22 +26,34 @@ const editable = (target: EventTarget) => target instanceof HTMLElement
 /**
  * Reordering for a flat, already-ordered id list split into scopes (for example a project's status
  * or an idea's archived state): an item only moves among items of its own scope. A drag starts on the
- * item's handle (`handleProps`) and drops on another item (`itemProps`); `move` shifts an item one
- * place, which the ⋯ menus and Alt+↑ / Alt+↓ use, and `canMove` says whether it can go that way.
- * `onReorder` receives the full `ids` list with just the moved scope's ids in their new relative
- * order; the caller decides how, and whether, to persist it.
+ * item's handle (`handleProps`), which sits inside the item or is the item, and drops on another item
+ * (`itemProps`); `move` shifts an item one place, which the ⋯ menus and Alt+↑ / Alt+↓ use, and
+ * `canMove` says whether it can go that way. `onReorder` receives the full `ids` list with just the
+ * moved scope's ids in their new relative order; the caller decides how, and whether, to persist it.
+ * While a drag lasts, the held item has the class `dragging` and the item under the pointer
+ * `drag-over-before` or `drag-over-after`, set on their elements without rendering the caller.
  */
 export function useDragReorder(
   ids: readonly string[], scopeOf: (id: string) => string, onReorder: (order: string[]) => void,
 ): {
   handleProps: (id: string) => DragHandleProps
   itemProps: (id: string) => ReorderItemProps
-  dropClass: (id: string) => string
   canMove: (id: string, by: -1 | 1) => boolean
   move: (id: string, by: -1 | 1) => void
 } {
-  const [dragging, setDragging] = useState<string | null>(null)
-  const [over, setOver] = useState<{ id: string; before: boolean } | null>(null)
+  // Kept out of React state: rendering the caller on every dragover would redraw its whole list.
+  const drag = useRef<{
+    id: string; item: HTMLElement; over: { id: string; before: boolean; item: HTMLElement } | null
+  } | null>(null)
+  const lineClass = (before: boolean) => (before ? 'drag-over-before' : 'drag-over-after')
+  /** Ends the drag in progress and clears its marks. */
+  const finish = () => {
+    const held = drag.current
+    if (held === null) return
+    held.item.classList.remove('dragging')
+    held.over?.item.classList.remove(lineClass(held.over.before))
+    drag.current = null
+  }
 
   /** Puts `id` into `queue`, its scope's ids without it, and reports the full new order. */
   const place = (id: string, queue: string[]) => {
@@ -69,31 +81,40 @@ export function useDragReorder(
       event.dataTransfer.effectAllowed = 'move'
       event.dataTransfer.setData('text/plain', id)
       // The whole item, not just the handle, follows the pointer.
-      const item = event.currentTarget.closest<HTMLElement>('[data-reorder-item]')
-      if (item !== null && item !== event.currentTarget) {
+      const item = event.currentTarget.closest<HTMLElement>('[data-reorder-item]')!
+      if (item !== event.currentTarget) {
         const box = item.getBoundingClientRect()
         event.dataTransfer.setDragImage(item, event.clientX - box.left, event.clientY - box.top)
       }
-      setDragging(id)
+      finish()
+      item.classList.add('dragging')
+      drag.current = { id, item, over: null }
     },
-    onDragEnd: () => { setDragging(null); setOver(null) },
+    onDragEnd: finish,
   })
 
   const itemProps = (id: string): ReorderItemProps => ({
     'data-reorder-item': id,
     onDragOver: (event) => {
-      if (dragging === null || dragging === id || scopeOf(dragging) !== scopeOf(id)) return
+      const held = drag.current
+      if (held === null || held.id === id || scopeOf(held.id) !== scopeOf(id)) return
       event.preventDefault()
-      const box = event.currentTarget.getBoundingClientRect()
-      setOver({ id, before: event.clientY < box.top + box.height / 2 })
+      const item = event.currentTarget
+      const box = item.getBoundingClientRect()
+      const before = event.clientY < box.top + box.height / 2
+      const last = held.over
+      if (last !== null && (last.item !== item || last.before !== before)) last.item.classList.remove(lineClass(last.before))
+      item.classList.add(lineClass(before))
+      held.over = { id, before, item }
     },
     onDrop: (event) => {
-      if (dragging === null || over === null) return
+      const held = drag.current
+      if (held === null || held.over === null) return
       event.preventDefault()
+      const { id: dragging, over } = held
       const queue = scoped(dragging).filter((other) => other !== dragging)
       queue.splice(queue.indexOf(over.id) + (over.before ? 0 : 1), 0, dragging)
-      setDragging(null)
-      setOver(null)
+      finish()
       place(dragging, queue)
     },
     onKeyDown: (event) => {
@@ -105,12 +126,5 @@ export function useDragReorder(
     },
   })
 
-  const dropClass = (id: string): string => {
-    const parts: string[] = []
-    if (dragging === id) parts.push('dragging')
-    if (over !== null && over.id === id) parts.push(over.before ? 'drag-over-before' : 'drag-over-after')
-    return parts.join(' ')
-  }
-
-  return { handleProps, itemProps, dropClass, canMove, move }
+  return { handleProps, itemProps, canMove, move }
 }

@@ -293,7 +293,7 @@ export function ProjectTaskPanel({
   )
 }
 
-function TaskRow({ projectId, task, flash, selected, reorder, dropClass = '', onSave, onDelete, onOpen }: {
+function TaskRow({ projectId, task, flash, selected, reorder, onSave, onDelete, onOpen }: {
   projectId: string
   task: Task
   flash: boolean
@@ -305,7 +305,6 @@ function TaskRow({ projectId, task, flash, selected, reorder, dropClass = '', on
    * position among other done tasks does not matter.
    */
   reorder?: Reorderable
-  dropClass?: string
   onSave: (patch: TaskPatch) => Promise<boolean>
   onDelete: () => void
   /** Opens the task's detail panel; the row's own field editors swallow their clicks so they do not also open it. */
@@ -317,8 +316,7 @@ function TaskRow({ projectId, task, flash, selected, reorder, dropClass = '', on
     <Toolbar label={task.title}>
       <StructuredRow
         composite selected={selected} data-row={task.id} {...reorder?.item} {...reorder?.handle} onActivate={onOpen}
-        className={`ddlrow task-row${task.state === 'done' ? ' done' : ''}${flash ? ' flash' : ''}${
-          dropClass ? ` ${dropClass}` : ''}`}
+        className={`ddlrow task-row${task.state === 'done' ? ' done' : ''}${flash ? ' flash' : ''}`}
       >
         <TaskScheduleField mode="date" task={task} onSave={onSave} className="task-date-part" stopRowActivation />
         <TaskScheduleField mode="time" task={task} onSave={onSave} className="task-clock-part" stopRowActivation />
@@ -488,7 +486,6 @@ export function ProjectPlan({
                     projectId={projectId}
                     key={task.id} task={task} flash={flashId === task.id} selected={selectedTaskId === task.id}
                     reorder={{ item: taskOrder.itemProps(task.id), handle: taskOrder.handleProps(task.id) }}
-                    dropClass={taskOrder.dropClass(task.id)}
                     onSave={(patch) => onUpdateTask(task.id, patch)}
                     onDelete={() => onDeleteTask(task.id)}
                     onOpen={() => onOpenTask(task.id)}
