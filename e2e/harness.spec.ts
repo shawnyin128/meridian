@@ -1,5 +1,5 @@
 import { _electron as electron, expect, test } from '@playwright/test'
-import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { cpSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { delimiter, join, resolve } from 'node:path'
 import type { MeridianWindow } from './app.js'
@@ -20,11 +20,9 @@ realHarnessTest('真实 Electron/Core/Python Harness 零费用链路停在审核
   const root = mkdtempSync(join(tmpdir(), 'meridian-harness-e2e-'))
   const vault = join(root, 'vault')
   const config = join(root, 'config')
+  // The fixture paper is stored without a page count, as a paper downloaded by 0.0.18.0 is: Core
+  // checks the pages a draft cites against its PDF's two pages.
   cpSync(FIXTURE_VAULT, vault, { recursive: true })
-  // The fixture page has no page count, and Core refuses a draft citing pages of a paper with none;
-  // an imported paper gets its count from its PDF, which has two pages here.
-  const page = join(vault, 'wiki', 'papers', `${PAPER}.md`)
-  writeFileSync(page, readFileSync(page, 'utf8').replace(/^source_id: .*$/m, '$&\npage_count: 2'), 'utf8')
   mkdirSync(config, { recursive: true })
   writeFileSync(join(config, 'harness-model.json'), JSON.stringify({
     schemaVersion: 'meridian.harness-model.v2',

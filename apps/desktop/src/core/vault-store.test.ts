@@ -2826,6 +2826,17 @@ describe('vault store on the aggregation layout', () => {
       .toMatchObject({ title: 'Parsed Title' })
   })
 
+  it('下载入库的论文页一次写下 PDF 的页数,重开库后读得出', () => {
+    writeFileSync(join(vault, '.meridian', 'inbox.json'), JSON.stringify([INBOX_ENTRY]), 'utf8')
+    writeFileSync(join(vault, '.meridian', 'watches.json'), JSON.stringify([
+      { id: 'w-1', type: 'topic', name: 'quantization', active: true },
+    ]), 'utf8')
+    store = createVaultStore(vault, () => '2026-09-10', () => new Date('2026-09-10T16:05:04.003Z'))
+    const made = store.completeInboxDownload(INBOX_ENTRY.id, minimalPdf({ lines: [INBOX_ENTRY.title] }), 12)
+    expect(readFileSync(join(vault, 'wiki', 'papers', `${made.paper}.md`), 'utf8')).toMatch(/^page_count: 12$/m)
+    expect(createVaultStore(vault).getPaper(made.paper).pageCount).toBe(12)
+  })
+
   it('入库出的论文页正文为空,能直接编辑', () => {
     // The example vault has no app state and an empty inbox; write one recommendation, then reopen to read it.
     writeFileSync(join(vault, '.meridian', 'inbox.json'), JSON.stringify([INBOX_ENTRY]), 'utf8')

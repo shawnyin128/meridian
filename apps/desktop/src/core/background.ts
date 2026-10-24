@@ -91,7 +91,7 @@ export function createBackground(deps: {
     )),
   })
   const metadata = createMetadataQueue({ store: deps.store, probe: deps.probe, provider: arxiv, onWrite })
-  const downloads = createInboxDownloads({ store: deps.store, get: deps.get, onWrite })
+  const downloads = createInboxDownloads({ store: deps.store, get: deps.get, probe: deps.probe, onWrite })
   const fetcher = createWatchFetcher({
     store: deps.store, arxiv, scholar, now: deps.now, onWrite,
     authorPapers: (identity) => authors.papers(identity.id),

@@ -3,6 +3,7 @@ import {
 } from '../../shared/contract.js'
 import { CallError } from '../call-error.js'
 import { HttpStatusError, netFailure, type HttpGet } from '../net/http.js'
+import type { PdfProbe } from '../paper-library/index.js'
 import type { VaultStore } from '../vault.js'
 import { isWriteFailure } from '../vault/writer.js'
 
@@ -13,9 +14,12 @@ export type InboxDownloads = {
   progress(): DownloadProgress[]
 }
 
-/** Builds the real PDF downloader for inbox and later-queue entries. */
+/**
+ * Builds the real PDF downloader for inbox and later-queue entries; `probe` reads each downloaded PDF's
+ * page count.
+ */
 export function createInboxDownloads(deps: {
-  store: VaultStore; get: HttpGet; onWrite: () => void
+  store: VaultStore; get: HttpGet; probe: PdfProbe; onWrite: () => void
 }): InboxDownloads {
   const running = new Map<string, DownloadProgress>()
   return {
@@ -41,9 +45,14 @@ export function createInboxDownloads(deps: {
       if (!Buffer.from(body.subarray(0, 1024)).toString('latin1').includes('%PDF-')) {
         return { kind: 'failed', reason: 'not-pdf' }
       }
+      // A PDF the probe cannot read is still stored, as an upload's is; it only goes without a page count.
+      const pageCount = await deps.probe(body).then((facts) => facts.pageCount, (error: unknown) => {
+        console.error(`[inbox] 下载的 PDF 读不出页数：${error instanceof Error ? error.message : String(error)}`)
+        return undefined
+      })
       let result: InboxDownloadResult
       try {
-        result = deps.store.completeInboxDownload(id, body)
+        result = deps.store.completeInboxDownload(id, body, pageCount)
       } catch (error) {
         if (!isWriteFailure(error)) throw error
         return { kind: 'failed', reason: 'write' }
