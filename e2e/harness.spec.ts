@@ -2,7 +2,7 @@ import { _electron as electron, expect, test } from '@playwright/test'
 import { cpSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { delimiter, join, resolve } from 'node:path'
-import type { MeridianWindow } from './app.js'
+import { LAUNCH_SWITCHES, type MeridianWindow } from './app.js'
 
 const harnessPython = process.env['MERIDIAN_HARNESS_TEST_PYTHON']
 const realHarnessTest = harnessPython === undefined ? test.skip : test
@@ -29,7 +29,7 @@ realHarnessTest('真实 Electron/Core/Python Harness 零费用链路停在审核
   }), 'utf8')
 
   const app = await electron.launch({
-    args: [APP_DIR],
+    args: [APP_DIR, ...LAUNCH_SWITCHES],
     env: {
       ...process.env,
       MERIDIAN_VAULT_ROOT: vault,

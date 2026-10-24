@@ -269,6 +269,14 @@ export function useScreen(): ScreenKey {
   return state.screen
 }
 
+/** Whether the caller's screen is the one shown; a screen once entered stays mounted while hidden. */
+export function useScreenShown(): boolean {
+  const state = useContext(ScreenContext)
+  const slot = useContext(SlotContext)
+  if (!state) throw new Error('useScreenShown needs AppShell')
+  return state.screen === slot
+}
+
 /**
  * Returns the number of sidebar navigations. A screen uses it to decide when an entry takes it back to
  * its top level: only a sidebar click counts as an entry. A cross-screen jump and the return from one

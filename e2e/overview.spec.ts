@@ -441,8 +441,7 @@ test('日周月切换时只列出和当前时间段有交集的任务,同日任�
 
 test.describe('窗口收窄并滚动', () => {
   // Narrowing re-fits the week/month day width, which re-centers the scroll on today and reflows the
-  // whole canvas; off-screen windows only get one animation-frame tick per second (see app.ts), so this
-  // multi-step settling can take several real seconds there but is immediate once the window is on screen.
+  // whole canvas over several animation frames; see `showWindow` in app.ts.
   test.use({ showWindow: true })
 
   test('窗口收窄并滚动后,月视图里每个任务行都保留横条或边缘残桩', async ({ app, win }) => {
@@ -633,8 +632,8 @@ test('总览里程碑弹层:焦点在「删除」上按 Esc 也收起,里程碑�
   expect(await milestonesOf(win, 'repro')).toEqual(before)
 })
 
-// An offscreen window draws about one frame a second (see app.ts) and paints the moved popover a frame
-// late, so the cases that check a moved popover run on screen.
+// The moved popover is painted a frame late, so the cases that check it run in a shown window; see
+// `showWindow` in app.ts.
 test.describe(() => {
   test.use({ showWindow: true })
 
@@ -738,4 +737,23 @@ test('总览里程碑弹层:点「删除」收起弹层,里程碑从 core 里删
   const after = await milestonesOf(win, 'repro')
   expect(after).not.toContainEqual(m2)
   expect(after).toHaveLength(before.length - 1)
+})
+
+test('总览里删掉的里程碑,提示里的撤销把它放回 core 和时间线', async ({ win }) => {
+  await gotoOverview(win)
+  const menu = win.locator('.ctxmenu')
+  const diamond = await revealMilestone(win, 'repro/m2')
+  const before = await milestonesOf(win, 'repro')
+
+  await diamond.click()
+  await menu.locator('.mi.danger').click()
+  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已删除里程碑')
+  await expect(diamond).toHaveCount(0)
+
+  const undo = win.locator('#notice .btn')
+  await expect(undo).toHaveText('撤销')
+  await undo.click()
+  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已撤销')
+  await expect(diamond).toBeVisible()
+  expect(await milestonesOf(win, 'repro')).toEqual(before)
 })

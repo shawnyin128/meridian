@@ -86,8 +86,8 @@ test('应用菜单里有「设置…」,其余菜单仍是 Electron 的角色', 
   expect(menu.findIndex((top) => top.items.some((item) => item.id === 'settings'))).toBe(mac ? 0 : 3)
 })
 
-// The window stays on screen because Windows sends the shortcut through sendInputEvent, which has not
-// been verified on an offscreen window.
+// The window is shown because Windows sends the shortcut through sendInputEvent, which has not been
+// verified on a hidden window.
 test.describe(() => {
   test.use({ showWindow: true })
 
@@ -266,7 +266,8 @@ test('设置右栏滚动时,标题留在上面,滚动条从标题下面起、止
     const column = dialog.querySelector('.set-main')!
     const area = [column, ...column.querySelectorAll('*')].find((box) => getComputedStyle(box).overflowY === 'auto') as HTMLElement
     area.scrollTop = (area.scrollHeight - area.clientHeight) / 2
-    // An offscreen window gets no frames to fire scroll events in, so the case sends its own.
+    // A scroll event fires only in the next rendering update, after the reads below, so the case sends
+    // its own.
     area.dispatchEvent(new Event('scroll'))
     const title = column.querySelector('.section-heading')!
     const close = dialog.querySelector('.modal-close')!

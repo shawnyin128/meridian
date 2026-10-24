@@ -28,6 +28,7 @@ const api = vi.hoisted(() => ({
   purge: vi.fn(async () => {}),
   notes: [] as unknown[],
   listError: null as unknown,
+  revision: 0,
 }))
 
 vi.mock('../ipc.js', () => ({
@@ -44,7 +45,7 @@ vi.mock('../ipc.js', () => ({
 vi.mock('../shell/AppShell.js', () => ({
   useNotice: () => ({ success: vi.fn(), refusal: vi.fn() }),
   useToday: () => '2026-08-25',
-  useVaultRevision: () => ({ revision: 0, bump: vi.fn() }),
+  useVaultRevision: () => ({ revision: api.revision, bump: vi.fn() }),
 }))
 vi.mock('../hooks/useVaultWrite.js', () => ({
   useVaultWrite: () => async (work: Promise<unknown>, opts: { note?: unknown } = {}) => {
@@ -79,6 +80,7 @@ describe('Trash', () => {
     api.purge.mockClear()
     api.notes.length = 0
     api.listError = null
+    api.revision = 0
     root = createRoot(host)
     await act(async () => { root!.render(<MessagesProvider><Trash /></MessagesProvider>) })
   })
@@ -104,6 +106,20 @@ describe('Trash', () => {
       expect(host.textContent).not.toContain('/Users/me/vault')
     }
     vi.restoreAllMocks()
+  })
+
+  it('读垃圾桶失败过一次，下一次读取成功时错误横幅收起，条目照常列出', async () => {
+    const reread = async (revision: number) => {
+      api.revision = revision
+      await act(async () => { root!.render(<MessagesProvider><Trash /></MessagesProvider>) })
+    }
+    api.listError = new CallError('trash.list', 'newer-version')
+    await reread(1)
+    expect(host.querySelector('.ipcerror')?.textContent).toBe('需要更新 App')
+
+    api.listError = null
+    await reread(2)
+    expect([host.querySelector('.ipcerror'), host.querySelectorAll('.trow').length]).toEqual([null, 4])
   })
 
   it('每条只写几天后自动清除，页脚不再用一句话重复保留期', () => {

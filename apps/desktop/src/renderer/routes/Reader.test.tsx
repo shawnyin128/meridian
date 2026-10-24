@@ -15,8 +15,12 @@ const shell = vi.hoisted(() => ({
   jump: { screen: 'reader', target: 'paper-1', from: 'papers', seq: 1 },
   returnTo: vi.fn(),
   reading: { paperId: 'paper-1', highlights: [], notes: [], remark: '' } as PaperReading,
+  /** Each success notice's text and the action it offered, in the order shown. */
+  successes: [] as [text: unknown, action: { label: string; onAction: () => void } | undefined][],
+  /** The change entries changelog.undo was asked to undo, in order. */
+  undone: [] as string[],
   writes: [] as ReadingMutation[],
-  /** The reading state after `mutation`, as Core applies the highlight commands. */
+  /** The reading state after `mutation`, as Core applies the highlight commands and the deletions. */
   written(held: PaperReading, mutation: ReadingMutation): PaperReading {
     if (mutation.kind === 'highlight.add') {
       const { page, quote, rects, color } = mutation
@@ -31,6 +35,10 @@ const shell = vi.hoisted(() => ({
           : item)),
       }
     }
+    if (mutation.kind === 'note.delete') return { ...held, notes: held.notes.filter((item) => item.id !== mutation.id) }
+    if (mutation.kind === 'highlight.delete') {
+      return { ...held, highlights: held.highlights.filter((item) => item.id !== mutation.id) }
+    }
     throw new Error(`no fake for ${mutation.kind}`)
   },
 }))
@@ -41,16 +49,24 @@ vi.mock('../ipc.js', () => ({
     reading: () => Promise.resolve(structuredClone(shell.reading)),
     // The PDF never arrives: these cases are about the reading state beside it.
     source: () => new Promise(() => {}),
+    // As in Core, a write answers the reading after it and the change it recorded; adding a highlight records none.
     mutateReading: (_id: string, mutation: ReadingMutation) => {
       shell.writes.push(mutation)
       shell.reading = shell.written(shell.reading, mutation)
-      return Promise.resolve(structuredClone(shell.reading))
+      return Promise.resolve({
+        reading: structuredClone(shell.reading),
+        change: mutation.kind === 'highlight.add' ? null : `change-${mutation.kind}`,
+      })
     },
   },
+  changelog: { undo: (id: string) => { shell.undone.push(id); return Promise.resolve() } },
 }))
 
 vi.mock('../shell/AppShell.js', () => ({
-  useNotice: () => ({ success: vi.fn(), refusal: vi.fn() }),
+  useNotice: () => ({
+    success: (text: unknown, action?: { label: string; onAction: () => void }) => { shell.successes.push([text, action]) },
+    refusal: vi.fn(),
+  }),
   useCrumbTail: () => {},
   useJump: () => ({ jump: shell.jump, open: vi.fn(), returnTo: shell.returnTo }),
   useVaultRevision: () => ({ revision: shell.revision, bump: vi.fn() }),
@@ -66,12 +82,23 @@ vi.mock('../components/chat/PaperChat.js', () => ({
 }))
 
 vi.mock('../components/reader/ReaderSidePanel.js', () => ({
-  ReaderSidePanel: ({ reading }: { reading: PaperReading | null }) => (
+  ReaderSidePanel: ({ reading, onMutate }: {
+    reading: PaperReading | null
+    onMutate: (mutation: ReadingMutation) => Promise<boolean>
+  }) => (
     <>
-      <ul className="notes">{reading?.notes.map((note) => <li key={note.id}>{note.text}</li>)}</ul>
-      <ul className="highlights">
-        {reading?.highlights.map((highlight) => <li key={highlight.id} className={highlight.color}>{highlight.note}</li>)}
-      </ul>
+      <ul className="notes">{reading?.notes.map((note) => (
+        <li key={note.id}>
+          {note.text}
+          <button type="button" className="drop" onClick={() => { void onMutate({ kind: 'note.delete', id: note.id }) }} />
+        </li>
+      ))}</ul>
+      <ul className="highlights">{reading?.highlights.map((highlight) => (
+        <li key={highlight.id} className={highlight.color}>
+          {highlight.note}
+          <button type="button" className="drop" onClick={() => { void onMutate({ kind: 'highlight.delete', id: highlight.id }) }} />
+        </li>
+      ))}</ul>
     </>
   ),
 }))
@@ -102,6 +129,8 @@ describe('Reader', () => {
     vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} })
     shell.revision = 0
     shell.reading = { paperId: 'paper-1', highlights: [], notes: [note('note-1', '留着的')], remark: '' }
+    shell.successes = []
+    shell.undone = []
     shell.writes = []
     host = document.createElement('div')
     document.body.appendChild(host)
@@ -164,6 +193,27 @@ describe('Reader', () => {
     shell.revision = 1
     await render()
     expect(notes()).toEqual(['撤销放回来的', '留着的'])
+  })
+
+  it('删掉一条笔记,提示带撤销,撤销的是这次删除记下的那条变动', async () => {
+    await render()
+    await act(async () => { host.querySelector<HTMLButtonElement>('.notes .drop')!.click() })
+    expect(notes()).toEqual([])
+    const [text, action] = shell.successes.at(-1) ?? []
+    expect([text, action?.label]).toEqual(['Note deleted', 'Undo'])
+    await act(async () => { action!.onAction() })
+    expect(shell.undone).toEqual(['change-note.delete'])
+  })
+
+  it('删掉一处高亮,提示带撤销,撤销的是这次删除记下的那条变动', async () => {
+    shell.reading = { ...shell.reading, highlights: [stored('highlight-1', 'yellow', '', 0.1)] }
+    await render()
+    await act(async () => { host.querySelector<HTMLButtonElement>('.highlights .drop')!.click() })
+    expect(host.querySelectorAll('.highlights li')).toHaveLength(0)
+    const [text, action] = shell.successes.at(-1) ?? []
+    expect([text, action?.label]).toEqual(['Highlight deleted', 'Undo'])
+    await act(async () => { action!.onAction() })
+    expect(shell.undone).toEqual(['change-highlight.delete'])
   })
 
   describe('选中文字后的工具条', () => {

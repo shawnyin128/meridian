@@ -325,8 +325,7 @@ test('换一篇读,新篇解析期间屏上没有上一篇的页', async ({ win 
 })
 
 // These tests take twenty actions over five papers, and before each one Playwright waits for the
-// element to be stable, comparing its position in two consecutive frames. Offscreen a frame takes one
-// second, so each wait takes two, and twenty of them do not fit the 30-second test budget.
+// element to be stable, comparing its position in two consecutive frames; see `showWindow` in app.ts.
 test.describe(() => {
   test.use({ showWindow: true })
 
@@ -434,6 +433,63 @@ test('阅读器顶栏与面包屑写的是这一篇,面包屑上一段回到论�
   await win.locator('#crumb .cseg.link', { hasText: '论文' }).click()
   await expect(win.locator('#crumb .cseg')).toHaveText(['我的库', '论文'])
   await expect(shown(win, '.ptable')).toHaveCount(1)
+})
+
+/** The readable paper's id in the fixture vault. */
+const READABLE_ID = '13979-STAR-Speculative-Decodin'
+
+/** The readable paper's notes and highlights as Core holds them, read directly, bypassing the UI. */
+const readingOf = (win: Page) =>
+  call<{ notes: unknown[]; highlights: unknown[] }>(win, 'papers.reading', { id: READABLE_ID })
+
+/** Clicks Undo on the notice the last write showed, and waits for the notice saying it was undone. */
+async function undoFromNotice(win: Page): Promise<void> {
+  const undo = win.locator('#notice .btn')
+  await expect(undo).toHaveText('撤销')
+  await undo.click()
+  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已撤销')
+}
+
+test('删掉一条笔记,提示里的撤销把它放回', async ({ win }) => {
+  await win.locator('[data-desk="papers"]').waitFor()
+  await call(win, 'papers.mutateReading', { id: READABLE_ID, mutation: { kind: 'note.add', page: 1, text: '删掉又放回的笔记' } })
+  const before = (await readingOf(win)).notes
+  await openFromPapers(win)
+  await shown(win, '.reader-rail [aria-label="阅读笔记"]').click()
+  const card = shown(win, '.reading-notes .reading-card')
+  await expect(card).toHaveCount(1)
+  await card.hover()
+  await card.locator('.reading-delete').click()
+  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已删除笔记')
+  await expect(card).toHaveCount(0)
+
+  await undoFromNotice(win)
+  await expect(card).toHaveCount(1)
+  expect((await readingOf(win)).notes).toEqual(before)
+})
+
+test('删掉一处高亮,提示里的撤销把它放回', async ({ win }) => {
+  await win.locator('[data-desk="papers"]').waitFor()
+  await call(win, 'papers.mutateReading', {
+    id: READABLE_ID,
+    mutation: {
+      kind: 'highlight.add', page: 1, quote: 'SPECULATIVE DECODING', color: 'yellow',
+      rects: [{ x: 0.1, y: 0.1, width: 0.3, height: 0.02 }],
+    },
+  })
+  const before = (await readingOf(win)).highlights
+  await openFromPapers(win)
+  await shown(win, '.reader-rail [aria-label="高亮与批注"]').click()
+  const card = shown(win, '.reading-notes .highlight-card')
+  await expect(card).toHaveCount(1)
+  await card.hover()
+  await card.locator('.reading-delete').click()
+  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已删除高亮')
+  await expect(card).toHaveCount(0)
+
+  await undoFromNotice(win)
+  await expect(card).toHaveCount(1)
+  expect((await readingOf(win)).highlights).toEqual(before)
 })
 
 test('返回钮回到来路那一屏,阅读器里读到哪一篇还留着', async ({ win }) => {
@@ -687,7 +743,7 @@ test('右键阅读器里选中的字弹出能复制的系统菜单(macOS 上先�
 /** A note line far longer than the selection toolbar is wide. */
 const LONG = '第二行写得很长，长到工具条那么宽放不下，要在批注框里折成好几行'
 
-// Pixel checks take screenshots of the window, which need a visible one.
+// Pixel checks take screenshots of the window, so they run in a shown one; see `showWindow` in app.ts.
 test.describe('选中文字时的选区', () => {
   test.use({ showWindow: true })
 

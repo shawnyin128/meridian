@@ -1838,7 +1838,8 @@ export function createVaultStore(
 
     deleteAttachment: atomic((projectId, attachmentId) => {
       const project = projectOf(projectId)
-      const attachment = project.attachments.find((a) => a.id === attachmentId)
+      const position = project.attachments.findIndex((a) => a.id === attachmentId)
+      const attachment = project.attachments[position]
       if (!attachment) throw new CallError('not-found', `附件不存在：${attachmentId}`)
       const next = writeProject({
         ...project,
@@ -1846,7 +1847,7 @@ export function createVaultStore(
       }, ['attachments'])
       toTrash({
         id: nextId('trash'), kind: 'attachment', title: attachment.name, deletedAt: nowMs(),
-        projectId, attachment,
+        projectId, attachment, position,
       })
       return next
     }),
@@ -2602,8 +2603,11 @@ export function createVaultStore(
       } else {
         const project = projectById.get(item.projectId)
         if (!project) throw new CallError('not-found', `项目不存在：${item.projectId}`)
+        const { attachments } = project
+        const at = Math.min(item.position ?? attachments.length, attachments.length)
         writeProject(
-          { ...project, attachments: [...project.attachments, item.attachment] }, ['attachments'],
+          { ...project, attachments: [...attachments.slice(0, at), item.attachment, ...attachments.slice(at)] },
+          ['attachments'],
         )
       }
       trash = save('trash', trash.filter((entry) => entry !== item))
