@@ -1497,7 +1497,7 @@ export function createFixtureStore(
       return { kind: 'fetch', url: entry.pdf }
     },
 
-    completeInboxDownload(id, bytes) {
+    completeInboxDownload(id, bytes, pageCount) {
       const entry = downloadableEntry(id)
       const topics = entry.vault.topic === '' ? null : topicDir(wikiHome(wiki))
       const result = storeUpload(`${entry.title}.pdf`, bytes)
@@ -1508,12 +1508,12 @@ export function createFixtureStore(
       if (result.kind === 'existing') {
         return { kind: 'existing', paper: result.paper.id, title: result.paper.title }
       }
-      fillPaper(result.paper.id, remoteMetadata({
+      fillPaper(result.paper.id, { ...remoteMetadata({
         id: entry.vault.arxiv,
         title: entry.title,
         abstract: entry.abstract,
         ...entry.vault.meta,
-      }), null)
+      }), ...(pageCount === undefined ? {} : { pageCount }) }, null)
       const filing = topics === null ? null : topicProposal(
         result.paper.id,
         entry.title,

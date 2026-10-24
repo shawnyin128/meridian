@@ -11,6 +11,7 @@ const status: JobsStatus = {
   downloads: [],
   fetch: { state: 'idle', checkedAt: null, reason: null },
   generating: [],
+  generatingWiki: [], wikiFailures: {},
 }
 
 describe('withUiSampleUpload', () => {

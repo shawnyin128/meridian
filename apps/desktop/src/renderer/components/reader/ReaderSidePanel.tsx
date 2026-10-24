@@ -45,6 +45,9 @@ export function ReaderSidePanel({
   // The scope and the live targets both come from the reading shown, so they always name one paper.
   const paperId = reading?.paperId ?? ''
   const drafts = useDrafts(['paper', paperId])
+  // A proposal's edited Markdown outlasts its write, so an undo brings it back; it has a scope of its
+  // own, which the reading's notes and highlights do not prune.
+  const ingestEdits = useDrafts<EditDraft>(['paper', paperId, 'wiki-ingest'])
   const edits = useDrafts<EditDraft>(['paper', paperId, 'edits'], reading === null ? null : [
     `remark:${reading.paperId}`,
     ...reading.notes.map((note) => `note:${note.id}`),
@@ -72,7 +75,7 @@ export function ReaderSidePanel({
         ? <ReadingRemark reading={reading} saving={saving} onSave={onSaveRemark} edits={edits} />
         : null}
       {tab === 'wiki' && paper !== null && reading !== null
-        ? <PaperWikiIngest paper={paper} reading={reading} onJump={onJump} />
+        ? <PaperWikiIngest paper={paper} reading={reading} onJump={onJump} edits={ingestEdits} />
         : null}
       <ToggleGroup
         label={m.reader.rail.label} className="reader-rail" value={tab ?? ''}

@@ -657,13 +657,19 @@ export const HarnessStartParamsSchema = z.object({
   acknowledgeCost: z.literal(true),
 }).strict()
 
+/** Stops the Wiki run going for paper `paperId`. */
 export const HarnessCancelParamsSchema = z.object({
-  planId: z.string().min(1),
+  paperId: z.string().min(1),
 }).strict()
 
 export const HarnessCancelResultSchema = z.object({
-  planId: z.string().min(1),
+  paperId: z.string().min(1),
   cancelled: z.literal(true),
+}).strict()
+
+/** Forgets why the last Wiki run of paper `paperId` failed. */
+export const HarnessDismissFailureParamsSchema = z.object({
+  paperId: z.string().min(1),
 }).strict()
 
 /** Provenance displayed during Paper Wiki proposal review. */
@@ -782,6 +788,8 @@ export const HarnessApplyPaperWikiResultSchema = z.object({
   proposalId: z.string().min(1),
   wikiId: z.string().min(1),
   appliedAt: IsoTimestamp,
+  /** The change entry the Wiki write recorded, the one `changelog.undo` takes to undo it. */
+  change: z.string(),
   /** Why the audit record of the applied proposal could not be written; the Wiki page is written. */
   warning: CallFailureSchema.optional(),
 }).strict()
@@ -2302,13 +2310,19 @@ export const DownloadProgressSchema = z.object({
   total: z.number().int().nullable(),
 }).strict()
 
-/** Current state of Core work that outlives a single call; `generating` holds the ids of the chats whose reply is being generated. */
+/**
+ * Current state of Core work that outlives a single call; `generating` holds the ids of the chats whose
+ * reply is being generated, `generatingWiki` the ids of the papers whose Wiki proposal is, and
+ * `wikiFailures` why the last Wiki run of a paper failed, by paper id, until a new start or a dismiss.
+ */
 export const JobsStatusSchema = z.object({
   writes: z.number().int(),
   uploads: z.array(MetadataJobSchema),
   downloads: z.array(DownloadProgressSchema),
   fetch: FetchStatusSchema,
   generating: z.array(z.string()),
+  generatingWiki: z.array(z.string()),
+  wikiFailures: z.record(z.string(), CallFailureSchema),
 }).strict()
 
 /** Input for no-argument methods: renderer sends an empty object and the boundary rejects extra keys. */
@@ -2642,6 +2656,7 @@ export const CONTRACT_METHODS = [
   'harness.pendingPaperWiki',
   'harness.start',
   'harness.cancel',
+  'harness.dismissFailure',
   'harness.modelSettings',
   'harness.updateModelSettings',
   'harness.checkModelConnection',

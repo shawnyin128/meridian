@@ -1,9 +1,11 @@
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import type { HarnessPaperWikiQuality } from '../../shared/contract.js'
+import type { HarnessPaperWikiQuality, PaperRow } from '../../shared/contract.js'
 import { callFailure } from '../call-error.js'
 import type { PaperWikiDraft } from './paper-wiki.js'
 import {
-  paperWikiHarnessError, projectPaperWikiReview, renderPaperWikiDraft,
+  citablePages, paperWikiHarnessError, projectPaperWikiReview, renderPaperWikiDraft,
   validatePaperWikiDraftScope, validatePaperWikiDraftSemantics, validatePaperWikiQuality,
 } from './paper-wiki.js'
 import { HarnessRpcError } from './rpc.js'
@@ -41,6 +43,14 @@ const draft = (): PaperWikiDraft => ({
 })
 
 describe('Paper Wiki Harness draft boundary', () => {
+  it('lets a draft cite the pages the paper has: its stored count, or its PDF\'s when none is stored', async () => {
+    const pdf = new Uint8Array(readFileSync(resolve(import.meta.dirname,
+      '../fixtures/vault/sources/papers/paper-pdf-a6b750e25a61-13979-STAR-Speculative-Decodin.pdf')))
+    const paper = (pageCount: number) => ({ pageCount }) as PaperRow
+    expect(await citablePages(paper(0), () => pdf)).toBe(2)
+    expect(await citablePages(paper(7), () => { throw new Error('the stored count is enough') })).toBe(7)
+  })
+
   it('renders only the canonical Core-owned section layout', () => {
     expect(renderPaperWikiDraft(draft())).toBe([
       '## What To Remember',

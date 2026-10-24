@@ -37,8 +37,11 @@ export type Background = {
    * arms nothing while no vault is open.
    */
   armSchedule(): () => void
-  /** The jobs status without the chats being generated, which the chat service reports. */
-  status(): Omit<JobsStatus, 'generating'>
+  /**
+   * The jobs status without the chats and Wiki proposals being generated and the failed Wiki runs,
+   * which the chat service and the Harness cost gate report.
+   */
+  status(): Omit<JobsStatus, 'generating' | 'generatingWiki' | 'wikiFailures'>
   idle(): Promise<void>
 }
 
@@ -88,7 +91,7 @@ export function createBackground(deps: {
     )),
   })
   const metadata = createMetadataQueue({ store: deps.store, probe: deps.probe, provider: arxiv, onWrite })
-  const downloads = createInboxDownloads({ store: deps.store, get: deps.get, onWrite })
+  const downloads = createInboxDownloads({ store: deps.store, get: deps.get, probe: deps.probe, onWrite })
   const fetcher = createWatchFetcher({
     store: deps.store, arxiv, scholar, now: deps.now, onWrite,
     authorPapers: (identity) => authors.papers(identity.id),
