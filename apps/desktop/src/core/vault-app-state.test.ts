@@ -18,6 +18,8 @@ const VAULT = resolve(import.meta.dirname, 'fixtures/vault')
 const PAPER = '13979-STAR-Speculative-Decodin'
 const PAPER_PAGE = 'wiki/papers/13979-STAR-Speculative-Decodin.md'
 const PAPER_PDF = 'sources/papers/paper-pdf-a6b750e25a61-13979-STAR-Speculative-Decodin.pdf'
+/** The other page of the test vault; it records no year. */
+const MIXTRAL = 'Jiang-et-al-2024-Mixtral-of-Experts'
 
 /** Real-vault ignore rules copied byte-for-byte from D:\research\paper-wiki\.gitignore. */
 const VAULT_GITIGNORE = [
@@ -258,6 +260,12 @@ describe('vault app state', () => {
   })
 
   describe('收件与入库', () => {
+    /** The record `.meridian/inbox.json` now holds for the entry `id`. */
+    const stored = (id: string): Record<string, unknown> =>
+      (JSON.parse(read('.meridian/inbox.json')) as Record<string, unknown>[]).find((entry) => entry.id === id)!
+    /** The source id the page `id` names. */
+    const sourceOf = (id: string): string => read(`wiki/papers/${id}.md`).match(/^source_id: "(.+)"$/m)![1]!
+
     beforeEach(() => {
       writeFileSync(join(vault, '.meridian', 'inbox.json'), JSON.stringify(INBOX), 'utf8')
       writeFileSync(join(vault, '.meridian', 'watches.json'), JSON.stringify([
@@ -317,7 +325,7 @@ describe('vault app state', () => {
         title: 'Medusa Heads Revisited', topics: ['Draft acceptance'], readState: '未读',
         pageState: 'draft', updated: '2026-09-08',
       })
-      expect(store.listInbox().find((e) => e.id === 'in-new')?.downloaded).toBe(true)
+      expect(store.listInbox().map((e) => e.id)).toEqual(['in-dup'])
     })
 
     it('入库时把远端元数据一次写进论文页', () => {
@@ -325,7 +333,7 @@ describe('vault app state', () => {
       expect(paper.year).toBe(2026)
       expect(paper.venue).toBe('ICLR 2026')
       expect(paper.identifier).toBe('arXiv:2609.10002')
-      expect(store.listInbox().find((e) => e.id === 'in-new')?.venue).toBe('ICLR 2026')
+      expect(stored('in-new').venue).toBe('ICLR 2026')
       expect(read('wiki/papers/Medusa-Heads-Revisited.md')).toContain('venue: "ICLR 2026"')
     })
 
@@ -341,17 +349,74 @@ describe('vault app state', () => {
       expect(store.completeInboxDownload('in-dup', bytes))
         .toEqual({ kind: 'existing', paper: held.id, title: held.title })
       expect(store.listPapers({ page: 1, size: 10 }).total).toBe(before + 1)
-      expect(store.listInbox().find((e) => e.id === 'in-dup')).toMatchObject({ downloaded: false, paper: '' })
+      expect(store.listInbox().map((e) => e.id)).toEqual(['in-new'])
+      expect(stored('in-dup')).toMatchObject({ gone: true, left: 'library', downloaded: true, paper: sourceOf(held.id) })
     })
 
-    it('入库的那一篇从库里删掉后,这一条回到可入库;从垃圾桶恢复后又是已入库', () => {
+    it('入库的那一条离开论文推送,记成 gone 和离开的原因;那一篇从库里删掉它也不回来,恢复论文也一样', () => {
       const { paper } = store.completeInboxDownload('in-new', minimalPdf({ lines: ['Medusa'] }))
+      expect(store.listInbox().map((e) => e.id)).toEqual(['in-dup'])
+      expect(stored('in-new')).toMatchObject({ gone: true, left: 'library', downloaded: true })
       store.deletePaper(paper)
-      expect(reopen().listInbox().find((e) => e.id === 'in-new')?.downloaded).toBe(false)
+      expect(reopen().listInbox().map((e) => e.id)).toEqual(['in-dup'])
       expect(store.prepareInboxDownload('in-new')).toEqual({ kind: 'fetch', url: 'https://arxiv.org/pdf/2609.10002' })
 
       store.restoreTrash(store.listTrash().find((item) => item.kind === 'paper')!.id)
-      expect(store.listInbox().find((e) => e.id === 'in-new')).toMatchObject({ downloaded: true, paper })
+      expect(store.listInbox().map((e) => e.id)).toEqual(['in-dup'])
+    })
+
+    it('论文从别处进了库,它那条推送就不再列出、不算条数:按不带版本的 arXiv 编号认', () => {
+      expect(store.listInbox().map((e) => e.id)).toEqual(['in-dup', 'in-new'])
+      store.updatePaper(PAPER, { identifier: 'arXiv:2609.10001v2' })
+      expect(store.listInbox().map((e) => e.id)).toEqual(['in-new'])
+      expect(reopen().listInbox({ kind: 'watch' }).map((e) => e.id)).toEqual(['in-new'])
+      expect(stored('in-dup')).toMatchObject({ gone: false })
+    })
+
+    it('按 DOI 认:库里记着同一个 DOI 的,或记着 arXiv 给这一篇的 DOI 的', () => {
+      writeFileSync(join(vault, '.meridian', 'inbox.json'), JSON.stringify([
+        { ...INBOX[0], doi: '10.1145/3600006.3613165' }, INBOX[1],
+      ]), 'utf8')
+      store = reopen()
+      store.updatePaper(PAPER, { identifier: 'https://doi.org/10.1145/3600006.3613165' })
+      expect(store.listInbox().map((e) => e.id)).toEqual(['in-new'])
+      store.updatePaper(MIXTRAL, { identifier: 'doi:10.48550/arXiv.2609.10002' })
+      expect(store.listInbox()).toEqual([])
+    })
+
+    it('没有共同的编号时按规范化标题加年份认:年份差一年以内算同一篇,差得更多不算,库里没记年份的只看标题', () => {
+      const titled = (id: string, title: string, submitted: string) => ({
+        ...INBOX[1], id, title, arxiv: `2609.2000${id.length}`, pdf: '', meta: { ...INBOX[1]!.meta, submitted },
+      })
+      writeFileSync(join(vault, '.meridian', 'inbox.json'), JSON.stringify([
+        titled('mixtral', 'MIXTRAL of Experts.', '2024-01-08'), titled('mixtral-23', 'Mixtral of experts', '2023-12-11'),
+        titled('mixtral-1999', 'Mixtral — of experts', '1999-05-01'), titled('mixtral-2022', 'Mixtral of Experts', '2022-06-01'),
+      ]), 'utf8')
+      store = reopen()
+      expect(store.listInbox()).toEqual([])
+      store.updatePaper(MIXTRAL, { year: 2024 })
+      expect(store.listInbox().map((e) => e.id)).toEqual(['mixtral-1999', 'mixtral-2022'])
+    })
+
+    it('忽略、稍后阅读、减少类似和已经了解都让卡片离开并记下原因,恢复时一并撤掉;更多类似留着', () => {
+      const project = store.createProject('离开的原因')
+      const found = (arxiv: string) => ({
+        semanticId: `semantic-${arxiv}`, id: arxiv, title: `Found ${arxiv}`, authors: ['Ada'], abstract: 'A',
+        submitted: '2026-09-08', journalRef: null, pdf: `https://arxiv.org/pdf/${arxiv}`,
+      })
+      expect(store.addDiscoveryEntries(project, ['2609.30001', '2609.30002', '2609.30003'].map(found))).toBe(3)
+      const [less, known, more] = store.listInbox({ kind: 'discovery' }).map((e) => e.id)
+      store.dismissInbox('in-dup')
+      store.readLater('in-new')
+      store.feedbackDiscovery(less!, 'less')
+      store.feedbackDiscovery(known!, 'known')
+      store.feedbackDiscovery(more!, 'more')
+      expect(store.listInbox().map((e) => [e.id, e.feedback])).toEqual([[more, 'more']])
+      expect(['in-dup', 'in-new', less, known, more].map((id) => [stored(id!).gone, stored(id!).left]))
+        .toEqual([[true, 'dismissed'], [true, 'later'], [true, 'less'], [true, 'known'], [false, undefined]])
+      store.restoreTrash(store.listTrash().find((item) => item.kind === 'inbox')!.id)
+      expect(stored('in-dup')).not.toHaveProperty('left')
+      expect(reopen().listInbox().map((e) => e.id)).toEqual([more, 'in-dup'])
     })
   })
 

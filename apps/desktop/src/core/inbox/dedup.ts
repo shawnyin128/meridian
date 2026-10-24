@@ -1,10 +1,7 @@
 import type { PaperRow, Watch } from '../../shared/contract.js'
 import { WATCH_KINDS } from '../../shared/vocabulary.js'
 import type { RemotePaper } from '../net/arxiv.js'
-
-/** Returns a title normalized for duplicate comparison. */
-export const titleKey = (title: string): string =>
-  title.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '')
+import { titleKey } from './identity.js'
 
 /** Returns only results that neither inbox history nor the paper library already accounts for. */
 export function unseenPapers<T extends RemotePaper>(

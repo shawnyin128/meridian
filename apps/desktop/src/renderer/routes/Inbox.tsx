@@ -12,7 +12,7 @@ import { errorLabel, failureLabel } from '../lib/failure-label.js'
 import type { Catalog } from '../messages/catalog.js'
 import { useMessages } from '../messages/useMessages.js'
 import {
-  DownloadRing, Icon, IconDownload, IconGear, IconLater, IconRead, IconSeen, IconTrash,
+  DownloadRing, Icon, IconDownload, IconGear, IconLater, IconSeen, IconTrash,
 } from '../components/icons.js'
 import { IconButton } from '../components/IconButton.js'
 import {
@@ -20,7 +20,6 @@ import {
 } from '../components/paper/PaperCard.js'
 import { EmptyState } from '../components/EmptyState.js'
 import { LoadingPlaceholder } from '../components/LoadingPlaceholder.js'
-import { plainTitle } from '../components/paper/paper-text.js'
 import { CollapsibleGroup } from '../components/CollapsibleGroup.js'
 import { DateTimeDisplay } from '../components/DateTimeDisplay.js'
 import { SortMenu } from '../components/SortMenu.js'
@@ -78,9 +77,6 @@ export function Inbox() {
   const [profiles, setProfiles] = useState<DiscoveryProfile[]>([])
   const [leaving, setLeaving] = useState<ReadonlySet<string>>(new Set())
   const [error, setError] = useState<string | null>(null)
-  // A download that hit a paper already in the vault: that paper's id and title, shown on the card
-  // with a link to open it.
-  const [collided, setCollided] = useState<ReadonlyMap<string, { paper: string; title: string }>>(new Map())
 
   const notice = useNotice()
   const { openCategory } = useSettingsOpen()
@@ -172,13 +168,12 @@ export function Inbox() {
         setFailed((held) => new Map(held).set(id, result.reason))
         return
       }
-      if (result.kind === 'existing') {
-        setCollided((seen) => new Map(seen).set(id, { paper: result.paper, title: result.title }))
-        notice.success(m.inbox.notices.duplicateToast)
-        return
-      }
-      bump()
-      notice.success(m.inbox.notices.downloaded)
+      leave([id])
+      notice.success(
+        result.kind === 'added' ? m.inbox.notices.downloaded : m.inbox.notices.duplicateToast,
+        { label: m.papers.rowActions.openReader, onAction: () => open('reader', result.paper) },
+      )
+      window.setTimeout(bump, LEAVE_MS)
     }).catch((e: unknown) => notice.refusal(errorLabel(m, e))).finally(() => {
       setBusy((held) => {
         const next = new Set(held)
@@ -222,23 +217,17 @@ export function Inbox() {
             </IconButton>
           </>
         ) : null}
-        {p.downloaded
+        {busy.has(p.id)
           ? (
-            <IconButton label={m.papers.rowActions.openReader} size="nested" onClick={() => open('reader', p.paper)}>
-              <IconRead />
+            <IconButton label={m.later.actions.downloading} size="nested" className="busy" disabled>
+              <DownloadRing progress={jobs?.downloads?.find((item) => item.id === p.id) ?? null} />
             </IconButton>
           )
-          : busy.has(p.id)
-            ? (
-              <IconButton label={m.later.actions.downloading} size="nested" className="busy" disabled>
-                <DownloadRing progress={jobs?.downloads?.find((item) => item.id === p.id) ?? null} />
-              </IconButton>
-            )
-            : (
-              <IconButton label={m.inbox.actions.download} size="nested" onClick={() => ingest(p.id)}>
-                <IconDownload />
-              </IconButton>
-            )}
+          : (
+            <IconButton label={m.inbox.actions.download} size="nested" onClick={() => ingest(p.id)}>
+              <IconDownload />
+            </IconButton>
+          )}
         <IconButton label={m.inbox.actions.readLater} size="nested" onClick={() => queue(p.id)}>
           <IconLater />
         </IconButton>
@@ -249,20 +238,11 @@ export function Inbox() {
         ) : null}
         </>
       )}
-      notices={(
-        <>
-          {collided.has(p.id) ? (
-            <PaperCardNotice action={(
-              <button className="btn ghost sm" onClick={() => open('reader', collided.get(p.id)!.paper)}>{m.inbox.actions.open}</button>
-            )}>{m.inbox.notices.alreadyInLibrary(plainTitle(collided.get(p.id)!.title))}</PaperCardNotice>
-          ) : null}
-          {failed.has(p.id) ? (
-            <PaperCardNotice tone="error" action={(
-              <button className="btn ghost sm" onClick={() => ingest(p.id)}>{m.common.retry}</button>
-            )}>{failureLabel(m, m.inbox.notices.downloadFailed, failed.get(p.id)!)}</PaperCardNotice>
-          ) : null}
-        </>
-      )}
+      notices={failed.has(p.id) ? (
+        <PaperCardNotice tone="error" action={(
+          <button className="btn ghost sm" onClick={() => ingest(p.id)}>{m.common.retry}</button>
+        )}>{failureLabel(m, m.inbox.notices.downloadFailed, failed.get(p.id)!)}</PaperCardNotice>
+      ) : null}
       metadata={(
         <>
           {p.authors}{p.venue ? <PaperCardBadge>{p.venue}</PaperCardBadge> : null}
