@@ -3,6 +3,7 @@ import { act } from 'react'
 import { createRoot } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Watch } from '../../shared/contract.js'
+import { CallError } from '../call-error.js'
 import { MessagesProvider } from '../messages/useMessages.js'
 import { LANGUAGE_STORAGE_KEY } from '../shell/language.js'
 
@@ -27,13 +28,12 @@ const api = vi.hoisted(() => ({
   })),
   update: vi.fn(async () => {}),
   setActive: vi.fn(async () => {}),
+  projects: vi.fn(async (): Promise<unknown> => [{ id: 'project-1', name: 'Draft-tree serving' }]),
 }))
 
 vi.mock('../ipc.js', () => ({
   author: { search: api.search },
-  project: {
-    list: vi.fn(async () => [{ id: 'project-1', name: 'Draft-tree serving' }]),
-  },
+  project: { list: api.projects },
   watch: {
     list: async () => structuredClone(api.watches),
     suggest: api.suggest,
@@ -89,6 +89,17 @@ describe('WatchSettings', () => {
     const add = topicList.previousElementSibling!.querySelector<HTMLButtonElement>('button')!
     await act(async () => { add.click() })
     expect(topicList.firstElementChild!.classList.contains('newrow')).toBe(true)
+
+    await act(async () => { root.unmount() })
+  })
+
+  it('读不到时，原因落在共享的错误框里，和发现、API 一样与列表齐平', async () => {
+    api.projects.mockRejectedValueOnce(new CallError('project.list', 'newer-version'))
+    const root = createRoot(host)
+    await act(async () => { root.render(<MessagesProvider><WatchSettings /></MessagesProvider>) })
+
+    const alert = host.querySelector('.watch-settings [role="alert"]')
+    expect([alert?.className, alert?.textContent]).toEqual(['ipcerror ipcerror--section', '需要更新 App'])
 
     await act(async () => { root.unmount() })
   })
