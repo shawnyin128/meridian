@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import type { ReactNode } from 'react'
 import type { ChatSession, Watch } from '../../shared/contract.js'
-import { MenuItem } from '../components/ActionMenu.js'
+import { MenuItem, MenuSeparator } from '../components/ActionMenu.js'
 import { DotsMenu } from '../components/FieldPickers.js'
 import { RowActions } from '../components/StructuredList.js'
 import { Grip, type GripProps } from '../components/Grip.js'
@@ -55,12 +55,12 @@ function WatchRow({ watch, count, on, onOpen }: {
 }
 
 /**
- * A chat's row in the sidebar. The "More" button at its end opens a menu with Archive only: the
- * demo's menu also had pin, rename and delete, which this app does not. Archived chats are not in
- * this list; unarchiving is in Settings.
+ * A chat's row in the sidebar. The "More" button at its end opens a menu with Archive and Delete:
+ * the demo's menu also had pin and rename, which this app does not. Archived chats are not in this
+ * list; unarchiving is in Settings.
  */
-function ChatRow({ session, on, onOpen, onArchive }: {
-  session: ChatSession; on: boolean; onOpen: () => void; onArchive: () => void
+function ChatRow({ session, on, onOpen, onArchive, onDelete }: {
+  session: ChatSession; on: boolean; onOpen: () => void; onArchive: () => void; onDelete: () => void
 }) {
   const m = useMessages()
   return (
@@ -78,6 +78,8 @@ function ChatRow({ session, on, onOpen, onArchive }: {
       <RowActions>
         <DotsMenu label={m.shell.sidebar.manageChat(plainTitle(session.title))} stopRowActivation>
           <MenuItem onSelect={onArchive}>{m.shell.sidebar.archive}</MenuItem>
+          <MenuSeparator />
+          <MenuItem className="mi danger" onSelect={onDelete}>{m.common.delete}</MenuItem>
         </DotsMenu>
       </RowActions>
     </NavRow>
@@ -148,7 +150,7 @@ function UpdateRow() {
 export function Sidebar({
   screen, onNavigate, onJump, paperCount, changeCount, projectCount, trashCount, wikiCount, ideaCount,
   inboxScope, inboxMode, onOpenInbox, watches, inboxCounts, discoveryCount, discoveryProjects, laterCount,
-  chats, chatId, onOpenChat, onNewChat, onArchiveChat, grip, collapsed,
+  chats, chatId, onOpenChat, onNewChat, onArchiveChat, onDeleteChat, grip, collapsed,
 }: {
   screen: ScreenKey
   onNavigate: (next: ScreenKey) => void
@@ -172,6 +174,7 @@ export function Sidebar({
   onOpenChat: (id: string) => void
   onNewChat: () => void
   onArchiveChat: (id: string) => void
+  onDeleteChat: (id: string) => void
   grip: GripProps
   collapsed: boolean
 }) {
@@ -312,7 +315,7 @@ export function Sidebar({
                 {active.map((s) => (
                   <ChatRow
                     key={s.id} session={s} on={s.id === chatId} onOpen={() => onOpenChat(s.id)}
-                    onArchive={() => onArchiveChat(s.id)}
+                    onArchive={() => onArchiveChat(s.id)} onDelete={() => onDeleteChat(s.id)}
                   />
                 ))}
               </div>

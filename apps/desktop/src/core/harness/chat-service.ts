@@ -1,6 +1,7 @@
-import type { ChatMessageFields, ChatSendResult } from '../../shared/contract.js'
+import type { ChatMessageFields, ChatSendResult, TrashedEntry } from '../../shared/contract.js'
 import { CallError, callFailure } from '../call-error.js'
 import type { VaultStore } from '../vault.js'
+import { trashedEntry } from '../write-receipts.js'
 import type { ChatHarnessRunner } from './chat.js'
 import type { HarnessModelConfig } from './model-config.js'
 
@@ -51,6 +52,11 @@ export function createChatService(options: {
       if (controller === undefined) return { id, cancelled: false }
       controller.abort()
       return { id, cancelled: true }
+    },
+    /** Stops the reply chat `id` is generating, if any, then moves the chat into the trash; throws when there is no such chat. */
+    delete(id: string): TrashedEntry {
+      running.get(id)?.abort()
+      return trashedEntry(options.store, () => options.store.deleteChat(id))
     },
   }
 }

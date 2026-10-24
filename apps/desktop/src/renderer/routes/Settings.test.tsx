@@ -64,6 +64,7 @@ const api = vi.hoisted(() => ({
   restartApp: vi.fn(),
   success: vi.fn(),
   chatList: vi.fn(async () => [] as unknown[]),
+  removeChat: vi.fn(),
 }))
 
 vi.mock('../ipc.js', () => ({
@@ -96,6 +97,7 @@ vi.mock('../ipc.js', () => ({
 vi.mock('../shell/AppShell.js', () => ({
   useNotice: () => ({ success: api.success, refusal: vi.fn() }),
   useJump: () => ({ open: vi.fn() }),
+  useChatSession: () => ({ remove: api.removeChat }),
   useSettingsOpen: () => ({
     open: true, requestedCategory: api.requestedCategory, setOpen: api.setOpen, openCategory: vi.fn(),
   }),
@@ -235,7 +237,7 @@ describe('Settings', () => {
     expect(api.updateDeliverySettings).toHaveBeenCalledExactlyOnceWith({ maxItemsPerRun: 12 })
   })
 
-  it('归档的对话那一行的打开和取消归档是行尾操作槽里的图标钮', async () => {
+  it('归档的对话那一行的打开、取消归档和删除是行尾操作槽里的图标钮，删除标红、不弹确认，交给删对话的那一处', async () => {
     const { chat } = await import('../ipc.js')
     vi.mocked(chat.list).mockResolvedValueOnce([{ id: 'chat-1', title: '树宽讨论', archived: true, messageCount: 2 }])
     api.requestedCategory = 'archived'
@@ -245,7 +247,10 @@ describe('Settings', () => {
       item.getAttribute('aria-label'), item.textContent, item.classList.contains('icbtn'), item.classList.contains('danger'),
     ])
     expect(row.hasAttribute('data-row-actions')).toBe(true)
-    expect(slot(row)).toEqual([['打开', '', true, false], ['取消归档', '', true, false]])
+    expect(slot(row)).toEqual([['打开', '', true, false], ['取消归档', '', true, false], ['删除', '', true, true]])
+    await act(async () => { row.querySelector<HTMLButtonElement>('.row-actions button[aria-label="删除"]')!.click() })
+    expect(document.querySelector('[role="alertdialog"]')).toBeNull()
+    expect(api.removeChat).toHaveBeenCalledExactlyOnceWith('chat-1')
   })
 
   it('设置右栏放不下时，只在藏着内容的那一边淡出', async () => {

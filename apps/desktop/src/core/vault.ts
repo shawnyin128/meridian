@@ -789,7 +789,8 @@ export interface VaultStore {
    * neither listed nor restorable. Each entry's `restorable` says whether it
    * can go back right now: an attachment cannot while the project it was
    * deleted from is itself deleted, nor a paper while another page stands where
-   * its page goes back.
+   * its page goes back, nor a paper chat while its paper has another chat that
+   * holds messages.
    */
   listTrash(): TrashEntry[]
 
@@ -800,7 +801,9 @@ export interface VaultStore {
    * whose project is no longer in the vault — that entry stays in the trash,
    * restorable again once the project is — and for a paper or project whose
    * page's place another page holds, which stays in the trash too, so a page
-   * is never overwritten. Restoring never discards what the
+   * is never overwritten, and likewise for a paper chat whose paper has
+   * another chat that holds messages. A paper chat put back takes the place of
+   * its paper's chat that holds no messages. Restoring never discards what the
    * entry holds and never puts it anywhere but where it came from. A paper put
    * back holding cells some column as the vault holds it now could not have been
    * filled through then has those cells emptied through updatePaper, recorded as
@@ -987,6 +990,14 @@ export interface VaultStore {
    * session exists.
    */
   setChatArchived(id: string, archived: boolean): void
+
+  /**
+   * Moves the session with the given id, with its messages, into the trash;
+   * restoring its trash entry puts it back where it stood in the list, archived
+   * or not, and bound to its paper. Ideas saved from it keep naming it. Throws
+   * if no such session exists.
+   */
+  deleteChat(id: string): void
 
   /**
    * Returns at most SEARCH_LIMIT hits for the query over the vault as held in

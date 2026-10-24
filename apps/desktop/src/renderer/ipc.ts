@@ -264,6 +264,7 @@ export const chat = {
     call<ProjectDetail>('chat.recordAction', { id, messageId }),
   setArchived: (id: string, archived: boolean) =>
     call<void>('chat.setArchived', { id, archived }),
+  delete: (id: string) => call<TrashedEntry>('chat.delete', { id }),
 }
 
 export const idea = {
