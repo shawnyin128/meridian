@@ -238,6 +238,21 @@ test('面板的最近推进、停滞天数与细行的上次推进都按最近�
     .toContainText(`上次推进 ${daysSince(today, moeProgress!)} 天前`)
 })
 
+test('进行中卡片右上角的里程碑和搁置、已完成行末的说明在同一条右边线上结束', async ({ app, win }) => {
+  await gotoList(win)
+  for (const [width, height] of [[1440, 900], [1280, 800]] as const) {
+    await app.evaluate(({ BrowserWindow }, size) => BrowserWindow.getAllWindows()[0]!.setContentSize(size.width, size.height), { width, height })
+    await expect.poll(() => win.evaluate(() => window.innerWidth)).toBe(width)
+    const ends = await shown(win).locator('.projpanel[data-proj], .prow').evaluateAll((items) => items.map((item) => ({
+      kind: item.classList.contains('prow') ? 'row' : 'card',
+      right: item.querySelector('.pp-h .dd, .prow .m')!.getBoundingClientRect().right,
+    })))
+    const shownEnds = `${width}×${height}: ${JSON.stringify(ends)}`
+    expect(new Set(ends.map((end) => end.kind)), shownEnds).toEqual(new Set(['card', 'row']))
+    expect(Math.max(...ends.map((end) => end.right)) - Math.min(...ends.map((end) => end.right)), shownEnds).toBeLessThan(0.5)
+  }
+})
+
 test('单日与跨天任务的日期标签、全天与时段标签在各自列里一样宽', async ({ win }) => {
   await gotoList(win)
   await win.locator('[data-proj="timeline-demo"]').click()

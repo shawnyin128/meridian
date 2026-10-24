@@ -21,6 +21,7 @@ import { IdeaRelations } from '../components/ideas/IdeaRelations.js'
 import { nodeMode } from '../components/project/ResearchGraph.js'
 import { LoadingPlaceholder } from '../components/LoadingPlaceholder.js'
 import { DetailPanel } from '../components/DetailPanel.js'
+import { TrailingDate } from '../components/DateTimeDisplay.js'
 import { CardOpen, ResearchObjectCard } from '../components/ResearchObjectCard.js'
 import { RowActions, StructuredList, StructuredRow } from '../components/StructuredList.js'
 import { ProjectLabel, ProjectStatusTag } from '../components/project/ProjectIdentity.js'
@@ -39,7 +40,6 @@ import { useScrollFade } from '../hooks/useScrollFade.js'
 import { useSourceChatDeleted } from '../hooks/useSourceChatDeleted.js'
 import { useDragReorder, type Reorderable } from '../hooks/useDragReorder.js'
 import { DragHandle } from '../components/DragHandle.js'
-import { useFormat } from '../lib/format.js'
 import { commitsMultiline, composing } from '../lib/keyboard.js'
 import { useMessages } from '../messages/useMessages.js'
 import { AgentLabel, SourceLabel } from '../components/SourceLabel.js'
@@ -165,7 +165,6 @@ function IdeaCard({ idea, chatDeleted, projectsById, pageTitles, selected, menu,
   reorder: Reorderable
   dropClassName: string
 }) {
-  const fmt = useFormat()
   const m = useMessages()
   return (
     <ResearchObjectCard
@@ -182,7 +181,7 @@ function IdeaCard({ idea, chatDeleted, projectsById, pageTitles, selected, menu,
             idea={idea} chatDeleted={chatDeleted}
             sourceProject={idea.sourceProject === undefined ? undefined : projectsById.get(idea.sourceProject)?.name}
           />
-          <span className="idea-card-updated">{m.ideas.updated(fmt.date(idea.updated))}</span>
+          <TrailingDate date={idea.updated} label={m.ideas.updated} />
         </div>
       </div>
       <RowActions><DragHandle {...reorder.handle} />{menu}</RowActions>
@@ -204,7 +203,6 @@ function IdeaRow({ idea, chatDeleted, projectsById, selected, menu, onOpen, reor
   reorder: Reorderable
   dropClassName: string
 }) {
-  const fmt = useFormat()
   const m = useMessages()
   const work = idea.project === undefined ? undefined : projectsById.get(idea.project)
   return (
@@ -223,7 +221,7 @@ function IdeaRow({ idea, chatDeleted, projectsById, selected, menu, onOpen, reor
           sourceProject={idea.sourceProject === undefined ? undefined : projectsById.get(idea.sourceProject)?.name}
         />
       </span>
-      <span className="idea-card-updated">{m.ideas.updated(fmt.date(idea.updated))}</span>
+      <TrailingDate date={idea.updated} label={m.ideas.updated} />
       <RowActions><DragHandle {...reorder.handle} />{menu}</RowActions>
     </StructuredRow>
   )

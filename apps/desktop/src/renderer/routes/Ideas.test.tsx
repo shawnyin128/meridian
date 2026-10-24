@@ -347,7 +347,7 @@ describe('Ideas', () => {
     try {
       await act(async () => { root.render(<MessagesProvider><Ideas /></MessagesProvider>) })
       expect([...host.querySelector('[data-idea="idea-own"] .idea-card-meta')!.children].map((child) => child.className))
-        .toEqual(['idea-card-updated'])
+        .toEqual(['trailing-date'])
       expect(host.querySelector('[data-idea="idea-own"]')!.textContent).not.toContain('手动添加')
       await act(async () => { host.querySelector<HTMLElement>('[data-idea="idea-own"]')!.click() })
       expect([...host.querySelectorAll('.idea-detail-panel > .section-heading:not(.idea-panel-head)')].map((h) => h.firstChild!.textContent))
@@ -401,8 +401,8 @@ describe('Ideas', () => {
       const meta = (id: string, part: string) => [...host.querySelector(`[data-idea="${id}"] ${part}`)!.children]
         .map((child) => (child.classList.contains('source-label') ? `[${child.textContent}]` : child.className))
       expect(meta('idea-linked', '.idea-row-meta')).toEqual(['fade-text idea-card-source', '[对话]'])
-      expect(meta('idea-independent', '.idea-card-meta')).toEqual(['fade-text idea-card-source', '[论文阅读]', 'idea-card-updated'])
-      expect(meta('idea-agent', '.idea-card-meta')).toEqual(['fade-text idea-card-source', '[agent]', 'idea-card-updated'])
+      expect(meta('idea-independent', '.idea-card-meta')).toEqual(['fade-text idea-card-source', '[论文阅读]', 'trailing-date'])
+      expect(meta('idea-agent', '.idea-card-meta')).toEqual(['fade-text idea-card-source', '[agent]', 'trailing-date'])
     } finally {
       api.ideas.pop()
     }

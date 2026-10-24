@@ -18,6 +18,23 @@ export function DateChip({ date, children, className = '' }: {
   )
 }
 
+/** The 28th of every month: with two-digit days, one of them gives the widest date label of a locale. */
+const WIDEST_DAYS = Array.from({ length: 12 }, (_, month) => `2000-${String(month + 1).padStart(2, '0')}-28`)
+
+/**
+ * An item's date at the end of its card or row, before its row actions, worded by `label` (for example
+ * "Updated Oct 24"). It is as wide as the widest date `label` words in the locale, its text starting at its
+ * left, so the trailing dates of cards and rows start and end at one x; it never shrinks or clips.
+ */
+export function TrailingDate({ date, label }: { date: string; label: (date: string) => string }) {
+  const fmt = useFormat()
+  return (
+    <span className="trailing-date" data-widest={WIDEST_DAYS.map((day) => label(fmt.date(day))).join('\n')}>
+      {label(fmt.date(date))}
+    </span>
+  )
+}
+
 /**
  * The app-wide date and time pair. The date always comes first and the time after it; the caller
  * only decides whether to show the time. A timestamp `at` (ISO or epoch ms) shows its local day and

@@ -141,3 +141,75 @@ test('coding agent 在项目工作区记下的想法出现在想法页,标着 ag
     rmSync(repo, { recursive: true, force: true })
   }
 })
+
+/**
+ * The trailing "updated" date of every idea card and row on the shown Ideas page: whether the item
+ * is a card or a row, the date's text, where its box starts and ends, and what cuts it off: its own box,
+ * the item's padding edge, a clipping box around it inside the item, or another element of the item
+ * painted over it.
+ */
+const trailingDates = (win: Page) => shown(win).locator('.idea-card, .idea-row').evaluateAll((items) => items.map((item) => {
+  const date = [...item.querySelectorAll('span')].find((span) => /^\d+月\d+日 更新$/.test(span.textContent ?? ''))!
+  const box = date.getBoundingClientRect()
+  const text = document.createRange()
+  text.selectNodeContents(date)
+  const cuts: string[] = []
+  if (date.scrollWidth > date.clientWidth || text.getBoundingClientRect().right > box.right + 0.5) cuts.push('its own box')
+  const itemStyle = getComputedStyle(item)
+  const itemEnd = item.getBoundingClientRect().right - parseFloat(itemStyle.borderRightWidth) - parseFloat(itemStyle.paddingRight)
+  if (box.right > itemEnd + 0.5) cuts.push('the item edge')
+  /** The part of `el` from `left` to `right` that the clipping boxes around it inside the item leave visible. */
+  const visible = (el: Element) => {
+    let { left, right } = el.getBoundingClientRect()
+    for (let around = el.parentElement; around !== null && around !== item; around = around.parentElement) {
+      if (getComputedStyle(around).overflowX === 'visible') continue
+      const clip = around.getBoundingClientRect()
+      left = Math.max(left, clip.left)
+      right = Math.min(right, clip.right)
+    }
+    return { left, right }
+  }
+  if (visible(date).right < box.right - 0.5) cuts.push('a clipping box around it')
+  for (const el of item.querySelectorAll('*')) {
+    if (el.childElementCount > 0 || el.contains(date) || date.contains(el)) continue
+    const { top, bottom } = el.getBoundingClientRect()
+    const { left, right } = visible(el)
+    if (right > box.left + 0.5 && left < box.right - 0.5 && bottom > box.top && top < box.bottom) cuts.push(`${el.className} over it`)
+  }
+  return { kind: item.classList.contains('idea-row') ? 'row' : 'card', text: date.textContent, left: box.left, right: box.right, cuts }
+}))
+
+test('未开始的卡片和进行中的行,末尾的更新日期起点和右边线都对齐,长短不同的日期也不被截断', async ({ app, win }) => {
+  const repo = mkdtempSync(join(tmpdir(), 'meridian-trailing-dates-'))
+  try {
+    // Agent ideas keep the day the workspace file gives them: the narrowest and the widest date label.
+    await win.evaluate((root) => (window as unknown as MeridianWindow).meridian.call('project.bindWorkspace', {
+      id: 'draft', binding: { kind: 'local', root },
+    }), repo)
+    mkdirSync(join(repo, '.meridian/ideas'), { recursive: true })
+    writeFileSync(join(repo, '.meridian/ideas/ideas.json'), JSON.stringify({
+      schema_version: 'meridian.workspace-agent-ideas.v1',
+      ideas: [
+        { id: 'narrow-date', date: '2026-01-01', title: '日期最窄的想法', body: '一月一日记下。' },
+        { id: 'wide-date', date: '2025-12-28', title: '日期最宽的想法', body: '十二月二十八日记下。' },
+      ],
+    }))
+    await gotoIdeas(win)
+    await expect(shown(win).locator('.idea-card', { hasText: '日期最窄的想法' })).toHaveCount(1)
+
+    const spread = (xs: number[]) => Math.max(...xs) - Math.min(...xs)
+    for (const [width, height] of [[1440, 900], [1280, 800]] as const) {
+      await app.evaluate(({ BrowserWindow }, size) => BrowserWindow.getAllWindows()[0]!.setContentSize(size.width, size.height), { width, height })
+      await expect.poll(() => win.evaluate(() => window.innerWidth)).toBe(width)
+      const dates = await trailingDates(win)
+      const shownDates = `${width}×${height}: ${JSON.stringify(dates)}`
+      expect(new Set(dates.map((date) => date.kind)), shownDates).toEqual(new Set(['card', 'row']))
+      expect(dates.map((date) => date.text), shownDates).toEqual(expect.arrayContaining(['1月1日 更新', '12月28日 更新']))
+      expect(spread(dates.map((date) => date.right)), `右边线 ${shownDates}`).toBeLessThan(0.5)
+      expect(spread(dates.map((date) => date.left)), `起点 ${shownDates}`).toBeLessThan(0.5)
+      expect(dates.filter((date) => date.cuts.length > 0), shownDates).toEqual([])
+    }
+  } finally {
+    rmSync(repo, { recursive: true, force: true })
+  }
+})

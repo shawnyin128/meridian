@@ -128,6 +128,8 @@
   --r-control:var(--r-md); --r-chip:var(--r-full); --r-card:var(--r-xl); --r-menu:var(--r-lg); --r-dialog:var(--r-2xl);
   --pad-menu:var(--sp-6); --r-menu-item:calc(var(--r-menu) - var(--pad-menu));
   --pad-track:var(--sp-2); --r-thumb:calc(var(--r-control) - var(--pad-track));
+  /* A list card's inline padding; a row listed among cards pads by it plus the card's 1px border. */
+  --pad-card-inline:var(--sp-16);
   /* Spacing steps, then per list type a row height and the row's inline padding; a menu row also has its check slot. */
   --sp-2:2px; --sp-4:4px; --sp-6:6px; --sp-8:8px; --sp-10:10px; --sp-12:12px; --sp-14:14px; --sp-16:16px; --sp-20:20px; --sp-24:24px; --sp-32:32px;
   --row-nav-h:30px; --row-nav-pad:var(--sp-8); --row-menu-h:30px; --row-menu-pad:var(--sp-10); --row-menu-check:13px;

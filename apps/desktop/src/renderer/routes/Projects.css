@@ -25,8 +25,11 @@
   .project-card-recent{grid-column:1/-1}
 }
 
-/* Shelved and completed projects: one StructuredRow each */
-.prow{display:flex;align-items:center;gap:var(--sp-10);padding:var(--sp-8) var(--sp-12);font-size:var(--fs-base)}
+/*
+ * Shelved and completed projects: one StructuredRow each, padded inline like the cards above it plus their
+ * border, so its name, meta and row actions line up with theirs.
+ */
+.prow{display:flex;align-items:center;gap:var(--sp-10);padding:var(--sp-8) calc(var(--pad-card-inline) + 1px);font-size:var(--fs-base)}
 .prow-open{display:flex;min-width:0;padding:0;border:0;background:none;color:inherit;font:inherit;text-align:left;cursor:inherit}
 .prow .m{flex:1;color:var(--ter);font-size:var(--fs-sm)}
 

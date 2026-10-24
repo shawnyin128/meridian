@@ -11,12 +11,14 @@
 .idea-relation-tag{max-width:220px}
 .idea-card-meta{display:flex;min-width:0;align-items:center;gap:var(--sp-8);margin-top:var(--sp-8)}
 .idea-card-source{color:var(--ter);font-size:var(--fs-cap)}
-.idea-card-updated{flex:none;margin-left:auto;color:var(--ter);font-size:var(--fs-cap);font-variant-numeric:tabular-nums}
 .idea-card>.row-actions{margin-top:calc(-1 * var(--sp-4))}
 
-/* A started idea is one row, with the padding of the project list's rows; its columns line up from row to row. */
+/*
+ * A started idea is one row, padded inline like the cards above it plus their border, so its title, date
+ * and row actions line up with theirs; its columns line up from row to row.
+ */
 .idea-row{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,.6fr) minmax(0,1.3fr) max-content max-content;align-items:center;
-  column-gap:var(--sp-12);padding:var(--sp-8) var(--sp-12);font-size:var(--fs-base)}
+  column-gap:var(--sp-12);padding:var(--sp-8) calc(var(--pad-card-inline) + 1px);font-size:var(--fs-base)}
 .idea-row-open{display:flex;min-width:0;padding:0;border:0;background:none;color:inherit;font:inherit;text-align:left;cursor:inherit}
 .idea-row-work{display:flex;min-width:0;align-items:center;gap:var(--sp-6)}
 .idea-row-meta{display:flex;min-width:0;align-items:center;gap:var(--sp-8)}

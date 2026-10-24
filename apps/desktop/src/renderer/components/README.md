@@ -44,6 +44,8 @@ Current shared contracts:
   a height cap with a scrolling body and pinned `actions`, the title role (`title` or `ModalTitle`),
   the shared close control (`closable`), and stacking above the dialog that opened it.
 - `DateTimeDisplay`: the app-wide `M月D日` date and optional time pair.
+- `TrailingDate`: an item's date at the end of its card or row, as wide as the widest date of the locale, so
+  the trailing dates of cards and rows on one page start and end at one x.
 - `ConfirmDialog`: one confirmation/destructive-action contract for wording order, focus, and button
   presentation, on the dialog surface's `confirm` step. Routes provide the consequence, the callback and,
   when the confirmation has one, a short `state` beside the buttons (a `Tag`, such as its cost). The
