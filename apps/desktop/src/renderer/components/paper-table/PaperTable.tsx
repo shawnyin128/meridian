@@ -1263,6 +1263,7 @@ export function PaperTable() {
                   rows={mapRows} total={mapTotal} loading={mapLoading}
                   onOpenPaper={(paper) => { void papers.get(paper.id).then(setDetail).catch(reportError) }}
                   onReadPaper={(paper) => open('reader', paper.id)}
+                  onRate={setRating} onPickReadState={setReadState}
                 />
               )
               : !listed

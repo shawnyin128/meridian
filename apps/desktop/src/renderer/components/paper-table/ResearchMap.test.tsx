@@ -14,13 +14,16 @@ const paper = (id: string, title: string, patch: Partial<PaperRow> = {}): PaperR
   updated: '2026-09-21', custom: {}, ...patch,
 })
 
+/** The rating and reading-status callbacks of a test that changes neither. */
+const NO_WRITES = { onRate: () => {}, onPickReadState: () => {} }
+
 describe('ResearchMap', () => {
   beforeEach(() => window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'zh'))
 
   it('还在整理时显示载入占位，不借空状态写一句正在整理', () => {
     const html = renderToStaticMarkup(
       <MessagesProvider>
-        <ResearchMap rows={[]} total={0} loading onOpenPaper={() => {}} onReadPaper={() => {}} />
+        <ResearchMap rows={[]} total={0} loading onOpenPaper={() => {}} onReadPaper={() => {}} {...NO_WRITES} />
       </MessagesProvider>,
     )
     expect(html).not.toContain('empty-state')
@@ -44,7 +47,7 @@ describe('ResearchMap', () => {
     const root = createRoot(host)
     await act(async () => root.render(
       <MessagesProvider>
-        <ResearchMap rows={rows} total={rows.length} loading={false} onOpenPaper={() => {}} onReadPaper={() => {}} />
+        <ResearchMap rows={rows} total={rows.length} loading={false} onOpenPaper={() => {}} onReadPaper={() => {}} {...NO_WRITES} />
       </MessagesProvider>,
     ))
 
@@ -64,7 +67,7 @@ describe('ResearchMap', () => {
     const host = document.createElement('div')
     host.innerHTML = renderToStaticMarkup(
       <MessagesProvider>
-        <ResearchMap rows={rows} total={rows.length} loading={false} onOpenPaper={() => {}} onReadPaper={() => {}} />
+        <ResearchMap rows={rows} total={rows.length} loading={false} onOpenPaper={() => {}} onReadPaper={() => {}} {...NO_WRITES} />
       </MessagesProvider>,
     )
     const faded = (selector: string) => [...host.querySelectorAll(`${selector} .fade-text:not(.tag-text)`)].map((line) => line.textContent)
@@ -86,7 +89,7 @@ describe('ResearchMap', () => {
     const host = document.createElement('div')
     host.innerHTML = renderToStaticMarkup(
       <MessagesProvider>
-        <ResearchMap rows={rows} total={7} loading={false} onOpenPaper={() => {}} onReadPaper={() => {}} />
+        <ResearchMap rows={rows} total={7} loading={false} onOpenPaper={() => {}} onReadPaper={() => {}} {...NO_WRITES} />
       </MessagesProvider>,
     )
     expect(host.querySelector('.research-map-copy p')).toBeNull()
@@ -104,6 +107,50 @@ describe('ResearchMap', () => {
     expect(detail.querySelector('.research-map-why')!.textContent).toBe('主题：Speculative decoding')
   })
 
+  it('一篇论文只占一个 Tab 停靠点：进来先到标题，方向键依次走过五颗星和阅读状态；按标题打开详情，按星只改评分', async () => {
+    globalThis.IS_REACT_ACT_ENVIRONMENT = true
+    vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} })
+    const rows = [paper('a', 'Alpha', { topics: ['Speculative decoding'] }), paper('b', 'Bravo', { topics: ['Speculative decoding'] })]
+    const onOpenPaper = vi.fn()
+    const onRate = vi.fn()
+    const host = document.createElement('div')
+    document.body.append(host)
+    const root = createRoot(host)
+    await act(async () => root.render(
+      <MessagesProvider>
+        <ResearchMap
+          rows={rows} total={rows.length} loading={false} onOpenPaper={onOpenPaper} onReadPaper={() => {}}
+          onRate={onRate} onPickReadState={() => {}}
+        />
+      </MessagesProvider>,
+    ))
+
+    const list = host.querySelector<HTMLElement>('.research-map-papers')!
+    const paperRows = [...list.querySelectorAll<HTMLElement>('.research-map-paper')]
+    const stops = [...list.querySelectorAll<HTMLElement>('*')]
+      .filter((element) => element.tabIndex >= 0 && !(element as HTMLButtonElement).disabled)
+    expect(stops).toEqual(paperRows)
+    await act(async () => { paperRows[0]!.focus() })
+    const walked: string[] = []
+    for (let step = 0; step < 8; step += 1) {
+      walked.push(document.activeElement!.getAttribute('aria-label') ?? document.activeElement!.textContent ?? '')
+      await act(async () => {
+        document.activeElement!.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true, cancelable: true }))
+        await new Promise((done) => setTimeout(done, 0))
+      })
+    }
+    expect(walked).toEqual(['Alpha', '1 星', '2 星', '3 星', '4 星', '5 星', '未读', 'Alpha'])
+
+    await act(async () => { paperRows[0]!.querySelector<HTMLButtonElement>('[aria-label="3 星"]')!.click() })
+    expect(onRate).toHaveBeenCalledExactlyOnceWith(rows[0], 3)
+    expect(onOpenPaper).not.toHaveBeenCalled()
+    await act(async () => { paperRows[0]!.querySelector<HTMLElement>('.research-map-paper-open')!.click() })
+    expect(onOpenPaper).toHaveBeenCalledExactlyOnceWith(rows[0])
+    act(() => root.unmount())
+    host.remove()
+    vi.unstubAllGlobals()
+  })
+
   it('论文行的右键菜单可以打开详情,也可以直接在阅读器中打开', async () => {
     globalThis.IS_REACT_ACT_ENVIRONMENT = true
     // The titles measure whether they fit, and jsdom has no ResizeObserver.
@@ -116,7 +163,7 @@ describe('ResearchMap', () => {
     const root = createRoot(host)
     await act(async () => root.render(
       <MessagesProvider>
-        <ResearchMap rows={rows} total={rows.length} loading={false} onOpenPaper={onOpenPaper} onReadPaper={onReadPaper} />
+        <ResearchMap rows={rows} total={rows.length} loading={false} onOpenPaper={onOpenPaper} onReadPaper={onReadPaper} {...NO_WRITES} />
       </MessagesProvider>,
     ))
 
