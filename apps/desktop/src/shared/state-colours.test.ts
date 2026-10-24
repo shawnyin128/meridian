@@ -93,6 +93,18 @@ describe('拖放落点', () => {
   })
 })
 
+describe('错误', () => {
+  it('错误只用共享的错误框:组件不写没有样式的 err 类,样式表也不为它留规则', () => {
+    const offenders = readdirSync(RENDERER, { recursive: true, encoding: 'utf8' })
+      .filter((path) => /\.(css|tsx)$/.test(path) && !/\.test\./.test(path))
+      .filter((path) => {
+        const text = readFileSync(join(RENDERER, path), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '')
+        return path.endsWith('.css') ? /\.err(?![\w-])/.test(text) : /className="(?:[^"]*\s)?err(?:\s[^"]*)?"/.test(text)
+      })
+    expect(offenders).toEqual([])
+  })
+})
+
 describe('结论冲突', () => {
   it('冲突的结论不画红条、红底块,也不因此缩进', () => {
     const drawn = STYLESHEETS.flatMap((path) => rules(path).flatMap(({ selectors, body }) => (

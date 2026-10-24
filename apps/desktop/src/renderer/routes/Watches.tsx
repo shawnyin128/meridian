@@ -447,7 +447,7 @@ export function WatchSettings() {
 
   return (
     <div className="watch-settings">
-      <PageError error={error} />
+      <PageError error={error} variant="section" />
       {GROUPS.map((type) => (
         <WatchGroup
           key={type} type={type} watches={listed === null ? null : watches.filter((w) => w.type === type)}
