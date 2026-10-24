@@ -46,6 +46,18 @@ function ReviewGroup({ group, onJump }: { group: HarnessPaperWikiReviewGroup; on
   )
 }
 
+/**
+ * Where finding path `path` points, in the user's words: the part of the proposal it names, followed
+ * by the item's number when it names one item of a list. Undefined for a part this version does not know.
+ */
+function placeLabel(path: string, m: Catalog): string | undefined {
+  const [, part, index] = /^([a-z_]+(?:\.[a-z_]+)?)(?:\[(\d+)\])?(?:\.[a-z_]+)?$/.exec(path) ?? []
+  const places: Record<string, string> = m.wiki.quality.places
+  const named = part === undefined ? undefined : places[part]
+  if (named === undefined || index === undefined) return named
+  return `${named} · ${m.wiki.quality.item(Number(index) + 1)}`
+}
+
 function QualityReport({ quality }: { quality: HarnessPaperWikiQuality }) {
   const m = useMessages()
   const title = quality.passed
@@ -64,6 +76,7 @@ function QualityReport({ quality }: { quality: HarnessPaperWikiQuality }) {
           {quality.findings.map((finding, index) => {
             const findingCopy: Record<string, { title: string; detail: string }> = m.wiki.quality.findings
             const copy = findingCopy[finding.code]
+            const place = placeLabel(finding.path, m)
             return (
               <StructuredRow className="paper-wiki-quality-finding"
                 key={`${finding.dimension}-${finding.code}-${finding.path}-${index}`}>
@@ -72,7 +85,7 @@ function QualityReport({ quality }: { quality: HarnessPaperWikiQuality }) {
                   <span>{m.wiki.quality.dimension[finding.dimension]}</span>
                 </div>
                 <p>{copy?.detail ?? finding.message}</p>
-                <code>{finding.path}</code>
+                {place === undefined ? null : <span className="paper-wiki-quality-place">{place}</span>}
               </StructuredRow>
             )
           })}

@@ -139,6 +139,20 @@ export const wiki = {
     findingsTitle: (n: number) => `${n} ${pluralEn(n, { one: 'item needs', other: 'items need' })} review`,
     findingsListLabel: 'Items to review',
     needsReviewFallback: 'Review needed',
+    places: {
+      draft: 'Whole proposal',
+      problem: 'Problem',
+      what_to_remember: 'Key points',
+      'retrieval.fits': 'Search scenarios',
+      'retrieval.scope_notes': 'Scope',
+      mechanism: 'Mechanism',
+      mechanism_details_to_verify: 'Mechanism details to check',
+      evidence: 'Evidence',
+      implementation_hooks: 'Implementation entry points',
+      limitations: 'Limitations and uncertainty',
+      user_observations: 'Your reading insights',
+    },
+    item: (n: number) => `item ${n}`,
     findings: {
       'unknown-page': {
         title: 'Page number is out of range', detail: 'An entry cites a page that does not exist in this paper.',

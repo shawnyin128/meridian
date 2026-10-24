@@ -10,7 +10,7 @@
 .paper-wiki-quality-finding strong{font-size:var(--fs-sm);line-height:var(--lh-ui)}
 .paper-wiki-quality-finding span{color:var(--ter);font-size:var(--fs-cap);line-height:var(--lh-ui)}
 .paper-wiki-quality-finding p{margin:var(--sp-4) 0 0;color:var(--sec);font-size:var(--fs-cap);line-height:1.5}
-.paper-wiki-quality-finding code{display:block;margin-top:var(--sp-4);color:var(--ter);font:var(--fs-cap)/var(--lh-ui) var(--mono)}
+.paper-wiki-quality-place{display:block;margin-top:var(--sp-4)}
 .paper-wiki-review-section{min-width:0}
 .paper-wiki-review-section-head{display:flex;align-items:center;justify-content:space-between;gap:var(--sp-8);margin-bottom:var(--sp-6)}
 .paper-wiki-review-section-head h4{margin:0;font-size:var(--fs-sm);line-height:var(--lh-ui)}

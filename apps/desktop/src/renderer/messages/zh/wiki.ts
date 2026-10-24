@@ -132,17 +132,31 @@ export const wiki = {
     findingsTitle: (n: number) => `发现 ${n} 项需要核对`,
     findingsListLabel: '需要核对的规则问题',
     needsReviewFallback: '需要核对',
+    places: {
+      draft: '整份提案',
+      problem: '论文问题',
+      what_to_remember: '核心要点',
+      'retrieval.fits': '检索场景',
+      'retrieval.scope_notes': '适用边界',
+      mechanism: '机制',
+      mechanism_details_to_verify: '待核对的机制细节',
+      evidence: '证据',
+      implementation_hooks: '实现入口',
+      limitations: '局限与不确定性',
+      user_observations: '你的阅读洞见',
+    },
+    item: (n: number) => `第 ${n} 条`,
     findings: {
       'unknown-page': { title: '来源页超出范围', detail: '条目引用了本次论文范围以外的页码。' },
       'missing-case-page': {
-        title: '缺少关键来源页', detail: '固定校准样本要求保留的来源页没有出现在提案中。',
+        title: '缺少关键来源页', detail: '提案缺少这篇论文必须引用的来源页。',
       },
       'unknown-reading-ref': { title: '阅读记录超出范围', detail: '用户洞见引用了本次确认范围以外的阅读记录。' },
       'insight-copies-source': {
         title: '洞见与来源内容重复', detail: '用户洞见不应直接复制论文原文或 Wiki 综合。',
       },
       'missing-case-reading-ref': {
-        title: '缺少关键阅读记录', detail: '固定校准样本要求纳入的阅读记录没有出现在提案中。',
+        title: '缺少关键阅读记录', detail: '提案缺少为这篇论文选定的阅读记录。',
       },
       'duplicate-query': { title: '检索问题重复', detail: '多个检索场景表达了相同的问题。' },
       'deictic-query': { title: '检索问题依赖当前上下文', detail: '问题需要在不知道目标论文的情况下仍然成立。' },
@@ -159,7 +173,7 @@ export const wiki = {
         title: '首次验证重复任务', detail: '首次验证需要是可执行检查，而不是重复实现任务。',
       },
       'missing-case-limitation': {
-        title: '缺少关键局限', detail: '固定校准样本要求保留的来源局限没有出现在提案中。',
+        title: '缺少关键局限', detail: '提案缺少论文中一条重要的局限。',
       },
     },
   },

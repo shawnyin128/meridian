@@ -98,6 +98,51 @@ describe('PaperWikiProposalReview', () => {
     expect(html).toContain('发现 1 项需要核对')
     expect(html).toContain('机制描述过于空泛')
     expect(html).toContain('structured-list--embedded')
-    expect(html).toContain('mechanism[0]')
+  })
+
+  /** The finding rows a report on `paths` shows in `language`, each as the texts of its lines. */
+  const findingRows = (language: 'zh' | 'en', paths: string[], code = 'generic-contract') => {
+    window.localStorage.setItem(LANGUAGE_STORAGE_KEY, language)
+    const review: HarnessPaperWikiReview = {
+      schemaVersion: 'meridian.paper-wiki-review.v1',
+      sections: [{ id: 'limitations', title: '局限', emptyLabel: '没有原文依据的局限。', groups: [] }],
+    }
+    const quality: HarnessPaperWikiQuality = {
+      schemaVersion: 'meridian.paper-wiki-calibration.v1', caseId: 'p1', passed: false,
+      dimensions: dimensions.map((id) => ({ id, passed: id !== 'mechanism' })),
+      findings: paths.map((path) => ({ dimension: 'mechanism', code, path, message: 'Required fixture pages were not cited.' })),
+    }
+    const host = document.createElement('div')
+    host.innerHTML = renderToStaticMarkup(
+      <MessagesProvider><PaperWikiProposalReview review={review} quality={quality} onJump={() => {}} /></MessagesProvider>,
+    )
+    return [...host.querySelectorAll('.paper-wiki-quality-finding')].map((row) => [...row.children].map((line) => line.textContent!))
+  }
+
+  it('names the place of each finding in the user\'s words, in zh and en, and never its field path', () => {
+    const paths = [
+      'problem', 'what_to_remember[2]', 'retrieval.fits[1].query', 'retrieval.fits', 'retrieval.scope_notes',
+      'mechanism[0]', 'mechanism_details_to_verify[0]', 'evidence[1]', 'implementation_hooks[0]', 'limitations',
+      'user_observations[0].text', 'draft', 'future_field[3]',
+    ]
+    const places = (language: 'zh' | 'en') => findingRows(language, paths).map((lines) => lines[2] ?? '')
+    expect(places('zh')).toEqual([
+      '论文问题', '核心要点 · 第 3 条', '检索场景 · 第 2 条', '检索场景', '适用边界', '机制 · 第 1 条',
+      '待核对的机制细节 · 第 1 条', '证据 · 第 2 条', '实现入口 · 第 1 条', '局限与不确定性', '你的阅读洞见 · 第 1 条',
+      '整份提案', '',
+    ])
+    expect(places('en')).toEqual([
+      'Problem', 'Key points · item 3', 'Search scenarios · item 2', 'Search scenarios', 'Scope', 'Mechanism · item 1',
+      'Mechanism details to check · item 1', 'Evidence · item 2', 'Implementation entry points · item 1',
+      'Limitations and uncertainty', 'Your reading insights · item 1', 'Whole proposal', '',
+    ])
+    for (const line of [...findingRows('zh', paths), ...findingRows('en', paths)].flat()) expect(line).not.toMatch(/[[\]_]|\w\.\w/)
+  })
+
+  it('reports every finding it knows without an evaluation term, in zh and en', () => {
+    for (const code of ['missing-case-page', 'missing-case-reading-ref', 'missing-case-limitation', 'unknown-page', 'generic-evidence']) {
+      expect(findingRows('zh', ['draft'], code)[0]!.join(' ')).not.toMatch(/校准|样本|用例/)
+      expect(findingRows('en', ['draft'], code)[0]!.join(' ')).not.toMatch(/fixture|calibration|\bcase\b/i)
+    }
   })
 })
