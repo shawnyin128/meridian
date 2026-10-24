@@ -42,8 +42,14 @@ export function ReaderSidePanel({
   focusHighlightId: string | null
 }) {
   const m = useMessages()
-  const drafts = useDrafts()
-  const edits = useDrafts<EditDraft>()
+  // The scope and the live targets both come from the reading shown, so they always name one paper.
+  const paperId = reading?.paperId ?? ''
+  const drafts = useDrafts(['paper', paperId])
+  const edits = useDrafts<EditDraft>(['paper', paperId, 'edits'], reading === null ? null : [
+    `remark:${reading.paperId}`,
+    ...reading.notes.map((note) => `note:${note.id}`),
+    ...reading.highlights.map((highlight) => `highlight:${highlight.id}`),
+  ])
   return (
     <aside className={tab === null ? 'reader-side collapsed' : 'reader-side'}>
       {tab === 'metadata' && paper !== null

@@ -18,7 +18,7 @@ const READING: PaperReading = {
 
 /** The remark panel with the drafts the reader rail holds for it. */
 function Remark(props: Omit<ComponentProps<typeof ReadingRemark>, 'edits'>) {
-  return <ReadingRemark {...props} edits={useDrafts<EditDraft>()} />
+  return <ReadingRemark {...props} edits={useDrafts<EditDraft>(['paper', 'p1', 'edits'])} />
 }
 
 function setValue(input: HTMLTextAreaElement, value: string): void {

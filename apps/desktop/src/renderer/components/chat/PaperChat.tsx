@@ -49,9 +49,9 @@ export function PaperChat({ paper, onBack = () => {}, prompt = null }: {
   const collapsed = usePaperChatCollapsed()
   const [session, setSession] = useState<ChatSession | null>(null)
   const [messages, setMessages] = useState<ChatMessage[] | null>(null)
-  const drafts = useDrafts<ChatRun[]>()
-  // An idea being drafted belongs to its paper, as the question being typed does.
-  const ideaDrafts = useDrafts<IdeaDraftText>()
+  // The question being typed and an idea being drafted belong to their paper.
+  const drafts = useDrafts<ChatRun[]>(['paper', paper?.id ?? ''])
+  const ideaDrafts = useDrafts<IdeaDraftText>(['paper', paper?.id ?? ''])
   const ideaAt = useRef<HTMLDivElement>(null)
   const { running, run, stop } = useGenerations()
   const { noModel, track } = useNoModelChats()
@@ -66,8 +66,8 @@ export function PaperChat({ paper, onBack = () => {}, prompt = null }: {
   const reportError = useCallback((cause: unknown) => setError(errorLabel(m, cause)), [m])
   const paperId = paper?.id ?? null
   const sessionId = session?.id ?? null
-  const draft = paperId === null ? [] : drafts.get(paperId) ?? []
-  const ideaDraft = paperId === null ? undefined : ideaDrafts.get(paperId)
+  const draft = paperId === null ? [] : drafts.get('chat-message') ?? []
+  const ideaDraft = paperId === null ? undefined : ideaDrafts.get('chat-idea')
   const sending = sessionId !== null && running(sessionId)
 
   useEffect(() => {
@@ -99,13 +99,13 @@ export function PaperChat({ paper, onBack = () => {}, prompt = null }: {
 
   useEffect(() => {
     if (prompt === null || paperId === null) return
-    drafts.set(paperId, [{ kind: 'text', text: m.chat.quotePrefix(prompt.quote) }])
+    drafts.set('chat-message', [{ kind: 'text', text: m.chat.quotePrefix(prompt.quote) }])
     requestAnimationFrame(() => composer.current?.focus())
   }, [prompt, m])
 
   const submit = () => {
     if (draftText(draft).trim() === '' || paperId === null || session === null || sending) return
-    drafts.drop(paperId)
+    drafts.drop('chat-message')
     follow()
     void run(write(track(session.id, chat.send(session.id, draft))))
   }
@@ -129,7 +129,7 @@ export function PaperChat({ paper, onBack = () => {}, prompt = null }: {
 
   const startIdea = () => {
     if (paperId === null) return
-    if (ideaDraft === undefined) ideaDrafts.set(paperId, { title: '', body: '' })
+    if (ideaDraft === undefined) ideaDrafts.set('chat-idea', { title: '', body: '' })
     else ideaAt.current?.querySelector<HTMLElement>('.form-control')?.focus()
   }
 
@@ -159,11 +159,11 @@ export function PaperChat({ paper, onBack = () => {}, prompt = null }: {
             <div className="mwrap" ref={ideaAt}>
               <IdeaDraft
                 source={`${plainTitle(paper.title)} · ${plainTitle(session.title)}`} draft={ideaDraft}
-                onChange={(next) => ideaDrafts.set(paper.id, next)} onCancel={() => ideaDrafts.drop(paper.id)}
+                onChange={(next) => ideaDrafts.set('chat-idea', next)} onCancel={() => ideaDrafts.drop('chat-idea')}
                 onSave={(title, body) => write(ideaApi.create(session.id, title, body), {
                   note: m.chat.ideaSavedNote,
                   action: (idea) => ({ label: m.common.open, onAction: () => open('ideas', idea.id) }),
-                }).then((saved) => { if (saved) ideaDrafts.drop(paper.id) })}
+                }).then((saved) => { if (saved) ideaDrafts.drop('chat-idea') })}
               />
             </div>
           )}
@@ -179,7 +179,7 @@ export function PaperChat({ paper, onBack = () => {}, prompt = null }: {
           </div>
           <ChatComposer
             key={paperId} ref={composer} label={m.chat.askAboutPaper} placeholder={m.chat.paperComposerPlaceholder}
-            draft={draft} onDraft={(next) => { if (paperId !== null) drafts.set(paperId, next) }} unavailable={session === null}
+            draft={draft} onDraft={(next) => { if (paperId !== null) drafts.set('chat-message', next) }} unavailable={session === null}
             running={sending} noModel={sessionId !== null && noModel(sessionId)} onSend={submit} onStop={stopSending}
           />
         </div>

@@ -42,42 +42,66 @@ export const test = base.extend<{
     rmSync(configHome, { recursive: true, force: true })
   },
   app: async ({ showWindow, configHome }, use) => {
-    const app = await electron.launch({
-      // The specs assert Chinese copy, so the app must not follow the host's language.
-      args: [APP_DIR, '--lang=zh-CN'],
-      env: {
-        ...ENV,
-        MERIDIAN_LIBRARY_ROOT: VAULT,
-        MERIDIAN_CONFIG_HOME: configHome,
-        // Write '0' explicitly: a case that did not ask for a window stays off screen even when the
-        // outer shell sets this variable.
-        MERIDIAN_SHOW_WINDOW: showWindow ? 'isolated' : '0',
-      },
-    })
-    // Native popup menus are recorded instead of shown: an open one keeps Main in its tracking loop
-    // until it is dismissed, which nothing in a case does, and the App could not quit.
-    await app.evaluate(({ Menu }) => {
-      const shown: string[][] = []
-      Object.assign(globalThis, { popupMenus: shown })
-      Menu.prototype.popup = function record(this: InstanceType<typeof Menu>) {
-        shown.push(this.items.map((item) => (item.type === 'separator' ? '—' : item.label)))
-      }
-    })
+    const app = await launchApp(showWindow, configHome)
     await use(app)
     await app.close()
   },
   win: async ({ app }, use) => {
     const win = await app.firstWindow()
-    // The profile outlives a run, so a language picked by an earlier spec is cleared before this one.
+    // The profile outlives a run, so a language picked by an earlier spec and the drafts an earlier
+    // case left unsaved are cleared before this one.
     const stale = await win.evaluate(() => {
-      const had = window.localStorage.getItem('meridian.language') !== null
+      const kept = Object.keys(window.localStorage).filter((key) => key.startsWith('meridian.drafts:'))
+      const had = window.localStorage.getItem('meridian.language') !== null || kept.length > 0
       window.localStorage.removeItem('meridian.language')
+      kept.forEach((key) => window.localStorage.removeItem(key))
       return had
     })
     if (stale) await win.reload()
     await use(win)
   },
 })
+
+/** Starts the App on the fixture vault with config home `configHome`, on screen (isolated) when `showWindow`. */
+async function launchApp(showWindow: boolean, configHome: string): Promise<ElectronApplication> {
+  const app = await electron.launch({
+    // The specs assert Chinese copy, so the app must not follow the host's language.
+    args: [APP_DIR, '--lang=zh-CN'],
+    env: {
+      ...ENV,
+      MERIDIAN_LIBRARY_ROOT: VAULT,
+      MERIDIAN_CONFIG_HOME: configHome,
+      // Write '0' explicitly: a case that did not ask for a window stays off screen even when the
+      // outer shell sets this variable.
+      MERIDIAN_SHOW_WINDOW: showWindow ? 'isolated' : '0',
+    },
+  })
+  // Native popup menus are recorded instead of shown: an open one keeps Main in its tracking loop
+  // until it is dismissed, which nothing in a case does, and the App could not quit.
+  await app.evaluate(({ Menu }) => {
+    const shown: string[][] = []
+    Object.assign(globalThis, { popupMenus: shown })
+    Menu.prototype.popup = function record(this: InstanceType<typeof Menu>) {
+      shown.push(this.items.map((item) => (item.type === 'separator' ? '—' : item.label)))
+    }
+  })
+  return app
+}
+
+/**
+ * Quits `app` as ⌘Q does and starts the App again on the same vault, config home `configHome` and
+ * profile, keeping what the profile holds; returns the new App and its first window once the
+ * preload is up. The caller closes the new App.
+ */
+export async function relaunch(app: ElectronApplication, configHome: string): Promise<{ app: ElectronApplication; win: Page }> {
+  const closed = app.waitForEvent('close')
+  await app.evaluate(({ app: running }) => { setTimeout(() => running.quit(), 0) })
+  await closed
+  const next = await launchApp(false, configHome)
+  const win = await next.firstWindow()
+  await win.waitForFunction(() => (window as unknown as MeridianWindow).meridian !== undefined)
+  return { app: next, win }
+}
 
 export { expect } from '@playwright/test'
 

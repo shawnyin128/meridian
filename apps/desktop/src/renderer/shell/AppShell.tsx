@@ -15,6 +15,7 @@ import { Notice, type NoticeAction, type NoticeContent, type NoticeTone } from '
 import { PageFailure } from '../components/PageShell.js'
 import { ScreenBoundary } from '../components/ScreenBoundary.js'
 import { Tooltip } from '../components/Tooltip.js'
+import { usePruneDrafts } from '../hooks/useDrafts.js'
 import { GenerationsContext, useCoreGenerations } from '../hooks/useGenerations.js'
 import { errorLabel } from '../lib/failure-label.js'
 import { commandShortcut, composing, pressesCommand } from '../lib/keyboard.js'
@@ -143,6 +144,16 @@ const SettingsContext = createContext<{
 const PaperChatGripContext = createContext<{ grip: GripProps; collapsed: boolean } | null>(null)
 
 /** The color of the window buttons' symbols in the current theme: `--sec`, the tone of secondary text. */
+/** The ids of every paper in the vault, read page by page. */
+async function allPaperIds(): Promise<string[]> {
+  const ids: string[] = []
+  for (let page = 1; ; page += 1) {
+    const { rows, total } = await papers.list({ page, size: 200 })
+    ids.push(...rows.map((row) => row.id))
+    if (rows.length === 0 || ids.length >= total) return ids
+  }
+}
+
 function symbolColor(): string {
   return getComputedStyle(document.documentElement).getPropertyValue('--sec').trim()
 }
@@ -386,6 +397,7 @@ export function AppShell({ screens, settings }: {
   const [jump, setJump] = useState<ScreenJump | null>(null)
   const [watches, setWatches] = useState<Watch[]>([])
   const [chats, setChats] = useState<ChatSession[]>([])
+  const [chatsRead, setChatsRead] = useState(false)
   const [chatId, setChatId] = useState<string | null>(null)
   const [inboxWatches, setInboxWatches] = useState<string[][]>([])
   const [discoveryCount, setDiscoveryCount] = useState(0)
@@ -418,7 +430,10 @@ export function AppShell({ screens, settings }: {
     void changelog.list().then((entries) => setChangeCount(entries.filter((c) => !c.archived).length))
     void wiki.home().then((h) => setWikiCount(h.aggregationCount))
     void watch.list().then(setWatches)
-    void chat.list().then(setChats)
+    void chat.list().then((rows) => {
+      setChats(rows)
+      setChatsRead(true)
+    })
     void later.list().then((entries) => setLaterCount(entries.length))
     void inbox.list({ kind: 'watch' }).then((entries) => setInboxWatches(
       entries.map((entry) => listingsOf(entry, 'watch').map((listing) => listing.id)),
@@ -434,6 +449,11 @@ export function AppShell({ screens, settings }: {
       setDiscoveryProjects([...counts.values()])
     })
   }, [revision])
+
+  // A kept draft of a chat that is gone is dropped whenever the chat list is read, one of a paper
+  // that is gone once per session, when the kept drafts are read.
+  usePruneDrafts(['chat'], chatsRead ? chats.map((session) => session.id) : null)
+  usePruneDrafts(['paper'], allPaperIds)
 
   // Reading ideas also takes in those a coding agent recorded, which is not a write here, so recount on every screen change too.
   useEffect(() => {
