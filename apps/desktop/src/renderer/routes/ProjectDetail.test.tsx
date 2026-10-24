@@ -245,6 +245,7 @@ describe('project idea panel', () => {
   const mount = (panel: ReactNode) => {
     globalThis.IS_REACT_ACT_ENVIRONMENT = true
     vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} })
+    vi.stubGlobal('meridian', { platform: 'darwin' })
     document.body.innerHTML = ''
     const host = document.createElement('div')
     document.body.append(host)

@@ -340,6 +340,7 @@ describe('ProjectTaskPanel', () => {
   it('备注按长文本的同一套约定编辑:编辑的位置换成取消和保存,取消或 Esc 还原不写,保存或 ⌘回车写回', async () => {
     globalThis.IS_REACT_ACT_ENVIRONMENT = true
     vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} })
+    vi.stubGlobal('meridian', { platform: 'darwin' })
     const host = document.createElement('div')
     document.body.append(host)
     const onSaveNote = vi.fn(async () => true)

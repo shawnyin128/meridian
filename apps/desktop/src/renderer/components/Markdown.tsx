@@ -9,6 +9,7 @@ import remarkGfm from 'remark-gfm'
 import remarkMath from 'remark-math'
 import 'katex/dist/katex.min.css'
 import type { WikiRef } from '../../shared/contract.js'
+import { appMenu } from '../ipc.js'
 import { commitsMultiline, composing } from '../lib/keyboard.js'
 import { EntityLink } from './EntityLink.js'
 import { MarkdownEditor } from './MarkdownEditor.js'
@@ -177,7 +178,7 @@ export function headingsOf(src: string): Heading[] {
  * One container that switches between the rendered result and the Markdown source: with `editing`
  * false it renders `text` as Markdown, or `empty` alone, outside the container, when the string is
  * empty; with it true it is a contentEditable holding the source, focused on entry, where Esc calls
- * `onCancel` and ⌘Enter or Ctrl+Enter calls `onSave`, unless an input method is composing.
+ * `onCancel` and ⌘Enter on macOS, Ctrl+Enter elsewhere, calls `onSave`, unless an input method is composing.
  * The caller places EditActions and reads `box`'s `innerText` on save. With `live`, the source is
  * edited in a MarkdownEditor inside the container instead, under the same keys, which renders every
  * block the cursor is not on as the rendered result does; the caller saves the source it last
@@ -188,7 +189,7 @@ export function MarkdownBox({ text, editing, box, onCancel, onSave, onOpen, onAn
   editing: boolean
   box: RefObject<HTMLDivElement | null>
   onCancel: () => void
-  /** Called on ⌘Enter or Ctrl+Enter while editing. */
+  /** Called on ⌘Enter on macOS, Ctrl+Enter elsewhere, while editing. */
   onSave: () => void
   onOpen?: (id: string) => void
   onAnchor?: (page: number) => void
@@ -200,7 +201,7 @@ export function MarkdownBox({ text, editing, box, onCancel, onSave, onOpen, onAn
   useEffect(() => { if (editing && live === undefined) box.current?.focus() }, [editing, box, live])
   const classes = `md${editing ? ' src' : ''}${className === undefined ? '' : ` ${className}`}`
   const keys = (e: ReactKeyboardEvent) => {
-    if (commitsMultiline(e.nativeEvent)) {
+    if (commitsMultiline(appMenu.platform(), e.nativeEvent)) {
       e.preventDefault()
       onSave()
       return

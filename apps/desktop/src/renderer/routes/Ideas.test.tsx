@@ -70,6 +70,7 @@ const api = vi.hoisted(() => ({
 }))
 
 vi.mock('../ipc.js', () => ({
+  appMenu: { platform: () => 'darwin' },
   idea: {
     list: () => (api.loading ? new Promise(() => {}) : Promise.resolve(structuredClone(api.ideas))),
     update: api.update,

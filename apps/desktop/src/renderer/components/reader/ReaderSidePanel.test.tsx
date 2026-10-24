@@ -7,6 +7,7 @@ import { MessagesProvider } from '../../messages/useMessages.js'
 import { LANGUAGE_STORAGE_KEY } from '../../shell/language.js'
 
 vi.mock('../../ipc.js', () => ({
+  appMenu: { platform: () => 'darwin' },
   harness: { pendingPaperWiki: () => new Promise(() => {}), preparePaperWiki: vi.fn() },
   papers: { update: vi.fn(), get: vi.fn() },
   project: { list: () => new Promise(() => {}), addPaper: vi.fn(), removePaper: vi.fn() },
