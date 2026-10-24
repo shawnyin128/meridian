@@ -20,6 +20,7 @@ export {
   relevanceOf,
 } from './scoring.js'
 export { discoveryReasons, mergeIntentResults } from './merge.js'
+export { POOL_LIMIT, poolFirst, shareCap } from './pool.js'
 export type { IntentResult } from './merge.js'
 export { applyRecommendationSignals } from './signals.js'
 export {

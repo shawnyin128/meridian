@@ -123,7 +123,7 @@ export const CandidateRecordSchema = z.object({
 
 /**
  * One `.meridian/discovery/progress.json` record: how far one scope's refreshes have got. `id` is
- * `project:<project id>`; `steps` holds, per discovery direction id, how many queries it has run;
+ * `project:<project id>` or `watch:<watch id>`; `steps` holds, per discovery direction id, how many queries it has run;
  * `candidates` holds the papers fetched beyond a run's cap, offered first by the next run; `favouredAt`
  * is when the scope last delivered more than an even split of a run's cap. Each is absent until set.
  */

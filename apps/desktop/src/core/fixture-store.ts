@@ -42,7 +42,7 @@ import { inboxFields, unseenPapers } from './inbox/dedup.js'
 import {
   applyRecommendationPreferences, buildRecommendationProfile, clusterRecommendationProfile,
   discoveryReasons, orderInbox, recommendationSeedIds,
-  type DiscoveryPaper, type DiscoveryPreferences, type DiscoverySchedule, type RefreshProgress,
+  type DiscoveryPaper, type DiscoveryPreferences, type DiscoverySchedule, type RefreshProgress, type RefreshScope,
 } from './recommendation/index.js'
 import { dayOf, feedNewestFirst, systemToday } from './dates.js'
 import { createResearchIdea, readResearchIdea, updateResearchIdea } from './research-ideas/index.js'
@@ -334,6 +334,12 @@ export function createFixtureStore(
   const discoveryPreferences = new Map<string, DiscoveryPreferences>()
   const progressByScope = new Map<string, RefreshProgress>()
   let deliveryConfig: DeliverySettings = structuredClone(DEFAULT_DELIVERY_SETTINGS)
+  /** Throws unless `scope` names a project or a watch the fixtures hold. */
+  const scopeOf = (scope: RefreshScope): void => {
+    if (scope.kind === 'project' ? !projectById.has(scope.id) : !watches.some((watch) => watch.id === scope.id)) {
+      throw new CallError('not-found', `${scope.kind === 'project' ? '项目' : '关注'}不存在：${scope.id}`)
+    }
+  }
   // Fixture ids use t1/m1/r1/f1/feed-1/chg-1 shapes; new prefixes must not collide with them.
   const nextId = (prefix: string) => `${prefix}-${++seq}`
 
@@ -1585,14 +1591,14 @@ export function createFixtureStore(
     },
 
     refreshProgress(scope) {
-      if (!projectById.has(scope.id)) throw new CallError('not-found', `项目不存在：${scope.id}`)
+      scopeOf(scope)
       return structuredClone(
         progressByScope.get(`${scope.kind}:${scope.id}`) ?? { steps: {}, candidates: [], favouredAt: null },
       )
     },
 
     setRefreshProgress(scope, next) {
-      if (!projectById.has(scope.id)) throw new CallError('not-found', `项目不存在：${scope.id}`)
+      scopeOf(scope)
       progressByScope.set(`${scope.kind}:${scope.id}`, structuredClone(next))
     },
 

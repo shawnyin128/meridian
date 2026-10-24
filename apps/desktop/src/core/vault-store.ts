@@ -38,7 +38,7 @@ import { inboxFields, unseenPapers } from './inbox/dedup.js'
 import {
   applyRecommendationPreferences, buildRecommendationProfile, clusterRecommendationProfile,
   discoveryReasons, orderInbox, recommendationSeedIds,
-  type DiscoveryPaper, type DiscoveryPreferences,
+  type DiscoveryPaper, type DiscoveryPreferences, type RefreshScope,
 } from './recommendation/index.js'
 import type { Json } from './vault/frontmatter.js'
 import { emitKey } from './vault/frontmatter.js'
@@ -779,6 +779,12 @@ export function createVaultStore(
   const nowMs = (): number => Date.parse(`${today()}T00:00:00Z`)
 
   /** Returns a project by ID. Throws when the vault has no such project, or cannot read its page. */
+  /** Throws unless `scope` names a project or a watch this vault holds. */
+  const scopeOf = (scope: RefreshScope): void => {
+    if (scope.kind === 'project') projectOf(scope.id)
+    else if (!watches.some((watch) => watch.id === scope.id)) throw new CallError('not-found', `关注不存在：${scope.id}`)
+  }
+
   const projectOf = (id: string): ProjectRecord => {
     const project = projectById.get(id)
     if (!project) {
@@ -2132,7 +2138,7 @@ export function createVaultStore(
     },
 
     refreshProgress(scope) {
-      projectOf(scope.id)
+      scopeOf(scope)
       const held = progress.find((row) => row.id === `${scope.kind}:${scope.id}`)
       return {
         steps: { ...held?.steps }, candidates: structuredClone(held?.candidates ?? []),
@@ -2141,11 +2147,13 @@ export function createVaultStore(
     },
 
     setRefreshProgress(scope, next) {
-      projectOf(scope.id)
+      scopeOf(scope)
       const id = `${scope.kind}:${scope.id}`
       const gone = (row: RefreshProgressRecord): boolean => {
-        const project = /^project:(.*)$/.exec(row.id)?.[1]
-        return project !== undefined && !projectById.has(project) && !unreadableProjects.has(project)
+        const [, kind, held] = /^(project|watch):(.*)$/.exec(row.id) ?? []
+        if (kind === 'project') return !projectById.has(held!) && !unreadableProjects.has(held!)
+        return kind === 'watch' && !watches.some((watch) => watch.id === held)
+          && !(lists.get('watches')?.unreadable ?? []).some((watch) => (watch as { id?: unknown }).id === held)
       }
       const record: RefreshProgressRecord = {
         id, steps: { ...next.steps }, candidates: structuredClone(next.candidates),

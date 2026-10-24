@@ -208,6 +208,26 @@ describe('论文推送重做后要写的存储形状', () => {
     expect(createVaultStore(vault).refreshProgress({ kind: 'project', id: project })).toEqual(next)
   })
 
+  it('关注的候选池也存在 progress.json：删掉的关注下次写时不留，这个版本读不了的关注照留', () => {
+    store.createWatch({ type: 'topic', name: 'kv cache' })
+    store.createWatch({ type: 'topic', name: 'speculative decoding' })
+    const watchNamed = (name: string) => store.listWatches().find((watch) => watch.name === name)!.id
+    const [kept, removed] = [watchNamed('kv cache'), watchNamed('speculative decoding')]
+    write('watches', [...read('watches') as object[], { id: 'watch-future', type: 'venue', name: 'NeurIPS', active: true }])
+    mkdirSync(join(vault, '.meridian', 'discovery'))
+    const future = { id: 'watch:watch-future', candidates: [refound('2609.96002')] }
+    write('discovery/progress', [{ id: `watch:${removed}`, candidates: [refound('2609.96001')] }, future])
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+
+    const reopened = createVaultStore(vault)
+    reopened.deleteWatch(removed)
+    const pooled = { steps: {}, candidates: [refound('2609.96003')], favouredAt: null }
+    reopened.setRefreshProgress({ kind: 'watch', id: kept }, pooled)
+    expect(read('discovery/progress')).toEqual([future, { id: `watch:${kept}`, steps: {}, candidates: pooled.candidates }])
+    expect(createVaultStore(vault).refreshProgress({ kind: 'watch', id: kept })).toEqual(pooled)
+    expect(() => reopened.refreshProgress({ kind: 'watch', id: removed })).toThrow(/关注不存在/)
+  })
+
   it('.meridian/discovery 下的候选池和 SPECTER2 向量缓存：打开、删项目、清空垃圾桶都不碰它们', () => {
     const folder = join(vault, '.meridian', 'discovery')
     mkdirSync(folder)

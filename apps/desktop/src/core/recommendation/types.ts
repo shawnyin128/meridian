@@ -55,8 +55,8 @@ export type DiscoverySchedule = {
   requests: Record<string, DiscoveryIntentCache>
 }
 
-/** One project whose refreshes Core keeps progress for. */
-export type RefreshScope = { kind: 'project'; id: string }
+/** One project or watch whose refreshes Core keeps progress for. */
+export type RefreshScope = { kind: 'project' | 'watch'; id: string }
 
 /** How far a scope's refreshes have got. */
 export type RefreshProgress = {
