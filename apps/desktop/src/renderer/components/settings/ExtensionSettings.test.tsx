@@ -38,7 +38,7 @@ describe('ExtensionSettings', () => {
     const copy = vi.fn()
     act(() => root.render(
       <MessagesProvider>
-        <ExtensionSettings statuses={[extension]} onCopy={copy} onCopyPrompt={vi.fn()} />
+        <ExtensionSettings statuses={[extension]} failed={false} onCopy={copy} onCopyPrompt={vi.fn()} />
       </MessagesProvider>,
     ))
     const toggle = host.querySelector<HTMLButtonElement>('.card-tray-toggle')!
@@ -56,7 +56,7 @@ describe('ExtensionSettings', () => {
     act(() => root.render(
       <MessagesProvider>
         <ExtensionSettings
-          statuses={[extension]} onCopy={vi.fn()} onCopyPrompt={vi.fn()}
+          statuses={[extension]} failed={false} onCopy={vi.fn()} onCopyPrompt={vi.fn()}
           plugin={{ plugin: { version: '0.0.9', checkedAt: null }, checking: false, onCheck: vi.fn() }}
         />
       </MessagesProvider>,
@@ -71,7 +71,7 @@ describe('ExtensionSettings', () => {
     const copyPrompt = vi.fn()
     act(() => root.render(
       <MessagesProvider>
-        <ExtensionSettings statuses={[extension]} onCopy={vi.fn()} onCopyPrompt={copyPrompt} />
+        <ExtensionSettings statuses={[extension]} failed={false} onCopy={vi.fn()} onCopyPrompt={copyPrompt} />
       </MessagesProvider>,
     ))
 

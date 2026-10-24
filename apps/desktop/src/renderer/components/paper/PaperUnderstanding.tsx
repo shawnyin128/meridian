@@ -10,9 +10,13 @@ import { entryAnchor, readingEntries } from '../paper-table/reading-entries.js'
 import { FadeText } from '../FadeText.js'
 import './PaperUnderstanding.css'
 
-/** Personal reading state shown beside, but never merged into, canonical Wiki content. */
-export function PaperUnderstanding({ reading, onRead }: {
+/**
+ * Personal reading state shown beside, but never merged into, canonical Wiki content. `reading` is
+ * null until it is read; the section then shows its loading placeholder, or nothing once `failed`.
+ */
+export function PaperUnderstanding({ reading, failed, onRead }: {
   reading: PaperReading | null
+  failed: boolean
   onRead: (anchor?: JumpAnchor) => void
 }) {
   const m = useMessages()
@@ -21,7 +25,7 @@ export function PaperUnderstanding({ reading, onRead }: {
     return (
       <section className="paper-understanding" aria-label={m.papers.understanding.ariaLabel}>
         <SectionHeading>{m.papers.understanding.heading}</SectionHeading>
-        <LoadingPlaceholder shape="lines" count={2} />
+        {failed ? null : <LoadingPlaceholder shape="lines" count={2} />}
       </section>
     )
   }

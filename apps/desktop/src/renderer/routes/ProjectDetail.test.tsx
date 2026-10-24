@@ -402,7 +402,7 @@ describe('project idea panel', () => {
     const kept: ResearchIdea = { ...idea, id: 'idea-kept', source: { chatId: 'chat-kept', chatTitle: '还在的对话' } }
     const list = mount(
       <ProjectIdeaList
-        projectId="draft" graph={graph} selectedId={null} onSelect={vi.fn()} onCreate={vi.fn()}
+        projectId="draft" failed={false} graph={graph} selectedId={null} onSelect={vi.fn()} onCreate={vi.fn()}
         ideas={[idea, kept]} chatDeleted={(held) => held.id === idea.id}
       />,
     )
@@ -415,6 +415,14 @@ describe('project idea panel', () => {
     panel.unmount()
   })
 
+  it('读关联想法失败时，想法一节不停在读取占位上', () => {
+    const list = mount(
+      <ProjectIdeaList projectId="draft" ideas={null} failed graph={graph} selectedId={null} onSelect={vi.fn()} onCreate={vi.fn()} />,
+    )
+    expect(list.host.querySelectorAll('.loading-placeholder')).toHaveLength(0)
+    list.unmount()
+  })
+
   it('项目页的想法一节先列在这个项目里做的想法，再列关联它的，再列在它这里冒出来的，各组新的在前；一个想法只出现在它的第一组', () => {
     const related: ResearchIdea = {
       ...idea, id: 'idea-2', title: '关联过来的想法', project: 'other', relations: { projects: ['draft'], pages: [] },
@@ -425,7 +433,7 @@ describe('project idea panel', () => {
     const onSelect = vi.fn()
     const list = mount(
       <ProjectIdeaList
-        projectId="draft" graph={graph} selectedId={null} onSelect={onSelect} onCreate={vi.fn()}
+        projectId="draft" failed={false} graph={graph} selectedId={null} onSelect={onSelect} onCreate={vi.fn()}
         ideas={[
           sparked('idea-old', '2026-09-01'), related, { ...idea, node: 'thread.probe', sourceProject: 'draft' },
           sparked('idea-new', '2026-09-20'), sparked('idea-both', '2026-09-25', { relations: { projects: ['draft'], pages: [] } }),
@@ -448,7 +456,7 @@ describe('project idea panel', () => {
       { ...idea, id: 'idea-old', project: undefined, sourceProject: 'draft', created: '2026-09-01', updated: '2026-09-01' },
     ]
     const list = mount(
-      <ProjectIdeaList projectId="draft" ideas={held} graph={graph} selectedId={null} onSelect={vi.fn()} onCreate={onCreate} />,
+      <ProjectIdeaList projectId="draft" ideas={held} failed={false} graph={graph} selectedId={null} onSelect={vi.fn()} onCreate={onCreate} />,
     )
     expect(list.headingActions('关联想法')).toEqual([['想法']])
     const add = list.host.querySelector<HTMLButtonElement>('.section-heading-actions .add-action')!
@@ -476,7 +484,7 @@ describe('project idea panel', () => {
     expect(onCreate).toHaveBeenCalledWith('项目页写下的想法', '先记下来。')
     const saved: ResearchIdea = { ...idea, id: 'idea-saved', project: undefined, sourceProject: 'draft', created: '2026-09-18', updated: '2026-09-18' }
     list.rerender(
-      <ProjectIdeaList projectId="draft" ideas={[saved, ...held]} graph={graph} selectedId={null} onSelect={vi.fn()} onCreate={onCreate} />,
+      <ProjectIdeaList projectId="draft" ideas={[saved, ...held]} failed={false} graph={graph} selectedId={null} onSelect={vi.fn()} onCreate={onCreate} />,
     )
     expect(slots()).toEqual(['idea-here', 'idea-saved', 'idea-old'])
     list.unmount()

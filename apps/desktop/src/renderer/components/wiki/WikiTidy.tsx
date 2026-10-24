@@ -62,19 +62,20 @@ const pageOf = (ref: string): string => ref.split('#')[0]!
  * where it is wrong: the missing pages a broken link points to by name, each one in the trash tagged as
  * such, or the claims a conflict is with, each a link that opens it. `titles` names pages and claims by
  * id or `page#claim` ref (a paper title may carry LaTeX; an id it does not name shows as written); it
- * is null while the names load. The list scrolls
+ * is null while the names load, and shows nothing once `failed` says reading them failed. The list scrolls
  * with the page and its kind column is as wide as its longest tag. Activating a row hands its page and,
  * for a conflict, its claim to `onOpen`; a claim's link hands that claim's.
  */
-export function TidyList({ rows, titles, onOpen }: {
+export function TidyList({ rows, titles, failed, onOpen }: {
   rows: TidyRow[]
   titles: Record<string, string> | null
+  failed: boolean
   onOpen: (page: string, claim?: string) => void
 }) {
   const m = useMessages()
   const t = m.wiki.tidy
   if (rows.length === 0) return <EmptyState variant="section">{t.empty}</EmptyState>
-  if (titles === null) return <LoadingPlaceholder shape="rows" />
+  if (titles === null) return failed ? null : <LoadingPlaceholder shape="rows" />
   const name = (id: string): string => titles[id] ?? id
   /** A missing page's name as plain text, with the trash mark after it when it is in the trash. */
   const missingText = (page: MissingPage): string => (page.trashed ? `${plainTitle(page.name)} ${t.inTrash}` : plainTitle(page.name))

@@ -14,7 +14,9 @@ const STATE_TONE: Record<ExtensionStatus['state'], TagTone> = {
 }
 
 interface ExtensionSettingsProps {
+  /** The extensions Core found, or null until they are read: a loading placeholder, or nothing once `failed`. */
   statuses: ExtensionStatus[] | null
+  failed: boolean
   /** The plugin version row listed first, since both clients install that version; omitted until known. */
   plugin?: PluginVersionEntryProps | undefined
   onCopy: (name: string, command: string) => void
@@ -22,10 +24,10 @@ interface ExtensionSettingsProps {
 }
 
 /** Installed coding-agent extensions and the explicit commands that manage them. */
-export function ExtensionSettings({ statuses, plugin, onCopy, onCopyPrompt }: ExtensionSettingsProps) {
+export function ExtensionSettings({ statuses, failed, plugin, onCopy, onCopyPrompt }: ExtensionSettingsProps) {
   const m = useMessages()
   if (statuses === null) {
-    return <LoadingPlaceholder shape="cards" count={1} />
+    return failed ? null : <LoadingPlaceholder shape="cards" count={1} />
   }
 
   return (
