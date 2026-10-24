@@ -8,10 +8,12 @@ const vaultTopics = (): Promise<string[]> => papers.facets('topics').then((facet
 /**
  * A paper's topics, edited the same way in the paper table and the detail panel: a chip per topic,
  * whose × hands it to `onRemove`, then the `+` that adds one, offering the vault's topics the paper
- * lacks. `onAdd` and `onRemove` return whether the write completed.
+ * lacks. `onAdd` and `onRemove` return whether the write completed. What is typed is kept as a
+ * draft of `keep`; see `TagChips`.
  */
-export function PaperTopics({ topics, onAdd, onRemove, onError }: {
+export function PaperTopics({ topics, keep, onAdd, onRemove, onError }: {
   topics: string[]
+  keep: readonly string[]
   onAdd: (value: string) => Promise<boolean>
   onRemove: (value: string) => Promise<boolean>
   onError: (e: Error) => void
@@ -19,7 +21,7 @@ export function PaperTopics({ topics, onAdd, onRemove, onError }: {
   const m = useMessages()
   return (
     <TagChips
-      values={topics} vocabulary={vaultTopics} onAdd={onAdd} onRemove={onRemove} onError={onError}
+      values={topics} vocabulary={vaultTopics} onAdd={onAdd} onRemove={onRemove} onError={onError} keep={keep}
       labels={{ add: m.papers.tags.add, remove: m.papers.tags.remove, existing: m.papers.tags.existingTopics }}
     />
   )

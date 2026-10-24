@@ -313,9 +313,9 @@ export function ProjectDetail({
   const railFade = useScrollFade('y')
   const [project, setProject] = useState<Project | null>(null)
   const [linkedIdeas, setLinkedIdeas] = useState<ResearchIdea[] | null>(null)
-  const [relAdding, setRelAdding] = useState(false)
-  const [relGroup, setRelGroup] = useState<string>(PROJECT_RELATION_GROUPS[0])
-  const [relEditing, setRelEditing] = useState<RelationGroup['items'][number] | null>(null)
+  const [ownRelAdding, setRelAdding] = useState(false)
+  const [ownRelGroup, setOwnRelGroup] = useState<string>(PROJECT_RELATION_GROUPS[0])
+  const [ownRelEditing, setRelEditing] = useState<RelationGroup['items'][number] | null>(null)
   // A new object on every locate: clicking the same row again changes its identity, so the effect below reruns.
   const [flash, setFlash] = useState<{ id: string } | null>(null)
   const [hoverMilestone, setHoverMilestone] = useState<string | null>(null)
@@ -347,10 +347,36 @@ export function ProjectDetail({
   const relTriggers = useMemo(() => [relAdd], [])
   const relEditRow = useRef<HTMLDivElement>(null)
 
+  // A relation being added or edited is kept as a draft of the project, and reopens where it was.
+  const relationItems = project?.id === projectId ? project.relations.flatMap((group) => group.items) : null
+  const relations = useDrafts<string>(['project', projectId, 'relation'], relationItems === null ? null : [
+    ...PROJECT_RELATION_GROUPS.map((group) => `add:${group}`), `add:${PROJECT_URL_GROUP}:name`,
+    ...relationItems.flatMap((item) => [`edit:${item.id}`, `edit:${item.id}:name`]),
+  ])
+  const keptAddGroup = PROJECT_RELATION_GROUPS.find((group) => relations.get(`add:${group}`) !== undefined)
+  const relAdding = ownRelAdding || keptAddGroup !== undefined
+  const relGroup = ownRelAdding ? ownRelGroup : keptAddGroup ?? ownRelGroup
+  const relEditing = ownRelEditing ?? relationItems?.find((item) => relations.get(`edit:${item.id}`) !== undefined) ?? null
+  const dropAdds = useCallback(() => {
+    for (const group of PROJECT_RELATION_GROUPS) relations.drop(`add:${group}`)
+    relations.drop(`add:${PROJECT_URL_GROUP}:name`)
+  }, [relations])
+  const setRelGroup = (group: string) => {
+    dropAdds()
+    setRelAdding(true)
+    setOwnRelGroup(group)
+  }
   const stopRel = useCallback(() => {
+    dropAdds()
     setRelAdding(false)
-  }, [])
-  const stopRelEdit = useCallback(() => setRelEditing(null), [])
+  }, [dropAdds])
+  const stopRelEdit = useCallback(() => {
+    if (relEditing !== null) {
+      relations.drop(`edit:${relEditing.id}`)
+      relations.drop(`edit:${relEditing.id}:name`)
+    }
+    setRelEditing(null)
+  }, [relations, relEditing])
   const notice = useNotice()
   const today = useToday()
   const clearNode = useCallback(() => setSelectedNode(null), [])
@@ -1186,7 +1212,10 @@ export function ProjectDetail({
                         variant="section" ref={relAdd} label={m.project.links.addTitle}
                         onClick={() => {
                           if (relAdding) relRow.current?.querySelector('input')?.focus()
-                          else setRelAdding(true)
+                          else {
+                            setOwnRelGroup(relGroup)
+                            setRelAdding(true)
+                          }
                         }}
                       >{m.project.sections.links}</AddAction>
                     )}
@@ -1214,7 +1243,7 @@ export function ProjectDetail({
                             <PickRow
                               key="paper" row={relRow} triggers={relTriggers} allowNew={false}
                               placeholder={m.project.links.paperPlaceholder} suggest={suggestPapers}
-                              onNew={() => false}
+                              onNew={() => false} kept={{ drafts: relations, target: `add:${PROJECT_PAPER_GROUP}` }}
                               onCancel={stopRel} onError={reportError}
                               onPick={(hit) => writeProject(
                                 projectApi.addPaper(projectId, hit.id),
@@ -1226,6 +1255,7 @@ export function ProjectDetail({
                             ? (
                               <ProjectUrlDraft
                                 key="url" row={relRow} triggers={relTriggers} onCancel={stopRel}
+                                kept={{ drafts: relations, target: `add:${PROJECT_URL_GROUP}` }}
                                 onInvalid={() => notice.refusal(m.project.links.urlInvalid)}
                                 onSubmit={(url, text) => writeProject(projectApi.createRelation(projectId, {
                                   group: PROJECT_URL_GROUP, text, url,
@@ -1236,7 +1266,7 @@ export function ProjectDetail({
                             <PickRow
                               key="page" row={relRow} triggers={relTriggers} allowNew
                               placeholder={m.project.links.pagePlaceholder} suggest={suggestPages}
-                              onCancel={stopRel} onError={reportError}
+                              onCancel={stopRel} onError={reportError} kept={{ drafts: relations, target: 'add:Wiki' }}
                               onPick={(hit) => writeProject(projectApi.createRelation(projectId, {
                                 group: 'Wiki', text: hit.title, page: hit.id,
                               }), m.project.links.added)}
@@ -1256,6 +1286,7 @@ export function ProjectDetail({
                             <ProjectUrlDraft
                               row={relEditRow} triggers={NO_TRIGGERS} onCancel={stopRelEdit}
                               initial={{ url: relEditing.url, text: relEditing.text }}
+                              kept={{ drafts: relations, target: `edit:${relEditing.id}` }}
                               onInvalid={() => notice.refusal(m.project.links.urlInvalid)}
                               onSubmit={(url, text) => writeProject(projectApi.updateRelation(
                                 projectId, relEditing.id, { text, url },
@@ -1266,7 +1297,7 @@ export function ProjectDetail({
                             <PickRow
                               row={relEditRow} triggers={NO_TRIGGERS} allowNew initialText={relEditing.text}
                               placeholder={m.project.links.pagePlaceholder} suggest={suggestPages}
-                              onCancel={stopRelEdit} onError={reportError}
+                              onCancel={stopRelEdit} onError={reportError} kept={{ drafts: relations, target: `edit:${relEditing.id}` }}
                               onPick={(hit) => writeProject(projectApi.updateRelation(projectId, relEditing.id, {
                                 text: hit.title, page: hit.id,
                               }), m.project.links.updated)}

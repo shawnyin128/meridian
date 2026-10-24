@@ -124,3 +124,45 @@ test('关掉 App 再打开,打了一半的新项目名或新任务那一行回�
     await (second ?? first).app.close()
   }
 })
+
+test('关掉 App 再打开,选中文字后工具条里没存的批注和论文表里改到一半的随笔格回到原处,仍没存', async ({ app, win, configHome }) => {
+  // Leaving either one saves it, so each is left open by quitting.
+  await openReader(win)
+  await expect(shown(win, '.pdfpagebox[data-painted="1"]').first()).toBeVisible()
+  const line = await shown(win, '.pdfpagebox .textLayer span').first().boundingBox()
+  await win.mouse.move(line!.x + 1, line!.y + line!.height / 2)
+  await win.mouse.down()
+  await win.mouse.move(line!.x + line!.width - 1, line!.y + line!.height / 2, { steps: 6 })
+  await win.mouse.up()
+  await win.locator('.selection-tools textarea[aria-label="批注"]').fill('没存的批注')
+  const highlights = async (page: Page) => (await page.evaluate(() => (window as unknown as MeridianWindow).meridian
+    .call('papers.reading', { id: '13979-STAR-Speculative-Decodin' })) as { highlights: unknown[] }).highlights.length
+  const before = await highlights(win)
+
+  const first = await relaunch(app, configHome)
+  let second: Awaited<ReturnType<typeof relaunch>> | null = null
+  try {
+    await openReader(first.win)
+    await expect(first.win.locator('.selection-tools textarea[aria-label="批注"]')).toHaveValue('没存的批注')
+    expect(await highlights(first.win)).toBe(before)
+    await first.win.keyboard.press('Escape')
+    await expect(first.win.locator('.selection-tools')).toHaveCount(0)
+    await first.win.locator('.paper-chat .back, button.back').first().click()
+    await gotoPapers(first.win)
+    await first.win.locator('#libq').fill('STAR: SPECULATIVE DECODING')
+    await expect(first.win.locator('.ptable tbody tr')).toHaveCount(1)
+    await first.win.locator('.ptable tbody tr .pt-remark').click()
+    await first.win.locator('.ptable tbody tr .pt-remark input').fill('改到一半的随笔')
+
+    second = await relaunch(first.app, configHome)
+    await gotoPapers(second.win)
+    await second.win.locator('#libq').fill('STAR: SPECULATIVE DECODING')
+    await expect(second.win.locator('.ptable tbody tr .pt-remark input')).toHaveValue('改到一半的随笔')
+    const kept = await second.win.evaluate(() => Object.keys(window.localStorage)
+      .filter((key) => key.startsWith('meridian.drafts:'))
+      .map((key) => window.localStorage.getItem(key)!).join(''))
+    expect(kept).not.toContain('没存的批注')
+  } finally {
+    await (second ?? first).app.close()
+  }
+})

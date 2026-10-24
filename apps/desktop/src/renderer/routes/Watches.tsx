@@ -22,6 +22,7 @@ import { PageError, SectionHeading } from '../components/PageShell.js'
 import { SegmentedControl } from '../components/SegmentedControl.js'
 import { Switch } from '../components/Switch.js'
 import { Tag } from '../components/Tag.js'
+import { useDraft } from '../hooks/useDrafts.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
 import { composing } from '../lib/keyboard.js'
 import { FadeText } from '../components/FadeText.js'
@@ -114,7 +115,9 @@ export function WatchSettings() {
   const watches = useMemo(() => listed ?? [], [listed])
   const [projects, setProjects] = useState<ProjectSummary[]>([])
   const [suggestionSource, setSuggestionSource] = useState<SuggestionSource>('focus')
-  const [focus, setFocus] = useState('')
+  const [keptFocus, setKeptFocus] = useDraft<string>(['watches'], 'focus')
+  const focus = keptFocus ?? ''
+  const setFocus = (next: string) => setKeptFocus(next === '' ? null : next)
   const [projectId, setProjectId] = useState('')
   const [suggestions, setSuggestions] = useState<WatchSuggestionResult | null>(null)
   const [hadSuggestions, setHadSuggestions] = useState(false)
@@ -124,8 +127,14 @@ export function WatchSettings() {
   const [error, setError] = useState<string | null>(null)
   // The screen, not each group, holds the draft row, so "only one open at a time" spans both groups:
   // if each group held its own, neither could close the other's.
-  const [editor, setEditor] = useState<{ type: Watch['type']; id?: string } | null>(null)
-  const [name, setName] = useState('')
+  // The open draft row and its name are kept as a draft, and the row reopens with them.
+  const [kept, setKept] = useDraft<{ type: Watch['type']; id?: string; name: string }>(['watches'], 'editor')
+  const keptType = kept?.type
+  const keptId = kept?.id
+  const editor = useMemo(() => (keptType === undefined ? null
+    : { type: keptType, ...(keptId === undefined ? {} : { id: keptId }) }), [keptType, keptId])
+  const name = kept?.name ?? ''
+  const setName = (next: string) => { if (kept !== null) setKept({ ...kept, name: next }) }
   const [authorMatches, setAuthorMatches] = useState<AuthorCandidate[]>([])
   const [authorSearching, setAuthorSearching] = useState(false)
   const [authorSearchError, setAuthorSearchError] = useState<string | AuthorSearchFailed | null>(null)
@@ -147,12 +156,15 @@ export function WatchSettings() {
 
   const stop = useCallback(() => {
     authorSearchRevision.current += 1
-    setEditor(null)
-    setName('')
+    setKept(null)
     setAuthorMatches([])
     setAuthorSearching(false)
     setAuthorSearchError(null)
-  }, [])
+  }, [setKept])
+  // A kept edit of a watch the list no longer holds is dropped.
+  useEffect(() => {
+    if (keptId !== undefined && listed !== null && !listed.some((item) => item.id === keptId)) setKept(null)
+  }, [keptId, listed, setKept])
   useEffect(() => {
     void watch.list().then(setListed).catch(reportError)
     void project.list().then((items) => {
@@ -218,15 +230,13 @@ export function WatchSettings() {
       return
     }
     afterLeaving(leaveDraft, () => {
-      setEditor({ type })
-      setName('')
+      setKept({ type, name: '' })
       setAuthorSearchNonce(0)
     })
   }
 
   const edit = (item: Watch) => afterLeaving(leaveDraft, () => {
-    setEditor({ type: item.type, id: item.id })
-    setName(item.name)
+    setKept({ type: item.type, id: item.id, name: item.name })
     setAuthorMatches([])
     setAuthorSearchError(null)
     setAuthorSearchNonce(0)

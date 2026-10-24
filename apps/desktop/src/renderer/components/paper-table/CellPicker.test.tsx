@@ -37,7 +37,7 @@ async function mount(
     createRoot(host).render(
       <MessagesProvider>
         <div onContextMenu={onRowContextMenu}>
-          <CellPicker column={COLUMN} values={values} onCommit={onCommit} onClose={onClose} />
+          <CellPicker column={COLUMN} values={values} onCommit={onCommit} onClose={onClose} keep={{ scope: ['paper', 'p1'], target: 'cell:c1' }} />
         </div>
       </MessagesProvider>,
     )

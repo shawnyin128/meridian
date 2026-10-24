@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 const vault = vi.hoisted(() => ({ root: '/vaults/a' }))
 vi.mock('../ipc.js', () => ({ library: { location: () => Promise.resolve({ root: vault.root }) } }))
 
-const { DraftsProvider, keptDraftsKey, useDrafts, usePruneDrafts } = await import('./useDrafts.js')
+const { DraftsProvider, keptDraftsKey, useDrafts, useKeptTargets, usePruneDrafts } = await import('./useDrafts.js')
 
 declare global {
   var IS_REACT_ACT_ENVIRONMENT: boolean
@@ -180,5 +180,21 @@ describe('kept drafts', () => {
     quit()
     await start(<Editor scope={['paper', 'p1']} seen={(seen) => { drafts = seen }} />, false)
     expect(drafts.get('new-note')).toBeUndefined()
+  })
+
+  it('finds the kept drafts of every item of a kind by target, each of which it can drop', async () => {
+    window.localStorage.setItem(keptDraftsKey('/vaults/a'), JSON.stringify({
+      format: 1, drafts: [[['paper', 'p1'], 'cell:remark', 'a'], [['paper', 'p2'], 'new-note', 'b'], [['paper', 'p3', 'edits'], 'cell:x', 'c']],
+    }))
+    let found: ReturnType<typeof useKeptTargets> = []
+    function Finder() {
+      found = useKeptTargets(['paper'], 'cell:')
+      return null
+    }
+    await start(<Finder />)
+    expect(found.map(({ scope, target }) => [scope, target])).toEqual([[['paper', 'p1'], 'cell:remark']])
+    act(() => found[0]!.drop())
+    expect(found).toEqual([])
+    expect(window.localStorage.getItem(keptDraftsKey('/vaults/a'))).not.toContain('cell:remark')
   })
 })

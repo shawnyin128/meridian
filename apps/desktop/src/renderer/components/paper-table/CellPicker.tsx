@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react'
 import type { PaperColumn } from '../../../shared/contract.js'
 import { useCandidateKeys } from '../../hooks/useCandidateKeys.js'
+import { useDrafts } from '../../hooks/useDrafts.js'
 import { useInlineDraft } from '../../hooks/useInlineDraft.js'
 import { NO_TRIGGERS } from '../../hooks/useOnLeave.js'
 import { composing } from '../../lib/keyboard.js'
@@ -40,21 +41,29 @@ export function optionRows(
  * returns whether it was written; otherwise when this cell closes is decided by the caller. After a
  * create, the input is cleared and the popover stays open.
  */
-export function CellPicker({ column, values, onCommit, onClose }: {
+export function CellPicker({ column, values, onCommit, onClose, keep }: {
   column: PaperColumn
   /** The values this cell holds now; a select column holds at most one. */
   values: string[]
   onCommit: (value: string, created: boolean) => boolean | Promise<boolean>
   onClose: () => void
+  /** Keeps what is typed as a draft under `target` of `scope`, which the picker starts from; closing drops it. */
+  keep: { scope: readonly string[]; target: string }
 }) {
   const m = useMessages()
-  const [q, setQ] = useState('')
+  const kept = useDrafts<string>(keep.scope)
+  const [q, setOwnQ] = useState(kept.get(keep.target) ?? '')
+  const setQ = (next: string) => {
+    setOwnQ(next)
+    kept.set(keep.target, next)
+  }
   const anchor = useRef<HTMLInputElement>(null)
 
   const typed = q.trim()
   const { hits, isNew } = optionRows(column.options, typed)
   const create = () => {
-    setQ('')
+    setOwnQ('')
+    kept.drop(keep.target)
     void onCommit(typed, true)
   }
 
@@ -65,6 +74,7 @@ export function CellPicker({ column, values, onCommit, onClose }: {
   })
   const draft = useInlineDraft({
     row: anchor, triggers: NO_TRIGGERS, onCancel: onClose, isEmpty: () => typed === '',
+    kept: { drafts: kept, target: keep.target },
     onSubmit: () => {
       const hit = hits[keys.active]
       if (hit === undefined) return onCommit(typed, true)
@@ -89,7 +99,7 @@ export function CellPicker({ column, values, onCommit, onClose }: {
             keys.onKeyDown(e)
             if (e.key === 'Escape') e.stopPropagation()
             if (composing(e.nativeEvent)) return
-            if (e.key === 'Escape') onClose()
+            if (e.key === 'Escape') draft.cancel()
           }}
         />
       )}

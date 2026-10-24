@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { RefObject } from 'react'
 import { useCandidateKeys } from '../hooks/useCandidateKeys.js'
 import { NO_TRIGGERS } from '../hooks/useOnLeave.js'
+import { useDrafts, type Drafts, type KeptText } from '../hooks/useDrafts.js'
 import { useInlineDraft } from '../hooks/useInlineDraft.js'
 import { AddAction } from './AddAction.js'
 import { FadeText } from './FadeText.js'
@@ -34,15 +35,20 @@ type DraftProps = {
  * pending, neither an outside press nor focus leaving closes it, and no second one is sent before the
  * first lands. All closing goes through `useInlineDraft`; Radix only positions the candidates.
  */
-function useChipDraft({ open, initial, appearance, values, vocabulary, labels, input, onSubmit, onClose, onError }: DraftProps & {
+function useChipDraft({ open, initial, appearance, values, vocabulary, labels, input, onSubmit, onClose, onError, kept }: DraftProps & {
   open: boolean
   initial: string
   appearance: Extract<FormControlAppearance, 'inline' | 'chip'>
   input: RefObject<HTMLInputElement | null>
   onSubmit: (value: string) => Promise<boolean>
   onClose: () => void
+  kept: KeptText
 }) {
-  const [q, setQ] = useState(initial)
+  const [q, setOwnQ] = useState(kept.drafts.get(kept.target) ?? initial)
+  const setQ = (next: string) => {
+    setOwnQ(next)
+    kept.drafts.set(kept.target, next)
+  }
   const [vocab, setVocab] = useState<string[]>([])
 
   useEffect(() => {
@@ -59,8 +65,8 @@ function useChipDraft({ open, initial, appearance, values, vocabulary, labels, i
 
   // While closed the input is not rendered and its ref is null, so the outside and focus paths do nothing.
   const draft = useInlineDraft({
-    row: input, triggers: NO_TRIGGERS, isEmpty: () => typed === '' || typed === initial,
-    onCancel: () => { setQ(initial); onClose() },
+    row: input, triggers: NO_TRIGGERS, isEmpty: () => typed === '' || typed === initial, kept,
+    onCancel: () => { setOwnQ(initial); onClose() },
     onSubmit: () => (typed === '' ? false : typed === initial ? true : onSubmit(hits[keys.active] ?? typed)),
   })
   // The create row, when there is one, is the last row the keys and the pointer move through.
@@ -100,11 +106,13 @@ function useChipDraft({ open, initial, appearance, values, vocabulary, labels, i
  * to `onAdd`. The `+` button opens it with its own `setOpen(true)`; the styling follows the demo's
  * .tagadd/.tagin/tagSug.
  */
-function ChipAdd({ onAdd, ...props }: DraftProps & { onAdd: (value: string) => Promise<boolean> }) {
-  const [open, setOpen] = useState(false)
+function ChipAdd({ onAdd, drafts, ...props }: DraftProps & { onAdd: (value: string) => Promise<boolean>; drafts: Drafts<string> }) {
+  const [ownOpen, setOpen] = useState(false)
+  const open = ownOpen || drafts.get('add') !== undefined
   const input = useRef<HTMLInputElement>(null)
   const { field, content } = useChipDraft({
     ...props, open, initial: '', appearance: 'inline', input, onSubmit: onAdd, onClose: () => setOpen(false),
+    kept: { drafts, target: 'add' },
   })
   return (
     <PickerPopover
@@ -122,14 +130,16 @@ function ChipAdd({ onAdd, ...props }: DraftProps & { onAdd: (value: string) => P
 }
 
 /** Chip `value` being edited: the draft input in the chip's place, holding its value, whose result goes to `onReplace`. */
-function ChipEdit({ value, onReplace, onClose, ...props }: DraftProps & {
+function ChipEdit({ value, onReplace, onClose, drafts, ...props }: DraftProps & {
   value: string
   onReplace: (value: string) => Promise<boolean>
   onClose: () => void
+  drafts: Drafts<string>
 }) {
   const input = useRef<HTMLInputElement>(null)
   const { field, content } = useChipDraft({
     ...props, open: true, initial: value, appearance: 'chip', input, onSubmit: onReplace, onClose,
+    kept: { drafts, target: `edit:${value}` },
   })
   return <PickerPopover open anchorRef={input} stopClickPropagation content={content} anchor={field} />
 }
@@ -139,20 +149,27 @@ function ChipEdit({ value, onReplace, onClose, ...props }: DraftProps & {
  * it to `onRemove`, then the `+` that adds one through `onAdd`. With `onReplace`, clicking a chip
  * turns it into an input holding its value, in its place, and the value that input hands over
  * replaces it through `onReplace`. Every input offers the values of `vocabulary` the list does not
- * hold. `onAdd`, `onRemove` and `onReplace` return whether the write completed.
+ * hold. `onAdd`, `onRemove` and `onReplace` return whether the write completed. What an input holds
+ * is kept as a draft of `keep` (see `useDrafts`), the scope of the item the values belong to, and an
+ * input with a kept draft opens again with it.
  */
-export function TagChips({ values, onAdd, onRemove, onReplace, ...props }: DraftProps & {
+export function TagChips({ values, onAdd, onRemove, onReplace, keep, ...props }: DraftProps & {
   onAdd: (value: string) => Promise<boolean>
   onRemove: (value: string) => Promise<boolean>
   onReplace?: (from: string, to: string) => Promise<boolean>
+  keep: readonly string[]
 }) {
-  const [editing, setEditing] = useState<string | null>(null)
+  const drafts = useDrafts<string>(keep, [
+    'add', ...(onReplace === undefined ? [] : values.map((value) => `edit:${value}`)),
+  ])
+  const [ownEditing, setEditing] = useState<string | null>(null)
+  const editing = ownEditing ?? values.find((value) => drafts.get(`edit:${value}`) !== undefined) ?? null
   return (
     <>
       {values.map((value) => (onReplace !== undefined && editing === value
         ? (
           <ChipEdit
-            key={value} value={value} values={values} {...props}
+            key={value} value={value} values={values} {...props} drafts={drafts}
             onReplace={(to) => onReplace(value, to)} onClose={() => setEditing(null)}
           />
         )
@@ -171,7 +188,7 @@ export function TagChips({ values, onAdd, onRemove, onReplace, ...props }: Draft
             ><IconCross sw={2.5} /></IconButton>
           </span>
         )))}
-      <ChipAdd values={values} onAdd={onAdd} {...props} />
+      <ChipAdd values={values} onAdd={onAdd} {...props} drafts={drafts} />
     </>
   )
 }

@@ -32,7 +32,7 @@ import { headingsOf, MarkdownBox } from '../components/Markdown.js'
 import { Pager } from '../components/Pager.js'
 import { PickRow, type PickHit } from '../components/PickRow.js'
 import { nextKey, slugOf } from '../lib/slug.js'
-import { editText, useDrafts, usePruneDrafts, type EditDraft } from '../hooks/useDrafts.js'
+import { editText, useDraft, useDrafts, usePruneDrafts, type EditDraft } from '../hooks/useDrafts.js'
 import { useRowCap } from '../hooks/useRowCap.js'
 import { useUndo } from '../hooks/useUndo.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
@@ -257,15 +257,16 @@ function Table({ agg, onOpen, onAnchor, onRemove, pending, adding, head }: {
 }
 
 /**
- * Column settings: rename or delete existing columns one by one. Save hands over the whole set of
- * columns and is disabled while any column name is empty. It renders in the popover of the gear at
- * the end of the header row; adding a column is not here but on the + next to it.
+ * Column settings: rename or delete existing columns one by one, as a view of `rows`, which each
+ * change replaces through `onRows`. Save hands over the whole set of columns and is disabled while
+ * any column name is empty or while `stale`. It renders in the popover of the gear at the end of the
+ * header row; adding a column is not here but on the + next to it.
  */
-function ColumnsEditor({ columns, onSave, onCancel }: {
-  columns: WikiColumn[]; onSave: (columns: WikiColumn[]) => void; onCancel: () => void
+function ColumnsEditor({ rows, stale, onRows, onSave, onCancel }: {
+  rows: WikiColumn[]; stale: boolean; onRows: (rows: WikiColumn[]) => void; onSave: (columns: WikiColumn[]) => void; onCancel: () => void
 }) {
   const m = useMessages()
-  const [rows, setRows] = useState(columns)
+  const setRows = onRows
   return (
     <div className="coledit">
       <div className="ch">{m.wiki.columnSettings}</div>
@@ -284,7 +285,7 @@ function ColumnsEditor({ columns, onSave, onCancel }: {
       <div className="acts">
         <button className="btn" onClick={onCancel}>{m.common.cancel}</button>
         <button
-          className="btn pri" disabled={rows.some((c) => c.label.trim() === '')}
+          className="btn pri" disabled={stale || rows.some((c) => c.label.trim() === '')}
           onClick={() => onSave(rows.map((c) => ({ key: c.key, label: c.label.trim() })))}
         >{m.common.save}</button>
       </div>
@@ -396,8 +397,22 @@ export function Wiki() {
   usePruneDrafts(['wiki'], wikiPageIds)
   const [saving, setSaving] = useState(false)
   const [pending, setPending] = useState(false)
-  const [adding, setAdding] = useState<'child' | 'paper' | 'columns' | null>(null)
-  const [newCol, setNewCol] = useState(false)
+  // A page keeps its open add row, the new column's name and the column settings being typed as drafts.
+  const adds = useDrafts<string>(['wiki', place ?? ''])
+  const [columnsDraft, setColumnsDraft] = useDraft<{ rows: WikiColumn[]; base: WikiColumn[] }>(['wiki', place ?? ''], 'columns')
+  const adding = adds.get('add-child') !== undefined ? 'child'
+    : adds.get('add-paper') !== undefined ? 'paper' : columnsDraft !== null ? 'columns' : null
+  const setAdding = (what: 'child' | 'paper' | null) => {
+    if (what !== 'child') adds.drop('add-child')
+    if (what !== 'paper') adds.drop('add-paper')
+    setColumnsDraft(null)
+    if (what !== null && adds.get(`add-${what}`) === undefined) adds.set(`add-${what}`, '')
+  }
+  const newCol = adds.get('new-column') !== undefined
+  const setNewCol = (open: boolean) => {
+    if (!open) adds.drop('new-column')
+    else if (!newCol) adds.set('new-column', '')
+  }
   const addRow = useRef<HTMLElement>(null)
   const newPaperRow = useRef<HTMLTableRowElement>(null)
   const newColCell = useRef<HTMLTableCellElement>(null)
@@ -405,12 +420,6 @@ export function Wiki() {
   const paperBtn = useRef<HTMLButtonElement>(null)
   const colBtn = useRef<HTMLButtonElement>(null)
   const colAdd = useRef<HTMLButtonElement>(null)
-
-  // A page change or vault write also closes whichever add row or column editor is open.
-  useEffect(() => {
-    setAdding(null)
-    setNewCol(false)
-  }, [place, revision])
 
   /**
    * A management operation is a proposal: once it is written, close the input row, bump the vault
@@ -820,6 +829,7 @@ export function Wiki() {
                                 placeholder={m.wiki.kindNamePlaceholder(shownAgg.kindLabel)}
                                 suggest={suggestChildren} onPick={mount} onNew={create}
                                 onCancel={() => setAdding(null)} onError={reportError}
+                                kept={{ drafts: adds, target: 'add-child' }}
                               />
                             </div>
                             <div className="wf" />
@@ -848,7 +858,7 @@ export function Wiki() {
                           row={newPaperRow} triggers={[childBtn, paperBtn, colBtn]} allowNew={false}
                           placeholder={m.project.links.paperPlaceholder}
                           suggest={suggestPapers} onNew={() => false} onCancel={() => setAdding(null)}
-                          onError={reportError}
+                          onError={reportError} kept={{ drafts: adds, target: 'add-paper' }}
                           onPick={(hit) => propose(m.wiki.proposals.addPaper(hit.title, shownAgg.title), [
                             { op: 'setMembership', paper: hit.id, in: shownAgg.id, cells: {} },
                           ])}
@@ -872,7 +882,10 @@ export function Wiki() {
                           />
                           <ActionPopover
                             open={adding === 'columns'}
-                            onOpenChange={(next) => setAdding(next ? 'columns' : null)}
+                            onOpenChange={(next) => {
+                              setAdding(null)
+                              if (next) setColumnsDraft({ rows: shownAgg.columns, base: shownAgg.columns })
+                            }}
                             contentClassName="ctxmenu colpop" sticky="always"
                             trigger={(
                               <IconButton
@@ -885,7 +898,10 @@ export function Wiki() {
                               * popover stays inside the window, like the paper table's column menu.
                               */}
                                 <ColumnsEditor
-                                  columns={shownAgg.columns} onCancel={() => setAdding(null)}
+                                  rows={columnsDraft?.rows ?? shownAgg.columns}
+                                  stale={columnsDraft !== null && JSON.stringify(columnsDraft.base) !== JSON.stringify(shownAgg.columns)}
+                                  onRows={(rows) => { if (columnsDraft !== null) setColumnsDraft({ ...columnsDraft, rows }) }}
+                                  onCancel={() => setAdding(null)}
                                   onSave={(columns) => {
                                     if (pending) return
                                     propose(
@@ -902,7 +918,7 @@ export function Wiki() {
                         : (
                           <NewColumnHead
                             cell={newColCell} triggers={[colAdd]}
-                            onCreate={createColumn} onCancel={() => setNewCol(false)}
+                            onCreate={createColumn} onCancel={() => setNewCol(false)} kept={{ drafts: adds, target: 'new-column' }}
                           />
                         ),
                     }}

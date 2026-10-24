@@ -14,7 +14,7 @@ import { EmptyState } from '../EmptyState.js'
 import { MarkdownBox } from '../Markdown.js'
 import { PaperText } from '../paper/PaperText.js'
 import { useFormat } from '../../lib/format.js'
-import type { TextEdit } from '../../hooks/useDrafts.js'
+import type { KeptText, TextEdit } from '../../hooks/useDrafts.js'
 import { useInlineDraft } from '../../hooks/useInlineDraft.js'
 import { useMessages } from '../../messages/useMessages.js'
 import { FormInput } from '../FormControls.js'
@@ -40,21 +40,27 @@ export const urlDisplayName = (url: string) => url.replace(/^https?:\/\//i, '').
  * `initial` at first. Enter in either field or leaving `row` submits, Escape cancels, and leaving
  * both fields empty closes the row, as does leaving an `initial` draft unchanged or without an
  * address. `onSubmit` receives a normalized http(s) address and resolves true when the row should
- * close.
+ * close. With `kept`, the address is kept as a draft under its target and the name under the target
+ * followed by `:name`; the fields start from them, and the row closing drops both.
  */
-export function ProjectUrlDraft({ row, triggers, initial, onSubmit, onCancel, onInvalid }: {
+export function ProjectUrlDraft({ row, triggers, initial, onSubmit, onCancel, onInvalid, kept }: {
   row: RefObject<HTMLElement | null>
   triggers: Array<RefObject<HTMLElement | null>>
   initial?: { url: string; text: string }
   onSubmit: (url: string, name: string) => boolean | Promise<boolean>
   onCancel: () => void
   onInvalid: () => void
+  kept?: KeptText | undefined
 }) {
   const m = useMessages()
   const address = useRef<HTMLInputElement>(null)
   const label = useRef<HTMLInputElement>(null)
   const draft = useInlineDraft({
-    row, triggers, onCancel,
+    row, triggers, kept,
+    onCancel: () => {
+      kept?.drafts.drop(`${kept.target}:name`)
+      onCancel()
+    },
     isEmpty: () => {
       const typed = address.current?.value.trim() ?? ''
       const name = label.current?.value.trim() ?? ''
@@ -75,13 +81,21 @@ export function ProjectUrlDraft({ row, triggers, initial, onSubmit, onCancel, on
     <div className="urldraft">
       <FormInput
         ref={address} appearance="inline" className="inedit" placeholder={m.project.links.urlPlaceholder}
-        defaultValue={initial?.url}
+        defaultValue={kept?.drafts.get(kept.target) ?? initial?.url}
         {...draft.inputProps}
+        onInput={(event) => {
+          draft.inputProps.onInput()
+          kept?.drafts.set(kept.target, event.currentTarget.value)
+        }}
       />
       <FormInput
         ref={label} appearance="inline" className="inedit" placeholder={m.project.links.urlNamePlaceholder}
-        defaultValue={initial?.text}
+        defaultValue={kept?.drafts.get(`${kept.target}:name`) ?? initial?.text}
         {...draft.inputProps} autoFocus={false}
+        onInput={(event) => {
+          draft.inputProps.onInput()
+          kept?.drafts.set(`${kept.target}:name`, event.currentTarget.value)
+        }}
       />
     </div>
   )
@@ -107,7 +121,7 @@ export function ProjectAreasField({ projectId, areas, onSave, onError }: {
   return (
     <span className="metadata-field project-areas">
       <TagChips
-        values={areas} vocabulary={vocabulary} onError={onError}
+        values={areas} vocabulary={vocabulary} onError={onError} keep={['project', projectId, 'areas']}
         labels={{ add: m.project.identity.addArea, remove: m.project.identity.removeArea, existing: m.project.identity.existingAreas }}
         onAdd={(area) => onSave([...new Set([...areas, area])])}
         onRemove={(area) => onSave(areas.filter((held) => held !== area))}

@@ -39,6 +39,8 @@ type KeptDraft = [scope: string[], target: string, draft: unknown]
  */
 type DraftStore = {
   scope: (scope: string) => ReadonlyMap<string, unknown>
+  /** Every scope's drafts; the same map until a draft changes. */
+  all: () => ReadonlyMap<string, ReadonlyMap<string, unknown>>
   /** Whether the drafts kept for the vault have been read; true from the start for a store that keeps none. */
   loaded: () => boolean
   set: (scope: string, target: string, draft: unknown) => void
@@ -117,6 +119,7 @@ function createDraftStore(storage: Storage | null = null): DraftStore & { open: 
   }
   return {
     scope: (scope) => scopes.get(scope) ?? NO_DRAFTS,
+    all: () => scopes,
     loaded: () => loaded,
     set: (scope, target, draft) => withScope(scope, (drafts) => { drafts.set(target, draft) }),
     drop: (scope, target) => {
@@ -214,6 +217,28 @@ export function useDrafts<D = string>(scope: readonly string[], live: readonly s
 }
 
 const NEVER = () => () => {}
+const NO_SCOPES: ReadonlyMap<string, ReadonlyMap<string, unknown>> = new Map()
+
+/**
+ * The scope and target of every kept draft whose scope is `prefix` followed by one more segment and
+ * whose target begins with `start`, for a caller that reopens the editor of whichever item has one,
+ * each with `drop`, which forgets that draft. Outside a `DraftsProvider` there are none.
+ */
+export function useKeptTargets(prefix: readonly string[], start: string): { scope: string[]; target: string; drop: () => void }[] {
+  const store = useContext(DraftsContext)
+  const read = () => store?.all() ?? NO_SCOPES
+  const scopes = useSyncExternalStore(store?.subscribe ?? NEVER, read, read)
+  const prefixId = JSON.stringify(prefix)
+  return useMemo(() => {
+    const under = JSON.parse(prefixId) as string[]
+    return [...scopes].flatMap(([id, drafts]) => {
+      const scope = JSON.parse(id) as string[]
+      if (scope.length !== under.length + 1 || !under.every((segment, at) => scope[at] === segment)) return []
+      return [...drafts.keys()].filter((target) => target.startsWith(start))
+        .map((target) => ({ scope, target, drop: () => store?.drop(id, target) }))
+    })
+  }, [store, scopes, prefixId, start])
+}
 
 /**
  * Drops the kept drafts of every item under `prefix` whose id is not in `live`, the ids of the

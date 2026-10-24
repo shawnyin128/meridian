@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useRef, useState } from 'react'
 import type { IdeaRelations as Relations, ProjectSummary, ResearchIdea } from '../../../shared/contract.js'
+import { useDrafts } from '../../hooks/useDrafts.js'
 import { useMessages } from '../../messages/useMessages.js'
 import { AddAction } from '../AddAction.js'
 import { EmptyState } from '../EmptyState.js'
@@ -37,11 +38,18 @@ export function IdeaRelations({ idea, projects, pages, onChange, onOpenProject, 
   const m = useMessages()
   const r = m.ideas.relation
   const held = useMemo(() => idea.relations ?? { projects: [], pages: [] }, [idea.relations])
-  const [adding, setAdding] = useState<Row | null>(null)
+  // The row being added to and what is typed there are kept as a draft of the idea.
+  const kept = useDrafts<string>(['idea', idea.id, 'relation'])
+  const [ownAdding, setOwnAdding] = useState<Row | null>(null)
+  const adding = ownAdding ?? ROWS.find((row) => kept.get(`add:${row}`) !== undefined) ?? null
+  const setAdding = useCallback((row: Row | null) => {
+    for (const other of ROWS) if (other !== row) kept.drop(`add:${other}`)
+    setOwnAdding(row)
+  }, [kept])
   const draftRow = useRef<HTMLDivElement>(null)
   const add = useRef<HTMLButtonElement>(null)
   const triggers = useMemo(() => [add], [])
-  const stop = useCallback(() => setAdding(null), [])
+  const stop = useCallback(() => setAdding(null), [setAdding])
   const nameOf = (row: Row, id: string) => (row === 'projects'
     ? projects.find((project) => project.id === id)?.name ?? m.ideas.link.unavailable
     : pages.get(id) ?? id)
@@ -96,7 +104,7 @@ export function IdeaRelations({ idea, projects, pages, onChange, onOpenProject, 
                 <PickRow
                   key={row} row={draftRow} triggers={triggers} allowNew={false} onNew={() => false}
                   placeholder={row === 'projects' ? m.project.identity.nameFieldLabel : m.project.links.pagePlaceholder}
-                  suggest={suggest} onCancel={stop} onError={onError}
+                  suggest={suggest} onCancel={stop} onError={onError} kept={{ drafts: kept, target: `add:${row}` }}
                   onPick={(hit) => onChange({ ...held, [row]: [...held[row], hit.id] })}
                 />
               </div>
