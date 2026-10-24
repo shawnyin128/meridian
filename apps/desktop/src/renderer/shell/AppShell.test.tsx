@@ -309,6 +309,31 @@ describe('AppShell sidebar collapse', () => {
     fixture.platform = 'darwin'
   })
 
+  /** Presses B with the modifiers in `init` in `field`; returns whether the shell took the key from the text system. */
+  const pressB = (field: HTMLElement, init: KeyboardEventInit) => {
+    const event = new KeyboardEvent('keydown', { key: 'b', bubbles: true, cancelable: true, ...init })
+    act(() => { field.dispatchEvent(event) })
+    return event.defaultPrevented
+  }
+  const hidden = () => document.querySelector('#main')!.classList.contains('sbhide')
+
+  it('toggles the sidebar on macOS with ⌘B only, and leaves Control-B in a text field to the text system', () => {
+    search.focus()
+    expect([pressB(search, { ctrlKey: true }), hidden()]).toEqual([false, false])
+    expect([pressB(search, { metaKey: true }), hidden()]).toEqual([true, true])
+  })
+
+  it('toggles the sidebar on Windows with Ctrl+B, in a text field too', async () => {
+    act(() => root!.unmount())
+    fixture.platform = 'win32'
+    await mount()
+    const field = document.querySelector<HTMLInputElement>('#sSearch')!
+    field.focus()
+    const toggled = [pressB(field, { ctrlKey: true }), hidden()]
+    fixture.platform = 'darwin'
+    expect(toggled).toEqual([true, true])
+  })
+
   it('names the sidebar grip in the shared tooltip by its action with ⌘B on macOS, with no drag hint and no tooltip of its own', () => {
     expect(hoverTip('#sbgrip')).toEqual(['收起侧栏', '⌘B'])
     expect(document.querySelector('[role="tooltip"] .tooltip-note')).toBeNull()

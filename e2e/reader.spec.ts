@@ -146,7 +146,7 @@ test('阅读器右栏一下子定好宽度、内容淡入,收起后只保留工�
     .toBeLessThan(60)
 })
 
-test('对话栏右缘的把手悬停显形、拖动在 240–480px 间调宽、按住不动松开什么也不做；收起后留一条带把手的窄边，窄边、Ctrl+B 与标题栏按钮都能再开合', async ({ win }) => {
+test('对话栏右缘的把手悬停显形、拖动在 240–480px 间调宽、按住不动松开什么也不做；收起后留一条带把手的窄边，窄边、⌘B(其他平台 Ctrl+B)与标题栏按钮都能再开合', async ({ win }) => {
   await openFromPapers(win)
   const chat = shown(win, '.paper-chat')
   const grip = shown(win, '.paper-chat > #rrgrip')
@@ -176,7 +176,7 @@ test('对话栏右缘的把手悬停显形、拖动在 240–480px 间调宽、�
   await grip.dblclick()
   expect(await width()).toBe(300)
 
-  await win.keyboard.press('Control+b')
+  await win.keyboard.press('ControlOrMeta+b')
   await expect(edge).toBeVisible()
   await settle(chat)
   expect(await opacity()).toBe('0')
@@ -187,7 +187,7 @@ test('对话栏右缘的把手悬停显形、拖动在 240–480px 间调宽、�
   expect(await opacity()).toBe('1')
   expect(await width()).toBe(300)
 
-  await win.keyboard.press('Control+b')
+  await win.keyboard.press('ControlOrMeta+b')
   await expect(edge).toBeVisible()
   await win.locator('#sbBtn').click()
   await expect(edge).toHaveCount(0)
