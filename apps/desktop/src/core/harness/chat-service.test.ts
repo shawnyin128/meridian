@@ -83,6 +83,44 @@ describe('Core chat service', () => {
     ])
   })
 
+  it('deleting a chat that is generating stops the generation before the chat goes to the trash, and the late answer never lands', async () => {
+    const store = createFixtureStore()
+    let signal: AbortSignal | undefined
+    let finish: (answer: string) => void = () => {}
+    const runner: ChatHarnessRunner = {
+      checkConnection: vi.fn(async () => ({
+        state: 'connected' as const, modelCalls: 1 as const, maxOutputTokens: 1 as const,
+      })),
+      // Resolves only when the test says so, whether or not it was aborted.
+      answer: vi.fn((_id, _text, held) => {
+        signal = held
+        return new Promise<string>((resolve) => { finish = resolve })
+      }),
+      close: vi.fn(),
+    }
+    const service = createChatService({ store, model: await configuredModel(), runner })
+    const before = store.chatMessages('amortize').length
+    const remove = store.deleteChat
+    let stoppedFirst: boolean | undefined
+    vi.spyOn(store, 'deleteChat').mockImplementation((id) => {
+      stoppedFirst = signal?.aborted
+      remove(id)
+    })
+    const sending = service.send('amortize', '删之前问的一句')
+
+    const { trash } = service.delete('amortize')
+    finish('删掉之后才到的回答')
+
+    await expect(sending).resolves.toEqual({ id: 'amortize', state: 'cancelled' })
+    expect(stoppedFirst).toBe(true)
+    expect(store.listChats().map((chat) => chat.id)).not.toContain('amortize')
+    expect(store.listTrash()[0]).toMatchObject({ id: trash, kind: 'chat' })
+    store.restoreTrash(trash)
+    expect(store.chatMessages('amortize').slice(before)).toMatchObject([
+      { role: 'you', runs: [{ text: '删之前问的一句' }] },
+    ])
+  })
+
   it('answers a failed model call with its reason and keeps the provider text out of the result', async () => {
     const store = createFixtureStore()
     const runner: ChatHarnessRunner = {
