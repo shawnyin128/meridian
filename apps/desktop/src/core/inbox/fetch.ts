@@ -1,5 +1,5 @@
 import type { AuthorIdentity, FeedRun, FetchStatus, NetFailure } from '../../shared/contract.js'
-import { watchQuery, type Arxiv } from '../net/arxiv.js'
+import { WATCH_BATCH, watchQuery, type Arxiv } from '../net/arxiv.js'
 import { netFailure } from '../net/http.js'
 import type { RemotePaper } from '../net/arxiv.js'
 import type { VaultStore } from '../vault.js'
@@ -9,10 +9,15 @@ import {
 
 export type WatchFetcher = { run(watchIds?: string[]): Promise<void>; status(): FetchStatus }
 
+/** Most arXiv pages one run reads for a watch: as many papers as its pool keeps. */
+export const MAX_WATCH_PAGES = 3
+
 /**
  * Builds the serialized arXiv fetcher for all active watches or a selected subset. A run queries every
  * watch it covers and spreads the delivery cap over them; the papers a watch could not deliver within its
- * share stay in its pool and are offered first by its next run.
+ * share stay in its pool and are offered first by its next run. An arXiv watch that has fetched before
+ * reads page after page of its newest papers, until a page holds a paper from the newest page it
+ * fetched last, falls short of WATCH_BATCH, or MAX_WATCH_PAGES are read.
  */
 export function createWatchFetcher(deps: {
   store: VaultStore; arxiv: Pick<Arxiv, 'search'>; scholar?: ScholarlyMetadata
@@ -24,6 +29,16 @@ export function createWatchFetcher(deps: {
   let pending = 0
   let reason: NetFailure | null = null
 
+  const searchPages = async (query: string, seen: ReadonlySet<string>): Promise<RemotePaper[]> => {
+    const found: RemotePaper[] = []
+    for (let page = 0; page < MAX_WATCH_PAGES; page += 1) {
+      const batch = await deps.arxiv.search(query, page * WATCH_BATCH)
+      found.push(...batch)
+      if (seen.size === 0 || batch.length < WATCH_BATCH || batch.some((paper) => seen.has(paper.id))) break
+    }
+    return found
+  }
+
   const fetchWatches = async (watchIds: string[] | undefined): Promise<void> => {
     const watches = deps.store.listWatches()
       .filter((watch) => watch.active && (watchIds === undefined || watchIds.includes(watch.id)))
@@ -31,13 +46,15 @@ export function createWatchFetcher(deps: {
     const counts = new Map<string, { name: string; added: number }>()
     let failure: NetFailure | null = null
     const progress = watches.map((watch) => deps.store.refreshProgress({ kind: 'watch', id: watch.id }))
+    const newest = progress.map((held) => held.newest)
     const shares = await shareCap(watches.map((watch, at) => ({
       favouredAt: progress[at]!.favouredAt,
       candidates: async (): Promise<DiscoveryPaper[]> => {
         try {
           const found = watch.type === 'author' && watch.identity?.source === 'semantic-scholar' && deps.authorPapers !== undefined
             ? await deps.authorPapers(watch.identity)
-            : await deps.arxiv.search(watchQuery(watch))
+            : await searchPages(watchQuery(watch), new Set(progress[at]!.newest))
+          newest[at] = found.slice(0, WATCH_BATCH).map((paper) => paper.id)
           return poolFirst(progress[at]!.candidates, found.map((paper) => ({ ...rankedPaper(watch, paper), semanticId: '' })))
         } catch (caught) {
           failure ??= netFailure(caught)
@@ -61,9 +78,10 @@ export function createWatchFetcher(deps: {
       const pool = rest.slice(0, POOL_LIMIT)
       const held = progress[at]!
       if (delivered === 0 && pool.length === held.candidates.length
-        && pool.every((paper, index) => paper.id === held.candidates[index]!.id)) continue
+        && pool.every((paper, index) => paper.id === held.candidates[index]!.id)
+        && newest[at]!.join('\n') === held.newest.join('\n')) continue
       deps.store.setRefreshProgress({ kind: 'watch', id: watch.id }, {
-        steps: held.steps, candidates: pool, favouredAt: favoured ? deps.now() : held.favouredAt,
+        steps: held.steps, candidates: pool, favouredAt: favoured ? deps.now() : held.favouredAt, newest: newest[at]!,
       })
     }
     const arxivIds = [...new Set(batches.flatMap((batch) => batch.found.map((paper) => paper.id)))]

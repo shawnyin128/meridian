@@ -10,7 +10,7 @@ const paper = (id: string, title: string): RemotePaper => ({
 })
 
 function setup(
-  search: (query: string) => Promise<RemotePaper[]>,
+  search: (query: string, start: number) => Promise<RemotePaper[]>,
   scholar?: { lookup(ids: string[]): Promise<Map<string, {
     citationCount: number; influentialCitationCount: number; venue: string; published: boolean
   }>> },
@@ -22,7 +22,7 @@ function setup(
   const fetcher = createWatchFetcher({
     store,
     arxiv: {
-      search: async (query) => { queries.push(query); return search(query) },
+      search: async (query, start) => { queries.push(query); return search(query, start ?? 0) },
     },
     ...(scholar === undefined ? {} : { scholar }),
     ...(authorPapers === undefined ? {} : { authorPapers }),
@@ -231,5 +231,51 @@ describe('createWatchFetcher', () => {
     await Promise.all([first, second])
     expect(queries).toEqual(['all:"speculative decoding"', 'au:Dao_T'])
     expect(fetcher.status().state).toBe('idle')
+  })
+
+  it('两次抓取之间新论文多过一页时往后翻页,直到碰上上次见过的论文,一篇不丢', async () => {
+    const newestFirst: RemotePaper[] = []
+    const publish = (count: number, label: string): void => {
+      for (let at = 0; at < count; at += 1) newestFirst.unshift(paper(`2609.${20_000 + newestFirst.length}`, `${label} ${at}`))
+    }
+    publish(25, 'Before')
+    const { store, fetcher, queries } = setup(async (_query, start) => newestFirst.slice(start, start + 20))
+    store.setDeliverySettings({ maxItemsPerRun: 100 })
+    await fetcher.run(['spec'])
+    expect(queries).toHaveLength(1)
+
+    publish(25, 'Burst')
+    queries.length = 0
+    await fetcher.run(['spec'])
+    expect(queries).toHaveLength(2)
+    expect(store.listInbox().filter((entry) => entry.title.startsWith('Burst'))).toHaveLength(25)
+  })
+
+  it('一轮最多往后翻三页,翻到不满一页就停', async () => {
+    const newestFirst: RemotePaper[] = []
+    let published = 0
+    const publish = (count: number, label: string): void => {
+      for (let at = 0; at < count; at += 1) newestFirst.unshift(paper(`2609.${30_000 + published++}`, `${label} ${at}`))
+    }
+    publish(20, 'Before')
+    const { store, fetcher, queries } = setup(async (_query, start) => newestFirst.slice(start, start + 20))
+    store.setDeliverySettings({ maxItemsPerRun: 100 })
+    await fetcher.run(['spec'])
+    publish(100, 'Burst')
+    queries.length = 0
+    await fetcher.run(['spec'])
+    expect(queries).toHaveLength(3)
+    expect(store.listInbox().filter((entry) => entry.title.startsWith('Burst'))).toHaveLength(60)
+
+    newestFirst.splice(0, newestFirst.length)
+    publish(50, 'Short')
+    queries.length = 0
+    await fetcher.run(['spec'])
+    expect(queries).toHaveLength(3)
+    newestFirst.splice(0, newestFirst.length)
+    publish(30, 'Shorter')
+    queries.length = 0
+    await fetcher.run(['spec'])
+    expect(queries).toHaveLength(2)
   })
 })

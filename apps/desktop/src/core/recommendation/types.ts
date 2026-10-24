@@ -66,6 +66,8 @@ export type RefreshProgress = {
   candidates: DiscoveryPaper[]
   /** When the scope last delivered more than an even split of a run's cap, or null if it never did. */
   favouredAt: number | null
+  /** The arXiv ids of the newest page a watch fetched last; empty before its first fetch and for projects. */
+  newest: string[]
 }
 
 export type DiscoveryPreferences = {

@@ -207,6 +207,7 @@ export function createRecommendationService(deps: {
               ))),
               candidates: pool,
               favouredAt: favoured ? now : plan.favouredAt,
+              newest: [],
             })
             wrote = true
           }

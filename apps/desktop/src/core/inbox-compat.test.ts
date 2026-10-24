@@ -193,11 +193,11 @@ describe('论文推送重做后要写的存储形状', () => {
 
     const reopened = createVaultStore(vault)
     expect(reopened.refreshProgress({ kind: 'project', id: project })).toEqual({
-      steps: { 'intent-a': 3 }, candidates: later, favouredAt: 1_792_000_000_000,
+      steps: { 'intent-a': 3 }, candidates: later, favouredAt: 1_792_000_000_000, newest: [],
     })
     reopened.deleteProject(other)
     const trashed = readFileSync(join(vault, '.meridian', 'state.json'), 'utf8')
-    const next = { steps: { 'intent-a': 4, 'intent-d': 1 }, candidates: [refound('2609.95002')], favouredAt: null }
+    const next = { steps: { 'intent-a': 4, 'intent-d': 1 }, candidates: [refound('2609.95002')], favouredAt: null, newest: [] }
     reopened.setRefreshProgress({ kind: 'project', id: project }, next)
     expect(readFileSync(join(vault, '.meridian', 'state.json'), 'utf8')).toBe(trashed)
     expect(trashed).not.toBe(state)
@@ -221,7 +221,7 @@ describe('论文推送重做后要写的存储形状', () => {
 
     const reopened = createVaultStore(vault)
     reopened.deleteWatch(removed)
-    const pooled = { steps: {}, candidates: [refound('2609.96003')], favouredAt: null }
+    const pooled = { steps: {}, candidates: [refound('2609.96003')], favouredAt: null, newest: [] }
     reopened.setRefreshProgress({ kind: 'watch', id: kept }, pooled)
     expect(read('discovery/progress')).toEqual([future, { id: `watch:${kept}`, steps: {}, candidates: pooled.candidates }])
     expect(createVaultStore(vault).refreshProgress({ kind: 'watch', id: kept })).toEqual(pooled)

@@ -43,7 +43,8 @@ export type MetadataProvider = {
 export type TopicalOrder = 'relevance' | 'submittedDate'
 
 export type Arxiv = MetadataProvider & {
-  search(query: string): Promise<RemotePaper[]>
+  /** The WATCH_BATCH newest papers matching `query`, skipping the first `start`. */
+  search(query: string, start?: number): Promise<RemotePaper[]>
   /**
    * The TOPICAL_BATCH papers matching `query` first submitted in or after `sinceYear`, best match or newest first,
    * skipping the first `start`.
@@ -63,10 +64,14 @@ export function watchQuery(watch: Pick<Watch, 'type' | 'name'>): string {
   return `au:"${tokens.join(' ')}"`
 }
 
-/** Returns the API address for the newest WATCH_BATCH papers matching `query`. */
-export function searchUrl(query: string): string {
+/**
+ * Returns the API address for the newest WATCH_BATCH papers matching `query` after its first `start`.
+ * The first page's address carries no `start`.
+ */
+export function searchUrl(query: string, start = 0): string {
   const params = new URLSearchParams({
     search_query: query, sortBy: 'submittedDate', sortOrder: 'descending', max_results: String(WATCH_BATCH),
+    ...(start > 0 ? { start: String(start) } : {}),
   })
   return `${API}?${params.toString()}`
 }
@@ -225,7 +230,7 @@ export function createArxiv(deps: {
   }
 
   return {
-    search: (query) => call(searchUrl(query), parseAtom),
+    search: (query, start) => call(searchUrl(query, start), parseAtom),
     searchTopical: (query, sinceYear, order, start) => call(topicalSearchUrl(query, sinceYear, order, start), parseAtom),
     lookup,
     async lookupMany(ids) {

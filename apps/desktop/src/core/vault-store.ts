@@ -2142,7 +2142,7 @@ export function createVaultStore(
       const held = progress.find((row) => row.id === `${scope.kind}:${scope.id}`)
       return {
         steps: { ...held?.steps }, candidates: structuredClone(held?.candidates ?? []),
-        favouredAt: held?.favouredAt ?? null,
+        favouredAt: held?.favouredAt ?? null, newest: [...held?.newest ?? []],
       }
     },
 
@@ -2158,6 +2158,7 @@ export function createVaultStore(
       const record: RefreshProgressRecord = {
         id, steps: { ...next.steps }, candidates: structuredClone(next.candidates),
         ...(next.favouredAt === null ? {} : { favouredAt: next.favouredAt }),
+        ...(next.newest.length === 0 ? {} : { newest: [...next.newest] }),
       }
       progress = save('discovery/progress', [...progress.filter((row) => row.id !== id && !gone(row)), record])
     },

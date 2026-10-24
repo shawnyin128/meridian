@@ -29,7 +29,7 @@ function seededProject(
 
 /** Store methods for a fake store that keeps no refresh progress between runs. */
 const noProgress = {
-  refreshProgress: () => ({ steps: {}, candidates: [], favouredAt: null }), setRefreshProgress: () => {},
+  refreshProgress: () => ({ steps: {}, candidates: [], favouredAt: null, newest: [] }), setRefreshProgress: () => {},
 }
 
 /** The cooldown record an earlier fetch of `intent` leaves, keyed by its anchor seed and no negatives. */
@@ -579,7 +579,7 @@ describe('project recommendation service', () => {
       ),
       setDiscoverySchedule: (projectId: string, schedule: DiscoverySchedule) => { schedules.set(projectId, schedule) },
       refreshProgress: ({ id }: RefreshScope) => structuredClone(
-        progress.get(id) ?? { steps: {}, candidates: [], favouredAt: null },
+        progress.get(id) ?? { steps: {}, candidates: [], favouredAt: null, newest: [] },
       ),
       setRefreshProgress: ({ id }: RefreshScope, next: RefreshProgress) => { progress.set(id, structuredClone(next)) },
       addDiscoveryEntries: (projectId: string, found: DiscoveryPaper[], limit?: number) => {

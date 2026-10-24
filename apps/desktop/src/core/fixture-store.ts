@@ -1593,7 +1593,7 @@ export function createFixtureStore(
     refreshProgress(scope) {
       scopeOf(scope)
       return structuredClone(
-        progressByScope.get(`${scope.kind}:${scope.id}`) ?? { steps: {}, candidates: [], favouredAt: null },
+        progressByScope.get(`${scope.kind}:${scope.id}`) ?? { steps: {}, candidates: [], favouredAt: null, newest: [] },
       )
     },
 

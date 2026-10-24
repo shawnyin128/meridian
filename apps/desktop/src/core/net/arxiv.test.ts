@@ -63,6 +63,11 @@ describe('arXiv 查询', () => {
     )
   })
 
+  it('关注翻页时从 start 往后取,第一页的地址不带 start', () => {
+    expect(searchUrl('all:"speculative decoding"', 0)).toBe(searchUrl('all:"speculative decoding"'))
+    expect(new URL(searchUrl('all:"speculative decoding"', 40)).searchParams.get('start')).toBe('40')
+  })
+
   it('主题检索翻页时从 start 往后取,第一页的地址不带 start', () => {
     const first = topicalSearchUrl('ti:"mixture of experts"', 2022, 'relevance')
     expect(new URL(first).searchParams.has('start')).toBe(false)
