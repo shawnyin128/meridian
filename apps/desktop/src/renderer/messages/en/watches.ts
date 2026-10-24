@@ -20,7 +20,7 @@ export const watches = {
   noMatches: 'No confirmable authors found',
   authorSearchFailed: 'Author search failed',
   candidateInfo: (papers: number, citations: number, hIndex: number) =>
-    `${papers} ${pluralEn(papers, { one: 'paper', other: 'papers' })} · ${formatNumber('en', citations)} ${pluralEn(citations, { one: 'citation', other: 'citations' })} · h-index ${hIndex}`,
+    `${formatNumber('en', papers)} ${pluralEn(papers, { one: 'paper', other: 'papers' })} · ${formatNumber('en', citations)} ${pluralEn(citations, { one: 'citation', other: 'citations' })} · h-index ${formatNumber('en', hIndex)}`,
   follow: 'Watch',
   choose: 'Choose',
   saveByName: 'Watch this name without verification',
@@ -37,15 +37,15 @@ export const watches = {
   suggestionFailed: 'Watch suggestions failed',
   allAdded: 'All suggestions added',
   noneSuggested: 'No new keywords or authors found',
-  suggestionBasis: (n: number) => `Based on ${n} relevant ${pluralEn(n, { one: 'paper', other: 'papers' })}`,
+  suggestionBasis: (n: number) => `Based on ${formatNumber('en', n)} relevant ${pluralEn(n, { one: 'paper', other: 'papers' })}`,
   suggestionStale: 'Offline · last suggestions',
   topicSuggestions: 'Keywords worth watching',
   authorSuggestions: 'Authors worth following',
   relatedPapers: (n: number) => n === 0
     ? 'From your project'
-    : `${n} relevant ${pluralEn(n, { one: 'paper', other: 'papers' })}`,
+    : `${formatNumber('en', n)} relevant ${pluralEn(n, { one: 'paper', other: 'papers' })}`,
   suggestedAuthorInfo: (relevant: number, hIndex: number, citations: number) => (
-    `${relevant} relevant ${pluralEn(relevant, { one: 'paper', other: 'papers' })} · h-index ${hIndex} · ${formatNumber('en', citations)} citations`
+    `${formatNumber('en', relevant)} relevant ${pluralEn(relevant, { one: 'paper', other: 'papers' })} · h-index ${formatNumber('en', hIndex)} · ${formatNumber('en', citations)} citations`
   ),
   addAction: 'Add',
   addAllTopics: 'Add all keywords',

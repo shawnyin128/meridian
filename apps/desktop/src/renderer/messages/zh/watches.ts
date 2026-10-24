@@ -18,7 +18,7 @@ export const watches = {
   noMatches: '没有找到可确认的作者',
   authorSearchFailed: '搜索作者失败',
   candidateInfo: (papers: number, citations: number, hIndex: number) =>
-    `${papers} 篇论文 · ${formatNumber('zh', citations)} 次引用 · h-index ${hIndex}`,
+    `${formatNumber('zh', papers)} 篇论文 · ${formatNumber('zh', citations)} 次引用 · h-index ${formatNumber('zh', hIndex)}`,
   follow: '关注',
   choose: '选择',
   saveByName: '暂不确认，按姓名关注',
@@ -35,13 +35,13 @@ export const watches = {
   suggestionFailed: '生成关注建议失败',
   allAdded: '建议已全部添加',
   noneSuggested: '没有找到新的关键词或作者',
-  suggestionBasis: (n: number) => `基于 ${n} 篇相关论文`,
+  suggestionBasis: (n: number) => `基于 ${formatNumber('zh', n)} 篇相关论文`,
   suggestionStale: '离线 · 上次的建议',
   topicSuggestions: '值得关注的关键词',
   authorSuggestions: '值得关注的作者',
-  relatedPapers: (n: number) => n === 0 ? '来自项目' : `${n} 篇相关论文`,
+  relatedPapers: (n: number) => n === 0 ? '来自项目' : `${formatNumber('zh', n)} 篇相关论文`,
   suggestedAuthorInfo: (relevant: number, hIndex: number, citations: number) => (
-    `${relevant} 篇相关论文 · h-index ${hIndex} · ${formatNumber('zh', citations)} 次引用`
+    `${formatNumber('zh', relevant)} 篇相关论文 · h-index ${formatNumber('zh', hIndex)} · ${formatNumber('zh', citations)} 次引用`
   ),
   addAction: '添加',
   addAllTopics: '添加全部关键词',

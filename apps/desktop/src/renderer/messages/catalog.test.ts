@@ -236,6 +236,18 @@ describe('引用数', () => {
   }
 })
 
+describe('关注页上的数', () => {
+  for (const [language, catalog] of [['zh', zh], ['en', en]] as const) {
+    it(`${language}:论文数、引用数和 h-index 都按同一个数字格式写`, () => {
+      const shown = createFormat(language).number(12_345)
+      expect([
+        catalog.watches.candidateInfo(12_345, 12_345, 12_345), catalog.watches.suggestedAuthorInfo(12_345, 12_345, 12_345),
+        catalog.watches.suggestionBasis(12_345), catalog.watches.relatedPapers(12_345),
+      ].map((text) => [text.split(shown).length - 1, text.includes('12345')])).toEqual([[3, false], [3, false], [1, false], [1, false]])
+    })
+  }
+})
+
 describe('提示、标签和占位只说结果', () => {
   // The notices, labels and placeholders the copy audit shortened: each states its result or name in
   // one clause, with no explanation after it.
