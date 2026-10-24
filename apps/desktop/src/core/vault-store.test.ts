@@ -1318,18 +1318,18 @@ describe('vault store', () => {
     expect(store.wikiPaper(`papers/${WITH_SOURCE}`).body).toBe('## 概览\n人工改过一次。')
   })
 
-  it('写入 Wiki 提案记成一条点名论文页的最近变动,撤销逐字节还原,两个信任字段也撤掉', () => {
+  it('写入 Wiki 提案记成一条来源 Meridian 的最近变动,撤销逐字节还原,两个信任字段也撤掉', () => {
     const id = `papers/${WITH_SOURCE}`
     const file = join(vault, 'wiki', 'papers', `${WITH_SOURCE}.md`)
     const before = readFileSync(file, 'utf8')
     expect(before).not.toMatch(/^trust_state:/m)
+    const kind = store.wikiPaper(id).body.trim() === '' ? '新建内容' : '更新内容'
     const changes = store.listChanges().length
     const { change } = recordChange(store, () => store.applyPaperWikiDraft(id, '## 概览\nHarness 生成的正文。'))
     expect(store.listChanges()).toHaveLength(changes + 1)
     const title = store.wikiPaper(id).title
     expect(store.listChanges()[0]).toMatchObject({
-      id: change, title: `Wiki · 「${title}」· 改了正文`, source: '我', diff: [`~ ${id}`], undoable: true,
-      named: { kind: 'page', id },
+      id: change, title: `Wiki · ${title} · ${kind}`, source: 'Meridian', diff: [`~ ${id}`], undoable: true,
     })
     store.undoChange(change)
     expect(readFileSync(file, 'utf8')).toBe(before)

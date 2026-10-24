@@ -13,7 +13,7 @@ import { errorLabel, failureLabel } from '../../lib/failure-label.js'
 import { useFormat } from '../../lib/format.js'
 import { useMessages } from '../../messages/useMessages.js'
 import type { Catalog } from '../../messages/catalog.js'
-import { useJump, useSettingsOpen } from '../../shell/AppShell.js'
+import { useJump, useSettingsOpen, useVaultRevision } from '../../shell/AppShell.js'
 import { ChipToggles } from '../ChipToggles.js'
 import { EntityLink } from '../EntityLink.js'
 import { FormTextarea } from '../FormControls.js'
@@ -125,6 +125,16 @@ export function PaperWikiIngest({ paper, reading, onJump }: {
     settingsWereOpen.current = settingsOpen
     if (closed && plan !== null && !plan.model.configured) setPreparations((n) => n + 1)
   }, [settingsOpen, plan])
+
+  // Once written, the panel follows the vault: after any later vault write, such as an undo of this
+  // one from its notice or from Recent changes, it prepares again and shows what the vault now holds.
+  const { revision } = useVaultRevision()
+  const written = useRef<number | null>(null)
+  useEffect(() => {
+    if (!applied) written.current = null
+    else if (written.current === null) written.current = revision
+    else if (written.current !== revision) setPreparations((n) => n + 1)
+  }, [applied, revision])
 
   const start = () => {
     if (plan === null || running) return

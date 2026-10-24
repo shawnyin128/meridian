@@ -23,6 +23,8 @@ export type HarnessProposalAuditEvent = {
   review?: HarnessPaperWikiReview
   quality?: HarnessPaperWikiQuality
   feedback?: HarnessPaperWikiRejectionFeedback
+  /** The change entry an `applied` event's Wiki write recorded. */
+  change?: string
 }
 
 export type PendingHarnessProposal = {
@@ -35,6 +37,9 @@ export type PendingHarnessProposal = {
   review?: HarnessPaperWikiReview
   quality?: HarnessPaperWikiQuality
 }
+
+/** A proposal written to the Wiki, with `change`, the change entry its write recorded. */
+export type AppliedHarnessProposal = PendingHarnessProposal & { change: string }
 
 function parseEvent(line: string, index: number): HarnessProposalAuditEvent {
   let value: unknown
@@ -77,7 +82,27 @@ function parseEvent(line: string, index: number): HarnessProposalAuditEvent {
     }
     event.feedback = parsed.data
   }
+  if (event.change !== undefined && (typeof event.change !== 'string' || event.event !== 'applied')) {
+    throw new Error(`Harness proposal audit line ${index + 1} has an invalid change entry`)
+  }
   return event as HarnessProposalAuditEvent
+}
+
+/** The proposal generated event `event`, line `index` of the log, holds; throws when it holds no body. */
+function proposalOf(event: HarnessProposalAuditEvent, index: number): PendingHarnessProposal {
+  if (typeof event.body !== 'string' || event.body.trim() === '') {
+    throw new Error(`Harness proposal audit line ${index + 1} has no proposal body`)
+  }
+  return {
+    id: event.proposalId,
+    targetId: event.targetId,
+    scopeDigest: event.scopeDigest,
+    generatedAt: event.at,
+    body: event.body,
+    ...(event.action === undefined ? {} : { action: event.action }),
+    ...(event.review === undefined ? {} : { review: event.review }),
+    ...(event.quality === undefined ? {} : { quality: event.quality }),
+  }
 }
 
 /**
@@ -106,24 +131,29 @@ export function createHarnessProposalAudit(root: string) {
       const pending = new Map<string, PendingHarnessProposal>()
       for (const [index, event] of readEvents(file).entries()) {
         if (event.event === 'generated') {
-          if (typeof event.body !== 'string' || event.body.trim() === '') {
-            throw new Error(`Harness proposal audit line ${index + 1} has no proposal body`)
-          }
-          pending.set(event.proposalId, {
-            id: event.proposalId,
-            targetId: event.targetId,
-            scopeDigest: event.scopeDigest,
-            generatedAt: event.at,
-            body: event.body,
-            ...(event.action === undefined ? {} : { action: event.action }),
-            ...(event.review === undefined ? {} : { review: event.review }),
-            ...(event.quality === undefined ? {} : { quality: event.quality }),
-          })
+          pending.set(event.proposalId, proposalOf(event, index))
         } else {
           pending.delete(event.proposalId)
         }
       }
       return [...pending.values()].sort((left, right) => left.generatedAt.localeCompare(right.generatedAt))
+    },
+
+    /**
+     * Returns each proposal whose last event is an `applied` one that recorded its change entry, as its
+     * `generated` event held it, in log order. Undoing that change makes the proposal pending again.
+     */
+    applied(): AppliedHarnessProposal[] {
+      const generated = new Map<string, PendingHarnessProposal>()
+      const applied = new Map<string, AppliedHarnessProposal>()
+      for (const [index, event] of readEvents(file).entries()) {
+        if (event.event === 'generated') generated.set(event.proposalId, proposalOf(event, index))
+        const proposal = generated.get(event.proposalId)
+        if (event.event === 'applied' && event.change !== undefined && proposal !== undefined) {
+          applied.set(event.proposalId, { ...proposal, change: event.change })
+        } else applied.delete(event.proposalId)
+      }
+      return [...applied.values()]
     },
 
     /**
