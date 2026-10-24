@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto'
 import type {
-  HarnessApplyPaperWikiParams, HarnessApplyPaperWikiResult, HarnessCancelResult, HarnessPlan, HarnessRunReceipt,
+  CallFailure, HarnessApplyPaperWikiParams, HarnessApplyPaperWikiResult, HarnessCancelResult, HarnessPlan, HarnessRunReceipt,
   HarnessPaperWikiQuality, HarnessPaperWikiReview, HarnessPendingPaperWikiResult, HarnessRejectPaperWikiResult,
   HarnessRejectPaperWikiParams, HarnessStartParams, PaperReading, PaperRow, RecordedChange, WikiPaper,
 } from '../../shared/contract.js'
@@ -111,6 +111,8 @@ export function createHarnessCostGate(deps: Dependencies) {
   ])
   /** The controller of the run going for each paper, by paper id. */
   const running = new Map<string, AbortController>()
+  /** Why the last run of a paper failed, by paper id, until a new start or a dismiss. */
+  const failures = new Map<string, CallFailure>()
 
   const configuredModel = () => typeof deps.model === 'function' ? deps.model() : deps.model
 
@@ -191,6 +193,7 @@ export function createHarnessCostGate(deps: Dependencies) {
       const startedAt = now().toISOString()
       const controller = new AbortController()
       running.set(held.plan.targetId, controller)
+      failures.delete(held.plan.targetId)
       let result: Awaited<ReturnType<HarnessRunner>>
       try {
         result = await deps.run({
@@ -199,6 +202,9 @@ export function createHarnessCostGate(deps: Dependencies) {
           signal: controller.signal,
           limits: { maxOutputTokens: MAX_OUTPUT_TOKENS, maxModelCalls: MAX_MODEL_CALLS },
         })
+      } catch (error) {
+        failures.set(held.plan.targetId, callFailure(error))
+        throw error
       } finally {
         if (running.get(held.plan.targetId) === controller) running.delete(held.plan.targetId)
       }
@@ -265,6 +271,16 @@ export function createHarnessCostGate(deps: Dependencies) {
     /** The ids of the papers whose Wiki proposal is being generated. */
     generating(): string[] {
       return [...running.keys()]
+    },
+
+    /** Why the last run of each paper failed, by paper id, for the papers whose last run failed. */
+    failed(): Record<string, CallFailure> {
+      return Object.fromEntries(failures)
+    },
+
+    /** Forgets why the last run of paper `paperId` failed. */
+    dismissFailure(paperId: string): void {
+      failures.delete(paperId)
     },
 
     applyPaperWiki(params: HarnessApplyPaperWikiParams): HarnessApplyPaperWikiResult {

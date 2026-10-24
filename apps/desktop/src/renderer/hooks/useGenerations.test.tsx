@@ -11,13 +11,17 @@ declare global {
 
 const cancel = vi.hoisted(() => vi.fn(() => Promise.resolve({ id: 'chat-1', cancelled: true })))
 const cancelWiki = vi.hoisted(() => vi.fn(() => Promise.resolve({ paperId: 'paper-1', cancelled: true })))
-vi.mock('../ipc.js', () => ({ chat: { cancel }, harness: { cancel: cancelWiki } }))
+const dismissWiki = vi.hoisted(() => vi.fn(() => Promise.resolve(null)))
+vi.mock('../ipc.js', () => ({ chat: { cancel }, harness: { cancel: cancelWiki, dismissFailure: dismissWiki } }))
 
 const { useCoreGenerations } = await import('./useGenerations.js')
 
-/** A jobs status in which Core is generating replies in `generating` and the Wiki proposals of `generatingWiki`. */
-const reported = (generating: string[] = [], generatingWiki: string[] = []): JobsStatus => ({
-  writes: 0, uploads: [], downloads: [], fetch: { state: 'idle', checkedAt: null, reason: null }, generating, generatingWiki,
+/** A jobs status in which Core is generating replies in `generating` and the Wiki proposals of `generatingWiki`, and the last Wiki runs of `wikiFailures` failed. */
+const reported = (
+  generating: string[] = [], generatingWiki: string[] = [], wikiFailures: JobsStatus['wikiFailures'] = {},
+): JobsStatus => ({
+  writes: 0, uploads: [], downloads: [], fetch: { state: 'idle', checkedAt: null, reason: null },
+  generating, generatingWiki, wikiFailures,
 })
 
 /** Renders nothing; only hands the generations of the latest render to the test. */
@@ -49,6 +53,7 @@ describe('useCoreGenerations', () => {
     document.body.innerHTML = ''
     cancel.mockClear()
     cancelWiki.mockClear()
+    dismissWiki.mockClear()
   })
 
   it('Core 报告哪条对话在生成，就只有那一条在生成；还没有报告时一条也不算', () => {
@@ -89,6 +94,18 @@ describe('useCoreGenerations', () => {
       .toEqual([true, false, false])
     report(reported())
     expect(latest().wikiRunning('paper-1')).toBe(false)
+  })
+
+  it('Core 报告哪篇论文上一次 Wiki 生成为什么失败，就给那一篇那个原因；放下它请 Core 忘掉，再马上要新报告', async () => {
+    const refresh = vi.fn()
+    const { latest, report } = mount(reported([], [], { 'paper-1': 'model' }), refresh)
+    expect([latest().wikiFailure('paper-1'), latest().wikiFailure('paper-2')]).toEqual(['model', undefined])
+    await act(async () => { await latest().dismissWiki('paper-1') })
+    expect(dismissWiki).toHaveBeenCalledExactlyOnceWith('paper-1')
+    expect(refresh).toHaveBeenCalledOnce()
+    expect(dismissWiki.mock.invocationCallOrder[0]).toBeLessThan(refresh.mock.invocationCallOrder[0]!)
+    report(reported())
+    expect(latest().wikiFailure('paper-1')).toBeUndefined()
   })
 
   it('停止 Wiki 提案请 Core 停下这篇论文的那一次生成，再马上要新报告', async () => {

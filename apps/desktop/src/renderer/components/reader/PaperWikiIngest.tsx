@@ -11,7 +11,7 @@ import { useGenerations } from '../../hooks/useGenerations.js'
 import { useUndo } from '../../hooks/useUndo.js'
 import { useVaultWrite } from '../../hooks/useVaultWrite.js'
 import { useScrollFade } from '../../hooks/useScrollFade.js'
-import { errorLabel, failureLabel } from '../../lib/failure-label.js'
+import { errorLabel, failureLabel, reasonLabel } from '../../lib/failure-label.js'
 import { useFormat } from '../../lib/format.js'
 import { useMessages } from '../../messages/useMessages.js'
 import type { Catalog } from '../../messages/catalog.js'
@@ -71,6 +71,7 @@ export function PaperWikiIngest({ paper, reading, onJump, edits }: {
   const [receipt, setReceipt] = useState<HarnessRunReceipt | null>(null)
   const generations = useGenerations()
   const running = generations.wikiRunning(paper.id)
+  const failure = generations.wikiFailure(paper.id)
   const [cancelling, setCancelling] = useState(false)
   const [reviewMode, setReviewMode] = useState<ReviewMode>('markdown')
   const [applying, setApplying] = useState(false)
@@ -193,8 +194,8 @@ export function PaperWikiIngest({ paper, reading, onJump, edits }: {
       return result
     })
     const saved = await write(operation, { note: m.wiki.ingest.writeNote, action: undo.change })
+    // The edits stay in the drafts: an undo of this write brings the proposal back as it was reviewed.
     if (saved) {
-      edit?.drop()
       setApplied(true)
       if (warning !== undefined) setError(failureLabel(m, m.wiki.ingest.auditFailed, warning))
     }
@@ -226,6 +227,14 @@ export function PaperWikiIngest({ paper, reading, onJump, edits }: {
       ? undefined
       : { reasons, ...(note === '' ? {} : { note }) }
     void reject(feedback)
+  }
+
+  // Why the paper's last run failed stays in Core until a new start or this dismiss, so a panel opened
+  // after the run shows it too.
+  const failed = error ?? (failure === undefined ? null : reasonLabel(m, failure))
+  const reprepare = () => {
+    if (failure !== undefined) void generations.dismissWiki(paper.id)
+    prepare()
   }
 
   const writtenHighlights = reading.highlights.filter((item) => item.note.trim() !== '').length
@@ -329,15 +338,15 @@ export function PaperWikiIngest({ paper, reading, onJump, edits }: {
         {receipt?.warning === undefined ? null : (
           <p className="wiki-ingest-status bad">{failureLabel(m, m.wiki.ingest.auditFailed, receipt.warning)}</p>
         )}
-        {error !== null ? <p className="wiki-ingest-status bad">{error}</p> : null}
+        {failed !== null ? <p className="wiki-ingest-status bad">{failed}</p> : null}
 
         <div className="wiki-ingest-actions">
-          {receipt === null && plan !== null
+          {receipt === null && plan !== null && failure === undefined
             ? <HarnessAction plan={plan} running={running} onStart={start} onCancel={cancel} />
             : null}
           {cancelling ? <span className="wiki-ingest-status">{m.wiki.ingest.stopping}</span> : null}
-          {receipt !== null || error !== null || rejected
-            ? <button className="btn" onClick={() => { prepare() }}>{m.wiki.ingest.reprepare}</button>
+          {receipt !== null || failed !== null || rejected
+            ? <button className="btn" onClick={reprepare}>{m.wiki.ingest.reprepare}</button>
             : null}
         </div>
         {proposal !== undefined && !applied && !rejected ? (

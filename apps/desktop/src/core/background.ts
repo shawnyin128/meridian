@@ -38,10 +38,10 @@ export type Background = {
    */
   armSchedule(): () => void
   /**
-   * The jobs status without the chats and Wiki proposals being generated, which the chat service and
-   * the Harness cost gate report.
+   * The jobs status without the chats and Wiki proposals being generated and the failed Wiki runs,
+   * which the chat service and the Harness cost gate report.
    */
-  status(): Omit<JobsStatus, 'generating' | 'generatingWiki'>
+  status(): Omit<JobsStatus, 'generating' | 'generatingWiki' | 'wikiFailures'>
   idle(): Promise<void>
 }
 

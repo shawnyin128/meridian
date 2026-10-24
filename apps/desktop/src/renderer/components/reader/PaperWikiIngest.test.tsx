@@ -12,13 +12,13 @@ import { MessagesProvider } from '../../messages/useMessages.js'
 import { LANGUAGE_STORAGE_KEY } from '../../shell/language.js'
 
 /** The papers Core is running a Wiki proposal for, and how to make the shell ask Core for a new report now. */
-const core = vi.hoisted(() => ({ runs: new Set<string>(), poll: () => {} }))
+const core = vi.hoisted(() => ({ runs: new Set<string>(), failures: {} as Record<string, 'model' | 'cancelled'>, poll: () => {} }))
 
 /** The shell's generations over Core's reported runs, as AppShell provides them. */
 function Shell({ children }: { children: ReactNode }) {
   const reported = (): JobsStatus => ({
     writes: 0, uploads: [], downloads: [], fetch: { state: 'idle', checkedAt: null, reason: null },
-    generating: [], generatingWiki: [...core.runs],
+    generating: [], generatingWiki: [...core.runs], wikiFailures: { ...core.failures },
   })
   const [status, setStatus] = useState(reported)
   const refresh = useCallback(() => setStatus(reported()), [])
@@ -57,6 +57,7 @@ const api = vi.hoisted(() => ({
   apply: vi.fn(),
   reject: vi.fn(),
   undo: vi.fn(),
+  dismiss: vi.fn(),
   revision: 0,
   notices: [] as { note: unknown; action: NoticeAction | undefined }[],
   settingsOpen: false,
@@ -77,6 +78,10 @@ vi.mock('../../ipc.js', () => ({
     cancel: (paperId: string) => {
       core.runs.delete(paperId)
       return api.cancel(paperId)
+    },
+    dismissFailure: (paperId: string) => {
+      delete core.failures[paperId]
+      return api.dismiss(paperId)
     },
     applyPaperWiki: api.apply,
     rejectPaperWiki: api.reject,
@@ -155,6 +160,8 @@ describe('PaperWikiIngest', () => {
     })
     api.cancel.mockReset().mockResolvedValue({ paperId: 'p1', cancelled: true })
     core.runs.clear()
+    core.failures = {}
+    api.dismiss.mockReset().mockResolvedValue(null)
     api.apply.mockReset().mockResolvedValue({
       proposalId: 'proposal-1', wikiId: 'papers/p1', appliedAt: '2026-09-17T12:01:00.000Z',
     })
@@ -314,6 +321,48 @@ describe('PaperWikiIngest', () => {
     expect(api.cancel).toHaveBeenCalledExactlyOnceWith('p1')
     expect(api.start).not.toHaveBeenCalled()
     expect(host.querySelector('[data-testid="start-harness"]')).not.toBeNull()
+  })
+
+  it('shows why the paper\'s last run failed when it opens, without Start, until 重新准备 dismisses it', async () => {
+    core.failures = { p1: 'model' }
+    await act(async () => { root.render(withMessages(<Panel paper={paper} reading={reading} onJump={api.jump} />)) })
+
+    expect([...host.querySelectorAll('.wiki-ingest-status.bad')].map((line) => line.textContent)).toEqual(['模型调用失败'])
+    expect(host.querySelector('[data-testid="start-harness"]')).toBeNull()
+    await act(async () => {
+      [...host.querySelectorAll<HTMLButtonElement>('button')].find((button) => button.textContent === '重新准备')!.click()
+    })
+    expect(api.dismiss).toHaveBeenCalledExactlyOnceWith('p1')
+    expect(host.querySelector('.wiki-ingest-status.bad')).toBeNull()
+    expect(host.querySelector('[data-testid="start-harness"]')).not.toBeNull()
+  })
+
+  it('keeps the edited Markdown through the write, so an undo brings back what was reviewed', async () => {
+    const render = () => act(async () => { root.render(withMessages(<Panel paper={paper} reading={reading} onJump={api.jump} />)) })
+    await render()
+    await act(async () => { host.querySelector<HTMLButtonElement>('[data-testid="start-harness"]')!.click() })
+    await act(async () => {
+      [...host.querySelectorAll<HTMLButtonElement>('button')].find((button) => button.textContent === 'Markdown 编辑')!.click()
+    })
+    const editor = host.querySelector<HTMLTextAreaElement>('[aria-label="Wiki 提案内容"]')!
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')!.set!.call(editor, '# Reviewed')
+      editor.dispatchEvent(new Event('input', { bubbles: true }))
+    })
+    await act(async () => {
+      [...host.querySelectorAll<HTMLButtonElement>('button')].find((button) => button.textContent === '确认写入 Wiki')!.click()
+    })
+    api.pending.mockResolvedValue({
+      proposal: { id: 'proposal-1', targetId: 'p1', action: 'create', body: '# Draft', review, quality },
+      generatedAt: '2026-09-17T12:00:00.000Z',
+      stale: false,
+    })
+    api.revision += 1
+    await render()
+    await act(async () => {
+      [...host.querySelectorAll<HTMLButtonElement>('button')].find((button) => button.textContent === 'Markdown 编辑')!.click()
+    })
+    expect(host.querySelector<HTMLTextAreaElement>('[aria-label="Wiki 提案内容"]')!.value).toBe('# Reviewed')
   })
 
   it('once a run it did not start ends, shows the proposal that run made without another run', async () => {

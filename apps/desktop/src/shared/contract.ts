@@ -667,6 +667,11 @@ export const HarnessCancelResultSchema = z.object({
   cancelled: z.literal(true),
 }).strict()
 
+/** Forgets why the last Wiki run of paper `paperId` failed. */
+export const HarnessDismissFailureParamsSchema = z.object({
+  paperId: z.string().min(1),
+}).strict()
+
 /** Provenance displayed during Paper Wiki proposal review. */
 export const HarnessPaperWikiProvenanceSchema = z.enum([
   'paper-source', 'wiki-synthesis', 'user-insight', 'open-question',
@@ -2290,7 +2295,8 @@ export const DownloadProgressSchema = z.object({
 
 /**
  * Current state of Core work that outlives a single call; `generating` holds the ids of the chats whose
- * reply is being generated, and `generatingWiki` the ids of the papers whose Wiki proposal is.
+ * reply is being generated, `generatingWiki` the ids of the papers whose Wiki proposal is, and
+ * `wikiFailures` why the last Wiki run of a paper failed, by paper id, until a new start or a dismiss.
  */
 export const JobsStatusSchema = z.object({
   writes: z.number().int(),
@@ -2299,6 +2305,7 @@ export const JobsStatusSchema = z.object({
   fetch: FetchStatusSchema,
   generating: z.array(z.string()),
   generatingWiki: z.array(z.string()),
+  wikiFailures: z.record(z.string(), CallFailureSchema),
 }).strict()
 
 /** Input for no-argument methods: renderer sends an empty object and the boundary rejects extra keys. */
@@ -2630,6 +2637,7 @@ export const CONTRACT_METHODS = [
   'harness.pendingPaperWiki',
   'harness.start',
   'harness.cancel',
+  'harness.dismissFailure',
   'harness.modelSettings',
   'harness.updateModelSettings',
   'harness.checkModelConnection',
