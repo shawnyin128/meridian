@@ -6,7 +6,7 @@ import { useJump, useNotice, useVaultRevision } from '../shell/AppShell.js'
 import { BackButton } from '../components/BackButton.js'
 import { useJumpOrigin } from '../hooks/useJumpOrigin.js'
 import { useJobs } from '../shell/useJobs.js'
-import { DownloadRing, Icon, IconCross, IconRead } from '../components/icons.js'
+import { DownloadRing, Icon, IconRead, IconTrash } from '../components/icons.js'
 import { IconButton } from '../components/IconButton.js'
 import { PaperCard, PaperCardBadge, PaperCardNotice } from '../components/paper/PaperCard.js'
 import { plainTitle } from '../components/paper/paper-text.js'
@@ -162,7 +162,7 @@ export function Later() {
                         )
                         : null}
                     <IconButton label={m.later.actions.removeFrom} size="nested" onClick={() => remove(x)}>
-                      <IconCross />
+                      <IconTrash />
                     </IconButton>
                     </>
                   )}
