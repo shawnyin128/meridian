@@ -9,6 +9,8 @@ import { CallError } from '../call-error.js'
 import { MessagesProvider } from '../messages/useMessages.js'
 import type { SettingsCategory } from '../shell/settings-categories.js'
 import { LANGUAGE_STORAGE_KEY } from '../shell/language.js'
+import { ColourThemeFilesContext } from '../shell/useColourThemes.js'
+import { BUILT_IN_COLOUR_THEMES } from '../../shared/colour-theme.js'
 
 const api = vi.hoisted(() => ({
   setOpen: vi.fn(),
@@ -530,6 +532,41 @@ describe('Settings', () => {
     expect(document.documentElement.dataset.colourTheme).toBeUndefined()
     expect(document.getElementById('meridian-colour-theme')).toBeNull()
     expect(window.localStorage.getItem('meridian.colour-theme')).toBe('default')
+  })
+
+  it('外观主题在五个内置主题之后列出能读的自定义主题文件,用它自己的名字;读不了的文件只显示文件名和原因标签', async () => {
+    const luodian = BUILT_IN_COLOUR_THEMES.find((theme) => theme.id === 'luodian')!
+    const celadon = { ...luodian, id: 'celadon', name: '青瓷', basedOn: 'luodian', light: { ...luodian.light, accent: '#3f7a6a' } }
+    await act(async () => {
+      root.render(
+        <MessagesProvider>
+          <ColourThemeFilesContext.Provider value={[
+            { state: 'unreadable', file: 'broken.json', reason: 'syntax' },
+            { state: 'readable', file: 'celadon.json', theme: celadon },
+          ]}>
+            <Settings />
+          </ColourThemeFilesContext.Provider>
+        </MessagesProvider>,
+      )
+    })
+    const dialog = document.querySelector('.setdlg')!
+    await act(async () => {
+      dialog.querySelector<HTMLElement>('[data-setcat="appearance"]')!.click()
+    })
+
+    const themes = dialog.querySelector('[role="radiogroup"][aria-label="外观主题"]')!
+    const choices = [...themes.querySelectorAll<HTMLButtonElement>('.appearance-choice')]
+    expect(choices.map((choice) => choice.textContent)).toEqual(['默认', '朱漆', '螺钿', '秋叶', '流霞', '青瓷'])
+    expect(choices[5]!.querySelector<HTMLElement>('.appearance-mini.light')!.style.getPropertyValue('--ap-accent')).toBe('#3f7a6a')
+    const problems = [...themes.querySelectorAll('.appearance-problem')]
+    expect(problems.map((problem) => [problem.querySelector('.tag--bad')?.textContent, problem.querySelector('.appearance-label')?.textContent]))
+      .toEqual([['不是 JSON', 'broken.json']])
+    expect(themes.lastElementChild).toBe(problems[0])
+
+    await act(async () => { choices[5]!.click() })
+    expect(window.localStorage.getItem('meridian.colour-theme')).toBe('celadon')
+    expect(document.documentElement.dataset.colourTheme).toBe('celadon')
+    expect(choices[5]!.getAttribute('aria-checked')).toBe('true')
   })
 
   it('每个设置页只有标题和控件，标题下不写介绍句子', async () => {

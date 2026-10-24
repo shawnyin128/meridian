@@ -27,6 +27,10 @@ export const settings = {
     system: '跟随系统',
     themeHeading: '外观主题',
     themes: { default: '默认', cinnabar: '朱漆', luodian: '螺钿', chestnut: '秋叶', xipi: '流霞' },
+    themeProblems: {
+      unreadable: '无法读取', syntax: '不是 JSON', version: '需要更新 App', format: '格式不符',
+      id: 'id 与文件名不符', 'built-in': '与内置主题重名',
+    },
   },
   storage: {
     heading: '存储',

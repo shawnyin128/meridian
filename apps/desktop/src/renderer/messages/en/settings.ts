@@ -34,6 +34,10 @@ export const settings = {
     system: 'Follow system',
     themeHeading: 'Theme',
     themes: { default: 'Default', cinnabar: 'Cinnabar', luodian: 'Nacre', chestnut: 'Autumn Leaf', xipi: 'Afterglow' },
+    themeProblems: {
+      unreadable: 'Cannot be read', syntax: 'Not JSON', version: 'Needs a newer App', format: 'Not a theme',
+      id: 'Id differs from file name', 'built-in': 'Built-in theme id',
+    },
   },
   storage: {
     heading: 'Storage',

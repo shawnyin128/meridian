@@ -38,6 +38,9 @@
 .appearance-choice[aria-checked="true"] .appearance-label{color:var(--on-selected)}
 .appearance-preview.system,.appearance-preview.pair{display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-2)}
 .appearance-preview.system>.appearance-mini,.appearance-preview.pair>.appearance-mini{min-width:0}
+/* A theme file that cannot be used: the card's place and size, its reason where the preview goes. */
+.appearance-problem{min-width:0;text-align:center}
+.appearance-preview.problem{display:grid;place-items:center}
 /* A preview draws one theme in one mode: AppearanceSettings writes its --ap-* colours from that theme's modules. */
 .appearance-mini{display:flex;height:100%;overflow:hidden;flex-direction:column;
   border-radius:calc(var(--r-card) - var(--sp-8));background:var(--ap-window);

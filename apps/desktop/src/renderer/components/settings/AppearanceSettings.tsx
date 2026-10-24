@@ -15,7 +15,10 @@ import {
   setColourThemePreference,
   type AppearancePreference,
 } from '../../shell/appearance.js'
+import { useColourThemeFiles, useColourThemes } from '../../shell/useColourThemes.js'
 import { Card } from '../Card.js'
+import { FadeText } from '../FadeText.js'
+import { Tag } from '../Tag.js'
 
 const OPTIONS: readonly AppearancePreference[] = ['light', 'dark', 'system']
 const OPTION_LABEL: Record<AppearancePreference, 'light' | 'dark' | 'system'> = {
@@ -80,7 +83,7 @@ function useColourTheme(themes: readonly ColourTheme[]): ColourTheme {
 export function AppearanceSettings() {
   const m = useMessages()
   const [preference, setPreference] = useState<AppearancePreference>(readAppearancePreference)
-  const theme = useColourTheme(BUILT_IN_COLOUR_THEMES)
+  const theme = useColourTheme(useColourThemes())
 
   useEffect(() => {
     const synchronize = (event: Event) => {
@@ -111,15 +114,24 @@ export function AppearanceSettings() {
 
 type BuiltInName = keyof Catalog['settings']['appearance']['themes']
 
-/** Device-local colour theme selector: each theme previewed in light and dark; it changes only renderer tokens. */
+/**
+ * Device-local colour theme selector: the built-in themes, then the custom theme files, each
+ * previewed in light and dark; a file that cannot be used shows its reason. It changes only
+ * renderer tokens.
+ */
 export function ColourThemeSettings() {
   const m = useMessages()
-  const chosen = useColourTheme(BUILT_IN_COLOUR_THEMES)
+  const themes = useColourThemes()
+  const chosen = useColourTheme(themes)
+  const unusable = (useColourThemeFiles() ?? []).flatMap((file) => (file.state === 'unreadable' ? [file] : []))
+  const name = (theme: ColourTheme) => (BUILT_IN_COLOUR_THEMES.includes(theme)
+    ? m.settings.appearance.themes[theme.id as BuiltInName]
+    : theme.name)
 
   return (
     <Card className="appearance-settings-card">
       <div className="appearance-options" role="radiogroup" aria-label={m.settings.appearance.themeHeading}>
-        {BUILT_IN_COLOUR_THEMES.map((theme) => (
+        {themes.map((theme) => (
           <button
             type="button" role="radio" aria-checked={chosen.id === theme.id}
             className="appearance-choice" data-colour-theme={theme.id} key={theme.id}
@@ -129,8 +141,16 @@ export function ColourThemeSettings() {
               <Preview tone="light" theme={theme} />
               <Preview tone="dark" theme={theme} />
             </span>
-            <span className="appearance-label">{m.settings.appearance.themes[theme.id as BuiltInName]}</span>
+            <FadeText className="appearance-label" label={name(theme)}>{name(theme)}</FadeText>
           </button>
+        ))}
+        {unusable.map((file) => (
+          <span className="appearance-problem" data-colour-theme-file={file.file} key={file.file}>
+            <span className="appearance-preview problem">
+              <Tag tone="bad">{m.settings.appearance.themeProblems[file.reason]}</Tag>
+            </span>
+            <FadeText className="appearance-label" label={file.file}>{file.file}</FadeText>
+          </span>
         ))}
       </div>
     </Card>

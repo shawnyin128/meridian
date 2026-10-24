@@ -22,6 +22,7 @@ import { CommandPalette, type PaletteCommand } from './CommandPalette.js'
 import { SETTINGS_CATEGORIES, SETTINGS_CATEGORY_LABEL, type SettingsCategory } from './settings-categories.js'
 import { Sidebar } from './Sidebar.js'
 import { JobsContext, useJobsPoll } from './useJobs.js'
+import { ColourThemeFilesContext, useColourThemeFilesPoll } from './useColourThemes.js'
 import brandmark from '../../../resources/mark-64.png'
 import './AppShell.css'
 
@@ -477,6 +478,7 @@ export function AppShell({ screens, settings }: {
     return { success: of('success'), refusal: of('refusal') }
   }, [])
   const jobsStatus = useJobsPoll(bump)
+  const colourThemeFiles = useColourThemeFilesPoll()
   const paperCountState = useMemo(() => ({ count: paperCount }), [paperCount])
   const screenState = useMemo(() => ({ screen, entry, reentry }), [screen, entry, reentry])
   const vaultRevision = useMemo(() => ({ revision, bump }), [revision, bump])
@@ -831,7 +833,7 @@ export function AppShell({ screens, settings }: {
                               </CrumbTailContext.Provider>
                             ))}
                             {/* The modal covers the current screen and does not occupy the keep-alive slot: it has no view state to keep. */}
-                            {settings}
+                            <ColourThemeFilesContext.Provider value={colourThemeFiles}>{settings}</ColourThemeFilesContext.Provider>
                           </SettingsContext.Provider>
                         </TodayContext.Provider>
                       </JumpContext.Provider>

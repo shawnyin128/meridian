@@ -2317,6 +2317,25 @@ export const ColourThemeSchema = z.object({
   dark: ColourThemeModulesSchema,
 })
 
+/**
+ * Why a file in `<config home>/themes` cannot be used: it cannot be read, is not JSON, carries
+ * another theme schema version, does not match the theme format, names another id than its file,
+ * or takes a built-in theme's id.
+ */
+export const ColourThemeProblemSchema = z.enum(['unreadable', 'syntax', 'version', 'format', 'id', 'built-in'])
+
+/** One `.json` file in `<config home>/themes`, by file name: its theme, or why it cannot be used. */
+export const ColourThemeFileSchema = z.discriminatedUnion('state', [
+  z.object({ state: z.literal('readable'), file: z.string().min(1), theme: ColourThemeSchema }).strict(),
+  z.object({ state: z.literal('unreadable'), file: z.string().min(1), reason: ColourThemeProblemSchema }).strict(),
+])
+
+/** Writes one custom theme to `<config home>/themes/<id>.json`, replacing the file of that id. */
+export const ColourThemeSaveParamsSchema = z.object({ theme: ColourThemeSchema }).strict()
+
+/** Deletes the file of one custom theme. */
+export const ColourThemeDeleteParamsSchema = z.object({ id: ColourThemeIdSchema }).strict()
+
 /** The outcome of one Semantic Scholar request made with the saved key. */
 export const SemanticKeyCheckResultSchema = z.discriminatedUnion('state', [
   z.object({ state: z.literal('connected') }).strict(),
@@ -2506,6 +2525,8 @@ export type SemanticKeyStatus = z.infer<typeof SemanticKeyStatusSchema>
 export type SemanticKeyCheckResult = z.infer<typeof SemanticKeyCheckResultSchema>
 export type ColourThemeModules = z.infer<typeof ColourThemeModulesSchema>
 export type ColourTheme = z.infer<typeof ColourThemeSchema>
+export type ColourThemeProblem = z.infer<typeof ColourThemeProblemSchema>
+export type ColourThemeFile = z.infer<typeof ColourThemeFileSchema>
 
 /** Facet value with paper count and title of the newest matching paper. */
 export type Facet = { value: string; count: number; newestTitle: string }
@@ -2524,6 +2545,9 @@ export const CONTRACT_METHODS = [
   'delivery.semanticKey',
   'delivery.setSemanticKey',
   'delivery.checkSemanticKey',
+  'themes.list',
+  'themes.save',
+  'themes.delete',
   'vault.today',
   'papers.list',
   'papers.facets',
