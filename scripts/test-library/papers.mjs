@@ -41,6 +41,12 @@ export const PAPERS = [
       title: 'Dynamic Draft Trees: \\emph{Adaptive} Width for Speculative Decoding at~95\\% Acceptance with \\textbf{2--3$\\times$} Speedup',
       shortTitle: 'Dynamic Draft Trees', authors: ['Meridian 测试库'], year: 2026, venue: '测试数据',
     } },
+  // The research map's one ungrouped paper: it shares no title word, topic, method or project with another paper.
+  { key: 'ddpm', days: -2, claim: 'A diffusion model learns to reverse a fixed noising process step by step.',
+    fields: {
+      title: 'Denoising Diffusion Probabilistic Models', shortTitle: 'DDPM',
+      authors: ['Jonathan Ho', 'Ajay Jain', 'Pieter Abbeel'], year: 2020, venue: 'NeurIPS',
+    } },
 ]
 
 /** Custom paper-table columns, one of each type. */
