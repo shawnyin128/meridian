@@ -53,12 +53,16 @@
 .textLayer br::selection{background:transparent}
 .textLayer .endOfContent{display:block;position:absolute;inset:100% 0 0;z-index:0;cursor:default;-webkit-user-select:none;user-select:none}
 .textLayer.selecting .endOfContent{top:0}
-/* Meridian's own: the text layer stacks over the highlight overlay, and a selection takes the app's blue. */
+/*
+ * Meridian's own: the text layer stacks over the highlight overlay and paints no selection; the
+ * reader draws the selection in its own layer the way it draws a highlight.
+ */
 .textLayer{z-index:2}
-.textLayer ::selection{background:rgb(46 119 246/.3)}
-.paper-highlights{position:absolute;inset:0;z-index:1;pointer-events:none;overflow:hidden}
-.paper-highlight{position:absolute;overflow:visible}
+.textLayer ::selection{background:transparent}
+.paper-highlights,.paper-selection{position:absolute;inset:0;z-index:1;pointer-events:none;overflow:hidden}
+.paper-highlight,.paper-selected{position:absolute;overflow:visible}
 .paper-highlight path{fill:color-mix(in srgb,var(--mark) 30%,transparent)}
+.paper-selected path{fill:var(--hl-sel)}
 .paper-highlight .paper-highlight-note{fill:none;stroke:var(--hl-note);stroke-width:2.5px;vector-effect:non-scaling-stroke}
 /* The selection toolbar: the shared menu surface and items, laid out in one row. */
 .ctxmenu.selection-tools{display:flex;min-width:0}

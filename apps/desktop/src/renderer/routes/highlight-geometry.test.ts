@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import type { PaperHighlightRect } from '../../shared/contract.js'
 import {
-  highlightLines, highlightShape, normalizedHighlightRects, selectedTextRanges, selectionBox,
+  highlightLines, highlightShape, normalizedHighlightRects, selectedLinesByPage, selectedTextRanges, selectionBox,
 } from './highlight-geometry.js'
 
 /** A US Letter page at the reader's fit scale (830 / 612), as the page box's client rectangle. */
@@ -20,13 +20,14 @@ const SUPERSCRIPT = { ascent: 13.6, height: 12 }
 const text = (left: number, right: number, baseline: number, face = SERIF) =>
   ({ left, top: baseline - face.ascent, width: right - left, height: face.height })
 
-/** A stored rectangle mapped back to client pixels, rounded to tenths of a pixel. */
-const onScreen = (rect: PaperHighlightRect) => ({
-  left: Math.round((PAGE.left + rect.x * PAGE.width) * 10) / 10,
-  right: Math.round((PAGE.left + (rect.x + rect.width) * PAGE.width) * 10) / 10,
-  top: Math.round((PAGE.top + rect.y * PAGE.height) * 10) / 10,
-  bottom: Math.round((PAGE.top + (rect.y + rect.height) * PAGE.height) * 10) / 10,
+/** A stored rectangle mapped back to client pixels on `page`, rounded to tenths of a pixel. */
+const onScreenOf = (page: typeof PAGE) => (rect: PaperHighlightRect) => ({
+  left: Math.round((page.left + rect.x * page.width) * 10) / 10,
+  right: Math.round((page.left + (rect.x + rect.width) * page.width) * 10) / 10,
+  top: Math.round((page.top + rect.y * page.height) * 10) / 10,
+  bottom: Math.round((page.top + (rect.y + rect.height) * page.height) * 10) / 10,
 })
+const onScreen = onScreenOf(PAGE)
 
 /**
  * A two-column section under a full-width figure: the left column's text runs from 193 to 524 px,
@@ -168,5 +169,42 @@ describe('highlight geometry', () => {
     inside.setStart(words, 2)
     inside.setEnd(words, 7)
     expect(selectedTextRanges(inside).map((piece) => piece.toString())).toEqual(['afts'])
+  })
+
+  it('选区按页给出选中的行：每页按自己的页框换算，跨栏的每栏每行一个矩形，页外和文字层外的字不算', () => {
+    document.body.innerHTML = '<div class="pdfsheet">'
+      + '<div class="pdfpagebox"><div class="textLayer"><span>Speculative</span><span>decoding</span><span>drafts</span></div></div>'
+      + '<div class="pdfpagebox"><div class="paper-selection"><span>drawn</span></div><div class="textLayer"><span>tokens</span></div></div>'
+      + '</div><aside><p>side panel</p></aside>'
+    const pages = [...document.querySelectorAll<HTMLElement>('.pdfpagebox')]
+    const next = { ...PAGE, top: PAGE.top + PAGE.height + 24 }
+    const boxes = new Map([[pages[0], PAGE], [pages[1], next]])
+    // jsdom lays nothing out: each page box and each selected word report the box they have on screen.
+    const words = new Map([
+      ['Speculative', text(350, 470, 905)], ['decoding', text(547, 700, 905)], ['drafts', text(193, 410, 923.4)],
+      ['drawn', text(193, 300, next.top + 40)], ['tokens', text(193, 300, next.top + 60)], ['side panel', text(10, 90, 300)],
+    ])
+    const box = ({ left, top, width, height }: { left: number; top: number; width: number; height: number }) =>
+      DOMRect.fromRect({ x: left, y: top, width, height })
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+      return box(boxes.get(this) ?? { left: 0, top: 0, width: 0, height: 0 })
+    })
+    Range.prototype.getClientRects = function (this: Range) { return [box(words.get(this.toString())!)] as unknown as DOMRectList }
+    const range = document.createRange()
+    range.setStart(pages[0]!.querySelector('span')!.firstChild!, 0)
+    range.setEnd(document.querySelector('aside p')!.firstChild!, 4)
+
+    const lines = selectedLinesByPage(range)
+    expect([...lines.keys()]).toEqual(pages)
+    expect(lines.get(pages[0]!)!.map(onScreen)).toEqual([
+      { left: 350, right: 470, top: 891.7, bottom: 908.2 },
+      { left: 547, right: 700, top: 891.7, bottom: 908.2 },
+      { left: 193, right: 410, top: 910.1, bottom: 926.6 },
+    ])
+    expect(lines.get(pages[1]!)!.map(onScreenOf(next))).toEqual([
+      { left: 193, right: 300, top: next.top + 46.7, bottom: next.top + 63.2 },
+    ])
+    vi.restoreAllMocks()
+    delete (Range.prototype as Partial<Range>).getClientRects
   })
 })

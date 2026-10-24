@@ -17,7 +17,7 @@ import { PickerPopover, type AnchorBox } from '../components/PickerPopover.js'
 import { Toolbar, ToolbarButton } from '../components/Toolbar.js'
 import { Tooltip } from '../components/Tooltip.js'
 import {
-  highlightLines, highlightShape, normalizedHighlightRects, selectedTextRanges, selectionBox,
+  highlightLines, highlightShape, selectedLinesByPage, selectionBox,
 } from './highlight-geometry.js'
 import {
   ZOOM_MAX, ZOOM_MIN, clampZoom, keptScroll, pageScale, scaledAbout, wheelZoom, type SheetTransform,
@@ -60,6 +60,33 @@ type PendingHighlight = {
 
 const emptyReading = (paperId: string): PaperReading => ({ paperId, highlights: [], notes: [], remark: '' })
 
+/**
+ * The SVG drawing of `lines` on their page as one filled shape, placed over the page box in
+ * percentages of its size, with class `className`; `underline` adds one line along the bottom of
+ * each line.
+ */
+function linesMark(lines: PaperHighlightRect[], className: string, underline = false): SVGSVGElement {
+  const shape = highlightShape(lines)
+  const mark = document.createElementNS(SVG_NS, 'svg')
+  mark.setAttribute('class', className)
+  mark.setAttribute('viewBox', `${shape.box.x} ${shape.box.y} ${shape.box.width} ${shape.box.height}`)
+  mark.setAttribute('preserveAspectRatio', 'none')
+  mark.style.left = `${shape.box.x * 100}%`
+  mark.style.top = `${shape.box.y * 100}%`
+  mark.style.width = `${shape.box.width * 100}%`
+  mark.style.height = `${shape.box.height * 100}%`
+  const fill = document.createElementNS(SVG_NS, 'path')
+  fill.setAttribute('d', shape.fill)
+  mark.append(fill)
+  if (underline) {
+    const note = document.createElementNS(SVG_NS, 'path')
+    note.setAttribute('class', 'paper-highlight-note')
+    note.setAttribute('d', shape.underline)
+    mark.append(note)
+  }
+  return mark
+}
+
 /** Redraws every highlight through one path; called when the PDF first loads and when the reading state updates. */
 function paintHighlights(box: ParentNode, reading: PaperReading | null): void {
   box.querySelectorAll<HTMLElement>('.paper-highlights').forEach((marks) => marks.replaceChildren())
@@ -67,26 +94,23 @@ function paintHighlights(box: ParentNode, reading: PaperReading | null): void {
   for (const highlight of reading.highlights) {
     const pagebox = box.querySelector<HTMLElement>(`.pdfpagebox[data-page="${highlight.page}"]`)
     if (pagebox === null) continue
-    const { box: bounds, fill, underline } = highlightShape(highlightLines(highlight.rects, Number(pagebox.dataset.aspect)))
-    const mark = document.createElementNS(SVG_NS, 'svg')
-    mark.setAttribute('class', `paper-highlight ${highlight.color}`)
+    const lines = highlightLines(highlight.rects, Number(pagebox.dataset.aspect))
+    const mark = linesMark(lines, `paper-highlight ${highlight.color}`, highlight.note.trim() !== '')
     mark.dataset.highlight = highlight.id
-    mark.setAttribute('viewBox', `${bounds.x} ${bounds.y} ${bounds.width} ${bounds.height}`)
-    mark.setAttribute('preserveAspectRatio', 'none')
-    mark.style.left = `${bounds.x * 100}%`
-    mark.style.top = `${bounds.y * 100}%`
-    mark.style.width = `${bounds.width * 100}%`
-    mark.style.height = `${bounds.height * 100}%`
-    const shape = document.createElementNS(SVG_NS, 'path')
-    shape.setAttribute('d', fill)
-    mark.append(shape)
-    if (highlight.note.trim() !== '') {
-      const note = document.createElementNS(SVG_NS, 'path')
-      note.setAttribute('class', 'paper-highlight-note')
-      note.setAttribute('d', underline)
-      mark.append(note)
-    }
     pagebox.querySelector('.paper-highlights')!.append(mark)
+  }
+}
+
+/**
+ * Redraws the document's selection on the pages of `sheet` it covers, as a highlight of it would be
+ * drawn, in each page's `.paper-selection` layer.
+ */
+function paintSelection(sheet: HTMLElement): void {
+  sheet.querySelectorAll<HTMLElement>('.paper-selection').forEach((layer) => layer.replaceChildren())
+  const selection = document.getSelection()
+  if (selection === null || selection.isCollapsed || selection.rangeCount === 0) return
+  for (const [pagebox, lines] of selectedLinesByPage(selection.getRangeAt(0))) {
+    pagebox.querySelector('.paper-selection')!.append(linesMark(lines, 'paper-selected'))
   }
 }
 
@@ -347,6 +371,9 @@ export function Reader() {
         const marks = document.createElement('div')
         marks.className = 'paper-highlights'
         pagebox.append(marks)
+        const selected = document.createElement('div')
+        selected.className = 'paper-selection'
+        pagebox.append(selected)
         const text = document.createElement('div')
         text.className = 'textLayer'
         text.dataset.page = String(pdf.pageNumber)
@@ -438,6 +465,24 @@ export function Reader() {
       layers().forEach((layer) => layer.classList.toggle('selecting', range.intersectsNode(layer)))
     }, { signal })
     return () => listening.abort()
+  }, [])
+
+  // Chromium paints a selection line by line over the text layer's spans, and on tightly set text one
+  // line's paint overlaps the next, which shows darker there; the text layer paints none, and the
+  // selection is drawn as a highlight is, at most once a frame while it changes.
+  useEffect(() => {
+    const box = sheet.current
+    if (box === null) return
+    let frame = 0
+    const repaint = () => {
+      cancelAnimationFrame(frame)
+      frame = requestAnimationFrame(() => paintSelection(box))
+    }
+    document.addEventListener('selectionchange', repaint)
+    return () => {
+      document.removeEventListener('selectionchange', repaint)
+      cancelAnimationFrame(frame)
+    }
   }, [])
 
   // Highlights are independent overlays; when you change notes or add new highlights, you only change these small rectangles and do not redraw the PDF canvas / text layer.
@@ -632,9 +677,7 @@ export function Reader() {
     }
     const pagebox = start.closest<HTMLElement>('.pdfpagebox')
     if (pagebox === null) return
-    const bounds = pagebox.getBoundingClientRect()
-    const rects = normalizedHighlightRects(
-      bounds, selectedTextRanges(range).flatMap((piece) => [...piece.getClientRects()]))
+    const rects = selectedLinesByPage(range).get(pagebox) ?? []
     const quote = selection.toString().replace(/\s+/g, ' ').trim()
     setPending(quote === '' || rects.length === 0 ? null : {
       page: Number(pagebox.dataset.page), quote, rects,
@@ -680,7 +723,7 @@ export function Reader() {
     if (pending === null) return
     const selection = pending
     const previous = new Set(reading?.highlights.map((highlight) => highlight.id) ?? [])
-    // First remove the blue selection of the browser; do not let it continue to cover the persistent highlight while Core is writing.
+    // First remove the selection, so its drawing does not keep covering the persistent highlight while Core is writing.
     window.getSelection()?.removeAllRanges()
     setPending(null)
     const next = await mutateReading({
