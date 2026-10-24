@@ -545,7 +545,8 @@ registerHandler('project.bindWorkspace', (params) => {
 })
 registerHandler('project.update', (params) => {
   const { id, patch } = ProjectUpdateParamsSchema.parse(params)
-  return store.updateProject(id, definedFields(patch))
+  const { result, change } = recordChange(store, () => store.updateProject(id, definedFields(patch)))
+  return { project: result, change }
 })
 registerHandler('project.delete', (params) => {
   const { id } = ProjectDeleteParamsSchema.parse(params)

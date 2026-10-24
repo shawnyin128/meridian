@@ -819,10 +819,23 @@ test('删掉一个附件,提示里的撤销把它放回', async ({ win }) => {
 
   await undoFromNotice(win)
   await expect(rows).toHaveCount(before.length)
-  // Undo restores the attachment from the trash, which puts it back at the end of the list.
-  const after = (await removable(win)).attachments
-  expect(after).toHaveLength(before.length)
-  expect(after).toEqual(expect.arrayContaining(before))
+  expect((await removable(win)).attachments).toEqual(before)
+})
+
+test('移除一个领域,提示里的撤销把它放回', async ({ win }) => {
+  await win.locator('[data-desk="resproj"]').waitFor()
+  await call(win, 'project.update', { id: 'draft', patch: { topics: ['speculative decoding', 'kv cache eviction'] } })
+  await gotoProject(win)
+  const chips = win.locator('.screenslot:not([hidden]) .project-areas .tagchip:not(.tagadd)')
+  await expect(chips).toHaveCount(2)
+  await rowAction(chips.first(), '.rx')
+  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已更新领域')
+  await expect(chips).toHaveText(['kv cache eviction'])
+
+  await undoFromNotice(win)
+  await expect(chips).toHaveText(['speculative decoding', 'kv cache eviction'])
+  const { topics } = await call<{ topics: string[] }>(win, 'project.get', { id: 'draft' })
+  expect(topics).toEqual(['speculative decoding', 'kv cache eviction'])
 })
 
 test('科研图展示多个活跃节点,节点以只读 Markdown、分支结果与 Agent 记录呈现', async ({ win }) => {

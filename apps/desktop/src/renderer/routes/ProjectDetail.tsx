@@ -2,7 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import type { ReactNode } from 'react'
 import type {
   ProjectDetail as Project, ProjectWorkspace, RelationGroup, ResearchGraph as ResearchGraphData, ResearchIdea,
-  ProjectRecordedChange, ResearchIdeaGraphPlacement, TaskWindow,
+  ProjectFields, ProjectRecordedChange, ResearchIdeaGraphPlacement, TaskWindow,
 } from '../../shared/contract.js'
 import { projectControlState } from '../../shared/project-control.js'
 import { researchPathState } from '../../shared/research-path.js'
@@ -507,16 +507,24 @@ export function ProjectDetail({
   }
 
   /**
-   * A removal the change log records: first discards any open editor, then puts the project after it
-   * into state and shows `note` with an Undo of the change it recorded.
+   * Finishes a removal the change log records as writeProject finishes a write, and its notice also
+   * offers Undo of the change it recorded.
    */
-  const applyRemoval = (op: Promise<ProjectRecordedChange>, note: ReactNode) => {
-    discardOpenEdits()
-    void write(op.then((removed) => {
+  const writeRemoval = (op: Promise<ProjectRecordedChange>, note: ReactNode): Promise<boolean> =>
+    write(op.then((removed) => {
       setProject(removed.project)
       return removed
     }), { note, action: undo.change })
+
+  /** A removal not made from a placeholder: first discards any open editor, as applyWrite does. */
+  const applyRemoval = (op: Promise<ProjectRecordedChange>, note: ReactNode) => {
+    discardOpenEdits()
+    void writeRemoval(op, note)
   }
+
+  /** Writes `patch` to this project through project.update and answers the project after the write. */
+  const updateProject = (patch: Partial<ProjectFields>): Promise<Project> =>
+    projectApi.update(projectId, patch).then(({ project: updated }) => updated)
 
   /** Persists a drag-reordering of the task list, shared by the plan's task rows and the Gantt's labels. */
   const reorderTasks = (order: string[]) => { void writeProject(projectApi.reorderTasks(projectId, order)) }
@@ -974,7 +982,7 @@ export function ProjectDetail({
 
             <ProjectMemo
               text={project.memo} editing={memoEditing} onEditing={setMemoEditing} onOpen={openWikiPage}
-              onSave={(memo) => applyWrite(projectApi.update(projectId, { memo }), m.project.remarkSaved)}
+              onSave={(memo) => applyWrite(updateProject({ memo }), m.project.remarkSaved)}
             />
           </div>
 
@@ -1059,7 +1067,7 @@ export function ProjectDetail({
                               const next = name.trim()
                               if (next === '') { notice.refusal(m.project.identity.nameRequired); return false }
                               return writeProject(
-                                projectApi.update(projectId, { name: next }), m.project.identity.nameUpdated,
+                                updateProject({ name: next }), m.project.identity.nameUpdated,
                               )
                             }}
                           />
@@ -1068,7 +1076,7 @@ export function ProjectDetail({
                           <ChoicePicker
                             value={project.status} options={PROJECT_STATUSES}
                             onPick={(status) => applyWrite(
-                              projectApi.update(projectId, { status }), m.project.identity.statusUpdated,
+                              updateProject({ status }), m.project.identity.statusUpdated,
                             )}
                           />
                         ),
@@ -1076,14 +1084,15 @@ export function ProjectDetail({
                           <PriorityPicker
                             value={project.priority} className="pv metadata-editable"
                             onPick={(priority) => applyWrite(
-                              projectApi.update(projectId, { priority }), m.project.identity.priorityUpdated,
+                              updateProject({ priority }), m.project.identity.priorityUpdated,
                             )}
                           ><ProjectPriorityTag priority={project.priority} /></PriorityPicker>
                         ),
                         topic: (
                           <ProjectAreasField
                             projectId={projectId} areas={projectAreas(project)} onError={reportError}
-                            onSave={(topics) => writeProject(
+                            onSave={(topics) => writeProject(updateProject({ topics }), m.project.identity.topicUpdated)}
+                            onRemove={(topics) => writeRemoval(
                               projectApi.update(projectId, { topics }), m.project.identity.topicUpdated,
                             )}
                           />
@@ -1101,7 +1110,7 @@ export function ProjectDetail({
                         // this field closes is left to InlineMetadataField, which follows the write's result
                         discardOpenEdits()
                         return writeProject(
-                          projectApi.update(projectId, { focus: next }), m.project.identity.focusUpdated(label),
+                          updateProject({ focus: next }), m.project.identity.focusUpdated(label),
                         )
                       }}
                     />
@@ -1114,7 +1123,7 @@ export function ProjectDetail({
                       onSave={(value) => {
                         const next = value.trim()
                         return writeProject(
-                          projectApi.update(projectId, { block: next === '' ? null : next }),
+                          updateProject({ block: next === '' ? null : next }),
                           next === '' ? m.project.control.blockerCleared : m.project.control.blockerUpdated,
                         )
                       }}
@@ -1127,7 +1136,7 @@ export function ProjectDetail({
                           notice.refusal(m.project.identity.startAfterDue)
                           return
                         }
-                        applyWrite(projectApi.update(projectId, { start }), m.project.identity.dateUpdated)
+                        applyWrite(updateProject({ start }), m.project.identity.dateUpdated)
                       }}
                     />
                     <div className="pk">{m.project.identity.dueLabel}</div>
@@ -1138,7 +1147,7 @@ export function ProjectDetail({
                           notice.refusal(m.project.identity.dueBeforeStart)
                           return
                         }
-                        applyWrite(projectApi.update(projectId, { due }), m.project.identity.dateUpdated)
+                        applyWrite(updateProject({ due }), m.project.identity.dateUpdated)
                       }}
                     />
                     <div className="pk">{m.project.sections.papers}</div>

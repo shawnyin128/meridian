@@ -182,7 +182,7 @@ export const project = {
   bindWorkspace: (id: string, binding: ProjectWorkspaceBinding | null) =>
     call<ProjectDetail>('project.bindWorkspace', { id, binding }),
   update: (id: string, patch: Partial<ProjectFields>) =>
-    call<ProjectDetail>('project.update', { id, patch }),
+    call<ProjectRecordedChange>('project.update', { id, patch }),
   delete: (id: string) => call<RecordedChange>('project.delete', { id }),
   createTask: (projectId: string, task: TaskFields) =>
     call<ProjectDetail>('project.createTask', { projectId, task }),

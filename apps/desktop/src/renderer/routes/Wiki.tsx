@@ -640,6 +640,7 @@ export function Wiki() {
     void wiki.aggregation(card.id).then((child) => propose(
       m.wiki.proposals.moveOut(child.title, shownAgg.title),
       [{ op: 'setParents', page: child.id, parents: child.parents.map((p) => p.id).filter((id) => id !== shownAgg.id) }],
+      undefined, true,
     )).catch((e: Error) => {
       setPending(false)
       reportError(e)
@@ -886,6 +887,8 @@ export function Wiki() {
                                     propose(
                                       m.wiki.proposals.changeColumns(shownAgg.title),
                                       [{ op: 'setColumns', page: shownAgg.id, columns }],
+                                      undefined,
+                                      shownAgg.columns.some((held) => !columns.some((kept) => kept.key === held.key)),
                                     )
                                   }}
                                 />
@@ -908,6 +911,7 @@ export function Wiki() {
                     propose(
                       m.wiki.proposals.moveOutPaper(row.paper.title, shownAgg.title),
                       [{ op: 'removeMembership', paper: paperId, in: shownAgg.id }],
+                      undefined, true,
                     )
                   }}
                 />

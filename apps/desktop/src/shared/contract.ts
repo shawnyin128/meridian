@@ -1456,8 +1456,9 @@ export const RecordedChangeSchema = z.object({ change: z.string() }).strict()
 export const TrashedEntrySchema = z.object({ trash: z.string() }).strict()
 
 /**
- * What `project.deleteTask`, `project.deleteMilestone`, `project.deleteRelation`, `project.removePaper`
- * and `project.deleteAttachment` answer: the project after the write, and the change entry it recorded.
+ * What `project.update`, `project.deleteTask`, `project.deleteMilestone`, `project.deleteRelation`,
+ * `project.removePaper` and `project.deleteAttachment` answer: the project after the write, and the
+ * change entry it recorded.
  */
 export const ProjectRecordedChangeSchema = RecordedChangeSchema.extend({ project: ProjectDetailSchema }).strict()
 

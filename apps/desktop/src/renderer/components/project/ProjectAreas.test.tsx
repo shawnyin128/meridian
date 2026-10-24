@@ -26,12 +26,13 @@ describe('项目属性栏的领域', () => {
   let host: HTMLDivElement
   let root: Root
   let onSave: ReturnType<typeof vi.fn<(areas: string[]) => Promise<boolean>>>
+  let onRemove: ReturnType<typeof vi.fn<(areas: string[]) => Promise<boolean>>>
 
   const render = async (areas: string[]) => {
     await act(async () => {
       root.render(
         <MessagesProvider>
-          <ProjectAreasField projectId="draft" areas={areas} onSave={onSave} onError={vi.fn()} />
+          <ProjectAreasField projectId="draft" areas={areas} onSave={onSave} onRemove={onRemove} onError={vi.fn()} />
         </MessagesProvider>,
       )
     })
@@ -45,6 +46,7 @@ describe('项目属性栏的领域', () => {
     window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'zh')
     vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} })
     onSave = vi.fn(async () => true)
+    onRemove = vi.fn(async () => true)
     host = document.createElement('div')
     document.body.append(host)
     root = createRoot(host)
@@ -114,13 +116,14 @@ describe('项目属性栏的领域', () => {
     expect(host.querySelector('.tagin')).toBeNull()
   })
 
-  it('改成这个项目已有的另一个领域,两个并成一个;× 去掉那一个', async () => {
+  it('改成这个项目已有的另一个领域,两个并成一个;× 去掉那一个,交给移除那一路', async () => {
     await render(['speculative decoding', 'KV cache'])
     await act(async () => { host.querySelectorAll<HTMLButtonElement>('.tagchip-open')[0]!.click() })
     await act(async () => { setValue(input(), 'KV cache') })
     await act(async () => { key(input(), 'Enter') })
     expect(onSave).toHaveBeenLastCalledWith(['KV cache'])
     await act(async () => { host.querySelector<HTMLButtonElement>('.tagchip .rx')!.click() })
-    expect(onSave).toHaveBeenLastCalledWith(['KV cache'])
+    expect(onSave).toHaveBeenCalledTimes(1)
+    expect(onRemove).toHaveBeenLastCalledWith(['KV cache'])
   })
 })
