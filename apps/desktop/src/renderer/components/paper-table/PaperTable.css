@@ -225,8 +225,9 @@
 .research-map-detail-head>div{display:flex;min-width:0;flex:1;flex-direction:column;gap:var(--sp-4)}
 .research-map-detail-head .research-map-detail-name{color:inherit;font-size:var(--fs-group);font-weight:var(--fw-title)}
 .research-map-detail-head>div>span{color:var(--ter);font-size:var(--fs-cap)}
-.research-map-papers{padding:0 var(--sp-16)}
-.research-map-paper{display:grid;grid-template-columns:auto minmax(0,1fr) auto;grid-template-areas:"open open marks" "meta why why";align-items:center;gap:var(--sp-4) var(--sp-16);min-height:78px;padding:var(--sp-10) 0}
+/* The card clips at its edges, so a scrolling paper list keeps no ring room there; its controls sit inside the rows' inset. */
+.research-map-detail>.research-map-papers.structured-list--scrollable{padding:0;margin-inline:0}
+.research-map-paper{display:grid;grid-template-columns:auto minmax(0,1fr) auto;grid-template-areas:"open open marks" "meta why why";align-items:center;gap:var(--sp-4) var(--sp-16);min-height:78px;padding:var(--sp-10) var(--sp-16)}
 .research-map-paper-open{grid-area:open;display:flex;min-width:0;padding:0;border:0;background:none;color:inherit;font:inherit;text-align:left;cursor:inherit}
 .research-map-paper-title{font-weight:var(--fw-title)}
 .research-map-paper-marks{grid-area:marks;display:flex;align-items:center;gap:var(--sp-8)}
