@@ -6,6 +6,7 @@ import { errorLabel } from '../../lib/failure-label.js'
 import { useMessages } from '../../messages/useMessages.js'
 import { EntityLink } from '../EntityLink.js'
 import { FormInput } from '../FormControls.js'
+import { PageError } from '../PageShell.js'
 import { Tag } from '../Tag.js'
 import {
   ServiceActions, ServiceCard, ServiceClearKeyButton, ServiceConnectionStatus, ServiceError, ServiceField,
@@ -27,7 +28,7 @@ export function SemanticKeySettings() {
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
   const [connectionCheck, setConnectionCheck] = useState<ConnectionCheckState>({ state: 'idle' })
-  const { load } = useScreenLoad()
+  const { error, load } = useScreenLoad()
 
   useEffect(() => load('status', delivery.semanticKey(), setStatus), [load])
 
@@ -61,7 +62,7 @@ export function SemanticKeySettings() {
     }
   }
 
-  if (status === null) return null
+  if (status === null) return <PageError variant="section" error={error} />
 
   const showingSavedKey = status.configured && !editing && !clearPending
   const canTestConnection = status.configured && !clearPending && draft.trim() === ''

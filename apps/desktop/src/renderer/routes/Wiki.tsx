@@ -950,7 +950,7 @@ export function Wiki() {
             <div className="wkpage">
               <div className="wkmain" ref={main}>
                 <PaperUnderstanding
-                  reading={shownReading}
+                  reading={shownReading} failed={error !== null}
                   onRead={(anchor) => jumpTo(
                     'reader', shownPaper.id.slice(PAPER_PAGE.length), anchor,
                   )}
@@ -1053,7 +1053,7 @@ export function Wiki() {
         {place === REVIEW
           ? (
             <ReviewQueue
-              proposals={proposals} pending={pending} links={claimLinks}
+              proposals={proposals} failed={error !== null} pending={pending} links={claimLinks}
               onOpenConclusion={(project, conclusion) => jumpTo('project', project, { conclusion })}
               onApply={(proposal) => decide(proposal, 'apply')}
               onDecline={(proposal, reason) => decide(proposal, 'decline', reason === '' ? undefined : reason)}
@@ -1062,7 +1062,9 @@ export function Wiki() {
           : null}
 
         {place === TIDY
-          ? tidy === null ? <LoadingPlaceholder shape="rows" /> : <TidyList rows={tidy} titles={tidyTitles} onOpen={openSignal} />
+          ? tidy === null
+            ? (error === null ? <LoadingPlaceholder shape="rows" /> : null)
+            : <TidyList rows={tidy} titles={tidyTitles} failed={error !== null} onOpen={openSignal} />
           : null}
 
         {place === null && home !== null

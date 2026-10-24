@@ -32,6 +32,7 @@ import { ModalDialog, ModalTitle } from '../components/ModalDialog.js'
 import { NavRow } from '../components/NavRow.js'
 import { RowActions, StructuredList, StructuredRow } from '../components/StructuredList.js'
 import { PageError, SectionHeading } from '../components/PageShell.js'
+import { useScreenLoad } from '../hooks/useScreenLoad.js'
 import { useScrollFade } from '../hooks/useScrollFade.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
 import { WatchSettings } from './Watches.js'
@@ -85,37 +86,46 @@ export function Settings() {
   const [themeDirty, setThemeDirty] = useState(false)
   /** Where leaving the theme editor with unsaved edits goes once confirmed: back to Appearance, or out of Settings. */
   const [leaving, setLeaving] = useState<'back' | 'close' | null>(null)
-  // Each fetch and action reports into the pane it belongs to, so an error shows only on its own pane.
-  const [errors, setErrors] = useState<Partial<Record<CategoryKey, string>>>({})
+  // Each read and action reports into the pane it belongs to, so an error shows only on its own pane.
+  const [actionErrors, setActionErrors] = useState<Partial<Record<CategoryKey, string>>>({})
+  const { error: archivedError, load: loadArchived } = useScreenLoad()
+  const { error: storageError, load: loadStorage } = useScreenLoad()
+  const { error: extensionsError, load: loadExtensions } = useScreenLoad()
+  const readErrors: Partial<Record<CategoryKey, string | null>> = {
+    archived: archivedError, storage: storageError, extensions: extensionsError,
+  }
 
   const { open: jumpTo } = useJump()
   const { remove: deleteChat } = useChatSession()
   const { revision } = useVaultRevision()
   const notice = useNotice()
   const format = useFormat()
-  const setError = useCallback((pane: CategoryKey, message: string | null) => setErrors((held) => {
+  const setActionError = useCallback((pane: CategoryKey, message: string | null) => setActionErrors((held) => {
     const next = { ...held }
     if (message === null) delete next[pane]
     else next[pane] = message
     return next
   }), [])
   const reportTo = useCallback((pane: CategoryKey) => (e: unknown) => {
-    setError(pane, errorLabel(m, e))
-  }, [setError, m])
+    setActionError(pane, errorLabel(m, e))
+  }, [setActionError, m])
   const write = useVaultWrite()
 
   // Fetch nothing while closed: this dialog stays mounted, so without this check every vault write
   // would fetch the chat list again.
   useEffect(() => {
     if (!open) return
-    setErrors({})
+    setActionErrors({})
     setBackups(null)
-    void chat.list().then(setChats).catch(reportTo('archived'))
-    void library.location().then(setLocation).catch(reportTo('storage'))
-    void library.backups().then(setBackups).catch(reportTo('storage'))
-    void extensions.status().then(setExtensionStatus).catch(reportTo('extensions'))
-    void extensions.pluginVersion().then(setPluginVersion).catch(reportTo('extensions'))
-  }, [open, revision, reportTo])
+    const drops = [
+      loadArchived('chats', chat.list(), setChats),
+      loadStorage('location', library.location(), setLocation),
+      loadStorage('backups', library.backups(), setBackups),
+      loadExtensions('status', extensions.status(), setExtensionStatus),
+      loadExtensions('plugin', extensions.pluginVersion(), setPluginVersion),
+    ]
+    return () => { for (const drop of drops) drop() }
+  }, [open, revision, loadArchived, loadStorage, loadExtensions])
 
   useEffect(() => {
     if (open && requestedCategory !== null) setCurrent(requestedCategory)
@@ -148,7 +158,7 @@ export function Settings() {
 
   const chooseLibrary = async () => {
     setChoosing(true)
-    setError('storage', null)
+    setActionError('storage', null)
     try {
       const root = await appMenu.chooseLibraryRoot()
       if (root === null) return
@@ -164,7 +174,7 @@ export function Settings() {
 
   const resetLibrary = async () => {
     setResetting(true)
-    setError('storage', null)
+    setActionError('storage', null)
     try {
       await library.reset()
       appMenu.restartApp()
@@ -176,7 +186,7 @@ export function Settings() {
 
   const switchBackup = async (backup: LibraryBackup) => {
     setSwitchingBackup(backup.id)
-    setError('storage', null)
+    setActionError('storage', null)
     try {
       await library.switchBackup(backup.id)
       appMenu.restartApp()
@@ -188,7 +198,7 @@ export function Settings() {
 
   const deleteBackup = async (backup: LibraryBackup) => {
     setDeletingBackup(backup.id)
-    setError('storage', null)
+    setActionError('storage', null)
     try {
       await library.deleteBackup(backup.id)
       setBackups((currentBackups) => currentBackups?.filter((item) => item.id !== backup.id) ?? [])
@@ -247,7 +257,7 @@ export function Settings() {
             {location === null ? null : <Tag>{m.settings.storage.source[location.source]}</Tag>}
           </div>
           {location === null
-            ? <LoadingPlaceholder shape="lines" count={2} />
+            ? (storageError === null ? <LoadingPlaceholder shape="lines" count={2} /> : null)
             : (
               <>
                 <PageError
@@ -361,7 +371,8 @@ export function Settings() {
     extensions: (
       <>
         <ExtensionSettings
-          statuses={extensionStatus} onCopy={copyExtensionCommand} onCopyPrompt={copyAgentPrompt}
+          statuses={extensionStatus} failed={extensionsError !== null}
+          onCopy={copyExtensionCommand} onCopyPrompt={copyAgentPrompt}
           plugin={pluginVersion === null ? undefined : {
             plugin: pluginVersion,
             checking: checkingPlugin,
@@ -398,7 +409,7 @@ export function Settings() {
     archived: (
       <>
         {chats === null
-          ? <LoadingPlaceholder shape="rows" count={2} />
+          ? (archivedError === null ? <LoadingPlaceholder shape="rows" count={2} /> : null)
           : archived.length === 0
           ? <EmptyState variant="section">{m.settings.archived.empty}</EmptyState>
           : (
@@ -458,7 +469,7 @@ export function Settings() {
 
             <div className="set-main">
               <div className="set-head">
-                <PageError error={errors[current]} />
+                <PageError error={actionErrors[current] ?? readErrors[current]} />
                 <SectionHeading>{titles[current]}</SectionHeading>
               </div>
               <div className="set-body" ref={paneFade}>{panes[current]}</div>
