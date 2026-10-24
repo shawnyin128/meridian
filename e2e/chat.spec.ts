@@ -137,16 +137,27 @@ test('短输入也会真正发送，不再被当成未实现的搜索词', async
   await expect(shown(win, '.msg.you .bubble')).toHaveText('测试')
 })
 
-test('@ 下拉按项目、论文、Wiki 三组列候选,点一条填进输入框', async ({ win }) => {
+test('@ 下拉按项目、论文、Wiki 三组列候选,在句子中间点一条,它成了光标处的引用块,前后的字都留着', async ({ win }) => {
   await gotoChat(win)
-  await shown(win, '#composer').fill('@')
+  const composer = shown(win, '#composer')
+  await composer.fill('先看看  再说')
+  await composer.press('Home')
+  for (let step = 0; step < 4; step += 1) await composer.press('ArrowRight')
+  await composer.pressSequentially('@')
   await expect(win.locator('#cRes .rg')).toHaveText(['项目', '论文', 'Wiki'])
 
   const first = win.locator('#cRes .rrow').first()
   const picked = await first.locator('.rt').textContent()
   await first.click()
-  await expect(shown(win, '#composer')).toHaveValue(`${picked} `)
+  await expect(composer.locator('.composer-mention')).toHaveText([picked!])
+  await expect(composer).toHaveText(`先看看 ${picked} 再说`)
   await expect(win.locator('#cRes')).toHaveCount(0)
+
+  // The mention goes as one piece: one Backspace after it takes it whole.
+  await composer.press('ArrowLeft')
+  await composer.press('Backspace')
+  await expect(composer.locator('.composer-mention')).toHaveCount(0)
+  await expect(composer).toHaveText('先看看  再说')
 })
 
 /** Asks Core directly whether the chat is archived now. */

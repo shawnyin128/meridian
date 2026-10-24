@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { act, type ReactNode } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
+import { EditorView } from '@codemirror/view'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ChatSendResult, PaperRow } from '../../shared/contract.js'
 import { MessagesProvider } from '../messages/useMessages.js'
@@ -102,9 +103,10 @@ function Shell({ children }: { children: ReactNode }) {
   return <GenerationsContext.Provider value={useCoreGenerations(status, refresh)}>{children}</GenerationsContext.Provider>
 }
 
-function setValue(input: HTMLTextAreaElement, value: string): void {
-  Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value')!.set!.call(input, value)
-  input.dispatchEvent(new Event('input', { bubbles: true }))
+/** Types `text` into the composer whose editable text is `field`. */
+function typeInto(field: HTMLElement, text: string): void {
+  const view = EditorView.findFromDOM(field.closest<HTMLElement>('.cm-editor')!)!
+  view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: text }, selection: { anchor: text.length }, userEvent: 'input.type' })
 }
 
 /** Lets every pending call to Core answer and the screens render what it answered. */
@@ -142,7 +144,7 @@ describe('一条会话在生成，打开它的每一屏都知道', () => {
 
   /** Asks a question in the reader's paper chat and leaves its reply generating. */
   const askInReader = async () => {
-    act(() => setValue(document.querySelector<HTMLTextAreaElement>('[aria-label="向当前论文提问"]')!, '关键假设是什么？'))
+    act(() => typeInto(document.querySelector<HTMLElement>('[aria-label="向当前论文提问"]')!, '关键假设是什么？'))
     act(() => readerControl().click())
     await settle()
     expect(core.send).toHaveBeenCalledExactlyOnceWith('chat-paper-1', '关键假设是什么？')
@@ -152,7 +154,7 @@ describe('一条会话在生成，打开它的每一屏都知道', () => {
     await askInReader()
     expect(readerControl().getAttribute('aria-label')).toBe('正在生成，点击停止')
     expect(chatControl().getAttribute('aria-label')).toBe('正在生成，点击停止')
-    expect(document.querySelector<HTMLTextAreaElement>('#composer')!.disabled).toBe(true)
+    expect(document.querySelector('#composer')!.getAttribute('contenteditable')).toBe('false')
   })
 
   it('在对话屏按停止，停的是阅读器里正在生成的那条会话，两屏都回到发送', async () => {

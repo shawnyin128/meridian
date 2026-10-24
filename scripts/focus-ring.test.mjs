@@ -7,7 +7,7 @@ const RENDERER = join(process.cwd(), 'apps/desktop/src/renderer')
  * A selector part that reaches a native field, a FormControls element, the plan's inline name input
  * or a text editor, which show focus with their frame.
  */
-const FIELD = /(^|[\s>+~(])(input|textarea|select)\b|\.form-(input|textarea|select|control|button)\b|\.plan-name-input\b|contenteditable|\.md\.src\b/
+const FIELD = /(^|[\s>+~(])(input|textarea|select)\b|\.form-(input|textarea|select|control|button)\b|\.plan-name-input\b|contenteditable|\.md\.src\b|\.chat-composer\b/
 /** The properties a focus rule may set: the ones that reveal a control, or lift a fold over what has focus. */
 const REVEAL = new Set(['opacity', 'pointer-events', 'display', 'visibility', 'max-height', 'mask-image'])
 /** The ring a host draws for a control inside it whose fade mask hides the control's own ring. */
