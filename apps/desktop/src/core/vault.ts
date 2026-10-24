@@ -615,10 +615,10 @@ export interface VaultStore {
    * before and the vault does not hold; a result that is already a live card is listed under this
    * watch on that card instead. These papers and the watch's cards in the feed are then ranked by
    * recommendation score down to the delivery settings' `maxShownPerScope`, a card given `more`
-   * feedback always staying: a card ranked below is folded away as seen, and a paper ranked below is
-   * not delivered at all, neither a card nor remembered, so a later run may still deliver it, and
-   * `undelivered` still names it. Returns the arXiv ids of exactly the papers delivered. Throws if
-   * no such watch exists.
+   * feedback always staying and not counted: a card ranked below is folded away as seen, and a paper
+   * ranked below is not delivered at all, neither a card nor remembered, so a later run may still
+   * deliver it, and `undelivered` still names it. Returns the arXiv ids of exactly the papers
+   * delivered. Throws if no such watch exists.
    */
   addInboxEntries(watchId: string, found: RemotePaper[], limit?: number): string[]
 

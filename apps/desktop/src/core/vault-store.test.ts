@@ -256,16 +256,22 @@ describe('vault store', () => {
         expect(s.undelivered([discovered('2609.28002'), discovered('2609.28004')]).map((paper) => paper.id)).toEqual(['2609.28004'])
       })
 
-      it(`${name}:按过更多类似的卡片刷新时从不折叠,它占着一个位置`, () => {
+      it(`${name}:按过更多类似的卡片刷新时从不折叠,也不占显示上限:上限只排这个范围别的未读卡片和新来的论文`, () => {
         const s = make()
         s.setDeliverySettings({ ...s.deliverySettings(), maxShownPerScope: 2 })
         const project = s.createProject('按过更多类似')
         const rankedFind = (id: string, relevance: number) => Object.assign(discovered(id), { ranking: ranked(id, relevance).ranking })
+        const like = (title: string) => s.feedbackDiscovery(s.listInbox({ kind: 'discovery', project }).find((entry) => entry.title === title)!.id, 'more')
         expect(s.addDiscoveryEntries(project, [rankedFind('2609.28101', 0.1), rankedFind('2609.28102', 0.2)])).toBe(2)
-        const liked = s.listInbox({ kind: 'discovery', project }).find((entry) => entry.title === 'Shared 2609.28101')!
-        s.feedbackDiscovery(liked.id, 'more')
-        expect(s.addDiscoveryEntries(project, [rankedFind('2609.28103', 0.9), rankedFind('2609.28104', 0.5)])).toBe(1)
-        expect(titles(s.listInbox({ kind: 'discovery', project }))).toEqual(['Shared 2609.28103', 'Shared 2609.28101'])
+        like('Shared 2609.28101')
+        expect(s.addDiscoveryEntries(project, [rankedFind('2609.28103', 0.9), rankedFind('2609.28104', 0.5)])).toBe(2)
+        expect(titles(s.listInbox({ kind: 'discovery', project }))).toEqual(['Shared 2609.28103', 'Shared 2609.28104', 'Shared 2609.28101'])
+        like('Shared 2609.28103')
+        like('Shared 2609.28104')
+        expect(s.addDiscoveryEntries(project, [rankedFind('2609.28105', 0.05)])).toBe(1)
+        expect(titles(s.listInbox({ kind: 'discovery', project }))).toEqual([
+          'Shared 2609.28103', 'Shared 2609.28104', 'Shared 2609.28101', 'Shared 2609.28105',
+        ])
       })
     }
 
