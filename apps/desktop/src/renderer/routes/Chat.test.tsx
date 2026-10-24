@@ -117,7 +117,7 @@ describe('Chat composer', () => {
       await Promise.resolve()
       await Promise.resolve()
     })
-    expect(host.querySelector('#composer')!.getAttribute('role')).toBe('textbox')
+    expect(['role', 'aria-label'].map((name) => host.querySelector('#composer')!.getAttribute(name))).toEqual(['textbox', '问题或想法'])
   })
 
   afterEach(() => {

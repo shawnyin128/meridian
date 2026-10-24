@@ -59,6 +59,7 @@ const sameDraft = (a: readonly ChatRun[], b: readonly ChatRun[]) => JSON.stringi
  * follows it up to the caret; picking one puts it in as a pill, which the caret steps over and a
  * deletion takes whole. `draft` replaces what the editor holds whenever it differs from what the
  * editor last reported through `onDraft`; nothing can be typed while `unavailable` or `running`.
+ * `label` names the editor for assistive technology, as the placeholder does without it.
  */
 export function ChatComposer({
   ref, id, label, placeholder, draft, onDraft, unavailable, running, noModel, sendId, onSend, onStop, mentions = [],
@@ -93,7 +94,7 @@ export function ChatComposer({
 
   const configured = (): Extension => [
     EditorView.editable.of(!locked), EditorState.readOnly.of(locked), placeholderText(placeholder),
-    EditorView.contentAttributes.of({ ...(id === undefined ? {} : { id }), ...(label === undefined ? {} : { 'aria-label': label }) }),
+    EditorView.contentAttributes.of({ ...(id === undefined ? {} : { id }), 'aria-label': label ?? placeholder }),
   ]
   const stateOf = (runs: readonly ChatRun[]) => tools.stateOf(runs, [
     history(),
