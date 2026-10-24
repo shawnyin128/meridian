@@ -280,6 +280,9 @@ on the reviewing machine.
   `<dir>` from scratch with its own config home and user-data folder;
   `node scripts/test-library.mjs open --out <dir> [--app <build>]` opens it.
   Without `--app` both use the checkout's built `apps/desktop`.
+- `node scripts/test-library.mjs relocate --out <dir>` points a copied test
+  library's stored paths at the copy without starting any App, so an agent
+  prepares a review copy with no window; `open` does the same before it opens.
 - Test libraries live in `outputs/test-library/<display version>/` in the
   checkout, on macOS and Windows alike.
 - A pull request that adds a screen or a stored kind adds its scenario to the
