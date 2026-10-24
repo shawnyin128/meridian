@@ -255,7 +255,7 @@ describe('createWatchFetcher', () => {
     }
     publish(25, 'Before')
     const { store, fetcher, queries } = setup(async (_query, start) => newestFirst.slice(start, start + 20))
-    store.setDeliverySettings({ maxItemsPerRun: 100 })
+    store.setDeliverySettings({ maxItemsPerRun: 100, maxShownPerScope: 100 })
     await fetcher.run(['spec'])
     expect(queries).toHaveLength(1)
 
@@ -274,7 +274,7 @@ describe('createWatchFetcher', () => {
     }
     publish(20, 'Before')
     const { store, fetcher, queries } = setup(async (_query, start) => newestFirst.slice(start, start + 20))
-    store.setDeliverySettings({ maxItemsPerRun: 100 })
+    store.setDeliverySettings({ maxItemsPerRun: 100, maxShownPerScope: 100 })
     await fetcher.run(['spec'])
     publish(100, 'Burst')
     queries.length = 0
