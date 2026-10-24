@@ -398,6 +398,8 @@ export function createVaultStore(
     writeJson(join(meridian, `${name}.json`), lists.get(name)?.stored(rows) ?? rows, staging)
     return rows
   }
+  /** The record `.meridian/<name>.json` stores for `row`: `row` with the fields this version does not know put back. */
+  const storedRecord = (name: string, row: unknown): unknown => lists.get(name)?.stored([row])[0] ?? row
 
   // Remove partial output from the previous run; destination pages were never modified and the debris is no longer useful.
   rmSync(staging, { recursive: true, force: true })
@@ -2460,7 +2462,12 @@ export function createVaultStore(
         const held = paperChatNow(item)
         if ((held?.messages.length ?? 0) > 0) throw new CallError('refused', `这篇论文已经有了新的对话：${item.title}`)
         const rest = chats.filter((chat) => chat !== held)
-        chats = save('chats', [...rest.slice(0, item.position), structuredClone(item.chat), ...rest.slice(item.position)])
+        // The chat goes back as the trash stored it, and is read again so its unknown fields stay for later saves.
+        const records = lists.get('chats')?.stored(rest) ?? rest
+        const at = Math.min(item.position, rest.length)
+        const back = (storedRecord('trash', item) as { chat: unknown }).chat
+        writeJson(join(meridian, 'chats.json'), [...records.slice(0, at), back, ...records.slice(at)], staging)
+        chats = load('chats', ChatRecordSchema)
       } else if (item.kind === 'idea') {
         ideas = save('ideas', [structuredClone(item.idea), ...ideas])
         if (item.idea.project !== undefined) {
@@ -2654,7 +2661,10 @@ export function createVaultStore(
       const chat = chatOf(id)
       const position = chats.indexOf(chat)
       chats = save('chats', chats.filter((held) => held !== chat))
-      toTrash({ id: nextId('trash'), kind: 'chat', title: chat.title, deletedAt: nowMs(), chat, position })
+      toTrash({
+        id: nextId('trash'), kind: 'chat', title: chat.title, deletedAt: nowMs(),
+        chat: storedRecord('chats', chat) as ChatRecord, position,
+      })
     }),
 
     search(query) {
