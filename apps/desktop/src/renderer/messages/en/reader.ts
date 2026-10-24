@@ -37,7 +37,8 @@ export const reader = {
   },
   selection: {
     highlight: 'Highlight',
-    note: 'Annotate',
+    colours: { yellow: 'Yellow', green: 'Green', blue: 'Blue', pink: 'Pink' },
+    note: 'Annotation',
     askAi: 'Ask AI',
   },
   zoom: {

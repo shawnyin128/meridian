@@ -591,7 +591,7 @@ test('拖完任务条那一下不算点击,单击只定位闪烁,名称格仍可
   await expect(row.locator('.plan-name-input')).toHaveCount(0)
   await expect(win.locator('.plan-time-pop')).toHaveCount(0)
 
-  await row.locator('.plan-rename').click()
+  await rowAction(row, '.plan-rename')
   await row.locator('.plan-name-input').fill(EDITED_TASK_TITLE)
   await row.locator('.plan-name-input').press('Enter')
   await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已更新任务')
@@ -1021,6 +1021,40 @@ test('科研记录在记录和科研图之间切换,标题留在原处,记录短
   if (!atEnd) expect(await top()).toBe(held)
   expect(await viewHeight()).toBeLessThan(graphHeight)
   expect(await page.locator('.record-view').evaluate((el) => getComputedStyle(el).minHeight)).toBe('0px')
+})
+
+test('标签页组里有一行的标签页和空着的一样高:科研计划与科研记录切换时下面的小标题不动', async ({ win }) => {
+  await win.locator('[data-desk="resproj"]').click()
+  await win.locator('[data-proj="moe"]').click()
+  const page = win.locator('.screenslot:not([hidden]) .wkpage')
+  await page.locator('#taskList').waitFor()
+  // moe has one task and no milestone, one record, one conclusion and no research graph.
+  const groups = [
+    { heading: '科研计划', next: '科研记录', tabs: { 任务: 'row', 里程碑: 'empty' } },
+    { heading: '科研记录', next: '关联想法', tabs: { 记录: 'row', 实验结论: 'row', 科研图: 'empty' } },
+  ] as const
+  const rowHeight = await win.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--row-list-h').trim())
+  for (const group of groups) {
+    const heading = page.locator('.section-heading', { hasText: group.heading })
+    const shown: Record<string, { content: string; panel: number; next: number }> = {}
+    for (const tab of Object.keys(group.tabs)) {
+      await heading.locator('.segmented-control>button', { hasText: tab }).click()
+      shown[tab] = await heading.evaluate((el, next) => {
+        const panel = el.nextElementSibling!
+        const following = [...document.querySelectorAll('.screenslot:not([hidden]) .wkpage .section-heading')]
+          .find((candidate) => candidate.textContent!.startsWith(next))!
+        const rows = panel.querySelectorAll('.structured-row').length
+        return {
+          content: rows === 1 ? 'row' : rows === 0 && panel.querySelector('.empty-state') !== null ? 'empty' : `${rows} rows`,
+          panel: panel.getBoundingClientRect().height,
+          next: following.getBoundingClientRect().top - el.getBoundingClientRect().top,
+        }
+      }, group.next)
+    }
+    expect(Object.fromEntries(Object.entries(shown).map(([tab, held]) => [tab, held.content])), group.heading).toEqual(group.tabs)
+    expect(Object.values(shown).map((held) => `${held.panel}px`), group.heading).toEqual(Object.keys(group.tabs).map(() => rowHeight))
+    expect(new Set(Object.values(shown).map((held) => held.next)).size, group.heading).toBe(1)
+  }
 })
 
 test('切换科研图节点:右栏高度不随内容变,页面不跟着跳,新节点从顶部读起', async ({ win }) => {
@@ -1615,7 +1649,7 @@ test('任务四列各自编辑,点击行或任务名只打开任务详情,不改
   await win.keyboard.press('Escape')
   await expect(side.locator('.node-document-title')).toHaveCount(0)
 
-  await row.locator('.plan-rename').click()
+  await rowAction(row, '.plan-rename')
   await expect(row.locator('.plan-name-input')).toHaveCount(1)
   await expect(win.locator('.schedule-form')).toHaveCount(0)
   await win.keyboard.press('Escape')
@@ -1761,7 +1795,7 @@ test('节点面板由 Agent 管理:标题、状态、记录与分支都不可在
 test('节点面板开着时 Esc 先关任务名称格,再按一次才收面板', async ({ win }) => {
   const head = await openNodePanel(win)
   const row = win.locator('#taskList .ddlrow').first()
-  await row.locator('.plan-rename').click()
+  await rowAction(row, '.plan-rename')
   await expect(row.locator('.plan-name-input')).toHaveCount(1)
   await win.keyboard.press('Escape')
   await expect(row.locator('.plan-name-input')).toHaveCount(0)

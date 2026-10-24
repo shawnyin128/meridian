@@ -17,6 +17,7 @@ const sectionRule = FILES.find((file) => file.path.endsWith('EmptyState.css'))!.
 const EMPTY = {
   'changelog.empty': zh.changelog.empty,
   'chat.empty': zh.chat.empty,
+  'feed.empty': zh.feed.empty,
   'ideas.emptyGroup.open': zh.ideas.emptyGroup.open,
   'ideas.emptyGroup.active': zh.ideas.emptyGroup.active,
   'ideas.emptyGroup.done': zh.ideas.emptyGroup.done,
@@ -58,6 +59,12 @@ describe('空态', () => {
   it('分节空态与上面的标题齐平、高一行列表行，切换同一位置的标签页时不跳', () => {
     expect(sectionRule).toContain('min-height:var(--row-list-h)')
     expect(sectionRule).not.toMatch(/padding/)
+  })
+
+  it('标签页里列表的每一行和空着的标签页一样，都是一行列表行高', () => {
+    const tabbed = FILES.find((file) => file.path.endsWith('TabbedSection.css'))?.text ?? ''
+    const rowRule = tabbed.match(/\.tabbed-section-panel>\.structured-list \.structured-row\{([^}]*)\}/)?.[1] ?? ''
+    expect(rowRule).toContain('min-height:var(--row-list-h)')
   })
 
   it('没有哪一页再手搭空态', () => {

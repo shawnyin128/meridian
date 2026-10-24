@@ -180,7 +180,7 @@ function Table({ agg, onOpen, onAnchor, onRemove, pending, adding, head }: {
     <div className="cmpwrap" ref={wrapFade} data-fade-held="top" style={cap === null ? undefined : { maxHeight: cap }}>
       <table className="cmp">
         <thead>
-          <tr>
+          <tr data-row-actions="">
             <th>{m.wiki.paperKind}</th>
             {agg.columns.map((c) => <th key={c.key}>{c.label}</th>)}
             {agg.derivedColumns.map((d) => (
@@ -188,7 +188,7 @@ function Table({ agg, onOpen, onAnchor, onRemove, pending, adding, head }: {
             ))}
             {head?.newColumn}
             {onRemove === undefined ? null : <th className="rx" />}
-            {head === undefined ? null : <th className="th-add">{head.controls}</th>}
+            {head === undefined ? null : <th className="th-add"><RowActions>{head.controls}</RowActions></th>}
           </tr>
         </thead>
         <tbody>
@@ -858,7 +858,7 @@ export function Wiki() {
                         <>
                           {/* If the placeholder column is already open, only refocus it, keeping the half-typed name. */}
                           <AddAction
-                            variant="icon" className="colbtn" ref={colAdd} disabled={pending}
+                            variant="icon" ref={colAdd} disabled={pending}
                             label={m.wiki.aggregation.addColumn}
                             onClick={() => {
                               if (newCol) { newColCell.current?.querySelector('input')?.focus(); return }
@@ -872,7 +872,7 @@ export function Wiki() {
                             contentClassName="ctxmenu colpop" sticky="always"
                             trigger={(
                               <IconButton
-                                label={m.wiki.columnSettings} size="nested" className="colbtn" ref={colBtn} disabled={pending}
+                                label={m.wiki.columnSettings} size="nested" ref={colBtn} disabled={pending}
                               ><IconGear /></IconButton>
                             )}
                           >

@@ -21,10 +21,9 @@ import { ModalTitle } from '../ModalDialog.js'
 import { NavRow } from '../NavRow.js'
 import { SectionHeading } from '../PageShell.js'
 import { SegmentedControl } from '../SegmentedControl.js'
+import { Swatches } from '../Swatches.js'
 import { Switch } from '../Switch.js'
 import { Tag } from '../Tag.js'
-import { ToggleGroup, ToggleItem } from '../Toolbar.js'
-import { Tooltip } from '../Tooltip.js'
 import { useColourThemeName } from './AppearanceSettings.js'
 import { ServiceActions, ServiceError, ServiceFoot } from './ServiceCard.js'
 import './ThemeEditor.css'
@@ -248,19 +247,10 @@ export function ThemeEditor({ theme, onBack, onDirtyChange }: {
           <Card className="theme-module-card">
             <SectionHeading variant="group">{t.modules[module]}</SectionHeading>
             <div className="theme-module-colour">
-              <ToggleGroup
-                label={t.swatches} className="theme-swatches" value={colours[module].toLowerCase()}
-                onValueChange={(value) => { if (value !== '') paint(value) }}
-              >
-                {swatches.map(([value, builtIn]) => (
-                  <Tooltip label={name(builtIn)} key={value}>
-                    <ToggleItem
-                      value={value} className={value === colours[module].toLowerCase() ? 'theme-swatch on' : 'theme-swatch'}
-                      aria-label={name(builtIn)} style={{ backgroundColor: value }}
-                    />
-                  </Tooltip>
-                ))}
-              </ToggleGroup>
+              <Swatches
+                label={t.swatches} value={colours[module].toLowerCase()} onPick={paint}
+                swatches={swatches.map(([value, builtIn]) => ({ value, colour: value, label: name(builtIn) }))}
+              />
               <ColourField value={colours[module]} onChange={paint} pickLabel={t.pick} valueLabel={t.hex} />
             </div>
             {error === null ? null : <ServiceError>{error}</ServiceError>}

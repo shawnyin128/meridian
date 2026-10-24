@@ -30,7 +30,8 @@ Current shared contracts:
   candidate row: menu item anatomy, lit only as the active row, and the row under the pointer is it.
 - `ActionMenu` and `ActionPopover`: the two shared interactive-surface shells. Menus own action and
   radio-item semantics, and radio and checkbox items draw the one checked mark themselves; popovers
-  retain normal focus for calendars and configuration forms. Routes provide triggers, contents, and
+  retain normal focus for calendars, configuration forms and the reader's selection toolbar, which a
+  popover places against a box it measures (`anchorBox`). Routes provide triggers, contents, and
   capability flags instead of assembling Radix roots and portals. Every menu and popover keeps
   `COLLISION_PADDING` from the window edge.
 - `ContextMenu`: the shared right-click menu of one element, opened by the pointer or by the
@@ -58,6 +59,11 @@ Current shared contracts:
 - `SegmentedControl`: the only switch between peer views in the app, including the timeline scale: a track of
   equal segments with a raised thumb that slides to the picked one, radio-group semantics, and one Tab stop
   with arrow keys inside. The `.fchip` and `.segbtn` pill rows are retired.
+- `TabbedSection`: the one section whose content switches between peer tabs: its heading, its `SegmentedControl`
+  first in the heading's actions slot and then the section's own actions, and the picked tab's panel. A tab with
+  nothing shows its sentence as the section `EmptyState`; that state and every row of the list a tab shows are
+  one list row high, so switching between a tab with one row and an empty tab moves nothing below. Routes supply
+  only the tabs, each tab's content and its empty sentence.
 - `Toolbar`: the one roving group, on Radix Toolbar: a group of controls is one Tab stop, the arrow keys move
   between them, and Tab comes back to the one focused last. IconButton, AddAction, ChoicePicker's trigger and
   `ToolbarButton` join the toolbar they render in; a toolbar inside one of the same orientation joins it, and a
@@ -65,6 +71,8 @@ Current shared contracts:
   picks a value, on its own or inside a toolbar. A paper row, the row-actions slot and the rating stars use them.
 - `ChipToggles`: a multi-select of short values as chips that each turn on or off, with the same one Tab
   stop and arrow keys. A choice among many values is a menu picker, not a segment per value.
+- `Swatches`: the one row of colour circles that picks a colour, the theme editor's presets and the reader's
+  highlight colours. A picked circle wears the neutral picked ring, never the accent.
 - `Switch`: a binary setting that takes effect as soon as it flips. Its name stays the same in both states;
   a button whose label flips between two actions is not used for a setting.
 - `Notice`: the app's one notice. AppShell places it on the canvas and screens show it through
@@ -105,6 +113,8 @@ Current shared contracts:
 - `DayHeading`: the small heading that opens one day in a list grouped by day, with an optional count.
 - `hooks/useCandidateKeys`: arrow-key, pointer and Enter handling for a candidate list, shared by every
   suggestion and picker dropdown.
+- `hooks/useWheelZoom`: the one wheel rule of a zoomable view, shared by the reader and the research graph:
+  a pinch or a Ctrl- or ⌘-scroll zooms about the pointer, and every other scroll scrolls the page.
 - `ResearchObjectCard`: one list-card shell for first-class research objects such as projects and ideas;
   routes provide their domain-specific identity and metadata without redefining width, spacing, borders,
   selection, management-menu visibility, or keyboard activation.
@@ -117,6 +127,8 @@ Current shared contracts:
   library search configure the same focus restoration, icon geometry, and accessible naming.
 - `GenerationControl`: the shared idle, spinning, and hover-to-stop button contract for model-backed
   actions. Chat composers and Wiki Harness generation do not define independent running animations.
+- `ActionButton`: the busy state of a text button that starts an action. While `busy` it reads its busy label,
+  is marked `aria-busy`, and is disabled, so a second press cannot start the action again.
 - `RunningRing` (in `icons`): the one running indicator, `DownloadRing` without a total, turning once per
   `--t-spin` in the colour of the text around it. GenerationControl and About use it; a running job is
   never drawn in a danger tone.

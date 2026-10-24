@@ -18,8 +18,8 @@ import { EntityLink } from '../EntityLink.js'
 import { FormTextarea } from '../FormControls.js'
 import { HarnessAction } from '../HarnessAction.js'
 import { SectionHeading } from '../PageShell.js'
-import { SegmentedControl } from '../SegmentedControl.js'
 import { NoModelTag } from '../NoModelTag.js'
+import { TabbedSection } from '../TabbedSection.js'
 import { AgentLabel } from '../SourceLabel.js'
 import { Tag, TagButton } from '../Tag.js'
 import { PaperText } from '../paper/PaperText.js'
@@ -203,6 +203,79 @@ export function PaperWikiIngest({ paper, reading, onJump }: {
   const personal = reading.notes.length + writtenHighlights + (reading.remark.trim() === '' ? 0 : 1)
   const proposal = receipt?.proposal ?? pending?.proposal
   const made = receipt?.startedAt ?? pending?.generatedAt
+  /** The card of proposal `shown` with its content in view `mode`, and its decision under it. */
+  const reviewCard = (shown: NonNullable<typeof proposal>, mode: ReviewMode) => (
+    <ProposalCard>
+      <ProposalChange
+        kind={shown.action === 'create' ? m.wiki.ingest.newContent : m.wiki.ingest.updateContent}
+        target={(
+          <EntityLink
+            kind="page" label={<PaperText text={paper.title} />}
+            onOpen={() => open('wiki', `${PAPER_PAGE}${shown.targetId}`)}
+          />
+        )}
+        by={<><AgentLabel />{made === undefined ? null : <span>{fmt.date(localDayOf(made))}</span>}</>}
+      >
+        {mode === 'structured' && shown.review !== undefined ? (
+          <>
+            {draft === shown.body ? null : <Tag tone="warn">{m.wiki.ingest.editNote}</Tag>}
+            <PaperWikiProposalReview review={shown.review} onJump={onJump}
+              {...(shown.quality === undefined ? {} : { quality: shown.quality })} />
+          </>
+        ) : (
+          <FormTextarea appearance="field" aria-label={m.wiki.ingest.proposalContentLabel} value={draft}
+            onChange={(event) => setDraft(event.target.value)} />
+        )}
+      </ProposalChange>
+      {rejectionOpen ? (
+        <div className="wiki-ingest-rejection" aria-label={m.wiki.ingest.rejectionFeedbackLabel}>
+          <div className="wiki-ingest-rejection-head">
+            <strong>{m.wiki.ingest.rejectionPrompt}</strong>
+          </div>
+          <ChipToggles
+            className="wiki-ingest-rejection-reasons" label={m.wiki.ingest.rejectReasonsLabel}
+            value={rejectionReasons} options={rejectReasonOptions(m)} disabled={rejecting}
+            onChange={setRejectionReasons}
+          />
+          <FormTextarea appearance="field" rows={2} maxLength={500}
+            aria-label={m.wiki.ingest.rejectionNoteLabel} placeholder={m.wiki.ingest.rejectionNotePlaceholder}
+            disabled={rejecting}
+            value={rejectionNote} onChange={(event) => setRejectionNote(event.target.value)} />
+          <div className="wiki-ingest-actions">
+            <button type="button" className="btn" disabled={rejecting}
+              onClick={() => setRejectionOpen(false)}>{m.wiki.ingest.backToReview}</button>
+            <button type="button" className="btn danger" disabled={rejecting}
+              onClick={submitRejection}>
+              {rejecting
+                ? m.wiki.ingest.discarding
+                : rejectionReasons.length === 0 && rejectionNote.trim() === ''
+                  ? m.wiki.ingest.discardNoFeedback
+                  : m.wiki.ingest.discardWithFeedback}
+            </button>
+          </div>
+        </div>
+      ) : (
+        <ProposalDecision>
+          <button className="btn ghost danger" disabled={applying || rejecting}
+            onClick={() => setRejectionOpen(true)}>
+            {m.wiki.ingest.discardProposal}
+          </button>
+          <button className="btn"
+            disabled={applying || rejecting || draft.trim() === '' || pending?.stale === true}
+            onClick={() => { void apply() }}>
+            {applying ? m.wiki.ingest.writing : m.wiki.ingest.confirm}
+          </button>
+          {pending?.stale === true
+            ? (
+              <TagButton tone="warn" disabled={applying || rejecting} onClick={() => setRejectionOpen(true)}>
+                {`${m.wiki.queue.stale} · ${m.wiki.ingest.discard}`}
+              </TagButton>
+            )
+            : null}
+        </ProposalDecision>
+      )}
+    </ProposalCard>
+  )
 
   return (
     <section className="wiki-ingest" ref={ingestFade} aria-label={m.wiki.addToWiki}>
@@ -242,87 +315,20 @@ export function PaperWikiIngest({ paper, reading, onJump }: {
         </div>
         {proposal !== undefined && !applied && !rejected ? (
           <div className="wiki-ingest-review">
-            <SectionHeading
-              variant="rail"
-              actions={proposal.review === undefined ? undefined : (
-                <SegmentedControl
-                  size="sm" label={m.wiki.ingest.reviewViewLabel} value={reviewMode} options={reviewModes(m)}
-                  onChange={setReviewMode}
+            {proposal.review === undefined
+              ? (
+                <>
+                  <SectionHeading variant="rail">{m.wiki.ingest.reviewHeading}</SectionHeading>
+                  {reviewCard(proposal, 'markdown')}
+                </>
+              )
+              : (
+                <TabbedSection
+                  variant="rail" heading={m.wiki.ingest.reviewHeading} label={m.wiki.ingest.reviewViewLabel}
+                  value={reviewMode} onChange={setReviewMode}
+                  tabs={reviewModes(m).map((mode) => ({ ...mode, content: reviewCard(proposal, mode.value) }))}
                 />
               )}
-            >
-              {m.wiki.ingest.reviewHeading}
-            </SectionHeading>
-            <ProposalCard>
-              <ProposalChange
-                kind={proposal.action === 'create' ? m.wiki.ingest.newContent : m.wiki.ingest.updateContent}
-                target={(
-                  <EntityLink
-                    kind="page" label={<PaperText text={paper.title} />}
-                    onOpen={() => open('wiki', `${PAPER_PAGE}${proposal.targetId}`)}
-                  />
-                )}
-                by={<><AgentLabel />{made === undefined ? null : <span>{fmt.date(localDayOf(made))}</span>}</>}
-              >
-                {proposal.review !== undefined && reviewMode === 'structured' ? (
-                  <>
-                    {draft === proposal.body ? null : <Tag tone="warn">{m.wiki.ingest.editNote}</Tag>}
-                    <PaperWikiProposalReview review={proposal.review} onJump={onJump}
-                      {...(proposal.quality === undefined ? {} : { quality: proposal.quality })} />
-                  </>
-                ) : (
-                  <FormTextarea appearance="field" aria-label={m.wiki.ingest.proposalContentLabel} value={draft}
-                    onChange={(event) => setDraft(event.target.value)} />
-                )}
-              </ProposalChange>
-              {rejectionOpen ? (
-                <div className="wiki-ingest-rejection" aria-label={m.wiki.ingest.rejectionFeedbackLabel}>
-                  <div className="wiki-ingest-rejection-head">
-                    <strong>{m.wiki.ingest.rejectionPrompt}</strong>
-                  </div>
-                  <ChipToggles
-                    className="wiki-ingest-rejection-reasons" label={m.wiki.ingest.rejectReasonsLabel}
-                    value={rejectionReasons} options={rejectReasonOptions(m)} disabled={rejecting}
-                    onChange={setRejectionReasons}
-                  />
-                  <FormTextarea appearance="field" rows={2} maxLength={500}
-                    aria-label={m.wiki.ingest.rejectionNoteLabel} placeholder={m.wiki.ingest.rejectionNotePlaceholder}
-                    disabled={rejecting}
-                    value={rejectionNote} onChange={(event) => setRejectionNote(event.target.value)} />
-                  <div className="wiki-ingest-actions">
-                    <button type="button" className="btn" disabled={rejecting}
-                      onClick={() => setRejectionOpen(false)}>{m.wiki.ingest.backToReview}</button>
-                    <button type="button" className="btn danger" disabled={rejecting}
-                      onClick={submitRejection}>
-                      {rejecting
-                        ? m.wiki.ingest.discarding
-                        : rejectionReasons.length === 0 && rejectionNote.trim() === ''
-                          ? m.wiki.ingest.discardNoFeedback
-                          : m.wiki.ingest.discardWithFeedback}
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <ProposalDecision>
-                  <button className="btn ghost danger" disabled={applying || rejecting}
-                    onClick={() => setRejectionOpen(true)}>
-                    {m.wiki.ingest.discardProposal}
-                  </button>
-                  <button className="btn"
-                    disabled={applying || rejecting || draft.trim() === '' || pending?.stale === true}
-                    onClick={() => { void apply() }}>
-                    {applying ? m.wiki.ingest.writing : m.wiki.ingest.confirm}
-                  </button>
-                  {pending?.stale === true
-                    ? (
-                      <TagButton tone="warn" disabled={applying || rejecting} onClick={() => setRejectionOpen(true)}>
-                        {`${m.wiki.queue.stale} · ${m.wiki.ingest.discard}`}
-                      </TagButton>
-                    )
-                    : null}
-                </ProposalDecision>
-              )}
-            </ProposalCard>
           </div>
         ) : null}
         {applied ? <p className="wiki-ingest-status done">{m.wiki.ingest.written}</p> : null}
