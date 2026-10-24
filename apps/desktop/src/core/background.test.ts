@@ -1,13 +1,19 @@
-import { resolve } from 'node:path'
+import { mkdtempSync, rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join, resolve } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { createBackground } from './background.js'
+import { callFailure } from './call-error.js'
 import { createFixtureStore } from './fixture-store.js'
+import { FIRST_TICK_MS, TICK_MS } from './inbox/schedule.js'
+import { unopenedStore } from './unopened-store.js'
+import { createVaultStore } from './vault-store.js'
+import type { VaultStore } from './vault.js'
 import cannedNet from './fixtures/net.json' with { type: 'json' }
 import { probePdf } from './paper-library/index.js'
 import { createCannedGet, type CannedTable } from './net/canned-http.js'
 import { searchUrl, watchQuery } from './net/arxiv.js'
 import { minimalPdf } from './net/minimal-pdf.js'
-import { FIRST_TICK_MS } from './inbox/schedule.js'
 
 const VAULT = resolve(import.meta.dirname, 'fixtures/vault')
 const setup = (options: { semanticKey?: string } = {}) => {
@@ -22,6 +28,28 @@ const setup = (options: { semanticKey?: string } = {}) => {
 
 describe('createBackground', () => {
   afterEach(() => { vi.useRealTimers() })
+
+  it('论文库打不开时排好的定时什么也不做:十五秒后和之后的每一轮都不碰库、不联网', async () => {
+    vi.useFakeTimers({ now: 0 })
+    const empty = mkdtempSync(join(tmpdir(), 'meridian-no-vault-'))
+    // Core opens the vault the same way and stands an unopened store in for one that throws.
+    let store: VaultStore
+    try {
+      store = createVaultStore(empty)
+    } catch (error) {
+      store = unopenedStore(error instanceof Error ? error.message : String(error), callFailure(error))
+    }
+    rmSync(empty, { recursive: true, force: true })
+    const get = vi.fn(async () => ({ status: 503, body: new Uint8Array() }))
+    const background = createBackground({
+      store, get, probe: probePdf, arxivIntervalMs: 0, sleep: async () => {}, now: () => Date.now(),
+    })
+    const stop = background.armSchedule()
+    await vi.advanceTimersByTimeAsync(FIRST_TICK_MS)
+    await vi.advanceTimersByTimeAsync(3 * TICK_MS)
+    expect(get).not.toHaveBeenCalled()
+    stop()
+  })
 
   it('导入立刻返回,随后在后台按 arXiv 补全', async () => {
     const { store, background } = setup()
