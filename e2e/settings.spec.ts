@@ -76,7 +76,11 @@ test('应用菜单里有「设置…」,其余菜单仍是 Electron 的角色', 
   expect(menu.map((top) => top.role)).toEqual(mac
     ? ['appmenu', 'filemenu', 'editmenu', 'viewmenu', 'windowmenu', null]
     : [null, 'editmenu', 'viewmenu', null, 'windowmenu', null])
-  expect(menu.at(-1)!.label).toBe('帮助')
+  // In zh every title and item is named in Chinese; macOS titles the application menu with the app's name.
+  expect(menu.slice(mac ? 1 : 0).map((top) => top.label))
+    .toEqual(mac ? ['文件', '编辑', '视图', '窗口', '帮助'] : ['文件', '编辑', '视图', '工具', '窗口', '帮助'])
+  expect(menu.flatMap((top) => top.items).map((item) => item.label)
+    .filter((label) => /[A-Za-z]/.test(label.replace(/Meridian|Skill|MCP/g, '')))).toEqual([])
 
   const settings = menu.flatMap((top) => top.items).filter((item) => item.id === 'settings')
   expect(settings).toHaveLength(1)

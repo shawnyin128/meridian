@@ -76,12 +76,65 @@ describe('menuTemplate', () => {
     for (const platform of ['win32', 'linux'] as const) {
       const template = menuTemplate(platform, () => {}, MAIN_COPY.zh.menu)
       expect(template.map((item) => item.label ?? item.role))
-        .toEqual(['File', 'editMenu', 'viewMenu', '工具', 'windowMenu', '帮助'])
+        .toEqual(['文件', '编辑', '视图', '工具', '窗口', '帮助'])
 
       const tools = template[3]
       expect(Array.isArray(tools?.submenu) ? tools.submenu.map((i) => i.id) : [])
         .toEqual(['settings', 'palette'])
     }
+  })
+
+  it('中文菜单每一层的每一项都有中文名，只留 Meridian、Skill 与 MCP 这几个专名', () => {
+    for (const platform of ['darwin', 'win32', 'linux'] as const) {
+      const english = flatten(menuTemplate(platform, () => {}, MAIN_COPY.zh.menu))
+        // macOS titles the application menu with the app's name whatever its label.
+        .filter((item) => item.type !== 'separator' && item.role !== 'appMenu')
+        .map((item) => item.label ?? `(${item.role ?? item.id} 没有名字)`)
+        .filter((label) => /[A-Za-z]/.test(label.replace(/Meridian|Skill|MCP/g, '')))
+      expect([platform, english]).toEqual([platform, []])
+    }
+  })
+
+  it('每个角色菜单按 Electron 默认的条目和顺序列出，各平台不同处照旧', () => {
+    /** Each item's role, '—' for a separator, and a nested list for a submenu without a role. */
+    const shape = (items: MenuItemConstructorOptions[]): unknown[] => items.map((item) => (item.type === 'separator'
+      ? '—'
+      : Array.isArray(item.submenu) ? { [item.role ?? item.label!]: shape(item.submenu) } : item.role ?? item.id))
+    const zh = MAIN_COPY.zh.menu
+    const roles = (platform: NodeJS.Platform) => shape(menuTemplate(platform, () => {}, zh))
+    const view = { viewMenu: ['reload', 'forceReload', 'toggleDevTools', '—', 'resetZoom', 'zoomIn', 'zoomOut', '—', 'togglefullscreen'] }
+    const help = { [zh.help]: ['agent-tutorial'] }
+    expect(roles('darwin')).toEqual([
+      { appMenu: ['about', '—', 'settings', 'palette', '—', 'services', '—', 'hide', 'hideOthers', 'unhide', '—', 'quit'] },
+      { fileMenu: ['close'] },
+      { editMenu: [
+        'undo', 'redo', '—', 'cut', 'copy', 'paste', 'pasteAndMatchStyle', 'delete', 'selectAll', '—',
+        { [zh.substitutions]: ['showSubstitutions', '—', 'toggleSmartQuotes', 'toggleSmartDashes', 'toggleTextReplacement'] },
+        { [zh.speech]: ['startSpeaking', 'stopSpeaking'] },
+      ] },
+      view,
+      { windowMenu: ['minimize', 'zoom', '—', 'front'] },
+      help,
+    ])
+    for (const platform of ['win32', 'linux'] as const) {
+      expect(roles(platform)).toEqual([
+        { [zh.file]: ['quit'] },
+        { editMenu: ['undo', 'redo', '—', 'cut', 'copy', 'paste', 'delete', '—', 'selectAll'] },
+        view,
+        { [zh.tools]: ['settings', 'palette'] },
+        { windowMenu: ['minimize', 'zoom', 'close'] },
+        help,
+      ])
+    }
+  })
+
+  it('英文菜单用 Electron 默认的名字，应用菜单里写的是 Meridian', () => {
+    const template = menuTemplate('darwin', () => {}, MAIN_COPY.en.menu)
+    expect(template.map((item) => item.label)).toEqual([undefined, 'File', 'Edit', 'View', 'Window', 'Help'])
+    expect((template[0]!.submenu as MenuItemConstructorOptions[]).filter((item) => item.role !== undefined).map((item) => item.label))
+      .toEqual(['About Meridian', 'Services', 'Hide Meridian', 'Hide Others', 'Show All', 'Quit Meridian'])
+    expect((template[2]!.submenu as MenuItemConstructorOptions[]).slice(0, 6).map((item) => item.label))
+      .toEqual(['Undo', 'Redo', undefined, 'Cut', 'Copy', 'Paste'])
   })
 
   it('帮助菜单在三个平台都排在最后，中文写作「帮助」，英文写作 Help', () => {
