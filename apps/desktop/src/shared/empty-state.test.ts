@@ -60,6 +60,12 @@ describe('空态', () => {
     expect(sectionRule).not.toMatch(/padding/)
   })
 
+  it('标签页里列表的每一行和空着的标签页一样，都是一行列表行高', () => {
+    const tabbed = FILES.find((file) => file.path.endsWith('TabbedSection.css'))?.text ?? ''
+    const rowRule = tabbed.match(/\.tabbed-section-panel>\.structured-list \.structured-row\{([^}]*)\}/)?.[1] ?? ''
+    expect(rowRule).toContain('min-height:var(--row-list-h)')
+  })
+
   it('没有哪一页再手搭空态', () => {
     const handBuilt = FILES.flatMap(({ path, text }) => ['direction-empty', 'paper-wiki-review-empty', 'rgempty', 'className="lm"']
       .filter((mark) => text.includes(mark)).map((mark) => `${path}: ${mark}`))

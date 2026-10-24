@@ -26,6 +26,7 @@ import { ChoicePicker, DateButton, DotsMenu, PriorityPicker } from '../component
 import { IconButton } from '../components/IconButton.js'
 import { IconOpen } from '../components/icons.js'
 import { SegmentedControl } from '../components/SegmentedControl.js'
+import { TabbedSection } from '../components/TabbedSection.js'
 import { RowActions, StructuredList, StructuredRow } from '../components/StructuredList.js'
 import { TitleNote } from '../components/TitleNote.js'
 import {
@@ -865,87 +866,76 @@ export function ProjectDetail({
               )}
             />
 
-            <SectionHeading
-              ref={recordHeading}
-              actions={(
-                <SegmentedControl
-                  size="sm" label={m.project.recordViewLabel}
-                  value={record}
-                  options={[
-                    { value: 'tl', label: m.project.recordModes.activity },
-                    { value: 'concl', label: m.project.recordModes.conclusions },
-                    { value: 'graph', label: m.project.sections.graph },
-                  ]}
-                  onChange={(value) => {
-                    holdRecordHeading()
-                    onRecord(value)
-                    if (value !== 'graph') setSelectedNode(null)
-                    if (value !== 'concl') setSelectedConclusion(null)
-                    discardOpenEdits()
-                  }}
-                />
-              )}
-            >{m.project.sections.records}
-            </SectionHeading>
-            <div className="record-view">
-            <PageError error={project.workspace?.issue} variant="section" />
-            {record === 'tl'
-              ? (sortedRecords.length === 0
-                ? <EmptyState variant="section">{m.project.graph.noRecords}</EmptyState>
-                : (
-                <ProjectEventList withNode className="evlist">
-                  {sortedRecords.map((ev, index) => {
-                    const graphNode = ev.node === undefined
-                      ? undefined
-                      : displayedGraph.nodes.find((candidate) => candidate.id === ev.node)
-                    return (
-                      <ProjectEventRow
-                        key={`${ev.date} ${index}`}
-                        kind={recordKind(ev)} date={ev.date} title={ev.text} detail={ev.detail}
-                        origin={recordOrigin(ev)}
-                        node={graphNode === undefined
+            <TabbedSection
+              heading={m.project.sections.records} label={m.project.recordViewLabel} value={record}
+              headingRef={recordHeading} panelClassName="record-view" error={project.workspace?.issue}
+              onChange={(value) => {
+                holdRecordHeading()
+                onRecord(value)
+                if (value !== 'graph') setSelectedNode(null)
+                if (value !== 'concl') setSelectedConclusion(null)
+                discardOpenEdits()
+              }}
+              tabs={[
+                {
+                  value: 'tl', label: m.project.recordModes.activity, empty: m.project.graph.noRecords,
+                  content: sortedRecords.length === 0 ? null : (
+                    <ProjectEventList withNode className="evlist">
+                      {sortedRecords.map((ev, index) => {
+                        const graphNode = ev.node === undefined
                           ? undefined
-                          : { id: graphNode.id, label: graphNode.label, mode: nodeMode(graphNode) }}
-                        onSelectNode={goToRecordNode}
-                      />
-                    )
-                  })}
-                </ProjectEventList>
-                ))
-              : record === 'concl'
-              ? (conclusions.length === 0
-                ? <EmptyState variant="section">{m.project.conclusions.empty}</EmptyState>
-                : (
-                  <ProjectEventList withNode className="evlist">
-                    {conclusions.map((item) => (
-                      <ProjectConclusionRow
-                        key={item.id} conclusion={item} node={nodeLook(item.node)}
-                        selected={item.id === selectedConclusion}
-                        onOpen={() => {
-                          setSelectedNode(null)
-                          setSelectedIdeaId(null)
-                          setSelectedConclusion(item.id)
-                          discardOpenEdits()
-                        }}
-                      />
-                    ))}
-                  </ProjectEventList>
-                ))
-              : (
-                <>
-                  <ResearchGraph
-                    graph={displayedGraph}
-                    selected={selectedNode}
-                    ideaNodeIds={selectedIdea?.node === undefined || selectedIdea.project !== projectId ? [] : [selectedIdea.node]}
-                    onSelect={(nodeId) => {
-                      setSelectedIdeaId(null)
-                      setSelectedConclusion(null)
-                      setSelectedNode(nodeId)
-                    }}
-                  />
-                </>
-              )}
-            </div>
+                          : displayedGraph.nodes.find((candidate) => candidate.id === ev.node)
+                        return (
+                          <ProjectEventRow
+                            key={`${ev.date} ${index}`}
+                            kind={recordKind(ev)} date={ev.date} title={ev.text} detail={ev.detail}
+                            origin={recordOrigin(ev)}
+                            node={graphNode === undefined
+                              ? undefined
+                              : { id: graphNode.id, label: graphNode.label, mode: nodeMode(graphNode) }}
+                            onSelectNode={goToRecordNode}
+                          />
+                        )
+                      })}
+                    </ProjectEventList>
+                  ),
+                },
+                {
+                  value: 'concl', label: m.project.recordModes.conclusions, empty: m.project.conclusions.empty,
+                  content: conclusions.length === 0 ? null : (
+                    <ProjectEventList withNode className="evlist">
+                      {conclusions.map((item) => (
+                        <ProjectConclusionRow
+                          key={item.id} conclusion={item} node={nodeLook(item.node)}
+                          selected={item.id === selectedConclusion}
+                          onOpen={() => {
+                            setSelectedNode(null)
+                            setSelectedIdeaId(null)
+                            setSelectedConclusion(item.id)
+                            discardOpenEdits()
+                          }}
+                        />
+                      ))}
+                    </ProjectEventList>
+                  ),
+                },
+                {
+                  value: 'graph', label: m.project.sections.graph, empty: m.project.graph.empty,
+                  content: displayedGraph.nodes.length === 0 ? null : (
+                    <ResearchGraph
+                      graph={displayedGraph}
+                      selected={selectedNode}
+                      ideaNodeIds={selectedIdea?.node === undefined || selectedIdea.project !== projectId ? [] : [selectedIdea.node]}
+                      onSelect={(nodeId) => {
+                        setSelectedIdeaId(null)
+                        setSelectedConclusion(null)
+                        setSelectedNode(nodeId)
+                      }}
+                    />
+                  ),
+                },
+              ]}
+            />
 
             <ProjectIdeaList
               projectId={projectId} ideas={linkedIdeas} graph={displayedGraph} selectedId={selectedIdeaId} chatDeleted={chatDeleted}

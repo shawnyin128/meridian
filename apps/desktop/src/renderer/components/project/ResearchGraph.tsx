@@ -172,8 +172,8 @@ export function layoutResearchTree(graph: Graph): { nodes: Graph['nodes']; edges
 }
 
 /**
- * Interactive research DAG. View transforms are local presentation state and never write back
- * into the Agent-owned graph.
+ * Interactive research DAG of a graph with at least one node. View transforms are local presentation
+ * state and never write back into the Agent-owned graph.
  */
 export function ResearchGraph({ graph, selected, ideaNodeIds = [], onSelect }: {
   graph: Graph
@@ -214,9 +214,6 @@ export function ResearchGraph({ graph, selected, ideaNodeIds = [], onSelect }: {
   }, [graphKey])
   useEffect(() => { if (!moved.current) setView(fitted) }, [viewportWidth])
 
-  if (graph.nodes.length === 0) {
-    return <EmptyState variant="section">{m.project.graph.empty}</EmptyState>
-  }
   const nodes = layout.nodes
   // The arrow keys move between nodes in document order: down each column, then on to the next one.
   const readingOrder = [...nodes].sort((a, b) => a.x - b.x || a.y - b.y)
