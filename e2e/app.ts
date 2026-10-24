@@ -18,13 +18,21 @@ const ENV = Object.fromEntries(Object.entries(process.env).filter(
   (e): e is [string, string] => e[1] !== undefined && e[0] !== 'MERIDIAN_VAULT_ROOT'))
 
 /**
+ * Chromium switches every automated launch passes. A window off every display or hidden paints in the
+ * primary display's colour profile and tags its screenshots with it; forced sRGB keeps the stored
+ * values equal to the page's own colours, as a window on a display returns them. The main process
+ * cannot set this switch: Chromium reads it before the main script runs.
+ */
+export const LAUNCH_SWITCHES = ['--force-color-profile=srgb']
+
+/**
  * Each test case gets its own Electron instance: `app` is the main-process handle (used to resize the
  * window), `win` is its first window. The whole app is closed after the case finishes.
- * `showWindow` says whether the case needs a shown window. It defaults to false, a hidden window. The
- * cost is that a hidden window gets no frames from the compositor: rAF drops to once per second, so
- * Playwright waits two seconds per actionability check and one second per element screenshot, and menu
- * accelerators reach only a shown window. Cases that hit either limit set `test.use({ showWindow: true })`;
- * the rest leave it off.
+ * `showWindow` says whether the case needs a shown window. It defaults to false, a hidden window.
+ * Measured on macOS, a hidden window gets frames at the display's rate: a click or an element screenshot
+ * takes under 0.1 s, a transition ends on time, and menu accelerators reach it. Windows has not been
+ * measured, so cases that wait for many frames, take element screenshots or press menu accelerators
+ * still set `test.use({ showWindow: true })`, and long ones `test.slow()`.
  * Neither window gets in the way of someone using the machine: on macOS the App has no Dock icon and
  * never becomes the active app. A shown window opens isolated, unfocusable and right of every display,
  * so it never covers another window, takes system focus or sees the machine's real keyboard and pointer.
@@ -44,7 +52,7 @@ export const test = base.extend<{
   app: async ({ showWindow, configHome }, use) => {
     const app = await electron.launch({
       // The specs assert Chinese copy, so the app must not follow the host's language.
-      args: [APP_DIR, '--lang=zh-CN'],
+      args: [APP_DIR, '--lang=zh-CN', ...LAUNCH_SWITCHES],
       env: {
         ...ENV,
         MERIDIAN_LIBRARY_ROOT: VAULT,

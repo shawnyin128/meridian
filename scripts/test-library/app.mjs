@@ -71,7 +71,11 @@ const appArgs = (out) => [`--user-data-dir=${join(out, 'user-data')}`, '--lang=z
 export async function session(out, app, options, steps) {
   const target = appTarget(app)
   const launched = await electron.launch({
-    executablePath: target.executable, args: [...target.args, ...appArgs(out)], env: appEnv(out, options),
+    executablePath: target.executable,
+    // Off every display Chromium paints in the primary display's colour profile; forced sRGB keeps a
+    // screenshot's stored values equal to the page's colours. Chromium reads it before the main script.
+    args: [...target.args, ...appArgs(out), '--force-color-profile=srgb'],
+    env: appEnv(out, options),
   })
   try {
     const win = await launched.firstWindow()

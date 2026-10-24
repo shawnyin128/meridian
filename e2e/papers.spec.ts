@@ -600,8 +600,8 @@ test('标签添加框:点联想项写成功后,输入框与候选层都收起', 
 })
 
 test('文本格:改完焦点移走或点到格外都像回车一样写,Esc 才放弃', async ({ win }) => {
-  // Creates a column, then makes three edits each checked in Core; an offscreen window waits two
-  // seconds per actionability check, so the default 30 s is too short.
+  // Creates a column, then makes three edits each checked in Core: many actionability checks for a
+  // hidden window; see `showWindow` in app.ts.
   test.slow()
   await gotoPapers(win)
   await firstPage(win)
@@ -703,8 +703,8 @@ test('文本格开着时按住表格自己的竖直滚动条,不算点到格外:
 })
 
 test('列管理:内置列显隐持久到离开再回来,固定列藏不了;自定义列新建、填格、撤销、改名、删除', async ({ win }) => {
-  // One test creates a column, fills a cell, undoes, renames and deletes; an offscreen window waits
-  // two seconds per actionability check, so the default 30 s is too short.
+  // One test creates a column, fills a cell, undoes, renames and deletes: many actionability checks
+  // for a hidden window; see `showWindow` in app.ts.
   test.slow()
   await gotoPapers(win)
   await firstPage(win)
@@ -788,8 +788,8 @@ test('列管理:内置列显隐持久到离开再回来,固定列藏不了;自�
 })
 
 test('多选格:连着提交两次都留得住,点输入框本身不关弹层', async ({ win }) => {
-  // Creates a column and writes one cell twice in a row; an offscreen window waits two seconds per
-  // actionability check, so the default 30 s is too short.
+  // Creates a column and writes one cell twice in a row: many actionability checks for a hidden
+  // window; see `showWindow` in app.ts.
   test.slow()
   await gotoPapers(win)
   await firstPage(win)
@@ -837,8 +837,8 @@ test('多选格:连着提交两次都留得住,点输入框本身不关弹层', 
 })
 
 test('列类型:建单选列、格子里建选项、按它分组、改名与撤销、删还在用的选项被拒', async ({ win }) => {
-  // One test creates a column, fills two cells, groups, renames, undoes and deletes; an offscreen
-  // window waits two seconds per actionability check.
+  // One test creates a column, fills two cells, groups, renames, undoes and deletes: many
+  // actionability checks for a hidden window; see `showWindow` in app.ts.
   test.slow()
   await gotoPapers(win)
   await firstPage(win)
@@ -1039,8 +1039,8 @@ test('分页条两端对齐:条数贴左缘,页码与每页档位挨着贴右缘
 })
 
 test('年份与发表分两列:年份只写年份、仍按它排序,发表只写出处、紧跟年份、可隐藏;详情里两行各写各的,详情开着时表只剩标题、作者与年份', async ({ win }) => {
-  // Two sorts, one hide and opening details; an offscreen window waits two seconds per
-  // actionability check, so the default 30 s is too short.
+  // Two sorts, one hide and opening details: many actionability checks for a hidden window;
+  // see `showWindow` in app.ts.
   test.slow()
   await gotoPapers(win)
   await firstPage(win)
@@ -1140,8 +1140,8 @@ test('详情面板保留完整列与列操作,Escape 收的是详情面板', asy
 })
 
 test('建列被 core 拒绝:占位格与打好的列名都留着,改了再回车才建出来', async ({ win }) => {
-  // Creates a column, fills two values, deletes the column and creates two more; an offscreen
-  // window waits two seconds per actionability check, so the default 30 s is too short.
+  // Creates a column, fills two values, deletes the column and creates two more: many actionability
+  // checks for a hidden window; see `showWindow` in app.ts.
   test.slow()
   await gotoPapers(win)
   await firstPage(win)
@@ -1512,7 +1512,7 @@ test('选中行的冻结标题格不透底,阅读状态菜单开着时整行是�
   expect(await paint()).toEqual(hovered)
 })
 
-// Pixel checks take element screenshots, which need a visible window.
+// Pixel checks take element screenshots, so they run in a shown window; see `showWindow` in app.ts.
 test.describe(() => {
   test.use({ showWindow: true })
 
@@ -1564,7 +1564,7 @@ test.describe(() => {
   })
 })
 
-// This test needs a visible window; an offscreen window cannot reproduce the behaviour.
+// This test needs a shown window; a hidden window cannot reproduce the behaviour.
 test.describe(() => {
   test.use({ showWindow: true })
 
@@ -1614,7 +1614,7 @@ test('分组齿轮是真菜单:每行是 menuitemcheckbox,勾选跟着分组栏;
   await expect(win.locator('.filters .segmented-control>button')).toHaveText(['无', '项目'])
 })
 
-// This test needs a visible window; an offscreen window cannot reproduce the behaviour.
+// This test needs a shown window; a hidden window cannot reproduce the behaviour.
 test.describe(() => {
   test.use({ showWindow: true })
 

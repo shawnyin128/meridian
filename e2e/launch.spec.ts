@@ -1,16 +1,16 @@
 import { _electron as electron } from '@playwright/test'
-import type { ElectronApplication } from '@playwright/test'
+import type { ElectronApplication, Page } from '@playwright/test'
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { prepareSelectedLibrary } from '../apps/desktop/src/core/workspace-layout.js'
-import { expect, openSettings, test } from './app.js'
+import { expect, LAUNCH_SWITCHES, openSettings, test } from './app.js'
 
 const APP_DIR = resolve(import.meta.dirname, '../apps/desktop')
 const FIXTURE_VAULT = resolve(APP_DIR, 'src/core/fixtures/vault')
 
 /** Launch arguments for a case that reads the UI's Chinese copy: the app must not follow the host's language. */
-const ZH_ARGS = [APP_DIR, '--lang=zh-CN']
+const ZH_ARGS = [APP_DIR, '--lang=zh-CN', ...LAUNCH_SWITCHES]
 
 /** Whether the app's first window is shown right now. */
 const visible = (app: ElectronApplication) =>
@@ -20,6 +20,26 @@ const visible = (app: ElectronApplication) =>
 const inDock = (app: ElectronApplication) =>
   app.evaluate(({ app: electronApp }) => electronApp.dock?.isVisible() ?? false)
 
+/**
+ * What a screenshot stores for a swatch painted rgb(53, 104, 255) at the page's top left, read without
+ * colour management: the page's own sRGB value, unless Chromium painted in a display's colour profile.
+ */
+async function storedSwatch(win: Page): Promise<number[]> {
+  await win.evaluate(() => {
+    const swatch = document.createElement('div')
+    swatch.style.cssText = 'position:fixed;left:0;top:0;width:8px;height:8px;z-index:2147483647;background:rgb(53, 104, 255)'
+    document.body.append(swatch)
+  })
+  const png = (await win.screenshot({ clip: { x: 2, y: 2, width: 1, height: 1 } })).toString('base64')
+  return win.evaluate(async (b64) => {
+    const bytes = new Blob([Uint8Array.from(atob(b64), (c) => c.charCodeAt(0))], { type: 'image/png' })
+    const bitmap = await createImageBitmap(bytes, { colorSpaceConversion: 'none' })
+    const ctx = new OffscreenCanvas(bitmap.width, bitmap.height).getContext('2d')!
+    ctx.drawImage(bitmap, 0, 0)
+    return [...ctx.getImageData(0, 0, 1, 1).data.slice(0, 3)]
+  }, png)
+}
+
 test('打包后的应用启动出一个窗口', async ({ win }) => {
   const mark = win.locator('.titlebar .appbtn .brandmark')
   await expect(mark).toHaveCount(1)
@@ -27,10 +47,11 @@ test('打包后的应用启动出一个窗口', async ({ win }) => {
   expect(await mark.evaluate((el) => (el as HTMLImageElement).naturalWidth)).toBeGreaterThan(0)
 })
 
-test('自动化传 MERIDIAN_SHOW_WINDOW=0 时窗口不上屏,Dock 里也没有应用图标', async ({ app, win }) => {
+test('自动化传 MERIDIAN_SHOW_WINDOW=0 时窗口不上屏,Dock 里也没有应用图标,截图存的是页面自己的 sRGB 色值', async ({ app, win }) => {
   await win.locator('.sidebar').waitFor()
   expect(await visible(app)).toBe(false)
   expect(await inDock(app)).toBe(false)
+  expect(await storedSwatch(win)).toEqual([53, 104, 255])
 })
 
 test('不传 MERIDIAN_SHOW_WINDOW 时窗口上屏', async ({ configHome }) => {
@@ -53,7 +74,7 @@ test('不传 MERIDIAN_SHOW_WINDOW 时窗口上屏', async ({ configHome }) => {
 test.describe('用例要窗口出画面时', () => {
   test.use({ showWindow: true })
 
-  test('窗口在所有显示器之外照常出画面:不把应用切到前台,拿不到系统焦点,Dock 里也没有应用图标', async ({ app }) => {
+  test('窗口在所有显示器之外照常出画面:不把应用切到前台,拿不到系统焦点,Dock 里也没有应用图标,截图存的是页面自己的 sRGB 色值', async ({ app }) => {
     // macOS reports activation only as an event. The window shows after the renderer's first paint,
     // long after this call returns, so the listener is in place before any activation could happen.
     await app.evaluate(({ app: electronApp }) => {
@@ -88,6 +109,7 @@ test.describe('用例要窗口出画面时', () => {
     const shot = await win.screenshot()
     const scale = await win.evaluate(() => devicePixelRatio)
     expect([shot.readUInt32BE(16), shot.readUInt32BE(20)]).toEqual([1600 * scale, 1300 * scale])
+    expect(await storedSwatch(win)).toEqual([53, 104, 255])
   })
 })
 

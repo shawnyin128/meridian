@@ -3,7 +3,7 @@ import type { ElectronApplication, Page } from '@playwright/test'
 import { cpSync, mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
-import { test as base, type MeridianWindow } from './app.js'
+import { LAUNCH_SWITCHES, test as base, type MeridianWindow } from './app.js'
 
 const APP_DIR = resolve(import.meta.dirname, '../apps/desktop')
 const EXAMPLE = resolve(import.meta.dirname, '../apps/desktop/src/core/fixtures/wiki-example-vault')
@@ -22,7 +22,7 @@ const test = base.extend<{ app: ElectronApplication }>({
     }
     const app = await electron.launch({
       // The specs assert Chinese copy, so the app must not follow the host's language.
-      args: [APP_DIR, '--lang=zh-CN'],
+      args: [APP_DIR, '--lang=zh-CN', ...LAUNCH_SWITCHES],
       env: {
         ...Object.fromEntries(Object.entries(process.env).filter((e): e is [string, string] => e[1] !== undefined)),
         MERIDIAN_VAULT_ROOT: vault,
@@ -44,7 +44,8 @@ const call = <T>(win: Page, method: string, params: unknown) => win.evaluate(
 )
 
 test('真实库的 store 读新布局:首页按两种聚合计数;一条提案写进库,页上出现,撤销后消失', async ({ win }) => {
-  // Before writing, after writing, and after undoing, you need to walk through the aggregation tree and click more than a dozen times; the window that is not on the screen needs to wait two seconds for each operation.
+  // Before writing, after writing and after undoing, the case walks the aggregation tree with more than
+  // a dozen clicks; see `showWindow` in app.ts.
   test.slow()
   await win.locator('[data-desk="wiki"]').click()
   await expect(shown(win).locator('.desk-head .t')).toHaveText('Wiki · 13')

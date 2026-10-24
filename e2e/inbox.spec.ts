@@ -357,8 +357,8 @@ test('入库撞上库里已有的同一份原文:不重复入库,卡片离开,�
 
 test.describe('这一条推送已经在别处入过库', () => {
   // Core's `jobs.status()` is polled every second (useJobs.ts) and bumps the vault revision on any
-  // external write, including this test's own bypass call; off-screen windows only paint that update
-  // once per second, so the click racing the stale card can lose to the poll there but not on screen.
+  // external write, including this test's own bypass call; a window that paints that update late lets
+  // the poll win the race against the click on the stale card. See `showWindow` in app.ts.
   test.use({ showWindow: true })
 
   test('界面上还没刷新时再点「入库」:报进拒绝提示而不是 .ipcerror', async ({ win }) => {

@@ -301,7 +301,7 @@ test('任务行开头的日期、时段、优先级和状态按需要注意的�
 })
 
 test.describe(() => {
-  // The record opens through a height transition, which an offscreen window, without frames, does not run.
+  // The record opens through a height transition, which runs over frames; see `showWindow` in app.ts.
   test.use({ showWindow: true })
 
   test('放不下的科研记录停在上面一会儿就向下展开整段,不弹 tooltip,移开就收回', async ({ app, win }) => {
@@ -1286,8 +1286,7 @@ test('关联里加一条:页面和链接的就地输入框都整个露在右栏�
 })
 
 test('属性栏焦点格:焦点移走或点到格外都像回车一样写回,Esc 才放弃', async ({ win }) => {
-  // Three edits, each checked in Core; an offscreen window waits two seconds per actionability
-  // check, so the default 30 s is too short.
+  // Three edits, each checked in Core: many actionability checks for a hidden window; see `showWindow` in app.ts.
   test.slow()
   await gotoProject(win)
   const focusNow = () => call<{ focus: string }>(win, 'project.get', { id: 'draft' }).then((p) => p.focus)
