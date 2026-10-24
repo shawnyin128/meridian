@@ -20,6 +20,7 @@ export {
   relevanceOf,
 } from './scoring.js'
 export { discoveryReasons, mergeIntentResults } from './merge.js'
+export { POOL_LIMIT, poolFirst, shareCap } from './pool.js'
 export type { IntentResult } from './merge.js'
 export { applyRecommendationSignals } from './signals.js'
 export {
@@ -28,7 +29,7 @@ export {
 export type { RecommendationEvaluationCase, RecommendationMetrics } from './evaluation.js'
 export {
   applyRecommendationPreferences, buildRecommendationProfile, clusterRecommendationProfile,
-  recommendationFingerprint, recommendationQueryIntent, recommendationSeedIds,
+  recommendationFingerprint, recommendationQuery, recommendationSeedIds,
   selectRecommendationIntents,
 } from './profile.js'
 export { createRecommendationService } from './service.js'
@@ -45,5 +46,7 @@ export type {
   RecommendationProvider,
   RecommendationSeed,
   RecommendationSource,
+  RefreshProgress,
+  RefreshScope,
   ScholarlyMetadata,
 } from './types.js'

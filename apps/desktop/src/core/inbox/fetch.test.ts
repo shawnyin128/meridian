@@ -69,7 +69,7 @@ describe('createWatchFetcher', () => {
     expect(store.listInbox().filter((entry) => entry.title !== 'Tree One').map((entry) => entry.source)).toEqual(before)
   })
 
-  it('整轮关注抓取共用单次推送上限', async () => {
+  it('整轮关注抓取共用单次推送上限:每条关注都去查,上限外的论文留在各自的候选池里', async () => {
     const { store, fetcher, queries } = setup(async () => [
       paper(`2609.${String(queries.length + 1).padStart(5, '0')}`, 'New Paper'),
       paper(`2609.${String(queries.length + 11).padStart(5, '0')}`, 'Another Paper'),
@@ -79,10 +79,45 @@ describe('createWatchFetcher', () => {
     const before = store.listInbox().length
     await fetcher.run()
     expect(store.listInbox()).toHaveLength(before + 1)
-    expect(queries).toHaveLength(1)
+    expect(queries).toHaveLength(2)
+    expect(store.refreshProgress({ kind: 'watch', id: 'dao' }).candidates.map((found) => found.id))
+      .toEqual(['2609.00003', '2609.00013'])
     expect(store.listFeed()[0]?.body).toMatchObject({
       kind: 'runs', runs: expect.arrayContaining([{ kind: 'strong', text: '1 篇新论文入队' }]),
     })
+  })
+
+  it('单次上限在几条关注之间平分,除不尽的那篇轮流给,而不是让列在前面的关注用光', async () => {
+    const prefix: Record<string, number> = { 'all:"speculative decoding"': 1, 'all:"MoE serving"': 2, 'au:Dao_T': 3 }
+    let run = 0
+    // Every run each watch finds three papers it never found before.
+    const { store, fetcher } = setup(async (query) => (
+      [1, 2, 3].map((at) => paper(`2609.${prefix[query]}${run}0${at}`, `${query} ${run}.${at}`))
+    ))
+    store.setDeliverySettings({ maxItemsPerRun: 4 })
+    const delivered = () => Object.keys(prefix).map((query) => (
+      store.listInbox().filter((entry) => entry.title.startsWith(query)).length
+    ))
+
+    run = 1
+    await fetcher.run()
+    expect(delivered()).toEqual([2, 1, 1])
+    run = 2
+    await fetcher.run()
+    expect(delivered()).toEqual([3, 3, 2])
+  })
+
+  it('上限外的论文留在这条关注的候选池里,下一轮先推,不被更新的论文挤掉', async () => {
+    let answer = [paper('2609.40001', 'Pooled First'), paper('2609.40002', 'Pooled Second')]
+    const { store, fetcher } = setup(async () => answer)
+    store.setDeliverySettings({ maxItemsPerRun: 1 })
+    await fetcher.run(['spec'])
+    answer = [paper('2609.40003', 'Newest'), ...answer]
+    await fetcher.run(['spec'])
+    expect(store.listInbox().filter((entry) => entry.watch === 'spec').slice(0, 2).map((entry) => entry.title))
+      .toEqual(['Pooled Second', 'Pooled First'])
+    expect(store.refreshProgress({ kind: 'watch', id: 'spec' }).candidates.map((found) => found.title))
+      .toContain('Newest')
   })
 
   it('一条关注搜不成:其余照抓,状态是失败带原因,抓完的时刻不记', async () => {
