@@ -173,8 +173,12 @@
   background:var(--content);z-index:5}
 .pdetail{height:100%;box-sizing:border-box;overflow:auto;overscroll-behavior:contain;padding:var(--sp-16)}
 .desk-body.withdetail,.desk-foot.withdetail{margin-right:var(--detailw)}
-.pd-h{display:flex;align-items:flex-start;gap:var(--sp-8);margin-bottom:var(--sp-12)}
-.pd-t{font-size:var(--fs-section);font-weight:var(--fw-title);line-height:var(--lh-ui);flex:1;min-width:0}
+/*
+ * The buttons take a row of their own at the head's right end, and the title the whole row below them.
+ * The title comes first in the markup, so Tab still reaches it before the buttons.
+ */
+.pd-h{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:var(--sp-4) var(--sp-8);margin-bottom:var(--sp-12)}
+.pd-t{order:1;width:100%;font-size:var(--fs-section);font-weight:var(--fw-title);line-height:var(--lh-ui)}
 /* The title is the panel's head, in the head's ink rather than a property value's grey. */
 .pd-t .metadata-editable{color:inherit}
 .pdetail .wkprops{grid-template-columns:52px 1fr;font-size:var(--fs-sm)}
