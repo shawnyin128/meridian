@@ -70,6 +70,8 @@ async function seed(out, app, today) {
   await session(out, app, {}, async (call) => {
     await seedInbox(state, call)
     await call('discovery.feedback', { id: 'seed-discovery-kvquant', feedback: 'more' })
+    await call('discovery.feedback', { id: 'seed-discovery-snapkv', feedback: 'less' })
+    await call('discovery.feedback', { id: 'seed-discovery-scissorhands', feedback: 'known' })
     await call('feed.list')
   })
   redatePapers(state, titles)

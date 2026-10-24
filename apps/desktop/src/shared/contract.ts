@@ -1196,12 +1196,21 @@ export const RecommendationReasonSchema = z.object({
   paperId: z.string().optional(),
 }).strict()
 
+/** A stream that lists an inbox entry: a watch, or a project's discovery, by id, with the group label it shows under. */
+export const InboxStreamSchema = z.object({
+  kind: z.enum(['watch', 'discovery']),
+  id: z.string(),
+  source: z.string(),
+}).strict()
+
 /**
  * Inbox candidate. `kind` distinguishes deterministic watch matches from
  * personalized discovery; legacy records migrate to watch matches. `watch` and
- * `project` identify the owning stream, `source` freezes the group label,
- * `reasons` contains structured Core rationale, and `rec` remains for legacy
- * compatibility. Feedback and ranking metadata stay in app state.
+ * `project` identify the stream that delivered it first, `source` freezes its
+ * group label, and `also` lists every other stream that delivered the same
+ * paper, in order. `reasons` contains structured Core rationale from all of
+ * them, and `rec` remains for legacy compatibility. Feedback and ranking
+ * metadata stay in app state.
  */
 export const InboxEntrySchema = z.object({
   id: z.string(),
@@ -1215,6 +1224,7 @@ export const InboxEntrySchema = z.object({
   abstract: z.string(),
   rec: z.string(),
   reasons: z.array(RecommendationReasonSchema).default([]),
+  also: z.array(InboxStreamSchema).optional(),
   feedback: z.enum(['more', 'less', 'known']).optional(),
   downloaded: z.boolean(),
   paper: z.string(),
@@ -1228,8 +1238,10 @@ export const InboxEntrySchema = z.object({
   }).strict().optional(),
 }).strict()
 
+/** Entries of one stream kind, of the one watch or project among them when named, which then sort as one group. */
 export const InboxListParamsSchema = z.object({
   kind: z.enum(['watch', 'discovery']).optional(),
+  watch: z.string().optional(),
   project: z.string().optional(),
   sort: z.enum(['recommended', 'latest', 'published', 'impact']).optional(),
 }).strict()
@@ -2449,6 +2461,7 @@ export type WatchAuthorSuggestion = z.infer<typeof WatchAuthorSuggestionSchema>
 export type WatchSuggestionResult = z.infer<typeof WatchSuggestionResultSchema>
 export type WatchSuggestionParams = z.infer<typeof WatchSuggestionParamsSchema>
 export type InboxEntry = z.infer<typeof InboxEntrySchema>
+export type InboxStream = z.infer<typeof InboxStreamSchema>
 export type InboxListParams = z.infer<typeof InboxListParamsSchema>
 export type InboxDownloadFailure = z.infer<typeof InboxDownloadFailureSchema>
 export type InboxDownloadResult = z.infer<typeof InboxDownloadResultSchema>

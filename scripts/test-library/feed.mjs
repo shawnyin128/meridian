@@ -4,10 +4,12 @@ import { dayFrom, onDay, readJson, writeJson } from './app.mjs'
 /**
  * Recommendations a watch fetch would have brought from arXiv, by stored id: the watch name they
  * came from, the paper, and what happens to them in the seed. `later` moves one to read-later on
- * that day, `dismiss` moves it to Trash.
+ * that day, `dismiss` moves it to Trash, and `unqueue` then takes it out of read-later into Trash.
+ * `alsoProject` names the seeded project whose discovery found the same paper, which then shows as
+ * one card under both. EAGLE is a paper the library already holds, which the App keeps out of the feed.
  */
 const RECOMMENDATIONS = [
-  { id: 'seed-inbox-sequoia', watch: 'speculative decoding', arxiv: '2402.12374', submitted: '2024-02-19',
+  { id: 'seed-inbox-sequoia', watch: 'speculative decoding', arxiv: '2402.12374', submitted: '2024-02-19', alsoProject: 'spec',
     title: 'Sequoia: Scalable, Robust, and Hardware-aware Speculative Decoding',
     authors: ['Zhuoming Chen', 'Avner May', 'Ruslan Svirschevski', 'Yuhsun Huang', 'Max Ryabinin', 'Zhihao Jia', 'Beidi Chen'],
     abstract: 'Sequoia builds the token tree for speculative decoding by dynamic programming and reports up to $4.04\\times$ faster decoding on an A100.' },
@@ -23,10 +25,18 @@ const RECOMMENDATIONS = [
     title: 'Draft & Verify: Lossless Large Language Model Acceleration via Self-Speculative Decoding',
     authors: ['Jun Zhang', 'Jue Wang', 'Huan Li', 'Lidan Shou', 'Ke Chen', 'Gang Chen', 'Sharad Mehrotra'],
     abstract: 'The model drafts by skipping some of its own intermediate layers and then verifies the draft with the full model, with no extra network.' },
+  { id: 'seed-inbox-osd', watch: 'speculative decoding', arxiv: '2310.07177', submitted: '2023-10-11', later: -2, unqueue: true,
+    title: 'Online Speculative Decoding',
+    authors: ['Xiaoxuan Liu', 'Lanxiang Hu', 'Peter Bailis', 'Alvin Cheung', 'Zhijie Deng', 'Ion Stoica', 'Hao Zhang'],
+    abstract: 'Online speculative decoding keeps distilling the draft model on the queries the service sees, raising its acceptance rate as traffic shifts.' },
   { id: 'seed-inbox-lookahead', watch: 'speculative decoding', arxiv: '2402.02057', submitted: '2024-02-03', dismiss: true,
     title: 'Break the Sequential Dependency of LLM Inference Using Lookahead Decoding',
     authors: ['Yichao Fu', 'Peter Bailis', 'Ion Stoica', 'Hao Zhang'],
     abstract: 'Lookahead decoding generates and verifies n-grams in parallel through Jacobi iteration, without a draft model.' },
+  { id: 'seed-inbox-eagle', watch: 'speculative decoding', arxiv: '2401.15077', submitted: '2024-01-26',
+    title: 'EAGLE: Speculative Sampling Requires Rethinking Feature Uncertainty',
+    authors: ['Yuhui Li', 'Fangyun Wei', 'Chao Zhang', 'Hongyang Zhang'],
+    abstract: 'EAGLE drafts at the feature level of the second-to-top layer and resolves feature uncertainty with the token sampled one step ahead.' },
   { id: 'seed-inbox-fa3', watch: 'Tri Dao', arxiv: '2407.08608', submitted: '2024-07-11',
     title: 'FlashAttention-3: Fast and Accurate Attention with Asynchrony and Low-precision',
     authors: ['Jay Shah', 'Ganesh Bikshandi', 'Ying Zhang', 'Vijay Thakkar', 'Pradeep Ramani', 'Tri Dao'],
@@ -43,10 +53,16 @@ export async function seedWatches(seed, call) {
   seed.watches = Object.fromEntries(watches.map((watch) => [watch.name, watch]))
   // The App posts this summary when a watch fetch over the network brings new papers.
   await onDay(seed, -1, () => call('feed.append', { source: 'inbox', body: { kind: 'runs', runs: [
-    { kind: 'text', text: '抓取：' }, { kind: 'strong', text: '6 篇新论文入队' },
-    { kind: 'text', text: '（speculative decoding ×5 · Tri Dao ×1）。' },
+    { kind: 'text', text: '抓取：' }, { kind: 'strong', text: '8 篇新论文入队' },
+    { kind: 'text', text: '（speculative decoding ×7 · Tri Dao ×1）。' },
   ] } }))
 }
+
+/** The stream record of project `project`'s discovery finding a paper a watch delivered first. */
+const alsoFound = (project) => ({
+  kind: 'discovery', id: project.id, source: `项目 · ${project.name}`,
+  reasons: [{ kind: 'project', label: `来自项目「${project.name}」` }, { kind: 'source', label: '由相似论文召回' }],
+})
 
 /**
  * Writes the recommendations in `.meridian/inbox.json` in the stored shape a watch fetch writes,
@@ -63,12 +79,13 @@ export function writeInbox(seed, extra = []) {
       rec: '', reasons: [{ kind: 'watch', label: `命中${kind}「${watch.name}」` }], downloaded: false, paper: '',
       pdf: `https://arxiv.org/pdf/${paper.arxiv}`, topic: watch.type === 'topic' ? watch.name : '', gone: false,
       arxiv: paper.arxiv, semanticId: '', meta: { authors: paper.authors, submitted: paper.submitted, journalRef: null },
+      ...(paper.alsoProject === undefined ? {} : { also: [alsoFound(seed.projects[paper.alsoProject])] }),
     }
   })
   writeJson(join(seed.out, 'library', '.meridian', 'inbox.json'), [...records, ...extra])
 }
 
-/** Moves recommendations to read-later and to Trash through the inbox's own methods. */
+/** Moves recommendations to read-later and to Trash through the inbox's and read-later's own methods. */
 export async function seedInbox(seed, call) {
   for (const paper of RECOMMENDATIONS) {
     if (paper.later !== undefined) {
@@ -76,6 +93,7 @@ export async function seedInbox(seed, call) {
       seed.days.later.set(paper.id, paper.later)
     }
     if (paper.dismiss) await call('inbox.dismiss', { id: paper.id })
+    if (paper.unqueue) await call('later.remove', { id: paper.id })
   }
 }
 

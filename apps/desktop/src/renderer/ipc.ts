@@ -301,8 +301,9 @@ export const discovery = {
   ),
   setIntent: (projectId: string, intentId: string, action: DiscoveryIntentAction) =>
     call<void>('discovery.intent', { projectId, intentId, action }),
+  /** Records the feedback; `less` and `known` move the entry to the trash and answer that trash entry. */
   feedback: (id: string, feedback: DiscoveryFeedback) =>
-    call<void>('discovery.feedback', { id, feedback }),
+    call<TrashedEntry | null>('discovery.feedback', { id, feedback }),
 }
 
 export const delivery = {
@@ -326,7 +327,7 @@ export const colourThemes = {
 
 export const later = {
   list: () => call<LaterEntry[]>('later.list', {}),
-  remove: (id: string) => call<void>('later.remove', { id }),
+  remove: (id: string) => call<TrashedEntry>('later.remove', { id }),
 }
 
 export const watch = {

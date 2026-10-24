@@ -38,14 +38,21 @@ const call = <T>(win: Page, method: string, params: unknown) => win.evaluate(
   [method, params] as const,
 )
 
+/** The other streams that list an entry, as Core answers them. */
+type Also = { also?: { kind: 'watch' | 'discovery'; id: string }[] }
 const inboxFromCore = (win: Page) =>
-  call<{
+  call<({
     id: string; watch: string; source: string; paper: string; downloaded: boolean; pdf: string
-  }[]>(win, 'inbox.list', {})
+  } & Also)[]>(win, 'inbox.list', {})
 const discoveryFromCore = (win: Page) =>
-  call<{ id: string; project: string; reasons: { label: string }[] }[]>(
+  call<({ id: string; project: string; reasons: { label: string }[] } & Also)[]>(
     win, 'inbox.list', { kind: 'discovery' },
   )
+/** The ids of the watches, or the projects, that list `entry`: the one that delivered it first, then the others. */
+const listedUnder = (entry: { watch?: string; project?: string } & Also, kind: 'watch' | 'discovery') => [
+  ...(kind === 'watch' ? [entry.watch ?? ''] : [entry.project ?? '']).filter((id) => id !== ''),
+  ...(entry.also ?? []).filter((stream) => stream.kind === kind).map((stream) => stream.id),
+]
 const laterFromCore = (win: Page) =>
   call<{ id: string; source: string; day: string }[]>(win, 'later.list', {})
 const watchesFromCore = (win: Page) =>
@@ -146,7 +153,9 @@ test('关注与项目发现是两条流,发现解释来源并接受显式反馈'
   await expect(shown(win, '.collapsible-group-title').first()).toContainText('项目 ·')
   // Discovery lists its projects under the sidebar row; picking one shows only that project's papers.
   const byProject = new Map<string, number>()
-  for (const entry of await discoveryFromCore(win)) byProject.set(entry.project, (byProject.get(entry.project) ?? 0) + 1)
+  for (const entry of await discoveryFromCore(win)) {
+    for (const project of listedUnder(entry, 'discovery')) byProject.set(project, (byProject.get(project) ?? 0) + 1)
+  }
   await expect(win.locator('[data-discovery-project]')).toHaveCount(byProject.size)
   const [firstProject, firstCount] = [...byProject.entries()][0]!
   await win.locator(`[data-discovery-project="${firstProject}"]`).click()
@@ -155,19 +164,45 @@ test('关注与项目发现是两条流,发现解释来源并接受显式反馈'
   await expect(shown(win, '.collapsible-group')).toHaveCount(1)
   await openInbox(win, 'discovery')
 
+  // More-like-this feedback keeps the card, pressed; less-like-this feedback then takes it out.
   const first = shown(win, '.pcard').first()
   await rowAction(first, '更多类似')
   await expect(first.locator('[aria-label="更多类似"]')).toHaveAttribute('aria-pressed', 'true')
 
   const before = (await discoveryFromCore(win)).length
-  await rowAction(shown(win, '.pcard').nth(1), '减少类似')
+  await rowAction(first, '减少类似')
   await expect.poll(async () => (await discoveryFromCore(win)).length).toBe(before - 1)
+})
+
+test('发现的卡片能忽略;忽略、减少类似和已经了解都进垃圾桶,恢复后回到发现,反馈一并撤掉', async ({ win }) => {
+  await openInbox(win, 'discovery')
+  await shown(win, '.desk-head .btn').filter({ hasText: '刷新发现' }).click()
+  await expect.poll(async () => (await discoveryFromCore(win)).length).toBeGreaterThan(0)
+  const delivered = await discoveryFromCore(win)
+  await expect(shown(win, '.pcard')).toHaveCount(delivered.length)
+  const title = (await cardTitles(win))[0]!
+
+  for (const label of ['忽略', '减少类似', '已经了解']) {
+    await openInbox(win, 'discovery')
+    await rowAction(shown(win, '.pcard').filter({ hasText: title }), label)
+    await expect(shown(win, '.pcard')).toHaveCount(delivered.length - 1)
+    expect((await trashFromCore(win)).map((item) => [item.kind, item.title])).toEqual([['inbox', title]])
+
+    await win.locator('[data-desk="trash"]').click()
+    await expect(shown(win, '.section-heading')).toHaveText('论文推送 · 1')
+    await rowAction(win.locator('.tgroup .trow'), '恢复')
+    await expect.poll(async () => (await trashFromCore(win)).length).toBe(0)
+    const restored = await call<{ title: string; feedback?: string }[]>(win, 'inbox.list', { kind: 'discovery' })
+    expect(restored.find((entry) => entry.title === title)).not.toHaveProperty('feedback')
+  }
+  await openInbox(win, 'discovery')
+  await expect(shown(win, '.pcard')).toHaveCount(delivered.length)
 })
 
 test('按关键词与作者各筛一档,面包屑与条数都跟着换', async ({ win }) => {
   const entries = await inboxFromCore(win)
   const counted = (await watchesFromCore(win)).map((w) => ({
-    ...w, n: entries.filter((e) => e.watch === w.id).length,
+    ...w, n: entries.filter((e) => listedUnder(e, 'watch').includes(w.id)).length,
   }))
   // At least two watches must have different counts, or this test could not tell whether filtering works.
   expect(new Set(counted.map((c) => c.n)).size).toBeGreaterThan(1)
@@ -244,56 +279,80 @@ test('「全部忽略」只清空自己这一组,逐组清完出空态,忽略的
   await expect(win.locator('#rowInboxAll .n')).toHaveCount(0)
 })
 
-test('入库:论文进库,按钮就地变开始阅读', async ({ win }) => {
+test('入库:论文进库,卡片离开论文推送和它的条数,提示里的开始阅读打开那一篇', async ({ win }) => {
   await openInbox(win, 'all')
-  await expect(shown(win, '.pcard')).toHaveCount((await inboxFromCore(win)).length)
+  const entries = await inboxFromCore(win)
+  await expect(shown(win, '.pcard')).toHaveCount(entries.length)
   const before = await paperTotal(win)
   const title = (await cardTitles(win))[0]!
 
-  const card = shown(win, '.pcard').first()
-  await rowAction(card, '下载并入库')
-  await expect(card.locator('[aria-label="开始阅读"]')).toHaveCount(1)
-  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已下载入库 · 可阅读')
-  await expect(card.locator('[aria-label="下载并入库"]')).toHaveCount(0)
+  await rowAction(shown(win, '.pcard').first(), '下载并入库')
+  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已入库')
+  await expect(shown(win, '.pcard')).toHaveCount(entries.length - 1)
+  expect(await cardTitles(win)).not.toContain(title)
 
   expect(await paperTotal(win)).toBe(before + 1)
-  expect((await inboxFromCore(win)).filter((e) => e.downloaded)).toHaveLength(1)
+  expect(await inboxFromCore(win)).toHaveLength(entries.length - 1)
+  await expect(win.locator('#rowInboxAll .n')).toHaveText(String(entries.length - 1))
   await expect(win.locator('[data-desk="papers"] .n')).toHaveText(String(before + 1))
 
-  // The paper added is the card's: filtering the paper table by its title shows it as the one row.
-  await win.locator('[data-desk="papers"]').click()
-  await win.locator('#libq').fill(title.slice(0, 24))
-  await expect(win.locator('.ptable tbody tr .pt-title .ci')).toHaveText([title])
+  // The paper the notice opens is the card's: the reader header shows the card's title.
+  await win.locator('#notice .btn', { hasText: '开始阅读' }).click()
+  await expect(win.locator('#crumb .cseg').last()).toHaveText(title)
 })
 
-test('入库撞上库里已有的那一篇:不重复入库,就地给出打开那一篇的入口', async ({ win }) => {
-  // Like every entry Core writes, this one names no paper; the user has since imported directly the
-  // same PDF that adding it downloads.
-  const dup = (await inboxFromCore(win)).find((e) => e.id === 'longspec')!
-  expect(dup.paper).toBe('')
-  const bytes = [...minimalPdf(CANNED_NET[dup.pdf]!.pdf!)]
+/**
+ * Imports directly, bypassing the UI, the PDF that adding the `longspec` inbox entry downloads, and
+ * returns the paper once the import's metadata parse, which may still retitle it, has settled. The
+ * import takes its title from the file name, so nothing yet tells it is the card's paper.
+ */
+async function importLongSpec(win: Page): Promise<{ id: string; title: string }> {
+  const entry = (await inboxFromCore(win)).find((e) => e.id === 'longspec')!
+  const bytes = [...minimalPdf(CANNED_NET[entry.pdf]!.pdf!)]
   const held = await win.evaluate((pdf) => (window as unknown as MeridianWindow).meridian.call(
     'papers.import', { filename: 'LongSpec.pdf', bytes: new Uint8Array(pdf) },
   ), bytes) as { paper: { id: string } }
-  // The import's metadata parse may still retitle the paper, so the title is read once it settles.
   await expect.poll(async () => (await call<{ uploads: { step: string }[] }>(win, 'jobs.status', {})).uploads
     .every((job) => job.step === 'done' || job.step === 'failed')).toBe(true)
-  const known = await call<{ title: string }>(win, 'papers.get', { id: held.paper.id })
+  return call<{ id: string; title: string }>(win, 'papers.get', { id: held.paper.id })
+}
+
+test('论文从别处进了库:它那张卡片离开论文推送和侧栏条数', async ({ win }) => {
+  await openInbox(win, 'all')
+  const entries = await inboxFromCore(win)
+  await expect(shown(win, '.pcard')).toHaveCount(entries.length)
+  await expect(shown(win, '.pcard[data-pid="longspec"]')).toHaveCount(1)
+
+  // Once the imported paper records the card's arXiv id, it is recognized as the card's paper.
+  const held = await importLongSpec(win)
+  await expect(shown(win, '.pcard[data-pid="longspec"]')).toHaveCount(1)
+  await call(win, 'papers.update', { id: held.id, patch: { identifier: 'arXiv:2607.01428' } })
+
+  await expect(shown(win, '.pcard[data-pid="longspec"]')).toHaveCount(0)
+  await expect(shown(win, '.pcard')).toHaveCount(entries.length - 1)
+  await expect(win.locator('#rowInboxAll .n')).toHaveText(String(entries.length - 1))
+})
+
+test('入库撞上库里已有的同一份原文:不重复入库,卡片离开,提示里的开始阅读打开库里那一篇', async ({ win }) => {
+  // Like every entry Core writes, this one names no paper. The user has imported directly the same PDF
+  // that adding it downloads, under another title, so only the PDF's bytes tell it is the same paper.
+  expect((await inboxFromCore(win)).find((e) => e.id === 'longspec')?.paper).toBe('')
+  const held = await importLongSpec(win)
+  await call(win, 'papers.update', { id: held.id, patch: { title: '我那一份 LongSpec' } })
   const before = await paperTotal(win)
 
   await openInbox(win, 'all')
-  const card = shown(win, `.pcard[data-pid="${dup.id}"]`)
+  const card = shown(win, '.pcard[data-pid="longspec"]')
   await rowAction(card, '下载并入库')
 
   await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('库里已有这一篇')
-  await expect(card.locator('.pdup span')).toHaveText(`库里已经有这一篇：「${known.title}」`)
-  // The vault has no extra paper, and the entry is not marked as added.
+  await expect(card).toHaveCount(0)
   expect(await paperTotal(win)).toBe(before)
-  expect((await inboxFromCore(win)).find((e) => e.id === dup.id)?.downloaded).toBe(false)
+  expect((await inboxFromCore(win)).map((e) => e.id)).not.toContain('longspec')
 
   // That entry point really opens the vault's paper: the reader header shows that paper's full title.
-  await card.locator('.pdup .btn', { hasText: '打开' }).click()
-  await expect(win.locator('#crumb .cseg').last()).toHaveText(known.title)
+  await win.locator('#notice .btn', { hasText: '开始阅读' }).click()
+  await expect(win.locator('#crumb .cseg').last()).toHaveText('我那一份 LongSpec')
 })
 
 test.describe('这一条推送已经在别处入过库', () => {
@@ -321,14 +380,14 @@ test.describe('这一条推送已经在别处入过库', () => {
   })
 })
 
-test('下载并入库时显示进度环,完成后就地变成开始阅读', async ({ win }) => {
+test('下载并入库时显示进度环,完成后卡片离开论文推送', async ({ win }) => {
   await openInbox(win, 'all')
   const card = shown(win, '.pcard[data-pid="drafterlite"]')
   await rowAction(card, '下载并入库')
   await expect(card.locator('.icbtn.busy[aria-label="从 arXiv 下载中"] .ring')).toHaveCount(1)
-  await expect(card.locator('[aria-label="开始阅读"]')).toHaveCount(1, { timeout: 10_000 })
-  await expect(card.locator('.ring')).toHaveCount(0)
-  expect((await inboxFromCore(win)).find((entry) => entry.id === 'drafterlite')?.downloaded).toBe(true)
+  await expect(card).toHaveCount(0, { timeout: 10_000 })
+  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已入库')
+  expect((await inboxFromCore(win)).map((entry) => entry.id)).not.toContain('drafterlite')
 })
 
 test('下载失败在卡片内给原因和重试,不占用全页错误', async ({ win }) => {
@@ -346,13 +405,14 @@ test('检查新论文按关注抓取一次,新论文进入相应分组且标题�
   await openInbox(win, 'all')
   const before = await inboxFromCore(win)
   await shown(win, '.desk-head .btn').filter({ hasText: '检查新论文' }).click()
-  await expect(shown(win, '.pcard')).toHaveCount(before.length + 2)
+  // The vault's Mixtral of Experts records 2026 and arXiv's 2024, more than a year apart, so it is another paper.
+  await expect(shown(win, '.pcard')).toHaveCount(before.length + 3)
   await expect(shown(win, '.desk-head .fetchnote')).toHaveText(/^上次检查 \d+月\d+日\d{2}:\d{2}$/)
   await expect(shown(win, '.desk-head .fetchnote .date-chip')).toHaveCount(2)
   expect((await cardTitles(win))[0]).toBe('Tree Width in Batched Serving')
   const fresh = shown(win, '.pcard').filter({ hasText: 'Tree Width in Batched Serving' })
   await expect(fresh.locator('.plabel')).toHaveText(['摘要'])
-  await expect(win.locator('#rowInboxAll .n')).toHaveText(String(before.length + 2))
+  await expect(win.locator('#rowInboxAll .n')).toHaveText(String(before.length + 3))
 })
 
 test('存入稍后阅读:离开推送屏,排到队首,再移出', async ({ win }) => {
@@ -395,6 +455,14 @@ test('存入稍后阅读:离开推送屏,排到队首,再移出', async ({ win }
   await rowAction(shown(win, '.pcard').first(), '移出')
   await expect(shown(win, '.desk-head .t')).toHaveText(`稍后阅读 · ${queued.length}`)
   expect((await laterFromCore(win)).map((e) => e.id)).toEqual(queued.map((e) => e.id))
+
+  // The removal went to the trash; restoring it puts the entry back at the head of the queue.
+  expect(await trashFromCore(win)).toEqual([expect.objectContaining({ kind: 'later', title })])
+  await win.locator('[data-desk="trash"]').click()
+  await rowAction(win.locator('.tgroup .trow'), '恢复')
+  await win.locator('#rowLater').click()
+  await expect(shown(win, '.desk-head .t')).toHaveText(`稍后阅读 · ${queued.length + 1}`)
+  expect((await laterFromCore(win)).map((e) => e.id)).toEqual([first.id, ...queued.map((e) => e.id)])
 })
 
 test('稍后阅读里有原文地址的条目可以直接开始阅读并在需要时先下载', async ({ win }) => {
@@ -418,7 +486,7 @@ test('稍后阅读里有原文地址的条目可以直接开始阅读并在需�
   const source = entries.find((x) => x.paper === shared.paper)!
   await openInbox(win, 'all')
   await rowAction(shown(win, `.pcard[data-pid="${source.id}"]`), '下载并入库')
-  await expect(shown(win, `.pcard[data-pid="${source.id}"] [aria-label="开始阅读"]`)).toHaveCount(1)
+  await expect(shown(win, `.pcard[data-pid="${source.id}"]`)).toHaveCount(0)
 
   await win.locator('#rowLater').click()
   await expect(shown(win, `.pcard[data-pid="${shared.id}"] [aria-label="开始阅读"]`)).toHaveCount(1)
@@ -719,9 +787,9 @@ test('侧栏角标数的都是库里的真实数量', async ({ win }) => {
   const entries = await inboxFromCore(win)
   const watches = await watchesFromCore(win)
   const queued = await laterFromCore(win)
-  const count = (id: string) => entries.filter((e) => e.watch === id).length
-  // A group counts the papers its watches delivered.
-  const papers = (type: string) => entries.filter((e) => watches.some((w) => w.id === e.watch && w.type === type)).length
+  const count = (id: string) => entries.filter((e) => listedUnder(e, 'watch').includes(id)).length
+  // A group counts each paper its watches delivered once.
+  const papers = (type: string) => entries.filter((e) => watches.some((w) => w.type === type && listedUnder(e, 'watch').includes(w.id))).length
 
   const badges: [string, number][] = [
     ['#rowInboxAll .n', entries.length],
