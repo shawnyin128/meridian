@@ -76,7 +76,8 @@ export function menuTemplate(
  * misspelled word under the pointer, then Cut, Copy, Paste and Select All, each dimmed when `target`
  * reports the page cannot perform it; on selected text outside a field it holds Copy. On macOS,
  * Look Up the selection, its whitespace collapsed and cut to 50 characters, comes right before Cut
- * or Copy.
+ * or Copy, and no item shows a shortcut, as in the system's context menus; elsewhere the items keep
+ * Electron's default shortcuts.
  * `replaceMisspelling` puts a suggestion in place of the misspelled word; `lookUp` shows the
  * selection in the system dictionary.
  */
@@ -97,14 +98,16 @@ export function editMenuTemplate(
     groups.push([{ label: copy.lookUp(named), click: actions.lookUp }])
   }
   const can = target.editFlags
+  // A role item shows its role's default shortcut unless it is given another; an empty one shows none.
+  const shortcut = platform === 'darwin' ? { accelerator: '' } : {}
   groups.push(target.isEditable
     ? [
-      { role: 'cut', label: copy.cut, enabled: can.canCut },
-      { role: 'copy', label: copy.copy, enabled: can.canCopy },
-      { role: 'paste', label: copy.paste, enabled: can.canPaste },
-      { role: 'selectAll', label: copy.selectAll, enabled: can.canSelectAll },
+      { role: 'cut', label: copy.cut, enabled: can.canCut, ...shortcut },
+      { role: 'copy', label: copy.copy, enabled: can.canCopy, ...shortcut },
+      { role: 'paste', label: copy.paste, enabled: can.canPaste, ...shortcut },
+      { role: 'selectAll', label: copy.selectAll, enabled: can.canSelectAll, ...shortcut },
     ]
-    : [{ role: 'copy', label: copy.copy, enabled: can.canCopy }])
+    : [{ role: 'copy', label: copy.copy, enabled: can.canCopy, ...shortcut }])
   return groups.filter((group) => group.length > 0)
     .flatMap((group, at) => (at === 0 ? group : [{ type: 'separator' } satisfies MenuItemConstructorOptions, ...group]))
 }
