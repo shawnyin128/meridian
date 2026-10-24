@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { Page } from '@playwright/test'
-import { expect, test, unfitTags, type MeridianWindow } from './app.js'
+import { expect, narrowTitles, test, unfitTags, type MeridianWindow } from './app.js'
 
 /** Screens stay mounted once visited, so selectors every screen has are scoped to the visible one. */
 const shown = (win: Page) => win.locator('.screenslot:not([hidden])')
@@ -214,7 +214,7 @@ test('未开始的卡片和进行中的行,末尾的更新日期起点和右边�
   }
 })
 
-test('项目名很长、行又放不下时,行里的标签都完整显示:标题和来源先让位,标签不被挤成一条缝', async ({ app, win }) => {
+test('项目名很长、行又放不下时,标题留够十二个字,放不下的列整列收起,留下的标签都完整显示', async ({ app, win }) => {
   const idea = await seedIdea(win, '挤压标签用想法')
   // A shelved project with a long name: its row shows the name and the shelved status tag side by side.
   await win.evaluate(async (ideaId) => {
@@ -234,9 +234,11 @@ test('项目名很长、行又放不下时,行里的标签都完整显示:标题
     await app.evaluate(({ BrowserWindow }, size) => BrowserWindow.getAllWindows()[0]!.setContentSize(size.width, size.height), { width, height })
     await expect.poll(() => win.evaluate(() => window.innerWidth)).toBe(width)
     expect(await unfitTags(shown(win).locator('.ideas-list')), `${width}×${height}`).toEqual([])
+    expect(await narrowTitles(shown(win).locator('.idea-row-open')), `${width}×${height}`).toEqual([])
     await row.click()
     await expect(shown(win).locator('.idea-detail-panel')).toHaveCount(1)
     expect(await unfitTags(shown(win).locator('.ideas-list')), `${width}×${height} 详情开着`).toEqual([])
+    expect(await narrowTitles(shown(win).locator('.idea-row-open')), `${width}×${height} 详情开着`).toEqual([])
     await shown(win).locator('.idea-detail-panel .panel-close').click()
     await expect(shown(win).locator('.idea-detail-panel')).toHaveCount(0)
   }

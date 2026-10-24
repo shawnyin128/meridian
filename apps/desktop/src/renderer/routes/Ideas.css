@@ -1,7 +1,8 @@
 /* A size container: 100cqh, its height inside the padding, keeps the detail panel inside the visible page at any window height. */
 .ideas-body{padding:var(--sp-20) var(--sp-24);container-type:size}
 .ideas-workspace{display:flex;align-items:flex-start;gap:0;width:100%;box-sizing:border-box}
-.ideas-list{flex:1;min-width:0}
+/* An inline-size container: the rows' columns follow the list's own width, which the detail panel narrows. */
+.ideas-list{flex:1;min-width:0;container:idea-list/inline-size}
 
 /* The idea card supports triage; full content and editing remain in the detail panel. */
 .idea-card{display:flex;align-items:flex-start;gap:var(--sp-12)}
@@ -15,19 +16,30 @@
 
 /*
  * The started and the done ideas are rows on one grid, so their columns line up from row to row and
- * across both groups. The project column is as wide as the widest project tags; the titles and the
- * sources give way to it.
+ * across both groups. The title keeps twelve characters of body text, the project column is as wide as
+ * the widest project tags, and the source column takes what is left. The first column also holds the
+ * row's inline padding, which the shared grid adds to its title.
  */
-.idea-row-groups{display:grid;grid-template-columns:minmax(0,1.1fr) max-content minmax(0,1.3fr) max-content max-content;
-  column-gap:var(--sp-12)}
+.idea-row-groups{--idea-row-inset:calc(var(--pad-card-inline) + 1px);--idea-title-least:calc(12 * var(--fs-base) + var(--idea-row-inset));
+  display:grid;column-gap:var(--sp-12);
+  grid-template-columns:minmax(var(--idea-title-least),1.1fr) minmax(0,max-content) minmax(0,1.3fr) max-content max-content}
 .idea-row-groups>*{grid-column:1/-1}
 .idea-rows{display:grid;grid-template-columns:subgrid}
 /* A row is padded inline like the cards above it plus their border, so its title, date and row actions line up with theirs. */
 .idea-row{display:grid;grid-column:1/-1;grid-template-columns:subgrid;align-items:center;
-  padding:var(--sp-8) calc(var(--pad-card-inline) + 1px);font-size:var(--fs-base)}
+  padding:var(--sp-8) var(--idea-row-inset);font-size:var(--fs-base)}
 .idea-row-open{display:flex;min-width:0;padding:0;border:0;background:none;color:inherit;font:inherit;text-align:left;cursor:inherit}
 .idea-row-work{display:flex;min-width:0;align-items:center;gap:var(--sp-6)}
 .idea-row-meta{display:flex;min-width:0;align-items:center;gap:var(--sp-8)}
+/* A list too narrow for every column drops whole ones: the source first, then the project. The detail panel shows both. */
+@container idea-list (width < 800px){
+  .idea-row-groups{grid-template-columns:minmax(var(--idea-title-least),1fr) minmax(0,max-content) max-content max-content}
+  .idea-row-meta{display:none}
+}
+@container idea-list (width < 600px){
+  .idea-row-groups{grid-template-columns:minmax(var(--idea-title-least),1fr) max-content max-content}
+  .idea-row-work{display:none}
+}
 
 /* Ideas by project: the name, then three counts spread over the list's width, under their column labels. */
 .idea-stats-head,.idea-stats-row{display:grid;grid-template-columns:minmax(0,2fr) repeat(3,minmax(0,1fr));align-items:center;column-gap:var(--sp-16)}

@@ -239,6 +239,19 @@ export function unfitTags(scope: Locator): Promise<{ text: string; width: number
     .map(({ text, width, needs, hidden }) => ({ text, width, needs, hidden }))))
 }
 
+/**
+ * The shown boxes among `titles` that are narrower than the least a list row keeps for its title,
+ * twelve characters of body text (12 × --fs-base), each with its text and width.
+ */
+export function narrowTitles(titles: Locator): Promise<{ text: string; width: number }[]> {
+  return titles.evaluateAll((boxes) => {
+    const least = 12 * parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--fs-base'))
+    return boxes.filter((box) => box.getClientRects().length > 0)
+      .map((box) => ({ text: box.textContent!.trim(), width: box.getBoundingClientRect().width }))
+      .filter((title) => title.width < least - 0.5)
+  })
+}
+
 /** How far below its screen's header the top of `content` lies, in px. */
 export function belowHeader(content: Locator): Promise<number> {
   return content.evaluate((el) => el.getBoundingClientRect().top
