@@ -2063,6 +2063,26 @@ describe('vault store on the aggregation layout', () => {
       expect(store.chatForPaper(PAPER)).toMatchObject({ id: taken.id, messageCount: 1 })
     })
 
+    it('新版本写进对话记录里、这个版本不认识的字段，删掉进垃圾桶、重开库恢复、恢复后再改都原样留着', () => {
+      const file = join(vault, '.meridian', 'chats.json')
+      const written = {
+        id: 'chat-901', title: '新版本写的对话', named: true, archived: false, pinned: true,
+        messages: [{
+          id: 'msg-902', role: 'you', runs: [{ kind: 'text', text: '新版本问的' }], actions: [], sentAt: '2026-09-10T09:00:00Z',
+        }],
+      }
+      mkdirSync(join(vault, '.meridian'), { recursive: true })
+      writeFileSync(file, JSON.stringify([written], null, 2))
+
+      createVaultStore(vault, () => '2026-09-10').deleteChat(written.id)
+      expect(JSON.parse(trashFile())[0].chat).toEqual(written)
+      const reopened = createVaultStore(vault, () => '2026-09-10')
+      reopened.restoreTrash(reopened.listTrash()[0]!.id)
+      expect(JSON.parse(readFileSync(file, 'utf8'))).toEqual([written])
+      reopened.setChatArchived(written.id, true)
+      expect(JSON.parse(readFileSync(file, 'utf8'))).toEqual([{ ...written, archived: true }])
+    })
+
     it('彻底删除、过了保留期和清空垃圾桶都把删掉的对话连同消息一起清掉，再也恢复不了', () => {
       let day = '2026-09-10'
       const dated = createVaultStore(vault, () => day)
