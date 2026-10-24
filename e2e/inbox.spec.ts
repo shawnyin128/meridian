@@ -164,41 +164,39 @@ test('关注与项目发现是两条流,发现解释来源并接受显式反馈'
   await expect(shown(win, '.collapsible-group')).toHaveCount(1)
   await openInbox(win, 'discovery')
 
+  // 更多类似 keeps the card, pressed; 减少类似 then takes it out.
   const first = shown(win, '.pcard').first()
   await rowAction(first, '更多类似')
   await expect(first.locator('[aria-label="更多类似"]')).toHaveAttribute('aria-pressed', 'true')
 
   const before = (await discoveryFromCore(win)).length
-  await rowAction(shown(win, '.pcard').nth(1), '减少类似')
+  await rowAction(first, '减少类似')
   await expect.poll(async () => (await discoveryFromCore(win)).length).toBe(before - 1)
 })
 
 test('发现的卡片能忽略;忽略、减少类似和已经了解都进垃圾桶,恢复后回到发现,反馈一并撤掉', async ({ win }) => {
   await openInbox(win, 'discovery')
   await shown(win, '.desk-head .btn').filter({ hasText: '刷新发现' }).click()
-  await expect.poll(async () => (await discoveryFromCore(win)).length).toBeGreaterThan(2)
+  await expect.poll(async () => (await discoveryFromCore(win)).length).toBeGreaterThan(0)
   const delivered = await discoveryFromCore(win)
   await expect(shown(win, '.pcard')).toHaveCount(delivered.length)
-  const titles = await cardTitles(win)
+  const title = (await cardTitles(win))[0]!
 
   for (const label of ['忽略', '减少类似', '已经了解']) {
-    const count = await shown(win, '.pcard').count()
-    await rowAction(shown(win, '.pcard').first(), label)
-    await expect(shown(win, '.pcard')).toHaveCount(count - 1)
+    await openInbox(win, 'discovery')
+    await rowAction(shown(win, '.pcard').filter({ hasText: title }), label)
+    await expect(shown(win, '.pcard')).toHaveCount(delivered.length - 1)
+    expect((await trashFromCore(win)).map((item) => [item.kind, item.title])).toEqual([['inbox', title]])
+
+    await win.locator('[data-desk="trash"]').click()
+    await expect(shown(win, '.section-heading')).toHaveText('论文推送 · 1')
+    await rowAction(win.locator('.tgroup .trow'), '恢复')
+    await expect.poll(async () => (await trashFromCore(win)).length).toBe(0)
+    const restored = await call<{ title: string; feedback?: string }[]>(win, 'inbox.list', { kind: 'discovery' })
+    expect(restored.find((entry) => entry.title === title)).not.toHaveProperty('feedback')
   }
-  const trash = await trashFromCore(win)
-  expect(trash.map((item) => [item.kind, item.title])).toEqual(titles.slice(0, 3).reverse().map((title) => ['inbox', title]))
-
-  await win.locator('[data-desk="trash"]').click()
-  await expect(shown(win, '.section-heading')).toHaveText('论文推送 · 3')
-  for (let left = 3; left > 0; left -= 1) await rowAction(win.locator('.tgroup .trow').first(), '恢复')
-  await expect.poll(async () => (await trashFromCore(win)).length).toBe(0)
-
   await openInbox(win, 'discovery')
   await expect(shown(win, '.pcard')).toHaveCount(delivered.length)
-  expect((await cardTitles(win)).sort()).toEqual([...titles].sort())
-  const restored = await call<{ id: string; feedback?: string }[]>(win, 'inbox.list', { kind: 'discovery' })
-  expect(restored.filter((entry) => entry.feedback !== undefined)).toEqual([])
 })
 
 test('按关键词与作者各筛一档,面包屑与条数都跟着换', async ({ win }) => {
@@ -305,7 +303,8 @@ test('入库:论文进库,卡片离开论文推送和它的条数,提示里的�
 
 /**
  * Imports directly, bypassing the UI, the PDF that adding the `longspec` inbox entry downloads, and
- * returns the paper once the import's metadata parse, which may still retitle it, has settled.
+ * returns the paper once the import's metadata parse, which may still retitle it, has settled. The
+ * import takes its title from the file name, so nothing yet tells it is the card's paper.
  */
 async function importLongSpec(win: Page): Promise<{ id: string; title: string }> {
   const entry = (await inboxFromCore(win)).find((e) => e.id === 'longspec')!
@@ -324,8 +323,10 @@ test('论文从别处进了库:它那张卡片离开论文推送和侧栏条数'
   await expect(shown(win, '.pcard')).toHaveCount(entries.length)
   await expect(shown(win, '.pcard[data-pid="longspec"]')).toHaveCount(1)
 
-  // The PDF carries the card's title, which is how the vault's paper is recognized.
-  await importLongSpec(win)
+  // Once the imported paper records the card's arXiv id, it is recognized as the card's paper.
+  const held = await importLongSpec(win)
+  await expect(shown(win, '.pcard[data-pid="longspec"]')).toHaveCount(1)
+  await call(win, 'papers.update', { id: held.id, patch: { identifier: 'arXiv:2607.01428' } })
 
   await expect(shown(win, '.pcard[data-pid="longspec"]')).toHaveCount(0)
   await expect(shown(win, '.pcard')).toHaveCount(entries.length - 1)
@@ -334,7 +335,7 @@ test('论文从别处进了库:它那张卡片离开论文推送和侧栏条数'
 
 test('入库撞上库里已有的同一份原文:不重复入库,卡片离开,提示里的开始阅读打开库里那一篇', async ({ win }) => {
   // Like every entry Core writes, this one names no paper. The user has imported directly the same PDF
-  // that adding it downloads, and retitled it, so only the PDF's bytes tell it is the same paper.
+  // that adding it downloads, under another title, so only the PDF's bytes tell it is the same paper.
   expect((await inboxFromCore(win)).find((e) => e.id === 'longspec')?.paper).toBe('')
   const held = await importLongSpec(win)
   await call(win, 'papers.update', { id: held.id, patch: { title: '我那一份 LongSpec' } })
