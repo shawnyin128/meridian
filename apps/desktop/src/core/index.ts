@@ -120,7 +120,7 @@ import { sleep } from './net/http.js'
 import { unopenedStore } from './unopened-store.js'
 import type { VaultStore } from './vault.js'
 import { createDesktopVaultStore, createVaultStore } from './vault-store.js'
-import { recordChange, trashedEntry } from './write-receipts.js'
+import { recordChange, recordChangeIfAny, trashedEntry } from './write-receipts.js'
 import {
   deleteLibraryBackup, listLibraryBackups, resetLibrary, switchLibraryBackup,
 } from './workspace-layout.js'
@@ -476,7 +476,8 @@ registerHandler('papers.reading', (params) =>
   store.paperReading(PapersReadingParamsSchema.parse(params).id))
 registerHandler('papers.mutateReading', (params) => {
   const { id, mutation } = PapersMutateReadingParamsSchema.parse(params)
-  return store.mutatePaperReading(id, mutation)
+  const { result, change } = recordChangeIfAny(store, () => store.mutatePaperReading(id, mutation))
+  return { reading: result, change }
 })
 registerHandler('harness.prepare', (params) => {
   const { paperId } = HarnessPrepareParamsSchema.parse(params)
@@ -506,8 +507,11 @@ registerHandler('papers.columns', (params) => {
   EmptyParamsSchema.parse(params)
   return store.paperColumns()
 })
-registerHandler('papers.setColumns', (params) =>
-  store.setPaperColumns(PapersSetColumnsParamsSchema.parse(params).columns))
+registerHandler('papers.setColumns', (params) => {
+  const { columns } = PapersSetColumnsParamsSchema.parse(params)
+  const { change } = recordChangeIfAny(store, () => store.setPaperColumns(columns))
+  return { change }
+})
 registerHandler('papers.renameOption', (params) => {
   const { key, from, to } = PapersRenameOptionParamsSchema.parse(params)
   const { change } = recordChange(store, () => store.renamePaperOption(key, from, to))

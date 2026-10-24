@@ -745,6 +745,53 @@ test('列管理:内置列显隐持久到离开再回来,固定列藏不了;自�
   await expect.poll(head).not.toContain('批注')
 })
 
+/** Clicks Undo on the notice the last write showed, and waits for the notice saying it was undone. */
+async function undoFromNotice(win: Page): Promise<void> {
+  const undo = win.locator('#notice .btn')
+  await expect(undo).toHaveText('撤销')
+  await undo.click()
+  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已撤销')
+}
+
+test('删掉一列,提示里的撤销把它放回,格子里的值还在', async ({ win }) => {
+  await seed(win, [{ key: 'note', label: '备注', type: 'text', options: [] }], [{ note: '删列前写下的值' }])
+  const before = await call<PaperColumns>(win, 'papers.columns', {})
+  await gotoPapers(win)
+  await firstPage(win)
+  const head = () => win.locator('.ptable thead th').allTextContents()
+  const menu = win.locator('[data-radix-popper-content-wrapper] .mi.colrow')
+  await win.locator('.ptable thead').hover()
+  await win.locator('.ptable thead [aria-label="列设置"]').click()
+  await menu.filter({ hasText: '备注' }).hover()
+  await menu.filter({ hasText: '备注' }).locator('[aria-label="删除列"]').click()
+  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已删除列「备注」')
+  await expect.poll(head).not.toContain('备注')
+
+  await undoFromNotice(win)
+  await expect.poll(head).toContain('备注')
+  await expect(win.locator('.ptable tbody tr').first().locator('td.pt-cust')).toHaveText('删列前写下的值')
+  expect((await call<PaperColumns>(win, 'papers.columns', {})).custom).toEqual(before.custom)
+})
+
+test('删掉一个没人用的选项,提示里的撤销把它放回', async ({ win }) => {
+  await seed(win, [{ key: 'pick', label: '读法', type: 'select', options: ['精读', '略读'] }], [{ pick: '精读' }])
+  const before = await call<PaperColumns>(win, 'papers.columns', {})
+  await gotoPapers(win)
+  await firstPage(win)
+  const menu = win.locator('[data-radix-popper-content-wrapper] .mi.colrow')
+  await win.locator('.ptable thead').hover()
+  await win.locator('.ptable thead [aria-label="列设置"]').click()
+  await menu.filter({ hasText: '读法' }).locator('.cmx.optx').click()
+  const spare = win.locator('[data-radix-popper-content-wrapper] .mi.optrow', { hasText: '略读' })
+  await spare.hover()
+  await spare.locator('[aria-label="删除选项"]').click()
+  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已删除选项')
+  await expect(spare).toHaveCount(0)
+
+  await undoFromNotice(win)
+  await expect.poll(async () => (await call<PaperColumns>(win, 'papers.columns', {})).custom).toEqual(before.custom)
+})
+
 test('多选格:连着提交两次都留得住,点输入框本身不关弹层', async ({ win }) => {
   // Creates a column and writes one cell twice in a row; an offscreen window waits two seconds per
   // actionability check, so the default 30 s is too short.

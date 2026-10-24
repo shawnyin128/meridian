@@ -856,14 +856,14 @@ export function PaperTable() {
    * A column configuration change, queued on the column chain: when its turn comes, `update` computes
    * the new configuration from the last confirmed column set and it is handed to Core. It takes effect
    * only once written (`onApplied` is called synchronously at that moment), bumps the vault revision,
-   * shows its success notice, and drops a deleted column's width along with the column. Returns whether it was
-   * written.
+   * shows its success notice, which offers Undo when the change deletes a column or an option, and drops
+   * a deleted column's width along with the column. Returns whether it was written.
    */
   const changeColumns = (
     update: (base: PaperColumns) => PaperColumns, onApplied?: () => void,
   ): Promise<boolean> => writeColumns(async (base) => {
     const next = update(base)
-    await papers.setColumns(next)
+    const written = await papers.setColumns(next)
     bump()
     const gone = base.custom.find((c) => !next.custom.some((n) => n.key === c.key))
     if (gone) {
@@ -874,7 +874,10 @@ export function PaperTable() {
       })
     }
     const note = columnsNote(base, next, m.papers.notices)
-    if (note !== undefined) notice.success(note)
+    const dropped = gone !== undefined || next.custom.some((column) => base.custom
+      .find((held) => held.key === column.key)?.options.some((option) => !column.options.includes(option)))
+    // Core records every change to the custom columns, so a deletion always has a change to undo.
+    if (note !== undefined) notice.success(note, dropped ? undo.change({ change: written.change! }) : undefined)
     return next
   }, onApplied)
 

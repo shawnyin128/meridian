@@ -12,7 +12,8 @@ import type {
   HarnessRejectPaperWikiResult, HarnessRunReceipt,
   LibraryBackup, LibraryLocation, LibraryResetResult, ListResult,
   MilestoneFields, NetFailed, PaperColumn, PaperColumns, PaperFields, PaperImportResult, PaperReading, PaperRow,
-  Proposal, ProjectDetail, ProjectFields, ProjectRecordedChange, ProjectWorkspaceBinding, ReadingMutation, RecordedChange,
+  Proposal, ProjectDetail, ProjectFields, ProjectRecordedChange, ProjectWorkspaceBinding, ReadingMutation,
+  OptionalRecordedChange, ReadingRecordedChange, RecordedChange,
   ResearchIdea,
   ResearchIdeaGraphPlacement, ResearchIdeaPatch, ResearchIdeaPlaceOnGraphResult,
   ResearchIdeaPromoteResult,
@@ -136,9 +137,9 @@ export const papers = {
   retryMetadata: (id: string) => call<void>('papers.retryMetadata', { id }),
   reading: (id: string) => call<PaperReading>('papers.reading', { id }),
   mutateReading: (id: string, mutation: ReadingMutation) =>
-    call<PaperReading>('papers.mutateReading', { id, mutation }),
+    call<ReadingRecordedChange>('papers.mutateReading', { id, mutation }),
   columns: () => call<PaperColumns>('papers.columns', {}),
-  setColumns: (columns: PaperColumns) => call<void>('papers.setColumns', { columns }),
+  setColumns: (columns: PaperColumns) => call<OptionalRecordedChange>('papers.setColumns', { columns }),
   renameOption: (key: string, from: string, to: string) =>
     call<RecordedChange>('papers.renameOption', { key, from, to }),
   setColumnType: (key: string, type: PaperColumn['type']) =>

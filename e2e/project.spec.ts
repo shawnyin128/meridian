@@ -724,7 +724,7 @@ test('新建一个任务再删掉,任务数前后一致', async ({ win }) => {
 
 /** The parts of the draft project a removal on its page can take away, read from Core, bypassing the UI. */
 const removable = (win: Page) => call<{
-  tasks: unknown[]; milestones: unknown[]; relations: unknown[]; papers: string[]
+  tasks: unknown[]; milestones: unknown[]; relations: unknown[]; papers: string[]; attachments: unknown[]
 }>(win, 'project.get', { id: 'draft' })
 
 /** Clicks Undo on the notice the last write showed, and waits for the notice saying it was undone. */
@@ -806,6 +806,23 @@ test('移除一篇关联论文,提示里的撤销把它放回', async ({ win }) 
   await undoFromNotice(win)
   await expect(chip).toHaveCount(1)
   expect((await removable(win)).papers).toEqual(before)
+})
+
+test('删掉一个附件,提示里的撤销把它放回', async ({ win }) => {
+  await gotoProject(win)
+  const rows = win.locator('.screenslot:not([hidden]) .attachment-list .attrow')
+  const before = (await removable(win)).attachments
+  await expect(rows).toHaveCount(before.length)
+  await rowAction(rows.first(), '.ax')
+  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已移入垃圾桶')
+  await expect(rows).toHaveCount(before.length - 1)
+
+  await undoFromNotice(win)
+  await expect(rows).toHaveCount(before.length)
+  // Undo restores the attachment from the trash, which puts it back at the end of the list.
+  const after = (await removable(win)).attachments
+  expect(after).toHaveLength(before.length)
+  expect(after).toEqual(expect.arrayContaining(before))
 })
 
 test('科研图展示多个活跃节点,节点以只读 Markdown、分支结果与 Agent 记录呈现', async ({ win }) => {

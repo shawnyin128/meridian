@@ -1287,13 +1287,9 @@ export function ProjectDetail({
                     onReveal={(path) => void files.reveal(path).then((found) => {
                       if (!found) notice.refusal(m.project.attachments.missing)
                     })}
-                    onRemove={(attachmentId) => {
-                      discardOpenEdits()
-                      void write(projectApi.deleteAttachment(projectId, attachmentId).then((deleted) => {
-                        setProject(deleted.project)
-                        return deleted
-                      }), { note: m.common.trashed, action: undo.change })
-                    }}
+                    onRemove={(attachmentId) => applyRemoval(
+                      projectApi.deleteAttachment(projectId, attachmentId), m.common.trashed,
+                    )}
                   />
                 </>
               )

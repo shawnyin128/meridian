@@ -22,10 +22,12 @@ export const reader = {
     newAria: '新笔记',
     placeholder: (page: number) => `第 ${page} 页的笔记`,
     pageAria: (page: number) => `第 ${page} 页笔记`,
+    deleted: '已删除笔记',
   },
   highlights: {
     noteAria: (page: number) => `第 ${page} 页高亮批注`,
     annotate: '这段高亮的批注',
+    deleted: '已删除高亮',
   },
   remark: {
     heading: '随笔 · 本篇',

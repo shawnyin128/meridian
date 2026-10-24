@@ -189,7 +189,7 @@ export async function seedPapers(seed, call, files) {
     await onDay(seed, paper.days >= -3 ? 0 : -9, () => call('papers.update', { id: seed.papers[paper.key], patch: paper.fields }))
   }
   const eagle = seed.papers.eagle
-  const reading = (id, mutation) => call('papers.mutateReading', { id, mutation })
+  const reading = (id, mutation) => call('papers.mutateReading', { id, mutation }).then((written) => written.reading)
   const highlight = async (key, pattern, count, color) =>
     reading(seed.papers[key], { kind: 'highlight.add', page: 1, ...await passage(files[key], pattern, count), color })
   await highlight('eagle', /reconsider speculative sampling/, 2, 'yellow')
