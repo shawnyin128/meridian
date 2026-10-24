@@ -293,7 +293,7 @@ function renderTaskPanel(
   return renderToStaticMarkup(
     <MessagesProvider>
       <ProjectTaskPanel
-        task={{ ...task, ...taskOverrides }} node={node} nodes={[]} handSet={false}
+        projectId="p1" task={{ ...task, ...taskOverrides }} node={node} nodes={[]} handSet={false}
         onClose={vi.fn()} onSaveNote={vi.fn()} onOpenNode={vi.fn()} onSetNode={vi.fn()}
       />
     </MessagesProvider>,
@@ -350,7 +350,7 @@ describe('ProjectTaskPanel', () => {
     act(() => root.render(
       <MessagesProvider>
         <ProjectTaskPanel
-          task={{ ...task, note: '原备注' }} node={undefined} nodes={[]} handSet={false}
+          projectId="p1" task={{ ...task, note: '原备注' }} node={undefined} nodes={[]} handSet={false}
           onClose={vi.fn()} onSaveNote={onSaveNote} onOpenNode={vi.fn()} onSetNode={vi.fn()}
         />
       </MessagesProvider>,
@@ -409,7 +409,7 @@ describe('ProjectTaskPanel', () => {
       act(() => root!.render(
         <MessagesProvider>
           <ProjectTaskPanel
-            task={task} node={props.node} nodes={props.nodes ?? nodes} handSet={props.handSet ?? false}
+            projectId="p1" task={task} node={props.node} nodes={props.nodes ?? nodes} handSet={props.handSet ?? false}
             onClose={vi.fn()} onSaveNote={vi.fn()} onOpenNode={vi.fn()} onSetNode={onSetNode}
           />
         </MessagesProvider>,

@@ -32,6 +32,7 @@ import { headingsOf, MarkdownBox } from '../components/Markdown.js'
 import { Pager } from '../components/Pager.js'
 import { PickRow, type PickHit } from '../components/PickRow.js'
 import { nextKey, slugOf } from '../lib/slug.js'
+import { editText, useDrafts, usePruneDrafts, type EditDraft } from '../hooks/useDrafts.js'
 import { useRowCap } from '../hooks/useRowCap.js'
 import { useUndo } from '../hooks/useUndo.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
@@ -349,6 +350,12 @@ function Toc({ body, main }: { body: string; main: RefObject<HTMLDivElement | nu
  * This screen holds no vault data of its own. Back follows history: when another screen jumped here,
  * that screen is on the stack too, and going back past the last page returns to it.
  */
+/** The id of every Wiki page: each aggregation's, and each paper's page. */
+async function wikiPageIds(): Promise<string[]> {
+  const [cards, paperIds] = await Promise.all([wiki.cards(), papers.allIds()])
+  return [...cards.map((card) => card.id), ...paperIds.map((id) => `${PAPER_PAGE}${id}`)]
+}
+
 export function Wiki() {
   const fmt = useFormat()
   const m = useMessages()
@@ -385,7 +392,8 @@ export function Wiki() {
   const write = useVaultWrite()
   const undo = useUndo()
   const box = useRef<HTMLDivElement>(null)
-  const [editing, setEditing] = useState(false)
+  const bodies = useDrafts<EditDraft>(['wiki', place ?? ''])
+  usePruneDrafts(['wiki'], wikiPageIds)
   const [saving, setSaving] = useState(false)
   const [pending, setPending] = useState(false)
   const [adding, setAdding] = useState<'child' | 'paper' | 'columns' | null>(null)
@@ -397,10 +405,6 @@ export function Wiki() {
   const paperBtn = useRef<HTMLButtonElement>(null)
   const colBtn = useRef<HTMLButtonElement>(null)
   const colAdd = useRef<HTMLButtonElement>(null)
-
-  // A page change or vault write discards the source being edited: as with Project notes, anything
-  // that re-renders the whole screen discards it.
-  useEffect(() => setEditing(false), [place, revision])
 
   // A page change or vault write also closes whichever add row or column editor is open.
   useEffect(() => {
@@ -563,6 +567,7 @@ export function Wiki() {
   const shownReading = shownPaper !== null && reading?.paperId === shownPaper.id.slice(PAPER_PAGE.length)
     ? reading : null
   const shownBacklinks = backlinks !== null && backlinks.page === place ? backlinks.links : []
+  const bodyEdit = editText(bodies, 'body', shownAgg?.body ?? shownPaper?.body ?? '')
   // Until the place shows its content it is a placeholder, which cannot be scrolled that far.
   const shown = place === null ? home !== null
     : place === REVIEW ? proposals !== null
@@ -712,11 +717,11 @@ export function Wiki() {
    * page fetch again.
    */
   const saveBody = () => {
-    if (saving) return
+    if (saving || bodyEdit.stale) return
     const next = box.current?.innerText.trim() ?? ''
     setSaving(true)
     void write(wiki.update(place!, next).then(() => {
-      setEditing(false)
+      bodyEdit.drop()
     }), { note: m.wiki.saved }).finally(() => setSaving(false))
   }
 
@@ -725,7 +730,7 @@ export function Wiki() {
     <SectionHeading
       actions={(
         <EditActions
-          editing={editing} saving={saving} onEdit={() => setEditing(true)} onCancel={() => setEditing(false)}
+          editing={bodyEdit.editing} saving={saving} canSave={!bodyEdit.stale} onEdit={bodyEdit.start} onCancel={bodyEdit.drop}
           onSave={saveBody}
         />
       )}
@@ -918,8 +923,8 @@ export function Wiki() {
                 />
                 {bodyHead(shownAgg.title)}
                 <MarkdownBox
-                  text={shownAgg.body} editing={editing} box={box} onCancel={() => setEditing(false)} onSave={saveBody}
-                  onOpen={go}
+                  text={bodyEdit.text} editing={bodyEdit.editing} box={box} onCancel={bodyEdit.drop} onSave={saveBody}
+                  onType={bodyEdit.change} onOpen={go}
                   titles={shownAgg.titles} empty={<EmptyState variant="section">{m.wiki.noBody}</EmptyState>}
                 />
               </div>
@@ -979,8 +984,8 @@ export function Wiki() {
                 />
                 {bodyHead(m.wiki.internalizedContent)}
                 <MarkdownBox
-                  text={shownPaper.body} editing={editing} box={box} onCancel={() => setEditing(false)} onSave={saveBody}
-                  onOpen={go} onAnchor={(page) => openSource(shownPaper.id, page)}
+                  text={bodyEdit.text} editing={bodyEdit.editing} box={box} onCancel={bodyEdit.drop} onSave={saveBody}
+                  onType={bodyEdit.change} onOpen={go} onAnchor={(page) => openSource(shownPaper.id, page)}
                   titles={shownPaper.titles}
                   empty={<EmptyState variant="section">{m.wiki.noInternalizedContent}</EmptyState>}
                 />

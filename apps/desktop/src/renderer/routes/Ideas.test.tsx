@@ -646,4 +646,28 @@ describe('Ideas', () => {
     })
     expect(detail.querySelector('.idea-panel-source')!.textContent).toBe('EAGLE')
   })
+
+  it('改到一半时库里这条想法被别处改过,保存按不动,回车也不写;取消后显示改过的', async () => {
+    await act(async () => { root.render(<MessagesProvider><Ideas /></MessagesProvider>) })
+    await act(async () => { host.querySelector<HTMLElement>('[data-idea="idea-linked"]')!.click() })
+    const detail = host.querySelector('.idea-detail-panel')!
+    const head = (label: string) => [...detail.querySelectorAll<HTMLButtonElement>('.idea-panel-head .btn')].find((item) => item.textContent === label)!
+    await act(async () => { head('编辑').click() })
+    const held = api.ideas
+    try {
+      api.ideas = held.map((idea) => (idea.id === 'idea-linked' ? { ...idea, body: '插件改过的正文' } : idea))
+      api.revision += 1
+      await act(async () => { root.render(<MessagesProvider><Ideas /></MessagesProvider>) })
+      expect(head('保存').disabled).toBe(true)
+      await act(async () => {
+        detail.querySelector('.idea-detail-editor input')!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
+      })
+      expect(api.update).not.toHaveBeenCalled()
+      await act(async () => { head('取消').click() })
+      expect(detail.textContent).toContain('插件改过的正文')
+    } finally {
+      api.ideas = held
+      api.revision = 0
+    }
+  })
 })

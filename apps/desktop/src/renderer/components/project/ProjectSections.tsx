@@ -14,6 +14,7 @@ import { EmptyState } from '../EmptyState.js'
 import { MarkdownBox } from '../Markdown.js'
 import { PaperText } from '../paper/PaperText.js'
 import { useFormat } from '../../lib/format.js'
+import type { TextEdit } from '../../hooks/useDrafts.js'
 import { useInlineDraft } from '../../hooks/useInlineDraft.js'
 import { useMessages } from '../../messages/useMessages.js'
 import { FormInput } from '../FormControls.js'
@@ -116,37 +117,35 @@ export function ProjectAreasField({ projectId, areas, onSave, onError }: {
   )
 }
 
-/** Rendered Markdown and its source editor share one stable project-memo shell. */
-export function ProjectMemo({ text, editing, onEditing, onSave, onOpen }: {
-  text: string
-  editing: boolean
-  onEditing: (editing: boolean) => void
+/**
+ * Rendered Markdown and its source editor share one stable project-memo shell. `edit` is the memo's
+ * kept edit (see `editText`); a stale one is not saved.
+ */
+export function ProjectMemo({ edit, onSave, onOpen }: {
+  edit: TextEdit
   onSave: (next: string) => void
   onOpen: (id: string) => void
 }) {
   const m = useMessages()
   const box = useRef<HTMLDivElement>(null)
-  const draft = useRef(text)
-  const edit = () => {
-    draft.current = text
-    onEditing(true)
-  }
   const save = () => {
-    onEditing(false)
-    onSave(draft.current.trim())
+    if (edit.stale) return
+    const next = edit.text.trim()
+    edit.drop()
+    onSave(next)
   }
   return (
     <>
       <SectionHeading
         actions={(
-          <EditActions editing={editing} onEdit={edit} onCancel={() => onEditing(false)} onSave={save} />
+          <EditActions editing={edit.editing} canSave={!edit.stale} onEdit={edit.start} onCancel={edit.drop} onSave={save} />
         )}
       >{m.project.sections.remark}
       </SectionHeading>
       <MarkdownBox
-        className="memo" text={text} editing={editing} box={box}
-        live={{ onChange: (next) => { draft.current = next } }}
-        onCancel={() => onEditing(false)} onSave={save} onOpen={onOpen}
+        className="memo" text={edit.text} editing={edit.editing} box={box}
+        live={{ onChange: edit.change }}
+        onCancel={edit.drop} onSave={save} onOpen={onOpen}
         empty={<EmptyState variant="section">{m.project.remarkEmpty}</EmptyState>}
       />
     </>

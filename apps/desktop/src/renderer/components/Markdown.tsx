@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import type { KeyboardEvent as ReactKeyboardEvent, ReactNode, RefObject } from 'react'
 import { useScrollFade } from '../hooks/useScrollFade.js'
 import type { Parent, Root } from 'mdast'
@@ -179,12 +179,14 @@ export function headingsOf(src: string): Heading[] {
  * false it renders `text` as Markdown, or `empty` alone, outside the container, when the string is
  * empty; with it true it is a contentEditable holding the source, focused on entry, where Esc calls
  * `onCancel` and ⌘Enter on macOS, Ctrl+Enter elsewhere, calls `onSave`, unless an input method is composing.
- * The caller places EditActions and reads `box`'s `innerText` on save. With `live`, the source is
+ * The caller places EditActions and reads `box`'s `innerText` on save; `onType` receives that text
+ * as it is typed. While editing, the box keeps the source it opened with, as a changed `text` would
+ * move the caret. With `live`, the source is
  * edited in a MarkdownEditor inside the container instead, under the same keys, which renders every
  * block the cursor is not on as the rendered result does; the caller saves the source it last
  * received through `live.onChange`. `className` is appended to the container.
  */
-export function MarkdownBox({ text, editing, box, onCancel, onSave, onOpen, onAnchor, titles, empty, className, live }: {
+export function MarkdownBox({ text, editing, box, onCancel, onSave, onOpen, onAnchor, titles, empty, className, live, onType }: {
   text: string
   editing: boolean
   box: RefObject<HTMLDivElement | null>
@@ -197,7 +199,10 @@ export function MarkdownBox({ text, editing, box, onCancel, onSave, onOpen, onAn
   empty: ReactNode
   className?: string
   live?: { onChange: (text: string) => void }
+  onType?: (text: string) => void
 }) {
+  const source = useRef(text)
+  if (!editing) source.current = text
   useEffect(() => { if (editing && live === undefined) box.current?.focus() }, [editing, box, live])
   const classes = `md${editing ? ' src' : ''}${className === undefined ? '' : ` ${className}`}`
   const keys = (e: ReactKeyboardEvent) => {
@@ -223,7 +228,12 @@ export function MarkdownBox({ text, editing, box, onCancel, onSave, onOpen, onAn
     )
   }
   return editing
-    ? <div className={classes} contentEditable suppressContentEditableWarning ref={box} onKeyDown={keys}>{text}</div>
+    ? (
+      <div
+        className={classes} contentEditable suppressContentEditableWarning ref={box} onKeyDown={keys}
+        onInput={(e) => onType?.(e.currentTarget.innerText)}
+      >{source.current}</div>
+    )
     : text === ''
       ? empty
       : <div className={classes}><Markdown src={text} {...links} /></div>

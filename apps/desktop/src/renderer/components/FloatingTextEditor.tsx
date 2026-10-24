@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { Key, ReactElement, ReactNode } from 'react'
+import type { Drafts } from '../hooks/useDrafts.js'
 import { ActionPopover } from './ActionPopover.js'
 import type { ActionPopoverAlign, ActionPopoverSide } from './ActionPopover.js'
 import { ShortTextEditor } from './ShortTextEditor.js'
@@ -10,11 +11,11 @@ import { ShortTextEditor } from './ShortTextEditor.js'
  * closes through `ShortTextEditor`, never through Radix. Pages only provide the anchor, the copy,
  * the save/delete actions and, when the object has one, `field` and `fieldChanged` as ShortTextEditor
  * takes them. When it closes with focus left nowhere, focus goes back to the element that held it
- * when it opened.
+ * when it opened. `kept` keeps what is typed as a draft; see `ShortTextEditor`.
  */
 export function FloatingTextEditor({
   open, anchor, editorKey, title, initialValue = '', placeholder, field, fieldChanged = false, onSubmit, onClose, onDelete,
-  contentClassName = 'ctxmenu drop', side = 'bottom', align = 'start', sideOffset = 6,
+  contentClassName = 'ctxmenu drop', side = 'bottom', align = 'start', sideOffset = 6, kept,
 }: {
   open: boolean
   anchor: ReactElement
@@ -31,6 +32,7 @@ export function FloatingTextEditor({
   side?: ActionPopoverSide
   align?: ActionPopoverAlign
   sideOffset?: number
+  kept?: { drafts: Drafts<string>; target: string } | undefined
 }) {
   const [busy, setBusy] = useState(false)
   const opener = useRef<HTMLElement | null>(null)
@@ -59,13 +61,15 @@ export function FloatingTextEditor({
             // This popover alone decides whether to close, so Radix's open change and the editor's own
             // Escape do not each call onClose; while a write is unfinished, popover and draft stay intact.
           event.preventDefault()
-          if (!busy) onClose()
+          if (busy) return
+          kept?.drafts.drop(kept.target)
+          onClose()
         },
       }}
     >
       <ShortTextEditor
         key={editorKey} title={title} initialValue={initialValue} placeholder={placeholder}
-        field={field} fieldChanged={fieldChanged} onSubmit={onSubmit} onClose={onClose} onBusyChange={setBusy}
+        field={field} fieldChanged={fieldChanged} onSubmit={onSubmit} onClose={onClose} onBusyChange={setBusy} kept={kept}
         {...(onDelete === undefined ? {} : { onDelete })}
       />
     </ActionPopover>

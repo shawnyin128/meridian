@@ -118,6 +118,15 @@ export const vault = {
 
 export const papers = {
   list: (params: ListParams) => call<ListResult>('papers.list', params),
+  /** The id of every paper in the vault, read page by page. */
+  allIds: async (): Promise<string[]> => {
+    const ids: string[] = []
+    for (let page = 1; ; page += 1) {
+      const { rows, total } = await call<ListResult>('papers.list', { page, size: 200 })
+      ids.push(...rows.map((row) => row.id))
+      if (rows.length === 0 || ids.length >= total) return ids
+    }
+  },
   facets: (field: string, filter?: string) =>
     call<Facet[]>('papers.facets', { field, ...(filter ? { filter } : {}) }),
   get: (id: string) => call<PaperRow>('papers.get', { id }),

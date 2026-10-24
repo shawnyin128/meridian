@@ -65,6 +65,7 @@ import { plainTitle } from '../components/paper/paper-text.js'
 import { StatusDot } from '../components/StatusDot.js'
 import { Tag } from '../components/Tag.js'
 import { Tooltip } from '../components/Tooltip.js'
+import { editText, useDraft, useDrafts, usePruneDrafts, type EditDraft } from '../hooks/useDrafts.js'
 import { NO_TRIGGERS } from '../hooks/useOnLeave.js'
 import { useUndo } from '../hooks/useUndo.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
@@ -125,12 +126,11 @@ export function ProjectIdeaPanel({
   const m = useMessages()
   const g = m.ideas.nodeDraft
   const linkedNode = graph.nodes.find((node) => node.id === idea.node)
-  const [held, setDraft] = useState<{ idea: string; label: string; after: string } | null>(null)
-  const draftAt = useRef<HTMLDivElement>(null)
   // A node draft belongs to the idea it was opened for and shows only with it.
-  const draft = held?.idea === idea.id ? held : null
+  const [draft, setDraft] = useDraft<{ label: string; after: string }>(['idea', idea.id], 'node')
+  const draftAt = useRef<HTMLDivElement>(null)
   const startNode = () => {
-    if (draft === null) setDraft({ idea: idea.id, label: idea.title, after: '' })
+    if (draft === null) setDraft({ label: idea.title, after: '' })
     else draftAt.current?.querySelector<HTMLElement>('.form-control')?.focus()
   }
   return (
@@ -203,7 +203,7 @@ export function ProjectIdeaList({ projectId, ideas, graph, selectedId, onSelect,
   chatDeleted?: (idea: ResearchIdea) => boolean
 }) {
   const m = useMessages()
-  const [draft, setDraft] = useState<IdeaDraftText | null>(null)
+  const [draft, setDraft] = useDraft<IdeaDraftText>(['project', projectId], 'idea')
   const draftAt = useRef<HTMLDivElement>(null)
   const add = useRef<HTMLButtonElement>(null)
   const triggers = useMemo(() => [add], [])
@@ -320,7 +320,13 @@ export function ProjectDetail({
   // A new object on every locate: clicking the same row again changes its identity, so the effect below reruns.
   const [flash, setFlash] = useState<{ id: string } | null>(null)
   const [hoverMilestone, setHoverMilestone] = useState<string | null>(null)
-  const [memoEditing, setMemoEditing] = useState(false)
+  const edits = useDrafts<EditDraft>(['project', projectId])
+  const shownProject = project?.id === projectId ? project : null
+  usePruneDrafts(['project', projectId, 'task'], shownProject === null ? null : shownProject.tasks.map((task) => task.id))
+  usePruneDrafts(['project', projectId, 'conclusion'], shownProject === null ? null
+    : (shownProject.projectConclusions ?? []).map((conclusion) => conclusion.id))
+  usePruneDrafts(['project', projectId, 'milestone'], shownProject === null ? null
+    : ['new', ...shownProject.milestones.map((milestone) => milestone.id)])
   const [selectedNode, setSelectedNode] = useState<string | null>(null)
   const [selectedIdeaId, setSelectedIdeaId] = useState<string | null>(null)
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
@@ -488,8 +494,8 @@ export function ProjectDetail({
     setCreating(null)
     stopRel()
     stopRelEdit()
-    setMemoEditing(false)
-  }, [stopRel, stopRelEdit])
+    edits.drop('memo')
+  }, [stopRel, stopRelEdit, edits])
 
   /**
    * Finishes a write that returns the project: the project goes into state, then `write` bumps the
@@ -967,7 +973,7 @@ export function ProjectDetail({
             />
 
             <ProjectMemo
-              text={project.memo} editing={memoEditing} onEditing={setMemoEditing} onOpen={openWikiPage}
+              edit={editText(edits, 'memo', project.memo)} onOpen={openWikiPage}
               onSave={(memo) => applyWrite(projectApi.update(projectId, { memo }), m.project.remarkSaved)}
             />
           </div>
@@ -979,7 +985,7 @@ export function ProjectDetail({
             {selectedTask !== undefined
               ? (
                 <ProjectTaskPanel
-                  task={selectedTask} onClose={clearTask} onOpenNode={goToRecordNode}
+                  projectId={projectId} task={selectedTask} onClose={clearTask} onOpenNode={goToRecordNode}
                   node={nodeLook(taskGraph.nodes.find((candidate) => candidate.tasks?.includes(selectedTask.id))?.id)}
                   nodes={displayedGraph.nodes}
                   handSet={displayedGraph.nodes.some((candidate) => candidate.id === project.taskNodes?.[selectedTask.id])}

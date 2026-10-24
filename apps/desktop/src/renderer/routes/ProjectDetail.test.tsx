@@ -310,7 +310,7 @@ describe('project idea panel', () => {
     const on = handlers()
     const task = mount(
       <ProjectTaskPanel
-        task={{ id: 't1', title: '宽树实验', start: '2026-09-16', end: '2026-09-16', priority: 'p1', state: 'act' }}
+        projectId="p1" task={{ id: 't1', title: '宽树实验', start: '2026-09-16', end: '2026-09-16', priority: 'p1', state: 'act' }}
         node={undefined} nodes={graph.nodes} handSet={false}
         onClose={vi.fn()} onSaveNote={vi.fn()} onOpenNode={vi.fn()} onSetNode={vi.fn()}
       />,

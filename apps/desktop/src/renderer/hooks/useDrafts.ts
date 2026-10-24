@@ -1,5 +1,5 @@
 import {
-  createContext, createElement, useContext, useEffect, useState, useSyncExternalStore,
+  createContext, createElement, useContext, useEffect, useMemo, useState, useSyncExternalStore,
   type ChangeEvent, type KeyboardEvent, type ReactNode,
 } from 'react'
 import { library } from '../ipc.js'
@@ -196,17 +196,18 @@ export function useDrafts<D = string>(scope: readonly string[], live: readonly s
   const [own] = useState(() => (shared === null ? createDraftStore() : null))
   const store = shared ?? own!
   const id = JSON.stringify(scope)
-  const drafts = useSyncExternalStore(store.subscribe, () => store.scope(id))
-  const loaded = useSyncExternalStore(store.subscribe, store.loaded)
+  const scoped = () => store.scope(id)
+  const drafts = useSyncExternalStore(store.subscribe, scoped, scoped)
+  const loaded = useSyncExternalStore(store.subscribe, store.loaded, store.loaded)
   const liveId = live === null ? null : JSON.stringify(live)
   useEffect(() => {
     if (loaded && liveId !== null) store.keep(id, JSON.parse(liveId) as string[])
   }, [store, id, liveId, loaded])
-  return {
+  return useMemo(() => ({
     get: (target) => drafts.get(target) as D | undefined,
     set: (target, draft) => store.set(id, target, draft),
     drop: (target) => store.drop(id, target),
-  }
+  }), [store, id, drafts])
 }
 
 const NEVER = () => () => {}
@@ -222,7 +223,8 @@ export function usePruneDrafts(
   live: readonly string[] | (() => Promise<readonly string[]>) | null,
 ): void {
   const store = useContext(DraftsContext)
-  const loaded = useSyncExternalStore(store?.subscribe ?? NEVER, () => store?.loaded() ?? false)
+  const read = () => store?.loaded() ?? false
+  const loaded = useSyncExternalStore(store?.subscribe ?? NEVER, read, read)
   const prefixId = JSON.stringify(prefix)
   const liveId = live === null || typeof live === 'function' ? null : JSON.stringify(live)
   const load = typeof live === 'function' ? live : null
@@ -232,6 +234,44 @@ export function usePruneDrafts(
     if (liveId !== null) store.prune(under, JSON.parse(liveId) as string[])
     else if (load !== null && store.holds(under)) void load().then((ids) => store.prune(under, ids))
   }, [store, loaded, prefixId, liveId, load])
+}
+
+/** An edit of stored text; see `editText`. */
+export type TextEdit = {
+  editing: boolean
+  text: string
+  stale: boolean
+  start: () => void
+  change: (text: string) => void
+  drop: () => void
+}
+
+/**
+ * The edit of stored text `stored`, its draft kept in `drafts` under `target`: `editing` while
+ * there is a draft, `text` the draft's text or `stored`, and `stale` when the stored text has
+ * changed since the draft started, which the caller must not save. `start` opens a draft of
+ * `stored`, `change` replaces its text and keeps the stored text it started from, and `drop`
+ * forgets it once it is saved or cancelled.
+ */
+export function editText(drafts: Drafts<EditDraft>, target: string, stored: string): TextEdit {
+  const draft = drafts.get(target)
+  return {
+    editing: draft !== undefined,
+    text: draft?.text ?? stored,
+    stale: draft !== undefined && draft.base !== stored,
+    start: () => drafts.set(target, { text: stored, base: stored }),
+    change: (text) => drafts.set(target, { text, base: draft?.base ?? stored }),
+    drop: () => drafts.drop(target),
+  }
+}
+
+/**
+ * The one draft `target` of `scope` (see `useDrafts`) as a state: null while there is none, and
+ * setting null drops it.
+ */
+export function useDraft<D>(scope: readonly string[], target: string): [D | null, (next: D | null) => void] {
+  const drafts = useDrafts<D>(scope)
+  return [drafts.get(target) ?? null, (next) => (next === null ? drafts.drop(target) : drafts.set(target, next))]
 }
 
 /**
@@ -253,21 +293,19 @@ export function editField(drafts: Drafts<EditDraft>, target: string, stored: str
     onKeyDown: (event: KeyboardEvent<HTMLTextAreaElement>) => void
   }
 } {
-  const draft = drafts.get(target)
-  const text = draft?.text ?? stored
-  const stale = draft !== undefined && draft.base !== stored
+  const edit = editText(drafts, target, stored)
   return {
-    text,
-    stale,
-    drop: () => drafts.drop(target),
+    text: edit.text,
+    stale: edit.stale,
+    drop: edit.drop,
     fieldProps: {
-      value: text,
-      'aria-invalid': stale || undefined,
-      onChange: (event) => drafts.set(target, { text: event.target.value, base: draft?.base ?? stored }),
+      value: edit.text,
+      'aria-invalid': edit.stale || undefined,
+      onChange: (event) => edit.change(event.target.value),
       onKeyDown: (event) => {
-        if (event.key !== 'Escape' || draft === undefined || composing(event.nativeEvent)) return
+        if (event.key !== 'Escape' || !edit.editing || composing(event.nativeEvent)) return
         event.stopPropagation()
-        drafts.drop(target)
+        edit.drop()
       },
     },
   }

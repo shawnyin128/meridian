@@ -6,6 +6,7 @@ import type {
 import { localDayOf } from '../../../shared/dates.js'
 import { PAPER_PAGE } from '../../../shared/vocabulary.js'
 import { harness } from '../../ipc.js'
+import { useDrafts } from '../../hooks/useDrafts.js'
 import { useVaultWrite } from '../../hooks/useVaultWrite.js'
 import { useScrollFade } from '../../hooks/useScrollFade.js'
 import { errorLabel, failureLabel } from '../../lib/failure-label.js'
@@ -65,13 +66,9 @@ export function PaperWikiIngest({ paper, reading, onJump }: {
   const [receipt, setReceipt] = useState<HarnessRunReceipt | null>(null)
   const [running, setRunning] = useState(false)
   const [cancelling, setCancelling] = useState(false)
-  const [draft, setDraft] = useState('')
   const [reviewMode, setReviewMode] = useState<ReviewMode>('markdown')
   const [applying, setApplying] = useState(false)
   const [rejecting, setRejecting] = useState(false)
-  const [rejectionOpen, setRejectionOpen] = useState(false)
-  const [rejectionReasons, setRejectionReasons] = useState<HarnessPaperWikiRejectionReason[]>([])
-  const [rejectionNote, setRejectionNote] = useState('')
   const [applied, setApplied] = useState(false)
   const [rejected, setRejected] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -84,16 +81,32 @@ export function PaperWikiIngest({ paper, reading, onJump }: {
     remark: reading.remark,
   })
 
+  // The edited proposal and the discard feedback are kept per proposal until it is applied or discarded.
+  const kept = receipt?.proposal ?? pending?.proposal
+  const edits = useDrafts<string>(['paper', paper.id, 'wiki-ingest'], kept !== undefined
+    ? [kept.id, `rejection:${kept.id}`] : plan !== null ? [] : null)
+  const rejections = useDrafts<{ reasons: HarnessPaperWikiRejectionReason[]; note: string }>(['paper', paper.id, 'wiki-ingest'])
+  const draft = kept === undefined ? '' : edits.get(kept.id) ?? kept.body
+  const setDraft = (text: string) => { if (kept !== undefined) edits.set(kept.id, text) }
+  const rejection = kept === undefined ? undefined : rejections.get(`rejection:${kept.id}`)
+  const rejectionReasons = rejection?.reasons ?? []
+  const rejectionNote = rejection?.note ?? ''
+  const setRejection = (next: { reasons: HarnessPaperWikiRejectionReason[]; note: string } | null) => {
+    if (kept === undefined) return
+    if (next === null) rejections.drop(`rejection:${kept.id}`)
+    else rejections.set(`rejection:${kept.id}`, next)
+  }
+  const forget = (id: string) => {
+    edits.drop(id)
+    rejections.drop(`rejection:${id}`)
+  }
+
   const prepare = useCallback(() => {
     let live = true
     setPlan(null)
     setPending(null)
     setReceipt(null)
-    setDraft('')
     setReviewMode('markdown')
-    setRejectionOpen(false)
-    setRejectionReasons([])
-    setRejectionNote('')
     setApplied(false)
     setRejected(false)
     setError(null)
@@ -101,7 +114,6 @@ export function PaperWikiIngest({ paper, reading, onJump }: {
       if (!live) return
       if (restored !== null) {
         setPending(restored)
-        setDraft(restored.proposal.body)
         setReviewMode(restored.proposal.review === undefined ? 'markdown' : 'structured')
         return
       }
@@ -131,7 +143,6 @@ export function PaperWikiIngest({ paper, reading, onJump }: {
     void harness.start(plan).then((next) => {
       setReceipt(next)
       setPending(null)
-      setDraft(next.proposal?.body ?? '')
       setReviewMode(next.proposal?.review === undefined ? 'markdown' : 'structured')
     }).catch((cause: unknown) => {
       setError(errorLabel(m, cause))
@@ -166,6 +177,7 @@ export function PaperWikiIngest({ paper, reading, onJump }: {
       note: m.wiki.ingest.writeNote,
     })
     if (saved) {
+      forget(proposal.id)
       setApplied(true)
       if (warning !== undefined) setError(failureLabel(m, m.wiki.ingest.auditFailed, warning))
     }
@@ -179,6 +191,7 @@ export function PaperWikiIngest({ paper, reading, onJump }: {
     setError(null)
     try {
       const result = await harness.rejectPaperWiki(proposal.id, feedback)
+      forget(proposal.id)
       setRejected(true)
       if (result.warning !== undefined) setError(failureLabel(m, m.wiki.ingest.auditFailed, result.warning))
     } catch (cause) {
@@ -227,7 +240,7 @@ export function PaperWikiIngest({ paper, reading, onJump }: {
             onChange={(event) => setDraft(event.target.value)} />
         )}
       </ProposalChange>
-      {rejectionOpen ? (
+      {rejection !== undefined ? (
         <div className="wiki-ingest-rejection" aria-label={m.wiki.ingest.rejectionFeedbackLabel}>
           <div className="wiki-ingest-rejection-head">
             <strong>{m.wiki.ingest.rejectionPrompt}</strong>
@@ -235,15 +248,15 @@ export function PaperWikiIngest({ paper, reading, onJump }: {
           <ChipToggles
             className="wiki-ingest-rejection-reasons" label={m.wiki.ingest.rejectReasonsLabel}
             value={rejectionReasons} options={rejectReasonOptions(m)} disabled={rejecting}
-            onChange={setRejectionReasons}
+            onChange={(reasons) => setRejection({ reasons, note: rejectionNote })}
           />
           <FormTextarea appearance="field" rows={2} maxLength={500}
             aria-label={m.wiki.ingest.rejectionNoteLabel} placeholder={m.wiki.ingest.rejectionNotePlaceholder}
             disabled={rejecting}
-            value={rejectionNote} onChange={(event) => setRejectionNote(event.target.value)} />
+            value={rejectionNote} onChange={(event) => setRejection({ reasons: rejectionReasons, note: event.target.value })} />
           <div className="wiki-ingest-actions">
             <button type="button" className="btn" disabled={rejecting}
-              onClick={() => setRejectionOpen(false)}>{m.wiki.ingest.backToReview}</button>
+              onClick={() => setRejection(null)}>{m.wiki.ingest.backToReview}</button>
             <button type="button" className="btn danger" disabled={rejecting}
               onClick={submitRejection}>
               {rejecting
@@ -257,7 +270,7 @@ export function PaperWikiIngest({ paper, reading, onJump }: {
       ) : (
         <ProposalDecision>
           <button className="btn ghost danger" disabled={applying || rejecting}
-            onClick={() => setRejectionOpen(true)}>
+            onClick={() => setRejection({ reasons: [], note: '' })}>
             {m.wiki.ingest.discardProposal}
           </button>
           <button className="btn"
@@ -267,7 +280,7 @@ export function PaperWikiIngest({ paper, reading, onJump }: {
           </button>
           {pending?.stale === true
             ? (
-              <TagButton tone="warn" disabled={applying || rejecting} onClick={() => setRejectionOpen(true)}>
+              <TagButton tone="warn" disabled={applying || rejecting} onClick={() => setRejection({ reasons: [], note: '' })}>
                 {`${m.wiki.queue.stale} · ${m.wiki.ingest.discard}`}
               </TagButton>
             )

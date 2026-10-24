@@ -1,8 +1,9 @@
 // @vitest-environment jsdom
-import { act, useState } from 'react'
+import { act } from 'react'
 import { createRoot } from 'react-dom/client'
 import { EditorView } from '@codemirror/view'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { editText, useDrafts, type EditDraft } from '../../hooks/useDrafts.js'
 import { MessagesProvider } from '../../messages/useMessages.js'
 import { LANGUAGE_STORAGE_KEY } from '../../shell/language.js'
 import { ProjectMemo } from './ProjectSections.js'
@@ -16,8 +17,7 @@ describe('ProjectMemo', () => {
     window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'zh')
     const onSave = vi.fn()
     function Memo() {
-      const [editing, setEditing] = useState(false)
-      return <ProjectMemo text="# 本周计划" editing={editing} onEditing={setEditing} onSave={onSave} onOpen={vi.fn()} />
+      return <ProjectMemo edit={editText(useDrafts<EditDraft>(['project', 'p1']), 'memo', '# 本周计划')} onSave={onSave} onOpen={vi.fn()} />
     }
     const host = document.createElement('div')
     document.body.append(host)
@@ -55,6 +55,40 @@ describe('ProjectMemo', () => {
     type('再改一次')
     press('保存')
     expect(onSave).toHaveBeenLastCalledWith('再改一次')
+    act(() => root.unmount())
+    host.remove()
+  })
+
+  it('有留着的草稿时随笔再出现就开在编辑里,是草稿的字;库里的随笔在这之后被改过时,保存按不动,⌘回车也不写', () => {
+    globalThis.IS_REACT_ACT_ENVIRONMENT = true
+    vi.stubGlobal('meridian', { platform: 'darwin' })
+    window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'zh')
+    const onSave = vi.fn()
+    /** The project page: it holds the drafts, and shows the memo of stored text `stored` while `shown`. */
+    function Page({ stored, shown }: { stored: string; shown: boolean }) {
+      const drafts = useDrafts<EditDraft>(['project', 'p1'])
+      return shown ? <ProjectMemo edit={editText(drafts, 'memo', stored)} onSave={onSave} onOpen={vi.fn()} /> : null
+    }
+    const host = document.createElement('div')
+    document.body.append(host)
+    const root = createRoot(host)
+    const show = (stored: string, shown = true) => act(() => root.render(<MessagesProvider><Page stored={stored} shown={shown} /></MessagesProvider>))
+    const buttons = () => [...host.querySelectorAll<HTMLButtonElement>('.section-heading-actions > .btn')]
+    const editor = () => EditorView.findFromDOM(host.querySelector<HTMLElement>('.memo .cm-editor')!)!
+    show('# 原来的随笔')
+    act(() => buttons().find((button) => button.textContent === '编辑')!.click())
+    act(() => editor().dispatch({ changes: { from: 0, to: editor().state.doc.length, insert: '没存的随笔' }, userEvent: 'input.type' }))
+    show('# 原来的随笔', false)
+    show('# 原来的随笔')
+    expect(editor().state.doc.toString()).toBe('没存的随笔')
+    expect(buttons().map((button) => [button.textContent, button.disabled])).toEqual([['取消', false], ['保存', false]])
+
+    show('# 插件改过的随笔')
+    expect(buttons().map((button) => [button.textContent, button.disabled])).toEqual([['取消', false], ['保存', true]])
+    act(() => {
+      editor().contentDOM.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', metaKey: true, bubbles: true }))
+    })
+    expect(onSave).not.toHaveBeenCalled()
     act(() => root.unmount())
     host.remove()
   })

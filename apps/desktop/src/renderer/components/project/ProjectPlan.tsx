@@ -27,6 +27,7 @@ import { SectionHeading } from '../PageShell.js'
 import { RowActions, StructuredList, StructuredRow } from '../StructuredList.js'
 import { TabbedSection } from '../TabbedSection.js'
 import { Toolbar, ToolbarButton } from '../Toolbar.js'
+import { editText, useDrafts, type EditDraft } from '../../hooks/useDrafts.js'
 import { useDragReorder, type Reorderable } from '../../hooks/useDragReorder.js'
 import { useFormat } from '../../lib/format.js'
 import { useMessages } from '../../messages/useMessages.js'
@@ -231,12 +232,14 @@ function TaskNameCell({ task, onSave }: { task: Task; onSave: (patch: TaskPatch)
 /**
  * Task detail panel: the same shared panel and open/close interaction as a research node, showing
  * the task's fields (and that an agent added it, when one did), its Markdown note, editable in
- * place, and the research node it belongs to, which opens through `onOpenNode`. The node is picked
- * among `nodes` through `onSetNode`, which a `handSet` node can also be taken away with.
+ * place, its draft kept with the task of project `projectId`, and the research node it belongs to,
+ * which opens through `onOpenNode`. The node is picked among `nodes` through `onSetNode`, which a
+ * `handSet` node can also be taken away with.
  */
 export function ProjectTaskPanel({
-  task, node, nodes, handSet, onClose, onSaveNote, onOpenNode, onSetNode,
+  projectId, task, node, nodes, handSet, onClose, onSaveNote, onOpenNode, onSetNode,
 }: {
+  projectId: string
   task: Task
   node: { id: string; label: string; mode: NonNullable<GraphNode['mode']> } | undefined
   nodes: readonly { id: string; label: string }[]
@@ -248,11 +251,12 @@ export function ProjectTaskPanel({
 }) {
   const m = useMessages()
   const fmt = useFormat()
-  const [editing, setEditing] = useState(false)
+  const note = editText(useDrafts<EditDraft>(['project', projectId, 'task', task.id]), 'note', task.note ?? '')
   const box = useRef<HTMLDivElement>(null)
   const save = () => {
+    if (note.stale) return
     const next = box.current?.innerText.trim() ?? ''
-    setEditing(false)
+    note.drop()
     void onSaveNote(next)
   }
   return (
@@ -272,15 +276,13 @@ export function ProjectTaskPanel({
       <SectionHeading
         variant="rail"
         actions={(
-          <EditActions
-            editing={editing} onEdit={() => setEditing(true)} onCancel={() => setEditing(false)} onSave={save}
-          />
+          <EditActions editing={note.editing} canSave={!note.stale} onEdit={note.start} onCancel={note.drop} onSave={save} />
         )}
       >{m.project.plan.noteHeading}
       </SectionHeading>
       <MarkdownBox
-        className="task-note" text={task.note ?? ''} editing={editing} box={box}
-        onCancel={() => setEditing(false)} onSave={save}
+        className="task-note" text={note.text} editing={note.editing} box={box}
+        onCancel={note.drop} onSave={save} onType={note.change}
         empty={<EmptyState variant="section">{m.project.plan.noteEmpty}</EmptyState>}
       />
     </>

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
+import type { Drafts } from '../hooks/useDrafts.js'
 import { useOnLeave } from '../hooks/useOnLeave.js'
 import { composing } from '../lib/keyboard.js'
 import { useMessages } from '../messages/useMessages.js'
@@ -15,10 +16,12 @@ import './ShortTextEditor.css'
  * pressed while an input method is composing belong to it and neither save nor close. `field` is a
  * control for another part of the same object, shown under the text, whose value the host holds;
  * `fieldChanged` says it differs from the saved one, so leaving saves even with the text unchanged.
+ * With `kept`, what is typed is kept under `kept.target` in `kept.drafts` as a draft: the editor
+ * starts from it the next time it opens, and closing through this editor drops it.
  */
 export function ShortTextEditor({
   title, initialValue = '', placeholder, submitLabel, deleteLabel, busyLabel, field, fieldChanged = false,
-  onSubmit, onClose, onDelete, onBusyChange,
+  onSubmit, onClose, onDelete, onBusyChange, kept,
 }: {
   title: string
   initialValue?: string
@@ -32,11 +35,16 @@ export function ShortTextEditor({
   onClose: () => void
   onDelete?: (() => void) | undefined
   onBusyChange?: ((busy: boolean) => void) | undefined
+  kept?: { drafts: Drafts<string>; target: string } | undefined
 }) {
   const m = useMessages()
   const removeLabel = deleteLabel ?? m.common.delete
   const savingLabel = busyLabel ?? m.common.saving
-  const [value, setValue] = useState(initialValue)
+  const [value, setValue] = useState(kept?.drafts.get(kept.target) ?? initialValue)
+  const close = () => {
+    kept?.drafts.drop(kept.target)
+    onClose()
+  }
   const [busy, setBusy] = useState(false)
   const [invalid, setInvalid] = useState(false)
   const row = useRef<HTMLDivElement>(null)
@@ -63,7 +71,7 @@ export function ShortTextEditor({
   // nor focus leaving sends another, and a refused leave is not retried before the text changes.
   useOnLeave(row, () => {
     if (busyRef.current || refused.current) return
-    if (value.trim() === '' || (value.trim() === initialValue && !fieldChanged)) onClose()
+    if (value.trim() === '' || (value.trim() === initialValue && !fieldChanged)) close()
     else void commit(true)
   })
 
@@ -74,7 +82,7 @@ export function ShortTextEditor({
     try {
       const accepted = await onSubmit(next)
       // If this editor was replaced for another anchor meanwhile, the old write must not close the new popover.
-      if (accepted && alive.current) onClose()
+      if (accepted && alive.current) close()
       else if (!accepted && leaving) {
         refused.current = true
         if (alive.current) setInvalid(true)
@@ -99,6 +107,7 @@ export function ShortTextEditor({
           aria-label={title} aria-invalid={invalid || undefined} disabled={busy}
           onChange={(event) => {
             setValue(event.target.value)
+            kept?.drafts.set(kept.target, event.target.value)
             refused.current = false
             setInvalid(false)
           }}
@@ -108,7 +117,7 @@ export function ShortTextEditor({
             if (event.key === 'Enter') { event.preventDefault(); void commit() }
             if (event.key === 'Escape') {
               event.preventDefault()
-              if (!busyRef.current) onClose()
+              if (!busyRef.current) close()
             }
           }}
         />
