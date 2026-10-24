@@ -28,6 +28,7 @@ import { TimelineBoard } from '../components/timeline/TimelineBoard.js'
 import { useMilestoneEditor } from '../components/timeline/MilestoneEditor.js'
 import { ToolbarButton } from '../components/Toolbar.js'
 import { Tooltip } from '../components/Tooltip.js'
+import { useUndo } from '../hooks/useUndo.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
 import {
   PageBody, PageError, PageHeader, PageShell, PageTitle, PageToolbar, SectionHeading,
@@ -389,6 +390,7 @@ export function ResearchOverview() {
   const { open: jumpTo } = useJump()
   const reportError = useCallback((e: unknown) => setError(errorLabel(m, e)), [m])
   const write = useVaultWrite()
+  const undo = useUndo()
   const { filter, shown } = useAreaFilter(rows ?? [])
 
   useEffect(() => {
@@ -437,9 +439,9 @@ export function ResearchOverview() {
   const deleteMilestone = useCallback((projectId: string, milestoneId: string) => {
     void write(
       projectApi.deleteMilestone(projectId, milestoneId),
-      { note: m.project.plan.milestoneDeleted },
+      { note: m.project.plan.milestoneDeleted, action: undo.change },
     )
-  }, [write, m])
+  }, [write, undo, m])
 
   const newMilestone = useCallback((projectId: string, date: string, title: string) => write(
     projectApi.createMilestone(projectId, { date, title, done: false }),

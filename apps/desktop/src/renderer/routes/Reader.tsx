@@ -6,6 +6,8 @@ import type {
 } from '../../shared/contract.js'
 import { sharesText } from '../../shared/highlight-overlap.js'
 import { papers } from '../ipc.js'
+import { useUndo } from '../hooks/useUndo.js'
+import { useVaultWrite } from '../hooks/useVaultWrite.js'
 import { useWheelZoom } from '../hooks/useWheelZoom.js'
 import { sendsMessage } from '../lib/chat.js'
 import { errorLabel } from '../lib/failure-label.js'
@@ -667,7 +669,7 @@ export function Reader() {
     if (reading.lastPage === undefined && currentPage === 1) return
     const timer = window.setTimeout(() => {
       void papers.mutateReading(opened, { kind: 'progress.set', page: currentPage })
-        .then(setReading)
+        .then((written) => setReading(written.reading))
         .catch((cause: unknown) => notice.refusal(errorLabel(m, cause)))
     }, PROGRESS_MS)
     return () => window.clearTimeout(timer)
@@ -740,7 +742,7 @@ export function Reader() {
     if (opened === null || saving) return null
     setSaving(true)
     try {
-      const next = await papers.mutateReading(opened, mutation)
+      const { reading: next } = await papers.mutateReading(opened, mutation)
       setReading(next)
       bump()
       return next
@@ -752,8 +754,33 @@ export function Reader() {
     }
   }, [opened, saving, bump, notice])
 
+  const write = useVaultWrite()
+  const undo = useUndo()
+  /**
+   * Deletes a note or a highlight: puts the reading after it into state and shows a notice offering
+   * Undo of the change Core recorded. Returns whether it was written.
+   */
+  const removeFromReading = useCallback(async (
+    mutation: Extract<ReadingMutation, { kind: 'note.delete' | 'highlight.delete' }>,
+  ): Promise<boolean> => {
+    if (opened === null || saving) return false
+    setSaving(true)
+    const removed = await write(papers.mutateReading(opened, mutation).then(({ reading: next, change }) => {
+      setReading(next)
+      // Core records every deletion of a note or a highlight.
+      return { change: change! }
+    }), {
+      note: mutation.kind === 'note.delete' ? m.reader.notes.deleted : m.reader.highlights.deleted,
+      action: undo.change,
+    })
+    setSaving(false)
+    return removed
+  }, [opened, saving, write, undo, m])
+
   const mutate = useCallback(async (mutation: ReadingMutation): Promise<boolean> =>
-    await mutateReading(mutation) !== null, [mutateReading])
+    mutation.kind === 'note.delete' || mutation.kind === 'highlight.delete'
+      ? removeFromReading(mutation)
+      : await mutateReading(mutation) !== null, [mutateReading, removeFromReading])
 
   const saveRemark = async (text: string): Promise<boolean> => {
     const ok = await mutate({ kind: 'remark.set', text })
