@@ -76,11 +76,18 @@ describe('menuTemplate', () => {
     for (const platform of ['win32', 'linux'] as const) {
       const template = menuTemplate(platform, () => {}, MAIN_COPY.zh.menu)
       expect(template.map((item) => item.label ?? item.role))
-        .toEqual(['File', 'editMenu', 'viewMenu', '工具', 'windowMenu', 'Help'])
+        .toEqual(['File', 'editMenu', 'viewMenu', '工具', 'windowMenu', '帮助'])
 
       const tools = template[3]
       expect(Array.isArray(tools?.submenu) ? tools.submenu.map((i) => i.id) : [])
         .toEqual(['settings', 'palette'])
+    }
+  })
+
+  it('帮助菜单在三个平台都排在最后，中文写作「帮助」，英文写作 Help', () => {
+    for (const platform of ['darwin', 'win32', 'linux'] as const) {
+      expect([MAIN_COPY.zh.menu, MAIN_COPY.en.menu].map((copy) => menuTemplate(platform, () => {}, copy).at(-1)?.label))
+        .toEqual(['帮助', 'Help'])
     }
   })
 
