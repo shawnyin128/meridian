@@ -14,12 +14,12 @@ async function openReader(win: Page): Promise<void> {
   await shown(win, '[aria-label="阅读笔记"]').click()
 }
 
-test('关掉 App 再打开,没存的阅读笔记和论文对话里没发出的问题原样回来,仍没存;存下之后不再留着', async ({ app, win, configHome }) => {
+test('关掉 App 再打开,没存的阅读笔记和论文对话里没发出的问题原样回来,仍没存;存下之后不再留着', async ({ app, win, configHome, profile }) => {
   await openReader(win)
   await shown(win, 'textarea[aria-label="新笔记"]').fill('没存的笔记')
   await win.locator('.paper-chat [contenteditable="true"]').fill('没发出的问题')
 
-  const reopened = await relaunch(app, configHome)
+  const reopened = await relaunch(app, configHome, profile)
   try {
     await openReader(reopened.win)
     const note = shown(reopened.win, 'textarea[aria-label="新笔记"]')
@@ -54,7 +54,7 @@ async function openWikiPage(win: Page, id: string): Promise<void> {
 }
 const wikiButton = (win: Page, label: string) => shown(win, '.wkmain .section-heading-actions > .btn:not(.add-action)').filter({ hasText: label })
 
-test('关掉 App 再打开,项目随笔和 Wiki 正文没存的改动回到原处,还开在编辑里;取消或存下之后不再留着', async ({ app, win, configHome }) => {
+test('关掉 App 再打开,项目随笔和 Wiki 正文没存的改动回到原处,还开在编辑里;取消或存下之后不再留着', async ({ app, win, configHome, profile }) => {
   await gotoProject(win)
   await sectionButton(win, '项目随笔', '编辑').click()
   await win.keyboard.press('ControlOrMeta+End')
@@ -64,7 +64,7 @@ test('关掉 App 再打开,项目随笔和 Wiki 正文没存的改动回到原�
   await shown(win, '.md.src').press('ControlOrMeta+End')
   await shown(win, '.md.src').pressSequentially('没存的正文')
 
-  const reopened = await relaunch(app, configHome)
+  const reopened = await relaunch(app, configHome, profile)
   try {
     const again = reopened.win
     await gotoProject(again)
@@ -89,13 +89,13 @@ test('关掉 App 再打开,项目随笔和 Wiki 正文没存的改动回到原�
   }
 })
 
-test('关掉 App 再打开,打了一半的新项目名或新任务那一行回到原处,仍没建;取消之后不再留着', async ({ app, win, configHome }) => {
+test('关掉 App 再打开,打了一半的新项目名或新任务那一行回到原处,仍没建;取消之后不再留着', async ({ app, win, configHome, profile }) => {
   // Leaving an inline draft saves it, so each one is left open by quitting.
   await win.locator('[data-desk="resproj"]').click()
   await shown(win, '#projNew').click()
   await shown(win, '.projpanel .inedit').fill('打了一半的项目名')
 
-  const first = await relaunch(app, configHome)
+  const first = await relaunch(app, configHome, profile)
   let second: Awaited<ReturnType<typeof relaunch>> | null = null
   try {
     await first.win.locator('[data-desk="resproj"]').click()
@@ -110,7 +110,7 @@ test('关掉 App 再打开,打了一半的新项目名或新任务那一行回�
     await plan.locator('.task-create-row .tag').click()
     await plan.locator('.task-create-row .min').fill('打了一半的任务')
 
-    second = await relaunch(first.app, configHome)
+    second = await relaunch(first.app, configHome, profile)
     await gotoProject(second.win)
     const row = shown(second.win, '.project-plan .task-create-row')
     await expect(row.locator('.min')).toHaveValue('打了一半的任务')
@@ -125,7 +125,7 @@ test('关掉 App 再打开,打了一半的新项目名或新任务那一行回�
   }
 })
 
-test('关掉 App 再打开,选中文字后工具条里没存的批注和论文表里改到一半的随笔格回到原处,仍没存', async ({ app, win, configHome }) => {
+test('关掉 App 再打开,选中文字后工具条里没存的批注和论文表里改到一半的随笔格回到原处,仍没存', async ({ app, win, configHome, profile }) => {
   // Leaving either one saves it, so each is left open by quitting.
   await openReader(win)
   await expect(shown(win, '.pdfpagebox[data-painted="1"]').first()).toBeVisible()
@@ -139,7 +139,7 @@ test('关掉 App 再打开,选中文字后工具条里没存的批注和论文�
     .call('papers.reading', { id: '13979-STAR-Speculative-Decodin' })) as { highlights: unknown[] }).highlights.length
   const before = await highlights(win)
 
-  const first = await relaunch(app, configHome)
+  const first = await relaunch(app, configHome, profile)
   let second: Awaited<ReturnType<typeof relaunch>> | null = null
   try {
     await openReader(first.win)
@@ -154,7 +154,7 @@ test('关掉 App 再打开,选中文字后工具条里没存的批注和论文�
     await first.win.locator('.ptable tbody tr .pt-remark').click()
     await first.win.locator('.ptable tbody tr .pt-remark input').fill('改到一半的随笔')
 
-    second = await relaunch(first.app, configHome)
+    second = await relaunch(first.app, configHome, profile)
     await gotoPapers(second.win)
     await second.win.locator('#libq').fill('STAR: SPECULATIVE DECODING')
     await expect(second.win.locator('.ptable tbody tr .pt-remark input')).toHaveValue('改到一半的随笔')

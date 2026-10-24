@@ -12,17 +12,17 @@ const EXAMPLE = resolve(import.meta.dirname, '../apps/desktop/src/core/fixtures/
  * The `app` fixture of app.ts on a vault with the aggregation layout: each case copies the example
  * vault into `wiki/` of a temporary directory, and `MERIDIAN_VAULT_ROOT` makes Core open that copy
  * with the vault store instead of the fixture store. The copy is deleted after the case, and the
- * case's config home is the temporary one from app.ts.
+ * case's config home and user-data folder are the temporary ones from app.ts.
  */
 const test = base.extend<{ app: ElectronApplication }>({
-  app: async ({ showWindow, configHome }, use) => {
+  app: async ({ showWindow, configHome, profile }, use) => {
     const vault = mkdtempSync(join(tmpdir(), 'meridian-e2e-vault-'))
     for (const name of ['schema.yaml', 'papers', 'topics', 'methods']) {
       cpSync(join(EXAMPLE, name), join(vault, 'wiki', name), { recursive: true })
     }
     const app = await electron.launch({
       // The specs assert Chinese copy, so the app must not follow the host's language.
-      args: [APP_DIR, '--lang=zh-CN', ...LAUNCH_SWITCHES],
+      args: [APP_DIR, '--lang=zh-CN', `--user-data-dir=${profile}`, ...LAUNCH_SWITCHES],
       env: {
         ...Object.fromEntries(Object.entries(process.env).filter((e): e is [string, string] => e[1] !== undefined)),
         MERIDIAN_VAULT_ROOT: vault,

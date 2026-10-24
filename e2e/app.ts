@@ -40,7 +40,7 @@ export const LAUNCH_SWITCHES = ['--force-color-profile=srgb']
  * moves the page's focus the way switching to another app and back does.
  */
 export const test = base.extend<{
-  app: ElectronApplication; win: Page; showWindow: boolean; configHome: string
+  app: ElectronApplication; win: Page; showWindow: boolean; configHome: string; profile: string
 }>({
   showWindow: [false, { option: true }],
   // A fresh config home per case keeps the user's own ~/.meridian (keys, model settings) out of reach.
@@ -49,32 +49,31 @@ export const test = base.extend<{
     await use(configHome)
     rmSync(configHome, { recursive: true, force: true })
   },
-  app: async ({ showWindow, configHome }, use) => {
-    const app = await launchApp(showWindow, configHome)
+  // A fresh user-data folder per case keeps the App's own profile (settings, drafts) out of reach and
+  // gives every case the profile of a first launch.
+  profile: async ({}, use) => {
+    const profile = mkdtempSync(join(tmpdir(), 'meridian-e2e-profile-'))
+    await use(profile)
+    rmSync(profile, { recursive: true, force: true })
+  },
+  app: async ({ showWindow, configHome, profile }, use) => {
+    const app = await launchApp(showWindow, configHome, profile)
     await use(app)
     await app.close()
   },
   win: async ({ app }, use) => {
-    const win = await app.firstWindow()
-    // The profile outlives a run, so a language picked by an earlier spec and the drafts an earlier
-    // case left unsaved are cleared before this one.
-    const stale = await win.evaluate(() => {
-      const kept = Object.keys(window.localStorage).filter((key) => key.startsWith('meridian.drafts:'))
-      const had = window.localStorage.getItem('meridian.language') !== null || kept.length > 0
-      window.localStorage.removeItem('meridian.language')
-      kept.forEach((key) => window.localStorage.removeItem(key))
-      return had
-    })
-    if (stale) await win.reload()
-    await use(win)
+    await use(await app.firstWindow())
   },
 })
 
-/** Starts the App on the fixture vault with config home `configHome`, on screen (isolated) when `showWindow`. */
-async function launchApp(showWindow: boolean, configHome: string): Promise<ElectronApplication> {
+/**
+ * Starts the App on the fixture vault with config home `configHome` and user-data folder `profile`, on
+ * screen (isolated) when `showWindow`.
+ */
+async function launchApp(showWindow: boolean, configHome: string, profile: string): Promise<ElectronApplication> {
   const app = await electron.launch({
     // The specs assert Chinese copy, so the app must not follow the host's language.
-    args: [APP_DIR, '--lang=zh-CN', ...LAUNCH_SWITCHES],
+    args: [APP_DIR, '--lang=zh-CN', `--user-data-dir=${profile}`, ...LAUNCH_SWITCHES],
     env: {
       ...ENV,
       MERIDIAN_LIBRARY_ROOT: VAULT,
@@ -98,14 +97,16 @@ async function launchApp(showWindow: boolean, configHome: string): Promise<Elect
 
 /**
  * Quits `app` as ⌘Q does and starts the App again on the same vault, config home `configHome` and
- * profile, keeping what the profile holds; returns the new App and its first window once the
- * preload is up. The caller closes the new App.
+ * user-data folder `profile`, keeping what the profile holds; returns the new App and its first window
+ * once the preload is up. The caller closes the new App.
  */
-export async function relaunch(app: ElectronApplication, configHome: string): Promise<{ app: ElectronApplication; win: Page }> {
+export async function relaunch(
+  app: ElectronApplication, configHome: string, profile: string,
+): Promise<{ app: ElectronApplication; win: Page }> {
   const closed = app.waitForEvent('close')
   await app.evaluate(({ app: running }) => { setTimeout(() => running.quit(), 0) })
   await closed
-  const next = await launchApp(false, configHome)
+  const next = await launchApp(false, configHome, profile)
   const win = await next.firstWindow()
   await win.waitForFunction(() => (window as unknown as MeridianWindow).meridian !== undefined)
   return { app: next, win }
