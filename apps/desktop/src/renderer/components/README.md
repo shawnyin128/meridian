@@ -134,7 +134,8 @@ Current shared contracts:
   is marked `aria-busy` and disabled, so a second press cannot start the action again.
 - `RunningRing` (in `icons`): the one running indicator, `DownloadRing` without a total, turning once per
   `--t-spin` in the colour of the text around it. GenerationControl, ActionButton and About use it; on a
-  solid button it turns in the button's ink, and a running job is never drawn in a danger tone.
+  solid accent fill (a primary button, the composer's send) it turns in the fill's ink, by its own rule in
+  `icons.css`, and a running job is never drawn in a danger tone.
 - `CardTray`: progressive disclosure for secondary card details. It keeps a one-line summary visible,
   expands details below the host without moving its primary identity, and owns the shared animation,
   keyboard semantics, and reduced-motion behavior.
