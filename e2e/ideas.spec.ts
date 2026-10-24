@@ -52,6 +52,36 @@ test('拖一张想法卡片到另一张前面,顺序写进库里', async ({ win 
   await expect.poll(async () => (await listIdeaIds(win)).filter((id) => seeded.has(id))).toEqual(expected)
 })
 
+test('拖一行进行中的想法经过另一行,落点画出和项目行一样的线,被拖的那行变淡', async ({ win }) => {
+  const [dragged, target] = [await seedIdea(win, '落点线用想法甲'), await seedIdea(win, '落点线用想法乙')]
+  for (const { id } of [dragged, target]) {
+    await win.evaluate((ideaId) => (window as unknown as MeridianWindow).meridian.call('idea.update', {
+      id: ideaId, patch: { project: 'draft' },
+    }), id)
+  }
+  await gotoIdeas(win)
+  const draggedRow = shown(win).locator(`.idea-row[data-idea="${dragged.id}"]`)
+  const targetRow = shown(win).locator(`.idea-row[data-idea="${target.id}"]`)
+  const ink = await win.evaluate(() => {
+    const probe = document.createElement('span')
+    probe.style.color = 'var(--ink)'
+    document.body.append(probe)
+    const colour = getComputedStyle(probe).color
+    probe.remove()
+    return colour
+  })
+
+  await draggedRow.locator('.drag-handle').dispatchEvent('dragstart', { dataTransfer: await win.evaluateHandle(() => new DataTransfer()) })
+  const box = (await targetRow.boundingBox())!
+  await targetRow.dispatchEvent('dragover', { clientY: box.y + 2, dataTransfer: await win.evaluateHandle(() => new DataTransfer()) })
+  await expect(draggedRow).toHaveCSS('opacity', '0.4')
+  await expect(targetRow).toHaveCSS('box-shadow', `${ink} 0px -2px 0px 0px`)
+  await targetRow.dispatchEvent('dragover', {
+    clientY: box.y + box.height - 2, dataTransfer: await win.evaluateHandle(() => new DataTransfer()),
+  })
+  await expect(targetRow).toHaveCSS('box-shadow', `${ink} 0px 2px 0px 0px`)
+})
+
 test('排序点「按更新时间」不报错,菜单收起、列表还在', async ({ win }) => {
   const seeded = await seedIdea(win, '排序菜单验证')
   await gotoIdeas(win)
