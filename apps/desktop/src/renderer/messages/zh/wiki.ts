@@ -118,15 +118,6 @@ export const wiki = {
     'open-question': '开放问题',
   },
   quality: {
-    dimension: {
-      grounding: '来源依据',
-      separation: '内容分层',
-      retrieval: '检索表达',
-      mechanism: '机制描述',
-      evidence: '证据描述',
-      implementation: '实现入口',
-      uncertainty: '局限与不确定性',
-    },
     heading: '生成时规则检查',
     passedTitle: '7 项规则检查未发现问题',
     findingsTitle: (n: number) => `发现 ${n} 项需要核对`,

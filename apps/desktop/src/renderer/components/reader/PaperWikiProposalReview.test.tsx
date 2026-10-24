@@ -148,7 +148,8 @@ describe('PaperWikiProposalReview', () => {
   }
 
   it('shows a finding by its title and place alone, its detail only in the tooltip of its title, in zh and en', () => {
-    expect(findingRows('zh', ['mechanism[0]']).map(({ lines }) => lines)).toEqual([['机制描述过于空泛机制描述', '机制 · 第 1 条']])
+    expect(findingRows('zh', ['mechanism[0]']).map(({ lines }) => lines)).toEqual([['机制描述过于空泛', '机制 · 第 1 条']])
+    expect(findingRows('en', ['mechanism[0]']).map(({ lines }) => lines)).toEqual([['Mechanism description is too generic', 'Mechanism · item 1']])
     expect(findingTip('zh', 'generic-contract')).toBe('输入、变换、输出或依赖仍是占位式表达。')
     expect(findingTip('en', 'generic-contract')).toBe('The input, transformation, output, or dependencies still use placeholder wording.')
   })
