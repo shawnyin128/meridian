@@ -24,8 +24,8 @@ import { TaskScheduleField } from '../TaskScheduleField.js'
 import { IconButton } from '../IconButton.js'
 import { IconPencil, IconTrash } from '../icons.js'
 import { SectionHeading } from '../PageShell.js'
-import { SegmentedControl } from '../SegmentedControl.js'
 import { RowActions, StructuredList, StructuredRow } from '../StructuredList.js'
+import { TabbedSection } from '../TabbedSection.js'
 import { Toolbar, ToolbarButton } from '../Toolbar.js'
 import { useDragReorder, type Reorderable } from '../../hooks/useDragReorder.js'
 import { useFormat } from '../../lib/format.js'
@@ -444,123 +444,111 @@ export function ProjectPlan({
   const msArchiveShown = msArchiveOpen || archivedMilestones.some((milestone) => milestone.id === flashId)
   return (
     <section className="project-plan">
-      <SectionHeading
+      <TabbedSection
+        heading={m.project.sections.plan} label={m.project.plan.viewLabel} value={tab} panelRef={listRef}
+        onChange={(value) => { onTab(value); onDiscardOpenEdits() }}
         actions={(
-          <>
-            <SegmentedControl
-              size="sm" label={m.project.plan.viewLabel}
-              value={tab}
-              options={[
-                { value: 'task', label: m.project.plan.taskMode },
-                { value: 'ms', label: m.project.plan.milestoneMode },
-              ]}
-              onChange={(value) => { onTab(value); onDiscardOpenEdits() }}
-            />
-            <AddAction
-              variant="section" ref={addRef}
-              label={tab === 'ms' ? m.project.plan.addMilestone : m.project.plan.addTask}
-              onClick={() => (tab === 'ms' ? onStartMilestone(today) : onStartTask())}
-            >{tab === 'ms' ? m.project.plan.milestoneMode : m.project.plan.taskMode}</AddAction>
-          </>
+          <AddAction
+            variant="section" ref={addRef}
+            label={tab === 'ms' ? m.project.plan.addMilestone : m.project.plan.addTask}
+            onClick={() => (tab === 'ms' ? onStartMilestone(today) : onStartTask())}
+          >{tab === 'ms' ? m.project.plan.milestoneMode : m.project.plan.taskMode}</AddAction>
         )}
-      >{m.project.sections.plan}
-      </SectionHeading>
-
-      <div ref={listRef}>
-        {tab === 'task'
-          ? (
-            <StructuredList id="taskList" variant="embedded">
-              {creating?.kind === 'task'
-                ? (
-                  <TaskCreateRow
-                    initial={{
-                      title: '',
-                      start: creating.date,
-                      end: creating.window ? creating.date : isoOf(dnum(creating.date) + 6),
-                      priority: 'p1',
-                      state: 'act',
-                      window: creating.window,
-                    }}
-                    triggers={[addRef, timelineAddRef]}
-                    onCancel={onCancelCreate} onSave={onCreateTask}
+        tabs={[
+          {
+            value: 'task', label: m.project.plan.taskMode, empty: m.project.plan.noTasks,
+            content: project.tasks.length === 0 && creating?.kind !== 'task' ? null : (
+              <StructuredList id="taskList" variant="embedded">
+                {creating?.kind === 'task'
+                  ? (
+                    <TaskCreateRow
+                      initial={{
+                        title: '',
+                        start: creating.date,
+                        end: creating.window ? creating.date : isoOf(dnum(creating.date) + 6),
+                        priority: 'p1',
+                        state: 'act',
+                        window: creating.window,
+                      }}
+                      triggers={[addRef, timelineAddRef]}
+                      onCancel={onCancelCreate} onSave={onCreateTask}
+                    />
+                  )
+                  : null}
+                {activeTasks.map((task) => (
+                  <TaskRow
+                    key={task.id} task={task} flash={flashId === task.id} selected={selectedTaskId === task.id}
+                    reorder={{ item: taskOrder.itemProps(task.id), handle: taskOrder.handleProps(task.id) }}
+                    dropClass={taskOrder.dropClass(task.id)}
+                    onSave={(patch) => onUpdateTask(task.id, patch)}
+                    onDelete={() => onDeleteTask(task.id)}
+                    onOpen={() => onOpenTask(task.id)}
                   />
-                )
-                : null}
-              {activeTasks.map((task) => (
-                <TaskRow
-                  key={task.id} task={task} flash={flashId === task.id} selected={selectedTaskId === task.id}
-                  reorder={{ item: taskOrder.itemProps(task.id), handle: taskOrder.handleProps(task.id) }}
-                  dropClass={taskOrder.dropClass(task.id)}
-                  onSave={(patch) => onUpdateTask(task.id, patch)}
-                  onDelete={() => onDeleteTask(task.id)}
-                  onOpen={() => onOpenTask(task.id)}
-                />
-              ))}
-              {project.tasks.length === 0 && creating?.kind !== 'task'
-                ? <EmptyState variant="section">{m.project.plan.noTasks}</EmptyState>
-                : null}
-              {archivedTasks.length === 0
-                ? null
-                : (
-                  <CollapsibleGroup
-                    variant="quiet" title={m.common.archived} count={archivedTasks.length}
-                    open={taskArchiveShown} onToggle={() => setTaskArchiveOpen((open) => !open)}
-                  >
-                    {archivedTasks.map((task) => (
-                      <TaskRow
-                        key={task.id} task={task} flash={flashId === task.id}
-                        selected={selectedTaskId === task.id}
-                        onSave={(patch) => onUpdateTask(task.id, patch)}
-                        onDelete={() => onDeleteTask(task.id)}
-                        onOpen={() => onOpenTask(task.id)}
-                      />
-                    ))}
-                  </CollapsibleGroup>
-                )}
-            </StructuredList>
-          )
-          : (
-            <StructuredList id="msList" variant="embedded">
-              {activeMilestones.map((milestone) => (
-                <MilestoneRow
-                  key={milestone.id} milestone={milestone} flash={flashId === milestone.id}
-                  onHover={onHoverMilestone}
-                  onSave={(patch) => onUpdateMilestone(milestone.id, patch)}
-                  onDelete={() => onDeleteMilestone(milestone.id)}
-                />
-              ))}
-              {creating?.kind === 'ms'
-                ? (
-                  <MilestoneCreateRow
-                    initial={{ date: creating.date, title: '', done: false }}
-                    triggers={[addRef, timelineAddRef]}
-                    onCancel={onCancelCreate} onSave={onCreateMilestone}
+                ))}
+                {archivedTasks.length === 0
+                  ? null
+                  : (
+                    <CollapsibleGroup
+                      variant="quiet" title={m.common.archived} count={archivedTasks.length}
+                      open={taskArchiveShown} onToggle={() => setTaskArchiveOpen((open) => !open)}
+                    >
+                      {archivedTasks.map((task) => (
+                        <TaskRow
+                          key={task.id} task={task} flash={flashId === task.id}
+                          selected={selectedTaskId === task.id}
+                          onSave={(patch) => onUpdateTask(task.id, patch)}
+                          onDelete={() => onDeleteTask(task.id)}
+                          onOpen={() => onOpenTask(task.id)}
+                        />
+                      ))}
+                    </CollapsibleGroup>
+                  )}
+              </StructuredList>
+            ),
+          },
+          {
+            value: 'ms', label: m.project.plan.milestoneMode, empty: m.project.plan.noMilestones,
+            content: project.milestones.length === 0 && creating?.kind !== 'ms' ? null : (
+              <StructuredList id="msList" variant="embedded">
+                {activeMilestones.map((milestone) => (
+                  <MilestoneRow
+                    key={milestone.id} milestone={milestone} flash={flashId === milestone.id}
+                    onHover={onHoverMilestone}
+                    onSave={(patch) => onUpdateMilestone(milestone.id, patch)}
+                    onDelete={() => onDeleteMilestone(milestone.id)}
                   />
-                )
-                : null}
-              {project.milestones.length === 0 && creating?.kind !== 'ms'
-                ? <EmptyState variant="section">{m.project.plan.noMilestones}</EmptyState>
-                : null}
-              {archivedMilestones.length === 0
-                ? null
-                : (
-                  <CollapsibleGroup
-                    variant="quiet" title={m.common.archived} count={archivedMilestones.length}
-                    open={msArchiveShown} onToggle={() => setMsArchiveOpen((open) => !open)}
-                  >
-                    {archivedMilestones.map((milestone) => (
-                      <MilestoneRow
-                        key={milestone.id} milestone={milestone} flash={flashId === milestone.id}
-                        onHover={onHoverMilestone}
-                        onSave={(patch) => onUpdateMilestone(milestone.id, patch)}
-                        onDelete={() => onDeleteMilestone(milestone.id)}
-                      />
-                    ))}
-                  </CollapsibleGroup>
-                )}
-            </StructuredList>
-          )}
-      </div>
+                ))}
+                {creating?.kind === 'ms'
+                  ? (
+                    <MilestoneCreateRow
+                      initial={{ date: creating.date, title: '', done: false }}
+                      triggers={[addRef, timelineAddRef]}
+                      onCancel={onCancelCreate} onSave={onCreateMilestone}
+                    />
+                  )
+                  : null}
+                {archivedMilestones.length === 0
+                  ? null
+                  : (
+                    <CollapsibleGroup
+                      variant="quiet" title={m.common.archived} count={archivedMilestones.length}
+                      open={msArchiveShown} onToggle={() => setMsArchiveOpen((open) => !open)}
+                    >
+                      {archivedMilestones.map((milestone) => (
+                        <MilestoneRow
+                          key={milestone.id} milestone={milestone} flash={flashId === milestone.id}
+                          onHover={onHoverMilestone}
+                          onSave={(patch) => onUpdateMilestone(milestone.id, patch)}
+                          onDelete={() => onDeleteMilestone(milestone.id)}
+                        />
+                      ))}
+                    </CollapsibleGroup>
+                  )}
+              </StructuredList>
+            ),
+          },
+        ]}
+      />
     </section>
   )
 }

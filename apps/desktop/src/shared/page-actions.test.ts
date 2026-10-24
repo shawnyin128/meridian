@@ -106,6 +106,7 @@ type Slot = 'page header' | 'page toolbar' | 'section heading' | 'panel head' | 
 const SLOT_PROPS: Record<string, Record<string, Slot>> = {
   PageHeader: { actions: 'page header' },
   SectionHeading: { actions: 'section heading' },
+  TabbedSection: { actions: 'section heading' },
   CollapsibleGroup: { actions: 'group heading' },
   IdeaPanel: { actions: 'panel head' },
   PaperCard: { actions: 'row actions' },
@@ -132,10 +133,12 @@ const SLOT_BODIES: Record<string, Slot> = { TimelineControls: 'timeline toolbar'
 const CONTROL_FILES = new Set(['components/SortMenu.tsx', 'components/AddAction.tsx', 'components/EditActions.tsx',
   'components/PanelClose.tsx', 'components/FieldPickers.tsx', 'components/IconButton.tsx', 'components/DraftForm.tsx'])
 
-/** Segmented controls that switch the views of a page, a section or a board, by their accessible name. */
+/**
+ * Segmented controls that switch the views of a page, a section or a board, by their accessible name;
+ * a section's switch is TabbedSection's, named by its `label`.
+ */
 const VIEW_SWITCHES = new Set(['m.papers.views.aria', 'm.papers.toolbar.groupFieldAria', 'm.later.groupBy',
-  'm.feed.sourceFieldLabel', 'm.project.plan.viewLabel', 'm.project.recordViewLabel',
-  'm.timeline.scaleGroup', 'm.wiki.ingest.reviewViewLabel'])
+  'm.feed.sourceFieldLabel', 'label', 'm.timeline.scaleGroup'])
 
 /** The message path of a control that sorts a page's list, whichever control draws it. */
 const SORT_LABEL = /^m\.[\w.]+\.sort(Label)?$/

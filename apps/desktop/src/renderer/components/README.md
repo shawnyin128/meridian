@@ -58,6 +58,11 @@ Current shared contracts:
 - `SegmentedControl`: the only switch between peer views in the app, including the timeline scale: a track of
   equal segments with a raised thumb that slides to the picked one, radio-group semantics, and one Tab stop
   with arrow keys inside. The `.fchip` and `.segbtn` pill rows are retired.
+- `TabbedSection`: the one section whose content switches between peer tabs: its heading, its `SegmentedControl`
+  first in the heading's actions slot and then the section's own actions, and the picked tab's panel. A tab with
+  nothing shows its sentence as the section `EmptyState`; that state and every row of the list a tab shows are
+  one list row high, so switching between a tab with one row and an empty tab moves nothing below. Routes supply
+  only the tabs, each tab's content and its empty sentence.
 - `Toolbar`: the one roving group, on Radix Toolbar: a group of controls is one Tab stop, the arrow keys move
   between them, and Tab comes back to the one focused last. IconButton, AddAction, ChoicePicker's trigger and
   `ToolbarButton` join the toolbar they render in; a toolbar inside one of the same orientation joins it, and a
