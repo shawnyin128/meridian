@@ -111,6 +111,14 @@ export const wiki = {
     written: '已写入 Wiki。',
     discarded: '提案已丢弃',
   },
+  reviewGroups: {
+    problem: '论文问题',
+    takeaway: '核心要点',
+    'retrieval-fit': '检索场景',
+    'retrieval-scope': '适用边界',
+    evidence: '证据',
+    implementation: '实现入口',
+  },
   reviewSections: {
     remember: { title: '记住什么', empty: '本提案没有可审核的核心摘要。' },
     retrieve: { title: '何时检索', empty: '本提案没有检索建议。' },

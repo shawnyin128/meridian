@@ -20,6 +20,18 @@ function anchorLabel(anchor: string, m: Catalog): string {
 }
 
 /**
+ * The title group `group` shows: the catalog's name for the kind its id names, numbered as its id is,
+ * or the title Core stored for a kind the catalog does not name, such as a mechanism component's own name.
+ */
+function groupTitle(group: HarnessPaperWikiReviewGroup, m: Catalog): string | undefined {
+  const [, kind, number] = /^(.+?)(?:-(\d+))?$/.exec(group.id) ?? []
+  const named: Record<string, string> = m.wiki.reviewGroups
+  const name = kind === undefined ? undefined : named[kind]
+  if (name === undefined) return group.title
+  return number === undefined ? name : `${name} ${number}`
+}
+
+/**
  * One group of the review: its title and provenance, its unlabelled text in body type, then one aligned
  * list of its labelled rows and what it rests on: the paper's pages as anchors that open the reader
  * there through `onJump`, and the reading records it cites by name.
@@ -29,10 +41,11 @@ function ReviewGroup({ group, onJump }: { group: HarnessPaperWikiReviewGroup; on
   const g = m.wiki.queue.grounds
   const pages = group.anchors.filter((anchor) => anchor.startsWith('page:')).map((anchor) => Number(anchor.slice('page:'.length)))
   const records = group.anchors.filter((anchor) => !anchor.startsWith('page:'))
+  const title = groupTitle(group, m)
   return (
     <StructuredRow className="paper-wiki-review-group">
       <div className="paper-wiki-review-group-head">
-        {group.title === undefined ? null : <strong>{group.title}</strong>}
+        {title === undefined ? null : <strong>{title}</strong>}
         <Tag>{m.wiki.provenance[group.provenance]}</Tag>
       </div>
       {group.rows.map((row, index) => (row.label === undefined ? <ProposalText key={index}>{row.text}</ProposalText> : null))}

@@ -92,6 +92,33 @@ describe('PaperWikiProposalReview', () => {
     for (const [title, empty] of sectionTexts('en', ids)) expect(`${title} ${empty}`).not.toMatch(/[\u3400-\u9fff]/)
   })
 
+  it('names each group title by its id in the catalog, in zh and en, and keeps the stored words of a mechanism component and of an unknown id', () => {
+    const groups = [
+      ['problem', '论文问题'], ['takeaway-3', '核心要点 3'], ['retrieval-fit-2', '检索场景 2'], ['retrieval-scope', '适用边界'],
+      ['evidence-1', '证据 1'], ['implementation-1', '实现入口 1'], ['mechanism-1', 'Feature drafter'], ['later-group-1', 'Core 存下的组'],
+    ]
+    const titles = (language: 'zh' | 'en') => {
+      window.localStorage.setItem(LANGUAGE_STORAGE_KEY, language)
+      const review: HarnessPaperWikiReview = {
+        schemaVersion: 'meridian.paper-wiki-review.v1',
+        sections: [{
+          id: 'remember', title: '记住什么', emptyLabel: '没有内容',
+          groups: groups.map(([id, title]) => ({ id: id!, title: title!, provenance: 'wiki-synthesis' as const, anchors: [], rows: [{ text: '一句' }] })),
+        }],
+      }
+      const host = document.createElement('div')
+      host.innerHTML = renderToStaticMarkup(
+        <MessagesProvider><PaperWikiProposalReview review={review} onJump={() => {}} /></MessagesProvider>,
+      )
+      return [...host.querySelectorAll('.paper-wiki-review-group-head > strong')].map((title) => title.textContent)
+    }
+    expect(titles('zh')).toEqual(groups.map(([, title]) => title))
+    expect(titles('en')).toEqual([
+      'Problem', 'Key point 3', 'Search scenario 2', 'Scope', 'Evidence 1', 'Implementation entry point 1',
+      'Feature drafter', 'Core 存下的组',
+    ])
+  })
+
   it('keeps the words Core stored for a section this version does not know', () => {
     expect(sectionTexts('en', ['later-section'])).toEqual([['Core 存下的「later-section」', 'Core 存下的「later-section」空白']])
   })

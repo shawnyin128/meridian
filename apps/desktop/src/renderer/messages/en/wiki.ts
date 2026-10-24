@@ -118,6 +118,14 @@ export const wiki = {
     written: 'Saved to Wiki.',
     discarded: 'Draft discarded',
   },
+  reviewGroups: {
+    problem: 'Problem',
+    takeaway: 'Key point',
+    'retrieval-fit': 'Search scenario',
+    'retrieval-scope': 'Scope',
+    evidence: 'Evidence',
+    implementation: 'Implementation entry point',
+  },
   reviewSections: {
     remember: { title: 'What to remember', empty: 'No key points to review.' },
     retrieve: { title: 'When to retrieve', empty: 'No retrieval suggestions.' },
