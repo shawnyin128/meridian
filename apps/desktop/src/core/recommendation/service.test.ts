@@ -1,12 +1,37 @@
 import { describe, expect, it, vi } from 'vitest'
 import { createFixtureStore } from '../fixture-store.js'
 import { minimalPdf } from '../net/minimal-pdf.js'
-import { ON_POLICY_DISTILLATION_SAMPLE } from './fixtures/on-policy-distillation.js'
-import { clusterRecommendationProfile, recommendationFingerprint, recommendationQueryIntent } from './profile.js'
+import { ON_POLICY_DISTILLATION_SAMPLE, type DiscoverySamplePaper } from './fixtures/on-policy-distillation.js'
+import { clusterRecommendationProfile, recommendationFingerprint } from './profile.js'
 import { createRecommendationService, DISCOVERY_COOLDOWN_MS } from './service.js'
 import type {
-  DiscoverySchedule, RecommendationProfile, RecommendationProvider, RecommendationSeed,
+  DiscoveryPaper, DiscoverySchedule, RecommendationIntent, RecommendationProfile, RecommendationProvider,
+  RecommendationSeed,
 } from './types.js'
+
+/** Creates the project `name` in `store` with `seeds` imported as its papers, and returns its id. */
+function seededProject(
+  store: ReturnType<typeof createFixtureStore>, name: string, seeds: DiscoverySamplePaper[],
+): string {
+  store.createProject(name)
+  const project = store.listProjects().find((item) => item.name === name)!
+  for (const seed of seeds) {
+    const imported = store.importPaper(`${seed.arxiv}.pdf`, minimalPdf({ lines: [seed.arxiv, seed.title] })).paper
+    store.fillPaperMetadata(imported.id, {
+      title: seed.title, authors: seed.authors, abstract: seed.abstract, identifier: `arXiv:${seed.arxiv}`,
+    }, imported.title)
+    store.addPaper(project.id, imported.id)
+  }
+  return project.id
+}
+
+/** Store methods for a fake store that keeps no refresh progress between runs. */
+const noProgress = { refreshProgress: () => ({ steps: {} }), setRefreshProgress: () => {} }
+
+/** The cooldown record an earlier fetch of `intent` leaves, keyed by its anchor seed and no negatives. */
+const fetchedRecord = (intent: RecommendationIntent, fetchedAt: number) => ({
+  fingerprint: recommendationFingerprint({ ...intent, seeds: intent.seeds.slice(0, 1) }, []), fetchedAt,
+})
 
 describe('project recommendation service', () => {
   it('用五篇 OPD/KD 论文建档后发布 provider 给出的 Osprey,并把正反馈并入下一轮', async () => {
@@ -274,6 +299,7 @@ describe('project recommendation service', () => {
       setDiscoverySchedule: (projectId: string, schedule: DiscoverySchedule) => {
         schedules.set(projectId, schedule)
       },
+      ...noProgress,
       addDiscoveryEntries: () => 0,
     }
     const requested: string[] = []
@@ -334,6 +360,7 @@ describe('project recommendation service', () => {
           schedules.get(projectId) ?? { lastFetchedAt: null, cursor: 0, requests: {} }
         ),
         setDiscoverySchedule: (projectId, schedule) => { schedules.set(projectId, schedule) },
+        ...noProgress,
         addDiscoveryEntries: () => 0,
       },
       provider: {
@@ -402,10 +429,9 @@ describe('project recommendation service', () => {
       identifier: `arXiv:${seed.arxiv}`,
     }, imported.title)
     store.addPaper(project.id, imported.id)
-    const intent = recommendationQueryIntent(store.discoveryIntents(project.id)[0]!)
+    const intent = store.discoveryIntents(project.id)[0]!
     store.setDiscoverySchedule(project.id, {
-      lastFetchedAt: 1, cursor: 0,
-      requests: { [intent.id]: { fingerprint: recommendationFingerprint(intent, []), fetchedAt: 1 } },
+      lastFetchedAt: 1, cursor: 0, requests: { [intent.id]: fetchedRecord(intent, 1) },
     })
     const recommend = vi.fn<RecommendationProvider['recommend']>(async () => [])
     const service = createRecommendationService({
@@ -414,5 +440,86 @@ describe('project recommendation service', () => {
 
     await service.discover(project.id)
     expect(recommend.mock.calls[0]?.[2]).toBe('citation')
+  })
+
+  it('每个方向在两次刷新之间换到下一个查询,第二次刷新送来第一次没有的论文', async () => {
+    const store = createFixtureStore(() => '2026-09-17')
+    const project = seededProject(store, '轮换项目', ON_POLICY_DISTILLATION_SAMPLE.seeds)
+    store.setDeliverySettings({ maxItemsPerRun: 20 })
+    const runs: string[][] = []
+    const answers = new Map<string, DiscoveryPaper>()
+    // A provider answers the same query with the same paper, as Semantic Scholar does for an unchanged seed.
+    const recommend = vi.fn<RecommendationProvider['recommend']>(async (positive, _negative, source, page) => {
+      const query = `${positive.map((seed) => seed.paperId).join('+')} ${source ?? 'similarity'} ${page ?? 0}`
+      runs.at(-1)!.push(query)
+      if (!answers.has(query)) {
+        answers.set(query, {
+          ...ON_POLICY_DISTILLATION_SAMPLE.expected,
+          semanticId: `rotated-${answers.size}`, id: `2609.${70_000 + answers.size}`, title: `Answer to ${query}`,
+        })
+      }
+      return [answers.get(query)!]
+    })
+    let now = 1
+    const service = createRecommendationService({ store, provider: { recommend }, onWrite: vi.fn(), now: () => now })
+
+    runs.push([])
+    await expect(service.discover(project)).resolves.toMatchObject({ intents: 2, added: 2 })
+    now += DISCOVERY_COOLDOWN_MS + 1
+    runs.push([])
+    await expect(service.discover(project)).resolves.toMatchObject({ intents: 2, added: 2 })
+
+    expect(runs[1]).toHaveLength(2)
+    expect(runs[1]!.filter((query) => runs[0]!.includes(query))).toEqual([])
+    expect(store.listInbox({ kind: 'discovery', project })).toHaveLength(4)
+  })
+
+  it('选中的方向都在冷却时游标照样前进,下一次刷新轮到还没冷却的方向', async () => {
+    const titles = ['quantized attention kernels', 'speculative draft trees', 'cache eviction policies',
+      'expert routing balance', 'sparse mask search']
+    const profile: RecommendationProfile = {
+      projectId: 'p', projectName: '五个方向', anchorText: titles[0]!,
+      positive: titles.map((title, at) => ({ paperId: `seed-${at}`, title, abstract: '', source: 'project' })),
+      negative: [],
+    }
+    const intents = clusterRecommendationProfile(profile)
+    expect(intents).toHaveLength(5)
+    const now = 10 * DISCOVERY_COOLDOWN_MS
+    const recent = now - DISCOVERY_COOLDOWN_MS / 6
+    let schedule: DiscoverySchedule = {
+      lastFetchedAt: recent, cursor: 0,
+      requests: Object.fromEntries(intents.slice(0, 3).map((intent) => [intent.id, fetchedRecord(intent, recent)])),
+    }
+    const requested: string[] = []
+    const service = createRecommendationService({
+      store: {
+        deliverySettings: () => ({ maxItemsPerRun: 20 }),
+        listDiscoveryProfiles: () => [{
+          id: 'p', name: '五个方向', seedCount: 5, positiveCount: 0, negativeCount: 0, intentCount: 5,
+          lastFetchedAt: schedule.lastFetchedAt, intents: [],
+        }],
+        discoveryProfile: () => profile,
+        discoveryIntents: () => intents,
+        discoverySchedule: () => schedule,
+        setDiscoverySchedule: (_projectId, next) => { schedule = next },
+        ...noProgress,
+        addDiscoveryEntries: () => 0,
+      },
+      provider: {
+        recommend: async (positive) => {
+          requested.push(positive[0]!.paperId)
+          return []
+        },
+      },
+      onWrite: vi.fn(),
+      now: () => now,
+    })
+
+    await expect(service.discover('p')).resolves.toMatchObject({ intents: 0, cachedIntents: 3, failedIntents: 0 })
+    expect(requested).toEqual([])
+    expect(schedule).toMatchObject({ lastFetchedAt: recent, cursor: 2 })
+
+    await expect(service.discover('p')).resolves.toMatchObject({ intents: 2, cachedIntents: 1 })
+    expect(requested).toEqual(intents.slice(3).map((intent) => intent.seeds[0]!.paperId))
   })
 })

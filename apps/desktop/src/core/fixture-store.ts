@@ -42,7 +42,7 @@ import { inboxFields, unseenPapers } from './inbox/dedup.js'
 import {
   applyRecommendationPreferences, buildRecommendationProfile, clusterRecommendationProfile,
   discoveryReasons, orderInbox, recommendationSeedIds,
-  type DiscoveryPaper, type DiscoveryPreferences, type DiscoverySchedule,
+  type DiscoveryPaper, type DiscoveryPreferences, type DiscoverySchedule, type RefreshProgress,
 } from './recommendation/index.js'
 import { dayOf, feedNewestFirst, systemToday } from './dates.js'
 import { createResearchIdea, readResearchIdea, updateResearchIdea } from './research-ideas/index.js'
@@ -332,6 +332,7 @@ export function createFixtureStore(
   let fetchedAt: number | null = null
   const discoverySchedules = new Map<string, DiscoverySchedule>()
   const discoveryPreferences = new Map<string, DiscoveryPreferences>()
+  const progressByScope = new Map<string, RefreshProgress>()
   let deliveryConfig: DeliverySettings = structuredClone(DEFAULT_DELIVERY_SETTINGS)
   // Fixture ids use t1/m1/r1/f1/feed-1/chg-1 shapes; new prefixes must not collide with them.
   const nextId = (prefix: string) => `${prefix}-${++seq}`
@@ -1581,6 +1582,16 @@ export function createFixtureStore(
     setDiscoverySchedule(projectId, schedule) {
       if (!projectById.has(projectId)) throw new CallError('not-found', `项目不存在：${projectId}`)
       discoverySchedules.set(projectId, schedule)
+    },
+
+    refreshProgress(scope) {
+      if (!projectById.has(scope.id)) throw new CallError('not-found', `项目不存在：${scope.id}`)
+      return structuredClone(progressByScope.get(`${scope.kind}:${scope.id}`) ?? { steps: {} })
+    },
+
+    setRefreshProgress(scope, next) {
+      if (!projectById.has(scope.id)) throw new CallError('not-found', `项目不存在：${scope.id}`)
+      progressByScope.set(`${scope.kind}:${scope.id}`, structuredClone(next))
     },
 
     setDiscoveryIntent(projectId, intentId, action) {

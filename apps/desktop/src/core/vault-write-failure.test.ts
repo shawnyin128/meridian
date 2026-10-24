@@ -3,7 +3,7 @@ import {
   statSync, writeFileSync,
 } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { dirname, join, resolve, sep } from 'node:path'
+import { basename, dirname, join, resolve, sep } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { TRASH_RETENTION_DAYS } from '../shared/vocabulary.js'
 import { placeResearchIdeaOnGraph, promoteResearchIdea } from './research-ideas/index.js'
@@ -116,6 +116,9 @@ const REFUSED: [string, string, (store: VaultStore, world: World) => unknown, (s
   ['state.json', '改推送设置', (s) => s.setDeliverySettings({ maxItemsPerRun: 3 }), (s) => s.deliverySettings()],
   ['state.json', '记下项目发现的进度', (s, w) => s.setDiscoverySchedule(w.project, { lastFetchedAt: 1, cursor: 1, requests: {} }), (s, w) => s.discoverySchedule(w.project)],
   ['state.json', '记下拉取时间', (s) => s.setLastFetch(1), (s) => s.lastFetch()],
+  ['discovery/progress.json', '记下项目发现轮到哪一步', (s, w) => s.setRefreshProgress(
+    { kind: 'project', id: w.project }, { steps: { 'intent-a': 1 } },
+  ), (s, w) => s.refreshProgress({ kind: 'project', id: w.project })],
   ['state.json', '调想法顺序', (s) => s.reorderIdeas(s.listIdeas().map((idea) => idea.id).reverse()), (s) => s.listIdeas()],
   ['changelog.json', '归档一条变动', (s) => s.archiveChange(s.listChanges().find((c) => !c.archived)!.id), (s) => s.listChanges()],
   ['changelog.json', '全部归档', (s) => s.archiveAllChanges(), (s) => s.listChanges()],
@@ -268,7 +271,7 @@ describe('a vault write that fails', () => {
     locked = []
   }
   /** The file the writer stages a write of `.meridian/<file>` in before renaming it over the file. */
-  const staged = (file: string): string => join(vault, '.meridian', 'tmp', `${file}.tmp`)
+  const staged = (file: string): string => join(vault, '.meridian', 'tmp', `${basename(file)}.tmp`)
   /** Makes every write of `.meridian/<file>` fail, and no other write: its staged file exists read-only. */
   const refuse = (file: string): void => {
     mkdirSync(join(vault, '.meridian', 'tmp'), { recursive: true })

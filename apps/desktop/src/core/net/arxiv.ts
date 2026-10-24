@@ -44,8 +44,11 @@ export type TopicalOrder = 'relevance' | 'submittedDate'
 
 export type Arxiv = MetadataProvider & {
   search(query: string): Promise<RemotePaper[]>
-  /** The TOPICAL_BATCH papers matching `query` first submitted in or after `sinceYear`, best match or newest first. */
-  searchTopical(query: string, sinceYear: number, order: TopicalOrder): Promise<RemotePaper[]>
+  /**
+   * The TOPICAL_BATCH papers matching `query` first submitted in or after `sinceYear`, best match or newest first,
+   * skipping the first `start`.
+   */
+  searchTopical(query: string, sinceYear: number, order: TopicalOrder, start?: number): Promise<RemotePaper[]>
 }
 
 /**
@@ -68,11 +71,15 @@ export function searchUrl(query: string): string {
   return `${API}?${params.toString()}`
 }
 
-/** Returns the API address for a topical search restricted to papers first submitted in or after `sinceYear`. */
-export function topicalSearchUrl(query: string, sinceYear: number, order: TopicalOrder): string {
+/**
+ * Returns the API address for a topical search restricted to papers first submitted in or after `sinceYear`,
+ * starting after its first `start` results. The first page's address carries no `start`.
+ */
+export function topicalSearchUrl(query: string, sinceYear: number, order: TopicalOrder, start = 0): string {
   const params = new URLSearchParams({
     search_query: `(${query}) AND submittedDate:[${sinceYear}01010000 TO 999912312359]`,
     sortBy: order, sortOrder: 'descending', max_results: String(TOPICAL_BATCH),
+    ...(start > 0 ? { start: String(start) } : {}),
   })
   return `${API}?${params.toString()}`
 }
@@ -219,7 +226,7 @@ export function createArxiv(deps: {
 
   return {
     search: (query) => call(searchUrl(query), parseAtom),
-    searchTopical: (query, sinceYear, order) => call(topicalSearchUrl(query, sinceYear, order), parseAtom),
+    searchTopical: (query, sinceYear, order, start) => call(topicalSearchUrl(query, sinceYear, order, start), parseAtom),
     lookup,
     async lookupMany(ids) {
       const unique = [...new Set(ids.map((id) => id.trim()).filter(Boolean))]

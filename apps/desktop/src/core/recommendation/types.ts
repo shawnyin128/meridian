@@ -55,6 +55,15 @@ export type DiscoverySchedule = {
   requests: Record<string, DiscoveryIntentCache>
 }
 
+/** One project whose refreshes Core keeps progress for. */
+export type RefreshScope = { kind: 'project'; id: string }
+
+/** How far a scope's refreshes have got. */
+export type RefreshProgress = {
+  /** Per discovery direction id, how many queries it has run; the next one runs at that rotation step. */
+  steps: Record<string, number>
+}
+
 export type DiscoveryPreferences = {
   coreIntentId: string | null
   disabledIntentIds: string[]
@@ -71,10 +80,13 @@ export type DiscoveryPaper = RemotePaper & {
   wikiTerms?: string[]
 }
 
-/** Replaceable boundary for any project-seeded paper recommendation backend. */
+/**
+ * Replaceable boundary for any project-seeded paper recommendation backend. `page` counts from 0 and
+ * asks for the results after the first `page` batches; a backend that cannot page ignores it.
+ */
 export type RecommendationProvider = {
   recommend(
-    positive: RecommendationSeed[], negativePaperIds: string[], source?: RecommendationSource,
+    positive: RecommendationSeed[], negativePaperIds: string[], source?: RecommendationSource, page?: number,
   ): Promise<DiscoveryPaper[]>
 }
 

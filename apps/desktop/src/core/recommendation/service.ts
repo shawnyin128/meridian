@@ -2,20 +2,16 @@ import type { DiscoveryFetchResult } from '../../shared/contract.js'
 import type { VaultStore } from '../vault.js'
 import { mergeIntentResults, type IntentResult } from './merge.js'
 import {
-  recommendationFingerprint, recommendationQueryIntent, selectRecommendationIntents,
+  QUERY_SOURCES, recommendationFingerprint, recommendationQuery, selectRecommendationIntents,
 } from './profile.js'
 import { applyRecommendationSignals } from './signals.js'
 import type {
   DiscoverySchedule, RecommendationIntent, RecommendationProfile, RecommendationProvider,
-  RecommendationSource,
 } from './types.js'
 
 const MAX_GLOBAL_CALLS = 12
 const MAX_PROJECT_CALLS = 3
 export const DISCOVERY_COOLDOWN_MS = 6 * 60 * 60 * 1_000
-const CORE_SOURCE_CYCLE: RecommendationSource[] = [
-  'similarity', 'citation', 'reference', 'author',
-]
 
 type ProjectPlan = {
   id: string
@@ -23,39 +19,35 @@ type ProjectPlan = {
   negative: string[]
   excluded: Set<string>
   intents: RecommendationIntent[]
+  /** Every direction of the project, enabled or not; rotation steps are kept for these only. */
+  directionIds: string[]
   selected: RecommendationIntent[]
   nextCursor: number
   schedule: DiscoverySchedule
+  steps: Record<string, number>
   results: IntentResult[]
   successfulRequests: Record<string, { fingerprint: string; fetchedAt: number }>
   failed: number
 }
 
-const sourceKey = (intentId: string, source: RecommendationSource): string => (
-  `${intentId}@${source}`
+/** The fingerprint a direction's cooldown is kept under: its anchor seed and the negatives. */
+const cooldownFingerprint = (intent: RecommendationIntent, negative: string[]): string => (
+  recommendationFingerprint(recommendationQuery(intent, 0).intent, negative)
 )
 
 /**
- * The direction cooldown remains the request-rate gate. Once due, the core direction uses the
- * least-covered source; secondary directions stay on similarity so exploration cannot displace
- * project coverage or multiply the global provider-call budget.
+ * The rotation step of a direction with no stored step: one past each source, in QUERY_SOURCES order,
+ * that `schedule` records as already run with the direction's anchor seed and `negative`.
  */
-const recommendationSource = (
-  intent: RecommendationIntent, negative: string[], schedule: DiscoverySchedule,
-): RecommendationSource => {
-  if (!intent.core) return 'similarity'
-  const ranked = CORE_SOURCE_CYCLE.map((source, order) => {
-    const fingerprint = recommendationFingerprint(intent, negative, source)
-    const explicit = schedule.requests[sourceKey(intent.id, source)]
-    const legacy = source === 'similarity' ? schedule.requests[intent.id] : undefined
-    const cached = explicit ?? legacy
-    return {
-      source, order,
-      fetchedAt: cached?.fingerprint === fingerprint ? cached.fetchedAt : Number.NEGATIVE_INFINITY,
-    }
-  })
-  ranked.sort((left, right) => left.fetchedAt - right.fetchedAt || left.order - right.order)
-  return ranked[0]!.source
+const firstStep = (intent: RecommendationIntent, negative: string[], schedule: DiscoverySchedule): number => {
+  let step = 0
+  for (; step < QUERY_SOURCES.length; step += 1) {
+    const query = recommendationQuery(intent, step)
+    const held = schedule.requests[`${intent.id}@${query.source}`]
+      ?? (query.source === 'similarity' ? schedule.requests[intent.id] : undefined)
+    if (held?.fingerprint !== recommendationFingerprint(query.intent, negative, query.source)) break
+  }
+  return step
 }
 
 export type RecommendationService = {
@@ -69,7 +61,8 @@ export type RecommendationService = {
 export function createRecommendationService(deps: {
   store: Pick<VaultStore,
     'listDiscoveryProfiles' | 'discoveryIntents' | 'discoveryProfile' | 'discoverySchedule'
-    | 'setDiscoverySchedule' | 'addDiscoveryEntries' | 'deliverySettings'>
+    | 'setDiscoverySchedule' | 'refreshProgress' | 'setRefreshProgress' | 'addDiscoveryEntries'
+    | 'deliverySettings'>
   provider: RecommendationProvider
   onWrite: () => void
   now: () => number
@@ -90,14 +83,17 @@ export function createRecommendationService(deps: {
         const context = deps.store.discoveryProfile(profile.id)
         const schedule = deps.store.discoverySchedule(profile.id)
         const negative = context.negative.map((seed) => seed.paperId).slice(0, 5)
+        const directions = deps.store.discoveryIntents(profile.id)
         return {
           id: profile.id, profile: context, negative,
           excluded: new Set([
             ...negative, ...context.positive.map((seed) => seed.paperId),
           ]),
-          intents: deps.store.discoveryIntents(profile.id).filter((intent) => intent.enabled),
-          selected: [], nextCursor: schedule.cursor, schedule, results: [],
-          successfulRequests: {}, failed: 0,
+          intents: directions.filter((intent) => intent.enabled),
+          directionIds: directions.map((intent) => intent.id),
+          selected: [], nextCursor: schedule.cursor, schedule,
+          steps: deps.store.refreshProgress({ kind: 'project', id: profile.id }).steps,
+          results: [], successfulRequests: {}, failed: 0,
         }
       })
 
@@ -131,35 +127,36 @@ export function createRecommendationService(deps: {
       let cachedIntents = 0
       let successfulIntents = 0
       for (const { plan, intent } of tasks) {
-        const queryIntent = recommendationQueryIntent(intent)
-        const fingerprint = recommendationFingerprint(queryIntent, plan.negative)
+        const fingerprint = cooldownFingerprint(intent, plan.negative)
         const cached = plan.schedule.requests[intent.id]
         if (!force && cached?.fingerprint === fingerprint
           && now - cached.fetchedAt < DISCOVERY_COOLDOWN_MS) {
           cachedIntents += 1
           continue
         }
+        const step = plan.steps[intent.id] ?? firstStep(intent, plan.negative, plan.schedule)
+        const query = recommendationQuery(intent, step)
         try {
-          const source = recommendationSource(queryIntent, plan.negative, plan.schedule)
-          const found = await deps.provider.recommend(queryIntent.seeds, plan.negative, source)
-          const papers = applyRecommendationSignals(plan.profile, queryIntent, found.filter((paper) => (
+          const found = await deps.provider.recommend(query.intent.seeds, plan.negative, query.source, query.page)
+          const papers = applyRecommendationSignals(plan.profile, query.intent, found.filter((paper) => (
             !plan.excluded.has(paper.semanticId) && !plan.excluded.has(`ARXIV:${paper.id}`)
           )))
-          plan.results.push({ intent: queryIntent, papers })
+          plan.results.push({ intent: query.intent, papers })
           plan.successfulRequests[intent.id] = { fingerprint, fetchedAt: now }
-          plan.successfulRequests[sourceKey(intent.id, source)] = {
-            fingerprint: recommendationFingerprint(queryIntent, plan.negative, source),
-            fetchedAt: now,
-          }
+          plan.steps[intent.id] = step + 1
           successfulIntents += 1
         } catch {
           plan.failed += 1
         }
       }
-      const touched = plans.filter((plan) => Object.keys(plan.successfulRequests).length > 0)
+      const fetched = plans.filter((plan) => Object.keys(plan.successfulRequests).length > 0)
+      // A project whose selected directions were all cooling still moves its cursor on to the next ones.
+      const touched = plans.filter((plan) => (
+        fetched.includes(plan) || (plan.failed === 0 && plan.nextCursor !== plan.schedule.cursor)
+      ))
       try {
         for (const plan of touched) {
-          if (remainingItems > 0) {
+          if (fetched.includes(plan) && remainingItems > 0) {
             const published = deps.store.addDiscoveryEntries(
               plan.id, mergeIntentResults(plan.results), remainingItems,
             )
@@ -167,14 +164,21 @@ export function createRecommendationService(deps: {
             remainingItems -= published
           }
           deps.store.setDiscoverySchedule(plan.id, {
-            lastFetchedAt: plan.failed === 0 ? now : plan.schedule.lastFetchedAt,
+            lastFetchedAt: plan.failed === 0 && fetched.includes(plan) ? now : plan.schedule.lastFetchedAt,
             cursor: plan.failed === 0 ? plan.nextCursor : plan.schedule.cursor,
             requests: { ...plan.schedule.requests, ...plan.successfulRequests },
           })
+          if (fetched.includes(plan)) {
+            deps.store.setRefreshProgress({ kind: 'project', id: plan.id }, {
+              steps: Object.fromEntries(plan.directionIds.flatMap((id) => (
+                plan.steps[id] === undefined ? [] : [[id, plan.steps[id]]]
+              ))),
+            })
+          }
         }
         if (touched.length > 0) deps.onWrite()
         return {
-          projects: touched.length,
+          projects: fetched.length,
           intents: successfulIntents,
           added,
           deferredProjects: plans.filter((plan) => (
