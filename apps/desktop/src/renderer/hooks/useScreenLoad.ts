@@ -17,7 +17,7 @@ export type ScreenLoad = {
    * again.
    */
   load: <T>(key: string, call: Promise<T>, apply: (value: T) => void) => () => void
-  /** Shows the label of `cause`, a failed read outside the screen's loads, until a load started after it succeeds. */
+  /** Shows the label of `cause`, a failure outside the screen's loads, until a load started after it succeeds. */
   report: (cause: unknown) => void
 }
 

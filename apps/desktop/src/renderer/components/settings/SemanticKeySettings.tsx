@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { SemanticKeyCheckResult, SemanticKeyStatus } from '../../../shared/contract.js'
 import { delivery } from '../../ipc.js'
+import { useScreenLoad } from '../../hooks/useScreenLoad.js'
 import { errorLabel } from '../../lib/failure-label.js'
 import { useMessages } from '../../messages/useMessages.js'
 import { EntityLink } from '../EntityLink.js'
@@ -24,12 +25,11 @@ export function SemanticKeySettings() {
   const [editing, setEditing] = useState(false)
   const [clearPending, setClearPending] = useState(false)
   const [saving, setSaving] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [saveError, setSaveError] = useState<string | null>(null)
   const [connectionCheck, setConnectionCheck] = useState<ConnectionCheckState>({ state: 'idle' })
+  const { load } = useScreenLoad()
 
-  useEffect(() => {
-    void delivery.semanticKey().then(setStatus).catch((e: unknown) => setError(errorLabel(m, e)))
-  }, [m])
+  useEffect(() => load('status', delivery.semanticKey(), setStatus), [load])
 
   useEffect(() => {
     setConnectionCheck({ state: 'idle' })
@@ -37,7 +37,7 @@ export function SemanticKeySettings() {
 
   const save = async () => {
     setSaving(true)
-    setError(null)
+    setSaveError(null)
     try {
       const next = await delivery.setSemanticKey(clearPending ? null : draft)
       setStatus(next)
@@ -46,7 +46,7 @@ export function SemanticKeySettings() {
       setClearPending(false)
       setConnectionCheck({ state: 'idle' })
     } catch (caught) {
-      setError(errorLabel(m, caught))
+      setSaveError(errorLabel(m, caught))
     } finally {
       setSaving(false)
     }
@@ -135,7 +135,7 @@ export function SemanticKeySettings() {
           </button>
         </ServiceActions>
       </ServiceFoot>
-      {error === null ? null : <ServiceError>{error}</ServiceError>}
+      {saveError === null ? null : <ServiceError>{saveError}</ServiceError>}
     </ServiceCard>
   )
 }

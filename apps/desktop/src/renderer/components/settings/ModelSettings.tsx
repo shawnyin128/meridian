@@ -4,6 +4,7 @@ import type {
   HarnessModelProvider, HarnessModelSettings,
 } from '../../../shared/contract.js'
 import { harness } from '../../ipc.js'
+import { useScreenLoad } from '../../hooks/useScreenLoad.js'
 import { errorLabel, reasonLabel } from '../../lib/failure-label.js'
 import { useMessages } from '../../messages/useMessages.js'
 import { ChoicePicker } from '../FieldPickers.js'
@@ -132,7 +133,8 @@ export function ModelSettings() {
   const [editingApiKey, setEditingApiKey] = useState(false)
   const [clearApiKey, setClearApiKey] = useState(false)
   const [saving, setSaving] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [saveError, setSaveError] = useState<string | null>(null)
+  const { load } = useScreenLoad()
   const [connectionCheck, setConnectionCheck] = useState<ConnectionCheckState>({ state: 'idle' })
 
   const resetCredentialDraft = () => {
@@ -153,19 +155,17 @@ export function ModelSettings() {
     resetCredentialDraft()
   }
 
-  useEffect(() => {
-    void harness.modelSettings().then((next) => {
-      setSettings(next)
-      setProvider(next.provider)
-      setProtocol(next.protocol)
-      setBaseUrl(next.baseUrl)
-      setModel(next.model)
-      setAuthentication(next.authentication)
-      setCompatibleTemplate(next.provider === 'openai-compatible'
-        ? compatibleTemplateFor(next.baseUrl, next.protocol, next.authentication)
-        : 'choose')
-    }).catch((caught: unknown) => setError(errorLabel(m, caught)))
-  }, [m])
+  useEffect(() => load('settings', harness.modelSettings(), (next) => {
+    setSettings(next)
+    setProvider(next.provider)
+    setProtocol(next.protocol)
+    setBaseUrl(next.baseUrl)
+    setModel(next.model)
+    setAuthentication(next.authentication)
+    setCompatibleTemplate(next.provider === 'openai-compatible'
+      ? compatibleTemplateFor(next.baseUrl, next.protocol, next.authentication)
+      : 'choose')
+  }), [load])
 
   useEffect(() => {
     setConnectionCheck({ state: 'idle' })
@@ -220,7 +220,7 @@ export function ModelSettings() {
 
   const save = async () => {
     setSaving(true)
-    setError(null)
+    setSaveError(null)
     try {
       const next = await harness.updateModelSettings({
         provider, protocol, baseUrl, model, authentication,
@@ -231,7 +231,7 @@ export function ModelSettings() {
       showProfile(next)
       setConnectionCheck({ state: 'idle' })
     } catch (caught) {
-      setError(errorLabel(m, caught))
+      setSaveError(errorLabel(m, caught))
     } finally {
       setSaving(false)
     }
@@ -408,7 +408,7 @@ export function ModelSettings() {
       {settings.error === undefined ? null : (
         <ServiceError>{m.settings.model.errorHint(reasonLabel(m, settings.error))}</ServiceError>
       )}
-      {error === null ? null : <ServiceError>{error}</ServiceError>}
+      {saveError === null ? null : <ServiceError>{saveError}</ServiceError>}
     </ServiceCard>
   )
 }

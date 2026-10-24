@@ -587,7 +587,7 @@ describe('项目页跟着工作区刷新', () => {
     expect(gets).toBe(1)
   })
 
-  it('离开项目页后不再读，正在读的那次回来也不再排下一次；回到项目页接着读', async () => {
+  it('离开项目页后不再读，正在读的那次回来也不再排下一次；回到项目页马上读一次，再照常隔一段读', async () => {
     let answerTick: (value: ProjectDetail) => void = () => {}
     answers = [async () => bound(), () => new Promise((resolve) => { answerTick = resolve }), async () => bound()]
     await mount()
@@ -600,8 +600,9 @@ describe('项目页跟着工作区刷新', () => {
 
     shell.shown = true
     await render()
-    await wait(2_000)
     expect(gets).toBe(3)
+    await wait(2_000)
+    expect(gets).toBe(4)
   })
 
   it('读回来的项目没变时不重新渲染', async () => {
