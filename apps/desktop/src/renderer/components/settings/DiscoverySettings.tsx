@@ -1,7 +1,7 @@
-import { Fragment, useCallback, useEffect, useState } from 'react'
+import { Fragment, useEffect, useState } from 'react'
 import type { DiscoveryFetchResult, DiscoveryIntentAction, DiscoveryProfile } from '../../../shared/contract.js'
 import { discovery } from '../../ipc.js'
-import { errorLabel } from '../../lib/failure-label.js'
+import { useScreenLoad } from '../../hooks/useScreenLoad.js'
 import type { Catalog } from '../../messages/catalog.js'
 import { useMessages } from '../../messages/useMessages.js'
 import { useNotice, useVaultRevision } from '../../shell/AppShell.js'
@@ -32,22 +32,19 @@ export function DiscoverySettings() {
   const [profiles, setProfiles] = useState<DiscoveryProfile[] | null>(null)
   const [busy, setBusy] = useState<ReadonlySet<string>>(new Set())
   const [refreshing, setRefreshing] = useState<string | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  const { error, load, report } = useScreenLoad()
   const notice = useNotice()
   const { revision, bump } = useVaultRevision()
-  const load = useCallback(() => {
-    void discovery.profiles().then(setProfiles).catch((caught: unknown) => setError(errorLabel(m, caught)))
-  }, [m])
 
-  useEffect(load, [load, revision])
+  useEffect(() => load('profiles', discovery.profiles(), setProfiles), [load, revision])
 
   const update = (projectId: string, intentId: string, action: DiscoveryIntentAction) => {
     setBusy((held) => new Set([...held, intentId]))
     void discovery.setIntent(projectId, intentId, action).then(() => {
-      load()
+      load('profiles', discovery.profiles(), setProfiles)
       notice.success(action === 'set-core' ? m.settings.discovery.setCore
         : action === 'disable' ? m.settings.discovery.disabled : m.settings.discovery.enabled)
-    }).catch((caught: unknown) => setError(errorLabel(m, caught))).finally(() => {
+    }).catch(report).finally(() => {
       setBusy((held) => {
         const next = new Set(held)
         next.delete(intentId)
@@ -61,7 +58,7 @@ export function DiscoverySettings() {
     void discovery.fetch(projectId, true).then((result) => {
       notice.success(resultNote(result, m))
       bump()
-    }).catch((caught: unknown) => setError(errorLabel(m, caught))).finally(() => setRefreshing(null))
+    }).catch(report).finally(() => setRefreshing(null))
   }
 
   const enabled = (profiles ?? []).reduce((total, profile) => total + profile.intentCount, 0)
