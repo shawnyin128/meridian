@@ -42,7 +42,7 @@ import { inboxFields, unseenPapers } from './inbox/dedup.js'
 import {
   applyRecommendationPreferences, buildRecommendationProfile, clusterRecommendationProfile,
   discoveryReasons, orderInbox, recommendationSeedIds,
-  type DiscoveryPaper, type DiscoveryPreferences, type DiscoverySchedule,
+  type DiscoveryPaper, type DiscoveryPreferences, type DiscoverySchedule, type RefreshProgress, type RefreshScope,
 } from './recommendation/index.js'
 import { dayOf, feedNewestFirst, systemToday } from './dates.js'
 import { createResearchIdea, readResearchIdea, updateResearchIdea } from './research-ideas/index.js'
@@ -332,7 +332,14 @@ export function createFixtureStore(
   let fetchedAt: number | null = null
   const discoverySchedules = new Map<string, DiscoverySchedule>()
   const discoveryPreferences = new Map<string, DiscoveryPreferences>()
+  const progressByScope = new Map<string, RefreshProgress>()
   let deliveryConfig: DeliverySettings = structuredClone(DEFAULT_DELIVERY_SETTINGS)
+  /** Throws unless `scope` names a project or a watch the fixtures hold. */
+  const scopeOf = (scope: RefreshScope): void => {
+    if (scope.kind === 'project' ? !projectById.has(scope.id) : !watches.some((watch) => watch.id === scope.id)) {
+      throw new CallError('not-found', `${scope.kind === 'project' ? '项目' : '关注'}不存在：${scope.id}`)
+    }
+  }
   // Fixture ids use t1/m1/r1/f1/feed-1/chg-1 shapes; new prefixes must not collide with them.
   const nextId = (prefix: string) => `${prefix}-${++seq}`
 
@@ -1581,6 +1588,18 @@ export function createFixtureStore(
     setDiscoverySchedule(projectId, schedule) {
       if (!projectById.has(projectId)) throw new CallError('not-found', `项目不存在：${projectId}`)
       discoverySchedules.set(projectId, schedule)
+    },
+
+    refreshProgress(scope) {
+      scopeOf(scope)
+      return structuredClone(
+        progressByScope.get(`${scope.kind}:${scope.id}`) ?? { steps: {}, candidates: [], favouredAt: null, newest: [] },
+      )
+    },
+
+    setRefreshProgress(scope, next) {
+      scopeOf(scope)
+      progressByScope.set(`${scope.kind}:${scope.id}`, structuredClone(next))
     },
 
     setDiscoveryIntent(projectId, intentId, action) {

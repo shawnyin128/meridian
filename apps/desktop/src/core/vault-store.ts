@@ -38,16 +38,16 @@ import { inboxFields, unseenPapers } from './inbox/dedup.js'
 import {
   applyRecommendationPreferences, buildRecommendationProfile, clusterRecommendationProfile,
   discoveryReasons, orderInbox, recommendationSeedIds,
-  type DiscoveryPaper, type DiscoveryPreferences,
+  type DiscoveryPaper, type DiscoveryPreferences, type RefreshScope,
 } from './recommendation/index.js'
 import type { Json } from './vault/frontmatter.js'
 import { emitKey } from './vault/frontmatter.js'
 import type {
-  ChatRecord, InboxRecord, PaperSnapshot, TrashRecord, VaultState,
+  ChatRecord, InboxRecord, PaperSnapshot, RefreshProgressRecord, TrashRecord, VaultState,
 } from './vault/records.js'
 import {
   ChatRecordSchema, DiscoveryPreferencesRecordSchema, InboxRecordSchema, LaterRecordSchema,
-  PaperReadingRecordSchema, TrashRecordSchema, VaultStateSchema,
+  PaperReadingRecordSchema, RefreshProgressRecordSchema, TrashRecordSchema, VaultStateSchema,
 } from './vault/records.js'
 import { readRecord, readStoredList, withUnknownFields, type StoredList } from './vault/stored-records.js'
 import {
@@ -445,6 +445,7 @@ export function createVaultStore(
   }
   let trash = load('trash', TrashRecordSchema)
   let readings = load('paper-readings', PaperReadingRecordSchema, 'paperId')
+  let progress: RefreshProgressRecord[] = load('discovery/progress', RefreshProgressRecordSchema)
   // Another App version may have written queue records this one cannot read; keep those as written.
   const heldProposals: unknown[] = existsSync(join(meridian, 'proposals.json'))
     ? JSON.parse(readFileSync(join(meridian, 'proposals.json'), 'utf8')) as unknown[] : []
@@ -778,6 +779,12 @@ export function createVaultStore(
   const nowMs = (): number => Date.parse(`${today()}T00:00:00Z`)
 
   /** Returns a project by ID. Throws when the vault has no such project, or cannot read its page. */
+  /** Throws unless `scope` names a project or a watch this vault holds. */
+  const scopeOf = (scope: RefreshScope): void => {
+    if (scope.kind === 'project') projectOf(scope.id)
+    else if (!watches.some((watch) => watch.id === scope.id)) throw new CallError('not-found', `关注不存在：${scope.id}`)
+  }
+
   const projectOf = (id: string): ProjectRecord => {
     const project = projectById.get(id)
     if (!project) {
@@ -2128,6 +2135,32 @@ export function createVaultStore(
         ...state,
         discoverySchedules: { ...state.discoverySchedules, [projectId]: schedule },
       })
+    },
+
+    refreshProgress(scope) {
+      scopeOf(scope)
+      const held = progress.find((row) => row.id === `${scope.kind}:${scope.id}`)
+      return {
+        steps: { ...held?.steps }, candidates: structuredClone(held?.candidates ?? []),
+        favouredAt: held?.favouredAt ?? null, newest: [...held?.newest ?? []],
+      }
+    },
+
+    setRefreshProgress(scope, next) {
+      scopeOf(scope)
+      const id = `${scope.kind}:${scope.id}`
+      const gone = (row: RefreshProgressRecord): boolean => {
+        const [, kind, held] = /^(project|watch):(.*)$/.exec(row.id) ?? []
+        if (kind === 'project') return !projectById.has(held!) && !unreadableProjects.has(held!)
+        return kind === 'watch' && !watches.some((watch) => watch.id === held)
+          && !(lists.get('watches')?.unreadable ?? []).some((watch) => (watch as { id?: unknown }).id === held)
+      }
+      const record: RefreshProgressRecord = {
+        id, steps: { ...next.steps }, candidates: structuredClone(next.candidates),
+        ...(next.favouredAt === null ? {} : { favouredAt: next.favouredAt }),
+        ...(next.newest.length === 0 ? {} : { newest: [...next.newest] }),
+      }
+      progress = save('discovery/progress', [...progress.filter((row) => row.id !== id && !gone(row)), record])
     },
 
     setDiscoveryIntent(projectId, intentId, action) {

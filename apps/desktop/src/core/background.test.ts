@@ -1,7 +1,14 @@
-import { resolve } from 'node:path'
-import { describe, expect, it } from 'vitest'
+import { mkdtempSync, rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join, resolve } from 'node:path'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { createBackground } from './background.js'
+import { callFailure } from './call-error.js'
 import { createFixtureStore } from './fixture-store.js'
+import { FIRST_TICK_MS, TICK_MS } from './inbox/schedule.js'
+import { unopenedStore } from './unopened-store.js'
+import { createVaultStore } from './vault-store.js'
+import type { VaultStore } from './vault.js'
 import cannedNet from './fixtures/net.json' with { type: 'json' }
 import { probePdf } from './paper-library/index.js'
 import { createCannedGet, type CannedTable } from './net/canned-http.js'
@@ -20,6 +27,30 @@ const setup = (options: { semanticKey?: string } = {}) => {
 }
 
 describe('createBackground', () => {
+  afterEach(() => { vi.useRealTimers() })
+
+  it('论文库打不开时排好的定时什么也不做:十五秒后和之后的每一轮都不碰库、不联网', async () => {
+    vi.useFakeTimers({ now: 0 })
+    const empty = mkdtempSync(join(tmpdir(), 'meridian-no-vault-'))
+    // Core opens the vault the same way and stands an unopened store in for one that throws.
+    let store: VaultStore
+    try {
+      store = createVaultStore(empty)
+    } catch (error) {
+      store = unopenedStore(error instanceof Error ? error.message : String(error), callFailure(error))
+    }
+    rmSync(empty, { recursive: true, force: true })
+    const get = vi.fn(async () => ({ status: 503, body: new Uint8Array() }))
+    const background = createBackground({
+      store, get, probe: probePdf, arxivIntervalMs: 0, sleep: async () => {}, now: () => Date.now(),
+    })
+    const stop = background.armSchedule()
+    await vi.advanceTimersByTimeAsync(FIRST_TICK_MS)
+    await vi.advanceTimersByTimeAsync(3 * TICK_MS)
+    expect(get).not.toHaveBeenCalled()
+    stop()
+  })
+
   it('导入立刻返回,随后在后台按 arXiv 补全', async () => {
     const { store, background } = setup()
     const result = background.importPaper('draft-trees.pdf', minimalPdf({ lines: ['arXiv:2509.01234v1'] }))
@@ -71,12 +102,42 @@ describe('createBackground', () => {
     expect(background.status().writes).toBeGreaterThan(0)
   })
 
+  it('排好定时后论文发现自己刷新,不必有人点刷新', async () => {
+    vi.useFakeTimers({ now: 0 })
+    const { store, background } = setup({ semanticKey: 'saved-key' })
+    const stop = background.armSchedule()
+    await vi.advanceTimersByTimeAsync(FIRST_TICK_MS)
+    await vi.waitFor(() => expect(store.listInbox({ kind: 'discovery', project: 'draft' })).toHaveLength(2))
+    expect(store.listFeed().map((entry) => entry.body)).toContainEqual(expect.objectContaining({
+      runs: expect.arrayContaining([{ kind: 'text', text: '发现：' }]),
+    }))
+    stop()
+  })
+
+  it('同时来两次论文发现时排队跑,后一次看得到前一次的进度,不重复请求', async () => {
+    const asked: string[] = []
+    const canned = createCannedGet(cannedNet as CannedTable, VAULT)
+    const store = createFixtureStore(() => '2026-08-25')
+    const background = createBackground({
+      store, probe: probePdf, arxivIntervalMs: 0, sleep: async () => {}, now: () => 0,
+      semanticScholarApiKey: () => 'saved-key',
+      get: (url, options) => {
+        if (url.includes('/recommendations/')) asked.push(url)
+        return canned(url, options)
+      },
+    })
+    const [first, second] = await Promise.all([background.fetchDiscoveries('draft'), background.fetchDiscoveries('draft')])
+    expect(asked).toHaveLength(3)
+    expect(first).toMatchObject({ intents: 3, added: 2 })
+    expect(second).toMatchObject({ intents: 0, cachedIntents: 3, added: 0 })
+  })
+
   it('按项目论文生成独立发现流,并把显式负反馈带进下一轮种子', async () => {
     const { store, background } = setup({ semanticKey: 'saved-key' })
     const result = await background.fetchDiscoveries('draft')
     expect(result).toEqual({
       projects: 1, intents: 3, added: 2, deferredProjects: 0,
-      cachedIntents: 0, failedIntents: 0,
+      cachedIntents: 0, failedIntents: 0, nothingNew: false, lastFetchedAt: 0,
     })
     const rows = store.listInbox({ kind: 'discovery', project: 'draft' })
     expect(rows).toHaveLength(2)

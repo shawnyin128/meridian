@@ -96,6 +96,46 @@ describe('Semantic Scholar recommendations', () => {
   })
 })
 
+describe('Semantic Scholar DOIs', () => {
+  it('passes each candidate\'s DOI through from externalIds, and leaves it out when the API has none', async () => {
+    const paper = (paperId: string, externalIds: Record<string, string>) => ({
+      paperId, title: paperId, year: 2026, externalIds,
+    })
+    const canned = {
+      recommendations: bytes({ recommendedPapers: [
+        paper('with-doi', { ArXiv: '2609.00001', DOI: ' 10.48550/arXiv.2609.00001 ' }),
+        paper('without-doi', { ArXiv: '2609.00002' }),
+      ] }),
+      citations: bytes({ data: [{ citingPaper: paper('citing', { ArXiv: '2609.00003', DOI: '10.1145/3600006.3613165' }) }] }),
+    }
+    const get: HttpGet = async (url) => ({
+      status: 200, body: url.includes('/recommendations/') ? canned.recommendations : canned.citations,
+    })
+    const client = createSemanticRecommendations({ get, sleep: async () => {} })
+    const similar = await client.recommend([seed('ARXIV:2605.29343')], [])
+    const citing = await client.recommend([seed('ARXIV:2605.29343')], [], 'citation')
+    expect(similar.map((found) => found.doi)).toEqual(['10.48550/arXiv.2609.00001', undefined])
+    expect('doi' in similar[1]!).toBe(false)
+    expect(citing[0]?.doi).toBe('10.1145/3600006.3613165')
+  })
+})
+
+describe('Semantic Scholar paging', () => {
+  it('pages citations and references by offset, one batch per page, leaving the first page address unchanged', async () => {
+    const urls: string[] = []
+    const get: HttpGet = async (url) => {
+      urls.push(url)
+      return { status: 200, body: bytes({ data: [] }) }
+    }
+    const client = createSemanticRecommendations({ get, sleep: async () => {} })
+    await client.recommend([seed('ARXIV:2605.29343')], [], 'citation', 2)
+    await client.recommend([seed('ARXIV:2605.29343')], [], 'reference', 1)
+    await client.recommend([seed('ARXIV:2605.29343')], [], 'citation', 0)
+    expect(urls.map((url) => new URL(url).searchParams.get('offset'))).toEqual(['40', '20', null])
+    expect(urls[2]).toBe(semanticCitationUrl('ARXIV:2605.29343'))
+  })
+})
+
 describe('Semantic Scholar paper batch', () => {
   it('只保留排名所需字段,忽略找不到的论文与坏数值', () => {
     const result = parsePaperImpact(bytes([

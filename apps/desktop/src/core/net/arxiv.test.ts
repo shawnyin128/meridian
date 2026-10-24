@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import type { HttpGet } from './http.js'
-import { batchLookupUrl, createArxiv, lookupUrl, parseAbs, parseAtom, searchUrl, watchQuery } from './arxiv.js'
+import {
+  batchLookupUrl, createArxiv, lookupUrl, parseAbs, parseAtom, searchUrl, topicalSearchUrl, watchQuery,
+} from './arxiv.js'
 
 /** Atom response shaped after the arXiv API documentation; two papers, with journal_ref and escapes on the second. */
 const ATOM = `<?xml version="1.0" encoding="UTF-8"?>
@@ -59,6 +61,19 @@ describe('arXiv 查询', () => {
     expect(batchLookupUrl(['2211.17192', '2407.08608', '2211.17192'])).toBe(
       'https://export.arxiv.org/api/query?id_list=2211.17192%2C2407.08608&max_results=2',
     )
+  })
+
+  it('关注翻页时从 start 往后取,第一页的地址不带 start', () => {
+    expect(searchUrl('all:"speculative decoding"', 0)).toBe(searchUrl('all:"speculative decoding"'))
+    expect(new URL(searchUrl('all:"speculative decoding"', 40)).searchParams.get('start')).toBe('40')
+  })
+
+  it('主题检索翻页时从 start 往后取,第一页的地址不带 start', () => {
+    const first = topicalSearchUrl('ti:"mixture of experts"', 2022, 'relevance')
+    expect(new URL(first).searchParams.has('start')).toBe(false)
+    expect(topicalSearchUrl('ti:"mixture of experts"', 2022, 'relevance', 0)).toBe(first)
+    expect(new URL(topicalSearchUrl('ti:"mixture of experts"', 2022, 'relevance', 100)).searchParams.get('start'))
+      .toBe('100')
   })
 })
 
