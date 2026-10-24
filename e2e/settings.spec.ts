@@ -415,12 +415,13 @@ test('外观主题从新建、保存、套用,到重新加载后还在、在卡�
     await expect(win.locator('.setdlg input[aria-label="名称"]')).toHaveValue('晨雾')
     await win.locator('.setdlg [data-module="ground"]').click()
     await win.locator('.setdlg input[aria-label="色值"]').fill('#f6f8fb')
-    // Every way out of the editor asks the same question while it holds unsaved edits.
+    // Every way out of the editor asks the same question while it holds unsaved edits. The scrim goes
+    // first: for a moment after a confirmation closes, Radix is not yet listening for a press outside.
     const confirmation = win.locator('[role="alertdialog"] .modal-title')
     const ways: [string, () => Promise<void>][] = [
+      ['遮罩', () => win.mouse.click(40, 450)],
       ['Esc', () => win.keyboard.press('Escape')],
       ['关闭', () => win.locator('.setdlg .modal-close').click()],
-      ['遮罩', () => win.mouse.click(40, 450)],
     ]
     for (const [way, leave] of ways) {
       await leave()
