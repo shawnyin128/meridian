@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { DragEvent as ReactDragEvent, KeyboardEvent as ReactKeyboardEvent } from 'react'
+import { typesText } from '../lib/keyboard.js'
 
 /** Native drag attributes of an item's drag handle, the only part of the item a drag starts from. */
 export type DragHandleProps = {
@@ -18,10 +19,6 @@ export type ReorderItemProps = {
 
 /** What a reorderable item component takes: its own attributes and its drag handle's. */
 export type Reorderable = { item: ReorderItemProps; handle: DragHandleProps }
-
-/** Typing targets keep Alt+Arrow for themselves: it moves the caret there. */
-const editable = (target: EventTarget) => target instanceof HTMLElement
-  && (target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName))
 
 /**
  * Reordering for a flat, already-ordered id list split into scopes (for example a project's status
@@ -98,7 +95,7 @@ export function useDragReorder(
     },
     onKeyDown: (event) => {
       const by = event.key === 'ArrowUp' ? -1 : event.key === 'ArrowDown' ? 1 : 0
-      if (by === 0 || !event.altKey || event.ctrlKey || event.metaKey || event.shiftKey || editable(event.target)) return
+      if (by === 0 || !event.altKey || event.ctrlKey || event.metaKey || event.shiftKey || typesText(event.target)) return
       event.preventDefault()
       event.stopPropagation()
       move(id, by)

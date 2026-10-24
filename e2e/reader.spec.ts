@@ -914,4 +914,73 @@ test.describe('选中文字时的选区', () => {
     await expect(shown(win, '.highlight-card.yellow textarea')).toHaveValue('点外面也留着')
     await expect(shown(win, '.highlight-card.green textarea')).toHaveValue('')
   })
+
+  test('单击页上的一段高亮选中它:圈显示它的颜色、批注框是它的批注、侧栏里它选中;换色和改批注都落在它身上', async ({ win }) => {
+    const id = await openTight(win)
+    // The side panel is open first: opening it lays the pages out again.
+    await shown(win, '.reader-rail [aria-label="高亮与批注"]').click()
+    let laid = ''
+    await expect.poll(async () => {
+      const now = JSON.stringify(await textLines(win))
+      const settled = now === laid
+      laid = now
+      return settled
+    }).toBe(true)
+    const lines = await textLines(win)
+    const tools = win.locator('.selection-tools')
+    await dragAcross(win, lines.slice(0, 2))
+    await tools.locator('[aria-label="绿色"]').click()
+    await tools.locator('textarea').click()
+    await tools.locator('textarea').pressSequentially('原来的批注')
+    await tools.locator('textarea').press('Enter')
+    await expect(tools).toHaveCount(0)
+
+    const [first] = lines
+    await win.mouse.click((first!.left + first!.right) / 2, (first!.top + first!.bottom) / 2)
+    await expect(tools.locator('[aria-label="绿色"]')).toHaveAttribute('aria-checked', 'true')
+    await expect(tools.locator('textarea')).toHaveValue('原来的批注')
+    await expect(tools.locator('[aria-label="删除"]')).toBeVisible()
+    await expect(shown(win, '.highlight-card.green.selected')).toHaveCount(1)
+    expect(await win.evaluate(() => document.getSelection()!.toString())).toBe('')
+
+    await tools.locator('[aria-label="蓝色"]').click()
+    await expect(shown(win, '.pdfpagebox .paper-highlight.blue')).toHaveCount(1)
+    await tools.locator('textarea').fill('改过的批注')
+    await tools.locator('textarea').press('Enter')
+    await expect(tools).toHaveCount(0)
+    await expect(shown(win, '.highlight-card.selected')).toHaveCount(0)
+    type Held = { highlights: { color: string; note: string }[] }
+    expect((await call<Held>(win, 'papers.reading', { id })).highlights.map(({ color, note }) => ({ color, note })))
+      .toEqual([{ color: 'blue', note: '改过的批注' }])
+  })
+
+  test('从高亮里面拖选照旧是选文字;单击选中它后按 Delete 删掉,通知里撤销放回来', async ({ win }) => {
+    await openTight(win)
+    const lines = await textLines(win)
+    const tools = win.locator('.selection-tools')
+    await dragAcross(win, lines.slice(0, 2))
+    await tools.locator('[aria-label="黄色"]').click()
+    await win.keyboard.press('Escape')
+    await expect(tools).toHaveCount(0)
+
+    const [first] = lines
+    const middle = (first!.top + first!.bottom) / 2
+    await win.mouse.move(first!.left + 1, middle)
+    await win.mouse.down()
+    await win.mouse.move((first!.left + first!.right) / 2, middle, { steps: 6 })
+    await win.mouse.up()
+    await expect(tools).toBeVisible()
+    expect(await win.evaluate(() => document.getSelection()!.toString())).not.toBe('')
+    await expect(tools.locator('[aria-label="删除"]')).toHaveCount(0)
+    await win.keyboard.press('Escape')
+    await win.evaluate(() => document.getSelection()!.removeAllRanges())
+
+    await win.mouse.click((first!.left + first!.right) / 2, middle)
+    await expect(tools.locator('[aria-label="删除"]')).toBeVisible()
+    await win.keyboard.press('Delete')
+    await expect(tools).toHaveCount(0)
+    await expect(shown(win, '.pdfpagebox .paper-highlight')).toHaveCount(0)
+    await win.locator('#notice').getByRole('button', { name: '撤销' }).click()
+    await expect(shown(win, '.pdfpagebox .paper-highlight.yellow')).toHaveCount(1)
+  })
 })

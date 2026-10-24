@@ -45,3 +45,12 @@ export function commandShortcut(platform: string, key: string, shift = false): s
 export function pressesCommand(platform: string, key: Pick<KeyboardEvent, 'key' | 'metaKey' | 'ctrlKey'>, letter: string): boolean {
   return (platform === 'darwin' ? key.metaKey : key.ctrlKey) && key.key.toLowerCase() === letter.toLowerCase()
 }
+
+/**
+ * Whether `target` is a place text is typed in: a field, a select or editable content. Keys that edit
+ * text there, such as Backspace, or that move its caret, such as Alt+Arrow, belong to it.
+ */
+export function typesText(target: EventTarget | null): boolean {
+  return target instanceof HTMLElement
+    && (target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName))
+}

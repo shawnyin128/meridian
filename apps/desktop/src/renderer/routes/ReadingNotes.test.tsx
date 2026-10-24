@@ -50,6 +50,31 @@ describe('ReadingNotes', () => {
     for (const root of roots.splice(0)) act(() => root.unmount())
   })
 
+  it('在页上选中的那段高亮,它的卡片滚到眼前、显示为选中,焦点不挪进它的批注', async () => {
+    const host = document.createElement('div')
+    document.body.append(host)
+    const root = createRoot(host)
+    roots.push(root)
+    const scrolled: unknown[] = []
+    Element.prototype.scrollIntoView = function (this: Element, options?: unknown) { scrolled.push([this.className, options]) }
+    const panel = (selected: string | null) => (
+      <MessagesProvider>
+        <Notes
+          reading={READING} currentPage={2} saving={false} onJump={vi.fn()} onMutate={async () => true}
+          mode="highlights" selectedHighlightId={selected}
+        />
+      </MessagesProvider>
+    )
+    act(() => root.render(panel(null)))
+    const card = () => host.querySelector('.highlight-card')!
+    expect([card().classList.contains('selected'), card().getAttribute('aria-current'), scrolled]).toEqual([false, null, []])
+    act(() => root.render(panel('highlight-1')))
+    expect([card().classList.contains('selected'), card().getAttribute('aria-current')]).toEqual([true, 'true'])
+    expect(scrolled).toEqual([['reading-card highlight-card yellow selected', { block: 'nearest' }]])
+    expect(document.activeElement).toBe(document.body)
+    delete (Element.prototype as Partial<Element>).scrollIntoView
+  })
+
   it('新笔记带当前页提交成功后清空草稿', async () => {
     const host = document.createElement('div')
     document.body.append(host)

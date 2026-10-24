@@ -1,4 +1,4 @@
-import type { PaperHighlightRect } from '../../shared/contract.js'
+import type { PaperHighlight, PaperHighlightRect } from '../../shared/contract.js'
 import { onOneLine } from '../../shared/highlight-overlap.js'
 
 type Rect = Pick<DOMRect, 'left' | 'top' | 'width' | 'height'>
@@ -110,6 +110,38 @@ export function uncoveredLines(lines: PaperHighlightRect[], over: PaperHighlight
     ].filter((part) => part.width > 0)),
     [line],
   ))
+}
+
+/**
+ * The lines each of `highlights`, all on one page and in stored order, is drawn with: its lines
+ * where no later one in the list, a newer one, covers them on the same line; one covered whole gets
+ * none. `aspect` is the page's width over its height.
+ */
+export function drawnLines(highlights: readonly PaperHighlight[], aspect: number): PaperHighlightRect[][] {
+  const newer: PaperHighlightRect[] = []
+  const drawn: PaperHighlightRect[][] = []
+  for (let at = highlights.length - 1; at >= 0; at -= 1) {
+    const lines = highlightLines(highlights[at]!.rects, aspect)
+    drawn[at] = uncoveredLines(lines, newer)
+    newer.push(...lines)
+  }
+  return drawn
+}
+
+/**
+ * The highlight of `highlights`, all on one page and in stored order, drawn at `point` in page
+ * fractions, the newest where drawn lines meet, or null where none is drawn.
+ */
+export function highlightAt(
+  highlights: readonly PaperHighlight[], aspect: number, point: { x: number; y: number },
+): PaperHighlight | null {
+  const drawn = drawnLines(highlights, aspect)
+  for (let at = highlights.length - 1; at >= 0; at -= 1) {
+    const hit = drawn[at]!.some((line) => point.x >= line.x && point.x <= line.x + line.width
+      && point.y >= line.y && point.y <= line.y + line.height)
+    if (hit) return highlights[at]!
+  }
+  return null
 }
 
 /**

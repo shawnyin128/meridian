@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import type { MouseEvent as ReactMouseEvent } from 'react'
 import type { PDFDocumentProxy, PDFPageProxy, PageViewport, RenderTask, TextLayer } from 'pdfjs-dist'
 import workerSrc from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
 import type {
@@ -11,6 +12,7 @@ import { useVaultWrite } from '../hooks/useVaultWrite.js'
 import { useWheelZoom } from '../hooks/useWheelZoom.js'
 import { sendsMessage } from '../lib/chat.js'
 import { errorLabel } from '../lib/failure-label.js'
+import { typesText } from '../lib/keyboard.js'
 import { useMessages } from '../messages/useMessages.js'
 import { useDrafts } from '../hooks/useDrafts.js'
 import { useOnLeave } from '../hooks/useOnLeave.js'
@@ -21,13 +23,13 @@ import { ActionPopover } from '../components/ActionPopover.js'
 import type { AnchorBox } from '../components/floating-layer.js'
 import { FormTextarea } from '../components/FormControls.js'
 import { IconButton } from '../components/IconButton.js'
-import { IconAskAi, IconMinus, IconPlus } from '../components/icons.js'
+import { IconAskAi, IconMinus, IconPlus, IconTrash } from '../components/icons.js'
 import { LoadingPlaceholder } from '../components/LoadingPlaceholder.js'
 import { Swatches } from '../components/Swatches.js'
 import { Toolbar, ToolbarButton } from '../components/Toolbar.js'
 import { Tooltip } from '../components/Tooltip.js'
 import {
-  highlightLines, highlightShape, selectedLinesByPage, selectionBox, uncoveredLines,
+  drawnLines, highlightAt, highlightLines, highlightShape, selectedLinesByPage, selectionBox,
 } from './highlight-geometry.js'
 import {
   ZOOM_MAX, ZOOM_MIN, clampZoom, keptScroll, pageScale, scaledAbout, type SheetTransform,
@@ -71,12 +73,18 @@ type PendingHighlight = {
   rects: PaperHighlightRect[]
   /** The selected text's box on screen, measured from its page each time it is read. */
   box: AnchorBox
+  /** The highlight a click on it selected, which the toolbar edits; absent for selected text. */
+  highlight?: string
 }
 
 /** A note being typed in the selection toolbar, kept as a draft with the selection it is about. */
 type SelectionNote = Pick<PendingHighlight, 'page' | 'quote' | 'rects'> & { note: string }
 
 const emptyReading = (paperId: string): PaperReading => ({ paperId, highlights: [], notes: [], remark: '' })
+
+/** The highlights of `reading` on page `page`, in stored order. */
+const highlightsOn = (reading: PaperReading, page: number): PaperHighlight[] =>
+  reading.highlights.filter((highlight) => highlight.page === page)
 
 /** The highlights of `reading` on page `page` that cover some of the text `rects` cover. */
 const highlightsOver = (reading: PaperReading | null, page: number, rects: PaperHighlightRect[]): PaperHighlight[] =>
@@ -117,20 +125,18 @@ function linesMark(lines: PaperHighlightRect[], className: string, underline = f
 function paintHighlights(box: ParentNode, reading: PaperReading | null): void {
   box.querySelectorAll<HTMLElement>('.paper-highlights').forEach((marks) => marks.replaceChildren())
   if (reading === null) return
-  const newer = new Map<number, PaperHighlightRect[]>()
-  const marks: [HTMLElement, SVGSVGElement][] = []
-  for (const highlight of [...reading.highlights].reverse()) {
-    const pagebox = box.querySelector<HTMLElement>(`.pdfpagebox[data-page="${highlight.page}"]`)
+  for (const page of new Set(reading.highlights.map((highlight) => highlight.page))) {
+    const pagebox = box.querySelector<HTMLElement>(`.pdfpagebox[data-page="${page}"]`)
     if (pagebox === null) continue
-    const lines = highlightLines(highlight.rects, Number(pagebox.dataset.aspect))
-    const shown = uncoveredLines(lines, newer.get(highlight.page) ?? [])
-    newer.set(highlight.page, [...newer.get(highlight.page) ?? [], ...lines])
-    if (shown.length === 0) continue
-    const mark = linesMark(shown, `paper-highlight ${highlight.color}`, highlight.note.trim() !== '')
-    mark.dataset.highlight = highlight.id
-    marks.unshift([pagebox, mark])
+    const highlights = highlightsOn(reading, page)
+    drawnLines(highlights, Number(pagebox.dataset.aspect)).forEach((lines, at) => {
+      if (lines.length === 0) return
+      const highlight = highlights[at]!
+      const mark = linesMark(lines, `paper-highlight ${highlight.color}`, highlight.note.trim() !== '')
+      mark.dataset.highlight = highlight.id
+      pagebox.querySelector('.paper-highlights')!.append(mark)
+    })
   }
-  for (const [pagebox, mark] of marks) pagebox.querySelector('.paper-highlights')!.append(mark)
 }
 
 /**
@@ -508,9 +514,12 @@ export function Reader() {
   }, [])
 
   // The highlights the toolbar's selection covers text of: none, the one it edits, or several, which
-  // it offers only to ask AI about.
-  const touched = pending === null ? [] : highlightsOver(reading, pending.page, pending.rects)
+  // it offers only to ask AI about. A highlight selected by a click is the one it edits.
+  const touched = pending === null ? []
+    : pending.highlight === undefined ? highlightsOver(reading, pending.page, pending.rects)
+      : reading?.highlights.filter((highlight) => highlight.id === pending.highlight) ?? []
   const edited = touched.length === 1 ? touched[0]! : null
+  const selected = pending?.highlight === undefined ? null : edited
 
   // Chromium paints a selection line by line over the text layer's spans, and on tightly set text one
   // line's paint overlaps the next, which shows darker there; the text layer paints none, and the
@@ -724,12 +733,35 @@ export function Reader() {
 
   /**
    * Turns the browser's native selection into normalized rectangles on its page; a selection that
-   * spans pages is dropped for the user to reselect.
+   * spans pages is dropped for the user to reselect. A plain click, which selects no text, selects
+   * the highlight drawn where it lands, if any.
    */
-  const captureSelection = useCallback(() => {
+  const captureSelection = useCallback((event: ReactMouseEvent) => {
     const selection = window.getSelection()
     if (selection === null || selection.isCollapsed || selection.rangeCount === 0) {
-      setPending(null)
+      const pagebox = (event.target as Element).closest<HTMLElement>('.pdfpagebox')
+      const held = readingRef.current
+      if (pagebox === null || held === null) {
+        setPending(null)
+        return
+      }
+      const frame = pagebox.getBoundingClientRect()
+      const page = Number(pagebox.dataset.page)
+      const aspect = Number(pagebox.dataset.aspect)
+      const hit = highlightAt(highlightsOn(held, page), aspect, {
+        x: (event.clientX - frame.left) / frame.width, y: (event.clientY - frame.top) / frame.height,
+      })
+      if (hit === null) {
+        setPending(null)
+        return
+      }
+      const lines = highlightLines(hit.rects, aspect)
+      dropSelectionNote.current()
+      setNoteDraft(hit.note)
+      setPending({
+        page, quote: hit.quote, rects: hit.rects, highlight: hit.id,
+        box: { getBoundingClientRect: () => selectionBox(pagebox.getBoundingClientRect(), lines) },
+      })
       return
     }
     const range = selection.getRangeAt(0)
@@ -869,6 +901,26 @@ export function Reader() {
   leave.current = leaveTools
   useOnLeave(tools, leaveTools)
 
+  /** Deletes the highlight a click selected and closes the toolbar; the notice offers Undo. */
+  const deleteSelected = () => {
+    if (selected === null) return
+    setPending(null)
+    void removeFromReading({ kind: 'highlight.delete', id: selected.id })
+  }
+  const deleteKey = useRef(deleteSelected)
+  deleteKey.current = deleteSelected
+  // Delete and Backspace delete the highlight a click selected, unless focus is where text is typed.
+  useEffect(() => {
+    if (selected === null) return
+    const press = (event: KeyboardEvent) => {
+      if ((event.key !== 'Delete' && event.key !== 'Backspace') || typesText(event.target)) return
+      event.preventDefault()
+      deleteKey.current()
+    }
+    document.addEventListener('keydown', press)
+    return () => document.removeEventListener('keydown', press)
+  }, [selected?.id])
+
   const askAi = () => {
     if (pending === null) return
     setChatPrompt({ seq: Date.now(), quote: pending.quote })
@@ -927,6 +979,11 @@ export function Reader() {
                         onPick={(colour) => { void pickColour(colour) }}
                       />
                     )}
+                    {selected === null ? null : (
+                      <IconButton label={m.common.delete} size="nested" round tone="danger" onClick={deleteSelected}>
+                        <IconTrash />
+                      </IconButton>
+                    )}
                   </div>
                 </Toolbar>
                 {touched.length > 1 ? null : (
@@ -955,7 +1012,7 @@ export function Reader() {
             tab={sideTab} onTab={(tab) => { setSideTab(tab); setFocusHighlightId(null) }}
             paper={paper} onPaper={setPaper} reading={heldReading} currentPage={currentPage}
             saving={saving} onMutate={mutate} onSaveRemark={saveRemark}
-            onJump={jumpToPage} focusHighlightId={focusHighlightId}
+            onJump={jumpToPage} focusHighlightId={focusHighlightId} selectedHighlightId={selected?.id ?? null}
           />
 
           <Toolbar>
