@@ -329,7 +329,7 @@ export const settings = {
   delivery: {
     heading: '论文推送',
     limitHeading: '单次推送上限',
-    shownHeading: '每条关注或项目显示上限',
+    shownHeading: '显示上限',
     unit: '篇',
     saving: '保存中…',
     rangeError: (min: number, max: number) => `请输入 ${min}–${max} 之间的整数`,

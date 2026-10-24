@@ -12,6 +12,8 @@ type IconButtonProps = Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'aria-label
   label: string
   /** The keyboard shortcut of the same action, shown after the name in the tooltip. */
   shortcut?: string
+  /** A line under the name in the tooltip, such as why the button is disabled. */
+  note?: string | undefined
   size?: IconButtonSize
   /** `danger` turns the glyph red on hover. */
   tone?: 'neutral' | 'danger'
@@ -29,12 +31,12 @@ const SIZE_CLASS: Record<IconButtonSize, string> = { default: '', nested: 'sm', 
  * the toolbar's controls.
  */
 export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(function IconButton({
-  label, shortcut, size = 'default', tone = 'neutral', pressed, className, type = 'button', children, ...props
+  label, shortcut, note, size = 'default', tone = 'neutral', pressed, className, type = 'button', children, ...props
 }, ref) {
   const asItem = useToolbarItem()
   const classes = ['icbtn', SIZE_CLASS[size], tone === 'danger' ? 'danger' : '', className].filter(Boolean).join(' ')
   return (
-    <Tooltip label={label} shortcut={shortcut}>
+    <Tooltip label={label} shortcut={shortcut} note={note}>
       {asItem(
         <button {...props} ref={ref} type={type} className={classes} aria-label={label} aria-pressed={pressed}>
           {children}

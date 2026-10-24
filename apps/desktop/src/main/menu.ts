@@ -1,6 +1,17 @@
 import type { ContextMenuParams, MenuItemConstructorOptions } from 'electron'
 
-export type MenuCopy = { settings: string; palette: string; tools: string; help: string; agentTutorial: string }
+/** The roles the application menu lists, each named in the UI language. */
+type MenuRole = 'about' | 'services' | 'hide' | 'hideOthers' | 'unhide' | 'quit' | 'close'
+  | 'undo' | 'redo' | 'cut' | 'copy' | 'paste' | 'pasteAndMatchStyle' | 'delete' | 'selectAll'
+  | 'showSubstitutions' | 'toggleSmartQuotes' | 'toggleSmartDashes' | 'toggleTextReplacement' | 'startSpeaking' | 'stopSpeaking'
+  | 'reload' | 'forceReload' | 'toggleDevTools' | 'resetZoom' | 'zoomIn' | 'zoomOut' | 'togglefullscreen'
+  | 'minimize' | 'zoom' | 'front'
+
+export type MenuCopy = {
+  settings: string; palette: string; tools: string; help: string; agentTutorial: string
+  file: string; edit: string; view: string; window: string; substitutions: string; speech: string
+  roles: Record<MenuRole, string>
+}
 
 export type EditMenuCopy = { cut: string; copy: string; paste: string; selectAll: string; lookUp: (text: string) => string }
 
@@ -8,10 +19,11 @@ export type EditMenuCopy = { cut: string; copy: string; paste: string; selectAll
 const LOOK_UP_CHARS = 50
 
 /**
- * Application menu template. `platform` comes from `process.platform`; `onSettings`, `onAgentTutorial`
- * and `onPalette` handle the Settings, tutorial and Command Palette actions. Every other item uses an
- * Electron role, which supplies native copy, paste, zoom, developer tools, and related behavior
- * without reimplementing them here.
+ * Application menu template, every title and item named by `copy`. `platform` comes from
+ * `process.platform`; `onSettings`, `onAgentTutorial` and `onPalette` handle the Settings, tutorial
+ * and Command Palette actions. Every other item uses an Electron role, which supplies native copy,
+ * paste, zoom, developer tools, and related behavior without reimplementing them here; each role menu
+ * lists the items Electron's own role menu has on `platform`, in its order, so that they carry names.
  */
 export function menuTemplate(
   platform: NodeJS.Platform,
@@ -32,6 +44,9 @@ export function menuTemplate(
     accelerator: 'CmdOrCtrl+Shift+P',
     click: onPalette,
   }
+  const item = (role: MenuRole): MenuItemConstructorOptions => ({ role, label: copy.roles[role] })
+  const separator: MenuItemConstructorOptions = { type: 'separator' }
+  const mac = platform === 'darwin'
   // macOS places Settings in the application-name menu beside the Apple menu. Electron requires
   // that menu as a complete template, so reproduce the default appMenu roles and insert Settings and
   // the Command Palette after it.
@@ -39,30 +54,60 @@ export function menuTemplate(
   // File only needs Quit. On Windows, application preferences conventionally live in Tools, which
   // follows View and precedes Window in the classic menu order.
   return [
-    ...(platform === 'darwin'
+    ...(mac
       ? [
         {
           role: 'appMenu',
           submenu: [
-            { role: 'about' }, { type: 'separator' },
-            settings, palette, { type: 'separator' },
-            { role: 'services' }, { type: 'separator' },
-            { role: 'hide' }, { role: 'hideOthers' }, { role: 'unhide' }, { type: 'separator' },
-            { role: 'quit' },
+            item('about'), separator,
+            settings, palette, separator,
+            item('services'), separator,
+            item('hide'), item('hideOthers'), item('unhide'), separator,
+            item('quit'),
           ],
         } satisfies MenuItemConstructorOptions,
-        { role: 'fileMenu' } satisfies MenuItemConstructorOptions,
+        { role: 'fileMenu', label: copy.file, submenu: [item('close')] } satisfies MenuItemConstructorOptions,
       ]
       : [{
-        label: 'File',
-        submenu: [{ role: 'quit' }],
+        label: copy.file,
+        submenu: [item('quit')],
       } satisfies MenuItemConstructorOptions]),
-    { role: 'editMenu' },
-    { role: 'viewMenu' },
-    ...(platform === 'darwin'
+    {
+      role: 'editMenu',
+      label: copy.edit,
+      submenu: [
+        item('undo'), item('redo'), separator, item('cut'), item('copy'), item('paste'),
+        ...(mac
+          ? [
+            item('pasteAndMatchStyle'), item('delete'), item('selectAll'), separator,
+            {
+              label: copy.substitutions,
+              submenu: [
+                item('showSubstitutions'), separator,
+                item('toggleSmartQuotes'), item('toggleSmartDashes'), item('toggleTextReplacement'),
+              ],
+            },
+            { label: copy.speech, submenu: [item('startSpeaking'), item('stopSpeaking')] },
+          ]
+          : [item('delete'), separator, item('selectAll')]),
+      ],
+    },
+    {
+      role: 'viewMenu',
+      label: copy.view,
+      submenu: [
+        item('reload'), item('forceReload'), item('toggleDevTools'), separator,
+        item('resetZoom'), item('zoomIn'), item('zoomOut'), separator, item('togglefullscreen'),
+      ],
+    },
+    ...(mac
       ? []
       : [{ label: copy.tools, submenu: [settings, palette] } satisfies MenuItemConstructorOptions]),
-    { role: 'windowMenu' },
+    {
+      role: 'windowMenu',
+      label: copy.window,
+      submenu: [item('minimize'), item('zoom'), ...(mac ? [separator, item('front')] : [item('close')])],
+    },
     {
       label: copy.help,
       submenu: [{ id: 'agent-tutorial', label: copy.agentTutorial, click: onAgentTutorial }],

@@ -1,0 +1,7 @@
+/*
+ * A busy ActionButton keeps its children laid out where they were, unseen, so its width holds; the
+ * RunningRing sits over them in the middle of the button.
+ */
+.action-button{position:relative}
+.action-label{display:contents;visibility:hidden}
+.action-button>.ring{position:absolute;inset:0;width:1.2em;height:1.2em;margin:auto}

@@ -105,7 +105,9 @@ Current shared contracts:
 - `Tooltip`: the one tooltip, under the one `TooltipProvider` at the renderer root. Its text is the element's
   name plus the platform's shortcut (`commandShortcut`); it opens after one delay on hover and at once on
   keyboard focus, and with `whenClipped` only while a cut-off text needs showing whole. `IconButton`'s `label`
-  is its tooltip.
+  is its tooltip, and its `note` the line under it: a disabled button that has a reason, such as a Trash row's
+  Restore, states it there, never as a tag or a sentence beside the button. The pointer still opens the tooltip of
+  a disabled button.
 - `PanelClose`: the close button of a detail panel, with one label and one glyph everywhere.
 - `DetailPanel`: the shared open/closed state and motion contract for right-side details. Its `inline`,
   `overlay`, and `resize` modes cover panels that join layout, slide over it, or widen an existing rail;
@@ -131,11 +133,13 @@ Current shared contracts:
   library search configure the same focus restoration, icon geometry, and accessible naming.
 - `GenerationControl`: the shared idle, spinning, and hover-to-stop button contract for model-backed
   actions. Chat composers and Wiki Harness generation do not define independent running animations.
-- `ActionButton`: the busy state of a text button that starts an action. While `busy` it reads its busy label,
-  is marked `aria-busy`, and is disabled, so a second press cannot start the action again.
+- `ActionButton`: the busy state of a text button that starts an action. While `busy` it keeps its width and
+  shows the `RunningRing`, in full colour, in place of its text; its busy label is only its accessible name. It
+  is marked `aria-busy` and disabled, so a second press cannot start the action again.
 - `RunningRing` (in `icons`): the one running indicator, `DownloadRing` without a total, turning once per
-  `--t-spin` in the colour of the text around it. GenerationControl and About use it; a running job is
-  never drawn in a danger tone.
+  `--t-spin` in the colour of the text around it. GenerationControl, ActionButton and About use it; on a
+  solid accent fill (a primary button, the composer's send) it turns in the fill's ink, by its own rule in
+  `icons.css`, and a running job is never drawn in a danger tone.
 - `CardTray`: progressive disclosure for secondary card details. It keeps a one-line summary visible,
   expands details below the host without moving its primary identity, and owns the shared animation,
   keyboard semantics, and reduced-motion behavior.

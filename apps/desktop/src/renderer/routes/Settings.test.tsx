@@ -916,7 +916,7 @@ describe('Settings', () => {
     expect(api.success).toHaveBeenCalledWith('备份已删除')
   })
 
-  it('确认删除备份后确认框关上，删除还没完成时那一行的删除按钮显示正在删除、按不动', async () => {
+  it('确认删除备份后确认框关上，删除还没完成时那一行的删除按钮在原处转圈、按不动，名字是正在删除', async () => {
     api.libraryLocation.mockResolvedValueOnce({
       root: '/tmp/meridian', source: 'configured', locked: false, restartRequired: false, openError: null,
     })
@@ -937,12 +937,15 @@ describe('Settings', () => {
 
     expect(document.querySelector('.modal.confirm')).toBeNull()
     const trigger = dialog.querySelector<HTMLButtonElement>('.storage-backup-actions .btn.danger')!
-    expect([trigger.textContent, trigger.disabled, trigger.getAttribute('aria-busy')]).toEqual(['正在删除…', true, 'true'])
+    expect([
+      trigger.getAttribute('aria-label'), trigger.textContent, trigger.querySelector('.ring.spin') !== null, trigger.disabled,
+      trigger.getAttribute('aria-busy'),
+    ]).toEqual(['正在删除…', '删除', true, true, 'true'])
     await act(async () => { finish() })
     expect(dialog.querySelector('.storage-backup-list')).toBeNull()
   })
 
-  it('确认重置论文库后确认框关上，重置还没完成时重置按钮显示正在重置、按不动，完成后才重启', async () => {
+  it('确认重置论文库后确认框关上，重置还没完成时重置按钮在原处转圈、按不动，名字是正在重置，完成后才重启', async () => {
     api.libraryLocation.mockResolvedValueOnce({
       root: '/tmp/meridian', source: 'configured', locked: false, restartRequired: false, openError: null,
     })
@@ -958,7 +961,10 @@ describe('Settings', () => {
 
     expect(document.querySelector('.modal.confirm')).toBeNull()
     const trigger = dialog.querySelector<HTMLButtonElement>('.storage-reset .btn.danger')!
-    expect([trigger.textContent, trigger.disabled, trigger.getAttribute('aria-busy')]).toEqual(['正在重置…', true, 'true'])
+    expect([
+      trigger.getAttribute('aria-label'), trigger.textContent, trigger.querySelector('.ring.spin') !== null, trigger.disabled,
+      trigger.getAttribute('aria-busy'),
+    ]).toEqual(['正在重置…', '重置库…', true, true, 'true'])
     expect(api.restartApp).not.toHaveBeenCalled()
     await act(async () => { finish() })
     expect(api.restartApp).toHaveBeenCalledOnce()
