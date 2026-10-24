@@ -119,6 +119,36 @@ describe('PaperWikiProposalReview', () => {
     ])
   })
 
+  it('names each row label by its group\'s kind and its position, in zh and en, and keeps the stored label of an unknown kind or a row past the known ones', () => {
+    const rows = (labels: string[]) => labels.map((label) => ({ label, text: '一句' }))
+    const groups = [
+      ['retrieval-fit-1', ['问题', '适用原因']], ['retrieval-scope', ['主要适用', '相邻适用', '弱相关']],
+      ['mechanism-1', ['输入', '变换', '输出', '依赖']], ['evidence-1', ['主张', '设置', '结果']],
+      ['implementation-1', ['任务', '首先检查', 'Core 存下的第三行']], ['later-group-1', ['Core 存下的行']],
+    ] as const
+    const labels = (language: 'zh' | 'en') => {
+      window.localStorage.setItem(LANGUAGE_STORAGE_KEY, language)
+      const review: HarnessPaperWikiReview = {
+        schemaVersion: 'meridian.paper-wiki-review.v1',
+        sections: [{
+          id: 'retrieve', title: '何时检索', emptyLabel: '没有内容',
+          groups: groups.map(([id, stored]) => ({ id, title: '组', provenance: 'wiki-synthesis' as const, anchors: [], rows: rows([...stored]) })),
+        }],
+      }
+      const host = document.createElement('div')
+      host.innerHTML = renderToStaticMarkup(
+        <MessagesProvider><PaperWikiProposalReview review={review} onJump={() => {}} /></MessagesProvider>,
+      )
+      return [...host.querySelectorAll('.paper-wiki-review-group')].map((group) => [...group.querySelectorAll('.proposal-row dt')].map((dt) => dt.textContent))
+    }
+    expect(labels('zh')).toEqual(groups.map(([, stored]) => [...stored]))
+    expect(labels('en')).toEqual([
+      ['Question', 'Why it fits'], ['Primary fit', 'Adjacent fit', 'Weak fit'],
+      ['Input', 'Transformation', 'Output', 'Dependency'], ['Claim', 'Setting', 'Result'],
+      ['Task', 'First check', 'Core 存下的第三行'], ['Core 存下的行'],
+    ])
+  })
+
   it('keeps the words Core stored for a section this version does not know', () => {
     expect(sectionTexts('en', ['later-section'])).toEqual([['Core 存下的「later-section」', 'Core 存下的「later-section」空白']])
   })

@@ -119,6 +119,13 @@ export const wiki = {
     evidence: '证据',
     implementation: '实现入口',
   },
+  reviewRows: {
+    'retrieval-fit': ['问题', '适用原因'],
+    'retrieval-scope': ['主要适用', '相邻适用', '弱相关'],
+    mechanism: ['输入', '变换', '输出', '依赖'],
+    evidence: ['主张', '设置', '结果'],
+    implementation: ['任务', '首先检查'],
+  },
   reviewSections: {
     remember: { title: '记住什么', empty: '本提案没有可审核的核心摘要。' },
     retrieve: { title: '何时检索', empty: '本提案没有检索建议。' },

@@ -19,14 +19,20 @@ function anchorLabel(anchor: string, m: Catalog): string {
   return anchor
 }
 
+/** The kind and the number group id `id` names, as `takeaway-3` names kind `takeaway` and number 3. */
+function kindOf(id: string): { kind: string; number?: string } {
+  const [, kind = id, number] = /^(.+?)(?:-(\d+))?$/.exec(id) ?? []
+  return number === undefined ? { kind } : { kind, number }
+}
+
 /**
  * The title group `group` shows: the catalog's name for the kind its id names, numbered as its id is,
  * or the title Core stored for a kind the catalog does not name, such as a mechanism component's own name.
  */
 function groupTitle(group: HarnessPaperWikiReviewGroup, m: Catalog): string | undefined {
-  const [, kind, number] = /^(.+?)(?:-(\d+))?$/.exec(group.id) ?? []
+  const { kind, number } = kindOf(group.id)
   const named: Record<string, string> = m.wiki.reviewGroups
-  const name = kind === undefined ? undefined : named[kind]
+  const name = named[kind]
   if (name === undefined) return group.title
   return number === undefined ? name : `${name} ${number}`
 }
@@ -42,6 +48,8 @@ function ReviewGroup({ group, onJump }: { group: HarnessPaperWikiReviewGroup; on
   const pages = group.anchors.filter((anchor) => anchor.startsWith('page:')).map((anchor) => Number(anchor.slice('page:'.length)))
   const records = group.anchors.filter((anchor) => !anchor.startsWith('page:'))
   const title = groupTitle(group, m)
+  // Core projects each kind's labelled rows in one fixed order (core/harness/paper-wiki.ts).
+  const labels: readonly string[] = (m.wiki.reviewRows as Record<string, readonly string[]>)[kindOf(group.id).kind] ?? []
   return (
     <StructuredRow className="paper-wiki-review-group">
       <div className="paper-wiki-review-group-head">
@@ -50,7 +58,9 @@ function ReviewGroup({ group, onJump }: { group: HarnessPaperWikiReviewGroup; on
       </div>
       {group.rows.map((row, index) => (row.label === undefined ? <ProposalText key={index}>{row.text}</ProposalText> : null))}
       <ProposalRows rows={[
-        ...group.rows.flatMap((row, index) => (row.label === undefined ? [] : [{ key: `row-${index}`, label: row.label, value: row.text }])),
+        ...group.rows.flatMap((row, index) => (row.label === undefined ? [] : [{
+          key: `row-${index}`, label: labels[index] ?? row.label, value: row.text,
+        }])),
         ...(pages.length === 0 ? [] : [{
           key: 'pages', label: g.source, value: pages.map((page) => <SourceAnchor key={page} page={page} onOpen={() => onJump(page)} />),
         }]),

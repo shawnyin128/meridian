@@ -126,6 +126,13 @@ export const wiki = {
     evidence: 'Evidence',
     implementation: 'Implementation entry point',
   },
+  reviewRows: {
+    'retrieval-fit': ['Question', 'Why it fits'],
+    'retrieval-scope': ['Primary fit', 'Adjacent fit', 'Weak fit'],
+    mechanism: ['Input', 'Transformation', 'Output', 'Dependency'],
+    evidence: ['Claim', 'Setting', 'Result'],
+    implementation: ['Task', 'First check'],
+  },
   reviewSections: {
     remember: { title: 'What to remember', empty: 'No key points to review.' },
     retrieve: { title: 'When to retrieve', empty: 'No retrieval suggestions.' },
