@@ -5,10 +5,11 @@ import { dayFrom, onDay, readJson, writeJson } from './app.mjs'
  * Recommendations a watch fetch would have brought from arXiv, by stored id: the watch name they
  * came from, the paper, and what happens to them in the seed. `later` moves one to read-later on
  * that day, `dismiss` moves it to Trash, and `unqueue` then takes it out of read-later into Trash.
- * EAGLE is a paper the library already holds, which the App keeps out of the feed.
+ * `alsoProject` names the seeded project whose discovery found the same paper, which then shows as
+ * one card under both. EAGLE is a paper the library already holds, which the App keeps out of the feed.
  */
 const RECOMMENDATIONS = [
-  { id: 'seed-inbox-sequoia', watch: 'speculative decoding', arxiv: '2402.12374', submitted: '2024-02-19',
+  { id: 'seed-inbox-sequoia', watch: 'speculative decoding', arxiv: '2402.12374', submitted: '2024-02-19', alsoProject: 'spec',
     title: 'Sequoia: Scalable, Robust, and Hardware-aware Speculative Decoding',
     authors: ['Zhuoming Chen', 'Avner May', 'Ruslan Svirschevski', 'Yuhsun Huang', 'Max Ryabinin', 'Zhihao Jia', 'Beidi Chen'],
     abstract: 'Sequoia builds the token tree for speculative decoding by dynamic programming and reports up to $4.04\\times$ faster decoding on an A100.' },
@@ -57,6 +58,12 @@ export async function seedWatches(seed, call) {
   ] } }))
 }
 
+/** The stream record of project `project`'s discovery finding a paper a watch delivered first. */
+const alsoFound = (project) => ({
+  kind: 'discovery', id: project.id, source: `项目 · ${project.name}`,
+  reasons: [{ kind: 'project', label: `来自项目「${project.name}」` }, { kind: 'source', label: '由相似论文召回' }],
+})
+
 /**
  * Writes the recommendations in `.meridian/inbox.json` in the stored shape a watch fetch writes,
  * since only the network produces them, followed by the stored records in `extra`. Run with the App
@@ -72,6 +79,7 @@ export function writeInbox(seed, extra = []) {
       rec: '', reasons: [{ kind: 'watch', label: `命中${kind}「${watch.name}」` }], downloaded: false, paper: '',
       pdf: `https://arxiv.org/pdf/${paper.arxiv}`, topic: watch.type === 'topic' ? watch.name : '', gone: false,
       arxiv: paper.arxiv, semanticId: '', meta: { authors: paper.authors, submitted: paper.submitted, journalRef: null },
+      ...(paper.alsoProject === undefined ? {} : { also: [alsoFound(seed.projects[paper.alsoProject])] }),
     }
   })
   writeJson(join(seed.out, 'library', '.meridian', 'inbox.json'), [...records, ...extra])

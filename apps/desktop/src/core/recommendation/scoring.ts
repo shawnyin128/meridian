@@ -93,13 +93,17 @@ const compare = (mode: NonNullable<InboxListParams['sort']>) => (
   return b.values.recommended - a.values.recommended
 }
 
-/** Sorts inside each source group while preserving group order and stable ties. */
+/**
+ * Sorts inside each group while preserving group order and stable ties. An entry's group is the one
+ * `groupOf` names, by default the stream that delivered it first.
+ */
 export function orderInbox(
   entries: InboxEntry[], mode: NonNullable<InboxListParams['sort']> = 'recommended', now = Date.now(),
+  groupOf: (entry: InboxEntry) => string = (entry) => (entry.kind === 'discovery' ? entry.project : entry.watch),
 ): InboxEntry[] {
   const groups = new Map<string, { entry: InboxEntry; values: RankValues }[]>()
   for (const entry of entries) {
-    const key = entry.kind === 'discovery' ? entry.project : entry.watch
+    const key = groupOf(entry)
     const ranked = { entry, values: valuesOf(entry, now) }
     const group = groups.get(key)
     if (group === undefined) groups.set(key, [ranked])

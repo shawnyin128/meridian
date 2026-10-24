@@ -1,0 +1,109 @@
+import type { InboxEntry, InboxListParams, InboxStream } from '../../shared/contract.js'
+import { listingsOf } from '../../shared/inbox-streams.js'
+import { orderInbox } from '../recommendation/index.js'
+import { createPaperIndex, type PaperIdentity } from './identity.js'
+
+type Reason = InboxEntry['reasons'][number]
+
+/** A stream that delivered a paper besides the one that delivered it first, with the reasons it gave. */
+export type StoredStream = InboxStream & { reasons: Reason[] }
+
+/** The fields every stored inbox entry carries that say which streams list it. */
+export type StreamEntry = Pick<InboxEntry, 'kind' | 'watch' | 'project' | 'source' | 'reasons'> & {
+  also?: StoredStream[] | undefined
+}
+
+/** Returns every stream that lists `entry`: the one that delivered it first, then the others in order. */
+export function streamsOf(entry: StreamEntry): StoredStream[] {
+  return [
+    {
+      kind: entry.kind, id: entry.kind === 'discovery' ? entry.project : entry.watch, source: entry.source,
+      reasons: entry.reasons,
+    },
+    ...(entry.also ?? []),
+  ]
+}
+
+/** Returns whether `entry` is listed under a stream of `kind`, and under the one with id `id` when given. */
+export function listedUnder(entry: StreamEntry, kind: InboxStream['kind'], id?: string): boolean {
+  return streamsOf(entry).some((stream) => stream.kind === kind && (id === undefined || stream.id === id))
+}
+
+/** Returns the reasons of every stream that lists `entry`, each label once, in stream order. */
+export function combinedReasons(entry: StreamEntry): Reason[] {
+  const seen = new Set<string>()
+  return streamsOf(entry).flatMap((stream) => stream.reasons).filter((reason) => {
+    if (seen.has(reason.label)) return false
+    seen.add(reason.label)
+    return true
+  })
+}
+
+/**
+ * Orders the entries `listInbox(params)` lists in `params.sort` order inside each group: the one watch
+ * or project `params` names, or else the first stream of `params.kind` that lists an entry, or else
+ * the stream that delivered it first.
+ */
+export function orderListing(rows: InboxEntry[], params: InboxListParams): InboxEntry[] {
+  const scope = params.watch ?? params.project
+  return orderInbox(rows, params.sort, undefined, (entry) => {
+    if (scope !== undefined) return scope
+    const kind = params.kind ?? entry.kind
+    return `${kind}:${listingsOf(entry, kind)[0]!.id}`
+  })
+}
+
+/** Returns `entry` with `stream` added to the streams that list it, or `entry` itself when it already does. */
+export function withStream<E extends StreamEntry>(entry: E, stream: StoredStream): E {
+  if (listedUnder(entry, stream.kind, stream.id)) return entry
+  return { ...entry, also: [...(entry.also ?? []), stream] }
+}
+
+/**
+ * Returns `entry` no longer listed under the streams `gone` names: when the stream that delivered it
+ * first is one of them, the next stream takes its place, with its own source and reasons. Returns null
+ * when no stream lists it anymore, and `entry` itself when `gone` names none of them.
+ */
+export function withoutStreams<E extends StreamEntry>(entry: E, gone: (stream: InboxStream) => boolean): E | null {
+  const streams = streamsOf(entry)
+  const kept = streams.filter((stream) => !gone(stream))
+  if (kept.length === streams.length) return entry
+  const [first, ...rest] = kept
+  if (first === undefined) return null
+  const next: E = {
+    ...entry, kind: first.kind, watch: first.kind === 'watch' ? first.id : '',
+    project: first.kind === 'discovery' ? first.id : '', source: first.source, reasons: first.reasons, also: rest,
+  }
+  if (rest.length === 0) delete next.also
+  return next
+}
+
+/** What a found paper turns out to be: in the library, delivered before, or the live card with id `id`. */
+type Known = { kind: 'owned' } | { kind: 'seen' } | { kind: 'live'; id: string }
+
+/**
+ * Sorts the papers a stream found: `fresh` are those to deliver as new cards, in found order and each
+ * paper once, and `merged` maps the id of each live card the stream found again to the first paper
+ * that found it. A found paper is matched by identity against, in this order, `owned` (the library),
+ * `live` (cards in the feed, by id), and `seen` (everything delivered before, gone cards and the
+ * delivery history alike); an owned or seen paper is skipped.
+ */
+export function sortFound<P>(found: P[], identityOf: (paper: P) => PaperIdentity, known: {
+  owned: PaperIdentity[]; live: { id: string; identity: PaperIdentity }[]; seen: PaperIdentity[]
+}): { fresh: P[]; merged: Map<string, P> } {
+  const index = createPaperIndex<Known>()
+  for (const identity of known.owned) index.add(identity, { kind: 'owned' })
+  for (const { id, identity } of known.live) index.add(identity, { kind: 'live', id })
+  for (const identity of known.seen) index.add(identity, { kind: 'seen' })
+  const fresh: P[] = []
+  const merged = new Map<string, P>()
+  for (const paper of found) {
+    const identity = identityOf(paper)
+    const match = index.find(identity)
+    if (match?.kind === 'live' && !merged.has(match.id)) merged.set(match.id, paper)
+    if (match !== undefined) continue
+    fresh.push(paper)
+    index.add(identity, { kind: 'seen' })
+  }
+  return { fresh, merged }
+}

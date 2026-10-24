@@ -1,8 +1,8 @@
 import { z } from 'zod'
 import {
-  AttachmentSchema, ChatMessageSchema, ChatSessionSchema, InboxEntrySchema, LaterEntrySchema,
-  DeliverySettingsSchema, PaperColumnsSchema, PaperReadingSchema, PaperRowSchema, ResearchIdeaSchema,
-  TrashEntrySchema,
+  AttachmentSchema, ChatMessageSchema, ChatSessionSchema, InboxEntrySchema, InboxStreamSchema, LaterEntrySchema,
+  DeliverySettingsSchema, PaperColumnsSchema, PaperReadingSchema, PaperRowSchema, RecommendationReasonSchema,
+  ResearchIdeaSchema, TrashEntrySchema,
 } from '../../shared/contract.js'
 
 /**
@@ -31,9 +31,11 @@ export const PaperSnapshotSchema = PaperRowSchema
  * it has left inbox, its arXiv id, and bibliographic metadata used during download/import.
  * `downloaded` is still written for older Apps; listing derives it from the vault's paper pages.
  * `left` says why a `gone` entry left, as one of `InboxLeft` when this version wrote it; `gone` stays
- * the truth, since an older App restoring an entry from the trash leaves `left` as it was.
+ * the truth, since an older App restoring an entry from the trash leaves `left` as it was. `reasons`
+ * holds the reasons of the stream that delivered it first, and each stream in `also` its own.
  */
 export const InboxRecordSchema = InboxEntrySchema.extend({
+  also: z.array(InboxStreamSchema.extend({ reasons: z.array(RecommendationReasonSchema) }).strict()).optional(),
   pdf: z.string().default(''),
   topic: z.string(),
   gone: z.boolean(),
@@ -49,6 +51,18 @@ export const InboxRecordSchema = InboxEntrySchema.extend({
     journalRef: z.string().nullable(),
   }).strict().default({ authors: [], submitted: '', journalRef: null }),
 })
+
+/**
+ * One paper `.meridian/discovery/delivered.json` remembers as delivered: the id of the inbox entry that
+ * delivered it and its identity, as `PaperIdentity` holds it. The file outlives inbox records, which
+ * every App deletes with their watch or project, so a paper delivered once is never delivered again.
+ */
+export const DeliveredRecordSchema = z.object({
+  id: z.string(),
+  keys: z.array(z.string()),
+  title: z.string(),
+  year: z.number().int().nullable(),
+}).strict()
 
 /** Stored read-later item. `day` derives from vault today and `downloaded` from library presence; neither is stored. */
 export const LaterRecordSchema = LaterEntrySchema.omit({ day: true, downloaded: true })
@@ -143,6 +157,7 @@ export const VaultStateSchema = z.object({
 
 export type PaperSnapshot = z.infer<typeof PaperSnapshotSchema>
 export type InboxRecord = z.infer<typeof InboxRecordSchema>
+export type DeliveredRecord = z.infer<typeof DeliveredRecordSchema>
 /** Why an inbox entry left the feed: added to the vault, queued to read later, dismissed, or given `less` or `known` feedback. */
 export type InboxLeft = 'library' | 'later' | 'dismissed' | 'less' | 'known'
 export type LaterRecord = z.infer<typeof LaterRecordSchema>

@@ -63,9 +63,10 @@ describe('createBackground', () => {
     const running = background.fetchWatches()
     expect(background.status().fetch.state).toBe('checking')
     await running
-    expect(store.listInbox()).toHaveLength(before + 2)
+    // The vault's Mixtral of Experts records another year, so by its title and year it is another paper.
+    expect(store.listInbox()).toHaveLength(before + 3)
     expect(store.listInbox().map((entry) => entry.title)).toEqual(expect.arrayContaining([
-      'Tree Width in Batched Serving', 'Attention Kernels for Shared Prefixes',
+      'Tree Width in Batched Serving', 'Attention Kernels for Shared Prefixes', 'Mixtral of Experts',
     ]))
     expect(background.status().fetch).toEqual({ state: 'idle', checkedAt: 0, reason: null })
     expect(background.status().writes).toBeGreaterThan(0)

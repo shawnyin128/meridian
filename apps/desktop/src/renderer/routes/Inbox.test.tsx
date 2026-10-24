@@ -31,6 +31,8 @@ const api = vi.hoisted(() => ({
   open: vi.fn(),
   /** The sort order of each inbox.list call, in order. */
   sorts: [] as (string | undefined)[],
+  /** The parameters of each inbox.list call, in order. */
+  lists: [] as Record<string, unknown>[],
   notice: {
     success: vi.fn<(text: unknown, action?: { label: string; onAction: () => void }) => void>(),
     refusal: vi.fn(),
@@ -39,10 +41,16 @@ const api = vi.hoisted(() => ({
 
 vi.mock('../ipc.js', () => ({
   inbox: {
-    list: (params: { kind?: InboxEntry['kind']; sort?: string }) => {
+    list: (params: { kind?: InboxEntry['kind']; sort?: string; watch?: string; project?: string }) => {
       api.sorts.push(params.sort)
-      return api.loading ? new Promise(() => {}) : Promise.resolve(api.entries
-        .filter((entry) => params.kind === undefined || entry.kind === params.kind))
+      api.lists.push(params)
+      const streams = (entry: InboxEntry) => [
+        { kind: entry.kind, id: entry.kind === 'watch' ? entry.watch : entry.project }, ...(entry.also ?? []),
+      ]
+      return api.loading ? new Promise(() => {}) : Promise.resolve(api.entries.filter((entry) => streams(entry).some((stream) => (
+        (params.kind === undefined || stream.kind === params.kind)
+        && (params.watch ?? params.project ?? stream.id) === stream.id
+      ))))
     },
     dismiss: api.dismiss, readLater: async () => false,
     download: async (id: string) => api.downloads[id] ?? { kind: 'added', paper: 'p1' },
@@ -374,6 +382,46 @@ describe('Inbox', () => {
     expect(card('d3').classList.contains('is-leaving')).toBe(false)
     expect(api.feedback).toHaveBeenLastCalledWith('d3', 'more')
     await act(async () => { root.unmount() })
+  })
+
+  it('几条关注和项目都送来的论文只是一张卡片:全部里出现一次,理由合在一起;它的每个范围里都列着它,组名是那个范围', async () => {
+    const shared: InboxEntry = {
+      id: 's1', kind: 'watch', watch: 'w1', project: '', source: '关键词 · w1',
+      title: 'Shared Paper', authors: 'Ada', venue: 'ICLR', abstract: 'Abstract', rec: '',
+      reasons: [{ kind: 'watch', label: '命中关键词「w1」' }, { kind: 'watch', label: '命中作者「w2」' }],
+      also: [{ kind: 'watch', id: 'w2', source: '作者 · w2' }, { kind: 'discovery', id: 'p1', source: '项目 · 项目一' }],
+      downloaded: false, paper: '', pdf: 'https://arxiv.org/pdf/2609.1',
+    }
+    const single: InboxEntry = {
+      ...shared, id: 's2', title: 'Single Paper', reasons: [{ kind: 'watch', label: '命中关键词「w1」' }],
+    }
+    delete single.also
+    api.entries = [shared, single]
+    const root = createRoot(host)
+    await act(async () => { root.render(<MessagesProvider><Inbox /></MessagesProvider>) })
+    expect([...host.querySelectorAll('.collapsible-group-title')].map((title) => title.textContent)).toEqual(['关键词 · w1'])
+    expect(host.querySelectorAll('.paper-card')).toHaveLength(2)
+    const card = (id: string) => host.querySelector(`.paper-card[data-pid="${id}"]`)!
+    expect(card('s1').querySelector('.prec')?.textContent).toBe('命中关键词「w1」 · 命中作者「w2」')
+    expect(card('s2').querySelector('.prec')).toBeNull()
+    await act(async () => { root.unmount() })
+
+    api.scope = 'w2'
+    const scoped = createRoot(host)
+    await act(async () => { scoped.render(<MessagesProvider><Inbox /></MessagesProvider>) })
+    expect(api.lists.at(-1)).toMatchObject({ kind: 'watch', watch: 'w2' })
+    expect([...host.querySelectorAll('.collapsible-group-title')].map((title) => title.textContent)).toEqual(['作者 · w2'])
+    expect([...host.querySelectorAll('.paper-card')].map((held) => held.getAttribute('data-pid'))).toEqual(['s1'])
+    await act(async () => { scoped.unmount() })
+
+    api.scope = 'p1'
+    api.mode = 'discovery'
+    const discovering = createRoot(host)
+    await act(async () => { discovering.render(<MessagesProvider><Inbox /></MessagesProvider>) })
+    expect(api.lists.at(-1)).toMatchObject({ kind: 'discovery', project: 'p1' })
+    expect(host.querySelector('.desk-head .t')?.textContent).toBe('项目 · 项目一 · 1')
+    expect(host.querySelector('[aria-label="减少类似"]')).not.toBeNull()
+    await act(async () => { discovering.unmount() })
   })
 
   it('上次检查的时刻像全 App 的时间一样写成日期与时刻', async () => {

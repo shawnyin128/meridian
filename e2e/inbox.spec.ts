@@ -38,14 +38,21 @@ const call = <T>(win: Page, method: string, params: unknown) => win.evaluate(
   [method, params] as const,
 )
 
+/** The other streams that list an entry, as Core answers them. */
+type Also = { also?: { kind: 'watch' | 'discovery'; id: string }[] }
 const inboxFromCore = (win: Page) =>
-  call<{
+  call<({
     id: string; watch: string; source: string; paper: string; downloaded: boolean; pdf: string
-  }[]>(win, 'inbox.list', {})
+  } & Also)[]>(win, 'inbox.list', {})
 const discoveryFromCore = (win: Page) =>
-  call<{ id: string; project: string; reasons: { label: string }[] }[]>(
+  call<({ id: string; project: string; reasons: { label: string }[] } & Also)[]>(
     win, 'inbox.list', { kind: 'discovery' },
   )
+/** The ids of the watches, or the projects, that list `entry`: the one that delivered it first, then the others. */
+const listedUnder = (entry: { watch?: string; project?: string } & Also, kind: 'watch' | 'discovery') => [
+  ...(kind === 'watch' ? [entry.watch ?? ''] : [entry.project ?? '']).filter((id) => id !== ''),
+  ...(entry.also ?? []).filter((stream) => stream.kind === kind).map((stream) => stream.id),
+]
 const laterFromCore = (win: Page) =>
   call<{ id: string; source: string; day: string }[]>(win, 'later.list', {})
 const watchesFromCore = (win: Page) =>
@@ -146,7 +153,9 @@ test('关注与项目发现是两条流,发现解释来源并接受显式反馈'
   await expect(shown(win, '.collapsible-group-title').first()).toContainText('项目 ·')
   // Discovery lists its projects under the sidebar row; picking one shows only that project's papers.
   const byProject = new Map<string, number>()
-  for (const entry of await discoveryFromCore(win)) byProject.set(entry.project, (byProject.get(entry.project) ?? 0) + 1)
+  for (const entry of await discoveryFromCore(win)) {
+    for (const project of listedUnder(entry, 'discovery')) byProject.set(project, (byProject.get(project) ?? 0) + 1)
+  }
   await expect(win.locator('[data-discovery-project]')).toHaveCount(byProject.size)
   const [firstProject, firstCount] = [...byProject.entries()][0]!
   await win.locator(`[data-discovery-project="${firstProject}"]`).click()
@@ -195,7 +204,7 @@ test('发现的卡片能忽略;忽略、减少类似和已经了解都进垃圾�
 test('按关键词与作者各筛一档,面包屑与条数都跟着换', async ({ win }) => {
   const entries = await inboxFromCore(win)
   const counted = (await watchesFromCore(win)).map((w) => ({
-    ...w, n: entries.filter((e) => e.watch === w.id).length,
+    ...w, n: entries.filter((e) => listedUnder(e, 'watch').includes(w.id)).length,
   }))
   // At least two watches must have different counts, or this test could not tell whether filtering works.
   expect(new Set(counted.map((c) => c.n)).size).toBeGreaterThan(1)
@@ -395,13 +404,14 @@ test('检查新论文按关注抓取一次,新论文进入相应分组且标题�
   await openInbox(win, 'all')
   const before = await inboxFromCore(win)
   await shown(win, '.desk-head .btn').filter({ hasText: '检查新论文' }).click()
-  await expect(shown(win, '.pcard')).toHaveCount(before.length + 2)
+  // The vault's Mixtral of Experts records another year, so by its title and year it is another paper.
+  await expect(shown(win, '.pcard')).toHaveCount(before.length + 3)
   await expect(shown(win, '.desk-head .fetchnote')).toHaveText(/^上次检查 \d+月\d+日\d{2}:\d{2}$/)
   await expect(shown(win, '.desk-head .fetchnote .date-chip')).toHaveCount(2)
   expect((await cardTitles(win))[0]).toBe('Tree Width in Batched Serving')
   const fresh = shown(win, '.pcard').filter({ hasText: 'Tree Width in Batched Serving' })
   await expect(fresh.locator('.plabel')).toHaveText(['摘要'])
-  await expect(win.locator('#rowInboxAll .n')).toHaveText(String(before.length + 2))
+  await expect(win.locator('#rowInboxAll .n')).toHaveText(String(before.length + 3))
 })
 
 test('存入稍后阅读:离开推送屏,排到队首,再移出', async ({ win }) => {
@@ -776,9 +786,9 @@ test('侧栏角标数的都是库里的真实数量', async ({ win }) => {
   const entries = await inboxFromCore(win)
   const watches = await watchesFromCore(win)
   const queued = await laterFromCore(win)
-  const count = (id: string) => entries.filter((e) => e.watch === id).length
-  // A group counts the papers its watches delivered.
-  const papers = (type: string) => entries.filter((e) => watches.some((w) => w.id === e.watch && w.type === type)).length
+  const count = (id: string) => entries.filter((e) => listedUnder(e, 'watch').includes(id)).length
+  // A group counts each paper its watches delivered once.
+  const papers = (type: string) => entries.filter((e) => watches.some((w) => w.type === type && listedUnder(e, 'watch').includes(w.id))).length
 
   const badges: [string, number][] = [
     ['#rowInboxAll .n', entries.length],

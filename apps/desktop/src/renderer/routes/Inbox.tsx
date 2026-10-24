@@ -3,6 +3,7 @@ import type {
   DiscoveryFetchResult, DiscoveryProfile, FetchStatus, InboxDownloadFailure, InboxEntry,
   InboxListParams, Watch,
 } from '../../shared/contract.js'
+import { listingsOf } from '../../shared/inbox-streams.js'
 import { discovery, inbox, watch } from '../ipc.js'
 import {
   ALL_WATCHES, useCrumbTail, useInboxMode, useInboxScope, useJump, useNotice, useSettingsOpen, useVaultRevision,
@@ -94,31 +95,31 @@ export function Inbox() {
     void discovery.profiles().then(setProfiles).catch(reportError)
   }, [reportError])
 
+  // Discovery is scoped by project and paper delivery by watch; the sidebar sets the scope for either stream.
   useEffect(() => {
-    void inbox.list({ kind: stream, sort }).then((rows) => {
+    const scoped = scope === ALL_WATCHES ? {} : stream === 'discovery' ? { project: scope } : { watch: scope }
+    void inbox.list({ kind: stream, sort, ...scoped }).then((rows) => {
       setEntries(rows)
       setLeaving(new Set())
     }).catch(reportError)
     void watch.list().then(setWatches).catch(reportError)
     loadProfiles()
-  }, [loadProfiles, revision, reportError, sort, stream])
+  }, [loadProfiles, revision, reportError, scope, sort, stream])
 
   const watched = watches.find((w) => w.id === scope)
-  // Discovery is scoped by project and paper delivery by watch; the sidebar sets the scope for either stream.
-  const groupOf = useCallback((entry: InboxEntry) => (stream === 'discovery' ? entry.project : entry.watch), [stream])
-  const rows = useMemo(() => (
-    scope === ALL_WATCHES ? entries ?? [] : (entries ?? []).filter((e) => groupOf(e) === scope)
-  ), [entries, groupOf, scope])
+  const rows = useMemo(() => entries ?? [], [entries])
+  // A card shows under the scope in view, or else under the first stream of this kind that lists it.
   const groups = useMemo(() => {
     const byKey = new Map<string, { key: string; title: string; rows: InboxEntry[] }>()
     for (const row of rows) {
-      const key = groupOf(row)
-      const group = byKey.get(key) ?? { key, title: shownSource(row.source), rows: [] }
+      const listings = listingsOf(row, stream)
+      const listing = listings.find((held) => held.id === scope) ?? listings[0]!
+      const group = byKey.get(listing.id) ?? { key: listing.id, title: shownSource(listing.source), rows: [] }
       group.rows.push(row)
-      byKey.set(key, group)
+      byKey.set(listing.id, group)
     }
     return [...byKey.values()]
-  }, [groupOf, rows])
+  }, [rows, scope, stream])
   const scopedProject = stream === 'discovery' && scope !== ALL_WATCHES ? groups[0]?.title ?? '' : null
   const [folded, setFolded] = useState<ReadonlySet<string>>(new Set())
   const toggleGroup = (key: string) => setFolded((held) => {
@@ -257,7 +258,7 @@ export function Inbox() {
         </>
       )}
       abstract={p.abstract} {...(
-        stream === 'discovery' && p.reasons.length > 0
+        (stream === 'discovery' || p.also !== undefined) && p.reasons.length > 0
           ? { recommendation: p.reasons.map((reason) => reason.label).join(' · ') }
           : p.rec === '' ? {} : { recommendation: p.rec }
       )}

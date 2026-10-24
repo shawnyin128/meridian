@@ -4,7 +4,7 @@ import { dayFrom, onDay } from './app.mjs'
 
 /**
  * Creates project `name` on day `days` the way the project list does, with the feed entry it
- * posts, records its id in `seed.projects[key]`, and returns the id.
+ * posts, records its id and name in `seed.projects[key]`, and returns the id.
  */
 async function createProject(seed, call, key, name, days) {
   return onDay(seed, days, async () => {
@@ -12,7 +12,7 @@ async function createProject(seed, call, key, name, days) {
     await call('feed.append', { source: 'me', body: { kind: 'runs', runs: [
       { kind: 'text', text: '新项目《' }, { kind: 'text', text: name, target: { kind: 'project', id } }, { kind: 'text', text: '》已创建' },
     ] } })
-    seed.projects[key] = { id, days }
+    seed.projects[key] = { id, days, name }
     return id
   })
 }

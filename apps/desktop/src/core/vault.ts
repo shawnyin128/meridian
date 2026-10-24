@@ -610,8 +610,19 @@ export interface VaultStore {
   /** Replaces the common paper-delivery settings. */
   setDeliverySettings(settings: DeliverySettings): void
 
-  /** Adds at most `limit` unseen arXiv results for one watch and returns their arXiv ids. */
+  /**
+   * Delivers for one watch at most `limit` of the arXiv results `found` that no stream delivered
+   * before and the vault does not hold, and returns their arXiv ids; a result that is already a live
+   * card is listed under this watch on that card instead. Throws if no such watch exists.
+   */
   addInboxEntries(watchId: string, found: RemotePaper[], limit?: number): string[]
+
+  /**
+   * Returns the papers of `found`, in order and each once, that adding them for any watch or project
+   * would still deliver as new cards: the vault does not hold them and no stream delivered them
+   * before, including a watch or project since deleted. Writes nothing.
+   */
+  undelivered<P extends RemotePaper & { semanticId?: string }>(found: P[]): P[]
 
   /** Refreshes ranking/venue metadata for inbox history belonging to one watch. */
   updateInboxEntries(watchId: string, found: RemotePaper[]): number
@@ -637,7 +648,12 @@ export interface VaultStore {
   /** Persists one user-owned core/enable decision without mutating Wiki knowledge. */
   setDiscoveryIntent(projectId: string, intentId: string, action: DiscoveryIntentAction): void
 
-  /** Adds at most `limit` unseen provider results to one project's discovery feed. */
+  /**
+   * Delivers to one project's discovery at most `limit` of the provider results `found` that no
+   * stream delivered before and the vault does not hold, and returns how many; a result that is
+   * already a live card is listed under this project on that card instead. Throws if no such project
+   * exists.
+   */
   addDiscoveryEntries(projectId: string, found: DiscoveryPaper[], limit?: number): number
 
   /**
