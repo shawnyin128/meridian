@@ -18,17 +18,22 @@ export const semanticRecommendationsUrl =
 
 const RELATION_LIMIT = 20
 const AUTHOR_LIMIT = 3
-const graphPaperUrl = (paperId: string, path: 'citations' | 'references' | 'authors', fields: string) => (
+const graphPaperUrl = (
+  paperId: string, path: 'citations' | 'references' | 'authors', fields: string, offset = 0,
+) => (
   `https://api.semanticscholar.org/graph/v1/paper/${encodeURIComponent(paperId)}/${path}?${new URLSearchParams({
     limit: String(path === 'authors' ? AUTHOR_LIMIT : RELATION_LIMIT), fields,
+    ...(offset > 0 ? { offset: String(offset) } : {}),
   }).toString()}`
 )
 
-export const semanticCitationUrl = (paperId: string): string => (
-  graphPaperUrl(paperId, 'citations', PAPER_FIELDS)
+/** The address of page `page` of the papers citing `paperId`, RELATION_LIMIT per page; the first page carries no offset. */
+export const semanticCitationUrl = (paperId: string, page = 0): string => (
+  graphPaperUrl(paperId, 'citations', PAPER_FIELDS, page * RELATION_LIMIT)
 )
-export const semanticReferenceUrl = (paperId: string): string => (
-  graphPaperUrl(paperId, 'references', PAPER_FIELDS)
+/** The address of page `page` of the papers `paperId` cites, RELATION_LIMIT per page; the first page carries no offset. */
+export const semanticReferenceUrl = (paperId: string, page = 0): string => (
+  graphPaperUrl(paperId, 'references', PAPER_FIELDS, page * RELATION_LIMIT)
 )
 export const semanticAuthorNeighborsUrl = (paperId: string): string => {
   const fields = [
@@ -52,7 +57,7 @@ type ApiPaper = {
   year?: unknown
   citationCount?: unknown
   influentialCitationCount?: unknown
-  externalIds?: { ArXiv?: unknown } | null
+  externalIds?: { ArXiv?: unknown; DOI?: unknown } | null
   publicationTypes?: unknown
 }
 
@@ -75,6 +80,7 @@ const discoveryPaper = (paper: ApiPaper, relevance: number): DiscoveryPaper | nu
   const title = text(paper.title)
   const semanticId = text(paper.paperId)
   if (arxiv === '' || title === '' || semanticId === '') return null
+  const doi = text(paper.externalIds?.DOI)
   const submitted = submittedOf(paper)
   const venue = text(paper.venue)
   const types = Array.isArray(paper.publicationTypes)
@@ -89,6 +95,7 @@ const discoveryPaper = (paper: ApiPaper, relevance: number): DiscoveryPaper | nu
     }) : []
   return {
     semanticId,
+    ...(doi === '' ? {} : { doi }),
     id: arxiv,
     title,
     authors,
@@ -181,7 +188,10 @@ const withOrigin = (
   ...paper, origins: [{ source, seedPaperIds: [...seedPaperIds] }],
 }))
 
-/** Semantic Scholar source adapter for similarity, citation, reference and author candidates. */
+/**
+ * Semantic Scholar source adapter for similarity, citation, reference and author candidates. Citations
+ * and references page by offset; similarity and author ignore `page`.
+ */
 export function createSemanticRecommendations(deps: {
   get: HttpGet
   sleep: (ms: number) => Promise<void>
@@ -191,7 +201,7 @@ export function createSemanticRecommendations(deps: {
     limit: RECOMMENDATION_BODY_LIMIT, sleep: deps.sleep,
   }
   return {
-    async recommend(positive, negativePaperIds, source = 'similarity') {
+    async recommend(positive, negativePaperIds, source = 'similarity', page = 0) {
       const positivePaperIds = positive.map((seed) => seed.paperId)
       if (positivePaperIds.length === 0) return []
       if (source === 'similarity') {
@@ -202,8 +212,8 @@ export function createSemanticRecommendations(deps: {
         return withOrigin(parseSemanticRecommendations(body), source, positivePaperIds)
       }
       const seed = positivePaperIds[0]!
-      const url = source === 'citation' ? semanticCitationUrl(seed)
-        : source === 'reference' ? semanticReferenceUrl(seed)
+      const url = source === 'citation' ? semanticCitationUrl(seed, page)
+        : source === 'reference' ? semanticReferenceUrl(seed, page)
           : semanticAuthorNeighborsUrl(seed)
       const body = await requestWithRetry(deps.get, url, {}, policy)
       const parsed = source === 'author'

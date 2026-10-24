@@ -7,6 +7,7 @@ import {
   ChatAppendParamsSchema,
   ChatCancelParamsSchema,
   ChatCreateParamsSchema,
+  ChatDeleteParamsSchema,
   ChatForPaperParamsSchema,
   ChatMessagesParamsSchema,
   ChatSendParamsSchema,
@@ -34,6 +35,7 @@ import {
   DeliverySettingsSchema,
   InboxDismissParamsSchema,
   InboxDownloadParamsSchema,
+  InboxFetchParamsSchema,
   InboxListParamsSchema,
   InboxReadLaterParamsSchema,
   LibraryBackupParamsSchema,
@@ -645,8 +647,8 @@ registerHandler('inbox.readLater', (params) =>
 registerHandler('inbox.download', (params) =>
   background.downloadInbox(InboxDownloadParamsSchema.parse(params).id))
 registerHandler('inbox.fetch', (params) => {
-  EmptyParamsSchema.parse(params)
-  void background.fetchWatches()
+  const { watchId } = InboxFetchParamsSchema.parse(params)
+  void background.fetchWatches(watchId === undefined ? undefined : [watchId])
 })
 registerHandler('delivery.settings', (params) => {
   EmptyParamsSchema.parse(params)
@@ -670,14 +672,20 @@ registerHandler('discovery.intent', (params) => {
 })
 registerHandler('discovery.feedback', (params) => {
   const { id, feedback } = DiscoveryFeedbackParamsSchema.parse(params)
-  return store.feedbackDiscovery(id, feedback)
+  if (feedback === 'more') {
+    store.feedbackDiscovery(id, feedback)
+    return null
+  }
+  return trashedEntry(store, () => store.feedbackDiscovery(id, feedback))
 })
 registerHandler('later.list', (params) => {
   EmptyParamsSchema.parse(params)
   return store.listLater()
 })
-registerHandler('later.remove', (params) =>
-  store.removeLater(LaterRemoveParamsSchema.parse(params).id))
+registerHandler('later.remove', (params) => {
+  const { id } = LaterRemoveParamsSchema.parse(params)
+  return trashedEntry(store, () => store.removeLater(id))
+})
 registerHandler('watch.list', (params) => {
   EmptyParamsSchema.parse(params)
   return store.listWatches()
@@ -794,7 +802,7 @@ registerHandler('chat.list', (params) => {
   return store.listChats()
 })
 registerHandler('chat.messages', (params) =>
-  store.chatMessages(ChatMessagesParamsSchema.parse(params).id))
+  chatService.messages(ChatMessagesParamsSchema.parse(params).id))
 registerHandler('chat.create', (params) => {
   const { title, named } = ChatCreateParamsSchema.parse(params)
   return store.createChat(title, named)
@@ -806,8 +814,8 @@ registerHandler('chat.append', (params) => {
   return store.appendChatMessages(id, messages)
 })
 registerHandler('chat.send', (params) => {
-  const { id, text } = ChatSendParamsSchema.parse(params)
-  return chatService.send(id, text)
+  const { id, runs } = ChatSendParamsSchema.parse(params)
+  return chatService.send(id, runs)
 })
 registerHandler('chat.cancel', (params) =>
   chatService.cancel(ChatCancelParamsSchema.parse(params).id))
@@ -845,10 +853,11 @@ registerHandler('chat.setArchived', (params) => {
   const { id, archived } = ChatSetArchivedParamsSchema.parse(params)
   return store.setChatArchived(id, archived)
 })
+registerHandler('chat.delete', (params) => chatService.delete(ChatDeleteParamsSchema.parse(params).id))
 registerHandler('search.query', (params) => store.search(SearchParamsSchema.parse(params).query))
 registerHandler('jobs.status', (params) => {
   EmptyParamsSchema.parse(params)
-  const status = background.status()
+  const status = { ...background.status(), generating: chatService.generating() }
   return showUiSamples ? withUiSampleUpload(status, Date.now()) : status
 })
 

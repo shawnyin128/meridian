@@ -1,7 +1,7 @@
 import type { AppUpdateStatus } from '../shared/app-update.js'
 import type {
   AttachmentFields, AuthorCandidate, AuthorSearchFailed, CallRejection, ChangeEntry, ChatCancelResult,
-  ChatMessage, ChatMessageFields, ChatSendResult, ChatSession, ColourTheme, ColourThemeFile, ConclusionState,
+  ChatMessage, ChatMessageFields, ChatRun, ChatSendResult, ChatSession, ColourTheme, ColourThemeFile, ConclusionState,
   ContractMethod, Facet, PluginVersion, SemanticKeyCheckResult, SemanticKeyStatus,
   DeliverySettings, DiscoveryFeedback, DiscoveryFetchResult, DiscoveryIntentAction, DiscoveryProfile,
   ExtensionStatus, FeedEntry, FeedFields,
@@ -258,12 +258,14 @@ export const chat = {
   forPaper: (paperId: string) => call<ChatSession>('chat.forPaper', { paperId }),
   append: (id: string, messages: ChatMessageFields[]) =>
     call<void>('chat.append', { id, messages }),
-  send: (id: string, text: string) => call<ChatSendResult>('chat.send', { id, text }),
+  /** Sends what the user wrote in `runs`, each mention as a run of its own. */
+  send: (id: string, runs: ChatRun[]) => call<ChatSendResult>('chat.send', { id, runs }),
   cancel: (id: string) => call<ChatCancelResult>('chat.cancel', { id }),
   recordAction: (id: string, messageId: string) =>
     call<ProjectDetail>('chat.recordAction', { id, messageId }),
   setArchived: (id: string, archived: boolean) =>
     call<void>('chat.setArchived', { id, archived }),
+  delete: (id: string) => call<TrashedEntry>('chat.delete', { id }),
 }
 
 export const idea = {
@@ -287,8 +289,8 @@ export const inbox = {
   readLater: (id: string) => call<boolean>('inbox.readLater', { id }),
   /** Adds the paper to the vault; whether it was added or already there tells the UI how to open the entry. */
   download: (id: string) => call<InboxDownloadResult>('inbox.download', { id }),
-  /** Starts one full fetch of every active watch and returns immediately. */
-  fetch: () => call<void>('inbox.fetch', {}),
+  /** Starts one fetch of the watch `watchId`, or of every active watch, and returns immediately. */
+  fetch: (watchId?: string) => call<void>('inbox.fetch', watchId === undefined ? {} : { watchId }),
 }
 
 export const discovery = {
@@ -301,8 +303,9 @@ export const discovery = {
   ),
   setIntent: (projectId: string, intentId: string, action: DiscoveryIntentAction) =>
     call<void>('discovery.intent', { projectId, intentId, action }),
+  /** Records the feedback; `less` and `known` move the entry to the trash and answer that trash entry. */
   feedback: (id: string, feedback: DiscoveryFeedback) =>
-    call<void>('discovery.feedback', { id, feedback }),
+    call<TrashedEntry | null>('discovery.feedback', { id, feedback }),
 }
 
 export const delivery = {
@@ -326,7 +329,7 @@ export const colourThemes = {
 
 export const later = {
   list: () => call<LaterEntry[]>('later.list', {}),
-  remove: (id: string) => call<void>('later.remove', { id }),
+  remove: (id: string) => call<TrashedEntry>('later.remove', { id }),
 }
 
 export const watch = {

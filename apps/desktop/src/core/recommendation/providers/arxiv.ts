@@ -1,4 +1,4 @@
-import { watchQuery, type Arxiv, type RemotePaper } from '../../net/arxiv.js'
+import { TOPICAL_BATCH, watchQuery, type Arxiv, type RemotePaper } from '../../net/arxiv.js'
 import type {
   DiscoveryPaper, RecommendationProvider, RecommendationSeed, RecommendationSource,
 } from '../types.js'
@@ -68,14 +68,21 @@ const ranked = (
  * Project discovery backed by arXiv search, which needs no key. Similarity searches the seeds' key
  * phrases over the last few years by relevance. arXiv keeps no citations, so citation and reference
  * requests return the newest papers on the same phrases, labelled as similarity. Author follows the
- * first and last author of the first seed arXiv knows. Every candidate must be textually close to a
- * seed; negative seeds only act through Core's own exclusion.
+ * first and last author of the first seed arXiv knows. Page `page` of any of them reads arXiv's results
+ * from `page` batches of TOPICAL_BATCH on. Citation and reference requests share a query key. Every candidate must be textually close to a seed; negative
+ * seeds only act through Core's own exclusion.
  */
 export function createArxivRecommendations(deps: { arxiv: Arxiv; now: () => number }): RecommendationProvider {
   const currentYear = () => new Date(deps.now()).getUTCFullYear()
   return {
-    async recommend(positive, _negativePaperIds, source = 'similarity') {
+    queryKey(positive, source, page) {
+      const start = page * TOPICAL_BATCH
+      if (source === 'author') return `author ${positive.find((seed) => ARXIV_SEED.test(seed.paperId))?.paperId} ${start}`
+      return `${source === 'similarity' ? 'relevance' : 'newest'} ${topicQuery(positive)} ${start}`
+    },
+    async recommend(positive, _negativePaperIds, source = 'similarity', page = 0) {
       if (positive.length === 0) return []
+      const start = page * TOPICAL_BATCH
       const seedArxivIds = new Set(positive.flatMap((seed) => ARXIV_SEED.exec(seed.paperId)?.[1] ?? []))
       if (source === 'author') {
         const [first] = seedArxivIds
@@ -84,14 +91,14 @@ export function createArxivRecommendations(deps: { arxiv: Arxiv; now: () => numb
         const named = [...new Set([authors[0], authors.at(-1)])].filter((name): name is string => name !== undefined)
         if (named.length === 0) return []
         const query = named.map((name) => watchQuery({ type: 'author', name })).join(' OR ')
-        const found = await deps.arxiv.searchTopical(query, currentYear() - RECENT_YEARS + 1, 'submittedDate')
+        const found = await deps.arxiv.searchTopical(query, currentYear() - RECENT_YEARS + 1, 'submittedDate', start)
         return ranked(found, positive, 'author', seedArxivIds, AUTHOR_MIN_SIMILARITY)
       }
       const query = topicQuery(positive)
       if (query === null) return []
       const found = source === 'similarity'
-        ? await deps.arxiv.searchTopical(query, currentYear() - TOPICAL_YEARS + 1, 'relevance')
-        : await deps.arxiv.searchTopical(query, currentYear() - RECENT_YEARS + 1, 'submittedDate')
+        ? await deps.arxiv.searchTopical(query, currentYear() - TOPICAL_YEARS + 1, 'relevance', start)
+        : await deps.arxiv.searchTopical(query, currentYear() - RECENT_YEARS + 1, 'submittedDate', start)
       return ranked(found, positive, 'similarity', seedArxivIds, MIN_SIMILARITY)
     },
   }

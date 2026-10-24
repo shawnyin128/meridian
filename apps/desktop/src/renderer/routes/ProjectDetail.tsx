@@ -44,7 +44,7 @@ import { EntityLink } from '../components/EntityLink.js'
 import { ProjectConclusionPanel, ProjectConclusionRow } from '../components/project/ProjectConclusions.js'
 import { ProjectTimeline } from '../components/project/ProjectTimeline.js'
 import { nodeMode, ResearchGraph, ResearchNodePanel } from '../components/project/ResearchGraph.js'
-import { IdeaPanel, IdeaSource, ideaSourceLabel, ownIdea } from '../components/ideas/IdeaPanel.js'
+import { IdeaPanel, IdeaSource, ideaSourceLabel, ownIdea, SourceChatDeleted } from '../components/ideas/IdeaPanel.js'
 import { IdeaDraft, type IdeaDraftText } from '../components/ideas/IdeaDraft.js'
 import { ProjectPlan, ProjectTaskPanel } from '../components/project/ProjectPlan.js'
 import type { PlanCreating, PlanTab } from '../components/project/ProjectPlan.js'
@@ -67,6 +67,7 @@ import { NO_TRIGGERS } from '../hooks/useOnLeave.js'
 import { useUndo } from '../hooks/useUndo.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
 import { useScrollFade } from '../hooks/useScrollFade.js'
+import { useSourceChatDeleted } from '../hooks/useSourceChatDeleted.js'
 import { FadeText } from '../components/FadeText.js'
 import './shell.css'
 import './ProjectDetail.css'
@@ -101,14 +102,17 @@ export function WorkspaceRoot({ state, name, root, onOpen }: {
  * unless the workspace manages the graph, drafts a new node in place, titled as the idea and after a
  * node or as a root, which `onCreateNode` creates and links, resolving whether it did. A `related`
  * idea, one that relates to the project but is not carried out in it, has no research-node section.
+ * `sourceChatDeleted` says the chat the idea came from is deleted.
  */
 export function ProjectIdeaPanel({
-  idea, graph, workspaceManaged, related = false, onClose, onOpenIdea, onOpenPaper, onCreateNode, onOpenNode, onSetNode,
+  idea, graph, workspaceManaged, related = false, sourceChatDeleted = false,
+  onClose, onOpenIdea, onOpenPaper, onCreateNode, onOpenNode, onSetNode,
 }: {
   idea: ResearchIdea
   graph: ResearchGraphData
   workspaceManaged: boolean
   related?: boolean
+  sourceChatDeleted?: boolean
   onClose: () => void
   onOpenIdea: () => void
   onOpenPaper: (paperId: string) => void
@@ -129,7 +133,7 @@ export function ProjectIdeaPanel({
   }
   return (
     <IdeaPanel
-      idea={idea} onClose={onClose} onOpenSourcePaper={onOpenPaper}
+      idea={idea} onClose={onClose} onOpenSourcePaper={onOpenPaper} sourceChatDeleted={sourceChatDeleted}
       actions={(
         <IconButton label={m.project.idea.openIdea} className="project-idea-open-idea" onClick={onOpenIdea}>
           <IconOpen />
@@ -184,15 +188,17 @@ const newestFirst = (a: ResearchIdea, b: ResearchIdea) =>
  * sparked in it, tagged with their source; newest first within each group. `ideas` is null while they
  * load. A carried-out idea shows its node in `graph`. Activating a row selects that idea through
  * `onSelect`. The heading's new-idea action drafts an idea sparked in the project first in that last
- * group, where it lands; `onCreate` writes it and settles whether it was written.
+ * group, where it lands; `onCreate` writes it and settles whether it was written. An idea for which
+ * `chatDeleted` holds carries the tag saying the chat it came from is deleted.
  */
-export function ProjectIdeaList({ projectId, ideas, graph, selectedId, onSelect, onCreate }: {
+export function ProjectIdeaList({ projectId, ideas, graph, selectedId, onSelect, onCreate, chatDeleted = () => false }: {
   projectId: string
   ideas: readonly ResearchIdea[] | null
   graph: ResearchGraphData
   selectedId: string | null
   onSelect: (ideaId: string) => void
   onCreate: (title: string, body: string) => Promise<boolean>
+  chatDeleted?: (idea: ResearchIdea) => boolean
 }) {
   const m = useMessages()
   const [draft, setDraft] = useState<IdeaDraftText | null>(null)
@@ -219,6 +225,7 @@ export function ProjectIdeaList({ projectId, ideas, graph, selectedId, onSelect,
             )}
           {tag === null ? null : <Tag>{tag}</Tag>}
           {idea.archived ? <Tag>{m.common.archived}</Tag> : null}
+          {chatDeleted(idea) ? <SourceChatDeleted /> : null}
         </span>
         {ownIdea(idea) ? null : (
           <FadeText className="project-idea-source" label={m.project.idea.sourceTag(source)}>
@@ -351,6 +358,7 @@ export function ProjectDetail({
     setSelectedTaskId(taskId)
   }, [])
   const { revision } = useVaultRevision()
+  const chatDeleted = useSourceChatDeleted()
   const { open: jumpTo } = useJump()
   const openWikiPage = (page: string) => jumpTo('wiki', page)
   const reportError = useCallback((e: unknown) => setError(errorLabel(m, e)), [m])
@@ -940,7 +948,7 @@ export function ProjectDetail({
             </div>
 
             <ProjectIdeaList
-              projectId={projectId} ideas={linkedIdeas} graph={displayedGraph} selectedId={selectedIdeaId}
+              projectId={projectId} ideas={linkedIdeas} graph={displayedGraph} selectedId={selectedIdeaId} chatDeleted={chatDeleted}
               onCreate={(title, body) => write(ideaApi.create(undefined, title, body, projectId).then((idea) => {
                 setLinkedIdeas((held) => [idea, ...(held ?? [])])
               }), { note: m.chat.ideaSavedNote })}
@@ -983,7 +991,7 @@ export function ProjectDetail({
                   idea={selectedIdea}
                   graph={displayedGraph}
                   workspaceManaged={project.workspace !== undefined}
-                  related={selectedIdea.project !== projectId}
+                  related={selectedIdea.project !== projectId} sourceChatDeleted={chatDeleted(selectedIdea)}
                   onClose={clearIdea}
                   onOpenIdea={() => jumpTo('ideas', selectedIdea.id)}
                   onOpenPaper={(paperId) => jumpTo('reader', paperId)}
@@ -1282,7 +1290,7 @@ export function ProjectDetail({
                   graph={displayedGraph} events={visibleEvents}
                   ideas={(linkedIdeas ?? []).filter((idea) => idea.project === projectId && idea.node === node.id)} node={node}
                   tasks={project.tasks.filter((task) => node.tasks?.includes(task.id))}
-                  onSelectTask={openTask}
+                  onSelectTask={openTask} chatDeleted={chatDeleted}
                   onClose={clearNode}
                   onSelect={(nodeId) => {
                     setSelectedIdeaId(null)

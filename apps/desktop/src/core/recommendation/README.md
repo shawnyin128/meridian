@@ -7,9 +7,11 @@ This folder owns paper recommendation as one replaceable Core domain.
 - `types.ts` defines the provider-neutral boundary.
 - `profile.ts` anchors one project to its topic/focus/active path, builds tight intent clusters and
   rotates non-core directions without allowing bridge papers to average unrelated ideas together.
-  It also selects one anchor-ranked representative per direction for provider retrieval, preventing
-  an external multi-positive query from averaging away the direction's main idea.
+  It also plans each direction's queries: one seed per query, so an external multi-positive query
+  cannot average away the direction's main idea, taken in anchor order through every source.
 - `merge.ts` round-robin merges per-intent results, deduplicates them and attaches structured reasons.
+- `pool.ts` spreads one run's delivery cap evenly over its scopes and puts each scope's pooled
+  candidates before the ones fetched this run.
 - `signals.ts` re-ranks one source response against the project anchor and read-only canonical Wiki
   topic/method memberships; it never writes recommendation state back into Wiki pages.
 - `evaluation.ts` owns the inspectable offline metrics and stage-two quality gate.
@@ -32,21 +34,40 @@ user can inspect their seed papers, set the core direction, disable or re-enable
 force-refresh one project. These preferences live in `.meridian/state.json`; the derived cluster
 identity remains reproducible from project papers and feedback.
 
-One explicit refresh makes at most 12 provider calls globally and at most 3 for one project.
+Discovery also refreshes on its own: Background's schedule runs a global refresh once a project it
+can refresh was last refreshed a day ago or never, and one discovery runs at a time, so a scheduled
+refresh and a user's refresh never overlap. One refresh makes at most 12 provider calls globally and
+at most 3 for one project.
 Projects that have never been fetched, then the least-recently fetched projects, receive the budget
 first. The persisted direction cursor always protects the anchored core direction while rotating
 bounded secondary slots. This makes adding projects or directions increase refresh latency rather
 than silently widening a query until its main idea disappears.
 
-Each request is fingerprinted from the selected representative and project-local negatives. An
-unchanged fingerprint is reused for six hours unless the user force-refreshes. Provider failures are
-isolated per direction: successful siblings still publish, failed directions do not advance the
-project cursor or freshness timestamp, and the next refresh retries them before the project is
-treated as current.
+Each direction's cooldown is fingerprinted from its anchor seed and project-local negatives. An
+unchanged fingerprint keeps the direction cooling for six hours unless the user force-refreshes. A
+project whose selected directions are all cooling still moves its cursor on, so the next refresh
+selects other directions. Provider failures are isolated per direction: successful siblings still
+publish, failed directions do not advance the project cursor or freshness timestamp, and the next
+refresh retries the same query before the project is treated as current.
 
-When a core direction becomes due, its single provider-call slot rotates through similarity,
-downstream citations, references and same-author papers, always choosing the least-covered source.
-Secondary directions keep their slots on similarity retrieval. Source coverage is stored alongside
-the existing request fingerprints, so stage three does not add an unbounded second scheduler or
-multiply the 12/3 call limits. Every accepted candidate freezes factual source provenance and any
-actually matched Wiki term into structured recommendation reasons.
+When a direction becomes due, its single provider-call slot runs the next query of its rotation: its
+seeds in anchor order, each through similarity, downstream citations, references and same-author
+papers, and then all of them again one page further. arXiv pages with `start`, and Semantic
+Scholar citations and references with `offset`; Semantic Scholar similarity and same-author papers
+ignore the page. A step whose request repeats an earlier step of the same pass is skipped; on arXiv,
+which answers citations and references with the same search, that is every reference step. Each
+direction's rotation step is stored in `.meridian/discovery/progress.json`,
+which versions before 0.0.19.0 never read; a direction without a step continues past the sources
+older versions recorded in `state.json`. The rotation does not add a second scheduler or multiply the
+12/3 call limits. Every accepted candidate freezes factual source provenance and any actually matched
+Wiki term into structured recommendation reasons.
+
+Candidates a run fetched beyond its cap, or offered but ranked below the project's cut, stay in the
+project's pool in the same file, up to 60, and the next run offers them before anything it fetches,
+except those the feed would no longer deliver as new cards. A project whose pool already covers a
+whole run is served from it without provider calls, unless the user force-refreshes or a run served
+that way delivered nothing, which the project's record notes as `poolStalled` until a run delivers
+again. One run's cap is split evenly over its projects; the odd shares go first to the projects that
+have gone longest without one, so no project takes the cap by its place in the list. A run that
+finds nothing left to deliver anywhere in its scope, with nothing put off and nothing failed, says
+so in `nothingNew`, beside the latest refresh time of its projects.

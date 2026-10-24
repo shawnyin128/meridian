@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { callFailure } from './call-error.js'
-import { unopenedStore } from './unopened-store.js'
+import { createFixtureStore } from './fixture-store.js'
+import { isUnopenedStore, unopenedStore } from './unopened-store.js'
 
 describe('unopened store', () => {
   it('每个方法都抛出打不开库的原因', () => {
@@ -8,6 +9,11 @@ describe('unopened store', () => {
     expect(() => store.today()).toThrow('库里没有论文页目录:D:\\x\\wiki\\papers')
     expect(() => store.listPapers({ page: 1, size: 1 })).toThrow('库里没有论文页目录')
     expect(() => store.listChats()).toThrow('库里没有论文页目录')
+  })
+
+  it('认得出自己替打不开的库站着的那一个,别的库不算', () => {
+    expect(isUnopenedStore(unopenedStore('库里没有论文页目录', 'invalid'))).toBe(true)
+    expect(isUnopenedStore(createFixtureStore())).toBe(false)
   })
 
   it('每个方法失败的原因都是打不开库的那一类', () => {

@@ -21,9 +21,11 @@ import {
   ConclusionSchema,
   ChatAppendParamsSchema,
   ChatCreateParamsSchema,
+  ChatDeleteParamsSchema,
   ChatForPaperParamsSchema,
   ChatMessageSchema,
   ChatMessagesParamsSchema,
+  ChatSendParamsSchema,
   ChatSessionSchema,
   ChatSetArchivedParamsSchema,
   DeliverySettingsSchema,
@@ -830,7 +832,7 @@ describe('contract schemas', () => {
       .toBe('quantization')
   })
 
-  it('垃圾桶条目只有 id、类型、标题、删除时刻与能否恢复五项,类型只收契约里的五种', () => {
+  it('垃圾桶条目只有 id、类型、标题、删除时刻与能否恢复五项,类型只收契约里的那几种', () => {
     const entry = {
       id: 'trash-1', kind: 'paper', title: 'LongSpec', deletedAt: 1787000000000, restorable: true,
     }
@@ -839,6 +841,7 @@ describe('contract schemas', () => {
     expect(TrashEntrySchema.parse({ ...entry, kind: 'project' }).kind).toBe('project')
     expect(TrashEntrySchema.parse({ ...entry, kind: 'inbox' }).kind).toBe('inbox')
     expect(TrashEntrySchema.parse({ ...entry, kind: 'idea' }).kind).toBe('idea')
+    expect(TrashEntrySchema.parse({ ...entry, kind: 'chat' }).kind).toBe('chat')
     expect(() => TrashEntrySchema.parse({ ...entry, kind: '项目' })).toThrow()
     // Automatic retention is calculated from deletion time, which every record carries as epoch milliseconds.
     expect(() => TrashEntrySchema.parse({ id: entry.id, kind: entry.kind, title: entry.title }))
@@ -1169,6 +1172,28 @@ describe('contract schemas', () => {
     for (const project of projects) ProjectDetailSchema.parse(store.getProject(project.id))
   })
 
+  it('发送收的是用户写下的各段：引用是 @ 加一行名字和它点名的项目、论文或 Wiki 页，整句不能只有空白，也不能超过两万字', () => {
+    const target = { kind: 'project', id: 'project-1' }
+    const runs = [{ kind: 'text', text: '看看 ' }, { kind: 'mention', text: '@推测解码加速', target }, { kind: 'text', text: ' 还剩什么' }]
+    expect(ChatSendParamsSchema.parse({ id: 'chat-1', runs })).toEqual({ id: 'chat-1', runs })
+    expect(() => ChatSendParamsSchema.parse({ id: 'chat-1', runs: [] })).toThrow()
+    expect(() => ChatSendParamsSchema.parse({ id: 'chat-1', runs: [{ kind: 'text', text: ' \n ' }] })).toThrow()
+    expect(() => ChatSendParamsSchema.parse({ id: 'chat-1', runs: [{ kind: 'text', text: 'x'.repeat(20_001) }] })).toThrow()
+    for (const text of ['推测解码加速', '@', '@推测\n解码']) {
+      expect(() => ChatSendParamsSchema.parse({ id: 'chat-1', runs: [{ kind: 'mention', text, target }] })).toThrow()
+    }
+    for (const kind of ['paper', 'page']) {
+      expect(ChatSendParamsSchema.parse({ id: 'chat-1', runs: [{ kind: 'mention', text: '@x', target: { kind, id: 'x' } }] }).runs[0]!.target!.kind).toBe(kind)
+    }
+    for (const run of [
+      { kind: 'mention', text: '@推测解码加速' }, { kind: 'mention', text: '@推测解码加速', target: { kind: 'idea', id: 'idea-1' } },
+      { kind: 'text', text: '看看', target },
+    ]) {
+      expect(() => ChatSendParamsSchema.parse({ id: 'chat-1', runs: [run] })).toThrow()
+    }
+    expect(() => ChatSendParamsSchema.parse({ id: 'chat-1', text: '看看' })).toThrow()
+  })
+
   it('恢复与彻底删除只收一个垃圾桶条目 id', () => {
     expect(TrashRestoreParamsSchema.parse({ id: 'trash-1' }).id).toBe('trash-1')
     expect(TrashPurgeParamsSchema.parse({ id: 'trash-1' }).id).toBe('trash-1')
@@ -1233,6 +1258,8 @@ describe('contract schemas', () => {
     expect(() => ChatForPaperParamsSchema.parse({ paperId: 'paper-a', title: '伪造标题' })).toThrow()
     expect(ChatSetArchivedParamsSchema.parse({ id: 'amortize', archived: true }).archived).toBe(true)
     expect(() => ChatSetArchivedParamsSchema.parse({ id: 'amortize' })).toThrow()
+    expect(ChatDeleteParamsSchema.parse({ id: 'amortize' }).id).toBe('amortize')
+    expect(() => ChatDeleteParamsSchema.parse({ id: 'amortize', archived: true })).toThrow()
   })
 
   it('追加消息的入参不收 id,id 由 core 指派', () => {

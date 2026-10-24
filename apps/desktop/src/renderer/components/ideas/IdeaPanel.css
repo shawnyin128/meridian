@@ -3,4 +3,5 @@
 .idea-panel-body,.idea-panel-source{margin:0;color:var(--sec);font-size:var(--fs-base);line-height:1.65;
   white-space:pre-wrap;overflow-wrap:anywhere}
 .idea-panel-source{font-size:var(--fs-sm)}
+.idea-panel-source-gone{margin-left:var(--sp-6)}
 .idea-panel-dates{color:var(--ter);font-size:var(--fs-cap);font-variant-numeric:tabular-nums}

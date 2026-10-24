@@ -3,20 +3,39 @@ import type {
   ChatAction, ChatMessage, ChatMessageFields, ChatRun,
 } from '../../../shared/contract.js'
 import { useMessages } from '../../messages/useMessages.js'
+import { useJump } from '../../shell/AppShell.js'
+import { ENTITY_SCREEN, EntityLink, opensHere } from '../EntityLink.js'
 import { Icon } from '../icons.js'
 import { AgentLabel } from '../SourceLabel.js'
+import { Tag } from '../Tag.js'
 
 export const plain = (text: string): { kind: 'text'; text: string } => ({ kind: 'text', text })
 export const said = (runs: ChatRun[]): ChatMessageFields => ({ role: 'you', runs, actions: [] })
 export const answer = (runs: ChatRun[], actions: ChatAction[] = []): ChatMessageFields =>
   ({ role: 'ai', runs, actions })
 
+/**
+ * A mention that names an entity in the vault: the chip the composer shows it as, its name a link
+ * that opens the entity. One that names nothing that opens is its text.
+ */
+function Mention({ run }: { run: ChatRun }) {
+  const { open } = useJump()
+  const target = run.target !== undefined && opensHere(run.target.kind) ? { kind: run.target.kind, id: run.target.id } : undefined
+  if (target === undefined) return <>{run.text}</>
+  const screen = ENTITY_SCREEN[target.kind]
+  return (
+    <Tag shape="chip">
+      <EntityLink kind={target.kind} label={run.text} href={`#${screen}:${target.id}`} onOpen={() => open(screen, target.id)} />
+    </Tag>
+  )
+}
+
 /** The text of a message; each run renders by its own kind. */
 function Runs({ runs }: { runs: ChatRun[] }) {
   return (
     <>
       {runs.map((run, at) => (run.kind === 'mention'
-        ? <span className="mention" key={at}>{run.text}</span>
+        ? <Mention run={run} key={at} />
         : <Fragment key={at}>{run.text}</Fragment>))}
     </>
   )

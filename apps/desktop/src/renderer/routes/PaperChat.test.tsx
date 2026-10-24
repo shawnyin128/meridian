@@ -1,8 +1,10 @@
 // @vitest-environment jsdom
 import { act, type ReactNode } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
+import { EditorView } from '@codemirror/view'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { ChatMessage, PaperRow } from '../../shared/contract.js'
+import type { ChatMessage, ChatSendResult, JobsStatus, PaperRow } from '../../shared/contract.js'
+import { CallError } from '../call-error.js'
 import { MessagesProvider } from '../messages/useMessages.js'
 import { LANGUAGE_STORAGE_KEY } from '../shell/language.js'
 import { TOOLTIP_DELAY } from '../components/Tooltip.js'
@@ -11,11 +13,13 @@ declare global {
   var IS_REACT_ACT_ENVIRONMENT: boolean
 }
 
-const withMessages = (node: ReactNode) => <MessagesProvider>{node}</MessagesProvider>
+const withMessages = (node: ReactNode) => <MessagesProvider><Shell>{node}</Shell></MessagesProvider>
 
 const api = vi.hoisted(() => ({
-  send: vi.fn(() => Promise.resolve({ id: 'chat-paper-1', state: 'complete' })),
-  cancel: vi.fn(() => Promise.resolve({ id: 'chat-paper-1', cancelled: true })),
+  /** The chats Core is generating a reply in. */
+  generating: new Set<string>(),
+  send: vi.fn((): Promise<ChatSendResult> => Promise.resolve({ id: 'chat-paper-1', state: 'complete' })),
+  cancel: vi.fn((id: string) => Promise.resolve({ id, cancelled: api.generating.delete(id) })),
   forPaper: vi.fn((paperId: string) => Promise.resolve({
     id: `chat-${paperId}`, title: 'Paper One', archived: false, messageCount: 0, paperId,
   })),
@@ -50,6 +54,12 @@ vi.mock('../ipc.js', () => ({
   },
   idea: { create: api.createIdea },
   feed: { append: api.feedAppend },
+  jobs: {
+    status: (): Promise<JobsStatus> => Promise.resolve({
+      writes: 0, uploads: [], downloads: [], fetch: { state: 'idle', checkedAt: null, reason: null },
+      generating: [...api.generating],
+    }),
+  },
   project: { list: api.listProjects, createConclusion: api.createConclusion },
 }))
 
@@ -71,6 +81,35 @@ vi.mock('../hooks/useVaultWrite.js', () => ({
 }))
 
 const { PaperChat } = await import('../components/chat/PaperChat.js')
+const { GenerationsContext, useCoreGenerations } = await import('../hooks/useGenerations.js')
+const { useJobsPoll } = await import('../shell/useJobs.js')
+
+const noBump = () => {}
+/** The shell around the paper chat: the jobs poll and the generations it reports. */
+function Shell({ children }: { children: ReactNode }) {
+  const { status, refresh } = useJobsPoll(noBump)
+  return <GenerationsContext.Provider value={useCoreGenerations(status, refresh)}>{children}</GenerationsContext.Provider>
+}
+
+/** Lets every pending call to Core answer and the chat render what it answered. */
+const settle = () => act(async () => {
+  for (let turn = 0; turn < 5; turn += 1) await Promise.resolve()
+})
+
+/** Makes the next send leave its reply generating until the returned call. */
+function pendingReply(): () => Promise<void> {
+  let finish = () => {}
+  api.send.mockImplementationOnce(() => {
+    api.generating.add('chat-paper-1')
+    return new Promise((resolve) => {
+      finish = () => {
+        api.generating.delete('chat-paper-1')
+        resolve({ id: 'chat-paper-1', state: 'complete' })
+      }
+    })
+  })
+  return async () => { await act(async () => { finish(); await Promise.resolve() }) }
+}
 
 const PAPER: PaperRow = {
   id: 'paper-1', title: 'Paper One', venue: '', topics: [], methods: [], datasets: [], metrics: [],
@@ -79,6 +118,17 @@ const PAPER: PaperRow = {
   updated: '2026-09-14', custom: {},
 }
 const PAPER_TWO: PaperRow = { ...PAPER, id: 'paper-2', title: 'Paper Two' }
+
+/** The paper chat's editable text; showing another paper mounts a new one. */
+const field = () => document.querySelector<HTMLElement>('[aria-label="向当前论文提问"]')!
+const editor = () => EditorView.findFromDOM(field().closest<HTMLElement>('.cm-editor')!)!
+/** Replaces the question with `text` as typing it would, leaving the caret at its end. */
+const type = (text: string) => act(() => {
+  const view = editor()
+  view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: text }, selection: { anchor: text.length }, userEvent: 'input.type' })
+})
+/** The question as the composer shows it. */
+const typed = () => editor().state.doc.toString()
 
 function setValue(input: HTMLInputElement | HTMLTextAreaElement, value: string): void {
   const prototype = input instanceof window.HTMLTextAreaElement
@@ -99,6 +149,7 @@ describe('PaperChat', () => {
     window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'zh')
     document.body.innerHTML = ''
     vi.clearAllMocks()
+    api.generating.clear()
     api.writes.length = 0
     api.collapsed = false
     api.revision = 0
@@ -147,12 +198,12 @@ describe('PaperChat', () => {
     expect(api.messages).toHaveBeenCalledWith('chat-paper-1')
     expect(host.querySelector('aside')?.getAttribute('aria-label')).toBe('当前论文对话')
 
-    const input = host.querySelector<HTMLInputElement>('[aria-label="向当前论文提问"]')!
-    act(() => setValue(input, '  关键假设是什么？  '))
+    type('  关键假设是什么？  ')
     await act(async () => { host.querySelector<HTMLButtonElement>('.paper-chat .send')!.click() })
 
-    expect(api.send).toHaveBeenCalledWith('chat-paper-1', '关键假设是什么？')
-    expect(input.value).toBe('')
+    // Core trims the turn at its ends.
+    expect(api.send).toHaveBeenCalledWith('chat-paper-1', [{ kind: 'text', text: '  关键假设是什么？  ' }])
+    expect(typed()).toBe('')
   })
 
   it('没配置模型时发送失败，输入框里的「AI 未连接」是一个按钮，打开设置的模型一栏', async () => {
@@ -165,7 +216,7 @@ describe('PaperChat', () => {
       await Promise.resolve()
       await Promise.resolve()
     })
-    act(() => setValue(host.querySelector<HTMLInputElement>('[aria-label="向当前论文提问"]')!, '关键假设是什么？'))
+    type('关键假设是什么？')
     await act(async () => { host.querySelector<HTMLButtonElement>('.paper-chat .send')!.click() })
     await act(async () => { await Promise.resolve() })
     const tag = host.querySelector<HTMLElement>('.paper-chat .cbox .tag')!
@@ -200,10 +251,7 @@ describe('PaperChat', () => {
   })
 
   it('提交未完成时发送箭头变为可停止的旋转控件', async () => {
-    let finish = () => {}
-    api.send.mockImplementationOnce(() => new Promise((resolve) => {
-      finish = () => resolve({ id: 'chat-paper-1', state: 'complete' })
-    }))
+    const finish = pendingReply()
     const host = document.createElement('div')
     document.body.append(host)
     root = createRoot(host)
@@ -213,18 +261,19 @@ describe('PaperChat', () => {
       await Promise.resolve()
     })
 
-    const input = host.querySelector<HTMLInputElement>('[aria-label="向当前论文提问"]')!
-    act(() => setValue(input, 'What is the mechanism?'))
+    type('What is the mechanism?')
     act(() => host.querySelector<HTMLButtonElement>('.paper-chat .send')!.click())
+    await settle()
     const control = host.querySelector<HTMLButtonElement>('.paper-chat .send')!
     expect(control.getAttribute('aria-label')).toBe('正在生成，点击停止')
     expect(control.querySelector('.ring.spin')).not.toBeNull()
     expect(control.querySelector('.generation-stop')).not.toBeNull()
 
     act(() => control.click())
+    await settle()
     expect(control.getAttribute('aria-label')).toBe('发送')
     expect(api.cancel).toHaveBeenCalledWith('chat-paper-1')
-    await act(async () => { finish(); await Promise.resolve() })
+    await finish()
   })
 
   it('论文对话把用户明确整理的标题和正文存为可回看的想法', async () => {
@@ -293,34 +342,30 @@ describe('PaperChat', () => {
   }
 
   it('问题草稿留在它的论文上：换一篇时输入框是空的，回到原篇问题还在', async () => {
-    const host = await mountChat()
-    const input = host.querySelector<HTMLTextAreaElement>('[aria-label="向当前论文提问"]')!
-    act(() => setValue(input, '这篇的关键假设是什么？'))
+    await mountChat()
+    type('这篇的关键假设是什么？')
     // While the next paper loads, the reader passes no paper.
     await showPaper(null)
     await showPaper(PAPER_TWO)
-    expect(input.value).toBe('')
+    expect(typed()).toBe('')
 
     await showPaper(null)
     await showPaper(PAPER)
-    expect(input.value).toBe('这篇的关键假设是什么？')
+    expect(typed()).toBe('这篇的关键假设是什么？')
   })
 
   it('上一篇还在生成时换一篇论文，这一篇照常可以提问，停止只停正在生成的那篇', async () => {
-    let finish = () => {}
-    api.send.mockImplementationOnce(() => new Promise((resolve) => {
-      finish = () => resolve({ id: 'chat-paper-1', state: 'complete' })
-    }))
+    const finish = pendingReply()
     const host = await mountChat()
-    const input = host.querySelector<HTMLTextAreaElement>('[aria-label="向当前论文提问"]')!
     const control = () => host.querySelector<HTMLButtonElement>('.paper-chat .send')!
-    act(() => setValue(input, '这篇的关键假设是什么？'))
+    type('这篇的关键假设是什么？')
     act(() => control().click())
+    await settle()
     expect(control().getAttribute('aria-label')).toBe('正在生成，点击停止')
 
     await showPaper(null)
     await showPaper(PAPER_TWO)
-    expect(input.disabled).toBe(false)
+    expect(field().getAttribute('contenteditable')).toBe('true')
     expect(control().getAttribute('aria-label')).toBe('发送')
 
     await showPaper(null)
@@ -328,7 +373,40 @@ describe('PaperChat', () => {
     expect(control().getAttribute('aria-label')).toBe('正在生成，点击停止')
     act(() => control().click())
     expect(api.cancel).toHaveBeenCalledExactlyOnceWith('chat-paper-1')
-    await act(async () => { finish(); await Promise.resolve() })
+    await finish()
+  })
+
+  it('这篇论文的对话在别处删掉后，对话栏换成论文新开的空对话，不报会话不存在；从垃圾桶恢复后又是原来那段', async () => {
+    const asked: ChatMessage[] = [{ id: 'm1', role: 'you', runs: [{ kind: 'text', text: '删之前问的' }], actions: [] }]
+    // The chats Core holds by id; the paper's chat is whichever of them is listed first.
+    let held: Record<string, ChatMessage[]> = { 'chat-paper-1': asked }
+    const forPaper = api.forPaper.getMockImplementation()!
+    const messages = api.messages.getMockImplementation()!
+    api.forPaper.mockImplementation(async (paperId: string) => ({
+      id: Object.keys(held)[0]!, title: 'Paper One', archived: false, messageCount: 0, paperId,
+    }))
+    api.messages.mockImplementation((async (id: string) => {
+      if (held[id] === undefined) throw new CallError('chat.messages', 'not-found')
+      return held[id]
+    }) as () => Promise<ChatMessage[]>)
+    const shown = (host: HTMLElement) => [host.querySelector('.paper-chat .ipcerror'), host.querySelector('.paper-chat .msgs')!.textContent]
+    try {
+      const host = await mountChat()
+      expect(shown(host)).toEqual([null, '删之前问的'])
+
+      held = { 'chat-paper-2': [] }
+      api.revision = 1
+      await showPaper(PAPER)
+      expect(shown(host)).toEqual([null, '还没有对话'])
+
+      held = { 'chat-paper-1': asked }
+      api.revision = 2
+      await showPaper(PAPER)
+      expect(shown(host)).toEqual([null, '删之前问的'])
+    } finally {
+      api.forPaper.mockImplementation(forPaper)
+      api.messages.mockImplementation(messages)
+    }
   })
 
   it('想法草稿留在它的论文上：换一篇时不跟过去，回到原篇草稿还在；Esc 收起', async () => {
@@ -350,12 +428,11 @@ describe('PaperChat', () => {
 
   it('问题去掉空白后为空时发送钮不可点；还没讨论时保存为想法是变淡的幽灵按钮', async () => {
     const host = await mountChat()
-    const input = host.querySelector<HTMLTextAreaElement>('[aria-label="向当前论文提问"]')!
     const send = host.querySelector<HTMLButtonElement>('.paper-chat .send')!
     expect(send.disabled).toBe(true)
-    act(() => setValue(input, '   '))
+    type('   ')
     expect(send.disabled).toBe(true)
-    act(() => setValue(input, '关键假设是什么？'))
+    type('关键假设是什么？')
     expect(send.disabled).toBe(false)
 
     const save = host.querySelector<HTMLButtonElement>('.paper-chat .save-idea')!
@@ -372,23 +449,31 @@ describe('PaperChat', () => {
 
   it('输入框是多行文本框：回车发送，Shift+回车换行，输入法组字时的回车不发送', async () => {
     const host = await mountChat()
-    const input = host.querySelector('[aria-label="向当前论文提问"]')
-    expect(input).toBeInstanceOf(window.HTMLTextAreaElement)
-    const composer = input as HTMLTextAreaElement
-    act(() => setValue(composer, '第一行'))
+    expect(host.contains(field())).toBe(true)
+    expect(field().getAttribute('aria-multiline')).toBe('true')
+    type('第一行')
     const press = (init: KeyboardEventInit) => {
       const event = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true, ...init })
-      act(() => { composer.dispatchEvent(event) })
+      act(() => { field().dispatchEvent(event) })
       return event
     }
 
-    expect(press({ shiftKey: true }).defaultPrevented).toBe(false)
-    expect(press({ isComposing: true }).defaultPrevented).toBe(false)
+    press({ shiftKey: true })
+    expect(typed()).toBe('第一行\n')
+    // The composer leaves an Enter that confirms a composition untouched.
+    let free: boolean | null = null
+    const see = (event: Event) => { free = !event.defaultPrevented }
+    field().addEventListener('keydown', see, { capture: true })
+    press({ isComposing: true })
+    field().removeEventListener('keydown', see, { capture: true })
+    expect(free).toBe(true)
     expect(api.send).not.toHaveBeenCalled()
+
+    type('第一行')
 
     // The Enter that sends inserts no line break of its own.
     expect(press({}).defaultPrevented).toBe(true)
-    expect(api.send).toHaveBeenCalledWith('chat-paper-1', '第一行')
+    expect(api.send).toHaveBeenCalledWith('chat-paper-1', [{ kind: 'text', text: '第一行' }])
     await act(async () => { await Promise.resolve() })
   })
 
@@ -441,9 +526,8 @@ describe('PaperChat', () => {
     await arrive()
     expect(stream.scrollTop).toBe(100)
 
-    const composer = host.querySelector<HTMLTextAreaElement>('[aria-label="向当前论文提问"]')!
-    act(() => setValue(composer, '为什么'))
-    act(() => { composer.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true })) })
+    type('为什么')
+    act(() => { field().dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true })) })
     await act(async () => { await Promise.resolve() })
     expect(stream.scrollTop).toBe(700)
   })

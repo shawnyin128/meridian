@@ -104,28 +104,219 @@ describe('vault store', () => {
     rmSync(vault, { recursive: true, force: true })
   })
 
-  describe('一篇论文只进收件一次', () => {
+  describe('一篇论文只送一次', () => {
     /** An arXiv result a watch brings in. */
-    const found = (id: string) => ({
-      id, title: `Shared ${id}`, authors: ['Li'], abstract: '……', submitted: '2026-09-01', journalRef: null,
-      pdf: `https://arxiv.org/pdf/${id}`,
+    const found = (id: string, title = `Shared ${id}`, submitted = '2026-09-01') => ({
+      id, title, authors: ['Li'], abstract: '……', submitted, journalRef: null, pdf: `https://arxiv.org/pdf/${id}`,
     })
+    /** A provider result project discovery brings in. */
+    const discovered = (id: string, semanticId = `semantic-${id}`, title = `Shared ${id}`) => ({
+      ...found(id, title), semanticId,
+    })
+    /** The watch named `name` in store `s`. */
+    const watchOf = (s: VaultStore, name: string) => s.listWatches().find((w) => w.name === name)!.id
+    const titles = (rows: { title: string }[]) => rows.map((row) => row.title)
 
     for (const [name, make] of [['真实实现', () => store], ['fixture', () => createFixtureStore()]] as const) {
-      it(`${name}:别的关注再拉到推送过的论文不再添一条,这一篇被不看了也一样,一次拉到两遍也只添一条`, () => {
+      it(`${name}:别的关注和项目再找到推送过的论文,并进同一张卡片,理由合在一起,每个找到它的范围里都列着它`, () => {
         const s = make()
         s.createWatch({ type: 'topic', name: 'shared-a' })
         s.createWatch({ type: 'author', name: 'shared-b' })
-        const id = (watch: string) => s.listWatches().find((w) => w.name === watch)!.id
-        expect(s.addInboxEntries(id('shared-a'), [found('2609.20001'), found('2609.20002')])).toEqual(['2609.20001', '2609.20002'])
-        expect(s.addInboxEntries(id('shared-b'), [found('2609.20002'), found('2609.20003'), found('2609.20003')])).toEqual(['2609.20003'])
-        s.dismissInbox(s.listInbox().find((entry) => entry.title === 'Shared 2609.20001')!.id)
-        expect(s.addInboxEntries(id('shared-b'), [found('2609.20001')])).toEqual([])
-        expect(s.listInbox({ kind: 'watch' }).filter((entry) => entry.title.startsWith('Shared '))
-          .map((entry) => [entry.title, entry.watch === id('shared-a') ? 'a' : 'b']))
-          .toEqual(expect.arrayContaining([['Shared 2609.20002', 'a'], ['Shared 2609.20003', 'b']]))
+        const project = s.createProject('共享项目')
+        expect(s.addInboxEntries(watchOf(s, 'shared-a'), [found('2609.20001'), found('2609.20002')])).toEqual(['2609.20001', '2609.20002'])
+        expect(s.addInboxEntries(watchOf(s, 'shared-b'), [found('2609.20002v2'), found('2609.20003'), found('2609.20003')])).toEqual(['2609.20003'])
+        expect(s.addDiscoveryEntries(project, [discovered('2609.20002'), discovered('2609.20004')])).toBe(1)
+
+        const shared = s.listInbox().filter((entry) => entry.title === 'Shared 2609.20002')
+        expect(shared).toHaveLength(1)
+        expect(shared[0]!.reasons.map((reason) => reason.label).slice(0, 3))
+          .toEqual(['命中关键词「shared-a」', '命中作者「shared-b」', '来自项目「共享项目」'])
+        expect(shared[0]!.also).toEqual([
+          { kind: 'watch', id: watchOf(s, 'shared-b'), source: '作者 · shared-b' },
+          { kind: 'discovery', id: project, source: '项目 · 共享项目' },
+        ])
+        expect(titles(s.listInbox({ kind: 'watch', watch: watchOf(s, 'shared-b') })).sort()).toEqual(['Shared 2609.20002', 'Shared 2609.20003'])
+        expect(titles(s.listInbox({ kind: 'discovery', project })).sort()).toEqual(['Shared 2609.20002', 'Shared 2609.20004'])
+        expect(s.listInbox({ kind: 'watch' }).filter((entry) => entry.title.startsWith('Shared '))).toHaveLength(3)
+      })
+
+      it(`${name}:认得是同一篇:Semantic Scholar 编号、库里记的 DOI,再按规范化标题加年份;年份不同的另算一篇`, () => {
+        const s = make()
+        const one = s.createProject('项目一')
+        const two = s.createProject('项目二')
+        s.createWatch({ type: 'topic', name: 'titles' })
+        expect(s.addDiscoveryEntries(one, [discovered('2609.21001', 'semantic-same')])).toBe(1)
+        expect(s.addDiscoveryEntries(two, [discovered('', 'semantic-same', 'Retitled by the provider')])).toBe(0)
+        const paper = s.listPapers({ page: 1, size: 1 }).rows[0]!
+        s.updatePaper(paper.id, { identifier: 'doi:10.48550/arXiv.2609.21002' })
+        expect(s.addInboxEntries(watchOf(s, 'titles'), [
+          found('2609.21002'), found('2609.21003', 'A Paper, Twice'), found('2609.21004', 'a paper twice'),
+          found('2609.21005', 'A Paper Twice', '2019-03-01'),
+        ])).toEqual(['2609.21003', '2609.21005'])
+      })
+
+      it(`${name}:推送过、忽略过或标过的论文不再回来,删掉送来它的关注和项目之后也一样`, () => {
+        const s = make()
+        s.createWatch({ type: 'topic', name: 'gone-a' })
+        const project = s.createProject('要删的项目')
+        expect(s.addInboxEntries(watchOf(s, 'gone-a'), [found('2609.22001'), found('2609.22002')])).toHaveLength(2)
+        expect(s.addDiscoveryEntries(project, [discovered('2609.22003'), discovered('2609.22004')])).toBe(2)
+        s.dismissInbox(s.listInbox().find((entry) => entry.title === 'Shared 2609.22001')!.id)
+        s.feedbackDiscovery(s.listInbox().find((entry) => entry.title === 'Shared 2609.22003')!.id, 'known')
+        s.deleteWatch(watchOf(s, 'gone-a'))
+        s.deleteProject(project)
+        s.createWatch({ type: 'topic', name: 'again' })
+        const again = [found('2609.22001'), found('2609.22002'), found('2609.22003'), found('2609.22004')]
+        expect(s.addInboxEntries(watchOf(s, 'again'), again)).toEqual([])
+        expect(s.listInbox()).toEqual(expect.not.arrayContaining([expect.objectContaining({ title: 'Shared 2609.22002' })]))
+      })
+
+      it(`${name}:两个项目以不同的标题送来同一个 DOI 的论文,只是一张卡片,两个项目下都列着它,DOI 存在记录上`, () => {
+        const s = make()
+        const one = s.createProject('DOI 一')
+        const two = s.createProject('DOI 二')
+        expect(s.addDiscoveryEntries(one, [Object.assign(discovered('', 'semantic-doi-a', 'A Title'), { doi: '10.1145/3600006.3613165' })])).toBe(1)
+        expect(s.addDiscoveryEntries(two, [Object.assign(discovered('', 'semantic-doi-b', 'Another Title'), { doi: 'https://doi.org/10.1145/3600006.3613165' })])).toBe(0)
+        const cards = s.listInbox({ kind: 'discovery' }).filter((entry) => entry.title === 'A Title' || entry.title === 'Another Title')
+        expect(cards.map((entry) => [entry.title, entry.also?.map((stream) => stream.id)])).toEqual([['A Title', [two]]])
+        const library = s.listPapers({ page: 1, size: 1 }).rows[0]!
+        s.updatePaper(library.id, { identifier: 'doi:10.1145/3600006.3613165' })
+        expect(s.listInbox({ kind: 'discovery' }).map((entry) => entry.title)).not.toContain('A Title')
+      })
+
+      it(`${name}:删掉卡片最先来自的那条关注,卡片留在另一个找到它的范围下,只带那边的理由`, () => {
+        const s = make()
+        s.createWatch({ type: 'topic', name: 'first' })
+        const project = s.createProject('后来的项目')
+        s.addInboxEntries(watchOf(s, 'first'), [found('2609.23001')])
+        s.addDiscoveryEntries(project, [discovered('2609.23001')])
+        const cards = () => s.listInbox().filter((entry) => entry.title === 'Shared 2609.23001')
+        expect(cards()).toHaveLength(1)
+        s.deleteWatch(watchOf(s, 'first'))
+        const [card] = cards()
+        expect(card).toMatchObject({ kind: 'discovery', project, watch: '', source: '项目 · 后来的项目' })
+        expect(card!.also).toBeUndefined()
+        expect(card!.reasons[0]).toEqual({ kind: 'project', label: '来自项目「后来的项目」' })
+        expect(card!.reasons.some((reason) => reason.kind === 'watch')).toBe(false)
+      })
+
+      it(`${name}:关注先送来、项目也找到的那张卡片,在项目里给的反馈记进那个项目`, () => {
+        const s = make()
+        s.createWatch({ type: 'topic', name: 'watched-first' })
+        const project = s.createProject('反馈项目')
+        s.addInboxEntries(watchOf(s, 'watched-first'), [found('2609.24001')])
+        s.addDiscoveryEntries(project, [discovered('2609.24001')])
+        const [card] = s.listInbox({ kind: 'discovery', project })
+        expect(card!.kind).toBe('watch')
+        s.feedbackDiscovery(card!.id, 'less')
+        expect(s.discoverySeeds(project).negative).toEqual(['semantic-2609.24001'])
+        expect(titles(s.listInbox())).not.toContain('Shared 2609.24001')
       })
     }
+
+    for (const [name, make] of [['真实实现', () => store], ['fixture', () => createFixtureStore()]] as const) {
+      it(`${name}:问哪些候选还会送出:库里有的、送过的(送它的关注删了也算)和推送里正列着的都不算,同一篇只算一次`, () => {
+        const s = make()
+        s.createWatch({ type: 'topic', name: 'asked' })
+        s.addInboxEntries(watchOf(s, 'asked'), [found('2609.26001'), found('2609.26002')])
+        s.dismissInbox(s.listInbox().find((entry) => entry.title === 'Shared 2609.26002')!.id)
+        s.updatePaper(s.listPapers({ page: 1, size: 1 }).rows[0]!.id, { identifier: 'arXiv:2609.26003' })
+        const candidates = ['2609.26001', '2609.26002', '2609.26003', '2609.26004', '2609.26004v2', '2609.26005']
+          .map((id) => discovered(id))
+        expect(s.undelivered(candidates).map((paper) => paper.id)).toEqual(['2609.26004', '2609.26005'])
+        s.deleteWatch(watchOf(s, 'asked'))
+        expect(s.undelivered(candidates).map((paper) => paper.id)).toEqual(['2609.26004', '2609.26005'])
+        expect(s.listInbox().filter((entry) => entry.title.startsWith('Shared '))).toEqual([])
+      })
+    }
+
+    /** An arXiv result with ranking metadata whose only difference from its siblings is `relevance`. */
+    const ranked = (id: string, relevance: number) => ({
+      ...found(id, `Ranked ${id}`),
+      ranking: { relevance, published: false, citationCount: 0, influentialCitationCount: 0, submitted: '2026-09-01' },
+    })
+
+    for (const [name, make] of [['真实实现', () => store], ['fixture', () => createFixtureStore()]] as const) {
+      it(`${name}:刷新时新来的和这个范围里还没读的一起按推荐分排,只留前几张,其余折叠为看过:不删、不再送,别的范围不动`, () => {
+        const s = make()
+        s.setDeliverySettings({ ...s.deliverySettings(), maxShownPerScope: 3 })
+        s.createWatch({ type: 'topic', name: 'capped' })
+        s.createWatch({ type: 'topic', name: 'other' })
+        s.addInboxEntries(watchOf(s, 'other'), [ranked('2609.28009', 0.1)])
+        expect(s.addInboxEntries(watchOf(s, 'capped'), [ranked('2609.28001', 0.9), ranked('2609.28002', 0.2)]))
+          .toEqual(['2609.28001', '2609.28002'])
+        expect(s.addInboxEntries(watchOf(s, 'capped'), [
+          ranked('2609.28003', 0.5), ranked('2609.28004', 0.1), ranked('2609.28005', 0.8),
+        ])).toEqual(['2609.28003', '2609.28005'])
+        expect(titles(s.listInbox({ kind: 'watch', watch: watchOf(s, 'capped') })))
+          .toEqual(['Ranked 2609.28001', 'Ranked 2609.28005', 'Ranked 2609.28003'])
+        expect(titles(s.listInbox({ kind: 'watch', watch: watchOf(s, 'other') }))).toEqual(['Ranked 2609.28009'])
+        expect(s.addInboxEntries(watchOf(s, 'capped'), [ranked('2609.28002', 0.2), ranked('2609.28004', 0.1)])).toEqual([])
+        // A new paper ranked below the limit is not delivered, so a later run may still deliver it.
+        expect(s.undelivered([discovered('2609.28002'), discovered('2609.28004')]).map((paper) => paper.id)).toEqual(['2609.28004'])
+      })
+
+      it(`${name}:按过更多类似的卡片刷新时从不折叠,也不占显示上限:上限只排这个范围别的未读卡片和新来的论文`, () => {
+        const s = make()
+        s.setDeliverySettings({ ...s.deliverySettings(), maxShownPerScope: 2 })
+        const project = s.createProject('按过更多类似')
+        const rankedFind = (id: string, relevance: number) => Object.assign(discovered(id), { ranking: ranked(id, relevance).ranking })
+        const like = (title: string) => s.feedbackDiscovery(s.listInbox({ kind: 'discovery', project }).find((entry) => entry.title === title)!.id, 'more')
+        expect(s.addDiscoveryEntries(project, [rankedFind('2609.28101', 0.1), rankedFind('2609.28102', 0.2)])).toBe(2)
+        like('Shared 2609.28101')
+        expect(s.addDiscoveryEntries(project, [rankedFind('2609.28103', 0.9), rankedFind('2609.28104', 0.5)])).toBe(2)
+        expect(titles(s.listInbox({ kind: 'discovery', project }))).toEqual(['Shared 2609.28103', 'Shared 2609.28104', 'Shared 2609.28101'])
+        like('Shared 2609.28103')
+        like('Shared 2609.28104')
+        expect(s.addDiscoveryEntries(project, [rankedFind('2609.28105', 0.05)])).toBe(1)
+        expect(titles(s.listInbox({ kind: 'discovery', project }))).toEqual([
+          'Shared 2609.28103', 'Shared 2609.28104', 'Shared 2609.28101', 'Shared 2609.28105',
+        ])
+      })
+    }
+
+    it('真实实现:落到上限以下的卡片存成 gone 加 left: folded,不进垃圾桶;落到上限以下的新论文不送,不进收件也不记作送过', () => {
+      store.setDeliverySettings({ maxItemsPerRun: 10, maxShownPerScope: 1 })
+      store.createWatch({ type: 'topic', name: 'folding' })
+      store.addInboxEntries(watchOf(store, 'folding'), [ranked('2609.29001', 0.2)])
+      expect(store.addInboxEntries(watchOf(store, 'folding'), [ranked('2609.29002', 0.9), ranked('2609.29003', 0.1)]))
+        .toEqual(['2609.29002'])
+      const stored = (JSON.parse(readFileSync(join(vault, '.meridian', 'inbox.json'), 'utf8')) as Record<string, unknown>[])
+        .map(({ arxiv, gone, left }) => [arxiv, gone, left])
+      expect(stored).toEqual(expect.arrayContaining([['2609.29001', true, 'folded'], ['2609.29002', false, undefined]]))
+      expect(stored.map(([arxiv]) => arxiv)).not.toContain('2609.29003')
+      expect(readFileSync(join(vault, '.meridian', 'discovery', 'delivered.json'), 'utf8')).not.toContain('2609.29003')
+      expect(store.listTrash()).toEqual([])
+    })
+
+    it('真实实现:问哪些候选还会送出不写库', () => {
+      store.createWatch({ type: 'topic', name: 'asked' })
+      store.addInboxEntries(watchOf(store, 'asked'), [found('2609.27001')])
+      const before = ['inbox.json', 'discovery/delivered.json', 'state.json']
+        .map((name) => readFileSync(join(vault, '.meridian', name), 'utf8'))
+      expect(store.undelivered([discovered('2609.27001'), discovered('2609.27002')]).map((paper) => paper.id)).toEqual(['2609.27002'])
+      expect(['inbox.json', 'discovery/delivered.json', 'state.json']
+        .map((name) => readFileSync(join(vault, '.meridian', name), 'utf8'))).toEqual(before)
+    })
+
+    it('真实实现:送来的论文带 DOI 时,收件记录顶层存着它', () => {
+      const project = store.createProject('存 DOI')
+      store.addDiscoveryEntries(project, [Object.assign(discovered('2609.21201'), { doi: '10.1145/3600006.3613166' })])
+      expect((JSON.parse(readFileSync(join(vault, '.meridian', 'inbox.json'), 'utf8')) as Record<string, unknown>[])
+        .find((entry) => entry['arxiv'] === '2609.21201')).toMatchObject({ doi: '10.1145/3600006.3613166' })
+    })
+
+    it('真实实现:送过的论文记在 .meridian/discovery/delivered.json,删掉关注、重开库之后也不再送', () => {
+      store.createWatch({ type: 'topic', name: 'kept' })
+      expect(store.addInboxEntries(watchOf(store, 'kept'), [found('2609.25001')])).toEqual(['2609.25001'])
+      store.deleteWatch(watchOf(store, 'kept'))
+      expect(JSON.parse(readFileSync(join(vault, '.meridian', 'inbox.json'), 'utf8'))).toEqual([])
+      expect(JSON.parse(readFileSync(join(vault, '.meridian', 'discovery', 'delivered.json'), 'utf8')))
+        .toEqual([expect.objectContaining({ keys: ['arxiv:2609.25001'], title: 'shared260925001', year: 2026 })])
+      const reopened = createVaultStore(vault)
+      reopened.createWatch({ type: 'topic', name: 'kept again' })
+      expect(reopened.addInboxEntries(watchOf(reopened, 'kept again'), [found('2609.25001')])).toEqual([])
+    })
   })
 
   describe('形状对拍', () => {
@@ -696,12 +887,26 @@ describe('vault store', () => {
     expect(store.listProjects()[0]!.id).toBe(c.id)
   })
 
-  it('论文推送配置有默认值，写进 state.json 后重开仍保留', () => {
-    expect(store.deliverySettings()).toEqual({ maxItemsPerRun: 10 })
-    store.setDeliverySettings({ maxItemsPerRun: 7 })
-    expect(createVaultStore(vault).deliverySettings()).toEqual({ maxItemsPerRun: 7 })
-    expect(JSON.parse(readFileSync(join(vault, '.meridian', 'state.json'), 'utf8')))
-      .toMatchObject({ deliverySettings: { maxItemsPerRun: 7 } })
+  it('论文推送配置有默认值，写进 state.json 后重开仍保留;每个范围的显示上限存在 state.json 顶层', () => {
+    const state = () => JSON.parse(readFileSync(join(vault, '.meridian', 'state.json'), 'utf8')) as Record<string, unknown>
+    expect(store.deliverySettings()).toEqual({ maxItemsPerRun: 10, maxShownPerScope: 20 })
+    store.setDeliverySettings({ maxItemsPerRun: 7, maxShownPerScope: 12 })
+    expect(createVaultStore(vault).deliverySettings()).toEqual({ maxItemsPerRun: 7, maxShownPerScope: 12 })
+    expect(state()).toMatchObject({ deliverySettings: { maxItemsPerRun: 7 }, maxShownPerScope: 12 })
+    expect(state()['deliverySettings']).toEqual({ maxItemsPerRun: 7 })
+    store.setDeliverySettings({ maxItemsPerRun: 5 })
+    expect(createVaultStore(vault).deliverySettings()).toEqual({ maxItemsPerRun: 5, maxShownPerScope: 20 })
+    expect(state()).not.toHaveProperty('maxShownPerScope')
+  })
+
+  it('开发中写进 deliverySettings 里的每个范围显示上限照样读出,下次保存时搬到顶层', () => {
+    const file = join(vault, '.meridian', 'state.json')
+    writeFileSync(file, JSON.stringify({ seq: 0, deliverySettings: { maxItemsPerRun: 6, maxShownPerScope: 9 } }), 'utf8')
+    const reopened = createVaultStore(vault)
+    expect(reopened.deliverySettings()).toEqual({ maxItemsPerRun: 6, maxShownPerScope: 9 })
+    reopened.setDeliverySettings(reopened.deliverySettings())
+    expect(JSON.parse(readFileSync(file, 'utf8'))).toMatchObject({ deliverySettings: { maxItemsPerRun: 6 }, maxShownPerScope: 9 })
+    expect((JSON.parse(readFileSync(file, 'utf8')) as { deliverySettings: object }).deliverySettings).toEqual({ maxItemsPerRun: 6 })
   })
 
   it('上一批存下的列配置没有 type / options / groups,开库补齐', () => {
@@ -1982,6 +2187,134 @@ describe('vault store on the aggregation layout', () => {
     })
   })
 
+  describe('删除对话', () => {
+    const said = (text: string) => ({ role: 'you' as const, runs: [{ kind: 'text' as const, text }], actions: [] })
+    /** A paper of the example vault. */
+    const PAPER = '2404.00456'
+    const trashFile = () => readFileSync(join(vault, '.meridian', 'trash.json'), 'utf8')
+
+    it('删掉的对话进垃圾桶：对话列表、搜索和反向链接里都没有它，从它存下的想法还在；恢复回到原来的位置，消息一条不少，重开库还在', () => {
+      const older = store.createChat('更早的对话', true)
+      const asked = store.createChat('问 PTQ 的边界', true)
+      const newer = store.createChat('更新的对话', true)
+      store.appendChatMessages(asked.id, [said('@PTQ 的边界在哪')])
+      const idea = store.createIdea(asked.id, '旋转与 KV 量化叠加', '先旋转再按 token 量化')
+      const messages = store.chatMessages(asked.id)
+      const order = [newer.id, asked.id, older.id]
+      expect(store.listChats().map((chat) => chat.id)).toEqual(order)
+      expect(store.search('问 PTQ').filter((hit) => hit.kind === 'chat').map((hit) => hit.target)).toEqual([asked.id])
+      expect(store.wikiBacklinks('topics/ptq').filter((link) => link.kind === 'chat').map((link) => link.id)).toEqual([asked.id])
+
+      store.deleteChat(asked.id)
+
+      expect(store.listChats().map((chat) => chat.id)).toEqual([newer.id, older.id])
+      expect(() => store.chatMessages(asked.id)).toThrow(expect.objectContaining({ reason: 'not-found' }))
+      expect(store.search('问 PTQ').filter((hit) => hit.kind === 'chat')).toEqual([])
+      expect(store.wikiBacklinks('topics/ptq').filter((link) => link.kind === 'chat')).toEqual([])
+      expect(store.listIdeas().find((held) => held.id === idea.id)!.source).toEqual({ chatId: asked.id, chatTitle: '问 PTQ 的边界' })
+      const deletedAt = Date.parse(`${store.today()}T00:00:00Z`)
+      const entry = store.listTrash()[0]!
+      expect(entry).toEqual({ id: entry.id, kind: 'chat', title: '问 PTQ 的边界', deletedAt, restorable: true })
+      expect(JSON.parse(trashFile())).toEqual([{
+        id: entry.id, kind: 'chat', title: '问 PTQ 的边界', deletedAt, position: 1,
+        chat: { id: asked.id, title: '问 PTQ 的边界', named: true, archived: false, messages },
+      }])
+      expect(() => store.deleteChat(asked.id)).toThrow(expect.objectContaining({ reason: 'not-found' }))
+
+      store.restoreTrash(entry.id)
+
+      expect(store.listChats().map((chat) => chat.id)).toEqual(order)
+      expect(store.chatMessages(asked.id)).toEqual(messages)
+      expect(store.listTrash()).toEqual([])
+      const reopened = createVaultStore(vault)
+      expect(reopened.listChats().map((chat) => chat.id)).toEqual(order)
+      expect(reopened.chatMessages(asked.id)).toEqual(messages)
+    })
+
+    it('归档的对话删掉再恢复，回来还是归档的', () => {
+      const old = store.createChat('旧的 MoE 讨论', true)
+      store.appendChatMessages(old.id, [said('容量因子取多少合适')])
+      store.setChatArchived(old.id, true)
+
+      store.deleteChat(old.id)
+      expect(store.listChats().map((chat) => chat.id)).not.toContain(old.id)
+      store.restoreTrash(store.listTrash()[0]!.id)
+
+      expect(createVaultStore(vault).listChats().find((chat) => chat.id === old.id))
+        .toEqual({ id: old.id, title: '旧的 MoE 讨论', archived: true, messageCount: 1 })
+    })
+
+    it('论文对话删掉再恢复回到它的论文：这期间论文开出的空对话让位；新对话有了消息就占着位置，那一条恢复不了、留在垃圾桶里', () => {
+      const reading = store.chatForPaper(PAPER)
+      store.appendChatMessages(reading.id, [said('草稿头为什么只要一层')])
+      store.deleteChat(reading.id)
+      const fresh = store.chatForPaper(PAPER)
+      expect(fresh).toMatchObject({ messageCount: 0, paperId: PAPER })
+      expect(fresh.id).not.toBe(reading.id)
+      const entry = store.listTrash()[0]!
+      expect(entry.restorable).toBe(true)
+
+      store.restoreTrash(entry.id)
+      expect(store.chatForPaper(PAPER)).toEqual({ ...reading, messageCount: 1 })
+      expect(() => store.chatSession(fresh.id)).toThrow(expect.objectContaining({ reason: 'not-found' }))
+
+      store.deleteChat(reading.id)
+      const taken = store.chatForPaper(PAPER)
+      store.appendChatMessages(taken.id, [said('换个问法')])
+      const held = store.listTrash()[0]!
+      expect(held.restorable).toBe(false)
+      expect(() => store.restoreTrash(held.id)).toThrow(expect.objectContaining({ reason: 'refused' }))
+      expect(store.listTrash().map((item) => item.id)).toContain(held.id)
+      expect(store.chatForPaper(PAPER)).toMatchObject({ id: taken.id, messageCount: 1 })
+    })
+
+    it('新版本写进对话记录里、这个版本不认识的字段，删掉进垃圾桶、重开库恢复、恢复后再改都原样留着', () => {
+      const file = join(vault, '.meridian', 'chats.json')
+      const written = {
+        id: 'chat-901', title: '新版本写的对话', named: true, archived: false, pinned: true,
+        messages: [{
+          id: 'msg-902', role: 'you', runs: [{ kind: 'text', text: '新版本问的' }], actions: [], sentAt: '2026-09-10T09:00:00Z',
+        }],
+      }
+      mkdirSync(join(vault, '.meridian'), { recursive: true })
+      writeFileSync(file, JSON.stringify([written], null, 2))
+
+      createVaultStore(vault, () => '2026-09-10').deleteChat(written.id)
+      expect(JSON.parse(trashFile())[0].chat).toEqual(written)
+      const reopened = createVaultStore(vault, () => '2026-09-10')
+      reopened.restoreTrash(reopened.listTrash()[0]!.id)
+      expect(JSON.parse(readFileSync(file, 'utf8'))).toEqual([written])
+      reopened.setChatArchived(written.id, true)
+      expect(JSON.parse(readFileSync(file, 'utf8'))).toEqual([{ ...written, archived: true }])
+    })
+
+    it('彻底删除、过了保留期和清空垃圾桶都把删掉的对话连同消息一起清掉，再也恢复不了', () => {
+      let day = '2026-09-10'
+      const dated = createVaultStore(vault, () => day)
+      const deleted = (title: string) => {
+        const chat = dated.createChat(title, true)
+        dated.appendChatMessages(chat.id, [said(`${title}的消息`)])
+        dated.deleteChat(chat.id)
+        return dated.listTrash()[0]!.id
+      }
+      const purged = deleted('彻底删的')
+      const expired = deleted('过期的')
+      dated.purgeTrash(purged)
+      expect(trashFile()).not.toContain('彻底删的的消息')
+      day = '2026-09-12'
+      const cleared = deleted('清空的')
+      day = '2026-09-17'
+      expect(dated.listTrash().map((item) => item.id)).toEqual([cleared])
+      expect(trashFile()).not.toContain('过期的的消息')
+      dated.clearTrash()
+      expect(trashFile()).not.toContain('清空的的消息')
+      for (const id of [purged, expired, cleared]) {
+        expect(() => dated.restoreTrash(id)).toThrow(expect.objectContaining({ reason: 'not-found' }))
+      }
+      expect(createVaultStore(vault, () => day).listChats()).toEqual([])
+    })
+  })
+
   it('记入科研记录:写进项目、把按钮记成已记,再记一次就抛,重开库仍是已记', () => {
     store.createProject('记录目标')
     const projectId = store.listProjects().find((project) => project.name === '记录目标')!.id
@@ -2629,7 +2962,7 @@ describe('vault store on the aggregation layout', () => {
     it('state.json 里有这个版本不认识的字段,含嵌套的:照常开库,改设置存回时那些字段还在', () => {
       put('state', { ...held('state') as object, deliverySettings: { maxItemsPerRun: 7, digest: 'weekly' }, focus: { since: '2026-09-01' } })
       const reopened = reopen()
-      expect(reopened.deliverySettings()).toEqual({ maxItemsPerRun: 7 })
+      expect(reopened.deliverySettings()).toEqual({ maxItemsPerRun: 7, maxShownPerScope: 20 })
 
       reopened.setDeliverySettings({ maxItemsPerRun: 3 })
       expect(held('state')).toMatchObject({ deliverySettings: { maxItemsPerRun: 3, digest: 'weekly' }, focus: { since: '2026-09-01' } })

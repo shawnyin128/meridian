@@ -51,7 +51,7 @@ const EXEMPT: Record<string, string> = {
   // The reader's pages are sheets on the desk; a page reaching past the view is not a cut line of text.
   '.pdfwrap': 'reader pages',
   // Fading a text input would hide the caret and the selection at its edges.
-  '.cbox textarea': 'text input',
+  '.chat-composer .cm-scroller': 'text input',
   // The command wraps at any character, so nothing is ever hidden past its edges.
   '.extension-command-code': 'wraps',
 }

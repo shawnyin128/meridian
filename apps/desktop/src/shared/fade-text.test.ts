@@ -12,8 +12,8 @@ const RULES = readdirSync(RENDERER, { recursive: true, encoding: 'utf8' }).filte
 
 /** Text that may still end in an ellipsis, and why. */
 const ELLIPSIS_EXEMPT: Record<string, string> = {
-  // A placeholder takes no mask of its own, and a mask on the field would fade the typed text and the caret too.
-  '.cbox textarea::placeholder': 'placeholder',
+  // The composer's placeholder is drawn by its editor, which cannot tell whether the placeholder is cut off.
+  '.chat-composer .cm-placeholder': 'placeholder',
 }
 
 /**
@@ -86,8 +86,8 @@ const ONE_LINE_CLIP: Record<string, { fade: string } | { never: string }> = {
   '.crumb': { never: 'segments fade' },
   // The palette's title is for assistive technology only: a 1px box clipped away.
   '.cmdk-title': { never: 'visually hidden' },
-  // A placeholder takes no mask of its own, and a mask on the field would fade the typed text and the caret too.
-  '.cbox textarea::placeholder': { never: 'placeholder' },
+  // The composer's placeholder is drawn by its editor, which cannot tell whether the placeholder is cut off.
+  '.chat-composer .cm-placeholder': { never: 'placeholder' },
   // Its column is as wide as the widest date chip in it, and the chip's own text is a FadeText.
   '.milestone-row>.plan-date-button': { never: 'fits its column' },
   // Its label is a FadeText that shrinks and fades; the fold button, folded count and priority keep their width.

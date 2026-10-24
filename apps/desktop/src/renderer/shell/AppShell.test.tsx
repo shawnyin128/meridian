@@ -14,8 +14,10 @@ const fixture = vi.hoisted(() => ({
   watches: [{ id: 'w-topic', type: 'topic', name: '推测解码', active: true }],
   projects: [{ id: 'p1', name: '推理项目', status: '进行中' }],
   discovery: [{ id: 'e1', kind: 'discovery', watch: '', project: 'p1', source: '推理项目' }],
-  delivered: [] as { id: string; kind: 'watch'; watch: string; title: string }[],
+  delivered: [] as { id: string; kind: 'watch'; watch: string; title: string; also?: { kind: string; id: string; source: string }[] }[],
   chats: [{ id: 'c1', title: '讨论', archived: false, messageCount: 1 }],
+  deleteChat: vi.fn(async () => ({ trash: 'trash-9' })),
+  restoreTrash: vi.fn(async () => {}),
   back: vi.fn(),
   platform: 'darwin',
   fullScreen: [] as ((on: boolean) => void)[],
@@ -44,6 +46,7 @@ vi.mock('../ipc.js', () => ({
   colourThemes: { list: none },
   chat: {
     list: () => Promise.resolve(fixture.chats), create: () => new Promise(() => {}), setArchived: vi.fn(),
+    delete: fixture.deleteChat,
   },
   extensions: { checkLatest: vi.fn() },
   idea: { list: none },
@@ -53,7 +56,7 @@ vi.mock('../ipc.js', () => ({
   papers: { list: () => Promise.resolve({ rows: [], total: 0 }) },
   project: { list: () => Promise.resolve(fixture.projects) },
   search: { query: none },
-  trash: { list: none },
+  trash: { list: none, restore: fixture.restoreTrash },
   vault: { today: () => fixture.today() },
   watch: { list: () => Promise.resolve(fixture.watches) },
   wiki: { home: () => Promise.resolve({ aggregationCount: 0 }) },
@@ -194,9 +197,12 @@ function controlOf(selector: string): HTMLElement {
 
 describe('侧栏论文推送的计数', () => {
   const watches = fixture.watches
+  const { discovery, projects } = fixture
   afterEach(() => {
     fixture.watches = watches
     fixture.delivered = []
+    fixture.discovery = discovery
+    fixture.projects = projects
   })
 
   /** The text of the count badge in each of `rows`, or null where a row has none. */
@@ -220,6 +226,35 @@ describe('侧栏论文推送的计数', () => {
         '#rowInboxAll': '4', '[data-disc="topics"]': '4', '[data-watchrow="w-topic"]': '3', '[data-watchrow="w-moe"]': '1',
         '[data-disc="authors"]': null, '[data-watchrow="w-dao"]': null,
       })
+  })
+
+  it('几条关注都送来的一篇在每条关注下各算一次,在分组和全部里只算一次;几个项目都找到的一篇在每个项目下各算一次', async () => {
+    fixture.watches = [
+      { id: 'w-topic', type: 'topic', name: '推测解码', active: true },
+      { id: 'w-moe', type: 'topic', name: '专家混合', active: true },
+      { id: 'w-dao', type: 'author', name: 'Tri Dao', active: true },
+    ]
+    fixture.delivered = [
+      {
+        id: 'i1', kind: 'watch', watch: 'w-topic', title: 'EAGLE',
+        also: [{ kind: 'watch', id: 'w-moe', source: '关键词 · 专家混合' }, { kind: 'watch', id: 'w-dao', source: '作者 · Tri Dao' }],
+      },
+      { id: 'i2', kind: 'watch', watch: 'w-moe', title: 'Medusa' },
+    ]
+    fixture.projects = [{ id: 'p1', name: '推理项目', status: '进行中' }, { id: 'p2', name: '量化项目', status: '进行中' }]
+    fixture.discovery = [{
+      id: 'e1', kind: 'discovery', watch: '', project: 'p1', source: '推理项目',
+      also: [{ kind: 'discovery', id: 'p2', source: '项目 · 量化项目' }],
+    } as typeof discovery[number]]
+    await mount()
+    expect(counts([
+      '#rowInboxAll', '[data-disc="topics"]', '[data-watchrow="w-topic"]', '[data-watchrow="w-moe"]', '[data-disc="authors"]',
+      '[data-watchrow="w-dao"]', '[data-inbox="discovery"]', '[data-discovery-project="p1"]', '[data-discovery-project="p2"]',
+    ])).toEqual({
+      '#rowInboxAll': '2', '[data-disc="topics"]': '2', '[data-watchrow="w-topic"]': '1', '[data-watchrow="w-moe"]': '2',
+      '[data-disc="authors"]': '1', '[data-watchrow="w-dao"]': '1',
+      '[data-inbox="discovery"]': '1', '[data-discovery-project="p1"]': '1', '[data-discovery-project="p2"]': '1',
+    })
   })
 
   it('暂停的关注照样显示它推来的条数,只是变灰', async () => {
@@ -728,3 +763,42 @@ describe('AppShell command palette', () => {
   })
 })
 
+
+describe('侧栏对话行的删除', () => {
+  /** Opens the More menu of chat `id`'s sidebar row and returns its items. */
+  async function chatMenu(id: string): Promise<HTMLElement[]> {
+    await act(async () => {
+      document.querySelector(`#chatList [data-chat="${id}"] .dots`)!
+        .dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, button: 0 }))
+    })
+    return [...document.querySelectorAll<HTMLElement>('[role="menu"] [role="menuitem"]')]
+  }
+
+  beforeEach(() => {
+    fixture.deleteChat.mockClear()
+    fixture.restoreTrash.mockClear()
+  })
+
+  it('更多菜单里归档之后是标红的删除；删除不弹确认，提示已移入垃圾桶，撤销把垃圾桶里那一条放回', async () => {
+    await mount()
+    const items = await chatMenu('c1')
+    expect(items.map((item) => [item.textContent, item.classList.contains('danger')])).toEqual([['归档', false], ['删除', true]])
+    await act(async () => { items[1]!.click() })
+    expect(fixture.deleteChat).toHaveBeenCalledExactlyOnceWith('c1')
+    expect(document.querySelector('[role="alertdialog"]')).toBeNull()
+    expect(document.querySelector('#notice .notice-text')!.textContent).toBe('已移入垃圾桶')
+    const undo = document.querySelector<HTMLButtonElement>('#notice button')!
+    expect(undo.textContent).toBe('撤销')
+    await act(async () => { undo.click() })
+    expect(fixture.restoreTrash).toHaveBeenCalledExactlyOnceWith('trash-9')
+  })
+
+  it('删掉对话屏正打开着的那段对话，像归档一样回到动态', async () => {
+    await mount()
+    await act(async () => { controlOf('#chatList [data-chat="c1"]').click() })
+    expect(crumbs()).toEqual(['对话'])
+    const items = await chatMenu('c1')
+    await act(async () => { items.find((item) => item.textContent === '删除')!.click() })
+    expect(crumbs()).toEqual(['动态'])
+  })
+})

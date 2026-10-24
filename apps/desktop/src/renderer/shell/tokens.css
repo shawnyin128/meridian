@@ -108,9 +108,13 @@
   --tint-good:rgba(48,209,88,.14); --tint-warn:rgba(255,214,10,.14);
   --tint-bad:rgba(224,69,58,.12);
   --tint-mut:rgba(17,17,17,.04);
-  /* The paper does not flip with the theme, nor do the reading highlights on it and the underline of a highlight with a note */
+  /*
+   * The paper does not flip with the theme, nor do the reading highlights on it, the underline of a
+   * highlight with a note and the selection being made on it, which is the light theme's --sel
+   */
   --paper:#fff; --scrim:rgba(23,23,23,.42);
   --hl-yellow:#f8d84a; --hl-green:#87d99a; --hl-blue:#82c7f2; --hl-pink:#f0a0be; --hl-note:rgba(17,17,17,.55);
+  --hl-sel:rgba(17,17,17,.14);
   /* Elevation. --sh-2 (menus, popovers) and --sh-3 (dialogs) draw the layer's edge as their first ring. */
   --sh-1:0 1px 2px rgba(23,23,23,.06), 0 0 0 1px rgba(23,23,23,.04);
   --sh-2:0 0 0 1px rgba(23,23,23,.10), 0 6px 16px rgba(23,23,23,.12), 0 2px 5px rgba(23,23,23,.06);

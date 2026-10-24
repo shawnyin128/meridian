@@ -40,6 +40,7 @@ export const ideas = {
     createdNote: '已由想法创建项目并建立关联',
   },
   openSourceChat: '打开来源对话',
+  sourceChatDeleted: '对话已删除',
   editor: {
     sourceLabel: (source: string) => `来源：${source}`,
     titleLabel: '标题',

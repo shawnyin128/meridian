@@ -2,7 +2,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { FetchStatus } from '../../shared/contract.js'
 import type { WatchFetcher } from './fetch.js'
 import {
-  armFetchSchedule, fetchDue, FETCH_EVERY_MS, FIRST_TICK_MS, RETRY_AFTER_MS, TICK_MS,
+  armDiscoverySchedule, armFetchSchedule, DISCOVER_EVERY_MS, fetchDue, FETCH_EVERY_MS, FIRST_TICK_MS, RETRY_AFTER_MS,
+  TICK_MS,
 } from './schedule.js'
 
 describe('fetchDue', () => {
@@ -64,6 +65,57 @@ describe('armFetchSchedule', () => {
     const { runs, fetcher } = fakeFetcher({ state: 'checking', checkedAt: null, reason: null })
     const stop = armFetchSchedule(fetcher, () => Date.now())
     await vi.advanceTimersByTimeAsync(FIRST_TICK_MS + TICK_MS)
+    expect(runs).toEqual([])
+    stop()
+  })
+})
+
+describe('armDiscoverySchedule', () => {
+  afterEach(() => { vi.useRealTimers() })
+
+  function fakeDiscovery(refreshedAt: (number | null)[]) {
+    const runs: number[] = []
+    const held = { refreshedAt, running: false }
+    const discovery = {
+      running: () => held.running,
+      refreshedAt: () => held.refreshedAt,
+      run: async () => { runs.push(Date.now()) },
+    }
+    return { runs, held, discovery }
+  }
+
+  it('开库十五秒后刷新论文发现;没刷成的半小时后重试;每个项目都刷过后满一天再刷;停下后不再刷', async () => {
+    vi.useFakeTimers({ now: 0 })
+    const { runs, held, discovery } = fakeDiscovery([null, 0])
+    const stop = armDiscoverySchedule(discovery, () => Date.now())
+
+    await vi.advanceTimersByTimeAsync(FIRST_TICK_MS)
+    expect(runs).toEqual([FIRST_TICK_MS])
+    await vi.advanceTimersByTimeAsync(3 * TICK_MS - FIRST_TICK_MS)
+    expect(runs).toHaveLength(1)
+    await vi.advanceTimersByTimeAsync(TICK_MS)
+    expect(runs).toEqual([FIRST_TICK_MS, 4 * TICK_MS])
+
+    held.refreshedAt = [4 * TICK_MS, 4 * TICK_MS]
+    await vi.advanceTimersByTimeAsync(DISCOVER_EVERY_MS - TICK_MS)
+    expect(runs).toHaveLength(2)
+    await vi.advanceTimersByTimeAsync(TICK_MS)
+    expect(runs).toHaveLength(3)
+
+    stop()
+    await vi.advanceTimersByTimeAsync(2 * DISCOVER_EVERY_MS)
+    expect(runs).toHaveLength(3)
+  })
+
+  it('没有能刷新的项目或正在刷新时,到了点也不另起一轮', async () => {
+    vi.useFakeTimers({ now: 0 })
+    const { runs, held, discovery } = fakeDiscovery([])
+    const stop = armDiscoverySchedule(discovery, () => Date.now())
+    await vi.advanceTimersByTimeAsync(FIRST_TICK_MS + TICK_MS)
+    expect(runs).toEqual([])
+    held.refreshedAt = [null]
+    held.running = true
+    await vi.advanceTimersByTimeAsync(TICK_MS)
     expect(runs).toEqual([])
     stop()
   })

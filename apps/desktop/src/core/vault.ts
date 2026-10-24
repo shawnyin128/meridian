@@ -14,7 +14,7 @@ import type {
 import type { PageText, PaperSnapshot } from './vault/records.js'
 import type { RemotePaper } from './net/arxiv.js'
 import type {
-  DiscoveryPaper, DiscoverySchedule, RecommendationIntent, RecommendationProfile,
+  DiscoveryPaper, DiscoverySchedule, RecommendationIntent, RecommendationProfile, RefreshProgress, RefreshScope,
 } from './recommendation/index.js'
 import type { WorkspaceAgentTask } from './project-management/index.js'
 import type { ResearchIdeaMutation } from './research-ideas/index.js'
@@ -568,8 +568,9 @@ export interface VaultStore {
   listLater(): LaterEntry[]
 
   /**
-   * Removes the entry with the given id from the later queue. It does not go
-   * to the trash. Throws if the queue holds no such entry.
+   * Moves the entry with the given id from the later queue into the trash;
+   * restoring its trash entry puts it back where it sat in the queue. Throws if
+   * the queue holds no such entry.
    */
   removeLater(id: string): void
 
@@ -603,14 +604,30 @@ export interface VaultStore {
    */
   deleteWatch(id: string): void
 
-  /** Returns the common limits used by watch fetching and project discovery. */
+  /** Returns the common limits used by watch fetching and project discovery, an unset one as its default. */
   deliverySettings(): DeliverySettings
 
   /** Replaces the common paper-delivery settings. */
   setDeliverySettings(settings: DeliverySettings): void
 
-  /** Adds at most `limit` unseen arXiv results for one watch and returns their arXiv ids. */
+  /**
+   * Delivers for one watch at most `limit` of the arXiv results `found` that no stream delivered
+   * before and the vault does not hold; a result that is already a live card is listed under this
+   * watch on that card instead. These papers and the watch's cards in the feed are then ranked by
+   * recommendation score down to the delivery settings' `maxShownPerScope`, a card given `more`
+   * feedback always staying and not counted: a card ranked below is folded away as seen, and a paper
+   * ranked below is not delivered at all, neither a card nor remembered, so a later run may still
+   * deliver it, and `undelivered` still names it. Returns the arXiv ids of exactly the papers
+   * delivered. Throws if no such watch exists.
+   */
   addInboxEntries(watchId: string, found: RemotePaper[], limit?: number): string[]
+
+  /**
+   * Returns the papers of `found`, in order and each once, that adding them for any watch or project
+   * would still deliver as new cards: the vault does not hold them and no stream delivered them
+   * before, including a watch or project since deleted. Writes nothing.
+   */
+  undelivered<P extends RemotePaper & { semanticId?: string; doi?: string }>(found: P[]): P[]
 
   /** Refreshes ranking/venue metadata for inbox history belonging to one watch. */
   updateInboxEntries(watchId: string, found: RemotePaper[]): number
@@ -633,13 +650,30 @@ export interface VaultStore {
   /** Advances one project's refresh time and secondary-intent rotation cursor. */
   setDiscoverySchedule(projectId: string, schedule: DiscoverySchedule): void
 
+  /** How far the refreshes of `scope` have got; no steps before its first refresh. Throws if it does not exist. */
+  refreshProgress(scope: RefreshScope): RefreshProgress
+
+  /** Replaces the progress of `scope`. Throws if it does not exist. */
+  setRefreshProgress(scope: RefreshScope, progress: RefreshProgress): void
+
   /** Persists one user-owned core/enable decision without mutating Wiki knowledge. */
   setDiscoveryIntent(projectId: string, intentId: string, action: DiscoveryIntentAction): void
 
-  /** Adds at most `limit` unseen provider results to one project's discovery feed. */
+  /**
+   * Delivers to one project's discovery at most `limit` of the provider results `found` that no
+   * stream delivered before and the vault does not hold, cutting the project's cards and these
+   * papers to its limit the way addInboxEntries does for a watch, and returns how many papers it
+   * delivered, exactly; a result that is already a live card is listed under this project on that
+   * card instead. Throws if no such project exists.
+   */
   addDiscoveryEntries(projectId: string, found: DiscoveryPaper[], limit?: number): number
 
-  /** Persists explicit discovery feedback; less/known items leave the visible feed. */
+  /**
+   * Persists explicit discovery feedback on the live discovery entry with the
+   * given id. A `more` entry stays in the feed; a `less` or `known` one leaves
+   * it into the trash, and restoring its trash entry puts it back without the
+   * feedback. Throws if no such live entry exists or it is not a discovery.
+   */
   feedbackDiscovery(id: string, feedback: DiscoveryFeedback): void
 
   /** Returns the last completed full fetch time, or null before any full fetch. */
@@ -789,7 +823,8 @@ export interface VaultStore {
    * neither listed nor restorable. Each entry's `restorable` says whether it
    * can go back right now: an attachment cannot while the project it was
    * deleted from is itself deleted, nor a paper while another page stands where
-   * its page goes back.
+   * its page goes back, nor a paper chat while its paper has another chat that
+   * holds messages.
    */
   listTrash(): TrashEntry[]
 
@@ -800,7 +835,9 @@ export interface VaultStore {
    * whose project is no longer in the vault — that entry stays in the trash,
    * restorable again once the project is — and for a paper or project whose
    * page's place another page holds, which stays in the trash too, so a page
-   * is never overwritten. Restoring never discards what the
+   * is never overwritten, and likewise for a paper chat whose paper has
+   * another chat that holds messages. A paper chat put back takes the place of
+   * its paper's chat that holds no messages. Restoring never discards what the
    * entry holds and never puts it anywhere but where it came from. A paper put
    * back holding cells some column as the vault holds it now could not have been
    * filled through then has those cells emptied through updatePaper, recorded as
@@ -987,6 +1024,14 @@ export interface VaultStore {
    * session exists.
    */
   setChatArchived(id: string, archived: boolean): void
+
+  /**
+   * Moves the session with the given id, with its messages, into the trash;
+   * restoring its trash entry puts it back where it stood in the list, archived
+   * or not, and bound to its paper. Ideas saved from it keep naming it. Throws
+   * if no such session exists.
+   */
+  deleteChat(id: string): void
 
   /**
    * Returns at most SEARCH_LIMIT hits for the query over the vault as held in
