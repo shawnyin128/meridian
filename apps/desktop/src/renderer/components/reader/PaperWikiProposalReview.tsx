@@ -7,6 +7,7 @@ import { EmptyState } from '../EmptyState.js'
 import { SourceAnchor } from '../SourceAnchor.js'
 import { StructuredList, StructuredRow } from '../StructuredList.js'
 import { Tag } from '../Tag.js'
+import { Tooltip } from '../Tooltip.js'
 import { ProposalRows, ProposalText } from '../wiki/ProposalChange.js'
 import './PaperWikiProposalReview.css'
 
@@ -81,10 +82,11 @@ function QualityReport({ quality }: { quality: HarnessPaperWikiQuality }) {
               <StructuredRow className="paper-wiki-quality-finding"
                 key={`${finding.dimension}-${finding.code}-${finding.path}-${index}`}>
                 <div>
-                  <strong>{copy?.title ?? m.wiki.quality.needsReviewFallback}</strong>
+                  <Tooltip label={copy?.detail ?? finding.message}>
+                    <strong>{copy?.title ?? m.wiki.quality.needsReviewFallback}</strong>
+                  </Tooltip>
                   <span>{m.wiki.quality.dimension[finding.dimension]}</span>
                 </div>
-                <p>{copy?.detail ?? finding.message}</p>
                 {place === undefined ? null : <span className="paper-wiki-quality-place">{place}</span>}
               </StructuredRow>
             )
