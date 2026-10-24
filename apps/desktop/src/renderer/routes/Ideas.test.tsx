@@ -392,7 +392,7 @@ describe('Ideas', () => {
   it('来源标签跟在来源后面：对话和论文阅读写来源的种类，agent 记下的只写 agent', async () => {
     api.ideas.push({
       id: 'idea-agent', title: 'agent 记下的想法', body: '按接受率调宽度。',
-      source: { chatId: 'agent-1', chatTitle: '动态树宽度的实现讨论', agent: true },
+      source: { chatTitle: '动态树宽度的实现讨论', agent: true },
       archived: false, created: '2026-09-17', updated: '2026-09-17',
     })
     try {
@@ -551,11 +551,14 @@ describe('Ideas', () => {
       .toEqual([['内容', []], ['关联', ['关联']], ['所在项目', ['转为项目']], ['来源', ['打开来源对话']]])
   })
 
-  it('来源对话删掉了的想法，详情的来源一节没有打开来源对话，来源后面写着对话已删除；对话还在的照常能打开', async () => {
+  it('来源对话删掉了的想法，卡片的来源后面和详情的来源后面都写着对话已删除，详情没有打开来源对话；对话还在的照常能打开', async () => {
     const chats = api.chats
     api.chats = chats.filter((held) => held.id !== 'chat-2')
     try {
       await act(async () => { root.render(<MessagesProvider><Ideas /></MessagesProvider>) })
+      expect([...host.querySelectorAll<HTMLElement>('[data-idea="idea-independent"] .tag, [data-idea="idea-linked"] .tag')]
+        .filter((tag) => tag.textContent === '对话已删除').map((tag) => tag.closest<HTMLElement>('[data-idea]')!.dataset['idea']))
+        .toEqual(['idea-independent'])
       const source = async (id: string) => {
         await act(async () => { host.querySelector<HTMLElement>(`[data-idea="${id}"]`)!.click() })
         const detail = host.querySelector('.idea-detail-panel')!

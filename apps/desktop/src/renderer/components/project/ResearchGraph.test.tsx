@@ -334,6 +334,22 @@ describe('idea and graph association', () => {
     act(() => root.unmount())
   })
 
+  it('来源对话删掉了的关联想法，那一行的来源后面跟着中性的对话已删除标签；对话还在的不跟', () => {
+    const host = document.createElement('div')
+    const root = createRoot(host)
+    const kept: ResearchIdea = { ...IDEA, id: 'idea-2', source: { chatId: 'chat-kept', chatTitle: '还在的对话' } }
+    act(() => root.render(withMessages(
+      <ResearchNodePanel
+        graph={GRAPH} events={[]} ideas={[IDEA, kept]} tasks={[]} node={GRAPH.nodes[0]!}
+        onClose={vi.fn()} onSelect={vi.fn()} onSelectIdea={vi.fn()} onSelectTask={vi.fn()}
+        chatDeleted={(idea) => idea.id === IDEA.id}
+      />,
+    )))
+    expect([...host.querySelectorAll('.node-idea-row')].map((row) => [...row.querySelectorAll('.tag')].map((tag) => [tag.textContent, tag.className])))
+      .toEqual([[['对话已删除', 'tag tag--label tag--neutral']], []])
+    act(() => root.unmount())
+  })
+
   it('自己写下的关联想法那一行只有标题，不写来源', () => {
     const host = document.createElement('div')
     const root = createRoot(host)

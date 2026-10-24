@@ -60,6 +60,12 @@ export function IdeaSource({ idea, sourceProject, message = (source) => source, 
   )
 }
 
+/** The neutral tag that follows an idea's source wherever it shows, once the chat the idea came from is deleted. */
+export function SourceChatDeleted({ className }: { className?: string }) {
+  const m = useMessages()
+  return <Tag className={className}>{m.ideas.sourceChatDeleted}</Tag>
+}
+
 /**
  * The one detail panel of an idea, on the Ideas screen and on the project page: the title with the
  * host's `actions` and the close button, the kind and archived tags with the created date and,
@@ -120,7 +126,7 @@ export function IdeaPanel({
           </SectionHeading>
           <p className="idea-panel-source">
             <IdeaSource idea={idea} sourceProject={sourceProject} onOpenPaper={onOpenSourcePaper} />
-            {sourceChatDeleted ? <Tag className="idea-panel-source-gone">{m.ideas.sourceChatDeleted}</Tag> : null}
+            {sourceChatDeleted ? <SourceChatDeleted className="idea-panel-source-gone" /> : null}
           </p>
         </>
       )}
