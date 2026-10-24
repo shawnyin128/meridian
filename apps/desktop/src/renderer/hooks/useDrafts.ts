@@ -1,5 +1,5 @@
 import {
-  createContext, createElement, useContext, useEffect, useMemo, useState, useSyncExternalStore,
+  createContext, createElement, useCallback, useContext, useEffect, useMemo, useState, useSyncExternalStore,
   type ChangeEvent, type KeyboardEvent, type ReactNode,
 } from 'react'
 import { library } from '../ipc.js'
@@ -17,6 +17,9 @@ export type Drafts<D = string> = {
 
 /** A draft that edits stored text: what was typed, and the stored text it was typed over. */
 export type EditDraft = { text: string; base: string }
+
+/** Where an editor keeps the text typed into it as a draft: under `target` in `drafts`. */
+export type KeptText = { drafts: Drafts<string>; target: string }
 
 /** The renderer localStorage key of the drafts kept for the vault at `root`. */
 export const keptDraftsKey = (root: string): string => `meridian.drafts:${root}`
@@ -271,7 +274,8 @@ export function editText(drafts: Drafts<EditDraft>, target: string, stored: stri
  */
 export function useDraft<D>(scope: readonly string[], target: string): [D | null, (next: D | null) => void] {
   const drafts = useDrafts<D>(scope)
-  return [drafts.get(target) ?? null, (next) => (next === null ? drafts.drop(target) : drafts.set(target, next))]
+  const set = useCallback((next: D | null) => (next === null ? drafts.drop(target) : drafts.set(target, next)), [drafts, target])
+  return [drafts.get(target) ?? null, set]
 }
 
 /**

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
-import type { Drafts } from '../hooks/useDrafts.js'
+import type { KeptText } from '../hooks/useDrafts.js'
 import { useOnLeave } from '../hooks/useOnLeave.js'
 import { composing } from '../lib/keyboard.js'
 import { useMessages } from '../messages/useMessages.js'
@@ -35,7 +35,7 @@ export function ShortTextEditor({
   onClose: () => void
   onDelete?: (() => void) | undefined
   onBusyChange?: ((busy: boolean) => void) | undefined
-  kept?: { drafts: Drafts<string>; target: string } | undefined
+  kept?: KeptText | undefined
 }) {
   const m = useMessages()
   const removeLabel = deleteLabel ?? m.common.delete

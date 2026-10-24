@@ -48,7 +48,7 @@ import { ProjectTimeline } from '../components/project/ProjectTimeline.js'
 import { nodeMode, ResearchGraph, ResearchNodePanel } from '../components/project/ResearchGraph.js'
 import { IdeaPanel, IdeaSource, ideaSourceLabel, ownIdea, SourceChatDeleted } from '../components/ideas/IdeaPanel.js'
 import { IdeaDraft, type IdeaDraftText } from '../components/ideas/IdeaDraft.js'
-import { ProjectPlan, ProjectTaskPanel } from '../components/project/ProjectPlan.js'
+import { newPlanRow, ProjectPlan, ProjectTaskPanel } from '../components/project/ProjectPlan.js'
 import type { PlanCreating, PlanTab } from '../components/project/ProjectPlan.js'
 import { BackButton } from '../components/BackButton.js'
 import { dnum } from '../../shared/dates.js'
@@ -316,11 +316,11 @@ export function ProjectDetail({
   const [relAdding, setRelAdding] = useState(false)
   const [relGroup, setRelGroup] = useState<string>(PROJECT_RELATION_GROUPS[0])
   const [relEditing, setRelEditing] = useState<RelationGroup['items'][number] | null>(null)
-  const [creating, setCreating] = useState<PlanCreating | null>(null)
   // A new object on every locate: clicking the same row again changes its identity, so the effect below reruns.
   const [flash, setFlash] = useState<{ id: string } | null>(null)
   const [hoverMilestone, setHoverMilestone] = useState<string | null>(null)
   const edits = useDrafts<EditDraft>(['project', projectId])
+  const [creating, setCreating] = useDraft<PlanCreating>(['project', projectId], 'new-row')
   const shownProject = project?.id === projectId ? project : null
   usePruneDrafts(['project', projectId, 'task'], shownProject === null ? null : shownProject.tasks.map((task) => task.id))
   usePruneDrafts(['project', projectId, 'conclusion'], shownProject === null ? null
@@ -495,7 +495,7 @@ export function ProjectDetail({
     stopRel()
     stopRelEdit()
     edits.drop('memo')
-  }, [stopRel, stopRelEdit, edits])
+  }, [setCreating, stopRel, stopRelEdit, edits])
 
   /**
    * Finishes a write that returns the project: the project goes into state, then `write` bumps the
@@ -617,13 +617,13 @@ export function ProjectDetail({
   const startTask = (date = today, window: TaskWindow | null = null) => {
     onTab('task')
     if (focusOpenRow('task')) return
-    setCreating({ kind: 'task', date, window })
+    setCreating(newPlanRow('task', date, window))
   }
 
   const startMilestone = (date: string) => {
     onTab('ms')
     if (focusOpenRow('ms')) return
-    setCreating({ kind: 'ms', date })
+    setCreating(newPlanRow('ms', date))
   }
 
   /**
@@ -857,12 +857,12 @@ export function ProjectDetail({
               : null}
 
             <ProjectPlan
-              project={project} tab={tab} today={today} creating={creating}
+              projectId={projectId} project={project} tab={tab} today={today} creating={creating}
               flashId={flash?.id ?? null} selectedTaskId={selectedTaskId}
               listRef={planList} addRef={planAdd} timelineAddRef={ganttAdd}
               onTab={onTab} onDiscardOpenEdits={discardOpenEdits}
               onStartTask={() => startTask()} onStartMilestone={startMilestone}
-              onCancelCreate={() => setCreating(null)} onHoverMilestone={setHoverMilestone}
+              onCreating={setCreating} onCancelCreate={() => setCreating(null)} onHoverMilestone={setHoverMilestone}
               onCreateTask={({ window, ...draft }) => writeProject(
                 projectApi.createTask(projectId, {
                   ...draft, ...(window === null ? {} : { window }),
@@ -1054,7 +1054,7 @@ export function ProjectDetail({
                       fields={{
                         name: (
                           <InlineMetadataField
-                            label={m.project.identity.nameFieldLabel} value={project.name}
+                            label={m.project.identity.nameFieldLabel} value={project.name} keep={{ scope: ['project', projectId], target: 'name' }}
                             onSave={(name) => {
                               const next = name.trim()
                               if (next === '') { notice.refusal(m.project.identity.nameRequired); return false }
@@ -1093,6 +1093,7 @@ export function ProjectDetail({
                     <div className="pk">{m.project.identity.focusLabel[FOCUS_KEY[project.status]]}</div>
                     <InlineMetadataField
                       label={m.project.identity.focusLabel[FOCUS_KEY[project.status]]} value={project.focus}
+                      keep={{ scope: ['project', projectId], target: 'focus' }}
                       onSave={(focus) => {
                         const next = focus.trim()
                         const label = m.project.identity.focusLabel[FOCUS_KEY[project.status]]
@@ -1109,7 +1110,7 @@ export function ProjectDetail({
                     <ProjectNextActionView action={controlState.next} />
                     <div className="pk">{m.project.control.blocker}</div>
                     <InlineMetadataField
-                      label={m.project.control.blocker} value={project.block ?? ''}
+                      label={m.project.control.blocker} value={project.block ?? ''} keep={{ scope: ['project', projectId], target: 'block' }}
                       display={<ProjectBlockerView blocker={controlState.blocker} />}
                       onSave={(value) => {
                         const next = value.trim()

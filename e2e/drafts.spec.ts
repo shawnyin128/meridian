@@ -88,3 +88,39 @@ test('关掉 App 再打开,项目随笔和 Wiki 正文没存的改动回到原�
     await reopened.app.close()
   }
 })
+
+test('关掉 App 再打开,打了一半的新项目名或新任务那一行回到原处,仍没建;取消之后不再留着', async ({ app, win, configHome }) => {
+  // Leaving an inline draft saves it, so each one is left open by quitting.
+  await win.locator('[data-desk="resproj"]').click()
+  await shown(win, '#projNew').click()
+  await shown(win, '.projpanel .inedit').fill('打了一半的项目名')
+
+  const first = await relaunch(app, configHome)
+  let second: Awaited<ReturnType<typeof relaunch>> | null = null
+  try {
+    await first.win.locator('[data-desk="resproj"]').click()
+    await expect(shown(first.win, '.projpanel .inedit')).toHaveValue('打了一半的项目名')
+    const projects = await first.win.evaluate(() => (window as unknown as MeridianWindow).meridian.call('project.list', {}))
+    expect(JSON.stringify(projects)).not.toContain('打了一半的项目名')
+    await shown(first.win, '.projpanel .inedit').press('Escape')
+    await expect(shown(first.win, '.projpanel .inedit')).toHaveCount(0)
+    await gotoProject(first.win)
+    const plan = shown(first.win, '.project-plan')
+    await plan.locator('[aria-label="添加任务"]').first().click()
+    await plan.locator('.task-create-row .tag').click()
+    await plan.locator('.task-create-row .min').fill('打了一半的任务')
+
+    second = await relaunch(first.app, configHome)
+    await gotoProject(second.win)
+    const row = shown(second.win, '.project-plan .task-create-row')
+    await expect(row.locator('.min')).toHaveValue('打了一半的任务')
+    await expect(row.locator('.tag')).toHaveText('P2')
+    const kept = await second.win.evaluate(() => Object.keys(window.localStorage)
+      .filter((key) => key.startsWith('meridian.drafts:'))
+      .map((key) => window.localStorage.getItem(key)!).join(''))
+    expect(kept).not.toContain('打了一半的项目名')
+    expect(kept).toContain('打了一半的任务')
+  } finally {
+    await (second ?? first).app.close()
+  }
+})

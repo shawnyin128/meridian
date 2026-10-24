@@ -51,59 +51,61 @@ const NEXT_TASK_STATE: Record<Task['state'], Task['state']> = {
 
 export type PlanTab = 'task' | 'ms'
 
-export type PlanCreating =
-  | { kind: 'task'; date: string; window: TaskWindow | null }
-  | { kind: 'ms'; date: string }
-
 export type TaskDraft = Pick<Task, 'title' | 'start' | 'end' | 'priority' | 'state'> & {
   window: TaskWindow | null
 }
 
 export type MilestoneDraft = Pick<Milestone, 'date' | 'title' | 'done'>
 
-function TaskCreateRow({ initial, triggers, onSave, onCancel }: {
-  initial: Omit<TaskDraft, 'window'> & { window?: TaskWindow | null | undefined }
+/** The new row drafted in the plan, with every field it holds. */
+export type PlanCreating = { kind: 'task'; draft: TaskDraft } | { kind: 'ms'; draft: MilestoneDraft }
+
+/**
+ * The new row a plan opens on `date`: a task over the week from it, or over that day alone when it
+ * has a time `window`, or a milestone on it.
+ */
+export function newPlanRow(kind: PlanTab, date: string, window: TaskWindow | null = null): PlanCreating {
+  return kind === 'ms'
+    ? { kind, draft: { date, title: '', done: false } }
+    : { kind, draft: { title: '', start: date, end: window ? date : isoOf(dnum(date) + 6), priority: 'p1', state: 'act', window } }
+}
+
+/** The new-task row, a view of `draft`, which every change replaces through `onDraft`. */
+function TaskCreateRow({ draft, onDraft, triggers, onSave, onCancel }: {
+  draft: TaskDraft
+  onDraft: (draft: TaskDraft) => void
   triggers: Array<RefObject<HTMLElement | null>>
   onSave: (draft: TaskDraft) => boolean | Promise<boolean>
   onCancel: () => void
 }) {
-  const [start, setStart] = useState(initial.start)
-  const [end, setEnd] = useState(initial.end)
-  const [taskWindow, setTaskWindow] = useState<TaskWindow | null>(initial.window ?? null)
-  const [priority, setPriority] = useState(initial.priority)
-  const [state, setState] = useState(initial.state)
-  const [title, setTitle] = useState(initial.title)
+  const { start, end, priority, state, title, window: taskWindow } = draft
+  const patch = (fields: Partial<TaskDraft>) => onDraft({ ...draft, ...fields })
   const row = useRef<HTMLDivElement>(null)
   const m = useMessages()
 
   const pickStart = (iso: string) => {
-    setStart(iso)
-    if (dnum(end) < dnum(iso)) setEnd(iso)
-    if (taskWindow && iso === end && taskWindow.end <= taskWindow.start) {
-      const index = TASK_SLOT_STARTS.indexOf(taskWindow.start)
-      setTaskWindow({ ...taskWindow, end: TASK_SLOT_ENDS[index]! })
-    }
+    const window = taskWindow && iso === end && taskWindow.end <= taskWindow.start
+      ? { ...taskWindow, end: TASK_SLOT_ENDS[TASK_SLOT_STARTS.indexOf(taskWindow.start)]! } : taskWindow
+    patch({ start: iso, end: dnum(end) < dnum(iso) ? iso : end, window })
   }
   const pickEnd = (iso: string) => {
     const next = dnum(iso) < dnum(start) ? start : iso
-    setEnd(next)
-    if (taskWindow && next === start && taskWindow.end <= taskWindow.start) {
-      const index = TASK_SLOT_ENDS.indexOf(taskWindow.end)
-      setTaskWindow({ ...taskWindow, start: TASK_SLOT_STARTS[index]! })
-    }
+    const window = taskWindow && next === start && taskWindow.end <= taskWindow.start
+      ? { ...taskWindow, start: TASK_SLOT_STARTS[TASK_SLOT_ENDS.indexOf(taskWindow.end)]! } : taskWindow
+    patch({ end: next, window })
   }
-  const pickWindowStart = (next: TaskWindow['start']) => setTaskWindow((current) => {
-    if (!current) return current
-    return start === end && current.end <= next
+  const pickWindowStart = (next: TaskWindow['start']) => {
+    if (!taskWindow) return
+    patch({ window: start === end && taskWindow.end <= next
       ? { start: next, end: TASK_SLOT_ENDS[TASK_SLOT_STARTS.indexOf(next)]! }
-      : { ...current, start: next }
-  })
-  const pickWindowEnd = (next: TaskWindow['end']) => setTaskWindow((current) => {
-    if (!current) return current
-    return start === end && next <= current.start
+      : { ...taskWindow, start: next } })
+  }
+  const pickWindowEnd = (next: TaskWindow['end']) => {
+    if (!taskWindow) return
+    patch({ window: start === end && next <= taskWindow.start
       ? { start: TASK_SLOT_STARTS[TASK_SLOT_ENDS.indexOf(next)]!, end: next }
-      : { ...current, end: next }
-  })
+      : { ...taskWindow, end: next } })
+  }
   const save = (nextTitle: string): boolean | Promise<boolean> => {
     return onSave({
       title: nextTitle,
@@ -121,7 +123,7 @@ function TaskCreateRow({ initial, triggers, onSave, onCancel }: {
       <DateButton iso={end} className="din" onPick={pickEnd} />
       <button
         className="din twmode" type="button"
-        onClick={() => setTaskWindow((current) => current ? null : { start: '10:00', end: '12:00' })}
+        onClick={() => patch({ window: taskWindow ? null : { start: '10:00', end: '12:00' } })}
       >{taskWindow ? m.project.plan.windowMode.timed : m.project.plan.windowMode.allDay}</button>
       {taskWindow
         ? (
@@ -140,32 +142,32 @@ function TaskCreateRow({ initial, triggers, onSave, onCancel }: {
         : null}
       <TagButton
         tone={PRIORITY_TONE[priority]}
-        onClick={() => setPriority(NEXT_PRIORITY[priority])}
+        onClick={() => patch({ priority: NEXT_PRIORITY[priority] })}
       >
         {priority.toUpperCase()}
       </TagButton>
       <button
         className="din state-edit" type="button"
-        onClick={() => setState(NEXT_TASK_STATE[state])}
+        onClick={() => patch({ state: NEXT_TASK_STATE[state] })}
       >{stateWord(m)[state]}</button>
       <InlineDraftInput
         className="min" scopeRef={row} triggers={triggers} placeholder={m.project.plan.taskNamePlaceholder}
         onSubmit={save} onCancel={onCancel}
-        value={title} onChange={(event) => setTitle(event.target.value)}
+        value={title} onChange={(event) => patch({ title: event.target.value })}
       />
     </StructuredRow>
   )
 }
 
-function MilestoneCreateRow({ initial, triggers, onSave, onCancel }: {
-  initial: MilestoneDraft
+/** The new-milestone row, a view of `draft`, which every change replaces through `onDraft`. */
+function MilestoneCreateRow({ draft, onDraft, triggers, onSave, onCancel }: {
+  draft: MilestoneDraft
+  onDraft: (draft: MilestoneDraft) => void
   triggers: Array<RefObject<HTMLElement | null>>
   onSave: (draft: MilestoneDraft) => boolean | Promise<boolean>
   onCancel: () => void
 }) {
-  const [date, setDate] = useState(initial.date)
-  const [done, setDone] = useState(initial.done)
-  const [title, setTitle] = useState(initial.title)
+  const { date, done, title } = draft
   const row = useRef<HTMLDivElement>(null)
   const m = useMessages()
 
@@ -175,29 +177,30 @@ function MilestoneCreateRow({ initial, triggers, onSave, onCancel }: {
 
   return (
     <StructuredRow className="ddlrow milestone-create-row" rowRef={row}>
-      <DateButton iso={date} className="din" onPick={setDate} />
+      <DateButton iso={date} className="din" onPick={(next) => onDraft({ ...draft, date: next })} />
       <button
         className="din state-edit" type="button"
-        onClick={() => setDone((current) => !current)}
+        onClick={() => onDraft({ ...draft, done: !done })}
       >{done ? m.project.plan.milestoneState.done : m.project.plan.milestoneState.open}</button>
       <InlineDraftInput
         className="min" scopeRef={row} triggers={triggers} placeholder={m.project.plan.milestoneNamePlaceholder}
         onSubmit={save} onCancel={onCancel}
-        value={title} onChange={(event) => setTitle(event.target.value)}
+        value={title} onChange={(event) => onDraft({ ...draft, title: event.target.value })}
       />
     </StructuredRow>
   )
 }
 
-function PlanNameCell({ value, label, onSave, rest }: {
+function PlanNameCell({ value, label, keep, onSave, rest }: {
   value: string
   label: string
+  keep: NonNullable<InlineFieldProps['keep']>
   onSave: (value: string) => boolean | Promise<boolean>
   rest?: InlineFieldProps['rest']
 }) {
   return (
     <InlineField
-      label={label} value={value} display={<FadeText>{value}</FadeText>} wrapperClassName="plan-name-cell"
+      label={label} value={value} display={<FadeText>{value}</FadeText>} wrapperClassName="plan-name-cell" keep={keep}
       buttonClassName="plan-cell plan-name" inputClassName="plan-name-input"
       normalize={(next) => next.trim()} validate={(next) => next !== ''} onSave={onSave}
       {...(rest === undefined ? {} : { rest })}
@@ -209,11 +212,12 @@ function PlanNameCell({ value, label, onSave, rest }: {
  * A task's name cell: the name is the row's keyboard control for opening the task, so its click
  * reaches the row, and the pencil beside it renames the task in place.
  */
-function TaskNameCell({ task, onSave }: { task: Task; onSave: (patch: TaskPatch) => Promise<boolean> }) {
+function TaskNameCell({ projectId, task, onSave }: { projectId: string; task: Task; onSave: (patch: TaskPatch) => Promise<boolean> }) {
   const m = useMessages()
   return (
     <PlanNameCell
       value={task.title} label={m.project.plan.taskNamePlaceholder} onSave={(title) => onSave({ title })}
+      keep={{ scope: ['project', projectId, 'task', task.id], target: 'name' }}
       rest={(edit) => (
         <>
           <ToolbarButton className="plan-cell plan-name plan-open"><FadeText>{task.title}</FadeText></ToolbarButton>
@@ -289,7 +293,8 @@ export function ProjectTaskPanel({
   )
 }
 
-function TaskRow({ task, flash, selected, reorder, dropClass = '', onSave, onDelete, onOpen }: {
+function TaskRow({ projectId, task, flash, selected, reorder, dropClass = '', onSave, onDelete, onOpen }: {
+  projectId: string
   task: Task
   flash: boolean
   /** Whether this task's detail panel is the one currently open. */
@@ -330,11 +335,11 @@ function TaskRow({ task, flash, selected, reorder, dropClass = '', onSave, onDel
         {task.origin === 'agent'
           ? (
             <span className="task-name-with-origin">
-              <TaskNameCell task={task} onSave={onSave} />
+              <TaskNameCell projectId={projectId} task={task} onSave={onSave} />
               <AgentLabel />
             </span>
           )
-          : <TaskNameCell task={task} onSave={onSave} />}
+          : <TaskNameCell projectId={projectId} task={task} onSave={onSave} />}
         <RowActions>
           <IconButton
             label={m.project.plan.deleteTaskFor(task.title)} size="nested" tone="danger"
@@ -346,7 +351,8 @@ function TaskRow({ task, flash, selected, reorder, dropClass = '', onSave, onDel
   )
 }
 
-function MilestoneRow({ milestone, flash, onHover, onSave, onDelete }: {
+function MilestoneRow({ projectId, milestone, flash, onHover, onSave, onDelete }: {
+  projectId: string
   milestone: Milestone
   flash: boolean
   onHover: (milestoneId: string | null) => void
@@ -375,6 +381,7 @@ function MilestoneRow({ milestone, flash, onHover, onSave, onDelete }: {
       />
       <PlanNameCell
         value={milestone.title} label={m.project.plan.milestoneNamePlaceholder}
+        keep={{ scope: ['project', projectId, 'milestone', milestone.id], target: 'name' }}
         onSave={(title) => onSave({ title })}
       />
       <RowActions>
@@ -392,12 +399,14 @@ function MilestoneRow({ milestone, flash, onHover, onSave, onDelete }: {
  * this component owns task/milestone presentation, creation, and per-field editing behavior.
  */
 export function ProjectPlan({
-  project, tab, today, creating, flashId, selectedTaskId,
+  projectId, project, tab, today, creating, flashId, selectedTaskId,
   listRef, addRef, timelineAddRef,
-  onTab, onDiscardOpenEdits, onStartTask, onStartMilestone, onCancelCreate,
+  onTab, onDiscardOpenEdits, onStartTask, onStartMilestone, onCreating, onCancelCreate,
   onCreateTask, onCreateMilestone, onUpdateTask, onDeleteTask, onReorderTasks, onOpenTask,
   onUpdateMilestone, onDeleteMilestone, onHoverMilestone,
 }: {
+  /** The project the plan is of, whose name edits are kept with its tasks and milestones. */
+  projectId: string
   project: Pick<Project, 'tasks' | 'milestones'>
   tab: PlanTab
   today: string
@@ -412,6 +421,8 @@ export function ProjectPlan({
   onDiscardOpenEdits: () => void
   onStartTask: () => void
   onStartMilestone: (date: string) => void
+  /** Replaces the new row's fields as they are edited. */
+  onCreating: (creating: PlanCreating) => void
   onCancelCreate: () => void
   onCreateTask: (draft: TaskDraft) => Promise<boolean>
   onCreateMilestone: (draft: MilestoneDraft) => Promise<boolean>
@@ -466,14 +477,7 @@ export function ProjectPlan({
                 {creating?.kind === 'task'
                   ? (
                     <TaskCreateRow
-                      initial={{
-                        title: '',
-                        start: creating.date,
-                        end: creating.window ? creating.date : isoOf(dnum(creating.date) + 6),
-                        priority: 'p1',
-                        state: 'act',
-                        window: creating.window,
-                      }}
+                      draft={creating.draft} onDraft={(draft) => onCreating({ kind: 'task', draft })}
                       triggers={[addRef, timelineAddRef]}
                       onCancel={onCancelCreate} onSave={onCreateTask}
                     />
@@ -481,6 +485,7 @@ export function ProjectPlan({
                   : null}
                 {activeTasks.map((task) => (
                   <TaskRow
+                    projectId={projectId}
                     key={task.id} task={task} flash={flashId === task.id} selected={selectedTaskId === task.id}
                     reorder={{ item: taskOrder.itemProps(task.id), handle: taskOrder.handleProps(task.id) }}
                     dropClass={taskOrder.dropClass(task.id)}
@@ -498,6 +503,7 @@ export function ProjectPlan({
                     >
                       {archivedTasks.map((task) => (
                         <TaskRow
+                          projectId={projectId}
                           key={task.id} task={task} flash={flashId === task.id}
                           selected={selectedTaskId === task.id}
                           onSave={(patch) => onUpdateTask(task.id, patch)}
@@ -516,6 +522,7 @@ export function ProjectPlan({
               <StructuredList id="msList" variant="embedded">
                 {activeMilestones.map((milestone) => (
                   <MilestoneRow
+                    projectId={projectId}
                     key={milestone.id} milestone={milestone} flash={flashId === milestone.id}
                     onHover={onHoverMilestone}
                     onSave={(patch) => onUpdateMilestone(milestone.id, patch)}
@@ -525,7 +532,7 @@ export function ProjectPlan({
                 {creating?.kind === 'ms'
                   ? (
                     <MilestoneCreateRow
-                      initial={{ date: creating.date, title: '', done: false }}
+                      draft={creating.draft} onDraft={(draft) => onCreating({ kind: 'ms', draft })}
                       triggers={[addRef, timelineAddRef]}
                       onCancel={onCancelCreate} onSave={onCreateMilestone}
                     />
@@ -540,6 +547,7 @@ export function ProjectPlan({
                     >
                       {archivedMilestones.map((milestone) => (
                         <MilestoneRow
+                          projectId={projectId}
                           key={milestone.id} milestone={milestone} flash={flashId === milestone.id}
                           onHover={onHoverMilestone}
                           onSave={(patch) => onUpdateMilestone(milestone.id, patch)}

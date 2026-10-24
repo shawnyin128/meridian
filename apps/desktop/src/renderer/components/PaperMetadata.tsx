@@ -166,6 +166,7 @@ function PaperFieldEditor({ paper, field, display, save }: {
   return (
     <InlineMetadataField
       label={m.papers.metadata.fields[field]} value={draftOf(paper, field)} display={display || '—'}
+      keep={{ scope: ['paper', paper.id], target: `field:${field}` }}
       type={field === 'submitted' ? 'date' : 'text'}
       inputMode={field === 'year' ? 'numeric' : 'text'}
       onSave={(value) => {

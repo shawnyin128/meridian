@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { Key, ReactElement, ReactNode } from 'react'
-import type { Drafts } from '../hooks/useDrafts.js'
+import type { KeptText } from '../hooks/useDrafts.js'
 import { ActionPopover } from './ActionPopover.js'
 import type { ActionPopoverAlign, ActionPopoverSide } from './ActionPopover.js'
 import { ShortTextEditor } from './ShortTextEditor.js'
@@ -32,7 +32,7 @@ export function FloatingTextEditor({
   side?: ActionPopoverSide
   align?: ActionPopoverAlign
   sideOffset?: number
-  kept?: { drafts: Drafts<string>; target: string } | undefined
+  kept?: KeptText | undefined
 }) {
   const [busy, setBusy] = useState(false)
   const opener = useRef<HTMLElement | null>(null)

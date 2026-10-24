@@ -934,7 +934,7 @@ export function Wiki() {
                   <div className="pk">{m.project.identity.typeLabel}</div><div className="pv">{shownAgg.kindLabel}</div>
                   <div className="pk">{m.project.identity.nameLabel}</div>
                   <InlineMetadataField
-                    label={m.wiki.nameFieldLabel} value={shownAgg.title}
+                    label={m.wiki.nameFieldLabel} value={shownAgg.title} keep={{ scope: ['wiki', shownAgg.id], target: 'title' }}
                     onSave={(title) => {
                       const next = title.trim()
                       if (next === '') { notice.refusal(m.wiki.nameRequired); return false }
@@ -950,7 +950,7 @@ export function Wiki() {
                   </div>
                   <div className="pk">{m.wiki.splitOnLabel}</div>
                   <InlineMetadataField
-                    label={m.wiki.splitOnLabel} value={shownAgg.splitOn ?? ''}
+                    label={m.wiki.splitOnLabel} value={shownAgg.splitOn ?? ''} keep={{ scope: ['wiki', shownAgg.id], target: 'splitOn' }}
                     onSave={(splitOn) => propose(m.wiki.proposals.editMetadata(shownAgg.title), [{
                       op: 'setAggregationMetadata', page: shownAgg.id, title: shownAgg.title,
                       splitOn: splitOn.trim() || null,
@@ -996,7 +996,7 @@ export function Wiki() {
                   <div className="pk">{m.project.identity.typeLabel}</div><div className="pv">{m.wiki.paperKind}</div>
                   <div className="pk">{m.wiki.titleLabel}</div>
                   <InlineMetadataField
-                    label={m.wiki.titleLabel} value={shownPaper.title}
+                    label={m.wiki.titleLabel} value={shownPaper.title} keep={{ scope: ['wiki', shownPaper.id], target: 'title' }}
                     onSave={(title) => {
                       const next = title.trim()
                       if (next === '') { notice.refusal(m.wiki.titleRequired); return false }
@@ -1005,14 +1005,14 @@ export function Wiki() {
                   />
                   <div className="pk">{m.wiki.shortTitleLabel}</div>
                   <InlineMetadataField
-                    label={m.wiki.shortTitleLabel} value={shownPaper.short}
+                    label={m.wiki.shortTitleLabel} value={shownPaper.short} keep={{ scope: ['wiki', shownPaper.id], target: 'short' }}
                     onSave={(shortTitle) => updateWikiPaper(
                       { shortTitle: shortTitle.trim() || null }, m.wiki.shortTitleLabel,
                     )}
                   />
                   <div className="pk">{m.wiki.authorsLabel}</div>
                   <InlineMetadataField
-                    label={m.wiki.authorsLabel} value={shownPaper.authors.join(', ')}
+                    label={m.wiki.authorsLabel} value={shownPaper.authors.join(', ')} keep={{ scope: ['wiki', shownPaper.id], target: 'authors' }}
                     onSave={(authors) => updateWikiPaper({
                       authors: authors.split(/[,，;；\n]/).map((item) => item.trim()).filter(Boolean),
                     }, m.wiki.authorsLabel)}
@@ -1020,6 +1020,7 @@ export function Wiki() {
                   <div className="pk">{m.wiki.yearLabel}</div>
                   <InlineMetadataField
                     label={m.wiki.yearLabel} value={shownPaper.year?.toString() ?? ''} inputMode="numeric"
+                    keep={{ scope: ['wiki', shownPaper.id], target: 'year' }}
                     onSave={(year) => {
                       const text = year.trim()
                       if (text === '') return updateWikiPaper({ year: null }, m.wiki.yearLabel)
@@ -1033,7 +1034,7 @@ export function Wiki() {
                   />
                   <div className="pk">{m.wiki.venueLabel}</div>
                   <InlineMetadataField
-                    label={m.wiki.venueLabel} value={shownPaper.venue}
+                    label={m.wiki.venueLabel} value={shownPaper.venue} keep={{ scope: ['wiki', shownPaper.id], target: 'venue' }}
                     onSave={(venue) => updateWikiPaper({ venue: venue.trim() }, m.wiki.venueLabel)}
                   />
                   {shownPaper.pdf === ''
