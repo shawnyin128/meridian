@@ -77,6 +77,12 @@ async function openWorkspaceDialog(): Promise<HTMLElement> {
 
 const submit = (dialog: HTMLElement) => dialog.querySelector<HTMLButtonElement>('.modal-actions button[type="submit"]')!
 
+/** A busy button's accessible name, its text, whether it shows the running ring, and whether it is disabled and aria-busy. */
+const busyState = (button: HTMLButtonElement) => [
+  button.getAttribute('aria-label'), button.textContent, button.querySelector('.ring.spin') !== null, button.disabled,
+  button.getAttribute('aria-busy'),
+]
+
 let root: Root | null = null
 
 describe('项目工作区对话框', () => {
@@ -93,19 +99,18 @@ describe('项目工作区对话框', () => {
     root = null
   })
 
-  it('添加本地目录还没完成时，按钮显示正在添加、按不动，再按也不会开第二次连接', async () => {
+  it('添加本地目录还没完成时，按钮在原处转圈、按不动，名字是正在添加，再按也不会开第二次连接', async () => {
     const dialog = await openWorkspaceDialog()
     act(() => setValue(dialog.querySelector<HTMLInputElement>('#workspaceLocal input')!, '/work/spec-decoding'))
     await act(async () => { submit(dialog).click() })
     await act(async () => { submit(dialog).click() })
     expect(api.binds.map((bind) => bind.binding)).toEqual([{ kind: 'local', root: '/work/spec-decoding' }])
-    expect([submit(dialog).textContent, submit(dialog).disabled, submit(dialog).getAttribute('aria-busy')])
-      .toEqual(['正在添加…', true, 'true'])
+    expect(busyState(submit(dialog))).toEqual(['正在添加…', '添加', true, true, 'true'])
     await act(async () => { api.binds[0]!.finish() })
     expect(document.querySelector('.workspace-dialog')).toBeNull()
   })
 
-  it('SSH 连接还没完成时，按钮显示正在连接、按不动；切回本地目录也开不了第二次连接', async () => {
+  it('SSH 连接还没完成时，按钮在原处转圈、按不动，名字是正在连接；切回本地目录也开不了第二次连接', async () => {
     const dialog = await openWorkspaceDialog()
     await act(async () => {
       [...dialog.querySelectorAll<HTMLButtonElement>('.workspace-kinds button')].find((b) => b.textContent === 'SSH')!.click()
@@ -116,8 +121,7 @@ describe('项目工作区对话框', () => {
     await act(async () => { submit(dialog).click() })
     await act(async () => { submit(dialog).click() })
     expect(api.binds.map((bind) => bind.binding)).toEqual([{ kind: 'ssh', host: 'gpu-lab', path: '/srv/project' }])
-    expect([submit(dialog).textContent, submit(dialog).disabled, submit(dialog).getAttribute('aria-busy')])
-      .toEqual(['正在连接…', true, 'true'])
+    expect(busyState(submit(dialog))).toEqual(['正在连接…', '连接', true, true, 'true'])
     await act(async () => {
       [...dialog.querySelectorAll<HTMLButtonElement>('.workspace-kinds button')].find((b) => b.textContent === '本地目录')!.click()
     })

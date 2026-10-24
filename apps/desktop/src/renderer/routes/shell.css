@@ -33,6 +33,14 @@
 .btn:enabled:active{background-image:linear-gradient(var(--press),var(--press))}
 .btn.pri:enabled:active{background-image:linear-gradient(var(--press-solid),var(--press-solid))}
 .btn:disabled{opacity:.45;cursor:default;box-shadow:none}
+/*
+ * A busy button shows live progress, so it keeps its full colour while it cannot be clicked. On a
+ * solid fill its running ring takes the button's ink over a faint track of it; the accent arc and the
+ * light --sep track would vanish into the fill and into each other.
+ */
+.btn[aria-busy="true"]{opacity:1}
+.btn.pri .ring{color:var(--on-accent)}
+.btn.pri .ring circle:not(.arc){stroke:currentColor;stroke-opacity:.35}
 /* An applied filter looks pressed; solid accent is kept for primary actions. */
 .filter-menu.on{background-color:var(--selected-strong);border-color:transparent;color:var(--on-selected)}
 .add-action{display:inline-flex;align-items:center;justify-content:center;gap:var(--sp-6);white-space:nowrap}
