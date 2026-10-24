@@ -18,18 +18,26 @@ const ENV = Object.fromEntries(Object.entries(process.env).filter(
   (e): e is [string, string] => e[1] !== undefined && e[0] !== 'MERIDIAN_VAULT_ROOT'))
 
 /**
+ * Chromium switches every automated launch passes. A window off every display or hidden paints in the
+ * primary display's colour profile and tags its screenshots with it; forced sRGB keeps the stored
+ * values equal to the page's own colours, as a window on a display returns them. The main process
+ * cannot set this switch: Chromium reads it before the main script runs.
+ */
+export const LAUNCH_SWITCHES = ['--force-color-profile=srgb']
+
+/**
  * Each test case gets its own Electron instance: `app` is the main-process handle (used to resize the
  * window), `win` is its first window. The whole app is closed after the case finishes.
- * `showWindow` says whether the case needs a real window on screen. It defaults to false: one
- * regression round launches the app more than a hundred times, and windows grabbing focus again and
- * again make the computer hard to use. The cost is that an offscreen window gets no frames from the
- * compositor: rAF drops to once per second, so Playwright waits two seconds per actionability check
- * and one second per element screenshot, and menu accelerators reach only a window on screen. Cases
- * that hit either limit set `test.use({ showWindow: true })`; the rest leave it off.
- * A shown window opens isolated: it never takes system focus and a transparent child window takes the
- * real pointer, so typing or moving the mouse on the machine cannot change what a running case sees.
- * Playwright's input goes through the DevTools protocol and still reaches the page. A case that needs
- * real system focus calls `setFocusable(true)` before `focus()`, and its title says so.
+ * `showWindow` says whether the case needs a shown window. It defaults to false, a hidden window.
+ * Measured on macOS, a hidden window gets frames at the display's rate: a click or an element screenshot
+ * takes under 0.1 s, a transition ends on time, and menu accelerators reach it. Windows has not been
+ * measured, so cases that wait for many frames, take element screenshots or press menu accelerators
+ * still set `test.use({ showWindow: true })`, and long ones `test.slow()`.
+ * Neither window gets in the way of someone using the machine: on macOS the App has no Dock icon and
+ * never becomes the active app. A shown window opens isolated, unfocusable and right of every display,
+ * so it never covers another window, takes system focus or sees the machine's real keyboard and pointer.
+ * Playwright's input goes through the DevTools protocol and still reaches the page, and `appSwitcher`
+ * moves the page's focus the way switching to another app and back does.
  */
 export const test = base.extend<{
   app: ElectronApplication; win: Page; showWindow: boolean; configHome: string
@@ -44,7 +52,7 @@ export const test = base.extend<{
   app: async ({ showWindow, configHome }, use) => {
     const app = await electron.launch({
       // The specs assert Chinese copy, so the app must not follow the host's language.
-      args: [APP_DIR, '--lang=zh-CN'],
+      args: [APP_DIR, '--lang=zh-CN', ...LAUNCH_SWITCHES],
       env: {
         ...ENV,
         MERIDIAN_LIBRARY_ROOT: VAULT,
@@ -80,6 +88,22 @@ export const test = base.extend<{
 })
 
 export { expect } from '@playwright/test'
+
+/**
+ * Prepares a case about the App going to the background and coming back, without system focus:
+ * `away()` takes focus from the page the way switching to another app does, with blur and a focusout
+ * that has no related target, and `back()` returns it the way switching back does. The page's own focus
+ * is taken once here, so from then on Playwright's focus emulation alone decides whether the page has
+ * focus; `away()` turns it off and `back()` on.
+ */
+export async function appSwitcher(app: ElectronApplication, win: Page): Promise<{
+  away(): Promise<void>; back(): Promise<void>
+}> {
+  await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]!.blurWebView())
+  const cdp = await win.context().newCDPSession(win)
+  const emulate = async (enabled: boolean) => { await cdp.send('Emulation.setFocusEmulationEnabled', { enabled }) }
+  return { away: () => emulate(false), back: () => emulate(true) }
+}
 
 /** The API preload exposes to the page; inside `page.evaluate` it calls Core by contract method, bypassing the UI. */
 export type MeridianWindow = Window & {

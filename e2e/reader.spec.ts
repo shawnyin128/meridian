@@ -325,8 +325,7 @@ test('换一篇读,新篇解析期间屏上没有上一篇的页', async ({ win 
 })
 
 // These tests take twenty actions over five papers, and before each one Playwright waits for the
-// element to be stable, comparing its position in two consecutive frames. Offscreen a frame takes one
-// second, so each wait takes two, and twenty of them do not fit the 30-second test budget.
+// element to be stable, comparing its position in two consecutive frames; see `showWindow` in app.ts.
 test.describe(() => {
   test.use({ showWindow: true })
 
@@ -744,7 +743,7 @@ test('右键阅读器里选中的字弹出能复制的系统菜单(macOS 上先�
 /** A note line far longer than the selection toolbar is wide. */
 const LONG = '第二行写得很长，长到工具条那么宽放不下，要在批注框里折成好几行'
 
-// Pixel checks take screenshots of the window, which need a visible one.
+// Pixel checks take screenshots of the window, so they run in a shown one; see `showWindow` in app.ts.
 test.describe('选中文字时的选区', () => {
   test.use({ showWindow: true })
 

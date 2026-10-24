@@ -2,8 +2,8 @@ import { resolve } from 'node:path'
 import type { Locator, Page } from '@playwright/test'
 import { ACTIVE_PROJECT, PROJECT_STATUSES, SHELVED_PROJECT } from '../apps/desktop/src/shared/vocabulary.js'
 import {
-  dshort, expect, expectWholeInRail, fixtureDay, gotoProject, overlaps, railEdges, readDraft, test, textBox,
-  timelinePeriod, uniqueHeights, vaultToday, type MeridianWindow,
+  appSwitcher, dshort, expect, expectWholeInRail, fixtureDay, gotoProject, overlaps, railEdges, readDraft, test,
+  textBox, timelinePeriod, uniqueHeights, vaultToday, type MeridianWindow,
 } from './app.js'
 
 const call = <T>(win: Page, method: string, params: unknown) => win.evaluate(
@@ -301,7 +301,7 @@ test('任务行开头的日期、时段、优先级和状态按需要注意的�
 })
 
 test.describe(() => {
-  // The record opens through a height transition, which an offscreen window, without frames, does not run.
+  // The record opens through a height transition, which runs over frames; see `showWindow` in app.ts.
   test.use({ showWindow: true })
 
   test('放不下的科研记录停在上面一会儿就向下展开整段,不弹 tooltip,移开就收回', async ({ app, win }) => {
@@ -1402,8 +1402,7 @@ test('关联里加一条:页面和链接的就地输入框都整个露在右栏�
 })
 
 test('属性栏焦点格:焦点移走或点到格外都像回车一样写回,Esc 才放弃', async ({ win }) => {
-  // Three edits, each checked in Core; an offscreen window waits two seconds per actionability
-  // check, so the default 30 s is too short.
+  // Three edits, each checked in Core: many actionability checks for a hidden window; see `showWindow` in app.ts.
   test.slow()
   await gotoProject(win)
   const focusNow = () => call<{ focus: string }>(win, 'project.get', { id: 'draft' }).then((p) => p.focus)
@@ -1491,10 +1490,7 @@ test('就地输入框:关联占位与属性栏焦点格都是共用的原位外�
 })
 
 test.describe('属性栏焦点格:切到别的应用', () => {
-  // The window must be visible and hold system focus, or the main process's blur()/focus() cannot move it.
-  test.use({ showWindow: true })
-
-  test('切回来不重新全选:接着打字接在原字后面,不是把原字替掉(需要系统焦点)', async ({ app, win }) => {
+  test('切回来不重新全选:接着打字接在原字后面,不是把原字替掉', async ({ app, win }) => {
     await gotoProject(win)
     const before = await call<{ focus: string }>(win, 'project.get', { id: 'draft' }).then((p) => p.focus)
     const side = win.locator('.screenslot:not([hidden]) .wkside')
@@ -1504,28 +1500,13 @@ test.describe('属性栏焦点格:切到别的应用', () => {
     await edit.click()
     await pin.fill('切走前打的字')
 
-    // Turn off Playwright's focus emulation: while on, the page always believes it has focus, so the
-    // real window losing or regaining focus never reaches it.
-    const cdp = await win.context().newCDPSession(win)
-    await cdp.send('Emulation.setFocusEmulationEnabled', { enabled: false })
-    await app.evaluate(({ BrowserWindow }) => {
-      const target = BrowserWindow.getAllWindows()[0]!
-      target.setFocusable(true)
-      target.show()
-      target.focus()
-    })
-    await expect.poll(() => win.evaluate(() => document.hasFocus()), {
-      message: '窗口没有真的拿到系统焦点,后面的 blur()/focus() 无从谈起',
-    }).toBe(true)
-
     // Switch to another app and back: .metadata-input stayed mounted, so Blink gives focus back to it.
-    await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]!.blur())
-    await expect.poll(() => win.evaluate(() => document.hasFocus())).toBe(false)
-    await app.evaluate(({ BrowserWindow }) => {
-      const target = BrowserWindow.getAllWindows()[0]!
-      target.show()
-      target.focus()
-    })
+    const switcher = await appSwitcher(app, win)
+    await switcher.away()
+    await expect.poll(() => win.evaluate(() => document.hasFocus()), {
+      message: '页面没有失去焦点,切走无从谈起',
+    }).toBe(false)
+    await switcher.back()
     await expect.poll(() => win.evaluate(() => document.hasFocus())).toBe(true)
 
     await pin.pressSequentially('后')

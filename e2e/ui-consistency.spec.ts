@@ -192,7 +192,7 @@ test('项目目录那一行的「更多」悬停就能点到', async ({ win }) =
   await gotoProject(win)
   const field = shown(win, '.workspace-field')
   await field.hover()
-  // pointer-events has no transition, so it reads the settled value even in an off-screen window.
+  // pointer-events has no transition, so it reads the settled value at once.
   await expect(field.locator('.dots')).toHaveCSS('pointer-events', 'auto')
   await field.locator('.dots').click()
   await expect(win.locator('[data-radix-popper-content-wrapper]')).toHaveCount(1)

@@ -36,7 +36,7 @@ async function noStreamOverflow(win: Page): Promise<void> {
 }
 
 test('四档窗口下主内容随窗口变宽,比例不低于下限,不横向溢出', async ({ win, app }) => {
-  // Each size visits five screens, and an offscreen window waits two seconds for every actionability check.
+  // Each size visits five screens, many actionability checks for a hidden window; see `showWindow` in app.ts.
   test.slow()
   for (const [w, h] of SIZES) {
     await app.evaluate(({ BrowserWindow }, size) => BrowserWindow.getAllWindows()[0]!.setSize(size.w, size.h), { w, h })
