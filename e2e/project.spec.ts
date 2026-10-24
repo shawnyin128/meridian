@@ -722,6 +722,92 @@ test('新建一个任务再删掉,任务数前后一致', async ({ win }) => {
   expect((await readDraft(win)).tasks.some((t) => t.title === NEW_TASK_TITLE)).toBe(false)
 })
 
+/** The parts of the draft project a removal on its page can take away, read from Core, bypassing the UI. */
+const removable = (win: Page) => call<{
+  tasks: unknown[]; milestones: unknown[]; relations: unknown[]; papers: string[]
+}>(win, 'project.get', { id: 'draft' })
+
+/** Clicks Undo on the notice the last write showed, and waits for the notice saying it was undone. */
+async function undoFromNotice(win: Page): Promise<void> {
+  const undo = win.locator('#notice .btn')
+  await expect(undo).toHaveText('撤销')
+  await undo.click()
+  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已撤销')
+}
+
+test('删掉一条任务,提示里的撤销把它原样放回计划', async ({ win }) => {
+  await gotoProject(win)
+  const before = (await removable(win)).tasks
+  const row = win.locator('#taskList .ddlrow[data-row="t2"]')
+  await rowAction(row, '.row-delete')
+  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已删除任务')
+  await expect(row).toHaveCount(0)
+
+  await undoFromNotice(win)
+  await expect(row).toHaveCount(1)
+  expect((await removable(win)).tasks).toEqual(before)
+})
+
+test('在计划里删掉一个里程碑,提示里的撤销把它原样放回', async ({ win }) => {
+  await gotoProject(win)
+  await win.locator('.section-heading-actions .segmented-control>button', { hasText: '里程碑' }).click()
+  const before = (await removable(win)).milestones
+  const row = win.locator('#msList .milestone-row[data-row="m2"]')
+  await rowAction(row, '.row-delete')
+  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已删除里程碑')
+  await expect(row).toHaveCount(0)
+
+  await undoFromNotice(win)
+  await expect(row).toHaveCount(1)
+  expect((await removable(win)).milestones).toEqual(before)
+})
+
+test('在时间线上删掉一个里程碑,提示里的撤销把它放回时间线', async ({ win }) => {
+  await gotoProject(win)
+  const before = (await removable(win)).milestones
+  const diamond = await revealMilestone(win, 'draft/m2')
+  await diamond.click()
+  await expect(win.locator('.ctxmenu .rh')).toHaveText('里程碑')
+  await win.locator('.ctxmenu .mi.danger').click()
+  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已删除里程碑')
+  await expect(diamond).toHaveCount(0)
+
+  await undoFromNotice(win)
+  await expect(diamond).toBeVisible()
+  expect((await removable(win)).milestones).toEqual(before)
+})
+
+test('移除一条关联,提示里的撤销把它放回原处', async ({ win }) => {
+  await gotoProject(win)
+  const side = win.locator('.screenslot:not([hidden]) .wkside')
+  const before = (await removable(win)).relations
+  const first = side.locator('.wkrel .tagchip[data-wk]').first()
+  const [page, text] = [(await first.getAttribute('data-wk'))!, await first.innerText()]
+  const chip = side.locator(`.wkrel .tagchip[data-wk="${page}"]`)
+  await rowAction(chip, '.rx')
+  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText(`已移除关联「${text}」`)
+  await expect(chip).toHaveCount(0)
+
+  await undoFromNotice(win)
+  await expect(chip).toHaveCount(1)
+  expect((await removable(win)).relations).toEqual(before)
+})
+
+test('移除一篇关联论文,提示里的撤销把它放回', async ({ win }) => {
+  await gotoProject(win)
+  const side = win.locator('.screenslot:not([hidden]) .wkside')
+  const before = (await removable(win)).papers
+  const paper = (await side.locator('.wkrel [data-paper]').first().getAttribute('data-paper'))!
+  const chip = side.locator(`.wkrel [data-paper="${paper}"]`)
+  await rowAction(chip, '.rx')
+  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText(/^已移除关联「.+」$/)
+  await expect(chip).toHaveCount(0)
+
+  await undoFromNotice(win)
+  await expect(chip).toHaveCount(1)
+  expect((await removable(win)).papers).toEqual(before)
+})
+
 test('科研图展示多个活跃节点,节点以只读 Markdown、分支结果与 Agent 记录呈现', async ({ win }) => {
   await gotoProject(win)
   await win.locator('.section-heading-actions .segmented-control>button', { hasText: '科研图' }).click()

@@ -558,7 +558,8 @@ registerHandler('project.updateTask', (params) => {
 })
 registerHandler('project.deleteTask', (params) => {
   const { projectId, taskId } = ProjectDeleteTaskParamsSchema.parse(params)
-  return store.deleteTask(projectId, taskId)
+  const { result, change } = recordChange(store, () => store.deleteTask(projectId, taskId))
+  return { project: result, change }
 })
 registerHandler('project.reorderTasks', (params) => {
   const { projectId, order } = ProjectReorderTasksParamsSchema.parse(params)
@@ -578,7 +579,8 @@ registerHandler('project.updateMilestone', (params) => {
 })
 registerHandler('project.deleteMilestone', (params) => {
   const { projectId, milestoneId } = ProjectDeleteMilestoneParamsSchema.parse(params)
-  return store.deleteMilestone(projectId, milestoneId)
+  const { result, change } = recordChange(store, () => store.deleteMilestone(projectId, milestoneId))
+  return { project: result, change }
 })
 registerHandler('project.createRelation', (params) => {
   const { projectId, relation } = ProjectCreateRelationParamsSchema.parse(params)
@@ -586,7 +588,8 @@ registerHandler('project.createRelation', (params) => {
 })
 registerHandler('project.deleteRelation', (params) => {
   const { projectId, relationId } = ProjectDeleteRelationParamsSchema.parse(params)
-  return store.deleteRelation(projectId, relationId)
+  const { result, change } = recordChange(store, () => store.deleteRelation(projectId, relationId))
+  return { project: result, change }
 })
 registerHandler('project.updateRelation', (params) => {
   const { projectId, relationId, relation } = ProjectUpdateRelationParamsSchema.parse(params)
@@ -598,7 +601,8 @@ registerHandler('project.addPaper', (params) => {
 })
 registerHandler('project.removePaper', (params) => {
   const { projectId, paperId } = ProjectPaperParamsSchema.parse(params)
-  return store.removePaper(projectId, paperId)
+  const { result, change } = recordChange(store, () => store.removePaper(projectId, paperId))
+  return { project: result, change }
 })
 registerHandler('project.moveRelation', (params) => {
   const { projectId, id, index } = ProjectMoveRelationParamsSchema.parse(params)

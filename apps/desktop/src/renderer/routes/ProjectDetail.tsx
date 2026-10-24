@@ -2,7 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import type { ReactNode } from 'react'
 import type {
   ProjectDetail as Project, ProjectWorkspace, RelationGroup, ResearchGraph as ResearchGraphData, ResearchIdea,
-  ResearchIdeaGraphPlacement, TaskWindow,
+  ProjectRecordedChange, ResearchIdeaGraphPlacement, TaskWindow,
 } from '../../shared/contract.js'
 import { projectControlState } from '../../shared/project-control.js'
 import { researchPathState } from '../../shared/research-path.js'
@@ -506,6 +506,18 @@ export function ProjectDetail({
     void writeProject(op, note)
   }
 
+  /**
+   * A removal the change log records: first discards any open editor, then puts the project after it
+   * into state and shows `note` with an Undo of the change it recorded.
+   */
+  const applyRemoval = (op: Promise<ProjectRecordedChange>, note: ReactNode) => {
+    discardOpenEdits()
+    void write(op.then((removed) => {
+      setProject(removed.project)
+      return removed
+    }), { note, action: undo.change })
+  }
+
   /** Persists a drag-reordering of the task list, shared by the plan's task rows and the Gantt's labels. */
   const reorderTasks = (order: string[]) => { void writeProject(projectApi.reorderTasks(projectId, order)) }
 
@@ -809,7 +821,7 @@ export function ProjectDetail({
           onUpdateMilestone={(milestoneId, patch) => writeProject(
             projectApi.updateMilestone(projectId, milestoneId, patch), m.project.plan.milestoneUpdated,
           )}
-          onDeleteMilestone={(milestoneId) => applyWrite(
+          onDeleteMilestone={(milestoneId) => applyRemoval(
             projectApi.deleteMilestone(projectId, milestoneId), m.project.plan.milestoneDeleted,
           )}
           newActionRef={ganttAdd}
@@ -852,7 +864,7 @@ export function ProjectDetail({
               onUpdateTask={(taskId, patch) => writeProject(
                 projectApi.updateTask(projectId, taskId, patch), m.project.plan.taskUpdated,
               )}
-              onDeleteTask={(taskId) => applyWrite(
+              onDeleteTask={(taskId) => applyRemoval(
                 projectApi.deleteTask(projectId, taskId), m.project.plan.taskDeleted,
               )}
               onReorderTasks={reorderTasks}
@@ -860,7 +872,7 @@ export function ProjectDetail({
               onUpdateMilestone={(milestoneId, patch) => writeProject(
                 projectApi.updateMilestone(projectId, milestoneId, patch), m.project.plan.milestoneUpdated,
               )}
-              onDeleteMilestone={(milestoneId) => applyWrite(
+              onDeleteMilestone={(milestoneId) => applyRemoval(
                 projectApi.deleteMilestone(projectId, milestoneId), m.project.plan.milestoneDeleted,
               )}
             />
@@ -1185,7 +1197,7 @@ export function ProjectDetail({
                       .map((id) => ({ id, title: project.paperTitles[id]! }))}
                     onOpenPage={openWikiPage}
                     onOpenPaper={(paperId) => jumpTo('reader', paperId)}
-                    onRemovePaper={(paperId, title) => applyWrite(
+                    onRemovePaper={(paperId, title) => applyRemoval(
                       projectApi.removePaper(projectId, paperId),
                       <TitleNote message={m.project.links.paperRemoved} title={plainTitle(title)} />,
                     )}
@@ -1264,7 +1276,7 @@ export function ProjectDetail({
                           ),
                       }}
                     onEdit={setRelEditing}
-                    onRemove={(relationId, text) => applyWrite(
+                    onRemove={(relationId, text) => applyRemoval(
                       projectApi.deleteRelation(projectId, relationId),
                       <TitleNote message={m.project.links.removed} title={text} />,
                     )}

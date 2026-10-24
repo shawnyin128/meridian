@@ -188,7 +188,7 @@ export const project = {
   updateTask: (projectId: string, taskId: string, patch: TaskPatch) =>
     call<ProjectDetail>('project.updateTask', { projectId, taskId, patch }),
   deleteTask: (projectId: string, taskId: string) =>
-    call<ProjectDetail>('project.deleteTask', { projectId, taskId }),
+    call<ProjectRecordedChange>('project.deleteTask', { projectId, taskId }),
   reorderTasks: (projectId: string, order: string[]) =>
     call<ProjectDetail>('project.reorderTasks', { projectId, order }),
   setTaskNode: (projectId: string, taskId: string, nodeId: string | null) =>
@@ -198,17 +198,17 @@ export const project = {
   updateMilestone: (projectId: string, milestoneId: string, patch: Partial<MilestoneFields>) =>
     call<ProjectDetail>('project.updateMilestone', { projectId, milestoneId, patch }),
   deleteMilestone: (projectId: string, milestoneId: string) =>
-    call<ProjectDetail>('project.deleteMilestone', { projectId, milestoneId }),
+    call<ProjectRecordedChange>('project.deleteMilestone', { projectId, milestoneId }),
   createRelation: (projectId: string, relation: RelationFields) =>
     call<ProjectDetail>('project.createRelation', { projectId, relation }),
   deleteRelation: (projectId: string, relationId: string) =>
-    call<ProjectDetail>('project.deleteRelation', { projectId, relationId }),
+    call<ProjectRecordedChange>('project.deleteRelation', { projectId, relationId }),
   updateRelation: (projectId: string, relationId: string, relation: Omit<RelationFields, 'group'>) =>
     call<ProjectDetail>('project.updateRelation', { projectId, relationId, relation }),
   addPaper: (projectId: string, paperId: string) =>
     call<ProjectDetail>('project.addPaper', { projectId, paperId }),
   removePaper: (projectId: string, paperId: string) =>
-    call<ProjectDetail>('project.removePaper', { projectId, paperId }),
+    call<ProjectRecordedChange>('project.removePaper', { projectId, paperId }),
   moveRelation: (projectId: string, id: string, index: number) =>
     call<ProjectDetail>('project.moveRelation', { projectId, id, index }),
   reorder: (order: string[]) => call<void>('project.reorder', { order }),

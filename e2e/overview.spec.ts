@@ -739,3 +739,22 @@ test('总览里程碑弹层:点「删除」收起弹层,里程碑从 core 里删
   expect(after).not.toContainEqual(m2)
   expect(after).toHaveLength(before.length - 1)
 })
+
+test('总览里删掉的里程碑,提示里的撤销把它放回 core 和时间线', async ({ win }) => {
+  await gotoOverview(win)
+  const menu = win.locator('.ctxmenu')
+  const diamond = await revealMilestone(win, 'repro/m2')
+  const before = await milestonesOf(win, 'repro')
+
+  await diamond.click()
+  await menu.locator('.mi.danger').click()
+  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已删除里程碑')
+  await expect(diamond).toHaveCount(0)
+
+  const undo = win.locator('#notice .btn')
+  await expect(undo).toHaveText('撤销')
+  await undo.click()
+  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已撤销')
+  await expect(diamond).toBeVisible()
+  expect(await milestonesOf(win, 'repro')).toEqual(before)
+})
