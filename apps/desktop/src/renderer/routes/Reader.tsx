@@ -2,18 +2,22 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { PDFDocumentProxy, PDFPageProxy, PageViewport, RenderTask, TextLayer } from 'pdfjs-dist'
 import workerSrc from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
 import type {
-  PaperHighlightRect, PaperReading, PaperRow, ReadingMutation,
+  PaperHighlight, PaperHighlightRect, PaperReading, PaperRow, ReadingMutation,
 } from '../../shared/contract.js'
 import { papers } from '../ipc.js'
+import { sendsMessage } from '../lib/chat.js'
 import { errorLabel } from '../lib/failure-label.js'
 import { useMessages } from '../messages/useMessages.js'
 import {
   useCrumbTail, useJump, useNotice, useVaultRevision, type CrumbSeg, type ScreenKey, type JumpAnchor,
 } from '../shell/AppShell.js'
+import { ActionPopover } from '../components/ActionPopover.js'
+import type { AnchorBox } from '../components/floating-layer.js'
+import { FormTextarea } from '../components/FormControls.js'
 import { IconButton } from '../components/IconButton.js'
-import { IconMinus, IconPlus } from '../components/icons.js'
+import { IconAskAi, IconMinus, IconPlus } from '../components/icons.js'
 import { LoadingPlaceholder } from '../components/LoadingPlaceholder.js'
-import { PickerPopover, type AnchorBox } from '../components/PickerPopover.js'
+import { Swatches } from '../components/Swatches.js'
 import { Toolbar, ToolbarButton } from '../components/Toolbar.js'
 import { Tooltip } from '../components/Tooltip.js'
 import {
@@ -37,6 +41,10 @@ const PROGRESS_MS = 800
 const DOC_CACHE = 2
 const SVG_NS = 'http://www.w3.org/2000/svg'
 const UNSCALED: SheetTransform = { x: 0, y: 0, scale: 1 }
+/** Each stored highlight colour and the token that paints it, in the selection toolbar's order. */
+const HIGHLIGHT_COLOURS: readonly (readonly [PaperHighlight['color'], string])[] = [
+  ['yellow', 'var(--hl-yellow)'], ['green', 'var(--hl-green)'], ['blue', 'var(--hl-blue)'], ['pink', 'var(--hl-pink)'],
+]
 
 /**
  * One PDF page on the sheet: its box, the scale its canvas holds or is being drawn at, the canvas
@@ -56,6 +64,8 @@ type PendingHighlight = {
   rects: PaperHighlightRect[]
   /** The selected text's box on screen, measured from its page each time it is read. */
   box: AnchorBox
+  /** The highlight the selection toolbar made of it, null until a colour or a note makes one. */
+  made: PaperHighlight | null
 }
 
 const emptyReading = (paperId: string): PaperReading => ({ paperId, highlights: [], notes: [], remark: '' })
@@ -103,13 +113,18 @@ function paintHighlights(box: ParentNode, reading: PaperReading | null): void {
 
 /**
  * Redraws the document's selection on the pages of `sheet` it covers, as a highlight of it would be
- * drawn, in each page's `.paper-selection` layer.
+ * drawn, in each page's `.paper-selection` layer; while the document's selection covers no page,
+ * `held` is drawn in its place.
  */
-function paintSelection(sheet: HTMLElement): void {
+function paintSelection(sheet: HTMLElement, held: PendingHighlight | null): void {
   sheet.querySelectorAll<HTMLElement>('.paper-selection').forEach((layer) => layer.replaceChildren())
   const selection = document.getSelection()
-  if (selection === null || selection.isCollapsed || selection.rangeCount === 0) return
-  for (const [pagebox, lines] of selectedLinesByPage(selection.getRangeAt(0))) {
+  const live = selection === null || selection.isCollapsed || selection.rangeCount === 0
+    ? new Map<HTMLElement, PaperHighlightRect[]>()
+    : selectedLinesByPage(selection.getRangeAt(0))
+  const heldPage = held === null ? null : sheet.querySelector<HTMLElement>(`.pdfpagebox[data-page="${held.page}"]`)
+  const drawn = live.size > 0 || held === null || heldPage === null ? live : new Map([[heldPage, held.rects]])
+  for (const [pagebox, lines] of drawn) {
     pagebox.querySelector('.paper-selection')!.append(linesMark(lines, 'paper-selected'))
   }
 }
@@ -469,21 +484,25 @@ export function Reader() {
 
   // Chromium paints a selection line by line over the text layer's spans, and on tightly set text one
   // line's paint overlaps the next, which shows darker there; the text layer paints none, and the
-  // selection is drawn as a highlight is, at most once a frame while it changes.
+  // selection is drawn as a highlight is, at most once a frame while it changes. Focus in the
+  // toolbar's note box takes the document's selection, so the toolbar's stays drawn until a
+  // highlight is made of it.
+  const heldSelection = pending !== null && pending.made === null ? pending : null
   useEffect(() => {
     const box = sheet.current
     if (box === null) return
     let frame = 0
     const repaint = () => {
       cancelAnimationFrame(frame)
-      frame = requestAnimationFrame(() => paintSelection(box))
+      frame = requestAnimationFrame(() => paintSelection(box, heldSelection))
     }
+    repaint()
     document.addEventListener('selectionchange', repaint)
     return () => {
       document.removeEventListener('selectionchange', repaint)
       cancelAnimationFrame(frame)
     }
-  }, [])
+  }, [heldSelection])
 
   // Highlights are independent overlays; when you change notes or add new highlights, you only change these small rectangles and do not redraw the PDF canvas / text layer.
   useEffect(() => {
@@ -682,6 +701,7 @@ export function Reader() {
     setPending(quote === '' || rects.length === 0 ? null : {
       page: Number(pagebox.dataset.page), quote, rects,
       box: { getBoundingClientRect: () => selectionBox(pagebox.getBoundingClientRect(), rects) },
+      made: null,
     })
   }, [])
 
@@ -719,22 +739,50 @@ export function Reader() {
     return ok
   }
 
-  const addHighlight = async (withNote: boolean) => {
+  /**
+   * Makes `made` the highlight the toolbar shows for `selection`, unless the toolbar has closed or
+   * moved to another selection meanwhile.
+   */
+  const keepMade = (selection: PendingHighlight, made: PaperHighlight) =>
+    setPending((held) => (held === selection ? { ...selection, made } : held))
+
+  /** Writes the toolbar's `selection` as a new highlight in `color`; returns it, or null when Core refused. */
+  const highlightSelection = async (selection: PendingHighlight, color: PaperHighlight['color']) => {
+    const previous = new Set(reading?.highlights.map((highlight) => highlight.id) ?? [])
+    // The document's selection gives way to the highlight made of it.
+    window.getSelection()?.removeAllRanges()
+    const next = await mutateReading({
+      kind: 'highlight.add', page: selection.page, quote: selection.quote, rects: selection.rects, color,
+    })
+    return next === null ? null : next.highlights.find((highlight) => !previous.has(highlight.id))!
+  }
+
+  /** Highlights the toolbar's selection in `color`, or recolours the highlight it made; the toolbar stays open. */
+  const pickColour = async (color: PaperHighlight['color']) => {
     if (pending === null) return
     const selection = pending
-    const previous = new Set(reading?.highlights.map((highlight) => highlight.id) ?? [])
-    // First remove the selection, so its drawing does not keep covering the persistent highlight while Core is writing.
-    window.getSelection()?.removeAllRanges()
-    setPending(null)
-    const next = await mutateReading({
-      kind: 'highlight.add', page: selection.page, quote: selection.quote, rects: selection.rects, color: 'yellow',
-    })
-    if (next === null) return
-    if (withNote) {
-      const created = next.highlights.find((highlight) => !previous.has(highlight.id))
-      setFocusHighlightId(created?.id ?? null)
-      setSideTab('highlights')
+    const { made } = selection
+    if (made === null) {
+      const created = await highlightSelection(selection, color)
+      if (created !== null) keepMade(selection, created)
+      return
     }
+    const next = await mutateReading({ kind: 'highlight.update', id: made.id, note: made.note, color })
+    if (next !== null) keepMade(selection, next.highlights.find((highlight) => highlight.id === made.id)!)
+  }
+
+  /**
+   * Saves `note` onto the highlight the toolbar made, or onto a new yellow highlight of its selection
+   * when no colour was picked, then closes the toolbar. An empty note closes it once a highlight is
+   * made and does nothing before.
+   */
+  const saveNote = async (note: string) => {
+    if (pending === null || (note === '' && pending.made === null)) return
+    const selection = pending
+    const made = selection.made ?? await highlightSelection(selection, 'yellow')
+    if (made === null) return
+    if (selection.made === null) keepMade(selection, made)
+    if (note === '' || await mutateReading({ kind: 'highlight.update', id: made.id, note }) !== null) setPending(null)
   }
 
   const askAi = () => {
@@ -770,20 +818,40 @@ export function Reader() {
             {loading ? <LoadingPlaceholder shape="sheet" /> : null}
           </div>
 
-          <PickerPopover
+          <ActionPopover
             open={pending !== null} anchorBox={selectionAnchor}
             onOpenChange={(open) => { if (!open) setPending(null) }}
             contentClassName="ctxmenu selection-tools" side="bottom" align="center" sideOffset={10}
-            content={pending === null ? null : (
-              <Toolbar>
-                <div className="selection-tools-row">
-                  <ToolbarButton className="mi" onClick={() => { void addHighlight(false) }}>{m.reader.selection.highlight}</ToolbarButton>
-                  <ToolbarButton className="mi" onClick={() => { void addHighlight(true) }}>{m.reader.selection.note}</ToolbarButton>
-                  <ToolbarButton className="mi" onClick={askAi}>{m.reader.selection.askAi}</ToolbarButton>
-                </div>
-              </Toolbar>
+            contentProps={{
+              // Opening leaves focus where it is, so the selection can still be copied.
+              onOpenAutoFocus: (event) => event.preventDefault(),
+            }}
+          >
+            {pending === null ? null : (
+              <>
+                <Toolbar>
+                  <div className="selection-tools-row">
+                    <IconButton label={m.reader.selection.askAi} size="nested" onClick={askAi}><IconAskAi /></IconButton>
+                    <Swatches
+                      label={m.reader.selection.highlight} value={pending.made?.color ?? ''}
+                      swatches={HIGHLIGHT_COLOURS.map(([colour, token]) => ({
+                        value: colour, colour: token, label: m.reader.selection.colours[colour],
+                      }))}
+                      onPick={(colour) => { void pickColour(colour) }}
+                    />
+                  </div>
+                </Toolbar>
+                <FormTextarea
+                  aria-label={m.reader.selection.note} rows={1}
+                  onKeyDown={(event) => {
+                    if (!sendsMessage(event.nativeEvent)) return
+                    event.preventDefault()
+                    void saveNote(event.currentTarget.value.trim())
+                  }}
+                />
+              </>
             )}
-          />
+          </ActionPopover>
 
           <ReaderSidePanel
             tab={sideTab} onTab={(tab) => { setSideTab(tab); setFocusHighlightId(null) }}

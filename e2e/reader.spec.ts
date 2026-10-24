@@ -721,9 +721,36 @@ test.describe('选中文字时的选区', () => {
       await app.evaluate(({ clipboard }, text) => clipboard.writeText(text), kept)
     }
 
-    await win.locator('.selection-tools .mi', { hasText: '高亮' }).click()
+    await win.locator('.selection-tools [aria-label="黄色"]').click()
     await expect(shown(win, '.pdfpagebox .paper-highlight path')).toHaveCount(1)
     expect(await shown(win, '.pdfpagebox .paper-highlight path').getAttribute('d')).toBe(drawn)
     await expect(shown(win, '.pdfpagebox .paper-selection svg')).toHaveCount(0)
+    await expect(win.locator('.selection-tools')).toBeVisible()
+  })
+
+  test('在工具条的批注框里写:选区照旧画着,Shift+Enter 换行,Enter 划成带这条批注的黄色高亮并收起,侧栏里看得到', async ({ win }) => {
+    await openTight(win)
+    await dragAcross(win, (await textLines(win)).slice(0, 2))
+    const drawn = await shown(win, '.pdfpagebox .paper-selection path').getAttribute('d')
+
+    // Focus in the box takes the document's selection; the selected lines stay drawn all the same. The
+    // drawing follows the selection a frame later, so it is read once frames have passed.
+    const box = win.locator('.selection-tools textarea[aria-label="批注"]')
+    await box.click()
+    await expect.poll(() => win.evaluate(() => document.getSelection()!.isCollapsed)).toBe(true)
+    await box.pressSequentially('第一行')
+    await box.press('Shift+Enter')
+    await box.pressSequentially('第二行')
+    await expect(box).toHaveValue('第一行\n第二行')
+    await win.evaluate(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done))))
+    expect(await shown(win, '.pdfpagebox .paper-selection path').getAttribute('d', { timeout: 1000 })).toBe(drawn)
+    await box.press('Enter')
+
+    await expect(win.locator('.selection-tools')).toHaveCount(0)
+    await expect(shown(win, '.pdfpagebox .paper-highlight.yellow .paper-highlight-note')).toHaveCount(1)
+    expect(await shown(win, '.pdfpagebox .paper-highlight path').first().getAttribute('d')).toBe(drawn)
+    await expect(shown(win, '.pdfpagebox .paper-selection svg')).toHaveCount(0)
+    await shown(win, '.reader-rail [aria-label="高亮与批注"]').click()
+    await expect(shown(win, '.highlight-card.yellow textarea')).toHaveValue('第一行\n第二行')
   })
 })

@@ -64,10 +64,13 @@
 .paper-highlight path{fill:color-mix(in srgb,var(--mark) 30%,transparent)}
 .paper-selected path{fill:var(--hl-sel)}
 .paper-highlight .paper-highlight-note{fill:none;stroke:var(--hl-note);stroke-width:2.5px;vector-effect:non-scaling-stroke}
-/* The selection toolbar: the shared menu surface and items, laid out in one row. */
-.ctxmenu.selection-tools{display:flex;min-width:0}
-.selection-tools-row{display:flex}
-.selection-tools .mi{width:auto;white-space:nowrap}
+/*
+ * The selection toolbar, on the shared menu surface: the AI mark and the highlight colours in one row,
+ * the note box under them, which grows with its lines.
+ */
+.ctxmenu.selection-tools{display:flex;flex-direction:column;gap:var(--sp-8);min-width:0}
+.selection-tools-row{display:flex;align-items:center;gap:var(--sp-10)}
+.selection-tools .form-textarea{resize:none;field-sizing:content;max-height:calc(6lh + 2 * var(--sp-8) + 2px)}
 
 .reading-notes{width:320px;min-width:320px;box-sizing:border-box;border-left:1px solid var(--sep);background:var(--content);display:flex;flex-direction:column;overflow:hidden}
 /* The heading bar of every reader rail panel */

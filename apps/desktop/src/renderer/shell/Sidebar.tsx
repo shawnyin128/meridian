@@ -6,7 +6,7 @@ import { DotsMenu } from '../components/FieldPickers.js'
 import { RowActions } from '../components/StructuredList.js'
 import { Grip, type GripProps } from '../components/Grip.js'
 import { IconButton } from '../components/IconButton.js'
-import { Icon, IconNorthStar, IconPlus } from '../components/icons.js'
+import { CHAT_BUBBLE_PATH, Icon, IconNorthStar, IconPlus } from '../components/icons.js'
 import { NavRow } from '../components/NavRow.js'
 import { CountBadge } from '../components/Tag.js'
 import { Toolbar } from '../components/Toolbar.js'
@@ -69,7 +69,7 @@ function ChatRow({ session, on, onOpen, onArchive }: {
       label={(
         <>
           <span className="ic">
-            <Icon><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></Icon>
+            <Icon><path d={CHAT_BUBBLE_PATH} /></Icon>
           </span>
           <FadeText className="ct-t" label={plainTitle(session.title)}><PaperText text={session.title} /></FadeText>
         </>

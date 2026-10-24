@@ -2,8 +2,9 @@
 import { act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { PaperReading } from '../../shared/contract.js'
+import type { PaperReading, ReadingMutation } from '../../shared/contract.js'
 import { MessagesProvider } from '../messages/useMessages.js'
+import { LANGUAGE_STORAGE_KEY, setLanguagePreference } from '../shell/language.js'
 
 declare global {
   var IS_REACT_ACT_ENVIRONMENT: boolean
@@ -14,6 +15,24 @@ const shell = vi.hoisted(() => ({
   jump: { screen: 'reader', target: 'paper-1', from: 'papers', seq: 1 },
   returnTo: vi.fn(),
   reading: { paperId: 'paper-1', highlights: [], notes: [], remark: '' } as PaperReading,
+  writes: [] as ReadingMutation[],
+  /** The reading state after `mutation`, as Core applies the highlight commands. */
+  written(held: PaperReading, mutation: ReadingMutation): PaperReading {
+    if (mutation.kind === 'highlight.add') {
+      const { page, quote, rects, color } = mutation
+      const highlight = { id: `highlight-${held.highlights.length + 1}`, page, quote, rects, color, note: '', created: '2026-10-24', updated: '2026-10-24' }
+      return { ...held, highlights: [...held.highlights, highlight] }
+    }
+    if (mutation.kind === 'highlight.update') {
+      return {
+        ...held,
+        highlights: held.highlights.map((item) => (item.id === mutation.id
+          ? { ...item, note: mutation.note, ...(mutation.color === undefined ? {} : { color: mutation.color }) }
+          : item)),
+      }
+    }
+    throw new Error(`no fake for ${mutation.kind}`)
+  },
 }))
 
 vi.mock('../ipc.js', () => ({
@@ -22,6 +41,11 @@ vi.mock('../ipc.js', () => ({
     reading: () => Promise.resolve(structuredClone(shell.reading)),
     // The PDF never arrives: these cases are about the reading state beside it.
     source: () => new Promise(() => {}),
+    mutateReading: (_id: string, mutation: ReadingMutation) => {
+      shell.writes.push(mutation)
+      shell.reading = shell.written(shell.reading, mutation)
+      return Promise.resolve(structuredClone(shell.reading))
+    },
   },
 }))
 
@@ -36,12 +60,19 @@ vi.mock('pdfjs-dist', () => ({ GlobalWorkerOptions: {}, getDocument: vi.fn() }))
 vi.mock('pdfjs-dist/build/pdf.worker.min.mjs?url', () => ({ default: '' }))
 
 vi.mock('../components/chat/PaperChat.js', () => ({
-  PaperChat: ({ onBack }: { onBack: () => void }) => <button type="button" className="back" onClick={onBack} />,
+  PaperChat: ({ onBack, prompt }: { onBack: () => void; prompt: { quote: string } | null }) => (
+    <button type="button" className="back" data-asked={prompt?.quote ?? ''} onClick={onBack} />
+  ),
 }))
 
 vi.mock('../components/reader/ReaderSidePanel.js', () => ({
   ReaderSidePanel: ({ reading }: { reading: PaperReading | null }) => (
-    <ul className="notes">{reading?.notes.map((note) => <li key={note.id}>{note.text}</li>)}</ul>
+    <>
+      <ul className="notes">{reading?.notes.map((note) => <li key={note.id}>{note.text}</li>)}</ul>
+      <ul className="highlights">
+        {reading?.highlights.map((highlight) => <li key={highlight.id} className={highlight.color}>{highlight.note}</li>)}
+      </ul>
+    </>
   ),
 }))
 
@@ -64,6 +95,7 @@ describe('Reader', () => {
     vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} })
     shell.revision = 0
     shell.reading = { paperId: 'paper-1', highlights: [], notes: [note('note-1', '留着的')], remark: '' }
+    shell.writes = []
     host = document.createElement('div')
     document.body.appendChild(host)
     root = createRoot(host)
@@ -73,6 +105,7 @@ describe('Reader', () => {
     act(() => root.unmount())
     host.remove()
     vi.unstubAllGlobals()
+    localStorage.removeItem(LANGUAGE_STORAGE_KEY)
   })
 
   it('缩放到上限或下限时那一侧的按钮变淡，点百分比回到 100%', async () => {
@@ -130,8 +163,8 @@ describe('Reader', () => {
     /** Puts one page with a selection layer and a text layer on the sheet, selects its words and releases the mouse. */
     const select = async () => {
       const sheet = host.querySelector('.pdfsheet')!
-      sheet.innerHTML = '<div class="pdfpagebox" data-page="1"><div class="paper-selection"></div>'
-        + '<div class="textLayer"><span>Speculative decoding</span></div></div>'
+      sheet.innerHTML = '<div class="pdfpagebox" data-page="1" data-aspect="0.75"><div class="paper-highlights"></div>'
+        + '<div class="paper-selection"></div><div class="textLayer"><span>Speculative decoding</span></div></div>'
       const range = document.createRange()
       range.selectNodeContents(sheet.querySelector('.textLayer span')!)
       window.getSelection()!.removeAllRanges()
@@ -140,6 +173,27 @@ describe('Reader', () => {
       await act(async () => { await new Promise((done) => setTimeout(done, 20)) })
     }
     const tools = () => document.querySelector<HTMLElement>('.selection-tools')
+    const control = (label: string) => tools()!.querySelector<HTMLElement>(`[aria-label="${label}"]`)!
+    const noteBox = () => tools()!.querySelector<HTMLTextAreaElement>('textarea')!
+    const click = (element: HTMLElement) => act(async () => { element.click() })
+    /** The colour circles that show as picked. */
+    const picked = () => [...tools()!.querySelectorAll('[aria-checked="true"]')].map((circle) => circle.getAttribute('aria-label'))
+    const highlights = () => shell.reading.highlights.map(({ color, note }) => ({ color, note }))
+    const ADDED = { kind: 'highlight.add', page: 1, quote: 'Speculative decoding', rects: expect.any(Array) }
+    /** Writes `text` into the note box as typing does. */
+    const write = (text: string) => act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')!.set!.call(noteBox(), text)
+      noteBox().dispatchEvent(new Event('input', { bubbles: true }))
+    })
+    /** Presses `key` in the note box; returns whether the press kept its default action. */
+    const press = async (key: string, init: KeyboardEventInit = {}) => {
+      let kept = true
+      await act(async () => {
+        kept = noteBox().dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true, ...init }))
+      })
+      return kept
+    }
+    const frame = () => act(async () => { await new Promise((done) => requestAnimationFrame(() => done(undefined))) })
 
     it('用共享的浮层面,贴着选中的文字放', async () => {
       await render()
@@ -201,6 +255,127 @@ describe('Reader', () => {
       window.getSelection()!.removeAllRanges()
       await changed()
       expect(sheet.querySelectorAll('.paper-selection svg')).toHaveLength(0)
+    })
+
+    it('两行,一个字也不写:上面是问 AI 的标记和四个高亮颜色圈,下面是批注框;每个控件都有中英文的名字', async () => {
+      await render()
+      await select()
+      const names = () => [...tools()!.querySelectorAll('button, textarea')].map((control) => control.getAttribute('aria-label'))
+      expect(tools()!.textContent).toBe('')
+      expect(noteBox().placeholder).toBe('')
+      expect(names()).toEqual(['Ask AI', 'Yellow', 'Green', 'Blue', 'Pink', 'Annotation'])
+      await act(async () => { setLanguagePreference('zh') })
+      expect(names()).toEqual(['问 AI', '黄色', '绿色', '蓝色', '粉色', '批注'])
+    })
+
+    it('点一个颜色就按那个颜色划成高亮,工具条还开着,点中的圈显示为选中', async () => {
+      await render()
+      await select()
+      expect(picked()).toEqual([])
+      await click(control('Green'))
+      expect(shell.writes).toEqual([{ ...ADDED, color: 'green' }])
+      expect(tools()).not.toBeNull()
+      expect(picked()).toEqual(['Green'])
+    })
+
+    it('再点另一个颜色给这段高亮换色,不另划一段', async () => {
+      await render()
+      await select()
+      await click(control('Green'))
+      await click(control('Blue'))
+      expect(shell.writes.slice(1)).toEqual([{ kind: 'highlight.update', id: 'highlight-1', note: '', color: 'blue' }])
+      expect(highlights()).toEqual([{ color: 'blue', note: '' }])
+      expect(picked()).toEqual(['Blue'])
+      expect(tools()).not.toBeNull()
+    })
+
+    it('Enter 把批注记到选了颜色的那段高亮上,工具条收起,侧栏里看得到', async () => {
+      await render()
+      await select()
+      await click(control('Pink'))
+      await write('  要点  ')
+      expect(await press('Enter')).toBe(false)
+      expect(shell.writes.slice(1)).toEqual([{ kind: 'highlight.update', id: 'highlight-1', note: '要点' }])
+      expect(highlights()).toEqual([{ color: 'pink', note: '要点' }])
+      expect(tools()).toBeNull()
+      expect(host.querySelector('.highlights li.pink')!.textContent).toBe('要点')
+    })
+
+    it('没选颜色时 Enter 划一段带着这条批注的黄色高亮,工具条收起', async () => {
+      await render()
+      await select()
+      await write('第一行\n第二行')
+      await press('Enter')
+      expect(shell.writes).toEqual([
+        { ...ADDED, color: 'yellow' }, { kind: 'highlight.update', id: 'highlight-1', note: '第一行\n第二行' },
+      ])
+      expect(highlights()).toEqual([{ color: 'yellow', note: '第一行\n第二行' }])
+      expect(tools()).toBeNull()
+    })
+
+    it('批注框空着按 Enter:还没划高亮就什么也不做,划了就收起', async () => {
+      await render()
+      await select()
+      await press('Enter')
+      expect([shell.writes, tools() === null]).toEqual([[], false])
+      await click(control('Blue'))
+      await press('Enter')
+      expect(shell.writes.map((write) => write.kind)).toEqual(['highlight.add'])
+      expect(tools()).toBeNull()
+    })
+
+    it('Shift+Enter 在批注里换行,输入法选字的 Enter 归输入法:都不保存也不收起', async () => {
+      await render()
+      await select()
+      await write('第一行')
+      expect(await press('Enter', { shiftKey: true })).toBe(true)
+      expect(await press('Enter', { isComposing: true })).toBe(true)
+      expect(shell.writes).toEqual([])
+      expect(tools()).not.toBeNull()
+    })
+
+    it('按 Esc 或点工具条外面收起,已经划的高亮留着', async () => {
+      await render()
+      await select()
+      await click(control('Yellow'))
+      await write('还没写完')
+      await press('Escape')
+      expect(tools()).toBeNull()
+      await select()
+      await click(control('Green'))
+      // Radix dismisses on the click that follows a press outside.
+      await act(async () => {
+        for (const type of ['pointerdown', 'click']) document.body.dispatchEvent(new MouseEvent(type, { bubbles: true }))
+      })
+      expect(tools()).toBeNull()
+      expect(shell.writes.map((write) => write.kind)).toEqual(['highlight.add', 'highlight.add'])
+      expect(highlights()).toEqual([{ color: 'yellow', note: '' }, { color: 'green', note: '' }])
+    })
+
+    it('点问 AI 的标记,和原来的「问 AI」一样把选中的话交给论文对话并收起', async () => {
+      await render()
+      await select()
+      await click(control('Ask AI'))
+      expect(host.querySelector('.back')!.getAttribute('data-asked')).toBe('Speculative decoding')
+      expect(tools()).toBeNull()
+      expect(shell.writes).toEqual([])
+    })
+
+    it('焦点进了批注框、文档的选区没了,选中的那段照旧画在页上;划成高亮后就不再画', async () => {
+      await render()
+      await select()
+      const drawn = () => host.querySelectorAll('.paper-selection svg').length
+      await act(async () => {
+        noteBox().focus()
+        // A focused text field takes the document's selection, as Chromium does when the box is clicked.
+        window.getSelection()!.removeAllRanges()
+        document.dispatchEvent(new Event('selectionchange'))
+      })
+      await frame()
+      expect(drawn()).toBe(1)
+      await click(control('Yellow'))
+      await frame()
+      expect(drawn()).toBe(0)
     })
 
     it('缩放页面时收起', async () => {
