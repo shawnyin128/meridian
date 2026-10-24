@@ -4,8 +4,11 @@
  * side by side.
  */
 
-/* Message stream shared by the feed and chat: one item per row in a centered, fixed-width column */
-.msgs{flex:1;overflow:auto;padding:var(--sp-24) 0;display:flex;flex-direction:column;gap:var(--sp-20)}
+/*
+ * Message stream shared by the feed and chat: one item per row in a centered, fixed-width column. It
+ * does not scroll or pad itself: on a page the page body does both, and the paper chat's stream does.
+ */
+.msgs{display:flex;flex-direction:column;gap:var(--sp-20)}
 .mwrap{width:min(var(--chatw),92%);margin:0 auto}
 
 /*

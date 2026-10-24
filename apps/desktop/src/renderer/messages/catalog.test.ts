@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { createFormat } from '../lib/format.js'
 import { en } from './en/index.js'
 import { zh } from './zh/index.js'
 
@@ -220,6 +221,31 @@ describe('标签后的数', () => {
       zh.inbox.headWatch('主题 · speculative decoding', 3), zh.project.conclusions.tasks(2), zh.project.conclusions.experiments(2),
     ]).toEqual(['主题 · speculative decoding · 3', '任务 · 2', '实验记录 · 2'])
   })
+})
+
+describe('引用数', () => {
+  for (const [language, catalog] of [['zh', zh], ['en', en]] as const) {
+    it(`${language}:作者候选、建议的作者和论文卡片都按同一个数字格式写`, () => {
+      const shown = createFormat(language).number(12_345)
+      expect(shown).toBe('12,345')
+      expect([
+        catalog.watches.candidateInfo(46, 12_345, 19), catalog.watches.suggestedAuthorInfo(2, 19, 12_345),
+        catalog.papers.card.citations(12_345),
+      ].map((text) => text.includes(shown))).toEqual([true, true, true])
+    })
+  }
+})
+
+describe('关注页上的数', () => {
+  for (const [language, catalog] of [['zh', zh], ['en', en]] as const) {
+    it(`${language}:论文数、引用数和 h-index 都按同一个数字格式写`, () => {
+      const shown = createFormat(language).number(12_345)
+      expect([
+        catalog.watches.candidateInfo(12_345, 12_345, 12_345), catalog.watches.suggestedAuthorInfo(12_345, 12_345, 12_345),
+        catalog.watches.suggestionBasis(12_345), catalog.watches.relatedPapers(12_345),
+      ].map((text) => [text.split(shown).length - 1, text.includes('12345')])).toEqual([[3, false], [3, false], [1, false], [1, false]])
+    })
+  }
 })
 
 describe('提示、标签和占位只说结果', () => {

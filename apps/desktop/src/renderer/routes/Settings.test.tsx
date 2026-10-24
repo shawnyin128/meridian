@@ -322,6 +322,15 @@ describe('Settings', () => {
     expect(dialog.querySelector('[data-api="research"] .api-state')?.textContent).toBe('Semantic Scholar')
   })
 
+  it('API 总览读不到当前状态时，原因落在共享的错误框里，和别的设置页的错误一样', async () => {
+    api.semanticKey.mockRejectedValueOnce(new CallError('delivery.semanticKey', 'newer-version'))
+    await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
+    const dialog = document.querySelector('.setdlg')!
+    await act(async () => { dialog.querySelector<HTMLElement>('[data-setcat="api"]')!.click() })
+    const alert = dialog.querySelector('.set-body [role="alert"]')
+    expect([alert?.className, alert?.textContent]).toEqual(['ipcerror ipcerror--section', '需要更新 App'])
+  })
+
   it('API 与论文推送的子分类默认收起，点开父级或直接进入子级都会展开', async () => {
     api.requestedCategory = null
     await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })

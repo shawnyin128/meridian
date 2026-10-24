@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import type { Page } from '@playwright/test'
-import { expect, openSettings, settle, test, type MeridianWindow } from './app.js'
+import { belowHeader, expect, openSettings, settle, test, type MeridianWindow } from './app.js'
 
 /** Screens stay mounted once visited, so selectors every screen has, such as messages, are scoped to the visible one. */
 const shown = (win: Page, sel: string) => win.locator(`.screenslot:not([hidden]) ${sel}`)
@@ -140,6 +140,23 @@ test('@ 引用项目、论文与 wiki 页都交给真实对话链路,发出的�
   await sayWith(win, '', lead, lead, '这篇讲了什么')
   await expect(lastSaid().locator('.tag')).toContainText([`@${lead}`])
   await expect(shown(win, '.cbox .tag')).toHaveText(NO_MODEL)
+})
+
+test('对话的第一条消息和别的屏的第一项一样，从屏头下同一处开始；发出的新消息仍然滚到底', async ({ app, win }) => {
+  await win.locator('[data-desk="changelog"]').click()
+  const elsewhere = await belowHeader(shown(win, '.desk-body > :first-child'))
+  await gotoChat(win)
+  expect(await belowHeader(shown(win, '.desk-body > .stream > .msgs > :first-child'))).toBeCloseTo(elsewhere, 0)
+
+  // A short window and a few more messages make the conversation taller than its page body, so following the end is observable.
+  await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]!.setSize(1280, 560))
+  const body = shown(win, '.desk-body')
+  const overflows = () => body.evaluate((element) => element.scrollHeight > element.clientHeight)
+  for (let sent = 1; sent <= 6 && !await overflows(); sent++) await say(win, `新消息跟到底 ${sent}`)
+  expect(await overflows()).toBe(true)
+  await say(win, '最后一条也在视野里')
+  await expect.poll(() => body.evaluate((element) => element.scrollHeight - element.clientHeight - element.scrollTop))
+    .toBeLessThanOrEqual(1)
 })
 
 test('问一个一般问题,输入框显示「AI 未连接」的状态而不是回答', async ({ win }) => {
