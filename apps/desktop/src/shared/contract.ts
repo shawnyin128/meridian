@@ -2234,12 +2234,13 @@ export const DownloadProgressSchema = z.object({
   total: z.number().int().nullable(),
 }).strict()
 
-/** Current state of Core work that outlives a single call. */
+/** Current state of Core work that outlives a single call; `generating` holds the ids of the chats whose reply is being generated. */
 export const JobsStatusSchema = z.object({
   writes: z.number().int(),
   uploads: z.array(MetadataJobSchema),
   downloads: z.array(DownloadProgressSchema),
   fetch: FetchStatusSchema,
+  generating: z.array(z.string()),
 }).strict()
 
 /** Input for no-argument methods: renderer sends an empty object and the boundary rejects extra keys. */

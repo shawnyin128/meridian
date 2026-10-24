@@ -26,14 +26,18 @@
 .qacts>.tag+.save-idea{margin-left:0}
 .cbox{--send-size:30px;display:flex;align-items:flex-end;gap:var(--sp-10);background:var(--field);border:1px solid var(--sep2);border-radius:calc(var(--send-size) / 2 + var(--sp-4) + 1px);padding:var(--sp-4) var(--sp-6) var(--sp-4) var(--sp-16)}
 .cbox:focus-within{border-color:var(--sep-strong);background:var(--card)}
-.cbox:has(textarea:focus-visible){outline:0;box-shadow:none}
 /*
- * Grows with its text up to eight lines, then scrolls. Its radius is the send button's plus the
- * padding and border around it, so the two curves are concentric and a single line is a pill. A long
- * placeholder stays on one line so the empty box does not grow.
+ * The editor grows with its text up to eight lines, then scrolls. The box's radius is the send
+ * button's plus the padding and border around it, so the two curves are concentric and a single line
+ * is a pill. A long placeholder stays on one line so the empty box does not grow. CodeMirror's base
+ * theme brings its own font, line height, padding and focus outline; the editor takes the box's.
  */
-.cbox textarea{flex:1;border:0;background:transparent;color:var(--ink);font-family:var(--sans);font-size:var(--fs-base);padding:var(--sp-6) 0;resize:none;field-sizing:content;max-height:calc(8lh + 2 * var(--sp-6));overflow-y:auto}
-.cbox textarea::placeholder{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.chat-composer{flex:1;min-width:0;color:var(--ink);font-family:var(--sans);font-size:var(--fs-base)}
+.chat-composer .cm-editor.cm-focused{outline:none}
+.chat-composer .cm-scroller{font-family:inherit;line-height:inherit;max-height:calc(8lh + 2 * var(--sp-6));overflow-y:auto}
+.chat-composer .cm-content{padding:var(--sp-6) 0;caret-color:var(--ink)}
+.chat-composer .cm-line{padding:0}
+.chat-composer .cm-placeholder{color:var(--ter);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 /* The composer's state sits beside the send button, centred on it. */
 .cbox>.tag{margin-bottom:calc((var(--send-size) - var(--sp-20)) / 2)}
 .send{width:var(--send-size);height:var(--send-size);border-radius:var(--r-full);border:0;background:var(--accent-solid);color:var(--on-accent);cursor:pointer;flex-shrink:0;display:grid;place-items:center;padding:0;transition:box-shadow var(--t-fast) var(--e-out)}

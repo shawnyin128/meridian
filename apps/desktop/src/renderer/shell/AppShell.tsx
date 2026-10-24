@@ -14,6 +14,7 @@ import { Notice, type NoticeAction, type NoticeContent, type NoticeTone } from '
 import { PageFailure } from '../components/PageShell.js'
 import { ScreenBoundary } from '../components/ScreenBoundary.js'
 import { Tooltip } from '../components/Tooltip.js'
+import { GenerationsContext, useCoreGenerations } from '../hooks/useGenerations.js'
 import { errorLabel } from '../lib/failure-label.js'
 import { commandShortcut, composing } from '../lib/keyboard.js'
 import type { Catalog } from '../messages/catalog.js'
@@ -477,7 +478,8 @@ export function AppShell({ screens, settings }: {
     }
     return { success: of('success'), refusal: of('refusal') }
   }, [])
-  const jobsStatus = useJobsPoll(bump)
+  const { status: jobsStatus, refresh: refreshJobs } = useJobsPoll(bump)
+  const generations = useCoreGenerations(jobsStatus, refreshJobs)
   const colourThemeFiles = useColourThemeFilesPoll()
   const paperCountState = useMemo(() => ({ count: paperCount }), [paperCount])
   const screenState = useMemo(() => ({ screen, entry, reentry }), [screen, entry, reentry])
@@ -797,6 +799,7 @@ export function AppShell({ screens, settings }: {
         ) : null}
         <NoticeContext.Provider value={notify}>
           <JobsContext.Provider value={jobsStatus}>
+            <GenerationsContext.Provider value={generations}>
             <PaperCountContext.Provider value={paperCountState}>
               <VaultRevisionContext.Provider value={vaultRevision}>
                 <ScreenContext.Provider value={screenState}>
@@ -844,6 +847,7 @@ export function AppShell({ screens, settings }: {
                 </ScreenContext.Provider>
               </VaultRevisionContext.Provider>
             </PaperCountContext.Provider>
+            </GenerationsContext.Provider>
           </JobsContext.Provider>
         </NoticeContext.Provider>
         <Notice notice={notice} />

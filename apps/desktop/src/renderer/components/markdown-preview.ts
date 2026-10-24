@@ -5,12 +5,10 @@ import { Decoration, EditorView, keymap, WidgetType } from '@codemirror/view'
 import type { SyntaxNode } from '@lezer/common'
 import type { Line, MarkdownConfig } from '@lezer/markdown'
 import { GFM, parser } from '@lezer/markdown'
+import type { WidgetSlots } from './widget-slots.js'
 
 /** One block of the source, line-aligned: `from` starts its first line and `to` ends its last. */
 export type MarkdownBlock = { from: number; to: number }
-
-/** Where the editor puts each rendered block's element, for the host to render the block's source into. */
-export type PreviewSlots = { add: (dom: HTMLElement, source: string) => void; remove: (dom: HTMLElement) => void }
 
 /**
  * The length of the `$` run that starts `line` when the line is a display-formula fence as
@@ -74,7 +72,7 @@ export function renderedBlocks(blocks: readonly MarkdownBlock[], selection: Edit
 
 /** A rendered block in the editor: an empty element that `slots` fills with the rendering of `source`. */
 class RenderedBlock extends WidgetType {
-  constructor(readonly source: string, readonly slots: PreviewSlots) { super() }
+  constructor(readonly source: string, readonly slots: WidgetSlots) { super() }
 
   override eq(other: RenderedBlock): boolean { return other.source === this.source }
 
@@ -119,7 +117,7 @@ function stepOntoBlock(blocks: StateField<MarkdownBlock[]>, forward: boolean): C
  * Live preview for a Markdown source editor: every block of `markdownBlocks` that `renderedBlocks`
  * keeps shows rendered in place of its lines, through an element handed to `slots`.
  */
-export function livePreview(slots: PreviewSlots): Extension {
+export function livePreview(slots: WidgetSlots): Extension {
   const blocks = StateField.define<MarkdownBlock[]>({
     create: (state) => markdownBlocks(state.doc),
     update: (value, transaction) => (transaction.docChanged ? markdownBlocks(transaction.state.doc) : value),
