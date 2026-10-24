@@ -34,7 +34,7 @@ const core = vi.hoisted(() => {
     }),
     status: vi.fn(() => Promise.resolve({
       writes: 0, uploads: [], downloads: [], fetch: { state: 'idle', checkedAt: null, reason: null },
-      generating: [...replies.keys()],
+      generating: [...replies.keys()], generatingWiki: [], wikiFailures: {},
     })),
   }
 })

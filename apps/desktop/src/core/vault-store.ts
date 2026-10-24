@@ -2035,7 +2035,7 @@ export function createVaultStore(
       return { kind: 'fetch', url: entry.pdf }
     },
 
-    completeInboxDownload: atomic((id, bytes) => {
+    completeInboxDownload: atomic((id, bytes, pageCount) => {
       const entry = downloadableEntry(id)
       const topics = entry.topic === '' ? null : topicDir(wikiHome(wikiData))
       const result = storeUpload(`${entry.title}.pdf`, bytes)
@@ -2045,12 +2045,12 @@ export function createVaultStore(
       if (result.kind === 'existing') {
         return { kind: 'existing', paper: result.paper.id, title: result.paper.title }
       }
-      fillPaper(result.paper.id, remoteMetadata({
+      fillPaper(result.paper.id, { ...remoteMetadata({
         id: entry.arxiv,
         title: entry.title,
         abstract: entry.abstract,
         ...entry.meta,
-      }), null)
+      }), ...(pageCount === undefined ? {} : { pageCount }) }, null)
       const filing = topics === null ? null : topicProposal(
         result.paper.id,
         entry.title,

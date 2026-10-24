@@ -554,8 +554,13 @@ export interface VaultStore {
   /** Returns whether an inbox entry needs its PDF fetched or already exists in the library. */
   prepareInboxDownload(id: string): { kind: 'fetch'; url: string } | Exclude<InboxDownloadResult, { kind: 'failed' }>
 
-  /** Stores a fetched inbox PDF through the immutable import path and applies its saved metadata. */
-  completeInboxDownload(id: string, bytes: Uint8Array): Exclude<InboxDownloadResult, { kind: 'failed' }>
+  /**
+   * Stores a fetched inbox PDF through the immutable import path and applies its saved metadata, with
+   * `pageCount`, the number of pages the PDF has, when it is known.
+   */
+  completeInboxDownload(
+    id: string, bytes: Uint8Array, pageCount?: number,
+  ): Exclude<InboxDownloadResult, { kind: 'failed' }>
 
   /**
    * Returns the later queue, the most recently added entry first; entries

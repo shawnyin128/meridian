@@ -1,11 +1,11 @@
 import { createHash } from 'node:crypto'
 import type {
-  HarnessApplyPaperWikiParams, HarnessApplyPaperWikiResult, HarnessCancelResult, HarnessPlan, HarnessRunReceipt,
+  CallFailure, HarnessApplyPaperWikiParams, HarnessApplyPaperWikiResult, HarnessCancelResult, HarnessPlan, HarnessRunReceipt,
   HarnessPaperWikiQuality, HarnessPaperWikiReview, HarnessPendingPaperWikiResult, HarnessRejectPaperWikiResult,
-  HarnessRejectPaperWikiParams, HarnessStartParams, PaperReading, PaperRow, WikiPaper,
+  HarnessRejectPaperWikiParams, HarnessStartParams, PaperReading, PaperRow, RecordedChange, WikiPaper,
 } from '../../shared/contract.js'
 import { CallError, callFailure } from '../call-error.js'
-import type { HarnessProposalAuditEvent, PendingHarnessProposal } from './proposal-audit.js'
+import type { AppliedHarnessProposal, HarnessProposalAuditEvent, PendingHarnessProposal } from './proposal-audit.js'
 
 const PLAN_TTL_MS = 10 * 60 * 1_000
 const MAX_MODEL_CALLS = 1
@@ -43,9 +43,12 @@ type Dependencies = {
   wiki: (id: string) => WikiPaper
   model: HarnessModel | (() => HarnessModel)
   run: HarnessRunner
-  applyWiki: (id: string, body: string) => void
+  /** Writes `body` to Wiki page `id` and returns the change entry that write recorded. */
+  applyWiki: (id: string, body: string) => RecordedChange
   recordProposal?: (event: Omit<HarnessProposalAuditEvent, 'schemaVersion'>) => void
   initialProposals?: readonly PendingHarnessProposal[]
+  /** Proposals already written to the Wiki, each reopened when the change its write recorded is undone. */
+  initialApplied?: readonly AppliedHarnessProposal[]
   now?: () => Date
   nextId?: (prefix: string) => string
 }
@@ -61,6 +64,8 @@ type HeldProposal = {
   review?: HarnessPaperWikiReview
   quality?: HarnessPaperWikiQuality
   used: boolean
+  /** While written to the Wiki, the change entry that write recorded. */
+  change?: string
 }
 
 /** Stable digest of exactly the source, personal reading state, and current Wiki page the user saw. */
@@ -93,17 +98,21 @@ function scopeOf(snapshot: PaperWikiSnapshot): HarnessPlan['scope'] {
 /**
  * Core-owned one-shot cost gate. Preparing is deterministic and free. Starting requires the exact
  * plan digest, checks that its scope has not changed, consumes it once, and only then calls Harness.
+ * A paper has at most one run going at a time.
  */
 export function createHarnessCostGate(deps: Dependencies) {
   const now = deps.now ?? (() => new Date())
   let serial = 0
   const nextId = deps.nextId ?? ((prefix: string) => `${prefix}-${now().getTime()}-${serial += 1}`)
   const plans = new Map<string, HeldPlan>()
-  const proposals = new Map<string, HeldProposal>((deps.initialProposals ?? []).map((proposal) => [
-    proposal.id,
-    { ...proposal, used: false },
-  ]))
+  const proposals = new Map<string, HeldProposal>([
+    ...(deps.initialApplied ?? []).map((proposal): [string, HeldProposal] => [proposal.id, { ...proposal, used: true }]),
+    ...(deps.initialProposals ?? []).map((proposal): [string, HeldProposal] => [proposal.id, { ...proposal, used: false }]),
+  ])
+  /** The controller of the run going for each paper, by paper id. */
   const running = new Map<string, AbortController>()
+  /** Why the last run of a paper failed, by paper id, until a new start or a dismiss. */
+  const failures = new Map<string, CallFailure>()
 
   const configuredModel = () => typeof deps.model === 'function' ? deps.model() : deps.model
 
@@ -174,13 +183,17 @@ export function createHarnessCostGate(deps: Dependencies) {
       if (digestOf(current) !== held.plan.scopeDigest) {
         throw new CallError('changed', '论文、笔记或 Wiki 已发生变化，请重新确认范围')
       }
+      if (running.has(held.plan.targetId)) {
+        throw new CallError('busy', '这篇论文的 Wiki 提案仍在生成，请先停止或等待完成')
+      }
 
       // Consume before crossing the cost boundary. A provider error may already have spent tokens,
       // so retrying always requires a fresh user-confirmed plan.
       held.used = true
       const startedAt = now().toISOString()
       const controller = new AbortController()
-      running.set(held.plan.id, controller)
+      running.set(held.plan.targetId, controller)
+      failures.delete(held.plan.targetId)
       let result: Awaited<ReturnType<HarnessRunner>>
       try {
         result = await deps.run({
@@ -189,8 +202,11 @@ export function createHarnessCostGate(deps: Dependencies) {
           signal: controller.signal,
           limits: { maxOutputTokens: MAX_OUTPUT_TOKENS, maxModelCalls: MAX_MODEL_CALLS },
         })
+      } catch (error) {
+        failures.set(held.plan.targetId, callFailure(error))
+        throw error
       } finally {
-        if (running.get(held.plan.id) === controller) running.delete(held.plan.id)
+        if (running.get(held.plan.targetId) === controller) running.delete(held.plan.targetId)
       }
       const receipt: HarnessRunReceipt = {
         id: nextId('run'),
@@ -243,11 +259,28 @@ export function createHarnessCostGate(deps: Dependencies) {
       return receipt
     },
 
-    cancel(planId: string): HarnessCancelResult {
-      const controller = running.get(planId)
+    /** Stops the run going for paper `paperId`; from then on the paper no longer counts as generating. */
+    cancel(paperId: string): HarnessCancelResult {
+      const controller = running.get(paperId)
       if (controller === undefined) throw new CallError('refused', '这项 AI 任务当前没有在运行')
       controller.abort()
-      return { planId, cancelled: true }
+      running.delete(paperId)
+      return { paperId, cancelled: true }
+    },
+
+    /** The ids of the papers whose Wiki proposal is being generated. */
+    generating(): string[] {
+      return [...running.keys()]
+    },
+
+    /** Why the last run of each paper failed, by paper id, for the papers whose last run failed. */
+    failed(): Record<string, CallFailure> {
+      return Object.fromEntries(failures)
+    },
+
+    /** Forgets why the last run of paper `paperId` failed. */
+    dismissFailure(paperId: string): void {
+      failures.delete(paperId)
     },
 
     applyPaperWiki(params: HarnessApplyPaperWikiParams): HarnessApplyPaperWikiResult {
@@ -258,23 +291,48 @@ export function createHarnessCostGate(deps: Dependencies) {
       if (digestOf(current) !== proposal.scopeDigest) {
         throw new CallError('changed', '论文、笔记或 Wiki 已发生变化，请重新生成提案')
       }
-      deps.applyWiki(`papers/${proposal.targetId}`, params.body)
+      const { change } = deps.applyWiki(`papers/${proposal.targetId}`, params.body)
       proposal.used = true
+      proposal.change = change
       const result: HarnessApplyPaperWikiResult = {
         proposalId: proposal.id,
         wikiId: `papers/${proposal.targetId}`,
         appliedAt: now().toISOString(),
+        change,
       }
       try {
         deps.recordProposal?.({
           event: 'applied', proposalId: proposal.id, targetId: proposal.targetId,
-          scopeDigest: proposal.scopeDigest, at: result.appliedAt, body: params.body,
+          scopeDigest: proposal.scopeDigest, at: result.appliedAt, body: params.body, change,
         })
       } catch (error) {
         console.error(`[harness] Wiki 已写入，但审计记录写入失败：${error instanceof Error ? error.message : String(error)}`)
         result.warning = callFailure(error)
       }
       return result
+    },
+
+    /**
+     * Makes the proposal whose Wiki write recorded change entry `change` reviewable again, as that
+     * write has just been undone, and logs it as generated again so it stays pending across restarts.
+     * Does nothing for any other change.
+     */
+    reopenPaperWiki(change: string): void {
+      const proposal = [...proposals.values()].find((held) => held.used && held.change === change)
+      if (proposal === undefined) return
+      proposal.used = false
+      delete proposal.change
+      try {
+        deps.recordProposal?.({
+          event: 'generated', proposalId: proposal.id, targetId: proposal.targetId,
+          scopeDigest: proposal.scopeDigest, at: proposal.generatedAt, body: proposal.body,
+          ...(proposal.action === undefined ? {} : { action: proposal.action }),
+          ...(proposal.review === undefined ? {} : { review: proposal.review }),
+          ...(proposal.quality === undefined ? {} : { quality: proposal.quality }),
+        })
+      } catch (error) {
+        console.error(`[harness] 提案已回到待审核，但审计记录写入失败：${error instanceof Error ? error.message : String(error)}`)
+      }
     },
 
     rejectPaperWiki(params: HarnessRejectPaperWikiParams): HarnessRejectPaperWikiResult {

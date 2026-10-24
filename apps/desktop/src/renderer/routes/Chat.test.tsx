@@ -48,7 +48,7 @@ vi.mock('../ipc.js', () => ({
   jobs: {
     status: (): Promise<JobsStatus> => Promise.resolve({
       writes: 0, uploads: [], downloads: [], fetch: { state: 'idle', checkedAt: null, reason: null },
-      generating: [...api.generating],
+      generating: [...api.generating], generatingWiki: [], wikiFailures: {},
     }),
   },
   papers: { list: api.listPapers },

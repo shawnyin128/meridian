@@ -213,7 +213,7 @@ const WHOLE: [string, (store: VaultStore, world: World, repo: string) => () => u
     return () => s.createIdea(undefined, '新的方向', '验证一下')
   }, false],
   ['删掉连着想法的科研节点', (s, w) => () => s.deleteNode(w.project, w.node), false],
-  ['把论文页的 Wiki 草稿写进去', (s, w) => () => s.applyPaperWikiDraft(`papers/${w.paper}`, '读过之后的正文'), false],
+  ['把论文页的 Wiki 草稿写进去', (s, w) => () => s.applyPaperWikiDraft(`papers/${w.paper}`, '读过之后的正文'), true],
   ['改 Wiki 页的正文', (s) => () => s.updateWikiPage('topics/draft-acceptance', '改过的正文'), true],
   ['改一个选项的名字，填着它的论文一起改', (s) => {
     fillColumn(s, 'select')

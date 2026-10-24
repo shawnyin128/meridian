@@ -2,10 +2,10 @@ import { z } from 'zod'
 import {
   HarnessPaperWikiQualitySchema, PapersGetParamsSchema, PapersReadingParamsSchema, PapersSourceParamsSchema,
 } from '../../shared/contract.js'
-import type { HarnessPaperWikiQuality, HarnessPaperWikiReview } from '../../shared/contract.js'
+import type { HarnessPaperWikiQuality, HarnessPaperWikiReview, PaperRow } from '../../shared/contract.js'
 import { CallError } from '../call-error.js'
 import type { VaultStore } from '../vault.js'
-import { extractPdfPages } from '../paper-library/index.js'
+import { extractPdfPages, probePdf } from '../paper-library/index.js'
 import type { HarnessExecution, HarnessRunner } from './cost-gate.js'
 import type { HarnessModelConfig } from './model-config.js'
 import { launchHarnessProcess } from './process.js'
@@ -262,6 +262,14 @@ export function projectPaperWikiReview(draft: PaperWikiDraft): HarnessPaperWikiR
   }
 }
 
+/**
+ * The number of pages a draft for `paper` may cite: its stored page count, or, for a paper stored
+ * without one, the number of pages its PDF, read by `source`, has.
+ */
+export async function citablePages(paper: Pick<PaperRow, 'pageCount'>, source: () => Uint8Array): Promise<number> {
+  return paper.pageCount > 0 ? paper.pageCount : (await probePdf(source())).pageCount
+}
+
 /** Revalidate every model-provided anchor against the user-confirmed Core snapshot. */
 export function validatePaperWikiDraftScope(draft: PaperWikiDraft, scope: {
   paperPages: number
@@ -418,7 +426,7 @@ export function createPaperWikiHarnessRunner(options: {
       throw new CallError('model', 'Harness 返回的 Wiki 提案范围与确认任务不一致')
     }
     validatePaperWikiDraftScope(result.draft, {
-      paperPages: execution.snapshot.paper.pageCount,
+      paperPages: await citablePages(execution.snapshot.paper, () => options.store.paperSource(execution.plan.targetId)),
       readingRefs: new Set([
         ...execution.snapshot.reading.highlights.map((item) => `highlight:${item.id}`),
         ...execution.snapshot.reading.notes.map((item) => `note:${item.id}`),

@@ -13,11 +13,15 @@ const HARNESS_PATH = [
   resolve(import.meta.dirname, '../apps/harness/src'),
 ].join(delimiter)
 
-realHarnessTest('真实 Electron/Core/Python Harness 零费用链路停在审核后再写入', async () => {
+const PAPER = '13979-STAR-Speculative-Decodin'
+
+realHarnessTest('真实 Electron/Core/Python Harness 零费用链路停在审核后再写入，撤销写入后回到审核', async () => {
   if (harnessPython === undefined) throw new Error('Harness test Python is not configured')
   const root = mkdtempSync(join(tmpdir(), 'meridian-harness-e2e-'))
   const vault = join(root, 'vault')
   const config = join(root, 'config')
+  // The fixture paper is stored without a page count, as a paper downloaded by 0.0.18.0 is: Core
+  // checks the pages a draft cites against its PDF's two pages.
   cpSync(FIXTURE_VAULT, vault, { recursive: true })
   mkdirSync(config, { recursive: true })
   writeFileSync(join(config, 'harness-model.json'), JSON.stringify({
@@ -29,7 +33,8 @@ realHarnessTest('真实 Electron/Core/Python Harness 零费用链路停在审核
   }), 'utf8')
 
   const app = await electron.launch({
-    args: [APP_DIR, ...LAUNCH_SWITCHES],
+    // The case asserts Chinese copy, so the app must not follow the host's language.
+    args: [APP_DIR, '--lang=zh-CN', ...LAUNCH_SWITCHES],
     env: {
       ...process.env,
       MERIDIAN_VAULT_ROOT: vault,
@@ -58,26 +63,29 @@ realHarnessTest('真实 Electron/Core/Python Harness 零费用链路停在审核
     await shown('.pdetail [aria-label="开始阅读"]').click()
     await shown('.reader-rail [aria-label="内化到 Wiki"]').click()
 
-    const before = await call<{ body: string }>('wiki.paper', {
-      id: 'papers/13979-STAR-Speculative-Decodin',
-    })
+    const body = async () => (await call<{ body: string }>('wiki.paper', { id: `papers/${PAPER}` })).body
+    const before = await body()
     await shown('.wiki-ingest .harness-trigger').click()
     const dialog = win.locator('[role="alertdialog"]')
-    await expect(dialog).toContainText('点击开始后才会调用模型')
+    // The confirmation states the cost before any run: none has started, so no proposal is waiting.
+    await expect(dialog.locator('.modal-actions .tag')).toHaveText('免费')
+    expect(await call('harness.pendingPaperWiki', { paperId: PAPER })).toBeNull()
     await dialog.getByRole('button', { name: /开始(生成|更新)/ }).click()
 
     const review = shown('.wiki-ingest-review')
     await expect(review).toContainText('审核 Wiki 提案')
-    await expect(review.locator('textarea')).toHaveValue(/zero-cost fixture crossed/)
-    expect((await call<{ body: string }>('wiki.paper', {
-      id: 'papers/13979-STAR-Speculative-Decodin',
-    })).body).toBe(before.body)
+    await expect(review).toContainText('zero-cost fixture crossed')
+    expect(await body()).toBe(before)
 
     await review.getByRole('button', { name: '确认写入 Wiki' }).click()
     await expect(shown('.wiki-ingest')).toContainText('已写入 Wiki')
-    expect((await call<{ body: string }>('wiki.paper', {
-      id: 'papers/13979-STAR-Speculative-Decodin',
-    })).body).toContain('zero-cost fixture crossed')
+    expect(await body()).toContain('zero-cost fixture crossed')
+
+    // Undoing the write from its notice puts the page back and the proposal back under review.
+    await win.locator('#notice').getByRole('button', { name: '撤销' }).click()
+    await expect.poll(body).toBe(before)
+    await expect(review.getByRole('button', { name: '确认写入 Wiki' })).toBeVisible()
+    await expect(shown('.wiki-ingest')).not.toContainText('已写入 Wiki')
   } finally {
     await app.close()
     rmSync(root, { recursive: true, force: true })

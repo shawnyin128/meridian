@@ -8,6 +8,7 @@ import {
 import type {
   HarnessPaperWikiQuality, HarnessPaperWikiRejectionFeedback, HarnessPaperWikiReview,
 } from '../../shared/contract.js'
+import { readRecord } from '../vault/stored-records.js'
 
 export const HARNESS_PROPOSAL_LOG = '.meridian/harness-proposals.jsonl'
 
@@ -23,6 +24,8 @@ export type HarnessProposalAuditEvent = {
   review?: HarnessPaperWikiReview
   quality?: HarnessPaperWikiQuality
   feedback?: HarnessPaperWikiRejectionFeedback
+  /** The change entry an `applied` event's Wiki write recorded. */
+  change?: string
 }
 
 export type PendingHarnessProposal = {
@@ -35,6 +38,9 @@ export type PendingHarnessProposal = {
   review?: HarnessPaperWikiReview
   quality?: HarnessPaperWikiQuality
 }
+
+/** A proposal written to the Wiki, with `change`, the change entry its write recorded. */
+export type AppliedHarnessProposal = PendingHarnessProposal & { change: string }
 
 function parseEvent(line: string, index: number): HarnessProposalAuditEvent {
   let value: unknown
@@ -56,33 +62,55 @@ function parseEvent(line: string, index: number): HarnessProposalAuditEvent {
   if (event.action !== undefined && event.action !== 'create' && event.action !== 'update') {
     throw new Error(`Harness proposal audit line ${index + 1} has an invalid action`)
   }
+  if (event.event === 'generated' && (typeof event.body !== 'string' || event.body.trim() === '')) {
+    throw new Error(`Harness proposal audit line ${index + 1} has no proposal body`)
+  }
+  // A later version may add fields inside these; they are read without them.
   if (event.review !== undefined) {
-    const parsed = HarnessPaperWikiReviewSchema.safeParse(event.review)
-    if (!parsed.success) {
+    const parsed = readRecord(HarnessPaperWikiReviewSchema, event.review)
+    if ('error' in parsed) {
       throw new Error(`Harness proposal audit line ${index + 1} has an invalid review projection`)
     }
-    event.review = parsed.data
+    event.review = parsed.value
   }
   if (event.quality !== undefined) {
-    const parsed = HarnessPaperWikiQualitySchema.safeParse(event.quality)
-    if (!parsed.success || parsed.data.caseId !== event.targetId) {
+    const parsed = readRecord(HarnessPaperWikiQualitySchema, event.quality)
+    if ('error' in parsed || parsed.value.caseId !== event.targetId) {
       throw new Error(`Harness proposal audit line ${index + 1} has an invalid quality report`)
     }
-    event.quality = parsed.data
+    event.quality = parsed.value
   }
   if (event.feedback !== undefined) {
-    const parsed = HarnessPaperWikiRejectionFeedbackSchema.safeParse(event.feedback)
-    if (!parsed.success || event.event !== 'rejected') {
+    const parsed = readRecord(HarnessPaperWikiRejectionFeedbackSchema, event.feedback)
+    if ('error' in parsed || event.event !== 'rejected') {
       throw new Error(`Harness proposal audit line ${index + 1} has invalid rejection feedback`)
     }
-    event.feedback = parsed.data
+    event.feedback = parsed.value
+  }
+  if (event.change !== undefined && (typeof event.change !== 'string' || event.event !== 'applied')) {
+    throw new Error(`Harness proposal audit line ${index + 1} has an invalid change entry`)
   }
   return event as HarnessProposalAuditEvent
 }
 
+/** The proposal generated event `event` holds. */
+function proposalOf(event: HarnessProposalAuditEvent): PendingHarnessProposal {
+  return {
+    id: event.proposalId,
+    targetId: event.targetId,
+    scopeDigest: event.scopeDigest,
+    generatedAt: event.at,
+    body: event.body!,
+    ...(event.action === undefined ? {} : { action: event.action }),
+    ...(event.review === undefined ? {} : { review: event.review }),
+    ...(event.quality === undefined ? {} : { quality: event.quality }),
+  }
+}
+
 /**
- * Reads every well-formed event in the audit log at `file`, oldest first, dropping a final line left
- * incomplete by a write cut short. Returns an empty list when the log does not exist.
+ * Reads the audit log at `file` line by line, oldest first, dropping a final line left incomplete by a
+ * write cut short. A complete line it cannot read is reported on stderr and skipped, and fields it does
+ * not know are read without. Returns an empty list when the log does not exist.
  */
 function readEvents(file: string): HarnessProposalAuditEvent[] {
   if (!existsSync(file)) return []
@@ -95,7 +123,14 @@ function readEvents(file: string): HarnessProposalAuditEvent[] {
       lines.pop()
     }
   }
-  return lines.map((line, index) => parseEvent(line, index))
+  return lines.flatMap((line, index) => {
+    try {
+      return [parseEvent(line, index)]
+    } catch (error) {
+      console.error(`[harness] 跳过读不了的提案审计记录：${error instanceof Error ? error.message : String(error)}`)
+      return []
+    }
+  })
 }
 
 /** Append one durable proposal event without giving Harness access to the vault path. */
@@ -104,26 +139,31 @@ export function createHarnessProposalAudit(root: string) {
   return {
     pending(): PendingHarnessProposal[] {
       const pending = new Map<string, PendingHarnessProposal>()
-      for (const [index, event] of readEvents(file).entries()) {
+      for (const event of readEvents(file)) {
         if (event.event === 'generated') {
-          if (typeof event.body !== 'string' || event.body.trim() === '') {
-            throw new Error(`Harness proposal audit line ${index + 1} has no proposal body`)
-          }
-          pending.set(event.proposalId, {
-            id: event.proposalId,
-            targetId: event.targetId,
-            scopeDigest: event.scopeDigest,
-            generatedAt: event.at,
-            body: event.body,
-            ...(event.action === undefined ? {} : { action: event.action }),
-            ...(event.review === undefined ? {} : { review: event.review }),
-            ...(event.quality === undefined ? {} : { quality: event.quality }),
-          })
+          pending.set(event.proposalId, proposalOf(event))
         } else {
           pending.delete(event.proposalId)
         }
       }
       return [...pending.values()].sort((left, right) => left.generatedAt.localeCompare(right.generatedAt))
+    },
+
+    /**
+     * Returns each proposal whose last event is an `applied` one that recorded its change entry, as its
+     * `generated` event held it, in log order. Undoing that change makes the proposal pending again.
+     */
+    applied(): AppliedHarnessProposal[] {
+      const generated = new Map<string, PendingHarnessProposal>()
+      const applied = new Map<string, AppliedHarnessProposal>()
+      for (const event of readEvents(file)) {
+        if (event.event === 'generated') generated.set(event.proposalId, proposalOf(event))
+        const proposal = generated.get(event.proposalId)
+        if (event.event === 'applied' && event.change !== undefined && proposal !== undefined) {
+          applied.set(event.proposalId, { ...proposal, change: event.change })
+        } else applied.delete(event.proposalId)
+      }
+      return [...applied.values()]
     },
 
     /**

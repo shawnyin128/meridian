@@ -172,6 +172,17 @@ export function createMetadataQueue(deps: {
     }
   }
 
+  /** Fails `item` for `error`, its lookup's, after writing the page count its PDF gave, which needs no lookup. */
+  const keepPageCount = (item: Prepared, error: unknown): void => {
+    try {
+      if (deps.store.fillPaperMetadata(item.job.paperId, { pageCount: item.facts.pageCount }, item.arrivalTitle).length > 0) deps.onWrite()
+    } catch (writeError) {
+      fail(item, writeError)
+      return
+    }
+    fail(item, error)
+  }
+
   const runBatch = async (items: readonly Pending[]): Promise<void> => {
     const candidates = await mapConcurrent(items, PDF_PROBE_CONCURRENCY, prepare)
     const prepared = candidates.filter((item): item is Prepared => item !== null)
@@ -180,7 +191,7 @@ export function createMetadataQueue(deps: {
     const remote = await lookup(ids)
     for (const item of prepared) {
       const error = item.arxivId === null ? undefined : remote.errors.get(item.arxivId)
-      if (error !== undefined) fail(item, error)
+      if (error !== undefined) keepPageCount(item, error)
       else write(item, item.arxivId === null ? null : remote.papers.get(item.arxivId) ?? null)
     }
   }
