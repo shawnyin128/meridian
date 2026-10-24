@@ -2406,6 +2406,40 @@ describe('vault store on the aggregation layout', () => {
     expect(() => store.wikiBacklinks('topics/nope')).toThrow(expect.objectContaining({ reason: 'not-found' }))
   })
 
+  /** A project holding attachments c.csv, b.csv and a.csv in that order; returns its id. */
+  const withAttachments = (): string => {
+    store.createProject('附件')
+    const id = store.listProjects().find((project) => project.name === '附件')!.id
+    for (const name of ['a.csv', 'b.csv', 'c.csv']) store.createAttachment(id, { name, size: '1 KB', path: join(vault, name) })
+    return id
+  }
+
+  it('删掉的附件从垃圾桶恢复、或撤销这次删除时,回到它原来的位置', () => {
+    const id = withAttachments()
+    const before = store.getProject(id).attachments
+    expect(before.map((attachment) => attachment.name)).toEqual(['c.csv', 'b.csv', 'a.csv'])
+    store.deleteAttachment(id, before[1]!.id)
+    store.restoreTrash(store.listTrash()[0]!.id)
+    expect(store.getProject(id).attachments).toEqual(before)
+    const { change } = recordChange(store, () => store.deleteAttachment(id, before[1]!.id))
+    store.undoChange(change)
+    expect(createVaultStore(vault).getProject(id).attachments).toEqual(before)
+  })
+
+  it('旧版本记下的附件垃圾不带位置,恢复时照旧放回末尾', () => {
+    const id = withAttachments()
+    const [c, b, a] = store.getProject(id).attachments
+    store.deleteAttachment(id, b!.id)
+    const file = join(vault, '.meridian', 'trash.json')
+    const written = JSON.parse(readFileSync(file, 'utf8')) as Record<string, unknown>[]
+    writeFileSync(file, JSON.stringify(written.map((record) => Object.fromEntries(
+      Object.entries(record).filter(([key]) => key !== 'position'),
+    ))))
+    const reopened = createVaultStore(vault, () => '2026-09-10', () => new Date('2026-09-10T16:05:04.003Z'))
+    reopened.restoreTrash(reopened.listTrash()[0]!.id)
+    expect(reopened.getProject(id).attachments).toEqual([c, a, b])
+  })
+
   it('附件记下本机绝对路径,相对路径不收', () => {
     store.createProject('附件')
     const id = store.listProjects().find((project) => project.name === '附件')!.id

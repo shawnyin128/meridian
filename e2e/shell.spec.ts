@@ -162,7 +162,8 @@ test('侧栏在论文与项目两屏之间切换,面包屑跟着换', async ({ w
 })
 
 test('切走再切回,分页页码、排序、列宽与详情面板都保持', async ({ win }) => {
-  // Sorting, dragging a column, paging and a trip to the project screen take several offscreen frames each.
+  // Sorting, dragging a column, paging and a trip to the project screen each wait for frames; see
+  // `showWindow` in app.ts.
   test.slow()
   await gotoPapers(win)
   await expect(win.locator('.ptable tbody tr')).toHaveCount(20)
@@ -220,8 +221,8 @@ test('切走再切回,分页页码、排序、列宽与详情面板都保持', a
 })
 
 test('全应用的齿轮是同一颗:一条闭合轮廓加一个轴孔,四处逐字相同', async ({ win }) => {
-  // The four gears are spread over two screens and the sidebar; an offscreen window waits two seconds for
-  // each actionability check, so the default 30 seconds is not enough.
+  // The four gears are spread over two screens and the sidebar, many actionability checks for a hidden
+  // window; see `showWindow` in app.ts.
   test.slow()
   await gotoPapers(win)
   await win.locator('.ptable tbody tr').first().waitFor()

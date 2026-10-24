@@ -186,8 +186,7 @@ test('短标题一点不被渐隐吃掉', async ({ win }) => {
 })
 
 // Two scripts, three places each, three screenshots per place (mask on, mask off, backdrop): eighteen
-// element screenshots in one test case. Each needs a frame from the compositor, which an offscreen
-// window gets once a second, more than the 30-second test case budget allows.
+// element screenshots in one test case, each waiting for a frame from the compositor; see `showWindow` in app.ts.
 test.describe(() => {
   test.use({ showWindow: true })
 

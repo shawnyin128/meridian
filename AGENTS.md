@@ -247,6 +247,23 @@ itself, and the CLI tests need PyYAML.
   cover them; add an end-to-end case only for behaviour no unit test can reach.
   Let a started run finish, and do not re-run specs that already passed on the
   same code.
+- Automated launches never take the owner's keyboard focus or cover the
+  owner's screen: the owner works on the same machine while agents build, seed,
+  screenshot and run end-to-end cases. Every automated launch sets
+  `MERIDIAN_SHOW_WINDOW`, `0` for a hidden window and `isolated` for one that
+  paints, and passes `--force-color-profile=srgb` so screenshots store the
+  page's own colours, as the e2e fixture (`LAUNCH_SWITCHES` in `e2e/app.ts`)
+  and `scripts/test-library/app.mjs` already do. On macOS both run the App
+  without a Dock icon and never make it the active app; an isolated window is
+  unfocusable and sits right of every display. Nothing automated calls
+  `show()`, `focus()`, `setFocusable(true)` or `app.focus()`; a case about the
+  window losing focus uses `appSwitcher` in `e2e/app.ts`. The only normal
+  windows are the one opened for the owner's review
+  (`node scripts/test-library.mjs open`) and the launch case that proves an
+  App started without the variable still shows its window, which runs only in
+  the release run. Known limits: the App can still count as a Dock app for up
+  to 0.1 s at launch, before its main script runs; the off-screen placement is
+  unverified on Windows, so check it at the next Windows release.
 - Everything a build, a seed or a test run generates goes under the
   checkout's `outputs/` folder, which git ignores, never onto the Desktop:
   unpacked builds in `outputs/builds/`, test libraries in
@@ -263,6 +280,9 @@ on the reviewing machine.
   `<dir>` from scratch with its own config home and user-data folder;
   `node scripts/test-library.mjs open --out <dir> [--app <build>]` opens it.
   Without `--app` both use the checkout's built `apps/desktop`.
+- `node scripts/test-library.mjs relocate --out <dir>` points a copied test
+  library's stored paths at the copy without starting any App, so an agent
+  prepares a review copy with no window; `open` does the same before it opens.
 - Test libraries live in `outputs/test-library/<display version>/` in the
   checkout, on macOS and Windows alike.
 - A pull request that adds a screen or a stored kind adds its scenario to the
@@ -324,16 +344,21 @@ checks. This is the order to follow, on the version's release branch and never o
    and a build sharing that folder quits at once. Unset `ELECTRON_RUN_AS_NODE`
    first; shells started from VS Code extensions set it, and the build then runs
    as plain Node.
-   - macOS: `env -u ELECTRON_RUN_AS_NODE MERIDIAN_VAULT_ROOT=<copy>/library MERIDIAN_CONFIG_HOME=<copy>/config <build>/Meridian.app/Contents/MacOS/Meridian --user-data-dir=<copy>/user-data`
-   - Windows (PowerShell): `Remove-Item Env:ELECTRON_RUN_AS_NODE -ErrorAction Ignore; $env:MERIDIAN_VAULT_ROOT = '<copy>\library'; $env:MERIDIAN_CONFIG_HOME = '<copy>\config'; & '<build>\Meridian.exe' --user-data-dir='<copy>\user-data'`
+   - macOS: `env -u ELECTRON_RUN_AS_NODE MERIDIAN_SHOW_WINDOW=0 MERIDIAN_VAULT_ROOT=<copy>/library MERIDIAN_CONFIG_HOME=<copy>/config <build>/Meridian.app/Contents/MacOS/Meridian --user-data-dir=<copy>/user-data --force-color-profile=srgb`
+   - Windows (PowerShell): `Remove-Item Env:ELECTRON_RUN_AS_NODE -ErrorAction Ignore; $env:MERIDIAN_SHOW_WINDOW = '0'; $env:MERIDIAN_VAULT_ROOT = '<copy>\library'; $env:MERIDIAN_CONFIG_HOME = '<copy>\config'; & '<build>\Meridian.exe' --user-data-dir='<copy>\user-data' --force-color-profile=srgb`
 
    `library.location`, `vault.today`, `project.list`, `project.get` for every
    project, `wiki.home`, `wiki.proposals`, `wiki.signals` and `feed.list` must
    all succeed. Never point a test at the original library, the App's user data
    folder, or `~/.meridian`. Beside the real-library copy, copy the test library
-   the previous release seeded to a temporary folder and open the copy with
-   `node scripts/test-library.mjs open --out <copy> --app <build>`; the same
-   calls must succeed there.
+   the previous release seeded to a temporary folder `<testlib>`, point the
+   paths it stores at the copy with
+   `node scripts/test-library.mjs relocate --out <testlib>`, and launch the build
+   on it the same quiet way:
+   - macOS: `env -u ELECTRON_RUN_AS_NODE MERIDIAN_SHOW_WINDOW=0 MERIDIAN_VAULT_ROOT=<testlib>/library MERIDIAN_CONFIG_HOME=<testlib>/config <build>/Meridian.app/Contents/MacOS/Meridian --user-data-dir=<testlib>/user-data --force-color-profile=srgb`
+   - Windows (PowerShell): `Remove-Item Env:ELECTRON_RUN_AS_NODE -ErrorAction Ignore; $env:MERIDIAN_SHOW_WINDOW = '0'; $env:MERIDIAN_VAULT_ROOT = '<testlib>\library'; $env:MERIDIAN_CONFIG_HOME = '<testlib>\config'; & '<build>\Meridian.exe' --user-data-dir='<testlib>\user-data' --force-color-profile=srgb`
+
+   The same calls must succeed there, made the same way.
 5. **Owner review.** Hand the owner the unpacked build with a list of what to
    check, issue by issue. Nothing is tagged until the owner approves. Any change
    after that means a new build in a new folder and another review.
@@ -403,6 +428,13 @@ Each of these happened in this repository. The rule after each one is binding.
   with a recursive delete: `cmd /c rmdir <path>` on Windows, `rm <path>` with no
   `-r` and no trailing slash on macOS.
 - **Several Electron apps at once exhausted the desktop.** Launches failed with
-  `0xC0000142`. Do not run end-to-end suites from several worktrees at once. An
-  offscreen window can also time out on screenshots and report styles from
-  before a transition; take visual checks with a visible window.
+  `0xC0000142`. Do not run end-to-end suites from several worktrees at once. A
+  hidden window also timed out on screenshots and reported styles from before a
+  transition; take visual checks with an isolated window, which paints.
+- **Automated launches took the owner's keyboard focus and covered their
+  screen.** Screenshot drivers opened normal windows, whose `show()` makes
+  Meridian the active app; two e2e cases called `focus()` on purpose; isolated
+  windows still appeared over the owner's work; and every launch put an icon in
+  the Dock. Launch only in the modes under Tests and Gates, and before trusting
+  a new kind of launch, record the frontmost app, the Dock and the windows on
+  the displays while it runs.

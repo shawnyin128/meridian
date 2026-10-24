@@ -1,8 +1,8 @@
-import { Fragment, useCallback, useEffect, useState } from 'react'
+import { Fragment, useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import type { FeedEntry, FeedSource } from '../../shared/contract.js'
 import { feed } from '../ipc.js'
-import { errorLabel } from '../lib/failure-label.js'
+import { useScreenLoad } from '../hooks/useScreenLoad.js'
 import { useMessages } from '../messages/useMessages.js'
 import { useJump, useVaultRevision } from '../shell/AppShell.js'
 import { CONFLICT_THREAD } from '../lib/chat.js'
@@ -159,15 +159,11 @@ export function Feed() {
   const { revision } = useVaultRevision()
   const { open } = useJump()
   const [entries, setEntries] = useState<FeedEntry[] | null>(null)
-  const [error, setError] = useState<string | null>(null)
   const [source, setSource] = useState<FeedSource | null>(null)
   const [setupShown, setSetupShown] = useState<boolean | null>(null)
+  const { error, load, report } = useScreenLoad()
 
-  const reportError = useCallback((e: unknown) => setError(errorLabel(m, e)), [m])
-
-  useEffect(() => {
-    void feed.list().then(setEntries).catch(reportError)
-  }, [revision, reportError])
+  useEffect(() => load('entries', feed.list(), setEntries), [revision, load])
 
   const rows = source === null ? entries ?? [] : (entries ?? []).filter((e) => e.source === source)
 
@@ -177,7 +173,7 @@ export function Feed() {
       <PageError error={error} />
       <PageBody>
         <div className="msgs">
-          <FirstRunChecklist className="mwrap" onError={reportError} onShown={setSetupShown} />
+          <FirstRunChecklist className="mwrap" onError={report} onShown={setSetupShown} />
           {/* The switch sits in the stream, so it lines up with the entries' column. */}
           <PageToolbar className="mwrap">
             <SegmentedControl

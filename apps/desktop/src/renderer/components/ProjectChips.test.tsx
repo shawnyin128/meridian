@@ -10,12 +10,20 @@ declare global {
   var IS_REACT_ACT_ENVIRONMENT: boolean
 }
 
-const api = vi.hoisted(() => ({ open: vi.fn(), removePaper: vi.fn(async () => undefined) }))
+const api = vi.hoisted(() => ({
+  open: vi.fn(),
+  removePaper: vi.fn(async () => ({ project: {}, change: 'change-unlink' })),
+  writes: [] as { result: unknown; opts: { note?: unknown; action?: (result: never) => { label: string; onAction: () => void } } }[],
+  undone: [] as string[],
+}))
 
-vi.mock('../ipc.js', () => ({ project: { list: async () => [], removePaper: api.removePaper } }))
+vi.mock('../ipc.js', () => ({
+  project: { list: async () => [], removePaper: api.removePaper },
+  changelog: { undo: (id: string) => { api.undone.push(id); return Promise.resolve() } },
+}))
 vi.mock('../shell/AppShell.js', () => ({ useJump: () => ({ jump: null, open: api.open }) }))
 vi.mock('../hooks/useVaultWrite.js', () => ({
-  useVaultWrite: () => async (work: Promise<unknown>) => { await work; return true },
+  useVaultWrite: () => async (work: Promise<unknown>, opts = {}) => { api.writes.push({ result: await work, opts }); return true },
 }))
 
 const { ProjectChips } = await import('./ProjectChips.js')
@@ -54,5 +62,16 @@ describe('ProjectChips', () => {
     act(() => chips[0]!.querySelector<HTMLElement>('.rx')!.click())
     expect(api.removePaper).toHaveBeenCalledWith('draft', 'p1')
     expect(api.open).toHaveBeenCalledTimes(2)
+  })
+
+  it('× 解除关联后提示带撤销,撤销的是这次解除记下的那条变动', async () => {
+    const paper = { id: 'p1', projects: [{ id: 'draft', name: 'draft 效率' }] } as PaperRow
+    act(() => root.render(<MessagesProvider><ProjectChips paper={paper} onError={vi.fn()} /></MessagesProvider>))
+    await act(async () => { host.querySelector<HTMLElement>('.tagchip[data-project="draft"] .rx')!.click() })
+    const removed = api.writes.at(-1)!
+    const action = removed.opts.action?.(removed.result as never)
+    expect([removed.opts.note, action?.label]).toEqual(['已移除关联', '撤销'])
+    await act(async () => { action!.onAction() })
+    expect(api.undone).toEqual(['change-unlink'])
   })
 })
