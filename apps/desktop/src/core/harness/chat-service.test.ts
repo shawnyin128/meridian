@@ -150,7 +150,7 @@ describe('Core chat service', () => {
       stoppedFirst = signal?.aborted
       remove(id)
     })
-    const sending = service.send('amortize', '删之前问的一句')
+    const sending = service.send('amortize', written('删之前问的一句'))
 
     const { trash } = service.delete('amortize')
     finish('删掉之后才到的回答')
