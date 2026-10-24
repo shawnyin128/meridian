@@ -2,14 +2,17 @@
 import { act, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import { EditorView } from '@codemirror/view'
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { MessagesProvider } from '../../messages/useMessages.js'
 import { LANGUAGE_STORAGE_KEY } from '../../shell/language.js'
 import { ProjectMemo } from './ProjectSections.js'
 
 describe('ProjectMemo', () => {
+  afterEach(() => { vi.unstubAllGlobals() })
+
   it('编辑的位置换成取消和保存:编辑器里是随笔原文,取消还原不写,再编辑从原文开始;⌘回车和保存写回编辑器里的原文', () => {
     globalThis.IS_REACT_ACT_ENVIRONMENT = true
+    vi.stubGlobal('meridian', { platform: 'darwin' })
     window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'zh')
     const onSave = vi.fn()
     function Memo() {
@@ -45,7 +48,7 @@ describe('ProjectMemo', () => {
     press('编辑')
     type('改过的计划\n## 小结')
     act(() => {
-      editor().contentDOM.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', ctrlKey: true, bubbles: true }))
+      editor().contentDOM.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', metaKey: true, bubbles: true }))
     })
     expect(onSave).toHaveBeenCalledWith('改过的计划\n## 小结')
     press('编辑')

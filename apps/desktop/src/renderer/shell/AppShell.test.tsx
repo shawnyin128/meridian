@@ -28,7 +28,7 @@ const fixture = vi.hoisted(() => ({
   openPalette: null as (() => void) | null,
 }))
 
-const none = () => Promise.resolve([])
+const none = vi.hoisted(() => () => Promise.resolve([]))
 
 vi.mock('../ipc.js', () => ({
   appMenu: {

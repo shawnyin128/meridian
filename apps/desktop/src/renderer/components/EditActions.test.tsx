@@ -54,14 +54,16 @@ describe('EditActions', () => {
 describe('commitsMultiline', () => {
   const key = (init: Partial<KeyboardEvent>) => ({ key: 'Enter', metaKey: false, ctrlKey: false, isComposing: false, ...init })
 
-  it('commits a multi-line text on ⌘Enter or Ctrl+Enter, while a plain Enter starts a new line', () => {
-    expect(commitsMultiline(key({ metaKey: true }))).toBe(true)
-    expect(commitsMultiline(key({ ctrlKey: true }))).toBe(true)
-    expect(commitsMultiline(key({}))).toBe(false)
-    expect(commitsMultiline(key({ key: 'a', metaKey: true }))).toBe(false)
+  it('commits a multi-line text on ⌘Enter on macOS and Ctrl+Enter elsewhere, while a plain Enter starts a new line', () => {
+    expect(commitsMultiline('darwin', key({ metaKey: true }))).toBe(true)
+    expect(commitsMultiline('darwin', key({ ctrlKey: true }))).toBe(false)
+    expect(commitsMultiline('win32', key({ ctrlKey: true }))).toBe(true)
+    expect(commitsMultiline('win32', key({ metaKey: true }))).toBe(false)
+    expect(commitsMultiline('darwin', key({}))).toBe(false)
+    expect(commitsMultiline('darwin', key({ key: 'a', metaKey: true }))).toBe(false)
   })
 
   it('leaves the keys of an input method composition to the input method', () => {
-    expect(commitsMultiline(key({ metaKey: true, isComposing: true }))).toBe(false)
+    expect(commitsMultiline('darwin', key({ metaKey: true, isComposing: true }))).toBe(false)
   })
 })

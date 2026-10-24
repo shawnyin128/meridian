@@ -18,6 +18,7 @@ describe('DraftForm', () => {
 
   beforeEach(() => {
     vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} })
+    vi.stubGlobal('meridian', { platform: 'darwin' })
     globalThis.IS_REACT_ACT_ENVIRONMENT = true
     window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'zh')
     vi.clearAllMocks()
@@ -66,7 +67,7 @@ describe('DraftForm', () => {
     expect(buttons().map((button) => button.textContent)).toEqual(['取消', '保存'])
   })
 
-  it('saves on Enter in a one-line field and on ⌘Enter or Ctrl+Enter in a long text, where a plain Enter is a new line', () => {
+  it('saves on Enter in a one-line field and on ⌘Enter in a long text on macOS, where a plain Enter is a new line', () => {
     show({ body: 'Wide trees win' })
     press(field('body'), { key: 'Enter' })
     expect(onSave).not.toHaveBeenCalled()

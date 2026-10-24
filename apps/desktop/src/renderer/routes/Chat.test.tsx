@@ -42,6 +42,7 @@ const nav = vi.hoisted(() => ({ jump: null as ScreenJump | null, returnTo: vi.fn
 const resized: (() => void)[] = []
 
 vi.mock('../ipc.js', () => ({
+  appMenu: { platform: () => 'darwin' },
   chat: { send: api.send, messages: api.messages, cancel: api.cancel, create: api.create, recordAction: api.recordAction },
   feed: { append: api.feedAppend },
   idea: { create: api.createIdea },
