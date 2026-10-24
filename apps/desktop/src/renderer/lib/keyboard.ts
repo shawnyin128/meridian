@@ -35,3 +35,12 @@ export function commandShortcut(platform: string, key: string, shift = false): s
   if (platform === 'darwin') return `${shift ? '⇧' : ''}⌘${key}`
   return `Ctrl+${shift ? 'Shift+' : ''}${key}`
 }
+
+/**
+ * Whether a keydown is `letter` pressed with the platform's command key, the shortcut
+ * `commandShortcut(platform, letter)` names: ⌘ on macOS, Ctrl elsewhere. On macOS a Control-letter
+ * belongs to the text system, where Control-B moves the caret back one character.
+ */
+export function pressesCommand(platform: string, key: Pick<KeyboardEvent, 'key' | 'metaKey' | 'ctrlKey'>, letter: string): boolean {
+  return (platform === 'darwin' ? key.metaKey : key.ctrlKey) && key.key.toLowerCase() === letter.toLowerCase()
+}

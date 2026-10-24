@@ -1,6 +1,6 @@
 import type { Page } from '@playwright/test'
 import { minimalPdf } from '../apps/desktop/src/core/net/minimal-pdf.js'
-import { expect, gotoPapers, settle, test, type MeridianWindow } from './app.js'
+import { expect, gotoPapers, popupMenus, settle, test, type MeridianWindow } from './app.js'
 
 /** Visited screens stay mounted, so reader selectors are scoped to the screen shown. */
 const shown = (win: Page, sel: string) => win.locator(`.screenslot:not([hidden]) ${sel}`)
@@ -146,7 +146,7 @@ test('阅读器右栏一下子定好宽度、内容淡入,收起后只保留工�
     .toBeLessThan(60)
 })
 
-test('对话栏右缘的把手悬停显形、拖动在 240–480px 间调宽、按住不动松开什么也不做；收起后留一条带把手的窄边，窄边、Ctrl+B 与标题栏按钮都能再开合', async ({ win }) => {
+test('对话栏右缘的把手悬停显形、拖动在 240–480px 间调宽、按住不动松开什么也不做；收起后留一条带把手的窄边，窄边、⌘B(其他平台 Ctrl+B)与标题栏按钮都能再开合', async ({ win }) => {
   await openFromPapers(win)
   const chat = shown(win, '.paper-chat')
   const grip = shown(win, '.paper-chat > #rrgrip')
@@ -176,7 +176,7 @@ test('对话栏右缘的把手悬停显形、拖动在 240–480px 间调宽、�
   await grip.dblclick()
   expect(await width()).toBe(300)
 
-  await win.keyboard.press('Control+b')
+  await win.keyboard.press('ControlOrMeta+b')
   await expect(edge).toBeVisible()
   await settle(chat)
   expect(await opacity()).toBe('0')
@@ -187,7 +187,7 @@ test('对话栏右缘的把手悬停显形、拖动在 240–480px 间调宽、�
   expect(await opacity()).toBe('1')
   expect(await width()).toBe(300)
 
-  await win.keyboard.press('Control+b')
+  await win.keyboard.press('ControlOrMeta+b')
   await expect(edge).toBeVisible()
   await win.locator('#sbBtn').click()
   await expect(edge).toHaveCount(0)
@@ -665,6 +665,20 @@ async function paintOver(win: Page, box: { left: number; right: number; top: num
     return { painted: painted.length, doubled }
   }, shot.toString('base64'))
 }
+
+test('右键阅读器里选中的字弹出能复制的系统菜单(macOS 上先能查询),选区不变', async ({ app, win }) => {
+  await openTight(win)
+  const [line] = await textLines(win)
+  await dragAcross(win, [line!])
+  const selected = await win.evaluate(() => document.getSelection()!.toString())
+  expect(selected.trim()).toBe(TIGHT.lines[0])
+
+  await win.mouse.click((line!.left + line!.right) / 2, (line!.top + line!.bottom) / 2, { button: 'right' })
+  await expect.poll(() => popupMenus(app)).toEqual([
+    process.platform === 'darwin' ? [`查询“${TIGHT.lines[0]}”`, '—', '复制'] : ['复制'],
+  ])
+  expect(await win.evaluate(() => document.getSelection()!.toString())).toBe(selected)
+})
 
 // Pixel checks take screenshots of the window, which need a visible one.
 test.describe('选中文字时的选区', () => {

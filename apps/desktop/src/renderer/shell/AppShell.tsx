@@ -17,7 +17,7 @@ import { ScreenBoundary } from '../components/ScreenBoundary.js'
 import { Tooltip } from '../components/Tooltip.js'
 import { GenerationsContext, useCoreGenerations } from '../hooks/useGenerations.js'
 import { errorLabel } from '../lib/failure-label.js'
-import { commandShortcut, composing } from '../lib/keyboard.js'
+import { commandShortcut, composing, pressesCommand } from '../lib/keyboard.js'
 import type { Catalog } from '../messages/catalog.js'
 import { useMessages } from '../messages/useMessages.js'
 import { CommandPalette, type PaletteCommand } from './CommandPalette.js'
@@ -501,11 +501,11 @@ export function AppShell({ screens, settings }: {
     openCategory: openSettingsCategory,
   }), [settingsCategory, settingsOpen, openSettingsCategory])
 
-  // Ctrl+B / Cmd+B toggles the sidebar; Escape peels the topmost dismissible layer; "/" outside an
-  // editable element jumps to the nearest search field.
+  // ⌘B on macOS, Ctrl+B elsewhere, toggles the sidebar; Escape peels the topmost dismissible layer;
+  // "/" outside an editable element jumps to the nearest search field.
   useEffect(() => {
     const key = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && (e.key === 'b' || e.key === 'B')) {
+      if (pressesCommand(appMenu.platform(), e, 'B')) {
         e.preventDefault()
         setHidden((h) => !h)
         return

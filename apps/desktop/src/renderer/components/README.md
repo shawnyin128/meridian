@@ -110,6 +110,8 @@ Current shared contracts:
 - `DayHeading`: the small heading that opens one day in a list grouped by day, with an optional count.
 - `hooks/useCandidateKeys`: arrow-key, pointer and Enter handling for a candidate list, shared by every
   suggestion and picker dropdown.
+- `hooks/useWheelZoom`: the one wheel rule of a zoomable view, shared by the reader and the research graph:
+  a pinch or a Ctrl- or ⌘-scroll zooms about the pointer, and every other scroll scrolls the page.
 - `ResearchObjectCard`: one list-card shell for first-class research objects such as projects and ideas;
   routes provide their domain-specific identity and metadata without redefining width, spacing, borders,
   selection, management-menu visibility, or keyboard activation.

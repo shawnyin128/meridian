@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
-  ZOOM_MAX, ZOOM_MIN, clampZoom, keptScroll, pageScale, scaledAbout, wheelZoom, type SheetTransform,
+  ZOOM_MAX, ZOOM_MIN, clampZoom, keptScroll, pageScale, scaledAbout, type SheetTransform,
 } from './reader-zoom.js'
 
 /** Where a point of the laid-out sheet shows on screen under `transform`, relative to the sheet's laid-out corner. */
@@ -10,20 +10,8 @@ const onScreen = (point: { x: number; y: number }, transform: SheetTransform) =>
 })
 
 describe('reader zoom', () => {
-  it('滚轮和双指缩放按增量指数连续变化：几小步等于一大步，来回同样的增量回到原比例', () => {
-    expect(wheelZoom(1, -100)).toBeCloseTo(Math.exp(0.15), 10)
-    expect(wheelZoom(1, -3)).toBeGreaterThan(1)
-    expect(wheelZoom(1, -3)).toBeLessThan(1.01)
-    let stepped = 1.1
-    for (let step = 0; step < 20; step += 1) stepped = wheelZoom(stepped, -5)
-    expect(stepped).toBeCloseTo(wheelZoom(1.1, -100), 10)
-    expect(wheelZoom(wheelZoom(1.3, -40), 40)).toBeCloseTo(1.3, 10)
-  })
-
   it('缩放不超出 60% 到 240%', () => {
     expect([ZOOM_MIN, ZOOM_MAX]).toEqual([0.6, 2.4])
-    expect(wheelZoom(2.3, -1000)).toBe(ZOOM_MAX)
-    expect(wheelZoom(0.7, 1000)).toBe(ZOOM_MIN)
     expect(clampZoom(3)).toBe(ZOOM_MAX)
     expect(clampZoom(0.2)).toBe(ZOOM_MIN)
     expect(clampZoom(1.37)).toBe(1.37)

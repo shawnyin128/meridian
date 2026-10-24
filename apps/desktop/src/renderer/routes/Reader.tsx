@@ -5,6 +5,7 @@ import type {
   PaperHighlightRect, PaperReading, PaperRow, ReadingMutation,
 } from '../../shared/contract.js'
 import { papers } from '../ipc.js'
+import { useWheelZoom } from '../hooks/useWheelZoom.js'
 import { errorLabel } from '../lib/failure-label.js'
 import { useMessages } from '../messages/useMessages.js'
 import {
@@ -20,7 +21,7 @@ import {
   highlightLines, highlightShape, selectedLinesByPage, selectionBox,
 } from './highlight-geometry.js'
 import {
-  ZOOM_MAX, ZOOM_MIN, clampZoom, keptScroll, pageScale, scaledAbout, wheelZoom, type SheetTransform,
+  ZOOM_MAX, ZOOM_MIN, clampZoom, keptScroll, pageScale, scaledAbout, type SheetTransform,
 } from './reader-zoom.js'
 import { PaperChat, type PaperChatPrompt } from '../components/chat/PaperChat.js'
 import { ReaderSidePanel, type ReaderSideTab } from '../components/reader/ReaderSidePanel.js'
@@ -578,23 +579,18 @@ export function Reader() {
     })
   }
 
+  useWheelZoom(scroller, (factor, point) => zoomTo(shownZoom.current * factor, point))
+
   useEffect(() => {
     const view = scroller.current
     if (view === null) return
-    const wheel = (event: WheelEvent) => {
-      if (!event.ctrlKey) return
-      event.preventDefault()
-      zoomTo(wheelZoom(shownZoom.current, event.deltaY), { x: event.clientX, y: event.clientY })
-    }
-    view.addEventListener('wheel', wheel, { passive: false })
     // Pages scrolled into view after a zoom are drawn at it once scrolling pauses.
     view.addEventListener('scroll', settleLater, { passive: true })
     return () => {
-      view.removeEventListener('wheel', wheel)
       view.removeEventListener('scroll', settleLater)
       window.clearTimeout(settleTimer.current)
     }
-  }, [zoomTo, settleLater])
+  }, [settleLater])
 
   // Opening or closing the paper chat or a rail tab, or resizing the window, changes the room the
   // pages fit; they are laid out again with the page at the top of the view kept in place.

@@ -91,6 +91,23 @@ describe('Reader', () => {
     expect([shown(), button('Zoom in').disabled, button('Zoom out').disabled]).toEqual(['60%', false, true])
   })
 
+  it('滚轮平常滚动页面;双指捏合或按住 Ctrl、⌘ 滚动才缩放,缩放不超出上下限', async () => {
+    await render()
+    const pages = host.querySelector<HTMLElement>('.pdfwrap')!
+    const shown = () => host.querySelector('.zoomctl .zoom-reset')!.textContent
+    /** Turns the wheel over the pages; returns whether the reader kept the event from scrolling them. */
+    const wheel = async (init: WheelEventInit) => {
+      const event = new WheelEvent('wheel', { deltaY: -100, bubbles: true, cancelable: true, ...init })
+      await act(async () => { pages.dispatchEvent(event) })
+      return event.defaultPrevented
+    }
+    expect([await wheel({}), shown()]).toEqual([false, '100%'])
+    expect([await wheel({ ctrlKey: true }), shown()]).toEqual([true, '116%'])
+    expect([await wheel({ metaKey: true }), shown()]).toEqual([true, '135%'])
+    expect([await wheel({ ctrlKey: true, deltaY: -5000 }), shown()]).toEqual([true, '240%'])
+    expect([await wheel({ ctrlKey: true, deltaY: 5000 }), shown()]).toEqual([true, '60%'])
+  })
+
   it('从别的屏点链接打开时,阅读器头上的返回回到来的那一屏', async () => {
     shell.jump = { screen: 'reader', target: 'paper-1', from: 'feed', seq: 2 }
     await render()
