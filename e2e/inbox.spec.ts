@@ -155,12 +155,13 @@ test('关注与项目发现是两条流,发现解释来源并接受显式反馈'
   await expect(shown(win, '.collapsible-group')).toHaveCount(1)
   await openInbox(win, 'discovery')
 
+  // 更多类似 keeps the card, pressed; 减少类似 then takes it out.
   const first = shown(win, '.pcard').first()
   await rowAction(first, '更多类似')
   await expect(first.locator('[aria-label="更多类似"]')).toHaveAttribute('aria-pressed', 'true')
 
   const before = (await discoveryFromCore(win)).length
-  await rowAction(shown(win, '.pcard').nth(1), '减少类似')
+  await rowAction(first, '减少类似')
   await expect.poll(async () => (await discoveryFromCore(win)).length).toBe(before - 1)
 })
 
@@ -268,7 +269,8 @@ test('入库:论文进库,卡片离开论文推送和它的条数,提示里的�
 
 /**
  * Imports directly, bypassing the UI, the PDF that adding the `longspec` inbox entry downloads, and
- * returns the paper once the import's metadata parse, which may still retitle it, has settled.
+ * returns the paper once the import's metadata parse, which may still retitle it, has settled. The
+ * import takes its title from the file name, so nothing yet tells it is the card's paper.
  */
 async function importLongSpec(win: Page): Promise<{ id: string; title: string }> {
   const entry = (await inboxFromCore(win)).find((e) => e.id === 'longspec')!
@@ -287,8 +289,10 @@ test('论文从别处进了库:它那张卡片离开论文推送和侧栏条数'
   await expect(shown(win, '.pcard')).toHaveCount(entries.length)
   await expect(shown(win, '.pcard[data-pid="longspec"]')).toHaveCount(1)
 
-  // The PDF carries the card's title, which is how the vault's paper is recognized.
-  await importLongSpec(win)
+  // Once the imported paper records the card's arXiv id, it is recognized as the card's paper.
+  const held = await importLongSpec(win)
+  await expect(shown(win, '.pcard[data-pid="longspec"]')).toHaveCount(1)
+  await call(win, 'papers.update', { id: held.id, patch: { identifier: 'arXiv:2607.01428' } })
 
   await expect(shown(win, '.pcard[data-pid="longspec"]')).toHaveCount(0)
   await expect(shown(win, '.pcard')).toHaveCount(entries.length - 1)
@@ -297,7 +301,7 @@ test('论文从别处进了库:它那张卡片离开论文推送和侧栏条数'
 
 test('入库撞上库里已有的同一份原文:不重复入库,卡片离开,提示里的开始阅读打开库里那一篇', async ({ win }) => {
   // Like every entry Core writes, this one names no paper. The user has imported directly the same PDF
-  // that adding it downloads, and retitled it, so only the PDF's bytes tell it is the same paper.
+  // that adding it downloads, under another title, so only the PDF's bytes tell it is the same paper.
   expect((await inboxFromCore(win)).find((e) => e.id === 'longspec')?.paper).toBe('')
   const held = await importLongSpec(win)
   await call(win, 'papers.update', { id: held.id, patch: { title: '我那一份 LongSpec' } })
