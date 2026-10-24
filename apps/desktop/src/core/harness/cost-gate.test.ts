@@ -298,6 +298,63 @@ describe('Harness cost gate', () => {
     expect(run).not.toHaveBeenCalled()
   })
 
+  it('makes a proposal reviewable again once the change its write recorded is undone, and logs it as generated again', () => {
+    const reference = gate().costGate.prepare('p1')
+    const recordProposal = vi.fn()
+    const pending = {
+      id: 'proposal-restored', targetId: 'p1', scopeDigest: reference.scopeDigest,
+      generatedAt: '2026-09-17T11:00:00.000Z', action: 'create' as const, body: '# Restored', review, quality,
+    }
+    const restored = createHarnessCostGate({
+      paper: () => structuredClone(paper),
+      reading: () => structuredClone(reading),
+      wiki: () => structuredClone(wiki),
+      model: { provider: 'Provider', name: 'model', configured: true, billable: true },
+      run: vi.fn(),
+      applyWiki: vi.fn(() => ({ change: 'change-9' })),
+      recordProposal,
+      initialProposals: [pending],
+      now: () => new Date('2026-09-17T12:00:00.000Z'),
+    })
+    restored.applyPaperWiki({ proposalId: 'proposal-restored', body: '# Reviewed' })
+    expect(recordProposal).toHaveBeenLastCalledWith(expect.objectContaining({ event: 'applied', change: 'change-9' }))
+    restored.reopenPaperWiki('change-8')
+    expect(restored.pendingPaperWiki('p1')).toBeNull()
+
+    restored.reopenPaperWiki('change-9')
+    expect(restored.pendingPaperWiki('p1')).toEqual({
+      proposal: { id: 'proposal-restored', targetId: 'p1', action: 'create', body: '# Restored', review, quality },
+      generatedAt: '2026-09-17T11:00:00.000Z',
+      stale: false,
+    })
+    expect(recordProposal).toHaveBeenLastCalledWith({
+      event: 'generated', proposalId: 'proposal-restored', targetId: 'p1', scopeDigest: reference.scopeDigest,
+      at: '2026-09-17T11:00:00.000Z', body: '# Restored', action: 'create', review, quality,
+    })
+    restored.reopenPaperWiki('change-9')
+    expect(recordProposal).toHaveBeenCalledTimes(2)
+  })
+
+  it('after a restart reopens a proposal whose write the log holds with its change entry', () => {
+    const reference = gate().costGate.prepare('p1')
+    const restored = createHarnessCostGate({
+      paper: () => structuredClone(paper),
+      reading: () => structuredClone(reading),
+      wiki: () => structuredClone(wiki),
+      model: { provider: 'Provider', name: 'model', configured: true, billable: true },
+      run: vi.fn(),
+      applyWiki: vi.fn(),
+      initialApplied: [{
+        id: 'proposal-written', targetId: 'p1', scopeDigest: reference.scopeDigest,
+        generatedAt: '2026-09-17T11:00:00.000Z', action: 'create', body: '# Written', change: 'change-9',
+      }],
+      now: () => new Date('2026-09-17T12:00:00.000Z'),
+    })
+    expect(restored.pendingPaperWiki('p1')).toBeNull()
+    restored.reopenPaperWiki('change-9')
+    expect(restored.pendingPaperWiki('p1')?.proposal.id).toBe('proposal-written')
+  })
+
   it('records optional rejection feedback without running Harness or writing Wiki', () => {
     const reference = gate().costGate.prepare('p1')
     const run = vi.fn()

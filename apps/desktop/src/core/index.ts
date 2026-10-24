@@ -253,6 +253,15 @@ const pendingHarnessProposals = (() => {
     return []
   }
 })()
+const appliedHarnessProposals = (() => {
+  if (proposalAudit === null) return []
+  try {
+    return proposalAudit.applied()
+  } catch (error) {
+    console.error(`[harness] 已写入的提案无法恢复，撤销后不会回到待审核：${error instanceof Error ? error.message : String(error)}`)
+    return []
+  }
+})()
 process.once('exit', () => {
   paperWikiHarness?.close()
   chatHarness.close()
@@ -272,6 +281,7 @@ const harness = createHarnessCostGate({
     : paperWikiHarness.run,
   applyWiki: (id, body) => recordChange(store, () => store.applyPaperWikiDraft(id, body)),
   initialProposals: pendingHarnessProposals,
+  initialApplied: appliedHarnessProposals,
   ...(proposalAudit === null ? {} : { recordProposal: proposalAudit.record }),
 })
 const wikiProposals = createWikiProposals({ store, pdf: pdfPageText(store), now: Date.now })
@@ -778,8 +788,11 @@ registerHandler('changelog.list', (params) => {
   EmptyParamsSchema.parse(params)
   return store.listChanges()
 })
-registerHandler('changelog.undo', (params) =>
-  store.undoChange(ChangelogUndoParamsSchema.parse(params).id))
+registerHandler('changelog.undo', (params) => {
+  const { id } = ChangelogUndoParamsSchema.parse(params)
+  store.undoChange(id)
+  harness.reopenPaperWiki(id)
+})
 registerHandler('changelog.archive', (params) =>
   store.archiveChange(ChangelogArchiveParamsSchema.parse(params).id))
 registerHandler('changelog.archiveAll', (params) => {

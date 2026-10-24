@@ -57,6 +57,7 @@ const api = vi.hoisted(() => ({
   apply: vi.fn(),
   reject: vi.fn(),
   undo: vi.fn(),
+  revision: 0,
   notices: [] as { note: unknown; action: NoticeAction | undefined }[],
   settingsOpen: false,
   openCategory: vi.fn(),
@@ -86,6 +87,7 @@ vi.mock('../../ipc.js', () => ({
 vi.mock('../../shell/AppShell.js', () => ({
   useSettingsOpen: () => ({ open: api.settingsOpen, openCategory: api.openCategory }),
   useJump: () => ({ jump: null, open: api.open }),
+  useVaultRevision: () => ({ revision: api.revision, bump: vi.fn() }),
 }))
 vi.mock('../../hooks/useVaultWrite.js', () => ({
   useVaultWrite: () => async (operation: Promise<unknown>, opts?: {
@@ -220,6 +222,27 @@ describe('PaperWikiIngest', () => {
     expect(api.notices.map(({ note, action }) => [note, action?.label])).toEqual([['Wiki 提案已写入论文页', '撤销']])
     await act(async () => { api.notices[0]!.action!.onAction() })
     expect(api.undo).toHaveBeenCalledExactlyOnceWith('change-9')
+  })
+
+  it('once its write is undone, shows the proposal for review again and no longer says it is written', async () => {
+    const render = () => act(async () => { root.render(withMessages(<Panel paper={paper} reading={reading} onJump={api.jump} />)) })
+    await render()
+    await act(async () => { host.querySelector<HTMLButtonElement>('[data-testid="start-harness"]')!.click() })
+    await act(async () => {
+      [...host.querySelectorAll<HTMLButtonElement>('button')].find((button) => button.textContent === '确认写入 Wiki')!.click()
+    })
+    expect(host.textContent).toContain('已写入 Wiki')
+
+    api.pending.mockResolvedValue({
+      proposal: { id: 'proposal-1', targetId: 'p1', action: 'create', body: '# Draft', review, quality },
+      generatedAt: '2026-09-17T12:00:00.000Z',
+      stale: false,
+    })
+    api.revision += 1
+    await render()
+    expect(host.textContent).not.toContain('已写入 Wiki')
+    expect([...host.querySelectorAll('button')].some((button) => button.textContent === '确认写入 Wiki')).toBe(true)
+    expect(api.start).toHaveBeenCalledOnce()
   })
 
   it('names an audit record that could not be written by its reason, next to the ready proposal', async () => {
