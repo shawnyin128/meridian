@@ -47,7 +47,7 @@ export const settings = {
       deleteTitle: (name: string) => `删除外观主题「${name}」？`,
       deleteDescription: '它的主题文件会被删除，不能恢复。',
       leaveTitle: '放弃未保存的修改？',
-      leaveDescription: '返回后这些修改不会保留。',
+      leaveDescription: '离开后这些修改不会保留。',
       leave: '放弃修改',
       modules: {
         ground: '窗口底色', sidebar: '侧栏', card: '卡片', field: '输入框', separator: '分隔线',
