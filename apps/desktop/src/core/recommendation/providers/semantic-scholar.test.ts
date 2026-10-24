@@ -96,6 +96,22 @@ describe('Semantic Scholar recommendations', () => {
   })
 })
 
+describe('Semantic Scholar paging', () => {
+  it('pages citations and references by offset, one batch per page, leaving the first page address unchanged', async () => {
+    const urls: string[] = []
+    const get: HttpGet = async (url) => {
+      urls.push(url)
+      return { status: 200, body: bytes({ data: [] }) }
+    }
+    const client = createSemanticRecommendations({ get, sleep: async () => {} })
+    await client.recommend([seed('ARXIV:2605.29343')], [], 'citation', 2)
+    await client.recommend([seed('ARXIV:2605.29343')], [], 'reference', 1)
+    await client.recommend([seed('ARXIV:2605.29343')], [], 'citation', 0)
+    expect(urls.map((url) => new URL(url).searchParams.get('offset'))).toEqual(['40', '20', null])
+    expect(urls[2]).toBe(semanticCitationUrl('ARXIV:2605.29343'))
+  })
+})
+
 describe('Semantic Scholar paper batch', () => {
   it('只保留排名所需字段,忽略找不到的论文与坏数值', () => {
     const result = parsePaperImpact(bytes([

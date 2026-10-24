@@ -10,7 +10,7 @@ const paper = (id: string, title: string): RemotePaper => ({
 })
 
 function setup(
-  search: (query: string) => Promise<RemotePaper[]>,
+  search: (query: string, start: number) => Promise<RemotePaper[]>,
   scholar?: { lookup(ids: string[]): Promise<Map<string, {
     citationCount: number; influentialCitationCount: number; venue: string; published: boolean
   }>> },
@@ -22,7 +22,7 @@ function setup(
   const fetcher = createWatchFetcher({
     store,
     arxiv: {
-      search: async (query) => { queries.push(query); return search(query) },
+      search: async (query, start) => { queries.push(query); return search(query, start ?? 0) },
     },
     ...(scholar === undefined ? {} : { scholar }),
     ...(authorPapers === undefined ? {} : { authorPapers }),
@@ -69,7 +69,7 @@ describe('createWatchFetcher', () => {
     expect(store.listInbox().filter((entry) => entry.title !== 'Tree One').map((entry) => entry.source)).toEqual(before)
   })
 
-  it('整轮关注抓取共用单次推送上限', async () => {
+  it('整轮关注抓取共用单次推送上限:每条关注都去查,上限外的论文留在各自的候选池里', async () => {
     const { store, fetcher, queries } = setup(async () => [
       paper(`2609.${String(queries.length + 1).padStart(5, '0')}`, 'New Paper'),
       paper(`2609.${String(queries.length + 11).padStart(5, '0')}`, 'Another Paper'),
@@ -79,10 +79,45 @@ describe('createWatchFetcher', () => {
     const before = store.listInbox().length
     await fetcher.run()
     expect(store.listInbox()).toHaveLength(before + 1)
-    expect(queries).toHaveLength(1)
+    expect(queries).toHaveLength(2)
+    expect(store.refreshProgress({ kind: 'watch', id: 'dao' }).candidates.map((found) => found.id))
+      .toEqual(['2609.00003', '2609.00013'])
     expect(store.listFeed()[0]?.body).toMatchObject({
       kind: 'runs', runs: expect.arrayContaining([{ kind: 'strong', text: '1 篇新论文入队' }]),
     })
+  })
+
+  it('单次上限在几条关注之间平分,除不尽的那篇轮流给,而不是让列在前面的关注用光', async () => {
+    const prefix: Record<string, number> = { 'all:"speculative decoding"': 1, 'all:"MoE serving"': 2, 'au:Dao_T': 3 }
+    let run = 0
+    // Every run each watch finds three papers it never found before.
+    const { store, fetcher } = setup(async (query) => (
+      [1, 2, 3].map((at) => paper(`2609.${prefix[query]}${run}0${at}`, `${query} ${run}.${at}`))
+    ))
+    store.setDeliverySettings({ maxItemsPerRun: 4 })
+    const delivered = () => Object.keys(prefix).map((query) => (
+      store.listInbox().filter((entry) => entry.title.startsWith(query)).length
+    ))
+
+    run = 1
+    await fetcher.run()
+    expect(delivered()).toEqual([2, 1, 1])
+    run = 2
+    await fetcher.run()
+    expect(delivered()).toEqual([3, 3, 2])
+  })
+
+  it('上限外的论文留在这条关注的候选池里,下一轮先推,不被更新的论文挤掉', async () => {
+    let answer = [paper('2609.40001', 'Pooled First'), paper('2609.40002', 'Pooled Second')]
+    const { store, fetcher } = setup(async () => answer)
+    store.setDeliverySettings({ maxItemsPerRun: 1 })
+    await fetcher.run(['spec'])
+    answer = [paper('2609.40003', 'Newest'), ...answer]
+    await fetcher.run(['spec'])
+    expect(store.listInbox().filter((entry) => entry.watch === 'spec').slice(0, 2).map((entry) => entry.title))
+      .toEqual(['Pooled Second', 'Pooled First'])
+    expect(store.refreshProgress({ kind: 'watch', id: 'spec' }).candidates.map((found) => found.title))
+      .toContain('Newest')
   })
 
   it('一条关注搜不成:其余照抓,状态是失败带原因,抓完的时刻不记', async () => {
@@ -196,5 +231,51 @@ describe('createWatchFetcher', () => {
     await Promise.all([first, second])
     expect(queries).toEqual(['all:"speculative decoding"', 'au:Dao_T'])
     expect(fetcher.status().state).toBe('idle')
+  })
+
+  it('两次抓取之间新论文多过一页时往后翻页,直到碰上上次见过的论文,一篇不丢', async () => {
+    const newestFirst: RemotePaper[] = []
+    const publish = (count: number, label: string): void => {
+      for (let at = 0; at < count; at += 1) newestFirst.unshift(paper(`2609.${20_000 + newestFirst.length}`, `${label} ${at}`))
+    }
+    publish(25, 'Before')
+    const { store, fetcher, queries } = setup(async (_query, start) => newestFirst.slice(start, start + 20))
+    store.setDeliverySettings({ maxItemsPerRun: 100 })
+    await fetcher.run(['spec'])
+    expect(queries).toHaveLength(1)
+
+    publish(25, 'Burst')
+    queries.length = 0
+    await fetcher.run(['spec'])
+    expect(queries).toHaveLength(2)
+    expect(store.listInbox().filter((entry) => entry.title.startsWith('Burst'))).toHaveLength(25)
+  })
+
+  it('一轮最多往后翻三页,翻到不满一页就停', async () => {
+    const newestFirst: RemotePaper[] = []
+    let published = 0
+    const publish = (count: number, label: string): void => {
+      for (let at = 0; at < count; at += 1) newestFirst.unshift(paper(`2609.${30_000 + published++}`, `${label} ${at}`))
+    }
+    publish(20, 'Before')
+    const { store, fetcher, queries } = setup(async (_query, start) => newestFirst.slice(start, start + 20))
+    store.setDeliverySettings({ maxItemsPerRun: 100 })
+    await fetcher.run(['spec'])
+    publish(100, 'Burst')
+    queries.length = 0
+    await fetcher.run(['spec'])
+    expect(queries).toHaveLength(3)
+    expect(store.listInbox().filter((entry) => entry.title.startsWith('Burst'))).toHaveLength(60)
+
+    newestFirst.splice(0, newestFirst.length)
+    publish(50, 'Short')
+    queries.length = 0
+    await fetcher.run(['spec'])
+    expect(queries).toHaveLength(3)
+    newestFirst.splice(0, newestFirst.length)
+    publish(30, 'Shorter')
+    queries.length = 0
+    await fetcher.run(['spec'])
+    expect(queries).toHaveLength(2)
   })
 })

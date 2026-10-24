@@ -213,13 +213,26 @@ export function recommendationFingerprint(
   return (hash >>> 0).toString(36)
 }
 
+/** The sources a direction's queries cycle through, in order. */
+export const QUERY_SOURCES: readonly RecommendationSource[] = ['similarity', 'citation', 'reference', 'author']
+
 /**
- * Uses the anchor-ranked representative for retrieval. Multi-seed providers weight positives
- * symmetrically, which can average away the project's main idea even inside a coherent cluster.
- * The complete cluster remains visible to the user and continues to determine the direction.
+ * The query direction `intent` runs at rotation step `step`: one of its seeds, a source and a page.
+ * Each query asks with a single seed, since multi-seed providers weight positives symmetrically and can
+ * average away the project's main idea even inside a coherent cluster. Steps take the seeds in anchor
+ * order and run each through every source of QUERY_SOURCES; once every seed has run every source, the
+ * next step starts over one page further.
  */
-export function recommendationQueryIntent(intent: RecommendationIntent): RecommendationIntent {
-  return { ...intent, seeds: intent.seeds.slice(0, 1) }
+export function recommendationQuery(intent: RecommendationIntent, step: number): {
+  intent: RecommendationIntent; source: RecommendationSource; page: number
+} {
+  const queries = intent.seeds.length * QUERY_SOURCES.length
+  const at = step % queries
+  return {
+    intent: { ...intent, seeds: [intent.seeds[Math.floor(at / QUERY_SOURCES.length)]!] },
+    source: QUERY_SOURCES[at % QUERY_SOURCES.length]!,
+    page: Math.floor(step / queries),
+  }
 }
 
 /** Always keeps the anchored core intent and rotates the bounded secondary slots. */
