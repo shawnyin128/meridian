@@ -1772,10 +1772,8 @@ test('改类型:列菜单里只用键盘把文本列改成单选', async ({ win 
   for (let n = await toggles.count(); n > 0; n -= 1) await win.keyboard.press('Tab')
   await expect(menu.locator('.mi.colrow', { hasText: '备注' }).locator('[aria-label="改类型"]')).toBeFocused()
   await win.keyboard.press('Enter')
-  // Of the expanded type options only the current one is in the Tab order; after Change type come
-  // the rename pen, the delete × and then that option.
-  await win.keyboard.press('Tab')
-  await win.keyboard.press('Tab')
+  // Of the expanded type options only the current one is in the Tab order. Change type, the rename
+  // pen and the delete × are the row's actions slot, one Tab stop, so the next Tab reaches that option.
   await win.keyboard.press('Tab')
   const selectBtn = menu.locator('.typerow .ctbtn[aria-label="单选"]')
   await expect(menu.locator('.typerow .ctbtn[aria-label="文本"]')).toBeFocused()
