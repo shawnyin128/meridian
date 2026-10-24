@@ -384,8 +384,8 @@ export function PaperTable() {
       setFacets([])
       return
     }
-    void papers.facets(group, filter).then(setFacets).catch(report)
-  }, [group, filter, revision, report])
+    return load('facets', papers.facets(group, filter), setFacets)
+  }, [group, filter, revision, load])
 
   useEffect(() => {
     if (view !== 'table' || !listed) return
@@ -394,11 +394,11 @@ export function PaperTable() {
       ...(filter ? { filter } : {}),
       ...(sel === null || group === 'none' ? {} : { facet: { field: group, value: sel } }),
     }
-    void papers.list(params).then((r) => {
+    return load('rows', papers.list(params), (r) => {
       setRows(r.rows)
       setTotal(r.total)
-    }).catch(report)
-  }, [view, listed, shownPage, size, sort, direction, filter, group, sel, revision, report])
+    })
+  }, [view, listed, shownPage, size, sort, direction, filter, group, sel, revision, load])
 
   useEffect(() => {
     if (view !== 'research-map') return
