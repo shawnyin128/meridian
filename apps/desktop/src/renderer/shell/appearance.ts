@@ -1,7 +1,13 @@
+import { BUILT_IN_COLOUR_THEMES, DEFAULT_COLOUR_THEME, deriveColourTokens } from '../../shared/colour-theme.js'
+import type { ColourTheme } from '../../shared/contract.js'
+
 export type AppearancePreference = 'light' | 'dark' | 'system'
 
 export const APPEARANCE_STORAGE_KEY = 'meridian.appearance'
 export const APPEARANCE_CHANGE_EVENT = 'meridian:appearance-change'
+export const COLOUR_THEME_STORAGE_KEY = 'meridian.colour-theme'
+export const COLOUR_THEME_CHANGE_EVENT = 'meridian:colour-theme-change'
+const COLOUR_THEME_STYLE = 'meridian-colour-theme'
 
 const PREFER_DARK = '(prefers-color-scheme: dark)'
 
@@ -49,7 +55,54 @@ export function setAppearancePreference(preference: AppearancePreference): void 
   }))
 }
 
-/** Applies the saved choice before React renders and keeps system mode synchronized. */
+/** Reads the id of the device-local colour theme; today's palette when none is saved or storage is blocked. */
+export function readColourThemePreference(): string {
+  try {
+    return window.localStorage.getItem(COLOUR_THEME_STORAGE_KEY) ?? DEFAULT_COLOUR_THEME.id
+  } catch {
+    return DEFAULT_COLOUR_THEME.id
+  }
+}
+
+/**
+ * Applies `theme` in both modes: its derived colour tokens go into one style element above
+ * tokens.css, which already holds today's palette, so that palette removes the element.
+ * `data-colour-theme` on the root names every theme but today's palette.
+ */
+export function applyColourTheme(theme: ColourTheme): void {
+  const root = document.documentElement
+  document.getElementById(COLOUR_THEME_STYLE)?.remove()
+  if (theme.id === DEFAULT_COLOUR_THEME.id) {
+    delete root.dataset.colourTheme
+    return
+  }
+  // The doubled :root outranks tokens.css's [data-theme="dark"] block, and the dark rule outranks the light one.
+  const rules = (['light', 'dark'] as const).map((mode) => {
+    const tokens = Object.entries(deriveColourTokens(theme[mode], mode)).map(([name, value]) => `${name}:${value}`)
+    return `${mode === 'dark' ? ':root:root[data-theme="dark"]' : ':root:root'}{${tokens.join(';')}}`
+  })
+  const style = document.createElement('style')
+  style.id = COLOUR_THEME_STYLE
+  style.textContent = rules.join('\n')
+  document.head.append(style)
+  root.dataset.colourTheme = theme.id
+}
+
+/** Persists the chosen colour theme, applies it, and announces its id with COLOUR_THEME_CHANGE_EVENT. */
+export function setColourThemePreference(theme: ColourTheme): void {
+  try {
+    window.localStorage.setItem(COLOUR_THEME_STORAGE_KEY, theme.id)
+  } catch {
+    // A blocked storage backend must not prevent a session-only colour theme change.
+  }
+  applyColourTheme(theme)
+  window.dispatchEvent(new CustomEvent<string>(COLOUR_THEME_CHANGE_EVENT, { detail: theme.id }))
+}
+
+/**
+ * Applies the saved choices before React renders and keeps system mode synchronized. A saved colour
+ * theme that is not built in shows today's palette until it is applied.
+ */
 export function initializeAppearance(): () => void {
   const media = window.matchMedia(PREFER_DARK)
   const synchronize = () => {
@@ -57,6 +110,8 @@ export function initializeAppearance(): () => void {
     if (preference === 'system') applyAppearance(preference)
   }
   applyAppearance(readAppearancePreference())
+  const chosen = readColourThemePreference()
+  applyColourTheme(BUILT_IN_COLOUR_THEMES.find((theme) => theme.id === chosen) ?? DEFAULT_COLOUR_THEME)
   media.addEventListener('change', synchronize)
   return () => media.removeEventListener('change', synchronize)
 }

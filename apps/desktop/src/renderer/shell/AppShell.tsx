@@ -458,13 +458,13 @@ export function AppShell({ screens, settings }: {
     else delete document.documentElement.dataset.fullscreen
   }), [])
 
-  // The theme is not React state: it is written straight to documentElement's data-theme, and the
-  // screenshot script and e2e write it the same way. So this watches the attribute, not the buttons,
-  // and catches every way the theme can change.
+  // The theme is not React state: it is written straight to documentElement's data-theme and
+  // data-colour-theme, and the screenshot script and e2e write them the same way. So this watches the
+  // attributes, not the buttons, and catches every way the theme can change.
   useEffect(() => {
     appMenu.setTitleBarTheme(symbolColor())
     const observer = new MutationObserver(() => appMenu.setTitleBarTheme(symbolColor()))
-    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] })
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'data-colour-theme'] })
     return () => { observer.disconnect() }
   }, [])
 

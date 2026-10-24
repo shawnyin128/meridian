@@ -1,11 +1,18 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { BUILT_IN_COLOUR_THEMES, DEFAULT_COLOUR_THEME } from '../../shared/colour-theme.js'
 import {
   APPEARANCE_STORAGE_KEY,
+  COLOUR_THEME_STORAGE_KEY,
   initializeAppearance,
   readAppearancePreference,
   setAppearancePreference,
+  setColourThemePreference,
 } from './appearance.js'
+
+/** The rules the applied colour theme added, as `<selector> --content:<value>`. */
+const themeRules = (): string[] => [...(document.getElementById('meridian-colour-theme')?.textContent ?? '').split('\n')]
+  .filter((rule) => rule !== '').map((rule) => `${rule.slice(0, rule.indexOf('{'))} ${/--content:[^;}]+/.exec(rule)![0]}`)
 
 describe('appearance preference', () => {
   let systemDark = false
@@ -17,6 +24,8 @@ describe('appearance preference', () => {
     window.localStorage.clear()
     delete document.documentElement.dataset.theme
     delete document.documentElement.dataset.appearance
+    delete document.documentElement.dataset.colourTheme
+    document.getElementById('meridian-colour-theme')?.remove()
     document.documentElement.style.colorScheme = ''
     vi.stubGlobal('matchMedia', vi.fn(() => ({
       get matches() { return systemDark },
@@ -57,5 +66,39 @@ describe('appearance preference', () => {
 
     setAppearancePreference('dark')
     expect(document.documentElement.dataset.theme).toBe('dark')
+  })
+
+  it('restores the saved colour theme on start with its light and dark tokens, whatever the mode', () => {
+    window.localStorage.setItem(COLOUR_THEME_STORAGE_KEY, 'luodian')
+    window.localStorage.setItem(APPEARANCE_STORAGE_KEY, 'dark')
+    initializeAppearance()
+    expect(document.documentElement.dataset.colourTheme).toBe('luodian')
+    expect(themeRules()).toEqual([':root:root --content:#faf7f3', ':root:root[data-theme="dark"] --content:#151c1f'])
+
+    setAppearancePreference('light')
+    expect(document.documentElement.dataset.colourTheme).toBe('luodian')
+    expect(themeRules()).toHaveLength(2)
+  })
+
+  it('persists a colour theme, and today\'s palette removes its rules so tokens.css alone applies', () => {
+    initializeAppearance()
+    expect(themeRules()).toEqual([])
+
+    setColourThemePreference(BUILT_IN_COLOUR_THEMES.find((theme) => theme.id === 'xipi')!)
+    expect(window.localStorage.getItem(COLOUR_THEME_STORAGE_KEY)).toBe('xipi')
+    expect(document.documentElement.dataset.colourTheme).toBe('xipi')
+    expect(themeRules()).toEqual([':root:root --content:#fef6ef', ':root:root[data-theme="dark"] --content:#251612'])
+
+    setColourThemePreference(DEFAULT_COLOUR_THEME)
+    expect(document.documentElement.dataset.colourTheme).toBeUndefined()
+    expect(themeRules()).toEqual([])
+  })
+
+  it('shows today\'s palette for a saved theme that is not built in and keeps the saved choice', () => {
+    window.localStorage.setItem(COLOUR_THEME_STORAGE_KEY, 'my-theme')
+    initializeAppearance()
+    expect(document.documentElement.dataset.colourTheme).toBeUndefined()
+    expect(themeRules()).toEqual([])
+    expect(window.localStorage.getItem(COLOUR_THEME_STORAGE_KEY)).toBe('my-theme')
   })
 })

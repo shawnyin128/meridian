@@ -139,6 +139,8 @@ describe('Settings', () => {
     window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'zh')
     delete document.documentElement.dataset.theme
     delete document.documentElement.dataset.appearance
+    delete document.documentElement.dataset.colourTheme
+    document.getElementById('meridian-colour-theme')?.remove()
     vi.stubGlobal('matchMedia', vi.fn(() => ({
       matches: false,
       media: '(prefers-color-scheme: dark)',
@@ -472,10 +474,11 @@ describe('Settings', () => {
       dialog.querySelector<HTMLElement>('[data-setcat="appearance"]')!.click()
     })
 
-    const choices = [...dialog.querySelectorAll<HTMLButtonElement>('.appearance-choice')]
+    const modes = dialog.querySelector('[role="radiogroup"][aria-label="外观"]')!
+    const choices = [...modes.querySelectorAll<HTMLButtonElement>('.appearance-choice')]
     expect(choices.map((choice) => choice.textContent)).toEqual(['浅色', '深色', '跟随系统'])
-    expect(dialog.querySelectorAll('.appearance-preview')).toHaveLength(3)
-    expect(dialog.querySelectorAll('.appearance-preview.system .appearance-mini')).toHaveLength(2)
+    expect(modes.querySelectorAll('.appearance-preview')).toHaveLength(3)
+    expect(modes.querySelectorAll('.appearance-preview.system .appearance-mini')).toHaveLength(2)
     expect(choices[2]!.getAttribute('aria-checked')).toBe('true')
 
     await act(async () => { choices[1]!.click() })
@@ -486,6 +489,47 @@ describe('Settings', () => {
     await act(async () => { choices[0]!.click() })
     expect(document.documentElement.dataset.theme).toBeUndefined()
     expect(document.documentElement.dataset.appearance).toBe('light')
+  })
+
+  /** The colours a preview draws, as `<mode> <window> <sidebar> <line> <accent>`. */
+  const previewColours = (preview: Element): string => {
+    const style = (preview as HTMLElement).style
+    return [preview.classList.contains('dark') ? 'dark' : 'light',
+      ...['--ap-window', '--ap-sidebar', '--ap-line', '--ap-accent'].map((part) => style.getPropertyValue(part))].join(' ')
+  }
+
+  it('外观主题用五张卡选择默认和四种漆色主题,每张都并排预览它的浅色和深色;选中后整套颜色和三张外观预览都换成它', async () => {
+    await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
+    const dialog = document.querySelector('.setdlg')!
+    await act(async () => {
+      dialog.querySelector<HTMLElement>('[data-setcat="appearance"]')!.click()
+    })
+
+    const themes = dialog.querySelector('[role="radiogroup"][aria-label="外观主题"]')!
+    const choices = [...themes.querySelectorAll<HTMLButtonElement>('.appearance-choice')]
+    expect(choices.map((choice) => choice.textContent)).toEqual(['默认', '朱漆', '螺钿', '秋叶', '流霞'])
+    expect(choices.map((choice) => [...choice.querySelectorAll('.appearance-mini')].map((preview) => preview.classList.contains('dark') ? 'dark' : 'light')))
+      .toEqual(choices.map(() => ['light', 'dark']))
+    expect(previewColours(choices[1]!.querySelector('.appearance-mini.light')!)).toBe('light #f7f0e4 #ede6da #d3ccbf #a64436')
+    expect(choices.map((choice) => choice.getAttribute('aria-checked'))).toEqual(['true', 'false', 'false', 'false', 'false'])
+    const modes = dialog.querySelector('[role="radiogroup"][aria-label="外观"]')!
+    const modePreviews = () => [...modes.querySelectorAll('.appearance-mini')].map(previewColours)
+    expect(modePreviews()).toEqual([
+      'light #f8f8f8 #eeeeee #d2d2d2 #3568ff', 'dark #07111f #0d1b2d #394a62 #558cff',
+      'light #f8f8f8 #eeeeee #d2d2d2 #3568ff', 'dark #07111f #0d1b2d #394a62 #558cff',
+    ])
+
+    await act(async () => { choices[1]!.click() })
+    expect(document.documentElement.dataset.colourTheme).toBe('cinnabar')
+    expect(window.localStorage.getItem('meridian.colour-theme')).toBe('cinnabar')
+    expect(document.getElementById('meridian-colour-theme')!.textContent).toContain('--accent:#a64436')
+    expect(choices.map((choice) => choice.getAttribute('aria-checked'))).toEqual(['false', 'true', 'false', 'false', 'false'])
+    expect(modePreviews().map((colours) => colours.split(' ').at(-1))).toEqual(['#a64436', '#b35041', '#a64436', '#b35041'])
+
+    await act(async () => { choices[0]!.click() })
+    expect(document.documentElement.dataset.colourTheme).toBeUndefined()
+    expect(document.getElementById('meridian-colour-theme')).toBeNull()
+    expect(window.localStorage.getItem('meridian.colour-theme')).toBe('default')
   })
 
   it('每个设置页只有标题和控件，标题下不写介绍句子', async () => {

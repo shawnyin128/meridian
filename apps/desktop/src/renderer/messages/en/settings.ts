@@ -32,6 +32,8 @@ export const settings = {
     light: 'Light',
     dark: 'Dark',
     system: 'Follow system',
+    themeHeading: 'Theme',
+    themes: { default: 'Default', cinnabar: 'Cinnabar', luodian: 'Nacre', chestnut: 'Autumn Leaf', xipi: 'Afterglow' },
   },
   storage: {
     heading: 'Storage',

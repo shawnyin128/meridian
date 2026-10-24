@@ -25,6 +25,8 @@ export const settings = {
     light: '浅色',
     dark: '深色',
     system: '跟随系统',
+    themeHeading: '外观主题',
+    themes: { default: '默认', cinnabar: '朱漆', luodian: '螺钿', chestnut: '秋叶', xipi: '流霞' },
   },
   storage: {
     heading: '存储',

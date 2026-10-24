@@ -36,13 +36,13 @@
 .appearance-choice[aria-checked="true"] .appearance-preview{background-color:var(--selected)}
 .appearance-label{display:block;margin-top:var(--sp-8);font-size:var(--fs-sm);font-weight:var(--fw-medium);color:var(--sec)}
 .appearance-choice[aria-checked="true"] .appearance-label{color:var(--on-selected)}
-.appearance-preview.system{display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-2)}
-.appearance-preview.system>.appearance-mini{min-width:0}
-.appearance-mini{--ap-window:#f8f8f8;--ap-sidebar:#eeeeee;--ap-content:#fff;--ap-field:#e8e8e8;
-  --ap-line:#d2d2d2;--ap-accent:#3568ff;display:flex;height:100%;overflow:hidden;flex-direction:column;
-  border-radius:calc(var(--r-card) - var(--sp-8));background:var(--ap-window);box-shadow:0 0 0 1px rgba(17,17,17,.12)}
-.appearance-mini.dark{--ap-window:#07111f;--ap-sidebar:#0d1b2d;--ap-content:#12213a;--ap-field:#16263f;
-  --ap-line:#394a62;--ap-accent:#558cff;box-shadow:0 0 0 1px rgba(245,247,251,.14)}
+.appearance-preview.system,.appearance-preview.pair{display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-2)}
+.appearance-preview.system>.appearance-mini,.appearance-preview.pair>.appearance-mini{min-width:0}
+/* A preview draws one theme in one mode: AppearanceSettings writes its --ap-* colours from that theme's modules. */
+.appearance-mini{display:flex;height:100%;overflow:hidden;flex-direction:column;
+  border-radius:calc(var(--r-card) - var(--sp-8));background:var(--ap-window);
+  box-shadow:0 0 0 1px color-mix(in srgb,var(--ap-ink) 12%,transparent)}
+.appearance-mini.dark{box-shadow:0 0 0 1px color-mix(in srgb,var(--ap-ink) 14%,transparent)}
 .appearance-mini-bar{height:17px;display:flex;align-items:center;gap:var(--sp-4);padding:0 var(--sp-6);background:var(--ap-content);
   border-bottom:1px solid var(--ap-line)}
 .appearance-mini-bar i{width:4px;height:4px;border-radius:var(--r-full);background:var(--ap-line)}

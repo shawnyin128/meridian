@@ -17,7 +17,7 @@ import { IconButton } from '../components/IconButton.js'
 import { EmptyState } from '../components/EmptyState.js'
 import { LoadingPlaceholder } from '../components/LoadingPlaceholder.js'
 import { DirectoryField } from '../components/FormControls.js'
-import { AppearanceSettings } from '../components/settings/AppearanceSettings.js'
+import { AppearanceSettings, ColourThemeSettings } from '../components/settings/AppearanceSettings.js'
 import { LanguageSettings } from '../components/settings/LanguageSettings.js'
 import { DiscoverySettings } from '../components/settings/DiscoverySettings.js'
 import { SemanticKeySettings } from '../components/settings/SemanticKeySettings.js'
@@ -210,6 +210,8 @@ export function Settings() {
     appearance: (
       <>
         <AppearanceSettings />
+        <SectionHeading>{m.settings.appearance.themeHeading}</SectionHeading>
+        <ColourThemeSettings />
         <SectionHeading>{m.settings.language.heading}</SectionHeading>
         <LanguageSettings />
       </>

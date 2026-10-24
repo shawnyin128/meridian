@@ -139,6 +139,18 @@ function follow(source: Colour, reference: Colour, target: Colour): Colour {
   })
 }
 
+/**
+ * Where a colour the default theme pairs with one of its modules lands in another theme: it moves
+ * with that module the way derived tokens do.
+ * @param modules The theme's module colours in `mode`.
+ * @param module The module the colour moves with.
+ * @param target The colour, `#rrggbb`, beside the default theme's `module` in `mode`.
+ * @returns The colour for `modules`, `#rrggbb`.
+ */
+export function colourFollowing(modules: ColourThemeModules, mode: ColourMode, module: ColourModule, target: string): string {
+  return hexOf(follow(parse(modules[module]), parse(DEFAULT_COLOUR_THEME[mode][module]), parse(target)))
+}
+
 /** `color-mix(in srgb, x p%, y)` of two opaque colours, written out as that expression. */
 function mix(x: Colour, p: number, y: Colour): Colour {
   const at = (k: 'r' | 'g' | 'b') => x[k] * (p / 100) + y[k] * (1 - p / 100)
