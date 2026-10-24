@@ -6,7 +6,7 @@ import { clusterRecommendationProfile, recommendationFingerprint } from './profi
 import { createRecommendationService, DISCOVERY_COOLDOWN_MS } from './service.js'
 import type {
   DiscoveryPaper, DiscoverySchedule, RecommendationIntent, RecommendationProfile, RecommendationProvider,
-  RecommendationSeed,
+  RecommendationSeed, RefreshProgress, RefreshScope,
 } from './types.js'
 
 /** Creates the project `name` in `store` with `seeds` imported as its papers, and returns its id. */
@@ -26,7 +26,9 @@ function seededProject(
 }
 
 /** Store methods for a fake store that keeps no refresh progress between runs. */
-const noProgress = { refreshProgress: () => ({ steps: {} }), setRefreshProgress: () => {} }
+const noProgress = {
+  refreshProgress: () => ({ steps: {}, candidates: [], favouredAt: null }), setRefreshProgress: () => {},
+}
 
 /** The cooldown record an earlier fetch of `intent` leaves, keyed by its anchor seed and no negatives. */
 const fetchedRecord = (intent: RecommendationIntent, fetchedAt: number) => ({
@@ -58,7 +60,7 @@ describe('project recommendation service', () => {
     const service = createRecommendationService({ store, provider: { recommend }, onWrite, now: () => 1 })
     await expect(service.discover(project.id)).resolves.toEqual({
       projects: 1, intents: 2, added: 1, deferredProjects: 0,
-      cachedIntents: 0, failedIntents: 0,
+      cachedIntents: 0, failedIntents: 0, nothingNew: false, lastFetchedAt: 1,
     })
     expect(recommend).toHaveBeenCalledTimes(2)
     // project.papers is newest-first, so a tie in cluster score goes to the most recently linked paper.
@@ -93,7 +95,7 @@ describe('project recommendation service', () => {
     })
     await expect(service.discover(project.id)).resolves.toEqual({
       projects: 0, intents: 0, added: 0, deferredProjects: 0,
-      cachedIntents: 0, failedIntents: 0,
+      cachedIntents: 0, failedIntents: 0, nothingNew: false, lastFetchedAt: null,
     })
     expect(recommend).not.toHaveBeenCalled()
   })
@@ -155,7 +157,7 @@ describe('project recommendation service', () => {
     })
     await expect(service.discover(project.id)).resolves.toEqual({
       projects: 1, intents: 1, added: 1, deferredProjects: 0,
-      cachedIntents: 0, failedIntents: 0,
+      cachedIntents: 0, failedIntents: 0, nothingNew: false, lastFetchedAt: 1,
     })
     expect(recommend.mock.calls[0]?.[1]).toEqual([ON_POLICY_DISTILLATION_SAMPLE.expected.semanticId])
     expect(store.listInbox({ kind: 'discovery', project: project.id }).map((paper) => paper.title))
@@ -223,7 +225,7 @@ describe('project recommendation service', () => {
 
     await expect(service.discover(project.id)).resolves.toEqual({
       projects: 1, intents: 1, added: 1, deferredProjects: 0,
-      cachedIntents: 0, failedIntents: 1,
+      cachedIntents: 0, failedIntents: 1, nothingNew: false, lastFetchedAt: null,
     })
     expect(store.discoverySchedule(project.id).lastFetchedAt).toBeNull()
     expect(store.discoverySchedule(project.id).cursor).toBe(0)
@@ -232,7 +234,7 @@ describe('project recommendation service', () => {
     call = 0
     await expect(service.discover(project.id)).resolves.toEqual({
       projects: 1, intents: 1, added: 0, deferredProjects: 0,
-      cachedIntents: 1, failedIntents: 0,
+      cachedIntents: 1, failedIntents: 0, nothingNew: true, lastFetchedAt: 2,
     })
     expect(recommend).toHaveBeenCalledTimes(3)
     expect(store.discoverySchedule(project.id).lastFetchedAt).toBe(2)
@@ -260,7 +262,7 @@ describe('project recommendation service', () => {
 
     await expect(service.discover(project.id)).resolves.toEqual({
       projects: 0, intents: 0, added: 0, deferredProjects: 0,
-      cachedIntents: 0, failedIntents: 1,
+      cachedIntents: 0, failedIntents: 1, nothingNew: false, lastFetchedAt: null,
     })
     expect(store.discoverySchedule(project.id)).toEqual({
       lastFetchedAt: null, cursor: 0, requests: {},
@@ -314,7 +316,7 @@ describe('project recommendation service', () => {
 
     await expect(service.discover()).resolves.toEqual({
       projects: 12, intents: 12, added: 0, deferredProjects: 3,
-      cachedIntents: 0, failedIntents: 0,
+      cachedIntents: 0, failedIntents: 0, nothingNew: false, lastFetchedAt: 1,
     })
     expect(requested).toEqual(Array.from({ length: 12 }, (_, at) => `seed-project-${at}`))
 
@@ -375,7 +377,7 @@ describe('project recommendation service', () => {
 
     await expect(service.discover()).resolves.toEqual({
       projects: 5, intents: 12, added: 0, deferredProjects: 0,
-      cachedIntents: 0, failedIntents: 0,
+      cachedIntents: 0, failedIntents: 0, nothingNew: true, lastFetchedAt: 1,
     })
     expect(requested.slice(0, 5)).toEqual(profiles.map((profile) => `${profile.id}-core`))
     expect(profiles.map((profile) => (
@@ -521,5 +523,109 @@ describe('project recommendation service', () => {
 
     await expect(service.discover('p')).resolves.toMatchObject({ intents: 2, cachedIntents: 1 })
     expect(requested).toEqual(intents.slice(3).map((intent) => intent.seeds[0]!.paperId))
+  })
+
+  it('这一轮推不完的候选留在候选池里下一轮先推,候选池够一轮时不再请求 provider', async () => {
+    const store = createFixtureStore(() => '2026-09-17')
+    const project = seededProject(store, '候选池项目', ON_POLICY_DISTILLATION_SAMPLE.seeds.slice(0, 1))
+    store.setDeliverySettings({ maxItemsPerRun: 1 })
+    const candidate = (at: number): DiscoveryPaper => ({
+      ...ON_POLICY_DISTILLATION_SAMPLE.expected,
+      semanticId: `pooled-${at}`, id: `2609.${71_000 + at}`, title: `Pooled candidate ${at}`,
+    })
+    let answer = [candidate(1), candidate(2), candidate(3)]
+    const recommend = vi.fn<RecommendationProvider['recommend']>(async () => answer)
+    let now = 1
+    const service = createRecommendationService({ store, provider: { recommend }, onWrite: vi.fn(), now: () => now })
+    const titles = () => store.listInbox({ kind: 'discovery', project }).map((entry) => entry.title)
+
+    await expect(service.discover(project)).resolves.toMatchObject({ added: 1 })
+    expect(titles()).toEqual(['Pooled candidate 1'])
+
+    now += DISCOVERY_COOLDOWN_MS + 1
+    await expect(service.discover(project)).resolves.toMatchObject({ added: 1, intents: 0, cachedIntents: 0 })
+    expect(recommend).toHaveBeenCalledTimes(1)
+    expect(titles()).toEqual(['Pooled candidate 2', 'Pooled candidate 1'])
+
+    answer = [candidate(4), candidate(3)]
+    await expect(service.discover(project, true)).resolves.toMatchObject({ added: 1, intents: 1 })
+    expect(titles()[0]).toBe('Pooled candidate 3')
+    expect(store.refreshProgress({ kind: 'project', id: project }).candidates.map((paper) => paper.title))
+      .toEqual(['Pooled candidate 4'])
+  })
+
+  it('全局刷新把单次上限平分给各项目,除不尽的那篇轮流给,而不是总给列在前面的项目', async () => {
+    const ids = ['early', 'late']
+    const profileFor = (projectId: string): RecommendationProfile => ({
+      projectId, projectName: projectId, anchorText: `${projectId} retrieval`,
+      positive: [{ paperId: `seed-${projectId}`, title: `${projectId} retrieval`, abstract: '', source: 'project' }],
+      negative: [],
+    })
+    const schedules = new Map<string, DiscoverySchedule>()
+    const progress = new Map<string, RefreshProgress>()
+    const delivered = new Map(ids.map((id) => [id, [] as string[]]))
+    const store = {
+      deliverySettings: () => ({ maxItemsPerRun: 3 }),
+      listDiscoveryProfiles: () => ids.map((id) => ({
+        id, name: id, seedCount: 1, positiveCount: 0, negativeCount: 0, intentCount: 1,
+        lastFetchedAt: schedules.get(id)?.lastFetchedAt ?? null, intents: [],
+      })),
+      discoveryProfile: profileFor,
+      discoveryIntents: (projectId: string) => clusterRecommendationProfile(profileFor(projectId)),
+      discoverySchedule: (projectId: string) => (
+        schedules.get(projectId) ?? { lastFetchedAt: null, cursor: 0, requests: {} }
+      ),
+      setDiscoverySchedule: (projectId: string, schedule: DiscoverySchedule) => { schedules.set(projectId, schedule) },
+      refreshProgress: ({ id }: RefreshScope) => structuredClone(
+        progress.get(id) ?? { steps: {}, candidates: [], favouredAt: null },
+      ),
+      setRefreshProgress: ({ id }: RefreshScope, next: RefreshProgress) => { progress.set(id, structuredClone(next)) },
+      addDiscoveryEntries: (projectId: string, found: DiscoveryPaper[], limit?: number) => {
+        const held = delivered.get(projectId)!
+        const fresh = found.filter((paper) => !held.includes(paper.id)).slice(0, limit)
+        held.push(...fresh.map((paper) => paper.id))
+        return fresh.length
+      },
+    }
+    const recommend = vi.fn<RecommendationProvider['recommend']>(async (positive) => (
+      [1, 2, 3, 4].map((at) => ({
+        ...ON_POLICY_DISTILLATION_SAMPLE.expected,
+        semanticId: `${positive[0]!.paperId}-${at}`, id: `${positive[0]!.paperId}-${at}`,
+      }))
+    ))
+    let now = 1
+    const service = createRecommendationService({ store, provider: { recommend }, onWrite: vi.fn(), now: () => now })
+    const counts = () => ids.map((id) => delivered.get(id)!.length)
+
+    await expect(service.discover()).resolves.toMatchObject({ added: 3 })
+    expect(counts()).toEqual([2, 1])
+    now += DISCOVERY_COOLDOWN_MS + 1
+    await expect(service.discover()).resolves.toMatchObject({ added: 3 })
+    expect(counts()).toEqual([3, 3])
+  })
+
+  it('真的没有新论文时结果写明这一点,并带上次刷新的时间', async () => {
+    const store = createFixtureStore(() => '2026-09-17')
+    const project = seededProject(store, '没有新论文', ON_POLICY_DISTILLATION_SAMPLE.seeds.slice(0, 1))
+    let fail = false
+    const recommend = vi.fn<RecommendationProvider['recommend']>(async () => {
+      if (fail) throw new Error('temporary 429')
+      return [ON_POLICY_DISTILLATION_SAMPLE.expected]
+    })
+    let now = 1_000
+    const service = createRecommendationService({ store, provider: { recommend }, onWrite: vi.fn(), now: () => now })
+
+    await expect(service.discover(project)).resolves.toMatchObject({ added: 1, nothingNew: false, lastFetchedAt: 1_000 })
+    now += DISCOVERY_COOLDOWN_MS + 1
+    await expect(service.discover(project)).resolves.toMatchObject({ added: 0, nothingNew: true, lastFetchedAt: now })
+    const fetchedAt = now
+    now += 60_000
+    await expect(service.discover(project)).resolves.toMatchObject({
+      intents: 0, cachedIntents: 1, nothingNew: true, lastFetchedAt: fetchedAt,
+    })
+    fail = true
+    await expect(service.discover(project, true)).resolves.toMatchObject({
+      failedIntents: 1, nothingNew: false, lastFetchedAt: fetchedAt,
+    })
   })
 })

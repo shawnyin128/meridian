@@ -48,7 +48,7 @@ vi.mock('../ipc.js', () => ({
     profiles: async () => api.profiles,
     fetch: async () => ({
       projects: api.profiles.length, intents: 0, added: 0, deferredProjects: 0,
-      cachedIntents: 0, failedIntents: 0,
+      cachedIntents: 0, failedIntents: 0, nothingNew: true, lastFetchedAt: null,
     }),
     setIntent: api.setIntent,
     feedback: api.feedback,

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { setAreas } from './projects.mjs'
+import { RefreshProgressRecordSchema } from '../../apps/desktop/src/core/vault/records.ts'
+import { discoveryProgress, setAreas } from './projects.mjs'
 
 /** A seed `call` that answers `project.update` the way an App does, recording each patch it takes. */
 const app = ({ takesTopics }) => {
@@ -35,5 +36,13 @@ describe('种子按 App 收不收 topics 写项目的领域', () => {
     const seed = { areas: true }
     const call = async () => { throw new Error('project.update: {"reason":"invalid"}') }
     await expect(setAreas(seed, call, 'moe', ['混合专家', '混合专家'])).rejects.toThrow(/invalid/)
+  })
+})
+
+describe('种子里 KV cache 项目的候选池', () => {
+  it('按 App 存刷新进度的形状写,两篇候选都读得进来', () => {
+    const records = discoveryProgress({ projects: { kv: { id: 'project-7' } } })
+    expect(records.map((record) => RefreshProgressRecordSchema.safeParse(record).success)).toEqual([true])
+    expect(records[0].candidates.map((paper) => paper.id)).toEqual(['2403.05527', '2402.12065'])
   })
 })

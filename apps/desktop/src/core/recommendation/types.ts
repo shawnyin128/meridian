@@ -62,6 +62,10 @@ export type RefreshScope = { kind: 'project'; id: string }
 export type RefreshProgress = {
   /** Per discovery direction id, how many queries it has run; the next one runs at that rotation step. */
   steps: Record<string, number>
+  /** Candidates fetched beyond a run's delivery cap, in the order a later run offers them first. */
+  candidates: DiscoveryPaper[]
+  /** When the scope last delivered more than an even split of a run's cap, or null if it never did. */
+  favouredAt: number | null
 }
 
 export type DiscoveryPreferences = {

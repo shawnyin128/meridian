@@ -178,31 +178,34 @@ describe('论文推送重做后要写的存储形状', () => {
     })
   })
 
-  it('刷新进度存在 .meridian/discovery/progress.json：重开后读回来，state.json 不动，删掉的项目不留进度，读不懂的照留', () => {
+  it('刷新进度和候选池存在 .meridian/discovery/progress.json：重开后读回来，state.json 不动，删掉的项目不留进度，读不懂的照留', () => {
     const other = store.createProject('删掉的项目')
     const folder = join(vault, '.meridian', 'discovery')
     mkdirSync(folder)
     const later = [refound('2609.95001')]
+    const scores = { '2609.95001': 0.8 }
     writeFileSync(join(folder, 'progress.json'), JSON.stringify([
-      { id: `project:${project}`, steps: { 'intent-a': 3 }, candidates: later },
+      { id: `project:${project}`, steps: { 'intent-a': 3 }, candidates: later, favouredAt: 1_792_000_000_000, scores },
       { id: `project:${other}`, steps: { 'intent-b': 1 } },
       { id: 'topic:speculative-decoding', steps: { 'intent-c': 2 } },
     ]), 'utf8')
     const state = readFileSync(join(vault, '.meridian', 'state.json'), 'utf8')
 
     const reopened = createVaultStore(vault)
-    expect(reopened.refreshProgress({ kind: 'project', id: project })).toEqual({ steps: { 'intent-a': 3 } })
+    expect(reopened.refreshProgress({ kind: 'project', id: project })).toEqual({
+      steps: { 'intent-a': 3 }, candidates: later, favouredAt: 1_792_000_000_000,
+    })
     reopened.deleteProject(other)
     const trashed = readFileSync(join(vault, '.meridian', 'state.json'), 'utf8')
-    reopened.setRefreshProgress({ kind: 'project', id: project }, { steps: { 'intent-a': 4, 'intent-d': 1 } })
+    const next = { steps: { 'intent-a': 4, 'intent-d': 1 }, candidates: [refound('2609.95002')], favouredAt: null }
+    reopened.setRefreshProgress({ kind: 'project', id: project }, next)
     expect(readFileSync(join(vault, '.meridian', 'state.json'), 'utf8')).toBe(trashed)
     expect(trashed).not.toBe(state)
     expect(JSON.parse(readFileSync(join(folder, 'progress.json'), 'utf8'))).toEqual([
       { id: 'topic:speculative-decoding', steps: { 'intent-c': 2 } },
-      { id: `project:${project}`, steps: { 'intent-a': 4, 'intent-d': 1 }, candidates: later },
+      { id: `project:${project}`, steps: next.steps, candidates: next.candidates, scores },
     ])
-    expect(createVaultStore(vault).refreshProgress({ kind: 'project', id: project }))
-      .toEqual({ steps: { 'intent-a': 4, 'intent-d': 1 } })
+    expect(createVaultStore(vault).refreshProgress({ kind: 'project', id: project })).toEqual(next)
   })
 
   it('.meridian/discovery 下的候选池和 SPECTER2 向量缓存：打开、删项目、清空垃圾桶都不碰它们', () => {

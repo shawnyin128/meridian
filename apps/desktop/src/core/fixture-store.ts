@@ -1586,7 +1586,9 @@ export function createFixtureStore(
 
     refreshProgress(scope) {
       if (!projectById.has(scope.id)) throw new CallError('not-found', `项目不存在：${scope.id}`)
-      return structuredClone(progressByScope.get(`${scope.kind}:${scope.id}`) ?? { steps: {} })
+      return structuredClone(
+        progressByScope.get(`${scope.kind}:${scope.id}`) ?? { steps: {}, candidates: [], favouredAt: null },
+      )
     },
 
     setRefreshProgress(scope, next) {

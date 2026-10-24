@@ -6,7 +6,7 @@ import { seedConversations } from './test-library/conversations.mjs'
 import { redateLater, seedInbox, seedWatches, writeInbox } from './test-library/feed.mjs'
 import { prepareWorkspace, redateEvents, seedLab, seedProposals } from './test-library/lab.mjs'
 import { arxivMetadata, importPapers, paperFiles, redatePapers, seedPapers } from './test-library/papers.mjs'
-import { discoveryRecords, redateProjects, seedProjects } from './test-library/projects.mjs'
+import { discoveryProgress, discoveryRecords, redateProjects, seedProjects } from './test-library/projects.mjs'
 import { relocate } from './test-library/relocate.mjs'
 import { checkOut, MARKER, protectedRoots } from './test-library/safety.mjs'
 import { seedColourTheme } from './test-library/themes.mjs'
@@ -67,6 +67,8 @@ async function seed(out, app, today) {
     await seedProposals(state, call, files)
   })
   writeInbox(state, discoveryRecords(state))
+  mkdirSync(join(out, 'library', '.meridian', 'discovery'), { recursive: true })
+  writeJson(join(out, 'library', '.meridian', 'discovery', 'progress.json'), discoveryProgress(state))
   await session(out, app, {}, async (call) => {
     await seedInbox(state, call)
     await call('discovery.feedback', { id: 'seed-discovery-kvquant', feedback: 'more' })

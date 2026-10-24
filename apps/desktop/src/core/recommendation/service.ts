@@ -1,12 +1,13 @@
 import type { DiscoveryFetchResult } from '../../shared/contract.js'
 import type { VaultStore } from '../vault.js'
 import { mergeIntentResults, type IntentResult } from './merge.js'
+import { POOL_LIMIT, poolFirst, shareCap } from './pool.js'
 import {
   QUERY_SOURCES, recommendationFingerprint, recommendationQuery, selectRecommendationIntents,
 } from './profile.js'
 import { applyRecommendationSignals } from './signals.js'
 import type {
-  DiscoverySchedule, RecommendationIntent, RecommendationProfile, RecommendationProvider,
+  DiscoveryPaper, DiscoverySchedule, RecommendationIntent, RecommendationProfile, RecommendationProvider,
 } from './types.js'
 
 const MAX_GLOBAL_CALLS = 12
@@ -25,6 +26,8 @@ type ProjectPlan = {
   nextCursor: number
   schedule: DiscoverySchedule
   steps: Record<string, number>
+  pool: DiscoveryPaper[]
+  favouredAt: number | null
   results: IntentResult[]
   successfulRequests: Record<string, { fingerprint: string; fetchedAt: number }>
   failed: number
@@ -70,6 +73,7 @@ export function createRecommendationService(deps: {
   return {
     async discover(projectId, force = false) {
       const now = deps.now()
+      const cap = deps.store.deliverySettings().maxItemsPerRun
       const profiles = deps.store.listDiscoveryProfiles()
         .filter((profile) => projectId === undefined || profile.id === projectId)
         .filter((profile) => profile.seedCount + profile.positiveCount > 0)
@@ -84,6 +88,7 @@ export function createRecommendationService(deps: {
         const schedule = deps.store.discoverySchedule(profile.id)
         const negative = context.negative.map((seed) => seed.paperId).slice(0, 5)
         const directions = deps.store.discoveryIntents(profile.id)
+        const progress = deps.store.refreshProgress({ kind: 'project', id: profile.id })
         return {
           id: profile.id, profile: context, negative,
           excluded: new Set([
@@ -92,17 +97,19 @@ export function createRecommendationService(deps: {
           intents: directions.filter((intent) => intent.enabled),
           directionIds: directions.map((intent) => intent.id),
           selected: [], nextCursor: schedule.cursor, schedule,
-          steps: deps.store.refreshProgress({ kind: 'project', id: profile.id }).steps,
+          steps: progress.steps, pool: progress.candidates, favouredAt: progress.favouredAt,
           results: [], successfulRequests: {}, failed: 0,
         }
       })
 
+      // A project whose pool covers a whole run is served from it without provider calls, unless forced.
+      const fetching = plans.filter((plan) => force || plan.pool.length < cap)
       // Give every project one turn before assigning a second or third. This uses spare budget
       // without letting an early project's secondary directions crowd out another project's core.
       const allocations = new Map<ProjectPlan, number>()
       let remaining = budget
       for (let slot = 0; slot < MAX_PROJECT_CALLS && remaining > 0; slot += 1) {
-        for (const plan of plans) {
+        for (const plan of fetching) {
           const held = allocations.get(plan) ?? 0
           if (held >= plan.intents.length || remaining === 0) continue
           allocations.set(plan, held + 1)
@@ -123,7 +130,6 @@ export function createRecommendationService(deps: {
         })
       )).flat()
       let added = 0
-      let remainingItems = deps.store.deliverySettings().maxItemsPerRun
       let cachedIntents = 0
       let successfulIntents = 0
       for (const { plan, intent } of tasks) {
@@ -149,43 +155,56 @@ export function createRecommendationService(deps: {
           plan.failed += 1
         }
       }
-      const fetched = plans.filter((plan) => Object.keys(plan.successfulRequests).length > 0)
-      // A project whose selected directions were all cooling still moves its cursor on to the next ones.
-      const touched = plans.filter((plan) => (
-        fetched.includes(plan) || (plan.failed === 0 && plan.nextCursor !== plan.schedule.cursor)
-      ))
+      const fetched = new Set(plans.filter((plan) => Object.keys(plan.successfulRequests).length > 0))
       try {
-        for (const plan of touched) {
-          if (fetched.includes(plan) && remainingItems > 0) {
-            const published = deps.store.addDiscoveryEntries(
-              plan.id, mergeIntentResults(plan.results), remainingItems,
-            )
-            added += published
-            remainingItems -= published
+        const shares = await shareCap(plans.map((plan) => ({
+          favouredAt: plan.favouredAt,
+          candidates: async () => poolFirst(plan.pool, mergeIntentResults(plan.results, POOL_LIMIT)),
+          deliver: (batch: DiscoveryPaper[]) => deps.store.addDiscoveryEntries(plan.id, batch, batch.length),
+        })), cap)
+        let wrote = false
+        let lastFetchedAt: number | null = null
+        for (const [at, plan] of plans.entries()) {
+          const { delivered, rest, favoured } = shares[at]!
+          const pool = rest.slice(0, POOL_LIMIT)
+          const refreshed = fetched.has(plan) || delivered > 0
+          const fetchedAt = plan.failed === 0 && refreshed ? now : plan.schedule.lastFetchedAt
+          // A project whose selected directions were all cooling still moves its cursor on to the next ones.
+          if (refreshed || (plan.failed === 0 && plan.nextCursor !== plan.schedule.cursor)) {
+            deps.store.setDiscoverySchedule(plan.id, {
+              lastFetchedAt: fetchedAt,
+              cursor: plan.failed === 0 ? plan.nextCursor : plan.schedule.cursor,
+              requests: { ...plan.schedule.requests, ...plan.successfulRequests },
+            })
+            wrote = true
           }
-          deps.store.setDiscoverySchedule(plan.id, {
-            lastFetchedAt: plan.failed === 0 && fetched.includes(plan) ? now : plan.schedule.lastFetchedAt,
-            cursor: plan.failed === 0 ? plan.nextCursor : plan.schedule.cursor,
-            requests: { ...plan.schedule.requests, ...plan.successfulRequests },
-          })
-          if (fetched.includes(plan)) {
+          if (refreshed || pool.length !== plan.pool.length) {
             deps.store.setRefreshProgress({ kind: 'project', id: plan.id }, {
               steps: Object.fromEntries(plan.directionIds.flatMap((id) => (
                 plan.steps[id] === undefined ? [] : [[id, plan.steps[id]]]
               ))),
+              candidates: pool,
+              favouredAt: favoured ? now : plan.favouredAt,
             })
+            wrote = true
           }
+          added += delivered
+          if (fetchedAt !== null) lastFetchedAt = Math.max(lastFetchedAt ?? fetchedAt, fetchedAt)
         }
-        if (touched.length > 0) deps.onWrite()
+        if (wrote) deps.onWrite()
+        const deferredProjects = fetching.filter((plan) => (
+          plan.intents.length > 0 && plan.selected.length === 0
+        )).length
+        const failedIntents = plans.reduce((total, plan) => total + plan.failed, 0)
         return {
-          projects: fetched.length,
+          projects: plans.filter((plan, at) => fetched.has(plan) || shares[at]!.delivered > 0).length,
           intents: successfulIntents,
           added,
-          deferredProjects: plans.filter((plan) => (
-            plan.intents.length > 0 && plan.selected.length === 0
-          )).length,
+          deferredProjects,
           cachedIntents,
-          failedIntents: plans.reduce((total, plan) => total + plan.failed, 0),
+          failedIntents,
+          nothingNew: plans.length > 0 && added === 0 && deferredProjects === 0 && failedIntents === 0,
+          lastFetchedAt,
         }
       } catch (error) {
         throw new Error(`没能保存论文发现：${error instanceof Error ? error.message : String(error)}`, { cause: error })

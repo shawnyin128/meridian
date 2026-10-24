@@ -10,6 +10,8 @@ This folder owns paper recommendation as one replaceable Core domain.
   It also plans each direction's queries: one seed per query, so an external multi-positive query
   cannot average away the direction's main idea, taken in anchor order through every source.
 - `merge.ts` round-robin merges per-intent results, deduplicates them and attaches structured reasons.
+- `pool.ts` spreads one run's delivery cap evenly over its scopes and puts each scope's pooled
+  candidates before the ones fetched this run.
 - `signals.ts` re-ranks one source response against the project anchor and read-only canonical Wiki
   topic/method memberships; it never writes recommendation state back into Wiki pages.
 - `evaluation.ts` owns the inspectable offline metrics and stage-two quality gate.
@@ -53,3 +55,11 @@ which versions before 0.0.19.0 never read; a direction without a step continues 
 older versions recorded in `state.json`. The rotation does not add a second scheduler or multiply the
 12/3 call limits. Every accepted candidate freezes factual source provenance and any actually matched
 Wiki term into structured recommendation reasons.
+
+Candidates a run fetched beyond its cap stay in the project's pool in the same file, up to 60, and
+the next run offers them before anything it fetches. A project whose pool already covers a whole run
+is served from it without provider calls unless the user force-refreshes. One run's cap is split
+evenly over its projects; the odd shares go first to the projects that have gone longest without one,
+so no project takes the cap by its place in the list. A run that finds nothing left to deliver
+anywhere in its scope, with nothing put off and nothing failed, says so in `nothingNew`, beside the
+latest refresh time of its projects.
