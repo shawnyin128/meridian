@@ -104,6 +104,8 @@ export function useDragReorder(
       const before = event.clientY < box.top + box.height / 2
       const last = held.over
       if (last !== null && (last.item !== item || last.before !== before)) last.item.classList.remove(lineClass(last.before))
+      // Both marks are set again on every dragover: a render that changes an item's className drops them.
+      held.item.classList.add('dragging')
       item.classList.add(lineClass(before))
       held.over = { id, before, item }
     },

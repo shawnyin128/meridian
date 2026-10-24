@@ -135,6 +135,17 @@ describe('useDragReorder', () => {
     expect(feedback('a', 'b', 'c')).toEqual(['', '', ''])
   })
 
+  it('拖动中 React 改写了条目的 class,下一次 dragover 把变淡和落点线都补回来', () => {
+    mount(['a', 'b', 'c'], () => 'x', vi.fn())
+    start('a')
+    over('c', 2)
+    // A render that changes an item's className sets the whole attribute, without the drag marks.
+    item('a').className = ''
+    item('c').className = ''
+    over('c', 3)
+    expect(feedback('a', 'b', 'c')).toEqual(['dragging', '', 'drag-over-before'])
+  })
+
   it('放下后被拖条目和落点的标记都清掉', () => {
     mount(['a', 'b', 'c'], () => 'x', vi.fn())
     start('a')
