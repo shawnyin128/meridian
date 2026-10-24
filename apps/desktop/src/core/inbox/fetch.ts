@@ -14,8 +14,9 @@ export const MAX_WATCH_PAGES = 3
 
 /**
  * Builds the serialized arXiv fetcher for all active watches or a selected subset. A run queries every
- * watch it covers and spreads the delivery cap over them; the papers a watch could not deliver within its
- * share stay in its pool and are offered first by its next run. An arXiv watch that has fetched before
+ * watch it covers and spreads the delivery cap over them; the papers a watch did not deliver, beyond its
+ * share or below its scope's cut, stay in its pool and are offered first by its next run, except those
+ * the feed would no longer deliver as new cards. An arXiv watch that has fetched before
  * reads page after page of its newest papers, until a page holds a paper from the newest page it
  * fetched last, falls short of WATCH_BATCH, or MAX_WATCH_PAGES are read.
  */
@@ -48,21 +49,24 @@ export function createWatchFetcher(deps: {
     let failure: NetFailure | null = null
     const progress = watches.map((watch) => deps.store.refreshProgress({ kind: 'watch', id: watch.id }))
     const newest = progress.map((held) => held.newest)
+    const offered = watches.map((): DiscoveryPaper[] => [])
     const shares = await shareCap(watches.map((watch, at) => ({
       favouredAt: progress[at]!.favouredAt,
       candidates: async (): Promise<DiscoveryPaper[]> => {
+        const pooled = deps.store.undelivered(progress[at]!.candidates)
         try {
           const found = watch.type === 'author' && watch.identity?.source === 'semantic-scholar' && deps.authorPapers !== undefined
             ? await deps.authorPapers(watch.identity)
             : await searchPages(watchQuery(watch), new Set(progress[at]!.newest))
           newest[at] = found.slice(0, WATCH_BATCH).map((paper) => paper.id)
-          return poolFirst(progress[at]!.candidates, found.map((paper) => ({ ...rankedPaper(watch, paper), semanticId: '' })))
+          return poolFirst(pooled, found.map((paper) => ({ ...rankedPaper(watch, paper), semanticId: '' })))
         } catch (caught) {
           failure ??= netFailure(caught)
-          return progress[at]!.candidates
+          return pooled
         }
       },
       deliver: (batch: DiscoveryPaper[]) => {
+        offered[at]!.push(...batch)
         const added = deps.store.addInboxEntries(watch.id, batch, batch.length)
         if (added.length > 0) {
           const ids = new Set(added)
@@ -76,7 +80,7 @@ export function createWatchFetcher(deps: {
     })), deps.store.deliverySettings().maxItemsPerRun)
     for (const [at, watch] of watches.entries()) {
       const { delivered, rest, favoured } = shares[at]!
-      const pool = rest.slice(0, POOL_LIMIT)
+      const pool = [...deps.store.undelivered(offered[at]!), ...rest].slice(0, POOL_LIMIT)
       const held = progress[at]!
       if (delivered === 0 && pool.length === held.candidates.length
         && pool.every((paper, index) => paper.id === held.candidates[index]!.id)

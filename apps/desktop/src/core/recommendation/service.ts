@@ -26,7 +26,10 @@ type ProjectPlan = {
   nextCursor: number
   schedule: DiscoverySchedule
   steps: Record<string, number>
+  /** The pooled candidates the feed would still deliver as new cards. */
   pool: DiscoveryPaper[]
+  /** The candidates this run offered to the feed. */
+  offered: DiscoveryPaper[]
   favouredAt: number | null
   results: IntentResult[]
   successfulRequests: Record<string, { fingerprint: string; fetchedAt: number }>
@@ -85,7 +88,7 @@ export function createRecommendationService(deps: {
   store: Pick<VaultStore,
     'listDiscoveryProfiles' | 'discoveryIntents' | 'discoveryProfile' | 'discoverySchedule'
     | 'setDiscoverySchedule' | 'refreshProgress' | 'setRefreshProgress' | 'addDiscoveryEntries'
-    | 'deliverySettings'>
+    | 'undelivered' | 'deliverySettings'>
   provider: RecommendationProvider
   onWrite: () => void
   now: () => number
@@ -117,7 +120,8 @@ export function createRecommendationService(deps: {
           intents: directions.filter((intent) => intent.enabled),
           directionIds: directions.map((intent) => intent.id),
           selected: [], nextCursor: schedule.cursor, schedule,
-          steps: progress.steps, pool: progress.candidates, favouredAt: progress.favouredAt,
+          steps: progress.steps, pool: deps.store.undelivered(progress.candidates), offered: [],
+          favouredAt: progress.favouredAt,
           results: [], successfulRequests: {}, failed: 0,
         }
       })
@@ -182,13 +186,16 @@ export function createRecommendationService(deps: {
         const shares = await shareCap(plans.map((plan) => ({
           favouredAt: plan.favouredAt,
           candidates: async () => poolFirst(plan.pool, mergeIntentResults(plan.results, POOL_LIMIT)),
-          deliver: (batch: DiscoveryPaper[]) => deps.store.addDiscoveryEntries(plan.id, batch, batch.length),
+          deliver: (batch: DiscoveryPaper[]) => {
+            plan.offered.push(...batch)
+            return deps.store.addDiscoveryEntries(plan.id, batch, batch.length)
+          },
         })), cap)
         let wrote = false
         let lastFetchedAt: number | null = null
         for (const [at, plan] of plans.entries()) {
           const { delivered, rest, favoured } = shares[at]!
-          const pool = rest.slice(0, POOL_LIMIT)
+          const pool = [...deps.store.undelivered(plan.offered), ...rest].slice(0, POOL_LIMIT)
           const refreshed = fetched.has(plan) || delivered > 0
           const fetchedAt = plan.failed === 0 && refreshed ? now : plan.schedule.lastFetchedAt
           // A project whose selected directions were all cooling still moves its cursor on to the next ones.

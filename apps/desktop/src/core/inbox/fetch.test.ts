@@ -122,6 +122,43 @@ describe('createWatchFetcher', () => {
       .toContain('Newest')
   })
 
+  it('落到这条关注显示上限以下的新论文不送,留在它的候选池里,卡片走了之后下一轮送出', async () => {
+    let answer = [paper('2609.50001', 'Above The Cut'), paper('2609.50002', 'Below The Cut')]
+    const { store, fetcher } = setup(async (query) => (query === 'all:"held back"' ? answer : []))
+    store.createWatch({ type: 'topic', name: 'held back' })
+    const watch = store.listWatches().find((held) => held.name === 'held back')!.id
+    store.setDeliverySettings({ maxItemsPerRun: 10, maxShownPerScope: 1 })
+    const titles = () => store.listInbox({ kind: 'watch', watch }).map((entry) => entry.title)
+
+    await fetcher.run([watch])
+    expect(titles()).toEqual(['Above The Cut'])
+    expect(store.refreshProgress({ kind: 'watch', id: watch }).candidates.map((found) => found.title))
+      .toEqual(['Below The Cut'])
+
+    store.dismissInbox(store.listInbox({ kind: 'watch', watch })[0]!.id)
+    answer = []
+    await fetcher.run([watch])
+    expect(titles()).toEqual(['Below The Cut'])
+  })
+
+  it('候选池里别处已经送过的候选拿掉,不再留在池里', async () => {
+    const { store, fetcher } = setup(async () => [])
+    store.createWatch({ type: 'topic', name: 'stale pool' })
+    const watch = store.listWatches().find((held) => held.name === 'stale pool')!.id
+    store.setDeliverySettings({ maxItemsPerRun: 1 })
+    store.addInboxEntries('spec', [paper('2609.51002', 'Delivered Elsewhere')])
+    store.setRefreshProgress({ kind: 'watch', id: watch }, {
+      steps: {}, favouredAt: null, newest: [],
+      candidates: [paper('2609.51001', 'Pooled Fresh'), paper('2609.51002', 'Delivered Elsewhere'), paper('2609.51003', 'Pooled Later')]
+        .map((found) => ({ ...found, semanticId: '' })),
+    })
+
+    await fetcher.run([watch])
+    expect(store.listInbox({ kind: 'watch', watch }).map((entry) => entry.title)).toEqual(['Pooled Fresh'])
+    expect(store.refreshProgress({ kind: 'watch', id: watch }).candidates.map((found) => found.title))
+      .toEqual(['Pooled Later'])
+  })
+
   it('一条关注搜不成:其余照抓,状态是失败带原因,抓完的时刻不记', async () => {
     const { store, fetcher } = setup(async (query) => {
       if (query === 'au:Dao_T') throw new TypeError('fetch failed')

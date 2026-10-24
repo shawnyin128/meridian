@@ -305,6 +305,7 @@ describe('project recommendation service', () => {
       },
       ...noProgress,
       addDiscoveryEntries: () => 0,
+      undelivered: <P>(found: P[]) => found,
     }
     const requested: string[] = []
     const recommend = vi.fn(async (positive: RecommendationSeed[]) => {
@@ -366,6 +367,7 @@ describe('project recommendation service', () => {
         setDiscoverySchedule: (projectId, schedule) => { schedules.set(projectId, schedule) },
         ...noProgress,
         addDiscoveryEntries: () => 0,
+        undelivered: <P>(found: P[]) => found,
       },
       provider: {
         recommend: async (positive) => {
@@ -508,6 +510,7 @@ describe('project recommendation service', () => {
         setDiscoverySchedule: (_projectId, next) => { schedule = next },
         ...noProgress,
         addDiscoveryEntries: () => 0,
+        undelivered: <P>(found: P[]) => found,
       },
       provider: {
         recommend: async (positive) => {
@@ -556,6 +559,52 @@ describe('project recommendation service', () => {
       .toEqual(['Pooled candidate 4'])
   })
 
+  it('落到项目显示上限以下的新候选不送,留在候选池里,卡片走了之后下一轮送出', async () => {
+    const store = createFixtureStore(() => '2026-09-17')
+    const project = seededProject(store, '上限以下的候选', ON_POLICY_DISTILLATION_SAMPLE.seeds.slice(0, 1))
+    store.setDeliverySettings({ maxItemsPerRun: 10, maxShownPerScope: 1 })
+    const candidate = (at: number): DiscoveryPaper => ({
+      ...ON_POLICY_DISTILLATION_SAMPLE.expected,
+      semanticId: `held-${at}`, id: `2609.${72_000 + at}`, title: `Held candidate ${at}`,
+    })
+    let answer = [candidate(1), candidate(2)]
+    const service = createRecommendationService({
+      store, provider: { recommend: async () => answer }, onWrite: vi.fn(), now: () => 1,
+    })
+    const titles = () => store.listInbox({ kind: 'discovery', project }).map((entry) => entry.title)
+
+    await expect(service.discover(project)).resolves.toMatchObject({ added: 1 })
+    expect(titles()).toEqual(['Held candidate 1'])
+    expect(store.refreshProgress({ kind: 'project', id: project }).candidates.map((paper) => paper.title))
+      .toEqual(['Held candidate 2'])
+
+    store.dismissInbox(store.listInbox({ kind: 'discovery', project })[0]!.id)
+    answer = []
+    await expect(service.discover(project, true)).resolves.toMatchObject({ added: 1 })
+    expect(titles()).toEqual(['Held candidate 2'])
+  })
+
+  it('候选池里别处已经送过的候选拿掉,不算进够不够一轮,该请求 provider 时照常请求', async () => {
+    const store = createFixtureStore(() => '2026-09-17')
+    const project = seededProject(store, '池里有送过的', ON_POLICY_DISTILLATION_SAMPLE.seeds.slice(0, 1))
+    store.setDeliverySettings({ maxItemsPerRun: 1 })
+    const candidate = (at: number): DiscoveryPaper => ({
+      ...ON_POLICY_DISTILLATION_SAMPLE.expected,
+      semanticId: `stale-${at}`, id: `2609.${73_000 + at}`, title: `Stale pool candidate ${at}`,
+    })
+    store.addInboxEntries('spec', [candidate(1)])
+    store.setRefreshProgress({ kind: 'project', id: project }, {
+      steps: {}, candidates: [candidate(1)], favouredAt: null, newest: [],
+    })
+    const recommend = vi.fn<RecommendationProvider['recommend']>(async () => [candidate(2)])
+    const service = createRecommendationService({ store, provider: { recommend }, onWrite: vi.fn(), now: () => 1 })
+
+    await expect(service.discover(project)).resolves.toMatchObject({ added: 1, intents: 1 })
+    expect(recommend).toHaveBeenCalledTimes(1)
+    expect(store.listInbox({ kind: 'discovery', project }).map((entry) => entry.title)).toEqual(['Stale pool candidate 2'])
+    expect(store.refreshProgress({ kind: 'project', id: project }).candidates).toEqual([])
+  })
+
   it('全局刷新把单次上限平分给各项目,除不尽的那篇轮流给,而不是总给列在前面的项目', async () => {
     const ids = ['early', 'late']
     const profileFor = (projectId: string): RecommendationProfile => ({
@@ -588,6 +637,9 @@ describe('project recommendation service', () => {
         held.push(...fresh.map((paper) => paper.id))
         return fresh.length
       },
+      undelivered: <P extends { id: string }>(found: P[]) => (
+        found.filter((paper) => ![...delivered.values()].some((held) => held.includes(paper.id)))
+      ),
     }
     const recommend = vi.fn<RecommendationProvider['recommend']>(async (positive) => (
       [1, 2, 3, 4].map((at) => ({
