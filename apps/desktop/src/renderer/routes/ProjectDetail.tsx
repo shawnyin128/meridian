@@ -12,7 +12,6 @@ import {
 } from '../../shared/project-signals.js'
 import { PROJECT_STATUSES } from '../../shared/vocabulary.js'
 import { appMenu, files, idea as ideaApi, papers, project as projectApi, wiki } from '../ipc.js'
-import { errorLabel } from '../lib/failure-label.js'
 import {
   useCrumbTail, useEscapeLayer, useJump, useNotice, useToday, useVaultRevision,
 } from '../shell/AppShell.js'
@@ -64,6 +63,7 @@ import { StatusDot } from '../components/StatusDot.js'
 import { Tag } from '../components/Tag.js'
 import { Tooltip } from '../components/Tooltip.js'
 import { NO_TRIGGERS } from '../hooks/useOnLeave.js'
+import { useScreenLoad } from '../hooks/useScreenLoad.js'
 import { useUndo } from '../hooks/useUndo.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
 import { useScrollFade } from '../hooks/useScrollFade.js'
@@ -323,7 +323,6 @@ export function ProjectDetail({
   const [selectedIdeaId, setSelectedIdeaId] = useState<string | null>(null)
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
   const [selectedConclusion, setSelectedConclusion] = useState<string | null>(null)
-  const [error, setError] = useState<string | null>(null)
   const [workspaceOpen, setWorkspaceOpen] = useState(false)
   const [workspaceMode, setWorkspaceMode] = useState<'local' | 'ssh'>('local')
   const [localPath, setLocalPath] = useState('')
@@ -361,7 +360,7 @@ export function ProjectDetail({
   const chatDeleted = useSourceChatDeleted()
   const { open: jumpTo } = useJump()
   const openWikiPage = (page: string) => jumpTo('wiki', page)
-  const reportError = useCallback((e: unknown) => setError(errorLabel(m, e)), [m])
+  const { error, load, report } = useScreenLoad()
   const write = useVaultWrite()
   const undo = useUndo()
   const heldPapers = project?.papers
@@ -390,18 +389,12 @@ export function ProjectDetail({
 
   // Writes outside this screen can change this project too (restoring an attachment from the Trash),
   // so fetch again on every revision.
-  useEffect(() => {
-    void projectApi.get(projectId).then(setProject).catch(reportError)
-  }, [projectId, reportError, revision])
+  useEffect(() => load('project', projectApi.get(projectId), setProject), [projectId, load, revision])
 
   // An idea stores the project it is carried out in, the projects it relates to and the one it was
   // sparked in; project details look all three up from this side, so they show at both ends.
-  useEffect(() => {
-    void ideaApi.list()
-      .then((ideas) => setLinkedIdeas(ideas.filter((idea) => idea.project === projectId
-        || idea.relations?.projects.includes(projectId) === true || idea.sourceProject === projectId)))
-      .catch(reportError)
-  }, [projectId, reportError, revision])
+  useEffect(() => load('ideas', ideaApi.list(), (ideas) => setLinkedIdeas(ideas.filter((idea) => idea.project === projectId
+    || idea.relations?.projects.includes(projectId) === true || idea.sourceProject === projectId))), [projectId, load, revision])
 
   // While project details are open, follow what external writers put in the workspace; SSH needs a
   // process and a network connection, so it polls less often than a local folder.
@@ -412,10 +405,10 @@ export function ProjectDetail({
   useEffect(() => {
     if (workspaceKey === undefined) return
     const timer = window.setInterval(() => {
-      void projectApi.get(projectId).then(setProject).catch(reportError)
+      load('project', projectApi.get(projectId), setProject)
     }, workspaceKind === 'ssh' ? 15_000 : 2000)
     return () => window.clearInterval(timer)
-  }, [projectId, reportError, workspaceKey, workspaceKind])
+  }, [projectId, load, workspaceKey, workspaceKind])
 
   useEffect(() => {
     setSelectedNode(null)
@@ -543,7 +536,7 @@ export function ProjectDetail({
   }
 
   const refreshWorkspace = () => {
-    void projectApi.get(projectId).then(setProject).catch(reportError)
+    load('project', projectApi.get(projectId), setProject)
   }
 
   const locatePlanRow = useCallback((kind: PlanTab, id: string) => {
@@ -1070,7 +1063,7 @@ export function ProjectDetail({
                         ),
                         topic: (
                           <ProjectAreasField
-                            projectId={projectId} areas={projectAreas(project)} onError={reportError}
+                            projectId={projectId} areas={projectAreas(project)} onError={report}
                             onSave={(topics) => writeProject(
                               projectApi.update(projectId, { topics }), m.project.identity.topicUpdated,
                             )}
@@ -1202,7 +1195,7 @@ export function ProjectDetail({
                               key="paper" row={relRow} triggers={relTriggers} allowNew={false}
                               placeholder={m.project.links.paperPlaceholder} suggest={suggestPapers}
                               onNew={() => false}
-                              onCancel={stopRel} onError={reportError}
+                              onCancel={stopRel} onError={report}
                               onPick={(hit) => writeProject(
                                 projectApi.addPaper(projectId, hit.id),
                                 <TitleNote message={m.project.links.paperLinked} title={plainTitle(hit.title)} />,
@@ -1223,7 +1216,7 @@ export function ProjectDetail({
                             <PickRow
                               key="page" row={relRow} triggers={relTriggers} allowNew
                               placeholder={m.project.links.pagePlaceholder} suggest={suggestPages}
-                              onCancel={stopRel} onError={reportError}
+                              onCancel={stopRel} onError={report}
                               onPick={(hit) => writeProject(projectApi.createRelation(projectId, {
                                 group: 'Wiki', text: hit.title, page: hit.id,
                               }), m.project.links.added)}
@@ -1253,7 +1246,7 @@ export function ProjectDetail({
                             <PickRow
                               row={relEditRow} triggers={NO_TRIGGERS} allowNew initialText={relEditing.text}
                               placeholder={m.project.links.pagePlaceholder} suggest={suggestPages}
-                              onCancel={stopRelEdit} onError={reportError}
+                              onCancel={stopRelEdit} onError={report}
                               onPick={(hit) => writeProject(projectApi.updateRelation(projectId, relEditing.id, {
                                 text: hit.title, page: hit.id,
                               }), m.project.links.updated)}

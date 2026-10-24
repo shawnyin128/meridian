@@ -28,6 +28,7 @@ import { NO_TRIGGERS } from '../../hooks/useOnLeave.js'
 import { useInlineDraft } from '../../hooks/useInlineDraft.js'
 import { useUndo } from '../../hooks/useUndo.js'
 import { useJumpOrigin } from '../../hooks/useJumpOrigin.js'
+import { useScreenLoad } from '../../hooks/useScreenLoad.js'
 import { useVaultWrite } from '../../hooks/useVaultWrite.js'
 import { useScrollFade } from '../../hooks/useScrollFade.js'
 import {
@@ -298,7 +299,6 @@ export function PaperTable() {
   const [editingCell, setEditingCell] = useState<{ id: string; key: string } | null>(null)
   const editingTd = useRef<HTMLTableCellElement>(null)
   const [detail, setDetail] = useState<PaperRow | null>(null)
-  const [error, setError] = useState<string | null>(null)
   const [uploading, setUploading] = useState(false)
   const [dropActive, setDropActive] = useState(false)
   const uploadInput = useRef<HTMLInputElement>(null)
@@ -324,7 +324,8 @@ export function PaperTable() {
   // The revision is bumped after a write so the grouping and row-fetch effects run again, like the
   // demo's renderLibRows call after a submit.
   const { revision, bump } = useVaultRevision()
-  const reportError = useCallback((e: unknown) => setError(errorLabel(m, e)), [m])
+  const { error, load, report } = useScreenLoad()
+  const openDetail = (id: string) => { load('detail', papers.get(id), setDetail) }
   const closeDetail = useCallback(() => setDetail(null), [])
   const write = useVaultWrite()
   const undo = useUndo()
@@ -334,8 +335,8 @@ export function PaperTable() {
   // must be refetched.
   useEffect(() => {
     if (detailId === undefined) return
-    void papers.get(detailId).then(setDetail).catch(reportError)
-  }, [detailId, revision, reportError])
+    return load('detail', papers.get(detailId), setDetail)
+  }, [detailId, revision, load])
 
   // Opening a paper is a separate navigation action, so discard an unfinished column-header draft.
   // The established columns remain mounted and horizontally scrollable beside the inspector.
@@ -371,8 +372,8 @@ export function PaperTable() {
     columnChain.current = columnChain.current.then(() => papers.columns().then((live) => {
       confirmedColumns.current = live
       setColumns(live)
-    }).catch(reportError))
-  }, [revision, reportError])
+    }).catch(report))
+  }, [revision, report])
 
   // Editing another cell drops the previous cell's write queue; the next cell's first pick computes
   // from the current column configuration and row again.
@@ -383,8 +384,8 @@ export function PaperTable() {
       setFacets([])
       return
     }
-    void papers.facets(group, filter).then(setFacets).catch(reportError)
-  }, [group, filter, revision, reportError])
+    void papers.facets(group, filter).then(setFacets).catch(report)
+  }, [group, filter, revision, report])
 
   useEffect(() => {
     if (view !== 'table' || !listed) return
@@ -396,8 +397,8 @@ export function PaperTable() {
     void papers.list(params).then((r) => {
       setRows(r.rows)
       setTotal(r.total)
-    }).catch(reportError)
-  }, [view, listed, shownPage, size, sort, direction, filter, group, sel, revision, reportError])
+    }).catch(report)
+  }, [view, listed, shownPage, size, sort, direction, filter, group, sel, revision, report])
 
   useEffect(() => {
     if (view !== 'research-map') return
@@ -411,9 +412,9 @@ export function PaperTable() {
       if (!active) return
       setMapRows(result.rows)
       setMapTotal(result.total)
-    }).catch(reportError).finally(() => { if (active) setMapLoading(false) })
+    }).catch(report).finally(() => { if (active) setMapLoading(false) })
     return () => { active = false }
-  }, [view, filter, revision, reportError])
+  }, [view, filter, revision, report])
 
   // Clicking the sidebar while this screen is shown lands on the plain table: an open detail panel closes.
   const reentry = useScreenReentry()
@@ -426,7 +427,7 @@ export function PaperTable() {
     if (jump === null || jump.seq === consumed.current) return
     consumed.current = jump.seq
     if (jump.anchor?.detail === true) {
-      void papers.get(jump.target).then(setDetail).catch(reportError)
+      load('detail', papers.get(jump.target), setDetail)
       return
     }
     if (jump.anchor?.importPdf === true) {
@@ -435,7 +436,7 @@ export function PaperTable() {
     }
     setQ(jump.target)
     setPage(1)
-  }, [jump, reportError, uploading])
+  }, [jump, load, uploading])
 
   const backToValues = useCallback(() => { setSel(null); setPage(1) }, [])
   const backToUngrouped = useCallback(() => { setGroup('none'); setSel(null); setPage(1) }, [])
@@ -676,7 +677,6 @@ export function PaperTable() {
       return
     }
     setUploading(true)
-    setError(null)
     try {
       const result = await papers.import(file.name, new Uint8Array(await file.arrayBuffer()))
       if (result.kind === 'added') bump()
@@ -844,7 +844,7 @@ export function PaperTable() {
         await papers.columns().then((live) => {
           confirmedColumns.current = live
           setColumns(live)
-        }).catch(reportError)
+        }).catch(report)
         return false
       }
     })
@@ -1005,7 +1005,7 @@ export function PaperTable() {
       <td key={k}>
         <span className="ci">
           <PaperTopics
-            topics={p.topics} onError={reportError} onAdd={(v) => addTopic(p, v)} onRemove={(v) => removeTopic(p, v)}
+            topics={p.topics} onError={report} onAdd={(v) => addTopic(p, v)} onRemove={(v) => removeTopic(p, v)}
           />
         </span>
       </td>
@@ -1122,14 +1122,14 @@ export function PaperTable() {
                   <tr
                     className={detail?.id === p.id ? 'selected' : undefined} data-row-actions=""
                     aria-current={detail?.id === p.id ? 'true' : undefined}
-                    onClick={() => { void papers.get(p.id).then(setDetail).catch(reportError) }}
+                    onClick={() => openDetail(p.id)}
                     onMouseDown={holdRepeatSelection}
                     onDoubleClick={(event) => {
                       if (opensPaperFrom(event.target)) open('reader', p.id)
                     }}
                     onKeyDown={(event) => {
                       if (event.key === 'Enter' && event.target === event.currentTarget) {
-                        void papers.get(p.id).then(setDetail).catch(reportError)
+                        openDetail(p.id)
                       }
                     }}
                   >
@@ -1148,7 +1148,7 @@ export function PaperTable() {
                 </Toolbar>
               )}
             >
-              <ContextMenuItem onSelect={() => { void papers.get(p.id).then(setDetail).catch(reportError) }}>
+              <ContextMenuItem onSelect={() => openDetail(p.id)}>
                 {m.papers.contextMenu.openDetail}
               </ContextMenuItem>
               <ContextMenuItem onSelect={() => open('reader', p.id)}>{m.papers.contextMenu.openReader}</ContextMenuItem>
@@ -1253,7 +1253,7 @@ export function PaperTable() {
           </PageToolbar>
           <ParseProgress
             onParsed={() => bump()}
-            onOpenPaper={(id) => { void papers.get(id).then(setDetail).catch(reportError) }}
+            onOpenPaper={openDetail}
           />
 
           <div id="libList">
@@ -1261,7 +1261,7 @@ export function PaperTable() {
               ? (
                 <ResearchMap
                   rows={mapRows} total={mapTotal} loading={mapLoading}
-                  onOpenPaper={(paper) => { void papers.get(paper.id).then(setDetail).catch(reportError) }}
+                  onOpenPaper={(paper) => openDetail(paper.id)}
                   onReadPaper={(paper) => open('reader', paper.id)}
                   onRate={setRating} onPickReadState={setReadState}
                 />

@@ -25,6 +25,7 @@ import {
 import { PaperChat, type PaperChatPrompt } from '../components/chat/PaperChat.js'
 import { ReaderSidePanel, type ReaderSideTab } from '../components/reader/ReaderSidePanel.js'
 import { PageShell } from '../components/PageShell.js'
+import { useScreenLoad } from '../hooks/useScreenLoad.js'
 import { plainTitle } from '../components/paper/paper-text.js'
 import './shell.css'
 import './Reader.css'
@@ -203,7 +204,6 @@ export function Reader() {
   const [arrival, setArrival] = useState<JumpAnchor | null>(null)
   const [painted, setPainted] = useState(0)
   const [saving, setSaving] = useState(false)
-  const [error, setError] = useState<string | null>(null)
   const scroller = useRef<HTMLDivElement>(null)
   const selectionAnchor = useRef<AnchorBox | null>(null)
   selectionAnchor.current = pending?.box ?? null
@@ -226,7 +226,7 @@ export function Reader() {
   const loadingDocs = useRef(new Set<string>())
   const openedRef = useRef(opened)
   openedRef.current = opened
-  const reportError = useCallback((cause: unknown) => setError(errorLabel(m, cause)), [m])
+  const { error, load, report } = useScreenLoad()
 
   useEffect(() => {
     if (jump === null || jump.seq === consumed.current) return
@@ -252,20 +252,13 @@ export function Reader() {
 
   useEffect(() => {
     if (opened === null) return
-    setError(null)
-    let live = true
-    void papers.get(opened).then((value) => { if (live) setPaper(value) }).catch(reportError)
-    return () => { live = false }
-  }, [opened, revision, reportError])
+    return load('paper', papers.get(opened), setPaper)
+  }, [opened, revision, load])
 
   useEffect(() => {
     if (opened === null) return
-    let live = true
-    void papers.reading(opened)
-      .then((value) => { if (live) setReading(value) })
-      .catch(reportError)
-    return () => { live = false }
-  }, [opened, revision, reportError])
+    return load('reading', papers.reading(opened), setReading)
+  }, [opened, revision, load])
 
   useEffect(() => {
     if (opened === null) return
@@ -296,9 +289,9 @@ export function Reader() {
       setDoc(value)
     }).catch((cause: Error) => {
       loadingDocs.current.delete(id)
-      if (openedRef.current === id) reportError(cause)
+      if (openedRef.current === id) report(cause)
     })
-  }, [opened, reportError])
+  }, [opened, report])
 
   // A kept document whose paper has left the library is dropped, so a later paper taking the same id never shows the old source.
   useEffect(() => {
@@ -332,10 +325,10 @@ export function Reader() {
       if (rect.bottom <= frame.top || rect.top >= frame.bottom) continue
       slot.text!.update({ viewport: slot.pdf.getViewport({ scale: laidOutScale(slot) }) })
       void drawCanvas(slot).catch((cause: unknown) => {
-        if (!cancelled(cause)) reportError(cause as Error)
+        if (!cancelled(cause)) report(cause as Error)
       })
     }
-  }, [reportError])
+  }, [report])
 
   useEffect(() => {
     const view = scroller.current
@@ -422,7 +415,7 @@ export function Reader() {
         await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()))
       }
     })().catch((cause: unknown) => {
-      if (live && !cancelled(cause)) reportError(cause as Error)
+      if (live && !cancelled(cause)) report(cause as Error)
     })
     return () => {
       live = false
@@ -436,7 +429,7 @@ export function Reader() {
       transform.current = UNSCALED
       shownZoom.current = zoomRef.current
     }
-  }, [doc, reportError, redrawVisible])
+  }, [doc, report, redrawVisible])
 
   // pdf.js's TextLayerBuilder selection support: a text layer is `.selecting` from a press on it, or
   // while a selection being made covers it, until the pointer or key is released; its endOfContent

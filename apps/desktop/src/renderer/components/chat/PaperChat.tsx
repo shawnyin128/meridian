@@ -18,6 +18,7 @@ import { useDrafts } from '../../hooks/useDrafts.js'
 import { useGenerations } from '../../hooks/useGenerations.js'
 import { useFollowEnd } from '../../hooks/useFollowEnd.js'
 import { useNoModelChats } from '../../hooks/useNoModelChats.js'
+import { useScreenLoad } from '../../hooks/useScreenLoad.js'
 import { useScrollFade } from '../../hooks/useScrollFade.js'
 import { namedRuns, TitleNote } from '../TitleNote.js'
 import { useVaultWrite } from '../../hooks/useVaultWrite.js'
@@ -55,7 +56,7 @@ export function PaperChat({ paper, onBack = () => {}, prompt = null }: {
   const ideaAt = useRef<HTMLDivElement>(null)
   const { running, run, stop } = useGenerations()
   const { noModel, track } = useNoModelChats()
-  const [error, setError] = useState<string | null>(null)
+  const { error, load } = useScreenLoad()
   const streamFade = useScrollFade('y')
   const { ref: followRef, follow } = useFollowEnd<HTMLDivElement>()
   const stream = useCallback((area: HTMLDivElement | null) => {
@@ -63,7 +64,6 @@ export function PaperChat({ paper, onBack = () => {}, prompt = null }: {
     followRef(area)
   }, [streamFade, followRef])
   const composer = useRef<ChatComposerHandle>(null)
-  const reportError = useCallback((cause: unknown) => setError(errorLabel(m, cause)), [m])
   const paperId = paper?.id ?? null
   const sessionId = session?.id ?? null
   const draft = paperId === null ? [] : drafts.get(paperId) ?? []
@@ -73,7 +73,6 @@ export function PaperChat({ paper, onBack = () => {}, prompt = null }: {
   useEffect(() => {
     setSession(null)
     setMessages(null)
-    setError(null)
     follow()
   }, [paperId, follow])
 
@@ -82,10 +81,8 @@ export function PaperChat({ paper, onBack = () => {}, prompt = null }: {
   const shownSession = useRef<string | null>(null)
   useEffect(() => {
     if (paperId === null) return
-    let live = true
-    void chat.forPaper(paperId).then(async (value) => {
-      const held = await chat.messages(value.id)
-      if (!live) return
+    const read = chat.forPaper(paperId).then(async (value) => ({ value, held: await chat.messages(value.id) }))
+    return load('chat', read, ({ value, held }) => {
       setSession(value)
       setMessages(held)
       if (shownSession.current === value.id) return
@@ -93,9 +90,8 @@ export function PaperChat({ paper, onBack = () => {}, prompt = null }: {
       // Opening it the first time may create a session, so refresh the shell's chat list; Core hides
       // empty paper sessions for now.
       bump()
-    }).catch(reportError)
-    return () => { live = false }
-  }, [paperId, revision, bump, reportError])
+    })
+  }, [paperId, revision, bump, load])
 
   useEffect(() => {
     if (prompt === null || paperId === null) return

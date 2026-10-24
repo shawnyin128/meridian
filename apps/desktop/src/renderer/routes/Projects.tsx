@@ -6,7 +6,6 @@ import {
 } from '../../shared/project-signals.js'
 import type { ProjectSortKey } from '../../shared/project-signals.js'
 import { ACTIVE_PROJECT, PROJECT_STATUSES } from '../../shared/vocabulary.js'
-import { errorLabel } from '../lib/failure-label.js'
 import type { CrumbSeg, ScreenKey } from '../shell/AppShell.js'
 import { feed, project as projectApi } from '../ipc.js'
 import {
@@ -37,6 +36,7 @@ import type { Catalog } from '../messages/catalog.js'
 import { ProjectDetail } from './ProjectDetail.js'
 import type { RecordTab } from './ProjectDetail.js'
 import type { PlanTab } from '../components/project/ProjectPlan.js'
+import { useScreenLoad } from '../hooks/useScreenLoad.js'
 import { useUndo } from '../hooks/useUndo.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
 import type { NoticeAction } from '../components/Notice.js'
@@ -279,10 +279,9 @@ function ProjectList({ onOpen, newRow, onNewRow, onReturn }: {
   const m = useMessages()
   const [projects, setProjects] = useState<ProjectSummary[] | null>(null)
   const [creating, setCreating] = useState(false)
-  const [error, setError] = useState<string | null>(null)
   const today = useToday()
   const { revision } = useVaultRevision()
-  const reportError = useCallback((e: unknown) => setError(errorLabel(m, e)), [m])
+  const { error, load } = useScreenLoad()
   const write = useVaultWrite()
   const undo = useUndo()
   const stopCreating = useCallback(() => setCreating(false), [])
@@ -307,9 +306,7 @@ function ProjectList({ onOpen, newRow, onNewRow, onReturn }: {
 
   useCrumbTail(NO_TAIL)
 
-  useEffect(() => {
-    void projectApi.list().then(setProjects).catch(reportError)
-  }, [reportError, revision])
+  useEffect(() => load('projects', projectApi.list(), setProjects), [load, revision])
 
   useEffect(() => {
     if (!newRow) return

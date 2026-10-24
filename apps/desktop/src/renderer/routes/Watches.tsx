@@ -5,7 +5,7 @@ import type {
   WatchSuggestionResult,
 } from '../../shared/contract.js'
 import { author, project, watch } from '../ipc.js'
-import { errorLabel, failureLabel, failureOf } from '../lib/failure-label.js'
+import { failureLabel, failureOf } from '../lib/failure-label.js'
 import { useVaultRevision } from '../shell/AppShell.js'
 import { useMessages } from '../messages/useMessages.js'
 import { AddAction } from '../components/AddAction.js'
@@ -22,6 +22,7 @@ import { PageError, SectionHeading } from '../components/PageShell.js'
 import { SegmentedControl } from '../components/SegmentedControl.js'
 import { Switch } from '../components/Switch.js'
 import { Tag } from '../components/Tag.js'
+import { useScreenLoad } from '../hooks/useScreenLoad.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
 import { composing } from '../lib/keyboard.js'
 import { FadeText } from '../components/FadeText.js'
@@ -121,7 +122,6 @@ export function WatchSettings() {
   const [suggesting, setSuggesting] = useState(false)
   const [suggestionError, setSuggestionError] = useState<string | null>(null)
   const [addingSuggestion, setAddingSuggestion] = useState<string | null>(null)
-  const [error, setError] = useState<string | null>(null)
   // The screen, not each group, holds the draft row, so "only one open at a time" spans both groups:
   // if each group held its own, neither could close the other's.
   const [editor, setEditor] = useState<{ type: Watch['type']; id?: string } | null>(null)
@@ -142,7 +142,7 @@ export function WatchSettings() {
   const triggers = useMemo(() => [addTopic, addAuthor], [])
 
   const { revision } = useVaultRevision()
-  const reportError = useCallback((e: unknown) => setError(errorLabel(m, e)), [m])
+  const { error, load } = useScreenLoad()
   const write = useVaultWrite()
 
   const stop = useCallback(() => {
@@ -153,13 +153,11 @@ export function WatchSettings() {
     setAuthorSearching(false)
     setAuthorSearchError(null)
   }, [])
-  useEffect(() => {
-    void watch.list().then(setListed).catch(reportError)
-    void project.list().then((items) => {
-      setProjects(items)
-      setProjectId((current) => current || items[0]?.id || '')
-    }).catch(reportError)
-  }, [revision, reportError])
+  useEffect(() => load('watches', watch.list(), setListed), [revision, load])
+  useEffect(() => load('projects', project.list(), (items) => {
+    setProjects(items)
+    setProjectId((current) => current || items[0]?.id || '')
+  }), [revision, load])
 
   useEffect(() => {
     const query = name.trim()

@@ -6,7 +6,6 @@ import type {
 } from '../../shared/contract.js'
 import { PAPER_PAGE } from '../../shared/vocabulary.js'
 import { papers, project, wiki } from '../ipc.js'
-import { errorLabel } from '../lib/failure-label.js'
 import {
   useCrumbTail, useJump, useNotice, useScreenEntry, useVaultRevision, type CrumbSeg, type ScreenKey,
 } from '../shell/AppShell.js'
@@ -33,6 +32,7 @@ import { Pager } from '../components/Pager.js'
 import { PickRow, type PickHit } from '../components/PickRow.js'
 import { nextKey, slugOf } from '../lib/slug.js'
 import { useRowCap } from '../hooks/useRowCap.js'
+import { useScreenLoad } from '../hooks/useScreenLoad.js'
 import { useUndo } from '../hooks/useUndo.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
 import { useScrollFade } from '../hooks/useScrollFade.js'
@@ -374,13 +374,12 @@ export function Wiki() {
   /** The claim a tidying row opens its page at, until the page has brought it into view. */
   const [arrival, setArrival] = useState<{ page: string; claim: string } | null>(null)
   const arrived = useCallback(() => setArrival(null), [])
-  const [error, setError] = useState<string | null>(null)
   const consumed = useRef(0)
   const main = useRef<HTMLDivElement>(null)
   const body = useRef<HTMLDivElement>(null)
   /** The step a Back returned to, until its page shows its content and gets its scroll offset back. */
   const returning = useRef<{ place: Place; scroll: number } | null>(null)
-  const reportError = useCallback((e: unknown) => setError(errorLabel(m, e)), [m])
+  const { error, load, report } = useScreenLoad()
   const notice = useNotice()
   const write = useVaultWrite()
   const undo = useUndo()
@@ -449,79 +448,58 @@ export function Wiki() {
     setStack([])
   }, [entry, jump])
 
-  useEffect(() => {
-    void wiki.home().then(setHome).catch(reportError)
-  }, [revision, reportError])
+  useEffect(() => load('home', wiki.home(), setHome), [revision, load])
 
-  useEffect(() => {
-    void papers.list({ page, size }).then((r) => {
-      setRows(r.rows)
-      setTotal(r.total)
-    }).catch(reportError)
-  }, [page, size, revision, reportError])
+  useEffect(() => load('papers', papers.list({ page, size }), (r) => {
+    setRows(r.rows)
+    setTotal(r.total)
+  }), [page, size, revision, load])
 
-  useEffect(() => {
-    void wiki.proposals().then(setProposals).catch(reportError)
-  }, [revision, reportError])
+  useEffect(() => load('proposals', wiki.proposals(), setProposals), [revision, load])
 
-  useEffect(() => {
-    void wiki.signals().then(setSignals).catch(reportError)
-  }, [revision, reportError])
+  useEffect(() => load('signals', wiki.signals(), setSignals), [revision, load])
 
   // The tidying list names each row's page: aggregations and projects from their lists, papers one by
   // one; and the claims a conflict is with, from their pages.
   useEffect(() => {
     setTidyTitles(null)
     if (place !== TIDY || signals === null) return
-    let live = true
     const rows = tidyRows(signals)
     const pages = rows.map((row) => row.page)
     const paperPages = [...new Set(pages.filter((id) => id.startsWith(PAPER_PAGE)))]
     const claimPages = [...new Set(rows.filter((row) => row.kind === 'open-conflict')
       .flatMap((row) => row.targets.map((ref) => ref.split('#')[0]!)))]
-    void Promise.all([
+    return load('tidy', Promise.all([
       wiki.cards(), project.list(),
       Promise.all(paperPages.map(async (id) => [id, (await papers.get(id.slice(PAPER_PAGE.length))).title] as const)),
       Promise.all(claimPages.map(async (id) => (await wiki.aggregation(id)).claims.map((c) => [`${id}#${c.id}`, c.text] as const))),
-    ]).then(([cards, projects, paperTitles, claimTexts]) => {
-      if (live) {
-        setTidyTitles(Object.fromEntries([
-          ...cards.map((c) => [c.id, c.title] as const),
-          ...projects.map((p) => [`${PROJECT_PAGE}${p.id}`, p.name] as const),
-          ...paperTitles,
-          ...claimTexts.flat(),
-        ]))
-      }
-    }).catch(reportError)
-    return () => { live = false }
-  }, [place, signals, reportError])
-
-  useEffect(() => {
-    setError(null)
-    if (place === null || place === REVIEW || place === TIDY) return
-    if (place.startsWith(PAPER_PAGE)) void wiki.paper(place).then(setPaper).catch(reportError)
-    else void wiki.aggregation(place).then(setAgg).catch(reportError)
-  }, [place, revision, reportError])
+    ]), ([cards, projects, paperTitles, claimTexts]) => {
+      setTidyTitles(Object.fromEntries([
+        ...cards.map((c) => [c.id, c.title] as const),
+        ...projects.map((p) => [`${PROJECT_PAGE}${p.id}`, p.name] as const),
+        ...paperTitles,
+        ...claimTexts.flat(),
+      ]))
+    })
+  }, [place, signals, load])
 
   useEffect(() => {
     if (place === null || place === REVIEW || place === TIDY) return
-    let live = true
-    void wiki.backlinks(place)
-      .then((links) => { if (live) setBacklinks({ page: place, links }) })
-      .catch(reportError)
-    return () => { live = false }
-  }, [place, revision, reportError])
+    return place.startsWith(PAPER_PAGE)
+      ? load('page', wiki.paper(place), setPaper)
+      : load('page', wiki.aggregation(place), setAgg)
+  }, [place, revision, load])
+
+  useEffect(() => {
+    if (place === null || place === REVIEW || place === TIDY) return
+    return load('backlinks', wiki.backlinks(place), (links) => setBacklinks({ page: place, links }))
+  }, [place, revision, load])
 
   useEffect(() => {
     setReading(null)
     if (place === null || !place.startsWith(PAPER_PAGE)) return
-    let live = true
-    const paperId = place.slice(PAPER_PAGE.length)
-    void papers.reading(paperId)
-      .then((value) => { if (live) setReading(value) })
-      .catch(reportError)
-    return () => { live = false }
-  }, [place, revision, reportError])
+    return load('reading', papers.reading(place.slice(PAPER_PAGE.length)), setReading)
+  }, [place, revision, load])
 
   const goHome = useCallback(() => {
     setPlace(null)
@@ -628,7 +606,7 @@ export function Wiki() {
       m.wiki.proposals.placeUnder(child.title, shownAgg.title),
       [{ op: 'setParents', page: child.id, parents: [...child.parents.map((p) => p.id), shownAgg.id] }],
     ), (e: Error) => {
-      reportError(e)
+      report(e)
       return false
     })
   }
@@ -642,7 +620,7 @@ export function Wiki() {
       [{ op: 'setParents', page: child.id, parents: child.parents.map((p) => p.id).filter((id) => id !== shownAgg.id) }],
     )).catch((e: Error) => {
       setPending(false)
-      reportError(e)
+      report(e)
     })
   }
 
@@ -814,7 +792,7 @@ export function Wiki() {
                                 row={addRow} triggers={[childBtn, paperBtn, colBtn]} allowNew
                                 placeholder={m.wiki.kindNamePlaceholder(shownAgg.kindLabel)}
                                 suggest={suggestChildren} onPick={mount} onNew={create}
-                                onCancel={() => setAdding(null)} onError={reportError}
+                                onCancel={() => setAdding(null)} onError={report}
                               />
                             </div>
                             <div className="wf" />
@@ -843,7 +821,7 @@ export function Wiki() {
                           row={newPaperRow} triggers={[childBtn, paperBtn, colBtn]} allowNew={false}
                           placeholder={m.project.links.paperPlaceholder}
                           suggest={suggestPapers} onNew={() => false} onCancel={() => setAdding(null)}
-                          onError={reportError}
+                          onError={report}
                           onPick={(hit) => propose(m.wiki.proposals.addPaper(hit.title, shownAgg.title), [
                             { op: 'setMembership', paper: hit.id, in: shownAgg.id, cells: {} },
                           ])}

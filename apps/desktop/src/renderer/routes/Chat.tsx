@@ -26,6 +26,7 @@ import { useFollowEnd } from '../hooks/useFollowEnd.js'
 import { useGenerations } from '../hooks/useGenerations.js'
 import { useNoModelChats } from '../hooks/useNoModelChats.js'
 import { useJumpOrigin } from '../hooks/useJumpOrigin.js'
+import { useScreenLoad } from '../hooks/useScreenLoad.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
 import { CONFLICT_THREAD } from '../lib/chat.js'
 import { IdeaDraft, type IdeaDraftText } from '../components/ideas/IdeaDraft.js'
@@ -96,22 +97,19 @@ export function Chat() {
   const [projects, setProjects] = useState<ProjectSummary[]>([])
   const [rows, setRows] = useState<PaperRow[]>([])
   const [pages, setPages] = useState<WikiAggregationCard[]>([])
-  const [error, setError] = useState<string | null>(null)
   // The page body, not the message list, scrolls the conversation.
   const { ref: followRef, follow } = useFollowEnd<HTMLDivElement>()
   const composer = useRef<ChatComposerHandle>(null)
   const consumed = useRef(0)
-  const reportError = useCallback((e: unknown) => setError(errorLabel(m, e)), [m])
+  const { error, load } = useScreenLoad()
   const write = useVaultWrite()
   const draft = id === null ? [] : drafts.get(id) ?? []
   const ideaDraft = id === null ? undefined : ideaDrafts.get(id)
   const sending = id !== null && running(id)
 
-  useEffect(() => {
-    void project.list().then(setProjects).catch(reportError)
-    void papers.list({ page: 1, size: MENTION_PAPERS }).then((r) => setRows(r.rows)).catch(reportError)
-    void wiki.cards().then(setPages).catch(reportError)
-  }, [revision, reportError])
+  useEffect(() => load('projects', project.list(), setProjects), [revision, load])
+  useEffect(() => load('papers', papers.list({ page: 1, size: MENTION_PAPERS }), (r) => setRows(r.rows)), [revision, load])
+  useEffect(() => load('pages', wiki.cards(), setPages), [revision, load])
 
   useEffect(() => {
     setMessages(null)
@@ -119,8 +117,8 @@ export function Chat() {
   }, [id, follow])
   useEffect(() => {
     if (id === null) return
-    void chat.messages(id).then(setMessages).catch(reportError)
-  }, [id, revision, reportError])
+    return load('messages', chat.messages(id), setMessages)
+  }, [id, revision, load])
 
   // Empty until the vault data arrives, after which an `@` already typed opens the picker by itself.
   const mentions = useMemo(() => mentionsOf(projects, rows, pages, fmt, m), [projects, rows, pages, fmt, m])
