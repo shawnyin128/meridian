@@ -33,6 +33,18 @@ describe('内置外观主题', () => {
   }
 })
 
+describe('推导色跟着模块走', () => {
+  it('浅色的警告浅底随警告色走:默认的警告色还是今天的浅黄,换成红色或蓝色,浅底也变成那个色调', () => {
+    const tint = (warning: string) => deriveColourTokens({ ...DEFAULT_COLOUR_THEME.light, warning }, 'light')['--tint-warn']
+    const channels = (rgba: string) => rgba.slice(5, -1).split(',').slice(0, 3).map(Number) as [number, number, number]
+    expect(tint('#b8860b')).toBe('rgba(255,214,10,0.14)')
+    const [r, g, b] = channels(tint('#c0392b'))
+    expect(r > g && g > b, `红色警告色的浅底 ${tint('#c0392b')}`).toBe(true)
+    const [r2, g2, b2] = channels(tint('#2f6fbf'))
+    expect(b2 > g2 && g2 > r2, `蓝色警告色的浅底 ${tint('#2f6fbf')}`).toBe(true)
+  })
+})
+
 describe('对比度不足', () => {
   const pale = { ...DEFAULT_COLOUR_THEME.light, ink: '#8a8a8a' }
 
