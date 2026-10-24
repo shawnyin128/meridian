@@ -223,10 +223,12 @@ function Blocks({ p, links, onOpenConclusion, by, context }: {
  * the block sits beside the apply button, opening the changed page or the conclusion through `onOpenConclusion`. The
  * project and node that prompted it show only when no change cites them. Pages, projects and source
  * passages open through `links`. Decided proposals follow under their own heading, muted, each with its
- * outcome. `proposals` is null while they load.
+ * outcome. `proposals` is null until they are read; the queue then shows its loading placeholder, or
+ * nothing once `failed`.
  */
-export function ReviewQueue({ proposals, pending, onApply, onDecline, links, onOpenConclusion }: {
+export function ReviewQueue({ proposals, failed, pending, onApply, onDecline, links, onOpenConclusion }: {
   proposals: WikiProposal[] | null
+  failed: boolean
   pending: boolean
   onApply: (proposal: WikiProposal) => void
   onDecline: (proposal: WikiProposal, reason: string) => void
@@ -298,7 +300,7 @@ export function ReviewQueue({ proposals, pending, onApply, onDecline, links, onO
   return (
     <>
       {proposals === null
-        ? <LoadingPlaceholder shape="rows" />
+        ? (failed ? null : <LoadingPlaceholder shape="rows" />)
         : queued.length === 0
         ? <EmptyState variant="section">{r.empty}</EmptyState>
         : (

@@ -1,8 +1,7 @@
-import { Fragment, useCallback, useEffect, useState } from 'react'
+import { Fragment, useEffect, useState } from 'react'
 import type { TrashEntry } from '../../shared/contract.js'
 import { TRASH_RETENTION_DAYS } from '../../shared/vocabulary.js'
 import { trash } from '../ipc.js'
-import { errorLabel } from '../lib/failure-label.js'
 import { useMessages } from '../messages/useMessages.js'
 import { useToday, useVaultRevision } from '../shell/AppShell.js'
 import { Icon, IconRestore, IconTrash } from '../components/icons.js'
@@ -20,6 +19,7 @@ import {
   PageBody, PageError, PageHeader, PageShell, PageTitle, SectionHeading,
 } from '../components/PageShell.js'
 import { D1, dnum } from '../../shared/dates.js'
+import { useScreenLoad } from '../hooks/useScreenLoad.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
 import './shell.css'
 import './Trash.css'
@@ -62,16 +62,13 @@ function ClearButton({ count, onClear }: { count: number; onClear: () => void })
 export function Trash() {
   const m = useMessages()
   const [entries, setEntries] = useState<TrashEntry[] | null>(null)
-  const [error, setError] = useState<string | null>(null)
 
   const today = useToday()
   const { revision } = useVaultRevision()
-  const reportError = useCallback((e: unknown) => setError(errorLabel(m, e)), [m])
+  const { error, load } = useScreenLoad()
   const write = useVaultWrite()
 
-  useEffect(() => {
-    void trash.list().then(setEntries).catch(reportError)
-  }, [revision, reportError])
+  useEffect(() => load('entries', trash.list(), setEntries), [revision, load])
 
   const restore = (entry: TrashEntry) => {
     void write(trash.restore(entry.id),

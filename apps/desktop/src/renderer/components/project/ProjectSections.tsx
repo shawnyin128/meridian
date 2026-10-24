@@ -106,13 +106,15 @@ const CLIP_PATH = 'M21.4 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 
 /**
  * Project `projectId`'s areas in its property rail: a chip per area, which a click edits in place and
  * whose × removes it, then the `+` that adds one where it lands. Every input offers the areas the
- * other projects use that this one lacks, asked of project.list each time it opens. `onSave`
- * receives the whole new list and returns whether the write completed.
+ * other projects use that this one lacks, asked of project.list each time it opens. `onSave` receives
+ * the whole new list after an add or an edit, `onRemove` the list after a removal; each returns whether
+ * the write completed.
  */
-export function ProjectAreasField({ projectId, areas, onSave, onError }: {
+export function ProjectAreasField({ projectId, areas, onSave, onRemove, onError }: {
   projectId: string
   areas: string[]
   onSave: (areas: string[]) => Promise<boolean>
+  onRemove: (areas: string[]) => Promise<boolean>
   onError: (error: Error) => void
 }) {
   const m = useMessages()
@@ -124,7 +126,7 @@ export function ProjectAreasField({ projectId, areas, onSave, onError }: {
         values={areas} vocabulary={vocabulary} onError={onError} keep={['project', projectId, 'areas']}
         labels={{ add: m.project.identity.addArea, remove: m.project.identity.removeArea, existing: m.project.identity.existingAreas }}
         onAdd={(area) => onSave([...new Set([...areas, area])])}
-        onRemove={(area) => onSave(areas.filter((held) => held !== area))}
+        onRemove={(area) => onRemove(areas.filter((held) => held !== area))}
         onReplace={(from, to) => onSave([...new Set(areas.map((held) => (held === from ? to : held)))])}
       />
     </span>

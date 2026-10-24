@@ -45,6 +45,7 @@ vi.mock('../shell/AppShell.js', () => ({
   useJump: () => ({ jump: null, open: vi.fn(), returnTo: vi.fn(), enter: vi.fn() }),
   useNotice: () => ({ success: vi.fn(), refusal: vi.fn() }),
   useScreen: () => 'resproj',
+  useScreenShown: () => true,
   useToday: () => '2026-08-25',
   useVaultRevision: () => ({ revision: 0, bump: vi.fn() }),
 }))

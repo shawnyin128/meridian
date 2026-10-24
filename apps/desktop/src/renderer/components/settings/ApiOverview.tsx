@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { HarnessModelSettings, SemanticKeyStatus } from '../../../shared/contract.js'
 import { delivery, harness } from '../../ipc.js'
-import { errorLabel } from '../../lib/failure-label.js'
+import { useScreenLoad } from '../../hooks/useScreenLoad.js'
 import { useMessages } from '../../messages/useMessages.js'
 import { PageError } from '../PageShell.js'
 import { StructuredList, StructuredRow } from '../StructuredList.js'
@@ -14,12 +14,10 @@ export function ApiOverview({ onOpen }: { onOpen: (category: 'model' | 'research
   const copy = m.settings.api
   const [model, setModel] = useState<HarnessModelSettings | null>(null)
   const [semanticKey, setSemanticKey] = useState<SemanticKeyStatus | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  const { error, load } = useScreenLoad()
 
-  useEffect(() => {
-    void harness.modelSettings().then(setModel).catch((e: unknown) => setError(errorLabel(m, e)))
-    void delivery.semanticKey().then(setSemanticKey).catch((e: unknown) => setError(errorLabel(m, e)))
-  }, [m])
+  useEffect(() => load('model', harness.modelSettings(), setModel), [load])
+  useEffect(() => load('semanticKey', delivery.semanticKey(), setSemanticKey), [load])
 
   const modelState = model === null
     ? m.common.reading

@@ -12,6 +12,7 @@ import { useCandidateKeys } from '../hooks/useCandidateKeys.js'
 import { NO_TRIGGERS } from '../hooks/useOnLeave.js'
 import { useDrafts } from '../hooks/useDrafts.js'
 import { useInlineDraft } from '../hooks/useInlineDraft.js'
+import { useUndo } from '../hooks/useUndo.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
 import { useMessages } from '../messages/useMessages.js'
 import { useJump } from '../shell/AppShell.js'
@@ -37,6 +38,7 @@ export function ProjectChips({ paper, onError }: {
   const [projects, setProjects] = useState<ProjectSummary[]>([])
   const input = useRef<HTMLInputElement>(null)
   const write = useVaultWrite()
+  const undo = useUndo()
   const close = useCallback(() => kept.drop('add-project'), [kept])
 
   useEffect(() => {
@@ -69,7 +71,7 @@ export function ProjectChips({ paper, onError }: {
             onClick={(event) => {
               event.stopPropagation()
               void write(project.removePaper(linked.id, paper.id), {
-                note: m.research.chips.unlinked,
+                note: m.research.chips.unlinked, action: undo.change,
               })
             }}
           ><IconCross /></IconButton>

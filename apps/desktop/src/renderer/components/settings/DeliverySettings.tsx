@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react'
 import type { DeliverySettings as DeliverySettingsValue } from '../../../shared/contract.js'
 import { DEFAULT_DELIVERY_SETTINGS } from '../../../shared/contract.js'
 import { delivery } from '../../ipc.js'
-import { errorLabel } from '../../lib/failure-label.js'
 import { useMessages } from '../../messages/useMessages.js'
+import { useScreenLoad } from '../../hooks/useScreenLoad.js'
 import { useVaultWrite } from '../../hooks/useVaultWrite.js'
 import { composing } from '../../lib/keyboard.js'
 import { FormInput } from '../FormControls.js'
@@ -26,25 +26,17 @@ export function DeliverySettings() {
     maxItemsPerRun: String(DEFAULT_DELIVERY_SETTINGS.maxItemsPerRun),
     maxShownPerScope: String(DEFAULT_DELIVERY_SETTINGS.maxShownPerScope),
   })
-  const [loadingError, setLoadingError] = useState<string | null>(null)
+  const { error: loadingError, load } = useScreenLoad()
   const [saving, setSaving] = useState(false)
   // After a save the button says so in place, until a field changes again.
   const [justSaved, setJustSaved] = useState(false)
   const write = useVaultWrite()
 
-  useEffect(() => {
-    let active = true
-    void delivery.settings().then((settings) => {
-      if (!active) return
-      const held = { ...DEFAULT_DELIVERY_SETTINGS, ...settings }
-      setSaved(held)
-      setDrafts({ maxItemsPerRun: String(held.maxItemsPerRun), maxShownPerScope: String(held.maxShownPerScope) })
-      setLoadingError(null)
-    }).catch((error: unknown) => {
-      if (active) setLoadingError(errorLabel(m, error))
-    })
-    return () => { active = false }
-  }, [m])
+  useEffect(() => load('settings', delivery.settings(), (settings) => {
+    const held = { ...DEFAULT_DELIVERY_SETTINGS, ...settings }
+    setSaved(held)
+    setDrafts({ maxItemsPerRun: String(held.maxItemsPerRun), maxShownPerScope: String(held.maxShownPerScope) })
+  }), [load])
 
   const amounts = { maxItemsPerRun: Number(drafts.maxItemsPerRun), maxShownPerScope: Number(drafts.maxShownPerScope) }
   const valid = LIMITS.every((limit) => (

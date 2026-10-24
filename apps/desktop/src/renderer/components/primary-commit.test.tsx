@@ -124,7 +124,7 @@ describe('每个屏幕只有一个主操作', () => {
   it('审阅队列只有第一条能应用的提案的应用是实心强调色', async () => {
     await show(
       <ReviewQueue
-        proposals={[PROPOSAL('p1', { staleNow: true }), PROPOSAL('p2'), PROPOSAL('p3')]} pending={false}
+        proposals={[PROPOSAL('p1', { staleNow: true }), PROPOSAL('p2'), PROPOSAL('p3')]} failed={false} pending={false}
         onApply={vi.fn()} onDecline={vi.fn()} links={{ openPage: vi.fn(), openProject: vi.fn(), openReader: vi.fn() }}
         onOpenConclusion={vi.fn()}
       />,

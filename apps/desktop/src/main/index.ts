@@ -1,5 +1,5 @@
 import {
-  app, BaseWindow, BrowserWindow, dialog, ipcMain, MessageChannelMain, Menu, nativeTheme, net, shell,
+  app, BrowserWindow, dialog, ipcMain, MessageChannelMain, Menu, nativeTheme, net, screen, shell,
   utilityProcess,
 } from 'electron'
 import { execFile, spawn } from 'node:child_process'
@@ -76,9 +76,13 @@ function configHome(): string {
 // Hide the window only when MERIDIAN_SHOW_WINDOW=0 is explicit. E2E and screenshot scripts set it; development does not.
 const devUrl = process.env['ELECTRON_RENDERER_URL']
 const hidden = devUrl === undefined && process.env['MERIDIAN_SHOW_WINDOW'] === '0'
-// E2E cases that need the window on screen set MERIDIAN_SHOW_WINDOW=isolated: the machine's real keyboard
-// and pointer must not reach the page, while DevTools-protocol input still does.
+// E2E cases and drivers that need pixels set MERIDIAN_SHOW_WINDOW=isolated: the window paints off every
+// display, where the machine's real keyboard and pointer cannot reach the page and the page cannot cover
+// the user's work, while DevTools-protocol input still reaches it.
 const isolated = devUrl === undefined && process.env['MERIDIAN_SHOW_WINDOW'] === 'isolated'
+// Automated launches run while the user works on the same Mac: an accessory app has no Dock icon and is
+// never made the active app.
+if ((hidden || isolated) && process.platform === 'darwin') app.setActivationPolicy('accessory')
 
 // Installed builds run as a single instance; later launches bring the existing window forward.
 const primary = !app.isPackaged || app.requestSingleInstanceLock()
@@ -106,6 +110,8 @@ app.whenReady().then(() => {
     height: 900,
     show: false,
     focusable: !isolated,
+    // Without it macOS pulls a shown window back onto a display and caps its height at the display's.
+    enableLargerThanScreen: isolated,
     backgroundColor: windowBackground(nativeTheme.shouldUseDarkColors),
     // Only Windows and Linux use this option for window and taskbar icons; macOS uses the app bundle.
     ...(process.platform === 'darwin' ? {} : { icon }),
@@ -133,18 +139,11 @@ app.whenReady().then(() => {
       return
     }
     // show() would activate the app. Inactive and unfocusable, the window never becomes key, so the
-    // keyboard keeps typing into whatever app the user is in.
+    // keyboard keeps typing into whatever app the user is in. It is placed right of every display, with
+    // room for its shadow, before it is ordered in.
+    const right = Math.max(...screen.getAllDisplays().map(({ bounds }) => bounds.x + bounds.width))
+    win.setPosition(right + 100, 0)
     win.showInactive()
-    // setIgnoreMouseEvents is not enough on macOS: the page still sees the cursor enter and leave. A
-    // transparent child window over the whole window takes the pointer instead.
-    const shield = new BaseWindow({
-      parent: win, frame: false, transparent: true, hasShadow: false, focusable: false, show: false,
-    })
-    const cover = () => shield.setBounds(win.getBounds())
-    win.on('resize', cover)
-    win.on('move', cover)
-    cover()
-    shield.showInactive()
   })
 
   win.webContents.setWindowOpenHandler(openLinks((url) => shell.openExternal(url)))
