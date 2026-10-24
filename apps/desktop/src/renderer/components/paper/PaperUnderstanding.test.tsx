@@ -39,7 +39,7 @@ describe('PaperUnderstanding', () => {
     document.body.append(host)
     const root = createRoot(host)
     await act(async () => root.render(
-      <MessagesProvider><PaperUnderstanding reading={reading} onRead={() => undefined} /></MessagesProvider>,
+      <MessagesProvider><PaperUnderstanding reading={reading} error={null} onRead={() => undefined} /></MessagesProvider>,
     ))
     const html = host.innerHTML
     expect(html).toContain('个人理解')
@@ -58,7 +58,7 @@ describe('PaperUnderstanding', () => {
   it('shows empty personal state as a section empty state under a heading with no actions; reading starts from the page header', () => {
     const empty = { paperId: 'paper-1', highlights: [], notes: [], remark: '' }
     const html = renderToStaticMarkup(
-      <MessagesProvider><PaperUnderstanding reading={empty} onRead={() => undefined} /></MessagesProvider>,
+      <MessagesProvider><PaperUnderstanding reading={empty} error={null} onRead={() => undefined} /></MessagesProvider>,
     )
     expect(html).toContain('还没有随笔和笔记')
     expect(html).toContain('<div class="section-heading section-heading--page">个人理解</div>')

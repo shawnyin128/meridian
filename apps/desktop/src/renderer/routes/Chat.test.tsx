@@ -378,6 +378,21 @@ describe('Chat composer', () => {
   }
   const control = () => document.querySelector<HTMLButtonElement>('#sendBtn')!
 
+  it('换到另一条对话后，前一条晚到的消息不会顶替这一条的', async () => {
+    const said = (text: string): ChatMessage[] => [{ id: text, role: 'you', runs: [{ kind: 'text', text }], actions: [] }]
+    let answerFirst: (messages: ChatMessage[]) => void = () => {}
+    api.messages
+      .mockImplementationOnce(() => new Promise((resolve) => { answerFirst = resolve }))
+      .mockResolvedValueOnce(said('第二条的消息'))
+    session.revision = 1
+    await openChat('chat-1')
+    await openChat('chat-2')
+    expect(document.querySelector('.msgs')!.textContent).toBe('第二条的消息')
+
+    await act(async () => { answerFirst(said('第一条的消息')) })
+    expect(document.querySelector('.msgs')!.textContent).toBe('第二条的消息')
+  })
+
   it('一条对话还在生成时，换到另一条对话照常可以输入和发送', async () => {
     const finish = await sendPending('第一条的问题')
     expect(control().getAttribute('aria-label')).toBe('正在生成，点击停止')

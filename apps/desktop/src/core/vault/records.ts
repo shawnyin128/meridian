@@ -95,7 +95,9 @@ export type PaperReadingRecord = z.infer<typeof PaperReadingRecordSchema>
  * the original relative path for restoration. Paper entries also retain any reading record they had.
  * An inbox entry's `feedback` names the discovery feedback that removed it; restoring clears that
  * feedback from the entry. A read-later entry holds the removed item and its index in the queue, where
- * restoring puts it back; a chat entry holds the whole chat and its index in the chat list the same way.
+ * restoring puts it back; a chat entry holds the whole chat and its index in the chat list the same way,
+ * and an attachment entry its index in the project's attachments. An attachment entry an older version
+ * wrote has no index and goes back at the end.
  */
 export const TrashRecordSchema = z.discriminatedUnion('kind', [
   TrashBase.extend({
@@ -105,6 +107,7 @@ export const TrashRecordSchema = z.discriminatedUnion('kind', [
   TrashBase.extend({ kind: z.literal('idea'), idea: ResearchIdeaSchema }),
   TrashBase.extend({
     kind: z.literal('attachment'), projectId: z.string(), attachment: AttachmentSchema,
+    position: z.number().int().min(0).optional(),
   }),
   TrashBase.extend({
     kind: z.literal('inbox'), entryId: z.string(), feedback: z.enum(['less', 'known']).optional(),

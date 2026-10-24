@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useEffect, useRef, useState } from 'react'
+import { Fragment, useEffect, useRef, useState } from 'react'
 import type { InboxDownloadFailure, LaterEntry } from '../../shared/contract.js'
 import { inbox, later } from '../ipc.js'
 import { useMessages } from '../messages/useMessages.js'
@@ -17,6 +17,7 @@ import { SegmentedControl } from '../components/SegmentedControl.js'
 import { errorLabel, failureLabel } from '../lib/failure-label.js'
 import { TitleNote } from '../components/TitleNote.js'
 import { useFormat } from '../lib/format.js'
+import { useScreenLoad } from '../hooks/useScreenLoad.js'
 import { useUndo } from '../hooks/useUndo.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
 import { PageBody, PageError, PageHeader, PageShell, PageTitle, PageToolbar } from '../components/PageShell.js'
@@ -39,7 +40,6 @@ export function Later() {
   const fmt = useFormat()
   const [entries, setEntries] = useState<LaterEntry[] | null>(null)
   const [grouping, setGrouping] = useState<Grouping>('time')
-  const [error, setError] = useState<string | null>(null)
 
   const notice = useNotice()
   const { jump, open } = useJump()
@@ -47,7 +47,7 @@ export function Later() {
   const body = useRef<HTMLDivElement>(null)
   const consumed = useRef(0)
   const { revision, bump } = useVaultRevision()
-  const reportError = useCallback((e: unknown) => setError(errorLabel(m, e)), [m])
+  const { error, load } = useScreenLoad()
   const write = useVaultWrite()
   const undo = useUndo()
   const jobs = useJobs()
@@ -81,9 +81,7 @@ export function Later() {
     })
   }
 
-  useEffect(() => {
-    void later.list().then(setEntries).catch(reportError)
-  }, [revision, reportError])
+  useEffect(() => load('entries', later.list(), setEntries), [revision, load])
 
   // The entry can be scrolled to only once the queue has arrived.
   useEffect(() => {

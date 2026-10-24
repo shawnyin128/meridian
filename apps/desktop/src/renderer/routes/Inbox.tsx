@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import type {
   DiscoveryFetchResult, DiscoveryProfile, FetchStatus, InboxDownloadFailure, InboxEntry,
   InboxListParams, Watch,
@@ -25,6 +25,7 @@ import { CollapsibleGroup } from '../components/CollapsibleGroup.js'
 import { DateTimeDisplay } from '../components/DateTimeDisplay.js'
 import { SortMenu } from '../components/SortMenu.js'
 import { Tag } from '../components/Tag.js'
+import { useScreenLoad } from '../hooks/useScreenLoad.js'
 import { useUndo } from '../hooks/useUndo.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
 import { shownSource } from '../lib/watch-source.js'
@@ -94,13 +95,12 @@ export function Inbox() {
   const [watches, setWatches] = useState<Watch[]>([])
   const [profiles, setProfiles] = useState<DiscoveryProfile[]>([])
   const [leaving, setLeaving] = useState<ReadonlySet<string>>(new Set())
-  const [error, setError] = useState<string | null>(null)
 
   const notice = useNotice()
   const { openCategory } = useSettingsOpen()
   const { open, enter } = useJump()
   const { revision, bump } = useVaultRevision()
-  const reportError = useCallback((e: unknown) => setError(errorLabel(m, e)), [m])
+  const { error, load } = useScreenLoad()
   const write = useVaultWrite()
   const undo = useUndo()
   const jobs = useJobs()
@@ -109,20 +109,16 @@ export function Inbox() {
   const [sort, setSort] = useState<NonNullable<InboxListParams['sort']>>('recommended')
   const [discovering, setDiscovering] = useState(false)
 
-  const loadProfiles = useCallback(() => {
-    void discovery.profiles().then(setProfiles).catch(reportError)
-  }, [reportError])
-
   // Discovery is scoped by project and paper delivery by watch; the sidebar sets the scope for either stream.
   useEffect(() => {
     const scoped = scope === ALL_WATCHES ? {} : stream === 'discovery' ? { project: scope } : { watch: scope }
-    void inbox.list({ kind: stream, sort, ...scoped }).then((rows) => {
+    return load('entries', inbox.list({ kind: stream, sort, ...scoped }), (rows) => {
       setEntries(rows)
       setLeaving(new Set())
-    }).catch(reportError)
-    void watch.list().then(setWatches).catch(reportError)
-    loadProfiles()
-  }, [loadProfiles, revision, reportError, scope, sort, stream])
+    })
+  }, [load, revision, scope, sort, stream])
+  useEffect(() => load('watches', watch.list(), setWatches), [load, revision])
+  useEffect(() => load('profiles', discovery.profiles(), setProfiles), [load, revision])
 
   const watched = watches.find((w) => w.id === scope)
   // Until the list for a new stream or scope arrives, the one held may name entries it does not list.

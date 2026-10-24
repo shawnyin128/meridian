@@ -58,7 +58,7 @@ describe('WikiTidy', () => {
   })
 
   const render = (signals: WikiSignal[], titles: Record<string, string> | null = TITLES) => act(() => root.render(
-    <MessagesProvider><TidyList rows={tidyRows(signals)} titles={titles} onOpen={onOpen} /></MessagesProvider>,
+    <MessagesProvider><TidyList rows={tidyRows(signals)} titles={titles} failed={false} onOpen={onOpen} /></MessagesProvider>,
   ))
 
   it('只列结论冲突、链接失效、内容太少、未归入主题,按这个次序,同一种同一页只列一次,带上出错的那几处', () => {

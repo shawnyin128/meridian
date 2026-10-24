@@ -11,7 +11,7 @@ const SCREENS: readonly (readonly [string, string])[] = [
   ['[data-desk="trash"]', 'Trash'],
 ]
 
-// Screenshots of an off-screen window take about a second each, so this spec shows its window.
+// The spec takes eleven screenshots, so it shows its window; see `showWindow` in app.ts.
 test.use({ showWindow: true })
 
 test('picking English relabels the shell and each main screen, and survives a reload', async ({ app, win }) => {

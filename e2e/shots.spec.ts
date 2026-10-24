@@ -139,8 +139,8 @@ test('第 6 批:Wiki 论文页的属性,四档窗口 × 亮暗', async ({ win, a
 })
 
 test('第 6 批:列菜单与改类型那一行,四档窗口 × 亮暗', async ({ win, app }) => {
-  // Each window size opens the menu three times (hover, expanded type row, text column row), and an
-  // offscreen window waits two seconds per actionability check.
+  // Each window size opens the menu three times (hover, expanded type row, text column row) in both
+  // themes, many actionability checks for a hidden window; see `showWindow` in app.ts.
   test.setTimeout(300_000)
   await gotoPapers(win)
   await win.locator('.ptable tbody tr').first().waitFor()

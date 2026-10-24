@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import type { Locator, Page } from '@playwright/test'
 import { minimalPdf } from '../apps/desktop/src/core/net/minimal-pdf.js'
-import { expect, gotoPapers, test, type MeridianWindow } from './app.js'
+import { appSwitcher, expect, gotoPapers, test, type MeridianWindow } from './app.js'
 
 /** Screens stay mounted once visited, so selectors every screen has, such as cards, are scoped to the visible one. */
 const shown = (win: Page, sel: string) => win.locator(`.screenslot:not([hidden]) ${sel}`)
@@ -357,8 +357,8 @@ test('入库撞上库里已有的同一份原文:不重复入库,卡片离开,�
 
 test.describe('这一条推送已经在别处入过库', () => {
   // Core's `jobs.status()` is polled every second (useJobs.ts) and bumps the vault revision on any
-  // external write, including this test's own bypass call; off-screen windows only paint that update
-  // once per second, so the click racing the stale card can lose to the poll there but not on screen.
+  // external write, including this test's own bypass call; a window that paints that update late lets
+  // the poll win the race against the click on the stale card. See `showWindow` in app.ts.
   test.use({ showWindow: true })
 
   test('界面上还没刷新时再点「入库」:报进拒绝提示而不是 .ipcerror', async ({ win }) => {
@@ -774,30 +774,13 @@ test('关注管理:两下快回车只建出一条关注', async ({ win }) => {
 })
 
 test.describe('关注管理:切到别的应用', () => {
-  // The window must be on screen and hold system focus for the main process's blur() to take it away.
-  test.use({ showWindow: true })
-
-  test('切到别的应用不算放弃:占位与打好的字都留着(需要系统焦点)', async ({ app, win }) => {
+  test('切到别的应用不算放弃:占位与打好的字都留着', async ({ app, win }) => {
     await openDeliverySettings(win)
     await settings(win, '.section-heading').filter({ hasText: '关键词' }).locator('.btn').click()
     const input = settings(win, '.wrow.newrow input')
     await input.fill('切走之前打的字')
     await expect(input).toBeFocused()
-    // Turn off Playwright's focus emulation: while it is on, the page always believes it has focus, so
-    // the real window losing focus never reaches it.
-    const cdp = await win.context().newCDPSession(win)
-    await cdp.send('Emulation.setFocusEmulationEnabled', { enabled: false })
-    // Bring the window to the front and wait until it really has system focus; only then can the
-    // blur() below take it away.
-    await app.evaluate(({ BrowserWindow }) => {
-      const target = BrowserWindow.getAllWindows()[0]!
-      target.setFocusable(true)
-      target.show()
-      target.focus()
-    })
-    await expect.poll(() => win.evaluate(() => document.hasFocus()), {
-      message: '窗口没有真的拿到系统焦点,后面的 blur() 无从谈起',
-    }).toBe(true)
+    const switcher = await appSwitcher(app, win)
     await input.evaluate((el) => {
       const seen: (string | null)[] = []
       ;(window as unknown as { focusouts: (string | null)[] }).focusouts = seen
@@ -807,8 +790,11 @@ test.describe('关注管理:切到别的应用', () => {
       })
     })
 
-    await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]!.blur())
+    await switcher.away()
 
+    await expect.poll(() => win.evaluate(() => document.hasFocus()), {
+      message: '页面没有失去焦点,切走无从谈起',
+    }).toBe(false)
     await expect.poll(() => win.evaluate(() => (window as unknown as { focusouts: (string | null)[] }).focusouts))
       .toEqual([null])
     await expect(settings(win, '.wrow.newrow')).toHaveCount(1)

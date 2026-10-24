@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { createFixtureStore } from './fixture-store.js'
-import { recordChange, trashedEntry } from './write-receipts.js'
+import { recordChange, recordChangeIfAny, trashedEntry } from './write-receipts.js'
 
 /** A fixture paper whose topics are its Wiki topic memberships. */
 const FILED = '2401.18079'
@@ -14,6 +14,19 @@ describe('写入回执', () => {
     expect(change).toBe(store.listChanges()[0]!.id)
     store.undoChange(change)
     expect(store.getPaper(FILED).topics).toEqual(before)
+  })
+
+  it('只在有些时候记进最近变动的写入:记了就回给它记下的那一条,撤销它正好放回删掉的列;没记就回 null', () => {
+    const store = createFixtureStore(() => '2026-08-25')
+    const columns = store.paperColumns()
+    const hidden = recordChangeIfAny(store, () => store.setPaperColumns({ ...columns, hidden: ['venue'] }))
+    expect(hidden.change).toBeNull()
+    const held = { ...columns, custom: [{ key: 'note', label: '备注', type: 'text' as const, options: [] }] }
+    store.setPaperColumns(held)
+    const { change } = recordChangeIfAny(store, () => store.setPaperColumns({ ...held, custom: [] }))
+    expect(change).toBe(store.listChanges()[0]!.id)
+    store.undoChange(change!)
+    expect(store.paperColumns().custom).toEqual(held.custom)
   })
 
   it('没记进最近变动的写入不给回执,直接报错', () => {

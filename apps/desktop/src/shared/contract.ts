@@ -1455,8 +1455,25 @@ export const RecordedChangeSchema = z.object({ change: z.string() }).strict()
  */
 export const TrashedEntrySchema = z.object({ trash: z.string() }).strict()
 
-/** What `project.deleteAttachment` answers: the project after the write, and the change entry it recorded. */
+/**
+ * What `project.update`, `project.deleteTask`, `project.deleteMilestone`, `project.deleteRelation`,
+ * `project.removePaper` and `project.deleteAttachment` answer: the project after the write, and the
+ * change entry it recorded.
+ */
 export const ProjectRecordedChangeSchema = RecordedChangeSchema.extend({ project: ProjectDetailSchema }).strict()
+
+/**
+ * What a write the change log records only in some cases answers: `change` is the id of the change
+ * entry it recorded, or null when it recorded none. `papers.setColumns` records a change to the custom
+ * columns, not one to which columns are hidden, grouped or ordered. A call response; nothing stores it.
+ */
+export const OptionalRecordedChangeSchema = z.object({ change: z.string().nullable() }).strict()
+
+/**
+ * What `papers.mutateReading` answers: the reading after the write, and the change entry it recorded.
+ * Adding a note or a highlight and saving the reading position record none.
+ */
+export const ReadingRecordedChangeSchema = OptionalRecordedChangeSchema.extend({ reading: PaperReadingSchema }).strict()
 
 export const ChangelogUndoParamsSchema = z.object({ id: z.string() }).strict()
 
@@ -2517,6 +2534,8 @@ export type DiffPiece = z.infer<typeof DiffPieceSchema>
 export type RecordedChange = z.infer<typeof RecordedChangeSchema>
 export type TrashedEntry = z.infer<typeof TrashedEntrySchema>
 export type ProjectRecordedChange = z.infer<typeof ProjectRecordedChangeSchema>
+export type OptionalRecordedChange = z.infer<typeof OptionalRecordedChangeSchema>
+export type ReadingRecordedChange = z.infer<typeof ReadingRecordedChangeSchema>
 export type ChangeSource = ChangeEntry['source']
 export type FeedEntry = z.infer<typeof FeedEntrySchema>
 export type FeedSource = FeedEntry['source']

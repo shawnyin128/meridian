@@ -70,7 +70,7 @@ type TrashRecord = Omit<TrashEntry, 'restorable'> & (
   }
   | { kind: 'project'; project: FixtureProject }
   | { kind: 'idea'; idea: ResearchIdea }
-  | { kind: 'attachment'; projectId: string; attachment: Attachment }
+  | { kind: 'attachment'; projectId: string; attachment: Attachment; position: number }
   | { kind: 'inbox'; entryId: string; feedback?: 'less' | 'known' }
   | { kind: 'later'; later: LaterRecord; position: number }
   | { kind: 'chat'; chat: ChatRecord; position: number }
@@ -1281,7 +1281,8 @@ export function createFixtureStore(
     deleteAttachment(projectId, attachmentId) {
       const project = projectById.get(projectId)
       if (!project) throw new CallError('not-found', `项目不存在：${projectId}`)
-      const attachment = project.attachments.find((a) => a.id === attachmentId)
+      const position = project.attachments.findIndex((a) => a.id === attachmentId)
+      const attachment = project.attachments[position]
       if (!attachment) throw new CallError('not-found', `附件不存在：${attachmentId}`)
       const nextProject = {
         ...project,
@@ -1290,7 +1291,7 @@ export function createFixtureStore(
       projectById.set(projectId, nextProject)
       trash = [{
         id: nextId('trash'), kind: 'attachment', title: attachment.name,
-        deletedAt: nowMs(), projectId, attachment,
+        deletedAt: nowMs(), projectId, attachment, position,
       }, ...trash]
       return detailOf(nextProject)
     },
@@ -1974,9 +1975,11 @@ export function createFixtureStore(
       else {
         const project = projectById.get(item.projectId)
         if (!project) throw new CallError('not-found', `项目不存在：${item.projectId}`)
+        const { attachments } = project
+        const at = Math.min(item.position, attachments.length)
         projectById.set(item.projectId, {
           ...project,
-          attachments: [...project.attachments, item.attachment],
+          attachments: [...attachments.slice(0, at), item.attachment, ...attachments.slice(at)],
         })
       }
       trash = trash.filter((entry) => entry !== item)

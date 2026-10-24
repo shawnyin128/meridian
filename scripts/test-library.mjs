@@ -16,6 +16,7 @@ const USAGE = `Builds a Meridian test library that covers every screen, or opens
 
   node scripts/test-library.mjs seed --out <dir> [--app <app>] [--today <YYYY-MM-DD>]
   node scripts/test-library.mjs open --out <dir> [--app <app>]
+  node scripts/test-library.mjs relocate --out <dir>
 
 <app> is a Meridian.app, a Meridian.exe, or a folder such as apps/desktop (the default, built
 with npm --prefix apps/desktop run build). seed writes <dir>/library, config, user-data,
@@ -23,7 +24,8 @@ workspaces and files from scratch through the App's Core and keeps the PDFs and 
 downloads from arXiv in <dir>/cache, so a later seed into <dir> runs off the network unless the
 App predates 0.0.16.0. --today is the day the seeded dates count from; it defaults to the system
 date, which Core still uses to stamp the records the seed does not redate. open on a copy of a
-test library first points the paths it stores at the copy.`
+test library first points the paths it stores at the copy; relocate does only that and starts no
+App.`
 
 /** The folders a seed writes and therefore deletes before writing them again. */
 const SEEDED = ['library', 'config', 'user-data', 'workspaces', 'files']
@@ -85,28 +87,41 @@ async function seed(out, app, today) {
   console.log(`Seeded ${out}`)
 }
 
+/**
+ * Points the paths the test library in `out` stores at `out` when it was seeded or last relocated
+ * elsewhere, and records `out` as its root. Throws when `out` holds no test library this tool seeded
+ * or overlaps real Meridian data.
+ */
+function relocateCopy(out) {
+  checkOut(out, protectedRoots(), { seeded: true })
+  const marker = readJson(join(out, MARKER))
+  if (marker.root === out) return
+  relocate(out, marker.root)
+  writeJson(join(out, MARKER), { ...marker, root: out })
+}
+
 const { positionals: [command], values } = parseArgs({
   allowPositionals: true,
   options: { out: { type: 'string' }, app: { type: 'string' }, today: { type: 'string' } },
 })
-if (!['seed', 'open'].includes(command) || values.out === undefined) {
+if (!['seed', 'open', 'relocate'].includes(command) || values.out === undefined) {
   console.error(USAGE)
   process.exit(2)
 }
 const out = resolve(values.out)
-const app = values.app === undefined ? DESKTOP : resolve(values.app)
-if (!existsSync(app)) throw new Error(`No App at ${app}`)
-if (command === 'seed') {
-  const today = values.today ?? systemToday()
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(today)) throw new Error(`--today must be YYYY-MM-DD: ${today}`)
-  await seed(out, app, today)
+if (command === 'relocate') {
+  relocateCopy(out)
+  console.log(`Relocated ${out}`)
 } else {
-  checkOut(out, protectedRoots(), { seeded: true })
-  const marker = readJson(join(out, MARKER))
-  if (marker.root !== out) {
-    relocate(out, marker.root)
-    writeJson(join(out, MARKER), { ...marker, root: out })
+  const app = values.app === undefined ? DESKTOP : resolve(values.app)
+  if (!existsSync(app)) throw new Error(`No App at ${app}`)
+  if (command === 'seed') {
+    const today = values.today ?? systemToday()
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(today)) throw new Error(`--today must be YYYY-MM-DD: ${today}`)
+    await seed(out, app, today)
+  } else {
+    relocateCopy(out)
+    openApp(out, app)
+    console.log(`Opened ${out} in ${app}`)
   }
-  openApp(out, app)
-  console.log(`Opened ${out} in ${app}`)
 }
