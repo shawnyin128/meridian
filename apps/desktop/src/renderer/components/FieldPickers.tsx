@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { ReactNode } from 'react'
 import type { Task } from '../../shared/contract.js'
+import { dnum } from '../../shared/dates.js'
 import { useToday } from '../shell/AppShell.js'
 import { useFormat } from '../lib/format.js'
 import { useMessages } from '../messages/useMessages.js'
@@ -13,6 +14,7 @@ import { ToggleGroup, ToggleItem, useToolbarItem } from './Toolbar.js'
 import { FadeText } from './FadeText.js'
 import { Button } from './Button.js'
 import './FieldPickers.css'
+import './InlineField.css'
 
 const PRIORITIES: Task['priority'][] = ['p0', 'p1', 'p2']
 
@@ -154,7 +156,8 @@ export function PriorityPicker({ value, className, onPick, children, stopRowActi
   )
 }
 
-function Calendar({ selected, onPick }: { selected: string; onPick: (iso: string) => void }) {
+/** A month of days to pick `selected` from; days before `min`, when given, cannot be picked. */
+function Calendar({ selected, min, onPick }: { selected: string; min: string | undefined; onPick: (iso: string) => void }) {
   const m = useMessages()
   const today = useToday()
   const fmt = useFormat()
@@ -189,6 +192,7 @@ function Calendar({ selected, onPick }: { selected: string; onPick: (iso: string
           return (
             <ToggleItem
               asChild key={iso} value={iso} aria-label={fmt.date(iso)} aria-current={iso === today ? 'date' : undefined}
+              disabled={min !== undefined && dnum(iso) < dnum(min)}
             >
               <PopoverClose className={`cd${iso === today ? ' today' : ''}${iso === selected ? ' sel' : ''}`}>{index + 1}</PopoverClose>
             </ToggleItem>
@@ -200,12 +204,13 @@ function Calendar({ selected, onPick }: { selected: string; onPick: (iso: string
 }
 
 /**
- * Shared calendar trigger for the ISO date `iso`. With `appearance="field"` it is the boxed field of a
- * form, as ChoicePicker's is, showing the date; otherwise consumers control only the trigger's class
- * and its content, which defaults to the date.
+ * Shared calendar trigger for the ISO date `iso`; days before `min`, when given, cannot be picked.
+ * With `appearance="field"` it is the boxed field of a form, as ChoicePicker's is, showing the date;
+ * otherwise consumers control only the trigger's class and its content, which defaults to the date.
  */
-export function DateButton({ iso, className, appearance, onPick, children }: {
+export function DateButton({ iso, min, className, appearance, onPick, children }: {
   iso: string
+  min?: string
   className?: string
   appearance?: 'field'
   onPick: (next: string) => void
@@ -225,7 +230,29 @@ export function DateButton({ iso, className, appearance, onPick, children }: {
         )
         : <button className={className}>{shown}</button>}
     >
-      <Calendar selected={iso} onPick={onPick} />
+      <Calendar selected={iso} min={min} onPick={onPick} />
     </ActionPopover>
+  )
+}
+
+/** A date range of ISO dates; `start` is never after `end`. */
+export type DateRange = { start: string; end: string }
+
+/**
+ * The one date range field: its start and its end, each a DateButton on the one calendar, under one
+ * rule for the end before the start: the end's calendar starts at the start, and a start picked after
+ * the end takes the end along to it. `onChange` receives each new range. `children` lays out the two
+ * triggers, given as `start` and `end`; `className` and `appearance` dress both as DateButton's do.
+ */
+export function DateRangeField({ start, end, onChange, className, appearance, children }: DateRange & {
+  onChange: (range: DateRange) => void
+  className?: string
+  appearance?: 'field'
+  children: (start: ReactNode, end: ReactNode) => ReactNode
+}) {
+  const dressed = { ...(className === undefined ? {} : { className }), ...(appearance === undefined ? {} : { appearance }) }
+  return children(
+    <DateButton {...dressed} iso={start} onPick={(next) => onChange({ start: next, end: dnum(end) < dnum(next) ? next : end })} />,
+    <DateButton {...dressed} iso={end} min={start} onPick={(next) => onChange({ start, end: next })} />,
   )
 }

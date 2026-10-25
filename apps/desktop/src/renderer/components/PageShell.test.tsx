@@ -3,7 +3,7 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
 import { AddAction } from './AddAction.js'
 import {
-  PageBody, PageError, PageFooter, PageHeader, PageShell, PageTitle, PageToolbar, SectionHeading,
+  PageBody, PageError, PageFooter, PageHeader, PageNote, PageShell, PageTitle, PageToolbar, SectionHeading,
 } from './PageShell.js'
 import { SegmentedControl } from './SegmentedControl.js'
 import { SortMenu } from './SortMenu.js'
@@ -15,27 +15,28 @@ describe('PageShell', () => {
       <>
         <PageTitle>论文</PageTitle>
         <SectionHeading actions={<button type="button">新增</button>}>项目</SectionHeading>
-        <SectionHeading variant="group">今日</SectionHeading>
-        <SectionHeading variant="rail">关联</SectionHeading>
+        <SectionHeading level="group" count={2}>今日</SectionHeading>
+        <SectionHeading level="group" fold={{ open: true, onToggle: () => {} }}>进行中</SectionHeading>
       </>,
     )
     expect([...host.querySelectorAll('[role="heading"]')].map((heading) => [heading.getAttribute('aria-level'), heading.textContent]))
-      .toEqual([['1', '论文'], ['2', '项目'], ['3', '今日'], ['2', '关联']])
-    expect(host.querySelector('[role="heading"] button')).toBeNull()
+      .toEqual([['1', '论文'], ['2', '项目'], ['3', '今日 · 2'], ['3', '进行中']])
+    expect(host.querySelector('[role="heading"] .section-heading-actions, [role="heading"] [type="button"]:not(.fold-toggle)')).toBeNull()
+    expect(host.querySelectorAll('[role="heading"]')[3]!.querySelector('[aria-expanded="true"]')).not.toBeNull()
   })
 
   it('composes the canonical page regions without changing feature classes', () => {
     const html = renderToStaticMarkup(
       <PageShell className="paper-library">
         <PageHeader><PageTitle>论文</PageTitle></PageHeader>
-        <PageBody className="libview"><PageToolbar>操作</PageToolbar>正文</PageBody>
+        <PageBody className="papers"><PageToolbar>操作</PageToolbar>正文</PageBody>
         <PageFooter bare>分页</PageFooter>
       </PageShell>,
     )
     expect(html).toContain('class="desk paper-library"')
     expect(html).toContain('class="desk-head"')
     expect(html).toContain('class="fade-text t"')
-    expect(html).toContain('class="desk-body libview"')
+    expect(html).toContain('class="scroll-area scroll-area--y scroll-area--fill scroll-area--gutter desk-body papers" data-fade-paint=""')
     expect(html).toContain('class="page-toolbar"')
     expect(html).toContain('class="desk-foot bare"')
   })
@@ -50,7 +51,7 @@ describe('PageShell', () => {
       <>
         <PageError error="打不开" />
         <SectionHeading actions={<button>新增</button>}>项目</SectionHeading>
-        <SectionHeading variant="group">今日</SectionHeading>
+        <SectionHeading level="group">今日</SectionHeading>
       </>,
     )
     expect(html).toContain('<div class="inline-message inline-message--box inline-message--error page-error page-error--page" role="alert">'
@@ -59,7 +60,7 @@ describe('PageShell', () => {
       .toBe('<div class="inline-message inline-message--box inline-message--error page-error page-error--section" role="alert">'
         + '<div class="inline-message-text">科研图读不了</div></div>')
     expect(html).toContain(
-      '<div class="section-heading section-heading--page"><span role="heading" aria-level="2">项目</span><div class="section-heading-actions"><button>新增</button></div></div>',
+      '<div class="section-heading section-heading--section"><span role="heading" aria-level="2">项目</span><div class="section-heading-actions"><button>新增</button></div></div>',
     )
     expect(html).toContain('<div class="section-heading section-heading--group"><span role="heading" aria-level="3">今日</span></div>')
     expect(renderToStaticMarkup(<PageError error={null} />)).toBe('')
@@ -85,13 +86,23 @@ describe('PageShell', () => {
     expect(html).toMatch(/^<div class="page-toolbar"><div [^>]*class="segmented-control segmented-control--md"/)
   })
 
-  it('gives the rail variant its own class and keeps actions in the shared slot', () => {
+  it('heads a rail section at the group level and keeps actions in the shared slot', () => {
     const html = renderToStaticMarkup(
-      <SectionHeading variant="rail" actions={<button>＋</button>}>关联</SectionHeading>,
+      <SectionHeading level="group" actions={<button>＋</button>}>关联</SectionHeading>,
     )
     expect(html).toBe(
-      '<div class="section-heading section-heading--rail"><span role="heading" aria-level="2">关联</span><div class="section-heading-actions"><button>＋</button></div></div>',
+      '<div class="section-heading section-heading--group"><span role="heading" aria-level="3">关联</span><div class="section-heading-actions"><button>＋</button></div></div>',
     )
+  })
+
+  it('writes a meta after the title on its line, after the count, and keeps actions at the end', () => {
+    expect(renderToStaticMarkup(
+      <SectionHeading level="group" meta="上次检查 10月24日" actions={<button>检查更新</button>}>Meridian Plugin</SectionHeading>,
+    )).toBe('<div class="section-heading section-heading--group"><span role="heading" aria-level="3">Meridian Plugin<span class="section-heading-meta">上次检查 10月24日</span></span>'
+      + '<div class="section-heading-actions"><button>检查更新</button></div></div>')
+    expect(renderToStaticMarkup(<SectionHeading level="group" count={3} meta="3 篇种子">KV cache 量化</SectionHeading>))
+      .toBe('<div class="section-heading section-heading--group"><span role="heading" aria-level="3">KV cache 量化<span class="heading-count"> · 3</span>'
+        + '<span class="section-heading-meta">3 篇种子</span></span></div>')
   })
 
   it('sorts a page from its header at the page weight and adds to a section from its heading at the section weight', () => {
@@ -105,5 +116,26 @@ describe('PageShell', () => {
     )
     const classes = [...html.matchAll(/<button[^>]*class="([^"]*)"/g)].map((match) => match[1]!.split(' ').slice(0, 2).join(' '))
     expect(classes).toEqual(['btn sort-menu', 'btn sm'])
+  })
+
+  it('heads a pane with the same bar as a page, its title a step smaller, and a line of state among the actions', () => {
+    const html = renderToStaticMarkup(
+      <PageHeader size="pane" actions={<PageNote>第 3 页</PageNote>}><PageTitle count={2}>阅读笔记</PageTitle></PageHeader>,
+    )
+    expect(html).toMatch(/^<div class="desk-head desk-head--pane"><span role="heading" aria-level="1" class="fade-text t" data-state="closed">阅读笔记<span class="heading-count">/)
+    expect(html).toMatch(/<div class="page-actions"><span class="page-note">第 3 页<\/span><\/div><\/div>$/)
+  })
+
+  it('gives a prose page the prose column, and a body whose content fills it no scrolling of its own', () => {
+    expect(renderToStaticMarkup(<PageBody column="prose">正文</PageBody>))
+      .toBe('<div class="scroll-area scroll-area--y scroll-area--fill scroll-area--gutter desk-body desk-body--prose" data-fade-paint="">正文</div>')
+    expect(renderToStaticMarkup(<PageBody fill className="papers">表格</PageBody>))
+      .toBe('<div class="desk-body desk-body--fill papers">表格</div>')
+  })
+
+  it('centres a toolbar over the stream it heads when asked, and starts it at the body\'s edge otherwise', () => {
+    expect(renderToStaticMarkup(<PageToolbar align="center">切换</PageToolbar>))
+      .toBe('<div class="page-toolbar page-toolbar--center">切换</div>')
+    expect(renderToStaticMarkup(<PageToolbar>切换</PageToolbar>)).toBe('<div class="page-toolbar">切换</div>')
   })
 })

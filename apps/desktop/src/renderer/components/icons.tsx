@@ -140,6 +140,14 @@ export const IconNorthStar = () => (
 /** A chat's speech bubble, the glyph of the sidebar's chat rows and of the mark that asks the paper chat. */
 export const CHAT_BUBBLE_PATH = 'M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z'
 
+/** A closed book, the glyph of the sidebar's papers row and of an empty paper view. */
+export const IconPapers = ({ sw = 1.8 }: { sw?: number }) => (
+  <Icon sw={sw}>
+    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+    <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+  </Icon>
+)
+
 /** Asks the paper chat about the text selected in the reader: the chat bubble with a small sparkle in it. */
 export const IconAskAi = () => (
   <Icon>

@@ -40,9 +40,9 @@ export function NodeAssignment({ node, nodes, canUnlink, create, draft, onOpen, 
     )
   return (
     <>
-      <SectionHeading variant="rail" actions={actions}>{m.project.plan.nodeHeading}</SectionHeading>
+      <SectionHeading level="group" actions={actions}>{m.project.plan.nodeHeading}</SectionHeading>
       {node === undefined
-        ? draft ?? <EmptyState variant="section">{m.project.plan.noNode}</EmptyState>
+        ? draft ?? <EmptyState variant="section" />
         : (
           <div className="node-assignment">
             <EntityLink kind="node" label={node.label} mode={node.mode} onOpen={() => onOpen(node.id)} />

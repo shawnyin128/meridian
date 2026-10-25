@@ -4,11 +4,10 @@ import type { Task, TaskPatch, TaskWindow } from '../../shared/contract.js'
 import { TASK_SLOT_ENDS, TASK_SLOT_STARTS } from '../../shared/contract.js'
 import { ActionPopover } from './ActionPopover.js'
 import { DateChip } from './DateTimeDisplay.js'
-import { ChoicePicker } from './FieldPickers.js'
-import { FormInput } from './FormControls.js'
+import { ChoicePicker, DateRangeField } from './FieldPickers.js'
+import { FieldRow, FieldRows } from './FormControls.js'
 import { SegmentedControl } from './SegmentedControl.js'
 import { useToolbarItem } from './Toolbar.js'
-import { dnum } from '../../shared/dates.js'
 import { useFormat } from '../lib/format.js'
 import { useMessages } from '../messages/useMessages.js'
 import { CommitActions } from './CommitActions.js'
@@ -16,10 +15,31 @@ import './TaskScheduleField.css'
 
 export type ScheduleEditMode = 'date' | 'time'
 
-/** One editor for the date range and the time window; `mode` only picks which fields this edit shows. */
+/** The schedule of a task, saved or still drafted: its date range and its time window, if it has one. */
+export type TaskSchedule = Pick<Task, 'start' | 'end'> & { window?: TaskWindow | null | undefined }
+
+/** The slot that ends two hours after `start`, and the slot that starts two hours before `end`. */
+const endAfter = (start: TaskWindow['start']): TaskWindow['end'] => TASK_SLOT_ENDS[TASK_SLOT_STARTS.indexOf(start)]!
+const startBefore = (end: TaskWindow['end']): TaskWindow['start'] => TASK_SLOT_STARTS[TASK_SLOT_ENDS.indexOf(end)]!
+
+/**
+ * `window` on a task of `start` to `end`, after its `part` bound was picked: on a one-day task a window
+ * never ends before it starts, so the other bound moves to one slot past the picked one; across days
+ * the start falls on the first day and the end on the last, in any order.
+ */
+function windowAfter(window: TaskWindow, start: string, end: string, part: 'start' | 'end'): TaskWindow {
+  if (start !== end || window.end > window.start) return window
+  return part === 'start' ? { start: window.start, end: endAfter(window.start) } : { start: startBefore(window.end), end: window.end }
+}
+
+/**
+ * One editor for the date range and the time window; `mode` only picks which fields this edit shows.
+ * A date range that turns a task into a one-day task whose window ends before it starts saves the
+ * window with it, moved one slot past the bound of the day picked last.
+ */
 export function TaskScheduleEditor({ mode, task, saving, onSave, onCancel }: {
   mode: ScheduleEditMode
-  task: Task
+  task: TaskSchedule
   saving: boolean
   onSave: (patch: TaskPatch) => void
   onCancel: () => void
@@ -28,16 +48,18 @@ export function TaskScheduleEditor({ mode, task, saving, onSave, onCancel }: {
   const [start, setStart] = useState(task.start)
   const [end, setEnd] = useState(task.end)
   const [window, setWindow] = useState<TaskWindow | null>(task.window ?? null)
+  const [picked, setPicked] = useState<'start' | 'end'>('start')
+  const pickSlot = (part: 'start' | 'end', slot: string) => setWindow((current) => current
+    && windowAfter({ ...current, [part]: slot } as TaskWindow, start, end, part))
 
   const submit = (event: FormEvent) => {
     event.preventDefault()
     if (saving) return
     if (mode === 'date') {
-      if (start === '' || end === '') return
-      onSave({ start, end: dnum(end) < dnum(start) ? start : end })
+      const kept = task.window ? windowAfter(task.window, start, end, picked) : undefined
+      onSave(kept === undefined || kept === task.window ? { start, end } : { start, end, window: kept })
       return
     }
-    if (window !== null && window.end <= window.start) return
     onSave({ window })
   }
 
@@ -45,24 +67,21 @@ export function TaskScheduleEditor({ mode, task, saving, onSave, onCancel }: {
     <form className="schedule-form" onSubmit={submit}>
       {mode === 'date'
         ? (
-          <>
-            <label>{m.research.schedule.startLabel}
-              <FormInput
-                className="schedule-input" type="date" required value={start}
-                onChange={(event) => {
-                  const next = event.target.value
-                  setStart(next)
-                  if (next !== '' && end !== '' && dnum(end) < dnum(next)) setEnd(next)
-                }}
-              />
-            </label>
-            <label>{m.research.schedule.endLabel}
-              <FormInput
-                className="schedule-input" type="date" required min={start} value={end}
-                onChange={(event) => setEnd(event.target.value)}
-              />
-            </label>
-          </>
+          <DateRangeField
+            appearance="field" start={start} end={end}
+            onChange={(range) => {
+              setPicked(range.start === start ? 'end' : 'start')
+              setStart(range.start)
+              setEnd(range.end)
+            }}
+          >
+            {(startField, endField) => (
+              <FieldRows>
+                <FieldRow label={m.research.schedule.startLabel}>{startField}</FieldRow>
+                <FieldRow label={m.research.schedule.endLabel}>{endField}</FieldRow>
+              </FieldRows>
+            )}
+          </DateRangeField>
         )
         : (
           <>
@@ -85,14 +104,12 @@ export function TaskScheduleEditor({ mode, task, saving, onSave, onCancel }: {
                 <div className="schedule-window">
                   <ChoicePicker
                     appearance="field" className="schedule-input" aria-label={m.research.schedule.startSlot}
-                    value={window.start} options={TASK_SLOT_STARTS}
-                    onPick={(start) => setWindow((current) => current && ({ ...current, start }))}
+                    value={window.start} options={TASK_SLOT_STARTS} onPick={(slot) => pickSlot('start', slot)}
                   />
                   <span>–</span>
                   <ChoicePicker
                     appearance="field" className="schedule-input" aria-label={m.research.schedule.endSlot}
-                    value={window.end} options={TASK_SLOT_ENDS}
-                    onPick={(end) => setWindow((current) => current && ({ ...current, end }))}
+                    value={window.end} options={TASK_SLOT_ENDS} onPick={(slot) => pickSlot('end', slot)}
                   />
                 </div>
               )}
@@ -106,12 +123,12 @@ export function TaskScheduleEditor({ mode, task, saving, onSave, onCancel }: {
 }
 
 /**
- * A separate date or time-window entry; both open TaskScheduleEditor but never edit together. Its
- * trigger is one of the controls of the toolbar it renders in.
+ * A separate date or time-window entry of a saved or a drafted task; both open TaskScheduleEditor but
+ * never edit together. Its trigger is one of the controls of the toolbar it renders in.
  */
 export function TaskScheduleField({ mode, task, onSave, className = '', stopRowActivation = false }: {
   mode: ScheduleEditMode
-  task: Task
+  task: TaskSchedule
   onSave: (patch: TaskPatch) => Promise<boolean>
   className?: string
   /** Pass true when the row or card itself is clickable, so the trigger swallows the click instead of bubbling it. */

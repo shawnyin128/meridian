@@ -11,13 +11,13 @@ export interface UpdateActionProps {
   onDownload: (url: string) => void
 }
 
-/** The short state label of where the app's self-update stands. */
-export function updateLine(status: AppUpdateStatus, m: Catalog): string {
+/** The short state label of where the app's self-update stands, or null while a check runs, which shows as loading. */
+export function updateLine(status: AppUpdateStatus, m: Catalog): string | null {
   const phase = m.settings.extensions.app.phase
   switch (status.phase) {
     case 'unsupported': return phase.unsupported
     case 'idle': return phase.idle
-    case 'checking': return phase.checking
+    case 'checking': return null
     case 'latest': return phase.latest
     case 'downloading': return phase.downloading(status.version, status.percent)
     case 'ready': return phase.ready(status.version)

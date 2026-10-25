@@ -364,22 +364,27 @@ describe('就地的错误、警告、提示和完成', () => {
   }
 })
 
-/** Every tone of the shared Tag but the dashed ghost slot, and the text colour each one writes in. */
+/** The text colour of a neutral tag and of the tag of each state, all on the one neutral chip. */
 const TAG_TEXT = {
-  neutral: '--sec', accent: '--sec', info: '--sec', paper: '--sec', wiki: '--sec',
-  good: '--good-text', warn: '--warn-text', bad: '--bad-text',
+  neutral: '--sec', error: '--bad-text', warning: '--warn-text', done: '--good-text', p0: '--bad-text', p1: '--warn-text',
 } as const
 
+/** The fill and text tokens of a tag of `state`: the fill is `.tag`'s, the text `.tag`'s or its state's. */
+const tagLook = (state: keyof typeof TAG_TEXT): string => {
+  const [fill, text] = lookOf('components/Tag.css', '.tag').split(' ') as [string, string]
+  return `${fill} ${state === 'neutral' ? text : lookOf('components/Tag.css', `.tag--${state}`).split(' ')[1]}`
+}
+
 describe('标签', () => {
-  it('每种标签都是中性的标签底,只有 good、warn、bad 三种需要注意的状态给字上自己的颜色', () => {
-    expect(Object.fromEntries(Object.keys(TAG_TEXT).map((tone) => [tone, lookOf('components/Tag.css', `.tag--${tone}`)])))
-      .toEqual(Object.fromEntries(Object.entries(TAG_TEXT).map(([tone, text]) => [tone, `--chip ${text}`])))
+  it('每种标签都是中性的标签底,只有错误、警告、完成和 P0、P1 给字上自己的颜色', () => {
+    expect(Object.fromEntries(Object.keys(TAG_TEXT).map((state) => [state, tagLook(state as keyof typeof TAG_TEXT)])))
+      .toEqual(Object.fromEntries(Object.entries(TAG_TEXT).map(([state, text]) => [state, `--chip ${text}`])))
   })
 
   for (const theme of THEMES) {
-    for (const tone of Object.keys(TAG_TEXT)) {
-      it(`${named(theme)}的 ${tone} 标签的字压在它自己的底上,铺在每种底面上都不低于 4.5:1`, () => {
-        const [fill, text] = lookOf('components/Tag.css', `.tag--${tone}`).split(' ') as [string, string]
+    for (const state of Object.keys(TAG_TEXT) as (keyof typeof TAG_TEXT)[]) {
+      it(`${named(theme)}的 ${state} 标签的字压在它自己的底上,铺在每种底面上都不低于 4.5:1`, () => {
+        const [fill, text] = tagLook(state).split(' ') as [string, string]
         for (const [where, ground] of SURFACES) {
           const got = contrast(colour(theme, text), flatten(theme, [...ground, fill]))
           expect(got, `${text} 压在${where}的 ${fill} 上是 ${got.toFixed(2)}:1`).toBeGreaterThanOrEqual(TEXT)
@@ -392,7 +397,7 @@ describe('标签', () => {
 describe('强调色的字', () => {
   for (const theme of THEMES) {
     it(`${named(theme)}侧栏当前行的字,静止和悬停时都不低于 4.5:1`, () => {
-      const [fill, text] = lookOf('shell/AppShell.css', '.srow.on').split(' ') as [string, string]
+      const [fill, text] = lookOf('components/NavRow.css', '.nav-row.on').split(' ') as [string, string]
       for (const ground of [['--window', '--sidebar', fill], ['--window', '--sidebar', fill, '--hover']]) {
         const got = contrast(colour(theme, text), flatten(theme, ground))
         expect(got, `${text} 压在 ${ground.join(' + ')} 上是 ${got.toFixed(2)}:1`).toBeGreaterThanOrEqual(TEXT)
@@ -402,7 +407,7 @@ describe('强调色的字', () => {
 
   for (const theme of LIGHT_THEMES) {
     it(`${named(theme)}侧栏当前行上的计数,字压在它的标签底上不低于 4.5:1`, () => {
-      const [row] = lookOf('shell/AppShell.css', '.srow.on').split(' ') as [string]
+      const [row] = lookOf('components/NavRow.css', '.nav-row.on').split(' ') as [string]
       const [fill, text] = lookOf('components/CountBadge.css', '.count-badge').split(' ') as [string, string]
       const ground = ['--window', '--sidebar', row, fill]
       const got = contrast(colour(theme, text), flatten(theme, ground))
@@ -414,7 +419,7 @@ describe('强调色的字', () => {
 describe('选中、当前、已应用和按下的状态', () => {
   /** The selected states that take the sidebar current row's look: a list's selected row or card, the selected highlight card and an on chip toggle. */
   const SELECTED = [
-    ['shell/AppShell.css', '.srow.on'], ['components/Item.css', '.item--selected'],
+    ['components/NavRow.css', '.nav-row.on'], ['components/Item.css', '.item--selected'],
     ['components/ChipToggles.css', '.chip-toggle[data-state="on"]'],
   ] as const
 

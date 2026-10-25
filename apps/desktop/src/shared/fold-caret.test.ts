@@ -30,7 +30,7 @@ const QUARTER_TURN = /rotate\(\s*[+-]?90deg\s*\)/
 /** Files that draw the same chevron for something other than a fold, each with what it draws. */
 const NOT_FOLDS: Record<string, string> = {
   'components/icons.tsx': 'IconChevron, the chevron of a picker that opens a menu, which never turns',
-  'components/paper-table/PaperTable.tsx': 'the sort arrow of the sorted column\'s heading',
+  'components/Table.tsx': 'the sort arrow of the sorted column\'s heading',
 }
 
 describe('折叠只有一种箭头', () => {

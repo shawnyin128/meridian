@@ -16,8 +16,10 @@ describe('StatusDot', () => {
       .toBe('<span class="status-dot status-dot--sm status-dot--good" aria-hidden="true"></span>')
   })
 
-  it('comes in two sizes', () => {
+  it('comes in three sizes, the third the mark of a navigation row, which can say that something new is waiting', () => {
     expect(renderToStaticMarkup(<StatusDot tone="warn" size="md" />)).toContain('status-dot--md status-dot--warn')
+    expect(renderToStaticMarkup(<StatusDot tone="new" size="nav" />))
+      .toBe('<span class="status-dot status-dot--nav status-dot--new" aria-hidden="true"></span>')
   })
 
   it('is filled by default, or half-filled, a hollow ring or a cross in its tone', () => {

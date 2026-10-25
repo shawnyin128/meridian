@@ -196,7 +196,8 @@ App, the Python package, and the agent plugins. Data formats are compatible in b
   and hover, focus and selected states belong to shared components and tokens.
   `scripts/check-screen-css.test.mjs` enforces this against
   `scripts/screen-css-ratchet.txt`, the violations that predate it. The list
-  only shrinks, and it is empty by the v0.0.20.0 release. Domain views (the
+  only shrinks: a change that edits a screen stylesheet removes the entries it
+  makes dead, and a later version clears the rest. Domain views (the
   timeline board, the research graph, the PDF page) keep their own drawing:
   `DOMAIN_DRAWING` in `scripts/check-screen-css.mjs` lists, with a reason
   each, the drawing classes their stylesheets may style. Their chrome follows

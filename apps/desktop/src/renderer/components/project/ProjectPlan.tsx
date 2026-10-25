@@ -8,10 +8,9 @@ import type {
   TaskPatch,
   TaskWindow,
 } from '../../../shared/contract.js'
-import { TASK_SLOT_ENDS, TASK_SLOT_STARTS } from '../../../shared/contract.js'
 import { dnum, isoOf } from '../../../shared/dates.js'
 import { AddAction } from '../AddAction.js'
-import { CollapsibleGroup } from '../CollapsibleGroup.js'
+import { Group } from '../GroupedList.js'
 import { DateChip } from '../DateTimeDisplay.js'
 import { EmptyState } from '../EmptyState.js'
 import { ChoicePicker, DateButton, PriorityPicker } from '../FieldPickers.js'
@@ -19,7 +18,7 @@ import { InlineDraftInput } from '../InlineDraftInput.js'
 import { InlineField, type InlineFieldProps } from '../InlineField.js'
 import { EditActions } from '../EditActions.js'
 import { MarkdownBox } from '../Markdown.js'
-import { PanelClose } from '../PanelClose.js'
+import { PanelBody, PanelHead } from '../SidePanel.js'
 import { TaskScheduleField } from '../TaskScheduleField.js'
 import { IconButton } from '../IconButton.js'
 import { IconPencil, IconTrash } from '../icons.js'
@@ -30,26 +29,20 @@ import { List } from '../List.js'
 import { TabbedSection } from '../TabbedSection.js'
 import { Toolbar, ToolbarButton } from '../Toolbar.js'
 import { editText, useDrafts, type EditDraft } from '../../hooks/useDrafts.js'
-import { useDragReorder, type Reorderable } from '../../hooks/useDragReorder.js'
+import { useDragReorder, type ReorderItemProps } from '../../hooks/useDragReorder.js'
 import { useFormat } from '../../lib/format.js'
 import { useMessages } from '../../messages/useMessages.js'
 import type { Catalog } from '../../messages/catalog.js'
 import { AgentLabel } from '../SourceLabel.js'
-import { TagButton, tagClass } from '../Tag.js'
+import { tagClass } from '../Tag.js'
 import { NodeAssignment } from './NodeAssignment.js'
-import { PRIORITY_TONE, ProjectPriorityTag } from './ProjectIdentity.js'
+import { PRIORITY_STATE, ProjectPriorityTag } from './ProjectIdentity.js'
 import { FadeText } from '../FadeText.js'
 import './ProjectPlan.css'
 
 const stateWord = (m: Catalog): Record<Task['state'], string> => m.project.plan.state
 const TASK_STATES: Task['state'][] = ['act', 'plan', 'done']
 const MILESTONE_STATES = ['open', 'done'] as const
-const NEXT_PRIORITY: Record<Task['priority'], Task['priority']> = {
-  p0: 'p1', p1: 'p2', p2: 'p0',
-}
-const NEXT_TASK_STATE: Record<Task['state'], Task['state']> = {
-  act: 'plan', plan: 'done', done: 'act',
-}
 
 export type PlanTab = 'task' | 'ms'
 
@@ -72,7 +65,10 @@ export function newPlanRow(kind: PlanTab, date: string, window: TaskWindow | nul
     : { kind, draft: { title: '', start: date, end: window ? date : isoOf(dnum(date) + 6), priority: 'p1', state: 'act', window } }
 }
 
-/** The new-task row, a view of `draft`, which every change replaces through `onDraft`; `row` is its draft slot. */
+/**
+ * The new-task row, a view of `draft`, which every change replaces through `onDraft`: its date, time,
+ * priority and state are picked as a saved task's are, in the same columns. `row` is its draft slot.
+ */
 function TaskCreateRow({ row, draft, onDraft, triggers, onSave, onCancel }: {
   row: RefObject<HTMLElement | null>
   draft: TaskDraft
@@ -81,87 +77,44 @@ function TaskCreateRow({ row, draft, onDraft, triggers, onSave, onCancel }: {
   onSave: (draft: TaskDraft) => boolean | Promise<boolean>
   onCancel: () => void
 }) {
-  const { start, end, priority, state, title, window: taskWindow } = draft
+  const { priority, state, title } = draft
   const patch = (fields: Partial<TaskDraft>) => onDraft({ ...draft, ...fields })
+  const schedule = (fields: TaskPatch) => {
+    patch({
+      start: fields.start ?? draft.start, end: fields.end ?? draft.end,
+      window: fields.window === undefined ? draft.window : fields.window,
+    })
+    return Promise.resolve(true)
+  }
   const m = useMessages()
 
-  const pickStart = (iso: string) => {
-    const window = taskWindow && iso === end && taskWindow.end <= taskWindow.start
-      ? { ...taskWindow, end: TASK_SLOT_ENDS[TASK_SLOT_STARTS.indexOf(taskWindow.start)]! } : taskWindow
-    patch({ start: iso, end: dnum(end) < dnum(iso) ? iso : end, window })
-  }
-  const pickEnd = (iso: string) => {
-    const next = dnum(iso) < dnum(start) ? start : iso
-    const window = taskWindow && next === start && taskWindow.end <= taskWindow.start
-      ? { ...taskWindow, start: TASK_SLOT_STARTS[TASK_SLOT_ENDS.indexOf(taskWindow.end)]! } : taskWindow
-    patch({ end: next, window })
-  }
-  const pickWindowStart = (next: TaskWindow['start']) => {
-    if (!taskWindow) return
-    patch({ window: start === end && taskWindow.end <= next
-      ? { start: next, end: TASK_SLOT_ENDS[TASK_SLOT_STARTS.indexOf(next)]! }
-      : { ...taskWindow, start: next } })
-  }
-  const pickWindowEnd = (next: TaskWindow['end']) => {
-    if (!taskWindow) return
-    patch({ window: start === end && next <= taskWindow.start
-      ? { start: TASK_SLOT_STARTS[TASK_SLOT_ENDS.indexOf(next)]!, end: next }
-      : { ...taskWindow, end: next } })
-  }
-  const save = (nextTitle: string): boolean | Promise<boolean> => {
-    return onSave({
-      title: nextTitle,
-      start,
-      end: dnum(end) < dnum(start) ? start : end,
-      priority,
-      state,
-      window: taskWindow,
-    })
-  }
   return (
-    <DraftSlot className="ddlrow task-create-row" slot={row}>
-      <DateButton iso={start} className="din" onPick={pickStart} />
-      <span className="dsep">–</span>
-      <DateButton iso={end} className="din" onPick={pickEnd} />
-      <button
-        className="din twmode" type="button"
-        onClick={() => patch({ window: taskWindow ? null : { start: '10:00', end: '12:00' } })}
-      >{taskWindow ? m.project.plan.windowMode.timed : m.project.plan.windowMode.allDay}</button>
-      {taskWindow
-        ? (
-          <span className="twinputs">
-            <ChoicePicker
-              value={taskWindow.start} options={TASK_SLOT_STARTS}
-              className="din time" onPick={pickWindowStart}
-            />
-            <span className="dsep">–</span>
-            <ChoicePicker
-              value={taskWindow.end} options={TASK_SLOT_ENDS}
-              className="din time" onPick={pickWindowEnd}
-            />
-          </span>
-        )
-        : null}
-      <TagButton
-        tone={PRIORITY_TONE[priority]}
-        onClick={() => patch({ priority: NEXT_PRIORITY[priority] })}
-      >
-        {priority.toUpperCase()}
-      </TagButton>
-      <button
-        className="din state-edit" type="button"
-        onClick={() => patch({ state: NEXT_TASK_STATE[state] })}
-      >{stateWord(m)[state]}</button>
-      <InlineDraftInput
-        className="min" scopeRef={row} triggers={triggers} placeholder={m.project.plan.taskNamePlaceholder}
-        onSubmit={save} onCancel={onCancel}
-        value={title} onChange={(event) => patch({ title: event.target.value })}
+    <DraftSlot subgrid className="ddlrow task-row task-create-row" slot={row}>
+      <TaskScheduleField mode="date" task={draft} onSave={schedule} className="task-date-part" />
+      <TaskScheduleField mode="time" task={draft} onSave={schedule} className="task-clock-part" />
+      <PriorityPicker
+        value={priority} className={tagClass(PRIORITY_STATE[priority], 'label', 'plan-priority')}
+        onPick={(next) => patch({ priority: next })}
+      >{priority.toUpperCase()}</PriorityPicker>
+      <ChoicePicker
+        value={state} options={TASK_STATES} label={(next) => stateWord(m)[next]}
+        className="dleft plan-cell state-cell" onPick={(next) => patch({ state: next })}
       />
+      <span className="plan-name-cell">
+        <InlineDraftInput
+          scopeRef={row} triggers={triggers} placeholder={m.project.plan.taskNamePlaceholder}
+          onSubmit={(nextTitle) => onSave({ ...draft, title: nextTitle })} onCancel={onCancel}
+          value={title} onChange={(event) => patch({ title: event.target.value })}
+        />
+      </span>
     </DraftSlot>
   )
 }
 
-/** The new-milestone row, a view of `draft`, which every change replaces through `onDraft`; `row` is its draft slot. */
+/**
+ * The new-milestone row, a view of `draft`, which every change replaces through `onDraft`: its date
+ * and state are picked as a saved milestone's are, in the same columns. `row` is its draft slot.
+ */
 function MilestoneCreateRow({ row, draft, onDraft, triggers, onSave, onCancel }: {
   row: RefObject<HTMLElement | null>
   draft: MilestoneDraft
@@ -173,23 +126,33 @@ function MilestoneCreateRow({ row, draft, onDraft, triggers, onSave, onCancel }:
   const { date, done, title } = draft
   const m = useMessages()
 
-  const save = (nextTitle: string): boolean | Promise<boolean> => {
-    return onSave({ date, title: nextTitle, done })
-  }
-
   return (
-    <DraftSlot className="ddlrow milestone-create-row" slot={row}>
-      <DateButton iso={date} className="din" onPick={(next) => onDraft({ ...draft, date: next })} />
-      <button
-        className="din state-edit" type="button"
-        onClick={() => onDraft({ ...draft, done: !done })}
-      >{done ? m.project.plan.milestoneState.done : m.project.plan.milestoneState.open}</button>
-      <InlineDraftInput
-        className="min" scopeRef={row} triggers={triggers} placeholder={m.project.plan.milestoneNamePlaceholder}
-        onSubmit={save} onCancel={onCancel}
-        value={title} onChange={(event) => onDraft({ ...draft, title: event.target.value })}
-      />
+    <DraftSlot subgrid className="ddlrow milestone-row milestone-create-row" slot={row}>
+      <DateButton iso={date} className="plan-cell plan-date-button" onPick={(next) => onDraft({ ...draft, date: next })}>
+        <DateChip date={date} className="plan-date" />
+      </DateButton>
+      <MilestoneStatePicker done={done} onPick={(next) => onDraft({ ...draft, done: next })} />
+      <span className="plan-name-cell">
+        <InlineDraftInput
+          scopeRef={row} triggers={triggers} placeholder={m.project.plan.milestoneNamePlaceholder}
+          onSubmit={(nextTitle) => onSave({ date, title: nextTitle, done })} onCancel={onCancel}
+          value={title} onChange={(event) => onDraft({ ...draft, title: event.target.value })}
+        />
+      </span>
     </DraftSlot>
+  )
+}
+
+/** A milestone's open or done state, picked from a menu, in a new row and a saved one alike. */
+function MilestoneStatePicker({ done, onPick }: { done: boolean; onPick: (done: boolean) => void }) {
+  const m = useMessages()
+  return (
+    <ChoicePicker
+      value={done ? 'done' : 'open'} options={MILESTONE_STATES}
+      label={(state) => (state === 'done' ? m.project.plan.milestoneState.done : m.project.plan.milestoneState.open)}
+      className="dleft plan-cell state-cell"
+      onPick={(state) => onPick(state === 'done')}
+    />
   )
 }
 
@@ -202,8 +165,7 @@ function PlanNameCell({ value, label, keep, onSave, rest }: {
 }) {
   return (
     <InlineField
-      label={label} value={value} display={<FadeText>{value}</FadeText>} wrapperClassName="plan-name-cell" keep={keep}
-      buttonClassName="plan-cell plan-name" inputClassName="plan-name-input"
+      label={label} value={value} display={<FadeText>{value}</FadeText>} className="plan-name-cell" keep={keep}
       normalize={(next) => next.trim()} validate={(next) => next !== ''} onSave={onSave}
       {...(rest === undefined ? {} : { rest })}
     />
@@ -221,7 +183,7 @@ function TaskNameCell({ projectId, task, onSave }: { projectId: string; task: Ta
       value={task.title} label={m.project.plan.taskNamePlaceholder} onSave={(title) => onSave({ title })}
       keep={{ scope: ['project', projectId, 'task', task.id], target: 'name' }}
       rest={(edit) => (
-        <>
+        <span className="task-name">
           <ToolbarButton className="plan-cell plan-name plan-open"><FadeText>{task.title}</FadeText></ToolbarButton>
           <RowActions>
             <IconButton
@@ -229,7 +191,7 @@ function TaskNameCell({ projectId, task, onSave }: { projectId: string; task: Ta
               className="plan-rename" onClick={(event) => { event.stopPropagation(); edit() }}
             ><IconPencil /></IconButton>
           </RowActions>
-        </>
+        </span>
       )}
     />
   )
@@ -267,38 +229,35 @@ export function ProjectTaskPanel({
   }
   return (
     <>
-      <SectionHeading
-        variant="rail" className="node-document-head"
-        actions={<PanelClose onClose={onClose} />}
-      ><FadeText className="node-document-title" label={task.title}>{task.title}</FadeText>
-      </SectionHeading>
-      <div className="project-task-detail-meta">
-        <DateChip>{fmt.dateRange(task.start, task.end)}</DateChip>
-        <ProjectPriorityTag priority={task.priority} />
-        <span className="project-task-detail-state">{stateWord(m)[task.state]}</span>
-        {task.origin === 'agent' ? <AgentLabel /> : null}
-      </div>
-      <NodeAssignment node={node} nodes={nodes} canUnlink={handSet} onOpen={onOpenNode} onSet={onSetNode} />
-      <SectionHeading
-        variant="rail"
-        actions={(
-          <EditActions editing={note.editing} canSave={!note.stale} onEdit={note.start} onCancel={note.drop} onSave={save} />
-        )}
-      >{m.project.plan.noteHeading}
-      </SectionHeading>
-      <MarkdownBox
-        className="task-note" text={note.text} editing={note.editing} box={box}
-        onCancel={note.drop} onSave={save} onType={note.change}
-        empty={<EmptyState variant="section">{m.project.plan.noteEmpty}</EmptyState>}
-      />
+      <PanelHead title={task.title} onClose={onClose} />
+      <PanelBody>
+        <div className="project-task-detail-meta">
+          <DateChip>{fmt.dateRange(task.start, task.end)}</DateChip>
+          <ProjectPriorityTag priority={task.priority} />
+          <span className="project-task-detail-state">{stateWord(m)[task.state]}</span>
+          {task.origin === 'agent' ? <AgentLabel /> : null}
+        </div>
+        <NodeAssignment node={node} nodes={nodes} canUnlink={handSet} onOpen={onOpenNode} onSet={onSetNode} />
+        <SectionHeading
+          level="group"
+          actions={(
+            <EditActions editing={note.editing} canSave={!note.stale} onEdit={note.start} onCancel={note.drop} onSave={save} />
+          )}
+        >{m.project.plan.noteHeading}
+        </SectionHeading>
+        <MarkdownBox
+          className="task-note" text={note.text} editing={note.editing} box={box}
+          onCancel={note.drop} onSave={save} onType={note.change}
+          empty={<EmptyState variant="section" />}
+        />
+      </PanelBody>
     </>
   )
 }
 
-function TaskRow({ projectId, task, flash, selected, reorder, onSave, onDelete, onOpen }: {
+function TaskRow({ projectId, task, selected, reorder, onSave, onDelete, onOpen }: {
   projectId: string
   task: Task
-  flash: boolean
   /** Whether this task's detail panel is the one currently open. */
   selected: boolean
   /**
@@ -306,7 +265,7 @@ function TaskRow({ projectId, task, flash, selected, reorder, onSave, onDelete, 
    * column from the narrow plan list. Omitted for an archived row: it does not move, since its
    * position among other done tasks does not matter.
    */
-  reorder?: Reorderable
+  reorder?: ReorderItemProps
   onSave: (patch: TaskPatch) => Promise<boolean>
   onDelete: () => void
   /** Opens the task's detail panel; the row's own field editors swallow their clicks so they do not also open it. */
@@ -317,8 +276,8 @@ function TaskRow({ projectId, task, flash, selected, reorder, onSave, onDelete, 
     // The row is the toolbar of its own controls, from its date to its delete.
     <Toolbar label={task.title}>
       <Item
-        composite selected={selected} data-row={task.id} {...reorder?.item} {...reorder?.handle} onActivate={onOpen}
-        className={`ddlrow task-row${task.state === 'done' ? ' done' : ''}${flash ? ' flash' : ''}`}
+        composite subgrid selected={selected} data-row={task.id} {...reorder} onActivate={onOpen}
+        className={`ddlrow task-row${task.state === 'done' ? ' done' : ''}`}
         actions={(
           <IconButton
             label={m.project.plan.deleteTaskFor(task.title)} size="nested" tone="danger"
@@ -329,7 +288,7 @@ function TaskRow({ projectId, task, flash, selected, reorder, onSave, onDelete, 
         <TaskScheduleField mode="date" task={task} onSave={onSave} className="task-date-part" stopRowActivation />
         <TaskScheduleField mode="time" task={task} onSave={onSave} className="task-clock-part" stopRowActivation />
         <PriorityPicker
-          value={task.priority} className={tagClass(PRIORITY_TONE[task.priority], 'label', 'plan-priority')}
+          value={task.priority} className={tagClass(PRIORITY_STATE[task.priority], 'label', 'plan-priority')}
           stopRowActivation
           onPick={(priority) => { void onSave({ priority }) }}
         >{task.priority.toUpperCase()}</PriorityPicker>
@@ -351,20 +310,18 @@ function TaskRow({ projectId, task, flash, selected, reorder, onSave, onDelete, 
   )
 }
 
-function MilestoneRow({ projectId, milestone, flash, onHover, onSave, onDelete }: {
+function MilestoneRow({ projectId, milestone, onHover, onSave, onDelete }: {
   projectId: string
   milestone: Milestone
-  flash: boolean
   onHover: (milestoneId: string | null) => void
   onSave: (patch: Partial<Pick<Milestone, 'date' | 'title' | 'done'>>) => Promise<boolean>
   onDelete: () => void
 }) {
   const m = useMessages()
-  const milestoneState: typeof MILESTONE_STATES[number] = milestone.done ? 'done' : 'open'
   return (
     <Item
-      data-row={milestone.id}
-      className={`ddlrow milestone-row${milestone.done ? ' done' : ''}${flash ? ' flash' : ''}`}
+      subgrid data-row={milestone.id}
+      className={`ddlrow milestone-row${milestone.done ? ' done' : ''}`}
       onMouseEnter={() => onHover(milestone.id)} onMouseLeave={() => onHover(null)}
       actions={(
         <IconButton
@@ -379,12 +336,7 @@ function MilestoneRow({ projectId, milestone, flash, onHover, onSave, onDelete }
       >
         <DateChip date={milestone.date} className="plan-date" />
       </DateButton>
-      <ChoicePicker
-        value={milestoneState} options={MILESTONE_STATES}
-        label={(state) => (state === 'done' ? m.project.plan.milestoneState.done : m.project.plan.milestoneState.open)}
-        className="dleft plan-cell state-cell"
-        onPick={(state) => { void onSave({ done: state === 'done' }) }}
-      />
+      <MilestoneStatePicker done={milestone.done} onPick={(done) => { void onSave({ done }) }} />
       <PlanNameCell
         value={milestone.title} label={m.project.plan.milestoneNamePlaceholder}
         keep={{ scope: ['project', projectId, 'milestone', milestone.id], target: 'name' }}
@@ -411,6 +363,7 @@ export function ProjectPlan({
   tab: PlanTab
   today: string
   creating: PlanCreating | null
+  /** The task or milestone being located, which shows, its archive group unfolded, while it flashes. */
   flashId: string | null
   /** The task whose detail panel is currently open, so its row can show as selected. */
   selectedTaskId: string | null
@@ -449,7 +402,7 @@ export function ProjectPlan({
     () => new Map(project.tasks.map((task) => [task.id, task.state === 'done'])), [project.tasks],
   )
   const taskOrder = useDragReorder(
-    taskIds, (id) => (taskDoneById.get(id) ? 'done' : 'active'), onReorderTasks,
+    taskIds, (id) => (taskDoneById.get(id) ? 'done' : 'active'), (order) => onReorderTasks(order), { axis: 'y', handle: 'row' },
   )
   const activeTasks = project.tasks.filter((task) => task.state !== 'done')
   const archivedTasks = project.tasks.filter((task) => task.state === 'done')
@@ -473,7 +426,7 @@ export function ProjectPlan({
         )}
         tabs={[
           {
-            value: 'task', label: m.project.plan.taskMode, empty: m.project.plan.noTasks,
+            value: 'task', label: m.project.plan.taskMode,
             content: project.tasks.length === 0 && creating?.kind !== 'task' ? null : (
               <List id="taskList" variant="embedded">
                 {creating?.kind === 'task'
@@ -488,8 +441,8 @@ export function ProjectPlan({
                 {activeTasks.map((task) => (
                   <TaskRow
                     projectId={projectId}
-                    key={task.id} task={task} flash={flashId === task.id} selected={selectedTaskId === task.id}
-                    reorder={{ item: taskOrder.itemProps(task.id), handle: taskOrder.handleProps(task.id) }}
+                    key={task.id} task={task} selected={selectedTaskId === task.id}
+                    reorder={taskOrder.itemProps(task.id)}
                     onSave={(patch) => onUpdateTask(task.id, patch)}
                     onDelete={() => onDeleteTask(task.id)}
                     onOpen={() => onOpenTask(task.id)}
@@ -498,33 +451,33 @@ export function ProjectPlan({
                 {archivedTasks.length === 0
                   ? null
                   : (
-                    <CollapsibleGroup
-                      variant="quiet" title={m.common.archived} count={archivedTasks.length}
-                      open={taskArchiveShown} onToggle={() => setTaskArchiveOpen((open) => !open)}
+                    <Group
+                      title={m.common.archived} count={archivedTasks.length}
+                      fold={{ open: taskArchiveShown, onToggle: () => setTaskArchiveOpen((open) => !open) }}
                     >
                       {archivedTasks.map((task) => (
                         <TaskRow
                           projectId={projectId}
-                          key={task.id} task={task} flash={flashId === task.id}
+                          key={task.id} task={task}
                           selected={selectedTaskId === task.id}
                           onSave={(patch) => onUpdateTask(task.id, patch)}
                           onDelete={() => onDeleteTask(task.id)}
                           onOpen={() => onOpenTask(task.id)}
                         />
                       ))}
-                    </CollapsibleGroup>
+                    </Group>
                   )}
               </List>
             ),
           },
           {
-            value: 'ms', label: m.project.plan.milestoneMode, empty: m.project.plan.noMilestones,
+            value: 'ms', label: m.project.plan.milestoneMode,
             content: project.milestones.length === 0 && creating?.kind !== 'ms' ? null : (
               <List id="msList" variant="embedded">
                 {activeMilestones.map((milestone) => (
                   <MilestoneRow
                     projectId={projectId}
-                    key={milestone.id} milestone={milestone} flash={flashId === milestone.id}
+                    key={milestone.id} milestone={milestone}
                     onHover={onHoverMilestone}
                     onSave={(patch) => onUpdateMilestone(milestone.id, patch)}
                     onDelete={() => onDeleteMilestone(milestone.id)}
@@ -542,20 +495,20 @@ export function ProjectPlan({
                 {archivedMilestones.length === 0
                   ? null
                   : (
-                    <CollapsibleGroup
-                      variant="quiet" title={m.common.archived} count={archivedMilestones.length}
-                      open={msArchiveShown} onToggle={() => setMsArchiveOpen((open) => !open)}
+                    <Group
+                      title={m.common.archived} count={archivedMilestones.length}
+                      fold={{ open: msArchiveShown, onToggle: () => setMsArchiveOpen((open) => !open) }}
                     >
                       {archivedMilestones.map((milestone) => (
                         <MilestoneRow
                           projectId={projectId}
-                          key={milestone.id} milestone={milestone} flash={flashId === milestone.id}
+                          key={milestone.id} milestone={milestone}
                           onHover={onHoverMilestone}
                           onSave={(patch) => onUpdateMilestone(milestone.id, patch)}
                           onDelete={() => onDeleteMilestone(milestone.id)}
                         />
                       ))}
-                    </CollapsibleGroup>
+                    </Group>
                   )}
               </List>
             ),

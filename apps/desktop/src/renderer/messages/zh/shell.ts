@@ -49,12 +49,11 @@ export const shell = {
     resize: '侧栏宽度',
     collapse: '收起侧栏',
     toggleGroup: (name: string) => `收起/展开「${name}」`,
-    dragHint: '拖动调整宽度',
     manageChat: (title: string) => `管理对话：${title}`,
     archive: '归档',
   },
   titlebar: { settings: '设置…', palette: '命令面板…', checkUpdates: '检查更新…', about: '关于 Meridian' },
-  about: { title: '关于 Meridian', releases: '发布记录', version: (version: string) => `版本 ${version}` },
+  about: { releases: '发布记录', version: (version: string) => `版本 ${version}` },
   bootFailure: {
     title: '论文库打不开',
     changeLibrary: '换论文库',
@@ -63,7 +62,6 @@ export const shell = {
     placeholder: '全局搜索',
     clear: '清除全局搜索',
     results: '搜索结果',
-    noHits: '没有找到匹配的内容',
   },
-  palette: { title: '命令面板', placeholder: '输入命令', settingsPane: (pane: string) => `设置 · ${pane}` },
+  palette: { title: '命令面板', placeholder: '命令', settingsPane: (pane: string) => `设置 · ${pane}` },
 } satisfies Record<string, unknown>

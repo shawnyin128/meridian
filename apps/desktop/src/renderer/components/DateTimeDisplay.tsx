@@ -1,5 +1,4 @@
 import type { ReactNode } from 'react'
-import { localDayOf } from '../../shared/dates.js'
 import { useFormat } from '../lib/format.js'
 import { Tag } from './Tag.js'
 import './DateTimeDisplay.css'
@@ -47,12 +46,12 @@ export function DateTimeDisplay(props: ({ start: string; end?: string; time?: Re
 }) {
   const { className = '', dateClassName = '', timeClassName = '' } = props
   const fmt = useFormat()
-  const [start, end, time] = 'at' in props
-    ? [localDayOf(new Date(props.at).toISOString()), undefined, fmt.clock(props.at)]
-    : [props.start, props.end, props.time]
+  const [date, time] = 'at' in props
+    ? [fmt.day(props.at), fmt.clock(props.at)]
+    : [fmt.dateRange(props.start, props.end ?? props.start), props.time]
   return (
     <span className={`date-time-display${className ? ` ${className}` : ''}`}>
-      <DateChip className={dateClassName}>{fmt.dateRange(start, end ?? start)}</DateChip>
+      <DateChip className={dateClassName}>{date}</DateChip>
       {time === undefined ? null : <DateChip className={timeClassName}>{time}</DateChip>}
     </span>
   )

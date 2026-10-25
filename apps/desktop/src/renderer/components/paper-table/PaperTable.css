@@ -3,131 +3,21 @@
  * e2e/fixtures/platform-shell-demo.html. Selector names match the demo for side-by-side comparison.
  */
 
-/*
- * The table itself is the scroll viewport: it scrolls both ways inside the table, with the horizontal
- * scrollbar always at the bottom of the visible area. The header row sticks to the top, the title
- * column to the left (the corner cell is fixed both ways) and the actions column to the right; those
- * three edges are held, and only the bottom edge fades the way other scroll areas do.
- */
-.desk-body.libview{display:flex;flex-direction:column;overflow:hidden}
+/* The table takes the view's remaining height, in a page body that does not scroll, and scrolls inside itself. */
 .desk-body.libview>.libwide{display:flex;flex-direction:column;flex:1;min-height:0;width:100%}
 .desk-body.libview #libList{flex:1;min-height:0;display:flex;flex-direction:column}
-.desk-body.libview .tblwrap{flex:1;min-height:0}
-.tblwrap{overflow:auto;scrollbar-gutter:stable}
 
 /* The page toolbar holds the view switch, then the filters of the list: filter input + group switch */
 .paper-view-toolbar{align-items:center;gap:var(--sp-12)}
 .libbar{display:flex;flex:1;min-width:0;align-items:center;gap:var(--sp-12)}
 .pdfupload-input{display:none}
 .paper-drop{position:absolute;inset:46px 0 0;z-index:30;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:var(--sp-8);background:color-mix(in srgb,var(--content) 88%,transparent);border:2px dashed var(--ink);color:var(--ink);backdrop-filter:blur(8px);pointer-events:none}
-.paper-drop strong{font-size:var(--fs-read)}
-.paper-drop span{font-size:var(--fs-sm);color:var(--ter)}
 /* Filter input: the shared field input at the size of the Watches screen's one-line add box (.af-in). */
 .paper-search{flex:1}
-.paper-search>.form-input{width:100%;font-size:var(--fs-sm)}
 
 /* Group index level: pick a value first, then see the papers under it */
 .gxrow .gx-t{min-width:150px}
 .gnav{display:flex;align-items:center;gap:var(--sp-6);flex-wrap:wrap;margin-bottom:var(--sp-12)}
-
-/*
- * Separate borders: with collapsed ones, Chromium leaves the divider above the last row out of the
- * sticky cells' first paint, until something repaints them.
- */
-.ptable{width:100%;min-width:0;border-collapse:separate;border-spacing:0;font-size:var(--fs-base);margin-bottom:var(--sp-16);table-layout:fixed}
-.ptable th{position:relative}
-.thsort{padding:0;border:0;background:none;color:inherit;font:inherit;cursor:inherit}
-.thsort svg{width:9px;height:9px;vertical-align:0}
-/* A column's grip straddles the border with the next header cell. */
-.ptable th>.thgrip{right:-5px}
-.thmove{display:inline-flex;width:13px;height:17px;align-items:center;justify-content:center;margin:0 var(--sp-4) 0 calc(-1 * var(--sp-6));color:var(--ter);opacity:0;cursor:var(--cursor-draggable);vertical-align:-4px;border-radius:var(--r-xs)}
-.ptable th:hover .thmove,.thmove:focus-visible{opacity:1}
-.thmove:active{cursor:var(--cursor-dragging);color:var(--ink)}
-.thmove svg{width:9px;height:14px}
-.column-drag-ghost{position:fixed;left:-100px;top:-100px;width:1px;height:1px;opacity:0;pointer-events:none}
-.ptable td .ci{display:block;overflow:hidden;white-space:nowrap}
-/* A text cell that does not fit fades out, until its hover shows it whole or its title takes keyboard focus. */
-.ptable td.trunc:not(:hover) .ci:not(:has(.tagchip)):not(:focus-visible){mask-image:var(--clipfade)}
-/* A chip cell clips its chips, so it keeps the ring room around them inside the cell's padding. */
-.ptable td .ci:has(.tagchip){padding:var(--ring-room);margin:calc(-1 * var(--ring-room))}
-.ptable td.trunc:has(.ci):not(:has(.tagchip)):hover{overflow:visible}
-/* Hover reveal: expands in place (Excel style); text stays put, no border, and the background over adjacent columns matches the row */
-.ptable td.trunc:hover .ci:not(:has(.tagchip)){position:absolute;left:0;top:0;bottom:0;display:flex;align-items:center;padding:var(--sp-6) var(--row-table-pad);width:max-content;background:linear-gradient(var(--row-over),var(--row-over)),linear-gradient(var(--row-bg),var(--row-bg)) var(--content);z-index:6;overflow:visible;text-overflow:clip}
-.tblwrap .ptable thead th{position:sticky;top:0;z-index:3;background:var(--content)}
-.ptable th:first-child,.ptable td:first-child{position:sticky;left:0;z-index:2;background:var(--content)}
-.ptable th:first-child{top:0;z-index:4}
-/* The corner cell must sit above the other header cells: the "thead th" rule is more specific, so the corner cell gets its own rule. */
-.tblwrap .ptable thead th:first-child{left:0;z-index:4}
-/*
- * Content scrolling under the title column, the actions column or the header fades at the sticky
- * cell's inner edge while the cell is stuck, in that cell's own paint, so a hovered or selected row
- * keeps its tint; the sticky cells themselves never fade. A header cell marking a column drop keeps
- * its ::after for the marker.
- */
-.ptable :is(th,td):first-child,.ptable td.row-actions-cell,.tblwrap .ptable thead th{container-type:scroll-state}
-.ptable td:first-child,.ptable td.row-actions-cell{overflow:visible}
-.ptable :is(th,td):first-child::before,.ptable :is(td.row-actions-cell,th.th-add)::before,
-.tblwrap .ptable thead th:not(.column-drop-after)::after{content:"";position:absolute;background:inherit;opacity:0;
-  pointer-events:none;transition:opacity var(--t-fast) var(--e-out)}
-.ptable :is(th,td):first-child::before{top:0;bottom:0;left:100%;width:var(--sp-24);mask-image:linear-gradient(to right,#000,transparent)}
-.ptable :is(td.row-actions-cell,th.th-add)::before{top:0;bottom:0;right:100%;width:var(--sp-24);mask-image:linear-gradient(to left,#000,transparent)}
-.tblwrap .ptable thead th:not(.column-drop-after)::after{top:100%;left:0;right:0;height:var(--sp-24);mask-image:linear-gradient(#000,transparent)}
-@container scroll-state(stuck: left){.ptable :is(th,td):first-child::before{opacity:1}}
-@container scroll-state(stuck: right){.ptable :is(td.row-actions-cell,th.th-add)::before{opacity:1}}
-@container scroll-state(stuck: top){.tblwrap .ptable thead th:not(.column-drop-after)::after{opacity:1}}
-.ptable td .ci .hid{display:none}
-.ptable td .ci.chip-expanded{display:flex;align-items:center;flex-wrap:wrap;gap:var(--sp-2);overflow:visible;white-space:normal;text-overflow:clip}
-.ptable td .ci.chip-expanded .hid{display:inline-block;animation:chip-row-reveal var(--t) var(--e-out) both}
-@keyframes chip-row-reveal{from{opacity:0;transform:translateX(-4px)}to{opacity:1;transform:translateX(0)}}
-@media (prefers-reduced-motion:reduce){.ptable td .ci.chip-expanded .hid{animation:none}}
-/* Only a sortable header, the one that carries aria-sort, shows a pointer and darkens on hover. */
-.ptable th{text-align:left;font-size:var(--fs-sm);color:var(--sec);font-weight:var(--fw-semibold);padding:var(--sp-6) var(--row-table-pad);border-bottom:1px solid var(--sep);cursor:default;white-space:nowrap;user-select:none;transition:color var(--t-fast) var(--e-out)}
-.ptable th[aria-sort]{cursor:pointer}
-.ptable th[aria-sort]:hover{color:var(--ink)}
-.ptable th.column-moving{opacity:.45;background:var(--tint-mut)}
-.ptable th.column-drop-before::before,.ptable th.column-drop-after::after{content:'';position:absolute;top:3px;bottom:3px;width:2px;border-radius:var(--r-2xs);background:var(--ink);z-index:5}
-.ptable th.column-drop-before::before{left:-1px}.ptable th.column-drop-after::after{right:-1px}
-.ptable td{padding:var(--sp-6) var(--row-table-pad);height:var(--row-table-h);box-sizing:border-box;border-bottom:1px solid var(--sep2);vertical-align:middle;line-height:var(--lh-ui);overflow:hidden;white-space:nowrap;position:relative}
-/* An embedded table draws a rule only between adjacent rows, never under the last one. */
-.ptable tbody tr:last-child td{border-bottom:0}
-.ptable td:last-child{padding-top:0;padding-bottom:0;text-align:center}
-/*
- * One row colour (--row-bg, the selected look of Item.css) and the hover over it
- * (--row-over), painted by every cell and by a truncated cell's hover box. The sticky title cell and
- * the hover box lay both over --content, so cells scrolling under them never show through. A row
- * keeps the hover while its reading status menu is open and the pointer is on a menu item.
- */
-.ptable tbody tr{--row-bg:transparent;--row-over:transparent}
-.ptable tbody tr:hover,.ptable tbody tr:has(.stchip[data-state="open"]){--row-over:var(--hover)}
-.ptable tbody tr.selected{--row-bg:var(--accent-soft)}
-.ptable tbody td{background-color:var(--row-bg);background-image:linear-gradient(var(--row-over),var(--row-over))}
-.ptable tbody td:first-child{background-color:var(--content);
-  background-image:linear-gradient(var(--row-over),var(--row-over)),linear-gradient(var(--row-bg),var(--row-bg))}
-.pt-title{font-weight:var(--fw-medium);color:var(--ink);cursor:pointer}
-/* The title is the row's button; it draws nothing of its own, and its click reaches the row. */
-.ptable .pt-open{width:100%;padding:0;border:0;background:none;color:inherit;font:inherit;text-align:left;cursor:inherit}
-.ptable tbody tr.selected .pt-title{color:var(--accent-text)}
-.pt-title:hover{text-decoration:underline;text-underline-offset:2px}
-.ptable tbody tr{cursor:pointer}
-.pt-dim{color:var(--ter);white-space:nowrap}
-/*
- * The + at the end of a tag cell: a ghost tag, hidden at rest and shown only while the row is hovered
- * or it has keyboard focus. The focus state names both classes, or it ties with the resting state and
- * only source order decides.
- */
-.tagchip.tagadd{opacity:0;pointer-events:none;transition:opacity var(--t-fast) var(--e-out)}
-.ptable tr:hover .tagadd,.tagchip.tagadd:focus-visible{opacity:1;pointer-events:auto}
-/* A topic chip's × in the table shows with the row's +, so a resting table reads as plain tags. */
-.ptable .tagchip .rx{opacity:0;pointer-events:none;transition:opacity var(--t-fast) var(--e-out)}
-.ptable tr:hover .tagchip .rx,.ptable .tagchip .rx:focus-visible{opacity:1;pointer-events:auto}
-.ptable tr:has(.stchip[data-state="open"]) .tagadd{opacity:1}
-.paper-meta-projects .tagchip.tagadd,.paper-meta-topics .tagchip.tagadd{opacity:1;pointer-events:auto}
-.form-input.form-control-inline.tagin{display:inline-block;width:110px;vertical-align:middle}
-
-/* Custom columns: clicking a cell edits it in place */
-.pt-cust,.pt-remark{color:var(--sec);font-size:var(--fs-sm);cursor:text;min-width:70px}
-/* Text values use the shared inline editor; compact column-menu and picker inputs retain their own width. */
-.ptable td .paper-text-cell-input{display:block}
 
 /* Column menu: custom columns have rename/delete at the end of their rows. */
 .mi.colrow .cl{flex:1}
@@ -147,34 +37,11 @@
  */
 .typerow{padding-left:calc(var(--row-menu-pad) + var(--row-menu-check) + var(--sp-10) + var(--sp-20) - var(--sp-8))}
 
-/*
- * The cell of a row's actions and the header's add cell stick to the table's right edge, so the
- * actions stay in reach while the columns scroll under them. They lie above a truncated cell's hover
- * box (z-index 6), and the header cell above the body cells that scroll under it.
- */
-.ptable td.row-actions-cell,.tblwrap .ptable thead th.th-add{position:sticky;right:0}
-.ptable td.row-actions-cell{z-index:7;background-color:var(--content);
-  background-image:linear-gradient(var(--row-over),var(--row-over)),linear-gradient(var(--row-bg),var(--row-bg))}
-.tblwrap .ptable thead th.th-add{z-index:8}
-
-
-/* Paper detail: a full-height right panel; the table and the footer make room for it together. */
-.paper-detail-slot{--detail-panel-width:var(--detailw);top:46px;right:0;bottom:0;border-left:1px solid var(--sep);
-  background:var(--content);z-index:5}
-.pdetail{height:100%;box-sizing:border-box;overflow:auto;overscroll-behavior:contain;padding:var(--sp-16)}
+/* Paper detail: a full-height right panel under the page head; the table and the footer make room for it together. */
+.paper-detail-slot{position:absolute;top:46px;right:0;bottom:0;z-index:5}
 .desk-body.withdetail,.desk-foot.withdetail{margin-right:var(--detailw)}
-/*
- * The buttons take a row of their own at the head's right end, and the title the whole row below them.
- * The title comes first in the markup, so Tab still reaches it before the buttons.
- */
-.pd-h{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:var(--sp-4) var(--sp-8);margin-bottom:var(--sp-12)}
-.pd-t{order:1;width:100%;font-size:var(--fs-section);font-weight:var(--fw-title);line-height:var(--lh-ui)}
-/* The title is the panel's head, in the head's ink rather than a property value's grey. */
-.pd-t .metadata-editable{color:inherit}
-.pdetail .wkprops{grid-template-columns:52px 1fr;font-size:var(--fs-sm)}
 .pdetail>.paper-meta{height:auto;margin:0 calc(-1 * var(--sp-16)) calc(-1 * var(--sp-16))}
 .paper-reading-summary{margin-top:var(--sp-16)}
-.paper-reading-summary .paper-meta-list{padding:0}
 .paper-reading-summary .reading-summary-all{margin:var(--sp-6) 0 0 calc(-1 * var(--sp-10))}
 
 /*
@@ -183,14 +50,12 @@
  * bar. Only this top bar wraps, since .filters itself is also used by the Feed screen's .feedbar.
  */
 .libbar .filters{align-items:center;flex-wrap:wrap;margin:0}
-.libbar .filters>.pt-dim{font-size:var(--fs-sm)}
 
-/* Research Map is a peer view of the table. It composes the shared list and segmented
- * controls; these rules only define its two-column domain layout and information hierarchy. */
-/* The map takes the view's remaining height; each of its two columns scrolls inside itself. */
+/* Research Map is a peer view of the table. It composes the shared list, segmented control and split
+ * page; these rules only define its information hierarchy. */
+/* The map takes the view's remaining height, which its split page fills; each column scrolls inside itself. */
 .research-map{display:flex;min-height:0;flex:1;flex-direction:column;gap:var(--sp-14);padding:var(--sp-2) var(--sp-2) 0}
 .research-map-limit{color:var(--ter);font-size:var(--fs-sm)}
-.research-map-layout{display:grid;flex:1;min-height:0;grid-template-columns:minmax(220px,310px) minmax(0,1fr);grid-template-rows:minmax(0,1fr);gap:var(--sp-16)}
 /* The groups, then the cross-group and ungrouped rows in a list of their own below them. */
 .research-map-index{min-width:0;gap:var(--sp-12)}
 .research-map-groups{min-width:0}
@@ -207,6 +72,3 @@
 .research-map-paper-meta{white-space:nowrap}
 .research-map-why{display:flex;align-items:center;gap:var(--sp-4)}
 
-@media (max-width:900px){
-  .research-map-layout{grid-template-columns:1fr;grid-template-rows:fit-content(50%) minmax(0,1fr)}
-}

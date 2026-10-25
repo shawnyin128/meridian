@@ -8,7 +8,7 @@
  * 2. The tokens added beyond the demo (--accent-solid / --press / --press-solid / --hover-solid /
  *    --bad-solid / --bad-text / --good-text / --warn-text / --accent-text / --accent-mark / --ring* / --sel / --selected /
  *    --on-selected / --tint-* / --star / --hl-* / --paper / --scrim / --raised / --chip / --track / --r-* /
- *    --pad-* / --sp-* / --page-inset / --section-gap / --item-* / --row-* / --fs-* / --fw-* / --lh-* / --t-* / --e-* /
+ *    --pad-* / --sp-* / --page-inset / --section-gap / --item-* / --row-* / --menu-list-h / --fs-* / --fw-* / --lh-* / --t-* / --e-* /
  *    --window-buttons-* / --cursor-*)
  *    and the split into --sh-1 / --sh-2 / --sh-3 / --sh-paper are not in the demo: the demo is the
  *    reference for layout and behavior, not for the finished look, so the two differ on these.
@@ -67,8 +67,8 @@
    * draw them at its end, macOS its traffic lights at its start.
    */
   --window-buttons-end:154px; --window-buttons-start:78px;
-  /* A detail panel's width beside the list whose item it details, and a one-line form's in a popover. */
-  --detailw:360px; --formw:320px;
+  /* An edge side panel's width beside the page it details, and a one-line form's in a popover. */
+  --detailw:320px; --formw:320px;
   --cardw:230px; --card-tt:var(--fs-item-title); --card-fs:var(--fs-sm); --card-lines:2;
   --diff-add:rgba(40,167,69,.12); --diff-del:rgba(224,69,58,.1);
   --sans:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI","PingFang SC","Microsoft YaHei","Noto Sans SC",sans-serif;
@@ -138,6 +138,8 @@
   --sp-2:2px; --sp-4:4px; --sp-6:6px; --sp-8:8px; --sp-10:10px; --sp-12:12px; --sp-14:14px; --sp-16:16px; --sp-20:20px; --sp-24:24px; --sp-32:32px;
   --row-nav-h:30px; --row-nav-pad:var(--sp-8); --row-menu-h:30px; --row-menu-pad:var(--sp-10); --row-menu-check:13px;
   --row-list-h:38px; --row-list-pad:var(--sp-8); --row-table-h:38px; --row-table-pad:var(--sp-10);
+  /* A long list of menu rows, as the chat's mentions or the command palette's, scrolls past this height. */
+  --menu-list-h:min(440px,55vh);
   /*
    * Spacing roles: a page's inline inset, the space above a section, the space between items, and the
    * inline inset of an item, which rows and cards share so the two align when mixed; a row listed among
@@ -158,7 +160,7 @@
   --fs-dialog-title:var(--fs-title);
   --lh-tight:1.3; --lh-ui:1.45; --lh-read:1.7;
   --t-fast:120ms; --t:180ms; --t-slow:280ms;
-  /* The pause before content enters an opening container, a refusal shake, a located row's flash, a spinner turn. */
+  /* The pause before content enters an opening container, a refusal shake, a landed target's flash, a spinner turn. */
   --t-delay:60ms; --t-shake:320ms; --t-flash:500ms; --t-spin:1s;
   --e-out:cubic-bezier(.2,.6,.35,1); --e-inout:cubic-bezier(.4,0,.2,1);
 }
@@ -200,19 +202,18 @@
   [data-theme="dark"]{--sep:#5d6c83;--sep2:#5d6c83;--sep-strong:#7b899e;--ter:#aab6c8}
 }
 
+@media (max-width:900px){:root{--detailw:280px}}
 @media (min-width:1600px){:root{--pagew:1320px;--prosew:1200px;--chatw:880px;--cardw:280px;--card-tt:var(--fs-item-title);--card-fs:var(--fs-sm);--card-lines:3}}
 @media (min-width:2000px){:root{--pagew:1560px;--prosew:1320px;--chatw:1000px;--cardw:320px;--card-tt:var(--fs-read);--card-fs:var(--fs-base);--card-lines:3}}
 
 /*
  * With the system's "Reduce motion" on, transitions and keyframe animations stop entirely but every
  * state change still shows. Only the spinning DownloadRing keeps turning: it is the live sign that a
- * job is running. A JS timer adds and removes .ddlrow.flash, so it gets a static background, and the
- * located row stays highlighted for that time.
+ * job is running.
  */
 @media (prefers-reduced-motion:reduce){
   :root{--t-fast:1ms;--t:1ms;--t-slow:1ms;--t-delay:0ms}
   :not(.ring.spin),::before,::after{animation:none!important}
-  .ddlrow.flash{background:var(--tint-warn)}
   .item--leaving{transform:none}
 }
 
@@ -252,47 +253,6 @@ body{margin:0;background:var(--desktop);color:var(--ink);font-family:var(--sans)
 ::-webkit-scrollbar-thumb:hover{background-color:var(--sbthumb-h);border:3px solid transparent;background-clip:padding-box}
 ::-webkit-scrollbar-button{display:none;width:0;height:0}
 ::-webkit-scrollbar-corner{background:transparent}
-/*
- * A scroll area that hides content past an edge fades toward that edge; useScrollFade lists those
- * edges in data-fade. The mask leaves out the strips of the scrollbars it shows, so a scrollbar never
- * fades: the vertical fade and the horizontal fade are intersected, then the strips added back. An
- * edge named in data-fade-held belongs to a sticky element, so the area leaves that edge solid: the
- * sticky element is a scroll-state container and, while it is stuck, lays a pseudo-element in its own
- * paint beside its inner edge, which fades the content sliding under it. Its scroll padding keeps a
- * control that takes focus out of a faded edge.
- */
-[data-fade]{--fade-top:0px;--fade-bottom:0px;--fade-left:0px;--fade-right:0px;--fade-bar-y:0px;--fade-bar-x:0px;
-  scroll-padding:var(--sp-24);
-  mask:linear-gradient(#000,#000) right top/var(--fade-bar-y) 100% no-repeat,
-    linear-gradient(#000,#000) left bottom/100% var(--fade-bar-x) no-repeat,
-    linear-gradient(to bottom,transparent,#000 var(--fade-top),#000 calc(100% - var(--fade-bottom)),transparent)
-      left top/calc(100% - var(--fade-bar-y)) calc(100% - var(--fade-bar-x)) no-repeat,
-    linear-gradient(to right,transparent,#000 var(--fade-left),#000 calc(100% - var(--fade-right)),transparent)
-      left top/calc(100% - var(--fade-bar-y)) calc(100% - var(--fade-bar-x)) no-repeat;
-  mask-composite:add,add,intersect,add}
-[data-fade~="top"]{--fade-top:var(--sp-24)}
-[data-fade~="bottom"]{--fade-bottom:var(--sp-24)}
-[data-fade~="left"]{--fade-left:var(--sp-24)}
-[data-fade~="right"]{--fade-right:var(--sp-24)}
-:is([data-fade~="top"],[data-fade~="bottom"]){--fade-bar-y:var(--scrollbar-size)}
-:is([data-fade~="left"],[data-fade~="right"]){--fade-bar-x:var(--scrollbar-size)}
-[data-fade-held~="top"]{--fade-top:0px}
-[data-fade-held~="bottom"]{--fade-bottom:0px}
-[data-fade-held~="left"]{--fade-left:0px}
-[data-fade-held~="right"]{--fade-right:0px}
-/*
- * A scroll area that draws its own frame or holds sticky rails fades a hidden top or bottom by laying
- * its own background over it, --fade-paint, instead of masking, so its frame and its sticky children,
- * which sit above that layer, stay solid. The layer sticks across the area's padding, which its host
- * gives as --fade-pad-top and --fade-pad-bottom, and takes no room.
- */
-[data-fade][data-fade-paint]{mask:none}
-[data-fade~="top"][data-fade-paint]::before,[data-fade~="bottom"][data-fade-paint]::after{content:"";display:block;position:sticky;
-  z-index:1;height:var(--sp-24);pointer-events:none}
-[data-fade~="top"][data-fade-paint]::before{top:calc(-1 * var(--fade-pad-top));margin-bottom:calc(-1 * var(--sp-24));
-  background:linear-gradient(var(--fade-paint),transparent)}
-[data-fade~="bottom"][data-fade-paint]::after{bottom:calc(-1 * var(--fade-pad-bottom));margin-top:calc(-1 * var(--sp-24));
-  background:linear-gradient(transparent,var(--fade-paint))}
 @supports not selector(::-webkit-scrollbar){
   *{scrollbar-width:thin;scrollbar-color:var(--sbthumb) transparent}
 }

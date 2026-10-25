@@ -1,0 +1,69 @@
+/*
+ * The one scroll container. It scrolls along its axis, and its children keep their size and scroll
+ * instead of shrinking to fit. With a gutter it keeps room for its scrollbar whether or not one shows,
+ * so its content never moves when it starts to scroll and lines up with a region pinned beside it that
+ * keeps the same room.
+ */
+.scroll-area--y{overflow-x:hidden;overflow-y:auto}
+.scroll-area--x{overflow-x:auto;overflow-y:hidden}
+.scroll-area--both{overflow:auto}
+.scroll-area>*{flex-shrink:0}
+.scroll-area--fill{flex:1 1 0;min-width:0;min-height:0}
+.scroll-area--gutter{scrollbar-gutter:stable}
+
+/*
+ * A scroll area that hides content past an edge fades toward that edge; useScrollFade lists those
+ * edges in data-fade. The mask leaves out the strips of the scrollbars it shows, so a scrollbar never
+ * fades: the vertical fade and the horizontal fade are intersected, then the strips added back. An
+ * edge named in data-fade-held belongs to a sticky element, so the area leaves that edge solid and the
+ * sticky element fades the content under it (data-stuck-fade, below). Its scroll padding keeps a
+ * control that takes focus out of a faded edge.
+ */
+[data-fade]{--fade-top:0px;--fade-bottom:0px;--fade-left:0px;--fade-right:0px;--fade-bar-y:0px;--fade-bar-x:0px;
+  scroll-padding:var(--sp-24);
+  mask:linear-gradient(#000,#000) right top/var(--fade-bar-y) 100% no-repeat,
+    linear-gradient(#000,#000) left bottom/100% var(--fade-bar-x) no-repeat,
+    linear-gradient(to bottom,transparent,#000 var(--fade-top),#000 calc(100% - var(--fade-bottom)),transparent)
+      left top/calc(100% - var(--fade-bar-y)) calc(100% - var(--fade-bar-x)) no-repeat,
+    linear-gradient(to right,transparent,#000 var(--fade-left),#000 calc(100% - var(--fade-right)),transparent)
+      left top/calc(100% - var(--fade-bar-y)) calc(100% - var(--fade-bar-x)) no-repeat;
+  mask-composite:add,add,intersect,add}
+[data-fade~="top"]{--fade-top:var(--sp-24)}
+[data-fade~="bottom"]{--fade-bottom:var(--sp-24)}
+[data-fade~="left"]{--fade-left:var(--sp-24)}
+[data-fade~="right"]{--fade-right:var(--sp-24)}
+:is([data-fade~="top"],[data-fade~="bottom"]){--fade-bar-y:var(--scrollbar-size)}
+:is([data-fade~="left"],[data-fade~="right"]){--fade-bar-x:var(--scrollbar-size)}
+[data-fade-held~="top"]{--fade-top:0px}
+[data-fade-held~="bottom"]{--fade-bottom:0px}
+[data-fade-held~="left"]{--fade-left:0px}
+[data-fade-held~="right"]{--fade-right:0px}
+/*
+ * A scroll area that draws its own frame or holds sticky rails fades a hidden top or bottom by laying
+ * its own background over it, --fade-paint, instead of masking, so its frame and its sticky children,
+ * which sit above that layer, stay solid. The layer sticks across the area's padding, which its host
+ * gives as --fade-pad-top and --fade-pad-bottom, and takes no room.
+ */
+[data-fade][data-fade-paint]{mask:none}
+[data-fade~="top"][data-fade-paint]::before,[data-fade~="bottom"][data-fade-paint]::after{content:"";display:block;position:sticky;
+  z-index:1;height:var(--sp-24);pointer-events:none}
+[data-fade~="top"][data-fade-paint]::before{top:calc(-1 * var(--fade-pad-top));margin-bottom:calc(-1 * var(--sp-24));
+  background:linear-gradient(var(--fade-paint),transparent)}
+[data-fade~="bottom"][data-fade-paint]::after{bottom:calc(-1 * var(--fade-pad-bottom));margin-top:calc(-1 * var(--sp-24));
+  background:linear-gradient(transparent,var(--fade-paint))}
+
+/*
+ * A sticky element that content slides under names the edges it sticks to in data-stuck-fade. It is a
+ * scroll-state container and, while it is stuck, lays a strip of its own paint beside its inner edge,
+ * which fades the content sliding under it and covers its rule. The top edge takes ::after, the left
+ * and right edges ::before.
+ */
+[data-stuck-fade]{container-type:scroll-state}
+[data-stuck-fade~="top"]::after,[data-stuck-fade~="left"]::before,[data-stuck-fade~="right"]::before{content:"";position:absolute;
+  background:inherit;opacity:0;pointer-events:none;transition:opacity var(--t-fast) var(--e-out)}
+[data-stuck-fade~="top"]::after{top:100%;left:0;right:0;height:var(--sp-24);mask-image:linear-gradient(#000,transparent)}
+[data-stuck-fade~="left"]::before{top:0;bottom:0;left:100%;width:var(--sp-24);mask-image:linear-gradient(to right,#000,transparent)}
+[data-stuck-fade~="right"]::before{top:0;bottom:0;right:100%;width:var(--sp-24);mask-image:linear-gradient(to left,#000,transparent)}
+@container scroll-state(stuck: top){[data-stuck-fade~="top"]::after{opacity:1}}
+@container scroll-state(stuck: left){[data-stuck-fade~="left"]::before{opacity:1}}
+@container scroll-state(stuck: right){[data-stuck-fade~="right"]::before{opacity:1}}

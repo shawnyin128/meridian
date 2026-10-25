@@ -7,7 +7,6 @@ export const inbox = {
     noneNew: '没有新论文',
     lastChecked: '上次检查',
   },
-  lastRefreshed: '上次刷新',
   checkNewPapers: '检查新论文',
   discovering: '正在发现…',
   refreshDiscovery: '刷新发现',
@@ -15,12 +14,8 @@ export const inbox = {
   sort: { recommended: '推荐', latest: '最新', published: '已发表', impact: '影响力' },
   discoverySettings: '发现设置',
   watchSettings: '关注设置',
-  discoverySummary: (projects: number, intents: number) => `${projects} 个项目 · ${intents} 个启用方向`,
   empty: {
-    discoveryNone: '还没有新的发现',
-    discoveryNoSeeds: '还没有带 arXiv 编号的项目论文',
     openProjects: '打开项目列表',
-    watch: '还没有新的推送',
   },
   dismissAll: '全部忽略',
   actions: {
@@ -32,8 +27,6 @@ export const inbox = {
     dismiss: '忽略',
   },
   notices: {
-    queued: '已存入稍后阅读',
-    alreadyQueued: '已在稍后阅读中',
     dismissedAll: '已全部忽略',
     dismissed: '已忽略',
     duplicateToast: '库里已有这一篇',

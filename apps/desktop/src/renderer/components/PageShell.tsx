@@ -1,13 +1,13 @@
 import {
   forwardRef,
-  useCallback,
   type HTMLAttributes,
   type ReactNode,
 } from 'react'
-import { useScrollFade } from '../hooks/useScrollFade.js'
 import { FadeText } from './FadeText.js'
+import { FoldToggle } from './FoldToggle.js'
 import { HeadingCount, headingText } from './HeadingCount.js'
 import { InlineMessage } from './InlineMessage.js'
+import { ScrollArea } from './ScrollArea.js'
 import './PageShell.css'
 
 const classes = (base: string, className: string | undefined) =>
@@ -23,12 +23,16 @@ export const PageShell = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElemen
 /**
  * Fixed-height page identity bar: the back button when the page has one and the title, as children,
  * and `actions`, everything that acts on the whole page, at its right end. Page actions are default-size
- * buttons, the primary one last.
+ * buttons, the primary one last. `size: 'pane'` heads a pane beside the page, such as the reader's paper
+ * chat and rail panels: the same bar on the pane's ground, its title a step smaller.
  */
-export const PageHeader = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement> & { actions?: ReactNode }>(
-  function PageHeader({ className, children, actions, ...props }, ref) {
+export const PageHeader = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement> & {
+  actions?: ReactNode
+  size?: 'page' | 'pane'
+}>(
+  function PageHeader({ className, children, actions, size = 'page', ...props }, ref) {
     return (
-      <div ref={ref} className={classes('desk-head', className)} {...props}>
+      <div ref={ref} className={classes(size === 'pane' ? 'desk-head desk-head--pane' : 'desk-head', className)} {...props}>
         {children}
         {actions === undefined ? null : <div className="page-actions">{actions}</div>}
       </div>
@@ -36,10 +40,18 @@ export const PageHeader = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivEleme
   },
 )
 
-/** The one place for switching between peer views of the page, with the filters that go with them, at the body's start. */
-export const PageToolbar = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
-  function PageToolbar({ className, ...props }, ref) {
-    return <div ref={ref} className={classes('page-toolbar', className)} {...props} />
+/** A line of state among a page or pane head's actions, such as when the page last refreshed. */
+export function PageNote({ children }: { children: ReactNode }) {
+  return <span className="page-note">{children}</span>
+}
+
+/**
+ * The one place for switching between peer views of the page, with the filters that go with them, at the body's start.
+ * `align: 'center'` centres them over the stream of entries the toolbar heads, whose own gap spaces it.
+ */
+export const PageToolbar = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement> & { align?: 'start' | 'center' }>(
+  function PageToolbar({ className, align = 'start', ...props }, ref) {
+    return <div ref={ref} className={classes(align === 'center' ? 'page-toolbar page-toolbar--center' : 'page-toolbar', className)} {...props} />
   },
 )
 
@@ -64,16 +76,20 @@ export function PageTitle({ children, label, count, className, ...props }: {
   )
 }
 
-/** The only main scrolling area of the page; its top and bottom fade while content is hidden past them. */
-export const PageBody = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
-  function PageBody({ className, ...props }, ref) {
-    const fade = useScrollFade('y')
-    const attach = useCallback((node: HTMLDivElement | null) => {
-      fade(node)
-      if (typeof ref === 'function') ref(node)
-      else if (ref !== null) ref.current = node
-    }, [fade, ref])
-    return <div ref={attach} className={classes('desk-body', className)} data-fade-paint="" {...props} />
+/**
+ * The only main scrolling area of the page; its top and bottom fade while content is hidden past them.
+ * Its content keeps to the page's column: `column: 'page'` for list screens, `prose` for pages that are
+ * read, such as a Wiki page or a project. A `fill` body does not scroll: its content takes its height
+ * and scrolls inside, as a table does.
+ */
+export const PageBody = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement> & {
+  column?: 'page' | 'prose'
+  fill?: boolean
+}>(
+  function PageBody({ className, column = 'page', fill = false, ...props }, ref) {
+    const own = `desk-body${column === 'prose' ? ' desk-body--prose' : ''}`
+    if (fill) return <div ref={ref} className={classes(`${own} desk-body--fill`, className)} {...props} />
+    return <ScrollArea axis="y" fill gutter paint ref={ref} className={classes(own, className)} {...props} />
   },
 )
 
@@ -99,26 +115,44 @@ export function PageError({ error, variant = 'page' }: {
 }
 
 /**
- * The one section heading in the app. `variant` is its role: `page` heads a section of a page's body,
- * `group` heads a group inside a section or a card, and `rail` heads a section of a side rail or a
- * detail panel. `count` follows the title as ` · N`. `actions` holds everything that acts on the
- * section and sits at the heading's end.
+ * The one heading of a section or a group, below the page title. `level` is its level: `section`
+ * heads a section of a page's body, and `group` heads anything one step below: a group of items, a
+ * card, or a section of a side rail or a detail panel. Each level has one type, one height and one
+ * space above and below. `count` follows the title as ` · N`. `meta` follows the title on its line
+ * in the meta type, such as when a card's subject was last checked. With `fold`, the title is the
+ * fold toggle of the content whose id is `fold.controls`, its caret after the title. `actions` holds
+ * everything that acts on the section, never toggles it, and sits at the heading's end without
+ * making the heading taller.
  */
 export const SectionHeading = forwardRef<HTMLDivElement, {
   children: ReactNode
   actions?: ReactNode
   count?: number | undefined
-  variant?: 'page' | 'group' | 'rail'
+  meta?: ReactNode
+  fold?: { open: boolean; onToggle: () => void; controls?: string } | undefined
+  level?: 'section' | 'group'
 } & HTMLAttributes<HTMLDivElement>>(
-  function SectionHeading({ children, actions, count, className, variant = 'page', ...rest }, ref) {
+  function SectionHeading({ children, actions, count, meta, fold, className, level = 'section', ...rest }, ref) {
+    // The title, with its count and meta, is the heading, without the actions beside it: a section's
+    // at the second level under the page title, a group's at the third.
+    const heading = { role: 'heading', 'aria-level': level === 'group' ? 3 : 2 } as const
+    const label = (
+      <>
+        {children}<HeadingCount count={count} />
+        {meta === undefined ? null : <span className="section-heading-meta">{meta}</span>}
+      </>
+    )
     return (
-      <div ref={ref} className={classes(`section-heading section-heading--${variant}`, className)} {...rest}>
-        {/*
-          * The title and its count are the heading, without the actions beside it: a section's at the
-          * second level under the page title, a group's at the third. The heading is a flex row, so the
-          * count shares the title's span instead of becoming an item of its own.
-          */}
-        <span role="heading" aria-level={variant === 'group' ? 3 : 2}>{children}<HeadingCount count={count} /></span>
+      <div ref={ref} className={classes(`section-heading section-heading--${level}`, className)} {...rest}>
+        {fold === undefined ? <span {...heading}>{label}</span> : (
+          // A folding title is the heading's toggle, as an accordion's is, and fills the row as the toggle does.
+          <span {...heading} className="section-heading-fold">
+            <FoldToggle open={fold.open} onToggle={fold.onToggle} {...(fold.controls === undefined ? {} : { controls: fold.controls })}>
+              {/* The toggle lays its label out as a flex row, so the count and meta share the title's span. */}
+              {count === undefined && meta === undefined ? children : <span>{label}</span>}
+            </FoldToggle>
+          </span>
+        )}
         {actions === undefined ? null : <div className="section-heading-actions">{actions}</div>}
       </div>
     )

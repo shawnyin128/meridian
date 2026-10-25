@@ -42,6 +42,10 @@
 .form-textarea.form-control-field{padding:var(--sp-8) var(--sp-10);line-height:var(--lh-ui);resize:vertical}
 .form-control-field:hover{border-color:var(--sep-strong)}
 .form-control-field:disabled{cursor:default;opacity:.55}
+/* A boxed field sets its own text, so its text reads the same in every form, whatever the text around it. */
+.form-control-field{font-family:var(--sans);font-size:var(--fs-body);font-weight:var(--fw-regular);line-height:var(--lh-ui)}
+/* A long text that is source, such as a page's Markdown, shows it in the code font. */
+.form-textarea.form-control-code{font-family:var(--mono);font-size:var(--fs-sm)}
 
 /*
  * An inline editor takes the place of the text it replaces: its padding and border lie in negative
@@ -108,3 +112,21 @@
   padding:0;border:0;border-radius:var(--r-xs);background:none;cursor:pointer;appearance:none}
 .colour-field-picker::-webkit-color-swatch-wrapper{padding:0}
 .colour-field-picker::-webkit-color-swatch{border:1px solid var(--sep2);border-radius:var(--r-xs)}
+
+/*
+ * A labelled field: the label in the label column, then the field. The rows of one FieldRows, or of a
+ * DraftForm, share their host's label column, as wide as its longest label; a row on its own has a
+ * column of its own. A row without a label spans the label column too. Text in the field's place
+ * reads as a property value.
+ */
+.field-rows{display:grid;grid-template-columns:max-content minmax(0,1fr);column-gap:var(--sp-12);row-gap:var(--sp-12);min-width:0}
+.field-rows>*{grid-column:1/-1}
+.field-row{display:grid;grid-template-columns:max-content minmax(0,1fr);align-items:center;column-gap:var(--sp-12);min-width:0}
+.field-rows>.field-row{grid-template-columns:subgrid}
+.field-row-label{grid-column:1;white-space:nowrap;color:var(--ter);font-size:var(--fs-meta);line-height:var(--lh-ui)}
+.field-row-field{grid-column:2;display:flex;align-items:center;gap:var(--sp-8);min-width:0;color:var(--sec);font-size:var(--fs-meta);line-height:var(--lh-ui)}
+.field-row-field:only-child{grid-column:1/-1}
+.field-row-field>:is(.form-control,.choice-picker,.directory-field,.clearable-input){flex:1}
+/* A long text's label stays level with its first line. */
+.field-row:has(>.field-row-field>.form-textarea){align-items:start}
+.field-row:has(>.field-row-field>.form-textarea)>.field-row-label{padding-top:calc(var(--sp-8) + 1px)}

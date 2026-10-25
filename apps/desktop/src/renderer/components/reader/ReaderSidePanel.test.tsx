@@ -22,6 +22,9 @@ vi.mock('../../shell/AppShell.js', () => ({
 
 const { ReaderSidePanel } = await import('./ReaderSidePanel.js')
 const { GenerationsContext } = await import('../../hooks/useGenerations.js')
+const { ModelStatusContext } = await import('../../hooks/useModelStatus.js')
+/** A shell whose model status says a model is set up. */
+const CONNECTED: import('../../hooks/useModelStatus.js').ModelStatus = { connected: true, source: 'api', track: (send) => send }
 /** A shell in which Core is generating nothing. */
 const IDLE = {
   running: () => false, run: async (work: Promise<unknown>) => { await work }, stop: vi.fn(),
@@ -91,10 +94,12 @@ describe('ReaderSidePanel', () => {
   ) => act(() => root!.render(
     <MessagesProvider>
       <GenerationsContext.Provider value={IDLE}>
-        <ReaderSidePanel
-          tab={tab} onTab={vi.fn()} paper={paper} onPaper={vi.fn()} reading={held} currentPage={1}
-          saving={false} onMutate={onSave} onSaveRemark={onSave} onJump={vi.fn()} focusHighlightId={null} selectedHighlightId={null}
-        />
+        <ModelStatusContext.Provider value={CONNECTED}>
+          <ReaderSidePanel
+            tab={tab} onTab={vi.fn()} paper={paper} onPaper={vi.fn()} reading={held} currentPage={1}
+            saving={false} onMutate={onSave} onSaveRemark={onSave} onJump={vi.fn()} focusHighlightId={null} selectedHighlightId={null}
+          />
+        </ModelStatusContext.Provider>
       </GenerationsContext.Provider>
     </MessagesProvider>,
   ))
@@ -130,19 +135,19 @@ describe('ReaderSidePanel', () => {
     expect(onTab.mock.calls).toEqual([[null], ['metadata']])
   })
 
-  it('右栏的每个面板都以同一种标题栏开头，元数据面板也有', () => {
+  it('右栏的每个面板都是同一种贴边的侧面板，以同一种标题栏开头，元数据面板也有', () => {
     const heads = (['metadata', 'highlights', 'notes', 'remark', 'wiki'] as const).map((tab) => {
       show(tab, PAPER_ONE, undefined, PAPER)
       const panel = host.querySelector('.reader-side')!.firstElementChild!
-      const head = panel.firstElementChild!
-      return [head.tagName, head.className, head.querySelector('strong')?.textContent]
+      const head = panel.querySelector('.side-panel-content')!.firstElementChild!
+      return [panel.tagName, panel.className.split(' ').slice(0, 2).join(' '), head.className, head.querySelector('.t')?.textContent]
     })
     expect(heads).toEqual([
-      ['HEADER', 'reader-panel-head', '元数据'],
-      ['HEADER', 'reader-panel-head', '高亮与批注'],
-      ['HEADER', 'reader-panel-head', '阅读笔记 · 1'],
-      ['HEADER', 'reader-panel-head', '随笔 · 本篇'],
-      ['HEADER', 'reader-panel-head', '内化到 Wiki'],
+      ['ASIDE', 'side-panel side-panel--edge', 'desk-head desk-head--pane', '元数据'],
+      ['ASIDE', 'side-panel side-panel--edge', 'desk-head desk-head--pane', '高亮与批注'],
+      ['ASIDE', 'side-panel side-panel--edge', 'desk-head desk-head--pane', '阅读笔记 · 1'],
+      ['ASIDE', 'side-panel side-panel--edge', 'desk-head desk-head--pane', '随笔 · 本篇'],
+      ['ASIDE', 'side-panel side-panel--edge', 'desk-head desk-head--pane', '内化到 Wiki'],
     ])
   })
 

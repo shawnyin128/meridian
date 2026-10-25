@@ -12,26 +12,19 @@
 
 /* The project timeline and the details below share one content width; an open node's panel only narrows the left column. */
 .desk .desk-body>.wkpage.project-detail-page{max-width:var(--pagew)}
-.project-detail-panel>.detail-panel__content{min-width:0}
+.project-detail-page{display:flex;gap:var(--sp-32);align-items:flex-start}
 /* Node panel: the Markdown document, branch results and progress records an agent maintains; the App only reads them. */
 .wkpage.node-reading{gap:var(--sp-24)}
 /* Fixed height with its own scroll: the page keeps its height and position whichever node is open. */
-.wkside.node-document-pane{flex:0 0 520px;width:520px;max-width:min(520px,48vw);height:100cqh;
-  box-sizing:border-box;padding:var(--sp-20) var(--sp-24);border:1px solid var(--sep);border-radius:var(--r-card);background:var(--card);
-  box-shadow:var(--sh-1);overscroll-behavior:auto;--fade-paint:var(--card);--fade-pad-top:var(--sp-20);--fade-pad-bottom:var(--sp-20)}
+.project-detail-panel{position:sticky;top:0;z-index:2;height:100cqh}
 @media (max-width:1150px){
   .wkpage.node-reading{gap:var(--sp-20)}
-  .wkside.node-document-pane{flex-basis:44%;width:44%;max-width:44%;padding:var(--sp-16) var(--sp-20);--fade-pad-top:var(--sp-16);--fade-pad-bottom:var(--sp-16)}
 }
 
 /* The Workspace is a connection, not core metadata: its path is truncated, and a dot names its state, in words when it is not connected. */
 .workspace-field{display:flex;align-items:center;gap:var(--sp-4);min-width:0}
 .workspace-root{display:flex;align-items:center;gap:var(--sp-6);min-width:0;flex:1;border:0;background:transparent;color:inherit;font:inherit;text-align:left;cursor:pointer;padding:0}
 .workspace-kinds{margin-bottom:var(--sp-16)}
-.workspace-form{display:grid;gap:var(--sp-10)}
-.workspace-form label{display:grid;grid-template-columns:66px minmax(0,1fr);align-items:center;gap:var(--sp-12);
-  color:var(--ter);font-size:var(--fs-sm)}
-.workspace-form .form-control{width:100%;font-size:var(--fs-base)}
 .workspace-form .form-input[type="number"]{-moz-appearance:textfield}
 .workspace-form .form-input[type="number"]::-webkit-inner-spin-button{appearance:none;margin:0}
 

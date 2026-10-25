@@ -38,7 +38,7 @@ describe('IdeaPanel', () => {
 
   const headings = () => [...host.querySelectorAll('.section-heading')].map((heading) => heading.textContent)
 
-  it('标题在顶行，跟着宿主的操作和关闭；再是类型标签、内容、宿主自己的分节，最后是来源', () => {
+  it('面板头写标题，跟着宿主的操作和关闭；正文里再是类型标签、内容、宿主自己的分节，最后是来源', () => {
     const onClose = vi.fn()
     act(() => root.render(
       <MessagesProvider>
@@ -47,12 +47,12 @@ describe('IdeaPanel', () => {
         </IdeaPanel>
       </MessagesProvider>,
     ))
-    const head = host.querySelector('.idea-panel-head')!
-    expect(head.querySelector('.node-document-title')!.textContent).toBe(IDEA.title)
+    const head = host.querySelector('.panel-head')!
+    expect(head.querySelector('.panel-head-title')!.textContent).toBe(IDEA.title)
     expect([...head.querySelectorAll('button')].map((button) => button.textContent || button.getAttribute('aria-label')))
       .toEqual(['打开想法', '收起详情'])
     expect([...host.querySelectorAll('.idea-panel-meta .tag')].map((tag) => tag.textContent)).toEqual(['想法', '已归档'])
-    expect(headings()).toEqual([`${IDEA.title}打开想法`, '内容', '来源'])
+    expect(headings()).toEqual(['内容', '来源'])
     expect(host.querySelector('.idea-panel-body')!.textContent).toBe('先做一个最小探针。')
     const order = [...host.querySelectorAll('.idea-panel-body, .probe, .idea-panel-source')].map((el) => el.className)
     expect(order).toEqual(['idea-panel-body', 'probe', 'idea-panel-source'])
@@ -64,10 +64,11 @@ describe('IdeaPanel', () => {
   it('创建和更新日期在顶部，跟在类型标签后面；正文和来源之后不再写日期', () => {
     act(() => root.render(<MessagesProvider><IdeaPanel idea={IDEA} onClose={vi.fn()} /></MessagesProvider>))
     const meta = host.querySelector('.idea-panel-meta')!
-    expect(meta.previousElementSibling).toBe(host.querySelector('.idea-panel-head'))
+    const body = host.querySelector('.panel-body')!
+    expect([body.previousElementSibling, body.firstElementChild]).toEqual([host.querySelector('.panel-head'), meta])
     expect(meta.querySelector('.idea-panel-dates')!.textContent).toBe('创建于 9月17日 · 更新于 9月18日')
     expect([...meta.children].map((child) => child.className.split(' ')[0])).toEqual(['tag', 'tag', 'idea-panel-dates'])
-    expect(host.lastElementChild).toBe(host.querySelector('.idea-panel-source'))
+    expect(body.lastElementChild).toBe(host.querySelector('.idea-panel-source'))
   })
 
   it('创建和更新是同一天时只写创建于', () => {
@@ -78,7 +79,7 @@ describe('IdeaPanel', () => {
   it('自己写下的想法没有来源一节，也不写手动添加', () => {
     const own: ResearchIdea = { ...IDEA, source: { chatTitle: '手动添加' } }
     act(() => root.render(<MessagesProvider><IdeaPanel idea={own} onClose={vi.fn()} onOpenSourceChat={vi.fn()} /></MessagesProvider>))
-    expect(headings()).toEqual([own.title, '内容'])
+    expect(headings()).toEqual(['内容'])
     expect(host.querySelector('.idea-panel-source')).toBeNull()
     expect(host.textContent).not.toContain('手动添加')
   })
@@ -91,7 +92,7 @@ describe('IdeaPanel', () => {
     ))
     expect(host.querySelector('.editor-probe')).not.toBeNull()
     expect(host.querySelector('.idea-panel-body')).toBeNull()
-    expect(headings()).toEqual([IDEA.title, '来源'])
+    expect(headings()).toEqual(['来源'])
   })
 
   it('给了打开来源对话的去处才有这个按钮，按它打开那段对话', () => {

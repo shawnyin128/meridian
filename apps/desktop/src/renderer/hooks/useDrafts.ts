@@ -3,7 +3,7 @@ import {
   type ChangeEvent, type KeyboardEvent, type ReactNode,
 } from 'react'
 import { library } from '../ipc.js'
-import { composing } from '../lib/keyboard.js'
+import { commitKeys } from '../lib/keyboard.js'
 
 /** Unsent drafts held per target; see `useDrafts`. */
 export type Drafts<D = string> = {
@@ -304,18 +304,18 @@ export function useDraft<D>(scope: readonly string[], target: string): [D | null
 }
 
 /**
- * The field that edits `stored`, with its draft kept in `drafts` under `target`. `text` is the
- * draft, or `stored` when there is none; typing keeps the stored text the draft started from, and
- * Esc drops the draft so the stored text shows again, except while an input method is composing. `stale` is true when the stored text has
- * changed since the draft started: the field is then marked as a refused save (`aria-invalid`), and
- * the caller must not save it. `drop` forgets the draft once it has been saved. Spread `fieldProps`
- * onto the field.
+ * The multi-line field that edits `stored`, with its draft kept in `drafts` under `target`. `text`
+ * is the draft, or `stored` when there is none; typing keeps the stored text the draft started from,
+ * and Esc drops the draft so the stored text shows again (see `commitKeys`). `stale` is true when the
+ * stored text has changed since the draft started: the field is then marked as a refused save
+ * (`aria-invalid`), and the caller must not save it. `drop` forgets the draft once it has been saved.
+ * Spread `fieldProps(onSave)` onto the field, where the multi-line commit key calls `onSave`.
  */
 export function editField(drafts: Drafts<EditDraft>, target: string, stored: string): {
   text: string
   stale: boolean
   drop: () => void
-  fieldProps: {
+  fieldProps: (onSave?: () => void) => {
     value: string
     'aria-invalid': true | undefined
     onChange: (event: ChangeEvent<HTMLTextAreaElement>) => void
@@ -327,15 +327,11 @@ export function editField(drafts: Drafts<EditDraft>, target: string, stored: str
     text: edit.text,
     stale: edit.stale,
     drop: edit.drop,
-    fieldProps: {
+    fieldProps: (onSave) => ({
       value: edit.text,
       'aria-invalid': edit.stale || undefined,
       onChange: (event) => edit.change(event.target.value),
-      onKeyDown: (event) => {
-        if (event.key !== 'Escape' || !edit.editing || composing(event.nativeEvent)) return
-        event.stopPropagation()
-        edit.drop()
-      },
-    },
+      onKeyDown: commitKeys({ multiline: true, ...(onSave === undefined ? {} : { onSave }), ...(edit.editing ? { onCancel: edit.drop } : {}) }),
+    }),
   }
 }

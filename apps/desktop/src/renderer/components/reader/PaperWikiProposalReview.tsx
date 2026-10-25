@@ -4,8 +4,8 @@ import type {
 import { useMessages } from '../../messages/useMessages.js'
 import type { Catalog } from '../../messages/catalog.js'
 import { EmptyState } from '../EmptyState.js'
-import { HeadingCount } from '../HeadingCount.js'
 import { InlineMessage } from '../InlineMessage.js'
+import { SectionHeading } from '../PageShell.js'
 import { SourceAnchor } from '../SourceAnchor.js'
 import { Item } from '../Item.js'
 import { List } from '../List.js'
@@ -129,19 +129,17 @@ export function PaperWikiProposalReview({ review, quality, onJump }: {
   onJump: (page: number) => void
 }) {
   const m = useMessages()
-  const named: Record<string, { title: string; empty: string }> = m.wiki.reviewSections
+  const named: Record<string, { title: string }> = m.wiki.reviewSections
   return (
     <div className="paper-wiki-structured-review">
       {quality === undefined ? null : <QualityReport quality={quality} />}
       {review.sections.map((section) => {
-        const words = named[section.id] ?? { title: section.title, empty: section.emptyLabel }
+        const words = named[section.id] ?? { title: section.title }
         return (
           <section className="paper-wiki-review-section" key={section.id}>
-            <div className="paper-wiki-review-section-head">
-              <h4>{words.title}<HeadingCount count={section.groups.length} /></h4>
-            </div>
+            <SectionHeading level="group" count={section.groups.length}>{words.title}</SectionHeading>
             {section.groups.length === 0 ? (
-              <EmptyState variant="section">{words.empty}</EmptyState>
+              <EmptyState variant="section" />
             ) : (
               <List
                 variant="embedded"

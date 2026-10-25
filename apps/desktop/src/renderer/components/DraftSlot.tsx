@@ -34,10 +34,12 @@ export function useDraftSlot<T extends HTMLElement = HTMLElement>(open: boolean,
  * A new item's draft where the item will land: a row of its list, or a card among its cards or on a
  * card of its own when it lands elsewhere. It is the Item that holds the draft's DraftForm or
  * InlineDraftInput, in `children` or, with the parts the item will show beside it, in `title` after
- * `leading`; `slot` is useDraftSlot's. `className` only names or places it.
+ * `leading`; `slot` is useDraftSlot's. A `subgrid` row lays its parts in its list's columns, as the
+ * saved rows beside it do. `className` only names or places it.
  */
-export function DraftSlot({ as = 'row', slot, leading, title, className = '', children }: {
+export function DraftSlot({ as = 'row', subgrid = false, slot, leading, title, className = '', children }: {
   as?: 'row' | 'card'
+  subgrid?: boolean
   slot: RefObject<HTMLElement | null>
   leading?: ReactNode
   title?: ReactNode
@@ -46,7 +48,7 @@ export function DraftSlot({ as = 'row', slot, leading, title, className = '', ch
 }) {
   return (
     <Item
-      density={as} className={`draft-slot${className ? ` ${className}` : ''}`} elementRef={slot}
+      density={as} subgrid={subgrid} className={`draft-slot${className ? ` ${className}` : ''}`} elementRef={slot}
       {...(leading === undefined ? {} : { leading })} {...(title === undefined ? {} : { title })}
     >{children}</Item>
   )

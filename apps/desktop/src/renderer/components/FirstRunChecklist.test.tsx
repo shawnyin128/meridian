@@ -19,6 +19,9 @@ const state = vi.hoisted(() => ({
   plugin: 'not-installed' as 'installed' | 'not-installed',
   settingsOpen: false,
   reads: 0,
+  extensionReads: 0,
+  /** Whether the shell has read its model status yet. */
+  modelKnown: true,
   openCategory: vi.fn(),
   jump: vi.fn(),
 }))
@@ -26,7 +29,12 @@ const state = vi.hoisted(() => ({
 vi.mock('../ipc.js', () => ({
   library: { location: () => Promise.resolve({ root: '/libraries/new', openError: state.openError }) },
   harness: { modelSettings: () => { state.reads += 1; return Promise.resolve({ configured: state.configured }) } },
-  extensions: { status: () => Promise.resolve([{ id: 'codex', state: 'not-installed' }, { id: 'claude-code', state: state.plugin }]) },
+  extensions: {
+    status: () => {
+      state.extensionReads += 1
+      return Promise.resolve([{ id: 'codex', state: 'not-installed' }, { id: 'claude-code', state: state.plugin }])
+    },
+  },
 }))
 
 vi.mock('../shell/AppShell.js', () => ({
@@ -37,6 +45,7 @@ vi.mock('../shell/AppShell.js', () => ({
 }))
 
 const { FirstRunChecklist, firstRunKey, firstRunShown } = await import('./FirstRunChecklist.js')
+const { ModelStatusContext } = await import('../hooks/useModelStatus.js')
 
 const flush = async () => {
   for (let i = 0; i < 6; i += 1) await act(async () => { await Promise.resolve() })
@@ -62,7 +71,10 @@ describe('FirstRunChecklist', () => {
     globalThis.IS_REACT_ACT_ENVIRONMENT = true
     window.localStorage.clear()
     window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'zh')
-    Object.assign(state, { papers: 0, revision: 0, openError: null, configured: false, plugin: 'not-installed', settingsOpen: false, reads: 0 })
+    Object.assign(state, {
+      papers: 0, revision: 0, openError: null, configured: false, plugin: 'not-installed', settingsOpen: false, reads: 0, extensionReads: 0,
+      modelKnown: true,
+    })
     vi.clearAllMocks()
     host = document.createElement('div')
     document.body.append(host)
@@ -74,8 +86,17 @@ describe('FirstRunChecklist', () => {
     host.remove()
   })
 
+  /** Renders the checklist in a shell whose model status says a model is set up while `state.configured`. */
   const render = async () => {
-    act(() => root.render(<MessagesProvider><FirstRunChecklist onError={onError} onShown={onShown} /></MessagesProvider>))
+    act(() => root.render(
+      <MessagesProvider>
+        <ModelStatusContext.Provider value={{
+          connected: state.modelKnown ? state.configured : null, source: state.modelKnown && state.configured ? 'api' : null, track: (send) => send,
+        }}>
+          <FirstRunChecklist onError={onError} onShown={onShown} />
+        </ModelStatusContext.Provider>
+      </MessagesProvider>,
+    ))
     await flush()
   }
   const remount = async () => {
@@ -159,9 +180,27 @@ describe('FirstRunChecklist', () => {
     act(() => host.querySelector<HTMLButtonElement>('.firstrun-hide')!.click())
     expect(host.innerHTML).toBe('')
     expect(window.localStorage.getItem(firstRunKey(ROOT))).toBe('closed')
-    state.reads = 0
+    state.extensionReads = 0
     await remount()
     expect(host.innerHTML).toBe('')
+    expect(state.extensionReads).toBe(0)
+  })
+
+  it('模型这一步跟着应用共用的模型状态:状态一说配好了,不等设置关上也马上打上勾,也不自己去读模型设置', async () => {
+    await render()
+    expect(steps().find(([step]) => step === 'model')![1]).toBe('false')
+    state.configured = true
+    await render()
+    expect(steps().find(([step]) => step === 'model')![1]).toBe('true')
     expect(state.reads).toBe(0)
+  })
+
+  it('应用还没读到模型状态时不显示,也不先说一声不显示', async () => {
+    state.modelKnown = false
+    await render()
+    expect([host.innerHTML, onShown.mock.calls]).toEqual(['', []])
+    state.modelKnown = true
+    await render()
+    expect(onShown.mock.calls).toEqual([[true]])
   })
 })
