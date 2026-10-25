@@ -402,6 +402,21 @@ describe('subscription CLI runner', () => {
     expect(refused.checks).toEqual(['claude', 'claude'])
   })
 
+  it('keeps the check when the user cancels a call, and drops it when a call runs past its timeout', async () => {
+    const { runner, checks, records, answer } = standIns({ hang: true }, {}, { now: () => 0 })
+    const controller = new AbortController()
+    const cancelled = runner(call('claude', controller.signal))
+    await until(() => records().length === 1)
+    controller.abort()
+    await expect(cancelled).rejects.toMatchObject({ kind: 'cancelled' })
+    await expect(runner({ ...call('claude'), timeoutMs: 300 })).rejects.toMatchObject({ kind: 'timeout' })
+    expect(checks).toEqual(['claude'])
+
+    answer({ stdout: claudeResult({ structured_output: { title: 'Draft' } }) })
+    await runner(call('claude'))
+    expect(checks).toEqual(['claude', 'claude'])
+  })
+
   it('reports a reached usage limit as its own failure, from the error the CLI reports or the end of its stderr', async () => {
     const claude = standIns({
       stdout: claudeResult({ is_error: true, result: "You've hit your session limit · resets 3pm (Europe/Paris)" }),
