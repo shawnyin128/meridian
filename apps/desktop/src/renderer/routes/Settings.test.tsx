@@ -588,7 +588,10 @@ describe('Settings', () => {
     expect(choices.map((choice) => choice.textContent)).toEqual(['默认', '朱漆', '螺钿', '秋叶', '流霞', '青瓷'])
     expect(choices[5]!.querySelector<HTMLElement>('.appearance-mini.light')!.style.getPropertyValue('--ap-accent')).toBe('#3f7a6a')
     const problems = [...themes.querySelectorAll('.appearance-problem')]
-    expect(problems.map((problem) => [problem.querySelector('.tag--bad')?.textContent, problem.querySelector('.appearance-label')?.textContent]))
+    expect(problems.map((problem) => [
+      problem.querySelector('.inline-message--line.inline-message--error[role="alert"]')?.textContent,
+      problem.querySelector('.appearance-label')?.textContent,
+    ]))
       .toEqual([['不是 JSON', 'broken.json'], ['格式不符 · light.accent', 'pale.json']])
     expect(themes.lastElementChild).toBe(problems[1])
 
@@ -783,6 +786,9 @@ describe('Settings', () => {
     })
     await act(async () => { root.render(<MessagesProvider key="pending"><Settings /></MessagesProvider>) })
     expect(states()).toEqual(['重启后生效', '立即重启'])
+    const pending = card().querySelector('.storage-pending')!
+    expect([pending.matches('.inline-message--box.inline-message--warning[role="status"]'),
+      pending.querySelector('.inline-message-action .btn.pri')?.textContent]).toEqual([true, '立即重启'])
     expect(card().querySelector('p')).toBeNull()
   })
 

@@ -554,7 +554,7 @@ test('同一篇再进来按当下的库重取,不吃上一次的结果', async (
   // The card left the feed when it was added; the feed's link to the paper still opens it.
   await win.locator('[data-desk="feed"]').click()
   await shown(win, `.entity-link--paper[href="#reader:${paper}"]`).first().click()
-  await expect(shown(win, '.pdfload')).toHaveText('这一项已不存在')
+  await expect(shown(win, '.pdfwrap .page-error')).toHaveText('这一项已不存在')
 
   // Restored from the Trash, the same paper opens without the earlier error. The global sidebar is
   // collapsed while reading, so leave through the back button.
@@ -564,7 +564,7 @@ test('同一篇再进来按当下的库重取,不吃上一次的结果', async (
   await win.locator('.tgroup .trow .row-actions [aria-label="恢复"]').click()
   await win.locator('[data-desk="feed"]').click()
   await shown(win, `.entity-link--paper[href="#reader:${paper}"]`).first().click()
-  await expect(shown(win, '.pdfload')).toHaveCount(0)
+  await expect(shown(win, '.pdfwrap .page-error')).toHaveCount(0)
   await expect(shown(win, '.pdfpagebox')).toHaveCount(INGESTED.pages)
 })
 

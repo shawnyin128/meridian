@@ -556,7 +556,7 @@ describe('Inbox', () => {
     }
     const root = createRoot(host)
     await act(async () => { root.render(<MessagesProvider><Inbox /></MessagesProvider>) })
-    expect(host.querySelector('.fetchnote')?.textContent).toBe('检查失败 · 网络不可用')
+    expect(host.querySelector('.fetchnote .inline-message--line.inline-message--error[role="alert"]')?.textContent).toBe('检查失败 · 网络不可用')
     await act(async () => { root.unmount() })
   })
 

@@ -8,6 +8,7 @@ import { Grip, type GripProps } from '../components/Grip.js'
 import { IconButton } from '../components/IconButton.js'
 import { CHAT_BUBBLE_PATH, Icon, IconNorthStar, IconPlus } from '../components/icons.js'
 import { NavRow } from '../components/NavRow.js'
+import { InlineMessage } from '../components/InlineMessage.js'
 import { CountBadge } from '../components/Tag.js'
 import { Toolbar } from '../components/Toolbar.js'
 import { FadeText } from '../components/FadeText.js'
@@ -117,16 +118,18 @@ function UpdateRow() {
   if (update?.phase !== 'ready' && update?.phase !== 'available') return null
   const ready = update.phase === 'ready'
   return (
-    <div className="update-row" data-desk="update">
-      <span className="ic"><Icon><path d="M12 4v11" /><path d="M7 10l5 5 5-5" /><path d="M5 20h14" /></Icon></span>
-      <span className="update-row-text">
-        {ready ? m.shell.update.ready(update.version) : m.shell.update.available(update.version)}
-      </span>
-      <button
-        type="button" className="btn sm update-row-action"
-        onClick={() => { if (ready) appUpdates.install(); else window.open(update.url) }}
-      >{ready ? m.shell.update.relaunch : m.shell.update.download}</button>
-    </div>
+    <InlineMessage
+      tone="info" variant="box" className="update-row" data-desk="update"
+      lead={<Icon><path d="M12 4v11" /><path d="M7 10l5 5 5-5" /><path d="M5 20h14" /></Icon>}
+      action={(
+        <button
+          type="button" className="btn sm"
+          onClick={() => { if (ready) appUpdates.install(); else window.open(update.url) }}
+        >{ready ? m.shell.update.relaunch : m.shell.update.download}</button>
+      )}
+    >
+      {ready ? m.shell.update.ready(update.version) : m.shell.update.available(update.version)}
+    </InlineMessage>
   )
 }
 

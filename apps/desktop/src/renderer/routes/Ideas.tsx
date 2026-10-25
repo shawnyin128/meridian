@@ -9,6 +9,7 @@ import { appMenu, idea as ideaApi, project as projectApi, wiki as wikiApi } from
 import { MenuItem, MenuSeparator } from '../components/ActionMenu.js'
 import { SortMenu } from '../components/SortMenu.js'
 import { FormInput, FormTextarea } from '../components/FormControls.js'
+import { InlineMessage } from '../components/InlineMessage.js'
 import { ChoicePicker, DotsMenu } from '../components/FieldPickers.js'
 import { EditActions } from '../components/EditActions.js'
 import { CollapsibleGroup } from '../components/CollapsibleGroup.js'
@@ -339,7 +340,7 @@ function IdeaDetailPanel({
           onPick={(id) => onProject(id || null)}
         />
         {idea.project !== undefined && linked === undefined
-          ? <div className="idea-missing-project">{m.ideas.link.originalUnavailable}</div>
+          ? <InlineMessage tone="warning" variant="line" className="idea-missing-project">{m.ideas.link.originalUnavailable}</InlineMessage>
           : null}
         {candidate === undefined
           ? null

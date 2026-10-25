@@ -259,7 +259,8 @@ describe('ReviewQueue', () => {
       }),
       proposal('n5', { titles, status: 'rejected', reason: { kind: 'invalid', message: '提案没有给出它依据的页的版本：topics/sd' }, decided }),
     ])
-    expect(row('n1').querySelector('.review-note--warn')!.innerHTML).toBe('这些引句没有文字层可核对：<strong>F</strong>lux p.1')
+    expect(row('n1').querySelector('.inline-message--line.inline-message--warning[role="status"] .inline-message-text')!.innerHTML)
+      .toBe('这些引句没有文字层可核对：<strong>F</strong>lux p.1')
     expect(row('n2').querySelector('.review-reason')!.innerHTML).toBe('引句在原文第 2 页找不到：<strong>F</strong>lux')
     expect(row('n3').querySelector('.review-reason')!.textContent).toBe('差 ~5% papers/flux')
     expect(row('n4').querySelector('.review-reason')!.textContent).toBe('依据的页在提案生成之后改过')
