@@ -4,5 +4,5 @@
     "lib": ["ES2023", "DOM"]
   },
   "include": ["src/main/preload.ts", "src/shared/**/*.ts"],
-  "exclude": ["src/shared/call-boundary.test.ts"]
+  "exclude": ["src/shared/call-boundary.test.ts", "src/shared/chat-status-lines.test.ts"]
 }

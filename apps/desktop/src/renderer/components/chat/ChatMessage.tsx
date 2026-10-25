@@ -9,6 +9,7 @@ import { Icon } from '../icons.js'
 import { AgentLabel } from '../SourceLabel.js'
 import { Tag } from '../Tag.js'
 import { Button } from '../Button.js'
+import { statusLine } from './status-lines.js'
 
 export const plain = (text: string): { kind: 'text'; text: string } => ({ kind: 'text', text })
 export const said = (runs: ChatRun[]): ChatMessageFields => ({ role: 'you', runs, actions: [] })
@@ -57,6 +58,8 @@ export function ChatMessageView({ message, onAct, onRetry }: {
 }) {
   const m = useMessages()
   if (message.role === 'status') {
+    const stored = message.runs.map((run) => run.text).join('')
+    const shown = statusLine(stored, m)
     return (
       <div className="mwrap">
         <div className="msg">
@@ -64,7 +67,7 @@ export function ChatMessageView({ message, onAct, onRetry }: {
             <span className="event-icon" aria-hidden="true">
               <Icon><circle cx="12" cy="12" r="9" /><path d="M12 11v5" /><path d="M12 8h.01" /></Icon>
             </span>
-            <span><Runs runs={message.runs} /></span>
+            <span>{shown === stored ? <Runs runs={message.runs} /> : shown}</span>
             {onRetry === undefined ? null : <Button size="compact" variant="ghost" onClick={onRetry}>{m.common.retry}</Button>}
           </div>
         </div>
