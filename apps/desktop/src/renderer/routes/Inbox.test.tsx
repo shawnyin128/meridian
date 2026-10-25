@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act, type ReactNode } from 'react'
+import { act } from 'react'
 import { createRoot } from 'react-dom/client'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -116,12 +116,12 @@ describe('Inbox', () => {
     vi.unstubAllGlobals()
   })
 
-  it('全部项目的发现为空、项目里还没有带 arXiv 编号的论文时，空状态只写状态，带一个打开项目列表的操作', async () => {
+  it('全部项目的发现为空、项目里还没有带 arXiv 编号的论文时，整屏空态只有论文推送的图标和打开项目列表这一个操作，不写字', async () => {
     api.mode = 'discovery'
     const root = createRoot(host)
     await act(async () => { root.render(<MessagesProvider><Inbox /></MessagesProvider>) })
     const empty = host.querySelector('.empty-state')!
-    expect(empty.querySelector('span')?.textContent).toBe('还没有带 arXiv 编号的项目论文')
+    expect([empty.querySelector('svg') !== null, empty.textContent]).toEqual([true, '打开项目列表'])
     const action = empty.querySelector<HTMLButtonElement>('button')!
     expect(action.textContent).toBe('打开项目列表')
     act(() => action.click())
@@ -255,8 +255,8 @@ describe('Inbox', () => {
     expect(groups[0]!.querySelector('.heading-count')?.textContent).toBe(' · 2')
     expect(groups[0]!.querySelectorAll('.paper-card')).toHaveLength(2)
 
-    await act(async () => { groups[0]!.querySelector<HTMLButtonElement>('.collapsible-group-toggle')!.click() })
-    expect(groups[0]!.querySelector('.collapsible-group-toggle')?.getAttribute('aria-expanded')).toBe('false')
+    await act(async () => { groups[0]!.querySelector<HTMLButtonElement>('.collapsible-group-head .fold-toggle')!.click() })
+    expect(groups[0]!.querySelector('.collapsible-group-head .fold-toggle')?.getAttribute('aria-expanded')).toBe('false')
     expect(groups[0]!.querySelectorAll('.paper-card')).toHaveLength(0)
     expect(groups[1]!.querySelectorAll('.paper-card')).toHaveLength(1)
     await act(async () => { root.unmount() })
@@ -289,8 +289,8 @@ describe('Inbox', () => {
     const groups = [...host.querySelectorAll<HTMLElement>('.collapsible-group')]
     expect(groups.map((group) => group.dataset['group'])).toEqual(['w1', 'w2'])
 
-    await act(async () => { groups[0]!.querySelector<HTMLButtonElement>('.collapsible-group-toggle')!.click() })
-    const dismissAll = (group: HTMLElement) => [...group.querySelectorAll<HTMLButtonElement>('.collapsible-group-actions .btn')]
+    await act(async () => { groups[0]!.querySelector<HTMLButtonElement>('.collapsible-group-head .fold-toggle')!.click() })
+    const dismissAll = (group: HTMLElement) => [...group.querySelectorAll<HTMLButtonElement>('.collapsible-group-head .section-heading-actions .btn')]
       .filter((button) => button.textContent === '全部忽略')
     await act(async () => { dismissAll(groups[0]!)[0]!.click() })
     await act(async () => { await new Promise((done) => { setTimeout(done, 300) }) })
@@ -346,7 +346,7 @@ describe('Inbox', () => {
     const root = createRoot(host)
     await act(async () => { root.render(<MessagesProvider><Inbox /></MessagesProvider>) })
     expect(lastAction()).toBe('忽略')
-    expect([...host.querySelectorAll('.collapsible-group-actions .btn')].map((button) => button.textContent)).toEqual(['全部忽略'])
+    expect([...host.querySelectorAll('.collapsible-group-head .section-heading-actions .btn')].map((button) => button.textContent)).toEqual(['全部忽略'])
     await act(async () => { host.querySelector<HTMLButtonElement>('[aria-label="忽略"]')!.click() })
     expect(host.querySelector('.paper-card')!.classList.contains('is-leaving')).toBe(true)
     await act(async () => { await new Promise((done) => { setTimeout(done, 300) }) })
@@ -446,7 +446,7 @@ describe('Inbox', () => {
     }
   })
 
-  it('刷新发现的结果说真的没有新论文时,提示说没有新的,并写出结果带回的这个范围上次刷新的日期与时刻', async () => {
+  it('刷新发现没有带来新论文时不弹通知,列表本身说明了结果', async () => {
     api.mode = 'discovery'
     api.scope = 'p1'
     const at = new Date(2026, 9, 23, 9, 30).getTime()
@@ -461,17 +461,13 @@ describe('Inbox', () => {
     const root = createRoot(host)
     await act(async () => { root.render(<MessagesProvider><Inbox /></MessagesProvider>) })
     const refresh = [...host.querySelectorAll<HTMLButtonElement>('.desk-head .btn')].find((held) => held.textContent === '刷新发现')!
+    api.notice.success.mockClear()
     await act(async () => { refresh.click() })
-    const toast = document.createElement('div')
-    const shown = createRoot(toast)
-    act(() => shown.render(<MessagesProvider>{api.notice.success.mock.calls.at(-1)![0] as ReactNode}</MessagesProvider>))
-    expect(toast.textContent).toMatch(/^没有发现新的论文 · 上次刷新 /)
-    expect([...toast.querySelectorAll('.date-chip')].map((chip) => chip.textContent)).toEqual(['10月23日', '09:30'])
-    act(() => shown.unmount())
+    expect([api.notice.success.mock.calls, api.notice.refusal.mock.calls]).toEqual([[], []])
     await act(async () => { root.unmount() })
   })
 
-  it('刷新发现没送来论文、但有方向失败时,结果不算真的没有新论文,提示不写上次刷新的时刻', async () => {
+  it('刷新发现有方向失败时只报失败:几个方向失败,不弹没有新论文的通知', async () => {
     api.mode = 'discovery'
     api.scope = 'p1'
     const at = new Date(2026, 9, 23, 9, 30).getTime()
@@ -485,13 +481,10 @@ describe('Inbox', () => {
     const root = createRoot(host)
     await act(async () => { root.render(<MessagesProvider><Inbox /></MessagesProvider>) })
     const refresh = [...host.querySelectorAll<HTMLButtonElement>('.desk-head .btn')].find((held) => held.textContent === '刷新发现')!
+    api.notice.success.mockClear()
+    api.notice.refusal.mockClear()
     await act(async () => { refresh.click() })
-    const toast = document.createElement('div')
-    const shown = createRoot(toast)
-    act(() => shown.render(<MessagesProvider>{api.notice.success.mock.calls.at(-1)![0] as ReactNode}</MessagesProvider>))
-    expect(toast.textContent).toBe('没有发现新的论文 · 请求 0 个方向 · 1 个方向失败 · 下轮优先重试')
-    expect(toast.querySelectorAll('.date-chip')).toHaveLength(0)
-    act(() => shown.unmount())
+    expect([api.notice.success.mock.calls, api.notice.refusal.mock.calls]).toEqual([[], [['1 个方向失败']]])
     await act(async () => { root.unmount() })
   })
 
@@ -505,17 +498,17 @@ describe('Inbox', () => {
     api.scope = 'w1'
     const root = createRoot(host)
     await act(async () => { root.render(<MessagesProvider><Inbox /></MessagesProvider>) })
-    expect(host.querySelector('.fetchnote')!.textContent).toBe('没有新论文 · 上次检查 9月21日08:15')
+    expect(host.querySelector('.page-note')!.textContent).toBe('没有新论文 · 上次检查 9月21日08:15')
     await act(async () => { root.unmount() })
     status.fetch!.last = { watches: ['w1'], added: 2, at }
     const added = createRoot(host)
     await act(async () => { added.render(<MessagesProvider><Inbox /></MessagesProvider>) })
-    expect(host.querySelector('.fetchnote')!.textContent).toBe('上次检查 9月21日08:15')
+    expect(host.querySelector('.page-note')!.textContent).toBe('上次检查 9月21日08:15')
     await act(async () => { added.unmount() })
     api.scope = 'all'
     const all = createRoot(host)
     await act(async () => { all.render(<MessagesProvider><Inbox /></MessagesProvider>) })
-    expect(host.querySelector('.fetchnote')!.textContent).toBe('上次检查 9月20日14:05')
+    expect(host.querySelector('.page-note')!.textContent).toBe('上次检查 9月20日14:05')
     await act(async () => { all.unmount() })
   })
 
@@ -544,7 +537,7 @@ describe('Inbox', () => {
     }
     const root = createRoot(host)
     await act(async () => { root.render(<MessagesProvider><Inbox /></MessagesProvider>) })
-    const note = host.querySelector('.fetchnote')!
+    const note = host.querySelector('.page-note')!
     expect(note.firstChild!.textContent).toBe('上次检查')
     expect([...note.querySelectorAll('.date-time-display .date-chip')].map((chip) => chip.textContent)).toEqual(['9月20日', '14:05'])
     await act(async () => { root.unmount() })
@@ -556,7 +549,7 @@ describe('Inbox', () => {
     }
     const root = createRoot(host)
     await act(async () => { root.render(<MessagesProvider><Inbox /></MessagesProvider>) })
-    expect(host.querySelector('.fetchnote .inline-message--line.inline-message--error[role="alert"]')?.textContent).toBe('检查失败 · 网络不可用')
+    expect(host.querySelector('.page-note .inline-message--line.inline-message--error[role="alert"]')?.textContent).toBe('检查失败 · 网络不可用')
     await act(async () => { root.unmount() })
   })
 
@@ -614,7 +607,7 @@ describe('Inbox', () => {
     await act(async () => { root.unmount() })
   })
 
-  it('发现页用小齿轮直接打开发现设置，不在页面重复渲染方向编辑器；概况只写数量', async () => {
+  it('发现页用小齿轮直接打开发现设置，不在页面重复渲染方向编辑器，也不写方向概况', async () => {
     api.mode = 'discovery'
     api.profiles = [{
       id: 'p1', name: '项目一', seedCount: 2, positiveCount: 0, negativeCount: 0,
@@ -633,7 +626,7 @@ describe('Inbox', () => {
     const root = createRoot(host)
     await act(async () => { root.render(<MessagesProvider><Inbox /></MessagesProvider>) })
     const gear = host.querySelector<HTMLButtonElement>('[aria-label="发现设置"]')!
-    expect(host.querySelector('.discovery-note')?.textContent).toBe('1 个项目 · 2 个启用方向')
+    expect(host.textContent).not.toContain('启用方向')
     expect(gear.querySelector('svg')).not.toBeNull()
     expect(host.textContent).not.toContain('管理方向')
     expect(host.textContent).not.toContain('Draft Model')

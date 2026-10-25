@@ -31,7 +31,7 @@ const { useChatTurn } = await import('./useChatTurn.js')
 function mount(): ReturnType<typeof useChatTurn> {
   let turn: ReturnType<typeof useChatTurn> | undefined
   function Probe() {
-    turn = useChatTurn((_session, sent) => sent)
+    turn = useChatTurn((sent) => sent)
     return null
   }
   act(() => { createRoot(document.createElement('div')).render(<Probe />) })

@@ -12,8 +12,10 @@
 .modal.confirm{--modal-w:420px}
 .modal.form{--modal-w:520px}
 .modal.wide{--modal-w:820px}
+.modal.modal--top{top:12vh;bottom:auto;max-height:calc(88vh - var(--sp-24))}
 .modal-title{margin:0;font-size:var(--fs-dialog-title);font-weight:var(--fw-semibold);line-height:var(--lh-tight);color:var(--ink)}
 .modal>.modal-title{padding:0 var(--sp-20) var(--sp-8)}
+.modal-title--hidden{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
 /*
  * The side padding lives inside the scrolling body, so focus rings next to its edges are not clipped.
  * The body is a stacking layer of its own, so nothing it fades or stacks rises above the close control.

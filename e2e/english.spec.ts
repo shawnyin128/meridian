@@ -5,8 +5,8 @@ const SHOTS = resolve(import.meta.dirname, '../outputs/e2e/shots')
 
 /** Sidebar entry selector and the English crumb its screen shows. */
 const SCREENS: readonly (readonly [string, string])[] = [
-  ['[data-desk="feed"]', 'Feed'], ['[data-inbox="discovery"]', 'Inbox'], ['[data-desk="later"]', 'Read Later'],
-  ['[data-desk="papers"]', 'Papers'], ['[data-desk="wiki"]', 'Wiki'], ['[data-desk="changelog"]', 'Recent Changes'],
+  ['[data-desk="feed"]', 'Feed'], ['[data-inbox="discovery"]', 'Inbox'], ['[data-desk="later"]', 'Read later'],
+  ['[data-desk="papers"]', 'Papers'], ['[data-desk="wiki"]', 'Wiki'], ['[data-desk="changelog"]', 'Recent changes'],
   ['[data-desk="restl"]', 'Overview'], ['[data-desk="resproj"]', 'Projects'], ['[data-desk="ideas"]', 'Ideas'],
   ['[data-desk="trash"]', 'Trash'],
 ]
@@ -26,7 +26,7 @@ test('picking English relabels the shell and each main screen, and survives a re
   await win.keyboard.press('Escape')
 
   for (const [entry, label] of SCREENS) {
-    await win.locator(`.sidebar ${entry}`).click()
+    await win.locator(`#sidebar ${entry}`).click()
     await expect(win.locator('.titlebar')).toContainText(label)
     await win.screenshot({ path: `${SHOTS}/english-${label.toLowerCase().replace(' ', '-')}.png` })
   }

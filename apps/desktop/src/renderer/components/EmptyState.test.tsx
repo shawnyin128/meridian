@@ -1,36 +1,37 @@
+// @vitest-environment jsdom
 import { renderToStaticMarkup } from 'react-dom/server'
-import { describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it } from 'vitest'
+import { MessagesProvider } from '../messages/useMessages.js'
+import { LANGUAGE_STORAGE_KEY } from '../shell/language.js'
 import { EmptyState } from './EmptyState.js'
 
+const render = (node: Parameters<typeof renderToStaticMarkup>[0]) => renderToStaticMarkup(<MessagesProvider>{node}</MessagesProvider>)
+
 describe('EmptyState', () => {
-  it('draws the page variant as a centred icon plus one sentence', () => {
-    const html = renderToStaticMarkup(
-      <EmptyState variant="page" icon={<svg />}>还没有论文推送。</EmptyState>,
-    )
-    expect(html).toContain('class="empty-state empty-state--page"')
-    expect(html).toContain('<svg')
-    expect(html).toContain('还没有论文推送。')
+  beforeEach(() => { window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'zh') })
+
+  it('draws an empty page as the screen glyph alone, without a sentence', () => {
+    expect(render(<EmptyState variant="page" icon={<svg />} />)).toBe('<div class="empty-state empty-state--page"><svg></svg></div>')
   })
 
-  it('draws the section variant as one grey line without an icon slot', () => {
-    const html = renderToStaticMarkup(
-      <EmptyState variant="section" icon={<svg />}>暂无关联想法。</EmptyState>,
-    )
-    expect(html).toContain('class="empty-state empty-state--section"')
-    expect(html).not.toContain('<svg')
+  it('puts the one action that ends the emptiness after the glyph', () => {
+    expect(render(<EmptyState variant="page" icon={<svg />} action={<button type="button" className="btn">打开项目列表</button>} />))
+      .toBe('<div class="empty-state empty-state--page"><svg></svg><button type="button" class="btn">打开项目列表</button></div>')
   })
 
-  it('puts its one action after the sentence', () => {
-    const html = renderToStaticMarkup(
-      <EmptyState variant="page" action={<button type="button" className="btn">打开项目列表</button>}>还没有项目论文</EmptyState>,
-    )
-    expect(html).toBe('<div class="empty-state empty-state--page"><span>还没有项目论文</span>'
-      + '<button type="button" class="btn">打开项目列表</button></div>')
+  it('draws an empty section as one line holding the shared empty value', () => {
+    expect(render(<EmptyState variant="section" />)).toBe('<div class="empty-state empty-state--section">—</div>')
   })
 
-  it('keeps the page variant usable without an icon', () => {
-    const html = renderToStaticMarkup(<EmptyState variant="page">都看过了。</EmptyState>)
-    expect(html).toContain('class="empty-state empty-state--page"')
-    expect(html).not.toContain('<svg')
+  it('draws an empty option list as that line holding the no-result word, its word where an option\'s text starts', () => {
+    expect(render(<EmptyState variant="option" />)).toBe('<div class="empty-state empty-state--option">无结果</div>')
+  })
+
+  it('draws a search or picker that found nothing as the same line holding the no-result word', () => {
+    expect(render(<EmptyState variant="results" />)).toBe('<div class="empty-state empty-state--section">无结果</div>')
+  })
+
+  it('stands the shared empty value in a value\'s place inline', () => {
+    expect(render(<EmptyState variant="inline" />)).toBe('<span class="empty-state empty-state--inline">—</span>')
   })
 })

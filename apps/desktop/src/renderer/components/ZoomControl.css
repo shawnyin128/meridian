@@ -1,0 +1,7 @@
+/* The one zoom control: a pill on the card surface, floating above the view it zooms. */
+.zoom-control{position:absolute;z-index:22;display:flex;align-items:center;gap:var(--sp-2);padding:var(--sp-4) var(--sp-6);
+  border-radius:var(--r-full);background:var(--card);box-shadow:var(--sh-2)}
+.zoom-control--bottom{bottom:var(--sp-16);left:50%;transform:translateX(-50%)}
+.zoom-control--corner{top:var(--sp-8);right:var(--sp-8)}
+/* Wide enough for 240%, so the buttons beside it never move as the zoom changes. */
+.zoom-control-reset{min-width:52px}

@@ -1,11 +1,3 @@
-.service-status-head{display:flex;align-items:flex-start;justify-content:space-between;gap:var(--sp-16);
-  padding-bottom:var(--sp-14);border-bottom:1px solid var(--sep2)}
-.service-status-head strong{font-size:var(--fs-item-title);font-weight:var(--fw-title);color:var(--ink)}
-.service-status-head p{margin:var(--sp-6) 0 0;color:var(--ter);font-size:var(--fs-cap);line-height:var(--lh-ui)}
-.service-card{--service-label-w:88px}
-.service-field{display:grid;grid-template-columns:var(--service-label-w) minmax(0,1fr);gap:var(--sp-12);align-items:center;margin-top:var(--sp-12)}
-.service-field>span{color:var(--sec);font-size:var(--fs-sm)}
-.service-field .form-control{width:100%}
 .service-saved-key{display:flex;align-items:center;gap:var(--sp-4)}
 .service-key-mask{color:var(--ter);letter-spacing:.08em}
 .service-key-tail{color:var(--ink);font-family:var(--mono);letter-spacing:.04em}

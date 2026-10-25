@@ -1,0 +1,4 @@
+/* A section's heading is one 24px row in the label type, its text on the rows' inline padding. */
+.nav-section-head{display:flex;align-items:center;gap:var(--sp-4);height:var(--sp-24);margin:var(--sp-8) 0 0;padding:0 var(--row-nav-pad);
+  font-size:var(--fs-label);font-weight:var(--fw-label);color:var(--ter)}
+.nav-section-action{display:flex;margin-left:auto}

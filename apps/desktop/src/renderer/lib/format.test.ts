@@ -100,3 +100,17 @@ describe('月份与星期', () => {
     expect(fmt.weekdayShort(6)).toBe('Sat')
   })
 })
+
+describe('时间戳的日期与作者列表', () => {
+  it('时间戳写成它在本地日历上的那一天,ISO 时间和毫秒时间一样', () => {
+    const late = new Date(2026, 8, 18, 23, 30)
+    expect(createFormat('zh').day(late.toISOString())).toBe('9月18日')
+    expect(createFormat('zh').day(late.getTime())).toBe('9月18日')
+    expect(createFormat('en').day(new Date(2026, 9, 2, 0, 5).toISOString())).toBe('Oct 2')
+  })
+
+  it('作者按顺序用逗号隔开,没有作者时是空的', () => {
+    expect(createFormat('zh').authors(['Ada Lovelace', 'Alan Turing'])).toBe('Ada Lovelace, Alan Turing')
+    expect(createFormat('en').authors([])).toBe('')
+  })
+})
