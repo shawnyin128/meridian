@@ -140,7 +140,7 @@ export const STATES = [
   // The trash loads once per App run, so its failure comes in a batch that has not shown the trash.
   { screen: '垃圾桶', state: 'page-error', batch: 'settings', steps: [['fail', 'trash.list', 'newer-version'], ...desk('trash'), ['wait', `${V}[role="alert"]`]] },
   // Leaving the theme editor asks to discard the draft, so it is the batch's last state.
-  { screen: '设置', state: 'theme-editor', batch: 'settings', scope: 'overlay', steps: [...openSettings, ...settingsPane('appearance'), ['click', '.appearance-add'], ['wait', '.theme-editor-title']] },
+  { screen: '设置', state: 'theme-editor', batch: 'settings', scope: 'overlay', steps: [...openSettings, ...settingsPane('appearance'), ['click', '.set-body .section-heading .add-action'], ['wait', '.theme-editor-title']] },
 ]
 
 /** The screens in the order the map first visits them. */

@@ -630,15 +630,16 @@ describe('Settings', () => {
     expect(choices[5]!.getAttribute('aria-checked')).toBe('true')
   })
 
-  it('外观主题最后一张是只有加号的卡,点它编辑页换掉设置的两栏;返回回到外观', async () => {
+  it('外观主题的小标题里是「＋ 主题」,主题卡后面不再有加号卡;点它编辑页换掉设置的两栏,返回回到外观', async () => {
     await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
     const dialog = document.querySelector('.setdlg')!
     await act(async () => {
       dialog.querySelector<HTMLElement>('[data-setcat="appearance"]')!.click()
     })
-    const themes = dialog.querySelector('[role="radiogroup"][aria-label="外观主题"]')!
-    const add = themes.nextElementSibling as HTMLButtonElement
-    expect([add.getAttribute('aria-label'), add.textContent, add.nextElementSibling]).toEqual(['新建外观主题', '', null])
+    expect(dialog.querySelector('[role="radiogroup"][aria-label="外观主题"]')!.nextElementSibling).toBeNull()
+    const heading = [...dialog.querySelectorAll('.section-heading')].find((held) => held.firstChild?.textContent === '外观主题')!
+    const add = heading.querySelector<HTMLButtonElement>('.section-heading-actions > .add-action')!
+    expect([add.getAttribute('aria-label'), add.textContent]).toEqual(['新建外观主题', '主题'])
 
     await act(async () => { add.click() })
     expect(dialog.querySelector('[data-setcat]')).toBeNull()
@@ -738,7 +739,7 @@ describe('Settings', () => {
     await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
     const settings = document.querySelector<HTMLElement>('[role="dialog"]')!
     await act(async () => { settings.querySelector<HTMLElement>('[data-setcat="appearance"]')!.click() })
-    await act(async () => { settings.querySelector<HTMLButtonElement>('.appearance-add')!.click() })
+    await act(async () => { settings.querySelector<HTMLButtonElement>('.add-action[aria-label="新建外观主题"]')!.click() })
     const close = settings.querySelector<HTMLButtonElement>(':scope > .modal-close')!
     await act(async () => { close.click() })
     expect(api.setOpen).toHaveBeenCalledExactlyOnceWith(false)

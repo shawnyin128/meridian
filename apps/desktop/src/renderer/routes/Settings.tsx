@@ -27,6 +27,7 @@ import { DeliverySettings } from '../components/settings/DeliverySettings.js'
 import { ModelSettings } from '../components/settings/ModelSettings.js'
 import { ApiOverview } from '../components/settings/ApiOverview.js'
 import { ExtensionSettings } from '../components/settings/ExtensionSettings.js'
+import { AddAction } from '../components/AddAction.js'
 import { Button } from '../components/Button.js'
 import { ConfirmDialog } from '../components/ConfirmDialog.js'
 import { DateTimeDisplay } from '../components/DateTimeDisplay.js'
@@ -243,7 +244,14 @@ export function Settings() {
     appearance: (
       <>
         <AppearanceSettings />
-        <SectionHeading>{m.settings.appearance.themeHeading}</SectionHeading>
+        <SectionHeading
+          actions={(
+            <AddAction variant="section" label={m.settings.appearance.editor.create} onClick={() => setEditingTheme({ theme: null })}>
+              {m.settings.appearance.editor.createShort}
+            </AddAction>
+          )}
+        >{m.settings.appearance.themeHeading}
+        </SectionHeading>
         <ColourThemeSettings onEdit={(theme) => setEditingTheme({ theme })} onError={reportTo('appearance')} />
         <SectionHeading>{m.settings.language.heading}</SectionHeading>
         <LanguageSettings />

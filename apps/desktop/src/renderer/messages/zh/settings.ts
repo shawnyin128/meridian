@@ -34,6 +34,7 @@ export const settings = {
     themeProblemAt: (problem: string, path: string) => `${problem} · ${path}`,
     editor: {
       create: '新建外观主题',
+      createShort: '主题',
       name: '名称',
       basedOn: '基于',
       mode: '编辑的模式',

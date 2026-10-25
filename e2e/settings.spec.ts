@@ -354,7 +354,7 @@ const forgetColourTheme = (win: Page) => win.evaluate(() => {
 test('新建外观主题:保存写进配置目录的 themes/<id>.json 并套用;编辑时在 App 外改了文件,没改过就重读,改过就留着修改并标出', async ({ app, win, configHome }) => {
   try {
     await openSettings(app, win)
-    await win.locator('.setdlg .appearance-add').click()
+    await win.locator('.setdlg .section-heading .add-action[aria-label="新建外观主题"]').click()
     await win.locator('.setdlg input[aria-label="名称"]').fill('E2E Theme')
     await win.locator('.setdlg [data-module="accent"]').click()
     const hex = win.locator('.setdlg input[aria-label="色值"]')
@@ -388,7 +388,7 @@ test('新建外观主题:保存写进配置目录的 themes/<id>.json 并套用;
 test('外观主题从新建、保存、套用,到重新加载后还在、在卡片的 … 菜单里重新编辑和删除', async ({ app, win, configHome }) => {
   try {
     await openSettings(app, win)
-    await win.locator('.setdlg .appearance-add').click()
+    await win.locator('.setdlg .section-heading .add-action[aria-label="新建外观主题"]').click()
     await win.locator('.setdlg input[aria-label="名称"]').fill('晨雾')
     await win.locator('.setdlg [data-module="accent"]').click()
     await win.locator('.setdlg input[aria-label="色值"]').fill('#2f6fbf')
