@@ -240,6 +240,7 @@ const background = createBackground({
 })
 const cliRunner = createCliRunner({
   discover: (cli) => discoverCli(cli),
+  settingsRevision: () => harnessModel.subscriptionRevision(),
   internalMcp: createInternalMcp({ store, onLog: (line) => console.error(`[harness] ${line}`) }),
 })
 const paperWikiHarness = vaultRoot === undefined ? null : createPaperWikiHarnessRunner({

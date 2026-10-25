@@ -20,6 +20,8 @@ const CODEX_MCP_FEATURE = 'code_mode_host'
 const NAMED_SCHEMA_KEYS = new Set(['properties', '$defs', 'definitions', 'patternProperties'])
 
 const MAX_CLI_ERROR_DETAIL = 300
+/** How long a CLI's passed check holds before a call checks it again. */
+const CHECK_TTL_MS = 5 * 60_000
 
 export type CliCall = {
   cli: HarnessCli
@@ -200,18 +202,34 @@ function codexResult(outcome: ChildOutcome, outputFile: string): Omit<CliResult,
  * in with the user's subscription, in `environment` without its API-key variables, inside an empty
  * folder of a fresh temporary folder that it removes afterwards. A call with a `lookup` scope also
  * gets the internal MCP server `internalMcp` opens in that folder, and only that server, which the
- * runner closes once the CLI has exited, however the call ends; a refused call opens none.
+ * runner closes once the CLI has exited, however the call ends; a refused call opens none. A passed
+ * check holds for five minutes by `now`, until `settingsRevision` changes or a call does not complete.
  */
 export function createCliRunner(deps: {
   discover: (cli: HarnessCli) => Promise<CliDiscovery>
+  /** A number that changes whenever the subscription settings change. */
+  settingsRevision?: () => number
   environment?: NodeJS.ProcessEnv
   internalMcp?: InternalMcpOpener
+  now?: () => number
 }): CliRunner {
   const environment = deps.environment ?? process.env
-  return async (call) => {
-    const ready = readiness(await deps.discover(call.cli))
+  const now = deps.now ?? Date.now
+  const revision = deps.settingsRevision ?? (() => 0)
+  /** Each CLI's binary from its last passed check, with when it passed and under which settings revision. */
+  const passed = new Map<HarnessCli, { binary: string; at: number; revision: number }>()
+  const checkedBinary = async (cli: HarnessCli) => {
+    const kept = passed.get(cli)
+    if (kept !== undefined && now() - kept.at < CHECK_TTL_MS && kept.revision === revision()) return kept.binary
+    passed.delete(cli)
+    const check = { at: now(), revision: revision() }
+    const ready = readiness(await deps.discover(cli))
     if (!('binary' in ready)) throw new CliRunError(ready.kind, ready.message)
-    const { binary } = ready
+    passed.set(cli, { binary: ready.binary, ...check })
+    return ready.binary
+  }
+  return async (call) => {
+    const binary = await checkedBinary(call.cli)
     if (call.lookup !== undefined && deps.internalMcp === undefined) {
       throw new Error('This runner has no internal MCP server for a call that looks up the vault')
     }
@@ -238,6 +256,9 @@ export function createCliRunner(deps: {
       const durationMs = Date.now() - started
       const result = call.cli === 'claude' ? claudeResult(outcome) : codexResult(outcome, files.output)
       return { ...result, durationMs }
+    }).catch((cause: unknown) => {
+      passed.delete(call.cli)
+      throw cause
     })
   }
 }

@@ -293,6 +293,24 @@ describe('subscription choice', () => {
     expect((await createHarnessModelConfig(root, credentialVault())).settings().subscription.active).toBeNull()
   })
 
+  it('changes the subscription revision each time the subscription choice is saved, and only then', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'meridian-model-config-'))
+    const config = await createHarnessModelConfig(root, credentialVault())
+    const revisions = [config.subscriptionRevision()]
+
+    await config.update({ ...apiProfile, apiKey: 'anthropic-secret' })
+    revisions.push(config.subscriptionRevision())
+    config.updateSubscription({ cli: 'claude', model: '' })
+    revisions.push(config.subscriptionRevision())
+    config.updateSubscription({ cli: 'claude', model: '' })
+    revisions.push(config.subscriptionRevision())
+    await config.update({ ...apiProfile })
+    revisions.push(config.subscriptionRevision())
+
+    expect(revisions[1]).toBe(revisions[0])
+    expect(new Set(revisions.slice(1)).size).toBe(4)
+  })
+
   it('writes no subscription file while only API profiles are saved', async () => {
     const root = mkdtempSync(join(tmpdir(), 'meridian-model-config-'))
     const config = await createHarnessModelConfig(root, credentialVault())

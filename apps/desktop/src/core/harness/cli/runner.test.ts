@@ -72,8 +72,15 @@ const found = (cli: HarnessCli, binary: string, fields: Partial<Extract<CliDisco
   cli, installed: true, binary, version: '2.1.280', missingFlags: [], signIn: 'subscription', ...fields,
 })
 
-/** A folder holding stand-in `claude` and `codex` executables and the file they record to. */
-function standIns(reply: Reply, discovered: Partial<Extract<CliDiscovery, { installed: true }>> = {}) {
+/**
+ * A folder holding stand-in `claude` and `codex` executables and the file they record to, and a
+ * runner on them whose clock and settings revision `clock` gives; `checks` lists each CLI checked.
+ */
+function standIns(
+  reply: Reply,
+  discovered: Partial<Extract<CliDiscovery, { installed: true }>> = {},
+  clock: { now?: () => number; settingsRevision?: () => number } = {},
+) {
   const root = mkdtempSync(join(tmpdir(), 'meridian-cli-test-'))
   folders.push(root)
   const bin = join(root, 'bin')
@@ -93,14 +100,21 @@ function standIns(reply: Reply, discovered: Partial<Extract<CliDiscovery, { inst
     STAND_IN_RECORD: recordFile,
     STAND_IN_REPLY: JSON.stringify(reply),
   }
+  const checks: HarnessCli[] = []
   const runner = createCliRunner({
-    discover: async (cli: HarnessCli) => found(cli, join(bin, cli), discovered),
+    discover: async (cli: HarnessCli) => {
+      checks.push(cli)
+      return found(cli, join(bin, cli), discovered)
+    },
     environment,
+    ...clock,
   })
   const records = (): Seen[] => existsSync(recordFile)
     ? readFileSync(recordFile, 'utf8').split('\n').filter((line) => line !== '').map((line) => JSON.parse(line) as Seen)
     : []
-  return { bin, runner, records }
+  /** Makes the stand-ins answer `next` from the next call on. */
+  const answer = (next: Reply) => { environment.STAND_IN_REPLY = JSON.stringify(next) }
+  return { bin, runner, records, checks, answer }
 }
 
 const call = (cli: HarnessCli, signal = new AbortController().signal) => ({
@@ -343,6 +357,49 @@ describe('subscription CLI runner', () => {
       await expect(runner(call('claude'))).rejects.toMatchObject({ kind: 'signed-out' })
       expect(records()).toEqual([])
     }
+  })
+
+  it('keeps a passed check for five minutes, per CLI, then checks again', async () => {
+    let now = 0
+    const { runner, checks } = standIns({ stdout: claudeResult({ structured_output: { title: 'Draft' } }) }, {}, { now: () => now })
+
+    await runner(call('claude'))
+    now = 5 * 60_000 - 1
+    await runner(call('claude'))
+    expect(checks).toEqual(['claude'])
+    await runner(call('codex'))
+    expect(checks).toEqual(['claude', 'codex'])
+    now = 5 * 60_000
+    await runner(call('claude'))
+    expect(checks).toEqual(['claude', 'codex', 'claude'])
+  })
+
+  it('checks again at once once the subscription settings change', async () => {
+    let revision = 1
+    const { runner, checks } = standIns({ stdout: claudeResult({ structured_output: { title: 'Draft' } }) }, {}, {
+      now: () => 0, settingsRevision: () => revision,
+    })
+
+    await runner(call('claude'))
+    await runner(call('claude'))
+    revision = 2
+    await runner(call('claude'))
+    expect(checks).toEqual(['claude', 'claude'])
+  })
+
+  it('checks again at once after a call fails, and keeps no check that refused a call', async () => {
+    const { runner, checks, answer } = standIns({ stdout: 'not json', stderr: 'boom', exit: 1 }, {}, { now: () => 0 })
+
+    await expect(runner(call('claude'))).rejects.toMatchObject({ kind: 'failed' })
+    answer({ stdout: claudeResult({ structured_output: { title: 'Draft' } }) })
+    await runner(call('claude'))
+    await runner(call('claude'))
+    expect(checks).toEqual(['claude', 'claude'])
+
+    const refused = standIns({ stdout: claudeResult({ structured_output: { title: 'Draft' } }) }, { signIn: 'signed-out' }, { now: () => 0 })
+    await expect(refused.runner(call('claude'))).rejects.toMatchObject({ kind: 'signed-out' })
+    await expect(refused.runner(call('claude'))).rejects.toMatchObject({ kind: 'signed-out' })
+    expect(refused.checks).toEqual(['claude', 'claude'])
   })
 
   it('reports a reached usage limit as its own failure, from the error the CLI reports or the end of its stderr', async () => {
