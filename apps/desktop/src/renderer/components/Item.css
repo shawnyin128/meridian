@@ -21,7 +21,7 @@
 .item--card.item--muted{background-color:var(--content)}
 .item--row.item--muted .item-main{opacity:.52}
 /* A marked item carries its colour along its leading edge; its content keeps the shared inset. */
-.item--marked{--item-mark:var(--sep);border-left:3px solid var(--item-mark);padding-left:calc(var(--item-inset) - 2px)}
+.item--marked{--item-mark:var(--sep);border-left:3px solid var(--item-mark);padding-left:calc(var(--item-inset) - var(--sp-2))}
 /* A dismissed item fades and slides away before its list drops it. */
 .item--leaving{opacity:0;transform:translateX(var(--sp-24))}
 .item--actionable{cursor:pointer}
@@ -52,9 +52,9 @@
  * card's head sits on its first line: its texts on one baseline, its actions centred on that line.
  */
 .item-head{display:flex;align-items:baseline;gap:var(--sp-12);min-width:0}
-.item-head>.item-actions{align-self:flex-start;margin-top:calc((1lh - var(--sp-24)) / 2)}
+.item-head>.item-actions{align-self:flex-start;margin-top:calc((var(--lh-ui) * var(--fs-body) - var(--sp-24)) / 2)}
 .item-leading{display:flex;flex:none;align-items:center;color:var(--ter)}
-.item-leading>svg{width:13px;height:13px}
+.item-leading>svg,.item-trailing>svg{width:13px;height:13px}
 /* A leading mark belongs with the title it marks: it stands 8px before it, not a whole slot gap. */
 .item-leading{margin-right:calc(var(--sp-8) - var(--sp-12))}
 .item-main{display:flex;flex:1;min-width:0;align-items:center;gap:var(--sp-8)}

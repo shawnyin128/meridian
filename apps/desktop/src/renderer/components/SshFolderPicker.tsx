@@ -12,10 +12,10 @@ import { FormInput } from './FormControls.js'
 import { IconButton } from './IconButton.js'
 import { IconEnclosingFolder, IconFolder, IconNext } from './icons.js'
 import { InlineMessage } from './InlineMessage.js'
-import { Item } from './Item.js'
-import { List } from './List.js'
 import { LoadingPlaceholder } from './LoadingPlaceholder.js'
 import { PickerPopover, PickOption } from './PickerPopover.js'
+import { Item } from './Item.js'
+import { List } from './List.js'
 import './SshFolderPicker.css'
 
 /** One folder of an SSH host, as Core listed it. */
@@ -209,8 +209,9 @@ export function SshFolderBrowser({ choice }: { choice: SshFolderChoice }) {
               <List variant="embedded" rows="fill" aria-label={folder.path}>
                 {folder.folders.map((child) => (
                   <Item
-                    key={child.path} className="ssh-folder-row" onActivate={() => openFrom(child.path)} leading={<IconFolder />}
-                    title={<FadeText className="ssh-folder-name" label={child.name}>{child.name}</FadeText>} trailing={<IconNext />}
+                    key={child.path} className="ssh-folder-row" onActivate={() => openFrom(child.path)}
+                    leading={<IconFolder />} title={<FadeText className="ssh-folder-name" label={child.name}>{child.name}</FadeText>}
+                    trailing={<IconNext />}
                   />
                 ))}
               </List>
