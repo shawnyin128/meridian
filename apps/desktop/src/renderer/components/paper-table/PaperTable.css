@@ -62,21 +62,11 @@
 .tblwrap .ptable thead th:first-child{left:0;z-index:4}
 /*
  * Content scrolling under the title column, the actions column or the header fades at the sticky
- * cell's inner edge while the cell is stuck, in that cell's own paint, so a hovered or selected row
- * keeps its tint; the sticky cells themselves never fade. A header cell marking a column drop keeps
- * its ::after for the marker.
+ * cell's inner edge while the cell is stuck (data-stuck-fade), in that cell's own paint, so a hovered
+ * or selected row keeps its tint; the sticky cells themselves never fade, and the fade reaches out of
+ * the body cells.
  */
-.ptable :is(th,td):first-child,.ptable td.row-actions-cell,.tblwrap .ptable thead th{container-type:scroll-state}
 .ptable td:first-child,.ptable td.row-actions-cell{overflow:visible}
-.ptable :is(th,td):first-child::before,.ptable :is(td.row-actions-cell,th.th-add)::before,
-.tblwrap .ptable thead th:not(.column-drop-after)::after{content:"";position:absolute;background:inherit;opacity:0;
-  pointer-events:none;transition:opacity var(--t-fast) var(--e-out)}
-.ptable :is(th,td):first-child::before{top:0;bottom:0;left:100%;width:var(--sp-24);mask-image:linear-gradient(to right,#000,transparent)}
-.ptable :is(td.row-actions-cell,th.th-add)::before{top:0;bottom:0;right:100%;width:var(--sp-24);mask-image:linear-gradient(to left,#000,transparent)}
-.tblwrap .ptable thead th:not(.column-drop-after)::after{top:100%;left:0;right:0;height:var(--sp-24);mask-image:linear-gradient(#000,transparent)}
-@container scroll-state(stuck: left){.ptable :is(th,td):first-child::before{opacity:1}}
-@container scroll-state(stuck: right){.ptable :is(td.row-actions-cell,th.th-add)::before{opacity:1}}
-@container scroll-state(stuck: top){.tblwrap .ptable thead th:not(.column-drop-after)::after{opacity:1}}
 .ptable td .ci .hid{display:none}
 .ptable td .ci.chip-expanded{display:flex;align-items:center;flex-wrap:wrap;gap:var(--sp-2);overflow:visible;white-space:normal;text-overflow:clip}
 .ptable td .ci.chip-expanded .hid{display:inline-block;animation:chip-row-reveal var(--t) var(--e-out) both}

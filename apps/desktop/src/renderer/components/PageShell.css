@@ -1,7 +1,7 @@
 .desk{flex:1;overflow:hidden;background:var(--content);display:flex;flex-direction:column;min-width:0;position:relative}
 .desk-head{display:flex;align-items:center;gap:var(--sp-8);box-sizing:border-box;height:46px;padding:0 var(--sp-16);border-bottom:1px solid var(--sep);background:var(--sidebar);backdrop-filter:blur(20px)}
 .desk-head .t{font-size:var(--fs-page-title);font-weight:var(--fw-title)}
-.desk-body{flex:1;overflow:auto;padding:var(--sp-20) var(--page-inset);scrollbar-gutter:stable}
+.desk-body{padding:var(--sp-20) var(--page-inset)}
 /* A page body holds sticky rails and headings, so it fades its scrolled edges in paint. */
 .desk-body{--fade-paint:var(--content);--fade-pad-top:var(--sp-20);--fade-pad-bottom:var(--sp-20)}
 /* Must override the margin shorthand of sections and grids, or they undo the centering of page content. */

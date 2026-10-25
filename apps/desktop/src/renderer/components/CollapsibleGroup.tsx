@@ -32,7 +32,7 @@ export function CollapsibleGroup({
   ].filter(Boolean).join(' ')
   return (
     <section className={classes} {...data}>
-      <div className="collapsible-group-head">
+      <div className="collapsible-group-head" {...(variant === 'quiet' ? {} : { 'data-stuck-fade': 'top' })}>
         <FoldToggle
           className="collapsible-group-toggle" open={open} controls={bodyId}
           onToggle={() => { setOpening(!open); onToggle() }}

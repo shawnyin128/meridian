@@ -1,13 +1,12 @@
 import {
   forwardRef,
-  useCallback,
   type HTMLAttributes,
   type ReactNode,
 } from 'react'
-import { useScrollFade } from '../hooks/useScrollFade.js'
 import { FadeText } from './FadeText.js'
 import { HeadingCount, headingText } from './HeadingCount.js'
 import { InlineMessage } from './InlineMessage.js'
+import { ScrollArea } from './ScrollArea.js'
 import './PageShell.css'
 
 const classes = (base: string, className: string | undefined) =>
@@ -64,13 +63,7 @@ export function PageTitle({ children, label, count, className, ...props }: {
 /** The only main scrolling area of the page; its top and bottom fade while content is hidden past them. */
 export const PageBody = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
   function PageBody({ className, ...props }, ref) {
-    const fade = useScrollFade('y')
-    const attach = useCallback((node: HTMLDivElement | null) => {
-      fade(node)
-      if (typeof ref === 'function') ref(node)
-      else if (ref !== null) ref.current = node
-    }, [fade, ref])
-    return <div ref={attach} className={classes('desk-body', className)} data-fade-paint="" {...props} />
+    return <ScrollArea axis="y" fill gutter paint ref={ref} className={classes('desk-body', className)} {...props} />
   },
 )
 

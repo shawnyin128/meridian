@@ -2,7 +2,6 @@ import { useEffect, useRef } from 'react'
 import type { PaperHighlight, PaperNote, PaperReading, ReadingMutation } from '../../../shared/contract.js'
 import { editField, type Drafts, type EditDraft } from '../../hooks/useDrafts.js'
 import { useMessages } from '../../messages/useMessages.js'
-import { useScrollFade } from '../../hooks/useScrollFade.js'
 import { FormTextarea } from '../FormControls.js'
 import { EmptyState } from '../EmptyState.js'
 import { IconButton } from '../IconButton.js'
@@ -10,6 +9,7 @@ import { IconTrash } from '../icons.js'
 import { RowActions } from '../StructuredList.js'
 import { SourceAnchor } from '../SourceAnchor.js'
 import { ReaderPanelHeader } from './ReaderPanelHeader.js'
+import { ScrollArea } from '../ScrollArea.js'
 import { useClipped } from '../../hooks/useClipped.js'
 import { CommitActions } from '../CommitActions.js'
 
@@ -116,7 +116,6 @@ export function ReadingNotes({
   edits: Drafts<EditDraft>
 }) {
   const m = useMessages()
-  const listFade = useScrollFade('y')
   const compose = `new-note:${reading.paperId}`
   const draft = drafts.get(compose) ?? ''
   const addNote = async () => {
@@ -138,29 +137,31 @@ export function ReadingNotes({
         />
         <CommitActions place="item" saving={saving} canSave={draft.trim() !== ''} onSave={() => { void addNote() }} />
       </div>}
-      <div className="reading-list" ref={listFade}>
-        {mode === 'notes' ? null : reading.highlights.map((highlight) => (
-          <HighlightCard
-            key={highlight.id} highlight={highlight} edits={edits} onJump={() => onJump(highlight.page)}
-            focus={focusHighlightId === highlight.id} selected={selectedHighlightId === highlight.id}
-            onSave={(note) => onMutate({ kind: 'highlight.update', id: highlight.id, note })}
-            onDelete={() => onMutate({ kind: 'highlight.delete', id: highlight.id })}
-          />
-        ))}
-        {mode === 'highlights' ? null : reading.notes.map((note) => (
-          <NoteCard
-            key={note.id} note={note} edits={edits} onJump={() => onJump(note.page)}
-            onSave={(text) => onMutate({ kind: 'note.update', id: note.id, text })}
-            onDelete={() => onMutate({ kind: 'note.delete', id: note.id })}
-          />
-        ))}
-        {mode === 'notes'
-          ? (reading.notes.length === 0 ? <EmptyState variant="section">{m.reader.emptyNotes}</EmptyState> : null)
-          : mode === 'highlights'
-            ? (reading.highlights.length === 0 ? <EmptyState variant="section">{m.reader.emptyHighlights}</EmptyState> : null)
-            : (reading.highlights.length === 0 && reading.notes.length === 0
-              ? <EmptyState variant="section">{m.reader.emptyReading}</EmptyState> : null)}
-      </div>
+      <ScrollArea axis="y" fill>
+        <div className="reading-list">
+          {mode === 'notes' ? null : reading.highlights.map((highlight) => (
+            <HighlightCard
+              key={highlight.id} highlight={highlight} edits={edits} onJump={() => onJump(highlight.page)}
+              focus={focusHighlightId === highlight.id} selected={selectedHighlightId === highlight.id}
+              onSave={(note) => onMutate({ kind: 'highlight.update', id: highlight.id, note })}
+              onDelete={() => onMutate({ kind: 'highlight.delete', id: highlight.id })}
+            />
+          ))}
+          {mode === 'highlights' ? null : reading.notes.map((note) => (
+            <NoteCard
+              key={note.id} note={note} edits={edits} onJump={() => onJump(note.page)}
+              onSave={(text) => onMutate({ kind: 'note.update', id: note.id, text })}
+              onDelete={() => onMutate({ kind: 'note.delete', id: note.id })}
+            />
+          ))}
+          {mode === 'notes'
+            ? (reading.notes.length === 0 ? <EmptyState variant="section">{m.reader.emptyNotes}</EmptyState> : null)
+            : mode === 'highlights'
+              ? (reading.highlights.length === 0 ? <EmptyState variant="section">{m.reader.emptyHighlights}</EmptyState> : null)
+              : (reading.highlights.length === 0 && reading.notes.length === 0
+                ? <EmptyState variant="section">{m.reader.emptyReading}</EmptyState> : null)}
+        </div>
+      </ScrollArea>
     </aside>
   )
 }

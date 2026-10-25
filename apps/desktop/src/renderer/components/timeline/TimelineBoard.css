@@ -16,7 +16,6 @@
 .glrow.msl>.timeline-item-label,.glrow.msl>.timeline-label-open{flex:0 1 auto}
 /* A label that opens something is the row's button and draws nothing of its own. */
 .timeline-label-open{display:flex;flex:1;min-width:0;padding:0;border:0;border-radius:var(--r-sm);background:none;color:inherit;font:inherit;text-align:left;cursor:inherit}
-.gwrap{overflow-x:auto;flex:1;min-width:0}
 .gcanvas{position:relative;border-bottom:1px solid var(--sep2)}
 .glabels .glrow:last-child{border-bottom:1px solid var(--sep2)}
 .glrow[draggable]{cursor:var(--cursor-draggable)}

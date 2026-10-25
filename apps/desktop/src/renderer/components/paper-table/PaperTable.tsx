@@ -1100,7 +1100,7 @@ export function PaperTable() {
         <thead>
           <tr data-row-actions="">
             {/* A sortable header sorts on click; its button is the keyboard's way to that click. */}
-            <th data-k="title" aria-sort={ariaSort('title')} onClick={() => clickHeader('title')}>
+            <th data-k="title" data-stuck-fade="top left" aria-sort={ariaSort('title')} onClick={() => clickHeader('title')}>
               <button type="button" className="thsort">
                 {m.papers.columns.title}{sort === 'title' ? <> <SortArrow direction={direction} /></> : null}
               </button>
@@ -1109,6 +1109,8 @@ export function PaperTable() {
             {cols.map((c) => (
               <th
                 key={c.k} data-k={c.sort} aria-sort={c.sort ? ariaSort(c.sort) : undefined}
+                // A column marking a drop after it draws the marker in the pseudo-element the fade would take.
+                data-stuck-fade={columnDrop?.key === c.k && columnDrop.after ? undefined : 'top'}
                 className={[
                   movingColumn === c.k ? 'column-moving' : '',
                   columnDrop?.key === c.k ? `column-drop-${columnDrop.after ? 'after' : 'before'}` : '',
@@ -1150,7 +1152,7 @@ export function PaperTable() {
                 />
               )
               : null}
-            <th className="th-add">
+            <th className="th-add" data-stuck-fade="top right">
               <RowActions>
                 <AddAction
                   size="compact" ref={colAdd} label={m.papers.columnHeader.addColumn}
@@ -1188,10 +1190,10 @@ export function PaperTable() {
                       }
                     }}
                   >
-                    <td className="pt-title"><ToolbarButton className="ci pt-open"><PaperText text={p.title} /></ToolbarButton></td>
+                    <td className="pt-title" data-stuck-fade="left"><ToolbarButton className="ci pt-open"><PaperText text={p.title} /></ToolbarButton></td>
                     {cols.map((c) => cell(p, c))}
                     {newCol ? <td className="pt-cust" /> : null}
-                    <td className="row-actions-cell">
+                    <td className="row-actions-cell" data-stuck-fade="right">
                       <RowActions>
                         <IconButton
                           label={m.papers.rowActions.delete} size="nested" tone="danger" className="rowx"

@@ -15,8 +15,9 @@ const stylesheet = (path: string) => readFileSync(join(import.meta.dirname, '..'
 
 describe('窗口框架的滚动区', () => {
   it('时间线只在真能横向滚动时才留出滚动条的轨道', () => {
-    document.head.innerHTML = `<style>${stylesheet('components/timeline/TimelineBoard.css')}</style>`
-    document.body.innerHTML = '<div class="gantt"><div class="gsplit"><div class="gwrap"></div></div></div>'
+    document.head.innerHTML = ['components/ScrollArea.css', 'components/timeline/TimelineBoard.css']
+      .map((path) => `<style>${stylesheet(path)}</style>`).join('')
+    document.body.innerHTML = '<div class="gantt"><div class="gsplit"><div class="scroll-area scroll-area--x scroll-area--fill gwrap"></div></div></div>'
     expect(getComputedStyle(document.querySelector('.gwrap')).overflowX).toBe('auto')
   })
 

@@ -173,6 +173,8 @@ Current shared contracts:
 - `PageShell`: the shared page-level header/body/footer/error/section composition. Routes supply content
   and actions rather than copying the desktop shell structure. `SectionHeading` is the one section heading:
   its `variant` is `page`, `content`, `group` or `rail`, and `actions` is the only right-hand slot.
+- `ScrollArea`: the one scroll container, with the fade of every hidden edge, the fill of a flex column
+  and the fade a sticky element lays under itself while stuck (`data-stuck-fade`).
 - `HeadingCount`: a heading's count, ` · N` after its text in the heading's own type. `PageTitle`,
   `SectionHeading`, `CollapsibleGroup`, `DayHeading`, `CardTray` and `ReaderPanelHeader` show it through
   their `count`; no message or screen writes `· N` itself.

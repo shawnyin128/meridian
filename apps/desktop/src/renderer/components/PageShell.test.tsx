@@ -19,7 +19,7 @@ describe('PageShell', () => {
     expect(html).toContain('class="desk paper-library"')
     expect(html).toContain('class="desk-head"')
     expect(html).toContain('class="fade-text t"')
-    expect(html).toContain('class="desk-body libview"')
+    expect(html).toContain('class="scroll-area scroll-area--y scroll-area--fill scroll-area--gutter desk-body libview" data-fade-paint=""')
     expect(html).toContain('class="page-toolbar"')
     expect(html).toContain('class="desk-foot bare"')
   })
