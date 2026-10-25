@@ -19,10 +19,14 @@
 .list.list--scrollable{padding:var(--ring-room);margin-inline:calc(-1 * var(--ring-room))}
 .desk .desk-body>.list.list--scrollable{max-width:none;
   margin-inline:max(calc(-1 * var(--ring-room)),calc((100% - var(--pagew)) / 2 - var(--ring-room)))}
-/* A list that fills its container shrinks to the room it is given, and clips and keeps ring room as a scrolling list does. */
-.list--fill{flex:0 1 auto;min-height:0;overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain}
+/*
+ * A list that fills its container shrinks to the room it is given, and clips and keeps ring room as a
+ * scrolling list does. Every list that scrolls inside itself keeps its scrollbar's room from the start,
+ * so its rows' trailing slots stay put when it starts to scroll.
+ */
+.list--fill{flex:0 1 auto;min-height:0;overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;scrollbar-gutter:stable}
 .list.list--fill{padding:var(--ring-room);margin-inline:calc(-1 * var(--ring-room))}
 /* A list in a surface that clips at its edges keeps its rows against them. */
 .list.list--flush{padding:0;margin-inline:0}
-.list-column{display:flex;min-height:0;flex-direction:column;overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;
+.list-column{display:flex;min-height:0;flex-direction:column;overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;scrollbar-gutter:stable;
   padding:var(--ring-room);margin:calc(-1 * var(--ring-room))}

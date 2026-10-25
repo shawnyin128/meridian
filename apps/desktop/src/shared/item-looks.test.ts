@@ -110,3 +110,14 @@ describe('行和卡片的内缩与样子', () => {
     ])
   })
 })
+
+describe('在自己里面滚动的列表', () => {
+  it('封顶的、铺满容器的列表和一栏列表都从一开始就留出滚动条的位置，开始滚动时行尾的槽不挪', () => {
+    const list = SHEETS[2]!.replace(/\/\*[\s\S]*?\*\//g, '')
+    const gutter = (selector: string) => [...list.matchAll(/([^{}]+)\{([^{}]*)\}/g)]
+      .filter(([, selectors]) => selectors!.split(',').map((part) => part.trim()).includes(selector))
+      .map(([, , body]) => /scrollbar-gutter:([^;]+)/.exec(body!)?.[1] ?? '').find((value) => value !== '') ?? 'none'
+    expect(Object.fromEntries(['.list--scrollable', '.list--fill', '.list-column'].map((selector) => [selector, gutter(selector)])))
+      .toEqual({ '.list--scrollable': 'stable', '.list--fill': 'stable', '.list-column': 'stable' })
+  })
+})
