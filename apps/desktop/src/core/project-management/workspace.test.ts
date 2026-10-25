@@ -1,13 +1,14 @@
 import { afterEach, describe, expect, it } from 'vitest'
-import { execFileSync } from 'node:child_process'
-import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
+import { execFileSync, spawnSync } from 'node:child_process'
+import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join, resolve } from 'node:path'
+import { join, posix, resolve } from 'node:path'
 import type { ResearchIdea } from '../../shared/contract.js'
 import type { ProjectRecord } from './page.js'
 import {
   PROJECT_PLAN_SCHEMA, WORKSPACE_CHANGES_SCHEMA, WORKSPACE_SCHEMA, projectWorkspaceRoot,
-  projectWorkspaceSsh, readProjectWorkspace, writeProjectWorkspace, writeProjectWorkspaceState,
+  projectWorkspaceSsh, readProjectWorkspace, sshConfigHosts, sshFolders, writeProjectWorkspace,
+  writeProjectWorkspaceState, type SshExecutor,
 } from './workspace.js'
 
 /** Repository root, whose `src` holds the Python package an agent plugin runs. */
@@ -487,7 +488,7 @@ describe('project workspace protocol', () => {
 
   it('materializes the same protocol over SSH with one staged App-owned transaction', () => {
     const calls: { command: string; input?: Buffer }[] = []
-    const ssh = (_binding: Parameters<typeof projectWorkspaceSsh>[0] & { kind: 'ssh' }, command: string, input?: Buffer) => {
+    const ssh: SshExecutor = (_target, command, input) => {
       calls.push({ command, ...(input === undefined ? {} : { input }) })
       return calls.length === 1 ? remotePayload({}) : Buffer.alloc(0)
     }
@@ -538,5 +539,120 @@ describe('project workspace protocol', () => {
       },
       events: [{ date: '2026-09-15', text: 'Remote result', kind: 'note', origin: 'agent' }],
     })
+  })
+})
+
+/** The shells a remote host may run the listing command in as its login shell, of those this machine has. */
+const REMOTE_SHELLS = process.platform === 'win32'
+  ? []
+  : ['sh', 'bash', 'zsh'].filter((shell) => spawnSync(shell, ['-c', 'true']).status === 0)
+
+/** A listing of `path` as the remote shell prints it: the folder's path, then `./` and each folder entry's name, each ended by NUL. */
+function remoteListing(path: string, names: readonly string[]): Buffer {
+  return Buffer.from([path, ...names.map((name) => `./${name}`)].map((part) => `${part}\0`).join(''))
+}
+
+describe('choosing a folder on an SSH host', () => {
+  it('SSH 配置里只读出 Host 别名：通配、否定、HostName 与其余配置都不算，同名只出现一次，没有配置文件就是空的', () => {
+    const home = temporary()
+    const config = join(home, 'config')
+    writeFileSync(config, [
+      '# Host commented-out',
+      'Host gpu-lab cluster',
+      '  HostName 10.0.0.2',
+      '  IdentityFile ~/.ssh/id_lab',
+      '  User researcher',
+      'Host *',
+      '  ForwardAgent no',
+      'Host *.internal !bastion login?',
+      'host=jump # the jump host',
+      '  Host "quoted" gpu-lab',
+      'Match host cluster',
+      'HostKeyAlias ignored',
+      '',
+    ].join('\r\n'), 'utf8')
+    expect(sshConfigHosts(config)).toEqual(['gpu-lab', 'cluster', 'jump', 'quoted'])
+    expect(sshConfigHosts(join(home, 'missing'))).toEqual([])
+  })
+
+  it('连接时列出远端主目录：主目录的上一级、按名字排好的子文件夹，隐藏文件夹不显示，连的是给定主机与端口', () => {
+    const calls: { target: Parameters<SshExecutor>[0]; command: string }[] = []
+    const ssh: SshExecutor = (target, command) => {
+      calls.push({ target, command })
+      return remoteListing('/home/researcher', ['projects', '.cache', 'notes 10', 'Data', 'notes 2', '.ssh'])
+    }
+    expect(sshFolders({ host: 'gpu-lab', port: 2222 }, undefined, ssh)).toEqual({
+      state: 'ready',
+      path: '/home/researcher',
+      parent: '/home',
+      folders: [
+        { name: 'Data', path: '/home/researcher/Data' },
+        { name: 'notes 2', path: '/home/researcher/notes 2' },
+        { name: 'notes 10', path: '/home/researcher/notes 10' },
+        { name: 'projects', path: '/home/researcher/projects' },
+      ],
+    })
+    expect(calls).toHaveLength(1)
+    expect(calls[0]!.target).toEqual({ host: 'gpu-lab', port: 2222 })
+    expect(calls[0]!.command.split('\n')).toContain('cd')
+  })
+
+  it('打开一个文件夹时只列它这一层；根目录没有上一级；名字里带换行的文件夹不列出，因为它存不成工作区', () => {
+    const commands: string[] = []
+    const ssh: SshExecutor = (_target, command) => {
+      commands.push(command)
+      return remoteListing('/', ['srv', 'line\nbreak', 'home'])
+    }
+    expect(sshFolders({ host: 'gpu-lab' }, '/srv/../', ssh)).toEqual({
+      state: 'ready', path: '/', parent: null,
+      folders: [{ name: 'home', path: '/home' }, { name: 'srv', path: '/srv' }],
+    })
+    expect(commands[0]!.split('\n')).toContain("cd -- '/'")
+  })
+
+  it("远端命令把目录当作一个带引号的参数，目录里的引号、$() 和换行改不了命令", () => {
+    const commands: string[] = []
+    const ssh: SshExecutor = (_target, command) => {
+      commands.push(command)
+      return remoteListing("/srv/it's $(touch pwned)", [])
+    }
+    sshFolders({ host: 'gpu-lab' }, "/srv/it's $(touch pwned)", ssh)
+    expect(commands[0]!.split('\n')).toContain(`cd -- '/srv/it'"'"'s $(touch pwned)'`)
+    expect(() => sshFolders({ host: 'gpu-lab' }, '/srv/a\nrm -rf ~', ssh)).toThrow('绝对路径')
+    expect(commands).toHaveLength(1)
+  })
+
+  it.each(REMOTE_SHELLS)('远端登录 shell 是 %s 时列出真实目录：主目录、空格、指向文件夹的链接、空文件夹都照常列出，文件不列出', (shell) => {
+    const home = realpathSync(temporary())
+    for (const folder of ['projects/spec decoding', 'empty', '.hidden']) mkdirSync(join(home, folder), { recursive: true })
+    writeFileSync(join(home, 'notes.md'), 'not a folder\n', 'utf8')
+    symlinkSync(join(home, 'projects'), join(home, 'linked'))
+    const local: SshExecutor = (_target, command) => execFileSync(shell, ['-c', command], {
+      env: { HOME: home, PATH: process.env['PATH'] ?? '' }, stdio: ['ignore', 'pipe', 'pipe'],
+    })
+    expect(sshFolders({ host: 'gpu-lab' }, undefined, local)).toEqual({
+      state: 'ready', path: home, parent: posix.dirname(home),
+      folders: ['empty', 'linked', 'projects'].map((name) => ({ name, path: `${home}/${name}` })),
+    })
+    expect(sshFolders({ host: 'gpu-lab' }, join(home, 'linked'), local)).toMatchObject({
+      state: 'ready', path: join(home, 'linked'), folders: [{ name: 'spec decoding', path: join(home, 'linked', 'spec decoding') }],
+    })
+    expect(sshFolders({ host: 'gpu-lab' }, join(home, 'empty'), local)).toMatchObject({ state: 'ready', folders: [] })
+  })
+
+  it('连不上或文件夹打不开时给出 SSH 自己说的原因，而不是抛错；主机或端口无效时不连接', () => {
+    let calls = 0
+    const failing: SshExecutor = () => {
+      calls += 1
+      throw new Error('ssh: Could not resolve hostname nope: nodename nor servname provided, or not known')
+    }
+    expect(sshFolders({ host: 'nope' }, undefined, failing)).toEqual({
+      state: 'failed', issue: 'ssh: Could not resolve hostname nope: nodename nor servname provided, or not known',
+    })
+    expect(sshFolders({ host: 'gpu-lab' }, undefined, () => Buffer.from('relative\0'))).toMatchObject({ state: 'failed' })
+    expect(() => sshFolders({ host: '-oProxyCommand=bad' }, undefined, failing)).toThrow('主机')
+    expect(() => sshFolders({ host: 'gpu-lab', port: 70_000 }, undefined, failing)).toThrow('端口')
+    expect(() => sshFolders({ host: 'gpu-lab' }, 'relative/path', failing)).toThrow('绝对路径')
+    expect(calls).toBe(1)
   })
 })
