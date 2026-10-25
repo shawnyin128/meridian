@@ -125,8 +125,8 @@ Current shared contracts:
   recent progress, upcoming milestones, backups, a node's branches, records and document) is hidden while it
   has nothing to show. A control that orders or groups a list is hidden while the list is empty; adding,
   filtering and settings stay.
-- `Tag`: every tag, chip and status pill. `tone` picks the fill and text colour (`neutral`, `accent`, `good`,
-  `warn`, `bad`, `info`, `paper`, `wiki`, and `ghost` for the slot that adds a tag to a row) and `shape` the
+- `Tag`: every tag, chip and status pill, on the one neutral chip. Only a `state` colours its text, `error`,
+  `warning`, `done`, `p0` or `p1`; a kind, source, name or any other word is neutral. `shape` picks the
   box (`label` for a status, kind, priority or source word; `chip` for a name, topic, date or value).
   `TagButton` is the clickable tag and `tagClass` gives a trigger another component renders the same classes.
   A tag keeps the width of its text: the text beside it gives way first, and when its row still has no

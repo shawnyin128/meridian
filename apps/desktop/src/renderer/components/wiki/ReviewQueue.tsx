@@ -109,7 +109,7 @@ function Blocks({ p, links, onOpenConclusion, by, context }: {
               <EntityLink kind="project" label={title(`projects/${item.project}`)} onOpen={() => links.openProject(item.project)} />
               <span className="proposal-sep" aria-hidden="true">›</span>
               <EntityLink kind="project" label={title(`projects/${item.project}#${point}`)} onOpen={() => onOpenConclusion(item.project, point)} />
-              {state ? <Tag tone={verified ? 'good' : 'warn'}>{verified ? r.verified : r.notVerified}</Tag> : null}
+              {state ? <Tag state={verified ? 'done' : 'warning'}>{verified ? r.verified : r.notVerified}</Tag> : null}
             </>
           ),
         }
@@ -339,10 +339,10 @@ export function ReviewQueue({ proposals, failed, pending, onApply, onDecline, li
                         </div>
                       </ActionPopover>
                       <Button size="compact" variant={p.id === lead ? 'primary' : 'secondary'} disabled={pending || !applicable(p)} onClick={() => onApply(p)}>{r.apply}</Button>
-                      {p.staleNow ? <TagButton tone="warn" onClick={() => links.openPage(p.stalePage!)}>{r.stale}</TagButton> : null}
+                      {p.staleNow ? <TagButton state="warning" onClick={() => links.openPage(p.stalePage!)}>{r.stale}</TagButton> : null}
                       {unverified === undefined ? null : (
                         <TagButton
-                          tone="warn"
+                          state="warning"
                           onClick={() => {
                             const [project, conclusion] = unverified.slice('projects/'.length).split('#') as [string, string]
                             onOpenConclusion(project, conclusion)
@@ -368,7 +368,7 @@ export function ReviewQueue({ proposals, failed, pending, onApply, onDecline, li
                   <ProposalCard decided declined={p.status !== 'applied'}>
                     {body(p)}
                     <ProposalDecision>
-                      <Tag tone={p.status === 'applied' ? 'good' : 'neutral'}>
+                      <Tag state={p.status === 'applied' ? 'done' : undefined}>
                         {p.status === 'applied' ? r.applied
                           : p.reason?.kind === 'declined' ? r.rejected : `${r.rejected} · ${r.reasonKind[p.reason?.kind ?? 'invalid']}`}
                       </Tag>

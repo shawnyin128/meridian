@@ -84,11 +84,11 @@ describe('project conclusions', () => {
     expect([...pending!.children].map((cell) => cell.className)).toEqual([
       'project-signal-kind', 'project-signal-date', 'attn-text record-text', 'record-node', 'record-who',
     ])
-    expect(pending!.querySelector('.tag--warn')!.textContent).toBe('待验证')
+    expect(pending!.querySelector('.tag--warning')!.textContent).toBe('待验证')
     expect(pending!.querySelector('.entity-link--node')!.textContent).toBe('宽树')
     expect(pending!.querySelector('.record-line')!.textContent).toBe('Wide trees win at B8 · 未写入 Wiki')
     expect(pending!.querySelector('.record-who .source-label')!.textContent).toBe('agent')
-    expect(verified!.querySelector('.tag--good')!.textContent).toBe('已验证')
+    expect(verified!.querySelector('.tag--done')!.textContent).toBe('已验证')
     expect(verified!.querySelector('.record-line')!.textContent).toBe('Wide trees win at B8 · Speculative decoding v2')
     expect(verified!.classList.contains('structured-row--selected')).toBe(true)
     expect(pending!.classList.contains('structured-row--selected')).toBe(false)

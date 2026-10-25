@@ -22,8 +22,8 @@ import { ProjectSignalDate, ProjectSignalKind } from './ProjectSignals.js'
 import { Button } from '../Button.js'
 import './ProjectConclusions.css'
 
-const STATE_TONE: Record<ConclusionState, 'warn' | 'good' | 'bad'> = {
-  pending: 'warn', verified: 'good', conflicting: 'bad',
+const STATE: Record<ConclusionState, 'warning' | 'done' | 'error'> = {
+  pending: 'warning', verified: 'done', conflicting: 'error',
 }
 
 type NodeLook = { label: string; mode: NonNullable<GraphNode['mode']> }
@@ -49,7 +49,7 @@ export function ProjectConclusionRow({ conclusion, node, selected, onOpen }: {
       className="attnrow record-row conclusion-row" selected={selected}
       data-conclusion={conclusion.id} onActivate={onOpen}
     >
-      <ProjectSignalKind tone={STATE_TONE[conclusion.state]}>{c.state[conclusion.state]}</ProjectSignalKind>
+      <ProjectSignalKind state={STATE[conclusion.state]}>{c.state[conclusion.state]}</ProjectSignalKind>
       <ProjectSignalDate date={conclusion.date} />
       <span className="attn-text record-text">
         <FadeText className="record-line" expand>
@@ -141,7 +141,7 @@ export function ProjectConclusionPanel({
       </SectionHeading>
       <p className="conclusion-detail-text">{conclusion.text}</p>
       <div className="conclusion-detail-meta">
-        <ProjectSignalKind tone={STATE_TONE[conclusion.state]}>{c.state[conclusion.state]}</ProjectSignalKind>
+        <ProjectSignalKind state={STATE[conclusion.state]}>{c.state[conclusion.state]}</ProjectSignalKind>
         {conclusion.date === undefined ? null : <span className="conclusion-detail-date">{fmt.date(conclusion.date)}</span>}
       </div>
       {draft === null

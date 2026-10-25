@@ -27,7 +27,7 @@ export function ServiceStatus({
         <strong>{title}</strong>
         {description === undefined ? null : <p>{description}</p>}
       </div>
-      <Tag tone={configured ? 'good' : 'neutral'} className="service-status-pill">
+      <Tag state={configured ? 'done' : undefined} className="service-status-pill">
         {configured ? configuredLabel : notConfiguredLabel}
       </Tag>
     </div>

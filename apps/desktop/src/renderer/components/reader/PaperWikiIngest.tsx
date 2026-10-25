@@ -263,7 +263,7 @@ export function PaperWikiIngest({ paper, reading, onJump, edits }: {
       >
         {mode === 'structured' && shown.review !== undefined ? (
           <>
-            {draft === shown.body ? null : <Tag tone="warn">{m.wiki.ingest.editNote}</Tag>}
+            {draft === shown.body ? null : <Tag state="warning">{m.wiki.ingest.editNote}</Tag>}
             <PaperWikiProposalReview review={shown.review} onJump={onJump}
               {...(shown.quality === undefined ? {} : { quality: shown.quality })} />
           </>
@@ -307,7 +307,7 @@ export function PaperWikiIngest({ paper, reading, onJump, edits }: {
           >{m.wiki.ingest.confirm}</Button>
           {pending?.stale === true
             ? (
-              <TagButton tone="warn" disabled={applying || rejecting} onClick={() => setRejection({ reasons: [], note: '' })}>
+              <TagButton state="warning" disabled={applying || rejecting} onClick={() => setRejection({ reasons: [], note: '' })}>
                 {`${m.wiki.queue.stale} · ${m.wiki.ingest.discard}`}
               </TagButton>
             )
@@ -338,7 +338,7 @@ export function PaperWikiIngest({ paper, reading, onJump, edits }: {
           : null}
         {plan !== null && !plan.model.configured ? <NoModelTag label={m.wiki.ingest.notConnectedNote} /> : null}
         {receipt !== null ? <InlineMessage tone="done" variant="line" className="wiki-ingest-status">{receipt.message}</InlineMessage> : null}
-        {pending !== null ? <Tag tone="good">{m.wiki.ingest.restoredPending}</Tag> : null}
+        {pending !== null ? <Tag>{m.wiki.ingest.restoredPending}</Tag> : null}
         {receipt?.warning === undefined ? null : (
           <InlineMessage tone="error" variant="line" className="wiki-ingest-status">
             {failureLabel(m, m.wiki.ingest.auditFailed, receipt.warning)}

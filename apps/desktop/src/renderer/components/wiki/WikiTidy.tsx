@@ -12,10 +12,10 @@ import { plainTitle } from '../paper/paper-text.js'
 import { ProjectSignalKind } from '../project/ProjectSignals.js'
 import './WikiTidy.css'
 
-/** The signal kinds the tidying list shows, in the order it lists them, with the tone of each kind's tag. */
+/** The signal kinds the tidying list shows, in the order it lists them, with the state each kind's tag names. */
 const SHOWN = {
-  'open-conflict': 'bad', 'broken-link': 'bad', 'thin-aggregation': 'warn', 'unfiled-paper': 'warn',
-} as const satisfies Partial<Record<WikiSignalKind, 'bad' | 'warn'>>
+  'open-conflict': 'error', 'broken-link': 'error', 'thin-aggregation': 'warning', 'unfiled-paper': 'warning',
+} as const satisfies Partial<Record<WikiSignalKind, 'error' | 'warning'>>
 type ShownKind = keyof typeof SHOWN
 const ORDER = Object.keys(SHOWN) as ShownKind[]
 
@@ -86,7 +86,7 @@ export function TidyList({ rows, titles, failed, onOpen }: {
           composite className="attnrow tidy-row" key={`${row.kind} ${row.page}`} data-wk={row.page}
           onActivate={() => onOpen(row.page, row.claim)}
         >
-          <ProjectSignalKind tone={SHOWN[row.kind]}>{t.kinds[row.kind]}</ProjectSignalKind>
+          <ProjectSignalKind state={SHOWN[row.kind]}>{t.kinds[row.kind]}</ProjectSignalKind>
           <span className="tidy-what">
             <button type="button" className="tidy-open">
               <FadeText className="attn-text" label={plainTitle(name(row.page))}><PaperText text={name(row.page)} /></FadeText>

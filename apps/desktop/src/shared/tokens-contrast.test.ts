@@ -364,22 +364,27 @@ describe('就地的错误、警告、提示和完成', () => {
   }
 })
 
-/** Every tone of the shared Tag but the dashed ghost slot, and the text colour each one writes in. */
+/** The text colour of a neutral tag and of the tag of each state, all on the one neutral chip. */
 const TAG_TEXT = {
-  neutral: '--sec', accent: '--sec', info: '--sec', paper: '--sec', wiki: '--sec',
-  good: '--good-text', warn: '--warn-text', bad: '--bad-text',
+  neutral: '--sec', error: '--bad-text', warning: '--warn-text', done: '--good-text', p0: '--bad-text', p1: '--warn-text',
 } as const
 
+/** The fill and text tokens of a tag of `state`: the fill is `.tag`'s, the text `.tag`'s or its state's. */
+const tagLook = (state: keyof typeof TAG_TEXT): string => {
+  const [fill, text] = lookOf('components/Tag.css', '.tag').split(' ') as [string, string]
+  return `${fill} ${state === 'neutral' ? text : lookOf('components/Tag.css', `.tag--${state}`).split(' ')[1]}`
+}
+
 describe('标签', () => {
-  it('每种标签都是中性的标签底,只有 good、warn、bad 三种需要注意的状态给字上自己的颜色', () => {
-    expect(Object.fromEntries(Object.keys(TAG_TEXT).map((tone) => [tone, lookOf('components/Tag.css', `.tag--${tone}`)])))
-      .toEqual(Object.fromEntries(Object.entries(TAG_TEXT).map(([tone, text]) => [tone, `--chip ${text}`])))
+  it('每种标签都是中性的标签底,只有错误、警告、完成和 P0、P1 给字上自己的颜色', () => {
+    expect(Object.fromEntries(Object.keys(TAG_TEXT).map((state) => [state, tagLook(state as keyof typeof TAG_TEXT)])))
+      .toEqual(Object.fromEntries(Object.entries(TAG_TEXT).map(([state, text]) => [state, `--chip ${text}`])))
   })
 
   for (const theme of THEMES) {
-    for (const tone of Object.keys(TAG_TEXT)) {
-      it(`${named(theme)}的 ${tone} 标签的字压在它自己的底上,铺在每种底面上都不低于 4.5:1`, () => {
-        const [fill, text] = lookOf('components/Tag.css', `.tag--${tone}`).split(' ') as [string, string]
+    for (const state of Object.keys(TAG_TEXT) as (keyof typeof TAG_TEXT)[]) {
+      it(`${named(theme)}的 ${state} 标签的字压在它自己的底上,铺在每种底面上都不低于 4.5:1`, () => {
+        const [fill, text] = tagLook(state).split(' ') as [string, string]
         for (const [where, ground] of SURFACES) {
           const got = contrast(colour(theme, text), flatten(theme, [...ground, fill]))
           expect(got, `${text} 压在${where}的 ${fill} 上是 ${got.toFixed(2)}:1`).toBeGreaterThanOrEqual(TEXT)

@@ -183,7 +183,7 @@ function ProjectPanel({ project, onOpen, menu, reorder }: {
     >
       <div className="pp-h">
         <CardOpen><ProjectIdentity project={project} showTopic /></CardOpen>
-        {stale ? <Tag tone="warn">{m.research.panel.staleAlert(idle!)}</Tag> : null}
+        {stale ? <Tag state="warning">{m.research.panel.staleAlert(idle!)}</Tag> : null}
         <span className="dd">
           {next && left !== null
             ? (

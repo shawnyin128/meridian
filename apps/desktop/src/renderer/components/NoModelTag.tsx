@@ -1,8 +1,8 @@
 import { useSettingsOpen } from '../shell/AppShell.js'
-import { TagButton, type TagTone } from './Tag.js'
+import { TagButton, type TagState } from './Tag.js'
 
-/** The state a feature shows while no model is set up, `label` in `tone`, as the button that opens the model settings. */
-export function NoModelTag({ label, tone }: { label: string; tone?: TagTone }) {
+/** The state a feature shows while no model is set up, `label` in `state`, as the button that opens the model settings. */
+export function NoModelTag({ label, state }: { label: string; state?: TagState }) {
   const { openCategory } = useSettingsOpen()
-  return <TagButton tone={tone} onClick={() => openCategory('model')}>{label}</TagButton>
+  return <TagButton state={state} onClick={() => openCategory('model')}>{label}</TagButton>
 }

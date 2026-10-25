@@ -87,7 +87,7 @@ function WatchGroup({ type, watches, failed, add, editor, onOpen, onEdit, onSetA
                 <StructuredRow className="wrow" data-w={w.id} key={w.id}>
                   <span className="nm">{w.name}</span>
                   {w.type !== 'author' ? null : w.identity === undefined
-                    ? <Tag tone="warn">{m.watches.identityUnconfirmed}</Tag>
+                    ? <Tag state="warning">{m.watches.identityUnconfirmed}</Tag>
                     : (
                       <FadeText className="author-id-state" label={w.identity.affiliations[0] || m.watches.identityUnconfirmed}>
                         {w.identity.affiliations[0] || m.watches.identityUnconfirmed}
@@ -530,7 +530,7 @@ export function WatchSettings() {
                 <>
                   <div className="ph2">
                     {m.watches.suggestionBasis(suggestions.paperCount)}
-                    {suggestions.stale === true ? <Tag tone="warn">{m.watches.suggestionStale}</Tag> : null}
+                    {suggestions.stale === true ? <Tag state="warning">{m.watches.suggestionStale}</Tag> : null}
                   </div>
                   {suggestions.topics.length === 0 ? null : (
                     <section className="watch-suggestion-group">

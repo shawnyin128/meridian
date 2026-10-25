@@ -89,7 +89,7 @@ export function DiscoverySettings() {
               <div className={`direction-row${intent.enabled ? '' : ' disabled'}`} key={intent.id}>
                 <div className="direction-main">
                   <div className="direction-name">
-                    {intent.core ? <Tag tone="accent">{m.settings.discovery.core}</Tag> : null}
+                    {intent.core ? <Tag>{m.settings.discovery.core}</Tag> : null}
                     <span>{intent.label}</span>
                   </div>
                   <FadeText className="direction-seeds" label={intent.seeds.map((seed) => plainTitle(seed.title)).join(' · ')}>

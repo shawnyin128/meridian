@@ -175,7 +175,7 @@ export function TagChips({ values, onAdd, onRemove, onReplace, keep, ...props }:
           />
         )
         : (
-          <span className={tagClass('neutral', 'chip', 'tagchip')} key={value}>
+          <span className={tagClass(undefined, 'chip', 'tagchip')} key={value}>
             {onReplace === undefined
               ? value
               : (

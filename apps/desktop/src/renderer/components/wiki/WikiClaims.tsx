@@ -397,7 +397,7 @@ export function WikiClaims({ page, pending, links, onApply, arrival, onArrived }
                   {claim.conflicts.map((x) => (
                     <Fragment key={`conflict ${x.id}`}>
                       <li className="wkclaim-conflict">
-                        <Tag tone="warn">{c.conflict}</Tag>
+                        <Tag state="warning">{c.conflict}</Tag>
                         <ClaimSide item={x.against} title={x.title} point={x.point} links={links} />
                         <span className="wkclaim-note">{x.note}</span>
                         <Button

@@ -100,7 +100,7 @@ function Body({ body, onOpenConflict }: {
         <div className="bh">{body.heading}</div>
         {body.items.map((item) => (
           <div className="bitem" key={item.id}>
-            <Tag tone="bad">{item.tag}</Tag>
+            <Tag state="error">{item.tag}</Tag>
             <span className="t">{item.text}</span>
             {/* The demo's briefConf: this button opens a chat about the conflicting conclusions. */}
             <span className="go">

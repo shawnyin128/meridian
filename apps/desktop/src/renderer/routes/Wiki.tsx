@@ -90,7 +90,7 @@ function AggregationCard({ card, onOpen, onRemove, pending }: {
   return (
     <ResearchObjectCard variant="grid" className="wkcard" data-wk={card.id} onActivate={onOpen}>
       <div className="wt">
-        <Tag tone="wiki" className="wkind">{card.kindLabel}</Tag>
+        <Tag className="wkind">{card.kindLabel}</Tag>
         <CardOpen className="tt"><FadeText>{card.title}</FadeText></CardOpen>
         {card.parentCount > 1 ? <Tag className="wkind">{m.wiki.aggregation.parentCount(card.parentCount)}</Tag> : null}
         <span className="sp" />
@@ -128,7 +128,7 @@ function PaperCard({ paper, onOpen }: { paper: PaperRow; onOpen: () => void }) {
   return (
     <ResearchObjectCard variant="grid" className="wkcard wkcard--paper" data-wk={`${PAPER_PAGE}${paper.id}`} onActivate={onOpen}>
       <div className="wt">
-        <Tag tone="paper" className="wkind">{m.wiki.paperKind}</Tag>
+        <Tag className="wkind">{m.wiki.paperKind}</Tag>
         <Tooltip label={plainTitle(paper.title)} whenClipped>
           <CardOpen className="tt"><span ref={title} className={`tt-lines fade-lines${titleCut ? ' clipped' : ''}`}><PaperText text={paper.title} /></span></CardOpen>
         </Tooltip>
@@ -791,7 +791,7 @@ export function Wiki() {
                         ? (
                           <ResearchObjectCard variant="grid" className="wkcard newcard" cardRef={addRow}>
                             <div className="wt">
-                              <Tag tone="wiki" className="wkind">{shownAgg.kindLabel}</Tag>
+                              <Tag className="wkind">{shownAgg.kindLabel}</Tag>
                               <PickRow
                                 row={addRow} triggers={[childBtn, paperBtn, colBtn]} allowNew
                                 placeholder={m.wiki.kindNamePlaceholder(shownAgg.kindLabel)}
@@ -1040,7 +1040,7 @@ export function Wiki() {
                   : shownPaper.memberships.map((ms) => (
                     <div className="memb" key={ms.aggregation.id}>
                       <div className="wkrel">
-                        <Tag tone="wiki" className="wkind">{ms.kindLabel}</Tag>
+                        <Tag className="wkind">{ms.kindLabel}</Tag>
                         <TagButton
                           shape="chip" className="tagchip" data-wk={ms.aggregation.id}
                           onClick={() => go(ms.aggregation.id)}

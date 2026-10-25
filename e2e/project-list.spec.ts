@@ -229,7 +229,7 @@ test('面板的最近推进、停滞天数与细行的上次推进都按最近�
   // Nothing has changed draft since its latest entry; the earliest entry is further back, so reading
   // the wrong end of the log gives a different number.
   expect(draftProgress).toBe(draft.at(-1)!.date)
-  await expect(shown(win).locator('[data-proj="draft"] .pp-h > .tag--warn'))
+  await expect(shown(win).locator('[data-proj="draft"] .pp-h > .tag--warning'))
     .toHaveText(`已 ${daysSince(today, draftProgress!)} 天无推进`)
 
   // moe is shelved and shows as one compact row, ending with the days since it last progressed.

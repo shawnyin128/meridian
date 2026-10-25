@@ -111,7 +111,7 @@ export function IdeaRelations({ idea, projects, pages, onChange, onOpenProject, 
             )
             : null}
           {held[row].map((id) => (
-            <span className={tagClass('neutral', 'chip', 'tagchip')} key={id} data-row-actions="">
+            <span className={tagClass(undefined, 'chip', 'tagchip')} key={id} data-row-actions="">
               <button
                 type="button" className="tagchip-open"
                 onClick={() => (row === 'projects' ? onOpenProject(id) : onOpenPage(id))}
