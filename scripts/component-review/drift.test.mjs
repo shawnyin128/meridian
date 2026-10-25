@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { driftMarkdown, driftRanking, driftSummary, newInstance } from './drift.mjs'
+import { compareMarkdown, driftCompare, driftMarkdown, driftRanking, driftSummary, newInstance } from './drift.mjs'
 
 const row = (screen, padding, extra = {}) => ({ combo: '1440x900-light', screen, pattern: 'Row', metrics: { padding, inset: 12, ...extra } })
 
@@ -40,15 +40,25 @@ describe('the drift summary', () => {
       tag('2 8', '12/400'), tag('2 6', '11/400'),
     ])
     expect(driftRanking(summary)).toEqual([
-      { pattern: 'Row', instances: 3, distinct: 3, metric: 'padding', total: 4 },
-      { pattern: 'Tag', instances: 2, distinct: 2, metric: 'padding', total: 4 },
+      { pattern: 'Row', instances: 3, distinct: 3, metric: 'padding', total: 4, height: null },
+      { pattern: 'Tag', instances: 2, distinct: 2, metric: 'padding', total: 4, height: null },
     ])
+  })
+
+  it('keeps height out of the ranking and reports it beside it', () => {
+    const card = (height, padding) => ({ combo: '1440x900-light', screen: 'Wiki', pattern: 'Card', metrics: { height, padding } })
+    const summary = driftSummary([card(72, '12 16'), card(113, '12 16'), card(298, '12 16'), row('项目', '8'), row('想法', '0')])
+    expect(driftRanking(summary)).toEqual([
+      { pattern: 'Row', instances: 2, distinct: 2, metric: 'padding', total: 3, height: null },
+      { pattern: 'Card', instances: 3, distinct: 1, metric: 'padding', total: 1, height: 3 },
+    ])
+    expect(driftMarkdown({ summary, meta: [], failures: [] })).toContain('| Card | 3 | 1 | padding | 1 | 3 |')
   })
 
   it('writes each value with its instance count and screens into the report', () => {
     const summary = driftSummary([row('项目', '8 12'), row('想法', '0')])
     const report = driftMarkdown({ summary, meta: ['test run'], failures: [{ screen: '设置', state: 'watches', reason: 'timeout' }] })
-    expect(report).toContain('| Row | 2 | 2 | padding | 3 |')
+    expect(report).toContain('| Row | 2 | 2 | padding | 3 | – |')
     expect(report).toContain('| padding | 2 | `0` ×1 (想法)<br>`8 12` ×1 (项目) |')
     expect(report).toContain('- 设置 · watches: timeout')
   })
@@ -75,5 +85,28 @@ describe('counting instances across states', () => {
     expect(newInstance(seen, '论文 Row', record(1, '0.2.4'))).toBe(true)
     expect(newInstance(seen, '论文 Row', record(1, '0.2.5'))).toBe(false)
     expect(newInstance(seen, '想法 Row', record(9, '0.2.4'))).toBe(true)
+  })
+})
+
+describe('comparing two runs', () => {
+  const before = driftSummary([row('项目', '8 12'), row('想法', '0'), row('Wiki', '2')])
+  const after = driftSummary([
+    row('项目', '8 12'), row('想法', '8 12'),
+    { combo: '1440x900-light', screen: '想法', pattern: 'Item', metrics: { padding: '8 12' } },
+  ])
+
+  it('lists distinct values and instances before and after for every pattern and metric', () => {
+    expect(driftCompare(before, after)).toEqual([
+      { pattern: 'Row', metric: 'padding', instances: [3, 2], distinct: [3, 1] },
+      { pattern: 'Row', metric: 'inset', instances: [3, 2], distinct: [1, 1] },
+      { pattern: 'Item', metric: 'padding', instances: [null, 1], distinct: [null, 1] },
+    ])
+  })
+
+  it('writes the comparison as one table with the change in distinct values', () => {
+    const table = compareMarkdown(driftCompare(before, after), ['before: a', 'after: b'])
+    expect(table).toContain('| Row | 3 → 2 | padding | 3 → 1 | −2 |')
+    expect(table).toContain('| Row | 3 → 2 | inset | 1 → 1 | = |')
+    expect(table).toContain('| Item | – → 1 | padding | – → 1 | new |')
   })
 })

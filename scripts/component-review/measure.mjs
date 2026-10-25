@@ -1,9 +1,9 @@
 import { execFileSync } from 'node:child_process'
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { parseArgs } from 'node:util'
 import { DESKTOP } from '../test-library/app.mjs'
-import { driftMarkdown, driftSummary, newInstance } from './drift.mjs'
+import { compareMarkdown, driftCompare, driftMarkdown, driftSummary, MAIN_COMBO, newInstance } from './drift.mjs'
 import { COLOUR_TOKENS, PATTERNS, probeEntries, SHADOW_TOKENS, VARIANT_CLASSES } from './patterns.mjs'
 import { clearFocusPathInPage, markFocusPathInPage, measureInPage } from './probe.mjs'
 import { comboName, LIBRARY, REVIEW, setSize, setTheme, settle, SIZES, THEMES, walk } from './run.mjs'
@@ -11,22 +11,26 @@ import { SCREEN_ORDER, STATES } from './screens.mjs'
 
 const USAGE = `Measures every pattern of the component inventory in the running App and writes its drift.
 
-  node scripts/component-review/measure.mjs [--name <name>] [--app <app>] [--library <dir>] [--out <dir>]
+  node scripts/component-review/measure.mjs [--name <name>] [--app <app>] [--library <dir>] [--out <dir>] [--compare <before.json>]
 
 Writes <out>/<name>.json (every instance and the summary) and <out>/<name>.md (the drift
-summary). <name> defaults to baseline, <out> to outputs/review/v0.0.20.0/components/drift in the
+summary). With --compare, also prints and writes <out>/compare.md: per pattern and metric, the
+instances and distinct values of the <before.json> run and of this one. <name> defaults to baseline, <out> to outputs/review/v0.0.20.0/components/drift in the
 main checkout, <app> to this checkout's built apps/desktop and <library> to the v0.0.19.0 test
 library, which the run copies first.`
 
 /** Instances measured per selector entry and state. */
 const CAP = 40
 
-const { values } = parseArgs({ options: { name: { type: 'string' }, app: { type: 'string' }, library: { type: 'string' }, out: { type: 'string' } } })
+const { values } = parseArgs({
+  options: { name: { type: 'string' }, app: { type: 'string' }, library: { type: 'string' }, out: { type: 'string' }, compare: { type: 'string' } },
+})
 const name = values.name ?? 'baseline'
 const app = values.app === undefined ? DESKTOP : resolve(values.app)
 const library = values.library === undefined ? LIBRARY : resolve(values.library)
 const out = values.out === undefined ? join(REVIEW, 'components', 'drift') : resolve(values.out)
-if (!/^[\w.-]+$/.test(name) || !existsSync(app) || !existsSync(library)) {
+const before = values.compare === undefined ? null : resolve(values.compare)
+if (!/^[\w.-]+$/.test(name) || !existsSync(app) || !existsSync(library) || (before !== null && !existsSync(before))) {
   console.error(USAGE)
   process.exit(2)
 }
@@ -119,3 +123,12 @@ writeFileSync(join(out, `${name}.md`), driftMarkdown({
   ],
 }))
 console.log(`Wrote ${join(out, `${name}.json`)} and ${name}.md: ${records.length} measurements, ${failures.length} states not reached`)
+if (before !== null) {
+  const baseline = JSON.parse(readFileSync(before, 'utf8'))
+  const run = (label, file, data) => `${label}: \`${file}\`, App code last changed in \`${data.appCommit?.slice(0, 10) ?? data.app}\`, scripts on \`${data.branch}\`.`
+  const table = compareMarkdown(driftCompare(baseline.summary, summary), [
+    run('Before', before, baseline), run('After', join(out, `${name}.json`), meta), `Size and theme: ${MAIN_COMBO}.`,
+  ])
+  writeFileSync(join(out, 'compare.md'), table)
+  console.log(table)
+}

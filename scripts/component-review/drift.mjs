@@ -61,16 +61,51 @@ export function driftSummary(records, screenOrder = []) {
 }
 
 /**
- * The patterns of `combo` in `summary`, most drifted first: by the largest number of distinct
- * values any one metric takes, then by the distinct values of all metrics together, then by name.
- * Each item names the pattern, its instances, that largest count and the metric that has it.
+ * The patterns of `combo` in `summary`, most drifted first, by the metrics that should agree
+ * (every metric but `height`, which follows the content): by the largest number of distinct values
+ * any one of them takes, then by their distinct values together, then by name. Each item names the
+ * pattern, its instances, that largest count, the metric that has it, the total, and the distinct
+ * heights (null for a class without height).
  */
 export function driftRanking(summary, combo = MAIN_COMBO) {
   return Object.entries(summary[combo] ?? {}).map(([pattern, { instances, metrics }]) => {
-    const counts = Object.entries(metrics).map(([key, metric]) => [key, metric.distinct])
+    const counts = Object.entries(metrics).filter(([key]) => key !== 'height').map(([key, metric]) => [key, metric.distinct])
     const [metric, distinct] = counts.reduce((best, item) => (item[1] > best[1] ? item : best), ['', 0])
-    return { pattern, instances, distinct, metric, total: counts.reduce((sum, [, count]) => sum + count, 0) }
+    const height = metrics.height?.distinct ?? null
+    return { pattern, instances, distinct, metric, total: counts.reduce((sum, [, count]) => sum + count, 0), height }
   }).sort((a, b) => b.distinct - a.distinct || b.total - a.total || a.pattern.localeCompare(b.pattern, 'en'))
+}
+
+/**
+ * The comparison of two summaries at `combo`: one row per pattern and metric of either, in the
+ * order of the `before` ranking, then the patterns only `after` has. Each row gives the instances
+ * and the distinct values as `[before, after]`, with null where a run has none.
+ */
+export function driftCompare(before, after, combo = MAIN_COMBO) {
+  const ranked = driftRanking(before, combo).map((item) => item.pattern)
+  const added = Object.keys(after[combo] ?? {}).filter((pattern) => !ranked.includes(pattern)).sort((a, b) => a.localeCompare(b, 'en'))
+  return [...ranked, ...added].flatMap((pattern) => {
+    const sides = [before[combo]?.[pattern], after[combo]?.[pattern]]
+    const keys = [...new Set(sides.flatMap((side) => Object.keys(side?.metrics ?? {})))]
+    return keys.map((metric) => ({
+      pattern, metric,
+      instances: sides.map((side) => side?.instances ?? null),
+      distinct: sides.map((side) => side?.metrics[metric]?.distinct ?? null),
+    }))
+  })
+}
+
+/** The Markdown table of `rows` from driftCompare, after the `meta` lines. */
+export function compareMarkdown(rows, meta) {
+  const pair = ([a, b]) => `${a ?? '–'} → ${b ?? '–'}`
+  const change = ([a, b]) => (a === null ? 'new' : b === null ? 'gone' : a === b ? '=' : `${b > a ? '+' : '−'}${Math.abs(b - a)}`)
+  return [
+    '# Component drift, before and after', '', ...meta.map((line) => `- ${line}`), '',
+    'Distinct: how many different values a metric takes across every instance on every screen; 1 means every instance agrees.', '',
+    '| Pattern | Instances | Metric | Distinct | Change |', '|---|---:|---|---:|---:|',
+    ...rows.map((row) => `| ${row.pattern} | ${pair(row.instances)} | ${row.metric} | ${pair(row.distinct)} | ${change(row.distinct)} |`),
+    '',
+  ].join('\n')
 }
 
 const cell = (text) => String(text).replaceAll('|', '\\|').replaceAll('\n', ' ')
@@ -85,9 +120,9 @@ export function driftMarkdown({ summary, meta, failures, combo = MAIN_COMBO }) {
   const lines = ['# Component drift', '', ...meta.map((line) => `- ${line}`), '']
   lines.push(
     `## Patterns by distinct values (${combo})`, '',
-    'Distinct: how many different values the most varied metric takes across every instance on every screen; 1 means every instance agrees. All: the distinct values of every metric added up.', '',
-    '| Pattern | Instances | Distinct | Metric | All |', '|---|---:|---:|---|---:|',
-    ...driftRanking(summary, combo).map((item) => `| ${item.pattern} | ${item.instances} | ${item.distinct} | ${item.metric} | ${item.total} |`),
+    'Distinct: how many different values the most varied metric takes across every instance on every screen; 1 means every instance agrees. All: the distinct values of every metric added up. Both leave out height, which follows the content; Height gives its distinct values.', '',
+    '| Pattern | Instances | Distinct | Metric | All | Height |', '|---|---:|---:|---|---:|---:|',
+    ...driftRanking(summary, combo).map((item) => `| ${item.pattern} | ${item.instances} | ${item.distinct} | ${item.metric} | ${item.total} | ${item.height ?? '–'} |`),
     '',
   )
   lines.push(`## Values per pattern (${combo})`, '')
