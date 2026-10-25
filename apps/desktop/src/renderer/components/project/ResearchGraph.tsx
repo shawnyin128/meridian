@@ -521,10 +521,10 @@ export function ResearchNodePanel({
         : (
           <List className="node-tasks" variant="embedded">
             {tasks.map((task) => (
-              <Item className="node-task-row" data-task={task.id} key={task.id} onActivate={() => onSelectTask(task.id)}>
-                <FadeText>{task.title}</FadeText>
-                {task.origin === 'agent' ? <AgentLabel /> : null}
-              </Item>
+              <Item
+                className="node-task-row" data-task={task.id} key={task.id} onActivate={() => onSelectTask(task.id)}
+                title={<FadeText>{task.title}</FadeText>} tags={task.origin === 'agent' ? <AgentLabel /> : null}
+              />
             ))}
           </List>
         )}
@@ -540,19 +540,18 @@ export function ResearchNodePanel({
                 : `${plainTitle(idea.source.paperTitle)} · ${plainTitle(idea.source.chatTitle)}`
               return (
                 <Item
-                  className="node-idea-row" data-idea={idea.id} key={idea.id}
+                  className="node-idea-row" data-idea={idea.id} key={idea.id} lines={2}
                   onActivate={() => onSelectIdea(idea.id)}
-                >
-                  <FadeText className="node-idea-title" label={idea.title}>{idea.title}</FadeText>
-                  {ownIdea(idea) ? null : (
-                    <span className="node-idea-source-line">
+                  title={<FadeText className="node-idea-title" label={idea.title}>{idea.title}</FadeText>}
+                  meta={ownIdea(idea) ? null : (
+                    <>
                       <FadeText className="node-idea-source" label={m.project.idea.sourceTag(source)}>
                         {m.project.idea.sourceTag(source)}
                       </FadeText>
                       {chatDeleted(idea) ? <SourceChatDeleted /> : null}
-                    </span>
+                    </>
                   )}
-                </Item>
+                />
               )
             })}
           </List>

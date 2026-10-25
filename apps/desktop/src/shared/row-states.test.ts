@@ -58,8 +58,8 @@ describe('选中的样子只有一种', () => {
   })
 
   it('选中的想法卡片，标题也用强调色的字', () => {
-    const card = '<article class="item item--card item--selected idea-card"><div class="idea-card-title-row"><strong>草稿头共享浅层 KV</strong></div></article>'
-    expect(styleOf(card, 'strong').color).toBe('var(--accent-text)')
+    const card = '<article class="item item--card item--slotted item--selected idea-card"><div class="item-head"><span class="item-main"><span class="item-title"><button class="item-open"><span class="fade-text idea-card-title">草稿头共享浅层 KV</span></button></span></span></div></article>'
+    expect(styleOf(card, '.idea-card-title').color).toBe('var(--accent-text)')
   })
 
   it('选中的侧栏行图标跟着字用同一个颜色', () => {

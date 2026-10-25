@@ -130,9 +130,9 @@ describe('项目列表的卡片', () => {
       summary({ id: 'kv', name: 'KV cache 量化', priority: 'p2', lastProgress: '2026-10-09' }),
     ]
     await act(async () => root.render(<MessagesProvider><Projects /></MessagesProvider>))
-    const afterName = (id: string) => host.querySelector(`[data-proj="${id}"] .pp-h > .item-open`)!.nextElementSibling!
-    expect([afterName('spec').className, afterName('spec').textContent]).toEqual(['tag tag--label tag--warn', '已 10 天无推进'])
-    expect(afterName('kv').className).toBe('dd')
+    const afterName = (id: string) => host.querySelector(`[data-proj="${id}"] .item-head .item-title > .item-open`)!.nextElementSibling
+    expect([afterName('spec')!.className, afterName('spec')!.textContent]).toEqual(['tag tag--label tag--warn', '已 10 天无推进'])
+    expect(afterName('kv')).toBeNull()
     expect(host.querySelectorAll('.project-card-alert')).toHaveLength(0)
   })
 })
@@ -169,7 +169,7 @@ describe('Project list', () => {
       id: 'draft', name: 'draft 效率', status: '搁置', priority: 'p1', topic: '推理', focus: '等算力',
     })]
     await act(async () => root.render(<MessagesProvider><Projects /></MessagesProvider>))
-    const open = host.querySelector<HTMLElement>('.prow[data-proj="draft"]')!.firstElementChild as HTMLElement
+    const open = host.querySelector<HTMLElement>('.prow[data-proj="draft"] .item-title > .item-open')!
     expect(open.tagName).toBe('BUTTON')
     expect(open.textContent).toContain('draft 效率')
     act(() => open.click())

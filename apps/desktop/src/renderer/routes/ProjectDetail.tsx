@@ -220,24 +220,25 @@ export function ProjectIdeaList({ projectId, ideas, error, graph, selectedId, on
       <Item
         className="project-idea-row" selected={selectedId === idea.id}
         data-idea={idea.id} key={idea.id} onActivate={() => onSelect(idea.id)}
-      >
-        <FadeText className="project-idea-title" label={idea.title}>{idea.title}</FadeText>
-        <span className="project-idea-flags">
-          {ideaNode === undefined
-            ? null
-            : (
-              <EntityLink kind="node" label={ideaNode.label} mode={nodeMode(ideaNode)} />
-            )}
-          {tag === null ? null : <Tag>{tag}</Tag>}
-          {idea.archived ? <Tag>{m.common.archived}</Tag> : null}
-          {chatDeleted(idea) ? <SourceChatDeleted /> : null}
-        </span>
-        {ownIdea(idea) ? null : (
+        title={<FadeText className="project-idea-title" label={idea.title}>{idea.title}</FadeText>}
+        tags={(
+          <span className="project-idea-flags">
+            {ideaNode === undefined
+              ? null
+              : (
+                <EntityLink kind="node" label={ideaNode.label} mode={nodeMode(ideaNode)} />
+              )}
+            {tag === null ? null : <Tag>{tag}</Tag>}
+            {idea.archived ? <Tag>{m.common.archived}</Tag> : null}
+            {chatDeleted(idea) ? <SourceChatDeleted /> : null}
+          </span>
+        )}
+        trailing={ownIdea(idea) ? null : (
           <FadeText className="project-idea-source" label={m.project.idea.sourceTag(source)}>
             <IdeaSource idea={idea} message={m.project.idea.sourceTag} />
           </FadeText>
         )}
-      </Item>
+      />
     )
   }
   const shown = carried.length + related.length + sparked.length

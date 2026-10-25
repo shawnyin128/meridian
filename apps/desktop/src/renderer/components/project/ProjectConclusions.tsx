@@ -197,9 +197,10 @@ export function ProjectConclusionPanel({
               : (
                 <List variant="embedded" className="conclusion-chain">
                   {conclusion.tasks.map((task) => (
-                    <Item key={task.id} className="conclusion-chain-row" onActivate={() => onOpenTask(task.id)}>
-                      <FadeText>{task.title}</FadeText>
-                    </Item>
+                    <Item
+                      key={task.id} className="conclusion-chain-row" onActivate={() => onOpenTask(task.id)}
+                      title={<FadeText>{task.title}</FadeText>}
+                    />
                   ))}
                 </List>
               )}
@@ -217,10 +218,10 @@ export function ProjectConclusionPanel({
               : (
                 <List variant="embedded" className="conclusion-chain">
                   {conclusion.experiments.map((experiment) => (
-                    <Item key={experiment.id} className="conclusion-chain-row">
-                      <FadeText>{experiment.title}</FadeText>
-                      {experiment.title === experiment.id ? null : <span className="conclusion-chain-id">{experiment.id}</span>}
-                    </Item>
+                    <Item
+                      key={experiment.id} className="conclusion-chain-row" title={<FadeText>{experiment.title}</FadeText>}
+                      trailing={experiment.title === experiment.id ? null : <span className="conclusion-chain-id">{experiment.id}</span>}
+                    />
                   ))}
                 </List>
               )}
@@ -235,11 +236,9 @@ export function ProjectConclusionPanel({
             {conclusion.wiki.map((claim) => (
               <Item
                 key={`${claim.page}#${claim.claim}`} className="conclusion-chain-row" data-wk={claim.page}
-                onActivate={() => onOpenPage(claim.page)}
-              >
-                <FadeText>{claim.title}</FadeText>
-                <span className="conclusion-chain-id">v{claim.version}</span>
-              </Item>
+                onActivate={() => onOpenPage(claim.page)} title={<FadeText>{claim.title}</FadeText>}
+                trailing={<span className="conclusion-chain-id">v{claim.version}</span>}
+              />
             ))}
           </List>
         )}

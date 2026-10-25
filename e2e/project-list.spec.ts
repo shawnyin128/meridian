@@ -229,7 +229,7 @@ test('面板的最近推进、停滞天数与细行的上次推进都按最近�
   // Nothing has changed draft since its latest entry; the earliest entry is further back, so reading
   // the wrong end of the log gives a different number.
   expect(draftProgress).toBe(draft.at(-1)!.date)
-  await expect(shown(win).locator('[data-proj="draft"] .pp-h > .tag--warn'))
+  await expect(shown(win).locator('[data-proj="draft"] .item-title > .tag--warn'))
     .toHaveText(`已 ${daysSince(today, draftProgress!)} 天无推进`)
 
   // moe is shelved and shows as one compact row, ending with the days since it last progressed.
@@ -245,7 +245,7 @@ test('进行中卡片右上角的里程碑和搁置、已完成行末的说明�
     await expect.poll(() => win.evaluate(() => window.innerWidth)).toBe(width)
     const ends = await shown(win).locator('.projpanel[data-proj], .prow').evaluateAll((items) => items.map((item) => ({
       kind: item.classList.contains('prow') ? 'row' : 'card',
-      right: item.querySelector('.pp-h .dd, .prow .m')!.getBoundingClientRect().right,
+      right: item.querySelector('.item-head > .item-trailing, .item-main > .item-meta')!.getBoundingClientRect().right,
     })))
     const shownEnds = `${width}×${height}: ${JSON.stringify(ends)}`
     expect(new Set(ends.map((end) => end.kind)), shownEnds).toEqual(new Set(['card', 'row']))

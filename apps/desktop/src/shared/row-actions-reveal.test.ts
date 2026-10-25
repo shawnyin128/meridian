@@ -37,8 +37,8 @@ const SLOT = '<span class="row-actions"><button type="button" class="icbtn sm do
 // away from the slot.
 const ROWS = {
   chat: `<div class="srow chat-row" data-row-actions=""><span class="ct-t" data-point>对话</span>${SLOT}</div>`,
-  card: `<article class="item item--card projpanel" data-actionable="" data-row-actions=""><div class="pp-h"><button type="button" data-focus>MoE 路由分析</button><span class="dd" data-point>没有里程碑</span>${SLOT}</div></article>`,
-  project: `<div class="item item--row prow" data-row-actions=""><span class="tp" data-point>投机解码</span>${SLOT}</div>`,
+  card: `<article class="item item--card item--slotted item--actionable projpanel" data-row-actions=""><div class="item-head"><span class="item-main"><span class="item-title"><button type="button" class="item-open" data-focus>MoE 路由分析</button></span></span><span class="item-trailing" data-point>没有里程碑</span>${SLOT}</div></article>`,
+  project: `<div class="item item--row item--slotted item--actionable prow" data-row-actions=""><span class="item-main"><span class="item-meta" data-point>投机解码</span></span>${SLOT}</div>`,
   workspace: `<div class="pv workspace-field" data-row-actions=""><button class="workspace-root" data-point data-focus>meridian</button>${SLOT}</div>`,
   claim: `<div class="item item--row wkclaim" data-row-actions=""><div class="wkclaim-head"><span class="wkclaim-text">拐点在宽度 6</span>${SLOT}</div><div class="wkclaim-meta" data-point>v2</div><button class="wkclaim-history" data-focus>版本史</button></div>`,
   plan: `<section class="project-plan"><div class="item item--row item--actionable ddlrow task-row" data-row-actions=""><span class="plan-name-cell"><button class="plan-cell plan-name plan-open" data-focus>校准批次</button>${SLOT}</span><span class="dleft" data-point>进行中</span></div></section>`,

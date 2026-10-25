@@ -20,7 +20,7 @@ import { useMessages } from '../../messages/useMessages.js'
 import { FormInput } from '../FormControls.js'
 import { SectionHeading } from '../PageShell.js'
 import { SegmentedControl } from '../SegmentedControl.js'
-import { Item, RowActions } from '../Item.js'
+import { Item, ItemOpen, RowActions } from '../Item.js'
 import { List } from '../List.js'
 import { Tag, tagClass } from '../Tag.js'
 import { TagChips } from '../TagChips.js'
@@ -391,23 +391,28 @@ export function ProjectAttachments({ attachments, onAdd, onReveal, onRemove }: {
           : (
             <List className="attachment-list" variant="embedded">
               {attachments.map((attachment) => (
-                <Item className="attrow" key={attachment.id}>
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                    <path d={CLIP_PATH} />
-                  </svg>
-                  <button
-                    type="button" className="an" disabled={attachment.path === undefined}
-                    onClick={() => { if (attachment.path !== undefined) onReveal(attachment.path) }}
-                  ><FadeText>{attachment.name}</FadeText></button>
-                  {attachment.path === undefined ? <Tag>{m.project.attachments.noPath}</Tag> : null}
-                  <span className="as">{attachment.size}</span>
-                  <RowActions>
+                <Item
+                  className="attrow" key={attachment.id}
+                  {...(attachment.path === undefined ? {} : { composite: true, onActivate: () => onReveal(attachment.path!) })}
+                  leading={(
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                      <path d={CLIP_PATH} />
+                    </svg>
+                  )}
+                  title={(
+                    <>
+                      <ItemOpen className="an" disabled={attachment.path === undefined}><FadeText>{attachment.name}</FadeText></ItemOpen>
+                      {attachment.path === undefined ? <Tag>{m.project.attachments.noPath}</Tag> : null}
+                    </>
+                  )}
+                  trailing={<span className="as">{attachment.size}</span>}
+                  actions={(
                     <IconButton
                       label={m.project.attachments.delete} size="nested" tone="danger" className="ax"
-                      onClick={() => onRemove(attachment.id)}
+                      onClick={(event) => { event.stopPropagation(); onRemove(attachment.id) }}
                     ><IconTrash /></IconButton>
-                  </RowActions>
-                </Item>
+                  )}
+                />
               ))}
             </List>
           )}
@@ -424,12 +429,11 @@ export function ProjectAgentSessions({ sessions }: { sessions: AgentSession[] })
     <>
       <SectionHeading count={sessions.length}>{m.project.agentSessions.heading}</SectionHeading>
       {sessions.map((session) => (
-        <div className="agcard" key={session.id}>
-          <div className="agh">
-            <span className="agnm">{session.title}</span>
-            <Tag>{m.project.agentSessions.done}</Tag>
-            <span className="agbg">{fmt.date(session.when)}</span>
-          </div>
+        <Item
+          density="card" className="agcard" key={session.id}
+          title={<><span className="agnm">{session.title}</span><Tag>{m.project.agentSessions.done}</Tag></>}
+          trailing={fmt.date(session.when)}
+        >
           <CardTray
             className="agent-run-tray" summary={session.outcome}
             expandLabel={m.common.details.expand} collapseLabel={m.common.details.collapse}
@@ -442,7 +446,7 @@ export function ProjectAgentSessions({ sessions }: { sessions: AgentSession[] })
               ))}
             </div>
           </CardTray>
-        </div>
+        </Item>
       ))}
     </>
   )

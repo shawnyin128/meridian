@@ -318,6 +318,12 @@ function TaskRow({ projectId, task, flash, selected, reorder, onSave, onDelete, 
       <Item
         composite selected={selected} data-row={task.id} {...reorder?.item} {...reorder?.handle} onActivate={onOpen}
         className={`ddlrow task-row${task.state === 'done' ? ' done' : ''}${flash ? ' flash' : ''}`}
+        actions={(
+          <IconButton
+            label={m.project.plan.deleteTaskFor(task.title)} size="nested" tone="danger"
+            className="row-delete" onClick={(event) => { event.stopPropagation(); onDelete() }}
+          ><IconTrash /></IconButton>
+        )}
       >
         <TaskScheduleField mode="date" task={task} onSave={onSave} className="task-date-part" stopRowActivation />
         <TaskScheduleField mode="time" task={task} onSave={onSave} className="task-clock-part" stopRowActivation />
@@ -339,12 +345,6 @@ function TaskRow({ projectId, task, flash, selected, reorder, onSave, onDelete, 
             </span>
           )
           : <TaskNameCell projectId={projectId} task={task} onSave={onSave} />}
-        <RowActions>
-          <IconButton
-            label={m.project.plan.deleteTaskFor(task.title)} size="nested" tone="danger"
-            className="row-delete" onClick={(event) => { event.stopPropagation(); onDelete() }}
-          ><IconTrash /></IconButton>
-        </RowActions>
       </Item>
     </Toolbar>
   )
@@ -365,6 +365,12 @@ function MilestoneRow({ projectId, milestone, flash, onHover, onSave, onDelete }
       data-row={milestone.id}
       className={`ddlrow milestone-row${milestone.done ? ' done' : ''}${flash ? ' flash' : ''}`}
       onMouseEnter={() => onHover(milestone.id)} onMouseLeave={() => onHover(null)}
+      actions={(
+        <IconButton
+          label={m.project.plan.deleteMilestoneFor(milestone.title)} size="nested"
+          tone="danger" className="row-delete" onClick={onDelete}
+        ><IconTrash /></IconButton>
+      )}
     >
       <DateButton
         iso={milestone.date} className="plan-cell plan-date-button"
@@ -383,12 +389,6 @@ function MilestoneRow({ projectId, milestone, flash, onHover, onSave, onDelete }
         keep={{ scope: ['project', projectId, 'milestone', milestone.id], target: 'name' }}
         onSave={(title) => onSave({ title })}
       />
-      <RowActions>
-        <IconButton
-          label={m.project.plan.deleteMilestoneFor(milestone.title)} size="nested"
-          tone="danger" className="row-delete" onClick={onDelete}
-        ><IconTrash /></IconButton>
-      </RowActions>
     </Item>
   )
 }

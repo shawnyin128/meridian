@@ -23,7 +23,7 @@ import { nodeMode } from '../components/project/ResearchGraph.js'
 import { LoadingPlaceholder } from '../components/LoadingPlaceholder.js'
 import { DetailPanel } from '../components/DetailPanel.js'
 import { TrailingDate } from '../components/DateTimeDisplay.js'
-import { Item, ItemOpen, RowActions } from '../components/Item.js'
+import { Item, ItemMeta, ItemOpen } from '../components/Item.js'
 import { List } from '../components/List.js'
 import { ProjectLabel, ProjectStatusTag } from '../components/project/ProjectIdentity.js'
 import {
@@ -168,25 +168,26 @@ function IdeaCard({ idea, chatDeleted, projectsById, pageTitles, selected, menu,
 }) {
   const m = useMessages()
   return (
-    <Item density="card"
-      className="idea-card" selected={selected} muted={idea.archived}
+    <Item
+      density="card" className="idea-card" selected={selected} muted={idea.archived}
       data-idea={idea.id} onActivate={onOpen} {...reorder.item}
-    >
-      <div className="idea-card-content">
-        <div className="idea-card-title-row">
+      title={(
+        <>
           <ItemOpen><FadeText className="idea-card-title" label={idea.title}>{idea.title}</FadeText></ItemOpen>
           <IdeaRelationTags idea={idea} projectsById={projectsById} pageTitles={pageTitles} />
-        </div>
-        <div className="idea-card-meta">
+        </>
+      )}
+      meta={(
+        <>
           <IdeaOrigin
             idea={idea} chatDeleted={chatDeleted}
             sourceProject={idea.sourceProject === undefined ? undefined : projectsById.get(idea.sourceProject)?.name}
           />
           <TrailingDate date={idea.updated} label={m.ideas.updated} />
-        </div>
-      </div>
-      <RowActions><DragHandle {...reorder.handle} />{menu}</RowActions>
-    </Item>
+        </>
+      )}
+      actions={<DragHandle {...reorder.handle} />} menu={menu}
+    />
   )
 }
 
@@ -207,22 +208,21 @@ function IdeaRow({ idea, chatDeleted, projectsById, selected, menu, onOpen, reor
   const work = idea.project === undefined ? undefined : projectsById.get(idea.project)
   return (
     <Item
-      composite className="idea-row" selected={selected}
-      data-idea={idea.id} onActivate={onOpen} {...reorder.item}
+      composite className="idea-row" selected={selected} data-idea={idea.id} onActivate={onOpen} {...reorder.item}
+      title={<ItemOpen className="idea-row-open"><FadeText className="idea-row-title" label={idea.title}>{idea.title}</FadeText></ItemOpen>}
+      trailing={<TrailingDate date={idea.updated} label={m.ideas.updated} />}
+      actions={<DragHandle {...reorder.handle} />} menu={menu}
     >
-      <button type="button" className="idea-row-open"><FadeText className="idea-row-title" label={idea.title}>{idea.title}</FadeText></button>
       <span className="idea-row-work">
         {work === undefined ? null : <ProjectLabel name={work.name} />}
         {work?.status === SHELVED_PROJECT ? <ProjectStatusTag status={work.status} /> : null}
       </span>
-      <span className="idea-row-meta">
+      <ItemMeta className="idea-row-meta">
         <IdeaOrigin
           idea={idea} chatDeleted={chatDeleted}
           sourceProject={idea.sourceProject === undefined ? undefined : projectsById.get(idea.sourceProject)?.name}
         />
-      </span>
-      <TrailingDate date={idea.updated} label={m.ideas.updated} />
-      <RowActions><DragHandle {...reorder.handle} />{menu}</RowActions>
+      </ItemMeta>
     </Item>
   )
 }

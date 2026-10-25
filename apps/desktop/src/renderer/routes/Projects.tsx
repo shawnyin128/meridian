@@ -26,7 +26,7 @@ import { ProjectBlockerView, ProjectNextActionView } from '../components/project
 import { useAreaFilter } from '../components/project/ProjectAreaFilter.js'
 import { ProjectIdentity } from '../components/project/ProjectIdentity.js'
 import { EventText } from '../components/project/ProjectSignals.js'
-import { Item, ItemOpen, RowActions } from '../components/Item.js'
+import { Item, ItemOpen } from '../components/Item.js'
 import { List } from '../components/List.js'
 import { Tag } from '../components/Tag.js'
 import { dnum } from '../../shared/dates.js'
@@ -148,12 +148,10 @@ function ProjectCreateRow({ row, triggers, onCreate, onCancel, kept }: {
   const m = useMessages()
   return (
     <Item density="card" className="projpanel" elementRef={row}>
-      <div className="pp-h">
-        <InlineDraftInput
-          className="inedit" scopeRef={row} triggers={triggers} placeholder={m.project.identity.nameFieldLabel}
-          onSubmit={onCreate} onCancel={onCancel} kept={kept}
-        />
-      </div>
+      <InlineDraftInput
+        className="inedit" scopeRef={row} triggers={triggers} placeholder={m.project.identity.nameFieldLabel}
+        onSubmit={onCreate} onCancel={onCancel} kept={kept}
+      />
     </Item>
   )
 }
@@ -177,25 +175,24 @@ function ProjectPanel({ project, onOpen, menu, reorder }: {
   const record = newest?.date === project.lastProgress ? newest : undefined
 
   return (
-    <Item density="card"
-      className="projpanel"
-      data-proj={project.id} onActivate={onOpen} {...reorder.item}
+    <Item
+      density="card" className="projpanel" data-proj={project.id} onActivate={onOpen} {...reorder.item}
+      title={(
+        <>
+          <ItemOpen><ProjectIdentity project={project} showTopic /></ItemOpen>
+          {stale ? <Tag tone="warn">{m.research.panel.staleAlert(idle!)}</Tag> : null}
+        </>
+      )}
+      trailing={next && left !== null
+        ? (
+          <>
+            <span>{m.research.panel.milestoneOn(fmt.date(next.date))}</span>
+            <span>{left === 0 ? m.research.panel.dueToday : m.research.panel.dueInDays(left)}</span>
+          </>
+        )
+        : m.research.panel.noUpcomingMilestone}
+      actions={<DragHandle {...reorder.handle} />} menu={menu}
     >
-      <div className="pp-h">
-        <ItemOpen><ProjectIdentity project={project} showTopic /></ItemOpen>
-        {stale ? <Tag tone="warn">{m.research.panel.staleAlert(idle!)}</Tag> : null}
-        <span className="dd">
-          {next && left !== null
-            ? (
-              <>
-                <span>{m.research.panel.milestoneOn(fmt.date(next.date))}</span>
-                {left === 0 ? m.research.panel.dueToday : m.research.panel.dueInDays(left)}
-              </>
-            )
-            : m.research.panel.noUpcomingMilestone}
-        </span>
-        <RowActions><DragHandle {...reorder.handle} />{menu}</RowActions>
-      </div>
       <div className="project-card-decisions">
         <div className="project-card-decision">
           <span className="project-card-label">{m.project.identity.focusLabel.currentGoal}</span>
@@ -253,18 +250,16 @@ function ProjectRow({ project, onOpen, menu, reorder }: {
   const m = useMessages()
   return (
     <Item
-      composite className="prow"
-      data-proj={project.id} onActivate={onOpen} {...reorder.item}
-    >
-      <button type="button" className="prow-open">
-        <ProjectIdentity project={project} variant="row" showPriority={false} showTopic />
-      </button>
-      <FadeText className="m">
-        {m.project.identity.focusWithLabel(m.project.identity.focusLabel[FOCUS_KEY[project.status]], project.focus)} ·{' '}
-        {idleNote(idle, m.project.signals.idle)}
-      </FadeText>
-      <RowActions><DragHandle {...reorder.handle} />{menu}</RowActions>
-    </Item>
+      composite className="prow" data-proj={project.id} onActivate={onOpen} {...reorder.item}
+      title={<ItemOpen><ProjectIdentity project={project} variant="row" showPriority={false} showTopic /></ItemOpen>}
+      meta={(
+        <FadeText className="m">
+          {m.project.identity.focusWithLabel(m.project.identity.focusLabel[FOCUS_KEY[project.status]], project.focus)} ·{' '}
+          {idleNote(idle, m.project.signals.idle)}
+        </FadeText>
+      )}
+      actions={<DragHandle {...reorder.handle} />} menu={menu}
+    />
   )
 }
 

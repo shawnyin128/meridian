@@ -480,18 +480,9 @@ components/project/ProjectConclusions.css:3: .conclusion-detail-date { font-size
 components/project/ProjectConclusions.css:4: .conclusion-detail-source { margin }
 components/project/ProjectConclusions.css:4: .conclusion-detail-source { color }
 components/project/ProjectConclusions.css:4: .conclusion-detail-source { font-size }
-components/project/ProjectConclusions.css:6: .conclusion-chain-row { display }
-components/project/ProjectConclusions.css:6: .conclusion-chain-row { align-items }
-components/project/ProjectConclusions.css:6: .conclusion-chain-row { gap }
-components/project/ProjectConclusions.css:6: .conclusion-chain-row { min-height }
-components/project/ProjectConclusions.css:6: .conclusion-chain-row { padding }
-components/project/ProjectConclusions.css:6: .conclusion-chain-row { font-size }
-components/project/ProjectConclusions.css:8: .conclusion-chain-id { color }
-components/project/ProjectConclusions.css:8: .conclusion-chain-id { font-size }
-components/project/ProjectConclusions.css:8: .conclusion-chain-id { white-space }
-components/project/ProjectConclusions.css:9: .conclusion-draft { margin-top }
-components/project/ProjectConclusions.css:10: .conclusion-draft-evidence { color }
-components/project/ProjectConclusions.css:10: .conclusion-draft-evidence { font-size }
+components/project/ProjectConclusions.css:6: .conclusion-draft { margin-top }
+components/project/ProjectConclusions.css:7: .conclusion-draft-evidence { color }
+components/project/ProjectConclusions.css:7: .conclusion-draft-evidence { font-size }
 components/project/ProjectControl.css:1: .project-control-value { display }
 components/project/ProjectControl.css:1: .project-control-value { color }
 components/project/ProjectControl.css:3: .project-control-meta { display }
@@ -512,8 +503,6 @@ components/project/ProjectIdentity.css:6: .project-identity-sub { font-size }
 components/project/ProjectPlan.css:1: .project-plan .ddlrow { display }
 components/project/ProjectPlan.css:1: .project-plan .ddlrow { align-items }
 components/project/ProjectPlan.css:1: .project-plan .ddlrow { gap }
-components/project/ProjectPlan.css:1: .project-plan .ddlrow { padding }
-components/project/ProjectPlan.css:1: .project-plan .ddlrow { font-size }
 components/project/ProjectPlan.css:2: .project-plan .ddlrow .dleft { font-size }
 components/project/ProjectPlan.css:2: .project-plan .ddlrow .dleft { color }
 components/project/ProjectPlan.css:2: .project-plan .ddlrow .dleft { width }
@@ -615,64 +604,31 @@ components/project/ProjectPlan.css:42: @keyframes plan-row-flash 0% { background
 components/project/ProjectPlan.css:42: @keyframes plan-row-flash 100% { background }
 components/project/ProjectPlan.css:42: @keyframes plan-row-flash 50% { background }
 components/project/ProjectPlan.css:43: .project-plan .ddlrow.flash { animation }
-components/project/ProjectPlan.css:44: .project-plan .task-row[draggable] { cursor }
-components/project/ProjectPlan.css:45: .project-plan .task-row[draggable]:active { cursor }
-components/project/ProjectPlan.css:45: .project-plan .task-row.dragging { cursor }
-components/project/ProjectPlan.css:46: .project-plan .row-actions { margin-left }
-components/project/ProjectSections.css:2: .agcard { background }
-components/project/ProjectSections.css:2: .agcard { border }
-components/project/ProjectSections.css:2: .agcard { border-radius }
-components/project/ProjectSections.css:2: .agcard { padding }
-components/project/ProjectSections.css:2: .agcard { margin-bottom }
-components/project/ProjectSections.css:4: .agnm { font-size }
-components/project/ProjectSections.css:4: .agnm { font-weight }
-components/project/ProjectSections.css:5: .agbg { margin-left }
-components/project/ProjectSections.css:5: .agbg { font-size }
-components/project/ProjectSections.css:5: .agbg { color }
-components/project/ProjectSections.css:6: .agent-run-tray { margin-top }
-components/project/ProjectSections.css:7: .agsteps { padding }
-components/project/ProjectSections.css:8: .agstep { font-size }
-components/project/ProjectSections.css:8: .agstep { color }
-components/project/ProjectSections.css:8: .agstep { padding }
-components/project/ProjectSections.css:8: .agstep { line-height }
-components/project/ProjectSections.css:9: .agstep .agt { font-family }
-components/project/ProjectSections.css:9: .agstep .agt { font-size }
-components/project/ProjectSections.css:9: .agstep .agt { color }
-components/project/ProjectSections.css:9: .agstep .agt { width }
-components/project/ProjectSections.css:11: .memo { font-size }
-components/project/ProjectSections.css:14: .project-areas .tagchip.tagadd { opacity }
-components/project/ProjectSections.css:14: .project-areas .tagchip.tagadd { pointer-events }
-components/project/ProjectSections.css:15: .project-areas .tagchip-open { cursor }
-components/project/ProjectSections.css:16: .wkrel .reladd { min-width }
-components/project/ProjectSections.css:22: .wkrel .tagchip[draggable] { cursor }
-components/project/ProjectSections.css:23: .wkrel .tagchip[draggable]:active { cursor }
-components/project/ProjectSections.css:24: .wkrel .tagchip.dragging { opacity }
-components/project/ProjectSections.css:25: .wkrel .tagchip.drop-before { box-shadow }
-components/project/ProjectSections.css:26: .wkrel .tagchip.drop-after { box-shadow }
-components/project/ProjectSections.css:28: .attrow { display }
-components/project/ProjectSections.css:28: .attrow { align-items }
-components/project/ProjectSections.css:28: .attrow { gap }
-components/project/ProjectSections.css:28: .attrow { font-size }
-components/project/ProjectSections.css:28: .attrow { padding }
-components/project/ProjectSections.css:29: .attrow>svg { width }
-components/project/ProjectSections.css:29: .attrow>svg { height }
-components/project/ProjectSections.css:29: .attrow>svg { color }
-components/project/ProjectSections.css:30: .attrow .an { padding }
-components/project/ProjectSections.css:30: .attrow .an { border }
-components/project/ProjectSections.css:30: .attrow .an { background }
-components/project/ProjectSections.css:30: .attrow .an { color }
-components/project/ProjectSections.css:30: .attrow .an { font }
-components/project/ProjectSections.css:30: .attrow .an { text-align }
-components/project/ProjectSections.css:30: .attrow .an { cursor }
-components/project/ProjectSections.css:31: .attrow .an:disabled { cursor }
-components/project/ProjectSections.css:32: .attrow .as { font-size }
-components/project/ProjectSections.css:32: .attrow .as { color }
-components/project/ProjectSections.css:33: .attrow .row-actions { margin }
-components/project/ProjectSections.css:34: .attachments { border-radius }
-components/project/ProjectSections.css:34: .attachments { transition }
-components/project/ProjectSections.css:34: .attachments { outline }
-components/project/ProjectSections.css:35: .attachments.drag { background }
-components/project/ProjectSections.css:35: .attachments.drag { outline-color }
+components/project/ProjectPlan.css:44: .project-plan .row-actions { margin-left }
+components/project/ProjectSections.css:2: .agsteps { padding }
+components/project/ProjectSections.css:3: .agstep { font-size }
+components/project/ProjectSections.css:3: .agstep { color }
+components/project/ProjectSections.css:3: .agstep { padding }
+components/project/ProjectSections.css:3: .agstep { line-height }
+components/project/ProjectSections.css:4: .agstep .agt { font-family }
+components/project/ProjectSections.css:4: .agstep .agt { font-size }
+components/project/ProjectSections.css:4: .agstep .agt { color }
+components/project/ProjectSections.css:4: .agstep .agt { width }
+components/project/ProjectSections.css:6: .memo { font-size }
+components/project/ProjectSections.css:9: .project-areas .tagchip.tagadd { opacity }
+components/project/ProjectSections.css:9: .project-areas .tagchip.tagadd { pointer-events }
+components/project/ProjectSections.css:10: .project-areas .tagchip-open { cursor }
+components/project/ProjectSections.css:11: .wkrel .reladd { min-width }
+components/project/ProjectSections.css:17: .wkrel .tagchip[draggable] { cursor }
+components/project/ProjectSections.css:18: .wkrel .tagchip[draggable]:active { cursor }
+components/project/ProjectSections.css:19: .wkrel .tagchip.dragging { opacity }
+components/project/ProjectSections.css:20: .wkrel .tagchip.drop-before { box-shadow }
+components/project/ProjectSections.css:21: .wkrel .tagchip.drop-after { box-shadow }
+components/project/ProjectSections.css:23: .attachments { border-radius }
+components/project/ProjectSections.css:23: .attachments { transition }
+components/project/ProjectSections.css:23: .attachments { outline }
+components/project/ProjectSections.css:24: .attachments.drag { background }
+components/project/ProjectSections.css:24: .attachments.drag { outline-color }
 components/project/ProjectSignals.css:2: .project-signal-columns { --project-signal-kind-width }
 components/project/ProjectSignals.css:2: .project-signal-columns { --project-signal-date-width }
 components/project/ProjectSignals.css:2: .project-signal-columns { --project-signal-gap }
@@ -744,28 +700,15 @@ components/project/ResearchGraph.css:59: .node-branch-label { padding-top }
 components/project/ResearchGraph.css:59: .node-branch-label { color }
 components/project/ResearchGraph.css:59: .node-branch-label { font-size }
 components/project/ResearchGraph.css:59: .node-branch-label { white-space }
-components/project/ResearchGraph.css:61: .node-task-row { display }
-components/project/ResearchGraph.css:61: .node-task-row { align-items }
-components/project/ResearchGraph.css:61: .node-task-row { gap }
-components/project/ResearchGraph.css:61: .node-task-row { min-height }
-components/project/ResearchGraph.css:61: .node-task-row { padding }
-components/project/ResearchGraph.css:63: .node-ideas { display }
-components/project/ResearchGraph.css:64: .node-idea-row { display }
-components/project/ResearchGraph.css:64: .node-idea-row { gap }
-components/project/ResearchGraph.css:64: .node-idea-row { min-height }
-components/project/ResearchGraph.css:64: .node-idea-row { padding }
-components/project/ResearchGraph.css:65: .node-idea-title { font-weight }
-components/project/ResearchGraph.css:67: .node-idea-source { color }
-components/project/ResearchGraph.css:67: .node-idea-source { font-size }
-components/project/ResearchGraph.css:68: .node-document-source { display }
-components/project/ResearchGraph.css:68: .node-document-source { margin-top }
-components/project/ResearchGraph.css:68: .node-document-source { padding-top }
-components/project/ResearchGraph.css:68: .node-document-source { border-top }
-components/project/ResearchGraph.css:68: .node-document-source { color }
-components/project/ResearchGraph.css:69: .node-document-source { font-family }
-components/project/ResearchGraph.css:69: .node-document-source { font-size }
-components/project/ResearchGraph.css:71: @media (max-width:1150px) .node-document-pane .node-document-head { margin }
-components/project/ResearchGraph.css:71: @media (max-width:1150px) .node-document-pane .node-document-head { padding }
+components/project/ResearchGraph.css:61: .node-document-source { display }
+components/project/ResearchGraph.css:61: .node-document-source { margin-top }
+components/project/ResearchGraph.css:61: .node-document-source { padding-top }
+components/project/ResearchGraph.css:61: .node-document-source { border-top }
+components/project/ResearchGraph.css:61: .node-document-source { color }
+components/project/ResearchGraph.css:62: .node-document-source { font-family }
+components/project/ResearchGraph.css:62: .node-document-source { font-size }
+components/project/ResearchGraph.css:64: @media (max-width:1150px) .node-document-pane .node-document-head { margin }
+components/project/ResearchGraph.css:64: @media (max-width:1150px) .node-document-pane .node-document-head { padding }
 components/reader/PaperWikiProposalReview.css:3: .paper-wiki-quality-head>strong { font-size }
 components/reader/PaperWikiProposalReview.css:3: .paper-wiki-quality-head>strong { line-height }
 components/reader/PaperWikiProposalReview.css:4: .paper-wiki-quality-head>span { font-size }
@@ -1111,155 +1054,108 @@ routes/Feed.css:24: .bitem .t { line-height }
 routes/Feed.css:25: .bitem .go { margin-left }
 routes/Ideas.css:2: .ideas-body { padding }
 routes/Ideas.css:3: .ideas-workspace { box-sizing }
-routes/Ideas.css:8: .idea-card { display }
-routes/Ideas.css:8: .idea-card { align-items }
-routes/Ideas.css:8: .idea-card { gap }
-routes/Ideas.css:11: .idea-card-title { font-size }
-routes/Ideas.css:11: .idea-card-title { font-weight }
-routes/Ideas.css:12: .idea-relation-tag { max-width }
-routes/Ideas.css:13: .idea-card-meta { margin-top }
-routes/Ideas.css:14: .idea-card-source { color }
-routes/Ideas.css:14: .idea-card-source { font-size }
-routes/Ideas.css:15: .idea-card>.row-actions { margin-top }
-routes/Ideas.css:23: .idea-row-groups { --idea-row-inset }
-routes/Ideas.css:23: .idea-row-groups { --idea-title-least }
-routes/Ideas.css:27: .idea-rows { display }
-routes/Ideas.css:27: .idea-rows { grid-template-columns }
-routes/Ideas.css:29: .idea-row { display }
-routes/Ideas.css:29: .idea-row { grid-template-columns }
-routes/Ideas.css:29: .idea-row { align-items }
-routes/Ideas.css:30: .idea-row { padding }
-routes/Ideas.css:30: .idea-row { font-size }
-routes/Ideas.css:31: .idea-row-open { padding }
-routes/Ideas.css:31: .idea-row-open { border }
-routes/Ideas.css:31: .idea-row-open { background }
-routes/Ideas.css:31: .idea-row-open { color }
-routes/Ideas.css:31: .idea-row-open { font }
-routes/Ideas.css:31: .idea-row-open { text-align }
-routes/Ideas.css:31: .idea-row-open { cursor }
-routes/Ideas.css:45: .idea-stats-row { display }
-routes/Ideas.css:45: .idea-stats-row { grid-template-columns }
-routes/Ideas.css:45: .idea-stats-row { align-items }
-routes/Ideas.css:45: .idea-stats-row { column-gap }
-routes/Ideas.css:46: .idea-stats-head { padding }
-routes/Ideas.css:46: .idea-stats-head { color }
-routes/Ideas.css:46: .idea-stats-head { font-size }
-routes/Ideas.css:46: .idea-stats-head { text-align }
-routes/Ideas.css:47: .idea-stats-row { padding }
-routes/Ideas.css:47: .idea-stats-row { font-size }
-routes/Ideas.css:48: .idea-stats-n { color }
-routes/Ideas.css:48: .idea-stats-n { text-align }
-routes/Ideas.css:48: .idea-stats-n { font-variant-numeric }
-routes/Ideas.css:49: .idea-stats-n.zero { color }
-routes/Ideas.css:55: .idea-detail-slot { --detail-panel-width }
-routes/Ideas.css:55: .idea-detail-slot { --detail-panel-gap }
-routes/Ideas.css:59: .idea-detail-panel { box-sizing }
-routes/Ideas.css:59: .idea-detail-panel { padding }
-routes/Ideas.css:59: .idea-detail-panel { border }
-routes/Ideas.css:59: .idea-detail-panel { border-radius }
-routes/Ideas.css:59: .idea-detail-panel { background }
-routes/Ideas.css:60: .idea-detail-panel { box-shadow }
-routes/Ideas.css:60: .idea-detail-panel { overflow-x }
-routes/Ideas.css:60: .idea-detail-panel { overflow-y }
-routes/Ideas.css:60: .idea-detail-panel { overscroll-behavior }
-routes/Ideas.css:61: .idea-detail-panel { --fade-paint }
-routes/Ideas.css:61: .idea-detail-panel { --fade-pad-top }
-routes/Ideas.css:61: .idea-detail-panel { --fade-pad-bottom }
-routes/Ideas.css:62: .idea-detail-editor { margin-top }
-routes/Ideas.css:63: .idea-detail-editor label { color }
-routes/Ideas.css:63: .idea-detail-editor label { font-size }
-routes/Ideas.css:65: .idea-detail-editor .form-textarea { min-height }
-routes/Ideas.css:67: .idea-missing-project { margin-top }
-routes/Ideas.css:70: @media (max-width:1150px) .idea-detail-slot { --detail-panel-width }
-routes/Ideas.css:70: @media (max-width:1150px) .idea-detail-slot { --detail-panel-gap }
-routes/Ideas.css:71: @media (max-width:1150px) .idea-detail-panel { padding }
-routes/Ideas.css:71: @media (max-width:1150px) .idea-detail-panel { --fade-pad-top }
-routes/Ideas.css:71: @media (max-width:1150px) .idea-detail-panel { --fade-pad-bottom }
+routes/Ideas.css:8: .idea-relation-tag { max-width }
+routes/Ideas.css:16: .idea-row-groups { --idea-row-inset }
+routes/Ideas.css:16: .idea-row-groups { --idea-title-least }
+routes/Ideas.css:20: .idea-rows { display }
+routes/Ideas.css:20: .idea-rows { grid-template-columns }
+routes/Ideas.css:22: .idea-row { display }
+routes/Ideas.css:22: .idea-row { grid-template-columns }
+routes/Ideas.css:22: .idea-row { align-items }
+routes/Ideas.css:35: .idea-stats-row { display }
+routes/Ideas.css:35: .idea-stats-row { grid-template-columns }
+routes/Ideas.css:35: .idea-stats-row { align-items }
+routes/Ideas.css:35: .idea-stats-row { column-gap }
+routes/Ideas.css:36: .idea-stats-head { padding }
+routes/Ideas.css:36: .idea-stats-head { color }
+routes/Ideas.css:36: .idea-stats-head { font-size }
+routes/Ideas.css:36: .idea-stats-head { text-align }
+routes/Ideas.css:37: .idea-stats-n { color }
+routes/Ideas.css:37: .idea-stats-n { text-align }
+routes/Ideas.css:37: .idea-stats-n { font-variant-numeric }
+routes/Ideas.css:38: .idea-stats-n.zero { color }
+routes/Ideas.css:44: .idea-detail-slot { --detail-panel-width }
+routes/Ideas.css:44: .idea-detail-slot { --detail-panel-gap }
+routes/Ideas.css:48: .idea-detail-panel { box-sizing }
+routes/Ideas.css:48: .idea-detail-panel { padding }
+routes/Ideas.css:48: .idea-detail-panel { border }
+routes/Ideas.css:48: .idea-detail-panel { border-radius }
+routes/Ideas.css:48: .idea-detail-panel { background }
+routes/Ideas.css:49: .idea-detail-panel { box-shadow }
+routes/Ideas.css:49: .idea-detail-panel { overflow-x }
+routes/Ideas.css:49: .idea-detail-panel { overflow-y }
+routes/Ideas.css:49: .idea-detail-panel { overscroll-behavior }
+routes/Ideas.css:50: .idea-detail-panel { --fade-paint }
+routes/Ideas.css:50: .idea-detail-panel { --fade-pad-top }
+routes/Ideas.css:50: .idea-detail-panel { --fade-pad-bottom }
+routes/Ideas.css:51: .idea-detail-editor { margin-top }
+routes/Ideas.css:52: .idea-detail-editor label { color }
+routes/Ideas.css:52: .idea-detail-editor label { font-size }
+routes/Ideas.css:54: .idea-detail-editor .form-textarea { min-height }
+routes/Ideas.css:56: .idea-missing-project { margin-top }
+routes/Ideas.css:59: @media (max-width:1150px) .idea-detail-slot { --detail-panel-width }
+routes/Ideas.css:59: @media (max-width:1150px) .idea-detail-slot { --detail-panel-gap }
+routes/Ideas.css:60: @media (max-width:1150px) .idea-detail-panel { padding }
+routes/Ideas.css:60: @media (max-width:1150px) .idea-detail-panel { --fade-pad-top }
+routes/Ideas.css:60: @media (max-width:1150px) .idea-detail-panel { --fade-pad-bottom }
 routes/ProjectDetail.css:4: .project-ideas { display }
 routes/ProjectDetail.css:5: .project-idea-row { display }
 routes/ProjectDetail.css:5: .project-idea-row { grid-template-columns }
 routes/ProjectDetail.css:5: .project-idea-row { align-items }
 routes/ProjectDetail.css:5: .project-idea-row { gap }
-routes/ProjectDetail.css:6: .project-idea-row { min-height }
-routes/ProjectDetail.css:6: .project-idea-row { padding }
-routes/ProjectDetail.css:7: .project-idea-title { font-weight }
-routes/ProjectDetail.css:9: .project-idea-source { color }
-routes/ProjectDetail.css:9: .project-idea-source { font-size }
-routes/ProjectDetail.css:9: .project-idea-source { text-align }
-routes/ProjectDetail.css:11: @media (max-width:900px) .project-idea-row { grid-template-columns }
-routes/ProjectDetail.css:13: @media (max-width:900px) .project-idea-source { text-align }
-routes/ProjectDetail.css:20: .wkpage.node-reading { gap }
-routes/ProjectDetail.css:22: .wkside.node-document-pane { flex }
-routes/ProjectDetail.css:22: .wkside.node-document-pane { width }
-routes/ProjectDetail.css:22: .wkside.node-document-pane { max-width }
-routes/ProjectDetail.css:23: .wkside.node-document-pane { box-sizing }
-routes/ProjectDetail.css:23: .wkside.node-document-pane { padding }
-routes/ProjectDetail.css:23: .wkside.node-document-pane { border }
-routes/ProjectDetail.css:23: .wkside.node-document-pane { border-radius }
-routes/ProjectDetail.css:23: .wkside.node-document-pane { background }
-routes/ProjectDetail.css:24: .wkside.node-document-pane { box-shadow }
-routes/ProjectDetail.css:24: .wkside.node-document-pane { overscroll-behavior }
-routes/ProjectDetail.css:24: .wkside.node-document-pane { --fade-paint }
-routes/ProjectDetail.css:24: .wkside.node-document-pane { --fade-pad-top }
-routes/ProjectDetail.css:24: .wkside.node-document-pane { --fade-pad-bottom }
-routes/ProjectDetail.css:26: @media (max-width:1150px) .wkpage.node-reading { gap }
-routes/ProjectDetail.css:27: @media (max-width:1150px) .wkside.node-document-pane { padding }
-routes/ProjectDetail.css:27: @media (max-width:1150px) .wkside.node-document-pane { --fade-pad-top }
-routes/ProjectDetail.css:27: @media (max-width:1150px) .wkside.node-document-pane { --fade-pad-bottom }
-routes/ProjectDetail.css:32: .workspace-root { border }
-routes/ProjectDetail.css:32: .workspace-root { background }
-routes/ProjectDetail.css:32: .workspace-root { color }
-routes/ProjectDetail.css:32: .workspace-root { font }
-routes/ProjectDetail.css:32: .workspace-root { text-align }
-routes/ProjectDetail.css:32: .workspace-root { cursor }
-routes/ProjectDetail.css:32: .workspace-root { padding }
-routes/ProjectDetail.css:33: .workspace-kinds { margin-bottom }
-routes/ProjectDetail.css:35: .workspace-form label { grid-template-columns }
-routes/ProjectDetail.css:36: .workspace-form label { color }
-routes/ProjectDetail.css:36: .workspace-form label { font-size }
-routes/ProjectDetail.css:37: .workspace-form .form-control { font-size }
-routes/ProjectDetail.css:38: .workspace-form .form-input[type="number"] { -moz-appearance }
-routes/ProjectDetail.css:39: .workspace-form .form-input[type="number"]::-webkit-inner-spin-button { appearance }
-routes/ProjectDetail.css:39: .workspace-form .form-input[type="number"]::-webkit-inner-spin-button { margin }
-routes/Projects.css:8: .pp-h .dd { margin-left }
-routes/Projects.css:8: .pp-h .dd { font-size }
-routes/Projects.css:8: .pp-h .dd { color }
-routes/Projects.css:9: .project-card-decisions { margin-top }
-routes/Projects.css:11: .project-card-label { color }
-routes/Projects.css:11: .project-card-label { font-size }
-routes/Projects.css:11: .project-card-label { font-weight }
-routes/Projects.css:11: .project-card-label { line-height }
-routes/Projects.css:12: .project-card-value { color }
-routes/Projects.css:12: .project-card-value { font-size }
-routes/Projects.css:13: .project-card-decision .project-control-value { color }
-routes/Projects.css:14: .project-card-facts { margin-top }
-routes/Projects.css:14: .project-card-facts { padding-top }
-routes/Projects.css:14: .project-card-facts { border-top }
-routes/Projects.css:14: .project-card-facts { font-size }
-routes/Projects.css:14: .project-card-facts { color }
-routes/Projects.css:17: .project-card-empty { color }
-routes/Projects.css:18: .msbar { vertical-align }
-routes/Projects.css:18: .msbar { margin }
-routes/Projects.css:19: .msbar i { width }
-routes/Projects.css:19: .msbar i { height }
-routes/Projects.css:19: .msbar i { border-radius }
-routes/Projects.css:19: .msbar i { background }
-routes/Projects.css:20: .msbar i.done { background }
-routes/Projects.css:32: .prow { display }
-routes/Projects.css:32: .prow { align-items }
-routes/Projects.css:32: .prow { gap }
-routes/Projects.css:32: .prow { padding }
-routes/Projects.css:32: .prow { font-size }
-routes/Projects.css:33: .prow-open { padding }
-routes/Projects.css:33: .prow-open { border }
-routes/Projects.css:33: .prow-open { background }
-routes/Projects.css:33: .prow-open { color }
-routes/Projects.css:33: .prow-open { font }
-routes/Projects.css:33: .prow-open { text-align }
-routes/Projects.css:33: .prow-open { cursor }
-routes/Projects.css:34: .prow .m { color }
-routes/Projects.css:34: .prow .m { font-size }
-routes/Projects.css:36: .projpanel .row-actions { margin-left }
+routes/ProjectDetail.css:8: @media (max-width:900px) .project-idea-row { grid-template-columns }
+routes/ProjectDetail.css:17: .wkpage.node-reading { gap }
+routes/ProjectDetail.css:19: .wkside.node-document-pane { flex }
+routes/ProjectDetail.css:19: .wkside.node-document-pane { width }
+routes/ProjectDetail.css:19: .wkside.node-document-pane { max-width }
+routes/ProjectDetail.css:20: .wkside.node-document-pane { box-sizing }
+routes/ProjectDetail.css:20: .wkside.node-document-pane { padding }
+routes/ProjectDetail.css:20: .wkside.node-document-pane { border }
+routes/ProjectDetail.css:20: .wkside.node-document-pane { border-radius }
+routes/ProjectDetail.css:20: .wkside.node-document-pane { background }
+routes/ProjectDetail.css:21: .wkside.node-document-pane { box-shadow }
+routes/ProjectDetail.css:21: .wkside.node-document-pane { overscroll-behavior }
+routes/ProjectDetail.css:21: .wkside.node-document-pane { --fade-paint }
+routes/ProjectDetail.css:21: .wkside.node-document-pane { --fade-pad-top }
+routes/ProjectDetail.css:21: .wkside.node-document-pane { --fade-pad-bottom }
+routes/ProjectDetail.css:23: @media (max-width:1150px) .wkpage.node-reading { gap }
+routes/ProjectDetail.css:24: @media (max-width:1150px) .wkside.node-document-pane { padding }
+routes/ProjectDetail.css:24: @media (max-width:1150px) .wkside.node-document-pane { --fade-pad-top }
+routes/ProjectDetail.css:24: @media (max-width:1150px) .wkside.node-document-pane { --fade-pad-bottom }
+routes/ProjectDetail.css:29: .workspace-root { border }
+routes/ProjectDetail.css:29: .workspace-root { background }
+routes/ProjectDetail.css:29: .workspace-root { color }
+routes/ProjectDetail.css:29: .workspace-root { font }
+routes/ProjectDetail.css:29: .workspace-root { text-align }
+routes/ProjectDetail.css:29: .workspace-root { cursor }
+routes/ProjectDetail.css:29: .workspace-root { padding }
+routes/ProjectDetail.css:30: .workspace-kinds { margin-bottom }
+routes/ProjectDetail.css:32: .workspace-form label { grid-template-columns }
+routes/ProjectDetail.css:33: .workspace-form label { color }
+routes/ProjectDetail.css:33: .workspace-form label { font-size }
+routes/ProjectDetail.css:34: .workspace-form .form-control { font-size }
+routes/ProjectDetail.css:35: .workspace-form .form-input[type="number"] { -moz-appearance }
+routes/ProjectDetail.css:36: .workspace-form .form-input[type="number"]::-webkit-inner-spin-button { appearance }
+routes/ProjectDetail.css:36: .workspace-form .form-input[type="number"]::-webkit-inner-spin-button { margin }
+routes/Projects.css:9: .project-card-label { color }
+routes/Projects.css:9: .project-card-label { font-size }
+routes/Projects.css:9: .project-card-label { font-weight }
+routes/Projects.css:9: .project-card-label { line-height }
+routes/Projects.css:10: .project-card-value { color }
+routes/Projects.css:10: .project-card-value { font-size }
+routes/Projects.css:11: .project-card-decision .project-control-value { color }
+routes/Projects.css:12: .project-card-facts { padding-top }
+routes/Projects.css:12: .project-card-facts { border-top }
+routes/Projects.css:12: .project-card-facts { font-size }
+routes/Projects.css:12: .project-card-facts { color }
+routes/Projects.css:15: .project-card-empty { color }
+routes/Projects.css:16: .msbar { vertical-align }
+routes/Projects.css:16: .msbar { margin }
+routes/Projects.css:17: .msbar i { width }
+routes/Projects.css:17: .msbar i { height }
+routes/Projects.css:17: .msbar i { border-radius }
+routes/Projects.css:17: .msbar i { background }
+routes/Projects.css:18: .msbar i.done { background }
 routes/Reader.css:7: .paper-chat { flex }
 routes/Reader.css:7: .paper-chat { border-right }
 routes/Reader.css:7: .paper-chat { transition }
@@ -1465,44 +1361,37 @@ routes/ResearchOverview.css:27: .ovlist-row { display }
 routes/ResearchOverview.css:27: .ovlist-row { grid-template-columns }
 routes/ResearchOverview.css:28: .ovlist-row { align-items }
 routes/ResearchOverview.css:28: .ovlist-row { column-gap }
-routes/ResearchOverview.css:28: .ovlist-row { min-height }
-routes/ResearchOverview.css:28: .ovlist-row { box-sizing }
-routes/ResearchOverview.css:28: .ovlist-row { padding }
-routes/ResearchOverview.css:29: .ovlist-row { font-size }
-routes/ResearchOverview.css:29: .ovlist-row { line-height }
-routes/ResearchOverview.css:31: .ovlist-when { height }
-routes/ResearchOverview.css:31: .ovlist-when { color }
-routes/ResearchOverview.css:31: .ovlist-when { font-size }
-routes/ResearchOverview.css:32: .ovlist-kind { height }
-routes/ResearchOverview.css:35: .ovlist-row:has(>.ovlist-main) { align-items }
-routes/ResearchOverview.css:36: .ovlist-meta { color }
-routes/ResearchOverview.css:36: .ovlist-meta { font-size }
-routes/ResearchOverview.css:36: .ovlist-meta { white-space }
-routes/ResearchOverview.css:37: .ovlist-prefix { color }
-routes/ResearchOverview.css:37: .ovlist-prefix { margin-right }
-routes/ResearchOverview.css:38: .ovlist-row.progress .ovlist-kind { grid-template-columns }
-routes/ResearchOverview.css:44: .ovpulse { display }
-routes/ResearchOverview.css:44: .ovpulse { grid-template-columns }
-routes/ResearchOverview.css:45: .ovpulse { column-gap }
-routes/ResearchOverview.css:46: .ovlist-row.ovpulse-row { column-gap }
-routes/ResearchOverview.css:46: .ovlist-row.ovpulse-row { min-height }
-routes/ResearchOverview.css:46: .ovlist-row.ovpulse-row { padding }
-routes/ResearchOverview.css:48: .ovpulse-title { font-size }
-routes/ResearchOverview.css:48: .ovpulse-title { font-weight }
-routes/ResearchOverview.css:49: .ovpulse-latest { font-size }
-routes/ResearchOverview.css:49: .ovpulse-latest { font-weight }
-routes/ResearchOverview.css:50: .ovpulse-sub { color }
-routes/ResearchOverview.css:50: .ovpulse-sub { font-size }
-routes/ResearchOverview.css:50: .ovpulse-sub { font-weight }
-routes/ResearchOverview.css:54: .ovcols { grid-template-columns }
-routes/ResearchOverview.css:54: .ovcols { border-top }
-routes/ResearchOverview.css:54: .ovcols { margin-top }
-routes/ResearchOverview.css:54: .ovcols { padding-top }
-routes/ResearchOverview.css:57: @media (max-width:900px) .ovlist { grid-template-columns }
-routes/ResearchOverview.css:58: @media (max-width:900px) .ovlist-meta { display }
-routes/ResearchOverview.css:59: @media (max-width:900px) .ovpulse { grid-template-columns }
-routes/ResearchOverview.css:59: @media (max-width:900px) .ovpulse { column-gap }
-routes/ResearchOverview.css:60: @media (max-width:900px) .ovlist-row.ovpulse-row { column-gap }
+routes/ResearchOverview.css:30: .ovlist-when { height }
+routes/ResearchOverview.css:30: .ovlist-when { color }
+routes/ResearchOverview.css:30: .ovlist-when { font-size }
+routes/ResearchOverview.css:31: .ovlist-kind { height }
+routes/ResearchOverview.css:34: .ovlist-row:has(>.ovlist-main) { align-items }
+routes/ResearchOverview.css:35: .ovlist-meta { color }
+routes/ResearchOverview.css:35: .ovlist-meta { font-size }
+routes/ResearchOverview.css:35: .ovlist-meta { white-space }
+routes/ResearchOverview.css:36: .ovlist-prefix { color }
+routes/ResearchOverview.css:36: .ovlist-prefix { margin-right }
+routes/ResearchOverview.css:37: .ovlist-row.progress .ovlist-kind { grid-template-columns }
+routes/ResearchOverview.css:43: .ovpulse { display }
+routes/ResearchOverview.css:43: .ovpulse { grid-template-columns }
+routes/ResearchOverview.css:44: .ovpulse { column-gap }
+routes/ResearchOverview.css:45: .ovlist-row.ovpulse-row { column-gap }
+routes/ResearchOverview.css:47: .ovpulse-title { font-size }
+routes/ResearchOverview.css:47: .ovpulse-title { font-weight }
+routes/ResearchOverview.css:48: .ovpulse-latest { font-size }
+routes/ResearchOverview.css:48: .ovpulse-latest { font-weight }
+routes/ResearchOverview.css:49: .ovpulse-sub { color }
+routes/ResearchOverview.css:49: .ovpulse-sub { font-size }
+routes/ResearchOverview.css:49: .ovpulse-sub { font-weight }
+routes/ResearchOverview.css:53: .ovcols { grid-template-columns }
+routes/ResearchOverview.css:53: .ovcols { border-top }
+routes/ResearchOverview.css:53: .ovcols { margin-top }
+routes/ResearchOverview.css:53: .ovcols { padding-top }
+routes/ResearchOverview.css:56: @media (max-width:900px) .ovlist { grid-template-columns }
+routes/ResearchOverview.css:57: @media (max-width:900px) .ovlist-meta { display }
+routes/ResearchOverview.css:58: @media (max-width:900px) .ovpulse { grid-template-columns }
+routes/ResearchOverview.css:58: @media (max-width:900px) .ovpulse { column-gap }
+routes/ResearchOverview.css:59: @media (max-width:900px) .ovlist-row.ovpulse-row { column-gap }
 routes/Settings.css:8: .modal.setdlg { height }
 routes/Settings.css:8: .modal.setdlg { padding }
 routes/Settings.css:8: .modal.setdlg { overflow }
