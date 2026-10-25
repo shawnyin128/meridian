@@ -562,9 +562,10 @@ test('论文对比:在表头末尾就地建一列,建完没有配置层', async 
   await table.locator('thead').hover()
   await table.locator('thead [aria-label="新建列"]').click()
   await expect(table.locator('thead th.th-new')).toHaveCount(1)
-  // The placeholder column adds a blank cell to each body row too, or the body's cells would not line up.
+  // The placeholder column adds a blank cell to each body row too, or the body's cells would not line up:
+  // a row holds a cell under every header, that blank, and its actions cell.
   expect(await table.locator('tbody tr').first().locator('td').count())
-    .toBe(before.length + 3)
+    .toBe(before.length + 2)
   await table.locator('thead th.th-new input').fill('新列')
   await table.locator('thead th.th-new input').press('Enter')
   await expect.poll(heads).toEqual([...before, '新列'])
