@@ -1241,14 +1241,14 @@ test('详情面板保留完整列与列操作,Escape 收的是详情面板', asy
   await win.locator('.ptable tbody tr').first().locator('td.pt-title').click()
   await expect(win.locator('.pdetail')).toHaveCount(1)
   const detailSlot = win.locator('.paper-detail-slot')
-  await expect(detailSlot).toHaveAttribute('data-panel-state', 'open')
-  expect(await detailSlot.evaluate((element) => getComputedStyle(element).transitionProperty))
-    .toContain('transform')
+  // The panel takes its place at once and only its content moves in, as every side panel does.
+  expect(await detailSlot.evaluate((element) => [
+    getComputedStyle(element).transitionDuration, getComputedStyle(element.firstElementChild!).animationName,
+  ])).toEqual(['0s', 'side-panel-in'])
   expect(await win.locator('.ptable thead th').allTextContents()).toEqual(headersBefore)
   await expect(win.locator('.ptable thead [aria-label="新建列"]')).toBeEnabled()
   await win.keyboard.press('Escape')
-  await expect(win.locator('.pdetail')).toHaveCount(0)
-  await expect(detailSlot).toHaveAttribute('data-panel-state', 'closed')
+  await expect(detailSlot).toHaveCount(0)
   // Closing the details opens no popover; an add-column popover opened while the details were open
   // would show up now.
   await expect(win.locator('[data-radix-popper-content-wrapper]')).toHaveCount(0)
@@ -1265,11 +1265,11 @@ test('详情面板头部的打开和收起在标题上方单独一行靠右,长�
   await gotoPapers(win)
   await firstPage(win)
   await win.locator('.ptable tbody tr').first().locator('td.pt-title').click()
-  await expect(win.locator('.pdetail .pd-t')).toHaveText(title)
+  await expect(win.locator('.paper-detail-slot .panel-head-title')).toHaveText(title)
 
-  const head = await panelHead(win.locator('.pdetail .pd-h'), '.pd-t', '.icbtn')
+  const head = await panelHead(win.locator('.paper-detail-slot .panel-head'), '.panel-head-title', '.icbtn')
   expect(head.actions.map(({ label, width, height }) => [label, width, height]))
-    .toEqual([['开始阅读', 30, 30], ['收起详情', 30, 30]])
+    .toEqual([['开始阅读', 24, 24], ['收起详情', 24, 24]])
   expect(Math.abs(head.actions[1]!.right - head.content.right)).toBeLessThan(1)
   expect(head.actions.map((action) => Math.round(action.top - head.content.top))).toEqual([0, 0])
   expect(head.actions.map((action) => action.top + action.height <= head.title.top)).toEqual([true, true])

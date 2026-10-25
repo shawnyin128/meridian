@@ -10,7 +10,7 @@ async function openReader(win: Page): Promise<void> {
   await win.locator('#libq').fill('STAR: SPECULATIVE DECODING')
   await expect(win.locator('.ptable tbody tr')).toHaveCount(1)
   await win.locator('.ptable tbody tr').click()
-  await shown(win, '.pdetail [aria-label="开始阅读"]').click()
+  await shown(win, '.paper-detail-slot [aria-label="开始阅读"]').click()
   await shown(win, '[aria-label="阅读笔记"]').click()
 }
 

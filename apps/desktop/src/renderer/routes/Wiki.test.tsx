@@ -223,7 +223,7 @@ describe('Wiki keyboard reach', () => {
     expect(tags('.cmp td.rh .entity-link')).toEqual(['BUTTON'])
     expect(tags('.cmp td.dv .tagchip')).toEqual(['BUTTON'])
     expect(tags('.cmp td.table-actions .row-actions > *')).toEqual(['BUTTON'])
-    expect(tags('.wkside .wkrel .tagchip')).toEqual(['BUTTON', 'BUTTON'])
+    expect(tags('.split-rail .wkrel .tagchip')).toEqual(['BUTTON', 'BUTTON'])
     expect(all('.wktoc li > button').map((b) => b.textContent)).toEqual(['背景', '结果'])
     expect(tags('.wkmain .md .entity-link')).toEqual(['A'])
 
@@ -272,7 +272,7 @@ describe('Wiki keyboard reach', () => {
     await press(host.querySelector<HTMLElement>('[data-wk="papers/p1"] .tt')!)
     const [list, read] = [...host.querySelectorAll<HTMLButtonElement>('.desk-head > .page-actions > .btn')]
     expect([list!.textContent, read!.textContent]).toEqual(['去论文列表查看', '去阅读论文'])
-    expect(host.querySelector('.wkside .btn')).toBeNull()
+    expect(host.querySelector('.split-rail .btn')).toBeNull()
     expect(host.querySelector('.paper-understanding .section-heading-actions')).toBeNull()
     await press(list!)
     expect(fixture.open).toHaveBeenCalledWith('papers', 'EAGLE-2')
@@ -308,8 +308,8 @@ describe('Wiki keyboard reach', () => {
     ])
     await press(host.querySelector<HTMLElement>('[data-wk="topics/sd"] .tt')!)
     expect(fixture.backlinks).toHaveBeenLastCalledWith('topics/sd')
-    expect(all('.wkside > .section-heading').map((heading) => heading.textContent)).toEqual(['属性', '关联', '反向链接', '目录'])
-    const link = (name: string) => all('.wkside .rail-links .tagchip').find((el) => el.textContent === name)!
+    expect(all('.split-rail > .section-heading').map((heading) => heading.textContent)).toEqual(['属性', '关联', '反向链接', '目录'])
+    const link = (name: string) => all('.split-rail .rail-links .tagchip').find((el) => el.textContent === name)!
     await press(link('推测解码加速'))
     expect(fixture.open).toHaveBeenLastCalledWith('project', 'p-47')
     await press(link('按接受率调树宽'))
@@ -321,7 +321,7 @@ describe('Wiki keyboard reach', () => {
     fixture.backlinks.mockResolvedValue([{ kind: 'page', id: 'topics/sd', title: '推测解码', kindLabel: '主题' }])
     await press(host.querySelector<HTMLElement>('.cmp td.rh .entity-link')!)
     expect(fixture.backlinks).toHaveBeenLastCalledWith('papers/p1')
-    expect(all('.wkside > .section-heading').map((heading) => heading.textContent)).toEqual(['属性', '归属', '反向链接', '目录'])
+    expect(all('.split-rail > .section-heading').map((heading) => heading.textContent)).toEqual(['属性', '归属', '反向链接', '目录'])
     fixture.aggregation.mockClear()
     await press(link('推测解码'))
     expect(fixture.aggregation).toHaveBeenLastCalledWith('topics/sd')
@@ -333,7 +333,7 @@ describe('Wiki keyboard reach', () => {
       { kind: 'project', id: 'p-47', title: '推测解码加速' },
     ])
     await press(host.querySelector<HTMLElement>('[data-wk="topics/sd"] .tt')!)
-    const rows = all('.wkside .wkrel').map((row) => [
+    const rows = all('.split-rail .wkrel').map((row) => [
       row.className, ...[...row.children].map((part) => `${part.tagName} ${part.className}`),
     ])
     expect(rows.map((row) => row.slice(1))).toEqual(Array(4).fill(['SPAN rl', 'BUTTON tag tag--chip tag--neutral tagchip']))
@@ -355,17 +355,18 @@ describe('Wiki keyboard reach', () => {
 
   it('从关联打开另一页再按返回,回到的那一页等内容出来后回到原来滚到的位置', async () => {
     fixture.aggregation.mockImplementation(async (id: string) => ({ ...AGG, id, title: id === 'topics/sd' ? '推测解码' : '树' }))
-    const body = () => host.querySelector<HTMLElement>('.wiki-body')!
+    // A page's main column scrolls inside itself.
+    const body = () => host.querySelector<HTMLElement>('.wiki-body .split-column')!
     await press(host.querySelector<HTMLElement>('[data-wk="topics/sd"] .tt')!)
     body().scrollTop = 160
-    await press(all('.wkside .rail-links .tagchip').find((el) => el.textContent === '树')!)
+    await press(all('.split-rail .rail-links .tagchip').find((el) => el.textContent === '树')!)
     expect(host.querySelector('.desk-head .t')!.textContent).toBe('树')
     body().scrollTop = 40
     let arrive: (page: WikiAggregation) => void = () => {}
     fixture.aggregation.mockImplementationOnce(() => new Promise((done) => { arrive = done }))
     await press(host.querySelector<HTMLElement>('.desk-head > .back')!)
-    // A browser clamps the offset to 0 while the page waits behind its placeholder.
-    body().scrollTop = 0
+    // While the page waits behind its placeholder it has no column, so the column it gets starts at the top.
+    expect(host.querySelector('.wiki-body .split-column')).toBeNull()
     await act(async () => { arrive({ ...AGG, title: '推测解码' }); await Promise.resolve() })
     expect(host.querySelector('.desk-head .t')!.textContent).toBe('推测解码')
     expect(body().scrollTop).toBe(160)
@@ -388,9 +389,22 @@ describe('Wiki keyboard reach', () => {
     expect(body().scrollTop).toBe(120)
   })
 
+  it('聚合页和论文页的正文和右栏是同一个分栏页的两栏,各在自己那一栏里滚动,不随整页滚', async () => {
+    const columns = () => {
+      const split = host.querySelector('.wiki-body > .split-page')
+      return split === null ? null : [split.className, ...[...split.children].map((column) => column.className)]
+    }
+    expect(columns()).toBeNull()
+    await press(host.querySelector<HTMLElement>('[data-wk="topics/sd"] .tt')!)
+    expect(columns()).toEqual(['split-page split-page--rail wkpage', 'scroll-area scroll-area--y split-column wkmain', 'scroll-area scroll-area--y split-rail'])
+    await press(host.querySelector<HTMLElement>('.desk-head > .back')!)
+    await press(host.querySelector<HTMLElement>('[data-wk="papers/p1"] .tt')!)
+    expect(columns()).toEqual(['split-page split-page--rail wkpage', 'scroll-area scroll-area--y split-column wkmain', 'scroll-area scroll-area--y split-rail'])
+  })
+
   it('没有东西指向这一页时右栏没有反向链接这一块', async () => {
     await press(host.querySelector<HTMLElement>('[data-wk="topics/sd"] .tt')!)
-    expect(all('.wkside > .section-heading').map((heading) => heading.textContent)).toEqual(['属性', '关联', '目录'])
+    expect(all('.split-rail > .section-heading').map((heading) => heading.textContent)).toEqual(['属性', '关联', '目录'])
   })
 
   it('opens a paper page membership from a button', async () => {

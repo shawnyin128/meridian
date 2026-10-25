@@ -9,6 +9,7 @@ import { LoadingPlaceholder } from '../LoadingPlaceholder.js'
 import { RatingStars, ReadStatePicker } from '../PaperMetadata.js'
 import { ReadDots } from '../ReadDots.js'
 import { Item, ItemOpen } from '../Item.js'
+import { SplitPage } from '../SplitPage.js'
 import { List, ListColumn } from '../List.js'
 import { CountBadge } from '../CountBadge.js'
 import { Tag } from '../Tag.js'
@@ -101,7 +102,7 @@ export function ResearchMap({ rows, total, loading, onOpenPaper, onReadPaper, on
         : map.groups.length === 0
           ? <EmptyState variant="page" icon={<IconPapers sw={1.4} />} />
           : (
-            <div className="research-map-layout">
+            <SplitPage columns="index">
               <ListColumn className="research-map-index">
                 <List className="research-map-groups" aria-label={m.papers.researchMap.groupListAria}>
                   {entries.groups.map(entryRow)}
@@ -172,7 +173,7 @@ export function ResearchMap({ rows, total, loading, onOpenPaper, onReadPaper, on
                     </List>
                   </div>
                 )}
-            </div>
+            </SplitPage>
           )}
     </section>
   )

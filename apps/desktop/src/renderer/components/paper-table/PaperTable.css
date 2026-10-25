@@ -37,18 +37,9 @@
  */
 .typerow{padding-left:calc(var(--row-menu-pad) + var(--row-menu-check) + var(--sp-10) + var(--sp-20) - var(--sp-8))}
 
-/* Paper detail: a full-height right panel; the table and the footer make room for it together. */
-.paper-detail-slot{--detail-panel-width:var(--detailw);top:46px;right:0;bottom:0;border-left:1px solid var(--sep);
-  background:var(--content);z-index:5}
-.pdetail{height:100%;box-sizing:border-box;overflow:auto;overscroll-behavior:contain;padding:var(--sp-16)}
+/* Paper detail: a full-height right panel under the page head; the table and the footer make room for it together. */
+.paper-detail-slot{position:absolute;top:46px;right:0;bottom:0;z-index:5}
 .desk-body.withdetail,.desk-foot.withdetail{margin-right:var(--detailw)}
-/*
- * The buttons take a row of their own at the head's right end, and the title the whole row below them.
- * The title comes first in the markup, so Tab still reaches it before the buttons.
- */
-.pd-h{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:var(--sp-4) var(--sp-8);margin-bottom:var(--sp-12)}
-.pd-t{order:1;width:100%;font-size:var(--fs-section);font-weight:var(--fw-title);line-height:var(--lh-ui)}
-/* The title is the panel's head, in the head's ink rather than a property value's grey. */
 .pdetail>.paper-meta{height:auto;margin:0 calc(-1 * var(--sp-16)) calc(-1 * var(--sp-16))}
 .paper-reading-summary{margin-top:var(--sp-16)}
 .paper-reading-summary .reading-summary-all{margin:var(--sp-6) 0 0 calc(-1 * var(--sp-10))}
@@ -60,12 +51,11 @@
  */
 .libbar .filters{align-items:center;flex-wrap:wrap;margin:0}
 
-/* Research Map is a peer view of the table. It composes the shared list and segmented
- * controls; these rules only define its two-column domain layout and information hierarchy. */
-/* The map takes the view's remaining height; each of its two columns scrolls inside itself. */
+/* Research Map is a peer view of the table. It composes the shared list, segmented control and split
+ * page; these rules only define its information hierarchy. */
+/* The map takes the view's remaining height, which its split page fills; each column scrolls inside itself. */
 .research-map{display:flex;min-height:0;flex:1;flex-direction:column;gap:var(--sp-14);padding:var(--sp-2) var(--sp-2) 0}
 .research-map-limit{color:var(--ter);font-size:var(--fs-sm)}
-.research-map-layout{display:grid;flex:1;min-height:0;grid-template-columns:minmax(220px,310px) minmax(0,1fr);grid-template-rows:minmax(0,1fr);gap:var(--sp-16)}
 /* The groups, then the cross-group and ungrouped rows in a list of their own below them. */
 .research-map-index{min-width:0;gap:var(--sp-12)}
 .research-map-groups{min-width:0}
@@ -82,6 +72,3 @@
 .research-map-paper-meta{white-space:nowrap}
 .research-map-why{display:flex;align-items:center;gap:var(--sp-4)}
 
-@media (max-width:900px){
-  .research-map-layout{grid-template-columns:1fr;grid-template-rows:fit-content(50%) minmax(0,1fr)}
-}

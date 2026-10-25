@@ -257,9 +257,30 @@ describe('Settings', () => {
     expect(api.removeChat).toHaveBeenCalledExactlyOnceWith('chat-1')
   })
 
+  it('设置和外观主题编辑都是分栏页的对话框两栏:左边导航,右边的标题留在上面,下面的内容自己滚动', async () => {
+    await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
+    const dialog = document.querySelector('.setdlg')!
+    const layout = () => {
+      const split = dialog.querySelector('.modal-body > .split-page')
+      const main = split?.querySelector(':scope > .split-main')
+      return split === null || main === null || main === undefined ? null : [
+        split.className, ...[...split.children].map((column) => column.className.split(' ')[0]),
+        ...[...main.children].map((part) => part.className.split(' ')[0]),
+      ]
+    }
+    expect(layout()).toEqual(['split-page split-page--dialog', 'scroll-area', 'split-main', 'split-main-head', 'scroll-area'])
+    expect(dialog.querySelector('.split-nav > .split-nav-head > .modal-title')!.textContent).toBe('设置')
+    await act(async () => { dialog.querySelector<HTMLElement>('[data-setcat="appearance"]')!.click() })
+    const heading = [...dialog.querySelectorAll('.section-heading')].find((held) => held.firstChild?.textContent === '外观主题')!
+    await act(async () => { heading.querySelector<HTMLButtonElement>('.section-heading-actions > .add-action')!.click() })
+    expect(layout()).toEqual(['split-page split-page--dialog', 'scroll-area', 'split-main', 'split-main-head', 'scroll-area'])
+    expect([...dialog.querySelector('.split-nav-head')!.children].map((part) => part.getAttribute('aria-label') ?? part.textContent))
+      .toEqual(['返回', '外观主题'])
+  })
+
   it('设置右栏放不下时，只在藏着内容的那一边淡出', async () => {
     await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
-    const pane = document.querySelector<HTMLElement>('.setdlg .set-body')!
+    const pane = document.querySelector<HTMLElement>('.setdlg .split-main-body')!
     let offset = 0
     Object.defineProperty(pane, 'clientHeight', { configurable: true, get: () => 400 })
     Object.defineProperty(pane, 'scrollHeight', { configurable: true, get: () => 900 })
@@ -278,7 +299,7 @@ describe('Settings', () => {
     for (const [category, title] of Object.entries(titles) as [SettingsCategory, string][]) {
       api.requestedCategory = category
       await act(async () => { root.render(<MessagesProvider key={category}><Settings /></MessagesProvider>) })
-      const column = document.querySelector<HTMLElement>('.setdlg .set-main')!
+      const column = document.querySelector<HTMLElement>('.setdlg .split-main')!
       for (const box of [column, ...column.querySelectorAll<HTMLElement>('*')]) {
         Object.defineProperty(box, 'clientHeight', { configurable: true, get: () => 400 })
         Object.defineProperty(box, 'scrollHeight', { configurable: true, get: () => 900 })
@@ -338,7 +359,7 @@ describe('Settings', () => {
     await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
     const dialog = document.querySelector('.setdlg')!
     await act(async () => { dialog.querySelector<HTMLElement>('[data-setcat="api"]')!.click() })
-    const alert = dialog.querySelector('.set-body [role="alert"]')
+    const alert = dialog.querySelector('.split-main-body [role="alert"]')
     expect([alert?.className, alert?.textContent]).toEqual(['inline-message inline-message--box inline-message--error page-error page-error--section', '需要更新 App'])
   })
 
@@ -652,7 +673,7 @@ describe('Settings', () => {
 
     await act(async () => { add.click() })
     expect(dialog.querySelector('[data-setcat]')).toBeNull()
-    expect(dialog.querySelector('.set-side .set-t')!.textContent).toBe('外观主题')
+    expect(dialog.querySelector('.split-nav .modal-title')!.textContent).toBe('外观主题')
     expect([...dialog.querySelectorAll('[data-module]')]).toHaveLength(13)
 
     await act(async () => { dialog.querySelector<HTMLButtonElement>('button[aria-label="返回"]')!.click() })
@@ -739,7 +760,7 @@ describe('Settings', () => {
     const dialog = await appearanceWith([celadon])
     await pickDelete(dialog, '青瓷')
     await act(async () => { document.querySelector<HTMLButtonElement>('[role="alertdialog"] .btn.pri.danger')!.click() })
-    expect(dialog.querySelector('.set-head')!.textContent).toContain('这一项已不存在')
+    expect(dialog.querySelector('.split-main-head')!.textContent).toContain('这一项已不存在')
     expect(window.localStorage.getItem('meridian.colour-theme')).toBe('celadon')
   })
 
@@ -808,7 +829,7 @@ describe('Settings', () => {
     for (const category of categories) {
       api.requestedCategory = category
       await act(async () => { root.render(<MessagesProvider key={category}><Settings /></MessagesProvider>) })
-      const pane = document.querySelector('.setdlg .set-main')!
+      const pane = document.querySelector('.setdlg .split-main')!
       expect([...pane.querySelectorAll('.settings-intro, .storage-card .section-heading + p, .storage-note')].map((p) => p.textContent), category)
         .toEqual([])
     }
@@ -857,13 +878,13 @@ describe('Settings', () => {
     await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
     const dialog = document.querySelector('.setdlg')!
     await act(async () => { dialog.querySelector<HTMLElement>('[data-setcat="storage"]')!.click() })
-    expect(dialog.querySelectorAll('.set-main .loading-placeholder')).toHaveLength(1)
-    expect(dialog.querySelector('.set-main .empty-state')).toBeNull()
-    expect(dialog.querySelector('.set-main')!.textContent).not.toMatch(/正在读取/)
+    expect(dialog.querySelectorAll('.split-main .loading-placeholder')).toHaveLength(1)
+    expect(dialog.querySelector('.split-main .empty-state')).toBeNull()
+    expect(dialog.querySelector('.split-main')!.textContent).not.toMatch(/正在读取/)
 
     await act(async () => { dialog.querySelector<HTMLElement>('[data-setcat="archived"]')!.click() })
-    expect(dialog.querySelector('.set-main .loading-placeholder')).not.toBeNull()
-    expect(dialog.querySelector('.set-main .empty-state')).toBeNull()
+    expect(dialog.querySelector('.split-main .loading-placeholder')).not.toBeNull()
+    expect(dialog.querySelector('.split-main .empty-state')).toBeNull()
   })
 
   it('每个设置页只显示自己那次读取的错误：对话列表读不到时，存储页不报，归档的对话页报', async () => {
@@ -871,10 +892,10 @@ describe('Settings', () => {
     await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
     const dialog = document.querySelector('.setdlg')!
     await act(async () => { dialog.querySelector<HTMLElement>('[data-setcat="storage"]')!.click() })
-    expect(dialog.querySelector('.set-main [role="alert"]')).toBeNull()
+    expect(dialog.querySelector('.split-main [role="alert"]')).toBeNull()
 
     await act(async () => { dialog.querySelector<HTMLElement>('[data-setcat="archived"]')!.click() })
-    expect(dialog.querySelector('.set-main [role="alert"]')?.textContent).toBe('需要更新 App')
+    expect(dialog.querySelector('.split-main [role="alert"]')?.textContent).toBe('需要更新 App')
   })
 
   it('还没有备份时备份这一节整节不显示', async () => {
@@ -883,7 +904,7 @@ describe('Settings', () => {
     await act(async () => { dialog.querySelector<HTMLElement>('[data-setcat="storage"]')!.click() })
     expect([...dialog.querySelectorAll('.section-heading')].map((node) => node.textContent))
       .not.toContain('论文库备份 · 0')
-    expect(dialog.querySelector('.set-main .empty-state')).toBeNull()
+    expect(dialog.querySelector('.split-main .empty-state')).toBeNull()
   })
 
   it('库打不开时显示所选目录与原因的标签，错误里不带路径，切换和重置仍然可用', async () => {
@@ -1324,9 +1345,9 @@ describe('Settings', () => {
   const shownFailure = () => {
     const dialog = document.querySelector('.setdlg')!
     return [
-      dialog.querySelector('.set-head .page-error')?.textContent ?? null,
-      dialog.querySelector('.set-body .page-error')?.textContent ?? null,
-      dialog.querySelectorAll('.set-body .loading-placeholder').length,
+      dialog.querySelector('.split-main-head .page-error')?.textContent ?? null,
+      dialog.querySelector('.split-main-body .page-error')?.textContent ?? null,
+      dialog.querySelectorAll('.split-main-body .loading-placeholder').length,
     ]
   }
 
@@ -1337,7 +1358,7 @@ describe('Settings', () => {
     expect(shownFailure()).toEqual(['需要更新 App', null, 0])
     await render(1)
     expect(shownFailure()).toEqual([null, null, 0])
-    expect(document.querySelector('.setdlg .set-body')!.textContent).toContain('Codex')
+    expect(document.querySelector('.setdlg .split-main-body')!.textContent).toContain('Codex')
   })
 
   it('读论文库位置失败时，原因写在论文库那张卡片里，不再停在读取占位上，也不在屏头重复', async () => {

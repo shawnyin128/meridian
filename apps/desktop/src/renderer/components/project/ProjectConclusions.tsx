@@ -13,7 +13,7 @@ import { FadeText } from '../FadeText.js'
 import { ChoicePicker } from '../FieldPickers.js'
 import { FieldRow, FormInput } from '../FormControls.js'
 import { SectionHeading } from '../PageShell.js'
-import { PanelClose } from '../PanelClose.js'
+import { PanelBody, PanelHead } from '../SidePanel.js'
 import { AgentLabel } from '../SourceLabel.js'
 import { useDraftSlot } from '../DraftSlot.js'
 import { Item } from '../Item.js'
@@ -121,8 +121,8 @@ export function ProjectConclusionPanel({
 
   return (
     <>
-      <SectionHeading
-        level="group" className="node-document-head" data-stuck-fade="top"
+      <PanelHead
+        title={c.heading} onClose={onClose}
         actions={(
           <>
             {conclusion.node !== undefined && conclusion.fingerprint !== undefined && conclusion.state === 'pending'
@@ -133,114 +133,113 @@ export function ProjectConclusionPanel({
               : null}
             {conclusion.state === 'verified' ? null : <Tag>{c.unverifiedState}</Tag>}
             <Button size="compact" disabled={conclusion.state !== 'verified'} onClick={claimDraft.start}>{c.write}</Button>
-            <PanelClose onClose={onClose} />
           </>
         )}
-      ><FadeText className="node-document-title" label={c.heading}>{c.heading}</FadeText>
-      </SectionHeading>
-      <p className="conclusion-detail-text">{conclusion.text}</p>
-      <div className="conclusion-detail-meta">
-        <ProjectSignalKind state={STATE[conclusion.state]}>{c.state[conclusion.state]}</ProjectSignalKind>
-        {conclusion.date === undefined ? null : <span className="conclusion-detail-date">{fmt.date(conclusion.date)}</span>}
-      </div>
-      {draft === null
-        ? null
-        : (
-          <div className="conclusion-draft" ref={claimDraft.slot}>
-            <DraftForm
-              destination={(invalid) => (
-                <>
-                  <ChoicePicker
-                    appearance="field" aria-label={c.page} placeholder={c.pagePick} value={draft.page}
-                    aria-invalid={invalid(draft.page === '')} options={pages.map((card) => card.id)}
-                    label={(id) => pages.find((card) => card.id === id)?.title ?? id}
-                    onPick={(page) => setDraft({ ...draft, page })}
-                  />
-                  <span>· {m.wiki.claims.heading}</span>
-                </>
-              )}
-              canSave={draft.page !== '' && draft.text.trim() !== ''} onSave={submit} onCancel={() => setDraft(null)}
-            >
-              {(invalid) => (
-                <>
-                  <FormInput
-                    value={draft.text} aria-label={c.text} aria-invalid={invalid(draft.text.trim() === '')}
-                    onChange={(event) => setDraft({ ...draft, text: event.target.value })}
-                  />
-                  <FieldRow>
-                    <span className="conclusion-draft-evidence">
-                      <Tag>{m.wiki.claims.experiment}</Tag>
-                      <EntityLink kind="project" label={projectName} />
-                      <span>{conclusion.node === undefined ? conclusion.text : node?.label ?? conclusion.node}</span>
-                    </span>
-                  </FieldRow>
-                </>
-              )}
-            </DraftForm>
-          </div>
-        )}
-
-      {conclusion.node === undefined
-        ? (
-          <>
-            <SectionHeading level="group">{c.source}</SectionHeading>
-            <p className="conclusion-detail-source">{conclusion.source}</p>
-          </>
-        )
-        : (
-          <>
-            <SectionHeading level="group" count={conclusion.tasks.length}>{c.tasks}</SectionHeading>
-            {conclusion.tasks.length === 0
-              ? <EmptyState variant="section" />
-              : (
-                <List variant="embedded" className="conclusion-chain">
-                  {conclusion.tasks.map((task) => (
-                    <Item
-                      key={task.id} className="conclusion-chain-row" onActivate={() => onOpenTask(task.id)}
-                      title={<FadeText>{task.title}</FadeText>}
+      />
+      <PanelBody>
+        <p className="conclusion-detail-text">{conclusion.text}</p>
+        <div className="conclusion-detail-meta">
+          <ProjectSignalKind state={STATE[conclusion.state]}>{c.state[conclusion.state]}</ProjectSignalKind>
+          {conclusion.date === undefined ? null : <span className="conclusion-detail-date">{fmt.date(conclusion.date)}</span>}
+        </div>
+        {draft === null
+          ? null
+          : (
+            <div className="conclusion-draft" ref={claimDraft.slot}>
+              <DraftForm
+                destination={(invalid) => (
+                  <>
+                    <ChoicePicker
+                      appearance="field" aria-label={c.page} placeholder={c.pagePick} value={draft.page}
+                      aria-invalid={invalid(draft.page === '')} options={pages.map((card) => card.id)}
+                      label={(id) => pages.find((card) => card.id === id)?.title ?? id}
+                      onPick={(page) => setDraft({ ...draft, page })}
                     />
-                  ))}
-                </List>
-              )}
-            <SectionHeading level="group">{c.node}</SectionHeading>
-            {node === undefined
-              ? null
-              : (
-                <div className="conclusion-detail-node">
-                  <EntityLink kind="node" label={node.label} mode={node.mode} onOpen={() => onOpenNode(conclusion.node!)} />
-                </div>
-              )}
-            <SectionHeading level="group" count={conclusion.experiments.length}>{c.experiments}</SectionHeading>
-            {conclusion.experiments.length === 0
-              ? <EmptyState variant="section" />
-              : (
-                <List variant="embedded" className="conclusion-chain">
-                  {conclusion.experiments.map((experiment) => (
-                    <Item
-                      key={experiment.id} className="conclusion-chain-row" title={<FadeText>{experiment.title}</FadeText>}
-                      trailing={experiment.title === experiment.id ? null : <span className="conclusion-chain-id">{experiment.id}</span>}
+                    <span>· {m.wiki.claims.heading}</span>
+                  </>
+                )}
+                canSave={draft.page !== '' && draft.text.trim() !== ''} onSave={submit} onCancel={() => setDraft(null)}
+              >
+                {(invalid) => (
+                  <>
+                    <FormInput
+                      value={draft.text} aria-label={c.text} aria-invalid={invalid(draft.text.trim() === '')}
+                      onChange={(event) => setDraft({ ...draft, text: event.target.value })}
                     />
-                  ))}
-                </List>
-              )}
-          </>
-        )}
+                    <FieldRow>
+                      <span className="conclusion-draft-evidence">
+                        <Tag>{m.wiki.claims.experiment}</Tag>
+                        <EntityLink kind="project" label={projectName} />
+                        <span>{conclusion.node === undefined ? conclusion.text : node?.label ?? conclusion.node}</span>
+                      </span>
+                    </FieldRow>
+                  </>
+                )}
+              </DraftForm>
+            </div>
+          )}
 
-      <SectionHeading level="group">{c.wiki}</SectionHeading>
-      {conclusion.wiki.length === 0
-        ? <EmptyState variant="section" />
-        : (
-          <List variant="embedded" className="conclusion-chain">
-            {conclusion.wiki.map((claim) => (
-              <Item
-                key={`${claim.page}#${claim.claim}`} className="conclusion-chain-row" data-wk={claim.page}
-                onActivate={() => onOpenPage(claim.page)} title={<FadeText>{claim.title}</FadeText>}
-                trailing={<span className="conclusion-chain-id">v{claim.version}</span>}
-              />
-            ))}
-          </List>
-        )}
+        {conclusion.node === undefined
+          ? (
+            <>
+              <SectionHeading level="group">{c.source}</SectionHeading>
+              <p className="conclusion-detail-source">{conclusion.source}</p>
+            </>
+          )
+          : (
+            <>
+              <SectionHeading level="group" count={conclusion.tasks.length}>{c.tasks}</SectionHeading>
+              {conclusion.tasks.length === 0
+                ? <EmptyState variant="section" />
+                : (
+                  <List variant="embedded" className="conclusion-chain">
+                    {conclusion.tasks.map((task) => (
+                      <Item
+                        key={task.id} className="conclusion-chain-row" onActivate={() => onOpenTask(task.id)}
+                        title={<FadeText>{task.title}</FadeText>}
+                      />
+                    ))}
+                  </List>
+                )}
+              <SectionHeading level="group">{c.node}</SectionHeading>
+              {node === undefined
+                ? null
+                : (
+                  <div className="conclusion-detail-node">
+                    <EntityLink kind="node" label={node.label} mode={node.mode} onOpen={() => onOpenNode(conclusion.node!)} />
+                  </div>
+                )}
+              <SectionHeading level="group" count={conclusion.experiments.length}>{c.experiments}</SectionHeading>
+              {conclusion.experiments.length === 0
+                ? <EmptyState variant="section" />
+                : (
+                  <List variant="embedded" className="conclusion-chain">
+                    {conclusion.experiments.map((experiment) => (
+                      <Item
+                        key={experiment.id} className="conclusion-chain-row" title={<FadeText>{experiment.title}</FadeText>}
+                        trailing={experiment.title === experiment.id ? null : <span className="conclusion-chain-id">{experiment.id}</span>}
+                      />
+                    ))}
+                  </List>
+                )}
+            </>
+          )}
 
+        <SectionHeading level="group">{c.wiki}</SectionHeading>
+        {conclusion.wiki.length === 0
+          ? <EmptyState variant="section" />
+          : (
+            <List variant="embedded" className="conclusion-chain">
+              {conclusion.wiki.map((claim) => (
+                <Item
+                  key={`${claim.page}#${claim.claim}`} className="conclusion-chain-row" data-wk={claim.page}
+                  onActivate={() => onOpenPage(claim.page)} title={<FadeText>{claim.title}</FadeText>}
+                  trailing={<span className="conclusion-chain-id">v{claim.version}</span>}
+                />
+              ))}
+            </List>
+          )}
+      </PanelBody>
     </>
   )
 }

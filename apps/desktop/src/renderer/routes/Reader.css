@@ -71,23 +71,18 @@
 .selection-tools-row{display:flex;align-items:center;gap:var(--sp-10)}
 .selection-tools .form-textarea{width:100%;resize:none;field-sizing:content;max-height:calc(6lh + 2 * var(--sp-8) + 2px)}
 
-.reading-notes{width:320px;min-width:320px;box-sizing:border-box;border-left:1px solid var(--sep);background:var(--content);display:flex;flex-direction:column;overflow:hidden}
 .note-compose{padding:var(--sp-12);border-bottom:1px solid var(--sep);display:flex;flex-direction:column;gap:var(--sp-8);align-items:flex-end}
 .note-compose .form-textarea,.reading-card .form-textarea{width:100%}
 .note-compose .form-textarea{min-height:86px}.reading-card .form-textarea{min-height:64px}
 .reading-list{padding:var(--sp-12);display:flex;flex-direction:column}
 .reading-actions{display:flex;align-items:center;justify-content:flex-end}
 .highlight-card blockquote{max-height:calc(4 * 1lh);margin:0;color:var(--sec);font-size:var(--fs-sm);line-height:1.45}
-.reading-remark{width:320px;min-width:320px;box-sizing:border-box;border-left:1px solid var(--sep);background:var(--content);display:flex;flex-direction:column;overflow:hidden}
 .remark-compose{padding:var(--sp-12);display:flex;flex-direction:column;gap:var(--sp-8);align-items:flex-end}
 .remark-compose .form-textarea{width:100%;min-height:120px}
 
-.reader-side{display:flex;flex:0 0 362px;min-width:0;height:100%;overflow:hidden;background:var(--content)}
-.reader-side.collapsed{flex-basis:42px}
-.reader-side:not(.collapsed)>:not(.reader-rail){animation:detail-panel-content-in var(--t-slow) var(--e-out) both}
-.reader-side>.reader-meta,.reader-side>.reading-notes,.reader-side>.reading-remark,.reader-side>.wiki-ingest{width:320px;min-width:320px;border-left:1px solid var(--sep)}
-.reader-meta{display:flex;flex-direction:column;overflow:hidden;background:var(--content)}
-.reader-meta>.paper-meta{flex:1;height:auto}
+/* The open panel and the rail of panel switches, side by side, each as wide as it is. */
+.reader-side{display:flex;flex:none;height:100%}
+.reader-meta .paper-meta{flex:1;height:auto}
 .reader-rail{width:42px;min-width:42px;border-left:1px solid var(--sep);background:var(--sidebar);display:flex;flex-direction:column;align-items:center;padding-top:var(--sp-8);box-sizing:border-box;gap:var(--sp-4);order:2}
 .reader-rail button{width:32px;height:32px;border:0;border-radius:var(--r-control);background:transparent;color:var(--ter);display:grid;place-items:center;cursor:pointer}
 .reader-rail button:hover{background:var(--hover);color:var(--ink)}
@@ -96,9 +91,7 @@
 
 
 @media (max-width:1100px){.main.reading{--rrw:260px}}
-@media (max-width:900px){.reader-side{flex-basis:322px}.reader-side.collapsed{flex-basis:42px}.reader-side>.reader-meta,.reader-side>.reading-notes,.reader-side>.reading-remark,.reader-side>.wiki-ingest{width:280px;min-width:280px}}
 
-.wiki-ingest{box-sizing:border-box;background:var(--content);display:flex;flex-direction:column}
 .wiki-ingest-body{padding:var(--sp-12);display:flex;flex-direction:column;align-items:stretch}
 .wiki-ingest-body>p{font-size:var(--fs-sm);line-height:1.55;color:var(--sec);margin:0}
 .wiki-ingest .wiki-ingest-status{margin-top:var(--sp-10);padding:0 var(--sp-2)}

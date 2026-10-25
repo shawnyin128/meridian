@@ -103,9 +103,9 @@ test('项目反向展示关联想法，点击后在项目右栏就地打开详�
 
   await row.click()
   await expect(win.locator('#crumb .cseg')).toHaveText(['研究', '项目', 'draft 效率'])
-  await expect(page.locator('.node-document-pane')).toContainText(idea!.title)
+  await expect(page.locator('.project-detail-panel')).toContainText(idea!.title)
   await expect(page.locator('.idea-panel-body')).not.toBeEmpty()
-  const openIdea = page.locator('.idea-panel-head .project-idea-open-idea')
+  const openIdea = page.locator('.project-detail-panel .panel-head .project-idea-open-idea')
   await expect(openIdea).toHaveAttribute('aria-label', '打开想法')
   await expect(page.getByRole('button', { name: '打开来源对话' })).toHaveCount(0)
   await expect(row).toHaveClass(/selected/)
@@ -151,7 +151,7 @@ test('想法在科研图中动态标出关联节点，节点详情反向展示�
 
   const page = win.locator('.screenslot:not([hidden])')
   await page.locator(`.project-idea-row[data-idea="${idea!.id}"]`).click()
-  const side = page.locator('.node-document-pane')
+  const side = page.locator('.project-detail-panel')
   const actions = side.locator('.section-heading', { hasText: '科研节点' }).locator('.section-heading-actions')
   await expect.poll(() => side.evaluate((element) => element.getBoundingClientRect().width))
     .toBeGreaterThan(400)
@@ -167,8 +167,9 @@ test('想法在科研图中动态标出关联节点，节点详情反向展示�
   await expect(linkedNode.locator('rect.rgn-box')).toHaveAttribute('style', /idea-node-hatch-/)
 
   await linkedNode.click()
+  await expect(side.locator('.panel-head-title')).toHaveText('树宽收益拐点')
   const headings = await side.locator('.section-heading').allTextContents()
-  expect(headings.slice(1, 5)).toEqual(['分支 · 3', '任务 · 1', '关联想法 · 1', '科研记录 · 1'])
+  expect(headings.slice(0, 4)).toEqual(['分支 · 3', '任务 · 1', '关联想法 · 1', '科研记录 · 1'])
   // wide and prefix are both active_nodes, so knee's branches are two in progress and one supported; no candidate group remains.
   expect(await side.locator('.node-branch-label').evaluateAll((labels) => labels.map((label) => ({
     text: label.textContent,
@@ -198,7 +199,7 @@ test('节点详情自己滚动;滚到底后滚轮接着滚整页', async ({ win 
   await page.locator('.rgn[data-node="knee"]').click()
 
   const body = page.locator('.desk-body')
-  const side = page.locator('.node-document-pane')
+  const side = page.locator('.project-detail-panel .panel-body')
   expect(await side.evaluate((element) => getComputedStyle(element).overflowY)).toBe('auto')
   await body.evaluate((element) => { element.scrollTop = 0 })
   await side.evaluate((element) => { element.scrollTop = element.scrollHeight })
@@ -858,7 +859,7 @@ test('科研图展示多个活跃节点,节点以只读 Markdown、分支结果�
   await expect(graph.locator('.rgn[data-node="root"]')).toHaveClass(/active-path-node-graph/)
 
   await graph.locator('.rgn[data-node="root"]').click()
-  const panel = win.locator('.screenslot:not([hidden]) .wkside')
+  const panel = win.locator('.screenslot:not([hidden]) .project-detail-panel')
   await expect(panel.locator('.node-markdown')).toContainText('核心问题是')
   await expect(panel.locator('.node-branch-group.useful .entity-link')).toHaveText('树宽收益拐点')
   await expect(panel.locator('.node-branch-group.dead .entity-link')).toHaveText('draft 提前停止策略')
@@ -866,7 +867,7 @@ test('科研图展示多个活跃节点,节点以只读 Markdown、分支结果�
   await expect(panel.locator('input')).toHaveCount(0)
 
   await panel.locator('.node-branch-list .entity-link', { hasText: '树宽收益拐点' }).click()
-  await expect(panel.locator('.node-document-title')).toHaveText('树宽收益拐点')
+  await expect(panel.locator('.panel-head-title')).toHaveText('树宽收益拐点')
   await expect(panel.locator('.node-markdown')).toContainText('Hypothesis')
   // wide and prefix are both in active_nodes, so both land in the in-progress group, not repairable/candidate.
   await expect(panel.locator('.node-branch-group.active .entity-link')).toHaveCount(2)
@@ -944,12 +945,12 @@ test('科研图节点上下居中且可缩放平移,分支和科研记录在正�
   const mainWidth = (await detail.locator('.wkmain').boundingBox())!.width
   // An empty section is hidden: root has branches but no records, knee has both.
   await viewport.locator('.rgn[data-node="root"]').click()
-  await expect(detail.locator('.node-document-pane .section-heading', { hasText: /^分支 ·/ })).toHaveCount(1)
-  await expect(detail.locator('.node-document-pane .section-heading', { hasText: /^科研记录/ })).toHaveCount(0)
+  await expect(detail.locator('.project-detail-panel .section-heading', { hasText: /^分支 ·/ })).toHaveCount(1)
+  await expect(detail.locator('.project-detail-panel .section-heading', { hasText: /^科研记录/ })).toHaveCount(0)
   await viewport.locator('.rgn[data-node="knee"]').click()
-  await expect(detail.locator('.node-document-title')).toHaveText('树宽收益拐点')
-  const branchHeading = detail.locator('.node-document-pane .section-heading', { hasText: /^分支 ·/ })
-  const recordHeading = detail.locator('.node-document-pane .section-heading', { hasText: /^科研记录 ·/ })
+  await expect(detail.locator('.panel-head-title')).toHaveText('树宽收益拐点')
+  const branchHeading = detail.locator('.project-detail-panel .section-heading', { hasText: /^分支 ·/ })
+  const recordHeading = detail.locator('.project-detail-panel .section-heading', { hasText: /^科研记录 ·/ })
   const markdown = detail.locator('.node-markdown')
   await expect(detail.locator('.node-document-metadata')).toHaveCount(0)
   const [branchBox, recordBox, markdownBox] = await Promise.all([
@@ -965,49 +966,55 @@ test('科研图节点上下居中且可缩放平移,分支和科研记录在正�
 test('节点阅读态保留科研图并扩宽右栏,可直接切换节点', async ({ win }) => {
   await gotoProject(win)
   const page = win.locator('.screenslot:not([hidden]) .wkpage')
-  const side = page.locator('.wkside')
-  const propertyWidth = await side.evaluate((element) => element.getBoundingClientRect().width)
+  const rail = page.locator('.wkside')
+  const side = page.locator('.project-detail-panel')
+  const propertyWidth = await rail.evaluate((element) => element.getBoundingClientRect().width)
 
   await page.locator('.section-heading-actions .segmented-control>button', { hasText: '科研图' }).click()
   await page.locator('.rgraph .rgn[data-node="knee"]').click()
 
   await expect(page).toHaveClass(/\bnode-reading\b/)
   await expect(page.locator('.rgraph')).toBeVisible()
-  await expect(side).toHaveClass(/\bnode-document-pane\b/)
-  await expect(side).toHaveClass(/\bdetail-panel--resize\b/)
+  await expect(rail).toHaveCount(0)
+  await expect(side).toHaveClass(/\bside-panel--card\b/)
   expect(await side.evaluate((element) => getComputedStyle(element).transitionProperty))
     .not.toContain('flex-basis')
-  await expect(side.locator('.node-document-title')).toHaveText('树宽收益拐点')
+  await expect(side.locator('.panel-head-title')).toHaveText('树宽收益拐点')
   await expect.poll(() => side.evaluate((element) => element.getBoundingClientRect().width))
     .toBeGreaterThan(propertyWidth + 120)
 
   await page.locator('.rgraph .rgn[data-node="stop"]').click()
-  await expect(side.locator('.section-heading').first()).toContainText('draft 提前停止策略')
-  await expect(side.locator('.node-document-title')).toHaveText('draft 提前停止策略')
+  await expect(side.locator('.panel-head-title')).toHaveText('draft 提前停止策略')
   await expect(page.locator('.rgraph .rgn[data-node="stop"]')).toHaveClass(/\bsel\b/)
 
   await side.locator('button[aria-label="收起详情"]').click()
   await expect(page).not.toHaveClass(/\bnode-reading\b/)
-  await expect(side.locator('.section-heading').first()).toHaveText('属性')
+  await expect(side).toHaveCount(0)
+  await expect(rail.locator('.section-heading').first()).toHaveText('属性')
 })
 
-test('任务详情头部的长标题仍是一行,在收起按钮前淡出,收起按钮在头部右上角', async ({ win }) => {
+test('任务详情头部的收起钮在标题上方单独一行靠右,长标题每一行都占满头部的整行宽度', async ({ win }) => {
   const title = '汇总今天的宽度扫描结果并把每个树宽下的接受率和端到端加速比整理成一张对比表交给组会'
   // The plan's list shows the open tasks; this one is the first of them.
   const task = (await readDraft(win)).tasks.find((held) => held.title === '宽树实验 B≥8')!
   await call(win, 'project.updateTask', { projectId: 'draft', taskId: task.id, patch: { title } })
   await gotoProject(win)
   await win.locator(`#taskList .ddlrow[data-row="${task.id}"] .plan-name`).click()
-  const side = win.locator('.screenslot:not([hidden]) .wkside')
-  await expect(side.locator('.node-document-title')).toHaveText(title)
-  await expect(side.locator('.node-document-title')).toHaveClass(/\bclipped\b/)
+  const side = win.locator('.screenslot:not([hidden]) .project-detail-panel')
+  await expect(side.locator('.panel-head-title')).toHaveText(title)
 
-  const head = await panelHead(side.locator('.node-document-head'), '.node-document-title', '.section-heading-actions .icbtn')
-  expect(head.actions.map(({ label, width, height }) => [label, width, height])).toEqual([['收起详情', 30, 30]])
+  // The same head as the paper detail's: Han text breaks between any two characters, so every full line ends less than a character short.
+  const head = await panelHead(side.locator('.panel-head'), '.panel-head-title', '.icbtn')
+  expect(head.actions.map(({ label, width, height }) => [label, width, height])).toEqual([['收起详情', 24, 24]])
   expect(Math.abs(head.actions[0]!.right - head.content.right)).toBeLessThan(1)
   expect(Math.round(head.actions[0]!.top - head.content.top)).toBe(0)
-  expect(head.title.lines).toHaveLength(1)
-  expect(head.title.right).toBeLessThanOrEqual(head.actions[0]!.left)
+  expect(head.actions[0]!.top + head.actions[0]!.height).toBeLessThanOrEqual(head.title.top)
+  expect([head.title.left - head.content.left, head.content.right - head.title.right].map(Math.round)).toEqual([0, 0])
+  expect(head.title.lines.length).toBeGreaterThanOrEqual(2)
+  expect(head.title.lines.slice(0, -1).map((line) => ({
+    starts: Math.abs(line.left - head.content.left) < 1,
+    fills: head.content.right - line.right < head.title.fontSize,
+  }))).toEqual(head.title.lines.slice(0, -1).map(() => ({ starts: true, fills: true })))
 })
 
 test('在项目详情里再点侧栏的「项目」,回到项目列表;返回键在页头标题左边', async ({ win }) => {
@@ -1085,12 +1092,13 @@ test('标签页组里有一行的标签页和空着的一样高:科研计划与�
 test('切换科研图节点:右栏高度不随内容变,页面不跟着跳,新节点从顶部读起', async ({ win }) => {
   await gotoProject(win)
   const page = win.locator('.screenslot:not([hidden]) .wkpage')
-  const side = page.locator('.wkside')
+  const side = page.locator('.project-detail-panel')
+  const scroller = side.locator('.panel-body')
   await page.locator('.section-heading-actions .segmented-control>button', { hasText: '科研图' }).click()
   // Nodes are activated with a dispatched click: a pointer click would first scroll the node into
   // view, and this test measures the page's own movement.
   await page.locator('.rgraph .rgn[data-node="knee"]').dispatchEvent('click')
-  await expect(side.locator('.node-document-title')).toHaveText('树宽收益拐点')
+  await expect(side.locator('.panel-head-title')).toHaveText('树宽收益拐点')
 
   const measure = () => side.evaluate((pane) => {
     let scroller: HTMLElement | null = pane.parentElement
@@ -1101,13 +1109,13 @@ test('切换科研图节点:右栏高度不随内容变,页面不跟着跳,新�
       pageScroll: scroller?.scrollTop ?? 0,
     }
   })
-  await side.evaluate((pane) => { pane.scrollTop = 120 })
+  await scroller.evaluate((pane) => { pane.scrollTop = 120 })
   const before = await measure()
 
   await page.locator('.rgraph .rgn[data-node="stop"]').dispatchEvent('click')
-  await expect(side.locator('.node-document-title')).toHaveText('draft 提前停止策略')
+  await expect(side.locator('.panel-head-title')).toHaveText('draft 提前停止策略')
   expect(await measure()).toEqual(before)
-  expect(await side.evaluate((pane) => pane.scrollTop)).toBe(0)
+  expect(await scroller.evaluate((pane) => pane.scrollTop)).toBe(0)
 })
 
 test('新任务行开着且打了字时按侧栏会话的「...」:任务照样建成,菜单打开', async ({ win }) => {
@@ -1623,7 +1631,8 @@ test('项目列表点进详情,内容导航行的返回钮退回列表', async (
 test('任务四列各自编辑,点击行或任务名只打开任务详情,不改变任何列,改名从铅笔进入', async ({ win }) => {
   test.slow()
   await gotoProject(win)
-  const side = win.locator('.screenslot:not([hidden]) .wkside')
+  const side = win.locator('.screenslot:not([hidden]) .project-detail-panel')
+  const rail = win.locator('.screenslot:not([hidden]) .wkside')
   const menu = win.locator('[role="menu"]')
   const radios = menu.locator('[role="menuitemradio"]')
 
@@ -1633,23 +1642,23 @@ test('任务四列各自编辑,点击行或任务名只打开任务详情,不改
   await expect(row.locator('.row-delete')).toHaveAttribute('aria-label', /^删除任务：/)
   const title = await row.locator('.plan-name').textContent()
   await row.evaluate((element) => (element as HTMLElement).click())
-  await expect(side.locator('.node-document-title')).toHaveText(title!)
+  await expect(side.locator('.panel-head-title')).toHaveText(title!)
   await expect(row.locator('.metadata-input')).toHaveCount(0)
   await expect(win.locator('.schedule-form')).toHaveCount(0)
   await win.keyboard.press('Escape')
-  await expect(side.locator('.node-document-title')).toHaveCount(0)
+  await expect(side.locator('.panel-head-title')).toHaveCount(0)
 
   // The name opens the same panel, on a click and on Enter, and renaming starts from the pencil beside it.
   await row.locator('.plan-name').click()
-  await expect(side.locator('.node-document-title')).toHaveText(title!)
+  await expect(side.locator('.panel-head-title')).toHaveText(title!)
   await expect(row.locator('.metadata-input')).toHaveCount(0)
   await win.keyboard.press('Escape')
-  await expect(side.locator('.node-document-title')).toHaveCount(0)
+  await expect(side.locator('.panel-head-title')).toHaveCount(0)
   await row.locator('.plan-name').focus()
   await win.keyboard.press('Enter')
-  await expect(side.locator('.node-document-title')).toHaveText(title!)
+  await expect(side.locator('.panel-head-title')).toHaveText(title!)
   await win.keyboard.press('Escape')
-  await expect(side.locator('.node-document-title')).toHaveCount(0)
+  await expect(side.locator('.panel-head-title')).toHaveCount(0)
 
   await rowAction(row, '.plan-rename')
   await expect(row.locator('.metadata-input')).toHaveCount(1)
@@ -1671,14 +1680,14 @@ test('任务四列各自编辑,点击行或任务名只打开任务详情,不改
   await win.keyboard.press('Escape')
 
   // Status: three radio options, ACTIVE_PROJECT checked; clicking SHELVED_PROJECT writes it back.
-  await side.locator('.property-label:text-is("状态") + .property-value > .pv').click()
+  await rail.locator('.property-label:text-is("状态") + .property-value > .pv').click()
   await expect(radios).toHaveText([...PROJECT_STATUSES])
   await expect(radios.filter({ hasText: ACTIVE_PROJECT })).toHaveAttribute('aria-checked', 'true')
   await radios.filter({ hasText: SHELVED_PROJECT }).click()
   await expect.poll(async () => (await call<{ status: string }>(win, 'project.get', { id: 'draft' })).status).toBe(SHELVED_PROJECT)
 
   // Priority: the current P0 is checked; ArrowDown twice reaches P1 and Enter writes it back.
-  await side.locator('.property-label:text-is("优先级") + .property-value > .pv').click()
+  await rail.locator('.property-label:text-is("优先级") + .property-value > .pv').click()
   await expect(radios).toHaveText(['P0 · 紧急', 'P1 · 常规', 'P2 · 较低'])
   await expect(radios.nth(0)).toHaveAttribute('aria-checked', 'true')
   await win.keyboard.press('ArrowDown')
@@ -1690,7 +1699,7 @@ test('任务四列各自编辑,点击行或任务名只打开任务详情,不改
 
 test('任务详情里手动给任务挂科研节点,面板里显示挂上的节点并写进库里;手动挂的可以取消', async ({ win }) => {
   await gotoProject(win)
-  const side = win.locator('.screenslot:not([hidden]) .wkside')
+  const side = win.locator('.screenslot:not([hidden]) .project-detail-panel')
   const linked = side.locator('.node-assignment .entity-link--node')
   const taskNodes = async () => (await call<{ taskNodes?: Record<string, string> }>(
     win, 'project.get', { id: 'draft' },
@@ -1758,12 +1767,12 @@ test('红色垃圾桶直接删除任务,不会先把这一行切进编辑态', a
   expect(project.tasks.some((task) => task.id === taskId)).toBe(false)
 })
 
-/** Opens draft's research graph and clicks the knee node; returns the node panel header, showing it. */
+/** Opens draft's research graph and clicks the knee node; returns the first heading of the column, the node panel's title while it shows. */
 async function openNodePanel(win: Page) {
   await gotoProject(win)
   await win.locator('.section-heading-actions .segmented-control>button', { hasText: '科研图' }).click()
   await win.locator('.rgraph .rgn[data-node="knee"]').click()
-  const head = win.locator('.screenslot:not([hidden]) .wkside .section-heading').first()
+  const head = win.locator('.screenslot:not([hidden]) :is(.project-detail-panel .panel-head-title, .wkside .section-heading)').first()
   await expect(head).toContainText('树宽收益拐点')
   return head
 }
@@ -1780,10 +1789,10 @@ test('科研图由 Agent 管理:空图没有 App 侧新增入口', async ({ win 
 test('节点面板由 Agent 管理:标题、状态、记录与分支都不可在 App 编辑', async ({ win }) => {
   await gotoProject(win)
   const main = win.locator('.screenslot:not([hidden]) .wkmain')
-  const side = win.locator('.screenslot:not([hidden]) .wkside')
+  const side = win.locator('.screenslot:not([hidden]) .project-detail-panel')
   await main.locator('.segmented-control>button', { hasText: '科研图' }).click()
   await main.locator('.rgn[data-node="prefix"]').click()
-  await expect(side.locator('.node-document-title')).toHaveText('前缀复用配置')
+  await expect(side.locator('.panel-head-title')).toHaveText('前缀复用配置')
   await expect(side.locator('input, textarea, [contenteditable="true"]')).toHaveCount(0)
   await expect(side.getByText('删除节点')).toHaveCount(0)
   await expect(side.getByText('子节点')).toHaveCount(0)

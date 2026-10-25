@@ -35,12 +35,6 @@
 .legend-node.current{border:1px solid var(--ink);background:var(--selected)}
 .legend-node.idea{border:1px solid var(--ink);background:repeating-linear-gradient(122deg,var(--selected) 0 4px,color-mix(in srgb,var(--ink) 28%,var(--selected)) 4px 6px)}
 
-/* Every panel in the shared slot starts its content the same distance below the sticky head. */
-.node-document-pane .node-document-head+*{margin-top:var(--sp-20)}
-.node-document-pane .node-document-head{position:sticky;top:calc(-1 * var(--sp-20));z-index:2;margin:0 calc(-1 * var(--sp-24)) 0;padding:var(--sp-20) var(--sp-24) var(--sp-12);
-  background:var(--card);border-bottom:1px solid var(--sep2)}
-.node-document-title{flex:1;font-size:var(--fs-section);font-weight:var(--fw-title);line-height:var(--lh-tight)}
-.node-document-pane .tlrow{padding:var(--sp-10) var(--sp-2);font-size:var(--fs-base);line-height:var(--lh-ui)}
 .node-markdown{margin-top:var(--sp-24);padding:var(--sp-20) 0 var(--sp-4);border-top:1px solid var(--sep2)}
 .node-markdown .md{font-size:var(--fs-base);line-height:1.65}
 .node-markdown .md>:first-child{margin-top:0}
@@ -52,9 +46,6 @@
 .node-branch-list{display:flex;flex-wrap:wrap;gap:var(--sp-6)}
 .node-document-source{display:block;margin-top:var(--sp-24);padding-top:var(--sp-10);border-top:1px solid var(--sep2);color:var(--ter);
   font-family:var(--mono);font-size:var(--fs-cap)}
-@media (max-width:1150px){
-  .node-document-pane .node-document-head{top:calc(-1 * var(--sp-16));margin:0 calc(-1 * var(--sp-20));padding:var(--sp-16) var(--sp-20) var(--sp-12)}
-}
 @media (prefers-reduced-motion:reduce){
   .idea-node-pattern-stripe{display:none}
 }

@@ -23,8 +23,17 @@ const { document, getComputedStyle } = globalThis as unknown as Window
 
 const stylesheet = (path: string) => readFileSync(join(import.meta.dirname, '..', 'renderer', path), 'utf8')
 const STYLES = [
-  'components/NavPane.css', 'routes/Reader.css', 'components/DetailPanel.css', 'routes/ProjectDetail.css',
+  'components/NavPane.css', 'routes/Reader.css', 'components/SidePanel.css', 'components/SplitPage.css', 'routes/ProjectDetail.css',
+  'routes/Ideas.css',
   'components/paper-table/PaperTable.css', 'components/GroupedList.css', 'components/timeline/TimelineBoard.css',
+]
+
+/** Every side panel as its screen places it: the paper detail, the idea and project panels, and a reader panel. */
+const PANELS = [
+  '<div class="desk"><aside class="side-panel side-panel--edge paper-detail-slot"></aside></div>',
+  '<div class="split-page split-page--rail"><aside class="side-panel side-panel--card idea-detail-panel"></aside></div>',
+  '<div class="wkpage project-detail-page"><aside class="side-panel side-panel--card project-detail-panel"></aside></div>',
+  '<div class="reader"><aside class="reader-side"><aside class="side-panel side-panel--edge reading-notes"></aside></aside></div>',
 ]
 
 /** Properties whose change moves the content beside a panel on every frame of a transition. */
@@ -62,8 +71,7 @@ describe('面板的动效', () => {
 
   it('详情面板、表格的详情和阅读器侧栏一下子定好宽度，不逐帧挤动旁边的内容', () => {
     for (const [markup, selector] of [
-      ['<div class="detail-panel detail-panel--inline is-open"></div>', '.detail-panel'],
-      ['<div class="detail-panel detail-panel--resize is-open"></div>', '.detail-panel'],
+      ...PANELS.map((markup) => [markup, '.side-panel'] as const),
       ['<div class="wkpage project-detail-page"></div>', '.project-detail-page'],
       ['<div class="desk-body libview withdetail"></div>', '.desk-body'],
       ['<div class="desk-foot withdetail"></div>', '.desk-foot'],
@@ -71,6 +79,16 @@ describe('面板的动效', () => {
     ] as const) {
       expect(transitioned(markup, selector).filter((property) => LAYOUT.test(property)), markup).toEqual([])
     }
+  })
+
+  it('每个侧面板都用同一种动效打开:面板不动,只有内容淡入并从右边滑进来', () => {
+    const motions = PANELS.map((markup) => {
+      document.body.innerHTML = markup.replace('></aside>', '><div class="side-panel-content"></div></aside>')
+      return [transitioned(document.body.innerHTML, '.side-panel').join(' '), keyframesOf('.side-panel-content')]
+    })
+    expect(new Set(motions.map(([transition, keyframes]) => `${transition} | ${keyframes}`)).size).toBe(1)
+    expect(motions[0]![0]).toBe('')
+    expect(motions[0]![1]).toMatch(/0% \{ opacity: 0; transform: translateX\(10px\); \}[\s\S]*100% \{ opacity: 1; transform: none; \}/)
   })
 
   it('收件分组展开时高度经网格行长出来，和 CardTray 一样', () => {

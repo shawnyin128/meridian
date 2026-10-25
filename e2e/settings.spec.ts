@@ -194,7 +194,7 @@ test('preload 仍是窄接口:页面上没有任何收得下 channel 名的口�
 
 test('设置是左右分栏:左栏是分类,右栏是选中那一类的内容', async ({ app, win }) => {
   await openSettings(app, win)
-  const cats = win.locator('.setdlg .set-side .nav-row')
+  const cats = win.locator('.setdlg .split-nav .nav-row')
   const archived = (await core<Session[]>(win, 'chat.list', {})).filter((s) => s.archived)
   expect(archived.length).toBeGreaterThan(0)
 
@@ -202,7 +202,7 @@ test('设置是左右分栏:左栏是分类,右栏是选中那一类的内容', 
   const labels = await cats.allInnerTexts()
   console.log(`左栏分类 ${JSON.stringify(labels)}`)
   expect(labels).toEqual(['外观', '存储', 'API', '扩展', '论文推送', '归档的对话'])
-  await expect(win.locator('.setdlg .set-side .nav-row.on')).toHaveCount(1)
+  await expect(win.locator('.setdlg .split-nav .nav-row.on')).toHaveCount(1)
   await expect(win.getByRole('radiogroup', { name: '外观', exact: true }).locator('.appearance-choice')).toHaveText(['浅色', '深色', '跟随系统'])
   await expect(win.getByRole('radiogroup', { name: '外观主题', exact: true }).locator('.appearance-choice'))
     .toHaveText(['默认', '朱漆', '螺钿', '秋叶', '流霞'])
@@ -220,13 +220,13 @@ test('设置是左右分栏:左栏是分类,右栏是选中那一类的内容', 
   // itself spans several sections.
   for (const label of labels) {
     await cats.filter({ hasText: label }).click()
-    await expect(win.locator('.setdlg .set-side .nav-row.on')).toHaveText([label])
-    await expect(win.locator('.setdlg .set-main')).toContainText(label)
+    await expect(win.locator('.setdlg .split-nav .nav-row.on')).toHaveText([label])
+    await expect(win.locator('.setdlg .split-main')).toContainText(label)
   }
 
-  await expect(win.locator('.setdlg .set-main .section-heading')).toHaveText(`归档的对话 · ${archived.length}`)
-  await expect(win.locator('.setdlg .set-main .wrow')).toHaveCount(archived.length)
-  await expect(win.locator('.setdlg .set-main .wrow .nm')).toHaveText(archived.map((s) => s.title))
+  await expect(win.locator('.setdlg .split-main .section-heading')).toHaveText(`归档的对话 · ${archived.length}`)
+  await expect(win.locator('.setdlg .split-main .wrow')).toHaveCount(archived.length)
+  await expect(win.locator('.setdlg .split-main .wrow .nm')).toHaveText(archived.map((s) => s.title))
 })
 
 test('扩展设置展示 Core 检查到的状态与对应安装或更新命令', async ({ app, win }) => {
@@ -256,9 +256,9 @@ test('一条归档都没有时,右栏给空态而不是只剩一个标题', asyn
 
   await openSettings(app, win)
   await win.locator('.setdlg .nav-row[data-setcat="archived"]').click()
-  await expect(win.locator('.setdlg .set-main .section-heading')).toHaveText('归档的对话 · 0')
-  await expect(win.locator('.setdlg .set-main .wrow')).toHaveCount(0)
-  await expect(win.locator('.setdlg .set-main .empty-state')).toHaveCount(1)
+  await expect(win.locator('.setdlg .split-main .section-heading')).toHaveText('归档的对话 · 0')
+  await expect(win.locator('.setdlg .split-main .wrow')).toHaveCount(0)
+  await expect(win.locator('.setdlg .split-main .empty-state')).toHaveCount(1)
 })
 
 test('设置右栏滚动时,标题留在上面,滚动条从标题下面起、止于圆角之上,右上角的关闭按钮照样点得到', async ({ app, win }) => {
@@ -268,7 +268,7 @@ test('设置右栏滚动时,标题留在上面,滚动条从标题下面起、止
 
   const layout = await win.evaluate(() => {
     const dialog = document.querySelector('.setdlg')!
-    const column = dialog.querySelector('.set-main')!
+    const column = dialog.querySelector('.split-main')!
     const area = [column, ...column.querySelectorAll('*')].find((box) => getComputedStyle(box).overflowY === 'auto') as HTMLElement
     area.scrollTop = (area.scrollHeight - area.clientHeight) / 2
     // A scroll event fires only in the next rendering update, after the reads below, so the case sends

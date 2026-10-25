@@ -30,7 +30,7 @@ const SHEETS = [
   'components/Item.css', 'components/paper/PaperCard.css', 'components/paper/PaperUnderstanding.css',
   'components/project/ProjectIdentity.css', 'components/project/ResearchGraph.css',
   'components/paper-table/PaperTable.css', 'components/NavSection.css', 'routes/Wiki.css', 'routes/Projects.css',
-  'routes/Ideas.css', 'routes/Watches.css', 'components/PropertyList.css',
+  'routes/Ideas.css', 'routes/Watches.css', 'components/PropertyList.css', 'components/SidePanel.css',
 ]
 
 /**
@@ -46,8 +46,8 @@ const MARKUP = `
   <div class="section-heading section-heading--group" id="rail">属性</div>
   <section class="collapsible-group collapsible-group--sticky"><div class="section-heading section-heading--group collapsible-group-head" id="fold"><button class="fold-toggle">主题 · speculative decoding</button></div></section>
   <section class="collapsible-group"><div class="section-heading section-heading--group collapsible-group-head" id="quiet"><button class="fold-toggle">已归档 · 2</button></div></section>
-  <div class="section-heading section-heading--group node-document-head"><span class="node-document-title" id="panel">基线：独立草稿模型</span></div>
-  <div class="pd-h"><span class="pd-t" id="paper-detail">QuIP#: Even Better LLM Quantization</span></div>
+  <header class="panel-head"><div class="panel-head-title" id="panel">基线：独立草稿模型</div></header>
+  <header class="panel-head"><div class="panel-head-title" id="paper-detail"><button class="metadata-editable">QuIP#: Even Better LLM Quantization</button></div></header>
   <article class="item item--card item--slotted paper-card"><div class="item-head"><div class="item-main"><div class="item-title"><h3 id="paper-card">Acceptance Is Not Speed</h3></div></div></div>
     <section class="paper-card-section"><div class="paper-card-label" id="card-label">摘要</div></section></article>
   <article class="item item--card item--slotted wkcard"><div class="item-head"><div class="item-main"><div class="item-title"><button class="item-open tt" id="wiki-card">KV cache 压缩</button></div></div></div></article>

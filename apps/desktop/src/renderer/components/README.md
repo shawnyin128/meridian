@@ -185,10 +185,24 @@ Current shared contracts:
   is its tooltip, and its `note` the line under it: a disabled button that has a reason, such as a Trash row's
   Restore, states it there, never as a tag or a sentence beside the button. The pointer still opens the tooltip of
   a disabled button.
-- `PanelClose`: the close button of a detail panel, with one label and one glyph everywhere.
-- `DetailPanel`: the shared open/closed state and motion contract for right-side details. Its `inline`,
-  `overlay`, and `resize` modes cover panels that join layout, slide over it, or widen an existing rail;
-  routes provide only final geometry and domain content.
+- `SidePanel`: the one panel that opens beside a page body for one item or tool. Its `surface` is a
+  `card` inside the page body, beside its content, or an `edge` panel against the window's edge, with a
+  rule on its inner side; each surface has one width and one inset. It takes its width at once and only
+  its content moves in. Its content is a column: `PanelHead` stays at the top and `PanelBody`, under it,
+  scrolls and fades. `PanelHead` sets its buttons, the panel's actions and then the one close button,
+  compact on a row of their own at the top right, and under them the title, which spans the head and
+  wraps; the title comes first in the markup, so Tab reaches a title that is a control first. The panel
+  is named by that title, or by its `label`. Screens only place it: its position, its height and the gap
+  beside it.
+- `SplitPage`: the one page of two columns side by side, a master and its detail: the Wiki's pages and
+  their rail, the Ideas list and its panel, the research map's index and detail. It takes the height its
+  page body has left, and both columns start at its top and end at its bottom, each scrolling inside
+  itself and fading at a hidden edge: a `SplitColumn`, a `SplitRail` (properties and links after a rule,
+  in small text) or a `ListColumn` fills its column, and a `SidePanel` or a card is as tall as its content
+  up to the column's height. `columns` is `rail` (a main column and a rail or panel as wide as it is),
+  `index` (a narrow index and its detail) or `dialog`, the Settings modal and the theme editor: a
+  `SplitNav`, the navigation with its title and back button in a head, and a `SplitMain`, a head that
+  stays above a body that scrolls. Every column scrolls through `ScrollArea`.
 - `GroupedList` and `Group`: items grouped by status, kind, day, source, project or archive. Each group opens
   with the group heading, the third heading level, and the first group sits flush with the list's top; a
   group with `fold` folds its items through its heading, and `sticky` pins that heading while they scroll.

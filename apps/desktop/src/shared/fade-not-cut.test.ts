@@ -25,20 +25,21 @@ const FADED: Record<string, [file: string, markup: RegExp][]> = {
   '.scroll-area--both': [['components/ScrollArea.tsx', /const fade = useScrollFade<HTMLDivElement>\(axis\)/]],
   '.nav-pane-rows': [['components/NavPane.tsx', /<ScrollArea axis="y" fill gutter className="nav-pane-rows">/], ...SCROLL_AREA],
   '.desk-body': [['components/PageShell.tsx', /<ScrollArea axis="y" fill gutter paint ref=\{ref\} className=\{classes\(own, className\)\}/], ...SCROLL_AREA],
-  '.set-body': [['routes/Settings.tsx', /className="set-body" ref=\{paneFade\}/]],
-  '.set-side': [['routes/Settings.tsx', /className="set-side" ref=\{sideFade\}/]],
   '.list--scrollable': [['components/List.tsx', /list\.current = node\n\s*fade\(node\)/]],
   '.list--fill': [['components/List.tsx', /list\.current = node\n\s*fade\(node\)/]],
   '.list-column': [['components/List.tsx', /<div ref=\{fade\} className=\{`list-column/]],
   '.modal-body': [['components/ModalDialog.tsx', /className="modal-body" ref=\{bodyFade\}/]],
-  '.pdetail': [['components/paper-table/PaperTable.tsx', /className="pdetail" ref=\{detailFade\}/]],
   '.paper-meta-list': [['components/PaperMetadata.tsx', /className="paper-meta-list" ref=\{listFade\}/]],
   '.reading-list': [['components/reader/ReadingNotes.tsx', /<ScrollArea axis="y" fill>\s*<div className="reading-list">/], ...SCROLL_AREA],
   '.wiki-ingest-body': [['components/reader/PaperWikiIngest.tsx', /<ScrollArea axis="y" fill>\s*<div className="wiki-ingest-body">/], ...SCROLL_AREA],
   // Only the paper chat's stream scrolls; on the Chat and Feed screens it grows inside the page body, which fades it.
   '.paper-chat .msgs': [['components/chat/PaperChat.tsx', /<ScrollArea axis="y" fill ref=\{followRef\}>\s*<div className="msgs">/], ...SCROLL_AREA],
-  '.idea-detail-panel': [['routes/Ideas.tsx', /className="idea-detail-panel node-document-pane" ref=\{panelFade\}/]],
-  '.wkside': [['routes/Wiki.tsx', /className="wkside" ref=\{railFade\}/]],
+  '.panel-body': [['components/SidePanel.tsx', /<ScrollArea axis="y" ref=\{ref\} className=\{`panel-body/], ...SCROLL_AREA],
+  '.split-column': [['components/SplitPage.tsx', /<ScrollArea axis="y" ref=\{ref\} className=\{named\('split-column', className\)\}>/], ...SCROLL_AREA],
+  '.split-rail': [['components/SplitPage.tsx', /<ScrollArea axis="y" paint ref=\{ref\} className=\{named\('split-rail', className\)\}>/], ...SCROLL_AREA],
+  '.split-nav': [['components/SplitPage.tsx', /<ScrollArea axis="y" paint className="split-nav">/], ...SCROLL_AREA],
+  '.split-main-body': [['components/SplitPage.tsx', /<ScrollArea axis="y" fill className="split-main-body">/], ...SCROLL_AREA],
+  '.wkside': [['routes/ProjectDetail.tsx', /className="wkside" ref=\{railFade\}/]],
   '.gwrap': [['components/timeline/TimelineBoard.tsx', /<ScrollArea axis="x" fill className="gwrap" ref=\{wrap\}>/], ...SCROLL_AREA],
   '.cmdk-list': [['shell/CommandPalette.tsx', /<ScrollArea axis="y" className="cmdk-list" ref=\{list\}>/], ...SCROLL_AREA],
   '.pickhits': [['components/PickerPopover.tsx', /<Popover\.Content\s+ref=\{listFade\}/]],
@@ -79,15 +80,13 @@ const STUCK: Record<string, [file: string, markup: RegExp][]> = {
     [TABLE, /<td className="table-actions" data-stuck-fade="right">/], [TABLE, /<th className="table-actions" data-stuck-fade="top right">/],
   ],
   '.collapsible-group--sticky>.section-heading.collapsible-group-head': [['components/GroupedList.tsx', /\{\.\.\.\(sticky \? \{ 'data-stuck-fade': 'top' \} : \{\}\)\}/]],
-  '.node-document-pane .node-document-head': ['project/ResearchGraph', 'project/ProjectConclusions', 'ideas/IdeaPanel', 'project/ProjectPlan']
-    .map((name) => [`components/${name}.tsx`, /className="[\w -]*node-document-head" data-stuck-fade="top"/]),
 }
 
 /** Sticky elements nothing slides under, and why. */
 const UNDER_NOTHING: Record<string, string> = {
-  // Both rails stand beside the content they pin next to, not over it.
+  // The rail and the panels stand beside the content they pin next to, not over it.
   '.wkside': 'rail beside the page',
-  '.idea-detail-slot': 'rail beside the board',
+  '.project-detail-panel': 'panel beside the page',
   // The layer that paints a fade over the edge of a scroll area.
   '[data-fade~="top"][data-fade-paint]::before,[data-fade~="bottom"][data-fade-paint]::after': 'the fade itself',
 }
@@ -114,27 +113,29 @@ describe('滚动区和吸住的部分都淡出而不是硬切', () => {
       .map(({ path, selector }) => `${path}  ${selector}`)).toEqual([])
   })
 
-  it('Wiki 的侧栏和项目节点面板的高度取自页面主体内的可见高度,不论窗口多高都止于页面主体之内', () => {
+  it('分栏页、项目右栏和项目节点面板的高度取自页面主体内的可见高度,不论窗口多高都止于页面主体之内', () => {
     const body = (path: string, selector: string) => RULES.filter((rule) => rule.path === path && rule.selector === selector)
       .map((rule) => rule.body).join(';')
-    expect(body('routes/shell.css', '.wiki-body,.project-detail-body')).toMatch(/container-type:\s*size/)
-    expect(source('routes/Wiki.tsx')).toMatch(/<PageBody className="wiki-body"[\s>]/)
+    // The split page takes its page body's height and lays both columns in one row of that height.
+    expect(body('components/SplitPage.css', '.split-page')).toMatch(/(^|;)\s*height:\s*100%;[\s\S]*grid-template-rows:\s*minmax\(0,\s*1fr\)/)
+    expect(body('components/SplitPage.css', '.split-page')).not.toMatch(/vh\b/)
+    expect(source('routes/Wiki.tsx').match(/<SplitPage columns="rail" className="wkpage">/g)).toHaveLength(2)
+    expect(body('routes/shell.css', '.project-detail-body')).toMatch(/container-type:\s*size/)
     expect(source('routes/ProjectDetail.tsx')).toMatch(/<PageBody className="project-detail-body"[\s>]/)
     expect(body('routes/shell.css', '.wkside')).toMatch(/max-height:\s*100cqh/)
-    expect(body('routes/ProjectDetail.css', '.wkside.node-document-pane')).toMatch(/(^|;)\s*height:\s*100cqh/)
-    for (const [path, selector] of [['routes/shell.css', '.wkside'], ['routes/ProjectDetail.css', '.wkside.node-document-pane']] as const) {
+    expect(body('routes/ProjectDetail.css', '.project-detail-panel')).toMatch(/(^|;)\s*height:\s*100cqh/)
+    for (const [path, selector] of [['routes/shell.css', '.wkside'], ['routes/ProjectDetail.css', '.project-detail-panel']] as const) {
       expect(body(path, selector), selector).not.toMatch(/vh\b/)
     }
   })
 
   it('想法详情面板的高度取自页面主体内的可见高度,不论窗口多高都止于页面主体之内', () => {
-    const body = (selector: string) => RULES.filter((rule) => rule.path === 'routes/Ideas.css' && rule.selector === selector)
+    // The list and the panel are a split page's columns; a side panel there is at most its column's height.
+    expect(source('routes/Ideas.tsx')).toMatch(/<PageBody className="ideas-body">\s*<SplitPage columns="rail">/)
+    const panel = RULES.filter((rule) => rule.path === 'components/SplitPage.css' && rule.selector === '.split-page>.side-panel')
       .map((rule) => rule.body).join(';')
-    expect(body('.ideas-body')).toMatch(/container-type:\s*size/)
-    for (const selector of ['.idea-detail-slot', '.idea-detail-panel']) {
-      expect(body(selector), selector).toMatch(/max-height:\s*100cqh/)
-      expect(body(selector), selector).not.toMatch(/vh\b/)
-    }
+    expect(panel).toMatch(/max-height:\s*100%/)
+    expect(panel).not.toMatch(/vh\b/)
   })
 
   it('内容会滑到下面的吸住元素,吸住时在自己的边上淡出内容', () => {

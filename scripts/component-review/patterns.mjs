@@ -63,7 +63,7 @@ export const PATTERNS = {
     metrics: 'page',
     entries: [
       entry('shared:PageBody', '.desk-body'),
-      entry('hand:routes/Settings.tsx', '.set-main'),
+      entry('shared:SplitMain', '.split-main'),
       entry('hand:routes/Reader.tsx', '.pdfwrap'),
     ],
   },
@@ -71,44 +71,42 @@ export const PATTERNS = {
   SplitPage: {
     metrics: 'page',
     entries: [
-      entry('hand:components/paper-table/ResearchMap.tsx', '.research-map-layout'),
-      entry('hand:routes/Wiki.tsx', '.wkpage'),
+      entry('shared:SplitPage', '.split-page'),
+      entry('hand:routes/ProjectDetail.tsx', '.project-detail-page'),
       entry('hand:routes/ResearchOverview.tsx', '.ovcols'),
-      entry('hand:routes/Ideas.tsx', '.ideas-workspace'),
     ],
   },
   SidePanel: {
     metrics: 'panel',
     entries: [
-      entry('shared:DetailPanel', '.detail-panel.is-open, .detail-panel--inline, .detail-panel--resize'),
+      entry('shared:SidePanel', '.side-panel', { parts: { head: '.panel-head, .desk-head--pane' } }),
       entry('shared:PaperChat', '.paper-chat'),
-      entry('hand:components/reader/ReaderSidePanel.tsx', '.reader-side:not(.collapsed)'),
-      entry('hand:routes/Settings.tsx', '.set-side'),
-      entry('hand:routes/Wiki.tsx', '.wkside'),
+      entry('shared:SplitNav', '.split-nav'),
+      entry('shared:SplitRail', '.split-rail'),
+      entry('hand:routes/ProjectDetail.tsx', '.wkside'),
     ],
   },
   PanelHead: {
     metrics: 'head',
     entries: [
-      entry('shared:SectionHeading', '.node-document-head'),
+      entry('shared:PanelHead', '.panel-head', { parts: { title: '.panel-head-title' } }),
       entry('shared:ModalDialog', '.modal-title'),
-      entry('hand:components/paper-table/PaperTable.tsx', '.pd-h', { parts: { title: '.pd-t' } }),
       entry('hand:components/paper-table/ResearchMap.tsx', '.research-map-detail-head'),
       entry('hand:components/timeline/TimelineBoard.tsx', '.ghead'),
-      entry('hand:components/settings/ThemeEditor.tsx', '.theme-editor-title'),
+      entry('shared:SplitNav', '.split-nav-head'),
     ],
   },
   SectionHeading: {
     metrics: 'heading',
     entries: [
-      entry('shared:SectionHeading', '.section-heading', { not: '.section-heading--group, .node-document-head, .section-heading:has(+ .tabbed-section-panel)' }),
+      entry('shared:SectionHeading', '.section-heading', { not: '.section-heading--group, .section-heading:has(+ .tabbed-section-panel)' }),
       entry('hand:routes/Wiki.tsx', '.coledit .ch'),
     ],
   },
   GroupHeading: {
     metrics: 'heading',
     entries: [
-      entry('shared:SectionHeading', '.section-heading--group', { not: '.node-document-head' }),
+      entry('shared:SectionHeading', '.section-heading--group'),
       entry('hand:shell/SearchBox.tsx', '.pickhits .rh'),
       entry('hand:components/chat/ChatComposer.tsx', '.pickhits .rg'),
     ],

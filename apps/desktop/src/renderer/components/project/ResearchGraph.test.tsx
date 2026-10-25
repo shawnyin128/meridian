@@ -339,7 +339,8 @@ describe('idea and graph association', () => {
     )))
 
     const headings = [...host.querySelectorAll('.section-heading')].map((heading) => heading.textContent)
-    expect(headings.slice(1)).toEqual(['分支 · 1', '任务 · 1', '关联想法 · 1'])
+    expect([host.querySelector('.panel-head-title')!.textContent, ...headings])
+      .toEqual([GRAPH.nodes[0]!.label, '分支 · 1', '任务 · 1', '关联想法 · 1'])
     expect(host.querySelector('.node-task-row')?.textContent).toBe('重跑延迟矩阵agent')
     act(() => (host.querySelector('.node-task-row') as HTMLButtonElement).click())
     expect(onSelectTask).toHaveBeenCalledWith('task-7')
@@ -412,7 +413,7 @@ describe('idea and graph association', () => {
       />,
     )))
     const headings = [...host.querySelectorAll('.section-heading')].map((heading) => heading.textContent)
-    expect(headings.slice(1)).toEqual(['任务 · 0', '关联想法 · 0'])
+    expect([host.querySelector('.panel-head-title')!.textContent, ...headings]).toEqual([leaf.label, '任务 · 0', '关联想法 · 0'])
     expect([...host.querySelectorAll('.empty-state')].map((node) => node.textContent)).toEqual(['—', '—'])
     act(() => root.unmount())
   })

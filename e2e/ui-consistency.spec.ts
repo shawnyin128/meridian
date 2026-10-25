@@ -131,7 +131,7 @@ test('收起钮全应用一个说法,Escape 一层一层剥,「/」跳到输入�
   test.slow()
   await win.locator('[data-desk="papers"]').click()
   await shown(win, '.ptable tbody tr').first().click()
-  await expect(shown(win, '.pdetail .panel-close')).toHaveAttribute('aria-label', '收起详情')
+  await expect(shown(win, '.paper-detail-slot .panel-close')).toHaveAttribute('aria-label', '收起详情')
   await win.keyboard.press('Escape')
   await expect(shown(win, '.pdetail')).toHaveCount(0)
 

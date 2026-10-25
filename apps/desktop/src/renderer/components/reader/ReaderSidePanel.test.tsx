@@ -135,19 +135,19 @@ describe('ReaderSidePanel', () => {
     expect(onTab.mock.calls).toEqual([[null], ['metadata']])
   })
 
-  it('右栏的每个面板都以同一种标题栏开头，元数据面板也有', () => {
+  it('右栏的每个面板都是同一种贴边的侧面板，以同一种标题栏开头，元数据面板也有', () => {
     const heads = (['metadata', 'highlights', 'notes', 'remark', 'wiki'] as const).map((tab) => {
       show(tab, PAPER_ONE, undefined, PAPER)
       const panel = host.querySelector('.reader-side')!.firstElementChild!
-      const head = panel.firstElementChild!
-      return [head.className, head.querySelector('.t')?.textContent]
+      const head = panel.querySelector('.side-panel-content')!.firstElementChild!
+      return [panel.tagName, panel.className.split(' ').slice(0, 2).join(' '), head.className, head.querySelector('.t')?.textContent]
     })
     expect(heads).toEqual([
-      ['desk-head desk-head--pane', '元数据'],
-      ['desk-head desk-head--pane', '高亮与批注'],
-      ['desk-head desk-head--pane', '阅读笔记 · 1'],
-      ['desk-head desk-head--pane', '随笔 · 本篇'],
-      ['desk-head desk-head--pane', '内化到 Wiki'],
+      ['ASIDE', 'side-panel side-panel--edge', 'desk-head desk-head--pane', '元数据'],
+      ['ASIDE', 'side-panel side-panel--edge', 'desk-head desk-head--pane', '高亮与批注'],
+      ['ASIDE', 'side-panel side-panel--edge', 'desk-head desk-head--pane', '阅读笔记 · 1'],
+      ['ASIDE', 'side-panel side-panel--edge', 'desk-head desk-head--pane', '随笔 · 本篇'],
+      ['ASIDE', 'side-panel side-panel--edge', 'desk-head desk-head--pane', '内化到 Wiki'],
     ])
   })
 

@@ -3,6 +3,7 @@ import { editField, type Drafts, type EditDraft } from '../../hooks/useDrafts.js
 import { useMessages } from '../../messages/useMessages.js'
 import { FormTextarea } from '../FormControls.js'
 import { PageHeader, PageTitle } from '../PageShell.js'
+import { SidePanel } from '../SidePanel.js'
 import { CommitActions } from '../CommitActions.js'
 
 /**
@@ -26,7 +27,7 @@ export function ReadingRemark({ reading, saving, onSave, edits }: {
     void onSave(text.trim()).then((saved) => { if (saved) edit.drop() })
   }
   return (
-    <aside className="reading-remark" aria-label={m.reader.rail.tabs.remark}>
+    <SidePanel surface="edge" label={m.reader.rail.tabs.remark} className="reading-remark">
       <PageHeader size="pane"><PageTitle>{m.reader.remark.heading}</PageTitle></PageHeader>
       <div className="remark-compose">
         <FormTextarea
@@ -35,6 +36,6 @@ export function ReadingRemark({ reading, saving, onSave, edits }: {
         />
         <CommitActions place="item" saving={saving} canSave={!unchanged} onSave={save} />
       </div>
-    </aside>
+    </SidePanel>
   )
 }

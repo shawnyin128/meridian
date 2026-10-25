@@ -45,11 +45,11 @@ const openingTag = (source: string, from: number): string => {
 
 /**
  * The classes components put on an icon button besides its own, to place it or reveal it: from
- * `className` on an IconButton or a PanelClose.
+ * `className` on an IconButton.
  */
 const HOOKS = new Set(FILES.filter((path) => path.endsWith('.tsx') && !path.endsWith('.test.tsx')).flatMap((path) => {
   const source = read(path)
-  return [...source.matchAll(/<(?:IconButton|PanelClose)\b/g)]
+  return [...source.matchAll(/<IconButton\b/g)]
     .map(({ index }) => openingTag(source, index))
     .flatMap((tag) => [.../className="([^"]+)"/.exec(tag)?.[1]?.split(/\s+/) ?? []])
 }).filter((name) => !['sm', 'xs', 'danger'].includes(name)))

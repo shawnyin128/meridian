@@ -109,7 +109,7 @@ test('标题栏整条可拖,交互元素让出拖拽区', async ({ win }) => {
   await win.locator('#libq').fill('STAR: SPECULATIVE DECODING')
   await expect(win.locator('.ptable tbody tr')).toHaveCount(1)
   await win.locator('.ptable tbody tr').click()
-  await win.locator('.screenslot:not([hidden]) .pdetail [aria-label="开始阅读"]').click()
+  await win.locator('.screenslot:not([hidden]) .paper-detail-slot [aria-label="开始阅读"]').click()
   expect(await region('.titlebar .cseg.link'), '能点的面包屑段落在拖拽区里就点不动了').toBe('no-drag')
   expect(await region('.titlebar .cseg:not(.link)'), '不能点的面包屑段要能拖动窗口').toBe('drag')
 })

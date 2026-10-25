@@ -120,8 +120,8 @@ test('根节点卡进聚合页,子聚合再进一层带上级,返回按历史退
   expect(await shown(win).locator('.wkmain .md h2').allTextContents())
     .toEqual(agg.body.split('\n').filter((l) => l.startsWith('## ')).map((l) => l.slice(3)))
   await expect(shown(win).locator('.wkgrid .wkcard')).toHaveCount(agg.children.length)
-  await expect(shown(win).locator('.wkside .property-value').nth(0)).toHaveText(agg.kindLabel)
-  await expect(shown(win).locator('.wkside .property-value').nth(2))
+  await expect(shown(win).locator('.split-rail .property-value').nth(0)).toHaveText(agg.kindLabel)
+  await expect(shown(win).locator('.split-rail .property-value').nth(2))
     .toHaveText(`${agg.memberCount} 篇 · ${agg.childCount} 细分`)
 
   // A child aggregation goes one level deeper: the breadcrumb's middle segment is its first parent.
@@ -178,10 +178,10 @@ test('对照表的行是成员论文,格子按契约的列排,悬停看原文;�
   const paper = await paperFromCore(win, first.paper.id)
   await expect(crumbs(win)).toHaveText(['我的库', 'Wiki', paper.title])
   await expect(shown(win).locator('.desk-head .t')).toHaveText(paper.title)
-  expect(await shown(win).locator('.wkside .section-heading').allTextContents()).toEqual(['属性', '归属', '反向链接', '目录'])
+  expect(await shown(win).locator('.split-rail .section-heading').allTextContents()).toEqual(['属性', '归属', '反向链接', '目录'])
   // Side panel headers have their own style, one size smaller than the main area and without a rule:
   // 14px, no top border.
-  const sideHeads = shown(win).locator('.wkside .section-heading')
+  const sideHeads = shown(win).locator('.split-rail .section-heading')
   await expect(sideHeads.first()).toHaveCSS('font-size', '14px')
   await expect(sideHeads.first()).toHaveCSS('border-top-width', '0px')
   await expect(shown(win).locator('.memb')).toHaveCount(paper.memberships.length)
@@ -213,7 +213,7 @@ test('首页论文卡进论文页;个人理解与 Wiki 内容分层,没内化的
   await expect(shown(win).locator('.wkmain .section-heading')).toHaveText(['个人理解', 'Wiki 内化内容编辑'])
   await expect(shown(win).locator('.wkmain > .empty-state')).toHaveText('—')
   await expect(shown(win).locator('.wkmain .section-heading-actions > .btn:not(.add-action)', { hasText: '编辑' })).toHaveCount(1)
-  await expect(shown(win).locator('.wkside .empty-state')).toHaveText('—')
+  await expect(shown(win).locator('.split-rail .empty-state')).toHaveText('—')
   // "View in the paper list" goes to Papers with the title in the filter box. In the fixture, QuaRot and
   // SpinQuant each have a same-named paper page copied from an old vault, so the filtered row count can
   // only be asserted non-zero.
@@ -242,7 +242,7 @@ test('论文页的属性里年份与发表分两行,各写各的', async ({ win 
   expect(paper.venue).not.toBe('')
   await shown(win).locator(`.wkgrid [data-wk="${id}"]`).click()
   await expect(shown(win).locator('.desk-head .t')).toHaveText(paper.title)
-  const props = shown(win).locator('.wkside .property-list')
+  const props = shown(win).locator('.split-rail .property-list')
   // Year and publication use InlineMetadataField (InlineField.tsx): the value button (.metadata-editable)
   // sits inside a wrapping .metadata-field span, inside the property's value after its label.
   await expect(props.locator('.property-label:text-is("年份") + .property-value > .metadata-field .metadata-editable')).toHaveText(String(paper.year))
@@ -252,7 +252,7 @@ test('论文页的属性里年份与发表分两行,各写各的', async ({ win 
 test('论文页右栏的多行和单行值进入编辑时,编辑框整个露在右栏里,右栏不横向滚动,字不挪位', async ({ win }) => {
   await gotoWiki(win)
   await shown(win).locator('.wkgrid').last().locator('.wkcard').first().click()
-  const side = shown(win).locator('.wkside')
+  const side = shown(win).locator('.split-rail')
   for (const key of ['标题', '年份']) {
     const field = side.locator(`.property-label:text-is("${key}") + .property-value > .metadata-field`)
     const value = field.locator('.metadata-editable')
@@ -301,9 +301,9 @@ test('右栏目录列正文的标题,点一条把它滚进视口', async ({ win,
   const toc = shown(win).locator('.wktoc li')
   expect(await toc.allTextContents()).toEqual(heads)
 
-  // Scroll to the bottom so the body's first heading is above the viewport; clicking the first contents
-  // entry brings it back to the top of the viewport.
-  const body = shown(win).locator('.desk-body')
+  // Scroll the main column to its bottom so the body's first heading is above its top; clicking the first
+  // contents entry brings it back to the top of the column.
+  const body = shown(win).locator('.wkmain')
   await body.evaluate((el) => { el.scrollTop = el.scrollHeight })
   const top = (await body.boundingBox())!.y
   const first = shown(win).locator('.wkmain .md h2').first()
@@ -407,7 +407,7 @@ test('细分:挂上已有的同类聚合,拿掉;新名字回车新建一页', as
   await expect(cards).toHaveCount(n + 1)
   await shown(win).locator('.wkmain .wkgrid [data-wk="topics/端到端新建的主题"]').click()
   await expect(shown(win).locator('.desk-head .t')).toHaveText('端到端新建的主题')
-  await expect(shown(win).locator('.wkside .tagchip[data-wk="topics/quantization"]')).toHaveCount(1)
+  await expect(shown(win).locator('.split-rail .tagchip[data-wk="topics/quantization"]')).toHaveCount(1)
   const changes = await call<{ title: string; undoable: boolean }[]>(win, 'changelog.list', {})
   expect(changes.slice(0, 3).map((c) => c.title)).toEqual([
     'Wiki · 新建 端到端新建的主题，归在 Quantization 下',

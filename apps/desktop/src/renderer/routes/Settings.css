@@ -1,24 +1,10 @@
 /*
- * Two-column layout inside the Settings modal, on the dialog surface's wide step. The height is fixed
- * so switching categories does not resize the dialog, and each column scrolls by itself; the
- * columns reuse the existing rules (NavRow, .section-heading, .wrow, .btn) and add no new design
- * language.
+ * The Settings modal holds the shared split page's dialog layout, on the dialog surface's wide step. The
+ * height is fixed so switching categories does not resize the dialog, and each column scrolls by itself.
  */
 
 .modal.setdlg{height:min(560px,84vh);padding:0;overflow:hidden}
 .setdlg>.modal-body{display:flex;padding:0;overflow:hidden}
-/* Left column of categories, matching the sidebar: same background, padding and navigation rows */
-.set-side{flex:0 0 190px;box-sizing:border-box;background:var(--sidebar);
-  border-right:1px solid var(--sep);padding:var(--sp-20) var(--sp-10);overflow-y:auto;
-  --fade-paint:var(--sidebar);--fade-pad-top:var(--sp-20);--fade-pad-bottom:var(--sp-20)}
-.set-side .set-t{padding:0 var(--sp-8);margin:0 0 var(--sp-10)}
-/*
- * Right column of content, matching a screen's main content area. Its title stays above the body that
- * scrolls, and the body ends clear of the dialog's rounded corner with room for focus rings inside it.
- */
-.set-main{flex:1;min-width:0;display:flex;flex-direction:column;padding:var(--sp-20) 0 calc(var(--sp-20) - var(--ring-room))}
-.set-head{flex:none;padding:0 var(--sp-24)}
-.set-body{flex:1;min-height:0;overflow:auto;padding:0 var(--sp-24) var(--ring-room)}
 
 .appearance-options{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--sp-14)}
 .appearance-choice{min-width:0;border:0;background:transparent;color:var(--sec);padding:0;cursor:pointer;

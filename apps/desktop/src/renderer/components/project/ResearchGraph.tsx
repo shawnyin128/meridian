@@ -19,7 +19,7 @@ import { EmptyState } from '../EmptyState.js'
 import { EntityLink } from '../EntityLink.js'
 import { FadeText } from '../FadeText.js'
 import { ownIdea, SourceChatDeleted } from '../ideas/IdeaPanel.js'
-import { PanelClose } from '../PanelClose.js'
+import { PanelBody, PanelHead } from '../SidePanel.js'
 import { SectionHeading } from '../PageShell.js'
 import { StatusDot } from '../StatusDot.js'
 import { Item } from '../Item.js'
@@ -464,98 +464,96 @@ export function ResearchNodePanel({
 
   return (
     <>
-      <SectionHeading
-        level="group" className="node-document-head" data-stuck-fade="top"
-        actions={<PanelClose onClose={onClose} />}
-      ><FadeText className="node-document-title" label={node.label}>{node.label}</FadeText>
-      </SectionHeading>
-      {children.length === 0 ? null : (
-        <>
-          <SectionHeading level="group" count={children.length}>{m.project.graph.branchSummary}</SectionHeading>
-          <div className="node-branch-groups">
-            {branches.map((group) => (
-              <div className={`node-branch-group ${group.key}`} key={group.key}>
-                <span className="node-branch-label">{group.label}</span>
-                <div className="node-branch-list">
-                  {group.nodes.map((child) => (
-                    <EntityLink
-                      kind="node" key={child.id} label={child.label} mode={nodeMode(child)} onOpen={() => onSelect(child.id)}
-                    />
-                  ))}
+      <PanelHead title={node.label} onClose={onClose} />
+      <PanelBody>
+        {children.length === 0 ? null : (
+          <>
+            <SectionHeading level="group" count={children.length}>{m.project.graph.branchSummary}</SectionHeading>
+            <div className="node-branch-groups">
+              {branches.map((group) => (
+                <div className={`node-branch-group ${group.key}`} key={group.key}>
+                  <span className="node-branch-label">{group.label}</span>
+                  <div className="node-branch-list">
+                    {group.nodes.map((child) => (
+                      <EntityLink
+                        kind="node" key={child.id} label={child.label} mode={nodeMode(child)} onOpen={() => onSelect(child.id)}
+                      />
+                    ))}
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
-        </>
-      )}
-
-      <SectionHeading level="group" count={tasks.length}>{m.project.graph.tasks}</SectionHeading>
-      {tasks.length === 0
-        ? <EmptyState variant="section" />
-        : (
-          <List className="node-tasks" variant="embedded">
-            {tasks.map((task) => (
-              <Item
-                className="node-task-row" data-task={task.id} key={task.id} onActivate={() => onSelectTask(task.id)}
-                title={<FadeText>{task.title}</FadeText>} tags={task.origin === 'agent' ? <AgentLabel /> : null}
-              />
-            ))}
-          </List>
+              ))}
+            </div>
+          </>
         )}
 
-      <SectionHeading level="group" count={ideas.length}>{m.project.linkedIdeas}</SectionHeading>
-      {ideas.length === 0
-        ? <EmptyState variant="section" />
-        : (
-          <List className="node-ideas" variant="embedded">
-            {ideas.map((idea) => {
-              const source = idea.source.paperTitle === undefined
-                ? plainTitle(idea.source.chatTitle)
-                : `${plainTitle(idea.source.paperTitle)} · ${plainTitle(idea.source.chatTitle)}`
-              return (
+        <SectionHeading level="group" count={tasks.length}>{m.project.graph.tasks}</SectionHeading>
+        {tasks.length === 0
+          ? <EmptyState variant="section" />
+          : (
+            <List className="node-tasks" variant="embedded">
+              {tasks.map((task) => (
                 <Item
-                  className="node-idea-row" data-idea={idea.id} key={idea.id} lines={2}
-                  onActivate={() => onSelectIdea(idea.id)}
-                  title={<FadeText className="node-idea-title" label={idea.title}>{idea.title}</FadeText>}
-                  meta={ownIdea(idea) ? null : (
-                    <>
-                      <FadeText className="node-idea-source" label={m.project.idea.sourceTag(source)}>
-                        {m.project.idea.sourceTag(source)}
-                      </FadeText>
-                      {chatDeleted(idea) ? <SourceChatDeleted /> : null}
-                    </>
-                  )}
+                  className="node-task-row" data-task={task.id} key={task.id} onActivate={() => onSelectTask(task.id)}
+                  title={<FadeText>{task.title}</FadeText>} tags={task.origin === 'agent' ? <AgentLabel /> : null}
                 />
-              )
-            })}
-          </List>
+              ))}
+            </List>
+          )}
+
+        <SectionHeading level="group" count={ideas.length}>{m.project.linkedIdeas}</SectionHeading>
+        {ideas.length === 0
+          ? <EmptyState variant="section" />
+          : (
+            <List className="node-ideas" variant="embedded">
+              {ideas.map((idea) => {
+                const source = idea.source.paperTitle === undefined
+                  ? plainTitle(idea.source.chatTitle)
+                  : `${plainTitle(idea.source.paperTitle)} · ${plainTitle(idea.source.chatTitle)}`
+                return (
+                  <Item
+                    className="node-idea-row" data-idea={idea.id} key={idea.id} lines={2}
+                    onActivate={() => onSelectIdea(idea.id)}
+                    title={<FadeText className="node-idea-title" label={idea.title}>{idea.title}</FadeText>}
+                    meta={ownIdea(idea) ? null : (
+                      <>
+                        <FadeText className="node-idea-source" label={m.project.idea.sourceTag(source)}>
+                          {m.project.idea.sourceTag(source)}
+                        </FadeText>
+                        {chatDeleted(idea) ? <SourceChatDeleted /> : null}
+                      </>
+                    )}
+                  />
+                )
+              })}
+            </List>
+          )}
+
+        {nodeEvents.length === 0 ? null : (
+          <>
+            <SectionHeading level="group" count={nodeEvents.length}>{m.project.graph.records}</SectionHeading>
+            <ProjectEventList className="node-event-list">
+              {nodeEvents.map((event, index) => (
+                <ProjectEventRow
+                  key={`${event.date} ${index}`}
+                  kind={recordKind(event)} date={event.date} title={event.text} detail={event.detail} origin={recordOrigin(event)}
+                />
+              ))}
+            </ProjectEventList>
+          </>
         )}
 
-      {nodeEvents.length === 0 ? null : (
-        <>
-          <SectionHeading level="group" count={nodeEvents.length}>{m.project.graph.records}</SectionHeading>
-          <ProjectEventList className="node-event-list">
-            {nodeEvents.map((event, index) => (
-              <ProjectEventRow
-                key={`${event.date} ${index}`}
-                kind={recordKind(event)} date={event.date} title={event.text} detail={event.detail} origin={recordOrigin(event)}
-              />
-            ))}
-          </ProjectEventList>
-        </>
-      )}
-
-      {document.body === '' ? null : (
-        <div className="node-markdown"><div className="md"><Markdown src={document.body} titles={{}} /></div></div>
-      )}
-
-      {node.markdownPath === undefined
-        ? null
-        : (
-          <FadeText className="node-document-source" label={`${node.markdownPath}${node.markdownAnchor === undefined ? '' : `#${node.markdownAnchor}`}`}>
-            {node.markdownPath}{node.markdownAnchor === undefined ? '' : `#${node.markdownAnchor}`}
-          </FadeText>
+        {document.body === '' ? null : (
+          <div className="node-markdown"><div className="md"><Markdown src={document.body} titles={{}} /></div></div>
         )}
+
+        {node.markdownPath === undefined
+          ? null
+          : (
+            <FadeText className="node-document-source" label={`${node.markdownPath}${node.markdownAnchor === undefined ? '' : `#${node.markdownAnchor}`}`}>
+              {node.markdownPath}{node.markdownAnchor === undefined ? '' : `#${node.markdownAnchor}`}
+            </FadeText>
+          )}
+      </PanelBody>
     </>
   )
 }

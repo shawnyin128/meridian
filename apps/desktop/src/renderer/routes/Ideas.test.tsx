@@ -268,7 +268,7 @@ describe('Ideas', () => {
       const first = () => host.querySelector('.ideas-list > .grouped-list > .section-heading')!.nextElementSibling
       expect(first()?.getAttribute('data-idea')).toBe('idea-own')
       expect(first()?.classList.contains('item--selected')).toBe(true)
-      expect(host.querySelector('.idea-detail-slot .node-document-title')?.textContent).toBe('按 batch 校准阈值')
+      expect(host.querySelector('.idea-detail-panel .panel-head-title')?.textContent).toBe('按 batch 校准阈值')
       api.revision += 1
       await act(async () => { root.render(<MessagesProvider><Ideas /></MessagesProvider>) })
       expect(first()?.getAttribute('data-idea')).toBe('idea-own')
@@ -377,9 +377,9 @@ describe('Ideas', () => {
         .toEqual(['trailing-date'])
       expect(host.querySelector('[data-idea="idea-own"]')!.textContent).not.toContain('手动添加')
       await act(async () => { host.querySelector<HTMLElement>('[data-idea="idea-own"]')!.click() })
-      expect([...host.querySelectorAll('.idea-detail-panel > .section-heading:not(.idea-panel-head)')].map((h) => h.firstChild!.textContent))
+      expect([...host.querySelectorAll('.idea-detail-panel .panel-body > .section-heading')].map((h) => h.firstChild!.textContent))
         .toEqual(['内容', '关联', '所在项目'])
-      expect(host.querySelector('.idea-detail-slot')!.textContent).not.toContain('手动添加')
+      expect(host.querySelector('.idea-detail-panel')!.textContent).not.toContain('手动添加')
     } finally {
       api.ideas = api.ideas.filter((idea) => idea.id !== OWN.id)
     }
@@ -437,7 +437,7 @@ describe('Ideas', () => {
 
   it('卡片和行展示判断所需的标题、关联或所在项目、来源和时间，正文留在详情里；点击后在右侧编辑', async () => {
     await act(async () => { root.render(<MessagesProvider><Ideas /></MessagesProvider>) })
-    expect(host.querySelector('.idea-detail-slot')?.getAttribute('data-panel-state')).toBe('closed')
+    expect(host.querySelector('.idea-detail-panel')).toBeNull()
 
     const linked = host.querySelector('[data-idea="idea-linked"]')!
     expect(linked.classList.contains('item')).toBe(true)
@@ -458,19 +458,23 @@ describe('Ideas', () => {
     expect(independent.textContent).toContain('9月17日 更新')
 
     await act(async () => { (linked as HTMLElement).click() })
-    expect(host.querySelector('.idea-detail-slot')?.getAttribute('data-panel-state')).toBe('open')
+    // The same card panel as the project page's, with the same head: the title, then the edit and the close, both compact.
     const detail = host.querySelector('.idea-detail-panel')!
-    expect(detail.querySelector('.idea-panel-head .node-document-title')!.textContent)
+    expect([detail.tagName, detail.className, detail.getAttribute('aria-label')])
+      .toEqual(['ASIDE', 'side-panel side-panel--card idea-detail-panel', '想法详情'])
+    expect(detail.querySelector('.panel-head .panel-head-title')!.textContent)
       .toBe('用可学习性信号动态分配 draft model 的蒸馏预算')
+    expect([...detail.querySelectorAll('.panel-head button')].map((item) => [item.textContent || item.getAttribute('aria-label'), item.className]))
+      .toEqual([['编辑', 'btn sm'], ['收起详情', 'icbtn sm panel-close']])
     expect([...detail.querySelectorAll('.section-heading--group')].map((heading) => heading.textContent))
-      .toEqual(['用可学习性信号动态分配 draft model 的蒸馏预算编辑', '内容', '关联关联', '所在项目打开项目', '来源打开来源对话'])
+      .toEqual(['内容', '关联关联', '所在项目打开项目', '来源打开来源对话'])
     expect(detail.textContent).toContain('只对 disagreement 高且可学习的 token 加大蒸馏权重。')
     const edit = [...detail.querySelectorAll<HTMLButtonElement>('button')]
       .find((item) => item.textContent === '编辑')!
     await act(async () => { edit.click() })
     expect(detail.querySelector('.idea-detail-editor')).not.toBeNull()
     expect(document.querySelector('.idea-dialog')).toBeNull()
-    const headButtons = () => [...detail.querySelectorAll<HTMLButtonElement>('.idea-panel-head .btn')]
+    const headButtons = () => [...detail.querySelectorAll<HTMLButtonElement>('.panel-head .btn')]
       .map((item) => item.textContent)
     expect(headButtons()).toEqual(['取消', '保存'])
     expect(detail.querySelector('.idea-detail-editor button')).toBeNull()
@@ -481,7 +485,7 @@ describe('Ideas', () => {
     expect(detail.querySelector('.idea-detail-editor')).toBeNull()
     expect(api.update).not.toHaveBeenCalled()
     await act(async () => {
-      [...detail.querySelectorAll<HTMLButtonElement>('.idea-panel-head .btn')].find((item) => item.textContent === '编辑')!.click()
+      [...detail.querySelectorAll<HTMLButtonElement>('.panel-head .btn')].find((item) => item.textContent === '编辑')!.click()
     })
     await act(async () => {
       detail.querySelector('.idea-detail-editor input')!
@@ -523,8 +527,17 @@ describe('Ideas', () => {
     await act(async () => {
       host.querySelector<HTMLButtonElement>('.idea-detail-panel .panel-close')!.click()
     })
-    expect(host.querySelector('.idea-detail-slot')?.getAttribute('data-panel-state')).toBe('closed')
     expect(host.querySelector('.idea-detail-panel')).toBeNull()
+  })
+
+  it('想法列表和开着的详情面板是同一个分栏页的两栏:列表在自己那一栏里滚动,不随整页滚,面板从同一个顶端排起', async () => {
+    await act(async () => { root.render(<MessagesProvider><Ideas /></MessagesProvider>) })
+    const split = () => host.querySelector('.ideas-body > .split-page')
+    expect([...split()!.children].map((column) => column.className)).toEqual(['scroll-area scroll-area--y split-column'])
+    expect(split()!.querySelector(':scope > .split-column > .ideas-list')).not.toBeNull()
+    await act(async () => { host.querySelector<HTMLElement>('[data-idea="idea-linked"]')!.click() })
+    expect([split()!.className, ...[...split()!.children].map((column) => column.className)])
+      .toEqual(['split-page split-page--rail', 'scroll-area scroll-area--y split-column', 'side-panel side-panel--card idea-detail-panel'])
   })
 
   it('已归档的想法收进一个带条数的折叠分组,和项目计划里的已归档一样默认收起', async () => {
@@ -611,7 +624,7 @@ describe('Ideas', () => {
     await act(async () => { root.render(<MessagesProvider><Ideas /></MessagesProvider>) })
     const headings = async (id: string) => {
       await act(async () => { host.querySelector<HTMLElement>(`[data-idea="${id}"]`)!.click() })
-      return [...host.querySelectorAll<HTMLElement>('.idea-detail-panel > .section-heading:not(.idea-panel-head)')].map((heading) => [
+      return [...host.querySelectorAll<HTMLElement>('.idea-detail-panel .panel-body > .section-heading')].map((heading) => [
         heading.firstChild!.textContent,
         [...heading.querySelectorAll(':scope > .section-heading-actions > .btn')].map((button) => button.textContent),
       ])
@@ -742,7 +755,7 @@ describe('Ideas', () => {
     await act(async () => { root.render(<MessagesProvider><Ideas /></MessagesProvider>) })
     await act(async () => { host.querySelector<HTMLElement>('[data-idea="idea-linked"]')!.click() })
     const detail = host.querySelector('.idea-detail-panel')!
-    const head = (label: string) => [...detail.querySelectorAll<HTMLButtonElement>('.idea-panel-head .btn')].find((item) => item.textContent === label)!
+    const head = (label: string) => [...detail.querySelectorAll<HTMLButtonElement>('.panel-head .btn')].find((item) => item.textContent === label)!
     await act(async () => { head('编辑').click() })
     const held = api.ideas
     try {

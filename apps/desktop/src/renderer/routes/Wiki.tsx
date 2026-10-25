@@ -37,7 +37,6 @@ import { editText, useDraft, useDrafts, usePruneDrafts, type EditDraft } from '.
 import { useScreenLoad } from '../hooks/useScreenLoad.js'
 import { useUndo } from '../hooks/useUndo.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
-import { useScrollFade } from '../hooks/useScrollFade.js'
 import { PaperUnderstanding } from '../components/paper/PaperUnderstanding.js'
 import { PaperText } from '../components/paper/PaperText.js'
 import { plainTitle } from '../components/paper/paper-text.js'
@@ -47,6 +46,7 @@ import { WikiBacklinks } from '../components/wiki/WikiBacklinks.js'
 import { WikiClaims, type ClaimLinks } from '../components/wiki/WikiClaims.js'
 import { tidyRows, TidyList } from '../components/wiki/WikiTidy.js'
 import { SourceAnchor } from '../components/SourceAnchor.js'
+import { SplitColumn, SplitPage, SplitRail } from '../components/SplitPage.js'
 import { CountBadge } from '../components/CountBadge.js'
 import { Tag, TagButton } from '../components/Tag.js'
 import { DraftSlot, focusDraft } from '../components/DraftSlot.js'
@@ -292,9 +292,9 @@ function Toc({ body, main }: { body: string; main: RefObject<HTMLDivElement | nu
   const headings = useMemo(() => headingsOf(body), [body])
   const [active, setActive] = useState<string | null>(null)
 
-  // The body scrolls inside .desk-body: on every scroll, take the last heading that reached its top.
+  // The body scrolls inside its column: on every scroll, take the last heading that reached its top.
   useEffect(() => {
-    const scroller = main.current?.closest('.desk-body')
+    const scroller = main.current
     if (!scroller || headings.length === 0) return
     const pick = () => {
       const top = scroller.getBoundingClientRect().top + 8
@@ -352,8 +352,6 @@ async function wikiPageIds(): Promise<string[]> {
 export function Wiki() {
   const fmt = useFormat()
   const m = useMessages()
-  const railFade = useScrollFade('y')
-  const paperRailFade = useScrollFade('y')
   const entry = useScreenEntry()
   const { jump, open: jumpTo, returnTo } = useJump()
   const { revision } = useVaultRevision()
@@ -511,7 +509,8 @@ export function Wiki() {
   }, [])
 
   const go = useCallback((next: Place) => {
-    const scroll = body.current?.scrollTop ?? 0
+    // A page's main column scrolls inside itself; the home, review and tidy views scroll the page body.
+    const scroll = (main.current ?? body.current)?.scrollTop ?? 0
     returning.current = null
     setPlace((current) => {
       if (next === current) return current
@@ -553,9 +552,10 @@ export function Wiki() {
         : shownAgg !== null || (shownPaper !== null && shownReading !== null)
   useLayoutEffect(() => {
     const held = returning.current
-    if (held === null || held.place !== place || !shown || body.current === null) return
+    const scroller = main.current ?? body.current
+    if (held === null || held.place !== place || !shown || scroller === null) return
     returning.current = null
-    body.current.scrollTop = held.scroll
+    scroller.scrollTop = held.scroll
   }, [place, shown])
 
   /** The rail link to Wiki page `ref`, which opens it here. */
@@ -766,8 +766,8 @@ export function Wiki() {
           : null}
         {shownAgg !== null
           ? (
-            <div className="wkpage">
-              <div className="wkmain" ref={main}>
+            <SplitPage columns="rail" className="wkpage">
+              <SplitColumn className="wkmain" ref={main}>
                 <SectionHeading
                   actions={(
                     <AddAction
@@ -916,8 +916,8 @@ export function Wiki() {
                   onType={bodyEdit.change} onOpen={go}
                   titles={shownAgg.titles} empty={<EmptyState variant="section" />}
                 />
-              </div>
-              <div className="wkside" ref={railFade} data-fade-paint="">
+              </SplitColumn>
+              <SplitRail>
                 <SectionHeading level="group">{m.project.identity.heading}</SectionHeading>
                 <PropertyList>
                   <Property label={m.project.identity.typeLabel}>{shownAgg.kindLabel}</Property>
@@ -955,15 +955,15 @@ export function Wiki() {
                 />
                 <WikiBacklinks links={shownBacklinks} onOpen={openBacklink} />
                 <Toc body={shownAgg.body} main={main} />
-              </div>
-            </div>
+              </SplitRail>
+            </SplitPage>
           )
           : null}
 
         {shownPaper !== null
           ? (
-            <div className="wkpage">
-              <div className="wkmain" ref={main}>
+            <SplitPage columns="rail" className="wkpage">
+              <SplitColumn className="wkmain" ref={main}>
                 <PaperUnderstanding
                   reading={shownReading} error={failure('reading')}
                   onRead={(anchor) => jumpTo(
@@ -977,8 +977,8 @@ export function Wiki() {
                   titles={shownPaper.titles}
                   empty={<EmptyState variant="section" />}
                 />
-              </div>
-              <div className="wkside" ref={paperRailFade} data-fade-paint="">
+              </SplitColumn>
+              <SplitRail>
                 <SectionHeading level="group">{m.project.identity.heading}</SectionHeading>
                 <PropertyList>
                   <Property label={m.project.identity.typeLabel}>{m.wiki.paperKind}</Property>
@@ -1056,8 +1056,8 @@ export function Wiki() {
                   ))}
                 <WikiBacklinks links={shownBacklinks} onOpen={openBacklink} />
                 <Toc body={shownPaper.body} main={main} />
-              </div>
-            </div>
+              </SplitRail>
+            </SplitPage>
           )
           : null}
 

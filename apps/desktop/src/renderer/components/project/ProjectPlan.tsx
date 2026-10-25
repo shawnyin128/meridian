@@ -18,7 +18,7 @@ import { InlineDraftInput } from '../InlineDraftInput.js'
 import { InlineField, type InlineFieldProps } from '../InlineField.js'
 import { EditActions } from '../EditActions.js'
 import { MarkdownBox } from '../Markdown.js'
-import { PanelClose } from '../PanelClose.js'
+import { PanelBody, PanelHead } from '../SidePanel.js'
 import { TaskScheduleField } from '../TaskScheduleField.js'
 import { IconButton } from '../IconButton.js'
 import { IconPencil, IconTrash } from '../icons.js'
@@ -229,30 +229,28 @@ export function ProjectTaskPanel({
   }
   return (
     <>
-      <SectionHeading
-        level="group" className="node-document-head" data-stuck-fade="top"
-        actions={<PanelClose onClose={onClose} />}
-      ><FadeText className="node-document-title" label={task.title}>{task.title}</FadeText>
-      </SectionHeading>
-      <div className="project-task-detail-meta">
-        <DateChip>{fmt.dateRange(task.start, task.end)}</DateChip>
-        <ProjectPriorityTag priority={task.priority} />
-        <span className="project-task-detail-state">{stateWord(m)[task.state]}</span>
-        {task.origin === 'agent' ? <AgentLabel /> : null}
-      </div>
-      <NodeAssignment node={node} nodes={nodes} canUnlink={handSet} onOpen={onOpenNode} onSet={onSetNode} />
-      <SectionHeading
-        level="group"
-        actions={(
-          <EditActions editing={note.editing} canSave={!note.stale} onEdit={note.start} onCancel={note.drop} onSave={save} />
-        )}
-      >{m.project.plan.noteHeading}
-      </SectionHeading>
-      <MarkdownBox
-        className="task-note" text={note.text} editing={note.editing} box={box}
-        onCancel={note.drop} onSave={save} onType={note.change}
-        empty={<EmptyState variant="section" />}
-      />
+      <PanelHead title={task.title} onClose={onClose} />
+      <PanelBody>
+        <div className="project-task-detail-meta">
+          <DateChip>{fmt.dateRange(task.start, task.end)}</DateChip>
+          <ProjectPriorityTag priority={task.priority} />
+          <span className="project-task-detail-state">{stateWord(m)[task.state]}</span>
+          {task.origin === 'agent' ? <AgentLabel /> : null}
+        </div>
+        <NodeAssignment node={node} nodes={nodes} canUnlink={handSet} onOpen={onOpenNode} onSet={onSetNode} />
+        <SectionHeading
+          level="group"
+          actions={(
+            <EditActions editing={note.editing} canSave={!note.stale} onEdit={note.start} onCancel={note.drop} onSave={save} />
+          )}
+        >{m.project.plan.noteHeading}
+        </SectionHeading>
+        <MarkdownBox
+          className="task-note" text={note.text} editing={note.editing} box={box}
+          onCancel={note.drop} onSave={save} onType={note.change}
+          empty={<EmptyState variant="section" />}
+        />
+      </PanelBody>
     </>
   )
 }

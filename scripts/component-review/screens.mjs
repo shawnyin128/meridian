@@ -8,10 +8,10 @@ const V = '.screenslot:not([hidden]) '
 const reset = [['press', 'Escape'], ['press', 'Escape'], ['clickIf', '.main.reading .paper-chat .desk-head .back']]
 /** Goes to the sidebar row `desk` from any screen. */
 const desk = (name) => [...reset, ['click', `[data-desk="${name}"]`], ['wait', 700]]
-const openSettings = [...reset, ['click', '.appbtn'], ['click', '[data-appmenu] .mi'], ['wait', '.set-side']]
-const settingsPane = (name) => [['click', `.set-side [data-setcat="${name}"]`], ['wait', 600]]
+const openSettings = [...reset, ['click', '.appbtn'], ['click', '[data-appmenu] .mi'], ['wait', '.split-nav']]
+const settingsPane = (name) => [['click', `.split-nav [data-setcat="${name}"]`], ['wait', 600]]
 const openReader = [
-  ...desk('papers'), ['click', `${V}tbody tr`], ['wait', `${V}.pd-h`], ['click', `${V}.pd-h .icbtn`], ['wait', `${V}.reader-rail`], ['wait', 900],
+  ...desk('papers'), ['click', `${V}tbody tr`], ['wait', `${V}.paper-detail-slot .panel-head`], ['click', `${V}.paper-detail-slot .panel-head .icbtn`], ['wait', `${V}.reader-rail`], ['wait', 900],
 ]
 const readerTab = (label) => [['click', `${V}.reader-rail [aria-label="${label}"]`], ['wait', 700]]
 /** The seeded project with every section filled: plan, timeline, records, graph and linked ideas. */
@@ -53,10 +53,10 @@ export const STATES = [
 
   { screen: '论文', state: 'table', batch: 'library', steps: [...desk('papers'), ['wait', `${V}tbody tr`]] },
   { screen: '论文', state: 'row-hover', batch: 'library', keepPointer: true, steps: [...desk('papers'), ['hover', `${V}tbody tr`], ['wait', 300]] },
-  { screen: '论文', state: 'detail', batch: 'library', steps: [...desk('papers'), ['click', `${V}tbody tr`], ['wait', `${V}.pd-h`], ['wait', 500]] },
+  { screen: '论文', state: 'detail', batch: 'library', steps: [...desk('papers'), ['click', `${V}tbody tr`], ['wait', `${V}.paper-detail-slot .panel-head`], ['wait', 500]] },
   { screen: '论文', state: 'grouped', batch: 'library', steps: [...desk('papers'), ['radio', '主题'], ['wait', `${V}.gxrow`]], after: [['radio', '无']] },
   { screen: '论文', state: 'drop', batch: 'library', steps: [...desk('papers'), ['drag', `${V}.paper-library`, 'dragenter'], ['wait', `${V}.paper-drop`]], after: [['drag', `${V}.paper-library`, 'dragleave']] },
-  { screen: '论文', state: 'research-map', batch: 'library', steps: [...desk('papers'), ['radio', '研究地图'], ['wait', `${V}.research-map-layout`], ['wait', 600]], after: [['radio', '列表']] },
+  { screen: '论文', state: 'research-map', batch: 'library', steps: [...desk('papers'), ['radio', '研究地图'], ['wait', `${V}.research-map .split-page`], ['wait', 600]], after: [['radio', '列表']] },
   // A larger total than the library holds puts the pager under the table; typing a query reloads the list.
   { screen: '论文', state: 'pager', batch: 'library', steps: [
     ['transform', 'papers.list', '(list) => ({ ...list, total: Math.max(list.total, 45) })'], ...desk('papers'),
@@ -76,12 +76,12 @@ export const STATES = [
   { screen: '阅读器', state: 'wiki', batch: 'library', continues: true, steps: readerTab('内化到 Wiki') },
   // The reader keeps a paper it opened, so this state opens one no earlier state opened.
   { screen: '阅读器', state: 'page-error', batch: 'library', steps: [
-    ...desk('papers'), ['click', `${V}tbody tr`, 2], ['wait', `${V}.pd-h`], ['fail', 'papers.get', 'not-found'], ['fail', 'papers.source', 'not-found'],
-    ['click', `${V}.pd-h .icbtn`], ['wait', `${V}[role="alert"], ${V}.pdfload`],
+    ...desk('papers'), ['click', `${V}tbody tr`, 2], ['wait', `${V}.paper-detail-slot .panel-head`], ['fail', 'papers.get', 'not-found'], ['fail', 'papers.source', 'not-found'],
+    ['click', `${V}.paper-detail-slot .panel-head .icbtn`], ['wait', `${V}[role="alert"], ${V}.pdfload`],
   ] },
   { screen: 'Wiki', state: 'home', batch: 'library', steps: openWiki },
-  { screen: 'Wiki', state: 'paper', batch: 'library', steps: [...openWiki, ['click', `${V}.wkcard--paper .item-open`], ['wait', `${V}.wkside`], ['wait', 500]] },
-  { screen: 'Wiki', state: 'aggregation', batch: 'library', steps: [...openWiki, ['click', `${V}.wkcard:not(.wkcard--paper) .item-open`], ['wait', `${V}.wkside`], ['wait', 500]] },
+  { screen: 'Wiki', state: 'paper', batch: 'library', steps: [...openWiki, ['click', `${V}.wkcard--paper .item-open`], ['wait', `${V}.split-rail`], ['wait', 500]] },
+  { screen: 'Wiki', state: 'aggregation', batch: 'library', steps: [...openWiki, ['click', `${V}.wkcard:not(.wkcard--paper) .item-open`], ['wait', `${V}.split-rail`], ['wait', 500]] },
   { screen: 'Wiki', state: 'review', batch: 'library', steps: [...openWiki, ['click', `${V}.desk-head .page-actions .btn`], ['wait', 900]] },
   { screen: 'Wiki', state: 'tidy', batch: 'library', steps: [...openWiki, ['click', `${V}.desk-head .page-actions .btn`, -1], ['wait', 900]] },
   { screen: '论文', state: 'notice-refusal', batch: 'library', scope: '.notice-host', steps: [
@@ -99,11 +99,11 @@ export const STATES = [
   { screen: '项目', state: 'card-menu', batch: 'research', scope: 'overlay', steps: [...desk('resproj'), ['hover', `${V}.item--card`], ['click', `${V}.item--card .dots`], ['wait', '.ctxmenu']] },
   { screen: '项目', state: 'draft', batch: 'research', steps: [...desk('resproj'), ['click', `${V}.page-actions .add-action`], ['wait', `${V}.item--card .form-control`]] },
   { screen: '项目详情', state: 'default', batch: 'research', steps: openProject },
-  { screen: '项目详情', state: 'task-panel', batch: 'research', steps: [...openProject, ['click', `${V}.plan-open`], ['wait', `${V}.node-document-head`], ['wait', 500]] },
+  { screen: '项目详情', state: 'task-panel', batch: 'research', steps: [...openProject, ['click', `${V}.plan-open`], ['wait', `${V}.project-detail-panel .panel-head`], ['wait', 500]] },
   { screen: '项目详情', state: 'records-graph', batch: 'research', steps: [...openProject, ['radio', '科研图'], ['wait', `${V}.rgraph-viewport`], ['wait', 600]] },
   { screen: '项目详情', state: 'records-conclusions', batch: 'research', steps: [...openProject, ['radio', '实验结论'], ['wait', 700]] },
   { screen: '想法', state: 'default', batch: 'research', steps: [...desk('ideas'), ['wait', `${V}.idea-card`]] },
-  { screen: '想法', state: 'panel', batch: 'research', steps: [...desk('ideas'), ['click', `${V}.idea-card .item-open`], ['wait', `${V}.idea-panel-head`], ['wait', 500]] },
+  { screen: '想法', state: 'panel', batch: 'research', steps: [...desk('ideas'), ['click', `${V}.idea-card .item-open`], ['wait', `${V}.idea-detail-panel .panel-head`], ['wait', 500]] },
   { screen: '想法', state: 'card-menu', batch: 'research', scope: 'overlay', steps: [...desk('ideas'), ['hover', `${V}.idea-card`], ['click', `${V}.idea-card .dots`], ['wait', '.ctxmenu']] },
   { screen: '最近变动', state: 'default', batch: 'research', steps: [...desk('changelog'), ['wait', `${V}.crow`]] },
   { screen: '最近变动', state: 'expanded', batch: 'research', steps: [...desk('changelog'), ['click', `${V}.card-tray-toggle`], ['wait', `${V}.diff`]] },
@@ -141,7 +141,7 @@ export const STATES = [
   // The trash loads once per App run, so its failure comes in a batch that has not shown the trash.
   { screen: '垃圾桶', state: 'page-error', batch: 'settings', steps: [['fail', 'trash.list', 'newer-version'], ...desk('trash'), ['wait', `${V}[role="alert"]`]] },
   // Leaving the theme editor asks to discard the draft, so it is the batch's last state.
-  { screen: '设置', state: 'theme-editor', batch: 'settings', scope: 'overlay', steps: [...openSettings, ...settingsPane('appearance'), ['click', '.set-body .section-heading .add-action'], ['wait', '.theme-editor-title']] },
+  { screen: '设置', state: 'theme-editor', batch: 'settings', scope: 'overlay', steps: [...openSettings, ...settingsPane('appearance'), ['click', '.split-main-body .section-heading .add-action'], ['wait', '.split-nav-head .back']] },
 ]
 
 /** The screens in the order the map first visits them. */

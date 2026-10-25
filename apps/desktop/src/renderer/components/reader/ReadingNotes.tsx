@@ -10,6 +10,7 @@ import { Item } from '../Item.js'
 import { SourceAnchor } from '../SourceAnchor.js'
 import { PageHeader, PageNote, PageTitle } from '../PageShell.js'
 import { ScrollArea } from '../ScrollArea.js'
+import { SidePanel } from '../SidePanel.js'
 import { useClipped } from '../../hooks/useClipped.js'
 import { CommitActions } from '../CommitActions.js'
 import { commitKeys } from '../../lib/keyboard.js'
@@ -127,7 +128,7 @@ export function ReadingNotes({
     if (await onMutate({ kind: 'note.add', page: currentPage, text })) drafts.drop(compose)
   }
   return (
-    <aside className="reading-notes" aria-label={m.reader.notes.ariaLabel}>
+    <SidePanel surface="edge" label={m.reader.notes.ariaLabel} className="reading-notes">
       <PageHeader size="pane" actions={<PageNote>{m.reader.page.at(currentPage)}</PageNote>}>
         <PageTitle count={mode === 'highlights' ? undefined : reading.notes.length}>
           {mode === 'highlights' ? m.reader.rail.tabs.highlights : m.reader.notes.heading}
@@ -166,6 +167,6 @@ export function ReadingNotes({
                 ? <EmptyState variant="section" /> : null)}
         </div>
       </ScrollArea>
-    </aside>
+    </SidePanel>
   )
 }

@@ -24,6 +24,7 @@ import { InlineMessage } from '../InlineMessage.js'
 import { LoadingPlaceholder } from '../LoadingPlaceholder.js'
 import { PageHeader, PageTitle, SectionHeading } from '../PageShell.js'
 import { ScrollArea } from '../ScrollArea.js'
+import { SidePanel } from '../SidePanel.js'
 import { ModelStatusTag } from '../ModelStatusTag.js'
 import { Property, PropertyList } from '../PropertyList.js'
 import { TabbedSection } from '../TabbedSection.js'
@@ -318,7 +319,7 @@ export function PaperWikiIngest({ paper, reading, onJump, edits }: {
   )
 
   return (
-    <section className="wiki-ingest" aria-label={m.wiki.addToWiki}>
+    <SidePanel surface="edge" label={m.wiki.addToWiki} className="wiki-ingest">
       <PageHeader size="pane"><PageTitle>{m.wiki.addToWiki}</PageTitle></PageHeader>
       <ScrollArea axis="y" fill>
         <div className="wiki-ingest-body">
@@ -374,6 +375,6 @@ export function PaperWikiIngest({ paper, reading, onJump, edits }: {
           {rejected ? <InlineMessage tone="info" variant="line" className="wiki-ingest-status">{m.wiki.ingest.discarded}</InlineMessage> : null}
         </div>
       </ScrollArea>
-    </section>
+    </SidePanel>
   )
 }
