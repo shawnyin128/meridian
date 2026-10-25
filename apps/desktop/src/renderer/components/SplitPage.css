@@ -3,14 +3,15 @@
  * block body's height, or the rest of a flex column's. Its one row is that height, so both columns start
  * at its top and end at its bottom.
  */
-.split-page{display:grid;flex:0 1 auto;height:100%;min-height:0;grid-template-rows:minmax(0,1fr)}
+.split-page{display:grid;flex:0 1 auto;width:100%;height:100%;min-height:0;grid-template-rows:minmax(0,1fr)}
 .split-page--rail{grid-template-columns:minmax(0,1fr) auto;column-gap:var(--sp-32)}
 .split-page--index{grid-template-columns:minmax(220px,310px) minmax(0,1fr);column-gap:var(--sp-16)}
+/* A dialog's navigation has one width, room for a four-character module name beside its low-contrast mark. */
+.split-page--dialog{grid-template-columns:210px minmax(0,1fr)}
 @media (max-width:900px){.split-page--index{grid-template-columns:minmax(0,1fr);grid-template-rows:fit-content(50%) minmax(0,1fr);row-gap:var(--sp-16)}}
 
 /* A column that clips keeps the focus-ring room inside its edges and reaches out by as much, so its content stays put. */
-.split-column{min-width:0;min-height:0;overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;
-  padding:var(--ring-room);margin:calc(-1 * var(--ring-room))}
+.split-column{min-width:0;min-height:0;overscroll-behavior:contain;padding:var(--ring-room);margin:calc(-1 * var(--ring-room))}
 
 /*
  * The rail draws a rule on its start side, so it fades in its own paint and keeps the rule solid. It keeps
@@ -19,8 +20,20 @@
  */
 .split-rail{--rail-room:max(var(--ring-room),calc(var(--sp-6) + 1px));box-sizing:border-box;width:calc(260px + var(--rail-room));
   min-width:0;min-height:0;margin-right:calc(-1 * var(--rail-room));padding:0 var(--rail-room) var(--ring-room) var(--sp-24);
-  border-left:1px solid var(--sep2);overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;
+  border-left:1px solid var(--sep2);overscroll-behavior:contain;
   font-size:var(--fs-sm);line-height:var(--lh-ui);--fade-paint:var(--content);--fade-pad-top:0px;--fade-pad-bottom:0px}
 
 /* A side panel or a card in a column is as tall as its content, up to the column's height. */
 .split-page>.side-panel{align-self:start;max-height:100%}
+
+/* A dialog's navigation, on the sidebar's ground before its rule, matching the sidebar's padding and rows. */
+.split-nav{min-width:0;min-height:0;box-sizing:border-box;padding:var(--sp-20) var(--sp-10);border-right:1px solid var(--sep);
+  background:var(--sidebar);--fade-paint:var(--sidebar);--fade-pad-top:var(--sp-20);--fade-pad-bottom:var(--sp-20)}
+.split-nav-head{display:flex;align-items:center;gap:var(--sp-4);margin:0 0 var(--sp-10);padding:0 var(--sp-8)}
+/*
+ * A dialog's main column matches a screen's main content: its head stays above the body that scrolls,
+ * and the body ends clear of the dialog's rounded corner with room for focus rings inside it.
+ */
+.split-main{display:flex;min-width:0;min-height:0;flex-direction:column;padding:var(--sp-20) 0 calc(var(--sp-20) - var(--ring-room))}
+.split-main-head{flex:none;padding:0 var(--sp-24)}
+.split-main-body{padding:0 var(--sp-24) var(--ring-room)}

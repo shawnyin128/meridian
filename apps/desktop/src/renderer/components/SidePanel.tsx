@@ -1,9 +1,9 @@
-import { createContext, forwardRef, useCallback, useContext, useId } from 'react'
+import { createContext, forwardRef, useContext, useId } from 'react'
 import type { HTMLAttributes, ReactNode } from 'react'
-import { useScrollFade } from '../hooks/useScrollFade.js'
 import { useMessages } from '../messages/useMessages.js'
 import { IconButton } from './IconButton.js'
 import { IconCross } from './icons.js'
+import { ScrollArea } from './ScrollArea.js'
 import './SidePanel.css'
 
 /** `card` lies inside a page body beside its content; `edge` lies against the window's edge, a rule on its inner side. */
@@ -66,12 +66,6 @@ export function PanelHead({ title, actions, onClose }: {
 /** The part of a SidePanel under its head that scrolls; it fades at an edge while content is hidden past it. `className` only names it. */
 export const PanelBody = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
   function PanelBody({ className, ...props }, ref) {
-    const fade = useScrollFade('y')
-    const attach = useCallback((node: HTMLDivElement | null) => {
-      fade(node)
-      if (typeof ref === 'function') ref(node)
-      else if (ref !== null) ref.current = node
-    }, [fade, ref])
-    return <div ref={attach} className={`panel-body${className ? ` ${className}` : ''}`} {...props} />
+    return <ScrollArea axis="y" ref={ref} className={`panel-body${className ? ` ${className}` : ''}`} {...props} />
   },
 )

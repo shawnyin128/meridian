@@ -33,7 +33,7 @@ describe('SplitPage', () => {
     ))
     const split = host.querySelector('.split-page')!
     expect([split.className, ...[...split.children].map((column) => column.className)])
-      .toEqual(['split-page split-page--rail probe', 'split-column wkmain', 'split-rail'])
+      .toEqual(['split-page split-page--rail probe', 'scroll-area scroll-area--y split-column wkmain', 'scroll-area scroll-area--y split-rail'])
     expect(main.current).toBe(split.firstElementChild)
     expect([...split.children].map((column) => column.hasAttribute('data-fade-paint'))).toEqual([false, true])
   })

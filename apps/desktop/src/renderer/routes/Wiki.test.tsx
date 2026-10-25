@@ -396,10 +396,10 @@ describe('Wiki keyboard reach', () => {
     }
     expect(columns()).toBeNull()
     await press(host.querySelector<HTMLElement>('[data-wk="topics/sd"] .tt')!)
-    expect(columns()).toEqual(['split-page split-page--rail wkpage', 'split-column wkmain', 'split-rail'])
+    expect(columns()).toEqual(['split-page split-page--rail wkpage', 'scroll-area scroll-area--y split-column wkmain', 'scroll-area scroll-area--y split-rail'])
     await press(host.querySelector<HTMLElement>('.desk-head > .back')!)
     await press(host.querySelector<HTMLElement>('[data-wk="papers/p1"] .tt')!)
-    expect(columns()).toEqual(['split-page split-page--rail wkpage', 'split-column wkmain', 'split-rail'])
+    expect(columns()).toEqual(['split-page split-page--rail wkpage', 'scroll-area scroll-area--y split-column wkmain', 'scroll-area scroll-area--y split-rail'])
   })
 
   it('没有东西指向这一页时右栏没有反向链接这一块', async () => {

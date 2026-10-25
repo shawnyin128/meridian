@@ -533,11 +533,11 @@ describe('Ideas', () => {
   it('想法列表和开着的详情面板是同一个分栏页的两栏:列表在自己那一栏里滚动,不随整页滚,面板从同一个顶端排起', async () => {
     await act(async () => { root.render(<MessagesProvider><Ideas /></MessagesProvider>) })
     const split = () => host.querySelector('.ideas-body > .split-page')
-    expect([...split()!.children].map((column) => column.className)).toEqual(['split-column'])
+    expect([...split()!.children].map((column) => column.className)).toEqual(['scroll-area scroll-area--y split-column'])
     expect(split()!.querySelector(':scope > .split-column > .ideas-list')).not.toBeNull()
     await act(async () => { host.querySelector<HTMLElement>('[data-idea="idea-linked"]')!.click() })
     expect([split()!.className, ...[...split()!.children].map((column) => column.className)])
-      .toEqual(['split-page split-page--rail', 'split-column', 'side-panel side-panel--card idea-detail-panel'])
+      .toEqual(['split-page split-page--rail', 'scroll-area scroll-area--y split-column', 'side-panel side-panel--card idea-detail-panel'])
   })
 
   it('已归档的想法收进一个带条数的折叠分组,和项目计划里的已归档一样默认收起', async () => {

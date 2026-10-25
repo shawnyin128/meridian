@@ -71,6 +71,6 @@ describe('SidePanel', () => {
       </SidePanel>,
     )
     const content = host.querySelector('.side-panel > .side-panel-content')!
-    expect([...content.children].map((child) => child.className)).toEqual(['panel-head', 'panel-body probe'])
+    expect([...content.children].map((child) => child.className)).toEqual(['panel-head', 'scroll-area scroll-area--y panel-body probe'])
   })
 })

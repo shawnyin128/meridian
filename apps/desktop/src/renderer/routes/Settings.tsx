@@ -35,8 +35,8 @@ import { NavRow } from '../components/NavRow.js'
 import { Item } from '../components/Item.js'
 import { List } from '../components/List.js'
 import { PageError, SectionHeading } from '../components/PageShell.js'
+import { SplitMain, SplitNav, SplitPage } from '../components/SplitPage.js'
 import { useScreenLoad } from '../hooks/useScreenLoad.js'
-import { useScrollFade } from '../hooks/useScrollFade.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
 import { WatchSettings } from './Watches.js'
 import { PaperText } from '../components/paper/PaperText.js'
@@ -71,8 +71,6 @@ type CategoryKey = SettingsCategory
 export function Settings() {
   const m = useMessages()
   const { open, requestedCategory, setOpen } = useSettingsOpen()
-  const paneFade = useScrollFade('y')
-  const sideFade = useScrollFade('y')
   const [current, setCurrent] = useState<CategoryKey>(SETTINGS_CATEGORIES[0])
   const [chats, setChats] = useState<ChatSession[] | null>(null)
   const [location, setLocation] = useState<LibraryLocation | null>(null)
@@ -452,25 +450,26 @@ export function Settings() {
           </>
         )
         : (
-          <>
-            <div className="set-side" ref={sideFade} data-fade-paint="">
-              <ModalTitle className="set-t">{m.settings.title}</ModalTitle>
+          <SplitPage columns="dialog">
+            <SplitNav head={<ModalTitle>{m.settings.title}</ModalTitle>}>
               {visibleCategories.map((c) => (
                 <NavRow
                   key={c} indent={SUB_CATEGORIES.has(c) ? 1 : 0} sub={SUB_CATEGORIES.has(c)} selected={c === current}
                   data-setcat={c} onActivate={() => setCurrent(c)}
                 >{m.settings.categories[SETTINGS_CATEGORY_LABEL[c]]}</NavRow>
               ))}
-            </div>
+            </SplitNav>
 
-            <div className="set-main">
-              <div className="set-head">
-                <PageError error={actionErrors[current] ?? readErrors[current]} />
-                <SectionHeading count={current === 'archived' ? archived.length : undefined}>{titles[current]}</SectionHeading>
-              </div>
-              <div className="set-body" ref={paneFade}>{panes[current]}</div>
-            </div>
-          </>
+            <SplitMain
+              head={(
+                <>
+                  <PageError error={actionErrors[current] ?? readErrors[current]} />
+                  <SectionHeading count={current === 'archived' ? archived.length : undefined}>{titles[current]}</SectionHeading>
+                </>
+              )}
+            >{panes[current]}
+            </SplitMain>
+          </SplitPage>
         )}
     </ModalDialog>
   )

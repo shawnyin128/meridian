@@ -12,13 +12,13 @@ type Window = {
 const { document, getComputedStyle } = globalThis as unknown as Window
 
 const RENDERER = join(import.meta.dirname, '..', 'renderer')
-const STYLES = ['components/SplitPage.css', 'components/SidePanel.css', 'routes/shell.css', 'routes/Wiki.css', 'routes/Ideas.css',
+const STYLES = ['components/ScrollArea.css', 'components/SplitPage.css', 'components/SidePanel.css', 'routes/shell.css', 'routes/Wiki.css', 'routes/Ideas.css',
   'components/paper-table/PaperTable.css']
 
 /** Each split page as its screen renders it: the Wiki page and its rail, the Ideas list and its panel, the research map. */
 const SPLITS = {
-  wiki: '<div class="split-page split-page--rail wkpage"><div class="split-column wkmain"></div><div class="split-rail"></div></div>',
-  ideas: '<div class="split-page split-page--rail"><div class="split-column"></div><aside class="side-panel side-panel--card idea-detail-panel"></aside></div>',
+  wiki: '<div class="split-page split-page--rail wkpage"><div class="scroll-area scroll-area--y split-column wkmain"></div><div class="scroll-area scroll-area--y split-rail"></div></div>',
+  ideas: '<div class="split-page split-page--rail"><div class="scroll-area scroll-area--y split-column"></div><aside class="side-panel side-panel--card idea-detail-panel"></aside></div>',
   map: '<section class="research-map"><div class="split-page split-page--index"><div class="list-column research-map-index"></div><div class="research-map-detail"></div></div></section>',
 }
 

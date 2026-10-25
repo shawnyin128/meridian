@@ -1,19 +1,20 @@
-import { forwardRef, useCallback } from 'react'
-import type { ReactNode, Ref } from 'react'
-import { useScrollFade } from '../hooks/useScrollFade.js'
+import { forwardRef } from 'react'
+import type { ReactNode } from 'react'
+import { ScrollArea } from './ScrollArea.js'
 import './SplitPage.css'
 
 /**
  * `rail`: a main column, then a rail or a side panel as wide as it is. `index`: a narrow index, then the
- * detail of what it picks.
+ * detail of what it picks. `dialog`: a dialog's navigation, then the main column of what it picks.
  */
-export type SplitColumns = 'rail' | 'index'
+export type SplitColumns = 'rail' | 'index' | 'dialog'
 
 /**
  * The one page of two columns side by side, a master and its detail. It takes the height its page body
- * has left, and each column scrolls inside itself from the same top: a SplitColumn, a SplitRail or a
- * ListColumn fills its column, and a SidePanel or a card is as tall as its content up to the column's
- * height. `columns` sets their widths and the gap between them. `className` only names or places it.
+ * or dialog has left, and each column scrolls inside itself from the same top: a SplitColumn, a
+ * SplitRail, a SplitNav, a SplitMain or a ListColumn fills its column, and a SidePanel or a card is as
+ * tall as its content up to the column's height. `columns` sets their widths and the gap between them.
+ * `className` only names or places it.
  */
 export function SplitPage({ columns, className, children }: {
   columns: SplitColumns
@@ -23,20 +24,12 @@ export function SplitPage({ columns, className, children }: {
   return <div className={`split-page split-page--${columns}${className ? ` ${className}` : ''}`}>{children}</div>
 }
 
-/** The element of a scroll column, attached to `ref` too and faded at an edge while content is hidden past it. */
-function useColumn(ref: Ref<HTMLDivElement>) {
-  const fade = useScrollFade('y')
-  return useCallback((node: HTMLDivElement | null) => {
-    fade(node)
-    if (typeof ref === 'function') ref(node)
-    else if (ref !== null) ref.current = node
-  }, [fade, ref])
-}
+const named = (base: string, className: string | undefined) => `${base}${className ? ` ${className}` : ''}`
 
 /** A column of a SplitPage that scrolls inside itself. `className` only names it. */
 export const SplitColumn = forwardRef<HTMLDivElement, { className?: string; children: ReactNode }>(
   function SplitColumn({ className, children }, ref) {
-    return <div ref={useColumn(ref)} className={`split-column${className ? ` ${className}` : ''}`}>{children}</div>
+    return <ScrollArea axis="y" ref={ref} className={named('split-column', className)}>{children}</ScrollArea>
   },
 )
 
@@ -46,6 +39,29 @@ export const SplitColumn = forwardRef<HTMLDivElement, { className?: string; chil
  */
 export const SplitRail = forwardRef<HTMLDivElement, { className?: string; children: ReactNode }>(
   function SplitRail({ className, children }, ref) {
-    return <div ref={useColumn(ref)} className={`split-rail${className ? ` ${className}` : ''}`} data-fade-paint="">{children}</div>
+    return <ScrollArea axis="y" paint ref={ref} className={named('split-rail', className)}>{children}</ScrollArea>
   },
 )
+
+/**
+ * The navigation of a dialog's SplitPage, on the sidebar's ground before a rule: `head`, such as the
+ * dialog's title and a back button, then the rows, scrolling inside it.
+ */
+export function SplitNav({ head, children }: { head: ReactNode; children: ReactNode }) {
+  return (
+    <ScrollArea axis="y" paint className="split-nav">
+      <div className="split-nav-head">{head}</div>
+      {children}
+    </ScrollArea>
+  )
+}
+
+/** The main column of a dialog's SplitPage: `head`, which stays at its top, and the content under it, which scrolls. */
+export function SplitMain({ head, children }: { head: ReactNode; children: ReactNode }) {
+  return (
+    <div className="split-main">
+      <div className="split-main-head">{head}</div>
+      <ScrollArea axis="y" fill className="split-main-body">{children}</ScrollArea>
+    </div>
+  )
+}

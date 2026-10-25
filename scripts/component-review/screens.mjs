@@ -8,8 +8,8 @@ const V = '.screenslot:not([hidden]) '
 const reset = [['press', 'Escape'], ['press', 'Escape'], ['clickIf', '.main.reading .paper-chat .desk-head .back']]
 /** Goes to the sidebar row `desk` from any screen. */
 const desk = (name) => [...reset, ['click', `[data-desk="${name}"]`], ['wait', 700]]
-const openSettings = [...reset, ['click', '.appbtn'], ['click', '[data-appmenu] .mi'], ['wait', '.set-side']]
-const settingsPane = (name) => [['click', `.set-side [data-setcat="${name}"]`], ['wait', 600]]
+const openSettings = [...reset, ['click', '.appbtn'], ['click', '[data-appmenu] .mi'], ['wait', '.split-nav']]
+const settingsPane = (name) => [['click', `.split-nav [data-setcat="${name}"]`], ['wait', 600]]
 const openReader = [
   ...desk('papers'), ['click', `${V}tbody tr`], ['wait', `${V}.paper-detail-slot .panel-head`], ['click', `${V}.paper-detail-slot .panel-head .icbtn`], ['wait', `${V}.reader-rail`], ['wait', 900],
 ]
@@ -141,7 +141,7 @@ export const STATES = [
   // The trash loads once per App run, so its failure comes in a batch that has not shown the trash.
   { screen: '垃圾桶', state: 'page-error', batch: 'settings', steps: [['fail', 'trash.list', 'newer-version'], ...desk('trash'), ['wait', `${V}[role="alert"]`]] },
   // Leaving the theme editor asks to discard the draft, so it is the batch's last state.
-  { screen: '设置', state: 'theme-editor', batch: 'settings', scope: 'overlay', steps: [...openSettings, ...settingsPane('appearance'), ['click', '.set-body .section-heading .add-action'], ['wait', '.theme-editor-title']] },
+  { screen: '设置', state: 'theme-editor', batch: 'settings', scope: 'overlay', steps: [...openSettings, ...settingsPane('appearance'), ['click', '.split-main-body .section-heading .add-action'], ['wait', '.split-nav-head .back']] },
 ]
 
 /** The screens in the order the map first visits them. */

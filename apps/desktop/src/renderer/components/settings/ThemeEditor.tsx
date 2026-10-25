@@ -11,13 +11,13 @@ import { colourThemeId } from '../../lib/slug.js'
 import { useMessages } from '../../messages/useMessages.js'
 import { readColourThemePreference, setColourThemePreference } from '../../shell/appearance.js'
 import { useColourThemeFiles, useColourThemes } from '../../shell/useColourThemes.js'
-import { useScrollFade } from '../../hooks/useScrollFade.js'
 import { BackButton } from '../BackButton.js'
 import { Card } from '../Card.js'
 import { ChoicePicker } from '../FieldPickers.js'
 import { ColourField, FieldRow, FormInput } from '../FormControls.js'
 import { Icon } from '../icons.js'
 import { ModalTitle } from '../ModalDialog.js'
+import { SplitMain, SplitNav, SplitPage } from '../SplitPage.js'
 import { NavRow } from '../NavRow.js'
 import { NavSection } from '../NavSection.js'
 import { SectionHeading } from '../PageShell.js'
@@ -133,8 +133,6 @@ export function ThemeEditor({ theme, onBack, onDirtyChange }: {
   const [module, setModule] = useState<ColourModule>('ground')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const sideFade = useScrollFade('y')
-  const bodyFade = useScrollFade('y')
   const { draft } = form
   const colours = draft[mode]
   const dirty = !same(draft, form.loaded)
@@ -195,12 +193,8 @@ export function ThemeEditor({ theme, onBack, onDirtyChange }: {
   }
 
   return (
-    <>
-      <div className="set-side theme-modules" ref={sideFade} data-fade-paint="">
-        <div className="theme-editor-title">
-          <BackButton onClick={onBack} />
-          <ModalTitle className="set-t">{m.settings.appearance.themeHeading}</ModalTitle>
-        </div>
+    <SplitPage columns="dialog">
+      <SplitNav head={<><BackButton onClick={onBack} /><ModalTitle>{m.settings.appearance.themeHeading}</ModalTitle></>}>
         {GROUPS.map((keys) => (
           <div className="theme-module-group" key={keys[0]}>
             {keys.map((key) => (
@@ -214,60 +208,61 @@ export function ThemeEditor({ theme, onBack, onDirtyChange }: {
             ))}
           </div>
         ))}
-      </div>
+      </SplitNav>
 
-      <div className="set-main theme-editor">
-        <div className="set-head theme-editor-head">
-          <FormInput
-            className="theme-editor-name" value={draft.name} placeholder={t.name} aria-label={t.name} maxLength={80}
-            onChange={(event) => change({ name: event.target.value })}
-          />
-          <FieldRow label={t.basedOn}>
-            <ChoicePicker
-              appearance="field" className="theme-editor-base-picker" aria-label={t.basedOn}
-              value={draft.basedOn ?? ''} options={bases.map((candidate) => candidate.id)}
-              label={(id) => name(bases.find((candidate) => candidate.id === id)!)}
-              onPick={(id) => {
-                const picked = bases.find((candidate) => candidate.id === id)!
-                change({ basedOn: id, light: picked.light, dark: picked.dark })
-              }}
+      <SplitMain
+        head={(
+          <div className="theme-editor-head">
+            <FormInput
+              className="theme-editor-name" value={draft.name} placeholder={t.name} aria-label={t.name} maxLength={80}
+              onChange={(event) => change({ name: event.target.value })}
             />
-          </FieldRow>
-        </div>
-        <div className="set-body" ref={bodyFade}>
-          <div className="theme-editor-modes">
-            <SegmentedControl
-              label={t.mode} value={mode} onChange={setMode}
-              options={[{ value: 'light', label: m.settings.appearance.light }, { value: 'dark', label: m.settings.appearance.dark }]}
-            />
-            <Button
-              size="compact" variant="ghost"
-              onClick={() => { change({ dark: deriveDarkModules(draft.light, base) }); setMode('dark') }}
-            >{t.deriveDark}</Button>
-          </div>
-          <ThemePreview modules={colours} mode={mode} />
-          <Card className="theme-module-card">
-            <SectionHeading level="group">{t.modules[module]}</SectionHeading>
-            <div className="theme-module-colour">
-              <Swatches
-                label={t.swatches} value={colours[module].toLowerCase()} onPick={paint}
-                swatches={swatches.map(([value, builtIn]) => ({ value, colour: value, label: name(builtIn) }))}
+            <FieldRow label={t.basedOn}>
+              <ChoicePicker
+                appearance="field" className="theme-editor-base-picker" aria-label={t.basedOn}
+                value={draft.basedOn ?? ''} options={bases.map((candidate) => candidate.id)}
+                label={(id) => name(bases.find((candidate) => candidate.id === id)!)}
+                onPick={(id) => {
+                  const picked = bases.find((candidate) => candidate.id === id)!
+                  change({ basedOn: id, light: picked.light, dark: picked.dark })
+                }}
               />
-              <ColourField value={colours[module]} onChange={paint} pickLabel={t.pick} valueLabel={t.hex} />
-            </div>
-            {error === null ? null : <ServiceError>{error}</ServiceError>}
-            <ServiceFoot>
-              {form.outside ? <Tag state="warning">{t.changedOutside}</Tag> : null}
-              <ServiceActions>
-                <CommitActions
-                  place="foot" saving={saving} canSave={draft.name.trim() !== '' && (dirty || form.outside)} done={form.saved}
-                  onSave={() => { void save() }}
-                />
-              </ServiceActions>
-            </ServiceFoot>
-          </Card>
+            </FieldRow>
+          </div>
+        )}
+      >
+        <div className="theme-editor-modes">
+          <SegmentedControl
+            label={t.mode} value={mode} onChange={setMode}
+            options={[{ value: 'light', label: m.settings.appearance.light }, { value: 'dark', label: m.settings.appearance.dark }]}
+          />
+          <Button
+            size="compact" variant="ghost"
+            onClick={() => { change({ dark: deriveDarkModules(draft.light, base) }); setMode('dark') }}
+          >{t.deriveDark}</Button>
         </div>
-      </div>
-    </>
+        <ThemePreview modules={colours} mode={mode} />
+        <Card className="theme-module-card">
+          <SectionHeading level="group">{t.modules[module]}</SectionHeading>
+          <div className="theme-module-colour">
+            <Swatches
+              label={t.swatches} value={colours[module].toLowerCase()} onPick={paint}
+              swatches={swatches.map(([value, builtIn]) => ({ value, colour: value, label: name(builtIn) }))}
+            />
+            <ColourField value={colours[module]} onChange={paint} pickLabel={t.pick} valueLabel={t.hex} />
+          </div>
+          {error === null ? null : <ServiceError>{error}</ServiceError>}
+          <ServiceFoot>
+            {form.outside ? <Tag state="warning">{t.changedOutside}</Tag> : null}
+            <ServiceActions>
+              <CommitActions
+                place="foot" saving={saving} canSave={draft.name.trim() !== '' && (dirty || form.outside)} done={form.saved}
+                onSave={() => { void save() }}
+              />
+            </ServiceActions>
+          </ServiceFoot>
+        </Card>
+      </SplitMain>
+    </SplitPage>
   )
 }
