@@ -23,6 +23,8 @@ export {
   readProjectWorkspace,
   readWorkspaceAgentIdeas,
   readWorkspaceAgentTasks,
+  sshConfigHosts,
+  sshFolders,
   WORKSPACE_AGENT_IDEAS_SCHEMA,
   WORKSPACE_CHANGES_SCHEMA,
   WORKSPACE_EVENTS_SCHEMA,
@@ -30,4 +32,4 @@ export {
   writeProjectWorkspace,
   writeProjectWorkspaceState,
 } from './workspace.js'
-export type { SshExecutor, WorkspaceAgentIdea, WorkspaceAgentTask } from './workspace.js'
+export type { SshCommand, SshExecutor, SshTarget, WorkspaceAgentIdea, WorkspaceAgentTask } from './workspace.js'

@@ -56,6 +56,8 @@ import { useMessages } from '../messages/useMessages.js'
 import { InlineMetadataField } from '../components/InlineField.js'
 import { ModalDialog } from '../components/ModalDialog.js'
 import { DirectoryField, FormInput } from '../components/FormControls.js'
+import { InlineMessage } from '../components/InlineMessage.js'
+import { SshFolderBrowser, SshHostField, useSshFolders } from '../components/SshFolderPicker.js'
 import {
   PageBody, PageError, PageHeader, PageShell, PageTitle, SectionHeading,
 } from '../components/PageShell.js'
@@ -338,8 +340,8 @@ export function ProjectDetail({
   const [workspaceMode, setWorkspaceMode] = useState<'local' | 'ssh'>('local')
   const [localPath, setLocalPath] = useState('')
   const [sshHost, setSshHost] = useState('')
-  const [sshPath, setSshPath] = useState('')
   const [sshPort, setSshPort] = useState('')
+  const remote = useSshFolders()
   const [binding, setBinding] = useState<'local' | 'ssh' | null>(null)
   const planList = useRef<HTMLDivElement>(null)
   const planAdd = useRef<HTMLButtonElement>(null)
@@ -578,18 +580,24 @@ export function ProjectDetail({
     setWorkspaceMode(ssh ? 'ssh' : 'local')
     setLocalPath(workspace?.kind === 'local' ? workspace.root : '')
     setSshHost(ssh ? workspace.host ?? '' : '')
-    setSshPath(ssh ? workspace.root : '')
     setSshPort(ssh && workspace.port !== undefined ? String(workspace.port) : '')
+    remote.reset()
     setWorkspaceOpen(true)
   }
 
-  const connectSshWorkspace = async () => {
+  /** Connects to the host typed and shows its home; once connected, binds the folder shown. */
+  const submitSshWorkspace = async () => {
     const port = sshPort.trim() === '' ? undefined : Number(sshPort)
+    const target = { host: sshHost.trim(), ...(port === undefined ? {} : { port }) }
+    if (remote.folder === null) {
+      remote.connect(target)
+      return
+    }
     setBinding('ssh')
-    const connected = await writeProject(projectApi.bindWorkspace(projectId, {
-      kind: 'ssh', host: sshHost.trim(), path: sshPath.trim(),
-      ...(port === undefined ? {} : { port }),
-    }), m.project.workspace.sshConnected)
+    const connected = await writeProject(
+      projectApi.bindWorkspace(projectId, { kind: 'ssh', ...target, path: remote.folder.path }),
+      m.project.workspace.sshConnected,
+    )
     setBinding(null)
     if (connected) setWorkspaceOpen(false)
   }
@@ -775,10 +783,14 @@ export function ProjectDetail({
         title={m.project.workspace.dialogTitle}
         actions={(
           <CommitActions
-            place="foot" onCancel={() => setWorkspaceOpen(false)} saving={binding !== null}
+            place="foot" onCancel={() => setWorkspaceOpen(false)}
+            saving={binding !== null || (workspaceMode === 'ssh' && remote.folder === null && remote.opening)}
+            canSave={workspaceMode === 'local' || remote.folder === null || (!remote.opening && !remote.edited)}
             {...workspaceMode === 'local'
               ? { form: 'workspaceLocal', saveLabel: m.project.workspace.add, busyLabel: m.project.workspace.adding }
-              : { form: 'workspaceSsh', saveLabel: m.project.workspace.connect, busyLabel: m.project.workspace.connecting }}
+              : remote.folder === null
+                ? { form: 'workspaceSsh', saveLabel: m.project.workspace.connect, busyLabel: m.project.workspace.connecting }
+                : { form: 'workspaceSsh', saveLabel: m.project.workspace.choose, busyLabel: m.project.workspace.choosing }}
           />
         )}
       >
@@ -811,28 +823,24 @@ export function ProjectDetail({
               : (
                 <form
                   id="workspaceSsh" className="workspace-form"
-                  onSubmit={(event) => { event.preventDefault(); void connectSshWorkspace() }}
+                  onSubmit={(event) => { event.preventDefault(); void submitSshWorkspace() }}
                 >
                   <label>{m.project.workspace.hostLabel}
-                    <FormInput
-                      appearance="field" value={sshHost} autoFocus required
-                      placeholder={m.project.workspace.hostPlaceholder}
-                      onChange={(event) => setSshHost(event.target.value)}
-                    />
-                  </label>
-                  <label>{m.project.workspace.pathLabel}
-                    <FormInput
-                      appearance="field" value={sshPath} required placeholder={m.project.workspace.remotePlaceholder}
-                      onChange={(event) => setSshPath(event.target.value)}
+                    <SshHostField
+                      value={sshHost} autoFocus required placeholder={m.project.workspace.hostPlaceholder}
+                      onValue={(host) => { setSshHost(host); remote.reset() }} onError={report}
                     />
                   </label>
                   <label>{m.project.workspace.portLabel}
                     <FormInput
                       appearance="field" value={sshPort} type="number" min={1} max={65_535}
                       placeholder={m.project.workspace.portLabel}
-                      onChange={(event) => setSshPort(event.target.value)}
+                      onChange={(event) => { setSshPort(event.target.value); remote.reset() }}
                     />
                   </label>
+                  {remote.folder === null
+                    ? remote.issue === null ? null : <InlineMessage tone="error" variant="line">{remote.issue}</InlineMessage>
+                    : <SshFolderBrowser choice={remote} />}
                 </form>
               )}
       </ModalDialog>
