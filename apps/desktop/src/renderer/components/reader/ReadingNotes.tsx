@@ -13,6 +13,11 @@ import { ReaderPanelHeader } from './ReaderPanelHeader.js'
 import { useClipped } from '../../hooks/useClipped.js'
 import { CommitActions } from '../CommitActions.js'
 
+/** The colour each highlight colour marks its card's leading edge with. */
+const HIGHLIGHT_MARK: Record<PaperHighlight['color'], string> = {
+  yellow: 'var(--hl-yellow)', green: 'var(--hl-green)', blue: 'var(--hl-blue)', pink: 'var(--hl-pink)',
+}
+
 /** A note or highlight card's delete, for the row-actions slot at the end of the card's top line. */
 function ReadingDelete({ onDelete }: { onDelete: () => Promise<boolean> }) {
   const m = useMessages()
@@ -72,7 +77,7 @@ function HighlightCard({ highlight, edits, onSave, onDelete, onJump, focus, sele
   return (
     <Item
       density="card" elementRef={card} className={`reading-card highlight-card ${highlight.color}`} selected={selected}
-      mark={`var(--hl-${highlight.color})`} aria-current={selected || undefined}
+      mark={HIGHLIGHT_MARK[highlight.color]} aria-current={selected || undefined}
       meta={<SourceAnchor page={highlight.page} quote={highlight.quote} onOpen={onJump} />}
       actions={<ReadingDelete onDelete={onDelete} />}
     >
