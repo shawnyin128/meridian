@@ -18,7 +18,7 @@ import { useDrafts } from '../../hooks/useDrafts.js'
 import { useDraftSlot } from '../DraftSlot.js'
 import { useGenerations } from '../../hooks/useGenerations.js'
 import { useFollowEnd } from '../../hooks/useFollowEnd.js'
-import { useNoModelChats } from '../../hooks/useNoModelChats.js'
+import { useModelStatus } from '../../hooks/useModelStatus.js'
 import { useScreenLoad } from '../../hooks/useScreenLoad.js'
 import { namedRuns, TitleNote } from '../TitleNote.js'
 import { useVaultWrite } from '../../hooks/useVaultWrite.js'
@@ -55,7 +55,7 @@ export function PaperChat({ paper, onBack = () => {}, prompt = null }: {
   const drafts = useDrafts<ChatRun[]>(['paper', paper?.id ?? ''])
   const ideaDrafts = useDrafts<IdeaDraftText>(['paper', paper?.id ?? ''])
   const { running, run, stop } = useGenerations()
-  const { noModel, track } = useNoModelChats()
+  const { track } = useModelStatus()
   const { error, load } = useScreenLoad()
   const { ref: followRef, follow } = useFollowEnd<HTMLDivElement>()
   const composer = useRef<ChatComposerHandle>(null)
@@ -101,7 +101,7 @@ export function PaperChat({ paper, onBack = () => {}, prompt = null }: {
     if (draftText(draft).trim() === '' || paperId === null || session === null || sending) return
     drafts.drop('chat-message')
     follow()
-    void run(write(track(session.id, chat.send(session.id, draft))))
+    void run(write(track(chat.send(session.id, draft))))
   }
 
   const stopSending = () => {
@@ -167,7 +167,7 @@ export function PaperChat({ paper, onBack = () => {}, prompt = null }: {
           <ChatComposer
             key={paperId} ref={composer} label={m.chat.askAboutPaper} placeholder={m.chat.paperComposerPlaceholder}
             draft={draft} onDraft={(next) => { if (paperId !== null) drafts.set('chat-message', next) }} unavailable={session === null}
-            running={sending} noModel={sessionId !== null && noModel(sessionId)} onSend={submit} onStop={stopSending}
+            running={sending} onSend={submit} onStop={stopSending}
           />
         </div>
       </div>

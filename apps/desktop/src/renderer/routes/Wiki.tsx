@@ -54,6 +54,7 @@ import { Item, ItemOpen, RowActions } from '../components/Item.js'
 import { EMBEDDED_LIST_ROW_LIMIT, List } from '../components/List.js'
 import { Tooltip } from '../components/Tooltip.js'
 import { useClipped } from '../hooks/useClipped.js'
+import { land } from '../hooks/useArrival.js'
 import { Button } from '../components/Button.js'
 import { CommitActions } from '../components/CommitActions.js'
 import './shell.css'
@@ -333,7 +334,10 @@ function Toc({ body, main }: { body: string; main: RefObject<HTMLDivElement | nu
           <li className={`l${h.depth - base + 1}${h.id === active ? ' on' : ''}`} key={h.id}>
             <button
               type="button"
-              onClick={() => main.current?.querySelector<HTMLElement>(`#${h.id}`)?.scrollIntoView({ block: 'start' })}
+              onClick={() => {
+                const heading = main.current?.querySelector(`#${h.id}`)
+                if (heading) land(heading, 'start')
+              }}
             ><FadeText label={h.text}>{h.text}</FadeText></button>
           </li>
         ))}
@@ -1015,7 +1019,7 @@ export function Wiki() {
                   />
                   <div className="pk">{m.wiki.authorsLabel}</div>
                   <InlineMetadataField
-                    label={m.wiki.authorsLabel} value={shownPaper.authors.join(', ')} keep={{ scope: ['wiki', shownPaper.id], target: 'authors' }}
+                    label={m.wiki.authorsLabel} value={fmt.authors(shownPaper.authors)} keep={{ scope: ['wiki', shownPaper.id], target: 'authors' }}
                     onSave={(authors) => updateWikiPaper({
                       authors: authors.split(/[,，;；\n]/).map((item) => item.trim()).filter(Boolean),
                     }, m.wiki.authorsLabel)}

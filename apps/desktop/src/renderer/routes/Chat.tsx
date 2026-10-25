@@ -26,7 +26,7 @@ import { useDrafts } from '../hooks/useDrafts.js'
 import { useDraftSlot } from '../components/DraftSlot.js'
 import { useFollowEnd } from '../hooks/useFollowEnd.js'
 import { useGenerations } from '../hooks/useGenerations.js'
-import { useNoModelChats } from '../hooks/useNoModelChats.js'
+import { useModelStatus } from '../hooks/useModelStatus.js'
 import { useJumpOrigin } from '../hooks/useJumpOrigin.js'
 import { useScreenLoad } from '../hooks/useScreenLoad.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
@@ -95,7 +95,7 @@ export function Chat() {
   const drafts = useDrafts<ChatRun[]>(['chat', id ?? ''])
   const ideaDrafts = useDrafts<IdeaDraftText>(['chat', id ?? ''])
   const { running, run, stop } = useGenerations()
-  const { noModel, track } = useNoModelChats()
+  const { track } = useModelStatus()
   const [projects, setProjects] = useState<ProjectSummary[]>([])
   const [rows, setRows] = useState<PaperRow[]>([])
   const [pages, setPages] = useState<WikiAggregationCard[]>([])
@@ -128,7 +128,7 @@ export function Chat() {
 
   const send = useCallback((session: string, runs: ChatRun[]) => {
     follow()
-    return run(write(track(session, chat.send(session, runs))))
+    return run(write(track(chat.send(session, runs))))
   }, [follow, run, write, track])
 
   const stopSending = () => {
@@ -242,7 +242,7 @@ export function Chat() {
             <ChatComposer
               key={id} ref={composer} id="composer" sendId="sendBtn" placeholder={m.chat.composerPlaceholder}
               draft={draft} onDraft={(next) => { if (id !== null) drafts.set('message', next) }} unavailable={id === null}
-              running={sending} noModel={id !== null && noModel(id)} onSend={submit} onStop={stopSending}
+              running={sending} onSend={submit} onStop={stopSending}
               mentions={mentions}
             />
           </div>

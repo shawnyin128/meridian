@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { MouseEvent as ReactMouseEvent, RefObject } from 'react'
+import { useElementWidth } from './useElementWidth.js'
 
 /**
  * Drag-to-reschedule and viewport tracking for a Gantt chart, shared by both Gantt timelines.
@@ -15,9 +16,8 @@ import type { MouseEvent as ReactMouseEvent, RefObject } from 'react'
  * swallows the click the browser fires after mouseup. `stubAt` takes a bar's left and right ends on
  * the canvas and, when less than 4px of the bar shows in the `wrap` viewport, returns the side its
  * stub sits on and the stub's `left`; otherwise null. The viewport is re-measured on scroll and
- * resize, but the measuring effect runs only once on mount (it depends on the `wrap` ref, whose
- * identity never changes), so `wrap.current` must already point at the real node when this hook
- * mounts, or the viewport stays `{ left: 0, width: 0 }`. The right-side stub's `left` assumes the
+ * resize of the node `wrap` points at when this hook mounts (see useElementWidth); without one, the
+ * viewport stays at its left edge and 0 wide. The right-side stub's `left` assumes the
  * 20px stub width of `.gstub` in `TimelineBoard.css`; change both together.
  */
 export function useGanttDrag<G>({ wrap, dayWidth, unitWidthOf, idOf, onMove, onClick }: {
@@ -43,22 +43,16 @@ export function useGanttDrag<G>({ wrap, dayWidth, unitWidthOf, idOf, onMove, onC
   // would stay set until it swallowed some unrelated Gantt click.
   const suppress = useRef(false)
   const [shift, setShift] = useState<{ id: string; dx: number; moved: boolean } | null>(null)
-  const [view, setView] = useState({ left: 0, width: 0 })
+  const width = useElementWidth(wrap)
+  const [left, setLeft] = useState(0)
 
   useLayoutEffect(() => {
     const w = wrap.current
     if (!w) return
-    const sync = () => setView({ left: w.scrollLeft, width: w.clientWidth })
+    const sync = () => setLeft(w.scrollLeft)
     sync()
     w.addEventListener('scroll', sync)
-    // Both screens stay mounted, so the viewport may change while the other screen is shown;
-    // measuring only once on mount would keep a stale width.
-    const resize = new ResizeObserver(sync)
-    resize.observe(w)
-    return () => {
-      w.removeEventListener('scroll', sync)
-      resize.disconnect()
-    }
+    return () => w.removeEventListener('scroll', sync)
   }, [wrap])
 
   useEffect(() => {
@@ -115,8 +109,8 @@ export function useGanttDrag<G>({ wrap, dayWidth, unitWidthOf, idOf, onMove, onC
     dragging: (id) => shift?.id === id && shift.moved,
     onClickCapture: (e) => { if (suppress.current) { suppress.current = false; e.stopPropagation() } },
     stubAt: (barLeft, barRight) => {
-      if (barRight < view.left + 4) return { side: 'l', left: view.left + 6 }
-      if (barLeft > view.left + view.width - 4) return { side: 'r', left: view.left + view.width - 26 }
+      if (barRight < left + 4) return { side: 'l', left: left + 6 }
+      if (barLeft > left + width - 4) return { side: 'r', left: left + width - 26 }
       return null
     },
   }

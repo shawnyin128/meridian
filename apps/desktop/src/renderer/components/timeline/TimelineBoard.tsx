@@ -18,6 +18,7 @@ import {
 import type { TimelinePeriod } from './TimelineScale.js'
 import { useGanttDrag } from '../../hooks/useGanttDrag.js'
 import { useDragReorder } from '../../hooks/useDragReorder.js'
+import { isClipped } from '../../hooks/useClipped.js'
 import './TimelineBoard.css'
 
 export type TimelineProject = {
@@ -193,7 +194,7 @@ export function TimelineBoard({
   // The title inside a one-day bar keeps its box, hidden while it is drawn beside, so its fit is measured the same way in both.
   useLayoutEffect(() => {
     const cut = new Map([...canvas.current!.querySelectorAll<HTMLElement>('.gbar.one-day .gbar-label')]
-      .filter((label) => label.scrollWidth > label.clientWidth + 1)
+      .filter((label) => isClipped(label, 'x'))
       .map((label) => {
         const bar = label.closest<HTMLElement>('.gbar')!
         return [`${bar.dataset['proj']}/task/${bar.dataset['task']}`, label.scrollWidth] as const
