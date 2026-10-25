@@ -7,8 +7,9 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Protocol
 
+from langchain_core.prompt_values import PromptValue
 from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.runnables import Runnable
+from langchain_core.runnables import Runnable, RunnableLambda
 from langgraph.graph import END, START, StateGraph
 from langgraph.graph.state import CompiledStateGraph
 from langgraph.runtime import Runtime
@@ -20,6 +21,7 @@ from meridian_harness.models import (
     ModelConfigurationError,
     ModelInvocationError,
     create_chat_model,
+    runs_on_cli,
 )
 from meridian_harness.protocol import ProtocolViolation
 
@@ -285,6 +287,8 @@ class CoreReadContext(Protocol):
 
     def read(self, method: str, params: object) -> object: ...
 
+    def invoke_model(self, params: object) -> object: ...
+
 
 class PaperWikiInput(TypedDict):
     target_id: str
@@ -319,7 +323,7 @@ class PaperWikiState(PaperWikiInput, total=False):
     quality: dict[str, object]
 
 
-DraftChain = Runnable[dict[str, object], PaperWikiDraft]
+DraftChain = Runnable[dict[str, object], object]
 DraftChainFactory = Callable[[object, object], DraftChain]
 
 
@@ -374,6 +378,30 @@ def build_draft_chain(model: object, limits: object) -> DraftChain:
     chat_model = create_chat_model(model, limits)
     structured_model = chat_model.with_structured_output(PaperWikiDraft, method="json_schema")
     return PAPER_WIKI_PROMPT | structured_model
+
+
+def build_cli_draft_chain(core: CoreReadContext) -> DraftChain:
+    """Compose the same prompt with one model call that Core runs on the user's subscription CLI."""
+
+    def invoke(prompt: PromptValue) -> object:
+        system, human = prompt.to_messages()
+        from meridian_harness.server import CoreCallbackError
+
+        try:
+            result = core.invoke_model({
+                "system": system.content,
+                "prompt": human.content,
+                "schema": PaperWikiDraft.model_json_schema(),
+            })
+        except CoreCallbackError as cause:
+            if cause.kind != "model_error":
+                raise
+            raise ModelInvocationError(str(cause), "subscription_cli") from cause
+        if not isinstance(result, dict):
+            raise ProtocolViolation("Core returned an invalid model call result")
+        return result.get("output")
+
+    return PAPER_WIKI_PROMPT | RunnableLambda(invoke)
 
 
 def _read_scope(state: PaperWikiState, runtime: Runtime[PaperWikiRuntime]) -> dict[str, object]:
@@ -450,6 +478,8 @@ def _generate_draft(
             "模型返回的 Paper Wiki 草稿引用了范围外内容",
             "invalid_anchor",
         ) from cause
+    except ModelInvocationError:
+        raise
     except Exception as cause:
         raise ModelInvocationError.from_exception(cause) from cause
     quality = evaluate_paper_wiki_draft(
@@ -551,7 +581,11 @@ def build_paper_wiki_method(
     def propose(context: CoreReadContext, value: object) -> object:
         params = _request(value)
         try:
-            draft_chain = draft_chain_factory(params["model"], params["limits"])
+            draft_chain = (
+                build_cli_draft_chain(context)
+                if runs_on_cli(params["model"])
+                else draft_chain_factory(params["model"], params["limits"])
+            )
         except ModelConfigurationError as cause:
             from meridian_harness.server import HarnessFailure
 

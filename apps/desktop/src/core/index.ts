@@ -137,9 +137,9 @@ import { createPluginVersionCheck } from './extensions/latest.js'
 import { openSemanticKeyStore } from './net/semantic-key.js'
 import { deleteColourTheme, listColourThemes, saveColourTheme } from './colour-themes.js'
 import {
-  checkSubscription, createChatHarnessRunner, createChatService, createHarnessCostGate,
-  createHarnessModelConfig, createHarnessProposalAudit,
-  createMainCredentialVault, createPaperWikiHarnessRunner, type SubscriptionDiscovery,
+  checkCliConnection, checkSubscription, createChatHarnessRunner, createChatService, createCliRunner,
+  createHarnessCostGate, createHarnessModelConfig, createHarnessProposalAudit,
+  createMainCredentialVault, createPaperWikiHarnessRunner, resolveCliBinary, type SubscriptionDiscovery,
 } from './harness/index.js'
 import { placeResearchIdeaOnGraph, promoteResearchIdea } from './research-ideas/index.js'
 import { createWikiProposals, pdfPageText } from './wiki-proposals.js'
@@ -242,9 +242,11 @@ const background = createBackground({
   now: Date.now,
   semanticScholarApiKey: semanticKey.current,
 })
+const cliRunner = createCliRunner({ binary: (cli) => resolveCliBinary(cli) })
 const paperWikiHarness = vaultRoot === undefined ? null : createPaperWikiHarnessRunner({
   store,
   model: harnessModel,
+  cli: cliRunner,
   onLog: (line) => console.error(`[harness] ${line}`),
 })
 // Chat is always an explicit user action, so a configured model also works with the
@@ -252,6 +254,7 @@ const paperWikiHarness = vaultRoot === undefined ? null : createPaperWikiHarness
 const chatHarness = createChatHarnessRunner({
   store,
   model: harnessModel,
+  checkCli: (cli) => checkCliConnection(cli),
   onLog: (line) => console.error(`[harness] ${line}`),
 })
 const chatService = createChatService({ store, model: harnessModel, runner: chatHarness })

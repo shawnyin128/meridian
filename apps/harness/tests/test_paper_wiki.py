@@ -8,13 +8,15 @@ from threading import Event
 from langchain_core.runnables import Runnable, RunnableLambda
 
 from meridian_harness.protocol import ProtocolViolation
-from meridian_harness.server import HarnessFailure, RequestContext
+from meridian_harness.server import CoreCallbackError, HarnessFailure, RequestContext
 from meridian_harness.workflows.paper_wiki import (
     PAPER_WIKI_GRAPH,
     PAPER_WIKI_PROMPT,
     PaperWikiDraft,
     build_paper_wiki_method,
 )
+
+USAGE_LIMIT = "claude 运行失败：Claude AI usage limit reached"
 
 
 class PaperWikiWorkflowTests(unittest.TestCase):
@@ -255,6 +257,76 @@ class PaperWikiWorkflowTests(unittest.TestCase):
             )
 
         self.assertEqual(calls, [])
+
+    def test_a_cli_model_asks_core_for_the_one_model_call_and_builds_no_provider(self) -> None:
+        calls: list[object] = []
+
+        def read(method: str, params: object) -> object:
+            if method != "model.invoke":
+                return _read(method, params)
+            calls.append(params)
+            return {"output": _valid_draft()}
+
+        def no_provider(
+            _model: object,
+            _limits: object,
+        ) -> Runnable[dict[str, object], PaperWikiDraft]:
+            raise AssertionError("a CLI run must not build a LangChain provider")
+
+        params = _params()
+        params["model"] = {"source": "cli", "cli": "claude"}
+        result = build_paper_wiki_method(no_provider)(RequestContext(30, Event(), read), params)
+
+        self.assertEqual(result["draft"], _valid_draft())
+        self.assertEqual(len(calls), 1)
+        call = calls[0]
+        if not isinstance(call, dict):
+            raise AssertionError("model.invoke params must be an object")
+        self.assertEqual(set(call), {"system", "prompt", "schema"})
+        self.assertEqual(call["system"], PAPER_WIKI_PROMPT.messages[0].prompt.template)
+        self.assertTrue(str(call["prompt"]).startswith("Authorized Paper Wiki scope:\n{"))
+        self.assertIn('"scopeDigest":"digest-1"', str(call["prompt"]))
+        self.assertEqual(call["schema"], PaperWikiDraft.model_json_schema())
+
+    def test_malformed_cli_output_is_the_structured_output_failure_and_is_not_retried(self) -> None:
+        for output in (None, {**_valid_draft(), "unexpected": "text"}):
+            with self.subTest(output=output):
+                calls: list[object] = []
+
+                def read(
+                    method: str,
+                    params: object,
+                    answer: object = output,
+                    seen: list[object] = calls,
+                ) -> object:
+                    if method != "model.invoke":
+                        return _read(method, params)
+                    seen.append(params)
+                    return {"output": answer}
+
+                params = _params()
+                params["model"] = {"source": "cli", "cli": "codex"}
+                with self.assertRaises(HarnessFailure) as raised:
+                    build_paper_wiki_method()(RequestContext(31, Event(), read), params)
+
+                self.assertEqual(raised.exception.kind, "model_error")
+                self.assertEqual(raised.exception.detail, "structured_output")
+                self.assertEqual(len(calls), 1)
+
+    def test_a_cli_failure_core_reports_keeps_its_own_words(self) -> None:
+        def read(method: str, params: object) -> object:
+            if method == "model.invoke":
+                raise CoreCallbackError("model_error", USAGE_LIMIT)
+            return _read(method, params)
+
+        params = _params()
+        params["model"] = {"source": "cli", "cli": "claude"}
+        with self.assertRaises(HarnessFailure) as raised:
+            build_paper_wiki_method()(RequestContext(32, Event(), read), params)
+
+        self.assertEqual(raised.exception.kind, "model_error")
+        self.assertEqual(str(raised.exception), USAGE_LIMIT)
+        self.assertEqual(raised.exception.detail, "subscription_cli")
 
 
 def _read(method: str, _params: object) -> object:

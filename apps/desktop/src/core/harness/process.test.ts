@@ -1,8 +1,14 @@
-import { existsSync } from 'node:fs'
-import { delimiter, resolve } from 'node:path'
+import { chmodSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { delimiter, join, resolve } from 'node:path'
 import { createServer } from 'node:http'
 import type { AddressInfo } from 'node:net'
 import { describe, expect, it } from 'vitest'
+import type { HarnessPlan, PaperReading, PaperRow, WikiPaper } from '../../shared/contract.js'
+import type { VaultStore } from '../vault.js'
+import { createCliRunner } from './cli/runner.js'
+import type { HarnessModelConfig } from './model-config.js'
+import { createPaperWikiHarnessRunner } from './paper-wiki.js'
 import { createHarnessRpc } from './rpc.js'
 import { harnessProcessConfig, launchHarnessProcess } from './process.js'
 import { HARNESS_CAPABILITIES } from './protocol.js'
@@ -218,6 +224,102 @@ describe('Harness process', () => {
       await new Promise<void>((resolveClose) => provider.close(() => resolveClose()))
     }
   })
+
+  developmentHarnessIt('drafts a Paper Wiki proposal through the real Harness and a stand-in claude', async () => {
+    const folder = mkdtempSync(join(tmpdir(), 'meridian-cli-e2e-'))
+    const record = join(folder, 'record.json')
+    const draft = {
+      problem: { text: 'Speculative decoding is bounded by the draft model.', pages: [1] },
+      what_to_remember: [{ text: 'A small draft proposes tokens the target verifies.', pages: [1] }],
+      retrieval: {
+        fits: [
+          { query: 'How does speculative decoding verify drafted tokens?', use_because: 'Mechanism.', pages: [1] },
+          { query: 'Which draft model sizes keep acceptance high?', use_because: 'Ablation.', pages: [2] },
+          { query: 'What speedups does speculative decoding report?', use_because: 'Evidence.', pages: [2] },
+        ],
+        scope_notes: { primary_fit: 'Decoding speed.', adjacent_fit: 'Serving.', weak_fit: 'Training.' },
+      },
+      mechanism: [{
+        name: 'Draft and verify', input: 'Prefix tokens', transformation: 'Draft k tokens, verify in one pass',
+        output: 'Accepted tokens', dependency: 'Target and draft share a vocabulary', pages: [1],
+      }],
+      mechanism_details_to_verify: [{ text: 'Check the acceptance rule.', pages: [1] }],
+      evidence: [{ claim: 'Decoding gets faster', setting: 'Fixture setting', finding: 'Fewer target passes', pages: [2] }],
+      implementation_hooks: [{ task: 'Add a draft model', first_check: 'Measure acceptance on ten prompts', pages: [1] }],
+      limitations: [],
+      user_observations: [{ text: 'Worth trying on our serving stack.', reading_refs: ['note:n1'] }],
+      open_questions: ['Does acceptance hold for long outputs?'],
+    }
+    const claude = join(folder, 'claude')
+    writeFileSync(claude, `#!${process.execPath}
+const fs = require('node:fs')
+let stdin = ''
+process.stdin.setEncoding('utf8')
+process.stdin.on('data', (chunk) => { stdin += chunk })
+process.stdin.on('end', () => {
+  fs.writeFileSync(${JSON.stringify(record)}, JSON.stringify({
+    argv: process.argv.slice(2), stdin, apiKey: process.env.ANTHROPIC_API_KEY ?? null,
+  }))
+  process.stdout.write(JSON.stringify({
+    type: 'result', subtype: 'success', is_error: false, num_turns: 1,
+    usage: { input_tokens: 10, cache_read_input_tokens: 0, cache_creation_input_tokens: 0, output_tokens: 20 },
+    structured_output: ${JSON.stringify(draft)},
+  }))
+})
+`)
+    chmodSync(claude, 0o755)
+    const pdf = new Uint8Array(readFileSync(resolve(import.meta.dirname,
+      '../fixtures/vault/sources/papers/paper-pdf-a6b750e25a61-13979-STAR-Speculative-Decodin.pdf')))
+    const config = harnessProcessConfig({
+      PATH: process.env['PATH'],
+      CONDA_EXE: process.env['CONDA_EXE'],
+      MERIDIAN_HARNESS_CONDA_ENV: 'meridian',
+    }, resolve('apps/desktop'))
+    const logs: string[] = []
+    const runner = createPaperWikiHarnessRunner({
+      store: {
+        getPaper: () => ({ id: 'p1', title: 'STAR', authors: ['A. Researcher'], venue: 'arXiv' }),
+        paperReading: () => ({ highlights: [], notes: [{ id: 'n1', page: 1, text: 'Try it on serving.' }], remark: '' }),
+        paperSource: () => pdf,
+        wikiPaper: () => ({ id: 'papers/p1', body: '' }),
+      } as unknown as VaultStore,
+      model: { runtime: async () => ({ source: 'cli', cli: 'claude' }) } as unknown as HarnessModelConfig,
+      cli: createCliRunner({
+        binary: async () => claude,
+        environment: { ...process.env, ANTHROPIC_API_KEY: 'sk-ant-must-not-cross' },
+      }),
+      launch: () => launchHarnessProcess(config),
+      onLog: (line) => logs.push(line),
+    })
+    try {
+      const result = await runner.run({
+        plan: { workflow: 'paper-wiki', targetId: 'p1', scopeDigest: 'cli-scope', action: 'create' } as HarnessPlan,
+        snapshot: {
+          paper: { pageCount: 2 } as PaperRow,
+          reading: { highlights: [], notes: [{ id: 'n1' }], remark: '' } as unknown as PaperReading,
+          wiki: {} as WikiPaper,
+        },
+        signal: new AbortController().signal,
+        limits: { maxOutputTokens: 6_000, maxModelCalls: 1 },
+      })
+
+      expect(result).toMatchObject({ state: 'proposal-ready', proposalQuality: { caseId: 'p1' } })
+      expect(result.proposalBody).toContain('A small draft proposes tokens the target verifies.')
+      const seen = JSON.parse(readFileSync(record, 'utf8')) as { argv: string[]; stdin: string; apiKey: string | null }
+      const flag = (name: string) => seen.argv[seen.argv.indexOf(name) + 1]!
+      expect(flag('--system-prompt')).toMatch(/^Prepare one review-only Meridian Paper Wiki V2 proposal\./)
+      expect(JSON.parse(flag('--json-schema'))).toMatchObject({
+        additionalProperties: false, required: expect.arrayContaining(['limitations', 'open_questions']),
+      })
+      expect(seen.stdin).toMatch(/^Authorized Paper Wiki scope:\n\{/)
+      expect(seen.stdin).toContain('"scopeDigest":"cli-scope"')
+      expect(seen.apiKey).toBeNull()
+      expect(logs).toContainEqual(expect.stringMatching(/^claude: \d+\.\d s, 1 turns, 10 input tokens \(0 cached\), 20 output tokens$/))
+    } finally {
+      runner.close()
+      rmSync(folder, { recursive: true, force: true })
+    }
+  }, 30_000)
 
   realExecutableIt('starts the packaged sidecar and completes the versioned handshake', async () => {
     const config = harnessProcessConfig({ MERIDIAN_HARNESS_EXECUTABLE: harnessExecutable })

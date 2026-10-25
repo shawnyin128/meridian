@@ -86,7 +86,8 @@ type LoadedConfig = {
   migrated?: boolean
 }
 
-export type HarnessRuntimeModel = {
+/** A model reached through a LangChain provider, with its API key when it needs one. */
+type HarnessApiModel = {
   provider: HarnessModelProvider
   protocol: HarnessModelProtocol
   baseUrl: string
@@ -94,6 +95,9 @@ export type HarnessRuntimeModel = {
   authentication: 'api-key' | 'none'
   apiKey?: string
 }
+
+/** The model a Harness run uses: an API provider, or the user's own signed-in CLI. */
+export type HarnessRuntimeModel = HarnessApiModel | HarnessCliModel
 
 const normalizeBaseUrl = (baseUrl: string) => baseUrl.replace(/\/+$/, '')
 
@@ -276,7 +280,7 @@ export async function createHarnessModelConfig(configHome: string, vault: Creden
       choose({ active: cli, models: { ...subscription.models, [cli]: model } })
       return publicSettings()
     },
-    async runtime(): Promise<HarnessRuntimeModel | HarnessCliModel> {
+    async runtime(): Promise<HarnessRuntimeModel> {
       if (subscriptionError !== undefined) {
         throw new CallError(subscriptionError, '订阅配置读不出来')
       }

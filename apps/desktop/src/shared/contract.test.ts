@@ -184,6 +184,9 @@ describe('contract schemas', () => {
       state: 'connected', modelCalls: 1, maxOutputTokens: 1,
     }).state).toBe('connected')
     expect(HarnessModelConnectionCheckResultSchema.parse({
+      state: 'connected', modelCalls: 0, maxOutputTokens: 1,
+    }).modelCalls).toBe(0)
+    expect(HarnessModelConnectionCheckResultSchema.parse({
       state: 'failed', reason: 'authentication', detail: 'HTTP 401: invalid API key',
       modelCalls: 1, maxOutputTokens: 1,
     }).state).toBe('failed')

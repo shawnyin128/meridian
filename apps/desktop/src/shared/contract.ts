@@ -943,7 +943,7 @@ export const HarnessModelConnectionFailureSchema = z.enum([
   'unknown',
 ])
 
-/** A subscription CLI's check reads how the CLI is installed and signed in and calls no model. */
+/** A model connection check's result. `modelCalls` is 0 for a check that calls no model, as a subscription CLI's. */
 export const HarnessModelConnectionCheckResultSchema = z.discriminatedUnion('state', [
   z.object({
     state: z.literal('connected'),

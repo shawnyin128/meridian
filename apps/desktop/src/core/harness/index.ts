@@ -1,3 +1,6 @@
+export { checkCliConnection, resolveCliBinary } from './cli/discovery.js'
+export { createCliRunner } from './cli/runner.js'
+export type { CliRunner } from './cli/runner.js'
 export { createHarnessCostGate } from './cost-gate.js'
 export { createChatHarnessRunner } from './chat.js'
 export type { ChatHarnessRunner } from './chat.js'

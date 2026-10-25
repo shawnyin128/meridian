@@ -2,7 +2,12 @@ import { describe, expect, it } from 'vitest'
 import { z } from 'zod'
 import type { ChatMessage, PaperReading } from '../../shared/contract.js'
 import { CallError } from '../call-error.js'
-import { CHAT_CONTEXT_BUDGETS, ChatFailure, chatHarnessError, messagesBefore, packChatHistory, packPaperReading } from './chat.js'
+import type { VaultStore } from '../vault.js'
+import {
+  CHAT_CONTEXT_BUDGETS, ChatFailure, chatHarnessError, createChatHarnessRunner, messagesBefore, packChatHistory,
+  packPaperReading,
+} from './chat.js'
+import type { HarnessModelConfig } from './model-config.js'
 import { HarnessRpcError } from './rpc.js'
 
 function message(id: string, role: ChatMessage['role'], text: string): ChatMessage {
@@ -101,5 +106,23 @@ describe('chat failures in plain words', () => {
     expect(said(parsed.error)).toEqual([true, '模型的回答读不出来'])
     const unreadable = new CallError('key-unreadable', '保存的 API Key 读不出来')
     expect(chatHarnessError(unreadable)).toBe(unreadable)
+  })
+})
+
+describe('model connection check', () => {
+  it('checks a subscription CLI with its own check, without the Harness or a model call', async () => {
+    const checked: string[] = []
+    const runner = createChatHarnessRunner({
+      store: {} as VaultStore,
+      model: { runtime: async () => ({ source: 'cli', cli: 'codex' }) } as unknown as HarnessModelConfig,
+      checkCli: async (cli) => {
+        checked.push(cli)
+        return { state: 'connected', modelCalls: 0, maxOutputTokens: 1 }
+      },
+    })
+
+    await expect(runner.checkConnection()).resolves.toEqual({ state: 'connected', modelCalls: 0, maxOutputTokens: 1 })
+    expect(checked).toEqual(['codex'])
+    runner.close()
   })
 })
