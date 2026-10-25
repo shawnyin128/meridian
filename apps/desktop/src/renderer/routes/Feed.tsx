@@ -12,6 +12,8 @@ import { EmptyState } from '../components/EmptyState.js'
 import { ENTITY_SCREEN, EntityLink, opensHere } from '../components/EntityLink.js'
 import { FirstRunChecklist } from '../components/FirstRunChecklist.js'
 import { Icon } from '../components/icons.js'
+import { Item } from '../components/Item.js'
+import { List } from '../components/List.js'
 import { LoadingPlaceholder } from '../components/LoadingPlaceholder.js'
 import {
   PageBody, PageError, PageHeader, PageShell, PageTitle, PageToolbar,
@@ -98,16 +100,15 @@ function Body({ body, onOpenConflict }: {
     return (
       <div className="brief">
         <div className="bh">{body.heading}</div>
-        {body.items.map((item) => (
-          <div className="bitem" key={item.id}>
-            <Tag state="error">{item.tag}</Tag>
-            <span className="t">{item.text}</span>
-            {/* The demo's briefConf: this button opens a chat about the conflicting conclusions. */}
-            <span className="go">
-              <Button size="compact" variant="ghost" onClick={onOpenConflict}>{item.action}</Button>
-            </span>
-          </div>
-        ))}
+        <List variant="embedded" rows="all" nested>
+          {body.items.map((item) => (
+            <Item
+              className="bitem" key={item.id} leading={<Tag state="error">{item.tag}</Tag>} title={<span className="t">{item.text}</span>}
+              // The demo's briefConf: this button opens a chat about the conflicting conclusions.
+              trailing={<span className="go"><Button size="compact" variant="ghost" onClick={onOpenConflict}>{item.action}</Button></span>}
+            />
+          ))}
+        </List>
       </div>
     )
   }
@@ -115,22 +116,23 @@ function Body({ body, onOpenConflict }: {
 }
 
 /**
- * One feed entry: its source label with the source icon, the time at the top right, and the body. An
- * entry written before entries kept their timestamp shows the time it was stored with.
+ * One feed entry, a card Item: its source label with the source icon on its meta line, the time at
+ * the top right, and the body. An entry written before entries kept their timestamp shows the time it
+ * was stored with.
  */
-function Item({ entry, onOpenConflict }: { entry: FeedEntry; onOpenConflict: () => void }) {
+function FeedEntryCard({ entry, onOpenConflict }: { entry: FeedEntry; onOpenConflict: () => void }) {
   const m = useMessages()
   const time = entry.createdAt === undefined ? <DateChip>{entry.time}</DateChip> : <DateTimeDisplay at={entry.createdAt} />
   return (
     <div className="mwrap">
       <div className="msg">
-        <div className="fitem" data-src={entry.source}>
-          <div className="fsrc">
-            <SourceLabel lead={<span className="fic">{FSRC[entry.source].icon}</span>}>{m.feed.sources[entry.source]}</SourceLabel>
-            <span className="ftime">{time}</span>
-          </div>
+        <Item
+          density="card" className="fitem" data-src={entry.source}
+          meta={<SourceLabel lead={<span className="fic">{FSRC[entry.source].icon}</span>}>{m.feed.sources[entry.source]}</SourceLabel>}
+          trailing={<span className="ftime">{time}</span>}
+        >
           <div className="fbody"><Body body={entry.body} onOpenConflict={onOpenConflict} /></div>
-        </div>
+        </Item>
       </div>
     </div>
   )
@@ -144,7 +146,7 @@ export function FeedRows({ rows, onOpenConflict }: { rows: FeedEntry[]; onOpenCo
       {entry.day !== rows[index - 1]?.day ? (
         <div className="mwrap feed-day"><DayHeading>{daySectionName(entry.day, m.common.daySections)}</DayHeading></div>
       ) : null}
-      <Item entry={entry} onOpenConflict={onOpenConflict} />
+      <FeedEntryCard entry={entry} onOpenConflict={onOpenConflict} />
     </Fragment>
   ))
 }

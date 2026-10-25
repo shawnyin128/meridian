@@ -940,7 +940,7 @@ test.describe('选中文字时的选区', () => {
     await expect(tools.locator('[aria-label="绿色"]')).toHaveAttribute('aria-checked', 'true')
     await expect(tools.locator('textarea')).toHaveValue('原来的批注')
     await expect(tools.locator('[aria-label="删除"]')).toBeVisible()
-    await expect(shown(win, '.highlight-card.green.selected')).toHaveCount(1)
+    await expect(shown(win, '.highlight-card.green.item--selected')).toHaveCount(1)
     expect(await win.evaluate(() => document.getSelection()!.toString())).toBe('')
     // The selected highlight is outlined on the page in the paper's ink, never the accent.
     const outline = shown(win, '.pdfpagebox .paper-highlight-outline path')
@@ -959,7 +959,7 @@ test.describe('选中文字时的选区', () => {
     await tools.locator('textarea').fill('改过的批注')
     await tools.locator('textarea').press('Enter')
     await expect(tools).toHaveCount(0)
-    await expect(shown(win, '.highlight-card.selected')).toHaveCount(0)
+    await expect(shown(win, '.highlight-card.item--selected')).toHaveCount(0)
     await expect(shown(win, '.pdfpagebox .paper-highlight-outline')).toHaveCount(0)
     type Held = { highlights: { color: string; note: string }[] }
     expect((await call<Held>(win, 'papers.reading', { id })).highlights.map(({ color, note }) => ({ color, note })))

@@ -91,7 +91,7 @@ describe('ProjectEventRow', () => {
     ))
 
     const row = host.querySelector('.record-row')
-    expect(row?.className).toBe('structured-row attnrow record-row')
+    expect(row?.className).toBe('item item--row attnrow record-row')
     expect(host.querySelector('.project-signal-kind .tag--neutral')?.textContent).toBe('实验结果')
     expect(host.querySelector('.project-signal-date .date-chip')).not.toBeNull()
     expect(host.querySelector('.record-line')?.textContent).toBe('第一个探针支持假设 · p99 从 80ms 降到 62ms')
@@ -120,7 +120,7 @@ describe('ProjectEventRow', () => {
     ))
 
     const list = host.querySelector('.evlist')!
-    expect(list.className).toBe('structured-list structured-list--embedded project-signal-columns record-list with-node evlist')
+    expect(list.className).toBe('list list--embedded project-signal-columns record-list with-node evlist')
     expect([...list.querySelectorAll('.record-row')].map((row) => [...row.children].map((cell) => cell.className))).toEqual([
       ['project-signal-kind', 'project-signal-date', 'attn-text record-text', 'record-node', 'record-who'],
       ['project-signal-kind', 'project-signal-date', 'attn-text record-text', 'record-node', 'record-who'],

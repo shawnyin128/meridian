@@ -37,7 +37,7 @@ describe('PaperWikiProposalReview', () => {
     document.body.replaceChildren(host)
     const root = createRoot(host)
     act(() => root.render(<MessagesProvider><PaperWikiProposalReview review={review} onJump={jump} /></MessagesProvider>))
-    const group = host.querySelector('.structured-list--embedded .paper-wiki-review-group')!
+    const group = host.querySelector('.list--embedded .paper-wiki-review-group')!
     expect(group.querySelector('.tag')!.textContent).toBe('论文原文')
     expect([...group.querySelectorAll('.proposal-text')].map((text) => text.textContent)).toEqual(['一句话'])
     expect([...group.querySelectorAll('.proposal-row')].map((row) => [row.querySelector('dt')!.textContent, row.querySelector('dd')!.textContent]))
@@ -58,7 +58,7 @@ describe('PaperWikiProposalReview', () => {
       <MessagesProvider><PaperWikiProposalReview review={review} onJump={() => {}} /></MessagesProvider>,
     )
     expect(html).toContain('本提案没有提取到有原文依据的局限。')
-    expect(html).not.toContain('structured-list')
+    expect(html).not.toMatch(/class="list[ "]/)
   })
 
   /** The heading and empty statement of each section a review of `ids`, as Core stores it, shows in `language`. */
@@ -191,7 +191,7 @@ describe('PaperWikiProposalReview', () => {
     )
     expect(html).toContain('发现 1 项需要核对')
     expect(html).toContain('机制描述过于空泛')
-    expect(html).toContain('structured-list--embedded')
+    expect(html).toContain('list--embedded')
     const host = document.createElement('div')
     host.innerHTML = html
     expect(host.querySelector('.paper-wiki-quality')?.matches('.inline-message--box.inline-message--warning[role="status"]')).toBe(true)
@@ -216,7 +216,7 @@ describe('PaperWikiProposalReview', () => {
       <MessagesProvider><PaperWikiProposalReview review={emptyReview} quality={report(paths, code)} onJump={() => {}} /></MessagesProvider>,
     )
     return [...host.querySelectorAll('.paper-wiki-quality-finding')].map((row) => ({
-      lines: [...row.children].map((line) => line.textContent!),
+      lines: [...row.querySelector('.item-main')!.children].map((line) => line.textContent!),
       place: row.querySelector('.paper-wiki-quality-place')?.textContent ?? '',
     }))
   }

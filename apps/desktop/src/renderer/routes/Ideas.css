@@ -5,14 +5,7 @@
 .ideas-list{flex:1;min-width:0;container:idea-list/inline-size}
 
 /* The idea card supports triage; full content and editing remain in the detail panel. */
-.idea-card{display:flex;align-items:flex-start;gap:var(--sp-12)}
-.idea-card-content{flex:1;min-width:0}
-.idea-card-title-row{display:flex;align-items:center;gap:var(--sp-8);min-width:0}
-.idea-card-title{font-size:var(--fs-item-title);font-weight:var(--fw-title)}
 .idea-relation-tag{max-width:220px}
-.idea-card-meta{display:flex;min-width:0;align-items:center;gap:var(--sp-8);margin-top:var(--sp-8)}
-.idea-card-source{color:var(--ter);font-size:var(--fs-cap)}
-.idea-card>.row-actions{margin-top:calc(-1 * var(--sp-4))}
 
 /*
  * The started and the done ideas are rows on one grid, so their columns line up from row to row and
@@ -25,12 +18,9 @@
   grid-template-columns:minmax(var(--idea-title-least),1.1fr) minmax(0,max-content) minmax(0,1.3fr) max-content max-content}
 .idea-row-groups>*{grid-column:1/-1}
 .idea-rows{display:grid;grid-template-columns:subgrid}
-/* A row is padded inline like the cards above it plus their border, so its title, date and row actions line up with theirs. */
-.idea-row{display:grid;grid-column:1/-1;grid-template-columns:subgrid;align-items:center;
-  padding:var(--sp-8) var(--idea-row-inset);font-size:var(--fs-base)}
-.idea-row-open{display:flex;min-width:0;padding:0;border:0;background:none;color:inherit;font:inherit;text-align:left;cursor:inherit}
+/* A row lays its title, project, source, date and row actions on the shared grid. */
+.idea-row{display:grid;grid-column:1/-1;grid-template-columns:subgrid;align-items:center}
 .idea-row-work{display:flex;min-width:0;align-items:center;gap:var(--sp-6)}
-.idea-row-meta{display:flex;min-width:0;align-items:center;gap:var(--sp-8)}
 /* A list too narrow for every column drops whole ones: the source first, then the project. The detail panel shows both. */
 @container idea-list (width < 800px){
   .idea-row-groups{grid-template-columns:minmax(var(--idea-title-least),1fr) minmax(0,max-content) max-content max-content}

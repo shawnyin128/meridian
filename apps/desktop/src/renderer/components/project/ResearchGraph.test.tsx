@@ -345,7 +345,7 @@ describe('idea and graph association', () => {
     expect(onSelectTask).toHaveBeenCalledWith('task-7')
     expect(host.querySelector('.node-idea-row')?.textContent)
       .toContain('用动态预算控制校准成本')
-    expect(host.querySelector('.node-ideas')?.classList.contains('structured-list--embedded')).toBe(true)
+    expect(host.querySelector('.node-ideas')?.classList.contains('list--embedded')).toBe(true)
 
     act(() => (host.querySelector('.node-idea-row') as HTMLButtonElement).click())
     expect(onSelectIdea).toHaveBeenCalledWith('idea-1')

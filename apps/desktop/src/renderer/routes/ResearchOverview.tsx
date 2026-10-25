@@ -11,7 +11,8 @@ import { useJump, useToday, useVaultRevision, type JumpAnchor } from '../shell/A
 import { LoadingPlaceholder } from '../components/LoadingPlaceholder.js'
 import { AgentLabel } from '../components/SourceLabel.js'
 import { FadeText } from '../components/FadeText.js'
-import { StructuredList, StructuredRow } from '../components/StructuredList.js'
+import { Item } from '../components/Item.js'
+import { List } from '../components/List.js'
 import { StatTile } from '../components/StatTile.js'
 import { Tag, type TagState } from '../components/Tag.js'
 import { dnum } from '../../shared/dates.js'
@@ -87,7 +88,7 @@ function Stats({ rows }: { rows: ProjectOverview[] }) {
  * Upcoming milestones.
  */
 function OverviewList({ children }: { children: ReactNode }) {
-  return <StructuredList className="ovlist project-signal-columns" variant="embedded">{children}</StructuredList>
+  return <List className="ovlist project-signal-columns" variant="embedded">{children}</List>
 }
 
 function OverviewDate({ date }: { date: string | undefined }) {
@@ -105,13 +106,13 @@ function OverviewRow({ when, kind, main, meta, project, projectId, variant, onOp
   onOpen: () => void
 }) {
   return (
-    <StructuredRow className={`ovlist-row ${variant}`} data-proj={projectId} onActivate={onOpen}>
+    <Item className={`ovlist-row ${variant}`} data-proj={projectId} onActivate={onOpen}>
       <ProjectLabel name={project} className="ovlist-project" />
       <span className="ovlist-when">{when}</span>
       <span className="ovlist-kind">{kind}</span>
       <FadeText className="ovlist-main" expand>{main}</FadeText>
       {meta ? <span className="ovlist-meta">{meta}</span> : null}
-    </StructuredRow>
+    </Item>
   )
 }
 
@@ -172,7 +173,7 @@ function ProjectProgress({ rows, onOpen }: {
   return (
     <>
       <SectionHeading>{m.research.overview.progressHeading}</SectionHeading>
-      <StructuredList className="ovpulse" variant="embedded">
+      <List className="ovpulse" variant="embedded">
         {current.map((project) => {
           const control = projectControlState({
             tasks: project.tasks,
@@ -203,7 +204,7 @@ function ProjectProgress({ rows, onOpen }: {
               : m.project.identity.focusLabel[FOCUS_KEY[project.status]]
           const when = latest ? fmt.date(latest.date) : m.research.overview.waitingForAgent
           return (
-            <StructuredRow
+            <Item
               className="ovlist-row progress ovpulse-row" data-proj={project.id}
               key={project.id} onActivate={() => onOpen(project.id)}
             >
@@ -229,10 +230,10 @@ function ProjectProgress({ rows, onOpen }: {
                 <Tag state={PULSE_STATE[signal.tone]}>{signal.label}</Tag>
                 <FadeText className="ovpulse-sub" label={signal.detail}>{signal.detail}</FadeText>
               </span>
-            </StructuredRow>
+            </Item>
           )
         })}
-      </StructuredList>
+      </List>
     </>
   )
 }

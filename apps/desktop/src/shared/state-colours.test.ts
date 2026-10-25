@@ -183,13 +183,13 @@ describe('强调色', () => {
    */
   const ACCENT = [
     'components/ActionMenu.css  .mi .ck', 'components/Button.css  .btn.pri',
-    'components/ChipToggles.css  .chip-toggle[data-state="on"]', 'components/ProgressFill.css  .progress-fill>span',
-    'components/ResearchObjectCard.css  .research-object-card.selected', 'components/SegmentedControl.css  .segmented-control>button[data-state="on"]',
-    'components/StructuredList.css  .structured-row--selected', 'components/Switch.css  .switch[data-state="checked"]',
+    'components/ChipToggles.css  .chip-toggle[data-state="on"]', 'components/Item.css  .item--selected',
+    'components/ProgressFill.css  .progress-fill>span', 'components/SegmentedControl.css  .segmented-control>button[data-state="on"]',
+    'components/Switch.css  .switch[data-state="checked"]',
     'components/Table.css  .table-row--selected', 'components/Table.css  .table-row--selected>.table-cell--title',
     'components/chat/Chat.css  .send', 'components/icons.css  .ring',
     'components/timeline/TimelineBoard.css  .gnow', 'components/timeline/TimelineBoard.css  .gnow::after',
-    'components/timeline/TimelineBoard.css  .gtoday', 'routes/Reader.css  .reading-card.selected', 'shell/AppShell.css  .srow.on',
+    'components/timeline/TimelineBoard.css  .gtoday', 'shell/AppShell.css  .srow.on',
   ]
 
   it('强调色只标选中的和正在执行的:主操作、侧栏的当前行、选中的分段、勾上的菜单项、开着的标签开关、列表里选中的行和卡片、选中的高亮卡片、开着的开关、运行中的圈、进度和时间线的今天;链接、标签、计数和别的规则都不读', () => {
@@ -207,8 +207,7 @@ describe('强调色', () => {
     const current = tokens(bodyOf('shell/AppShell.css', '.srow.on'))
     expect(current).toEqual(['--accent-soft', '--accent-text'])
     for (const [path, selector] of [
-      ['components/StructuredList.css', '.structured-row--selected'], ['components/ResearchObjectCard.css', '.research-object-card.selected'],
-      ['routes/Reader.css', '.reading-card.selected'], ['components/ChipToggles.css', '.chip-toggle[data-state="on"]'],
+      ['components/Item.css', '.item--selected'], ['components/ChipToggles.css', '.chip-toggle[data-state="on"]'],
     ] as const) expect(tokens(bodyOf(path, selector)), selector).toEqual(current)
     expect(tokens(bodyOf('components/Table.css', '.table-row--selected'))).toEqual(['--accent-soft'])
     expect(tokens(bodyOf('components/Table.css', '.table-row--selected>.table-cell--title'))).toEqual(['--accent-text'])

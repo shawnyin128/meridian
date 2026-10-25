@@ -13,7 +13,9 @@ import { ConfirmDialog } from '../components/ConfirmDialog.js'
 import { EmptyState } from '../components/EmptyState.js'
 import { LoadingPlaceholder } from '../components/LoadingPlaceholder.js'
 import { afterLeaving, InlineDraftInput } from '../components/InlineDraftInput.js'
-import { RowActions, StructuredList, StructuredRow } from '../components/StructuredList.js'
+import { DraftSlot, focusDraft } from '../components/DraftSlot.js'
+import { Item } from '../components/Item.js'
+import { List } from '../components/List.js'
 import { IconButton } from '../components/IconButton.js'
 import { IconPencil, IconTrash } from '../components/icons.js'
 import { FormInput } from '../components/FormControls.js'
@@ -73,39 +75,47 @@ function WatchGroup({ type, watches, failed, add, editor, onOpen, onEdit, onSetA
         : watches.length === 0 && editor === undefined
         ? <EmptyState variant="section">{m.watches.empty(m.shell.watchKind[type])}</EmptyState>
         : (
-          <StructuredList className="wlist">
+          <List className="wlist">
             {editor === undefined || editor.id !== undefined
               ? null
-              : <StructuredRow className="wrow newrow" rowRef={editor.row}>{editor.input}</StructuredRow>}
+              : <DraftSlot className="wrow newrow" slot={editor.row}>{editor.input}</DraftSlot>}
             {watches.map((w) => (editor?.id === w.id
               ? (
-                <StructuredRow className="wrow editrow" data-w={w.id} key={w.id} rowRef={editor.row}>
+                <Item className="wrow editrow" data-w={w.id} key={w.id} elementRef={editor.row}>
                   {editor.input}
-                </StructuredRow>
+                </Item>
               )
               : (
-                <StructuredRow className="wrow" data-w={w.id} key={w.id}>
-                  <span className="nm">{w.name}</span>
-                  {w.type !== 'author' ? null : w.identity === undefined
-                    ? <Tag state="warning">{m.watches.identityUnconfirmed}</Tag>
-                    : (
+                <Item
+                  className="wrow" data-w={w.id} key={w.id}
+                  title={<span className="nm">{w.name}</span>}
+                  meta={w.type === 'author' && w.identity !== undefined
+                    ? (
                       <FadeText className="author-id-state" label={w.identity.affiliations[0] || m.watches.identityUnconfirmed}>
                         {w.identity.affiliations[0] || m.watches.identityUnconfirmed}
                       </FadeText>
-                    )}
-                  {w.active ? null : <Tag className="watch-paused">{m.watches.paused}</Tag>}
-                  <Switch label={w.name} checked={w.active} onChange={() => onSetActive(w)} />
-                  <RowActions>
-                    <IconButton label={m.common.edit} size="nested" onClick={() => onEdit(w)}><IconPencil /></IconButton>
-                    <ConfirmDialog
-                      trigger={<IconButton label={m.common.remove} size="nested" tone="danger"><IconTrash /></IconButton>}
-                      title={m.watches.confirmRemove(w.name)} description={m.watches.confirmRemoveDescription}
-                      confirmLabel={m.watches.confirmRemoveLabel} onConfirm={() => onRemove(w.id)}
-                    />
-                  </RowActions>
-                </StructuredRow>
+                    )
+                    : undefined}
+                  tags={(
+                    <>
+                      {w.type === 'author' && w.identity === undefined ? <Tag state="warning">{m.watches.identityUnconfirmed}</Tag> : null}
+                      {w.active ? null : <Tag className="watch-paused">{m.watches.paused}</Tag>}
+                    </>
+                  )}
+                  trailing={<Switch label={w.name} checked={w.active} onChange={() => onSetActive(w)} />}
+                  actions={(
+                    <>
+                      <IconButton label={m.common.edit} size="nested" onClick={() => onEdit(w)}><IconPencil /></IconButton>
+                      <ConfirmDialog
+                        trigger={<IconButton label={m.common.remove} size="nested" tone="danger"><IconTrash /></IconButton>}
+                        title={m.watches.confirmRemove(w.name)} description={m.watches.confirmRemoveDescription}
+                        confirmLabel={m.watches.confirmRemoveLabel} onConfirm={() => onRemove(w.id)}
+                      />
+                    </>
+                  )}
+                />
               ))) }
-          </StructuredList>
+          </List>
         )}
     </>
   )
@@ -146,7 +156,6 @@ export function WatchSettings() {
   const [authorSearchNonce, setAuthorSearchNonce] = useState(0)
   const authorSearchRevision = useRef(0)
   const row = useRef<HTMLDivElement>(null)
-  const nameInput = useRef<HTMLInputElement>(null)
   const addTopic = useRef<HTMLButtonElement>(null)
   const addAuthor = useRef<HTMLButtonElement>(null)
   const suggestionRequest = useRef(0)
@@ -229,7 +238,7 @@ export function WatchSettings() {
    */
   const open = (type: Watch['type']) => {
     if (editor?.type === type && editor.id === undefined) {
-      nameInput.current?.focus()
+      focusDraft(row.current)
       return
     }
     afterLeaving(leaveDraft, () => {
@@ -379,7 +388,7 @@ export function WatchSettings() {
   const editorInput = editor === null ? null : editor.type === 'topic'
     ? (
       <InlineDraftInput
-        ref={nameInput} className="inedit" scopeRef={row} triggers={triggers} leaveRef={leaveDraft}
+        className="inedit" scopeRef={row} triggers={triggers} leaveRef={leaveDraft}
         placeholder={m.shell.watchKind.topic} onCancel={stop}
         onSubmit={(next) => next === editingWatch?.name || persist({ type: 'topic', name: next })}
         value={name} onChange={(e) => setName(e.target.value)}
@@ -388,7 +397,7 @@ export function WatchSettings() {
     : (
       <div className="author-resolver">
         <InlineDraftInput
-          ref={nameInput} className="inedit" scopeRef={row} triggers={triggers} leaveRef={leaveDraft}
+          className="inedit" scopeRef={row} triggers={triggers} leaveRef={leaveDraft}
           placeholder={m.watches.authorNamePlaceholder} onCancel={stop}
           onSubmit={(next, leaving) => next === editingWatch?.name
             || (leaving && persist({ type: 'author', name: next }))}
@@ -430,24 +439,23 @@ export function WatchSettings() {
                 : authorMatches.length === 0
                   ? <EmptyState variant="section">{m.watches.noMatches}</EmptyState>
                   : (
-                    <div className="author-matches">
+                    <List variant="embedded" rows="all" nested className="author-matches">
                       {authorMatches.map((candidate) => (
-                        <div className="author-match" key={candidate.id}>
-                          <div className="author-match-copy">
-                            <FadeText className="author-match-name" label={candidate.name}>{candidate.name}</FadeText>
-                            <FadeText className="author-match-affiliations">
-                              {candidate.affiliations.join(' · ') || m.watches.noAffiliation}
-                            </FadeText>
-                            <FadeText className="author-match-info">
+                        <Item
+                          className="author-match" key={candidate.id} lines={2}
+                          title={<FadeText className="author-match-name" label={candidate.name}>{candidate.name}</FadeText>}
+                          meta={<FadeText>{candidate.affiliations.join(' · ') || m.watches.noAffiliation}</FadeText>}
+                          trailing={(
+                            <>
                               {m.watches.candidateInfo(candidate.paperCount, candidate.citationCount, candidate.hIndex)}
-                            </FadeText>
-                          </div>
-                          <Button size="compact" variant="ghost" onClick={() => chooseAuthor(candidate)}>
-                            {editor.id === undefined ? m.watches.follow : m.watches.choose}
-                          </Button>
-                        </div>
+                              <Button size="compact" variant="ghost" onClick={() => chooseAuthor(candidate)}>
+                                {editor.id === undefined ? m.watches.follow : m.watches.choose}
+                              </Button>
+                            </>
+                          )}
+                        />
                       ))}
-                    </div>
+                    </List>
                   )}
         {name.trim() !== '' && (editor.id === undefined || name.trim() !== editingWatch?.name
           || editingWatch?.type === 'author' && editingWatch.identity === undefined)
@@ -545,22 +553,21 @@ export function WatchSettings() {
                           )
                           : null}
                       </div>
-                      <StructuredList variant="embedded" className="watch-suggestion-list">
+                      <List variant="embedded" className="watch-suggestion-list">
                         {suggestions.topics.map((item) => (
-                          <StructuredRow className="watch-suggestion-row" key={item.name}>
-                            <div className="watch-suggestion-copy">
-                              <FadeText className="nm" label={item.name}>{item.name}</FadeText>
-                              <FadeText>{m.watches.relatedPapers(item.relatedPapers)}</FadeText>
-                            </div>
-                            <RowActions>
+                          <Item
+                            className="watch-suggestion-row" key={item.name} lines={2}
+                            title={<FadeText className="nm" label={item.name}>{item.name}</FadeText>}
+                            meta={<FadeText>{m.watches.relatedPapers(item.relatedPapers)}</FadeText>}
+                            actions={(
                               <AddAction
                                 size="compact" disabled={addingSuggestion !== null}
                                 onClick={() => { void addSuggestedTopic(item.name) }}
                               >{m.watches.addAction}</AddAction>
-                            </RowActions>
-                          </StructuredRow>
+                            )}
+                          />
                         ))}
-                      </StructuredList>
+                      </List>
                     </section>
                   )}
                   {suggestions.authors.length === 0 ? null : (
@@ -568,24 +575,25 @@ export function WatchSettings() {
                       <div className="watch-suggestion-group-heading">
                         <strong>{m.watches.authorSuggestions}</strong>
                       </div>
-                      <StructuredList variant="embedded" className="watch-suggestion-list">
+                      <List variant="embedded" className="watch-suggestion-list">
                         {suggestions.authors.map((item) => (
-                          <StructuredRow className="watch-suggestion-row" key={suggestedAuthorKey(item)}>
-                            <div className="watch-suggestion-copy">
-                              <FadeText className="nm" label={item.name}>{item.name}</FadeText>
+                          <Item
+                            className="watch-suggestion-row" key={suggestedAuthorKey(item)} lines={2}
+                            title={<FadeText className="nm" label={item.name}>{item.name}</FadeText>}
+                            meta={(
                               <FadeText>{'id' in item
                                 ? m.watches.suggestedAuthorInfo(item.relatedPapers, item.hIndex, item.citationCount)
                                 : m.watches.relatedPapers(item.relatedPapers)}</FadeText>
-                            </div>
-                            <RowActions>
+                            )}
+                            actions={(
                               <AddAction
                                 size="compact" disabled={addingSuggestion !== null}
                                 onClick={() => { void addSuggestedAuthor(item) }}
                               >{m.watches.addAction}</AddAction>
-                            </RowActions>
-                          </StructuredRow>
+                            )}
+                          />
                         ))}
-                      </StructuredList>
+                      </List>
                     </section>
                   )}
                 </>

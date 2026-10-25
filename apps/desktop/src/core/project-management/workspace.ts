@@ -1,12 +1,12 @@
 import { createHash, randomUUID } from 'node:crypto'
-import { spawnSync } from 'node:child_process'
+import { execFile, spawnSync } from 'node:child_process'
 import {
-  existsSync, mkdirSync, readFileSync, realpathSync, renameSync, statSync, writeFileSync,
+  existsSync, globSync, mkdirSync, readFileSync, realpathSync, renameSync, statSync, writeFileSync,
 } from 'node:fs'
-import { dirname, isAbsolute, join, posix } from 'node:path'
+import { dirname, isAbsolute, join, posix, resolve } from 'node:path'
 import { z } from 'zod'
 import type {
-  ProjectWorkspace, ProjectWorkspaceBinding, ResearchGraph, ResearchIdea,
+  ProjectWorkspace, ProjectWorkspaceBinding, ResearchGraph, ResearchIdea, SshFolders,
 } from '../../shared/contract.js'
 import { CallError } from '../call-error.js'
 import { readStoredList } from '../vault/stored-records.js'
@@ -131,8 +131,14 @@ const UNKNOWN_FORMAT = '格式是这个版本的 Meridian 不认识的，请更�
 type JsonObject = Record<string, unknown>
 type SshBinding = Extract<ProjectWorkspaceBinding, { kind: 'ssh' }>
 
+/** Where an SSH command connects: a host name or `Host` alias, and the port when it is not the default. */
+export type SshTarget = Pick<SshBinding, 'host' | 'port'>
+
 /** Injectable seam for protocol tests; production uses the user's system OpenSSH client. */
-export type SshExecutor = (binding: SshBinding, command: string, input?: Buffer) => Buffer
+export type SshExecutor = (target: SshTarget, command: string, input?: Buffer) => Buffer
+
+/** Injectable seam for listing folders: runs one command on an SSH host without blocking Core. */
+export type SshCommand = (target: SshTarget, command: string) => Promise<Buffer>
 
 /** Writes beside the destination and renames over it, so readers never observe half a JSON file. */
 function atomicJson(file: string, value: unknown): void {
@@ -356,17 +362,24 @@ function sshError(stderr: Buffer | string | null | undefined): string {
   return message.trim().split('\n').at(-1) || 'SSH 连接失败'
 }
 
-const systemSsh: SshExecutor = (binding, command, input) => {
-  const args = [
+/** OpenSSH's arguments for running `command` on `target` without asking for a password or a host key. */
+function sshArgs(target: SshTarget, command: string): string[] {
+  return [
     '-T', '-o', 'BatchMode=yes', '-o', 'ConnectTimeout=5',
-    ...(binding.port === undefined ? [] : ['-p', String(binding.port)]),
-    binding.host, command,
+    ...(target.port === undefined ? [] : ['-p', String(target.port)]),
+    target.host, command,
   ]
-  const result = spawnSync('ssh', args, {
+}
+
+const SSH_MAX_BUFFER = 32 * 1024 * 1024
+const SSH_TIMEOUT_MS = 15_000
+
+const systemSsh: SshExecutor = (target, command, input) => {
+  const result = spawnSync('ssh', sshArgs(target, command), {
     input,
     encoding: null,
-    maxBuffer: 32 * 1024 * 1024,
-    timeout: 15_000,
+    maxBuffer: SSH_MAX_BUFFER,
+    timeout: SSH_TIMEOUT_MS,
   })
   if (result.error) {
     throw result.error.message.includes('ETIMEDOUT')
@@ -377,6 +390,17 @@ const systemSsh: SshExecutor = (binding, command, input) => {
   return Buffer.isBuffer(result.stdout) ? result.stdout : Buffer.from(result.stdout ?? '')
 }
 
+const systemSshCommand: SshCommand = (target, command) => new Promise((done, fail) => {
+  const child = execFile('ssh', sshArgs(target, command), {
+    encoding: 'buffer', maxBuffer: SSH_MAX_BUFFER, timeout: SSH_TIMEOUT_MS,
+  }, (error, stdout, stderr) => {
+    if (error === null) done(stdout)
+    else if (error.killed === true) fail(new CallError('timeout', 'SSH 连接超时'))
+    else fail(new Error(typeof error.code === 'number' ? sshError(stderr) : error.message))
+  })
+  child.stdin?.end()
+})
+
 /** Resolves and validates a directory before it is stored on a project page. */
 export function projectWorkspaceRoot(root: string): string {
   if (!isAbsolute(root)) throw new CallError('invalid', '项目目录必须是绝对路径')
@@ -385,21 +409,141 @@ export function projectWorkspaceRoot(root: string): string {
   return canonical
 }
 
-/** Validates the non-secret part of an SSH binding. Credentials remain in OpenSSH. */
-export function projectWorkspaceSsh(binding: Omit<SshBinding, 'kind'>): SshBinding {
-  const host = binding.host.trim()
-  const path = binding.path.trim()
-  if (!/^(?!-)[A-Za-z0-9._@%+:[\]-]+$/.test(host)) throw new CallError('invalid', 'SSH 主机或别名无效')
-  if (path.includes('\0') || path.includes('\n') || path.includes('\r') || !posix.isAbsolute(path)) {
-    throw new CallError('invalid', '远端项目目录必须是绝对路径')
-  }
-  if (binding.port !== undefined && (!Number.isInteger(binding.port) || binding.port < 1 || binding.port > 65_535)) {
+/** A host name or alias that OpenSSH cannot read as an option. */
+const SSH_HOST = /^(?!-)[A-Za-z0-9._@%+:[\]-]+$/
+
+/** Validates where an SSH command connects. */
+function sshTarget(target: SshTarget): SshTarget {
+  const host = target.host.trim()
+  if (!SSH_HOST.test(host)) throw new CallError('invalid', 'SSH 主机或别名无效')
+  if (target.port !== undefined && (!Number.isInteger(target.port) || target.port < 1 || target.port > 65_535)) {
     throw new CallError('invalid', 'SSH 端口无效')
   }
-  const normalized = posix.normalize(path)
+  return { host, ...(target.port === undefined ? {} : { port: target.port }) }
+}
+
+/** Validates an absolute remote path and normalizes it, without a trailing slash except at `/`. */
+function remotePath(path: string): string {
+  const trimmed = path.trim()
+  if (trimmed.includes('\0') || trimmed.includes('\n') || trimmed.includes('\r') || !posix.isAbsolute(trimmed)) {
+    throw new CallError('invalid', '远端项目目录必须是绝对路径')
+  }
+  const normalized = posix.normalize(trimmed)
+  return normalized === '/' ? normalized : normalized.replace(/\/+$/, '')
+}
+
+/** Validates the non-secret part of an SSH binding. Credentials remain in OpenSSH. */
+export function projectWorkspaceSsh(binding: Omit<SshBinding, 'kind'>): SshBinding {
+  const { host, port } = sshTarget(binding)
+  return { kind: 'ssh', host, path: remotePath(binding.path), ...(port === undefined ? {} : { port }) }
+}
+
+/** How deep `Include` nests before ssh stops reading, as OpenSSH's own limit. */
+const SSH_INCLUDE_DEPTH = 16
+
+/** The arguments of one ssh_config line, unquoted, up to a `#` that starts a comment. */
+function configWords(text: string): string[] {
+  const words: string[] = []
+  for (const [whole, double, single, bare] of text.matchAll(/"([^"]*)"|'([^']*)'|(\S+)/g)) {
+    if (bare?.startsWith('#') === true) break
+    words.push(double ?? single ?? bare ?? whole)
+  }
+  return words
+}
+
+/**
+ * The `Host` aliases of the user's OpenSSH client config, `.ssh/config` under `home`, in the order
+ * ssh reads them and each once: the patterns of its `Host` lines that name one host, without
+ * wildcards or negations. `Include` is followed as ssh follows it: wildcards in its paths expand in
+ * lexical order, a path starting with `~/` starts at `home` and any other relative path at
+ * `home/.ssh`, and files nested deeper than OpenSSH reads are left out. Nothing but the aliases is
+ * read into the result. A missing file has none.
+ */
+export function sshConfigHosts(home: string): string[] {
+  const sshDir = join(home, '.ssh')
+  const hosts = new Set<string>()
+  const included = (path: string): string[] => {
+    const [cwd, pattern] = path.startsWith('~/') ? [home, path.slice(2)] : [sshDir, path]
+    return globSync(pattern, { cwd }).map((match) => resolve(cwd, match)).filter((file) => statSync(file).isFile()).sort()
+  }
+  const read = (file: string, depth: number): void => {
+    for (const line of readFileSync(file, 'utf8').split(/\r?\n/)) {
+      const directive = /^\s*(host|include)(?:\s*=\s*|\s+)(.*)$/i.exec(line)
+      if (directive === null) continue
+      for (const word of configWords(directive[2]!)) {
+        if (directive[1]!.toLowerCase() === 'host') {
+          if (SSH_HOST.test(word)) hosts.add(word)
+        } else if (depth < SSH_INCLUDE_DEPTH) {
+          for (const file of included(word)) read(file, depth + 1)
+        }
+      }
+    }
+  }
+  const config = join(sshDir, 'config')
+  if (existsSync(config)) read(config, 0)
+  return [...hosts]
+}
+
+/**
+ * The `cd` lines that enter `path`: an absolute path, or `~` and a path under `~/`, which start at
+ * the remote home, as does no path at all. Throws `invalid` for any other path.
+ */
+function enterFolder(path: string | undefined): string[] {
+  const trimmed = path?.trim() ?? '~'
+  if (trimmed !== '~' && !trimmed.startsWith('~/')) return [`cd -- ${quoteShell(remotePath(trimmed))}`]
+  const under = trimmed.slice(2)
+  if (/[\0\n\r]/.test(under)) throw new CallError('invalid', '远端项目目录必须是绝对路径')
+  const normalized = posix.normalize(under || '.').replace(/(.)\/+$/, '$1')
+  return normalized === '.' ? ['cd'] : ['cd', `cd -- ${quoteShell(normalized)}`]
+}
+
+/**
+ * Prints the folder `path` resolves to (see `enterFolder`), then `./` and the name of each of its
+ * entries that is a folder or a link to one, each ended by NUL.
+ */
+function listFoldersCommand(path: string | undefined): string {
+  return [
+    'set -eu',
+    ...enterFolder(path),
+    "printf '%s\\0' \"$PWD\"",
+    // Not a glob: a zsh login shell fails a glob that matches nothing, as in an empty folder.
+    'find -L . -mindepth 1 -maxdepth 1 -type d -print0',
+  ].join('\n')
+}
+
+/**
+ * Lists one folder of the SSH host `target` over one connection, in a child process: the folder at
+ * `path`, an absolute path or one starting at `~`, or the remote home when `path` is undefined.
+ * Resolves it `ready` with its path as the remote shell resolved it, its parent (null at `/`) and its
+ * subfolders by name, leaving out hidden ones and those whose path a binding cannot hold; or
+ * `failed` with the reason SSH or the remote shell gave. Rejects with `invalid` for a host, port or
+ * path that cannot be used, without connecting.
+ */
+export async function sshFolders(
+  target: SshTarget, path: string | undefined, ssh: SshCommand = systemSshCommand,
+): Promise<SshFolders> {
+  const remote = sshTarget(target)
+  const command = listFoldersCommand(path)
+  let payload: Buffer
+  try {
+    payload = await ssh(remote, command)
+  } catch (error) {
+    return { state: 'failed', issue: error instanceof Error ? error.message : String(error) }
+  }
+  const [folder = '', ...entries] = payload.toString('utf8').split('\0')
+  const names = entries.slice(0, -1)
+  if (!posix.isAbsolute(folder) || entries.at(-1) !== '' || !names.every((entry) => entry.startsWith('./'))) {
+    return { state: 'failed', issue: 'SSH 文件夹响应无效' }
+  }
   return {
-    kind: 'ssh', host, path: normalized === '/' ? normalized : normalized.replace(/\/+$/, ''),
-    ...(binding.port === undefined ? {} : { port: binding.port }),
+    state: 'ready',
+    path: folder,
+    parent: folder === '/' ? null : posix.dirname(folder),
+    folders: names.map((entry) => entry.slice(2))
+      // A binding's path is trimmed and holds no line break, so such a name could not be bound.
+      .filter((name) => !name.startsWith('.') && !/[\n\r]|\s$/.test(name))
+      .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))
+      .map((name) => ({ name, path: posix.join(folder, name) })),
   }
 }
 

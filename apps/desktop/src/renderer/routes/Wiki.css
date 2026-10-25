@@ -5,22 +5,17 @@
  */
 
 /*
- * Cards: aggregation and paper cards, the grid variant of ResearchObjectCard, which draws them. The
- * grid card's 1.5 line-height pairs with .wkcard .wm's height:calc(1.5em * var(--card-lines)):
- * together they fix the summary's height, which keeps every card in the grid the same height.
+ * Cards: aggregation and paper cards, card Items in a grid. The summary's 1.5 line-height pairs with
+ * its height:calc(1.5em * var(--card-lines)): together they fix the summary's height, which keeps every
+ * card in the grid the same height.
  */
-.wkgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(var(--cardw),1fr));gap:var(--sp-10);margin:var(--sp-6) 0 var(--sp-6)}
-.wkcard .wt{font-size:var(--card-tt);display:flex;align-items:center;gap:var(--sp-6)}
-.wkcard .tt{display:block;flex:1;min-width:0;font-weight:var(--fw-title)}
-.wkcard .tt>.fade-text{display:block}
-.wkcard .sp{margin-left:auto;display:flex;align-items:center;flex-shrink:0}
-.wkcard .wm{font-size:var(--card-fs);color:var(--ter);margin-top:var(--sp-4);line-height:1.5;height:calc(1.5em * var(--card-lines))}
-.wkcard .wf{font-size:var(--fs-sm);color:var(--ter);margin-top:var(--sp-8);display:flex;align-items:center;gap:var(--sp-6)}
+.wkcard .tt{flex:1;min-width:0}
+.wkcard .wm{font-size:var(--card-fs);color:var(--ter);line-height:1.5;height:calc(1.5em * var(--card-lines))}
+.wkcard .wf{font-size:var(--fs-sm);color:var(--ter);display:flex;align-items:center;gap:var(--sp-6)}
 /*
  * A paper card's title takes up to two lines, always the height of two so every card in the grid keeps
  * one height, and its year, venue and topics take one line under it.
  */
-.wkcard--paper .wt{align-items:flex-start}
 .wkcard--paper .tt{white-space:normal;mask-image:none}
 .wkcard--paper .tt-lines{display:block;height:calc(1.5em * 2)}
 .wkcard--paper .wm{display:block;height:auto}
@@ -53,9 +48,7 @@
 .wktoc li.l3{padding-left:calc(3 * var(--sp-12));font-size:var(--fs-sm);color:var(--ter)}
 .wktoc li.l3.on{color:var(--ink)}
 
-/* Management controls: a card's row-actions slot in its corner, and the column editor */
-.wkcard{position:relative}
-.wkcard .row-actions{position:absolute;top:8px;right:8px}
+/* The column editor */
 .coledit{margin:var(--sp-6) 0 var(--sp-12);display:grid;gap:var(--sp-6);max-width:420px}
 .coledit .row{display:flex;gap:var(--sp-8);align-items:center}
 .coledit .acts{display:flex;gap:var(--sp-8);margin-top:var(--sp-4)}
@@ -64,7 +57,6 @@
  * The placeholder card for a new subpage: as wide and tall as the cards beside it, except that its
  * title line is an input and its last line is empty, only holding the height.
  */
-.wkcard.newcard{cursor:default;border-style:dashed}
 .wkcard.newcard .wf{height:1.5em}
 
 /* The editor in the column-settings popover the gear opens */

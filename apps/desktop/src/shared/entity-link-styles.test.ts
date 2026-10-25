@@ -15,8 +15,8 @@ const STYLESHEETS = FILES.filter((path) => path.endsWith('.css'))
  * selected highlight card, a checked menu item's mark and the running ring.
  */
 const ACCENT_TEXT = [
-  '.srow.on', '.segmented-control>button[data-state="on"]', '.chip-toggle[data-state="on"]', '.structured-row--selected',
-  '.research-object-card.selected', '.table-row--selected>.table-cell--title', '.reading-card.selected', '.mi .ck', '.ring',
+  '.srow.on', '.segmented-control>button[data-state="on"]', '.chip-toggle[data-state="on"]', '.item--selected',
+  '.table-row--selected>.table-cell--title', '.mi .ck', '.ring',
 ]
 
 /** Each rule of `path` as its selectors and its declarations, comments dropped. */
