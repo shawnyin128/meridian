@@ -28,10 +28,10 @@ describe('窗口框架的滚动区', () => {
     expect(pane.filter((property) => /^(height|padding|border|box-sizing)/.test(property))).toEqual([])
   })
 
-  it('内容自己滚动的页面主体照样留出滚动条的位置，栏和会滚动的页面主体对齐', () => {
+  it('内容自己滚动的页面主体和压在页面主体下的页脚照样留出滚动条的位置，栏和会滚动的页面主体对齐', () => {
     const css = ['components/ScrollArea.css', 'components/PageShell.css'].map(stylesheet).join('\n')
-    const gutter = (selector: string) => new RegExp(`${selector.replace('.', '\\.')}\\{[^}]*scrollbar-gutter:stable`).test(css)
-    expect([gutter('.scroll-area--gutter'), gutter('.desk-body--fill')]).toEqual([true, true])
+    const gutter = (selector: string) => new RegExp(`${selector.replaceAll('.', '\\.')}\\{[^}]*scrollbar-gutter:stable`).test(css)
+    expect([gutter('.scroll-area--gutter'), gutter('.desk-body--fill'), gutter('.desk-foot.bare')]).toEqual([true, true, true])
   })
 
   it('导航行只有一种高度：侧栏、设置的分类和主题编辑器的模块都用 NavRow 的行高，别的样式表不改它', () => {
