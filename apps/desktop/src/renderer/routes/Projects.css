@@ -4,14 +4,12 @@
  */
 
 /* Ongoing projects: a decision-first card. */
-.pp-h{display:flex;align-items:center;gap:var(--sp-8)}
-.pp-h .dd{margin-left:auto;display:flex;gap:var(--sp-8);align-items:center;font-size:var(--fs-sm);color:var(--sec);flex-shrink:0}
-.project-card-decisions{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1.35fr) minmax(0,.8fr);gap:var(--sp-20);margin-top:var(--sp-14)}
+.project-card-decisions{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1.35fr) minmax(0,.8fr);gap:var(--sp-20)}
 .project-card-decision{display:flex;min-width:0;flex-direction:column;gap:var(--sp-6)}
 .project-card-label{flex:none;color:var(--ter);font-size:var(--fs-label);font-weight:var(--fw-label);line-height:var(--lh-ui)}
 .project-card-value{color:var(--ink);font-size:var(--fs-base)}
 .project-card-decision .project-control-value{color:var(--ink)}
-.project-card-facts{display:grid;grid-template-columns:max-content max-content minmax(0,1fr);align-items:center;gap:var(--sp-20);margin-top:var(--sp-14);padding-top:var(--sp-10);border-top:1px solid var(--sep);font-size:var(--fs-sm);color:var(--sec)}
+.project-card-facts{display:grid;grid-template-columns:max-content max-content minmax(0,1fr);align-items:center;gap:var(--sp-20);padding-top:var(--sp-10);border-top:1px solid var(--sep);font-size:var(--fs-sm);color:var(--sec)}
 .project-card-fact{display:flex;min-width:0;align-items:center;gap:var(--sp-8)}
 .project-card-recent>span:last-child{min-width:0}
 .project-card-empty{color:var(--ter)}
@@ -25,12 +23,3 @@
   .project-card-recent{grid-column:1/-1}
 }
 
-/*
- * Shelved and completed projects: one StructuredRow each, padded inline like the cards above it plus their
- * border, so its name, meta and row actions line up with theirs.
- */
-.prow{display:flex;align-items:center;gap:var(--sp-10);padding:var(--sp-8) calc(var(--item-inset) + 1px);font-size:var(--fs-base)}
-.prow-open{display:flex;min-width:0;padding:0;border:0;background:none;color:inherit;font:inherit;text-align:left;cursor:inherit}
-.prow .m{flex:1;color:var(--ter);font-size:var(--fs-sm)}
-
-.projpanel .row-actions{margin-left:var(--sp-2)}
