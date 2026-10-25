@@ -276,7 +276,7 @@ test('「全部忽略」只清空自己这一组,逐组清完出空态,忽略的
   const trash = await trashFromCore(win)
   expect(trash.map((t) => t.title).sort()).toEqual([...titles].sort())
   expect(trash.every((t) => t.kind === 'inbox')).toBe(true)
-  await expect(win.locator('#rowInboxAll .n')).toHaveCount(0)
+  await expect(win.locator('#rowInboxAll .nav-row-count')).toHaveCount(0)
 })
 
 test('入库:论文进库,卡片离开论文推送和它的条数,提示里的开始阅读打开那一篇', async ({ win }) => {
@@ -293,8 +293,8 @@ test('入库:论文进库,卡片离开论文推送和它的条数,提示里的�
 
   expect(await paperTotal(win)).toBe(before + 1)
   expect(await inboxFromCore(win)).toHaveLength(entries.length - 1)
-  await expect(win.locator('#rowInboxAll .n')).toHaveText(String(entries.length - 1))
-  await expect(win.locator('[data-desk="papers"] .n')).toHaveText(String(before + 1))
+  await expect(win.locator('#rowInboxAll .nav-row-count')).toHaveText(String(entries.length - 1))
+  await expect(win.locator('[data-desk="papers"] .nav-row-count')).toHaveText(String(before + 1))
 
   // The paper the notice opens is the card's: the reader header shows the card's title.
   await win.locator('#notice .btn', { hasText: '开始阅读' }).click()
@@ -330,7 +330,7 @@ test('论文从别处进了库:它那张卡片离开论文推送和侧栏条数'
 
   await expect(shown(win, '.pcard[data-pid="longspec"]')).toHaveCount(0)
   await expect(shown(win, '.pcard')).toHaveCount(entries.length - 1)
-  await expect(win.locator('#rowInboxAll .n')).toHaveText(String(entries.length - 1))
+  await expect(win.locator('#rowInboxAll .nav-row-count')).toHaveText(String(entries.length - 1))
 })
 
 test('入库撞上库里已有的同一份原文:不重复入库,卡片离开,提示里的开始阅读打开库里那一篇', async ({ win }) => {
@@ -412,7 +412,7 @@ test('检查新论文按关注抓取一次,新论文进入相应分组且标题�
   expect((await cardTitles(win))[0]).toBe('Tree Width in Batched Serving')
   const fresh = shown(win, '.pcard').filter({ hasText: 'Tree Width in Batched Serving' })
   await expect(fresh.locator('.plabel')).toHaveText(['摘要'])
-  await expect(win.locator('#rowInboxAll .n')).toHaveText(String(before.length + 3))
+  await expect(win.locator('#rowInboxAll .nav-row-count')).toHaveText(String(before.length + 3))
 })
 
 test('在一条关注那一档里检查新论文只抓这一条;再抓没有新的,屏头写没有新论文和这一次的时刻', async ({ win }) => {
@@ -551,7 +551,7 @@ test('关注管理:暂停、添加与移除都实时改侧栏与推送屏', asyn
   await expect(spec.locator('[role="switch"]')).toHaveAttribute('aria-checked', 'false')
   await expect(spec.locator('.watch-paused')).toHaveText('已暂停')
   await expect(win.locator('[data-watchrow="spec"]')).toHaveClass(/\bdim\b/)
-  await expect(win.locator('[data-watchrow="spec"] .n')).toHaveText(String(kept))
+  await expect(win.locator('[data-watchrow="spec"] .nav-row-count')).toHaveText(String(kept))
   expect((await inboxFromCore(win)).filter((e) => e.watch === 'spec')).toHaveLength(kept)
   await spec.locator('[role="switch"]').click()
   await expect(win.locator('[data-watchrow="spec"]')).not.toHaveClass(/\bdim\b/)
@@ -570,7 +570,7 @@ test('关注管理:暂停、添加与移除都实时改侧栏与推送屏', asyn
   await expect(settings(win, '.wrow.newrow')).toHaveCount(0)
   await expect(settings(win, '.wrow')).toHaveCount(watches.length + 1)
   await expect(win.locator('#g-topics .nav-row')).toHaveCount(topics + 1)
-  await expect(win.locator('[data-disc="topics"] .n')).toHaveText(String(topicPapers))
+  await expect(win.locator('[data-disc="topics"] .nav-row-count')).toHaveText(String(topicPapers))
 
   // Removed: the sidebar row disappears, and its own pushes are cleared with it (the confirm dialog's
   // own wording says so); other watches' pushes are untouched.
@@ -815,11 +815,11 @@ test('侧栏角标数的都是库里的真实数量', async ({ win }) => {
   const papers = (type: string) => entries.filter((e) => watches.some((w) => w.type === type && listedUnder(e, 'watch').includes(w.id))).length
 
   const badges: [string, number][] = [
-    ['#rowInboxAll .n', entries.length],
-    ['[data-disc="topics"] .n', papers('topic')],
-    ['[data-disc="authors"] .n', papers('author')],
-    ['#rowLater .n', queued.length],
-    ...watches.map((w): [string, number] => [`[data-watchrow="${w.id}"] .n`, count(w.id)]),
+    ['#rowInboxAll .nav-row-count', entries.length],
+    ['[data-disc="topics"] .nav-row-count', papers('topic')],
+    ['[data-disc="authors"] .nav-row-count', papers('author')],
+    ['#rowLater .nav-row-count', queued.length],
+    ...watches.map((w): [string, number] => [`[data-watchrow="${w.id}"] .nav-row-count`, count(w.id)]),
   ]
   // At least two counts must differ, or this test could not tell one badge from another.
   expect(new Set(badges.map(([, n]) => n)).size).toBeGreaterThan(1)

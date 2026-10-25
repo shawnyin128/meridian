@@ -122,7 +122,7 @@ test('侧栏「总览」进的是研究总览,各块条数与 project.overview �
   await expect(win.locator('#crumb .cseg')).toHaveText(['研究', '总览'])
   await expect(shown(win).locator('.desk-head .t')).toHaveText('总览')
   // In the demo this sidebar row has no badge; only the other rows do.
-  await expect(win.locator('[data-desk="restl"] .n')).toHaveCount(0)
+  await expect(win.locator('[data-desk="restl"] .nav-row-count')).toHaveCount(0)
 
   // By default only active projects show: one milestone row per project, plus one row per real task.
   expect(counts.ganttRows).toBeGreaterThanOrEqual(counts.active)

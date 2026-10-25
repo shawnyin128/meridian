@@ -54,7 +54,7 @@ async function shelveDraft(win: Page): Promise<void> {
 
 test('侧栏「最近变动」进的是变动屏,面包屑、屏头的数与角标都对上', async ({ win }) => {
   const sources = await sourcesFromCore(win)
-  await expect(win.locator('[data-desk="changelog"] .n')).toHaveText(String(sources.length))
+  await expect(win.locator('[data-desk="changelog"] .nav-row-count')).toHaveText(String(sources.length))
 
   await gotoChangelog(win)
   await expect(win.locator('#crumb .cseg')).toHaveText(['我的库', '最近变动'])
@@ -152,7 +152,7 @@ test('归一条:它落到「已归档」那一节,屏头与侧栏的数都掉一
   await first.locator('.carch').click()
 
   await expect(shown(win, '.desk-head .t')).toHaveText(`最近变动 · ${total - 1}`)
-  await expect(win.locator('[data-desk="changelog"] .n')).toHaveText(String(total - 1))
+  await expect(win.locator('[data-desk="changelog"] .nav-row-count')).toHaveText(String(total - 1))
   await expect(shown(win, '.section-heading')).toContainText(['未归档', '已归档'])
 
   // Section headings use the main-area size, 15px. The first section (unarchived) has no top rule;
@@ -179,7 +179,7 @@ test('「全部归档」把未归档清空成一行空态 —,按钮跟着灰掉
   await shown(win, '.archall').click()
 
   await expect(shown(win, '.desk-head .t')).toHaveText('最近变动 · 0')
-  await expect(win.locator('[data-desk="changelog"] .n')).toHaveCount(0)
+  await expect(win.locator('[data-desk="changelog"] .nav-row-count')).toHaveCount(0)
   await expect(shown(win, '.empty-state')).toHaveText('—')
   // It sits under a section heading with the archived list below it, so it is the one-line variant.
   await expect(shown(win, '.empty-state')).toHaveClass(/empty-state--section/)
