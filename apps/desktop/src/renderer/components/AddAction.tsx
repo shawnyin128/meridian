@@ -19,9 +19,9 @@ type AddActionProps = Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'children' |
 /**
  * The one create or add control: the ＋ on the soft fill of a secondary Button, at the size of its
  * slot. With `children` it is a Button showing the ＋ and that short word, and `label`, when given, is
- * the whole action's spoken name. Without them it is the ＋ alone, a square named `label`, which its
- * tooltip shows. Further classes in `className` only place it. Inside a toolbar it is one of the
- * toolbar's controls.
+ * the whole action's spoken name. Without them it is the ＋ alone, named `label`, which its tooltip
+ * shows: a square, or at the `chip` size a circle like the chips it follows. Further classes in
+ * `className` only place it. Inside a toolbar it is one of the toolbar's controls.
  */
 export const AddAction = forwardRef<HTMLButtonElement, AddActionProps>(function AddAction(props, ref) {
   const asItem = useToolbarItem()

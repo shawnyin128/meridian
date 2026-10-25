@@ -11,7 +11,7 @@ declare global {
 }
 
 describe('AddAction', () => {
-  it('每种尺寸都是次要按钮的灰底配同一个加号：带字的是常规或紧凑的 Button，只有加号的是方块，标签串里是标签那么高的方块', () => {
+  it('每种尺寸都是次要按钮的灰底配同一个加号：带字的是常规或紧凑的 Button，只有加号的是方块，标签串里是标签那么高的圆', () => {
     const regular = renderToStaticMarkup(<AddAction size="regular">导入 PDF</AddAction>)
     const compact = renderToStaticMarkup(<AddAction size="compact">任务</AddAction>)
     const icon = renderToStaticMarkup(<AddAction size="compact" label="新对话" />)
