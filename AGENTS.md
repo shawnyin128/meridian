@@ -206,7 +206,9 @@ App, the Python package, and the agent plugins. Data formats are compatible in b
   only places it. A component that needs another look gets a variant.
 - No raw elements for a pattern that has a component. A screen renders no
   `<button>` (use `Button` or `IconButton`), no `<table>` (use `Table`) and no
-  hand-built list markup.
+  hand-built list markup. `scripts/check-screen-elements.test.mjs` enforces the
+  `<button>` part; `RAW_BUTTONS` in `scripts/check-screen-elements.mjs` lists,
+  with a reason each, the raw buttons that are not text buttons.
 - One spacing and type system. Spacing takes the roles in `shell/tokens.css`:
   `--page-inset`, `--section-gap`, `--item-gap`, and `--item-inset`, which
   rows and cards share. Text takes a type role: page title, section heading,
