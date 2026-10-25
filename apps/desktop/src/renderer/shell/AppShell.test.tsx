@@ -861,12 +861,15 @@ describe('侧栏对话行的删除', () => {
     fixture.chats = [...chats, { id: 'c2', title: '另一段', archived: false, messageCount: 1 }]
     try {
       await mount()
+      // A keyboard user's focus is on the row when they open its menu.
+      act(() => { document.querySelector<HTMLElement>('[data-chat="c1"] .nav-row-label')!.focus() })
       const items = await chatMenu('c1')
       fixture.chats = fixture.chats.filter((session) => session.id !== 'c1')
-      await act(async () => {
-        items.find((item) => item.textContent === '删除')!.click()
-        await new Promise((done) => setTimeout(done, 20))
-      })
+      await act(async () => { items.find((item) => item.textContent === '删除')!.click() })
+      // The row goes once the chat list is read again after the delete; the menu hands its focus back first.
+      for (let turn = 0; turn < 50 && document.querySelector('[data-chat="c1"]') !== null; turn += 1) {
+        await act(async () => { await new Promise((done) => setTimeout(done, 10)) })
+      }
       expect(document.querySelector('[data-chat="c1"]')).toBeNull()
       expect(document.activeElement?.closest('[data-chat]')?.getAttribute('data-chat')).toBe('c2')
     } finally {
