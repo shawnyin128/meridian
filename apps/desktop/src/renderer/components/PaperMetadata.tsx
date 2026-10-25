@@ -3,6 +3,7 @@ import type { PaperFields, PaperRow, ReadState, RecordedChange } from '../../sha
 import { LATER_PAPER, READ_PAPER, READ_STATES, READING_PAPER, UNREAD_PAPER } from '../../shared/vocabulary.js'
 import { papers } from '../ipc.js'
 import { errorLabel } from '../lib/failure-label.js'
+import { useFormat, type Format } from '../lib/format.js'
 import type { Catalog } from '../messages/catalog.js'
 import { useMessages } from '../messages/useMessages.js'
 import { useNotice } from '../shell/AppShell.js'
@@ -64,7 +65,7 @@ export function ReadStatePicker({ value, onPick }: {
   return (
     <ChoicePicker
       value={value} options={READ_STATES} onPick={onPick} label={(state) => readStateName(m, state)} stopRowActivation
-      className={tagClass('neutral', 'chip', value === READING_PAPER ? 'stchip on' : 'stchip')}
+      className={tagClass(undefined, 'chip', value === READING_PAPER ? 'stchip on' : 'stchip')}
     />
   )
 }
@@ -74,8 +75,8 @@ type EditableField = 'title' | 'shortTitle' | 'authors' | 'venue' | 'year' | 'id
 const splitList = (value: string): string[] => value
   .split(/[,，;；\n]/).map((item) => item.trim()).filter(Boolean)
 
-function draftOf(paper: PaperRow, field: EditableField): string {
-  if (field === 'authors') return (paper.authors ?? []).join(', ')
+function draftOf(paper: PaperRow, field: EditableField, fmt: Format): string {
+  if (field === 'authors') return fmt.authors(paper.authors ?? [])
   if (field === 'year') return paper.year?.toString() ?? ''
   if (field === 'shortTitle') return paper.shortTitle ?? ''
   if (field === 'identifier') return paper.identifier ?? ''
@@ -162,10 +163,11 @@ function PaperFieldEditor({ paper, field, display, save }: {
   save: (field: EditableField, patch: Partial<PaperFields>) => Promise<boolean>
 }) {
   const m = useMessages()
+  const fmt = useFormat()
   const notice = useNotice()
   return (
     <InlineMetadataField
-      label={m.papers.metadata.fields[field]} value={draftOf(paper, field)} display={display || '—'}
+      label={m.papers.metadata.fields[field]} value={draftOf(paper, field, fmt)} display={display || '—'}
       keep={{ scope: ['paper', paper.id], target: `field:${field}` }}
       type={field === 'submitted' ? 'date' : 'text'}
       inputMode={field === 'year' ? 'numeric' : 'text'}
@@ -197,6 +199,7 @@ export function PaperMetadata({ paper, readStateLabel, onSaved, titled = true }:
   titled?: boolean
 }) {
   const m = useMessages()
+  const fmt = useFormat()
   const listFade = useScrollFade('y')
   const labels = { ...m.papers.metadata.fields, readState: readStateLabel }
   const notice = useNotice()
@@ -218,7 +221,7 @@ export function PaperMetadata({ paper, readStateLabel, onSaved, titled = true }:
       <dl className="paper-meta-list" ref={listFade}>
         {titled ? editableRow('title', <PaperText text={paper.title} />) : null}
         {editableRow('shortTitle', paper.shortTitle ? <PaperText text={paper.shortTitle} /> : '')}
-        {editableRow('authors', paper.authors?.join(', ') ?? '')}
+        {editableRow('authors', fmt.authors(paper.authors ?? []))}
         <dt>{m.papers.metadata.abstractLabel}</dt>
         <dd>{paper.abstract ? <PaperAbstract text={paper.abstract} folded /> : '—'}</dd>
         {editableRow('venue', paper.venue)}

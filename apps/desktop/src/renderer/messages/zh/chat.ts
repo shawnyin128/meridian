@@ -3,7 +3,6 @@ export const chat = {
   newChat: '新对话',
   saveIdeaLabel: '保存为想法',
   noDiscussion: '尚无讨论',
-  noModel: 'AI 未连接',
   mentionGroup: { project: '项目', paper: '论文', page: 'Wiki' },
   conflictTitle: '结论冲突',
   conflictQuestion: '为什么说这两条结论冲突？',

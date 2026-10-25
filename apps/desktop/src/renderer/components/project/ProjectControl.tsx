@@ -46,7 +46,7 @@ export function ProjectNextActionView({ action, variant = 'detail', className = 
           {variant === 'summary'
             ? null
             : (
-              <Tag tone={action.source === 'task' ? 'neutral' : 'good'}>
+              <Tag>
                 {action.source === 'task' ? m.project.plan.taskMode : m.project.sections.graph}
               </Tag>
             )}

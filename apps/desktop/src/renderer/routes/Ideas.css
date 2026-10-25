@@ -1,5 +1,5 @@
 /* A size container: 100cqh, its height inside the padding, keeps the detail panel inside the visible page at any window height. */
-.ideas-body{padding:var(--sp-20) var(--sp-24);container-type:size}
+.ideas-body{container-type:size}
 .ideas-workspace{display:flex;align-items:flex-start;gap:0;width:100%;box-sizing:border-box}
 /* An inline-size container: the rows' columns follow the list's own width, which the detail panel narrows. */
 .ideas-list{flex:1;min-width:0;container:idea-list/inline-size}
@@ -30,12 +30,6 @@
   .idea-row-groups{grid-template-columns:minmax(var(--idea-title-least),1fr) max-content max-content}
   .idea-row-work{display:none}
 }
-
-/* Ideas by project: the name, then three counts spread over the list's width, under their column labels. */
-.idea-stats-head,.idea-stats-row{display:grid;grid-template-columns:minmax(0,2fr) repeat(3,minmax(0,1fr));align-items:center;column-gap:var(--sp-16)}
-.idea-stats-head{padding:0 calc(var(--item-inset) + 1px) var(--sp-6);color:var(--ter);font-size:var(--fs-cap);text-align:right}
-.idea-stats-n{color:var(--sec);text-align:right;font-variant-numeric:tabular-nums}
-.idea-stats-n.zero{color:var(--ter)}
 
 /*
  * The detail panel follows a research graph node's layout, content on the left and its document on

@@ -13,6 +13,16 @@ function lastLineEnd(box: HTMLElement): number {
 }
 
 /**
+ * Whether `box` cuts its content off along `axis`: content wider than the box (`x`), taller (`y`), or
+ * either (`both`), by more than the pixel that rounding may add.
+ */
+export function isClipped(box: Element, axis: 'x' | 'y' | 'both'): boolean {
+  const wide = box.scrollWidth > box.clientWidth + 1
+  const tall = box.scrollHeight > box.clientHeight + 1
+  return axis === 'x' ? wide : axis === 'y' ? tall : wide || tall
+}
+
+/**
  * Whether the text in `box` is cut off by it: wider or taller than the box. Measured when `content`
  * changes and whenever the box changes size. With `lines`, a box of several lines that cuts its text
  * off also gets `--line-end`, where the text on its last whole line ends, so its fade can end there
@@ -24,7 +34,7 @@ export function useClipped(box: RefObject<HTMLElement | null>, content: unknown,
     const element = box.current
     if (element === null) return
     const measure = () => {
-      const cut = element.scrollWidth > element.clientWidth + 1 || element.scrollHeight > element.clientHeight + 1
+      const cut = isClipped(element, 'both')
       if (lines && cut) element.style.setProperty('--line-end', `${lastLineEnd(element)}px`)
       else if (lines) element.style.removeProperty('--line-end')
       setClipped(cut)

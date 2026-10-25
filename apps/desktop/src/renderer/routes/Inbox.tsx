@@ -22,7 +22,7 @@ import {
 import { EmptyState } from '../components/EmptyState.js'
 import { InlineMessage } from '../components/InlineMessage.js'
 import { LoadingPlaceholder } from '../components/LoadingPlaceholder.js'
-import { CollapsibleGroup } from '../components/CollapsibleGroup.js'
+import { Group, GroupedList } from '../components/GroupedList.js'
 import { DateTimeDisplay } from '../components/DateTimeDisplay.js'
 import { SortMenu } from '../components/SortMenu.js'
 import { Tag } from '../components/Tag.js'
@@ -31,7 +31,7 @@ import { useUndo } from '../hooks/useUndo.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
 import { shownSource } from '../lib/watch-source.js'
 import {
-  PageBody, PageError, PageHeader, PageShell, PageTitle,
+  PageBody, PageError, PageHeader, PageNote, PageShell, PageTitle,
 } from '../components/PageShell.js'
 import { Button } from '../components/Button.js'
 import './shell.css'
@@ -304,7 +304,7 @@ export function Inbox() {
                 >{m.watches.resume}</Button>
               </>
             ) : null}
-            <span className="fetchnote">{stream === 'watch' ? fetchNote(jobs?.fetch ?? null, scope, m) : ''}</span>
+            <PageNote>{stream === 'watch' ? fetchNote(jobs?.fetch ?? null, scope, m) : ''}</PageNote>
             {rows.length === 0 ? null : (
               <SortMenu
                 label={m.inbox.sortLabel} current={m.inbox.sort[sort]}
@@ -369,11 +369,11 @@ export function Inbox() {
             </EmptyState>
           )
           : (
-            <>
+            <GroupedList>
               {groups.map((group) => (
-                <CollapsibleGroup
-                  key={group.key} data-group={group.key} title={group.title} count={group.rows.length}
-                  open={!folded.has(group.key)} onToggle={() => toggleGroup(group.key)}
+                <Group
+                  key={group.key} data-group={group.key} title={group.title} count={group.rows.length} sticky
+                  fold={{ open: !folded.has(group.key), onToggle: () => toggleGroup(group.key) }}
                   actions={(
                     <Button
                       size="compact"
@@ -382,9 +382,9 @@ export function Inbox() {
                   )}
                 >
                   {group.rows.map(card)}
-                </CollapsibleGroup>
+                </Group>
               ))}
-            </>
+            </GroupedList>
           )}
       </PageBody>
     </PageShell>

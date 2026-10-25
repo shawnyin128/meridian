@@ -3,7 +3,7 @@ import { act, useMemo } from 'react'
 import type { DragEvent as ReactDragEvent, KeyboardEvent as ReactKeyboardEvent } from 'react'
 import { createRoot } from 'react-dom/client'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { useDragReorder, type ReorderAxis, type ReorderHandle } from './useDragReorder.js'
+import { useDragReorder, type ReorderAxis, type ReorderDrag, type ReorderHandle } from './useDragReorder.js'
 
 declare global {
   var IS_REACT_ACT_ENVIRONMENT: boolean
@@ -12,16 +12,17 @@ declare global {
 type Reorder = ReturnType<typeof useDragReorder>
 
 /** Exposes the hook's return value to the test through `onReady`, called on every render. */
-function Probe({ ids, scopeOf, onReorder, onReady, axis, handle }: {
+function Probe({ ids, scopeOf, onReorder, onReady, axis, handle, onDrag }: {
   ids: readonly string[]
   scopeOf: (id: string) => string
   onReorder: (order: string[], moved: string) => void
   onReady: (reorder: Reorder) => void
   axis: ReorderAxis
   handle: ReorderHandle
+  onDrag?: ((drag: ReorderDrag | null) => void) | undefined
 }) {
   const stableScopeOf = useMemo(() => scopeOf, [scopeOf])
-  const reorder = useDragReorder(ids, stableScopeOf, onReorder, { axis, handle })
+  const reorder = useDragReorder(ids, stableScopeOf, onReorder, { axis, handle, ...(onDrag === undefined ? {} : { onDrag }) })
   onReady(reorder)
   return null
 }
@@ -59,12 +60,12 @@ describe('useDragReorder', () => {
   let renders = 0
   const mount = (
     ids: string[], scopeOf: (id: string) => string, onReorder: (order: string[], moved: string) => void,
-    { axis = 'y', handle = 'grip' }: { axis?: ReorderAxis; handle?: ReorderHandle } = {},
+    { axis = 'y', handle = 'grip', onDrag }: { axis?: ReorderAxis; handle?: ReorderHandle; onDrag?: (drag: ReorderDrag | null) => void } = {},
   ) => {
     renders = 0
     act(() => createRoot(host).render(
       <Probe
-        ids={ids} scopeOf={scopeOf} onReorder={onReorder} axis={axis} handle={handle}
+        ids={ids} scopeOf={scopeOf} onReorder={onReorder} axis={axis} handle={handle} onDrag={onDrag}
         onReady={(next) => { reorder = next; renders += 1 }}
       />,
     ))
@@ -198,6 +199,24 @@ describe('useDragReorder', () => {
     item('c').className = ''
     over('c', 3)
     expect(feedback('a', 'b', 'c')).toEqual(['dragging', '', 'drag-over-before'])
+  })
+
+  it('给了 onDrag 时,拿起、换落点和放下都告诉它一次,同一个落点上的 dragover 不重复告诉', () => {
+    const onDrag = vi.fn()
+    mount(['a', 'b', 'c'], () => 'x', vi.fn(), { onDrag })
+    start('a')
+    over('c', 2)
+    over('c', 3)
+    over('c', 15)
+    over('b', 15)
+    drop('b')
+    expect(onDrag.mock.calls).toEqual([
+      [{ held: 'a', over: null }],
+      [{ held: 'a', over: { id: 'c', before: true } }],
+      [{ held: 'a', over: { id: 'c', before: false } }],
+      [{ held: 'a', over: { id: 'b', before: false } }],
+      [null],
+    ])
   })
 
   it('放下后被拖条目和落点的标记都清掉', () => {

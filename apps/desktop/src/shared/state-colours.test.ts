@@ -39,7 +39,7 @@ describe('红色只标逾期、错误和危险', () => {
       ['components/timeline/TimelineBoard.css', '.gnow::after'],
       ['components/timeline/TimelineBoard.css', '.gbar.priority-p0'],
       ['components/FieldPickers.css', '.cd.today'],
-      ['components/Tag.css', '.tag--warn'],
+      ['components/Tag.css', '.tag--warning'],
     ] as const
     expect(marks.map(([path, selector]) => [selector, tokens(bodyOf(path, selector)).filter((t) => RED.test(t))]))
       .toEqual(marks.map(([, selector]) => [selector, []]))
@@ -114,6 +114,8 @@ describe('状态色', () => {
     'components/Button.css': "a danger button's soft fill",
     'components/ActionMenu.css': 'a danger menu item',
     'components/FirstRunChecklist.css': "a finished first-run step's check",
+    'components/StatTile.css': "a stat tile's figure that needs attention",
+    'components/arrival.css': 'the flash of a row or anchor a jump has landed on',
   }
 
   /**
@@ -121,9 +123,6 @@ describe('状态色', () => {
    * each with that issue. The list only shrinks.
    */
   const PENDING: Record<string, string> = {
-    'components/project/ProjectPlan.css  50%  background': '#578, the landing flash of a plan row',
-    'shell/tokens.css  .ddlrow.flash  background': '#578, the landing flash of a plan row',
-    'routes/ResearchOverview.css  .ovstat.bad b  color': 'the Overview stat tiles, which the catalog has no row for',
   }
 
   /** Every declaration that writes text in --bad, --warn or --good, or lays a --tint-* fill, as `<path>  <selector>  <property>`. */
@@ -182,13 +181,13 @@ describe('强调色', () => {
    */
   const ACCENT = [
     'components/ActionMenu.css  .mi .ck', 'components/Button.css  .btn.pri',
-    'components/ChipToggles.css  .chip-toggle[data-state="on"]', 'components/Item.css  .item--selected',
+    'components/ChipToggles.css  .chip-toggle[data-state="on"]', 'components/Item.css  .item--selected', 'components/NavRow.css  .nav-row.on',
     'components/ProgressFill.css  .progress-fill>span', 'components/SegmentedControl.css  .segmented-control>button[data-state="on"]',
     'components/Switch.css  .switch[data-state="checked"]',
+    'components/Table.css  .table-row--selected', 'components/Table.css  .table-row--selected>.table-cell--title',
     'components/chat/Chat.css  .send', 'components/icons.css  .ring',
-    'components/paper-table/PaperTable.css  .ptable tbody tr.selected', 'components/paper-table/PaperTable.css  .ptable tbody tr.selected .pt-title',
     'components/timeline/TimelineBoard.css  .gnow', 'components/timeline/TimelineBoard.css  .gnow::after',
-    'components/timeline/TimelineBoard.css  .gtoday', 'shell/AppShell.css  .srow.on',
+    'components/timeline/TimelineBoard.css  .gtoday',
   ]
 
   it('强调色只标选中的和正在执行的:主操作、侧栏的当前行、选中的分段、勾上的菜单项、开着的标签开关、列表里选中的行和卡片、选中的高亮卡片、开着的开关、运行中的圈、进度和时间线的今天;链接、标签、计数和别的规则都不读', () => {
@@ -203,13 +202,13 @@ describe('强调色', () => {
   })
 
   it('选中的东西用强调色:列表里选中的行和卡片、选中的高亮卡片和开着的标签开关都是侧栏当前行的浅强调底配强调色的字,选中的分段字用强调色,勾和运行中的圈用强调色的记号色', () => {
-    const current = tokens(bodyOf('shell/AppShell.css', '.srow.on'))
+    const current = tokens(bodyOf('components/NavRow.css', '.nav-row.on'))
     expect(current).toEqual(['--accent-soft', '--accent-text'])
     for (const [path, selector] of [
       ['components/Item.css', '.item--selected'], ['components/ChipToggles.css', '.chip-toggle[data-state="on"]'],
     ] as const) expect(tokens(bodyOf(path, selector)), selector).toEqual(current)
-    expect(tokens(bodyOf('components/paper-table/PaperTable.css', '.ptable tbody tr.selected'))).toEqual(['--accent-soft'])
-    expect(tokens(bodyOf('components/paper-table/PaperTable.css', '.ptable tbody tr.selected .pt-title'))).toEqual(['--accent-text'])
+    expect(tokens(bodyOf('components/Table.css', '.table-row--selected'))).toEqual(['--accent-soft'])
+    expect(tokens(bodyOf('components/Table.css', '.table-row--selected>.table-cell--title'))).toEqual(['--accent-text'])
     expect(tokens(bodyOf('components/SegmentedControl.css', '.segmented-control>button[data-state="on"]'))).toEqual(['--accent-text'])
     for (const [path, selector] of [['components/ActionMenu.css', '.mi .ck'], ['components/icons.css', '.ring']] as const) {
       expect(tokens(bodyOf(path, selector)), selector).toEqual(['--accent-mark'])
@@ -219,10 +218,16 @@ describe('强调色', () => {
   it('链接、侧栏的图标、关注行的未读点和研究地图的阅读点都是中性的', () => {
     expect(bodyOf('components/EntityLink.css', '.entity-link')).toMatch(/(?:^|;)color:inherit(?:;|$)/)
     expect(tokens(bodyOf('components/EntityLink.css', '.entity-link:hover'))).toEqual(['--ink'])
-    expect(tokens(bodyOf('shell/AppShell.css', '.srow .ic'))).toEqual(['--sec'])
-    expect(tokens(bodyOf('shell/AppShell.css', '.srow.sub:has(.n) .ic:empty::before'))).toEqual(['--sec', '--sec'])
+    expect(tokens(bodyOf('components/NavRow.css', '.nav-row-icon'))).toEqual(['--sec'])
     expect(readFileSync(join(RENDERER, 'components/ReadDots.tsx'), 'utf8')).toMatch(/<StatusDot key=\{index\} tone="neutral"/)
     expect(tokens(bodyOf('components/StatusDot.css', '.status-dot--neutral'))).toEqual(['--ter'])
+  })
+
+  it('侧栏一行有新论文时，它的点用次要灰填满、7px，和没有新论文时的空心圈一样大，一眼分得出', () => {
+    expect(readFileSync(join(RENDERER, 'shell/Sidebar.tsx'), 'utf8'))
+      .toMatch(/<StatusDot size="nav" tone=\{fresh \? 'new' : 'neutral'\} fill=\{fresh \? 'full' : 'ring'\} \/>/)
+    expect([tokens(bodyOf('components/StatusDot.css', '.status-dot--new')), bodyOf('components/StatusDot.css', '.status-dot--nav')])
+      .toEqual([['--sec'], 'width:7px;height:7px'])
   })
 })
 

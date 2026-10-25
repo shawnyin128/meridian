@@ -35,13 +35,6 @@ export const COLOUR_TOKENS = [
 /** The elevation tokens of `shell/tokens.css` a measured box shadow is named by. */
 export const SHADOW_TOKENS = ['sh-1', 'sh-2', 'sh-3', 'sh-paper']
 
-/**
- * Section headings that head a group of items rather than a section: the status groups of the
- * project list and of Ideas, and the kind groups of the trash.
- */
-const GROUPED_SECTIONS = '.desk-body:has(.projpanel) > .section-heading, .desk-body:has(> .tgroup) > .section-heading, '
-  + '.ideas-list > .section-heading:not(:has(+ .idea-stats-head)), .idea-row-groups > .section-heading'
-
 /** One selector entry: `impl` is `shared:<Component>` or `hand:<file>`, `selector` finds its elements. */
 const entry = (impl, selector, options = {}) => ({ id: `${impl} ${selector}`, impl, selector, ...options })
 
@@ -55,9 +48,9 @@ const ITEM_PARTS = { title: '.item-title', meta: '.item-meta', trailing: '.item-
  * element counts once, for the first entry that matches it.
  */
 export const PATTERNS = {
-  TitleBar: { metrics: 'head', entries: [entry('hand:shell/AppShell.tsx', '.titlebar', { parts: { title: '#crumb' } })] },
-  Breadcrumb: { metrics: 'text', entries: [entry('hand:shell/AppShell.tsx', '#crumb')] },
-  NavList: { metrics: 'list', entries: [entry('hand:shell/Sidebar.tsx', '#sidebar .sb-top')] },
+  TitleBar: { metrics: 'head', entries: [entry('shared:TitleBar', '.titlebar', { parts: { title: '#crumb' } })] },
+  Breadcrumb: { metrics: 'text', entries: [entry('shared:Breadcrumb', '#crumb')] },
+  NavList: { metrics: 'list', entries: [entry('shared:NavPane', '#sidebar .nav-pane-rows')] },
   PageHeader: {
     metrics: 'head',
     entries: [
@@ -97,10 +90,8 @@ export const PATTERNS = {
   PanelHead: {
     metrics: 'head',
     entries: [
-      entry('shared:ReaderPanelHeader', '.reader-panel-head'),
       entry('shared:SectionHeading', '.node-document-head'),
       entry('shared:ModalDialog', '.modal-title'),
-      entry('hand:components/chat/PaperChat.tsx', '.paper-chat-head', { parts: { title: '.paper-chat-title' } }),
       entry('hand:components/paper-table/PaperTable.tsx', '.pd-h', { parts: { title: '.pd-t' } }),
       entry('hand:components/paper-table/ResearchMap.tsx', '.research-map-detail-head'),
       entry('hand:components/timeline/TimelineBoard.tsx', '.ghead'),
@@ -110,23 +101,16 @@ export const PATTERNS = {
   SectionHeading: {
     metrics: 'heading',
     entries: [
-      entry('shared:SectionHeading', '.section-heading', { not: `.section-heading--group, .node-document-head, .section-heading:has(+ .tabbed-section-panel), ${GROUPED_SECTIONS}` }),
-      entry('shared:ServiceStatus', '.service-status-head'),
-      entry('hand:components/settings/ExtensionSettings.tsx', '.extension-head'),
-      entry('hand:routes/Watches.tsx', '.af-h'),
+      entry('shared:SectionHeading', '.section-heading', { not: '.section-heading--group, .node-document-head, .section-heading:has(+ .tabbed-section-panel)' }),
       entry('hand:routes/Wiki.tsx', '.coledit .ch'),
     ],
   },
   GroupHeading: {
     metrics: 'heading',
     entries: [
-      entry('shared:SectionHeading', '.section-heading--group'),
-      entry('shared:SectionHeading', GROUPED_SECTIONS),
-      entry('shared:DayHeading', '.day-heading', { parts: { count: '.count-badge' } }),
+      entry('shared:SectionHeading', '.section-heading--group', { not: '.node-document-head' }),
       entry('hand:shell/SearchBox.tsx', '.pickhits .rh'),
       entry('hand:components/chat/ChatComposer.tsx', '.pickhits .rg'),
-      entry('hand:routes/Watches.tsx', '.watch-suggestion-group-heading'),
-      entry('hand:components/settings/DiscoverySettings.tsx', '.direction-project > header'),
     ],
   },
   TabGroup: {
@@ -139,10 +123,10 @@ export const PATTERNS = {
   Fold: {
     metrics: 'heading',
     entries: [
-      entry('shared:CollapsibleGroup', '.collapsible-group-head', { parts: { count: '.count-badge' } }),
+      entry('shared:Group', '.collapsible-group-head', { parts: { count: '.count-badge' } }),
       entry('shared:CardTray', '.card-tray--tray > .card-tray-head'),
-      entry('shared:NavRow', '#sidebar .srow.disc'),
-      entry('hand:shell/Sidebar.tsx', '#sidebar .sb-h'),
+      entry('shared:NavRow', '#sidebar .fold-toggle.nav-row'),
+      entry('shared:NavSection', '#sidebar .nav-section-head'),
       entry('shared:FoldToggle', '.fold-toggle--composite', { not: '.card-tray--row .fold-toggle--composite' }),
       entry('hand:components/timeline/TimelineBoard.tsx', '.glrow:has(.fold-toggle)'),
     ],
@@ -170,9 +154,7 @@ export const PATTERNS = {
   Table: {
     metrics: 'list',
     entries: [
-      entry('hand:components/paper-table/PaperTable.tsx', '.ptable'),
-      entry('hand:routes/Wiki.tsx', '.cmp'),
-      entry('hand:routes/Ideas.tsx', '.idea-stats'),
+      entry('shared:Table', 'table.table'),
       entry('shared:Markdown', '.md table'),
     ],
   },
@@ -187,10 +169,9 @@ export const PATTERNS = {
     metrics: 'item',
     entries: [
       entry('shared:Item', '.item--row', { not: '.draft-slot', parts: ITEM_PARTS }),
-      entry('shared:NavRow', '.nav-row', { not: '.srow.disc, .sb-h' }),
+      entry('shared:NavRow', '.nav-row', { not: '.fold-toggle.nav-row' }),
       entry('shared:PickOption', '.mi.rrow', { parts: { title: '.rt', meta: '.rm' } }),
-      entry('hand:components/paper-table/PaperTable.tsx', '.ptable tbody tr', { parts: { title: '.pt-title' } }),
-      entry('hand:routes/Wiki.tsx', '.cmp tbody tr:not(.newrow)'),
+      entry('shared:Table', '.table-row:not(.newrow)', { parts: { title: '.table-cell--title' } }),
       entry('hand:routes/Wiki.tsx', '.wktoc li'),
       entry('hand:components/wiki/WikiClaims.tsx', '.wkclaim-lines li'),
       entry('hand:components/reader/PaperWikiIngest.tsx', '.wiki-ingest-scope > div'),
@@ -243,7 +224,7 @@ export const PATTERNS = {
       entry('hand:components/chat/PaperChat.tsx', '.paper-chat .msgs'),
     ],
   },
-  StatTile: { metrics: 'item', entries: [entry('hand:routes/ResearchOverview.tsx', '.ovstat')] },
+  StatTile: { metrics: 'item', entries: [entry('shared:StatTile', '.stat-tile')] },
   TimelineBar: { metrics: 'item', entries: [entry('hand:components/timeline/TimelineBoard.tsx', '.gbar')] },
   GraphNode: { metrics: 'item', entries: [entry('hand:components/project/ResearchGraph.tsx', '.rgn-box')] },
   ItemTitle: {
@@ -252,7 +233,7 @@ export const PATTERNS = {
       entry('shared:Item', '.item-title'),
       entry('shared:PickOption', '.mi.rrow .rt'),
       entry('hand:components/project/ProjectIdentity.tsx', '.project-identity-name'),
-      entry('hand:components/paper-table/PaperTable.tsx', '.pt-title'),
+      entry('shared:Table', '.table-cell--title'),
       entry('hand:routes/Feed.tsx', '.fbody'),
       entry('hand:routes/ResearchOverview.tsx', '.ovpulse-title'),
       entry('hand:components/timeline/TimelineBoard.tsx', '.timeline-item-label'),
@@ -265,7 +246,7 @@ export const PATTERNS = {
       entry('shared:PickOption', '.mi.rrow .rm'),
       entry('hand:components/project/ProjectIdentity.tsx', '.project-identity-topic'),
       entry('hand:components/project/ProjectControl.tsx', '.project-control-text, .project-control-meta'),
-      entry('hand:components/paper-table/PaperTable.tsx', '.pt-dim'),
+      entry('shared:Table', '.table-cell--meta'),
       entry('hand:routes/Wiki.tsx', '.wkcard .wm'),
       entry('hand:routes/ResearchOverview.tsx', '.ovpulse-sub'),
     ],
@@ -285,7 +266,7 @@ export const PATTERNS = {
     metrics: 'button',
     entries: [
       entry('shared:RowActions', '.row-actions'),
-      entry('hand:components/paper-table/PaperTable.tsx', '.row-actions-cell'),
+      entry('shared:Table', '.table-actions'),
     ],
   },
   OverflowMenu: { metrics: 'button', entries: [entry('shared:DotsMenu', '.dots')] },
@@ -300,9 +281,9 @@ export const PATTERNS = {
     metrics: 'state',
     entries: [
       entry('shared:Item', '.item--selected'),
-      entry('shared:NavRow', '.srow.on'),
+      entry('shared:NavRow', '.nav-row.on'),
       entry('shared:IconButton', '.icbtn[aria-pressed="true"]'),
-      entry('hand:components/paper-table/PaperTable.tsx', '.ptable tbody tr.selected'),
+      entry('shared:Table', '.table-row--selected'),
     ],
   },
   Tag: {
@@ -357,7 +338,7 @@ export const PATTERNS = {
     metrics: 'button',
     entries: [
       entry('shared:Button', '.btn', {
-        not: '.filter-menu, .sort-menu, .add-action, .choice-picker, .harness-trigger, .paper-abstract-toggle, .reading-summary-all, .zoom-reset, .graph-zoom-reset',
+        not: '.filter-menu, .sort-menu, .add-action, .choice-picker, .harness-trigger, .paper-abstract-toggle, .reading-summary-all, .zoom-control-reset',
       }),
       entry('hand:components/project/ProjectPlan.tsx', '.din'),
     ],
@@ -400,7 +381,7 @@ export const PATTERNS = {
     metrics: 'button',
     entries: [
       entry('shared:SortMenu', '.sort-menu'),
-      entry('hand:components/paper-table/PaperTable.tsx', '.thsort'),
+      entry('shared:Table', '.table-sort'),
     ],
   },
   Picker: {
@@ -415,8 +396,7 @@ export const PATTERNS = {
   ZoomControl: {
     metrics: 'button',
     entries: [
-      entry('hand:routes/Reader.tsx', '.zoomctl'),
-      entry('hand:components/project/ResearchGraph.tsx', '.graph-view-controls'),
+      entry('shared:ZoomControl', '.zoom-control'),
     ],
   },
   SearchField: { metrics: 'field', entries: [entry('shared:ClearableInput', '.clearable-input')] },
@@ -478,7 +458,8 @@ export const PATTERNS = {
   Caption: {
     metrics: 'text',
     entries: [
-      entry('hand:routes/Inbox.tsx', '.fetchnote, .discovery-note'),
+      entry('shared:PageNote', '.page-note'),
+      entry('hand:routes/Inbox.tsx', '.discovery-note'),
       entry('hand:routes/Settings.tsx', '.storage-state'),
       entry('hand:routes/Projects.tsx', '.project-card-label'),
       entry('hand:components/project/ResearchGraph.tsx', '.glegend'),

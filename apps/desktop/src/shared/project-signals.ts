@@ -156,7 +156,7 @@ export function projectDecisionItems(
   const { conflicting } = project.conclusions
   if (conflicting) {
     items.push({
-      id: 'conflict', rank: 0, kind: m.kind.conflict, tone: 'bad',
+      id: 'conflict', rank: 0, kind: m.kind.conflict, tone: 'warn',
       reason: m.reason.conflictCount(conflicting), action: m.action.decideConflict,
       ...(project.conflictPage === undefined ? {} : { page: project.conflictPage }),
     })
@@ -235,7 +235,7 @@ export function projectPulseSignal(
   }
   const first = projectDecisionItems(project, todayIso, m)[0]
   if (first?.id === 'block') return { tone: 'blocked', label: m.pulse.blocked, detail: first.reason }
-  if (first?.id === 'conflict') return { tone: 'risk', label: m.pulse.conflict, detail: first.reason }
+  if (first?.id === 'conflict') return { tone: 'warn', label: m.pulse.conflict, detail: first.reason }
   if (first?.id === 'path-broken') return { tone: 'risk', label: m.pulse.pathBroken, detail: first.reason }
   if (first?.id === 'path-missing') return { tone: 'warn', label: m.pulse.pathMissing, detail: first.reason }
   if (first) return {

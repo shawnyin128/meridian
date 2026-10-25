@@ -93,12 +93,15 @@ describe('拖动处的光标', () => {
 })
 
 describe('拖动中的条目和落点', () => {
+  /** The marks useDragReorder sets on the item held and the item under the pointer. */
+  const MARKS = ['dragging', 'drag-over-before', 'drag-over-after']
   /**
    * Each reorderable item: the stylesheets of its screen, the shared one that draws its drop look (Item
-   * its rows and cards, DragHandle.css the rest), and its markup as its component renders it with
-   * useDragReorder's attributes.
+   * its rows and cards, Table its columns, DragHandle.css the rest), its markup as its component
+   * renders it with useDragReorder's attributes, and the classes that mark it held, then landed before
+   * and after: the hook's marks, or the ones Table sets from its `move`.
    */
-  const ITEMS: Record<string, [sheets: string[], drawn: string, markup: string]> = {
+  const ITEMS: Record<string, [sheets: string[], drawn: string, markup: string, marks?: string[]]> = {
     '项目行': [['routes/Projects.css'], 'components/Item.css', '<div class="item item--row item--actionable prow" data-reorder-item="p1" data-reorder-axis="y"></div>'],
     '项目卡片': [['routes/Projects.css'], 'components/Item.css', '<article class="item item--card item--actionable projpanel" data-row-actions="" data-reorder-item="p1" data-reorder-axis="y"></article>'],
     '想法行': [['routes/Ideas.css'], 'components/Item.css', '<div class="item item--row item--actionable idea-row" data-reorder-item="i1" data-reorder-axis="y"></div>'],
@@ -106,10 +109,14 @@ describe('拖动中的条目和落点', () => {
     '计划的任务行': [['components/project/ProjectPlan.css'], 'components/Item.css', '<div class="project-plan"><div class="item item--row item--actionable ddlrow task-row" draggable="true" data-reorder-item="t1" data-reorder-axis="y"></div></div>'],
     '时间线的任务标签行': [['components/timeline/TimelineBoard.css'], 'components/DragHandle.css', '<div class="glabels"><div class="glrow timeline-label-row" draggable="true" data-reorder-item="t1" data-reorder-axis="y"></div></div>'],
     '关联 chip': [['components/Tag.css', 'components/ChipList.css', 'components/project/ProjectSections.css'], 'components/DragHandle.css', '<div class="wkrel"><span class="tag tag--chip tag--neutral tagchip" draggable="true" data-reorder-item="r1" data-reorder-axis="x"></span></div>'],
-    '论文表的列': [['routes/shell.css', 'components/paper-table/PaperTable.css'], 'components/DragHandle.css', '<div class="tblwrap"><table class="ptable"><thead><tr><th data-reorder-item="short" data-reorder-axis="x"></th></tr></thead></table></div>'],
+    '论文表的列': [
+      ['components/paper-table/PaperTable.css'], 'components/Table.css',
+      '<div class="table-scroll"><table class="table ptable"><thead><tr><th data-reorder-item="short" data-reorder-axis="x"></th></tr></thead></table></div>',
+      ['table-move-moving', 'table-move-before', 'table-move-after'],
+    ],
   }
   /** The opacity and box shadow of the item in `markup` under `sheets`, held, then with the drop line before and after it. */
-  const feedback = (sheets: string[], markup: string) => ['dragging', 'drag-over-before', 'drag-over-after'].map((state) => {
+  const feedback = (sheets: string[], markup: string, marks = MARKS) => marks.map((state) => {
     document.head.innerHTML = sheets.map(source).map((css) => `<style>${css}</style>`).join('')
     document.body.innerHTML = markup
     const item = document.querySelector('[data-reorder-item]')
@@ -127,9 +134,10 @@ describe('拖动中的条目和落点', () => {
 
   it('每个可拖动排序的条目拖动时变淡、落点画一条 2px 的线,只来自画它的共享样式,竖排画在上下,横排画在左右', () => {
     const items = Object.entries(ITEMS)
-    expect(Object.fromEntries(items.map(([name, [sheets, drawn, markup]]) => [name, [
-      feedback([...sheets, 'components/DragHandle.css', 'components/Item.css'].filter((sheet) => sheet !== drawn), markup),
-      feedback([...sheets, 'components/DragHandle.css', 'components/Item.css'], markup),
+    const shared = ['components/DragHandle.css', 'components/Item.css', 'components/Table.css']
+    expect(Object.fromEntries(items.map(([name, [sheets, drawn, markup, marks]]) => [name, [
+      feedback([...sheets, ...shared].filter((sheet) => sheet !== drawn), markup, marks),
+      feedback([...sheets, ...shared], markup, marks),
     ]]))).toEqual(Object.fromEntries(items.map(([name, [, , markup]]) => [name, [
       [['1', ''], ['1', ''], ['1', '']],
       markup.includes('<th ') ? LOOK.header : markup.includes('data-reorder-axis="x"') ? LOOK.x : LOOK.y,

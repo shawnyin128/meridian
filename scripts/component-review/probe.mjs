@@ -72,16 +72,27 @@ export function measureInPage({ entries, scope, cap, colourTokens, shadowTokens,
   /**
    * The nearest block above (`dir` -1) or below (+1) `el` in document order, below `root`: a
    * visible sibling of `el` or of an ancestor that shares some of its width and lies wholly on
-   * that side, so blocks in another column or overlaid ones are passed over. Null when `el` is
-   * the first or last block in `root`.
+   * that side, so blocks in another column or overlaid ones are passed over. A sibling that draws
+   * no box of its own (display: contents) stands for its children. Null when `el` is the first or
+   * last block in `root`.
    */
   const neighbour = (el, dir, root) => {
     const own = rect(el)
     const beside = (box) => box.height > 0 && box.right > own.left && box.left < own.right
       && (dir < 0 ? box.bottom <= own.top + 0.5 : box.top >= own.bottom - 0.5)
+    const block = (candidate) => {
+      if (getComputedStyle(candidate).display !== 'contents') return shown(candidate) && beside(rect(candidate)) ? candidate : null
+      const kids = [...candidate.children]
+      for (const kid of dir < 0 ? kids.reverse() : kids) {
+        const found = block(kid)
+        if (found) return found
+      }
+      return null
+    }
     for (let node = el; node && node !== root; node = node.parentElement) {
       for (let next = dir < 0 ? node.previousElementSibling : node.nextElementSibling; next; next = dir < 0 ? next.previousElementSibling : next.nextElementSibling) {
-        if (shown(next) && beside(rect(next))) return next
+        const found = block(next)
+        if (found) return found
       }
     }
     return null

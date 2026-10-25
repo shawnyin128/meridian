@@ -65,7 +65,7 @@ export const ChipList = forwardRef<HTMLDivElement, {
     <>
       {chips.map((chip) => (chip.editor !== undefined ? <Fragment key={chip.id}>{chip.editor}</Fragment> : (
         <span
-          key={chip.id} className={tagClass('neutral', 'chip', 'tagchip')} data-row-actions=""
+          key={chip.id} className={tagClass(undefined, 'chip', 'tagchip')} data-row-actions=""
           data-actionable={chip.onOpen === undefined ? undefined : ''} {...chip.data}
           {...reorder?.(chip.id)}
           onClick={chip.onOpen === undefined ? undefined : (event) => { event.stopPropagation(); chip.onOpen!() }}

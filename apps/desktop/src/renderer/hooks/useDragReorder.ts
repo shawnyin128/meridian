@@ -30,6 +30,9 @@ export type ReorderItemProps = {
 /** What a reorderable item component takes: its own attributes and its drag handle's. */
 export type Reorderable = { item: ReorderItemProps; handle: DragHandleProps }
 
+/** A drag in progress: the item held, and the item under the pointer with the side it would land on, if any. */
+export type ReorderDrag = { held: string; over: { id: string; before: boolean } | null }
+
 /** The keys that move an item one place back and forward along each axis, with Alt held. */
 const KEYS: Record<ReorderAxis, Record<string, -1 | 1>> = {
   x: { ArrowLeft: -1, ArrowRight: 1 },
@@ -48,11 +51,13 @@ const KEYS: Record<ReorderAxis, Record<string, -1 | 1>> = {
  * order, and the id that moved; the caller decides how, and whether, to persist it.
  * While a drag lasts, the held item has the class `dragging` and the item under the pointer
  * `drag-over-before` or `drag-over-after`, set on their elements without rendering the caller; with
- * `data-reorder-axis` they are the whole drag state the drop look is drawn from.
+ * `data-reorder-axis` they are the whole drag state the drop look is drawn from. An item whose
+ * component draws its drop look from props instead takes `onDrag`, told the drag each time the item
+ * held, the item under the pointer or its side changes, and null once the drag ends.
  */
 export function useDragReorder(
   ids: readonly string[], scopeOf: (id: string) => string, onReorder: (order: string[], moved: string) => void,
-  { axis, handle }: { axis: ReorderAxis; handle: ReorderHandle },
+  { axis, handle, onDrag }: { axis: ReorderAxis; handle: ReorderHandle; onDrag?: (drag: ReorderDrag | null) => void },
 ): {
   handleProps: (id: string) => DragHandleProps
   itemProps: (id: string) => ReorderItemProps
@@ -71,6 +76,7 @@ export function useDragReorder(
     held.item.classList.remove('dragging')
     held.over?.item.classList.remove(lineClass(held.over.before))
     drag.current = null
+    onDrag?.(null)
   }
 
   /** Puts `id` into `queue`, its scope's ids without it, and reports the full new order. */
@@ -107,6 +113,7 @@ export function useDragReorder(
       finish()
       item.classList.add('dragging')
       drag.current = { id, item, over: null }
+      onDrag?.({ held: id, over: null })
     },
     onDragEnd: finish,
   })
@@ -128,6 +135,7 @@ export function useDragReorder(
       held.item.classList.add('dragging')
       item.classList.add(lineClass(before))
       held.over = { id, before, item }
+      if (last === null || last.id !== id || last.before !== before) onDrag?.({ held: held.id, over: { id, before } })
     },
     onDrop: (event) => {
       const held = drag.current

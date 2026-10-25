@@ -131,7 +131,7 @@ describe('项目列表的卡片', () => {
     ]
     await act(async () => root.render(<MessagesProvider><Projects /></MessagesProvider>))
     const afterName = (id: string) => host.querySelector(`[data-proj="${id}"] .item-head .item-title > .item-open`)!.nextElementSibling
-    expect([afterName('spec')!.className, afterName('spec')!.textContent]).toEqual(['tag tag--label tag--warn', '已 10 天无推进'])
+    expect([afterName('spec')!.className, afterName('spec')!.textContent]).toEqual(['tag tag--label tag--warning', '已 10 天无推进'])
     expect(afterName('kv')).toBeNull()
     expect(host.querySelectorAll('.project-card-alert')).toHaveLength(0)
   })

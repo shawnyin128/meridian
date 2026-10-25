@@ -1,0 +1,2 @@
+/* Under a heading a Markdown body takes the heading's space below it, not its first block's top margin. */
+.section-heading+.md>:first-child{margin-top:0}

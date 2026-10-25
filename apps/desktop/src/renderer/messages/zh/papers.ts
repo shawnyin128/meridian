@@ -51,7 +51,6 @@ export const papers = {
     later: '待读',
   },
   columnHeader: {
-    resize: (column: string) => `「${column}」列宽`,
     addColumn: '新建列',
   },
   rowActions: { delete: '删除', openReader: '开始阅读' },
@@ -67,8 +66,6 @@ export const papers = {
   tags: {
     add: '添加主题',
     existingTopics: '已有主题',
-    showMore: (n: number) => `展开其余 ${n} 项`,
-    showLess: (n: number) => `收起其余 ${n} 项`,
     remove: (topic: string) => `移除主题「${topic}」`,
   },
   notices: {

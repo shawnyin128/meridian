@@ -25,7 +25,7 @@ export function ChipToggles<Value extends string>({
       onValueChange={(next) => onChange(next as Value[])}
     >
       {options.map((option) => (
-        <ToggleGroup.Item key={option.value} value={option.value} className={tagClass('neutral', 'chip', 'tagchip chip-toggle')}>
+        <ToggleGroup.Item key={option.value} value={option.value} className={tagClass(undefined, 'chip', 'tagchip chip-toggle')}>
           {option.label}
         </ToggleGroup.Item>
       ))}
