@@ -23,7 +23,9 @@ import { SectionHeading } from '../PageShell.js'
 import { SegmentedControl } from '../SegmentedControl.js'
 import { SourceAnchor } from '../SourceAnchor.js'
 import { AgentLabel } from '../SourceLabel.js'
-import { RowActions, StructuredList, StructuredRow } from '../StructuredList.js'
+import { DraftSlot, useDraftSlot } from '../DraftSlot.js'
+import { Item, RowActions } from '../Item.js'
+import { List } from '../List.js'
 import { Tag } from '../Tag.js'
 import { PaperText } from '../paper/PaperText.js'
 import { Button } from '../Button.js'
@@ -158,7 +160,6 @@ export function WikiClaims({ page, pending, links, onApply, arrival, onArrived }
   useArrival(arrival, true, () => arrivalRow.current, { block: 'center', ...(onArrived === undefined ? {} : { onLanded: onArrived }) })
   const [projects, setProjects] = useState<ProjectSummary[]>([])
   const [conclusions, setConclusions] = useState<ProjectConclusion[]>([])
-  const addRow = useRef<HTMLDivElement>(null)
   // A draft picked in a claim's menu opens once the menu has closed, so it keeps the focus.
   const opening = useRef<Form | null>(null)
   const formClaim = draft?.claim === null ? undefined : page.claims.find((x) => x.id === draft?.claim)
@@ -181,10 +182,6 @@ export function WikiClaims({ page, pending, links, onApply, arrival, onArrived }
   const patch = (fields: Partial<ClaimDraft>) => { if (draft !== null) setDraft({ ...draft, ...fields }) }
 
   const open = (next: Form) => {
-    if (next.kind === 'add' && form?.kind === 'add') {
-      addRow.current?.querySelector<HTMLElement>('.form-control')?.focus()
-      return
-    }
     setDraft({
       kind: next.kind,
       claim: next.kind === 'add' ? null : next.claim.id,
@@ -194,6 +191,7 @@ export function WikiClaims({ page, pending, links, onApply, arrival, onArrived }
     })
   }
   const close = () => setDraft(null)
+  const addSlot = useDraftSlot(form?.kind === 'add', () => open({ page: page.id, kind: 'add' }))
 
   useEffect(() => {
     if (form?.kind !== 'add' || basis !== 'conclusion') return
@@ -281,7 +279,7 @@ export function WikiClaims({ page, pending, links, onApply, arrival, onArrived }
   const addDraft = form?.kind !== 'add'
     ? null
     : (
-      <StructuredRow className="wkclaim wkclaim-draft" rowRef={addRow}>
+      <DraftSlot className="wkclaim wkclaim-draft" slot={addSlot.slot}>
         <DraftForm canSave={ready !== null} onSave={saveDraft} onCancel={close}>
           {(invalid) => (
             <>
@@ -330,23 +328,23 @@ export function WikiClaims({ page, pending, links, onApply, arrival, onArrived }
             </>
           )}
         </DraftForm>
-      </StructuredRow>
+      </DraftSlot>
     )
 
   return (
     <>
       <SectionHeading
-        actions={<AddAction size="compact" disabled={pending} label={c.add} onClick={() => open({ page: page.id, kind: 'add' })}>{c.addShort}</AddAction>}
+        actions={<AddAction size="compact" disabled={pending} label={c.add} onClick={addSlot.start}>{c.addShort}</AddAction>}
       >{c.heading}
       </SectionHeading>
       {page.claims.length === 0 && addDraft === null
         ? <EmptyState variant="section">{c.empty}</EmptyState>
         : (
-          <StructuredList variant="embedded" maxVisibleRows="all" className="wkclaims">
+          <List variant="embedded" rows="all" className="wkclaims">
             {page.claims.map((claim) => (
-              <StructuredRow
+              <Item
                 key={claim.id} data-claim={claim.id} className="wkclaim"
-                {...claim.id === arrival ? { rowRef: arrivalRow } : {}}
+                {...claim.id === arrival ? { elementRef: arrivalRow } : {}}
               >
                 <div className="wkclaim-head">
                   {form?.kind === 'revise' && form.claim.id === claim.id
@@ -483,10 +481,10 @@ export function WikiClaims({ page, pending, links, onApply, arrival, onArrived }
                       />
                     </CardTray>
                   )}
-              </StructuredRow>
+              </Item>
             ))}
             {addDraft}
-          </StructuredList>
+          </List>
         )}
     </>
   )

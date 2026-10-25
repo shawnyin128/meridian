@@ -334,7 +334,7 @@ describe('Inbox', () => {
       source: kind === 'watch' ? '主题 · w1' : '项目 · 项目一', title: `Paper ${kind}`, authors: 'Ada', venue: 'ICLR',
       abstract: 'Abstract', rec: '', reasons: [], downloaded: false, paper: '', pdf: 'https://arxiv.org/pdf/2609.1',
     })
-    const lastAction = () => [...host.querySelectorAll('.paper-card-actions [aria-label]')].at(-1)!.getAttribute('aria-label')
+    const lastAction = () => [...host.querySelectorAll('.paper-card .item-actions [aria-label]')].at(-1)!.getAttribute('aria-label')
     api.entries = [entry('watch')]
     const watching = createRoot(host)
     await act(async () => { watching.render(<MessagesProvider><Inbox /></MessagesProvider>) })

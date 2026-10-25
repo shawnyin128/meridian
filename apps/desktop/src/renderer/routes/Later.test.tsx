@@ -126,7 +126,7 @@ describe('Later', () => {
   it('按时间排时，论文从哪来写成中性的来源标签，不是醒目的强调徽标', async () => {
     const root = createRoot(host)
     await act(async () => { root.render(<MessagesProvider><Later /></MessagesProvider>) })
-    const metadata = host.querySelector('.paper-card-metadata')!
+    const metadata = host.querySelector('.paper-card .item-meta')!
     expect(metadata.querySelector('.source-label')!.textContent).toBe('arXiv')
     expect(metadata.querySelector('.paper-card-badge')).toBeNull()
     await act(async () => { root.unmount() })

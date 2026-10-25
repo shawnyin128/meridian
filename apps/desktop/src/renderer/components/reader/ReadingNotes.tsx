@@ -7,22 +7,20 @@ import { FormTextarea } from '../FormControls.js'
 import { EmptyState } from '../EmptyState.js'
 import { IconButton } from '../IconButton.js'
 import { IconTrash } from '../icons.js'
-import { RowActions } from '../StructuredList.js'
+import { Item } from '../Item.js'
 import { SourceAnchor } from '../SourceAnchor.js'
 import { ReaderPanelHeader } from './ReaderPanelHeader.js'
 import { useClipped } from '../../hooks/useClipped.js'
 import { CommitActions } from '../CommitActions.js'
 import { commitKeys } from '../../lib/keyboard.js'
 
-/** A note or highlight card's delete, in the row-actions slot at the end of the card's top line. */
+/** A note or highlight card's delete, for the row-actions slot at the end of the card's top line. */
 function ReadingDelete({ onDelete }: { onDelete: () => Promise<boolean> }) {
   const m = useMessages()
   return (
-    <RowActions>
-      <IconButton
-        label={m.common.delete} size="nested" tone="danger" className="reading-delete" onClick={() => { void onDelete() }}
-      ><IconTrash /></IconButton>
-    </RowActions>
+    <IconButton
+      label={m.common.delete} size="nested" tone="danger" className="reading-delete" onClick={() => { void onDelete() }}
+    ><IconTrash /></IconButton>
   )
 }
 
@@ -42,16 +40,15 @@ function NoteCard({ note, edits, onSave, onDelete, onJump }: {
     void onSave(text.trim()).then((saved) => { if (saved) edit.drop() })
   }
   return (
-    <article className="reading-card" data-row-actions="">
-      <div className="reading-card-head">
-        <span className="reading-page"><SourceAnchor page={note.page} onOpen={onJump} /></span>
-        <ReadingDelete onDelete={onDelete} />
-      </div>
+    <Item
+      density="card" className="reading-card" meta={<SourceAnchor page={note.page} onOpen={onJump} />}
+      actions={<ReadingDelete onDelete={onDelete} />}
+    >
       <FormTextarea aria-label={m.reader.notes.pageAria(note.page)} {...edit.fieldProps(save)} />
       <div className="reading-actions">
         <CommitActions place="item" canSave={changed && text.trim() !== ''} onSave={save} />
       </div>
-    </article>
+    </Item>
   )
 }
 
@@ -79,14 +76,12 @@ function HighlightCard({ highlight, edits, onSave, onDelete, onJump, focus, sele
   useEffect(() => { if (focus) input.current?.focus() }, [focus])
   useEffect(() => { if (selected) card.current?.scrollIntoView({ block: 'nearest' }) }, [selected])
   return (
-    <article
-      ref={card} className={`reading-card highlight-card ${highlight.color}${selected ? ' selected' : ''}`} data-row-actions=""
-      aria-current={selected || undefined}
+    <Item
+      density="card" elementRef={card} className={`reading-card highlight-card ${highlight.color}`} selected={selected}
+      mark={`var(--hl-${highlight.color})`} aria-current={selected || undefined}
+      meta={<SourceAnchor page={highlight.page} quote={highlight.quote} onOpen={onJump} />}
+      actions={<ReadingDelete onDelete={onDelete} />}
     >
-      <div className="reading-card-head">
-        <span className="reading-page"><SourceAnchor page={highlight.page} quote={highlight.quote} onOpen={onJump} /></span>
-        <ReadingDelete onDelete={onDelete} />
-      </div>
       <blockquote ref={quote} className={`fade-lines${quoteCut ? ' clipped' : ''}`}>{highlight.quote}</blockquote>
       <FormTextarea
         ref={input}
@@ -96,7 +91,7 @@ function HighlightCard({ highlight, edits, onSave, onDelete, onJump, focus, sele
       <div className="reading-actions">
         <CommitActions place="item" canSave={note !== highlight.note} onSave={save} />
       </div>
-    </article>
+    </Item>
   )
 }
 

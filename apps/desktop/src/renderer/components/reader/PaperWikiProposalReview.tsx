@@ -7,7 +7,8 @@ import { EmptyState } from '../EmptyState.js'
 import { HeadingCount } from '../HeadingCount.js'
 import { InlineMessage } from '../InlineMessage.js'
 import { SourceAnchor } from '../SourceAnchor.js'
-import { StructuredList, StructuredRow } from '../StructuredList.js'
+import { Item } from '../Item.js'
+import { List } from '../List.js'
 import { Tag } from '../Tag.js'
 import { Tooltip } from '../Tooltip.js'
 import { ProposalRows, ProposalText } from '../wiki/ProposalChange.js'
@@ -53,7 +54,7 @@ function ReviewGroup({ group, onJump }: { group: HarnessPaperWikiReviewGroup; on
   // Core projects each kind's labelled rows in one fixed order (core/harness/paper-wiki.ts).
   const labels: readonly string[] = (m.wiki.reviewRows as Record<string, readonly string[]>)[kindOf(group.id).kind] ?? []
   return (
-    <StructuredRow className="paper-wiki-review-group">
+    <Item className="paper-wiki-review-group">
       <div className="paper-wiki-review-group-head">
         {title === undefined ? null : <strong>{title}</strong>}
         <Tag>{m.wiki.provenance[group.provenance]}</Tag>
@@ -68,7 +69,7 @@ function ReviewGroup({ group, onJump }: { group: HarnessPaperWikiReviewGroup; on
         }]),
         ...(records.length === 0 ? [] : [{ key: 'records', label: g.note, value: records.map((anchor) => anchorLabel(anchor, m)).join(' · ') }]),
       ]} />
-    </StructuredRow>
+    </Item>
   )
 }
 
@@ -98,23 +99,20 @@ function QualityReport({ quality }: { quality: HarnessPaperWikiQuality }) {
         <span>{title}</span>
       </div>
       {quality.findings.length === 0 ? null : (
-        <StructuredList className="paper-wiki-quality-findings" variant="embedded"
-          aria-label={m.wiki.quality.findingsListLabel}>
+        <List className="paper-wiki-quality-findings" variant="embedded" nested aria-label={m.wiki.quality.findingsListLabel}>
           {quality.findings.map((finding, index) => {
             const findingCopy: Record<string, { title: string; detail: string }> = m.wiki.quality.findings
             const copy = findingCopy[finding.code]
             const place = placeLabel(finding.path, m)
             return (
-              <StructuredRow className="paper-wiki-quality-finding"
-                key={`${finding.dimension}-${finding.code}-${finding.path}-${index}`}>
-                <Tooltip label={copy?.detail ?? finding.message}>
-                  <strong>{copy?.title ?? m.wiki.quality.needsReviewFallback}</strong>
-                </Tooltip>
-                {place === undefined ? null : <span className="paper-wiki-quality-place">{place}</span>}
-              </StructuredRow>
+              <Item
+                className="paper-wiki-quality-finding" key={`${finding.dimension}-${finding.code}-${finding.path}-${index}`} lines={2}
+                title={<Tooltip label={copy?.detail ?? finding.message}><strong>{copy?.title ?? m.wiki.quality.needsReviewFallback}</strong></Tooltip>}
+                meta={place === undefined ? null : <span className="paper-wiki-quality-place">{place}</span>}
+              />
             )
           })}
-        </StructuredList>
+        </List>
       )}
     </InlineMessage>
   )
@@ -145,12 +143,12 @@ export function PaperWikiProposalReview({ review, quality, onJump }: {
             {section.groups.length === 0 ? (
               <EmptyState variant="section">{words.empty}</EmptyState>
             ) : (
-              <StructuredList
+              <List
                 variant="embedded"
                 aria-label={words.title}
               >
                 {section.groups.map((group) => <ReviewGroup group={group} key={group.id} onJump={onJump} />)}
-              </StructuredList>
+              </List>
             )}
           </section>
         )

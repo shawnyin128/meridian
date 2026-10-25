@@ -48,6 +48,7 @@ export const common = {
     edit: (label: string) => `Edit ${label}`,
     chooseDirectory: 'Choose folder',
   },
+  sshFolders: { up: 'Enclosing folder', path: 'Folder path', empty: 'No folders' },
   pager: {
     total: (n: number) => `${n} ${pluralEn(n, { one: 'item', other: 'items' })} total`,
     perPage: 'Items per page',

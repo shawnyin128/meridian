@@ -24,7 +24,8 @@ import { IconMinus, IconPlus } from '../icons.js'
 import { PanelClose } from '../PanelClose.js'
 import { SectionHeading } from '../PageShell.js'
 import { StatusDot } from '../StatusDot.js'
-import { StructuredList, StructuredRow } from '../StructuredList.js'
+import { Item } from '../Item.js'
+import { List } from '../List.js'
 import { AgentLabel } from '../SourceLabel.js'
 import { ToggleGroup, ToggleItem, Toolbar } from '../Toolbar.js'
 import { Tooltip } from '../Tooltip.js'
@@ -510,43 +511,42 @@ export function ResearchNodePanel({
       {tasks.length === 0
         ? <EmptyState variant="section">{m.project.graph.noTasks}</EmptyState>
         : (
-          <StructuredList className="node-tasks" variant="embedded">
+          <List className="node-tasks" variant="embedded">
             {tasks.map((task) => (
-              <StructuredRow className="node-task-row" data-task={task.id} key={task.id} onActivate={() => onSelectTask(task.id)}>
-                <FadeText>{task.title}</FadeText>
-                {task.origin === 'agent' ? <AgentLabel /> : null}
-              </StructuredRow>
+              <Item
+                className="node-task-row" data-task={task.id} key={task.id} onActivate={() => onSelectTask(task.id)}
+                title={<FadeText>{task.title}</FadeText>} tags={task.origin === 'agent' ? <AgentLabel /> : null}
+              />
             ))}
-          </StructuredList>
+          </List>
         )}
 
       <SectionHeading variant="rail" count={ideas.length}>{m.project.linkedIdeas}</SectionHeading>
       {ideas.length === 0
         ? <EmptyState variant="section">{m.project.noLinkedIdeas}</EmptyState>
         : (
-          <StructuredList className="node-ideas" variant="embedded">
+          <List className="node-ideas" variant="embedded">
             {ideas.map((idea) => {
               const source = idea.source.paperTitle === undefined
                 ? plainTitle(idea.source.chatTitle)
                 : `${plainTitle(idea.source.paperTitle)} · ${plainTitle(idea.source.chatTitle)}`
               return (
-                <StructuredRow
-                  className="node-idea-row" data-idea={idea.id} key={idea.id}
+                <Item
+                  className="node-idea-row" data-idea={idea.id} key={idea.id} lines={2}
                   onActivate={() => onSelectIdea(idea.id)}
-                >
-                  <FadeText className="node-idea-title" label={idea.title}>{idea.title}</FadeText>
-                  {ownIdea(idea) ? null : (
-                    <span className="node-idea-source-line">
+                  title={<FadeText className="node-idea-title" label={idea.title}>{idea.title}</FadeText>}
+                  meta={ownIdea(idea) ? null : (
+                    <>
                       <FadeText className="node-idea-source" label={m.project.idea.sourceTag(source)}>
                         {m.project.idea.sourceTag(source)}
                       </FadeText>
                       {chatDeleted(idea) ? <SourceChatDeleted /> : null}
-                    </span>
+                    </>
                   )}
-                </StructuredRow>
+                />
               )
             })}
-          </StructuredList>
+          </List>
         )}
 
       {nodeEvents.length === 0 ? null : (

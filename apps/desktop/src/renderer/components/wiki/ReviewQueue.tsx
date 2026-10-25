@@ -13,7 +13,8 @@ import { InlineMessage } from '../InlineMessage.js'
 import { LoadingPlaceholder } from '../LoadingPlaceholder.js'
 import { SectionHeading } from '../PageShell.js'
 import { SourceAnchor } from '../SourceAnchor.js'
-import { StructuredList, StructuredRow } from '../StructuredList.js'
+import { Item } from '../Item.js'
+import { List } from '../List.js'
 import { AgentLabel } from '../SourceLabel.js'
 import { Tag, TagButton } from '../Tag.js'
 import { PaperText } from '../paper/PaperText.js'
@@ -303,11 +304,11 @@ export function ReviewQueue({ proposals, failed, pending, onApply, onDecline, li
         : queued.length === 0
         ? <EmptyState variant="section">{r.empty}</EmptyState>
         : (
-          <StructuredList variant="embedded" maxVisibleRows="all" className="review-list">
+          <List variant="embedded" rows="all" className="review-list">
             {queued.map((p) => {
               const [unverified] = p.unverified ?? []
               return (
-                <StructuredRow key={p.id} className="review-row" data-proposal={p.id}>
+                <Item key={p.id} className="review-row" data-proposal={p.id}>
                   <ProposalCard>
                     {body(p)}
                     <ProposalDecision>
@@ -347,10 +348,10 @@ export function ReviewQueue({ proposals, failed, pending, onApply, onDecline, li
                       )}
                     </ProposalDecision>
                   </ProposalCard>
-                </StructuredRow>
+                </Item>
               )
             })}
-          </StructuredList>
+          </List>
         )}
 
       {decided.length === 0
@@ -358,9 +359,9 @@ export function ReviewQueue({ proposals, failed, pending, onApply, onDecline, li
         : (
           <>
             <SectionHeading count={decided.length}>{r.history}</SectionHeading>
-            <StructuredList variant="embedded" className="review-list">
+            <List variant="embedded" className="review-list">
               {decided.map((p) => (
-                <StructuredRow key={p.id} className="review-row" data-proposal={p.id}>
+                <Item key={p.id} className="review-row" data-proposal={p.id}>
                   <ProposalCard decided declined={p.status !== 'applied'}>
                     {body(p)}
                     <ProposalDecision>
@@ -378,9 +379,9 @@ export function ReviewQueue({ proposals, failed, pending, onApply, onDecline, li
                       )}
                     </ProposalDecision>
                   </ProposalCard>
-                </StructuredRow>
+                </Item>
               ))}
-            </StructuredList>
+            </List>
           </>
         )}
     </>

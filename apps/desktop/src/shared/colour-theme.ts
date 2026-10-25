@@ -205,7 +205,7 @@ function colours(modules: ColourThemeModules, mode: ColourMode) {
     '--sep': own('separator'), '--sep2': alpha(own('separator'), 0.6),
     '--sep-strong': rounded(mix(own('separator'), light ? 85 : 82, own('inkSecondary'))),
     '--accent': accent, '--accent-soft': alpha(accent, 0.12), '--on-accent': WHITE,
-    '--accent-solid': moved('accent', '#3568ff'), '--accent-text': mix(accent, 70, ink), '--ring': accent,
+    '--accent-solid': moved('accent', '#3568ff'), '--accent-text': mix(accent, 70, ink), '--accent-mark': accent, '--ring': accent,
     '--card': own('card'), '--raised': own('card'), '--field': own('field'),
     '--hover': alpha(shade, 0.05), '--press': alpha(shade, light ? 0.06 : 0.09),
     '--chip': alpha(shade, light ? 0.07 : 0.08), '--track': light ? alpha(shade, 0.07) : alpha(BLACK, 0.45),
@@ -290,6 +290,17 @@ const HIGHLIGHTED: Layer = ['--hl-yellow', 0.3]
 function contrastChecks(mode: ColourMode): ContrastCheck[] {
   const solid = (fill: ColourToken): (readonly ColourToken[])[] => [[fill], [fill, '--hover-solid'], [fill, '--press-solid']]
   const current = [['--window', '--sidebar', '--accent-soft'], ['--window', '--sidebar', '--accent-soft', '--hover']] as const
+  /** A list's selected row or card, on the canvas, a card or a floating layer, at rest and hovered. */
+  const selectedRow = (['--content', '--card', '--raised'] as const)
+    .flatMap((surface) => [[surface, '--accent-soft'], [surface, '--accent-soft', '--hover']] as const)
+  /**
+   * Where an accent mark (a check mark, the running ring, a progress line) sits: every surface, hovered,
+   * a selected or current row, and a progress line's track on a card, a floating layer or a message box.
+   */
+  const boxes: readonly (readonly ColourToken[])[] = [...MESSAGE_BOX, ['--raised', '--tint-mut']]
+  const marked: readonly (readonly ColourToken[])[] = [...SURFACES.slice(0, 4), ['--card', '--hover'], ['--raised', '--hover'],
+    ['--window', '--sidebar', '--hover'], ...selectedRow, ...current, ['--card', '--track'], ['--raised', '--track'],
+    ...boxes.map((box): readonly ColourToken[] => [...box, '--track'])]
   return [
     ...over('ink', '--ink', [...SURFACES, ...CHIPS, ['--field'], ['--content', '--sel'], ['--card', '--selected', '--hover']]),
     ...over('ink', '--window', [['--ink']]),
@@ -301,7 +312,8 @@ function contrastChecks(mode: ColourMode): ContrastCheck[] {
     ...over('accent', '--on-accent', [['--accent']], MARK),
     ...over('accent', '--on-accent', solid('--accent-solid')),
     ...over('accent', '--accent-solid', [['--content'], ['--card'], ['--window']], MARK),
-    ...over('accent', '--accent-text', current),
+    ...over('accent', '--accent-text', [...current, ...selectedRow]),
+    ...over('accent', '--accent-mark', marked, MARK),
     ...over('error', '--bad', [['--content'], ['--card']], MARK),
     ...over('error', '--on-accent', solid('--bad-solid')),
     ...over('error', '--bad-text', [...CHIPS, ['--content', '--tint-bad'], ['--card', '--tint-bad'], ['--card'], ['--raised'], ...MESSAGE_BOX]),
@@ -341,7 +353,7 @@ const ratioOf = (values: ColourValues, check: ContrastCheck): number => contrast
  * chroma and hue it keeps when only its lightness moves to meet it.
  */
 const REPAIRED: readonly [ColourToken, ColourModule | null][] = [
-  ['--accent-solid', null], ['--bad-solid', null], ['--accent-text', 'accent'],
+  ['--accent-solid', null], ['--bad-solid', null], ['--accent-text', 'accent'], ['--accent-mark', 'accent'],
   ['--good-text', 'done'], ['--warn-text', 'warning'], ['--bad-text', 'error'],
 ]
 

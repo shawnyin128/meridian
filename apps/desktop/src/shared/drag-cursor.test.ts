@@ -28,7 +28,7 @@ const RULES = STYLESHEETS.flatMap((path) => [...source(path).matchAll(/([^{}]+)\
 
 const STYLES = [
   'shell/tokens.css', 'routes/shell.css', 'components/IconButton.css', 'components/Tag.css', 'components/DragHandle.css',
-  'components/StructuredList.css', 'components/TagChips.css', 'components/paper-table/PaperTable.css', 'components/project/ProjectSections.css',
+  'components/Item.css', 'components/List.css', 'components/TagChips.css', 'components/paper-table/PaperTable.css', 'components/project/ProjectSections.css',
   'components/project/ProjectPlan.css', 'components/timeline/TimelineBoard.css', 'components/project/ResearchGraph.css',
 ].map(source)
 
@@ -42,7 +42,7 @@ const SPOTS: Record<string, [markup: string, spot: string, held: string[]]> = {
   '关联 chip': ['<div class="wkrel"><span class="tag tag--chip tag--neutral tagchip" draggable="true"><button type="button" class="tagchip-open">链接</button></span></div>', '.tagchip', ['press']],
   '时间线的任务条': ['<div class="grow"><button type="button" class="gbar"></button></div>', '.gbar', ['press', 'dragging']],
   '时间线的里程碑菱形': ['<div class="grow msrow"><span class="gddl"></span></div>', '.gddl', ['press', 'dragging']],
-  '计划的任务行': ['<div class="project-plan"><div id="taskList"><div class="structured-row structured-row--composite ddlrow task-row" data-row-actions="" draggable="true" data-reorder-item="t1"></div></div></div>', '.task-row', ['press', 'dragging']],
+  '计划的任务行': ['<div class="project-plan"><div id="taskList"><div class="item item--row item--actionable ddlrow task-row" data-row-actions="" draggable="true" data-reorder-item="t1"></div></div></div>', '.task-row', ['press', 'dragging']],
   '时间线的任务标签行': ['<div class="glabels"><div class="glrow timeline-label-row" draggable="true" data-reorder-item="t1"><button type="button" class="timeline-label-open">任务</button></div></div>', '.glrow', ['press', 'dragging']],
   // ResearchGraph adds `panning` as the pointer goes down on the background.
   '科研图的背景': ['<div class="rgraph"><div class="rgraph-viewport"><svg></svg></div></div>', '.rgraph-viewport', ['panning']],
@@ -95,9 +95,9 @@ describe('拖动处的光标', () => {
 describe('拖动中的行和落点', () => {
   /** Each reorderable row: its own stylesheet and its markup as its component renders it. */
   const ROWS: Record<string, [sheet: string, markup: string]> = {
-    '项目行': ['routes/Projects.css', '<div class="structured-row structured-row--composite prow" data-reorder-item="p1"></div>'],
-    '想法行': ['routes/Ideas.css', '<div class="structured-row structured-row--composite idea-row" data-reorder-item="i1"></div>'],
-    '计划的任务行': ['components/project/ProjectPlan.css', '<div class="project-plan"><div class="structured-row structured-row--composite ddlrow task-row" draggable="true" data-reorder-item="t1"></div></div>'],
+    '项目行': ['routes/Projects.css', '<div class="item item--row item--actionable prow" data-reorder-item="p1"></div>'],
+    '想法行': ['routes/Ideas.css', '<div class="item item--row item--actionable idea-row" data-reorder-item="i1"></div>'],
+    '计划的任务行': ['components/project/ProjectPlan.css', '<div class="project-plan"><div class="item item--row item--actionable ddlrow task-row" draggable="true" data-reorder-item="t1"></div></div>'],
   }
   /** The opacity and box shadow of the row in `markup` under `sheets`, held, then with the drop line above and below. */
   const feedback = (sheets: string[], markup: string) => ['dragging', 'drag-over-before', 'drag-over-after'].map((state) => {
@@ -109,11 +109,11 @@ describe('拖动中的行和落点', () => {
     return [style.opacity, style.boxShadow]
   })
 
-  it('项目行、想法行和计划的任务行拖动时变淡、落点画线,都只来自共享的拖动样式', () => {
+  it('项目行、想法行和计划的任务行拖动时变淡、落点画线,都只来自 Item', () => {
     const rows = Object.entries(ROWS)
     expect(Object.fromEntries(rows.map(([name, [sheet, markup]]) => [name, [
-      feedback(['components/StructuredList.css', sheet], markup),
-      feedback(['components/StructuredList.css', sheet, 'components/DragHandle.css'], markup),
+      feedback([sheet, 'components/DragHandle.css'], markup),
+      feedback(['components/Item.css', sheet, 'components/DragHandle.css'], markup),
     ]]))).toEqual(Object.fromEntries(rows.map(([name]) => [name, [
       [['1', ''], ['1', ''], ['1', '']],
       [['0.4', ''], ['1', '0 -2px 0 0 var(--ink)'], ['1', '0 2px 0 0 var(--ink)']],

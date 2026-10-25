@@ -1,4 +1,4 @@
-.project-plan .ddlrow{display:flex;align-items:center;gap:var(--sp-8);padding:var(--sp-6) var(--sp-2);font-size:var(--fs-base)}
+.project-plan .ddlrow{display:flex;align-items:center;gap:var(--sp-8)}
 .project-plan .ddlrow .dleft{font-size:var(--fs-sm);color:var(--ter);width:52px;flex-shrink:0}
 .project-plan .ddlrow.done>:not(.row-actions){opacity:.5}
 #taskList{display:grid;grid-template-columns:max-content max-content max-content max-content minmax(0,1fr) 24px;column-gap:var(--sp-10)}
@@ -39,6 +39,4 @@
 .project-plan .ddlrow .din.state-edit{padding:var(--sp-2) var(--sp-4);background:transparent;color:var(--ter);font-family:var(--sans);font-size:var(--fs-sm)}
 .project-plan .ddlrow .twinputs{display:flex;align-items:center;gap:var(--sp-4);flex-shrink:0}
 .project-plan .ddlrow .min{flex:1;min-width:0}
-.project-plan .task-row[draggable]{cursor:var(--cursor-draggable)}
-.project-plan .task-row[draggable]:active,.project-plan .task-row.dragging{cursor:var(--cursor-dragging)}
 .project-plan .row-actions{margin-left:var(--sp-2)}

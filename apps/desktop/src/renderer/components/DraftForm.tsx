@@ -2,8 +2,8 @@ import { useLayoutEffect, useRef, useState } from 'react'
 import type { KeyboardEvent, ReactNode, RefObject } from 'react'
 import { NO_TRIGGERS, useOnLeave } from '../hooks/useOnLeave.js'
 import { commitKeys } from '../lib/keyboard.js'
-import { Card } from './Card.js'
 import { CommitActions } from './CommitActions.js'
+import { Item } from './Item.js'
 import './DraftForm.css'
 
 /** Gives a field the refused look while it is `missing` after a save the draft refused; see DraftForm. */
@@ -82,7 +82,7 @@ export function DraftForm({ destination, canSave, onSave, onCancel, empty = fals
       </div>
     </div>
   )
-  return destination === undefined ? form : <Card className="draft-form-card">{form}</Card>
+  return destination === undefined ? form : <Item density="card" className="draft-form-card">{form}</Item>
 }
 
 /**

@@ -21,11 +21,11 @@ const STYLES = ['routes/shell.css', 'components/project/ProjectSignals.css', 'co
 
 // The markup TidyList renders for two rows, one with the longest kind tag.
 const LIST = `
-  <div class="structured-list structured-list--embedded attn project-signal-columns tidy-list" id="list">
-    <div class="structured-row structured-row--composite attnrow tidy-row" id="long">
+  <div class="list list--embedded attn project-signal-columns tidy-list" id="list">
+    <div class="item item--row item--actionable attnrow tidy-row" id="long">
       <span class="project-signal-kind" id="long-kind"><span class="tag">未归入主题</span></span><span class="tidy-what"></span>
     </div>
-    <div class="structured-row structured-row--composite attnrow tidy-row" id="short">
+    <div class="item item--row item--actionable attnrow tidy-row" id="short">
       <span class="project-signal-kind" id="short-kind"><span class="tag">结论冲突</span></span><span class="tidy-what"></span>
     </div>
   </div>`
