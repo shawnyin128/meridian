@@ -71,8 +71,8 @@ test('内嵌列表和表格不画外框线:末行下方与首行上方都没有�
   }
 
   await win.locator('[data-desk="changelog"]').click()
-  await shown(win, '.structured-row').first().waitFor()
-  await noBottom('.structured-row', '最近变动末行')
+  await shown(win, '.item--row').first().waitFor()
+  await noBottom('.item--row', '最近变动末行')
 
   await win.locator('[data-desk="papers"]').click()
   await shown(win, '.ptable tbody tr').first().waitFor()
@@ -171,7 +171,7 @@ test('按天分组的三屏用同一行小标题', async ({ win }) => {
 test('四处「更多」菜单同一个触发器:tooltip 说出它的名字、悬停显形、键盘能到、开着不褪色', async ({ win }) => {
   test.slow()
   await win.locator('[data-desk="resproj"]').click()
-  const card = shown(win, '.research-object-card').first()
+  const card = shown(win, '.item--card').first()
   await card.hover()
   const dots = card.locator('.dots')
   await expect(card.locator('.row-actions')).toHaveCSS('opacity', '1')

@@ -38,9 +38,13 @@ Current shared contracts:
 - `DraftForm`: the one form drafted in place, for a new item, or a change to one, that takes more than one
   field. It opens where the item lands with its first field focused, and Cancel and Save at its foot. Enter
   in a one-line field or ⌘Enter in a long text saves, Escape cancels, and a press outside keeps the draft.
-  An item that lands elsewhere names its destination after an arrow, on a card of its own. Hosts provide
+  An item that lands elsewhere names its destination after an arrow, on a card Item of its own. Hosts provide
   the fields and the write; the refused look of a missing field, input method keys, menu keys and the save
   lock are implemented once. No create action opens a dialog.
+- `DraftSlot` and `useDraftSlot`: the place a new item's draft opens, the row or card it will be, holding
+  its DraftForm or InlineDraftInput, and the one way its AddAction opens it: `start` opens the draft, or,
+  when it is open, puts the caret back after what is typed (`focusDraft`). The draft it holds is kept with
+  `useDraft` or `useDrafts`, so it comes back in its place after a restart.
 - `PickerPopover`: the shared anchored surface for input suggestions and compact pickers. It owns
   portal positioning, focus retention, anchor-aware outside interaction, spacing, and optional event
   isolation; picker contents and domain selection policy stay configurable. Its `size` is a field's
@@ -73,10 +77,23 @@ Current shared contracts:
   returns to where it was.
 - `ShortTextEditor`: the shared create/rename popover body, including fixed input geometry, focus,
   Enter/Escape, async acceptance, and optional deletion.
-- `StructuredList`: list shell and actionable/static row semantics; routes only supply columns and cells.
-  A row that holds controls of its own is `composite`: it stays a div that forwards pointer clicks, and
-  its children carry the keyboard-accessible control, so a button is never nested inside a button. A
-  `selected` row takes the one selected look, the sidebar's current row's: `--accent-soft` with `--accent-text`.
+- `Item`: the one list item, in two densities that start their content at one `--item-inset`, so rows
+  and cards line up on a page that mixes them: `row`, a line of a `List`, and `card`, a bordered item of its
+  own. It owns the item's type, the hover, the selected look (the sidebar's current row's: `--accent-soft`
+  with `--accent-text`), the drop feedback of `useDragReorder` and the look it keeps while one of its
+  menus is open, and the slots leading, title, meta, tags, trailing, `actions` and the overflow `menu`,
+  which go in its `RowActions` slot. A card's title is semibold, and so is a two-line row's (`lines={2}`);
+  a one-line row's title is regular. `muted` dims an archived or switched-off item, `mark` colours a
+  card's leading edge, `leaving` slides a dismissed item away. An actionable row is a button; an item that
+  holds controls of its own is `composite` (an actionable card always is): it stays a div that forwards
+  pointer clicks, and its `ItemOpen` around the name is the keyboard control, so a button is never nested
+  inside a button. `ItemTitle` and `ItemMeta` give a row's own grid cell or a line inside a control of the
+  item (Recent Changes' fold toggle) the slot's type.
+- `List`: the one container of Items: the outline (`card`) or none (`embedded`), the dividers between
+  its rows, cards one under another or in a `grid` of the card width, and how many rows it shows before it
+  scrolls inside itself (`rows`: five by default when embedded, `all`, or `fill` for the rest of its
+  container's height), keeping its scrollbar's room. A `nested` list in a card's body or a message box
+  starts its rows at that content's edge; a `flush` one lies in a surface that clips at its edges.
 - `NavRow`: the one row of a navigation list, the sidebar's and the Settings categories'. It is a button,
   or, when it holds controls of its own, a div whose label is the button; the row's class gives the look.
   While Meridian is not the active app, the current row's accent turns to the neutral selected look.
@@ -153,14 +170,18 @@ Current shared contracts:
   (`live`, `usePruneDrafts`) so a kept draft of a deleted item is dropped.
 - `hooks/useWheelZoom`: the one wheel rule of a zoomable view, shared by the reader and the research graph:
   a pinch or a Ctrl- or ⌘-scroll zooms about the pointer, and every other scroll scrolls the page.
-- `ResearchObjectCard`: one list-card shell for first-class research objects such as projects and ideas;
-  routes provide their domain-specific identity and metadata without redefining width, spacing, borders,
-  selection, management-menu visibility, or keyboard activation. A selected card takes the one selected look.
 - `FormInput`, `FormTextarea`, and `FormSelect`: the one field, in two appearances: `field`, the boxed field
   of forms, dialogs, popovers and filters (the default), and `inline`, which edits a value in the place of its
   text in a row, cell or property list. Both share one edge, fill, radius and the one focus rule in
   `shell/tokens.css`; no other stylesheet draws a field's box. Feature components still own their layout,
   validation, suggestions, and persistence.
+- `SshFolderPicker`: choosing a folder on an SSH host the way a local one is chosen. `SshHostField` is the
+  host field: it offers the `Host` aliases Core reads from `~/.ssh/config` and keeps any host typed.
+  `useSshFolders` connects through Core and lists one folder at a time, dropping answers that arrive late.
+  `SshFolderBrowser` shows the folder: the enclosing-folder control and its path as a field, where Enter goes
+  to a typed path (absolute or under `~`, hidden folders too), then its subfolders in a list five rows high,
+  the loading state while the next folder lists, and a failure under the list. The
+  project's workspace dialog uses all three, and any other choice of a remote folder reuses them.
 - `ClearableInput`: the shared controlled single-line field with one trailing clear action. Global and
   library search configure the same focus restoration, icon geometry, and accessible naming.
 - `GenerationControl`: the shared idle, spinning, and hover-to-stop button contract for model-backed
@@ -187,8 +208,8 @@ Current shared contracts:
   and an optional click on a chip to edit it in place; a paper's topics and a project's areas use it.
   `TagChips.css` holds the chip base every row of chips uses: a chip's spacing (`tagchip`), its name
   button (`tagchip-open`) and the relation row with its label (`wkrel`).
-- `paper/PaperCard`: discovery-card composition, actions/notices slots, metadata badges, recommendations,
-  and the shared LaTeX-capable `PaperAbstract`. Inbox and read-later configure the same card.
+- `paper/PaperCard`: the discovery card, a card Item: its actions, notices, metadata badges and
+  recommendations, and the shared LaTeX-capable `PaperAbstract`. Inbox and read-later configure the same card.
 - `paper/PaperText`: every display of a paper title (inline) or abstract (block, through `Markdown`) with
   the LaTeX of arXiv metadata; `plainTitle` is the same title for tooltips, aria labels, breadcrumbs and notices.
 - `paper/PaperUnderstanding`: the reader-facing whole-paper remark and page-linked note summary. It

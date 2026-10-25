@@ -269,7 +269,7 @@ test('设置可重置、切换和删除论文库备份', async ({ configHome, pr
     await win.locator('.setdlg .srow[data-setcat="storage"]').click()
     await expect(win.locator('.storage-backup-row')).toHaveCount(1)
     const switched = win.waitForEvent('domcontentloaded')
-    await win.locator('.storage-backup-actions .btn', { hasText: '切换' }).click()
+    await win.locator('.storage-backup-row .item-trailing .btn', { hasText: '切换' }).click()
     await switched
     await win.locator('.sidebar').waitFor()
     expect(readFileSync(join(root, 'sources', 'papers', 'keep.pdf'), 'utf8')).toBe('source bytes')
@@ -278,7 +278,7 @@ test('设置可重置、切换和删除论文库备份', async ({ configHome, pr
     await openSettings(app, win)
     await win.locator('.setdlg .srow[data-setcat="storage"]').click()
     await expect(win.locator('.storage-backup-row')).toHaveCount(1)
-    await win.locator('.storage-backup-actions .btn', { hasText: '删除' }).click()
+    await win.locator('.storage-backup-row .item-trailing .btn', { hasText: '删除' }).click()
     await expect(win.locator('.modal-detail')).toContainText('永久删除')
     await win.locator('.modal-actions .btn', { hasText: '删除' }).click()
     await expect(win.locator('.storage-backup-row')).toHaveCount(0)

@@ -414,8 +414,7 @@ describe('强调色的字', () => {
 describe('选中、当前、已应用和按下的状态', () => {
   /** The selected states that take the sidebar current row's look: a list's selected row or card, the selected highlight card and an on chip toggle. */
   const SELECTED = [
-    ['shell/AppShell.css', '.srow.on'], ['components/StructuredList.css', '.structured-row--selected'],
-    ['components/ResearchObjectCard.css', '.research-object-card.selected'], ['routes/Reader.css', '.reading-card.selected'],
+    ['shell/AppShell.css', '.srow.on'], ['components/Item.css', '.item--selected'],
     ['components/ChipToggles.css', '.chip-toggle[data-state="on"]'],
   ] as const
 

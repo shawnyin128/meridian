@@ -36,7 +36,7 @@ describe('ResearchMap', () => {
     // Every row draws a 78px box, stacked from the top of its list.
     vi.spyOn(HTMLElement.prototype, 'getClientRects').mockReturnValue([{}] as unknown as DOMRectList)
     vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
-      const rows = [...this.closest('.structured-list')!.querySelectorAll('.structured-row')]
+      const rows = [...this.closest('.list')!.querySelectorAll('.item')]
       return { top: 0, bottom: 78 * (rows.indexOf(this) + 1) } as DOMRect
     })
     const grouped = ['Alpha', 'Bravo', 'Charlie', 'Delta', 'Echo', 'Foxtrot', 'Golf']
@@ -53,7 +53,7 @@ describe('ResearchMap', () => {
 
     const list = host.querySelector<HTMLElement>('.research-map-papers')!
     expect(list.querySelectorAll('.research-map-paper')).toHaveLength(grouped.length)
-    expect(list.classList.contains('structured-list--fill')).toBe(true)
+    expect(list.classList.contains('list--fill')).toBe(true)
     expect(list.style.maxHeight).toBe('')
     expect(host.querySelector('.research-map-index')?.classList.contains('list-column')).toBe(true)
     act(() => root.unmount())
@@ -72,7 +72,7 @@ describe('ResearchMap', () => {
       </MessagesProvider>,
     )
     const faded = (selector: string) => [...host.querySelectorAll(`${selector} .fade-text:not(.tag-text, .read-dots)`)].map((line) => line.textContent)
-    expect(faded('.research-map-group-copy')).toEqual(['Speculative decoding'])
+    expect(faded('.research-map-group .item-main')).toEqual(['Speculative decoding'])
     expect(faded('.research-map-detail-head')).toEqual(['Speculative decoding'])
     expect(faded('.research-map-paper')).toEqual([title, '主题：Speculative decoding', 'Bravo', '主题：Speculative decoding'])
     expect([...host.querySelectorAll('.research-map-group-name, .research-map-detail-name')].every((name) => name.matches('.fade-text')))
@@ -97,7 +97,7 @@ describe('ResearchMap', () => {
     const kinds = [...host.querySelectorAll('.research-map-group')]
       .map((group) => [
         group.querySelector('.research-map-group-name')?.textContent,
-        group.querySelector('.research-map-group-copy>span:not(.research-map-group-name, .read-dots)')?.textContent ?? null,
+        group.querySelector('.research-map-group-kind')?.textContent ?? null,
       ])
     expect(kinds).toContainEqual(['Speculative decoding', '主题或方法信号'])
     expect(kinds).toContainEqual(['Kernel fusion', null])
@@ -209,7 +209,7 @@ describe('ResearchMap', () => {
       </MessagesProvider>,
     )
     const lines = [...host.querySelectorAll('.research-map-groups')[0]!.querySelectorAll('.research-map-group')].map((group) => {
-      const line = group.querySelector('.research-map-group-copy>.research-map-group-name+.read-dots')
+      const line = group.querySelector('.item-title:has(>.research-map-group-name)+.item-meta>.read-dots:first-child')
       return [
         group.querySelector('.research-map-group-name')?.textContent, line?.getAttribute('aria-label'), line?.textContent,
         [...line?.children ?? []].map((dot) => /status-dot--(half|ring)/.exec(dot.className)?.[1] ?? 'full'),
