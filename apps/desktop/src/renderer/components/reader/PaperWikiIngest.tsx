@@ -360,13 +360,13 @@ export function PaperWikiIngest({ paper, reading, onJump, edits }: {
             {proposal.review === undefined
               ? (
                 <>
-                  <SectionHeading variant="rail">{m.wiki.ingest.reviewHeading}</SectionHeading>
+                  <SectionHeading level="group">{m.wiki.ingest.reviewHeading}</SectionHeading>
                   {reviewCard(proposal, 'markdown')}
                 </>
               )
               : (
                 <TabbedSection
-                  variant="rail" heading={m.wiki.ingest.reviewHeading} label={m.wiki.ingest.reviewViewLabel}
+                  level="group" heading={m.wiki.ingest.reviewHeading} label={m.wiki.ingest.reviewViewLabel}
                   value={reviewMode} onChange={setReviewMode}
                   tabs={reviewModes(m).map((mode) => ({ ...mode, content: reviewCard(proposal, mode.value) }))}
                 />

@@ -4,8 +4,8 @@ import type {
 import { useMessages } from '../../messages/useMessages.js'
 import type { Catalog } from '../../messages/catalog.js'
 import { EmptyState } from '../EmptyState.js'
-import { HeadingCount } from '../HeadingCount.js'
 import { InlineMessage } from '../InlineMessage.js'
+import { SectionHeading } from '../PageShell.js'
 import { SourceAnchor } from '../SourceAnchor.js'
 import { StructuredList, StructuredRow } from '../StructuredList.js'
 import { Tag } from '../Tag.js'
@@ -139,9 +139,7 @@ export function PaperWikiProposalReview({ review, quality, onJump }: {
         const words = named[section.id] ?? { title: section.title, empty: section.emptyLabel }
         return (
           <section className="paper-wiki-review-section" key={section.id}>
-            <div className="paper-wiki-review-section-head">
-              <h4>{words.title}<HeadingCount count={section.groups.length} /></h4>
-            </div>
+            <SectionHeading level="group" count={section.groups.length}>{words.title}</SectionHeading>
             {section.groups.length === 0 ? (
               <EmptyState variant="section">{words.empty}</EmptyState>
             ) : (

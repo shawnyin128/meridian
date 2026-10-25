@@ -497,9 +497,9 @@ describe('Settings', () => {
       .toContain('在 Coding Agent 中使用 Meridian')
     // The first row is the plugin version the skills and MCP share, not the app's own version.
     const pluginRow = dialog.querySelector('[data-plugin-version="0.0.1"]')!
-    expect(pluginRow.querySelector('.section-heading--group')?.textContent).toBe('Meridian Plugin')
+    expect(pluginRow.querySelector('.section-heading--group > span')?.firstChild?.textContent).toBe('Meridian Plugin')
     expect(pluginRow.querySelector('.extension-state')?.textContent).toBe('最新 0.0.1')
-    expect(pluginRow.querySelector('p')?.textContent).toContain('还没联网检查过')
+    expect(pluginRow.querySelector('.section-heading-meta')?.textContent).toContain('还没联网检查过')
     api.pluginVersion.mockResolvedValueOnce({ version: '0.0.2', checkedAt: '2026-09-22T08:00:00.000Z' })
     await act(async () => {
       pluginRow.querySelector<HTMLButtonElement>('button')!.click()
@@ -507,7 +507,7 @@ describe('Settings', () => {
     expect(api.checkLatest).toHaveBeenCalledOnce()
     const checked = dialog.querySelector('[data-plugin-version="0.0.2"]')!
     expect(checked.querySelector('.extension-state')?.textContent).toBe('最新 0.0.2')
-    expect(checked.querySelector('p')?.textContent).toContain('上次检查')
+    expect(checked.querySelector('.section-heading-meta')?.textContent).toContain('上次检查')
 
     await act(async () => {
       dialog.querySelector<HTMLButtonElement>('[aria-label="复制 Claude Code 安装命令"]')!.click()
@@ -800,7 +800,7 @@ describe('Settings', () => {
       api.requestedCategory = category
       await act(async () => { root.render(<MessagesProvider key={category}><Settings /></MessagesProvider>) })
       const pane = document.querySelector('.setdlg .set-main')!
-      expect([...pane.querySelectorAll('.settings-intro, .storage-head p, .storage-note')].map((p) => p.textContent), category)
+      expect([...pane.querySelectorAll('.settings-intro, .storage-card .section-heading + p, .storage-note')].map((p) => p.textContent), category)
         .toEqual([])
     }
   })
@@ -1259,14 +1259,14 @@ describe('Settings', () => {
     const dialog = document.querySelector('.setdlg')!
     for (const provider of ['OpenAI', 'Anthropic', 'Google Gemini', 'OpenAI 兼容 API']) {
       await pick(dialog, '模型服务', provider)
-      expect([dialog.querySelector('.service-status-head strong')?.textContent, dialog.querySelector('.service-status-head p')])
+      expect([dialog.querySelector('.service-card .section-heading')?.firstChild?.textContent, dialog.querySelector('.service-card .section-heading-meta')])
         .toEqual([provider, null])
     }
     expect(dialog.querySelector('.model-template-help')).toBeNull()
 
     api.requestedCategory = 'research'
     await act(async () => { root.render(<MessagesProvider key="research"><Settings /></MessagesProvider>) })
-    expect(document.querySelector('.setdlg .service-status-head p')?.textContent).toBe('申请 key')
+    expect(document.querySelector('.setdlg .service-card .section-heading-meta')?.textContent).toBe('申请 key')
   })
 
   it('常用模板只要求用户填写模型 ID 和需要的密钥', async () => {

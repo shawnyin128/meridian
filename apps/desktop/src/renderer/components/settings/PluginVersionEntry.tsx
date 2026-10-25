@@ -24,16 +24,16 @@ export function PluginVersionEntry({ plugin, checking, onCheck }: PluginVersionE
   const checked = plugin.checkedAt === null ? copy.neverChecked : copy.checkedAt(fmt.date(localDay(plugin.checkedAt)))
   return (
     <section className="extension-entry" data-plugin-version={plugin.version}>
-      <div className="extension-head">
-        <div>
-          <SectionHeading variant="group">{copy.name}</SectionHeading>
-          <p>{checked}</p>
-        </div>
-        <div className="extension-head-side">
-          <Tag className="extension-state">{copy.latest(plugin.version)}</Tag>
-          <Button size="compact" busy={checking} busyLabel={copy.checking} onClick={onCheck}>{copy.check}</Button>
-        </div>
-      </div>
+      <SectionHeading
+        level="group" meta={checked}
+        actions={(
+          <>
+            <Tag className="extension-state">{copy.latest(plugin.version)}</Tag>
+            <Button size="compact" busy={checking} busyLabel={copy.checking} onClick={onCheck}>{copy.check}</Button>
+          </>
+        )}
+      >{copy.name}
+      </SectionHeading>
     </section>
   )
 }

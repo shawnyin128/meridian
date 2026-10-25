@@ -41,12 +41,12 @@ const SHEETS = [
  */
 const MARKUP = `
 <div class="desk"><div class="desk-head"><span class="t" id="t">垃圾桶 · 5</span></div><div class="desk-body">
-  <div class="section-heading section-heading--page" id="section">论文推送 · 1</div>
+  <div class="section-heading section-heading--section" id="section">论文推送 · 1</div>
   <div class="section-heading section-heading--group" id="group">论文库</div>
-  <div class="section-heading section-heading--rail" id="rail">属性</div>
+  <div class="section-heading section-heading--group" id="rail">属性</div>
   <section class="collapsible-group"><div class="collapsible-group-head"><button class="collapsible-group-toggle" id="fold">主题 · speculative decoding</button></div></section>
   <section class="collapsible-group collapsible-group--quiet"><div class="collapsible-group-head"><button class="collapsible-group-toggle" id="quiet">已归档 · 2</button></div></section>
-  <div class="section-heading section-heading--rail node-document-head"><span class="node-document-title" id="panel">基线：独立草稿模型</span></div>
+  <div class="section-heading section-heading--group node-document-head"><span class="node-document-title" id="panel">基线：独立草稿模型</span></div>
   <div class="pd-h"><span class="pd-t" id="paper-detail">QuIP#: Even Better LLM Quantization</span></div>
   <article class="paper-card"><div class="paper-card-heading"><h3 id="paper-card">Acceptance Is Not Speed</h3></div>
     <section class="paper-card-section"><div class="paper-card-label" id="card-label">摘要</div></section></article>

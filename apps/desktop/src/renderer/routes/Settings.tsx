@@ -260,12 +260,10 @@ export function Settings() {
     storage: (
       <>
         <Card className="storage-card">
-          <div className="storage-head">
-            <div>
-              <SectionHeading variant="group">{m.settings.storage.libraryTitle}</SectionHeading>
-            </div>
-            {location === null ? null : <Tag>{m.settings.storage.source[location.source]}</Tag>}
-          </div>
+          <SectionHeading
+            level="group" actions={location === null ? undefined : <Tag>{m.settings.storage.source[location.source]}</Tag>}
+          >{m.settings.storage.libraryTitle}
+          </SectionHeading>
           {location === null
             ? (storageFailure('location') === null
               ? <LoadingPlaceholder shape="lines" count={2} />

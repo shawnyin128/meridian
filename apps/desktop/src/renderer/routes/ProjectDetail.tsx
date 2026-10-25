@@ -1074,7 +1074,7 @@ export function ProjectDetail({
               : node === undefined
               ? (
                 <>
-                  <SectionHeading variant="rail">{m.project.identity.heading}</SectionHeading>
+                  <SectionHeading level="group">{m.project.identity.heading}</SectionHeading>
                   <div className="wkprops">
                     <div className="pk">{m.project.identity.typeLabel}</div>
                     <div className="pv">{m.project.identity.typeValue}</div>
@@ -1209,7 +1209,7 @@ export function ProjectDetail({
                   </div>
 
                   <SectionHeading
-                    variant="rail"
+                    level="group"
                     actions={(
                       // The demo's relAdd guard: an open placeholder is only refocused, keeping what was typed.
                       <AddAction

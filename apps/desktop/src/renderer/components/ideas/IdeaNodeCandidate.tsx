@@ -20,7 +20,7 @@ export function IdeaNodeCandidate({ node, onConfirm, onDismiss }: {
   return (
     <>
       <SectionHeading
-        variant="rail"
+        level="group"
         actions={(
           <>
             <Button size="compact" onClick={onDismiss}>{m.ideas.candidate.dismiss}</Button>

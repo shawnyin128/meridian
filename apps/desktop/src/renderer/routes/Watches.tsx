@@ -64,7 +64,7 @@ function WatchGroup({ type, watches, failed, add, editor, onOpen, onEdit, onSetA
   return (
     <>
       <SectionHeading
-        variant="group"
+        level="group"
         actions={<AddAction size="compact" ref={add} label={m.watches.add(m.shell.watchKind[type])} onClick={onOpen}>{m.shell.watchKind[type]}</AddAction>}
       >{m.shell.watchKind[type]}
       </SectionHeading>
@@ -479,8 +479,8 @@ export function WatchSettings() {
         />
       ))}
 
+      <SectionHeading>{m.watches.suggestHeading}</SectionHeading>
       <section className="watch-suggestions">
-        <div className="af-h">{m.watches.suggestHeading}</div>
         <SegmentedControl
           className="watch-suggestion-source" label={m.watches.sourceLabel} value={suggestionSource}
           options={[

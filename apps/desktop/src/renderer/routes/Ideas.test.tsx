@@ -435,7 +435,7 @@ describe('Ideas', () => {
     const detail = host.querySelector('.idea-detail-panel')!
     expect(detail.querySelector('.idea-panel-head .node-document-title')!.textContent)
       .toBe('用可学习性信号动态分配 draft model 的蒸馏预算')
-    expect([...detail.querySelectorAll('.section-heading--rail')].map((heading) => heading.textContent))
+    expect([...detail.querySelectorAll('.section-heading--group')].map((heading) => heading.textContent))
       .toEqual(['用可学习性信号动态分配 draft model 的蒸馏预算编辑', '内容', '关联关联', '所在项目打开项目', '来源打开来源对话'])
     expect(detail.textContent).toContain('只对 disagreement 高且可学习的 token 加大蒸馏权重。')
     const edit = [...detail.querySelectorAll<HTMLButtonElement>('button')]

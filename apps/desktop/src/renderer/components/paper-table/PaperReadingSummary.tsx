@@ -46,7 +46,7 @@ export function PaperReadingSummary({ paper, onRead, onConclusions }: {
           ? paper.conclusionCount
           : <EntityLink kind="page" label={paper.conclusionCount} onOpen={onConclusions} />}</dd>
       </dl>
-      <SectionHeading variant="rail">{m.papers.reading.remarkAndNotes}</SectionHeading>
+      <SectionHeading level="group">{m.papers.reading.remarkAndNotes}</SectionHeading>
       <PageError error={error} />
       {held === null
         ? (error === null ? <LoadingPlaceholder shape="rows" count={2} /> : null)

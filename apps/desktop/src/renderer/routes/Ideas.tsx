@@ -317,7 +317,7 @@ function IdeaDetailPanel({
           onOpenProject={(projectId) => onOpen('project', projectId)} onOpenPage={(page) => onOpen('wiki', page)}
         />
         <SectionHeading
-          variant="rail"
+          level="group"
           actions={idea.project === undefined
             ? <Button size="compact" onClick={onPromote}>{m.ideas.promote.action}</Button>
             : linked === undefined

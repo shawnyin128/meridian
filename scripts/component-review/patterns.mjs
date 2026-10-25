@@ -108,16 +108,13 @@ export const PATTERNS = {
     metrics: 'heading',
     entries: [
       entry('shared:SectionHeading', '.section-heading', { not: `.section-heading--group, .node-document-head, .section-heading:has(+ .tabbed-section-panel), ${GROUPED_SECTIONS}` }),
-      entry('shared:ServiceStatus', '.service-status-head'),
-      entry('hand:components/settings/ExtensionSettings.tsx', '.extension-head'),
-      entry('hand:routes/Watches.tsx', '.af-h'),
       entry('hand:routes/Wiki.tsx', '.coledit .ch'),
     ],
   },
   GroupHeading: {
     metrics: 'heading',
     entries: [
-      entry('shared:SectionHeading', '.section-heading--group'),
+      entry('shared:SectionHeading', '.section-heading--group', { not: '.node-document-head' }),
       entry('shared:SectionHeading', GROUPED_SECTIONS),
       entry('shared:DayHeading', '.day-heading', { parts: { count: '.count-badge' } }),
       entry('hand:shell/SearchBox.tsx', '.pickhits .rh'),

@@ -13,16 +13,18 @@
 .page-toolbar{display:flex;align-items:flex-end;gap:var(--sp-8);min-height:28px;margin:0 0 var(--sp-14)}
 .page-toolbar+.section-heading{margin-top:0;padding-top:0;border-top:0}
 
-.section-heading{display:flex;align-items:center;gap:var(--sp-10);font-size:var(--fs-section);font-weight:var(--fw-title);color:var(--ink);
+/* The heading sets its own line height, so the reading typography of a page around it never reaches it. */
+.section-heading{display:flex;align-items:center;gap:var(--sp-10);font-size:var(--fs-section);font-weight:var(--fw-title);color:var(--ink);line-height:var(--lh-ui);
   margin:var(--section-gap) 0 var(--sp-10);padding-top:var(--sp-16);border-top:1px solid var(--sep2)}
 .section-heading:first-child{margin-top:0;padding-top:0;border-top:0}
-/* A group inside a section or a card sits under its section's rule, a step smaller. */
+/* A group sits under its section's rule, a step smaller. */
 .section-heading--group{font-size:var(--fs-group);margin:var(--sp-20) 0 var(--sp-8);padding-top:0;border-top:0}
-.section-heading--group:first-child{margin-top:0}
-/* The right rail is narrower: no rule above it and a smaller step. */
-.section-heading--rail{font-size:var(--fs-group);margin:var(--sp-20) 0 var(--sp-8);padding-top:0;border-top:0}
-.section-heading--rail:first-child{margin-top:0}
-.section-heading-actions{display:flex;flex:none;align-items:center;gap:var(--sp-8);margin-left:auto;font-weight:var(--fw-regular)}
+/*
+ * The actions take one line of the heading, and a compact control in them overhangs that line
+ * evenly, so a heading with actions is as tall as one without.
+ */
+.section-heading-actions{display:flex;flex:none;align-items:center;gap:var(--sp-8);height:1lh;margin-left:auto;font-weight:var(--fw-regular)}
+.section-heading-meta{margin-left:var(--sp-8);color:var(--ter);font-size:var(--fs-meta);font-weight:var(--fw-regular)}
 
 .page-error{margin:0 var(--sp-16) var(--sp-12)}
 

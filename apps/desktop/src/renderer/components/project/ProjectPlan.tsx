@@ -266,7 +266,7 @@ export function ProjectTaskPanel({
   return (
     <>
       <SectionHeading
-        variant="rail" className="node-document-head"
+        level="group" className="node-document-head"
         actions={<PanelClose onClose={onClose} />}
       ><FadeText className="node-document-title" label={task.title}>{task.title}</FadeText>
       </SectionHeading>
@@ -278,7 +278,7 @@ export function ProjectTaskPanel({
       </div>
       <NodeAssignment node={node} nodes={nodes} canUnlink={handSet} onOpen={onOpenNode} onSet={onSetNode} />
       <SectionHeading
-        variant="rail"
+        level="group"
         actions={(
           <EditActions editing={note.editing} canSave={!note.stale} onEdit={note.start} onCancel={note.drop} onSave={save} />
         )}

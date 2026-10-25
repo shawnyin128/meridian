@@ -22,9 +22,9 @@ describe('标题的计数', () => {
     const html = (node: ReactNode) => renderToStaticMarkup(node)
     expect(html(<PageTitle count={7}>垃圾桶</PageTitle>)).toContain(`>垃圾桶${COUNT}</span>`)
     expect(html(<SectionHeading count={7}>对话</SectionHeading>))
-      .toBe(`<div class="section-heading section-heading--page"><span>对话${COUNT}</span></div>`)
-    expect(html(<SectionHeading variant="rail" count={7} actions={<button>新增</button>}>任务</SectionHeading>))
-      .toBe(`<div class="section-heading section-heading--rail"><span>任务${COUNT}</span><div class="section-heading-actions"><button>新增</button></div></div>`)
+      .toBe(`<div class="section-heading section-heading--section"><span>对话${COUNT}</span></div>`)
+    expect(html(<SectionHeading level="group" count={7} actions={<button>新增</button>}>任务</SectionHeading>))
+      .toBe(`<div class="section-heading section-heading--group"><span>任务${COUNT}</span><div class="section-heading-actions"><button>新增</button></div></div>`)
     expect(html(<CollapsibleGroup title="已归档" count={7} open onToggle={vi.fn()}>内容</CollapsibleGroup>))
       .toContain(`<span class="collapsible-group-title">已归档</span>${COUNT}`)
     expect(html(<DayHeading count={7}>今天</DayHeading>)).toBe(`<div class="day-heading">今天${COUNT}</div>`)
@@ -33,7 +33,7 @@ describe('标题的计数', () => {
   })
 
   it('没有计数的标题不写 ·', () => {
-    expect(renderToStaticMarkup(<SectionHeading>对话</SectionHeading>)).toBe('<div class="section-heading section-heading--page">对话</div>')
+    expect(renderToStaticMarkup(<SectionHeading>对话</SectionHeading>)).toBe('<div class="section-heading section-heading--section">对话</div>')
     expect(renderToStaticMarkup(<PageTitle>论文</PageTitle>)).not.toContain('heading-count')
     expect(renderToStaticMarkup(<DayHeading>昨天</DayHeading>)).toBe('<div class="day-heading">昨天</div>')
   })

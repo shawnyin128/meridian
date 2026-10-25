@@ -77,7 +77,7 @@ export function IdeaRelations({ idea, projects, pages, onChange, onOpenProject, 
   return (
     <>
       <SectionHeading
-        variant="rail"
+        level="group"
         actions={(
           <AddAction
             size="compact" ref={add} label={m.project.links.addTitle}
