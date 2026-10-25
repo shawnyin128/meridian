@@ -2132,6 +2132,9 @@ export const ChatSendResultSchema = z.object({
 }).strict()
 
 export const ChatCancelParamsSchema = z.object({ id: z.string() }).strict()
+
+/** Asks again for an answer to a chat's last question, after its turn got none; answers a ChatSendResult. */
+export const ChatRetryParamsSchema = z.object({ id: z.string() }).strict()
 export const ChatCancelResultSchema = z.object({ id: z.string(), cancelled: z.boolean() }).strict()
 
 /**
@@ -2744,6 +2747,7 @@ export const CONTRACT_METHODS = [
   'chat.forPaper',
   'chat.append',
   'chat.send',
+  'chat.retry',
   'chat.cancel',
   'idea.list',
   'idea.create',

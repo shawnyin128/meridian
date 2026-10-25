@@ -272,6 +272,8 @@ export const chat = {
     call<void>('chat.append', { id, messages }),
   /** Sends what the user wrote in `runs`, each mention as a run of its own. */
   send: (id: string, runs: ChatRun[]) => call<ChatSendResult>('chat.send', { id, runs }),
+  /** Asks again for an answer to the chat's last question after its turn ended in a status line. */
+  retry: (id: string) => call<ChatSendResult>('chat.retry', { id }),
   cancel: (id: string) => call<ChatCancelResult>('chat.cancel', { id }),
   recordAction: (id: string, messageId: string) =>
     call<ProjectDetail>('chat.recordAction', { id, messageId }),

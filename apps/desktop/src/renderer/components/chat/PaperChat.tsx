@@ -6,7 +6,7 @@ import {
   useJump, useNotice, usePaperChatCollapsed, usePaperChatGrip, useVaultRevision,
 } from '../../shell/AppShell.js'
 import { GripTooltip } from '../../shell/GripTooltip.js'
-import { ChatMessageView } from './ChatMessage.js'
+import { ChatMessageView, endsUnanswered } from './ChatMessage.js'
 import { ChatComposer, draftText, type ChatComposerHandle } from './ChatComposer.js'
 import { BackButton } from '../BackButton.js'
 import { Grip } from '../Grip.js'
@@ -15,6 +15,7 @@ import { FadeText } from '../FadeText.js'
 import { LoadingPlaceholder } from '../LoadingPlaceholder.js'
 import { PageError } from '../PageShell.js'
 import { useDrafts } from '../../hooks/useDrafts.js'
+import { useChatTurn } from '../../hooks/useChatTurn.js'
 import { useGenerations } from '../../hooks/useGenerations.js'
 import { useFollowEnd } from '../../hooks/useFollowEnd.js'
 import { useNoModelChats } from '../../hooks/useNoModelChats.js'
@@ -55,8 +56,9 @@ export function PaperChat({ paper, onBack = () => {}, prompt = null }: {
   const drafts = useDrafts<ChatRun[]>(['paper', paper?.id ?? ''])
   const ideaDrafts = useDrafts<IdeaDraftText>(['paper', paper?.id ?? ''])
   const ideaAt = useRef<HTMLDivElement>(null)
-  const { running, run, stop } = useGenerations()
+  const { running, stop } = useGenerations()
   const { noModel, track } = useNoModelChats()
+  const turn = useChatTurn(track)
   const { error, load } = useScreenLoad()
   const streamFade = useScrollFade('y')
   const { ref: followRef, follow } = useFollowEnd<HTMLDivElement>()
@@ -104,7 +106,7 @@ export function PaperChat({ paper, onBack = () => {}, prompt = null }: {
     if (draftText(draft).trim() === '' || paperId === null || session === null || sending) return
     drafts.drop('chat-message')
     follow()
-    void run(write(track(session.id, chat.send(session.id, draft))))
+    void turn.send(session.id, draft)
   }
 
   const stopSending = () => {
@@ -142,13 +144,18 @@ export function PaperChat({ paper, onBack = () => {}, prompt = null }: {
         </FadeText>
       </header>
       <PageError error={error} />
-      <div className="msgs" ref={stream}>
+      <div className="msgs" ref={stream} role="log" aria-label={m.chat.messagesLabel}>
         {messages === null
           ? (error === null ? <div className="mwrap"><LoadingPlaceholder shape="lines" /></div> : null)
           : messages.length === 0 && error === null
           ? <div className="mwrap"><EmptyState variant="page">{m.chat.empty}</EmptyState></div>
-          : messages.map((message) => (
-            <ChatMessageView key={message.id} message={message} onAct={() => act(message)} />
+          : messages.map((message, at) => (
+            <ChatMessageView
+              key={message.id} message={message} onAct={() => act(message)}
+              onRetry={session !== null && !sending && at === messages.length - 1 && endsUnanswered(messages)
+                ? () => { follow(); void turn.retry(session.id) }
+                : undefined}
+            />
           ))}
         {session === null || paper === null || ideaDraft === undefined
           ? null

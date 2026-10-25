@@ -11,7 +11,7 @@ import { dnum } from '../../shared/dates.js'
 import { useFormat, type Format } from '../lib/format.js'
 import { useMessages } from '../messages/useMessages.js'
 import type { Catalog } from '../messages/catalog.js'
-import { ChatMessageView } from '../components/chat/ChatMessage.js'
+import { ChatMessageView, endsUnanswered } from '../components/chat/ChatMessage.js'
 import {
   ChatComposer, draftText, type ChatComposerHandle, type MentionCandidate,
 } from '../components/chat/ChatComposer.js'
@@ -23,6 +23,7 @@ import {
 } from '../components/PageShell.js'
 import { useDrafts } from '../hooks/useDrafts.js'
 import { useFollowEnd } from '../hooks/useFollowEnd.js'
+import { useChatTurn } from '../hooks/useChatTurn.js'
 import { useGenerations } from '../hooks/useGenerations.js'
 import { useNoModelChats } from '../hooks/useNoModelChats.js'
 import { useJumpOrigin } from '../hooks/useJumpOrigin.js'
@@ -93,7 +94,7 @@ export function Chat() {
   const drafts = useDrafts<ChatRun[]>(['chat', id ?? ''])
   const ideaDrafts = useDrafts<IdeaDraftText>(['chat', id ?? ''])
   const ideaAt = useRef<HTMLDivElement>(null)
-  const { running, run, stop } = useGenerations()
+  const { running, stop } = useGenerations()
   const { noModel, track } = useNoModelChats()
   const [projects, setProjects] = useState<ProjectSummary[]>([])
   const [rows, setRows] = useState<PaperRow[]>([])
@@ -124,10 +125,11 @@ export function Chat() {
   // Empty until the vault data arrives, after which an `@` already typed opens the picker by itself.
   const mentions = useMemo(() => mentionsOf(projects, rows, pages, fmt, m), [projects, rows, pages, fmt, m])
 
+  const turn = useChatTurn(track)
   const send = useCallback((session: string, runs: ChatRun[]) => {
     follow()
-    return run(write(track(session, chat.send(session, runs))))
-  }, [follow, run, write, track])
+    return turn.send(session, runs)
+  }, [follow, turn])
 
   const stopSending = () => {
     if (id !== null) stop(id)
@@ -192,13 +194,18 @@ export function Chat() {
         <div className="stream">
           <PageError error={error} />
 
-          <div className="msgs">
+          <div className="msgs" role="log" aria-label={m.chat.messagesLabel}>
             {messages === null
               ? (id !== null && error === null ? <div className="mwrap"><LoadingPlaceholder shape="lines" /></div> : null)
               : messages.length === 0
                 ? <div className="mwrap"><EmptyState variant="page">{m.chat.empty}</EmptyState></div>
-                : messages.map((msg) => (
-                  <ChatMessageView key={msg.id} message={msg} onAct={() => act(msg)} />
+                : messages.map((msg, at) => (
+                  <ChatMessageView
+                    key={msg.id} message={msg} onAct={() => act(msg)}
+                    onRetry={id !== null && !sending && at === messages.length - 1 && endsUnanswered(messages)
+                      ? () => { follow(); void turn.retry(id) }
+                      : undefined}
+                  />
                 ))}
             {id === null || ideaDraft === undefined
               ? null
