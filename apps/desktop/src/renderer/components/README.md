@@ -47,7 +47,7 @@ Current shared contracts:
   candidates, a `tall` list or a `wide` results panel. `PickOption` is the one candidate row: menu
   item anatomy, lit only as the active row, and the row under the pointer is it.
 - `ActionMenu` and `ActionPopover`: the two shared interactive-surface shells. Menus own action and
-  radio-item semantics, and radio and checkbox items draw the one checked mark themselves; popovers
+  radio-item semantics, and radio and checkbox items draw the one checked mark themselves, in `--accent-mark`; popovers
   retain normal focus for calendars, configuration forms and the reader's selection toolbar, which a
   popover places against a box it measures (`anchorBox`). Routes provide triggers, contents, and
   capability flags instead of assembling Radix roots and portals. Every menu and popover keeps
@@ -75,12 +75,13 @@ Current shared contracts:
   Enter/Escape, async acceptance, and optional deletion.
 - `StructuredList`: list shell and actionable/static row semantics; routes only supply columns and cells.
   A row that holds controls of its own is `composite`: it stays a div that forwards pointer clicks, and
-  its children carry the keyboard-accessible control, so a button is never nested inside a button.
+  its children carry the keyboard-accessible control, so a button is never nested inside a button. A
+  `selected` row takes the one selected look, the sidebar's current row's: `--accent-soft` with `--accent-text`.
 - `NavRow`: the one row of a navigation list, the sidebar's and the Settings categories'. It is a button,
   or, when it holds controls of its own, a div whose label is the button; the row's class gives the look.
 - `SegmentedControl`: the only switch between peer views in the app, including the timeline scale: a track of
-  equal segments with a raised thumb that slides to the picked one, radio-group semantics, and one Tab stop
-  with arrow keys inside. The `.fchip` and `.segbtn` pill rows are retired.
+  equal segments with a raised thumb that slides to the picked one, whose label is in `--accent-text`,
+  radio-group semantics, and one Tab stop with arrow keys inside. The `.fchip` and `.segbtn` pill rows are retired.
 - `TabbedSection`: the one section whose content switches between peer tabs: its heading, its `SegmentedControl`
   first in the heading's actions slot and then the section's own actions, and the picked tab's panel. A tab with
   nothing shows its sentence as the section `EmptyState`; that state and every row of the list a tab shows are
@@ -92,7 +93,7 @@ Current shared contracts:
   menu, popover or dialog opened from a toolbar keeps its controls out of it. `ToggleGroup` is the group that
   picks a value, on its own or inside a toolbar. A paper row, the row-actions slot and the rating stars use them.
 - `ChipToggles`: a multi-select of short values as chips that each turn on or off, with the same one Tab
-  stop and arrow keys. A choice among many values is a menu picker, not a segment per value.
+  stop and arrow keys. An on chip takes the one selected look. A choice among many values is a menu picker, not a segment per value.
 - `Swatches`: the one row of colour circles that picks a colour, the theme editor's presets and the reader's
   highlight colours. A picked circle wears the neutral picked ring, never the accent.
 - `Switch`: a binary setting that takes effect as soon as it flips. Its name stays the same in both states;
@@ -153,7 +154,7 @@ Current shared contracts:
   a pinch or a Ctrl- or ⌘-scroll zooms about the pointer, and every other scroll scrolls the page.
 - `ResearchObjectCard`: one list-card shell for first-class research objects such as projects and ideas;
   routes provide their domain-specific identity and metadata without redefining width, spacing, borders,
-  selection, management-menu visibility, or keyboard activation.
+  selection, management-menu visibility, or keyboard activation. A selected card takes the one selected look.
 - `FormInput`, `FormTextarea`, and `FormSelect`: the one field, in two appearances: `field`, the boxed field
   of forms, dialogs, popovers and filters (the default), and `inline`, which edits a value in the place of its
   text in a row, cell or property list. Both share one edge, fill, radius and the one focus rule in
@@ -164,9 +165,11 @@ Current shared contracts:
 - `GenerationControl`: the shared idle, spinning, and hover-to-stop button contract for model-backed
   actions. Chat composers and Wiki Harness generation do not define independent running animations.
 - `RunningRing` (in `icons`): the one running indicator, `DownloadRing` without a total, turning once per
-  `--t-spin` in the colour of the text around it. GenerationControl, Button and About use it; on a
+  `--t-spin` in `--accent-mark`. GenerationControl, Button and About use it; on a
   solid accent fill (a primary button, the composer's send) it turns in the fill's ink, by its own rule in
   `icons.css`, and a running job is never drawn in a danger tone.
+- `ProgressFill`: the one progress presentation, a 2px `--accent-mark` line on a `--track` groove along its
+  host's bottom edge, filled to the progress. ParseProgress and InlineMessage host it.
 - `CardTray`: progressive disclosure for secondary card details. It keeps a one-line summary visible,
   expands details below the host without moving its primary identity, and owns the shared animation,
   keyboard semantics, and reduced-motion behavior.
