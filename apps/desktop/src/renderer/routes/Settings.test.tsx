@@ -1430,11 +1430,8 @@ describe('Settings', () => {
     expect(api.updateSubscription).toHaveBeenCalledWith({ cli: 'codex', model: 'gpt-5-codex' })
   })
 
-  it.each([
-    [{ state: 'missing' }, 'inline-message--warning', '没有找到'],
-    [{ state: 'unsupported', version: '0.1.0' }, 'inline-message--warning', '0.1.0 · 版本不受支持'],
-  ] as const)('CLI 是 %o 时 CLI 一行是一条提醒行，没有登录一行', async (status, tone, text) => {
-    api.subscriptionStatus.mockResolvedValueOnce(status)
+  it('没有找到 CLI 时 CLI 一行是一条提醒行，没有登录一行', async () => {
+    api.subscriptionStatus.mockResolvedValueOnce({ state: 'missing' })
     api.requestedCategory = 'model'
     await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
     const dialog = document.querySelector('.setdlg')!
@@ -1442,13 +1439,26 @@ describe('Settings', () => {
     await pick(dialog, '模型服务', 'Claude 订阅')
 
     const line = dialog.querySelector('.model-settings-card .field-row .inline-message')
-    expect([line?.classList.contains('inline-message--line'), line?.classList.contains(tone), line?.textContent]).toEqual([true, true, text])
+    expect([line?.classList.contains('inline-message--line'), line?.classList.contains('inline-message--warning'), line?.textContent])
+      .toEqual([true, true, '没有找到'])
     expect(modelRows(dialog).map(([label]) => label)).toEqual(['模型服务', 'CLI', '模型 ID'])
+  })
+
+  it('读不出 CLI 的版本时 CLI 一行只写它的名字', async () => {
+    api.subscriptionStatus.mockResolvedValueOnce({ state: 'found', version: null, signIn: 'subscription' })
+    api.requestedCategory = 'model'
+    await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
+    const dialog = document.querySelector('.setdlg')!
+
+    await pick(dialog, '模型服务', 'ChatGPT 订阅')
+
+    expect(modelRows(dialog)[1]).toEqual(['CLI', 'Codex'])
   })
 
   it.each([
     ['signed-out', '未登录'],
     ['other', '未用订阅登录'],
+    ['unknown', '读不出登录状态'],
   ] as const)('CLI 登录方式是 %s 时登录一行是提醒色的标签', async (signIn, text) => {
     api.subscriptionStatus.mockResolvedValueOnce({ state: 'found', version: '2.1.3', signIn })
     api.requestedCategory = 'model'

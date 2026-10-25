@@ -896,17 +896,17 @@ export const HarnessUpdateSubscriptionParamsSchema = z.object({
 export const HarnessSubscriptionStatusParamsSchema = z.object({ cli: HarnessCliSchema }).strict()
 
 /**
- * What Core finds of one subscription CLI on this machine: not installed, installed in a version
- * Meridian cannot run, or runnable and signed in with a subscription, in another way such as an API
- * key, or not at all.
+ * What Core finds of one subscription CLI on this machine: not installed, or installed in `version`
+ * (null when it cannot be read) and signed in with a subscription, in another way such as an API
+ * key, not at all, or in a way that cannot be read. Whether that version can run the model is the
+ * connection check's to say.
  */
 export const HarnessSubscriptionStatusSchema = z.discriminatedUnion('state', [
   z.object({ state: z.literal('missing') }).strict(),
-  z.object({ state: z.literal('unsupported'), version: z.string().min(1).max(100) }).strict(),
   z.object({
     state: z.literal('found'),
-    version: z.string().min(1).max(100),
-    signIn: z.enum(['subscription', 'other', 'signed-out']),
+    version: z.string().min(1).max(100).nullable(),
+    signIn: z.enum(['subscription', 'other', 'signed-out', 'unknown']),
   }).strict(),
 ])
 
@@ -936,10 +936,6 @@ export const HarnessModelConnectionFailureSchema = z.enum([
   'timeout',
   'unavailable',
   'provider',
-  'cli-missing',
-  'cli-unsupported',
-  'cli-signed-out',
-  'cli-not-subscribed',
   'unknown',
 ])
 

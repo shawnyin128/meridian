@@ -336,10 +336,8 @@ export function ModelSettings() {
           <LoadingPlaceholder shape="lines" count={1} />
         ) : cliStatus.state === 'missing' ? (
           <InlineMessage tone="warning" variant="line">{m.settings.model.subscription.missing}</InlineMessage>
-        ) : cliStatus.state === 'unsupported' ? (
-          <InlineMessage tone="warning" variant="line">{m.settings.model.subscription.unsupported(cliStatus.version)}</InlineMessage>
         ) : (
-          <span>{CLI_NAMES[cli]} {cliStatus.version}</span>
+          <span>{cliStatus.version === null ? CLI_NAMES[cli] : `${CLI_NAMES[cli]} ${cliStatus.version}`}</span>
         )}
       </FieldRow>
       {statusFailure === null && cliStatus?.state === 'found' ? (

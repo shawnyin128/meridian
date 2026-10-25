@@ -137,9 +137,9 @@ import { createPluginVersionCheck } from './extensions/latest.js'
 import { openSemanticKeyStore } from './net/semantic-key.js'
 import { deleteColourTheme, listColourThemes, saveColourTheme } from './colour-themes.js'
 import {
-  checkCliConnection, checkSubscription, createChatHarnessRunner, createChatService, createCliRunner,
-  createHarnessCostGate, createHarnessModelConfig, createHarnessProposalAudit,
-  createMainCredentialVault, createPaperWikiHarnessRunner, resolveCliBinary, type SubscriptionDiscovery,
+  checkCliConnection, createChatHarnessRunner, createChatService, createCliRunner, createHarnessCostGate,
+  createHarnessModelConfig, createHarnessProposalAudit, createMainCredentialVault, createPaperWikiHarnessRunner,
+  discoverCli, resolveCliBinary, subscriptionStatus,
 } from './harness/index.js'
 import { placeResearchIdeaOnGraph, promoteResearchIdea } from './research-ideas/index.js'
 import { createWikiProposals, pdfPageText } from './wiki-proposals.js'
@@ -182,10 +182,6 @@ const librarySource = sourceOf(vaultRoot, process.env['MERIDIAN_VAULT_SOURCE'])
 const locationRoot = vaultRoot ?? process.env['MERIDIAN_LIBRARY_ROOT'] ?? process.cwd()
 const configHome = process.env['MERIDIAN_CONFIG_HOME'] ?? join(homedir(), '.meridian')
 const harnessModel = await createHarnessModelConfig(configHome, createMainCredentialVault())
-/** Fails every lookup: this build cannot find a subscription CLI yet. */
-const discoverSubscriptionCli: SubscriptionDiscovery = async (cli) => {
-  throw new CallError('unavailable', `这个版本还找不到 ${cli}`)
-}
 const semanticKey = await openSemanticKeyStore({
   file: join(configHome, 'semantic-scholar.json'), vault: createMainCredentialVault(),
 })
@@ -525,13 +521,12 @@ registerHandler('harness.updateModelSettings', (params) =>
   harnessModel.update(HarnessModelSettingsUpdateSchema.parse(params)))
 registerHandler('harness.checkModelConnection', (params) => {
   EmptyParamsSchema.parse(params)
-  const cli = harnessModel.settings().subscription.active
-  return cli === null ? chatHarness.checkConnection() : checkSubscription(discoverSubscriptionCli, cli)
+  return chatHarness.checkConnection()
 })
 registerHandler('harness.updateSubscription', (params) =>
   harnessModel.updateSubscription(HarnessUpdateSubscriptionParamsSchema.parse(params)))
 registerHandler('harness.subscriptionStatus', (params) =>
-  discoverSubscriptionCli(HarnessSubscriptionStatusParamsSchema.parse(params).cli))
+  subscriptionStatus(HarnessSubscriptionStatusParamsSchema.parse(params).cli, (cli) => discoverCli(cli)))
 registerHandler('harness.applyPaperWiki', (params) =>
   harness.applyPaperWiki(HarnessApplyPaperWikiParamsSchema.parse(params)))
 registerHandler('harness.rejectPaperWiki', (params) =>
