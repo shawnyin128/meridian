@@ -1,4 +1,6 @@
-import type { ChatMessage, ChatMessageFields, ChatRun, ChatSendResult, TrashedEntry } from '../../shared/contract.js'
+import type {
+  ChatAnswerModel, ChatMessage, ChatMessageFields, ChatRun, ChatSendResult, ChatWriting, TrashedEntry,
+} from '../../shared/contract.js'
 import { CallError, callFailure } from '../call-error.js'
 import type { VaultStore } from '../vault.js'
 import { trashedEntry } from '../write-receipts.js'
@@ -15,8 +17,8 @@ function trimmed(runs: readonly ChatRun[]): ChatRun[] {
   if (last.kind === 'text') last.text = last.text.trimEnd()
   return copied.filter((run) => run.kind !== 'text' || run.text !== '')
 }
-const answerMessage = (text: string): ChatMessageFields => ({
-  role: 'ai', runs: textRun(text), actions: [],
+const answerMessage = (text: string, model: ChatAnswerModel | undefined): ChatMessageFields => ({
+  role: 'ai', runs: textRun(text), actions: [], ...(model === undefined ? {} : { model }),
 })
 const statusMessage = (text: string): ChatMessageFields => ({
   role: 'status', runs: textRun(text), actions: [],
@@ -32,25 +34,33 @@ export function createChatService(options: {
   runner: ChatHarnessRunner | null
 }) {
   const running = new Map<string, AbortController>()
-  const written = new Map<string, string>()
+  const written = new Map<string, ChatWriting>()
   const stopped = (id: string) => {
     running.delete(id)
     written.delete(id)
   }
 
   /**
-   * Asks the model once to answer `text` in chat `id` and keeps the answer, or, when the turn gets
-   * none, a status line that says what happened in plain words; the error's own text goes to the log.
+   * Asks the model once to answer `text` in chat `id` and keeps the answer with the model that wrote
+   * it, or, when the turn gets none, a status line that says what happened in plain words; the error's
+   * own text goes to the log.
    */
   const answer = async (id: string, text: string): Promise<ChatSendResult> => {
     if (!options.model.planModel().configured || options.runner === null) return { id, state: 'failed', reason: 'no-model' }
     const controller = new AbortController()
     running.set(id, controller)
     try {
-      const answered = await options.runner.answer(id, text, controller.signal, (so) => {
-        if (running.get(id) === controller) written.set(id, so)
+      let model: ChatAnswerModel | undefined
+      const answered = await options.runner.answer(id, text, controller.signal, {
+        onModel: (named) => {
+          model = named
+          if (running.get(id) === controller) written.set(id, { text: written.get(id)?.text ?? '', model: named })
+        },
+        onText: (so) => {
+          if (running.get(id) === controller && model !== undefined) written.set(id, { text: so, model })
+        },
       })
-      options.store.appendChatMessages(id, [answerMessage(answered)])
+      options.store.appendChatMessages(id, [answerMessage(answered, model)])
       return { id, state: 'complete' }
     } catch (cause) {
       if (controller.signal.aborted) return { id, state: 'cancelled' }
@@ -113,8 +123,11 @@ export function createChatService(options: {
         runs: message.runs.map((run) => (run.target === undefined || inVault(run.target) ? run : { kind: run.kind, text: run.text })),
       }))
     },
-    /** The answer the model is writing in chat `id`, as far as it has written it, or null while it writes none there. */
-    writing(id: string): string | null {
+    /**
+     * The answer being written in chat `id`: its model, as far as known, and its text so far, empty
+     * before the first text; null while no turn there has named its model.
+     */
+    writing(id: string): ChatWriting | null {
       return written.get(id) ?? null
     },
     /** The ids of the chats whose reply is being generated. */

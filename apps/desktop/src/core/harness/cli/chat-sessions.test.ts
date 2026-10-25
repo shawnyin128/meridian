@@ -153,6 +153,24 @@ describe('the CLI sessions of a chat', () => {
   })
 })
 
+describe('the model a Codex session ran', () => {
+  it('is the one the last turn of the chat\'s own session file names, and none when that file is gone', () => {
+    const { open, codexFile } = machine()
+    const sessions = open()
+    mkdirSync(dirname(codexFile(CODEX_SESSION)), { recursive: true })
+    writeFileSync(codexFile(CODEX_SESSION), [
+      { timestamp: '2026-10-25T17:00:00Z', type: 'session_meta', payload: { id: CODEX_SESSION } },
+      { timestamp: '2026-10-25T17:00:01Z', type: 'turn_context', payload: { model: 'gpt-6.1' } },
+      { timestamp: '2026-10-25T17:00:02Z', type: 'event_msg', payload: { type: 'agent_message', message: 'a "turn_context" quoted in a reply' } },
+      { timestamp: '2026-10-25T17:00:03Z', type: 'turn_context', payload: { model: 'gpt-6.1-sol' } },
+    ].map((line) => JSON.stringify(line)).join('\n') + '\n{"timestamp":"2026-10-25T17:00:04Z","type":"turn_context","payl')
+
+    expect(sessions.codexModel(CODEX_SESSION)).toBe('gpt-6.1-sol')
+    expect(sessions.codexModel('01a174d3-3d3a-7520-a05c-0ab572609305')).toBeNull()
+    expect(sessions.codexModel('../../auth')).toBeNull()
+  })
+})
+
 describe('deleting the CLI sessions of chats the vault no longer keeps', () => {
   const GONE_CLAUDE = 'd0e896e3-91f5-4e51-b7aa-ed732d49b2b8'
   const GONE_CODEX = '01a174d3-3d3a-7520-a05c-0ab572609305'

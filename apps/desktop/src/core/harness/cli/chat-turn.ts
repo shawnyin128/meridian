@@ -23,6 +23,8 @@ export type CliChatCall = {
   folder: string
   /** Called with the id of the session the turn runs in, as soon as the CLI names it. */
   onSession?: (id: string) => void
+  /** Called with the id of the model the turn runs on, as soon as the CLI names it, which Claude does as it starts. */
+  onModel?: (id: string) => void
   /** What the turn may look up in the vault through the internal MCP server; without it the CLI has no tools. */
   lookup?: VaultToolScope
   timeoutMs: number
@@ -35,6 +37,8 @@ export type CliChatResult = {
   /** The answer, or null when the CLI wrote none. */
   answer: string | null
   usage?: CliUsage
+  /** The id of the model that wrote the answer, as Claude's result names it; Codex names none. */
+  model?: string
   durationMs: number
 }
 
@@ -94,10 +98,10 @@ export function chatTurnFlags(cli: HarnessCli): string[] {
 
 /**
  * Reads the events a turn prints, one JSON object per line, as they arrive: tells `onSession` the
- * session's id once the CLI names it, tells `onText` the answer as far as it is written, and keeps
- * every event for the end of the turn.
+ * session's id and `onModel` the model's once the CLI names them, tells `onText` the answer as far as
+ * it is written, and keeps every event for the end of the turn.
  */
-function eventReader(cli: HarnessCli, onSession: (id: string) => void, onText: (text: string) => void) {
+function eventReader(cli: HarnessCli, on: Required<Pick<CliChatCall, 'onSession' | 'onModel' | 'onText'>>) {
   const events: Array<Record<string, unknown>> = []
   let rest = ''
   let writing = ''
@@ -105,14 +109,17 @@ function eventReader(cli: HarnessCli, onSession: (id: string) => void, onText: (
   const show = (text: string) => {
     if (text === '' || text === shown) return
     shown = text
-    onText(text)
+    on.onText(text)
   }
   const read = (event: Record<string, unknown>) => {
     events.push(event)
     const session = cli === 'claude'
       ? (event['type'] === 'system' && event['subtype'] === 'init' ? event['session_id'] : undefined)
       : (event['type'] === 'thread.started' ? event['thread_id'] : undefined)
-    if (typeof session === 'string') onSession(session)
+    if (typeof session === 'string') on.onSession(session)
+    if (cli === 'claude' && event['type'] === 'system' && event['subtype'] === 'init' && typeof event['model'] === 'string') {
+      on.onModel(event['model'])
+    }
     if (cli === 'codex') {
       const item = event['item']
       if (isRecord(item) && item['type'] === 'agent_message' && typeof item['text'] === 'string') show(item['text'])
@@ -146,7 +153,17 @@ function eventReader(cli: HarnessCli, onSession: (id: string) => void, onText: (
   }
 }
 
-/** The answer of a Claude turn: its `result` event's text. */
+/**
+ * The model of a Claude `result`: of the models its usage names, the one that wrote the most, which is
+ * the turn's model when Claude Code also ran a small one for itself.
+ */
+function claudeModel(result: Record<string, unknown>): string | undefined {
+  const usage = isRecord(result['modelUsage']) ? Object.entries(result['modelUsage']) : []
+  const written = (entry: unknown) => (isRecord(entry) && typeof entry['outputTokens'] === 'number' ? entry['outputTokens'] : 0)
+  return usage.sort(([, a], [, b]) => written(b) - written(a))[0]?.[0]
+}
+
+/** The answer of a Claude turn: its `result` event's text, and the model that wrote it. */
 function claudeAnswer(events: ReadonlyArray<Record<string, unknown>>, outcome: ChildOutcome) {
   const result = events.findLast((event) => event['type'] === 'result')
   if (result === undefined) {
@@ -154,7 +171,12 @@ function claudeAnswer(events: ReadonlyArray<Record<string, unknown>>, outcome: C
     return { answer: null }
   }
   if (result['is_error'] === true) throw claudeFailure(result, outcome)
-  return { answer: typeof result['result'] === 'string' ? result['result'] : null, usage: claudeUsage(result) }
+  const model = claudeModel(result)
+  return {
+    answer: typeof result['result'] === 'string' ? result['result'] : null,
+    usage: claudeUsage(result),
+    ...(model === undefined ? {} : { model }),
+  }
 }
 
 /** The answer of a Codex turn: its last completed agent message. */
@@ -187,7 +209,9 @@ export function createCliChatRunner(deps: CliRunnerDeps): CliChatRunner {
       const systemFile = join(root, 'system-prompt.txt')
       if (call.cli === 'claude') writeFileSync(systemFile, call.system, { mode: 0o600 })
       const mcp = call.lookup === undefined ? null : await deps.internalMcp!({ ...call.lookup, folder: root })
-      const reader = eventReader(call.cli, call.onSession ?? (() => {}), call.onText ?? (() => {}))
+      const reader = eventReader(call.cli, {
+        onSession: call.onSession ?? (() => {}), onModel: call.onModel ?? (() => {}), onText: call.onText ?? (() => {}),
+      })
       const started = Date.now()
       let outcome: ChildOutcome
       try {

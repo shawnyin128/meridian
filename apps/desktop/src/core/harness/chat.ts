@@ -1,7 +1,9 @@
 import { createHash, randomUUID } from 'node:crypto'
 import { z, ZodError } from 'zod'
 import { HarnessModelConnectionCheckResultSchema } from '../../shared/contract.js'
-import type { HarnessCli, HarnessCliModel, HarnessModelConnectionCheckResult } from '../../shared/contract.js'
+import type {
+  ChatAnswerModel, HarnessCli, HarnessCliModel, HarnessModelConnectionCheckResult,
+} from '../../shared/contract.js'
 import { CallError } from '../call-error.js'
 import { extractPdfPages } from '../paper-library/index.js'
 import type { VaultStore } from '../vault.js'
@@ -191,6 +193,9 @@ export function messagesBefore(messages: readonly StoredChatMessage[], currentTe
     : [...messages]
 }
 
+/** What a chat turn tells while it runs: the model writing its answer, as soon as it is known and whenever it is known better, and the answer as far as it is written. */
+export type ChatProgress = { onModel: (model: ChatAnswerModel) => void; onText: (text: string) => void }
+
 /** A chat turn that got no answer, its message what happened in plain words, as the chat's status line says it. */
 export class ChatFailure extends Error {}
 
@@ -296,15 +301,21 @@ export function createChatHarnessRunner(options: {
 
   /**
    * The one model call of a turn of chat `chatId` that answers `text` on `model`, ending when
-   * `signal` aborts, telling `onText` the answer as far as the CLI has written it and reporting a CLI
-   * failure to `onFailure`. It resumes the chat's CLI session, with the new message alone, while that
+   * `signal` aborts, telling `progress` the model the CLI names and the answer as far as it has
+   * written it, and reporting a CLI failure to `onFailure`. It resumes the chat's CLI session, with the new message alone, while that
    * session holds the turns the chat holds; otherwise it starts a new session with the whole turn.
    * `keep` makes the session resumable once the turn's `answer` is kept.
    */
   const cliTurn = (
     chatId: string, text: string, model: HarnessCliModel, signal: AbortSignal,
-    onFailure: (failure: CliRunError) => void, onText?: (text: string) => void,
+    onFailure: (failure: CliRunError) => void, progress?: ChatProgress,
   ) => {
+    let reported: string | undefined
+    const named = (id: string) => {
+      if (id === reported) return
+      reported = id
+      progress?.onModel({ route: 'subscription', cli: model.cli, id })
+    }
     const before = turnsOf(messagesBefore(options.store.chatMessages(chatId), text))
     let called = false
     let ran: { id: string; total?: CliUsage } | null = null
@@ -334,7 +345,7 @@ export function createChatHarnessRunner(options: {
             id = named
             options.sessions.started(chatId, model.cli, named)
           },
-          ...(onText === undefined ? {} : { onText }),
+          ...(progress === undefined ? {} : { onText: progress.onText, onModel: named }),
         })
       } catch (cause) {
         if (cause instanceof CliRunError) onFailure(cause)
@@ -345,6 +356,8 @@ export function createChatHarnessRunner(options: {
       const usage = total !== undefined && resumed?.total !== undefined ? usageSince(total, resumed.total) : result.usage
       options.onLog?.(cliUsageLine(model.cli, usage === undefined ? result : { ...result, usage }))
       if (id !== undefined) ran = { id, ...(total === undefined ? {} : { total }) }
+      const fromCli = result.model ?? (model.cli === 'codex' && id !== undefined ? options.sessions.codexModel(id) : null)
+      if (fromCli !== null) named(fromCli)
       return { output: result.answer }
     }
     const keep = (answer: string) => {
@@ -384,16 +397,20 @@ export function createChatHarnessRunner(options: {
       }
     },
     /**
-     * Asks Harness to answer `text` in chat `id` until `signal` aborts; a model that streams its
-     * answer tells `onText` the answer as far as it is written.
+     * Asks Harness to answer `text` in chat `id` until `signal` aborts. `progress` hears the model
+     * writing the answer at once, as configured, and again when a CLI names its own; a model that
+     * streams its answer also tells it the answer as far as it is written.
      */
-    async answer(id: string, text: string, signal: AbortSignal, onText?: (text: string) => void): Promise<string> {
+    async answer(id: string, text: string, signal: AbortSignal, progress?: ChatProgress): Promise<string> {
       const ended = new AbortController()
       let failure: CliRunError | undefined
       try {
         const model = await options.model.runtime()
+        progress?.onModel('source' in model
+          ? { route: 'subscription', cli: model.cli, ...(model.model === undefined ? {} : { id: model.model }) }
+          : { route: 'api', id: model.model })
         const turn = 'source' in model
-          ? cliTurn(id, text, model, AbortSignal.any([signal, ended.signal]), (cause) => { failure = cause }, onText)
+          ? cliTurn(id, text, model, AbortSignal.any([signal, ended.signal]), (cause) => { failure = cause }, progress)
           : null
         const result = ChatAnswerSchema.parse(await rpc.request('chat.answer', {
           chatId: id,

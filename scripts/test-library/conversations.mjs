@@ -7,7 +7,9 @@ const say = (role, ...runs) => ({ role, runs: runs.map((run) => (typeof run === 
  * Seeds the chats and ideas. Replies are written with `chat.append`, since only a model produces
  * them: two paper chats, ordinary chats, one archived, one mentioning a Wiki page with `@` in its
  * text as 0.0.18.0 sent mentions and a project as a mention run naming it as later Apps send them, and
- * a reply whose action records a research record for the KV cache project. Ideas are saved from those
+ * a reply whose action records a research record for the KV cache project. The tree-width chat's
+ * replies name the model that wrote them, as 0.0.21.0 keeps them: Claude on the subscription, Codex
+ * on its own default, and an API model; every other reply names none, as older Apps kept them. Ideas are saved from those
  * chats in every state: placed on the research graph, linked only, archived, promoted to a project,
  * unlinked, and deleted into Trash; one idea the user wrote down without a chat is linked to a project.
  * One chat an idea was saved from is then deleted into Trash, so that idea, carried out in the
@@ -37,10 +39,15 @@ export async function seedConversations(seed, call) {
   const width = await onDay(seed, -3, async () => {
     const chat = await call('chat.create', { title: '推测解码的树宽怎么定', named: true })
     await append(chat.id, [
-      say('you', '固定树宽为什么在长回答上变差？'), say('ai', '长回答后半段的接受率下降，宽树里大部分分支都会被拒绝，验证开销白白浪费。'),
-      say('you', '@推测解码 里说加速比取决于接受率，长回答也是这样吗？'), say('ai', '是的：长回答后半段的接受率更低，加速比也跟着下降。'),
+      say('you', '固定树宽为什么在长回答上变差？'),
+      {
+        ...say('ai', '长回答后半段的接受率下降，宽树里大部分分支都会被拒绝，验证开销白白浪费。'),
+        model: { route: 'subscription', cli: 'claude', id: 'claude-opus-5-5[1m]' },
+      },
+      say('you', '@推测解码 里说加速比取决于接受率，长回答也是这样吗？'),
+      { ...say('ai', '是的：长回答后半段的接受率更低，加速比也跟着下降。'), model: { route: 'subscription', cli: 'codex' } },
       say('you', '那 ', { kind: 'mention', text: '@推测解码加速', target: { kind: 'project', id: seed.projects.spec.id } }, ' 先从哪组实验开始？'),
-      say('ai', '先跑动态树宽的原型：它直接回答长回答上接受率下降的问题。'),
+      { ...say('ai', '先跑动态树宽的原型：它直接回答长回答上接受率下降的问题。'), model: { route: 'api', id: 'gpt-5.5' } },
     ])
     return chat
   })

@@ -235,10 +235,11 @@ process.stdin.on('end', () => {
   const id = resume ?? (claude ? after('--session-id') : crypto.randomUUID())
   fs.mkdirSync(folder, { recursive: true })
   fs.appendFileSync(fileOf(id), JSON.stringify({ stdin }) + '\\n')
-  const turns = fs.readFileSync(fileOf(id), 'utf8').split('\\n').filter(Boolean).length
+  if (!claude) fs.appendFileSync(fileOf(id), JSON.stringify({ timestamp: 't', type: 'turn_context', payload: { model: 'gpt-6.1-sol' } }) + '\\n')
+  const turns = fs.readFileSync(fileOf(id), 'utf8').split('\\n').filter((line) => line.startsWith('{"stdin"')).length
   const answer = 'Answer ' + turns
   if (claude) {
-    print({ type: 'system', subtype: 'init', session_id: id })
+    print({ type: 'system', subtype: 'init', session_id: id, model: 'claude-opus-5-5[1m]' })
     print({ type: 'stream_event', event: { type: 'content_block_delta', delta: { type: 'text_delta', text: answer } } })
     print({ type: 'result', subtype: 'success', is_error: false, result: answer, session_id: id,
       usage: { input_tokens: 2, cache_creation_input_tokens: 100, cache_read_input_tokens: 1000 * turns, output_tokens: 10 } })
@@ -386,14 +387,18 @@ describe('a chat turn on a subscription CLI', () => {
     close()
   })
 
-  it('passes on the answer as far as the CLI has written it', async () => {
+  it('passes on the configured model at once, the model the CLI names, and the answer as far as the CLI has written it', async () => {
     const { child, runner, chat, close } = chatRunner(CLI_MODEL, async (call) => {
+      call.onModel?.('claude-opus-5-5[1m]')
       call.onText?.('EAGLE reaches')
       call.onText?.('EAGLE reaches 3.76x [p. 6].')
-      return { answer: 'EAGLE reaches 3.76x [p. 6].', durationMs: 1 }
+      return { answer: 'EAGLE reaches 3.76x [p. 6].', model: 'claude-opus-5-5[1m]', durationMs: 1 }
     })
     const written: string[] = []
-    const answering = runner.answer(chat, 'Why?', new AbortController().signal, (text) => written.push(text))
+    const models: unknown[] = []
+    const answering = runner.answer(chat, 'Why?', new AbortController().signal, {
+      onModel: (model) => models.push(model), onText: (text) => written.push(text),
+    })
     child.ready()
     await child.frame()
     child.callModel('call')
@@ -402,6 +407,10 @@ describe('a chat turn on a subscription CLI', () => {
 
     await expect(answering).resolves.toBe('EAGLE reaches 3.76x [p. 6].')
     expect(written).toEqual(['EAGLE reaches', 'EAGLE reaches 3.76x [p. 6].'])
+    expect(models).toEqual([
+      { route: 'subscription', cli: 'claude', id: 'opus' },
+      { route: 'subscription', cli: 'claude', id: 'claude-opus-5-5[1m]' },
+    ])
     close()
   })
 
@@ -499,7 +508,10 @@ describe('a chat turn on a subscription CLI', () => {
       provider: 'openai', protocol: 'responses', baseUrl: 'https://api.openai.com/v1',
       model: 'gpt-5', authentication: 'api-key', apiKey: 'sk-test',
     }, cli)
-    const answering = runner.answer(chat, 'Why?', new AbortController().signal)
+    const models: unknown[] = []
+    const answering = runner.answer(chat, 'Why?', new AbortController().signal, {
+      onModel: (model) => models.push(model), onText: () => {},
+    })
     child.ready()
     await child.frame()
 
@@ -508,6 +520,7 @@ describe('a chat turn on a subscription CLI', () => {
     expect(cli).not.toHaveBeenCalled()
     child.send({ type: 'response', id: 1, ok: true, result: { answer: 'API answer' } })
     await expect(answering).resolves.toBe('API answer')
+    expect(models).toEqual([{ route: 'api', id: 'gpt-5' }])
     close()
   })
 })
@@ -535,6 +548,21 @@ describe('a chat on a subscription CLI keeps a CLI session', () => {
           || first!.cwd.startsWith(join('/private', chat.root, 'user-data', 'cli-chats'))).toBe(true)
         expect(chat.store.chatMessages(chat.chat).map((message) => message.runs[0]!.text))
           .toEqual(['What is EAGLE?', 'Answer 1', 'And its speedup?', 'Answer 2'])
+      } finally {
+        chat.close()
+      }
+    })
+  }
+
+  for (const [cli, model] of [
+    ['claude', { route: 'subscription', cli: 'claude', id: 'claude-opus-5-5[1m]' }],
+    ['codex', { route: 'subscription', cli: 'codex', id: 'gpt-6.1-sol' }],
+  ] as const) {
+    it(`keeps a ${cli} answer with the model the CLI named for it, from its stream or its own session`, async () => {
+      const chat = sessionChat({ source: 'cli', cli })
+      try {
+        await chat.send('What is EAGLE?')
+        expect(chat.store.chatMessages(chat.chat).at(-1)).toMatchObject({ role: 'ai', model })
       } finally {
         chat.close()
       }

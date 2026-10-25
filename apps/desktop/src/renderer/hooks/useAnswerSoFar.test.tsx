@@ -2,13 +2,13 @@
 import { act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { ChatMessage } from '../../shared/contract.js'
+import type { ChatMessage, ChatWriting } from '../../shared/contract.js'
 
 declare global {
   var IS_REACT_ACT_ENVIRONMENT: boolean
 }
 
-const writing = vi.hoisted(() => vi.fn<(id: string) => Promise<string | null>>())
+const writing = vi.hoisted(() => vi.fn<(id: string) => Promise<ChatWriting | null>>())
 vi.mock('../ipc.js', () => ({ chat: { writing } }))
 
 const { useAnswerSoFar } = await import('./useAnswerSoFar.js')
@@ -16,6 +16,9 @@ const { useAnswerSoFar } = await import('./useAnswerSoFar.js')
 const message = (id: string, role: ChatMessage['role'], text: string): ChatMessage =>
   ({ id, role, runs: [{ kind: 'text', text }], actions: [] })
 const asked = [message('m1', 'you', 'EAGLE 快多少')]
+const MODEL = { route: 'subscription', cli: 'claude', id: 'claude-opus-5-5[1m]' } as const
+/** Core's report of an answer written as far as `text`. */
+const so = (text: string): ChatWriting => ({ text, model: MODEL })
 
 type Props = { chat: string | null; running: boolean; messages: ChatMessage[] | null }
 
@@ -48,20 +51,20 @@ describe('useAnswerSoFar', () => {
   })
 
   it('shows the answer as Core reports it written while the chat generates, as an answer message', async () => {
-    writing.mockResolvedValue('EAGLE reaches')
+    writing.mockResolvedValue(so('EAGLE reaches'))
     const probe = mount({ chat: 'chat-1', running: true, messages: asked })
     await poll()
-    expect(probe.latest()).toEqual(message('answer-so-far', 'ai', 'EAGLE reaches'))
+    expect(probe.latest()).toEqual({ ...message('answer-so-far', 'ai', 'EAGLE reaches'), model: MODEL })
     expect(writing).toHaveBeenCalledWith('chat-1')
 
-    writing.mockResolvedValue('EAGLE reaches 3.76x')
+    writing.mockResolvedValue(so('EAGLE reaches 3.76x'))
     await poll()
     expect(probe.latest()?.runs).toEqual([{ kind: 'text', text: 'EAGLE reaches 3.76x' }])
     probe.unmount()
   })
 
   it('keeps the text once the turn stops until the messages are read again, then gives way to them', async () => {
-    writing.mockResolvedValue('EAGLE reaches 3.76x')
+    writing.mockResolvedValue(so('EAGLE reaches 3.76x'))
     const probe = mount({ chat: 'chat-1', running: true, messages: asked })
     await poll()
 
@@ -76,13 +79,16 @@ describe('useAnswerSoFar', () => {
     probe.unmount()
   })
 
-  it('shows nothing while Core reports nothing written, nor once the messages end with the kept answer', async () => {
+  it('shows an answer with no text while Core reports nothing written yet, nothing before Core reports, nor once the messages end with the kept answer', async () => {
     writing.mockResolvedValue(null)
     const probe = mount({ chat: 'chat-1', running: true, messages: asked })
     await poll()
     expect(probe.latest()).toBeNull()
+    writing.mockResolvedValue(so(''))
+    await poll()
+    expect(probe.latest()).toEqual({ id: 'answer-so-far', role: 'ai', runs: [], actions: [], model: MODEL })
 
-    writing.mockResolvedValue('EAGLE reaches 3.76x')
+    writing.mockResolvedValue(so('EAGLE reaches 3.76x'))
     await poll()
     probe.render({ chat: 'chat-1', running: true, messages: [...asked, message('m2', 'ai', 'EAGLE reaches 3.76x [p. 6].')] })
     expect(probe.latest()).toBeNull()
@@ -90,7 +96,7 @@ describe('useAnswerSoFar', () => {
   })
 
   it('starts each turn from nothing written and asks nothing while no turn runs', async () => {
-    writing.mockResolvedValue('the first turn')
+    writing.mockResolvedValue(so('the first turn'))
     const probe = mount({ chat: 'chat-1', running: true, messages: asked })
     await poll()
     probe.render({ chat: 'chat-1', running: false, messages: [...asked, message('m2', 'ai', 'the first turn')] })

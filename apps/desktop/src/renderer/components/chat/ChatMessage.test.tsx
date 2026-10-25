@@ -34,9 +34,11 @@ describe('ChatMessageView', () => {
     root = null
   })
 
-  const show = (message: ChatMessage) => act(() => root!.render(
-    <MessagesProvider><ChatMessageView message={message} onAct={() => {}} /></MessagesProvider>,
+  const show = (message: ChatMessage, writing = false) => act(() => root!.render(
+    <MessagesProvider><ChatMessageView message={message} onAct={() => {}} writing={writing} /></MessagesProvider>,
   ))
+  /** The label and the text of the answer on screen. */
+  const answerParts = () => [...host.querySelector('.msg.ai')!.children].map((part) => [part.className, part.textContent])
 
   it('模型回答是标签下面的一段正文，不是气泡', () => {
     show({ id: 'm1', role: 'ai', runs: [{ kind: 'text', text: '接受率决定加速比。' }], actions: [] })
@@ -45,6 +47,34 @@ describe('ChatMessageView', () => {
       ['tag tag--label tag--neutral source-label msg-who', 'agent'],
       ['answer', '接受率决定加速比。'],
     ])
+  })
+
+  it('模型回答的标签写出回答它的模型和走的路：订阅还是 API；模型没报名字的订阅回答写 CLI 的名字', () => {
+    const said = (model: ChatMessage['model']): ChatMessage => ({
+      id: 'm1', role: 'ai', runs: [{ kind: 'text', text: '接受率决定加速比。' }], actions: [], model,
+    })
+    show(said({ route: 'subscription', cli: 'claude', id: 'claude-opus-5-5[1m]' }))
+    expect(answerParts()[0]).toEqual(['tag tag--label tag--neutral source-label msg-who', 'Claude Opus 5.5 · 订阅'])
+    show(said({ route: 'subscription', cli: 'codex' }))
+    expect(answerParts()[0]![1]).toBe('Codex · 订阅')
+    show(said({ route: 'api', id: 'gpt-5.5' }))
+    expect(answerParts()[0]![1]).toBe('GPT-5.5 · API')
+  })
+
+  it('还没写出字的回答在标签下面转着运行圈，读屏念「思考中…」；写出字后就是那些字', () => {
+    const model = { route: 'subscription' as const, cli: 'claude' as const, id: 'claude-opus-5-5[1m]' }
+    show({ id: 'answer-so-far', role: 'ai', runs: [], actions: [], model }, true)
+    expect(answerParts()).toEqual([
+      ['tag tag--label tag--neutral source-label msg-who', 'Claude Opus 5.5 · 订阅'],
+      ['answer', ''],
+    ])
+    const thinking = host.querySelector('.answer .inline-message')!
+    expect(['role', 'aria-label', 'aria-busy'].map((name) => thinking.getAttribute(name))).toEqual(['status', '思考中…', 'true'])
+    expect(thinking.querySelector('.inline-message-lead svg.ring.spin')).not.toBeNull()
+
+    show({ id: 'answer-so-far', role: 'ai', runs: [{ kind: 'text', text: 'EAGLE 快' }], actions: [], model }, true)
+    expect(answerParts()[1]).toEqual(['answer', 'EAGLE 快'])
+    expect(host.querySelector('.inline-message')).toBeNull()
   })
 
   it('发出的消息里的引用和输入框里一样是共享的 chip，夹在前后的字中间，点它打开它点名的实体', () => {
