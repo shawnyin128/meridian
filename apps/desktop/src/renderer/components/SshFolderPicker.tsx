@@ -14,7 +14,8 @@ import { IconEnclosingFolder, IconFolder, IconNext } from './icons.js'
 import { InlineMessage } from './InlineMessage.js'
 import { LoadingPlaceholder } from './LoadingPlaceholder.js'
 import { PickerPopover, PickOption } from './PickerPopover.js'
-import { StructuredList, StructuredRow } from './StructuredList.js'
+import { Item } from './Item.js'
+import { List } from './List.js'
 import './SshFolderPicker.css'
 
 /** One folder of an SSH host, as Core listed it. */
@@ -205,15 +206,15 @@ export function SshFolderBrowser({ choice }: { choice: SshFolderChoice }) {
           : folder.folders.length === 0
             ? <EmptyState variant="section">{m.common.sshFolders.empty}</EmptyState>
             : (
-              <StructuredList variant="embedded" maxVisibleRows="fill" aria-label={folder.path}>
+              <List variant="embedded" rows="fill" aria-label={folder.path}>
                 {folder.folders.map((child) => (
-                  <StructuredRow key={child.path} className="ssh-folder-row" onActivate={() => openFrom(child.path)}>
-                    <IconFolder />
-                    <FadeText className="ssh-folder-name" label={child.name}>{child.name}</FadeText>
-                    <IconNext />
-                  </StructuredRow>
+                  <Item
+                    key={child.path} className="ssh-folder-row" onActivate={() => openFrom(child.path)}
+                    leading={<IconFolder />} title={<FadeText className="ssh-folder-name" label={child.name}>{child.name}</FadeText>}
+                    trailing={<IconNext />}
+                  />
                 ))}
-              </StructuredList>
+              </List>
             )}
       </div>
       {issue === null ? null : <InlineMessage tone="error" variant="line">{issue}</InlineMessage>}
