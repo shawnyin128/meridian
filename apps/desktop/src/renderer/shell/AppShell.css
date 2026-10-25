@@ -73,13 +73,6 @@
 .sfield{margin-bottom:var(--sp-6)}
 .sfield>.form-input{width:100%}
 
-/*
- * Live results of the global search: Radix positions, opens and closes them, and the rows are the
- * shared menu anatomy. In the demo the panel's left edge lines up with the search box and its right
- * edge reaches 260px past the sidebar over the content, which comes to 270px wider than the search box.
- */
-/* Compounded with .pickhits so this wider, unclipped shape and lower stacking layer win over the shared shell's, regardless of CSS load order. */
-.pickhits.sres{width:calc(var(--radix-popover-trigger-width) + 270px);max-height:none;overflow:hidden;z-index:40}
 /* A search with no hits keeps the panel open; its empty state sits on the rows' inline padding. */
 .pickhits.sres .sres-empty{padding:0 var(--row-menu-pad)}
 

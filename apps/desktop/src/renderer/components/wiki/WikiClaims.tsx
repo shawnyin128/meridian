@@ -477,7 +477,7 @@ export function WikiClaims({ page, pending, links, onApply, arrival, onArrived }
                 {claim.history.length === 0
                   ? null
                   : (
-                    <CardTray variant="row" className="wkclaim-history" summary={c.history(claim.history.length)}>
+                    <CardTray variant="row" className="wkclaim-history" summary={c.history} count={claim.history.length}>
                       <DiffLines lines={[
                         ...claim.history.map((h) => `- v${h.version} · ${fmt.date(h.since)} · ${h.text}`),
                         `+ v${claim.version} · ${fmt.date(claim.since)} · ${claim.text}`,

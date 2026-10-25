@@ -131,6 +131,7 @@ describe('按钮组', () => {
   })
 
   it('菜单里禁用的条目与禁用的按钮是同一个样子：变淡、没有手形光标，悬停也不亮', () => {
+    document.head.innerHTML += `<style>${readFileSync(join(RENDERER, 'components', 'ActionMenu.css'), 'utf8')}</style>`
     /** Opacity, cursor and fill of the `.mi` in `markup`, hovered first when `hover`. */
     const look = (markup: string, hover = false) => {
       document.body.innerHTML = markup

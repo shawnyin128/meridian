@@ -2,7 +2,7 @@ import { formatNumber } from '../../lib/number.js'
 
 /** Paper table, paper detail metadata, and paper card copy. */
 export const papers = {
-  title: (count: number | null) => count === null ? '论文' : `论文 · ${count}`,
+  title: '论文',
   columns: {
     title: '标题',
     short: '短标题',
@@ -167,7 +167,7 @@ export const papers = {
     empty: '还没有随笔和笔记',
     goRead: '去阅读论文',
     remarkLabel: '随笔',
-    notesLabel: (n: number) => `笔记 · ${n}`,
+    notesLabel: '笔记',
     notesAria: '论文笔记',
     page: (n: number) => `第 ${n} 页`,
     updated: (date: string) => `更新 ${date}`,

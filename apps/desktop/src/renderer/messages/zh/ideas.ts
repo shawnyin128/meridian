@@ -1,10 +1,10 @@
 /** ideas screen copy. */
 export const ideas = {
-  title: (n: number) => `想法 · ${n}`,
+  title: '想法',
   groups: {
-    open: (n: number) => `未开始 · ${n}`,
-    active: (n: number) => `进行中 · ${n}`,
-    done: (n: number) => `已完成 · ${n}`,
+    open: '未开始',
+    active: '进行中',
+    done: '已完成',
   },
   sort: '排序',
   sortUpdated: '按更新时间',

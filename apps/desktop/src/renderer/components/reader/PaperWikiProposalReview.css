@@ -10,7 +10,6 @@
 .paper-wiki-review-section{min-width:0}
 .paper-wiki-review-section-head{display:flex;align-items:center;justify-content:space-between;gap:var(--sp-8);margin-bottom:var(--sp-6)}
 .paper-wiki-review-section-head h4{margin:0;font-size:var(--fs-sm);line-height:var(--lh-ui)}
-.paper-wiki-review-section-head>span{min-width:18px;text-align:center;color:var(--ter);font:var(--fs-cap)/var(--lh-ui) var(--mono)}
 .paper-wiki-review-group{display:flex;flex-direction:column;gap:var(--sp-6);padding:var(--sp-8) 0}
 .paper-wiki-review-group-head{display:flex;align-items:flex-start;justify-content:space-between;gap:var(--sp-8)}
 .paper-wiki-review-group-head>strong{min-width:0;font-size:var(--fs-sm);line-height:1.45}

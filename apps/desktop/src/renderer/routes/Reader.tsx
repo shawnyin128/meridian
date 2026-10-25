@@ -974,7 +974,7 @@ export function Reader() {
           <ActionPopover
             open={pending !== null} anchorBox={selectionAnchor}
             onOpenChange={(open) => { if (!open) setPending(null) }}
-            contentClassName="ctxmenu selection-tools" side="bottom" align="center" sideOffset={10}
+            surface="toolbar" contentClassName="selection-tools" side="bottom" align="center" sideOffset={10}
             contentProps={{
               // Opening leaves focus where it is, so the selection can still be copied.
               onOpenAutoFocus: (event) => event.preventDefault(),

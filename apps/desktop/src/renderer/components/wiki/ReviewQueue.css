@@ -1,4 +1,5 @@
 .review-row{padding:var(--sp-12) var(--sp-2)}
 .review-reason{color:var(--sec);overflow-wrap:anywhere}
-.review-decline{display:flex;gap:var(--sp-8);align-items:center;padding:var(--sp-8);width:320px}
+.review-decline{width:var(--formw)}
+.review-decline-form{display:flex;gap:var(--sp-8);align-items:center}
 .review-decline .form-input{flex:1}

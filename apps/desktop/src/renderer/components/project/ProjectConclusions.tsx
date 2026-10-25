@@ -189,7 +189,7 @@ export function ProjectConclusionPanel({
         )
         : (
           <>
-            <SectionHeading variant="rail">{c.tasks(conclusion.tasks.length)}</SectionHeading>
+            <SectionHeading variant="rail" count={conclusion.tasks.length}>{c.tasks}</SectionHeading>
             {conclusion.tasks.length === 0
               ? <EmptyState variant="section">{c.noTasks}</EmptyState>
               : (
@@ -209,7 +209,7 @@ export function ProjectConclusionPanel({
                   <EntityLink kind="node" label={node.label} mode={node.mode} onOpen={() => onOpenNode(conclusion.node!)} />
                 </div>
               )}
-            <SectionHeading variant="rail">{c.experiments(conclusion.experiments.length)}</SectionHeading>
+            <SectionHeading variant="rail" count={conclusion.experiments.length}>{c.experiments}</SectionHeading>
             {conclusion.experiments.length === 0
               ? <EmptyState variant="section">{c.noExperiments}</EmptyState>
               : (

@@ -97,7 +97,7 @@ export function ShortTextEditor({
       className="short-text-editor" data-busy={busy ? 'true' : undefined} ref={row}
       onClick={(event) => event.stopPropagation()}
     >
-      <div className="short-text-title rh">{title}</div>
+      <div className="rh">{title}</div>
       <form
         className="short-text-form mi-in"
         onSubmit={(event) => { event.preventDefault(); void commit() }}
@@ -130,7 +130,7 @@ export function ShortTextEditor({
         ? null
         : (
           <>
-            <div className="short-text-separator" />
+            <div className="msep" />
             <button
               type="button" className="short-text-delete mi danger" disabled={busy}
               onClick={() => { onDelete(); onClose() }}

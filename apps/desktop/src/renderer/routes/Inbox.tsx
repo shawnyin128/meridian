@@ -286,8 +286,8 @@ export function Inbox() {
   )
 
   const head = scope === ALL_WATCHES
-    ? m.inbox.headAll(streamLabel(m, stream), rows.length)
-    : m.inbox.headWatch(scopedProject ?? (watched ? label(watched, m.shell.watchKind) : ''), rows.length)
+    ? streamLabel(m, stream)
+    : scopedProject ?? (watched ? label(watched, m.shell.watchKind) : '')
 
   return (
     <PageShell>
@@ -329,7 +329,7 @@ export function Inbox() {
           </>
         )}
       >
-        <PageTitle>{head}</PageTitle>
+        <PageTitle count={rows.length}>{head}</PageTitle>
       </PageHeader>
 
       <PageError error={error} />

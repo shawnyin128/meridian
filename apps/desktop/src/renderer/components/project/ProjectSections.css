@@ -10,11 +10,6 @@
 
 .memo{font-size:var(--fs-base)}
 
-.wkrel .tagchip,.tagchip:has(.rx){display:inline-flex;align-items:center;gap:var(--sp-4);max-width:100%;box-sizing:border-box}
-.wkrel .tagchip{margin-right:0}
-/* A chip's name is its button; the chip forwards a click anywhere else on it. */
-.tagchip-open{display:flex;min-width:0;padding:0;border:0;background:none;color:inherit;font:inherit;cursor:inherit}
-.tagchip-open:hover{color:var(--ink)}
 /* A project's areas: the + stays shown, and a click on an area edits it, as on any other property. */
 .project-areas .tagchip.tagadd{opacity:1;pointer-events:auto}
 .project-areas .tagchip-open{cursor:pointer}
@@ -24,7 +19,6 @@
 .wkrel .reladd:has(.urldraft){flex-wrap:wrap}
 .wkrel .reladd .urldraft{display:flex;flex-direction:column;gap:var(--sp-6);flex:1 1 100%;min-width:0}
 .wkrel .reladd .urldraft .inedit{flex:none}
-.wkrel .tagchip[data-url]{cursor:pointer}
 .wkrel .tagchip[draggable]{cursor:var(--cursor-draggable)}
 .wkrel .tagchip[draggable]:active{cursor:var(--cursor-dragging)}
 .wkrel .tagchip.dragging{opacity:.4}

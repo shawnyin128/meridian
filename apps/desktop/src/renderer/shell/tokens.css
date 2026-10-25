@@ -63,8 +63,8 @@
    * draw them at its end, macOS its traffic lights at its start.
    */
   --window-buttons-end:154px; --window-buttons-start:78px;
-  /* A detail panel's width beside the list whose item it details. */
-  --detailw:360px;
+  /* A detail panel's width beside the list whose item it details, and a one-line form's in a popover. */
+  --detailw:360px; --formw:320px;
   --cardw:230px; --card-tt:var(--fs-item-title); --card-fs:var(--fs-sm); --card-lines:2;
   --diff-add:rgba(40,167,69,.12); --diff-del:rgba(224,69,58,.1);
   --sans:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI","PingFang SC","Microsoft YaHei","Noto Sans SC",sans-serif;

@@ -1,8 +1,6 @@
 /** Inbox (paper delivery and discovery) screen copy. */
 export const inbox = {
   streamLabel: { watch: '论文推送', discovery: '论文发现' },
-  headAll: (streamLabel: string, count: number) => `${streamLabel} · ${count}`,
-  headWatch: (label: string, count: number) => `${label} · ${count}`,
   check: {
     checking: '正在检查新论文…',
     failed: '检查失败',

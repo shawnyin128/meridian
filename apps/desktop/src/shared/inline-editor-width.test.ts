@@ -15,7 +15,7 @@ const RENDERER = join(import.meta.dirname, '..', 'renderer')
 /** The stylesheets that style an in-place editor in a property list, in bundle order. */
 const SHEETS = [
   'components/FormControls.css', 'routes/shell.css', 'components/PaperMetadata.css',
-  'components/paper-table/PaperTable.css', 'components/project/ProjectSections.css', 'routes/Wiki.css',
+  'components/TagChips.css', 'components/paper-table/PaperTable.css', 'components/project/ProjectSections.css', 'routes/Wiki.css',
 ]
 
 const MULTILINE = 'form-control form-textarea form-control-inline metadata-input multiline'

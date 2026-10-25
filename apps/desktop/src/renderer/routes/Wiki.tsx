@@ -46,7 +46,8 @@ import { WikiBacklinks } from '../components/wiki/WikiBacklinks.js'
 import { WikiClaims, type ClaimLinks } from '../components/wiki/WikiClaims.js'
 import { tidyRows, TidyList } from '../components/wiki/WikiTidy.js'
 import { SourceAnchor } from '../components/SourceAnchor.js'
-import { CountBadge, Tag, TagButton } from '../components/Tag.js'
+import { CountBadge } from '../components/CountBadge.js'
+import { Tag, TagButton } from '../components/Tag.js'
 import { CardOpen, ResearchObjectCard } from '../components/ResearchObjectCard.js'
 import { EMBEDDED_LIST_ROW_LIMIT, RowActions } from '../components/StructuredList.js'
 import { Tooltip } from '../components/Tooltip.js'
@@ -685,10 +686,12 @@ export function Wiki() {
   const queued = (proposals ?? []).filter((p) => p.status === 'queued').length
   const tidy = signals === null ? null : tidyRows(signals)
   const title = shownAgg?.title ?? (shownPaper === null ? null : <PaperText text={shownPaper.title} />)
-    ?? (place === REVIEW ? m.wiki.queue.title(queued) : null)
-    ?? (place === TIDY ? m.wiki.tidy.title(tidy?.length ?? 0) : null)
-    ?? (home === null ? 'Wiki' : m.wiki.title(home.aggregationCount))
+    ?? (place === REVIEW ? m.wiki.queue.entry : null)
+    ?? (place === TIDY ? m.wiki.tidy.entry : null)
+    ?? m.wiki.title
   const tidyCount = tidy?.length ?? 0
+  const titleCount = shownAgg !== null || shownPaper !== null ? undefined
+    : place === REVIEW ? queued : place === TIDY ? tidyCount : home?.aggregationCount
 
   /** Applies or declines a queued proposal; a proposal Core refuses on apply is reported with its reason. */
   const decide = (proposal: WikiProposal, decision: 'apply' | 'decline', reason?: string) => {
@@ -766,7 +769,7 @@ export function Wiki() {
             : undefined}
       >
         {place === null ? null : <BackButton onClick={back} />}
-        <PageTitle label={shownAgg?.title ?? (shownPaper === null ? undefined : plainTitle(shownPaper.title))}>{title}</PageTitle>
+        <PageTitle label={shownAgg?.title ?? (shownPaper === null ? undefined : plainTitle(shownPaper.title))} count={titleCount}>{title}</PageTitle>
       </PageHeader>
 
       <PageError error={error} />
@@ -865,7 +868,7 @@ export function Wiki() {
                               setAdding(null)
                               if (next) setColumnsDraft({ rows: shownAgg.columns, base: shownAgg.columns })
                             }}
-                            contentClassName="ctxmenu colpop" sticky="always"
+                            surface="form" contentClassName="colpop" sticky="always"
                             trigger={(
                               <IconButton
                                 label={m.wiki.columnSettings} size="nested" ref={colBtn} disabled={pending}

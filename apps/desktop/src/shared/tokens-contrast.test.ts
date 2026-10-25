@@ -403,7 +403,7 @@ describe('强调色的字', () => {
   for (const theme of LIGHT_THEMES) {
     it(`${named(theme)}侧栏当前行上的计数,字压在它的标签底上不低于 4.5:1`, () => {
       const [row] = lookOf('shell/AppShell.css', '.srow.on').split(' ') as [string]
-      const [fill, text] = lookOf('components/Tag.css', '.count-badge').split(' ') as [string, string]
+      const [fill, text] = lookOf('components/CountBadge.css', '.count-badge').split(' ') as [string, string]
       const ground = ['--window', '--sidebar', row, fill]
       const got = contrast(colour(theme, text), flatten(theme, ground))
       expect(got, `${text} 压在 ${ground.join(' + ')} 上是 ${got.toFixed(2)}:1`).toBeGreaterThanOrEqual(TEXT)
@@ -430,7 +430,7 @@ describe('选中、当前、已应用和按下的状态', () => {
 
   /** The on states of controls that already have a fill at rest: the current page, the applied filter, the picked column type. */
   const FILLED_ON = [
-    ['components/Pager.css', '.pgbtn.on'], ['routes/shell.css', '.filter-menu.on'],
+    ['components/Pager.css', '.pgbtn.on'], ['components/FilterMenu.css', '.filter-menu.on'],
     ['components/paper-table/PaperTable.css', '.ctbtn.on'],
   ] as const
 
