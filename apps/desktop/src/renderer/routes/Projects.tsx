@@ -21,8 +21,8 @@ import {
 import { DotsMenu } from '../components/FieldPickers.js'
 import { EmptyState } from '../components/EmptyState.js'
 import { InlineDraftInput } from '../components/InlineDraftInput.js'
+import { InlineField } from '../components/InlineField.js'
 import { LoadingPlaceholder } from '../components/LoadingPlaceholder.js'
-import { ShortTextEditor } from '../components/ShortTextEditor.js'
 import { ProjectBlockerView, ProjectNextActionView } from '../components/project/ProjectControl.js'
 import { useAreaFilter } from '../components/project/ProjectAreaFilter.js'
 import { ProjectIdentity } from '../components/project/ProjectIdentity.js'
@@ -74,64 +74,66 @@ function signals(project: ProjectSummary, todayIso: string) {
 }
 
 /**
- * The … menu at the right end of a project row, the demo's projMenu: rename, change status, delete.
- * Rename replaces the content of the same popover, matching the demo, which closed the menu and
- * opened a rename popover in the same spot; while renaming, only the rename editor closes it.
+ * The … menu at the right end of a project row, the demo's projMenu: rename, move, change status,
+ * delete. Rename closes the menu and turns the project's name into its inline field in place (see
+ * ProjectName), keeping focus there.
  */
-function ProjectMenu({ project, onRename, onMove, canMove, onStatus, onDelete }: {
+function ProjectMenu({ project, onMove, canMove, onStatus, onDelete }: {
   project: ProjectSummary
-  onRename: (name: string) => boolean | Promise<boolean>
   onMove: (by: -1 | 1) => void
   canMove: (by: -1 | 1) => boolean
   onStatus: (status: ProjectStatus) => void
   onDelete: () => void
 }) {
   const m = useMessages()
-  // A rename being typed is kept with its project, and reopens the menu where it was typed.
   const kept = useDrafts<string>(['project', project.id])
-  const renaming = kept.get('rename') !== undefined
-  const [open, setOpen] = useState(false)
-  const close = () => {
-    setOpen(false)
-    kept.drop('rename')
-  }
+  const renaming = useRef(false)
 
   return (
     <DotsMenu
-      open={open || renaming}
-      onOpenChange={(next) => {
-        if (!next && renaming) return
-        setOpen(next)
+      stopRowActivation
+      onCloseAutoFocus={(event) => {
+        if (!renaming.current) return
+        renaming.current = false
+        // The name's field opens once the menu has let go of focus, so focus goes to it.
+        event.preventDefault()
+        kept.set(RENAME, project.name)
       }}
-      surface={renaming ? 'editor' : 'menu'} stopRowActivation
     >
-          {renaming
-            ? (
-              <ShortTextEditor
-                title={m.research.list.renameTitle} initialValue={project.name}
-                placeholder={m.project.identity.nameFieldLabel}
-                onSubmit={onRename} onClose={close} kept={{ drafts: kept, target: 'rename' }}
-              />
-            )
-            : (
-              <>
-                {/* Selecting "Rename" does not close the menu: it replaces the contents of the same menu */}
-                <MenuItem onSelect={(e) => { e.preventDefault(); kept.set('rename', project.name) }}>
-                  {m.research.list.rename}
-                </MenuItem>
-                <MenuItem disabled={!canMove(-1)} onSelect={() => onMove(-1)}>{m.common.moveUp}</MenuItem>
-                <MenuItem disabled={!canMove(1)} onSelect={() => onMove(1)}>{m.common.moveDown}</MenuItem>
-                <MenuSeparator />
-                <MenuRadioGroup value={project.status}>
-                  {PROJECT_STATUSES.map((s) => (
-                    <MenuRadioItem key={s} value={s} onSelect={() => onStatus(s)}>{s}</MenuRadioItem>
-                  ))}
-                </MenuRadioGroup>
-                <MenuSeparator />
-                <MenuItem className="mi danger" onSelect={onDelete}>{m.common.delete}</MenuItem>
-              </>
-            )}
+      <MenuItem onSelect={() => { renaming.current = true }}>{m.research.list.rename}</MenuItem>
+      <MenuItem disabled={!canMove(-1)} onSelect={() => onMove(-1)}>{m.common.moveUp}</MenuItem>
+      <MenuItem disabled={!canMove(1)} onSelect={() => onMove(1)}>{m.common.moveDown}</MenuItem>
+      <MenuSeparator />
+      <MenuRadioGroup value={project.status}>
+        {PROJECT_STATUSES.map((s) => (
+          <MenuRadioItem key={s} value={s} onSelect={() => onStatus(s)}>{s}</MenuRadioItem>
+        ))}
+      </MenuRadioGroup>
+      <MenuSeparator />
+      <MenuItem className="mi danger" onSelect={onDelete}>{m.common.delete}</MenuItem>
     </DotsMenu>
+  )
+}
+
+/** The draft a project's rename is kept under, with its project, so it reopens where it was typed. */
+const RENAME = 'rename'
+
+/**
+ * A project's name on its card or row: `children`, the identity that opens the project, at rest, and
+ * while the … menu's rename is open the name's inline field in their place, saved through `onRename`.
+ */
+function ProjectName({ project, onRename, children }: {
+  project: ProjectSummary
+  onRename: (name: string) => boolean | Promise<boolean>
+  children: ReactNode
+}) {
+  const m = useMessages()
+  return (
+    <InlineField
+      label={m.project.identity.nameFieldLabel} value={project.name} keep={{ scope: ['project', project.id], target: RENAME }}
+      className="project-name" normalize={(next) => next.trim()} validate={(next) => next !== ''} onSave={onRename}
+      rest={() => children}
+    />
   )
 }
 
@@ -164,8 +166,8 @@ export function projectPaperCountLabel(count: number, m: Catalog): string {
 }
 
 /** Ongoing projects expose the decisions a researcher needs before secondary counts and history. */
-function ProjectPanel({ project, onOpen, menu, reorder }: {
-  project: ProjectSummary; onOpen: () => void; menu: ReactNode
+function ProjectPanel({ project, onOpen, onRename, menu, reorder }: {
+  project: ProjectSummary; onOpen: () => void; onRename: (name: string) => boolean | Promise<boolean>; menu: ReactNode
   reorder: Reorderable
 }) {
   const today = useToday()
@@ -182,7 +184,9 @@ function ProjectPanel({ project, onOpen, menu, reorder }: {
       density="card" className="projpanel" data-proj={project.id} onActivate={onOpen} {...reorder.item}
       title={(
         <>
-          <ItemOpen><ProjectIdentity project={project} showTopic /></ItemOpen>
+          <ProjectName project={project} onRename={onRename}>
+            <ItemOpen><ProjectIdentity project={project} showTopic /></ItemOpen>
+          </ProjectName>
           {stale ? <Tag state="warning">{m.research.panel.staleAlert(idle!)}</Tag> : null}
         </>
       )}
@@ -245,8 +249,8 @@ function ProjectPanel({ project, onOpen, menu, reorder }: {
  * focus and time since the last progress. The identity is the row's button; a click anywhere else on
  * the row opens it too.
  */
-function ProjectRow({ project, onOpen, menu, reorder }: {
-  project: ProjectSummary; onOpen: () => void; menu: ReactNode
+function ProjectRow({ project, onOpen, onRename, menu, reorder }: {
+  project: ProjectSummary; onOpen: () => void; onRename: (name: string) => boolean | Promise<boolean>; menu: ReactNode
   reorder: Reorderable
 }) {
   const { idle } = signals(project, useToday())
@@ -254,7 +258,11 @@ function ProjectRow({ project, onOpen, menu, reorder }: {
   return (
     <Item
       composite className="prow" data-proj={project.id} onActivate={onOpen} {...reorder.item}
-      title={<ItemOpen><ProjectIdentity project={project} variant="row" showPriority={false} showTopic /></ItemOpen>}
+      title={(
+        <ProjectName project={project} onRename={onRename}>
+          <ItemOpen><ProjectIdentity project={project} variant="row" showPriority={false} showTopic /></ItemOpen>
+        </ProjectName>
+      )}
       meta={(
         <FadeText className="m">
           {m.project.identity.focusWithLabel(m.project.identity.focusLabel[FOCUS_KEY[project.status]], project.focus)} ·{' '}
@@ -362,7 +370,6 @@ function ProjectList({ onOpen, newRow, onNewRow, onReturn }: {
   const menuOf = (p: ProjectSummary) => (
     <ProjectMenu
       project={p}
-      onRename={(name) => write(projectApi.update(p.id, { name }), { note: m.research.list.renamed })}
       onMove={(by) => reorder.move(p.id, by)} canMove={(by) => reorder.canMove(p.id, by)}
       onStatus={(status) => applyWrite(
         projectApi.update(p.id, { status }), m.research.list.statusChangedTo(status),
@@ -370,6 +377,7 @@ function ProjectList({ onOpen, newRow, onNewRow, onReturn }: {
       onDelete={() => applyWrite(projectApi.delete(p.id), m.common.trashed, undo.change)}
     />
   )
+  const renameOf = (p: ProjectSummary) => (name: string) => write(projectApi.update(p.id, { name }), { note: m.research.list.renamed })
 
   return (
     <PageShell>
@@ -410,7 +418,7 @@ function ProjectList({ onOpen, newRow, onNewRow, onReturn }: {
               {g.status === ACTIVE_PROJECT
                 ? g.items.map((p) => (
                   <ProjectPanel
-                    project={p} onOpen={() => onOpen(p.id)} menu={menuOf(p)} key={p.id}
+                    project={p} onOpen={() => onOpen(p.id)} onRename={renameOf(p)} menu={menuOf(p)} key={p.id}
                     reorder={{ item: reorder.itemProps(p.id), handle: reorder.handleProps(p.id) }}
                   />
                 ))
@@ -418,7 +426,7 @@ function ProjectList({ onOpen, newRow, onNewRow, onReturn }: {
                   <List variant="embedded" rows="all">
                     {g.items.map((p) => (
                       <ProjectRow
-                        project={p} onOpen={() => onOpen(p.id)} menu={menuOf(p)} key={p.id}
+                        project={p} onOpen={() => onOpen(p.id)} onRename={renameOf(p)} menu={menuOf(p)} key={p.id}
                         reorder={{ item: reorder.itemProps(p.id), handle: reorder.handleProps(p.id) }}
                       />
                     ))}

@@ -28,10 +28,6 @@
 .workspace-field{display:flex;align-items:center;gap:var(--sp-4);min-width:0}
 .workspace-root{display:flex;align-items:center;gap:var(--sp-6);min-width:0;flex:1;border:0;background:transparent;color:inherit;font:inherit;text-align:left;cursor:pointer;padding:0}
 .workspace-kinds{margin-bottom:var(--sp-16)}
-.workspace-form{display:grid;gap:var(--sp-10)}
-.workspace-form label{display:grid;grid-template-columns:66px minmax(0,1fr);align-items:center;gap:var(--sp-12);
-  color:var(--ter);font-size:var(--fs-sm)}
-.workspace-form .form-control{width:100%;font-size:var(--fs-base)}
 .workspace-form .form-input[type="number"]{-moz-appearance:textfield}
 .workspace-form .form-input[type="number"]::-webkit-inner-spin-button{appearance:none;margin:0}
 

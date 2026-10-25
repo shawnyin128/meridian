@@ -8,7 +8,6 @@ import type {
   TaskPatch,
   TaskWindow,
 } from '../../../shared/contract.js'
-import { TASK_SLOT_ENDS, TASK_SLOT_STARTS } from '../../../shared/contract.js'
 import { dnum, isoOf } from '../../../shared/dates.js'
 import { AddAction } from '../AddAction.js'
 import { Group } from '../GroupedList.js'
@@ -35,7 +34,7 @@ import { useFormat } from '../../lib/format.js'
 import { useMessages } from '../../messages/useMessages.js'
 import type { Catalog } from '../../messages/catalog.js'
 import { AgentLabel } from '../SourceLabel.js'
-import { TagButton, tagClass } from '../Tag.js'
+import { tagClass } from '../Tag.js'
 import { NodeAssignment } from './NodeAssignment.js'
 import { PRIORITY_STATE, ProjectPriorityTag } from './ProjectIdentity.js'
 import { FadeText } from '../FadeText.js'
@@ -44,12 +43,6 @@ import './ProjectPlan.css'
 const stateWord = (m: Catalog): Record<Task['state'], string> => m.project.plan.state
 const TASK_STATES: Task['state'][] = ['act', 'plan', 'done']
 const MILESTONE_STATES = ['open', 'done'] as const
-const NEXT_PRIORITY: Record<Task['priority'], Task['priority']> = {
-  p0: 'p1', p1: 'p2', p2: 'p0',
-}
-const NEXT_TASK_STATE: Record<Task['state'], Task['state']> = {
-  act: 'plan', plan: 'done', done: 'act',
-}
 
 export type PlanTab = 'task' | 'ms'
 
@@ -72,7 +65,10 @@ export function newPlanRow(kind: PlanTab, date: string, window: TaskWindow | nul
     : { kind, draft: { title: '', start: date, end: window ? date : isoOf(dnum(date) + 6), priority: 'p1', state: 'act', window } }
 }
 
-/** The new-task row, a view of `draft`, which every change replaces through `onDraft`; `row` is its draft slot. */
+/**
+ * The new-task row, a view of `draft`, which every change replaces through `onDraft`: its date, time,
+ * priority and state are picked as a saved task's are, in the same columns. `row` is its draft slot.
+ */
 function TaskCreateRow({ row, draft, onDraft, triggers, onSave, onCancel }: {
   row: RefObject<HTMLElement | null>
   draft: TaskDraft
@@ -81,87 +77,44 @@ function TaskCreateRow({ row, draft, onDraft, triggers, onSave, onCancel }: {
   onSave: (draft: TaskDraft) => boolean | Promise<boolean>
   onCancel: () => void
 }) {
-  const { start, end, priority, state, title, window: taskWindow } = draft
+  const { priority, state, title } = draft
   const patch = (fields: Partial<TaskDraft>) => onDraft({ ...draft, ...fields })
+  const schedule = (fields: TaskPatch) => {
+    patch({
+      start: fields.start ?? draft.start, end: fields.end ?? draft.end,
+      window: fields.window === undefined ? draft.window : fields.window,
+    })
+    return Promise.resolve(true)
+  }
   const m = useMessages()
 
-  const pickStart = (iso: string) => {
-    const window = taskWindow && iso === end && taskWindow.end <= taskWindow.start
-      ? { ...taskWindow, end: TASK_SLOT_ENDS[TASK_SLOT_STARTS.indexOf(taskWindow.start)]! } : taskWindow
-    patch({ start: iso, end: dnum(end) < dnum(iso) ? iso : end, window })
-  }
-  const pickEnd = (iso: string) => {
-    const next = dnum(iso) < dnum(start) ? start : iso
-    const window = taskWindow && next === start && taskWindow.end <= taskWindow.start
-      ? { ...taskWindow, start: TASK_SLOT_STARTS[TASK_SLOT_ENDS.indexOf(taskWindow.end)]! } : taskWindow
-    patch({ end: next, window })
-  }
-  const pickWindowStart = (next: TaskWindow['start']) => {
-    if (!taskWindow) return
-    patch({ window: start === end && taskWindow.end <= next
-      ? { start: next, end: TASK_SLOT_ENDS[TASK_SLOT_STARTS.indexOf(next)]! }
-      : { ...taskWindow, start: next } })
-  }
-  const pickWindowEnd = (next: TaskWindow['end']) => {
-    if (!taskWindow) return
-    patch({ window: start === end && next <= taskWindow.start
-      ? { start: TASK_SLOT_STARTS[TASK_SLOT_ENDS.indexOf(next)]!, end: next }
-      : { ...taskWindow, end: next } })
-  }
-  const save = (nextTitle: string): boolean | Promise<boolean> => {
-    return onSave({
-      title: nextTitle,
-      start,
-      end: dnum(end) < dnum(start) ? start : end,
-      priority,
-      state,
-      window: taskWindow,
-    })
-  }
   return (
-    <DraftSlot className="ddlrow task-create-row" slot={row}>
-      <DateButton iso={start} className="din" onPick={pickStart} />
-      <span className="dsep">–</span>
-      <DateButton iso={end} className="din" onPick={pickEnd} />
-      <button
-        className="din twmode" type="button"
-        onClick={() => patch({ window: taskWindow ? null : { start: '10:00', end: '12:00' } })}
-      >{taskWindow ? m.project.plan.windowMode.timed : m.project.plan.windowMode.allDay}</button>
-      {taskWindow
-        ? (
-          <span className="twinputs">
-            <ChoicePicker
-              value={taskWindow.start} options={TASK_SLOT_STARTS}
-              className="din time" onPick={pickWindowStart}
-            />
-            <span className="dsep">–</span>
-            <ChoicePicker
-              value={taskWindow.end} options={TASK_SLOT_ENDS}
-              className="din time" onPick={pickWindowEnd}
-            />
-          </span>
-        )
-        : null}
-      <TagButton
-        state={PRIORITY_STATE[priority]}
-        onClick={() => patch({ priority: NEXT_PRIORITY[priority] })}
-      >
-        {priority.toUpperCase()}
-      </TagButton>
-      <button
-        className="din state-edit" type="button"
-        onClick={() => patch({ state: NEXT_TASK_STATE[state] })}
-      >{stateWord(m)[state]}</button>
-      <InlineDraftInput
-        className="min" scopeRef={row} triggers={triggers} placeholder={m.project.plan.taskNamePlaceholder}
-        onSubmit={save} onCancel={onCancel}
-        value={title} onChange={(event) => patch({ title: event.target.value })}
+    <DraftSlot subgrid className="ddlrow task-row task-create-row" slot={row}>
+      <TaskScheduleField mode="date" task={draft} onSave={schedule} className="task-date-part" />
+      <TaskScheduleField mode="time" task={draft} onSave={schedule} className="task-clock-part" />
+      <PriorityPicker
+        value={priority} className={tagClass(PRIORITY_STATE[priority], 'label', 'plan-priority')}
+        onPick={(next) => patch({ priority: next })}
+      >{priority.toUpperCase()}</PriorityPicker>
+      <ChoicePicker
+        value={state} options={TASK_STATES} label={(next) => stateWord(m)[next]}
+        className="dleft plan-cell state-cell" onPick={(next) => patch({ state: next })}
       />
+      <span className="plan-name-cell">
+        <InlineDraftInput
+          scopeRef={row} triggers={triggers} placeholder={m.project.plan.taskNamePlaceholder}
+          onSubmit={(nextTitle) => onSave({ ...draft, title: nextTitle })} onCancel={onCancel}
+          value={title} onChange={(event) => patch({ title: event.target.value })}
+        />
+      </span>
     </DraftSlot>
   )
 }
 
-/** The new-milestone row, a view of `draft`, which every change replaces through `onDraft`; `row` is its draft slot. */
+/**
+ * The new-milestone row, a view of `draft`, which every change replaces through `onDraft`: its date
+ * and state are picked as a saved milestone's are, in the same columns. `row` is its draft slot.
+ */
 function MilestoneCreateRow({ row, draft, onDraft, triggers, onSave, onCancel }: {
   row: RefObject<HTMLElement | null>
   draft: MilestoneDraft
@@ -173,23 +126,33 @@ function MilestoneCreateRow({ row, draft, onDraft, triggers, onSave, onCancel }:
   const { date, done, title } = draft
   const m = useMessages()
 
-  const save = (nextTitle: string): boolean | Promise<boolean> => {
-    return onSave({ date, title: nextTitle, done })
-  }
-
   return (
-    <DraftSlot className="ddlrow milestone-create-row" slot={row}>
-      <DateButton iso={date} className="din" onPick={(next) => onDraft({ ...draft, date: next })} />
-      <button
-        className="din state-edit" type="button"
-        onClick={() => onDraft({ ...draft, done: !done })}
-      >{done ? m.project.plan.milestoneState.done : m.project.plan.milestoneState.open}</button>
-      <InlineDraftInput
-        className="min" scopeRef={row} triggers={triggers} placeholder={m.project.plan.milestoneNamePlaceholder}
-        onSubmit={save} onCancel={onCancel}
-        value={title} onChange={(event) => onDraft({ ...draft, title: event.target.value })}
-      />
+    <DraftSlot subgrid className="ddlrow milestone-row milestone-create-row" slot={row}>
+      <DateButton iso={date} className="plan-cell plan-date-button" onPick={(next) => onDraft({ ...draft, date: next })}>
+        <DateChip date={date} className="plan-date" />
+      </DateButton>
+      <MilestoneStatePicker done={done} onPick={(next) => onDraft({ ...draft, done: next })} />
+      <span className="plan-name-cell">
+        <InlineDraftInput
+          scopeRef={row} triggers={triggers} placeholder={m.project.plan.milestoneNamePlaceholder}
+          onSubmit={(nextTitle) => onSave({ date, title: nextTitle, done })} onCancel={onCancel}
+          value={title} onChange={(event) => onDraft({ ...draft, title: event.target.value })}
+        />
+      </span>
     </DraftSlot>
+  )
+}
+
+/** A milestone's open or done state, picked from a menu, in a new row and a saved one alike. */
+function MilestoneStatePicker({ done, onPick }: { done: boolean; onPick: (done: boolean) => void }) {
+  const m = useMessages()
+  return (
+    <ChoicePicker
+      value={done ? 'done' : 'open'} options={MILESTONE_STATES}
+      label={(state) => (state === 'done' ? m.project.plan.milestoneState.done : m.project.plan.milestoneState.open)}
+      className="dleft plan-cell state-cell"
+      onPick={(state) => onPick(state === 'done')}
+    />
   )
 }
 
@@ -202,8 +165,7 @@ function PlanNameCell({ value, label, keep, onSave, rest }: {
 }) {
   return (
     <InlineField
-      label={label} value={value} display={<FadeText>{value}</FadeText>} wrapperClassName="plan-name-cell" keep={keep}
-      buttonClassName="plan-cell plan-name" inputClassName="plan-name-input"
+      label={label} value={value} display={<FadeText>{value}</FadeText>} className="plan-name-cell" keep={keep}
       normalize={(next) => next.trim()} validate={(next) => next !== ''} onSave={onSave}
       {...(rest === undefined ? {} : { rest })}
     />
@@ -221,7 +183,7 @@ function TaskNameCell({ projectId, task, onSave }: { projectId: string; task: Ta
       value={task.title} label={m.project.plan.taskNamePlaceholder} onSave={(title) => onSave({ title })}
       keep={{ scope: ['project', projectId, 'task', task.id], target: 'name' }}
       rest={(edit) => (
-        <>
+        <span className="task-name">
           <ToolbarButton className="plan-cell plan-name plan-open"><FadeText>{task.title}</FadeText></ToolbarButton>
           <RowActions>
             <IconButton
@@ -229,7 +191,7 @@ function TaskNameCell({ projectId, task, onSave }: { projectId: string; task: Ta
               className="plan-rename" onClick={(event) => { event.stopPropagation(); edit() }}
             ><IconPencil /></IconButton>
           </RowActions>
-        </>
+        </span>
       )}
     />
   )
@@ -316,7 +278,7 @@ function TaskRow({ projectId, task, selected, reorder, onSave, onDelete, onOpen 
     // The row is the toolbar of its own controls, from its date to its delete.
     <Toolbar label={task.title}>
       <Item
-        composite selected={selected} data-row={task.id} {...reorder} onActivate={onOpen}
+        composite subgrid selected={selected} data-row={task.id} {...reorder} onActivate={onOpen}
         className={`ddlrow task-row${task.state === 'done' ? ' done' : ''}`}
         actions={(
           <IconButton
@@ -358,10 +320,9 @@ function MilestoneRow({ projectId, milestone, onHover, onSave, onDelete }: {
   onDelete: () => void
 }) {
   const m = useMessages()
-  const milestoneState: typeof MILESTONE_STATES[number] = milestone.done ? 'done' : 'open'
   return (
     <Item
-      data-row={milestone.id}
+      subgrid data-row={milestone.id}
       className={`ddlrow milestone-row${milestone.done ? ' done' : ''}`}
       onMouseEnter={() => onHover(milestone.id)} onMouseLeave={() => onHover(null)}
       actions={(
@@ -377,12 +338,7 @@ function MilestoneRow({ projectId, milestone, onHover, onSave, onDelete }: {
       >
         <DateChip date={milestone.date} className="plan-date" />
       </DateButton>
-      <ChoicePicker
-        value={milestoneState} options={MILESTONE_STATES}
-        label={(state) => (state === 'done' ? m.project.plan.milestoneState.done : m.project.plan.milestoneState.open)}
-        className="dleft plan-cell state-cell"
-        onPick={(state) => { void onSave({ done: state === 'done' }) }}
-      />
+      <MilestoneStatePicker done={milestone.done} onPick={(done) => { void onSave({ done }) }} />
       <PlanNameCell
         value={milestone.title} label={m.project.plan.milestoneNamePlaceholder}
         keep={{ scope: ['project', projectId, 'milestone', milestone.id], target: 'name' }}

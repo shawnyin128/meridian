@@ -5,7 +5,7 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { MessagesProvider } from '../messages/useMessages.js'
 import { LANGUAGE_STORAGE_KEY } from '../shell/language.js'
-import { ColourField, DirectoryField, FormButton, FormInput, FormSelect, FormTextarea } from './FormControls.js'
+import { ColourField, DirectoryField, FieldRow, FieldRows, FormButton, FormInput, FormSelect, FormTextarea } from './FormControls.js'
 
 declare global {
   var IS_REACT_ACT_ENVIRONMENT: boolean
@@ -96,6 +96,32 @@ describe('FormControls', () => {
     )
     expect(disabled).toMatch(/form-input[^>]*disabled=""/)
     expect(disabled).toMatch(/directory-field-action[^>]*disabled=""/)
+  })
+})
+
+describe('FieldRow', () => {
+  it('标签写在标签列,它是那一行文字栏位的标签:给栏位起名,点它就是点栏位;选择器不挂在标签上', () => {
+    globalThis.IS_REACT_ACT_ENVIRONMENT = true
+    const host = document.createElement('div')
+    document.body.append(host)
+    const root = createRoot(host)
+    act(() => root.render(
+      <FieldRows>
+        <FieldRow label="主机"><FormInput /></FieldRow>
+        <FieldRow label="正文"><FormTextarea /></FieldRow>
+        <FieldRow label="基于"><FormButton>默认</FormButton></FieldRow>
+        <FieldRow><FormInput id="own" /></FieldRow>
+      </FieldRows>,
+    ))
+    const rows = [...host.querySelectorAll('.field-rows > .field-row')]
+    expect(rows.map((row) => [...row.children].map((part) => part.className)))
+      .toEqual([...Array(3)].map(() => ['field-row-label', 'field-row-field']).concat([['field-row-field']]))
+    const [input, textarea] = [host.querySelector('input')!, host.querySelector('textarea')!]
+    const labels = [...host.querySelectorAll('label')]
+    expect([input.labels?.[0], textarea.labels?.[0]]).toEqual([labels[0], labels[1]])
+    expect(host.querySelector('button')!.labels?.length).toBe(0)
+    expect(host.querySelector('#own')).not.toBeNull()
+    act(() => root.unmount())
   })
 })
 

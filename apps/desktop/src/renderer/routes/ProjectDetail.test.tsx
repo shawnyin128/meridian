@@ -645,3 +645,62 @@ describe('项目页跟着工作区刷新', () => {
     expect([gets, host.querySelector('.page-error')]).toEqual([3, null])
   })
 })
+
+describe('项目的起止日期', () => {
+  let unmount = () => {}
+  const updates: unknown[] = []
+
+  beforeEach(() => {
+    globalThis.IS_REACT_ACT_ENVIRONMENT = true
+    vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} })
+    window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'zh')
+    shell.shown = true
+    updates.length = 0
+    const held = project({ start: '2026-09-02', due: '2026-09-15' })
+    vi.stubGlobal('meridian', {
+      call: (method: string, params: { patch?: Partial<ProjectDetail> }) => {
+        if (method === 'project.get') return Promise.resolve(structuredClone(held))
+        if (method === 'project.update') {
+          updates.push(params.patch)
+          Object.assign(held, params.patch)
+          return Promise.resolve({ project: structuredClone(held), change: 'change-dates' })
+        }
+        if (method === 'idea.list' || method === 'chat.list') return Promise.resolve([])
+        return new Promise(() => {})
+      },
+    })
+  })
+
+  afterEach(() => {
+    unmount()
+    vi.unstubAllGlobals()
+  })
+
+  it('属性栏的开始和截止是一个日期范围:截止的日历从开始那天起,开始挑到截止之后时截止跟着挪,一次写下两个', async () => {
+    const host = document.createElement('div')
+    document.body.append(host)
+    const root = createRoot(host)
+    await act(async () => {
+      root.render(withMessages(
+        <ProjectScreen projectId="draft" onBack={() => {}} onReturn={() => {}} tab="task" onTab={() => {}} record="tl" onRecord={() => {}} />,
+      ))
+    })
+    unmount = () => { act(() => root.unmount()); host.remove() }
+    await vi.waitFor(() => expect(host.querySelectorAll('.wkside .property').length).toBeGreaterThan(0))
+    const value = (label: string) => [...host.querySelectorAll('.wkside .property')]
+      .find((row) => row.querySelector('.property-label')!.textContent === label)?.querySelector<HTMLButtonElement>('.property-value > button')
+    const days = async (label: string) => {
+      await vi.waitFor(() => expect(value(label)).toBeDefined())
+      await act(async () => { value(label)!.click() })
+      return [...[...document.querySelectorAll('.calg')].at(-1)!.querySelectorAll<HTMLButtonElement>('button')]
+    }
+    const due = await days('截止')
+    expect(due.filter((day) => day.disabled).map((day) => day.textContent)).toEqual(['1'])
+    await act(async () => { due[9]!.click() })
+    expect(updates.at(-1)).toEqual({ due: '2026-09-10' })
+    await vi.waitFor(() => expect(document.querySelector('.calg')).toBeNull())
+    const start = await days('开始')
+    await act(async () => { start[19]!.click() })
+    expect(updates.at(-1)).toEqual({ start: '2026-09-20', due: '2026-09-20' })
+  })
+})

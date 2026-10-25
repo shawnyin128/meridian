@@ -14,8 +14,6 @@ const { parse } = require('@babel/parser')
 export const RAW_BUTTONS = [
   { reason: 'a link of the page contents that scrolls to its heading', keys: ['routes/Wiki.tsx wktoc > button'] },
   { reason: 'a property value that opens its editor', keys: ['routes/ProjectDetail.tsx workspace-root', 'routes/ProjectDetail.tsx pv'] },
-  { reason: 'a draft row\'s field that cycles its value, drawn as the row\'s other field pills',
-    keys: ['components/project/ProjectPlan.tsx din'] },
   { reason: 'an option of a radio group: a column type icon or an appearance card',
     keys: ['components/paper-table/ColumnAdd.tsx ctbtn', 'components/settings/AppearanceSettings.tsx appearance-choice'] },
   { reason: 'a menu row that turns a column on or off', keys: ['components/paper-table/ColumnMenu.tsx mi'] },

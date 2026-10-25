@@ -127,7 +127,7 @@ test('第 6 批:Wiki 论文页的属性,四档窗口 × 亮暗', async ({ win, a
   await win.locator('[data-desk="wiki"]').click()
   const shownSlot = win.locator('.screenslot:not([hidden])')
   await shownSlot.locator('.wkgrid').last().locator('.wkcard').first().click()
-  await shownSlot.locator('.wkside .wkprops').waitFor()
+  await shownSlot.locator('.wkside .property-list').waitFor()
   for (const theme of ['light', 'dark'] as const) {
     await win.evaluate((t) => { document.documentElement.dataset['theme'] = t }, theme)
     for (const [w, h] of B6_SIZES) {

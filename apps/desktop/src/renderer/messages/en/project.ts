@@ -169,8 +169,6 @@ export const project = {
     focusUpdated: (label: string) => `${label} updated`,
     startLabel: 'Start',
     dueLabel: 'Due',
-    startAfterDue: "Start date can't be later than the due date.",
-    dueBeforeStart: "Due date can't be earlier than the start date.",
     dateUpdated: 'Date updated',
     paperCount: (n: number) => `${n} ${pluralEn(n, { one: 'paper', other: 'papers' })}`,
     workspaceLabel: 'Workspace',

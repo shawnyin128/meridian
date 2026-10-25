@@ -713,9 +713,9 @@ const inputShape = (input: Locator): Promise<Record<string, string>> => input.ev
     border: `${s.borderTopWidth} ${s.borderTopStyle} ${s.borderTopColor}`,
     background: s.backgroundColor,
     radius: s.borderTopLeftRadius,
-    // Read the left side only: #libq is now a ClearableInput whose trailing clear button legitimately
-    // widens its own right padding, so the shared "same outfit" side is the one without that button.
-    padding: `${s.paddingTop} ${s.paddingLeft}`,
+    // Read the top only: #libq is a SearchField whose leading glyph and trailing clear button widen its
+    // left and right padding, so the shared "same outfit" side is the one without either.
+    padding: s.paddingTop,
     fontSize: s.fontSize,
     fontFamily: s.fontFamily,
   }

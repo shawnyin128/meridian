@@ -1,14 +1,9 @@
-/* A draft's labelled lines share one label column, as wide as its longest label; every other part spans the draft. */
+/* A draft's field rows share one label column, as wide as its longest label; every other part spans the draft. */
 .draft-form{display:grid;grid-template-columns:max-content minmax(0,1fr);column-gap:var(--sp-8);row-gap:var(--sp-8);min-width:0}
 .draft-form>*{grid-column:1/-1}
+.draft-form>.field-row{grid-template-columns:subgrid}
 .draft-form .form-control{width:100%}
 .draft-form .form-textarea{min-height:96px}
 .draft-form-destination{display:flex;align-items:center;gap:var(--sp-6);min-width:0;color:var(--ter);font-size:var(--fs-sm)}
 .draft-form-destination .choice-picker{width:auto;max-width:100%}
-.draft-form-line{display:grid;grid-template-columns:subgrid;align-items:center;min-width:0}
-.draft-form-line>.draft-form-label{grid-column:1;white-space:nowrap}
-.draft-form-fields{grid-column:2;display:flex;align-items:center;gap:var(--sp-8);min-width:0}
-.draft-form-fields:only-child{grid-column:1/-1}
-.draft-form-fields>.form-control,.draft-form-fields>.choice-picker{flex:1}
-.draft-form-label{flex:none;color:var(--sec);font-size:var(--fs-sm)}
 .draft-form-foot{display:flex;justify-content:flex-end;gap:var(--sp-8)}

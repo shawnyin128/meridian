@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
-import { ClearableInput } from '../components/ClearableInput.js'
+import { SearchField } from '../components/ClearableInput.js'
 import { EmptyState } from '../components/EmptyState.js'
-import { IconSearch } from '../components/icons.js'
 import { ModalDialog, ModalTitle } from '../components/ModalDialog.js'
 import { PickOption } from '../components/PickerPopover.js'
 import { ScrollArea } from '../components/ScrollArea.js'
@@ -38,7 +37,7 @@ function PaletteBody({ commands, onCommand }: {
   return (
     <div className="cmdk-body">
       <ModalTitle hidden>{m.shell.palette.title}</ModalTitle>
-      <ClearableInput
+      <SearchField
         wrapperClassName="cmdk-field" id="cmdkq" placeholder={m.shell.palette.placeholder} autoComplete="off" value={q}
         onChange={(e) => setQ(e.target.value)} onClear={() => setQ('')}
         onKeyDown={(e) => {
@@ -47,7 +46,6 @@ function PaletteBody({ commands, onCommand }: {
           // The Enter that chooses must not also press whatever the chosen row opens, such as a dialog's close button.
           if (e.key === 'Enter') e.preventDefault()
         }}
-        leading={<IconSearch />}
       />
       <ScrollArea axis="y" className="cmdk-list" ref={list}>
         {shown.map((command, at) => (

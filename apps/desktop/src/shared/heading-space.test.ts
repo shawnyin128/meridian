@@ -23,7 +23,8 @@ const RENDERER = join(import.meta.dirname, '..', 'renderer')
 const SHEETS = [
   'shell/tokens.css', 'routes/shell.css', 'components/PageShell.css', 'components/GroupedList.css', 'components/Card.css',
   'components/CardTray.css', 'components/Item.css', 'components/List.css', 'components/Markdown.css', 'routes/Feed.css',
-  'components/settings/ExtensionSettings.css', 'routes/Settings.css',
+  'components/settings/ExtensionSettings.css', 'routes/Settings.css', 'components/FormControls.css',
+  'components/settings/ServiceCard.css',
 ]
 
 type Rule = { selectors: string[]; declarations: Map<string, string>; order: number }
@@ -190,8 +191,15 @@ describe('标题下面的空隙只归标题', () => {
       '<section class="card-surface extension-tutorial"><div class="section-heading section-heading--group" id="heading">在 Coding Agent 中使用 Meridian</div><ol class="extension-tutorial-steps"></ol></section>',
     )), '教程步骤').toBe(8)
     expect(spaceBelow(heading(
-      '<div class="card-surface storage-card"><div class="section-heading section-heading--group" id="heading">论文库</div><label class="storage-root"></label></div>',
+      '<div class="card-surface storage-card"><div class="section-heading section-heading--group" id="heading">论文库</div><div class="storage-root"></div></div>',
     )), '库位置').toBe(8)
+  })
+
+  it('服务卡片的字段跟在分组标题后面时,第一行不再叠上行与行之间的空隙', () => {
+    expect(spaceBelow(heading(
+      '<div class="card-surface service-card"><div class="section-heading section-heading--group" id="heading">OpenAI</div>'
+        + '<div class="field-rows"><div class="field-row"></div><div class="field-row"></div></div><div class="service-foot"></div></div>',
+    ))).toBe(8)
   })
 
   it('小节标题下面的 Markdown 不再叠上它第一个标题的上边距', () => {

@@ -12,7 +12,13 @@ Current shared contracts:
 - `timeline/MilestoneEditor`: the one milestone editor of both boards. The milestone lane opens it to
   name a new milestone and a diamond to rename or delete one, at the click; Enter or Space on a lane
   opens it on today's date.
-- `InlineField`: one-field-at-a-time editing, validation, cancel/save behavior, and presentation hooks.
+- `InlineField`: the one in-place edit of a value, a name included: the rail values, the paper title and
+  metadata, the plan's task and milestone names, a project's name on its card or row, and, with `cell`, a
+  paper table text cell that its table opens. At rest the value's hover fill reaches past its text by the
+  inline field's padding, so the field's text starts where the value's was; Enter, focus leaving or a press
+  outside saves, Escape cancels, and what is typed is kept as a draft. A rename starts from a click on the
+  name, or, where the name's click opens its item, from the item's rename command (the … menu's 重命名, a
+  task's pencil); it never opens a popover.
 - `Button`: the one text button: `primary`, `secondary` or `ghost`, in the `neutral` or `danger` tone,
   `regular` (30px) in the page header bar and at dialog, popover and form feet and `compact` (24px) in
   section, group and panel headings, inside rows and cards, and in toolbars, with an optional glyph before
@@ -36,7 +42,7 @@ Current shared contracts:
   layout, sibling controls, trigger refs, and persistence; trimming, validation, focus, Enter/Escape,
   outside cancellation, and async submission locking are implemented once.
 - `DraftForm`: the one form drafted in place, for a new item, or a change to one, that takes more than one
-  field. It opens where the item lands with its first field focused, and Cancel and Save at its foot. Enter
+  field, its labelled ones `FieldRow`s. It opens where the item lands with its first field focused, and Cancel and Save at its foot. Enter
   in a one-line field or ⌘Enter in a long text saves, Escape cancels, and a press outside keeps the draft.
   An item that lands elsewhere names its destination after an arrow, on a card Item of its own. Hosts provide
   the fields and the write; the refused look of a missing field, input method keys, menu keys and the save
@@ -62,7 +68,8 @@ Current shared contracts:
   ContextMenu key and Shift+F10. Radix owns placement at the point, roving focus with the arrow, Home
   and End keys, outside/Escape dismissal, and focus return.
 - `FloatingTextEditor`: positioned short-text create/rename behavior, including async-dismiss locking
-  and editor identity when the anchor changes.
+  and editor identity when the anchor changes. Only the timeline's milestones use it: a milestone named or
+  renamed at a point on the timeline has no text of its own to edit in place.
 - `ModalDialog`: the shared triggerless modal shell, overlay, accessibility defaults, and focus return.
   It owns the one dialog surface: the `confirm`, `form` and `wide` size steps on `--raised`, centring,
   a height cap with a scrolling body and pinned `actions`, the title role (`title` or `ModalTitle`),
@@ -75,7 +82,7 @@ Current shared contracts:
   when the confirmation has one, a short `state` beside the buttons (a `Tag`, such as its cost). The
   trigger opens it, or, when several ways lead to the same confirmation, the host holds it open and focus
   returns to where it was.
-- `ShortTextEditor`: the shared create/rename popover body, including fixed input geometry, focus,
+- `ShortTextEditor`: the body of `FloatingTextEditor`, including fixed input geometry, focus,
   Enter/Escape, async acceptance, and optional deletion.
 - `Item`: the one list item, in two densities that start their content at one `--item-inset`, so rows
   and cards line up on a page that mixes them: `row`, a line of a `List`, and `card`, a bordered item of its
@@ -88,7 +95,8 @@ Current shared contracts:
   holds controls of its own is `composite` (an actionable card always is): it stays a div that forwards
   pointer clicks, and its `ItemOpen` around the name is the keyboard control, so a button is never nested
   inside a button. `ItemTitle` and `ItemMeta` give a row's own grid cell or a line inside a control of the
-  item (Recent Changes' fold toggle) the slot's type.
+  item (Recent Changes' fold toggle) the slot's type. A `subgrid` row lays its cells in its list's grid
+  columns, so a list's rows, new and saved, line up.
 - `List`: the one container of Items: the outline (`card`) or none (`embedded`), the dividers between
   its rows, cards one under another or in a `grid` of the card width, and how many rows it shows before it
   scrolls inside itself (`rows`: five by default when embedded, `all`, or `fill` for the rest of its
@@ -196,8 +204,16 @@ Current shared contracts:
 - `FormInput`, `FormTextarea`, and `FormSelect`: the one field, in two appearances: `field`, the boxed field
   of forms, dialogs, popovers and filters (the default), and `inline`, which edits a value in the place of its
   text in a row, cell or property list. Both share one edge, fill, radius and the one focus rule in
-  `shell/tokens.css`; no other stylesheet draws a field's box. Feature components still own their layout,
-  validation, suggestions, and persistence.
+  `shell/tokens.css`; no other stylesheet draws a field's box or sets its text. A `field` sets its own font,
+  the body text, whatever the text around it; an `inline` field takes the text it replaces. Feature
+  components still own their layout, validation, suggestions, and persistence.
+- `FieldRow` and `FieldRows` (in `FormControls`): the one labelled field. The label stands in the label
+  column, in the meta size and `--ter`, and names the text field after it; the rows of one `FieldRows`, or of
+  a `DraftForm`, share a label column as wide as their longest label. Screens render no `<label>` of their own.
+- `PropertyList` and `Property`: the one label/value list, in the project and Wiki rails, the paper
+  metadata, a run's cost plan, the Wiki ingest scope and proposal cards. Labels stand in a column as wide as
+  the longest, in the meta size and `--ter`, values after them in `--sec`; `aligned` lists take the label
+  column of the grid around them. Screens render no `dl` of their own.
 - `SshFolderPicker`: choosing a folder on an SSH host the way a local one is chosen. `SshHostField` is the
   host field: it offers the `Host` aliases Core reads from `~/.ssh/config` and keeps any host typed.
   `useSshFolders` connects through Core and lists one folder at a time, dropping answers that arrive late.
@@ -205,8 +221,9 @@ Current shared contracts:
   to a typed path (absolute or under `~`, hidden folders too), then its subfolders in a list five rows high,
   the loading state while the next folder lists, and a failure under the list. The
   project's workspace dialog uses all three, and any other choice of a remote folder reuses them.
-- `ClearableInput`: the shared controlled single-line field with one trailing clear action. Global and
-  library search configure the same focus restoration, icon geometry, and accessible naming.
+- `ClearableInput`: the shared controlled single-line field with one trailing clear action. `SearchField` is
+  the one search, a `ClearableInput` with the search glyph at its start: the sidebar search, the command
+  palette and the library search configure the same focus restoration, icon geometry, and accessible naming.
 - `GenerationControl`: the shared idle, spinning, and hover-to-stop button contract for model-backed
   actions. Chat composers and Wiki Harness generation do not define independent running animations.
 - `RunningRing` (in `icons`): the one running indicator, `DownloadRing` without a total, turning once per
@@ -258,7 +275,8 @@ Current shared contracts:
 - `project/ResearchGraph` and `project/ResearchNodePanel`: topology-based tree layout, active-path
   rendering, zoom/pan state, node selection, branch summaries, and Agent-owned node documents. The
   project route only selects the data source and holds the selected node id.
-- `project/ProjectPlan`: the complete task/milestone editor, including segmented mode, create rows,
+- `project/ProjectPlan`: the complete task/milestone editor, including segmented mode, create rows that pick
+  their fields with the saved rows' pickers in the saved rows' columns,
   per-field editing, deletion, focus restoration, and timeline-location highlighting. Persistence and
   timeline coordination are injected by the project route.
 - `project/ProjectControl`: one visual contract for the resolved next action and blocker. Project
@@ -271,8 +289,12 @@ Current shared contracts:
   relations, attachments, Agent sessions, and timeline feature sections. The route coordinates data
   and persistence instead of implementing their internal UI.
 - `FieldPickers`: shared choice, priority, date, and overflow-menu controls. Screens supply trigger
-  presentation and callbacks rather than rebuilding popovers and keyboard behavior. `ChoicePicker` is the one
-  single-value picker: `appearance="field"` makes it the boxed field of a form in place of a native select. `DotsMenu` is the one
+  presentation and callbacks rather than rebuilding popovers and keyboard behavior. A value is picked the same
+  way in a new item as in a saved one: a menu for a choice, the one calendar for a date, never a native date
+  input or a click that cycles values. `ChoicePicker` is the one
+  single-value picker: `appearance="field"` makes it the boxed field of a form in place of a native select.
+  `DateRangeField` is the one start and end, a task's schedule and a project's dates alike, under one rule:
+  the end's calendar starts at the start, and a start picked after the end takes the end along to it. `DotsMenu` is the one
   overflow-menu trigger: `label` names it, `stopRowActivation` keeps a click from activating the row it
   sits in, and `open` with `onOpenChange` lets a host control it. The host owns the rule that reveals it.
 

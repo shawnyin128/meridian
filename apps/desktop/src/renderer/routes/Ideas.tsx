@@ -8,7 +8,7 @@ import { FINISHED_PROJECT, SHELVED_PROJECT } from '../../shared/vocabulary.js'
 import { idea as ideaApi, project as projectApi, wiki as wikiApi } from '../ipc.js'
 import { MenuItem, MenuSeparator } from '../components/ActionMenu.js'
 import { SortMenu } from '../components/SortMenu.js'
-import { FormInput, FormTextarea } from '../components/FormControls.js'
+import { FieldRow, FieldRows, FormInput, FormTextarea } from '../components/FormControls.js'
 import { InlineMessage } from '../components/InlineMessage.js'
 import { ChoicePicker, DotsMenu } from '../components/FieldPickers.js'
 import { EditActions } from '../components/EditActions.js'
@@ -295,22 +295,22 @@ function IdeaDetailPanel({
         editor={editing
           ? (
             <section className="idea-detail-editor">
-              <label>
-                <span>{m.ideas.editor.titleLabel}</span>
-                <FormInput
-                  autoFocus value={title} maxLength={160}
-                  onChange={(event) => setEdit({ ...edit!, title: event.target.value })}
-                  onKeyDown={commitKeys({ onSave: save, onCancel: cancelEditing })}
-                />
-              </label>
-              <label>
-                <span>{m.ideas.bodyLabel}</span>
-                <FormTextarea
-                  value={body} maxLength={20_000}
-                  onChange={(event) => setEdit({ ...edit!, body: event.target.value })}
-                  onKeyDown={commitKeys({ multiline: true, onSave: save, onCancel: cancelEditing })}
-                />
-              </label>
+              <FieldRows>
+                <FieldRow label={m.ideas.editor.titleLabel}>
+                  <FormInput
+                    autoFocus value={title} maxLength={160}
+                    onChange={(event) => setEdit({ ...edit!, title: event.target.value })}
+                    onKeyDown={commitKeys({ onSave: save, onCancel: cancelEditing })}
+                  />
+                </FieldRow>
+                <FieldRow label={m.ideas.bodyLabel}>
+                  <FormTextarea
+                    value={body} maxLength={20_000}
+                    onChange={(event) => setEdit({ ...edit!, body: event.target.value })}
+                    onKeyDown={commitKeys({ multiline: true, onSave: save, onCancel: cancelEditing })}
+                  />
+                </FieldRow>
+              </FieldRows>
             </section>
           )
           : undefined}

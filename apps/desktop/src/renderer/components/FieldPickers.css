@@ -10,7 +10,8 @@ button.pv{border:0;background:transparent;font-family:var(--sans);font-size:var(
 .cw{font-size:var(--fs-cap);color:var(--ter);text-align:center;padding:var(--sp-2) 0}
 .cd{font-size:var(--fs-sm);text-align:center;padding:var(--sp-4) 0;border-radius:var(--r-sm);cursor:pointer;border:0;background:transparent;color:var(--ink);font-family:var(--sans);transition:background var(--t-fast) var(--e-out)}
 :where(.cd):hover{background:var(--hover)}
-.cd.off{cursor:default}
-.cd.off:hover{background:transparent}
+.cd.off,.cd:disabled{cursor:default}
+.cd.off:hover,.cd:disabled:hover{background:transparent}
+.cd:disabled{color:var(--ter)}
 .cd.today{color:var(--on-selected);font-weight:var(--fw-bold)}
 .cd.sel{background:var(--selected);color:var(--on-selected)}

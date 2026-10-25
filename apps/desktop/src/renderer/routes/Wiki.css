@@ -27,8 +27,7 @@
 .cmp-derived{display:inline-flex;align-items:center;gap:var(--sp-6)}
 
 /* The paper page's "Location in Wiki" blocks in the right rail */
-.memb{margin:var(--sp-4) 0 var(--sp-12)}
-.memb .wkprops{grid-template-columns:max-content 1fr;margin-top:var(--sp-4)}
+.memb{display:grid;gap:var(--sp-4);margin:var(--sp-4) 0 var(--sp-12)}
 
 /* Body: a heading with the page name and "Edit", then rendered Markdown, whose first heading sits close under it. */
 .section-heading+.md>h2:first-child{margin-top:var(--sp-6)}

@@ -283,7 +283,7 @@ export function ReviewQueue({ proposals, failed, pending, onApply, onDecline, li
             context={<>{origin(p)}{p.proposal.rationale ? <p className="proposal-context">{p.proposal.rationale}</p> : null}</>}
           />
         )}
-      <ProposalRows rows={others(p).length === 0 ? [] : [{
+      <ProposalRows aligned rows={others(p).length === 0 ? [] : [{
         key: 'pages', label: r.pages,
         value: others(p).map((id) => (
           <EntityLink

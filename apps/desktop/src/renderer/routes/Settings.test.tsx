@@ -1269,6 +1269,17 @@ describe('Settings', () => {
     expect(document.querySelector('.setdlg .service-card .section-heading-meta')?.textContent).toBe('申请 key')
   })
 
+  it('服务卡片的头部在字段的行之前,不在行里:字段之间的空隙不叠到头部下面', async () => {
+    /** The kinds of a card's first two parts, by their first class. */
+    const head = () => [...document.querySelector('.setdlg .service-card')!.children].slice(0, 2).map((part) => part.className.split(' ')[0])
+    api.requestedCategory = 'model'
+    await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
+    expect(head()).toEqual(['section-heading', 'field-rows'])
+    api.requestedCategory = 'research'
+    await act(async () => { root.render(<MessagesProvider key="research"><Settings /></MessagesProvider>) })
+    expect(head()).toEqual(['section-heading', 'field-rows'])
+  })
+
   it('常用模板只要求用户填写模型 ID 和需要的密钥', async () => {
     api.requestedCategory = 'model'
     await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })

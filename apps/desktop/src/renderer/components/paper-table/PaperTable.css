@@ -16,7 +16,6 @@
 .paper-drop span{font-size:var(--fs-sm);color:var(--ter)}
 /* Filter input: the shared field input at the size of the Watches screen's one-line add box (.af-in). */
 .paper-search{flex:1}
-.paper-search>.form-input{width:100%;font-size:var(--fs-sm)}
 
 /* Group index level: pick a value first, then see the papers under it */
 .gxrow .gx-t{min-width:150px}
@@ -52,11 +51,8 @@
 .pd-h{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:var(--sp-4) var(--sp-8);margin-bottom:var(--sp-12)}
 .pd-t{order:1;width:100%;font-size:var(--fs-section);font-weight:var(--fw-title);line-height:var(--lh-ui)}
 /* The title is the panel's head, in the head's ink rather than a property value's grey. */
-.pd-t .metadata-editable{color:inherit}
-.pdetail .wkprops{grid-template-columns:52px 1fr;font-size:var(--fs-sm)}
 .pdetail>.paper-meta{height:auto;margin:0 calc(-1 * var(--sp-16)) calc(-1 * var(--sp-16))}
 .paper-reading-summary{margin-top:var(--sp-16)}
-.paper-reading-summary .paper-meta-list{padding:0}
 .paper-reading-summary .reading-summary-all{margin:var(--sp-6) 0 0 calc(-1 * var(--sp-10))}
 
 /*
@@ -65,7 +61,6 @@
  * bar. Only this top bar wraps, since .filters itself is also used by the Feed screen's .feedbar.
  */
 .libbar .filters{align-items:center;flex-wrap:wrap;margin:0}
-.libbar .filters>.pt-dim{font-size:var(--fs-sm)}
 
 /* Research Map is a peer view of the table. It composes the shared list and segmented
  * controls; these rules only define its two-column domain layout and information hierarchy. */

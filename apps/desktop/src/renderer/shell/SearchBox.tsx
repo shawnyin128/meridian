@@ -2,11 +2,10 @@ import { useEffect, useRef, useState } from 'react'
 import type { SearchHit } from '../../shared/contract.js'
 import { search } from '../ipc.js'
 import { PickerPopover, PickOption } from '../components/PickerPopover.js'
-import { ClearableInput } from '../components/ClearableInput.js'
+import { SearchField } from '../components/ClearableInput.js'
 import { EmptyState } from '../components/EmptyState.js'
 import { ENTITY_SCREEN } from '../components/EntityLink.js'
 import { FadeText } from '../components/FadeText.js'
-import { IconSearch } from '../components/icons.js'
 import { PaperText } from '../components/paper/PaperText.js'
 import { useCandidateKeys, type CandidateKeys } from '../hooks/useCandidateKeys.js'
 import { useMessages } from '../messages/useMessages.js'
@@ -98,13 +97,12 @@ export function SearchBox({ onJump }: { onJump: (screen: ScreenKey, target: stri
 
   return (
     <>
-      <ClearableInput
+      <SearchField
         wrapperClassName="sfield" wrapperId="searchBox" wrapperRef={field}
         id="sSearch" placeholder={m.shell.search.placeholder} autoComplete="off" value={q}
         onChange={(e) => setQ(e.target.value)} onClear={() => setQ('')}
         onKeyDown={keys.onKeyDown}
         clearLabel={m.shell.search.clear} keycap="/" aria-keyshortcuts="/"
-        leading={<IconSearch />}
       />
       {/* The results line up with the whole field, its icon included, not with the input inside it. */}
       <PickerPopover

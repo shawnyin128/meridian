@@ -15,7 +15,7 @@ import { useScrollFade } from '../../hooks/useScrollFade.js'
 import { BackButton } from '../BackButton.js'
 import { Card } from '../Card.js'
 import { ChoicePicker } from '../FieldPickers.js'
-import { ColourField, FormInput } from '../FormControls.js'
+import { ColourField, FieldRow, FormInput } from '../FormControls.js'
 import { Icon } from '../icons.js'
 import { ModalTitle } from '../ModalDialog.js'
 import { NavRow } from '../NavRow.js'
@@ -222,8 +222,7 @@ export function ThemeEditor({ theme, onBack, onDirtyChange }: {
             className="theme-editor-name" value={draft.name} placeholder={t.name} aria-label={t.name} maxLength={80}
             onChange={(event) => change({ name: event.target.value })}
           />
-          <span className="theme-editor-base">
-            {t.basedOn}
+          <FieldRow label={t.basedOn}>
             <ChoicePicker
               appearance="field" className="theme-editor-base-picker" aria-label={t.basedOn}
               value={draft.basedOn ?? ''} options={bases.map((candidate) => candidate.id)}
@@ -233,7 +232,7 @@ export function ThemeEditor({ theme, onBack, onDirtyChange }: {
                 change({ basedOn: id, light: picked.light, dark: picked.dark })
               }}
             />
-          </span>
+          </FieldRow>
         </div>
         <div className="set-body" ref={bodyFade}>
           <div className="theme-editor-modes">

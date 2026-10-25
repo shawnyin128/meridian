@@ -94,7 +94,7 @@ describe('PaperReadingSummary', () => {
       )
     })
 
-    const links = [...host.querySelectorAll('.paper-meta-list dd')].map((dd) => dd.querySelector<HTMLElement>(':scope > .entity-link'))
+    const links = [...host.querySelectorAll('.property-list dd')].map((dd) => dd.querySelector<HTMLElement>(':scope > .entity-link'))
     expect(links.map((link) => [link?.tagName, link?.textContent])).toEqual([['BUTTON', '3'], ['BUTTON', '2']])
     await act(async () => { links[0]!.click() })
     await act(async () => { links[1]!.click() })
@@ -113,7 +113,7 @@ describe('PaperReadingSummary', () => {
       )
     })
 
-    expect([...host.querySelectorAll('.paper-meta-list dd')].map((dd) => [dd.childElementCount, dd.textContent])[1])
+    expect([...host.querySelectorAll('.property-list dd')].map((dd) => [dd.childElementCount, dd.textContent])[1])
       .toEqual([0, '0'])
   })
 })

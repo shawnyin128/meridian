@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act, type ReactNode } from 'react'
+import { act, useRef, type ReactNode } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { DraftsProvider } from '../hooks/useDrafts.js'
@@ -121,23 +121,61 @@ describe('InlineMetadataField', () => {
     expect(host.querySelector('[aria-label="编辑年份"]')!.getAttribute('aria-invalid')).toBeNull()
   })
 
-  it('同一编辑器可通过样式和校验参数服务列表名称格', async () => {
+  it('名称格和属性值是同一个就地编辑:静息是同一格 hover 按钮,编辑时是同一种就地输入框,按参数修剪和校验', async () => {
     const save = vi.fn(() => Promise.resolve(true))
     act(() => root!.render(withMessages(
       <InlineField
-        label="任务名称" value="旧任务" wrapperClassName="plan-name-cell"
-        buttonClassName="plan-name" inputClassName="plan-name-input"
+        label="任务名称" value="旧任务" className="plan-name-cell"
         normalize={(value) => value.trim()} validate={(value) => value !== ''} onSave={save}
       />,
     )))
-    act(() => host.querySelector<HTMLButtonElement>('.plan-name')!.click())
-    const input = host.querySelector<HTMLInputElement>('.plan-name-input')!
+    expect(host.firstElementChild!.className).toBe('metadata-field plan-name-cell')
+    act(() => host.querySelector<HTMLButtonElement>('.metadata-editable')!.click())
+    const input = host.querySelector<HTMLInputElement>('[aria-label="编辑任务名称"]')!
+    expect([...input.classList]).toEqual(['form-control', 'form-input', 'form-control-inline', 'metadata-input'])
     act(() => setValue(input, '  新任务  '))
     await act(async () => {
       input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
       await Promise.resolve()
     })
     expect(save).toHaveBeenCalledWith('新任务')
+  })
+
+  it('表格格子里的就地编辑:一打开就是同一种就地输入框,点格子里不算离开,回车交给保存后收起;Esc 收起且不保存', async () => {
+    window.localStorage.removeItem('meridian.drafts:/vaults/a')
+    const save = vi.fn(() => Promise.resolve(true))
+    const close = vi.fn()
+    function Table() {
+      const cell = useRef<HTMLTableCellElement>(null)
+      return (
+        <table><tbody><tr><td ref={cell} id="cell">
+          <InlineField
+            label="随笔" value="旧随笔" keep={{ scope: ['paper', 'p1'], target: 'cell:remark' }} onSave={save}
+            cell={{ ref: cell, onClose: close }}
+          />
+        </td></tr></tbody></table>
+      )
+    }
+    await act(async () => {
+      root!.render(withMessages(<DraftsProvider><Table /></DraftsProvider>))
+      await Promise.resolve()
+    })
+    const input = host.querySelector<HTMLInputElement>('[aria-label="编辑随笔"]')!
+    expect([input.value, input.classList.contains('form-control-inline'), document.activeElement]).toEqual(['旧随笔', true, input])
+    await act(async () => {
+      host.querySelector('#cell')!.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }))
+      await Promise.resolve()
+    })
+    expect([save.mock.calls.length, close.mock.calls.length]).toEqual([0, 0])
+    act(() => setValue(input, '新随笔'))
+    await act(async () => {
+      input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
+      await Promise.resolve()
+    })
+    expect([save.mock.calls, close.mock.calls.length]).toEqual([[['新随笔']], 1])
+    act(() => setValue(input, '不要的字'))
+    act(() => { input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })) })
+    expect([save.mock.calls.length, close.mock.calls.length]).toEqual([1, 2])
   })
 
   it('留着草稿的字段:改到一半关掉 App 再打开,字段仍开着、是打的字;Esc 收起后再打开 App 不再带回', async () => {

@@ -14,11 +14,11 @@ import { AddAction } from '../AddAction.js'
 import { CardTray } from '../CardTray.js'
 import { MenuItem } from '../ActionMenu.js'
 import { DiffLines } from '../DiffLines.js'
-import { DraftForm, DraftLine } from '../DraftForm.js'
+import { DraftForm } from '../DraftForm.js'
 import { EmptyState } from '../EmptyState.js'
 import { EntityLink } from '../EntityLink.js'
 import { ChoicePicker, DotsMenu } from '../FieldPickers.js'
-import { FormInput } from '../FormControls.js'
+import { FieldRow, FormInput } from '../FormControls.js'
 import { SectionHeading } from '../PageShell.js'
 import { SegmentedControl } from '../SegmentedControl.js'
 import { SourceAnchor } from '../SourceAnchor.js'
@@ -287,7 +287,7 @@ export function WikiClaims({ page, pending, links, onApply, arrival, onArrived }
                 value={text} placeholder={f.textPlaceholder} aria-label={f.text} aria-invalid={invalid(text.trim() === '')}
                 onChange={(e) => patch({ text: e.target.value })}
               />
-              <DraftLine label={f.basis}>
+              <FieldRow label={f.basis}>
                 <SegmentedControl
                   label={f.basisLabel} value={basis} onChange={(next) => patch({ basis: next })}
                   options={[{ value: 'personal', label: f.personal }, { value: 'conclusion', label: f.conclusion }]}
@@ -309,7 +309,7 @@ export function WikiClaims({ page, pending, links, onApply, arrival, onArrived }
                       {projectId === ''
                         ? null
                         : conclusions.length === 0
-                          ? <span className="draft-form-label">{f.noConclusions}</span>
+                          ? <span>{f.noConclusions}</span>
                           : (
                             <ChoicePicker
                               appearance="field" aria-label={f.conclusion} placeholder={f.conclusionPick}
@@ -324,7 +324,7 @@ export function WikiClaims({ page, pending, links, onApply, arrival, onArrived }
                           )}
                     </>
                   )}
-              </DraftLine>
+              </FieldRow>
             </>
           )}
         </DraftForm>
@@ -409,29 +409,29 @@ export function WikiClaims({ page, pending, links, onApply, arrival, onArrived }
                             >
                               {(invalid) => (
                                 <>
-                                  <DraftLine label={f.outcome}>
+                                  <FieldRow label={f.outcome}>
                                     <ChoicePicker
                                       appearance="field" aria-label={f.outcome} value={outcome}
                                       options={OUTCOMES} label={(o) => f.outcomes[o]}
                                       onPick={(next) => patch({ outcome: next, text: next === 'revised' ? claim.text : '' })}
                                     />
-                                  </DraftLine>
+                                  </FieldRow>
                                   {outcome === 'revised' || outcome === 'split'
                                     ? (
-                                      <DraftLine label={outcome === 'revised' ? f.revisedText : f.splitText}>
+                                      <FieldRow label={outcome === 'revised' ? f.revisedText : f.splitText}>
                                         <FormInput
                                           value={text} aria-invalid={invalid(textMissing)}
                                           onChange={(e) => patch({ text: e.target.value })}
                                         />
-                                      </DraftLine>
+                                      </FieldRow>
                                     )
                                     : null}
-                                  <DraftLine label={f.note}>
+                                  <FieldRow label={f.note}>
                                     <FormInput
                                       value={note} placeholder={f.resolvePlaceholder} aria-invalid={invalid(note.trim() === '')}
                                       onChange={(e) => patch({ note: e.target.value })}
                                     />
-                                  </DraftLine>
+                                  </FieldRow>
                                 </>
                               )}
                             </DraftForm>
@@ -446,9 +446,9 @@ export function WikiClaims({ page, pending, links, onApply, arrival, onArrived }
                         <DraftForm canSave={ready !== null} onSave={saveDraft} onCancel={close}>
                           {(invalid) => (
                             <>
-                              <DraftLine label={f.other}>
+                              <FieldRow label={f.other}>
                                 {others.length === 0
-                                  ? <span className="draft-form-label">{f.noOthers}</span>
+                                  ? <span>{f.noOthers}</span>
                                   : (
                                     <ChoicePicker
                                       appearance="field" aria-label={f.other} placeholder={f.other} value={other}
@@ -456,13 +456,13 @@ export function WikiClaims({ page, pending, links, onApply, arrival, onArrived }
                                       label={(id) => others.find((x) => x.id === id)?.text ?? id} onPick={(id) => patch({ other: id })}
                                     />
                                   )}
-                              </DraftLine>
-                              <DraftLine label={f.note}>
+                              </FieldRow>
+                              <FieldRow label={f.note}>
                                 <FormInput
                                   value={note} placeholder={f.conflictPlaceholder} aria-invalid={invalid(note.trim() === '')}
                                   onChange={(e) => patch({ note: e.target.value })}
                                 />
-                              </DraftLine>
+                              </FieldRow>
                             </>
                           )}
                         </DraftForm>

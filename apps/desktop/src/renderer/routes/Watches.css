@@ -11,7 +11,7 @@
 
 .watch-suggestion-source{margin-bottom:var(--sp-8)}
 .af-in{display:flex;gap:var(--sp-8)}
-.af-in .form-control{flex:1;width:auto;font-size:var(--fs-sm);font-family:var(--sans)}
+.af-in .form-control{flex:1;width:auto}
 .af-in>.btn{flex-shrink:0}
 .watch-suggestion-error{margin-top:var(--sp-8)}
 .watch-suggestion-results{margin-top:var(--sp-10)}

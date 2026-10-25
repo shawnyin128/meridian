@@ -135,10 +135,7 @@ export const PATTERNS = {
     metrics: 'list',
     entries: [
       entry('shared:List', '.list'),
-      entry('shared:PaperMetadata', '.paper-meta-list'),
-      entry('shared:ProposalRows', '.proposal-rows'),
       entry('hand:shell/CommandPalette.tsx', '.cmdk-list'),
-      entry('hand:components/reader/PaperWikiIngest.tsx', '.wiki-ingest-scope'),
       entry('hand:routes/Wiki.tsx', '.wktoc'),
       entry('hand:components/timeline/TimelineBoard.tsx', '.glabels'),
     ],
@@ -161,7 +158,7 @@ export const PATTERNS = {
   PropertyGrid: {
     metrics: 'list',
     entries: [
-      entry('hand:routes/Wiki.tsx', '.wkprops'),
+      entry('shared:PropertyList', '.property-list'),
       entry('hand:routes/Projects.tsx', '.project-card-decisions'),
     ],
   },
@@ -174,7 +171,6 @@ export const PATTERNS = {
       entry('shared:Table', '.table-row:not(.newrow)', { parts: { title: '.table-cell--title' } }),
       entry('hand:routes/Wiki.tsx', '.wktoc li'),
       entry('hand:components/wiki/WikiClaims.tsx', '.wkclaim-lines li'),
-      entry('hand:components/reader/PaperWikiIngest.tsx', '.wiki-ingest-scope > div'),
       entry('hand:components/timeline/TimelineBoard.tsx', '.glrow'),
     ],
   },
@@ -340,7 +336,6 @@ export const PATTERNS = {
       entry('shared:Button', '.btn', {
         not: '.filter-menu, .sort-menu, .add-action, .choice-picker, .harness-trigger, .paper-abstract-toggle, .reading-summary-all, .zoom-control-reset',
       }),
-      entry('hand:components/project/ProjectPlan.tsx', '.din'),
     ],
   },
   ActionButton: {

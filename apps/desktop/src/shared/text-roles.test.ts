@@ -30,7 +30,7 @@ const SHEETS = [
   'components/Item.css', 'components/paper/PaperCard.css', 'components/paper/PaperUnderstanding.css',
   'components/project/ProjectIdentity.css', 'components/project/ResearchGraph.css',
   'components/paper-table/PaperTable.css', 'components/NavSection.css', 'routes/Wiki.css', 'routes/Projects.css',
-  'routes/Ideas.css', 'routes/Watches.css',
+  'routes/Ideas.css', 'routes/Watches.css', 'components/PropertyList.css',
 ]
 
 /**
@@ -58,7 +58,7 @@ const MARKUP = `
   <div class="wkpage"><div class="wkmain">
     <div class="section-heading" id="body-heading">推测解码</div>
     <div class="md" id="md"><h2 id="h2-first">问题</h2><p>正文</p><h1 id="h1">一级</h1><h2 id="h2">怎么读这一页</h2><h3 id="h3">实验</h3><h4 id="h4">细节</h4></div>
-    <div class="wkprops" id="props"><div class="pk">当前目标</div><div class="pv">x</div></div>
+    <dl class="property-list" id="props"><div class="property"><dt class="property-label">当前目标</dt><dd class="property-value">x</dd></div></dl>
   </div></div>
 </div></div>
 <aside class="nav-pane"><div class="nav-section-head" id="sidebar-label">收件</div></aside>`

@@ -121,7 +121,7 @@ describe('ReviewQueue', () => {
     kind: text(block.querySelector('.proposal-where > .tag')),
     target: text(block.querySelector('.proposal-target')),
     texts: [...block.querySelectorAll('.proposal-text')].map((t) => `${t.className.split('--')[1]}: ${t.textContent}`),
-    rows: [...block.querySelectorAll('.proposal-row')]
+    rows: [...block.querySelectorAll('.proposal-rows .property')]
       .map((r) => [text(r.querySelector('dt')), text(r.querySelector('.proposal-value')), text(r.querySelector('.proposal-quote'))]),
   }))
 
@@ -188,8 +188,8 @@ describe('ReviewQueue', () => {
     act(() => node!.click())
     expect(onOpenConclusion).toHaveBeenCalledWith('draft', 'wide')
     expect(experiment!.querySelector('.tag--done')!.textContent).toBe('已验证')
-    expect(row('p6').querySelector('.proposal-row .tag--warning')!.textContent).toBe('未验证')
-    expect(row('p3').querySelector('.proposal-row .tag')).toBeNull()
+    expect(row('p6').querySelector('.proposal-rows .property .tag--warning')!.textContent).toBe('未验证')
+    expect(row('p3').querySelector('.proposal-rows .property .tag')).toBeNull()
     const anchor = source!.querySelector<HTMLButtonElement>('.source-anchor')!
     expect([anchor.tagName, anchor.textContent]).toEqual(['BUTTON', 'p.7'])
     act(() => anchor.click())
@@ -232,7 +232,7 @@ describe('ReviewQueue', () => {
   })
 
   it('「涉及」只列各块写入的页以外的页,没有这样的页就不出这一行', () => {
-    const others = (id: string) => [...row(id).querySelectorAll(':scope .proposal-card > .proposal-rows .proposal-row')]
+    const others = (id: string) => [...row(id).querySelectorAll(':scope .proposal-card > .proposal-rows .property')]
     expect(others('p2')).toHaveLength(0)
     expect(others('p1').map((r) => [text(r.querySelector('dt')), [...r.querySelectorAll('.entity-link')].map((l) => l.getAttribute('data-wk'))]))
       .toEqual([['涉及', ['topics/other']]])

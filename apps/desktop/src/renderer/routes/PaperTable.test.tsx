@@ -639,7 +639,7 @@ describe('PaperTable', () => {
     expect(host.querySelector('#libq')?.classList).toContain('form-control-field')
   })
 
-  it('随笔与自定义文本列共用整格文本编辑器', async () => {
+  it('随笔与自定义文本列共用整格文本编辑器,就是就地编辑的那一个', async () => {
     const host = mount()
     columnsCall.resolve(NOTE_COLUMNS)
     listCall.resolve({ rows: [{ ...ROW, remark: '', custom: { note: '' } }], total: 1 })
@@ -647,12 +647,12 @@ describe('PaperTable', () => {
 
     const remarkCell = host.querySelector<HTMLElement>('td.pt-remark')!
     await act(async () => { press(remarkCell) })
-    expect(remarkCell.querySelector('input')?.classList).toContain('paper-text-cell-input')
+    expect(remarkCell.querySelector('input')?.classList).toContain('metadata-input')
     expect(remarkCell.querySelector('input')?.classList).toContain('form-control-inline')
 
     const customCell = host.querySelector<HTMLElement>('td.pt-cust')!
     await act(async () => { press(customCell) })
-    expect(customCell.querySelector('input')?.classList).toContain('paper-text-cell-input')
+    expect(customCell.querySelector('input')?.classList).toContain('metadata-input')
     expect(customCell.querySelector('input')?.classList).toContain('form-control-inline')
   })
 
@@ -1535,7 +1535,7 @@ describe('PaperTable', () => {
     await flush()
 
     const title = host.querySelector<HTMLElement>('.pdetail .pd-t')
-    const short = host.querySelector<HTMLElement>('.paper-meta-list .paper-meta-editable')
+    const short = host.querySelector<HTMLElement>('.paper-meta-list .property-value')
     expect(title!.innerHTML).toMatch(/<strong>F<\/strong>luxBin <span><span class="katex">/)
     expect(short!.innerHTML).toContain('<em>Flux</em>')
     await act(async () => { title!.querySelector('button')!.click() })
@@ -1556,7 +1556,8 @@ describe('PaperTable', () => {
 
     const panel = host.querySelector<HTMLElement>('.paper-meta')!
     expect(panel.textContent).not.toContain('元数据')
-    expect(panel.firstElementChild!.tagName).toBe('DL')
+    expect(panel.firstElementChild!.className).toBe('paper-meta-list')
+    expect(panel.firstElementChild!.firstElementChild!.tagName).toBe('DL')
     const labels = [...panel.querySelectorAll('dt')].map((dt) => dt.textContent)
     const abstract = panel.querySelectorAll('dd')[labels.indexOf('摘要')]!
     expect(labels.indexOf('摘要')).toBe(labels.indexOf('作者') + 1)

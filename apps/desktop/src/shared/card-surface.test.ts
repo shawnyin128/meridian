@@ -63,7 +63,6 @@ const SEPARATED: [file: string, selector: string, border: string][] = [
   ['components/project/ResearchGraph.css', '.rgraph-viewport', '1px solid var(--sep2)'],
   ['routes/ProjectDetail.css', '.wkside.node-document-pane', '1px solid var(--sep)'],
   ['routes/Ideas.css', '.idea-detail-panel', '1px solid var(--sep)'],
-  ['routes/Reader.css', '.wiki-ingest-scope', '1px solid var(--sep2)'],
 ]
 
 describe('卡片和画布之间的边', () => {

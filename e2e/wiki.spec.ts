@@ -120,8 +120,8 @@ test('根节点卡进聚合页,子聚合再进一层带上级,返回按历史退
   expect(await shown(win).locator('.wkmain .md h2').allTextContents())
     .toEqual(agg.body.split('\n').filter((l) => l.startsWith('## ')).map((l) => l.slice(3)))
   await expect(shown(win).locator('.wkgrid .wkcard')).toHaveCount(agg.children.length)
-  await expect(shown(win).locator('.wkside .pv').nth(0)).toHaveText(agg.kindLabel)
-  await expect(shown(win).locator('.wkside .pv').nth(1))
+  await expect(shown(win).locator('.wkside .property-value').nth(0)).toHaveText(agg.kindLabel)
+  await expect(shown(win).locator('.wkside .property-value').nth(2))
     .toHaveText(`${agg.memberCount} 篇 · ${agg.childCount} 细分`)
 
   // A child aggregation goes one level deeper: the breadcrumb's middle segment is its first parent.
@@ -242,11 +242,11 @@ test('论文页的属性里年份与发表分两行,各写各的', async ({ win 
   expect(paper.venue).not.toBe('')
   await shown(win).locator(`.wkgrid [data-wk="${id}"]`).click()
   await expect(shown(win).locator('.desk-head .t')).toHaveText(paper.title)
-  const props = shown(win).locator('.wkside .wkprops')
+  const props = shown(win).locator('.wkside .property-list')
   // Year and publication use InlineMetadataField (InlineField.tsx): the value button (.metadata-editable)
-  // sits inside a wrapping .metadata-field span, which is the actual sibling right after .pk.
-  await expect(props.locator('.pk:text-is("年份") + .metadata-field .metadata-editable')).toHaveText(String(paper.year))
-  await expect(props.locator('.pk:text-is("发表") + .metadata-field .metadata-editable')).toHaveText(paper.venue)
+  // sits inside a wrapping .metadata-field span, inside the property's value after its label.
+  await expect(props.locator('.property-label:text-is("年份") + .property-value > .metadata-field .metadata-editable')).toHaveText(String(paper.year))
+  await expect(props.locator('.property-label:text-is("发表") + .property-value > .metadata-field .metadata-editable')).toHaveText(paper.venue)
 })
 
 test('论文页右栏的多行和单行值进入编辑时,编辑框整个露在右栏里,右栏不横向滚动,字不挪位', async ({ win }) => {
@@ -254,7 +254,7 @@ test('论文页右栏的多行和单行值进入编辑时,编辑框整个露在�
   await shown(win).locator('.wkgrid').last().locator('.wkcard').first().click()
   const side = shown(win).locator('.wkside')
   for (const key of ['标题', '年份']) {
-    const field = side.locator(`.wkprops .pk:text-is("${key}") + .metadata-field`)
+    const field = side.locator(`.property-label:text-is("${key}") + .property-value > .metadata-field`)
     const value = field.locator('.metadata-editable')
     const before = await textBox(value)
 
