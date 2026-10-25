@@ -1,4 +1,4 @@
-import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
@@ -70,12 +70,14 @@ function standIns(reply: Reply) {
   const records = (): Seen[] => existsSync(recordFile)
     ? readFileSync(recordFile, 'utf8').split('\n').filter((line) => line !== '').map((line) => JSON.parse(line) as Seen)
     : []
-  return { runner, records, release: () => writeFileSync(go, '') }
+  const folder = join(root, 'chat-folder')
+  mkdirSync(folder)
+  return { runner, records, release: () => writeFileSync(go, ''), folder }
 }
 
-const turn = (cli: HarnessCli, extra: Partial<CliChatCall> = {}): CliChatCall => ({
+const turn = (cli: HarnessCli, folder: string, extra: Partial<CliChatCall> = {}): CliChatCall => ({
   cli, system: 'Chat rules\n\nConversation context:\n{"title":"T"}', prompt: 'Current user message:\nWhy?',
-  mcpFlags: [], timeoutMs: 20_000, signal: new AbortController().signal, ...extra,
+  session: {}, folder, mcpFlags: [], timeoutMs: 20_000, signal: new AbortController().signal, ...extra,
 })
 
 const delta = (text: string) => ({
@@ -90,8 +92,8 @@ const agentMessage = (text: string) => ({ type: 'item.completed', item: { id: 'i
 const codexUsage = { input_tokens: 27_023, cached_input_tokens: 7_552, output_tokens: 117 }
 
 describe('a chat turn on Claude Code', () => {
-  it('streams the answer as Claude writes it, with every tool, setting and MCP server off and no session kept', async () => {
-    const { runner, records, release } = standIns({
+  it('streams the answer as Claude writes it into the session it starts, with every tool, setting and MCP server off', async () => {
+    const { runner, records, release, folder } = standIns({
       lines: [
         { type: 'system', subtype: 'init', session_id: 'session-1' },
         { type: 'stream_event', event: { type: 'message_start', message: {} } },
@@ -103,8 +105,11 @@ describe('a chat turn on Claude Code', () => {
       waitAfter: 3,
     })
     const seen: string[] = []
-    const result = await runner(turn('claude', {
+    const sessions: string[] = []
+    const result = await runner(turn('claude', folder, {
       model: 'opus',
+      session: { start: 'session-1' },
+      onSession: (id) => sessions.push(id),
       onText: (text) => {
         seen.push(text)
         release()
@@ -112,6 +117,7 @@ describe('a chat turn on Claude Code', () => {
     }))
 
     expect(seen).toEqual(['EAGLE reaches ', 'EAGLE reaches 3.76x [p. 6].'])
+    expect(sessions).toEqual(['session-1'])
     expect(result).toMatchObject({
       answer: 'EAGLE reaches 3.76x [p. 6].',
       usage: { inputTokens: 24_182, cachedInputTokens: 23_327, outputTokens: 88 },
@@ -120,22 +126,33 @@ describe('a chat turn on Claude Code', () => {
     expect(seenCall!.argv).toEqual([
       '-p', '--output-format', 'stream-json', '--verbose', '--include-partial-messages',
       '--tools', '', '--strict-mcp-config', '--setting-sources', 'project',
-      '--no-session-persistence', '--system-prompt', 'Chat rules\n\nConversation context:\n{"title":"T"}',
+      '--session-id', 'session-1', '--system-prompt', 'Chat rules\n\nConversation context:\n{"title":"T"}',
       '--model=opus',
     ])
     expect(seenCall!.stdin).toBe('Current user message:\nWhy?')
     expect(seenCall!.env).toEqual({ KEEP_ME: 'kept' })
+    expect(seenCall!.cwd).toBe(realpathSync(folder))
     expect(seenCall!.entries).toEqual([])
-    expect(existsSync(seenCall!.cwd)).toBe(false)
+  })
+
+  it('resumes a session with the new message alone and the same system prompt', async () => {
+    const { runner, records, folder } = standIns({ lines: [claudeResult('Again [p. 2].')] })
+    await expect(runner(turn('claude', folder, { session: { resume: 'session-1' }, prompt: 'And then?' })))
+      .resolves.toMatchObject({ answer: 'Again [p. 2].' })
+    const [seenCall] = records()
+    expect(seenCall!.argv.slice(10)).toEqual([
+      '--resume', 'session-1', '--system-prompt', 'Chat rules\n\nConversation context:\n{"title":"T"}',
+    ])
+    expect(seenCall!.stdin).toBe('And then?')
   })
 
   it('fails in Claude\'s own words when its result is an error, and with the exit code when it printed none', async () => {
     const limited = standIns({ lines: [claudeResult('Claude AI usage limit reached', { is_error: true, subtype: 'error_during_execution' })], exit: 1 })
-    await expect(limited.runner(turn('claude'))).rejects.toMatchObject({
+    await expect(limited.runner(turn('claude', limited.folder))).rejects.toMatchObject({
       name: 'CliRunError', kind: 'failed', message: 'claude 运行失败：Claude AI usage limit reached', exitCode: 1,
     })
     const crashed = standIns({ lines: ['not json'], stderr: 'boom', exit: 2 })
-    await expect(crashed.runner(turn('claude'))).rejects.toMatchObject({
+    await expect(crashed.runner(turn('claude', crashed.folder))).rejects.toMatchObject({
       kind: 'failed', message: 'claude 运行失败（退出码 2）', exitCode: 2, stderr: 'boom',
     })
   })
@@ -143,7 +160,7 @@ describe('a chat turn on Claude Code', () => {
 
 describe('a chat turn on Codex', () => {
   it('shows each agent message as Codex completes it and answers with the last, read-only with its tools off', async () => {
-    const { runner, records, release } = standIns({
+    const { runner, records, release, folder } = standIns({
       lines: [
         { type: 'thread.started', thread_id: 'thread-1' },
         { type: 'item.completed', item: { id: 'item_0', type: 'error', message: 'Code Mode is unavailable' } },
@@ -155,8 +172,10 @@ describe('a chat turn on Codex', () => {
       waitAfter: 4,
     })
     const seen: string[] = []
-    const result = await runner(turn('codex', {
+    const sessions: string[] = []
+    const result = await runner(turn('codex', folder, {
       mcpFlags: ['-c', 'mcp_servers.meridian.command="x"'],
+      onSession: (id) => sessions.push(id),
       onText: (text) => {
         seen.push(text)
         release()
@@ -164,45 +183,57 @@ describe('a chat turn on Codex', () => {
     }))
 
     expect(seen).toEqual(['Drafting [p. 4].', 'EAGLE drafts features [p. 4].'])
+    expect(sessions).toEqual(['thread-1'])
     expect(result).toMatchObject({
       answer: 'EAGLE drafts features [p. 4].',
       usage: { inputTokens: 27_023, cachedInputTokens: 7_552, outputTokens: 117 },
     })
     const [seenCall] = records()
     expect(seenCall!.argv).toEqual([
-      'exec', '--ephemeral', '--skip-git-repo-check', '--sandbox', 'read-only',
-      '--ignore-user-config', '--ignore-rules', '--json', '--color', 'never', '-c', 'web_search="disabled"',
-      '-C', expect.any(String),
+      'exec', '--skip-git-repo-check', '--ignore-user-config', '--ignore-rules', '--json', '-c', 'web_search="disabled"',
       ...CODEX_DISABLED_FEATURES.flatMap((feature) => ['--disable', feature]),
-      '-c', 'mcp_servers.meridian.command="x"', '-',
+      '-c', 'mcp_servers.meridian.command="x"',
+      '--sandbox', 'read-only', '--color', 'never', '-C', folder, '-',
     ])
-    const work = seenCall!.argv[seenCall!.argv.indexOf('-C') + 1]!
-    expect(work.split('/').slice(-2)).toEqual(seenCall!.cwd.split('/').slice(-2))
+    expect(seenCall!.cwd).toBe(realpathSync(folder))
     expect(seenCall!.stdin).toBe('Chat rules\n\nConversation context:\n{"title":"T"}\n\nCurrent user message:\nWhy?')
     expect(seenCall!.env).toEqual({ KEEP_ME: 'kept' })
     expect(seenCall!.entries).toEqual([])
   })
 
+  it('resumes a session read-only with the new message alone, its first message holding the system prompt', async () => {
+    const { runner, records, folder } = standIns({ lines: [agentMessage('Again [p. 2].'), { type: 'turn.completed', usage: codexUsage }] })
+    await expect(runner(turn('codex', folder, { session: { resume: 'thread-1' }, prompt: 'And then?', model: 'gpt-5' })))
+      .resolves.toMatchObject({ answer: 'Again [p. 2].' })
+    const [seenCall] = records()
+    expect(seenCall!.argv).toEqual([
+      'exec', 'resume', '--skip-git-repo-check', '--ignore-user-config', '--ignore-rules', '--json', '-c', 'web_search="disabled"',
+      ...CODEX_DISABLED_FEATURES.flatMap((feature) => ['--disable', feature]),
+      '--model=gpt-5', '-c', 'sandbox_mode="read-only"', 'thread-1', '-',
+    ])
+    expect(seenCall!.stdin).toBe('And then?')
+  })
+
   it('fails in the words of Codex\'s last error event when it exits with an error', async () => {
-    const { runner } = standIns({
+    const { runner, folder } = standIns({
       lines: [{ type: 'thread.started', thread_id: 'thread-1' }, { type: 'turn.failed', error: { message: 'usage limit reached' } }],
       exit: 1,
     })
-    await expect(runner(turn('codex'))).rejects.toMatchObject({
+    await expect(runner(turn('codex', folder))).rejects.toMatchObject({
       kind: 'failed', message: 'codex 运行失败：usage limit reached', exitCode: 1,
     })
   })
 })
 
 describe('the flags a chat turn needs', () => {
-  it('lists each option a chat turn passes once, without its value', () => {
+  it('lists each option a chat turn that starts or resumes a session passes once, without its value', () => {
     expect(chatTurnFlags('claude')).toEqual([
       '-p', '--output-format', '--verbose', '--include-partial-messages', '--tools', '--strict-mcp-config',
-      '--setting-sources', '--no-session-persistence', '--system-prompt', '--model',
+      '--setting-sources', '--session-id', '--system-prompt', '--model', '--resume',
     ])
     expect(chatTurnFlags('codex')).toEqual([
-      '--ephemeral', '--skip-git-repo-check', '--sandbox', '--ignore-user-config', '--ignore-rules', '--json',
-      '--color', '-c', '-C', '--disable', '--model',
+      '--skip-git-repo-check', '--ignore-user-config', '--ignore-rules', '--json', '-c', '--disable', '--model',
+      '--sandbox', '--color', '-C',
     ])
   })
 })

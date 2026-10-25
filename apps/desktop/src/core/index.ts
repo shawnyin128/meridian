@@ -139,7 +139,7 @@ import { deleteColourTheme, listColourThemes, saveColourTheme } from './colour-t
 import {
   checkCliConnection, createChatHarnessRunner, createChatService, createCliChatRunner, createCliRunner, createHarnessCostGate,
   createHarnessModelConfig, createHarnessProposalAudit, createMainCredentialVault, createPaperWikiHarnessRunner,
-  discoverCli, listCliModels, resolveCliBinary, subscriptionStatus,
+  discoverCli, listCliModels, openCliChatSessions, resolveCliBinary, subscriptionStatus,
 } from './harness/index.js'
 import { placeResearchIdeaOnGraph, promoteResearchIdea } from './research-ideas/index.js'
 import { createWikiProposals, pdfPageText } from './wiki-proposals.js'
@@ -181,6 +181,8 @@ const vaultRoot = process.env['MERIDIAN_VAULT_ROOT']
 const librarySource = sourceOf(vaultRoot, process.env['MERIDIAN_VAULT_SOURCE'])
 const locationRoot = vaultRoot ?? process.env['MERIDIAN_LIBRARY_ROOT'] ?? process.cwd()
 const configHome = process.env['MERIDIAN_CONFIG_HOME'] ?? join(homedir(), '.meridian')
+const userData = process.env['MERIDIAN_USER_DATA']
+if (userData === undefined) throw new Error('Core 没有收到 App 的用户数据目录（MERIDIAN_USER_DATA）')
 const harnessModel = await createHarnessModelConfig(configHome, createMainCredentialVault())
 const semanticKey = await openSemanticKeyStore({
   file: join(configHome, 'semantic-scholar.json'), vault: createMainCredentialVault(),
@@ -252,6 +254,9 @@ const chatHarness = createChatHarnessRunner({
   model: harnessModel,
   checkCli: (cli) => checkCliConnection(cli, { onLog: (line) => console.error(`[harness] ${line}`) }),
   cli: createCliChatRunner({ binary: (cli) => resolveCliBinary(cli) }),
+  sessions: openCliChatSessions({
+    root: join(userData, 'cli-chats'), vault: locationRoot, onLog: (line) => console.error(`[harness] ${line}`),
+  }),
   onLog: (line) => console.error(`[harness] ${line}`),
 })
 const chatService = createChatService({ store, model: harnessModel, runner: chatHarness })

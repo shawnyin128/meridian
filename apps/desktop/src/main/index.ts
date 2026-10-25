@@ -328,11 +328,15 @@ app.whenReady().then(() => {
     const source = explicit !== undefined ? 'environment' : configured !== undefined ? 'configured' : 'fallback'
     const child = utilityProcess.fork(join(here, '../core/index.js'), [], {
       env: fixture
-        ? { ...process.env, ...harnessEnvironment, MERIDIAN_APP_VERSION: displayVersion(app.getVersion()) }
+        ? {
+          ...process.env, ...harnessEnvironment, MERIDIAN_APP_VERSION: displayVersion(app.getVersion()),
+          MERIDIAN_USER_DATA: app.getPath('userData'),
+        }
         : {
           ...process.env,
           ...harnessEnvironment,
           MERIDIAN_APP_VERSION: displayVersion(app.getVersion()),
+          MERIDIAN_USER_DATA: app.getPath('userData'),
           MERIDIAN_VAULT_ROOT: selected,
           MERIDIAN_VAULT_SOURCE: source,
           MERIDIAN_CONFIG_HOME: configHome(),

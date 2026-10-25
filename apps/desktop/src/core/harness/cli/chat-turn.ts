@@ -1,7 +1,5 @@
-import { mkdirSync } from 'node:fs'
-import { join } from 'node:path'
 import type { HarnessCli } from '../../../shared/contract.js'
-import { type ChildOutcome, cliEnvironment, CliRunError, inTemporaryFolder, runChild } from './child.js'
+import { type ChildOutcome, cliEnvironment, CliRunError, runChild } from './child.js'
 import {
   claudeFailure, claudeUsage, CODEX_DISABLED_FEATURES, codexFailure, codexUsage, type CliUsage, failureDetails,
   isRecord, jsonLine,
@@ -13,8 +11,14 @@ export type CliChatCall = {
   model?: string
   /** The instructions and the chat's context. */
   system: string
-  /** The history and the new message. */
+  /** The history and the new message, or, in a resumed session, the new message alone. */
   prompt: string
+  /** The session the turn resumes, or else starts; Claude starts it with the id `start` names. */
+  session: { resume: string } | { start?: string }
+  /** The folder the CLI runs in, which the CLI files its sessions under. */
+  folder: string
+  /** Called with the id of the session the turn runs in, as soon as the CLI names it. */
+  onSession?: (id: string) => void
   /** The flags that give the CLI the run's MCP servers. */
   mcpFlags: readonly string[]
   timeoutMs: number
@@ -39,39 +43,48 @@ export type CliChatRunner = (call: CliChatCall) => Promise<CliChatResult>
 const modelFlag = (call: CliChatCall) => (call.model === undefined ? [] : [`--model=${call.model}`])
 
 function claudeArgs(call: CliChatCall): string[] {
+  const session = 'resume' in call.session ? ['--resume', call.session.resume]
+    : call.session.start === undefined ? [] : ['--session-id', call.session.start]
   return [
     '-p', '--output-format', 'stream-json', '--verbose', '--include-partial-messages',
     '--tools', '', '--strict-mcp-config', '--setting-sources', 'project',
-    '--no-session-persistence', '--system-prompt', call.system,
+    ...session, '--system-prompt', call.system,
     ...modelFlag(call), ...call.mcpFlags,
   ]
 }
 
-function codexArgs(call: CliChatCall, work: string): string[] {
-  return [
-    'exec', '--ephemeral', '--skip-git-repo-check', '--sandbox', 'read-only',
-    '--ignore-user-config', '--ignore-rules', '--json', '--color', 'never', '-c', 'web_search="disabled"', '-C', work,
+/** `codex exec resume` takes no --sandbox, --color or -C; its sandbox is set through -c. */
+function codexArgs(call: CliChatCall): string[] {
+  const common = [
+    '--skip-git-repo-check', '--ignore-user-config', '--ignore-rules', '--json', '-c', 'web_search="disabled"',
     ...CODEX_DISABLED_FEATURES.flatMap((feature) => ['--disable', feature]),
     ...modelFlag(call), ...call.mcpFlags,
-    '-',
   ]
+  return 'resume' in call.session
+    ? ['exec', 'resume', ...common, '-c', 'sandbox_mode="read-only"', call.session.resume, '-']
+    : ['exec', ...common, '--sandbox', 'read-only', '--color', 'never', '-C', call.folder, '-']
 }
 
-/** Every flag a chat turn passes to `cli`, the way `claude --help` and `codex exec --help` list them. */
+/**
+ * Every flag a chat turn that starts or resumes a session passes to `cli`, the way `claude --help`
+ * and `codex exec --help` list them.
+ */
 export function chatTurnFlags(cli: HarnessCli): string[] {
-  const call: CliChatCall = {
-    cli, model: 'model', system: 'system', prompt: 'prompt', mcpFlags: [], timeoutMs: 0,
+  const turn = (session: CliChatCall['session']): CliChatCall => ({
+    cli, model: 'model', system: 'system', prompt: 'prompt', session, folder: 'folder', mcpFlags: [], timeoutMs: 0,
     signal: new AbortController().signal,
-  }
-  const args = cli === 'claude' ? claudeArgs(call) : codexArgs(call, 'work')
+  })
+  const args = [turn({ start: 'id' }), turn({ resume: 'id' })]
+    .flatMap((call) => (cli === 'claude' ? claudeArgs(call) : codexArgs(call)))
   return [...new Set(args.filter((arg) => arg.startsWith('-') && arg !== '-').map((arg) => arg.split('=')[0]!))]
 }
 
 /**
- * Reads the events a turn prints, one JSON object per line, as they arrive: tells `onText` the answer
- * as far as it is written and keeps every event for the end of the turn.
+ * Reads the events a turn prints, one JSON object per line, as they arrive: tells `onSession` the
+ * session's id once the CLI names it, tells `onText` the answer as far as it is written, and keeps
+ * every event for the end of the turn.
  */
-function eventReader(cli: HarnessCli, onText: (text: string) => void) {
+function eventReader(cli: HarnessCli, onSession: (id: string) => void, onText: (text: string) => void) {
   const events: Array<Record<string, unknown>> = []
   let rest = ''
   let writing = ''
@@ -83,6 +96,10 @@ function eventReader(cli: HarnessCli, onText: (text: string) => void) {
   }
   const read = (event: Record<string, unknown>) => {
     events.push(event)
+    const session = cli === 'claude'
+      ? (event['type'] === 'system' && event['subtype'] === 'init' ? event['session_id'] : undefined)
+      : (event['type'] === 'thread.started' ? event['thread_id'] : undefined)
+    if (typeof session === 'string') onSession(session)
     if (cli === 'codex') {
       const item = event['item']
       if (isRecord(item) && item['type'] === 'agent_message' && typeof item['text'] === 'string') show(item['text'])
@@ -139,8 +156,9 @@ function codexAnswer(events: ReadonlyArray<Record<string, unknown>>, outcome: Ch
 
 /**
  * The chat turn runner that starts the CLI `binary` resolves, in `environment` without its API-key
- * variables, inside an empty folder of a fresh temporary folder that it removes afterwards. The turn
- * keeps no session: the CLI reads the system prompt and the prompt whole.
+ * variables, inside the turn's folder. Claude reads the system prompt as an option and the prompt on
+ * stdin; Codex reads both on stdin when it starts a session, and only the prompt when it resumes one,
+ * whose first message already holds the system prompt.
  */
 export function createCliChatRunner(deps: {
   binary: (cli: HarnessCli) => Promise<string | null>
@@ -150,23 +168,19 @@ export function createCliChatRunner(deps: {
   return async (call) => {
     const binary = await deps.binary(call.cli)
     if (binary === null) throw new CliRunError('unavailable', `没有找到 ${call.cli} 命令`)
-    return inTemporaryFolder(async (root) => {
-      const work = join(root, 'work')
-      mkdirSync(work)
-      const reader = eventReader(call.cli, call.onText ?? (() => {}))
-      const started = Date.now()
-      const outcome = await runChild(binary, call.cli === 'claude' ? claudeArgs(call) : codexArgs(call, work), {
-        cwd: work,
-        env: cliEnvironment(environment, binary),
-        input: call.cli === 'claude' ? call.prompt : `${call.system}\n\n${call.prompt}`,
-        timeoutMs: call.timeoutMs,
-        signal: call.signal,
-        onOutput: reader.push,
-      })
-      const durationMs = Date.now() - started
-      reader.end()
-      const result = call.cli === 'claude' ? claudeAnswer(reader.events, outcome) : codexAnswer(reader.events, outcome)
-      return { ...result, durationMs }
+    const reader = eventReader(call.cli, call.onSession ?? (() => {}), call.onText ?? (() => {}))
+    const started = Date.now()
+    const outcome = await runChild(binary, call.cli === 'claude' ? claudeArgs(call) : codexArgs(call), {
+      cwd: call.folder,
+      env: cliEnvironment(environment, binary),
+      input: call.cli === 'claude' || 'resume' in call.session ? call.prompt : `${call.system}\n\n${call.prompt}`,
+      timeoutMs: call.timeoutMs,
+      signal: call.signal,
+      onOutput: reader.push,
     })
+    const durationMs = Date.now() - started
+    reader.end()
+    const result = call.cli === 'claude' ? claudeAnswer(reader.events, outcome) : codexAnswer(reader.events, outcome)
+    return { ...result, durationMs }
   }
 }

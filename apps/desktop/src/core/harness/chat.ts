@@ -1,10 +1,13 @@
+import { createHash, randomUUID } from 'node:crypto'
 import { z, ZodError } from 'zod'
 import { HarnessModelConnectionCheckResultSchema } from '../../shared/contract.js'
 import type { HarnessCli, HarnessCliModel, HarnessModelConnectionCheckResult } from '../../shared/contract.js'
 import { extractPdfPages } from '../paper-library/index.js'
 import type { VaultStore } from '../vault.js'
 import { CLI_CALL_TIMEOUT_MS, CLI_REQUEST_TIMEOUT_MS, cliCallError, cliUsageLine } from './cli-call.js'
+import type { CliChatSessions } from './cli/chat-sessions.js'
 import type { CliChatResult, CliChatRunner } from './cli/chat-turn.js'
+import type { CliUsage } from './cli/runner.js'
 import type { HarnessModelConfig } from './model-config.js'
 import { launchHarnessProcess } from './process.js'
 import { createHarnessRpc, type HarnessCallback, type HarnessChild, HarnessRpcError } from './rpc.js'
@@ -45,6 +48,20 @@ type StoredPaperReading = ReturnType<VaultStore['paperReading']>
 
 const messageText = (message: StoredChatMessage) =>
   message.runs.map((run) => run.text).join('').trim()
+
+type Turn = { role: 'you' | 'ai'; text: string }
+/** What a CLI session of a chat holds of `messages`: what was said and answered, without the status lines. */
+const turnsOf = (messages: readonly StoredChatMessage[]): Turn[] =>
+  messages.flatMap((message) => (message.role === 'status' ? [] : [{ role: message.role, text: messageText(message) }]))
+/** A fingerprint of `turns`, which tells whether a CLI session holds the turns a chat holds now. */
+const turnsDigest = (turns: readonly Turn[]) =>
+  createHash('sha256').update(JSON.stringify(turns.map((turn) => [turn.role, turn.text]))).digest('hex')
+/** The usage between two running totals a Codex session reported. */
+const usageSince = (total: CliUsage, before: CliUsage): CliUsage => ({
+  inputTokens: total.inputTokens - before.inputTokens,
+  cachedInputTokens: total.cachedInputTokens - before.cachedInputTokens,
+  outputTokens: total.outputTokens - before.outputTokens,
+})
 
 function clipMiddle(value: string, limit: number): string {
   const text = value.trim()
@@ -194,8 +211,8 @@ export function chatHarnessError(cause: unknown): Error {
 
 /**
  * A single-purpose chat client with a least-privilege callback surface. A turn on a subscription CLI
- * also gets its one model call from Core, which `cli` runs with the MCP servers `mcpFlags` gives it,
- * none without it.
+ * also gets its one model call from Core, which `cli` runs in the chat's CLI session that `sessions`
+ * keeps, with the MCP servers `mcpFlags` gives it, none without it.
  */
 export function createChatHarnessRunner(options: {
   store: VaultStore
@@ -203,6 +220,7 @@ export function createChatHarnessRunner(options: {
   /** The connection check of a subscription CLI, which makes no model call. */
   checkCli: (cli: HarnessCli) => Promise<HarnessModelConnectionCheckResult>
   cli: CliChatRunner
+  sessions: CliChatSessions
   mcpFlags?: (cli: HarnessCli) => readonly string[]
   launch?: () => HarnessChild
   onLog?: (line: string) => void
@@ -265,30 +283,63 @@ export function createChatHarnessRunner(options: {
     },
   })
 
-  /** The one model call of a chat turn on `model`, which ends when `signal` aborts. */
-  const modelCall = (model: HarnessCliModel, signal: AbortSignal): HarnessCallback => {
+  /**
+   * The one model call of a turn of chat `chatId` that answers `text` on `model`, ending when
+   * `signal` aborts. It resumes the chat's CLI session, with the new message alone, while that
+   * session holds the turns the chat holds; otherwise it starts a new session with the whole turn.
+   * `keep` makes the session resumable once the turn's `answer` is kept.
+   */
+  const cliTurn = (chatId: string, text: string, model: HarnessCliModel, signal: AbortSignal) => {
+    const before = turnsOf(messagesBefore(options.store.chatMessages(chatId), text))
     let called = false
-    return async (params) => {
+    let ran: { id: string; total?: CliUsage } | null = null
+    const call: HarnessCallback = async (params) => {
       if (called) throw new HarnessRpcError({ kind: 'bad_request', message: 'A run makes one model call' })
       called = true
-      const call = ChatModelInvokeParamsSchema.parse(params)
+      const { system, prompt, message } = ChatModelInvokeParamsSchema.parse(params)
+      const resumed = options.sessions.resumable(chatId, model, turnsDigest(before))
+      const start = resumed === null && model.cli === 'claude' ? randomUUID() : undefined
+      let id = resumed?.id ?? start
+      // Until its answer is kept, the session holds a turn the chat may never hold.
+      options.sessions.begin(chatId, model.cli, id)
       let result: CliChatResult
       try {
         result = await options.cli({
           cli: model.cli,
           ...(model.model === undefined ? {} : { model: model.model }),
-          system: call.system,
-          prompt: call.prompt,
+          system,
+          prompt: resumed === null ? prompt : message,
+          session: resumed !== null ? { resume: resumed.id } : start === undefined ? {} : { start },
+          folder: options.sessions.folder(chatId),
           mcpFlags: options.mcpFlags?.(model.cli) ?? [],
           timeoutMs: CLI_CALL_TIMEOUT_MS,
           signal,
+          onSession: (named) => {
+            id = named
+            options.sessions.started(chatId, model.cli, named)
+          },
         })
       } catch (cause) {
         throw cliCallError(model.cli, cause, options.onLog)
       }
-      options.onLog?.(cliUsageLine(model.cli, result))
+      // Codex reports a session's running total, so a resumed turn's own usage is the difference.
+      const total = model.cli === 'codex' ? result.usage : undefined
+      const usage = total !== undefined && resumed?.total !== undefined ? usageSince(total, resumed.total) : result.usage
+      options.onLog?.(cliUsageLine(model.cli, usage === undefined ? result : { ...result, usage }))
+      if (id !== undefined) ran = { id, ...(total === undefined ? {} : { total }) }
       return { output: result.answer }
     }
+    const keep = (answer: string) => {
+      if (ran === null) return
+      options.sessions.keep(chatId, {
+        cli: model.cli,
+        id: ran.id,
+        ...(model.model === undefined ? {} : { model: model.model }),
+        history: turnsDigest([...before, { role: 'you', text: text.trim() }, { role: 'ai', text: answer }]),
+        ...(ran.total === undefined ? {} : { total: ran.total }),
+      })
+    }
+    return { call, keep }
   }
 
   return {
@@ -318,6 +369,7 @@ export function createChatHarnessRunner(options: {
       const ended = new AbortController()
       try {
         const model = await options.model.runtime()
+        const turn = 'source' in model ? cliTurn(id, text, model, AbortSignal.any([signal, ended.signal])) : null
         const result = ChatAnswerSchema.parse(await rpc.request('chat.answer', {
           chatId: id,
           text,
@@ -325,11 +377,12 @@ export function createChatHarnessRunner(options: {
           limits: { maxOutputTokens: 2_000, maxModelCalls: 1 },
         }, {
           signal,
-          ...('source' in model ? {
+          ...(turn === null ? {} : {
             timeoutMs: CLI_REQUEST_TIMEOUT_MS,
-            callbacks: { 'model.invoke': modelCall(model, AbortSignal.any([signal, ended.signal])) },
-          } : {}),
+            callbacks: { 'model.invoke': turn.call },
+          }),
         }))
+        turn?.keep(result.answer)
         return result.answer
       } catch (cause) {
         throw chatHarnessError(cause)
