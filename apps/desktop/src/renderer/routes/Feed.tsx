@@ -138,7 +138,7 @@ function FeedEntryCard({ entry, onOpenConflict }: { entry: FeedEntry; onOpenConf
   )
 }
 
-/** Feed rows grouped under their days, each day's heading placed in the same centered column as its cards. */
+/** Feed rows grouped under their days in the entries' centred column, each day's entries a stream of their own. */
 export function FeedRows({ rows, onOpenConflict }: { rows: FeedEntry[]; onOpenConflict: () => void }) {
   const m = useMessages()
   const days = rows.reduce<FeedEntry[][]>((made, entry) => {
@@ -147,13 +147,15 @@ export function FeedRows({ rows, onOpenConflict }: { rows: FeedEntry[]; onOpenCo
     return made
   }, [])
   return (
-    <GroupedList>
-      {days.map((day) => (
-        <Group key={day[0]!.id} className="feed-day" title={daySectionName(day[0]!.day, m.common.daySections)}>
-          {day.map((entry) => <FeedEntryCard key={entry.id} entry={entry} onOpenConflict={onOpenConflict} />)}
-        </Group>
-      ))}
-    </GroupedList>
+    <div className="feed-days">
+      <GroupedList>
+        {days.map((day) => (
+          <Group key={day[0]!.id} title={daySectionName(day[0]!.day, m.common.daySections)}>
+            <div className="msgs">{day.map((entry) => <FeedEntryCard key={entry.id} entry={entry} onOpenConflict={onOpenConflict} />)}</div>
+          </Group>
+        ))}
+      </GroupedList>
+    </div>
   )
 }
 

@@ -904,12 +904,12 @@ components/wiki/WikiTidy.css:7: .tidy-trashed { margin-left }
 routes/Feed.css:7: .feedcol { background }
 routes/Feed.css:10: .feedcol .msgs>.page-toolbar { justify-content }
 routes/Feed.css:10: .feedcol .msgs>.page-toolbar { margin }
-routes/Feed.css:15: .fic svg { width }
-routes/Feed.css:15: .fic svg { height }
-routes/Feed.css:18: .brief .bh { font-size }
-routes/Feed.css:18: .brief .bh { color }
-routes/Feed.css:18: .brief .bh { padding }
-routes/Feed.css:18: .brief .bh { border-bottom }
+routes/Feed.css:19: .fic svg { width }
+routes/Feed.css:19: .fic svg { height }
+routes/Feed.css:22: .brief .bh { font-size }
+routes/Feed.css:22: .brief .bh { color }
+routes/Feed.css:22: .brief .bh { padding }
+routes/Feed.css:22: .brief .bh { border-bottom }
 routes/Ideas.css:2: .ideas-body { padding }
 routes/Ideas.css:3: .ideas-workspace { box-sizing }
 routes/Ideas.css:8: .idea-relation-tag { max-width }
@@ -1319,7 +1319,6 @@ routes/Settings.css:60: .appearance-mini-content i { box-shadow }
 routes/Settings.css:62: .appearance-mini-content i:nth-child(3) { background }
 routes/Settings.css:64: .language-select { width }
 routes/Settings.css:66: .storage-root { grid-template-columns }
-routes/Settings.css:66: .storage-root { margin-top }
 routes/Settings.css:67: .storage-root { padding }
 routes/Settings.css:67: .storage-root { border-top }
 routes/Settings.css:67: .storage-root { border-bottom }

@@ -8,8 +8,12 @@
 /* A full-screen feed has a wider text column than chat, as in the demo's .main.feedmain .feedcol .mwrap */
 .feedcol .mwrap{width:min(var(--pagew),92%)}
 .feedcol .msgs>.page-toolbar{justify-content:center;margin:0 auto}
-/* A day's heading stands in the entries' column, as each entry's own wrapper does. */
-.feedcol .feed-day{align-self:center;width:min(var(--pagew),92%)}
+/*
+ * The days stand in the entries' column, as each entry's own wrapper does. Each day's entries are a
+ * stream of their own, so the stream's gap never adds to the space around a day's heading.
+ */
+.feedcol .feed-days{align-self:center;width:min(var(--pagew),92%)}
+.feedcol .feed-days .mwrap{width:100%}
 
 .fic{display:grid;place-items:center}
 .fic svg{width:12px;height:12px}
