@@ -92,7 +92,7 @@ test('打包后的应用启动出一个窗口', async ({ win }) => {
 })
 
 test('自动化传 MERIDIAN_SHOW_WINDOW=0 时窗口不上屏,Dock 里也没有应用图标,截图存的是页面自己的 sRGB 色值', async ({ app, win }) => {
-  await win.locator('.sidebar').waitFor()
+  await win.locator('#sidebar').waitFor()
   expect(await visible(app)).toBe(false)
   expect(await inDock(app)).toBe(false)
   expect(await storedSwatch(win)).toEqual([53, 104, 255])
@@ -107,7 +107,7 @@ test('不传 MERIDIAN_SHOW_WINDOW 时窗口上屏', async ({ configHome, profile
   })
   try {
     const win = await app.firstWindow()
-    await win.locator('.sidebar').waitFor()
+    await win.locator('#sidebar').waitFor()
     // The window shows once the renderer has painted its first frame, which may land just after this.
     await expect.poll(() => visible(app)).toBe(true)
   } finally {
@@ -127,7 +127,7 @@ test.describe('用例要窗口出画面时', () => {
       electronApp.on('did-become-active', () => { seen.activated = true })
     })
     const win = await app.firstWindow()
-    await win.locator('.sidebar').waitFor()
+    await win.locator('#sidebar').waitFor()
     await expect.poll(() => visible(app)).toBe(true)
     const windows = () => app.evaluate(({ app: electronApp, BrowserWindow, screen }) => {
       const target = BrowserWindow.getAllWindows()[0]!
@@ -173,7 +173,7 @@ test('指定的库里没有论文页目录时,内容区报出原因的标签而�
     await expect(win.locator('.bootfail .page-error')).toHaveText('不是 Meridian 论文库')
     await win.locator('.bootfail .btn', { hasText: '换论文库' }).click()
     // The button opens settings on the storage category, where another library is chosen.
-    await expect(win.locator('.setdlg .srow[data-setcat="storage"]')).toHaveClass(/\bon\b/)
+    await expect(win.locator('.setdlg .nav-row[data-setcat="storage"]')).toHaveClass(/\bon\b/)
     // The root path now shows in the shared read-only directory field, not a separate <code> element.
     await expect(win.locator('.setdlg .storage-root .directory-field input')).toHaveValue(/meridian-e2e-bare-/)
   } finally {
@@ -235,10 +235,10 @@ test('设置可重置、切换和删除论文库备份', async ({ configHome, pr
   })
   try {
     const win = await app.firstWindow()
-    await win.locator('.sidebar').waitFor()
+    await win.locator('#sidebar').waitFor()
     await openSettings(app, win)
     // Settings opens on its default category (appearance); the storage-reset control lives under storage.
-    await win.locator('.setdlg .srow[data-setcat="storage"]').click()
+    await win.locator('.setdlg .nav-row[data-setcat="storage"]').click()
     const reset = win.locator('.storage-reset .btn', { hasText: '重置库' })
     await expect(reset).toBeEnabled()
     await reset.click()
@@ -251,7 +251,7 @@ test('设置可重置、切换和删除论文库备份', async ({ configHome, pr
     const reloaded = win.waitForEvent('domcontentloaded')
     await win.locator('.modal-actions .btn', { hasText: '重置并重启' }).click()
     await reloaded
-    await win.locator('.sidebar').waitFor()
+    await win.locator('#sidebar').waitFor()
     await expect(win.locator('.bootfail')).toHaveCount(0)
 
     const backup = readdirSync(parent).find((name) => name.startsWith('library-backup-'))
@@ -266,17 +266,17 @@ test('设置可重置、切换和删除论文库备份', async ({ configHome, pr
     expect(existsSync(join(root, 'wiki', 'schema.yaml'))).toBe(true)
 
     await openSettings(app, win)
-    await win.locator('.setdlg .srow[data-setcat="storage"]').click()
+    await win.locator('.setdlg .nav-row[data-setcat="storage"]').click()
     await expect(win.locator('.storage-backup-row')).toHaveCount(1)
     const switched = win.waitForEvent('domcontentloaded')
     await win.locator('.storage-backup-row .item-trailing .btn', { hasText: '切换' }).click()
     await switched
-    await win.locator('.sidebar').waitFor()
+    await win.locator('#sidebar').waitFor()
     expect(readFileSync(join(root, 'sources', 'papers', 'keep.pdf'), 'utf8')).toBe('source bytes')
     expect(readFileSync(join(root, 'wiki', 'papers', 'keep.md'), 'utf8')).toBe(KEEP_PAGE)
 
     await openSettings(app, win)
-    await win.locator('.setdlg .srow[data-setcat="storage"]').click()
+    await win.locator('.setdlg .nav-row[data-setcat="storage"]').click()
     await expect(win.locator('.storage-backup-row')).toHaveCount(1)
     await win.locator('.storage-backup-row .item-trailing .btn', { hasText: '删除' }).click()
     await expect(win.locator('.modal-detail')).toContainText('永久删除')

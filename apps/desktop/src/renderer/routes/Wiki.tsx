@@ -7,8 +7,9 @@ import type {
 import { PAPER_PAGE } from '../../shared/vocabulary.js'
 import { papers, project, wiki } from '../ipc.js'
 import {
-  useCrumbTail, useJump, useNotice, useScreenEntry, useVaultRevision, type CrumbSeg, type ScreenKey,
+  useCrumbTail, useJump, useNotice, useScreenEntry, useVaultRevision, type ScreenKey,
 } from '../shell/AppShell.js'
+import type { CrumbSeg } from '../components/Breadcrumb.js'
 import { AddAction } from '../components/AddAction.js'
 import { ActionPopover } from '../components/ActionPopover.js'
 import { BackButton } from '../components/BackButton.js'
@@ -185,14 +186,14 @@ function Table({ agg, onOpen, onAnchor, onRemove, pending, adding, head }: {
       <table className="cmp">
         <thead>
           <tr data-row-actions="">
-            <th>{m.wiki.paperKind}</th>
-            {agg.columns.map((c) => <th key={c.key}>{c.label}</th>)}
+            <th data-stuck-fade="top">{m.wiki.paperKind}</th>
+            {agg.columns.map((c) => <th key={c.key} data-stuck-fade="top">{c.label}</th>)}
             {agg.derivedColumns.map((d) => (
-              <th className="dv" key={d.key}>{d.label}<Tag className="wkind">{m.wiki.autoColumn}</Tag></th>
+              <th className="dv" key={d.key} data-stuck-fade="top">{d.label}<Tag className="wkind">{m.wiki.autoColumn}</Tag></th>
             ))}
             {head?.newColumn}
-            {onRemove === undefined ? null : <th className="rx" />}
-            {head === undefined ? null : <th className="th-add"><RowActions>{head.controls}</RowActions></th>}
+            {onRemove === undefined ? null : <th className="rx" data-stuck-fade="top" />}
+            {head === undefined ? null : <th className="th-add" data-stuck-fade="top"><RowActions>{head.controls}</RowActions></th>}
           </tr>
         </thead>
         <tbody>
@@ -777,7 +778,7 @@ export function Wiki() {
 
       <PageError error={error} />
 
-      <PageBody className="wiki-body" ref={body}>
+      <PageBody className="wiki-body" column={place === null || place === REVIEW || place === TIDY ? 'page' : 'prose'} ref={body}>
         {error === null && (place === null ? home === null : place !== REVIEW && place !== TIDY && shownAgg === null && shownPaper === null)
           ? <LoadingPlaceholder shape="cards" />
           : null}

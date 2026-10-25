@@ -371,6 +371,13 @@ describe('Wiki keyboard reach', () => {
     expect(body().scrollTop).toBe(160)
   })
 
+  it('首页按列表屏的栏宽排，打开的一页按阅读页的栏宽排', async () => {
+    const prose = () => host.querySelector('.wiki-body')!.classList.contains('desk-body--prose')
+    expect(prose()).toBe(false)
+    await press(host.querySelector<HTMLElement>('[data-wk="topics/sd"] .tt')!)
+    expect(prose()).toBe(true)
+  })
+
   it('从首页打开一页再按返回,首页回到原来滚到的位置', async () => {
     const body = () => host.querySelector<HTMLElement>('.wiki-body')!
     body().scrollTop = 120

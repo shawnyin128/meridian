@@ -268,7 +268,7 @@ export function ProjectTaskPanel({
   return (
     <>
       <SectionHeading
-        variant="rail" className="node-document-head"
+        variant="rail" className="node-document-head" data-stuck-fade="top"
         actions={<PanelClose onClose={onClose} />}
       ><FadeText className="node-document-title" label={task.title}>{task.title}</FadeText>
       </SectionHeading>

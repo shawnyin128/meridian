@@ -7,6 +7,7 @@ import { useFormat } from '../../lib/format.js'
 import { useMessages } from '../../messages/useMessages.js'
 import { FadeText } from '../FadeText.js'
 import { FoldToggle } from '../FoldToggle.js'
+import { ScrollArea } from '../ScrollArea.js'
 import { ProjectPriorityTag } from '../project/ProjectIdentity.js'
 import { Toolbar, ToolbarButton } from '../Toolbar.js'
 import { Tooltip } from '../Tooltip.js'
@@ -17,7 +18,6 @@ import {
 import type { TimelinePeriod } from './TimelineScale.js'
 import { useGanttDrag } from '../../hooks/useGanttDrag.js'
 import { useDragReorder } from '../../hooks/useDragReorder.js'
-import { useScrollFade } from '../../hooks/useScrollFade.js'
 import { isClipped } from '../../hooks/useClipped.js'
 import './TimelineBoard.css'
 
@@ -102,7 +102,6 @@ export function TimelineBoard({
   const fmt = useFormat()
   const m = useMessages()
   const wrap = useRef<HTMLDivElement>(null)
-  const wrapFade = useScrollFade('x', wrap)
   const canvas = useRef<HTMLDivElement>(null)
   const todayIso = useToday()
   const { anchor, scale } = period
@@ -267,7 +266,7 @@ export function TimelineBoard({
             })}
           </div>
         </Toolbar>
-        <div className="gwrap" ref={wrapFade}>
+        <ScrollArea axis="x" fill className="gwrap" ref={wrap}>
           <Toolbar orientation="vertical">
             <div className="gcanvas" ref={canvas} style={{ width: days * dayWidth }}>
               <TimelineGrid window={window} scale={scale} today={today} />
@@ -400,7 +399,7 @@ export function TimelineBoard({
               {canvasOverlay}
             </div>
           </Toolbar>
-        </div>
+        </ScrollArea>
       </div>
     </div>
   )

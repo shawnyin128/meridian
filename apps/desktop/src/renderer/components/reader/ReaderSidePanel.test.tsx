@@ -140,14 +140,14 @@ describe('ReaderSidePanel', () => {
       show(tab, PAPER_ONE, undefined, PAPER)
       const panel = host.querySelector('.reader-side')!.firstElementChild!
       const head = panel.firstElementChild!
-      return [head.tagName, head.className, head.querySelector('strong')?.textContent]
+      return [head.className, head.querySelector('.t')?.textContent]
     })
     expect(heads).toEqual([
-      ['HEADER', 'reader-panel-head', '元数据'],
-      ['HEADER', 'reader-panel-head', '高亮与批注'],
-      ['HEADER', 'reader-panel-head', '阅读笔记 · 1'],
-      ['HEADER', 'reader-panel-head', '随笔 · 本篇'],
-      ['HEADER', 'reader-panel-head', '内化到 Wiki'],
+      ['desk-head desk-head--pane', '元数据'],
+      ['desk-head desk-head--pane', '高亮与批注'],
+      ['desk-head desk-head--pane', '阅读笔记 · 1'],
+      ['desk-head desk-head--pane', '随笔 · 本篇'],
+      ['desk-head desk-head--pane', '内化到 Wiki'],
     ])
   })
 

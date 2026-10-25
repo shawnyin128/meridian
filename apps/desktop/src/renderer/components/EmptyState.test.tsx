@@ -20,6 +20,11 @@ describe('EmptyState', () => {
     expect(html).not.toContain('<svg')
   })
 
+  it('draws the option variant as the same line, its text where an option\'s text starts', () => {
+    expect(renderToStaticMarkup(<EmptyState variant="option" icon={<svg />}>没有找到匹配的内容</EmptyState>))
+      .toBe('<div class="empty-state empty-state--option"><span>没有找到匹配的内容</span></div>')
+  })
+
   it('puts its one action after the sentence', () => {
     const html = renderToStaticMarkup(
       <EmptyState variant="page" action={<button type="button" className="btn">打开项目列表</button>}>还没有项目论文</EmptyState>,

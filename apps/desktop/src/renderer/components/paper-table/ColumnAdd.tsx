@@ -104,7 +104,7 @@ export function NewColumnHead({ cell, triggers, onCreate, onCancel, pickType, ke
   const btnRefs = useRef<(HTMLButtonElement | null)[]>([])
   const [type, setType] = useState<PaperColumn['type']>('text')
   const th = (
-    <th className="th-new" ref={cell}>
+    <th className="th-new" ref={cell} data-stuck-fade="top">
       <InlineDraftInput
         className="celledit" ref={input} scopeRef={cell} triggers={triggers}
         placeholder={m.papers.columnAdd.namePlaceholder} onSubmit={(label) => onCreate(label, type)} onCancel={onCancel}

@@ -115,7 +115,7 @@ export function SearchBox({ onJump }: { onJump: (screen: ScreenKey, target: stri
             <div className="rh">{m.shell.search.results}</div>
             {/* Tasks of one project share its id as their target: kind plus target would collide. */}
             {shown.length === 0
-              ? <div className="sres-empty"><EmptyState variant="section">{m.shell.search.noHits}</EmptyState></div>
+              ? <EmptyState variant="option">{m.shell.search.noHits}</EmptyState>
               : null}
             {shown.map((hit, at) => (
               <HitOption hit={hit} keys={keys} index={at} key={`${at}${hit.kind}${hit.target}`} onChoose={() => go(hit)} />

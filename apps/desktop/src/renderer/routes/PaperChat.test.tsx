@@ -257,7 +257,7 @@ describe('PaperChat', () => {
     document.body.append(host)
     root = createRoot(host)
     await act(async () => { root!.render(withMessages(<PaperChat paper={{ ...PAPER, title }} />)) })
-    expect(host.querySelector('.paper-chat-head .fade-text')?.textContent).toBe(`${title} · 阅读中`)
+    expect(host.querySelector('.paper-chat .desk-head .t')?.textContent).toBe(`${title} · 阅读中`)
   })
 
   it('提交未完成时发送箭头变为可停止的旋转控件', async () => {
@@ -508,8 +508,11 @@ describe('PaperChat', () => {
   })
 
   it('消息列表停在末尾时新消息滚进视野,往上翻着读时不抢,自己发出的消息总会滚进视野', async () => {
+    // The browser reports the stream's content growing through the ResizeObserver its scroll area watches it with.
+    const observers: (() => void)[] = []
+    vi.stubGlobal('ResizeObserver', class { constructor(changed: () => void) { observers.push(changed) } observe() {} disconnect() {} })
     const host = await mountChat()
-    const stream = host.querySelector<HTMLElement>('.msgs')!
+    const stream = host.querySelector<HTMLElement>('.paper-chat > .scroll-area')!
     let top = 0
     let length = 600
     Object.defineProperty(stream, 'clientHeight', { configurable: true, get: () => 300 })
@@ -525,6 +528,7 @@ describe('PaperChat', () => {
       api.revision += 1
       length += 200
       await showPaper(PAPER)
+      act(() => { for (const changed of observers) changed() })
     }
 
     await arrive()

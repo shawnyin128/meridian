@@ -2,7 +2,7 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
 import { AddAction } from './AddAction.js'
 import {
-  PageBody, PageError, PageFooter, PageHeader, PageShell, PageTitle, PageToolbar, SectionHeading,
+  PageBody, PageError, PageFooter, PageHeader, PageNote, PageShell, PageTitle, PageToolbar, SectionHeading,
 } from './PageShell.js'
 import { SegmentedControl } from './SegmentedControl.js'
 import { SortMenu } from './SortMenu.js'
@@ -12,14 +12,14 @@ describe('PageShell', () => {
     const html = renderToStaticMarkup(
       <PageShell className="paper-library">
         <PageHeader><PageTitle>论文</PageTitle></PageHeader>
-        <PageBody className="libview"><PageToolbar>操作</PageToolbar>正文</PageBody>
+        <PageBody className="papers"><PageToolbar>操作</PageToolbar>正文</PageBody>
         <PageFooter bare>分页</PageFooter>
       </PageShell>,
     )
     expect(html).toContain('class="desk paper-library"')
     expect(html).toContain('class="desk-head"')
     expect(html).toContain('class="fade-text t"')
-    expect(html).toContain('class="desk-body libview"')
+    expect(html).toContain('class="scroll-area scroll-area--y scroll-area--fill scroll-area--gutter desk-body papers" data-fade-paint=""')
     expect(html).toContain('class="page-toolbar"')
     expect(html).toContain('class="desk-foot bare"')
   })
@@ -89,5 +89,26 @@ describe('PageShell', () => {
     )
     const classes = [...html.matchAll(/<button[^>]*class="([^"]*)"/g)].map((match) => match[1]!.split(' ').slice(0, 2).join(' '))
     expect(classes).toEqual(['btn sort-menu', 'btn sm'])
+  })
+
+  it('heads a pane with the same bar as a page, its title a step smaller, and a line of state among the actions', () => {
+    const html = renderToStaticMarkup(
+      <PageHeader size="pane" actions={<PageNote>第 3 页</PageNote>}><PageTitle count={2}>阅读笔记</PageTitle></PageHeader>,
+    )
+    expect(html).toMatch(/^<div class="desk-head desk-head--pane"><span class="fade-text t" data-state="closed">阅读笔记<span class="heading-count">/)
+    expect(html).toMatch(/<div class="page-actions"><span class="page-note">第 3 页<\/span><\/div><\/div>$/)
+  })
+
+  it('gives a prose page the prose column, and a body whose content fills it no scrolling of its own', () => {
+    expect(renderToStaticMarkup(<PageBody column="prose">正文</PageBody>))
+      .toBe('<div class="scroll-area scroll-area--y scroll-area--fill scroll-area--gutter desk-body desk-body--prose" data-fade-paint="">正文</div>')
+    expect(renderToStaticMarkup(<PageBody fill className="papers">表格</PageBody>))
+      .toBe('<div class="desk-body desk-body--fill papers">表格</div>')
+  })
+
+  it('centres a toolbar over the stream it heads when asked, and starts it at the body\'s edge otherwise', () => {
+    expect(renderToStaticMarkup(<PageToolbar align="center">切换</PageToolbar>))
+      .toBe('<div class="page-toolbar page-toolbar--center">切换</div>')
+    expect(renderToStaticMarkup(<PageToolbar>切换</PageToolbar>)).toBe('<div class="page-toolbar">切换</div>')
   })
 })

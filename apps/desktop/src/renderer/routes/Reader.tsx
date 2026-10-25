@@ -18,8 +18,9 @@ import { useDrafts } from '../hooks/useDrafts.js'
 import { useOnLeave } from '../hooks/useOnLeave.js'
 import { land } from '../hooks/useArrival.js'
 import {
-  useCrumbTail, useJump, useNotice, useVaultRevision, type CrumbSeg, type ScreenKey, type JumpAnchor,
+  useCrumbTail, useJump, useNotice, useVaultRevision, type ScreenKey, type JumpAnchor,
 } from '../shell/AppShell.js'
+import type { CrumbSeg } from '../components/Breadcrumb.js'
 import { ActionPopover } from '../components/ActionPopover.js'
 import type { AnchorBox } from '../components/floating-layer.js'
 import { FormTextarea } from '../components/FormControls.js'

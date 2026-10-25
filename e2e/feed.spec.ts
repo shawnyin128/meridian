@@ -47,7 +47,7 @@ const bodyText = (win: Page, at: number) =>
 test('应用落在动态屏,侧栏与面包屑都指着它', async ({ win }) => {
   await expect(win.locator('#crumb .cseg')).toHaveText(['动态'])
   await expect(win.locator('#rowFeed')).toHaveClass(/\bon\b/)
-  await expect(win.locator('.sidebar .srow.on')).toHaveCount(1)
+  await expect(win.locator('#sidebar .nav-row.on')).toHaveCount(1)
   await expect(shown(win, '.feedcol')).toHaveCount(1)
 })
 

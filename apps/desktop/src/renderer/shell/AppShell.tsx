@@ -1,5 +1,5 @@
-import { createContext, Fragment, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
-import type { CSSProperties, MouseEvent as ReactMouseEvent, ReactNode } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
+import type { CSSProperties, ReactNode } from 'react'
 import type { ChatSession, Watch } from '../../shared/contract.js'
 import { listingsOf } from '../../shared/inbox-streams.js'
 import { ACTIVE_PROJECT } from '../../shared/vocabulary.js'
@@ -8,12 +8,14 @@ import {
 } from '../ipc.js'
 import { ActionMenu, MenuItem } from '../components/ActionMenu.js'
 import { AboutDialog } from '../components/AboutDialog.js'
-import { FadeText } from '../components/FadeText.js'
+import { AppFrame, ScreenSlot } from '../components/AppFrame.js'
+import { Breadcrumb, type CrumbSeg } from '../components/Breadcrumb.js'
 import { GripEdge, type GripProps } from '../components/Grip.js'
 import { IconButton } from '../components/IconButton.js'
 import { Notice, type NoticeAction, type NoticeContent, type NoticeTone } from '../components/Notice.js'
 import { PageFailure } from '../components/PageShell.js'
 import { ScreenBoundary } from '../components/ScreenBoundary.js'
+import { AppMark, TitleBar } from '../components/TitleBar.js'
 import { Tooltip } from '../components/Tooltip.js'
 import { usePruneDrafts } from '../hooks/useDrafts.js'
 import { GenerationsContext, useCoreGenerations } from '../hooks/useGenerations.js'
@@ -28,16 +30,12 @@ import { SETTINGS_CATEGORIES, SETTINGS_CATEGORY_LABEL, type SettingsCategory } f
 import { Sidebar } from './Sidebar.js'
 import { JobsContext, useJobsPoll } from './useJobs.js'
 import { ColourThemeFilesContext, useColourThemeFilesPoll } from './useColourThemes.js'
-import brandmark from '../../../resources/mark-64.png'
 import { Button } from '../components/Button.js'
 import './AppShell.css'
 
 export type ScreenKey =
   'feed' | 'inbox' | 'later' | 'papers' | 'wiki' | 'changelog' | 'ideas' | 'overview' | 'project'
   | 'trash' | 'chat' | 'reader'
-
-/** A breadcrumb segment. One with `onClick` that is not last is a link back, the demo's `.cseg.link`. */
-export type CrumbSeg = { text: string; onClick?: () => void }
 
 /** The breadcrumb trail for each screen. `null` means this screen keeps whatever brought it in. */
 const crumbsOf = (m: Catalog): Record<ScreenKey, [string, ...string[]] | null> => ({
@@ -733,15 +731,7 @@ export function AppShell({ screens, settings }: {
 
   return (
     <>
-      <div
-        className="titlebar"
-        onDoubleClick={(event: ReactMouseEvent<HTMLDivElement>) => {
-          const target = event.target
-          if (!(target instanceof Element)) return
-          if (target.closest('button,a,input,select,textarea,[contenteditable="true"],.cseg.link')) return
-          appMenu.toggleMaximize()
-        }}
-      >
+      <TitleBar onZoom={() => appMenu.toggleMaximize()}>
         <IconButton
           label={m.shell.sidebar.toggle} shortcut={commandShortcut(appMenu.platform(), 'B')} size="nested"
           className="tbtn" id="sbBtn" onClick={() => setHidden((h) => !h)}
@@ -757,9 +747,7 @@ export function AppShell({ screens, settings }: {
           align="start" sideOffset={6} contentData={{ 'data-appmenu': '' }}
           open={appMenuOpen} onOpenChange={setAppMenuOpen}
           trigger={(
-            <IconButton label="Meridian" size="nested" className="appbtn">
-              <img className="brandmark" src={brandmark} alt="Meridian" />
-            </IconButton>
+            <IconButton label="Meridian" size="nested" className="appbtn"><AppMark /></IconButton>
           )}
           contentProps={{
               // The menu and the Dialog cannot both manage focus. Mounting the Dialog as soon as
@@ -796,29 +784,11 @@ export function AppShell({ screens, settings }: {
         </ActionMenu>
         <AboutDialog open={aboutOpen} onOpenChange={setAboutOpen} />
         <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} commands={commands} />
-        <div className="crumb" id="crumb">
-          {parts.map((p, i) => {
-            // As in the demo, only .cseg.link gets a handler: the last segment is the current position.
-            const link = p.onClick !== undefined && i < parts.length - 1
-            return (
-              <Fragment key={`${i}${p.text}`}>
-                {i > 0 ? <span className="csep">›</span> : null}
-                {link
-                  ? (
-                    <Tooltip label={p.text} whenClipped>
-                      <button type="button" className="cseg link" onClick={p.onClick}><FadeText>{p.text}</FadeText></button>
-                    </Tooltip>
-                  )
-                  // A segment that is not a link drags the window, which takes its pointer, so it has no tooltip.
-                  : <FadeText className="cseg">{p.text}</FadeText>}
-              </Fragment>
-            )
-          })}
-        </div>
-      </div>
+        <Breadcrumb id="crumb" trail={parts} />
+      </TitleBar>
 
-      <div
-        className={`main${hidden ? ' sbhide' : ''}${screen === 'reader' ? ' reading' : ''}`} id="main"
+      <AppFrame
+        collapsed={hidden} reading={screen === 'reader'}
         style={{
           ['--sbw']: `${width}px`, ['--rrw']: chatWidth === null ? undefined : `${chatWidth}px`,
         } as CSSProperties}
@@ -832,7 +802,7 @@ export function AppShell({ screens, settings }: {
           laterCount={laterCount}
           chats={chats} chatId={screen === 'chat' ? chatId : null} onOpenChat={openChat}
           onNewChat={newChat} onArchiveChat={archiveChat} onDeleteChat={deleteChat}
-          grip={sidebarGrip} collapsed={hidden}
+          grip={sidebarGrip} collapsed={hidden} hidden={screen === 'reader'}
         />
         {hidden ? (
           <Tooltip
@@ -878,9 +848,9 @@ export function AppShell({ screens, settings }: {
                             {today === null ? null : mounted.map((k) => (
                               <CrumbTailContext.Provider value={setTail[k]} key={k}>
                                 <SlotContext.Provider value={k}>
-                                  <div className="screenslot" hidden={k !== screen}>
+                                  <ScreenSlot shown={k === screen}>
                                     <ScreenBoundary>{screens[k]}</ScreenBoundary>
-                                  </div>
+                                  </ScreenSlot>
                                 </SlotContext.Provider>
                               </CrumbTailContext.Provider>
                             ))}
@@ -901,7 +871,7 @@ export function AppShell({ screens, settings }: {
           </JobsContext.Provider>
         </NoticeContext.Provider>
         <Notice notice={notice} />
-      </div>
+      </AppFrame>
 
     </>
   )

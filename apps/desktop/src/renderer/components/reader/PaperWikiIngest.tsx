@@ -11,7 +11,6 @@ import { useModelStatus } from '../../hooks/useModelStatus.js'
 import { commitKeys } from '../../lib/keyboard.js'
 import { useUndo } from '../../hooks/useUndo.js'
 import { useVaultWrite } from '../../hooks/useVaultWrite.js'
-import { useScrollFade } from '../../hooks/useScrollFade.js'
 import { errorLabel, failureLabel, reasonLabel } from '../../lib/failure-label.js'
 import { useFormat } from '../../lib/format.js'
 import { useMessages } from '../../messages/useMessages.js'
@@ -22,14 +21,14 @@ import { EntityLink } from '../EntityLink.js'
 import { FormTextarea } from '../FormControls.js'
 import { HarnessAction } from '../HarnessAction.js'
 import { InlineMessage } from '../InlineMessage.js'
-import { SectionHeading } from '../PageShell.js'
+import { PageHeader, PageTitle, SectionHeading } from '../PageShell.js'
+import { ScrollArea } from '../ScrollArea.js'
 import { ModelStatusTag } from '../ModelStatusTag.js'
 import { TabbedSection } from '../TabbedSection.js'
 import { AgentLabel } from '../SourceLabel.js'
 import { Tag, TagButton } from '../Tag.js'
 import { PaperText } from '../paper/PaperText.js'
 import { ProposalCard, ProposalChange, ProposalDecision } from '../wiki/ProposalChange.js'
-import { ReaderPanelHeader } from './ReaderPanelHeader.js'
 import { PaperWikiProposalReview } from './PaperWikiProposalReview.js'
 import { Button } from '../Button.js'
 
@@ -68,7 +67,6 @@ export function PaperWikiIngest({ paper, reading, onJump, edits }: {
   const m = useMessages()
   const fmt = useFormat()
   const { open } = useJump()
-  const ingestFade = useScrollFade('y')
   const [plan, setPlan] = useState<HarnessPlan | null>(null)
   const [pending, setPending] = useState<HarnessPendingPaperWikiResult>(null)
   const [receipt, setReceipt] = useState<HarnessRunReceipt | null>(null)
@@ -321,64 +319,66 @@ export function PaperWikiIngest({ paper, reading, onJump, edits }: {
   )
 
   return (
-    <section className="wiki-ingest" ref={ingestFade} aria-label={m.wiki.addToWiki}>
-      <ReaderPanelHeader title={m.wiki.addToWiki} />
-      <div className="wiki-ingest-body">
-        <div className="wiki-ingest-scope">
-          <div><span>{m.wiki.scope.source}</span><strong>{m.wiki.scope.currentPaper}</strong></div>
-          <div><span>{m.wiki.scope.highlights}</span><strong>{m.wiki.scope.count(writtenHighlights)}</strong></div>
-          <div><span>{m.wiki.scope.notes}</span><strong>{m.wiki.scope.count(reading.notes.length)}</strong></div>
-          <div>
-            <span>{m.wiki.scope.remark}</span>
-            <strong>{reading.remark.trim() === '' ? m.wiki.scope.notRecorded : m.wiki.scope.recorded}</strong>
+    <section className="wiki-ingest" aria-label={m.wiki.addToWiki}>
+      <PageHeader size="pane"><PageTitle>{m.wiki.addToWiki}</PageTitle></PageHeader>
+      <ScrollArea axis="y" fill>
+        <div className="wiki-ingest-body">
+          <div className="wiki-ingest-scope">
+            <div><span>{m.wiki.scope.source}</span><strong>{m.wiki.scope.currentPaper}</strong></div>
+            <div><span>{m.wiki.scope.highlights}</span><strong>{m.wiki.scope.count(writtenHighlights)}</strong></div>
+            <div><span>{m.wiki.scope.notes}</span><strong>{m.wiki.scope.count(reading.notes.length)}</strong></div>
+            <div>
+              <span>{m.wiki.scope.remark}</span>
+              <strong>{reading.remark.trim() === '' ? m.wiki.scope.notRecorded : m.wiki.scope.recorded}</strong>
+            </div>
           </div>
-        </div>
 
-        <Tag>{personal === 0 ? m.wiki.ingest.noPersonalRecords : m.wiki.ingest.personalRecordsIncluded(personal)}</Tag>
+          <Tag>{personal === 0 ? m.wiki.ingest.noPersonalRecords : m.wiki.ingest.personalRecordsIncluded(personal)}</Tag>
 
-        {plan === null && pending === null && error === null
-          ? <InlineMessage tone="info" variant="line" className="wiki-ingest-status">{m.wiki.ingest.preparing}</InlineMessage>
-          : null}
-        {plan === null ? null : <ModelStatusTag />}
-        {receipt !== null ? <InlineMessage tone="done" variant="line" className="wiki-ingest-status">{receipt.message}</InlineMessage> : null}
-        {pending !== null ? <Tag tone="good">{m.wiki.ingest.restoredPending}</Tag> : null}
-        {receipt?.warning === undefined ? null : (
-          <InlineMessage tone="error" variant="line" className="wiki-ingest-status">
-            {failureLabel(m, m.wiki.ingest.auditFailed, receipt.warning)}
-          </InlineMessage>
-        )}
-        {failed !== null ? <InlineMessage tone="error" variant="line" className="wiki-ingest-status">{failed}</InlineMessage> : null}
-
-        <div className="wiki-ingest-actions">
-          {receipt === null && plan !== null && failure === undefined
-            ? <HarnessAction plan={plan} running={running} onStart={start} onCancel={cancel} />
+          {plan === null && pending === null && error === null
+            ? <InlineMessage tone="info" variant="line" className="wiki-ingest-status">{m.wiki.ingest.preparing}</InlineMessage>
             : null}
-          {cancelling ? <InlineMessage tone="info" variant="line" className="wiki-ingest-status">{m.wiki.ingest.stopping}</InlineMessage> : null}
-          {receipt !== null || failed !== null || rejected
-            ? <Button size="regular" onClick={reprepare}>{m.wiki.ingest.reprepare}</Button>
-            : null}
-        </div>
-        {proposal !== undefined && !applied && !rejected ? (
-          <div className="wiki-ingest-review">
-            {proposal.review === undefined
-              ? (
-                <>
-                  <SectionHeading variant="rail">{m.wiki.ingest.reviewHeading}</SectionHeading>
-                  {reviewCard(proposal, 'markdown')}
-                </>
-              )
-              : (
-                <TabbedSection
-                  variant="rail" heading={m.wiki.ingest.reviewHeading} label={m.wiki.ingest.reviewViewLabel}
-                  value={reviewMode} onChange={setReviewMode}
-                  tabs={reviewModes(m).map((mode) => ({ ...mode, content: reviewCard(proposal, mode.value) }))}
-                />
-              )}
+          {plan === null ? null : <ModelStatusTag />}
+          {receipt !== null ? <InlineMessage tone="done" variant="line" className="wiki-ingest-status">{receipt.message}</InlineMessage> : null}
+          {pending !== null ? <Tag tone="good">{m.wiki.ingest.restoredPending}</Tag> : null}
+          {receipt?.warning === undefined ? null : (
+            <InlineMessage tone="error" variant="line" className="wiki-ingest-status">
+              {failureLabel(m, m.wiki.ingest.auditFailed, receipt.warning)}
+            </InlineMessage>
+          )}
+          {failed !== null ? <InlineMessage tone="error" variant="line" className="wiki-ingest-status">{failed}</InlineMessage> : null}
+
+          <div className="wiki-ingest-actions">
+            {receipt === null && plan !== null && failure === undefined
+              ? <HarnessAction plan={plan} running={running} onStart={start} onCancel={cancel} />
+              : null}
+            {cancelling ? <InlineMessage tone="info" variant="line" className="wiki-ingest-status">{m.wiki.ingest.stopping}</InlineMessage> : null}
+            {receipt !== null || failed !== null || rejected
+              ? <Button size="regular" onClick={reprepare}>{m.wiki.ingest.reprepare}</Button>
+              : null}
           </div>
-        ) : null}
-        {applied ? <InlineMessage tone="done" variant="line" className="wiki-ingest-status">{m.wiki.ingest.written}</InlineMessage> : null}
-        {rejected ? <InlineMessage tone="info" variant="line" className="wiki-ingest-status">{m.wiki.ingest.discarded}</InlineMessage> : null}
-      </div>
+          {proposal !== undefined && !applied && !rejected ? (
+            <div className="wiki-ingest-review">
+              {proposal.review === undefined
+                ? (
+                  <>
+                    <SectionHeading variant="rail">{m.wiki.ingest.reviewHeading}</SectionHeading>
+                    {reviewCard(proposal, 'markdown')}
+                  </>
+                )
+                : (
+                  <TabbedSection
+                    variant="rail" heading={m.wiki.ingest.reviewHeading} label={m.wiki.ingest.reviewViewLabel}
+                    value={reviewMode} onChange={setReviewMode}
+                    tabs={reviewModes(m).map((mode) => ({ ...mode, content: reviewCard(proposal, mode.value) }))}
+                  />
+                )}
+            </div>
+          ) : null}
+          {applied ? <InlineMessage tone="done" variant="line" className="wiki-ingest-status">{m.wiki.ingest.written}</InlineMessage> : null}
+          {rejected ? <InlineMessage tone="info" variant="line" className="wiki-ingest-status">{m.wiki.ingest.discarded}</InlineMessage> : null}
+        </div>
+      </ScrollArea>
     </section>
   )
 }

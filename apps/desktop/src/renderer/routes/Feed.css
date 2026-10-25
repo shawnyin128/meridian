@@ -4,10 +4,8 @@
  * (.main.feedmain); the values below are the ones from that state.
  */
 
-.feedcol{background:var(--content)}
-/* A full-screen feed has a wider text column than chat, as in the demo's .main.feedmain .feedcol .mwrap */
-.feedcol .mwrap{width:min(var(--pagew),92%)}
-.feedcol .msgs>.page-toolbar{justify-content:center;margin:0 auto}
+/* The feed is a list screen: its entries take the page's column, not the narrower one of a chat. */
+.feedcol .mwrap{width:100%}
 .feed-day{box-sizing:border-box}
 
 .fic{display:grid;place-items:center}

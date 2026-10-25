@@ -97,7 +97,7 @@ export function IdeaPanel({
   return (
     <>
       <SectionHeading
-        variant="rail" className="idea-panel-head node-document-head"
+        variant="rail" className="idea-panel-head node-document-head" data-stuck-fade="top"
         actions={<>{actions}<PanelClose onClose={onClose} /></>}
       ><FadeText className="node-document-title" label={idea.title}>{idea.title}</FadeText>
       </SectionHeading>

@@ -483,7 +483,7 @@ export function ResearchNodePanel({
   return (
     <>
       <SectionHeading
-        variant="rail" className="node-document-head"
+        variant="rail" className="node-document-head" data-stuck-fade="top"
         actions={<PanelClose onClose={onClose} />}
       ><FadeText className="node-document-title" label={node.label}>{node.label}</FadeText>
       </SectionHeading>
