@@ -1189,7 +1189,7 @@ test('详情里笔记与实验结论的数是属性值:一段字,不为零时是
   await gotoPapers(win)
   await firstPage(win)
   await win.locator('.ptable tbody tr').first().locator('td.pt-title').click()
-  const counts = win.locator('.pdetail .paper-reading-summary .paper-meta-list dd')
+  const counts = win.locator('.pdetail .paper-reading-summary .property-list dd')
   await expect(counts).toHaveCount(2)
   // A count above zero is the one entity link, holding only the number; a zero is the number alone.
   expect(await counts.evaluateAll((dds) => dds.map((dd) => {

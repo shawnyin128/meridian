@@ -2,7 +2,7 @@
  * Every item starts its content --item-inset inside a 1px edge, so rows and cards line up when a page
  * mixes them: a card's own border, an outlined list's border, or the 1px an embedded row adds to its inset.
  * An item lays out its slots; one that brings only its own content keeps the flow, and a slotted row's
- * layout is :where()-weak, so a row whose cells sit on its list's grid lays them out there.
+ * layout is :where()-weak, so a row whose cells sit on its list's grid lays them out there, its list's gaps apart.
  */
 .item{box-sizing:border-box;width:100%;min-width:0;margin:0;border:0;background-color:transparent;color:var(--ink);
   font-family:inherit;font-size:var(--fs-body);font-weight:var(--fw-regular);line-height:var(--lh-ui);text-align:left;
