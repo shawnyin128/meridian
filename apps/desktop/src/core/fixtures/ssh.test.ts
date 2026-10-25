@@ -6,7 +6,7 @@ describe('the fixture library browses canned SSH hosts', () => {
   it('测试库的主机连上后列出主目录，隐藏文件夹不显示；别的主机连不上并给出原因', () => {
     expect(sshFolders({ host: 'gpu-lab' }, undefined, fixtureSsh(undefined))).toEqual({
       state: 'ready', path: '/home/researcher', parent: '/home',
-      folders: ['datasets', 'notes', 'projects'].map((name) => ({ name, path: `/home/researcher/${name}` })),
+      folders: ['checkpoints', 'datasets', 'logs', 'notes', 'projects', 'scratch', 'scripts'].map((name) => ({ name, path: `/home/researcher/${name}` })),
     })
     expect(sshFolders({ host: 'unknown-host' }, undefined, fixtureSsh(undefined))).toEqual({
       state: 'failed',
