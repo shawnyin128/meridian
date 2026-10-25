@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import type { KeyboardEvent, ReactNode } from 'react'
+import type { ReactNode } from 'react'
 import type { ComponentProps } from 'react'
 import type {
   IdeaRelations as IdeaRelationsValue, ProjectDetail, ProjectSummary, ResearchIdea,
 } from '../../shared/contract.js'
 import { FINISHED_PROJECT, SHELVED_PROJECT } from '../../shared/vocabulary.js'
-import { appMenu, idea as ideaApi, project as projectApi, wiki as wikiApi } from '../ipc.js'
+import { idea as ideaApi, project as projectApi, wiki as wikiApi } from '../ipc.js'
 import { MenuItem, MenuSeparator } from '../components/ActionMenu.js'
 import { SortMenu } from '../components/SortMenu.js'
 import { FormInput, FormTextarea } from '../components/FormControls.js'
@@ -41,7 +41,7 @@ import { useScrollFade } from '../hooks/useScrollFade.js'
 import { useSourceChatDeleted } from '../hooks/useSourceChatDeleted.js'
 import { useDragReorder, type Reorderable } from '../hooks/useDragReorder.js'
 import { DragHandle } from '../components/DragHandle.js'
-import { commitsMultiline, composing } from '../lib/keyboard.js'
+import { commitKeys } from '../lib/keyboard.js'
 import { useMessages } from '../messages/useMessages.js'
 import { AgentLabel, SourceLabel } from '../components/SourceLabel.js'
 import { Tag } from '../components/Tag.js'
@@ -272,12 +272,6 @@ function IdeaDetailPanel({
       if (saved) setEdit(null)
     })
   }
-  /** Enter commits the title, ⌘Enter on macOS or Ctrl+Enter elsewhere the body, and Escape restores both. */
-  const commitOrCancel = (multiline: boolean) => (event: KeyboardEvent<HTMLElement>) => {
-    if (composing(event.nativeEvent)) return
-    if (event.key === 'Escape') { event.stopPropagation(); cancelEditing(); return }
-    if (multiline ? commitsMultiline(appMenu.platform(), event.nativeEvent) : event.key === 'Enter') { event.preventDefault(); save() }
-  }
 
   return (
     <aside className="idea-detail-panel node-document-pane" ref={panelFade} data-fade-paint="" aria-label={m.ideas.detailHeading}>
@@ -298,14 +292,16 @@ function IdeaDetailPanel({
                 <span>{m.ideas.editor.titleLabel}</span>
                 <FormInput
                   autoFocus value={title} maxLength={160}
-                  onChange={(event) => setEdit({ ...edit!, title: event.target.value })} onKeyDown={commitOrCancel(false)}
+                  onChange={(event) => setEdit({ ...edit!, title: event.target.value })}
+                  onKeyDown={commitKeys({ onSave: save, onCancel: cancelEditing })}
                 />
               </label>
               <label>
                 <span>{m.ideas.bodyLabel}</span>
                 <FormTextarea
                   value={body} maxLength={20_000}
-                  onChange={(event) => setEdit({ ...edit!, body: event.target.value })} onKeyDown={commitOrCancel(true)}
+                  onChange={(event) => setEdit({ ...edit!, body: event.target.value })}
+                  onKeyDown={commitKeys({ multiline: true, onSave: save, onCancel: cancelEditing })}
                 />
               </label>
             </section>

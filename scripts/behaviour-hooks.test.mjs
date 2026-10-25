@@ -26,6 +26,17 @@ function copies(pattern, allowed) {
 }
 
 describe('each shared behaviour has one implementation', () => {
+  it('a field saves and cancels by key only through commitKeys', () => {
+    expect(copies(/key [!=]== 'Escape'|'Enter' && !composing|commitsMultiline\(/, {
+      'lib/keyboard.ts': { reason: 'commitKeys itself' },
+      'components/MarkdownEditor.tsx': { reason: 'tells CodeMirror the commit key is taken, for the box around it to act on' },
+      'shell/AppShell.tsx': { reason: 'Escape outside every field peels the top dismissible layer' },
+      'components/Grip.tsx': { reason: 'Escape ends a resize drag where it started' },
+      'hooks/useGanttDrag.ts': { reason: 'Escape ends a bar drag where it started' },
+      'components/paper-table/ColumnAdd.tsx': { reason: 'the column type picker, a radio group, drops the new column on Escape' },
+    })).toEqual([])
+  })
+
   it('an element\'s width is kept only through useElementWidth', () => {
     expect(copies(/set\w*\(\s*\w+\.clientWidth\s*\)|width: \w+\.clientWidth\b/, {
       'hooks/useElementWidth.ts': { reason: 'the width itself' },

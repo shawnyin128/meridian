@@ -4,7 +4,7 @@ import { useCandidateKeys } from '../../hooks/useCandidateKeys.js'
 import { useDrafts } from '../../hooks/useDrafts.js'
 import { useInlineDraft } from '../../hooks/useInlineDraft.js'
 import { NO_TRIGGERS } from '../../hooks/useOnLeave.js'
-import { composing } from '../../lib/keyboard.js'
+import { commitKeys } from '../../lib/keyboard.js'
 import { useMessages } from '../../messages/useMessages.js'
 import { IconCheck, IconPlus } from '../icons.js'
 import { PickerPopover, PickOption } from '../PickerPopover.js'
@@ -97,9 +97,7 @@ export function CellPicker({ column, values, onCommit, onClose, keep }: {
           onChange={(e) => setQ(e.target.value)}
           onKeyDown={(e) => {
             keys.onKeyDown(e)
-            if (e.key === 'Escape') e.stopPropagation()
-            if (composing(e.nativeEvent)) return
-            if (e.key === 'Escape') draft.cancel()
+            commitKeys({ onCancel: draft.cancel })(e)
           }}
         />
       )}

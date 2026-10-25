@@ -26,7 +26,7 @@ import { Tag } from '../components/Tag.js'
 import { useDraft } from '../hooks/useDrafts.js'
 import { useScreenLoad } from '../hooks/useScreenLoad.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
-import { composing } from '../lib/keyboard.js'
+import { commitKeys } from '../lib/keyboard.js'
 import { FadeText } from '../components/FadeText.js'
 import { Button } from '../components/Button.js'
 import { CommitActions } from '../components/CommitActions.js'
@@ -498,9 +498,7 @@ export function WatchSettings() {
                   setFocus(event.target.value)
                   clearSuggestionResults()
                 }}
-                onKeyDown={(event) => {
-                  if (event.key === 'Enter' && !composing(event.nativeEvent)) void suggest()
-                }}
+                onKeyDown={commitKeys({ onSave: () => { void suggest() } })}
               />
             )
             : (
