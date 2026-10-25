@@ -1,7 +1,7 @@
 import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { checkCliConnection, discoverCli, resolveCliBinary } from './discovery.js'
 import { chatTurnFlags } from './chat-turn.js'
 import { runnerFlags } from './runner.js'
@@ -140,29 +140,68 @@ describe('subscription CLI discovery', () => {
     await expect(discoverCli('codex', signedOut.options)).resolves.toMatchObject({ signIn: 'signed-out' })
   })
 
-  it('checks the connection from installation, the flags its help lists and sign-in, with no model call', async () => {
+  it('fails the check of a sign-in it cannot read as its own reason, logging the status output\'s shape and none of its content', async () => {
+    const results: unknown[] = []
+    const logs: string[] = []
+    for (const [cli, status] of [
+      ['claude', 'Logged in as researcher@example.org\nToken sk-ant-oat01-secretsecret\n'],
+      ['claude', JSON.stringify({ signedIn: true, method: 'claude.ai', account: { email: 'researcher@example.org' } })],
+      ['codex', 'Signed in with ChatGPT as researcher@example.org\n'],
+    ] as const) {
+      const unreadable = machine({ version: '9.9.9\n', status })
+      executable(join(unreadable.home, '.local', 'bin', cli), STAND_IN)
+      results.push(await checkCliConnection(cli, { ...unreadable.options, onLog: (line) => logs.push(line) }))
+    }
+
+    expect(results).toEqual(['claude', 'claude', 'codex'].map((cli) => ({
+      state: 'failed', reason: 'cli-sign-in-unknown', detail: `读不出 ${cli} 的登录状态`, version: '9.9.9',
+      modelCalls: 0, maxOutputTokens: 1,
+    })))
+    expect(logs).toEqual([
+      'claude 9.9.9: its sign-in status is in no form Meridian reads: stdout 2 lines of text, stderr 0 lines, exit 0',
+      'claude 9.9.9: its sign-in status is in no form Meridian reads: '
+        + 'stdout a JSON object of account: object, method: string, signedIn: boolean, stderr 0 lines, exit 0',
+      'codex 9.9.9: its sign-in status is in no form Meridian reads: stdout 0 lines of text, stderr 1 lines, exit 0',
+    ])
+    expect(logs.join('\n')).not.toMatch(/researcher|sk-ant|secret|claude\.ai|Logged|ChatGPT as/)
+  })
+
+  it('checks the connection from installation, the flags its help lists and sign-in, with no model call, naming the CLI problem', async () => {
     const missing = machine()
     await expect(checkCliConnection('claude', missing.options)).resolves.toEqual({
-      state: 'failed', reason: 'unavailable', detail: '没有找到 claude 命令', modelCalls: 0, maxOutputTokens: 1,
+      state: 'failed', reason: 'cli-missing', detail: '没有找到 claude 命令', modelCalls: 0, maxOutputTokens: 1,
     })
 
     const logs: string[] = []
     const old = machine({ version: '2.0.9 (Claude Code)\n', help: FULL_HELP.replace(/^ {2}--json-schema .*$/m, '') })
     executable(join(old.home, '.local', 'bin', 'claude'), STAND_IN)
     const unsupported = await checkCliConnection('claude', { ...old.options, onLog: (line) => logs.push(line) })
-    expect(unsupported).toMatchObject({ state: 'failed', reason: 'configuration', version: '2.0.9', modelCalls: 0 })
+    expect(unsupported).toMatchObject({ state: 'failed', reason: 'cli-unsupported', version: '2.0.9', modelCalls: 0 })
     expect(JSON.stringify(unsupported)).not.toContain('json-schema')
     expect(logs).toEqual([expect.stringContaining('--json-schema')])
     const noStreaming = machine({ help: FULL_HELP.replace(/^ {2}--include-partial-messages .*$/m, '') })
     executable(join(noStreaming.home, '.local', 'bin', 'claude'), STAND_IN)
     await expect(checkCliConnection('claude', noStreaming.options)).resolves.toMatchObject({
-      state: 'failed', reason: 'configuration', modelCalls: 0,
+      state: 'failed', reason: 'cli-unsupported', modelCalls: 0,
     })
+    for (const [cli, flag] of [['claude', '--resume'], ['codex', 'resume']] as const) {
+      const noResume = machine({ help: FULL_HELP.replace(new RegExp(`^ {2}${flag} .*$`, 'm'), '') })
+      executable(join(noResume.home, '.local', 'bin', cli), STAND_IN)
+      await expect(checkCliConnection(cli, noResume.options)).resolves.toMatchObject({
+        state: 'failed', reason: 'cli-unsupported', modelCalls: 0,
+      })
+    }
 
     const apiKey = machine({ status: JSON.stringify({ loggedIn: true, authMethod: 'api_key' }) })
     executable(join(apiKey.home, '.local', 'bin', 'claude'), STAND_IN)
     await expect(checkCliConnection('claude', apiKey.options)).resolves.toMatchObject({
-      state: 'failed', reason: 'authentication', detail: 'claude 没有用 Claude 订阅登录', modelCalls: 0,
+      state: 'failed', reason: 'cli-signed-out', detail: 'claude 没有用 Claude 订阅登录', modelCalls: 0,
+    })
+
+    const signedOut = machine({ status: JSON.stringify({ loggedIn: false }) })
+    executable(join(signedOut.home, '.local', 'bin', 'claude'), STAND_IN)
+    await expect(checkCliConnection('claude', signedOut.options)).resolves.toMatchObject({
+      state: 'failed', reason: 'cli-signed-out', detail: 'claude 还没有登录', modelCalls: 0,
     })
 
     const signedIn = machine({ version: '0.0.1 (Claude Code)\n' })
@@ -172,6 +211,21 @@ describe('subscription CLI discovery', () => {
     })
     expect(signedIn.calls().map((call) => call.argv)).toEqual([['--version'], ['--help'], ['auth', 'status', '--json']])
   })
+
+  it('fails the check of a CLI that does not answer in time as a CLI timeout, and ends it', async () => {
+    const slow = machine()
+    const pidFile = join(slow.root, 'pid')
+    executable(join(slow.home, '.local', 'bin', 'claude'), `#!${process.execPath}
+require('node:fs').writeFileSync(${JSON.stringify(pidFile)}, String(process.pid))
+setInterval(() => {}, 1000)
+`)
+
+    await expect(checkCliConnection('claude', { ...slow.options, probeTimeoutMs: 300 })).resolves.toMatchObject({
+      state: 'failed', reason: 'cli-timeout', modelCalls: 0,
+    })
+    const pid = Number(readFileSync(pidFile, 'utf8'))
+    await vi.waitFor(() => expect(() => process.kill(pid, 0)).toThrow())
+  }, 20_000)
 
   it('on Windows finds codex as an npm .cmd shim on PATH or in %APPDATA%\\npm, an .exe first, and claude only as an .exe', async () => {
     const { root, options } = machine()
