@@ -181,10 +181,8 @@ const PLACES: Record<string, Place[]> = {
     { slot: 'table header', size: 'compact', variant: 'icon', scope: 'a table adds a column to itself' },
     { slot: 'inline', size: 'chip', variant: 'icon', scope: 'a field adds a value after its chips' },
     { slot: 'sidebar heading', size: 'compact', variant: 'icon', scope: 'the sidebar starts a chat in its chats group' },
-    {
-      slot: 'inline', size: 'compact', variant: 'labelled',
-      scope: 'a suggestion row adds its suggestion, and the heading of a suggestion group adds all of them',
-    },
+    { slot: 'row actions', size: 'compact', variant: 'labelled', scope: 'a suggestion row adds its suggestion' },
+    { slot: 'inline', size: 'compact', variant: 'labelled', scope: 'the heading of a suggestion group adds all of them' },
   ],
   'view switch': [
     { slot: 'page toolbar', size: 'md', variant: 'plain' },
@@ -417,10 +415,10 @@ const BUTTON_SIZES: Partial<Record<Slot, string>> = {
   'selection toolbar': 'sm',
 }
 
-/** AddAction's one size in the page header bar and in each kind of heading. */
+/** AddAction's one size in the page header bar, in each kind of heading and among a row's actions. */
 const ADD_SIZES: Partial<Record<Slot, string>> = {
   'page header': 'regular', 'section heading': 'compact', 'group heading': 'compact', 'panel head': 'compact',
-  'sidebar heading': 'compact', 'table header': 'compact',
+  'sidebar heading': 'compact', 'table header': 'compact', 'row actions': 'compact',
 }
 
 /** The one icon button size of the slots that hold rows' and chips' own actions. */
