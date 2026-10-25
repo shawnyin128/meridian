@@ -234,7 +234,7 @@ describe('项目的排序', () => {
     await act(async () => { dots.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, button: 0 })) })
     const items = [...document.querySelectorAll<HTMLElement>('[role="menu"] [role="menuitem"]')]
     expect(items.map((item) => [item.textContent, item.hasAttribute('data-disabled')]).slice(0, 3))
-      .toEqual([['重命名…', false], ['上移', true], ['下移', false]])
+      .toEqual([['重命名', false], ['上移', true], ['下移', false]])
     await act(async () => { items[2]!.click() })
     expect(await reorder()).toHaveBeenCalledWith(['b', 'a', 'c'])
   })
@@ -272,7 +272,7 @@ describe('项目改名', () => {
   const rename = async (id: string) => {
     const dots = host.querySelector<HTMLElement>(`[data-proj="${id}"] .dots`)!
     await act(async () => { dots.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, button: 0 })) })
-    const item = [...document.querySelectorAll<HTMLElement>('[role="menu"] [role="menuitem"]')].find((held) => held.textContent === '重命名…')!
+    const item = [...document.querySelectorAll<HTMLElement>('[role="menu"] [role="menuitem"]')].find((held) => held.textContent === '重命名')!
     await act(async () => { item.click() })
     // The menu hands focus over a timer after it closes; the field opens then.
     await vi.waitFor(() => expect(host.querySelector(`[data-proj="${id}"] .metadata-input`)).not.toBeNull())
