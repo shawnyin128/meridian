@@ -309,12 +309,22 @@ describe('PaperWikiIngest', () => {
     expect(api.prepare).toHaveBeenCalledTimes(2)
   })
 
-  it('shows AI 未连接 as soon as the model status says no model is set up, even on a plan prepared with one', async () => {
+  it('takes whether a model is set up from the plan Core prepared, and prepares it again once the model status changes', async () => {
     const render = () => act(async () => { root.render(withMessages(<Panel paper={paper} reading={reading} onJump={api.jump} />)) })
     await render()
-    expect(states()).not.toContain('AI 未连接')
+    expect(api.prepare).toHaveBeenCalledTimes(1)
+    // The demo library's plan has a model of Core's own while no model is set up in Settings.
     api.connected = false
     await render()
+    expect(api.prepare).toHaveBeenCalledTimes(2)
+    expect(states()).not.toContain('AI 未连接')
+    api.prepare.mockResolvedValue({ ...plan, model: { ...plan.model, configured: false } })
+    api.connected = true
+    await render()
+    expect(api.prepare).toHaveBeenCalledTimes(2)
+    api.connected = false
+    await render()
+    expect(api.prepare).toHaveBeenCalledTimes(3)
     expect(states()).toContain('AI 未连接')
   })
 

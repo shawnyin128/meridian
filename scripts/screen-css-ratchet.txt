@@ -204,59 +204,58 @@ components/project/ProjectPlan.css:2: .project-plan .ddlrow .dleft { font-size }
 components/project/ProjectPlan.css:2: .project-plan .ddlrow .dleft { color }
 components/project/ProjectPlan.css:2: .project-plan .ddlrow .dleft { width }
 components/project/ProjectPlan.css:3: .project-plan .ddlrow.done>:not(.row-actions) { opacity }
-components/project/ProjectPlan.css:4: #taskList { grid-template-columns }
-components/project/ProjectPlan.css:5: #msList { grid-template-columns }
-components/project/ProjectPlan.css:7: .task-row>.plan-name-cell { margin-left }
-components/project/ProjectPlan.css:7: .task-row>.task-name-with-origin { margin-left }
-components/project/ProjectPlan.css:7: .milestone-row>.plan-name-cell { margin-left }
-components/project/ProjectPlan.css:8: #taskList>.collapsible-group { display }
-components/project/ProjectPlan.css:8: #msList>.collapsible-group { display }
-components/project/ProjectPlan.css:8: #taskList>.collapsible-group { grid-template-columns }
-components/project/ProjectPlan.css:8: #msList>.collapsible-group { grid-template-columns }
-components/project/ProjectPlan.css:10: #taskList .collapsible-group-body { display }
-components/project/ProjectPlan.css:10: #msList .collapsible-group-body { display }
-components/project/ProjectPlan.css:10: #taskList .collapsible-group-content { display }
-components/project/ProjectPlan.css:10: #msList .collapsible-group-content { display }
-components/project/ProjectPlan.css:10: #taskList .collapsible-group-body { grid-template-columns }
-components/project/ProjectPlan.css:10: #msList .collapsible-group-body { grid-template-columns }
-components/project/ProjectPlan.css:10: #taskList .collapsible-group-content { grid-template-columns }
-components/project/ProjectPlan.css:10: #msList .collapsible-group-content { grid-template-columns }
-components/project/ProjectPlan.css:10: #taskList .collapsible-group-body { row-gap }
-components/project/ProjectPlan.css:10: #msList .collapsible-group-body { row-gap }
-components/project/ProjectPlan.css:10: #taskList .collapsible-group-content { row-gap }
-components/project/ProjectPlan.css:10: #msList .collapsible-group-content { row-gap }
-components/project/ProjectPlan.css:12: .milestone-row>.plan-date-button { box-sizing }
-components/project/ProjectPlan.css:12: .milestone-row>.plan-date-button { overflow }
-components/project/ProjectPlan.css:12: .milestone-row>.plan-date-button { white-space }
-components/project/ProjectPlan.css:12: .milestone-row>.plan-date-button { text-align }
-components/project/ProjectPlan.css:12: .milestone-row>.plan-date-button { padding }
-components/project/ProjectPlan.css:13: .plan-date { min-width }
-components/project/ProjectPlan.css:16: .task-row .task-date-part { display }
-components/project/ProjectPlan.css:16: .task-row .task-clock-part { display }
-components/project/ProjectPlan.css:18: .plan-cell { box-sizing }
-components/project/ProjectPlan.css:18: .plan-cell { margin }
-components/project/ProjectPlan.css:18: .plan-cell { border }
-components/project/ProjectPlan.css:18: .plan-cell { background }
-components/project/ProjectPlan.css:18: .plan-cell { color }
-components/project/ProjectPlan.css:18: .plan-cell { font }
-components/project/ProjectPlan.css:18: .plan-cell { text-align }
-components/project/ProjectPlan.css:18: .plan-cell { cursor }
-components/project/ProjectPlan.css:19: .plan-cell:hover { box-shadow }
-components/project/ProjectPlan.css:20: .state-cell { padding }
-components/project/ProjectPlan.css:20: .state-cell { border-radius }
-components/project/ProjectPlan.css:23: .task-name-with-origin>.source-label { margin-left }
-components/project/ProjectPlan.css:26: .plan-name { box-sizing }
-components/project/ProjectPlan.css:26: .plan-name { display }
-components/project/ProjectPlan.css:26: .plan-name { align-items }
-components/project/ProjectPlan.css:26: .plan-name { height }
-components/project/ProjectPlan.css:26: .plan-name { padding }
-components/project/ProjectPlan.css:26: .plan-name { border }
-components/project/ProjectPlan.css:26: .plan-name { border-radius }
-components/project/ProjectPlan.css:26: .plan-name { font }
-components/project/ProjectPlan.css:26: .plan-name { line-height }
-components/project/ProjectPlan.css:27: .plan-name:hover { box-shadow }
-components/project/ProjectPlan.css:29: .project-plan .plan-rename { margin }
-components/project/ProjectPlan.css:30: .project-plan .row-actions { margin-left }
+components/project/ProjectPlan.css:5: #taskList { grid-template-columns }
+components/project/ProjectPlan.css:6: #msList { grid-template-columns }
+components/project/ProjectPlan.css:8: .task-row>.plan-name-cell { margin-left }
+components/project/ProjectPlan.css:8: .task-row>.task-name-with-origin { margin-left }
+components/project/ProjectPlan.css:8: .milestone-row>.plan-name-cell { margin-left }
+components/project/ProjectPlan.css:9: #taskList>.collapsible-group { display }
+components/project/ProjectPlan.css:9: #msList>.collapsible-group { display }
+components/project/ProjectPlan.css:9: #taskList>.collapsible-group { grid-template-columns }
+components/project/ProjectPlan.css:9: #msList>.collapsible-group { grid-template-columns }
+components/project/ProjectPlan.css:11: #taskList .collapsible-group-body { display }
+components/project/ProjectPlan.css:11: #msList .collapsible-group-body { display }
+components/project/ProjectPlan.css:11: #taskList .collapsible-group-content { display }
+components/project/ProjectPlan.css:11: #msList .collapsible-group-content { display }
+components/project/ProjectPlan.css:11: #taskList .collapsible-group-body { grid-template-columns }
+components/project/ProjectPlan.css:11: #msList .collapsible-group-body { grid-template-columns }
+components/project/ProjectPlan.css:11: #taskList .collapsible-group-content { grid-template-columns }
+components/project/ProjectPlan.css:11: #msList .collapsible-group-content { grid-template-columns }
+components/project/ProjectPlan.css:11: #taskList .collapsible-group-body { row-gap }
+components/project/ProjectPlan.css:11: #msList .collapsible-group-body { row-gap }
+components/project/ProjectPlan.css:11: #taskList .collapsible-group-content { row-gap }
+components/project/ProjectPlan.css:11: #msList .collapsible-group-content { row-gap }
+components/project/ProjectPlan.css:13: .milestone-row>.plan-date-button { box-sizing }
+components/project/ProjectPlan.css:13: .milestone-row>.plan-date-button { overflow }
+components/project/ProjectPlan.css:13: .milestone-row>.plan-date-button { white-space }
+components/project/ProjectPlan.css:13: .milestone-row>.plan-date-button { text-align }
+components/project/ProjectPlan.css:13: .milestone-row>.plan-date-button { padding }
+components/project/ProjectPlan.css:14: .plan-date { min-width }
+components/project/ProjectPlan.css:17: .task-row .task-date-part { display }
+components/project/ProjectPlan.css:17: .task-row .task-clock-part { display }
+components/project/ProjectPlan.css:19: .plan-cell { box-sizing }
+components/project/ProjectPlan.css:19: .plan-cell { margin }
+components/project/ProjectPlan.css:19: .plan-cell { border }
+components/project/ProjectPlan.css:19: .plan-cell { background }
+components/project/ProjectPlan.css:19: .plan-cell { color }
+components/project/ProjectPlan.css:19: .plan-cell { font }
+components/project/ProjectPlan.css:19: .plan-cell { text-align }
+components/project/ProjectPlan.css:19: .plan-cell { cursor }
+components/project/ProjectPlan.css:20: .plan-cell:hover { box-shadow }
+components/project/ProjectPlan.css:21: .state-cell { padding }
+components/project/ProjectPlan.css:21: .state-cell { border-radius }
+components/project/ProjectPlan.css:24: .task-name-with-origin>.source-label { margin-left }
+components/project/ProjectPlan.css:27: .plan-name { box-sizing }
+components/project/ProjectPlan.css:27: .plan-name { display }
+components/project/ProjectPlan.css:27: .plan-name { align-items }
+components/project/ProjectPlan.css:27: .plan-name { height }
+components/project/ProjectPlan.css:27: .plan-name { padding }
+components/project/ProjectPlan.css:27: .plan-name { border }
+components/project/ProjectPlan.css:27: .plan-name { border-radius }
+components/project/ProjectPlan.css:27: .plan-name { font }
+components/project/ProjectPlan.css:27: .plan-name { line-height }
+components/project/ProjectPlan.css:28: .plan-name:hover { box-shadow }
+components/project/ProjectPlan.css:30: .project-plan .plan-rename { margin }
 components/project/ProjectSections.css:2: .agsteps { padding }
 components/project/ProjectSections.css:3: .agstep { font-size }
 components/project/ProjectSections.css:3: .agstep { color }
@@ -275,11 +274,11 @@ components/project/ProjectSections.css:13: .attachments.drag { outline-color }
 components/project/ProjectSignals.css:2: .project-signal-columns { --project-signal-kind-width }
 components/project/ProjectSignals.css:2: .project-signal-columns { --project-signal-date-width }
 components/project/ProjectSignals.css:2: .project-signal-columns { --project-signal-gap }
-components/project/ProjectSignals.css:10: .record-list.with-node { grid-template-columns }
-components/project/ProjectSignals.css:12: .record-list>.record-row { grid-template-columns }
-components/project/ProjectSignals.css:12: .record-list>.record-row { align-items }
-components/project/ProjectSignals.css:16: .record-detail { color }
-components/project/ProjectSignals.css:16: .record-detail { font-size }
+components/project/ProjectSignals.css:11: .record-list.with-node { grid-template-columns }
+components/project/ProjectSignals.css:13: .record-list>.record-row { grid-template-columns }
+components/project/ProjectSignals.css:13: .record-list>.record-row { align-items }
+components/project/ProjectSignals.css:17: .record-detail { color }
+components/project/ProjectSignals.css:17: .record-detail { font-size }
 components/project/ResearchGraph.css:1: .rgraph { margin-top }
 components/project/ResearchGraph.css:2: .rgraph-viewport { height }
 components/project/ResearchGraph.css:2: .rgraph-viewport { box-sizing }
@@ -534,7 +533,6 @@ routes/Feed.css:14: .brief .bh { color }
 routes/Feed.css:14: .brief .bh { padding }
 routes/Feed.css:14: .brief .bh { border-bottom }
 routes/Ideas.css:5: .idea-relation-tag { max-width }
-routes/Ideas.css:13: .idea-row-groups { --idea-row-inset }
 routes/Ideas.css:13: .idea-row-groups { --idea-title-least }
 routes/Ideas.css:17: .idea-rows { display }
 routes/Ideas.css:17: .idea-rows { grid-template-columns }

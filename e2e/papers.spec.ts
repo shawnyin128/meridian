@@ -275,7 +275,9 @@ test('研究地图左右两栏都铺到视图底边，在同一高度开始各�
   await win.getByRole('radio', { name: '研究地图', exact: true }).click()
   await expect(win.locator('.research-map-detail .research-map-paper').nth(5)).toBeVisible()
 
-  for (const [width, height] of [[1440, 900], [1280, 800]] as const) {
+  // The fixture's ten groups fit the index column at 1440×900 and 1280×800, so a shorter window shows that
+  // column scrolling and fading inside itself as the paper list does.
+  for (const [width, height] of [[1440, 900], [1280, 800], [1280, 560]] as const) {
     await app.evaluate(({ BrowserWindow }, size) => BrowserWindow.getAllWindows()[0]!.setContentSize(size.width, size.height), { width, height })
     await expect.poll(() => win.evaluate(() => window.innerHeight)).toBe(height)
     const columns = await win.evaluate(() => {
@@ -286,6 +288,9 @@ test('研究地图左右两栏都铺到视图底边，在同一高度开始各�
       // The column keeps the focus-ring room inside its edges and reaches out by as much, so its lists end above that room.
       const indexEnd = Math.round(index.getBoundingClientRect().bottom - parseFloat(getComputedStyle(index).paddingBottom))
       const headTop = head.getBoundingClientRect().top
+      // A list measures its fades on scroll; make it measure the new window size before reading them.
+      papers.dispatchEvent(new Event('scroll'))
+      index.dispatchEvent(new Event('scroll'))
       const before = { index: index.dataset.fade, papers: papers.dataset.fade }
       papers.scrollTop = papers.scrollHeight
       index.scrollTop = index.scrollHeight
@@ -298,8 +303,7 @@ test('研究地图左右两栏都铺到视图底边，在同一高度开始各�
         fades: { before, after: { index: index.dataset.fade, papers: papers.dataset.fade } },
       }
     })
-    // At 1440×900 the fixture's ten groups fit the column, so only the paper list has more to show.
-    const groupsOverflow = height === 800
+    const groupsOverflow = height === 560
     expect(columns, `${width}×${height}`).toEqual({
       view: columns.view, index: columns.view, detail: columns.view,
       indexScrolls: groupsOverflow, papersScroll: true, headStays: true,
@@ -1185,7 +1189,7 @@ test('详情里笔记与实验结论的数是属性值:一段字,不为零时是
   await gotoPapers(win)
   await firstPage(win)
   await win.locator('.ptable tbody tr').first().locator('td.pt-title').click()
-  const counts = win.locator('.pdetail .paper-reading-summary .paper-meta-list dd')
+  const counts = win.locator('.pdetail .paper-reading-summary .property-list dd')
   await expect(counts).toHaveCount(2)
   // A count above zero is the one entity link, holding only the number; a zero is the number alone.
   expect(await counts.evaluateAll((dds) => dds.map((dd) => {

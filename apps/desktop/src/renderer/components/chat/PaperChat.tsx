@@ -6,7 +6,7 @@ import {
   useJump, useNotice, usePaperChatCollapsed, usePaperChatGrip, useVaultRevision,
 } from '../../shell/AppShell.js'
 import { GripTooltip } from '../../shell/GripTooltip.js'
-import { ChatMessageView } from './ChatMessage.js'
+import { ChatMessageView, endsUnanswered } from './ChatMessage.js'
 import { ChatComposer, draftText, type ChatComposerHandle } from './ChatComposer.js'
 import { BackButton } from '../BackButton.js'
 import { Grip } from '../Grip.js'
@@ -16,6 +16,7 @@ import { LoadingPlaceholder } from '../LoadingPlaceholder.js'
 import { PageError, PageHeader, PageTitle } from '../PageShell.js'
 import { ScrollArea } from '../ScrollArea.js'
 import { useDrafts } from '../../hooks/useDrafts.js'
+import { useChatTurn } from '../../hooks/useChatTurn.js'
 import { useDraftSlot } from '../DraftSlot.js'
 import { useGenerations } from '../../hooks/useGenerations.js'
 import { useFollowEnd } from '../../hooks/useFollowEnd.js'
@@ -54,8 +55,9 @@ export function PaperChat({ paper, onBack = () => {}, prompt = null }: {
   // The question being typed and an idea being drafted belong to their paper.
   const drafts = useDrafts<ChatRun[]>(['paper', paper?.id ?? ''])
   const ideaDrafts = useDrafts<IdeaDraftText>(['paper', paper?.id ?? ''])
-  const { running, run, stop } = useGenerations()
+  const { running, stop } = useGenerations()
   const { track } = useModelStatus()
+  const turn = useChatTurn(track)
   const { error, load } = useScreenLoad()
   const { ref: followRef, follow } = useFollowEnd<HTMLDivElement>()
   const composer = useRef<ChatComposerHandle>(null)
@@ -101,7 +103,7 @@ export function PaperChat({ paper, onBack = () => {}, prompt = null }: {
     if (draftText(draft).trim() === '' || paperId === null || session === null || sending) return
     drafts.drop('chat-message')
     follow()
-    void run(write(track(chat.send(session.id, draft))))
+    void turn.send(session.id, draft)
   }
 
   const stopSending = () => {
@@ -128,13 +130,18 @@ export function PaperChat({ paper, onBack = () => {}, prompt = null }: {
       </PageHeader>
       <PageError error={error} />
       <ScrollArea axis="y" fill ref={followRef}>
-        <div className="msgs">
+        <div className="msgs" role="log" aria-label={m.chat.messagesLabel}>
           {messages === null
             ? (error === null ? <div className="mwrap"><LoadingPlaceholder shape="lines" /></div> : null)
             : messages.length === 0 && error === null
             ? <div className="mwrap"><EmptyState variant="page" icon={<Icon sw={1.4}><path d={CHAT_BUBBLE_PATH} /></Icon>} /></div>
-            : messages.map((message) => (
-              <ChatMessageView key={message.id} message={message} onAct={() => act(message)} />
+            : messages.map((message, at) => (
+              <ChatMessageView
+                key={message.id} message={message} onAct={() => act(message)}
+                onRetry={session !== null && !sending && at === messages.length - 1 && endsUnanswered(messages)
+                  ? () => { follow(); void turn.retry(session.id) }
+                  : undefined}
+              />
             ))}
           {session === null || paper === null || ideaDraft === undefined
             ? null

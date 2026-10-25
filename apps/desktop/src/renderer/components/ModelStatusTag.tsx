@@ -4,13 +4,15 @@ import { useSettingsOpen } from '../shell/AppShell.js'
 import { TagButton, type TagState } from './Tag.js'
 
 /**
- * The one "AI not connected" state: while the shell's model status (see useModelStatus) says no model
- * is set up, the button in `state` that opens Settings at the model settings; nothing otherwise.
+ * The one "AI not connected" state: while no model is set up, the button in `state` that opens
+ * Settings at the model settings; nothing otherwise. Whether one is set up is `connected` when the
+ * surface holds Core's own word for the model it will use, as a Harness plan does, and the shell's
+ * model status (see useModelStatus) otherwise.
  */
-export function ModelStatusTag({ state }: { state?: TagState }) {
+export function ModelStatusTag({ state, connected }: { state?: TagState; connected?: boolean }) {
   const m = useMessages()
-  const { connected } = useModelStatus()
+  const status = useModelStatus()
   const { openCategory } = useSettingsOpen()
-  if (connected !== false) return null
+  if ((connected ?? status.connected) !== false) return null
   return <TagButton state={state} onClick={() => openCategory('model')}>{m.common.noModel}</TagButton>
 }

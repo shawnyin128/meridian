@@ -335,7 +335,7 @@ export function PaperWikiIngest({ paper, reading, onJump, edits }: {
           <Tag>{personal === 0 ? m.wiki.ingest.noPersonalRecords : m.wiki.ingest.personalRecordsIncluded(personal)}</Tag>
 
           {plan === null && pending === null && error === null ? <LoadingPlaceholder shape="lines" count={1} /> : null}
-          {plan === null ? null : <ModelStatusTag />}
+          {plan === null ? null : <ModelStatusTag connected={plan.model.configured} />}
           {receipt !== null ? <InlineMessage tone="done" variant="line" className="wiki-ingest-status">{receipt.message}</InlineMessage> : null}
           {pending !== null ? <Tag>{m.wiki.ingest.restoredPending}</Tag> : null}
           {receipt?.warning === undefined ? null : (

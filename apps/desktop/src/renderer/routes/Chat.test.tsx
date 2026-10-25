@@ -19,6 +19,7 @@ const api = vi.hoisted(() => ({
   /** The chats Core is generating a reply in. */
   generating: new Set<string>(),
   send: vi.fn((): Promise<ChatSendResult> => Promise.resolve({ id: 'chat-1', state: 'complete' })),
+  retry: vi.fn((): Promise<ChatSendResult> => Promise.resolve({ id: 'chat-1', state: 'complete' })),
   cancel: vi.fn((id: string) => Promise.resolve({ id, cancelled: api.generating.delete(id) })),
   listProjects: vi.fn(() => Promise.resolve([{
     id: 'draft', name: '草稿树项目', status: '进行中', priority: 'p1', topic: '推理', focus: '验证',
@@ -45,7 +46,9 @@ const resized: (() => void)[] = []
 
 vi.mock('../ipc.js', () => ({
   appMenu: { platform: () => 'darwin' },
-  chat: { send: api.send, messages: api.messages, cancel: api.cancel, create: api.create, recordAction: api.recordAction },
+  chat: {
+    send: api.send, retry: api.retry, messages: api.messages, cancel: api.cancel, create: api.create, recordAction: api.recordAction,
+  },
   feed: { append: api.feedAppend },
   harness: { modelSettings: () => Promise.resolve({ configured: api.configured }) },
   idea: { create: api.createIdea },
@@ -388,6 +391,36 @@ describe('Chat composer', () => {
     return async () => { await act(async () => { finish(); await Promise.resolve() }) }
   }
   const control = () => document.querySelector<HTMLButtonElement>('#sendBtn')!
+
+  /** A chat turn: a message of `role` saying `text`. */
+  const turnOf = (id: string, role: ChatMessage['role'], text: string): ChatMessage => ({ id, role, runs: [{ kind: 'text', text }], actions: [] })
+  const retry = () => document.querySelector<HTMLButtonElement>('.msgs .event .btn')
+
+  it('一轮没得到回答时,对话以那条状态行结束,行尾有重试;点它对这条对话的最后一问再要一次回答', async () => {
+    api.messages.mockResolvedValueOnce([turnOf('1', 'you', '问'), turnOf('2', 'status', '生成失败：AI 服务停了')])
+    session.revision = 1
+    await openChat('chat-1')
+    expect(retry()?.textContent).toBe('重试')
+    act(() => retry()!.click())
+    await settle()
+    expect(api.retry).toHaveBeenCalledExactlyOnceWith('chat-1')
+    expect(api.send).not.toHaveBeenCalled()
+  })
+
+  it('状态行后面已经有回答,或者还在生成时,不给重试;对话是一段读屏会念出新消息的记录', async () => {
+    api.messages.mockResolvedValueOnce([turnOf('1', 'you', '问'), turnOf('2', 'status', '生成失败：AI 服务停了'), turnOf('3', 'ai', '答')])
+    session.revision = 1
+    await openChat('chat-1')
+    expect(retry()).toBeNull()
+    expect(document.querySelector('.msgs')!.getAttribute('role')).toBe('log')
+
+    api.messages.mockResolvedValueOnce([turnOf('1', 'you', '问'), turnOf('2', 'status', '生成失败：AI 服务停了')])
+    session.revision = 2
+    await openChat('chat-1')
+    const finish = await sendPending('再问')
+    expect(retry()).toBeNull()
+    await finish()
+  })
 
   it('换到另一条对话后，前一条晚到的消息不会顶替这一条的', async () => {
     const said = (text: string): ChatMessage[] => [{ id: text, role: 'you', runs: [{ kind: 'text', text }], actions: [] }]

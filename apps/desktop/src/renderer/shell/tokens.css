@@ -143,9 +143,10 @@
   /*
    * Spacing roles: a page's inline inset, the space above a section, the space between items, and the
    * inline inset of an item, which rows and cards share so the two align when mixed; a row listed among
-   * cards pads by it plus the card's 1px border.
+   * cards pads by it plus the card's 1px border (--item-row-inset).
    */
   --page-inset:var(--sp-24); --section-gap:var(--sp-24); --item-gap:var(--sp-12); --item-inset:var(--sp-16);
+  --item-row-inset:calc(var(--item-inset) + 1px);
   --fs-cap:11px; --fs-sm:12px; --fs-base:13px; --fs-read:14px; --fs-title:15px; --fs-xl:17px;
   --fw-regular:400; --fw-medium:500; --fw-semibold:600; --fw-bold:700;
   /*

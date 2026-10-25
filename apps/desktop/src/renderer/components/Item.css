@@ -2,7 +2,7 @@
  * Every item starts its content --item-inset inside a 1px edge, so rows and cards line up when a page
  * mixes them: a card's own border, an outlined list's border, or the 1px an embedded row adds to its inset.
  * An item lays out its slots; one that brings only its own content keeps the flow, and a slotted row's
- * layout is :where()-weak, so a row whose cells sit on its list's grid lays them out there.
+ * layout is :where()-weak, so a row whose cells sit on its list's grid lays them out there, its list's gaps apart.
  */
 .item{box-sizing:border-box;width:100%;min-width:0;margin:0;border:0;background-color:transparent;color:var(--ink);
   font-family:inherit;font-size:var(--fs-body);font-weight:var(--fw-regular);line-height:var(--lh-ui);text-align:left;
@@ -14,7 +14,8 @@
 /* The rows of a list nested in another surface's content already sit inside that surface's inset. */
 .list--nested>.item--row{padding-inline:0}
 .item--columns{display:grid}
-.item--subgrid{grid-column:1/-1;display:grid;grid-template-columns:subgrid}
+/* A row on its list's columns keeps its list's gaps too, so its cells sit where the other rows' do. */
+.item--subgrid{grid-column:1/-1;display:grid;grid-template-columns:subgrid;gap:normal}
 .item--card{padding:var(--sp-12) var(--item-inset);border:1px solid var(--sep);border-radius:var(--r-card);background-color:var(--card)}
 .item--card.item--slotted{display:flex;flex-direction:column;gap:var(--sp-8)}
 /* Cards one under another stand apart by the item gap; a grid of cards spaces them itself. */

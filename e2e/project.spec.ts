@@ -136,7 +136,7 @@ test('在项目页的想法一节就地写下想法：存好就落在草稿那�
   await win.locator('[data-desk="ideas"]').click()
   const card = page.locator('.idea-card', { hasText: '项目页写下的想法' })
   await expect(card).toContainText('来源 · draft 效率')
-  await expect(page.locator('.ideas-list > .section-heading').first()).toHaveText(/^未开始/)
+  await expect(page.locator('.ideas-list > .grouped-list > .section-heading--group').first()).toHaveText(/^未开始/)
 })
 
 test('想法在科研图中动态标出关联节点，节点详情反向展示想法', async ({ win }) => {
@@ -299,6 +299,22 @@ test('任务行开头的日期、时段、优先级和状态按需要注意的�
     return edges.slice(1).map((edge, index) => Math.round(edge.left - edges[index]!.right))
   }))
   expect(rows).toEqual(rows.map(() => [gap, gap, gap, 2 * gap]))
+})
+
+test('任务行的日期从行的内边距开始,删除按钮在行的内边距处结束', async ({ win }) => {
+  await gotoProject(win)
+  const page = win.locator('.screenslot:not([hidden])')
+  const rows = await page.locator('#taskList .task-row').evaluateAll((items) => items.map((row) => {
+    const box = row.getBoundingClientRect()
+    const style = getComputedStyle(row)
+    return {
+      start: Math.round(row.querySelector('.task-date-part')!.getBoundingClientRect().left - box.left),
+      end: Math.round(box.right - row.querySelector('.row-delete')!.getBoundingClientRect().right),
+      padding: { start: parseFloat(style.paddingLeft), end: parseFloat(style.paddingRight) },
+    }
+  }))
+  expect(rows.length).toBeGreaterThan(1)
+  expect(rows.map(({ start, end }) => ({ start, end }))).toEqual(rows.map(({ padding }) => padding))
 })
 
 test.describe(() => {

@@ -49,7 +49,7 @@ test('真实库的 store 读新布局:首页按两种聚合计数;一条提案�
   test.slow()
   await win.locator('[data-desk="wiki"]').click()
   await expect(shown(win).locator('.desk-head .t')).toHaveText('Wiki · 13')
-  await expect(win.locator('[data-desk="papers"] .n')).toHaveText('10')
+  await expect(win.locator('[data-desk="papers"] .nav-row-count')).toHaveText('10')
 
   await shown(win).locator('[data-wk="topics/quantization"]').click()
   await shown(win).locator('[data-wk="topics/ptq"]').click()

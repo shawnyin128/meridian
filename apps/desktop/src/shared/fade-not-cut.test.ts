@@ -33,7 +33,7 @@ const FADED: Record<string, [file: string, markup: RegExp][]> = {
   '.reading-list': [['components/reader/ReadingNotes.tsx', /<ScrollArea axis="y" fill>\s*<div className="reading-list">/], ...SCROLL_AREA],
   '.wiki-ingest-body': [['components/reader/PaperWikiIngest.tsx', /<ScrollArea axis="y" fill>\s*<div className="wiki-ingest-body">/], ...SCROLL_AREA],
   // Only the paper chat's stream scrolls; on the Chat and Feed screens it grows inside the page body, which fades it.
-  '.paper-chat .msgs': [['components/chat/PaperChat.tsx', /<ScrollArea axis="y" fill ref=\{followRef\}>\s*<div className="msgs">/], ...SCROLL_AREA],
+  '.paper-chat .msgs': [['components/chat/PaperChat.tsx', /<ScrollArea axis="y" fill ref=\{followRef\}>\s*<div className="msgs"[^>]*>/], ...SCROLL_AREA],
   '.panel-body': [['components/SidePanel.tsx', /<ScrollArea axis="y" ref=\{ref\} className=\{`panel-body/], ...SCROLL_AREA],
   '.split-column': [['components/SplitPage.tsx', /<ScrollArea axis="y" ref=\{ref\} className=\{named\('split-column', className\)\}>/], ...SCROLL_AREA],
   '.split-rail': [['components/SplitPage.tsx', /<ScrollArea axis="y" paint ref=\{ref\} className=\{named\('split-rail', className\)\}>/], ...SCROLL_AREA],

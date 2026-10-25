@@ -14,6 +14,7 @@ export const chat = {
   recordedNote: (project: string) => `Added to the research log for “${project}”`,
   archivedSuffix: (title: string) => `${title} · Archived`,
   paperChatLabel: 'Paper chat',
+  messagesLabel: 'Messages',
   expandPaperChat: 'Expand the paper chat',
   collapsePaperChat: 'Collapse the paper chat',
   paperChatWidth: 'Paper chat width',

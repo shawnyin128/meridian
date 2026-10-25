@@ -108,6 +108,12 @@ describe('行和卡片的内缩与样子', () => {
       .toBe(left('<article class="item item--card">笔记</article>', '.item'))
   })
 
+  it('格子铺在列表的列上的行，带着槽也按列表的列距隔开格子，不用槽的间距', () => {
+    // A subgrid's normal gap is its parent grid's, so the row's cells stand the list's column gap apart.
+    const row = styleOf('<div class="item item--row item--slotted item--subgrid"><span class="item-actions"></span></div>', '.item')
+    expect([row.getPropertyValue('display'), row.getPropertyValue('gap')]).toEqual(['grid', 'normal'])
+  })
+
   it('离开列表的项淡出并滑开；关掉的行字变淡', () => {
     const leaving = styleOf('<article class="item item--card item--leaving">论文</article>', '.item')
     expect([leaving.opacity, leaving.getPropertyValue('transform')]).toEqual(['0', 'translateX(var(--sp-24))'])
