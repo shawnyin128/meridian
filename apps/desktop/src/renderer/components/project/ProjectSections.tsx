@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from 'react'
-import type { DragEvent as ReactDragEvent, KeyboardEvent as ReactKeyboardEvent, ReactNode, RefObject } from 'react'
+import type { ReactNode, RefObject } from 'react'
 import type { AgentSession, Attachment, RelationGroup } from '../../../shared/contract.js'
 import { projectAreas } from '../../../shared/project-signals.js'
 import { project as projectApi } from '../../ipc.js'
@@ -7,24 +7,24 @@ import { AddAction } from '../AddAction.js'
 import { CardTray } from '../CardTray.js'
 import { FadeText } from '../FadeText.js'
 import { IconButton } from '../IconButton.js'
-import { IconCross, IconPencil, IconTrash } from '../icons.js'
+import { IconTrash } from '../icons.js'
 import { EditActions } from '../EditActions.js'
-import { ExternalMark } from '../EntityLink.js'
 import { EmptyState } from '../EmptyState.js'
 import { MarkdownBox } from '../Markdown.js'
 import { PaperText } from '../paper/PaperText.js'
 import { useFormat } from '../../lib/format.js'
 import type { KeptText, TextEdit } from '../../hooks/useDrafts.js'
+import { useDragReorder } from '../../hooks/useDragReorder.js'
 import { useInlineDraft } from '../../hooks/useInlineDraft.js'
 import { useMessages } from '../../messages/useMessages.js'
 import { FormInput } from '../FormControls.js'
 import { SectionHeading } from '../PageShell.js'
 import { SegmentedControl } from '../SegmentedControl.js'
-import { Item, ItemOpen, RowActions } from '../Item.js'
+import { ChipList } from '../ChipList.js'
+import { Item, ItemOpen } from '../Item.js'
 import { List } from '../List.js'
-import { Tag, tagClass } from '../Tag.js'
+import { Tag } from '../Tag.js'
 import { TagChips } from '../TagChips.js'
-import { Tooltip } from '../Tooltip.js'
 import './ProjectSections.css'
 
 /** Local-only grouping key for linked papers inside the relations list; never sent to Core. */
@@ -191,59 +191,13 @@ export function ProjectRelations({
   onOpenPage: (page: string) => void
   onOpenPaper: (paperId: string) => void
   onRemovePaper: (paperId: string, title: string) => void
-  /** Puts the chip `id` at `index` among the chips of the same row, from a drop or Alt+← / Alt+→. */
+  /**
+   * Puts the chip `id` at `index` among the chips it moves with, from a drop or Alt+← / Alt+→: a row's
+   * relation items, or the linked papers.
+   */
   onMove: (id: string, index: number) => void
 }) {
   const m = useMessages()
-  const [dragging, setDragging] = useState<{ row: string; id: string } | null>(null)
-  const [dropAt, setDropAt] = useState<{ row: string; index: number } | null>(null)
-  // The row's chips in display order, so a drop index counts papers and items together.
-  const rowChipIds = (row: RelationGroup) => [
-    ...(isPaperRow(row.group) ? linked.map((paper) => paper.id) : []),
-    ...row.items.map((item) => item.id),
-  ]
-  const dragProps = (row: RelationGroup, id: string) => ({
-    draggable: true,
-    onDragStart: (event: ReactDragEvent) => {
-      event.dataTransfer.effectAllowed = 'move'
-      event.dataTransfer.setData('text/plain', id)
-      setDragging({ row: row.group, id })
-    },
-    onDragEnd: () => { setDragging(null); setDropAt(null) },
-    onDragOver: (event: ReactDragEvent<HTMLElement>) => {
-      if (dragging === null || dragging.row !== row.group) return
-      event.preventDefault()
-      const box = event.currentTarget.getBoundingClientRect()
-      const at = rowChipIds(row).indexOf(id) + (event.clientX > box.left + box.width / 2 ? 1 : 0)
-      setDropAt({ row: row.group, index: at })
-    },
-    onDrop: (event: ReactDragEvent) => {
-      if (dragging === null || dropAt === null || dragging.row !== row.group) return
-      event.preventDefault()
-      const ids = rowChipIds(row)
-      const from = ids.indexOf(dragging.id)
-      const to = dropAt.index > from ? dropAt.index - 1 : dropAt.index
-      setDragging(null)
-      setDropAt(null)
-      if (to !== from) onMove(dragging.id, to)
-    },
-    // The keyboard path of a drag: Alt+← / Alt+→ move the chip one place along its row.
-    onKeyDown: (event: ReactKeyboardEvent<HTMLElement>) => {
-      const by = event.key === 'ArrowLeft' ? -1 : event.key === 'ArrowRight' ? 1 : 0
-      if (by === 0 || !event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return
-      event.preventDefault()
-      const ids = rowChipIds(row)
-      const to = ids.indexOf(id) + by
-      if (to >= 0 && to < ids.length) onMove(id, to)
-    },
-  })
-  const chipClass = (row: RelationGroup, id: string) => {
-    const at = rowChipIds(row).indexOf(id)
-    const before = dropAt !== null && dropAt.row === row.group && dropAt.index === at
-    const after = dropAt !== null && dropAt.row === row.group && dropAt.index === at + 1
-      && at === rowChipIds(row).length - 1
-    return tagClass('neutral', 'chip', `tagchip${dragging?.id === id ? ' dragging' : ''}${before ? ' drop-before' : ''}${after ? ' drop-after' : ''}`)
-  }
   const groupLabel = (group: string) => (group === PROJECT_PAPER_GROUP
     ? m.project.sections.papers
     : group === PROJECT_URL_GROUP ? m.project.sections.urls : group)
@@ -264,80 +218,59 @@ export function ProjectRelations({
         row.group === group || (isPaperRow(group) && isPaperRow(row.group))))
       .map((group) => ({ group, items: [] })),
   ]
+  // Linked papers and a row's relation items are stored apart, so each moves only among its own kind.
+  const scopes = new Map(rows.flatMap((row) => [
+    ...(isPaperRow(row.group) ? linked.map((paper) => [paper.id, `${row.group} papers`] as const) : []),
+    ...row.items.map((item) => [item.id, `${row.group} items`] as const),
+  ]))
+  const scopeOf = (id: string) => scopes.get(id)!
+  const reorder = useDragReorder([...scopes.keys()], scopeOf, (order, moved) => {
+    onMove(moved, order.filter((id) => scopeOf(id) === scopeOf(moved)).indexOf(moved))
+  }, { axis: 'x', handle: 'row' })
   return (
     <>
       {rows.length === 0 ? <EmptyState variant="section">{m.project.links.empty}</EmptyState> : null}
-      {rows.map((row) => (
-        <div
-          className="wkrel" key={row.group}
-          ref={adding !== undefined && sameRow(adding.group, row.group) ? adding.row : undefined}
-        >
-          <span className="rl">{groupLabel(row.group)}</span>
-          {adding !== undefined && sameRow(adding.group, row.group)
-            ? (
-              <div className="reladd">
-                <SegmentedControl
-                  label={m.project.links.groupLabel}
-                  value={adding.group}
-                  options={PROJECT_RELATION_GROUPS.map((group) => ({ value: group, label: groupLabel(group) }))}
-                  onChange={adding.onGroup}
-                />
-                {adding.input}
-              </div>
-            )
-            : null}
-          {isPaperRow(row.group)
-            ? linked.map((paper) => (
-              <span
-                className={chipClass(row, paper.id)} key={paper.id} data-paper={paper.id} data-row-actions=""
-                onClick={() => onOpenPaper(paper.id)} {...dragProps(row, paper.id)}
-              >
-                <button type="button" className="tagchip-open">
-                  <FadeText className="tagchip-text"><PaperText text={paper.title} /></FadeText>
-                </button>
-                <RowActions>
-                  <IconButton
-                    label={m.common.removeLink} size="inline" className="rx"
-                    onClick={(event) => { event.stopPropagation(); onRemovePaper(paper.id, paper.title) }}
-                  ><IconCross /></IconButton>
-                </RowActions>
-              </span>
-            ))
-            : null}
-          {row.items.map((item) => (editing?.id === item.id
-            ? <div className="reladd" key={item.id} ref={editing.row}>{editing.input}</div>
-            : (
-              <span
-                className={chipClass(row, item.id)} key={item.id} data-wk={item.page} data-url={item.url}
-                data-row-actions="" {...dragProps(row, item.id)}
-                onClick={item.url !== undefined
-                  ? () => { window.open(item.url, '_blank') }
-                  : item.page === undefined ? undefined : () => onOpenPage(item.page!)}
-              >
-                {item.url === undefined && item.page === undefined
-                  ? <FadeText className="tagchip-text">{item.text}</FadeText>
-                  : (
-                    <Tooltip label={item.url}>
-                      <button type="button" className="tagchip-open">
-                        <FadeText className="tagchip-text">{item.text}</FadeText>
-                        {item.url === undefined ? null : <ExternalMark />}
-                      </button>
-                    </Tooltip>
-                  )}
-                <RowActions>
-                  <IconButton
-                    label={m.project.links.editTitle} size="inline" className="tagchip-edit"
-                    onClick={(event) => { event.stopPropagation(); onEdit(item) }}
-                  ><IconPencil /></IconButton>
-                  <IconButton
-                    label={m.common.removeLink} size="inline" className="rx"
-                    onClick={(event) => { event.stopPropagation(); onRemove(item.id, item.text) }}
-                  ><IconCross /></IconButton>
-                </RowActions>
-              </span>
-            )))}
-        </div>
-      ))}
+      {rows.map((row) => {
+        const adds = adding !== undefined && sameRow(adding.group, row.group)
+        return (
+          <ChipList
+            key={row.group} label={groupLabel(row.group)} ref={adds ? adding.row : undefined} reorder={reorder.itemProps}
+            before={adds
+              ? (
+                <div className="reladd">
+                  <SegmentedControl
+                    label={m.project.links.groupLabel}
+                    value={adding.group}
+                    options={PROJECT_RELATION_GROUPS.map((group) => ({ value: group, label: groupLabel(group) }))}
+                    onChange={adding.onGroup}
+                  />
+                  {adding.input}
+                </div>
+              )
+              : null}
+            chips={[
+              ...(isPaperRow(row.group) ? linked : []).map((paper) => ({
+                id: paper.id,
+                name: <PaperText text={paper.title} />,
+                onOpen: () => onOpenPaper(paper.id),
+                data: { 'data-paper': paper.id },
+                remove: { label: m.common.removeLink, onRemove: () => onRemovePaper(paper.id, paper.title) },
+              })),
+              ...row.items.map((item) => ({
+                id: item.id,
+                name: item.text,
+                ...(item.url !== undefined
+                  ? { onOpen: () => { window.open(item.url, '_blank') }, tooltip: item.url, external: true }
+                  : item.page === undefined ? {} : { onOpen: () => onOpenPage(item.page!) }),
+                data: { 'data-wk': item.page, 'data-url': item.url },
+                edit: { label: m.project.links.editTitle, onEdit: () => onEdit(item) },
+                remove: { label: m.common.removeLink, onRemove: () => onRemove(item.id, item.text) },
+                ...(editing?.id === item.id ? { editor: <div className="reladd" ref={editing.row}>{editing.input}</div> } : {}),
+              })),
+            ]}
+          />
+        )
+      })}
     </>
   )
 }
@@ -359,7 +292,7 @@ export function ProjectAttachments({ attachments, onAdd, onReveal, onRemove }: {
   return (
     <>
       <SectionHeading
-        variant="rail"
+        level="group"
         actions={(
           <AddAction size="compact" label={m.project.attachments.addTitle} onClick={() => input.current?.click()}>
             {m.project.sections.attachments}

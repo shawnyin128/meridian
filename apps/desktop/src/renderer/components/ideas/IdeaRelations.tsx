@@ -3,16 +3,12 @@ import type { IdeaRelations as Relations, ProjectSummary, ResearchIdea } from '.
 import { useDrafts } from '../../hooks/useDrafts.js'
 import { useMessages } from '../../messages/useMessages.js'
 import { AddAction } from '../AddAction.js'
+import { ChipList } from '../ChipList.js'
 import { EmptyState } from '../EmptyState.js'
-import { FadeText } from '../FadeText.js'
-import { IconButton } from '../IconButton.js'
-import { IconCross } from '../icons.js'
 import { SectionHeading } from '../PageShell.js'
 import { PickRow, type PickHit } from '../PickRow.js'
 import { SegmentedControl } from '../SegmentedControl.js'
 import { useDraftSlot } from '../DraftSlot.js'
-import { RowActions } from '../Item.js'
-import { tagClass } from '../Tag.js'
 
 type Row = keyof Relations
 
@@ -79,7 +75,7 @@ export function IdeaRelations({ idea, projects, pages, onChange, onOpenProject, 
   return (
     <>
       <SectionHeading
-        variant="rail"
+        level="group"
         actions={(
           <AddAction size="compact" ref={add} label={m.project.links.addTitle} onClick={relationDraft.start}>
             {m.project.sections.links}
@@ -89,9 +85,9 @@ export function IdeaRelations({ idea, projects, pages, onChange, onOpenProject, 
       </SectionHeading>
       {visible.length === 0 ? <EmptyState variant="section">{m.project.links.empty}</EmptyState> : null}
       {visible.map((row) => (
-        <div className="wkrel idea-relation-row" data-relations={row} key={row} ref={adding === row ? draftRow : undefined}>
-          <span className="rl">{r.rows[row]}</span>
-          {adding === row
+        <ChipList
+          key={row} label={r.rows[row]} data={{ 'data-relations': row }} ref={adding === row ? draftRow : undefined}
+          before={adding === row
             ? (
               <div className="reladd">
                 <SegmentedControl
@@ -108,22 +104,16 @@ export function IdeaRelations({ idea, projects, pages, onChange, onOpenProject, 
               </div>
             )
             : null}
-          {held[row].map((id) => (
-            <span className={tagClass('neutral', 'chip', 'tagchip')} key={id} data-row-actions="">
-              <button
-                type="button" className="tagchip-open"
-                onClick={() => (row === 'projects' ? onOpenProject(id) : onOpenPage(id))}
-              ><FadeText className="tagchip-text">{nameOf(row, id)}</FadeText>
-              </button>
-              <RowActions>
-                <IconButton
-                  label={m.common.removeLink} size="inline" className="rx"
-                  onClick={() => { void onChange({ ...held, [row]: held[row].filter((other) => other !== id) }, nameOf(row, id)) }}
-                ><IconCross /></IconButton>
-              </RowActions>
-            </span>
-          ))}
-        </div>
+          chips={held[row].map((id) => ({
+            id,
+            name: nameOf(row, id),
+            onOpen: () => (row === 'projects' ? onOpenProject(id) : onOpenPage(id)),
+            remove: {
+              label: m.common.removeLink,
+              onRemove: () => { void onChange({ ...held, [row]: held[row].filter((other) => other !== id) }, nameOf(row, id)) },
+            },
+          }))}
+        />
       ))}
     </>
   )

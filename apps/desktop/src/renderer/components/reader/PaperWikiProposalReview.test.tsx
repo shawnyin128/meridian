@@ -73,7 +73,7 @@ describe('PaperWikiProposalReview', () => {
       <MessagesProvider><PaperWikiProposalReview review={review} onJump={() => {}} /></MessagesProvider>,
     )
     return [...host.querySelectorAll('.paper-wiki-review-section')].map((section) => [
-      section.querySelector('h4')!.firstChild!.textContent, section.querySelector('.empty-state')?.textContent,
+      section.querySelector('.section-heading > span')!.firstChild!.textContent, section.querySelector('.empty-state')?.textContent,
     ])
   }
 

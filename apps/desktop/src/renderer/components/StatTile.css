@@ -1,0 +1,5 @@
+/* A figure above its label on a card, padded closer than a section's card. */
+.card-surface.stat-tile{min-width:74px;padding:var(--sp-8) var(--sp-16)}
+.stat-tile-value{display:block;font-size:var(--fs-xl);font-weight:var(--fw-bold);line-height:var(--lh-tight);font-variant-numeric:tabular-nums}
+.stat-tile-label{color:var(--ter);font-size:var(--fs-meta)}
+.stat-tile--error .stat-tile-value{color:var(--bad-text)}

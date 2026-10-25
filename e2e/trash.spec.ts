@@ -47,7 +47,7 @@ test('删掉的论文进垃圾桶,恢复后回到列表且总数复原', async (
   await gotoPapers(win)
   await expect(win.locator('.ptable tbody tr')).toHaveCount(20)
   const total = await paperTotal(win)
-  const title = await win.locator('.ptable tbody tr').first().locator('.pt-title .ci').innerText()
+  const title = await win.locator('.ptable tbody tr').first().locator('.pt-title .table-text').innerText()
   // The fixture library has two papers sharing this exact title, so filtering by title alone cannot
   // later confirm which one came back; capture the deleted paper's own id (table's default sort is
   // addedAt desc, matching apps/desktop/src/renderer/components/paper-table/PaperTable.tsx).

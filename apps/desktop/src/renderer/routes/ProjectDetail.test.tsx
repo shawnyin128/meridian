@@ -79,7 +79,7 @@ describe('attnItems', () => {
       lastProgress: '2026-08-17',
     }), TODAY, sm)).toEqual([
       {
-        id: 'conflict', rank: 0, kind: '实验结论冲突', tone: 'bad',
+        id: 'conflict', rank: 0, kind: '实验结论冲突', tone: 'warn',
         reason: '2 条实验结论有冲突', action: '检查证据并裁决',
       },
       {
@@ -303,7 +303,7 @@ describe('project idea panel', () => {
 
   it('shows the shared idea panel: the head, the content, the research node, then the source', () => {
     const panel = mount(<ProjectIdeaPanel idea={idea} graph={graph} workspaceManaged {...handlers()} />)
-    expect([...panel.host.querySelectorAll('.section-heading--rail')].map((heading) => heading.textContent))
+    expect([...panel.host.querySelectorAll('.section-heading--group')].map((heading) => heading.textContent))
       .toEqual(['用动态预算控制校准成本', '内容', '科研节点关联节点', '来源'])
     expect(panel.host.querySelector('.idea-panel-head .project-idea-open-idea')).not.toBeNull()
     expect(panel.host.textContent).not.toContain('工作区科研图只读')
@@ -411,7 +411,7 @@ describe('project idea panel', () => {
   })
   it('只是关联这个项目、不在这里做的想法，详情里没有科研节点一节', () => {
     const panel = mount(<ProjectIdeaPanel idea={{ ...idea, project: 'other' }} graph={graph} workspaceManaged={false} related {...handlers()} />)
-    expect([...panel.host.querySelectorAll('.section-heading--rail')].map((heading) => heading.textContent))
+    expect([...panel.host.querySelectorAll('.section-heading--group')].map((heading) => heading.textContent))
       .toEqual(['用动态预算控制校准成本', '内容', '来源'])
     panel.unmount()
   })

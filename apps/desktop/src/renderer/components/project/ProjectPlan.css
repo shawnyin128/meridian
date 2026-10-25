@@ -27,6 +27,4 @@
 .plan-name:hover{box-shadow:none}
 .plan-name.plan-open{flex:1;width:auto}
 .project-plan .plan-rename{margin:calc(-1 * var(--sp-2)) 0}
-@keyframes plan-row-flash{0%,100%{background:transparent}50%{background:var(--tint-warn)}}
-.project-plan .ddlrow.flash{animation:plan-row-flash var(--t-flash) var(--e-inout) 2}
 .project-plan .row-actions{margin-left:var(--sp-2)}

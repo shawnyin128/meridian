@@ -2,7 +2,8 @@ import type { HarnessPlan } from '../../shared/contract.js'
 import { useMessages } from '../messages/useMessages.js'
 import { ConfirmDialog } from './ConfirmDialog.js'
 import { GenerationControl } from './GenerationControl.js'
-import { NoModelTag } from './NoModelTag.js'
+import { ModelStatusTag } from './ModelStatusTag.js'
+import { useModelStatus } from '../hooks/useModelStatus.js'
 import { Property, PropertyList } from './PropertyList.js'
 import { Tag } from './Tag.js'
 import { Button } from './Button.js'
@@ -10,7 +11,9 @@ import './HarnessAction.css'
 
 /**
  * The one shared visual gate for cost-bearing Harness work. Feature components supply a prepared
- * plan and a start callback; they cannot skip the explicit acknowledgement represented here.
+ * plan and a start callback; they cannot skip the explicit acknowledgement represented here. It
+ * cannot start while the plan was prepared without a model or the shell's model status says none is
+ * set up.
  */
 export function HarnessAction({ plan, running, onStart, onCancel }: {
   plan: HarnessPlan
@@ -19,6 +22,7 @@ export function HarnessAction({ plan, running, onStart, onCancel }: {
   onCancel: () => void
 }) {
   const m = useMessages()
+  const { connected } = useModelStatus()
   if (running) {
     return (
       <GenerationControl
@@ -27,6 +31,7 @@ export function HarnessAction({ plan, running, onStart, onCancel }: {
     )
   }
   const personal = plan.scope.notes + plan.scope.annotatedHighlights
+  const ready = plan.model.configured && connected === true
   const trigger = (
     <Button size="regular" className="harness-trigger" icon={<span aria-hidden="true">✦</span>}>{plan.label}</Button>
   )
@@ -37,12 +42,12 @@ export function HarnessAction({ plan, running, onStart, onCancel }: {
       title={m.wiki.harness.confirmTitle(plan.label)}
       confirmLabel={plan.action === 'create' ? m.wiki.harness.startCreate : m.wiki.harness.startUpdate}
       confirmTone="primary"
-      confirmDisabled={!plan.model.configured}
+      confirmDisabled={!ready}
       onConfirm={onStart}
-      state={!plan.model.configured
-        ? <NoModelTag tone="warn" label={m.wiki.harness.notConnectedDetail} />
+      state={!ready
+        ? <ModelStatusTag state="warning" />
         : (
-          <Tag tone={plan.model.billable ? 'warn' : 'good'}>
+          <Tag state={plan.model.billable ? 'warning' : undefined}>
             {plan.model.billable ? m.wiki.harness.billableNote : m.wiki.harness.freeNote}
           </Tag>
         )}

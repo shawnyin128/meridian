@@ -102,8 +102,23 @@ Current shared contracts:
   scrolls inside itself (`rows`: five by default when embedded, `all`, or `fill` for the rest of its
   container's height), keeping its scrollbar's room. A `nested` list in a card's body or a message box
   starts its rows at that content's edge; a `flush` one lies in a surface that clips at its edges.
-- `NavRow`: the one row of a navigation list, the sidebar's and the Settings categories'. It is a button,
-  or, when it holds controls of its own, a div whose label is the button; the row's class gives the look.
+- `Table`: the one table, the paper table's, the Wiki comparison's and the ideas by project's. It owns the
+  header, the cells, sorting, column resizing, the sticky header, first column and actions column with their
+  fades, the row hover and selected looks, and cells that fade where they are cut off and show whole on hover
+  or fold their chips behind +N. `rows` is `fill` or `capped` at five rows; `actions` is the header cell of the
+  actions column (add a column, the column settings) and each `TableRow` puts its own actions in it; `draft` is
+  a `TableDraftHead` for a column being created. Screens render no raw `<table>`:
+  `scripts/check-screen-elements.test.mjs` checks it.
+- `NavRow`: the one row of a navigation list, the sidebar's, the Settings categories' and the theme
+  editor's modules, at one height: a glyph slot, the text, and a count or a state at its end. It is a
+  button, or, when it holds controls of its own or a fold caret, a div whose label is the button; a row that
+  opens nothing is the fold toggle of its group. `indent`, `sub` and `dim` are its looks under a group.
+- `NavSection`: a titled section of a navigation list whose 24px heading folds the rows under it.
+- `NavPane`: the sidebar's pane: its surface, width, collapse, the rows that scroll and the rows pinned
+  under them, which keep the same room for the scrollbar so every row ends at one edge.
+- `TitleBar` and `Breadcrumb`: the window's title bar, which drags and zooms the window, and the trail of
+  where the user is, whose segments before the last link back. `AppFrame` is the window body under it and
+  `ScreenSlot` keeps a screen mounted while it is hidden.
 - `SegmentedControl`: the only switch between peer views in the app, including the timeline scale: a track of
   equal segments with a raised thumb that slides to the picked one, whose label is in `--accent-text`,
   radio-group semantics, and one Tab stop with arrow keys inside. The `.fchip` and `.segbtn` pill rows are retired.
@@ -121,6 +136,11 @@ Current shared contracts:
   stop and arrow keys. An on chip takes the one selected look. A choice among many values is a menu picker, not a segment per value.
 - `Swatches`: the one row of colour circles that picks a colour, the theme editor's presets and the reader's
   highlight colours. A picked circle wears the neutral picked ring, never the accent.
+- `ZoomControl`: the one zoom control of a view that zooms, the reader's pages and the research graph:
+  zoom out, the zoom in percent, which resets it, and zoom in, floating at the view's `bottom` or in its
+  `corner`. A step is `zoomStep`, 20% to a round percentage; the wheel stays `hooks/useWheelZoom`.
+- `StatTile`: a figure with its label under it on a card, the Overview's counts; `state` `error` colours
+  only the figure's text.
 - `Switch`: a binary setting that takes effect as soon as it flips. Its name stays the same in both states;
   a button whose label flips between two actions is not used for a setting.
 - `Notice`: the app's one notice. AppShell places it on the canvas and screens show it through
@@ -135,16 +155,17 @@ Current shared contracts:
 - `LoadingPlaceholder`: the one loading state, grey blocks in the shape of the result (`rows`, `cards`,
   `lines`, `sheet`). Data that has not arrived is `null`, and a screen shows this placeholder for it, never
   an empty state and never a loading sentence.
-- `EmptyState`: the two ways a list says it is empty. `page` is a centred line with an optional icon for a
+- `EmptyState`: the ways a list says it is empty. `page` is a centred line with an optional icon for a
   whole screen; `section` is one line of small grey text under a section heading, flush with it and one list
-  row high, so tabs that share a slot keep one height. The words follow one pattern: 还没有… (No … yet), or
+  row high, so tabs that share a slot keep one height; `option` is that line in a list of options, its text
+  where an option's text starts. The words follow one pattern: 还没有… (No … yet), or
   没有找到… (No … found) for a search, without a full stop. A section the user fills (tasks, milestones,
   attachments, links, linked ideas) keeps its heading and a section empty state; a derived section (signals,
   recent progress, upcoming milestones, backups, a node's branches, records and document) is hidden while it
   has nothing to show. A control that orders or groups a list is hidden while the list is empty; adding,
   filtering and settings stay.
-- `Tag`: every tag, chip and status pill. `tone` picks the fill and text colour (`neutral`, `accent`, `good`,
-  `warn`, `bad`, `info`, `paper`, `wiki`, and `ghost` for the slot that adds a tag to a row) and `shape` the
+- `Tag`: every tag, chip and status pill, on the one neutral chip. Only a `state` colours its text, `error`,
+  `warning`, `done`, `p0` or `p1`; a kind, source, name or any other word is neutral. `shape` picks the
   box (`label` for a status, kind, priority or source word; `chip` for a name, topic, date or value).
   `TagButton` is the clickable tag and `tagClass` gives a trigger another component renders the same classes.
   A tag keeps the width of its text: the text beside it gives way first, and when its row still has no
@@ -168,7 +189,10 @@ Current shared contracts:
 - `DetailPanel`: the shared open/closed state and motion contract for right-side details. Its `inline`,
   `overlay`, and `resize` modes cover panels that join layout, slide over it, or widen an existing rail;
   routes provide only final geometry and domain content.
-- `DayHeading`: the small heading that opens one day in a list grouped by day, with an optional count.
+- `GroupedList` and `Group`: items grouped by status, kind, day, source, project or archive. Each group opens
+  with the group heading, the third heading level, and the first group sits flush with the list's top; a
+  group with `fold` folds its items through its heading, and `sticky` pins that heading while they scroll.
+  The list draws no box, so its groups' items keep the grid, column or stream around it.
 - `hooks/useCandidateKeys`: arrow-key, pointer and Enter handling for a candidate list, shared by every
   suggestion and picker dropdown.
 - `hooks/useDrafts`: the one home of unsaved text. Every editor holds what is typed in `useDrafts`, scoped by
@@ -212,18 +236,27 @@ Current shared contracts:
   expands details below the host without moving its primary identity, and owns the shared animation,
   keyboard semantics, and reduced-motion behavior.
 - `PageShell`: the shared page-level header/body/footer/error/section composition. Routes supply content
-  and actions rather than copying the desktop shell structure. `SectionHeading` is the one section heading:
-  its `variant` is `page`, `content`, `group` or `rail`, and `actions` is the only right-hand slot.
+  and actions rather than copying the desktop shell structure. `PageHeader` heads a page or, at `size: 'pane'`,
+  a pane beside it, such as the reader's paper chat and rail panels. `PageBody` keeps its content to the
+  page's column, `page` or `prose`. `SectionHeading` is the one heading of a section or a group: its `level`
+  is `section` or `group` (a rail, panel or card section is a group), `count` and `meta` follow the title,
+  `fold` makes the title a fold toggle, and `actions` is the only right-hand slot.
+- `ScrollArea`: the one scroll container, with the fade of every hidden edge, the fill of a flex column
+  and the fade a sticky element lays under itself while stuck (`data-stuck-fade`).
 - `HeadingCount`: a heading's count, ` · N` after its text in the heading's own type. `PageTitle`,
-  `SectionHeading`, `CollapsibleGroup`, `DayHeading`, `CardTray` and `ReaderPanelHeader` show it through
-  their `count`; no message or screen writes `· N` itself.
+  `SectionHeading` (and with it `Group`) and `CardTray` show it through their `count`; no message or screen
+  writes `· N` itself.
 - `PickRow`, `Pager`, `Markdown`, `PaperMetadata`, `ParseProgress`: shared feature widgets.
 - `RatingStars`, `ReadStatePicker` (in `PaperMetadata`) and `PaperTopics`: the one rating, reading-status and
   topic editor of a paper, used by both the paper table and the detail panel.
-- `TagChips`: the one editor of a list of values as chips, with × to remove, `+` to add from a vocabulary,
+- `ChipList`: the one list of removable chips. Each chip's name opens what it names, and its pencil and
+  × sit in the chip's row-actions slot; the `+` after the chips is AddAction's chip-sized circle, in the
+  row's actions slot with `reveal="hover"`; with `label` the list is a relation row (`wkrel`). It draws a
+  paper's topics and projects, a project's areas and relations, and an idea's relations. `ChipList.css`
+  holds the chip base every row of chips uses: a chip's spacing (`tagchip`), its name button
+  (`tagchip-open`) and the relation row with its label (`wkrel`).
+- `TagChips`: the one editor of a list of values as chips on ChipList, with `+` to add from a vocabulary
   and an optional click on a chip to edit it in place; a paper's topics and a project's areas use it.
-  `TagChips.css` holds the chip base every row of chips uses: a chip's spacing (`tagchip`), its name
-  button (`tagchip-open`) and the relation row with its label (`wkrel`).
 - `paper/PaperCard`: the discovery card, a card Item: its actions, notices, metadata badges and
   recommendations, and the shared LaTeX-capable `PaperAbstract`. Inbox and read-later configure the same card.
 - `paper/PaperText`: every display of a paper title (inline) or abstract (block, through `Markdown`) with
@@ -235,7 +268,7 @@ Current shared contracts:
   idea or project conclusion by a generic last-message shortcut.
 - `reader/ReaderSidePanel`: the configurable metadata/highlights/notes/remark tool rail; its note and
   remark editors are feature components rather than hidden route implementations. Every panel opens with
-  `reader/ReaderPanelHeader`.
+  the pane-size `PageHeader`.
 - `paper-table/PaperTable`: the complete library table, including configurable columns, grouping,
   cell pickers, column type editors, reading summaries, and table-owned styling. The route is only
   a page-shell adapter, while Wiki reuses the same column-creation control directly.

@@ -5,7 +5,7 @@ import type { HarnessPaperWikiReview } from '../../shared/contract.js'
 import { MessagesProvider } from '../messages/useMessages.js'
 import { LANGUAGE_STORAGE_KEY } from '../shell/language.js'
 import { ProjectStatusTag } from './project/ProjectIdentity.js'
-import { RECORD_TONE } from './project/ProjectSignals.js'
+import { RECORD_STATE } from './project/ProjectSignals.js'
 import { PaperWikiProposalReview } from './reader/PaperWikiProposalReview.js'
 
 /** The tone class of each tag in `html`, in order. */
@@ -20,7 +20,7 @@ describe('不需要注意的状态不带颜色', () => {
   })
 
   it('科研记录里重新打开是中性的,完成仍是完成的颜色', () => {
-    expect([RECORD_TONE.reopen, RECORD_TONE.complete]).toEqual(['neutral', 'good'])
+    expect([RECORD_STATE.reopen, RECORD_STATE.complete]).toEqual([undefined, 'done'])
   })
 
   it('Wiki 提案每一组的出处都是中性的标签', () => {

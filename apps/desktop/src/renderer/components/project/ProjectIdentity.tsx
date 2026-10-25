@@ -13,8 +13,8 @@ import './ProjectIdentity.css'
 /** The dot tone of each project status; the status tag itself is neutral, since no status needs attention. */
 const STATUS_TONE = { 进行中: 'good', 搁置: 'warn', 已完成: 'neutral' } as const satisfies Record<ProjectStatus, string>
 
-/** The tag tone of each priority. */
-export const PRIORITY_TONE = { p0: 'bad', p1: 'warn', p2: 'neutral' } as const
+/** The state each priority's tag names: P0 and P1, while P2 is neutral. */
+export const PRIORITY_STATE = { p0: 'p0', p1: 'p1', p2: undefined } as const
 
 export type ProjectIdentitySource = {
   name: string
@@ -39,7 +39,7 @@ export function ProjectPriorityTag({ priority, className }: {
   priority: ProjectIdentitySource['priority']
   className?: string
 }) {
-  return <Tag tone={PRIORITY_TONE[priority]} className={className}>{priority.toUpperCase()}</Tag>
+  return <Tag state={PRIORITY_STATE[priority]} className={className}>{priority.toUpperCase()}</Tag>
 }
 
 /** The one project-name label for lists that tag a row with its project; like every tag, it keeps its width. */

@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode, RefObject } from 'react'
 import type { ProjectStatus, ProjectSummary } from '../../shared/contract.js'
 import {
@@ -6,7 +6,8 @@ import {
 } from '../../shared/project-signals.js'
 import type { ProjectSortKey } from '../../shared/project-signals.js'
 import { ACTIVE_PROJECT, PROJECT_STATUSES } from '../../shared/vocabulary.js'
-import type { CrumbSeg, ScreenKey } from '../shell/AppShell.js'
+import type { CrumbSeg } from '../components/Breadcrumb.js'
+import type { ScreenKey } from '../shell/AppShell.js'
 import { feed, project as projectApi } from '../ipc.js'
 import {
   useCrumbTail, useJump, useScreenEntry, useToday, useVaultRevision,
@@ -45,8 +46,9 @@ import type { NoticeAction } from '../components/Notice.js'
 import { useDragReorder, type Reorderable } from '../hooks/useDragReorder.js'
 import { DragHandle } from '../components/DragHandle.js'
 import {
-  PageBody, PageError, PageHeader, PageShell, PageTitle, PageToolbar, SectionHeading,
+  PageBody, PageError, PageHeader, PageShell, PageTitle, PageToolbar,
 } from '../components/PageShell.js'
+import { Group, GroupedList } from '../components/GroupedList.js'
 import { FadeText } from '../components/FadeText.js'
 import { namedRuns } from '../components/TitleNote.js'
 import './shell.css'
@@ -185,7 +187,7 @@ function ProjectPanel({ project, onOpen, onRename, menu, reorder }: {
           <ProjectName project={project} onRename={onRename}>
             <ItemOpen><ProjectIdentity project={project} showTopic /></ItemOpen>
           </ProjectName>
-          {stale ? <Tag tone="warn">{m.research.panel.staleAlert(idle!)}</Tag> : null}
+          {stale ? <Tag state="warning">{m.research.panel.staleAlert(idle!)}</Tag> : null}
         </>
       )}
       trailing={next && left !== null
@@ -313,7 +315,7 @@ function ProjectList({ onOpen, newRow, onNewRow, onReturn }: {
   // Each project the filter hides is a scope of its own, so moving a shown one leaves it where it is.
   const reorder = useDragReorder(
     ids, (id) => (shownIds.has(id) ? statusOf.get(id) ?? '' : `hidden ${id}`),
-    (order) => { void write(projectApi.reorder(order)) },
+    (order) => { void write(projectApi.reorder(order)) }, { axis: 'y', handle: 'grip' },
   )
   const sortBy = (key: ProjectSortKey) => {
     if (projects === null) return
@@ -402,36 +404,37 @@ function ProjectList({ onOpen, newRow, onNewRow, onReturn }: {
 
       <PageBody>
         {projects.length === 0 ? null : <PageToolbar>{filter}</PageToolbar>}
-        {groups.map((g, i) => (
-          <Fragment key={g.status}>
-            <SectionHeading count={g.items.length}>{g.status}</SectionHeading>
-            {i === 0 && creating
-              ? (
-                <ProjectCreateRow
-                  row={createDraft.slot} triggers={newTriggers}
-                  onCancel={stopCreating} onCreate={createProject} kept={{ drafts, target: 'new' }}
-                />
-              )
-              : g.items.length === 0 ? <EmptyState variant="section">{m.research.list.empty}</EmptyState> : null}
-            {g.status === ACTIVE_PROJECT
-              ? g.items.map((p) => (
-                <ProjectPanel
-                  project={p} onOpen={() => onOpen(p.id)} onRename={renameOf(p)} menu={menuOf(p)} key={p.id}
-                  reorder={{ item: reorder.itemProps(p.id), handle: reorder.handleProps(p.id) }}
-                />
-              ))
-              : (
-                <List variant="embedded" rows="all">
-                  {g.items.map((p) => (
-                    <ProjectRow
-                      project={p} onOpen={() => onOpen(p.id)} onRename={renameOf(p)} menu={menuOf(p)} key={p.id}
-                      reorder={{ item: reorder.itemProps(p.id), handle: reorder.handleProps(p.id) }}
-                    />
-                  ))}
-                </List>
-              )}
-          </Fragment>
-        ))}
+        <GroupedList>
+          {groups.map((g, i) => (
+            <Group key={g.status} title={g.status} count={g.items.length}>
+              {i === 0 && creating
+                ? (
+                  <ProjectCreateRow
+                    row={createDraft.slot} triggers={newTriggers}
+                    onCancel={stopCreating} onCreate={createProject} kept={{ drafts, target: 'new' }}
+                  />
+                )
+                : g.items.length === 0 ? <EmptyState variant="section">{m.research.list.empty}</EmptyState> : null}
+              {g.status === ACTIVE_PROJECT
+                ? g.items.map((p) => (
+                  <ProjectPanel
+                    project={p} onOpen={() => onOpen(p.id)} onRename={renameOf(p)} menu={menuOf(p)} key={p.id}
+                    reorder={{ item: reorder.itemProps(p.id), handle: reorder.handleProps(p.id) }}
+                  />
+                ))
+                : (
+                  <List variant="embedded" rows="all">
+                    {g.items.map((p) => (
+                      <ProjectRow
+                        project={p} onOpen={() => onOpen(p.id)} onRename={renameOf(p)} menu={menuOf(p)} key={p.id}
+                        reorder={{ item: reorder.itemProps(p.id), handle: reorder.handleProps(p.id) }}
+                      />
+                    ))}
+                  </List>
+                )}
+            </Group>
+          ))}
+        </GroupedList>
       </PageBody>
     </PageShell>
   )

@@ -2,8 +2,6 @@
  * The placeholder row of watch management and the one-sentence add block at the bottom. The
  * latter is copied from e2e/fixtures/platform-shell-demo.html; selectors keep the demo's names so
  * the two can be compared side by side.
- * The demo puts a sparkle icon in .af-h. No model backs this block, so the icon and its rules are
- * dropped.
  */
 
 .author-resolver{flex:1;min-width:0}
@@ -11,9 +9,6 @@
 .author-search-error{flex:1}
 .author-resolver-actions{display:flex;justify-content:flex-end;padding:var(--sp-8) var(--sp-4) 1px;border-top:1px solid var(--sep2)}
 
-.watch-suggestions{margin-top:var(--sp-20);padding-top:var(--sp-16);border-top:1px solid var(--sep)}
-
-.af-h{display:flex;align-items:center;gap:var(--sp-6);font-size:var(--fs-group);font-weight:var(--fw-title);color:var(--ink);margin-bottom:var(--sp-8)}
 .watch-suggestion-source{margin-bottom:var(--sp-8)}
 .af-in{display:flex;gap:var(--sp-8)}
 .af-in .form-control{flex:1;width:auto}
@@ -22,8 +17,3 @@
 .watch-suggestion-results{margin-top:var(--sp-10)}
 .watch-suggestion-results>.ph2{font-size:var(--fs-cap);color:var(--ter)}
 .watch-suggestion-results>.ph2>.tag{margin-left:var(--sp-8)}
-.watch-suggestion-group{margin-top:var(--sp-10)}
-.watch-suggestion-group-heading{display:flex;align-items:center;justify-content:space-between;gap:var(--sp-10);
-  min-height:24px;color:var(--sec);font-size:var(--fs-cap)}
-.watch-suggestion-group-heading strong{font-weight:var(--fw-semibold);color:var(--ink)}
-

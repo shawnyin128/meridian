@@ -73,7 +73,7 @@ async function sayWith(win: Page, before: string, query: string, name: string, a
 
 /** Starts a new chat with the + on the sidebar's Chats heading. */
 async function newChat(win: Page): Promise<void> {
-  await win.locator('.sidebar .sb-add[aria-label="新对话"]').click()
+  await win.locator('#sidebar .add-action[aria-label="新对话"]').click()
   await shown(win, '#composer').waitFor()
 }
 
@@ -85,10 +85,10 @@ test('侧栏对话组的行数与 chat.list 一致,进屏后面包屑是对话�
   expect(archived.length).toBeGreaterThan(0)
 
   await expect(win.locator('#chatList .chat-row')).toHaveCount(active.length)
-  await expect(win.locator('#chatList .ct-t')).toHaveText(active.map((s) => s.title))
+  await expect(win.locator('#chatList .fade-text')).toHaveText(active.map((s) => s.title))
   // Archived chats are not in the sidebar at all; they are listed in Settings.
-  await expect(win.locator('.sidebar .chat-row')).toHaveCount(active.length)
-  for (const s of archived) await expect(win.locator('.sidebar')).not.toContainText(s.title)
+  await expect(win.locator('#sidebar .chat-row')).toHaveCount(active.length)
+  for (const s of archived) await expect(win.locator('#sidebar')).not.toContainText(s.title)
 
   await gotoChat(win)
   await expect(win.locator('#crumb .cseg')).toHaveText(['对话', active[0]!.title])
@@ -107,7 +107,7 @@ test('动态的「看看」建立结论冲突会话，未配置模型时给明�
   await expect(shown(win, '.msgs')).not.toContainText(stripped(demo.reply.split('<div class="macts">')[0]!))
 
   // The feed item opens a chat of its own, listed first in the chat list.
-  await expect(win.locator('#chatList .ct-t').first()).toHaveText('结论冲突')
+  await expect(win.locator('#chatList .fade-text').first()).toHaveText('结论冲突')
 })
 
 test('@ 引用项目、论文与 wiki 页都交给真实对话链路,发出的消息里引用是和输入框里一样的引用块,点它打开它点名的实体,返回回到对话', async ({ win }) => {
@@ -222,8 +222,8 @@ test('归档把会话移出侧栏,设置里取消归档把它放回', async ({ a
   await win.locator(`#chatList [data-chat="${target.id}"]`).hover()
   await win.locator(`#chatList [data-chat="${target.id}"] .dots`).click()
   await win.getByRole('menuitem', { name: '归档' }).click()
-  await expect(win.locator('.sidebar .chat-row')).toHaveCount(listed - 1)
-  await expect(win.locator(`.sidebar [data-chat="${target.id}"]`)).toHaveCount(0)
+  await expect(win.locator('#sidebar .chat-row')).toHaveCount(listed - 1)
+  await expect(win.locator(`#sidebar [data-chat="${target.id}"]`)).toHaveCount(0)
   expect(await isArchived(win, target.id)).toBe(true)
 
   await openSettings(app, win)
@@ -237,7 +237,7 @@ test('归档把会话移出侧栏,设置里取消归档把它放回', async ({ a
   await archivedRowAction(win, target.id, '取消归档')
   await expect(win.locator(`.setdlg .wrow[data-chat="${target.id}"]`)).toHaveCount(0)
   await expect(win.locator(`#chatList [data-chat="${target.id}"]`)).toHaveCount(1)
-  await expect(win.locator('.sidebar .chat-row')).toHaveCount(listed)
+  await expect(win.locator('#sidebar .chat-row')).toHaveCount(listed)
   expect(await isArchived(win, target.id)).toBe(false)
 })
 
@@ -258,7 +258,7 @@ test('侧栏删掉的会话不弹确认就进垃圾桶的对话一组,恢复后�
   const row = shown(win, '.trow').filter({ hasText: target.title })
   await row.hover()
   await row.getByRole('button', { name: '恢复' }).click()
-  await expect(win.locator('#chatList .chat-row .ct-t')).toHaveText(order.map((s) => s.title))
+  await expect(win.locator('#chatList .chat-row .fade-text')).toHaveText(order.map((s) => s.title))
   expect((await core<Session[]>(win, 'chat.list', {})).find((s) => s.id === target.id)!.messageCount).toBe(target.messageCount)
 })
 
@@ -327,7 +327,7 @@ test('正打开着的会话开它的 ... 菜单,行仍然是选中底色,不是 
   await shown(win, '#composer').waitFor()
   await expect(row).toHaveClass(/\bon\b/)
 
-  // The selected row's background comes from .srow.on, not the hover rule; record the actual
+  // The selected row's background comes from .nav-row.on, not the hover rule; record the actual
   // selected background first as the reference.
   await settle(row)
   const selectedBg = await row.evaluate((el) => getComputedStyle(el).backgroundColor)

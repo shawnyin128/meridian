@@ -13,12 +13,13 @@ import { AgentLabel } from '../components/SourceLabel.js'
 import { FadeText } from '../components/FadeText.js'
 import { Item } from '../components/Item.js'
 import { List } from '../components/List.js'
-import { Tag, type TagTone } from '../components/Tag.js'
+import { StatTile } from '../components/StatTile.js'
+import { Tag, type TagState } from '../components/Tag.js'
 import { dnum } from '../../shared/dates.js'
 import { useFormat } from '../lib/format.js'
 import { useMessages } from '../messages/useMessages.js'
 import {
-  EventText, ProjectSignalDate, ProjectSignalKind, RECORD_TONE,
+  DECISION_STATE, EventText, ProjectSignalDate, ProjectSignalKind, RECORD_STATE,
 } from '../components/project/ProjectSignals.js'
 import { ProjectNextActionView } from '../components/project/ProjectControl.js'
 import { useAreaFilter } from '../components/project/ProjectAreaFilter.js'
@@ -42,8 +43,8 @@ const RECENT_EVENTS = 6
 /** Research records dated within this many days count toward "Research log entries, last 7 days". */
 const WEEK_DAYS = 7
 
-const PULSE_TONE: Record<ProjectPulseSignal['tone'], TagTone> = {
-  healthy: 'good', warn: 'warn', risk: 'bad', blocked: 'warn', quiet: 'neutral',
+const PULSE_STATE: Record<ProjectPulseSignal['tone'], TagState | undefined> = {
+  healthy: undefined, warn: 'warning', risk: 'error', blocked: 'warning', quiet: undefined,
 }
 
 /**
@@ -75,9 +76,7 @@ function Stats({ rows }: { rows: ProjectOverview[] }) {
   return (
     <div className="ovstats">
       {stats.map((s) => (
-        <div className={s.bad ? 'ovstat bad' : 'ovstat'} key={s.label}>
-          <b>{s.value}</b><span>{s.label}</span>
-        </div>
+        <StatTile key={s.label} value={s.value} label={s.label} state={s.bad ? 'error' : undefined} />
       ))}
     </div>
   )
@@ -144,7 +143,7 @@ function DecisionQueue({ rows, onOpen }: {
             key={`${x.projectId}${x.id}`}
             variant="attention"
             when={<OverviewDate date={x.date} />}
-            kind={<ProjectSignalKind tone={x.tone}>{x.kind}</ProjectSignalKind>}
+            kind={<ProjectSignalKind state={DECISION_STATE[x.tone]}>{x.kind}</ProjectSignalKind>}
             main={x.reason}
             meta={`${x.action} →`}
             project={x.name}
@@ -228,7 +227,7 @@ function ProjectProgress({ rows, onOpen }: {
                 <ProjectNextActionView action={control.next} variant="summary" />
               </span>
               <span className="ovpulse-cell signal">
-                <Tag tone={PULSE_TONE[signal.tone]}>{signal.label}</Tag>
+                <Tag state={PULSE_STATE[signal.tone]}>{signal.label}</Tag>
                 <FadeText className="ovpulse-sub" label={signal.detail}>{signal.detail}</FadeText>
               </span>
             </Item>
@@ -256,7 +255,7 @@ function Recent({ rows, onOpen }: { rows: ProjectOverview[]; onOpen: (projectId:
               variant="dated"
               when={<OverviewDate date={e.date} />}
               kind={(
-                <ProjectSignalKind tone={RECORD_TONE[e.kind ?? 'note']}>
+                <ProjectSignalKind state={RECORD_STATE[e.kind ?? 'note']}>
                   {m.project.records.kind[e.kind ?? 'note']}
                 </ProjectSignalKind>
               )}
@@ -292,7 +291,7 @@ function Upcoming({ rows, onOpen }: { rows: ProjectOverview[]; onOpen: (projectI
               key={`${x.projectId}${x.id}`}
               variant="dated"
               when={<OverviewDate date={x.date} />}
-              kind={<ProjectSignalKind tone="warn">{m.project.plan.milestoneMode}</ProjectSignalKind>}
+              kind={<ProjectSignalKind>{m.project.plan.milestoneMode}</ProjectSignalKind>}
               main={x.title}
               project={x.name}
               projectId={x.projectId}

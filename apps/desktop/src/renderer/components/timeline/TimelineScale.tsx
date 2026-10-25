@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useLayoutEffect, useState, type RefObject } from 'react'
+import { useCallback, useEffect, useState, type RefObject } from 'react'
 import type { Task, TaskWindow as PlannedWindow } from '../../../shared/contract.js'
 import { D1, dnum, isoOf } from '../../../shared/dates.js'
 import { createFormat, useFormat, type Format } from '../../lib/format.js'
+import { useElementWidth } from '../../hooks/useElementWidth.js'
 import { useMessages } from '../../messages/useMessages.js'
 import { IconButton } from '../IconButton.js'
 import { IconNext, IconPrevious } from '../icons.js'
@@ -40,17 +41,7 @@ export function fitTimelineWindow(
 export function useFittedTimelineWindow(
   viewport: RefObject<HTMLDivElement | null>, window: TimelineWindow, scale: TimelineScale,
 ): TimelineWindow {
-  const [viewportWidth, setViewportWidth] = useState(0)
-  useLayoutEffect(() => {
-    const element = viewport.current
-    if (element === null) return
-    const sync = () => setViewportWidth(element.clientWidth)
-    sync()
-    const resize = new ResizeObserver(sync)
-    resize.observe(element)
-    return () => resize.disconnect()
-  }, [viewport])
-  return fitTimelineWindow(window, scale, viewportWidth)
+  return fitTimelineWindow(window, scale, useElementWidth(viewport))
 }
 
 /**

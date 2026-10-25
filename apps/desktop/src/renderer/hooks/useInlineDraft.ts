@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import type { KeyboardEvent as ReactKeyboardEvent, RefObject } from 'react'
-import { composing } from '../lib/keyboard.js'
+import { commitKeys } from '../lib/keyboard.js'
 import type { KeptText } from './useDrafts.js'
 import { useOnLeave } from './useOnLeave.js'
 
@@ -105,12 +105,7 @@ export function useInlineDraft({ row, triggers, onSubmit, onCancel, isEmpty, kep
       autoFocus: true,
       'aria-invalid': invalid || undefined,
       onInput: clearInvalid,
-      onKeyDown: (e) => {
-        if (e.key === 'Escape') e.stopPropagation()
-        if (composing(e.nativeEvent)) return
-        if (e.key === 'Enter') submit(() => onSubmit(false))
-        if (e.key === 'Escape') close()
-      },
+      onKeyDown: commitKeys({ onSave: () => submit(() => onSubmit(false)), onCancel: close }),
     },
     cancel: close,
     focus: () => row.current?.querySelector('input')?.focus(),

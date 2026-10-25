@@ -53,7 +53,6 @@ export const papers = {
     later: 'To read',
   },
   columnHeader: {
-    resize: (column: string) => `${column} column width`,
     addColumn: 'New column',
   },
   rowActions: { delete: 'Delete', openReader: 'Start reading' },
@@ -69,8 +68,6 @@ export const papers = {
   tags: {
     add: 'Add topic',
     existingTopics: 'Existing topics',
-    showMore: (n: number) => `Show ${n} more`,
-    showLess: (n: number) => `Hide the other ${n}`,
     remove: (topic: string) => `Remove topic "${topic}"`,
   },
   notices: {

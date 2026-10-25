@@ -10,8 +10,8 @@ const FILES = readdirSync(RENDERER, { recursive: true, encoding: 'utf8' })
   .filter((path) => /\.(css|tsx)$/.test(path) && !/\.test\./.test(path))
   .map((path) => ({ path, text: readFileSync(join(RENDERER, path), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '') }))
 
-const sectionRule = FILES.find((file) => file.path.endsWith('EmptyState.css'))!.text
-  .match(/\.empty-state--section\{([^}]*)\}/)![1]!
+const emptyCss = FILES.find((file) => file.path.endsWith('EmptyState.css'))!.text
+const sectionRule = emptyCss.match(/\.empty-state--section(?:,[^{]*)?\{([^}]*)\}/)![1]!
 
 /** The empty-state copy each list or section shows, by catalog path. */
 const EMPTY = {
@@ -59,6 +59,17 @@ describe('空态', () => {
   it('分节空态与上面的标题齐平、高一行列表行，切换同一位置的标签页时不跳', () => {
     expect(sectionRule).toContain('min-height:var(--row-list-h)')
     expect(sectionRule).not.toMatch(/padding/)
+  })
+
+  it('选项列表里的空态和分节空态一样高一行，字从选项的字开始的地方开始', () => {
+    /** The declarations of every rule of `css` whose selector list names `selector`. */
+    const declared = (css: string, selector: string) => [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)]
+      .filter(([, selectors]) => selectors!.split(',').map((one) => one.trim()).includes(selector)).map(([, , body]) => body).join(';')
+    const menu = FILES.find((file) => file.path.endsWith('ActionMenu.css'))!.text
+    const padding = (body: string) => body.match(/(?:^|;)\s*padding:([^;]*)/)?.[1]
+    expect(padding(declared(menu, '.mi'))).toBe('0 var(--row-menu-pad)')
+    expect(padding(declared(emptyCss, '.empty-state--option'))).toBe(padding(declared(menu, '.mi')))
+    expect(declared(emptyCss, '.empty-state--option')).toContain('min-height:var(--row-list-h)')
   })
 
   it('列表的每一行和空着的分节一样，都是一行列表行高，标签页里也是', () => {

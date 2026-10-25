@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { ChatMessage, ChatRun, ChatSession, PaperRow } from '../../../shared/contract.js'
 import { chat, feed, idea as ideaApi } from '../../ipc.js'
 import { errorLabel } from '../../lib/failure-label.js'
@@ -11,16 +11,15 @@ import { ChatComposer, draftText, type ChatComposerHandle } from './ChatComposer
 import { BackButton } from '../BackButton.js'
 import { Grip } from '../Grip.js'
 import { EmptyState } from '../EmptyState.js'
-import { FadeText } from '../FadeText.js'
 import { LoadingPlaceholder } from '../LoadingPlaceholder.js'
-import { PageError } from '../PageShell.js'
+import { PageError, PageHeader, PageTitle } from '../PageShell.js'
+import { ScrollArea } from '../ScrollArea.js'
 import { useDrafts } from '../../hooks/useDrafts.js'
 import { useDraftSlot } from '../DraftSlot.js'
 import { useGenerations } from '../../hooks/useGenerations.js'
 import { useFollowEnd } from '../../hooks/useFollowEnd.js'
-import { useNoModelChats } from '../../hooks/useNoModelChats.js'
+import { useModelStatus } from '../../hooks/useModelStatus.js'
 import { useScreenLoad } from '../../hooks/useScreenLoad.js'
-import { useScrollFade } from '../../hooks/useScrollFade.js'
 import { namedRuns, TitleNote } from '../TitleNote.js'
 import { useVaultWrite } from '../../hooks/useVaultWrite.js'
 import { useMessages } from '../../messages/useMessages.js'
@@ -56,14 +55,9 @@ export function PaperChat({ paper, onBack = () => {}, prompt = null }: {
   const drafts = useDrafts<ChatRun[]>(['paper', paper?.id ?? ''])
   const ideaDrafts = useDrafts<IdeaDraftText>(['paper', paper?.id ?? ''])
   const { running, run, stop } = useGenerations()
-  const { noModel, track } = useNoModelChats()
+  const { track } = useModelStatus()
   const { error, load } = useScreenLoad()
-  const streamFade = useScrollFade('y')
   const { ref: followRef, follow } = useFollowEnd<HTMLDivElement>()
-  const stream = useCallback((area: HTMLDivElement | null) => {
-    streamFade(area)
-    followRef(area)
-  }, [streamFade, followRef])
   const composer = useRef<ChatComposerHandle>(null)
   const paperId = paper?.id ?? null
   const sessionId = session?.id ?? null
@@ -107,7 +101,7 @@ export function PaperChat({ paper, onBack = () => {}, prompt = null }: {
     if (draftText(draft).trim() === '' || paperId === null || session === null || sending) return
     drafts.drop('chat-message')
     follow()
-    void run(write(track(session.id, chat.send(session.id, draft))))
+    void run(write(track(chat.send(session.id, draft))))
   }
 
   const stopSending = () => {
@@ -129,39 +123,38 @@ export function PaperChat({ paper, onBack = () => {}, prompt = null }: {
 
   return (
     <aside className="paper-chat stream" aria-label={m.chat.paperChatLabel} inert={collapsed}>
-      <header className="paper-chat-head">
+      <PageHeader size="pane">
         <BackButton onClick={onBack} />
-        <FadeText
-          className="paper-chat-title"
-          label={paper === null ? m.common.loading : `${plainTitle(paper.title)}${m.chat.paperHeaderSuffix}`}
-        >
+        <PageTitle label={paper === null ? m.common.loading : `${plainTitle(paper.title)}${m.chat.paperHeaderSuffix}`}>
           {paper === null ? m.common.loading : <><PaperText text={paper.title} />{m.chat.paperHeaderSuffix}</>}
-        </FadeText>
-      </header>
+        </PageTitle>
+      </PageHeader>
       <PageError error={error} />
-      <div className="msgs" ref={stream}>
-        {messages === null
-          ? (error === null ? <div className="mwrap"><LoadingPlaceholder shape="lines" /></div> : null)
-          : messages.length === 0 && error === null
-          ? <div className="mwrap"><EmptyState variant="page">{m.chat.empty}</EmptyState></div>
-          : messages.map((message) => (
-            <ChatMessageView key={message.id} message={message} onAct={() => act(message)} />
-          ))}
-        {session === null || paper === null || ideaDraft === undefined
-          ? null
-          : (
-            <div className="mwrap" ref={ideaSlot.slot}>
-              <IdeaDraft
-                source={`${plainTitle(paper.title)} · ${plainTitle(session.title)}`} draft={ideaDraft}
-                onChange={(next) => ideaDrafts.set('chat-idea', next)} onCancel={() => ideaDrafts.drop('chat-idea')}
-                onSave={(title, body) => write(ideaApi.create(session.id, title, body), {
-                  note: m.chat.ideaSavedNote,
-                  action: (idea) => ({ label: m.common.open, onAction: () => open('ideas', idea.id) }),
-                }).then((saved) => { if (saved) ideaDrafts.drop('chat-idea') })}
-              />
-            </div>
-          )}
-      </div>
+      <ScrollArea axis="y" fill ref={followRef}>
+        <div className="msgs">
+          {messages === null
+            ? (error === null ? <div className="mwrap"><LoadingPlaceholder shape="lines" /></div> : null)
+            : messages.length === 0 && error === null
+            ? <div className="mwrap"><EmptyState variant="page">{m.chat.empty}</EmptyState></div>
+            : messages.map((message) => (
+              <ChatMessageView key={message.id} message={message} onAct={() => act(message)} />
+            ))}
+          {session === null || paper === null || ideaDraft === undefined
+            ? null
+            : (
+              <div className="mwrap" ref={ideaSlot.slot}>
+                <IdeaDraft
+                  source={`${plainTitle(paper.title)} · ${plainTitle(session.title)}`} draft={ideaDraft}
+                  onChange={(next) => ideaDrafts.set('chat-idea', next)} onCancel={() => ideaDrafts.drop('chat-idea')}
+                  onSave={(title, body) => write(ideaApi.create(session.id, title, body), {
+                    note: m.chat.ideaSavedNote,
+                    action: (idea) => ({ label: m.common.open, onAction: () => open('ideas', idea.id) }),
+                  }).then((saved) => { if (saved) ideaDrafts.drop('chat-idea') })}
+                />
+              </div>
+            )}
+        </div>
+      </ScrollArea>
       <div className="composer paper-chat-composer">
         <div className="mwrap">
           <div className="qacts">
@@ -174,7 +167,7 @@ export function PaperChat({ paper, onBack = () => {}, prompt = null }: {
           <ChatComposer
             key={paperId} ref={composer} label={m.chat.askAboutPaper} placeholder={m.chat.paperComposerPlaceholder}
             draft={draft} onDraft={(next) => { if (paperId !== null) drafts.set('chat-message', next) }} unavailable={session === null}
-            running={sending} noModel={sessionId !== null && noModel(sessionId)} onSend={submit} onStop={stopSending}
+            running={sending} onSend={submit} onStop={stopSending}
           />
         </div>
       </div>

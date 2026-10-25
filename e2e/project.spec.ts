@@ -434,7 +434,7 @@ test('各板块渲染出的条目数与 project.get 返回的条数逐对相等'
   // A done task/milestone starts collapsed into the archived group; open it so every row is in the
   // DOM and this parity check still accounts for every item the contract returns.
   const openArchive = async (listSelector: string) => {
-    const toggle = win.locator(`${listSelector} .collapsible-group-toggle`)
+    const toggle = win.locator(`${listSelector} .collapsible-group-head .fold-toggle`)
     if (await toggle.count() > 0) await toggle.click()
   }
   await openArchive('#taskList')
@@ -579,7 +579,7 @@ test('拖完任务条那一下不算点击,单击只定位闪烁,名称格仍可
   await win.mouse.up()
   await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('任务顺延 2 天')
   // Click suppression still works: the click the browser sends after the release did not flash the row.
-  await expect(win.locator('#taskList .ddlrow[data-row="t2"]')).not.toHaveClass(/\bflash\b/)
+  await expect(win.locator('#taskList .ddlrow[data-row="t2"]')).not.toHaveAttribute('data-arrived')
 
   const moved = (await readDraft(win)).tasks.find((t) => t.id === 't2')!
   expect(moved.start).toBe(fixtureDay(today, T2_START + 2))
@@ -587,7 +587,7 @@ test('拖完任务条那一下不算点击,单击只定位闪烁,名称格仍可
   // A plain click without a drag only locates the matching row and makes it flash, opening no editor.
   await win.locator('.gantt .gbar').first().click()
   const row = win.locator('#taskList .ddlrow[data-row="t2"]')
-  await expect(row).toHaveClass(/\bflash\b/)
+  await expect(row).toHaveAttribute('data-arrived')
   await expect(row.locator('.metadata-input')).toHaveCount(0)
   await expect(win.locator('.plan-time-pop')).toHaveCount(0)
 
@@ -930,7 +930,7 @@ test('科研图节点上下居中且可缩放平移,分支和科研记录在正�
   const afterZoom = (await firstNode.boundingBox())!
   expect(afterZoom.width).toBeGreaterThan(beforeZoom.width)
 
-  await viewport.locator('.graph-zoom-reset').click()
+  await viewport.locator('.zoom-control-reset').click()
   const reset = (await firstNode.boundingBox())!
   const box = (await viewport.boundingBox())!
   await win.mouse.move(box.x + 8, box.y + 8)
@@ -941,7 +941,7 @@ test('科研图节点上下居中且可缩放平移,分支和科研记录在正�
   expect(Math.round(moved.x - reset.x)).toBe(50)
   expect(Math.round(moved.y - reset.y)).toBe(30)
 
-  await viewport.locator('.graph-zoom-reset').click()
+  await viewport.locator('.zoom-control-reset').click()
   const mainWidth = (await detail.locator('.wkmain').boundingBox())!.width
   // An empty section is hidden: root has branches but no records, knee has both.
   await viewport.locator('.rgn[data-node="root"]').click()

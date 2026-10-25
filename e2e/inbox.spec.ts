@@ -129,7 +129,7 @@ test('侧栏「论文推送」进推送屏,条目、分组与正文都照 demo',
     return `${KIND[w.type]} · ${w.name}`
   })
   expect(await groupTitles(win)).toEqual(heads)
-  await expect(shown(win, '.collapsible-group-actions .btn')).toHaveCount(heads.length)
+  await expect(shown(win, '.collapsible-group-head .section-heading-actions .btn')).toHaveCount(heads.length)
 
   // Every part of the first card matches the demo's text exactly.
   const card = shown(win, '.pcard').first()
@@ -254,7 +254,7 @@ test('「全部忽略」只清空自己这一组,逐组清完出空态,忽略的
   const titles = await cardTitles(win)
   const groups = shown(win, '.collapsible-group')
   const dismissGroup = (group: Locator) =>
-    group.locator('.collapsible-group-actions .btn').filter({ hasText: '全部忽略' }).click()
+    group.locator('.collapsible-group-head .section-heading-actions .btn').filter({ hasText: '全部忽略' }).click()
   const first = await groups.first().locator('.pcard h3').allTextContents()
   // The first group must leave other cards behind, or this test could not tell a group from the whole list.
   expect(first.length).toBeGreaterThan(0)
@@ -407,8 +407,8 @@ test('检查新论文按关注抓取一次,新论文进入相应分组且标题�
   await shown(win, '.desk-head .btn').filter({ hasText: '检查新论文' }).click()
   // The vault's Mixtral of Experts records 2026 and arXiv's 2024, more than a year apart, so it is another paper.
   await expect(shown(win, '.pcard')).toHaveCount(before.length + 3)
-  await expect(shown(win, '.desk-head .fetchnote')).toHaveText(/^上次检查 \d+月\d+日\d{2}:\d{2}$/)
-  await expect(shown(win, '.desk-head .fetchnote .date-chip')).toHaveCount(2)
+  await expect(shown(win, '.desk-head .page-note')).toHaveText(/^上次检查 \d+月\d+日\d{2}:\d{2}$/)
+  await expect(shown(win, '.desk-head .page-note .date-chip')).toHaveCount(2)
   expect((await cardTitles(win))[0]).toBe('Tree Width in Batched Serving')
   const fresh = shown(win, '.pcard').filter({ hasText: 'Tree Width in Batched Serving' })
   await expect(fresh.locator('.plabel')).toHaveText(['摘要'])
@@ -427,11 +427,11 @@ test('在一条关注那一档里检查新论文只抓这一条;再抓没有新�
   expect(after.filter((e) => !listedUnder(e, 'watch').includes('spec')).map((e) => e.id)).toEqual(elsewhere)
 
   await shown(win, '.desk-head .btn').filter({ hasText: '检查新论文' }).click()
-  await expect(shown(win, '.desk-head .fetchnote')).toHaveText(/^没有新论文 · 上次检查 \d+月\d+日\d{2}:\d{2}$/)
+  await expect(shown(win, '.desk-head .page-note')).toHaveText(/^没有新论文 · 上次检查 \d+月\d+日\d{2}:\d{2}$/)
   await expect(shown(win, '.pcard')).toHaveCount(shownBefore + 1)
   // The full check, which has not run, keeps its own status line.
   await openInbox(win, 'all')
-  await expect(shown(win, '.desk-head .fetchnote')).not.toContainText('没有新论文')
+  await expect(shown(win, '.desk-head .page-note')).not.toContainText('没有新论文')
 })
 
 test('在一个项目那一档里刷新发现只刷这个项目;没有新的时,提示写出它上次刷新的时刻', async ({ win }) => {
@@ -464,10 +464,10 @@ test('存入稍后阅读:离开推送屏,排到队首,再移出', async ({ win }
   const keyOf = (e: { day: string; source: string }, key: 'day' | 'source') => (key === 'day' ? e.day : shownSource(e.source))
   const heads = (key: 'day' | 'source') => [...new Set(queued.map((e) => keyOf(e, key)))]
     .map((k) => `${k} · ${queued.filter((e) => keyOf(e, key) === k).length}`)
-  expect(await shown(win, '.day-heading').allTextContents()).toEqual(heads('day'))
+  expect(await shown(win, '.section-heading--group').allTextContents()).toEqual(heads('day'))
   await shown(win, '.segmented-control>button').filter({ hasText: '按来源' }).click()
   await expect(shown(win, '.segmented-control>button').filter({ hasText: '按来源' })).toHaveAttribute('aria-checked', 'true')
-  expect(await shown(win, '.day-heading').allTextContents()).toEqual(heads('source'))
+  expect(await shown(win, '.section-heading--group').allTextContents()).toEqual(heads('source'))
 
   await openInbox(win, 'all')
   const entries = await inboxFromCore(win)
@@ -568,7 +568,7 @@ test('关注管理:暂停、添加与移除都实时改侧栏与推送屏', asyn
   await settings(win, '.wrow.newrow input').press('Enter')
   await expect(settings(win, '.wrow.newrow')).toHaveCount(0)
   await expect(settings(win, '.wrow')).toHaveCount(watches.length + 1)
-  await expect(win.locator('#g-topics .srow')).toHaveCount(topics + 1)
+  await expect(win.locator('#g-topics .nav-row')).toHaveCount(topics + 1)
   await expect(win.locator('[data-disc="topics"] .n')).toHaveText(String(topicPapers))
 
   // Removed: the sidebar row disappears, and its own pushes are cleared with it (the confirm dialog's
@@ -639,7 +639,7 @@ test('没填 key 时关注建议从 arXiv 生成关键词与按姓名的作者,�
 
   await section.locator('input').fill('我想关注批量推理中的动态验证与草稿树')
   await section.locator('.btn.pri').click()
-  await expect(section.locator('.watch-suggestion-group')).toHaveCount(2)
+  await expect(section.locator('.section-heading--group')).toHaveCount(2)
   await expect(section).toContainText('batched inference')
   await expect(section).not.toContainText('h-index')
   const suggestedAuthor = section.locator('.watch-suggestion-row').filter({ hasText: 'Mei Lin' })
@@ -772,7 +772,7 @@ test('关注管理:两下快回车只建出一条关注', async ({ win }) => {
 
   await expect(settings(win, '.wrow.newrow')).toHaveCount(0)
   await expect(settings(win, '.wrow')).toHaveCount(watches.length + 1)
-  await expect(win.locator('#g-topics .srow')).toHaveCount(topics + 1)
+  await expect(win.locator('#g-topics .nav-row')).toHaveCount(topics + 1)
   expect((await watchesFromCore(win)).filter((w) => w.name === TWICE_WATCH)).toHaveLength(1)
 })
 

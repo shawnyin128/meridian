@@ -1,18 +1,18 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import type { KeyboardEvent, ReactNode } from 'react'
+import type { ReactNode } from 'react'
 import type { ComponentProps } from 'react'
 import type {
   IdeaRelations as IdeaRelationsValue, ProjectDetail, ProjectSummary, ResearchIdea,
 } from '../../shared/contract.js'
 import { FINISHED_PROJECT, SHELVED_PROJECT } from '../../shared/vocabulary.js'
-import { appMenu, idea as ideaApi, project as projectApi, wiki as wikiApi } from '../ipc.js'
+import { idea as ideaApi, project as projectApi, wiki as wikiApi } from '../ipc.js'
 import { MenuItem, MenuSeparator } from '../components/ActionMenu.js'
 import { SortMenu } from '../components/SortMenu.js'
 import { FieldRow, FieldRows, FormInput, FormTextarea } from '../components/FormControls.js'
 import { InlineMessage } from '../components/InlineMessage.js'
 import { ChoicePicker, DotsMenu } from '../components/FieldPickers.js'
 import { EditActions } from '../components/EditActions.js'
-import { CollapsibleGroup } from '../components/CollapsibleGroup.js'
+import { Group, GroupedList } from '../components/GroupedList.js'
 import { EmptyState } from '../components/EmptyState.js'
 import { AddAction } from '../components/AddAction.js'
 import { IdeaDraft, type IdeaDraftText } from '../components/ideas/IdeaDraft.js'
@@ -26,6 +26,7 @@ import { TrailingDate } from '../components/DateTimeDisplay.js'
 import { DraftSlot, useDraftSlot } from '../components/DraftSlot.js'
 import { Item, ItemMeta, ItemOpen } from '../components/Item.js'
 import { List } from '../components/List.js'
+import { Table, TableCell, TableOpen, TableRow } from '../components/Table.js'
 import { ProjectLabel, ProjectStatusTag } from '../components/project/ProjectIdentity.js'
 import {
   PageBody, PageError, PageHeader, PageShell, PageTitle, SectionHeading,
@@ -43,7 +44,7 @@ import { useSourceChatDeleted } from '../hooks/useSourceChatDeleted.js'
 import { useDragReorder, type Reorderable } from '../hooks/useDragReorder.js'
 import { DragHandle } from '../components/DragHandle.js'
 import { failureOf } from '../lib/failure-label.js'
-import { commitsMultiline, composing } from '../lib/keyboard.js'
+import { commitKeys } from '../lib/keyboard.js'
 import { useMessages } from '../messages/useMessages.js'
 import { AgentLabel, SourceLabel } from '../components/SourceLabel.js'
 import { Tag } from '../components/Tag.js'
@@ -67,6 +68,10 @@ function ideaStatus(idea: ResearchIdea, project: ProjectSummary | undefined, det
   if (idea.archived) return 'archived'
   return idea.project === undefined ? 'open' : 'active'
 }
+
+/** The width the project column of the ideas by project starts at, and that of each count column, in px. */
+const STATS_NAME_WIDTH = 240
+const STATS_COUNT_WIDTH = 120
 
 /** Every project in `projects` order with the ideas sparked in it and how many of those are in progress or done, most first. */
 function ideasByProject(ideas: readonly { idea: ResearchIdea; status: IdeaStatus }[], projects: readonly ProjectSummary[]) {
@@ -239,7 +244,7 @@ function IdeaDetailPanel({
   linked: ProjectSummary | undefined
   projects: ProjectSummary[]
   pageTitles: ReadonlyMap<string, string>
-  /** The idea's candidate node as its source project's graph names it, while one is shown. */
+  /** The idea's candidate node as its source project's graph names it, while one is shown; null once that project is gone. */
   candidate: ComponentProps<typeof IdeaNodeCandidate>['node'] | undefined
   onClose: () => void
   onSave: (title: string, body: string) => Promise<boolean>
@@ -274,12 +279,6 @@ function IdeaDetailPanel({
       if (saved) setEdit(null)
     })
   }
-  /** Enter commits the title, ⌘Enter on macOS or Ctrl+Enter elsewhere the body, and Escape restores both. */
-  const commitOrCancel = (multiline: boolean) => (event: KeyboardEvent<HTMLElement>) => {
-    if (composing(event.nativeEvent)) return
-    if (event.key === 'Escape') { event.stopPropagation(); cancelEditing(); return }
-    if (multiline ? commitsMultiline(appMenu.platform(), event.nativeEvent) : event.key === 'Enter') { event.preventDefault(); save() }
-  }
 
   return (
     <aside className="idea-detail-panel node-document-pane" ref={panelFade} data-fade-paint="" aria-label={m.ideas.detailHeading}>
@@ -300,13 +299,15 @@ function IdeaDetailPanel({
                 <FieldRow label={m.ideas.editor.titleLabel}>
                   <FormInput
                     autoFocus value={title} maxLength={160}
-                    onChange={(event) => setEdit({ ...edit!, title: event.target.value })} onKeyDown={commitOrCancel(false)}
+                    onChange={(event) => setEdit({ ...edit!, title: event.target.value })}
+                    onKeyDown={commitKeys({ onSave: save, onCancel: cancelEditing })}
                   />
                 </FieldRow>
                 <FieldRow label={m.ideas.bodyLabel}>
                   <FormTextarea
                     value={body} maxLength={20_000}
-                    onChange={(event) => setEdit({ ...edit!, body: event.target.value })} onKeyDown={commitOrCancel(true)}
+                    onChange={(event) => setEdit({ ...edit!, body: event.target.value })}
+                    onKeyDown={commitKeys({ multiline: true, onSave: save, onCancel: cancelEditing })}
                   />
                 </FieldRow>
               </FieldRows>
@@ -319,7 +320,7 @@ function IdeaDetailPanel({
           onOpenProject={(projectId) => onOpen('project', projectId)} onOpenPage={(page) => onOpen('wiki', page)}
         />
         <SectionHeading
-          variant="rail"
+          level="group"
           actions={idea.project === undefined
             ? <Button size="compact" onClick={onPromote}>{m.ideas.promote.action}</Button>
             : linked === undefined
@@ -367,7 +368,7 @@ export function Ideas() {
   const [projects, setProjects] = useState<ProjectSummary[]>([])
   const [pageTitles, setPageTitles] = useState<ReadonlyMap<string, string>>(new Map())
   const chatDeleted = useSourceChatDeleted()
-  const [candidateSource, setCandidateSource] = useState<ProjectDetail | null>(null)
+  const [candidateSource, setCandidateSource] = useState<ProjectDetail | 'gone' | null>(null)
   const [details, setDetails] = useState<ReadonlyMap<string, ProjectDetail>>(new Map())
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [archiveOpen, setArchiveOpen] = useState(false)
@@ -420,9 +421,14 @@ export function Ideas() {
   useEffect(() => {
     setCandidateSource(null)
     if (candidateProject === undefined) return
-    return load('candidate', projectApi.get(candidateProject), setCandidateSource)
+    // A deleted source project leaves the candidate in the missing-project state; any other failure stands.
+    return load('candidate', projectApi.get(candidateProject).catch((cause: unknown) => {
+      if (failureOf(cause) === 'not-found') return 'gone' as const
+      throw cause
+    }), setCandidateSource)
   }, [candidateProject, revision, load])
-  const candidateNode = selected?.candidateNode === undefined || candidateSource === null || candidateSource.id !== candidateProject
+  const candidateNode = selected?.candidateNode === undefined || candidateSource === null || candidateSource === 'gone'
+    || candidateSource.id !== candidateProject
     ? undefined
     : (candidateSource.workspace?.graph ?? candidateSource.graph).nodes.find((node) => node.id === selected.candidateNode)
   const current = listed.filter((idea) => !idea.archived)
@@ -440,7 +446,7 @@ export function Ideas() {
   const counts = ideasByProject(listed.map((idea) => ({ idea, status: statusOf(idea.id) })), projects)
 
   const ids = useMemo(() => listed.map((idea) => idea.id), [listed])
-  const reorder = useDragReorder(ids, statusOf, (order) => { void write(ideaApi.reorder(order)) })
+  const reorder = useDragReorder(ids, statusOf, (order) => { void write(ideaApi.reorder(order)) }, { axis: 'y', handle: 'grip' })
   const sortByUpdated = () => {
     const order = [...listed].sort((a, b) => b.updated.localeCompare(a.updated)).map((idea) => idea.id)
     void write(ideaApi.reorder(order))
@@ -488,8 +494,7 @@ export function Ideas() {
   const rowGroups = (
     <>
       {groupRows(started, m.ideas.emptyGroup.active)}
-      <SectionHeading count={done.length}>{m.ideas.groups.done}</SectionHeading>
-      {groupRows(done, m.ideas.emptyGroup.done)}
+      <Group title={m.ideas.groups.done} count={done.length}>{groupRows(done, m.ideas.emptyGroup.done)}</Group>
     </>
   )
   const b = m.ideas.byProject
@@ -514,53 +519,57 @@ export function Ideas() {
       <PageBody className="ideas-body">
         <div className={`ideas-workspace${selected === undefined ? '' : ' has-detail'}`}>
           <main className="ideas-list">
-            <SectionHeading count={open.length}>{m.ideas.groups.open}</SectionHeading>
-            {draft === null
-              ? null
-              : (
-                <DraftSlot as="card" className="idea-draft-card" slot={draftSlot.slot}>
-                  <IdeaDraft
-                    draft={draft} triggers={draftTriggers} onChange={setDraft} onSave={createIdea} onCancel={() => setDraft(null)}
-                  />
-                </DraftSlot>
+            <GroupedList>
+              <Group title={m.ideas.groups.open} count={open.length}>
+                {draft === null
+                  ? null
+                  : (
+                    <DraftSlot as="card" className="idea-draft-card" slot={draftSlot.slot}>
+                      <IdeaDraft
+                        draft={draft} triggers={draftTriggers} onChange={setDraft} onSave={createIdea} onCancel={() => setDraft(null)}
+                      />
+                    </DraftSlot>
+                  )}
+                {rows === null ? (
+                  error === null ? <LoadingPlaceholder shape="cards" /> : null
+                ) : open.length === 0
+                  ? (draft === null ? <EmptyState variant="section">{m.ideas.emptyGroup.open}</EmptyState> : null)
+                  : open.map(card)}
+              </Group>
+              <Group title={m.ideas.groups.active} count={started.length}>
+                {/* Loaded rows of the started and the done group lay out on one grid, so their columns line up across both. */}
+                {rows === null ? rowGroups : <div className="idea-row-groups">{rowGroups}</div>}
+              </Group>
+              {archived.length === 0 ? null : (
+                <Group
+                  title={m.common.archived} count={archived.length}
+                  fold={{ open: archiveOpen || archived.some((idea) => idea.id === selectedId), onToggle: () => setArchiveOpen((held) => !held) }}
+                >
+                  {archived.map(card)}
+                </Group>
               )}
-            {rows === null ? (
-              error === null ? <LoadingPlaceholder shape="cards" /> : null
-            ) : open.length === 0
-              ? (draft === null ? <EmptyState variant="section">{m.ideas.emptyGroup.open}</EmptyState> : null)
-              : open.map(card)}
-            <SectionHeading count={started.length}>{m.ideas.groups.active}</SectionHeading>
-            {/* Loaded rows of both groups lay out on one grid, so their columns line up across the groups. */}
-            {rows === null ? rowGroups : <div className="idea-row-groups">{rowGroups}</div>}
-            {archived.length === 0 ? null : (
-              <CollapsibleGroup
-                variant="quiet" title={m.common.archived} count={archived.length}
-                open={archiveOpen || archived.some((idea) => idea.id === selectedId)}
-                onToggle={() => setArchiveOpen((held) => !held)}
-              >
-                {archived.map(card)}
-              </CollapsibleGroup>
-            )}
+            </GroupedList>
 
             {counts.every((count) => count.ideas === 0) ? null : (
               <>
                 <SectionHeading>{b.heading}</SectionHeading>
-                <div className="idea-stats-head" aria-hidden="true">
-                  <span /><span>{b.ideas}</span><span>{b.active}</span><span>{b.done}</span>
-                </div>
-                <List variant="embedded" className="idea-stats">
+                <Table
+                  className="idea-stats" rows="capped"
+                  columns={[
+                    { key: 'project', label: '', name: m.research.list.title, width: STATS_NAME_WIDTH },
+                    ...([['ideas', b.ideas], ['active', b.active], ['done', b.done]] as const)
+                      .map(([key, label]) => ({ key, label, width: STATS_COUNT_WIDTH, align: 'end' as const })),
+                  ]}
+                >
                   {counts.map(({ project, ideas, active, done: finished }) => (
-                    <Item
-                      className="idea-stats-row" key={project.id}
-                      onActivate={() => jumpTo('project', project.id)}
-                    >
-                      <FadeText className="idea-stats-name" label={project.name}>{project.name}</FadeText>
-                      {[[b.ideas, ideas], [b.active, active], [b.done, finished]].map(([label, count]) => (
-                        <span className={`idea-stats-n${count === 0 ? ' zero' : ''}`} aria-label={`${label} ${count}`} key={label}>{count}</span>
+                    <TableRow key={project.id} onClick={() => jumpTo('project', project.id)}>
+                      <TableCell kind="title"><TableOpen>{project.name}</TableOpen></TableCell>
+                      {[ideas, active, finished].map((count, i) => (
+                        <TableCell align="end" kind={count === 0 ? 'meta' : undefined} key={i}>{count}</TableCell>
                       ))}
-                    </Item>
+                    </TableRow>
                   ))}
-                </List>
+                </Table>
               </>
             )}
           </main>
@@ -573,7 +582,9 @@ export function Ideas() {
                 linked={selected.project === undefined ? undefined : projectsById.get(selected.project)}
                 projects={projects}
                 pageTitles={pageTitles}
-                candidate={candidateNode === undefined ? undefined : { id: candidateNode.id, label: candidateNode.label, mode: nodeMode(candidateNode) }}
+                candidate={candidateNode !== undefined
+                  ? { id: candidateNode.id, label: candidateNode.label, mode: nodeMode(candidateNode) }
+                  : candidateSource === 'gone' && selected.candidateNode !== undefined ? null : undefined}
                 onClose={closeDetail}
                 onRelations={(relations, removed) => write(ideaApi.update(selected.id, { relations }), {
                   note: removed === undefined ? m.project.links.added : <TitleNote message={m.project.links.removed} title={removed} />,

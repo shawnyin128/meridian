@@ -24,6 +24,7 @@ export const common = {
   loading: 'Loading…',
   saving: 'Saving…',
   reading: 'Reading…',
+  noModel: 'AI not connected',
   none: 'None',
   all: 'All',
   trashed: 'Moved to Trash',
@@ -40,6 +41,11 @@ export const common = {
   nav: { back: 'Back' },
   dialog: { close: 'Close' },
   panel: { close: 'Collapse details' },
+  table: {
+    resize: (column: string) => `${column} column width`,
+    showMore: (n: number) => `Show ${n} more`,
+    showLess: (n: number) => `Hide the other ${n}`,
+  },
   details: { expand: 'Show details', collapse: 'Hide details' },
   field: {
     clear: 'Clear input',

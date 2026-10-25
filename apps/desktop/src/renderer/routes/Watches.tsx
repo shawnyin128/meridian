@@ -22,13 +22,14 @@ import { FormInput } from '../components/FormControls.js'
 import { InlineMessage } from '../components/InlineMessage.js'
 import { ChoicePicker } from '../components/FieldPickers.js'
 import { PageError, SectionHeading } from '../components/PageShell.js'
+import { Group, GroupedList } from '../components/GroupedList.js'
 import { SegmentedControl } from '../components/SegmentedControl.js'
 import { Switch } from '../components/Switch.js'
 import { Tag } from '../components/Tag.js'
 import { useDraft } from '../hooks/useDrafts.js'
 import { useScreenLoad } from '../hooks/useScreenLoad.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
-import { composing } from '../lib/keyboard.js'
+import { commitKeys } from '../lib/keyboard.js'
 import { FadeText } from '../components/FadeText.js'
 import { Button } from '../components/Button.js'
 import { CommitActions } from '../components/CommitActions.js'
@@ -64,12 +65,10 @@ function WatchGroup({ type, watches, failed, add, editor, onOpen, onEdit, onSetA
 }) {
   const m = useMessages()
   return (
-    <>
-      <SectionHeading
-        variant="group"
-        actions={<AddAction size="compact" ref={add} label={m.watches.add(m.shell.watchKind[type])} onClick={onOpen}>{m.shell.watchKind[type]}</AddAction>}
-      >{m.shell.watchKind[type]}
-      </SectionHeading>
+    <Group
+      title={m.shell.watchKind[type]}
+      actions={<AddAction size="compact" ref={add} label={m.watches.add(m.shell.watchKind[type])} onClick={onOpen}>{m.shell.watchKind[type]}</AddAction>}
+    >
       {watches === null
         ? (failed ? null : <LoadingPlaceholder shape="rows" count={2} />)
         : watches.length === 0 && editor === undefined
@@ -98,7 +97,7 @@ function WatchGroup({ type, watches, failed, add, editor, onOpen, onEdit, onSetA
                     : undefined}
                   tags={(
                     <>
-                      {w.type === 'author' && w.identity === undefined ? <Tag tone="warn">{m.watches.identityUnconfirmed}</Tag> : null}
+                      {w.type === 'author' && w.identity === undefined ? <Tag state="warning">{m.watches.identityUnconfirmed}</Tag> : null}
                       {w.active ? null : <Tag className="watch-paused">{m.watches.paused}</Tag>}
                     </>
                   )}
@@ -117,7 +116,7 @@ function WatchGroup({ type, watches, failed, add, editor, onOpen, onEdit, onSetA
               ))) }
           </List>
         )}
-    </>
+    </Group>
   )
 }
 
@@ -476,19 +475,21 @@ export function WatchSettings() {
   return (
     <div className="watch-settings">
       <PageError error={error} variant="section" />
-      {GROUPS.map((type) => (
-        <WatchGroup
-          key={type} type={type} watches={listed === null ? null : watches.filter((w) => w.type === type)}
-          failed={error !== null}
-          add={type === 'topic' ? addTopic : addAuthor} onOpen={() => open(type)} onEdit={edit}
-          editor={editor?.type !== type || editorInput === null
-            ? undefined : { ...(editor.id === undefined ? {} : { id: editor.id }), row, input: editorInput }}
-          onSetActive={setActive} onRemove={remove}
-        />
-      ))}
+      <GroupedList>
+        {GROUPS.map((type) => (
+          <WatchGroup
+            key={type} type={type} watches={listed === null ? null : watches.filter((w) => w.type === type)}
+            failed={error !== null}
+            add={type === 'topic' ? addTopic : addAuthor} onOpen={() => open(type)} onEdit={edit}
+            editor={editor?.type !== type || editorInput === null
+              ? undefined : { ...(editor.id === undefined ? {} : { id: editor.id }), row, input: editorInput }}
+            onSetActive={setActive} onRemove={remove}
+          />
+        ))}
+      </GroupedList>
 
+      <SectionHeading>{m.watches.suggestHeading}</SectionHeading>
       <section className="watch-suggestions">
-        <div className="af-h">{m.watches.suggestHeading}</div>
         <SegmentedControl
           className="watch-suggestion-source" label={m.watches.sourceLabel} value={suggestionSource}
           options={[
@@ -506,9 +507,7 @@ export function WatchSettings() {
                   setFocus(event.target.value)
                   clearSuggestionResults()
                 }}
-                onKeyDown={(event) => {
-                  if (event.key === 'Enter' && !composing(event.nativeEvent)) void suggest()
-                }}
+                onKeyDown={commitKeys({ onSave: () => { void suggest() } })}
               />
             )
             : (
@@ -535,24 +534,23 @@ export function WatchSettings() {
             {suggestions.topics.length + suggestions.authors.length === 0
               ? <EmptyState variant="section">{hadSuggestions ? m.watches.allAdded : m.watches.noneSuggested}</EmptyState>
               : (
-                <>
+                <GroupedList>
                   <div className="ph2">
                     {m.watches.suggestionBasis(suggestions.paperCount)}
-                    {suggestions.stale === true ? <Tag tone="warn">{m.watches.suggestionStale}</Tag> : null}
+                    {suggestions.stale === true ? <Tag state="warning">{m.watches.suggestionStale}</Tag> : null}
                   </div>
                   {suggestions.topics.length === 0 ? null : (
-                    <section className="watch-suggestion-group">
-                      <div className="watch-suggestion-group-heading">
-                        <strong>{m.watches.topicSuggestions}</strong>
-                        {suggestions.topics.length > 1
-                          ? (
-                            <AddAction
-                              size="compact" disabled={addingSuggestion !== null}
-                              onClick={() => { void addAllSuggestedTopics() }}
-                            >{m.watches.addAllTopics}</AddAction>
-                          )
-                          : null}
-                      </div>
+                    <Group
+                      title={m.watches.topicSuggestions}
+                      actions={suggestions.topics.length > 1
+                        ? (
+                          <AddAction
+                            size="compact" disabled={addingSuggestion !== null}
+                            onClick={() => { void addAllSuggestedTopics() }}
+                          >{m.watches.addAllTopics}</AddAction>
+                        )
+                        : undefined}
+                    >
                       <List variant="embedded" className="watch-suggestion-list">
                         {suggestions.topics.map((item) => (
                           <Item
@@ -568,13 +566,10 @@ export function WatchSettings() {
                           />
                         ))}
                       </List>
-                    </section>
+                    </Group>
                   )}
                   {suggestions.authors.length === 0 ? null : (
-                    <section className="watch-suggestion-group">
-                      <div className="watch-suggestion-group-heading">
-                        <strong>{m.watches.authorSuggestions}</strong>
-                      </div>
+                    <Group title={m.watches.authorSuggestions}>
                       <List variant="embedded" className="watch-suggestion-list">
                         {suggestions.authors.map((item) => (
                           <Item
@@ -594,9 +589,9 @@ export function WatchSettings() {
                           />
                         ))}
                       </List>
-                    </section>
+                    </Group>
                   )}
-                </>
+                </GroupedList>
               )}
           </div>
         )}

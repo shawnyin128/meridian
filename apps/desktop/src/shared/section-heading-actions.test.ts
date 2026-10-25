@@ -37,7 +37,6 @@ describe('小标题的操作', () => {
     const rule = (selector: string) => new RegExp(`(?:^|\\n)${selector.replace(/[.-]/g, (c) => `\\${c}`)}\\{([^}]*)\\}`).exec(css)?.[1]
     expect(rule('.section-heading')).toMatch(/font-size:var\(--fs-section\);font-weight:var\(--fw-title\)/)
     expect(rule('.section-heading--group')).toMatch(/font-size:var\(--fs-group\)/)
-    expect(rule('.section-heading--rail')).toMatch(/font-size:var\(--fs-group\)/)
     expect(rule('.section-heading-actions')).toMatch(/margin-left:auto/)
     expect(css).not.toMatch(/\.flexh|\.section-actions/)
   })

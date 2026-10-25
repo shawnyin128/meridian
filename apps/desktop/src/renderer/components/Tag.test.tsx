@@ -8,9 +8,9 @@ describe('Tag', () => {
       .toBe('<span class="tag tag--label tag--neutral"><span class="fade-text tag-text" data-state="closed">进行中</span></span>')
   })
 
-  it('takes its fill from the tone and its box from the shape, and keeps a host class for placement', () => {
-    const html = renderToStaticMarkup(<Tag tone="warn" shape="chip" className="ovlist-project" title="draft 效率">draft 效率</Tag>)
-    expect(html).toContain('class="tag tag--chip tag--warn ovlist-project"')
+  it('takes its text colour from its state and its box from the shape, and keeps a host class for placement', () => {
+    const html = renderToStaticMarkup(<Tag state="warning" shape="chip" className="ovlist-project" title="draft 效率">draft 效率</Tag>)
+    expect(html).toContain('class="tag tag--chip tag--warning ovlist-project"')
     expect(html).toContain('title="draft 效率"')
   })
 
@@ -20,9 +20,9 @@ describe('Tag', () => {
   })
 
   it('gives an element another component renders the same classes', () => {
-    expect(tagClass('bad')).toBe('tag tag--label tag--bad')
-    expect(tagClass('neutral', 'chip', 'stchip on')).toBe('tag tag--chip tag--neutral stchip on')
-    expect(tagClass('ghost', 'chip')).toBe('tag tag--chip tag--ghost')
+    expect(tagClass('error')).toBe('tag tag--label tag--error')
+    expect(tagClass('p0')).toBe('tag tag--label tag--p0')
+    expect(tagClass(undefined, 'chip', 'stchip on')).toBe('tag tag--chip tag--neutral stchip on')
   })
 
   it('marks a tag whose placement caps its width, so it fades its long text there instead of yielding', () => {
