@@ -36,7 +36,8 @@ files to `outputs/review/v0.0.20.0/components/drift/`:
   value, how many instances have it, and the screens where it appears. For the other sizes and
   themes, it lists only the metrics whose values differ.
 
-An element counts once per screen, in the first state that shows it. Two runs on the same code and
+An element counts once per screen, in the first state that shows it. A later state that shows it
+again, or draws it anew at the same place with the same label and values, adds nothing. Two runs on the same code and
 library write byte-identical files. A later phase compares its run with the baseline, for example
 `--name phase1`.
 
