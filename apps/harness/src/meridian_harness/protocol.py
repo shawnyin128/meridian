@@ -23,6 +23,7 @@ READ_CALLBACKS: Final = frozenset(
         "chat.context",
     }
 )
+MODEL_CALLBACK: Final = "model.invoke"
 
 
 class ProtocolViolation(ValueError):  # noqa: N818
@@ -90,8 +91,8 @@ def response(request_id: int, result: object, callback_id: str | None = None) ->
 def callback(
     request_id: int, callback_id: str, method: str, params: object
 ) -> dict[str, object]:
-    """Build a read-only data request from Harness back to Core."""
-    if method not in READ_CALLBACKS:
+    """Build a read-only data request, or the run's model call, from Harness back to Core."""
+    if method not in READ_CALLBACKS and method != MODEL_CALLBACK:
         raise ProtocolViolation(f"Harness callback is not allowed: {method}")
     return {
         "type": "callback",

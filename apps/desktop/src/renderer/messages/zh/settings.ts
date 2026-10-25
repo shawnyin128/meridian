@@ -138,6 +138,22 @@ export const settings = {
         baseUrlPlaceholder: 'https://api.example.com/v1',
       },
     },
+    tabs: { label: '模型来源', api: 'API', subscription: '订阅' },
+    subscriptions: {
+      claude: { label: 'Claude 订阅' },
+      codex: { label: 'ChatGPT 订阅' },
+    },
+    subscription: {
+      cliLabel: 'CLI',
+      signInLabel: '登录',
+      signInCommand: '登录命令',
+      copySignIn: (name: string) => `复制 ${name} 登录命令`,
+      otherModel: (name: string) => `使用 ${name}`,
+      missing: '没有找到',
+      unsupported: '版本不受支持',
+      signIn: { subscription: '已用订阅登录', other: '未用订阅登录', 'signed-out': '未登录', unknown: '读不出登录状态' },
+      defaultModel: '默认',
+    },
     templates: {
       chooseLabel: '连接模板',
       chooseAria: '兼容服务模板',
@@ -182,6 +198,7 @@ export const settings = {
       action: '测试连接',
       testing: '正在测试…',
       connected: '连接成功 · 最多 1 个输出 token',
+      connectedNoModelCall: '连接成功 · 未调用模型',
       detailLabel: '详情',
       unexpectedDetail: '本地 Harness 没有诊断信息',
       failures: {
@@ -193,6 +210,11 @@ export const settings = {
         unavailable: '连不上模型服务',
         provider: '模型服务拒绝了请求',
         unknown: '连接测试失败',
+        'cli-missing': '没有找到 CLI',
+        'cli-unsupported': 'CLI 版本不受支持',
+        'cli-signed-out': '未用订阅登录',
+        'cli-sign-in-unknown': '无法确认登录方式',
+        'cli-timeout': '运行超时',
       },
     },
   },
@@ -230,7 +252,6 @@ export const settings = {
     installCommand: '安装命令',
     copyUpdateLabel: (name: string) => `复制 ${name} 更新命令`,
     copyInstallLabel: (name: string) => `复制 ${name} 安装命令`,
-    copy: '复制',
     tutorial: {
       heading: '在 Coding Agent 中使用 Meridian',
       groups: [

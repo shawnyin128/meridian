@@ -4,7 +4,7 @@ import { createRoot, type Root } from 'react-dom/client'
 import { redo, undo } from '@codemirror/commands'
 import { EditorView } from '@codemirror/view'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { ChatMessage, ChatSendResult, ChatSession, JobsStatus, PaperRow } from '../../shared/contract.js'
+import type { ChatMessage, ChatSendResult, ChatSession, ChatWriting, JobsStatus, PaperRow } from '../../shared/contract.js'
 import { CONFLICT_THREAD } from '../lib/chat.js'
 import { MessagesProvider } from '../messages/useMessages.js'
 import { LANGUAGE_STORAGE_KEY } from '../shell/language.js'
@@ -28,6 +28,7 @@ const api = vi.hoisted(() => ({
   }])),
   listPapers: vi.fn((): Promise<{ rows: PaperRow[]; total: number }> => Promise.resolve({ rows: [], total: 0 })),
   messages: vi.fn<() => Promise<ChatMessage[]>>(() => Promise.resolve([])),
+  writing: vi.fn<(id: string) => Promise<ChatWriting | null>>(() => Promise.resolve(null)),
   create: vi.fn<(title: string, named: boolean) => Promise<ChatSession>>(),
   recordAction: vi.fn<() => Promise<{ id: string; name: string }>>(),
   feedAppend: vi.fn(() => Promise.resolve()),
@@ -48,9 +49,10 @@ vi.mock('../ipc.js', () => ({
   appMenu: { platform: () => 'darwin' },
   chat: {
     send: api.send, retry: api.retry, messages: api.messages, cancel: api.cancel, create: api.create, recordAction: api.recordAction,
+    writing: api.writing,
   },
   feed: { append: api.feedAppend },
-  harness: { modelSettings: () => Promise.resolve({ configured: api.configured }) },
+  harness: { modelSettings: () => Promise.resolve({ configured: api.configured, subscription: { active: null, models: { claude: '', codex: '' } } }) },
   idea: { create: api.createIdea },
   jobs: {
     status: (): Promise<JobsStatus> => Promise.resolve({
@@ -119,6 +121,7 @@ describe('Chat composer', () => {
     document.body.innerHTML = ''
     vi.clearAllMocks()
     api.generating.clear()
+    api.writing.mockResolvedValue(null)
     api.configured = true
     session.id = 'chat-1'
     session.revision = 0
@@ -420,6 +423,35 @@ describe('Chat composer', () => {
     const finish = await sendPending('再问')
     expect(retry()).toBeNull()
     await finish()
+  })
+
+  it('一发出问题，回答那一行就带着模型标签、运行圈和「思考中…」出现，写出字后是那些字；存下的回答读到后，只剩存下的那一条', async () => {
+    const answers = () => [...document.querySelectorAll('.msgs .msg.ai .answer')].map((node) => node.textContent)
+    const tags = () => [...document.querySelectorAll('.msgs .msg.ai .msg-who')].map((node) => node.textContent)
+    const model = { route: 'subscription', cli: 'claude', id: 'claude-opus-5-5[1m]' } as const
+    api.writing.mockResolvedValue({ text: '', model })
+    api.messages.mockResolvedValueOnce([turnOf('1', 'you', 'EAGLE 快多少')])
+    session.revision = 1
+    await openChat('chat-1')
+    const finish = await sendPending('EAGLE 快多少')
+    await settle()
+    expect(api.writing).toHaveBeenCalledWith('chat-1')
+    expect(tags()).toEqual(['Claude Opus 5.5 · 订阅'])
+    expect(answers()).toEqual(['思考中…'])
+
+    api.writing.mockResolvedValue({ text: 'EAGLE 快 3.76 倍', model })
+    await act(async () => { await new Promise((wait) => setTimeout(wait, 200)) })
+    expect(answers()).toEqual(['EAGLE 快 3.76 倍'])
+
+    await finish()
+    await settle()
+    expect(answers()).toEqual(['EAGLE 快 3.76 倍'])
+    api.messages.mockResolvedValueOnce([turnOf('1', 'you', 'EAGLE 快多少'), { ...turnOf('2', 'ai', 'EAGLE 快 3.76 倍 [p. 6]'), model }])
+    session.revision = 2
+    await openChat('chat-1')
+    await settle()
+    expect(answers()).toEqual(['EAGLE 快 3.76 倍 [p. 6]'])
+    expect(tags()).toEqual(['Claude Opus 5.5 · 订阅'])
   })
 
   it('换到另一条对话后，前一条晚到的消息不会顶替这一条的', async () => {

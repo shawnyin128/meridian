@@ -2175,6 +2175,11 @@ export function createFixtureStore(
       chats = chats.map((c) => (c === chat ? { ...c, archived } : c))
     },
 
+    chatIds() {
+      dropExpired()
+      return [...chats.map((chat) => chat.id), ...trash.flatMap((item) => (item.kind === 'chat' ? [item.chat.id] : []))]
+    },
+
     deleteChat(id) {
       const chat = chatOf(id)
       const position = chats.indexOf(chat)

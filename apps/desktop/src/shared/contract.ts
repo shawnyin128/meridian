@@ -624,16 +624,23 @@ export const NetFailureSchema = z.enum(['unavailable', 'timeout', 'rate-limit', 
  * changed since it was shown, a change with newer changes to undo first, an option or column still
  * in use, input that failed validation, a folder that is not a Meridian library, a resource still
  * busy, data a newer App wrote, a key the system credential store could not save or read back, no
- * model set up, a generation the user stopped, a failed model call, or anything else.
+ * model set up, a generation the user stopped, a failed model call, a subscription CLI that is not
+ * installed, lacks options Meridian runs it with, is not signed in with the subscription or shows
+ * its sign-in in a form that cannot be read, a plan whose usage limit is reached, a CLI that ran
+ * past its time, model output that failed validation, or anything else.
  */
 export const CallFailureSchema = z.enum([
   ...NetFailureSchema.options, 'not-pdf', 'write', 'not-found', 'refused', 'changed', 'newer-changes', 'in-use',
   'invalid', 'not-library', 'busy', 'newer-version', 'key-unsaved', 'key-unreadable', 'no-model', 'cancelled',
-  'model',
+  'model', 'cli-missing', 'cli-unsupported', 'cli-signed-out', 'cli-sign-in-unknown', 'usage-limit', 'cli-timeout',
+  'malformed-output',
 ])
 
 /** What a rejected call carries across the process boundary instead of Core's error. */
 export const CallRejectionSchema = z.object({ reason: CallFailureSchema }).strict()
+
+/** The subscription CLIs a model call can run on: Claude Code (`claude`) and Codex CLI (`codex`). */
+export const HarnessCliSchema = z.enum(['claude', 'codex'])
 
 /**
  * A cost-bearing Harness action. Core prepares this plan without a model call; the renderer must
@@ -657,11 +664,13 @@ export const HarnessPlanSchema = z.object({
     hasRemark: z.boolean(),
     existingWikiChars: z.number().int().min(0),
   }).strict(),
+  /** `cli` names the subscription CLI a run on the user's plan runs on, instead of an API. */
   model: z.object({
     provider: z.string().min(1),
     name: z.string().min(1),
     configured: z.boolean(),
     billable: z.boolean(),
+    cli: HarnessCliSchema.optional(),
   }).strict(),
   expiresAt: IsoTimestamp,
 }).strict()
@@ -859,6 +868,56 @@ export const HarnessModelProtocolSchema = z.enum([
   'generate-content',
 ])
 
+/**
+ * A model that runs on the user's own signed-in CLI instead of an API key. `model` names the CLI's
+ * model for the call; without it the CLI uses its own default.
+ */
+export const HarnessCliModelSchema = z.object({
+  source: z.literal('cli'),
+  cli: HarnessCliSchema,
+  model: z.string().trim().min(1).max(200).optional(),
+}).strict()
+
+/** The model a subscription CLI runs, passed to its model option; '' runs the CLI's own default. */
+export const HarnessSubscriptionModelSchema = z.string().trim().max(200)
+  .regex(/^(?:[A-Za-z0-9][\w.:@/[\]-]*)?$/, '模型名含有不允许的字符')
+
+/**
+ * The subscription choice: `active` is the CLI that runs the model features, or null while the
+ * active API profile does, and `models` holds the model each CLI runs.
+ */
+export const HarnessSubscriptionSettingsSchema = z.object({
+  active: HarnessCliSchema.nullable(),
+  models: z.object({ claude: HarnessSubscriptionModelSchema, codex: HarnessSubscriptionModelSchema }).strict(),
+  /** Why the saved choice could not be loaded; no model source is set up until a choice is saved again. */
+  error: CallFailureSchema.optional(),
+}).strict()
+
+/** Makes subscription CLI `cli` the model source, running `model`. */
+export const HarnessUpdateSubscriptionParamsSchema = z.object({
+  cli: HarnessCliSchema,
+  model: HarnessSubscriptionModelSchema,
+}).strict()
+
+export const HarnessSubscriptionStatusParamsSchema = z.object({ cli: HarnessCliSchema }).strict()
+
+/**
+ * What Core finds of one subscription CLI on this machine: not installed; installed in `version`
+ * (null when it cannot be read) but unsupported, lacking options Meridian runs it with; or
+ * installed, signed in with a subscription, in another way such as an API key, not at all, or in a
+ * way that cannot be read, and accepting `models` besides its own default.
+ */
+export const HarnessSubscriptionStatusSchema = z.discriminatedUnion('state', [
+  z.object({ state: z.literal('missing') }).strict(),
+  z.object({ state: z.literal('unsupported'), version: z.string().min(1).max(100).nullable() }).strict(),
+  z.object({
+    state: z.literal('found'),
+    version: z.string().min(1).max(100).nullable(),
+    signIn: z.enum(['subscription', 'other', 'signed-out', 'unknown']),
+    models: z.array(z.string().min(1).max(200)).max(50),
+  }).strict(),
+])
+
 export const HarnessModelProfileSchema = z.object({
   provider: HarnessModelProviderSchema,
   protocol: HarnessModelProtocolSchema,
@@ -872,6 +931,7 @@ export const HarnessModelProfileSchema = z.object({
 
 export const HarnessModelSettingsSchema = HarnessModelProfileSchema.extend({
   profiles: z.array(HarnessModelProfileSchema).max(100),
+  subscription: HarnessSubscriptionSettingsSchema,
   /** Why the saved model configuration could not be loaded as it was. */
   error: CallFailureSchema.optional(),
 }).strict()
@@ -885,18 +945,31 @@ export const HarnessModelConnectionFailureSchema = z.enum([
   'unavailable',
   'provider',
   'unknown',
+  'cli-missing',
+  'cli-unsupported',
+  'cli-signed-out',
+  'cli-sign-in-unknown',
+  'cli-timeout',
 ])
 
+const CliVersionSchema = z.string().trim().min(1).max(100)
+
+/**
+ * A model connection check's result. `modelCalls` is 0 for a check that calls no model, as a
+ * subscription CLI's; `version` is that CLI's version, for display.
+ */
 export const HarnessModelConnectionCheckResultSchema = z.discriminatedUnion('state', [
   z.object({
     state: z.literal('connected'),
-    modelCalls: z.literal(1),
+    version: CliVersionSchema.optional(),
+    modelCalls: z.union([z.literal(0), z.literal(1)]),
     maxOutputTokens: z.literal(1),
   }).strict(),
   z.object({
     state: z.literal('failed'),
     reason: HarnessModelConnectionFailureSchema,
     detail: z.string().trim().min(1).max(500),
+    version: CliVersionSchema.optional(),
     modelCalls: z.union([z.literal(0), z.literal(1)]),
     maxOutputTokens: z.literal(1),
   }).strict(),
@@ -2037,15 +2110,27 @@ export const ChatActionSchema = z.object({
 }).strict()
 
 /**
+ * Which model wrote an AI answer: one run on the user's subscription CLI `cli`, `id` naming the model
+ * the CLI reported or was set to and absent when the CLI ran its own default and named none; or one
+ * reached through an API, `id` naming the configured model.
+ */
+export const ChatAnswerModelSchema = z.discriminatedUnion('route', [
+  z.object({ route: z.literal('subscription'), cli: HarnessCliSchema, id: z.string().min(1).max(200).optional() }).strict(),
+  z.object({ route: z.literal('api'), id: z.string().min(1).max(200) }).strict(),
+])
+
+/**
  * Chat message. `role` distinguishes user, AI answer, and Meridian status copy;
  * status messages are not rendered as answer bubbles. Messages without buttons
- * carry an empty actions array.
+ * carry an empty actions array. `model`, on an AI answer, is the model that wrote
+ * it; answers kept before 0.0.21.0 name none.
  */
 export const ChatMessageSchema = z.object({
   id: z.string(),
   role: z.enum(['you', 'ai', 'status']),
   runs: z.array(ChatRunSchema),
   actions: z.array(ChatActionSchema),
+  model: ChatAnswerModelSchema.optional(),
 }).strict()
 
 /**
@@ -2156,6 +2241,16 @@ export const ChatSendResultSchema = z.object({
 }).strict()
 
 export const ChatCancelParamsSchema = z.object({ id: z.string() }).strict()
+
+/** Reads the answer being written in a chat; answers a ChatWriting, or null while no turn runs there. */
+export const ChatWritingParamsSchema = z.object({ id: z.string() }).strict()
+
+/**
+ * The answer a chat's turn is writing: the model writing it, as far as Core knows it yet, and its
+ * `text` so far, empty until the first text arrives, which a model that does not stream sends only
+ * with the whole answer.
+ */
+export const ChatWritingSchema = z.object({ text: z.string(), model: ChatAnswerModelSchema }).strict()
 
 /** Asks again for an answer to a chat's last question, after its turn got none; answers a ChatSendResult. */
 export const ChatRetryParamsSchema = z.object({ id: z.string() }).strict()
@@ -2525,6 +2620,11 @@ export type HarnessModelConnectionFailure = z.infer<typeof HarnessModelConnectio
 export type HarnessModelConnectionCheckResult = z.infer<typeof HarnessModelConnectionCheckResultSchema>
 export type HarnessModelProvider = z.infer<typeof HarnessModelProviderSchema>
 export type HarnessModelProtocol = z.infer<typeof HarnessModelProtocolSchema>
+export type HarnessCli = z.infer<typeof HarnessCliSchema>
+export type HarnessCliModel = z.infer<typeof HarnessCliModelSchema>
+export type HarnessSubscriptionSettings = z.infer<typeof HarnessSubscriptionSettingsSchema>
+export type HarnessUpdateSubscriptionParams = z.infer<typeof HarnessUpdateSubscriptionParamsSchema>
+export type HarnessSubscriptionStatus = z.infer<typeof HarnessSubscriptionStatusSchema>
 export type ProjectDetail = z.infer<typeof ProjectDetailSchema>
 export type ProjectSummary = z.infer<typeof ProjectSummarySchema>
 export type ProjectOverview = z.infer<typeof ProjectOverviewSchema>
@@ -2622,6 +2722,8 @@ export type ProposalStatus = ProposalRecord['status']
 export type ChatRun = z.infer<typeof ChatRunSchema>
 export type ChatAction = z.infer<typeof ChatActionSchema>
 export type ChatMessage = z.infer<typeof ChatMessageSchema>
+export type ChatAnswerModel = z.infer<typeof ChatAnswerModelSchema>
+export type ChatWriting = z.infer<typeof ChatWritingSchema>
 export type ChatMessageFields = z.infer<typeof ChatMessageFieldsSchema>
 export type ChatSession = z.infer<typeof ChatSessionSchema>
 export type ChatSendResult = z.infer<typeof ChatSendResultSchema>
@@ -2689,6 +2791,8 @@ export const CONTRACT_METHODS = [
   'harness.modelSettings',
   'harness.updateModelSettings',
   'harness.checkModelConnection',
+  'harness.updateSubscription',
+  'harness.subscriptionStatus',
   'harness.applyPaperWiki',
   'harness.rejectPaperWiki',
   'papers.columns',
@@ -2777,6 +2881,7 @@ export const CONTRACT_METHODS = [
   'chat.send',
   'chat.retry',
   'chat.cancel',
+  'chat.writing',
   'idea.list',
   'idea.create',
   'idea.update',

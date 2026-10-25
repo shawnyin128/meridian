@@ -331,22 +331,8 @@ components/reader/PaperWikiProposalReview.css:8: .paper-wiki-review-group-head>s
 components/settings/ExtensionSettings.css:1: .extension-settings-card { padding-block }
 components/settings/ExtensionSettings.css:2: .extension-entry { padding }
 components/settings/ExtensionSettings.css:3: .extension-entry+.extension-entry { border-top }
-components/settings/ExtensionSettings.css:4: .extension-command { font-size }
-components/settings/ExtensionSettings.css:6: .extension-command-summary>span:first-child { color }
-components/settings/ExtensionSettings.css:7: .extension-command-summary code { color }
-components/settings/ExtensionSettings.css:7: .extension-command-summary code { font-family }
-components/settings/ExtensionSettings.css:8: .extension-command-code { margin }
-components/settings/ExtensionSettings.css:8: .extension-command-code { padding }
-components/settings/ExtensionSettings.css:8: .extension-command-code { overflow }
-components/settings/ExtensionSettings.css:8: .extension-command-code { color }
-components/settings/ExtensionSettings.css:8: .extension-command-code { font-family }
-components/settings/ExtensionSettings.css:9: .extension-command-code { font-size }
-components/settings/ExtensionSettings.css:9: .extension-command-code { line-height }
-components/settings/ExtensionSettings.css:9: .extension-command-code { white-space }
-components/settings/ExtensionSettings.css:9: .extension-command-code { overflow-wrap }
-components/settings/ExtensionSettings.css:10: .extension-command-code code { font }
-components/settings/ExtensionSettings.css:11: .extension-tutorial { margin-top }
-components/settings/ExtensionSettings.css:11: .extension-tutorial { color }
+components/settings/ExtensionSettings.css:4: .extension-tutorial { margin-top }
+components/settings/ExtensionSettings.css:4: .extension-tutorial { color }
 components/settings/ServiceCard.css:1: .service-saved-key { display }
 components/settings/ServiceCard.css:1: .service-saved-key { align-items }
 components/settings/ServiceCard.css:1: .service-saved-key { gap }

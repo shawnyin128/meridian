@@ -12,6 +12,19 @@ export function ServiceCard({ children, className }: { children: ReactNode; clas
   return <Card className={className === undefined ? 'service-card' : `service-card ${className}`}>{children}</Card>
 }
 
+/** A service's configured or not-configured pill, the end of its status head. */
+export function ServiceStatusPill({ configured, configuredLabel, notConfiguredLabel }: {
+  configured: boolean
+  configuredLabel: string
+  notConfiguredLabel: string
+}) {
+  return (
+    <Tag state={configured ? 'done' : undefined} className="service-status-pill">
+      {configured ? configuredLabel : notConfiguredLabel}
+    </Tag>
+  )
+}
+
 /** Status head: the service's name and an optional line after it, and a configured/not-configured pill at its end. */
 export function ServiceStatus({
   title, description, configured, configuredLabel, notConfiguredLabel,
@@ -25,11 +38,7 @@ export function ServiceStatus({
   return (
     <SectionHeading
       level="group" meta={description}
-      actions={(
-        <Tag state={configured ? 'done' : undefined} className="service-status-pill">
-          {configured ? configuredLabel : notConfiguredLabel}
-        </Tag>
-      )}
+      actions={<ServiceStatusPill configured={configured} configuredLabel={configuredLabel} notConfiguredLabel={notConfiguredLabel} />}
     >{title}
     </SectionHeading>
   )

@@ -2,14 +2,29 @@ import { z } from 'zod'
 import {
   HarnessPaperWikiQualitySchema, PapersGetParamsSchema, PapersReadingParamsSchema, PapersSourceParamsSchema,
 } from '../../shared/contract.js'
-import type { HarnessPaperWikiQuality, HarnessPaperWikiReview, PaperRow } from '../../shared/contract.js'
+import type {
+  HarnessCliModel, HarnessPaperWikiQuality, HarnessPaperWikiReview, PaperRow,
+} from '../../shared/contract.js'
 import { CallError } from '../call-error.js'
 import type { VaultStore } from '../vault.js'
 import { extractPdfPages, probePdf } from '../paper-library/index.js'
+import { CLI_CALL_TIMEOUT_MS, CLI_REQUEST_TIMEOUT_MS, cliCallError, cliUsageLine } from './cli-call.js'
+import { CliRunError } from './cli/child.js'
+import { CLI_CALL_FAILURES } from './cli/failure.js'
+import type { CliResult, CliRunner } from './cli/runner.js'
 import type { HarnessExecution, HarnessRunner } from './cost-gate.js'
 import type { HarnessModelConfig } from './model-config.js'
 import { launchHarnessProcess } from './process.js'
-import { createHarnessRpc, HarnessRpcError } from './rpc.js'
+import { createHarnessRpc, type HarnessCallback, type HarnessChild, HarnessRpcError } from './rpc.js'
+
+/** What Harness names as the detail of a model error whose output failed the draft schema or cited outside the run's scope. */
+const MALFORMED_OUTPUT_DETAILS: ReadonlySet<unknown> = new Set(['structured_output', 'invalid_anchor'])
+
+const ModelInvokeParamsSchema = z.object({
+  system: z.string().min(1).max(20_000),
+  prompt: z.string().min(1).max(1_000_000),
+  schema: z.record(z.string(), z.unknown()),
+}).strict()
 
 const WikiPageParamsSchema = z.object({ id: z.string().min(1) }).strict()
 const SourceStatementSchema = z.object({
@@ -288,13 +303,13 @@ export function validatePaperWikiDraftScope(draft: PaperWikiDraft, scope: {
   for (const statement of statements) {
     if (new Set(statement.pages).size !== statement.pages.length
       || statement.pages.some((page) => page > scope.paperPages)) {
-      throw new CallError('model', 'Harness 返回的 Wiki 提案引用了范围外的论文页')
+      throw new CallError('malformed-output', 'Harness 返回的 Wiki 提案引用了范围外的论文页')
     }
   }
   for (const observation of draft.user_observations) {
     if (new Set(observation.reading_refs).size !== observation.reading_refs.length
       || observation.reading_refs.some((item) => !scope.readingRefs.has(item))) {
-      throw new CallError('model', 'Harness 返回的 Wiki 提案引用了范围外的阅读记录')
+      throw new CallError('malformed-output', 'Harness 返回的 Wiki 提案引用了范围外的阅读记录')
     }
   }
 }
@@ -304,7 +319,7 @@ export function validatePaperWikiDraftSemantics(draft: PaperWikiDraft): void {
   const requireUnique = (values: readonly string[], label: string) => {
     const normalized = values.map((value) => inline(value).toLowerCase())
     if (new Set(normalized).size !== normalized.length) {
-      throw new CallError('model', `Harness 返回的 Wiki 提案包含重复的${label}`)
+      throw new CallError('malformed-output', `Harness 返回的 Wiki 提案包含重复的${label}`)
     }
   }
   requireUnique(draft.what_to_remember.map((item) => item.text), '核心要点')
@@ -314,7 +329,7 @@ export function validatePaperWikiDraftSemantics(draft: PaperWikiDraft): void {
   requireUnique(draft.implementation_hooks.map((item) => item.task), '实现任务')
   requireUnique(draft.open_questions, '开放问题')
   if (draft.open_questions.some((item) => !/[?？]$/u.test(item.trim()))) {
-    throw new CallError('model', 'Harness 返回的开放问题未使用问题形式')
+    throw new CallError('malformed-output', 'Harness 返回的开放问题未使用问题形式')
   }
 }
 
@@ -361,17 +376,25 @@ export function paperWikiHarnessError(cause: unknown): Error {
   if (cause.kind === 'bad_request') {
     return new CallError('model', '论文内容过大或 AI 任务格式不受支持，本次未自动重试。')
   }
+  if (cause.kind === 'model_error' && MALFORMED_OUTPUT_DETAILS.has(cause.detail)) {
+    return new CallError('malformed-output', cause.message, { cause })
+  }
   return new CallError('model', cause.message, { cause })
 }
 
-/** Real Paper Wiki runner. Core supplies reads and Harness supplies only an unapplied draft. */
+/**
+ * Real Paper Wiki runner. Core supplies reads and Harness supplies only an unapplied draft. A run on
+ * a subscription CLI also gets its one model call from Core, which `cli` runs.
+ */
 export function createPaperWikiHarnessRunner(options: {
   store: VaultStore
   model: HarnessModelConfig
+  cli: CliRunner
+  launch?: () => HarnessChild
   onLog?: (line: string) => void
 }) {
   const rpc = createHarnessRpc({
-    launch: launchHarnessProcess,
+    launch: options.launch ?? launchHarnessProcess,
     requiredCapabilities: ['paper-wiki'],
     ...(options.onLog === undefined ? {} : { onLog: options.onLog }),
     callbacks: {
@@ -406,19 +429,61 @@ export function createPaperWikiHarnessRunner(options: {
     },
   })
 
+  /** The one model call of a run on `model`, which ends when `signal` aborts and reports a CLI failure to `onFailure`. */
+  const modelCall = (
+    model: HarnessCliModel, signal: AbortSignal, onFailure: (failure: CliRunError) => void,
+  ): HarnessCallback => {
+    let called = false
+    return async (params) => {
+      if (called) throw new HarnessRpcError({ kind: 'bad_request', message: 'A run makes one model call' })
+      called = true
+      const call = ModelInvokeParamsSchema.parse(params)
+      let result: CliResult
+      try {
+        result = await options.cli({
+          cli: model.cli,
+          ...(model.model === undefined ? {} : { model: model.model }),
+          ...call,
+          timeoutMs: CLI_CALL_TIMEOUT_MS,
+          signal,
+        })
+      } catch (cause) {
+        if (cause instanceof CliRunError) onFailure(cause)
+        throw cliCallError(model.cli, cause, options.onLog)
+      }
+      options.onLog?.(cliUsageLine(model.cli, result))
+      return { output: result.output }
+    }
+  }
+
   const run: HarnessRunner = async (execution: HarnessExecution) => {
     let result: z.infer<typeof DraftEnvelopeSchema>
+    const ended = new AbortController()
+    let failure: CliRunError | undefined
     try {
+      const model = await options.model.runtime()
       result = DraftEnvelopeSchema.parse(await rpc.request('paper-wiki.propose', {
         workflow: execution.plan.workflow,
         targetId: execution.plan.targetId,
         scopeDigest: execution.plan.scopeDigest,
         action: execution.plan.action,
-        model: await options.model.runtime(),
+        model,
         limits: execution.limits,
-      }, { signal: execution.signal }))
+      }, {
+        signal: execution.signal,
+        ...('source' in model ? {
+          timeoutMs: CLI_REQUEST_TIMEOUT_MS,
+          callbacks: {
+            'model.invoke': modelCall(model, AbortSignal.any([execution.signal, ended.signal]), (cause) => { failure = cause }),
+          },
+        } : {}),
+      }))
     } catch (cause) {
-      throw paperWikiHarnessError(cause)
+      throw failure === undefined
+        ? paperWikiHarnessError(cause)
+        : new CallError(CLI_CALL_FAILURES[failure.kind], failure.message, { cause: failure })
+    } finally {
+      ended.abort()
     }
     if (result.targetId !== execution.plan.targetId
       || result.scopeDigest !== execution.plan.scopeDigest

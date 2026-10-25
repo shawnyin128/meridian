@@ -26,12 +26,17 @@ export type HarnessCallback = (params: unknown, requestId: number) => unknown | 
 export type HarnessRequestOptions = {
   signal?: AbortSignal
   onEvent?: (event: string, data: unknown) => void
+  /** Callbacks Harness may call during this request only, beside the client's own. */
+  callbacks?: Readonly<Record<string, HarnessCallback>>
+  /** How long this request may take, in place of the client's request timeout. */
+  timeoutMs?: number
 }
 
 type Pending = {
   resolve: (value: unknown) => void
   reject: (cause: Error) => void
   onEvent?: HarnessRequestOptions['onEvent']
+  callbacks?: HarnessRequestOptions['callbacks']
   timer: NodeJS.Timeout
   detachAbort?: () => void
 }
@@ -109,14 +114,15 @@ export function createHarnessRpc(deps: Dependencies) {
     message: Extract<HarnessInboundMessage, { type: 'callback' }>,
     target: HarnessChild,
   ) => {
-    if (!pending.has(message.id)) {
+    const held = pending.get(message.id)
+    if (held === undefined) {
       writeTo(target, {
         type: 'error', id: message.id, callbackId: message.callbackId, ok: false,
         error: { kind: 'cancelled', message: 'Harness request is no longer active' },
       } satisfies HarnessCallbackResultMessage)
       return
     }
-    const handler = callbacks[message.method]
+    const handler = held.callbacks?.[message.method] ?? callbacks[message.method]
     if (handler === undefined) {
       writeTo(target, {
         type: 'error', id: message.id, callbackId: message.callbackId, ok: false,
@@ -131,14 +137,14 @@ export function createHarnessRpc(deps: Dependencies) {
           type: 'response', id: message.id, callbackId: message.callbackId, ok: true, result,
         } satisfies HarnessCallbackResultMessage)
       },
-      () => {
+      (cause: unknown) => {
         if (!pending.has(message.id) || child !== target) return
         writeTo(target, {
           type: 'error', id: message.id, callbackId: message.callbackId, ok: false,
-          error: {
-            kind: 'internal',
-            message: 'Core read callback failed',
-          },
+          // A classified failure is worded for Harness; any other error's text stays in Core.
+          error: cause instanceof HarnessRpcError
+            ? { kind: cause.kind, message: cause.message }
+            : { kind: 'internal', message: 'Core read callback failed' },
         } satisfies HarnessCallbackResultMessage)
       },
     ).catch((cause: unknown) => {
@@ -284,11 +290,12 @@ export function createHarnessRpc(deps: Dependencies) {
       const timer = setTimeout(() => {
         const cause = new HarnessRpcError({ kind: 'harness_gone', message: 'Harness request timed out' })
         retire(requestChild, cause, true)
-      }, requestTimeoutMs)
+      }, options.timeoutMs ?? requestTimeoutMs)
       timer.unref()
       const held: Pending = {
         resolve, reject, timer,
         ...(options.onEvent === undefined ? {} : { onEvent: options.onEvent }),
+        ...(options.callbacks === undefined ? {} : { callbacks: options.callbacks }),
       }
       if (options.signal !== undefined) {
         const cancel = () => {

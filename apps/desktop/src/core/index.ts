@@ -1,11 +1,12 @@
 import { readFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
-import type { CallFailure, ContractMethod, LibrarySource } from '../shared/contract.js'
+import type { CallFailure, ContractMethod, HarnessCli, LibrarySource } from '../shared/contract.js'
 import {
   AuthorSearchParamsSchema,
   ChatAppendParamsSchema,
   ChatCancelParamsSchema,
+  ChatWritingParamsSchema,
   ChatRetryParamsSchema,
   ChatCreateParamsSchema,
   ChatDeleteParamsSchema,
@@ -31,6 +32,8 @@ import {
   HarnessRejectPaperWikiParamsSchema,
   HarnessModelSettingsUpdateSchema,
   HarnessStartParamsSchema,
+  HarnessSubscriptionStatusParamsSchema,
+  HarnessUpdateSubscriptionParamsSchema,
   DiscoveryFeedbackParamsSchema,
   DiscoveryFetchParamsSchema,
   DiscoveryIntentUpdateParamsSchema,
@@ -135,9 +138,10 @@ import { createPluginVersionCheck } from './extensions/latest.js'
 import { openSemanticKeyStore } from './net/semantic-key.js'
 import { deleteColourTheme, listColourThemes, saveColourTheme } from './colour-themes.js'
 import {
-  createChatHarnessRunner, createChatService, createHarnessCostGate,
-  createHarnessModelConfig, createHarnessProposalAudit,
-  createMainCredentialVault, createPaperWikiHarnessRunner,
+  checkCliConnection, createChatHarnessRunner, createChatService, createCliChatRunner, createCliRunner,
+  createHarnessCostGate, createHarnessModelConfig, createHarnessProposalAudit, createInternalMcp,
+  createMainCredentialVault, createPaperWikiHarnessRunner, discoverCli, listCliModels, openCliChatSessions,
+  subscriptionStatus,
 } from './harness/index.js'
 import { placeResearchIdeaOnGraph, promoteResearchIdea } from './research-ideas/index.js'
 import { createWikiProposals, pdfPageText } from './wiki-proposals.js'
@@ -179,6 +183,8 @@ const vaultRoot = process.env['MERIDIAN_VAULT_ROOT']
 const librarySource = sourceOf(vaultRoot, process.env['MERIDIAN_VAULT_SOURCE'])
 const locationRoot = vaultRoot ?? process.env['MERIDIAN_LIBRARY_ROOT'] ?? process.cwd()
 const configHome = process.env['MERIDIAN_CONFIG_HOME'] ?? join(homedir(), '.meridian')
+const userData = process.env['MERIDIAN_USER_DATA']
+if (userData === undefined) throw new Error('Core 没有收到 App 的用户数据目录（MERIDIAN_USER_DATA）')
 const harnessModel = await createHarnessModelConfig(configHome, createMainCredentialVault())
 const semanticKey = await openSemanticKeyStore({
   file: join(configHome, 'semantic-scholar.json'), vault: createMainCredentialVault(),
@@ -236,16 +242,37 @@ const background = createBackground({
   now: Date.now,
   semanticScholarApiKey: semanticKey.current,
 })
+const cliRunnerDeps = {
+  discover: (cli: HarnessCli) => discoverCli(cli, { onLog: (line) => console.error(`[harness] ${line}`) }),
+  settingsRevision: () => harnessModel.subscriptionRevision(),
+  internalMcp: createInternalMcp({ store, onLog: (line) => console.error(`[harness] ${line}`) }),
+}
+const cliRunner = createCliRunner(cliRunnerDeps)
 const paperWikiHarness = vaultRoot === undefined ? null : createPaperWikiHarnessRunner({
   store,
   model: harnessModel,
+  cli: cliRunner,
   onLog: (line) => console.error(`[harness] ${line}`),
 })
+const chatSessions = openCliChatSessions({
+  root: join(userData, 'cli-chats'), vault: locationRoot, onLog: (line) => console.error(`[harness] ${line}`),
+})
+/** Deletes the CLI sessions of the chats the vault no longer keeps; the trash keeps its chats' sessions. */
+const pruneChatSessions = (): void => {
+  if (openError !== null) return
+  void chatSessions.prune(new Set(store.chatIds())).catch((cause: unknown) => {
+    console.error(`[harness] 对话的 CLI 会话没能删掉：${cause instanceof Error ? cause.message : String(cause)}`)
+  })
+}
+pruneChatSessions()
 // Chat is always an explicit user action, so a configured model also works with the
 // in-memory fixture library used for product review. It never creates background cost.
 const chatHarness = createChatHarnessRunner({
   store,
   model: harnessModel,
+  checkCli: (cli) => checkCliConnection(cli, { onLog: (line) => console.error(`[harness] ${line}`) }),
+  cli: createCliChatRunner(cliRunnerDeps),
+  sessions: chatSessions,
   onLog: (line) => console.error(`[harness] ${line}`),
 })
 const chatService = createChatService({ store, model: harnessModel, runner: chatHarness })
@@ -518,6 +545,13 @@ registerHandler('harness.checkModelConnection', (params) => {
   EmptyParamsSchema.parse(params)
   return chatHarness.checkConnection()
 })
+registerHandler('harness.updateSubscription', (params) =>
+  harnessModel.updateSubscription(HarnessUpdateSubscriptionParamsSchema.parse(params)))
+registerHandler('harness.subscriptionStatus', (params) =>
+  subscriptionStatus(HarnessSubscriptionStatusParamsSchema.parse(params).cli, {
+    discover: (cli) => discoverCli(cli, { onLog: (line) => console.error(`[harness] ${line}`) }),
+    listModels: listCliModels, onLog: (line) => console.error(`[harness] ${line}`),
+  }))
 registerHandler('harness.applyPaperWiki', (params) =>
   harness.applyPaperWiki(HarnessApplyPaperWikiParamsSchema.parse(params)))
 registerHandler('harness.rejectPaperWiki', (params) =>
@@ -804,13 +838,20 @@ registerHandler('wiki.update', (params) => {
 })
 registerHandler('trash.list', (params) => {
   EmptyParamsSchema.parse(params)
-  return store.listTrash()
+  const listed = store.listTrash()
+  // Listing drops the entries whose retention has run out.
+  pruneChatSessions()
+  return listed
 })
 registerHandler('trash.restore', (params) => store.restoreTrash(TrashRestoreParamsSchema.parse(params).id))
-registerHandler('trash.purge', (params) => store.purgeTrash(TrashPurgeParamsSchema.parse(params).id))
+registerHandler('trash.purge', (params) => {
+  store.purgeTrash(TrashPurgeParamsSchema.parse(params).id)
+  pruneChatSessions()
+})
 registerHandler('trash.clear', (params) => {
   EmptyParamsSchema.parse(params)
   store.clearTrash()
+  pruneChatSessions()
 })
 registerHandler('changelog.list', (params) => {
   EmptyParamsSchema.parse(params)
@@ -861,6 +902,7 @@ registerHandler('chat.send', (params) => {
 registerHandler('chat.retry', (params) => chatService.retry(ChatRetryParamsSchema.parse(params).id))
 registerHandler('chat.cancel', (params) =>
   chatService.cancel(ChatCancelParamsSchema.parse(params).id))
+registerHandler('chat.writing', (params) => chatService.writing(ChatWritingParamsSchema.parse(params).id))
 registerHandler('idea.list', (params) => {
   EmptyParamsSchema.parse(params)
   return store.listIdeas()

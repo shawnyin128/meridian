@@ -2,6 +2,7 @@
 export const common = {
   save: '保存',
   saved: '已保存',
+  copy: '复制',
   copied: '已复制',
   empty: '—',
   noResults: '无结果',
@@ -34,7 +35,10 @@ export const common = {
   archived: '已归档',
   priority: { p0: '紧急', p1: '常规', p2: '较低' },
   /** The label of an agent's work, with where it came from when known. */
-  attribution: { agent: 'agent', withSource: (who: string, source: string) => `${who} · ${source}` },
+  attribution: {
+    agent: 'agent', withSource: (who: string, source: string) => `${who} · ${source}`,
+    routes: { subscription: '订阅', api: 'API' },
+  },
   daySections: { today: '今天', yesterday: '昨天', week: '本周', earlier: '更早' },
   nav: { back: '返回' },
   dialog: { close: '关闭' },
@@ -80,6 +84,9 @@ export const common = {
       invalid: '内容无效', 'not-library': '不是 Meridian 论文库', busy: '仍在进行中', 'newer-version': '需要更新 App',
       'key-unsaved': '没能保存密钥', 'key-unreadable': '没能读取已存的密钥', 'no-model': '还没有配置模型',
       cancelled: '已停止生成', model: '模型调用失败', 'update-files': '没能读写更新文件',
+      'cli-missing': '没有找到 CLI', 'cli-unsupported': 'CLI 版本不受支持', 'cli-signed-out': '未用订阅登录',
+      'cli-sign-in-unknown': '无法确认登录方式',
+      'usage-limit': '订阅额度已用完', 'cli-timeout': '运行超时', 'malformed-output': '模型输出无效',
     },
     unknown: '出了点问题',
   },

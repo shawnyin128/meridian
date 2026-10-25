@@ -80,6 +80,41 @@ describe('HarnessAction', () => {
     expect(document.querySelector('.modal-actions .tag')?.textContent).toBe('会产生费用')
   })
 
+  it('names the plan a subscription run counts against beside Start, and that its output has no limit', () => {
+    const start = vi.fn()
+    const subscription = (cli: 'claude' | 'codex'): HarnessPlan => ({
+      ...plan(),
+      model: { provider: cli === 'claude' ? 'Claude 订阅' : 'ChatGPT 订阅', name: '默认模型', configured: true, billable: false, cli },
+    })
+    const properties = () => [...document.querySelectorAll('.harness-cost-plan .property')]
+      .map((row) => [row.querySelector('dt')?.textContent, row.querySelector('dd')?.textContent])
+    act(() => root!.render(withMessages(<HarnessAction plan={subscription('claude')} running={false} onStart={start}
+      onCancel={vi.fn()} />)))
+    act(() => host.querySelector<HTMLButtonElement>('button')!.click())
+
+    const state = document.querySelector<HTMLElement>('.modal-actions .tag')!
+    expect([state.textContent, state.className]).toEqual(['计入 Claude 订阅额度', 'tag tag--label tag--neutral'])
+    expect(properties()).toEqual([
+      ['范围', '当前论文'], ['个人内容', '4 条带文字的笔记 · 1 篇随笔'], ['模型', 'Claude 订阅 · 默认模型'], ['输出上限', '不限'],
+    ])
+    expect(document.body.textContent).not.toMatch(/免费|会产生费用|token/)
+    act(() => Array.from(document.querySelectorAll('button'))
+      .find((button) => button.textContent === '开始生成')!.click())
+    expect(start).toHaveBeenCalledOnce()
+
+    act(() => root!.render(withMessages(<HarnessAction plan={subscription('codex')} running={false} onStart={start}
+      onCancel={vi.fn()} />)))
+    act(() => host.querySelector<HTMLButtonElement>('button')!.click())
+    expect(document.querySelector('.modal-actions .tag')?.textContent).toBe('计入 ChatGPT 订阅额度')
+  })
+
+  it('shows no output limit for a run on an API model', () => {
+    act(() => root!.render(withMessages(<HarnessAction plan={plan(true, true)} running={false} onStart={vi.fn()}
+      onCancel={vi.fn()} />)))
+    act(() => host.querySelector<HTMLButtonElement>('button')!.click())
+    expect(document.body.textContent).not.toContain('输出上限')
+  })
+
   it('shows the plan but cannot start when no model is configured', () => {
     const start = vi.fn()
     act(() => root!.render(withMessages(<HarnessAction plan={plan(false)} running={false} onStart={start}

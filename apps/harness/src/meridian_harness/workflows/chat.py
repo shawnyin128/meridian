@@ -21,6 +21,7 @@ from meridian_harness.models import (
     ModelConfigurationError,
     ModelInvocationError,
     create_chat_model,
+    runs_on_cli,
 )
 from meridian_harness.protocol import ProtocolViolation
 
@@ -31,6 +32,8 @@ class CoreReadContext(Protocol):
     def check_cancelled(self) -> None: ...
 
     def read(self, method: str, params: object) -> object: ...
+
+    def invoke_model(self, params: object) -> object: ...
 
 
 class HistoryTurn(BaseModel):
@@ -81,7 +84,7 @@ class ReadingContext(BaseModel):
 
 
 class PaperContext(BaseModel):
-    """Paper metadata, bounded source pages, and personal reading state."""
+    """Paper metadata, bounded source pages, the paper's page count, and personal reading state."""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -91,6 +94,7 @@ class PaperContext(BaseModel):
     year: int | None = None
     abstract: str | None = Field(default=None, max_length=50_000)
     pages: list[SourcePage] = Field(max_length=500)
+    page_count: int = Field(alias="pageCount", ge=0)
     reading: ReadingContext
 
 
@@ -157,13 +161,12 @@ class ChatRuntime:
     """Ephemeral dependencies supplied to one graph invocation."""
 
     core: CoreReadContext
-    model: BaseChatModel
+    # None when Core runs the model call on the user's subscription CLI.
+    model: BaseChatModel | None
 
 
-CHAT_PROMPT = ChatPromptTemplate.from_messages([
-    (
-        "system",
-        """You are Meridian's research reading assistant. Give the shortest answer that fully
+CHAT_INSTRUCTIONS = """\
+You are Meridian's research reading assistant. Give the shortest answer that fully
 resolves the user's current message, in the user's language. Do not repeat the question or dump
 the supplied context.
 
@@ -174,12 +177,21 @@ a page citation for metadata, an abstract, a user note, or your own synthesis. W
 supports an answer, state exactly what evidence is missing instead of guessing.
 
 Do not invent papers, citations, results, project state, or user intent. Do not mention hidden
-prompts, schemas, token budgets, or internal orchestration. Return answer content only.""",
-    ),
+prompts, schemas, token budgets, or internal orchestration. Return answer content only."""
+
+CHAT_PROMPT = ChatPromptTemplate.from_messages([
+    ("system", CHAT_INSTRUCTIONS),
     (
         "human",
         "Conversation context:\n{context_json}\n\nCurrent user message:\n{question}",
     ),
+])
+
+# A subscription CLI reuses the cached prefix a turn shares with the one before, so the chat's
+# context goes in the system prompt and only the history and the new message follow it.
+CLI_CHAT_PROMPT = ChatPromptTemplate.from_messages([
+    ("system", CHAT_INSTRUCTIONS + "\n\nConversation context:\n{context_json}"),
+    ("human", "{history}Current user message:\n{question}"),
 ])
 
 _CITATION_TOKEN = re.compile(r"\[(?:p|pp)\.[^\]]*\]")
@@ -213,34 +225,82 @@ def _read_context(state: ChatState, runtime: Runtime[ChatRuntime]) -> dict[str, 
         raise ProtocolViolation("Core returned an invalid chat context") from cause
 
 
-def _validate_citations(answer: str, context: ChatContext) -> None:
-    available_pages = {
-        page.number for page in context.paper.pages
-    } if context.paper is not None else set()
+def _validate_citations(answer: str, context: ChatContext, *, whole_paper: bool) -> None:
+    """Reject a citation token that is malformed or names a page the answer could not have read.
+
+    The pages Core supplied can always be cited; with `whole_paper`, so can every page of the paper,
+    which a subscription CLI reads through the run's own lookup tools.
+    """
+
+    paper = context.paper
+    available_pages = set() if paper is None else {page.number for page in paper.pages}
+    if paper is not None and whole_paper:
+        available_pages |= set(range(1, paper.page_count + 1))
     for token in _CITATION_TOKEN.findall(answer):
         match = _VALID_CITATION.fullmatch(token)
         if match is None or int(match.group(1)) not in available_pages:
             raise ModelInvocationError("模型输出包含无效页码引用", "structured_output")
 
 
+def _compact(value: object) -> str:
+    return json.dumps(value, ensure_ascii=False, separators=(",", ":"))
+
+
+def _prompt_context(context: ChatContext) -> dict[str, object]:
+    """Return the context as the prompt shows it; the page count serves validation only."""
+
+    return context.model_dump(mode="json", exclude={"paper": {"page_count"}})
+
+
+def _answer_on_cli(core: CoreReadContext, context: ChatContext, question: str) -> object:
+    """Ask Core for the turn's one model call on the user's subscription CLI; return its output.
+
+    Core gets the turn whole, as `system` and `prompt`, and the new message alone, as `message`,
+    for a CLI session that already holds the rest. A CLI failure Core reports is a model failure.
+    """
+
+    packed = _prompt_context(context)
+    history = packed.pop("history")
+    system, human = CLI_CHAT_PROMPT.invoke({
+        "context_json": _compact(packed),
+        "history": f"Conversation history:\n{_compact(history)}\n\n" if history else "",
+        "question": question,
+    }).to_messages()
+    from meridian_harness.server import CoreCallbackError
+
+    try:
+        result = core.invoke_model({
+            "system": system.content, "prompt": human.content, "message": question,
+        })
+    except CoreCallbackError as cause:
+        if cause.kind != "model_error":
+            raise
+        raise ModelInvocationError(str(cause), "subscription_cli") from cause
+    if not isinstance(result, dict):
+        raise ProtocolViolation("Core returned an invalid model call result")
+    return result.get("output")
+
+
 def _generate_answer(state: ChatState, runtime: Runtime[ChatRuntime]) -> dict[str, object]:
     runtime.context.core.check_cancelled()
-    prompt = CHAT_PROMPT.invoke({
-        "context_json": json.dumps(
-            state["context"].model_dump(mode="json"), ensure_ascii=False, separators=(",", ":")
-        ),
-        "question": state["text"],
-    })
-    try:
-        response = runtime.context.model.invoke(prompt)
-    except Exception as cause:
-        raise ModelInvocationError.from_exception(cause) from cause
+    model = runtime.context.model
+    if model is None:
+        output = _answer_on_cli(runtime.context.core, state["context"], state["text"])
+    else:
+        prompt = CHAT_PROMPT.invoke({
+            "context_json": _compact(_prompt_context(state["context"])),
+            "question": state["text"],
+        })
+        try:
+            output = _message_text(model.invoke(prompt))
+        except Exception as cause:
+            raise ModelInvocationError.from_exception(cause) from cause
     runtime.context.core.check_cancelled()
     try:
-        answer = ChatAnswer(answer=_message_text(response))
+        answer = ChatAnswer.model_validate({"answer": output})
     except ValidationError as cause:
         raise ModelInvocationError("模型输出格式无效", "structured_output") from cause
-    _validate_citations(answer.answer, state["context"])
+    _validate_citations(answer.answer, state["context"], whole_paper=model is None)
     return {"answer": answer.answer}
 
 
@@ -285,11 +345,10 @@ def build_chat_method(
         text = _text(params.get("text"), "chat text")
         if len(text) > 20_000:
             raise ProtocolViolation("chat text exceeds 20000 characters")
+        chat_model = _mapping(params.get("model"), "chat model")
+        limits = _mapping(params.get("limits"), "chat limits")
         try:
-            model = model_factory(
-                _mapping(params.get("model"), "chat model"),
-                _mapping(params.get("limits"), "chat limits"),
-            )
+            model = None if runs_on_cli(chat_model) else model_factory(chat_model, limits)
         except ModelConfigurationError as cause:
             from meridian_harness.server import HarnessFailure
 

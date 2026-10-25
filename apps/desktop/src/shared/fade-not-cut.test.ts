@@ -59,7 +59,7 @@ const EXEMPT: Record<string, string> = {
   // Fading a text input would hide the caret and the selection at its edges.
   '.chat-composer .cm-scroller': 'text input',
   // The command wraps at any character, so nothing is ever hidden past its edges.
-  '.extension-command-code': 'wraps',
+  '.command-tray-code': 'wraps',
 }
 
 const TABLE = 'components/Table.tsx'

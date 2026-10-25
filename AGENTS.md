@@ -137,6 +137,23 @@ App, the Python package, and the agent plugins. Data formats are compatible in b
 - Model access and orchestration use LangChain and LangGraph. Do not write
   provider HTTP clients, agent loops, state machines, structured-output
   parsers, retry frameworks, memory, or checkpointing by hand.
+- Subscription CLIs are a model source alongside the LangChain providers. For
+  one model call, Core runs the user's own signed-in `claude` or `codex` as a
+  child process:
+  - its own tools, hooks, plugins and the user's MCP servers are off, and so
+    are the user's instructions wherever the CLI allows it (Codex always reads
+    its global `AGENTS.md`);
+  - the only tools it may call are those of Meridian's internal read-only MCP
+    server for that call, which Core answers;
+  - it runs in an empty temporary folder, or, for a chat turn, in a
+    Meridian-owned folder for that chat that holds only the CLI's session and is
+    deleted with the chat;
+  - API-key variables are removed from its environment;
+  - Core never reads or stores the CLI's credentials.
+
+  The Harness asks Core for that call over RPC, and validates the result at the
+  node boundary like any other model output. A CLI call may take several turns
+  and cannot cap its output; the run confirmation says so.
 - The Harness stays stateless: no persistent checkpointer or store.
 - Deterministic work (selection, filtering, deduplication, formatting,
   routing, validation, persistence) belongs in typed Core code, not in a

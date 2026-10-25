@@ -1,10 +1,13 @@
 import { chmodSync, existsSync, mkdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import type {
-  CallFailure, HarnessModelProfile, HarnessModelProtocol, HarnessModelProvider, HarnessModelSettings,
-  HarnessModelSettingsUpdate,
+  CallFailure, HarnessCli, HarnessCliModel, HarnessModelProfile, HarnessModelProtocol, HarnessModelProvider,
+  HarnessModelSettings, HarnessModelSettingsUpdate, HarnessSubscriptionSettings, HarnessUpdateSubscriptionParams,
 } from '../../shared/contract.js'
-import { HarnessModelSettingsUpdateSchema } from '../../shared/contract.js'
+import {
+  HarnessCliSchema, HarnessModelSettingsUpdateSchema, HarnessSubscriptionModelSchema,
+  HarnessUpdateSubscriptionParamsSchema,
+} from '../../shared/contract.js'
 import { CallError, callFailure } from '../call-error.js'
 import { writeJson } from '../vault/writer.js'
 import type { CredentialVault } from './credential-vault.js'
@@ -18,6 +21,9 @@ const LEGACY_CONFIG_VERSIONS = [
   'meridian.harness-model.v4',
 ] as const
 const CREDENTIAL_STORAGE = 'electron-safe-storage.v1'
+export const HARNESS_SUBSCRIPTION_FILENAME = 'harness-subscription.json'
+const SUBSCRIPTION_VERSION = 'meridian.harness-subscription.v1'
+const SUBSCRIPTION_LABELS: Record<HarnessCli, string> = { claude: 'Claude 订阅', codex: 'ChatGPT 订阅' }
 
 const PROVIDERS: Record<HarnessModelProvider, {
   baseUrl: string
@@ -64,13 +70,24 @@ type PrivateModelConfig = {
   profiles: PrivateModelProfile[]
 }
 
+type SubscriptionChoice = Omit<HarnessSubscriptionSettings, 'error'>
+
+type SubscriptionRecord = {
+  schemaVersion: typeof SUBSCRIPTION_VERSION
+  active: HarnessCli | null
+  clis: Record<HarnessCli, { model: string }>
+}
+
+const noSubscription = (): SubscriptionChoice => ({ active: null, models: { claude: '', codex: '' } })
+
 type LoadedConfig = {
   value: PrivateModelConfig
   legacyApiKey?: string
   migrated?: boolean
 }
 
-export type HarnessRuntimeModel = {
+/** A model reached through a LangChain provider, with its API key when it needs one. */
+type HarnessApiModel = {
   provider: HarnessModelProvider
   protocol: HarnessModelProtocol
   baseUrl: string
@@ -78,6 +95,9 @@ export type HarnessRuntimeModel = {
   authentication: 'api-key' | 'none'
   apiKey?: string
 }
+
+/** The model a Harness run uses: an API provider, or the user's own signed-in CLI. */
+export type HarnessRuntimeModel = HarnessApiModel | HarnessCliModel
 
 const normalizeBaseUrl = (baseUrl: string) => baseUrl.replace(/\/+$/, '')
 
@@ -133,7 +153,7 @@ const publicProfile = (profile: PrivateModelProfile): HarnessModelProfile => {
 }
 
 /** Persist only public connection data and OS-encrypted credential envelopes. */
-function persist(configHome: string, file: string, value: PrivateModelConfig): void {
+function persist(configHome: string, file: string, value: PrivateModelConfig | SubscriptionRecord): void {
   mkdirSync(configHome, { recursive: true, mode: 0o700 })
   if (process.platform !== 'win32') chmodSync(configHome, 0o700)
   writeJson(file, value, join(configHome, '.tmp'))
@@ -143,8 +163,18 @@ function persist(configHome: string, file: string, value: PrivateModelConfig): v
 /** Core owns model profiles. Main performs OS-backed cryptography; Renderer sees metadata only. */
 export async function createHarnessModelConfig(configHome: string, vault: CredentialVault) {
   const file = join(configHome, HARNESS_MODEL_CONFIG_FILENAME)
+  const subscriptionFile = join(configHome, HARNESS_SUBSCRIPTION_FILENAME)
   let value = defaults()
   let loadError: CallFailure | undefined
+  let subscription = noSubscription()
+  let subscriptionError: CallFailure | undefined
+  let subscriptionRevision = 0
+  try {
+    subscription = readSubscriptionChoice(subscriptionFile)
+  } catch (error) {
+    console.error(`[harness] ${error instanceof Error ? error.message : String(error)}`)
+    subscriptionError = callFailure(error)
+  }
   try {
     const loaded = readPrivateConfig(file)
     value = loaded.value
@@ -183,8 +213,20 @@ export async function createHarnessModelConfig(configHome: string, vault: Creden
     return {
       ...current,
       profiles: value.profiles.map(publicProfile),
+      subscription: { ...subscription, ...(subscriptionError === undefined ? {} : { error: subscriptionError }) },
       ...(loadError === undefined ? {} : { error: loadError }),
     }
+  }
+
+  const choose = (next: SubscriptionChoice) => {
+    persist(configHome, subscriptionFile, {
+      schemaVersion: SUBSCRIPTION_VERSION,
+      active: next.active,
+      clis: { claude: { model: next.models.claude }, codex: { model: next.models.codex } },
+    })
+    subscription = next
+    subscriptionError = undefined
+    subscriptionRevision += 1
   }
 
   return {
@@ -231,9 +273,25 @@ export async function createHarnessModelConfig(configHome: string, vault: Creden
       }
       loadError = undefined
       persist(configHome, file, value)
+      if (subscription.active !== null || subscriptionError !== undefined) choose({ ...subscription, active: null })
+      return publicSettings()
+    },
+    /** A number that changes each time the subscription choice is saved. */
+    subscriptionRevision: () => subscriptionRevision,
+    /** Makes subscription CLI `cli` the model source, running `model`; the API profiles stay as they are. */
+    updateSubscription(input: HarnessUpdateSubscriptionParams): HarnessModelSettings {
+      const { cli, model } = HarnessUpdateSubscriptionParamsSchema.parse(input)
+      choose({ active: cli, models: { ...subscription.models, [cli]: model } })
       return publicSettings()
     },
     async runtime(): Promise<HarnessRuntimeModel> {
+      if (subscriptionError !== undefined) {
+        throw new CallError(subscriptionError, '订阅配置读不出来')
+      }
+      if (subscription.active !== null) {
+        const model = subscription.models[subscription.active]
+        return { source: 'cli', cli: subscription.active, ...(model === '' ? {} : { model }) }
+      }
       const current = activeProfile(value)
       let apiKey: string | undefined
       if (current.credential !== undefined) {
@@ -267,11 +325,18 @@ export async function createHarnessModelConfig(configHome: string, vault: Creden
       }
     },
     planModel() {
+      const cli = subscription.active
+      if (cli !== null) {
+        return {
+          provider: SUBSCRIPTION_LABELS[cli], name: subscription.models[cli] || '默认模型', configured: true, billable: false,
+          cli,
+        }
+      }
       const settings = publicSettings()
       return {
         provider: PROVIDERS[settings.provider].label,
         name: settings.model || '未配置',
-        configured: settings.configured,
+        configured: settings.configured && subscriptionError === undefined,
         billable: !isLocalNoAuth(settings),
       }
     },
@@ -391,6 +456,37 @@ function readPrivateConfig(file: string): LoadedConfig {
     throw new CallError(
       callFailure(error) === 'newer-version' ? 'newer-version' : 'invalid',
       `AI 模型配置无效：${error instanceof Error ? error.message : String(error)}`, { cause: error },
+    )
+  }
+}
+
+/**
+ * Reads the subscription choice in `file`, or no choice when there is none. Keys and CLIs this
+ * version does not know are ignored. Throws `newer-version` for a schema version or an active CLI
+ * this version cannot run, and `invalid` for anything else it cannot read.
+ */
+function readSubscriptionChoice(file: string): SubscriptionChoice {
+  if (!existsSync(file)) return noSubscription()
+  try {
+    const parsed = JSON.parse(readFileSync(file, 'utf8')) as Record<string, unknown>
+    if (parsed['schemaVersion'] !== SUBSCRIPTION_VERSION) throw new CallError('newer-version', '版本不受支持')
+    const active = parsed['active']
+    if (active !== null && !HarnessCliSchema.safeParse(active).success) {
+      throw new CallError(typeof active === 'string' ? 'newer-version' : 'invalid', `无法运行 ${String(active)}`)
+    }
+    const clis = (parsed['clis'] ?? {}) as Record<string, unknown>
+    if (typeof clis !== 'object' || Array.isArray(clis)) throw new Error('CLI 配置无效')
+    const modelOf = (cli: HarnessCli) => {
+      const held = clis[cli]
+      if (held === undefined) return ''
+      if (typeof held !== 'object' || held === null) throw new Error(`${cli} 的配置无效`)
+      return HarnessSubscriptionModelSchema.parse((held as Record<string, unknown>)['model'])
+    }
+    return { active: active as HarnessCli | null, models: { claude: modelOf('claude'), codex: modelOf('codex') } }
+  } catch (error) {
+    throw new CallError(
+      callFailure(error) === 'newer-version' ? 'newer-version' : 'invalid',
+      `订阅配置无效：${error instanceof Error ? error.message : String(error)}`, { cause: error },
     )
   }
 }

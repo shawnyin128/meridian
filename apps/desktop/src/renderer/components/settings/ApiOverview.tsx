@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { HarnessModelSettings, SemanticKeyStatus } from '../../../shared/contract.js'
 import { delivery, harness } from '../../ipc.js'
+import { modelSourceOf } from '../../hooks/useModelStatus.js'
 import { useScreenLoad } from '../../hooks/useScreenLoad.js'
 import { useMessages } from '../../messages/useMessages.js'
 import { PageError } from '../PageShell.js'
@@ -21,11 +22,17 @@ export function ApiOverview({ onOpen }: { onOpen: (category: 'model' | 'research
   useEffect(() => load('model', harness.modelSettings(), setModel), [load])
   useEffect(() => load('semanticKey', delivery.semanticKey(), setSemanticKey), [load])
 
+  const source = model === null ? null : modelSourceOf(model)
+  const cli = model?.subscription.active ?? null
   const modelState = model === null
     ? null
-    : model.configured
-      ? copy.modelSet(m.settings.model.providers[model.provider].label, model.model)
-      : copy.modelUnset
+    : source === 'subscription' && cli !== null
+      ? model.subscription.models[cli] === ''
+        ? m.settings.model.subscriptions[cli].label
+        : copy.modelSet(m.settings.model.subscriptions[cli].label, model.subscription.models[cli])
+      : source === 'api'
+        ? copy.modelSet(m.settings.model.providers[model.provider].label, model.model)
+        : copy.modelUnset
   const researchState = semanticKey === null
     ? null
     : semanticKey.configured ? 'Semantic Scholar' : copy.researchUnset

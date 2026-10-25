@@ -1039,6 +1039,12 @@ export interface VaultStore {
   deleteChat(id: string): void
 
   /**
+   * Returns the id of every chat the vault keeps: each session, a paper's empty one included, and
+   * each chat in the trash whose retention has not run out.
+   */
+  chatIds(): string[]
+
+  /**
    * Returns at most SEARCH_LIMIT hits for the query over the vault as held in
    * memory, as `searchHits` matches and ranks them: aggregations with their
    * page text and conclusions, projects, papers with their authors, page text,

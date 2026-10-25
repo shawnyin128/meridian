@@ -38,14 +38,14 @@ const core = vi.hoisted(() => {
     })),
     /** Whether the model settings set up a model. */
     configured: true,
-    modelSettings: vi.fn((): Promise<Partial<HarnessModelSettings>> => Promise.resolve({ configured: core.configured })),
+    modelSettings: vi.fn((): Promise<Partial<HarnessModelSettings>> => Promise.resolve({ configured: core.configured, subscription: { active: null, models: { claude: '', codex: '' } } })),
   }
 })
 
 vi.mock('../ipc.js', () => ({
   appMenu: { platform: () => 'darwin' },
   chat: {
-    send: core.send, cancel: core.cancel, messages: () => Promise.resolve([]),
+    send: core.send, cancel: core.cancel, messages: () => Promise.resolve([]), writing: () => Promise.resolve(null),
     forPaper: (paperId: string) => Promise.resolve({
       id: `chat-${paperId}`, title: 'Paper One', archived: false, messageCount: 0, paperId,
     }),

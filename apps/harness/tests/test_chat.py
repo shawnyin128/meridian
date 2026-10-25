@@ -10,7 +10,7 @@ from langchain_core.messages import AIMessage, BaseMessage
 from langchain_core.outputs import ChatGeneration, ChatResult
 
 from meridian_harness.protocol import ProtocolViolation
-from meridian_harness.server import HarnessFailure, RequestContext
+from meridian_harness.server import CoreCallbackError, HarnessFailure, RequestContext
 from meridian_harness.workflows.chat import CHAT_GRAPH, CHAT_PROMPT, build_chat_method
 
 
@@ -114,6 +114,118 @@ class ChatWorkflowTests(unittest.TestCase):
         self.assertEqual(calls, [])
 
 
+class ChatOnCliTests(unittest.TestCase):
+    def test_a_cli_model_asks_core_for_the_one_model_call_and_builds_no_provider(self) -> None:
+        calls: list[object] = []
+
+        def read(method: str, params: object) -> object:
+            if method != "model.invoke":
+                return _read_with_pages(method, params)
+            calls.append(params)
+            return {"output": "The source supports this [p. 2]."}
+
+        def no_provider(_model: object, _limits: object) -> BaseChatModel:
+            raise AssertionError("a CLI turn must not build a LangChain provider")
+
+        result = build_chat_method(no_provider)(RequestContext(20, Event(), read), _cli_params())
+
+        self.assertEqual(result, {"answer": "The source supports this [p. 2]."})
+        self.assertEqual(len(calls), 1)
+        call = calls[0]
+        if not isinstance(call, dict):
+            raise AssertionError("model.invoke params must be an object")
+        self.assertEqual(set(call), {"system", "prompt", "message"})
+        self.assertEqual(call["message"], "What changed?")
+
+    def test_a_cli_turn_keeps_the_context_in_a_prefix_the_history_never_changes(self) -> None:
+        def turn(history: list[dict[str, str]]) -> dict[str, object]:
+            calls: list[dict[str, object]] = []
+
+            def read(method: str, params: object) -> object:
+                if method == "model.invoke":
+                    if not isinstance(params, dict):
+                        raise AssertionError("model.invoke params must be an object")
+                    calls.append(params)
+                    return {"output": "Answer"}
+                context = _read_with_pages(method, params)
+                if not isinstance(context, dict):
+                    raise AssertionError("chat.context must be an object")
+                return {**context, "history": history}
+
+            build_chat_method()(RequestContext(21, Event(), read), _cli_params())
+            return calls[0]
+
+        first = turn([])
+        later = turn([
+            {"role": "user", "text": "Earlier question"},
+            {"role": "assistant", "text": "Earlier answer"},
+        ])
+
+        system = str(first["system"])
+        self.assertEqual(later["system"], system)
+        self.assertTrue(system.startswith(str(CHAT_PROMPT.messages[0].prompt.template)))
+        self.assertIn("Second page.", system)
+        self.assertNotIn("Earlier", system)
+        self.assertEqual(first["prompt"], "Current user message:\nWhat changed?")
+        prompt = str(later["prompt"])
+        self.assertTrue(prompt.startswith("Conversation history:\n"))
+        self.assertLess(prompt.index("Earlier question"), prompt.index("Earlier answer"))
+        self.assertLess(prompt.index("Earlier answer"), prompt.index("Current user message:"))
+        self.assertTrue(prompt.endswith("Current user message:\nWhat changed?"))
+
+    def test_a_cli_answer_cites_any_page_of_the_paper_its_tools_can_read(self) -> None:
+        def read(method: str, params: object) -> object:
+            if method == "model.invoke":
+                return {"output": "The lookup supports this [p. 9] and [p. 12]."}
+            return _read_with_pages(method, params)
+
+        self.assertEqual(
+            build_chat_method()(RequestContext(24, Event(), read), _cli_params()),
+            {"answer": "The lookup supports this [p. 9] and [p. 12]."},
+        )
+
+    def test_a_cli_turn_keeps_the_page_count_out_of_the_prompt(self) -> None:
+        calls: list[dict[str, object]] = []
+
+        def read(method: str, params: object) -> object:
+            if method == "model.invoke" and isinstance(params, dict):
+                calls.append(params)
+                return {"output": "Answer"}
+            return _read_with_pages(method, params)
+
+        build_chat_method()(RequestContext(25, Event(), read), _cli_params())
+        self.assertNotIn("12", str(calls[0]["system"]))
+        self.assertNotIn("page_count", str(calls[0]["system"]))
+
+    def test_a_cli_answer_is_validated_like_any_other_answer(self) -> None:
+        for output in (None, "   ", "Outside the paper [p. 13].", "Ambiguous range [pp. 1-2]."):
+            with self.subTest(output=output):
+
+                def read(method: str, params: object, answer: object = output) -> object:
+                    if method == "model.invoke":
+                        return {"output": answer}
+                    return _read_with_pages(method, params)
+
+                with self.assertRaises(HarnessFailure) as raised:
+                    build_chat_method()(RequestContext(22, Event(), read), _cli_params())
+
+                self.assertEqual(raised.exception.kind, "model_error")
+                self.assertEqual(raised.exception.detail, "structured_output")
+
+    def test_a_cli_failure_core_reports_keeps_its_own_words(self) -> None:
+        def read(method: str, params: object) -> object:
+            if method == "model.invoke":
+                raise CoreCallbackError("model_error", "claude 运行失败：usage limit reached")
+            return _read(method, params)
+
+        with self.assertRaises(HarnessFailure) as raised:
+            build_chat_method()(RequestContext(23, Event(), read), _cli_params())
+
+        self.assertEqual(raised.exception.kind, "model_error")
+        self.assertEqual(str(raised.exception), "claude 运行失败：usage limit reached")
+        self.assertEqual(raised.exception.detail, "subscription_cli")
+
+
 def _read(method: str, _params: object) -> object:
     if method != "chat.context":
         raise AssertionError(f"Unexpected callback: {method}")
@@ -134,6 +246,7 @@ def _read_with_pages(method: str, _params: object) -> object:
                 {"number": 1, "text": "First page."},
                 {"number": 2, "text": "Second page."},
             ],
+            "pageCount": 12,
             "reading": {"highlights": [], "notes": [], "remark": ""},
         },
     }
@@ -153,6 +266,7 @@ def _read_oversized(method: str, _params: object) -> object:
                 {"number": 1, "text": "a" * 75_000},
                 {"number": 2, "text": "b" * 75_000},
             ],
+            "pageCount": 2,
             "reading": {"highlights": [], "notes": [], "remark": ""},
         },
     }
@@ -172,6 +286,10 @@ def _params() -> dict[str, object]:
         },
         "limits": {"maxOutputTokens": 2_000, "maxModelCalls": 1},
     }
+
+
+def _cli_params() -> dict[str, object]:
+    return {**_params(), "model": {"source": "cli", "cli": "claude"}}
 
 
 if __name__ == "__main__":

@@ -234,4 +234,79 @@ describe('Harness RPC', () => {
     await expect(recovered).resolves.toEqual({ ok: true })
     rpc.close()
   })
+
+  it('answers a request\'s own callbacks only while that request runs', async () => {
+    const child = new FakeHarness()
+    const invoke = vi.fn(() => ({ output: { title: 'Draft' } }))
+    const rpc = createHarnessRpc({ launch: () => child })
+    const first = rpc.request('paper-wiki.run', {}, { callbacks: { 'model.invoke': invoke } })
+    ready(child)
+    await nextFrame(child.stdin)
+    const second = rpc.request('paper-wiki.run', {})
+    await nextFrame(child.stdin)
+
+    child.send({ type: 'callback', id: 2, callbackId: 'other', method: 'model.invoke', params: {} })
+    expect(await nextFrame(child.stdin)).toMatchObject({
+      type: 'error', id: 2, callbackId: 'other', error: { kind: 'bad_request' },
+    })
+    child.send({ type: 'callback', id: 1, callbackId: 'own', method: 'model.invoke', params: { prompt: 'p' } })
+    expect(await nextFrame(child.stdin)).toMatchObject({
+      type: 'response', id: 1, callbackId: 'own', result: { output: { title: 'Draft' } },
+    })
+    expect(invoke).toHaveBeenCalledOnce()
+
+    child.send({ type: 'response', id: 1, ok: true, result: {} })
+    child.send({ type: 'response', id: 2, ok: true, result: {} })
+    await Promise.all([first, second])
+    rpc.close()
+  })
+
+  it('passes a callback\'s classified failure to Harness and keeps any other error\'s text in Core', async () => {
+    const child = new FakeHarness()
+    const rpc = createHarnessRpc({
+      launch: () => child,
+      callbacks: { 'papers.get': () => { throw new Error('/Users/someone/library/papers is unreadable') } },
+    })
+    const result = rpc.request('paper-wiki.run', {}, {
+      callbacks: {
+        'model.invoke': () => { throw new HarnessRpcError({ kind: 'model_error', message: 'claude 运行超时，已停止' }) },
+      },
+    })
+    ready(child)
+    await nextFrame(child.stdin)
+
+    child.send({ type: 'callback', id: 1, callbackId: 'model', method: 'model.invoke', params: {} })
+    expect(await nextFrame(child.stdin)).toMatchObject({
+      type: 'error', callbackId: 'model', error: { kind: 'model_error', message: 'claude 运行超时，已停止' },
+    })
+    child.send({ type: 'callback', id: 1, callbackId: 'read', method: 'papers.get', params: {} })
+    expect(await nextFrame(child.stdin)).toMatchObject({
+      type: 'error', callbackId: 'read', error: { kind: 'internal', message: 'Core read callback failed' },
+    })
+
+    child.send({ type: 'response', id: 1, ok: true, result: {} })
+    await result
+    rpc.close()
+  })
+
+  it('lets a request take its own timeout in place of the client\'s', async () => {
+    vi.useFakeTimers()
+    try {
+      const child = new FakeHarness()
+      const rpc = createHarnessRpc({ launch: () => child, requestTimeoutMs: 1_000 })
+      const result = rpc.request('paper-wiki.run', {}, { timeoutMs: 5_000 })
+      ready(child)
+      await vi.advanceTimersByTimeAsync(4_000)
+      child.send({ type: 'response', id: 1, ok: true, result: { ok: true } })
+      await expect(result).resolves.toEqual({ ok: true })
+
+      const late = rpc.request('paper-wiki.run', {}, { timeoutMs: 5_000 })
+      const settled = expect(late).rejects.toMatchObject({ kind: 'harness_gone', message: 'Harness request timed out' })
+      await vi.advanceTimersByTimeAsync(5_001)
+      await settled
+      rpc.close()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
 })

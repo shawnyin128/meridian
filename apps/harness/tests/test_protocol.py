@@ -188,6 +188,43 @@ class ProtocolTests(TestCase):
         self.assertEqual(messages[1]["type"], "error")
         self.assertEqual(messages[1]["error"]["kind"], "bad_request")
 
+    def test_method_can_ask_core_for_its_model_call(self) -> None:
+        callback_written = Event()
+
+        class ObservedOutput(StringIO):
+            def write(self, value: str) -> int:
+                written = super().write(value)
+                if '"type":"callback"' in value:
+                    callback_written.set()
+                return written
+
+        def call_model(context: RequestContext, params: object) -> object:
+            return context.invoke_model(params)
+
+        class CallbackInput:
+            def __iter__(self) -> Iterator[str]:
+                yield json.dumps({
+                    "type": "request", "id": 5, "method": "test.call-model",
+                    "params": {"system": "s", "prompt": "p", "schema": {}},
+                })
+                callback_written.wait(timeout=1)
+                yield json.dumps({
+                    "type": "response", "id": 5, "callbackId": "callback-5-1", "ok": True,
+                    "result": {"output": {"title": "Draft"}},
+                })
+
+        output = ObservedOutput()
+        JsonLineServer({"test.call-model": call_model}).serve(CallbackInput(), output)  # type: ignore[arg-type]
+        messages = [json.loads(line) for line in output.getvalue().splitlines()]
+        callback_message = next(message for message in messages if message["type"] == "callback")
+        terminal = next(
+            message for message in messages
+            if message.get("id") == 5 and message["type"] == "response"
+        )
+        self.assertEqual(callback_message["method"], "model.invoke")
+        self.assertEqual(callback_message["params"], {"system": "s", "prompt": "p", "schema": {}})
+        self.assertEqual(terminal["result"], {"output": {"title": "Draft"}})
+
     def test_callback_allowlist_includes_reading_state_and_rejects_writes(self) -> None:
         self.assertEqual(callback(1, "cb", "papers.reading", {"id": "p1"})["type"], "callback")
         self.assertEqual(callback(1, "cb", "chat.context", {"id": "c1"})["type"], "callback")

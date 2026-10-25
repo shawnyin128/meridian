@@ -49,7 +49,7 @@ describe('ExtensionSettings', () => {
     expect(toggle.getAttribute('aria-expanded')).toBe('false')
     act(() => toggle.click())
     expect(toggle.getAttribute('aria-expanded')).toBe('true')
-    expect(host.querySelector('.extension-command-code')?.textContent).toBe(extension.installCommand)
+    expect(host.querySelector('.command-tray-code')?.textContent).toBe(extension.installCommand)
   })
 
   it('names each extension and the tutorial without sentences explaining them', () => {

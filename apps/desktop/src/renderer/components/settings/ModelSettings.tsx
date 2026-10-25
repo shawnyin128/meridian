@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import type {
-  HarnessModelConnectionCheckResult, HarnessModelProfile, HarnessModelProtocol,
-  HarnessModelProvider, HarnessModelSettings,
+  HarnessCli, HarnessModelConnectionCheckResult, HarnessModelProfile, HarnessModelProtocol,
+  HarnessModelProvider, HarnessModelSettings, HarnessSubscriptionStatus,
 } from '../../../shared/contract.js'
 import { harness } from '../../ipc.js'
 import { useScreenLoad } from '../../hooks/useScreenLoad.js'
@@ -9,14 +9,19 @@ import { errorLabel, reasonLabel } from '../../lib/failure-label.js'
 import { useMessages } from '../../messages/useMessages.js'
 import { ChoicePicker } from '../FieldPickers.js'
 import { FieldRow, FieldRows, FormInput } from '../FormControls.js'
+import { InlineMessage } from '../InlineMessage.js'
 import { LoadingPlaceholder } from '../LoadingPlaceholder.js'
 import { PageError } from '../PageShell.js'
+import { TabbedSection } from '../TabbedSection.js'
+import { Tag } from '../Tag.js'
 import {
   ServiceActions, ServiceCard, ServiceClearKeyButton, ServiceConnectionStatus, ServiceError,
-  ServiceFoot, ServiceSavedKey, ServiceStatus,
+  ServiceFoot, ServiceSavedKey, ServiceStatusPill,
 } from './ServiceCard.js'
 import { Button } from '../Button.js'
+import { CommandTray } from '../CommandTray.js'
 import { CommitActions } from '../CommitActions.js'
+import { SubscriptionModelField } from './SubscriptionModelField.js'
 
 /** Structural, language-neutral data for each provider. Copy comes from the catalog by provider id. */
 const PROVIDERS: Record<HarnessModelProvider, {
@@ -57,6 +62,13 @@ const PROVIDER_CHOICES: readonly HarnessModelProvider[] = ['openai', 'anthropic'
 const PROVIDER_NAMES: Record<Exclude<HarnessModelProvider, 'openai-compatible'>, string> = {
   openai: 'OpenAI', anthropic: 'Anthropic', 'google-gemini': 'Google Gemini',
 }
+/** The card's tabs: the API providers, and the subscriptions a CLI runs on. */
+type ModelTab = 'api' | 'subscription'
+const CLI_CHOICES: readonly HarnessCli[] = ['claude', 'codex']
+/** The CLI each subscription runs on, by its product name. */
+const CLI_NAMES: Record<HarnessCli, string> = { claude: 'Claude Code', codex: 'Codex' }
+/** The command that signs each CLI in with the user's subscription, which the user runs in a terminal. */
+const SIGN_IN_COMMANDS: Record<HarnessCli, string> = { claude: 'claude auth login', codex: 'codex login' }
 /** The protocols an OpenAI-compatible service may speak, by their API names. */
 const COMPATIBLE_PROTOCOLS: readonly HarnessModelProtocol[] = ['responses', 'chat-completions']
 const AUTHENTICATIONS = ['api-key', 'none'] as const
@@ -122,7 +134,8 @@ const profileFor = (
 
 type ConnectionCheckState = { state: 'idle' | 'testing' } | HarnessModelConnectionCheckResult
 
-export function ModelSettings() {
+/** The model settings card; `onCopy` puts a command on the clipboard and resolves whether it did. */
+export function ModelSettings({ onCopy }: { onCopy: (text: string) => Promise<boolean> }) {
   const m = useMessages()
   const [settings, setSettings] = useState<HarnessModelSettings | null>(null)
   const [provider, setProvider] = useState<HarnessModelProvider>('openai')
@@ -130,6 +143,12 @@ export function ModelSettings() {
   const [baseUrl, setBaseUrl] = useState(PROVIDERS.openai.baseUrl)
   const [model, setModel] = useState('')
   const [authentication, setAuthentication] = useState<'api-key' | 'none'>('api-key')
+  const [tab, setTab] = useState<ModelTab>('api')
+  // The subscription the subscription tab shows.
+  const [cli, setCli] = useState<HarnessCli>('claude')
+  const [cliModel, setCliModel] = useState('')
+  const [cliStatus, setCliStatus] = useState<HarnessSubscriptionStatus | null>(null)
+  const [statusReads, setStatusReads] = useState(0)
   const [compatibleTemplate, setCompatibleTemplate] = useState<CompatibleTemplateId>('choose')
   const [apiKey, setApiKey] = useState('')
   const [editingApiKey, setEditingApiKey] = useState(false)
@@ -138,7 +157,7 @@ export function ModelSettings() {
   // Whether the last save succeeded; Save shows its check as it turns true.
   const [saved, setSaved] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
-  const { error, load } = useScreenLoad()
+  const { error, failure, load } = useScreenLoad(['subscription'])
   const [connectionCheck, setConnectionCheck] = useState<ConnectionCheckState>({ state: 'idle' })
 
   const resetCredentialDraft = () => {
@@ -169,11 +188,26 @@ export function ModelSettings() {
     setCompatibleTemplate(next.provider === 'openai-compatible'
       ? compatibleTemplateFor(next.baseUrl, next.protocol, next.authentication)
       : 'choose')
+    const active = next.subscription.active
+    setTab(active === null ? 'api' : 'subscription')
+    setCli(active ?? 'claude')
+    setCliModel(next.subscription.models[active ?? 'claude'])
   }), [load])
 
   useEffect(() => {
+    if (tab !== 'subscription') return
+    return load('subscription', harness.subscriptionStatus(cli), setCliStatus)
+  }, [tab, cli, statusReads, load])
+
+  useEffect(() => {
     setConnectionCheck({ state: 'idle' })
-  }, [provider, protocol, baseUrl, model, authentication, apiKey, clearApiKey])
+  }, [tab, provider, protocol, baseUrl, model, authentication, apiKey, clearApiKey, cli, cliModel])
+
+  const selectCli = (next: HarnessCli) => {
+    if (next !== cli) setCliStatus(null)
+    setCli(next)
+    setCliModel(settings?.subscription.models[next] ?? '')
+  }
 
   const selectProvider = (next: HarnessModelProvider) => {
     const saved = profileFor(settings, next)
@@ -227,14 +261,17 @@ export function ModelSettings() {
     setSaved(false)
     setSaveError(null)
     try {
-      const next = await harness.updateModelSettings({
-        provider, protocol, baseUrl, model, authentication,
-        ...(apiKey.trim() === '' ? {} : { apiKey }),
-        ...(clearApiKey ? { clearApiKey: true } : {}),
-      })
+      const next = tab === 'api'
+        ? await harness.updateModelSettings({
+          provider, protocol, baseUrl, model, authentication,
+          ...(apiKey.trim() === '' ? {} : { apiKey }),
+          ...(clearApiKey ? { clearApiKey: true } : {}),
+        })
+        : await harness.updateSubscription({ cli, model: cliModel })
       setSaved(true)
       setSettings(next)
-      showProfile(next)
+      if (tab === 'api') showProfile(next)
+      else setCliModel(next.subscription.models[cli])
       setConnectionCheck({ state: 'idle' })
     } catch (caught) {
       setSaveError(errorLabel(m, caught))
@@ -247,6 +284,7 @@ export function ModelSettings() {
     setConnectionCheck({ state: 'testing' })
     try {
       setConnectionCheck(await harness.checkModelConnection())
+      if (tab === 'subscription') setStatusReads((reads) => reads + 1)
     } catch {
       setConnectionCheck({
         state: 'failed', reason: 'unavailable',
@@ -261,6 +299,7 @@ export function ModelSettings() {
   }
 
   const selected = { ...PROVIDERS[provider], ...m.settings.model.providers[provider] }
+  const subscriptionSaved = settings.subscription.active === cli && cliModel.trim() === settings.subscription.models[cli]
   const selectedCompatibleTemplate = compatibleTemplate !== 'choose' && compatibleTemplate !== 'custom'
     ? { ...COMPATIBLE_TEMPLATES[compatibleTemplate], ...m.settings.model.templates[compatibleTemplate] }
     : null
@@ -277,106 +316,175 @@ export function ModelSettings() {
     && normalizeBaseUrl(baseUrl) === normalizeBaseUrl(settings.baseUrl)
     && model === settings.model
     && authentication === settings.authentication
-  const canTestConnection = settings.configured && activeSelection
-    && apiKey.trim() === '' && !clearApiKey
+  const canTestConnection = tab === 'subscription'
+    ? subscriptionSaved
+    : settings.configured && activeSelection && settings.subscription.active === null
+      && settings.subscription.error === undefined && apiKey.trim() === '' && !clearApiKey
   const connectionStatus = connectionCheck.state === 'connected'
-    ? m.settings.model.connection.connected
+    ? connectionCheck.modelCalls === 0
+      ? m.settings.model.connection.connectedNoModelCall
+      : m.settings.model.connection.connected
     : connectionCheck.state === 'failed'
       ? m.settings.model.connection.failures[connectionCheck.reason]
       : null
-
-  return (
-    <ServiceCard className="model-settings-card">
-      <ServiceStatus
-        title={selected.label}
-        configured={savedSelection && savedProfile?.configured === true}
-        configuredLabel={m.settings.model.configured}
-        notConfiguredLabel={m.settings.model.notConfigured}
-      />
+  const statusFailure = failure('subscription')
+  const subscriptionPanel = (
+    <>
       <FieldRows>
         <FieldRow label={m.settings.model.fields.providerLabel}>
           <ChoicePicker
-            appearance="field" aria-label={m.settings.model.fields.providerLabel} value={provider}
-            options={PROVIDER_CHOICES} onPick={selectProvider}
-            label={(option) => (option === 'openai-compatible' ? m.settings.model.providers[option].label : PROVIDER_NAMES[option])}
+            appearance="field" aria-label={m.settings.model.fields.providerLabel} value={cli}
+            options={CLI_CHOICES} onPick={selectCli} label={(option) => m.settings.model.subscriptions[option].label}
           />
         </FieldRow>
-        {provider === 'openai-compatible' ? (
-          <>
-            <FieldRow label={m.settings.model.templates.chooseLabel}>
-              <ChoicePicker
-                appearance="field" aria-label={m.settings.model.templates.chooseAria} value={compatibleTemplate}
-                options={TEMPLATE_CHOICES} onPick={selectCompatibleTemplate}
-                label={(option) => (option === 'choose' ? m.settings.model.templates.choosePlaceholder
-                  : option === 'custom' ? m.settings.model.templates.custom : m.settings.model.templates[option].label)}
-              />
-            </FieldRow>
-            {compatibleTemplate === 'custom' ? (
-              <>
-                <FieldRow label={m.settings.model.fields.protocolLabel}>
-                  <ChoicePicker
-                    appearance="field" aria-label={m.settings.model.fields.protocolAria} value={protocol}
-                    options={COMPATIBLE_PROTOCOLS} onPick={setProtocol}
-                    label={(option) => (option === 'responses' ? 'Responses API' : 'Chat Completions API')}
-                  />
-                </FieldRow>
-                <FieldRow label={m.settings.model.fields.baseUrlLabel}>
-                  <FormInput appearance="field" aria-label={m.settings.model.fields.baseUrlAria} value={baseUrl}
-                    placeholder={m.settings.model.providers['openai-compatible'].baseUrlPlaceholder}
-                    onChange={(event) => setBaseUrl(event.target.value)} />
-                </FieldRow>
-                <FieldRow label={m.settings.model.fields.authLabel}>
-                  <ChoicePicker
-                    appearance="field" aria-label={m.settings.model.fields.authAria} value={authentication}
-                    options={AUTHENTICATIONS} onPick={setAuthentication}
-                    label={(option) => (option === 'api-key'
-                      ? m.settings.model.fields.apiKeyLabel : m.settings.model.fields.authNoneOption)}
-                  />
-                </FieldRow>
-              </>
-            ) : selectedCompatibleTemplate === null ? null : (
-              <div className="model-template-summary" aria-label={m.settings.model.templates.summaryAria}>
-                <span>{selectedCompatibleTemplate.protocolLabel} · {selectedCompatibleTemplate.authenticationLabel}</span>
-                <code>{selectedCompatibleTemplate.baseUrl}</code>
-              </div>
-            )}
-          </>
-        ) : (
-          <FieldRow label={m.settings.model.fields.protocolLabel}>
-            <span aria-label={m.settings.model.fields.protocolAria}>{selected.protocolLabel}</span>
+        <FieldRow label={m.settings.model.subscription.cliLabel}>
+          {statusFailure !== null ? (
+            <InlineMessage tone="error" variant="line">{statusFailure}</InlineMessage>
+          ) : cliStatus === null ? (
+            <LoadingPlaceholder shape="ring" holds="text" />
+          ) : cliStatus.state === 'missing' ? (
+            <InlineMessage tone="warning" variant="line">{m.settings.model.subscription.missing}</InlineMessage>
+          ) : cliStatus.state === 'unsupported' ? (
+            <InlineMessage tone="warning" variant="line">
+              {cliStatus.version === null
+                ? m.settings.model.subscription.unsupported
+                : `${cliStatus.version} · ${m.settings.model.subscription.unsupported}`}
+            </InlineMessage>
+          ) : (
+            <span>{cliStatus.version === null ? CLI_NAMES[cli] : `${CLI_NAMES[cli]} ${cliStatus.version}`}</span>
+          )}
+        </FieldRow>
+        {statusFailure === null && cliStatus === null ? (
+          <FieldRow label={m.settings.model.subscription.signInLabel}>
+            <LoadingPlaceholder shape="ring" holds="tag" />
           </FieldRow>
-        )}
-        {compatibleTemplatePending ? null : (
-          <>
-            <FieldRow label={m.settings.model.fields.modelIdLabel}>
-              <FormInput appearance="field" aria-label={m.settings.model.fields.modelIdAria} value={model}
-                placeholder={m.settings.model.fields.modelIdLabel} onChange={(event) => setModel(event.target.value)} />
-            </FieldRow>
-            {authentication === 'api-key' ? (
-              <FieldRow label={m.settings.model.fields.apiKeyLabel}>
-                {showingSavedApiKey ? (
-                  <ServiceSavedKey
-                    ariaLabel={m.settings.model.keyStored(savedProfile?.apiKeyLastFour ?? '')}
-                    lastFour={savedProfile?.apiKeyLastFour}
-                    onClick={() => setEditingApiKey(true)}
-                  />
-                ) : (
-                  <FormInput appearance="field" aria-label={m.settings.model.fields.apiKeyAria} type="password"
-                    value={apiKey} autoFocus={editingApiKey}
-                    autoComplete="new-password" spellCheck={false}
-                    placeholder={m.settings.model.fields.apiKeyLabel}
-                    onBlur={() => { if (apiKey === '') setEditingApiKey(false) }}
-                    onChange={(event) => {
-                      setApiKey(event.target.value)
-                      setEditingApiKey(true)
-                      setClearApiKey(false)
-                    }} />
-                )}
-              </FieldRow>
-            ) : null}
-          </>
-        )}
+        ) : statusFailure === null && cliStatus?.state === 'found' ? (
+          <FieldRow label={m.settings.model.subscription.signInLabel}>
+            <Tag state={cliStatus.signIn === 'subscription' ? 'done' : 'warning'}>
+              {m.settings.model.subscription.signIn[cliStatus.signIn]}
+            </Tag>
+          </FieldRow>
+        ) : null}
+        <FieldRow label={m.settings.model.fields.modelIdLabel}>
+          {statusFailure === null && cliStatus === null ? <LoadingPlaceholder shape="ring" holds="field" /> : (
+            <SubscriptionModelField
+              value={cliModel} models={cliStatus?.state === 'found' ? cliStatus.models : []} onChange={setCliModel}
+            />
+          )}
+        </FieldRow>
       </FieldRows>
+      {statusFailure === null && cliStatus?.state === 'found' && cliStatus.signIn !== 'subscription' ? (
+        <CommandTray
+          heading={m.settings.model.subscription.signInCommand} command={SIGN_IN_COMMANDS[cli]}
+          copyLabel={m.settings.model.subscription.copySignIn(CLI_NAMES[cli])} onCopy={onCopy}
+        />
+      ) : null}
+    </>
+  )
+
+  const apiPanel = (
+    <FieldRows>
+      <FieldRow label={m.settings.model.fields.providerLabel}>
+        <ChoicePicker
+          appearance="field" aria-label={m.settings.model.fields.providerLabel} value={provider}
+          options={PROVIDER_CHOICES} onPick={selectProvider}
+          label={(option) => (option === 'openai-compatible' ? m.settings.model.providers[option].label : PROVIDER_NAMES[option])}
+        />
+      </FieldRow>
+      {provider === 'openai-compatible' ? (
+        <>
+          <FieldRow label={m.settings.model.templates.chooseLabel}>
+            <ChoicePicker
+              appearance="field" aria-label={m.settings.model.templates.chooseAria} value={compatibleTemplate}
+              options={TEMPLATE_CHOICES} onPick={selectCompatibleTemplate}
+              label={(option) => (option === 'choose' ? m.settings.model.templates.choosePlaceholder
+                : option === 'custom' ? m.settings.model.templates.custom : m.settings.model.templates[option].label)}
+            />
+          </FieldRow>
+          {compatibleTemplate === 'custom' ? (
+            <>
+              <FieldRow label={m.settings.model.fields.protocolLabel}>
+                <ChoicePicker
+                  appearance="field" aria-label={m.settings.model.fields.protocolAria} value={protocol}
+                  options={COMPATIBLE_PROTOCOLS} onPick={setProtocol}
+                  label={(option) => (option === 'responses' ? 'Responses API' : 'Chat Completions API')}
+                />
+              </FieldRow>
+              <FieldRow label={m.settings.model.fields.baseUrlLabel}>
+                <FormInput appearance="field" aria-label={m.settings.model.fields.baseUrlAria} value={baseUrl}
+                  placeholder={m.settings.model.providers['openai-compatible'].baseUrlPlaceholder}
+                  onChange={(event) => setBaseUrl(event.target.value)} />
+              </FieldRow>
+              <FieldRow label={m.settings.model.fields.authLabel}>
+                <ChoicePicker
+                  appearance="field" aria-label={m.settings.model.fields.authAria} value={authentication}
+                  options={AUTHENTICATIONS} onPick={setAuthentication}
+                  label={(option) => (option === 'api-key'
+                    ? m.settings.model.fields.apiKeyLabel : m.settings.model.fields.authNoneOption)}
+                />
+              </FieldRow>
+            </>
+          ) : selectedCompatibleTemplate === null ? null : (
+            <div className="model-template-summary" aria-label={m.settings.model.templates.summaryAria}>
+              <span>{selectedCompatibleTemplate.protocolLabel} · {selectedCompatibleTemplate.authenticationLabel}</span>
+              <code>{selectedCompatibleTemplate.baseUrl}</code>
+            </div>
+          )}
+        </>
+      ) : (
+        <FieldRow label={m.settings.model.fields.protocolLabel}>
+          <span aria-label={m.settings.model.fields.protocolAria}>{selected.protocolLabel}</span>
+        </FieldRow>
+      )}
+      {compatibleTemplatePending ? null : (
+        <>
+          <FieldRow label={m.settings.model.fields.modelIdLabel}>
+            <FormInput appearance="field" aria-label={m.settings.model.fields.modelIdAria} value={model}
+              placeholder={m.settings.model.fields.modelIdLabel} onChange={(event) => setModel(event.target.value)} />
+          </FieldRow>
+          {authentication === 'api-key' ? (
+            <FieldRow label={m.settings.model.fields.apiKeyLabel}>
+              {showingSavedApiKey ? (
+                <ServiceSavedKey
+                  ariaLabel={m.settings.model.keyStored(savedProfile?.apiKeyLastFour ?? '')}
+                  lastFour={savedProfile?.apiKeyLastFour}
+                  onClick={() => setEditingApiKey(true)}
+                />
+              ) : (
+                <FormInput appearance="field" aria-label={m.settings.model.fields.apiKeyAria} type="password"
+                  value={apiKey} autoFocus={editingApiKey}
+                  autoComplete="new-password" spellCheck={false}
+                  placeholder={m.settings.model.fields.apiKeyLabel}
+                  onBlur={() => { if (apiKey === '') setEditingApiKey(false) }}
+                  onChange={(event) => {
+                    setApiKey(event.target.value)
+                    setEditingApiKey(true)
+                    setClearApiKey(false)
+                  }} />
+              )}
+            </FieldRow>
+          ) : null}
+        </>
+      )}
+    </FieldRows>
+  )
+
+  return (
+    <ServiceCard className="model-settings-card">
+      <TabbedSection
+        level="group" label={m.settings.model.tabs.label} value={tab} onChange={setTab}
+        heading={tab === 'api' ? selected.label : m.settings.model.subscriptions[cli].label}
+        actions={(
+          <ServiceStatusPill
+            configured={tab === 'api' ? savedSelection && savedProfile?.configured === true : subscriptionSaved}
+            configuredLabel={m.settings.model.configured} notConfiguredLabel={m.settings.model.notConfigured}
+          />
+        )}
+        tabs={[
+          { value: 'api', label: m.settings.model.tabs.api, content: apiPanel },
+          { value: 'subscription', label: m.settings.model.tabs.subscription, content: subscriptionPanel },
+        ]}
+      />
       <ServiceFoot>
         {connectionStatus === null ? null : (
           <ServiceConnectionStatus
@@ -387,7 +495,7 @@ export function ModelSettings() {
           />
         )}
         <ServiceActions>
-          {authentication === 'api-key' && savedKeyAvailable ? (
+          {tab === 'api' && authentication === 'api-key' && savedKeyAvailable ? (
             <ServiceClearKeyButton
               pending={clearApiKey}
               label={m.settings.model.clearKey}
@@ -405,7 +513,8 @@ export function ModelSettings() {
             onClick={() => { void testConnection() }}
           >{m.settings.model.connection.action}</Button>
           <CommitActions
-            place="foot" saving={saving} canSave={!compatibleTemplatePending} done={saved}
+            place="foot" saving={saving} done={saved}
+            canSave={tab === 'subscription' ? statusFailure === null && cliStatus?.state === 'found' : !compatibleTemplatePending}
             saveLabel={m.settings.model.save} busyLabel={m.settings.model.saving}
             onSave={() => { void save() }}
           />
@@ -413,6 +522,9 @@ export function ModelSettings() {
       </ServiceFoot>
       {settings.error === undefined ? null : (
         <ServiceError>{reasonLabel(m, settings.error)}</ServiceError>
+      )}
+      {settings.subscription.error === undefined ? null : (
+        <ServiceError>{reasonLabel(m, settings.subscription.error)}</ServiceError>
       )}
       {saveError === null ? null : <ServiceError>{saveError}</ServiceError>}
     </ServiceCard>

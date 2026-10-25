@@ -2,13 +2,13 @@ import type { AppUpdateStatus } from '../shared/app-update.js'
 import type { AppCommand, MenuState } from '../shared/app-commands.js'
 import type {
   AttachmentFields, AuthorCandidate, AuthorSearchFailed, CallRejection, ChangeEntry, ChatCancelResult,
-  ChatMessage, ChatMessageFields, ChatRun, ChatSendResult, ChatSession, ColourTheme, ColourThemeFile, ConclusionState,
-  ContractMethod, Facet, PluginVersion, SemanticKeyCheckResult, SemanticKeyStatus,
+  ChatMessage, ChatMessageFields, ChatRun, ChatSendResult, ChatSession, ChatWriting, ColourTheme, ColourThemeFile,
+  ConclusionState, ContractMethod, Facet, PluginVersion, SemanticKeyCheckResult, SemanticKeyStatus,
   DeliverySettings, DiscoveryFeedback, DiscoveryFetchResult, DiscoveryIntentAction, DiscoveryProfile,
   ExtensionStatus, FeedEntry, FeedFields,
   InboxDownloadResult, InboxEntry, InboxListParams, JobsStatus, LaterEntry, ListParams,
-  HarnessApplyPaperWikiResult, HarnessCancelResult, HarnessModelConnectionCheckResult,
-  HarnessModelSettings, HarnessModelSettingsUpdate,
+  HarnessApplyPaperWikiResult, HarnessCancelResult, HarnessCli, HarnessModelConnectionCheckResult,
+  HarnessModelSettings, HarnessModelSettingsUpdate, HarnessSubscriptionStatus, HarnessUpdateSubscriptionParams,
   HarnessPaperWikiRejectionFeedback, HarnessPendingPaperWikiResult, HarnessPlan,
   HarnessRejectPaperWikiResult, HarnessRunReceipt,
   LibraryBackup, LibraryLocation, LibraryResetResult, ListResult,
@@ -169,6 +169,11 @@ export const harness = {
     call<HarnessModelSettings>('harness.updateModelSettings', settings),
   checkModelConnection: () =>
     call<HarnessModelConnectionCheckResult>('harness.checkModelConnection', {}),
+  /** Makes a subscription CLI the model source; the API profiles stay as they are. */
+  updateSubscription: (choice: HarnessUpdateSubscriptionParams) =>
+    call<HarnessModelSettings>('harness.updateSubscription', choice),
+  /** Whether subscription CLI `cli` is installed on this machine, in which version, and how it is signed in. */
+  subscriptionStatus: (cli: HarnessCli) => call<HarnessSubscriptionStatus>('harness.subscriptionStatus', { cli }),
   /** Builds a deterministic one-time scope. Runtime budgets remain internal to Core. */
   pendingPaperWiki: (paperId: string) =>
     call<HarnessPendingPaperWikiResult>('harness.pendingPaperWiki', { paperId }),
@@ -283,6 +288,8 @@ export const chat = {
   /** Asks again for an answer to the chat's last question after its turn ended in a status line. */
   retry: (id: string) => call<ChatSendResult>('chat.retry', { id }),
   cancel: (id: string) => call<ChatCancelResult>('chat.cancel', { id }),
+  /** The answer being written in the chat, with the model writing it, or null while no turn runs there. */
+  writing: (id: string) => call<ChatWriting | null>('chat.writing', { id }),
   recordAction: (id: string, messageId: string) =>
     call<ProjectDetail>('chat.recordAction', { id, messageId }),
   setArchived: (id: string, archived: boolean) =>

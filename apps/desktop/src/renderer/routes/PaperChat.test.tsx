@@ -3,7 +3,7 @@ import { act, type ReactNode } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { EditorView } from '@codemirror/view'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { ChatMessage, ChatSendResult, JobsStatus, PaperRow } from '../../shared/contract.js'
+import type { ChatMessage, ChatSendResult, ChatWriting, JobsStatus, PaperRow } from '../../shared/contract.js'
 import { CallError } from '../call-error.js'
 import { MessagesProvider } from '../messages/useMessages.js'
 import { LANGUAGE_STORAGE_KEY } from '../shell/language.js'
@@ -24,6 +24,7 @@ const api = vi.hoisted(() => ({
     id: `chat-${paperId}`, title: 'Paper One', archived: false, messageCount: 0, paperId,
   })),
   messages: vi.fn<() => Promise<ChatMessage[]>>(() => Promise.resolve([])),
+  writing: vi.fn<(id: string) => Promise<ChatWriting | null>>(() => Promise.resolve(null)),
   createIdea: vi.fn(() => Promise.resolve({ id: 'idea-1' })),
   recordAction: vi.fn(() => Promise.reject(new Error('未在本测试调用'))),
   listProjects: vi.fn(() => Promise.resolve([{
@@ -52,9 +53,9 @@ vi.mock('../ipc.js', () => ({
   appMenu: { platform: () => 'darwin' },
   chat: {
     send: api.send, cancel: api.cancel, forPaper: api.forPaper, messages: api.messages,
-    recordAction: api.recordAction,
+    recordAction: api.recordAction, writing: api.writing,
   },
-  harness: { modelSettings: () => Promise.resolve({ configured: api.configured }) },
+  harness: { modelSettings: () => Promise.resolve({ configured: api.configured, subscription: { active: null, models: { claude: '', codex: '' } } }) },
   idea: { create: api.createIdea },
   feed: { append: api.feedAppend },
   jobs: {
@@ -158,6 +159,7 @@ describe('PaperChat', () => {
     document.body.innerHTML = ''
     vi.clearAllMocks()
     api.generating.clear()
+    api.writing.mockResolvedValue(null)
     api.configured = true
     api.writes.length = 0
     api.collapsed = false
@@ -292,6 +294,29 @@ describe('PaperChat', () => {
     await settle()
     expect(control.getAttribute('aria-label')).toBe('发送')
     expect(api.cancel).toHaveBeenCalledWith('chat-paper-1')
+    await finish()
+  })
+
+  it('一发出问题，论文对话里回答那一行就带着模型标签出现，写出字前是运行圈和「思考中…」', async () => {
+    api.writing.mockResolvedValue({ text: '', model: { route: 'api', id: 'gpt-5.5' } })
+    const finish = pendingReply()
+    const host = document.createElement('div')
+    document.body.append(host)
+    root = createRoot(host)
+    await act(async () => {
+      root!.render(withMessages(<PaperChat paper={PAPER} />))
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    type('What is the mechanism?')
+    act(() => host.querySelector<HTMLButtonElement>('.paper-chat .send')!.click())
+    await settle()
+    expect([...host.querySelectorAll('.msg.ai')].map((answer) => [
+      answer.querySelector('.msg-who')?.textContent,
+      answer.querySelector('.answer [aria-busy="true"]')?.textContent,
+      answer.querySelector('.answer .ring.spin') === null,
+    ])).toEqual([['GPT-5.5 · API', '思考中…', false]])
     await finish()
   })
 

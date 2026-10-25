@@ -145,6 +145,25 @@ export const settings = {
         baseUrlPlaceholder: 'https://api.example.com/v1',
       },
     },
+    tabs: { label: 'Model source', api: 'API', subscription: 'Subscription' },
+    subscriptions: {
+      claude: { label: 'Claude subscription' },
+      codex: { label: 'ChatGPT subscription' },
+    },
+    subscription: {
+      cliLabel: 'CLI',
+      signInLabel: 'Sign-in',
+      signInCommand: 'Sign-in command',
+      copySignIn: (name: string) => `Copy the ${name} sign-in command`,
+      otherModel: (name: string) => `Use ${name}`,
+      missing: 'Not found',
+      unsupported: 'Unsupported version',
+      signIn: {
+        subscription: 'Signed in with subscription', other: 'Not signed in with subscription', 'signed-out': 'Signed out',
+        unknown: 'Sign-in unreadable',
+      },
+      defaultModel: 'Default',
+    },
     templates: {
       chooseLabel: 'Connection template',
       chooseAria: 'Service template',
@@ -189,6 +208,7 @@ export const settings = {
       action: 'Test connection',
       testing: 'Testing…',
       connected: 'Connected · at most 1 output token',
+      connectedNoModelCall: 'Connected · no model call',
       detailLabel: 'Details',
       unexpectedDetail: 'No diagnostic message from the local Harness',
       failures: {
@@ -200,6 +220,11 @@ export const settings = {
         unavailable: 'Model service unreachable',
         provider: 'Request rejected by the model service',
         unknown: 'Connection test failed',
+        'cli-missing': 'CLI not found',
+        'cli-unsupported': 'Unsupported CLI version',
+        'cli-signed-out': 'Not signed in with subscription',
+        'cli-sign-in-unknown': 'Sign-in method unconfirmed',
+        'cli-timeout': 'Timed out',
       },
     },
   },
@@ -237,7 +262,6 @@ export const settings = {
     installCommand: 'Install command',
     copyUpdateLabel: (name: string) => `Copy the ${name} update command`,
     copyInstallLabel: (name: string) => `Copy the ${name} install command`,
-    copy: 'Copy',
     tutorial: {
       heading: 'Use Meridian with a coding agent',
       groups: [
