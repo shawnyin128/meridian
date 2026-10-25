@@ -347,7 +347,9 @@ test('项目菜单是真菜单;重命名合上菜单,把名字就地变成输入
   await input.press('Space')
   await input.press('a')
   await expect(input).toHaveValue('重上下进搁已删 a')
-  // Arrow keys and Home/End only move the caret in the input: Home then x, one right then y, End then z.
+  // Arrow keys and Home/End only move the caret in the input: Home then x, one right then y, the line's
+  // end then z. On macOS Home and End scroll instead, so ArrowUp has already put the caret at the start
+  // and ⌘→ takes it to the end.
   await input.press('ArrowDown')
   await input.press('ArrowUp')
   await input.press('Home')
@@ -355,6 +357,7 @@ test('项目菜单是真菜单;重命名合上菜单,把名字就地变成输入
   await input.press('ArrowRight')
   await input.press('y')
   await input.press('End')
+  if (process.platform === 'darwin') await input.press('Meta+ArrowRight')
   await input.press('z')
   await expect(input).toHaveValue('x重y上下进搁已删 az')
   await expect(input).toBeFocused()
