@@ -85,7 +85,7 @@
 .reading-card{border:1px solid var(--sep2);border-radius:var(--r-card);padding:var(--sp-10);background:var(--card);display:flex;flex-direction:column;gap:var(--sp-8)}
 .highlight-card{border-left:3px solid var(--mark)}
 /* The highlight selected on the page, in the selected look of rows and cards. */
-.reading-card.selected{background-color:var(--selected);color:var(--on-selected)}
+.reading-card.selected{background-color:var(--accent-soft);color:var(--accent-text)}
 .reading-page{width:max-content}
 .reading-card-head{display:flex;align-items:center;justify-content:space-between;gap:var(--sp-8)}
 .reading-actions{display:flex;align-items:center;justify-content:flex-end}
