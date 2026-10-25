@@ -41,6 +41,8 @@ export type DiscoveryOptions = {
   /** System folders a package manager installs commands into. */
   systemFolders?: readonly string[]
   platform?: NodeJS.Platform
+  /** How long each command discovery runs the CLI with (version, help, sign-in status) may take; 10 s by default. */
+  probeTimeoutMs?: number
 }
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -147,7 +149,7 @@ export async function discoverCli(cli: HarnessCli, options: DiscoveryOptions = {
   const env = cliEnvironment(options.environment ?? process.env, binary)
   return inTemporaryFolder(async (folder) => {
     const probe = (args: string[]) => runChild(binary, args, {
-      cwd: folder, env, timeoutMs: PROBE_TIMEOUT_MS,
+      cwd: folder, env, timeoutMs: options.probeTimeoutMs ?? PROBE_TIMEOUT_MS,
       ...(options.platform === undefined ? {} : { platform: options.platform }),
     })
     const version = /\b\d+\.\d+\.\d+\b/.exec((await probe(['--version'])).stdout)?.[0] ?? null
@@ -170,7 +172,7 @@ export async function checkCliConnection(
   options: DiscoveryOptions & { onLog?: (line: string) => void } = {},
 ): Promise<HarnessModelConnectionCheckResult> {
   let version: string | null = null
-  const failed = (reason: 'cli-missing' | 'cli-unsupported' | 'cli-signed-out' | 'timeout', detail: string) => ({
+  const failed = (reason: 'cli-missing' | 'cli-unsupported' | 'cli-signed-out' | 'cli-timeout', detail: string) => ({
     state: 'failed' as const, reason, detail, ...(version === null ? {} : { version }),
     modelCalls: 0 as const, maxOutputTokens: 1 as const,
   })
@@ -179,7 +181,7 @@ export async function checkCliConnection(
     found = await discoverCli(cli, options)
   } catch (cause) {
     if (!(cause instanceof CliRunError)) throw cause
-    return failed(cause.kind === 'timeout' ? 'timeout' : 'cli-missing', cause.message)
+    return failed(cause.kind === 'timeout' ? 'cli-timeout' : 'cli-missing', cause.message)
   }
   if (found.installed) version = found.version
   const ready = readiness(found)

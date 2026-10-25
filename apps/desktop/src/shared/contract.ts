@@ -626,12 +626,13 @@ export const NetFailureSchema = z.enum(['unavailable', 'timeout', 'rate-limit', 
  * busy, data a newer App wrote, a key the system credential store could not save or read back, no
  * model set up, a generation the user stopped, a failed model call, a subscription CLI that is not
  * installed, lacks options Meridian runs it with or is not signed in with the subscription, a plan
- * whose usage limit is reached, model output that failed validation, or anything else.
+ * whose usage limit is reached, a CLI that ran past its time, model output that failed validation,
+ * or anything else.
  */
 export const CallFailureSchema = z.enum([
   ...NetFailureSchema.options, 'not-pdf', 'write', 'not-found', 'refused', 'changed', 'newer-changes', 'in-use',
   'invalid', 'not-library', 'busy', 'newer-version', 'key-unsaved', 'key-unreadable', 'no-model', 'cancelled',
-  'model', 'cli-missing', 'cli-unsupported', 'cli-signed-out', 'usage-limit', 'malformed-output',
+  'model', 'cli-missing', 'cli-unsupported', 'cli-signed-out', 'usage-limit', 'cli-timeout', 'malformed-output',
 ])
 
 /** What a rejected call carries across the process boundary instead of Core's error. */
@@ -946,6 +947,7 @@ export const HarnessModelConnectionFailureSchema = z.enum([
   'cli-missing',
   'cli-unsupported',
   'cli-signed-out',
+  'cli-timeout',
 ])
 
 const CliVersionSchema = z.string().trim().min(1).max(100)

@@ -28,7 +28,7 @@ export const CLI_CALL_FAILURES = {
   unsupported: 'cli-unsupported',
   'signed-out': 'cli-signed-out',
   'usage-limit': 'usage-limit',
-  timeout: 'timeout',
+  timeout: 'cli-timeout',
   cancelled: 'cancelled',
   failed: 'model',
 } as const satisfies Record<CliFailureKind, CallFailure>

@@ -212,6 +212,7 @@ export const settings = {
         'cli-missing': '没有找到 CLI',
         'cli-unsupported': 'CLI 版本不受支持',
         'cli-signed-out': '未用订阅登录',
+        'cli-timeout': '运行超时',
       },
     },
   },

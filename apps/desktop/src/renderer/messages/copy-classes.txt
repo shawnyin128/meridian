@@ -91,6 +91,7 @@ common.failure.reasons.cancelled failure
 common.failure.reasons.changed failure
 common.failure.reasons.cli-missing failure
 common.failure.reasons.cli-signed-out failure
+common.failure.reasons.cli-timeout failure
 common.failure.reasons.cli-unsupported failure
 common.failure.reasons.in-use failure
 common.failure.reasons.invalid failure
@@ -758,6 +759,7 @@ settings.model.connection.detailLabel label
 settings.model.connection.failures.authentication failure
 settings.model.connection.failures.cli-missing failure
 settings.model.connection.failures.cli-signed-out failure
+settings.model.connection.failures.cli-timeout failure
 settings.model.connection.failures.cli-unsupported failure
 settings.model.connection.failures.configuration failure
 settings.model.connection.failures.model-or-endpoint failure

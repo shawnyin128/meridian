@@ -1,7 +1,7 @@
 import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { checkCliConnection, discoverCli, resolveCliBinary } from './discovery.js'
 import { runnerFlags } from './runner.js'
 
@@ -172,6 +172,21 @@ describe('subscription CLI discovery', () => {
     })
     expect(signedIn.calls().map((call) => call.argv)).toEqual([['--version'], ['--help'], ['auth', 'status', '--json']])
   })
+
+  it('fails the check of a CLI that does not answer in time as a CLI timeout, and ends it', async () => {
+    const slow = machine()
+    const pidFile = join(slow.root, 'pid')
+    executable(join(slow.home, '.local', 'bin', 'claude'), `#!${process.execPath}
+require('node:fs').writeFileSync(${JSON.stringify(pidFile)}, String(process.pid))
+setInterval(() => {}, 1000)
+`)
+
+    await expect(checkCliConnection('claude', { ...slow.options, probeTimeoutMs: 300 })).resolves.toMatchObject({
+      state: 'failed', reason: 'cli-timeout', modelCalls: 0,
+    })
+    const pid = Number(readFileSync(pidFile, 'utf8'))
+    await vi.waitFor(() => expect(() => process.kill(pid, 0)).toThrow())
+  }, 20_000)
 
   it('on Windows finds codex as an npm .cmd shim on PATH or in %APPDATA%\\npm, an .exe first, and claude only as an .exe', async () => {
     const { root, options } = machine()
