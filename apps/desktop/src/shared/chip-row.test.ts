@@ -8,7 +8,9 @@ import { rendererFiles, screenViolations } from '../../../../scripts/check-scree
 /** The parts of the jsdom window this test reads; the tsconfig of shared code carries no DOM types. */
 type Window = {
   document: { head: { innerHTML: string }; body: { innerHTML: string }; querySelector(selector: string): object }
-  getComputedStyle(element: object): { cursor: string; marginRight: string; display: string; flexWrap: string; paddingLeft: string }
+  getComputedStyle(element: object): {
+    cursor: string; marginRight: string; display: string; flexWrap: string; paddingLeft: string; verticalAlign: string
+  }
 }
 const { document, getComputedStyle } = globalThis as unknown as Window
 
@@ -41,6 +43,12 @@ describe('chip 行', () => {
       + '<button type="button" class="tag tag--chip tag--neutral tagchip link">推测解码</button></div>'
     expect(['plain', 'page', 'url', 'link'].map((name) => getComputedStyle(document.querySelector(`.${name}`)).cursor))
       .toEqual(['default', 'pointer', 'pointer', 'pointer'])
+  })
+
+  it('散排的 chip 后面的 ＋ 和 chip 顶对顶排在一行:它没有字,不拿加号的底边去对 chip 里字的基线', () => {
+    document.body.innerHTML = '<span class="metadata-field"><span class="tag tag--chip tag--neutral tagchip">KV 量化</span>'
+      + '<button type="button" class="add-action add-action-icon add-action-chip tagchip tagadd" aria-label="添加领域"><svg></svg></button></span>'
+    expect(getComputedStyle(document.querySelector('.tagadd')).verticalAlign).toBe('top')
   })
 
   it('chip 的名字是它的按钮,按钮自己不画边框、底色和内边距', () => {
