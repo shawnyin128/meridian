@@ -75,7 +75,7 @@ describe('占位文字和要再问一步的命令', () => {
   const placeholder = (path: string) => /(^|\.)(placeholder|[a-z]+Placeholder|[a-z]+Pick)$/.test(path)
   // The commands that open a file dialog, a dialog or an editor before they act, as #500 lists them.
   const ASKING = [
-    'papers.upload.importAction', 'common.field.chooseDirectory', 'research.list.rename', 'settings.storage.chooseAction',
+    'papers.upload.importAction', 'common.field.chooseDirectory', 'settings.storage.chooseAction',
     'project.identity.changeWorkspace', 'project.workspace.chooseLocal', 'project.attachments.addTitle',
     'wiki.claims.revise', 'wiki.claims.markConflict', 'settings.appearance.editor.edit',
   ]
