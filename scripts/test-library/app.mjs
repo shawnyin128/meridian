@@ -65,8 +65,9 @@ const appArgs = (out) => [`--user-data-dir=${join(out, 'user-data')}`, '--lang=z
 
 /**
  * Launches `app` isolated on test library `out`, runs `steps` with `call(method, params)`, which
- * calls Core through `window.meridian.call`, and closes the App. Rejects with an Error naming the
- * method and the reason Core gave when a call fails; Core logs its own text to the App's stdout.
+ * calls Core through `window.meridian.call`, the window and the launched ElectronApplication, and
+ * closes the App. Rejects with an Error naming the method and the reason Core gave when a call
+ * fails; Core logs its own text to the App's stdout.
  */
 export async function session(out, app, options, steps) {
   const target = appTarget(app)
@@ -83,7 +84,7 @@ export async function session(out, app, options, steps) {
     const call = (method, params = {}) => win.evaluate(([m, p]) => window.meridian.call(m, p).catch((rejected) => {
       throw new Error(`${m}: ${JSON.stringify(rejected)}`)
     }), [method, params])
-    return await steps(call, win)
+    return await steps(call, win, launched)
   } finally {
     await launched.close()
   }
