@@ -1,10 +1,12 @@
 import { createHash } from 'node:crypto'
-import { existsSync, globSync, mkdirSync, readFileSync } from 'node:fs'
+import { existsSync, globSync, mkdirSync, readdirSync, readFileSync, rmdirSync, rmSync } from 'node:fs'
 import { homedir } from 'node:os'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
 import { z } from 'zod'
 import { type HarnessCli, type HarnessCliModel, HarnessCliSchema } from '../../../shared/contract.js'
 import { writeJson } from '../../vault/writer.js'
+import { cliEnvironment, inTemporaryFolder, runChild, stderrExcerpt } from './child.js'
+import { resolveCliBinary } from './discovery.js'
 
 /** A session id as both CLIs write one: a UUID, which nothing in a file name pattern can mistake. */
 const SessionIdSchema = z.string().regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)
@@ -32,6 +34,7 @@ const CliChatRecordSchema = z.looseObject({
   resumable: ResumableRecordSchema.nullable(),
 })
 const SessionsFileSchema = z.looseObject({ chats: z.array(z.unknown()) })
+const DELETE_TIMEOUT_MS = 30_000
 
 type CliChatRecord = z.infer<typeof CliChatRecordSchema>
 export type ResumableSession = z.infer<typeof ResumableRecordSchema>
@@ -44,14 +47,16 @@ const folderName = (vault: string, chat: string) =>
  * The CLI sessions of the chats of the vault at `vault`, kept in `root`/sessions.json, machine-local
  * state outside the vault. Each chat's CLI runs in a folder of its own under `root`. The CLIs keep
  * their session files in their own homes, `CLAUDE_CONFIG_DIR` or ~/.claude and `CODEX_HOME` or
- * ~/.codex as `environment` sets them; Core only looks for a file named by a session's id. A record
- * that cannot be read is reported to `onLog`, skipped, and written back as it was.
+ * ~/.codex as `environment` sets them; Core only looks for, and deletes, a file named by a session's
+ * id, and has Codex delete its own sessions with the `codex` that `binary` finds. A record that
+ * cannot be read is reported to `onLog`, skipped, and written back as it was.
  */
 export function openCliChatSessions(options: {
   root: string
   vault: string
   environment?: NodeJS.ProcessEnv
   home?: string
+  binary?: (cli: HarnessCli) => Promise<string | null>
   onLog?: (line: string) => void
 }) {
   const file = join(options.root, 'sessions.json')
@@ -83,14 +88,17 @@ export function openCliChatSessions(options: {
     const at = indexOf(chat)
     return at < 0 ? null : CliChatRecordSchema.parse(stored[at])
   }
+  const save = () => {
+    mkdirSync(options.root, { recursive: true })
+    writeJson(file, { chats: stored }, join(options.root, '.tmp'))
+  }
   const change = (chat: string, next: (record: CliChatRecord) => CliChatRecord) => {
     const at = indexOf(chat)
     const record = next(at < 0
       ? { vault: options.vault, chat, sessions: [], resumable: null }
       : CliChatRecordSchema.parse(stored[at]))
     stored = at < 0 ? [...stored, record] : stored.map((held, index) => (index === at ? record : held))
-    mkdirSync(options.root, { recursive: true })
-    writeJson(file, { chats: stored }, join(options.root, '.tmp'))
+    save()
   }
   const withSession = (record: CliChatRecord, cli: HarnessCli, id: string): CliChatRecord =>
     record.sessions.some((session) => session.cli === cli && session.id === id)
@@ -100,6 +108,31 @@ export function openCliChatSessions(options: {
     if (SessionIdSchema.safeParse(id).success) return true
     options.onLog?.(`a CLI session id that is not a UUID is not kept: ${JSON.stringify(id.slice(0, 80))}`)
     return false
+  }
+  /**
+   * Deletes session `id` of `cli` and nothing else: Claude's file and folder named by the id, and the
+   * project folder that leaves empty; for Codex, `codex delete`, then any session file still named by
+   * the id.
+   */
+  const deleteSession = async (cli: HarnessCli, id: string) => {
+    if (cli === 'claude') {
+      const projects = join(claudeHome, 'projects')
+      const found = globSync([`*/${id}.jsonl`, `*/${id}`], { cwd: projects }).map((path) => join(projects, path))
+      for (const path of found) rmSync(path, { recursive: true, force: true })
+      for (const folder of new Set(found.map((path) => dirname(path)))) {
+        if (readdirSync(folder).length === 0) rmdirSync(folder)
+      }
+      return
+    }
+    const binary = await (options.binary ?? resolveCliBinary)('codex')
+    if (binary !== null) {
+      const { code, stderr } = await inTemporaryFolder((folder) => runChild(binary, ['delete', '--force', id], {
+        cwd: folder, env: cliEnvironment(environment, binary), timeoutMs: DELETE_TIMEOUT_MS,
+      }))
+      if (code !== 0) options.onLog?.(`codex delete ${id} exited with ${String(code)}: ${stderrExcerpt(stderr)}`)
+    }
+    const sessions = join(codexHome, 'sessions')
+    for (const path of globSync(`**/*${id}*.jsonl`, { cwd: sessions })) rmSync(join(sessions, path), { force: true })
   }
   /** Whether `cli` still keeps a file of session `id`, as it does until the session expires. */
   const sessionKept = (cli: HarnessCli, id: string) => (cli === 'claude'
@@ -146,6 +179,30 @@ export function openCliChatSessions(options: {
     /** Makes `session`, which holds the turns `session.history` fingerprints, the one chat `chat`'s next turn resumes. */
     keep(chat: string, session: ResumableSession) {
       if (validId(session.id)) change(chat, (record) => ({ ...withSession(record, session.cli, session.id), resumable: session }))
+    },
+    /**
+     * Deletes the CLI sessions of every chat of the vault that `kept` does not name, then the chat's
+     * folder and its record. A chat whose sessions cannot all be deleted keeps its record for the
+     * next time; why goes to `onLog`.
+     */
+    async prune(kept: ReadonlySet<string>): Promise<void> {
+      const gone = stored.flatMap((record) => {
+        const parsed = CliChatRecordSchema.safeParse(record)
+        return parsed.success && parsed.data.vault === options.vault && !kept.has(parsed.data.chat) ? [parsed.data] : []
+      })
+      for (const record of gone) {
+        try {
+          for (const session of record.sessions) await deleteSession(session.cli, session.id)
+          rmSync(join(options.root, folderName(options.vault, record.chat)), { recursive: true, force: true })
+        } catch (cause) {
+          options.onLog?.(`chat ${record.chat}: its CLI sessions could not be deleted: ${cause instanceof Error ? cause.message : String(cause)}`)
+          continue
+        }
+        const at = indexOf(record.chat)
+        stored = stored.filter((_, index) => index !== at)
+        save()
+        options.onLog?.(`chat ${record.chat}: deleted its ${record.sessions.length} CLI sessions`)
+      }
     },
   }
 }

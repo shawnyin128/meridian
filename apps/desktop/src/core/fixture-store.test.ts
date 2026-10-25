@@ -354,6 +354,17 @@ describe('fixture store', () => {
     expect(movable.listPapers({ page: 1, size: 1 }).total).toBe(291)
   })
 
+  it('keeps the id of every chat it holds and of each one in the trash, until the trash lets it go', () => {
+    const { store: movable, advance } = movableStore()
+    const reading = movable.chatForPaper(movable.listPapers({ page: 1, size: 1 }).rows[0]!.id).id
+    movable.deleteChat('widthknee')
+    advance(8)
+    movable.deleteChat('amortize')
+    expect(movable.chatIds().sort()).toEqual(['amortize', reading].sort())
+    movable.clearTrash()
+    expect(movable.chatIds()).toEqual([reading])
+  })
+
   it('过了保留期的那一条清掉,没到期的留下', () => {
     const { store: movable, advance } = movableStore()
     const [old, fresh] = movable.listPapers({ page: 1, size: 2 }).rows

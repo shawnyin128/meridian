@@ -2331,6 +2331,29 @@ describe('vault store on the aggregation layout', () => {
       }
       expect(createVaultStore(vault, () => day).listChats()).toEqual([])
     })
+
+    it('keeps the id of every chat it holds, a paper\'s empty one and the trashed ones included, until the trash lets them go', () => {
+      let day = '2026-09-10'
+      const dated = createVaultStore(vault, () => day)
+      const listed = dated.createChat('留着的', true).id
+      const reading = dated.chatForPaper(PAPER).id
+      const trashed = (title: string) => {
+        const chat = dated.createChat(title, true)
+        dated.deleteChat(chat.id)
+        return { chat: chat.id, entry: dated.listTrash()[0]!.id }
+      }
+      const purged = trashed('彻底删的')
+      const expired = trashed('过期的')
+      day = '2026-09-12'
+      const cleared = trashed('清空的')
+      dated.purgeTrash(purged.entry)
+      expect(dated.chatIds().sort()).toEqual([listed, reading, expired.chat, cleared.chat].sort())
+
+      day = '2026-09-17'
+      expect(createVaultStore(vault, () => day).chatIds().sort()).toEqual([listed, reading, cleared.chat].sort())
+      dated.clearTrash()
+      expect(dated.chatIds().sort()).toEqual([listed, reading].sort())
+    })
   })
 
   it('记入科研记录:写进项目、把按钮记成已记,再记一次就抛,重开库仍是已记', () => {

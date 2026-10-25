@@ -247,6 +247,17 @@ const paperWikiHarness = vaultRoot === undefined ? null : createPaperWikiHarness
   cli: cliRunner,
   onLog: (line) => console.error(`[harness] ${line}`),
 })
+const chatSessions = openCliChatSessions({
+  root: join(userData, 'cli-chats'), vault: locationRoot, onLog: (line) => console.error(`[harness] ${line}`),
+})
+/** Deletes the CLI sessions of the chats the vault no longer keeps; the trash keeps its chats' sessions. */
+const pruneChatSessions = (): void => {
+  if (openError !== null) return
+  void chatSessions.prune(new Set(store.chatIds())).catch((cause: unknown) => {
+    console.error(`[harness] 对话的 CLI 会话没能删掉：${cause instanceof Error ? cause.message : String(cause)}`)
+  })
+}
+pruneChatSessions()
 // Chat is always an explicit user action, so a configured model also works with the
 // in-memory fixture library used for product review. It never creates background cost.
 const chatHarness = createChatHarnessRunner({
@@ -254,9 +265,7 @@ const chatHarness = createChatHarnessRunner({
   model: harnessModel,
   checkCli: (cli) => checkCliConnection(cli, { onLog: (line) => console.error(`[harness] ${line}`) }),
   cli: createCliChatRunner({ binary: (cli) => resolveCliBinary(cli) }),
-  sessions: openCliChatSessions({
-    root: join(userData, 'cli-chats'), vault: locationRoot, onLog: (line) => console.error(`[harness] ${line}`),
-  }),
+  sessions: chatSessions,
   onLog: (line) => console.error(`[harness] ${line}`),
 })
 const chatService = createChatService({ store, model: harnessModel, runner: chatHarness })
@@ -821,13 +830,20 @@ registerHandler('wiki.update', (params) => {
 })
 registerHandler('trash.list', (params) => {
   EmptyParamsSchema.parse(params)
-  return store.listTrash()
+  const listed = store.listTrash()
+  // Listing drops the entries whose retention has run out.
+  pruneChatSessions()
+  return listed
 })
 registerHandler('trash.restore', (params) => store.restoreTrash(TrashRestoreParamsSchema.parse(params).id))
-registerHandler('trash.purge', (params) => store.purgeTrash(TrashPurgeParamsSchema.parse(params).id))
+registerHandler('trash.purge', (params) => {
+  store.purgeTrash(TrashPurgeParamsSchema.parse(params).id)
+  pruneChatSessions()
+})
 registerHandler('trash.clear', (params) => {
   EmptyParamsSchema.parse(params)
   store.clearTrash()
+  pruneChatSessions()
 })
 registerHandler('changelog.list', (params) => {
   EmptyParamsSchema.parse(params)

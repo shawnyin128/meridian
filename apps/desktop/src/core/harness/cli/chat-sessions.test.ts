@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { chmodSync, existsSync, globSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
@@ -13,22 +13,42 @@ afterEach(() => {
   for (const folder of folders.splice(0)) rmSync(folder, { recursive: true, force: true })
 })
 
-/** A user-data folder and the CLIs' homes, all temporary, and a way to write the session files a CLI keeps. */
+/** A stand-in `codex` that records the arguments of each call to the file `STAND_IN_RECORD` names. */
+const CODEX = `#!${process.execPath}
+require('node:fs').appendFileSync(process.env.STAND_IN_RECORD, JSON.stringify(process.argv.slice(2)) + '\\n')
+`
+
+/**
+ * A user-data folder, the CLIs' homes and a stand-in `codex`, all temporary, and a way to write the
+ * session files a CLI keeps.
+ */
 function machine() {
   const root = mkdtempSync(join(tmpdir(), 'meridian-chat-sessions-test-'))
   folders.push(root)
-  const environment = { CLAUDE_CONFIG_DIR: join(root, 'claude-home'), CODEX_HOME: join(root, 'codex-home') }
+  const record = join(root, 'codex-calls.jsonl')
+  const environment = {
+    CLAUDE_CONFIG_DIR: join(root, 'claude-home'), CODEX_HOME: join(root, 'codex-home'), PATH: '/usr/bin:/bin',
+    STAND_IN_RECORD: record,
+  }
+  writeFileSync(join(root, 'codex'), CODEX)
+  chmodSync(join(root, 'codex'), 0o755)
   const logs: string[] = []
   const open = (vault = '/vaults/research') => openCliChatSessions({
-    root: join(root, 'user-data', 'cli-chats'), vault, environment, home: join(root, 'home'), onLog: (line) => logs.push(line),
+    root: join(root, 'user-data', 'cli-chats'), vault, environment, home: join(root, 'home'),
+    binary: async (cli) => (cli === 'codex' ? join(root, 'codex') : null), onLog: (line) => logs.push(line),
   })
+  const codexCalls = (): string[][] => (existsSync(record)
+    ? readFileSync(record, 'utf8').split('\n').filter((line) => line !== '').map((line) => JSON.parse(line) as string[])
+    : [])
   const touch = (path: string) => {
     mkdirSync(dirname(path), { recursive: true })
     writeFileSync(path, '{}\n')
   }
   const claudeFile = (id: string) => join(environment.CLAUDE_CONFIG_DIR, 'projects', '-chat-folder', `${id}.jsonl`)
   const codexFile = (id: string) => join(environment.CODEX_HOME, 'sessions', '2026', '10', '25', `rollout-2026-10-25T17-00-00-${id}.jsonl`)
-  return { root, open, touch, claudeFile, codexFile, logs, file: join(root, 'user-data', 'cli-chats', 'sessions.json') }
+  return {
+    root, open, touch, claudeFile, codexFile, logs, codexCalls, file: join(root, 'user-data', 'cli-chats', 'sessions.json'),
+  }
 }
 
 describe('the CLI sessions of a chat', () => {
@@ -130,5 +150,71 @@ describe('the CLI sessions of a chat', () => {
     expect(open().folder('chat-3')).toBe(here)
     expect(open().folder('chat-4')).not.toBe(here)
     expect(open('/vaults/other').folder('chat-3')).not.toBe(here)
+  })
+})
+
+describe('deleting the CLI sessions of chats the vault no longer keeps', () => {
+  const GONE_CLAUDE = 'd0e896e3-91f5-4e51-b7aa-ed732d49b2b8'
+  const GONE_CODEX = '01a174d3-3d3a-7520-a05c-0ab572609305'
+
+  it('deletes each of their sessions by its id and nothing else, then their folders and records', async () => {
+    const { open, touch, claudeFile, codexFile, root, codexCalls, file, logs } = machine()
+    open('/vaults/other').keep('chat-2', { cli: 'claude', id: CLAUDE_SESSION, history: 'turns-1' })
+    const sessions = open()
+    sessions.keep('chat-1', { cli: 'claude', id: CLAUDE_SESSION, history: 'turns-1' })
+    sessions.begin('chat-2', 'claude', GONE_CLAUDE)
+    sessions.started('chat-2', 'codex', GONE_CODEX)
+    const goneFolder = sessions.folder('chat-2')
+    const keptFolder = sessions.folder('chat-1')
+    const claudeProjects = join(root, 'claude-home', 'projects')
+    touch(claudeFile(CLAUDE_SESSION))
+    touch(claudeFile(GONE_CLAUDE))
+    touch(join(claudeProjects, '-chat-folder', GONE_CLAUDE, 'subagents', 'agent-1.jsonl'))
+    touch(join(claudeProjects, '-other-folder', `${GONE_CLAUDE}.jsonl`))
+    touch(join(claudeProjects, '-other-folder', 'notes.jsonl'))
+    touch(join(claudeProjects, '-chat-folder', `${GONE_CLAUDE}-copy.jsonl`))
+    touch(codexFile(GONE_CODEX))
+    touch(codexFile(CODEX_SESSION))
+
+    await sessions.prune(new Set(['chat-1']))
+
+    expect(globSync('**/*', { cwd: join(root, 'claude-home') }).sort()).toEqual([
+      'projects', 'projects/-chat-folder', `projects/-chat-folder/${CLAUDE_SESSION}.jsonl`,
+      `projects/-chat-folder/${GONE_CLAUDE}-copy.jsonl`, 'projects/-other-folder', 'projects/-other-folder/notes.jsonl',
+    ].sort())
+    expect(globSync('**/*.jsonl', { cwd: join(root, 'codex-home') })).toEqual([
+      `sessions/2026/10/25/rollout-2026-10-25T17-00-00-${CODEX_SESSION}.jsonl`,
+    ])
+    expect(codexCalls()).toEqual([['delete', '--force', GONE_CODEX]])
+    expect(existsSync(goneFolder)).toBe(false)
+    expect(existsSync(keptFolder)).toBe(true)
+    expect(JSON.parse(readFileSync(file, 'utf8')).chats.map((chat: { vault: string; chat: string }) => [chat.vault, chat.chat]))
+      .toEqual([['/vaults/other', 'chat-2'], ['/vaults/research', 'chat-1']])
+    expect(logs).toContain('chat chat-2: deleted its 2 CLI sessions')
+  })
+
+  it('removes a Claude project folder its sessions leave empty', async () => {
+    const { open, touch, root } = machine()
+    const sessions = open()
+    sessions.begin('chat-2', 'claude', GONE_CLAUDE)
+    touch(join(root, 'claude-home', 'projects', '-chat-two', `${GONE_CLAUDE}.jsonl`))
+
+    await sessions.prune(new Set())
+
+    expect(existsSync(join(root, 'claude-home', 'projects', '-chat-two'))).toBe(false)
+    expect(existsSync(join(root, 'claude-home', 'projects'))).toBe(true)
+  })
+
+  it('keeps the sessions of every chat the vault keeps, and of a chat it never ran', async () => {
+    const { open, touch, claudeFile, file } = machine()
+    const sessions = open()
+    sessions.keep('chat-1', { cli: 'claude', id: CLAUDE_SESSION, history: 'turns-1' })
+    touch(claudeFile(CLAUDE_SESSION))
+    const before = readFileSync(file, 'utf8')
+
+    await sessions.prune(new Set(['chat-1', 'chat-7']))
+
+    expect(existsSync(claudeFile(CLAUDE_SESSION))).toBe(true)
+    expect(readFileSync(file, 'utf8')).toBe(before)
   })
 })

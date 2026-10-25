@@ -192,7 +192,8 @@ const CLI_MODEL: HarnessRuntimeModel = { source: 'cli', cli: 'claude', model: 'o
  * Stand-in `claude` and `codex` that keep sessions the way the real CLIs do: one file per session,
  * named by its id, under the folder `CLAUDE_CONFIG_DIR` or `CODEX_HOME` names. A turn that resumes a
  * session whose file is gone fails as the CLI does. Each answers `Answer <n>`, n counting the turns
- * its session holds, streams it, and records what it saw.
+ * its session holds, streams it, and records what it saw; `codex delete --force <id>` deletes the
+ * session's file.
  */
 const SESSION_CLI = `#!${process.execPath}
 const fs = require('node:fs')
@@ -205,6 +206,13 @@ let stdin = ''
 process.stdin.setEncoding('utf8')
 process.stdin.on('data', (chunk) => { stdin += chunk })
 process.stdin.on('end', () => {
+  if (argv[0] === 'delete') {
+    const sessions = path.join(process.env.CODEX_HOME, 'sessions', '2026', '10', '25')
+    for (const name of fs.existsSync(sessions) ? fs.readdirSync(sessions) : []) {
+      if (name.includes(argv[2])) fs.rmSync(path.join(sessions, name))
+    }
+    return
+  }
   fs.appendFileSync(process.env.STAND_IN_RECORD, JSON.stringify({ argv, stdin, cwd: process.cwd() }) + '\\n')
   const claude = path.basename(process.argv[1]) === 'claude'
   const resume = claude ? (argv.includes('--resume') ? after('--resume') : undefined) : (argv[1] === 'resume' ? argv.at(-2) : undefined)
@@ -265,12 +273,14 @@ function sessionChat(initial: HarnessRuntimeModel) {
     planModel: () => ({ provider: 'Claude', name: 'opus', configured: true, billable: false }),
   } as unknown as HarnessModelConfig
   const child = new FakeHarness()
+  const sessions = openCliChatSessions({
+    root: join(root, 'user-data', 'cli-chats'), vault: '/vaults/research', environment,
+    binary: async (cli) => join(bin, cli), onLog: (line) => logs.push(line),
+  })
   const runner = createChatHarnessRunner({
     store, model, checkCli: async () => ({ state: 'connected', modelCalls: 0, maxOutputTokens: 1 }),
     cli: createCliChatRunner({ binary: async (cli) => join(bin, cli), environment }),
-    sessions: openCliChatSessions({
-      root: join(root, 'user-data', 'cli-chats'), vault: '/vaults/research', environment, onLog: (line) => logs.push(line),
-    }),
+    sessions,
     launch: () => child,
     onLog: (line) => logs.push(line),
   })
@@ -298,7 +308,9 @@ function sessionChat(initial: HarnessRuntimeModel) {
     runner.close()
     rmSync(root, { recursive: true, force: true })
   }
-  return { store, chat, state, send, retry, seen, sessionFiles, logs, root, environment, close }
+  /** Deletes the CLI sessions of the chats the vault no longer keeps, the way Core does after the trash changes. */
+  const prune = () => sessions.prune(new Set(store.chatIds()))
+  return { store, chat, state, send, retry, seen, sessionFiles, logs, root, environment, close, prune }
 }
 
 const sessionOf = (turn: SeenTurn) => (turn.argv.includes('--resume') ? turn.argv[turn.argv.indexOf('--resume') + 1]
@@ -527,4 +539,32 @@ describe('a chat on a subscription CLI keeps a CLI session', () => {
       chat.close()
     }
   })
+})
+
+describe('deleting a chat on a subscription CLI', () => {
+  for (const cli of ['claude', 'codex'] as const) {
+    it(`keeps its ${cli} session while it is in the trash, resumes it once restored, and deletes it once purged`, async () => {
+      const chat = sessionChat({ source: 'cli', cli })
+      try {
+        await chat.send('What is EAGLE?')
+        const [first] = chat.seen()
+        chat.store.deleteChat(chat.chat)
+        await chat.prune()
+        expect(chat.sessionFiles()).toHaveLength(1)
+
+        chat.store.restoreTrash(chat.store.listTrash()[0]!.id)
+        await chat.send('And its speedup?')
+        expect(resumes(chat.seen()[1]!)).toBe(true)
+
+        chat.store.deleteChat(chat.chat)
+        chat.store.purgeTrash(chat.store.listTrash()[0]!.id)
+        await chat.prune()
+        expect(chat.sessionFiles()).toEqual([])
+        expect(existsSync(first!.cwd)).toBe(false)
+        expect(chat.logs).toContain(`chat ${chat.chat}: deleted its 1 CLI sessions`)
+      } finally {
+        chat.close()
+      }
+    })
+  }
 })
