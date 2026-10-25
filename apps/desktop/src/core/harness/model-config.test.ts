@@ -259,7 +259,9 @@ describe('subscription choice', () => {
       subscription: { active: 'claude', models: { claude: '', codex: '' } },
     })
     expect(await config.runtime()).toEqual({ source: 'cli', cli: 'claude' })
-    expect(config.planModel()).toEqual({ provider: 'Claude 订阅', name: '默认模型', configured: true, billable: false })
+    expect(config.planModel()).toEqual({
+      provider: 'Claude 订阅', name: '默认模型', configured: true, billable: false, cli: 'claude',
+    })
 
     const reopened = await createHarnessModelConfig(root, credentialVault())
     expect(reopened.settings().subscription).toEqual({ active: 'claude', models: { claude: '', codex: '' } })
@@ -274,7 +276,7 @@ describe('subscription choice', () => {
 
     expect(saved.subscription).toEqual({ active: 'codex', models: { claude: 'opus', codex: 'gpt-5-codex' } })
     expect(await config.runtime()).toEqual({ source: 'cli', cli: 'codex', model: 'gpt-5-codex' })
-    expect(config.planModel()).toMatchObject({ provider: 'ChatGPT 订阅', name: 'gpt-5-codex', configured: true })
+    expect(config.planModel()).toMatchObject({ provider: 'ChatGPT 订阅', name: 'gpt-5-codex', configured: true, cli: 'codex' })
   })
 
   it('makes a saved API profile the model source again and keeps each CLI its model', async () => {
@@ -287,6 +289,7 @@ describe('subscription choice', () => {
     expect(saved.subscription).toEqual({ active: null, models: { claude: '', codex: 'gpt-5-codex' } })
     expect(await config.runtime()).toMatchObject({ provider: 'anthropic', apiKey: 'anthropic-secret' })
     expect(config.planModel()).toMatchObject({ provider: 'Anthropic', name: 'claude-api' })
+    expect(config.planModel()).not.toHaveProperty('cli')
     expect((await createHarnessModelConfig(root, credentialVault())).settings().subscription.active).toBeNull()
   })
 

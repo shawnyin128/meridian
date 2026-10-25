@@ -637,6 +637,9 @@ export const CallFailureSchema = z.enum([
 /** What a rejected call carries across the process boundary instead of Core's error. */
 export const CallRejectionSchema = z.object({ reason: CallFailureSchema }).strict()
 
+/** The subscription CLIs a model call can run on: Claude Code (`claude`) and Codex CLI (`codex`). */
+export const HarnessCliSchema = z.enum(['claude', 'codex'])
+
 /**
  * A cost-bearing Harness action. Core prepares this plan without a model call; the renderer must
  * show its exact scope and selected model before it can exchange the one-time plan for a run.
@@ -659,11 +662,13 @@ export const HarnessPlanSchema = z.object({
     hasRemark: z.boolean(),
     existingWikiChars: z.number().int().min(0),
   }).strict(),
+  /** `cli` names the subscription CLI a run on the user's plan runs on, instead of an API. */
   model: z.object({
     provider: z.string().min(1),
     name: z.string().min(1),
     configured: z.boolean(),
     billable: z.boolean(),
+    cli: HarnessCliSchema.optional(),
   }).strict(),
   expiresAt: IsoTimestamp,
 }).strict()
@@ -860,9 +865,6 @@ export const HarnessModelProtocolSchema = z.enum([
   'messages',
   'generate-content',
 ])
-
-/** The subscription CLIs a model call can run on: Claude Code (`claude`) and Codex CLI (`codex`). */
-export const HarnessCliSchema = z.enum(['claude', 'codex'])
 
 /**
  * A model that runs on the user's own signed-in CLI instead of an API key. `model` names the CLI's

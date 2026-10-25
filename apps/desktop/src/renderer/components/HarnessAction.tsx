@@ -11,7 +11,8 @@ import './HarnessAction.css'
 /**
  * The one shared visual gate for cost-bearing Harness work. Feature components supply a prepared
  * plan and a start callback; they cannot skip the explicit acknowledgement represented here. It
- * cannot start while the plan was prepared without a model, the model Core will run it with.
+ * cannot start while the plan was prepared without a model, the model Core will run it with. A run
+ * on a subscription CLI names the plan it counts against and that its output has no limit.
  */
 export function HarnessAction({ plan, running, stopping = false, onStart, onCancel }: {
   plan: HarnessPlan
@@ -41,11 +42,13 @@ export function HarnessAction({ plan, running, stopping = false, onStart, onCanc
       onConfirm={onStart}
       state={!ready
         ? <ModelStatusTag state="warning" connected={false} />
-        : (
-          <Tag state={plan.model.billable ? 'warning' : undefined}>
-            {plan.model.billable ? m.wiki.harness.billableNote : m.wiki.harness.freeNote}
-          </Tag>
-        )}
+        : plan.model.cli !== undefined
+          ? <Tag>{m.wiki.harness.planNote[plan.model.cli]}</Tag>
+          : (
+            <Tag state={plan.model.billable ? 'warning' : undefined}>
+              {plan.model.billable ? m.wiki.harness.billableNote : m.wiki.harness.freeNote}
+            </Tag>
+          )}
       description={(
         <PropertyList className="harness-cost-plan">
           <Property label={m.wiki.harness.scopeLabel}>{m.wiki.scope.currentPaper}</Property>
@@ -53,6 +56,9 @@ export function HarnessAction({ plan, running, stopping = false, onStart, onCanc
             {m.wiki.harness.personalContentSummary(personal, plan.scope.hasRemark)}
           </Property>
           <Property label={m.wiki.harness.modelLabel}>{plan.model.provider} · {plan.model.name}</Property>
+          {plan.model.cli === undefined ? null : (
+            <Property label={m.wiki.harness.outputLimitLabel}>{m.wiki.harness.noOutputLimit}</Property>
+          )}
         </PropertyList>
       )}
     />

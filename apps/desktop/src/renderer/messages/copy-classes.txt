@@ -1042,8 +1042,12 @@ wiki.harness.billableNote state
 wiki.harness.confirmTitle label
 wiki.harness.freeNote state
 wiki.harness.modelLabel label
+wiki.harness.noOutputLimit state
+wiki.harness.outputLimitLabel label
 wiki.harness.personalContentLabel label
 wiki.harness.personalContentSummary state
+wiki.harness.planNote.claude state
+wiki.harness.planNote.codex state
 wiki.harness.scopeLabel label
 wiki.harness.startCreate action
 wiki.harness.startUpdate action

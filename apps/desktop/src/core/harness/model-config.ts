@@ -325,6 +325,7 @@ export async function createHarnessModelConfig(configHome: string, vault: Creden
       if (cli !== null) {
         return {
           provider: SUBSCRIPTION_LABELS[cli], name: subscription.models[cli] || '默认模型', configured: true, billable: false,
+          cli,
         }
       }
       const settings = publicSettings()

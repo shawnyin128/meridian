@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import type { HarnessPaperWikiQuality, PaperReading, PaperRow, WikiPaper } from '../../shared/contract.js'
 import { CallError } from '../call-error.js'
-import { createHarnessCostGate } from './cost-gate.js'
+import { createHarnessCostGate, type HarnessModel } from './cost-gate.js'
 
 const review = {
   schemaVersion: 'meridian.paper-wiki-review.v1' as const,
@@ -259,6 +259,32 @@ describe('Harness cost gate', () => {
       planId: stale.id, scopeDigest: stale.scopeDigest, acknowledgeCost: true,
     })).rejects.toThrow('已发生变化')
     expect(changed.run).not.toHaveBeenCalled()
+  })
+
+  it('refuses a plan shown with one subscription once the run would count against another plan or cost money', async () => {
+    const claude: HarnessModel = { provider: 'Claude 订阅', name: '默认模型', configured: true, billable: false, cli: 'claude' }
+    let model = claude
+    const run = vi.fn(async () => ({ state: 'demo-complete' as const, message: 'done' }))
+    const costGate = createHarnessCostGate({
+      paper: () => structuredClone(paper),
+      reading: () => structuredClone(reading),
+      wiki: () => structuredClone(wiki),
+      model: () => model,
+      run,
+      applyWiki: vi.fn(),
+      now: () => new Date('2026-09-17T12:00:00.000Z'),
+    })
+    const start = (plan: { id: string; scopeDigest: string }) =>
+      costGate.start({ planId: plan.id, scopeDigest: plan.scopeDigest, acknowledgeCost: true })
+
+    const shown = costGate.prepare('p1')
+    expect(shown.model).toEqual(claude)
+    model = { ...claude, provider: 'ChatGPT 订阅', cli: 'codex' }
+    await expect(start(shown)).rejects.toMatchObject({ reason: 'changed' })
+    const codex = costGate.prepare('p1')
+    model = { provider: 'Anthropic', name: 'claude-api', configured: true, billable: true }
+    await expect(start(codex)).rejects.toMatchObject({ reason: 'changed' })
+    expect(run).not.toHaveBeenCalled()
   })
 
   it('holds a generated draft until an explicit, scope-checked apply, then names the change entry the write recorded', async () => {
