@@ -4,6 +4,7 @@ import { ConfirmDialog } from './ConfirmDialog.js'
 import { GenerationControl } from './GenerationControl.js'
 import { NoModelTag } from './NoModelTag.js'
 import { Tag } from './Tag.js'
+import { Button } from './Button.js'
 import './HarnessAction.css'
 
 /**
@@ -26,9 +27,7 @@ export function HarnessAction({ plan, running, onStart, onCancel }: {
   }
   const personal = plan.scope.notes + plan.scope.annotatedHighlights
   const trigger = (
-    <button className="btn harness-trigger">
-      <span aria-hidden="true">✦</span>{plan.label}
-    </button>
+    <Button size="regular" className="harness-trigger" icon={<span aria-hidden="true">✦</span>}>{plan.label}</Button>
   )
 
   return (

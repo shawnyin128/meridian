@@ -5,6 +5,7 @@ import { useOnLeave } from '../hooks/useOnLeave.js'
 import { composing } from '../lib/keyboard.js'
 import { useMessages } from '../messages/useMessages.js'
 import { FormInput } from './FormControls.js'
+import { CommitActions } from './CommitActions.js'
 import './ShortTextEditor.css'
 
 /**
@@ -123,7 +124,7 @@ export function ShortTextEditor({
         />
         {submitLabel === undefined
           ? null
-          : <button className="btn pri" disabled={busy || value.trim() === ''}>{busy ? savingLabel : submitLabel}</button>}
+          : <CommitActions place="foot" saving={busy} canSave={value.trim() !== ''} saveLabel={submitLabel} busyLabel={savingLabel} />}
       </form>
       {field === undefined ? null : <div className="short-text-field mi-in">{field}</div>}
       {onDelete === undefined

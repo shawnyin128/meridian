@@ -51,6 +51,8 @@ import { CardOpen, ResearchObjectCard } from '../components/ResearchObjectCard.j
 import { EMBEDDED_LIST_ROW_LIMIT, RowActions } from '../components/StructuredList.js'
 import { Tooltip } from '../components/Tooltip.js'
 import { useClipped } from '../hooks/useClipped.js'
+import { Button } from '../components/Button.js'
+import { CommitActions } from '../components/CommitActions.js'
 import './shell.css'
 import './Wiki.css'
 
@@ -283,11 +285,10 @@ function ColumnsEditor({ rows, stale, onRows, onSave, onCancel }: {
         </div>
       ))}
       <div className="acts">
-        <button className="btn" onClick={onCancel}>{m.common.cancel}</button>
-        <button
-          className="btn pri" disabled={stale || rows.some((c) => c.label.trim() === '')}
-          onClick={() => onSave(rows.map((c) => ({ key: c.key, label: c.label.trim() })))}
-        >{m.common.save}</button>
+        <CommitActions
+          place="foot" onCancel={onCancel} canSave={!stale && rows.every((c) => c.label.trim() !== '')}
+          onSave={() => onSave(rows.map((c) => ({ key: c.key, label: c.label.trim() })))}
+        />
       </div>
     </div>
   )
@@ -746,20 +747,20 @@ export function Wiki() {
           ? (
             <>
               {/* Papers filters its table down to this paper by title; the user continues from that row's details. */}
-              <button className="btn" onClick={() => jumpTo('papers', shownPaper.title)}>{m.wiki.viewInPaperList}</button>
-              <button className="btn" onClick={() => jumpTo('reader', shownPaper.id.slice(PAPER_PAGE.length))}>
+              <Button size="regular" onClick={() => jumpTo('papers', shownPaper.title)}>{m.wiki.viewInPaperList}</Button>
+              <Button size="regular" onClick={() => jumpTo('reader', shownPaper.id.slice(PAPER_PAGE.length))}>
                 {m.papers.understanding.goRead}
-              </button>
+              </Button>
             </>
           )
           : place === null && (queued > 0 || tidyCount > 0)
             ? (
               <>
                 {queued === 0 ? null : (
-                  <button type="button" className="btn" onClick={() => go(REVIEW)}>{m.wiki.queue.entry}<CountBadge count={queued} /></button>
+                  <Button size="regular" onClick={() => go(REVIEW)}>{m.wiki.queue.entry}<CountBadge count={queued} /></Button>
                 )}
                 {tidyCount === 0 ? null : (
-                  <button type="button" className="btn" onClick={() => go(TIDY)}>{m.wiki.tidy.entry}<CountBadge count={tidyCount} /></button>
+                  <Button size="regular" onClick={() => go(TIDY)}>{m.wiki.tidy.entry}<CountBadge count={tidyCount} /></Button>
                 )}
               </>
             )

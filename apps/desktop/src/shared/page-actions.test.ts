@@ -175,7 +175,7 @@ const PLACES: Record<string, Place[]> = {
   sort: [{ slot: 'page header', size: 'md', variant: 'plain' }],
   create: [{ slot: 'page header', size: 'md', variant: 'primary' }],
   add: [
-    { slot: 'section heading', size: 'sm', variant: 'plain' },
+    { slot: 'section heading', size: 'md', variant: 'plain' },
     { slot: 'table header', size: 'nested', variant: 'icon', scope: 'a table adds a column to itself' },
     { slot: 'inline', size: 'chip', variant: 'chip', scope: 'a field adds a value after its chips' },
   ],
@@ -206,7 +206,7 @@ const PLACES: Record<string, Place[]> = {
   'overflow menu': [{ slot: 'row actions', size: 'nested', variant: 'plain' }],
   clear: [
     { slot: 'page header', size: 'md', variant: 'danger' },
-    { slot: 'section heading', size: 'sm', variant: 'danger', scope: 'a section clears its own entries' },
+    { slot: 'section heading', size: 'md', variant: 'danger', scope: 'a section clears its own entries' },
   ],
   'decline a proposal': [{ slot: 'inline', size: 'md', variant: 'ghost danger' }],
   'apply a proposal': [
@@ -217,8 +217,8 @@ const PLACES: Record<string, Place[]> = {
   'open pending work': [{ slot: 'page header', size: 'md', variant: 'plain' }],
   'settings save': [{ slot: 'card foot', size: 'md', variant: 'primary' }],
   'dismiss all': [
-    { slot: 'section heading', size: 'sm', variant: 'plain' },
-    { slot: 'group heading', size: 'sm', variant: 'plain', scope: 'a group dismisses its own rows' },
+    { slot: 'section heading', size: 'md', variant: 'plain' },
+    { slot: 'group heading', size: 'md', variant: 'plain', scope: 'a group dismisses its own rows' },
   ],
 }
 
@@ -261,7 +261,7 @@ function lookOf(element: Node, source: string, path: string): Look | null {
   if (name === 'AddAction') {
     const variant = literal('variant') ?? 'section'
     if (variant === 'page') return { operation: 'create', size: 'md', variant: 'primary' }
-    if (variant === 'section') return { operation: 'add', size: 'sm', variant: classesOf(element).includes('ghost') ? 'ghost' : 'plain' }
+    if (variant === 'section') return { operation: 'add', size: 'md', variant: 'plain' }
     return { operation: 'add', size: variant === 'icon' ? 'nested' : variant, variant }
   }
   if (name === 'EditActions') return { operation: 'edit', size: 'md', variant: 'plain' }
@@ -431,9 +431,9 @@ describe('一个操作一个位置', () => {
     expect([...new Set(menus.map((menu) => menu.at.split(':')[0]))].sort()).toEqual(['routes/Ideas.tsx', 'routes/Inbox.tsx', 'routes/Projects.tsx'])
   })
 
-  it('详情面板头部的文字按钮都是小号的普通按钮', () => {
+  it('详情面板头部的文字按钮都是普通按钮', () => {
     const offenders = READ.flatMap((file) => file.buttons)
-      .filter((button) => button.slot === 'panel head' && `${button.size} · ${button.variant}` !== 'sm · plain')
+      .filter((button) => button.slot === 'panel head' && button.variant !== 'plain')
       .map((button) => `${button.at} ${button.size} · ${button.variant}`)
     expect([...new Set(offenders)]).toEqual([])
   })

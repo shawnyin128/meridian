@@ -27,6 +27,7 @@ import { Sidebar } from './Sidebar.js'
 import { JobsContext, useJobsPoll } from './useJobs.js'
 import { ColourThemeFilesContext, useColourThemeFilesPoll } from './useColourThemes.js'
 import brandmark from '../../../resources/mark-64.png'
+import { Button } from '../components/Button.js'
 import './AppShell.css'
 
 export type ScreenKey =
@@ -873,9 +874,9 @@ export function AppShell({ screens, settings }: {
                                 className="bootfail" title={m.shell.bootFailure.title}
                                 error={bootError}
                                 action={(
-                                  <button className="btn" onClick={() => openSettingsCategory('storage')}>
+                                  <Button size="regular" onClick={() => openSettingsCategory('storage')}>
                                     {m.shell.bootFailure.changeLibrary}
-                                  </button>
+                                  </Button>
                                 )}
                               />
                             )}

@@ -51,7 +51,7 @@ describe('PageShell', () => {
     const html = renderToStaticMarkup(
       <PageHeader actions={<AddAction variant="page">Import</AddAction>}><PageTitle>Papers</PageTitle></PageHeader>,
     )
-    expect(html).toMatch(/^<div class="desk-head"><span class="fade-text t" data-state="closed">Papers<\/span><div class="page-actions"><button class="btn pri add-action add-action-page">/)
+    expect(html).toMatch(/^<div class="desk-head"><span class="fade-text t" data-state="closed">Papers<\/span><div class="page-actions"><button type="button" class="btn pri add-action add-action-page">/)
   })
 
   it('keeps peer-view switches in the shared content toolbar', () => {
@@ -76,7 +76,7 @@ describe('PageShell', () => {
     )
   })
 
-  it('sorts a page from its header at the page weight and adds to a section from its heading at the section weight', () => {
+  it('sorts a page from its header and adds to a section from its heading, both at the regular size', () => {
     const html = renderToStaticMarkup(
       <>
         <PageHeader actions={<SortMenu label="排序" options={[{ label: '按更新时间', onSelect: () => undefined }]} />}>
@@ -86,6 +86,6 @@ describe('PageShell', () => {
       </>,
     )
     const classes = [...html.matchAll(/<button[^>]*class="([^"]*)"/g)].map((match) => match[1]!.split(' ').slice(0, 2).join(' '))
-    expect(classes).toEqual(['btn sort-menu', 'btn sm'])
+    expect(classes).toEqual(['btn sort-menu', 'btn add-action'])
   })
 })

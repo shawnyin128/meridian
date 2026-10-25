@@ -1,6 +1,7 @@
 import { useMessages } from '../messages/useMessages.js'
 import { ActionMenu, MenuRadioGroup, MenuRadioItem, MenuSeparator } from './ActionMenu.js'
 import { FadeText } from './FadeText.js'
+import { Button } from './Button.js'
 import './FilterMenu.css'
 
 /** The radio value of the option that picks none; every other option's value is its position. */
@@ -29,11 +30,11 @@ export function FilterMenu<T>({ name, label, all, options, current, onPick, clas
       <span className="filter-menu-label">{m.common.filter}</span>
       <ActionMenu
         trigger={(
-          <button
-            type="button"
-            className={`${at < 0 ? 'btn sm filter-menu' : 'btn sm filter-menu on'}${className === undefined ? '' : ` ${className}`}`}
+          <Button
+            size="compact"
+            className={`${at < 0 ? 'filter-menu' : 'filter-menu on'}${className === undefined ? '' : ` ${className}`}`}
             aria-label={label}
-          ><FadeText>{at < 0 ? name : options[at]!.label}</FadeText></button>
+          ><FadeText>{at < 0 ? name : options[at]!.label}</FadeText></Button>
         )}
       >
         <MenuRadioGroup value={at < 0 ? ALL : String(at)}>

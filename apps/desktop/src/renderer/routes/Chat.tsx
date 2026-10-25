@@ -32,13 +32,14 @@ import { CONFLICT_THREAD } from '../lib/chat.js'
 import { IdeaDraft, type IdeaDraftText } from '../components/ideas/IdeaDraft.js'
 import { BackButton } from '../components/BackButton.js'
 import { FadeText } from '../components/FadeText.js'
-import { Toolbar, ToolbarButton } from '../components/Toolbar.js'
+import { Toolbar } from '../components/Toolbar.js'
 import { namedRuns, TitleNote } from '../components/TitleNote.js'
 import { Tag } from '../components/Tag.js'
 import { Tooltip } from '../components/Tooltip.js'
 import { readStateName } from '../components/PaperMetadata.js'
 import { PaperText } from '../components/paper/PaperText.js'
 import { plainTitle } from '../components/paper/paper-text.js'
+import { Button } from '../components/Button.js'
 import './shell.css'
 import '../components/chat/Chat.css'
 
@@ -228,17 +229,17 @@ export function Chat() {
                     ...mentions.filter((mention) => mention.kind === 'paper').slice(0, QUICK_MENTIONS),
                   ].map((mention) => (
                     <Tooltip key={mention.title} label={mention.title} whenClipped side="top">
-                      <ToolbarButton className="btn ghost sm qm" onClick={() => composer.current?.mention(mention)}>
+                      <Button size="compact" variant="ghost" className="qm" onClick={() => composer.current?.mention(mention)}>
                         <FadeText>@{mention.label}</FadeText>
-                      </ToolbarButton>
+                      </Button>
                     </Tooltip>
                   ))}
                 </span>
                 {hasDiscussion ? null : <Tag>{m.chat.noDiscussion}</Tag>}
-                <ToolbarButton
-                  className="btn ghost sm save-idea" id="qaIdea" disabled={id === null || !hasDiscussion}
+                <Button
+                  size="compact" variant="ghost" className="save-idea" id="qaIdea" disabled={id === null || !hasDiscussion}
                   onClick={startIdea}
-                >{m.chat.saveIdeaLabel}</ToolbarButton>
+                >{m.chat.saveIdeaLabel}</Button>
               </div>
             </Toolbar>
 

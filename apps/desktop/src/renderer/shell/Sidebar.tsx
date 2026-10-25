@@ -20,6 +20,7 @@ import { GripTooltip } from './GripTooltip.js'
 import { SearchBox } from './SearchBox.js'
 import { PaperText } from '../components/paper/PaperText.js'
 import { plainTitle } from '../components/paper/paper-text.js'
+import { Button } from '../components/Button.js'
 
 const CARET = <Icon sw={2.4}><path d="M6 9l6 6 6-6" /></Icon>
 
@@ -122,10 +123,10 @@ function UpdateRow() {
       <span className="update-row-text">
         {ready ? m.shell.update.ready(update.version) : m.shell.update.available(update.version)}
       </span>
-      <button
-        type="button" className="btn sm update-row-action"
+      <Button
+        size="compact" className="update-row-action"
         onClick={() => { if (ready) appUpdates.install(); else window.open(update.url) }}
-      >{ready ? m.shell.update.relaunch : m.shell.update.download}</button>
+      >{ready ? m.shell.update.relaunch : m.shell.update.download}</Button>
     </div>
   )
 }

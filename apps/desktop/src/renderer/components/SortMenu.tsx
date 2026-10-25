@@ -1,4 +1,5 @@
 import { ActionMenu, MenuItem, MenuRadioGroup, MenuRadioItem } from './ActionMenu.js'
+import { Button } from './Button.js'
 
 export type SortOption = { label: string; onSelect: () => void }
 
@@ -13,7 +14,7 @@ export function SortMenu({ label, options, current }: {
   current?: string
 }) {
   return (
-    <ActionMenu trigger={<button type="button" className="btn sort-menu">{label}</button>}>
+    <ActionMenu trigger={<Button size="regular" className="sort-menu">{label}</Button>}>
       {current === undefined
         ? options.map((option) => <MenuItem key={option.label} onSelect={option.onSelect}>{option.label}</MenuItem>)
         : (

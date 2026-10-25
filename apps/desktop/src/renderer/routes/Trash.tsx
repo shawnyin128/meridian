@@ -20,6 +20,7 @@ import {
 import { D1, dnum } from '../../shared/dates.js'
 import { useScreenLoad } from '../hooks/useScreenLoad.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
+import { Button } from '../components/Button.js'
 import './shell.css'
 import './Trash.css'
 
@@ -46,7 +47,7 @@ function ClearButton({ count, onClear }: { count: number; onClear: () => void })
   const m = useMessages()
   return (
     <ConfirmDialog
-      trigger={<button className="btn danger">{m.trash.clear}</button>}
+      trigger={<Button size="regular" tone="danger">{m.trash.clear}</Button>}
       title={m.trash.confirmClear} description={m.trash.confirmClearDescription(count)}
       confirmLabel={m.trash.confirmClearLabel} onConfirm={onClear}
     />

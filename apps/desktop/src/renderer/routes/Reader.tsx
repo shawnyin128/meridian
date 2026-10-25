@@ -26,7 +26,7 @@ import { IconButton } from '../components/IconButton.js'
 import { IconAskAi, IconMinus, IconPlus, IconTrash } from '../components/icons.js'
 import { LoadingPlaceholder } from '../components/LoadingPlaceholder.js'
 import { Swatches } from '../components/Swatches.js'
-import { Toolbar, ToolbarButton } from '../components/Toolbar.js'
+import { Toolbar } from '../components/Toolbar.js'
 import { Tooltip } from '../components/Tooltip.js'
 import {
   drawnLines, highlightAt, highlightLines, highlightOutline, highlightShape, selectedLinesByPage, selectionBox,
@@ -39,6 +39,7 @@ import { ReaderSidePanel, type ReaderSideTab } from '../components/reader/Reader
 import { PageShell } from '../components/PageShell.js'
 import { useScreenLoad } from '../hooks/useScreenLoad.js'
 import { plainTitle } from '../components/paper/paper-text.js'
+import { Button } from '../components/Button.js'
 import './shell.css'
 import './Reader.css'
 
@@ -1038,9 +1039,9 @@ export function Reader() {
                 <IconMinus />
               </IconButton>
               <Tooltip label={m.reader.zoom.reset}>
-                <ToolbarButton className="btn ghost sm zoom-reset" onClick={() => zoomBy(1 - shownZoom.current)}>
+                <Button size="compact" variant="ghost" className="zoom-reset" onClick={() => zoomBy(1 - shownZoom.current)}>
                   {Math.round(zoom * 100)}%
-                </ToolbarButton>
+                </Button>
               </Tooltip>
               <IconButton label={m.reader.zoom.in} size="nested" disabled={zoom >= ZOOM_MAX} onClick={() => zoomBy(ZOOM_STEP)}>
                 <IconPlus />
