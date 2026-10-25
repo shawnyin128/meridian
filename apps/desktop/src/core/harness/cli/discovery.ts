@@ -3,6 +3,7 @@ import { homedir, userInfo } from 'node:os'
 import { basename, isAbsolute, join } from 'node:path'
 import type { HarnessCli, HarnessModelConnectionCheckResult } from '../../../shared/contract.js'
 import { cliEnvironment, CliRunError, inTemporaryFolder, runChild } from './child.js'
+import { chatTurnFlags } from './chat-turn.js'
 import { runnerFlags } from './runner.js'
 
 const SYSTEM_FOLDERS = ['/opt/homebrew/bin', '/usr/local/bin'] as const
@@ -26,7 +27,7 @@ export type CliDiscovery =
     installed: true
     binary: string
     version: string | null
-    /** The flags the runner passes that the CLI's help does not list. */
+    /** The flags the runner or a chat turn passes that the CLI's help does not list. */
     missingFlags: string[]
     signIn: CliSignIn
   }
@@ -135,10 +136,10 @@ function codexSignIn(text: string): CliSignIn {
 }
 
 /**
- * Where `cli` is installed, its version, which of the runner's flags its help lacks and how it is
- * signed in, read from its own `--version`, help and status commands without a model call. Keeps
- * nothing else of their output. Rejects with a CliRunError when the installed CLI cannot start or
- * does not answer in time.
+ * Where `cli` is installed, its version, which of the flags the runner and a chat turn pass its help
+ * lacks and how it is signed in, read from its own `--version`, help and status commands without a
+ * model call. Keeps nothing else of their output. Rejects with a CliRunError when the installed CLI
+ * cannot start or does not answer in time.
  */
 export async function discoverCli(cli: HarnessCli, options: DiscoveryOptions = {}): Promise<CliDiscovery> {
   const binary = await resolveCliBinary(cli, options)
@@ -151,7 +152,8 @@ export async function discoverCli(cli: HarnessCli, options: DiscoveryOptions = {
     })
     const version = /\b\d+\.\d+\.\d+\b/.exec((await probe(['--version'])).stdout)?.[0] ?? null
     const help = await probe(cli === 'claude' ? ['--help'] : ['exec', '--help'])
-    const missingFlags = runnerFlags(cli).filter((flag) => !listsFlag(`${help.stdout}\n${help.stderr}`, flag))
+    const missingFlags = [...new Set([...runnerFlags(cli), ...chatTurnFlags(cli)])]
+      .filter((flag) => !listsFlag(`${help.stdout}\n${help.stderr}`, flag))
     const status = await probe(cli === 'claude' ? ['auth', 'status', '--json'] : ['login', 'status'])
     const signIn = cli === 'claude' ? claudeSignIn(status.stdout) : codexSignIn(`${status.stdout}\n${status.stderr}`)
     return { cli, installed: true, binary, version, missingFlags, signIn }
@@ -160,9 +162,9 @@ export async function discoverCli(cli: HarnessCli, options: DiscoveryOptions = {
 
 /**
  * The connection check of a subscription CLI: connected when `cli` is installed, its help lists
- * every flag the runner passes, and it is signed in with the user's subscription. Reports the
- * CLI's version when it has one, and logs through `onLog` which flags an unsupported CLI lacks.
- * Makes no model call.
+ * every flag the runner and a chat turn pass, and it is signed in with the user's subscription.
+ * Reports the CLI's version when it has one, and logs through `onLog` which flags an unsupported CLI
+ * lacks. Makes no model call.
  */
 export async function checkCliConnection(
   cli: HarnessCli,

@@ -1,11 +1,13 @@
 import { z, ZodError } from 'zod'
 import { HarnessModelConnectionCheckResultSchema } from '../../shared/contract.js'
-import type { HarnessCli, HarnessModelConnectionCheckResult } from '../../shared/contract.js'
+import type { HarnessCli, HarnessCliModel, HarnessModelConnectionCheckResult } from '../../shared/contract.js'
 import { extractPdfPages } from '../paper-library/index.js'
 import type { VaultStore } from '../vault.js'
+import { CLI_CALL_TIMEOUT_MS, CLI_REQUEST_TIMEOUT_MS, cliCallError, cliUsageLine } from './cli-call.js'
+import type { CliChatResult, CliChatRunner } from './cli/chat-turn.js'
 import type { HarnessModelConfig } from './model-config.js'
 import { launchHarnessProcess } from './process.js'
-import { createHarnessRpc, HarnessRpcError } from './rpc.js'
+import { createHarnessRpc, type HarnessCallback, type HarnessChild, HarnessRpcError } from './rpc.js'
 
 const MAX_MODEL_CONNECTION_DETAIL = 500
 const MODEL_CONNECTION_REDACTIONS = [
@@ -20,6 +22,12 @@ const ChatContextParamsSchema = z.object({
   currentText: z.string().min(1).max(20_000),
 }).strict()
 const ChatAnswerSchema = z.object({ answer: z.string().trim().min(1).max(20_000) }).strict()
+/** A chat turn's model call: the whole turn as `system` and `prompt`, and the new message alone. */
+const ChatModelInvokeParamsSchema = z.object({
+  system: z.string().min(1).max(500_000),
+  prompt: z.string().min(1).max(200_000),
+  message: z.string().min(1).max(20_000),
+}).strict()
 export const CHAT_CONTEXT_BUDGETS = Object.freeze({
   sourceCharacters: 80_000,
   historyCharacters: 12_000,
@@ -184,12 +192,19 @@ export function chatHarnessError(cause: unknown): Error {
   return new ChatFailure('AI 服务出了错')
 }
 
-/** A single-purpose chat client with a least-privilege callback surface. */
+/**
+ * A single-purpose chat client with a least-privilege callback surface. A turn on a subscription CLI
+ * also gets its one model call from Core, which `cli` runs with the MCP servers `mcpFlags` gives it,
+ * none without it.
+ */
 export function createChatHarnessRunner(options: {
   store: VaultStore
   model: HarnessModelConfig
   /** The connection check of a subscription CLI, which makes no model call. */
   checkCli: (cli: HarnessCli) => Promise<HarnessModelConnectionCheckResult>
+  cli: CliChatRunner
+  mcpFlags?: (cli: HarnessCli) => readonly string[]
+  launch?: () => HarnessChild
   onLog?: (line: string) => void
 }) {
   const sourceText = new Map<string, Promise<Array<{ number: number; text: string }>>>()
@@ -212,7 +227,7 @@ export function createChatHarnessRunner(options: {
   }
 
   const rpc = createHarnessRpc({
-    launch: launchHarnessProcess,
+    launch: options.launch ?? launchHarnessProcess,
     requiredCapabilities: ['chat', 'model-check'],
     ...(options.onLog === undefined ? {} : { onLog: options.onLog }),
     callbacks: {
@@ -250,6 +265,32 @@ export function createChatHarnessRunner(options: {
     },
   })
 
+  /** The one model call of a chat turn on `model`, which ends when `signal` aborts. */
+  const modelCall = (model: HarnessCliModel, signal: AbortSignal): HarnessCallback => {
+    let called = false
+    return async (params) => {
+      if (called) throw new HarnessRpcError({ kind: 'bad_request', message: 'A run makes one model call' })
+      called = true
+      const call = ChatModelInvokeParamsSchema.parse(params)
+      let result: CliChatResult
+      try {
+        result = await options.cli({
+          cli: model.cli,
+          ...(model.model === undefined ? {} : { model: model.model }),
+          system: call.system,
+          prompt: call.prompt,
+          mcpFlags: options.mcpFlags?.(model.cli) ?? [],
+          timeoutMs: CLI_CALL_TIMEOUT_MS,
+          signal,
+        })
+      } catch (cause) {
+        throw cliCallError(model.cli, cause, options.onLog)
+      }
+      options.onLog?.(cliUsageLine(model.cli, result))
+      return { output: result.answer }
+    }
+  }
+
   return {
     async checkConnection() {
       let model
@@ -274,16 +315,26 @@ export function createChatHarnessRunner(options: {
       }
     },
     async answer(id: string, text: string, signal: AbortSignal): Promise<string> {
+      const ended = new AbortController()
       try {
+        const model = await options.model.runtime()
         const result = ChatAnswerSchema.parse(await rpc.request('chat.answer', {
           chatId: id,
           text,
-          model: await options.model.runtime(),
+          model,
           limits: { maxOutputTokens: 2_000, maxModelCalls: 1 },
-        }, { signal }))
+        }, {
+          signal,
+          ...('source' in model ? {
+            timeoutMs: CLI_REQUEST_TIMEOUT_MS,
+            callbacks: { 'model.invoke': modelCall(model, AbortSignal.any([signal, ended.signal])) },
+          } : {}),
+        }))
         return result.answer
       } catch (cause) {
         throw chatHarnessError(cause)
+      } finally {
+        ended.abort()
       }
     },
     close: rpc.close,

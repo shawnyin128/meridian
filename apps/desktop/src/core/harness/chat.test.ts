@@ -1,4 +1,6 @@
-import { describe, expect, it } from 'vitest'
+import { EventEmitter } from 'node:events'
+import { PassThrough } from 'node:stream'
+import { describe, expect, it, vi } from 'vitest'
 import { z } from 'zod'
 import type { ChatMessage, PaperReading } from '../../shared/contract.js'
 import { CallError } from '../call-error.js'
@@ -7,8 +9,11 @@ import {
   CHAT_CONTEXT_BUDGETS, ChatFailure, chatHarnessError, createChatHarnessRunner, messagesBefore, packChatHistory,
   packPaperReading,
 } from './chat.js'
-import type { HarnessModelConfig } from './model-config.js'
-import { HarnessRpcError } from './rpc.js'
+import { CliRunError } from './cli/child.js'
+import type { CliChatCall, CliChatRunner } from './cli/chat-turn.js'
+import type { HarnessModelConfig, HarnessRuntimeModel } from './model-config.js'
+import { HARNESS_CAPABILITIES, HARNESS_PROTOCOL_VERSION } from './protocol.js'
+import { type HarnessChild, HarnessRpcError } from './rpc.js'
 
 function message(id: string, role: ChatMessage['role'], text: string): ChatMessage {
   return { id, role, runs: [{ kind: 'text', text }], actions: [] }
@@ -119,10 +124,147 @@ describe('model connection check', () => {
         checked.push(cli)
         return { state: 'connected', modelCalls: 0, maxOutputTokens: 1 }
       },
+      cli: vi.fn<CliChatRunner>(),
     })
 
     await expect(runner.checkConnection()).resolves.toEqual({ state: 'connected', modelCalls: 0, maxOutputTokens: 1 })
     expect(checked).toEqual(['codex'])
+    runner.close()
+  })
+})
+
+class FakeHarness extends EventEmitter implements HarnessChild {
+  readonly stdin = new PassThrough()
+  readonly stdout = new PassThrough()
+  readonly stderr = new PassThrough()
+  readonly kill = vi.fn(() => true)
+
+  send(message: object) {
+    this.stdout.write(`${JSON.stringify(message)}\n`)
+  }
+
+  ready() {
+    this.send({
+      type: 'event', id: 0, event: 'ready',
+      data: { protocol: HARNESS_PROTOCOL_VERSION, capabilities: [...HARNESS_CAPABILITIES] },
+    })
+  }
+
+  frame(): Promise<Record<string, unknown>> {
+    return new Promise((resolveFrame) => {
+      this.stdin.once('data', (chunk: Buffer) => resolveFrame(JSON.parse(chunk.toString('utf8').trim())))
+    })
+  }
+
+  callModel(callbackId: string) {
+    this.send({
+      type: 'callback', id: 1, callbackId, method: 'model.invoke',
+      params: { system: 'Chat rules and context', prompt: 'History, then: Why?', message: 'Why?' },
+    })
+  }
+}
+
+const CLI_MODEL: HarnessRuntimeModel = { source: 'cli', cli: 'claude', model: 'opus' }
+
+function chatRunner(model: HarnessRuntimeModel, cli: CliChatRunner) {
+  const child = new FakeHarness()
+  const logs: string[] = []
+  const runner = createChatHarnessRunner({
+    store: {} as VaultStore,
+    model: { runtime: async () => model } as unknown as HarnessModelConfig,
+    checkCli: async () => ({ state: 'connected', modelCalls: 0, maxOutputTokens: 1 }),
+    cli,
+    launch: () => child,
+    onLog: (line) => logs.push(line),
+  })
+  return { child, runner, logs }
+}
+
+describe('a chat turn on a subscription CLI', () => {
+  it('answers the turn\'s one model call on the CLI with the whole turn and its model, and offers no second', async () => {
+    const calls: CliChatCall[] = []
+    const { child, runner, logs } = chatRunner(CLI_MODEL, async (call) => {
+      calls.push(call)
+      return {
+        answer: 'EAGLE reaches 3.76x [p. 6].', durationMs: 6_700,
+        usage: { inputTokens: 24_182, cachedInputTokens: 23_327, outputTokens: 88 },
+      }
+    })
+    const answering = runner.answer('chat-1', 'Why?', new AbortController().signal)
+    child.ready()
+    expect(await child.frame()).toMatchObject({
+      method: 'chat.answer', params: { chatId: 'chat-1', text: 'Why?', model: CLI_MODEL },
+    })
+
+    child.callModel('first')
+    expect(await child.frame()).toMatchObject({
+      type: 'response', callbackId: 'first', result: { output: 'EAGLE reaches 3.76x [p. 6].' },
+    })
+    expect(calls).toEqual([expect.objectContaining({
+      cli: 'claude', model: 'opus', system: 'Chat rules and context', prompt: 'History, then: Why?', mcpFlags: [],
+    })])
+    child.callModel('second')
+    expect(await child.frame()).toMatchObject({ type: 'error', callbackId: 'second', error: { kind: 'bad_request' } })
+    expect(calls).toHaveLength(1)
+
+    child.send({ type: 'response', id: 1, ok: true, result: { answer: 'EAGLE reaches 3.76x [p. 6].' } })
+    await expect(answering).resolves.toBe('EAGLE reaches 3.76x [p. 6].')
+    expect(logs).toEqual(['claude: 6.7 s, 24182 input tokens (23327 cached), 88 output tokens'])
+    runner.close()
+  })
+
+  it('passes a CLI failure to Harness as a model error in the CLI\'s own words', async () => {
+    const { child, runner } = chatRunner(CLI_MODEL, async () => {
+      throw new CliRunError('failed', 'claude 运行失败：Claude AI usage limit reached')
+    })
+    const answering = runner.answer('chat-1', 'Why?', new AbortController().signal)
+    child.ready()
+    await child.frame()
+
+    child.callModel('limit')
+    expect(await child.frame()).toMatchObject({
+      type: 'error', callbackId: 'limit',
+      error: { kind: 'model_error', message: 'claude 运行失败：Claude AI usage limit reached' },
+    })
+    child.send({ type: 'error', id: 1, ok: false, error: { kind: 'model_error', message: 'claude 运行失败：Claude AI usage limit reached' } })
+    await expect(answering).rejects.toEqual(new ChatFailure('claude 运行失败：Claude AI usage limit reached'))
+    runner.close()
+  })
+
+  it('stops the CLI turn when the user stops the chat', async () => {
+    const signals: AbortSignal[] = []
+    const { child, runner } = chatRunner(CLI_MODEL, (call) => new Promise((_, reject) => {
+      signals.push(call.signal)
+      call.signal.addEventListener('abort', () => reject(new CliRunError('cancelled', '已停止 claude')))
+    }))
+    const controller = new AbortController()
+    const answering = runner.answer('chat-1', 'Why?', controller.signal)
+    child.ready()
+    await child.frame()
+    child.callModel('call')
+    await vi.waitFor(() => expect(signals).toHaveLength(1))
+
+    controller.abort()
+    await expect(answering).rejects.toEqual(new ChatFailure('已停止生成'))
+    expect(signals[0]!.aborted).toBe(true)
+    runner.close()
+  })
+
+  it('offers no model call to a chat on an API model', async () => {
+    const cli = vi.fn<CliChatRunner>()
+    const { child, runner } = chatRunner({
+      provider: 'openai', protocol: 'responses', baseUrl: 'https://api.openai.com/v1',
+      model: 'gpt-5', authentication: 'api-key', apiKey: 'sk-test',
+    }, cli)
+    const answering = runner.answer('chat-1', 'Why?', new AbortController().signal)
+    child.ready()
+    await child.frame()
+
+    child.callModel('call')
+    expect(await child.frame()).toMatchObject({ type: 'error', callbackId: 'call', error: { kind: 'bad_request' } })
+    expect(cli).not.toHaveBeenCalled()
+    child.send({ type: 'response', id: 1, ok: true, result: { answer: 'API answer' } })
+    await expect(answering).resolves.toBe('API answer')
     runner.close()
   })
 })

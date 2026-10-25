@@ -114,8 +114,9 @@ function batchInvocation(command: string, args: readonly string[], env: NodeJS.P
 }
 
 /**
- * Run `command` with `args` without a shell, give it `input` on stdin and collect its output; a
- * Windows batch file, such as an npm shim, runs through cmd.exe with every argument quoted.
+ * Run `command` with `args` without a shell, give it `input` on stdin and collect its output, each
+ * piece of stdout also going to `onOutput` as it arrives; a Windows batch file, such as an npm shim,
+ * runs through cmd.exe with every argument quoted.
  * Resolves with its exit code and output once it has exited. Rejects with a CliRunError:
  * `unavailable` when it cannot start, `timeout` after `timeoutMs`, `cancelled` when `signal` aborts.
  * In the last two cases it ends the child and everything the child started before it rejects.
@@ -126,6 +127,7 @@ export function runChild(command: string, args: readonly string[], options: {
   input?: string
   timeoutMs: number
   signal?: AbortSignal
+  onOutput?: (chunk: string) => void
   platform?: NodeJS.Platform
 }): Promise<ChildOutcome> {
   const name = command.split(/[\\/]/).pop() ?? command
@@ -190,7 +192,10 @@ export function runChild(command: string, args: readonly string[], options: {
       options.signal?.removeEventListener('abort', onAbort)
     }
     child.stdout.setEncoding('utf8')
-    child.stdout.on('data', (chunk: string) => { stdout += chunk })
+    child.stdout.on('data', (chunk: string) => {
+      stdout += chunk
+      options.onOutput?.(chunk)
+    })
     child.stderr.setEncoding('utf8')
     child.stderr.on('data', (chunk: string) => { stderr += chunk })
     child.on('error', (cause) => {
