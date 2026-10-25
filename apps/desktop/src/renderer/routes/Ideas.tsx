@@ -239,7 +239,7 @@ function IdeaDetailPanel({
   linked: ProjectSummary | undefined
   projects: ProjectSummary[]
   pageTitles: ReadonlyMap<string, string>
-  /** The idea's candidate node as its source project's graph names it, while one is shown. */
+  /** The idea's candidate node as its source project's graph names it, while one is shown; null once that project is gone. */
   candidate: ComponentProps<typeof IdeaNodeCandidate>['node'] | undefined
   onClose: () => void
   onSave: (title: string, body: string) => Promise<boolean>
@@ -367,7 +367,7 @@ export function Ideas() {
   const [projects, setProjects] = useState<ProjectSummary[]>([])
   const [pageTitles, setPageTitles] = useState<ReadonlyMap<string, string>>(new Map())
   const chatDeleted = useSourceChatDeleted()
-  const [candidateSource, setCandidateSource] = useState<ProjectDetail | null>(null)
+  const [candidateSource, setCandidateSource] = useState<ProjectDetail | 'gone' | null>(null)
   const [details, setDetails] = useState<ReadonlyMap<string, ProjectDetail>>(new Map())
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [archiveOpen, setArchiveOpen] = useState(false)
@@ -420,9 +420,14 @@ export function Ideas() {
   useEffect(() => {
     setCandidateSource(null)
     if (candidateProject === undefined) return
-    return load('candidate', projectApi.get(candidateProject), setCandidateSource)
+    // A deleted source project leaves the candidate in the missing-project state; any other failure stands.
+    return load('candidate', projectApi.get(candidateProject).catch((cause: unknown) => {
+      if (failureOf(cause) === 'not-found') return 'gone' as const
+      throw cause
+    }), setCandidateSource)
   }, [candidateProject, revision, load])
-  const candidateNode = selected?.candidateNode === undefined || candidateSource === null || candidateSource.id !== candidateProject
+  const candidateNode = selected?.candidateNode === undefined || candidateSource === null || candidateSource === 'gone'
+    || candidateSource.id !== candidateProject
     ? undefined
     : (candidateSource.workspace?.graph ?? candidateSource.graph).nodes.find((node) => node.id === selected.candidateNode)
   const current = listed.filter((idea) => !idea.archived)
@@ -573,7 +578,9 @@ export function Ideas() {
                 linked={selected.project === undefined ? undefined : projectsById.get(selected.project)}
                 projects={projects}
                 pageTitles={pageTitles}
-                candidate={candidateNode === undefined ? undefined : { id: candidateNode.id, label: candidateNode.label, mode: nodeMode(candidateNode) }}
+                candidate={candidateNode !== undefined
+                  ? { id: candidateNode.id, label: candidateNode.label, mode: nodeMode(candidateNode) }
+                  : candidateSource === 'gone' && selected.candidateNode !== undefined ? null : undefined}
                 onClose={closeDetail}
                 onRelations={(relations, removed) => write(ideaApi.update(selected.id, { relations }), {
                   note: removed === undefined ? m.project.links.added : <TitleNote message={m.project.links.removed} title={removed} />,
