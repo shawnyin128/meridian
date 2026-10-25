@@ -505,10 +505,34 @@ describe('AppShell keyboard navigation', () => {
     expect(document.querySelector('#sect-chats')!.classList.contains('closed')).toBe(false)
   })
 
+  it('every sidebar fold is the shared fold toggle: the caret follows its label and the toggle names the group it folds', () => {
+    /** The fold toggle of a row that folds as a whole, and the label its caret follows. */
+    const whole = (selector: string, label: string) => {
+      const toggle = document.querySelector(selector)!.matches('button') ? document.querySelector(selector)! : controlOf(selector)
+      return [toggle, toggle.querySelector('.fold-caret')!.previousSibling!.textContent === label] as const
+    }
+    /** The caret-only fold toggle of a row whose label is a button of its own, and whether it follows that label. */
+    const beside = (selector: string) => {
+      const toggle = document.querySelector(`${selector} > .fold-toggle`)!
+      return [toggle, toggle.previousElementSibling!.matches('.nav-row-label')] as const
+    }
+    const folds = [
+      [...whole('[data-sect="inbox"]', '收件'), 'sect-inbox'], [...whole('[data-sect="chats"]', '对话'), 'sect-chats'],
+      [...whole('[data-sect="lib"]', '我的库'), 'sect-lib'], [...whole('[data-sect="research"]', '研究'), 'sect-research'],
+      [...beside('#rowInboxAll'), 'g-inboxsub'], [...beside('[data-inbox="discovery"]'), 'g-discoverysub'],
+      [...whole('[data-disc="topics"]', '关注·关键词'), 'g-topics'], [...whole('[data-disc="authors"]', '关注·作者'), 'g-authors'],
+    ] as const
+    for (const [toggle, follows, group] of folds) {
+      expect([toggle.matches('button.fold-toggle'), follows], group).toEqual([true, true])
+      expect(toggle.getAttribute('aria-controls'), group).toBe(group)
+      expect(document.getElementById(group), group).not.toBeNull()
+    }
+  })
+
   it('folds the inbox groups from buttons without leaving the current screen', () => {
     const groups = [
-      ['#rowInboxAll .sh-caret', '#g-inboxsub'],
-      ['[data-inbox="discovery"] .sh-caret', '#g-discoverysub'],
+      ['#rowInboxAll .fold-toggle', '#g-inboxsub'],
+      ['[data-inbox="discovery"] .fold-toggle', '#g-discoverysub'],
       ['[data-disc="topics"]', '#g-topics'],
       ['[data-disc="authors"]', '#g-authors'],
     ] as const
@@ -599,7 +623,7 @@ describe('AppShell sidebar rows', () => {
   })
 
   it('folds the delivery groups from inline icon buttons that state whether they are open', () => {
-    for (const selector of ['#rowInboxAll .sh-caret', '[data-inbox="discovery"] .sh-caret']) {
+    for (const selector of ['#rowInboxAll .fold-toggle', '[data-inbox="discovery"] .fold-toggle']) {
       const toggle = document.querySelector<HTMLElement>(selector)!
       expect(toggle.classList.contains('icbtn'), selector).toBe(true)
       expect(toggle.classList.contains('xs'), selector).toBe(true)

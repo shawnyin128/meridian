@@ -389,7 +389,7 @@ describe('PaperChat', () => {
       if (held[id] === undefined) throw new CallError('chat.messages', 'not-found')
       return held[id]
     }) as () => Promise<ChatMessage[]>)
-    const shown = (host: HTMLElement) => [host.querySelector('.paper-chat .ipcerror'), host.querySelector('.paper-chat .msgs')!.textContent]
+    const shown = (host: HTMLElement) => [host.querySelector('.paper-chat .page-error'), host.querySelector('.paper-chat .msgs')!.textContent]
     try {
       const host = await mountChat()
       expect(shown(host)).toEqual([null, '删之前问的'])

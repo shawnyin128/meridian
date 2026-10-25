@@ -252,7 +252,7 @@ describe('Inbox', () => {
     const groups = [...host.querySelectorAll<HTMLElement>('.collapsible-group')]
     expect(groups.map((group) => group.dataset['group'])).toEqual(['p1', 'p2'])
     expect(groups[0]!.querySelector('.collapsible-group-title')?.textContent).toBe('项目 · 项目一')
-    expect(groups[0]!.querySelector('.collapsible-group-count')?.textContent).toBe(' · 2')
+    expect(groups[0]!.querySelector('.heading-count')?.textContent).toBe(' · 2')
     expect(groups[0]!.querySelectorAll('.paper-card')).toHaveLength(2)
 
     await act(async () => { groups[0]!.querySelector<HTMLButtonElement>('.collapsible-group-toggle')!.click() })
@@ -533,7 +533,7 @@ describe('Inbox', () => {
     api.scope = 'p1'
     api.loading = true
     await act(async () => { root.render(<MessagesProvider><Inbox /></MessagesProvider>) })
-    expect(host.querySelector('.ipcerror, .page-error')).toBeNull()
+    expect(host.querySelector('.page-error')).toBeNull()
     expect(host.querySelectorAll('.paper-card')).toHaveLength(0)
     await act(async () => { root.unmount() })
   })
@@ -556,7 +556,7 @@ describe('Inbox', () => {
     }
     const root = createRoot(host)
     await act(async () => { root.render(<MessagesProvider><Inbox /></MessagesProvider>) })
-    expect(host.querySelector('.fetchnote')?.textContent).toBe('检查失败 · 网络不可用')
+    expect(host.querySelector('.fetchnote .inline-message--line.inline-message--error[role="alert"]')?.textContent).toBe('检查失败 · 网络不可用')
     await act(async () => { root.unmount() })
   })
 
@@ -578,10 +578,11 @@ describe('Inbox', () => {
     for (const id of ['a1', 'a2', 'a3']) {
       await act(async () => { card(id).querySelector<HTMLButtonElement>('[aria-label="下载并入库"]')!.click() })
     }
-    expect(card('a1').querySelector('.pfail span')?.textContent).toBe('下载失败')
-    expect(card('a2').querySelector('.pfail span')?.textContent).toBe('下载失败 · 服务器出错')
-    expect(card('a3').querySelector('.pfail span')?.textContent).toBe('下载失败 · 没能写入论文库')
-    expect(card('a1').querySelector('.pfail .btn')?.textContent).toBe('重试')
+    const notice = (id: string) => card(id).querySelector('.paper-card-notice.inline-message--box.inline-message--error[role="alert"]')
+    expect(notice('a1')?.querySelector('.inline-message-text')?.textContent).toBe('下载失败')
+    expect(notice('a2')?.querySelector('.inline-message-text')?.textContent).toBe('下载失败 · 服务器出错')
+    expect(notice('a3')?.querySelector('.inline-message-text')?.textContent).toBe('下载失败 · 没能写入论文库')
+    expect(notice('a1')?.querySelector('.inline-message-action .btn')?.textContent).toBe('重试')
     await act(async () => { root.unmount() })
   })
 
@@ -603,7 +604,7 @@ describe('Inbox', () => {
     for (const [id, text, paper] of [['a1', '已入库', 'Added-Paper'], ['a2', '库里已有这一篇', 'Held-Paper']] as const) {
       await act(async () => { card(id).querySelector<HTMLButtonElement>('[aria-label="下载并入库"]')!.click() })
       expect(card(id).classList.contains('is-leaving')).toBe(true)
-      expect(card(id).querySelector('.pdup')).toBeNull()
+      expect(card(id).querySelector('.paper-card-notice')).toBeNull()
       const [said, action] = api.notice.success.mock.calls.at(-1)!
       expect([said, action?.label]).toEqual([text, '开始阅读'])
       act(() => action!.onAction())

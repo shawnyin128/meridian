@@ -61,7 +61,7 @@ const MARKUP = `
     <div class="wkprops" id="props"><div class="pk">当前目标</div><div class="pv">x</div></div>
   </div></div>
 </div></div>
-<aside class="sidebar"><div class="sb-h sect-h" id="sidebar-label">收件</div></aside>`
+<aside class="sidebar"><div class="sb-h" id="sidebar-label">收件</div></aside>`
 
 beforeAll(() => {
   document.head.innerHTML = `<style>${SHEETS.map(sheet).join('\n')}</style>`

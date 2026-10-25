@@ -1,0 +1,15 @@
+/*
+ * Candidate lists render through the Radix portal, so a field inside an overflow:auto container does
+ * not clip them. A list is as wide as its field, as Radix writes the anchor width to
+ * --radix-popover-trigger-width, and scrolls past 240px. The surface and rows are the shared menu
+ * anatomy in ActionMenu.css.
+ */
+.pickhits{width:var(--radix-popover-trigger-width);min-width:190px;max-height:240px;overflow:auto}
+/* A long list, as the chat's mentions, scrolls past a taller height and never sideways. */
+.pickhits--tall{max-height:min(440px,55vh);overflow:hidden;overflow-y:auto}
+/*
+ * A results panel, as the global search's: its left edge lines up with the field and its right edge
+ * reaches 260px past the sidebar over the content, which comes to 270px wider than the field. It grows
+ * with its rows and lies under the other floating layers.
+ */
+.pickhits--wide{width:calc(var(--radix-popover-trigger-width) + 270px);max-height:none;overflow:hidden;z-index:40}

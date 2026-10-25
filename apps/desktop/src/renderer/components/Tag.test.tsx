@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
-import { CountBadge, Tag, TagButton, tagClass } from './Tag.js'
+import { Tag, TagButton, tagClass } from './Tag.js'
 
 describe('Tag', () => {
   it('draws a neutral label by default, its text in a span that fades out when cut off and names itself in the tooltip', () => {
@@ -34,17 +34,5 @@ describe('Tag', () => {
   it('renders a clickable tag as a plain button with the same classes', () => {
     const html = renderToStaticMarkup(<TagButton shape="chip" data-wk="topics/kv" onClick={() => {}}>KV cache</TagButton>)
     expect(html).toBe('<button type="button" class="tag tag--chip tag--neutral" data-wk="topics/kv"><span class="fade-text tag-text" data-state="closed">KV cache</span></button>')
-  })
-})
-
-describe('CountBadge', () => {
-  it('shows a quiet count, and a strong one for items waiting for the user', () => {
-    expect(renderToStaticMarkup(<CountBadge count={79} />)).toBe('<span class="count-badge">79</span>')
-    expect(renderToStaticMarkup(<CountBadge count={3} className="n" />))
-      .toBe('<span class="count-badge n">3</span>')
-  })
-
-  it('shows zero instead of hiding itself; hosts that hide an empty count leave the badge out', () => {
-    expect(renderToStaticMarkup(<CountBadge count={0} />)).toBe('<span class="count-badge">0</span>')
   })
 })

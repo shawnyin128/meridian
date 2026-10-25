@@ -254,7 +254,8 @@ export function ProjectIdeaList({ projectId, ideas, error, graph, selectedId, on
             }}
           >{m.project.idea.kind}</AddAction>
         )}
-      >{m.project.linkedIdeas(shown)}
+        count={shown}
+      >{m.project.linkedIdeas}
       </SectionHeading>
       {ideas === null
         ? (error === null ? <LoadingPlaceholder shape="rows" count={2} /> : <PageError variant="section" error={error} />)
@@ -870,7 +871,7 @@ export function ProjectDetail({
         {attn.length > 0
           ? (
             <>
-              <SectionHeading>{m.project.signals.heading(attn.length)}</SectionHeading>
+              <SectionHeading count={attn.length}>{m.project.signals.heading}</SectionHeading>
               <ProjectAttention
                 items={attn} onOpenPage={openWikiPage} onLocateTask={locateTask}
                 onLocateMilestone={(milestoneId) => locatePlanRow('ms', milestoneId)}

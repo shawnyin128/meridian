@@ -91,7 +91,7 @@ export function Trash() {
   return (
     <PageShell>
       <PageHeader actions={groups.length === 0 ? undefined : <ClearButton count={held.length} onClear={clear} />}>
-        <PageTitle>{m.trash.title(held.length)}</PageTitle>
+        <PageTitle count={held.length}>{m.trash.title}</PageTitle>
       </PageHeader>
 
       <PageError error={error} />
@@ -114,7 +114,7 @@ export function Trash() {
           )
           : groups.map((g) => (
             <Fragment key={g.kind}>
-              <SectionHeading>{m.trash.kinds[g.kind]} · {g.items.length}</SectionHeading>
+              <SectionHeading count={g.items.length}>{m.trash.kinds[g.kind]}</SectionHeading>
               <StructuredList variant="embedded" maxVisibleRows="all" className="tgroup">
                 {g.items.map((entry) => (
                   <StructuredRow className="trow" key={entry.id}>

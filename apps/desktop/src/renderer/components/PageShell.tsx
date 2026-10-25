@@ -6,6 +6,8 @@ import {
 } from 'react'
 import { useScrollFade } from '../hooks/useScrollFade.js'
 import { FadeText } from './FadeText.js'
+import { HeadingCount, headingText } from './HeadingCount.js'
+import { InlineMessage } from './InlineMessage.js'
 import './PageShell.css'
 
 const classes = (base: string, className: string | undefined) =>
@@ -43,14 +45,20 @@ export const PageToolbar = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElem
 
 /**
  * The page's title on one line: when it does not fit it fades out at its end and the tooltip shows it
- * whole. `label` is that whole text, for a title that is not a plain string.
+ * whole. `label` is that whole text, for a title that is not a plain string. `count` follows the title
+ * as ` · N`.
  */
-export function PageTitle({ children, label, className, ...props }: {
+export function PageTitle({ children, label, count, className, ...props }: {
   children: ReactNode
   label?: string | undefined
+  count?: number | undefined
 } & Omit<HTMLAttributes<HTMLSpanElement>, 'children'>) {
   const whole = label ?? (typeof children === 'string' ? children : undefined)
-  return <FadeText className={classes('t', className)} label={whole} {...props}>{children}</FadeText>
+  return (
+    <FadeText className={classes('t', className)} label={whole === undefined ? undefined : headingText(whole, count)} {...props}>
+      {children}<HeadingCount count={count} />
+    </FadeText>
+  )
 }
 
 /** The only main scrolling area of the page; its top and bottom fade while content is hidden past them. */
@@ -75,30 +83,35 @@ export const PageFooter = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivEleme
 )
 
 /**
- * Unified landing point for IPC/loading errors. `page` sits in the page gutter; `section` sits flush
- * inside a content section, above what failed to load.
+ * Unified landing point for IPC/loading errors: the error box of InlineMessage. `page` sits in the page
+ * gutter; `section` sits flush inside a content section, above what failed to load.
  */
 export function PageError({ error, variant = 'page' }: {
   error: string | null | undefined
   variant?: 'page' | 'section'
 }) {
-  return error ? <div className={`ipcerror ipcerror--${variant}`} role="alert">{error}</div> : null
+  return error
+    ? <InlineMessage tone="error" variant="box" className={`page-error page-error--${variant}`}>{error}</InlineMessage>
+    : null
 }
 
 /**
  * The one section heading in the app. `variant` is its role: `page` heads a section of a page's body,
  * `group` heads a group inside a section or a card, and `rail` heads a section of a side rail or a
- * detail panel. `actions` holds everything that acts on the section and sits at the heading's end.
+ * detail panel. `count` follows the title as ` · N`. `actions` holds everything that acts on the
+ * section and sits at the heading's end.
  */
 export const SectionHeading = forwardRef<HTMLDivElement, {
   children: ReactNode
   actions?: ReactNode
+  count?: number | undefined
   variant?: 'page' | 'group' | 'rail'
 } & HTMLAttributes<HTMLDivElement>>(
-  function SectionHeading({ children, actions, className, variant = 'page', ...rest }, ref) {
+  function SectionHeading({ children, actions, count, className, variant = 'page', ...rest }, ref) {
     return (
       <div ref={ref} className={classes(`section-heading section-heading--${variant}`, className)} {...rest}>
-        {children}
+        {/* The heading is a flex row, so a count shares the title's span instead of becoming an item of its own. */}
+        {count === undefined ? children : <span>{children}<HeadingCount count={count} /></span>}
         {actions === undefined ? null : <div className="section-heading-actions">{actions}</div>}
       </div>
     )

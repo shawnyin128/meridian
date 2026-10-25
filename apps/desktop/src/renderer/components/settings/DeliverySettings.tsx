@@ -8,6 +8,7 @@ import { useVaultWrite } from '../../hooks/useVaultWrite.js'
 import { composing } from '../../lib/keyboard.js'
 import { FormInput } from '../FormControls.js'
 import { Card } from '../Card.js'
+import { InlineMessage } from '../InlineMessage.js'
 import { ServiceActions, ServiceFoot } from './ServiceCard.js'
 import { CommitActions } from '../CommitActions.js'
 
@@ -83,9 +84,14 @@ export function DeliverySettings() {
         </div>,
       ])}
       {!valid && saved !== null
-        ? <p className="delivery-setting-error">{m.settings.delivery.rangeError(MIN_ITEMS, MAX_ITEMS)}</p>
+        ? (
+          <InlineMessage tone="error" variant="line" className="delivery-setting-error">
+            {m.settings.delivery.rangeError(MIN_ITEMS, MAX_ITEMS)}
+          </InlineMessage>
+        )
         : null}
-      {loadingError === null ? null : <p className="delivery-setting-error">{loadingError}</p>}
+      {loadingError === null
+        ? null : <InlineMessage tone="error" variant="line" className="delivery-setting-error">{loadingError}</InlineMessage>}
       <ServiceFoot>
         <ServiceActions>
           <CommitActions

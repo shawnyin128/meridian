@@ -1,5 +1,6 @@
 import type { ReactElement, ReactNode } from 'react'
 import { DAY_SECTIONS, type DaySection } from '../../shared/vocabulary.js'
+import { HeadingCount } from './HeadingCount.js'
 import './DayHeading.css'
 
 /**
@@ -18,7 +19,7 @@ export function DayHeading({ children, count }: {
 }): ReactElement {
   return (
     <div className="day-heading">
-      {children}{count === undefined ? null : <span className="day-heading-count"> · {count}</span>}
+      {children}<HeadingCount count={count} />
     </div>
   )
 }

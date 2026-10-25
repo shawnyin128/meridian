@@ -73,7 +73,7 @@ describe('PaperWikiProposalReview', () => {
       <MessagesProvider><PaperWikiProposalReview review={review} onJump={() => {}} /></MessagesProvider>,
     )
     return [...host.querySelectorAll('.paper-wiki-review-section')].map((section) => [
-      section.querySelector('h4')!.textContent, section.querySelector('.empty-state')?.textContent,
+      section.querySelector('h4')!.firstChild!.textContent, section.querySelector('.empty-state')?.textContent,
     ])
   }
 
@@ -168,7 +168,8 @@ describe('PaperWikiProposalReview', () => {
     expect(html).toContain('7 项规则检查未发现问题')
     const host = document.createElement('div')
     host.innerHTML = html
-    expect(host.querySelector('.paper-wiki-quality > p')).toBeNull()
+    expect(host.querySelector('.paper-wiki-quality')?.matches('.inline-message--box.inline-message--done[role="status"]')).toBe(true)
+    expect(host.querySelector('.paper-wiki-quality p')).toBeNull()
     expect(host.querySelector('.paper-wiki-review-legend')).toBeNull()
   })
 
@@ -191,6 +192,9 @@ describe('PaperWikiProposalReview', () => {
     expect(html).toContain('发现 1 项需要核对')
     expect(html).toContain('机制描述过于空泛')
     expect(html).toContain('structured-list--embedded')
+    const host = document.createElement('div')
+    host.innerHTML = html
+    expect(host.querySelector('.paper-wiki-quality')?.matches('.inline-message--box.inline-message--warning[role="status"]')).toBe(true)
   })
 
   /** A report in which every path of `paths` has a finding of `code`. */

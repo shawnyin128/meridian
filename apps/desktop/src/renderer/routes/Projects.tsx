@@ -100,7 +100,7 @@ function ProjectMenu({ project, onRename, onMove, canMove, onStatus, onDelete }:
         if (!next && renaming) return
         setOpen(next)
       }}
-      contentClassName={renaming ? 'ctxmenu drop' : 'ctxmenu'} stopRowActivation
+      surface={renaming ? 'editor' : 'menu'} stopRowActivation
     >
           {renaming
             ? (
@@ -400,7 +400,7 @@ function ProjectList({ onOpen, newRow, onNewRow, onReturn }: {
         )}
       >
         {onReturn === undefined ? null : <BackButton onClick={onReturn} />}
-        <PageTitle>{m.research.list.title(shown.filter((p) => p.status === ACTIVE_PROJECT).length)}</PageTitle>
+        <PageTitle count={shown.filter((p) => p.status === ACTIVE_PROJECT).length}>{m.research.list.title}</PageTitle>
       </PageHeader>
       <PageError error={error} />
 
@@ -408,7 +408,7 @@ function ProjectList({ onOpen, newRow, onNewRow, onReturn }: {
         {projects.length === 0 ? null : <PageToolbar>{filter}</PageToolbar>}
         {groups.map((g, i) => (
           <Fragment key={g.status}>
-            <SectionHeading>{m.research.list.groupHeading(g.status, g.items.length)}</SectionHeading>
+            <SectionHeading count={g.items.length}>{g.status}</SectionHeading>
             {i === 0 && creating
               ? (
                 <ProjectCreateRow

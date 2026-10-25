@@ -5,6 +5,8 @@ import type { CandidateKeys } from '../hooks/useCandidateKeys.js'
 import { ignoreComposingEscape } from '../lib/keyboard.js'
 import { COLLISION_PADDING, type AnchorBox } from './floating-layer.js'
 import { OutsideToolbar } from './Toolbar.js'
+import './ActionMenu.css'
+import './PickerPopover.css'
 
 /** PickerPopover's focus guard, kept beside it so pages never touch the Radix event contract. */
 function pressGuard(
@@ -25,6 +27,7 @@ type PickerPopoverBaseProps = {
   anchorRef?: RefObject<HTMLElement | null>
   onOpenChange?: (open: boolean) => void
   contentId?: string
+  size?: 'field' | 'tall' | 'wide'
   contentClassName?: string
   side?: Popover.PopoverContentProps['side']
   align?: Popover.PopoverContentProps['align']
@@ -44,14 +47,16 @@ export type PickerPopoverProps = PickerPopoverBaseProps & (
  * inside, not taking the input's focus on open, and not blurring the input when a candidate is
  * pressed. An Escape pressed while an input method is composing does not close it. When `content`
  * is empty, only the anchor renders and no empty popover is mounted. It is placed against `anchor`,
- * which it renders, or against `anchorBox`, which the caller renders or measures itself.
+ * which it renders, or against `anchorBox`, which the caller renders or measures itself. Its `size` is
+ * a `field`'s candidates, as wide as the field; a `tall` list, as the chat's mentions; or a `wide`
+ * results panel, as the global search's. `contentClassName` adds classes that name or place it.
  */
 export function PickerPopover(props: PickerPopoverProps) {
   const listFade = useScrollFade('y')
   const {
     open, content, anchorRef, onOpenChange,
     contentId,
-    contentClassName = 'pickhits', side = 'bottom', align = 'start', sideOffset = 4,
+    size = 'field', contentClassName = '', side = 'bottom', align = 'start', sideOffset = 4,
     sticky, stopClickPropagation = false,
   } = props
   return (
@@ -66,7 +71,8 @@ export function PickerPopover(props: PickerPopoverProps) {
             <Popover.Content
               ref={listFade} data-fade-paint=""
               {...(contentId === undefined ? {} : { id: contentId })}
-              className={contentClassName} side={side} align={align} collisionPadding={COLLISION_PADDING}
+              className={['pickhits', size === 'field' ? '' : `pickhits--${size}`, contentClassName].filter(Boolean).join(' ')}
+              side={side} align={align} collisionPadding={COLLISION_PADDING}
               sideOffset={sideOffset} {...(sticky === undefined ? {} : { sticky })}
               {...pressGuard(anchorRef)} onEscapeKeyDown={ignoreComposingEscape()}
               onClick={stopClickPropagation ? (event) => event.stopPropagation() : undefined}

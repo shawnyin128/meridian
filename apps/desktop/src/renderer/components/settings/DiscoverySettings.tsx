@@ -65,8 +65,8 @@ export function DiscoverySettings() {
   const enabled = (profiles ?? []).reduce((total, profile) => total + profile.intentCount, 0)
   return (
     <section className="delivery-directions">
-      <SectionHeading variant="group">
-        {m.settings.discovery.directionsHeading(enabled)}
+      <SectionHeading variant="group" count={enabled}>
+        {m.settings.discovery.directionsHeading}
       </SectionHeading>
       <PageError error={error} variant="section" />
       <Card flush className="direction-panel">

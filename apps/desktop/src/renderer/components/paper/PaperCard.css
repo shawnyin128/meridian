@@ -3,9 +3,7 @@
 .paper-card-heading{display:flex;align-items:flex-start;gap:var(--sp-10)}
 .paper-card-heading h3{font-size:var(--fs-item-title);font-weight:var(--fw-title);margin:0;line-height:var(--lh-tight);flex:1}
 .paper-card-metadata{font-size:var(--fs-sm);color:var(--ter);margin:var(--sp-4) 0 var(--sp-10)}
-.paper-card-notice{display:flex;align-items:center;gap:var(--sp-8);margin-top:var(--sp-8);padding:var(--sp-6) var(--sp-10);border:1px solid var(--sep2);border-radius:var(--r-md);font-size:var(--fs-sm);color:var(--sec)}
-.paper-card-notice>span{flex:1}
-.paper-card-notice.is-error{color:var(--bad)}
+.paper-card-notice{margin-top:var(--sp-8)}
 .paper-card-badge{margin-left:var(--sp-6)}
 .paper-card-metadata .source-label{margin-left:var(--sp-6)}
 .paper-card-citations{margin-left:var(--sp-8);color:var(--ter);font-variant-numeric:tabular-nums}

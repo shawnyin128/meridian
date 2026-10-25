@@ -85,7 +85,9 @@ describe('DeliverySettings', () => {
     expect(shown.value).toBe('20')
     type(shown, '0')
     expect(button.disabled).toBe(true)
-    expect(host.querySelector('.delivery-setting-error')?.textContent).toBe('请输入 1–100 之间的整数')
+    const rangeError = host.querySelector('.delivery-setting-error')!
+    expect([rangeError.matches('.inline-message--line.inline-message--error[role="alert"]'), rangeError.textContent])
+      .toEqual([true, '请输入 1–100 之间的整数'])
     type(shown, '8')
     await act(async () => { button.click() })
     expect(api.updateSettings).toHaveBeenLastCalledWith({ maxItemsPerRun: 20, maxShownPerScope: 8 })

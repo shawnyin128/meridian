@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { Card } from '../Card.js'
 import { FormButton } from '../FormControls.js'
+import { InlineMessage } from '../InlineMessage.js'
 import { Tag } from '../Tag.js'
 import { Button } from '../Button.js'
 import './ServiceCard.css'
@@ -67,7 +68,10 @@ export function ServiceActions({ children }: { children: ReactNode }) {
   return <div className="service-actions">{children}</div>
 }
 
-/** One connection-check outcome line, with an optional diagnostic detail shown only on failure. */
+/**
+ * One connection-check outcome line: a success when it connected, an error with an optional diagnostic
+ * detail under it when it failed.
+ */
 export function ServiceConnectionStatus({ state, message, detail, detailLabel }: {
   state: 'connected' | 'failed'
   message: string
@@ -75,12 +79,12 @@ export function ServiceConnectionStatus({ state, message, detail, detailLabel }:
   detailLabel?: string | undefined
 }) {
   return (
-    <div className={`service-connection-status ${state}`} role={state === 'failed' ? 'alert' : 'status'}>
-      <span>{message}</span>
+    <InlineMessage tone={state === 'failed' ? 'error' : 'done'} variant="line" className="service-connection-status">
+      <div>{message}</div>
       {state === 'failed' && detail !== undefined ? (
-        <span className="service-connection-detail">{detailLabel}: {detail}</span>
+        <div className="service-connection-detail">{detailLabel}: {detail}</div>
       ) : null}
-    </div>
+    </InlineMessage>
   )
 }
 
@@ -98,7 +102,7 @@ export function ServiceClearKeyButton({ pending, label, pendingLabel, onClick }:
   )
 }
 
-/** Inline error text below a service card's fields. */
+/** The error line below a service card's fields. */
 export function ServiceError({ children }: { children: ReactNode }) {
-  return <p className="service-error" role="alert">{children}</p>
+  return <InlineMessage tone="error" variant="line" className="service-error">{children}</InlineMessage>
 }

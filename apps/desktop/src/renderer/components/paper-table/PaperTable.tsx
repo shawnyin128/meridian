@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import type { DragEvent as ReactDragEvent, RefObject } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import type { DragEvent as ReactDragEvent, ReactNode, RefObject } from 'react'
 import type {
   Facet, ListParams, PaperCell, PaperColumn, PaperColumns, PaperRow, ReadState, RecordedChange, SortDirection,
   SortKey,
@@ -40,7 +40,8 @@ import { BackButton } from '../BackButton.js'
 import { IconButton } from '../IconButton.js'
 import { holdRepeatSelection, RowActions, StructuredList, StructuredRow } from '../StructuredList.js'
 import { PanelClose } from '../PanelClose.js'
-import { CountBadge, Tag, tagClass } from '../Tag.js'
+import { CountBadge } from '../CountBadge.js'
+import { Tag } from '../Tag.js'
 import { Grip, type GripLimits } from '../Grip.js'
 import { Toolbar, ToolbarButton } from '../Toolbar.js'
 import { Tooltip } from '../Tooltip.js'
@@ -202,7 +203,7 @@ function GroupValuePicker({ current, facets, name, onPick }: {
       align="start"
       trigger={(
         <Button size="compact" aria-label={m.papers.toolbar.groupValueAria}>
-          {count === undefined ? shown : `${shown} · ${count}`}
+          {shown}{count === undefined ? null : <CountBadge count={count} />}
         </Button>
       )}
     >
@@ -210,7 +211,7 @@ function GroupValuePicker({ current, facets, name, onPick }: {
         {facets.map((facet) => (
           <MenuRadioItem key={facet.value} value={facet.value} onSelect={() => onPick(facet.value)}>
             {name(facet.value)}
-            <span className="mi-key">{facet.count}</span>
+            <span className="mi-key"><CountBadge count={facet.count} /></span>
           </MenuRadioItem>
         ))}
       </MenuRadioGroup>
@@ -289,6 +290,9 @@ export function PaperTable() {
   const [sort, setSort] = useState<SortKey>('addedAt')
   const [direction, setDirection] = useState<SortDirection>('desc')
   const [widths, setWidths] = useState<Record<string, number>>(DEFAULT_WIDTHS)
+  // How many chips each chip cell folds behind its +N, and the cells the user unfolded, by `data-fold` key.
+  const [folds, setFolds] = useState<ReadonlyMap<string, number>>(new Map())
+  const [unfolded, setUnfolded] = useState<ReadonlySet<string>>(new Set())
   const [columns, setColumns] = useState<PaperColumns>(
     { hidden: [], custom: [], groups: [...DEFAULT_PAPER_GROUPS] })
   const names = builtinNames(m, columns)
@@ -577,20 +581,23 @@ export function PaperTable() {
   // Recalculate truncation after data, columns, widths, panels, or editing state change. Text cells
   // retain their hover preview; chip cells keep the first visible row and expose hidden items through
   // an explicit +N toggle. Hidden screens measure as zero, so defer this work until Papers is active.
-  useEffect(() => {
+  // It runs before paint, so a +N that changed is drawn with its new count.
+  useLayoutEffect(() => {
     if (screen !== 'papers') return
+    const next = new Map<string, number>()
     table.current?.querySelectorAll<HTMLElement>('td .ci').forEach((ci) => {
       const td = ci.parentElement!
-      const wasExpanded = ci.dataset['expanded'] === 'true'
+      const open = ci.classList.contains('chip-expanded')
       ci.classList.remove('chip-expanded')
       ci.querySelectorAll('.hid').forEach((chip) => chip.classList.remove('hid'))
-      ci.querySelector('.morebadge')?.remove()
+      // The +N badge takes no room while the chips are measured.
+      const badge = ci.querySelector(':scope > .morebadge')
+      badge?.classList.add('hid')
       if (!ci.querySelector('.tagchip')) {
         td.classList.toggle('trunc', ci.scrollWidth > ci.clientWidth + 1)
         return
       }
       if (ci.scrollWidth <= ci.clientWidth + 1) {
-        delete ci.dataset['expanded']
         td.classList.remove('trunc')
         return
       }
@@ -599,7 +606,7 @@ export function PaperTable() {
       let real = 0
       ;[...ci.children].forEach((chip, i) => {
         // The first chip always stays, truncated if needed.
-        if (i === 0) return
+        if (i === 0 || chip === badge) return
         if (hidden > 0 || chip.getBoundingClientRect().right > limit) {
           chip.classList.add('hid')
           hidden++
@@ -607,28 +614,46 @@ export function PaperTable() {
           if (!chip.classList.contains('tagadd')) real++
         }
       })
-      if (real > 0) {
-        const badge = document.createElement('button')
-        badge.type = 'button'
-        badge.className = tagClass('neutral', 'label', 'morebadge')
-        const setExpanded = (expanded: boolean) => {
-          ci.dataset['expanded'] = String(expanded)
-          ci.classList.toggle('chip-expanded', expanded)
-          badge.textContent = expanded ? '−' : `+${real}`
-          badge.setAttribute('aria-label', expanded ? m.papers.tags.showLess(real) : m.papers.tags.showMore(real))
-          badge.setAttribute('aria-expanded', String(expanded))
-        }
-        setExpanded(wasExpanded)
-        badge.addEventListener('click', (event) => {
-          event.preventDefault()
-          event.stopPropagation()
-          setExpanded(ci.dataset['expanded'] !== 'true')
-        })
-        ci.appendChild(badge)
-      }
+      if (real > 0) next.set(ci.dataset['fold']!, real)
+      badge?.classList.remove('hid')
+      if (open) ci.classList.add('chip-expanded')
       td.classList.add('trunc')
     })
+    setFolds((held) => (held.size === next.size && [...next].every(([key, n]) => held.get(key) === n) ? held : next))
+    setUnfolded((held) => {
+      const kept = new Set([...held].filter((key) => next.has(key)))
+      return kept.size === held.size ? held : kept
+    })
   }, [rows, columns, widths, detail, screen, editingCell, m])
+
+  /**
+   * A chip cell's chips on one line, `key` naming the cell: the chips past its end fold behind a +N
+   * count that unfolds them.
+   */
+  const chipCell = (key: string, chips: ReactNode) => {
+    const folded = folds.get(key) ?? 0
+    const open = folded > 0 && unfolded.has(key)
+    return (
+      <span className={open ? 'ci chip-expanded' : 'ci'} data-fold={key}>
+        {chips}
+        {folded === 0 ? null : (
+          <CountBadge
+            className="morebadge" count={folded} more={{ open }}
+            label={open ? m.papers.tags.showLess(folded) : m.papers.tags.showMore(folded)}
+            onClick={(event) => {
+              event.preventDefault()
+              event.stopPropagation()
+              setUnfolded((held) => {
+                const toggled = new Set(held)
+                if (!toggled.delete(key)) toggled.add(key)
+                return toggled
+              })
+            }}
+          />
+        )}
+      </span>
+    )
+  }
 
   /**
    * A column's current width: its dragged width once dragged, otherwise DEFAULT_WIDTHS for a built-in
@@ -959,7 +984,7 @@ export function PaperTable() {
     const editing = editingCell?.id === p.id && editingCell.key === column.key
     if (!editing) {
       if (column.type === 'text') return <span className="ci">{values[0] ?? ''}</span>
-      return <span className="ci">{values.map((v) => <Tag shape="chip" capped className="tagchip" key={v}>{v}</Tag>)}</span>
+      return chipCell(`${p.id}:${column.key}`, values.map((v) => <Tag shape="chip" capped className="tagchip" key={v}>{v}</Tag>))
     }
     if (column.type === 'text') {
       return (
@@ -1030,12 +1055,12 @@ export function PaperTable() {
     }
     return (
       <td key={k}>
-        <span className="ci">
+        {chipCell(`${p.id}:${k}`, (
           <PaperTopics
             topics={p.topics} keep={['paper', p.id, 'topics-cell']} onError={report}
             onAdd={(v) => addTopic(p, v)} onRemove={(v) => removeTopic(p, v)}
           />
-        </span>
+        ))}
       </td>
     )
   }
@@ -1228,7 +1253,7 @@ export function PaperTable() {
         )}
       >
         {jumpOrigin.origin === null ? null : <BackButton onClick={jumpOrigin.back} />}
-        <PageTitle>{m.papers.title(titleCount)}</PageTitle>
+        <PageTitle count={titleCount ?? undefined}>{m.papers.title}</PageTitle>
       </PageHeader>
 
       <PageError error={error} />

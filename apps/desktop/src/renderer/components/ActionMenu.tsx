@@ -5,6 +5,18 @@ import { ignoreComposingEscape } from '../lib/keyboard.js'
 import { COLLISION_PADDING } from './floating-layer.js'
 import { IconCheck } from './icons.js'
 import { OutsideToolbar } from './Toolbar.js'
+import './ActionMenu.css'
+
+/**
+ * The looks of the one menu surface: `menu` holds items, `editor` holds a ShortTextEditor edge to
+ * edge, `form` holds a form with room around it, and `toolbar` holds a toolbar and is as wide as it.
+ */
+export type MenuSurface = 'menu' | 'editor' | 'form' | 'toolbar'
+
+/** The class list of the menu surface of `surface`, followed by `extra` classes that name or place it. */
+export function menuSurfaceClass(surface: MenuSurface = 'menu', extra = ''): string {
+  return ['ctxmenu', surface === 'menu' ? '' : `ctxmenu--${surface}`, extra].filter(Boolean).join(' ')
+}
 
 type ContentProps = Omit<DropdownMenu.DropdownMenuContentProps,
   'children' | 'className' | 'side' | 'align' | 'sideOffset'
@@ -16,6 +28,7 @@ export type ActionMenuProps = {
   open?: boolean
   onOpenChange?: (open: boolean) => void
   modal?: boolean
+  surface?: MenuSurface
   contentClassName?: string
   side?: DropdownMenu.DropdownMenuContentProps['side']
   align?: DropdownMenu.DropdownMenuContentProps['align']
@@ -30,14 +43,15 @@ export type ActionMenuProps = {
 /**
  * The app-wide action menu skeleton. Callers provide the trigger button, the items and when it opens
  * and closes; Root, the asChild trigger, Portal, surface style, positioning, the gap from the window
- * edge and inline click isolation are implemented only here. A menu that switches to an editor in
+ * edge and inline click isolation are implemented only here. The surface takes the look of `surface`,
+ * and `contentClassName` adds classes that name or place it. A menu that switches to an editor in
  * the same popover is controlled through `open`/`onOpenChange`; `contentProps` only carries advanced
  * Radix options such as focus and Escape handling. An Escape pressed while an input method is composing neither closes
  * the menu nor reaches `contentProps.onEscapeKeyDown`. A menu that `scrolls` past its height fades the edge it hides.
  */
 export function ActionMenu({
   trigger, children, open, onOpenChange, modal,
-  contentClassName = 'ctxmenu', side = 'bottom', align = 'end', sideOffset = 4,
+  surface = 'menu', contentClassName = '', side = 'bottom', align = 'end', sideOffset = 4,
   stopContentClickPropagation = false, onContentClick, contentProps, contentData, scrolls = false,
 }: ActionMenuProps) {
   const fade = useScrollFade('y')
@@ -60,7 +74,7 @@ export function ActionMenu({
         <DropdownMenu.Content
           collisionPadding={COLLISION_PADDING} {...contentProps} {...contentData}
           onEscapeKeyDown={ignoreComposingEscape(contentProps?.onEscapeKeyDown)}
-          className={contentClassName} side={side} align={align} sideOffset={sideOffset}
+          className={menuSurfaceClass(surface, contentClassName)} side={side} align={align} sideOffset={sideOffset}
           {...(scrolls ? { ref: fade, 'data-fade-paint': '' } : {})}
           {...(contentClick === undefined ? {} : { onClick: contentClick })}
         >

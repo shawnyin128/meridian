@@ -8,7 +8,8 @@ import { LoadingPlaceholder } from '../LoadingPlaceholder.js'
 import { RatingStars, ReadStatePicker } from '../PaperMetadata.js'
 import { ReadDots } from '../ReadDots.js'
 import { ListColumn, StructuredList, StructuredRow } from '../StructuredList.js'
-import { CountBadge, Tag } from '../Tag.js'
+import { CountBadge } from '../CountBadge.js'
+import { Tag } from '../Tag.js'
 import { Toolbar, ToolbarButton } from '../Toolbar.js'
 import { PaperText } from '../paper/PaperText.js'
 import { plainTitle } from '../paper/paper-text.js'
@@ -147,7 +148,7 @@ export function ResearchMap({ rows, total, loading, onOpenPaper, onReadPaper, on
                                 </span>
                                 {member.chips.length === 0 ? null : (
                                   <FadeText className="research-map-why">
-                                    {member.chips.map((chip) => <Tag shape="chip" className="tagchip" key={chip.key}>{chip.text}</Tag>)}
+                                    {member.chips.map((chip) => <Tag shape="chip" key={chip.key}>{chip.text}</Tag>)}
                                   </FadeText>
                                 )}
                               </StructuredRow>

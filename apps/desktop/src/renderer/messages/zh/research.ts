@@ -10,7 +10,7 @@ export const research = {
       openMilestones: '待完成里程碑',
       recentProgress: '近 7 天科研记录',
     },
-    decisions: (n: number) => `需要注意 · ${n}`,
+    decisions: '需要注意',
     progressHeading: '项目推进',
     activePathNote: (taskText: string | undefined) =>
       `当前科研路径${taskText === undefined ? '' : ` · 任务 ${taskText}`}`,
@@ -28,7 +28,7 @@ export const research = {
       `任务${slots > 0 ? '后移' : '前移'} ${hours} 小时`,
   },
   list: {
-    title: (n: number) => `项目 · ${n}`,
+    title: '项目',
     create: '新建项目',
     empty: '还没有进行中的项目',
     sort: '排序',
@@ -38,7 +38,6 @@ export const research = {
     rename: '重命名',
     renamed: '已重命名',
     statusChangedTo: (status: string) => `已标记为 ${status}`,
-    groupHeading: (status: string, n: number) => `${status} · ${n}`,
     createdNote: '已创建项目',
     createdFeedNote: (name: string) => `新项目《${name}》已创建`,
   },

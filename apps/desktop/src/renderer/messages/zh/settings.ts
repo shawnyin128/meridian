@@ -84,7 +84,7 @@ export const settings = {
     resetDescription: '当前论文、Wiki、项目与状态将清空，旧库会自动备份',
     resetting: '正在重置…',
     resetConfirm: '重置并重启',
-    backupsHeading: (count: number) => `论文库备份 · ${count}`,
+    backupsHeading: '论文库备份',
     backupSwitch: '切换',
     backupSwitching: '正在切换…',
     backupDelete: '删除',
@@ -336,7 +336,7 @@ export const settings = {
   },
   discovery: {
     heading: '发现',
-    directionsHeading: (n: number) => `发现方向 · ${n}`,
+    directionsHeading: '发现方向',
     noDirections: '还没有项目方向',
     seeds: (n: number) => `${n} 篇种子`,
     refreshing: '正在刷新…',
@@ -355,7 +355,7 @@ export const settings = {
     enabled: '已启用方向',
   },
   archived: {
-    heading: (count: number) => `归档的对话 · ${count}`,
+    heading: '归档的对话',
     empty: '还没有归档的对话',
     open: '打开',
     unarchive: '取消归档',

@@ -10,6 +10,7 @@ import { LinePieces } from '../DiffLines.js'
 import { EmptyState } from '../EmptyState.js'
 import { EntityLink } from '../EntityLink.js'
 import { FormInput } from '../FormControls.js'
+import { InlineMessage } from '../InlineMessage.js'
 import { LoadingPlaceholder } from '../LoadingPlaceholder.js'
 import { SectionHeading } from '../PageShell.js'
 import { SourceAnchor } from '../SourceAnchor.js'
@@ -294,7 +295,8 @@ export function ReviewQueue({ proposals, failed, pending, onApply, onDecline, li
           />
         )),
       }]} />
-      {p.notice === null ? null : <p className="review-note review-note--warn"><LinePieces pieces={named(p.notice, p.titles)} /></p>}
+      {p.notice === null
+        ? null : <InlineMessage tone="warning" variant="line"><LinePieces pieces={named(p.notice, p.titles)} /></InlineMessage>}
     </>
   )
 
@@ -319,20 +321,22 @@ export function ReviewQueue({ proposals, failed, pending, onApply, onDecline, li
                           if (declining !== null) reasons.drop(declining)
                           if (next) reasons.set(p.id, '')
                         }}
-                        contentClassName="ctxmenu review-decline" align="start"
+                        surface="form" contentClassName="review-decline" align="start"
                         trigger={<Button size="compact" variant="ghost" tone="danger" disabled={pending}>{r.decline}</Button>}
                       >
-                        <FormInput
-                          appearance="field" autoFocus value={reason} placeholder={r.reasonPlaceholder}
-                          onChange={(e) => reasons.set(p.id, e.target.value)}
-                        />
-                        <Button
-                          size="regular" tone="danger" disabled={pending}
-                          onClick={() => {
-                            reasons.drop(p.id)
-                            onDecline(p, reason.trim())
-                          }}
-                        >{r.declineConfirm}</Button>
+                        <div className="review-decline-form">
+                          <FormInput
+                            appearance="field" autoFocus value={reason} placeholder={r.reasonPlaceholder}
+                            onChange={(e) => reasons.set(p.id, e.target.value)}
+                          />
+                          <Button
+                            size="regular" tone="danger" disabled={pending}
+                            onClick={() => {
+                              reasons.drop(p.id)
+                              onDecline(p, reason.trim())
+                            }}
+                          >{r.declineConfirm}</Button>
+                        </div>
                       </ActionPopover>
                       <Button size="compact" variant={p.id === lead ? 'primary' : 'secondary'} disabled={pending || !applicable(p)} onClick={() => onApply(p)}>{r.apply}</Button>
                       {p.staleNow ? <TagButton tone="warn" onClick={() => links.openPage(p.stalePage!)}>{r.stale}</TagButton> : null}
@@ -357,7 +361,7 @@ export function ReviewQueue({ proposals, failed, pending, onApply, onDecline, li
         ? null
         : (
           <>
-            <SectionHeading>{r.history(decided.length)}</SectionHeading>
+            <SectionHeading count={decided.length}>{r.history}</SectionHeading>
             <StructuredList variant="embedded" className="review-list">
               {decided.map((p) => (
                 <StructuredRow key={p.id} className="review-row" data-proposal={p.id}>

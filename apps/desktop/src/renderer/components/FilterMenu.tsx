@@ -11,8 +11,9 @@ const ALL = 'all'
  * The one filter of a page toolbar: the word filter, then a button that shows `name` while nothing
  * is picked and the picked option's label otherwise, marked on while it filters. Its menu picks one
  * of `options`, or `all` for none, and `onPick` receives the picked option's value, or null for none;
- * a `current` no option holds shows as none. `label` names the button for assistive technology and
- * `className` places it.
+ * a `current` no option holds shows as none. The button keeps the width of the widest of `name` and
+ * the option labels, so picking never changes it. `label` names the button for assistive technology
+ * and `className` places it.
  */
 export function FilterMenu<T>({ name, label, all, options, current, onPick, className }: {
   name: string
@@ -34,7 +35,14 @@ export function FilterMenu<T>({ name, label, all, options, current, onPick, clas
             size="compact"
             className={`${at < 0 ? 'filter-menu' : 'filter-menu on'}${className === undefined ? '' : ` ${className}`}`}
             aria-label={label}
-          ><FadeText>{at < 0 ? name : options[at]!.label}</FadeText></Button>
+          >
+            <span className="filter-menu-value">
+              <FadeText>{at < 0 ? name : options[at]!.label}</FadeText>
+              {[name, ...options.map((option) => option.label)].map((text, i) => (
+                <span key={String(i)} className="filter-menu-ghost" data-label={text} aria-hidden="true" />
+              ))}
+            </span>
+          </Button>
         )}
       >
         <MenuRadioGroup value={at < 0 ? ALL : String(at)}>

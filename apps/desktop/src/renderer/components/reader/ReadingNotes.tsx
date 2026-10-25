@@ -127,7 +127,8 @@ export function ReadingNotes({
   return (
     <aside className="reading-notes" aria-label={m.reader.notes.ariaLabel}>
       <ReaderPanelHeader
-        title={mode === 'highlights' ? m.reader.rail.tabs.highlights : m.reader.notes.heading(reading.notes.length)}
+        title={mode === 'highlights' ? m.reader.rail.tabs.highlights : m.reader.notes.heading}
+        count={mode === 'highlights' ? undefined : reading.notes.length}
         note={m.reader.page.at(currentPage)}
       />
       {mode === 'highlights' ? null : <div className="note-compose">

@@ -24,7 +24,7 @@ import { ConfirmDialog } from '../ConfirmDialog.js'
 import { FadeText } from '../FadeText.js'
 import { DotsMenu } from '../FieldPickers.js'
 import { RowActions } from '../StructuredList.js'
-import { Tag } from '../Tag.js'
+import { InlineMessage } from '../InlineMessage.js'
 
 const OPTIONS: readonly AppearancePreference[] = ['light', 'dark', 'system']
 const OPTION_LABEL: Record<AppearancePreference, 'light' | 'dark' | 'system'> = {
@@ -214,11 +214,11 @@ export function ColourThemeSettings({ onEdit, onError }: {
           {unusable.map((file) => (
             <span className="appearance-problem" data-colour-theme-file={file.file} key={file.file}>
               <span className="appearance-preview problem">
-                <Tag tone="bad">
+                <InlineMessage tone="error" variant="line">
                   {file.path === undefined
                     ? m.settings.appearance.themeProblems[file.reason]
                     : m.settings.appearance.themeProblemAt(m.settings.appearance.themeProblems[file.reason], file.path)}
-                </Tag>
+                </InlineMessage>
               </span>
               <FadeText className="appearance-label" label={file.file}>{file.file}</FadeText>
             </span>

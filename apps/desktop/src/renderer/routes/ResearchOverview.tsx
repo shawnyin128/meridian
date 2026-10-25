@@ -136,7 +136,7 @@ function DecisionQueue({ rows, onOpen }: {
   if (items.length === 0) return null
   return (
     <>
-      <SectionHeading>{m.research.overview.decisions(items.length)}</SectionHeading>
+      <SectionHeading count={items.length}>{m.research.overview.decisions}</SectionHeading>
       <OverviewList>
         {items.map((x) => (
           <OverviewRow

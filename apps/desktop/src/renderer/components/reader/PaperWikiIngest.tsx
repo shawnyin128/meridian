@@ -20,6 +20,7 @@ import { ChipToggles } from '../ChipToggles.js'
 import { EntityLink } from '../EntityLink.js'
 import { FormTextarea } from '../FormControls.js'
 import { HarnessAction } from '../HarnessAction.js'
+import { InlineMessage } from '../InlineMessage.js'
 import { SectionHeading } from '../PageShell.js'
 import { NoModelTag } from '../NoModelTag.js'
 import { TabbedSection } from '../TabbedSection.js'
@@ -333,21 +334,23 @@ export function PaperWikiIngest({ paper, reading, onJump, edits }: {
         <Tag>{personal === 0 ? m.wiki.ingest.noPersonalRecords : m.wiki.ingest.personalRecordsIncluded(personal)}</Tag>
 
         {plan === null && pending === null && error === null
-          ? <p className="wiki-ingest-status">{m.wiki.ingest.preparing}</p>
+          ? <InlineMessage tone="info" variant="line" className="wiki-ingest-status">{m.wiki.ingest.preparing}</InlineMessage>
           : null}
         {plan !== null && !plan.model.configured ? <NoModelTag label={m.wiki.ingest.notConnectedNote} /> : null}
-        {receipt !== null ? <p className="wiki-ingest-status done">{receipt.message}</p> : null}
+        {receipt !== null ? <InlineMessage tone="done" variant="line" className="wiki-ingest-status">{receipt.message}</InlineMessage> : null}
         {pending !== null ? <Tag tone="good">{m.wiki.ingest.restoredPending}</Tag> : null}
         {receipt?.warning === undefined ? null : (
-          <p className="wiki-ingest-status bad">{failureLabel(m, m.wiki.ingest.auditFailed, receipt.warning)}</p>
+          <InlineMessage tone="error" variant="line" className="wiki-ingest-status">
+            {failureLabel(m, m.wiki.ingest.auditFailed, receipt.warning)}
+          </InlineMessage>
         )}
-        {failed !== null ? <p className="wiki-ingest-status bad">{failed}</p> : null}
+        {failed !== null ? <InlineMessage tone="error" variant="line" className="wiki-ingest-status">{failed}</InlineMessage> : null}
 
         <div className="wiki-ingest-actions">
           {receipt === null && plan !== null && failure === undefined
             ? <HarnessAction plan={plan} running={running} onStart={start} onCancel={cancel} />
             : null}
-          {cancelling ? <span className="wiki-ingest-status">{m.wiki.ingest.stopping}</span> : null}
+          {cancelling ? <InlineMessage tone="info" variant="line" className="wiki-ingest-status">{m.wiki.ingest.stopping}</InlineMessage> : null}
           {receipt !== null || failed !== null || rejected
             ? <Button size="regular" onClick={reprepare}>{m.wiki.ingest.reprepare}</Button>
             : null}
@@ -370,8 +373,8 @@ export function PaperWikiIngest({ paper, reading, onJump, edits }: {
               )}
           </div>
         ) : null}
-        {applied ? <p className="wiki-ingest-status done">{m.wiki.ingest.written}</p> : null}
-        {rejected ? <p className="wiki-ingest-status">{m.wiki.ingest.discarded}</p> : null}
+        {applied ? <InlineMessage tone="done" variant="line" className="wiki-ingest-status">{m.wiki.ingest.written}</InlineMessage> : null}
+        {rejected ? <InlineMessage tone="info" variant="line" className="wiki-ingest-status">{m.wiki.ingest.discarded}</InlineMessage> : null}
       </div>
     </section>
   )

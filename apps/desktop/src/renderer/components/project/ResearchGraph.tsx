@@ -496,7 +496,7 @@ export function ResearchNodePanel({
       </SectionHeading>
       {children.length === 0 ? null : (
         <>
-          <SectionHeading variant="rail">{m.project.graph.branchSummary(children.length)}</SectionHeading>
+          <SectionHeading variant="rail" count={children.length}>{m.project.graph.branchSummary}</SectionHeading>
           <div className="node-branch-groups">
             {branches.map((group) => (
               <div className={`node-branch-group ${group.key}`} key={group.key}>
@@ -514,7 +514,7 @@ export function ResearchNodePanel({
         </>
       )}
 
-      <SectionHeading variant="rail">{m.project.graph.tasks(tasks.length)}</SectionHeading>
+      <SectionHeading variant="rail" count={tasks.length}>{m.project.graph.tasks}</SectionHeading>
       {tasks.length === 0
         ? <EmptyState variant="section">{m.project.graph.noTasks}</EmptyState>
         : (
@@ -528,7 +528,7 @@ export function ResearchNodePanel({
           </StructuredList>
         )}
 
-      <SectionHeading variant="rail">{m.project.linkedIdeas(ideas.length)}</SectionHeading>
+      <SectionHeading variant="rail" count={ideas.length}>{m.project.linkedIdeas}</SectionHeading>
       {ideas.length === 0
         ? <EmptyState variant="section">{m.project.noLinkedIdeas}</EmptyState>
         : (
@@ -559,7 +559,7 @@ export function ResearchNodePanel({
 
       {nodeEvents.length === 0 ? null : (
         <>
-          <SectionHeading variant="rail">{m.project.graph.records(nodeEvents.length)}</SectionHeading>
+          <SectionHeading variant="rail" count={nodeEvents.length}>{m.project.graph.records}</SectionHeading>
           <ProjectEventList className="node-event-list">
             {nodeEvents.map((event, index) => (
               <ProjectEventRow

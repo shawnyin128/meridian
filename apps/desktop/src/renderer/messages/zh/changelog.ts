@@ -1,6 +1,6 @@
 /** Change log screen copy. */
 export const changelog = {
-  title: (count: number) => `最近变动 · ${count}`,
+  title: '最近变动',
   unarchivedHeading: '未归档',
   archivedHeading: '已归档',
   empty: '还没有新的变动',

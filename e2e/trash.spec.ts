@@ -199,7 +199,7 @@ test('原项目还在垃圾桶里时,那条附件恢复不回去,项目回来才
   await expect(attachmentRow.locator('.row-actions [aria-label="恢复"]')).toBeEnabled()
   await restore(attachmentRow)
   await expect(win.locator('.tgroup .trow')).toHaveCount(0)
-  await expect(shown(win, '.ipcerror')).toHaveCount(0)
+  await expect(shown(win, '.page-error')).toHaveCount(0)
   await expect(win.locator('#notice[data-tone="refusal"]')).toHaveCount(0)
 
   await win.locator('[data-desk="resproj"]').click()
