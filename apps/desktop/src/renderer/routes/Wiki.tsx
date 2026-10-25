@@ -786,7 +786,7 @@ export function Wiki() {
                 <SectionHeading
                   actions={(
                     <AddAction
-                      variant="section" ref={childBtn} disabled={pending}
+                      size="compact" ref={childBtn} disabled={pending}
                       label={m.wiki.addKind(shownAgg.kindLabel)} onClick={() => open('child')}
                     >{shownAgg.kindLabel}</AddAction>
                   )}
@@ -824,7 +824,7 @@ export function Wiki() {
                 <SectionHeading
                   actions={(
                     <AddAction
-                      variant="section" ref={paperBtn} disabled={pending}
+                      size="compact" ref={paperBtn} disabled={pending}
                       label={m.wiki.addPaperTitle} onClick={() => open('paper')}
                     >{m.wiki.paperKind}</AddAction>
                   )}
@@ -855,7 +855,7 @@ export function Wiki() {
                         <>
                           {/* If the placeholder column is already open, only refocus it, keeping the half-typed name. */}
                           <AddAction
-                            variant="icon" ref={colAdd} disabled={pending}
+                            size="compact" ref={colAdd} disabled={pending}
                             label={m.wiki.aggregation.addColumn}
                             onClick={() => {
                               if (newCol) { newColCell.current?.querySelector('input')?.focus(); return }

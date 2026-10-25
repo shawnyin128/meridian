@@ -50,7 +50,7 @@ export function ProjectTimeline({
       <SectionHeading
         actions={(
           <ActionMenu trigger={(
-            <AddAction variant="section" ref={newActionRef} label={m.project.plan.addTaskOrMilestone}>
+            <AddAction size="compact" ref={newActionRef} label={m.project.plan.addTaskOrMilestone}>
               {m.project.plan.newAction}
             </AddAction>
           )}

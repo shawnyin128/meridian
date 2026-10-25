@@ -492,7 +492,7 @@ export function Ideas() {
             ? null
             : <SortMenu label={m.ideas.sort} options={[{ label: m.ideas.sortUpdated, onSelect: sortByUpdated }]} />}
           <AddAction
-            variant="page" ref={newIdea}
+            size="regular" ref={newIdea}
             onClick={() => {
               // An open draft is only refocused, keeping what is typed.
               if (draft !== null) draftCard.current?.querySelector<HTMLElement>('.form-control')?.focus()

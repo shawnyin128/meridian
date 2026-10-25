@@ -1153,7 +1153,7 @@ export function PaperTable() {
             <th className="th-add">
               <RowActions>
                 <AddAction
-                  variant="icon" ref={colAdd} label={m.papers.columnHeader.addColumn}
+                  size="compact" ref={colAdd} label={m.papers.columnHeader.addColumn}
                   onClick={() => {
                     if (newCol) { newColCell.current?.querySelector('input')?.focus(); return }
                     setNewCol(true)
@@ -1244,7 +1244,7 @@ export function PaperTable() {
               }}
             />
             <AddAction
-              variant="page" className="pdfupload" disabled={uploading}
+              size="regular" className="pdfupload" disabled={uploading}
               onClick={() => uploadInput.current?.click()}
             >
               {uploading ? m.papers.upload.importing : m.papers.upload.importAction}

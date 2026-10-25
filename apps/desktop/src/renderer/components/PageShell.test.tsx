@@ -51,9 +51,9 @@ describe('PageShell', () => {
 
   it('puts page actions in their own slot at the header\'s right end, after the title', () => {
     const html = renderToStaticMarkup(
-      <PageHeader actions={<AddAction variant="page">Import</AddAction>}><PageTitle>Papers</PageTitle></PageHeader>,
+      <PageHeader actions={<AddAction size="regular">Import</AddAction>}><PageTitle>Papers</PageTitle></PageHeader>,
     )
-    expect(html).toMatch(/^<div class="desk-head"><span class="fade-text t" data-state="closed">Papers<\/span><div class="page-actions"><button type="button" class="btn pri add-action add-action-page">/)
+    expect(html).toMatch(/^<div class="desk-head"><span class="fade-text t" data-state="closed">Papers<\/span><div class="page-actions"><button type="button" class="btn add-action">/)
   })
 
   it('keeps peer-view switches in the shared content toolbar', () => {
@@ -84,7 +84,7 @@ describe('PageShell', () => {
         <PageHeader actions={<SortMenu label="排序" options={[{ label: '按更新时间', onSelect: () => undefined }]} />}>
           <PageTitle>想法</PageTitle>
         </PageHeader>
-        <SectionHeading actions={<AddAction variant="section">任务</AddAction>}>计划</SectionHeading>
+        <SectionHeading actions={<AddAction size="compact">任务</AddAction>}>计划</SectionHeading>
       </>,
     )
     const classes = [...html.matchAll(/<button[^>]*class="([^"]*)"/g)].map((match) => match[1]!.split(' ').slice(0, 2).join(' '))

@@ -195,7 +195,7 @@ describe('Project list', () => {
     await act(async () => root.render(<MessagesProvider><Projects /></MessagesProvider>))
     const actions = [...host.querySelectorAll<HTMLButtonElement>('.desk-head > .page-actions > button')]
     expect(actions.map((b) => [b.textContent, b.className.split(' ').slice(0, 2).join(' ')]))
-      .toEqual([['排序', 'btn sort-menu'], ['新建项目', 'btn pri']])
+      .toEqual([['排序', 'btn sort-menu'], ['新建项目', 'btn add-action']])
     expect(host.querySelector('.section-heading .section-heading-actions')).toBeNull()
     act(() => actions[1]!.click())
     expect(host.querySelector('.desk-body input')).not.toBeNull()

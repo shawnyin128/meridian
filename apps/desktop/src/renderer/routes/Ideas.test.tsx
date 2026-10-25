@@ -181,7 +181,7 @@ describe('Ideas', () => {
     await act(async () => { root.render(<MessagesProvider><Ideas /></MessagesProvider>) })
     const actions = [...host.querySelectorAll<HTMLButtonElement>('.desk-head > .page-actions > button')]
     expect(actions.map((b) => [b.textContent, b.className.split(' ').slice(0, 2).join(' ')]))
-      .toEqual([['排序', 'btn sort-menu'], ['新建想法', 'btn pri']])
+      .toEqual([['排序', 'btn sort-menu'], ['新建想法', 'btn add-action']])
     expect(host.querySelector('.ideas-list .section-heading .section-heading-actions')).toBeNull()
   })
 

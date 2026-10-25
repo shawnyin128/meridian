@@ -462,7 +462,7 @@ export function ProjectPlan({
         onChange={(value) => { onTab(value); onDiscardOpenEdits() }}
         actions={(
           <AddAction
-            variant="section" ref={addRef}
+            size="compact" ref={addRef}
             label={tab === 'ms' ? m.project.plan.addMilestone : m.project.plan.addTask}
             onClick={() => (tab === 'ms' ? onStartMilestone(today) : onStartTask())}
           >{tab === 'ms' ? m.project.plan.milestoneMode : m.project.plan.taskMode}</AddAction>

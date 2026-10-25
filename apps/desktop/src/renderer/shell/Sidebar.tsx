@@ -6,8 +6,8 @@ import { DotsMenu } from '../components/FieldPickers.js'
 import { FoldToggle } from '../components/FoldToggle.js'
 import { RowActions } from '../components/StructuredList.js'
 import { Grip, type GripProps } from '../components/Grip.js'
-import { IconButton } from '../components/IconButton.js'
-import { CHAT_BUBBLE_PATH, Icon, IconNorthStar, IconPlus } from '../components/icons.js'
+import { AddAction } from '../components/AddAction.js'
+import { CHAT_BUBBLE_PATH, Icon, IconNorthStar } from '../components/icons.js'
 import { NavRow } from '../components/NavRow.js'
 import { InlineMessage } from '../components/InlineMessage.js'
 import { CountBadge } from '../components/CountBadge.js'
@@ -288,10 +288,10 @@ export function Sidebar({
             <SectHead
               sect="chats" label={m.shell.nav.chats} closed={!!closed['chats']} onToggle={() => toggle('chats')}
               extra={(
-                <IconButton
-                  label={m.shell.nav.newChat} size="inline" className="sb-add"
+                <AddAction
+                  label={m.shell.nav.newChat} size="compact" className="sb-add"
                   onClick={(e) => { e.stopPropagation(); onNewChat() }}
-                ><IconPlus /></IconButton>
+                />
               )}
             />
             <div className={sect('chats')} id="sect-chats">

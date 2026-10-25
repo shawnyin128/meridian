@@ -65,7 +65,7 @@ function WatchGroup({ type, watches, failed, add, editor, onOpen, onEdit, onSetA
     <>
       <SectionHeading
         variant="group"
-        actions={<AddAction variant="section" ref={add} label={m.watches.add(m.shell.watchKind[type])} onClick={onOpen}>{m.shell.watchKind[type]}</AddAction>}
+        actions={<AddAction size="compact" ref={add} label={m.watches.add(m.shell.watchKind[type])} onClick={onOpen}>{m.shell.watchKind[type]}</AddAction>}
       >{m.shell.watchKind[type]}
       </SectionHeading>
       {watches === null

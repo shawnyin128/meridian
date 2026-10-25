@@ -246,7 +246,7 @@ export function ProjectIdeaList({ projectId, ideas, error, graph, selectedId, on
       <SectionHeading
         actions={(
           <AddAction
-            variant="section" ref={add} label={m.ideas.create}
+            size="compact" ref={add} label={m.ideas.create}
             onClick={() => {
               // An open draft is only refocused, keeping what is typed.
               if (draft !== null) draftAt.current?.querySelector<HTMLElement>('.form-control')?.focus()
@@ -1214,7 +1214,7 @@ export function ProjectDetail({
                     actions={(
                       // The demo's relAdd guard: an open placeholder is only refocused, keeping what was typed.
                       <AddAction
-                        variant="section" ref={relAdd} label={m.project.links.addTitle}
+                        size="compact" ref={relAdd} label={m.project.links.addTitle}
                         onClick={() => {
                           if (relAdding) relRow.current?.querySelector('input')?.focus()
                           else {

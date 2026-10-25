@@ -104,8 +104,8 @@ function useChipDraft({ open, initial, appearance, values, vocabulary, labels, i
 
 /**
  * The `+` after the chips: clicking it turns it into the draft input, in its place, whose value goes
- * to `onAdd`. The `+` button opens it with its own `setOpen(true)`; the styling follows the demo's
- * .tagadd/.tagin/tagSug.
+ * to `onAdd`. The `+` button opens it with its own `setOpen(true)`; the input's styling follows the
+ * demo's .tagin/tagSug.
  */
 function ChipAdd({ onAdd, drafts, ...props }: DraftProps & { onAdd: (value: string) => Promise<boolean>; drafts: Drafts<string> }) {
   const [ownOpen, setOpen] = useState(false)
@@ -122,7 +122,7 @@ function ChipAdd({ onAdd, drafts, ...props }: DraftProps & { onAdd: (value: stri
         ? field
         : (
           <AddAction
-            variant="chip" className={tagClass('ghost', 'chip', 'tagchip tagadd')} label={props.labels.add}
+            size="chip" className="tagchip tagadd" label={props.labels.add}
             onClick={(e) => { e.stopPropagation(); setOpen(true) }}
           />
         )}

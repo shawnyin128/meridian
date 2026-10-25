@@ -11,23 +11,23 @@ declare global {
 }
 
 describe('AddAction', () => {
-  it('页面、分节和图标入口共享加号,只改变视觉权重', () => {
-    const page = renderToStaticMarkup(<AddAction variant="page">导入 PDF</AddAction>)
-    const section = renderToStaticMarkup(<AddAction>任务</AddAction>)
-    const icon = renderToStaticMarkup(<AddAction variant="icon" label="新增列" />)
-    const chip = renderToStaticMarkup(<AddAction variant="chip" className="tagchip tagadd" label="关联项目" />)
+  it('每种尺寸都是次要按钮的灰底配同一个加号：带字的是常规或紧凑的 Button，只有加号的是方块，标签串里是标签那么高的方块', () => {
+    const regular = renderToStaticMarkup(<AddAction size="regular">导入 PDF</AddAction>)
+    const compact = renderToStaticMarkup(<AddAction size="compact">任务</AddAction>)
+    const icon = renderToStaticMarkup(<AddAction size="compact" label="新对话" />)
+    const chip = renderToStaticMarkup(<AddAction size="chip" className="tagchip tagadd" label="关联项目" />)
 
-    expect(page).toContain('class="btn pri add-action add-action-page"')
-    expect(section).toContain('class="btn sm add-action add-action-section"')
-    expect(icon).toContain('class="icbtn sm"')
-    expect(chip).toContain('class="add-action add-action-chip tagchip tagadd"')
-    expect([page, section, icon, chip].every((markup) => markup.includes('<svg'))).toBe(true)
-    expect(icon).toContain('aria-label="新增列"')
+    expect(regular).toContain('class="btn add-action"')
+    expect(compact).toContain('class="btn sm add-action"')
+    expect(icon).toContain('class="add-action add-action-icon"')
+    expect(chip).toContain('class="add-action add-action-icon add-action-chip tagchip tagadd"')
+    expect(new Set([regular, compact, icon, chip].map((markup) => /<svg[\s\S]*?<\/svg>/.exec(markup)?.[0])).size).toBe(1)
+    expect(icon).toContain('aria-label="新对话"')
     expect(chip).toContain('aria-label="关联项目"')
   })
 
   it('分节的添加钮只露出短词，整句是它的名字，不再用 tooltip 重复一遍', () => {
-    const html = renderToStaticMarkup(<AddAction variant="section" label="添加附件">附件</AddAction>)
+    const html = renderToStaticMarkup(<AddAction size="compact" label="添加附件">附件</AddAction>)
     expect(html).toContain('aria-label="添加附件"')
     expect(html).toContain('<span>附件</span>')
     expect(html).not.toContain('title=')
@@ -39,7 +39,7 @@ describe('AddAction', () => {
     const host = document.createElement('div')
     document.body.append(host)
     const root = createRoot(host)
-    act(() => root.render(<AddAction variant="chip" className="tagchip tagadd" label="关联项目" />))
+    act(() => root.render(<AddAction size="chip" className="tagchip tagadd" label="关联项目" />))
     const chip = host.querySelector('button')!
     act(() => { chip.dispatchEvent(new PointerEvent('pointermove', { bubbles: true, pointerType: 'mouse' })) })
     act(() => { vi.advanceTimersByTime(TOOLTIP_DELAY) })

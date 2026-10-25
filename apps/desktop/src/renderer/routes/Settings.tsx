@@ -246,7 +246,7 @@ export function Settings() {
         <AppearanceSettings />
         <SectionHeading
           actions={(
-            <AddAction variant="section" label={m.settings.appearance.editor.create} onClick={() => setEditingTheme({ theme: null })}>
+            <AddAction size="compact" label={m.settings.appearance.editor.create} onClick={() => setEditingTheme({ theme: null })}>
               {m.settings.appearance.editor.createShort}
             </AddAction>
           )}

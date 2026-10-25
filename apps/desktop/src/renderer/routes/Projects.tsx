@@ -388,7 +388,7 @@ function ProjectList({ onOpen, newRow, onNewRow, onReturn }: {
               />
             )}
             <AddAction
-              variant="page" id="projNew" ref={projNew}
+              size="regular" id="projNew" ref={projNew}
               onClick={() => {
                 // An open row is only refocused, keeping the half-typed name, so this click does not
                 // count as outside the row.

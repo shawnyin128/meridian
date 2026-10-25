@@ -88,9 +88,8 @@ describe('屏头的按钮', () => {
       return elements(actions).flatMap((element) => {
         const name = nameOf(element)
         const classes = strings(attribute(element, 'className')).flatMap((value) => value.split(/\s+/))
-        const variant = strings(attribute(element, 'variant'))
-        const small = classes.includes('sm') || strings(attribute(element, 'size')).some((size) => ['sm', 'nested', 'inline'].includes(size))
-          || (name === 'AddAction' && !variant.includes('page'))
+        const small = classes.includes('sm')
+          || strings(attribute(element, 'size')).some((size) => ['sm', 'nested', 'inline', 'compact', 'chip'].includes(size))
         return small ? [`${path}:${line(element)} <${name}>`] : []
       })
     })
@@ -173,11 +172,12 @@ type Place = { slot: Slot; size: string; variant: string; scope?: string }
  */
 const PLACES: Record<string, Place[]> = {
   sort: [{ slot: 'page header', size: 'md', variant: 'plain' }],
-  create: [{ slot: 'page header', size: 'md', variant: 'primary' }],
   add: [
-    { slot: 'section heading', size: 'sm', variant: 'plain' },
-    { slot: 'table header', size: 'nested', variant: 'icon', scope: 'a table adds a column to itself' },
-    { slot: 'inline', size: 'chip', variant: 'chip', scope: 'a field adds a value after its chips' },
+    { slot: 'section heading', size: 'compact', variant: 'labelled' },
+    { slot: 'page header', size: 'regular', variant: 'labelled', scope: 'a page creates an item of the list it shows' },
+    { slot: 'table header', size: 'compact', variant: 'icon', scope: 'a table adds a column to itself' },
+    { slot: 'inline', size: 'chip', variant: 'icon', scope: 'a field adds a value after its chips' },
+    { slot: 'sidebar heading', size: 'compact', variant: 'icon', scope: 'the sidebar starts a chat in its chats group' },
   ],
   'view switch': [
     { slot: 'page toolbar', size: 'md', variant: 'plain' },
@@ -268,10 +268,7 @@ function lookOf(element: Node, source: string, path: string): Look | null {
     return { operation: 'sort', size: 'md', variant: 'plain', label: text(expression(attribute(element, 'label'))) }
   }
   if (name === 'AddAction') {
-    const variant = literal('variant') ?? 'section'
-    if (variant === 'page') return { operation: 'create', size: 'md', variant: 'primary' }
-    if (variant === 'section') return { operation: 'add', size: 'sm', variant: 'plain' }
-    return { operation: 'add', size: variant === 'icon' ? 'nested' : variant, variant }
+    return { operation: 'add', size: literal('size') ?? 'unsized', variant: (element.children as Node[]).length === 0 ? 'icon' : 'labelled' }
   }
   if (name === 'EditActions') return { operation: 'edit', size: 'sm', variant: 'plain' }
   if (name === 'CommitActions' && path.startsWith('components/settings/')) {
@@ -413,6 +410,12 @@ const BUTTON_SIZES: Partial<Record<Slot, string>> = {
   'selection toolbar': 'sm',
 }
 
+/** AddAction's one size in the page header bar and in each kind of heading. */
+const ADD_SIZES: Partial<Record<Slot, string>> = {
+  'page header': 'regular', 'section heading': 'compact', 'group heading': 'compact', 'panel head': 'compact',
+  'sidebar heading': 'compact', 'table header': 'compact',
+}
+
 /** The one icon button size of the slots that hold rows' and chips' own actions. */
 const ICON_SIZES: Partial<Record<Slot, string>> = { 'row actions': 'nested', chip: 'inline' }
 
@@ -465,6 +468,14 @@ describe('一个操作一个位置', () => {
     const offenders = READ.flatMap((file) => file.buttons)
       .filter((button) => BUTTON_SIZES[button.slot] !== undefined && button.size !== BUTTON_SIZES[button.slot])
       .map((button) => `${button.at} ${button.slot}: ${button.size}`)
+    expect([...new Set(offenders)]).toEqual([])
+  })
+
+  it('新建和添加按槽定尺寸:屏头里的 AddAction 是常规尺寸,小标题、组标题、面板头、侧栏小标题和表头里是紧凑尺寸', () => {
+    const adds = PLACEMENTS.filter((placement) => placement.operation === 'add')
+    expect(adds.filter((add) => add.slot === 'page header').length).toBeGreaterThan(0)
+    const offenders = adds.filter((add) => ADD_SIZES[add.slot] !== undefined && add.size !== ADD_SIZES[add.slot])
+      .map((add) => `${add.at} ${add.slot}: ${add.size}`)
     expect([...new Set(offenders)]).toEqual([])
   })
 

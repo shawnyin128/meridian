@@ -87,7 +87,7 @@ describe('项目页时间线上的里程碑', () => {
     const heading = addAction().closest('.section-heading')!
     expect(heading.firstChild!.textContent).toBe('本项目时间线')
     expect(addAction().parentElement!.className).toBe('section-heading-actions')
-    expect(addAction().className).toBe('btn sm add-action add-action-section')
+    expect(addAction().className).toBe('btn sm add-action')
     expect(host.querySelector('.ghead .add-action')).toBeNull()
   })
 
