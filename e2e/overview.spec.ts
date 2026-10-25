@@ -279,13 +279,15 @@ test('总览横条是真实任务:拖动改任务日期,单击进所属项目', 
   const left = () => bar.evaluate((el) => parseFloat((el as HTMLElement).style.left))
   const from = await left()
 
+  // Two days earlier, t2 still spans today, so it stays in the week the Overview shows on every weekday;
+  // two days later, a Sunday would move it past the week's end, and its bar out of the timeline.
   await win.mouse.move(x0, y)
   await win.mouse.down()
-  await win.mouse.move(x0 + 2 * dayPx, y, { steps: 8 })
+  await win.mouse.move(x0 - 2 * dayPx, y, { steps: 8 })
   // While dragging, the bar follows the pointer in whole days. Wait until it has really moved two days
   // before releasing: if the press missed the bar or the move has not happened yet, the bar stays put
   // and this check fails.
-  await expect.poll(async () => (await left()) - from).toBeCloseTo(2 * dayPx, 0)
+  await expect.poll(async () => (await left()) - from).toBeCloseTo(-2 * dayPx, 0)
   await win.mouse.up()
 
   // The drag did not count as a click: the app stays on Overview instead of opening the project.
@@ -297,8 +299,8 @@ test('总览横条是真实任务:拖动改任务日期,单击进所属项目', 
       }
     return project.tasks.find((task) => task.id === 't2')!
   })).toMatchObject({
-    start: fixtureDay(today, REPRO_T2_START + 2),
-    end: fixtureDay(today, REPRO_T2_END + 2),
+    start: fixtureDay(today, REPRO_T2_START - 2),
+    end: fixtureDay(today, REPRO_T2_END - 2),
   })
 
   await bar.click()
