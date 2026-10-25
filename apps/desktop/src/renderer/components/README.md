@@ -171,12 +171,14 @@ Current shared contracts:
   expands details below the host without moving its primary identity, and owns the shared animation,
   keyboard semantics, and reduced-motion behavior.
 - `PageShell`: the shared page-level header/body/footer/error/section composition. Routes supply content
-  and actions rather than copying the desktop shell structure. `SectionHeading` is the one section heading:
+  and actions rather than copying the desktop shell structure. `PageHeader` heads a page or, at `size: 'pane'`,
+  a pane beside it, such as the reader's paper chat and rail panels. `PageBody` keeps its content to the
+  page's column, `page` or `prose`. `SectionHeading` is the one section heading:
   its `variant` is `page`, `content`, `group` or `rail`, and `actions` is the only right-hand slot.
 - `ScrollArea`: the one scroll container, with the fade of every hidden edge, the fill of a flex column
   and the fade a sticky element lays under itself while stuck (`data-stuck-fade`).
 - `HeadingCount`: a heading's count, ` · N` after its text in the heading's own type. `PageTitle`,
-  `SectionHeading`, `CollapsibleGroup`, `DayHeading`, `CardTray` and `ReaderPanelHeader` show it through
+  `SectionHeading`, `CollapsibleGroup`, `DayHeading` and `CardTray` show it through
   their `count`; no message or screen writes `· N` itself.
 - `PickRow`, `Pager`, `Markdown`, `PaperMetadata`, `ParseProgress`: shared feature widgets.
 - `RatingStars`, `ReadStatePicker` (in `PaperMetadata`) and `PaperTopics`: the one rating, reading-status and
@@ -196,7 +198,7 @@ Current shared contracts:
   idea or project conclusion by a generic last-message shortcut.
 - `reader/ReaderSidePanel`: the configurable metadata/highlights/notes/remark tool rail; its note and
   remark editors are feature components rather than hidden route implementations. Every panel opens with
-  `reader/ReaderPanelHeader`.
+  the pane-size `PageHeader`.
 - `paper-table/PaperTable`: the complete library table, including configurable columns, grouping,
   cell pickers, column type editors, reading summaries, and table-owned styling. The route is only
   a page-shell adapter, while Wiki reuses the same column-creation control directly.

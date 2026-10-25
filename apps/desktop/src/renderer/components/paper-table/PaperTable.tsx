@@ -1260,7 +1260,7 @@ export function PaperTable() {
 
       <PageError error={error} />
 
-      <PageBody className={detail ? 'libview withdetail' : 'libview'}>
+      <PageBody fill className={detail ? 'libview withdetail' : 'libview'}>
         <div className="libwide">
           <PageToolbar className="paper-view-toolbar">
             <SegmentedControl

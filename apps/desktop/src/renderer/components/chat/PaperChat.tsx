@@ -11,9 +11,8 @@ import { ChatComposer, draftText, type ChatComposerHandle } from './ChatComposer
 import { BackButton } from '../BackButton.js'
 import { Grip } from '../Grip.js'
 import { EmptyState } from '../EmptyState.js'
-import { FadeText } from '../FadeText.js'
 import { LoadingPlaceholder } from '../LoadingPlaceholder.js'
-import { PageError } from '../PageShell.js'
+import { PageError, PageHeader, PageTitle } from '../PageShell.js'
 import { ScrollArea } from '../ScrollArea.js'
 import { useDrafts } from '../../hooks/useDrafts.js'
 import { useGenerations } from '../../hooks/useGenerations.js'
@@ -127,15 +126,12 @@ export function PaperChat({ paper, onBack = () => {}, prompt = null }: {
 
   return (
     <aside className="paper-chat stream" aria-label={m.chat.paperChatLabel} inert={collapsed}>
-      <header className="paper-chat-head">
+      <PageHeader size="pane">
         <BackButton onClick={onBack} />
-        <FadeText
-          className="paper-chat-title"
-          label={paper === null ? m.common.loading : `${plainTitle(paper.title)}${m.chat.paperHeaderSuffix}`}
-        >
+        <PageTitle label={paper === null ? m.common.loading : `${plainTitle(paper.title)}${m.chat.paperHeaderSuffix}`}>
           {paper === null ? m.common.loading : <><PaperText text={paper.title} />{m.chat.paperHeaderSuffix}</>}
-        </FadeText>
-      </header>
+        </PageTitle>
+      </PageHeader>
       <PageError error={error} />
       <ScrollArea axis="y" fill ref={followRef}>
         <div className="msgs">

@@ -90,8 +90,6 @@
 /* In a window too short for the column to stay pinned with room to read, it scrolls with the page. */
 @media (max-height:860px){.wkside:not(.node-document-pane){position:static;max-height:none}}
 
-.desk-head .fetchnote{font-size:var(--fs-sm);color:var(--ter);white-space:nowrap}
-
 /* "Needs attention" block and its dated rows, shared by the project and wiki screens */
 .attn{padding:0;margin-bottom:0}
 .attnrow{display:grid;grid-template-columns:var(--project-signal-kind-width) var(--project-signal-date-width) minmax(0,1fr);

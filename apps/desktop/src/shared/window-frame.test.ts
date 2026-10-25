@@ -21,6 +21,12 @@ describe('窗口框架的滚动区', () => {
     expect(getComputedStyle(document.querySelector('.gwrap')).overflowX).toBe('auto')
   })
 
+  it('内容自己滚动的页面主体照样留出滚动条的位置，栏和会滚动的页面主体对齐', () => {
+    const css = ['components/ScrollArea.css', 'components/PageShell.css'].map(stylesheet).join('\n')
+    const gutter = (selector: string) => new RegExp(`${selector.replace('.', '\\.')}\\{[^}]*scrollbar-gutter:stable`).test(css)
+    expect([gutter('.scroll-area--gutter'), gutter('.desk-body--fill')]).toEqual([true, true])
+  })
+
   it('侧栏各级的折叠箭头不悬停也看得见', () => {
     document.head.innerHTML = ['components/IconButton.css', 'components/FoldCaret.css', 'components/FoldToggle.css', 'shell/AppShell.css']
       .map((path) => `<style>${stylesheet(path)}</style>`).join('')

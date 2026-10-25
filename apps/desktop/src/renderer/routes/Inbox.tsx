@@ -31,7 +31,7 @@ import { useUndo } from '../hooks/useUndo.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
 import { shownSource } from '../lib/watch-source.js'
 import {
-  PageBody, PageError, PageHeader, PageShell, PageTitle,
+  PageBody, PageError, PageHeader, PageNote, PageShell, PageTitle,
 } from '../components/PageShell.js'
 import { Button } from '../components/Button.js'
 import './shell.css'
@@ -304,7 +304,7 @@ export function Inbox() {
                 >{m.watches.resume}</Button>
               </>
             ) : null}
-            <span className="fetchnote">{stream === 'watch' ? fetchNote(jobs?.fetch ?? null, scope, m) : ''}</span>
+            <PageNote>{stream === 'watch' ? fetchNote(jobs?.fetch ?? null, scope, m) : ''}</PageNote>
             {rows.length === 0 ? null : (
               <SortMenu
                 label={m.inbox.sortLabel} current={m.inbox.sort[sort]}

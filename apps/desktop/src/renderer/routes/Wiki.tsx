@@ -775,7 +775,7 @@ export function Wiki() {
 
       <PageError error={error} />
 
-      <PageBody className="wiki-body" ref={body}>
+      <PageBody className="wiki-body" column={place === null || place === REVIEW || place === TIDY ? 'page' : 'prose'} ref={body}>
         {error === null && (place === null ? home === null : place !== REVIEW && place !== TIDY && shownAgg === null && shownPaper === null)
           ? <LoadingPlaceholder shape="cards" />
           : null}

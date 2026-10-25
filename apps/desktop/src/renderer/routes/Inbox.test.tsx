@@ -505,17 +505,17 @@ describe('Inbox', () => {
     api.scope = 'w1'
     const root = createRoot(host)
     await act(async () => { root.render(<MessagesProvider><Inbox /></MessagesProvider>) })
-    expect(host.querySelector('.fetchnote')!.textContent).toBe('没有新论文 · 上次检查 9月21日08:15')
+    expect(host.querySelector('.page-note')!.textContent).toBe('没有新论文 · 上次检查 9月21日08:15')
     await act(async () => { root.unmount() })
     status.fetch!.last = { watches: ['w1'], added: 2, at }
     const added = createRoot(host)
     await act(async () => { added.render(<MessagesProvider><Inbox /></MessagesProvider>) })
-    expect(host.querySelector('.fetchnote')!.textContent).toBe('上次检查 9月21日08:15')
+    expect(host.querySelector('.page-note')!.textContent).toBe('上次检查 9月21日08:15')
     await act(async () => { added.unmount() })
     api.scope = 'all'
     const all = createRoot(host)
     await act(async () => { all.render(<MessagesProvider><Inbox /></MessagesProvider>) })
-    expect(host.querySelector('.fetchnote')!.textContent).toBe('上次检查 9月20日14:05')
+    expect(host.querySelector('.page-note')!.textContent).toBe('上次检查 9月20日14:05')
     await act(async () => { all.unmount() })
   })
 
@@ -544,7 +544,7 @@ describe('Inbox', () => {
     }
     const root = createRoot(host)
     await act(async () => { root.render(<MessagesProvider><Inbox /></MessagesProvider>) })
-    const note = host.querySelector('.fetchnote')!
+    const note = host.querySelector('.page-note')!
     expect(note.firstChild!.textContent).toBe('上次检查')
     expect([...note.querySelectorAll('.date-time-display .date-chip')].map((chip) => chip.textContent)).toEqual(['9月20日', '14:05'])
     await act(async () => { root.unmount() })
@@ -556,7 +556,7 @@ describe('Inbox', () => {
     }
     const root = createRoot(host)
     await act(async () => { root.render(<MessagesProvider><Inbox /></MessagesProvider>) })
-    expect(host.querySelector('.fetchnote .inline-message--line.inline-message--error[role="alert"]')?.textContent).toBe('检查失败 · 网络不可用')
+    expect(host.querySelector('.page-note .inline-message--line.inline-message--error[role="alert"]')?.textContent).toBe('检查失败 · 网络不可用')
     await act(async () => { root.unmount() })
   })
 

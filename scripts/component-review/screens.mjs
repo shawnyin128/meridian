@@ -5,7 +5,7 @@
 const V = '.screenslot:not([hidden]) '
 
 /** Closes open menus, dialogs and drafts, and leaves the reader, which hides the sidebar. */
-const reset = [['press', 'Escape'], ['press', 'Escape'], ['clickIf', '.main.reading .paper-chat-head .back']]
+const reset = [['press', 'Escape'], ['press', 'Escape'], ['clickIf', '.main.reading .paper-chat .desk-head .back']]
 /** Goes to the sidebar row `desk` from any screen. */
 const desk = (name) => [...reset, ['click', `[data-desk="${name}"]`], ['wait', 700]]
 const openSettings = [...reset, ['click', '.appbtn'], ['click', '[data-appmenu] .mi'], ['wait', '.set-side']]

@@ -94,10 +94,8 @@ export const PATTERNS = {
   PanelHead: {
     metrics: 'head',
     entries: [
-      entry('shared:ReaderPanelHeader', '.reader-panel-head'),
       entry('shared:SectionHeading', '.node-document-head'),
       entry('shared:ModalDialog', '.modal-title'),
-      entry('hand:components/chat/PaperChat.tsx', '.paper-chat-head', { parts: { title: '.paper-chat-title' } }),
       entry('hand:components/paper-table/PaperTable.tsx', '.pd-h', { parts: { title: '.pd-t' } }),
       entry('hand:components/paper-table/ResearchMap.tsx', '.research-map-detail-head'),
       entry('hand:components/timeline/TimelineBoard.tsx', '.ghead'),
@@ -499,7 +497,8 @@ export const PATTERNS = {
   Caption: {
     metrics: 'text',
     entries: [
-      entry('hand:routes/Inbox.tsx', '.fetchnote, .discovery-note'),
+      entry('shared:PageNote', '.page-note'),
+      entry('hand:routes/Inbox.tsx', '.discovery-note'),
       entry('hand:routes/Settings.tsx', '.storage-state'),
       entry('hand:routes/Projects.tsx', '.project-card-label'),
       entry('hand:components/project/ResearchGraph.tsx', '.glegend'),

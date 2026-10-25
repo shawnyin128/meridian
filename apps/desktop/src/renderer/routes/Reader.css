@@ -7,8 +7,6 @@
 .paper-chat{flex:0 0 var(--rrw,300px);min-width:0;border-right:1px solid var(--sep);transition:transform var(--t-slow) var(--e-inout),opacity var(--t-slow) var(--e-inout)}
 /* The paper chat collapses as the sidebar does: out of the layout at once, then sliding away. */
 .main.sbhide .paper-chat{position:absolute;top:0;bottom:0;left:0;width:var(--rrw,300px);z-index:8;transform:translateX(-100%);opacity:0;pointer-events:none}
-.paper-chat-head{height:46px;box-sizing:border-box;padding:0 var(--sp-10);border-bottom:1px solid var(--sep);display:flex;align-items:center;gap:var(--sp-8);min-width:0;background:var(--sidebar)}
-.paper-chat-head .paper-chat-title{font-size:var(--fs-sm);font-weight:var(--fw-title);color:var(--sec)}
 .paper-chat .msgs{padding:var(--sp-16) 0;gap:var(--sp-14)}
 .paper-chat .mwrap{width:calc(100% - 24px)}
 .paper-chat .bubble,.paper-chat .answer,.paper-chat .event{font-size:var(--fs-sm);line-height:1.5}
@@ -74,10 +72,7 @@
 .selection-tools .form-textarea{width:100%;resize:none;field-sizing:content;max-height:calc(6lh + 2 * var(--sp-8) + 2px)}
 
 .reading-notes{width:320px;min-width:320px;box-sizing:border-box;border-left:1px solid var(--sep);background:var(--content);display:flex;flex-direction:column;overflow:hidden}
-/* The heading bar of every reader rail panel */
-.reader-panel-head{flex:none;height:46px;box-sizing:border-box;padding:0 var(--sp-14);display:flex;align-items:center;justify-content:space-between;gap:var(--sp-8);border-bottom:1px solid var(--sep)}
-.reader-panel-head strong{font-size:var(--fs-sm)}
-.reader-panel-head>span,.reading-page{font-size:var(--fs-cap);color:var(--ter)}
+.reading-page{font-size:var(--fs-cap);color:var(--ter)}
 .note-compose{padding:var(--sp-12);border-bottom:1px solid var(--sep);display:flex;flex-direction:column;gap:var(--sp-8);align-items:flex-end}
 .note-compose .form-textarea,.reading-card .form-textarea{width:100%}
 .note-compose .form-textarea{min-height:86px}.reading-card .form-textarea{min-height:64px}

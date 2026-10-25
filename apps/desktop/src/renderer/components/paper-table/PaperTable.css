@@ -4,12 +4,12 @@
  */
 
 /*
- * The table itself is the scroll viewport: it scrolls both ways inside the table, with the horizontal
- * scrollbar always at the bottom of the visible area. The header row sticks to the top, the title
- * column to the left (the corner cell is fixed both ways) and the actions column to the right; those
- * three edges are held, and only the bottom edge fades the way other scroll areas do.
+ * The table itself is the scroll viewport, in a page body that does not scroll: it scrolls both ways
+ * inside the table, with the horizontal scrollbar always at the bottom of the visible area. The header
+ * row sticks to the top, the title column to the left (the corner cell is fixed both ways) and the
+ * actions column to the right; those three edges are held, and only the bottom edge fades the way
+ * other scroll areas do.
  */
-.desk-body.libview{display:flex;flex-direction:column;overflow:hidden}
 .desk-body.libview>.libwide{display:flex;flex-direction:column;flex:1;min-height:0;width:100%}
 .desk-body.libview #libList{flex:1;min-height:0;display:flex;flex-direction:column}
 .desk-body.libview .tblwrap{flex:1;min-height:0}

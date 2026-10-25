@@ -247,7 +247,7 @@ describe('PaperChat', () => {
     document.body.append(host)
     root = createRoot(host)
     await act(async () => { root!.render(withMessages(<PaperChat paper={{ ...PAPER, title }} />)) })
-    expect(host.querySelector('.paper-chat-head .fade-text')?.textContent).toBe(`${title} · 阅读中`)
+    expect(host.querySelector('.paper-chat .desk-head .t')?.textContent).toBe(`${title} · 阅读中`)
   })
 
   it('提交未完成时发送箭头变为可停止的旋转控件', async () => {

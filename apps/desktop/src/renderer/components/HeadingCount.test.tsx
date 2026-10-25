@@ -8,7 +8,6 @@ import { CardTray } from './CardTray.js'
 import { CollapsibleGroup } from './CollapsibleGroup.js'
 import { DayHeading } from './DayHeading.js'
 import { PageTitle, SectionHeading } from './PageShell.js'
-import { ReaderPanelHeader } from './reader/ReaderPanelHeader.js'
 import { TOOLTIP_DELAY, TooltipProvider } from './Tooltip.js'
 
 declare global {
@@ -28,7 +27,6 @@ describe('标题的计数', () => {
     expect(html(<CollapsibleGroup title="已归档" count={7} open onToggle={vi.fn()}>内容</CollapsibleGroup>))
       .toContain(`<span class="collapsible-group-title">已归档</span>${COUNT}`)
     expect(html(<DayHeading count={7}>今天</DayHeading>)).toBe(`<div class="day-heading">今天${COUNT}</div>`)
-    expect(html(<ReaderPanelHeader title="阅读笔记" count={7} />)).toContain(`<strong>阅读笔记${COUNT}</strong>`)
     expect(html(<CardTray variant="row" summary="版本史" count={7}><p>旧版</p></CardTray>)).toContain(`>版本史${COUNT}</span>`)
   })
 

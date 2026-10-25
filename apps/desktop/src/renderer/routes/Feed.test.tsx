@@ -158,7 +158,7 @@ describe('feed rows', () => {
     const root = createRoot(host)
     await act(async () => { root.render(<MessagesProvider><Feed /></MessagesProvider>) })
     expect([...host.querySelector('.feedcol > .desk-body > .msgs')!.children].slice(0, 2).map((child) => child.className))
-      .toEqual(['firstrun-stub mwrap', 'page-toolbar mwrap'])
+      .toEqual(['firstrun-stub mwrap', 'page-toolbar page-toolbar--center mwrap'])
     await act(async () => { root.unmount() })
     host.remove()
     vi.unstubAllGlobals()

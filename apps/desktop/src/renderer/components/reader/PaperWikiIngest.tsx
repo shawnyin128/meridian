@@ -20,7 +20,7 @@ import { EntityLink } from '../EntityLink.js'
 import { FormTextarea } from '../FormControls.js'
 import { HarnessAction } from '../HarnessAction.js'
 import { InlineMessage } from '../InlineMessage.js'
-import { SectionHeading } from '../PageShell.js'
+import { PageHeader, PageTitle, SectionHeading } from '../PageShell.js'
 import { ScrollArea } from '../ScrollArea.js'
 import { NoModelTag } from '../NoModelTag.js'
 import { TabbedSection } from '../TabbedSection.js'
@@ -28,7 +28,6 @@ import { AgentLabel } from '../SourceLabel.js'
 import { Tag, TagButton } from '../Tag.js'
 import { PaperText } from '../paper/PaperText.js'
 import { ProposalCard, ProposalChange, ProposalDecision } from '../wiki/ProposalChange.js'
-import { ReaderPanelHeader } from './ReaderPanelHeader.js'
 import { PaperWikiProposalReview } from './PaperWikiProposalReview.js'
 import { Button } from '../Button.js'
 
@@ -318,7 +317,7 @@ export function PaperWikiIngest({ paper, reading, onJump, edits }: {
 
   return (
     <section className="wiki-ingest" aria-label={m.wiki.addToWiki}>
-      <ReaderPanelHeader title={m.wiki.addToWiki} />
+      <PageHeader size="pane"><PageTitle>{m.wiki.addToWiki}</PageTitle></PageHeader>
       <ScrollArea axis="y" fill>
         <div className="wiki-ingest-body">
           <div className="wiki-ingest-scope">

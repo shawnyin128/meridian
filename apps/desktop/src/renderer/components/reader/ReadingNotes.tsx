@@ -8,7 +8,7 @@ import { IconButton } from '../IconButton.js'
 import { IconTrash } from '../icons.js'
 import { RowActions } from '../StructuredList.js'
 import { SourceAnchor } from '../SourceAnchor.js'
-import { ReaderPanelHeader } from './ReaderPanelHeader.js'
+import { PageHeader, PageNote, PageTitle } from '../PageShell.js'
 import { ScrollArea } from '../ScrollArea.js'
 import { useClipped } from '../../hooks/useClipped.js'
 import { CommitActions } from '../CommitActions.js'
@@ -125,11 +125,11 @@ export function ReadingNotes({
   }
   return (
     <aside className="reading-notes" aria-label={m.reader.notes.ariaLabel}>
-      <ReaderPanelHeader
-        title={mode === 'highlights' ? m.reader.rail.tabs.highlights : m.reader.notes.heading}
-        count={mode === 'highlights' ? undefined : reading.notes.length}
-        note={m.reader.page.at(currentPage)}
-      />
+      <PageHeader size="pane" actions={<PageNote>{m.reader.page.at(currentPage)}</PageNote>}>
+        <PageTitle count={mode === 'highlights' ? undefined : reading.notes.length}>
+          {mode === 'highlights' ? m.reader.rail.tabs.highlights : m.reader.notes.heading}
+        </PageTitle>
+      </PageHeader>
       {mode === 'highlights' ? null : <div className="note-compose">
         <FormTextarea
           aria-label={m.reader.notes.newAria} placeholder={m.reader.notes.placeholder(currentPage)}

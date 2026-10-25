@@ -407,8 +407,8 @@ test('检查新论文按关注抓取一次,新论文进入相应分组且标题�
   await shown(win, '.desk-head .btn').filter({ hasText: '检查新论文' }).click()
   // The vault's Mixtral of Experts records 2026 and arXiv's 2024, more than a year apart, so it is another paper.
   await expect(shown(win, '.pcard')).toHaveCount(before.length + 3)
-  await expect(shown(win, '.desk-head .fetchnote')).toHaveText(/^上次检查 \d+月\d+日\d{2}:\d{2}$/)
-  await expect(shown(win, '.desk-head .fetchnote .date-chip')).toHaveCount(2)
+  await expect(shown(win, '.desk-head .page-note')).toHaveText(/^上次检查 \d+月\d+日\d{2}:\d{2}$/)
+  await expect(shown(win, '.desk-head .page-note .date-chip')).toHaveCount(2)
   expect((await cardTitles(win))[0]).toBe('Tree Width in Batched Serving')
   const fresh = shown(win, '.pcard').filter({ hasText: 'Tree Width in Batched Serving' })
   await expect(fresh.locator('.plabel')).toHaveText(['摘要'])
@@ -427,11 +427,11 @@ test('在一条关注那一档里检查新论文只抓这一条;再抓没有新�
   expect(after.filter((e) => !listedUnder(e, 'watch').includes('spec')).map((e) => e.id)).toEqual(elsewhere)
 
   await shown(win, '.desk-head .btn').filter({ hasText: '检查新论文' }).click()
-  await expect(shown(win, '.desk-head .fetchnote')).toHaveText(/^没有新论文 · 上次检查 \d+月\d+日\d{2}:\d{2}$/)
+  await expect(shown(win, '.desk-head .page-note')).toHaveText(/^没有新论文 · 上次检查 \d+月\d+日\d{2}:\d{2}$/)
   await expect(shown(win, '.pcard')).toHaveCount(shownBefore + 1)
   // The full check, which has not run, keeps its own status line.
   await openInbox(win, 'all')
-  await expect(shown(win, '.desk-head .fetchnote')).not.toContainText('没有新论文')
+  await expect(shown(win, '.desk-head .page-note')).not.toContainText('没有新论文')
 })
 
 test('在一个项目那一档里刷新发现只刷这个项目;没有新的时,提示写出它上次刷新的时刻', async ({ win }) => {

@@ -176,7 +176,7 @@ export function Feed() {
         <div className="msgs">
           <FirstRunChecklist className="mwrap" onError={report} onShown={setSetupShown} />
           {/* The switch sits in the stream, so it lines up with the entries' column. */}
-          <PageToolbar className="mwrap">
+          <PageToolbar align="center" className="mwrap">
             <SegmentedControl
               label={m.feed.sourceFieldLabel}
               value={source ?? 'all'}

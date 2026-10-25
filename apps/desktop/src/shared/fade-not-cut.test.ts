@@ -24,7 +24,7 @@ const FADED: Record<string, [file: string, markup: RegExp][]> = {
   '.scroll-area--x': [['components/ScrollArea.tsx', /const fade = useScrollFade<HTMLDivElement>\(axis\)/]],
   '.scroll-area--both': [['components/ScrollArea.tsx', /const fade = useScrollFade<HTMLDivElement>\(axis\)/]],
   '.sb-top': [['shell/Sidebar.tsx', /className="sb-top" ref=\{navFade\}/]],
-  '.desk-body': [['components/PageShell.tsx', /<ScrollArea axis="y" fill gutter paint ref=\{ref\} className=\{classes\('desk-body', className\)\}/], ...SCROLL_AREA],
+  '.desk-body': [['components/PageShell.tsx', /<ScrollArea axis="y" fill gutter paint ref=\{ref\} className=\{classes\(own, className\)\}/], ...SCROLL_AREA],
   '.set-body': [['routes/Settings.tsx', /className="set-body" ref=\{paneFade\}/]],
   '.set-side': [['routes/Settings.tsx', /className="set-side" ref=\{sideFade\}/]],
   '.structured-list--scrollable': [['components/StructuredList.tsx', /list\.current = node\n\s*fade\(node\)/]],
@@ -123,7 +123,7 @@ describe('滚动区和吸住的部分都淡出而不是硬切', () => {
       .map((rule) => rule.body).join(';')
     expect(body('routes/shell.css', '.wiki-body,.project-detail-body')).toMatch(/container-type:\s*size/)
     expect(source('routes/Wiki.tsx')).toMatch(/<PageBody className="wiki-body"[\s>]/)
-    expect(source('routes/ProjectDetail.tsx')).toMatch(/<PageBody className="project-detail-body">/)
+    expect(source('routes/ProjectDetail.tsx')).toMatch(/<PageBody className="project-detail-body"[\s>]/)
     expect(body('routes/shell.css', '.wkside')).toMatch(/max-height:\s*100cqh/)
     expect(body('routes/ProjectDetail.css', '.wkside.node-document-pane')).toMatch(/(^|;)\s*height:\s*100cqh/)
     for (const [path, selector] of [['routes/shell.css', '.wkside'], ['routes/ProjectDetail.css', '.wkside.node-document-pane']] as const) {
