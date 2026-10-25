@@ -2230,6 +2230,12 @@ export const ChatSendResultSchema = z.object({
 
 export const ChatCancelParamsSchema = z.object({ id: z.string() }).strict()
 
+/**
+ * Reads the answer the model is writing in a chat, as far as it has written it: a string, or null
+ * while the chat's model writes none, which a model that does not stream never does.
+ */
+export const ChatWritingParamsSchema = z.object({ id: z.string() }).strict()
+
 /** Asks again for an answer to a chat's last question, after its turn got none; answers a ChatSendResult. */
 export const ChatRetryParamsSchema = z.object({ id: z.string() }).strict()
 export const ChatCancelResultSchema = z.object({ id: z.string(), cancelled: z.boolean() }).strict()
@@ -2857,6 +2863,7 @@ export const CONTRACT_METHODS = [
   'chat.send',
   'chat.retry',
   'chat.cancel',
+  'chat.writing',
   'idea.list',
   'idea.create',
   'idea.update',

@@ -2786,6 +2786,11 @@ export function createVaultStore(
       chats = save('chats', chats.map((c) => (c === chat ? { ...c, archived } : c)))
     },
 
+    chatIds() {
+      dropExpired()
+      return [...chats.map((chat) => chat.id), ...trash.flatMap((item) => (item.kind === 'chat' ? [item.chat.id] : []))]
+    },
+
     deleteChat: atomic((id) => {
       const chat = chatOf(id)
       const position = chats.indexOf(chat)

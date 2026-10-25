@@ -18,6 +18,7 @@ import { ScrollArea } from '../ScrollArea.js'
 import { useDrafts } from '../../hooks/useDrafts.js'
 import { useChatTurn } from '../../hooks/useChatTurn.js'
 import { useDraftSlot } from '../DraftSlot.js'
+import { useAnswerSoFar } from '../../hooks/useAnswerSoFar.js'
 import { useGenerations } from '../../hooks/useGenerations.js'
 import { useFollowEnd } from '../../hooks/useFollowEnd.js'
 import { useModelStatus } from '../../hooks/useModelStatus.js'
@@ -69,6 +70,7 @@ export function PaperChat({ paper, onBack = () => {}, prompt = null }: {
     ideaDraft !== undefined, () => { if (paperId !== null) ideaDrafts.set('chat-idea', { title: '', body: '' }) },
   )
   const sending = sessionId !== null && running(sessionId)
+  const writing = useAnswerSoFar(sessionId, sending, messages)
 
   useEffect(() => {
     setSession(null)
@@ -143,6 +145,7 @@ export function PaperChat({ paper, onBack = () => {}, prompt = null }: {
                   : undefined}
               />
             ))}
+          {writing === null ? null : <ChatMessageView key={writing.id} message={writing} onAct={() => act(writing)} />}
           {session === null || paper === null || ideaDraft === undefined
             ? null
             : (

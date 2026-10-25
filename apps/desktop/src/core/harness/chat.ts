@@ -1,11 +1,19 @@
+import { createHash, randomUUID } from 'node:crypto'
 import { z, ZodError } from 'zod'
 import { HarnessModelConnectionCheckResultSchema } from '../../shared/contract.js'
-import type { HarnessCli, HarnessModelConnectionCheckResult } from '../../shared/contract.js'
+import type { HarnessCli, HarnessCliModel, HarnessModelConnectionCheckResult } from '../../shared/contract.js'
+import { CallError } from '../call-error.js'
 import { extractPdfPages } from '../paper-library/index.js'
 import type { VaultStore } from '../vault.js'
+import { CLI_CALL_TIMEOUT_MS, CLI_REQUEST_TIMEOUT_MS, cliCallError, cliUsageLine } from './cli-call.js'
+import type { CliChatSessions } from './cli/chat-sessions.js'
+import type { CliChatResult, CliChatRunner } from './cli/chat-turn.js'
+import { CliRunError } from './cli/child.js'
+import { CLI_CALL_FAILURES } from './cli/failure.js'
+import type { CliUsage } from './cli/runner.js'
 import type { HarnessModelConfig } from './model-config.js'
 import { launchHarnessProcess } from './process.js'
-import { createHarnessRpc, HarnessRpcError } from './rpc.js'
+import { createHarnessRpc, type HarnessCallback, type HarnessChild, HarnessRpcError } from './rpc.js'
 
 const MAX_MODEL_CONNECTION_DETAIL = 500
 const MODEL_CONNECTION_REDACTIONS = [
@@ -20,6 +28,12 @@ const ChatContextParamsSchema = z.object({
   currentText: z.string().min(1).max(20_000),
 }).strict()
 const ChatAnswerSchema = z.object({ answer: z.string().trim().min(1).max(20_000) }).strict()
+/** A chat turn's model call: the whole turn as `system` and `prompt`, and the new message alone. */
+const ChatModelInvokeParamsSchema = z.object({
+  system: z.string().min(1).max(500_000),
+  prompt: z.string().min(1).max(200_000),
+  message: z.string().min(1).max(20_000),
+}).strict()
 export const CHAT_CONTEXT_BUDGETS = Object.freeze({
   sourceCharacters: 80_000,
   historyCharacters: 12_000,
@@ -37,6 +51,20 @@ type StoredPaperReading = ReturnType<VaultStore['paperReading']>
 
 const messageText = (message: StoredChatMessage) =>
   message.runs.map((run) => run.text).join('').trim()
+
+type Turn = { role: 'you' | 'ai'; text: string }
+/** What a CLI session of a chat holds of `messages`: what was said and answered, without the status lines. */
+const turnsOf = (messages: readonly StoredChatMessage[]): Turn[] =>
+  messages.flatMap((message) => (message.role === 'status' ? [] : [{ role: message.role, text: messageText(message) }]))
+/** A fingerprint of `turns`, which tells whether a CLI session holds the turns a chat holds now. */
+const turnsDigest = (turns: readonly Turn[]) =>
+  createHash('sha256').update(JSON.stringify(turns.map((turn) => [turn.role, turn.text]))).digest('hex')
+/** The usage between two running totals a Codex session reported. */
+const usageSince = (total: CliUsage, before: CliUsage): CliUsage => ({
+  inputTokens: total.inputTokens - before.inputTokens,
+  cachedInputTokens: total.cachedInputTokens - before.cachedInputTokens,
+  outputTokens: total.outputTokens - before.outputTokens,
+})
 
 function clipMiddle(value: string, limit: number): string {
   const text = value.trim()
@@ -166,9 +194,9 @@ export function messagesBefore(messages: readonly StoredChatMessage[], currentTe
 export class ChatFailure extends Error {}
 
 /**
- * What went wrong with a chat turn, as a ChatFailure in plain words: the text of a provider's response
- * or of a parser never reaches it. An error from outside the Harness call, such as an unreadable key,
- * is returned as it is.
+ * What went wrong with a chat turn, as a ChatFailure in plain words, or as a malformed-output
+ * CallError when the answer failed validation: the text of a provider's response or of a parser never
+ * reaches it. An error from outside the Harness call, such as an unreadable key, is returned as it is.
  */
 export function chatHarnessError(cause: unknown): Error {
   if (cause instanceof ZodError) return new ChatFailure('模型的回答读不出来')
@@ -179,17 +207,28 @@ export function chatHarnessError(cause: unknown): Error {
   if (cause.kind === 'harness_gone') return new ChatFailure('AI 服务停了')
   if (cause.kind === 'bad_request') return new ChatFailure('对话太长，或这次请求模型不支持')
   if (cause.kind === 'no_model') return new ChatFailure('还没有连上模型')
+  if (cause.kind === 'model_error' && cause.detail === 'structured_output') {
+    return new CallError('malformed-output', cause.message, { cause })
+  }
   // The Harness words a model's own failure plainly and safely (ModelInvocationError).
   if (cause.kind === 'model_error') return new ChatFailure(cause.message)
   return new ChatFailure('AI 服务出了错')
 }
 
-/** A single-purpose chat client with a least-privilege callback surface. */
+/**
+ * A single-purpose chat client with a least-privilege callback surface. A turn on a subscription CLI
+ * also gets its one model call from Core, which `cli` runs in the chat's CLI session that `sessions`
+ * keeps, with the internal MCP server's vault lookups, scoped to the chat's paper in a paper chat; a
+ * turn whose CLI call fails fails for the CLI problem it met.
+ */
 export function createChatHarnessRunner(options: {
   store: VaultStore
   model: HarnessModelConfig
   /** The connection check of a subscription CLI, which makes no model call. */
   checkCli: (cli: HarnessCli) => Promise<HarnessModelConnectionCheckResult>
+  cli: CliChatRunner
+  sessions: CliChatSessions
+  launch?: () => HarnessChild
   onLog?: (line: string) => void
 }) {
   const sourceText = new Map<string, Promise<Array<{ number: number; text: string }>>>()
@@ -212,7 +251,7 @@ export function createChatHarnessRunner(options: {
   }
 
   const rpc = createHarnessRpc({
-    launch: launchHarnessProcess,
+    launch: options.launch ?? launchHarnessProcess,
     requiredCapabilities: ['chat', 'model-check'],
     ...(options.onLog === undefined ? {} : { onLog: options.onLog }),
     callbacks: {
@@ -250,6 +289,72 @@ export function createChatHarnessRunner(options: {
     },
   })
 
+  /**
+   * The one model call of a turn of chat `chatId` that answers `text` on `model`, ending when
+   * `signal` aborts, telling `onText` the answer as far as the CLI has written it and reporting a CLI
+   * failure to `onFailure`. It resumes the chat's CLI session, with the new message alone, while that
+   * session holds the turns the chat holds; otherwise it starts a new session with the whole turn.
+   * `keep` makes the session resumable once the turn's `answer` is kept.
+   */
+  const cliTurn = (
+    chatId: string, text: string, model: HarnessCliModel, signal: AbortSignal,
+    onFailure: (failure: CliRunError) => void, onText?: (text: string) => void,
+  ) => {
+    const before = turnsOf(messagesBefore(options.store.chatMessages(chatId), text))
+    let called = false
+    let ran: { id: string; total?: CliUsage } | null = null
+    const call: HarnessCallback = async (params) => {
+      if (called) throw new HarnessRpcError({ kind: 'bad_request', message: 'A run makes one model call' })
+      called = true
+      const { system, prompt, message } = ChatModelInvokeParamsSchema.parse(params)
+      const paperId = options.store.chatSession(chatId).paperId
+      const resumed = options.sessions.resumable(chatId, model, turnsDigest(before))
+      const start = resumed === null && model.cli === 'claude' ? randomUUID() : undefined
+      let id = resumed?.id ?? start
+      // Until its answer is kept, the session holds a turn the chat may never hold.
+      options.sessions.begin(chatId, model.cli, id)
+      let result: CliChatResult
+      try {
+        result = await options.cli({
+          cli: model.cli,
+          ...(model.model === undefined ? {} : { model: model.model }),
+          system,
+          prompt: resumed === null ? prompt : message,
+          session: resumed !== null ? { resume: resumed.id } : start === undefined ? {} : { start },
+          folder: options.sessions.folder(chatId),
+          lookup: paperId === undefined ? {} : { paperId },
+          timeoutMs: CLI_CALL_TIMEOUT_MS,
+          signal,
+          onSession: (named) => {
+            id = named
+            options.sessions.started(chatId, model.cli, named)
+          },
+          ...(onText === undefined ? {} : { onText }),
+        })
+      } catch (cause) {
+        if (cause instanceof CliRunError) onFailure(cause)
+        throw cliCallError(model.cli, cause, options.onLog)
+      }
+      // Codex reports a session's running total, so a resumed turn's own usage is the difference.
+      const total = model.cli === 'codex' ? result.usage : undefined
+      const usage = total !== undefined && resumed?.total !== undefined ? usageSince(total, resumed.total) : result.usage
+      options.onLog?.(cliUsageLine(model.cli, usage === undefined ? result : { ...result, usage }))
+      if (id !== undefined) ran = { id, ...(total === undefined ? {} : { total }) }
+      return { output: result.answer }
+    }
+    const keep = (answer: string) => {
+      if (ran === null) return
+      options.sessions.keep(chatId, {
+        cli: model.cli,
+        id: ran.id,
+        ...(model.model === undefined ? {} : { model: model.model }),
+        history: turnsDigest([...before, { role: 'you', text: text.trim() }, { role: 'ai', text: answer }]),
+        ...(ran.total === undefined ? {} : { total: ran.total }),
+      })
+    }
+    return { call, keep }
+  }
+
   return {
     async checkConnection() {
       let model
@@ -273,17 +378,38 @@ export function createChatHarnessRunner(options: {
         return failedConnectionCheck(cause, secrets, modelCalls)
       }
     },
-    async answer(id: string, text: string, signal: AbortSignal): Promise<string> {
+    /**
+     * Asks Harness to answer `text` in chat `id` until `signal` aborts; a model that streams its
+     * answer tells `onText` the answer as far as it is written.
+     */
+    async answer(id: string, text: string, signal: AbortSignal, onText?: (text: string) => void): Promise<string> {
+      const ended = new AbortController()
+      let failure: CliRunError | undefined
       try {
+        const model = await options.model.runtime()
+        const turn = 'source' in model
+          ? cliTurn(id, text, model, AbortSignal.any([signal, ended.signal]), (cause) => { failure = cause }, onText)
+          : null
         const result = ChatAnswerSchema.parse(await rpc.request('chat.answer', {
           chatId: id,
           text,
-          model: await options.model.runtime(),
+          model,
           limits: { maxOutputTokens: 2_000, maxModelCalls: 1 },
-        }, { signal }))
+        }, {
+          signal,
+          ...(turn === null ? {} : {
+            timeoutMs: CLI_REQUEST_TIMEOUT_MS,
+            callbacks: { 'model.invoke': turn.call },
+          }),
+        }))
+        turn?.keep(result.answer)
         return result.answer
       } catch (cause) {
-        throw chatHarnessError(cause)
+        throw failure === undefined
+          ? chatHarnessError(cause)
+          : new CallError(CLI_CALL_FAILURES[failure.kind], failure.message, { cause: failure })
+      } finally {
+        ended.abort()
       }
     },
     close: rpc.close,

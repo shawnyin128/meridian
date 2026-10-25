@@ -53,13 +53,13 @@ export type CliResult = {
  */
 export type CliRunner = (call: CliCall) => Promise<CliResult>
 
-const isRecord = (value: unknown): value is Record<string, unknown> =>
+export const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value)
 
 const count = (value: unknown) => (typeof value === 'number' && Number.isFinite(value) ? value : 0)
 
 /** What a failed call reports beside its message: the CLI's exit code and the redacted end of its stderr. */
-const failureDetails = (outcome: ChildOutcome) => ({ exitCode: outcome.code, stderr: stderrExcerpt(outcome.stderr) })
+export const failureDetails = (outcome: ChildOutcome) => ({ exitCode: outcome.code, stderr: stderrExcerpt(outcome.stderr) })
 
 /** How a call `cli` failed with `reported`, its own error text if any: at the plan's usage limit, or otherwise. */
 const failedKind = (cli: HarnessCli, outcome: ChildOutcome, reported: unknown = '') =>
@@ -68,6 +68,60 @@ const failedKind = (cli: HarnessCli, outcome: ChildOutcome, reported: unknown = 
 const detailOf = (value: unknown) => typeof value === 'string'
   ? value.replace(/\s+/g, ' ').trim().slice(0, MAX_CLI_ERROR_DETAIL)
   : ''
+
+/** The JSON object one line of a CLI's output holds, or null when it holds none. */
+export function jsonLine(line: string): Record<string, unknown> | null {
+  try {
+    const value: unknown = JSON.parse(line)
+    return isRecord(value) ? value : null
+  } catch {
+    return null
+  }
+}
+
+/** The usage a Claude `result` reports, its input counting the tokens read from and written to the cache. */
+export function claudeUsage(result: Record<string, unknown>): CliUsage {
+  const usage = isRecord(result['usage']) ? result['usage'] : {}
+  const cachedInputTokens = count(usage['cache_read_input_tokens'])
+  return {
+    inputTokens: count(usage['input_tokens']) + count(usage['cache_creation_input_tokens']) + cachedInputTokens,
+    cachedInputTokens,
+    outputTokens: count(usage['output_tokens']),
+  }
+}
+
+/** The failure of a Claude call that exited with `outcome.code` and printed no result. */
+export function claudeExitFailure(outcome: ChildOutcome): CliRunError {
+  return new CliRunError(failedKind('claude', outcome), `claude 运行失败（退出码 ${String(outcome.code)}）`, failureDetails(outcome))
+}
+
+/** The failure of a Claude call whose `result` reports an error, in the words of that error. */
+export function claudeFailure(result: Record<string, unknown>, outcome: ChildOutcome): CliRunError {
+  const detail = detailOf(result['result'])
+  return new CliRunError(failedKind('claude', outcome, result['result']),
+    detail === '' ? 'claude 运行失败' : `claude 运行失败：${detail}`, failureDetails(outcome))
+}
+
+/** The usage the `turn.completed` events of a Codex call report, summed. */
+export function codexUsage(events: ReadonlyArray<Record<string, unknown>>): CliUsage {
+  const usages = events.filter((event) => event['type'] === 'turn.completed')
+    .map((event) => (isRecord(event['usage']) ? event['usage'] : {}))
+  return {
+    inputTokens: usages.reduce((sum, usage) => sum + count(usage['input_tokens']), 0),
+    cachedInputTokens: usages.reduce((sum, usage) => sum + count(usage['cached_input_tokens']), 0),
+    outputTokens: usages.reduce((sum, usage) => sum + count(usage['output_tokens']), 0),
+  }
+}
+
+/** The failure of a Codex call that exited with an error, in the words of its last error event. */
+export function codexFailure(events: ReadonlyArray<Record<string, unknown>>, outcome: ChildOutcome): CliRunError {
+  const failure = events.findLast((event) => event['type'] === 'turn.failed' || event['type'] === 'error')
+  const reported = isRecord(failure?.['error']) ? failure['error']['message'] : failure?.['message']
+  const detail = detailOf(reported)
+  return new CliRunError(failedKind('codex', outcome, reported), detail === ''
+    ? `codex 运行失败（退出码 ${String(outcome.code)}）`
+    : `codex 运行失败：${detail}`, failureDetails(outcome))
+}
 
 /** `schema` in OpenAI's strict form: every object closed, every property required, no defaults. */
 export function strictSchema(schema: unknown): unknown {
@@ -139,50 +193,24 @@ function claudeResult(outcome: ChildOutcome): Omit<CliResult, 'durationMs'> {
     result = undefined
   }
   if (!isRecord(result)) {
-    if (outcome.code !== 0) {
-      throw new CliRunError(failedKind('claude', outcome), `claude 运行失败（退出码 ${String(outcome.code)}）`, failureDetails(outcome))
-    }
+    if (outcome.code !== 0) throw claudeExitFailure(outcome)
     return { output: null }
   }
-  const usage = isRecord(result['usage']) ? result['usage'] : {}
-  const cachedInputTokens = count(usage['cache_read_input_tokens'])
   const reported = {
-    usage: {
-      inputTokens: count(usage['input_tokens']) + count(usage['cache_creation_input_tokens']) + cachedInputTokens,
-      cachedInputTokens,
-      outputTokens: count(usage['output_tokens']),
-    },
+    usage: claudeUsage(result),
     ...(typeof result['num_turns'] === 'number' ? { turns: result['num_turns'] } : {}),
   }
   // An output that kept failing the schema is a malformed output, not a failed call.
   if (result['is_error'] === true && result['subtype'] !== 'error_max_structured_output_retries') {
-    const detail = detailOf(result['result'])
-    throw new CliRunError(failedKind('claude', outcome, result['result']),
-      detail === '' ? 'claude 运行失败' : `claude 运行失败：${detail}`, failureDetails(outcome))
+    throw claudeFailure(result, outcome)
   }
   return { output: result['structured_output'] ?? null, ...reported }
 }
 
 /** Codex prints JSON Lines events and writes its last message, the output, to the `-o` file. */
 function codexResult(outcome: ChildOutcome, outputFile: string): Omit<CliResult, 'durationMs'> {
-  const events = outcome.stdout.split('\n').flatMap((line) => {
-    try {
-      const event: unknown = JSON.parse(line)
-      return isRecord(event) ? [event] : []
-    } catch {
-      return []
-    }
-  })
-  if (outcome.code !== 0) {
-    const failure = events.findLast((event) => event['type'] === 'turn.failed' || event['type'] === 'error')
-    const reported = isRecord(failure?.['error']) ? failure['error']['message'] : failure?.['message']
-    const detail = detailOf(reported)
-    throw new CliRunError(failedKind('codex', outcome, reported), detail === ''
-      ? `codex 运行失败（退出码 ${String(outcome.code)}）`
-      : `codex 运行失败：${detail}`, failureDetails(outcome))
-  }
-  const turns = events.filter((event) => event['type'] === 'turn.completed')
-  const usages = turns.map((event) => (isRecord(event['usage']) ? event['usage'] : {}))
+  const events = outcome.stdout.split('\n').map(jsonLine).filter((event) => event !== null)
+  if (outcome.code !== 0) throw codexFailure(events, outcome)
   let output: unknown = null
   if (existsSync(outputFile)) {
     try {
@@ -193,12 +221,46 @@ function codexResult(outcome: ChildOutcome, outputFile: string): Omit<CliResult,
   }
   return {
     output,
-    usage: {
-      inputTokens: usages.reduce((sum, usage) => sum + count(usage['input_tokens']), 0),
-      cachedInputTokens: usages.reduce((sum, usage) => sum + count(usage['cached_input_tokens']), 0),
-      outputTokens: usages.reduce((sum, usage) => sum + count(usage['output_tokens']), 0),
+    usage: codexUsage(events),
+    turns: events.filter((event) => event['type'] === 'turn.completed').length,
+  }
+}
+
+export type CliRunnerDeps = {
+  discover: (cli: HarnessCli) => Promise<CliDiscovery>
+  /** A number that changes whenever the subscription settings change. */
+  settingsRevision?: () => number
+  environment?: NodeJS.ProcessEnv
+  internalMcp?: InternalMcpOpener
+  now?: () => number
+}
+
+/**
+ * The check a call makes before it starts a CLI: `binary` resolves the binary of `cli` as `discover`
+ * finds it once it is installed, supported and signed in with the user's subscription, and otherwise
+ * rejects with a CliRunError saying why. A passed check holds for five minutes by `now`, until
+ * `settingsRevision` changes or `failed` is told of a call that did not complete; a call the user
+ * cancelled keeps it.
+ */
+export function cliCheck(deps: Pick<CliRunnerDeps, 'discover' | 'settingsRevision' | 'now'>) {
+  const now = deps.now ?? Date.now
+  const revision = deps.settingsRevision ?? (() => 0)
+  /** Each CLI's binary from its last passed check, with when it passed and under which settings revision. */
+  const passed = new Map<HarnessCli, { binary: string; at: number; revision: number }>()
+  return {
+    async binary(cli: HarnessCli): Promise<string> {
+      const kept = passed.get(cli)
+      if (kept !== undefined && now() - kept.at < CHECK_TTL_MS && kept.revision === revision()) return kept.binary
+      passed.delete(cli)
+      const check = { at: now(), revision: revision() }
+      const ready = readiness(await deps.discover(cli))
+      if (!('binary' in ready)) throw new CliRunError(ready.kind, ready.message)
+      passed.set(cli, { binary: ready.binary, ...check })
+      return ready.binary
     },
-    turns: turns.length,
+    failed(cli: HarnessCli, cause: unknown) {
+      if (!(cause instanceof CliRunError && cause.kind === 'cancelled')) passed.delete(cli)
+    },
   }
 }
 
@@ -211,31 +273,11 @@ function codexResult(outcome: ChildOutcome, outputFile: string): Omit<CliResult,
  * check holds for five minutes by `now`, until `settingsRevision` changes or a call fails or times out;
  * a call the user cancels keeps it.
  */
-export function createCliRunner(deps: {
-  discover: (cli: HarnessCli) => Promise<CliDiscovery>
-  /** A number that changes whenever the subscription settings change. */
-  settingsRevision?: () => number
-  environment?: NodeJS.ProcessEnv
-  internalMcp?: InternalMcpOpener
-  now?: () => number
-}): CliRunner {
+export function createCliRunner(deps: CliRunnerDeps): CliRunner {
   const environment = deps.environment ?? process.env
-  const now = deps.now ?? Date.now
-  const revision = deps.settingsRevision ?? (() => 0)
-  /** Each CLI's binary from its last passed check, with when it passed and under which settings revision. */
-  const passed = new Map<HarnessCli, { binary: string; at: number; revision: number }>()
-  const checkedBinary = async (cli: HarnessCli) => {
-    const kept = passed.get(cli)
-    if (kept !== undefined && now() - kept.at < CHECK_TTL_MS && kept.revision === revision()) return kept.binary
-    passed.delete(cli)
-    const check = { at: now(), revision: revision() }
-    const ready = readiness(await deps.discover(cli))
-    if (!('binary' in ready)) throw new CliRunError(ready.kind, ready.message)
-    passed.set(cli, { binary: ready.binary, ...check })
-    return ready.binary
-  }
+  const check = cliCheck(deps)
   return async (call) => {
-    const binary = await checkedBinary(call.cli)
+    const binary = await check.binary(call.cli)
     if (call.lookup !== undefined && deps.internalMcp === undefined) {
       throw new Error('This runner has no internal MCP server for a call that looks up the vault')
     }
@@ -263,7 +305,7 @@ export function createCliRunner(deps: {
       const result = call.cli === 'claude' ? claudeResult(outcome) : codexResult(outcome, files.output)
       return { ...result, durationMs }
     }).catch((cause: unknown) => {
-      if (!(cause instanceof CliRunError && cause.kind === 'cancelled')) passed.delete(call.cli)
+      check.failed(call.cli, cause)
       throw cause
     })
   }

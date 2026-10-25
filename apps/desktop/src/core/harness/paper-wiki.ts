@@ -8,6 +8,7 @@ import type {
 import { CallError } from '../call-error.js'
 import type { VaultStore } from '../vault.js'
 import { extractPdfPages, probePdf } from '../paper-library/index.js'
+import { CLI_CALL_TIMEOUT_MS, CLI_REQUEST_TIMEOUT_MS, cliCallError, cliUsageLine } from './cli-call.js'
 import { CliRunError } from './cli/child.js'
 import { CLI_CALL_FAILURES } from './cli/failure.js'
 import type { CliResult, CliRunner } from './cli/runner.js'
@@ -15,10 +16,6 @@ import type { HarnessExecution, HarnessRunner } from './cost-gate.js'
 import type { HarnessModelConfig } from './model-config.js'
 import { launchHarnessProcess } from './process.js'
 import { createHarnessRpc, type HarnessCallback, type HarnessChild, HarnessRpcError } from './rpc.js'
-
-const CLI_CALL_TIMEOUT_MS = 10 * 60_000
-/** A CLI run's request also covers the reads before its model call and the checks after it. */
-const CLI_REQUEST_TIMEOUT_MS = CLI_CALL_TIMEOUT_MS + 2 * 60_000
 
 /** What Harness names as the detail of a model error whose output failed the draft schema or cited outside the run's scope. */
 const MALFORMED_OUTPUT_DETAILS: ReadonlySet<unknown> = new Set(['structured_output', 'invalid_anchor'])
@@ -385,18 +382,6 @@ export function paperWikiHarnessError(cause: unknown): Error {
   return new CallError('model', cause.message, { cause })
 }
 
-function usageLine(cli: HarnessCliModel['cli'], result: CliResult): string {
-  const parts = [`${(result.durationMs / 1_000).toFixed(1)} s`]
-  if (result.turns !== undefined) parts.push(`${result.turns} turns`)
-  if (result.usage !== undefined) {
-    parts.push(
-      `${result.usage.inputTokens} input tokens (${result.usage.cachedInputTokens} cached)`,
-      `${result.usage.outputTokens} output tokens`,
-    )
-  }
-  return `${cli}: ${parts.join(', ')}`
-}
-
 /**
  * Real Paper Wiki runner. Core supplies reads and Harness supplies only an unapplied draft. A run on
  * a subscription CLI also gets its one model call from Core, which `cli` runs.
@@ -463,15 +448,10 @@ export function createPaperWikiHarnessRunner(options: {
           signal,
         })
       } catch (cause) {
-        if (!(cause instanceof CliRunError)) throw cause
-        onFailure(cause)
-        if (cause.exitCode !== undefined || cause.stderr !== undefined) {
-          const stderr = cause.stderr === undefined || cause.stderr === '' ? '' : `: ${cause.stderr.replace(/\n/g, ' | ')}`
-          options.onLog?.(`${model.cli} failed, exit ${String(cause.exitCode ?? 'none')}${stderr}`)
-        }
-        throw new HarnessRpcError({ kind: 'model_error', message: cause.message })
+        if (cause instanceof CliRunError) onFailure(cause)
+        throw cliCallError(model.cli, cause, options.onLog)
       }
-      options.onLog?.(usageLine(model.cli, result))
+      options.onLog?.(cliUsageLine(model.cli, result))
       return { output: result.output }
     }
   }

@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { checkCliConnection, discoverCli, resolveCliBinary } from './discovery.js'
+import { chatTurnFlags } from './chat-turn.js'
 import { runnerFlags } from './runner.js'
 
 /**
@@ -21,8 +22,8 @@ else if (argv[0] === 'auth') process.stdout.write(process.env.STAND_IN_STATUS)
 else { process.stderr.write(process.env.STAND_IN_STATUS); process.exitCode = Number(process.env.STAND_IN_STATUS_EXIT ?? 0) }
 `
 
-/** Help text listing every flag the runner passes to either CLI, one option per line. */
-const FULL_HELP = [...runnerFlags('claude'), ...runnerFlags('codex')]
+/** Help text listing every flag the runner and a chat turn pass to either CLI, one option per line. */
+const FULL_HELP = [...runnerFlags('claude'), ...runnerFlags('codex'), ...chatTurnFlags('claude'), ...chatTurnFlags('codex')]
   .map((flag) => `  ${flag} <value>    What the option does`).join('\n')
 
 const CLAUDE_STATUS = JSON.stringify({
@@ -178,6 +179,18 @@ describe('subscription CLI discovery', () => {
     expect(unsupported).toMatchObject({ state: 'failed', reason: 'cli-unsupported', version: '2.0.9', modelCalls: 0 })
     expect(JSON.stringify(unsupported)).not.toContain('json-schema')
     expect(logs).toEqual([expect.stringContaining('--json-schema')])
+    const noStreaming = machine({ help: FULL_HELP.replace(/^ {2}--include-partial-messages .*$/m, '') })
+    executable(join(noStreaming.home, '.local', 'bin', 'claude'), STAND_IN)
+    await expect(checkCliConnection('claude', noStreaming.options)).resolves.toMatchObject({
+      state: 'failed', reason: 'cli-unsupported', modelCalls: 0,
+    })
+    for (const [cli, flag] of [['claude', '--resume'], ['codex', 'resume']] as const) {
+      const noResume = machine({ help: FULL_HELP.replace(new RegExp(`^ {2}${flag} .*$`, 'm'), '') })
+      executable(join(noResume.home, '.local', 'bin', cli), STAND_IN)
+      await expect(checkCliConnection(cli, noResume.options)).resolves.toMatchObject({
+        state: 'failed', reason: 'cli-unsupported', modelCalls: 0,
+      })
+    }
 
     const apiKey = machine({ status: JSON.stringify({ loggedIn: true, authMethod: 'api_key' }) })
     executable(join(apiKey.home, '.local', 'bin', 'claude'), STAND_IN)
