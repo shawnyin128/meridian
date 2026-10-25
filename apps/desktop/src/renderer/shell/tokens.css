@@ -186,20 +186,14 @@
 @media (min-width:1600px){:root{--pagew:1320px;--prosew:1200px;--chatw:880px;--cardw:280px;--card-tt:var(--fs-item-title);--card-fs:var(--fs-sm);--card-lines:3}}
 @media (min-width:2000px){:root{--pagew:1560px;--prosew:1320px;--chatw:1000px;--cardw:320px;--card-tt:var(--fs-read);--card-fs:var(--fs-base);--card-lines:3}}
 
-/* A row or anchor a jump has landed on, which useArrival marks [data-arrived], flashes twice. */
-@keyframes arrival-flash{50%{background-color:var(--tint-warn)}}
-[data-arrived]{animation:arrival-flash var(--t-flash) var(--e-inout) 2}
-
 /*
  * With the system's "Reduce motion" on, transitions and keyframe animations stop entirely but every
  * state change still shows. Only the spinning DownloadRing keeps turning: it is the live sign that a
- * job is running. A landed target keeps [data-arrived] for a set time (useArrival), so it gets a static
- * background, and stays highlighted for that time.
+ * job is running.
  */
 @media (prefers-reduced-motion:reduce){
   :root{--t-fast:1ms;--t:1ms;--t-slow:1ms;--t-delay:0ms}
   :not(.ring.spin),::before,::after{animation:none!important}
-  [data-arrived]{background-color:var(--tint-warn)}
   .paper-card.is-leaving{transform:none}
 }
 

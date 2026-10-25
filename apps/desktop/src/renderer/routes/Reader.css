@@ -27,10 +27,6 @@
 .pdfsheet{width:max-content;min-width:100%;transform-origin:0 0}
 .pdfpagebox{--user-unit:1;--total-scale-factor:calc(var(--scale-factor) * var(--user-unit));--scale-round-x:1px;--scale-round-y:1px;direction:ltr;position:relative;margin:0 auto var(--sp-24);background:var(--paper);box-shadow:var(--sh-paper);border-radius:var(--r-2xs)}
 .pdfpagebox canvas{display:block}
-/* The drawn page covers its own background, so a page a jump lands on flashes in a layer over it. */
-.pdfpagebox[data-arrived]::after{content:"";position:absolute;inset:0;z-index:3;border-radius:inherit;pointer-events:none;
-  animation:arrival-flash var(--t-flash) var(--e-inout) 2}
-@media (prefers-reduced-motion:reduce){.pdfpagebox[data-arrived]::after{background-color:var(--tint-warn)}}
 
 /*
  * pdf.js's TextLayer is only for text selection: transparent text laid over the canvas. These are

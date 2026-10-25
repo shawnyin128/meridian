@@ -58,6 +58,14 @@ describe('landing on a jump\'s target', () => {
     expect(arrived()).toEqual([])
   })
 
+  it('flashes a target whose drawing covers its own background in the layer over it', () => {
+    act(() => root.render(<Rows arrival={null} />))
+    act(() => land(host.querySelector('#c')!, 'start', 'over'))
+    expect([scrolled, host.querySelector('#c')!.getAttribute('data-arrived')]).toEqual([[['c', 'start']], 'over'])
+    act(() => { vi.advanceTimersByTime(ARRIVAL_FLASH_MS) })
+    expect(arrived()).toEqual([])
+  })
+
   it('starts the flash over when the same target is landed on again while it flashes', () => {
     act(() => root.render(<Rows arrival={null} />))
     const row = host.querySelector('#a')!

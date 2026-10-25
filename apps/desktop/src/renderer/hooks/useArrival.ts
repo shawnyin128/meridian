@@ -1,22 +1,24 @@
 import { useEffect, useRef } from 'react'
+import '../components/arrival.css'
 
-/** How long, in ms, a landed target flashes: the two pulses of `[data-arrived]` in tokens.css, each `--t-flash` long. */
+/** How long, in ms, a landed target flashes: the two pulses of `[data-arrived]` in arrival.css, each `--t-flash` long. */
 export const ARRIVAL_FLASH_MS = 1000
 
 const flashing = new WeakMap<Element, number>()
 
 /**
  * Lands on `target`, a row or an anchor a jump points at: scrolls it into view by `block` and flashes
- * it, marking it `data-arrived` for ARRIVAL_FLASH_MS. Landing on it again while it flashes starts the
+ * it, marking it `data-arrived` for ARRIVAL_FLASH_MS. A target whose drawing covers its own
+ * background, such as a PDF page, flashes `over` it. Landing on it again while it flashes starts the
  * flash over.
  */
-export function land(target: Element, block: ScrollLogicalPosition = 'nearest'): void {
+export function land(target: Element, block: ScrollLogicalPosition = 'nearest', layer: 'own' | 'over' = 'own'): void {
   target.scrollIntoView({ block })
   window.clearTimeout(flashing.get(target))
   // Taking the mark off and reading the layout before marking it again restarts its animation.
   target.removeAttribute('data-arrived')
   target.getBoundingClientRect()
-  target.setAttribute('data-arrived', '')
+  target.setAttribute('data-arrived', layer === 'over' ? 'over' : '')
   flashing.set(target, window.setTimeout(() => {
     target.removeAttribute('data-arrived')
     flashing.delete(target)
