@@ -171,7 +171,7 @@ describe('WatchSettings', () => {
 
     const label = (id: string) => host.querySelector<HTMLElement>(`[data-w="${id}"] .tag.tag--label`)
     expect([label('topic-1')?.textContent, label('topic-1')?.classList.contains('tag--neutral')]).toEqual(['已暂停', true])
-    expect([label('author-2')?.textContent, label('author-2')?.classList.contains('tag--warn')]).toEqual(['未确认', true])
+    expect([label('author-2')?.textContent, label('author-2')?.classList.contains('tag--warning')]).toEqual(['未确认', true])
     expect(label('author-1')).toBeNull()
 
     await act(async () => { root.unmount() })
@@ -331,7 +331,7 @@ describe('WatchSettings', () => {
       await act(async () => { row.querySelector<HTMLElement>('.row-actions')!.focus() })
       expect(document.activeElement).toBe(row.querySelector('.add-action'))
     }
-    const addAll = button(section.querySelector('.watch-suggestion-group-heading')!, '添加全部关键词')
+    const addAll = button(section.querySelector('.section-heading--group .section-heading-actions')!, '添加全部关键词')
     expect([addAll.classList.contains('add-action'), addAll.closest('.row-actions')]).toEqual([true, null])
 
     await act(async () => { root.unmount() })
@@ -353,6 +353,19 @@ describe('WatchSettings', () => {
     await pressEnter({})
     expect(api.suggest).toHaveBeenCalledExactlyOnceWith({ source: 'focus', focus: '批量推理的动态验证' })
 
+    await act(async () => { root.unmount() })
+  })
+
+  it('作者搜索进行中时候选的位置是载入占位，不写一句正在查找', async () => {
+    api.search.mockReturnValueOnce(new Promise(() => {}))
+    const root = createRoot(host)
+    await act(async () => { root.render(<MessagesProvider><WatchSettings /></MessagesProvider>) })
+    const authorList = host.querySelector('[data-w="author-1"]')!.closest('.wlist')!
+    await act(async () => { authorList.previousElementSibling!.querySelector<HTMLButtonElement>('button')!.click() })
+    await act(async () => { enter(authorList.querySelector<HTMLInputElement>('.newrow input')!, 'Ada Lovelace') })
+    await act(async () => { await new Promise((done) => { setTimeout(done, 750) }) })
+    expect([host.querySelector('.newrow .loading-placeholder--rows') !== null, host.querySelector('.author-search-note')])
+      .toEqual([true, null])
     await act(async () => { root.unmount() })
   })
 
@@ -393,7 +406,7 @@ describe('WatchSettings', () => {
     const section = host.querySelector('.watch-suggestions')!
     await act(async () => { enter(section.querySelector<HTMLInputElement>('input')!, '我想关注批量推理中的动态验证策略') })
     await act(async () => { button(section, '查找建议').click() })
-    expect(section.querySelector('.watch-suggestion-error.inline-message--error')?.textContent).toBe('生成关注建议失败 · 正在限流')
+    expect(section.querySelector('.watch-suggestion-error.inline-message--error')?.textContent).toBe('生成关注建议失败 · 被限流')
     await act(async () => { root.unmount() })
   })
 
@@ -438,7 +451,7 @@ describe('WatchSettings', () => {
     await act(async () => { button(section, '查找建议').click() })
     expect(api.suggest).toHaveBeenLastCalledWith({ source: 'project', projectId: 'project-1' })
     expect(section.textContent).toContain('tree attention kernels')
-    const basis = section.querySelector('.watch-suggestion-results > .ph2')!
+    const basis = section.querySelector('.watch-suggestion-results > .grouped-list > .ph2')!
     expect([basis.firstChild?.textContent, basis.querySelector('.tag')?.textContent]).toEqual(['基于 4 篇相关论文', '离线 · 上次的建议'])
 
     await act(async () => { root.unmount() })

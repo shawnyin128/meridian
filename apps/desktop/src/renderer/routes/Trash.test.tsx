@@ -149,8 +149,14 @@ describe('Trash', () => {
     expect([host.querySelector('.page-error'), host.querySelectorAll('.trow').length]).toEqual([null, 4])
   })
 
-  it('每条只写几天后自动清除，页脚不再用一句话重复保留期', () => {
-    expect(host.querySelector('.trow .tm2')!.textContent).toBe('7 天后自动清除')
+  it('每条只写还剩几天，几天后自动清除那句放进它的提示，页脚不再用一句话重复保留期', () => {
+    const left = host.querySelector<HTMLElement>('.trow .tm2')!
+    expect(left.textContent).toBe('7 天')
+    vi.useFakeTimers()
+    act(() => { left.dispatchEvent(new PointerEvent('pointermove', { bubbles: true, pointerType: 'mouse' })) })
+    act(() => { vi.advanceTimersByTime(TOOLTIP_DELAY) })
+    vi.useRealTimers()
+    expect(document.querySelector('[role="tooltip"]')?.textContent).toBe('7 天后自动清除')
     expect(host.querySelector('.desk-foot')).toBeNull()
   })
 
@@ -234,12 +240,12 @@ describe('Trash', () => {
     expect(rows.map(restoreState)).toEqual([[true, null, ['恢复', '论文已有新的对话']], [false, null, ['恢复', null]]])
   })
 
-  it('彻底删除一条要先确认,确认后才清除', async () => {
+  it('彻底删除一条要先确认,标题已说彻底,下面不再写一句,确认后才清除', async () => {
     await act(async () => { button(host.querySelector('.trow')!, '彻底删除').click() })
     expect(api.purge).not.toHaveBeenCalled()
     const dialog = document.querySelector('[role="alertdialog"]')!
     expect(dialog.querySelector('.modal-title')!.textContent).toBe('彻底删除「Draft trees」？')
-    expect(dialog.querySelector('.modal-detail')!.textContent).toBe('删除后不可恢复。')
+    expect(dialog.querySelector('.modal-detail')).toBeNull()
 
     await act(async () => { button(dialog, '彻底删除').click() })
     expect(api.purge).toHaveBeenCalledExactlyOnceWith('trash-1')
@@ -264,15 +270,8 @@ describe('Trash', () => {
     expect(api.purge).not.toHaveBeenCalled()
   })
 
-  it('恢复长标题的条目后，横幅写出完整标题，标题放不下时淡出而不是截断', async () => {
-    vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} })
+  it('恢复一条后它从列表上离开，不另弹通知', async () => {
     await act(async () => { button(host.querySelectorAll('.trow')[3]!, '恢复').click() })
-    const banner = document.createElement('div')
-    const shown = createRoot(banner)
-    act(() => shown.render(<>{api.notes[0]}</>))
-    const title = 'MoE 路由用熵正则代替负载均衡 load balancing.pdf'
-    expect(banner.textContent).toBe(`已恢复「${title}」`)
-    expect(banner.querySelector('.fade-text')!.textContent).toBe(title)
-    act(() => shown.unmount())
+    expect(api.notes).toEqual([undefined])
   })
 })

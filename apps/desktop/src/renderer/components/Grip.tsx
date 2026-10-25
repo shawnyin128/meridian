@@ -39,8 +39,9 @@ export type GripProps = GripLimits & {
  * must be the grip's parent element. Dragging past a 3px dead zone resizes the pane from its laid-out
  * width at the press; a press that never leaves the dead zone does nothing. Escape during a drag puts
  * the size at the press back and ends the drag. The arrow keys step the size by 10px (50px with
- * Shift), Home and End go to the limits, and a double-click calls `onReset`. Other props and the ref
- * go to the separator, so a tooltip can name it.
+ * Shift), Home and End go to the limits, and a double-click calls `onReset`; with Alt held the keys
+ * are left to the item the pane is, such as a table column that moves with Alt and the arrows. Other
+ * props and the ref go to the separator, so a tooltip can name it.
  */
 export const Grip = forwardRef<HTMLDivElement, GripProps & Omit<HTMLAttributes<HTMLDivElement>, keyof GripProps | 'children'>>(function Grip({
   label, value, min, max, onResizeStart, onResize, onResizeEnd, onReset, id, className, onClick, ...props
@@ -114,6 +115,7 @@ export const Grip = forwardRef<HTMLDivElement, GripProps & Omit<HTMLAttributes<H
   }
 
   const step = (e: ReactKeyboardEvent<HTMLDivElement>) => {
+    if (e.altKey) return
     const by = e.shiftKey ? SHIFT_STEP : STEP
     const steps: Record<string, (start: number, limits: GripLimits) => number> = {
       ArrowLeft: (start) => start - by,

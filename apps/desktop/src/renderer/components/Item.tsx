@@ -52,6 +52,8 @@ type ItemProps = {
   className?: string
   /** The grid columns of a row that lays its cells out itself. */
   columns?: string
+  /** A row that lays its cells in the columns of its list's grid, so the list's rows, new and saved, line up. */
+  subgrid?: boolean
   /** An item that holds controls of its own: a div that forwards a pointer click anywhere else on it to `onActivate`. */
   composite?: boolean
   /** The item whose detail is open beside the list. */
@@ -78,7 +80,7 @@ type ItemProps = {
  * gives, runs after that.
  */
 export function Item({
-  density = 'row', lines = 1, leading, title, meta, tags, trailing, actions, menu, children, className = '', columns,
+  density = 'row', lines = 1, leading, title, meta, tags, trailing, actions, menu, children, className = '', columns, subgrid = false,
   composite = false, selected = false, muted = false, leaving = false, mark, onActivate, elementRef, style, ...props
 }: ItemProps) {
   const card = density === 'card'
@@ -86,7 +88,7 @@ export function Item({
   const slotted = [leading, title, meta, tags, trailing, actions, menu].some(shown)
   const classes = [
     'item', `item--${density}`, slotted ? 'item--slotted' : '', lines === 2 && !card ? 'item--two-line' : '',
-    columns === undefined ? '' : 'item--columns',
+    columns === undefined ? '' : 'item--columns', subgrid ? 'item--subgrid' : '',
     onActivate === undefined ? '' : 'item--actionable',
     selected ? 'item--selected' : '', muted ? 'item--muted' : '', leaving ? 'item--leaving' : '', mark === undefined ? '' : 'item--marked',
     className,

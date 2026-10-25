@@ -21,7 +21,7 @@ export function RailLinks({ heading, rows }: { heading: string; rows: { label: s
   if (rows.length === 0) return null
   return (
     <>
-      <SectionHeading variant="rail">{heading}</SectionHeading>
+      <SectionHeading level="group">{heading}</SectionHeading>
       {rows.map((row) => (
         <div className="wkrel rail-links" key={row.label}>
           <span className="rl">{row.label}</span>

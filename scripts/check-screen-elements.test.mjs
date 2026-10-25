@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { rendererFiles } from './check-screen-css.mjs'
-import { RAW_BUTTONS, isScreenSource, rawButtonDiff, rawButtons } from './check-screen-elements.mjs'
+import { RAW_BUTTONS, isScreenSource, rawButtonDiff, rawButtons, rawTables } from './check-screen-elements.mjs'
 
 const files = (entries) => new Map(Object.entries(entries))
 
@@ -59,5 +59,21 @@ describe('屏幕不画原生按钮', () => {
 
   it('应用里屏幕上的原生按钮都在清单里，清单里的每个键都还在用', () => {
     expect(rawButtonDiff(rawButtons(rendererFiles()))).toEqual({ unlisted: [], unused: [] })
+  })
+})
+
+describe('屏幕不画原生表格', () => {
+  it('routes/、components/<功能>/ 和 shell/ 里的原生 table 都报出来，带文件和行号；共享组件和测试里的不算', () => {
+    const source = 'export const X = () => (\n  <div>\n    <table className="ptable"><tbody /></table>\n  </div>\n)\n'
+    expect(rawTables(files({
+      'routes/Wiki.tsx': source,
+      'components/paper-table/PaperTable.tsx': source,
+      'components/Table.tsx': source,
+      'routes/Wiki.test.tsx': source,
+    }))).toEqual([{ file: 'routes/Wiki.tsx', line: 3 }, { file: 'components/paper-table/PaperTable.tsx', line: 3 }])
+  })
+
+  it('应用里的屏幕都用共享的 Table 画表格，不画原生 table', () => {
+    expect(rawTables(rendererFiles())).toEqual([])
   })
 })

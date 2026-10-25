@@ -1,18 +1,13 @@
 /*
- * The theme editor takes the Settings columns: .set-side lists the modules and .set-main holds the
- * name, the preview and the picked module's colour.
+ * The theme editor takes the Settings dialog's split page: its navigation lists the modules and its main
+ * column holds the name, the preview and the picked module's colour.
  */
-/* The module column is wider than the categories', so a four-character name keeps one line beside its low-contrast mark. */
-.set-side.theme-modules{flex-basis:210px}
 .theme-module-name{white-space:nowrap}
-.theme-editor-title{display:flex;align-items:center;gap:var(--sp-4);margin:calc(-1 * var(--sp-6)) 0 var(--sp-6)}
-.theme-editor-title .set-t{margin:0;padding:0}
 .theme-module-group+.theme-module-group{margin-top:var(--sp-12)}
 .theme-module-swatch{width:12px;height:12px;border-radius:var(--r-full);box-shadow:inset 0 0 0 1px var(--sep-strong)}
 
 .theme-editor-head{display:flex;align-items:center;gap:var(--sp-16)}
 .theme-editor-name{width:200px}
-.theme-editor-base{display:inline-flex;align-items:center;gap:var(--sp-8);color:var(--sec);font-size:var(--fs-sm)}
 .theme-editor-base-picker{width:120px}
 .theme-editor-modes{display:flex;align-items:center;gap:var(--sp-12);margin-bottom:var(--sp-12)}
 

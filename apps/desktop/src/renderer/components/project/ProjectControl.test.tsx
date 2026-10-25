@@ -33,10 +33,10 @@ describe('ProjectControl', () => {
     expect(inline).not.toContain('project-control-meta')
   })
 
-  it('空阻塞只在详情占位，列表行不制造空内容', () => {
+  it('空阻塞只在详情里放共享的空值 —，列表行不制造空内容', () => {
     expect(renderToStaticMarkup(
       <MessagesProvider><ProjectBlockerView blocker={undefined} /></MessagesProvider>,
-    )).toContain('无阻塞')
+    )).toContain('>—</span>')
     expect(renderToStaticMarkup(
       <MessagesProvider><ProjectBlockerView blocker={undefined} variant="inline" /></MessagesProvider>,
     )).toBe('')

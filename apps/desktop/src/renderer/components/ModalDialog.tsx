@@ -1,8 +1,8 @@
-import { useEffect, useRef } from 'react'
 import type { ReactNode } from 'react'
 import * as Dialog from '@radix-ui/react-dialog'
 import { ignoreComposingEscape } from '../lib/keyboard.js'
 import { useMessages } from '../messages/useMessages.js'
+import { useOpenerFocus } from '../hooks/useOpenerFocus.js'
 import { useScrollFade } from '../hooks/useScrollFade.js'
 import { IconButton } from './IconButton.js'
 import { IconCross } from './icons.js'
@@ -21,9 +21,13 @@ export function modalSurface(size: ModalSize, className?: string): string {
   return `modal ${size}${className === undefined ? '' : ` ${className}`}`
 }
 
-/** The dialog's title, in the one dialog title role; `className` places it, it never restyles it. */
-export function ModalTitle({ className, children }: { className?: string; children: ReactNode }) {
-  return <Dialog.Title className={`modal-title${className === undefined ? '' : ` ${className}`}`}>{children}</Dialog.Title>
+/**
+ * The dialog's title, in the one dialog title role; `className` places it, it never restyles it. A
+ * `hidden` title names the dialog for assistive technology only, for a dialog whose field says what it is.
+ */
+export function ModalTitle({ className, hidden = false, children }: { className?: string; hidden?: boolean; children: ReactNode }) {
+  const classes = ['modal-title', hidden ? 'modal-title--hidden' : '', className].filter(Boolean).join(' ')
+  return <Dialog.Title className={classes}>{children}</Dialog.Title>
 }
 
 /** The close control in a closable dialog's top-right corner. */
@@ -35,21 +39,23 @@ function DialogClose({ onClose }: { onClose: () => void }) {
 /**
  * The app-wide modal skeleton without a trigger. It owns the overlay, the portal, the dialog surface
  * of `size` (centred, capped in height, stacked above whatever opened it), the accessibility
- * declaration for a dialog without a description, and returning focus on close whether the dialog
- * was opened from the app menu, programmatically or by a page button. An Escape pressed while an
+ * declaration for a dialog without a description, and returning focus on close (see useOpenerFocus)
+ * whether the dialog was opened from the app menu, programmatically or by a page button. An Escape pressed while an
  * input method is composing does not close it. `title` heads the surface; a dialog that places its
  * title itself omits it and uses `ModalTitle` in `children`. `children` is the body, which scrolls
  * when it is taller than the window allows, and `actions` stay pinned below it. `closable` puts the
- * dialog's close control in the surface's top-right corner, above anything the body holds. `className`
- * names the layout inside.
+ * dialog's close control in the surface's top-right corner, above anything the body holds. `place: 'top'`
+ * pins the surface near the window's top instead of centring it, so a field at its top stays put while
+ * the list under it grows and shrinks. `className` names the layout inside.
  */
 export function ModalDialog({
-  open, onOpenChange, size, title, actions, closable = false, className, overlayClassName = 'scrim', children,
+  open, onOpenChange, size, place = 'center', title, actions, closable = false, className, overlayClassName = 'scrim', children,
   restoreFocus = true, ariaDescribedBy, contentProps,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
   size: ModalSize
+  place?: 'center' | 'top'
   title?: ReactNode
   actions?: ReactNode
   closable?: boolean
@@ -61,40 +67,7 @@ export function ModalDialog({
   contentProps?: ContentProps
 }) {
   const bodyFade = useScrollFade('y')
-  const opener = useRef<HTMLElement | null>(null)
-  const lastFocused = useRef<HTMLElement | null>(null)
-  const wasOpen = useRef(false)
-  const committedOpen = useRef(open)
-  const openRef = useRef(open)
-  openRef.current = open
-
-  useEffect(() => {
-    const remember = (event: FocusEvent) => {
-      if (!openRef.current && event.target instanceof HTMLElement && event.target !== document.body) {
-        lastFocused.current = event.target
-      }
-    }
-    document.addEventListener('focusin', remember)
-    return () => document.removeEventListener('focusin', remember)
-  }, [])
-
-  // In a controlled Dialog without a Trigger, Radix's close auto-focus is not guaranteed to fire on
-  // every close path, so an effect on the committed `open` change does it again, focusing the
-  // original opener only while it is still on the page.
-  useEffect(() => {
-    const previous = committedOpen.current
-    committedOpen.current = open
-    if (previous && !open && restoreFocus && opener.current?.isConnected) opener.current.focus()
-  }, [open, restoreFocus])
-
-  // By the time a controlled Dialog without a Trigger reaches onOpenAutoFocus, FocusScope may have
-  // moved focus to the body for a moment. So the closed → open render first remembers the opener
-  // still on the page, and closing can reliably return focus to it.
-  if (open && !wasOpen.current) {
-    const active = document.activeElement
-    opener.current = active instanceof HTMLElement && active !== document.body ? active : lastFocused.current
-  }
-  wasOpen.current = open
+  const returnFocus = useOpenerFocus(open, restoreFocus)
 
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
@@ -102,7 +75,7 @@ export function ModalDialog({
         <Dialog.Overlay className={overlayClassName} />
         <Dialog.Content
           {...contentProps}
-          className={modalSurface(size, className)}
+          className={modalSurface(size, [place === 'top' ? 'modal--top' : '', className].filter(Boolean).join(' ') || undefined)}
           {...(ariaDescribedBy === undefined
             ? { 'aria-describedby': undefined }
             : { 'aria-describedby': ariaDescribedBy })}
@@ -112,11 +85,7 @@ export function ModalDialog({
             // inline draft cancels itself on Esc, so Esc from one leaves the dialog open.
             if (event.target instanceof Element && event.target.matches('[data-inline-draft]')) event.preventDefault()
           })}
-          onCloseAutoFocus={(event) => {
-            if (!restoreFocus || opener.current === null) return
-            event.preventDefault()
-            opener.current.focus()
-          }}
+          onCloseAutoFocus={returnFocus}
         >
           <OutsideToolbar>
             {closable ? <DialogClose onClose={() => onOpenChange(false)} /> : null}

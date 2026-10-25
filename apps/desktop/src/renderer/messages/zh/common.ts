@@ -2,6 +2,9 @@
 export const common = {
   save: '保存',
   saved: '已保存',
+  copied: '已复制',
+  empty: '—',
+  noResults: '无结果',
   cancel: '取消',
   edit: '编辑',
   confirm: '确认',
@@ -20,17 +23,14 @@ export const common = {
   moveDown: '下移',
   loading: '正在载入…',
   saving: '正在保存…',
-  reading: '正在读取…',
+  noModel: 'AI 未连接',
   none: '暂无',
-  all: '全部',
   trashed: '已移入垃圾桶',
   createdOn: (date: string) => `创建于 ${date}`,
   updatedOn: (date: string) => `更新于 ${date}`,
   addedOn: (date: string) => `加入于 ${date}`,
   overdue: '已逾期',
-  paused: '已暂停',
   archived: '已归档',
-  count: (n: number) => `${n}`,
   priority: { p0: '紧急', p1: '常规', p2: '较低' },
   /** The label of an agent's work, with where it came from when known. */
   attribution: { agent: 'agent', withSource: (who: string, source: string) => `${who} · ${source}` },
@@ -38,14 +38,19 @@ export const common = {
   nav: { back: '返回' },
   dialog: { close: '关闭' },
   panel: { close: '收起详情' },
+  table: {
+    resize: (column: string) => `「${column}」列宽`,
+    showMore: (n: number) => `展开其余 ${n} 项`,
+    showLess: (n: number) => `收起其余 ${n} 项`,
+  },
   details: { expand: '展开详情', collapse: '收起详情' },
   field: {
     clear: '清除输入',
     emptyValue: '—',
     edit: (label: string) => `编辑${label}`,
-    chooseDirectory: '选择目录',
+    chooseDirectory: '选择目录…',
   },
-  sshFolders: { up: '上层文件夹', path: '文件夹路径', empty: '没有文件夹' },
+  sshFolders: { up: '上层文件夹', path: '文件夹路径' },
   pager: {
     total: (n: number) => `共 ${n} 条`,
     perPage: '每页条数',
@@ -59,8 +64,7 @@ export const common = {
   generation: {
     start: '发送',
     stop: '停止生成',
-    running: '正在生成',
-    runningHint: '正在生成，点击停止',
+    stopping: '正在停止',
   },
   anchor: {
     label: (page: number) => `p.${page}`,
@@ -69,7 +73,7 @@ export const common = {
   failure: {
     label: (what: string, why: string) => `${what} · ${why}`,
     reasons: {
-      unavailable: '网络不可用', timeout: '连接超时', 'rate-limit': '正在限流', server: '服务器出错', 'not-pdf': '不是 PDF',
+      unavailable: '网络不可用', timeout: '连接超时', 'rate-limit': '被限流', server: '服务器出错', 'not-pdf': '不是 PDF',
       write: '没能写入论文库', 'no-key': '没有 Semantic Scholar key', 'not-found': '这一项已不存在',
       refused: '现在不能这样做', changed: '内容已变化', 'newer-changes': '先撤销较新的变动', 'in-use': '还有内容在用',
       invalid: '内容无效', 'not-library': '不是 Meridian 论文库', busy: '仍在进行中', 'newer-version': '需要更新 App',

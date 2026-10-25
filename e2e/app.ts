@@ -171,7 +171,7 @@ export function uniqueHeights(rows: Locator): Promise<number[]> {
 
 /**
  * Moves the pointer out of the content area. A pointer resting on a truncated cell makes that
- * cell's `.ci` expand in place across the table width, which changes measured widths and
+ * cell's text expand in place across the table width, which changes measured widths and
  * screenshots. The first synthesized mouse event still computes hover from the real cursor, so the
  * pointer moves into the content area and then out for the hover state to settle.
  */

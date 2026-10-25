@@ -1,4 +1,6 @@
 .card-tray{margin-top:var(--sp-12);overflow:hidden;border-radius:var(--r-md);background:var(--field);color:var(--sec)}
+/* Under a heading the tray takes the heading's space below it instead of its own. */
+.section-heading+.card-tray{margin-top:0}
 .card-tray-head{display:flex;min-height:34px;align-items:center;gap:var(--sp-6);padding:0 var(--sp-8) 0 var(--sp-12)}
 .card-tray-toggle{flex:1}
 .card-tray-action{display:flex;flex:0 0 auto;align-items:center}

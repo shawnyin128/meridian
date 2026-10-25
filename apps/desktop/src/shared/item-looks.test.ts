@@ -130,9 +130,9 @@ describe('行和卡片的内缩与样子', () => {
 
   it('拖动时行和卡片都用同一种落点线和同一种变淡', () => {
     const looks = ['item--row', 'item--card'].map((density) => [
-      styleOf(`<div class="item ${density} drag-over-before">落点</div>`, '.item').boxShadow,
-      styleOf(`<div class="item ${density} drag-over-after">落点</div>`, '.item').boxShadow,
-      styleOf(`<div class="item ${density} dragging">拿起</div>`, '.item').opacity,
+      styleOf(`<div class="item ${density} drag-over-before" data-reorder-item="a" data-reorder-axis="y">落点</div>`, '.item').boxShadow,
+      styleOf(`<div class="item ${density} drag-over-after" data-reorder-item="a" data-reorder-axis="y">落点</div>`, '.item').boxShadow,
+      styleOf(`<div class="item ${density} dragging" data-reorder-item="a" data-reorder-axis="y">拿起</div>`, '.item').opacity,
     ])
     expect(looks).toEqual([
       ['0 -2px 0 0 var(--ink)', '0 2px 0 0 var(--ink)', '0.4'],

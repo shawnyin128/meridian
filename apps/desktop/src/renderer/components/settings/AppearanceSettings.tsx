@@ -145,12 +145,12 @@ function ColourThemeMenu({ name, onEdit, onDelete }: { name: string; onEdit: () 
           setConfirming(true)
         }}
       >
-        <MenuItem onSelect={onEdit}>{m.common.edit}</MenuItem>
+        <MenuItem onSelect={onEdit}>{m.settings.appearance.editor.edit}</MenuItem>
         <MenuItem className="mi danger" onSelect={() => { deleting.current = true }}>{m.common.delete}</MenuItem>
       </DotsMenu>
       <ConfirmDialog
         open={confirming} onOpenChange={setConfirming}
-        title={t.deleteTitle(name)} description={t.deleteDescription} confirmLabel={m.common.delete} onConfirm={onDelete}
+        title={t.deleteTitle(name)} description={t.deleteLoss} confirmLabel={m.common.delete} onConfirm={onDelete}
       />
     </>
   )

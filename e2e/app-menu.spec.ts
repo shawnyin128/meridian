@@ -23,7 +23,7 @@ test('视图菜单的缩放在阅读器里缩放论文,别处缩放整个窗口'
   await expect(win.locator('.ptable tbody tr')).toHaveCount(1)
   await win.locator('.ptable tbody tr').click()
   await shown(win, '.pdetail [aria-label="开始阅读"]').click()
-  const percent = shown(win, '.zoomctl .zoom-reset')
+  const percent = shown(win, '.zoom-control .zoom-control-reset')
   await expect(percent).toHaveText('100%')
 
   await choose(app, 'zoomIn')
@@ -69,7 +69,7 @@ test('在 macOS 上向返回方向轻扫,和点返回按钮一样回到来的那
   await win.locator('#libq').fill('STAR: SPECULATIVE DECODING')
   await win.locator('.ptable tbody tr').click()
   await shown(win, '.pdetail [aria-label="开始阅读"]').click()
-  await expect(shown(win, '.zoomctl')).toBeVisible()
+  await expect(shown(win, '.zoom-control')).toBeVisible()
   await app.evaluate(({ BrowserWindow }) => { BrowserWindow.getAllWindows()[0]!.emit('swipe', {}, 'left') })
   await expect(shown(win, '#libq')).toBeVisible()
 })

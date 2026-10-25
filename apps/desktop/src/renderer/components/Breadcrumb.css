@@ -1,0 +1,11 @@
+/* The trail fills the rest of its bar after a short rule; it never wraps and never takes a text selection. */
+.crumb{display:flex;align-items:center;gap:var(--sp-6);margin-left:var(--sp-8);font-size:var(--fs-sm);color:var(--ter);flex:1;min-width:0;overflow:hidden;white-space:nowrap;user-select:none}
+.crumb::before{content:"";width:1px;height:12px;background:var(--sep);margin-right:var(--sp-4);flex-shrink:0}
+.crumb:empty{display:none}
+.crumb .csep{opacity:.5;font-size:var(--fs-sm);flex-shrink:0}
+/* Every segment fades its text out when it does not fit; a link fades its text inside its hover pill. */
+.crumb .cseg{max-width:260px}
+.crumb .cseg:last-child{color:var(--sec)}
+/* Padding paired with a negative margin: the pill grows outward only, and the text does not move. */
+.crumb .cseg.link{display:flex;min-width:0;border:0;background:transparent;color:inherit;font:inherit;cursor:pointer;padding:var(--sp-2) var(--sp-6);margin:calc(-1 * var(--sp-2)) calc(-1 * var(--sp-6));border-radius:var(--r-sm);transition:background var(--t-fast) var(--e-out),color var(--t-fast) var(--e-out)}
+.crumb .cseg.link:hover{background:var(--hover);color:var(--ink)}

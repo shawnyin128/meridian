@@ -1,8 +1,7 @@
 import { useLayoutEffect, useRef, useState } from 'react'
 import type { KeyboardEvent, ReactNode, RefObject } from 'react'
 import { NO_TRIGGERS, useOnLeave } from '../hooks/useOnLeave.js'
-import { appMenu } from '../ipc.js'
-import { commitsMultiline, composing } from '../lib/keyboard.js'
+import { commitKeys } from '../lib/keyboard.js'
 import { CommitActions } from './CommitActions.js'
 import { Item } from './Item.js'
 import './DraftForm.css'
@@ -62,18 +61,9 @@ export function DraftForm({ destination, canSave, onSave, onCancel, empty = fals
   const keyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     const { target } = event
     // A field's menu is portaled out of the draft, yet its keys still bubble here through React.
-    if (!(target instanceof Node) || root.current?.contains(target) !== true || composing(event.nativeEvent)) return
-    if (event.key === 'Escape') {
-      event.stopPropagation()
-      onCancel()
-      return
-    }
-    const commits = target instanceof HTMLTextAreaElement
-      ? commitsMultiline(appMenu.platform(), event.nativeEvent)
-      : target instanceof HTMLInputElement && event.key === 'Enter'
-    if (!commits) return
-    event.preventDefault()
-    save()
+    if (!(target instanceof Node) || root.current?.contains(target) !== true) return
+    const field = target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement
+    commitKeys({ multiline: target instanceof HTMLTextAreaElement, onCancel, ...(field ? { onSave: save } : {}) })(event)
   }
 
   const invalid: DraftInvalid = (missing) => (refused && missing ? true : undefined)
@@ -93,17 +83,4 @@ export function DraftForm({ destination, canSave, onSave, onCancel, empty = fals
     </div>
   )
   return destination === undefined ? form : <Item density="card" className="draft-form-card">{form}</Item>
-}
-
-/**
- * One line of a DraftForm: `label`, in the draft's label column, names the fields after it, which
- * start where every other line's fields do; a line without a label spans the draft.
- */
-export function DraftLine({ label, children }: { label?: string; children: ReactNode }) {
-  return (
-    <div className="draft-form-line">
-      {label === undefined ? null : <span className="draft-form-label">{label}</span>}
-      <div className="draft-form-fields">{children}</div>
-    </div>
-  )
 }

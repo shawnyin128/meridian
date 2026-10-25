@@ -3,22 +3,18 @@ import type { RefObject } from 'react'
 import { useCandidateKeys } from '../hooks/useCandidateKeys.js'
 import type { KeptText } from '../hooks/useDrafts.js'
 import { useInlineDraft } from '../hooks/useInlineDraft.js'
-import { PickerPopover, PickOption } from './PickerPopover.js'
+import { CandidateField } from './CandidateField.js'
 import { FormInput, type FormControlAppearance } from './FormControls.js'
 import { PaperText } from './paper/PaperText.js'
-import './PickRow.css'
 
 /** A candidate in the drop-down: target id, display name, gray text on the right; a `paper` name is a paper title. */
 export type PickHit = { id: string; title: string; meta?: string; paper?: boolean }
 
-/** At most this many candidates show in the drop-down. */
-const LIMIT = 8
-
 /**
- * The input of a draft row, with suggested candidates: typing asks `suggest` for candidates, the
- * up/down keys or the pointer move the highlight, and Enter picks the highlighted one. Clicking a
- * candidate picks it; with no candidate highlighted and `allowNew` true, Enter hands the typed text
- * over as a new name. Enter does nothing while the candidates have not caught up with the input, and the input
+ * The input of a draft row, with suggested candidates on CandidateField: typing asks `suggest` for
+ * candidates, the up/down keys or the pointer move the highlight, and Enter picks the highlighted one.
+ * Clicking a candidate picks it; with no candidate highlighted and `allowNew` true, Enter hands the
+ * typed text over as a new name. Enter does nothing while the candidates have not caught up with the input, and the input
  * is `aria-busy` meanwhile. Enter, a candidate click, Esc, a press outside the draft and focus
  * leaving it go through `useInlineDraft`, which sends no second pick until the first has landed.
  * Leaving the draft with text in it acts as Enter does; leaving it empty, with `initialText`
@@ -64,7 +60,7 @@ export function PickRow({
     const mine = ++seq.current
     void suggest(text.trim()).then((found) => {
       if (mine !== seq.current) return
-      setHits(found.slice(0, LIMIT))
+      setHits(found)
       setAnswered(text.trim())
     }).catch((e: Error) => {
       onError(e)
@@ -91,9 +87,9 @@ export function PickRow({
   const keys = useCandidateKeys(hits.length, (i) => { if (!stale) draft.submit(() => onPick(hits[i]!)) })
 
   return (
-    <PickerPopover
-      open={hits.length > 0} anchorRef={input}
-      anchor={(
+    <CandidateField
+      anchorRef={input} keys={keys}
+      field={(
         <FormInput
           appearance={inputAppearance} className={inputClassName} ref={input} placeholder={placeholder}
           {...draft.inputProps}
@@ -104,15 +100,8 @@ export function PickRow({
           }}
         />
       )}
-      content={hits.map((h, i) => (
-        <PickOption
-          keys={keys} index={i} key={h.id}
-          onMouseDown={(e) => { e.preventDefault(); draft.submit(() => onPick(h)) }}
-        >
-          {h.paper ? <PaperText text={h.title} /> : h.title}
-          {h.meta === undefined ? null : <span className="meta">{h.meta}</span>}
-        </PickOption>
-      ))}
+      candidates={hits.map((h) => ({ id: h.id, label: h.paper ? <PaperText text={h.title} /> : h.title, meta: h.meta }))}
+      onPick={(_, i) => draft.submit(() => onPick(hits[i]!))}
     />
   )
 }

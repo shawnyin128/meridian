@@ -40,7 +40,7 @@ export function PaperUnderstanding({ reading, error, onRead }: {
     <section className="paper-understanding" aria-label={m.papers.understanding.ariaLabel}>
       <SectionHeading>{m.papers.understanding.heading}</SectionHeading>
       {empty ? (
-        <EmptyState variant="section">{m.papers.understanding.empty}</EmptyState>
+        <EmptyState variant="section" />
       ) : (
         <>
           {hasRemark ? (

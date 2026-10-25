@@ -19,7 +19,7 @@ const { document, MouseEvent, getComputedStyle } = globalThis as unknown as Wind
 
 const STYLES = [
   'shell/tokens.css', 'components/Tag.css', 'routes/shell.css', 'components/paper-table/PaperTable.css', 'components/PaperMetadata.css',
-  'components/CollapsibleGroup.css', 'components/FoldCaret.css', 'components/FoldToggle.css', 'components/chat/Chat.css',
+  'components/PageShell.css', 'components/GroupedList.css', 'components/FoldCaret.css', 'components/FoldToggle.css', 'components/chat/Chat.css',
   'components/ActionMenu.css', 'components/ShortTextEditor.css',
 ].map((path) => readFileSync(join(import.meta.dirname, '..', 'renderer', path), 'utf8'))
 
@@ -55,7 +55,7 @@ describe('没有悬停反馈的控件', () => {
   })
 
   it('分组标题悬停时它的折叠箭头变深', () => {
-    const group = '<div class="collapsible-group"><div class="collapsible-group-head"><button type="button" class="fold-toggle collapsible-group-toggle"><span class="fold-caret"></span><span class="collapsible-group-title">主题</span></button></div></div>'
+    const group = '<section class="collapsible-group"><div class="section-heading section-heading--group collapsible-group-head"><button type="button" class="fold-toggle"><span><span class="collapsible-group-title">主题</span></span><span class="fold-caret"></span></button></div></section>'
     expect(restAndHover(group, '.collapsible-group-title', '.fold-caret', (style) => style.color))
       .toEqual(['var(--ter)', 'var(--ink)'])
   })

@@ -111,9 +111,10 @@ describe('菜单与候选列表的条目', () => {
     const sheet = join('components', 'PickerPopover.css')
     expect([declared(sheet, '.pickhits'), declared(sheet, '.pickhits--tall'), declared(sheet, '.pickhits--wide')]).toEqual([
       expect.objectContaining({ width: 'var(--radix-popover-trigger-width)', 'min-width': '190px', 'max-height': '240px', overflow: 'auto' }),
-      expect.objectContaining({ 'max-height': 'min(440px,55vh)', 'overflow-y': 'auto' }),
+      expect.objectContaining({ 'max-height': 'var(--menu-list-h)', 'overflow-y': 'auto' }),
       expect.objectContaining({ width: 'calc(var(--radix-popover-trigger-width) + 270px)', 'max-height': 'none', 'z-index': '40' }),
     ])
+    expect(declared(join('shell', 'tokens.css'), ':root')).toEqual(expect.objectContaining({ '--menu-list-h': 'min(440px,55vh)' }))
   })
 
   it('屏幕样式表不改菜单、弹层和候选列表：面、条目、分隔线、输入行和筛选按钮只由它们的组件画', () => {
