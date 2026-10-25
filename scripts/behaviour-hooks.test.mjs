@@ -75,8 +75,7 @@ describe('each shared behaviour has one implementation', () => {
       'hooks/useModelStatus.ts': { reason: 'the model status itself' },
       'components/ModelStatusTag.tsx': { reason: 'the one no-model state' },
       'components/settings/ModelSettings.tsx': { reason: 'the model settings editor reads the settings it edits' },
-      'components/settings/ApiOverview.tsx': { reason: 'the API summary in Settings names the provider and model it shows' },
-      'components/FirstRunChecklist.tsx': { reason: 'the first-run checklist reads its model step with its other steps' },
+      'components/settings/ApiOverview.tsx': { reason: 'the API summary in Settings names the provider and the model, which the status does not hold' },
     })).toEqual([])
   })
 })
