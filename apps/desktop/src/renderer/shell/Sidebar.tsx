@@ -38,7 +38,7 @@ function WatchRow({ watch, count, on, onOpen }: {
 
 /** The dot of a row that lists one source of papers: filled while it has new papers, a ring otherwise. */
 function NewDot({ fresh }: { fresh: boolean }) {
-  return <StatusDot tone="neutral" fill={fresh ? 'full' : 'ring'} />
+  return <StatusDot size="nav" tone={fresh ? 'new' : 'neutral'} fill={fresh ? 'full' : 'ring'} />
 }
 
 /**

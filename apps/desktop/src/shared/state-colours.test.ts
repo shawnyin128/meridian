@@ -221,9 +221,15 @@ describe('强调色', () => {
     expect(bodyOf('components/EntityLink.css', '.entity-link')).toMatch(/(?:^|;)color:inherit(?:;|$)/)
     expect(tokens(bodyOf('components/EntityLink.css', '.entity-link:hover'))).toEqual(['--ink'])
     expect(tokens(bodyOf('components/NavRow.css', '.nav-row-icon'))).toEqual(['--sec'])
-    expect(readFileSync(join(RENDERER, 'shell/Sidebar.tsx'), 'utf8')).toMatch(/<StatusDot tone="neutral" fill=\{fresh \? 'full' : 'ring'\} \/>/)
     expect(readFileSync(join(RENDERER, 'components/ReadDots.tsx'), 'utf8')).toMatch(/<StatusDot key=\{index\} tone="neutral"/)
     expect(tokens(bodyOf('components/StatusDot.css', '.status-dot--neutral'))).toEqual(['--ter'])
+  })
+
+  it('侧栏一行有新论文时，它的点用次要灰填满、7px，和没有新论文时的空心圈一样大，一眼分得出', () => {
+    expect(readFileSync(join(RENDERER, 'shell/Sidebar.tsx'), 'utf8'))
+      .toMatch(/<StatusDot size="nav" tone=\{fresh \? 'new' : 'neutral'\} fill=\{fresh \? 'full' : 'ring'\} \/>/)
+    expect([tokens(bodyOf('components/StatusDot.css', '.status-dot--new')), bodyOf('components/StatusDot.css', '.status-dot--nav')])
+      .toEqual([['--sec'], 'width:7px;height:7px'])
   })
 })
 
