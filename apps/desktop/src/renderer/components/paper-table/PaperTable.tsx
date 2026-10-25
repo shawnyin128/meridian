@@ -8,6 +8,7 @@ import { MAX_PDF_UPLOAD_BYTES } from '../../../shared/contract.js'
 import { DEFAULT_PAPER_GROUPS, PAPER_PAGE, READ_STATES } from '../../../shared/vocabulary.js'
 import { papers } from '../../ipc.js'
 import { errorLabel } from '../../lib/failure-label.js'
+import { useFormat } from '../../lib/format.js'
 import type { Catalog } from '../../messages/catalog.js'
 import { useMessages } from '../../messages/useMessages.js'
 import { IconGrip, IconRead, IconTrash } from '../icons.js'
@@ -244,6 +245,7 @@ function TextCellEdit({ cell, initial, keep, onSave, onCancel }: {
  */
 export function PaperTable() {
   const m = useMessages()
+  const fmt = useFormat()
   const jumpOrigin = useJumpOrigin()
   const [view, setView] = useState<'table' | 'research-map'>('table')
   const [rows, setRows] = useState<PaperRow[]>([])
@@ -791,7 +793,7 @@ export function PaperTable() {
     if (c.column) return customCell(p, c.column)
     const k = c.k
     if (k === 'short') return <TableCell kind="meta" key={k}>{p.shortTitle ?? ''}</TableCell>
-    if (k === 'authors') return <TableCell kind="meta" key={k}>{(p.authors ?? []).join(', ')}</TableCell>
+    if (k === 'authors') return <TableCell kind="meta" key={k}>{fmt.authors(p.authors ?? [])}</TableCell>
     if (k === 'rating') {
       return <TableCell content="controls" key={k}><RatingStars value={p.rating} onChange={(rating) => setRating(p, rating)} /></TableCell>
     }
@@ -1004,7 +1006,7 @@ export function PaperTable() {
 
       <PageError error={error} />
 
-      <PageBody className={detail ? 'libview withdetail' : 'libview'}>
+      <PageBody fill className={detail ? 'libview withdetail' : 'libview'}>
         <div className="libwide">
           <PageToolbar className="paper-view-toolbar">
             <SegmentedControl

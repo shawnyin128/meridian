@@ -26,27 +26,27 @@ const sheet = (path: string) => readFileSync(join(RENDERER, path), 'utf8')
 
 /** Every stylesheet a title, a heading or a small label below takes its type from, in bundle order. */
 const SHEETS = [
-  'shell/tokens.css', 'routes/shell.css', 'components/PageShell.css', 'components/CollapsibleGroup.css',
+  'shell/tokens.css', 'routes/shell.css', 'components/PageShell.css', 'components/GroupedList.css',
   'components/Item.css', 'components/paper/PaperCard.css', 'components/paper/PaperUnderstanding.css',
   'components/project/ProjectIdentity.css', 'components/project/ResearchGraph.css',
-  'components/paper-table/PaperTable.css', 'shell/AppShell.css', 'routes/Wiki.css', 'routes/Projects.css',
+  'components/paper-table/PaperTable.css', 'components/NavSection.css', 'routes/Wiki.css', 'routes/Projects.css',
   'routes/Ideas.css', 'routes/Watches.css',
 ]
 
 /**
  * One sample of every title, heading and small label: the screen's page head and its sections, a group
- * inside a section or a card and a rail section, the inbox's and the review queue's foldable groups and
- * a quiet archive group, a detail panel's title, the paper detail's title, the cards' titles, a Wiki
+ * inside a section or a card and a rail section, the inbox's pinned foldable groups and a foldable
+ * archive group, a detail panel's title, the paper detail's title, the cards' titles, a Wiki
  * body's Markdown headings, the sidebar's group label, and the labels inside the paper and project cards.
  */
 const MARKUP = `
 <div class="desk"><div class="desk-head"><span class="t" id="t">垃圾桶 · 5</span></div><div class="desk-body">
-  <div class="section-heading section-heading--page" id="section">论文推送 · 1</div>
+  <div class="section-heading section-heading--section" id="section">论文推送 · 1</div>
   <div class="section-heading section-heading--group" id="group">论文库</div>
-  <div class="section-heading section-heading--rail" id="rail">属性</div>
-  <section class="collapsible-group"><div class="collapsible-group-head"><button class="collapsible-group-toggle" id="fold">主题 · speculative decoding</button></div></section>
-  <section class="collapsible-group collapsible-group--quiet"><div class="collapsible-group-head"><button class="collapsible-group-toggle" id="quiet">已归档 · 2</button></div></section>
-  <div class="section-heading section-heading--rail node-document-head"><span class="node-document-title" id="panel">基线：独立草稿模型</span></div>
+  <div class="section-heading section-heading--group" id="rail">属性</div>
+  <section class="collapsible-group collapsible-group--sticky"><div class="section-heading section-heading--group collapsible-group-head" id="fold"><button class="fold-toggle">主题 · speculative decoding</button></div></section>
+  <section class="collapsible-group"><div class="section-heading section-heading--group collapsible-group-head" id="quiet"><button class="fold-toggle">已归档 · 2</button></div></section>
+  <div class="section-heading section-heading--group node-document-head"><span class="node-document-title" id="panel">基线：独立草稿模型</span></div>
   <div class="pd-h"><span class="pd-t" id="paper-detail">QuIP#: Even Better LLM Quantization</span></div>
   <article class="item item--card item--slotted paper-card"><div class="item-head"><div class="item-main"><div class="item-title"><h3 id="paper-card">Acceptance Is Not Speed</h3></div></div></div>
     <section class="paper-card-section"><div class="paper-card-label" id="card-label">摘要</div></section></article>
@@ -61,7 +61,7 @@ const MARKUP = `
     <div class="wkprops" id="props"><div class="pk">当前目标</div><div class="pv">x</div></div>
   </div></div>
 </div></div>
-<aside class="sidebar"><div class="sb-h" id="sidebar-label">收件</div></aside>`
+<aside class="nav-pane"><div class="nav-section-head" id="sidebar-label">收件</div></aside>`
 
 beforeAll(() => {
   document.head.innerHTML = `<style>${SHEETS.map(sheet).join('\n')}</style>`
@@ -112,8 +112,9 @@ describe('文字角色', () => {
       .toEqual(Object.fromEntries(titles.map((id) => [id, weight('section')])))
   })
 
-  it('详情面板的标题和可折叠分组都是小节这一级', () => {
-    expect([px('panel'), px('paper-detail'), px('fold')]).toEqual([px('section'), px('section'), px('section')])
+  it('详情面板的标题是小节这一级，可折叠的分组和归档分组都是分组这一级', () => {
+    expect([px('panel'), px('paper-detail')]).toEqual([px('section'), px('section')])
+    expect([px('fold'), px('quiet')]).toEqual([px('group'), px('group')])
   })
 
   it('Wiki 正文里的 Markdown 标题比小节低一级，不画小节的分隔线，也不往里缩', () => {
@@ -123,8 +124,8 @@ describe('文字角色', () => {
     expect(declared('md', 'padding'), 'Markdown 容器不往里缩').toEqual([])
   })
 
-  it('小标签只有一种：侧栏分组、卡片里的标签、项目卡片的标签、随笔和笔记的标签、归档分组都一样，不转大写也不加字距', () => {
-    const labels = ['sidebar-label', 'card-label', 'project-label', 'understanding-label', 'quiet']
+  it('小标签只有一种：侧栏分组、卡片里的标签、项目卡片的标签、随笔和笔记的标签都一样，不转大写也不加字距', () => {
+    const labels = ['sidebar-label', 'card-label', 'project-label', 'understanding-label']
     const look = (id: string) => [px(id), weight(id), style(id).color, style(id).textTransform, style(id).letterSpacing]
     const first = look('sidebar-label')
     expect(Object.fromEntries(labels.map((id) => [id, look(id)])))

@@ -26,7 +26,7 @@ test('picking English relabels the shell and each main screen, and survives a re
   await win.keyboard.press('Escape')
 
   for (const [entry, label] of SCREENS) {
-    await win.locator(`.sidebar ${entry}`).click()
+    await win.locator(`#sidebar ${entry}`).click()
     await expect(win.locator('.titlebar')).toContainText(label)
     await win.screenshot({ path: `${SHOTS}/english-${label.toLowerCase().replace(' ', '-')}.png` })
   }

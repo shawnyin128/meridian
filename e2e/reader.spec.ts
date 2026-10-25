@@ -273,7 +273,7 @@ test('别处写库不会把原文重解析一遍', async ({ win }) => {
   // hidden behind this screen; re-fetching on every write would start one more worker per write and
   // never destroy the replaced document. The global sidebar is collapsed while reading, so leave
   // through the reader's own back button, then open Watch settings from the Inbox screen.
-  await shown(win, '.paper-chat-head .back').click()
+  await shown(win, '.paper-chat .desk-head .back').click()
   await openInbox(win)
   await shown(win, '[aria-label="关注设置"]').click()
   const watched = win.locator('.setdlg .wrow').first()
@@ -299,7 +299,7 @@ test('换一篇读,新篇解析期间屏上没有上一篇的页', async ({ win 
   await selectPaper(win, READABLE.title)
   await shown(win, '.pdetail [aria-label="开始阅读"]').click()
   await expectPainted(win, READABLE.pages)
-  await shown(win, '.paper-chat-head .back').click()
+  await shown(win, '.paper-chat .desk-head .back').click()
   await selectPaper(win, SWITCHED[1]!.title)
 
   // Watch every DOM change from the click onwards: once the header names the new paper, the sheet may be empty or
@@ -307,7 +307,7 @@ test('换一篇读,新篇解析期间屏上没有上一篇的页', async ({ win 
   await win.evaluate(([staleCount, nextTitle]) => {
     const seen = { stale: false, cleared: false }
     const check = () => {
-      const head = document.querySelector('.paper-chat-head')?.textContent ?? ''
+      const head = document.querySelector('.paper-chat .desk-head')?.textContent ?? ''
       if (!head.includes(nextTitle as string)) return
       const boxes = document.querySelectorAll('.pdfpagebox').length
       if (boxes === staleCount) seen.stale = true
@@ -337,14 +337,14 @@ test.describe(() => {
     await selectPaper(win, READABLE.title)
     await shown(win, '.pdetail [aria-label="开始阅读"]').click()
     await expectPainted(win, READABLE.pages)
-    await shown(win, '.paper-chat-head .back').click()
+    await shown(win, '.paper-chat .desk-head .back').click()
     await expect(shown(win, '.ptable')).toHaveCount(1)
 
     // B: open a second readable paper and leave; the cache now holds A and B.
     await selectPaper(win, SWITCHED[1]!.title)
     await shown(win, '.pdetail [aria-label="开始阅读"]').click()
     await expectPainted(win, SWITCHED[1]!.pages)
-    await shown(win, '.paper-chat-head .back').click()
+    await shown(win, '.paper-chat .desk-head .back').click()
     await expect(shown(win, '.ptable')).toHaveCount(1)
 
     // C: download the inbox entry and open it; the cache is full, so this evicts A.
@@ -353,7 +353,7 @@ test.describe(() => {
     await openInbox(win)
     await addAndRead(win, target.id)
     await expectPainted(win, INGESTED.pages)
-    await shown(win, '.paper-chat-head .back').click()
+    await shown(win, '.paper-chat .desk-head .back').click()
 
     // A again: no longer cached, so it is re-parsed and evicts B.
     await gotoPapers(win)
@@ -376,13 +376,13 @@ test.describe(() => {
     await selectPaper(win, READABLE.title)
     await shown(win, '.pdetail [aria-label="开始阅读"]').click()
     await expectPainted(win, READABLE.pages)
-    await shown(win, '.paper-chat-head .back').click()
+    await shown(win, '.paper-chat .desk-head .back').click()
     await expect(shown(win, '.ptable')).toHaveCount(1)
 
     await selectPaper(win, SWITCHED[1]!.title)
     await shown(win, '.pdetail [aria-label="开始阅读"]').click()
     await expectPainted(win, SWITCHED[1]!.pages)
-    await shown(win, '.paper-chat-head .back').click()
+    await shown(win, '.paper-chat .desk-head .back').click()
     await expect(shown(win, '.ptable')).toHaveCount(1)
 
     await selectPaper(win, READABLE.title)
@@ -402,13 +402,13 @@ test.describe(() => {
     await selectPaper(win, READABLE.title)
     await shown(win, '.pdetail [aria-label="开始阅读"]').click()
     await expectPainted(win, READABLE.pages)
-    await shown(win, '.paper-chat-head .back').click()
+    await shown(win, '.paper-chat .desk-head .back').click()
     await expect(shown(win, '.ptable')).toHaveCount(1)
 
     await selectPaper(win, SWITCHED[1]!.title)
     await shown(win, '.pdetail [aria-label="开始阅读"]').click()
     await expectPainted(win, SWITCHED[1]!.pages)
-    await shown(win, '.paper-chat-head .back').click()
+    await shown(win, '.paper-chat .desk-head .back').click()
     await expect(shown(win, '.ptable')).toHaveCount(1)
 
     // The reader still holds the second paper; the first one is only kept in the cache.
@@ -425,7 +425,7 @@ test.describe(() => {
 test('阅读器顶栏与面包屑写的是这一篇,面包屑上一段回到论文屏', async ({ win }) => {
   await openFromPapers(win)
 
-  await expect(shown(win, '.paper-chat-head .paper-chat-title')).toHaveText(`${READABLE_TITLE} · 阅读中`)
+  await expect(shown(win, '.paper-chat .desk-head .t')).toHaveText(`${READABLE_TITLE} · 阅读中`)
   await expect(win.locator('#crumb .cseg')).toHaveText(['我的库', '论文', READABLE_TITLE])
   // Of the segments taken from the screen the reader came from, only the last is a link, back to that screen.
   await expect(win.locator('#crumb .cseg.link')).toHaveText(['论文'])
@@ -496,11 +496,11 @@ test('返回钮回到来路那一屏,阅读器里读到哪一篇还留着', asyn
   await openFromPapers(win)
   await expect(shown(win, '.pdfpagebox')).toHaveCount(READABLE.pages)
 
-  await shown(win, '.paper-chat-head .back').click()
+  await shown(win, '.paper-chat .desk-head .back').click()
   await expect(shown(win, '.ptable')).toHaveCount(1)
 
   await shown(win, '.pdetail [aria-label="开始阅读"]').click()
-  await expect(shown(win, '.paper-chat-head .paper-chat-title')).toHaveText(`${READABLE_TITLE} · 阅读中`)
+  await expect(shown(win, '.paper-chat .desk-head .t')).toHaveText(`${READABLE_TITLE} · 阅读中`)
   await expect(shown(win, '.pdfpagebox')).toHaveCount(READABLE.pages)
 })
 
@@ -521,7 +521,7 @@ test('同一篇再进来,读到哪儿、放大到几倍都留着', async ({ win 
   await shown(win, '.pdfwrap').evaluate((el, top) => { el.scrollTop = top }, SCROLLED)
   await expect(shown(win, '.pdfwrap')).toHaveJSProperty('scrollTop', SCROLLED)
 
-  await shown(win, '.paper-chat-head .back').click()
+  await shown(win, '.paper-chat .desk-head .back').click()
   await expect(shown(win, '.ptable')).toHaveCount(1)
   await shown(win, '.pdetail [aria-label="开始阅读"]').click()
 
@@ -543,7 +543,7 @@ test('同一篇再进来按当下的库重取,不吃上一次的结果', async (
   })).rows[0]!.id
 
   // Delete the paper from Papers: the reader stays open on the same paper, which is no longer in the vault.
-  await shown(win, '.paper-chat-head .back').click()
+  await shown(win, '.paper-chat .desk-head .back').click()
   await gotoPapers(win)
   await win.locator('#libq').fill(target.title.slice(0, 24))
   await expect(win.locator('.ptable tbody tr')).toHaveCount(1)
@@ -558,7 +558,7 @@ test('同一篇再进来按当下的库重取,不吃上一次的结果', async (
 
   // Restored from the Trash, the same paper opens without the earlier error. The global sidebar is
   // collapsed while reading, so leave through the back button.
-  await shown(win, '.paper-chat-head .back').click()
+  await shown(win, '.paper-chat .desk-head .back').click()
   await win.locator('[data-desk="trash"]').click()
   await win.locator('.tgroup .trow').hover()
   await win.locator('.tgroup .trow .row-actions [aria-label="恢复"]').click()

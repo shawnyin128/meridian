@@ -16,13 +16,6 @@
 
 .discovery-summary{display:flex;align-items:center;justify-content:space-between;gap:var(--sp-12);margin:calc(-1 * var(--sp-4)) 0 var(--sp-16)}
 .discovery-note{margin:0;color:var(--ter);font-size:var(--fs-sm)}
-.direction-panel{margin:0 0 var(--sp-20)}
-.direction-project+.direction-project{border-top:1px solid var(--sep)}
-.direction-project>header{display:flex;align-items:center;gap:var(--sp-10);padding:var(--sp-8) calc(var(--item-inset) + 1px);background:var(--field);font-size:var(--fs-sm)}
-.direction-project>header strong{color:var(--ink)}
-.direction-project>header span{color:var(--ter)}
-.direction-project>header .btn{margin-left:auto}
-
 
 /* The label column is as wide as the longest label, which stays on one line. */
 .wkprops{display:grid;grid-template-columns:max-content minmax(0,1fr);width:100%;max-width:100%;min-width:0;row-gap:var(--sp-6);column-gap:var(--sp-12);font-size:var(--fs-sm);line-height:var(--lh-ui)}
@@ -62,8 +55,6 @@
   padding-bottom:var(--ring-room)}
 /* In a window too short for the column to stay pinned with room to read, it scrolls with the page. */
 @media (max-height:860px){.wkside:not(.node-document-pane){position:static;max-height:none}}
-
-.desk-head .fetchnote{font-size:var(--fs-sm);color:var(--ter);white-space:nowrap}
 
 /* "Needs attention" block and its dated rows, shared by the project and wiki screens */
 .attnrow{display:grid;grid-template-columns:var(--project-signal-kind-width) var(--project-signal-date-width) minmax(0,1fr);

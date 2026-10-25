@@ -306,7 +306,7 @@ test('总览横条是真实任务:拖动改任务日期,单击进所属项目', 
 
   await bar.click()
   await expect(win.locator('#crumb .cseg')).toHaveText(['研究', '项目', '复现 EAGLE-2'])
-  await expect(shown(win).locator('.task-row[data-row="t2"]')).toHaveClass(/\bflash\b/)
+  await expect(shown(win).locator('.task-row[data-row="t2"]')).toHaveAttribute('data-arrived')
 })
 
 test('总览时间线左栏宽度固定，长任务名不撑宽；点任务名跳到项目里的这条任务', async ({ win }) => {
@@ -329,7 +329,7 @@ test('总览时间线左栏宽度固定，长任务名不撑宽；点任务名�
 
   await label.click()
   await expect(win.locator('#crumb .cseg')).toHaveText(['研究', '项目', '复现 EAGLE-2'])
-  await expect(shown(win).locator('.task-row[data-row="t2"]')).toHaveClass(/\bflash\b/)
+  await expect(shown(win).locator('.task-row[data-row="t2"]')).toHaveAttribute('data-arrived')
 })
 
 test.describe('拖总览菱形改期', () => {

@@ -106,7 +106,7 @@ const SLOT_PROPS: Record<string, Record<string, Slot>> = {
   PageHeader: { actions: 'page header' },
   SectionHeading: { actions: 'section heading' },
   TabbedSection: { actions: 'section heading' },
-  CollapsibleGroup: { actions: 'group heading' },
+  Group: { actions: 'group heading' },
   IdeaPanel: { actions: 'panel head' },
   Item: { actions: 'row actions', menu: 'row actions' },
   PaperCard: { actions: 'row actions' },
@@ -119,7 +119,7 @@ const SLOT_PROPS: Record<string, Record<string, Slot>> = {
   Comparison: { head: 'table header' },
   TimelineBoard: { headerAction: 'timeline toolbar' },
   ModalDialog: { actions: 'dialog actions' },
-  SectHead: { extra: 'sidebar heading' },
+  NavSection: { action: 'sidebar heading' },
   NodeAssignment: { create: 'section heading' },
 }
 
@@ -185,7 +185,7 @@ const PLACES: Record<string, Place[]> = {
     { slot: 'inline', size: 'chip', variant: 'icon', scope: 'a field adds a value after its chips' },
     { slot: 'sidebar heading', size: 'compact', variant: 'icon', scope: 'the sidebar starts a chat in its chats group' },
     { slot: 'row actions', size: 'compact', variant: 'labelled', scope: 'a suggestion row adds its suggestion' },
-    { slot: 'inline', size: 'compact', variant: 'labelled', scope: 'the heading of a suggestion group adds all of them' },
+    { slot: 'group heading', size: 'compact', variant: 'labelled', scope: 'a group adds to itself: a watch of its type, or all of its suggestions' },
   ],
   'view switch': [
     { slot: 'page toolbar', size: 'md', variant: 'plain' },

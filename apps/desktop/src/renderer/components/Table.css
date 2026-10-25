@@ -1,19 +1,11 @@
 /*
- * The one table. Its scroll box scrolls both ways, with the horizontal scrollbar at the bottom of the
- * visible area. The header row sticks to the top, the first column to the start (the corner cell both
- * ways) and the actions column to the end; those three edges are held, and only the bottom edge fades
- * the way other scroll areas do. Hosts name and place a table but never restyle it.
+ * The one table, in a ScrollArea that scrolls both ways, with the horizontal scrollbar at the bottom of
+ * the visible area. The header row sticks to the top, the first column to the start (the corner cell
+ * both ways) and the actions column to the end; the area holds those three edges, and each stuck cell
+ * fades the content under it through data-stuck-fade. Hosts name and place a table but never restyle it.
  */
-.table-scroll{overflow:auto}
-.table-scroll--fill{flex:1;min-height:0}
 /* A capped table keeps the ring room inside its edges and reaches out by as much, so it stays put. */
 .table-scroll--capped{margin:calc(-1 * var(--ring-room)) calc(-1 * var(--ring-room)) 0;padding:var(--ring-room);overscroll-behavior:contain}
-/*
- * The vertical scrollbar keeps its room in a table that scrolls down: the page's table, and a capped
- * one with more rows than it shows. A capped table that shows all its rows reaches as far as the
- * lists beside it.
- */
-.table-scroll--fill,.table-scroll--capped-rows{scrollbar-gutter:stable}
 
 /*
  * Separate borders: with collapsed ones, Chromium leaves the divider above the last row out of the
@@ -62,21 +54,6 @@
 .table td.table-actions{z-index:7;padding-top:0;padding-bottom:0;padding-right:var(--sp-14)}
 .table th.table-actions{z-index:8;padding:var(--sp-2)}
 .table th.table-actions .row-actions{gap:0;vertical-align:middle}
-/*
- * Content scrolling under the first column, the actions column or the header fades at the stuck
- * cell's inner edge, in that cell's own paint, so a hovered or selected row keeps its tint; the
- * stuck cells never fade. A header cell marking where a column lands keeps its ::after for the line.
- */
-.table :is(th,td):first-child,.table .table-actions,.table th{container-type:scroll-state}
-.table :is(th,td):first-child::before,.table .table-actions::before,.table th:not(.table-move-after)::after{content:"";position:absolute;
-  background:inherit;opacity:0;pointer-events:none;transition:opacity var(--t-fast) var(--e-out)}
-.table :is(th,td):first-child::before{top:0;bottom:0;left:100%;width:var(--sp-24);mask-image:linear-gradient(to right,#000,transparent)}
-.table .table-actions::before{top:0;bottom:0;right:100%;width:var(--sp-24);mask-image:linear-gradient(to left,#000,transparent)}
-.table th:not(.table-move-after)::after{top:100%;left:0;right:0;height:var(--sp-24);mask-image:linear-gradient(#000,transparent)}
-@container scroll-state(stuck: left){.table :is(th,td):first-child::before{opacity:1}}
-@container scroll-state(stuck: right){.table .table-actions::before{opacity:1}}
-@container scroll-state(stuck: top){.table th:not(.table-move-after)::after{opacity:1}}
-
 /*
  * One row colour (--row-bg, the selected look) and the hover over it (--row-over), painted by every
  * cell and by a cut cell's hover box. The stuck cells and the hover box lay both over --content, so

@@ -7,8 +7,9 @@ import type {
 import { PAPER_PAGE } from '../../shared/vocabulary.js'
 import { papers, project, wiki } from '../ipc.js'
 import {
-  useCrumbTail, useJump, useNotice, useScreenEntry, useVaultRevision, type CrumbSeg, type ScreenKey,
+  useCrumbTail, useJump, useNotice, useScreenEntry, useVaultRevision, type ScreenKey,
 } from '../shell/AppShell.js'
+import type { CrumbSeg } from '../components/Breadcrumb.js'
 import { AddAction } from '../components/AddAction.js'
 import { ActionPopover } from '../components/ActionPopover.js'
 import { BackButton } from '../components/BackButton.js'
@@ -53,6 +54,7 @@ import { List } from '../components/List.js'
 import { Table, TableCell, TableRow, type TableColumn } from '../components/Table.js'
 import { Tooltip } from '../components/Tooltip.js'
 import { useClipped } from '../hooks/useClipped.js'
+import { land } from '../hooks/useArrival.js'
 import { Button } from '../components/Button.js'
 import { CommitActions } from '../components/CommitActions.js'
 import './shell.css'
@@ -311,13 +313,16 @@ function Toc({ body, main }: { body: string; main: RefObject<HTMLDivElement | nu
   const base = Math.min(...headings.map((h) => h.depth))
   return (
     <>
-      <SectionHeading variant="rail">{m.wiki.toc}</SectionHeading>
+      <SectionHeading level="group">{m.wiki.toc}</SectionHeading>
       <ul className="wktoc">
         {headings.map((h) => (
           <li className={`l${h.depth - base + 1}${h.id === active ? ' on' : ''}`} key={h.id}>
             <button
               type="button"
-              onClick={() => main.current?.querySelector<HTMLElement>(`#${h.id}`)?.scrollIntoView({ block: 'start' })}
+              onClick={() => {
+                const heading = main.current?.querySelector(`#${h.id}`)
+                if (heading) land(heading, 'start')
+              }}
             ><FadeText label={h.text}>{h.text}</FadeText></button>
           </li>
         ))}
@@ -758,7 +763,7 @@ export function Wiki() {
 
       <PageError error={error} />
 
-      <PageBody className="wiki-body" ref={body}>
+      <PageBody className="wiki-body" column={place === null || place === REVIEW || place === TIDY ? 'page' : 'prose'} ref={body}>
         {error === null && (place === null ? home === null : place !== REVIEW && place !== TIDY && shownAgg === null && shownPaper === null)
           ? <LoadingPlaceholder shape="cards" />
           : null}
@@ -916,7 +921,7 @@ export function Wiki() {
                 />
               </div>
               <div className="wkside" ref={railFade} data-fade-paint="">
-                <SectionHeading variant="rail">{m.project.identity.heading}</SectionHeading>
+                <SectionHeading level="group">{m.project.identity.heading}</SectionHeading>
                 <div className="wkprops">
                   <div className="pk">{m.project.identity.typeLabel}</div><div className="pv">{shownAgg.kindLabel}</div>
                   <div className="pk">{m.project.identity.nameLabel}</div>
@@ -978,7 +983,7 @@ export function Wiki() {
                 />
               </div>
               <div className="wkside" ref={paperRailFade} data-fade-paint="">
-                <SectionHeading variant="rail">{m.project.identity.heading}</SectionHeading>
+                <SectionHeading level="group">{m.project.identity.heading}</SectionHeading>
                 <div className="wkprops">
                   <div className="pk">{m.project.identity.typeLabel}</div><div className="pv">{m.wiki.paperKind}</div>
                   <div className="pk">{m.wiki.titleLabel}</div>
@@ -999,7 +1004,7 @@ export function Wiki() {
                   />
                   <div className="pk">{m.wiki.authorsLabel}</div>
                   <InlineMetadataField
-                    label={m.wiki.authorsLabel} value={shownPaper.authors.join(', ')} keep={{ scope: ['wiki', shownPaper.id], target: 'authors' }}
+                    label={m.wiki.authorsLabel} value={fmt.authors(shownPaper.authors)} keep={{ scope: ['wiki', shownPaper.id], target: 'authors' }}
                     onSave={(authors) => updateWikiPaper({
                       authors: authors.split(/[,，;；\n]/).map((item) => item.trim()).filter(Boolean),
                     }, m.wiki.authorsLabel)}
@@ -1034,7 +1039,7 @@ export function Wiki() {
                     )}
                   <div className="pk">{m.wiki.updatedLabel}</div><div className="pv">{fmt.date(shownPaper.updated)}</div>
                 </div>
-                <SectionHeading variant="rail">{m.wiki.membershipHeading}</SectionHeading>
+                <SectionHeading level="group">{m.wiki.membershipHeading}</SectionHeading>
                 {shownPaper.memberships.length === 0
                   ? <EmptyState variant="section">{m.wiki.noMembership}</EmptyState>
                   : shownPaper.memberships.map((ms) => (

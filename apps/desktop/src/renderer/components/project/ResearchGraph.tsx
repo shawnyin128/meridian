@@ -9,6 +9,7 @@ import type {
   Task,
 } from '../../../shared/contract.js'
 import { useWheelZoom } from '../../hooks/useWheelZoom.js'
+import { useElementWidth } from '../../hooks/useElementWidth.js'
 import { useMessages } from '../../messages/useMessages.js'
 import { activeRoutes } from '../../../shared/research-path.js'
 import { recordKind, recordOrigin, sortRecordsNewestFirst } from '../../../shared/project-signals.js'
@@ -189,7 +190,7 @@ export function ResearchGraph({ graph, selected, ideaNodeIds = [], onSelect }: {
   const panStart = useRef<{
     pointerId: number; clientX: number; clientY: number; x: number; y: number
   } | null>(null)
-  const [viewportWidth, setViewportWidth] = useState(780)
+  const viewportWidth = useElementWidth(viewport)
   const [view, setView] = useState(UNMOVED)
   const [panning, setPanning] = useState(false)
   // Until the user zooms or pans, the view follows the fitted one as the viewport's width settles.
@@ -200,15 +201,6 @@ export function ResearchGraph({ graph, selected, ideaNodeIds = [], onSelect }: {
   const contentHeight = Math.max(0, ...layout.nodes.map((node) => node.y + GRAPH_NODE_HEIGHT))
   const fitted = fittedView({ width: contentWidth, height: contentHeight }, viewportWidth)
 
-  useEffect(() => {
-    const element = viewport.current
-    if (element === null) return
-    const sync = () => setViewportWidth(element.clientWidth)
-    sync()
-    const resize = new ResizeObserver(sync)
-    resize.observe(element)
-    return () => resize.disconnect()
-  }, [graph.nodes.length])
   useEffect(() => {
     moved.current = false
     setView(fitted)
@@ -473,13 +465,13 @@ export function ResearchNodePanel({
   return (
     <>
       <SectionHeading
-        variant="rail" className="node-document-head"
+        level="group" className="node-document-head" data-stuck-fade="top"
         actions={<PanelClose onClose={onClose} />}
       ><FadeText className="node-document-title" label={node.label}>{node.label}</FadeText>
       </SectionHeading>
       {children.length === 0 ? null : (
         <>
-          <SectionHeading variant="rail" count={children.length}>{m.project.graph.branchSummary}</SectionHeading>
+          <SectionHeading level="group" count={children.length}>{m.project.graph.branchSummary}</SectionHeading>
           <div className="node-branch-groups">
             {branches.map((group) => (
               <div className={`node-branch-group ${group.key}`} key={group.key}>
@@ -497,7 +489,7 @@ export function ResearchNodePanel({
         </>
       )}
 
-      <SectionHeading variant="rail" count={tasks.length}>{m.project.graph.tasks}</SectionHeading>
+      <SectionHeading level="group" count={tasks.length}>{m.project.graph.tasks}</SectionHeading>
       {tasks.length === 0
         ? <EmptyState variant="section">{m.project.graph.noTasks}</EmptyState>
         : (
@@ -511,7 +503,7 @@ export function ResearchNodePanel({
           </List>
         )}
 
-      <SectionHeading variant="rail" count={ideas.length}>{m.project.linkedIdeas}</SectionHeading>
+      <SectionHeading level="group" count={ideas.length}>{m.project.linkedIdeas}</SectionHeading>
       {ideas.length === 0
         ? <EmptyState variant="section">{m.project.noLinkedIdeas}</EmptyState>
         : (
@@ -541,7 +533,7 @@ export function ResearchNodePanel({
 
       {nodeEvents.length === 0 ? null : (
         <>
-          <SectionHeading variant="rail" count={nodeEvents.length}>{m.project.graph.records}</SectionHeading>
+          <SectionHeading level="group" count={nodeEvents.length}>{m.project.graph.records}</SectionHeading>
           <ProjectEventList className="node-event-list">
             {nodeEvents.map((event, index) => (
               <ProjectEventRow

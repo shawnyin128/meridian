@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { Key, ReactElement, ReactNode } from 'react'
 import type { KeptText } from '../hooks/useDrafts.js'
+import { useOpenerFocus } from '../hooks/useOpenerFocus.js'
 import { ActionPopover } from './ActionPopover.js'
 import type { ActionPopoverAlign, ActionPopoverSide } from './ActionPopover.js'
 import { ShortTextEditor } from './ShortTextEditor.js'
@@ -10,8 +11,8 @@ import { ShortTextEditor } from './ShortTextEditor.js'
  * the draft state when the edited object switches; an outside press or focus leaving saves or
  * closes through `ShortTextEditor`, never through Radix. Pages only provide the anchor, the copy,
  * the save/delete actions and, when the object has one, `field` and `fieldChanged` as ShortTextEditor
- * takes them. When it closes with focus left nowhere, focus goes back to the element that held it
- * when it opened. `kept` keeps what is typed as a draft; see `ShortTextEditor`.
+ * takes them. Closing returns focus as useOpenerFocus does. `kept` keeps what is typed as a draft;
+ * see `ShortTextEditor`.
  */
 export function FloatingTextEditor({
   open, anchor, editorKey, title, initialValue = '', placeholder, field, fieldChanged = false, onSubmit, onClose, onDelete,
@@ -34,13 +35,7 @@ export function FloatingTextEditor({
   kept?: KeptText | undefined
 }) {
   const [busy, setBusy] = useState(false)
-  const opener = useRef<HTMLElement | null>(null)
-  const wasOpen = useRef(false)
-  if (open && !wasOpen.current) {
-    const active = document.activeElement
-    opener.current = active instanceof HTMLElement && active !== document.body ? active : null
-  }
-  wasOpen.current = open
+  const returnFocus = useOpenerFocus(open)
 
   useEffect(() => {
     if (!open) setBusy(false)
@@ -52,10 +47,7 @@ export function FloatingTextEditor({
       surface="editor" side={side} align={align} sideOffset={sideOffset}
       contentProps={{
         // Anchored without a trigger, Radix hands focus back to nothing once the popover closes.
-        onCloseAutoFocus: (event) => {
-          event.preventDefault()
-          if (document.activeElement === document.body && opener.current?.isConnected) opener.current.focus()
-        },
+        onCloseAutoFocus: returnFocus,
         onEscapeKeyDown: (event) => {
             // This popover alone decides whether to close, so Radix's open change and the editor's own
             // Escape do not each call onClose; while a write is unfinished, popover and draft stay intact.

@@ -11,7 +11,7 @@ import { PageError, SectionHeading } from '../PageShell.js'
 import { PaperText } from '../paper/PaperText.js'
 import { Switch } from '../Switch.js'
 import { Tag } from '../Tag.js'
-import { Card } from '../Card.js'
+import { Group, GroupedList } from '../GroupedList.js'
 import { FadeText } from '../FadeText.js'
 import { plainTitle } from '../paper/paper-text.js'
 import { Button } from '../Button.js'
@@ -67,28 +67,26 @@ export function DiscoverySettings() {
   const enabled = (profiles ?? []).reduce((total, profile) => total + profile.intentCount, 0)
   return (
     <section className="delivery-directions">
-      <SectionHeading variant="group" count={enabled}>
-        {m.settings.discovery.directionsHeading}
-      </SectionHeading>
+      <SectionHeading count={enabled}>{m.settings.discovery.directionsHeading}</SectionHeading>
       <PageError error={error} variant="section" />
-      <Card flush className="direction-panel">
-        {profiles === null && error === null ? <LoadingPlaceholder shape="rows" count={2} /> : null}
-        {profiles?.length === 0 ? <EmptyState variant="section">{m.settings.discovery.noDirections}</EmptyState> : null}
+      {profiles === null && error === null ? <LoadingPlaceholder shape="rows" count={2} /> : null}
+      {profiles?.length === 0 ? <EmptyState variant="section">{m.settings.discovery.noDirections}</EmptyState> : null}
+      <GroupedList>
         {(profiles ?? []).map((profile) => (
-          <section className="direction-project" key={profile.id}>
-            <header>
-              <strong>{profile.name}</strong>
-              <span>{m.settings.discovery.seeds(profile.seedCount + profile.positiveCount)}</span>
+          <Group
+            key={profile.id} title={profile.name} meta={m.settings.discovery.seeds(profile.seedCount + profile.positiveCount)}
+            actions={(
               <Button
                 size="compact" variant="ghost" disabled={refreshing !== null || profile.intentCount === 0}
                 busy={refreshing === profile.id} busyLabel={m.settings.discovery.refreshing}
                 onClick={() => refresh(profile.id)}
               >{m.settings.discovery.refreshProject}</Button>
-            </header>
+            )}
+          >
             {profile.intents.length === 0 ? (
               <EmptyState variant="section">{m.settings.discovery.needsArxiv}</EmptyState>
             ) : (
-              <List variant="embedded" rows="all">
+              <List rows="all">
                 {profile.intents.map((intent) => (
                   <Item
                     className="direction-row" key={intent.id} lines={2} muted={!intent.enabled}
@@ -118,9 +116,9 @@ export function DiscoverySettings() {
                 ))}
               </List>
             )}
-          </section>
+          </Group>
         ))}
-      </Card>
+      </GroupedList>
     </section>
   )
 }

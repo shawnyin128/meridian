@@ -19,6 +19,7 @@ import { ColourField, FormInput } from '../FormControls.js'
 import { Icon } from '../icons.js'
 import { ModalTitle } from '../ModalDialog.js'
 import { NavRow } from '../NavRow.js'
+import { NavSection } from '../NavSection.js'
 import { SectionHeading } from '../PageShell.js'
 import { SegmentedControl } from '../SegmentedControl.js'
 import { Swatches } from '../Swatches.js'
@@ -57,7 +58,7 @@ type Form = { id: string | null; draft: Draft; loaded: Draft; outside: boolean; 
 const formOf = (id: string | null, draft: Draft): Form => ({ id, draft, loaded: draft, outside: false, saved: false })
 
 /** A stroke glyph of the sidebar's, for a preview row. */
-const Glyph = ({ d }: { d: string }) => <span className="ic"><Icon><path d={d} /></Icon></span>
+const Glyph = ({ d }: { d: string }) => <Icon><path d={d} /></Icon>
 
 /**
  * A screen of the App drawn with one mode of a theme: the colour tokens derived from `modules` are set
@@ -72,13 +73,14 @@ function ThemePreview({ modules, mode }: { modules: ColourThemeModules; mode: Co
   return (
     <div className="theme-preview" style={style} inert aria-hidden="true">
       <div className="theme-preview-side">
-        <NavRow className="srow on" onActivate={ignore}><Glyph d="M22 12h-4l-3 8L9 4l-3 8H2" />{m.shell.nav.feed}</NavRow>
-        <div className="sb-h">{m.shell.nav.myLibrary}</div>
-        <NavRow className="srow" onActivate={ignore}><Glyph d="M12 2L2 7l10 5 10-5-10-5z" />{m.shell.nav.wiki}</NavRow>
-        <NavRow className="srow" onActivate={ignore}>
-          <Glyph d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />{m.shell.nav.papers}
-        </NavRow>
-        <NavRow className="srow" onActivate={ignore}><Glyph d="M4 6h8M9 12h11M6 18h9" />{m.shell.nav.overview}</NavRow>
+        <NavRow selected onActivate={ignore} icon={<Glyph d="M22 12h-4l-3 8L9 4l-3 8H2" />}>{m.shell.nav.feed}</NavRow>
+        <NavSection id="preview-lib" title={m.shell.nav.myLibrary}>
+          <NavRow onActivate={ignore} icon={<Glyph d="M12 2L2 7l10 5 10-5-10-5z" />}>{m.shell.nav.wiki}</NavRow>
+          <NavRow onActivate={ignore} icon={<Glyph d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />}>
+            {m.shell.nav.papers}
+          </NavRow>
+          <NavRow onActivate={ignore} icon={<Glyph d="M4 6h8M9 12h11M6 18h9" />}>{m.shell.nav.overview}</NavRow>
+        </NavSection>
       </div>
       <div className="theme-preview-canvas">
         <Card>
@@ -203,12 +205,11 @@ export function ThemeEditor({ theme, onBack, onDirtyChange }: {
           <div className="theme-module-group" key={keys[0]}>
             {keys.map((key) => (
               <NavRow
-                key={key} className="srow theme-module" selected={key === module} data-module={key}
-                onActivate={() => setModule(key)}
+                key={key} selected={key === module} data-module={key} onActivate={() => setModule(key)}
+                icon={<span className="theme-module-swatch" style={{ backgroundColor: colours[key] }} />}
+                end={weak.has(key) ? <Tag state="warning">{t.lowContrast}</Tag> : undefined}
               >
-                <span className="ic"><span className="theme-module-swatch" style={{ backgroundColor: colours[key] }} /></span>
                 <span className="theme-module-name">{t.modules[key]}</span>
-                {weak.has(key) ? <Tag state="warning" className="n">{t.lowContrast}</Tag> : null}
               </NavRow>
             ))}
           </div>
@@ -247,7 +248,7 @@ export function ThemeEditor({ theme, onBack, onDirtyChange }: {
           </div>
           <ThemePreview modules={colours} mode={mode} />
           <Card className="theme-module-card">
-            <SectionHeading variant="group">{t.modules[module]}</SectionHeading>
+            <SectionHeading level="group">{t.modules[module]}</SectionHeading>
             <div className="theme-module-colour">
               <Swatches
                 label={t.swatches} value={colours[module].toLowerCase()} onPick={paint}

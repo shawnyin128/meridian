@@ -3,8 +3,7 @@
  * e2e/fixtures/platform-shell-demo.html. Selector names match the demo for side-by-side comparison.
  */
 
-/* The table takes the view's remaining height and scrolls inside itself. */
-.desk-body.libview{display:flex;flex-direction:column;overflow:hidden}
+/* The table takes the view's remaining height, in a page body that does not scroll, and scrolls inside itself. */
 .desk-body.libview>.libwide{display:flex;flex-direction:column;flex:1;min-height:0;width:100%}
 .desk-body.libview #libList{flex:1;min-height:0;display:flex;flex-direction:column}
 

@@ -3,12 +3,13 @@ import type {
   ButtonHTMLAttributes, HTMLAttributes, MouseEvent as ReactMouseEvent, ReactNode, TdHTMLAttributes, ThHTMLAttributes,
 } from 'react'
 import type { SortDirection } from '../../shared/contract.js'
+import { isClipped } from '../hooks/useClipped.js'
 import { useRowCap } from '../hooks/useRowCap.js'
-import { useScrollFade } from '../hooks/useScrollFade.js'
 import { useMessages } from '../messages/useMessages.js'
 import { CountBadge } from './CountBadge.js'
 import { Grip, type GripLimits } from './Grip.js'
 import { RowActions } from './Item.js'
+import { ScrollArea } from './ScrollArea.js'
 import { EMBEDDED_LIST_ROW_LIMIT } from './List.js'
 import { useToolbarItem } from './Toolbar.js'
 import { Tooltip } from './Tooltip.js'
@@ -45,6 +46,9 @@ export type TableColumn = {
   headProps?: (Omit<ThHTMLAttributes<HTMLTableCellElement>, 'children' | 'className'>
     & { [data: `data-${string}`]: string | undefined }) | undefined
 }
+
+/** The scroll box's edges the sticky header, first column and actions column hold. */
+const HELD = ['left', 'right', 'top'] as const
 
 /** Whether a column draft is open and whether the table has an actions column; every row follows both. */
 const Shape = createContext<{ draft: boolean; actions: boolean }>({ draft: false, actions: false })
@@ -97,7 +101,6 @@ export function Table({ columns, rows = 'fill', actions, draft = null, className
 }) {
   const m = useMessages()
   const box = useRef<HTMLDivElement | null>(null)
-  const fade = useScrollFade('both', box)
   const cap = useRowCap(box, bodyRows, rows === 'capped' ? EMBEDDED_LIST_ROW_LIMIT : undefined)
   const drag = useRef<WidthDrag | null>(null)
   const [widths, setWidths] = useState<ReadonlyMap<Slot, number>>(new Map())
@@ -199,9 +202,9 @@ export function Table({ columns, rows = 'fill', actions, draft = null, className
     : column.sort.direction === 'asc' ? 'ascending' : 'descending')
 
   return (
-    <div
-      className={`table-scroll table-scroll--${rows}${cap === null ? '' : ' table-scroll--capped-rows'}`} ref={fade}
-      data-fade-held="left right top" style={cap === null ? undefined : { maxHeight: cap }}
+    <ScrollArea
+      axis="both" fill={rows === 'fill'} gutter={rows === 'fill' || cap !== null} held={HELD} ref={box}
+      className={`table-scroll table-scroll--${rows}`} style={cap === null ? undefined : { maxHeight: cap }}
     >
       <table className={classes('table', className)}>
         <colgroup>
@@ -218,6 +221,7 @@ export function Table({ columns, rows = 'fill', actions, draft = null, className
               return (
                 <th
                   {...column.headProps} key={column.key} aria-sort={ariaSort(column)}
+                  data-stuck-fade={column === columns[0] ? 'top left' : column.move === 'after' ? undefined : 'top'}
                   className={classes(column.align === 'end' && 'table-end', column.move && `table-move-${column.move}`)}
                   onClick={column.sort?.onSort}
                 >
@@ -232,14 +236,14 @@ export function Table({ columns, rows = 'fill', actions, draft = null, className
               )
             })}
             {draft}
-            {hasActions ? <th className="table-actions">{actions === null ? null : <RowActions>{actions}</RowActions>}</th> : null}
+            {hasActions ? <th className="table-actions" data-stuck-fade="top right">{actions === null ? null : <RowActions>{actions}</RowActions>}</th> : null}
           </tr>
         </thead>
         <Shape.Provider value={{ draft: draft !== null, actions: hasActions }}>
           <tbody>{children}</tbody>
         </Shape.Provider>
       </table>
-    </div>
+    </ScrollArea>
   )
 }
 
@@ -249,7 +253,7 @@ export function Table({ columns, rows = 'fill', actions, draft = null, className
  */
 export const TableDraftHead = forwardRef<HTMLTableCellElement, { className?: string; children: ReactNode }>(
   function TableDraftHead({ className, children }, ref) {
-    return <th ref={ref} className={classes('table-draft', className)}>{children}</th>
+    return <th ref={ref} className={classes('table-draft', className)} data-stuck-fade="top">{children}</th>
   },
 )
 
@@ -275,7 +279,7 @@ export const TableRow = forwardRef<HTMLTableRowElement, {
     >
       {children}
       {shape.draft ? <td /> : null}
-      {shape.actions ? <td className="table-actions">{actions === undefined ? null : <RowActions>{actions}</RowActions>}</td> : null}
+      {shape.actions ? <td className="table-actions" data-stuck-fade="right">{actions === undefined ? null : <RowActions>{actions}</RowActions>}</td> : null}
     </tr>
   )
 })
@@ -305,7 +309,8 @@ function useCellMeasure(box: { current: HTMLElement | null }, measure: (box: HTM
  * One body cell of a `TableRow`, in one line. `content` is `text`, which fades out where the cell
  * cuts it off and shows whole over the cells beside it while the pointer rests on it; `chips`, which
  * keep the first chip, fold those that do not fit behind a +N count that unfolds them, and never
- * squeeze one; or `controls`, such as an editor, left as they are. `kind` is the row's `title`, a
+ * squeeze one; or `controls`, such as an editor, left as they are. `kind` is the row's `title`, its first
+ * cell, which fades the content scrolling under it while it is stuck, a
  * `meta` value in the quiet colour, or an `edit` value that opens its editor on a click. Other props
  * and the ref go to the `<td>`; `className` only names it.
  */
@@ -321,7 +326,7 @@ export const TableCell = forwardRef<HTMLTableCellElement, {
 ) {
   const names = classes(kind && `table-cell--${kind}`, align === 'end' && 'table-end', className)
   return (
-    <td {...props} ref={ref} className={names || undefined}>
+    <td {...props} ref={ref} className={names || undefined} {...(kind === 'title' ? { 'data-stuck-fade': 'left' } : {})}>
       {content === 'controls' ? children
         : content === 'chips' ? <TableChips>{children}</TableChips>
           : <TableText>{children}</TableText>}
@@ -333,7 +338,7 @@ export const TableCell = forwardRef<HTMLTableCellElement, {
 function TableText({ children }: { children: ReactNode }) {
   const box = useRef<HTMLSpanElement>(null)
   const [cut, setCut] = useState(false)
-  useCellMeasure(box, (text) => setCut(text.scrollWidth > text.clientWidth + 1))
+  useCellMeasure(box, (text) => setCut(isClipped(text, 'x')))
   return <span ref={box} className={cut ? 'table-text table-cut' : 'table-text'}>{children}</span>
 }
 
@@ -354,7 +359,7 @@ function TableChips({ children }: { children: ReactNode }) {
     const badge = chips.querySelector(':scope > .morebadge')
     badge?.classList.add('table-folded')
     let hidden = 0
-    if (chips.scrollWidth > chips.clientWidth + 1) {
+    if (isClipped(chips, 'x')) {
       const limit = chips.getBoundingClientRect().left + chips.clientWidth - 40
       let past = false
       ;[...chips.children].forEach((chip, i) => {

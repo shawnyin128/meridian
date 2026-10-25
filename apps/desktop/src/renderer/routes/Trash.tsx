@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { TrashEntry } from '../../shared/contract.js'
 import { TRASH_RETENTION_DAYS } from '../../shared/vocabulary.js'
 import { trash } from '../ipc.js'
@@ -9,6 +9,7 @@ import { IconButton } from '../components/IconButton.js'
 import { ConfirmDialog } from '../components/ConfirmDialog.js'
 import { EmptyState } from '../components/EmptyState.js'
 import { FadeText } from '../components/FadeText.js'
+import { Group, GroupedList } from '../components/GroupedList.js'
 import { LoadingPlaceholder } from '../components/LoadingPlaceholder.js'
 import { PaperText } from '../components/paper/PaperText.js'
 import { plainTitle } from '../components/paper/paper-text.js'
@@ -16,7 +17,7 @@ import { Item } from '../components/Item.js'
 import { List } from '../components/List.js'
 import { TitleNote } from '../components/TitleNote.js'
 import {
-  PageBody, PageError, PageHeader, PageShell, PageTitle, SectionHeading,
+  PageBody, PageError, PageHeader, PageShell, PageTitle,
 } from '../components/PageShell.js'
 import { D1, dnum } from '../../shared/dates.js'
 import { useScreenLoad } from '../hooks/useScreenLoad.js'
@@ -112,37 +113,40 @@ export function Trash() {
               {m.trash.empty}
             </EmptyState>
           )
-          : groups.map((g) => (
-            <Fragment key={g.kind}>
-              <SectionHeading count={g.items.length}>{m.trash.kinds[g.kind]}</SectionHeading>
-              <List variant="embedded" rows="all" className="tgroup">
-                {g.items.map((entry) => (
-                  <Item
-                    className="trow" key={entry.id}
-                    title={<FadeText className="tt2">{PAPER_KINDS.has(entry.kind) ? <PaperText text={entry.title} /> : entry.title}</FadeText>}
-                    trailing={<span className="tm2">{m.trash.autoClear(daysLeft(entry.deletedAt, today))}</span>}
-                    actions={(
-                      <>
-                        <IconButton
-                          label={m.common.restore} size="nested" disabled={!entry.restorable} onClick={() => restore(entry)}
-                          note={entry.restorable
-                            ? undefined
-                            : entry.kind === 'paper' ? m.trash.paperTaken : entry.kind === 'chat' ? m.trash.chatTaken : m.trash.projectGone}
-                        ><IconRestore /></IconButton>
-                        <ConfirmDialog
-                          trigger={(
-                            <IconButton label={m.common.deletePermanently} size="nested" tone="danger"><IconTrash /></IconButton>
-                          )}
-                          title={m.trash.confirmPurge(plainOf(entry))} description={m.trash.confirmPurgeDescription}
-                          confirmLabel={m.trash.confirmPurgeLabel} onConfirm={() => purge(entry.id)}
-                        />
-                      </>
-                    )}
-                  />
-                ))}
-              </List>
-            </Fragment>
-          ))}
+          : (
+            <GroupedList>
+              {groups.map((g) => (
+                <Group key={g.kind} title={m.trash.kinds[g.kind]} count={g.items.length}>
+                  <List variant="embedded" rows="all" className="tgroup">
+                    {g.items.map((entry) => (
+                      <Item
+                        className="trow" key={entry.id}
+                        title={<FadeText className="tt2">{PAPER_KINDS.has(entry.kind) ? <PaperText text={entry.title} /> : entry.title}</FadeText>}
+                        trailing={<span className="tm2">{m.trash.autoClear(daysLeft(entry.deletedAt, today))}</span>}
+                        actions={(
+                          <>
+                            <IconButton
+                              label={m.common.restore} size="nested" disabled={!entry.restorable} onClick={() => restore(entry)}
+                              note={entry.restorable
+                                ? undefined
+                                : entry.kind === 'paper' ? m.trash.paperTaken : entry.kind === 'chat' ? m.trash.chatTaken : m.trash.projectGone}
+                            ><IconRestore /></IconButton>
+                            <ConfirmDialog
+                              trigger={(
+                                <IconButton label={m.common.deletePermanently} size="nested" tone="danger"><IconTrash /></IconButton>
+                              )}
+                              title={m.trash.confirmPurge(plainOf(entry))} description={m.trash.confirmPurgeDescription}
+                              confirmLabel={m.trash.confirmPurgeLabel} onConfirm={() => purge(entry.id)}
+                            />
+                          </>
+                        )}
+                      />
+                    ))}
+                  </List>
+                </Group>
+              ))}
+            </GroupedList>
+          )}
       </PageBody>
     </PageShell>
   )

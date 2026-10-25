@@ -23,7 +23,7 @@ type Window = {
 const { document, MouseEvent, getComputedStyle } = globalThis as unknown as Window
 
 const STYLES = [
-  'shell/tokens.css', 'components/Item.css', 'components/List.css', 'shell/AppShell.css', 'components/Table.css',
+  'shell/tokens.css', 'components/Item.css', 'components/List.css', 'components/NavRow.css', 'components/Table.css',
   'components/project/ResearchGraph.css', 'routes/Settings.css',
   'components/timeline/TimelineBoard.css', 'routes/Ideas.css', 'routes/Reader.css',
 ].map((path) => readFileSync(join(import.meta.dirname, '..', 'renderer', path), 'utf8'))
@@ -46,7 +46,7 @@ describe('选中的样子只有一种', () => {
   it('选中的列表行、研究地图分组、卡片和高亮卡片都和侧栏的当前行一个样子:浅强调色的底配强调色的字', () => {
     const looks = {
       row: styleOf('<div class="list"><button class="item item--row item--actionable item--selected">项目</button></div>', '.item'),
-      sidebar: styleOf('<button class="nav-row srow on"><span class="ic"></span>论文</button>', '.srow'),
+      sidebar: styleOf('<button class="nav-row on"><span class="nav-row-icon"></span>论文</button>', '.nav-row'),
       map: styleOf('<div class="research-map-groups list"><button class="item item--row item--actionable item--selected research-map-group">KV cache</button></div>', '.research-map-group'),
       card: styleOf('<article class="item item--card item--selected">想法</article>', '.item'),
       highlight: styleOf('<article class="item item--card item--selected item--marked reading-card highlight-card yellow">批注</article>', '.reading-card'),
@@ -63,7 +63,7 @@ describe('选中的样子只有一种', () => {
   })
 
   it('选中的侧栏行图标跟着字用同一个颜色', () => {
-    expect(styleOf('<button class="nav-row srow on"><span class="ic"></span>论文</button>', '.ic').color).toBe('var(--accent-text)')
+    expect(styleOf('<button class="nav-row on"><span class="nav-row-icon"></span>论文</button>', '.nav-row-icon').color).toBe('var(--accent-text)')
   })
 
   it('选中的论文行和侧栏的当前行一个样子:铺浅强调色，标题用强调色的字，左边不画强调色竖条', () => {
@@ -98,7 +98,7 @@ describe('悬停的反馈不被任何状态盖掉', () => {
   it('选中的列表行和侧栏的当前行悬停时，浅强调色上再盖一层悬停色', () => {
     const row = styleOf('<div class="list"><button class="item item--row item--actionable item--selected">项目</button></div>', '.item', '.item')
     expect([row.backgroundColor, row.backgroundImage]).toEqual(['var(--accent-soft)', HOVER])
-    const sidebar = styleOf('<button class="nav-row srow on">论文</button>', '.srow', '.srow')
+    const sidebar = styleOf('<button class="nav-row on">论文</button>', '.nav-row', '.nav-row')
     expect([sidebar.backgroundColor, sidebar.backgroundImage]).toEqual(['var(--accent-soft)', HOVER])
   })
 

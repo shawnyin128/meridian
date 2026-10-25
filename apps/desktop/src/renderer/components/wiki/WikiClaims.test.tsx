@@ -181,7 +181,7 @@ describe('WikiClaims', () => {
     expect(tip()).toBe('“wide trees amortize”')
   })
 
-  it('带着要落到的结论打开时,把那条结论移到眼前;没带时不动', async () => {
+  it('带着要落到的结论打开时,把那条结论移到眼前并闪一下;没带时不动', async () => {
     const shown: (string | undefined)[] = []
     // jsdom lays nothing out and has no scrollIntoView.
     HTMLElement.prototype.scrollIntoView = function (this: HTMLElement) { shown.push(this.dataset.claim) }
@@ -192,6 +192,7 @@ describe('WikiClaims', () => {
         root!.render(<MessagesProvider><WikiClaims page={PAGE} pending={false} links={links} onApply={onApply} arrival={claim} /></MessagesProvider>)
       })
       expect(shown).toEqual([claim])
+      expect([...document.querySelectorAll<HTMLElement>('[data-arrived]')].map((row) => row.dataset.claim)).toEqual([claim])
     } finally {
       delete (HTMLElement.prototype as Partial<HTMLElement>).scrollIntoView
     }

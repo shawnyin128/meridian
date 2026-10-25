@@ -133,7 +133,7 @@ test('标题栏给窗口按钮让出了留白', async ({ win }) => {
 })
 
 test('长会话标题不把侧栏顶宽', async ({ win }) => {
-  const width = () => win.locator('.sidebar').evaluate((el) => el.getBoundingClientRect().width)
+  const width = () => win.locator('#sidebar').evaluate((el) => el.getBoundingClientRect().width)
   await win.locator('#chatList .chat-row').first().waitFor()
   const before = await width()
 
@@ -141,20 +141,20 @@ test('长会话标题不把侧栏顶宽', async ({ win }) => {
   await win.evaluate((title) => (window as unknown as MeridianWindow).meridian
     .call('chat.create', { title, named: true }), LONG_CHAT_TITLE)
   await win.reload()
-  await expect(win.locator('#chatList .ct-t').filter({ hasText: LONG_CHAT_TITLE })).toHaveCount(1)
+  await expect(win.locator('#chatList .fade-text').filter({ hasText: LONG_CHAT_TITLE })).toHaveCount(1)
 
   expect(await width()).toBe(before)
 })
 
 test('侧栏分组抬头是 11px 半粗体,比正文分节抬头小一号', async ({ win }) => {
-  const head = win.locator('.sb-h').first()
+  const head = win.locator('.nav-section-head').first()
   await expect(head).toHaveCSS('font-size', '11px')
   await expect(head).toHaveCSS('font-weight', '600')
 })
 
 test('侧栏的分组抬头一样高:收件、对话、我的库、研究都是 24px 的一行,折叠钮在每一行的同一处', async ({ win }) => {
-  await expect(win.locator('.sidebar .sb-h')).toHaveCount(4)
-  const heads = await win.locator('.sidebar .sb-h').evaluateAll((all) => all.map((head) => {
+  await expect(win.locator('#sidebar .nav-section-head')).toHaveCount(4)
+  const heads = await win.locator('#sidebar .nav-section-head').evaluateAll((all) => all.map((head) => {
     const box = head.getBoundingClientRect()
     const toggle = head.querySelector('.fold-toggle')!.getBoundingClientRect()
     return [(head as HTMLElement).dataset['sect'], box.height, toggle.x - box.x, toggle.y + toggle.height / 2 - box.y]
@@ -248,7 +248,7 @@ test('全应用的齿轮是同一颗:一条闭合轮廓加一个轴孔,四处逐
   // same tooltip as on aggregation pages.
   expect(await win.locator('.ptable thead [aria-label="列设置"] svg path').getAttribute('d')).toBe(gear)
   // Settings entries no longer crowd the sidebar; the only Watch settings gear is in the Inbox toolbar.
-  await expect(win.locator('.sidebar [aria-label="管理关注"]')).toHaveCount(0)
+  await expect(win.locator('#sidebar [aria-label="管理关注"]')).toHaveCount(0)
   await win.locator('[data-inbox="all"] > .nav-row-label').click()
   expect(await win.locator('.screenslot:not([hidden]) [aria-label="关注设置"] svg path').getAttribute('d'))
     .toBe(gear)

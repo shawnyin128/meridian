@@ -48,13 +48,16 @@ export function ExtensionSettings({ statuses, failed, plugin, onCopy, onCopyProm
             : m.settings.extensions.copyInstallLabel(extension.name)
           return (
             <section className="extension-entry" key={extension.id} data-extension={extension.id}>
-              <div className="extension-head">
-                <SectionHeading variant="group">{extension.name}</SectionHeading>
-                <Tag state={STATE[extension.state]} className="extension-state">
-                  {m.settings.extensions.state[extension.state]}
-                  {extension.version === undefined ? '' : ` · ${extension.version}`}
-                </Tag>
-              </div>
+              <SectionHeading
+                level="group"
+                actions={(
+                  <Tag state={STATE[extension.state]} className="extension-state">
+                    {m.settings.extensions.state[extension.state]}
+                    {extension.version === undefined ? '' : ` · ${extension.version}`}
+                  </Tag>
+                )}
+              >{extension.name}
+              </SectionHeading>
               <CardTray
                 className="extension-command"
                 expandLabel={m.common.details.expand} collapseLabel={m.common.details.collapse}
@@ -79,7 +82,7 @@ export function ExtensionSettings({ statuses, failed, plugin, onCopy, onCopyProm
       </Card>
 
       <Card as="section" className="extension-tutorial" data-extension-tutorial="">
-        <SectionHeading variant="group">{m.settings.extensions.tutorial.heading}</SectionHeading>
+        <SectionHeading level="group">{m.settings.extensions.tutorial.heading}</SectionHeading>
         <ol className="extension-tutorial-steps">
           {m.settings.extensions.tutorial.steps.map((step, index) => (
             <li key={step.title}>
@@ -89,11 +92,11 @@ export function ExtensionSettings({ statuses, failed, plugin, onCopy, onCopyProm
           ))}
         </ol>
 
-        <h4>{m.settings.extensions.tutorial.examplesHeading}</h4>
+        <SectionHeading level="group">{m.settings.extensions.tutorial.examplesHeading}</SectionHeading>
         <div className="extension-prompt-groups">
           {m.settings.extensions.tutorial.groups.map((group) => (
             <section className="extension-prompt-group" key={group.heading}>
-              <h5>{group.heading}</h5>
+              <SectionHeading level="group">{group.heading}</SectionHeading>
               <List variant="embedded" rows="all" nested className="extension-prompt-list">
                 {group.examples.map((example) => (
                   <Item
@@ -110,7 +113,7 @@ export function ExtensionSettings({ statuses, failed, plugin, onCopy, onCopyProm
           ))}
         </div>
 
-        <h4>{m.settings.extensions.tutorial.healthyHeading}</h4>
+        <SectionHeading level="group">{m.settings.extensions.tutorial.healthyHeading}</SectionHeading>
         <ul className="extension-healthy-list">
           {m.settings.extensions.tutorial.healthy.map((item) => <li key={item}>{item}</li>)}
         </ul>

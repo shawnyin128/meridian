@@ -56,7 +56,7 @@ describe('WikiBacklinks', () => {
   it('是右栏的一块:栏标题「反向链接」,同一种归在一行,行首是种类,后面是这一种的链接', () => {
     render(LINKS)
     const heading = host.querySelector('.section-heading')!
-    expect(heading.classList.contains('section-heading--rail')).toBe(true)
+    expect(heading.classList.contains('section-heading--group')).toBe(true)
     expect(heading.textContent).toBe('反向链接')
     const rows = [...host.querySelectorAll('.wkrel')].map((row) => [
       row.querySelector('.rl')!.textContent, [...row.querySelectorAll('.tagchip')].map((link) => link.textContent),

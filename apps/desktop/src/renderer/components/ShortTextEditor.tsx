@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import type { KeptText } from '../hooks/useDrafts.js'
 import { useOnLeave } from '../hooks/useOnLeave.js'
-import { composing } from '../lib/keyboard.js'
+import { commitKeys } from '../lib/keyboard.js'
 import { useMessages } from '../messages/useMessages.js'
 import { FormInput } from './FormControls.js'
 import { CommitActions } from './CommitActions.js'
@@ -114,12 +114,7 @@ export function ShortTextEditor({
           }}
           onKeyDown={(event) => {
             if (event.key !== 'Tab') event.stopPropagation()
-            if (composing(event.nativeEvent)) return
-            if (event.key === 'Enter') { event.preventDefault(); void commit() }
-            if (event.key === 'Escape') {
-              event.preventDefault()
-              if (!busyRef.current) close()
-            }
+            commitKeys({ onSave: () => { void commit() }, onCancel: () => { if (!busyRef.current) close() } })(event)
           }}
         />
         {submitLabel === undefined

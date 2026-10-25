@@ -1,6 +1,7 @@
 import { forwardRef, useImperativeHandle, useLayoutEffect, useRef, useState } from 'react'
 import type { ComponentPropsWithoutRef, ReactNode, RefObject } from 'react'
 import { FadeText } from './FadeText.js'
+import { isClipped } from '../hooks/useClipped.js'
 import './Tag.css'
 
 /**
@@ -44,7 +45,7 @@ function useYielded(box: RefObject<HTMLElement | null>, capped: boolean): boolea
       const style = getComputedStyle(parent)
       const end = parent.getBoundingClientRect().right - parseFloat(style.borderRightWidth) - parseFloat(style.paddingRight)
       const past = parent.getClientRects().length > 0 && tag.getBoundingClientRect().right > end + 1
-      setYielded((text !== null && text.scrollWidth > text.clientWidth + 1) || past)
+      setYielded((text !== null && isClipped(text, 'x')) || past)
     }
     measure()
     const observer = new ResizeObserver(measure)
