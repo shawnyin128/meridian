@@ -184,6 +184,14 @@ describe('subscription CLI discovery', () => {
     await expect(checkCliConnection('claude', noStreaming.options)).resolves.toMatchObject({
       state: 'failed', reason: 'cli-unsupported', modelCalls: 0,
     })
+    const variantHelp = machine({
+      help: `${FULL_HELP.replace(/^ {2}--system-prompt-file .*$/m, '')}\n  --bare    Provide context via: --system-prompt[-file], --mcp-config`,
+    })
+    executable(join(variantHelp.home, '.local', 'bin', 'claude'), STAND_IN)
+    await expect(checkCliConnection('claude', variantHelp.options)).resolves.toMatchObject({ state: 'connected' })
+    const noVariant = machine({ help: FULL_HELP.replace(/^ {2}--system-prompt-file .*$/m, '') })
+    executable(join(noVariant.home, '.local', 'bin', 'claude'), STAND_IN)
+    await expect(checkCliConnection('claude', noVariant.options)).resolves.toMatchObject({ reason: 'cli-unsupported' })
     for (const [cli, flag] of [['claude', '--resume'], ['codex', 'resume']] as const) {
       const noResume = machine({ help: FULL_HELP.replace(new RegExp(`^ {2}${flag} .*$`, 'm'), '') })
       executable(join(noResume.home, '.local', 'bin', cli), STAND_IN)

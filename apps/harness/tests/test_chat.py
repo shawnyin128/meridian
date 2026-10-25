@@ -173,8 +173,32 @@ class ChatOnCliTests(unittest.TestCase):
         self.assertLess(prompt.index("Earlier answer"), prompt.index("Current user message:"))
         self.assertTrue(prompt.endswith("Current user message:\nWhat changed?"))
 
+    def test_a_cli_answer_cites_any_page_of_the_paper_its_tools_can_read(self) -> None:
+        def read(method: str, params: object) -> object:
+            if method == "model.invoke":
+                return {"output": "The lookup supports this [p. 9] and [p. 12]."}
+            return _read_with_pages(method, params)
+
+        self.assertEqual(
+            build_chat_method()(RequestContext(24, Event(), read), _cli_params()),
+            {"answer": "The lookup supports this [p. 9] and [p. 12]."},
+        )
+
+    def test_a_cli_turn_keeps_the_page_count_out_of_the_prompt(self) -> None:
+        calls: list[dict[str, object]] = []
+
+        def read(method: str, params: object) -> object:
+            if method == "model.invoke" and isinstance(params, dict):
+                calls.append(params)
+                return {"output": "Answer"}
+            return _read_with_pages(method, params)
+
+        build_chat_method()(RequestContext(25, Event(), read), _cli_params())
+        self.assertNotIn("12", str(calls[0]["system"]))
+        self.assertNotIn("page_count", str(calls[0]["system"]))
+
     def test_a_cli_answer_is_validated_like_any_other_answer(self) -> None:
-        for output in (None, "   ", "Unsupported [p. 9]."):
+        for output in (None, "   ", "Outside the paper [p. 13].", "Ambiguous range [pp. 1-2]."):
             with self.subTest(output=output):
 
                 def read(method: str, params: object, answer: object = output) -> object:
@@ -222,6 +246,7 @@ def _read_with_pages(method: str, _params: object) -> object:
                 {"number": 1, "text": "First page."},
                 {"number": 2, "text": "Second page."},
             ],
+            "pageCount": 12,
             "reading": {"highlights": [], "notes": [], "remark": ""},
         },
     }
@@ -241,6 +266,7 @@ def _read_oversized(method: str, _params: object) -> object:
                 {"number": 1, "text": "a" * 75_000},
                 {"number": 2, "text": "b" * 75_000},
             ],
+            "pageCount": 2,
             "reading": {"highlights": [], "notes": [], "remark": ""},
         },
     }

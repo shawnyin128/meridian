@@ -198,7 +198,7 @@ describe('subscription CLI runner', () => {
     expect(env['PATH']).toBe(`${bin}:/usr/bin:/bin`)
   })
 
-  it('runs codex with its tool features off, the strict schema in a file and the last message read from -o', async () => {
+  it('runs codex with its tool features and web search off, the strict schema in a file and the last message read from -o', async () => {
     const { runner, records } = standIns({
       stdout: codexEvents(
         { input_tokens: 40_317, cached_input_tokens: 0, output_tokens: 2_932 },
@@ -221,6 +221,7 @@ describe('subscription CLI runner', () => {
     for (const feature of CODEX_DISABLED_FEATURES) {
       expect(record!.argv.join(' ')).toContain(`--disable ${feature}`)
     }
+    expect(flag('-c')).toBe('web_search="disabled"')
     expect(record!.argv.slice(-2)).toEqual(['--model=gpt-5.5', '-'])
     expect(record!.stdin).toBe('System rules\n\nPaper scope')
     expect(record!.entries).toEqual([])
@@ -333,7 +334,7 @@ describe('subscription CLI runner', () => {
     ])
     expect(runnerFlags('codex')).toEqual([
       '--ephemeral', '--skip-git-repo-check', '--sandbox', '--ignore-user-config', '--ignore-rules', '--json',
-      '--color', '--output-schema', '-o', '-C', '--disable', '--model', '-c',
+      '--color', '--output-schema', '-o', '-C', '-c', '--disable', '--model',
     ])
   })
 

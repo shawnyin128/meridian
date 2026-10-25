@@ -1,7 +1,7 @@
 import { EventEmitter } from 'node:events'
 import { chmodSync, existsSync, globSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { join, resolve } from 'node:path'
 import { PassThrough } from 'node:stream'
 import { describe, expect, it, vi } from 'vitest'
 import { z } from 'zod'
@@ -403,6 +403,36 @@ describe('a chat turn on a subscription CLI', () => {
     await expect(answering).resolves.toBe('EAGLE reaches 3.76x [p. 6].')
     expect(written).toEqual(['EAGLE reaches', 'EAGLE reaches 3.76x [p. 6].'])
     close()
+  })
+
+  it('tells Harness how many pages a paper chat\'s paper has, read from its PDF when the vault stored no count', async () => {
+    vi.stubEnv('MERIDIAN_LIBRARY_ROOT', resolve(import.meta.dirname, '../fixtures/vault'))
+    try {
+      const { child, runner, store, close } = chatRunner(CLI_MODEL, async () => ({ answer: 'Answer', durationMs: 1 }))
+      const stored = '13979-STAR-Speculative-Decodin'
+      // The same two-page PDF with one byte more, so the vault keeps it as a paper of its own.
+      const copy = store.importPaper('copy.pdf', new Uint8Array([...store.paperSource(stored), 0x0a])).paper
+      expect([store.getPaper(stored).pageCount, copy.pageCount]).toEqual([17, 0])
+      const answering = runner.answer(store.createChat('Warm-up', true).id, 'Why?', new AbortController().signal)
+      child.ready()
+      await child.frame()
+      const contextOf = async (paper: string) => {
+        const replied = child.frame()
+        child.send({
+          type: 'callback', id: 1, callbackId: paper, method: 'chat.context',
+          params: { id: store.chatForPaper(paper).id, currentText: 'Why?' },
+        })
+        return ((await replied) as { result: { paper: { pages: Array<{ number: number }>; pageCount: number } } }).result.paper
+      }
+
+      expect(await contextOf(stored)).toMatchObject({ pageCount: 17, pages: [{ number: 1 }, { number: 2 }] })
+      expect(await contextOf(copy.id)).toMatchObject({ pageCount: 2, pages: [{ number: 1 }, { number: 2 }] })
+      child.send({ type: 'response', id: 1, ok: true, result: { answer: 'Answer' } })
+      await answering
+      close()
+    } finally {
+      vi.unstubAllEnvs()
+    }
   })
 
   it('scopes the vault lookups of a paper chat\'s turn to its paper', async () => {

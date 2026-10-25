@@ -12,6 +12,7 @@ import { CliRunError } from './cli/child.js'
 import { CLI_CALL_FAILURES } from './cli/failure.js'
 import type { CliUsage } from './cli/runner.js'
 import type { HarnessModelConfig } from './model-config.js'
+import { citablePages } from './paper-wiki.js'
 import { launchHarnessProcess } from './process.js'
 import { createHarnessRpc, type HarnessCallback, type HarnessChild, HarnessRpcError } from './rpc.js'
 
@@ -263,8 +264,11 @@ export function createChatHarnessRunner(options: {
         const paper = options.store.getPaper(session.paperId)
         const reading = options.store.paperReading(session.paperId)
         let pages: Array<{ number: number; text: string }> = []
+        let pageCount = paper.pageCount
         try {
-          pages = await paperPages(session.paperId)
+          const paperId = session.paperId
+          pages = await paperPages(paperId)
+          pageCount = await citablePages(paper, () => options.store.paperSource(paperId))
         } catch {
           // Metadata and personal reading state remain useful when the source PDF is unavailable.
         }
@@ -282,6 +286,7 @@ export function createChatHarnessRunner(options: {
               abstract: clipMiddle(paper.abstract, CHAT_CONTEXT_BUDGETS.abstractCharacters),
             }),
             pages,
+            pageCount,
             reading: packPaperReading(reading),
           },
         }
