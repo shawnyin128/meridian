@@ -139,7 +139,7 @@ import { deleteColourTheme, listColourThemes, saveColourTheme } from './colour-t
 import {
   checkCliConnection, createChatHarnessRunner, createChatService, createCliRunner, createHarnessCostGate,
   createHarnessModelConfig, createHarnessProposalAudit, createInternalMcp, createMainCredentialVault,
-  createPaperWikiHarnessRunner, discoverCli, listCliModels, resolveCliBinary, subscriptionStatus,
+  createPaperWikiHarnessRunner, discoverCli, listCliModels, subscriptionStatus,
 } from './harness/index.js'
 import { placeResearchIdeaOnGraph, promoteResearchIdea } from './research-ideas/index.js'
 import { createWikiProposals, pdfPageText } from './wiki-proposals.js'
@@ -239,7 +239,8 @@ const background = createBackground({
   semanticScholarApiKey: semanticKey.current,
 })
 const cliRunner = createCliRunner({
-  binary: (cli) => resolveCliBinary(cli),
+  discover: (cli) => discoverCli(cli, { onLog: (line) => console.error(`[harness] ${line}`) }),
+  settingsRevision: () => harnessModel.subscriptionRevision(),
   internalMcp: createInternalMcp({ store, onLog: (line) => console.error(`[harness] ${line}`) }),
 })
 const paperWikiHarness = vaultRoot === undefined ? null : createPaperWikiHarnessRunner({
@@ -530,7 +531,8 @@ registerHandler('harness.updateSubscription', (params) =>
   harnessModel.updateSubscription(HarnessUpdateSubscriptionParamsSchema.parse(params)))
 registerHandler('harness.subscriptionStatus', (params) =>
   subscriptionStatus(HarnessSubscriptionStatusParamsSchema.parse(params).cli, {
-    discover: (cli) => discoverCli(cli), listModels: listCliModels, onLog: (line) => console.error(`[harness] ${line}`),
+    discover: (cli) => discoverCli(cli, { onLog: (line) => console.error(`[harness] ${line}`) }),
+    listModels: listCliModels, onLog: (line) => console.error(`[harness] ${line}`),
   }))
 registerHandler('harness.applyPaperWiki', (params) =>
   harness.applyPaperWiki(HarnessApplyPaperWikiParamsSchema.parse(params)))

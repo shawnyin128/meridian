@@ -2,6 +2,8 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import type { HarnessCli } from '../../../shared/contract.js'
 import { type ChildOutcome, cliEnvironment, CliRunError, inTemporaryFolder, runChild, stderrExcerpt } from './child.js'
+import type { CliDiscovery } from './discovery.js'
+import { reachedUsageLimit, readiness } from './failure.js'
 import { type InternalMcp, internalMcpArgs, type InternalMcpOpener } from './internal-mcp.js'
 import type { VaultToolScope } from './vault-tools.js'
 
@@ -16,6 +18,8 @@ export const CODEX_DISABLED_FEATURES = [
 const NAMED_SCHEMA_KEYS = new Set(['properties', '$defs', 'definitions', 'patternProperties'])
 
 const MAX_CLI_ERROR_DETAIL = 300
+/** How long a CLI's passed check holds before a call checks it again. */
+const CHECK_TTL_MS = 5 * 60_000
 
 export type CliCall = {
   cli: HarnessCli
@@ -43,7 +47,9 @@ export type CliResult = {
 
 /**
  * One model call on the user's signed-in CLI. Rejects with a CliRunError when the CLI is not
- * installed, fails, runs past the call's timeout, or the call's signal aborts.
+ * installed, lacks a flag the call passes, is not signed in with the user's subscription, reports
+ * the plan's usage limit reached or fails otherwise, runs past the call's timeout, or the call's
+ * signal aborts.
  */
 export type CliRunner = (call: CliCall) => Promise<CliResult>
 
@@ -54,6 +60,10 @@ const count = (value: unknown) => (typeof value === 'number' && Number.isFinite(
 
 /** What a failed call reports beside its message: the CLI's exit code and the redacted end of its stderr. */
 const failureDetails = (outcome: ChildOutcome) => ({ exitCode: outcome.code, stderr: stderrExcerpt(outcome.stderr) })
+
+/** How a call `cli` failed with `reported`, its own error text if any: at the plan's usage limit, or otherwise. */
+const failedKind = (cli: HarnessCli, outcome: ChildOutcome, reported: unknown = '') =>
+  reachedUsageLimit(cli, `${typeof reported === 'string' ? reported : ''}\n${outcome.stderr}`) ? 'usage-limit' : 'failed'
 
 const detailOf = (value: unknown) => typeof value === 'string'
   ? value.replace(/\s+/g, ' ').trim().slice(0, MAX_CLI_ERROR_DETAIL)
@@ -130,7 +140,7 @@ function claudeResult(outcome: ChildOutcome): Omit<CliResult, 'durationMs'> {
   }
   if (!isRecord(result)) {
     if (outcome.code !== 0) {
-      throw new CliRunError('failed', `claude 运行失败（退出码 ${String(outcome.code)}）`, failureDetails(outcome))
+      throw new CliRunError(failedKind('claude', outcome), `claude 运行失败（退出码 ${String(outcome.code)}）`, failureDetails(outcome))
     }
     return { output: null }
   }
@@ -147,7 +157,8 @@ function claudeResult(outcome: ChildOutcome): Omit<CliResult, 'durationMs'> {
   // An output that kept failing the schema is a malformed output, not a failed call.
   if (result['is_error'] === true && result['subtype'] !== 'error_max_structured_output_retries') {
     const detail = detailOf(result['result'])
-    throw new CliRunError('failed', detail === '' ? 'claude 运行失败' : `claude 运行失败：${detail}`, failureDetails(outcome))
+    throw new CliRunError(failedKind('claude', outcome, result['result']),
+      detail === '' ? 'claude 运行失败' : `claude 运行失败：${detail}`, failureDetails(outcome))
   }
   return { output: result['structured_output'] ?? null, ...reported }
 }
@@ -164,8 +175,9 @@ function codexResult(outcome: ChildOutcome, outputFile: string): Omit<CliResult,
   })
   if (outcome.code !== 0) {
     const failure = events.findLast((event) => event['type'] === 'turn.failed' || event['type'] === 'error')
-    const detail = detailOf(isRecord(failure?.['error']) ? failure['error']['message'] : failure?.['message'])
-    throw new CliRunError('failed', detail === ''
+    const reported = isRecord(failure?.['error']) ? failure['error']['message'] : failure?.['message']
+    const detail = detailOf(reported)
+    throw new CliRunError(failedKind('codex', outcome, reported), detail === ''
       ? `codex 运行失败（退出码 ${String(outcome.code)}）`
       : `codex 运行失败：${detail}`, failureDetails(outcome))
   }
@@ -191,20 +203,38 @@ function codexResult(outcome: ChildOutcome, outputFile: string): Omit<CliResult,
 }
 
 /**
- * The runner that starts the CLI `binary` resolves, in `environment` without its API-key
- * variables, inside an empty folder of a fresh temporary folder that it removes afterwards. A call
- * with a `lookup` scope also gets the internal MCP server `internalMcp` opens in that folder, and
- * only that server, which the runner closes once the CLI has exited, however the call ends.
+ * The runner that starts the CLI as `discover` finds it, once it is installed, supported and signed
+ * in with the user's subscription, in `environment` without its API-key variables, inside an empty
+ * folder of a fresh temporary folder that it removes afterwards. A call with a `lookup` scope also
+ * gets the internal MCP server `internalMcp` opens in that folder, and only that server, which the
+ * runner closes once the CLI has exited, however the call ends; a refused call opens none. A passed
+ * check holds for five minutes by `now`, until `settingsRevision` changes or a call does not complete.
  */
 export function createCliRunner(deps: {
-  binary: (cli: HarnessCli) => Promise<string | null>
+  discover: (cli: HarnessCli) => Promise<CliDiscovery>
+  /** A number that changes whenever the subscription settings change. */
+  settingsRevision?: () => number
   environment?: NodeJS.ProcessEnv
   internalMcp?: InternalMcpOpener
+  now?: () => number
 }): CliRunner {
   const environment = deps.environment ?? process.env
+  const now = deps.now ?? Date.now
+  const revision = deps.settingsRevision ?? (() => 0)
+  /** Each CLI's binary from its last passed check, with when it passed and under which settings revision. */
+  const passed = new Map<HarnessCli, { binary: string; at: number; revision: number }>()
+  const checkedBinary = async (cli: HarnessCli) => {
+    const kept = passed.get(cli)
+    if (kept !== undefined && now() - kept.at < CHECK_TTL_MS && kept.revision === revision()) return kept.binary
+    passed.delete(cli)
+    const check = { at: now(), revision: revision() }
+    const ready = readiness(await deps.discover(cli))
+    if (!('binary' in ready)) throw new CliRunError(ready.kind, ready.message)
+    passed.set(cli, { binary: ready.binary, ...check })
+    return ready.binary
+  }
   return async (call) => {
-    const binary = await deps.binary(call.cli)
-    if (binary === null) throw new CliRunError('unavailable', `没有找到 ${call.cli} 命令`)
+    const binary = await checkedBinary(call.cli)
     if (call.lookup !== undefined && deps.internalMcp === undefined) {
       throw new Error('This runner has no internal MCP server for a call that looks up the vault')
     }
@@ -231,6 +261,9 @@ export function createCliRunner(deps: {
       const durationMs = Date.now() - started
       const result = call.cli === 'claude' ? claudeResult(outcome) : codexResult(outcome, files.output)
       return { ...result, durationMs }
+    }).catch((cause: unknown) => {
+      passed.delete(call.cli)
+      throw cause
     })
   }
 }

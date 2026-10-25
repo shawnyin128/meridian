@@ -259,7 +259,9 @@ describe('subscription choice', () => {
       subscription: { active: 'claude', models: { claude: '', codex: '' } },
     })
     expect(await config.runtime()).toEqual({ source: 'cli', cli: 'claude' })
-    expect(config.planModel()).toEqual({ provider: 'Claude 订阅', name: '默认模型', configured: true, billable: false })
+    expect(config.planModel()).toEqual({
+      provider: 'Claude 订阅', name: '默认模型', configured: true, billable: false, cli: 'claude',
+    })
 
     const reopened = await createHarnessModelConfig(root, credentialVault())
     expect(reopened.settings().subscription).toEqual({ active: 'claude', models: { claude: '', codex: '' } })
@@ -274,7 +276,7 @@ describe('subscription choice', () => {
 
     expect(saved.subscription).toEqual({ active: 'codex', models: { claude: 'opus', codex: 'gpt-5-codex' } })
     expect(await config.runtime()).toEqual({ source: 'cli', cli: 'codex', model: 'gpt-5-codex' })
-    expect(config.planModel()).toMatchObject({ provider: 'ChatGPT 订阅', name: 'gpt-5-codex', configured: true })
+    expect(config.planModel()).toMatchObject({ provider: 'ChatGPT 订阅', name: 'gpt-5-codex', configured: true, cli: 'codex' })
   })
 
   it('makes a saved API profile the model source again and keeps each CLI its model', async () => {
@@ -287,7 +289,26 @@ describe('subscription choice', () => {
     expect(saved.subscription).toEqual({ active: null, models: { claude: '', codex: 'gpt-5-codex' } })
     expect(await config.runtime()).toMatchObject({ provider: 'anthropic', apiKey: 'anthropic-secret' })
     expect(config.planModel()).toMatchObject({ provider: 'Anthropic', name: 'claude-api' })
+    expect(config.planModel()).not.toHaveProperty('cli')
     expect((await createHarnessModelConfig(root, credentialVault())).settings().subscription.active).toBeNull()
+  })
+
+  it('changes the subscription revision each time the subscription choice is saved, and only then', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'meridian-model-config-'))
+    const config = await createHarnessModelConfig(root, credentialVault())
+    const revisions = [config.subscriptionRevision()]
+
+    await config.update({ ...apiProfile, apiKey: 'anthropic-secret' })
+    revisions.push(config.subscriptionRevision())
+    config.updateSubscription({ cli: 'claude', model: '' })
+    revisions.push(config.subscriptionRevision())
+    config.updateSubscription({ cli: 'claude', model: '' })
+    revisions.push(config.subscriptionRevision())
+    await config.update({ ...apiProfile })
+    revisions.push(config.subscriptionRevision())
+
+    expect(revisions[1]).toBe(revisions[0])
+    expect(new Set(revisions.slice(1)).size).toBe(4)
   })
 
   it('writes no subscription file while only API profiles are saved', async () => {

@@ -624,16 +624,23 @@ export const NetFailureSchema = z.enum(['unavailable', 'timeout', 'rate-limit', 
  * changed since it was shown, a change with newer changes to undo first, an option or column still
  * in use, input that failed validation, a folder that is not a Meridian library, a resource still
  * busy, data a newer App wrote, a key the system credential store could not save or read back, no
- * model set up, a generation the user stopped, a failed model call, or anything else.
+ * model set up, a generation the user stopped, a failed model call, a subscription CLI that is not
+ * installed, lacks options Meridian runs it with, is not signed in with the subscription or shows
+ * its sign-in in a form that cannot be read, a plan whose usage limit is reached, a CLI that ran
+ * past its time, model output that failed validation, or anything else.
  */
 export const CallFailureSchema = z.enum([
   ...NetFailureSchema.options, 'not-pdf', 'write', 'not-found', 'refused', 'changed', 'newer-changes', 'in-use',
   'invalid', 'not-library', 'busy', 'newer-version', 'key-unsaved', 'key-unreadable', 'no-model', 'cancelled',
-  'model',
+  'model', 'cli-missing', 'cli-unsupported', 'cli-signed-out', 'cli-sign-in-unknown', 'usage-limit', 'cli-timeout',
+  'malformed-output',
 ])
 
 /** What a rejected call carries across the process boundary instead of Core's error. */
 export const CallRejectionSchema = z.object({ reason: CallFailureSchema }).strict()
+
+/** The subscription CLIs a model call can run on: Claude Code (`claude`) and Codex CLI (`codex`). */
+export const HarnessCliSchema = z.enum(['claude', 'codex'])
 
 /**
  * A cost-bearing Harness action. Core prepares this plan without a model call; the renderer must
@@ -657,11 +664,13 @@ export const HarnessPlanSchema = z.object({
     hasRemark: z.boolean(),
     existingWikiChars: z.number().int().min(0),
   }).strict(),
+  /** `cli` names the subscription CLI a run on the user's plan runs on, instead of an API. */
   model: z.object({
     provider: z.string().min(1),
     name: z.string().min(1),
     configured: z.boolean(),
     billable: z.boolean(),
+    cli: HarnessCliSchema.optional(),
   }).strict(),
   expiresAt: IsoTimestamp,
 }).strict()
@@ -859,9 +868,6 @@ export const HarnessModelProtocolSchema = z.enum([
   'generate-content',
 ])
 
-/** The subscription CLIs a model call can run on: Claude Code (`claude`) and Codex CLI (`codex`). */
-export const HarnessCliSchema = z.enum(['claude', 'codex'])
-
 /**
  * A model that runs on the user's own signed-in CLI instead of an API key. `model` names the CLI's
  * model for the call; without it the CLI uses its own default.
@@ -939,6 +945,11 @@ export const HarnessModelConnectionFailureSchema = z.enum([
   'unavailable',
   'provider',
   'unknown',
+  'cli-missing',
+  'cli-unsupported',
+  'cli-signed-out',
+  'cli-sign-in-unknown',
+  'cli-timeout',
 ])
 
 const CliVersionSchema = z.string().trim().min(1).max(100)
