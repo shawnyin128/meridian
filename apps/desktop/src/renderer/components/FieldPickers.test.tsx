@@ -7,7 +7,7 @@ import { MessagesProvider } from '../messages/useMessages.js'
 import { TodayContext } from '../shell/AppShell.js'
 import { LANGUAGE_STORAGE_KEY } from '../shell/language.js'
 import { MenuItem } from './ActionMenu.js'
-import { ChoicePicker, DateButton, DotsMenu } from './FieldPickers.js'
+import { ChoicePicker, DateButton, DateRangeField, DotsMenu } from './FieldPickers.js'
 import { RowActions } from './Item.js'
 import { TOOLTIP_DELAY } from './Tooltip.js'
 
@@ -302,5 +302,52 @@ describe('DateButton', () => {
     expect(document.activeElement).toBe(buttons[16])
     await act(async () => { buttons[16]!.click() })
     expect(onPick).toHaveBeenCalledWith('2026-10-17')
+  })
+})
+
+describe('DateRangeField', () => {
+  beforeEach(() => { vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} }) })
+  let host: HTMLDivElement
+  let root: Root
+
+  beforeEach(() => {
+    globalThis.IS_REACT_ACT_ENVIRONMENT = true
+    window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'zh')
+    host = document.createElement('div')
+    document.body.append(host)
+    root = createRoot(host)
+  })
+
+  afterEach(() => {
+    act(() => root.unmount())
+    host.remove()
+  })
+
+  it('开始和结束都从同一个日历挑;结束的日历从开始那天起,开始挑到结束之后时结束跟着挪到开始那天', async () => {
+    const onChange = vi.fn()
+    function Range() {
+      const [range, setRange] = useState({ start: '2026-10-10', end: '2026-10-12' })
+      return (
+        <DateRangeField
+          {...range} className="date" onChange={(next) => { onChange(next); setRange(next) }}
+        >{(start, end) => <><span id="start">{start}</span><span id="end">{end}</span></>}</DateRangeField>
+      )
+    }
+    act(() => root.render(<MessagesProvider><TodayContext.Provider value="2026-10-18"><Range /></TodayContext.Provider></MessagesProvider>))
+    const open = async (part: string) => {
+      await act(async () => { host.querySelector<HTMLButtonElement>(`#${part} .date`)!.click() })
+      return [...document.querySelectorAll('.calg')].at(-1)!.querySelectorAll<HTMLButtonElement>('button')
+    }
+    const endDays = [...await open('end')]
+    expect(endDays.filter((day) => day.disabled).map((day) => day.textContent)).toEqual(['1', '2', '3', '4', '5', '6', '7', '8', '9'])
+    await act(async () => { endDays[13]!.click() })
+    // The closed calendar hands focus back to its trigger over a timer; the next one opens after that.
+    await vi.waitFor(() => expect([document.activeElement, document.querySelector('.calg')])
+      .toEqual([host.querySelector('#end .date'), null]))
+    expect(onChange).toHaveBeenLastCalledWith({ start: '2026-10-10', end: '2026-10-14' })
+    const startDays = [...await open('start')]
+    expect(startDays.some((day) => day.disabled)).toBe(false)
+    await act(async () => { startDays[19]!.click() })
+    expect(onChange).toHaveBeenLastCalledWith({ start: '2026-10-20', end: '2026-10-20' })
   })
 })

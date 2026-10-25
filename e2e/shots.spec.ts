@@ -14,7 +14,7 @@ test('截下论文库表的一组基线图', async ({ win }) => {
   await parkPointer(win)
   await win.screenshot({ path: `${SHOTS}/papers-detail.png` })
 
-  await win.locator('.pdetail [aria-label="收起详情"]').click()
+  await win.locator('.paper-detail-slot [aria-label="收起详情"]').click()
   await win.locator('.filters .segmented-control>button', { hasText: '主题' }).click()
   await win.locator('.gxrow').first().waitFor()
   await parkPointer(win)
@@ -58,7 +58,7 @@ test('截下带选择列与自定义分组的一组基线图', async ({ win, app
   for (const [w, h] of [[1280, 720], [1440, 900], [1920, 1080], [2560, 1440]] as const) {
     await app.evaluate(({ BrowserWindow }, s) => BrowserWindow.getAllWindows()[0]!.setSize(s.w, s.h), { w, h })
     // The new column is at the table's right end; in a narrow window scroll fully right to show it.
-    await win.locator('.tblwrap').evaluate((el) => { el.scrollLeft = el.scrollWidth })
+    await win.locator('.table-scroll:has(> .ptable)').evaluate((el) => { el.scrollLeft = el.scrollWidth })
     await parkPointer(win)
     await win.screenshot({ path: `${SHOTS}/papers-typed-${w}.png` })
   }
@@ -109,14 +109,14 @@ test('第 6 批:论文表的年份与发表、详情面板,四档窗口 × 亮�
     await win.evaluate((t) => { document.documentElement.dataset['theme'] = t }, theme)
     for (const [w, h] of B6_SIZES) {
       await app.evaluate(({ BrowserWindow }, s) => BrowserWindow.getAllWindows()[0]!.setSize(s.w, s.h), { w, h })
-      await win.locator('.tblwrap').evaluate((el) => { el.scrollLeft = 0 })
+      await win.locator('.table-scroll:has(> .ptable)').evaluate((el) => { el.scrollLeft = 0 })
       await parkPointer(win)
       await win.screenshot({ path: `${B6}/table-${theme}-${w}.png` })
       await win.locator('.ptable tbody tr').first().locator('td.pt-title').click()
       await win.locator('.pdetail').waitFor()
       await parkPointer(win)
       await win.screenshot({ path: `${B6}/detail-${theme}-${w}.png` })
-      await win.locator('.pdetail [aria-label="收起详情"]').click()
+      await win.locator('.paper-detail-slot [aria-label="收起详情"]').click()
       await expect(win.locator('.pdetail')).toHaveCount(0)
     }
   }
@@ -127,13 +127,13 @@ test('第 6 批:Wiki 论文页的属性,四档窗口 × 亮暗', async ({ win, a
   await win.locator('[data-desk="wiki"]').click()
   const shownSlot = win.locator('.screenslot:not([hidden])')
   await shownSlot.locator('.wkgrid').last().locator('.wkcard').first().click()
-  await shownSlot.locator('.wkside .wkprops').waitFor()
+  await shownSlot.locator('.split-rail .property-list').waitFor()
   for (const theme of ['light', 'dark'] as const) {
     await win.evaluate((t) => { document.documentElement.dataset['theme'] = t }, theme)
     for (const [w, h] of B6_SIZES) {
       await app.evaluate(({ BrowserWindow }, s) => BrowserWindow.getAllWindows()[0]!.setSize(s.w, s.h), { w, h })
       await parkPointer(win)
-      await shownSlot.locator('.wkside').screenshot({ path: `${B6}/wiki-paper-${theme}-${w}.png` })
+      await shownSlot.locator('.split-rail').screenshot({ path: `${B6}/wiki-paper-${theme}-${w}.png` })
     }
   }
 })

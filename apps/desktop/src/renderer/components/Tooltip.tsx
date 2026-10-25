@@ -2,6 +2,7 @@ import * as RadixTooltip from '@radix-ui/react-tooltip'
 import { createContext, useContext, useEffect, useState } from 'react'
 import type { ReactElement, ReactNode, SyntheticEvent } from 'react'
 import { COLLISION_PADDING } from './floating-layer.js'
+import { isClipped } from '../hooks/useClipped.js'
 import './Tooltip.css'
 
 /** How long, in ms, the pointer rests on a control before its tooltip opens. */
@@ -52,8 +53,7 @@ export function TooltipProvider({ children }: { children: ReactNode }) {
 function clipped(element: HTMLElement): boolean {
   return [element, ...element.querySelectorAll<HTMLElement>('*')].some((box) => {
     const style = getComputedStyle(box)
-    return (style.overflowX !== 'visible' && box.scrollWidth > box.clientWidth + 1)
-      || (style.overflowY !== 'visible' && box.scrollHeight > box.clientHeight + 1)
+    return (style.overflowX !== 'visible' && isClipped(box, 'x')) || (style.overflowY !== 'visible' && isClipped(box, 'y'))
   })
 }
 

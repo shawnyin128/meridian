@@ -45,11 +45,11 @@ const openingTag = (source: string, from: number): string => {
 
 /**
  * The classes components put on an icon button besides its own, to place it or reveal it: from
- * `className` on an IconButton or a PanelClose.
+ * `className` on an IconButton.
  */
 const HOOKS = new Set(FILES.filter((path) => path.endsWith('.tsx') && !path.endsWith('.test.tsx')).flatMap((path) => {
   const source = read(path)
-  return [...source.matchAll(/<(?:IconButton|PanelClose)\b/g)]
+  return [...source.matchAll(/<IconButton\b/g)]
     .map(({ index }) => openingTag(source, index))
     .flatMap((tag) => [.../className="([^"]+)"/.exec(tag)?.[1]?.split(/\s+/) ?? []])
 }).filter((name) => !['sm', 'xs', 'danger'].includes(name)))
@@ -147,7 +147,7 @@ describe('图标按钮', () => {
 
   it('表头末格的加号和齿轮只在一处定义', () => {
     const defining = (name: string) => STYLESHEETS.filter((path) => rulesOf(read(path))
-      .some(([selector]) => selector.split(',').some((part) => part.trim() === `.${name}`)))
-    expect(defining('th-add')).toEqual([join('routes', 'shell.css')])
+      .some(([selector]) => new RegExp(`\\.${name}(?![\\w-])`).test(selector)))
+    expect(defining('table-actions')).toEqual([join('components', 'Table.css')])
   })
 })

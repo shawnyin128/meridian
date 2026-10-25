@@ -4,7 +4,7 @@ import type { SshFolders } from '../../shared/contract.js'
 import { useCandidateKeys } from '../hooks/useCandidateKeys.js'
 import { ssh } from '../ipc.js'
 import { errorLabel } from '../lib/failure-label.js'
-import { composing } from '../lib/keyboard.js'
+import { commitKeys } from '../lib/keyboard.js'
 import { useMessages } from '../messages/useMessages.js'
 import { EmptyState } from './EmptyState.js'
 import { FadeText } from './FadeText.js'
@@ -14,7 +14,8 @@ import { IconEnclosingFolder, IconFolder, IconNext } from './icons.js'
 import { InlineMessage } from './InlineMessage.js'
 import { LoadingPlaceholder } from './LoadingPlaceholder.js'
 import { PickerPopover, PickOption } from './PickerPopover.js'
-import { StructuredList, StructuredRow } from './StructuredList.js'
+import { Item } from './Item.js'
+import { List } from './List.js'
 import './SshFolderPicker.css'
 
 /** One folder of an SSH host, as Core listed it. */
@@ -189,31 +190,30 @@ export function SshFolderBrowser({ choice }: { choice: SshFolderChoice }) {
           className="ssh-folders-path" value={choice.path} aria-label={m.common.sshFolders.path}
           spellCheck={false} autoComplete="off" data-inline-draft={edited ? '' : undefined}
           onChange={(event) => choice.type(event.target.value)}
-          onKeyDown={(event) => {
-            if (composing(event.nativeEvent)) return
-            if (event.key === 'Enter') {
-              event.preventDefault()
+          onKeyDown={commitKeys({
+            onSave: () => {
               refocus.current = false
               if (choice.path.trim() !== '') choice.open(choice.path.trim())
-            } else if (event.key === 'Escape' && edited) choice.type(folder.path)
-          }}
+            },
+            ...(edited ? { onCancel: () => choice.type(folder.path) } : {}),
+          })}
         />
       </div>
       <div className="ssh-folders-list">
         {opening
           ? <LoadingPlaceholder shape="rows" />
           : folder.folders.length === 0
-            ? <EmptyState variant="section">{m.common.sshFolders.empty}</EmptyState>
+            ? <EmptyState variant="section" />
             : (
-              <StructuredList variant="embedded" maxVisibleRows="fill" aria-label={folder.path}>
+              <List variant="embedded" rows="fill" aria-label={folder.path}>
                 {folder.folders.map((child) => (
-                  <StructuredRow key={child.path} className="ssh-folder-row" onActivate={() => openFrom(child.path)}>
-                    <IconFolder />
-                    <FadeText className="ssh-folder-name" label={child.name}>{child.name}</FadeText>
-                    <IconNext />
-                  </StructuredRow>
+                  <Item
+                    key={child.path} className="ssh-folder-row" onActivate={() => openFrom(child.path)}
+                    leading={<IconFolder />} title={<FadeText className="ssh-folder-name" label={child.name}>{child.name}</FadeText>}
+                    trailing={<IconNext />}
+                  />
                 ))}
-              </StructuredList>
+              </List>
             )}
       </div>
       {issue === null ? null : <InlineMessage tone="error" variant="line">{issue}</InlineMessage>}

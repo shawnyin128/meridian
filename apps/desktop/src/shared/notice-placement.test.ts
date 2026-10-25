@@ -16,7 +16,7 @@ const value = (body: string, property: string) => new RegExp(`(?:^|;)\\s*${prope
 
 describe('Notice placement', () => {
   it('在画布上居中：起点就是侧栏或阅读器对话栏的终点，不是窗口的左边', () => {
-    const sidebar = value(rule('shell/AppShell.css', '.sidebar'), 'flex')!.replace(/^0 0 /, '')
+    const sidebar = value(rule('components/NavPane.css', '.nav-pane'), 'flex')!.replace(/^0 0 /, '')
     const chat = value(rule('routes/Reader.css', '.paper-chat'), 'flex')!.replace(/^0 0 /, '')
     expect(value(rule('components/Notice.css', '.notice-host'), 'position')).toBe('absolute')
     expect(value(rule('components/Notice.css', '.notice-host'), 'left')).toBe(sidebar)

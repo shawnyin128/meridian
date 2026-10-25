@@ -21,13 +21,13 @@ export function useUndo(): {
     change: ({ change }: RecordedChange): NoticeAction => ({
       label: m.common.undo,
       undoes: true,
-      onAction: () => { void write(changelog.undo(change), { note: m.changelog.undoneNote }) },
+      onAction: () => { void write(changelog.undo(change)) },
     }),
     restore: (entries: readonly TrashedEntry[]): NoticeAction => ({
       label: m.common.undo,
       undoes: true,
       onAction: () => {
-        void write(Promise.all(entries.map((entry) => trash.restore(entry.trash))), { note: m.changelog.undoneNote })
+        void write(Promise.all(entries.map((entry) => trash.restore(entry.trash))))
       },
     }),
   }), [m, write])

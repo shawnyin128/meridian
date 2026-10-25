@@ -1,6 +1,5 @@
 import type { ReactNode } from 'react'
 import type { ConflictTarget, DiffPiece, Evidence, ProposalOp, WikiProposal } from '../../../shared/contract.js'
-import { localDayOf } from '../../../shared/dates.js'
 import { PAPER_PAGE } from '../../../shared/vocabulary.js'
 import { useDrafts } from '../../hooks/useDrafts.js'
 import { useFormat } from '../../lib/format.js'
@@ -23,9 +22,6 @@ import { ProposalCard, ProposalChange, ProposalDecision, ProposalRows, ProposalT
 import type { ClaimLinks } from './WikiClaims.js'
 import { Button } from '../Button.js'
 import './ReviewQueue.css'
-
-/** Local calendar day, the vault's day, a proposal arrived or was decided, from epoch ms. */
-const dayOf = (ms: number): string => localDayOf(new Date(ms).toISOString())
 
 /** A Wiki page id as Core's findings write it. */
 const PAGE_ID = /[\p{L}\p{N}._-]+\/[\p{L}\p{N}._-]+/gu
@@ -110,7 +106,7 @@ function Blocks({ p, links, onOpenConclusion, by, context }: {
               <EntityLink kind="project" label={title(`projects/${item.project}`)} onOpen={() => links.openProject(item.project)} />
               <span className="proposal-sep" aria-hidden="true">›</span>
               <EntityLink kind="project" label={title(`projects/${item.project}#${point}`)} onOpen={() => onOpenConclusion(item.project, point)} />
-              {state ? <Tag tone={verified ? 'good' : 'warn'}>{verified ? r.verified : r.notVerified}</Tag> : null}
+              {state ? <Tag state={verified ? 'done' : 'warning'}>{verified ? r.verified : r.notVerified}</Tag> : null}
             </>
           ),
         }
@@ -269,7 +265,7 @@ export function ReviewQueue({ proposals, failed, pending, onApply, onDecline, li
   }
   /** The producer's label and the day `p` arrived. */
   const by = (p: WikiProposal) => (
-    <>{p.proposal?.producer.kind === 'ai' ? <AgentLabel /> : null}<span>{fmt.date(dayOf(p.received))}</span></>
+    <>{p.proposal?.producer.kind === 'ai' ? <AgentLabel /> : null}<span>{fmt.day(p.received)}</span></>
   )
   /** The pages `p` would write beyond the ones its blocks name. */
   const others = (p: WikiProposal): string[] => {
@@ -287,7 +283,7 @@ export function ReviewQueue({ proposals, failed, pending, onApply, onDecline, li
             context={<>{origin(p)}{p.proposal.rationale ? <p className="proposal-context">{p.proposal.rationale}</p> : null}</>}
           />
         )}
-      <ProposalRows rows={others(p).length === 0 ? [] : [{
+      <ProposalRows aligned rows={others(p).length === 0 ? [] : [{
         key: 'pages', label: r.pages,
         value: others(p).map((id) => (
           <EntityLink
@@ -306,7 +302,7 @@ export function ReviewQueue({ proposals, failed, pending, onApply, onDecline, li
       {proposals === null
         ? (failed ? null : <LoadingPlaceholder shape="rows" />)
         : queued.length === 0
-        ? <EmptyState variant="section">{r.empty}</EmptyState>
+        ? <EmptyState variant="section" />
         : (
           <List variant="embedded" rows="all" className="review-list">
             {queued.map((p) => {
@@ -340,10 +336,10 @@ export function ReviewQueue({ proposals, failed, pending, onApply, onDecline, li
                         </div>
                       </ActionPopover>
                       <Button size="compact" variant={p.id === lead ? 'primary' : 'secondary'} disabled={pending || !applicable(p)} onClick={() => onApply(p)}>{r.apply}</Button>
-                      {p.staleNow ? <TagButton tone="warn" onClick={() => links.openPage(p.stalePage!)}>{r.stale}</TagButton> : null}
+                      {p.staleNow ? <TagButton state="warning" onClick={() => links.openPage(p.stalePage!)}>{r.stale}</TagButton> : null}
                       {unverified === undefined ? null : (
                         <TagButton
-                          tone="warn"
+                          state="warning"
                           onClick={() => {
                             const [project, conclusion] = unverified.slice('projects/'.length).split('#') as [string, string]
                             onOpenConclusion(project, conclusion)
@@ -369,16 +365,14 @@ export function ReviewQueue({ proposals, failed, pending, onApply, onDecline, li
                   <ProposalCard decided declined={p.status !== 'applied'}>
                     {body(p)}
                     <ProposalDecision>
-                      <Tag tone={p.status === 'applied' ? 'good' : 'neutral'}>
+                      <Tag state={p.status === 'applied' ? 'done' : undefined}>
                         {p.status === 'applied' ? r.applied
                           : p.reason?.kind === 'declined' ? r.rejected : `${r.rejected} · ${r.reasonKind[p.reason?.kind ?? 'invalid']}`}
                       </Tag>
-                      {p.decided === null ? null : <span>{fmt.date(dayOf(p.decided.at))}</span>}
-                      {p.reason === null || p.reason.message === '' ? null : (
+                      {p.decided === null ? null : <span>{fmt.day(p.decided.at)}</span>}
+                      {p.reason === null || p.reason.message === '' || p.reason.kind === 'stale' ? null : (
                         <span className="review-reason">
-                          {p.reason.kind === 'declined' ? p.reason.message
-                            : p.reason.kind === 'stale' ? r.staleReason
-                              : <LinePieces pieces={named(p.reason.message, p.titles)} />}
+                          {p.reason.kind === 'declined' ? p.reason.message : <LinePieces pieces={named(p.reason.message, p.titles)} />}
                         </span>
                       )}
                     </ProposalDecision>

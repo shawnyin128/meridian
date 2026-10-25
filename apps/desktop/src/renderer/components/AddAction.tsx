@@ -12,14 +12,16 @@ import './AddAction.css'
  * alone after the chips of a field.
  */
 type AddActionProps = Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'children' | 'title' | 'aria-label'> & (
-  | { size: 'regular' | 'compact'; label?: string; children: string }
-  | { size: 'compact' | 'chip'; label: string; children?: never }
+  | ({ size: 'regular' | 'compact'; label?: string; children: string }
+    & ({ busy?: undefined; busyLabel?: never } | { busy: boolean; busyLabel: string }))
+  | { size: 'compact' | 'chip'; label: string; children?: never; busy?: never; busyLabel?: never }
 )
 
 /**
  * The one create or add control: the ＋ on the soft fill of a secondary Button, at the size of its
  * slot. With `children` it is a Button showing the ＋ and that short word, and `label`, when given, is
- * the whole action's spoken name. Without them it is the ＋ alone, named `label`, which its tooltip
+ * the whole action's spoken name; while `busy` it shows the Button's busy state, named `busyLabel`.
+ * Without them it is the ＋ alone, named `label`, which its tooltip
  * shows: a square, or at the `chip` size a circle like the chips it follows. Further classes in
  * `className` only place it. Inside a toolbar it is one of the toolbar's controls.
  */
@@ -34,11 +36,11 @@ export const AddAction = forwardRef<HTMLButtonElement, AddActionProps>(function 
       </Tooltip>
     )
   }
-  const { size, label, className, children, ...rest } = props
+  const { size, label, className, children, busy, busyLabel, ...rest } = props
   return (
     <Button
       {...rest} ref={ref} size={size} className={['add-action', className].filter(Boolean).join(' ')}
-      aria-label={label} icon={<IconPlus />}
+      aria-label={label} icon={<IconPlus />} busy={busy ?? false} busyLabel={busyLabel ?? ''}
     ><span>{children}</span></Button>
   )
 })

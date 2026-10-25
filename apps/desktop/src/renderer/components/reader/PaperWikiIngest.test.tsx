@@ -14,7 +14,7 @@ import { LANGUAGE_STORAGE_KEY } from '../../shell/language.js'
 /** The papers Core is running a Wiki proposal for, and how to make the shell ask Core for a new report now. */
 const core = vi.hoisted(() => ({ runs: new Set<string>(), failures: {} as Record<string, 'model' | 'cancelled'>, poll: () => {} }))
 
-/** The shell's generations over Core's reported runs, as AppShell provides them. */
+/** The shell's generations over Core's reported runs, and its model status, as AppShell provides them. */
 function Shell({ children }: { children: ReactNode }) {
   const reported = (): JobsStatus => ({
     writes: 0, uploads: [], downloads: [], fetch: { state: 'idle', checkedAt: null, reason: null },
@@ -23,7 +23,13 @@ function Shell({ children }: { children: ReactNode }) {
   const [status, setStatus] = useState(reported)
   const refresh = useCallback(() => setStatus(reported()), [])
   core.poll = refresh
-  return <GenerationsContext.Provider value={useCoreGenerations(status, refresh)}>{children}</GenerationsContext.Provider>
+  return (
+    <GenerationsContext.Provider value={useCoreGenerations(status, refresh)}>
+      <ModelStatusContext.Provider value={{ connected: api.connected, source: api.connected ? 'api' : null, track: (send) => send }}>
+        {children}
+      </ModelStatusContext.Provider>
+    </GenerationsContext.Provider>
+  )
 }
 
 const withMessages = (node: ReactNode) => {
@@ -61,12 +67,15 @@ const api = vi.hoisted(() => ({
   revision: 0,
   notices: [] as { note: unknown; action: NoticeAction | undefined }[],
   settingsOpen: false,
+  /** Whether the shell's model status says a model is set up. */
+  connected: true,
   openCategory: vi.fn(),
   open: vi.fn(),
   jump: vi.fn(),
 }))
 
 vi.mock('../../ipc.js', () => ({
+  appMenu: { platform: () => 'darwin' },
   harness: {
     pendingPaperWiki: api.pending,
     preparePaperWiki: api.prepare,
@@ -114,6 +123,7 @@ vi.mock('../HarnessAction.js', () => ({
 
 const { PaperWikiIngest } = await import('./PaperWikiIngest.js')
 const { GenerationsContext, useCoreGenerations } = await import('../../hooks/useGenerations.js')
+const { ModelStatusContext } = await import('../../hooks/useModelStatus.js')
 const { useDrafts } = await import('../../hooks/useDrafts.js')
 
 /** The panel with the drafts the reader's rail keeps for it. */
@@ -150,6 +160,7 @@ describe('PaperWikiIngest', () => {
     document.body.replaceChildren(host)
     root = createRoot(host)
     api.prepare.mockReset().mockResolvedValue(plan)
+    api.connected = true
     api.pending.mockReset().mockResolvedValue(null)
     api.start.mockReset().mockResolvedValue({
       id: 'run-1', planId: 'plan-1', workflow: 'paper-wiki', targetId: 'p1',
@@ -211,7 +222,7 @@ describe('PaperWikiIngest', () => {
     })
     expect(api.apply).toHaveBeenCalledWith('proposal-1', '# Reviewed')
     expect([...host.querySelectorAll('.wiki-ingest-status.inline-message--line.inline-message--done')].map((line) => line.textContent))
-      .toEqual(['请审核', '已写入 Wiki。'])
+      .toEqual(['请审核', '已写入 Wiki'])
   })
 
   it('offers Undo in the notice of the Wiki write, undoing the change entry that write recorded', async () => {
@@ -271,14 +282,15 @@ describe('PaperWikiIngest', () => {
 
   it('states that no model is connected in the neutral status tone, not as an error', async () => {
     api.prepare.mockResolvedValue({ ...plan, model: { ...plan.model, configured: false } })
+    api.connected = false
     await act(async () => { root.render(withMessages(<Panel paper={paper} reading={reading} onJump={api.jump} />)) })
     const tag = [...host.querySelectorAll('.tag')].find((t) => t.textContent === 'AI 未连接')!
     expect(tag.className).toBe('tag tag--label tag--neutral')
   })
 
-  it('AI 未连接 is the button that opens Settings at 模型, and the plan is prepared again once Settings closes', async () => {
-    api.settingsOpen = false
+  it('AI 未连接 is the button that opens Settings at 模型, and the plan is prepared again once the model status says a model is set up', async () => {
     api.openCategory.mockReset()
+    api.connected = false
     api.prepare.mockResolvedValue({ ...plan, model: { ...plan.model, configured: false } })
     const render = () => act(async () => { root.render(withMessages(<Panel paper={paper} reading={reading} onJump={api.jump} />)) })
     await render()
@@ -286,14 +298,24 @@ describe('PaperWikiIngest', () => {
     expect(tag.tagName).toBe('BUTTON')
     act(() => tag.click())
     expect(api.openCategory).toHaveBeenCalledWith('model')
-    api.settingsOpen = true
     await render()
     expect(api.prepare).toHaveBeenCalledTimes(1)
     api.prepare.mockResolvedValue(plan)
-    api.settingsOpen = false
+    api.connected = true
     await render()
     expect(api.prepare).toHaveBeenCalledTimes(2)
     expect(states()).not.toContain('AI 未连接')
+    await render()
+    expect(api.prepare).toHaveBeenCalledTimes(2)
+  })
+
+  it('shows AI 未连接 as soon as the model status says no model is set up, even on a plan prepared with one', async () => {
+    const render = () => act(async () => { root.render(withMessages(<Panel paper={paper} reading={reading} onJump={api.jump} />)) })
+    await render()
+    expect(states()).not.toContain('AI 未连接')
+    api.connected = false
+    await render()
+    expect(states()).toContain('AI 未连接')
   })
 
   it('lets the user stop an in-flight run and requires a fresh confirmation afterward', async () => {
@@ -472,8 +494,15 @@ describe('PaperWikiIngest', () => {
     expect(api.jump).toHaveBeenCalledWith(1)
   })
 
+  it('shows the loading placeholder while the scope is prepared, never a sentence about preparing', async () => {
+    api.prepare.mockReturnValue(new Promise(() => {}))
+    await act(async () => { root.render(withMessages(<Panel paper={paper} reading={reading} onJump={api.jump} />)) })
+    expect([host.querySelector('.loading-placeholder--lines') !== null, host.querySelector('.wiki-ingest-status')]).toEqual([true, null])
+  })
+
   it('states a missing model as a short tag, never a sentence', async () => {
     api.prepare.mockResolvedValue({ ...plan, model: { ...plan.model, configured: false } })
+    api.connected = false
     await act(async () => { root.render(withMessages(<Panel paper={paper} reading={reading} onJump={api.jump} />)) })
     expect(states()).toEqual(['无阅读记录', 'AI 未连接'])
     expect(host.querySelector('.wiki-ingest-status')).toBeNull()
@@ -488,7 +517,7 @@ describe('PaperWikiIngest', () => {
     expect(host.querySelector('.wiki-ingest-tip')).toBeNull()
   })
 
-  it('collects optional local feedback before rejecting a proposal', async () => {
+  it('collects optional local feedback before rejecting a proposal, opening on the reasons without a question above them', async () => {
     await act(async () => { root.render(withMessages(<Panel paper={paper} reading={reading} onJump={api.jump} />)) })
     await act(async () => {
       host.querySelector<HTMLButtonElement>('[data-testid="start-harness"]')!.click()
@@ -499,7 +528,7 @@ describe('PaperWikiIngest', () => {
     })
 
     expect(api.reject).not.toHaveBeenCalled()
-    expect(host.querySelector('.wiki-ingest-rejection-head')!.textContent).toBe('可选：这份提案哪里不好？')
+    expect(host.querySelector('.wiki-ingest-rejection')!.firstElementChild!.matches('.wiki-ingest-rejection-reasons')).toBe(true)
     await act(async () => {
       [...host.querySelectorAll<HTMLButtonElement>('button')]
         .find((button) => button.textContent === '论文事实不准确')!.click()
@@ -524,6 +553,39 @@ describe('PaperWikiIngest', () => {
       note: '第 4 页的限制条件被遗漏。',
     })
     expect([...host.querySelectorAll('.wiki-ingest-status.inline-message--info')].map((line) => line.textContent)).toContain('提案已丢弃')
+  })
+
+  it('discards with the note on ⌘Enter in the note, as its discard button does; a plain Enter starts a new line', async () => {
+    await act(async () => { root.render(withMessages(<Panel paper={paper} reading={reading} onJump={api.jump} />)) })
+    await act(async () => { host.querySelector<HTMLButtonElement>('[data-testid="start-harness"]')!.click() })
+    await act(async () => {
+      [...host.querySelectorAll<HTMLButtonElement>('button')].find((button) => button.textContent === '丢弃提案')!.click()
+    })
+    const note = host.querySelector<HTMLTextAreaElement>('[aria-label="丢弃提案的补充说明"]')!
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')!.set!.call(note, '少了第 4 页的限制条件。')
+      note.dispatchEvent(new Event('input', { bubbles: true }))
+    })
+    const key = (init: KeyboardEventInit) => act(async () => {
+      note.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, cancelable: true, ...init }))
+    })
+    await key({ key: 'Enter' })
+    expect(api.reject).not.toHaveBeenCalled()
+    await key({ key: 'Enter', metaKey: true })
+    expect(api.reject).toHaveBeenCalledExactlyOnceWith('proposal-1', { reasons: ['other'], note: '少了第 4 页的限制条件。' })
+  })
+
+  it('writes the proposal to the Wiki only on a click of 确认写入 Wiki, never on ⌘Enter in its content', async () => {
+    await act(async () => { root.render(withMessages(<Panel paper={paper} reading={reading} onJump={api.jump} />)) })
+    await act(async () => { host.querySelector<HTMLButtonElement>('[data-testid="start-harness"]')!.click() })
+    await act(async () => {
+      [...host.querySelectorAll<HTMLButtonElement>('button')].find((button) => button.textContent === 'Markdown 编辑')!.click()
+    })
+    const editor = host.querySelector<HTMLTextAreaElement>('[aria-label="Wiki 提案内容"]')!
+    await act(async () => {
+      editor.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', metaKey: true, bubbles: true, cancelable: true }))
+    })
+    expect(api.apply).not.toHaveBeenCalled()
   })
 
   it('offers the rejection reasons as chips that each toggle on their own, not as segments', async () => {
@@ -557,7 +619,7 @@ describe('PaperWikiIngest', () => {
     })
     await act(async () => {
       [...host.querySelectorAll<HTMLButtonElement>('button')]
-        .find((button) => button.textContent === '不反馈，直接丢弃')!.click()
+        .find((button) => button.textContent === '直接丢弃')!.click()
     })
 
     expect(api.reject).toHaveBeenCalledWith('proposal-1', undefined)

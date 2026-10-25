@@ -5,6 +5,3 @@
 .generation-stop{display:none;fill:currentColor;stroke:none}
 .generation-control.is-running:hover .ring,.generation-control.is-running:focus-visible .ring{display:none}
 .generation-control.is-running:hover .generation-stop,.generation-control.is-running:focus-visible .generation-stop{display:block}
-.generation-stop-copy{display:none}
-.generation-control.is-running:hover .generation-running-copy,.generation-control.is-running:focus-visible .generation-running-copy{display:none}
-.generation-control.is-running:hover .generation-stop-copy,.generation-control.is-running:focus-visible .generation-stop-copy{display:inline}

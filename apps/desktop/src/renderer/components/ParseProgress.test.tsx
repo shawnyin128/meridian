@@ -26,33 +26,36 @@ describe('ParseProgress', () => {
   let host: HTMLDivElement
   beforeEach(() => {
     window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'zh')
+    // The count tag measures whether it fits, and jsdom has no ResizeObserver.
+    vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} })
     host = document.createElement('div')
     document.body.append(host)
     notice.success.mockClear()
   })
-  afterEach(() => { host.remove(); status = null })
+  afterEach(() => { host.remove(); status = null; vi.unstubAllGlobals() })
 
-  it('显示当前步骤,解析成功后只通知已入库并自动收卡', async () => {
+  it('处理中只有进度条和篇数,不写一句正在完善,解析成功后自动收卡,不弹通知', async () => {
     const parsed = vi.fn()
     const root = createRoot(host)
     status = state([job()])
     await act(async () => { root.render(<MessagesProvider><ParseProgress onParsed={parsed} onOpenPaper={() => {}} /></MessagesProvider>) })
-    expect(document.body.querySelector('.parse-float .upt')?.textContent).toContain('正在完善论文信息')
+    expect(document.body.querySelector('.parse-float .upt')?.textContent).toBe('1 篇')
     expect(document.body.querySelector('.parse-float [role="progressbar"]')?.getAttribute('aria-valuenow')).toBe('65')
 
     status = state([job({ step: 'done', found: 'arxiv', title: 'Parsed Paper' })], 1)
     await act(async () => { root.render(<MessagesProvider><ParseProgress onParsed={parsed} onOpenPaper={() => {}} /></MessagesProvider>) })
     expect(parsed).toHaveBeenCalledWith(expect.objectContaining({ title: 'Parsed Paper' }))
-    expect(notice.success).toHaveBeenCalledWith('已入库')
+    expect(notice.success).not.toHaveBeenCalled()
     expect(document.body.querySelector('.parse-float')).toBeNull()
     await act(async () => { root.unmount() })
   })
 
-  it('失败时只给补全提示,不暴露服务器状态', async () => {
+  it('失败时只给警示色的篇数和补全的动作,不写句子,不暴露服务器状态', async () => {
     const root = createRoot(host)
     status = state([job({ step: 'failed', error: '服务器返回 429' })], 1)
     await act(async () => { root.render(<MessagesProvider><ParseProgress onParsed={() => {}} onOpenPaper={() => {}} /></MessagesProvider>) })
-    expect(document.body.querySelector('.parse-float .upt')?.textContent).toContain('元数据暂未补全')
+    const tag = document.body.querySelector('.parse-float .upt .tag')
+    expect([tag?.textContent, tag?.classList.contains('tag--warning'), document.body.querySelector('.parse-float .upt')?.textContent]).toEqual(['1 篇', true, '1 篇'])
     expect(document.body.textContent).not.toContain('服务器返回 429')
     await act(async () => { root.unmount() })
   })
@@ -68,11 +71,11 @@ describe('ParseProgress', () => {
     await act(async () => { root.render(<MessagesProvider><ParseProgress onParsed={() => {}} onOpenPaper={opened} /></MessagesProvider>) })
     const card = () => document.body.querySelector<HTMLElement>('.parse-float .upcard')
     const actions = () => [...card()!.querySelectorAll<HTMLButtonElement>('.upacts .btn')]
-    expect(card()!.querySelector('.upt')!.textContent).toContain('2 篇论文已入库')
+    expect(card()!.querySelector('.upt .tag')!.textContent).toBe('2 篇')
     expect(actions().map((button) => [button.textContent, button.className])).toEqual([['重试', 'btn sm'], ['填写元数据', 'btn sm']])
     await act(async () => { actions()[0]!.click() })
     expect(retried).toEqual(['p-failed'])
-    expect(card()!.querySelector('.upt')!.textContent).toContain('1 篇论文已入库')
+    expect(card()!.querySelector('.upt .tag')!.textContent).toBe('1 篇')
     expect(actions().map((button) => button.textContent)).toEqual(['填写元数据'])
     await act(async () => { actions()[0]!.click() })
     expect(opened).toHaveBeenCalledWith('p-none')

@@ -177,7 +177,7 @@ test('短标题一点不被渐隐吃掉', async ({ win }) => {
 
   const row = win.locator('#chatList .chat-row').filter({ hasText: '短' })
   await expect(row).toHaveCount(1)
-  expect(await fullInk(win, '侧栏-短标题', row.locator('.ct-t')), '短标题该原样显示').toBeGreaterThan(0.97)
+  expect(await fullInk(win, '侧栏-短标题', row.locator('.fade-text')), '短标题该原样显示').toBeGreaterThan(0.97)
 
   await gotoPapers(win)
   const leaf = win.locator('#crumb .cseg').last()
@@ -191,7 +191,7 @@ test.describe(() => {
   test.use({ showWindow: true })
 
   test('长标题裁掉之后向右渐隐,不留省略号,底色不受影响', async ({ win }) => {
-    const sidebar = () => win.locator('.sidebar').evaluate((el) => el.getBoundingClientRect().width)
+    const sidebar = () => win.locator('#sidebar').evaluate((el) => el.getBoundingClientRect().width)
     await win.locator('#chatList .chat-row').first().waitFor()
     const before = await sidebar()
 
@@ -205,14 +205,14 @@ test.describe(() => {
       const row = win.locator('#chatList .chat-row').filter({ hasText: title })
       await expect(row).toHaveCount(1)
 
-      const hovered = await measureFade(win, `侧栏-${script}-hover`, row, row.locator('.ct-t'),
+      const hovered = await measureFade(win, `侧栏-${script}-hover`, row, row.locator('.fade-text'),
         () => row.hover())
       expect(await sidebar(), `${script} 长标题不该顶宽侧栏`).toBe(before)
 
       // Click the row to select it; a pointer left on the row would add hover, so move it into the
       // content area before measuring.
       await row.click()
-      const chosen = await measureFade(win, `侧栏-${script}-选中`, row, row.locator('.ct-t'),
+      const chosen = await measureFade(win, `侧栏-${script}-选中`, row, row.locator('.fade-text'),
         () => win.mouse.move(900, 600))
       expect(await sidebar(), `${script} 长标题不该顶宽侧栏`).toBe(before)
       expect(hex(chosen), 'hover 与选中本来就是两种底色,量到的该是两个值').not.toBe(hex(hovered))

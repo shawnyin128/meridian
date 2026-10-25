@@ -4,6 +4,9 @@
  */
 
 /* Ongoing projects: a decision-first card. */
+/* A project's name is as wide as its identity, and takes the rest of its line while it is renamed. */
+.project-name{flex:0 1 auto;width:auto}
+.project-name:has(>.metadata-input){flex:1}
 .project-card-decisions{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1.35fr) minmax(0,.8fr);gap:var(--sp-20)}
 .project-card-decision{display:flex;min-width:0;flex-direction:column;gap:var(--sp-6)}
 .project-card-label{flex:none;color:var(--ter);font-size:var(--fs-label);font-weight:var(--fw-label);line-height:var(--lh-ui)}
