@@ -60,7 +60,7 @@ describe('没有悬停反馈的控件', () => {
   })
 
   it('里程碑编辑框的删除行悬停时铺上菜单项的那层悬停底', () => {
-    const editor = '<div class="short-text-editor"><div class="short-text-separator"></div><button type="button" class="short-text-delete mi danger">删除</button></div>'
+    const editor = '<div class="short-text-editor"><div class="msep"></div><button type="button" class="short-text-delete mi danger">删除</button></div>'
     expect(restAndHover(editor, '.short-text-delete', '.short-text-delete', (style) => style.background))
       .toEqual(['rgba(0, 0, 0, 0)', 'var(--hover)'])
   })

@@ -9,8 +9,17 @@
 .ctxmenu,.pickhits{background:var(--raised);border-radius:var(--r-menu);box-shadow:var(--sh-2);padding:var(--pad-menu);z-index:90;
   --fade-paint:var(--raised);--fade-pad-top:var(--pad-menu);--fade-pad-bottom:var(--pad-menu)}
 .ctxmenu{min-width:158px}
-/* A surface holding a ShortTextEditor, which pads its own rows, edge to edge. */
-.ctxmenu--editor{padding:0;overflow:hidden;min-width:190px}
+/*
+ * A surface holding a ShortTextEditor, edge to edge: its heading over a divider, its rows of fields
+ * on their own padding, and a divider and the delete item, which keeps the menu's padding inside the
+ * surface's edges so its ring shows whole.
+ */
+.ctxmenu--editor{padding:0;overflow:hidden;min-width:210px}
+.ctxmenu--editor .rh{padding:var(--sp-8) var(--sp-12);border-bottom:1px solid var(--sep2);font-size:var(--fs-cap);color:var(--ter)}
+.ctxmenu--editor .mi-in{display:flex;align-items:center;gap:var(--sp-6);padding:var(--sp-8)}
+.ctxmenu--editor .mi-in+.mi-in{padding:0 var(--sp-8) var(--sp-6)}
+.ctxmenu--editor .msep{margin:0 var(--sp-6)}
+.ctxmenu--editor .mi{width:calc(100% - 2 * var(--pad-menu));margin:0 var(--pad-menu) var(--pad-menu)}
 /* A surface holding a form, with room around its fields. */
 .ctxmenu--form{padding:var(--sp-8);min-width:240px}
 /* A surface holding a toolbar is as wide as the toolbar; wider content wraps instead of widening it. */

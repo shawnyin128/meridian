@@ -30,6 +30,11 @@ const declared = (path: string, selector: string) => Object.fromEntries(SELECTOR
 const MENU_CLASSES = new Set(['ctxmenu', 'pickhits', 'mi', 'msep', 'mi-in', 'filter-menu',
   'sres', 'colpop', 'review-decline', 'selection-tools', 'paper-row-menu', 'read-state-filter'])
 
+/** The classes of the menu anatomy and the class a shared component hands its popover's surface. */
+const ANATOMY = /\.(ctxmenu|pickhits|mi|mi-in|msep|rh|rg|schedule-pop)(?![\w-])/
+/** Declarations that draw: fill, colour, border, radius, shadow, padding, margin and type. */
+const LOOK = /^(background|color|border|box-shadow|padding|margin|font|line-height)/
+
 /** The first class of the element a selector selects, outside `:not()` and `:has()`. */
 const subjectClass = (selector: string) => /\.(-?[_a-zA-Z][\w-]*)/
   .exec(selector.split(/\s*[\s>+~]\s*(?![^(]*\))/).at(-1)!.replace(/:(not|has)\((?:[^()]|\([^()]*\))*\)/g, ''))?.[1]
@@ -62,10 +67,33 @@ describe('菜单与候选列表的条目', () => {
   it('弹层按内容换面：编辑器贴着边，表单四周留 8px、至少 240px 宽，工具条和它的工具一样宽', () => {
     const sheet = join('components', 'ActionMenu.css')
     expect([declared(sheet, '.ctxmenu--editor'), declared(sheet, '.ctxmenu--form'), declared(sheet, '.ctxmenu--toolbar')]).toEqual([
-      expect.objectContaining({ padding: '0', overflow: 'hidden', 'min-width': '190px' }),
+      expect.objectContaining({ padding: '0', overflow: 'hidden', 'min-width': '210px' }),
       expect.objectContaining({ padding: 'var(--sp-8)', 'min-width': '240px' }),
       expect.objectContaining({ width: 'min-content', 'min-width': '0' }),
     ])
+  })
+
+  it('编辑器面画编辑器的各部分：标题下一道分隔、输入行留 8px、分隔线贴边、删除行落在菜单的内边距上', () => {
+    const sheet = join('components', 'ActionMenu.css')
+    expect([
+      declared(sheet, '.ctxmenu--editor .rh'), declared(sheet, '.ctxmenu--editor .mi-in'),
+      declared(sheet, '.ctxmenu--editor .msep'), declared(sheet, '.ctxmenu--editor .mi'),
+    ]).toEqual([
+      expect.objectContaining({ padding: 'var(--sp-8) var(--sp-12)', 'border-bottom': '1px solid var(--sep2)' }),
+      expect.objectContaining({ display: 'flex', padding: 'var(--sp-8)' }),
+      expect.objectContaining({ margin: '0 var(--sp-6)' }),
+      expect.objectContaining({ margin: '0 var(--pad-menu) var(--pad-menu)' }),
+    ])
+  })
+
+  it('别的共享组件不改菜单的面、条目、标题和输入行：文本编辑框和排期弹层的样子来自编辑器面和表单面', () => {
+    const own = new Set([join('components', 'ActionMenu.css'), join('components', 'PickerPopover.css')])
+    const restyled = SELECTORS
+      .filter((rule) => /^components\/[^/]+\.css$/.test(rule.path.split('\\').join('/')) && !own.has(rule.path))
+      .filter((rule) => ANATOMY.test(rule.selector.split(/\s*[\s>+~]\s*(?![^(]*\))/).at(-1)!))
+      .filter((rule) => rule.body.split(';').some((declaration) => LOOK.test(declaration.trim())))
+      .map((rule) => `${rule.path}: ${rule.selector}`)
+    expect(restyled).toEqual([])
   })
 
   it('筛选按钮把名字和每个选项都叠在同一格里占位,只显出当前那个,所以换选项时宽度不变', () => {
