@@ -1035,6 +1035,19 @@ describe('AppShell ⌘Z', () => {
     expect(fixture.undoChange.mock.calls).toEqual([['ch-1']])
     expect(document.querySelector('.screenslot:not([hidden]) #ch-1')).not.toBeNull()
   })
+
+  it('撤销放回来的那一项还没出现 App 就关了,之后出现的行不会被落上', async () => {
+    await mount(<Writes names={['ch-1']} />)
+    await writeOf('ch-1')
+    await pressZ()
+    act(() => root!.unmount())
+    root = null
+    const late = document.createElement('div')
+    late.id = 'sidebar'
+    late.innerHTML = '<div class="item">迟来的</div>'
+    await act(async () => { document.body.append(late) })
+    expect(late.querySelector('.item')!.hasAttribute('data-arrived')).toBe(false)
+  })
 })
 
 describe('AppShell 重新打开时回到上次的地方', () => {
