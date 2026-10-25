@@ -89,8 +89,9 @@ export function RowActions({ children, className = '' }: { children: ReactNode; 
 
 /**
  * The one interactive shell for list rows. With `onActivate` it renders as a keyboard-accessible
- * button, otherwise as a static div; `columns` lets pages set the column widths, while borders,
- * hover, focus and row clicks are implemented only here.
+ * button, otherwise as a static div; `columns` lets pages set the column widths, and a `subgrid` row
+ * lays its cells in the columns of the list's grid, so a list's rows line up; borders, hover, focus
+ * and row clicks are implemented only here.
  * A `composite` row holds controls of its own, so it stays a div that forwards pointer clicks to `onActivate`;
  * its children must include the keyboard-accessible control for the same action. A `selected` row is
  * the one whose detail is open beside the list. A double-click on a row with `onActivate` selects no
@@ -98,11 +99,12 @@ export function RowActions({ children, className = '' }: { children: ReactNode; 
  * row gives, runs after that.
  */
 export function StructuredRow({
-  children, className = '', columns, composite = false, selected = false, onActivate, rowRef, style, ...props
+  children, className = '', columns, subgrid = false, composite = false, selected = false, onActivate, rowRef, style, ...props
 }: {
   children: ReactNode
   className?: string
   columns?: string
+  subgrid?: boolean
   composite?: boolean
   selected?: boolean
   onActivate?: () => void
@@ -111,7 +113,8 @@ export function StructuredRow({
   style?: CSSProperties
 } & Omit<HTMLAttributes<HTMLElement>, 'children' | 'className' | 'style' | 'onClick'>) {
   const rowStyle = columns ? { ...style, gridTemplateColumns: columns } : style
-  const rowClass = `structured-row${composite ? ' structured-row--composite' : ''}${selected ? ' structured-row--selected' : ''}${className ? ` ${className}` : ''}`
+  const rowClass = `structured-row${subgrid ? ' structured-row--subgrid' : ''}${composite ? ' structured-row--composite' : ''}`
+    + `${selected ? ' structured-row--selected' : ''}${className ? ` ${className}` : ''}`
   if (onActivate && composite) {
     const { onMouseDown, ...rest } = props
     return (

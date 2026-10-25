@@ -376,7 +376,6 @@ export const PATTERNS = {
       entry('shared:Button', '.btn', {
         not: '.filter-menu, .sort-menu, .add-action, .choice-picker, .harness-trigger, .paper-abstract-toggle, .reading-summary-all, .zoom-reset, .graph-zoom-reset',
       }),
-      entry('hand:components/project/ProjectPlan.tsx', '.din'),
     ],
   },
   ActionButton: {

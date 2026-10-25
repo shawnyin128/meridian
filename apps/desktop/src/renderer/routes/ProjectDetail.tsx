@@ -22,7 +22,7 @@ import { MenuItem } from '../components/ActionMenu.js'
 import { EmptyState } from '../components/EmptyState.js'
 import { LoadingPlaceholder } from '../components/LoadingPlaceholder.js'
 import { DetailPanel } from '../components/DetailPanel.js'
-import { ChoicePicker, DateButton, DotsMenu, PriorityPicker } from '../components/FieldPickers.js'
+import { ChoicePicker, DateRangeField, DotsMenu, PriorityPicker } from '../components/FieldPickers.js'
 import { IconButton } from '../components/IconButton.js'
 import { IconOpen } from '../components/icons.js'
 import { SegmentedControl } from '../components/SegmentedControl.js'
@@ -51,7 +51,6 @@ import { IdeaDraft, type IdeaDraftText } from '../components/ideas/IdeaDraft.js'
 import { newPlanRow, ProjectPlan, ProjectTaskPanel } from '../components/project/ProjectPlan.js'
 import type { PlanCreating, PlanTab } from '../components/project/ProjectPlan.js'
 import { BackButton } from '../components/BackButton.js'
-import { dnum } from '../../shared/dates.js'
 import { useFormat } from '../lib/format.js'
 import { useMessages } from '../messages/useMessages.js'
 import { InlineMetadataField } from '../components/InlineField.js'
@@ -1155,30 +1154,20 @@ export function ProjectDetail({
                         }}
                       />
                     </Property>
-                    <Property label={m.project.identity.startLabel}>
-                      <DateButton
-                        iso={project.start} className="pv metadata-editable"
-                        onPick={(start) => {
-                          if (dnum(start) > dnum(project.due)) {
-                            notice.refusal(m.project.identity.startAfterDue)
-                            return
-                          }
-                          applyWrite(updateProject({ start }), m.project.identity.dateUpdated)
-                        }}
-                      />
-                    </Property>
-                    <Property label={m.project.identity.dueLabel}>
-                      <DateButton
-                        iso={project.due} className="pv metadata-editable"
-                        onPick={(due) => {
-                          if (dnum(due) < dnum(project.start)) {
-                            notice.refusal(m.project.identity.dueBeforeStart)
-                            return
-                          }
-                          applyWrite(updateProject({ due }), m.project.identity.dateUpdated)
-                        }}
-                      />
-                    </Property>
+                    <DateRangeField
+                      start={project.start} end={project.due} className="pv metadata-editable"
+                      onChange={(range) => applyWrite(updateProject({
+                        ...(range.start === project.start ? {} : { start: range.start }),
+                        ...(range.end === project.due ? {} : { due: range.end }),
+                      }), m.project.identity.dateUpdated)}
+                    >
+                      {(start, due) => (
+                        <>
+                          <Property label={m.project.identity.startLabel}>{start}</Property>
+                          <Property label={m.project.identity.dueLabel}>{due}</Property>
+                        </>
+                      )}
+                    </DateRangeField>
                     <Property label={m.project.sections.papers}>{m.project.identity.paperCount(project.paperCount)}</Property>
                     <Property label={m.project.identity.workspaceLabel}>
                       {project.workspace === undefined

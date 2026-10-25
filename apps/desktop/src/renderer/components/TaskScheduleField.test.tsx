@@ -20,15 +20,15 @@ const task: Task = {
 describe('TaskScheduleEditor', () => {
   beforeEach(() => { window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'zh') })
 
-  it('date mode exposes only date controls', () => {
+  it('date mode exposes only date controls: a start and an end picked from the one calendar, no native date input', () => {
     const html = renderToStaticMarkup(
       <MessagesProvider>
         <TaskScheduleEditor mode="date" task={task} saving={false} onSave={() => {}} onCancel={() => {}} />
       </MessagesProvider>,
     )
-    expect(html.match(/type="date"/g)).toHaveLength(2)
+    expect(html).not.toContain('type="date"')
     expect(html).not.toContain('开始时段')
-    expect(html.match(/class="form-control form-input form-control-field/g)).toHaveLength(2)
+    expect(html.match(/class="form-control form-button form-control-field choice-picker"[^>]*aria-haspopup="dialog"/g)).toHaveLength(2)
   })
 
   it('time mode exposes only time controls', () => {

@@ -80,7 +80,8 @@ Current shared contracts:
   returns to where it was.
 - `ShortTextEditor`: the body of `FloatingTextEditor`, including fixed input geometry, focus,
   Enter/Escape, async acceptance, and optional deletion.
-- `StructuredList`: list shell and actionable/static row semantics; routes only supply columns and cells.
+- `StructuredList`: list shell and actionable/static row semantics; routes only supply columns and cells. A
+  `subgrid` row lays its cells in the list's grid columns, so new and saved rows line up.
   A row that holds controls of its own is `composite`: it stays a div that forwards pointer clicks, and
   its children carry the keyboard-accessible control, so a button is never nested inside a button.
 - `NavRow`: the one row of a navigation list, the sidebar's and the Settings categories'. It is a button,
@@ -217,7 +218,8 @@ Current shared contracts:
 - `project/ResearchGraph` and `project/ResearchNodePanel`: topology-based tree layout, active-path
   rendering, zoom/pan state, node selection, branch summaries, and Agent-owned node documents. The
   project route only selects the data source and holds the selected node id.
-- `project/ProjectPlan`: the complete task/milestone editor, including segmented mode, create rows,
+- `project/ProjectPlan`: the complete task/milestone editor, including segmented mode, create rows that pick
+  their fields with the saved rows' pickers in the saved rows' columns,
   per-field editing, deletion, focus restoration, and timeline-location highlighting. Persistence and
   timeline coordination are injected by the project route.
 - `project/ProjectControl`: one visual contract for the resolved next action and blocker. Project
@@ -230,8 +232,12 @@ Current shared contracts:
   relations, attachments, Agent sessions, and timeline feature sections. The route coordinates data
   and persistence instead of implementing their internal UI.
 - `FieldPickers`: shared choice, priority, date, and overflow-menu controls. Screens supply trigger
-  presentation and callbacks rather than rebuilding popovers and keyboard behavior. `ChoicePicker` is the one
-  single-value picker: `appearance="field"` makes it the boxed field of a form in place of a native select. `DotsMenu` is the one
+  presentation and callbacks rather than rebuilding popovers and keyboard behavior. A value is picked the same
+  way in a new item as in a saved one: a menu for a choice, the one calendar for a date, never a native date
+  input or a click that cycles values. `ChoicePicker` is the one
+  single-value picker: `appearance="field"` makes it the boxed field of a form in place of a native select.
+  `DateRangeField` is the one start and end, a task's schedule and a project's dates alike, under one rule:
+  the end's calendar starts at the start, and a start picked after the end takes the end along to it. `DotsMenu` is the one
   overflow-menu trigger: `label` names it, `stopRowActivation` keeps a click from activating the row it
   sits in, and `open` with `onOpenChange` lets a host control it. The host owns the rule that reveals it.
 

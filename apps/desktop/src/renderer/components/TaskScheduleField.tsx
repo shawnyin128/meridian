@@ -4,11 +4,10 @@ import type { Task, TaskPatch, TaskWindow } from '../../shared/contract.js'
 import { TASK_SLOT_ENDS, TASK_SLOT_STARTS } from '../../shared/contract.js'
 import { ActionPopover } from './ActionPopover.js'
 import { DateChip } from './DateTimeDisplay.js'
-import { ChoicePicker } from './FieldPickers.js'
-import { FieldRow, FieldRows, FormInput } from './FormControls.js'
+import { ChoicePicker, DateRangeField } from './FieldPickers.js'
+import { FieldRow, FieldRows } from './FormControls.js'
 import { SegmentedControl } from './SegmentedControl.js'
 import { useToolbarItem } from './Toolbar.js'
-import { dnum } from '../../shared/dates.js'
 import { useFormat } from '../lib/format.js'
 import { useMessages } from '../messages/useMessages.js'
 import { CommitActions } from './CommitActions.js'
@@ -16,10 +15,13 @@ import './TaskScheduleField.css'
 
 export type ScheduleEditMode = 'date' | 'time'
 
+/** The schedule of a task, saved or still drafted: its date range and its time window, if it has one. */
+export type TaskSchedule = Pick<Task, 'start' | 'end'> & { window?: TaskWindow | null | undefined }
+
 /** One editor for the date range and the time window; `mode` only picks which fields this edit shows. */
 export function TaskScheduleEditor({ mode, task, saving, onSave, onCancel }: {
   mode: ScheduleEditMode
-  task: Task
+  task: TaskSchedule
   saving: boolean
   onSave: (patch: TaskPatch) => void
   onCancel: () => void
@@ -33,8 +35,7 @@ export function TaskScheduleEditor({ mode, task, saving, onSave, onCancel }: {
     event.preventDefault()
     if (saving) return
     if (mode === 'date') {
-      if (start === '' || end === '') return
-      onSave({ start, end: dnum(end) < dnum(start) ? start : end })
+      onSave({ start, end })
       return
     }
     if (window !== null && window.end <= window.start) return
@@ -45,24 +46,17 @@ export function TaskScheduleEditor({ mode, task, saving, onSave, onCancel }: {
     <form className="schedule-form" onSubmit={submit}>
       {mode === 'date'
         ? (
-          <FieldRows>
-            <FieldRow label={m.research.schedule.startLabel}>
-              <FormInput
-                type="date" required value={start}
-                onChange={(event) => {
-                  const next = event.target.value
-                  setStart(next)
-                  if (next !== '' && end !== '' && dnum(end) < dnum(next)) setEnd(next)
-                }}
-              />
-            </FieldRow>
-            <FieldRow label={m.research.schedule.endLabel}>
-              <FormInput
-                type="date" required min={start} value={end}
-                onChange={(event) => setEnd(event.target.value)}
-              />
-            </FieldRow>
-          </FieldRows>
+          <DateRangeField
+            appearance="field" start={start} end={end}
+            onChange={(range) => { setStart(range.start); setEnd(range.end) }}
+          >
+            {(startField, endField) => (
+              <FieldRows>
+                <FieldRow label={m.research.schedule.startLabel}>{startField}</FieldRow>
+                <FieldRow label={m.research.schedule.endLabel}>{endField}</FieldRow>
+              </FieldRows>
+            )}
+          </DateRangeField>
         )
         : (
           <>
@@ -106,12 +100,12 @@ export function TaskScheduleEditor({ mode, task, saving, onSave, onCancel }: {
 }
 
 /**
- * A separate date or time-window entry; both open TaskScheduleEditor but never edit together. Its
- * trigger is one of the controls of the toolbar it renders in.
+ * A separate date or time-window entry of a saved or a drafted task; both open TaskScheduleEditor but
+ * never edit together. Its trigger is one of the controls of the toolbar it renders in.
  */
 export function TaskScheduleField({ mode, task, onSave, className = '', stopRowActivation = false }: {
   mode: ScheduleEditMode
-  task: Task
+  task: TaskSchedule
   onSave: (patch: TaskPatch) => Promise<boolean>
   className?: string
   /** Pass true when the row or card itself is clickable, so the trigger swallows the click instead of bubbling it. */

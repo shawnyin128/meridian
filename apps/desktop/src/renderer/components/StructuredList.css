@@ -21,6 +21,7 @@
   padding:var(--ring-room);margin:calc(-1 * var(--ring-room))}
 .structured-row{box-sizing:border-box;width:100%;border:0;border-top:1px solid var(--sep2);background:transparent;color:var(--ink);font:inherit;text-align:left}
 .structured-row:first-child{border-top:0}
+.structured-row--subgrid{grid-column:1/-1;display:grid;grid-template-columns:subgrid}
 .structured-list--embedded>.structured-row{border-top:0}
 .structured-list--embedded>.structured-row+.structured-row{border-top:1px solid var(--sep2)}
 button.structured-row,.structured-row--composite{cursor:pointer}

@@ -708,8 +708,8 @@ test('新建一个任务再删掉,任务数前后一致', async ({ win }) => {
   await expect(win.locator('#taskList .ddlrow')).toHaveCount(ACTIVE_TASK_ROWS)
 
   await win.locator('.section-heading-actions .add-action', { hasText: '任务' }).click()
-  await win.locator('#taskList .min').fill(NEW_TASK_TITLE)
-  await win.locator('#taskList .min').press('Enter')
+  await win.locator('#taskList .task-create-row input').fill(NEW_TASK_TITLE)
+  await win.locator('#taskList .task-create-row input').press('Enter')
 
   await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已添加任务')
   await expect(win.locator('#taskList .ddlrow')).toHaveCount(ACTIVE_TASK_ROWS + 1)
@@ -1110,7 +1110,7 @@ test('新任务行开着且打了字时按侧栏会话的「...」:任务照样�
     .then((p) => p.tasks.map((task) => task.title))
   const before = await titles()
   await win.locator('.section-heading-actions .add-action', { hasText: '任务' }).click()
-  const input = win.locator('#taskList .ddlrow input.min')
+  const input = win.locator('#taskList .task-create-row input')
   await input.fill('按菜单触发器建成的任务')
   await expect(input).toHaveValue('按菜单触发器建成的任务')
 
@@ -1125,24 +1125,21 @@ test('新任务行开着且打了字时按侧栏会话的「...」:任务照样�
   expect(after).toContain('按菜单触发器建成的任务')
 })
 
-test('科研计划:新建任务那一行和已有行同一套样子,日期不折行、输入框是共用的原位外观', async ({ win }) => {
+test('科研计划:新建任务那一行和已有行同一套样子,日期、时段、优先级和状态落在已有行的同一列,输入框是共用的原位外观', async ({ win }) => {
   await gotoProject(win)
   const plan = win.locator('.screenslot:not([hidden]) .project-plan')
   await plan.locator('[aria-label="添加任务"]').first().click()
   const draft = plan.locator('.task-create-row')
   await expect(draft).toHaveCount(1)
 
-  const chips = await draft.locator('.din').evaluateAll((els) => els.map((el) => {
-    return { height: el.getBoundingClientRect().height, border: getComputedStyle(el).borderTopWidth }
-  }))
-  expect(chips.length).toBeGreaterThanOrEqual(4)
-  // One line of 12px text plus 2px padding each side; a wrapped chip is twice as tall.
-  for (const chip of chips) {
-    expect(chip.border).toBe('0px')
-    expect(chip.height).toBeLessThan(26)
-  }
+  const cells = ['.task-date-part', '.task-clock-part', '.plan-priority', '.state-cell']
+  const columns = (row: Locator) => row.evaluate((element, selectors) => selectors.map((selector) => {
+    const box = element.querySelector(selector)!.getBoundingClientRect()
+    return [Math.round(box.left), Math.round(box.width)]
+  }), cells)
+  expect(await columns(draft)).toEqual(await columns(plan.locator('#taskList .task-row:not(.task-create-row)').first()))
 
-  const input = await draft.locator('input.min').evaluate((el) => {
+  const input = await draft.locator('input').evaluate((el) => {
     const style = getComputedStyle(el)
     return {
       border: style.borderTopWidth, background: style.backgroundColor,
@@ -1805,13 +1802,13 @@ test('节点面板开着时 Esc 先关任务名称格,再按一次才收面板',
   await expect(head).toHaveText('属性')
 })
 
-test('节点面板开着时 Esc 先关日历,再按一次才收面板', async ({ win }) => {
+test('节点面板开着时 Esc 先关新任务的日期编辑框,再按一次才收面板', async ({ win }) => {
   const head = await openNodePanel(win)
   await win.locator('.section-heading-actions .add-action', { hasText: '任务' }).click()
-  await win.locator('#taskList .ddlrow .din').first().click()
-  await expect(win.locator('.calg')).toHaveCount(1)
+  await win.locator('#taskList .task-create-row .task-date-part').click()
+  await expect(win.locator('.schedule-pop')).toHaveCount(1)
   await win.keyboard.press('Escape')
-  await expect(win.locator('.calg')).toHaveCount(0)
+  await expect(win.locator('.schedule-pop')).toHaveCount(0)
   await expect(head).toContainText('树宽收益拐点')
 
   await win.keyboard.press('Escape')

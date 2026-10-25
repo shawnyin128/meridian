@@ -154,6 +154,53 @@ describe('ProjectPlan', () => {
     expect(output).toMatch(/task-create-row[\s\S]*<input[^>]*class="form-control form-input form-control-inline/)
   })
 
+  it('新建的任务和里程碑与已有的一行用同一套挑选器、落在同一列:日期和时段打开同一个编辑框,优先级和状态从菜单里挑,不是点一下换一个', async () => {
+    globalThis.IS_REACT_ACT_ENVIRONMENT = true
+    vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} })
+    const host = document.createElement('div')
+    document.body.append(host)
+    const onCreating = vi.fn()
+    const root = createRoot(host)
+    const render = (creating: PlanCreating, tab: 'task' | 'ms') => act(() => root.render(
+      <MessagesProvider>
+        <ProjectPlan
+          projectId="p1" project={{ tasks: [task], milestones: [milestone] }} tab={tab} today="2026-09-16"
+          creating={creating} flashId={null} selectedTaskId={null}
+          listRef={createRef()} addRef={createRef()} timelineAddRef={createRef()}
+          onTab={vi.fn()} onDiscardOpenEdits={vi.fn()} onStartTask={vi.fn()} onStartMilestone={vi.fn()}
+          onCreating={onCreating} onCancelCreate={vi.fn()} onCreateTask={vi.fn()} onCreateMilestone={vi.fn()}
+          onUpdateTask={vi.fn()} onDeleteTask={vi.fn()} onReorderTasks={vi.fn()} onOpenTask={vi.fn()}
+          onUpdateMilestone={vi.fn()} onDeleteMilestone={vi.fn()} onHoverMilestone={vi.fn()}
+        />
+      </MessagesProvider>,
+    ))
+    /** The class of each control of a row, with its element, in the row's order. */
+    const cells = (row: Element) => [...row.children].map((cell) => `${cell.tagName} ${cell.className.split(' ').filter((name) => !['task-create-row', 'milestone-create-row', 'done'].includes(name)).join(' ')}`)
+    const pick = async (trigger: Element, option: string) => {
+      await act(async () => { trigger.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, button: 0 })) })
+      const items = [...document.querySelectorAll<HTMLElement>('[role="menu"] [role="menuitemradio"]')]
+      await act(async () => { items.find((item) => item.textContent!.startsWith(option))!.click() })
+    }
+
+    render(newPlanRow('task', '2026-09-16'), 'task')
+    const draft = host.querySelector('.task-create-row')!
+    const saved = host.querySelector('[data-row="task-1"]')!
+    expect(cells(draft).slice(0, 4)).toEqual(cells(saved).slice(0, 4))
+    await pick(draft.querySelector('.plan-priority')!, 'P2')
+    expect(onCreating).toHaveBeenLastCalledWith(expect.objectContaining({ kind: 'task', draft: expect.objectContaining({ priority: 'p2' }) }))
+    await pick(draft.querySelector('.state-cell')!, '已完成')
+    expect(onCreating).toHaveBeenLastCalledWith(expect.objectContaining({ draft: expect.objectContaining({ state: 'done' }) }))
+
+    render(newPlanRow('ms', '2026-09-16'), 'ms')
+    const msDraft = host.querySelector('.milestone-create-row')!
+    expect(cells(msDraft).slice(0, 2)).toEqual(cells(host.querySelector('[data-row="milestone-1"]')!).slice(0, 2))
+    await pick(msDraft.querySelector('.state-cell')!, '已完成')
+    expect(onCreating).toHaveBeenLastCalledWith({ kind: 'ms', draft: expect.objectContaining({ done: true }) })
+    act(() => root.unmount())
+    host.remove()
+    vi.unstubAllGlobals()
+  })
+
   it('已完成的任务默认折叠进已归档分组,活动列表里看不到它', () => {
     const output = renderPlan('task', { tasks: [task, doneTask] })
     expect(output).toContain('校准批次')
