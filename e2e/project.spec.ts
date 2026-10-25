@@ -1630,6 +1630,7 @@ test('任务四列各自编辑,点击行或任务名只打开任务详情,不改
   test.slow()
   await gotoProject(win)
   const side = win.locator('.screenslot:not([hidden]) .project-detail-panel')
+  const rail = win.locator('.screenslot:not([hidden]) .wkside')
   const menu = win.locator('[role="menu"]')
   const radios = menu.locator('[role="menuitemradio"]')
 
@@ -1677,7 +1678,7 @@ test('任务四列各自编辑,点击行或任务名只打开任务详情,不改
   await win.keyboard.press('Escape')
 
   // Status: three radio options, ACTIVE_PROJECT checked; clicking SHELVED_PROJECT writes it back.
-  await side.locator('.wkprops .pk:text-is("状态") + .pv').click()
+  await rail.locator('.wkprops .pk:text-is("状态") + .pv').click()
   await expect(radios).toHaveText([...PROJECT_STATUSES])
   await expect(radios.filter({ hasText: ACTIVE_PROJECT })).toHaveAttribute('aria-checked', 'true')
   await radios.filter({ hasText: SHELVED_PROJECT }).click()
@@ -1685,7 +1686,7 @@ test('任务四列各自编辑,点击行或任务名只打开任务详情,不改
   expect((await call<{ status: string }>(win, 'project.get', { id: 'draft' })).status).toBe(SHELVED_PROJECT)
 
   // Priority: the current P0 is checked; ArrowDown twice reaches P1 and Enter writes it back.
-  await side.locator('.wkprops .pk:text-is("优先级") + .pv').click()
+  await rail.locator('.wkprops .pk:text-is("优先级") + .pv').click()
   await expect(radios).toHaveText(['P0 · 紧急', 'P1 · 常规', 'P2 · 较低'])
   await expect(radios.nth(0)).toHaveAttribute('aria-checked', 'true')
   await win.keyboard.press('ArrowDown')
