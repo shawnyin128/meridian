@@ -132,6 +132,27 @@ describe('Paper Wiki Harness draft boundary', () => {
     })).toThrow('范围外的阅读记录')
   })
 
+  it('fails a draft Core finds outside the run\'s scope or malformed as malformed output', () => {
+    const reason = (check: () => void) => {
+      try {
+        check()
+      } catch (cause) {
+        return callFailure(cause)
+      }
+      return null
+    }
+    const duplicate = draft()
+    duplicate.retrieval.fits[1]!.query = duplicate.retrieval.fits[0]!.query
+    const statement = draft()
+    statement.open_questions = ['Test generalization']
+    expect([
+      reason(() => validatePaperWikiDraftScope(draft(), { paperPages: 3, readingRefs: new Set(['note:n1']) })),
+      reason(() => validatePaperWikiDraftScope(draft(), { paperPages: 4, readingRefs: new Set() })),
+      reason(() => validatePaperWikiDraftSemantics(duplicate)),
+      reason(() => validatePaperWikiDraftSemantics(statement)),
+    ]).toEqual(['malformed-output', 'malformed-output', 'malformed-output', 'malformed-output'])
+  })
+
   it('projects provenance and source anchors without reparsing Markdown', () => {
     const review = projectPaperWikiReview(draft())
     expect(review.schemaVersion).toBe('meridian.paper-wiki-review.v1')
@@ -188,13 +209,16 @@ describe('Paper Wiki Harness draft boundary', () => {
     }, 'p1')).toThrow('结论不一致')
   })
 
-  it('fails a run the user stopped as cancelled and every other Harness failure as a model failure', () => {
-    const failure = (kind: 'cancelled' | 'harness_gone' | 'bad_request' | 'model_error') =>
-      callFailure(paperWikiHarnessError(new HarnessRpcError({ kind, message: kind })))
+  it('fails a run the user stopped as cancelled, invalid output as malformed and every other Harness failure as a model failure', () => {
+    const failure = (kind: 'cancelled' | 'harness_gone' | 'bad_request' | 'model_error', detail?: string) =>
+      callFailure(paperWikiHarnessError(new HarnessRpcError({ kind, message: kind, ...(detail === undefined ? {} : { detail }) })))
     expect(failure('cancelled')).toBe('cancelled')
     expect(failure('harness_gone')).toBe('model')
     expect(failure('bad_request')).toBe('model')
     expect(failure('model_error')).toBe('model')
+    expect(failure('model_error', 'rate_limit')).toBe('model')
+    expect(failure('model_error', 'structured_output')).toBe('malformed-output')
+    expect(failure('model_error', 'invalid_anchor')).toBe('malformed-output')
   })
 
   it('turns cancellation and process loss into explicit no-retry messages', () => {
@@ -427,7 +451,7 @@ describe('Paper Wiki run on a subscription CLI', () => {
     expect(failed).toEqual(reasons)
   })
 
-  it('fails a run whose CLI output Harness found invalid as malformed output, and an API run\'s as a model failure', async () => {
+  it('fails a run whose output Harness found invalid as malformed output, on a subscription and an API alike', async () => {
     const output = async () => ({ output: { draft: 'not a draft' }, durationMs: 1 })
     const failed = []
     for (const [model, detail] of [
@@ -441,7 +465,7 @@ describe('Paper Wiki run on a subscription CLI', () => {
       failed.push(callFailure(await running))
       runner.close()
     }
-    expect(failed).toEqual(['malformed-output', 'malformed-output', 'model'])
+    expect(failed).toEqual(['malformed-output', 'malformed-output', 'malformed-output'])
   })
 
   it('cancelling a run on a subscription ends the CLI\'s child process', async () => {
