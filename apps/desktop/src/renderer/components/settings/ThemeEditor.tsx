@@ -248,7 +248,7 @@ export function ThemeEditor({ theme, onBack, onDirtyChange }: {
           </div>
           <ThemePreview modules={colours} mode={mode} />
           <Card className="theme-module-card">
-            <SectionHeading variant="group">{t.modules[module]}</SectionHeading>
+            <SectionHeading level="group">{t.modules[module]}</SectionHeading>
             <div className="theme-module-colour">
               <Swatches
                 label={t.swatches} value={colours[module].toLowerCase()} onPick={paint}

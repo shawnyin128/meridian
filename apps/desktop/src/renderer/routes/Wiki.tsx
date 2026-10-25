@@ -328,7 +328,7 @@ function Toc({ body, main }: { body: string; main: RefObject<HTMLDivElement | nu
   const base = Math.min(...headings.map((h) => h.depth))
   return (
     <>
-      <SectionHeading variant="rail">{m.wiki.toc}</SectionHeading>
+      <SectionHeading level="group">{m.wiki.toc}</SectionHeading>
       <ul className="wktoc">
         {headings.map((h) => (
           <li className={`l${h.depth - base + 1}${h.id === active ? ' on' : ''}`} key={h.id}>
@@ -936,7 +936,7 @@ export function Wiki() {
                 />
               </div>
               <div className="wkside" ref={railFade} data-fade-paint="">
-                <SectionHeading variant="rail">{m.project.identity.heading}</SectionHeading>
+                <SectionHeading level="group">{m.project.identity.heading}</SectionHeading>
                 <div className="wkprops">
                   <div className="pk">{m.project.identity.typeLabel}</div><div className="pv">{shownAgg.kindLabel}</div>
                   <div className="pk">{m.project.identity.nameLabel}</div>
@@ -998,7 +998,7 @@ export function Wiki() {
                 />
               </div>
               <div className="wkside" ref={paperRailFade} data-fade-paint="">
-                <SectionHeading variant="rail">{m.project.identity.heading}</SectionHeading>
+                <SectionHeading level="group">{m.project.identity.heading}</SectionHeading>
                 <div className="wkprops">
                   <div className="pk">{m.project.identity.typeLabel}</div><div className="pv">{m.wiki.paperKind}</div>
                   <div className="pk">{m.wiki.titleLabel}</div>
@@ -1054,7 +1054,7 @@ export function Wiki() {
                     )}
                   <div className="pk">{m.wiki.updatedLabel}</div><div className="pv">{fmt.date(shownPaper.updated)}</div>
                 </div>
-                <SectionHeading variant="rail">{m.wiki.membershipHeading}</SectionHeading>
+                <SectionHeading level="group">{m.wiki.membershipHeading}</SectionHeading>
                 {shownPaper.memberships.length === 0
                   ? <EmptyState variant="section">{m.wiki.noMembership}</EmptyState>
                   : shownPaper.memberships.map((ms) => (

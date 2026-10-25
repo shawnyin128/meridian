@@ -122,7 +122,7 @@ export function ProjectConclusionPanel({
   return (
     <>
       <SectionHeading
-        variant="rail" className="node-document-head" data-stuck-fade="top"
+        level="group" className="node-document-head" data-stuck-fade="top"
         actions={(
           <>
             {conclusion.node !== undefined && conclusion.fingerprint !== undefined && conclusion.state === 'pending'
@@ -183,13 +183,13 @@ export function ProjectConclusionPanel({
       {conclusion.node === undefined
         ? (
           <>
-            <SectionHeading variant="rail">{c.source}</SectionHeading>
+            <SectionHeading level="group">{c.source}</SectionHeading>
             <p className="conclusion-detail-source">{conclusion.source}</p>
           </>
         )
         : (
           <>
-            <SectionHeading variant="rail" count={conclusion.tasks.length}>{c.tasks}</SectionHeading>
+            <SectionHeading level="group" count={conclusion.tasks.length}>{c.tasks}</SectionHeading>
             {conclusion.tasks.length === 0
               ? <EmptyState variant="section">{c.noTasks}</EmptyState>
               : (
@@ -202,7 +202,7 @@ export function ProjectConclusionPanel({
                   ))}
                 </List>
               )}
-            <SectionHeading variant="rail">{c.node}</SectionHeading>
+            <SectionHeading level="group">{c.node}</SectionHeading>
             {node === undefined
               ? null
               : (
@@ -210,7 +210,7 @@ export function ProjectConclusionPanel({
                   <EntityLink kind="node" label={node.label} mode={node.mode} onOpen={() => onOpenNode(conclusion.node!)} />
                 </div>
               )}
-            <SectionHeading variant="rail" count={conclusion.experiments.length}>{c.experiments}</SectionHeading>
+            <SectionHeading level="group" count={conclusion.experiments.length}>{c.experiments}</SectionHeading>
             {conclusion.experiments.length === 0
               ? <EmptyState variant="section">{c.noExperiments}</EmptyState>
               : (
@@ -226,7 +226,7 @@ export function ProjectConclusionPanel({
           </>
         )}
 
-      <SectionHeading variant="rail">{c.wiki}</SectionHeading>
+      <SectionHeading level="group">{c.wiki}</SectionHeading>
       {conclusion.wiki.length === 0
         ? <EmptyState variant="section">{c.notWritten}</EmptyState>
         : (

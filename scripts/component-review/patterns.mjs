@@ -35,13 +35,6 @@ export const COLOUR_TOKENS = [
 /** The elevation tokens of `shell/tokens.css` a measured box shadow is named by. */
 export const SHADOW_TOKENS = ['sh-1', 'sh-2', 'sh-3', 'sh-paper']
 
-/**
- * Section headings that head a group of items rather than a section: the status groups of the
- * project list and of Ideas, and the kind groups of the trash.
- */
-const GROUPED_SECTIONS = '.desk-body:has(.projpanel) > .section-heading, .desk-body:has(> .tgroup) > .section-heading, '
-  + '.ideas-list > .section-heading:not(:has(+ .idea-stats-head)), .idea-row-groups > .section-heading'
-
 /** One selector entry: `impl` is `shared:<Component>` or `hand:<file>`, `selector` finds its elements. */
 const entry = (impl, selector, options = {}) => ({ id: `${impl} ${selector}`, impl, selector, ...options })
 
@@ -108,23 +101,16 @@ export const PATTERNS = {
   SectionHeading: {
     metrics: 'heading',
     entries: [
-      entry('shared:SectionHeading', '.section-heading', { not: `.section-heading--group, .node-document-head, .section-heading:has(+ .tabbed-section-panel), ${GROUPED_SECTIONS}` }),
-      entry('shared:ServiceStatus', '.service-status-head'),
-      entry('hand:components/settings/ExtensionSettings.tsx', '.extension-head'),
-      entry('hand:routes/Watches.tsx', '.af-h'),
+      entry('shared:SectionHeading', '.section-heading', { not: '.section-heading--group, .node-document-head, .section-heading:has(+ .tabbed-section-panel)' }),
       entry('hand:routes/Wiki.tsx', '.coledit .ch'),
     ],
   },
   GroupHeading: {
     metrics: 'heading',
     entries: [
-      entry('shared:SectionHeading', '.section-heading--group'),
-      entry('shared:SectionHeading', GROUPED_SECTIONS),
-      entry('shared:DayHeading', '.day-heading', { parts: { count: '.count-badge' } }),
+      entry('shared:SectionHeading', '.section-heading--group', { not: '.node-document-head' }),
       entry('hand:shell/SearchBox.tsx', '.pickhits .rh'),
       entry('hand:components/chat/ChatComposer.tsx', '.pickhits .rg'),
-      entry('hand:routes/Watches.tsx', '.watch-suggestion-group-heading'),
-      entry('hand:components/settings/DiscoverySettings.tsx', '.direction-project > header'),
     ],
   },
   TabGroup: {
@@ -137,7 +123,7 @@ export const PATTERNS = {
   Fold: {
     metrics: 'heading',
     entries: [
-      entry('shared:CollapsibleGroup', '.collapsible-group-head', { parts: { count: '.count-badge' } }),
+      entry('shared:Group', '.collapsible-group-head', { parts: { count: '.count-badge' } }),
       entry('shared:CardTray', '.card-tray--tray > .card-tray-head'),
       entry('shared:NavRow', '#sidebar .fold-toggle.nav-row'),
       entry('shared:NavSection', '#sidebar .nav-section-head'),

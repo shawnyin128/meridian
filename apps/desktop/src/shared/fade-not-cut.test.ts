@@ -81,7 +81,7 @@ const STUCK: Record<string, [file: string, markup: RegExp][]> = {
   '.ptable td.row-actions-cell,.tblwrap .ptable thead th.th-add': [
     [PAPER_TABLE, /<td className="row-actions-cell" data-stuck-fade="right">/], [PAPER_TABLE, /<th className="th-add" data-stuck-fade="top right">/],
   ],
-  '.collapsible-group-head': [['components/CollapsibleGroup.tsx', /className="collapsible-group-head" \{\.\.\.\(variant === 'quiet' \? \{\} : \{ 'data-stuck-fade': 'top' \}\)\}/]],
+  '.collapsible-group--sticky>.section-heading.collapsible-group-head': [['components/GroupedList.tsx', /\{\.\.\.\(sticky \? \{ 'data-stuck-fade': 'top' \} : \{\}\)\}/]],
   '.node-document-pane .node-document-head': ['project/ResearchGraph', 'project/ProjectConclusions', 'ideas/IdeaPanel', 'project/ProjectPlan']
     .map((name) => [`components/${name}.tsx`, /className="[\w -]*node-document-head" data-stuck-fade="top"/]),
   '.cmp th': [['routes/Wiki.tsx', /<th data-stuck-fade="top">\{m\.wiki\.paperKind\}<\/th>\n\s*\{agg\.columns\.map\(\(c\) => <th key=\{c\.key\} data-stuck-fade="top">/]],

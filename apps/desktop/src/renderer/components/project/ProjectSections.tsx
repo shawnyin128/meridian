@@ -359,7 +359,7 @@ export function ProjectAttachments({ attachments, onAdd, onReveal, onRemove }: {
   return (
     <>
       <SectionHeading
-        variant="rail"
+        level="group"
         actions={(
           <AddAction size="compact" label={m.project.attachments.addTitle} onClick={() => input.current?.click()}>
             {m.project.sections.attachments}

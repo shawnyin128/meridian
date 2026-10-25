@@ -34,7 +34,7 @@ describe('PageShell', () => {
       <>
         <PageError error="打不开" />
         <SectionHeading actions={<button>新增</button>}>项目</SectionHeading>
-        <SectionHeading variant="group">今日</SectionHeading>
+        <SectionHeading level="group">今日</SectionHeading>
       </>,
     )
     expect(html).toContain('<div class="inline-message inline-message--box inline-message--error page-error page-error--page" role="alert">'
@@ -43,7 +43,7 @@ describe('PageShell', () => {
       .toBe('<div class="inline-message inline-message--box inline-message--error page-error page-error--section" role="alert">'
         + '<div class="inline-message-text">科研图读不了</div></div>')
     expect(html).toContain(
-      '<div class="section-heading section-heading--page">项目<div class="section-heading-actions"><button>新增</button></div></div>',
+      '<div class="section-heading section-heading--section">项目<div class="section-heading-actions"><button>新增</button></div></div>',
     )
     expect(html).toContain('<div class="section-heading section-heading--group">今日</div>')
     expect(renderToStaticMarkup(<PageError error={null} />)).toBe('')
@@ -69,13 +69,23 @@ describe('PageShell', () => {
     expect(html).toMatch(/^<div class="page-toolbar"><div [^>]*class="segmented-control segmented-control--md"/)
   })
 
-  it('gives the rail variant its own class and keeps actions in the shared slot', () => {
+  it('heads a rail section at the group level and keeps actions in the shared slot', () => {
     const html = renderToStaticMarkup(
-      <SectionHeading variant="rail" actions={<button>＋</button>}>关联</SectionHeading>,
+      <SectionHeading level="group" actions={<button>＋</button>}>关联</SectionHeading>,
     )
     expect(html).toBe(
-      '<div class="section-heading section-heading--rail">关联<div class="section-heading-actions"><button>＋</button></div></div>',
+      '<div class="section-heading section-heading--group">关联<div class="section-heading-actions"><button>＋</button></div></div>',
     )
+  })
+
+  it('writes a meta after the title on its line, after the count, and keeps actions at the end', () => {
+    expect(renderToStaticMarkup(
+      <SectionHeading level="group" meta="上次检查 10月24日" actions={<button>检查更新</button>}>Meridian Plugin</SectionHeading>,
+    )).toBe('<div class="section-heading section-heading--group"><span>Meridian Plugin<span class="section-heading-meta">上次检查 10月24日</span></span>'
+      + '<div class="section-heading-actions"><button>检查更新</button></div></div>')
+    expect(renderToStaticMarkup(<SectionHeading level="group" count={3} meta="3 篇种子">KV cache 量化</SectionHeading>))
+      .toBe('<div class="section-heading section-heading--group"><span>KV cache 量化<span class="heading-count"> · 3</span>'
+        + '<span class="section-heading-meta">3 篇种子</span></span></div>')
   })
 
   it('sorts a page from its header at the page weight and adds to a section from its heading at the section weight', () => {

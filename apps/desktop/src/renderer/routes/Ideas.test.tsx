@@ -150,7 +150,7 @@ describe('Ideas', () => {
   it('想法按做到哪一步分组：未开始是卡片，进行中和已完成是行，放下的收进已归档；搁置项目里的想法算进行中，带搁置标签', async () => {
     await act(async () => { root.render(<MessagesProvider><Ideas /></MessagesProvider>) })
     const groups = [...host.querySelectorAll<HTMLElement>('.ideas-list .section-heading')].map((heading) => heading.textContent)
-    expect(groups).toEqual(['未开始 · 1', '进行中 · 2', '已完成 · 1', '各项目的想法'])
+    expect(groups).toEqual(['未开始 · 1', '进行中 · 2', '已完成 · 1', '已归档 · 1', '各项目的想法'])
     const row = (id: string) => host.querySelector<HTMLElement>(`[data-idea="${id}"]`)!
     expect(row('idea-independent').classList.contains('item--card')).toBe(true)
     expect(row('idea-independent').textContent).not.toContain('还没有关联项目。')
@@ -161,7 +161,7 @@ describe('Ideas', () => {
     expect([...row('idea-linked').querySelectorAll('.idea-row-work .tag')].map((tag) => tag.textContent)).toEqual(['推测解码'])
     expect([...row('idea-paused').querySelectorAll('.idea-row-work .tag')].map((tag) => tag.textContent)).toEqual(['搁置项目', '搁置'])
     expect(row('idea-completed').closest('.list')!.previousElementSibling!.textContent).toBe('已完成 · 1')
-    const archived = host.querySelector<HTMLElement>('.collapsible-group.collapsible-group--quiet')!
+    const archived = host.querySelector<HTMLElement>('.ideas-list .collapsible-group')!
     expect(archived.querySelector('.heading-count')!.textContent).toBe(' · 1')
   })
 
@@ -206,7 +206,7 @@ describe('Ideas', () => {
   const press = (field: Element, key: string, metaKey = false) => act(() => {
     field.dispatchEvent(new KeyboardEvent('keydown', { key, metaKey, bubbles: true, cancelable: true }))
   })
-  const draft = () => host.querySelector<HTMLElement>('.ideas-list > .idea-draft-card')
+  const draft = () => host.querySelector<HTMLElement>('.ideas-list > .grouped-list > .idea-draft-card')
   const openDraft = () => act(async () => {
     [...host.querySelectorAll<HTMLButtonElement>('.desk-head > .page-actions > button')].at(-1)!.click()
   })
@@ -245,7 +245,7 @@ describe('Ideas', () => {
   it('新建想法的草稿卡里是对话存为想法用的同一个草稿表单，取消和保存在它的底部', async () => {
     await act(async () => { root.render(<MessagesProvider><Ideas /></MessagesProvider>) })
     await openDraft()
-    const card = host.querySelector('.ideas-list > .section-heading')!.nextElementSibling!
+    const card = host.querySelector('.ideas-list > .grouped-list > .section-heading')!.nextElementSibling!
     expect([card.classList.contains('item--card'), card.firstElementChild?.className])
       .toEqual([true, 'draft-form idea-draft'])
     expect([...card.querySelectorAll('.draft-form-foot button')].map((button) => button.textContent)).toEqual(['取消', '保存'])
@@ -265,7 +265,7 @@ describe('Ideas', () => {
       expect(api.update).not.toHaveBeenCalled()
       expect(draft()).toBeNull()
       expect(document.querySelector('[role="dialog"], .idea-dialog')).toBeNull()
-      const first = () => host.querySelector('.ideas-list > .section-heading')!.nextElementSibling
+      const first = () => host.querySelector('.ideas-list > .grouped-list > .section-heading')!.nextElementSibling
       expect(first()?.getAttribute('data-idea')).toBe('idea-own')
       expect(first()?.classList.contains('item--selected')).toBe(true)
       expect(host.querySelector('.idea-detail-slot .node-document-title')?.textContent).toBe('按 batch 校准阈值')
@@ -292,7 +292,7 @@ describe('Ideas', () => {
       await act(async () => { save.click() })
       expect(api.create).toHaveBeenCalledWith(undefined, '按 batch 校准阈值', '先在两个 batch 上试。')
       expect(draft()).toBeNull()
-      expect(host.querySelector('.ideas-list > .section-heading')!.nextElementSibling?.getAttribute('data-idea')).toBe('idea-own')
+      expect(host.querySelector('.ideas-list > .grouped-list > .section-heading')!.nextElementSibling?.getAttribute('data-idea')).toBe('idea-own')
     } finally {
       api.ideas = api.ideas.filter((idea) => idea.id !== OWN.id)
     }
@@ -462,7 +462,7 @@ describe('Ideas', () => {
     const detail = host.querySelector('.idea-detail-panel')!
     expect(detail.querySelector('.idea-panel-head .node-document-title')!.textContent)
       .toBe('用可学习性信号动态分配 draft model 的蒸馏预算')
-    expect([...detail.querySelectorAll('.section-heading--rail')].map((heading) => heading.textContent))
+    expect([...detail.querySelectorAll('.section-heading--group')].map((heading) => heading.textContent))
       .toEqual(['用可学习性信号动态分配 draft model 的蒸馏预算编辑', '内容', '关联关联', '所在项目打开项目', '来源打开来源对话'])
     expect(detail.textContent).toContain('只对 disagreement 高且可学习的 token 加大蒸馏权重。')
     const edit = [...detail.querySelectorAll<HTMLButtonElement>('button')]
@@ -529,11 +529,11 @@ describe('Ideas', () => {
 
   it('已归档的想法收进一个带条数的折叠分组,和项目计划里的已归档一样默认收起', async () => {
     await act(async () => { root.render(<MessagesProvider><Ideas /></MessagesProvider>) })
-    const group = host.querySelector<HTMLElement>('.collapsible-group.collapsible-group--quiet')!
-    expect(group.querySelector('.collapsible-group-title')!.textContent).toBe('已归档')
+    const group = host.querySelector<HTMLElement>('.ideas-list .collapsible-group')!
+    expect(group.querySelector('.collapsible-group-head.section-heading--group .fold-toggle')!.textContent).toBe('已归档 · 1')
     expect(group.querySelector('.heading-count')!.textContent).toBe(' · 1')
     expect(host.querySelector('[data-idea="idea-aside"]')).toBeNull()
-    await act(async () => { group.querySelector<HTMLButtonElement>('.collapsible-group-toggle')!.click() })
+    await act(async () => { group.querySelector<HTMLButtonElement>('.collapsible-group-head .fold-toggle')!.click() })
     expect(group.querySelector('[data-idea="idea-aside"]')!.classList.contains('item--card')).toBe(true)
   })
 

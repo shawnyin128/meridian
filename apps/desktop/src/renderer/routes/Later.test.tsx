@@ -100,7 +100,7 @@ describe('Later', () => {
     await act(async () => {
       [...host.querySelectorAll<HTMLButtonElement>('.segmented-control button')].find((button) => button.textContent === '按来源')!.click()
     })
-    expect([...host.querySelectorAll('.day-heading')].map((heading) => heading.textContent)).toEqual(['关键词 · MoE serving · 2'])
+    expect([...host.querySelectorAll('.section-heading--group')].map((heading) => heading.textContent)).toEqual(['关键词 · MoE serving · 2'])
     expect(api.entries.map((entry) => entry.source)).toEqual(['主题 · MoE serving', '关键词 · MoE serving'])
     await act(async () => { root.unmount() })
   })

@@ -47,14 +47,14 @@ describe('feed rows', () => {
     feedList.setupShown = true
   })
 
-  it('aligns the day heading with the card column and shows the time as the date and time pair', () => {
+  it('heads each day in the card column with the group heading over its own stream of entries, and shows the time as the date and time pair', () => {
     const html = renderToStaticMarkup(
       <MessagesProvider>
           <FeedRows rows={[{ ...ENTRY, createdAt: new Date(2026, 8, 20, 14, 5).toISOString() }]} onOpenConflict={() => {}} />
       </MessagesProvider>,
     )
 
-    expect(html).toContain('<div class="mwrap feed-day"><div class="day-heading">今天</div></div>')
+    expect(html).toContain('<div class="feed-days"><div class="grouped-list"><div class="section-heading section-heading--group">今天</div><div class="msgs"><div class="mwrap">')
     expect(html).toMatch(/<span class="ftime"><span class="date-time-display">.*>9月20日<.*>14:05<.*<\/span><\/span>/)
   })
 
@@ -144,8 +144,8 @@ describe('feed rows', () => {
       </MessagesProvider>,
     )
 
-    expect(html).toContain('<div class="day-heading">Today</div>')
-    expect(html).toContain('<div class="day-heading">Earlier</div>')
+    expect(html).toContain('<div class="section-heading section-heading--group">Today</div>')
+    expect(html).toContain('<div class="section-heading section-heading--group">Earlier</div>')
     expect(html).toMatch(/>Sep 12<.*>09:28 AM</)
   })
 
@@ -182,7 +182,7 @@ describe('feed rows', () => {
     const lab = [...host.querySelectorAll<HTMLButtonElement>('.page-toolbar button')].find((b) => b.textContent === '实验')!
     await act(async () => { lab.click() })
     expect(host.querySelectorAll('.fitem')).toHaveLength(2)
-    expect([...host.querySelectorAll('.feed-day .day-heading')].map((h) => h.textContent)).toEqual(['今天', '昨天'])
+    expect([...host.querySelectorAll('.feed-days .section-heading')].map((h) => h.textContent)).toEqual(['今天', '昨天'])
     await act(async () => { root.unmount() })
     host.remove()
     vi.unstubAllGlobals()

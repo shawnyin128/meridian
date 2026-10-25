@@ -14,6 +14,7 @@ import { EntityLink } from './EntityLink.js'
 import { MarkdownEditor } from './MarkdownEditor.js'
 import { remarkPaperText } from './paper/paper-text.js'
 import { SourceAnchor } from './SourceAnchor.js'
+import './Markdown.css'
 
 /** Two kinds of marks: `[[id|Text]]` / `[[id]]` are in-page links, and `(p.N)` is a source anchor. */
 const WIKI_LINK = /\[\[([^\]|\n]+)(?:\|([^\]\n]+))?\]\]/g

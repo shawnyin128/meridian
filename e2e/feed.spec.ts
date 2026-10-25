@@ -100,7 +100,7 @@ test('五个筛选档各自的条数与按来源分档的计数一致,筛过的�
     expect(kept(source).length).toBeGreaterThan(0)
     await shown(win, '.page-toolbar .segmented-control>button').filter({ hasText: label }).first().click()
     await expect(shown(win, '.fitem')).toHaveCount(kept(source).length)
-    await expect(shown(win, '.day-heading')).toHaveCount(new Set(kept(source).map((e) => e.day)).size)
+    await expect(shown(win, '.section-heading--group')).toHaveCount(new Set(kept(source).map((e) => e.day)).size)
   }
 })
 

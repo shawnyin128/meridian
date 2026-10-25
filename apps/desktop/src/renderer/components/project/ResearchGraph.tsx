@@ -483,13 +483,13 @@ export function ResearchNodePanel({
   return (
     <>
       <SectionHeading
-        variant="rail" className="node-document-head" data-stuck-fade="top"
+        level="group" className="node-document-head" data-stuck-fade="top"
         actions={<PanelClose onClose={onClose} />}
       ><FadeText className="node-document-title" label={node.label}>{node.label}</FadeText>
       </SectionHeading>
       {children.length === 0 ? null : (
         <>
-          <SectionHeading variant="rail" count={children.length}>{m.project.graph.branchSummary}</SectionHeading>
+          <SectionHeading level="group" count={children.length}>{m.project.graph.branchSummary}</SectionHeading>
           <div className="node-branch-groups">
             {branches.map((group) => (
               <div className={`node-branch-group ${group.key}`} key={group.key}>
@@ -507,7 +507,7 @@ export function ResearchNodePanel({
         </>
       )}
 
-      <SectionHeading variant="rail" count={tasks.length}>{m.project.graph.tasks}</SectionHeading>
+      <SectionHeading level="group" count={tasks.length}>{m.project.graph.tasks}</SectionHeading>
       {tasks.length === 0
         ? <EmptyState variant="section">{m.project.graph.noTasks}</EmptyState>
         : (
@@ -521,7 +521,7 @@ export function ResearchNodePanel({
           </List>
         )}
 
-      <SectionHeading variant="rail" count={ideas.length}>{m.project.linkedIdeas}</SectionHeading>
+      <SectionHeading level="group" count={ideas.length}>{m.project.linkedIdeas}</SectionHeading>
       {ideas.length === 0
         ? <EmptyState variant="section">{m.project.noLinkedIdeas}</EmptyState>
         : (
@@ -551,7 +551,7 @@ export function ResearchNodePanel({
 
       {nodeEvents.length === 0 ? null : (
         <>
-          <SectionHeading variant="rail" count={nodeEvents.length}>{m.project.graph.records}</SectionHeading>
+          <SectionHeading level="group" count={nodeEvents.length}>{m.project.graph.records}</SectionHeading>
           <ProjectEventList className="node-event-list">
             {nodeEvents.map((event, index) => (
               <ProjectEventRow

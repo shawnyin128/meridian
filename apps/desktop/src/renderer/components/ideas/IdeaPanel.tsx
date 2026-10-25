@@ -97,7 +97,7 @@ export function IdeaPanel({
   return (
     <>
       <SectionHeading
-        variant="rail" className="idea-panel-head node-document-head" data-stuck-fade="top"
+        level="group" className="idea-panel-head node-document-head" data-stuck-fade="top"
         actions={<>{actions}<PanelClose onClose={onClose} /></>}
       ><FadeText className="node-document-title" label={idea.title}>{idea.title}</FadeText>
       </SectionHeading>
@@ -111,7 +111,7 @@ export function IdeaPanel({
       </div>
       {editor ?? (
         <>
-          <SectionHeading variant="rail">{m.project.sections.content}</SectionHeading>
+          <SectionHeading level="group">{m.project.sections.content}</SectionHeading>
           <p className="idea-panel-body">{idea.body}</p>
         </>
       )}
@@ -119,7 +119,7 @@ export function IdeaPanel({
       {ownIdea(idea) && sourceProject === undefined ? null : (
         <>
           <SectionHeading
-            variant="rail"
+            level="group"
             actions={onOpenSourceChat === undefined || chatId === undefined || sourceChatDeleted
               ? undefined
               : <Button size="compact" className="idea-panel-open-chat" onClick={() => onOpenSourceChat(chatId)}>{m.ideas.openSourceChat}</Button>}
