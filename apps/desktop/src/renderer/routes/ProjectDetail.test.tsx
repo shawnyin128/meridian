@@ -482,7 +482,7 @@ describe('project idea panel', () => {
     expect([add.getAttribute('aria-label'), add.className.split(' ').slice(0, 2).join(' ')]).toEqual(['新建想法', 'btn sm'])
     act(() => add.click())
     expect(document.querySelector('.modal-body')).toBeNull()
-    const slots = () => [...list.host.querySelectorAll<HTMLElement>('.project-ideas > .structured-row')]
+    const slots = () => [...list.host.querySelectorAll<HTMLElement>('.project-ideas > .item')]
       .map((row) => row.dataset['idea'] ?? (row.querySelector('.idea-draft') === null ? '?' : 'draft'))
     expect(slots()).toEqual(['idea-here', 'draft', 'idea-old'])
     const draft = list.host.querySelector<HTMLElement>('.draft-form.idea-draft')!

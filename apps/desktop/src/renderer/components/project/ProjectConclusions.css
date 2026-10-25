@@ -3,8 +3,5 @@
 .conclusion-detail-date{color:var(--ter);font-size:var(--fs-cap)}
 .conclusion-detail-source{margin:0;color:var(--sec);font-size:var(--fs-sm)}
 .conclusion-detail-node{display:flex;min-width:0}
-.conclusion-chain-row{display:flex;align-items:center;gap:var(--sp-8);min-height:34px;padding:var(--sp-6) var(--sp-2);font-size:var(--fs-sm)}
-.conclusion-chain-row>.fade-text{flex:1;min-width:0}
-.conclusion-chain-id{color:var(--ter);font-size:var(--fs-cap);white-space:nowrap}
 .conclusion-draft{margin-top:var(--sp-16)}
 .conclusion-draft-evidence{display:flex;flex-wrap:wrap;align-items:baseline;gap:var(--sp-6);min-width:0;color:var(--sec);font-size:var(--fs-sm)}

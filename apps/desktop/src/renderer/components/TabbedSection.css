@@ -1,7 +1,0 @@
-/*
- * Every row of the list a tab shows stands one list row high, as a tab's empty state does, so switching
- * between a tab with one row and an empty tab moves nothing below. A row keeps its own space above its
- * cells and at most --sp-6 below, which leaves one line of cells inside that height; a row whose text
- * opens to more lines grows downward.
- */
-.tabbed-section-panel>.structured-list .structured-row{min-height:var(--row-list-h);padding-bottom:var(--sp-6)}

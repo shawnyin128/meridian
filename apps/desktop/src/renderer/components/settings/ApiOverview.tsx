@@ -4,10 +4,10 @@ import { delivery, harness } from '../../ipc.js'
 import { useScreenLoad } from '../../hooks/useScreenLoad.js'
 import { useMessages } from '../../messages/useMessages.js'
 import { PageError } from '../PageShell.js'
-import { StructuredList, StructuredRow } from '../StructuredList.js'
+import { Item } from '../Item.js'
+import { List } from '../List.js'
 import { FadeText } from '../FadeText.js'
 import { Button } from '../Button.js'
-import './ApiOverview.css'
 
 /** The API category's summary: which model and which scholarly source Meridian uses now, each opening its own page. */
 export function ApiOverview({ onOpen }: { onOpen: (category: 'model' | 'research') => void }) {
@@ -36,15 +36,15 @@ export function ApiOverview({ onOpen }: { onOpen: (category: 'model' | 'research
   return (
     <>
       <PageError error={error} variant="section" />
-      <StructuredList className="wlist">
+      <List className="wlist">
         {rows.map((row) => (
-          <StructuredRow composite className="wrow" data-api={row.key} key={row.key} onActivate={() => onOpen(row.key)}>
-            <span className="nm">{row.name}</span>
-            <FadeText className="api-state">{row.state}</FadeText>
-            <Button size="compact" variant="ghost" onClick={(event) => { event.stopPropagation(); onOpen(row.key) }}>{copy.open}</Button>
-          </StructuredRow>
+          <Item
+            composite className="wrow" data-api={row.key} key={row.key} onActivate={() => onOpen(row.key)}
+            title={<span className="nm">{row.name}</span>} meta={<FadeText className="api-state">{row.state}</FadeText>}
+            trailing={<Button size="compact" variant="ghost" onClick={(event) => { event.stopPropagation(); onOpen(row.key) }}>{copy.open}</Button>}
+          />
         ))}
-      </StructuredList>
+      </List>
     </>
   )
 }

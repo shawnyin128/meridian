@@ -27,9 +27,7 @@
 .paper-search>.form-input{width:100%;font-size:var(--fs-sm)}
 
 /* Group index level: pick a value first, then see the papers under it */
-.gxrow{display:flex;align-items:center;gap:var(--sp-12);padding:var(--sp-12) var(--sp-10)}
-.gxrow .gx-t{font-size:var(--fs-base);font-weight:var(--fw-semibold);min-width:150px}
-.gxrow .gx-m{flex:1;font-size:var(--fs-sm);color:var(--ter)}
+.gxrow .gx-t{min-width:150px}
 .gnav{display:flex;align-items:center;gap:var(--sp-6);flex-wrap:wrap;margin-bottom:var(--sp-12)}
 
 /*
@@ -82,7 +80,7 @@
 .ptable tbody tr:last-child td{border-bottom:0}
 .ptable td:last-child{padding-top:0;padding-bottom:0;text-align:center}
 /*
- * One row colour (--row-bg, the selected look of StructuredList.css) and the hover over it
+ * One row colour (--row-bg, the selected look of Item.css) and the hover over it
  * (--row-over), painted by every cell and by a truncated cell's hover box. The sticky title cell and
  * the hover box lay both over --content, so cells scrolling under them never show through. A row
  * keeps the hover while its reading status menu is open and the pointer is on a menu item.
@@ -184,27 +182,19 @@
 /* The groups, then the cross-group and ungrouped rows in a list of their own below them. */
 .research-map-index{min-width:0;gap:var(--sp-12)}
 .research-map-groups{min-width:0}
-.research-map-group{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:var(--sp-12);min-height:54px;padding:var(--sp-8) var(--sp-12)}
-.research-map-group-copy{display:flex;min-width:0;flex-direction:column;gap:var(--sp-4)}
-/* A name is a span beside the span of its kind or count line, and keeps its own type and colour. */
-.research-map-group-copy .research-map-group-name{color:inherit;font-size:var(--fs-base);font-weight:var(--fw-title)}
-.research-map-group-copy>span{color:var(--ter);font-size:var(--fs-cap)}
-/* The detail card is as tall as its papers up to the column's height, then its paper list scrolls under its head. */
+/*
+ * The detail card is as tall as its papers up to the column's height, then its paper list scrolls under
+ * its head, whose content starts where its rows' does.
+ */
 .research-map-detail{display:flex;min-width:0;max-height:100%;align-self:start;flex-direction:column;border:1px solid var(--sep);border-radius:var(--r-card);background:var(--card);overflow:hidden}
-.research-map-detail-head{display:flex;flex:none;align-items:flex-start;gap:var(--sp-12);padding:var(--sp-14) var(--sp-16);border-bottom:1px solid var(--sep2)}
+.research-map-detail-head{display:flex;flex:none;align-items:flex-start;gap:var(--sp-12);padding:var(--sp-14) calc(var(--item-inset) + 1px);border-bottom:1px solid var(--sep2)}
 .research-map-detail-head>div{display:flex;min-width:0;flex:1;flex-direction:column;gap:var(--sp-4)}
 .research-map-detail-head .research-map-detail-name{color:inherit;font-size:var(--fs-group);font-weight:var(--fw-title)}
 .research-map-detail-head>div>span{color:var(--ter);font-size:var(--fs-cap)}
-/* The card clips at its edges, so its paper list keeps no ring room there; its controls sit inside the rows' inset. */
-.research-map-detail>.research-map-papers.structured-list--fill{padding:0;margin-inline:0}
-.research-map-paper{display:grid;grid-template-columns:auto minmax(0,1fr) auto;grid-template-areas:"open open marks" "meta why why";align-items:center;gap:var(--sp-4) var(--sp-16);min-height:78px;padding:var(--sp-10) var(--sp-16)}
-.research-map-paper-open{grid-area:open;display:flex;min-width:0;padding:0;border:0;background:none;color:inherit;font:inherit;text-align:left;cursor:inherit}
-.research-map-paper-title{font-weight:var(--fw-title)}
-.research-map-paper-marks{grid-area:marks;display:flex;align-items:center;gap:var(--sp-8)}
-.research-map-paper-meta{grid-area:meta;color:var(--ter);font-size:var(--fs-sm);white-space:nowrap}
-.research-map-why{display:flex;grid-area:why;align-items:center;gap:var(--sp-4);color:var(--ter);font-size:var(--fs-cap)}
+.research-map-paper-marks{display:flex;align-items:center;gap:var(--sp-8)}
+.research-map-paper-meta{white-space:nowrap}
+.research-map-why{display:flex;align-items:center;gap:var(--sp-4)}
 
 @media (max-width:900px){
-  .research-map-layout{grid-template-columns:1fr;grid-template-rows:fit-content(50%) minmax(0,1fr)}.research-map-groups{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
-  .research-map-groups>.structured-row:nth-child(2){border-top:0}
+  .research-map-layout{grid-template-columns:1fr;grid-template-rows:fit-content(50%) minmax(0,1fr)}
 }

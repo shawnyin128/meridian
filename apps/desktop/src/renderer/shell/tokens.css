@@ -201,7 +201,7 @@
   :root{--t-fast:1ms;--t:1ms;--t-slow:1ms;--t-delay:0ms}
   :not(.ring.spin),::before,::after{animation:none!important}
   .ddlrow.flash{background:var(--tint-warn)}
-  .paper-card.is-leaving{transform:none}
+  .item--leaving{transform:none}
 }
 
 *{box-sizing:border-box}

@@ -67,10 +67,10 @@ describe('ReadingNotes', () => {
     )
     act(() => root.render(panel(null)))
     const card = () => host.querySelector('.highlight-card')!
-    expect([card().classList.contains('selected'), card().getAttribute('aria-current'), scrolled]).toEqual([false, null, []])
+    expect([card().classList.contains('item--selected'), card().getAttribute('aria-current'), scrolled]).toEqual([false, null, []])
     act(() => root.render(panel('highlight-1')))
-    expect([card().classList.contains('selected'), card().getAttribute('aria-current')]).toEqual([true, 'true'])
-    expect(scrolled).toEqual([['reading-card highlight-card yellow selected', { block: 'nearest' }]])
+    expect([card().classList.contains('item--selected'), card().getAttribute('aria-current')]).toEqual([true, 'true'])
+    expect(scrolled).toEqual([['item item--card item--slotted item--selected item--marked reading-card highlight-card yellow', { block: 'nearest' }]])
     expect(document.activeElement).toBe(document.body)
     delete (Element.prototype as Partial<Element>).scrollIntoView
   })
@@ -154,7 +154,7 @@ describe('ReadingNotes', () => {
     act(() => setValue(note, '修订笔记'))
     await act(async () => { note.closest('article')!.querySelector<HTMLButtonElement>('.reading-actions .btn')!.click() })
     await act(async () => { note.closest('article')!.querySelector<HTMLButtonElement>('.reading-delete')!.click() })
-    act(() => { host.querySelector<HTMLButtonElement>('.highlight-card .reading-page .source-anchor')!.click() })
+    act(() => { host.querySelector<HTMLButtonElement>('.highlight-card .item-meta .source-anchor')!.click() })
 
     expect(mutations).toEqual([
       { kind: 'highlight.update', id: 'highlight-1', note: '高亮判断' },

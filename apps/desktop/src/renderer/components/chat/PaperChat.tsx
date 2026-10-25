@@ -15,6 +15,7 @@ import { LoadingPlaceholder } from '../LoadingPlaceholder.js'
 import { PageError, PageHeader, PageTitle } from '../PageShell.js'
 import { ScrollArea } from '../ScrollArea.js'
 import { useDrafts } from '../../hooks/useDrafts.js'
+import { useDraftSlot } from '../DraftSlot.js'
 import { useGenerations } from '../../hooks/useGenerations.js'
 import { useFollowEnd } from '../../hooks/useFollowEnd.js'
 import { useNoModelChats } from '../../hooks/useNoModelChats.js'
@@ -53,7 +54,6 @@ export function PaperChat({ paper, onBack = () => {}, prompt = null }: {
   // The question being typed and an idea being drafted belong to their paper.
   const drafts = useDrafts<ChatRun[]>(['paper', paper?.id ?? ''])
   const ideaDrafts = useDrafts<IdeaDraftText>(['paper', paper?.id ?? ''])
-  const ideaAt = useRef<HTMLDivElement>(null)
   const { running, run, stop } = useGenerations()
   const { noModel, track } = useNoModelChats()
   const { error, load } = useScreenLoad()
@@ -63,6 +63,9 @@ export function PaperChat({ paper, onBack = () => {}, prompt = null }: {
   const sessionId = session?.id ?? null
   const draft = paperId === null ? [] : drafts.get('chat-message') ?? []
   const ideaDraft = paperId === null ? undefined : ideaDrafts.get('chat-idea')
+  const ideaSlot = useDraftSlot<HTMLDivElement>(
+    ideaDraft !== undefined, () => { if (paperId !== null) ideaDrafts.set('chat-idea', { title: '', body: '' }) },
+  )
   const sending = sessionId !== null && running(sessionId)
 
   useEffect(() => {
@@ -118,12 +121,6 @@ export function PaperChat({ paper, onBack = () => {}, prompt = null }: {
 
   const hasDiscussion = (messages ?? []).some((message) => message.role === 'you')
 
-  const startIdea = () => {
-    if (paperId === null) return
-    if (ideaDraft === undefined) ideaDrafts.set('chat-idea', { title: '', body: '' })
-    else ideaAt.current?.querySelector<HTMLElement>('.form-control')?.focus()
-  }
-
   return (
     <aside className="paper-chat stream" aria-label={m.chat.paperChatLabel} inert={collapsed}>
       <PageHeader size="pane">
@@ -145,7 +142,7 @@ export function PaperChat({ paper, onBack = () => {}, prompt = null }: {
           {session === null || paper === null || ideaDraft === undefined
             ? null
             : (
-              <div className="mwrap" ref={ideaAt}>
+              <div className="mwrap" ref={ideaSlot.slot}>
                 <IdeaDraft
                   source={`${plainTitle(paper.title)} · ${plainTitle(session.title)}`} draft={ideaDraft}
                   onChange={(next) => ideaDrafts.set('chat-idea', next)} onCancel={() => ideaDrafts.drop('chat-idea')}
@@ -164,7 +161,7 @@ export function PaperChat({ paper, onBack = () => {}, prompt = null }: {
             {hasDiscussion ? null : <Tag>{m.chat.noDiscussion}</Tag>}
             <Button
               size="compact" variant="ghost" className="save-idea" disabled={session === null || !hasDiscussion}
-              onClick={startIdea}
+              onClick={ideaSlot.start}
             >{m.chat.saveIdeaLabel}</Button>
           </div>
           <ChatComposer

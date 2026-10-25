@@ -72,9 +72,9 @@ describe('空态', () => {
     expect(declared(emptyCss, '.empty-state--option')).toContain('min-height:var(--row-list-h)')
   })
 
-  it('标签页里列表的每一行和空着的标签页一样，都是一行列表行高', () => {
-    const tabbed = FILES.find((file) => file.path.endsWith('TabbedSection.css'))?.text ?? ''
-    const rowRule = tabbed.match(/\.tabbed-section-panel>\.structured-list \.structured-row\{([^}]*)\}/)?.[1] ?? ''
+  it('列表的每一行和空着的分节一样，都是一行列表行高，标签页里也是', () => {
+    const item = FILES.find((file) => file.path.endsWith(join('components', 'Item.css')))!.text
+    const rowRule = item.match(/(?:^|\})\s*\.item--row\{([^}]*)\}/)?.[1] ?? ''
     expect(rowRule).toContain('min-height:var(--row-list-h)')
   })
 
