@@ -3,7 +3,8 @@ import type { EventKind, GraphNode } from '../../../shared/contract.js'
 import type { ProjectDecisionItem } from '../../../shared/project-signals.js'
 import { useMessages } from '../../messages/useMessages.js'
 import { DateChip } from '../DateTimeDisplay.js'
-import { StructuredList, StructuredRow } from '../StructuredList.js'
+import { Item } from '../Item.js'
+import { List } from '../List.js'
 import { FadeText } from '../FadeText.js'
 import { AgentLabel } from '../SourceLabel.js'
 import { Tag, type TagTone } from '../Tag.js'
@@ -39,21 +40,21 @@ export function ProjectAttention({ items, onOpenPage, onLocateTask, onLocateMile
     return item.page === undefined ? undefined : () => onOpenPage(item.page!)
   }
   return (
-    <StructuredList className="attn" variant="embedded">
+    <List className="attn" variant="embedded">
       {items.map((item) => {
         const open = target(item)
         return (
-          <StructuredRow
+          <Item
             className="attnrow project-signal-columns" key={item.id} data-wk={item.page}
             {...(open === undefined ? {} : { onActivate: open })}
           >
             <ProjectSignalKind tone={item.tone}>{item.kind}</ProjectSignalKind>
             <ProjectSignalDate date={item.date} />
             <FadeText className="attn-text">{item.reason}</FadeText>
-          </StructuredRow>
+          </Item>
         )
       })}
-    </StructuredList>
+    </List>
   )
 }
 
@@ -98,10 +99,10 @@ export function ProjectEventList({ withNode = false, className, children }: {
   children: ReactNode
 }) {
   return (
-    <StructuredList
+    <List
       className={`project-signal-columns record-list${withNode ? ' with-node' : ''} ${className}`} variant="embedded"
     >{children}
-    </StructuredList>
+    </List>
   )
 }
 
@@ -124,7 +125,7 @@ export function ProjectEventRow({
 }) {
   const m = useMessages()
   return (
-    <StructuredRow className="attnrow record-row">
+    <Item className="attnrow record-row">
       <ProjectSignalKind tone={RECORD_TONE[kind]}>{m.project.records.kind[kind]}</ProjectSignalKind>
       <ProjectSignalDate date={date} />
       <span className="attn-text record-text">
@@ -141,6 +142,6 @@ export function ProjectEventRow({
         </span>
       )}
       <span className="record-who">{origin === 'agent' ? <AgentLabel /> : null}</span>
-    </StructuredRow>
+    </Item>
   )
 }

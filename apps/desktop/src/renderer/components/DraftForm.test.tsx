@@ -175,8 +175,8 @@ describe('DraftForm', () => {
   it('names where the item lands after an arrow, on a card of its own, only when that is elsewhere', () => {
     show()
     expect(host.querySelector('.draft-form-destination')).toBeNull()
-    expect(host.querySelector('.card-surface')).toBeNull()
+    expect(host.querySelector('.item--card')).toBeNull()
     show({ destination: '想法' })
-    expect(host.querySelector('.card-surface > .draft-form > .draft-form-destination')!.textContent).toBe('→想法')
+    expect(host.querySelector('.item--card > .draft-form > .draft-form-destination')!.textContent).toBe('→想法')
   })
 })

@@ -23,8 +23,9 @@ import { nodeMode } from '../components/project/ResearchGraph.js'
 import { LoadingPlaceholder } from '../components/LoadingPlaceholder.js'
 import { DetailPanel } from '../components/DetailPanel.js'
 import { TrailingDate } from '../components/DateTimeDisplay.js'
-import { CardOpen, ResearchObjectCard } from '../components/ResearchObjectCard.js'
-import { RowActions, StructuredList, StructuredRow } from '../components/StructuredList.js'
+import { DraftSlot, useDraftSlot } from '../components/DraftSlot.js'
+import { Item, ItemMeta, ItemOpen } from '../components/Item.js'
+import { List } from '../components/List.js'
 import { ProjectLabel, ProjectStatusTag } from '../components/project/ProjectIdentity.js'
 import {
   PageBody, PageError, PageHeader, PageShell, PageTitle, SectionHeading,
@@ -168,25 +169,26 @@ function IdeaCard({ idea, chatDeleted, projectsById, pageTitles, selected, menu,
 }) {
   const m = useMessages()
   return (
-    <ResearchObjectCard
-      className="idea-card" selected={selected} muted={idea.archived}
+    <Item
+      density="card" className="idea-card" selected={selected} muted={idea.archived}
       data-idea={idea.id} onActivate={onOpen} {...reorder.item}
-    >
-      <div className="idea-card-content">
-        <div className="idea-card-title-row">
-          <CardOpen><FadeText className="idea-card-title" label={idea.title}>{idea.title}</FadeText></CardOpen>
+      title={(
+        <>
+          <ItemOpen><FadeText className="idea-card-title" label={idea.title}>{idea.title}</FadeText></ItemOpen>
           <IdeaRelationTags idea={idea} projectsById={projectsById} pageTitles={pageTitles} />
-        </div>
-        <div className="idea-card-meta">
+        </>
+      )}
+      meta={(
+        <>
           <IdeaOrigin
             idea={idea} chatDeleted={chatDeleted}
             sourceProject={idea.sourceProject === undefined ? undefined : projectsById.get(idea.sourceProject)?.name}
           />
           <TrailingDate date={idea.updated} label={m.ideas.updated} />
-        </div>
-      </div>
-      <RowActions><DragHandle {...reorder.handle} />{menu}</RowActions>
-    </ResearchObjectCard>
+        </>
+      )}
+      actions={<DragHandle {...reorder.handle} />} menu={menu}
+    />
   )
 }
 
@@ -206,24 +208,23 @@ function IdeaRow({ idea, chatDeleted, projectsById, selected, menu, onOpen, reor
   const m = useMessages()
   const work = idea.project === undefined ? undefined : projectsById.get(idea.project)
   return (
-    <StructuredRow
-      composite className="idea-row" selected={selected}
-      data-idea={idea.id} onActivate={onOpen} {...reorder.item}
+    <Item
+      composite className="idea-row" selected={selected} data-idea={idea.id} onActivate={onOpen} {...reorder.item}
+      title={<ItemOpen className="idea-row-open"><FadeText className="idea-row-title" label={idea.title}>{idea.title}</FadeText></ItemOpen>}
+      trailing={<TrailingDate date={idea.updated} label={m.ideas.updated} />}
+      actions={<DragHandle {...reorder.handle} />} menu={menu}
     >
-      <button type="button" className="idea-row-open"><FadeText className="idea-row-title" label={idea.title}>{idea.title}</FadeText></button>
       <span className="idea-row-work">
         {work === undefined ? null : <ProjectLabel name={work.name} />}
         {work?.status === SHELVED_PROJECT ? <ProjectStatusTag status={work.status} /> : null}
       </span>
-      <span className="idea-row-meta">
+      <ItemMeta className="idea-row-meta">
         <IdeaOrigin
           idea={idea} chatDeleted={chatDeleted}
           sourceProject={idea.sourceProject === undefined ? undefined : projectsById.get(idea.sourceProject)?.name}
         />
-      </span>
-      <TrailingDate date={idea.updated} label={m.ideas.updated} />
-      <RowActions><DragHandle {...reorder.handle} />{menu}</RowActions>
-    </StructuredRow>
+      </ItemMeta>
+    </Item>
   )
 }
 
@@ -359,7 +360,6 @@ export function Ideas() {
   const write = useVaultWrite()
   const undo = useUndo()
   const consumedJump = useRef(0)
-  const draftCard = useRef<HTMLElement>(null)
   const newIdea = useRef<HTMLButtonElement>(null)
   const draftTriggers = useMemo(() => [newIdea], [])
   const [rows, setRows] = useState<ResearchIdea[] | null>(null)
@@ -370,7 +370,9 @@ export function Ideas() {
   const [details, setDetails] = useState<ReadonlyMap<string, ProjectDetail>>(new Map())
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [archiveOpen, setArchiveOpen] = useState(false)
-  const [draft, setDraft] = useState<IdeaDraftText | null>(null)
+  // The new idea's draft is kept as it is typed and opens again after a restart.
+  const [draft, setDraft] = useDraft<IdeaDraftText>(['ideas'], 'new')
+  const draftSlot = useDraftSlot(draft !== null, () => setDraft({ title: '', body: '' }))
   const { error, load, report } = useScreenLoad()
   const closeDetail = useCallback(() => setSelectedId(null), [])
 
@@ -394,9 +396,10 @@ export function Ideas() {
   useEffect(() => {
     if (jump === null || jump.seq === consumedJump.current) return
     consumedJump.current = jump.seq
-    if (jump.anchor?.newIdea === true) setDraft((held) => held ?? { title: '', body: '' })
-    else setSelectedId(jump.target)
-  }, [jump])
+    if (jump.anchor?.newIdea === true) {
+      if (draft === null) setDraft({ title: '', body: '' })
+    } else setSelectedId(jump.target)
+  }, [jump, draft, setDraft])
   useEscapeLayer(selectedId !== null, closeDetail)
 
   const projectsById = useMemo(
@@ -474,7 +477,7 @@ export function Ideas() {
     ? (error === null ? <LoadingPlaceholder shape="rows" count={2} /> : null)
     : ideas.length === 0
       ? <EmptyState variant="section">{empty}</EmptyState>
-      : <StructuredList variant="embedded" maxVisibleRows="all" className="idea-rows">{ideas.map(row)}</StructuredList>)
+      : <List variant="embedded" rows="all" className="idea-rows">{ideas.map(row)}</List>)
   const rowGroups = (
     <>
       {groupRows(started, m.ideas.emptyGroup.active)}
@@ -492,12 +495,7 @@ export function Ideas() {
             ? null
             : <SortMenu label={m.ideas.sort} options={[{ label: m.ideas.sortUpdated, onSelect: sortByUpdated }]} />}
           <AddAction
-            size="regular" ref={newIdea}
-            onClick={() => {
-              // An open draft is only refocused, keeping what is typed.
-              if (draft !== null) draftCard.current?.querySelector<HTMLElement>('.form-control')?.focus()
-              else setDraft({ title: '', body: '' })
-            }}
+            size="regular" ref={newIdea} onClick={draftSlot.start}
           >{m.ideas.create}</AddAction>
         </>
       )}
@@ -513,11 +511,11 @@ export function Ideas() {
             {draft === null
               ? null
               : (
-                <ResearchObjectCard className="idea-draft-card" cardRef={draftCard}>
+                <DraftSlot as="card" className="idea-draft-card" slot={draftSlot.slot}>
                   <IdeaDraft
                     draft={draft} triggers={draftTriggers} onChange={setDraft} onSave={createIdea} onCancel={() => setDraft(null)}
                   />
-                </ResearchObjectCard>
+                </DraftSlot>
               )}
             {rows === null ? (
               error === null ? <LoadingPlaceholder shape="cards" /> : null
@@ -543,9 +541,9 @@ export function Ideas() {
                 <div className="idea-stats-head" aria-hidden="true">
                   <span /><span>{b.ideas}</span><span>{b.active}</span><span>{b.done}</span>
                 </div>
-                <StructuredList variant="embedded" className="idea-stats">
+                <List variant="embedded" className="idea-stats">
                   {counts.map(({ project, ideas, active, done: finished }) => (
-                    <StructuredRow
+                    <Item
                       className="idea-stats-row" key={project.id}
                       onActivate={() => jumpTo('project', project.id)}
                     >
@@ -553,9 +551,9 @@ export function Ideas() {
                       {[[b.ideas, ideas], [b.active, active], [b.done, finished]].map(([label, count]) => (
                         <span className={`idea-stats-n${count === 0 ? ' zero' : ''}`} aria-label={`${label} ${count}`} key={label}>{count}</span>
                       ))}
-                    </StructuredRow>
+                    </Item>
                   ))}
-                </StructuredList>
+                </List>
               </>
             )}
           </main>
