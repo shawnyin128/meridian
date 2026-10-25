@@ -2,6 +2,7 @@ import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { parseArgs } from 'node:util'
 import { DESKTOP } from '../test-library/app.mjs'
+import { newInstance } from './drift.mjs'
 import { COLOUR_TOKENS, componentPatterns, probeEntries, SHADOW_TOKENS, VARIANT_CLASSES } from './patterns.mjs'
 import { measureInPage } from './probe.mjs'
 import { LIBRARY, REVIEW, setTheme, settle, SIZES, THEMES, walk } from './run.mjs'
@@ -39,8 +40,8 @@ const viewport = SIZES[0]
  * metric values, with the instances that share it and a crop of the first one in each theme.
  */
 const looks = new Map()
-/** The element ids already counted per screen, so an element shown in several states counts once. */
-const counted = new Map()
+/** The instances already counted, so an element shown in several states of a screen counts once. */
+const counted = new Set()
 
 /**
  * Scrolls element `id` into view inside its scrolling container and returns its crop box in the
@@ -50,11 +51,13 @@ async function frame(win, id) {
   const box = await win.evaluate((target) => {
     const el = document.querySelector(`[data-review-id="${target}"]`)
     if (!el) return null
-    // Only scrolling containers move, inner ones first: scrollIntoView would also scroll the App's clipped root.
+    // Only scrolling containers move, inner ones first: scrollIntoView would also scroll the App's
+    // clipped root. Centring keeps the instance clear of sticky heads that show once a page scrolls.
     let r = el.getBoundingClientRect()
     for (let scroller = el.parentElement; scroller && (r.top < 0 || r.bottom > window.innerHeight); scroller = scroller.parentElement) {
       if (!['auto', 'scroll'].includes(getComputedStyle(scroller).overflowY) || scroller.scrollHeight <= scroller.clientHeight) continue
-      scroller.scrollTop += r.top - scroller.getBoundingClientRect().top - 40
+      scroller.dataset.reviewScroll ??= String(scroller.scrollTop)
+      scroller.scrollTop += r.top - scroller.getBoundingClientRect().top - (scroller.clientHeight - r.height) / 2
       r = el.getBoundingClientRect()
     }
     return { x: r.left, y: r.top, width: r.width, height: r.height }
@@ -76,11 +79,8 @@ async function visit(state, { win }) {
   const found = await win.evaluate(measureInPage, {
     entries, scope: state.scope ?? 'screen', cap: 400, colourTokens: COLOUR_TOKENS, shadowTokens: SHADOW_TOKENS, variantClasses: VARIANT_CLASSES,
   })
-  if (!counted.has(state.screen)) counted.set(state.screen, new Set())
-  const ids = counted.get(state.screen)
   const fresh = []
-  for (const record of found.records.filter((item) => !ids.has(`${item.entry} ${item.id}`))) {
-    ids.add(`${record.entry} ${record.id}`)
+  for (const record of found.records.filter((item) => newInstance(counted, `${state.screen} ${item.entry}`, item))) {
     const key = `${state.screen}\n${record.entry}\n${JSON.stringify(record.metrics)}`
     if (looks.has(key)) {
       looks.get(key).count += 1
@@ -99,6 +99,13 @@ async function visit(state, { win }) {
       look.crops[theme] = { ...framed, png: (await win.screenshot({ clip: framed.clip })).toString('base64') }
     }
   }
+  // A screen keeps its scroll when a later state reaches it again, so every scroller goes back.
+  await win.evaluate(() => {
+    for (const scroller of document.querySelectorAll('[data-review-scroll]')) {
+      scroller.scrollTop = Number(scroller.dataset.reviewScroll)
+      delete scroller.dataset.reviewScroll
+    }
+  })
   await setTheme(win, 'light')
   return fresh.length
 }
