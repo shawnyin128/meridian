@@ -752,53 +752,6 @@ components/project/ResearchGraph.css:7: .graph-view-controls { border-radius }
 components/project/ResearchGraph.css:7: .graph-view-controls { background }
 components/project/ResearchGraph.css:7: .graph-view-controls { box-shadow }
 components/project/ResearchGraph.css:8: .graph-view-controls .graph-zoom-reset { min-width }
-components/project/ResearchGraph.css:9: .redges path { fill }
-components/project/ResearchGraph.css:9: .redges path { stroke }
-components/project/ResearchGraph.css:9: .redges path { stroke-width }
-components/project/ResearchGraph.css:10: .redges path.active { stroke }
-components/project/ResearchGraph.css:10: .redges path.active { stroke-width }
-components/project/ResearchGraph.css:10: .redges path.active { opacity }
-components/project/ResearchGraph.css:11: .active-edge-flows { pointer-events }
-components/project/ResearchGraph.css:12: .active-edge-flows path { fill }
-components/project/ResearchGraph.css:12: .active-edge-flows path { stroke }
-components/project/ResearchGraph.css:12: .active-edge-flows path { stroke-width }
-components/project/ResearchGraph.css:12: .active-edge-flows path { stroke-linecap }
-components/project/ResearchGraph.css:13: .active-edge-flows path { stroke-dasharray }
-components/project/ResearchGraph.css:13: .active-edge-flows path { filter }
-components/project/ResearchGraph.css:15: .rgn-box { rx }
-components/project/ResearchGraph.css:15: .rgn-box { fill }
-components/project/ResearchGraph.css:15: .rgn-box { stroke }
-components/project/ResearchGraph.css:15: .rgn-box { stroke-width }
-components/project/ResearchGraph.css:16: .rgn-hover { rx }
-components/project/ResearchGraph.css:16: .rgn-hover { fill }
-components/project/ResearchGraph.css:16: .rgn-hover { stroke }
-components/project/ResearchGraph.css:16: .rgn-hover { opacity }
-components/project/ResearchGraph.css:16: .rgn-hover { pointer-events }
-components/project/ResearchGraph.css:17: .rgn { cursor }
-components/project/ResearchGraph.css:18: :where(.rgn):hover .rgn-hover { opacity }
-components/project/ResearchGraph.css:19: .rgn.sel .rgn-box { fill }
-components/project/ResearchGraph.css:21: .rgn-label { font-family }
-components/project/ResearchGraph.css:21: .rgn-label { font-size }
-components/project/ResearchGraph.css:21: .rgn-label { font-weight }
-components/project/ResearchGraph.css:21: .rgn-label { color }
-components/project/ResearchGraph.css:22: .rgn.sel .rgn-label { color }
-components/project/ResearchGraph.css:23: .rgn .nd { fill }
-components/project/ResearchGraph.css:23: .rgn.unresolved .nd { fill }
-components/project/ResearchGraph.css:24: .rgn.repairable .nd { fill }
-components/project/ResearchGraph.css:25: .rgn.supported .nd { fill }
-components/project/ResearchGraph.css:26: .rgn.dead .nd { fill }
-components/project/ResearchGraph.css:27: .rgn.active-path-node-graph .rgn-box { stroke }
-components/project/ResearchGraph.css:28: .rgn.active-leaf .rgn-box { fill }
-components/project/ResearchGraph.css:28: .rgn.active-leaf .rgn-box { stroke }
-components/project/ResearchGraph.css:28: .rgn.active-leaf .rgn-box { stroke-width }
-components/project/ResearchGraph.css:29: .idea-node-pattern-base { fill }
-components/project/ResearchGraph.css:30: .idea-node-pattern-stripe { fill }
-components/project/ResearchGraph.css:30: .idea-node-pattern-stripe { stroke }
-components/project/ResearchGraph.css:30: .idea-node-pattern-stripe { stroke-width }
-components/project/ResearchGraph.css:30: .idea-node-pattern-stripe { stroke-opacity }
-components/project/ResearchGraph.css:31: .rgn.idea-related .rgn-box { stroke }
-components/project/ResearchGraph.css:31: .rgn.idea-related .rgn-box { stroke-width }
-components/project/ResearchGraph.css:32: .rgn.idea-related .rgn-label { font-weight }
 components/project/ResearchGraph.css:33: .glegend { font-size }
 components/project/ResearchGraph.css:33: .glegend { color }
 components/project/ResearchGraph.css:33: .glegend { margin-top }
@@ -877,7 +830,6 @@ components/project/ResearchGraph.css:69: .node-document-source { font-family }
 components/project/ResearchGraph.css:69: .node-document-source { font-size }
 components/project/ResearchGraph.css:71: @media (max-width:1150px) .node-document-pane .node-document-head { margin }
 components/project/ResearchGraph.css:71: @media (max-width:1150px) .node-document-pane .node-document-head { padding }
-components/project/ResearchGraph.css:74: @media (prefers-reduced-motion:reduce) .idea-node-pattern-stripe { display }
 components/reader/PaperWikiProposalReview.css:2: .paper-wiki-quality { padding }
 components/reader/PaperWikiProposalReview.css:2: .paper-wiki-quality { border-radius }
 components/reader/PaperWikiProposalReview.css:2: .paper-wiki-quality { background }
@@ -1094,7 +1046,6 @@ components/timeline/TimelineBoard.css:16: .timeline-label-open { font }
 components/timeline/TimelineBoard.css:16: .timeline-label-open { text-align }
 components/timeline/TimelineBoard.css:16: .timeline-label-open { cursor }
 components/timeline/TimelineBoard.css:17: .gwrap { overflow-x }
-components/timeline/TimelineBoard.css:18: .gcanvas { border-bottom }
 components/timeline/TimelineBoard.css:19: .glabels .glrow:last-child { border-bottom }
 components/timeline/TimelineBoard.css:20: .glrow[draggable] { cursor }
 components/timeline/TimelineBoard.css:21: .glrow[draggable]:active { cursor }
@@ -1102,140 +1053,13 @@ components/timeline/TimelineBoard.css:21: .glrow.dragging { cursor }
 components/timeline/TimelineBoard.css:22: .glrow.dragging { opacity }
 components/timeline/TimelineBoard.css:23: .glrow.drag-over-before { box-shadow }
 components/timeline/TimelineBoard.css:24: .glrow.drag-over-after { box-shadow }
-components/timeline/TimelineBoard.css:26: .gday { text-align }
-components/timeline/TimelineBoard.css:26: .gday { font-size }
-components/timeline/TimelineBoard.css:26: .gday { color }
-components/timeline/TimelineBoard.css:26: .gday { font-variant-numeric }
-components/timeline/TimelineBoard.css:26: .gday { padding }
-components/timeline/TimelineBoard.css:26: .gday { box-sizing }
-components/timeline/TimelineBoard.css:26: .gday { border-left }
-components/timeline/TimelineBoard.css:27: .gday:first-child { border-left }
-components/timeline/TimelineBoard.css:28: .gday span { width }
-components/timeline/TimelineBoard.css:28: .gday span { height }
-components/timeline/TimelineBoard.css:28: .gday span { border-radius }
-components/timeline/TimelineBoard.css:29: .gday.week span { padding }
-components/timeline/TimelineBoard.css:30: .gday.today span { background }
-components/timeline/TimelineBoard.css:30: .gday.today span { color }
-components/timeline/TimelineBoard.css:30: .gday.today span { font-weight }
-components/timeline/TimelineBoard.css:31: .gdays.times { height }
-components/timeline/TimelineBoard.css:32: .gtime { box-sizing }
-components/timeline/TimelineBoard.css:32: .gtime { padding }
-components/timeline/TimelineBoard.css:32: .gtime { border-left }
-components/timeline/TimelineBoard.css:32: .gtime { font-family }
-components/timeline/TimelineBoard.css:32: .gtime { font-size }
-components/timeline/TimelineBoard.css:32: .gtime { color }
-components/timeline/TimelineBoard.css:33: .gtime:first-child { border-left }
-components/timeline/TimelineBoard.css:34: .gtimecell { top }
-components/timeline/TimelineBoard.css:34: .gtimecell { box-sizing }
-components/timeline/TimelineBoard.css:34: .gtimecell { border-left }
-components/timeline/TimelineBoard.css:34: .gtimecell { pointer-events }
-components/timeline/TimelineBoard.css:35: .gtimecell:first-of-type { border-left }
-components/timeline/TimelineBoard.css:36: .gtimecell.alt { background }
-components/timeline/TimelineBoard.css:36: .gtimecell.alt { opacity }
-components/timeline/TimelineBoard.css:37: .gdatecell { top }
-components/timeline/TimelineBoard.css:37: .gdatecell { box-sizing }
-components/timeline/TimelineBoard.css:37: .gdatecell { border-left }
-components/timeline/TimelineBoard.css:37: .gdatecell { pointer-events }
-components/timeline/TimelineBoard.css:38: .gdatecell.first { border-left }
-components/timeline/TimelineBoard.css:39: .gstripe { background }
-components/timeline/TimelineBoard.css:40: .grow { height }
-components/timeline/TimelineBoard.css:40: .grow { border-top }
-components/timeline/TimelineBoard.css:41: .gbar { transform }
-components/timeline/TimelineBoard.css:41: .gbar { height }
-components/timeline/TimelineBoard.css:41: .gbar { box-sizing }
-components/timeline/TimelineBoard.css:41: .gbar { background-color }
-components/timeline/TimelineBoard.css:41: .gbar { border }
-components/timeline/TimelineBoard.css:41: .gbar { border-radius }
-components/timeline/TimelineBoard.css:41: .gbar { font-size }
-components/timeline/TimelineBoard.css:41: .gbar { color }
-components/timeline/TimelineBoard.css:41: .gbar { padding }
-components/timeline/TimelineBoard.css:41: .gbar { white-space }
-components/timeline/TimelineBoard.css:41: .gbar { overflow }
-components/timeline/TimelineBoard.css:41: .gbar { cursor }
-components/timeline/TimelineBoard.css:41: .gbar { transition }
-components/timeline/TimelineBoard.css:44: .gbar { font-family }
-components/timeline/TimelineBoard.css:44: .gstub { font-family }
-components/timeline/TimelineBoard.css:44: .gbar { line-height }
-components/timeline/TimelineBoard.css:44: .gstub { line-height }
-components/timeline/TimelineBoard.css:44: .gbar { text-align }
-components/timeline/TimelineBoard.css:44: .gstub { text-align }
-components/timeline/TimelineBoard.css:45: .gstub { padding }
-components/timeline/TimelineBoard.css:47: :where(.gbar,.gstub):hover { background-image }
-components/timeline/TimelineBoard.css:48: .gbar.clipl { border-top-left-radius }
-components/timeline/TimelineBoard.css:48: .gbar.clipl { border-bottom-left-radius }
-components/timeline/TimelineBoard.css:48: .gbar.clipl { border-left }
-components/timeline/TimelineBoard.css:49: .gbar.dim:not(:hover) { opacity }
-components/timeline/TimelineBoard.css:50: .gbar.plan { background-color }
-components/timeline/TimelineBoard.css:50: .gbar.plan { border-style }
-components/timeline/TimelineBoard.css:50: .gbar.plan { border-color }
-components/timeline/TimelineBoard.css:50: .gbar.plan { color }
-components/timeline/TimelineBoard.css:51: .gbar.active { border-color }
-components/timeline/TimelineBoard.css:51: .gbar.active { background-color }
-components/timeline/TimelineBoard.css:52: .gbar.overdue { box-shadow }
-components/timeline/TimelineBoard.css:53: .gbar.priority-p0 { font-weight }
 components/timeline/TimelineBoard.css:55: .gbar.label-beside .gbar-label { visibility }
-components/timeline/TimelineBoard.css:56: .gbar-aside { transform }
-components/timeline/TimelineBoard.css:56: .gbar-aside { font-size }
-components/timeline/TimelineBoard.css:56: .gbar-aside { color }
-components/timeline/TimelineBoard.css:56: .gbar-aside { white-space }
-components/timeline/TimelineBoard.css:56: .gbar-aside { pointer-events }
-components/timeline/TimelineBoard.css:57: .gddl { top }
-components/timeline/TimelineBoard.css:57: .gddl { width }
-components/timeline/TimelineBoard.css:57: .gddl { height }
-components/timeline/TimelineBoard.css:57: .gddl { background }
-components/timeline/TimelineBoard.css:57: .gddl { transform }
-components/timeline/TimelineBoard.css:57: .gddl { border-radius }
-components/timeline/TimelineBoard.css:57: .gddl { cursor }
-components/timeline/TimelineBoard.css:58: .gddl.overdue { background }
-components/timeline/TimelineBoard.css:59: .gddl.done { background }
-components/timeline/TimelineBoard.css:61: .gbar.dragging { box-shadow }
-components/timeline/TimelineBoard.css:61: .gddl.dragging { box-shadow }
-components/timeline/TimelineBoard.css:62: .gbar:active { cursor }
-components/timeline/TimelineBoard.css:62: .gddl:active { cursor }
-components/timeline/TimelineBoard.css:62: .gbar.dragging { cursor }
-components/timeline/TimelineBoard.css:62: .gddl.dragging { cursor }
 components/timeline/TimelineBoard.css:63: .glrow.msl { height }
-components/timeline/TimelineBoard.css:63: .grow.msrow { height }
 components/timeline/TimelineBoard.css:63: .glrow.msl { background }
-components/timeline/TimelineBoard.css:63: .grow.msrow { background }
-components/timeline/TimelineBoard.css:64: .gstub { transform }
-components/timeline/TimelineBoard.css:64: .gstub { height }
-components/timeline/TimelineBoard.css:64: .gstub { width }
-components/timeline/TimelineBoard.css:64: .gstub { box-sizing }
-components/timeline/TimelineBoard.css:64: .gstub { background-color }
-components/timeline/TimelineBoard.css:64: .gstub { border }
-components/timeline/TimelineBoard.css:64: .gstub { border-radius }
-components/timeline/TimelineBoard.css:64: .gstub { display }
-components/timeline/TimelineBoard.css:64: .gstub { align-items }
-components/timeline/TimelineBoard.css:64: .gstub { justify-content }
-components/timeline/TimelineBoard.css:64: .gstub { font-size }
-components/timeline/TimelineBoard.css:64: .gstub { color }
-components/timeline/TimelineBoard.css:64: .gstub { cursor }
-components/timeline/TimelineBoard.css:64: .gstub { user-select }
-components/timeline/TimelineBoard.css:64: .gstub { transition }
-components/timeline/TimelineBoard.css:65: .gstub.done:not(:hover) { opacity }
 components/timeline/TimelineBoard.css:66: .glrow.msl { font-size }
 components/timeline/TimelineBoard.css:66: .glrow.msl { font-weight }
 components/timeline/TimelineBoard.css:66: .glrow.msl { color }
 components/timeline/TimelineBoard.css:66: .glrow.msl { cursor }
-components/timeline/TimelineBoard.css:67: .gtoday { top }
-components/timeline/TimelineBoard.css:67: .gtoday { width }
-components/timeline/TimelineBoard.css:67: .gtoday { background }
-components/timeline/TimelineBoard.css:67: .gtoday { opacity }
-components/timeline/TimelineBoard.css:68: .gnow { width }
-components/timeline/TimelineBoard.css:68: .gnow { background }
-components/timeline/TimelineBoard.css:68: .gnow { pointer-events }
-components/timeline/TimelineBoard.css:69: .gnow::after { content }
-components/timeline/TimelineBoard.css:69: .gnow::after { position }
-components/timeline/TimelineBoard.css:69: .gnow::after { top }
-components/timeline/TimelineBoard.css:69: .gnow::after { left }
-components/timeline/TimelineBoard.css:69: .gnow::after { width }
-components/timeline/TimelineBoard.css:69: .gnow::after { height }
-components/timeline/TimelineBoard.css:69: .gnow::after { border-radius }
-components/timeline/TimelineBoard.css:69: .gnow::after { background }
-components/timeline/TimelineBoard.css:70: .gddl.hl { box-shadow }
-components/timeline/TimelineBoard.css:70: .gddl.hl { transform }
-components/timeline/TimelineBoard.css:71: .gddl.overdue.hl { box-shadow }
 components/timeline/TimelineBoard.css:72: .timeline-fold { margin-left }
 components/timeline/TimelineBoard.css:73: .timeline-fold svg { transition }
 components/timeline/TimelineBoard.css:74: .timeline-fold[aria-expanded="false"] svg { transform }
@@ -1570,114 +1394,15 @@ routes/Reader.css:14: .paper-chat .answer { line-height }
 routes/Reader.css:14: .paper-chat .event { line-height }
 routes/Reader.css:15: .paper-chat .composer { padding }
 routes/Reader.css:16: .paper-chat .cbox { padding-left }
-routes/Reader.css:17: .yellow { --mark }
-routes/Reader.css:17: .green { --mark }
-routes/Reader.css:17: .blue { --mark }
-routes/Reader.css:17: .pink { --mark }
 routes/Reader.css:19: .reader { overflow }
 routes/Reader.css:19: .reader { background }
 routes/Reader.css:20: .pdfwrap { overflow }
 routes/Reader.css:20: .pdfwrap { padding }
 routes/Reader.css:20: .pdfwrap { overscroll-behavior }
-routes/Reader.css:27: .pdfsheet { transform-origin }
-routes/Reader.css:28: .pdfpagebox { --user-unit }
-routes/Reader.css:28: .pdfpagebox { --total-scale-factor }
-routes/Reader.css:28: .pdfpagebox { --scale-round-x }
-routes/Reader.css:28: .pdfpagebox { --scale-round-y }
-routes/Reader.css:28: .pdfpagebox { direction }
-routes/Reader.css:28: .pdfpagebox { margin }
-routes/Reader.css:28: .pdfpagebox { background }
-routes/Reader.css:28: .pdfpagebox { box-shadow }
-routes/Reader.css:28: .pdfpagebox { border-radius }
-routes/Reader.css:29: .pdfpagebox canvas { display }
 routes/Reader.css:30: .pdfload { text-align }
 routes/Reader.css:30: .pdfload { color }
 routes/Reader.css:30: .pdfload { font-size }
 routes/Reader.css:30: .pdfload { padding }
-routes/Reader.css:38: .textLayer { color-scheme }
-routes/Reader.css:38: .textLayer { text-align }
-routes/Reader.css:38: .textLayer { overflow }
-routes/Reader.css:38: .textLayer { opacity }
-routes/Reader.css:38: .textLayer { line-height }
-routes/Reader.css:38: .textLayer { letter-spacing }
-routes/Reader.css:38: .textLayer { word-spacing }
-routes/Reader.css:38: .textLayer { -webkit-text-size-adjust }
-routes/Reader.css:38: .textLayer { text-size-adjust }
-routes/Reader.css:38: .textLayer { forced-color-adjust }
-routes/Reader.css:38: .textLayer { transform-origin }
-routes/Reader.css:38: .textLayer { caret-color }
-routes/Reader.css:38: .textLayer { --min-font-size }
-routes/Reader.css:38: .textLayer { --text-scale-factor }
-routes/Reader.css:38: .textLayer { --min-font-size-inv }
-routes/Reader.css:39: .textLayer.highlighting { touch-action }
-routes/Reader.css:40: .textLayer :is(span,br) { color }
-routes/Reader.css:40: .textLayer :is(span,br) { white-space }
-routes/Reader.css:40: .textLayer :is(span,br) { cursor }
-routes/Reader.css:40: .textLayer :is(span,br) { transform-origin }
-routes/Reader.css:40: .textLayer :is(span,br) { -webkit-user-select }
-routes/Reader.css:40: .textLayer :is(span,br) { user-select }
-routes/Reader.css:41: .textLayer>:not(.markedContent) { --font-height }
-routes/Reader.css:41: .textLayer .markedContent span:not(.markedContent) { --font-height }
-routes/Reader.css:41: .textLayer>:not(.markedContent) { font-size }
-routes/Reader.css:41: .textLayer .markedContent span:not(.markedContent) { font-size }
-routes/Reader.css:41: .textLayer>:not(.markedContent) { --scale-x }
-routes/Reader.css:41: .textLayer .markedContent span:not(.markedContent) { --scale-x }
-routes/Reader.css:41: .textLayer>:not(.markedContent) { --rotate }
-routes/Reader.css:41: .textLayer .markedContent span:not(.markedContent) { --rotate }
-routes/Reader.css:41: .textLayer>:not(.markedContent) { transform }
-routes/Reader.css:41: .textLayer .markedContent span:not(.markedContent) { transform }
-routes/Reader.css:42: .textLayer .markedContent { display }
-routes/Reader.css:43: .textLayer span[role="img"] { -webkit-user-select }
-routes/Reader.css:43: .textLayer span[role="img"] { user-select }
-routes/Reader.css:43: .textLayer span[role="img"] { cursor }
-routes/Reader.css:44: .textLayer .highlight { --highlight-bg-color }
-routes/Reader.css:44: .textLayer .highlight { --highlight-selected-bg-color }
-routes/Reader.css:44: .textLayer .highlight { --highlight-backdrop-filter }
-routes/Reader.css:44: .textLayer .highlight { --highlight-selected-backdrop-filter }
-routes/Reader.css:44: .textLayer .highlight { margin }
-routes/Reader.css:44: .textLayer .highlight { padding }
-routes/Reader.css:44: .textLayer .highlight { background-color }
-routes/Reader.css:44: .textLayer .highlight { backdrop-filter }
-routes/Reader.css:44: .textLayer .highlight { border-radius }
-routes/Reader.css:45: @media screen and (forced-colors:active) .textLayer .highlight { --highlight-bg-color }
-routes/Reader.css:45: @media screen and (forced-colors:active) .textLayer .highlight { --highlight-selected-bg-color }
-routes/Reader.css:45: @media screen and (forced-colors:active) .textLayer .highlight { --highlight-backdrop-filter }
-routes/Reader.css:45: @media screen and (forced-colors:active) .textLayer .highlight { --highlight-selected-backdrop-filter }
-routes/Reader.css:47: .textLayer .highlight.begin { border-radius }
-routes/Reader.css:48: .textLayer .highlight.end { border-radius }
-routes/Reader.css:49: .textLayer .highlight.middle { border-radius }
-routes/Reader.css:50: .textLayer .highlight.selected { background-color }
-routes/Reader.css:50: .textLayer .highlight.selected { backdrop-filter }
-routes/Reader.css:50: .textLayer .highlight.selected { scroll-margin-top }
-routes/Reader.css:51: .textLayer ::selection { background }
-routes/Reader.css:51: .textLayer ::selection { background }
-routes/Reader.css:51: .textLayer ::selection { color }
-routes/Reader.css:52: .textLayer.selectionRendering ::selection { background }
-routes/Reader.css:52: .textLayer.selectionRendering ::selection { color }
-routes/Reader.css:53: .textLayer br::selection { background }
-routes/Reader.css:54: .textLayer .endOfContent { display }
-routes/Reader.css:54: .textLayer .endOfContent { cursor }
-routes/Reader.css:54: .textLayer .endOfContent { -webkit-user-select }
-routes/Reader.css:54: .textLayer .endOfContent { user-select }
-routes/Reader.css:61: .textLayer ::selection { background }
-routes/Reader.css:62: .paper-highlights { pointer-events }
-routes/Reader.css:62: .paper-selection { pointer-events }
-routes/Reader.css:62: .paper-highlights { overflow }
-routes/Reader.css:62: .paper-selection { overflow }
-routes/Reader.css:63: .paper-highlight { overflow }
-routes/Reader.css:63: .paper-selected { overflow }
-routes/Reader.css:63: .paper-highlight-outline { overflow }
-routes/Reader.css:64: .paper-highlight path { fill }
-routes/Reader.css:65: .paper-selected path { fill }
-routes/Reader.css:67: .paper-highlight-outline path { fill }
-routes/Reader.css:67: .paper-highlight-outline path { stroke }
-routes/Reader.css:67: .paper-highlight-outline path { stroke-width }
-routes/Reader.css:67: .paper-highlight-outline path { stroke-linejoin }
-routes/Reader.css:67: .paper-highlight-outline path { vector-effect }
-routes/Reader.css:68: .paper-highlight .paper-highlight-note { fill }
-routes/Reader.css:68: .paper-highlight .paper-highlight-note { stroke }
-routes/Reader.css:68: .paper-highlight .paper-highlight-note { stroke-width }
-routes/Reader.css:68: .paper-highlight .paper-highlight-note { vector-effect }
 routes/Reader.css:77: .selection-tools .form-textarea { resize }
 routes/Reader.css:77: .selection-tools .form-textarea { field-sizing }
 routes/Reader.css:77: .selection-tools .form-textarea { max-height }

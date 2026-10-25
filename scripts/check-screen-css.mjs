@@ -48,6 +48,46 @@ const GROUPS = [
 ]
 
 /**
+ * The domain views, which keep their own drawing: in these screen stylesheets a rule whose element is
+ * one of the listed drawing classes may set visual properties. Any other rule in them (on a shared
+ * component's class, a row, a heading, a button, a menu, a panel, a field or a tag) stays a violation,
+ * and so does a listed class that a shared stylesheet or a shared component's source draws.
+ */
+export const DOMAIN_DRAWING = {
+  'components/timeline/TimelineBoard.css': {
+    reason: 'The timeline board lays tasks and milestones on a dated scale, which no list or table draws.',
+    groups: [
+      { reason: 'the canvas, its day and hour scale, and the gridlines and stripes under it',
+        classes: ['gcanvas', 'gdays', 'gday', 'gtime', 'gtimecell', 'gdatecell', 'gstripe'] },
+      { reason: 'the lanes that bars and milestones lie in', classes: ['grow'] },
+      { reason: 'task bars, the title beside a one-day bar, and the stub of a bar outside the period',
+        classes: ['gbar', 'gbar-aside', 'gstub'] },
+      { reason: 'milestone diamonds', classes: ['gddl'] },
+      { reason: 'the today and now lines', classes: ['gtoday', 'gnow'] },
+    ],
+  },
+  'components/project/ResearchGraph.css': {
+    reason: 'The research graph draws research nodes and the edges between them as SVG on a canvas that pans and zooms.',
+    groups: [
+      { reason: 'edges, those on the active path, and the flow along it', classes: ['redges', 'active', 'active-edge-flows'] },
+      { reason: 'nodes: their box, hover box, label, status dot and the idea pattern',
+        classes: ['rgn', 'rgn-box', 'rgn-hover', 'rgn-label', 'nd', 'idea-node-pattern-base', 'idea-node-pattern-stripe'] },
+    ],
+  },
+  'routes/Reader.css': {
+    reason: 'The reader renders PDF pages with pdf.js and draws its text layer and the reader\'s marks over them.',
+    groups: [
+      { reason: 'the zoomed sheet and the paper page', classes: ['pdfsheet', 'pdfpagebox'] },
+      { reason: "pdf.js's text layer, copied from the pdfjs-dist viewer stylesheet",
+        classes: ['textLayer', 'markedContent', 'highlight', 'endOfContent'] },
+      { reason: 'the highlight and selection marks drawn over the page',
+        classes: ['paper-highlights', 'paper-selection', 'paper-highlight', 'paper-selected', 'paper-highlight-outline', 'paper-highlight-note'] },
+      { reason: 'the highlight colours a mark takes', classes: ['yellow', 'green', 'blue', 'pink'] },
+    ],
+  },
+}
+
+/**
  * Which layer a renderer stylesheet belongs to. Shared: the flat `components/*.css` and the token
  * layer `shell/tokens.css`. Screen: every other stylesheet, that is `routes/*.css`, the feature folders
  * `components/<feature>/*.css` and `shell/AppShell.css`.
@@ -129,11 +169,14 @@ function withoutNegationAndHas(compound) {
   return result
 }
 
+const compounds = (selector) => splitTopLevel(selector, ' >+~').filter((part) => part.trim() !== '')
+const classesOf = (compound) => [...withoutNegationAndHas(compound).matchAll(CLASS)].map((match) => match[1])
+
 /** The classes of the element a complex selector selects: those of its last compound selector. */
-function subjectClasses(selector) {
-  const compound = splitTopLevel(selector, ' >+~').filter((part) => part.trim() !== '').at(-1) ?? ''
-  return [...withoutNegationAndHas(compound).matchAll(CLASS)].map((match) => match[1])
-}
+const subjectClasses = (selector) => classesOf(compounds(selector).at(-1) ?? '')
+
+/** The first class of the selected element, or of its nearest ancestor with a class when it has none. */
+const anchorClass = (selector) => compounds(selector).map(classesOf).findLast((classes) => classes.length > 0)?.[0]
 
 /** Whether a module specifier imported from `file` resolves to a flat `components/<Name>` module. */
 function isSharedModule(file, specifier) {
@@ -183,16 +226,18 @@ function openingElements(node, found = []) {
 const rootName = (name) => (name.type === 'JSXMemberExpression' ? rootName(name.object) : name.name)
 
 /**
- * The classes on elements a shared component draws: every class on an element a shared stylesheet
- * selects (not on its ancestors), every literal class a shared component's source writes, and every
- * literal class a screen passes to a shared component through `className` or a `…ClassName` prop.
+ * The classes on elements a shared component draws.
+ * @returns `drawn`, every class on an element a shared stylesheet selects (not on its ancestors) and
+ *   every literal class a shared component's source writes, and `passed`, every literal class a screen
+ *   passes to a shared component through `className` or a `…ClassName` prop.
  */
-function sharedClasses(files) {
-  const shared = new Set()
+export function sharedClasses(files) {
+  const drawn = new Set()
+  const passed = new Set()
   for (const [file, text] of files) {
     if (stylesheetLayer(file) === 'shared' && file.startsWith('components/')) {
       for (const block of blocks(text.replace(CSS_COMMENT, ''))) {
-        for (const selector of splitTopLevel(block.prelude, ',')) for (const name of subjectClasses(selector)) shared.add(name)
+        for (const selector of splitTopLevel(block.prelude, ',')) for (const name of subjectClasses(selector)) drawn.add(name)
       }
     }
     if (!file.endsWith('.tsx')) continue
@@ -205,11 +250,11 @@ function sharedClasses(files) {
       if (!ownSource && !imported.has(rootName(element.name))) continue
       for (const attribute of element.attributes) {
         if (attribute.type !== 'JSXAttribute' || !/^(className|[a-z][A-Za-z]*ClassName)$/.test(attribute.name.name)) continue
-        for (const word of literalClasses(attribute.value)) if (CLASS_WORD.test(word)) shared.add(word)
+        for (const word of literalClasses(attribute.value)) if (CLASS_WORD.test(word)) (ownSource ? drawn : passed).add(word)
       }
     }
   }
-  return shared
+  return { drawn, passed }
 }
 
 const writesLength = (value) => numbers(value.replace(/var\(\s*--[\w-]+/g, 'var(').replace(/(["'])[\s\S]*?\1/g, ''))
@@ -242,17 +287,20 @@ function reasonFor(property, value, rule) {
  * `[aria-*]`, `[data-state]` and the like), in a pseudo-element or in `@keyframes`, and, in a rule
  * whose selected element's first class is a shared component's class, any declaration that lays out
  * the element's own content (its display, gaps, alignment of its items, its grid or flex direction).
+ * In a stylesheet of `DOMAIN_DRAWING`, a declaration on one of its drawing classes is reported with
+ * the reason of that class's group as `domain`; every other declaration has `domain` null.
  * @param files Map from a path relative to the renderer, with `/` separators, to its text. Shared
  *   stylesheets and `.tsx` sources only tell which classes belong to shared components.
- * @returns One `{ file, line, selector, property, value, reason, group }` per selector of a rule and
- *   reported declaration, in file order; `selector` is prefixed with the at-rules around it.
+ * @returns One `{ file, line, selector, property, value, reason, group, domain }` per selector of a
+ *   rule and reported declaration, in file order; `selector` is prefixed with the at-rules around it.
  */
 export function screenViolations(files) {
-  const shared = sharedClasses(files)
+  const { drawn, passed } = sharedClasses(files)
   const found = []
   for (const [file, raw] of files) {
     if (stylesheetLayer(file) !== 'screen') continue
     const text = raw.replace(CSS_COMMENT, (comment) => comment.replace(/[^\n]/g, ' '))
+    const drawing = DOMAIN_DRAWING[file]?.groups ?? []
     for (const block of blocks(text)) {
       const at = block.at.join(' ')
       const rules = splitTopLevel(block.prelude, ',').map(squeeze).filter(Boolean).map((selector) => ({
@@ -261,7 +309,9 @@ export function screenViolations(files) {
         container: block.at.some((prelude) => prelude.startsWith('@container')),
         pseudoElement: PSEUDO_ELEMENT.test(selector),
         state: STATE.test(selector),
-        shared: shared.has(subjectClasses(selector)[0]),
+        shared: drawn.has(subjectClasses(selector)[0]) || passed.has(subjectClasses(selector)[0]),
+        domain: drawn.has(anchorClass(selector)) ? null
+          : drawing.find((group) => group.classes.includes(anchorClass(selector)))?.reason ?? null,
       }))
       for (const declaration of declarations(block.body)) {
         const colon = declaration.text.indexOf(':')
@@ -273,7 +323,7 @@ export function screenViolations(files) {
         const group = GROUPS.find(([, pattern]) => pattern.test(property))[0]
         for (const rule of rules) {
           const reason = reasonFor(property, property.startsWith('--') ? value : value.toLowerCase(), rule)
-          if (reason !== null) found.push({ file, line, selector: rule.selector, property, value, reason, group })
+          if (reason !== null) found.push({ file, line, selector: rule.selector, property, value, reason, group, domain: rule.domain })
         }
       }
     }
@@ -332,7 +382,9 @@ function tally(violations, key) {
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1]).href) {
-  const violations = screenViolations(rendererFiles())
+  const all = screenViolations(rendererFiles())
+  const violations = all.filter((violation) => violation.domain === null)
+  const domain = all.filter((violation) => violation.domain !== null)
   const found = violations.map(ratchetEntry)
   const listed = parseRatchet(fs.readFileSync(RATCHET, 'utf8'))
   if (process.argv.includes('--update')) {
@@ -348,6 +400,9 @@ if (import.meta.url === pathToFileURL(process.argv[1]).href) {
   console.log(`By property group:\n${tally(violations, 'group')}`)
   console.log(`By reason:\n${tally(violations, 'reason')}`)
   console.log(`By file:\n${tally(violations, 'file')}`)
+  console.log(`${domain.length} more declarations are domain drawing that DOMAIN_DRAWING allows.`)
+  console.log(`By domain stylesheet:\n${tally(domain, 'file')}`)
+  console.log(`By drawing group:\n${tally(domain, 'domain')}`)
   const { added, fixed } = ratchetDiff(found, parseRatchet(fs.readFileSync(RATCHET, 'utf8')))
   if (added.length > 0) console.error(`Not in ${path.basename(RATCHET)}:\n${added.join('\n')}`)
   if (fixed.length > 0) console.error(`Listed in ${path.basename(RATCHET)} but gone; run with --update:\n${fixed.join('\n')}`)

@@ -2,7 +2,8 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { describe, expect, it } from 'vitest'
 import {
-  RATCHET, parseRatchet, ratchetDiff, ratchetEntry, ratchetKey, rendererFiles, screenViolations, stylesheetLayer,
+  DOMAIN_DRAWING, RATCHET, parseRatchet, ratchetDiff, ratchetEntry, ratchetKey, rendererFiles, screenViolations, sharedClasses,
+  stylesheetLayer,
 } from './check-screen-css.mjs'
 
 const files = (entries) => new Map(Object.entries(entries))
@@ -201,6 +202,57 @@ describe('屏幕样式表只摆放共享组件', () => {
   })
 })
 
+describe('领域视图只给自己的绘制写视觉样式', () => {
+  const TIMELINE = 'components/timeline/TimelineBoard.css'
+  const reasonOf = (name) => DOMAIN_DRAWING[TIMELINE].groups.find((group) => group.classes.includes(name)).reason
+
+  it('领域样式表里落在绘制类上的视觉声明归入领域清单，不进违规清单；伪元素、状态和类名下的元素都按最近的类算', () => {
+    const found = screenViolations(files({
+      [TIMELINE]: '.gbar{background-color:var(--field);border-radius:var(--r-md)}\n.gday span{font-size:var(--fs-sm)}\n.gnow::after{content:""}\n.gbar.dim:not(:hover){opacity:.45}',
+    }))
+    expect(found.map((violation) => [ratchetEntry(violation), violation.domain])).toEqual([
+      [`${TIMELINE}:1: .gbar { background-color }`, reasonOf('gbar')],
+      [`${TIMELINE}:1: .gbar { border-radius }`, reasonOf('gbar')],
+      [`${TIMELINE}:2: .gday span { font-size }`, reasonOf('gday')],
+      [`${TIMELINE}:3: .gnow::after { content }`, reasonOf('gnow')],
+      [`${TIMELINE}:4: .gbar.dim:not(:hover) { opacity }`, reasonOf('gbar')],
+    ])
+  })
+
+  it('领域样式表里的界面部件照旧算违规：共享组件的类、标签列的行、绘制类里的标签', () => {
+    const found = screenViolations(files({
+      'components/StructuredList.css': '.structured-row{border-top:1px solid var(--sep2)}',
+      [TIMELINE]: '.glrow{background:var(--hover)}\n.gcanvas .structured-row{padding:0}\n.gbar .tag{color:var(--sec)}\n.ghead{border-bottom:1px solid var(--sep2)}',
+      'routes/Feed.css': '.gbar{color:var(--ink)}',
+    }))
+    expect(found.filter((violation) => violation.domain === null).map(ratchetEntry)).toEqual([
+      `${TIMELINE}:1: .glrow { background }`,
+      `${TIMELINE}:2: .gcanvas .structured-row { padding }`,
+      `${TIMELINE}:3: .gbar .tag { color }`,
+      `${TIMELINE}:4: .ghead { border-bottom }`,
+      'routes/Feed.css:1: .gbar { color }',
+    ])
+    expect(found.filter((violation) => violation.domain !== null)).toEqual([])
+  })
+
+  it('绘制类一旦是共享组件自己画的类，就算列在领域清单里也照旧算违规', () => {
+    const found = screenViolations(files({
+      'components/Tag.css': '.gddl{color:var(--sec)}',
+      [TIMELINE]: '.gddl{background:var(--warn)}',
+    }))
+    expect(found.map((violation) => [ratchetEntry(violation), violation.domain])).toEqual([[`${TIMELINE}:1: .gddl { background }`, null]])
+  })
+
+  it('领域清单里的每个绘制类都在它的样式表里出现，且没有一个是共享组件自己画的类', () => {
+    const tree = rendererFiles()
+    const { drawn } = sharedClasses(tree)
+    const listed = Object.entries(DOMAIN_DRAWING).flatMap(([file, domain]) => domain.groups.flatMap((group) => group.classes
+      .map((name) => [file, name])))
+    expect(listed.filter(([file, name]) => !new RegExp(`\\.${name}(?![\\w-])`).test(tree.get(file)))).toEqual([])
+    expect(listed.filter(([, name]) => drawn.has(name))).toEqual([])
+  })
+})
+
 describe('屏幕样式表违规清单只减不增', () => {
   const listed = ['routes/Feed.css:1: .feed { color }', 'routes/Feed.css:1: .feed { padding }']
 
@@ -228,9 +280,11 @@ describe('屏幕样式表违规清单只减不增', () => {
 })
 
 describe('屏幕样式表守卫', () => {
-  const found = screenViolations(rendererFiles()).map(ratchetEntry)
+  const violations = screenViolations(rendererFiles())
+  const found = violations.filter((violation) => violation.domain === null).map(ratchetEntry)
   const { added, fixed } = ratchetDiff(found, parseRatchet(fs.readFileSync(RATCHET, 'utf8')))
   console.log(`Screen stylesheets hold ${found.length} declarations that are not placement, listed in ${path.basename(RATCHET)}.`)
+  console.log(`Domain views draw with ${violations.length - found.length} more, allowed by DOMAIN_DRAWING in ${Object.keys(DOMAIN_DRAWING).length} stylesheets.`)
 
   it('屏幕样式表没有清单之外的新视觉声明', () => {
     expect(added).toEqual([])
