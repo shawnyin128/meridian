@@ -21,6 +21,13 @@ describe('窗口框架的滚动区', () => {
     expect(getComputedStyle(document.querySelector('.gwrap')).overflowX).toBe('auto')
   })
 
+  it('面板的标题栏和页面的标题栏一样高、一样的内边距，两条底线连成一条', () => {
+    const css = stylesheet('components/PageShell.css').replace(/\/\*[\s\S]*?\*\//g, '')
+    const pane = [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)].filter(([, selector]) => selector!.trim() === '.desk-head--pane')
+      .flatMap(([, , body]) => body!.split(';').map((declaration) => declaration.split(':')[0]!.trim()).filter(Boolean))
+    expect(pane.filter((property) => /^(height|padding|border|box-sizing)/.test(property))).toEqual([])
+  })
+
   it('内容自己滚动的页面主体照样留出滚动条的位置，栏和会滚动的页面主体对齐', () => {
     const css = ['components/ScrollArea.css', 'components/PageShell.css'].map(stylesheet).join('\n')
     const gutter = (selector: string) => new RegExp(`${selector.replace('.', '\\.')}\\{[^}]*scrollbar-gutter:stable`).test(css)
