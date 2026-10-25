@@ -30,7 +30,7 @@ const fixture = vi.hoisted(() => ({
   appCommand: null as ((command: string) => void) | null,
   menuStates: [] as { sidebarHidden: boolean; reading: boolean }[],
   createChat: vi.fn(() => new Promise(() => {})),
-  undoChange: vi.fn(async (_id: string) => {}),
+  undoChange: vi.fn<(id: string) => Promise<void>>(async () => {}),
 }))
 
 const none = vi.hoisted(() => () => Promise.resolve([]))
