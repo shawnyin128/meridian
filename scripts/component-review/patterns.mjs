@@ -248,7 +248,7 @@ export const PATTERNS = {
       entry('hand:components/chat/PaperChat.tsx', '.paper-chat .msgs'),
     ],
   },
-  StatTile: { metrics: 'item', entries: [entry('hand:routes/ResearchOverview.tsx', '.ovstat')] },
+  StatTile: { metrics: 'item', entries: [entry('shared:StatTile', '.stat-tile')] },
   TimelineBar: { metrics: 'item', entries: [entry('hand:components/timeline/TimelineBoard.tsx', '.gbar')] },
   GraphNode: { metrics: 'item', entries: [entry('hand:components/project/ResearchGraph.tsx', '.rgn-box')] },
   ItemTitle: {
@@ -375,7 +375,7 @@ export const PATTERNS = {
     metrics: 'button',
     entries: [
       entry('shared:Button', '.btn', {
-        not: '.filter-menu, .sort-menu, .add-action, .choice-picker, .harness-trigger, .paper-abstract-toggle, .reading-summary-all, .zoom-reset, .graph-zoom-reset',
+        not: '.filter-menu, .sort-menu, .add-action, .choice-picker, .harness-trigger, .paper-abstract-toggle, .reading-summary-all, .zoom-control-reset',
       }),
       entry('hand:components/project/ProjectPlan.tsx', '.din'),
     ],
@@ -433,8 +433,7 @@ export const PATTERNS = {
   ZoomControl: {
     metrics: 'button',
     entries: [
-      entry('hand:routes/Reader.tsx', '.zoomctl'),
-      entry('hand:components/project/ResearchGraph.tsx', '.graph-view-controls'),
+      entry('shared:ZoomControl', '.zoom-control'),
     ],
   },
   SearchField: { metrics: 'field', entries: [entry('shared:ClearableInput', '.clearable-input')] },

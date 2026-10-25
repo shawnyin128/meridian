@@ -12,6 +12,7 @@ import { LoadingPlaceholder } from '../components/LoadingPlaceholder.js'
 import { AgentLabel } from '../components/SourceLabel.js'
 import { FadeText } from '../components/FadeText.js'
 import { StructuredList, StructuredRow } from '../components/StructuredList.js'
+import { StatTile } from '../components/StatTile.js'
 import { Tag, type TagState } from '../components/Tag.js'
 import { dnum } from '../../shared/dates.js'
 import { useFormat } from '../lib/format.js'
@@ -74,9 +75,7 @@ function Stats({ rows }: { rows: ProjectOverview[] }) {
   return (
     <div className="ovstats">
       {stats.map((s) => (
-        <div className={s.bad ? 'ovstat bad' : 'ovstat'} key={s.label}>
-          <b>{s.value}</b><span>{s.label}</span>
-        </div>
+        <StatTile key={s.label} value={s.value} label={s.label} state={s.bad ? 'error' : undefined} />
       ))}
     </div>
   )

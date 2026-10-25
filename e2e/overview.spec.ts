@@ -130,7 +130,7 @@ test('侧栏「总览」进的是研究总览,各块条数与 project.overview �
   await expect(shown(win).locator('.gantt .glrow')).toHaveCount(counts.ganttRows)
   await expect(shown(win).locator('.gantt .gddl')).toHaveCount(counts.diamonds)
 
-  await expect(shown(win).locator('.ovstat b')).toHaveText([
+  await expect(shown(win).locator('.stat-tile-value')).toHaveText([
     String(counts.active), String(counts.shelved), String(counts.openMilestones), String(counts.week),
   ])
   await expect(shown(win).locator('.ovlist-row.progress')).toHaveCount(counts.now)

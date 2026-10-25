@@ -17,18 +17,16 @@ import { plainTitle } from '../paper/paper-text.js'
 import { EmptyState } from '../EmptyState.js'
 import { EntityLink } from '../EntityLink.js'
 import { FadeText } from '../FadeText.js'
-import { IconButton } from '../IconButton.js'
 import { ownIdea, SourceChatDeleted } from '../ideas/IdeaPanel.js'
-import { IconMinus, IconPlus } from '../icons.js'
 import { PanelClose } from '../PanelClose.js'
 import { SectionHeading } from '../PageShell.js'
 import { StatusDot } from '../StatusDot.js'
 import { StructuredList, StructuredRow } from '../StructuredList.js'
 import { AgentLabel } from '../SourceLabel.js'
-import { ToggleGroup, ToggleItem, Toolbar } from '../Toolbar.js'
+import { ToggleGroup, ToggleItem } from '../Toolbar.js'
 import { Tooltip } from '../Tooltip.js'
 import { ProjectEventList, ProjectEventRow } from './ProjectSignals.js'
-import { Button } from '../Button.js'
+import { ZoomControl, zoomStep } from '../ZoomControl.js'
 import './ResearchGraph.css'
 
 type GraphNode = Graph['nodes'][number]
@@ -268,7 +266,7 @@ export function ResearchGraph({ graph, selected, ideaNodeIds = [], onSelect }: {
     zoomAt(view.zoom * factor, point.x - rect.left, point.y - rect.top)
   })
   const startPan = (event: ReactPointerEvent<HTMLDivElement>) => {
-    if ((event.target as Element).closest('.rgn,.graph-view-controls')) return
+    if ((event.target as Element).closest('.rgn,.zoom-control')) return
     panStart.current = {
       pointerId: event.pointerId,
       clientX: event.clientX,
@@ -369,31 +367,15 @@ export function ResearchGraph({ graph, selected, ideaNodeIds = [], onSelect }: {
             </g>
           </ToggleGroup>
         </svg>
-        <Toolbar>
-          <div className="graph-view-controls">
-            <IconButton
-              label={m.project.graph.zoomOut} size="nested" disabled={view.zoom <= GRAPH_MIN_ZOOM}
-              onClick={() => zoomAt(view.zoom / 1.2)}
-            >
-              <IconMinus />
-            </IconButton>
-            <Tooltip label={m.project.graph.resetView}>
-              <Button
-                size="compact" variant="ghost" className="graph-zoom-reset"
-                onClick={() => {
-                  moved.current = false
-                  setView(fitted)
-                }}
-              >{Math.round(view.zoom * 100)}%</Button>
-            </Tooltip>
-            <IconButton
-              label={m.project.graph.zoomIn} size="nested" disabled={view.zoom >= GRAPH_MAX_ZOOM}
-              onClick={() => zoomAt(view.zoom * 1.2)}
-            >
-              <IconPlus />
-            </IconButton>
-          </div>
-        </Toolbar>
+        <ZoomControl
+          place="corner" zoom={view.zoom} min={GRAPH_MIN_ZOOM} max={GRAPH_MAX_ZOOM}
+          onZoom={(direction) => zoomAt(zoomStep(view.zoom, direction))}
+          onReset={() => {
+            moved.current = false
+            setView(fitted)
+          }}
+          labels={{ out: m.project.graph.zoomOut, in: m.project.graph.zoomIn, reset: m.project.graph.resetView }}
+        />
       </div>
       <div className="glegend">
         <span className="legend-item"><StatusDot tone="warn" size="md" />{m.project.graph.legend.needsRepair}</span>

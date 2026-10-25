@@ -204,7 +204,7 @@ describe('研究总览按领域筛', () => {
       const item = [...document.querySelectorAll<HTMLElement>('[role="menu"] [role="menuitemradio"]')].find((option) => option.textContent === label)!
       await act(async () => { item.click() })
     }
-    const stats = () => [...host.querySelectorAll('.ovstat b')].map((value) => value.textContent)
+    const stats = () => [...host.querySelectorAll('.stat-tile-value')].map((value) => value.textContent)
     expect(stats()).toEqual(['2', '1', '2', '2'])
 
     await pick('量化')

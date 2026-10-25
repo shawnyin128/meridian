@@ -114,6 +114,7 @@ describe('状态色', () => {
     'components/Button.css': "a danger button's soft fill",
     'components/ActionMenu.css': 'a danger menu item',
     'components/FirstRunChecklist.css': "a finished first-run step's check",
+    'components/StatTile.css': "a stat tile's figure that needs attention",
   }
 
   /**
@@ -124,7 +125,6 @@ describe('状态色', () => {
     'components/Table.css  .table th.table-move-moving  background': '#567, the drag feedback of a column',
     'components/project/ProjectPlan.css  50%  background': '#578, the landing flash of a plan row',
     'shell/tokens.css  .ddlrow.flash  background': '#578, the landing flash of a plan row',
-    'routes/ResearchOverview.css  .ovstat.bad b  color': 'the Overview stat tiles, which the catalog has no row for',
   }
 
   /** Every declaration that writes text in --bad, --warn or --good, or lays a --tint-* fill, as `<path>  <selector>  <property>`. */

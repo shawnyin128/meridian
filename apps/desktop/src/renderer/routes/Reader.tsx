@@ -23,11 +23,10 @@ import { ActionPopover } from '../components/ActionPopover.js'
 import type { AnchorBox } from '../components/floating-layer.js'
 import { FormTextarea } from '../components/FormControls.js'
 import { IconButton } from '../components/IconButton.js'
-import { IconAskAi, IconMinus, IconPlus, IconTrash } from '../components/icons.js'
+import { IconAskAi, IconTrash } from '../components/icons.js'
 import { LoadingPlaceholder } from '../components/LoadingPlaceholder.js'
 import { Swatches } from '../components/Swatches.js'
 import { Toolbar } from '../components/Toolbar.js'
-import { Tooltip } from '../components/Tooltip.js'
 import {
   drawnLines, highlightAt, highlightLines, highlightOutline, highlightShape, selectedLinesByPage, selectionBox,
 } from './highlight-geometry.js'
@@ -39,12 +38,11 @@ import { ReaderSidePanel, type ReaderSideTab } from '../components/reader/Reader
 import { PageError, PageShell } from '../components/PageShell.js'
 import { useScreenLoad } from '../hooks/useScreenLoad.js'
 import { plainTitle } from '../components/paper/paper-text.js'
-import { Button } from '../components/Button.js'
+import { ZoomControl, zoomStep } from '../components/ZoomControl.js'
 import './shell.css'
 import './Reader.css'
 
 const MAX_DPR = 2
-const ZOOM_STEP = 0.2
 /** How long zooming and scrolling pause before the pages are laid out and drawn at the zoom shown. */
 const SETTLE_MS = 150
 const PROGRESS_MS = 800
@@ -671,11 +669,10 @@ export function Reader() {
     settleLater()
   }, [settleLater])
 
-  const zoomBy = (delta: number) => {
+  /** Zooms to `target` about the middle of the pages' view. */
+  const zoomAtCentre = (target: number) => {
     const frame = scroller.current!.getBoundingClientRect()
-    zoomTo(Math.round((shownZoom.current + delta) * 10) / 10, {
-      x: frame.left + frame.width / 2, y: frame.top + frame.height / 2,
-    })
+    zoomTo(target, { x: frame.left + frame.width / 2, y: frame.top + frame.height / 2 })
   }
 
   useWheelZoom(scroller, (factor, point) => zoomTo(shownZoom.current * factor, point))
@@ -1033,21 +1030,11 @@ export function Reader() {
             onJump={jumpToPage} focusHighlightId={focusHighlightId} selectedHighlightId={selected?.id ?? null}
           />
 
-          <Toolbar>
-            <div className="zoomctl">
-              <IconButton label={m.reader.zoom.out} size="nested" disabled={zoom <= ZOOM_MIN} onClick={() => zoomBy(-ZOOM_STEP)}>
-                <IconMinus />
-              </IconButton>
-              <Tooltip label={m.reader.zoom.reset}>
-                <Button size="compact" variant="ghost" className="zoom-reset" onClick={() => zoomBy(1 - shownZoom.current)}>
-                  {Math.round(zoom * 100)}%
-                </Button>
-              </Tooltip>
-              <IconButton label={m.reader.zoom.in} size="nested" disabled={zoom >= ZOOM_MAX} onClick={() => zoomBy(ZOOM_STEP)}>
-                <IconPlus />
-              </IconButton>
-            </div>
-          </Toolbar>
+          <ZoomControl
+            place="bottom" zoom={zoom} min={ZOOM_MIN} max={ZOOM_MAX}
+            onZoom={(direction) => zoomAtCentre(zoomStep(shownZoom.current, direction))} onReset={() => zoomAtCentre(1)}
+            labels={{ out: m.reader.zoom.out, in: m.reader.zoom.in, reset: m.reader.zoom.reset }}
+          />
         </div>
       </PageShell>
     </>

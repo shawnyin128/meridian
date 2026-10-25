@@ -103,6 +103,11 @@ Current shared contracts:
   stop and arrow keys. An on chip takes the one selected look. A choice among many values is a menu picker, not a segment per value.
 - `Swatches`: the one row of colour circles that picks a colour, the theme editor's presets and the reader's
   highlight colours. A picked circle wears the neutral picked ring, never the accent.
+- `ZoomControl`: the one zoom control of a view that zooms, the reader's pages and the research graph:
+  zoom out, the zoom in percent, which resets it, and zoom in, floating at the view's `bottom` or in its
+  `corner`. A step is `zoomStep`, 20% to a round percentage; the wheel stays `hooks/useWheelZoom`.
+- `StatTile`: a figure with its label under it on a card, the Overview's counts; `state` `error` colours
+  only the figure's text.
 - `Switch`: a binary setting that takes effect as soon as it flips. Its name stays the same in both states;
   a button whose label flips between two actions is not used for a setting.
 - `Notice`: the app's one notice. AppShell places it on the canvas and screens show it through

@@ -5,10 +5,6 @@
 
 /* Summary counts */
 .ovstats{display:flex;gap:var(--sp-10);flex-wrap:wrap}
-.ovstat{background:var(--card);border:1px solid var(--sep);border-radius:var(--r-card);padding:var(--sp-8) var(--sp-16);min-width:74px}
-.ovstat b{display:block;font-size:var(--fs-xl);font-weight:var(--fw-bold);line-height:var(--lh-tight);font-variant-numeric:tabular-nums}
-.ovstat span{font-size:var(--fs-sm);color:var(--ter)}
-.ovstat.bad b{color:var(--bad)}
 
 /*
  * The overview timeline mirrors the project timeline: each project's milestone row carries the

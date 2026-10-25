@@ -61,7 +61,6 @@ const SEPARATED: [file: string, selector: string, border: string][] = [
   ['routes/Feed.css', '.fitem', '1px solid var(--sep2)'],
   ['components/paper/PaperCard.css', '.paper-card', '1px solid var(--sep)'],
   ['components/paper-table/PaperTable.css', '.research-map-detail', '1px solid var(--sep)'],
-  ['routes/ResearchOverview.css', '.ovstat', '1px solid var(--sep)'],
   ['components/project/ProjectSections.css', '.agcard', '1px solid var(--sep)'],
   ['components/project/ResearchGraph.css', '.rgraph-viewport', '1px solid var(--sep2)'],
   ['routes/ProjectDetail.css', '.wkside.node-document-pane', '1px solid var(--sep)'],
