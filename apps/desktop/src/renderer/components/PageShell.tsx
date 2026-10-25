@@ -44,9 +44,9 @@ export const PageToolbar = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElem
 )
 
 /**
- * The page's title on one line: when it does not fit it fades out at its end and the tooltip shows it
- * whole. `label` is that whole text, for a title that is not a plain string. `count` follows the title
- * as ` · N`.
+ * The page's title on one line, the page's first-level heading: when it does not fit it fades out at
+ * its end and the tooltip shows it whole. `label` is that whole text, for a title that is not a plain
+ * string. `count` follows the title as ` · N`.
  */
 export function PageTitle({ children, label, count, className, ...props }: {
   children: ReactNode
@@ -55,7 +55,10 @@ export function PageTitle({ children, label, count, className, ...props }: {
 } & Omit<HTMLAttributes<HTMLSpanElement>, 'children'>) {
   const whole = label ?? (typeof children === 'string' ? children : undefined)
   return (
-    <FadeText className={classes('t', className)} label={whole === undefined ? undefined : headingText(whole, count)} {...props}>
+    <FadeText
+      className={classes('t', className)} label={whole === undefined ? undefined : headingText(whole, count)}
+      role="heading" aria-level={1} {...props}
+    >
       {children}<HeadingCount count={count} />
     </FadeText>
   )
@@ -110,8 +113,12 @@ export const SectionHeading = forwardRef<HTMLDivElement, {
   function SectionHeading({ children, actions, count, className, variant = 'page', ...rest }, ref) {
     return (
       <div ref={ref} className={classes(`section-heading section-heading--${variant}`, className)} {...rest}>
-        {/* The heading is a flex row, so a count shares the title's span instead of becoming an item of its own. */}
-        {count === undefined ? children : <span>{children}<HeadingCount count={count} /></span>}
+        {/*
+          * The title and its count are the heading, without the actions beside it: a section's at the
+          * second level under the page title, a group's at the third. The heading is a flex row, so the
+          * count shares the title's span instead of becoming an item of its own.
+          */}
+        <span role="heading" aria-level={variant === 'group' ? 3 : 2}>{children}<HeadingCount count={count} /></span>
         {actions === undefined ? null : <div className="section-heading-actions">{actions}</div>}
       </div>
     )

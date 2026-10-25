@@ -45,6 +45,7 @@ export const shell = {
   },
   watchKind: { topic: 'Keyword', author: 'Author' },
   sidebar: {
+    label: 'Sidebar',
     toggle: 'Collapse or expand the sidebar',
     expand: 'Expand the sidebar',
     resize: 'Sidebar width',

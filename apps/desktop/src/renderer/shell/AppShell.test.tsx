@@ -360,6 +360,17 @@ describe('AppShell sidebar collapse', () => {
   })
 })
 
+describe('AppShell landmarks', () => {
+  it('names the sidebar the navigation landmark and the screen shown the one main landmark', async () => {
+    await mount(<p>feed</p>, { papers: <p>papers</p> })
+    expect([document.querySelector('#sidebar')!.getAttribute('role'), document.querySelector('#sidebar')!.getAttribute('aria-label')])
+      .toEqual(['navigation', '侧栏'])
+    await act(async () => { document.querySelector<HTMLButtonElement>('[data-desk="papers"]')!.click() })
+    const mains = [...document.querySelectorAll('[role="main"]')]
+    expect(mains.map((main) => [main.textContent, main.hasAttribute('hidden')])).toEqual([['feed', true], ['papers', false]])
+  })
+})
+
 describe('AppShell title bar', () => {
   it('marks the document while the window is full screen, where macOS hides the traffic lights', async () => {
     await mount()

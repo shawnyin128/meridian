@@ -10,6 +10,15 @@ declare global {
 }
 
 describe('CollapsibleGroup', () => {
+  it('reads to a screen reader as a third-level heading that holds the toggle folding its group', () => {
+    const host = document.createElement('div')
+    host.innerHTML = renderToStaticMarkup(
+      <CollapsibleGroup title="进行中" count={2} open onToggle={() => {}}><p>行</p></CollapsibleGroup>,
+    )
+    const heading = host.querySelector('[role="heading"]')!
+    expect([heading.getAttribute('aria-level'), heading.querySelector('button')?.getAttribute('aria-expanded')]).toEqual(['3', 'true'])
+  })
+
   it('省略 count 时不写条数,给出 count 时像分节标题一样在标题后写 · N,不画徽标', () => {
     const withCount = renderToStaticMarkup(
       <CollapsibleGroup title="标题" count={3} open onToggle={vi.fn()}>内容</CollapsibleGroup>,

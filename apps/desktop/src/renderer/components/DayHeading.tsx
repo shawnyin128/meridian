@@ -12,13 +12,16 @@ export function daySectionName(day: string, names: Record<DaySection, string>): 
   return section === undefined ? day : names[section]
 }
 
-/** The line that opens one day's worth of a chronological list. Callers pass the already-formatted day. */
+/**
+ * The line that opens one day's worth of a chronological list, a third-level heading. Callers pass the
+ * already-formatted day.
+ */
 export function DayHeading({ children, count }: {
   children: ReactNode
   count?: number
 }): ReactElement {
   return (
-    <div className="day-heading">
+    <div className="day-heading" role="heading" aria-level={3}>
       {children}<HeadingCount count={count} />
     </div>
   )

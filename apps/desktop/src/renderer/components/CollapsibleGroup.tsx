@@ -5,8 +5,8 @@ import { HeadingCount } from './HeadingCount.js'
 import './CollapsibleGroup.css'
 
 /**
- * A titled group in a long list whose heading stays pinned while its items scroll past and folds the
- * group away when clicked. `count` follows the title as `· N` when given, as a section heading's does; `actions` sit at the
+ * A titled group in a long list whose heading, a third-level one, stays pinned while its items scroll
+ * past and folds the group away when clicked. `count` follows the title as `· N` when given, as a section heading's does; `actions` sit at the
  * heading's end and never toggle the group. `variant: 'quiet'` drops the sticky pinning and shrinks
  * the heading for a small group embedded inside another list, such as an archived section. A group
  * opened from its heading grows to its height; one that renders open, or that its owner opens, shows
@@ -32,7 +32,7 @@ export function CollapsibleGroup({
   ].filter(Boolean).join(' ')
   return (
     <section className={classes} {...data}>
-      <div className="collapsible-group-head">
+      <div className="collapsible-group-head" role="heading" aria-level={3}>
         <FoldToggle
           className="collapsible-group-toggle" open={open} controls={bodyId}
           onToggle={() => { setOpening(!open); onToggle() }}

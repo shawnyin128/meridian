@@ -177,7 +177,7 @@ export function Sidebar({
   const onDiscovery = (id: string) => screen === 'inbox' && inboxMode === 'discovery' && inboxScope === id
 
   return (
-    <div className="sidebar" id="sidebar" inert={collapsed}>
+    <div className="sidebar" id="sidebar" role="navigation" aria-label={m.shell.sidebar.label} inert={collapsed}>
       <SearchBox onJump={onJump} />
 
       <Toolbar orientation="vertical">

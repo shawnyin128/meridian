@@ -883,7 +883,7 @@ export function AppShell({ screens, settings }: {
                             {today === null ? null : mounted.map((k) => (
                               <CrumbTailContext.Provider value={setTail[k]} key={k}>
                                 <SlotContext.Provider value={k}>
-                                  <div className="screenslot" hidden={k !== screen}>
+                                  <div className="screenslot" role="main" hidden={k !== screen}>
                                     <ScreenBoundary>{screens[k]}</ScreenBoundary>
                                   </div>
                                 </SlotContext.Provider>

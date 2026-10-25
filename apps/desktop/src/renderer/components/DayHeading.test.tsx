@@ -5,7 +5,7 @@ import { DayHeading } from './DayHeading.js'
 describe('DayHeading', () => {
   it('is one grey line without a rule', () => {
     const html = renderToStaticMarkup(<DayHeading>昨天</DayHeading>)
-    expect(html).toBe('<div class="day-heading">昨天</div>')
+    expect(html).toBe('<div class="day-heading" role="heading" aria-level="3">昨天</div>')
   })
 
   it('appends a count when the caller has one', () => {

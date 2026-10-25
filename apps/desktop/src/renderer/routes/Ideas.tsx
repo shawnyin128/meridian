@@ -513,7 +513,7 @@ export function Ideas() {
       <PageError error={error} />
       <PageBody className="ideas-body">
         <div className={`ideas-workspace${selected === undefined ? '' : ' has-detail'}`}>
-          <main className="ideas-list">
+          <div className="ideas-list">
             <SectionHeading count={open.length}>{m.ideas.groups.open}</SectionHeading>
             {draft === null
               ? null
@@ -563,7 +563,7 @@ export function Ideas() {
                 </List>
               </>
             )}
-          </main>
+          </div>
 
           <DetailPanel open={selected !== undefined} mode="inline" className="idea-detail-slot">
             {selected === undefined ? null : (

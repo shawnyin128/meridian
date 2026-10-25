@@ -22,20 +22,20 @@ describe('标题的计数', () => {
     const html = (node: ReactNode) => renderToStaticMarkup(node)
     expect(html(<PageTitle count={7}>垃圾桶</PageTitle>)).toContain(`>垃圾桶${COUNT}</span>`)
     expect(html(<SectionHeading count={7}>对话</SectionHeading>))
-      .toBe(`<div class="section-heading section-heading--page"><span>对话${COUNT}</span></div>`)
+      .toBe(`<div class="section-heading section-heading--page"><span role="heading" aria-level="2">对话${COUNT}</span></div>`)
     expect(html(<SectionHeading variant="rail" count={7} actions={<button>新增</button>}>任务</SectionHeading>))
-      .toBe(`<div class="section-heading section-heading--rail"><span>任务${COUNT}</span><div class="section-heading-actions"><button>新增</button></div></div>`)
+      .toBe(`<div class="section-heading section-heading--rail"><span role="heading" aria-level="2">任务${COUNT}</span><div class="section-heading-actions"><button>新增</button></div></div>`)
     expect(html(<CollapsibleGroup title="已归档" count={7} open onToggle={vi.fn()}>内容</CollapsibleGroup>))
       .toContain(`<span class="collapsible-group-title">已归档</span>${COUNT}`)
-    expect(html(<DayHeading count={7}>今天</DayHeading>)).toBe(`<div class="day-heading">今天${COUNT}</div>`)
+    expect(html(<DayHeading count={7}>今天</DayHeading>)).toBe(`<div class="day-heading" role="heading" aria-level="3">今天${COUNT}</div>`)
     expect(html(<ReaderPanelHeader title="阅读笔记" count={7} />)).toContain(`<strong>阅读笔记${COUNT}</strong>`)
     expect(html(<CardTray variant="row" summary="版本史" count={7}><p>旧版</p></CardTray>)).toContain(`>版本史${COUNT}</span>`)
   })
 
   it('没有计数的标题不写 ·', () => {
-    expect(renderToStaticMarkup(<SectionHeading>对话</SectionHeading>)).toBe('<div class="section-heading section-heading--page">对话</div>')
+    expect(renderToStaticMarkup(<SectionHeading>对话</SectionHeading>)).toBe('<div class="section-heading section-heading--page"><span role="heading" aria-level="2">对话</span></div>')
     expect(renderToStaticMarkup(<PageTitle>论文</PageTitle>)).not.toContain('heading-count')
-    expect(renderToStaticMarkup(<DayHeading>昨天</DayHeading>)).toBe('<div class="day-heading">昨天</div>')
+    expect(renderToStaticMarkup(<DayHeading>昨天</DayHeading>)).toBe('<div class="day-heading" role="heading" aria-level="3">昨天</div>')
   })
 
   it('页面标题放不下时，提示里的整段标题带着计数', () => {
