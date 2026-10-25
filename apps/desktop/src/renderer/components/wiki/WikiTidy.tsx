@@ -15,7 +15,7 @@ import './WikiTidy.css'
 
 /** The signal kinds the tidying list shows, in the order it lists them, with the state each kind's tag names. */
 const SHOWN = {
-  'open-conflict': 'error', 'broken-link': 'error', 'thin-aggregation': 'warning', 'unfiled-paper': 'warning',
+  'open-conflict': 'warning', 'broken-link': 'error', 'thin-aggregation': 'warning', 'unfiled-paper': 'warning',
 } as const satisfies Partial<Record<WikiSignalKind, 'error' | 'warning'>>
 type ShownKind = keyof typeof SHOWN
 const ORDER = Object.keys(SHOWN) as ShownKind[]

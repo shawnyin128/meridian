@@ -51,7 +51,7 @@ describe('ProjectAttention', () => {
             { id: 'block', rank: 1, kind: '阻塞', tone: 'bad', reason: '等机器', action: '' },
             { id: 'milestone-m1', milestone: 'm1', rank: 3, kind: '里程碑逾期', tone: 'bad', reason: '初稿', action: '', date: '2026-10-13' },
             { id: 'overdue-tasks-2026-09-28', task: 't1', rank: 4, kind: '任务逾期', tone: 'bad', reason: '1 条任务已过计划时间', action: '', date: '2026-09-28' },
-            { id: 'conflict', page: 'topics/sd', rank: 0, kind: '冲突', tone: 'bad', reason: '1 处冲突', action: '' },
+            { id: 'conflict', page: 'topics/sd', rank: 0, kind: '冲突', tone: 'warn', reason: '1 处冲突', action: '' },
           ]}
           {...handlers}
         />

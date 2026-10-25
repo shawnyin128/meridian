@@ -103,7 +103,7 @@ function Body({ body, onOpenConflict }: {
         <List variant="embedded" rows="all" nested>
           {body.items.map((item) => (
             <Item
-              className="bitem" key={item.id} leading={<Tag state="error">{item.tag}</Tag>} title={<span className="t">{item.text}</span>}
+              className="bitem" key={item.id} leading={<Tag state="warning">{item.tag}</Tag>} title={<span className="t">{item.text}</span>}
               // The demo's briefConf: this button opens a chat about the conflicting conclusions.
               trailing={<span className="go"><Button size="compact" variant="ghost" onClick={onOpenConflict}>{item.action}</Button></span>}
             />

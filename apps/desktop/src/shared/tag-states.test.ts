@@ -28,3 +28,20 @@ describe('标签只给状态着色', () => {
     expect(fills).toEqual(['.tag'])
   })
 })
+
+describe('冲突要注意，不是失败', () => {
+  it('结论冲突处处是警告：Wiki 整理、实验结论、动态里的简报、Wiki 论断，以及项目需要决定的事和项目推进', () => {
+    const states = {
+      tidy: /'open-conflict': '(\w+)'/.exec(source('components/wiki/WikiTidy.tsx'))?.[1],
+      conclusion: /conflicting: '(\w+)'/.exec(source('components/project/ProjectConclusions.tsx'))?.[1],
+      brief: /<Tag state="(\w+)">\{item\.tag\}<\/Tag>/.exec(source('routes/Feed.tsx'))?.[1],
+      claim: /<Tag state="(\w+)">\{c\.conflict\}<\/Tag>/.exec(source('components/wiki/WikiClaims.tsx'))?.[1],
+    }
+    const signals = readFileSync(join(import.meta.dirname, 'project-signals.ts'), 'utf8')
+    expect({
+      ...states,
+      decision: /id: 'conflict', rank: 0, kind: m\.kind\.conflict, tone: '(\w+)'/.exec(signals)?.[1],
+      pulse: /first\?\.id === 'conflict'\) return \{ tone: '(\w+)'/.exec(signals)?.[1],
+    }).toEqual({ tidy: 'warning', conclusion: 'warning', brief: 'warning', claim: 'warning', decision: 'warn', pulse: 'warn' })
+  })
+})

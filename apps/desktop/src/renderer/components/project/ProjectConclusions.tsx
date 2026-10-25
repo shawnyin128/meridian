@@ -24,8 +24,8 @@ import { ProjectSignalDate, ProjectSignalKind } from './ProjectSignals.js'
 import { Button } from '../Button.js'
 import './ProjectConclusions.css'
 
-const STATE: Record<ConclusionState, 'warning' | 'done' | 'error'> = {
-  pending: 'warning', verified: 'done', conflicting: 'error',
+const STATE: Record<ConclusionState, 'warning' | 'done'> = {
+  pending: 'warning', verified: 'done', conflicting: 'warning',
 }
 
 type NodeLook = { label: string; mode: NonNullable<GraphNode['mode']> }
