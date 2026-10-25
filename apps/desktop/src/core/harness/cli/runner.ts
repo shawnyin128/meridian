@@ -203,7 +203,8 @@ function codexResult(outcome: ChildOutcome, outputFile: string): Omit<CliResult,
  * folder of a fresh temporary folder that it removes afterwards. A call with a `lookup` scope also
  * gets the internal MCP server `internalMcp` opens in that folder, and only that server, which the
  * runner closes once the CLI has exited, however the call ends; a refused call opens none. A passed
- * check holds for five minutes by `now`, until `settingsRevision` changes or a call does not complete.
+ * check holds for five minutes by `now`, until `settingsRevision` changes or a call fails or times out;
+ * a call the user cancels keeps it.
  */
 export function createCliRunner(deps: {
   discover: (cli: HarnessCli) => Promise<CliDiscovery>
@@ -257,7 +258,7 @@ export function createCliRunner(deps: {
       const result = call.cli === 'claude' ? claudeResult(outcome) : codexResult(outcome, files.output)
       return { ...result, durationMs }
     }).catch((cause: unknown) => {
-      passed.delete(call.cli)
+      if (!(cause instanceof CliRunError && cause.kind === 'cancelled')) passed.delete(call.cli)
       throw cause
     })
   }
