@@ -2,7 +2,8 @@
 import { act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { ProjectSummary, ResearchIdea } from '../../shared/contract.js'
+import type { CallFailure, ProjectSummary, ResearchIdea } from '../../shared/contract.js'
+import { CallError } from '../call-error.js'
 import { MessagesProvider } from '../messages/useMessages.js'
 import type { ScreenJump } from '../shell/AppShell.js'
 import { LANGUAGE_STORAGE_KEY } from '../shell/language.js'
@@ -55,6 +56,8 @@ const api = vi.hoisted(() => ({
   place: vi.fn(async () => ({ idea: {}, project: null, nodeId: null })),
   /** The project details `project.get` answers with, by id. */
   details: {} as Record<string, unknown>,
+  /** The reason `project.get` fails with, by id, for a project that cannot be read. */
+  unreadable: {} as Record<string, CallFailure>,
   promote: vi.fn(async () => ({ idea: {}, project: {} })),
   remove: vi.fn(async () => ({ trash: 'trash-idea' })),
   restored: [] as string[],
@@ -80,7 +83,14 @@ vi.mock('../ipc.js', () => ({
     reorder: api.reorder,
     create: api.create,
   },
-  project: { list: async () => structuredClone(api.projects), get: async (id: string) => structuredClone(api.details[id]) },
+  project: {
+    list: async () => structuredClone(api.projects),
+    get: async (id: string) => {
+      const reason = api.unreadable[id]
+      if (reason !== undefined) throw new CallError('project.get', reason)
+      return structuredClone(api.details[id])
+    },
+  },
   wiki: { cards: async () => [{ id: 'topics/sd', title: '推测解码' }, { id: 'topics/kv', title: 'KV 量化' }] },
   chat: { list: async () => structuredClone(api.chats) },
   trash: { restore: async (id: string) => { api.restored.push(id) } },
@@ -547,6 +557,37 @@ describe('Ideas', () => {
         .toEqual([true, '原关联项目当前不可用'])
     } finally {
       api.ideas.pop()
+    }
+  })
+
+  /** The ids of every idea the screen shows, sorted: all but the set-aside one, which sits in the closed archive group. */
+  const listedIds = () => api.ideas.map((idea) => idea.id).filter((id) => id !== 'idea-aside').sort()
+
+  it('想法放在一个已删除项目的节点上时，其余想法照常列出，没有整页报错；它的详情里是项目不在的那行警告', async () => {
+    api.ideas.push({ ...OWN, id: 'idea-orphan-node', title: '项目删了的节点上的想法', project: 'project-gone', node: 'n-gone' })
+    api.unreadable['project-gone'] = 'not-found'
+    try {
+      await act(async () => { root.render(<MessagesProvider><Ideas /></MessagesProvider>) })
+      expect([[...host.querySelectorAll('[data-idea]')].map((card) => card.getAttribute('data-idea')).sort(), host.querySelector('.page-error')])
+        .toEqual([listedIds(), null])
+      await act(async () => { host.querySelector<HTMLElement>('[data-idea="idea-orphan-node"]')!.click() })
+      expect(host.querySelector('.idea-missing-project')?.textContent).toBe('原关联项目当前不可用')
+    } finally {
+      api.ideas.pop()
+      delete api.unreadable['project-gone']
+    }
+  })
+
+  it('想法所在节点的项目读不出来时，想法照常列出，屏头报出读不出来的原因', async () => {
+    api.ideas.push({ ...OWN, id: 'idea-unread-node', title: '项目读不出来的节点上的想法', project: 'project-active', node: 'n-1' })
+    api.unreadable['project-active'] = 'server'
+    try {
+      await act(async () => { root.render(<MessagesProvider><Ideas /></MessagesProvider>) })
+      expect([[...host.querySelectorAll('[data-idea]')].map((card) => card.getAttribute('data-idea')).sort(), host.querySelector('.page-error')?.textContent])
+        .toEqual([listedIds(), '服务器出错'])
+    } finally {
+      api.ideas.pop()
+      delete api.unreadable['project-active']
     }
   })
 

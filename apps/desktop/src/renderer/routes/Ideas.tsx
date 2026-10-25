@@ -41,6 +41,7 @@ import { useScrollFade } from '../hooks/useScrollFade.js'
 import { useSourceChatDeleted } from '../hooks/useSourceChatDeleted.js'
 import { useDragReorder, type Reorderable } from '../hooks/useDragReorder.js'
 import { DragHandle } from '../components/DragHandle.js'
+import { failureOf } from '../lib/failure-label.js'
 import { commitsMultiline, composing } from '../lib/keyboard.js'
 import { useMessages } from '../messages/useMessages.js'
 import { AgentLabel, SourceLabel } from '../components/SourceLabel.js'
@@ -377,8 +378,14 @@ export function Ideas() {
   useEffect(() => {
     const read = Promise.all([ideaApi.list(), projectApi.list(), wikiApi.cards()]).then(async ([ideas, projectRows, cards]) => {
       // A node's state lives in its project's graph, so the projects holding an idea's node are read whole.
+      // Each is read on its own: one that is gone or unreadable leaves its ideas without a project, and
+      // any failure but a deleted project is also reported.
       const holding = [...new Set(ideas.flatMap((idea) => (idea.node === undefined || idea.project === undefined ? [] : [idea.project])))]
-      return { ideas, projectRows, cards, held: await Promise.all(holding.map((id) => projectApi.get(id))) }
+      const held = await Promise.all(holding.map((id) => projectApi.get(id).catch((cause: unknown) => {
+        if (failureOf(cause) !== 'not-found') report(cause)
+        return null
+      })))
+      return { ideas, projectRows, cards, held: held.filter((detail) => detail !== null) }
     })
     return load('ideas', read, ({ ideas, projectRows, cards, held }) => {
       setRows(ideas)
@@ -387,7 +394,7 @@ export function Ideas() {
       setPageTitles(new Map(cards.map((card) => [card.id, card.title])))
       setSelectedId((held) => held !== null && ideas.some((idea) => idea.id === held) ? held : null)
     })
-  }, [load, revision])
+  }, [load, report, revision])
   // Clicking the sidebar while this screen is shown lands on the plain list: an open detail closes.
   const reentry = useScreenReentry()
   useEffect(() => { setSelectedId(null) }, [reentry])
