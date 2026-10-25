@@ -124,6 +124,12 @@ export async function resolveCliBinary(cli: HarnessCli, options: DiscoveryOption
 const listsFlag = (help: string, flag: string) =>
   new RegExp(`(?<![\\w-])${flag.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![\\w-])`).test(help)
 
+/**
+ * `help` with each pair of options it names as `--name[-variant]`, the way Claude Code's help names
+ * `--system-prompt-file`, also written out as `--name --name-variant`.
+ */
+const withVariants = (help: string) => help.replace(/(--[\w-]+)\[(-[\w-]+)\]/g, '$1 $1$2')
+
 function claudeSignIn(stdout: string): CliSignIn {
   let status: unknown
   try {
@@ -188,7 +194,7 @@ export async function discoverCli(cli: HarnessCli, options: DiscoveryOptions = {
     const version = /\b\d+\.\d+\.\d+\b/.exec((await probe(['--version'])).stdout)?.[0] ?? null
     const help = await probe(cli === 'claude' ? ['--help'] : ['exec', '--help'])
     const missingFlags = [...new Set([...runnerFlags(cli), ...chatTurnFlags(cli)])]
-      .filter((flag) => !listsFlag(`${help.stdout}\n${help.stderr}`, flag))
+      .filter((flag) => !listsFlag(withVariants(`${help.stdout}\n${help.stderr}`), flag))
     const status = await probe(cli === 'claude' ? ['auth', 'status', '--json'] : ['login', 'status'])
     const signIn = cli === 'claude' ? claudeSignIn(status.stdout) : codexSignIn(`${status.stdout}\n${status.stderr}`)
     if (signIn === 'unknown') {

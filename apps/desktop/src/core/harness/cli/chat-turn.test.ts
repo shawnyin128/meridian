@@ -9,7 +9,11 @@ import type { InternalMcpOpener, InternalMcpRun } from './internal-mcp.js'
 import { CODEX_DISABLED_FEATURES } from './runner.js'
 
 /** What a stand-in CLI saw: its arguments, stdin, the variables of interest and its folder. */
-type Seen = { argv: string[]; stdin: string; env: { [name: string]: string | undefined }; cwd: string; entries: string[] }
+type Seen = {
+  argv: string[]; stdin: string; env: { [name: string]: string | undefined }; cwd: string; entries: string[]
+  /** What the file `--system-prompt-file` names held, when it names one. */
+  systemFile?: string
+}
 
 /**
  * What a stand-in CLI answers: `lines` on stdout, one at a time, stderr and an exit code. With
@@ -27,6 +31,8 @@ process.stdin.on('data', (chunk) => { stdin += chunk })
 process.stdin.on('end', async () => {
   const env = { ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY, OPENAI_API_KEY: process.env.OPENAI_API_KEY, KEEP_ME: process.env.KEEP_ME }
   const record = { argv: process.argv.slice(2), stdin, env, cwd: process.cwd(), entries: fs.readdirSync('.') }
+  const at = record.argv.indexOf('--system-prompt-file')
+  if (at >= 0) record.systemFile = fs.readFileSync(record.argv[at + 1], 'utf8')
   fs.appendFileSync(process.env.STAND_IN_RECORD, JSON.stringify(record) + '\\n')
   const reply = JSON.parse(process.env.STAND_IN_REPLY)
   const lines = (reply.lines ?? []).map((line) => typeof line === 'string' ? line : JSON.stringify(line))
@@ -132,12 +138,16 @@ describe('a chat turn on Claude Code', () => {
       usage: { inputTokens: 24_182, cachedInputTokens: 23_327, outputTokens: 88 },
     })
     const [seenCall] = records()
+    const systemFile = seenCall!.argv[seenCall!.argv.indexOf('--system-prompt-file') + 1]!
     expect(seenCall!.argv).toEqual([
       '-p', '--output-format', 'stream-json', '--verbose', '--include-partial-messages',
       '--tools', '', '--strict-mcp-config', '--setting-sources', 'project',
-      '--session-id', 'session-1', '--system-prompt', 'Chat rules\n\nConversation context:\n{"title":"T"}',
+      '--session-id', 'session-1', '--system-prompt-file', systemFile,
       '--model=opus',
     ])
+    expect(seenCall!.systemFile).toBe('Chat rules\n\nConversation context:\n{"title":"T"}')
+    expect(systemFile.startsWith(folder)).toBe(false)
+    expect(existsSync(systemFile)).toBe(false)
     expect(seenCall!.stdin).toBe('Current user message:\nWhy?')
     expect(seenCall!.env).toEqual({ KEEP_ME: 'kept' })
     expect(seenCall!.cwd).toBe(realpathSync(folder))
@@ -149,9 +159,8 @@ describe('a chat turn on Claude Code', () => {
     await expect(runner(turn('claude', folder, { session: { resume: 'session-1' }, prompt: 'And then?' })))
       .resolves.toMatchObject({ answer: 'Again [p. 2].' })
     const [seenCall] = records()
-    expect(seenCall!.argv.slice(10)).toEqual([
-      '--resume', 'session-1', '--system-prompt', 'Chat rules\n\nConversation context:\n{"title":"T"}',
-    ])
+    expect(seenCall!.argv.slice(10, 13)).toEqual(['--resume', 'session-1', '--system-prompt-file'])
+    expect(seenCall!.systemFile).toBe('Chat rules\n\nConversation context:\n{"title":"T"}')
     expect(seenCall!.stdin).toBe('And then?')
   })
 
@@ -266,7 +275,7 @@ describe('the flags a chat turn needs', () => {
   it('lists each option a chat turn that starts or resumes a session and looks up the vault passes once, without its value', () => {
     expect(chatTurnFlags('claude')).toEqual([
       '-p', '--output-format', '--verbose', '--include-partial-messages', '--tools', '--strict-mcp-config',
-      '--setting-sources', '--session-id', '--system-prompt', '--model', '--mcp-config', '--allowedTools', '--resume',
+      '--setting-sources', '--session-id', '--system-prompt-file', '--model', '--mcp-config', '--allowedTools', '--resume',
     ])
     expect(chatTurnFlags('codex')).toEqual([
       '--skip-git-repo-check', '--ignore-user-config', '--ignore-rules', '--json', '-c', '--disable', '--model',
