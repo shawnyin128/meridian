@@ -4,8 +4,6 @@ import { inbox as zh } from '../zh/inbox.js'
 /** English counterpart of `zh/inbox`. `satisfies` makes a missing, extra or re-parameterised key a compile error. */
 export const inbox = {
   streamLabel: { watch: 'Inmail', discovery: 'Recommended papers' },
-  headAll: (streamLabel: string, count: number) => `${streamLabel} · ${count}`,
-  headWatch: (label: string, count: number) => `${label} · ${count}`,
   check: {
     checking: 'Checking for new papers…',
     failed: 'Check failed',

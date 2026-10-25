@@ -371,7 +371,9 @@ test('分组加筛选后,索引层计数、值 chip 计数与分页总数三者�
   const indexCount = await indexRow.locator('.n').innerText()
   await indexRow.click()
 
-  await expect(win.locator('.gnav button[aria-label="分组取值"]')).toHaveText(`${TOPIC} · ${indexCount}`)
+  const picker = win.locator('.gnav button[aria-label="分组取值"]')
+  await expect(picker).toHaveText(`${TOPIC}${indexCount}`)
+  await expect(picker.locator('.count-badge')).toHaveText(indexCount)
   await expect(win.locator('.pginfo')).toHaveText(`共 ${indexCount} 条`)
 })
 
@@ -1178,6 +1180,27 @@ test('年份与发表分两列:年份只写年份、仍按它排序,发表只写
   await expect.poll(head).toEqual(columnsBeforeDetails)
   await expect(rows.first()).toHaveClass(/\bselected\b/)
   await expect(rows.first()).toHaveAttribute('aria-current', 'true')
+})
+
+test('详情里笔记与实验结论的数是属性值:一段字,不为零时是实体链接,不算分隔线的行高和「Wiki」「文件」两行一样', async ({ win }) => {
+  await gotoPapers(win)
+  await firstPage(win)
+  await win.locator('.ptable tbody tr').first().locator('td.pt-title').click()
+  const counts = win.locator('.pdetail .paper-reading-summary .paper-meta-list dd')
+  await expect(counts).toHaveCount(2)
+  // A count above zero is the one entity link, holding only the number; a zero is the number alone.
+  expect(await counts.evaluateAll((dds) => dds.map((dd) => {
+    const shown = /^\d+$/.test(dd.textContent ?? '')
+    const link = dd.querySelector(':scope > .entity-link')
+    return shown && (dd.textContent === '0' ? dd.childElementCount === 0 : dd.childElementCount === 1 && link !== null)
+  }))).toEqual([true, true])
+  const plain = win.locator('.pdetail .paper-meta .paper-meta-list').locator('dt:text-is("Wiki") + dd, dt:text-is("文件") + dd')
+  await expect(plain).toHaveCount(2)
+  // The last row of each list draws no divider under it, so rows are compared without theirs.
+  const heights = [...new Set(await counts.or(plain).evaluateAll((dds) => dds.map((dd) => (
+    dd.getBoundingClientRect().height - parseFloat(getComputedStyle(dd).borderBottomWidth)).toFixed(1))))]
+  console.log(`详情里笔记、实验结论、Wiki、文件四行不算分隔线的行高 ${heights.join(', ')}px`)
+  expect(heights).toHaveLength(1)
 })
 
 test('齿轮里没有新建入口,建列归表头末尾的 ＋', async ({ win }) => {

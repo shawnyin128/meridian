@@ -106,8 +106,11 @@ Current shared contracts:
   `TagButton` is the clickable tag and `tagClass` gives a trigger another component renders the same classes.
   A tag keeps the width of its text: the text beside it gives way first, and when its row still has no
   room the tag hides as a whole. Only a `capped` tag, whose placement caps it for a long value, fades its text.
-  `CountBadge` is the one count beside a label. A host places and sizes these through `className` but never
-  sets their fill, colour, border, radius or padding.
+  A host places and sizes a tag through `className` but never sets its fill, colour, border, radius or padding.
+- `CountBadge`: the one count beside a row or button label, zero shown as 0. With `more` it is a button in the
+  same look that counts the items folded away as +N and unfolds them. A property's value is not a count beside
+  a label: a property list shows a count as plain text, like its other values.
+  A host only places it. A heading's count is not a badge: the heading shows it after its text as `· N`.
 - `StatusDot`: the one state dot, in two sizes, filled, half-filled or a ring. A dot whose state no nearby text names
   carries a `label`.
 - `ReadDots`: one neutral `StatusDot` per paper's reading state on one fading line, read first, then reading, then
@@ -156,6 +159,9 @@ Current shared contracts:
 - `PageShell`: the shared page-level header/body/footer/error/section composition. Routes supply content
   and actions rather than copying the desktop shell structure. `SectionHeading` is the one section heading:
   its `variant` is `page`, `content`, `group` or `rail`, and `actions` is the only right-hand slot.
+- `HeadingCount`: a heading's count, ` · N` after its text in the heading's own type. `PageTitle`,
+  `SectionHeading`, `CollapsibleGroup`, `DayHeading`, `CardTray` and `ReaderPanelHeader` show it through
+  their `count`; no message or screen writes `· N` itself.
 - `PickRow`, `Pager`, `Markdown`, `PaperMetadata`, `ParseProgress`, `AddAction`: shared feature widgets.
 - `RatingStars`, `ReadStatePicker` (in `PaperMetadata`) and `PaperTopics`: the one rating, reading-status and
   topic editor of a paper, used by both the paper table and the detail panel.

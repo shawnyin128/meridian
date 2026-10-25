@@ -14,13 +14,13 @@ describe('CollapsibleGroup', () => {
     const withCount = renderToStaticMarkup(
       <CollapsibleGroup title="标题" count={3} open onToggle={vi.fn()}>内容</CollapsibleGroup>,
     )
-    expect(withCount).toContain('<span class="collapsible-group-label"><span class="collapsible-group-title">标题</span><span class="collapsible-group-count"> · 3</span></span>')
+    expect(withCount).toContain('<span class="collapsible-group-label"><span class="collapsible-group-title">标题</span><span class="heading-count"> · 3</span></span>')
     expect(withCount).not.toContain('count-badge')
 
     const withoutCount = renderToStaticMarkup(
       <CollapsibleGroup title="标题" open onToggle={vi.fn()}>内容</CollapsibleGroup>,
     )
-    expect(withoutCount).not.toContain('collapsible-group-count')
+    expect(withoutCount).not.toContain('heading-count')
   })
 
   it('quiet 变体带上安静样式的类名,默认变体不带', () => {

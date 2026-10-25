@@ -5,7 +5,7 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Facet, ListParams, PaperColumns, PaperImportResult, PaperRow } from '../../shared/contract.js'
 import type { ScreenJump } from '../shell/AppShell.js'
-import { PAPER_COLUMNS } from '../../shared/vocabulary.js'
+import { PAPER_COLUMNS, PAPER_PAGE } from '../../shared/vocabulary.js'
 import { CallError } from '../call-error.js'
 import { IconTrash } from '../components/icons.js'
 import { TOOLTIP_DELAY } from '../components/Tooltip.js'
@@ -335,6 +335,21 @@ describe('PaperTable', () => {
     const own = mount()
     await flush()
     expect(own.querySelector('.desk-head > .back')).toBeNull()
+  })
+
+  it('详情里笔记和实验结论的数是链接:点笔记打开这篇的阅读器,点实验结论打开这篇的 Wiki 页', async () => {
+    const counted = { ...ROW, noteCount: 2, conclusionCount: 1 }
+    jumpHere = { screen: 'papers', target: 'p1', from: 'papers', seq: 1, anchor: { detail: true } }
+    const host = mount()
+    columnsCall.resolve(EMPTY_COLUMNS)
+    listCall.resolve({ rows: [counted], total: 1 })
+    getCall.resolve(counted)
+    await flush()
+    const links = [...host.querySelectorAll<HTMLButtonElement>('.pdetail .paper-reading-summary dd > .entity-link')]
+    expect(links.map((link) => link.textContent)).toEqual(['2', '1'])
+    await act(async () => { links[0]!.click() })
+    await act(async () => { links[1]!.click() })
+    expect(openedScreens).toEqual([['reader', 'p1'], ['wiki', `${PAPER_PAGE}p1`]])
   })
 
   it('带详情落点跳进来时打开那篇的详情,搜索框不填字', async () => {
@@ -855,7 +870,7 @@ describe('PaperTable', () => {
     expect(line.classList.contains('fade-text')).toBe(true)
   })
 
-  it('选定分组取值后，取值换成一个选择器：按钮显示当前值，从菜单里换一个值就列出那一组', async () => {
+  it('选定分组取值后，取值换成一个选择器：按钮显示当前值和它的计数徽标，从菜单里换一个值就列出那一组', async () => {
     facetRows = [
       { value: '推理', count: 2, newestTitle: '一篇论文' },
       { value: '检索', count: 1, newestTitle: '一篇论文' },
@@ -873,18 +888,20 @@ describe('PaperTable', () => {
 
     expect(host.querySelector('.gnav .segmented-control')).toBeNull()
     const picker = host.querySelector<HTMLButtonElement>('.gnav button[aria-label="分组取值"]')!
-    expect(picker.textContent).toBe('推理 · 2')
+    expect([picker.textContent, picker.querySelector('.count-badge')?.textContent]).toEqual(['推理2', '2'])
     expect(host.querySelector('#gxBack')).toBeNull()
     expect([...host.querySelector('.gnav')!.children]).toEqual([picker])
     await act(async () => { picker.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, button: 0 })) })
     await flush()
     const items = [...document.querySelectorAll<HTMLElement>('.ctxmenu [role="menuitemradio"]')]
-    expect(items.map((item) => [item.textContent, item.getAttribute('aria-checked'), item.querySelectorAll('svg').length]))
-      .toEqual([['推理2', 'true', 1], ['检索1', 'false', 0]])
+    expect(items.map((item) => [
+      item.textContent, item.querySelector('.count-badge')?.textContent, item.getAttribute('aria-checked'), item.querySelectorAll('svg').length,
+    ])).toEqual([['推理2', '2', 'true', 1], ['检索1', '1', 'false', 0]])
     await act(async () => { press(items[1]!) })
     await flush()
     expect(listParams.at(-1)?.facet).toEqual({ field: 'topics', value: '检索' })
-    expect(host.querySelector('.gnav button[aria-label="分组取值"]')!.textContent).toBe('检索 · 1')
+    const picked = host.querySelector('.gnav button[aria-label="分组取值"]')!
+    expect([picked.textContent, picked.querySelector('.count-badge')?.textContent]).toEqual(['检索1', '1'])
   })
 
   it('列设置里能显隐的内置列是按钮并报出是否显示，锁定的列不是按钮', async () => {
@@ -958,7 +975,7 @@ describe('PaperTable', () => {
     expect([checked('主题'), checked('发表'), checked('选择')]).toEqual([true, false, false])
   })
 
-  it('主题超出一行时用 +N 收起,点击后展开且不会误开论文详情', async () => {
+  it('主题超出一行时用 +N 计数徽标收起,点击后展开且不会误开论文详情', async () => {
     const scrollWidth = vi.spyOn(HTMLElement.prototype, 'scrollWidth', 'get')
       .mockImplementation(function () { return this.classList.contains('ci') ? 200 : 0 })
     const clientWidth = vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get')
@@ -977,15 +994,16 @@ describe('PaperTable', () => {
       const more = host.querySelector<HTMLButtonElement>('.morebadge')!
       const chips = more.parentElement!
       expect([more.textContent, more.getAttribute('aria-label')]).toEqual(['+2', '展开其余 2 项'])
+      expect([more.classList.contains('count-badge'), more.classList.contains('tag')]).toEqual([true, false])
       expect(more.getAttribute('aria-expanded')).toBe('false')
       act(() => more.click())
       expect(more.getAttribute('aria-expanded')).toBe('true')
       expect(more.getAttribute('aria-label')).toBe('收起其余 2 项')
-      expect(chips.classList.contains('chip-expanded')).toBe(true)
+      expect([more.textContent, chips.classList.contains('chip-expanded')]).toEqual(['−', true])
       expect(openedScreens).toEqual([])
       act(() => more.click())
       expect(more.getAttribute('aria-expanded')).toBe('false')
-      expect(chips.classList.contains('chip-expanded')).toBe(false)
+      expect([more.textContent, chips.classList.contains('chip-expanded')]).toEqual(['+2', false])
     } finally {
       scrollWidth.mockRestore()
       clientWidth.mockRestore()
@@ -1181,7 +1199,7 @@ describe('PaperTable', () => {
 
     expect(listParams.at(-1)?.facet).toEqual({ field: 'readState', value: '稍后阅读' })
     expect(host.querySelector('.filters .read-state-filter.on')?.textContent).toBe('待读')
-    expect(host.querySelector('.gnav .btn')?.textContent).toBe('待读 · 2')
+    expect([host.querySelector('.gnav .btn')?.textContent, host.querySelector('.gnav .btn .count-badge')?.textContent]).toEqual(['待读2', '2'])
     expect(crumbTail.map((seg) => seg.text)).toEqual(['阅读状态', '待读'])
   })
 

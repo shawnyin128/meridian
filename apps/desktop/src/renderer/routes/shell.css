@@ -157,8 +157,6 @@
 .md hr{border:0;border-top:1px solid var(--sep2);margin:var(--sp-16) 0}
 .md img{max-width:100%}
 .md .katex-display{margin:var(--sp-10) 0}
-.cnt{border:0;background:transparent;padding:0;font:inherit;color:inherit;cursor:pointer}
-.cnt:hover{color:var(--ink);text-decoration:underline}
 .nrow{display:grid;padding:var(--sp-8) var(--sp-2)}
 .nrow .nq{font-size:var(--fs-sm);color:var(--ter);font-style:italic;background:var(--field);border-radius:var(--r-sm);padding:var(--sp-6) var(--sp-8);margin-bottom:var(--sp-6)}
 .nrow .nt{font-size:var(--fs-sm);color:var(--ink);overflow-wrap:anywhere}

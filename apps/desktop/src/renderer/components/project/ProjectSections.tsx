@@ -421,7 +421,7 @@ export function ProjectAgentSessions({ sessions }: { sessions: AgentSession[] })
   const m = useMessages()
   return (
     <>
-      <SectionHeading>{m.project.agentSessions.heading(sessions.length)}</SectionHeading>
+      <SectionHeading count={sessions.length}>{m.project.agentSessions.heading}</SectionHeading>
       {sessions.map((session) => (
         <div className="agcard" key={session.id}>
           <div className="agh">

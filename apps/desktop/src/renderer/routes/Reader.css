@@ -78,7 +78,7 @@
 /* The heading bar of every reader rail panel */
 .reader-panel-head{flex:none;height:46px;box-sizing:border-box;padding:0 var(--sp-14);display:flex;align-items:center;justify-content:space-between;gap:var(--sp-8);border-bottom:1px solid var(--sep)}
 .reader-panel-head strong{font-size:var(--fs-sm)}
-.reader-panel-head span,.reading-page{font-size:var(--fs-cap);color:var(--ter)}
+.reader-panel-head>span,.reading-page{font-size:var(--fs-cap);color:var(--ter)}
 .note-compose{padding:var(--sp-12);border-bottom:1px solid var(--sep);display:flex;flex-direction:column;gap:var(--sp-8);align-items:flex-end}
 .note-compose .form-textarea,.reading-card .form-textarea{width:100%}
 .note-compose .form-textarea{min-height:86px}.reading-card .form-textarea{min-height:64px}

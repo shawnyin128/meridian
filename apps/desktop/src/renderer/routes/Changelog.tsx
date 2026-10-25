@@ -213,7 +213,7 @@ export function Changelog() {
   return (
     <PageShell>
       <PageHeader>
-        <PageTitle>{m.changelog.title(unread)}</PageTitle>
+        <PageTitle count={unread}>{m.changelog.title}</PageTitle>
       </PageHeader>
 
       <PageError error={error} />

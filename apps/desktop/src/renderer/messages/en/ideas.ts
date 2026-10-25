@@ -2,11 +2,11 @@ import { ideas as zh } from '../zh/ideas.js'
 
 /** English counterpart of `zh/ideas`. */
 export const ideas = {
-  title: (n: number) => `Ideas · ${n}`,
+  title: 'Ideas',
   groups: {
-    open: (n: number) => `Not started · ${n}`,
-    active: (n: number) => `In progress · ${n}`,
-    done: (n: number) => `Done · ${n}`,
+    open: 'Not started',
+    active: 'In progress',
+    done: 'Done',
   },
   sort: 'Sort',
   sortUpdated: 'By updated',

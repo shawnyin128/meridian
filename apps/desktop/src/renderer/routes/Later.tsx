@@ -109,7 +109,7 @@ export function Later() {
     <PageShell>
       <PageHeader>
         {origin === null ? null : <BackButton onClick={back} />}
-        <PageTitle>{m.later.title(entries?.length ?? 0)}</PageTitle>
+        <PageTitle count={entries?.length ?? 0}>{m.later.title}</PageTitle>
       </PageHeader>
 
       <PageError error={error} />

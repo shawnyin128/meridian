@@ -216,10 +216,9 @@ describe('一个对象一个词', () => {
 })
 
 describe('标签后的数', () => {
-  it('一律写成 标签 · N,不带单位', () => {
-    expect([
-      zh.inbox.headWatch('主题 · speculative decoding', 3), zh.project.conclusions.tasks(2), zh.project.conclusions.experiments(2),
-    ]).toEqual(['主题 · speculative decoding · 3', '任务 · 2', '实验记录 · 2'])
+  it('标题的文案只是标签，· N 由标题组件写在后面', () => {
+    expect([zh.project.conclusions.tasks, zh.project.conclusions.experiments, en.project.conclusions.tasks])
+      .toEqual(['任务', '实验记录', 'Tasks'])
   })
 })
 
