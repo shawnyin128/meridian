@@ -210,7 +210,8 @@ describe('PaperWikiIngest', () => {
         .find((button) => button.textContent === '确认写入 Wiki')!.click()
     })
     expect(api.apply).toHaveBeenCalledWith('proposal-1', '# Reviewed')
-    expect(host.textContent).toContain('已写入 Wiki')
+    expect([...host.querySelectorAll('.wiki-ingest-status.inline-message--line.inline-message--info')].map((line) => line.textContent))
+      .toContain('已写入 Wiki。')
   })
 
   it('offers Undo in the notice of the Wiki write, undoing the change entry that write recorded', async () => {
@@ -263,7 +264,8 @@ describe('PaperWikiIngest', () => {
       host.querySelector<HTMLButtonElement>('[data-testid="start-harness"]')!.click()
     })
 
-    expect(host.textContent).toContain('审计记录没能保存 · 没能写入论文库')
+    expect([...host.querySelectorAll('.wiki-ingest-status.inline-message--line.inline-message--error[role="alert"]')]
+      .map((line) => line.textContent)).toEqual(['审计记录没能保存 · 没能写入论文库'])
     expect(host.textContent).toContain('记住什么')
   })
 
@@ -327,13 +329,13 @@ describe('PaperWikiIngest', () => {
     core.failures = { p1: 'model' }
     await act(async () => { root.render(withMessages(<Panel paper={paper} reading={reading} onJump={api.jump} />)) })
 
-    expect([...host.querySelectorAll('.wiki-ingest-status.bad')].map((line) => line.textContent)).toEqual(['模型调用失败'])
+    expect([...host.querySelectorAll('.wiki-ingest-status.inline-message--error')].map((line) => line.textContent)).toEqual(['模型调用失败'])
     expect(host.querySelector('[data-testid="start-harness"]')).toBeNull()
     await act(async () => {
       [...host.querySelectorAll<HTMLButtonElement>('button')].find((button) => button.textContent === '重新准备')!.click()
     })
     expect(api.dismiss).toHaveBeenCalledExactlyOnceWith('p1')
-    expect(host.querySelector('.wiki-ingest-status.bad')).toBeNull()
+    expect(host.querySelector('.wiki-ingest-status.inline-message--error')).toBeNull()
     expect(host.querySelector('[data-testid="start-harness"]')).not.toBeNull()
   })
 
@@ -521,7 +523,7 @@ describe('PaperWikiIngest', () => {
       reasons: ['source-inaccurate', 'missing-important'],
       note: '第 4 页的限制条件被遗漏。',
     })
-    expect([...host.querySelectorAll('.wiki-ingest-status')].map((line) => line.textContent)).toContain('提案已丢弃')
+    expect([...host.querySelectorAll('.wiki-ingest-status.inline-message--info')].map((line) => line.textContent)).toContain('提案已丢弃')
   })
 
   it('offers the rejection reasons as chips that each toggle on their own, not as segments', async () => {

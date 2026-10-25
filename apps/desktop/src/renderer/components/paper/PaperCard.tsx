@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { useMessages } from '../../messages/useMessages.js'
+import { InlineMessage } from '../InlineMessage.js'
 import { RowActions } from '../StructuredList.js'
 import { Tag } from '../Tag.js'
 import { PaperAbstract } from './PaperAbstract.js'
@@ -56,18 +57,9 @@ export function PaperCardBadge({ children }: { children: ReactNode }) {
   return <Tag className="paper-card-badge venue">{children}</Tag>
 }
 
-/** Inline hints in paper cards; `action` can hold open or retry buttons. */
-export function PaperCardNotice({ children, action, tone = 'default' }: {
-  children: ReactNode
-  action?: ReactNode
-  tone?: 'default' | 'error'
-}) {
-  return (
-    <div className={`paper-card-notice pdup${tone === 'error' ? ' is-error pfail' : ''}`}>
-      <span>{children}</span>
-      {action}
-    </div>
-  )
+/** A failure on a paper card, the error box of InlineMessage; `action` is the button that retries it. */
+export function PaperCardNotice({ children, action }: { children: ReactNode; action: ReactNode }) {
+  return <InlineMessage tone="error" variant="box" className="paper-card-notice" action={action}>{children}</InlineMessage>
 }
 
 /** The citation count, kept as dimmed fixed-width digits. */

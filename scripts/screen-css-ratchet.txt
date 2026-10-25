@@ -451,33 +451,27 @@ components/paper/PaperCard.css:5: .paper-card-metadata { font-size }
 components/paper/PaperCard.css:5: .paper-card-metadata { color }
 components/paper/PaperCard.css:5: .paper-card-metadata { margin }
 components/paper/PaperCard.css:6: .paper-card-notice { margin-top }
-components/paper/PaperCard.css:6: .paper-card-notice { padding }
-components/paper/PaperCard.css:6: .paper-card-notice { border }
-components/paper/PaperCard.css:6: .paper-card-notice { border-radius }
-components/paper/PaperCard.css:6: .paper-card-notice { font-size }
-components/paper/PaperCard.css:6: .paper-card-notice { color }
-components/paper/PaperCard.css:8: .paper-card-notice.is-error { color }
-components/paper/PaperCard.css:9: .paper-card-badge { margin-left }
-components/paper/PaperCard.css:10: .paper-card-metadata .source-label { margin-left }
-components/paper/PaperCard.css:11: .paper-card-citations { margin-left }
-components/paper/PaperCard.css:11: .paper-card-citations { color }
-components/paper/PaperCard.css:11: .paper-card-citations { font-variant-numeric }
-components/paper/PaperCard.css:12: .paper-card-label { font-size }
-components/paper/PaperCard.css:12: .paper-card-label { font-weight }
-components/paper/PaperCard.css:12: .paper-card-label { color }
-components/paper/PaperCard.css:12: .paper-card-label { margin-bottom }
-components/paper/PaperCard.css:13: .paper-card-section+.paper-card-section { margin-top }
-components/paper/PaperCard.css:14: .paper-abstract { font-size }
-components/paper/PaperCard.css:14: .paper-abstract { color }
-components/paper/PaperCard.css:14: .paper-abstract { line-height }
-components/paper/PaperCard.css:15: .paper-abstract>p { margin }
-components/paper/PaperCard.css:17: .paper-abstract.is-folded { max-height }
-components/paper/PaperCard.css:19: .paper-abstract.is-folded:has(:focus-visible) { max-height }
-components/paper/PaperCard.css:19: .paper-abstract.is-folded:has(:focus-visible) { mask-image }
-components/paper/PaperCard.css:21: .paper-abstract-toggle { margin }
-components/paper/PaperCard.css:22: .paper-card-recommendation { font-size }
-components/paper/PaperCard.css:22: .paper-card-recommendation { color }
-components/paper/PaperCard.css:24: @media (prefers-reduced-motion:reduce) .paper-card.is-leaving { transform }
+components/paper/PaperCard.css:7: .paper-card-badge { margin-left }
+components/paper/PaperCard.css:8: .paper-card-metadata .source-label { margin-left }
+components/paper/PaperCard.css:9: .paper-card-citations { margin-left }
+components/paper/PaperCard.css:9: .paper-card-citations { color }
+components/paper/PaperCard.css:9: .paper-card-citations { font-variant-numeric }
+components/paper/PaperCard.css:10: .paper-card-label { font-size }
+components/paper/PaperCard.css:10: .paper-card-label { font-weight }
+components/paper/PaperCard.css:10: .paper-card-label { color }
+components/paper/PaperCard.css:10: .paper-card-label { margin-bottom }
+components/paper/PaperCard.css:11: .paper-card-section+.paper-card-section { margin-top }
+components/paper/PaperCard.css:12: .paper-abstract { font-size }
+components/paper/PaperCard.css:12: .paper-abstract { color }
+components/paper/PaperCard.css:12: .paper-abstract { line-height }
+components/paper/PaperCard.css:13: .paper-abstract>p { margin }
+components/paper/PaperCard.css:15: .paper-abstract.is-folded { max-height }
+components/paper/PaperCard.css:17: .paper-abstract.is-folded:has(:focus-visible) { max-height }
+components/paper/PaperCard.css:17: .paper-abstract.is-folded:has(:focus-visible) { mask-image }
+components/paper/PaperCard.css:19: .paper-abstract-toggle { margin }
+components/paper/PaperCard.css:20: .paper-card-recommendation { font-size }
+components/paper/PaperCard.css:20: .paper-card-recommendation { color }
+components/paper/PaperCard.css:22: @media (prefers-reduced-motion:reduce) .paper-card.is-leaving { transform }
 components/paper/PaperText.css:1: .paper-text-mono { font-family }
 components/paper/PaperUnderstanding.css:2: .paper-understanding-remark { padding }
 components/paper/PaperUnderstanding.css:2: .paper-understanding-remark { border-radius }
@@ -947,16 +941,10 @@ components/settings/ServiceCard.css:12: .service-foot { margin-top }
 components/settings/ServiceCard.css:13: .service-foot { padding-top }
 components/settings/ServiceCard.css:13: .service-foot { border-top }
 components/settings/ServiceCard.css:14: .service-actions { margin-left }
-components/settings/ServiceCard.css:15: .service-connection-status { color }
-components/settings/ServiceCard.css:16: .service-connection-status { font-size }
-components/settings/ServiceCard.css:16: .service-connection-status { line-height }
-components/settings/ServiceCard.css:17: .service-connection-status.failed { color }
-components/settings/ServiceCard.css:18: .service-connection-detail { max-width }
-components/settings/ServiceCard.css:18: .service-connection-detail { color }
-components/settings/ServiceCard.css:18: .service-connection-detail { overflow-wrap }
-components/settings/ServiceCard.css:19: .service-error { margin }
-components/settings/ServiceCard.css:19: .service-error { color }
-components/settings/ServiceCard.css:19: .service-error { font-size }
+components/settings/ServiceCard.css:16: .service-connection-detail { max-width }
+components/settings/ServiceCard.css:16: .service-connection-detail { color }
+components/settings/ServiceCard.css:16: .service-connection-detail { overflow-wrap }
+components/settings/ServiceCard.css:17: .service-error { margin }
 components/settings/ThemeEditor.css:6: .set-side.theme-modules { flex-basis }
 components/settings/ThemeEditor.css:7: .theme-module-name { white-space }
 components/settings/ThemeEditor.css:8: .theme-editor-title { margin }
@@ -1522,29 +1510,26 @@ routes/Reader.css:124: .wiki-ingest-scope span { font-size }
 routes/Reader.css:125: .wiki-ingest-scope strong { font-size }
 routes/Reader.css:126: .wiki-ingest .wiki-ingest-status { margin-top }
 routes/Reader.css:126: .wiki-ingest .wiki-ingest-status { padding }
-routes/Reader.css:126: .wiki-ingest .wiki-ingest-status { color }
-routes/Reader.css:127: .wiki-ingest .wiki-ingest-status.bad { color }
-routes/Reader.css:128: .wiki-ingest .wiki-ingest-status.done { color }
-routes/Reader.css:129: .wiki-ingest-actions { margin-top }
-routes/Reader.css:130: .wiki-ingest-review { margin-top }
-routes/Reader.css:130: .wiki-ingest-review { padding-top }
-routes/Reader.css:130: .wiki-ingest-review { border-top }
-routes/Reader.css:131: .wiki-ingest-review .form-textarea { min-height }
-routes/Reader.css:131: .wiki-ingest-review .form-textarea { font-family }
-routes/Reader.css:131: .wiki-ingest-review .form-textarea { font-size }
-routes/Reader.css:131: .wiki-ingest-review .form-textarea { line-height }
-routes/Reader.css:132: .wiki-ingest-body>.tag { margin-top }
-routes/Reader.css:133: .wiki-ingest-rejection { margin-top }
-routes/Reader.css:133: .wiki-ingest-rejection { padding }
-routes/Reader.css:133: .wiki-ingest-rejection { background }
-routes/Reader.css:133: .wiki-ingest-rejection { border-radius }
-routes/Reader.css:134: .wiki-ingest-rejection-head { margin-bottom }
-routes/Reader.css:135: .wiki-ingest-rejection-head strong { font-size }
-routes/Reader.css:136: .wiki-ingest-rejection-reasons { margin-bottom }
-routes/Reader.css:137: .wiki-ingest-rejection>.form-textarea { min-height }
-routes/Reader.css:137: .wiki-ingest-rejection>.form-textarea { font-family }
-routes/Reader.css:137: .wiki-ingest-rejection>.form-textarea { font-size }
-routes/Reader.css:138: .wiki-ingest-rejection .wiki-ingest-actions { margin-top }
+routes/Reader.css:127: .wiki-ingest-actions { margin-top }
+routes/Reader.css:128: .wiki-ingest-review { margin-top }
+routes/Reader.css:128: .wiki-ingest-review { padding-top }
+routes/Reader.css:128: .wiki-ingest-review { border-top }
+routes/Reader.css:129: .wiki-ingest-review .form-textarea { min-height }
+routes/Reader.css:129: .wiki-ingest-review .form-textarea { font-family }
+routes/Reader.css:129: .wiki-ingest-review .form-textarea { font-size }
+routes/Reader.css:129: .wiki-ingest-review .form-textarea { line-height }
+routes/Reader.css:130: .wiki-ingest-body>.tag { margin-top }
+routes/Reader.css:131: .wiki-ingest-rejection { margin-top }
+routes/Reader.css:131: .wiki-ingest-rejection { padding }
+routes/Reader.css:131: .wiki-ingest-rejection { background }
+routes/Reader.css:131: .wiki-ingest-rejection { border-radius }
+routes/Reader.css:132: .wiki-ingest-rejection-head { margin-bottom }
+routes/Reader.css:133: .wiki-ingest-rejection-head strong { font-size }
+routes/Reader.css:134: .wiki-ingest-rejection-reasons { margin-bottom }
+routes/Reader.css:135: .wiki-ingest-rejection>.form-textarea { min-height }
+routes/Reader.css:135: .wiki-ingest-rejection>.form-textarea { font-family }
+routes/Reader.css:135: .wiki-ingest-rejection>.form-textarea { font-size }
+routes/Reader.css:136: .wiki-ingest-rejection .wiki-ingest-actions { margin-top }
 routes/ResearchOverview.css:8: .ovstat { background }
 routes/ResearchOverview.css:8: .ovstat { border }
 routes/ResearchOverview.css:8: .ovstat { border-radius }
@@ -1752,9 +1737,6 @@ routes/Settings.css:99: .delivery-setting-control { font-size }
 routes/Settings.css:100: .delivery-setting-control .form-input { width }
 routes/Settings.css:100: .delivery-setting-control .form-input { text-align }
 routes/Settings.css:101: .delivery-settings-card>.service-foot { margin-top }
-routes/Settings.css:102: .delivery-setting-error { margin }
-routes/Settings.css:102: .delivery-setting-error { color }
-routes/Settings.css:102: .delivery-setting-error { font-size }
 routes/Settings.css:103: .set-main .watch-settings>.section-heading:first-of-type { margin-top }
 routes/Settings.css:104: .set-main .watch-suggestions { margin-bottom }
 routes/Settings.css:105: .delivery-directions { margin-top }
@@ -1785,7 +1767,6 @@ routes/Watches.css:11: .author-id-state { font-size }
 routes/Watches.css:13: .author-search-note { padding }
 routes/Watches.css:13: .author-search-note { color }
 routes/Watches.css:13: .author-search-note { font-size }
-routes/Watches.css:14: .author-search-note.error { color }
 routes/Watches.css:15: .author-matches { margin-top }
 routes/Watches.css:16: .author-match { padding }
 routes/Watches.css:16: .author-match { border-bottom }
@@ -1811,9 +1792,6 @@ routes/Watches.css:27: .watch-suggestion-source { margin-bottom }
 routes/Watches.css:29: .af-in .form-control { font-size }
 routes/Watches.css:29: .af-in .form-control { font-family }
 routes/Watches.css:31: .watch-suggestion-error { margin-top }
-routes/Watches.css:31: .watch-suggestion-error { color }
-routes/Watches.css:31: .watch-suggestion-error { font-size }
-routes/Watches.css:31: .watch-suggestion-error { line-height }
 routes/Watches.css:32: .watch-suggestion-results { margin-top }
 routes/Watches.css:33: .watch-suggestion-results>.ph2 { font-size }
 routes/Watches.css:33: .watch-suggestion-results>.ph2 { color }

@@ -99,7 +99,7 @@
 .delivery-setting-control{display:flex;align-items:center;gap:var(--sp-8);color:var(--sec);font-size:var(--fs-sm)}
 .delivery-setting-control .form-input{width:76px;text-align:right}
 .delivery-settings-card>.service-foot{grid-column:1/-1;margin-top:var(--sp-8)}
-.delivery-setting-error{grid-column:1/-1;margin:0;color:var(--bad);font-size:var(--fs-cap)}
+.delivery-setting-error{grid-column:1/-1}
 .set-main .watch-settings>.section-heading:first-of-type{margin-top:0}
 .set-main .watch-suggestions{margin-bottom:var(--sp-24)}
 .delivery-directions{margin-top:var(--sp-24);padding-top:var(--sp-2);border-top:1px solid var(--sep)}

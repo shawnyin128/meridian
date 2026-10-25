@@ -6,6 +6,7 @@ import {
 } from 'react'
 import { useScrollFade } from '../hooks/useScrollFade.js'
 import { FadeText } from './FadeText.js'
+import { InlineMessage } from './InlineMessage.js'
 import './PageShell.css'
 
 const classes = (base: string, className: string | undefined) =>
@@ -75,14 +76,16 @@ export const PageFooter = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivEleme
 )
 
 /**
- * Unified landing point for IPC/loading errors. `page` sits in the page gutter; `section` sits flush
- * inside a content section, above what failed to load.
+ * Unified landing point for IPC/loading errors: the error box of InlineMessage. `page` sits in the page
+ * gutter; `section` sits flush inside a content section, above what failed to load.
  */
 export function PageError({ error, variant = 'page' }: {
   error: string | null | undefined
   variant?: 'page' | 'section'
 }) {
-  return error ? <div className={`ipcerror ipcerror--${variant}`} role="alert">{error}</div> : null
+  return error
+    ? <InlineMessage tone="error" variant="box" className={`page-error page-error--${variant}`}>{error}</InlineMessage>
+    : null
 }
 
 /**

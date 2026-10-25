@@ -302,7 +302,7 @@ function contrastChecks(mode: ColourMode): ContrastCheck[] {
     ...over('error', '--bad', [['--content'], ['--card']], MARK),
     ...over('error', '--on-accent', solid('--bad-solid')),
     ...over('error', '--bad-text', [...CHIPS, ['--content', '--tint-bad'], ['--card', '--tint-bad'], ['--card'], ['--raised']]),
-    ...over('warning', '--warn-text', CHIPS),
+    ...over('warning', '--warn-text', [...CHIPS, ['--content', '--tint-warn'], ['--card', '--tint-warn']]),
     ...over('done', '--good-text', CHIPS),
     ...over('highlight', '--ink', [['--card', HIGHLIGHTED], ['--content', HIGHLIGHTED]]),
   ]

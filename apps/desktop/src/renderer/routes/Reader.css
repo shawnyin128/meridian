@@ -123,9 +123,7 @@
 .wiki-ingest-scope>div:first-child{border-top:0}
 .wiki-ingest-scope span{color:var(--ter);font-size:var(--fs-cap)}
 .wiki-ingest-scope strong{font-size:var(--fs-sm)}
-.wiki-ingest .wiki-ingest-status{margin-top:var(--sp-10);padding:0 var(--sp-2);color:var(--ter)}
-.wiki-ingest .wiki-ingest-status.bad{color:var(--bad)}
-.wiki-ingest .wiki-ingest-status.done{color:var(--good)}
+.wiki-ingest .wiki-ingest-status{margin-top:var(--sp-10);padding:0 var(--sp-2)}
 .wiki-ingest-actions{display:flex;justify-content:flex-end;gap:var(--sp-8);margin-top:var(--sp-14)}
 .wiki-ingest-review{margin-top:var(--sp-14);padding-top:var(--sp-14);border-top:1px solid var(--sep2)}
 .wiki-ingest-review .form-textarea{width:100%;min-height:360px;font-family:var(--mono);font-size:var(--fs-cap);line-height:1.55}

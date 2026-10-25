@@ -17,6 +17,7 @@ import { RowActions, StructuredList, StructuredRow } from '../components/Structu
 import { IconButton } from '../components/IconButton.js'
 import { IconPencil, IconTrash } from '../components/icons.js'
 import { FormInput } from '../components/FormControls.js'
+import { InlineMessage } from '../components/InlineMessage.js'
 import { ChoicePicker } from '../components/FieldPickers.js'
 import { PageError, SectionHeading } from '../components/PageShell.js'
 import { SegmentedControl } from '../components/SegmentedControl.js'
@@ -409,13 +410,19 @@ export function WatchSettings() {
               ? <div className="author-search-note">{m.watches.searching}</div>
               : authorSearchError !== null
                 ? (
-                  <div className="author-search-note error">
-                    <span>{typeof authorSearchError === 'string'
-                      ? authorSearchError
-                      : failureLabel(m, m.watches.authorSearchFailed, authorSearchError.reason)}</span>
-                    <button className="btn ghost sm" onClick={() => setAuthorSearchNonce((value) => value + 1)}>
-                      {m.common.retry}
-                    </button>
+                  <div className="author-search-note">
+                    <InlineMessage
+                      tone="error" variant="line" className="author-search-error"
+                      action={(
+                        <button className="btn ghost sm" onClick={() => setAuthorSearchNonce((value) => value + 1)}>
+                          {m.common.retry}
+                        </button>
+                      )}
+                    >
+                      {typeof authorSearchError === 'string'
+                        ? authorSearchError
+                        : failureLabel(m, m.watches.authorSearchFailed, authorSearchError.reason)}
+                    </InlineMessage>
                   </div>
                 )
                 : authorMatches.length === 0
@@ -511,7 +518,7 @@ export function WatchSettings() {
           >{suggesting ? m.watches.suggesting : m.watches.suggestAction}</button>
         </div>
         {suggestionError === null
-          ? null : <div className="watch-suggestion-error" role="alert">{suggestionError}</div>}
+          ? null : <InlineMessage tone="error" variant="line" className="watch-suggestion-error">{suggestionError}</InlineMessage>}
         {suggestions === null || suggesting ? null : (
           <div className="watch-suggestion-results">
             {suggestions.topics.length + suggestions.authors.length === 0

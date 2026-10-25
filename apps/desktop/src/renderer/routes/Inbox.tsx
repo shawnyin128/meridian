@@ -263,7 +263,7 @@ export function Inbox() {
         </>
       )}
       notices={failed.has(p.id) ? (
-        <PaperCardNotice tone="error" action={(
+        <PaperCardNotice action={(
           <button className="btn ghost sm" onClick={() => ingest(p.id)}>{m.common.retry}</button>
         )}>{failureLabel(m, m.inbox.notices.downloadFailed, failed.get(p.id)!)}</PaperCardNotice>
       ) : null}
