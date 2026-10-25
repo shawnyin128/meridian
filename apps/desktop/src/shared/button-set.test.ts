@@ -164,6 +164,13 @@ describe('按钮组', () => {
     })
   })
 
+  it('两种尺寸左右都留同一份内边距：按钮组里只有一条内边距声明', () => {
+    const paddings = rulesOf(readFileSync(join(RENDERER, BUTTON_SET), 'utf8')).flatMap(([selector, body]) => [
+      ...body.matchAll(/(?:^|;)\s*(padding[\w-]*)\s*:([^;]+)/g),
+    ].map(([, property, value]) => `${selector} { ${property}:${value!.trim()} }`))
+    expect(paddings).toEqual(['.btn { padding:0 var(--sp-10) }'])
+  })
+
   it('默认按钮和它旁边带框的输入框、选择框一样高', () => {
     document.head.innerHTML += `<style>${readFileSync(join(RENDERER, 'components', 'FormControls.css'), 'utf8')}</style>`
     document.body.innerHTML = '<button type="button" class="btn">保存</button>'
