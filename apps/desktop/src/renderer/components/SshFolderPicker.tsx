@@ -1,0 +1,198 @@
+import { useCallback, useEffect, useRef, useState } from 'react'
+import type { InputHTMLAttributes } from 'react'
+import type { SshFolders } from '../../shared/contract.js'
+import { useCandidateKeys } from '../hooks/useCandidateKeys.js'
+import { ssh } from '../ipc.js'
+import { errorLabel } from '../lib/failure-label.js'
+import { useMessages } from '../messages/useMessages.js'
+import { EmptyState } from './EmptyState.js'
+import { FadeText } from './FadeText.js'
+import { FormInput } from './FormControls.js'
+import { IconButton } from './IconButton.js'
+import { IconEnclosingFolder, IconFolder, IconNext } from './icons.js'
+import { InlineMessage } from './InlineMessage.js'
+import { LoadingPlaceholder } from './LoadingPlaceholder.js'
+import { PickerPopover, PickOption } from './PickerPopover.js'
+import { StructuredList, StructuredRow } from './StructuredList.js'
+import './SshFolderPicker.css'
+
+/** One folder of an SSH host, as Core listed it. */
+export type SshFolder = Extract<SshFolders, { state: 'ready' }>
+
+/** Where a folder is listed from: a host name or `Host` alias, and the port when it is not the default. */
+export type SshTarget = { host: string; port?: number }
+
+/** Choosing a folder of an SSH host: the connection, the folder it shows, and how its listing went. */
+export type SshFolderChoice = {
+  /** The folder shown, null until a connection has listed the remote home. */
+  folder: SshFolder | null
+  /** Whether a folder is being listed. */
+  opening: boolean
+  /** Why the latest listing failed, until another starts. */
+  issue: string | null
+  /** Connects to `target` and lists its remote home. */
+  connect: (target: SshTarget) => void
+  /** Lists the folder at `path` of the host connected to. */
+  open: (path: string) => void
+  /** Drops the connection, the folder shown and any listing still on its way. */
+  reset: () => void
+}
+
+/**
+ * Lists folders of one SSH host through Core, one folder at a time. A listing's answer is dropped
+ * once a later one started or `reset` ran. A failed connection leaves `folder` null; a folder that
+ * fails to open leaves the one shown. Either failure stands as `issue`.
+ */
+export function useSshFolders(): SshFolderChoice {
+  const m = useMessages()
+  const [folder, setFolder] = useState<SshFolder | null>(null)
+  const [opening, setOpening] = useState(false)
+  const [issue, setIssue] = useState<string | null>(null)
+  const connected = useRef<SshTarget | null>(null)
+  const latest = useRef(0)
+
+  const list = useCallback((target: SshTarget, path?: string) => {
+    const mine = ++latest.current
+    setOpening(true)
+    setIssue(null)
+    void ssh.folders({ ...target, ...(path === undefined ? {} : { path }) }).then((listed) => {
+      if (mine !== latest.current) return
+      setOpening(false)
+      if (listed.state === 'ready') {
+        connected.current = target
+        setFolder(listed)
+      } else setIssue(listed.issue)
+    }, (error: unknown) => {
+      if (mine !== latest.current) return
+      setOpening(false)
+      setIssue(errorLabel(m, error))
+    })
+  }, [m])
+
+  const open = useCallback((path: string) => {
+    if (connected.current !== null) list(connected.current, path)
+  }, [list])
+
+  const reset = useCallback(() => {
+    latest.current += 1
+    connected.current = null
+    setFolder(null)
+    setOpening(false)
+    setIssue(null)
+  }, [])
+
+  return { folder, opening, issue, connect: list, open, reset }
+}
+
+/**
+ * The host field of an SSH connection. It offers the user's `Host` aliases that contain the typed
+ * text, read once when it mounts, and keeps whatever host is typed. Typing, a click or ↓ shows the
+ * aliases; the arrow keys or the pointer move through them, and Enter or a click puts one in the
+ * field, after which Enter submits the form it sits in. Esc or leaving the field hides them. A failed
+ * read of the aliases goes to `onError`; other props go to the input.
+ */
+export function SshHostField({ value, onValue, onError, ...props }: Omit<InputHTMLAttributes<HTMLInputElement>, 'value' | 'onChange'> & {
+  value: string
+  onValue: (host: string) => void
+  onError: (error: unknown) => void
+}) {
+  const [hosts, setHosts] = useState<readonly string[]>([])
+  const [shown, setShown] = useState(false)
+  const input = useRef<HTMLInputElement>(null)
+  useEffect(() => {
+    void ssh.hosts().then(setHosts, onError)
+  }, [onError])
+
+  const typed = value.trim()
+  const hits = shown ? hosts.filter((host) => host !== typed && host.toLowerCase().includes(typed.toLowerCase())) : []
+  const choose = (host: string) => {
+    onValue(host)
+    setShown(false)
+  }
+  const keys = useCandidateKeys(hits.length, (index) => choose(hits[index]!))
+  return (
+    <PickerPopover
+      open={hits.length > 0} anchorRef={input} onOpenChange={setShown}
+      content={hits.length === 0 ? null : hits.map((host, index) => (
+        <PickOption key={host} keys={keys} index={index} onClick={() => choose(host)}>{host}</PickOption>
+      ))}
+      anchor={(
+        <FormInput
+          {...props} ref={input} value={value} autoComplete="off" spellCheck={false}
+          onChange={(event) => {
+            onValue(event.target.value)
+            setShown(true)
+          }}
+          onClick={() => setShown(true)}
+          onBlur={() => setShown(false)}
+          onKeyDown={(event) => {
+            if (event.key === 'ArrowDown') setShown(true)
+            // Enter on an alias puts it in the field instead of submitting the form.
+            if (event.key === 'Enter' && hits.length > 0) event.preventDefault()
+            keys.onKeyDown(event)
+          }}
+        />
+      )}
+    />
+  )
+}
+
+/**
+ * One folder of an SSH host, browsed like a local one: the control that opens the folder holding it,
+ * its path, then its subfolders, each of which opens on a click. The list keeps the height of five
+ * rows and scrolls inside. While the next folder loads, the list shows the loading state; `issue`
+ * shows under it. A folder opened from inside the browser by the keyboard or the pointer leaves focus
+ * on the first subfolder once its listing settles, or on the enclosing-folder control when there is none.
+ */
+export function SshFolderBrowser({ folder, opening, issue, onOpen }: {
+  folder: SshFolder
+  opening: boolean
+  issue: string | null
+  onOpen: (path: string) => void
+}) {
+  const m = useMessages()
+  const browser = useRef<HTMLDivElement>(null)
+  const up = useRef<HTMLButtonElement>(null)
+  const refocus = useRef(false)
+  const openFrom = (path: string) => {
+    refocus.current = browser.current?.contains(document.activeElement) === true
+    onOpen(path)
+  }
+  useEffect(() => {
+    if (opening || !refocus.current) return
+    refocus.current = false
+    const first = browser.current?.querySelector<HTMLElement>('.ssh-folder-row')
+    if (first !== null && first !== undefined) first.focus()
+    else up.current?.focus()
+  }, [opening])
+
+  return (
+    <div ref={browser} className="ssh-folders" aria-busy={opening || undefined}>
+      <div className="ssh-folders-head">
+        <IconButton
+          ref={up} size="nested" label={m.common.sshFolders.up} disabled={folder.parent === null}
+          onClick={() => { if (folder.parent !== null) openFrom(folder.parent) }}
+        ><IconEnclosingFolder /></IconButton>
+        <FadeText className="ssh-folders-path" label={folder.path}>{folder.path}</FadeText>
+      </div>
+      <div className="ssh-folders-list">
+        {opening
+          ? <LoadingPlaceholder shape="rows" />
+          : folder.folders.length === 0
+            ? <EmptyState variant="section">{m.common.sshFolders.empty}</EmptyState>
+            : (
+              <StructuredList variant="embedded" maxVisibleRows="fill" aria-label={folder.path}>
+                {folder.folders.map((child) => (
+                  <StructuredRow key={child.path} className="ssh-folder-row" onActivate={() => openFrom(child.path)}>
+                    <IconFolder />
+                    <FadeText className="ssh-folder-name" label={child.name}>{child.name}</FadeText>
+                    <IconNext />
+                  </StructuredRow>
+                ))}
+              </StructuredList>
+            )}
+      </div>
+      {issue === null ? null : <InlineMessage tone="error" variant="line">{issue}</InlineMessage>}
+    </div>
+  )
+}

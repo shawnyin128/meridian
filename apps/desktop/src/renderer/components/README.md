@@ -159,6 +159,12 @@ Current shared contracts:
   text in a row, cell or property list. Both share one edge, fill, radius and the one focus rule in
   `shell/tokens.css`; no other stylesheet draws a field's box. Feature components still own their layout,
   validation, suggestions, and persistence.
+- `SshFolderPicker`: choosing a folder on an SSH host the way a local one is chosen. `SshHostField` is the
+  host field: it offers the `Host` aliases Core reads from `~/.ssh/config` and keeps any host typed.
+  `useSshFolders` connects through Core and lists one folder at a time, dropping answers that arrive late.
+  `SshFolderBrowser` shows the folder: the enclosing-folder control and its path, then its subfolders in a
+  list five rows high, the loading state while the next folder lists, and a failure under the list. The
+  project's workspace dialog uses all three, and any other choice of a remote folder reuses them.
 - `ClearableInput`: the shared controlled single-line field with one trailing clear action. Global and
   library search configure the same focus restoration, icon geometry, and accessible naming.
 - `GenerationControl`: the shared idle, spinning, and hover-to-stop button contract for model-backed

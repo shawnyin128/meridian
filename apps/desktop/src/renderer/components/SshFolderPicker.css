@@ -1,0 +1,11 @@
+/*
+ * The SSH folder browser: the enclosing-folder control and the path on one line, then a list that
+ * keeps five rows' height. The path and the subfolder names start at one x.
+ */
+.ssh-folders{display:grid;gap:var(--sp-6);min-width:0}
+.ssh-folders-head{display:flex;align-items:center;gap:var(--sp-8);min-width:0}
+.ssh-folders-path{flex:1;font-size:var(--fs-body);color:var(--ink)}
+.ssh-folders-list{display:flex;flex-direction:column;height:calc(5 * var(--row-list-h));min-height:0}
+.ssh-folder-row{display:flex;align-items:center;gap:var(--sp-8);min-height:var(--row-list-h);padding:0 var(--row-list-pad);font-size:var(--fs-body)}
+.ssh-folder-row>svg{flex:none;width:16px;height:16px;color:var(--ter)}
+.ssh-folder-name{flex:1}
