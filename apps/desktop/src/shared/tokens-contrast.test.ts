@@ -330,13 +330,35 @@ describe('暗色的三级文字', () => {
   }
 })
 
-describe('出错的提示框', () => {
+/** The tones of the shared InlineMessage. */
+const MESSAGE_TONES = ['error', 'warning', 'info', 'done'] as const
+
+/** The text token of an InlineMessage tone, and the fill of its box, which every tone shares. */
+const messageLook = (tone: typeof MESSAGE_TONES[number]): [string, string] => [
+  lookOf('components/InlineMessage.css', `.inline-message--${tone}`).split(' ')[1]!,
+  lookOf('components/InlineMessage.css', '.inline-message--box').split(' ')[0]!,
+]
+
+describe('就地的错误、警告、提示和完成', () => {
+  it('每种语气只给字上它的文字色,框都铺同一个中性底', () => {
+    expect(Object.fromEntries(MESSAGE_TONES.map((tone) => [tone, lookOf('components/InlineMessage.css', `.inline-message--${tone}`)])))
+      .toEqual({ error: '无 --bad-text', warning: '无 --warn-text', info: '无 --sec', done: '无 --good-text' })
+    expect(lookOf('components/InlineMessage.css', '.inline-message--box')).toBe('--tint-mut 无')
+    const css = readFileSync(new URL('../renderer/components/InlineMessage.css', import.meta.url), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '')
+    expect([...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)].filter((rule) => /(?:^|;)\s*background/.test(rule[2]!)).map((rule) => rule[1]!.trim()))
+      .toEqual(['.inline-message--box'])
+  })
+
   for (const theme of THEMES) {
-    it(`${named(theme)}的错误提示框里的红字压在它自己的浅红底上,铺在画布和卡片上都不低于 4.5:1`, () => {
-      const [fill, text] = lookOf('components/PageShell.css', '.ipcerror').split(' ') as [string, string]
-      for (const ground of ['--content', '--card']) {
-        const got = contrast(colour(theme, text), flatten(theme, [ground, fill]))
-        expect(got, `${text} 压在 ${ground} + ${fill} 上是 ${got.toFixed(2)}:1`).toBeGreaterThanOrEqual(TEXT)
+    it(`${named(theme)}的每种语气,写成一行或放进框里,铺在画布、卡片、浮层和窗口底上,字都不低于 4.5:1`, () => {
+      for (const tone of MESSAGE_TONES) {
+        const [text, fill] = messageLook(tone)
+        for (const [where, ground] of SURFACES.slice(0, 4)) {
+          for (const stack of [ground, [...ground, fill]]) {
+            const got = contrast(colour(theme, text), flatten(theme, stack))
+            expect(got, `${tone}: ${text} 压在${where} ${stack.join(' + ')} 上是 ${got.toFixed(2)}:1`).toBeGreaterThanOrEqual(TEXT)
+          }
+        }
       }
     })
   }

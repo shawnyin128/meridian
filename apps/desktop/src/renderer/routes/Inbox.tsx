@@ -20,6 +20,7 @@ import {
   PaperCard, PaperCardBadge, PaperCardCitations, PaperCardNotice,
 } from '../components/paper/PaperCard.js'
 import { EmptyState } from '../components/EmptyState.js'
+import { InlineMessage } from '../components/InlineMessage.js'
 import { LoadingPlaceholder } from '../components/LoadingPlaceholder.js'
 import { CollapsibleGroup } from '../components/CollapsibleGroup.js'
 import { DateTimeDisplay } from '../components/DateTimeDisplay.js'
@@ -53,7 +54,9 @@ const streamLabel = (m: Catalog, stream: 'watch' | 'discovery'): string =>
 function fetchNote(status: FetchStatus | null, scope: string, m: Catalog): ReactNode {
   if (status === null) return ''
   if (status.state === 'checking') return m.inbox.check.checking
-  if (status.state === 'failed') return failureLabel(m, m.inbox.check.failed, status.reason ?? 'unknown')
+  if (status.state === 'failed') {
+    return <InlineMessage tone="error" variant="line">{failureLabel(m, m.inbox.check.failed, status.reason ?? 'unknown')}</InlineMessage>
+  }
   const last = status.last
   const fetched = last?.watches === null ? scope === ALL_WATCHES : last?.watches.length === 1 && last.watches[0] === scope
   const at = last !== undefined && fetched ? last.at : status.checkedAt
@@ -263,7 +266,7 @@ export function Inbox() {
         </>
       )}
       notices={failed.has(p.id) ? (
-        <PaperCardNotice tone="error" action={(
+        <PaperCardNotice action={(
           <button className="btn ghost sm" onClick={() => ingest(p.id)}>{m.common.retry}</button>
         )}>{failureLabel(m, m.inbox.notices.downloadFailed, failed.get(p.id)!)}</PaperCardNotice>
       ) : null}

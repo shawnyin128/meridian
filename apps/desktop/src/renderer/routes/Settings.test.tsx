@@ -330,7 +330,7 @@ describe('Settings', () => {
     const dialog = document.querySelector('.setdlg')!
     await act(async () => { dialog.querySelector<HTMLElement>('[data-setcat="api"]')!.click() })
     const alert = dialog.querySelector('.set-body [role="alert"]')
-    expect([alert?.className, alert?.textContent]).toEqual(['ipcerror ipcerror--section', '需要更新 App'])
+    expect([alert?.className, alert?.textContent]).toEqual(['inline-message inline-message--box inline-message--error page-error page-error--section', '需要更新 App'])
   })
 
   it('API 与论文推送的子分类默认收起，点开父级或直接进入子级都会展开', async () => {
@@ -431,13 +431,15 @@ describe('Settings', () => {
 
     await act(async () => { test.click() })
     expect(api.checkSemanticKey).toHaveBeenCalledOnce()
-    expect(card.querySelector('.service-connection-status')?.textContent).toContain('连接成功')
+    const worked = card.querySelector('.service-connection-status')!
+    expect([worked.matches('.inline-message--line.inline-message--done[role="status"]'), worked.textContent]).toEqual([true, '连接成功'])
 
     api.checkSemanticKey.mockResolvedValueOnce({
       state: 'failed', reason: 'authentication', detail: 'HTTP 401',
     })
     await act(async () => { test.click() })
     const status = card.querySelector('.service-connection-status')!
+    expect(status.matches('.inline-message--line.inline-message--error[role="alert"]')).toBe(true)
     expect(status.textContent).toContain('认证失败，请检查 API Key。')
     expect(status.textContent).toContain('HTTP 401')
   })
@@ -586,7 +588,10 @@ describe('Settings', () => {
     expect(choices.map((choice) => choice.textContent)).toEqual(['默认', '朱漆', '螺钿', '秋叶', '流霞', '青瓷'])
     expect(choices[5]!.querySelector<HTMLElement>('.appearance-mini.light')!.style.getPropertyValue('--ap-accent')).toBe('#3f7a6a')
     const problems = [...themes.querySelectorAll('.appearance-problem')]
-    expect(problems.map((problem) => [problem.querySelector('.tag--bad')?.textContent, problem.querySelector('.appearance-label')?.textContent]))
+    expect(problems.map((problem) => [
+      problem.querySelector('.inline-message--line.inline-message--error[role="alert"]')?.textContent,
+      problem.querySelector('.appearance-label')?.textContent,
+    ]))
       .toEqual([['不是 JSON', 'broken.json'], ['格式不符 · light.accent', 'pale.json']])
     expect(themes.lastElementChild).toBe(problems[1])
 
@@ -781,6 +786,9 @@ describe('Settings', () => {
     })
     await act(async () => { root.render(<MessagesProvider key="pending"><Settings /></MessagesProvider>) })
     expect(states()).toEqual(['重启后生效', '立即重启'])
+    const pending = card().querySelector('.storage-pending')!
+    expect([pending.matches('.inline-message--box.inline-message--warning[role="status"]'),
+      pending.querySelector('.inline-message-action .btn.pri')?.textContent]).toEqual([true, '立即重启'])
     expect(card().querySelector('p')).toBeNull()
   })
 
@@ -850,7 +858,7 @@ describe('Settings', () => {
     })
 
     expect(dialog.textContent).not.toContain('正在读取库位置')
-    expect(dialog.querySelector('.ipcerror')?.textContent).toBe('不是 Meridian 论文库')
+    expect(dialog.querySelector('.page-error')?.textContent).toBe('不是 Meridian 论文库')
     expect(dialog.querySelector<HTMLInputElement>('.storage-root input')?.value)
       .toBe('/tmp/broken-library')
     expect(dialog.querySelector<HTMLButtonElement>('[aria-label="选择论文库根目录"]')?.disabled)
@@ -1265,8 +1273,8 @@ describe('Settings', () => {
   const shownFailure = () => {
     const dialog = document.querySelector('.setdlg')!
     return [
-      dialog.querySelector('.set-head .ipcerror')?.textContent ?? null,
-      dialog.querySelector('.set-body .ipcerror')?.textContent ?? null,
+      dialog.querySelector('.set-head .page-error')?.textContent ?? null,
+      dialog.querySelector('.set-body .page-error')?.textContent ?? null,
       dialog.querySelectorAll('.set-body .loading-placeholder').length,
     ]
   }
@@ -1286,7 +1294,7 @@ describe('Settings', () => {
     api.libraryLocation.mockRejectedValueOnce(newer('library.location'))
     await render()
     expect(shownFailure()).toEqual([null, '需要更新 App', 0])
-    expect(document.querySelector('.setdlg .storage-card .ipcerror')?.textContent).toBe('需要更新 App')
+    expect(document.querySelector('.setdlg .storage-card .page-error')?.textContent).toBe('需要更新 App')
   })
 
   it('读对话列表失败时，归档的对话一栏不停在读取占位上，屏头写出原因', async () => {

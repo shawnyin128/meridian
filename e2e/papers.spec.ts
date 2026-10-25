@@ -498,7 +498,7 @@ test('标签添加框:写被拒时输入框与打好的字都留着', async ({ w
   await input.press('Enter')
 
   await expect(win.locator('#notice[data-tone="refusal"] .notice-text')).toHaveText('这一项已不存在')
-  await expect(shown(win, '.ipcerror')).toHaveCount(0)
+  await expect(shown(win, '.page-error')).toHaveCount(0)
   await expect(input).toHaveCount(1)
   await expect(input).toHaveValue(ADDED_TOPIC)
 })
@@ -524,7 +524,7 @@ test('标签添加框:点联想项写被拒时,候选层与打开的占位都留
   await hit.click()
 
   await expect(win.locator('#notice[data-tone="refusal"] .notice-text')).toHaveText('这一项已不存在')
-  await expect(shown(win, '.ipcerror')).toHaveCount(0)
+  await expect(shown(win, '.page-error')).toHaveCount(0)
   await expect(input).toHaveCount(1)
   await expect(hit).toHaveText(picked)
 })
@@ -562,7 +562,7 @@ test('标签添加框:提交在路上时点外,写落地前候选层与占位都
   })
 
   await expect(win.locator('#notice[data-tone="refusal"] .notice-text')).toHaveText('这一项已不存在')
-  await expect(shown(win, '.ipcerror')).toHaveCount(0)
+  await expect(shown(win, '.page-error')).toHaveCount(0)
   await expect(input).toHaveCount(1)
   await expect(input).toHaveValue(picked)
   await expect(hit).toHaveCount(1)
@@ -598,7 +598,7 @@ test('标签添加框:回车提交在路上时点外,写落地前占位、打的
   })
 
   await expect(win.locator('#notice[data-tone="refusal"] .notice-text')).toHaveText('这一项已不存在')
-  await expect(shown(win, '.ipcerror')).toHaveCount(0)
+  await expect(shown(win, '.page-error')).toHaveCount(0)
   await expect(input).toHaveCount(1)
   await expect(input).toHaveValue(ADDED_TOPIC)
   await expect(newRow).toHaveCount(1)
@@ -1019,7 +1019,7 @@ test('列类型:建单选列、格子里建选项、按它分组、改名与撤�
   await still.hover()
   await still.locator('.cmx.danger').click()
   await expect(win.locator('#notice[data-tone="refusal"] .notice-text')).toHaveText('还有内容在用')
-  await expect(shown(win, '.ipcerror')).toHaveCount(0)
+  await expect(shown(win, '.page-error')).toHaveCount(0)
   await expect.poll(head).toContain('读法')
 
   // Delete the column while grouping by it: its header and grouping-bar button go, and grouping
@@ -1336,7 +1336,7 @@ test('建列被 core 拒绝:占位格与打好的列名都留着,改了再回车
   expect(await head()).not.toContain('读法')
   await expect(newInput).toBeFocused()
   await expect(win.locator('#notice[data-tone="refusal"] .notice-text')).toHaveText('还有内容在用')
-  await expect(shown(win, '.ipcerror')).toHaveCount(0)
+  await expect(shown(win, '.page-error')).toHaveCount(0)
   // After the rejection the placeholder, type popover, typed name and chosen type (Single choice,
   // not the default Text) all remain.
   await expect(newHead).toHaveCount(1)
@@ -1895,7 +1895,7 @@ test('改类型:多选 → 单选时有论文填着多个值,整次被拒,拒绝
   await firstPage(win)
   await retype(win, '标签', '单选')
   await expect(win.locator('#notice[data-tone="refusal"] .notice-text')).toHaveText('还有内容在用')
-  await expect(shown(win, '.ipcerror')).toHaveCount(0)
+  await expect(shown(win, '.page-error')).toHaveCount(0)
   // Rejected: Multiple choice stays selected in the type row; the table cells and Core are unchanged.
   await expect(win.locator('[data-radix-popper-content-wrapper] .typerow .ctbtn[aria-label="多选"]'))
     .toHaveAttribute('aria-checked', 'true')

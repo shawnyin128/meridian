@@ -20,6 +20,8 @@ const shell = vi.hoisted(() => ({
   /** The change entries changelog.undo was asked to undo, in order. */
   undone: [] as string[],
   writes: [] as ReadingMutation[],
+  /** The paper's PDF bytes as `papers.source` answers them; by default they never arrive. */
+  source: (): Promise<Uint8Array> => new Promise(() => {}),
   /** The reading state after `mutation`, as Core applies the highlight commands and the deletions. */
   written(held: PaperReading, mutation: ReadingMutation): PaperReading {
     if (mutation.kind === 'highlight.add') {
@@ -47,8 +49,8 @@ vi.mock('../ipc.js', () => ({
   papers: {
     get: () => Promise.resolve({ id: 'paper-1', title: 'Paper One' }),
     reading: () => Promise.resolve(structuredClone(shell.reading)),
-    // The PDF never arrives: these cases are about the reading state beside it.
-    source: () => new Promise(() => {}),
+    // The PDF never arrives unless a case says otherwise: most cases are about the reading state beside it.
+    source: () => shell.source(),
     // As in Core, a write answers the reading after it and the change it recorded; adding a highlight records none.
     mutateReading: (_id: string, mutation: ReadingMutation) => {
       shell.writes.push(mutation)
@@ -105,6 +107,7 @@ vi.mock('../components/reader/ReaderSidePanel.js', () => ({
 }))
 
 const { Reader } = await import('./Reader.js')
+const { CallError } = await import('../call-error.js')
 const { highlightLines, highlightOutline } = await import('./highlight-geometry.js')
 
 const note = (id: string, text: string) => ({ id, page: 1, text, created: '2026-10-18', updated: '2026-10-18' })
@@ -177,6 +180,15 @@ describe('Reader', () => {
     expect([await wheel({ metaKey: true }), shown()]).toEqual([true, '135%'])
     expect([await wheel({ ctrlKey: true, deltaY: -5000 }), shown()]).toEqual([true, '240%'])
     expect([await wheel({ ctrlKey: true, deltaY: 5000 }), shown()]).toEqual([true, '60%'])
+  })
+
+  it('PDF 读不到时,原因写在 PDF 的位置上,用和各屏一样的错误框', async () => {
+    shell.source = () => Promise.reject(new CallError('papers.source', 'not-found'))
+    localStorage.setItem(LANGUAGE_STORAGE_KEY, 'zh')
+    await render()
+    const error = host.querySelector('.pdfwrap .page-error--section.inline-message--box.inline-message--error[role="alert"]')
+    expect(error?.textContent).toBe('这一项已不存在')
+    shell.source = () => new Promise(() => {})
   })
 
   it('从别的屏点链接打开时,阅读器头上的返回回到来的那一屏', async () => {

@@ -165,7 +165,7 @@ export function Later() {
                     </>
                   )}
                   notices={failed.has(x.id) ? (
-                    <PaperCardNotice tone="error" action={(
+                    <PaperCardNotice action={(
                       <button className="btn ghost sm" onClick={() => read(x)}>{m.common.retry}</button>
                     )}>{failureLabel(m, m.inbox.notices.downloadFailed, failed.get(x.id)!)}</PaperCardNotice>
                   ) : null}

@@ -428,33 +428,27 @@ components/paper/PaperCard.css:5: .paper-card-metadata { font-size }
 components/paper/PaperCard.css:5: .paper-card-metadata { color }
 components/paper/PaperCard.css:5: .paper-card-metadata { margin }
 components/paper/PaperCard.css:6: .paper-card-notice { margin-top }
-components/paper/PaperCard.css:6: .paper-card-notice { padding }
-components/paper/PaperCard.css:6: .paper-card-notice { border }
-components/paper/PaperCard.css:6: .paper-card-notice { border-radius }
-components/paper/PaperCard.css:6: .paper-card-notice { font-size }
-components/paper/PaperCard.css:6: .paper-card-notice { color }
-components/paper/PaperCard.css:8: .paper-card-notice.is-error { color }
-components/paper/PaperCard.css:9: .paper-card-badge { margin-left }
-components/paper/PaperCard.css:10: .paper-card-metadata .source-label { margin-left }
-components/paper/PaperCard.css:11: .paper-card-citations { margin-left }
-components/paper/PaperCard.css:11: .paper-card-citations { color }
-components/paper/PaperCard.css:11: .paper-card-citations { font-variant-numeric }
-components/paper/PaperCard.css:12: .paper-card-label { font-size }
-components/paper/PaperCard.css:12: .paper-card-label { font-weight }
-components/paper/PaperCard.css:12: .paper-card-label { color }
-components/paper/PaperCard.css:12: .paper-card-label { margin-bottom }
-components/paper/PaperCard.css:13: .paper-card-section+.paper-card-section { margin-top }
-components/paper/PaperCard.css:14: .paper-abstract { font-size }
-components/paper/PaperCard.css:14: .paper-abstract { color }
-components/paper/PaperCard.css:14: .paper-abstract { line-height }
-components/paper/PaperCard.css:15: .paper-abstract>p { margin }
-components/paper/PaperCard.css:17: .paper-abstract.is-folded { max-height }
-components/paper/PaperCard.css:19: .paper-abstract.is-folded:has(:focus-visible) { max-height }
-components/paper/PaperCard.css:19: .paper-abstract.is-folded:has(:focus-visible) { mask-image }
-components/paper/PaperCard.css:21: .paper-abstract-toggle { margin }
-components/paper/PaperCard.css:22: .paper-card-recommendation { font-size }
-components/paper/PaperCard.css:22: .paper-card-recommendation { color }
-components/paper/PaperCard.css:24: @media (prefers-reduced-motion:reduce) .paper-card.is-leaving { transform }
+components/paper/PaperCard.css:7: .paper-card-badge { margin-left }
+components/paper/PaperCard.css:8: .paper-card-metadata .source-label { margin-left }
+components/paper/PaperCard.css:9: .paper-card-citations { margin-left }
+components/paper/PaperCard.css:9: .paper-card-citations { color }
+components/paper/PaperCard.css:9: .paper-card-citations { font-variant-numeric }
+components/paper/PaperCard.css:10: .paper-card-label { font-size }
+components/paper/PaperCard.css:10: .paper-card-label { font-weight }
+components/paper/PaperCard.css:10: .paper-card-label { color }
+components/paper/PaperCard.css:10: .paper-card-label { margin-bottom }
+components/paper/PaperCard.css:11: .paper-card-section+.paper-card-section { margin-top }
+components/paper/PaperCard.css:12: .paper-abstract { font-size }
+components/paper/PaperCard.css:12: .paper-abstract { color }
+components/paper/PaperCard.css:12: .paper-abstract { line-height }
+components/paper/PaperCard.css:13: .paper-abstract>p { margin }
+components/paper/PaperCard.css:15: .paper-abstract.is-folded { max-height }
+components/paper/PaperCard.css:17: .paper-abstract.is-folded:has(:focus-visible) { max-height }
+components/paper/PaperCard.css:17: .paper-abstract.is-folded:has(:focus-visible) { mask-image }
+components/paper/PaperCard.css:19: .paper-abstract-toggle { margin }
+components/paper/PaperCard.css:20: .paper-card-recommendation { font-size }
+components/paper/PaperCard.css:20: .paper-card-recommendation { color }
+components/paper/PaperCard.css:22: @media (prefers-reduced-motion:reduce) .paper-card.is-leaving { transform }
 components/paper/PaperText.css:1: .paper-text-mono { font-family }
 components/paper/PaperUnderstanding.css:2: .paper-understanding-remark { padding }
 components/paper/PaperUnderstanding.css:2: .paper-understanding-remark { border-radius }
@@ -777,38 +771,32 @@ components/project/ResearchGraph.css:69: .node-document-source { font-family }
 components/project/ResearchGraph.css:69: .node-document-source { font-size }
 components/project/ResearchGraph.css:71: @media (max-width:1150px) .node-document-pane .node-document-head { margin }
 components/project/ResearchGraph.css:71: @media (max-width:1150px) .node-document-pane .node-document-head { padding }
-components/reader/PaperWikiProposalReview.css:2: .paper-wiki-quality { padding }
-components/reader/PaperWikiProposalReview.css:2: .paper-wiki-quality { border-radius }
-components/reader/PaperWikiProposalReview.css:2: .paper-wiki-quality { background }
-components/reader/PaperWikiProposalReview.css:2: .paper-wiki-quality { color }
-components/reader/PaperWikiProposalReview.css:3: .paper-wiki-quality.passed { background }
-components/reader/PaperWikiProposalReview.css:3: .paper-wiki-quality.passed { color }
-components/reader/PaperWikiProposalReview.css:5: .paper-wiki-quality-head>strong { font-size }
-components/reader/PaperWikiProposalReview.css:5: .paper-wiki-quality-head>strong { line-height }
-components/reader/PaperWikiProposalReview.css:6: .paper-wiki-quality-head>span { font-size }
-components/reader/PaperWikiProposalReview.css:6: .paper-wiki-quality-head>span { font-weight }
-components/reader/PaperWikiProposalReview.css:6: .paper-wiki-quality-head>span { line-height }
-components/reader/PaperWikiProposalReview.css:7: .paper-wiki-quality-findings { margin-top }
-components/reader/PaperWikiProposalReview.css:7: .paper-wiki-quality-findings { color }
-components/reader/PaperWikiProposalReview.css:8: .paper-wiki-quality-finding { display }
-components/reader/PaperWikiProposalReview.css:8: .paper-wiki-quality-finding { padding }
-components/reader/PaperWikiProposalReview.css:9: .paper-wiki-quality-finding strong { font-size }
-components/reader/PaperWikiProposalReview.css:9: .paper-wiki-quality-finding strong { line-height }
-components/reader/PaperWikiProposalReview.css:10: .paper-wiki-quality-finding span { color }
-components/reader/PaperWikiProposalReview.css:10: .paper-wiki-quality-finding span { font-size }
-components/reader/PaperWikiProposalReview.css:10: .paper-wiki-quality-finding span { line-height }
-components/reader/PaperWikiProposalReview.css:11: .paper-wiki-quality-place { display }
-components/reader/PaperWikiProposalReview.css:11: .paper-wiki-quality-place { margin-top }
-components/reader/PaperWikiProposalReview.css:13: .paper-wiki-review-section-head { margin-bottom }
-components/reader/PaperWikiProposalReview.css:14: .paper-wiki-review-section-head h4 { margin }
-components/reader/PaperWikiProposalReview.css:14: .paper-wiki-review-section-head h4 { font-size }
-components/reader/PaperWikiProposalReview.css:14: .paper-wiki-review-section-head h4 { line-height }
-components/reader/PaperWikiProposalReview.css:15: .paper-wiki-review-group { display }
-components/reader/PaperWikiProposalReview.css:15: .paper-wiki-review-group { flex-direction }
-components/reader/PaperWikiProposalReview.css:15: .paper-wiki-review-group { gap }
-components/reader/PaperWikiProposalReview.css:15: .paper-wiki-review-group { padding }
-components/reader/PaperWikiProposalReview.css:17: .paper-wiki-review-group-head>strong { font-size }
-components/reader/PaperWikiProposalReview.css:17: .paper-wiki-review-group-head>strong { line-height }
+components/reader/PaperWikiProposalReview.css:3: .paper-wiki-quality-head>strong { font-size }
+components/reader/PaperWikiProposalReview.css:3: .paper-wiki-quality-head>strong { line-height }
+components/reader/PaperWikiProposalReview.css:4: .paper-wiki-quality-head>span { font-size }
+components/reader/PaperWikiProposalReview.css:4: .paper-wiki-quality-head>span { font-weight }
+components/reader/PaperWikiProposalReview.css:4: .paper-wiki-quality-head>span { line-height }
+components/reader/PaperWikiProposalReview.css:5: .paper-wiki-quality-findings { margin-top }
+components/reader/PaperWikiProposalReview.css:5: .paper-wiki-quality-findings { color }
+components/reader/PaperWikiProposalReview.css:6: .paper-wiki-quality-finding { display }
+components/reader/PaperWikiProposalReview.css:6: .paper-wiki-quality-finding { padding }
+components/reader/PaperWikiProposalReview.css:7: .paper-wiki-quality-finding strong { font-size }
+components/reader/PaperWikiProposalReview.css:7: .paper-wiki-quality-finding strong { line-height }
+components/reader/PaperWikiProposalReview.css:8: .paper-wiki-quality-finding span { color }
+components/reader/PaperWikiProposalReview.css:8: .paper-wiki-quality-finding span { font-size }
+components/reader/PaperWikiProposalReview.css:8: .paper-wiki-quality-finding span { line-height }
+components/reader/PaperWikiProposalReview.css:9: .paper-wiki-quality-place { display }
+components/reader/PaperWikiProposalReview.css:9: .paper-wiki-quality-place { margin-top }
+components/reader/PaperWikiProposalReview.css:11: .paper-wiki-review-section-head { margin-bottom }
+components/reader/PaperWikiProposalReview.css:12: .paper-wiki-review-section-head h4 { margin }
+components/reader/PaperWikiProposalReview.css:12: .paper-wiki-review-section-head h4 { font-size }
+components/reader/PaperWikiProposalReview.css:12: .paper-wiki-review-section-head h4 { line-height }
+components/reader/PaperWikiProposalReview.css:13: .paper-wiki-review-group { display }
+components/reader/PaperWikiProposalReview.css:13: .paper-wiki-review-group { flex-direction }
+components/reader/PaperWikiProposalReview.css:13: .paper-wiki-review-group { gap }
+components/reader/PaperWikiProposalReview.css:13: .paper-wiki-review-group { padding }
+components/reader/PaperWikiProposalReview.css:15: .paper-wiki-review-group-head>strong { font-size }
+components/reader/PaperWikiProposalReview.css:15: .paper-wiki-review-group-head>strong { line-height }
 components/settings/ApiOverview.css:1: .api-state { color }
 components/settings/ApiOverview.css:1: .api-state { font-size }
 components/settings/ExtensionSettings.css:1: .extension-settings-card { padding-block }
@@ -902,16 +890,10 @@ components/settings/ServiceCard.css:12: .service-foot { margin-top }
 components/settings/ServiceCard.css:13: .service-foot { padding-top }
 components/settings/ServiceCard.css:13: .service-foot { border-top }
 components/settings/ServiceCard.css:14: .service-actions { margin-left }
-components/settings/ServiceCard.css:15: .service-connection-status { color }
-components/settings/ServiceCard.css:16: .service-connection-status { font-size }
-components/settings/ServiceCard.css:16: .service-connection-status { line-height }
-components/settings/ServiceCard.css:17: .service-connection-status.failed { color }
-components/settings/ServiceCard.css:18: .service-connection-detail { max-width }
-components/settings/ServiceCard.css:18: .service-connection-detail { color }
-components/settings/ServiceCard.css:18: .service-connection-detail { overflow-wrap }
-components/settings/ServiceCard.css:19: .service-error { margin }
-components/settings/ServiceCard.css:19: .service-error { color }
-components/settings/ServiceCard.css:19: .service-error { font-size }
+components/settings/ServiceCard.css:16: .service-connection-detail { max-width }
+components/settings/ServiceCard.css:16: .service-connection-detail { color }
+components/settings/ServiceCard.css:16: .service-connection-detail { overflow-wrap }
+components/settings/ServiceCard.css:17: .service-error { margin }
 components/settings/ThemeEditor.css:6: .set-side.theme-modules { flex-basis }
 components/settings/ThemeEditor.css:7: .theme-module-name { white-space }
 components/settings/ThemeEditor.css:8: .theme-editor-title { margin }
@@ -1059,13 +1041,8 @@ components/wiki/ProposalChange.css:29: .proposal-decision { margin-top }
 components/wiki/ProposalChange.css:30: .proposal-decision { color }
 components/wiki/ProposalChange.css:30: .proposal-decision { font-size }
 components/wiki/ReviewQueue.css:1: .review-row { padding }
-components/wiki/ReviewQueue.css:2: .review-note { margin }
-components/wiki/ReviewQueue.css:2: .review-note { color }
-components/wiki/ReviewQueue.css:2: .review-note { font-size }
-components/wiki/ReviewQueue.css:2: .review-note { line-height }
-components/wiki/ReviewQueue.css:3: .review-note--warn { color }
-components/wiki/ReviewQueue.css:4: .review-reason { color }
-components/wiki/ReviewQueue.css:4: .review-reason { overflow-wrap }
+components/wiki/ReviewQueue.css:2: .review-reason { color }
+components/wiki/ReviewQueue.css:2: .review-reason { overflow-wrap }
 components/wiki/WikiClaims.css:1: .wkclaim { padding }
 components/wiki/WikiClaims.css:3: .wkclaim-text { font-size }
 components/wiki/WikiClaims.css:3: .wkclaim-text { font-weight }
@@ -1212,8 +1189,6 @@ routes/Ideas.css:63: .idea-detail-editor label { color }
 routes/Ideas.css:63: .idea-detail-editor label { font-size }
 routes/Ideas.css:65: .idea-detail-editor .form-textarea { min-height }
 routes/Ideas.css:67: .idea-missing-project { margin-top }
-routes/Ideas.css:67: .idea-missing-project { color }
-routes/Ideas.css:67: .idea-missing-project { font-size }
 routes/Ideas.css:70: @media (max-width:1150px) .idea-detail-slot { --detail-panel-width }
 routes/Ideas.css:70: @media (max-width:1150px) .idea-detail-slot { --detail-panel-gap }
 routes/Ideas.css:71: @media (max-width:1150px) .idea-detail-panel { padding }
@@ -1336,164 +1311,157 @@ routes/Reader.css:19: .reader { background }
 routes/Reader.css:20: .pdfwrap { overflow }
 routes/Reader.css:20: .pdfwrap { padding }
 routes/Reader.css:20: .pdfwrap { overscroll-behavior }
-routes/Reader.css:30: .pdfload { text-align }
-routes/Reader.css:30: .pdfload { color }
-routes/Reader.css:30: .pdfload { font-size }
-routes/Reader.css:30: .pdfload { padding }
-routes/Reader.css:75: .selection-tools .form-textarea { resize }
-routes/Reader.css:75: .selection-tools .form-textarea { field-sizing }
-routes/Reader.css:75: .selection-tools .form-textarea { max-height }
-routes/Reader.css:77: .reading-notes { width }
-routes/Reader.css:77: .reading-notes { min-width }
-routes/Reader.css:77: .reading-notes { box-sizing }
-routes/Reader.css:77: .reading-notes { border-left }
-routes/Reader.css:77: .reading-notes { background }
-routes/Reader.css:77: .reading-notes { overflow }
-routes/Reader.css:79: .reader-panel-head { height }
-routes/Reader.css:79: .reader-panel-head { box-sizing }
-routes/Reader.css:79: .reader-panel-head { padding }
-routes/Reader.css:79: .reader-panel-head { border-bottom }
-routes/Reader.css:80: .reader-panel-head strong { font-size }
-routes/Reader.css:81: .reader-panel-head>span { font-size }
-routes/Reader.css:81: .reading-page { font-size }
-routes/Reader.css:81: .reader-panel-head>span { color }
-routes/Reader.css:81: .reading-page { color }
-routes/Reader.css:82: .note-compose { padding }
-routes/Reader.css:82: .note-compose { border-bottom }
-routes/Reader.css:84: .note-compose .form-textarea { min-height }
-routes/Reader.css:84: .reading-card .form-textarea { min-height }
-routes/Reader.css:85: .reading-list { overflow }
-routes/Reader.css:85: .reading-list { padding }
-routes/Reader.css:86: .reading-card { border }
-routes/Reader.css:86: .reading-card { border-radius }
-routes/Reader.css:86: .reading-card { padding }
-routes/Reader.css:86: .reading-card { background }
-routes/Reader.css:87: .highlight-card { border-left }
-routes/Reader.css:89: .reading-card.selected { background-color }
-routes/Reader.css:89: .reading-card.selected { color }
-routes/Reader.css:93: .highlight-card blockquote { max-height }
-routes/Reader.css:93: .highlight-card blockquote { margin }
-routes/Reader.css:93: .highlight-card blockquote { color }
-routes/Reader.css:93: .highlight-card blockquote { font-size }
-routes/Reader.css:93: .highlight-card blockquote { line-height }
-routes/Reader.css:94: .reading-remark { width }
-routes/Reader.css:94: .reading-remark { min-width }
-routes/Reader.css:94: .reading-remark { box-sizing }
-routes/Reader.css:94: .reading-remark { border-left }
-routes/Reader.css:94: .reading-remark { background }
-routes/Reader.css:94: .reading-remark { overflow }
-routes/Reader.css:95: .remark-compose { padding }
-routes/Reader.css:96: .remark-compose .form-textarea { min-height }
-routes/Reader.css:98: .reader-side { flex }
-routes/Reader.css:98: .reader-side { overflow }
-routes/Reader.css:98: .reader-side { background }
-routes/Reader.css:99: .reader-side.collapsed { flex-basis }
-routes/Reader.css:100: .reader-side:not(.collapsed)>:not(.reader-rail) { animation }
-routes/Reader.css:101: .reader-side>.reader-meta { width }
-routes/Reader.css:101: .reader-side>.reading-notes { width }
-routes/Reader.css:101: .reader-side>.reading-remark { width }
-routes/Reader.css:101: .reader-side>.wiki-ingest { width }
-routes/Reader.css:101: .reader-side>.reader-meta { min-width }
-routes/Reader.css:101: .reader-side>.reading-notes { min-width }
-routes/Reader.css:101: .reader-side>.reading-remark { min-width }
-routes/Reader.css:101: .reader-side>.wiki-ingest { min-width }
-routes/Reader.css:101: .reader-side>.reader-meta { border-left }
-routes/Reader.css:101: .reader-side>.reading-notes { border-left }
-routes/Reader.css:101: .reader-side>.reading-remark { border-left }
-routes/Reader.css:101: .reader-side>.wiki-ingest { border-left }
-routes/Reader.css:102: .reader-meta { overflow }
-routes/Reader.css:102: .reader-meta { background }
-routes/Reader.css:104: .reader-rail { width }
-routes/Reader.css:104: .reader-rail { min-width }
-routes/Reader.css:104: .reader-rail { border-left }
-routes/Reader.css:104: .reader-rail { background }
-routes/Reader.css:104: .reader-rail { display }
-routes/Reader.css:104: .reader-rail { flex-direction }
-routes/Reader.css:104: .reader-rail { align-items }
-routes/Reader.css:104: .reader-rail { padding-top }
-routes/Reader.css:104: .reader-rail { box-sizing }
-routes/Reader.css:104: .reader-rail { gap }
-routes/Reader.css:105: .reader-rail button { width }
-routes/Reader.css:105: .reader-rail button { height }
-routes/Reader.css:105: .reader-rail button { border }
-routes/Reader.css:105: .reader-rail button { border-radius }
-routes/Reader.css:105: .reader-rail button { background }
-routes/Reader.css:105: .reader-rail button { color }
-routes/Reader.css:105: .reader-rail button { cursor }
-routes/Reader.css:106: .reader-rail button:hover { background }
-routes/Reader.css:106: .reader-rail button:hover { color }
-routes/Reader.css:107: .reader-rail button.on { background }
-routes/Reader.css:107: .reader-rail button.on { color }
-routes/Reader.css:108: .reader-rail svg { width }
-routes/Reader.css:108: .reader-rail svg { height }
-routes/Reader.css:108: .reader-rail svg { fill }
-routes/Reader.css:108: .reader-rail svg { stroke }
-routes/Reader.css:108: .reader-rail svg { stroke-width }
-routes/Reader.css:108: .reader-rail svg { stroke-linecap }
-routes/Reader.css:108: .reader-rail svg { stroke-linejoin }
-routes/Reader.css:110: .zoomctl { bottom }
-routes/Reader.css:110: .zoomctl { transform }
-routes/Reader.css:110: .zoomctl { background }
-routes/Reader.css:110: .zoomctl { border-radius }
-routes/Reader.css:110: .zoomctl { padding }
-routes/Reader.css:110: .zoomctl { box-shadow }
-routes/Reader.css:111: .zoomctl .zoom-reset { min-width }
-routes/Reader.css:113: @media (max-width:1100px) .main.reading { --rrw }
-routes/Reader.css:114: @media (max-width:900px) .reader-side { flex-basis }
-routes/Reader.css:114: @media (max-width:900px) .reader-side.collapsed { flex-basis }
-routes/Reader.css:114: @media (max-width:900px) .reader-side>.reader-meta { width }
-routes/Reader.css:114: @media (max-width:900px) .reader-side>.reading-notes { width }
-routes/Reader.css:114: @media (max-width:900px) .reader-side>.reading-remark { width }
-routes/Reader.css:114: @media (max-width:900px) .reader-side>.wiki-ingest { width }
-routes/Reader.css:114: @media (max-width:900px) .reader-side>.reader-meta { min-width }
-routes/Reader.css:114: @media (max-width:900px) .reader-side>.reading-notes { min-width }
-routes/Reader.css:114: @media (max-width:900px) .reader-side>.reading-remark { min-width }
-routes/Reader.css:114: @media (max-width:900px) .reader-side>.wiki-ingest { min-width }
-routes/Reader.css:116: .wiki-ingest { box-sizing }
-routes/Reader.css:116: .wiki-ingest { background }
-routes/Reader.css:116: .wiki-ingest { overflow }
-routes/Reader.css:117: .wiki-ingest-body { padding }
-routes/Reader.css:118: .wiki-ingest-body>p { font-size }
-routes/Reader.css:118: .wiki-ingest-body>p { line-height }
-routes/Reader.css:118: .wiki-ingest-body>p { color }
-routes/Reader.css:118: .wiki-ingest-body>p { margin }
-routes/Reader.css:119: .wiki-ingest-scope { margin }
-routes/Reader.css:119: .wiki-ingest-scope { border }
-routes/Reader.css:119: .wiki-ingest-scope { border-radius }
-routes/Reader.css:119: .wiki-ingest-scope { overflow }
-routes/Reader.css:119: .wiki-ingest-scope { background }
-routes/Reader.css:120: .wiki-ingest-scope>div { height }
-routes/Reader.css:120: .wiki-ingest-scope>div { padding }
-routes/Reader.css:120: .wiki-ingest-scope>div { border-top }
-routes/Reader.css:121: .wiki-ingest-scope>div:first-child { border-top }
-routes/Reader.css:122: .wiki-ingest-scope span { color }
-routes/Reader.css:122: .wiki-ingest-scope span { font-size }
-routes/Reader.css:123: .wiki-ingest-scope strong { font-size }
-routes/Reader.css:124: .wiki-ingest .wiki-ingest-status { margin-top }
-routes/Reader.css:124: .wiki-ingest .wiki-ingest-status { padding }
-routes/Reader.css:124: .wiki-ingest .wiki-ingest-status { color }
-routes/Reader.css:125: .wiki-ingest .wiki-ingest-status.bad { color }
-routes/Reader.css:126: .wiki-ingest .wiki-ingest-status.done { color }
-routes/Reader.css:127: .wiki-ingest-actions { margin-top }
-routes/Reader.css:128: .wiki-ingest-review { margin-top }
-routes/Reader.css:128: .wiki-ingest-review { padding-top }
-routes/Reader.css:128: .wiki-ingest-review { border-top }
-routes/Reader.css:129: .wiki-ingest-review .form-textarea { min-height }
-routes/Reader.css:129: .wiki-ingest-review .form-textarea { font-family }
-routes/Reader.css:129: .wiki-ingest-review .form-textarea { font-size }
-routes/Reader.css:129: .wiki-ingest-review .form-textarea { line-height }
-routes/Reader.css:130: .wiki-ingest-body>.tag { margin-top }
-routes/Reader.css:131: .wiki-ingest-rejection { margin-top }
-routes/Reader.css:131: .wiki-ingest-rejection { padding }
-routes/Reader.css:131: .wiki-ingest-rejection { background }
-routes/Reader.css:131: .wiki-ingest-rejection { border-radius }
-routes/Reader.css:132: .wiki-ingest-rejection-head { margin-bottom }
-routes/Reader.css:133: .wiki-ingest-rejection-head strong { font-size }
-routes/Reader.css:134: .wiki-ingest-rejection-reasons { margin-bottom }
-routes/Reader.css:135: .wiki-ingest-rejection>.form-textarea { min-height }
-routes/Reader.css:135: .wiki-ingest-rejection>.form-textarea { font-family }
-routes/Reader.css:135: .wiki-ingest-rejection>.form-textarea { font-size }
-routes/Reader.css:136: .wiki-ingest-rejection .wiki-ingest-actions { margin-top }
+routes/Reader.css:74: .selection-tools .form-textarea { resize }
+routes/Reader.css:74: .selection-tools .form-textarea { field-sizing }
+routes/Reader.css:74: .selection-tools .form-textarea { max-height }
+routes/Reader.css:76: .reading-notes { width }
+routes/Reader.css:76: .reading-notes { min-width }
+routes/Reader.css:76: .reading-notes { box-sizing }
+routes/Reader.css:76: .reading-notes { border-left }
+routes/Reader.css:76: .reading-notes { background }
+routes/Reader.css:76: .reading-notes { overflow }
+routes/Reader.css:78: .reader-panel-head { height }
+routes/Reader.css:78: .reader-panel-head { box-sizing }
+routes/Reader.css:78: .reader-panel-head { padding }
+routes/Reader.css:78: .reader-panel-head { border-bottom }
+routes/Reader.css:79: .reader-panel-head strong { font-size }
+routes/Reader.css:80: .reader-panel-head>span { font-size }
+routes/Reader.css:80: .reading-page { font-size }
+routes/Reader.css:80: .reader-panel-head>span { color }
+routes/Reader.css:80: .reading-page { color }
+routes/Reader.css:81: .note-compose { padding }
+routes/Reader.css:81: .note-compose { border-bottom }
+routes/Reader.css:83: .note-compose .form-textarea { min-height }
+routes/Reader.css:83: .reading-card .form-textarea { min-height }
+routes/Reader.css:84: .reading-list { overflow }
+routes/Reader.css:84: .reading-list { padding }
+routes/Reader.css:85: .reading-card { border }
+routes/Reader.css:85: .reading-card { border-radius }
+routes/Reader.css:85: .reading-card { padding }
+routes/Reader.css:85: .reading-card { background }
+routes/Reader.css:86: .highlight-card { border-left }
+routes/Reader.css:88: .reading-card.selected { background-color }
+routes/Reader.css:88: .reading-card.selected { color }
+routes/Reader.css:92: .highlight-card blockquote { max-height }
+routes/Reader.css:92: .highlight-card blockquote { margin }
+routes/Reader.css:92: .highlight-card blockquote { color }
+routes/Reader.css:92: .highlight-card blockquote { font-size }
+routes/Reader.css:92: .highlight-card blockquote { line-height }
+routes/Reader.css:93: .reading-remark { width }
+routes/Reader.css:93: .reading-remark { min-width }
+routes/Reader.css:93: .reading-remark { box-sizing }
+routes/Reader.css:93: .reading-remark { border-left }
+routes/Reader.css:93: .reading-remark { background }
+routes/Reader.css:93: .reading-remark { overflow }
+routes/Reader.css:94: .remark-compose { padding }
+routes/Reader.css:95: .remark-compose .form-textarea { min-height }
+routes/Reader.css:97: .reader-side { flex }
+routes/Reader.css:97: .reader-side { overflow }
+routes/Reader.css:97: .reader-side { background }
+routes/Reader.css:98: .reader-side.collapsed { flex-basis }
+routes/Reader.css:99: .reader-side:not(.collapsed)>:not(.reader-rail) { animation }
+routes/Reader.css:100: .reader-side>.reader-meta { width }
+routes/Reader.css:100: .reader-side>.reading-notes { width }
+routes/Reader.css:100: .reader-side>.reading-remark { width }
+routes/Reader.css:100: .reader-side>.wiki-ingest { width }
+routes/Reader.css:100: .reader-side>.reader-meta { min-width }
+routes/Reader.css:100: .reader-side>.reading-notes { min-width }
+routes/Reader.css:100: .reader-side>.reading-remark { min-width }
+routes/Reader.css:100: .reader-side>.wiki-ingest { min-width }
+routes/Reader.css:100: .reader-side>.reader-meta { border-left }
+routes/Reader.css:100: .reader-side>.reading-notes { border-left }
+routes/Reader.css:100: .reader-side>.reading-remark { border-left }
+routes/Reader.css:100: .reader-side>.wiki-ingest { border-left }
+routes/Reader.css:101: .reader-meta { overflow }
+routes/Reader.css:101: .reader-meta { background }
+routes/Reader.css:103: .reader-rail { width }
+routes/Reader.css:103: .reader-rail { min-width }
+routes/Reader.css:103: .reader-rail { border-left }
+routes/Reader.css:103: .reader-rail { background }
+routes/Reader.css:103: .reader-rail { display }
+routes/Reader.css:103: .reader-rail { flex-direction }
+routes/Reader.css:103: .reader-rail { align-items }
+routes/Reader.css:103: .reader-rail { padding-top }
+routes/Reader.css:103: .reader-rail { box-sizing }
+routes/Reader.css:103: .reader-rail { gap }
+routes/Reader.css:104: .reader-rail button { width }
+routes/Reader.css:104: .reader-rail button { height }
+routes/Reader.css:104: .reader-rail button { border }
+routes/Reader.css:104: .reader-rail button { border-radius }
+routes/Reader.css:104: .reader-rail button { background }
+routes/Reader.css:104: .reader-rail button { color }
+routes/Reader.css:104: .reader-rail button { cursor }
+routes/Reader.css:105: .reader-rail button:hover { background }
+routes/Reader.css:105: .reader-rail button:hover { color }
+routes/Reader.css:106: .reader-rail button.on { background }
+routes/Reader.css:106: .reader-rail button.on { color }
+routes/Reader.css:107: .reader-rail svg { width }
+routes/Reader.css:107: .reader-rail svg { height }
+routes/Reader.css:107: .reader-rail svg { fill }
+routes/Reader.css:107: .reader-rail svg { stroke }
+routes/Reader.css:107: .reader-rail svg { stroke-width }
+routes/Reader.css:107: .reader-rail svg { stroke-linecap }
+routes/Reader.css:107: .reader-rail svg { stroke-linejoin }
+routes/Reader.css:109: .zoomctl { bottom }
+routes/Reader.css:109: .zoomctl { transform }
+routes/Reader.css:109: .zoomctl { background }
+routes/Reader.css:109: .zoomctl { border-radius }
+routes/Reader.css:109: .zoomctl { padding }
+routes/Reader.css:109: .zoomctl { box-shadow }
+routes/Reader.css:110: .zoomctl .zoom-reset { min-width }
+routes/Reader.css:112: @media (max-width:1100px) .main.reading { --rrw }
+routes/Reader.css:113: @media (max-width:900px) .reader-side { flex-basis }
+routes/Reader.css:113: @media (max-width:900px) .reader-side.collapsed { flex-basis }
+routes/Reader.css:113: @media (max-width:900px) .reader-side>.reader-meta { width }
+routes/Reader.css:113: @media (max-width:900px) .reader-side>.reading-notes { width }
+routes/Reader.css:113: @media (max-width:900px) .reader-side>.reading-remark { width }
+routes/Reader.css:113: @media (max-width:900px) .reader-side>.wiki-ingest { width }
+routes/Reader.css:113: @media (max-width:900px) .reader-side>.reader-meta { min-width }
+routes/Reader.css:113: @media (max-width:900px) .reader-side>.reading-notes { min-width }
+routes/Reader.css:113: @media (max-width:900px) .reader-side>.reading-remark { min-width }
+routes/Reader.css:113: @media (max-width:900px) .reader-side>.wiki-ingest { min-width }
+routes/Reader.css:115: .wiki-ingest { box-sizing }
+routes/Reader.css:115: .wiki-ingest { background }
+routes/Reader.css:115: .wiki-ingest { overflow }
+routes/Reader.css:116: .wiki-ingest-body { padding }
+routes/Reader.css:117: .wiki-ingest-body>p { font-size }
+routes/Reader.css:117: .wiki-ingest-body>p { line-height }
+routes/Reader.css:117: .wiki-ingest-body>p { color }
+routes/Reader.css:117: .wiki-ingest-body>p { margin }
+routes/Reader.css:118: .wiki-ingest-scope { margin }
+routes/Reader.css:118: .wiki-ingest-scope { border }
+routes/Reader.css:118: .wiki-ingest-scope { border-radius }
+routes/Reader.css:118: .wiki-ingest-scope { overflow }
+routes/Reader.css:118: .wiki-ingest-scope { background }
+routes/Reader.css:119: .wiki-ingest-scope>div { height }
+routes/Reader.css:119: .wiki-ingest-scope>div { padding }
+routes/Reader.css:119: .wiki-ingest-scope>div { border-top }
+routes/Reader.css:120: .wiki-ingest-scope>div:first-child { border-top }
+routes/Reader.css:121: .wiki-ingest-scope span { color }
+routes/Reader.css:121: .wiki-ingest-scope span { font-size }
+routes/Reader.css:122: .wiki-ingest-scope strong { font-size }
+routes/Reader.css:123: .wiki-ingest .wiki-ingest-status { margin-top }
+routes/Reader.css:123: .wiki-ingest .wiki-ingest-status { padding }
+routes/Reader.css:124: .wiki-ingest-actions { margin-top }
+routes/Reader.css:125: .wiki-ingest-review { margin-top }
+routes/Reader.css:125: .wiki-ingest-review { padding-top }
+routes/Reader.css:125: .wiki-ingest-review { border-top }
+routes/Reader.css:126: .wiki-ingest-review .form-textarea { min-height }
+routes/Reader.css:126: .wiki-ingest-review .form-textarea { font-family }
+routes/Reader.css:126: .wiki-ingest-review .form-textarea { font-size }
+routes/Reader.css:126: .wiki-ingest-review .form-textarea { line-height }
+routes/Reader.css:127: .wiki-ingest-body>.tag { margin-top }
+routes/Reader.css:128: .wiki-ingest-rejection { margin-top }
+routes/Reader.css:128: .wiki-ingest-rejection { padding }
+routes/Reader.css:128: .wiki-ingest-rejection { background }
+routes/Reader.css:128: .wiki-ingest-rejection { border-radius }
+routes/Reader.css:129: .wiki-ingest-rejection-head { margin-bottom }
+routes/Reader.css:130: .wiki-ingest-rejection-head strong { font-size }
+routes/Reader.css:131: .wiki-ingest-rejection-reasons { margin-bottom }
+routes/Reader.css:132: .wiki-ingest-rejection>.form-textarea { min-height }
+routes/Reader.css:132: .wiki-ingest-rejection>.form-textarea { font-family }
+routes/Reader.css:132: .wiki-ingest-rejection>.form-textarea { font-size }
+routes/Reader.css:133: .wiki-ingest-rejection .wiki-ingest-actions { margin-top }
 routes/ResearchOverview.css:8: .ovstat { background }
 routes/ResearchOverview.css:8: .ovstat { border }
 routes/ResearchOverview.css:8: .ovstat { border-radius }
@@ -1701,9 +1669,6 @@ routes/Settings.css:99: .delivery-setting-control { font-size }
 routes/Settings.css:100: .delivery-setting-control .form-input { width }
 routes/Settings.css:100: .delivery-setting-control .form-input { text-align }
 routes/Settings.css:101: .delivery-settings-card>.service-foot { margin-top }
-routes/Settings.css:102: .delivery-setting-error { margin }
-routes/Settings.css:102: .delivery-setting-error { color }
-routes/Settings.css:102: .delivery-setting-error { font-size }
 routes/Settings.css:103: .set-main .watch-settings>.section-heading:first-of-type { margin-top }
 routes/Settings.css:104: .set-main .watch-suggestions { margin-bottom }
 routes/Settings.css:105: .delivery-directions { margin-top }
@@ -1734,7 +1699,6 @@ routes/Watches.css:11: .author-id-state { font-size }
 routes/Watches.css:13: .author-search-note { padding }
 routes/Watches.css:13: .author-search-note { color }
 routes/Watches.css:13: .author-search-note { font-size }
-routes/Watches.css:14: .author-search-note.error { color }
 routes/Watches.css:15: .author-matches { margin-top }
 routes/Watches.css:16: .author-match { padding }
 routes/Watches.css:16: .author-match { border-bottom }
@@ -1760,9 +1724,6 @@ routes/Watches.css:27: .watch-suggestion-source { margin-bottom }
 routes/Watches.css:29: .af-in .form-control { font-size }
 routes/Watches.css:29: .af-in .form-control { font-family }
 routes/Watches.css:31: .watch-suggestion-error { margin-top }
-routes/Watches.css:31: .watch-suggestion-error { color }
-routes/Watches.css:31: .watch-suggestion-error { font-size }
-routes/Watches.css:31: .watch-suggestion-error { line-height }
 routes/Watches.css:32: .watch-suggestion-results { margin-top }
 routes/Watches.css:33: .watch-suggestion-results>.ph2 { font-size }
 routes/Watches.css:33: .watch-suggestion-results>.ph2 { color }
@@ -2246,37 +2207,30 @@ shell/AppShell.css:112: .srow.on .ic { color }
 shell/AppShell.css:113: .feed-row { margin-top }
 shell/AppShell.css:114: .trash-row { margin-top }
 shell/AppShell.css:115: .update-row { margin-top }
-shell/AppShell.css:115: .update-row { padding }
-shell/AppShell.css:115: .update-row { border-radius }
-shell/AppShell.css:116: .update-row { background }
-shell/AppShell.css:116: .update-row { color }
-shell/AppShell.css:116: .update-row { font-size }
-shell/AppShell.css:117: .update-row .ic { color }
-shell/AppShell.css:118: .update-row-text { overflow-wrap }
-shell/AppShell.css:120: .srow .ic { width }
-shell/AppShell.css:120: .srow .ic { color }
-shell/AppShell.css:121: .srow .ic svg { width }
-shell/AppShell.css:121: .srow .ic svg { height }
-shell/AppShell.css:122: .srow .n { margin-left }
-shell/AppShell.css:123: .srow.sub { padding-left }
-shell/AppShell.css:123: .srow.sub { font-size }
-shell/AppShell.css:126: .watch-row .n { margin-left }
-shell/AppShell.css:130: .srow.sub .ic.blank::before { content }
-shell/AppShell.css:132: #g-inboxsub > .srow.discovery { padding-left }
-shell/AppShell.css:132: #g-inboxsub > .srow.disc { padding-left }
-shell/AppShell.css:133: #g-inboxsub .wgroup .srow.sub { padding-left }
-shell/AppShell.css:135: .srow.sub .ic:empty::before { content }
-shell/AppShell.css:135: .srow.sub .ic:empty::before { width }
-shell/AppShell.css:135: .srow.sub .ic:empty::before { height }
-shell/AppShell.css:135: .srow.sub .ic:empty::before { border-radius }
-shell/AppShell.css:135: .srow.sub .ic:empty::before { box-sizing }
-shell/AppShell.css:135: .srow.sub .ic:empty::before { border }
-shell/AppShell.css:135: .srow.sub .ic:empty::before { background }
-shell/AppShell.css:136: .srow.sub:has(.n) .ic:empty::before { background }
-shell/AppShell.css:136: .srow.sub:has(.n) .ic:empty::before { border-color }
-shell/AppShell.css:138: .disc.closed .sh-caret { transform }
-shell/AppShell.css:140: .srow.dim { color }
-shell/AppShell.css:142: .srow.closed>.sh-caret { transform }
-shell/AppShell.css:143: .wgroup.closed { display }
-shell/AppShell.css:146: #sbgrip { right }
-shell/AppShell.css:146: #rrgrip { right }
+shell/AppShell.css:116: .srow .ic { width }
+shell/AppShell.css:116: .srow .ic { color }
+shell/AppShell.css:117: .srow .ic svg { width }
+shell/AppShell.css:117: .srow .ic svg { height }
+shell/AppShell.css:118: .srow .n { margin-left }
+shell/AppShell.css:119: .srow.sub { padding-left }
+shell/AppShell.css:119: .srow.sub { font-size }
+shell/AppShell.css:122: .watch-row .n { margin-left }
+shell/AppShell.css:126: .srow.sub .ic.blank::before { content }
+shell/AppShell.css:128: #g-inboxsub > .srow.discovery { padding-left }
+shell/AppShell.css:128: #g-inboxsub > .srow.disc { padding-left }
+shell/AppShell.css:129: #g-inboxsub .wgroup .srow.sub { padding-left }
+shell/AppShell.css:131: .srow.sub .ic:empty::before { content }
+shell/AppShell.css:131: .srow.sub .ic:empty::before { width }
+shell/AppShell.css:131: .srow.sub .ic:empty::before { height }
+shell/AppShell.css:131: .srow.sub .ic:empty::before { border-radius }
+shell/AppShell.css:131: .srow.sub .ic:empty::before { box-sizing }
+shell/AppShell.css:131: .srow.sub .ic:empty::before { border }
+shell/AppShell.css:131: .srow.sub .ic:empty::before { background }
+shell/AppShell.css:132: .srow.sub:has(.n) .ic:empty::before { background }
+shell/AppShell.css:132: .srow.sub:has(.n) .ic:empty::before { border-color }
+shell/AppShell.css:134: .disc.closed .sh-caret { transform }
+shell/AppShell.css:136: .srow.dim { color }
+shell/AppShell.css:138: .srow.closed>.sh-caret { transform }
+shell/AppShell.css:139: .wgroup.closed { display }
+shell/AppShell.css:142: #sbgrip { right }
+shell/AppShell.css:142: #rrgrip { right }

@@ -10,6 +10,7 @@ import { LinePieces } from '../DiffLines.js'
 import { EmptyState } from '../EmptyState.js'
 import { EntityLink } from '../EntityLink.js'
 import { FormInput } from '../FormControls.js'
+import { InlineMessage } from '../InlineMessage.js'
 import { LoadingPlaceholder } from '../LoadingPlaceholder.js'
 import { SectionHeading } from '../PageShell.js'
 import { SourceAnchor } from '../SourceAnchor.js'
@@ -293,7 +294,8 @@ export function ReviewQueue({ proposals, failed, pending, onApply, onDecline, li
           />
         )),
       }]} />
-      {p.notice === null ? null : <p className="review-note review-note--warn"><LinePieces pieces={named(p.notice, p.titles)} /></p>}
+      {p.notice === null
+        ? null : <InlineMessage tone="warning" variant="line"><LinePieces pieces={named(p.notice, p.titles)} /></InlineMessage>}
     </>
   )
 

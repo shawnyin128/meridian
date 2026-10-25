@@ -17,6 +17,7 @@ import { IconButton } from '../components/IconButton.js'
 import { EmptyState } from '../components/EmptyState.js'
 import { LoadingPlaceholder } from '../components/LoadingPlaceholder.js'
 import { DirectoryField } from '../components/FormControls.js'
+import { InlineMessage } from '../components/InlineMessage.js'
 import { AppearanceSettings, ColourThemeSettings } from '../components/settings/AppearanceSettings.js'
 import { ThemeEditor } from '../components/settings/ThemeEditor.js'
 import { LanguageSettings } from '../components/settings/LanguageSettings.js'
@@ -284,12 +285,12 @@ export function Settings() {
             ? <Tag className="storage-state">{m.settings.storage.lockedNote}</Tag>
             : location?.restartRequired
               ? (
-                <div className="storage-pending" role="status">
-                  <Tag tone="warn">{m.settings.storage.pendingNote}</Tag>
-                  <button className="btn pri" onClick={() => appMenu.restartApp()}>
-                    {m.settings.storage.restartNow}
-                  </button>
-                </div>
+                <InlineMessage
+                  tone="warning" variant="box" className="storage-pending"
+                  action={<button className="btn pri" onClick={() => appMenu.restartApp()}>{m.settings.storage.restartNow}</button>}
+                >
+                  {m.settings.storage.pendingNote}
+                </InlineMessage>
               )
               : null}
           <div className="storage-reset">

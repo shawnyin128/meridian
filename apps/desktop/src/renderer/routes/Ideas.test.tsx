@@ -537,6 +537,19 @@ describe('Ideas', () => {
       .toEqual([true, '项目已完成'])
   })
 
+  it('所在项目已不在时,详情里所在项目下面写一行警告', async () => {
+    api.ideas.push({ ...OWN, id: 'idea-orphan', title: '项目没了的想法', project: 'project-gone' })
+    try {
+      await act(async () => { root.render(<MessagesProvider><Ideas /></MessagesProvider>) })
+      await act(async () => { host.querySelector<HTMLElement>('[data-idea="idea-orphan"]')!.click() })
+      const warning = host.querySelector('.idea-missing-project')
+      expect([warning?.matches('.inline-message--line.inline-message--warning[role="status"]'), warning?.textContent])
+        .toEqual([true, '原关联项目当前不可用'])
+    } finally {
+      api.ideas.pop()
+    }
+  })
+
   it('想法详情里每一节的操作放在那一节小标题的右端', async () => {
     await act(async () => { root.render(<MessagesProvider><Ideas /></MessagesProvider>) })
     const headings = async (id: string) => {

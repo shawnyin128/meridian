@@ -27,7 +27,6 @@
 .pdfsheet{width:max-content;min-width:100%;transform-origin:0 0}
 .pdfpagebox{--user-unit:1;--total-scale-factor:calc(var(--scale-factor) * var(--user-unit));--scale-round-x:1px;--scale-round-y:1px;direction:ltr;position:relative;margin:0 auto var(--sp-24);background:var(--paper);box-shadow:var(--sh-paper);border-radius:var(--r-2xs)}
 .pdfpagebox canvas{display:block}
-.pdfload{text-align:center;color:var(--ter);font-size:var(--fs-sm);padding:calc(2 * var(--sp-24)) 0}
 
 /*
  * pdf.js's TextLayer is only for text selection: transparent text laid over the canvas. These are
@@ -121,9 +120,7 @@
 .wiki-ingest-scope>div:first-child{border-top:0}
 .wiki-ingest-scope span{color:var(--ter);font-size:var(--fs-cap)}
 .wiki-ingest-scope strong{font-size:var(--fs-sm)}
-.wiki-ingest .wiki-ingest-status{margin-top:var(--sp-10);padding:0 var(--sp-2);color:var(--ter)}
-.wiki-ingest .wiki-ingest-status.bad{color:var(--bad)}
-.wiki-ingest .wiki-ingest-status.done{color:var(--good)}
+.wiki-ingest .wiki-ingest-status{margin-top:var(--sp-10);padding:0 var(--sp-2)}
 .wiki-ingest-actions{display:flex;justify-content:flex-end;gap:var(--sp-8);margin-top:var(--sp-14)}
 .wiki-ingest-review{margin-top:var(--sp-14);padding-top:var(--sp-14);border-top:1px solid var(--sep2)}
 .wiki-ingest-review .form-textarea{width:100%;min-height:360px;font-family:var(--mono);font-size:var(--fs-cap);line-height:1.55}

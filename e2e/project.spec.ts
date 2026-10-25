@@ -1466,7 +1466,7 @@ test('属性栏焦点格:回车后写被拒,格子仍在编辑、字还在', asy
   await call(win, 'project.delete', { id: 'draft' })
   await pin.press('Enter')
   await expect(win.locator('#notice[data-tone="refusal"] .notice-text')).toHaveText('这一项已不存在')
-  await expect(win.locator('.screenslot:not([hidden]) .ipcerror')).toHaveCount(0)
+  await expect(win.locator('.screenslot:not([hidden]) .page-error')).toHaveCount(0)
   await expect(pin).toHaveValue('项目没了这段还想留着')
 })
 

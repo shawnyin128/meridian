@@ -361,7 +361,7 @@ test.describe('这一条推送已经在别处入过库', () => {
   // the poll win the race against the click on the stale card. See `showWindow` in app.ts.
   test.use({ showWindow: true })
 
-  test('界面上还没刷新时再点「入库」:报进拒绝提示而不是 .ipcerror', async ({ win }) => {
+  test('界面上还没刷新时再点「入库」:报进拒绝提示而不是 .page-error', async ({ win }) => {
     const entries = await inboxFromCore(win)
     const fresh = (await Promise.all(entries.filter((e) => !e.downloaded).map(async (e) =>
       ({ e, known: await inLibrary(win, e.paper) })))).find((x) => !x.known)!.e
@@ -376,7 +376,7 @@ test.describe('这一条推送已经在别处入过库', () => {
 
     await rowAction(card, '下载并入库')
     await expect(win.locator('#notice[data-tone="refusal"] .notice-text')).toHaveText('现在不能这样做')
-    await expect(shown(win, '.ipcerror')).toHaveCount(0)
+    await expect(shown(win, '.page-error')).toHaveCount(0)
   })
 })
 
@@ -394,11 +394,11 @@ test('下载失败在卡片内给原因和重试,不占用全页错误', async (
   await openInbox(win, 'all')
   const card = shown(win, '.pcard[data-pid="sequoia2"]')
   await rowAction(card, '下载并入库')
-  await expect(card.locator('.pfail span')).toHaveText('下载失败 · 服务器出错')
+  await expect(card.locator('.paper-card-notice .inline-message-text')).toHaveText('下载失败 · 服务器出错')
   await expect(card.locator('[aria-label="下载并入库"]')).toHaveCount(1)
-  await expect(shown(win, '.ipcerror')).toHaveCount(0)
-  await card.locator('.pfail .btn', { hasText: '重试' }).click()
-  await expect(card.locator('.pfail span')).toHaveText('下载失败 · 服务器出错')
+  await expect(shown(win, '.page-error')).toHaveCount(0)
+  await card.locator('.paper-card-notice .inline-message-action .btn', { hasText: '重试' }).click()
+  await expect(card.locator('.paper-card-notice .inline-message-text')).toHaveText('下载失败 · 服务器出错')
 })
 
 test('检查新论文按关注抓取一次,新论文进入相应分组且标题栏记下时间', async ({ win }) => {
@@ -610,7 +610,7 @@ test('没填 Semantic Scholar key 时作者搜索写出缺 key，填了之后先
   await openDeliverySettings(win)
   await settings(win, '.section-heading').filter({ hasText: '作者' }).locator('.btn').click()
   await settings(win, '.wrow.newrow input').fill('Alex Kim')
-  await expect(settings(win, '.author-search-note.error span')).toHaveText('搜索作者失败 · 没有 Semantic Scholar key')
+  await expect(settings(win, '.author-search-note .inline-message--error .inline-message-text')).toHaveText('搜索作者失败 · 没有 Semantic Scholar key')
 
   await call(win, 'delivery.setSemanticKey', { apiKey: 'fixture-key' })
   await settings(win, '.wrow.newrow input').fill('')
