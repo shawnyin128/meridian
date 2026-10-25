@@ -31,7 +31,7 @@ import { SETTINGS_CATEGORIES, SETTINGS_CATEGORY_LABEL, type SettingsCategory } f
 import { Sidebar } from './Sidebar.js'
 import { JobsContext, useJobsPoll } from './useJobs.js'
 import { readShellState, writeShellState } from './shell-state.js'
-import { takeUndoOffers } from './undo-offers.js'
+import { itemsNow, landOnRestored, takeUndoOffers } from './undo-offers.js'
 import { ColourThemeFilesContext, useColourThemeFilesPoll } from './useColourThemes.js'
 import { Button } from '../components/Button.js'
 import './AppShell.css'
@@ -171,7 +171,8 @@ export function useCrumbTail(tail: CrumbSeg[], onLeafClick?: () => void): void {
  * An action marked `undoes` stays on offer after its notice is gone, as does the Undo of every write
  * the change log records whose notice does not offer one (useVaultWrite): ⌘Z outside a text field runs
  * the latest Undo still on offer exactly as a notice's button does, then returns to the screen that was
- * shown when it was offered, where the restored item is. Running it either way takes it off offer.
+ * shown when it was offered and lands on the item the undo brings back there, which flashes. Running
+ * it either way takes it off offer.
  * The returned object keeps the same reference throughout the lifetime of the shell.
  */
 export function useNotice(): { success: Notify; refusal: Notify } {
@@ -671,16 +672,18 @@ export function AppShell({ screens, settings }: {
   // A write the change log records offers its Undo here too when no notice offers it (useVaultWrite).
   useEffect(() => takeUndoOffers((run) => { undoOffers.current.push({ run, screen: shownScreen.current }) }), [])
 
-  // ⌘Z on macOS, Ctrl+Z elsewhere, outside a text field runs the latest Undo still on offer and goes
-  // back to where it was offered. In a text field it stays the field's own undo.
+  // ⌘Z on macOS, Ctrl+Z elsewhere, outside a text field runs the latest Undo still on offer, goes back
+  // to where it was offered and lands on the item it brings back. In a text field it stays the field's own undo.
   useEffect(() => {
     const key = (e: KeyboardEvent) => {
       if (!pressesCommand(appMenu.platform(), e, 'Z') || e.shiftKey || composing(e) || typesText(e.target)) return
       const offer = undoOffers.current.pop()
       if (offer === undefined) return
       e.preventDefault()
+      const before = itemsNow()
       offer.run()
       goTo(offer.screen)
+      landOnRestored(before)
     }
     document.addEventListener('keydown', key)
     return () => document.removeEventListener('keydown', key)

@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act, useRef, type ReactNode } from 'react'
+import { act, useEffect, useRef, useState, type ReactNode } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { TrashEntry } from '../../shared/contract.js'
@@ -31,7 +31,9 @@ const fixture = vi.hoisted(() => ({
   appCommand: null as ((command: string) => void) | null,
   menuStates: [] as { sidebarHidden: boolean; reading: boolean }[],
   createChat: vi.fn(() => new Promise(() => {})),
-  undoChange: vi.fn<(id: string) => Promise<void>>(async () => {}),
+  undoChange: vi.fn<(id: string) => Promise<void>>(async () => { fixture.undone?.() }),
+  /** What undoing a change brings back on the page, as the refetch after it does. */
+  undone: null as (() => void) | null,
   /** What papers.get answers for paper `id`; by default the paper is there. */
   getPaper: (id: string): Promise<unknown> => Promise.resolve({ id }),
 }))
@@ -86,6 +88,8 @@ const { useJumpOrigin } = await import('../hooks/useJumpOrigin.js')
 const { CallError } = await import('../call-error.js')
 const { useUndo } = await import('../hooks/useUndo.js')
 const { useVaultWrite } = await import('../hooks/useVaultWrite.js')
+const { Item } = await import('../components/Item.js')
+const { List } = await import('../components/List.js')
 const { Trash } = await import('../routes/Trash.js')
 const { TOOLTIP_DELAY } = await import('../components/Tooltip.js')
 
@@ -926,8 +930,39 @@ function Writes({ names, silent = false }: { names: string[]; silent?: boolean }
   ))
 }
 
+/**
+ * A screen of two rows, 甲 and 乙, and a count row: deleting 乙 records a change and offers its Undo,
+ * and undoing it brings 乙 back as a new row and changes the count in place, as a refetch does.
+ */
+function Rows() {
+  const [rows, setRows] = useState(['甲', '乙'])
+  const write = useVaultWrite()
+  const undo = useUndo()
+  useEffect(() => {
+    fixture.undone = () => setRows(['甲', '乙'])
+    return () => { fixture.undone = null }
+  }, [])
+  return (
+    <>
+      <List>
+        <Item title={`共 ${rows.length} 行`} />
+        {rows.map((row) => <Item key={row} title={row} data-row={row} />)}
+      </List>
+      <button
+        type="button" id="drop"
+        onClick={() => {
+          setRows(['甲'])
+          void write(Promise.resolve({ change: 'ch-乙' }), { note: '已删除', action: undo.change })
+        }}
+      >删</button>
+    </>
+  )
+}
+
 describe('AppShell ⌘Z', () => {
   beforeEach(() => { fixture.undoChange.mockClear() })
+  beforeAll(() => { Element.prototype.scrollIntoView = () => {} })
+  afterAll(() => { delete (Element.prototype as Partial<Element>).scrollIntoView })
 
   /** Clicks button `id` and lets its write finish. */
   const writeOf = async (id: string) => { await act(async () => { document.querySelector<HTMLButtonElement>(`#${id}`)!.click() }) }
@@ -976,6 +1011,18 @@ describe('AppShell ⌘Z', () => {
     expect(await pressZ({ metaKey: true, shiftKey: true })).toBe(false)
     expect(await pressZ({ ctrlKey: true })).toBe(false)
     expect(fixture.undoChange).not.toHaveBeenCalled()
+  })
+
+  it('撤销之后回到那一屏,落到撤销放回来的那一项上并闪一下,原地改了字的行不闪', async () => {
+    await mount(undefined, { papers: <Rows /> })
+    await act(async () => { document.querySelector<HTMLButtonElement>('[data-desk="papers"]')!.click() })
+    await writeOf('drop')
+    await act(async () => { document.querySelector<HTMLButtonElement>('[data-desk="feed"]')!.click() })
+    await pressZ()
+    await act(async () => { await new Promise((done) => setTimeout(done, 0)) })
+    const shown = document.querySelector('.screenslot:not([hidden])')!
+    expect([...shown.querySelectorAll('.item')].map((item) => [item.textContent, item.hasAttribute('data-arrived')]))
+      .toEqual([['共 2 行', false], ['甲', false], ['乙', true]])
   })
 
   it('撤销之后回到提示撤销时显示的那一屏', async () => {
