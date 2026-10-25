@@ -1825,153 +1825,153 @@ routes/shell.css:51: .ptable th.th-add { padding }
 routes/shell.css:51: .cmp th.th-add { padding }
 routes/shell.css:52: .th-add .row-actions { gap }
 routes/shell.css:52: .th-add .row-actions { vertical-align }
-routes/shell.css:58: .metadata-field { display }
-routes/shell.css:59: .metadata-editable { display }
-routes/shell.css:59: .metadata-editable { box-sizing }
-routes/shell.css:59: .metadata-editable { margin }
-routes/shell.css:59: .metadata-editable { padding }
-routes/shell.css:59: .metadata-editable { border }
-routes/shell.css:59: .metadata-editable { border-radius }
-routes/shell.css:59: .metadata-editable { background }
-routes/shell.css:59: .metadata-editable { color }
-routes/shell.css:59: .metadata-editable { font }
-routes/shell.css:59: .metadata-editable { line-height }
-routes/shell.css:59: .metadata-editable { text-align }
-routes/shell.css:59: .metadata-editable { overflow-wrap }
-routes/shell.css:59: .metadata-editable { cursor }
-routes/shell.css:60: .metadata-editable:hover { background }
-routes/shell.css:60: .metadata-editable:hover { color }
-routes/shell.css:61: .pv.metadata-editable { cursor }
-routes/shell.css:62: .form-control.metadata-input.multiline { display }
-routes/shell.css:62: .form-control.metadata-input.multiline { field-sizing }
-routes/shell.css:62: .form-control.metadata-input.multiline { resize }
-routes/shell.css:62: .form-control.metadata-input.multiline { overflow }
-routes/shell.css:62: .form-control.metadata-input.multiline { white-space }
-routes/shell.css:62: .form-control.metadata-input.multiline { overflow-wrap }
-routes/shell.css:68: .wkpage { display }
-routes/shell.css:68: .wkpage { gap }
-routes/shell.css:68: .wkpage { align-items }
-routes/shell.css:68: .wkpage { font-size }
-routes/shell.css:68: .wkpage { line-height }
-routes/shell.css:72: .wkside { box-sizing }
-routes/shell.css:72: .wkside { flex }
-routes/shell.css:72: .wkside { width }
-routes/shell.css:72: .wkside { max-width }
-routes/shell.css:72: .wkside { font-size }
-routes/shell.css:72: .wkside { line-height }
-routes/shell.css:72: .wkside { border-left }
-routes/shell.css:72: .wkside { padding-left }
-routes/shell.css:73: .wkside { overflow-x }
-routes/shell.css:73: .wkside { overflow-y }
-routes/shell.css:73: .wkside { overscroll-behavior }
-routes/shell.css:74: .wkside { --fade-paint }
-routes/shell.css:74: .wkside { --fade-pad-top }
-routes/shell.css:74: .wkside { --fade-pad-bottom }
-routes/shell.css:79: .wkside:not(.node-document-pane) { --rail-room }
-routes/shell.css:80: .wkside:not(.node-document-pane) { flex-basis }
-routes/shell.css:80: .wkside:not(.node-document-pane) { width }
-routes/shell.css:81: .wkside:not(.node-document-pane) { max-width }
-routes/shell.css:81: .wkside:not(.node-document-pane) { margin-right }
-routes/shell.css:81: .wkside:not(.node-document-pane) { padding-right }
-routes/shell.css:82: .wkside:not(.node-document-pane) { padding-bottom }
-routes/shell.css:86: .desk-head .fetchnote { font-size }
-routes/shell.css:86: .desk-head .fetchnote { color }
-routes/shell.css:86: .desk-head .fetchnote { white-space }
-routes/shell.css:89: .attn { padding }
-routes/shell.css:89: .attn { margin-bottom }
-routes/shell.css:90: .attnrow { display }
-routes/shell.css:90: .attnrow { grid-template-columns }
-routes/shell.css:91: .attnrow { align-items }
-routes/shell.css:91: .attnrow { column-gap }
-routes/shell.css:92: .attnrow { padding }
-routes/shell.css:92: .attnrow { font-size }
-routes/shell.css:92: .attnrow { cursor }
-routes/shell.css:94: .attnrow[data-wk] { cursor }
-routes/shell.css:95: .attnrow[data-wk]:hover { background }
-routes/shell.css:96: .attn-text { overflow }
-routes/shell.css:96: .attn-text { white-space }
-routes/shell.css:97: .attn+.wkpage { margin-top }
-routes/shell.css:99: .tlrow { font-size }
-routes/shell.css:99: .tlrow { padding }
-routes/shell.css:100: .tlrow .tm { font-size }
-routes/shell.css:100: .tlrow .tm { color }
-routes/shell.css:101: .macts { margin-top }
-routes/shell.css:107: .md { line-height }
-routes/shell.css:108: .md.src { white-space }
-routes/shell.css:108: .md.src { outline }
-routes/shell.css:108: .md.src { caret-color }
-routes/shell.css:109: .md p { margin }
-routes/shell.css:110: .md p:last-child { margin-bottom }
-routes/shell.css:110: .md ul:last-child { margin-bottom }
-routes/shell.css:110: .md ol:last-child { margin-bottom }
-routes/shell.css:111: .md h1 { font-size }
-routes/shell.css:111: .md h2 { font-size }
-routes/shell.css:111: .md h1 { line-height }
-routes/shell.css:111: .md h2 { line-height }
-routes/shell.css:112: .md h3 { font-size }
-routes/shell.css:112: .md h4 { font-size }
-routes/shell.css:113: .md h1 { margin }
-routes/shell.css:113: .md h2 { margin }
-routes/shell.css:113: .md h3 { margin }
-routes/shell.css:113: .md h4 { margin }
-routes/shell.css:113: .md h1 { font-weight }
-routes/shell.css:113: .md h2 { font-weight }
-routes/shell.css:113: .md h3 { font-weight }
-routes/shell.css:113: .md h4 { font-weight }
-routes/shell.css:114: .md ul { margin }
-routes/shell.css:114: .md ol { margin }
-routes/shell.css:114: .md ul { padding-left }
-routes/shell.css:114: .md ol { padding-left }
-routes/shell.css:115: .md li { margin }
-routes/shell.css:116: .md code { font-family }
-routes/shell.css:116: .md code { font-size }
-routes/shell.css:116: .md code { background }
-routes/shell.css:116: .md code { border-radius }
-routes/shell.css:116: .md code { padding }
-routes/shell.css:117: .md pre { margin }
-routes/shell.css:117: .md pre { padding }
-routes/shell.css:117: .md pre { background }
-routes/shell.css:117: .md pre { border-radius }
-routes/shell.css:117: .md pre { overflow }
-routes/shell.css:117: .md pre { font-size }
-routes/shell.css:117: .md pre { line-height }
-routes/shell.css:118: .md pre code { background }
-routes/shell.css:118: .md pre code { padding }
-routes/shell.css:119: .md blockquote { margin }
-routes/shell.css:119: .md blockquote { padding }
-routes/shell.css:119: .md blockquote { border-left }
-routes/shell.css:119: .md blockquote { color }
-routes/shell.css:120: .md table { border-collapse }
-routes/shell.css:120: .md table { margin }
-routes/shell.css:120: .md table { font-size }
-routes/shell.css:120: .md table { display }
-routes/shell.css:120: .md table { overflow-x }
-routes/shell.css:121: .md th { border }
-routes/shell.css:121: .md td { border }
-routes/shell.css:121: .md th { padding }
-routes/shell.css:121: .md td { padding }
-routes/shell.css:121: .md th { text-align }
-routes/shell.css:121: .md td { text-align }
-routes/shell.css:121: .md th { vertical-align }
-routes/shell.css:121: .md td { vertical-align }
-routes/shell.css:122: .md th { background }
-routes/shell.css:122: .md th { font-weight }
-routes/shell.css:123: .md hr { border }
-routes/shell.css:123: .md hr { border-top }
-routes/shell.css:123: .md hr { margin }
-routes/shell.css:125: .md .katex-display { margin }
-routes/shell.css:126: .nrow { display }
-routes/shell.css:126: .nrow { padding }
-routes/shell.css:127: .nrow .nq { font-size }
-routes/shell.css:127: .nrow .nq { color }
-routes/shell.css:127: .nrow .nq { font-style }
-routes/shell.css:127: .nrow .nq { background }
-routes/shell.css:127: .nrow .nq { border-radius }
-routes/shell.css:127: .nrow .nq { padding }
-routes/shell.css:127: .nrow .nq { margin-bottom }
-routes/shell.css:128: .nrow .nt { font-size }
-routes/shell.css:128: .nrow .nt { color }
-routes/shell.css:128: .nrow .nt { overflow-wrap }
+routes/shell.css:59: .metadata-field { display }
+routes/shell.css:60: .metadata-editable { display }
+routes/shell.css:60: .metadata-editable { box-sizing }
+routes/shell.css:60: .metadata-editable { margin }
+routes/shell.css:60: .metadata-editable { padding }
+routes/shell.css:60: .metadata-editable { border }
+routes/shell.css:60: .metadata-editable { border-radius }
+routes/shell.css:60: .metadata-editable { background }
+routes/shell.css:60: .metadata-editable { color }
+routes/shell.css:60: .metadata-editable { font }
+routes/shell.css:60: .metadata-editable { line-height }
+routes/shell.css:60: .metadata-editable { text-align }
+routes/shell.css:60: .metadata-editable { overflow-wrap }
+routes/shell.css:60: .metadata-editable { cursor }
+routes/shell.css:61: .metadata-editable:hover { background }
+routes/shell.css:61: .metadata-editable:hover { color }
+routes/shell.css:62: .pv.metadata-editable { cursor }
+routes/shell.css:63: .form-control.metadata-input.multiline { display }
+routes/shell.css:63: .form-control.metadata-input.multiline { field-sizing }
+routes/shell.css:63: .form-control.metadata-input.multiline { resize }
+routes/shell.css:63: .form-control.metadata-input.multiline { overflow }
+routes/shell.css:63: .form-control.metadata-input.multiline { white-space }
+routes/shell.css:63: .form-control.metadata-input.multiline { overflow-wrap }
+routes/shell.css:69: .wkpage { display }
+routes/shell.css:69: .wkpage { gap }
+routes/shell.css:69: .wkpage { align-items }
+routes/shell.css:69: .wkpage { font-size }
+routes/shell.css:69: .wkpage { line-height }
+routes/shell.css:73: .wkside { box-sizing }
+routes/shell.css:73: .wkside { flex }
+routes/shell.css:73: .wkside { width }
+routes/shell.css:73: .wkside { max-width }
+routes/shell.css:73: .wkside { font-size }
+routes/shell.css:73: .wkside { line-height }
+routes/shell.css:73: .wkside { border-left }
+routes/shell.css:73: .wkside { padding-left }
+routes/shell.css:74: .wkside { overflow-x }
+routes/shell.css:74: .wkside { overflow-y }
+routes/shell.css:74: .wkside { overscroll-behavior }
+routes/shell.css:75: .wkside { --fade-paint }
+routes/shell.css:75: .wkside { --fade-pad-top }
+routes/shell.css:75: .wkside { --fade-pad-bottom }
+routes/shell.css:80: .wkside:not(.node-document-pane) { --rail-room }
+routes/shell.css:81: .wkside:not(.node-document-pane) { flex-basis }
+routes/shell.css:81: .wkside:not(.node-document-pane) { width }
+routes/shell.css:82: .wkside:not(.node-document-pane) { max-width }
+routes/shell.css:82: .wkside:not(.node-document-pane) { margin-right }
+routes/shell.css:82: .wkside:not(.node-document-pane) { padding-right }
+routes/shell.css:83: .wkside:not(.node-document-pane) { padding-bottom }
+routes/shell.css:87: .desk-head .fetchnote { font-size }
+routes/shell.css:87: .desk-head .fetchnote { color }
+routes/shell.css:87: .desk-head .fetchnote { white-space }
+routes/shell.css:90: .attn { padding }
+routes/shell.css:90: .attn { margin-bottom }
+routes/shell.css:91: .attnrow { display }
+routes/shell.css:91: .attnrow { grid-template-columns }
+routes/shell.css:92: .attnrow { align-items }
+routes/shell.css:92: .attnrow { column-gap }
+routes/shell.css:93: .attnrow { padding }
+routes/shell.css:93: .attnrow { font-size }
+routes/shell.css:93: .attnrow { cursor }
+routes/shell.css:95: .attnrow[data-wk] { cursor }
+routes/shell.css:96: .attnrow[data-wk]:hover { background }
+routes/shell.css:97: .attn-text { overflow }
+routes/shell.css:97: .attn-text { white-space }
+routes/shell.css:98: .attn+.wkpage { margin-top }
+routes/shell.css:100: .tlrow { font-size }
+routes/shell.css:100: .tlrow { padding }
+routes/shell.css:101: .tlrow .tm { font-size }
+routes/shell.css:101: .tlrow .tm { color }
+routes/shell.css:102: .macts { margin-top }
+routes/shell.css:108: .md { line-height }
+routes/shell.css:109: .md.src { white-space }
+routes/shell.css:109: .md.src { outline }
+routes/shell.css:109: .md.src { caret-color }
+routes/shell.css:110: .md p { margin }
+routes/shell.css:111: .md p:last-child { margin-bottom }
+routes/shell.css:111: .md ul:last-child { margin-bottom }
+routes/shell.css:111: .md ol:last-child { margin-bottom }
+routes/shell.css:112: .md h1 { font-size }
+routes/shell.css:112: .md h2 { font-size }
+routes/shell.css:112: .md h1 { line-height }
+routes/shell.css:112: .md h2 { line-height }
+routes/shell.css:113: .md h3 { font-size }
+routes/shell.css:113: .md h4 { font-size }
+routes/shell.css:114: .md h1 { margin }
+routes/shell.css:114: .md h2 { margin }
+routes/shell.css:114: .md h3 { margin }
+routes/shell.css:114: .md h4 { margin }
+routes/shell.css:114: .md h1 { font-weight }
+routes/shell.css:114: .md h2 { font-weight }
+routes/shell.css:114: .md h3 { font-weight }
+routes/shell.css:114: .md h4 { font-weight }
+routes/shell.css:115: .md ul { margin }
+routes/shell.css:115: .md ol { margin }
+routes/shell.css:115: .md ul { padding-left }
+routes/shell.css:115: .md ol { padding-left }
+routes/shell.css:116: .md li { margin }
+routes/shell.css:117: .md code { font-family }
+routes/shell.css:117: .md code { font-size }
+routes/shell.css:117: .md code { background }
+routes/shell.css:117: .md code { border-radius }
+routes/shell.css:117: .md code { padding }
+routes/shell.css:118: .md pre { margin }
+routes/shell.css:118: .md pre { padding }
+routes/shell.css:118: .md pre { background }
+routes/shell.css:118: .md pre { border-radius }
+routes/shell.css:118: .md pre { overflow }
+routes/shell.css:118: .md pre { font-size }
+routes/shell.css:118: .md pre { line-height }
+routes/shell.css:119: .md pre code { background }
+routes/shell.css:119: .md pre code { padding }
+routes/shell.css:120: .md blockquote { margin }
+routes/shell.css:120: .md blockquote { padding }
+routes/shell.css:120: .md blockquote { border-left }
+routes/shell.css:120: .md blockquote { color }
+routes/shell.css:121: .md table { border-collapse }
+routes/shell.css:121: .md table { margin }
+routes/shell.css:121: .md table { font-size }
+routes/shell.css:121: .md table { display }
+routes/shell.css:121: .md table { overflow-x }
+routes/shell.css:122: .md th { border }
+routes/shell.css:122: .md td { border }
+routes/shell.css:122: .md th { padding }
+routes/shell.css:122: .md td { padding }
+routes/shell.css:122: .md th { text-align }
+routes/shell.css:122: .md td { text-align }
+routes/shell.css:122: .md th { vertical-align }
+routes/shell.css:122: .md td { vertical-align }
+routes/shell.css:123: .md th { background }
+routes/shell.css:123: .md th { font-weight }
+routes/shell.css:124: .md hr { border }
+routes/shell.css:124: .md hr { border-top }
+routes/shell.css:124: .md hr { margin }
+routes/shell.css:126: .md .katex-display { margin }
+routes/shell.css:127: .nrow { display }
+routes/shell.css:127: .nrow { padding }
+routes/shell.css:128: .nrow .nq { font-size }
+routes/shell.css:128: .nrow .nq { color }
+routes/shell.css:128: .nrow .nq { font-style }
+routes/shell.css:128: .nrow .nq { background }
+routes/shell.css:128: .nrow .nq { border-radius }
+routes/shell.css:128: .nrow .nq { padding }
+routes/shell.css:128: .nrow .nq { margin-bottom }
+routes/shell.css:129: .nrow .nt { font-size }
+routes/shell.css:129: .nrow .nt { color }
+routes/shell.css:129: .nrow .nt { overflow-wrap }
 shell/AppShell.css:16: .titlebar { height }
 shell/AppShell.css:16: .titlebar { padding }
 shell/AppShell.css:16: .titlebar { background }
