@@ -7,6 +7,7 @@ import { PAPER_PAGE } from '../../../shared/vocabulary.js'
 import { harness } from '../../ipc.js'
 import { editField, useDrafts, type Drafts, type EditDraft } from '../../hooks/useDrafts.js'
 import { useGenerations } from '../../hooks/useGenerations.js'
+import { useModelStatus } from '../../hooks/useModelStatus.js'
 import { useUndo } from '../../hooks/useUndo.js'
 import { useVaultWrite } from '../../hooks/useVaultWrite.js'
 import { useScrollFade } from '../../hooks/useScrollFade.js'
@@ -14,14 +15,14 @@ import { errorLabel, failureLabel, reasonLabel } from '../../lib/failure-label.j
 import { useFormat } from '../../lib/format.js'
 import { useMessages } from '../../messages/useMessages.js'
 import type { Catalog } from '../../messages/catalog.js'
-import { useJump, useSettingsOpen, useVaultRevision } from '../../shell/AppShell.js'
+import { useJump, useVaultRevision } from '../../shell/AppShell.js'
 import { ChipToggles } from '../ChipToggles.js'
 import { EntityLink } from '../EntityLink.js'
 import { FormTextarea } from '../FormControls.js'
 import { HarnessAction } from '../HarnessAction.js'
 import { InlineMessage } from '../InlineMessage.js'
 import { SectionHeading } from '../PageShell.js'
-import { NoModelTag } from '../NoModelTag.js'
+import { ModelStatusTag } from '../ModelStatusTag.js'
 import { TabbedSection } from '../TabbedSection.js'
 import { AgentLabel } from '../SourceLabel.js'
 import { Tag, TagButton } from '../Tag.js'
@@ -82,7 +83,7 @@ export function PaperWikiIngest({ paper, reading, onJump, edits }: {
   const [applied, setApplied] = useState(false)
   const [rejected, setRejected] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  /** Bumped to prepare the plan again, as when Settings closes on a plan prepared without a model. */
+  /** Bumped to prepare the plan again, as when the model status no longer matches the plan's model. */
   const [preparations, setPreparations] = useState(0)
   const write = useVaultWrite()
   const undo = useUndo()
@@ -119,14 +120,15 @@ export function PaperWikiIngest({ paper, reading, onJump, edits }: {
 
   useEffect(prepare, [prepare])
 
-  // Settings is where a model is set up: once it closes, a plan prepared without a model is prepared again.
-  const { open: settingsOpen } = useSettingsOpen()
-  const settingsWereOpen = useRef(settingsOpen)
+  // A plan holds the model it was prepared with: once the model status changes to disagree with it,
+  // the plan is prepared again.
+  const { connected } = useModelStatus()
+  const connectedWas = useRef(connected)
   useEffect(() => {
-    const closed = settingsWereOpen.current && !settingsOpen
-    settingsWereOpen.current = settingsOpen
-    if (closed && plan !== null && !plan.model.configured) setPreparations((n) => n + 1)
-  }, [settingsOpen, plan])
+    const changed = connectedWas.current !== connected
+    connectedWas.current = connected
+    if (changed && connected !== null && plan !== null && plan.model.configured !== connected) setPreparations((n) => n + 1)
+  }, [connected, plan])
 
   // A run this panel did not start, such as one going when it opened, settles without a receipt here:
   // once Core stops reporting it, the proposal it made is restored as a pending one.
@@ -335,7 +337,7 @@ export function PaperWikiIngest({ paper, reading, onJump, edits }: {
         {plan === null && pending === null && error === null
           ? <InlineMessage tone="info" variant="line" className="wiki-ingest-status">{m.wiki.ingest.preparing}</InlineMessage>
           : null}
-        {plan !== null && !plan.model.configured ? <NoModelTag label={m.wiki.ingest.notConnectedNote} /> : null}
+        {plan === null ? null : <ModelStatusTag />}
         {receipt !== null ? <InlineMessage tone="done" variant="line" className="wiki-ingest-status">{receipt.message}</InlineMessage> : null}
         {pending !== null ? <Tag tone="good">{m.wiki.ingest.restoredPending}</Tag> : null}
         {receipt?.warning === undefined ? null : (

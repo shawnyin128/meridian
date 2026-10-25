@@ -69,4 +69,14 @@ describe('each shared behaviour has one implementation', () => {
       'lib/format.ts': { reason: 'the format itself' },
     })).toEqual([])
   })
+
+  it('whether a model is set up is worked out only by useModelStatus, and AI 未连接 is drawn only by ModelStatusTag', () => {
+    expect(copies(/harness\.modelSettings\(|reason === 'no-model'|common\.noModel\b/, {
+      'hooks/useModelStatus.ts': { reason: 'the model status itself' },
+      'components/ModelStatusTag.tsx': { reason: 'the one no-model state' },
+      'components/settings/ModelSettings.tsx': { reason: 'the model settings editor reads the settings it edits' },
+      'components/settings/ApiOverview.tsx': { reason: 'the API summary in Settings names the provider and model it shows' },
+      'components/FirstRunChecklist.tsx': { reason: 'the first-run checklist reads its model step with its other steps' },
+    })).toEqual([])
+  })
 })

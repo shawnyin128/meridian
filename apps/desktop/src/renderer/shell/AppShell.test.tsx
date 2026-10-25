@@ -51,6 +51,7 @@ vi.mock('../ipc.js', () => ({
     delete: fixture.deleteChat,
   },
   extensions: { checkLatest: vi.fn() },
+  harness: { modelSettings: () => new Promise(() => {}) },
   idea: { list: none },
   inbox: { list: ({ kind }: { kind: string }) => Promise.resolve(kind === 'discovery' ? fixture.discovery : fixture.delivered) },
   jobs: { status: () => new Promise(() => {}) },

@@ -17,6 +17,7 @@ import { ScreenBoundary } from '../components/ScreenBoundary.js'
 import { Tooltip } from '../components/Tooltip.js'
 import { usePruneDrafts } from '../hooks/useDrafts.js'
 import { GenerationsContext, useCoreGenerations } from '../hooks/useGenerations.js'
+import { ModelStatusContext, useCoreModelStatus } from '../hooks/useModelStatus.js'
 import { useOpenerFocus } from '../hooks/useOpenerFocus.js'
 import { errorLabel } from '../lib/failure-label.js'
 import { commandShortcut, composing, pressesCommand } from '../lib/keyboard.js'
@@ -516,6 +517,7 @@ export function AppShell({ screens, settings }: {
   }, [])
   const { status: jobsStatus, refresh: refreshJobs } = useJobsPoll(bump)
   const generations = useCoreGenerations(jobsStatus, refreshJobs)
+  const modelStatus = useCoreModelStatus(settingsOpen)
   const colourThemeFiles = useColourThemeFilesPoll()
   const paperCountState = useMemo(() => ({ count: paperCount }), [paperCount])
   const screenState = useMemo(() => ({ screen, entry, reentry }), [screen, entry, reentry])
@@ -846,6 +848,7 @@ export function AppShell({ screens, settings }: {
         <NoticeContext.Provider value={notify}>
           <JobsContext.Provider value={jobsStatus}>
             <GenerationsContext.Provider value={generations}>
+            <ModelStatusContext.Provider value={modelStatus}>
             <PaperCountContext.Provider value={paperCountState}>
               <VaultRevisionContext.Provider value={vaultRevision}>
                 <ScreenContext.Provider value={screenState}>
@@ -893,6 +896,7 @@ export function AppShell({ screens, settings }: {
                 </ScreenContext.Provider>
               </VaultRevisionContext.Provider>
             </PaperCountContext.Provider>
+            </ModelStatusContext.Provider>
             </GenerationsContext.Provider>
           </JobsContext.Provider>
         </NoticeContext.Provider>

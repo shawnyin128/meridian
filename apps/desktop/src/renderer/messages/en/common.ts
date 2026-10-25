@@ -24,6 +24,7 @@ export const common = {
   loading: 'Loading…',
   saving: 'Saving…',
   reading: 'Reading…',
+  noModel: 'AI not connected',
   none: 'None',
   all: 'All',
   trashed: 'Moved to Trash',

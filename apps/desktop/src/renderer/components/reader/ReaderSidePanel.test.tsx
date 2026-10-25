@@ -22,6 +22,9 @@ vi.mock('../../shell/AppShell.js', () => ({
 
 const { ReaderSidePanel } = await import('./ReaderSidePanel.js')
 const { GenerationsContext } = await import('../../hooks/useGenerations.js')
+const { ModelStatusContext } = await import('../../hooks/useModelStatus.js')
+/** A shell whose model status says a model is set up. */
+const CONNECTED: import('../../hooks/useModelStatus.js').ModelStatus = { connected: true, source: 'api', track: (send) => send }
 /** A shell in which Core is generating nothing. */
 const IDLE = {
   running: () => false, run: async (work: Promise<unknown>) => { await work }, stop: vi.fn(),
@@ -91,10 +94,12 @@ describe('ReaderSidePanel', () => {
   ) => act(() => root!.render(
     <MessagesProvider>
       <GenerationsContext.Provider value={IDLE}>
-        <ReaderSidePanel
-          tab={tab} onTab={vi.fn()} paper={paper} onPaper={vi.fn()} reading={held} currentPage={1}
-          saving={false} onMutate={onSave} onSaveRemark={onSave} onJump={vi.fn()} focusHighlightId={null} selectedHighlightId={null}
-        />
+        <ModelStatusContext.Provider value={CONNECTED}>
+          <ReaderSidePanel
+            tab={tab} onTab={vi.fn()} paper={paper} onPaper={vi.fn()} reading={held} currentPage={1}
+            saving={false} onMutate={onSave} onSaveRemark={onSave} onJump={vi.fn()} focusHighlightId={null} selectedHighlightId={null}
+          />
+        </ModelStatusContext.Provider>
       </GenerationsContext.Provider>
     </MessagesProvider>,
   ))

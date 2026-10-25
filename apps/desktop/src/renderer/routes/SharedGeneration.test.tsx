@@ -3,7 +3,7 @@ import { act, type ReactNode } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { EditorView } from '@codemirror/view'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { ChatSendResult, PaperRow } from '../../shared/contract.js'
+import type { ChatSendResult, HarnessModelSettings, PaperRow } from '../../shared/contract.js'
 import { MessagesProvider } from '../messages/useMessages.js'
 import { LANGUAGE_STORAGE_KEY } from '../shell/language.js'
 
@@ -36,6 +36,9 @@ const core = vi.hoisted(() => {
       writes: 0, uploads: [], downloads: [], fetch: { state: 'idle', checkedAt: null, reason: null },
       generating: [...replies.keys()], generatingWiki: [], wikiFailures: {},
     })),
+    /** Whether the model settings set up a model. */
+    configured: true,
+    modelSettings: vi.fn((): Promise<Partial<HarnessModelSettings>> => Promise.resolve({ configured: core.configured })),
   }
 })
 
@@ -49,6 +52,7 @@ vi.mock('../ipc.js', () => ({
   },
   feed: { append: () => Promise.resolve() },
   idea: { create: () => Promise.resolve({ id: 'idea-1' }) },
+  harness: { modelSettings: core.modelSettings },
   jobs: { status: core.status },
   papers: { list: () => Promise.resolve({ rows: [], total: 0 }) },
   project: { list: () => Promise.resolve([]) },
@@ -88,6 +92,7 @@ vi.mock('../hooks/useVaultWrite.js', () => ({
 const { Chat } = await import('./Chat.js')
 const { PaperChat } = await import('../components/chat/PaperChat.js')
 const { GenerationsContext, useCoreGenerations } = await import('../hooks/useGenerations.js')
+const { ModelStatusContext, useCoreModelStatus } = await import('../hooks/useModelStatus.js')
 const { useJobsPoll } = await import('../shell/useJobs.js')
 
 const PAPER: PaperRow = {
@@ -97,10 +102,14 @@ const PAPER: PaperRow = {
   updated: '2026-09-14', custom: {},
 }
 
-/** The shell around both screens: the jobs poll and the generations it reports. */
+/** The shell around both screens: the jobs poll and the generations it reports, and the model status. */
 function Shell({ children }: { children: ReactNode }) {
   const { status, refresh } = useJobsPoll(shell.revision.bump)
-  return <GenerationsContext.Provider value={useCoreGenerations(status, refresh)}>{children}</GenerationsContext.Provider>
+  return (
+    <GenerationsContext.Provider value={useCoreGenerations(status, refresh)}>
+      <ModelStatusContext.Provider value={useCoreModelStatus(shell.settings.open)}>{children}</ModelStatusContext.Provider>
+    </GenerationsContext.Provider>
+  )
 }
 
 /** Types `text` into the composer whose editable text is `field`. */
@@ -108,6 +117,9 @@ function typeInto(field: HTMLElement, text: string): void {
   const view = EditorView.findFromDOM(field.closest<HTMLElement>('.cm-editor')!)!
   view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: text }, selection: { anchor: text.length }, userEvent: 'input.type' })
 }
+
+const readerControl = () => document.querySelector<HTMLButtonElement>('.paper-chat .send')!
+const chatControl = () => document.querySelector<HTMLButtonElement>('#sendBtn')!
 
 /** Lets every pending call to Core answer and the screens render what it answered. */
 const settle = () => act(async () => {
@@ -124,6 +136,8 @@ describe('一条会话在生成，打开它的每一屏都知道', () => {
     document.body.innerHTML = ''
     vi.clearAllMocks()
     core.replies.clear()
+    core.configured = true
+    shell.settings.open = false
     const host = document.createElement('div')
     document.body.append(host)
     root = createRoot(host)
@@ -139,8 +153,6 @@ describe('一条会话在生成，打开它的每一屏都知道', () => {
     vi.unstubAllGlobals()
   })
 
-  const readerControl = () => document.querySelector<HTMLButtonElement>('.paper-chat .send')!
-  const chatControl = () => document.querySelector<HTMLButtonElement>('#sendBtn')!
 
   /** Asks a question in the reader's paper chat and leaves its reply generating. */
   const askInReader = async () => {
@@ -184,5 +196,58 @@ describe('一条会话在生成，打开它的每一屏都知道', () => {
     await act(async () => { core.answer('chat-paper-1') })
     await settle()
     expect([readerControl().getAttribute('aria-label'), chatControl().getAttribute('aria-label')]).toEqual(['发送', '发送'])
+  })
+})
+
+describe('「AI 未连接」在每个输入框里都一样', () => {
+  let root: Root | null = null
+  const tags = () => [...document.querySelectorAll('.cbox')].map((box) => box.querySelector('.tag')?.textContent ?? null)
+  const render = () => act(async () => {
+    root!.render(<MessagesProvider><Shell><PaperChat paper={PAPER} /><Chat /></Shell></MessagesProvider>)
+  })
+
+  beforeEach(() => {
+    globalThis.IS_REACT_ACT_ENVIRONMENT = true
+    vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} })
+    window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'zh')
+    document.body.innerHTML = ''
+    vi.clearAllMocks()
+    core.replies.clear()
+    shell.settings.open = false
+    root = createRoot(document.body.appendChild(document.createElement('div')))
+  })
+
+  afterEach(() => {
+    if (root !== null) act(() => root!.unmount())
+    root = null
+    vi.unstubAllGlobals()
+  })
+
+  it('没配置模型时阅读器和对话屏的输入框一开始就都显示,设置里配好、关上设置,两边一起消失', async () => {
+    core.configured = false
+    await render()
+    await settle()
+    expect(tags()).toEqual(['AI 未连接', 'AI 未连接'])
+
+    shell.settings.open = true
+    await render()
+    core.configured = true
+    shell.settings.open = false
+    await render()
+    await settle()
+    expect(tags()).toEqual([null, null])
+  })
+
+  it('一屏发送时 Core 说没有模型,两屏一起显示', async () => {
+    core.configured = true
+    await render()
+    await settle()
+    expect(tags()).toEqual([null, null])
+    core.configured = false
+    core.send.mockResolvedValueOnce({ id: 'chat-paper-1', state: 'failed', reason: 'no-model' })
+    act(() => typeInto(document.querySelector<HTMLElement>('[aria-label="向当前论文提问"]')!, '关键假设是什么？'))
+    act(() => readerControl().click())
+    await settle()
+    expect(tags()).toEqual(['AI 未连接', 'AI 未连接'])
   })
 })
