@@ -34,6 +34,7 @@ import {
   GraphNodeSchema,
   HarnessCancelParamsSchema,
   HarnessCancelResultSchema,
+  HarnessCliModelSchema,
   HarnessModelConnectionCheckResultSchema,
   HarnessPlanSchema,
   HarnessPaperWikiQualitySchema,
@@ -182,6 +183,9 @@ describe('contract schemas', () => {
       state: 'connected', modelCalls: 1, maxOutputTokens: 1,
     }).state).toBe('connected')
     expect(HarnessModelConnectionCheckResultSchema.parse({
+      state: 'connected', modelCalls: 0, maxOutputTokens: 1,
+    }).modelCalls).toBe(0)
+    expect(HarnessModelConnectionCheckResultSchema.parse({
       state: 'failed', reason: 'authentication', detail: 'HTTP 401: invalid API key',
       modelCalls: 1, maxOutputTokens: 1,
     }).state).toBe('failed')
@@ -228,6 +232,16 @@ describe('contract schemas', () => {
       provider: 'anthropic', protocol: 'messages', baseUrl: 'https://proxy.example/v1',
       model: 'claude', authentication: 'api-key',
     })).toThrow()
+  })
+
+  it('订阅 CLI 模型只收 claude 或 codex 与可选的模型名，别的键不收', () => {
+    expect(HarnessCliModelSchema.parse({ source: 'cli', cli: 'claude' }))
+      .toEqual({ source: 'cli', cli: 'claude' })
+    expect(HarnessCliModelSchema.parse({ source: 'cli', cli: 'codex', model: ' gpt-5.5 ' }))
+      .toEqual({ source: 'cli', cli: 'codex', model: 'gpt-5.5' })
+    expect(() => HarnessCliModelSchema.parse({ source: 'cli', cli: 'gemini' })).toThrow()
+    expect(() => HarnessCliModelSchema.parse({ source: 'cli', cli: 'claude', model: ' ' })).toThrow()
+    expect(() => HarnessCliModelSchema.parse({ source: 'cli', cli: 'claude', apiKey: 'sk-x' })).toThrow()
   })
 
   it('Paper Wiki 质量报告的七个维度与问题汇总必须一致', () => {

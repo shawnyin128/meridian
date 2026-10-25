@@ -122,6 +122,11 @@ def _runtime_model(value: object) -> dict[str, object]:
     }
 
 
+def runs_on_cli(model: object) -> bool:
+    """Whether a runtime model is the user's subscription CLI, whose model call Core runs."""
+    return isinstance(model, dict) and model.get("source") == "cli"
+
+
 def _output_limit(value: object) -> int:
     limits = _mapping(value, "limits")
     output_tokens = limits.get("maxOutputTokens")

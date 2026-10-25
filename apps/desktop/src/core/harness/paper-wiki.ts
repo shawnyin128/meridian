@@ -2,14 +2,28 @@ import { z } from 'zod'
 import {
   HarnessPaperWikiQualitySchema, PapersGetParamsSchema, PapersReadingParamsSchema, PapersSourceParamsSchema,
 } from '../../shared/contract.js'
-import type { HarnessPaperWikiQuality, HarnessPaperWikiReview, PaperRow } from '../../shared/contract.js'
+import type {
+  HarnessCliModel, HarnessPaperWikiQuality, HarnessPaperWikiReview, PaperRow,
+} from '../../shared/contract.js'
 import { CallError } from '../call-error.js'
 import type { VaultStore } from '../vault.js'
 import { extractPdfPages, probePdf } from '../paper-library/index.js'
+import { CliRunError } from './cli/child.js'
+import type { CliResult, CliRunner } from './cli/runner.js'
 import type { HarnessExecution, HarnessRunner } from './cost-gate.js'
 import type { HarnessModelConfig } from './model-config.js'
 import { launchHarnessProcess } from './process.js'
-import { createHarnessRpc, HarnessRpcError } from './rpc.js'
+import { createHarnessRpc, type HarnessCallback, type HarnessChild, HarnessRpcError } from './rpc.js'
+
+const CLI_CALL_TIMEOUT_MS = 10 * 60_000
+/** A CLI run's request also covers the reads before its model call and the checks after it. */
+const CLI_REQUEST_TIMEOUT_MS = CLI_CALL_TIMEOUT_MS + 2 * 60_000
+
+const ModelInvokeParamsSchema = z.object({
+  system: z.string().min(1).max(20_000),
+  prompt: z.string().min(1).max(1_000_000),
+  schema: z.record(z.string(), z.unknown()),
+}).strict()
 
 const WikiPageParamsSchema = z.object({ id: z.string().min(1) }).strict()
 const SourceStatementSchema = z.object({
@@ -364,14 +378,31 @@ export function paperWikiHarnessError(cause: unknown): Error {
   return new CallError('model', cause.message, { cause })
 }
 
-/** Real Paper Wiki runner. Core supplies reads and Harness supplies only an unapplied draft. */
+function usageLine(cli: HarnessCliModel['cli'], result: CliResult): string {
+  const parts = [`${(result.durationMs / 1_000).toFixed(1)} s`]
+  if (result.turns !== undefined) parts.push(`${result.turns} turns`)
+  if (result.usage !== undefined) {
+    parts.push(
+      `${result.usage.inputTokens} input tokens (${result.usage.cachedInputTokens} cached)`,
+      `${result.usage.outputTokens} output tokens`,
+    )
+  }
+  return `${cli}: ${parts.join(', ')}`
+}
+
+/**
+ * Real Paper Wiki runner. Core supplies reads and Harness supplies only an unapplied draft. A run on
+ * a subscription CLI also gets its one model call from Core, which `cli` runs.
+ */
 export function createPaperWikiHarnessRunner(options: {
   store: VaultStore
   model: HarnessModelConfig
+  cli: CliRunner
+  launch?: () => HarnessChild
   onLog?: (line: string) => void
 }) {
   const rpc = createHarnessRpc({
-    launch: launchHarnessProcess,
+    launch: options.launch ?? launchHarnessProcess,
     requiredCapabilities: ['paper-wiki'],
     ...(options.onLog === undefined ? {} : { onLog: options.onLog }),
     callbacks: {
@@ -406,19 +437,54 @@ export function createPaperWikiHarnessRunner(options: {
     },
   })
 
+  /** The one model call of a run on `model`, which ends when `signal` aborts. */
+  const modelCall = (model: HarnessCliModel, signal: AbortSignal): HarnessCallback => {
+    let called = false
+    return async (params) => {
+      if (called) throw new HarnessRpcError({ kind: 'bad_request', message: 'A run makes one model call' })
+      called = true
+      const call = ModelInvokeParamsSchema.parse(params)
+      let result: CliResult
+      try {
+        result = await options.cli({
+          cli: model.cli,
+          ...(model.model === undefined ? {} : { model: model.model }),
+          ...call,
+          timeoutMs: CLI_CALL_TIMEOUT_MS,
+          signal,
+        })
+      } catch (cause) {
+        if (cause instanceof CliRunError) throw new HarnessRpcError({ kind: 'model_error', message: cause.message })
+        throw cause
+      }
+      options.onLog?.(usageLine(model.cli, result))
+      return { output: result.output }
+    }
+  }
+
   const run: HarnessRunner = async (execution: HarnessExecution) => {
     let result: z.infer<typeof DraftEnvelopeSchema>
+    const ended = new AbortController()
     try {
+      const model = await options.model.runtime()
       result = DraftEnvelopeSchema.parse(await rpc.request('paper-wiki.propose', {
         workflow: execution.plan.workflow,
         targetId: execution.plan.targetId,
         scopeDigest: execution.plan.scopeDigest,
         action: execution.plan.action,
-        model: await options.model.runtime(),
+        model,
         limits: execution.limits,
-      }, { signal: execution.signal }))
+      }, {
+        signal: execution.signal,
+        ...('source' in model ? {
+          timeoutMs: CLI_REQUEST_TIMEOUT_MS,
+          callbacks: { 'model.invoke': modelCall(model, AbortSignal.any([execution.signal, ended.signal])) },
+        } : {}),
+      }))
     } catch (cause) {
       throw paperWikiHarnessError(cause)
+    } finally {
+      ended.abort()
     }
     if (result.targetId !== execution.plan.targetId
       || result.scopeDigest !== execution.plan.scopeDigest

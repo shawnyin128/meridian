@@ -1,5 +1,6 @@
 import { z, ZodError } from 'zod'
 import { HarnessModelConnectionCheckResultSchema } from '../../shared/contract.js'
+import type { HarnessCli, HarnessModelConnectionCheckResult } from '../../shared/contract.js'
 import { extractPdfPages } from '../paper-library/index.js'
 import type { VaultStore } from '../vault.js'
 import type { HarnessModelConfig } from './model-config.js'
@@ -187,6 +188,8 @@ export function chatHarnessError(cause: unknown): Error {
 export function createChatHarnessRunner(options: {
   store: VaultStore
   model: HarnessModelConfig
+  /** The connection check of a subscription CLI, which makes no model call. */
+  checkCli: (cli: HarnessCli) => Promise<HarnessModelConnectionCheckResult>
   onLog?: (line: string) => void
 }) {
   const sourceText = new Map<string, Promise<Array<{ number: number; text: string }>>>()
@@ -255,6 +258,7 @@ export function createChatHarnessRunner(options: {
       } catch (cause) {
         return failedConnectionCheck(cause, [], 0)
       }
+      if ('source' in model) return options.checkCli(model.cli)
       const secrets = model.apiKey === undefined ? [] : [model.apiKey]
       try {
         const result = HarnessModelConnectionCheckResultSchema.parse(await rpc.request('model.check', {
