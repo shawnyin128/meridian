@@ -200,13 +200,17 @@ export function measureInPage({ entries, scope, cap, colourTokens, shadowTokens,
         const after = neighbour(el, 1, root)
         const host = part(el, parts.title) ?? textHost(el)
         const badge = part(el, parts.count ?? '.count-badge, .collapsible-group-count, .day-heading-count')
+        const written = part(el, '.heading-count')
         const inline = /·\s*\d+/.test(el.textContent ?? '')
         return {
           font: host ? font(getComputedStyle(host)) : null,
           color: host ? tok(getComputedStyle(host).color) : null,
           above: r1(box.top - (before ? rect(before).bottom : top)),
           below: r1((after ? rect(after).top : top + root.scrollHeight) - box.bottom),
-          count: badge ? `badge ${fontColour(badge)}` : inline ? 'inline' : 'none',
+          // A count written beside the title reads as plain `inline` unless it has a look of its own.
+          count: badge ? `badge ${fontColour(badge)}`
+            : written && host && fontColour(written) !== fontColour(host) ? `inline ${fontColour(written)}`
+              : written || inline ? 'inline' : 'none',
         }
       }
       case 'list': {

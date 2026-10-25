@@ -119,7 +119,7 @@ export const PATTERNS = {
     entries: [
       entry('shared:SectionHeading', '.section-heading--group'),
       entry('shared:SectionHeading', GROUPED_SECTIONS),
-      entry('shared:DayHeading', '.day-heading', { parts: { count: '.day-heading-count' } }),
+      entry('shared:DayHeading', '.day-heading', { parts: { count: '.count-badge' } }),
       entry('hand:shell/SearchBox.tsx', '.pickhits .rh'),
       entry('hand:components/chat/ChatComposer.tsx', '.pickhits .rg'),
       entry('hand:routes/Watches.tsx', '.watch-suggestion-group-heading'),
@@ -136,11 +136,12 @@ export const PATTERNS = {
   Fold: {
     metrics: 'heading',
     entries: [
-      entry('shared:CollapsibleGroup', '.collapsible-group-head', { parts: { count: '.collapsible-group-count' } }),
+      entry('shared:CollapsibleGroup', '.collapsible-group-head', { parts: { count: '.count-badge' } }),
       entry('shared:CardTray', '.card-tray--tray > .card-tray-head'),
       entry('shared:NavRow', '#sidebar .srow.disc'),
       entry('hand:shell/Sidebar.tsx', '#sidebar .sb-h'),
-      entry('hand:components/timeline/TimelineBoard.tsx', '.timeline-fold'),
+      entry('shared:FoldToggle', '.fold-toggle--composite', { not: '.card-tray--row .fold-toggle--composite' }),
+      entry('hand:components/timeline/TimelineBoard.tsx', '.glrow:has(.fold-toggle)'),
     ],
   },
   List: {
@@ -349,8 +350,6 @@ export const PATTERNS = {
     metrics: 'tag',
     entries: [
       entry('shared:CountBadge', '.count-badge'),
-      entry('shared:CollapsibleGroup', '.collapsible-group-count'),
-      entry('shared:DayHeading', '.day-heading-count'),
       entry('hand:components/timeline/TimelineBoard.tsx', '.timeline-folded-count'),
     ],
   },
@@ -371,15 +370,15 @@ export const PATTERNS = {
     metrics: 'button',
     entries: [
       entry('shared:IconButton', '.icbtn.busy'),
-      entry('shared:ActionButton', '.action-button:has(.ring)'),
+      entry('shared:Button', '.btn:has(.ring)'),
     ],
   },
   DropOverlay: { metrics: 'state', entries: [entry('hand:components/paper-table/PaperTable.tsx', '.paper-drop')] },
   Button: {
     metrics: 'button',
     entries: [
-      entry('hand:routes/shell.css', '.btn', {
-        not: '.filter-menu, .sort-menu, .add-action, .choice-picker, .action-button, .harness-trigger, .paper-abstract-toggle, .reading-summary-all, .zoom-reset, .graph-zoom-reset',
+      entry('shared:Button', '.btn', {
+        not: '.filter-menu, .sort-menu, .add-action, .choice-picker, .harness-trigger, .paper-abstract-toggle, .reading-summary-all, .zoom-reset, .graph-zoom-reset',
       }),
       entry('hand:components/project/ProjectPlan.tsx', '.din'),
     ],
@@ -387,7 +386,6 @@ export const PATTERNS = {
   ActionButton: {
     metrics: 'button',
     entries: [
-      entry('shared:ActionButton', '.action-button'),
       entry('shared:GenerationControl', '.generation-control'),
       entry('shared:HarnessAction', '.harness-trigger'),
     ],
@@ -481,20 +479,19 @@ export const PATTERNS = {
   InlineError: {
     metrics: 'state',
     entries: [
-      entry('shared:PaperCardNotice', '.paper-card-notice.is-error'),
+      entry('shared:InlineMessage', '.inline-message--error, .inline-message--warning', { not: '.page-error' }),
       entry('hand:components/settings/AppearanceSettings.tsx', '.appearance-problem'),
       entry('hand:components/settings/DeliverySettings.tsx', '.delivery-setting-error'),
-      entry('hand:routes/Watches.tsx', '.author-search-note.error, .watch-suggestion-error'),
+      entry('hand:routes/Watches.tsx', '.watch-suggestion-error'),
     ],
   },
   PageError: {
     metrics: 'state',
     entries: [
-      entry('shared:PageError', '.ipcerror'),
-      entry('hand:routes/Reader.tsx', '.pdfload'),
+      entry('shared:PageError', '.page-error'),
     ],
   },
-  BusyLabel: { metrics: 'state', entries: [entry('hand:routes/Watches.tsx', '.author-search-note:not(.error)')] },
+  BusyLabel: { metrics: 'state', entries: [entry('hand:routes/Watches.tsx', '.author-search-note:not(:has(.inline-message))')] },
   Markdown: { metrics: 'text', entries: [entry('shared:Markdown', '.md')] },
   FadeText: { metrics: 'text', entries: [entry('shared:PaperAbstract', '.paper-abstract')] },
   EntityLink: { metrics: 'text', entries: [entry('shared:EntityLink', '.entity-link')] },
