@@ -21,13 +21,12 @@ import { AgentLabel } from '../components/SourceLabel.js'
 import {
   PageBody, PageError, PageHeader, PageShell, PageTitle, SectionHeading,
 } from '../components/PageShell.js'
-import { Item, RowActions } from '../components/Item.js'
+import { Item, ItemMeta, ItemTitle, RowActions } from '../components/Item.js'
 import { List } from '../components/List.js'
 import { IconButton } from '../components/IconButton.js'
 import { IconArchive, IconTrash, IconUndo } from '../components/icons.js'
 import { Button } from '../components/Button.js'
 import './shell.css'
-import './Changelog.css'
 
 /** The separator between the parts of the grey line; the same string splits `meta` and joins the parts. */
 const SEP = ' · '
@@ -160,13 +159,13 @@ export function Changelog() {
   const unread = fresh.length
 
   const row = (c: ChangeEntry) => (
-    <Item className="crow" key={c.id}>
+    <Item className="crow" lines={2} key={c.id}>
       <CardTray
         variant="row" composite
         summary={(
           <>
-            <span className="ct"><ChangeTitle entry={c} /><ChangeSource source={c.source} /></span>
-            <span className="cm">{[metaBelowHeading(c.meta), hint(c, m.changelog.state)].filter((s) => s !== '').join(SEP)}</span>
+            <ItemTitle className="ct"><span><ChangeTitle entry={c} /></span><ChangeSource source={c.source} /></ItemTitle>
+            <ItemMeta className="cm">{[metaBelowHeading(c.meta), hint(c, m.changelog.state)].filter((s) => s !== '').join(SEP)}</ItemMeta>
           </>
         )}
         action={(

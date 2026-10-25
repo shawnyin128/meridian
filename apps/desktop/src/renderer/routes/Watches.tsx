@@ -13,7 +13,7 @@ import { ConfirmDialog } from '../components/ConfirmDialog.js'
 import { EmptyState } from '../components/EmptyState.js'
 import { LoadingPlaceholder } from '../components/LoadingPlaceholder.js'
 import { afterLeaving, InlineDraftInput } from '../components/InlineDraftInput.js'
-import { Item, RowActions } from '../components/Item.js'
+import { Item } from '../components/Item.js'
 import { List } from '../components/List.js'
 import { IconButton } from '../components/IconButton.js'
 import { IconPencil, IconTrash } from '../components/icons.js'
@@ -85,26 +85,34 @@ function WatchGroup({ type, watches, failed, add, editor, onOpen, onEdit, onSetA
                 </Item>
               )
               : (
-                <Item className="wrow" data-w={w.id} key={w.id}>
-                  <span className="nm">{w.name}</span>
-                  {w.type !== 'author' ? null : w.identity === undefined
-                    ? <Tag tone="warn">{m.watches.identityUnconfirmed}</Tag>
-                    : (
+                <Item
+                  className="wrow" data-w={w.id} key={w.id}
+                  title={<span className="nm">{w.name}</span>}
+                  meta={w.type === 'author' && w.identity !== undefined
+                    ? (
                       <FadeText className="author-id-state" label={w.identity.affiliations[0] || m.watches.identityUnconfirmed}>
                         {w.identity.affiliations[0] || m.watches.identityUnconfirmed}
                       </FadeText>
-                    )}
-                  {w.active ? null : <Tag className="watch-paused">{m.watches.paused}</Tag>}
-                  <Switch label={w.name} checked={w.active} onChange={() => onSetActive(w)} />
-                  <RowActions>
-                    <IconButton label={m.common.edit} size="nested" onClick={() => onEdit(w)}><IconPencil /></IconButton>
-                    <ConfirmDialog
-                      trigger={<IconButton label={m.common.remove} size="nested" tone="danger"><IconTrash /></IconButton>}
-                      title={m.watches.confirmRemove(w.name)} description={m.watches.confirmRemoveDescription}
-                      confirmLabel={m.watches.confirmRemoveLabel} onConfirm={() => onRemove(w.id)}
-                    />
-                  </RowActions>
-                </Item>
+                    )
+                    : undefined}
+                  tags={(
+                    <>
+                      {w.type === 'author' && w.identity === undefined ? <Tag tone="warn">{m.watches.identityUnconfirmed}</Tag> : null}
+                      {w.active ? null : <Tag className="watch-paused">{m.watches.paused}</Tag>}
+                    </>
+                  )}
+                  trailing={<Switch label={w.name} checked={w.active} onChange={() => onSetActive(w)} />}
+                  actions={(
+                    <>
+                      <IconButton label={m.common.edit} size="nested" onClick={() => onEdit(w)}><IconPencil /></IconButton>
+                      <ConfirmDialog
+                        trigger={<IconButton label={m.common.remove} size="nested" tone="danger"><IconTrash /></IconButton>}
+                        title={m.watches.confirmRemove(w.name)} description={m.watches.confirmRemoveDescription}
+                        confirmLabel={m.watches.confirmRemoveLabel} onConfirm={() => onRemove(w.id)}
+                      />
+                    </>
+                  )}
+                />
               ))) }
           </List>
         )}
@@ -431,24 +439,23 @@ export function WatchSettings() {
                 : authorMatches.length === 0
                   ? <EmptyState variant="section">{m.watches.noMatches}</EmptyState>
                   : (
-                    <div className="author-matches">
+                    <List variant="embedded" rows="all" className="author-matches">
                       {authorMatches.map((candidate) => (
-                        <div className="author-match" key={candidate.id}>
-                          <div className="author-match-copy">
-                            <FadeText className="author-match-name" label={candidate.name}>{candidate.name}</FadeText>
-                            <FadeText className="author-match-affiliations">
-                              {candidate.affiliations.join(' · ') || m.watches.noAffiliation}
-                            </FadeText>
-                            <FadeText className="author-match-info">
+                        <Item
+                          className="author-match" key={candidate.id} lines={2}
+                          title={<FadeText className="author-match-name" label={candidate.name}>{candidate.name}</FadeText>}
+                          meta={<FadeText>{candidate.affiliations.join(' · ') || m.watches.noAffiliation}</FadeText>}
+                          trailing={(
+                            <>
                               {m.watches.candidateInfo(candidate.paperCount, candidate.citationCount, candidate.hIndex)}
-                            </FadeText>
-                          </div>
-                          <Button size="compact" variant="ghost" onClick={() => chooseAuthor(candidate)}>
-                            {editor.id === undefined ? m.watches.follow : m.watches.choose}
-                          </Button>
-                        </div>
+                              <Button size="compact" variant="ghost" onClick={() => chooseAuthor(candidate)}>
+                                {editor.id === undefined ? m.watches.follow : m.watches.choose}
+                              </Button>
+                            </>
+                          )}
+                        />
                       ))}
-                    </div>
+                    </List>
                   )}
         {name.trim() !== '' && (editor.id === undefined || name.trim() !== editingWatch?.name
           || editingWatch?.type === 'author' && editingWatch.identity === undefined)
@@ -548,18 +555,17 @@ export function WatchSettings() {
                       </div>
                       <List variant="embedded" className="watch-suggestion-list">
                         {suggestions.topics.map((item) => (
-                          <Item className="watch-suggestion-row" key={item.name}>
-                            <div className="watch-suggestion-copy">
-                              <FadeText className="nm" label={item.name}>{item.name}</FadeText>
-                              <FadeText>{m.watches.relatedPapers(item.relatedPapers)}</FadeText>
-                            </div>
-                            <RowActions>
+                          <Item
+                            className="watch-suggestion-row" key={item.name} lines={2}
+                            title={<FadeText className="nm" label={item.name}>{item.name}</FadeText>}
+                            meta={<FadeText>{m.watches.relatedPapers(item.relatedPapers)}</FadeText>}
+                            actions={(
                               <AddAction
                                 size="compact" disabled={addingSuggestion !== null}
                                 onClick={() => { void addSuggestedTopic(item.name) }}
                               >{m.watches.addAction}</AddAction>
-                            </RowActions>
-                          </Item>
+                            )}
+                          />
                         ))}
                       </List>
                     </section>
@@ -571,20 +577,21 @@ export function WatchSettings() {
                       </div>
                       <List variant="embedded" className="watch-suggestion-list">
                         {suggestions.authors.map((item) => (
-                          <Item className="watch-suggestion-row" key={suggestedAuthorKey(item)}>
-                            <div className="watch-suggestion-copy">
-                              <FadeText className="nm" label={item.name}>{item.name}</FadeText>
+                          <Item
+                            className="watch-suggestion-row" key={suggestedAuthorKey(item)} lines={2}
+                            title={<FadeText className="nm" label={item.name}>{item.name}</FadeText>}
+                            meta={(
                               <FadeText>{'id' in item
                                 ? m.watches.suggestedAuthorInfo(item.relatedPapers, item.hIndex, item.citationCount)
                                 : m.watches.relatedPapers(item.relatedPapers)}</FadeText>
-                            </div>
-                            <RowActions>
+                            )}
+                            actions={(
                               <AddAction
                                 size="compact" disabled={addingSuggestion !== null}
                                 onClick={() => { void addSuggestedAuthor(item) }}
                               >{m.watches.addAction}</AddAction>
-                            </RowActions>
-                          </Item>
+                            )}
+                          />
                         ))}
                       </List>
                     </section>

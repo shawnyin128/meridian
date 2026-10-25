@@ -76,11 +76,7 @@
 .storage-pending{margin-top:var(--sp-12)}
 .storage-reset{display:flex;align-items:center;justify-content:space-between;gap:var(--sp-16);margin-top:var(--sp-16);
   padding-top:var(--sp-14);border-top:1px solid var(--sep2);color:var(--sec);font-size:var(--fs-sm)}
-.storage-backup-row{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:var(--sp-16);
-  min-height:58px;padding:var(--sp-8) var(--sp-12)}
-.storage-backup-copy{min-width:0;display:flex;flex-direction:column;gap:var(--sp-4)}
-.storage-backup-path{color:var(--ter);font-family:var(--mono);font-size:var(--fs-cap)}
-.storage-backup-actions{display:flex;align-items:center;gap:var(--sp-8)}
+.storage-backup-path{font-family:var(--mono)}
 
 /* The status head, field rows, saved-key mask, and foot are shared card chrome; see ServiceCard.css. */
 .model-protocol{display:grid;grid-template-columns:var(--service-label-w) minmax(0,1fr);gap:var(--sp-12);align-items:center;margin-top:var(--sp-12);

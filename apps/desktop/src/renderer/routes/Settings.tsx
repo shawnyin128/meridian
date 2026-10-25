@@ -33,7 +33,7 @@ import { ConfirmDialog } from '../components/ConfirmDialog.js'
 import { DateTimeDisplay } from '../components/DateTimeDisplay.js'
 import { ModalDialog, ModalTitle } from '../components/ModalDialog.js'
 import { NavRow } from '../components/NavRow.js'
-import { Item, RowActions } from '../components/Item.js'
+import { Item } from '../components/Item.js'
 import { List } from '../components/List.js'
 import { PageError, SectionHeading } from '../components/PageShell.js'
 import { useScreenLoad } from '../hooks/useScreenLoad.js'
@@ -328,32 +328,33 @@ export function Settings() {
                   const label = `${format.date(localDayOf(backup.createdAt))} ${format.clock(backup.createdAt)}`
                   const busy = switchingBackup !== null || deletingBackup !== null
                   return (
-                    <Item composite className="storage-backup-row" key={backup.id}>
-                      <div className="storage-backup-copy">
-                        <DateTimeDisplay at={backup.createdAt} />
-                        <FadeText className="storage-backup-path" label={backup.path}>{backup.path}</FadeText>
-                      </div>
-                      <div className="storage-backup-actions">
-                        <Button
-                          size="compact" variant="ghost" disabled={busy || location?.restartRequired === true}
-                          busy={switchingBackup === backup.id} busyLabel={m.settings.storage.backupSwitching}
-                          onClick={() => { void switchBackup(backup) }}
-                        >{m.settings.storage.backupSwitch}</Button>
-                        <ConfirmDialog
-                          trigger={(
-                            <Button
-                              size="compact" tone="danger"
-                              disabled={busy || location?.restartRequired === true}
-                              busy={deletingBackup === backup.id} busyLabel={m.settings.storage.backupDeleting}
-                            >{m.settings.storage.backupDelete}</Button>
-                          )}
-                          title={m.settings.storage.backupDeleteTitle(label)}
-                          description={m.settings.storage.backupDeleteDescription}
-                          confirmLabel={m.settings.storage.backupDelete}
-                          onConfirm={() => { void deleteBackup(backup) }}
-                        />
-                      </div>
-                    </Item>
+                    <Item
+                      className="storage-backup-row" key={backup.id} lines={2}
+                      title={<DateTimeDisplay at={backup.createdAt} />}
+                      meta={<FadeText className="storage-backup-path" label={backup.path}>{backup.path}</FadeText>}
+                      trailing={(
+                        <>
+                          <Button
+                            size="compact" variant="ghost" disabled={busy || location?.restartRequired === true}
+                            busy={switchingBackup === backup.id} busyLabel={m.settings.storage.backupSwitching}
+                            onClick={() => { void switchBackup(backup) }}
+                          >{m.settings.storage.backupSwitch}</Button>
+                          <ConfirmDialog
+                            trigger={(
+                              <Button
+                                size="compact" tone="danger"
+                                disabled={busy || location?.restartRequired === true}
+                                busy={deletingBackup === backup.id} busyLabel={m.settings.storage.backupDeleting}
+                              >{m.settings.storage.backupDelete}</Button>
+                            )}
+                            title={m.settings.storage.backupDeleteTitle(label)}
+                            description={m.settings.storage.backupDeleteDescription}
+                            confirmLabel={m.settings.storage.backupDelete}
+                            onConfirm={() => { void deleteBackup(backup) }}
+                          />
+                        </>
+                      )}
+                    />
                   )
                 })}
               </List>
@@ -423,20 +424,23 @@ export function Settings() {
           : (
             <List className="wlist">
               {archived.map((s) => (
-                <Item className="wrow" data-chat={s.id} key={s.id}>
-                  <span className="nm"><PaperText text={s.title} /></span>
-                  <RowActions>
-                    <IconButton label={m.settings.archived.open} size="nested" onClick={() => openChat(s)}>
-                      <IconOpen />
-                    </IconButton>
-                    <IconButton label={m.settings.archived.unarchive} size="nested" onClick={() => unarchive(s)}>
-                      <IconRestore />
-                    </IconButton>
-                    <IconButton label={m.common.delete} size="nested" tone="danger" onClick={() => deleteChat(s.id)}>
-                      <IconTrash />
-                    </IconButton>
-                  </RowActions>
-                </Item>
+                <Item
+                  className="wrow" data-chat={s.id} key={s.id}
+                  title={<span className="nm"><PaperText text={s.title} /></span>}
+                  actions={(
+                    <>
+                      <IconButton label={m.settings.archived.open} size="nested" onClick={() => openChat(s)}>
+                        <IconOpen />
+                      </IconButton>
+                      <IconButton label={m.settings.archived.unarchive} size="nested" onClick={() => unarchive(s)}>
+                        <IconRestore />
+                      </IconButton>
+                      <IconButton label={m.common.delete} size="nested" tone="danger" onClick={() => deleteChat(s.id)}>
+                        <IconTrash />
+                      </IconButton>
+                    </>
+                  )}
+                />
               ))}
             </List>
           )}

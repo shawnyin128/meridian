@@ -114,6 +114,18 @@ export function Item({
 }
 
 /**
+ * An item's title or meta line inside a control of the item's own, such as the toggle of a fold that
+ * is the row's summary: the slot's type, in the place the control gives it. `className` only names it.
+ */
+export function ItemTitle({ children, className = '' }: { children: ReactNode; className?: string }) {
+  return <span className={`item-title${className ? ` ${className}` : ''}`}>{children}</span>
+}
+
+export function ItemMeta({ children, className = '' }: { children: ReactNode; className?: string }) {
+  return <span className={`item-meta${className ? ` ${className}` : ''}`}>{children}</span>
+}
+
+/**
  * The button around an actionable card's or composite row's name: the item's keyboard control, whose
  * click reaches the item, and one of the controls of the toolbar the item renders in. Other props and
  * the ref go to the button, so a tooltip can name it.

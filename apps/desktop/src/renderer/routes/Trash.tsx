@@ -12,7 +12,7 @@ import { FadeText } from '../components/FadeText.js'
 import { LoadingPlaceholder } from '../components/LoadingPlaceholder.js'
 import { PaperText } from '../components/paper/PaperText.js'
 import { plainTitle } from '../components/paper/paper-text.js'
-import { Item, RowActions } from '../components/Item.js'
+import { Item } from '../components/Item.js'
 import { List } from '../components/List.js'
 import { TitleNote } from '../components/TitleNote.js'
 import {
@@ -23,7 +23,6 @@ import { useScreenLoad } from '../hooks/useScreenLoad.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
 import { Button } from '../components/Button.js'
 import './shell.css'
-import './Trash.css'
 
 /**
  * The order of the groups: the order of each kind's row in the sidebar, top to bottom. Attachments
@@ -118,25 +117,28 @@ export function Trash() {
               <SectionHeading count={g.items.length}>{m.trash.kinds[g.kind]}</SectionHeading>
               <List variant="embedded" rows="all" className="tgroup">
                 {g.items.map((entry) => (
-                  <Item className="trow" key={entry.id}>
-                    <FadeText className="tt2">{PAPER_KINDS.has(entry.kind) ? <PaperText text={entry.title} /> : entry.title}</FadeText>
-                    <span className="tm2">{m.trash.autoClear(daysLeft(entry.deletedAt, today))}</span>
-                    <RowActions>
-                      <IconButton
-                        label={m.common.restore} size="nested" disabled={!entry.restorable} onClick={() => restore(entry)}
-                        note={entry.restorable
-                          ? undefined
-                          : entry.kind === 'paper' ? m.trash.paperTaken : entry.kind === 'chat' ? m.trash.chatTaken : m.trash.projectGone}
-                      ><IconRestore /></IconButton>
-                      <ConfirmDialog
-                        trigger={(
-                          <IconButton label={m.common.deletePermanently} size="nested" tone="danger"><IconTrash /></IconButton>
-                        )}
-                        title={m.trash.confirmPurge(plainOf(entry))} description={m.trash.confirmPurgeDescription}
-                        confirmLabel={m.trash.confirmPurgeLabel} onConfirm={() => purge(entry.id)}
-                      />
-                    </RowActions>
-                  </Item>
+                  <Item
+                    className="trow" key={entry.id}
+                    title={<FadeText className="tt2">{PAPER_KINDS.has(entry.kind) ? <PaperText text={entry.title} /> : entry.title}</FadeText>}
+                    trailing={<span className="tm2">{m.trash.autoClear(daysLeft(entry.deletedAt, today))}</span>}
+                    actions={(
+                      <>
+                        <IconButton
+                          label={m.common.restore} size="nested" disabled={!entry.restorable} onClick={() => restore(entry)}
+                          note={entry.restorable
+                            ? undefined
+                            : entry.kind === 'paper' ? m.trash.paperTaken : entry.kind === 'chat' ? m.trash.chatTaken : m.trash.projectGone}
+                        ><IconRestore /></IconButton>
+                        <ConfirmDialog
+                          trigger={(
+                            <IconButton label={m.common.deletePermanently} size="nested" tone="danger"><IconTrash /></IconButton>
+                          )}
+                          title={m.trash.confirmPurge(plainOf(entry))} description={m.trash.confirmPurgeDescription}
+                          confirmLabel={m.trash.confirmPurgeLabel} onConfirm={() => purge(entry.id)}
+                        />
+                      </>
+                    )}
+                  />
                 ))}
               </List>
             </Fragment>
