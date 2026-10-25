@@ -307,7 +307,7 @@ function ProjectList({ onOpen, newRow, onNewRow, onReturn }: {
   // Each project the filter hides is a scope of its own, so moving a shown one leaves it where it is.
   const reorder = useDragReorder(
     ids, (id) => (shownIds.has(id) ? statusOf.get(id) ?? '' : `hidden ${id}`),
-    (order) => { void write(projectApi.reorder(order)) },
+    (order) => { void write(projectApi.reorder(order)) }, { axis: 'y', handle: 'grip' },
   )
   const sortBy = (key: ProjectSortKey) => {
     if (projects === null) return

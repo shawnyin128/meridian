@@ -95,105 +95,63 @@ components/paper-table/PaperTable.css:16: .paper-drop span { color }
 components/paper-table/PaperTable.css:19: .paper-search>.form-input { font-size }
 components/paper-table/PaperTable.css:22: .gxrow .gx-t { min-width }
 components/paper-table/PaperTable.css:23: .gnav { margin-bottom }
-components/paper-table/PaperTable.css:26: .thmove { width }
-components/paper-table/PaperTable.css:26: .thmove { height }
-components/paper-table/PaperTable.css:26: .thmove { margin }
-components/paper-table/PaperTable.css:26: .thmove { color }
-components/paper-table/PaperTable.css:26: .thmove { opacity }
-components/paper-table/PaperTable.css:26: .thmove { cursor }
-components/paper-table/PaperTable.css:26: .thmove { vertical-align }
-components/paper-table/PaperTable.css:26: .thmove { border-radius }
-components/paper-table/PaperTable.css:27: .ptable th:hover .thmove { opacity }
-components/paper-table/PaperTable.css:27: .thmove:focus-visible { opacity }
-components/paper-table/PaperTable.css:28: .thmove:active { cursor }
-components/paper-table/PaperTable.css:28: .thmove:active { color }
-components/paper-table/PaperTable.css:29: .thmove svg { width }
-components/paper-table/PaperTable.css:29: .thmove svg { height }
-components/paper-table/PaperTable.css:30: .column-drag-ghost { left }
-components/paper-table/PaperTable.css:30: .column-drag-ghost { top }
-components/paper-table/PaperTable.css:30: .column-drag-ghost { width }
-components/paper-table/PaperTable.css:30: .column-drag-ghost { height }
-components/paper-table/PaperTable.css:30: .column-drag-ghost { opacity }
-components/paper-table/PaperTable.css:30: .column-drag-ghost { pointer-events }
-components/paper-table/PaperTable.css:36: .tagchip.tagadd { opacity }
-components/paper-table/PaperTable.css:36: .tagchip.tagadd { pointer-events }
-components/paper-table/PaperTable.css:36: .tagchip.tagadd { transition }
-components/paper-table/PaperTable.css:37: .ptable tr:hover .tagadd { opacity }
-components/paper-table/PaperTable.css:37: .tagchip.tagadd:focus-visible { opacity }
-components/paper-table/PaperTable.css:37: .ptable tr:hover .tagadd { pointer-events }
-components/paper-table/PaperTable.css:37: .tagchip.tagadd:focus-visible { pointer-events }
-components/paper-table/PaperTable.css:39: .ptable .tagchip .rx { opacity }
-components/paper-table/PaperTable.css:39: .ptable .tagchip .rx { pointer-events }
-components/paper-table/PaperTable.css:39: .ptable .tagchip .rx { transition }
-components/paper-table/PaperTable.css:40: .ptable tr:hover .tagchip .rx { opacity }
-components/paper-table/PaperTable.css:40: .ptable .tagchip .rx:focus-visible { opacity }
-components/paper-table/PaperTable.css:40: .ptable tr:hover .tagchip .rx { pointer-events }
-components/paper-table/PaperTable.css:40: .ptable .tagchip .rx:focus-visible { pointer-events }
-components/paper-table/PaperTable.css:41: .ptable tr:has(.stchip[data-state="open"]) .tagadd { opacity }
-components/paper-table/PaperTable.css:42: .paper-meta-projects .tagchip.tagadd { opacity }
-components/paper-table/PaperTable.css:42: .paper-meta-topics .tagchip.tagadd { opacity }
-components/paper-table/PaperTable.css:42: .paper-meta-projects .tagchip.tagadd { pointer-events }
-components/paper-table/PaperTable.css:42: .paper-meta-topics .tagchip.tagadd { pointer-events }
-components/paper-table/PaperTable.css:43: .form-input.form-control-inline.tagin { display }
-components/paper-table/PaperTable.css:43: .form-input.form-control-inline.tagin { width }
-components/paper-table/PaperTable.css:43: .form-input.form-control-inline.tagin { vertical-align }
-components/paper-table/PaperTable.css:48: .cmx { margin }
-components/paper-table/PaperTable.css:52: .ctbtn { border }
-components/paper-table/PaperTable.css:52: .ctbtn { background }
-components/paper-table/PaperTable.css:52: .ctbtn { color }
-components/paper-table/PaperTable.css:52: .ctbtn { cursor }
-components/paper-table/PaperTable.css:52: .ctbtn { padding }
-components/paper-table/PaperTable.css:52: .ctbtn { border-radius }
-components/paper-table/PaperTable.css:53: .ctbtn:hover { color }
-components/paper-table/PaperTable.css:54: .ctbtn.on { background }
-components/paper-table/PaperTable.css:54: .ctbtn.on { border-color }
-components/paper-table/PaperTable.css:54: .ctbtn.on { color }
-components/paper-table/PaperTable.css:55: .ctbtn svg { width }
-components/paper-table/PaperTable.css:55: .ctbtn svg { height }
-components/paper-table/PaperTable.css:61: .typerow { padding-left }
-components/paper-table/PaperTable.css:64: .paper-detail-slot { --detail-panel-width }
-components/paper-table/PaperTable.css:64: .paper-detail-slot { top }
-components/paper-table/PaperTable.css:64: .paper-detail-slot { border-left }
-components/paper-table/PaperTable.css:65: .paper-detail-slot { background }
-components/paper-table/PaperTable.css:66: .pdetail { box-sizing }
-components/paper-table/PaperTable.css:66: .pdetail { overflow }
-components/paper-table/PaperTable.css:66: .pdetail { overscroll-behavior }
-components/paper-table/PaperTable.css:66: .pdetail { padding }
-components/paper-table/PaperTable.css:67: .desk-body.withdetail { margin-right }
-components/paper-table/PaperTable.css:67: .desk-foot.withdetail { margin-right }
-components/paper-table/PaperTable.css:72: .pd-h { margin-bottom }
-components/paper-table/PaperTable.css:73: .pd-t { font-size }
-components/paper-table/PaperTable.css:73: .pd-t { font-weight }
-components/paper-table/PaperTable.css:73: .pd-t { line-height }
-components/paper-table/PaperTable.css:75: .pd-t .metadata-editable { color }
-components/paper-table/PaperTable.css:76: .pdetail .wkprops { grid-template-columns }
-components/paper-table/PaperTable.css:76: .pdetail .wkprops { font-size }
-components/paper-table/PaperTable.css:77: .pdetail>.paper-meta { margin }
-components/paper-table/PaperTable.css:78: .paper-reading-summary { margin-top }
-components/paper-table/PaperTable.css:79: .paper-reading-summary .paper-meta-list { padding }
-components/paper-table/PaperTable.css:80: .paper-reading-summary .reading-summary-all { margin }
-components/paper-table/PaperTable.css:87: .libbar .filters { margin }
-components/paper-table/PaperTable.css:88: .libbar .filters>.pt-dim { font-size }
-components/paper-table/PaperTable.css:93: .research-map { padding }
-components/paper-table/PaperTable.css:94: .research-map-limit { color }
-components/paper-table/PaperTable.css:94: .research-map-limit { font-size }
-components/paper-table/PaperTable.css:95: .research-map-layout { grid-template-columns }
-components/paper-table/PaperTable.css:97: .research-map-index { gap }
-components/paper-table/PaperTable.css:103: .research-map-detail { border }
-components/paper-table/PaperTable.css:103: .research-map-detail { border-radius }
-components/paper-table/PaperTable.css:103: .research-map-detail { background }
-components/paper-table/PaperTable.css:103: .research-map-detail { overflow }
-components/paper-table/PaperTable.css:104: .research-map-detail-head { padding }
-components/paper-table/PaperTable.css:104: .research-map-detail-head { border-bottom }
-components/paper-table/PaperTable.css:106: .research-map-detail-head .research-map-detail-name { color }
-components/paper-table/PaperTable.css:106: .research-map-detail-head .research-map-detail-name { font-size }
-components/paper-table/PaperTable.css:106: .research-map-detail-head .research-map-detail-name { font-weight }
-components/paper-table/PaperTable.css:107: .research-map-detail-head>div>span { color }
-components/paper-table/PaperTable.css:107: .research-map-detail-head>div>span { font-size }
-components/paper-table/PaperTable.css:109: .research-map-paper-meta { white-space }
-components/paper-table/PaperTable.css:110: .research-map-why { display }
-components/paper-table/PaperTable.css:110: .research-map-why { align-items }
-components/paper-table/PaperTable.css:110: .research-map-why { gap }
+components/paper-table/PaperTable.css:28: .cmx { margin }
+components/paper-table/PaperTable.css:32: .ctbtn { border }
+components/paper-table/PaperTable.css:32: .ctbtn { background }
+components/paper-table/PaperTable.css:32: .ctbtn { color }
+components/paper-table/PaperTable.css:32: .ctbtn { cursor }
+components/paper-table/PaperTable.css:32: .ctbtn { padding }
+components/paper-table/PaperTable.css:32: .ctbtn { border-radius }
+components/paper-table/PaperTable.css:33: .ctbtn:hover { color }
+components/paper-table/PaperTable.css:34: .ctbtn.on { background }
+components/paper-table/PaperTable.css:34: .ctbtn.on { border-color }
+components/paper-table/PaperTable.css:34: .ctbtn.on { color }
+components/paper-table/PaperTable.css:35: .ctbtn svg { width }
+components/paper-table/PaperTable.css:35: .ctbtn svg { height }
+components/paper-table/PaperTable.css:41: .typerow { padding-left }
+components/paper-table/PaperTable.css:44: .paper-detail-slot { --detail-panel-width }
+components/paper-table/PaperTable.css:44: .paper-detail-slot { top }
+components/paper-table/PaperTable.css:44: .paper-detail-slot { border-left }
+components/paper-table/PaperTable.css:45: .paper-detail-slot { background }
+components/paper-table/PaperTable.css:46: .pdetail { box-sizing }
+components/paper-table/PaperTable.css:46: .pdetail { overflow }
+components/paper-table/PaperTable.css:46: .pdetail { overscroll-behavior }
+components/paper-table/PaperTable.css:46: .pdetail { padding }
+components/paper-table/PaperTable.css:47: .desk-body.withdetail { margin-right }
+components/paper-table/PaperTable.css:47: .desk-foot.withdetail { margin-right }
+components/paper-table/PaperTable.css:52: .pd-h { margin-bottom }
+components/paper-table/PaperTable.css:53: .pd-t { font-size }
+components/paper-table/PaperTable.css:53: .pd-t { font-weight }
+components/paper-table/PaperTable.css:53: .pd-t { line-height }
+components/paper-table/PaperTable.css:55: .pd-t .metadata-editable { color }
+components/paper-table/PaperTable.css:56: .pdetail .wkprops { grid-template-columns }
+components/paper-table/PaperTable.css:56: .pdetail .wkprops { font-size }
+components/paper-table/PaperTable.css:57: .pdetail>.paper-meta { margin }
+components/paper-table/PaperTable.css:58: .paper-reading-summary { margin-top }
+components/paper-table/PaperTable.css:59: .paper-reading-summary .paper-meta-list { padding }
+components/paper-table/PaperTable.css:60: .paper-reading-summary .reading-summary-all { margin }
+components/paper-table/PaperTable.css:67: .libbar .filters { margin }
+components/paper-table/PaperTable.css:68: .libbar .filters>.pt-dim { font-size }
+components/paper-table/PaperTable.css:73: .research-map { padding }
+components/paper-table/PaperTable.css:74: .research-map-limit { color }
+components/paper-table/PaperTable.css:74: .research-map-limit { font-size }
+components/paper-table/PaperTable.css:75: .research-map-layout { grid-template-columns }
+components/paper-table/PaperTable.css:77: .research-map-index { gap }
+components/paper-table/PaperTable.css:83: .research-map-detail { border }
+components/paper-table/PaperTable.css:83: .research-map-detail { border-radius }
+components/paper-table/PaperTable.css:83: .research-map-detail { background }
+components/paper-table/PaperTable.css:83: .research-map-detail { overflow }
+components/paper-table/PaperTable.css:84: .research-map-detail-head { padding }
+components/paper-table/PaperTable.css:84: .research-map-detail-head { border-bottom }
+components/paper-table/PaperTable.css:86: .research-map-detail-head .research-map-detail-name { color }
+components/paper-table/PaperTable.css:86: .research-map-detail-head .research-map-detail-name { font-size }
+components/paper-table/PaperTable.css:86: .research-map-detail-head .research-map-detail-name { font-weight }
+components/paper-table/PaperTable.css:87: .research-map-detail-head>div>span { color }
+components/paper-table/PaperTable.css:87: .research-map-detail-head>div>span { font-size }
+components/paper-table/PaperTable.css:89: .research-map-paper-meta { white-space }
+components/paper-table/PaperTable.css:90: .research-map-why { display }
+components/paper-table/PaperTable.css:90: .research-map-why { align-items }
+components/paper-table/PaperTable.css:90: .research-map-why { gap }
 components/paper/PaperCard.css:1: .paper-card-citations { font-variant-numeric }
 components/paper/PaperCard.css:2: .paper-card-label { font-size }
 components/paper/PaperCard.css:2: .paper-card-label { font-weight }
@@ -373,20 +331,11 @@ components/project/ProjectSections.css:4: .agstep .agt { font-size }
 components/project/ProjectSections.css:4: .agstep .agt { color }
 components/project/ProjectSections.css:4: .agstep .agt { width }
 components/project/ProjectSections.css:6: .memo { font-size }
-components/project/ProjectSections.css:9: .project-areas .tagchip.tagadd { opacity }
-components/project/ProjectSections.css:9: .project-areas .tagchip.tagadd { pointer-events }
-components/project/ProjectSections.css:10: .project-areas .tagchip-open { cursor }
-components/project/ProjectSections.css:11: .wkrel .reladd { min-width }
-components/project/ProjectSections.css:17: .wkrel .tagchip[draggable] { cursor }
-components/project/ProjectSections.css:18: .wkrel .tagchip[draggable]:active { cursor }
-components/project/ProjectSections.css:19: .wkrel .tagchip.dragging { opacity }
-components/project/ProjectSections.css:20: .wkrel .tagchip.drop-before { box-shadow }
-components/project/ProjectSections.css:21: .wkrel .tagchip.drop-after { box-shadow }
-components/project/ProjectSections.css:23: .attachments { border-radius }
-components/project/ProjectSections.css:23: .attachments { transition }
-components/project/ProjectSections.css:23: .attachments { outline }
-components/project/ProjectSections.css:24: .attachments.drag { background }
-components/project/ProjectSections.css:24: .attachments.drag { outline-color }
+components/project/ProjectSections.css:12: .attachments { border-radius }
+components/project/ProjectSections.css:12: .attachments { transition }
+components/project/ProjectSections.css:12: .attachments { outline }
+components/project/ProjectSections.css:13: .attachments.drag { background }
+components/project/ProjectSections.css:13: .attachments.drag { outline-color }
 components/project/ProjectSignals.css:2: .project-signal-columns { --project-signal-kind-width }
 components/project/ProjectSignals.css:2: .project-signal-columns { --project-signal-date-width }
 components/project/ProjectSignals.css:2: .project-signal-columns { --project-signal-gap }
@@ -597,26 +546,20 @@ components/timeline/TimelineBoard.css:18: .timeline-label-open { font }
 components/timeline/TimelineBoard.css:18: .timeline-label-open { text-align }
 components/timeline/TimelineBoard.css:18: .timeline-label-open { cursor }
 components/timeline/TimelineBoard.css:20: .glabels .glrow:last-child { border-bottom }
-components/timeline/TimelineBoard.css:21: .glrow[draggable] { cursor }
-components/timeline/TimelineBoard.css:22: .glrow[draggable]:active { cursor }
-components/timeline/TimelineBoard.css:22: .glrow.dragging { cursor }
-components/timeline/TimelineBoard.css:23: .glrow.dragging { opacity }
-components/timeline/TimelineBoard.css:24: .glrow.drag-over-before { box-shadow }
-components/timeline/TimelineBoard.css:25: .glrow.drag-over-after { box-shadow }
-components/timeline/TimelineBoard.css:56: .gbar.label-beside .gbar-label { visibility }
-components/timeline/TimelineBoard.css:64: .glrow.msl { height }
-components/timeline/TimelineBoard.css:64: .glrow.msl { background }
-components/timeline/TimelineBoard.css:67: .glrow.msl { font-size }
-components/timeline/TimelineBoard.css:67: .glrow.msl { font-weight }
-components/timeline/TimelineBoard.css:67: .glrow.msl { color }
-components/timeline/TimelineBoard.css:67: .glrow.msl { cursor }
-components/timeline/TimelineBoard.css:73: .timeline-folded-count { color }
-components/timeline/TimelineBoard.css:73: .timeline-folded-count { font-weight }
-components/timeline/TimelineBoard.css:79: .glane-new { padding }
-components/timeline/TimelineBoard.css:79: .glane-new { border }
-components/timeline/TimelineBoard.css:79: .glane-new { border-radius }
-components/timeline/TimelineBoard.css:79: .glane-new { background }
-components/timeline/TimelineBoard.css:79: .glane-new { pointer-events }
+components/timeline/TimelineBoard.css:51: .gbar.label-beside .gbar-label { visibility }
+components/timeline/TimelineBoard.css:59: .glrow.msl { height }
+components/timeline/TimelineBoard.css:59: .glrow.msl { background }
+components/timeline/TimelineBoard.css:62: .glrow.msl { font-size }
+components/timeline/TimelineBoard.css:62: .glrow.msl { font-weight }
+components/timeline/TimelineBoard.css:62: .glrow.msl { color }
+components/timeline/TimelineBoard.css:62: .glrow.msl { cursor }
+components/timeline/TimelineBoard.css:68: .timeline-folded-count { color }
+components/timeline/TimelineBoard.css:68: .timeline-folded-count { font-weight }
+components/timeline/TimelineBoard.css:74: .glane-new { padding }
+components/timeline/TimelineBoard.css:74: .glane-new { border }
+components/timeline/TimelineBoard.css:74: .glane-new { border-radius }
+components/timeline/TimelineBoard.css:74: .glane-new { background }
+components/timeline/TimelineBoard.css:74: .glane-new { pointer-events }
 components/wiki/ProposalChange.css:8: .proposal-rows { margin }
 components/wiki/ProposalChange.css:10: .proposal-change+.proposal-change { margin-top }
 components/wiki/ProposalChange.css:12: .proposal-row>dt { white-space }

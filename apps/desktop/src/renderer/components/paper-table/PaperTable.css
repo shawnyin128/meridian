@@ -22,26 +22,6 @@
 .gxrow .gx-t{min-width:150px}
 .gnav{display:flex;align-items:center;gap:var(--sp-6);flex-wrap:wrap;margin-bottom:var(--sp-12)}
 
-/* The handle that moves a column shows while its header is hovered or it has keyboard focus. */
-.thmove{display:inline-flex;width:13px;height:17px;align-items:center;justify-content:center;margin:0 var(--sp-4) 0 calc(-1 * var(--sp-6));color:var(--ter);opacity:0;cursor:var(--cursor-draggable);vertical-align:-4px;border-radius:var(--r-xs)}
-.ptable th:hover .thmove,.thmove:focus-visible{opacity:1}
-.thmove:active{cursor:var(--cursor-dragging);color:var(--ink)}
-.thmove svg{width:9px;height:14px}
-.column-drag-ghost{position:fixed;left:-100px;top:-100px;width:1px;height:1px;opacity:0;pointer-events:none}
-/*
- * The + at the end of a tag cell: a ghost tag, hidden at rest and shown only while the row is hovered
- * or it has keyboard focus. The focus state names both classes, or it ties with the resting state and
- * only source order decides.
- */
-.tagchip.tagadd{opacity:0;pointer-events:none;transition:opacity var(--t-fast) var(--e-out)}
-.ptable tr:hover .tagadd,.tagchip.tagadd:focus-visible{opacity:1;pointer-events:auto}
-/* A topic chip's × in the table shows with the row's +, so a resting table reads as plain tags. */
-.ptable .tagchip .rx{opacity:0;pointer-events:none;transition:opacity var(--t-fast) var(--e-out)}
-.ptable tr:hover .tagchip .rx,.ptable .tagchip .rx:focus-visible{opacity:1;pointer-events:auto}
-.ptable tr:has(.stchip[data-state="open"]) .tagadd{opacity:1}
-.paper-meta-projects .tagchip.tagadd,.paper-meta-topics .tagchip.tagadd{opacity:1;pointer-events:auto}
-.form-input.form-control-inline.tagin{display:inline-block;width:110px;vertical-align:middle}
-
 /* Column menu: custom columns have rename/delete at the end of their rows. */
 .mi.colrow .cl{flex:1}
 /* The 24px buttons reach into the menu row's padding, so custom-column rows stay as tall as the others. */

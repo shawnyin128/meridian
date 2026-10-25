@@ -143,11 +143,7 @@ describe('行尾操作槽', () => {
       .filter(({ selector, body }) => /:(?:hover|focus-visible|focus-within)\b/.test(selector)
         && sets(body, 'pointer-events', 'auto') && subjects(selector).some((name) => hidden.has(name)))
       .map(({ path, selector }) => `${path}  ${selector.replace(/\s+/g, ' ')}`)
-    // The paper table's chip + and chip ×, which the shared chip list of #474 takes over.
-    expect(reveals).toEqual([
-      'components/paper-table/PaperTable.css  .ptable tr:hover .tagadd,.tagchip.tagadd:focus-visible',
-      'components/paper-table/PaperTable.css  .ptable tr:hover .tagchip .rx,.ptable .tagchip .rx:focus-visible',
-    ])
+    expect(reveals).toEqual([])
   })
 
   it('只有 Item.css 决定槽和「更多」按钮显不显、点不点得到，各行不另写一份', () => {

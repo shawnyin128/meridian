@@ -68,7 +68,7 @@ const TABLE = 'components/Table.tsx'
  */
 const STUCK: Record<string, [file: string, markup: RegExp][]> = {
   '.table th': [
-    [TABLE, /data-stuck-fade=\{column === columns\[0\] \? 'top left' : column\.move === 'after' \? undefined : 'top'\}/],
+    [TABLE, /data-stuck-fade=\{column === columns\[0\] \? 'top left' : 'top'\}/],
     [TABLE, /className=\{classes\('table-draft', className\)\} data-stuck-fade="top"/],
     [TABLE, /<th className="table-actions" data-stuck-fade="top right">/],
   ],

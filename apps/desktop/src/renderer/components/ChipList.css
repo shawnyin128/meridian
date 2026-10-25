@@ -1,0 +1,28 @@
+/*
+ * The chips of a ChipList, and of the relation rows that list chips as links. A chip flowing in a
+ * cell or a line keeps 4px after it and 1px above and below, so wrapped lines of chips stay apart.
+ */
+.tagchip{margin:1px var(--sp-4) 1px 0}
+/* A chip's name is its button; the chip forwards a click anywhere else on it. */
+.tagchip-open{display:flex;min-width:0;padding:0;border:0;background:none;color:inherit;font:inherit;cursor:inherit}
+.tagchip-open:hover{color:var(--ink)}
+/*
+ * A relation row: its label, then its chips, spaced by the row's gap and wrapping when they run out of
+ * room. A chip there shows the arrow unless it opens something, its name or itself being a button. A
+ * chip that can be dragged takes the drag cursors of DragHandle.css instead.
+ */
+.wkrel{display:flex;gap:var(--sp-6);align-items:center;flex-wrap:wrap;margin:var(--sp-4) 0}
+.wkrel .rl{font-size:var(--fs-sm);color:var(--ter);width:28px;flex-shrink:0}
+.wkrel .tagchip{margin:0;position:relative}
+.wkrel .tagchip:not([draggable="true"]){cursor:default}
+/* A chip whose name opens what it names takes the pointer anywhere on it, since it forwards a click there. */
+.tagchip[data-actionable]:not([draggable="true"]),.wkrel .tagchip[data-actionable]:not([draggable="true"]),.wkrel button.tagchip{cursor:pointer}
+/*
+ * The draft of a relation in its row, after the label: the group switch, then the field that takes
+ * it, or the fields on a line of their own when they ask for the whole width.
+ */
+.wkrel .reladd{display:flex;align-items:center;flex-wrap:wrap;gap:var(--sp-6);flex:1 1 auto;min-width:190px}
+.wkrel .reladd .segmented-control{flex-shrink:0}
+.wkrel .reladd .inedit{flex:1;min-width:0}
+/* The input that takes a new chip's value, in the ＋'s place. */
+.form-input.form-control-inline.tagin{display:inline-block;width:110px;vertical-align:middle}

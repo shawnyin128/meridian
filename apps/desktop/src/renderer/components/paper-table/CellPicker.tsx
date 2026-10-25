@@ -6,8 +6,7 @@ import { useInlineDraft } from '../../hooks/useInlineDraft.js'
 import { NO_TRIGGERS } from '../../hooks/useOnLeave.js'
 import { commitKeys } from '../../lib/keyboard.js'
 import { useMessages } from '../../messages/useMessages.js'
-import { IconCheck, IconPlus } from '../icons.js'
-import { PickerPopover, PickOption } from '../PickerPopover.js'
+import { CandidateField } from '../CandidateField.js'
 import { FormInput } from '../FormControls.js'
 import { Tag } from '../Tag.js'
 
@@ -28,9 +27,9 @@ export function optionRows(
 }
 
 /**
- * Cell editor for select and multi-select columns: an input in the cell is the anchor, and below it
- * a popover lists the column's existing options, filtered by the typed text. When the typed text
- * equals no option, an extra "Create "X"" row appears after them. Clicking a row reports that row's
+ * Cell editor for select and multi-select columns, on CandidateField: an input in the cell, and below
+ * it the column's existing options, filtered by the typed text, each checked when the cell holds it.
+ * When the typed text equals no option, a row that creates it follows them. Clicking a row reports that row's
  * option; Enter reports the highlighted row's, which the arrow keys or the pointer move; Esc writes
  * nothing. Enter and Esc pressed while an input method is composing belong to it and do
  * neither. A press outside the input and its popover, or focus leaving them, reports what
@@ -83,9 +82,9 @@ export function CellPicker({ column, values, onCommit, onClose, keep }: {
   })
 
   return (
-    <PickerPopover
-      open anchorRef={anchor} stopClickPropagation
-      anchor={(
+    <CandidateField
+      anchorRef={anchor} keys={keys}
+      field={(
         <FormInput
           appearance="inline" className="celledit" autoComplete="off" autoFocus value={q} ref={anchor}
           placeholder={m.papers.cellPicker.placeholder}
@@ -101,27 +100,10 @@ export function CellPicker({ column, values, onCommit, onClose, keep }: {
           }}
         />
       )}
-      content={(
-        <>
-          {hits.length === 0 && !isNew
-            ? <div className="rh optnone">{m.papers.columnMenu.noOptionsHint}</div>
-            : null}
-          {hits.map((o, i) => (
-            <PickOption keys={keys} index={i} className="opt" key={o} onClick={() => onCommit(o, false)}>
-              <span className="ck">{values.includes(o) ? <IconCheck /> : null}</span>
-              <Tag shape="chip" className="tagchip">{o}</Tag>
-            </PickOption>
-          ))}
-          {isNew
-            ? (
-              <PickOption keys={keys} index={hits.length} className="mk" onClick={create}>
-                <IconPlus />
-                <span>{m.papers.cellPicker.createNew(typed)}</span>
-              </PickOption>
-            )
-            : null}
-        </>
-      )}
+      candidates={hits.map((o) => ({ id: o, label: <Tag shape="chip" className="tagchip">{o}</Tag>, checked: values.includes(o) }))}
+      onPick={(candidate) => { void onCommit(candidate.id, false) }}
+      create={isNew ? { text: typed, label: m.papers.cellPicker.createNew(typed), onCreate: create } : undefined}
+      empty={m.papers.columnMenu.noOptionsHint}
     />
   )
 }

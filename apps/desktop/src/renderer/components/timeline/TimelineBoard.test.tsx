@@ -140,8 +140,8 @@ describe('TimelineBoard 的头部', () => {
 describe('TimelineBoard 标签列拖拽排序', () => {
   it('提供了 onReorderTasks 时,任务标签行可以拖拽,里程碑行不可以', () => {
     const output = renderBoard(vi.fn())
-    expect(output).toContain('data-task="t1" draggable="true"')
-    expect(output).toContain('data-task="t2" draggable="true"')
+    expect(output).toMatch(/data-task="t1"[^>]*draggable="true"/)
+    expect(output).toMatch(/data-task="t2"[^>]*draggable="true"/)
     expect(output).not.toMatch(/class="glrow msl timeline-label-row"[^>]*draggable/)
   })
 

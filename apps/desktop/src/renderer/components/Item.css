@@ -37,14 +37,15 @@
   background-image:linear-gradient(var(--hover),var(--hover))}
 
 /*
- * The drop feedback useDragReorder marks on a reorderable item: the item held dims, and a line shows
- * where it would land. An item that is its own drag handle shows the drag cursors.
+ * The drop feedback useDragReorder marks on a reorderable item: the item held dims, and a 2px line
+ * shows the side it would land on, above or below as its data-reorder-axis says. An item that is its
+ * own drag handle shows the drag cursors.
  */
 .item[draggable]{cursor:var(--cursor-draggable)}
 .item[draggable]:active,.item[draggable].dragging{cursor:var(--cursor-dragging)}
 .item.dragging{opacity:.4}
-.item.drag-over-before{box-shadow:0 -2px 0 0 var(--ink)}
-.item.drag-over-after{box-shadow:0 2px 0 0 var(--ink)}
+.item[data-reorder-axis="y"].drag-over-before{box-shadow:0 -2px 0 0 var(--ink)}
+.item[data-reorder-axis="y"].drag-over-after{box-shadow:0 2px 0 0 var(--ink)}
 
 /*
  * The slots: the title and meta take the room, and everything after them keeps its own width at the

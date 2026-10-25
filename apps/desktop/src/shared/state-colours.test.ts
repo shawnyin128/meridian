@@ -123,7 +123,6 @@ describe('状态色', () => {
    * each with that issue. The list only shrinks.
    */
   const PENDING: Record<string, string> = {
-    'components/Table.css  .table th.table-move-moving  background': '#567, the drag feedback of a column',
   }
 
   /** Every declaration that writes text in --bad, --warn or --good, or lays a --tint-* fill, as `<path>  <selector>  <property>`. */

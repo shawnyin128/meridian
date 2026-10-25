@@ -34,12 +34,14 @@
 .table-sort svg{width:9px;height:9px;vertical-align:0}
 /* A column's grip straddles the border with the next header cell. */
 .table th>.table-grip{right:-5px}
-/* A column being moved dims, and a line marks where it lands. */
-.table th.table-move-moving{opacity:.45;background:var(--tint-mut)}
-.table th.table-move-before::before,.table th.table-move-after::after{content:'';position:absolute;top:3px;bottom:3px;width:2px;
-  border-radius:var(--r-2xs);background:var(--ink);z-index:5}
-.table th.table-move-before::before{left:-1px}
-.table th.table-move-after::after{right:-1px}
+/*
+ * A column being moved dims, and a 2px ink line marks the side of the header it lands on, as every
+ * reorder's drop look does. Its neighbours paint over a header cell's edges, so the line lies just
+ * inside them.
+ */
+.table th.table-move-moving{opacity:.4}
+.table th.table-move-before{box-shadow:inset 2px 0 0 0 var(--ink)}
+.table th.table-move-after{box-shadow:inset -2px 0 0 0 var(--ink)}
 /* The header cell of a column being created holds its name's field. */
 .table th.table-draft{padding:var(--sp-4) var(--row-table-pad)}
 

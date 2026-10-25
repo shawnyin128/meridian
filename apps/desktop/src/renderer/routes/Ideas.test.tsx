@@ -680,7 +680,7 @@ describe('Ideas', () => {
     await act(async () => { await new Promise((settle) => setTimeout(settle, 0)) })
     const hits = [...document.querySelectorAll<HTMLElement>('.pickhits .mi')]
     expect(hits.map((hit) => hit.textContent)).toEqual(['推测解码来源'])
-    await act(async () => { hits[0]!.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true })) })
+    await act(async () => { hits[0]!.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true })) })
     expect(api.update).toHaveBeenCalledWith('idea-sparked', {
       relations: { projects: ['project-completed', 'project-active'], pages: ['topics/sd'] },
     })

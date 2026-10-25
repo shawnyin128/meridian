@@ -11,7 +11,7 @@ import { errorLabel } from '../../lib/failure-label.js'
 import { useFormat } from '../../lib/format.js'
 import type { Catalog } from '../../messages/catalog.js'
 import { useMessages } from '../../messages/useMessages.js'
-import { IconGrip, IconRead, IconTrash } from '../icons.js'
+import { IconRead, IconTrash } from '../icons.js'
 import { CellPicker } from './CellPicker.js'
 import { NewColumnHead } from './ColumnAdd.js'
 import { builtinNames, columnKey, takenLabel } from './column-key.js'
@@ -33,10 +33,12 @@ import { useJumpOrigin } from '../../hooks/useJumpOrigin.js'
 import { useScreenLoad } from '../../hooks/useScreenLoad.js'
 import { useVaultWrite } from '../../hooks/useVaultWrite.js'
 import { useScrollFade } from '../../hooks/useScrollFade.js'
+import { useDragReorder, type ReorderDrag } from '../../hooks/useDragReorder.js'
 import {
   useCrumbTail, useEscapeLayer, useJump, useNotice, usePaperCount, useScreenReentry, useVaultRevision,
 } from '../../shell/AppShell.js'
 import { AddAction } from '../AddAction.js'
+import { DragHandle } from '../DragHandle.js'
 import { BackButton } from '../BackButton.js'
 import { IconButton } from '../IconButton.js'
 import { focusDraft } from '../DraftSlot.js'
@@ -142,18 +144,6 @@ export function orderedColumns(columns: PaperColumns): ShownCol[] {
     const column = byKey.get(key)
     return column === undefined ? [] : [column]
   })
-}
-
-export function movedColumnOrder(
-  columns: PaperColumns, from: string, to: string, after = false,
-): string[] {
-  const keys = orderedColumns(columns).map((column) => column.k)
-  const fromAt = keys.indexOf(from)
-  if (fromAt < 0 || !keys.includes(to) || from === to) return keys
-  const next = keys.filter((key) => key !== from)
-  const toAt = next.indexOf(to)
-  next.splice(toAt + (after ? 1 : 0), 0, from)
-  return next
 }
 
 /**
@@ -296,8 +286,8 @@ export function PaperTable() {
   const [dropActive, setDropActive] = useState(false)
   const uploadInput = useRef<HTMLInputElement>(null)
   const dropDepth = useRef(0)
-  const [movingColumn, setMovingColumn] = useState<string | null>(null)
-  const [columnDrop, setColumnDrop] = useState<{ key: string; after: boolean } | null>(null)
+  // The column being dragged and where it would land, which the table's header draws.
+  const [columnDrag, setColumnDrag] = useState<ReorderDrag | null>(null)
   const detailFade = useScrollFade('y')
   const consumed = useRef(0)
   // Write queue of the cell being edited: each link resolves to the values the previous step settled
@@ -832,36 +822,21 @@ export function PaperTable() {
     return (
       <TableCell content="chips" key={k}>
         <PaperTopics
-          topics={p.topics} keep={['paper', p.id, 'topics-cell']} onError={report}
+          topics={p.topics} keep={['paper', p.id, 'topics-cell']} onError={report} reveal="hover"
           onAdd={(v) => addTopic(p, v)} onRemove={(v) => removeTopic(p, v)}
         />
       </TableCell>
     )
   }
 
-  const cols: ShownCol[] = orderedColumns(columns)
-    .filter((column) => column.column !== undefined || !columns.hidden.includes(column.k))
-  const startColumnMove = (event: ReactDragEvent, key: string) => {
-    event.dataTransfer.effectAllowed = 'move'
-    event.dataTransfer.setData('text/x-meridian-column', key)
-    const ghost = document.createElement('span')
-    ghost.className = 'column-drag-ghost'
-    document.body.append(ghost)
-    event.dataTransfer.setDragImage(ghost, 0, 0)
-    requestAnimationFrame(() => ghost.remove())
-    setMovingColumn(key)
-  }
-  const dropColumn = (event: ReactDragEvent, target: string) => {
-    event.preventDefault()
-    event.stopPropagation()
-    const source = event.dataTransfer.getData('text/x-meridian-column') || movingColumn
-    setMovingColumn(null)
-    setColumnDrop(null)
-    if (source === null || source === target) return
-    void changeColumns((base) => ({
-      ...base, order: movedColumnOrder(base, source, target, columnDrop?.after ?? false),
-    }))
-  }
+  const allCols = orderedColumns(columns)
+  const cols: ShownCol[] = allCols.filter((column) => column.column !== undefined || !columns.hidden.includes(column.k))
+  // A hidden column keeps its place in the stored order while the shown ones move around it.
+  const shownKeys = new Set(cols.map((column) => column.k))
+  const columnOrder = useDragReorder(
+    allCols.map((column) => column.k), (key) => (shownKeys.has(key) ? 'shown' : 'hidden'),
+    (order) => { void changeColumns((base) => ({ ...base, order })) }, { axis: 'x', handle: 'grip', onDrag: setColumnDrag },
+  )
   const tableColumns: TableColumn[] = [
     { key: 't', label: m.papers.columns.title, width: DEFAULT_WIDTHS.t, sort: sortBy('title'), headProps: { 'data-k': 'title' } },
     ...cols.map((c): TableColumn => ({
@@ -869,28 +844,16 @@ export function PaperTable() {
       label: shownLabel(names.columns, c),
       width: c.column ? CUSTOM_WIDTH : DEFAULT_WIDTHS[c.k],
       sort: c.sort === undefined ? undefined : sortBy(c.sort),
-      move: movingColumn === c.k ? 'moving' : columnDrop?.key === c.k ? (columnDrop.after ? 'after' : 'before') : undefined,
+      move: columnDrag?.held === c.k ? 'moving'
+        : columnDrag?.over?.id === c.k ? (columnDrag.over.before ? 'before' : 'after') : undefined,
       lead: (
-        <span
-          className="thmove" draggable
+        <DragHandle
+          {...columnOrder.handleProps(c.k)} size="inline"
           onMouseDown={(event) => event.stopPropagation()}
           onClick={(event) => event.stopPropagation()}
-          onDragStart={(event) => startColumnMove(event, c.k)}
-          onDragEnd={() => { setMovingColumn(null); setColumnDrop(null) }}
-        ><IconGrip /></span>
+        />
       ),
-      headProps: {
-        'data-k': c.sort,
-        onDragOver: (event) => {
-          if (movingColumn !== null) {
-            event.preventDefault()
-            event.dataTransfer.dropEffect = 'move'
-            const bounds = event.currentTarget.getBoundingClientRect()
-            setColumnDrop({ key: c.k, after: event.clientX > bounds.left + bounds.width / 2 })
-          }
-        },
-        onDrop: (event) => dropColumn(event, c.k),
-      },
+      headProps: { 'data-k': c.sort, ...columnOrder.itemProps(c.k) },
     })),
   ]
   const paperTable = (

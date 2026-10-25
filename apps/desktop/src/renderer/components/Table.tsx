@@ -225,7 +225,7 @@ export function Table({ columns, rows = 'fill', actions, draft = null, className
               return (
                 <th
                   {...column.headProps} key={column.key} aria-sort={ariaSort(column)}
-                  data-stuck-fade={column === columns[0] ? 'top left' : column.move === 'after' ? undefined : 'top'}
+                  data-stuck-fade={column === columns[0] ? 'top left' : 'top'}
                   className={classes(column.align === 'end' && 'table-end', column.move && `table-move-${column.move}`)}
                   onClick={column.sort?.onSort}
                 >
@@ -349,7 +349,7 @@ function TableText({ children }: { children: ReactNode }) {
 /**
  * A cell's chips on one line: the first always stays, fading at the cell's end if it must, and the
  * chips past the end fold behind a +N count that unfolds them onto more lines. A trailing chip that
- * adds one (`tagadd`) folds with them but is not counted.
+ * adds one (`tagadd`), alone or in its row's actions slot, folds with them but is not counted.
  */
 function TableChips({ children }: { children: ReactNode }) {
   const m = useMessages()
@@ -371,7 +371,7 @@ function TableChips({ children }: { children: ReactNode }) {
         if (past || chip.getBoundingClientRect().right > limit) {
           past = true
           chip.classList.add('table-folded')
-          if (!chip.classList.contains('tagadd')) hidden++
+          if (!chip.classList.contains('tagadd') && chip.querySelector('.tagadd') === null) hidden++
         }
       })
     }
