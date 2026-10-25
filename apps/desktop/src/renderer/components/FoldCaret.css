@@ -1,5 +1,9 @@
-/* The one fold caret: a 12px chevron in a 16px box, turned a quarter to point at its label while its content is folded. */
-.fold-caret{display:grid;flex:none;place-items:center;width:16px;height:16px;color:var(--ter);
+/*
+ * The one fold caret: a 12px chevron in a 16px box, turned a quarter toward the end of its row while
+ * its content is folded. The box overhangs its line by 2px above and below, so a caret never makes a
+ * row taller than its text.
+ */
+.fold-caret{display:grid;flex:none;place-items:center;width:16px;height:16px;margin-top:calc(-1 * var(--sp-2));margin-bottom:calc(-1 * var(--sp-2));color:var(--ter);
   transition:transform var(--t-fast) var(--e-out),color var(--t-fast) var(--e-out)}
 .fold-caret>svg{width:12px;height:12px}
 .fold-caret.is-closed{transform:rotate(-90deg)}

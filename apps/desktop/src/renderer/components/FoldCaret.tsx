@@ -3,8 +3,8 @@ import './FoldCaret.css'
 
 /**
  * The one fold caret: a chevron that points down while its content shows (`open`) and turns to
- * point at its label while the content is folded away. Screen readers skip it; the toggle around it
- * states whether the content shows.
+ * point toward the end of its row while the content is folded away. Screen readers skip it; the
+ * toggle around it states whether the content shows.
  */
 export function FoldCaret({ open }: { open: boolean }) {
   return (

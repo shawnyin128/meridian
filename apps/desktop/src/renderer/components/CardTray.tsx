@@ -6,8 +6,8 @@ import './CardTray.css'
 
 /**
  * Progressive-disclosure surface for secondary details. The summary stays in place while the detail
- * area expands below it, so the host never shifts its identity or primary actions; a fold toggle
- * leads the summary with its caret. `tray` is a filled one-line tray inside a card, its toggle named
+ * area expands below it, so the host never shifts its identity or primary actions; the fold caret
+ * follows the summary. `tray` is a filled one-line tray inside a card, its toggle named
  * by `expandLabel` and `collapseLabel`; `row` draws no surface of its own, for a list row whose
  * summary is the row itself and names the toggle. A `composite` row's summary holds a control of its
  * own, such as an entity link, so the toggle, named by the summary, lies over the caret and the

@@ -1,20 +1,15 @@
 .card-tray{margin-top:var(--sp-12);overflow:hidden;border-radius:var(--r-md);background:var(--field);color:var(--sec)}
 .card-tray-head{display:flex;min-height:34px;align-items:center;gap:var(--sp-6);padding:0 var(--sp-8) 0 var(--sp-12)}
 .card-tray-toggle{flex:1}
-.card-tray-summary{flex:1}
 .card-tray-action{display:flex;flex:0 0 auto;align-items:center}
 .card-tray-reveal{display:grid;grid-template-rows:0fr;transition:grid-template-rows var(--t-slow) var(--e-out)}
 .card-tray.is-open .card-tray-reveal{grid-template-rows:1fr}
 .card-tray-content{min-height:0;overflow:hidden;border-top:1px solid transparent;opacity:0;
   transition:opacity var(--t) var(--e-out),border-color var(--t-fast) var(--e-out)}
 .card-tray.is-open .card-tray-content{border-top-color:var(--sep2);opacity:1;transition-delay:var(--t-delay),0ms}
-/*
- * A row tray has no surface: the list row is the surface, its summary wraps like the row's text, and
- * the details line up with the summary after the caret.
- */
+/* A row tray has no surface: the list row is the surface, and its summary wraps like the row's text. */
 .card-tray--row{margin-top:0;overflow:visible;border-radius:0;background:none;color:inherit}
 .card-tray--row .card-tray-head{min-height:0;padding:0;gap:var(--sp-10)}
 .card-tray--row .card-tray-summary{white-space:normal}
 .card-tray--row .card-tray-toggle:hover,.card-tray--row.is-open .card-tray-toggle{color:var(--ink)}
-.card-tray--row .card-tray-content{padding-left:var(--sp-24)}
 .card-tray--row.is-open .card-tray-content{border-top-color:transparent}

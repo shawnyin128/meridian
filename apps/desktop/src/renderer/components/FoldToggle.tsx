@@ -21,14 +21,14 @@ type FoldToggleProps = {
 ) & { [key: `data-${string}`]: string }
 
 /**
- * The one control that folds content away and back: a button that leads with the fold caret, then
- * its label, and states whether the content shows and which element holds it. In the `label`
+ * The one control that folds content away and back: a button whose label is followed by the fold
+ * caret, and which states whether the content shows and which element holds it. In the `label`
  * variant `children` is the label inside the button; `label`, when given, names the button instead
  * and shows as its tooltip. A `composite` label holds controls of its own, such as an entity link:
- * the button lies over the caret and the label, which names it, and those controls sit above it.
- * The `caret` variant is the caret alone, an inline icon button named by `label`, for a row whose
- * label is a control of its own. A click toggles and never reaches the row around the toggle; inside
- * a toolbar the button is one of the toolbar's controls.
+ * the button lies over the label and the caret, the label names it, and those controls sit above it.
+ * The `caret` variant is the caret alone, an inline icon button named by `label`, which a row whose
+ * label is a control of its own puts right after that label. A click toggles and never reaches the
+ * row around the toggle; inside a toolbar the button is one of the toolbar's controls.
  */
 export function FoldToggle({ open, onToggle, controls, className, variant, children, label, ...data }: FoldToggleProps) {
   const asItem = useToolbarItem()
@@ -56,8 +56,8 @@ export function FoldToggle({ open, onToggle, controls, className, variant, child
             aria-labelledby={labelId} onClick={press}
           />,
         )}
-        {caret}
         <span className="fold-toggle-label" id={labelId}>{children}</span>
+        {caret}
       </div>
     )
   }
@@ -67,7 +67,7 @@ export function FoldToggle({ open, onToggle, controls, className, variant, child
         <button
           {...data} type="button" className={classes('fold-toggle')} aria-expanded={open} aria-controls={controls}
           aria-label={label} onClick={press}
-        >{caret}{children}</button>,
+        >{children}{caret}</button>,
       )}
     </Tooltip>
   )

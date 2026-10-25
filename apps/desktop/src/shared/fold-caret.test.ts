@@ -7,7 +7,9 @@ import { describe, expect, it } from 'vitest'
 type Node = { querySelector(selector: string): Node }
 type Window = {
   document: { head: { innerHTML: string }; body: { innerHTML: string }; querySelector(selector: string): Node }
-  getComputedStyle(element: Node): { width: string; height: string; transform: string; transition: string }
+  getComputedStyle(element: Node): {
+    width: string; height: string; marginTop: string; marginBottom: string; transform: string; transition: string
+  }
 }
 const { document, getComputedStyle } = globalThis as unknown as Window
 
@@ -22,13 +24,14 @@ describe('折叠箭头的样子和动效', () => {
     return document.querySelector('.fold-caret')
   }
 
-  it('是 12px 的箭头，装在 16px 的格子里', () => {
+  it('是 12px 的箭头，装在 16px 的格子里；格子上下各探出 2px，不把它所在的那一行撑高', () => {
     const box = caret(true)
     const [outer, glyph] = [getComputedStyle(box), getComputedStyle(box.querySelector('svg'))]
     expect([outer.width, outer.height, glyph.width, glyph.height]).toEqual(['16px', '16px', '12px', '12px'])
+    expect([outer.marginTop, outer.marginBottom]).toEqual(['calc(-1 * var(--sp-2))', 'calc(-1 * var(--sp-2))'])
   })
 
-  it('开着时朝下，收起时转四分之一圈指向标签，转动走 --t-fast', () => {
+  it('开着时朝下，收起时转四分之一圈朝向行尾，转动走 --t-fast', () => {
     expect([getComputedStyle(caret(true)).transform, getComputedStyle(caret(false)).transform]).toEqual(['none', 'rotate(-90deg)'])
     expect(getComputedStyle(caret(false)).transition).toMatch(/^transform var\(--t-fast\) var\(--e-out\)/)
   })
