@@ -84,7 +84,7 @@ class ReadingContext(BaseModel):
 
 
 class PaperContext(BaseModel):
-    """Paper metadata, bounded source pages, and personal reading state."""
+    """Paper metadata, bounded source pages, the paper's page count, and personal reading state."""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -94,6 +94,7 @@ class PaperContext(BaseModel):
     year: int | None = None
     abstract: str | None = Field(default=None, max_length=50_000)
     pages: list[SourcePage] = Field(max_length=500)
+    page_count: int = Field(alias="pageCount", ge=0)
     reading: ReadingContext
 
 
@@ -224,10 +225,17 @@ def _read_context(state: ChatState, runtime: Runtime[ChatRuntime]) -> dict[str, 
         raise ProtocolViolation("Core returned an invalid chat context") from cause
 
 
-def _validate_citations(answer: str, context: ChatContext) -> None:
-    available_pages = {
-        page.number for page in context.paper.pages
-    } if context.paper is not None else set()
+def _validate_citations(answer: str, context: ChatContext, *, whole_paper: bool) -> None:
+    """Reject a citation token that is malformed or names a page the answer could not have read.
+
+    The pages Core supplied can always be cited; with `whole_paper`, so can every page of the paper,
+    which a subscription CLI reads through the run's own lookup tools.
+    """
+
+    paper = context.paper
+    available_pages = set() if paper is None else {page.number for page in paper.pages}
+    if paper is not None and whole_paper:
+        available_pages |= set(range(1, paper.page_count + 1))
     for token in _CITATION_TOKEN.findall(answer):
         match = _VALID_CITATION.fullmatch(token)
         if match is None or int(match.group(1)) not in available_pages:
@@ -238,6 +246,12 @@ def _compact(value: object) -> str:
     return json.dumps(value, ensure_ascii=False, separators=(",", ":"))
 
 
+def _prompt_context(context: ChatContext) -> dict[str, object]:
+    """Return the context as the prompt shows it; the page count serves validation only."""
+
+    return context.model_dump(mode="json", exclude={"paper": {"page_count"}})
+
+
 def _answer_on_cli(core: CoreReadContext, context: ChatContext, question: str) -> object:
     """Ask Core for the turn's one model call on the user's subscription CLI; return its output.
 
@@ -245,7 +259,7 @@ def _answer_on_cli(core: CoreReadContext, context: ChatContext, question: str) -
     for a CLI session that already holds the rest. A CLI failure Core reports is a model failure.
     """
 
-    packed = context.model_dump(mode="json")
+    packed = _prompt_context(context)
     history = packed.pop("history")
     system, human = CLI_CHAT_PROMPT.invoke({
         "context_json": _compact(packed),
@@ -274,7 +288,7 @@ def _generate_answer(state: ChatState, runtime: Runtime[ChatRuntime]) -> dict[st
         output = _answer_on_cli(runtime.context.core, state["context"], state["text"])
     else:
         prompt = CHAT_PROMPT.invoke({
-            "context_json": _compact(state["context"].model_dump(mode="json")),
+            "context_json": _compact(_prompt_context(state["context"])),
             "question": state["text"],
         })
         try:
@@ -286,7 +300,7 @@ def _generate_answer(state: ChatState, runtime: Runtime[ChatRuntime]) -> dict[st
         answer = ChatAnswer.model_validate({"answer": output})
     except ValidationError as cause:
         raise ModelInvocationError("模型输出格式无效", "structured_output") from cause
-    _validate_citations(answer.answer, state["context"])
+    _validate_citations(answer.answer, state["context"], whole_paper=model is None)
     return {"answer": answer.answer}
 
 
