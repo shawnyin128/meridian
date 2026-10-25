@@ -305,6 +305,23 @@ describe('Core chat service', () => {
     await next
   })
 
+  it('with only a subscription chosen, and no API profile set up, a send reaches the model', async () => {
+    const store = createFixtureStore()
+    const model = await createHarnessModelConfig(mkdtempSync(join(tmpdir(), 'meridian-chat-model-')), vault)
+    model.updateSubscription({ cli: 'codex', model: '' })
+    const runner: ChatHarnessRunner = {
+      checkConnection: vi.fn(async () => ({
+        state: 'connected' as const, modelCalls: 0 as const, maxOutputTokens: 1 as const,
+      })),
+      answer: vi.fn(async () => '订阅模型的回答'),
+      close: vi.fn(),
+    }
+    const service = createChatService({ store, model, runner })
+
+    await expect(service.send('amortize', written('测试'))).resolves.toEqual({ id: 'amortize', state: 'complete' })
+    expect(runner.answer).toHaveBeenCalledOnce()
+  })
+
   it('without a model keeps only the user turn and reports no-model, writing no status sentence of its own', async () => {
     const store = createFixtureStore()
     const model = await createHarnessModelConfig(

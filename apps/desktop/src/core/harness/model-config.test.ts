@@ -1,10 +1,12 @@
-import { mkdtempSync, readFileSync, statSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdtempSync, readFileSync, statSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
 import { CallError } from '../call-error.js'
 import type { CredentialVault } from './credential-vault.js'
-import { createHarnessModelConfig, HARNESS_MODEL_CONFIG_FILENAME } from './model-config.js'
+import {
+  createHarnessModelConfig, HARNESS_MODEL_CONFIG_FILENAME, HARNESS_SUBSCRIPTION_FILENAME,
+} from './model-config.js'
 
 const credentialVault = (): CredentialVault => ({
   seal: async (secret) => Array.from(secret).reverse().join(''),
@@ -27,6 +29,7 @@ describe('Harness model configuration', () => {
     expect(config.settings()).toEqual({
       ...initialProfile,
       profiles: [initialProfile],
+      subscription: { active: null, models: { claude: '', codex: '' } },
     })
 
     const saved = await config.update({
@@ -62,8 +65,7 @@ describe('Harness model configuration', () => {
       baseUrl: 'http://127.0.0.1:8000/v1', model: 'local-2',
       authentication: 'api-key',
     })
-    expect((await config.runtime()).apiKey).toBe('keep-me')
-    expect((await config.runtime()).protocol).toBe('chat-completions')
+    expect(await config.runtime()).toMatchObject({ apiKey: 'keep-me', protocol: 'chat-completions' })
     expect((await config.update({
       provider: 'openai-compatible', protocol: 'chat-completions',
       baseUrl: 'http://127.0.0.1:8000/v1', model: 'local-2',
@@ -229,5 +231,107 @@ describe('Harness model configuration', () => {
     expect(log).toHaveBeenCalledWith(expect.stringContaining('已从明文配置移除'))
     log.mockRestore()
     expect(readFileSync(file, 'utf8')).not.toContain('legacy-secret')
+  })
+})
+
+const apiProfile = {
+  provider: 'anthropic', protocol: 'messages', baseUrl: 'https://api.anthropic.com',
+  model: 'claude-api', authentication: 'api-key',
+} as const
+
+describe('subscription choice', () => {
+  it('keeps the subscription choice in its own file and leaves the API profiles byte for byte', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'meridian-model-config-'))
+    const config = await createHarnessModelConfig(root, credentialVault())
+    await config.update({ ...apiProfile, apiKey: 'anthropic-secret' })
+    const profiles = readFileSync(join(root, HARNESS_MODEL_CONFIG_FILENAME))
+
+    const saved = await config.updateSubscription({ cli: 'claude', model: '' })
+
+    expect(readFileSync(join(root, HARNESS_MODEL_CONFIG_FILENAME)).equals(profiles)).toBe(true)
+    expect(JSON.parse(readFileSync(join(root, HARNESS_SUBSCRIPTION_FILENAME), 'utf8'))).toEqual({
+      schemaVersion: 'meridian.harness-subscription.v1',
+      active: 'claude',
+      clis: { claude: { model: '' }, codex: { model: '' } },
+    })
+    expect(saved).toMatchObject({
+      provider: 'anthropic', model: 'claude-api', apiKeyLastFour: 'cret', configured: true,
+      subscription: { active: 'claude', models: { claude: '', codex: '' } },
+    })
+    expect(await config.runtime()).toEqual({ source: 'cli', cli: 'claude' })
+    expect(config.planModel()).toEqual({ provider: 'Claude 订阅', name: '默认模型', configured: true, billable: false })
+
+    const reopened = await createHarnessModelConfig(root, credentialVault())
+    expect(reopened.settings().subscription).toEqual({ active: 'claude', models: { claude: '', codex: '' } })
+    expect(readFileSync(join(root, HARNESS_MODEL_CONFIG_FILENAME)).equals(profiles)).toBe(true)
+  })
+
+  it('runs the model picked for the CLI and keeps each CLI its own model', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'meridian-model-config-'))
+    const config = await createHarnessModelConfig(root, credentialVault())
+    await config.updateSubscription({ cli: 'claude', model: 'opus' })
+    const saved = await config.updateSubscription({ cli: 'codex', model: 'gpt-5-codex' })
+
+    expect(saved.subscription).toEqual({ active: 'codex', models: { claude: 'opus', codex: 'gpt-5-codex' } })
+    expect(await config.runtime()).toEqual({ source: 'cli', cli: 'codex', model: 'gpt-5-codex' })
+    expect(config.planModel()).toMatchObject({ provider: 'ChatGPT 订阅', name: 'gpt-5-codex', configured: true })
+  })
+
+  it('makes a saved API profile the model source again and keeps each CLI its model', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'meridian-model-config-'))
+    const config = await createHarnessModelConfig(root, credentialVault())
+    await config.updateSubscription({ cli: 'codex', model: 'gpt-5-codex' })
+
+    const saved = await config.update({ ...apiProfile, apiKey: 'anthropic-secret' })
+
+    expect(saved.subscription).toEqual({ active: null, models: { claude: '', codex: 'gpt-5-codex' } })
+    expect(await config.runtime()).toMatchObject({ provider: 'anthropic', apiKey: 'anthropic-secret' })
+    expect(config.planModel()).toMatchObject({ provider: 'Anthropic', name: 'claude-api' })
+    expect((await createHarnessModelConfig(root, credentialVault())).settings().subscription.active).toBeNull()
+  })
+
+  it('writes no subscription file while only API profiles are saved', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'meridian-model-config-'))
+    const config = await createHarnessModelConfig(root, credentialVault())
+    await config.update({ ...apiProfile, apiKey: 'anthropic-secret' })
+
+    expect(existsSync(join(root, HARNESS_SUBSCRIPTION_FILENAME))).toBe(false)
+    expect(await config.runtime()).toMatchObject({ provider: 'anthropic' })
+  })
+
+  it('reads a subscription file with keys a newer App added and CLIs it does not know', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'meridian-model-config-'))
+    writeFileSync(join(root, HARNESS_SUBSCRIPTION_FILENAME), JSON.stringify({
+      schemaVersion: 'meridian.harness-subscription.v1', active: 'codex', usage: { shown: true },
+      clis: { codex: { model: 'gpt-5-codex', effort: 'high' }, gemini: { model: 'gemini-pro' } },
+    }), 'utf8')
+
+    const config = await createHarnessModelConfig(root, credentialVault())
+
+    expect(config.settings().subscription).toEqual({ active: 'codex', models: { claude: '', codex: 'gpt-5-codex' } })
+    expect(await config.runtime()).toEqual({ source: 'cli', cli: 'codex', model: 'gpt-5-codex' })
+  })
+
+  it.each([
+    ['{bad', 'invalid'],
+    [JSON.stringify({ schemaVersion: 'meridian.harness-subscription.v1', active: 'codex', clis: { codex: { model: '--yolo' } } }), 'invalid'],
+    [JSON.stringify({ schemaVersion: 'meridian.harness-subscription.v1', active: 'gemini', clis: {} }), 'newer-version'],
+    [JSON.stringify({ schemaVersion: 'meridian.harness-subscription.v2', active: 'claude', clis: {} }), 'newer-version'],
+  ])('sets up no model source, not the API profile, while the subscription file %s cannot be read', async (text, reason) => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    const root = mkdtempSync(join(tmpdir(), 'meridian-model-config-'))
+    const config = await createHarnessModelConfig(root, credentialVault())
+    await config.update({ ...apiProfile, apiKey: 'anthropic-secret' })
+    writeFileSync(join(root, HARNESS_SUBSCRIPTION_FILENAME), text, 'utf8')
+
+    const reopened = await createHarnessModelConfig(root, credentialVault())
+
+    expect(reopened.settings()).toMatchObject({ configured: true, subscription: { active: null, error: reason } })
+    expect(reopened.settings()).not.toHaveProperty('error')
+    expect(reopened.planModel().configured).toBe(false)
+    await expect(reopened.runtime()).rejects.toThrow()
+    expect((await reopened.updateSubscription({ cli: 'claude', model: '' })).subscription)
+      .toEqual({ active: 'claude', models: { claude: '', codex: '' } })
+    vi.restoreAllMocks()
   })
 })

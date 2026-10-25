@@ -2442,6 +2442,7 @@ describe('fixture store', () => {
       'discovery.fetch', 'author.search', 'watch.suggest', 'harness.prepare', 'harness.pendingPaperWiki',
       'harness.start', 'harness.cancel', 'harness.dismissFailure',
       'harness.modelSettings', 'harness.updateModelSettings', 'harness.checkModelConnection',
+      'harness.updateSubscription', 'harness.subscriptionStatus',
       'harness.applyPaperWiki',
       'harness.rejectPaperWiki', 'chat.send', 'chat.retry', 'chat.cancel',
       'idea.placeOnGraph', 'wiki.propose', 'wiki.proposals', 'wiki.decide',

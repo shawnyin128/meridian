@@ -3,7 +3,8 @@ import { act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type {
-  ColourTheme, HarnessModelConnectionCheckResult, LibraryBackup, LibraryLocation, SemanticKeyCheckResult, SemanticKeyStatus,
+  CallFailure, ColourTheme, HarnessCli, HarnessModelConnectionCheckResult, HarnessSubscriptionStatus, LibraryBackup,
+  LibraryLocation, SemanticKeyCheckResult, SemanticKeyStatus,
 } from '../../shared/contract.js'
 import { CallError } from '../call-error.js'
 import { MessagesProvider } from '../messages/useMessages.js'
@@ -29,6 +30,10 @@ const api = vi.hoisted(() => ({
       authentication: 'api-key', apiKeyConfigured: false,
       apiKeyLastFour: undefined as string | undefined, configured: false,
     }],
+    subscription: {
+      active: null as HarnessCli | null, models: { claude: '', codex: '' },
+      error: undefined as CallFailure | undefined,
+    },
   })),
   updateModelSettings: vi.fn(async () => ({
     provider: 'openai', protocol: 'responses', baseUrl: 'https://api.openai.com/v1', model: 'gpt-test',
@@ -37,6 +42,17 @@ const api = vi.hoisted(() => ({
       provider: 'openai', protocol: 'responses', baseUrl: 'https://api.openai.com/v1', model: 'gpt-test',
       authentication: 'api-key', apiKeyConfigured: true, apiKeyLastFour: 'cret', configured: true,
     }],
+    subscription: { active: null as HarnessCli | null, models: { claude: '', codex: '' }, error: undefined as CallFailure | undefined },
+  })),
+  updateSubscription: vi.fn(async (choice: { cli: HarnessCli; model: string }) => ({
+    ...(await api.modelSettings()),
+    subscription: {
+      active: choice.cli as HarnessCli | null, models: { claude: '', codex: '', [choice.cli]: choice.model },
+      error: undefined as CallFailure | undefined,
+    },
+  })),
+  subscriptionStatus: vi.fn<(cli: HarnessCli) => Promise<HarnessSubscriptionStatus>>(async () => ({
+    state: 'found', version: '2.1.3', signIn: 'subscription',
   })),
   checkModelConnection: vi.fn(async (): Promise<HarnessModelConnectionCheckResult> => ({
     state: 'connected' as const, modelCalls: 1 as const, maxOutputTokens: 1 as const,
@@ -92,6 +108,8 @@ vi.mock('../ipc.js', () => ({
     modelSettings: api.modelSettings,
     updateModelSettings: api.updateModelSettings,
     checkModelConnection: api.checkModelConnection,
+    updateSubscription: api.updateSubscription,
+    subscriptionStatus: api.subscriptionStatus,
   },
   extensions: { status: api.extensionStatus, pluginVersion: api.pluginVersion, checkLatest: api.checkLatest },
   colourThemes: { save: vi.fn(async () => {}), delete: api.deleteTheme },
@@ -166,6 +184,8 @@ describe('Settings', () => {
     api.updateDeliverySettings.mockClear()
     api.updateModelSettings.mockClear()
     api.checkModelConnection.mockClear()
+    api.updateSubscription.mockClear()
+    api.subscriptionStatus.mockClear()
     api.semanticKey.mockClear()
     api.semanticKey.mockResolvedValue({ configured: false })
     api.setSemanticKey.mockClear()
@@ -335,6 +355,18 @@ describe('Settings', () => {
     expect(dialog.querySelector('[data-setcat="research"]')?.classList.contains('on')).toBe(true)
     expect(dialog.querySelector('.semantic-key-card')).not.toBeNull()
     expect(dialog.querySelector('.semantic-key-card .service-status-pill')?.textContent).toBe('未配置')
+  })
+
+  it('API 总览在选了订阅时写订阅的名字，订阅指定了模型时再写模型', async () => {
+    const shown = async (subscription: { active: HarnessCli; models: { claude: string; codex: string } }) => {
+      api.modelSettings.mockResolvedValueOnce({ ...(await api.modelSettings()), subscription: { ...subscription, error: undefined } })
+      await act(async () => { root.render(<MessagesProvider key={JSON.stringify(subscription)}><Settings /></MessagesProvider>) })
+      const dialog = document.querySelector('.setdlg')!
+      await act(async () => { dialog.querySelector<HTMLElement>('[data-setcat="api"]')!.click() })
+      return dialog.querySelector('[data-api="model"] .api-state')?.textContent
+    }
+    expect(await shown({ active: 'claude', models: { claude: '', codex: 'gpt-5-codex' } })).toBe('Claude 订阅')
+    expect(await shown({ active: 'codex', models: { claude: '', codex: 'gpt-5-codex' } })).toBe('ChatGPT 订阅 · gpt-5-codex')
   })
 
   it('API 总览还没读到一项的状态时，那一格是载入占位，不写正在读取', async () => {
@@ -1082,7 +1114,7 @@ describe('Settings', () => {
 
     expect(dialog.querySelector('select')).toBeNull()
     expect((await openPicker(dialog, '模型服务')).map((item) => item.textContent))
-      .toEqual(['OpenAI', 'Anthropic', 'Google Gemini', 'OpenAI 兼容 API'])
+      .toEqual(['OpenAI', 'Anthropic', 'Google Gemini', 'OpenAI 兼容 API', 'Claude 订阅', 'ChatGPT 订阅'])
     await closePicker()
     expect(dialog.querySelector('[aria-label="模型协议"]')?.textContent).toContain('Responses API')
     expect(dialog.querySelectorAll('.model-settings-card .form-control-field').length).toBe(3)
@@ -1122,6 +1154,7 @@ describe('Settings', () => {
         model: 'gpt-test', authentication: 'api-key', apiKeyConfigured: true,
         apiKeyLastFour: 'c123', configured: true,
       }],
+      subscription: { active: null, models: { claude: '', codex: '' }, error: undefined },
     })
     api.requestedCategory = 'model'
     await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
@@ -1161,6 +1194,7 @@ describe('Settings', () => {
         model: 'gpt-test', authentication: 'api-key', apiKeyConfigured: true,
         apiKeyLastFour: 'c123', configured: true,
       }],
+      subscription: { active: null, models: { claude: '', codex: '' }, error: undefined },
     })
     api.requestedCategory = 'model'
     await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
@@ -1196,6 +1230,7 @@ describe('Settings', () => {
         authentication: 'api-key', apiKeyConfigured: true,
         apiKeyLastFour: 'd18b', configured: true,
       }],
+      subscription: { active: null, models: { claude: '', codex: '' }, error: undefined },
     })
     api.checkModelConnection.mockResolvedValueOnce({
       state: 'failed', reason: 'model-or-endpoint',
@@ -1229,6 +1264,7 @@ describe('Settings', () => {
         model: 'claude-saved', authentication: 'api-key', apiKeyConfigured: true,
         apiKeyLastFour: '2222', configured: true,
       }],
+      subscription: { active: null, models: { claude: '', codex: '' }, error: undefined },
     })
     api.requestedCategory = 'model'
     await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
@@ -1334,6 +1370,150 @@ describe('Settings', () => {
     expect(dialog.querySelector('[aria-label="模板连接信息"]')?.textContent)
       .toContain('Responses API · 无需认证')
     expect(dialog.querySelector('[aria-label="模型 API Key"]')).toBeNull()
+  })
+
+  /** Types `value` into the field named `label` in `dialog`. */
+  const fill = async (dialog: Element, label: string, value: string) => {
+    const field = dialog.querySelector<HTMLInputElement>(`[aria-label="${label}"]`)!
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(field, value)
+      field.dispatchEvent(new Event('input', { bubbles: true }))
+    })
+  }
+  /** The label and the text of each field row of the model card. */
+  const modelRows = (dialog: Element) => [...dialog.querySelectorAll('.model-settings-card .field-row')]
+    .map((row) => [row.querySelector('.field-row-label')?.textContent, row.querySelector('.field-row-field')?.textContent])
+  const testButton = (dialog: Element) => [...dialog.querySelectorAll<HTMLButtonElement>('.model-settings-card button')]
+    .find((button) => button.textContent === '测试连接')!
+
+  it('选 Claude 订阅时显示找到的 CLI 版本和完成色的已用订阅登录，不要 API Key；保存后测试连接不调用模型也成功', async () => {
+    api.requestedCategory = 'model'
+    await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
+    const dialog = document.querySelector('.setdlg')!
+
+    await pick(dialog, '模型服务', 'Claude 订阅')
+
+    expect(api.subscriptionStatus).toHaveBeenCalledWith('claude')
+    expect(dialog.querySelector('.model-settings-card .section-heading')?.firstChild?.textContent).toBe('Claude 订阅')
+    expect(modelRows(dialog)).toEqual([
+      ['模型服务', 'Claude 订阅'], ['CLI', 'Claude Code 2.1.3'], ['登录', '已用订阅登录'], ['模型 ID', ''],
+    ])
+    expect(dialog.querySelector('.model-settings-card .field-row .tag')?.classList.contains('tag--done')).toBe(true)
+    expect(dialog.querySelector<HTMLInputElement>('[aria-label="模型名称"]')?.placeholder).toBe('默认')
+    expect(dialog.querySelector('[aria-label="模型 API Key"]')).toBeNull()
+    expect(dialog.querySelector('.model-settings-card .service-status-pill')?.textContent).toBe('未配置')
+    expect(testButton(dialog).disabled).toBe(true)
+
+    await act(async () => { dialog.querySelector<HTMLButtonElement>('.service-actions .btn.pri')!.click() })
+    expect(api.updateSubscription).toHaveBeenCalledWith({ cli: 'claude', model: '' })
+    expect(api.updateModelSettings).not.toHaveBeenCalled()
+    expect(dialog.querySelector('.model-settings-card .service-status-pill')?.textContent).toBe('已配置')
+
+    api.checkModelConnection.mockResolvedValueOnce({ state: 'connected', modelCalls: 0, maxOutputTokens: 1 })
+    await act(async () => { testButton(dialog).click() })
+    expect(api.checkModelConnection).toHaveBeenCalledOnce()
+    expect(dialog.querySelector('.service-connection-status')?.textContent).toBe('连接成功 · 未调用模型')
+    expect(api.subscriptionStatus).toHaveBeenCalledTimes(2)
+  })
+
+  it('订阅的模型按 CLI 各存一份，选 ChatGPT 订阅时用 Codex 和它自己的模型', async () => {
+    api.requestedCategory = 'model'
+    await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
+    const dialog = document.querySelector('.setdlg')!
+
+    await pick(dialog, '模型服务', 'ChatGPT 订阅')
+    await fill(dialog, '模型名称', 'gpt-5-codex')
+    await act(async () => { dialog.querySelector<HTMLButtonElement>('.service-actions .btn.pri')!.click() })
+
+    expect(api.subscriptionStatus).toHaveBeenCalledWith('codex')
+    expect(modelRows(dialog)[1]).toEqual(['CLI', 'Codex 2.1.3'])
+    expect(api.updateSubscription).toHaveBeenCalledWith({ cli: 'codex', model: 'gpt-5-codex' })
+  })
+
+  it.each([
+    [{ state: 'missing' }, 'inline-message--warning', '没有找到'],
+    [{ state: 'unsupported', version: '0.1.0' }, 'inline-message--warning', '0.1.0 · 版本不受支持'],
+  ] as const)('CLI 是 %o 时 CLI 一行是一条提醒行，没有登录一行', async (status, tone, text) => {
+    api.subscriptionStatus.mockResolvedValueOnce(status)
+    api.requestedCategory = 'model'
+    await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
+    const dialog = document.querySelector('.setdlg')!
+
+    await pick(dialog, '模型服务', 'Claude 订阅')
+
+    const line = dialog.querySelector('.model-settings-card .field-row .inline-message')
+    expect([line?.classList.contains('inline-message--line'), line?.classList.contains(tone), line?.textContent]).toEqual([true, true, text])
+    expect(modelRows(dialog).map(([label]) => label)).toEqual(['模型服务', 'CLI', '模型 ID'])
+  })
+
+  it.each([
+    ['signed-out', '未登录'],
+    ['other', '未用订阅登录'],
+  ] as const)('CLI 登录方式是 %s 时登录一行是提醒色的标签', async (signIn, text) => {
+    api.subscriptionStatus.mockResolvedValueOnce({ state: 'found', version: '2.1.3', signIn })
+    api.requestedCategory = 'model'
+    await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
+    const dialog = document.querySelector('.setdlg')!
+
+    await pick(dialog, '模型服务', 'Claude 订阅')
+
+    const tag = dialog.querySelector('.model-settings-card .field-row .tag')!
+    expect([tag.textContent, tag.classList.contains('tag--warning')]).toEqual([text, true])
+  })
+
+  it('已选订阅时打开模型设置就是这个订阅和它的模型；切回 API 服务恢复它保存的配置，但它不在用，不能测试', async () => {
+    api.modelSettings.mockResolvedValueOnce({
+      provider: 'openai', protocol: 'responses', baseUrl: 'https://api.openai.com/v1',
+      model: 'gpt-saved', authentication: 'api-key', apiKeyConfigured: true,
+      apiKeyLastFour: '1111', configured: true,
+      profiles: [{
+        provider: 'openai', protocol: 'responses', baseUrl: 'https://api.openai.com/v1',
+        model: 'gpt-saved', authentication: 'api-key', apiKeyConfigured: true,
+        apiKeyLastFour: '1111', configured: true,
+      }],
+      subscription: { active: 'codex', models: { claude: 'opus', codex: 'gpt-5-codex' }, error: undefined },
+    })
+    api.requestedCategory = 'model'
+    await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
+    const dialog = document.querySelector('.setdlg')!
+
+    expect(dialog.querySelector('[aria-label="模型服务"]')?.textContent).toBe('ChatGPT 订阅')
+    expect(dialog.querySelector<HTMLInputElement>('[aria-label="模型名称"]')?.value).toBe('gpt-5-codex')
+    expect(dialog.querySelector('.model-settings-card .service-status-pill')?.textContent).toBe('已配置')
+    expect(testButton(dialog).disabled).toBe(false)
+
+    await pick(dialog, '模型服务', 'Claude 订阅')
+    expect(dialog.querySelector<HTMLInputElement>('[aria-label="模型名称"]')?.value).toBe('opus')
+    expect(testButton(dialog).disabled).toBe(true)
+
+    await pick(dialog, '模型服务', 'OpenAI')
+    expect(dialog.querySelector<HTMLInputElement>('[aria-label="模型名称"]')?.value).toBe('gpt-saved')
+    expect(dialog.querySelector('[aria-label="模型 API Key 已保存，末四位 1111"]')).not.toBeNull()
+    expect(modelRows(dialog).map(([label]) => label)).not.toContain('CLI')
+    expect(testButton(dialog).disabled).toBe(true)
+  })
+
+  it('读不到 CLI 的状态时原因写在 CLI 一行里，不在屏头', async () => {
+    api.subscriptionStatus.mockRejectedValueOnce(new CallError('harness.subscriptionStatus', 'unavailable'))
+    api.requestedCategory = 'model'
+    await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
+    const dialog = document.querySelector('.setdlg')!
+
+    await pick(dialog, '模型服务', 'Claude 订阅')
+
+    const line = dialog.querySelector('.model-settings-card .field-row .inline-message--error')
+    expect(line?.textContent).not.toBe('')
+    expect(dialog.querySelector('.page-error')).toBeNull()
+  })
+
+  it('存的订阅选择读不出来时只显示原因', async () => {
+    api.modelSettings.mockResolvedValueOnce({
+      ...(await api.modelSettings()), subscription: { active: null, models: { claude: '', codex: '' }, error: 'newer-version' },
+    })
+    api.requestedCategory = 'model'
+    await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
+
+    expect(document.querySelector('.setdlg .service-error')?.textContent).toBe('需要更新 App')
   })
 
   const newer = (method: 'extensions.status' | 'library.location' | 'chat.list' | 'harness.modelSettings' | 'delivery.semanticKey') =>

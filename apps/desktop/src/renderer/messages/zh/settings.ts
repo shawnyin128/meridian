@@ -138,6 +138,18 @@ export const settings = {
         baseUrlPlaceholder: 'https://api.example.com/v1',
       },
     },
+    subscriptions: {
+      claude: { label: 'Claude 订阅' },
+      codex: { label: 'ChatGPT 订阅' },
+    },
+    subscription: {
+      cliLabel: 'CLI',
+      signInLabel: '登录',
+      missing: '没有找到',
+      unsupported: (version: string) => `${version} · 版本不受支持`,
+      signIn: { subscription: '已用订阅登录', other: '未用订阅登录', 'signed-out': '未登录' },
+      defaultModel: '默认',
+    },
     templates: {
       chooseLabel: '连接模板',
       chooseAria: '兼容服务模板',
@@ -182,6 +194,7 @@ export const settings = {
       action: '测试连接',
       testing: '正在测试…',
       connected: '连接成功 · 最多 1 个输出 token',
+      connectedNoModelCall: '连接成功 · 未调用模型',
       detailLabel: '详情',
       unexpectedDetail: '本地 Harness 没有诊断信息',
       failures: {
@@ -192,6 +205,10 @@ export const settings = {
         timeout: '连接超时',
         unavailable: '连不上模型服务',
         provider: '模型服务拒绝了请求',
+        'cli-missing': '没有找到 CLI',
+        'cli-unsupported': 'CLI 版本不受支持',
+        'cli-signed-out': 'CLI 未登录',
+        'cli-not-subscribed': '未用订阅登录',
         unknown: '连接测试失败',
       },
     },

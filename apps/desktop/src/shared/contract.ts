@@ -872,6 +872,44 @@ export const HarnessCliModelSchema = z.object({
   model: z.string().trim().min(1).max(200).optional(),
 }).strict()
 
+/** The model a subscription CLI runs, passed to its model option; '' runs the CLI's own default. */
+export const HarnessSubscriptionModelSchema = z.string().trim().max(200)
+  .regex(/^(?:[A-Za-z0-9][\w.:@/[\]-]*)?$/, '模型名含有不允许的字符')
+
+/**
+ * The subscription choice: `active` is the CLI that runs the model features, or null while the
+ * active API profile does, and `models` holds the model each CLI runs.
+ */
+export const HarnessSubscriptionSettingsSchema = z.object({
+  active: HarnessCliSchema.nullable(),
+  models: z.object({ claude: HarnessSubscriptionModelSchema, codex: HarnessSubscriptionModelSchema }).strict(),
+  /** Why the saved choice could not be loaded; no model source is set up until a choice is saved again. */
+  error: CallFailureSchema.optional(),
+}).strict()
+
+/** Makes subscription CLI `cli` the model source, running `model`. */
+export const HarnessUpdateSubscriptionParamsSchema = z.object({
+  cli: HarnessCliSchema,
+  model: HarnessSubscriptionModelSchema,
+}).strict()
+
+export const HarnessSubscriptionStatusParamsSchema = z.object({ cli: HarnessCliSchema }).strict()
+
+/**
+ * What Core finds of one subscription CLI on this machine: not installed, installed in a version
+ * Meridian cannot run, or runnable and signed in with a subscription, in another way such as an API
+ * key, or not at all.
+ */
+export const HarnessSubscriptionStatusSchema = z.discriminatedUnion('state', [
+  z.object({ state: z.literal('missing') }).strict(),
+  z.object({ state: z.literal('unsupported'), version: z.string().min(1).max(100) }).strict(),
+  z.object({
+    state: z.literal('found'),
+    version: z.string().min(1).max(100),
+    signIn: z.enum(['subscription', 'other', 'signed-out']),
+  }).strict(),
+])
+
 export const HarnessModelProfileSchema = z.object({
   provider: HarnessModelProviderSchema,
   protocol: HarnessModelProtocolSchema,
@@ -885,6 +923,7 @@ export const HarnessModelProfileSchema = z.object({
 
 export const HarnessModelSettingsSchema = HarnessModelProfileSchema.extend({
   profiles: z.array(HarnessModelProfileSchema).max(100),
+  subscription: HarnessSubscriptionSettingsSchema,
   /** Why the saved model configuration could not be loaded as it was. */
   error: CallFailureSchema.optional(),
 }).strict()
@@ -897,13 +936,18 @@ export const HarnessModelConnectionFailureSchema = z.enum([
   'timeout',
   'unavailable',
   'provider',
+  'cli-missing',
+  'cli-unsupported',
+  'cli-signed-out',
+  'cli-not-subscribed',
   'unknown',
 ])
 
+/** A subscription CLI's check reads how the CLI is installed and signed in and calls no model. */
 export const HarnessModelConnectionCheckResultSchema = z.discriminatedUnion('state', [
   z.object({
     state: z.literal('connected'),
-    modelCalls: z.literal(1),
+    modelCalls: z.union([z.literal(0), z.literal(1)]),
     maxOutputTokens: z.literal(1),
   }).strict(),
   z.object({
@@ -2540,6 +2584,9 @@ export type HarnessModelProvider = z.infer<typeof HarnessModelProviderSchema>
 export type HarnessModelProtocol = z.infer<typeof HarnessModelProtocolSchema>
 export type HarnessCli = z.infer<typeof HarnessCliSchema>
 export type HarnessCliModel = z.infer<typeof HarnessCliModelSchema>
+export type HarnessSubscriptionSettings = z.infer<typeof HarnessSubscriptionSettingsSchema>
+export type HarnessUpdateSubscriptionParams = z.infer<typeof HarnessUpdateSubscriptionParamsSchema>
+export type HarnessSubscriptionStatus = z.infer<typeof HarnessSubscriptionStatusSchema>
 export type ProjectDetail = z.infer<typeof ProjectDetailSchema>
 export type ProjectSummary = z.infer<typeof ProjectSummarySchema>
 export type ProjectOverview = z.infer<typeof ProjectOverviewSchema>
@@ -2704,6 +2751,8 @@ export const CONTRACT_METHODS = [
   'harness.modelSettings',
   'harness.updateModelSettings',
   'harness.checkModelConnection',
+  'harness.updateSubscription',
+  'harness.subscriptionStatus',
   'harness.applyPaperWiki',
   'harness.rejectPaperWiki',
   'papers.columns',

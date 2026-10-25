@@ -145,6 +145,18 @@ export const settings = {
         baseUrlPlaceholder: 'https://api.example.com/v1',
       },
     },
+    subscriptions: {
+      claude: { label: 'Claude subscription' },
+      codex: { label: 'ChatGPT subscription' },
+    },
+    subscription: {
+      cliLabel: 'CLI',
+      signInLabel: 'Sign-in',
+      missing: 'Not found',
+      unsupported: (version: string) => `${version} · Unsupported version`,
+      signIn: { subscription: 'Signed in with subscription', other: 'Not signed in with subscription', 'signed-out': 'Signed out' },
+      defaultModel: 'Default',
+    },
     templates: {
       chooseLabel: 'Connection template',
       chooseAria: 'Service template',
@@ -189,6 +201,7 @@ export const settings = {
       action: 'Test connection',
       testing: 'Testing…',
       connected: 'Connected · at most 1 output token',
+      connectedNoModelCall: 'Connected · no model call',
       detailLabel: 'Details',
       unexpectedDetail: 'No diagnostic message from the local Harness',
       failures: {
@@ -199,6 +212,10 @@ export const settings = {
         timeout: 'Connection timed out',
         unavailable: 'Model service unreachable',
         provider: 'Request rejected by the model service',
+        'cli-missing': 'CLI not found',
+        'cli-unsupported': 'CLI version unsupported',
+        'cli-signed-out': 'CLI signed out',
+        'cli-not-subscribed': 'Not signed in with subscription',
         unknown: 'Connection test failed',
       },
     },

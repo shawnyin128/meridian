@@ -38,7 +38,7 @@ export function createChatService(options: {
    * none, a status line that says what happened in plain words; the error's own text goes to the log.
    */
   const answer = async (id: string, text: string): Promise<ChatSendResult> => {
-    if (!options.model.settings().configured || options.runner === null) return { id, state: 'failed', reason: 'no-model' }
+    if (!options.model.planModel().configured || options.runner === null) return { id, state: 'failed', reason: 'no-model' }
     const controller = new AbortController()
     running.set(id, controller)
     try {

@@ -255,7 +255,7 @@ export function createChatHarnessRunner(options: {
       } catch (cause) {
         return failedConnectionCheck(cause, [], 0)
       }
-      const secrets = model.apiKey === undefined ? [] : [model.apiKey]
+      const secrets = 'apiKey' in model && model.apiKey !== undefined ? [model.apiKey] : []
       try {
         const result = HarnessModelConnectionCheckResultSchema.parse(await rpc.request('model.check', {
           model,

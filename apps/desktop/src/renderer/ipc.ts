@@ -7,8 +7,8 @@ import type {
   DeliverySettings, DiscoveryFeedback, DiscoveryFetchResult, DiscoveryIntentAction, DiscoveryProfile,
   ExtensionStatus, FeedEntry, FeedFields,
   InboxDownloadResult, InboxEntry, InboxListParams, JobsStatus, LaterEntry, ListParams,
-  HarnessApplyPaperWikiResult, HarnessCancelResult, HarnessModelConnectionCheckResult,
-  HarnessModelSettings, HarnessModelSettingsUpdate,
+  HarnessApplyPaperWikiResult, HarnessCancelResult, HarnessCli, HarnessModelConnectionCheckResult,
+  HarnessModelSettings, HarnessModelSettingsUpdate, HarnessSubscriptionStatus, HarnessUpdateSubscriptionParams,
   HarnessPaperWikiRejectionFeedback, HarnessPendingPaperWikiResult, HarnessPlan,
   HarnessRejectPaperWikiResult, HarnessRunReceipt,
   LibraryBackup, LibraryLocation, LibraryResetResult, ListResult,
@@ -169,6 +169,11 @@ export const harness = {
     call<HarnessModelSettings>('harness.updateModelSettings', settings),
   checkModelConnection: () =>
     call<HarnessModelConnectionCheckResult>('harness.checkModelConnection', {}),
+  /** Makes a subscription CLI the model source; the API profiles stay as they are. */
+  updateSubscription: (choice: HarnessUpdateSubscriptionParams) =>
+    call<HarnessModelSettings>('harness.updateSubscription', choice),
+  /** Whether subscription CLI `cli` is installed on this machine, in which version, and how it is signed in. */
+  subscriptionStatus: (cli: HarnessCli) => call<HarnessSubscriptionStatus>('harness.subscriptionStatus', { cli }),
   /** Builds a deterministic one-time scope. Runtime budgets remain internal to Core. */
   pendingPaperWiki: (paperId: string) =>
     call<HarnessPendingPaperWikiResult>('harness.pendingPaperWiki', { paperId }),

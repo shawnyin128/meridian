@@ -2,11 +2,19 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import type { ChatSendResult, HarnessModelSettings } from '../../shared/contract.js'
 import { harness } from '../ipc.js'
 
-/** A kind of source the App's model answers from: today an API endpoint set up in the model settings. */
-export type ModelSource = 'api'
+/**
+ * A kind of source the App's model answers from: an API endpoint set up in the model settings, or
+ * the user's own subscription CLI chosen there.
+ */
+export type ModelSource = 'api' | 'subscription'
 
-/** The source `settings` set up a model from, or null when they set up none. A new kind of model source is read here. */
+/**
+ * The source `settings` set up a model from, or null when they set up none, which includes a
+ * subscription choice that could not be read. A new kind of model source is read here.
+ */
 export function modelSourceOf(settings: HarnessModelSettings): ModelSource | null {
+  if (settings.subscription.error !== undefined) return null
+  if (settings.subscription.active !== null) return 'subscription'
   return settings.configured ? 'api' : null
 }
 
