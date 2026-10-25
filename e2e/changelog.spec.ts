@@ -116,8 +116,8 @@ test('这一笔之后又改过时撤销被拒,说清还有几条更新的,数据
   await win.locator('[data-proj="draft"]').hover()
   await win.locator('[data-proj="draft"] .dots').click()
   await win.locator('.ctxmenu .mi', { hasText: '重命名' }).click()
-  await win.locator('.ctxmenu .mi-in input').fill('改过名字的 draft')
-  await win.locator('.ctxmenu .mi-in input').press('Enter')
+  await win.locator('[data-proj="draft"] .metadata-input').fill('改过名字的 draft')
+  await win.locator('[data-proj="draft"] .metadata-input').press('Enter')
   await expect(win.locator('[data-proj="draft"]')).toContainText('改过名字的 draft')
 
   await gotoChangelog(win)
