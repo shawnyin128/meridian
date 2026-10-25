@@ -19,7 +19,7 @@ import { Tooltip } from '../components/Tooltip.js'
 import { usePruneDrafts } from '../hooks/useDrafts.js'
 import { GenerationsContext, useCoreGenerations } from '../hooks/useGenerations.js'
 import { errorLabel } from '../lib/failure-label.js'
-import { commandShortcut, composing, pressesCommand } from '../lib/keyboard.js'
+import { commandShortcut, composing, pressesCommand, typesText } from '../lib/keyboard.js'
 import type { Catalog } from '../messages/catalog.js'
 import { useMessages } from '../messages/useMessages.js'
 import { CommandPalette, type PaletteCommand } from './CommandPalette.js'
@@ -166,6 +166,9 @@ export function useCrumbTail(tail: CrumbSeg[], onLeafClick?: () => void): void {
 /**
  * Returns the two ways to show the app's one notice: `success` for an action that took effect,
  * `refusal` for one that was refused or failed and wrote nothing. A new notice replaces the shown one.
+ * An action marked `undoes` stays on offer after its notice is gone: ⌘Z outside a text field runs the
+ * latest Undo still on offer exactly as its notice's button does, then returns to the screen that was
+ * shown when it was offered, where the restored item is. Running it either way takes it off offer.
  * The returned object keeps the same reference throughout the lifetime of the shell.
  */
 export function useNotice(): { success: Notify; refusal: Notify } {
@@ -433,6 +436,10 @@ export function AppShell({ screens, settings }: {
   const [bootError, setBootError] = useState<string | null>(null)
   const [notice, setNotice] = useState<NoticeContent | null>(null)
   const noticeSeq = useRef(0)
+  /** The Undos notices have offered that nothing has run yet, the latest last, with the screen shown when each was offered. */
+  const undoOffers = useRef<{ run: () => void; screen: ScreenKey }[]>([])
+  const shownScreen = useRef(screen)
+  shownScreen.current = screen
   const jumpSeq = useRef(0)
   /** Focus before the app menu opened, restored on close; when null, Radix returns focus to the logo button. */
   const appMenuOpener = useRef<HTMLElement | null>(null)
@@ -528,9 +535,21 @@ export function AppShell({ screens, settings }: {
 
   const bump = useCallback(() => setRevision((n) => n + 1), [])
   const notify = useMemo(() => {
+    const offered = (action: NoticeAction | undefined): NoticeAction | undefined => {
+      if (action?.undoes !== true) return action
+      const offer = { run: action.onAction, screen: shownScreen.current }
+      undoOffers.current.push(offer)
+      return {
+        ...action,
+        onAction: () => {
+          undoOffers.current = undoOffers.current.filter((held) => held !== offer)
+          offer.run()
+        },
+      }
+    }
     const of = (tone: NoticeTone): Notify => (text, action) => {
       noticeSeq.current += 1
-      setNotice({ id: noticeSeq.current, tone, text, action })
+      setNotice({ id: noticeSeq.current, tone, text, action: offered(action) })
     }
     return { success: of('success'), refusal: of('refusal') }
   }, [])
@@ -620,6 +639,21 @@ export function AppShell({ screens, settings }: {
     setMounted((m) => (m.includes(next) ? m : [...m, next]))
   }, [])
 
+  // ⌘Z on macOS, Ctrl+Z elsewhere, outside a text field runs the latest Undo still on offer and goes
+  // back to where it was offered. In a text field it stays the field's own undo.
+  useEffect(() => {
+    const key = (e: KeyboardEvent) => {
+      if (!pressesCommand(appMenu.platform(), e, 'Z') || e.shiftKey || composing(e) || typesText(e.target)) return
+      const offer = undoOffers.current.pop()
+      if (offer === undefined) return
+      e.preventDefault()
+      offer.run()
+      goTo(offer.screen)
+    }
+    document.addEventListener('keydown', key)
+    return () => document.removeEventListener('keydown', key)
+  }, [goTo])
+
   // Every sidebar click is an entry: a screen showing a detail returns to its list, also when it is the current screen.
   const navigate = useCallback((next: ScreenKey) => {
     setEntry((n) => n + 1)
@@ -665,6 +699,7 @@ export function AppShell({ screens, settings }: {
       bump()
       notify.success(m.common.trashed, {
         label: m.common.undo,
+        undoes: true,
         onAction: () => {
           void trash.restore(entry).then(() => {
             bump()

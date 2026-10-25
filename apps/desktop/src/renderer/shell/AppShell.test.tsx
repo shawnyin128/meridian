@@ -30,6 +30,7 @@ const fixture = vi.hoisted(() => ({
   appCommand: null as ((command: string) => void) | null,
   menuStates: [] as { sidebarHidden: boolean; reading: boolean }[],
   createChat: vi.fn(() => new Promise(() => {})),
+  undoChange: vi.fn(async (_id: string) => {}),
 }))
 
 const none = vi.hoisted(() => () => Promise.resolve([]))
@@ -53,7 +54,7 @@ vi.mock('../ipc.js', () => ({
     setTitleBarTheme: vi.fn(), toggleMaximize: vi.fn(),
   },
   appUpdates: { check: vi.fn(), status: () => new Promise(() => {}), onChange: () => () => {}, install: vi.fn() },
-  changelog: { list: none },
+  changelog: { list: none, undo: fixture.undoChange },
   colourThemes: { list: none },
   chat: {
     list: () => Promise.resolve(fixture.chats), create: fixture.createChat, setArchived: vi.fn(),
@@ -78,6 +79,8 @@ const {
   AppShell, useCrumbTail, useEscapeLayer, useJump, useNotice, usePaperChatCollapsed, useSettingsOpen,
 } = await import('./AppShell.js')
 const { useJumpOrigin } = await import('../hooks/useJumpOrigin.js')
+const { useUndo } = await import('../hooks/useUndo.js')
+const { useVaultWrite } = await import('../hooks/useVaultWrite.js')
 const { Trash } = await import('../routes/Trash.js')
 const { TOOLTIP_DELAY } = await import('../components/Tooltip.js')
 
@@ -901,6 +904,74 @@ describe('AppShell 菜单栏命令', () => {
   })
 })
 
+/** A screen whose button `name` makes a write that records change `name` and offers its Undo in the notice. */
+function Writes({ names }: { names: string[] }) {
+  const write = useVaultWrite()
+  const undo = useUndo()
+  return names.map((change) => (
+    <button
+      type="button" key={change} id={change}
+      onClick={() => { void write(Promise.resolve({ change }), { note: '已删除', action: undo.change }) }}
+    >{change}</button>
+  ))
+}
+
+describe('AppShell ⌘Z', () => {
+  beforeEach(() => { fixture.undoChange.mockClear() })
+
+  /** Clicks button `id` and lets its write finish. */
+  const writeOf = async (id: string) => { await act(async () => { document.querySelector<HTMLButtonElement>(`#${id}`)!.click() }) }
+  /** Presses Z with `init` on `target`; returns whether the shell took the key. */
+  const pressZ = async (init: KeyboardEventInit = { metaKey: true }, target: Element = document.body) => {
+    const event = new KeyboardEvent('keydown', { key: 'z', bubbles: true, cancelable: true, ...init })
+    await act(async () => { target.dispatchEvent(event) })
+    return event.defaultPrevented
+  }
+
+  it('焦点不在文本框里时,⌘Z 像提示上的撤销一样撤掉最近一次提示过撤销的写入,提示淡出后也一样;再按撤掉前一次', async () => {
+    await mount(<Writes names={['ch-1', 'ch-2']} />)
+    await writeOf('ch-1')
+    await writeOf('ch-2')
+    expect(await pressZ()).toBe(true)
+    expect(fixture.undoChange.mock.calls).toEqual([['ch-2']])
+    expect(document.querySelector('#notice .notice-text')!.textContent).toBe('已撤销')
+    expect(await pressZ()).toBe(true)
+    expect(fixture.undoChange.mock.calls).toEqual([['ch-2'], ['ch-1']])
+    expect(await pressZ()).toBe(false)
+    expect(fixture.undoChange).toHaveBeenCalledTimes(2)
+  })
+
+  it('点过提示上的撤销后,⌘Z 不再撤同一次写入', async () => {
+    await mount(<Writes names={['ch-1']} />)
+    await writeOf('ch-1')
+    await act(async () => { document.querySelector<HTMLButtonElement>('#notice button')!.click() })
+    expect(fixture.undoChange.mock.calls).toEqual([['ch-1']])
+    expect(await pressZ()).toBe(false)
+    expect(fixture.undoChange).toHaveBeenCalledTimes(1)
+  })
+
+  it('文本框里的 ⌘Z 留给文本框自己撤销;⇧⌘Z 和 macOS 上的 Control-Z 不撤写入', async () => {
+    await mount(<><Writes names={['ch-1']} /><input aria-label="名称" /></>)
+    await writeOf('ch-1')
+    const field = document.querySelector<HTMLInputElement>('[aria-label="名称"]')!
+    expect(await pressZ({ metaKey: true }, field)).toBe(false)
+    expect(await pressZ({ metaKey: true, shiftKey: true })).toBe(false)
+    expect(await pressZ({ ctrlKey: true })).toBe(false)
+    expect(fixture.undoChange).not.toHaveBeenCalled()
+  })
+
+  it('撤销之后回到提示撤销时显示的那一屏', async () => {
+    await mount(undefined, { papers: <Writes names={['ch-1']} /> })
+    await act(async () => { document.querySelector<HTMLButtonElement>('[data-desk="papers"]')!.click() })
+    await writeOf('ch-1')
+    await act(async () => { document.querySelector<HTMLButtonElement>('[data-desk="feed"]')!.click() })
+    expect(document.querySelector('.screenslot:not([hidden]) #ch-1')).toBeNull()
+    await pressZ()
+    expect(fixture.undoChange.mock.calls).toEqual([['ch-1']])
+    expect(document.querySelector('.screenslot:not([hidden]) #ch-1')).not.toBeNull()
+  })
+})
+
 /** A button that opens the reader, as a paper's link does. */
 function OpenReader() {
   const { open } = useJump()
@@ -933,6 +1004,16 @@ describe('侧栏对话行的删除', () => {
     const undo = document.querySelector<HTMLButtonElement>('#notice button')!
     expect(undo.textContent).toBe('撤销')
     await act(async () => { undo.click() })
+    expect(fixture.restoreTrash).toHaveBeenCalledExactlyOnceWith('trash-9')
+  })
+
+  it('删掉的对话也能按 ⌘Z 放回', async () => {
+    await mount()
+    const items = await chatMenu('c1')
+    await act(async () => { items[1]!.click() })
+    await act(async () => {
+      document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'z', metaKey: true, bubbles: true, cancelable: true }))
+    })
     expect(fixture.restoreTrash).toHaveBeenCalledExactlyOnceWith('trash-9')
   })
 
