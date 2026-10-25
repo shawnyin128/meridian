@@ -7,7 +7,10 @@ import './Button.css'
 /** `primary` is the solid accent of a screen's one main action, `secondary` a soft fill, `ghost` no fill. */
 export type ButtonVariant = 'primary' | 'secondary' | 'ghost'
 
-/** `regular` (30px) for page, section, panel and dialog actions; `compact` (24px) inside rows, cards and toolbars. */
+/**
+ * `regular` (30px) in the page header bar and at dialog, popover and form feet; `compact` (24px) in
+ * section, group and panel headings, inside rows and cards, and in toolbars.
+ */
 export type ButtonSize = 'regular' | 'compact'
 
 /** How long a done button shows its check before its label comes back, in milliseconds. */

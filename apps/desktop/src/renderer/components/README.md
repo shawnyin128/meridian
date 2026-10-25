@@ -14,8 +14,9 @@ Current shared contracts:
   opens it on today's date.
 - `InlineField`: one-field-at-a-time editing, validation, cancel/save behavior, and presentation hooks.
 - `Button`: the one text button: `primary`, `secondary` or `ghost`, in the `neutral` or `danger` tone,
-  `regular` (30px) for page, section, panel and dialog actions and `compact` (24px) inside rows, cards and
-  toolbars, with an optional glyph before its label. While `busy` it keeps its width and shows the
+  `regular` (30px) in the page header bar and at dialog, popover and form feet and `compact` (24px) in
+  section, group and panel headings, inside rows and cards, and in toolbars, with an optional glyph before
+  its label. While `busy` it keeps its width and shows the
   `RunningRing`, in full colour, in place of its label; its busy label is only its accessible name. It is
   marked `aria-busy` and disabled, so a second press cannot start the action again. Each time `done`
   turns true it shows the check in place of its label for a moment. Screens render no raw `<button>`:
@@ -23,8 +24,7 @@ Current shared contracts:
   each, the few that are not text buttons (a composite row's open button, a chip's open part, a link).
 - `CommitActions`: the one Cancel and Save of a draft, Cancel first. Its `place` sets the size and the
   primary rule: at a dialog's, popover's or form's `foot` Save is the primary action at the regular
-  size; in a `heading` both are secondary at the regular size, and inside an `item` both are secondary
-  at the compact size.
+  size; in a `heading` and inside an `item` both are secondary at the compact size.
 - `EditActions`: the one edit contract of a long text: Edit in the heading's action slot, then Cancel and
   Save (CommitActions) in that same place. Save or ⌘Enter commits (Enter in a one-line field), Cancel or
   Escape restores.

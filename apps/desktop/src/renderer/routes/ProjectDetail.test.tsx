@@ -479,7 +479,7 @@ describe('project idea panel', () => {
     )
     expect(list.headingActions('关联想法')).toEqual([['想法']])
     const add = list.host.querySelector<HTMLButtonElement>('.section-heading-actions .add-action')!
-    expect([add.getAttribute('aria-label'), add.className.split(' ').slice(0, 2).join(' ')]).toEqual(['新建想法', 'btn add-action'])
+    expect([add.getAttribute('aria-label'), add.className.split(' ').slice(0, 2).join(' ')]).toEqual(['新建想法', 'btn sm'])
     act(() => add.click())
     expect(document.querySelector('.modal-body')).toBeNull()
     const slots = () => [...list.host.querySelectorAll<HTMLElement>('.project-ideas > .structured-row')]

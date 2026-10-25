@@ -417,7 +417,7 @@ describe('PaperWikiIngest', () => {
       .toBe('Wiki 提案审核视图')
     const decide = [...host.querySelectorAll<HTMLButtonElement>('.wiki-ingest-review .proposal-decision > button')]
     expect(decide.map((button) => `${button.textContent} ${button.className}`))
-      .toEqual(['丢弃提案 btn ghost danger', '确认写入 Wiki btn'])
+      .toEqual(['丢弃提案 btn ghost danger sm', '确认写入 Wiki btn sm'])
   })
 
   it('opens a legacy recovered proposal directly in Markdown mode', async () => {

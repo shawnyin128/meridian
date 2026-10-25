@@ -16,6 +16,6 @@ export function EditActions({ editing, onEdit, onCancel, onSave, saving = false,
   canSave?: boolean
 }) {
   const m = useMessages()
-  if (!editing) return <Button size="regular" onClick={onEdit}>{m.common.edit}</Button>
+  if (!editing) return <Button size="compact" onClick={onEdit}>{m.common.edit}</Button>
   return <CommitActions place="heading" saving={saving} canSave={canSave} onCancel={onCancel} onSave={onSave} />
 }

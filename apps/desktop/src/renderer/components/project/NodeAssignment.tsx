@@ -35,7 +35,7 @@ export function NodeAssignment({ node, nodes, canUnlink, create, draft, onOpen, 
     : (
       <>
         {pick(m.project.plan.changeNode)}
-        {canUnlink ? <Button size="regular" onClick={() => onSet(null)}>{m.project.plan.unlinkNode}</Button> : null}
+        {canUnlink ? <Button size="compact" onClick={() => onSet(null)}>{m.project.plan.unlinkNode}</Button> : null}
       </>
     )
   return (

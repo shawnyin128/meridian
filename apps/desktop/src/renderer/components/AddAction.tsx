@@ -42,7 +42,8 @@ export const AddAction = forwardRef<HTMLButtonElement, AddActionProps>(function 
   }
   return (
     <Button
-      {...props} ref={ref} size="regular" variant={variant === 'page' ? 'primary' : 'secondary'} className={classes}
+      {...props} ref={ref} size={variant === 'page' ? 'regular' : 'compact'} variant={variant === 'page' ? 'primary' : 'secondary'}
+      className={classes}
       aria-label={label} icon={<IconPlus />}
     >{children === undefined ? null : <span>{children}</span>}</Button>
   )

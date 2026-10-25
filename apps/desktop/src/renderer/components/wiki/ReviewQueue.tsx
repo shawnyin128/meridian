@@ -320,7 +320,7 @@ export function ReviewQueue({ proposals, failed, pending, onApply, onDecline, li
                           if (next) reasons.set(p.id, '')
                         }}
                         contentClassName="ctxmenu review-decline" align="start"
-                        trigger={<Button size="regular" variant="ghost" tone="danger" disabled={pending}>{r.decline}</Button>}
+                        trigger={<Button size="compact" variant="ghost" tone="danger" disabled={pending}>{r.decline}</Button>}
                       >
                         <FormInput
                           appearance="field" autoFocus value={reason} placeholder={r.reasonPlaceholder}
@@ -334,7 +334,7 @@ export function ReviewQueue({ proposals, failed, pending, onApply, onDecline, li
                           }}
                         >{r.declineConfirm}</Button>
                       </ActionPopover>
-                      <Button size="regular" variant={p.id === lead ? 'primary' : 'secondary'} disabled={pending || !applicable(p)} onClick={() => onApply(p)}>{r.apply}</Button>
+                      <Button size="compact" variant={p.id === lead ? 'primary' : 'secondary'} disabled={pending || !applicable(p)} onClick={() => onApply(p)}>{r.apply}</Button>
                       {p.staleNow ? <TagButton tone="warn" onClick={() => links.openPage(p.stalePage!)}>{r.stale}</TagButton> : null}
                       {unverified === undefined ? null : (
                         <TagButton

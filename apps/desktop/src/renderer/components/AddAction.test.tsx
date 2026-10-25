@@ -18,7 +18,7 @@ describe('AddAction', () => {
     const chip = renderToStaticMarkup(<AddAction variant="chip" className="tagchip tagadd" label="关联项目" />)
 
     expect(page).toContain('class="btn pri add-action add-action-page"')
-    expect(section).toContain('class="btn add-action add-action-section"')
+    expect(section).toContain('class="btn sm add-action add-action-section"')
     expect(icon).toContain('class="icbtn sm"')
     expect(chip).toContain('class="add-action add-action-chip tagchip tagadd"')
     expect([page, section, icon, chip].every((markup) => markup.includes('<svg'))).toBe(true)

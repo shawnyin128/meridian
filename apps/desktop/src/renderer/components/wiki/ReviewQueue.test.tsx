@@ -282,9 +282,9 @@ describe('ReviewQueue', () => {
   })
 
   it('拒绝在前、应用在后；第一条能应用的提案的应用是主按钮，其余的应用是次要按钮；拒绝是红色的幽灵按钮，确认拒绝是浅红按钮', () => {
-    expect(['p1', 'p2', 'p6', 'p7'].map((id) => apply(id).className)).toEqual(['btn pri', 'btn', 'btn', 'btn'])
+    expect(['p1', 'p2', 'p6', 'p7'].map((id) => apply(id).className)).toEqual(['btn pri sm', 'btn sm', 'btn sm', 'btn sm'])
     const actions = decision('p2').filter((part) => part.classList.contains('btn'))
-    expect(actions.map((b) => `${b.textContent} ${b.className}`)).toEqual(['拒绝 btn ghost danger', '应用 btn'])
+    expect(actions.map((b) => `${b.textContent} ${b.className}`)).toEqual(['拒绝 btn ghost danger sm', '应用 btn sm'])
     act(() => actions[0]!.dispatchEvent(new MouseEvent('click', { bubbles: true })))
     expect(document.querySelector<HTMLButtonElement>('.review-decline button')!.className).toBe('btn danger')
   })

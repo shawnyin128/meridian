@@ -58,7 +58,7 @@ export function DotsMenu({
  * The one single-value picker: a menu of `options` with the picked one marked. With
  * `appearance="field"` it is the boxed field of a form, showing the picked option's label, or
  * `placeholder` while `value` matches no option, and with the refused look of a field while
- * `aria-invalid` holds. With `appearance="button"` its trigger is a regular Button showing
+ * `aria-invalid` holds. With `appearance="button"` its trigger is a compact Button showing
  * `children`, for a heading's actions. Otherwise the host field supplies the trigger's class, and its
  * content as `children`, which defaults to the picked option's label. Outside the field appearance
  * the trigger is one of the controls of the toolbar it renders in.
@@ -96,7 +96,7 @@ export function ChoicePicker<T extends string>({
     : appearance === 'button'
       ? (
         <Button
-          size="regular" className={className} aria-label={ariaLabel} disabled={disabled}
+          size="compact" className={className} aria-label={ariaLabel} disabled={disabled}
           onClick={stopRowActivation ? (e) => e.stopPropagation() : undefined}
         >{children ?? label(value)}</Button>
       )

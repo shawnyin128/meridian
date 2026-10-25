@@ -318,10 +318,10 @@ function IdeaDetailPanel({
         <SectionHeading
           variant="rail"
           actions={idea.project === undefined
-            ? <Button size="regular" onClick={onPromote}>{m.ideas.promote.action}</Button>
+            ? <Button size="compact" onClick={onPromote}>{m.ideas.promote.action}</Button>
             : linked === undefined
               ? undefined
-              : <Button size="regular" onClick={() => onOpen('project', linked.id)}>{m.ideas.promote.openProject}</Button>}
+              : <Button size="compact" onClick={() => onOpen('project', linked.id)}>{m.ideas.promote.openProject}</Button>}
         >{m.ideas.work.heading}
         </SectionHeading>
         <ChoicePicker

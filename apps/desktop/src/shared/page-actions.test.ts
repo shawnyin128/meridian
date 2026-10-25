@@ -175,7 +175,7 @@ const PLACES: Record<string, Place[]> = {
   sort: [{ slot: 'page header', size: 'md', variant: 'plain' }],
   create: [{ slot: 'page header', size: 'md', variant: 'primary' }],
   add: [
-    { slot: 'section heading', size: 'md', variant: 'plain' },
+    { slot: 'section heading', size: 'sm', variant: 'plain' },
     { slot: 'table header', size: 'nested', variant: 'icon', scope: 'a table adds a column to itself' },
     { slot: 'inline', size: 'chip', variant: 'chip', scope: 'a field adds a value after its chips' },
   ],
@@ -200,25 +200,25 @@ const PLACES: Record<string, Place[]> = {
   restore: [{ slot: 'row actions', size: 'nested', variant: 'plain' }],
   close: [{ slot: 'panel head', size: 'default', variant: 'plain' }],
   edit: [
-    { slot: 'section heading', size: 'md', variant: 'plain' },
-    { slot: 'panel head', size: 'md', variant: 'plain', scope: 'a detail panel edits the idea it shows' },
+    { slot: 'section heading', size: 'sm', variant: 'plain' },
+    { slot: 'panel head', size: 'sm', variant: 'plain', scope: 'a detail panel edits the idea it shows' },
   ],
   'overflow menu': [{ slot: 'row actions', size: 'nested', variant: 'plain' }],
   clear: [
     { slot: 'page header', size: 'md', variant: 'danger' },
-    { slot: 'section heading', size: 'md', variant: 'danger', scope: 'a section clears its own entries' },
+    { slot: 'section heading', size: 'sm', variant: 'danger', scope: 'a section clears its own entries' },
   ],
-  'decline a proposal': [{ slot: 'inline', size: 'md', variant: 'ghost danger' }],
+  'decline a proposal': [{ slot: 'inline', size: 'sm', variant: 'ghost danger' }],
   'apply a proposal': [
-    { slot: 'inline', size: 'md', variant: 'plain' },
-    { slot: 'inline', size: 'md', variant: 'primary', scope: "the review queue's first applicable proposal, its one primary" },
+    { slot: 'inline', size: 'sm', variant: 'plain' },
+    { slot: 'inline', size: 'sm', variant: 'primary', scope: "the review queue's first applicable proposal, its one primary" },
   ],
   'option switch': [{ slot: 'inline', size: 'md', variant: 'plain' }],
   'open pending work': [{ slot: 'page header', size: 'md', variant: 'plain' }],
   'settings save': [{ slot: 'card foot', size: 'md', variant: 'primary' }],
   'dismiss all': [
-    { slot: 'section heading', size: 'md', variant: 'plain' },
-    { slot: 'group heading', size: 'md', variant: 'plain', scope: 'a group dismisses its own rows' },
+    { slot: 'section heading', size: 'sm', variant: 'plain' },
+    { slot: 'group heading', size: 'sm', variant: 'plain', scope: 'a group dismisses its own rows' },
   ],
 }
 
@@ -241,9 +241,9 @@ function textButtonLook(element: Node) {
   const name = nameOf(element)
   if (name === 'CommitActions') {
     const place = strings(attribute(element, 'place'))[0]
-    return { size: place === 'item' ? 'sm' : 'md', variant: place === 'foot' ? 'primary' : 'plain' }
+    return { size: place === 'foot' ? 'md' : 'sm', variant: place === 'foot' ? 'primary' : 'plain' }
   }
-  if (name === 'EditActions') return { size: 'md', variant: 'plain' }
+  if (name === 'EditActions') return { size: 'sm', variant: 'plain' }
   if (name === 'Button') {
     const words = [...strings(attribute(element, 'variant')), ...strings(attribute(element, 'tone'))]
     return {
@@ -270,13 +270,13 @@ function lookOf(element: Node, source: string, path: string): Look | null {
   if (name === 'AddAction') {
     const variant = literal('variant') ?? 'section'
     if (variant === 'page') return { operation: 'create', size: 'md', variant: 'primary' }
-    if (variant === 'section') return { operation: 'add', size: 'md', variant: 'plain' }
+    if (variant === 'section') return { operation: 'add', size: 'sm', variant: 'plain' }
     return { operation: 'add', size: variant === 'icon' ? 'nested' : variant, variant }
   }
-  if (name === 'EditActions') return { operation: 'edit', size: 'md', variant: 'plain' }
+  if (name === 'EditActions') return { operation: 'edit', size: 'sm', variant: 'plain' }
   if (name === 'CommitActions' && path.startsWith('components/settings/')) {
     const place = literal('place')
-    return { operation: 'settings save', size: place === 'item' ? 'sm' : 'md', variant: place === 'foot' ? 'primary' : 'plain' }
+    return { operation: 'settings save', size: place === 'foot' ? 'md' : 'sm', variant: place === 'foot' ? 'primary' : 'plain' }
   }
   if (name === 'PanelClose') return { operation: 'close', size: 'default', variant: 'plain' }
   if (name === 'DotsMenu') return { operation: 'overflow menu', size: 'nested', variant: 'plain' }
@@ -403,10 +403,14 @@ function placementsIn(path: string): { actions: Placement[]; icons: IconPlacemen
 const READ = SOURCES.map(placementsIn)
 const PLACEMENTS = READ.flatMap((file) => file.actions)
 
-/** The one text button size of each slot: regular in heads and foots, compact inside rows and toolbars. */
+/**
+ * The one text button size of each slot: regular in the page header bar and at dialog, popover and form
+ * feet; compact in section, group and panel headings, inside rows and cards, and in toolbars.
+ */
 const BUTTON_SIZES: Partial<Record<Slot, string>> = {
-  'page header': 'md', 'section heading': 'md', 'group heading': 'md', 'panel head': 'md', 'dialog actions': 'md',
-  'card foot': 'md', 'row actions': 'sm', 'timeline toolbar': 'sm', 'selection toolbar': 'sm',
+  'page header': 'md', 'dialog actions': 'md', 'card foot': 'md',
+  'section heading': 'sm', 'group heading': 'sm', 'panel head': 'sm', 'row actions': 'sm', 'timeline toolbar': 'sm',
+  'selection toolbar': 'sm',
 }
 
 /** The one icon button size of the slots that hold rows' and chips' own actions. */
@@ -457,7 +461,7 @@ describe('一个操作一个位置', () => {
     expect([...new Set(offenders)]).toEqual([])
   })
 
-  it('一个槽里的文字按钮一种尺寸：屏头、小标题、组标题、面板头、对话框和卡片脚上是常规尺寸，行里和工具栏里是紧凑尺寸', () => {
+  it('一个槽里的文字按钮一种尺寸：屏头、对话框和表单脚上是常规尺寸，小标题、组标题、面板头、行里和工具栏里是紧凑尺寸', () => {
     const offenders = READ.flatMap((file) => file.buttons)
       .filter((button) => BUTTON_SIZES[button.slot] !== undefined && button.size !== BUTTON_SIZES[button.slot])
       .map((button) => `${button.at} ${button.slot}: ${button.size}`)

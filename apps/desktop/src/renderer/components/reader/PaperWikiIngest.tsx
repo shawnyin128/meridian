@@ -285,8 +285,8 @@ export function PaperWikiIngest({ paper, reading, onJump, edits }: {
             disabled={rejecting}
             value={rejectionNote} onChange={(event) => setRejection({ reasons: rejectionReasons, note: event.target.value })} />
           <div className="wiki-ingest-actions">
-            <Button size="regular" disabled={rejecting} onClick={() => setRejection(null)}>{m.wiki.ingest.backToReview}</Button>
-            <Button size="regular" tone="danger" busy={rejecting} busyLabel={m.wiki.ingest.discarding} onClick={submitRejection}>
+            <Button size="compact" disabled={rejecting} onClick={() => setRejection(null)}>{m.wiki.ingest.backToReview}</Button>
+            <Button size="compact" tone="danger" busy={rejecting} busyLabel={m.wiki.ingest.discarding} onClick={submitRejection}>
               {rejectionReasons.length === 0 && rejectionNote.trim() === ''
                 ? m.wiki.ingest.discardNoFeedback
                 : m.wiki.ingest.discardWithFeedback}
@@ -296,11 +296,11 @@ export function PaperWikiIngest({ paper, reading, onJump, edits }: {
       ) : (
         <ProposalDecision>
           <Button
-            size="regular" variant="ghost" tone="danger" disabled={applying || rejecting}
+            size="compact" variant="ghost" tone="danger" disabled={applying || rejecting}
             onClick={() => setRejection({ reasons: [], note: '' })}
           >{m.wiki.ingest.discardProposal}</Button>
           <Button
-            size="regular" busy={applying} busyLabel={m.wiki.ingest.writing}
+            size="compact" busy={applying} busyLabel={m.wiki.ingest.writing}
             disabled={rejecting || draft.trim() === '' || pending?.stale === true}
             onClick={() => { void apply() }}
           >{m.wiki.ingest.confirm}</Button>

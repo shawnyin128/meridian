@@ -23,8 +23,8 @@ export function IdeaNodeCandidate({ node, onConfirm, onDismiss }: {
         variant="rail"
         actions={(
           <>
-            <Button size="regular" onClick={onDismiss}>{m.ideas.candidate.dismiss}</Button>
-            <Button size="regular" onClick={onConfirm}>{m.common.confirm}</Button>
+            <Button size="compact" onClick={onDismiss}>{m.ideas.candidate.dismiss}</Button>
+            <Button size="compact" onClick={onConfirm}>{m.common.confirm}</Button>
           </>
         )}
       >{m.project.plan.nodeHeading}

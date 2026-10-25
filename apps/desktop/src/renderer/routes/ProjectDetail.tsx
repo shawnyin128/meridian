@@ -148,7 +148,7 @@ export function ProjectIdeaPanel({
         <NodeAssignment
           node={linkedNode === undefined ? undefined : { id: linkedNode.id, label: linkedNode.label, mode: nodeMode(linkedNode) }}
           nodes={graph.nodes} canUnlink onOpen={onOpenNode} onSet={onSetNode}
-          create={workspaceManaged ? undefined : <Button size="regular" onClick={startNode}>{m.project.idea.createNode}</Button>}
+          create={workspaceManaged ? undefined : <Button size="compact" onClick={startNode}>{m.project.idea.createNode}</Button>}
           draft={draft === null ? undefined : (
             <div ref={draftAt}>
               <DraftForm

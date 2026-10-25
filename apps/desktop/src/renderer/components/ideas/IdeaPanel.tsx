@@ -122,7 +122,7 @@ export function IdeaPanel({
             variant="rail"
             actions={onOpenSourceChat === undefined || chatId === undefined || sourceChatDeleted
               ? undefined
-              : <Button size="regular" className="idea-panel-open-chat" onClick={() => onOpenSourceChat(chatId)}>{m.ideas.openSourceChat}</Button>}
+              : <Button size="compact" className="idea-panel-open-chat" onClick={() => onOpenSourceChat(chatId)}>{m.ideas.openSourceChat}</Button>}
           >{m.project.sections.source}
           </SectionHeading>
           <p className="idea-panel-source">

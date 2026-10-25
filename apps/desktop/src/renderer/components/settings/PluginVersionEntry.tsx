@@ -31,7 +31,7 @@ export function PluginVersionEntry({ plugin, checking, onCheck }: PluginVersionE
         </div>
         <div className="extension-head-side">
           <Tag className="extension-state">{copy.latest(plugin.version)}</Tag>
-          <Button size="regular" busy={checking} busyLabel={copy.checking} onClick={onCheck}>{copy.check}</Button>
+          <Button size="compact" busy={checking} busyLabel={copy.checking} onClick={onCheck}>{copy.check}</Button>
         </div>
       </div>
     </section>

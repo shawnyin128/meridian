@@ -98,7 +98,7 @@ function ClearArchivedButton({ count, onClear }: { count: number; onClear: () =>
   const m = useMessages()
   return (
     <ConfirmDialog
-      trigger={<Button size="regular" tone="danger">{m.changelog.clearArchived}</Button>}
+      trigger={<Button size="compact" tone="danger">{m.changelog.clearArchived}</Button>}
       title={m.changelog.confirmClearArchived(count)} description={m.changelog.confirmClearArchivedDescription}
       confirmLabel={m.changelog.confirmClearArchivedLabel} onConfirm={onClear}
     />
@@ -223,7 +223,7 @@ export function Changelog() {
         <SectionHeading
           actions={(
             <Button
-              size="regular" className="archall" disabled={unread === 0}
+              size="compact" className="archall" disabled={unread === 0}
               onClick={() => archiveAll(unread)}
             >{m.changelog.archiveAll}</Button>
           )}

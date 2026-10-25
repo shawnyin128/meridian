@@ -37,11 +37,11 @@ describe('CommitActions', () => {
     expect(looks()).toEqual(['取消 btn', '保存 btn pri'])
   })
 
-  it('标题的动作槽里是常规尺寸，行和卡片里是紧凑尺寸；这两处保存都不是主操作', () => {
+  it('标题的动作槽里和行、卡片里都是紧凑尺寸；这两处保存都不是主操作', () => {
     show(<CommitActions place="heading" onCancel={vi.fn()} onSave={vi.fn()} />)
     const heading = looks()
     show(<CommitActions place="item" onCancel={vi.fn()} onSave={vi.fn()} />)
-    expect([heading, looks()]).toEqual([['取消 btn', '保存 btn'], ['取消 btn sm', '保存 btn sm']])
+    expect([heading, looks()]).toEqual([['取消 btn sm', '保存 btn sm'], ['取消 btn sm', '保存 btn sm']])
   })
 
   it('没有取消时只有保存；保存可以换一个说法', () => {

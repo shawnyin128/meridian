@@ -121,13 +121,13 @@ describe('project conclusions', () => {
     expect(head().querySelector('.tag')).toBeNull()
   })
 
-  it('面板头部的验证、取消验证和写入 Wiki 与其他面板头部一样是常规尺寸的普通按钮', async () => {
+  it('面板头部的验证、取消验证和写入 Wiki 与其他面板头部一样是小号的普通按钮', async () => {
     const looks = () => [...host.querySelectorAll<HTMLButtonElement>('.node-document-head > .section-heading-actions > .btn')]
       .map((button) => `${button.textContent} ${button.className}`)
     await panel(PENDING)
-    expect(looks()).toEqual(['验证 btn', '写入 Wiki btn'])
+    expect(looks()).toEqual(['验证 btn sm', '写入 Wiki btn sm'])
     await panel({ ...PENDING, state: 'verified', verifiedOn: '2026-09-21' })
-    expect(looks()).toEqual(['取消验证 btn', '写入 Wiki btn'])
+    expect(looks()).toEqual(['取消验证 btn sm', '写入 Wiki btn sm'])
   })
 
   it('已验证:能取消验证;写入 Wiki 在结论正下方就地打开草稿,不弹对话框,标明落到哪一页的结论区,摆出要写的结论和它的实验证据', async () => {

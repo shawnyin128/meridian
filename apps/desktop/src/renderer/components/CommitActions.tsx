@@ -3,11 +3,11 @@ import { Button, type ButtonSize } from './Button.js'
 
 /**
  * Where a commit sits: `foot`, the foot of a dialog, a popover or a form whose commit is its main
- * action; `heading`, a section's or a panel's heading; `item`, inside a row or a card.
+ * action; `heading`, a section's, a group's or a panel's heading; `item`, inside a row or a card.
  */
 export type CommitPlace = 'foot' | 'heading' | 'item'
 
-const SIZE: Record<CommitPlace, ButtonSize> = { foot: 'regular', heading: 'regular', item: 'compact' }
+const SIZE: Record<CommitPlace, ButtonSize> = { foot: 'regular', heading: 'compact', item: 'compact' }
 
 /**
  * The one commit of a draft: Cancel, when there is `onCancel`, then Save, at the size of `place`.

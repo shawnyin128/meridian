@@ -373,7 +373,7 @@ export function Inbox() {
                   open={!folded.has(group.key)} onToggle={() => toggleGroup(group.key)}
                   actions={(
                     <Button
-                      size="regular"
+                      size="compact"
                       onClick={() => dismiss(group.rows.map((r) => r.id), m.inbox.notices.dismissedAll)}
                     >{m.inbox.dismissAll}</Button>
                   )}
