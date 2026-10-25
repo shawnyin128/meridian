@@ -54,7 +54,7 @@ export const shell = {
     archive: 'Archive',
   },
   titlebar: { settings: 'Settings…', palette: 'Command palette…', checkUpdates: 'Check for updates…', about: 'About Meridian' },
-  about: { title: 'About Meridian', releases: 'Release notes', version: (version: string) => `Version ${version}` },
+  about: { releases: 'Release notes', version: (version: string) => `Version ${version}` },
   bootFailure: {
     title: "The library won't open",
     changeLibrary: 'Change library',

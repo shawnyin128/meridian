@@ -47,7 +47,7 @@ export const settings = {
       edit: '编辑…',
       manage: (name: string) => `管理「${name}」`,
       deleteTitle: (name: string) => `删除外观主题「${name}」？`,
-      deleteDescription: '主题文件不能恢复',
+      deleteLoss: '主题文件不能恢复',
       leaveTitle: '放弃未保存的修改？',
       leave: '放弃修改',
       modules: {
@@ -88,7 +88,7 @@ export const settings = {
     backupSwitching: '正在切换…',
     backupDelete: '删除',
     backupDeleteTitle: (label: string) => `删除 ${label} 的备份？`,
-    backupDeleteDescription: '备份文件夹不能恢复',
+    backupDeleteLoss: '备份文件夹不能恢复',
     backupDeleting: '正在删除…',
   },
   api: {

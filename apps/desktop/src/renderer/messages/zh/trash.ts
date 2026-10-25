@@ -11,7 +11,7 @@ export const trash = {
   chatTaken: '论文已有新的对话',
   clear: '清空垃圾桶',
   confirmClear: '清空垃圾桶？',
-  confirmClearDescription: (count: number) => `${count} 项不能恢复`,
+  confirmClearLoss: (count: number) => `${count} 项不能恢复`,
   confirmClearLabel: '确认清空',
   confirmPurge: (title: string) => `彻底删除「${title}」？`,
   confirmPurgeLabel: '彻底删除',

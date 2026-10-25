@@ -48,7 +48,7 @@ function ClearButton({ count, onClear }: { count: number; onClear: () => void })
   return (
     <ConfirmDialog
       trigger={<Button size="regular" tone="danger">{m.trash.clear}</Button>}
-      title={m.trash.confirmClear} description={m.trash.confirmClearDescription(count)}
+      title={m.trash.confirmClear} description={m.trash.confirmClearLoss(count)}
       confirmLabel={m.trash.confirmClearLabel} onConfirm={onClear}
     />
   )

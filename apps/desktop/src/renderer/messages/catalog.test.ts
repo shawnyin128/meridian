@@ -48,15 +48,15 @@ describe('两个语言的消息目录', () => {
 describe('确认框的文案', () => {
   // The title of every ConfirmDialog in the App and its consequence line, absent where the title says it all.
   const confirmations = (m: typeof zh): [string, string | undefined][] => [
-    [m.trash.confirmClear, m.trash.confirmClearDescription(2)],
+    [m.trash.confirmClear, m.trash.confirmClearLoss(2)],
     [m.trash.confirmPurge('Draft trees'), undefined],
-    [m.changelog.confirmDelete, m.changelog.confirmDeleteDescription],
-    [m.changelog.confirmClearArchived(2), m.changelog.confirmClearArchivedDescription],
-    [m.watches.confirmRemove('speculative decoding'), m.watches.confirmRemoveDescription],
+    [m.changelog.confirmDelete, m.changelog.confirmDeleteLoss],
+    [m.changelog.confirmClearArchived(2), m.changelog.confirmClearArchivedLoss],
+    [m.watches.confirmRemove('speculative decoding'), m.watches.confirmRemoveLoss],
     [m.settings.storage.resetTitle, undefined],
-    [m.settings.storage.backupDeleteTitle('9月15日 18:28'), m.settings.storage.backupDeleteDescription],
+    [m.settings.storage.backupDeleteTitle('9月15日 18:28'), m.settings.storage.backupDeleteLoss],
     [m.settings.appearance.editor.leaveTitle, undefined],
-    [m.settings.appearance.editor.deleteTitle('青瓷'), m.settings.appearance.editor.deleteDescription],
+    [m.settings.appearance.editor.deleteTitle('青瓷'), m.settings.appearance.editor.deleteLoss],
   ]
 
   for (const [language, catalog] of [['zh', zh], ['en', en]] as const) {

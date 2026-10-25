@@ -54,7 +54,7 @@ export const settings = {
       edit: 'Edit…',
       manage: (name: string) => `Manage “${name}”`,
       deleteTitle: (name: string) => `Delete the theme “${name}”?`,
-      deleteDescription: 'Its theme file cannot be restored',
+      deleteLoss: 'Its theme file cannot be restored',
       leaveTitle: 'Discard unsaved changes?',
       leave: 'Discard changes',
       modules: {
@@ -95,7 +95,7 @@ export const settings = {
     backupSwitching: 'Switching…',
     backupDelete: 'Delete',
     backupDeleteTitle: (label: string) => `Delete the backup from ${label}?`,
-    backupDeleteDescription: 'The backup folder cannot be restored',
+    backupDeleteLoss: 'The backup folder cannot be restored',
     backupDeleting: 'Deleting…',
   },
   api: {

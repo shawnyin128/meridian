@@ -15,7 +15,7 @@ export const trash = {
   chatTaken: 'Paper has a new chat',
   clear: 'Empty trash',
   confirmClear: 'Empty the trash?',
-  confirmClearDescription: (count: number) => `${count} ${pluralEn(count, { one: 'item', other: 'items' })} cannot be recovered`,
+  confirmClearLoss: (count: number) => `${count} ${pluralEn(count, { one: 'item', other: 'items' })} cannot be recovered`,
   confirmClearLabel: 'Empty trash',
   confirmPurge: (title: string) => `Delete “${title}” permanently?`,
   confirmPurgeLabel: 'Delete permanently',

@@ -99,7 +99,7 @@ function WatchGroup({ type, watches, failed, add, editor, onOpen, onEdit, onSetA
                     <IconButton label={m.common.edit} size="nested" onClick={() => onEdit(w)}><IconPencil /></IconButton>
                     <ConfirmDialog
                       trigger={<IconButton label={m.common.remove} size="nested" tone="danger"><IconTrash /></IconButton>}
-                      title={m.watches.confirmRemove(w.name)} description={m.watches.confirmRemoveDescription}
+                      title={m.watches.confirmRemove(w.name)} description={m.watches.confirmRemoveLoss}
                       confirmLabel={m.watches.confirmRemoveLabel} onConfirm={() => onRemove(w.id)}
                     />
                   </RowActions>

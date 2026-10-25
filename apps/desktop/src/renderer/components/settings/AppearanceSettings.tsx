@@ -150,7 +150,7 @@ function ColourThemeMenu({ name, onEdit, onDelete }: { name: string; onEdit: () 
       </DotsMenu>
       <ConfirmDialog
         open={confirming} onOpenChange={setConfirming}
-        title={t.deleteTitle(name)} description={t.deleteDescription} confirmLabel={m.common.delete} onConfirm={onDelete}
+        title={t.deleteTitle(name)} description={t.deleteLoss} confirmLabel={m.common.delete} onConfirm={onDelete}
       />
     </>
   )

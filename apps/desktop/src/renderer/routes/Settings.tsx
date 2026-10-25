@@ -333,7 +333,7 @@ export function Settings() {
                             >{m.settings.storage.backupDelete}</Button>
                           )}
                           title={m.settings.storage.backupDeleteTitle(label)}
-                          description={m.settings.storage.backupDeleteDescription}
+                          description={m.settings.storage.backupDeleteLoss}
                           confirmLabel={m.settings.storage.backupDelete}
                           onConfirm={() => { void deleteBackup(backup) }}
                         />

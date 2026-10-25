@@ -81,7 +81,6 @@ export const papers = {
   upload: {
     tooLarge: 'PDF 不能大于 100 MB',
     alreadyInLibrary: '这份 PDF 已在论文库中',
-    dropPdfOnly: '请拖入 PDF 文件',
     importing: '正在导入…',
     importAction: '导入 PDF…',
   },

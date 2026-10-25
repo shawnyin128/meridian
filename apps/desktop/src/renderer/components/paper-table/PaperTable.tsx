@@ -734,7 +734,7 @@ export function PaperTable() {
 
   const uploadFiles = async (files: File[]) => {
     const pdfs = files.filter((file) => file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf'))
-    if (pdfs.length === 0) { notice.refusal(m.papers.upload.dropPdfOnly); return }
+    if (pdfs.length === 0) { notice.refusal(m.common.failure.reasons['not-pdf']); return }
     for (const file of pdfs) await uploadPdf(file)
   }
 

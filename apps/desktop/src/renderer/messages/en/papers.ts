@@ -83,7 +83,6 @@ export const papers = {
   upload: {
     tooLarge: 'PDF files cannot be larger than 100 MB',
     alreadyInLibrary: 'This PDF is already in the library',
-    dropPdfOnly: 'Drop PDF files here',
     importing: 'Importing…',
     importAction: 'Import PDF…',
   },
