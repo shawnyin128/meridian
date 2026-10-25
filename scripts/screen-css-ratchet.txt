@@ -842,16 +842,12 @@ components/reader/PaperWikiProposalReview.css:13: .paper-wiki-review-section-hea
 components/reader/PaperWikiProposalReview.css:14: .paper-wiki-review-section-head h4 { margin }
 components/reader/PaperWikiProposalReview.css:14: .paper-wiki-review-section-head h4 { font-size }
 components/reader/PaperWikiProposalReview.css:14: .paper-wiki-review-section-head h4 { line-height }
-components/reader/PaperWikiProposalReview.css:15: .paper-wiki-review-section-head>span { min-width }
-components/reader/PaperWikiProposalReview.css:15: .paper-wiki-review-section-head>span { text-align }
-components/reader/PaperWikiProposalReview.css:15: .paper-wiki-review-section-head>span { color }
-components/reader/PaperWikiProposalReview.css:15: .paper-wiki-review-section-head>span { font }
-components/reader/PaperWikiProposalReview.css:16: .paper-wiki-review-group { display }
-components/reader/PaperWikiProposalReview.css:16: .paper-wiki-review-group { flex-direction }
-components/reader/PaperWikiProposalReview.css:16: .paper-wiki-review-group { gap }
-components/reader/PaperWikiProposalReview.css:16: .paper-wiki-review-group { padding }
-components/reader/PaperWikiProposalReview.css:18: .paper-wiki-review-group-head>strong { font-size }
-components/reader/PaperWikiProposalReview.css:18: .paper-wiki-review-group-head>strong { line-height }
+components/reader/PaperWikiProposalReview.css:15: .paper-wiki-review-group { display }
+components/reader/PaperWikiProposalReview.css:15: .paper-wiki-review-group { flex-direction }
+components/reader/PaperWikiProposalReview.css:15: .paper-wiki-review-group { gap }
+components/reader/PaperWikiProposalReview.css:15: .paper-wiki-review-group { padding }
+components/reader/PaperWikiProposalReview.css:17: .paper-wiki-review-group-head>strong { font-size }
+components/reader/PaperWikiProposalReview.css:17: .paper-wiki-review-group-head>strong { line-height }
 components/settings/ApiOverview.css:1: .api-state { color }
 components/settings/ApiOverview.css:1: .api-state { font-size }
 components/settings/ExtensionSettings.css:1: .extension-settings-card { padding-block }
@@ -1403,9 +1399,9 @@ routes/Reader.css:81: .reader-panel-head { box-sizing }
 routes/Reader.css:81: .reader-panel-head { padding }
 routes/Reader.css:81: .reader-panel-head { border-bottom }
 routes/Reader.css:82: .reader-panel-head strong { font-size }
-routes/Reader.css:83: .reader-panel-head span { font-size }
+routes/Reader.css:83: .reader-panel-head>span { font-size }
 routes/Reader.css:83: .reading-page { font-size }
-routes/Reader.css:83: .reader-panel-head span { color }
+routes/Reader.css:83: .reader-panel-head>span { color }
 routes/Reader.css:83: .reading-page { color }
 routes/Reader.css:84: .note-compose { padding }
 routes/Reader.css:84: .note-compose { border-bottom }

@@ -235,7 +235,7 @@ export function Settings() {
     delivery: m.settings.delivery.heading,
     'delivery-watch': m.settings.categories.deliveryWatch,
     'delivery-discovery': m.settings.discovery.heading,
-    archived: m.settings.archived.heading(archived.length),
+    archived: m.settings.archived.heading,
   }
 
   const panes: Record<CategoryKey, ReactNode> = {
@@ -312,7 +312,7 @@ export function Settings() {
           ? null
           : (
             <>
-              <SectionHeading>{m.settings.storage.backupsHeading(backups.length)}</SectionHeading>
+              <SectionHeading count={backups.length}>{m.settings.storage.backupsHeading}</SectionHeading>
               <StructuredList className="storage-backup-list">
                 {backups.map((backup) => {
                   const label = `${format.date(localDayOf(backup.createdAt))} ${format.clock(backup.createdAt)}`
@@ -471,7 +471,7 @@ export function Settings() {
             <div className="set-main">
               <div className="set-head">
                 <PageError error={actionErrors[current] ?? readErrors[current]} />
-                <SectionHeading>{titles[current]}</SectionHeading>
+                <SectionHeading count={current === 'archived' ? archived.length : undefined}>{titles[current]}</SectionHeading>
               </div>
               <div className="set-body" ref={paneFade}>{panes[current]}</div>
             </div>

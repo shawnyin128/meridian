@@ -356,7 +356,7 @@ export function ReviewQueue({ proposals, failed, pending, onApply, onDecline, li
         ? null
         : (
           <>
-            <SectionHeading>{r.history(decided.length)}</SectionHeading>
+            <SectionHeading count={decided.length}>{r.history}</SectionHeading>
             <StructuredList variant="embedded" className="review-list">
               {decided.map((p) => (
                 <StructuredRow key={p.id} className="review-row" data-proposal={p.id}>

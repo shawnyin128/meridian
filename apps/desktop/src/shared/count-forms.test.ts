@@ -62,6 +62,57 @@ function domCounts(program: ts.Program, files: readonly string[], base: string):
   })
 }
 
+/** The one place that writes a heading's count after its text. */
+const HEADING_COUNT = join(RENDERER, 'components', 'HeadingCount.tsx')
+
+/** A text part that ends in the count separator. */
+const ENDS_IN_DOT = /·\s*$/u
+/** Text after a number that starts with a word, as a unit does (`3 papers`). */
+const UNIT_AFTER = /^\s*[\p{L}%]/u
+
+/**
+ * Every `·` followed by a bare number in `files`: a template literal part, a JSX text or a string
+ * joined with `+` that ends in `·`, followed by a number no unit word follows. That is a count written
+ * after a label by hand.
+ * @returns One `path:line` per count, the path relative to `base`.
+ */
+function handBuiltCounts(program: ts.Program, files: readonly string[], base: string): string[] {
+  const checker = program.getTypeChecker()
+  return files.flatMap((file) => {
+    const source = program.getSourceFile(file)!
+    const found: string[] = []
+    const at = (node: ts.Node) => `${relative(base, file)}:${source.getLineAndCharacterOfPosition(node.getStart()).line + 1}`
+    const visit = (node: ts.Node) => {
+      if (ts.isTemplateExpression(node)) {
+        const before = [node.head, ...node.templateSpans.map((span) => span.literal)]
+        node.templateSpans.forEach((span, index) => {
+          // A space and then another part, as `${n} ${plural}`, puts a unit after the number too.
+          const unit = UNIT_AFTER.test(span.literal.text)
+            || (index < node.templateSpans.length - 1 && /^\s+$/u.test(span.literal.text))
+          if (ENDS_IN_DOT.test(before[index]!.text) && isNumber(checker, span.expression) && !unit) found.push(at(span.expression))
+        })
+      }
+      if (ts.isJsxElement(node) || ts.isJsxFragment(node)) {
+        const children = [...node.children]
+        children.forEach((child, index) => {
+          const next = children[index + 1]
+          const after = children[index + 2]
+          if (ts.isJsxText(child) && ENDS_IN_DOT.test(child.text) && next !== undefined && ts.isJsxExpression(next)
+            && next.expression !== undefined && isNumber(checker, next.expression)
+            && !(after !== undefined && ts.isJsxText(after) && UNIT_AFTER.test(after.text))) found.push(at(next))
+        })
+      }
+      if (ts.isBinaryExpression(node) && node.operatorToken.kind === ts.SyntaxKind.PlusToken
+        && ts.isStringLiteralLike(node.left) && ENDS_IN_DOT.test(node.left.text) && isNumber(checker, node.right)) {
+        found.push(at(node.right))
+      }
+      ts.forEachChild(node, visit)
+    }
+    visit(source)
+    return found
+  })
+}
+
 /** A program over in-memory renderer sources at `/fixture/<name>`, type-checked with the renderer's options. */
 function fixtureProgram(sources: Record<string, string>): { program: ts.Program; files: string[] } {
   const options = { ...rendererConfig().options, types: [] }
@@ -107,5 +158,33 @@ describe('计数只有两种画法', () => {
 
   it('没有哪个计数是用 document.createElement 搭出来再把数字写进 DOM 的，计数由 CountBadge 画', () => {
     expect(domCounts(renderer.program, renderer.files, RENDERER)).toEqual([])
+  })
+
+  it('· 后面跟着一个不带单位的数就是手写的计数；带单位的数和 · 后的文字都不算', () => {
+    const { program, files } = fixtureProgram({
+      'copy.ts': [
+        'export const copy = {',
+        '  title: (n: number) => `垃圾桶 · ${n}`,',
+        '  group: (status: string, n: number) => `${status} · ${n}`,',
+        '  middle: (n: number, at: string) => `已处理 · ${n} · ${at}`,',
+        '  summary: (projects: number, intents: number) => `${projects} 个项目 · ${intents} 个启用方向`,',
+        '  plural: (label: string, n: number, unit: string) => `${label} · ${n} ${unit}`,',
+        '  source: (name: string) => `项目 · ${name}`,',
+        '  joined: (n: number) => "笔记 · " + n,',
+        '}',
+      ].join('\n'),
+      'heading.tsx': [
+        'export const Heading = ({ kind, n, unit }: { kind: string; n: number; unit: string }) => (',
+        '  <div><h2>{kind} · {n}</h2><p>{kind} · {unit}</p><p>{kind} · {n} 篇</p><p>{`${kind} · ${n}`}</p></div>',
+        ')',
+      ].join('\n'),
+    })
+    expect(handBuiltCounts(program, files, '/fixture'))
+      .toEqual(['copy.ts:2', 'copy.ts:3', 'copy.ts:4', 'copy.ts:8', 'heading.tsx:2', 'heading.tsx:2'])
+  })
+
+  it('标题后的计数只由标题组件的 count 画成 · N，文案和界面代码都不手写', () => {
+    const files = renderer.files.filter((file) => file !== HEADING_COUNT)
+    expect(handBuiltCounts(renderer.program, files, RENDERER)).toEqual([])
   })
 })

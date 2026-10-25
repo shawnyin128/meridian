@@ -1252,7 +1252,7 @@ export function PaperTable() {
         )}
       >
         {jumpOrigin.origin === null ? null : <BackButton onClick={jumpOrigin.back} />}
-        <PageTitle>{m.papers.title(titleCount)}</PageTitle>
+        <PageTitle count={titleCount ?? undefined}>{m.papers.title}</PageTitle>
       </PageHeader>
 
       <PageError error={error} />

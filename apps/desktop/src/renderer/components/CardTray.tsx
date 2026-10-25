@@ -3,6 +3,7 @@ import type { ReactNode } from 'react'
 import { IconChevron } from './icons.js'
 import { Tooltip } from './Tooltip.js'
 import { FadeText } from './FadeText.js'
+import { HeadingCount } from './HeadingCount.js'
 import './CardTray.css'
 
 /**
@@ -12,13 +13,14 @@ import './CardTray.css'
  * surface of its own and leads with the caret, for a list row whose summary is the row itself and
  * names the toggle. A `composite` row's summary holds a control of its own, such as an entity link,
  * so the toggle, named by the summary, lies over the caret and the summary instead of holding them,
- * and the control sits above it.
+ * and the control sits above it. `count` follows the summary as ` · N`.
  */
 export function CardTray({
-  summary, children, action, variant = 'tray', composite = false, expandLabel, collapseLabel, defaultOpen = false,
+  summary, count, children, action, variant = 'tray', composite = false, expandLabel, collapseLabel, defaultOpen = false,
   className = '',
 }: {
   summary: ReactNode
+  count?: number | undefined
   children: ReactNode
   action?: ReactNode
   defaultOpen?: boolean
@@ -44,7 +46,7 @@ export function CardTray({
                 aria-controls={detailId} aria-labelledby={summaryId} onClick={toggle}
               />
               {chevron}
-              <FadeText className="card-tray-summary" id={summaryId}>{summary}</FadeText>
+              <FadeText className="card-tray-summary" id={summaryId}>{summary}<HeadingCount count={count} /></FadeText>
             </div>
           )
           : (
@@ -55,7 +57,7 @@ export function CardTray({
                 onClick={toggle}
               >
                 {variant === 'row' ? chevron : null}
-                <FadeText className="card-tray-summary">{summary}</FadeText>
+                <FadeText className="card-tray-summary">{summary}<HeadingCount count={count} /></FadeText>
                 {variant === 'row' ? null : chevron}
               </button>
             </Tooltip>

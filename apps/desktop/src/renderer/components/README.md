@@ -155,6 +155,9 @@ Current shared contracts:
 - `PageShell`: the shared page-level header/body/footer/error/section composition. Routes supply content
   and actions rather than copying the desktop shell structure. `SectionHeading` is the one section heading:
   its `variant` is `page`, `content`, `group` or `rail`, and `actions` is the only right-hand slot.
+- `HeadingCount`: a heading's count, ` · N` after its text in the heading's own type. `PageTitle`,
+  `SectionHeading`, `CollapsibleGroup`, `DayHeading`, `CardTray` and `ReaderPanelHeader` show it through
+  their `count`; no message or screen writes `· N` itself.
 - `PickRow`, `Pager`, `Markdown`, `PaperMetadata`, `ParseProgress`, `AddAction`: shared feature widgets.
 - `RatingStars`, `ReadStatePicker` (in `PaperMetadata`) and `PaperTopics`: the one rating, reading-status and
   topic editor of a paper, used by both the paper table and the detail panel.

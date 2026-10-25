@@ -476,7 +476,7 @@ export function Ideas() {
   const rowGroups = (
     <>
       {groupRows(started, m.ideas.emptyGroup.active)}
-      <SectionHeading>{m.ideas.groups.done(done.length)}</SectionHeading>
+      <SectionHeading count={done.length}>{m.ideas.groups.done}</SectionHeading>
       {groupRows(done, m.ideas.emptyGroup.done)}
     </>
   )
@@ -501,13 +501,13 @@ export function Ideas() {
       )}
       >
         {origin === null ? null : <BackButton onClick={back} />}
-        <PageTitle>{m.ideas.title(current.length)}</PageTitle>
+        <PageTitle count={current.length}>{m.ideas.title}</PageTitle>
       </PageHeader>
       <PageError error={error} />
       <PageBody className="ideas-body">
         <div className={`ideas-workspace${selected === undefined ? '' : ' has-detail'}`}>
           <main className="ideas-list">
-            <SectionHeading>{m.ideas.groups.open(open.length)}</SectionHeading>
+            <SectionHeading count={open.length}>{m.ideas.groups.open}</SectionHeading>
             {draft === null
               ? null
               : (
@@ -522,7 +522,7 @@ export function Ideas() {
             ) : open.length === 0
               ? (draft === null ? <EmptyState variant="section">{m.ideas.emptyGroup.open}</EmptyState> : null)
               : open.map(card)}
-            <SectionHeading>{m.ideas.groups.active(started.length)}</SectionHeading>
+            <SectionHeading count={started.length}>{m.ideas.groups.active}</SectionHeading>
             {/* Loaded rows of both groups lay out on one grid, so their columns line up across the groups. */}
             {rows === null ? rowGroups : <div className="idea-row-groups">{rowGroups}</div>}
             {archived.length === 0 ? null : (
