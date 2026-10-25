@@ -1,0 +1,4 @@
+.main{flex:1;display:flex;min-height:0;position:relative;background:var(--window)}
+/* display:contents keeps the slot out of the layout, so the screen's root is still a direct flex child of .main. */
+.screenslot{display:contents}
+.screenslot[hidden]{display:none}

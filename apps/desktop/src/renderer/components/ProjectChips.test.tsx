@@ -34,6 +34,7 @@ describe('ProjectChips', () => {
 
   beforeEach(() => {
     globalThis.IS_REACT_ACT_ENVIRONMENT = true
+    vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} })
     window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'zh')
     host = document.createElement('div')
     document.body.append(host)
@@ -44,20 +45,21 @@ describe('ProjectChips', () => {
   afterEach(() => {
     act(() => root.unmount())
     host.remove()
+    vi.unstubAllGlobals()
   })
 
-  it('每个项目 chip 的名字是打开那个项目的链接,× 只解除关联、不打开项目', () => {
+  it('每个项目 chip 的名字是打开那个项目的按钮,和关联 chip 一样;× 只解除关联、不打开项目', () => {
     const paper = { id: 'p1', projects: [{ id: 'draft', name: 'draft 效率' }, { id: 'moe', name: 'MoE 路由' }] } as PaperRow
     act(() => root.render(<MessagesProvider><ProjectChips paper={paper} onError={vi.fn()} /></MessagesProvider>))
     const chips = [...host.querySelectorAll('.tagchip[data-project]')]
     expect(chips.map((chip) => {
-      const link = chip.querySelector('.entity-link')
-      return [link?.tagName ?? null, link?.className ?? null, link?.textContent ?? null]
+      const name = chip.firstElementChild
+      return [name?.tagName ?? null, name?.className ?? null, name?.textContent ?? null]
     })).toEqual([
-      ['BUTTON', 'entity-link entity-link--project', 'draft 效率'],
-      ['BUTTON', 'entity-link entity-link--project', 'MoE 路由'],
+      ['BUTTON', 'tagchip-open', 'draft 效率'],
+      ['BUTTON', 'tagchip-open', 'MoE 路由'],
     ])
-    for (const chip of chips) act(() => chip.querySelector<HTMLElement>('.entity-link')!.click())
+    for (const chip of chips) act(() => chip.querySelector<HTMLElement>('.tagchip-open')!.click())
     expect(api.open.mock.calls).toEqual([['project', 'draft'], ['project', 'moe']])
     act(() => chips[0]!.querySelector<HTMLElement>('.rx')!.click())
     expect(api.removePaper).toHaveBeenCalledWith('draft', 'p1')

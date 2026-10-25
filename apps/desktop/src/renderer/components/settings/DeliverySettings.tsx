@@ -5,7 +5,7 @@ import { delivery } from '../../ipc.js'
 import { useMessages } from '../../messages/useMessages.js'
 import { useScreenLoad } from '../../hooks/useScreenLoad.js'
 import { useVaultWrite } from '../../hooks/useVaultWrite.js'
-import { composing } from '../../lib/keyboard.js'
+import { commitKeys } from '../../lib/keyboard.js'
 import { FormInput } from '../FormControls.js'
 import { Card } from '../Card.js'
 import { InlineMessage } from '../InlineMessage.js'
@@ -41,9 +41,8 @@ export function DeliverySettings() {
   }), [load])
 
   const amounts = { maxItemsPerRun: Number(drafts.maxItemsPerRun), maxShownPerScope: Number(drafts.maxShownPerScope) }
-  const valid = LIMITS.every((limit) => (
-    Number.isInteger(amounts[limit]) && amounts[limit] >= MIN_ITEMS && amounts[limit] <= MAX_ITEMS
-  ))
+  const inRange = (amount: number) => Number.isInteger(amount) && amount >= MIN_ITEMS && amount <= MAX_ITEMS
+  const valid = LIMITS.every((limit) => inRange(amounts[limit]))
   const changed = valid && saved !== null && LIMITS.some((limit) => amounts[limit] !== saved[limit])
 
   const save = async () => {
@@ -70,26 +69,18 @@ export function DeliverySettings() {
           <FormInput
             appearance="field"
             aria-label={heading[limit]} type="number" min={MIN_ITEMS} max={MAX_ITEMS}
+            aria-invalid={inRange(amounts[limit]) ? undefined : true}
             value={drafts[limit]} disabled={saved === null || saving}
             onChange={(event) => {
               const value = event.currentTarget.value
               setDrafts((held) => ({ ...held, [limit]: value }))
               setJustSaved(false)
             }}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter' && !composing(event.nativeEvent)) void save()
-            }}
+            onKeyDown={commitKeys({ onSave: () => { void save() } })}
           />
           <span>{m.settings.delivery.unit}</span>
         </div>,
       ])}
-      {!valid && saved !== null
-        ? (
-          <InlineMessage tone="error" variant="line" className="delivery-setting-error">
-            {m.settings.delivery.rangeError(MIN_ITEMS, MAX_ITEMS)}
-          </InlineMessage>
-        )
-        : null}
       {loadingError === null
         ? null : <InlineMessage tone="error" variant="line" className="delivery-setting-error">{loadingError}</InlineMessage>}
       <ServiceFoot>

@@ -1,0 +1,25 @@
+/* The list draws no box, so the headings and items of its groups stay items of the grid, column or stream around it. */
+.grouped-list{display:contents}
+
+/* A folding group holds its heading, so it takes the group heading's space above; the first one sits flush. */
+.collapsible-group{margin-top:var(--sp-20)}
+.collapsible-group:first-child{margin-top:0}
+.collapsible-group.is-closed>.collapsible-group-head{margin-bottom:0}
+/*
+ * A pinned heading covers the items scrolling under it, so it paints the page ground, and it holds
+ * the space above its title as padding, so the title keeps that space while it is pinned. While
+ * pinned it fades the items under it through ScrollArea's data-stuck-fade.
+ */
+.collapsible-group--sticky:not(:first-child){margin-top:var(--sp-8)}
+.collapsible-group--sticky>.section-heading.collapsible-group-head{position:sticky;top:calc(-1 * var(--sp-20));z-index:2;
+  margin-inline:calc(-1 * var(--sp-4));padding:var(--sp-12) var(--sp-4) 0;background:var(--content)}
+/*
+ * A group opened from its heading grows through its one grid row from 0fr, as CardTray does, and clips
+ * its content only while it grows, so the content's own shadows and overflow show once it is open.
+ */
+.collapsible-group-body{display:grid;grid-template-rows:1fr}
+.collapsible-group-content{min-height:0}
+.collapsible-group-body.is-opening{animation:collapsible-group-open var(--t-slow) var(--e-out)}
+.collapsible-group-body.is-opening>.collapsible-group-content{animation:collapsible-group-clip var(--t-slow)}
+@keyframes collapsible-group-open{from{grid-template-rows:0fr}to{grid-template-rows:1fr}}
+@keyframes collapsible-group-clip{from,to{overflow:hidden}}

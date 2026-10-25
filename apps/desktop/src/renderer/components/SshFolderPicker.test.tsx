@@ -102,7 +102,7 @@ describe('SSH 文件夹浏览', () => {
     expect([path(), names()]).toEqual(['/home', ['researcher']])
   })
 
-  it('文件夹打不开时原因写在列表下面，仍显示原来的文件夹；根目录没有上层文件夹，空文件夹显示没有文件夹', async () => {
+  it('文件夹打不开时原因写在列表下面，仍显示原来的文件夹；根目录没有上层文件夹，空文件夹是一行空态 —', async () => {
     await mount()
     await answer(0, folder('/home/researcher', ['private']))
     await act(async () => { row('private').click() })
@@ -112,7 +112,7 @@ describe('SSH 文件夹浏览', () => {
 
     await act(async () => { up().click() })
     await answer(2, folder('/', []))
-    expect([path(), up().disabled, document.querySelector('.ssh-folders .empty-state')?.textContent]).toEqual(['/', true, '没有文件夹'])
+    expect([path(), up().disabled, document.querySelector('.ssh-folders .empty-state')?.textContent]).toEqual(['/', true, '—'])
     expect(document.querySelector('.ssh-folders [role="alert"]')).toBeNull()
   })
 

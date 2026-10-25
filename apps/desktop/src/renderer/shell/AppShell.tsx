@@ -1,5 +1,5 @@
-import { createContext, Fragment, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
-import type { CSSProperties, MouseEvent as ReactMouseEvent, ReactNode } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
+import type { CSSProperties, ReactNode } from 'react'
 import type { AppCommand } from '../../shared/app-commands.js'
 import type { ChatSession, Watch } from '../../shared/contract.js'
 import { listingsOf } from '../../shared/inbox-streams.js'
@@ -9,15 +9,19 @@ import {
 } from '../ipc.js'
 import { ActionMenu, MenuItem } from '../components/ActionMenu.js'
 import { AboutDialog } from '../components/AboutDialog.js'
-import { FadeText } from '../components/FadeText.js'
+import { AppFrame, ScreenSlot } from '../components/AppFrame.js'
+import { Breadcrumb, type CrumbSeg } from '../components/Breadcrumb.js'
 import { GripEdge, type GripProps } from '../components/Grip.js'
 import { IconButton } from '../components/IconButton.js'
 import { Notice, type NoticeAction, type NoticeContent, type NoticeTone } from '../components/Notice.js'
 import { PageFailure } from '../components/PageShell.js'
 import { ScreenBoundary } from '../components/ScreenBoundary.js'
+import { AppMark, TitleBar } from '../components/TitleBar.js'
 import { Tooltip } from '../components/Tooltip.js'
 import { usePruneDrafts } from '../hooks/useDrafts.js'
 import { GenerationsContext, useCoreGenerations } from '../hooks/useGenerations.js'
+import { ModelStatusContext, useCoreModelStatus } from '../hooks/useModelStatus.js'
+import { useOpenerFocus } from '../hooks/useOpenerFocus.js'
 import { errorLabel } from '../lib/failure-label.js'
 import { commandShortcut, composing, pressesCommand } from '../lib/keyboard.js'
 import type { Catalog } from '../messages/catalog.js'
@@ -27,16 +31,12 @@ import { SETTINGS_CATEGORIES, SETTINGS_CATEGORY_LABEL, type SettingsCategory } f
 import { Sidebar } from './Sidebar.js'
 import { JobsContext, useJobsPoll } from './useJobs.js'
 import { ColourThemeFilesContext, useColourThemeFilesPoll } from './useColourThemes.js'
-import brandmark from '../../../resources/mark-64.png'
 import { Button } from '../components/Button.js'
 import './AppShell.css'
 
 export type ScreenKey =
   'feed' | 'inbox' | 'later' | 'papers' | 'wiki' | 'changelog' | 'ideas' | 'overview' | 'project'
   | 'trash' | 'chat' | 'reader'
-
-/** A breadcrumb segment. One with `onClick` that is not last is a link back, the demo's `.cseg.link`. */
-export type CrumbSeg = { text: string; onClick?: () => void }
 
 /** The breadcrumb trail for each screen. `null` means this screen keeps whatever brought it in. */
 const crumbsOf = (m: Catalog): Record<ScreenKey, [string, ...string[]] | null> => ({
@@ -434,8 +434,9 @@ export function AppShell({ screens, settings }: {
   const [notice, setNotice] = useState<NoticeContent | null>(null)
   const noticeSeq = useRef(0)
   const jumpSeq = useRef(0)
-  /** Focus before the app menu opened, restored on close; when null, Radix returns focus to the logo button. */
-  const appMenuOpener = useRef<HTMLElement | null>(null)
+  const [appMenuOpen, setAppMenuOpen] = useState(false)
+  // With no element noted, Radix returns focus to the logo button.
+  const returnAppMenuFocus = useOpenerFocus(appMenuOpen)
   // The dialog a menu item asked for, opened only once the menu has closed and handed focus back.
   const wantDialog = useRef<'settings' | 'palette' | 'about' | null>(null)
   const [aboutOpen, setAboutOpen] = useState(false)
@@ -536,6 +537,7 @@ export function AppShell({ screens, settings }: {
   }, [])
   const { status: jobsStatus, refresh: refreshJobs } = useJobsPoll(bump)
   const generations = useCoreGenerations(jobsStatus, refreshJobs)
+  const modelStatus = useCoreModelStatus(settingsOpen)
   const colourThemeFiles = useColourThemeFilesPoll()
   const paperCountState = useMemo(() => ({ count: paperCount }), [paperCount])
   const screenState = useMemo(() => ({ screen, entry, reentry }), [screen, entry, reentry])
@@ -668,7 +670,6 @@ export function AppShell({ screens, settings }: {
         onAction: () => {
           void trash.restore(entry).then(() => {
             bump()
-            notify.success(m.changelog.undoneNote)
           }).catch((e: unknown) => notify.refusal(errorLabel(m, e)))
         },
       })
@@ -773,15 +774,7 @@ export function AppShell({ screens, settings }: {
 
   return (
     <>
-      <div
-        className="titlebar"
-        onDoubleClick={(event: ReactMouseEvent<HTMLDivElement>) => {
-          const target = event.target
-          if (!(target instanceof Element)) return
-          if (target.closest('button,a,input,select,textarea,[contenteditable="true"],.cseg.link')) return
-          appMenu.toggleMaximize()
-        }}
-      >
+      <TitleBar onZoom={() => appMenu.toggleMaximize()}>
         <IconButton
           label={m.shell.sidebar.toggle} shortcut={commandShortcut(appMenu.platform(), 'B')} size="nested"
           className="tbtn" id="sbBtn" onClick={() => setHidden((h) => !h)}
@@ -795,18 +788,9 @@ export function AppShell({ screens, settings }: {
         </IconButton>
         <ActionMenu
           align="start" sideOffset={6} contentData={{ 'data-appmenu': '' }}
-          onOpenChange={(open) => {
-            if (!open) return
-            // The body does not count as where focus was: Radix then returns focus to the logo button.
-            const active = document.activeElement
-            appMenuOpener.current = active instanceof HTMLElement && active !== document.body
-              ? active
-              : null
-          }}
+          open={appMenuOpen} onOpenChange={setAppMenuOpen}
           trigger={(
-            <IconButton label="Meridian" size="nested" className="appbtn">
-              <img className="brandmark" src={brandmark} alt="Meridian" />
-            </IconButton>
+            <IconButton label="Meridian" size="nested" className="appbtn"><AppMark /></IconButton>
           )}
           contentProps={{
               // The menu and the Dialog cannot both manage focus. Mounting the Dialog as soon as
@@ -817,10 +801,7 @@ export function AppShell({ screens, settings }: {
               // setTimeout cannot order this: Radix's FocusScope also schedules a 0 ms macrotask when
               // it unmounts, and which one runs first is not guaranteed.
               onCloseAutoFocus: (e) => {
-                if (appMenuOpener.current) {
-                  e.preventDefault()
-                  appMenuOpener.current.focus()
-                }
+                returnAppMenuFocus(e)
                 const wanted = wantDialog.current
                 wantDialog.current = null
                 if (wanted === 'settings') setSettingsOpen(true)
@@ -846,29 +827,11 @@ export function AppShell({ screens, settings }: {
         </ActionMenu>
         <AboutDialog open={aboutOpen} onOpenChange={setAboutOpen} />
         <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} commands={commands} />
-        <div className="crumb" id="crumb">
-          {parts.map((p, i) => {
-            // As in the demo, only .cseg.link gets a handler: the last segment is the current position.
-            const link = p.onClick !== undefined && i < parts.length - 1
-            return (
-              <Fragment key={`${i}${p.text}`}>
-                {i > 0 ? <span className="csep">›</span> : null}
-                {link
-                  ? (
-                    <Tooltip label={p.text} whenClipped>
-                      <button type="button" className="cseg link" onClick={p.onClick}><FadeText>{p.text}</FadeText></button>
-                    </Tooltip>
-                  )
-                  // A segment that is not a link drags the window, which takes its pointer, so it has no tooltip.
-                  : <FadeText className="cseg">{p.text}</FadeText>}
-              </Fragment>
-            )
-          })}
-        </div>
-      </div>
+        <Breadcrumb id="crumb" trail={parts} />
+      </TitleBar>
 
-      <div
-        className={`main${hidden ? ' sbhide' : ''}${screen === 'reader' ? ' reading' : ''}`} id="main"
+      <AppFrame
+        collapsed={hidden} reading={screen === 'reader'}
         style={{
           ['--sbw']: `${width}px`, ['--rrw']: chatWidth === null ? undefined : `${chatWidth}px`,
         } as CSSProperties}
@@ -882,7 +845,7 @@ export function AppShell({ screens, settings }: {
           laterCount={laterCount}
           chats={chats} chatId={screen === 'chat' ? chatId : null} onOpenChat={openChat}
           onNewChat={newChat} onArchiveChat={archiveChat} onDeleteChat={deleteChat}
-          grip={sidebarGrip} collapsed={hidden}
+          grip={sidebarGrip} collapsed={hidden} hidden={screen === 'reader'}
         />
         {hidden ? (
           <Tooltip
@@ -898,6 +861,7 @@ export function AppShell({ screens, settings }: {
         <NoticeContext.Provider value={notify}>
           <JobsContext.Provider value={jobsStatus}>
             <GenerationsContext.Provider value={generations}>
+            <ModelStatusContext.Provider value={modelStatus}>
             <PaperCountContext.Provider value={paperCountState}>
               <VaultRevisionContext.Provider value={vaultRevision}>
                 <ScreenContext.Provider value={screenState}>
@@ -927,9 +891,9 @@ export function AppShell({ screens, settings }: {
                             {today === null ? null : mounted.map((k) => (
                               <CrumbTailContext.Provider value={setTail[k]} key={k}>
                                 <SlotContext.Provider value={k}>
-                                  <div className="screenslot" hidden={k !== screen}>
+                                  <ScreenSlot shown={k === screen}>
                                     <ScreenBoundary>{screens[k]}</ScreenBoundary>
-                                  </div>
+                                  </ScreenSlot>
                                 </SlotContext.Provider>
                               </CrumbTailContext.Provider>
                             ))}
@@ -945,11 +909,12 @@ export function AppShell({ screens, settings }: {
                 </ScreenContext.Provider>
               </VaultRevisionContext.Provider>
             </PaperCountContext.Provider>
+            </ModelStatusContext.Provider>
             </GenerationsContext.Provider>
           </JobsContext.Provider>
         </NoticeContext.Provider>
         <Notice notice={notice} />
-      </div>
+      </AppFrame>
 
     </>
   )

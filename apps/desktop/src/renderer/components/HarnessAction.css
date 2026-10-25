@@ -1,6 +1,1 @@
-.harness-cost-plan{min-width:360px;color:var(--sec);font-size:var(--fs-sm)}
-.harness-cost-plan dl{margin:0;display:grid;gap:0;border:1px solid var(--sep);border-radius:var(--r-md);overflow:hidden}
-.harness-cost-plan dl>div{display:grid;grid-template-columns:92px minmax(0,1fr);gap:var(--sp-12);padding:var(--sp-8) var(--sp-10);border-top:1px solid var(--sep)}
-.harness-cost-plan dl>div:first-child{border-top:0}
-.harness-cost-plan dt{color:var(--ter)}
-.harness-cost-plan dd{margin:0;color:var(--ink);text-align:right}
+.harness-cost-plan{min-width:360px}

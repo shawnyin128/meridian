@@ -2,8 +2,9 @@ import { appUpdates, extensions } from '../ipc.js'
 import { useAppUpdate } from '../hooks/useAppUpdate.js'
 import { useMessages } from '../messages/useMessages.js'
 import { EntityLink } from './EntityLink.js'
-import { IconCheck, RunningRing } from './icons.js'
+import { IconCheck } from './icons.js'
 import { InlineMessage } from './InlineMessage.js'
+import { LoadingPlaceholder } from './LoadingPlaceholder.js'
 import { ModalDialog, ModalTitle } from './ModalDialog.js'
 import { UpdateAction, updateLine } from './settings/AppUpdateSettings.js'
 import type { AppUpdateStatus } from '../../shared/app-update.js'
@@ -12,9 +13,8 @@ import './AboutDialog.css'
 
 const RELEASES = 'https://github.com/shawnyin128/meridian/releases'
 
-/** The small mark before the status line: a spinner while checking, a check once current or ready, else none. */
+/** The small mark before the status line: a check once current or ready, else none. */
 function statusMark(status: AppUpdateStatus) {
-  if (status.phase === 'checking') return <RunningRing />
   if (status.phase === 'latest' || status.phase === 'ready') return <IconCheck />
   return null
 }
@@ -33,9 +33,9 @@ function AboutBody({ status }: { status: AppUpdateStatus }) {
       <InlineMessage
         tone={status.phase === 'error' ? 'error' : status.phase === 'latest' ? 'done' : 'info'} variant="box" className="about-status"
         data-about-update={status.phase} lead={statusMark(status)}
-        progress={status.phase === 'downloading' ? { percent: status.percent, label: updateLine(status, m) } : undefined}
+        progress={status.phase === 'downloading' ? { percent: status.percent, label: updateLine(status, m)! } : undefined}
       >
-        {updateLine(status, m)}
+        {updateLine(status, m) ?? <LoadingPlaceholder shape="lines" count={1} />}
       </InlineMessage>
       <div className="about-actions">
         <span className="about-link"><EntityLink kind="external" label={m.shell.about.releases} href={RELEASES} /></span>

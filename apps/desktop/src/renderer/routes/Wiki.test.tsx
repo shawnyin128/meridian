@@ -34,7 +34,7 @@ const fixture = vi.hoisted(() => ({
   apply: vi.fn(),
   undo: vi.fn(),
   /** The `onApply` the page hands its claims. */
-  applyClaims: null as null | ((title: string, ops: ProposalOp[], done: { note: string; undoable?: boolean }) => Promise<boolean>),
+  applyClaims: null as null | ((title: string, ops: ProposalOp[], undoNote?: string) => Promise<boolean>),
   writes: [] as { result: unknown; opts?: { note?: unknown; action?: (result: never) => { label: string; onAction: () => void } } }[],
   /** What papers.reading and wiki.cards reject with instead of answering, when a test makes them fail. */
   readingError: null as unknown,
@@ -185,11 +185,11 @@ describe('Wiki keyboard reach', () => {
     expect([...child.querySelectorAll('.row-actions button')].map((b) => b.getAttribute('aria-label'))).toEqual(['从这一页移出'])
   })
 
-  it('结论写入的通知写结论区给的结果词;撤回的还带撤销,按下撤销撤回最近变动里记下的那一条;别的结论写入不带', async () => {
+  it('撤回结论的通知带撤销,按下撤销撤回最近变动里记下的那一条;别的结论写入页上看得到,不写通知', async () => {
     fixture.apply.mockResolvedValue({ change: 'c-9' })
     await press(host.querySelector<HTMLElement>('[data-wk="topics/sd"] .tt')!)
     const ops: ProposalOp[] = [{ op: 'retractClaim', page: 'topics/sd', claim: 'knee', reason: '撤回' }]
-    await act(async () => { await fixture.applyClaims!('撤回「推测解码」的一条结论', ops, { note: '已撤回', undoable: true }) })
+    await act(async () => { await fixture.applyClaims!('撤回「推测解码」的一条结论', ops, '已撤回') })
     expect(fixture.apply).toHaveBeenLastCalledWith({ source: 'user', title: '撤回「推测解码」的一条结论', ops })
     const { result, opts } = fixture.writes.at(-1)!
     expect(opts!.note).toBe('已撤回')
@@ -197,8 +197,8 @@ describe('Wiki keyboard reach', () => {
     expect(undo.label).toBe('撤销')
     await act(async () => { undo.onAction() })
     expect(fixture.undo).toHaveBeenCalledWith('c-9')
-    await act(async () => { await fixture.applyClaims!('给「推测解码」添加结论', ops, { note: '已添加' }) })
-    expect([fixture.writes.at(-1)!.opts?.note, fixture.writes.at(-1)!.opts?.action]).toEqual(['已添加', undefined])
+    await act(async () => { await fixture.applyClaims!('给「推测解码」添加结论', ops) })
+    expect([fixture.writes.at(-1)!.opts?.note, fixture.writes.at(-1)!.opts?.action]).toEqual([undefined, undefined])
   })
 
   it('比较表每个表头格下面都有一个单元格，自动列在表头用标签标出', async () => {
@@ -207,7 +207,7 @@ describe('Wiki keyboard reach', () => {
     const heads = all('.cmp thead th').length
     expect(all('.cmp tbody tr').map((tr) => tr.children.length)).toEqual([heads])
     expect(host.querySelector('.cmp td.na')!.textContent).toBe('—')
-    expect(host.querySelector('.cmp th.dv .wkind')!.textContent).toBe('自动')
+    expect(host.querySelector('.cmp thead .wkind')!.textContent).toBe('自动')
   })
 
   it('比较表那一行的移出在行尾操作槽里，行是槽的宿主', async () => {
@@ -222,13 +222,29 @@ describe('Wiki keyboard reach', () => {
     expect(tags('.wkmain .wkcard .tt')).toEqual(['BUTTON'])
     expect(tags('.cmp td.rh .entity-link')).toEqual(['BUTTON'])
     expect(tags('.cmp td.dv .tagchip')).toEqual(['BUTTON'])
-    expect(tags('.cmp td.rx .row-actions > *')).toEqual(['BUTTON'])
-    expect(tags('.wkside .wkrel .tagchip')).toEqual(['BUTTON', 'BUTTON'])
+    expect(tags('.cmp td.table-actions .row-actions > *')).toEqual(['BUTTON'])
+    expect(tags('.split-rail .wkrel .tagchip')).toEqual(['BUTTON', 'BUTTON'])
     expect(all('.wktoc li > button').map((b) => b.textContent)).toEqual(['背景', '结果'])
     expect(tags('.wkmain .md .entity-link')).toEqual(['A'])
 
     await press(host.querySelector<HTMLElement>('.cmp td.dv .tagchip')!)
     expect(fixture.aggregation).toHaveBeenLastCalledWith('methods/tree')
+  })
+
+  it('点目录里的一节,正文滚到那一节的标题,标题闪一下', async () => {
+    const scrolled: [string, ScrollLogicalPosition | undefined][] = []
+    // jsdom lays nothing out and has no scrollIntoView.
+    Element.prototype.scrollIntoView = function (this: Element, options?: boolean | ScrollIntoViewOptions) {
+      scrolled.push([this.textContent ?? '', typeof options === 'object' ? options.block : undefined])
+    }
+    try {
+      await press(host.querySelector<HTMLElement>('[data-wk="topics/sd"] .tt')!)
+      await press(all('.wktoc li > button').find((button) => button.textContent === '结果')!)
+      expect(scrolled).toEqual([['结果', 'start']])
+      expect([...host.querySelectorAll('.wkmain [data-arrived]')].map((heading) => heading.textContent)).toEqual(['结果'])
+    } finally {
+      delete (Element.prototype as Partial<Element>).scrollIntoView
+    }
   })
 
   it('比较表里的锚点是一个按钮:聚焦时显示原文,点它在阅读器里打开那篇论文的那一页', async () => {
@@ -246,7 +262,7 @@ describe('Wiki keyboard reach', () => {
 
   it('比较表的格子先是值,再是一段不断行的「空格 + 锚点」,紧贴值的最后一个字', async () => {
     await press(host.querySelector<HTMLElement>('[data-wk="topics/sd"] .tt')!)
-    const cell = host.querySelector<HTMLElement>('.cmp .source-anchor')!.closest('td')!
+    const cell = host.querySelector<HTMLElement>('.cmp .source-anchor')!.closest('.table-text')!
     expect([...cell.childNodes].map((node) => (node instanceof Element ? `${node.className}|${node.textContent}` : node.textContent)))
       .toEqual(['W4', 'source-anchor-keep| p.3'])
   })
@@ -256,7 +272,7 @@ describe('Wiki keyboard reach', () => {
     await press(host.querySelector<HTMLElement>('[data-wk="papers/p1"] .tt')!)
     const [list, read] = [...host.querySelectorAll<HTMLButtonElement>('.desk-head > .page-actions > .btn')]
     expect([list!.textContent, read!.textContent]).toEqual(['去论文列表查看', '去阅读论文'])
-    expect(host.querySelector('.wkside .btn')).toBeNull()
+    expect(host.querySelector('.split-rail .btn')).toBeNull()
     expect(host.querySelector('.paper-understanding .section-heading-actions')).toBeNull()
     await press(list!)
     expect(fixture.open).toHaveBeenCalledWith('papers', 'EAGLE-2')
@@ -292,8 +308,8 @@ describe('Wiki keyboard reach', () => {
     ])
     await press(host.querySelector<HTMLElement>('[data-wk="topics/sd"] .tt')!)
     expect(fixture.backlinks).toHaveBeenLastCalledWith('topics/sd')
-    expect(all('.wkside > .section-heading').map((heading) => heading.textContent)).toEqual(['属性', '关联', '反向链接', '目录'])
-    const link = (name: string) => all('.wkside .rail-links .tagchip').find((el) => el.textContent === name)!
+    expect(all('.split-rail > .section-heading').map((heading) => heading.textContent)).toEqual(['属性', '关联', '反向链接', '目录'])
+    const link = (name: string) => all('.split-rail .rail-links .tagchip').find((el) => el.textContent === name)!
     await press(link('推测解码加速'))
     expect(fixture.open).toHaveBeenLastCalledWith('project', 'p-47')
     await press(link('按接受率调树宽'))
@@ -305,7 +321,7 @@ describe('Wiki keyboard reach', () => {
     fixture.backlinks.mockResolvedValue([{ kind: 'page', id: 'topics/sd', title: '推测解码', kindLabel: '主题' }])
     await press(host.querySelector<HTMLElement>('.cmp td.rh .entity-link')!)
     expect(fixture.backlinks).toHaveBeenLastCalledWith('papers/p1')
-    expect(all('.wkside > .section-heading').map((heading) => heading.textContent)).toEqual(['属性', '归属', '反向链接', '目录'])
+    expect(all('.split-rail > .section-heading').map((heading) => heading.textContent)).toEqual(['属性', '归属', '反向链接', '目录'])
     fixture.aggregation.mockClear()
     await press(link('推测解码'))
     expect(fixture.aggregation).toHaveBeenLastCalledWith('topics/sd')
@@ -317,7 +333,7 @@ describe('Wiki keyboard reach', () => {
       { kind: 'project', id: 'p-47', title: '推测解码加速' },
     ])
     await press(host.querySelector<HTMLElement>('[data-wk="topics/sd"] .tt')!)
-    const rows = all('.wkside .wkrel').map((row) => [
+    const rows = all('.split-rail .wkrel').map((row) => [
       row.className, ...[...row.children].map((part) => `${part.tagName} ${part.className}`),
     ])
     expect(rows.map((row) => row.slice(1))).toEqual(Array(4).fill(['SPAN rl', 'BUTTON tag tag--chip tag--neutral tagchip']))
@@ -339,20 +355,28 @@ describe('Wiki keyboard reach', () => {
 
   it('从关联打开另一页再按返回,回到的那一页等内容出来后回到原来滚到的位置', async () => {
     fixture.aggregation.mockImplementation(async (id: string) => ({ ...AGG, id, title: id === 'topics/sd' ? '推测解码' : '树' }))
-    const body = () => host.querySelector<HTMLElement>('.wiki-body')!
+    // A page's main column scrolls inside itself.
+    const body = () => host.querySelector<HTMLElement>('.wiki-body .split-column')!
     await press(host.querySelector<HTMLElement>('[data-wk="topics/sd"] .tt')!)
     body().scrollTop = 160
-    await press(all('.wkside .rail-links .tagchip').find((el) => el.textContent === '树')!)
+    await press(all('.split-rail .rail-links .tagchip').find((el) => el.textContent === '树')!)
     expect(host.querySelector('.desk-head .t')!.textContent).toBe('树')
     body().scrollTop = 40
     let arrive: (page: WikiAggregation) => void = () => {}
     fixture.aggregation.mockImplementationOnce(() => new Promise((done) => { arrive = done }))
     await press(host.querySelector<HTMLElement>('.desk-head > .back')!)
-    // A browser clamps the offset to 0 while the page waits behind its placeholder.
-    body().scrollTop = 0
+    // While the page waits behind its placeholder it has no column, so the column it gets starts at the top.
+    expect(host.querySelector('.wiki-body .split-column')).toBeNull()
     await act(async () => { arrive({ ...AGG, title: '推测解码' }); await Promise.resolve() })
     expect(host.querySelector('.desk-head .t')!.textContent).toBe('推测解码')
     expect(body().scrollTop).toBe(160)
+  })
+
+  it('首页按列表屏的栏宽排，打开的一页按阅读页的栏宽排', async () => {
+    const prose = () => host.querySelector('.wiki-body')!.classList.contains('desk-body--prose')
+    expect(prose()).toBe(false)
+    await press(host.querySelector<HTMLElement>('[data-wk="topics/sd"] .tt')!)
+    expect(prose()).toBe(true)
   })
 
   it('从首页打开一页再按返回,首页回到原来滚到的位置', async () => {
@@ -365,9 +389,22 @@ describe('Wiki keyboard reach', () => {
     expect(body().scrollTop).toBe(120)
   })
 
+  it('聚合页和论文页的正文和右栏是同一个分栏页的两栏,各在自己那一栏里滚动,不随整页滚', async () => {
+    const columns = () => {
+      const split = host.querySelector('.wiki-body > .split-page')
+      return split === null ? null : [split.className, ...[...split.children].map((column) => column.className)]
+    }
+    expect(columns()).toBeNull()
+    await press(host.querySelector<HTMLElement>('[data-wk="topics/sd"] .tt')!)
+    expect(columns()).toEqual(['split-page split-page--rail wkpage', 'scroll-area scroll-area--y split-column wkmain', 'scroll-area scroll-area--y split-rail'])
+    await press(host.querySelector<HTMLElement>('.desk-head > .back')!)
+    await press(host.querySelector<HTMLElement>('[data-wk="papers/p1"] .tt')!)
+    expect(columns()).toEqual(['split-page split-page--rail wkpage', 'scroll-area scroll-area--y split-column wkmain', 'scroll-area scroll-area--y split-rail'])
+  })
+
   it('没有东西指向这一页时右栏没有反向链接这一块', async () => {
     await press(host.querySelector<HTMLElement>('[data-wk="topics/sd"] .tt')!)
-    expect(all('.wkside > .section-heading').map((heading) => heading.textContent)).toEqual(['属性', '关联', '目录'])
+    expect(all('.split-rail > .section-heading').map((heading) => heading.textContent)).toEqual(['属性', '关联', '目录'])
   })
 
   it('opens a paper page membership from a button', async () => {
@@ -408,7 +445,7 @@ describe('Wiki keyboard reach', () => {
   it('从这一页移出一篇论文,提示带撤销,撤销的是这次写入记下的那一条', async () => {
     fixture.apply.mockResolvedValue({ change: 'c-paper' })
     await press(host.querySelector<HTMLElement>('[data-wk="topics/sd"] .tt')!)
-    await press(host.querySelector<HTMLElement>('.cmp td.rx button')!)
+    await press(host.querySelector<HTMLElement>('.cmp td.table-actions button')!)
     await settle()
     expect(fixture.apply).toHaveBeenLastCalledWith({
       source: 'user', title: '把 EAGLE-2 从 推测解码 移出', ops: [{ op: 'removeMembership', paper: 'papers/p1', in: 'topics/sd' }],
@@ -607,7 +644,7 @@ describe('论文对比表的五行上限', () => {
    */
   const layOut = (heights: number[]) => {
     vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
-      if (this.classList.contains('cmpwrap')) return { top: 100, bottom: 100 } as DOMRect
+      if (this.classList.contains('table-scroll')) return { top: 100, bottom: 100 } as DOMRect
       const table = this.closest('.cmp')
       if (table === null || this.tagName !== 'TR') return { top: 0, bottom: 0 } as DOMRect
       const sizes = [30, ...heights]
@@ -627,7 +664,7 @@ describe('论文对比表的五行上限', () => {
       host.querySelector<HTMLElement>('[data-wk="topics/sd"] .tt')!.click()
       await Promise.resolve()
     })
-    return host.querySelector<HTMLElement>('.cmpwrap')!
+    return host.querySelector<HTMLElement>('.cmp')!.parentElement!
   }
 
   beforeEach(() => {

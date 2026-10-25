@@ -3,22 +3,22 @@ import { expect, gotoProject, parkPointer, test, type MeridianWindow } from './a
 
 const shown = (win: Page, sel: string) => win.locator(`.screenslot:not([hidden]) ${sel}`)
 
-test('空态只有两档:整屏的带图标居中,分节的是一行灰字', async ({ win }) => {
+test('空态只有两档:整屏的只有图标居中,分节的是一行灰色的 —', async ({ win }) => {
   test.slow()
   // The bin is empty in the fixture library, so it is the page variant.
   await win.locator('[data-desk="trash"]').click()
   const page = shown(win, '.empty-state')
   await expect(page).toHaveClass(/empty-state--page/)
-  await expect(page).toHaveText('还没有移入垃圾桶的内容')
+  await expect(page).toHaveText('')
   await expect(page.locator('svg')).toHaveCount(1)
 
-  // A leaf aggregation page has no children, so that section states it inline without an icon.
+  // A leaf aggregation page has no children, so that section is one line holding the shared empty value.
   await win.locator('[data-desk="wiki"]').click()
   await shown(win, '[data-wk="topics/quantization"]').click()
   await shown(win, '[data-wk="topics/ptq"]').click()
   await shown(win, '[data-wk="topics/ptq-weight-only"]').click()
   const section = shown(win, '.empty-state--section').first()
-  await expect(section).toHaveText('还没有细分')
+  await expect(section).toHaveText('—')
   await expect(section.locator('svg')).toHaveCount(0)
 
   // No screen keeps a hand-rolled empty-state class any more.
@@ -91,7 +91,7 @@ test('撤不回来的动作才弹确认,弹出来的都是同一个对话框', a
   const dialog = win.locator('.modal.confirm')
   await expect(dialog).toBeVisible()
   await expect(dialog.locator('.modal-title')).toHaveText('移除「speculative decoding」？')
-  await expect(dialog.locator('.modal-detail')).toHaveText('它带来的推送会一起清掉，且不能撤销。')
+  await expect(dialog.locator('.modal-detail')).toHaveText('它送来的推送一并清掉')
   // Cancel is always the left button and the destructive one is always on the right.
   await expect(dialog.locator('.modal-actions>*').first()).toHaveText('取消')
   await expect(dialog.locator('.modal-actions>*').last()).toHaveText('确认移除')
@@ -131,7 +131,7 @@ test('收起钮全应用一个说法,Escape 一层一层剥,「/」跳到输入�
   test.slow()
   await win.locator('[data-desk="papers"]').click()
   await shown(win, '.ptable tbody tr').first().click()
-  await expect(shown(win, '.pdetail .panel-close')).toHaveAttribute('aria-label', '收起详情')
+  await expect(shown(win, '.paper-detail-slot .panel-close')).toHaveAttribute('aria-label', '收起详情')
   await win.keyboard.press('Escape')
   await expect(shown(win, '.pdetail')).toHaveCount(0)
 
@@ -153,7 +153,7 @@ test('按天分组的三屏用同一行小标题', async ({ win }) => {
   test.slow()
   const box = async (desk: string) => {
     await win.locator(`[data-desk="${desk}"]`).click()
-    const heading = shown(win, '.day-heading').first()
+    const heading = shown(win, '.section-heading--group').first()
     await heading.waitFor()
     return {
       size: await heading.evaluate((el) => getComputedStyle(el).fontSize),

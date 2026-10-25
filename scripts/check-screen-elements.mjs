@@ -12,17 +12,11 @@ const { parse } = require('@babel/parser')
  * and key (see `rawButtons`), with the reason each is no Button.
  */
 export const RAW_BUTTONS = [
-  { reason: 'the open part of a chip whose remove sits beside it',
-    keys: ['components/ideas/IdeaRelations.tsx tagchip-open', 'components/project/ProjectSections.tsx tagchip-open'] },
   { reason: 'a link of the page contents that scrolls to its heading', keys: ['routes/Wiki.tsx wktoc > button'] },
-  { reason: 'a breadcrumb segment of the title bar that opens its place', keys: ['shell/AppShell.tsx cseg'] },
   { reason: 'a property value that opens its editor', keys: ['routes/ProjectDetail.tsx workspace-root', 'routes/ProjectDetail.tsx pv'] },
-  { reason: 'a draft row\'s field that cycles its value, drawn as the row\'s other field pills',
-    keys: ['components/project/ProjectPlan.tsx din'] },
   { reason: 'an option of a radio group: a column type icon or an appearance card',
     keys: ['components/paper-table/ColumnAdd.tsx ctbtn', 'components/settings/AppearanceSettings.tsx appearance-choice'] },
   { reason: 'a menu row that turns a column on or off', keys: ['components/paper-table/ColumnMenu.tsx mi'] },
-  { reason: 'a table header that sorts by its column', keys: ['components/paper-table/PaperTable.tsx thsort'] },
 ]
 
 /**
@@ -84,6 +78,24 @@ export function rawButtons(files) {
 }
 
 /**
+ * Every raw `<table>` element a screen source renders; a screen's tables are `Table`s.
+ * @param files Map from a path relative to the renderer, with `/` separators, to its text; sources
+ *   that are not screens are skipped.
+ * @returns One `{ file, line }` per element, in file order.
+ */
+export function rawTables(files) {
+  const found = []
+  for (const [file, text] of files) {
+    if (!isScreenSource(file)) continue
+    walk(parse(text, { sourceType: 'module', plugins: ['typescript', 'jsx'] }).program, (element) => {
+      const { name } = element.openingElement
+      if (name.type === 'JSXIdentifier' && name.name === 'table') found.push({ file, line: element.loc.start.line })
+    })
+  }
+  return found
+}
+
+/**
  * Compares the raw buttons with RAW_BUTTONS.
  * @returns `unlisted`, every raw button whose key no entry lists, as `file:line key`, and `unused`,
  *   every listed key no raw button has.
@@ -102,5 +114,7 @@ if (import.meta.url === pathToFileURL(process.argv[1]).href) {
   console.log(`${found.length} raw <button> elements in screens, under ${new Set(found.map((button) => button.key)).size} listed keys.`)
   if (unlisted.length > 0) console.error(`Not in RAW_BUTTONS of ${path.basename(import.meta.filename)}; use Button or IconButton:\n${unlisted.join('\n')}`)
   if (unused.length > 0) console.error(`Listed in RAW_BUTTONS but gone:\n${unused.join('\n')}`)
-  if (unlisted.length > 0 || unused.length > 0) process.exitCode = 1
+  const tables = rawTables(rendererFiles())
+  if (tables.length > 0) console.error(`Raw <table> elements in screens; use Table:\n${tables.map(({ file, line }) => `${file}:${line}`).join('\n')}`)
+  if (unlisted.length > 0 || unused.length > 0 || tables.length > 0) process.exitCode = 1
 }

@@ -90,6 +90,19 @@ describe('ModalDialog', () => {
     expect(surface.querySelector('.modal-actions')!.textContent).toBe('保存')
   })
 
+  it('pins a dialog near the window\'s top when placed there, and names it by a title only assistive technology reads', () => {
+    act(() => root!.render(
+      <ModalDialog open onOpenChange={vi.fn()} size="form" place="top" className="cmdk">
+        <ModalTitle hidden>命令面板</ModalTitle>
+      </ModalDialog>,
+    ))
+    const surface = document.querySelector<HTMLElement>('[role="dialog"]')!
+    expect([...surface.classList]).toEqual(['modal', 'form', 'modal--top', 'cmdk'])
+    const title = surface.querySelector('.modal-title')!
+    expect([...title.classList]).toEqual(['modal-title', 'modal-title--hidden'])
+    expect(surface.getAttribute('aria-labelledby')).toBe(title.id)
+  })
+
   it('puts a close control named Close, not a panel\'s Collapse details, in the surface when closable, and it closes the dialog', () => {
     const change = vi.fn()
     act(() => root!.render(

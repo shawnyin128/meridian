@@ -16,9 +16,9 @@ describe('GenerationControl', () => {
     const start = vi.fn()
     const stop = vi.fn()
 
-    const show = (running: boolean, showStatusText: boolean) => act(() => root.render(
+    const show = (running: boolean, regular: boolean, stopping = false) => act(() => root.render(
       <MessagesProvider>
-        <GenerationControl running={running} onStart={start} onStop={stop} showStatusText={showStatusText} />
+        <GenerationControl running={running} onStart={start} onStop={stop} regular={regular} stopping={stopping} />
       </MessagesProvider>,
     ))
     show(false, false)
@@ -28,24 +28,27 @@ describe('GenerationControl', () => {
     expect(start).toHaveBeenCalledOnce()
     show(true, false)
     expect([host.querySelector('button'), button.getAttribute('aria-label'), button.querySelector('.ring.spin') !== null])
-      .toEqual([button, '正在生成，点击停止', true])
+      .toEqual([button, '停止生成', true])
     act(() => button.click())
     expect(stop).toHaveBeenCalledOnce()
 
-    // With its status text it is a Button: the same one before and while it runs.
+    // At regular size it is a Button holding the glyph alone: the same one before and while it runs.
     show(false, true)
     const text = host.querySelector<HTMLButtonElement>('button')!
     expect([text.className, text.getAttribute('aria-label')]).toEqual(['btn generation-control', '发送'])
     show(true, true)
     expect(host.querySelector('button')).toBe(text)
-    expect(text.getAttribute('aria-label')).toBe('正在生成，点击停止')
+    expect(text.getAttribute('aria-label')).toBe('停止生成')
     expect(text.className).toBe('btn generation-control is-running')
     expect(text.querySelector('.ring.spin')).not.toBeNull()
     expect(text.querySelector('.generation-stop')).not.toBeNull()
-    expect(text.textContent).toContain('正在生成')
-    expect(text.textContent).toContain('停止生成')
+    expect(text.textContent).toBe('')
     act(() => text.click())
     expect(stop).toHaveBeenCalledTimes(2)
+
+    // Once a stop is asked for it shows the shared busy state and cannot be pressed again.
+    show(true, true, true)
+    expect([text.disabled, text.getAttribute('aria-busy'), text.getAttribute('aria-label')]).toEqual([true, 'true', '正在停止'])
     act(() => root.unmount())
   })
 

@@ -1,4 +1,5 @@
 import { useId, type ReactNode } from 'react'
+import { Property, PropertyList } from '../PropertyList.js'
 import { Tag } from '../Tag.js'
 import './ProposalChange.css'
 
@@ -6,24 +7,21 @@ import './ProposalChange.css'
 export type ProposalRow = { key: string; label: string; value?: ReactNode; quote?: ReactNode }
 
 /**
- * `rows` as one aligned two-column list, each label in the card's label column, under a visible
- * `label` that names the list when one is given; nothing when there are no rows.
+ * `rows` as one PropertyList, under a visible `label` that names the list when one is given; nothing
+ * when there are no rows. `aligned` puts each label in the label column of the card around the list.
  */
-export function ProposalRows({ rows, label }: { rows: ProposalRow[]; label?: string | undefined }) {
+export function ProposalRows({ rows, label, aligned = false }: { rows: ProposalRow[]; label?: string | undefined; aligned?: boolean }) {
   const id = useId()
   if (rows.length === 0) return null
   const list = (
-    <dl className="proposal-rows" aria-labelledby={label === undefined ? undefined : id}>
+    <PropertyList aligned={aligned} className="proposal-rows" aria-labelledby={label === undefined ? undefined : id}>
       {rows.map((row) => (
-        <div className="proposal-row" key={row.key}>
-          <dt>{row.label}</dt>
-          <dd>
-            {row.value === undefined ? null : <span className="proposal-value">{row.value}</span>}
-            {row.quote === undefined ? null : <span className="proposal-quote">{row.quote}</span>}
-          </dd>
-        </div>
+        <Property key={row.key} label={row.label}>
+          {row.value === undefined ? null : <div className="proposal-value">{row.value}</div>}
+          {row.quote === undefined ? null : <div className="proposal-quote">{row.quote}</div>}
+        </Property>
       ))}
-    </dl>
+    </PropertyList>
   )
   return label === undefined ? list : <><p className="proposal-rows-label" id={id}>{label}</p>{list}</>
 }
@@ -63,8 +61,8 @@ export function ProposalChange({ kind, target, by, context, fields = [], grounds
       </div>
       {context}
       {children}
-      <ProposalRows rows={fields} />
-      <ProposalRows rows={grounds} label={groundsLabel} />
+      <ProposalRows aligned rows={fields} />
+      <ProposalRows aligned rows={grounds} label={groundsLabel} />
     </div>
   )
 }

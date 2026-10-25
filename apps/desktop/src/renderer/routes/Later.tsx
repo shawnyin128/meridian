@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { InboxDownloadFailure, LaterEntry } from '../../shared/contract.js'
 import { inbox, later } from '../ipc.js'
 import { useMessages } from '../messages/useMessages.js'
@@ -10,7 +10,7 @@ import { DownloadRing, Icon, IconRead, IconTrash } from '../components/icons.js'
 import { IconButton } from '../components/IconButton.js'
 import { PaperCard, PaperCardBadge, PaperCardNotice } from '../components/paper/PaperCard.js'
 import { plainTitle } from '../components/paper/paper-text.js'
-import { DayHeading, daySectionName } from '../components/DayHeading.js'
+import { daySectionName, Group, GroupedList } from '../components/GroupedList.js'
 import { EmptyState } from '../components/EmptyState.js'
 import { LoadingPlaceholder } from '../components/LoadingPlaceholder.js'
 import { SegmentedControl } from '../components/SegmentedControl.js'
@@ -20,6 +20,7 @@ import { useFormat } from '../lib/format.js'
 import { useScreenLoad } from '../hooks/useScreenLoad.js'
 import { useUndo } from '../hooks/useUndo.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
+import { useArrival } from '../hooks/useArrival.js'
 import { PageBody, PageError, PageHeader, PageShell, PageTitle, PageToolbar } from '../components/PageShell.js'
 import { SourceLabel } from '../components/SourceLabel.js'
 import { shownSource } from '../lib/watch-source.js'
@@ -46,7 +47,6 @@ export function Later() {
   const { jump, open } = useJump()
   const { origin, back } = useJumpOrigin()
   const body = useRef<HTMLDivElement>(null)
-  const consumed = useRef(0)
   const { revision, bump } = useVaultRevision()
   const { error, load } = useScreenLoad()
   const write = useVaultWrite()
@@ -84,12 +84,8 @@ export function Later() {
 
   useEffect(() => load('entries', later.list(), setEntries), [revision, load])
 
-  // The entry can be scrolled to only once the queue has arrived.
-  useEffect(() => {
-    if (jump === null || jump.seq === consumed.current || entries === null) return
-    consumed.current = jump.seq
-    body.current?.querySelector(`[data-pid="${CSS.escape(jump.target)}"]`)?.scrollIntoView({ block: 'nearest' })
-  }, [jump, entries])
+  // The entry can be landed on only once the queue has arrived.
+  useArrival(jump, entries !== null, ({ target }) => body.current?.querySelector(`[data-pid="${CSS.escape(target)}"]`))
 
   const remove = (entry: LaterEntry) => {
     void write(later.remove(entry.id).then((trashed) => [trashed]), {
@@ -130,59 +126,58 @@ export function Later() {
           ? (error === null ? <LoadingPlaceholder shape="cards" /> : null)
           : groups.length === 0
           ? (
-            <EmptyState
-              variant="page"
-              icon={<Icon sw={1.4}><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></Icon>}
-            >
-              {m.later.empty}
-            </EmptyState>
+            <EmptyState variant="page" icon={<Icon sw={1.4}><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></Icon>} />
           )
-          : groups.map((g) => (
-            <Fragment key={g.key}>
-              <DayHeading count={g.items.length}>
-                {grouping === 'time' ? daySectionName(g.key, m.common.daySections) : g.key}
-              </DayHeading>
-              {g.items.map((x) => (
-                <PaperCard
-                  key={x.id} paperId={x.id} title={x.title}
-                  actions={(
-                    <>
-                    {busy.has(x.id)
-                      ? (
-                        <IconButton label={m.later.actions.downloading} size="nested" className="busy" disabled>
-                          <DownloadRing progress={jobs?.downloads?.find((item) => item.id === x.id) ?? null} />
+          : (
+            <GroupedList>
+              {groups.map((g) => (
+                <Group
+                  key={g.key} count={g.items.length}
+                  title={grouping === 'time' ? daySectionName(g.key, m.common.daySections) : g.key}
+                >
+                  {g.items.map((x) => (
+                    <PaperCard
+                      key={x.id} paperId={x.id} title={x.title}
+                      actions={(
+                        <>
+                        {busy.has(x.id)
+                          ? (
+                            <IconButton label={m.inbox.actions.download} size="nested" className="busy" disabled aria-busy>
+                              <DownloadRing progress={jobs?.downloads?.find((item) => item.id === x.id) ?? null} />
+                            </IconButton>
+                          )
+                          : x.downloaded || x.pdf !== undefined
+                            ? (
+                              <IconButton label={m.papers.rowActions.openReader} size="nested" onClick={() => read(x)}>
+                                <IconRead />
+                              </IconButton>
+                            )
+                            : null}
+                        <IconButton label={m.later.actions.removeFrom} size="nested" onClick={() => remove(x)}>
+                          <IconTrash />
                         </IconButton>
-                      )
-                      : x.downloaded || x.pdf !== undefined
-                        ? (
-                          <IconButton label={m.papers.rowActions.openReader} size="nested" onClick={() => read(x)}>
-                            <IconRead />
-                          </IconButton>
-                        )
-                        : null}
-                    <IconButton label={m.later.actions.removeFrom} size="nested" onClick={() => remove(x)}>
-                      <IconTrash />
-                    </IconButton>
-                    </>
-                  )}
-                  notices={failed.has(x.id) ? (
-                    <PaperCardNotice action={(
-                      <Button size="compact" variant="ghost" onClick={() => read(x)}>{m.common.retry}</Button>
-                    )}>{failureLabel(m, m.inbox.notices.downloadFailed, failed.get(x.id)!)}</PaperCardNotice>
-                  ) : null}
-                  metadata={(
-                    <>
-                    {x.authors}{x.venue ? <PaperCardBadge>{x.venue}</PaperCardBadge> : null}
-                    {grouping === 'time'
-                      ? <SourceLabel>{shownSource(x.source)}</SourceLabel>
-                      : <PaperCardBadge>{m.common.addedOn(fmt.date(x.added))}</PaperCardBadge>}
-                    </>
-                  )}
-                  {...(x.abstract ? { abstract: x.abstract } : {})}
-                />
+                        </>
+                      )}
+                      notices={failed.has(x.id) ? (
+                        <PaperCardNotice action={(
+                          <Button size="compact" variant="ghost" onClick={() => read(x)}>{m.common.retry}</Button>
+                        )}>{failureLabel(m, m.inbox.notices.downloadFailed, failed.get(x.id)!)}</PaperCardNotice>
+                      ) : null}
+                      metadata={(
+                        <>
+                        {x.authors}{x.venue ? <PaperCardBadge>{x.venue}</PaperCardBadge> : null}
+                        {grouping === 'time'
+                          ? <SourceLabel>{shownSource(x.source)}</SourceLabel>
+                          : <PaperCardBadge>{m.common.addedOn(fmt.date(x.added))}</PaperCardBadge>}
+                        </>
+                      )}
+                      {...(x.abstract ? { abstract: x.abstract } : {})}
+                    />
+                  ))}
+                </Group>
               ))}
-            </Fragment>
-          ))}
+            </GroupedList>
+          )}
       </PageBody>
     </PageShell>
   )

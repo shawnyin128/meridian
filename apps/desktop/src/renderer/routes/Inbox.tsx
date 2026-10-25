@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import type {
-  DiscoveryFetchResult, DiscoveryProfile, FetchStatus, InboxDownloadFailure, InboxEntry,
+  DiscoveryProfile, FetchStatus, InboxDownloadFailure, InboxEntry,
   InboxListParams, Watch,
 } from '../../shared/contract.js'
 import { listingsOf } from '../../shared/inbox-streams.js'
@@ -22,7 +22,7 @@ import {
 import { EmptyState } from '../components/EmptyState.js'
 import { InlineMessage } from '../components/InlineMessage.js'
 import { LoadingPlaceholder } from '../components/LoadingPlaceholder.js'
-import { CollapsibleGroup } from '../components/CollapsibleGroup.js'
+import { Group, GroupedList } from '../components/GroupedList.js'
 import { DateTimeDisplay } from '../components/DateTimeDisplay.js'
 import { SortMenu } from '../components/SortMenu.js'
 import { Tag } from '../components/Tag.js'
@@ -31,7 +31,7 @@ import { useUndo } from '../hooks/useUndo.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
 import { shownSource } from '../lib/watch-source.js'
 import {
-  PageBody, PageError, PageHeader, PageShell, PageTitle,
+  PageBody, PageError, PageHeader, PageNote, PageShell, PageTitle,
 } from '../components/PageShell.js'
 import { Button } from '../components/Button.js'
 import './shell.css'
@@ -54,7 +54,7 @@ const streamLabel = (m: Catalog, stream: 'watch' | 'discovery'): string =>
  */
 function fetchNote(status: FetchStatus | null, scope: string, m: Catalog): ReactNode {
   if (status === null) return ''
-  if (status.state === 'checking') return m.inbox.check.checking
+  if (status.state === 'checking') return ''
   if (status.state === 'failed') {
     return <InlineMessage tone="error" variant="line">{failureLabel(m, m.inbox.check.failed, status.reason ?? 'unknown')}</InlineMessage>
   }
@@ -66,23 +66,6 @@ function fetchNote(status: FetchStatus | null, scope: string, m: Catalog): React
     <>
       {last !== undefined && fetched && last.added === 0 ? `${m.inbox.check.noneNew} · ` : null}
       {m.inbox.check.lastChecked}{' '}<DateTimeDisplay at={at} />
-    </>
-  )
-}
-
-/** What a discovery refresh brought; when the result says nothing is new, also when the scope was last refreshed. */
-function discoveryResultNote(result: DiscoveryFetchResult, m: Catalog): ReactNode {
-  const parts = [m.settings.discovery.requested(result.intents)]
-  if (result.cachedIntents > 0) parts.push(m.settings.discovery.cooling(result.cachedIntents))
-  if (result.failedIntents > 0) parts.push(m.settings.discovery.failed(result.failedIntents))
-  if (result.deferredProjects > 0) parts.push(m.settings.discovery.deferred(result.deferredProjects))
-  if (result.added > 0) return [m.settings.discovery.newFound(result.added), ...parts].join(' · ')
-  const { lastFetchedAt } = result
-  if (!result.nothingNew || lastFetchedAt === null) return [m.settings.discovery.noNewPapers, ...parts].join(' · ')
-  return (
-    <>
-      {m.settings.discovery.noNewPapers} · {m.inbox.lastRefreshed}{' '}<DateTimeDisplay at={lastFetchedAt} />
-      {parts.map((part) => ` · ${part}`).join('')}
     </>
   )
 }
@@ -171,8 +154,7 @@ export function Inbox() {
 
   const queue = (id: string) => {
     leave([id])
-    void inbox.readLater(id).then((queued) => {
-      notice.success(queued ? m.inbox.notices.queued : m.inbox.notices.alreadyQueued)
+    void inbox.readLater(id).then(() => {
       window.setTimeout(bump, LEAVE_MS)
     }).catch((e: unknown) => notice.refusal(errorLabel(m, e)))
   }
@@ -207,7 +189,7 @@ export function Inbox() {
   const refreshDiscovery = () => {
     setDiscovering(true)
     void (scope === ALL_WATCHES ? discovery.fetch() : discovery.fetch(scope, true)).then((result) => {
-      notice.success(discoveryResultNote(result, m))
+      if (result.failedIntents > 0) notice.refusal(m.settings.discovery.failed(result.failedIntents))
       bump()
     }).catch((e: unknown) => notice.refusal(errorLabel(m, e))).finally(() => setDiscovering(false))
   }
@@ -215,7 +197,6 @@ export function Inbox() {
   const feedback = (id: string, value: 'more' | 'less' | 'known') => {
     if (value === 'more') {
       void discovery.feedback(id, value).then(() => {
-        notice.success(m.inbox.notices.remembered)
         bump()
       }).catch((e: unknown) => notice.refusal(errorLabel(m, e)))
       return
@@ -249,7 +230,7 @@ export function Inbox() {
         ) : null}
         {busy.has(p.id)
           ? (
-            <IconButton label={m.later.actions.downloading} size="nested" className="busy" disabled>
+            <IconButton label={m.inbox.actions.download} size="nested" className="busy" disabled aria-busy>
               <DownloadRing progress={jobs?.downloads?.find((item) => item.id === p.id) ?? null} />
             </IconButton>
           )
@@ -300,11 +281,11 @@ export function Inbox() {
                 <Tag>{m.watches.paused}</Tag>
                 <Button
                   size="regular"
-                  onClick={() => { void write(watch.setActive(watched.id, true), { note: m.watches.notices.resumed }) }}
+                  onClick={() => { void write(watch.setActive(watched.id, true)) }}
                 >{m.watches.resume}</Button>
               </>
             ) : null}
-            <span className="fetchnote">{stream === 'watch' ? fetchNote(jobs?.fetch ?? null, scope, m) : ''}</span>
+            <PageNote>{stream === 'watch' ? fetchNote(jobs?.fetch ?? null, scope, m) : ''}</PageNote>
             {rows.length === 0 ? null : (
               <SortMenu
                 label={m.inbox.sortLabel} current={m.inbox.sort[sort]}
@@ -336,16 +317,6 @@ export function Inbox() {
       <PageError error={error} />
 
       <PageBody>
-        {stream === 'discovery' ? (
-          <div className="discovery-summary">
-            <p className="discovery-note">
-              {m.inbox.discoverySummary(
-                profiles.filter((profile) => profile.intentCount > 0).length,
-                profiles.reduce((total, profile) => total + profile.intentCount, 0),
-              )}
-            </p>
-          </div>
-        ) : null}
         {entries === null
           ? (error === null ? <LoadingPlaceholder shape="cards" /> : null)
           : rows.length === 0
@@ -361,19 +332,14 @@ export function Inbox() {
                   <path d="M5.4 5.6L2 13v5a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-5l-3.4-7.4A2 2 0 0 0 16.8 4H7.2a2 2 0 0 0-1.8 1.6z" />
                 </Icon>
               )}
-            >
-              {stream === 'discovery'
-                ? (profiles.some((profile) => profile.seedCount > 0)
-                  ? m.inbox.empty.discoveryNone : m.inbox.empty.discoveryNoSeeds)
-                : m.inbox.empty.watch}
-            </EmptyState>
+            />
           )
           : (
-            <>
+            <GroupedList>
               {groups.map((group) => (
-                <CollapsibleGroup
-                  key={group.key} data-group={group.key} title={group.title} count={group.rows.length}
-                  open={!folded.has(group.key)} onToggle={() => toggleGroup(group.key)}
+                <Group
+                  key={group.key} data-group={group.key} title={group.title} count={group.rows.length} sticky
+                  fold={{ open: !folded.has(group.key), onToggle: () => toggleGroup(group.key) }}
                   actions={(
                     <Button
                       size="compact"
@@ -382,9 +348,9 @@ export function Inbox() {
                   )}
                 >
                   {group.rows.map(card)}
-                </CollapsibleGroup>
+                </Group>
               ))}
-            </>
+            </GroupedList>
           )}
       </PageBody>
     </PageShell>

@@ -71,10 +71,10 @@ describe('SearchBox', () => {
     vi.restoreAllMocks()
   })
 
-  it('搜不到时面板仍开着,写没有找到;清空搜索词后才收起', async () => {
+  it('搜不到时面板仍开着,只写无结果;清空搜索词后才收起', async () => {
     await type('无此词')
     const panel = document.querySelector<HTMLElement>('#sRes')
-    expect(panel?.querySelector('.empty-state')?.textContent).toBe('没有找到匹配的内容')
+    expect(panel?.querySelector('.empty-state')?.textContent).toBe('无结果')
     expect(panel?.querySelectorAll('[role="option"], .mi')).toHaveLength(0)
     await type('')
     expect(document.querySelector('#sRes')).toBeNull()
