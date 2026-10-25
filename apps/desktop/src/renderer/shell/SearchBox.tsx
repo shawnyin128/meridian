@@ -109,7 +109,7 @@ export function SearchBox({ onJump }: { onJump: (screen: ScreenKey, target: stri
       {/* The results line up with the whole field, its icon included, not with the input inside it. */}
       <PickerPopover
         open={open} onOpenChange={(next) => { if (!next) setShut(true) }}
-        contentClassName="pickhits sres" contentId="sRes" sideOffset={0} anchorBox={field}
+        size="wide" contentClassName="sres" contentId="sRes" sideOffset={0} anchorBox={field}
         content={(
           <>
             <div className="rh">{m.shell.search.results}</div>

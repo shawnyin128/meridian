@@ -437,7 +437,7 @@ describe('project idea panel', () => {
     const list = mount(
       <ProjectIdeaList projectId="draft" ideas={null} error="需要更新 App" graph={graph} selectedId={null} onSelect={vi.fn()} onCreate={vi.fn()} />,
     )
-    expect([list.host.querySelector('.ipcerror')?.textContent, list.host.querySelectorAll('.loading-placeholder').length])
+    expect([list.host.querySelector('.page-error')?.textContent, list.host.querySelectorAll('.loading-placeholder').length])
       .toEqual(['需要更新 App', 0])
     list.unmount()
   })
@@ -591,7 +591,7 @@ describe('项目页跟着工作区刷新', () => {
   it('读关联想法失败时，原因只写在想法一节的标题下，页头不再重复', async () => {
     ideasError = { reason: 'newer-version' }
     const host = await mount()
-    expect([...host.querySelectorAll('.ipcerror')].map((banner) => [
+    expect([...host.querySelectorAll('.page-error')].map((banner) => [
       banner.previousElementSibling?.textContent?.startsWith('关联想法') ?? false, banner.textContent,
     ])).toEqual([[true, '需要更新 App']])
   })
@@ -640,8 +640,8 @@ describe('项目页跟着工作区刷新', () => {
     answers = [async () => bound(), () => Promise.reject({ reason: 'newer-version' }), async () => bound()]
     const host = await mount()
     await wait(2_000)
-    expect(host.querySelector('.ipcerror')?.textContent).toBe('需要更新 App')
+    expect(host.querySelector('.page-error')?.textContent).toBe('需要更新 App')
     await wait(2_000)
-    expect([gets, host.querySelector('.ipcerror')]).toEqual([3, null])
+    expect([gets, host.querySelector('.page-error')]).toEqual([3, null])
   })
 })

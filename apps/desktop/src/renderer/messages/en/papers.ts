@@ -4,7 +4,7 @@ import { papers as zh } from '../zh/papers.js'
 
 /** English counterpart of `zh/papers`. `satisfies` makes a missing, extra or re-parameterised key a compile error. */
 export const papers = {
-  title: (count: number | null) => count === null ? 'Papers' : `Papers · ${count}`,
+  title: 'Papers',
   columns: {
     title: 'Title',
     short: 'Short title',
@@ -168,7 +168,7 @@ export const papers = {
     empty: 'No thoughts or notes yet',
     goRead: 'Open reader',
     remarkLabel: 'Thoughts',
-    notesLabel: (n: number) => `Notes · ${n}`,
+    notesLabel: 'Notes',
     notesAria: 'Paper notes',
     page: (n: number) => `Page ${n}`,
     updated: (date: string) => `Updated ${date}`,

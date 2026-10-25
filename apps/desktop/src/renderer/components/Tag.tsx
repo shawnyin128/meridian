@@ -106,15 +106,3 @@ export const TagButton = forwardRef<HTMLButtonElement, TagOwnProps & Omit<Compon
     )
   },
 )
-
-/** A number beside a label, in the one quiet count look. Zero is shown as 0. */
-export function CountBadge({ count, className = '' }: {
-  count: number
-  className?: string
-}) {
-  return (
-    <span className={`count-badge${className ? ` ${className}` : ''}`}>
-      {count}
-    </span>
-  )
-}

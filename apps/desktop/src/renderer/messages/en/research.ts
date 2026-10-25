@@ -13,7 +13,7 @@ export const research = {
       openMilestones: 'Open milestones',
       recentProgress: 'Research log entries, last 7 days',
     },
-    decisions: (n: number) => `Needs attention · ${n}`,
+    decisions: 'Needs attention',
     progressHeading: 'Project progress',
     activePathNote: (taskText: string | undefined) =>
       `Active research path${taskText === undefined ? '' : ` · Task: ${taskText}`}`,
@@ -32,7 +32,7 @@ export const research = {
       `Task moved ${slots > 0 ? 'later' : 'earlier'} by ${hours} ${pluralEn(hours, { one: 'hour', other: 'hours' })}`,
   },
   list: {
-    title: (n: number) => `Projects · ${n}`,
+    title: 'Projects',
     create: 'New project',
     empty: 'No active projects yet',
     sort: 'Sort',
@@ -42,7 +42,6 @@ export const research = {
     rename: 'Rename',
     renamed: 'Renamed',
     statusChangedTo: (status: string) => `Marked as ${status}`,
-    groupHeading: (status: string, n: number) => `${status} · ${n}`,
     createdNote: 'Project created',
     createdFeedNote: (name: string) => `Created project “${name}”`,
   },

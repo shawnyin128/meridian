@@ -18,7 +18,7 @@ export const reader = {
   emptyNotes: '还没有笔记',
   notes: {
     ariaLabel: '阅读笔记',
-    heading: (count: number) => `阅读笔记 · ${count}`,
+    heading: '阅读笔记',
     newAria: '新笔记',
     placeholder: (page: number) => `第 ${page} 页的笔记`,
     pageAria: (page: number) => `第 ${page} 页笔记`,

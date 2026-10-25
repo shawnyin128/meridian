@@ -1,5 +1,5 @@
 /*
- * Window shell, menu, tag and property-table rules shared by every screen, copied rule by rule from
+ * Window shell and property-table rules shared by every screen, copied rule by rule from
  * e2e/fixtures/platform-shell-demo.html. Selectors keep the demo's names so the two can be compared
  * side by side.
  */
@@ -35,8 +35,6 @@
 .btn:disabled{opacity:.45;cursor:default;box-shadow:none}
 /* A busy button shows live progress, so it keeps its full colour while it cannot be clicked. */
 .btn[aria-busy="true"]{opacity:1}
-/* An applied filter looks pressed; solid accent is kept for primary actions. */
-.filter-menu.on{background-color:var(--selected-strong);border-color:transparent;color:var(--on-selected)}
 .add-action{display:inline-flex;align-items:center;justify-content:center;gap:var(--sp-6);white-space:nowrap}
 .add-action>svg{width:12px;height:12px;flex:none}
 
@@ -67,40 +65,6 @@
 .direction-actions{display:flex;align-items:center;gap:var(--sp-6);flex:none}
 
 /*
- * Menus (.ctxmenu) and candidate lists (.pickhits) share one surface and one item anatomy; Radix owns
- * position and open/close. An item's highlight is inset inside the surface's padding. A Radix item
- * lights up while [data-highlighted] and a candidate row (.rrow) while it is the active row (.on);
- * neither lights up on :hover, which would paint a second row while the keyboard moves. Only a
- * button row outside a Radix menu, as in the column settings, lights up on hover; its focus is the ring.
- */
-.ctxmenu,.pickhits{background:var(--raised);border-radius:var(--r-menu);box-shadow:var(--sh-2);padding:var(--pad-menu);z-index:90;
-  --fade-paint:var(--raised);--fade-pad-top:var(--pad-menu);--fade-pad-bottom:var(--pad-menu)}
-.ctxmenu{min-width:158px}
-.mi{display:flex;align-items:center;gap:var(--sp-10);width:100%;min-height:var(--row-menu-h);padding:0 var(--row-menu-pad);border:0;border-radius:var(--r-menu-item);background:transparent;font-family:var(--sans);font-size:var(--fs-base);line-height:var(--lh-ui);text-align:left;color:var(--ink);cursor:pointer;user-select:none;transition:background var(--t-fast) var(--e-out)}
-.mi[data-highlighted],.mi.rrow.on,button.mi:not(:disabled):hover{background:var(--hover)}
-.mi.danger{color:var(--bad)}
-/* A disabled item takes the button set's disabled look. */
-.mi[data-disabled],button.mi:disabled{opacity:.45;cursor:default}
-/* A candidate with a grey second line under its title, and a row that creates what was typed */
-.mi.two-line{flex-direction:column;align-items:stretch;gap:0;padding-block:var(--sp-4)}
-.mi .rt{font-weight:var(--fw-medium)}
-.mi .rm{font-size:var(--fs-sm);color:var(--ter)}
-.mi.mk{color:var(--ter)}
-.mi.mk svg{width:11px;height:11px;flex-shrink:0}
-/* The divider between groups of items, and the label that heads a candidate list or a group in it */
-.msep{height:1px;background:var(--sep2);margin:var(--sp-4) var(--sp-6)}
-.pickhits .rh,.pickhits .rg{padding:var(--sp-6) var(--row-menu-pad) var(--sp-4);font-size:var(--fs-cap);color:var(--ter)}
-.pickhits .rg{font-weight:var(--fw-semibold)}
-/* The one checked mark, in the slot before an item's label */
-.mi .ck{width:var(--row-menu-check);display:flex;align-items:center;flex-shrink:0}
-.mi .ck>span{display:flex}
-.cki{width:13px;height:13px;vertical-align:-2px}
-.mi-key{margin-left:auto;color:var(--ter);font-size:var(--fs-cap)}
-/* Input row in a popover */
-.mi-in{padding:var(--sp-6) var(--sp-8)}
-.mi-in .form-input{width:100%}
-
-/*
  * Last header cell of both tables: the add-column + and the column-settings gear, nested icon
  * buttons in the header row's actions slot. Two 24px buttons fit in 52px once the cell's padding
  * drops from the 10px of .ptable th / .cmp th to 2px and the slot sets them side by side without its
@@ -113,15 +77,6 @@
  */
 .ptable th.th-add,.cmp th.th-add{padding:var(--sp-2)}
 .th-add .row-actions{gap:0;vertical-align:middle}
-
-/* A menu surface takes focus only to hand it to an item, and a Radix item's highlight is its focus. */
-.ctxmenu:focus-visible,.mi[data-highlighted]:focus-visible{outline:0}
-
-/* Second popover form, for rename/edit (FloatingTextEditor, project rename): the demo's .ctxmenu.drop. */
-.ctxmenu.drop{padding:0;border-radius:var(--r-menu);overflow:hidden;min-width:190px}
-
-/* A chip tag in a row of them: the paper table's tag cells and the project's links section */
-.tagchip{margin:1px var(--sp-4) 1px 0}
 
 /* The label column is as wide as the longest label, which stays on one line. */
 .wkprops{display:grid;grid-template-columns:max-content minmax(0,1fr);width:100%;max-width:100%;min-width:0;row-gap:var(--sp-6);column-gap:var(--sp-12);font-size:var(--fs-sm);line-height:var(--lh-ui)}
@@ -142,8 +97,6 @@
 /*
  * Two-column page: body text on the left, a property column on the right with rows of related chips
  * below it. Shared by project details and wiki pages.
- * The demo gives every .wkrel .tagchip the pointer cursor; here only chips with a real link target
- * get it.
  */
 .wkpage{display:flex;gap:var(--sp-32);align-items:flex-start;font-size:var(--fs-read);line-height:var(--lh-read)}
 .wkmain{flex:1;min-width:0}
@@ -163,10 +116,6 @@
   padding-bottom:var(--ring-room)}
 /* In a window too short for the column to stay pinned with room to read, it scrolls with the page. */
 @media (max-height:860px){.wkside:not(.node-document-pane){position:static;max-height:none}}
-.wkrel{display:flex;gap:var(--sp-6);align-items:center;flex-wrap:wrap;margin:var(--sp-4) 0}
-.wkrel .rl{font-size:var(--fs-sm);color:var(--ter);width:28px;flex-shrink:0}
-.wkrel .tagchip{cursor:default;margin:0;position:relative}
-.wkrel .tagchip[data-wk]{cursor:pointer}
 
 .desk-head .fetchnote{font-size:var(--fs-sm);color:var(--ter);white-space:nowrap}
 
@@ -208,8 +157,6 @@
 .md hr{border:0;border-top:1px solid var(--sep2);margin:var(--sp-16) 0}
 .md img{max-width:100%}
 .md .katex-display{margin:var(--sp-10) 0}
-.cnt{border:0;background:transparent;padding:0;font:inherit;color:inherit;cursor:pointer}
-.cnt:hover{color:var(--ink);text-decoration:underline}
 .nrow{display:grid;padding:var(--sp-8) var(--sp-2)}
 .nrow .nq{font-size:var(--fs-sm);color:var(--ter);font-style:italic;background:var(--field);border-radius:var(--r-sm);padding:var(--sp-6) var(--sp-8);margin-bottom:var(--sp-6)}
 .nrow .nt{font-size:var(--fs-sm);color:var(--ink);overflow-wrap:anywhere}

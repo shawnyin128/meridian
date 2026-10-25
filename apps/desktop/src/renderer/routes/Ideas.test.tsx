@@ -150,7 +150,7 @@ describe('Ideas', () => {
     expect([...row('idea-paused').querySelectorAll('.idea-row-work .tag')].map((tag) => tag.textContent)).toEqual(['搁置项目', '搁置'])
     expect(row('idea-completed').closest('.structured-list')!.previousElementSibling!.textContent).toBe('已完成 · 1')
     const archived = host.querySelector<HTMLElement>('.collapsible-group.collapsible-group--quiet')!
-    expect(archived.querySelector('.collapsible-group-count')!.textContent).toBe(' · 1')
+    expect(archived.querySelector('.heading-count')!.textContent).toBe(' · 1')
   })
 
   it('放在项目里一个已经收尾的科研节点上的想法算已完成，项目还在进行', async () => {
@@ -504,7 +504,7 @@ describe('Ideas', () => {
     await act(async () => { root.render(<MessagesProvider><Ideas /></MessagesProvider>) })
     const group = host.querySelector<HTMLElement>('.collapsible-group.collapsible-group--quiet')!
     expect(group.querySelector('.collapsible-group-title')!.textContent).toBe('已归档')
-    expect(group.querySelector('.collapsible-group-count')!.textContent).toBe(' · 1')
+    expect(group.querySelector('.heading-count')!.textContent).toBe(' · 1')
     expect(host.querySelector('[data-idea="idea-aside"]')).toBeNull()
     await act(async () => { group.querySelector<HTMLButtonElement>('.collapsible-group-toggle')!.click() })
     expect(group.querySelector('[data-idea="idea-aside"]')!.classList.contains('research-object-card')).toBe(true)
@@ -535,6 +535,19 @@ describe('Ideas', () => {
       .find((item) => item.textContent?.startsWith('取消归档'))!
     expect([unarchive.hasAttribute('data-disabled'), unarchive.querySelector('.mi-key')?.textContent])
       .toEqual([true, '项目已完成'])
+  })
+
+  it('所在项目已不在时,详情里所在项目下面写一行警告', async () => {
+    api.ideas.push({ ...OWN, id: 'idea-orphan', title: '项目没了的想法', project: 'project-gone' })
+    try {
+      await act(async () => { root.render(<MessagesProvider><Ideas /></MessagesProvider>) })
+      await act(async () => { host.querySelector<HTMLElement>('[data-idea="idea-orphan"]')!.click() })
+      const warning = host.querySelector('.idea-missing-project')
+      expect([warning?.matches('.inline-message--line.inline-message--warning[role="status"]'), warning?.textContent])
+        .toEqual([true, '原关联项目当前不可用'])
+    } finally {
+      api.ideas.pop()
+    }
   })
 
   it('想法详情里每一节的操作放在那一节小标题的右端', async () => {

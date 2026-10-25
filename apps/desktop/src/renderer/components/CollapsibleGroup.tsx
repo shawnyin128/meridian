@@ -1,6 +1,7 @@
 import { useId, useState } from 'react'
 import type { ReactNode } from 'react'
 import { FoldToggle } from './FoldToggle.js'
+import { HeadingCount } from './HeadingCount.js'
 import './CollapsibleGroup.css'
 
 /**
@@ -38,7 +39,7 @@ export function CollapsibleGroup({
         >
           <span className="collapsible-group-label">
             <span className="collapsible-group-title">{title}</span>
-            {count === undefined ? null : <span className="collapsible-group-count"> · {count}</span>}
+            <HeadingCount count={count} />
           </span>
         </FoldToggle>
         {actions === undefined ? null : <div className="collapsible-group-actions">{actions}</div>}

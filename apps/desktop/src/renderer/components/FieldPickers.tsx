@@ -4,7 +4,7 @@ import type { Task } from '../../shared/contract.js'
 import { useToday } from '../shell/AppShell.js'
 import { useFormat } from '../lib/format.js'
 import { useMessages } from '../messages/useMessages.js'
-import { ActionMenu, MenuRadioGroup, MenuRadioItem } from './ActionMenu.js'
+import { ActionMenu, MenuRadioGroup, MenuRadioItem, type MenuSurface } from './ActionMenu.js'
 import { ActionPopover, PopoverClose } from './ActionPopover.js'
 import { FormButton } from './FormControls.js'
 import { IconButton } from './IconButton.js'
@@ -23,7 +23,7 @@ const PRIORITIES: Task['priority'][] = ['p0', 'p1', 'p2']
  * it leaves focus to an editor an item opens in place.
  */
 export function DotsMenu({
-  children, label, stopRowActivation = false, open, onOpenChange, contentClassName, onCloseAutoFocus,
+  children, label, stopRowActivation = false, open, onOpenChange, surface, onCloseAutoFocus,
 }: {
   children: ReactNode
   /** The name, e.g. naming which idea or chat the menu manages. Falls back to the shared "more actions" label when omitted. */
@@ -32,7 +32,7 @@ export function DotsMenu({
   stopRowActivation?: boolean
   open?: boolean
   onOpenChange?: (open: boolean) => void
-  contentClassName?: string
+  surface?: MenuSurface
   onCloseAutoFocus?: (event: Event) => void
 }) {
   const m = useMessages()
@@ -40,7 +40,7 @@ export function DotsMenu({
     <ActionMenu
       {...(open === undefined ? {} : { open })}
       {...(onOpenChange === undefined ? {} : { onOpenChange })}
-      {...(contentClassName === undefined ? {} : { contentClassName })}
+      {...(surface === undefined ? {} : { surface })}
       {...(onCloseAutoFocus === undefined ? {} : { contentProps: { onCloseAutoFocus } })}
       stopContentClickPropagation
       trigger={(
@@ -100,7 +100,7 @@ export function ChoicePicker<T extends string>({
   return (
     <ActionMenu
       align="start" trigger={trigger} stopContentClickPropagation={stopRowActivation}
-      {...(appearance === 'field' ? { contentClassName: 'ctxmenu choice-picker-menu', scrolls: true } : {})}
+      {...(appearance === 'field' ? { contentClassName: 'choice-picker-menu', scrolls: true } : {})}
     >
       <MenuRadioGroup value={value}>
         {options.map((option) => (

@@ -14,13 +14,13 @@ describe('CollapsibleGroup', () => {
     const withCount = renderToStaticMarkup(
       <CollapsibleGroup title="标题" count={3} open onToggle={vi.fn()}>内容</CollapsibleGroup>,
     )
-    expect(withCount).toContain('<span class="collapsible-group-label"><span class="collapsible-group-title">标题</span><span class="collapsible-group-count"> · 3</span></span>')
+    expect(withCount).toContain('<span class="collapsible-group-label"><span class="collapsible-group-title">标题</span><span class="heading-count"> · 3</span></span>')
     expect(withCount).not.toContain('count-badge')
 
     const withoutCount = renderToStaticMarkup(
       <CollapsibleGroup title="标题" open onToggle={vi.fn()}>内容</CollapsibleGroup>,
     )
-    expect(withoutCount).not.toContain('collapsible-group-count')
+    expect(withoutCount).not.toContain('heading-count')
   })
 
   it('分组标题是共享的折叠钮：箭头跟在标题和条数后面，报出展开与否和它折叠的分组内容；收起时箭头转向', () => {

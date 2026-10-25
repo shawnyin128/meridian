@@ -73,13 +73,6 @@
 .sfield{margin-bottom:var(--sp-6)}
 .sfield>.form-input{width:100%}
 
-/*
- * Live results of the global search: Radix positions, opens and closes them, and the rows are the
- * shared menu anatomy. In the demo the panel's left edge lines up with the search box and its right
- * edge reaches 260px past the sidebar over the content, which comes to 270px wider than the search box.
- */
-/* Compounded with .pickhits so this wider, unclipped shape and lower stacking layer win over the shared shell's, regardless of CSS load order. */
-.pickhits.sres{width:calc(var(--radix-popover-trigger-width) + 270px);max-height:none;overflow:hidden;z-index:40}
 /* A search with no hits keeps the panel open; its empty state sits on the rows' inline padding. */
 .pickhits.sres .sres-empty{padding:0 var(--row-menu-pad)}
 
@@ -112,11 +105,7 @@
 .srow.on .ic{color:inherit}
 .feed-row{margin-top:var(--sp-8)}
 .trash-row{flex-shrink:0;margin-top:var(--sp-6)}
-.update-row{display:flex;flex-shrink:0;align-items:center;gap:var(--sp-8);margin-top:var(--sp-6);padding:var(--sp-8);border-radius:var(--r-md);
-  background:var(--chip);color:var(--ink);font-size:var(--fs-sm)}
-.update-row .ic{display:grid;place-items:center;color:var(--ink)}
-.update-row-text{flex:1;min-width:0;overflow-wrap:anywhere}
-.update-row .update-row-action{flex:none}
+.update-row{flex-shrink:0;margin-top:var(--sp-6)}
 .srow .ic{width:16px;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:var(--sec)}
 .srow .ic svg{width:13.5px;height:13.5px}
 .srow .n{margin-left:auto}

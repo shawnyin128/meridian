@@ -518,7 +518,7 @@ test('总览新建里程碑:写被拒时弹层与打的字都留着,改了再回
   // Wait for the refusal notice first: it shows the Enter really reached Core and was rejected, so the
   // popover is checked only after the write has returned.
   await expect(win.locator('#notice[data-tone="refusal"] .notice-text')).toHaveText('这一项已不存在')
-  await expect(shown(win).locator('.ipcerror')).toHaveCount(0)
+  await expect(shown(win).locator('.page-error')).toHaveCount(0)
   await expect(menu).toBeVisible()
   await expect(input).toHaveValue(REJECTED_TITLE)
 
@@ -582,7 +582,7 @@ test('总览里程碑改名:写成了才收起;写被拒时弹层与打的字都
   await input.fill(REJECTED_TITLE)
   await input.press('Enter')
   await expect(win.locator('#notice[data-tone="refusal"] .notice-text')).toHaveText('这一项已不存在')
-  await expect(shown(win).locator('.ipcerror')).toHaveCount(0)
+  await expect(shown(win).locator('.page-error')).toHaveCount(0)
   await expect(menu).toBeVisible()
   await expect(input).toHaveValue(REJECTED_TITLE)
 })

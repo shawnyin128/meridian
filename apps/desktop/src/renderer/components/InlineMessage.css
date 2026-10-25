@@ -1,0 +1,15 @@
+/*
+ * The one error, warning, note or success in place. Each tone colours only the text, through its text
+ * token, which keeps 4.5:1 on every surface and on the neutral box in every theme. No outer margin: the
+ * place it sits in sets the space around it.
+ */
+.inline-message{display:flex;align-items:center;gap:var(--sp-8);min-width:0;font-size:var(--fs-meta);line-height:var(--lh-ui)}
+.inline-message--error{color:var(--bad-text)}
+.inline-message--warning{color:var(--warn-text)}
+.inline-message--info{color:var(--sec)}
+.inline-message--done{color:var(--good-text)}
+.inline-message--box{padding:var(--sp-8) var(--sp-12);border-radius:var(--r-md);background:var(--tint-mut)}
+.inline-message-lead{display:flex;flex:none;align-items:center}
+.inline-message-lead svg{width:14px;height:14px}
+.inline-message-text{flex:1;min-width:0;overflow-wrap:anywhere}
+.inline-message-action{display:flex;flex:none;align-items:center;gap:var(--sp-8)}

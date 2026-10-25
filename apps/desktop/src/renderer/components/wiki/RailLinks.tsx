@@ -2,7 +2,6 @@ import type { ReactNode } from 'react'
 import { SectionHeading } from '../PageShell.js'
 import { TagButton } from '../Tag.js'
 import { Tooltip } from '../Tooltip.js'
-import './RailLinks.css'
 
 /** One link of a rail block: its name, the whole name its tooltip shows, the Wiki page it is (if any) and what opening it does. */
 export type RailLink = {

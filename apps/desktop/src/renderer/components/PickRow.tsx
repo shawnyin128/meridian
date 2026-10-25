@@ -92,7 +92,7 @@ export function PickRow({
 
   return (
     <PickerPopover
-      open={hits.length > 0} anchorRef={input} contentClassName="pickhits"
+      open={hits.length > 0} anchorRef={input}
       anchor={(
         <FormInput
           appearance={inputAppearance} className={inputClassName} ref={input} placeholder={placeholder}

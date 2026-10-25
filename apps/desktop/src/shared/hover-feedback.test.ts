@@ -20,7 +20,7 @@ const { document, MouseEvent, getComputedStyle } = globalThis as unknown as Wind
 const STYLES = [
   'shell/tokens.css', 'components/Tag.css', 'routes/shell.css', 'components/paper-table/PaperTable.css', 'components/PaperMetadata.css',
   'components/CollapsibleGroup.css', 'components/FoldCaret.css', 'components/FoldToggle.css', 'components/chat/Chat.css',
-  'components/ShortTextEditor.css',
+  'components/ActionMenu.css', 'components/ShortTextEditor.css',
 ].map((path) => readFileSync(join(import.meta.dirname, '..', 'renderer', path), 'utf8'))
 
 /**
@@ -61,7 +61,7 @@ describe('没有悬停反馈的控件', () => {
   })
 
   it('里程碑编辑框的删除行悬停时铺上菜单项的那层悬停底', () => {
-    const editor = '<div class="short-text-editor"><div class="short-text-separator"></div><button type="button" class="short-text-delete mi danger">删除</button></div>'
+    const editor = '<div class="short-text-editor"><div class="msep"></div><button type="button" class="short-text-delete mi danger">删除</button></div>'
     expect(restAndHover(editor, '.short-text-delete', '.short-text-delete', (style) => style.background))
       .toEqual(['rgba(0, 0, 0, 0)', 'var(--hover)'])
   })

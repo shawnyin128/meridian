@@ -129,7 +129,7 @@ describe('Trash', () => {
       act(() => root!.unmount())
       root = createRoot(host)
       await act(async () => { root!.render(<MessagesProvider><Trash /></MessagesProvider>) })
-      expect(host.querySelector('.ipcerror')?.textContent).toBe(label)
+      expect(host.querySelector('.page-error')?.textContent).toBe(label)
       expect(host.textContent).not.toContain('/Users/me/vault')
     }
     vi.restoreAllMocks()
@@ -142,11 +142,11 @@ describe('Trash', () => {
     }
     api.listError = new CallError('trash.list', 'newer-version')
     await reread(1)
-    expect(host.querySelector('.ipcerror')?.textContent).toBe('需要更新 App')
+    expect(host.querySelector('.page-error')?.textContent).toBe('需要更新 App')
 
     api.listError = null
     await reread(2)
-    expect([host.querySelector('.ipcerror'), host.querySelectorAll('.trow').length]).toEqual([null, 4])
+    expect([host.querySelector('.page-error'), host.querySelectorAll('.trow').length]).toEqual([null, 4])
   })
 
   it('每条只写几天后自动清除，页脚不再用一句话重复保留期', () => {

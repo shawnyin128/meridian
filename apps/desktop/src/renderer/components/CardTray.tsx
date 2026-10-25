@@ -2,6 +2,7 @@ import { useId, useState } from 'react'
 import type { ReactNode } from 'react'
 import { FadeText } from './FadeText.js'
 import { FoldToggle } from './FoldToggle.js'
+import { HeadingCount } from './HeadingCount.js'
 import './CardTray.css'
 
 /**
@@ -11,13 +12,15 @@ import './CardTray.css'
  * by `expandLabel` and `collapseLabel`; `row` draws no surface of its own, for a list row whose
  * summary is the row itself and names the toggle. A `composite` row's summary holds a control of its
  * own, such as an entity link, so the toggle, named by the summary, lies over the caret and the
- * summary instead of holding them, and the control sits above it.
+ * summary instead of holding them, and the control sits above it. `count` follows the summary as
+ * ` · N`.
  */
 export function CardTray({
-  summary, children, action, variant = 'tray', composite = false, expandLabel, collapseLabel, defaultOpen = false,
+  summary, count, children, action, variant = 'tray', composite = false, expandLabel, collapseLabel, defaultOpen = false,
   className = '',
 }: {
   summary: ReactNode
+  count?: number | undefined
   children: ReactNode
   action?: ReactNode
   defaultOpen?: boolean
@@ -29,7 +32,7 @@ export function CardTray({
   const [open, setOpen] = useState(defaultOpen)
   const detailId = useId()
   const label = variant === 'row' ? undefined : open ? collapseLabel : expandLabel
-  const text = <FadeText className="card-tray-summary">{summary}</FadeText>
+  const text = <FadeText className="card-tray-summary">{summary}<HeadingCount count={count} /></FadeText>
   const toggle = () => setOpen((held) => !held)
   return (
     <div className={`card-tray card-tray--${variant}${open ? ' is-open' : ''}${className ? ` ${className}` : ''}`}>

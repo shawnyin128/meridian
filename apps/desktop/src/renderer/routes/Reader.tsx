@@ -36,7 +36,7 @@ import {
 } from './reader-zoom.js'
 import { PaperChat, type PaperChatPrompt } from '../components/chat/PaperChat.js'
 import { ReaderSidePanel, type ReaderSideTab } from '../components/reader/ReaderSidePanel.js'
-import { PageShell } from '../components/PageShell.js'
+import { PageError, PageShell } from '../components/PageShell.js'
 import { useScreenLoad } from '../hooks/useScreenLoad.js'
 import { plainTitle } from '../components/paper/paper-text.js'
 import './shell.css'
@@ -967,14 +967,14 @@ export function Reader() {
         <div className="reader">
           <div className="pdfwrap" ref={scroller} onMouseUp={captureSelection}>
             <div ref={sheet} className="pdfsheet" />
-            {error === null ? null : <div className="pdfload">{error}</div>}
+            <PageError variant="section" error={error} />
             {loading ? <LoadingPlaceholder shape="sheet" /> : null}
           </div>
 
           <ActionPopover
             open={pending !== null} anchorBox={selectionAnchor}
             onOpenChange={(open) => { if (!open) setPending(null) }}
-            contentClassName="ctxmenu selection-tools" side="bottom" align="center" sideOffset={10}
+            surface="toolbar" contentClassName="selection-tools" side="bottom" align="center" sideOffset={10}
             contentProps={{
               // Opening leaves focus where it is, so the selection can still be copied.
               onOpenAutoFocus: (event) => event.preventDefault(),

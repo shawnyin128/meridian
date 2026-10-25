@@ -20,7 +20,7 @@ export const reader = {
   emptyNotes: 'No notes yet',
   notes: {
     ariaLabel: 'Reading notes',
-    heading: (count: number) => `Reading notes · ${count}`,
+    heading: 'Reading notes',
     newAria: 'New note',
     placeholder: (page: number) => `Add a note about page ${page}…`,
     pageAria: (page: number) => `Page ${page} note`,

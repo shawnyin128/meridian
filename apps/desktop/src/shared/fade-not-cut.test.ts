@@ -38,9 +38,9 @@ const FADED: Record<string, [file: string, markup: RegExp][]> = {
   '.gwrap': [['components/timeline/TimelineBoard.tsx', /className="gwrap" ref=\{wrapFade\}/]],
   '.cmdk-list': [['shell/CommandPalette.tsx', /className="cmdk-list" ref=\{listFade\}/]],
   '.pickhits': [['components/PickerPopover.tsx', /<Popover\.Content\s+ref=\{listFade\}/]],
-  '.pickhits.cres': [['components/PickerPopover.tsx', /<Popover\.Content\s+ref=\{listFade\}/]],
+  '.pickhits--tall': [['components/PickerPopover.tsx', /<Popover\.Content\s+ref=\{listFade\}/]],
   '.ctxmenu.choice-picker-menu': [
-    ['components/FieldPickers.tsx', /contentClassName: 'ctxmenu choice-picker-menu', scrolls: true/],
+    ['components/FieldPickers.tsx', /contentClassName: 'choice-picker-menu', scrolls: true/],
     ['components/ActionMenu.tsx', /\{\.\.\.\(scrolls \? \{ ref: fade, 'data-fade-paint': '' \} : \{\}\)\}/],
   ],
   '.md pre': [['components/Markdown.tsx', /pre: \(\{ children \}\) => <Sideways as="pre">/]],

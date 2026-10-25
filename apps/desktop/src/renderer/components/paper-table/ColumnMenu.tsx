@@ -141,7 +141,7 @@ export function ColumnMenu({ columns, onChange, onRenameOption, onRetype }: {
               </>
             )
             return locked
-              ? <div key={c.k} className="mi colrow locked">{body}</div>
+              ? <div key={c.k} className="mi colrow locked" data-disabled="">{body}</div>
               : (
                 <button
                   type="button" key={c.k} className="mi colrow" aria-pressed={shown} onClick={() => toggle(c.k)}
