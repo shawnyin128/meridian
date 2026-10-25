@@ -1,4 +1,5 @@
 import type { AppUpdateStatus } from '../shared/app-update.js'
+import type { AppCommand, MenuState } from '../shared/app-commands.js'
 import type {
   AttachmentFields, AuthorCandidate, AuthorSearchFailed, CallRejection, ChangeEntry, ChatCancelResult,
   ChatMessage, ChatMessageFields, ChatRun, ChatSendResult, ChatSession, ColourTheme, ColourThemeFile, ConclusionState,
@@ -52,6 +53,13 @@ export const appMenu = {
   onOpenAgentTutorial: (handler: () => void) => window.meridian.onOpenAgentTutorial(handler),
   /** Open the command palette from the native menu, whose accelerator is the palette's shortcut. */
   onOpenPalette: (handler: () => void) => window.meridian.onOpenPalette(handler),
+  /**
+   * Calls `handler` with each command Main hands the page, from the application menu or a trackpad
+   * swipe, and returns its unsubscribe function.
+   */
+  onAppCommand: (handler: (command: AppCommand) => void) => window.meridian.onAppCommand(handler),
+  /** Tells Main whether the sidebar is hidden and the reader shown, which title and route menu items. */
+  setMenuState: (state: MenuState) => { window.meridian.setMenuState(state) },
   /** Open the system directory selector. The page only gets the final path, not any Electron channel. */
   chooseLibraryRoot: () => window.meridian.chooseLibraryRoot(),
   /** Open the system directory selector and connect the code workspace to a project. */

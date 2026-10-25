@@ -26,6 +26,10 @@ const fixture = vi.hoisted(() => ({
   today: () => Promise.resolve('2026-10-18'),
   /** What the native menu's Command Palette item sends, once the shell has subscribed to it. */
   openPalette: null as (() => void) | null,
+  /** What Main hands the page from a menu item or a swipe, once the shell has subscribed to it. */
+  appCommand: null as ((command: string) => void) | null,
+  menuStates: [] as { sidebarHidden: boolean; reading: boolean }[],
+  createChat: vi.fn(() => new Promise(() => {})),
 }))
 
 const none = vi.hoisted(() => () => Promise.resolve([]))
@@ -41,13 +45,18 @@ vi.mock('../ipc.js', () => ({
       fixture.fullScreen.push(handler)
       return () => { fixture.fullScreen.splice(fixture.fullScreen.indexOf(handler), 1) }
     },
+    onAppCommand: (handler: (command: string) => void) => {
+      fixture.appCommand = handler
+      return () => { fixture.appCommand = null }
+    },
+    setMenuState: (state: { sidebarHidden: boolean; reading: boolean }) => { fixture.menuStates.push(state) },
     setTitleBarTheme: vi.fn(), toggleMaximize: vi.fn(),
   },
   appUpdates: { check: vi.fn(), status: () => new Promise(() => {}), onChange: () => () => {}, install: vi.fn() },
   changelog: { list: none },
   colourThemes: { list: none },
   chat: {
-    list: () => Promise.resolve(fixture.chats), create: () => new Promise(() => {}), setArchived: vi.fn(),
+    list: () => Promise.resolve(fixture.chats), create: fixture.createChat, setArchived: vi.fn(),
     delete: fixture.deleteChat,
   },
   extensions: { checkLatest: vi.fn() },
@@ -815,6 +824,88 @@ describe('AppShell command palette', () => {
   })
 })
 
+
+describe('AppShell 菜单栏命令', () => {
+  const shown = () => document.querySelector('.screenslot:not([hidden])')!.textContent
+  const command = (name: string) => act(() => fixture.appCommand!(name))
+
+  it('文件菜单的新建项目、新建想法、导入 PDF… 和命令面板走同一个落点,新对话新建一段对话', async () => {
+    await mount(undefined, {
+      project: <JumpProbe id="projectJump" />, papers: <JumpProbe id="papersJump" />, ideas: <JumpProbe id="ideasJump" />,
+    })
+    command('newProject')
+    expect(shown()).toBe('{"newProject":true}')
+    command('importPdf')
+    expect(shown()).toBe('{"importPdf":true}')
+    command('newIdea')
+    expect(shown()).toBe('{"newIdea":true}')
+    fixture.createChat.mockClear()
+    command('newChat')
+    expect(fixture.createChat).toHaveBeenCalledTimes(1)
+  })
+
+  it('编辑 › 查找… 像「/」一样跳到搜索框,在文本框里也一样', async () => {
+    await mount(<input aria-label="名称" />)
+    const field = document.querySelector<HTMLInputElement>('[aria-label="名称"]')!
+    field.focus()
+    command('find')
+    expect(document.activeElement).toBe(document.querySelector('#sSearch'))
+  })
+
+  it('视图 › 收起侧栏和 ⌘B 是同一个开关,侧栏和阅读器的状态告诉主进程,菜单按它改名、缩放按它走', async () => {
+    fixture.menuStates.length = 0
+    await mount(<OpenReader />)
+    expect(fixture.menuStates.at(-1)).toEqual({ sidebarHidden: false, reading: false })
+    command('toggleSidebar')
+    expect(document.querySelector('#main')!.classList.contains('sbhide')).toBe(true)
+    expect(fixture.menuStates.at(-1)).toEqual({ sidebarHidden: true, reading: false })
+    press('b', { metaKey: true })
+    expect(fixture.menuStates.at(-1)).toEqual({ sidebarHidden: false, reading: false })
+    act(() => { document.querySelector<HTMLButtonElement>('#openReader')!.click() })
+    expect(fixture.menuStates.at(-1)).toEqual({ sidebarHidden: false, reading: true })
+  })
+
+  /** Mouse button `button` released on the page; returns whether the shell took it. */
+  const release = (button: number) => {
+    const event = new MouseEvent('mouseup', { button, bubbles: true, cancelable: true })
+    act(() => { document.body.dispatchEvent(event) })
+    return event.defaultPrevented
+  }
+
+  it('触控板轻扫和鼠标的后退键按下当前屏的返回按钮,别的鼠标键不算', async () => {
+    const back = vi.fn()
+    await mount(<button type="button" className="back" onClick={back}>返回</button>)
+    command('back')
+    expect(back).toHaveBeenCalledTimes(1)
+    expect(release(3)).toBe(true)
+    expect(back).toHaveBeenCalledTimes(2)
+    expect([release(0), release(1), release(2), release(4)]).toEqual([false, false, false, false])
+    expect(back).toHaveBeenCalledTimes(2)
+  })
+
+  it('开着对话框时后退只按对话框里的返回,没有就什么也不做,不碰后面那一屏', async () => {
+    const screen = vi.fn()
+    const dialog = vi.fn()
+    await mount(<button type="button" className="back" onClick={screen}>返回</button>)
+    const open = document.createElement('div')
+    open.setAttribute('role', 'dialog')
+    document.body.append(open)
+    command('back')
+    expect([screen.mock.calls.length, dialog.mock.calls.length]).toEqual([0, 0])
+    const inDialog = document.createElement('button')
+    inDialog.className = 'back'
+    inDialog.addEventListener('click', dialog)
+    open.append(inDialog)
+    release(3)
+    expect([screen.mock.calls.length, dialog.mock.calls.length]).toEqual([0, 1])
+  })
+})
+
+/** A button that opens the reader, as a paper's link does. */
+function OpenReader() {
+  const { open } = useJump()
+  return <button type="button" id="openReader" onClick={() => open('reader', 'paper-1')}>阅读</button>
+}
 
 describe('侧栏对话行的删除', () => {
   /** Opens the More menu of chat `id`'s sidebar row and returns its items. */

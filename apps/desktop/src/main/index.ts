@@ -7,7 +7,7 @@ import { existsSync, readFileSync, writeSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { fileURLToPath } from 'node:url'
 import { dirname, join, resolve } from 'node:path'
-import { editMenuTemplate, menuTemplate } from './menu.js'
+import { editMenuTemplate, menuTemplate, nextZoomLevel } from './menu.js'
 import { openLinks } from './links.js'
 import { packagedHarnessEnvironment } from './harness-sidecar.js'
 import { attachCredentialVault } from './credential-vault.js'
@@ -17,6 +17,7 @@ import { canReplaceSelf, createMacSelfUpdate } from './mac-self-update.js'
 import { windowBackground } from './window-background.js'
 import { createUpdater, type InstallRoute } from './updater.js'
 import { releaseFilesUrl } from '../shared/app-update.js'
+import type { AppCommand, MenuState } from '../shared/app-commands.js'
 import { displayVersion } from '../shared/app-version.js'
 import electronUpdater from 'electron-updater'
 import icon from '../../resources/icon.png?asset'
@@ -40,6 +41,8 @@ const UPDATE_INSTALL = 'meridian:update-install'
 const UPDATE_CHANGED = 'meridian:update-changed'
 const FULL_SCREEN = 'meridian:full-screen'
 const FULL_SCREEN_CHANGED = 'meridian:full-screen-changed'
+const APP_COMMAND = 'meridian:app-command'
+const MENU_STATE = 'meridian:menu-state'
 
 // A closed terminal or an earlier parent-process exit is normal, not an application failure. Without
 // this listener, EPIPE would become an uncaught exception and display a crash dialog.
@@ -162,7 +165,16 @@ app.whenReady().then(() => {
     log(`[renderer] ${details.message}\n`)
   })
 
-  // Settings only notifies this window; the renderer owns opening and closing the UI.
+  // Settings and the commands the page carries out only notify this window; the renderer owns the
+  // UI they open. The zoom items zoom the reader's paper while it is shown, the window otherwise.
+  let menuState: MenuState = { sidebarHidden: false, reading: false }
+  const onCommand = (command: AppCommand) => {
+    if ((command === 'zoomIn' || command === 'zoomOut' || command === 'resetZoom') && !menuState.reading) {
+      win.webContents.setZoomLevel(nextZoomLevel(command, win.webContents.getZoomLevel()))
+      return
+    }
+    win.webContents.send(APP_COMMAND, command)
+  }
   const installMenu = () => Menu.setApplicationMenu(Menu.buildFromTemplate(
     menuTemplate(
       process.platform,
@@ -170,8 +182,20 @@ app.whenReady().then(() => {
       copy().menu,
       () => win.webContents.send(OPEN_AGENT_TUTORIAL),
       () => win.webContents.send(OPEN_PALETTE),
+      { packaged: app.isPackaged, sidebarHidden: menuState.sidebarHidden, onCommand },
     )))
   installMenu()
+  win.webContents.ipc.on(MENU_STATE, (_event, state: unknown) => {
+    if (typeof state !== 'object' || state === null) return
+    const { sidebarHidden, reading } = state as Record<string, unknown>
+    if (typeof sidebarHidden !== 'boolean' || typeof reading !== 'boolean') return
+    const retitle = sidebarHidden !== menuState.sidebarHidden
+    menuState = { sidebarHidden, reading }
+    if (retitle) installMenu()
+  })
+  // The swipe Electron names `left` is the one browsers take as Back. It fires only when the Trackpad
+  // setting "Swipe between pages" allows three fingers.
+  win.on('swipe', (_event, direction) => { if (direction === 'left') onCommand('back') })
 
   // A secondary click on text opens the edit menu. A click the page handles itself, such as a paper
   // row's own context menu, prevents the default and never reaches Main.

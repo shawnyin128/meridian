@@ -1,5 +1,6 @@
 import { createContext, Fragment, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import type { CSSProperties, MouseEvent as ReactMouseEvent, ReactNode } from 'react'
+import type { AppCommand } from '../../shared/app-commands.js'
 import type { ChatSession, Watch } from '../../shared/contract.js'
 import { listingsOf } from '../../shared/inbox-streams.js'
 import { ACTIVE_PROJECT } from '../../shared/vocabulary.js'
@@ -350,6 +351,27 @@ export function usePaperChatCollapsed(): boolean {
 const escapeLayers: { close: () => void }[] = []
 
 /**
+ * Focuses the search field of the screen shown, as "/" and Find do: the screen's own field wins over
+ * the always-mounted sidebar search, which sits earlier in the DOM and would otherwise match first in a
+ * single combined selector. A collapsed sidebar is inert, and its search is no fallback.
+ */
+function focusSearch(): void {
+  const field = document.querySelector<HTMLElement>(
+    '.screenslot:not([hidden]) #composer, .screenslot:not([hidden]) #libq',
+  ) ?? document.querySelector<HTMLElement>('#sidebar:not([inert]) #sSearch')
+  field?.focus()
+}
+
+/**
+ * Presses the back button of what is in front, as a trackpad swipe and the mouse's back button do:
+ * an open dialog's, or else the shown screen's first. With none there, nothing happens.
+ */
+function pressBack(): void {
+  const front = document.querySelector('[role="dialog"]') ?? document.querySelector('.screenslot:not([hidden])')
+  front?.querySelector<HTMLButtonElement>('button.back')?.click()
+}
+
+/**
  * Register one dismissible layer. Escape peels the most recently registered active layer and stops;
  * Radix surfaces handle their own Escape before this handler sees it. An Escape pressed while an
  * input method is composing peels nothing.
@@ -530,7 +552,7 @@ export function AppShell({ screens, settings }: {
   }), [settingsCategory, settingsOpen, openSettingsCategory])
 
   // ⌘B on macOS, Ctrl+B elsewhere, toggles the sidebar; Escape peels the topmost dismissible layer;
-  // "/" outside an editable element jumps to the nearest search field.
+  // "/" outside an editable element jumps to the nearest search field; the mouse's back button goes back.
   useEffect(() => {
     const key = (e: KeyboardEvent) => {
       if (pressesCommand(appMenu.platform(), e, 'B')) {
@@ -547,17 +569,21 @@ export function AppShell({ screens, settings }: {
       const editable = target.isContentEditable || /^(input|textarea|select)$/i.test(target.tagName)
       if (e.key === '/' && !editable) {
         e.preventDefault()
-        // The active screen's own field wins over the always-mounted sidebar search, which sits
-        // earlier in the DOM and would otherwise match first in a single combined selector. A
-        // collapsed sidebar is inert, and its search is no fallback.
-        const field = document.querySelector<HTMLElement>(
-          '.screenslot:not([hidden]) #composer, .screenslot:not([hidden]) #libq',
-        ) ?? document.querySelector<HTMLElement>('#sidebar:not([inert]) #sSearch')
-        field?.focus()
+        focusSearch()
       }
     }
+    const mouseBack = (e: MouseEvent) => {
+      // The mouse's back button is button 3.
+      if (e.button !== 3) return
+      e.preventDefault()
+      pressBack()
+    }
     document.addEventListener('keydown', key)
-    return () => document.removeEventListener('keydown', key)
+    document.addEventListener('mouseup', mouseBack)
+    return () => {
+      document.removeEventListener('keydown', key)
+      document.removeEventListener('mouseup', mouseBack)
+    }
   }, [])
 
   const setTail = useMemo(() => {
@@ -679,10 +705,14 @@ export function AppShell({ screens, settings }: {
 
   const crumbs = useMemo(() => crumbsOf(m), [m])
 
+  // The creates and the import the palette and the File menu both offer, one implementation each.
+  const newProject = () => jumps.open('project', '', { newProject: true })
+  const importPdf = () => jumps.open('papers', '', { importPdf: true })
+  const newIdea = () => jumps.open('ideas', '', { newIdea: true })
   const commands: PaletteCommand[] = [
-    { label: m.research.list.create, run: () => jumps.open('project', '', { newProject: true }) },
-    { label: m.papers.upload.importAction, run: () => jumps.open('papers', '', { importPdf: true }) },
-    { label: m.ideas.create, run: () => jumps.open('ideas', '', { newIdea: true }) },
+    { label: m.research.list.create, run: newProject },
+    { label: m.papers.upload.importAction, run: importPdf },
+    { label: m.ideas.create, run: newIdea },
     { label: m.shell.titlebar.settings, shortcut: commandShortcut(appMenu.platform(), ','), run: () => setSettingsOpen(true) },
     ...SETTINGS_CATEGORIES.map((category) => ({
       label: m.shell.palette.settingsPane(m.settings.categories[SETTINGS_CATEGORY_LABEL[category]]),
@@ -700,6 +730,20 @@ export function AppShell({ screens, settings }: {
     { label: m.shell.nav.ideas, run: () => navigate('ideas') },
     { label: m.shell.nav.trash, run: () => navigate('trash') },
   ]
+
+  // A command from the application menu or a swipe runs what the shell renders now; the reader takes the zoom commands.
+  const onAppCommand = useRef<(command: AppCommand) => void>(() => {})
+  onAppCommand.current = (command) => {
+    if (command === 'newProject') newProject()
+    if (command === 'newIdea') newIdea()
+    if (command === 'newChat') newChat()
+    if (command === 'importPdf') importPdf()
+    if (command === 'find') focusSearch()
+    if (command === 'toggleSidebar') setHidden((h) => !h)
+    if (command === 'back') pressBack()
+  }
+  useEffect(() => appMenu.onAppCommand((command) => onAppCommand.current(command)), [])
+  useEffect(() => { appMenu.setMenuState({ sidebarHidden: hidden, reading: screen === 'reader' }) }, [hidden, screen])
 
   // A screen's own breadcrumbs: the last base segment carries its back action, then its deeper ones.
   const partsOf = (k: ScreenKey): CrumbSeg[] => {
