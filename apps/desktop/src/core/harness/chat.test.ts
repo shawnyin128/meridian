@@ -112,6 +112,13 @@ describe('chat failures in plain words', () => {
     expect(said(harness('bad_request', 'Harness callback is not allowed: x'))).toEqual([true, '对话太长，或这次请求模型不支持'])
   })
 
+  it('fails an answer that failed validation as malformed output, in the Harness\'s words', () => {
+    const invalid = chatHarnessError(new HarnessRpcError({
+      kind: 'model_error', message: '模型输出包含无效页码引用', detail: 'structured_output',
+    }))
+    expect(invalid).toMatchObject({ name: 'CallError', reason: 'malformed-output', message: '模型输出包含无效页码引用' })
+  })
+
   it('never passes on a parser\'s text, and leaves an error from outside the Harness call as it is', () => {
     const parsed = z.object({ answer: z.string().min(1) }).safeParse({ answer: '' })
     expect(said(parsed.error)).toEqual([true, '模型的回答读不出来'])
@@ -279,7 +286,12 @@ function sessionChat(initial: HarnessRuntimeModel) {
   })
   const runner = createChatHarnessRunner({
     store, model, checkCli: async () => ({ state: 'connected', modelCalls: 0, maxOutputTokens: 1 }),
-    cli: createCliChatRunner({ binary: async (cli) => join(bin, cli), environment }),
+    cli: createCliChatRunner({
+      discover: async (cli) => ({ cli, installed: true, binary: join(bin, cli), version: '1.0.0', missingFlags: [], signIn: 'subscription' }),
+      // The stand-in CLIs start no MCP server; the turn's lookups add nothing to what they see.
+      internalMcp: async () => ({ claudeArgs: [], codexArgs: [], env: {}, close: async () => {} }),
+      environment,
+    }),
     sessions,
     launch: () => child,
     onLog: (line) => logs.push(line),
@@ -338,7 +350,7 @@ function chatRunner(model: HarnessRuntimeModel, cli: CliChatRunner) {
     runner.close()
     rmSync(root, { recursive: true, force: true })
   }
-  return { child, runner, logs, chat, close }
+  return { child, runner, logs, chat, store, close }
 }
 
 describe('a chat turn on a subscription CLI', () => {
@@ -362,7 +374,7 @@ describe('a chat turn on a subscription CLI', () => {
       type: 'response', callbackId: 'first', result: { output: 'EAGLE reaches 3.76x [p. 6].' },
     })
     expect(calls).toEqual([expect.objectContaining({
-      cli: 'claude', model: 'opus', system: 'Chat rules and context', prompt: 'History, then: Why?', mcpFlags: [],
+      cli: 'claude', model: 'opus', system: 'Chat rules and context', prompt: 'History, then: Why?', lookup: {},
     })])
     child.callModel('second')
     expect(await child.frame()).toMatchObject({ type: 'error', callbackId: 'second', error: { kind: 'bad_request' } })
@@ -393,22 +405,43 @@ describe('a chat turn on a subscription CLI', () => {
     close()
   })
 
-  it('passes a CLI failure to Harness as a model error in the CLI\'s own words', async () => {
-    const { child, runner, chat, close } = chatRunner(CLI_MODEL, async () => {
-      throw new CliRunError('failed', 'claude 运行失败：Claude AI usage limit reached')
+  it('scopes the vault lookups of a paper chat\'s turn to its paper', async () => {
+    const calls: CliChatCall[] = []
+    const { child, runner, store, close } = chatRunner(CLI_MODEL, async (call) => {
+      calls.push(call)
+      return { answer: 'Answer', durationMs: 1 }
     })
-    const answering = runner.answer(chat, 'Why?', new AbortController().signal)
+    const paper = store.listPapers({ page: 1, size: 1 }).rows[0]!.id
+    const answering = runner.answer(store.chatForPaper(paper).id, 'Why?', new AbortController().signal)
     child.ready()
     await child.frame()
+    child.callModel('call')
+    await child.frame()
+    child.send({ type: 'response', id: 1, ok: true, result: { answer: 'Answer' } })
 
-    child.callModel('limit')
-    expect(await child.frame()).toMatchObject({
-      type: 'error', callbackId: 'limit',
-      error: { kind: 'model_error', message: 'claude 运行失败：Claude AI usage limit reached' },
-    })
-    child.send({ type: 'error', id: 1, ok: false, error: { kind: 'model_error', message: 'claude 运行失败：Claude AI usage limit reached' } })
-    await expect(answering).rejects.toEqual(new ChatFailure('claude 运行失败：Claude AI usage limit reached'))
+    await answering
+    expect(calls).toEqual([expect.objectContaining({ lookup: { paperId: paper } })])
     close()
+  })
+
+  it('fails a turn whose CLI call failed for the CLI problem it met, in the CLI\'s own words', async () => {
+    for (const [kind, reason] of [['usage-limit', 'usage-limit'], ['signed-out', 'cli-signed-out'], ['failed', 'model']] as const) {
+      const { child, runner, chat, close } = chatRunner(CLI_MODEL, async () => {
+        throw new CliRunError(kind, 'claude 运行失败：You\'ve hit your limit')
+      })
+      const answering = runner.answer(chat, 'Why?', new AbortController().signal)
+      child.ready()
+      await child.frame()
+
+      child.callModel('limit')
+      expect(await child.frame()).toMatchObject({
+        type: 'error', callbackId: 'limit',
+        error: { kind: 'model_error', message: 'claude 运行失败：You\'ve hit your limit' },
+      })
+      child.send({ type: 'error', id: 1, ok: false, error: { kind: 'model_error', message: 'claude 运行失败：You\'ve hit your limit' } })
+      await expect(answering).rejects.toMatchObject({ name: 'CallError', reason, message: 'claude 运行失败：You\'ve hit your limit' })
+      close()
+    }
   })
 
   it('stops the CLI turn when the user stops the chat', async () => {
@@ -425,7 +458,7 @@ describe('a chat turn on a subscription CLI', () => {
     await vi.waitFor(() => expect(signals).toHaveLength(1))
 
     controller.abort()
-    await expect(answering).rejects.toEqual(new ChatFailure('已停止生成'))
+    await expect(answering).rejects.toMatchObject({ name: 'CallError', reason: 'cancelled' })
     expect(signals[0]!.aborted).toBe(true)
     close()
   })
