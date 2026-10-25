@@ -907,14 +907,17 @@ describe('AppShell 菜单栏命令', () => {
   })
 })
 
-/** A screen whose button `name` makes a write that records change `name` and offers its Undo in the notice. */
-function Writes({ names }: { names: string[] }) {
+/**
+ * A screen whose button `name` makes a write that records change `name` and offers its Undo in the
+ * notice, or, `silent`, records it and shows no notice, as a change visible on screen does.
+ */
+function Writes({ names, silent = false }: { names: string[]; silent?: boolean }) {
   const write = useVaultWrite()
   const undo = useUndo()
   return names.map((change) => (
     <button
       type="button" key={change} id={change}
-      onClick={() => { void write(Promise.resolve({ change }), { note: '已删除', action: undo.change }) }}
+      onClick={() => { void write(Promise.resolve({ change }), silent ? {} : { note: '已删除', action: undo.change }) }}
     >{change}</button>
   ))
 }
@@ -942,6 +945,15 @@ describe('AppShell ⌘Z', () => {
     expect(fixture.undoChange.mock.calls).toEqual([['ch-2'], ['ch-1']])
     expect(await pressZ()).toBe(false)
     expect(fixture.undoChange).toHaveBeenCalledTimes(2)
+  })
+
+  it('没有提示的写入只要记进了最近变动,⌘Z 也撤得掉,也只撤一次', async () => {
+    await mount(<Writes names={['ch-1']} silent />)
+    await writeOf('ch-1')
+    expect(document.querySelector('#notice .notice-text')?.textContent ?? '').toBe('')
+    expect(await pressZ()).toBe(true)
+    expect(fixture.undoChange.mock.calls).toEqual([['ch-1']])
+    expect(await pressZ()).toBe(false)
   })
 
   it('点过提示上的撤销后,⌘Z 不再撤同一次写入', async () => {

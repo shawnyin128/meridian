@@ -27,6 +27,7 @@ import { SETTINGS_CATEGORIES, SETTINGS_CATEGORY_LABEL, type SettingsCategory } f
 import { Sidebar } from './Sidebar.js'
 import { JobsContext, useJobsPoll } from './useJobs.js'
 import { readShellState, writeShellState } from './shell-state.js'
+import { takeUndoOffers } from './undo-offers.js'
 import { ColourThemeFilesContext, useColourThemeFilesPoll } from './useColourThemes.js'
 import brandmark from '../../../resources/mark-64.png'
 import { Button } from '../components/Button.js'
@@ -167,8 +168,9 @@ export function useCrumbTail(tail: CrumbSeg[], onLeafClick?: () => void): void {
 /**
  * Returns the two ways to show the app's one notice: `success` for an action that took effect,
  * `refusal` for one that was refused or failed and wrote nothing. A new notice replaces the shown one.
- * An action marked `undoes` stays on offer after its notice is gone: ⌘Z outside a text field runs the
- * latest Undo still on offer exactly as its notice's button does, then returns to the screen that was
+ * An action marked `undoes` stays on offer after its notice is gone, as does the Undo of every write
+ * the change log records whose notice does not offer one (useVaultWrite): ⌘Z outside a text field runs
+ * the latest Undo still on offer exactly as a notice's button does, then returns to the screen that was
  * shown when it was offered, where the restored item is. Running it either way takes it off offer.
  * The returned object keeps the same reference throughout the lifetime of the shell.
  */
@@ -659,6 +661,9 @@ export function AppShell({ screens, settings }: {
     setScreen(next)
     setMounted((m) => (m.includes(next) ? m : [...m, next]))
   }, [])
+
+  // A write the change log records offers its Undo here too when no notice offers it (useVaultWrite).
+  useEffect(() => takeUndoOffers((run) => { undoOffers.current.push({ run, screen: shownScreen.current }) }), [])
 
   // ⌘Z on macOS, Ctrl+Z elsewhere, outside a text field runs the latest Undo still on offer and goes
   // back to where it was offered. In a text field it stays the field's own undo.
