@@ -22,7 +22,7 @@ import {
 import { EmptyState } from '../components/EmptyState.js'
 import { InlineMessage } from '../components/InlineMessage.js'
 import { LoadingPlaceholder } from '../components/LoadingPlaceholder.js'
-import { CollapsibleGroup } from '../components/CollapsibleGroup.js'
+import { Group, GroupedList } from '../components/GroupedList.js'
 import { DateTimeDisplay } from '../components/DateTimeDisplay.js'
 import { SortMenu } from '../components/SortMenu.js'
 import { Tag } from '../components/Tag.js'
@@ -369,11 +369,11 @@ export function Inbox() {
             </EmptyState>
           )
           : (
-            <>
+            <GroupedList>
               {groups.map((group) => (
-                <CollapsibleGroup
-                  key={group.key} data-group={group.key} title={group.title} count={group.rows.length}
-                  open={!folded.has(group.key)} onToggle={() => toggleGroup(group.key)}
+                <Group
+                  key={group.key} data-group={group.key} title={group.title} count={group.rows.length} sticky
+                  fold={{ open: !folded.has(group.key), onToggle: () => toggleGroup(group.key) }}
                   actions={(
                     <Button
                       size="compact"
@@ -382,9 +382,9 @@ export function Inbox() {
                   )}
                 >
                   {group.rows.map(card)}
-                </CollapsibleGroup>
+                </Group>
               ))}
-            </>
+            </GroupedList>
           )}
       </PageBody>
     </PageShell>

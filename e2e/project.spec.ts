@@ -434,7 +434,7 @@ test('各板块渲染出的条目数与 project.get 返回的条数逐对相等'
   // A done task/milestone starts collapsed into the archived group; open it so every row is in the
   // DOM and this parity check still accounts for every item the contract returns.
   const openArchive = async (listSelector: string) => {
-    const toggle = win.locator(`${listSelector} .collapsible-group-toggle`)
+    const toggle = win.locator(`${listSelector} .collapsible-group-head .fold-toggle`)
     if (await toggle.count() > 0) await toggle.click()
   }
   await openArchive('#taskList')

@@ -65,7 +65,7 @@ const STUCK: Record<string, [container: string, fade: string]> = {
   '.tblwrap .ptable thead th': ['.tblwrap .ptable thead th', '.tblwrap .ptable thead th:not(.column-drop-after)::after'],
   '.ptable th:first-child,.ptable td:first-child': ['.ptable :is(th,td):first-child', '.ptable :is(th,td):first-child::before'],
   '.ptable td.row-actions-cell,.tblwrap .ptable thead th.th-add': ['.ptable td.row-actions-cell', '.ptable :is(td.row-actions-cell,th.th-add)::before'],
-  '.collapsible-group-head': ['.collapsible-group-head', '.collapsible-group-head::after'],
+  '.collapsible-group--sticky>.section-heading.collapsible-group-head': ['.collapsible-group--sticky>.section-heading.collapsible-group-head', '.collapsible-group--sticky>.collapsible-group-head::after'],
   '.node-document-pane .node-document-head': ['.node-document-pane .node-document-head', '.node-document-pane .node-document-head::after'],
   '.cmp th': ['.cmp th', '.cmp th::after'],
 }

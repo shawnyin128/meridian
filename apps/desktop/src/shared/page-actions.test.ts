@@ -106,7 +106,7 @@ const SLOT_PROPS: Record<string, Record<string, Slot>> = {
   PageHeader: { actions: 'page header' },
   SectionHeading: { actions: 'section heading' },
   TabbedSection: { actions: 'section heading' },
-  CollapsibleGroup: { actions: 'group heading' },
+  Group: { actions: 'group heading' },
   IdeaPanel: { actions: 'panel head' },
   PaperCard: { actions: 'row actions' },
   IdeaCard: { menu: 'row actions' },

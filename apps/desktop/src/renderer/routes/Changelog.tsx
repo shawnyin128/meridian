@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { ChangeEntry } from '../../shared/contract.js'
 import { HUMAN_PRODUCER, NOTES_PROPOSAL } from '../../shared/vocabulary.js'
 import { changelog } from '../ipc.js'
@@ -11,7 +11,7 @@ import { useScreenLoad } from '../hooks/useScreenLoad.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
 import { CardTray } from '../components/CardTray.js'
 import { ConfirmDialog } from '../components/ConfirmDialog.js'
-import { DayHeading } from '../components/DayHeading.js'
+import { Group, GroupedList } from '../components/GroupedList.js'
 import { DiffLines } from '../components/DiffLines.js'
 import { EmptyState } from '../components/EmptyState.js'
 import { ENTITY_SCREEN, EntityLink } from '../components/EntityLink.js'
@@ -203,12 +203,15 @@ export function Changelog() {
       if (current !== undefined && current.date === c.date) current.entries.push(c)
       else days.push({ date: c.date, entries: [c] })
     }
-    return days.map((day, at) => (
-      <Fragment key={`${day.date}-${at}`}>
-        <DayHeading>{fmt.dayHead(day.date, today)}</DayHeading>
-        <StructuredList variant="embedded" maxVisibleRows="all">{day.entries.map(row)}</StructuredList>
-      </Fragment>
-    ))
+    return (
+      <GroupedList>
+        {days.map((day, at) => (
+          <Group key={`${day.date}-${at}`} title={fmt.dayHead(day.date, today)}>
+            <StructuredList variant="embedded" maxVisibleRows="all">{day.entries.map(row)}</StructuredList>
+          </Group>
+        ))}
+      </GroupedList>
+    )
   }
 
   return (

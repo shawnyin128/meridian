@@ -37,8 +37,8 @@ const statusFromCore = (win: Page, id: string) => win.evaluate(async (projectId)
 /** The order of day headings and rows on the visible screen: a heading is written `#text`, a row `.`. */
 const layout = (win: Page) => shown(win, '.desk-body').evaluate((body) => {
   const marks: string[] = []
-  for (const el of body.querySelectorAll('.day-heading, .crow')) {
-    marks.push(el.classList.contains('day-heading') ? `#${el.textContent!}` : '.')
+  for (const el of body.querySelectorAll('.section-heading--group, .crow')) {
+    marks.push(el.classList.contains('section-heading--group') ? `#${el.textContent!}` : '.')
   }
   return marks.join('')
 })
@@ -233,7 +233,7 @@ test('两节内部各自按天分段,同一天连成一段,段首一行日期', 
   const first = shown(win, '.crow').first()
   await first.hover()
   await first.locator('.carch').click()
-  await expect(shown(win, '.day-heading')).toHaveText(['昨天', '今天'])
+  await expect(shown(win, '.section-heading--group')).toHaveText(['昨天', '今天'])
   expect(await layout(win)).toBe('#昨天...#今天.')
 })
 

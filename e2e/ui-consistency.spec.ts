@@ -153,7 +153,7 @@ test('按天分组的三屏用同一行小标题', async ({ win }) => {
   test.slow()
   const box = async (desk: string) => {
     await win.locator(`[data-desk="${desk}"]`).click()
-    const heading = shown(win, '.day-heading').first()
+    const heading = shown(win, '.section-heading--group').first()
     await heading.waitFor()
     return {
       size: await heading.evaluate((el) => getComputedStyle(el).fontSize),

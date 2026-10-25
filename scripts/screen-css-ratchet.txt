@@ -1074,32 +1074,31 @@ routes/Changelog.css:6: .crow .src { margin-left }
 routes/Feed.css:7: .feedcol { background }
 routes/Feed.css:10: .feedcol .msgs>.page-toolbar { justify-content }
 routes/Feed.css:10: .feedcol .msgs>.page-toolbar { margin }
-routes/Feed.css:11: .feed-day { box-sizing }
-routes/Feed.css:13: .fitem { background }
-routes/Feed.css:13: .fitem { border }
-routes/Feed.css:13: .fitem { border-radius }
-routes/Feed.css:13: .fitem { padding }
-routes/Feed.css:14: .fsrc { font-size }
-routes/Feed.css:14: .fsrc { color }
-routes/Feed.css:14: .fsrc { margin-bottom }
-routes/Feed.css:16: .fic svg { width }
-routes/Feed.css:16: .fic svg { height }
-routes/Feed.css:17: .ftime { margin-left }
-routes/Feed.css:17: .ftime { font-weight }
-routes/Feed.css:17: .ftime { font-variant-numeric }
-routes/Feed.css:18: .fbody { font-size }
-routes/Feed.css:18: .fbody { color }
-routes/Feed.css:21: .brief .bh { font-size }
-routes/Feed.css:21: .brief .bh { color }
-routes/Feed.css:21: .brief .bh { padding }
-routes/Feed.css:21: .brief .bh { border-bottom }
-routes/Feed.css:22: .bitem { padding }
-routes/Feed.css:22: .bitem { border-bottom }
-routes/Feed.css:23: .bitem:last-child { border-bottom }
-routes/Feed.css:24: .bitem .t { font-size }
-routes/Feed.css:24: .bitem .t { font-weight }
-routes/Feed.css:24: .bitem .t { line-height }
-routes/Feed.css:25: .bitem .go { margin-left }
+routes/Feed.css:14: .fitem { background }
+routes/Feed.css:14: .fitem { border }
+routes/Feed.css:14: .fitem { border-radius }
+routes/Feed.css:14: .fitem { padding }
+routes/Feed.css:15: .fsrc { font-size }
+routes/Feed.css:15: .fsrc { color }
+routes/Feed.css:15: .fsrc { margin-bottom }
+routes/Feed.css:17: .fic svg { width }
+routes/Feed.css:17: .fic svg { height }
+routes/Feed.css:18: .ftime { margin-left }
+routes/Feed.css:18: .ftime { font-weight }
+routes/Feed.css:18: .ftime { font-variant-numeric }
+routes/Feed.css:19: .fbody { font-size }
+routes/Feed.css:19: .fbody { color }
+routes/Feed.css:22: .brief .bh { font-size }
+routes/Feed.css:22: .brief .bh { color }
+routes/Feed.css:22: .brief .bh { padding }
+routes/Feed.css:22: .brief .bh { border-bottom }
+routes/Feed.css:23: .bitem { padding }
+routes/Feed.css:23: .bitem { border-bottom }
+routes/Feed.css:24: .bitem:last-child { border-bottom }
+routes/Feed.css:25: .bitem .t { font-size }
+routes/Feed.css:25: .bitem .t { font-weight }
+routes/Feed.css:25: .bitem .t { line-height }
+routes/Feed.css:26: .bitem .go { margin-left }
 routes/Ideas.css:2: .ideas-body { padding }
 routes/Ideas.css:3: .ideas-workspace { box-sizing }
 routes/Ideas.css:8: .idea-card { display }

@@ -129,7 +129,7 @@ test('侧栏「论文推送」进推送屏,条目、分组与正文都照 demo',
     return `${KIND[w.type]} · ${w.name}`
   })
   expect(await groupTitles(win)).toEqual(heads)
-  await expect(shown(win, '.collapsible-group-actions .btn')).toHaveCount(heads.length)
+  await expect(shown(win, '.collapsible-group-head .section-heading-actions .btn')).toHaveCount(heads.length)
 
   // Every part of the first card matches the demo's text exactly.
   const card = shown(win, '.pcard').first()
@@ -254,7 +254,7 @@ test('「全部忽略」只清空自己这一组,逐组清完出空态,忽略的
   const titles = await cardTitles(win)
   const groups = shown(win, '.collapsible-group')
   const dismissGroup = (group: Locator) =>
-    group.locator('.collapsible-group-actions .btn').filter({ hasText: '全部忽略' }).click()
+    group.locator('.collapsible-group-head .section-heading-actions .btn').filter({ hasText: '全部忽略' }).click()
   const first = await groups.first().locator('.pcard h3').allTextContents()
   // The first group must leave other cards behind, or this test could not tell a group from the whole list.
   expect(first.length).toBeGreaterThan(0)
@@ -464,10 +464,10 @@ test('存入稍后阅读:离开推送屏,排到队首,再移出', async ({ win }
   const keyOf = (e: { day: string; source: string }, key: 'day' | 'source') => (key === 'day' ? e.day : shownSource(e.source))
   const heads = (key: 'day' | 'source') => [...new Set(queued.map((e) => keyOf(e, key)))]
     .map((k) => `${k} · ${queued.filter((e) => keyOf(e, key) === k).length}`)
-  expect(await shown(win, '.day-heading').allTextContents()).toEqual(heads('day'))
+  expect(await shown(win, '.section-heading--group').allTextContents()).toEqual(heads('day'))
   await shown(win, '.segmented-control>button').filter({ hasText: '按来源' }).click()
   await expect(shown(win, '.segmented-control>button').filter({ hasText: '按来源' })).toHaveAttribute('aria-checked', 'true')
-  expect(await shown(win, '.day-heading').allTextContents()).toEqual(heads('source'))
+  expect(await shown(win, '.section-heading--group').allTextContents()).toEqual(heads('source'))
 
   await openInbox(win, 'all')
   const entries = await inboxFromCore(win)

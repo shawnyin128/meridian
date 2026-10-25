@@ -12,7 +12,7 @@ import { FormInput, FormTextarea } from '../components/FormControls.js'
 import { InlineMessage } from '../components/InlineMessage.js'
 import { ChoicePicker, DotsMenu } from '../components/FieldPickers.js'
 import { EditActions } from '../components/EditActions.js'
-import { CollapsibleGroup } from '../components/CollapsibleGroup.js'
+import { Group, GroupedList } from '../components/GroupedList.js'
 import { EmptyState } from '../components/EmptyState.js'
 import { AddAction } from '../components/AddAction.js'
 import { IdeaDraft, type IdeaDraftText } from '../components/ideas/IdeaDraft.js'
@@ -478,8 +478,7 @@ export function Ideas() {
   const rowGroups = (
     <>
       {groupRows(started, m.ideas.emptyGroup.active)}
-      <SectionHeading count={done.length}>{m.ideas.groups.done}</SectionHeading>
-      {groupRows(done, m.ideas.emptyGroup.done)}
+      <Group title={m.ideas.groups.done} count={done.length}>{groupRows(done, m.ideas.emptyGroup.done)}</Group>
     </>
   )
   const b = m.ideas.byProject
@@ -509,33 +508,36 @@ export function Ideas() {
       <PageBody className="ideas-body">
         <div className={`ideas-workspace${selected === undefined ? '' : ' has-detail'}`}>
           <main className="ideas-list">
-            <SectionHeading count={open.length}>{m.ideas.groups.open}</SectionHeading>
-            {draft === null
-              ? null
-              : (
-                <ResearchObjectCard className="idea-draft-card" cardRef={draftCard}>
-                  <IdeaDraft
-                    draft={draft} triggers={draftTriggers} onChange={setDraft} onSave={createIdea} onCancel={() => setDraft(null)}
-                  />
-                </ResearchObjectCard>
+            <GroupedList>
+              <Group title={m.ideas.groups.open} count={open.length}>
+                {draft === null
+                  ? null
+                  : (
+                    <ResearchObjectCard className="idea-draft-card" cardRef={draftCard}>
+                      <IdeaDraft
+                        draft={draft} triggers={draftTriggers} onChange={setDraft} onSave={createIdea} onCancel={() => setDraft(null)}
+                      />
+                    </ResearchObjectCard>
+                  )}
+                {rows === null ? (
+                  error === null ? <LoadingPlaceholder shape="cards" /> : null
+                ) : open.length === 0
+                  ? (draft === null ? <EmptyState variant="section">{m.ideas.emptyGroup.open}</EmptyState> : null)
+                  : open.map(card)}
+              </Group>
+              <Group title={m.ideas.groups.active} count={started.length}>
+                {/* Loaded rows of the started and the done group lay out on one grid, so their columns line up across both. */}
+                {rows === null ? rowGroups : <div className="idea-row-groups">{rowGroups}</div>}
+              </Group>
+              {archived.length === 0 ? null : (
+                <Group
+                  title={m.common.archived} count={archived.length}
+                  fold={{ open: archiveOpen || archived.some((idea) => idea.id === selectedId), onToggle: () => setArchiveOpen((held) => !held) }}
+                >
+                  {archived.map(card)}
+                </Group>
               )}
-            {rows === null ? (
-              error === null ? <LoadingPlaceholder shape="cards" /> : null
-            ) : open.length === 0
-              ? (draft === null ? <EmptyState variant="section">{m.ideas.emptyGroup.open}</EmptyState> : null)
-              : open.map(card)}
-            <SectionHeading count={started.length}>{m.ideas.groups.active}</SectionHeading>
-            {/* Loaded rows of both groups lay out on one grid, so their columns line up across the groups. */}
-            {rows === null ? rowGroups : <div className="idea-row-groups">{rowGroups}</div>}
-            {archived.length === 0 ? null : (
-              <CollapsibleGroup
-                variant="quiet" title={m.common.archived} count={archived.length}
-                open={archiveOpen || archived.some((idea) => idea.id === selectedId)}
-                onToggle={() => setArchiveOpen((held) => !held)}
-              >
-                {archived.map(card)}
-              </CollapsibleGroup>
-            )}
+            </GroupedList>
 
             {counts.every((count) => count.ideas === 0) ? null : (
               <>

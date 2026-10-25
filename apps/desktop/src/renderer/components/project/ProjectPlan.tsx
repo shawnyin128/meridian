@@ -11,7 +11,7 @@ import type {
 import { TASK_SLOT_ENDS, TASK_SLOT_STARTS } from '../../../shared/contract.js'
 import { dnum, isoOf } from '../../../shared/dates.js'
 import { AddAction } from '../AddAction.js'
-import { CollapsibleGroup } from '../CollapsibleGroup.js'
+import { Group } from '../GroupedList.js'
 import { DateChip } from '../DateTimeDisplay.js'
 import { EmptyState } from '../EmptyState.js'
 import { ChoicePicker, DateButton, PriorityPicker } from '../FieldPickers.js'
@@ -494,9 +494,9 @@ export function ProjectPlan({
                 {archivedTasks.length === 0
                   ? null
                   : (
-                    <CollapsibleGroup
-                      variant="quiet" title={m.common.archived} count={archivedTasks.length}
-                      open={taskArchiveShown} onToggle={() => setTaskArchiveOpen((open) => !open)}
+                    <Group
+                      title={m.common.archived} count={archivedTasks.length}
+                      fold={{ open: taskArchiveShown, onToggle: () => setTaskArchiveOpen((open) => !open) }}
                     >
                       {archivedTasks.map((task) => (
                         <TaskRow
@@ -508,7 +508,7 @@ export function ProjectPlan({
                           onOpen={() => onOpenTask(task.id)}
                         />
                       ))}
-                    </CollapsibleGroup>
+                    </Group>
                   )}
               </StructuredList>
             ),
@@ -538,9 +538,9 @@ export function ProjectPlan({
                 {archivedMilestones.length === 0
                   ? null
                   : (
-                    <CollapsibleGroup
-                      variant="quiet" title={m.common.archived} count={archivedMilestones.length}
-                      open={msArchiveShown} onToggle={() => setMsArchiveOpen((open) => !open)}
+                    <Group
+                      title={m.common.archived} count={archivedMilestones.length}
+                      fold={{ open: msArchiveShown, onToggle: () => setMsArchiveOpen((open) => !open) }}
                     >
                       {archivedMilestones.map((milestone) => (
                         <MilestoneRow
@@ -551,7 +551,7 @@ export function ProjectPlan({
                           onDelete={() => onDeleteMilestone(milestone.id)}
                         />
                       ))}
-                    </CollapsibleGroup>
+                    </Group>
                   )}
               </StructuredList>
             ),

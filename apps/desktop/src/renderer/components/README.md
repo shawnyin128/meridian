@@ -142,7 +142,10 @@ Current shared contracts:
 - `DetailPanel`: the shared open/closed state and motion contract for right-side details. Its `inline`,
   `overlay`, and `resize` modes cover panels that join layout, slide over it, or widen an existing rail;
   routes provide only final geometry and domain content.
-- `DayHeading`: the small heading that opens one day in a list grouped by day, with an optional count.
+- `GroupedList` and `Group`: items grouped by status, kind, day, source, project or archive. Each group opens
+  with the group heading, the third heading level, and the first group sits flush with the list's top; a
+  group with `fold` folds its items through its heading, and `sticky` pins that heading while they scroll.
+  The list draws no box, so its groups' items keep the grid, column or stream around it.
 - `hooks/useCandidateKeys`: arrow-key, pointer and Enter handling for a candidate list, shared by every
   suggestion and picker dropdown.
 - `hooks/useDrafts`: the one home of unsaved text. Every editor holds what is typed in `useDrafts`, scoped by
@@ -171,11 +174,11 @@ Current shared contracts:
   expands details below the host without moving its primary identity, and owns the shared animation,
   keyboard semantics, and reduced-motion behavior.
 - `PageShell`: the shared page-level header/body/footer/error/section composition. Routes supply content
-  and actions rather than copying the desktop shell structure. `SectionHeading` is the one section heading:
-  its `variant` is `page`, `content`, `group` or `rail`, and `actions` is the only right-hand slot.
+  and actions rather than copying the desktop shell structure. `SectionHeading` is the one heading of a section
+  or a group: its `level` is `section` or `group` (a rail, panel or card section is a group), `count` and
+  `meta` follow the title, `fold` makes the title a fold toggle, and `actions` is the only right-hand slot.
 - `HeadingCount`: a heading's count, ` · N` after its text in the heading's own type. `PageTitle`,
-  `SectionHeading`, `CollapsibleGroup`, `DayHeading`, `CardTray` and `ReaderPanelHeader` show it through
-  their `count`; no message or screen writes `· N` itself.
+  `SectionHeading` (and with it `Group`), `CardTray` and `ReaderPanelHeader` show it through their `count`; no message or screen writes `· N` itself.
 - `PickRow`, `Pager`, `Markdown`, `PaperMetadata`, `ParseProgress`: shared feature widgets.
 - `RatingStars`, `ReadStatePicker` (in `PaperMetadata`) and `PaperTopics`: the one rating, reading-status and
   topic editor of a paper, used by both the paper table and the detail panel.

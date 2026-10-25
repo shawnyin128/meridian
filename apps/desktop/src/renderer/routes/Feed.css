@@ -8,7 +8,8 @@
 /* A full-screen feed has a wider text column than chat, as in the demo's .main.feedmain .feedcol .mwrap */
 .feedcol .mwrap{width:min(var(--pagew),92%)}
 .feedcol .msgs>.page-toolbar{justify-content:center;margin:0 auto}
-.feed-day{box-sizing:border-box}
+/* A day's heading stands in the entries' column, as each entry's own wrapper does. */
+.feedcol .feed-day{align-self:center;width:min(var(--pagew),92%)}
 
 .fitem{background:var(--card);border:1px solid var(--sep2);border-radius:var(--r-card);padding:var(--sp-12) var(--sp-16)}
 .fsrc{display:flex;align-items:center;gap:var(--sp-6);font-size:var(--fs-sm);color:var(--ter);margin-bottom:var(--sp-6)}

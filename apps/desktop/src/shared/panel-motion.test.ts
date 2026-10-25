@@ -24,7 +24,7 @@ const { document, getComputedStyle } = globalThis as unknown as Window
 const stylesheet = (path: string) => readFileSync(join(import.meta.dirname, '..', 'renderer', path), 'utf8')
 const STYLES = [
   'shell/AppShell.css', 'routes/Reader.css', 'components/DetailPanel.css', 'routes/ProjectDetail.css',
-  'components/paper-table/PaperTable.css', 'components/CollapsibleGroup.css', 'components/timeline/TimelineBoard.css',
+  'components/paper-table/PaperTable.css', 'components/GroupedList.css', 'components/timeline/TimelineBoard.css',
 ]
 
 /** Properties whose change moves the content beside a panel on every frame of a transition. */

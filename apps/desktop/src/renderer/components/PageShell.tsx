@@ -6,6 +6,7 @@ import {
 } from 'react'
 import { useScrollFade } from '../hooks/useScrollFade.js'
 import { FadeText } from './FadeText.js'
+import { FoldToggle } from './FoldToggle.js'
 import { HeadingCount, headingText } from './HeadingCount.js'
 import { InlineMessage } from './InlineMessage.js'
 import './PageShell.css'
@@ -100,25 +101,33 @@ export function PageError({ error, variant = 'page' }: {
  * heads a section of a page's body, and `group` heads anything one step below: a group of items, a
  * card, or a section of a side rail or a detail panel. Each level has one type, one height and one
  * space above and below. `count` follows the title as ` · N`. `meta` follows the title on its line
- * in the meta type, such as when a card's subject was last checked. `actions` holds everything that
- * acts on the section and sits at the heading's end without making the heading taller.
+ * in the meta type, such as when a card's subject was last checked. With `fold`, the title is the
+ * fold toggle of the content whose id is `fold.controls`, its caret after the title. `actions` holds
+ * everything that acts on the section, never toggles it, and sits at the heading's end without
+ * making the heading taller.
  */
 export const SectionHeading = forwardRef<HTMLDivElement, {
   children: ReactNode
   actions?: ReactNode
   count?: number | undefined
   meta?: ReactNode
+  fold?: { open: boolean; onToggle: () => void; controls?: string } | undefined
   level?: 'section' | 'group'
 } & HTMLAttributes<HTMLDivElement>>(
-  function SectionHeading({ children, actions, count, meta, className, level = 'section', ...rest }, ref) {
+  function SectionHeading({ children, actions, count, meta, fold, className, level = 'section', ...rest }, ref) {
+    // The heading is a flex row, so a count and a meta share the title's span instead of becoming items of their own.
+    const title = count === undefined && meta === undefined ? children : (
+      <span>
+        {children}<HeadingCount count={count} />
+        {meta === undefined ? null : <span className="section-heading-meta">{meta}</span>}
+      </span>
+    )
     return (
       <div ref={ref} className={classes(`section-heading section-heading--${level}`, className)} {...rest}>
-        {/* The heading is a flex row, so a count and a meta share the title's span instead of becoming items of their own. */}
-        {count === undefined && meta === undefined ? children : (
-          <span>
-            {children}<HeadingCount count={count} />
-            {meta === undefined ? null : <span className="section-heading-meta">{meta}</span>}
-          </span>
+        {fold === undefined ? title : (
+          <FoldToggle open={fold.open} onToggle={fold.onToggle} {...(fold.controls === undefined ? {} : { controls: fold.controls })}>
+            {title}
+          </FoldToggle>
         )}
         {actions === undefined ? null : <div className="section-heading-actions">{actions}</div>}
       </div>

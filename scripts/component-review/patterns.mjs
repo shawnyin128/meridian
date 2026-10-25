@@ -116,7 +116,6 @@ export const PATTERNS = {
     entries: [
       entry('shared:SectionHeading', '.section-heading--group', { not: '.node-document-head' }),
       entry('shared:SectionHeading', GROUPED_SECTIONS),
-      entry('shared:DayHeading', '.day-heading', { parts: { count: '.count-badge' } }),
       entry('hand:shell/SearchBox.tsx', '.pickhits .rh'),
       entry('hand:components/chat/ChatComposer.tsx', '.pickhits .rg'),
       entry('hand:routes/Watches.tsx', '.watch-suggestion-group-heading'),
@@ -133,7 +132,7 @@ export const PATTERNS = {
   Fold: {
     metrics: 'heading',
     entries: [
-      entry('shared:CollapsibleGroup', '.collapsible-group-head', { parts: { count: '.count-badge' } }),
+      entry('shared:Group', '.collapsible-group-head', { parts: { count: '.count-badge' } }),
       entry('shared:CardTray', '.card-tray--tray > .card-tray-head'),
       entry('shared:NavRow', '#sidebar .srow.disc'),
       entry('hand:shell/Sidebar.tsx', '#sidebar .sb-h'),

@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import type { FeedEntry, FeedSource } from '../../shared/contract.js'
 import { feed } from '../ipc.js'
@@ -7,7 +7,7 @@ import { useMessages } from '../messages/useMessages.js'
 import { useJump, useVaultRevision } from '../shell/AppShell.js'
 import { CONFLICT_THREAD } from '../lib/chat.js'
 import { DateChip, DateTimeDisplay } from '../components/DateTimeDisplay.js'
-import { DayHeading, daySectionName } from '../components/DayHeading.js'
+import { daySectionName, Group, GroupedList } from '../components/GroupedList.js'
 import { EmptyState } from '../components/EmptyState.js'
 import { ENTITY_SCREEN, EntityLink, opensHere } from '../components/EntityLink.js'
 import { FirstRunChecklist } from '../components/FirstRunChecklist.js'
@@ -136,17 +136,23 @@ function Item({ entry, onOpenConflict }: { entry: FeedEntry; onOpenConflict: () 
   )
 }
 
-/** Feed rows under their day headings, each heading constrained to the same centered column as its cards. */
+/** Feed rows grouped under their days, each day's heading placed in the same centered column as its cards. */
 export function FeedRows({ rows, onOpenConflict }: { rows: FeedEntry[]; onOpenConflict: () => void }) {
   const m = useMessages()
-  return rows.map((entry, index) => (
-    <Fragment key={entry.id}>
-      {entry.day !== rows[index - 1]?.day ? (
-        <div className="mwrap feed-day"><DayHeading>{daySectionName(entry.day, m.common.daySections)}</DayHeading></div>
-      ) : null}
-      <Item entry={entry} onOpenConflict={onOpenConflict} />
-    </Fragment>
-  ))
+  const days = rows.reduce<FeedEntry[][]>((made, entry) => {
+    if (made.at(-1)?.[0]?.day === entry.day) made.at(-1)!.push(entry)
+    else made.push([entry])
+    return made
+  }, [])
+  return (
+    <GroupedList>
+      {days.map((day) => (
+        <Group key={day[0]!.id} className="feed-day" title={daySectionName(day[0]!.day, m.common.daySections)}>
+          {day.map((entry) => <Item key={entry.id} entry={entry} onOpenConflict={onOpenConflict} />)}
+        </Group>
+      ))}
+    </GroupedList>
+  )
 }
 
 /**
