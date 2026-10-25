@@ -5,7 +5,7 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Facet, ListParams, PaperColumns, PaperImportResult, PaperRow } from '../../shared/contract.js'
 import type { ScreenJump } from '../shell/AppShell.js'
-import { PAPER_COLUMNS } from '../../shared/vocabulary.js'
+import { PAPER_COLUMNS, PAPER_PAGE } from '../../shared/vocabulary.js'
 import { CallError } from '../call-error.js'
 import { IconTrash } from '../components/icons.js'
 import { TOOLTIP_DELAY } from '../components/Tooltip.js'
@@ -335,6 +335,21 @@ describe('PaperTable', () => {
     const own = mount()
     await flush()
     expect(own.querySelector('.desk-head > .back')).toBeNull()
+  })
+
+  it('详情里笔记和实验结论的数是链接:点笔记打开这篇的阅读器,点实验结论打开这篇的 Wiki 页', async () => {
+    const counted = { ...ROW, noteCount: 2, conclusionCount: 1 }
+    jumpHere = { screen: 'papers', target: 'p1', from: 'papers', seq: 1, anchor: { detail: true } }
+    const host = mount()
+    columnsCall.resolve(EMPTY_COLUMNS)
+    listCall.resolve({ rows: [counted], total: 1 })
+    getCall.resolve(counted)
+    await flush()
+    const links = [...host.querySelectorAll<HTMLButtonElement>('.pdetail .paper-reading-summary dd > .entity-link')]
+    expect(links.map((link) => link.textContent)).toEqual(['2', '1'])
+    await act(async () => { links[0]!.click() })
+    await act(async () => { links[1]!.click() })
+    expect(openedScreens).toEqual([['reader', 'p1'], ['wiki', `${PAPER_PAGE}p1`]])
   })
 
   it('带详情落点跳进来时打开那篇的详情,搜索框不填字', async () => {

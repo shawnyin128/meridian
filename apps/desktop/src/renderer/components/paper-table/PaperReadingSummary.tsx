@@ -6,6 +6,7 @@ import { useMessages } from '../../messages/useMessages.js'
 import { useVaultRevision, type JumpAnchor } from '../../shell/AppShell.js'
 import { entryAnchor, readingEntries } from './reading-entries.js'
 import { EmptyState } from '../EmptyState.js'
+import { EntityLink } from '../EntityLink.js'
 import { LoadingPlaceholder } from '../LoadingPlaceholder.js'
 import { PageError, SectionHeading } from '../PageShell.js'
 import { StructuredList, StructuredRow } from '../StructuredList.js'
@@ -13,13 +14,14 @@ import { StructuredList, StructuredRow } from '../StructuredList.js'
 const EXCERPT = 2
 
 /**
- * The reading summary in the paper detail: the note and conclusion counts as property values, and the
- * remark and recent notes from the same stored record the reader uses, each opening the reader through
- * `onRead`.
+ * The reading summary in the paper detail: the note and conclusion counts as property values, each above
+ * zero a link, the notes opening the reader at its notes through `onRead` and the conclusions through
+ * `onConclusions`; then the remark and recent notes from the same stored record the reader uses.
  */
-export function PaperReadingSummary({ paper, onRead }: {
+export function PaperReadingSummary({ paper, onRead, onConclusions }: {
   paper: PaperRow
   onRead: (anchor: JumpAnchor) => void
+  onConclusions: () => void
 }) {
   const m = useMessages()
   const { revision } = useVaultRevision()
@@ -35,9 +37,13 @@ export function PaperReadingSummary({ paper, onRead }: {
     <div className="paper-reading-summary">
       <dl className="paper-meta-list">
         <dt>{m.papers.reading.notes}</dt>
-        <dd>{paper.noteCount}</dd>
+        <dd>{paper.noteCount === 0
+          ? paper.noteCount
+          : <EntityLink kind="paper" label={paper.noteCount} onOpen={() => onRead({ panel: 'notes' })} />}</dd>
         <dt>{m.papers.reading.conclusions}</dt>
-        <dd>{paper.conclusionCount}</dd>
+        <dd>{paper.conclusionCount === 0
+          ? paper.conclusionCount
+          : <EntityLink kind="page" label={paper.conclusionCount} onOpen={onConclusions} />}</dd>
       </dl>
       <SectionHeading variant="rail">{m.papers.reading.remarkAndNotes}</SectionHeading>
       <PageError error={error} />
