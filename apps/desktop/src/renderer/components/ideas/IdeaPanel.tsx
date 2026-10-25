@@ -99,7 +99,7 @@ export function IdeaPanel({
       <PanelHead title={idea.title} actions={actions} onClose={onClose} />
       <PanelBody>
         <div className="idea-panel-meta">
-          <Tag tone="accent">{m.project.idea.kind}</Tag>
+          <Tag>{m.project.idea.kind}</Tag>
           {idea.archived ? <Tag>{m.common.archived}</Tag> : null}
           <span className="idea-panel-dates">
             {m.common.createdOn(fmt.date(idea.created))}
@@ -108,7 +108,7 @@ export function IdeaPanel({
         </div>
         {editor ?? (
           <>
-            <SectionHeading variant="rail">{m.project.sections.content}</SectionHeading>
+            <SectionHeading level="group">{m.project.sections.content}</SectionHeading>
             <p className="idea-panel-body">{idea.body}</p>
           </>
         )}
@@ -116,7 +116,7 @@ export function IdeaPanel({
         {ownIdea(idea) && sourceProject === undefined ? null : (
           <>
             <SectionHeading
-              variant="rail"
+              level="group"
               actions={onOpenSourceChat === undefined || chatId === undefined || sourceChatDeleted
                 ? undefined
                 : <Button size="compact" className="idea-panel-open-chat" onClick={() => onOpenSourceChat(chatId)}>{m.ideas.openSourceChat}</Button>}

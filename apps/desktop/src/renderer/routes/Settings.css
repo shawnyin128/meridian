@@ -1,29 +1,24 @@
 /*
  * Two-column layout inside the Settings modal, on the dialog surface's wide step. The height is fixed
  * so switching categories does not resize the dialog, and each column scrolls by itself; the
- * columns reuse the existing rules (.srow, .section-heading, .wrow, .btn) and add no new design
+ * columns reuse the existing rules (NavRow, .section-heading, .wrow, .btn) and add no new design
  * language.
  */
 
 .modal.setdlg{height:min(560px,84vh);padding:0;overflow:hidden}
 .setdlg>.modal-body{display:flex;padding:0;overflow:hidden}
-/* Left column of categories, matching the sidebar: same background, padding and .srow rows */
+/* Left column of categories, matching the sidebar: same background, padding and navigation rows */
 .set-side{flex:0 0 190px;box-sizing:border-box;background:var(--sidebar);
   border-right:1px solid var(--sep);padding:var(--sp-20) var(--sp-10);overflow-y:auto;
   --fade-paint:var(--sidebar);--fade-pad-top:var(--sp-20);--fade-pad-bottom:var(--sp-20)}
 .set-side .set-t{padding:0 var(--sp-8);margin:0 0 var(--sp-10)}
-.set-side .srow.set-sub{height:28px;padding-left:var(--sp-20);font-size:var(--fs-sm)}
 /*
  * Right column of content, matching a screen's main content area. Its title stays above the body that
  * scrolls, and the body ends clear of the dialog's rounded corner with room for focus rings inside it.
- * The body's empty first block holds the title's gap, so the gap still collapses with the top margin of
- * the first section below it.
  */
 .set-main{flex:1;min-width:0;display:flex;flex-direction:column;padding:var(--sp-20) 0 calc(var(--sp-20) - var(--ring-room))}
 .set-head{flex:none;padding:0 var(--sp-24)}
-.set-head>.section-heading{margin-bottom:0}
 .set-body{flex:1;min-height:0;overflow:auto;padding:0 var(--sp-24) var(--ring-room)}
-.set-body::before{content:"";display:block;margin-bottom:var(--sp-10)}
 
 .appearance-options{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--sp-14)}
 .appearance-choice{min-width:0;border:0;background:transparent;color:var(--sec);padding:0;cursor:pointer;
@@ -32,7 +27,7 @@
   border-radius:var(--r-card);background-color:var(--field);box-shadow:inset 0 0 0 1px var(--sep2);
   transition:background-color var(--t-fast) var(--e-out),box-shadow var(--t-fast) var(--e-out)}
 .appearance-choice:hover .appearance-preview{box-shadow:inset 0 0 0 1px var(--sep-strong)}
-/* The selected look of rows, cards and graph nodes; see StructuredList.css. */
+/* The selected look of rows, cards and graph nodes; see Item.css. */
 .appearance-choice[aria-checked="true"] .appearance-preview{background-color:var(--selected)}
 .appearance-label{display:block;margin-top:var(--sp-8);font-size:var(--fs-sm);font-weight:var(--fw-medium);color:var(--sec)}
 .appearance-choice[aria-checked="true"] .appearance-label{color:var(--on-selected)}
@@ -67,26 +62,15 @@
 
 .language-select{width:220px}
 
-.storage-head{display:flex;align-items:flex-start;gap:var(--sp-16)}
-.storage-head>div{flex:1;min-width:0}
-.storage-root{display:grid;grid-template-columns:64px minmax(0,1fr);gap:var(--sp-12);margin-top:var(--sp-16);
-  padding:var(--sp-10) 0;border-top:1px solid var(--sep2);border-bottom:1px solid var(--sep2);align-items:center}
-.storage-root span{color:var(--ter);font-size:var(--fs-sm)}
-.storage-state{margin-top:var(--sp-12)}
+.storage-root{padding:var(--sp-10) 0;border-top:1px solid var(--sep2);border-bottom:1px solid var(--sep2)}
 .storage-pending{margin-top:var(--sp-12)}
 .storage-reset{display:flex;align-items:center;justify-content:space-between;gap:var(--sp-16);margin-top:var(--sp-16);
   padding-top:var(--sp-14);border-top:1px solid var(--sep2);color:var(--sec);font-size:var(--fs-sm)}
-.storage-backup-row{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:var(--sp-16);
-  min-height:58px;padding:var(--sp-8) var(--sp-12)}
-.storage-backup-copy{min-width:0;display:flex;flex-direction:column;gap:var(--sp-4)}
-.storage-backup-path{color:var(--ter);font-family:var(--mono);font-size:var(--fs-cap)}
-.storage-backup-actions{display:flex;align-items:center;gap:var(--sp-8)}
+.storage-backup-path{font-family:var(--mono)}
 
-/* The status head, field rows, saved-key mask, and foot are shared card chrome; see ServiceCard.css. */
-.model-protocol{display:grid;grid-template-columns:var(--service-label-w) minmax(0,1fr);gap:var(--sp-12);align-items:center;margin-top:var(--sp-12);
-  color:var(--sec);font-size:var(--fs-sm)}
-.model-protocol strong{color:var(--ink);font-size:var(--fs-sm);font-weight:var(--fw-medium)}
-.model-template-summary{margin:var(--sp-10) 0 0 calc(var(--service-label-w) + var(--sp-12));padding:var(--sp-8) var(--sp-12);border-radius:var(--r-md);background:var(--field);
+/* The status head, saved-key mask and foot are ServiceCard's, and the field rows FieldRow's. A template's summary stands under the rows' fields. */
+.field-rows>.model-template-summary{grid-column:2}
+.model-template-summary{padding:var(--sp-8) var(--sp-12);border-radius:var(--r-md);background:var(--field);
   display:flex;flex-direction:column;gap:var(--sp-4);color:var(--sec);font-size:var(--fs-cap);line-height:var(--lh-ui)}
 .model-template-summary code{color:var(--ter);font-family:var(--mono);font-size:var(--fs-cap);overflow-wrap:anywhere}
 
@@ -96,8 +80,4 @@
 .delivery-setting-control .form-input{width:76px;text-align:right}
 .delivery-settings-card>.service-foot{grid-column:1/-1;margin-top:var(--sp-8)}
 .delivery-setting-error{grid-column:1/-1}
-.set-main .watch-settings>.section-heading:first-of-type{margin-top:0}
 .set-main .watch-suggestions{margin-bottom:var(--sp-24)}
-.delivery-directions{margin-top:var(--sp-24);padding-top:var(--sp-2);border-top:1px solid var(--sep)}
-.delivery-directions>.section-heading{border-top:0}
-.delivery-directions .direction-panel{margin-bottom:0}

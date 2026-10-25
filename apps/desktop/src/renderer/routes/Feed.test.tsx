@@ -47,14 +47,14 @@ describe('feed rows', () => {
     feedList.setupShown = true
   })
 
-  it('aligns the day heading with the card column and shows the time as the date and time pair', () => {
+  it('heads each day in the card column with the group heading over its own stream of entries, and shows the time as the date and time pair', () => {
     const html = renderToStaticMarkup(
       <MessagesProvider>
           <FeedRows rows={[{ ...ENTRY, createdAt: new Date(2026, 8, 20, 14, 5).toISOString() }]} onOpenConflict={() => {}} />
       </MessagesProvider>,
     )
 
-    expect(html).toContain('<div class="mwrap feed-day"><div class="day-heading">今天</div></div>')
+    expect(html).toContain('<div class="feed-days"><div class="grouped-list"><div class="section-heading section-heading--group">今天</div><div class="msgs"><div class="mwrap">')
     expect(html).toMatch(/<span class="ftime"><span class="date-time-display">.*>9月20日<.*>14:05<.*<\/span><\/span>/)
   })
 
@@ -80,7 +80,7 @@ describe('feed rows', () => {
     )
 
     expect(html).not.toContain('style="color')
-    expect(html.match(/<div class="fsrc"><span class="tag tag--label tag--neutral source-label"><span class="fic">/g)).toHaveLength(2)
+    expect(html.match(/<div class="item-meta"><span class="tag tag--label tag--neutral source-label"><span class="fic">/g)).toHaveLength(2)
     expect(html).toContain('<span class="fade-text tag-text" data-state="closed">我</span>')
     expect(html).toContain('<span class="fade-text tag-text" data-state="closed">实验</span>')
   })
@@ -144,8 +144,8 @@ describe('feed rows', () => {
       </MessagesProvider>,
     )
 
-    expect(html).toContain('<div class="day-heading">Today</div>')
-    expect(html).toContain('<div class="day-heading">Earlier</div>')
+    expect(html).toContain('<div class="section-heading section-heading--group">Today</div>')
+    expect(html).toContain('<div class="section-heading section-heading--group">Earlier</div>')
     expect(html).toMatch(/>Sep 12<.*>09:28 AM</)
   })
 
@@ -158,7 +158,7 @@ describe('feed rows', () => {
     const root = createRoot(host)
     await act(async () => { root.render(<MessagesProvider><Feed /></MessagesProvider>) })
     expect([...host.querySelector('.feedcol > .desk-body > .msgs')!.children].slice(0, 2).map((child) => child.className))
-      .toEqual(['firstrun-stub mwrap', 'page-toolbar mwrap'])
+      .toEqual(['firstrun-stub mwrap', 'page-toolbar page-toolbar--center mwrap'])
     await act(async () => { root.unmount() })
     host.remove()
     vi.unstubAllGlobals()
@@ -182,7 +182,7 @@ describe('feed rows', () => {
     const lab = [...host.querySelectorAll<HTMLButtonElement>('.page-toolbar button')].find((b) => b.textContent === '实验')!
     await act(async () => { lab.click() })
     expect(host.querySelectorAll('.fitem')).toHaveLength(2)
-    expect([...host.querySelectorAll('.feed-day .day-heading')].map((h) => h.textContent)).toEqual(['今天', '昨天'])
+    expect([...host.querySelectorAll('.feed-days .section-heading')].map((h) => h.textContent)).toEqual(['今天', '昨天'])
     await act(async () => { root.unmount() })
     host.remove()
     vi.unstubAllGlobals()
@@ -203,13 +203,13 @@ describe('feed rows', () => {
     expect(host.querySelectorAll('.fitem')).toHaveLength(0)
     const empty = host.querySelector('.msgs > .page-toolbar + .empty-state')
     expect([empty?.className, empty?.textContent, empty?.querySelectorAll('svg').length])
-      .toEqual(['empty-state empty-state--page', '还没有动态', 1])
+      .toEqual(['empty-state empty-state--page', '', 1])
     await act(async () => { root.unmount() })
     host.remove()
     vi.unstubAllGlobals()
   })
 
-  it('开始使用清单显示时，它就是这一屏的空态，下面不再写还没有动态', async () => {
+  it('开始使用清单显示时，它就是这一屏的空态，下面不再摆整屏空态', async () => {
     globalThis.IS_REACT_ACT_ENVIRONMENT = true
     vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} })
     feedList.rows = []

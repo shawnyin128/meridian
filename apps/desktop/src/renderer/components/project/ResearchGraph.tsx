@@ -9,6 +9,7 @@ import type {
   Task,
 } from '../../../shared/contract.js'
 import { useWheelZoom } from '../../hooks/useWheelZoom.js'
+import { useElementWidth } from '../../hooks/useElementWidth.js'
 import { useMessages } from '../../messages/useMessages.js'
 import { activeRoutes } from '../../../shared/research-path.js'
 import { recordKind, recordOrigin, sortRecordsNewestFirst } from '../../../shared/project-signals.js'
@@ -17,18 +18,17 @@ import { plainTitle } from '../paper/paper-text.js'
 import { EmptyState } from '../EmptyState.js'
 import { EntityLink } from '../EntityLink.js'
 import { FadeText } from '../FadeText.js'
-import { IconButton } from '../IconButton.js'
 import { ownIdea, SourceChatDeleted } from '../ideas/IdeaPanel.js'
-import { IconMinus, IconPlus } from '../icons.js'
 import { PanelBody, PanelHead } from '../SidePanel.js'
 import { SectionHeading } from '../PageShell.js'
 import { StatusDot } from '../StatusDot.js'
-import { StructuredList, StructuredRow } from '../StructuredList.js'
+import { Item } from '../Item.js'
+import { List } from '../List.js'
 import { AgentLabel } from '../SourceLabel.js'
-import { ToggleGroup, ToggleItem, Toolbar } from '../Toolbar.js'
+import { ToggleGroup, ToggleItem } from '../Toolbar.js'
 import { Tooltip } from '../Tooltip.js'
 import { ProjectEventList, ProjectEventRow } from './ProjectSignals.js'
-import { Button } from '../Button.js'
+import { ZoomControl, zoomStep } from '../ZoomControl.js'
 import './ResearchGraph.css'
 
 type GraphNode = Graph['nodes'][number]
@@ -190,7 +190,7 @@ export function ResearchGraph({ graph, selected, ideaNodeIds = [], onSelect }: {
   const panStart = useRef<{
     pointerId: number; clientX: number; clientY: number; x: number; y: number
   } | null>(null)
-  const [viewportWidth, setViewportWidth] = useState(780)
+  const viewportWidth = useElementWidth(viewport)
   const [view, setView] = useState(UNMOVED)
   const [panning, setPanning] = useState(false)
   // Until the user zooms or pans, the view follows the fitted one as the viewport's width settles.
@@ -201,15 +201,6 @@ export function ResearchGraph({ graph, selected, ideaNodeIds = [], onSelect }: {
   const contentHeight = Math.max(0, ...layout.nodes.map((node) => node.y + GRAPH_NODE_HEIGHT))
   const fitted = fittedView({ width: contentWidth, height: contentHeight }, viewportWidth)
 
-  useEffect(() => {
-    const element = viewport.current
-    if (element === null) return
-    const sync = () => setViewportWidth(element.clientWidth)
-    sync()
-    const resize = new ResizeObserver(sync)
-    resize.observe(element)
-    return () => resize.disconnect()
-  }, [graph.nodes.length])
   useEffect(() => {
     moved.current = false
     setView(fitted)
@@ -268,7 +259,7 @@ export function ResearchGraph({ graph, selected, ideaNodeIds = [], onSelect }: {
     zoomAt(view.zoom * factor, point.x - rect.left, point.y - rect.top)
   })
   const startPan = (event: ReactPointerEvent<HTMLDivElement>) => {
-    if ((event.target as Element).closest('.rgn,.graph-view-controls')) return
+    if ((event.target as Element).closest('.rgn,.zoom-control')) return
     panStart.current = {
       pointerId: event.pointerId,
       clientX: event.clientX,
@@ -369,31 +360,15 @@ export function ResearchGraph({ graph, selected, ideaNodeIds = [], onSelect }: {
             </g>
           </ToggleGroup>
         </svg>
-        <Toolbar>
-          <div className="graph-view-controls">
-            <IconButton
-              label={m.project.graph.zoomOut} size="nested" disabled={view.zoom <= GRAPH_MIN_ZOOM}
-              onClick={() => zoomAt(view.zoom / 1.2)}
-            >
-              <IconMinus />
-            </IconButton>
-            <Tooltip label={m.project.graph.resetView}>
-              <Button
-                size="compact" variant="ghost" className="graph-zoom-reset"
-                onClick={() => {
-                  moved.current = false
-                  setView(fitted)
-                }}
-              >{Math.round(view.zoom * 100)}%</Button>
-            </Tooltip>
-            <IconButton
-              label={m.project.graph.zoomIn} size="nested" disabled={view.zoom >= GRAPH_MAX_ZOOM}
-              onClick={() => zoomAt(view.zoom * 1.2)}
-            >
-              <IconPlus />
-            </IconButton>
-          </div>
-        </Toolbar>
+        <ZoomControl
+          place="corner" zoom={view.zoom} min={GRAPH_MIN_ZOOM} max={GRAPH_MAX_ZOOM}
+          onZoom={(direction) => zoomAt(zoomStep(view.zoom, direction))}
+          onReset={() => {
+            moved.current = false
+            setView(fitted)
+          }}
+          labels={{ out: m.project.graph.zoomOut, in: m.project.graph.zoomIn, reset: m.project.graph.resetView }}
+        />
       </div>
       <div className="glegend">
         <span className="legend-item"><StatusDot tone="warn" size="md" />{m.project.graph.legend.needsRepair}</span>
@@ -493,7 +468,7 @@ export function ResearchNodePanel({
       <PanelBody>
         {children.length === 0 ? null : (
           <>
-            <SectionHeading variant="rail" count={children.length}>{m.project.graph.branchSummary}</SectionHeading>
+            <SectionHeading level="group" count={children.length}>{m.project.graph.branchSummary}</SectionHeading>
             <div className="node-branch-groups">
               {branches.map((group) => (
                 <div className={`node-branch-group ${group.key}`} key={group.key}>
@@ -511,52 +486,51 @@ export function ResearchNodePanel({
           </>
         )}
 
-        <SectionHeading variant="rail" count={tasks.length}>{m.project.graph.tasks}</SectionHeading>
+        <SectionHeading level="group" count={tasks.length}>{m.project.graph.tasks}</SectionHeading>
         {tasks.length === 0
-          ? <EmptyState variant="section">{m.project.graph.noTasks}</EmptyState>
+          ? <EmptyState variant="section" />
           : (
-            <StructuredList className="node-tasks" variant="embedded">
+            <List className="node-tasks" variant="embedded">
               {tasks.map((task) => (
-                <StructuredRow className="node-task-row" data-task={task.id} key={task.id} onActivate={() => onSelectTask(task.id)}>
-                  <FadeText>{task.title}</FadeText>
-                  {task.origin === 'agent' ? <AgentLabel /> : null}
-                </StructuredRow>
+                <Item
+                  className="node-task-row" data-task={task.id} key={task.id} onActivate={() => onSelectTask(task.id)}
+                  title={<FadeText>{task.title}</FadeText>} tags={task.origin === 'agent' ? <AgentLabel /> : null}
+                />
               ))}
-            </StructuredList>
+            </List>
           )}
 
-        <SectionHeading variant="rail" count={ideas.length}>{m.project.linkedIdeas}</SectionHeading>
+        <SectionHeading level="group" count={ideas.length}>{m.project.linkedIdeas}</SectionHeading>
         {ideas.length === 0
-          ? <EmptyState variant="section">{m.project.noLinkedIdeas}</EmptyState>
+          ? <EmptyState variant="section" />
           : (
-            <StructuredList className="node-ideas" variant="embedded">
+            <List className="node-ideas" variant="embedded">
               {ideas.map((idea) => {
                 const source = idea.source.paperTitle === undefined
                   ? plainTitle(idea.source.chatTitle)
                   : `${plainTitle(idea.source.paperTitle)} · ${plainTitle(idea.source.chatTitle)}`
                 return (
-                  <StructuredRow
-                    className="node-idea-row" data-idea={idea.id} key={idea.id}
+                  <Item
+                    className="node-idea-row" data-idea={idea.id} key={idea.id} lines={2}
                     onActivate={() => onSelectIdea(idea.id)}
-                  >
-                    <FadeText className="node-idea-title" label={idea.title}>{idea.title}</FadeText>
-                    {ownIdea(idea) ? null : (
-                      <span className="node-idea-source-line">
+                    title={<FadeText className="node-idea-title" label={idea.title}>{idea.title}</FadeText>}
+                    meta={ownIdea(idea) ? null : (
+                      <>
                         <FadeText className="node-idea-source" label={m.project.idea.sourceTag(source)}>
                           {m.project.idea.sourceTag(source)}
                         </FadeText>
                         {chatDeleted(idea) ? <SourceChatDeleted /> : null}
-                      </span>
+                      </>
                     )}
-                  </StructuredRow>
+                  />
                 )
               })}
-            </StructuredList>
+            </List>
           )}
 
         {nodeEvents.length === 0 ? null : (
           <>
-            <SectionHeading variant="rail" count={nodeEvents.length}>{m.project.graph.records}</SectionHeading>
+            <SectionHeading level="group" count={nodeEvents.length}>{m.project.graph.records}</SectionHeading>
             <ProjectEventList className="node-event-list">
               {nodeEvents.map((event, index) => (
                 <ProjectEventRow

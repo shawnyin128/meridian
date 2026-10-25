@@ -42,7 +42,7 @@ export function updateFailure(error: unknown): UpdateFailure {
   if (error.message.includes('net::ERR_')) return 'unavailable'
   const { statusCode, code, syscall } = error as Error & { statusCode?: unknown; code?: unknown; syscall?: unknown }
   if (typeof statusCode === 'number' || (typeof code === 'string' && code.startsWith('ERR_UPDATER_'))) return 'server'
-  if (typeof syscall === 'string') return 'write'
+  if (typeof syscall === 'string') return 'update-files'
   return 'unknown'
 }
 

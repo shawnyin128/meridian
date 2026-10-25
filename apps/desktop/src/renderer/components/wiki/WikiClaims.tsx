@@ -4,6 +4,7 @@ import type {
 } from '../../../shared/contract.js'
 import { HUMAN_PRODUCER } from '../../../shared/vocabulary.js'
 import { useDraft } from '../../hooks/useDrafts.js'
+import { useArrival } from '../../hooks/useArrival.js'
 import { project as projectApi } from '../../ipc.js'
 import { useFormat } from '../../lib/format.js'
 import { claimId } from '../../lib/slug.js'
@@ -13,16 +14,18 @@ import { AddAction } from '../AddAction.js'
 import { CardTray } from '../CardTray.js'
 import { MenuItem } from '../ActionMenu.js'
 import { DiffLines } from '../DiffLines.js'
-import { DraftForm, DraftLine } from '../DraftForm.js'
+import { DraftForm } from '../DraftForm.js'
 import { EmptyState } from '../EmptyState.js'
 import { EntityLink } from '../EntityLink.js'
 import { ChoicePicker, DotsMenu } from '../FieldPickers.js'
-import { FormInput } from '../FormControls.js'
+import { FieldRow, FormInput } from '../FormControls.js'
 import { SectionHeading } from '../PageShell.js'
 import { SegmentedControl } from '../SegmentedControl.js'
 import { SourceAnchor } from '../SourceAnchor.js'
 import { AgentLabel } from '../SourceLabel.js'
-import { RowActions, StructuredList, StructuredRow } from '../StructuredList.js'
+import { DraftSlot, useDraftSlot } from '../DraftSlot.js'
+import { Item, RowActions } from '../Item.js'
+import { List } from '../List.js'
 import { Tag } from '../Tag.js'
 import { PaperText } from '../paper/PaperText.js'
 import { Button } from '../Button.js'
@@ -136,15 +139,15 @@ export function ClaimSide({ item, title, point, links }: {
  * adds, revises, marks and resolves conflicts on, and retracts claims through `onApply`, which submits
  * one titled list of ops and resolves whether it was written. A new claim is drafted last in the list,
  * where it lands; a revision in its claim's place; a conflict under its claim's lines; a resolution
- * under its conflict. A retract is written at once and asks `onApply` for an `undoable` write. Each
- * write hands `onApply` the `note` that names its result.
- * `arrival`, a claim id, is brought into view once the claims show, after which `onArrived` is called.
+ * under its conflict. A retract is written at once and hands `onApply` the note its Undo notice shows;
+ * the other writes show on the page and hand it none.
+ * `arrival`, a claim id, is landed on (see useArrival) once the claims show, after which `onArrived` is called.
  */
 export function WikiClaims({ page, pending, links, onApply, arrival, onArrived }: {
   page: WikiAggregation
   pending: boolean
   links: ClaimLinks
-  onApply: (title: string, ops: ProposalOp[], done: { note: string; undoable?: boolean }) => Promise<boolean>
+  onApply: (title: string, ops: ProposalOp[], undoNote?: string) => Promise<boolean>
   arrival?: string | undefined
   onArrived?: () => void
 }) {
@@ -154,14 +157,9 @@ export function WikiClaims({ page, pending, links, onApply, arrival, onArrived }
   const fmt = useFormat()
   const [draft, setDraft] = useDraft<ClaimDraft>(['wiki', page.id], 'claim')
   const arrivalRow = useRef<HTMLDivElement>(null)
-  useEffect(() => {
-    if (arrival === undefined) return
-    arrivalRow.current?.scrollIntoView({ block: 'center' })
-    onArrived?.()
-  }, [arrival, page, onArrived])
+  useArrival(arrival, true, () => arrivalRow.current, { block: 'center', ...(onArrived === undefined ? {} : { onLanded: onArrived }) })
   const [projects, setProjects] = useState<ProjectSummary[]>([])
   const [conclusions, setConclusions] = useState<ProjectConclusion[]>([])
-  const addRow = useRef<HTMLDivElement>(null)
   // A draft picked in a claim's menu opens once the menu has closed, so it keeps the focus.
   const opening = useRef<Form | null>(null)
   const formClaim = draft?.claim === null ? undefined : page.claims.find((x) => x.id === draft?.claim)
@@ -184,10 +182,6 @@ export function WikiClaims({ page, pending, links, onApply, arrival, onArrived }
   const patch = (fields: Partial<ClaimDraft>) => { if (draft !== null) setDraft({ ...draft, ...fields }) }
 
   const open = (next: Form) => {
-    if (next.kind === 'add' && form?.kind === 'add') {
-      addRow.current?.querySelector<HTMLElement>('.form-control')?.focus()
-      return
-    }
     setDraft({
       kind: next.kind,
       claim: next.kind === 'add' ? null : next.claim.id,
@@ -197,6 +191,7 @@ export function WikiClaims({ page, pending, links, onApply, arrival, onArrived }
     })
   }
   const close = () => setDraft(null)
+  const addSlot = useDraftSlot(form?.kind === 'add', () => open({ page: page.id, kind: 'add' }))
 
   useEffect(() => {
     if (form?.kind !== 'add' || basis !== 'conclusion') return
@@ -272,19 +267,19 @@ export function WikiClaims({ page, pending, links, onApply, arrival, onArrived }
   const ready = submission()
   /** Writes the drafted form and closes it once written. */
   const saveDraft = () => (ready === null || form === null ? Promise.resolve(false)
-    : onApply(ready.title, ready.ops, { note: c.done[form.kind] }))
+    : onApply(ready.title, ready.ops))
     .then((saved) => { if (saved) close() })
   /** Retracts `claim` at once. A retract stores no reason, yet the op requires one, so it carries the action's name. */
   const retract = (claim: WikiClaim) => {
     void onApply(c.proposals.retract(page.title), [
       { op: 'retractClaim', page: page.id, claim: claim.id, reason: c.retract },
-    ], { note: c.done.retract, undoable: true })
+    ], c.done.retract)
   }
 
   const addDraft = form?.kind !== 'add'
     ? null
     : (
-      <StructuredRow className="wkclaim wkclaim-draft" rowRef={addRow}>
+      <DraftSlot className="wkclaim wkclaim-draft" slot={addSlot.slot}>
         <DraftForm canSave={ready !== null} onSave={saveDraft} onCancel={close}>
           {(invalid) => (
             <>
@@ -292,7 +287,7 @@ export function WikiClaims({ page, pending, links, onApply, arrival, onArrived }
                 value={text} placeholder={f.textPlaceholder} aria-label={f.text} aria-invalid={invalid(text.trim() === '')}
                 onChange={(e) => patch({ text: e.target.value })}
               />
-              <DraftLine label={f.basis}>
+              <FieldRow label={f.basis}>
                 <SegmentedControl
                   label={f.basisLabel} value={basis} onChange={(next) => patch({ basis: next })}
                   options={[{ value: 'personal', label: f.personal }, { value: 'conclusion', label: f.conclusion }]}
@@ -314,7 +309,7 @@ export function WikiClaims({ page, pending, links, onApply, arrival, onArrived }
                       {projectId === ''
                         ? null
                         : conclusions.length === 0
-                          ? <span className="draft-form-label">{f.noConclusions}</span>
+                          ? <span>{m.common.noResults}</span>
                           : (
                             <ChoicePicker
                               appearance="field" aria-label={f.conclusion} placeholder={f.conclusionPick}
@@ -329,27 +324,27 @@ export function WikiClaims({ page, pending, links, onApply, arrival, onArrived }
                           )}
                     </>
                   )}
-              </DraftLine>
+              </FieldRow>
             </>
           )}
         </DraftForm>
-      </StructuredRow>
+      </DraftSlot>
     )
 
   return (
     <>
       <SectionHeading
-        actions={<AddAction size="compact" disabled={pending} label={c.add} onClick={() => open({ page: page.id, kind: 'add' })}>{c.addShort}</AddAction>}
+        actions={<AddAction size="compact" disabled={pending} label={c.add} onClick={addSlot.start}>{c.addShort}</AddAction>}
       >{c.heading}
       </SectionHeading>
       {page.claims.length === 0 && addDraft === null
-        ? <EmptyState variant="section">{c.empty}</EmptyState>
+        ? <EmptyState variant="section" />
         : (
-          <StructuredList variant="embedded" maxVisibleRows="all" className="wkclaims">
+          <List variant="embedded" rows="all" className="wkclaims">
             {page.claims.map((claim) => (
-              <StructuredRow
+              <Item
                 key={claim.id} data-claim={claim.id} className="wkclaim"
-                {...claim.id === arrival ? { rowRef: arrivalRow } : {}}
+                {...claim.id === arrival ? { elementRef: arrivalRow } : {}}
               >
                 <div className="wkclaim-head">
                   {form?.kind === 'revise' && form.claim.id === claim.id
@@ -397,7 +392,7 @@ export function WikiClaims({ page, pending, links, onApply, arrival, onArrived }
                   {claim.conflicts.map((x) => (
                     <Fragment key={`conflict ${x.id}`}>
                       <li className="wkclaim-conflict">
-                        <Tag tone="warn">{c.conflict}</Tag>
+                        <Tag state="warning">{c.conflict}</Tag>
                         <ClaimSide item={x.against} title={x.title} point={x.point} links={links} />
                         <span className="wkclaim-note">{x.note}</span>
                         <Button
@@ -414,29 +409,29 @@ export function WikiClaims({ page, pending, links, onApply, arrival, onArrived }
                             >
                               {(invalid) => (
                                 <>
-                                  <DraftLine label={f.outcome}>
+                                  <FieldRow label={f.outcome}>
                                     <ChoicePicker
                                       appearance="field" aria-label={f.outcome} value={outcome}
                                       options={OUTCOMES} label={(o) => f.outcomes[o]}
                                       onPick={(next) => patch({ outcome: next, text: next === 'revised' ? claim.text : '' })}
                                     />
-                                  </DraftLine>
+                                  </FieldRow>
                                   {outcome === 'revised' || outcome === 'split'
                                     ? (
-                                      <DraftLine label={outcome === 'revised' ? f.revisedText : f.splitText}>
+                                      <FieldRow label={outcome === 'revised' ? f.revisedText : f.splitText}>
                                         <FormInput
                                           value={text} aria-invalid={invalid(textMissing)}
                                           onChange={(e) => patch({ text: e.target.value })}
                                         />
-                                      </DraftLine>
+                                      </FieldRow>
                                     )
                                     : null}
-                                  <DraftLine label={f.note}>
+                                  <FieldRow label={f.note}>
                                     <FormInput
                                       value={note} placeholder={f.resolvePlaceholder} aria-invalid={invalid(note.trim() === '')}
                                       onChange={(e) => patch({ note: e.target.value })}
                                     />
-                                  </DraftLine>
+                                  </FieldRow>
                                 </>
                               )}
                             </DraftForm>
@@ -451,9 +446,9 @@ export function WikiClaims({ page, pending, links, onApply, arrival, onArrived }
                         <DraftForm canSave={ready !== null} onSave={saveDraft} onCancel={close}>
                           {(invalid) => (
                             <>
-                              <DraftLine label={f.other}>
+                              <FieldRow label={f.other}>
                                 {others.length === 0
-                                  ? <span className="draft-form-label">{f.noOthers}</span>
+                                  ? <span>{m.common.noResults}</span>
                                   : (
                                     <ChoicePicker
                                       appearance="field" aria-label={f.other} placeholder={f.other} value={other}
@@ -461,13 +456,13 @@ export function WikiClaims({ page, pending, links, onApply, arrival, onArrived }
                                       label={(id) => others.find((x) => x.id === id)?.text ?? id} onPick={(id) => patch({ other: id })}
                                     />
                                   )}
-                              </DraftLine>
-                              <DraftLine label={f.note}>
+                              </FieldRow>
+                              <FieldRow label={f.note}>
                                 <FormInput
                                   value={note} placeholder={f.conflictPlaceholder} aria-invalid={invalid(note.trim() === '')}
                                   onChange={(e) => patch({ note: e.target.value })}
                                 />
-                              </DraftLine>
+                              </FieldRow>
                             </>
                           )}
                         </DraftForm>
@@ -486,10 +481,10 @@ export function WikiClaims({ page, pending, links, onApply, arrival, onArrived }
                       />
                     </CardTray>
                   )}
-              </StructuredRow>
+              </Item>
             ))}
             {addDraft}
-          </StructuredList>
+          </List>
         )}
     </>
   )

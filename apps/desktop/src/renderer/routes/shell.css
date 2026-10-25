@@ -14,58 +14,6 @@
 /* The paper table's group bar */
 .filters{display:flex;gap:var(--sp-6);margin-bottom:var(--sp-12)}
 
-/*
- * Management row: a name followed by a few buttons at the end of the row. The demo uses it to manage
- * watches; the archived chats list in Settings has the same shape.
- */
-.wlist{margin-top:var(--sp-6)}
-.wrow{display:flex;align-items:center;gap:var(--sp-8);min-height:40px;padding:var(--sp-8) var(--sp-12);font-size:var(--fs-base)}
-.wrow .nm{display:flex;align-items:center;flex:1;min-width:0;min-height:22px;line-height:22px}
-
-.discovery-summary{display:flex;align-items:center;justify-content:space-between;gap:var(--sp-12);margin:calc(-1 * var(--sp-4)) 0 var(--sp-16)}
-.discovery-note{margin:0;color:var(--ter);font-size:var(--fs-sm)}
-.direction-panel{margin:0 0 var(--sp-20)}
-.direction-project+.direction-project{border-top:1px solid var(--sep)}
-.direction-project>header{display:flex;align-items:center;gap:var(--sp-10);padding:var(--sp-8) var(--sp-12);background:var(--field);font-size:var(--fs-sm)}
-.direction-project>header strong{color:var(--ink)}
-.direction-project>header span{color:var(--ter)}
-.direction-project>header .btn{margin-left:auto}
-.direction-row{display:flex;align-items:center;gap:var(--sp-14);min-height:46px;padding:var(--sp-8) var(--sp-12);border-top:1px solid var(--sep2)}
-.direction-row.disabled .direction-main{opacity:.52}
-.direction-main{min-width:0;flex:1}
-.direction-name{display:flex;align-items:center;gap:var(--sp-8);color:var(--ink);font-size:var(--fs-base)}
-.direction-seeds{display:block;margin-top:var(--sp-2);color:var(--ter);font-size:var(--fs-cap)}
-.direction-actions{display:flex;align-items:center;gap:var(--sp-6);flex:none}
-
-/*
- * Last header cell of both tables: the add-column + and the column-settings gear, nested icon
- * buttons in the header row's actions slot. Two 24px buttons fit in 52px once the cell's padding
- * drops from the 10px of .ptable th / .cmp th to 2px and the slot sets them side by side without its
- * gap, which also keeps the header no taller than one with text only.
- */
-.th-add{width:52px;white-space:nowrap}
-/*
- * Each table's th sets its padding with a selector more specific than .th-add, so this padding
- * override has to name the table too.
- */
-.ptable th.th-add,.cmp th.th-add{padding:var(--sp-2)}
-.th-add .row-actions{gap:0;vertical-align:middle}
-
-/* The label column is as wide as the longest label, which stays on one line. */
-.wkprops{display:grid;grid-template-columns:max-content minmax(0,1fr);width:100%;max-width:100%;min-width:0;row-gap:var(--sp-6);column-gap:var(--sp-12);font-size:var(--fs-sm);line-height:var(--lh-ui)}
-.wkprops>*{min-width:0}
-.wkprops .pk{color:var(--ter);font-size:var(--fs-sm);white-space:nowrap}
-.wkprops .pv{color:var(--sec)}
-
-/*
- * Single-value metadata editing used across the app: Zotero-style hover over the whole cell; a click
- * replaces just that value with an input in the same place.
- */
-.metadata-field{display:block;width:100%;max-width:100%;min-width:0}
-.metadata-editable{display:block;box-sizing:border-box;width:100%;min-width:0;margin:calc(-1 * var(--sp-2)) 0;padding:var(--sp-2) 0;border:0;border-radius:var(--r-xs);background:transparent;color:var(--sec);font:inherit;line-height:inherit;text-align:left;overflow-wrap:anywhere;cursor:text}
-.metadata-editable:hover{background:var(--field);color:var(--ink)}
-.pv.metadata-editable{cursor:pointer}
-.form-control.metadata-input.multiline{display:block;field-sizing:content;resize:none;overflow:hidden;white-space:pre-wrap;overflow-wrap:anywhere}
 
 /*
  * Two-column page: body text on the left, a property column on the right with rows of related chips
@@ -73,7 +21,6 @@
  */
 .wkpage{font-size:var(--fs-read);line-height:var(--lh-read)}
 .wkmain{flex:1;min-width:0}
-.wkpage .lm{font-size:var(--fs-sm)}
 /* A page body that holds a rail is a size container: 100cqh, its height inside the padding, keeps the rail inside the visible page at any window height. */
 .project-detail-body{container-type:size}
 .wkside{box-sizing:border-box;flex:0 0 260px;width:260px;max-width:260px;min-width:0;font-size:var(--fs-sm);line-height:var(--lh-ui);border-left:1px solid var(--sep2);padding-left:var(--sp-24);
@@ -90,16 +37,9 @@
 /* In a window too short for the column to stay pinned with room to read, it scrolls with the page. */
 @media (max-height:860px){.wkside:not(.node-document-pane){position:static;max-height:none}}
 
-.desk-head .fetchnote{font-size:var(--fs-sm);color:var(--ter);white-space:nowrap}
-
 /* "Needs attention" block and its dated rows, shared by the project and wiki screens */
-.attn{padding:0;margin-bottom:0}
 .attnrow{display:grid;grid-template-columns:var(--project-signal-kind-width) var(--project-signal-date-width) minmax(0,1fr);
-  align-items:center;column-gap:var(--project-signal-gap);
-  padding:var(--sp-8) 0;font-size:var(--fs-base);cursor:default}
-/* As in the demo, only rows linked to a wiki page are clickable. */
-.attnrow[data-wk]{cursor:pointer}
-.attnrow[data-wk]:hover{background:var(--hover)}
+  align-items:center;column-gap:var(--project-signal-gap)}
 .attn-text{flex:1;min-width:0;overflow:hidden;white-space:nowrap}
 .attn+.wkpage{margin-top:var(--sp-24)}
 
@@ -130,7 +70,7 @@
 .md hr{border:0;border-top:1px solid var(--sep2);margin:var(--sp-16) 0}
 .md img{max-width:100%}
 .md .katex-display{margin:var(--sp-10) 0}
-.nrow{display:grid;padding:var(--sp-8) var(--sp-2)}
+.nrow{display:grid}
 .nrow .nq{font-size:var(--fs-sm);color:var(--ter);font-style:italic;background:var(--field);border-radius:var(--r-sm);padding:var(--sp-6) var(--sp-8);margin-bottom:var(--sp-6)}
 .nrow .nt{font-size:var(--fs-sm);color:var(--ink);overflow-wrap:anywhere}
 

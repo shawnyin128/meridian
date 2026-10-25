@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import type {
   ConclusionState, GraphNode, ProjectConclusion, ProposalOp, WikiAggregationCard,
 } from '../../../shared/contract.js'
@@ -7,23 +7,25 @@ import { wiki } from '../../ipc.js'
 import { claimId } from '../../lib/slug.js'
 import { useFormat } from '../../lib/format.js'
 import { useMessages } from '../../messages/useMessages.js'
-import { DraftForm, DraftLine } from '../DraftForm.js'
+import { DraftForm } from '../DraftForm.js'
 import { EmptyState } from '../EmptyState.js'
 import { FadeText } from '../FadeText.js'
 import { ChoicePicker } from '../FieldPickers.js'
-import { FormInput } from '../FormControls.js'
+import { FieldRow, FormInput } from '../FormControls.js'
 import { SectionHeading } from '../PageShell.js'
 import { PanelBody, PanelHead } from '../SidePanel.js'
 import { AgentLabel } from '../SourceLabel.js'
-import { StructuredList, StructuredRow } from '../StructuredList.js'
+import { useDraftSlot } from '../DraftSlot.js'
+import { Item } from '../Item.js'
+import { List } from '../List.js'
 import { Tag } from '../Tag.js'
 import { EntityLink } from '../EntityLink.js'
 import { ProjectSignalDate, ProjectSignalKind } from './ProjectSignals.js'
 import { Button } from '../Button.js'
 import './ProjectConclusions.css'
 
-const STATE_TONE: Record<ConclusionState, 'warn' | 'good' | 'bad'> = {
-  pending: 'warn', verified: 'good', conflicting: 'bad',
+const STATE: Record<ConclusionState, 'warning' | 'done'> = {
+  pending: 'warning', verified: 'done', conflicting: 'warning',
 }
 
 type NodeLook = { label: string; mode: NonNullable<GraphNode['mode']> }
@@ -45,11 +47,11 @@ export function ProjectConclusionRow({ conclusion, node, selected, onOpen }: {
   const written = conclusion.wiki[0]
   const wikiState = written === undefined ? c.notWritten : c.writtenTo(written.title, written.version)
   return (
-    <StructuredRow
+    <Item
       className="attnrow record-row conclusion-row" selected={selected}
       data-conclusion={conclusion.id} onActivate={onOpen}
     >
-      <ProjectSignalKind tone={STATE_TONE[conclusion.state]}>{c.state[conclusion.state]}</ProjectSignalKind>
+      <ProjectSignalKind state={STATE[conclusion.state]}>{c.state[conclusion.state]}</ProjectSignalKind>
       <ProjectSignalDate date={conclusion.date} />
       <span className="attn-text record-text">
         <FadeText className="record-line" expand>
@@ -60,7 +62,7 @@ export function ProjectConclusionRow({ conclusion, node, selected, onOpen }: {
         {node === undefined ? null : <EntityLink kind="node" label={node.label} mode={node.mode} fill />}
       </span>
       <span className="record-who">{conclusion.node === undefined ? null : <AgentLabel />}</span>
-    </StructuredRow>
+    </Item>
   )
 }
 
@@ -94,16 +96,13 @@ export function ProjectConclusionPanel({
   // A draft belongs to the conclusion it was opened from and shows only with it.
   const [draft, setDraft] = useDraft<{ page: string; text: string }>(['project', projectId, 'conclusion', conclusion.id], 'claim')
   const [pages, setPages] = useState<WikiAggregationCard[]>([])
-  const draftAt = useRef<HTMLDivElement>(null)
-
-  const startWriting = () => {
-    if (draft !== null) {
-      draftAt.current?.querySelector<HTMLElement>('.form-control')?.focus()
-      return
-    }
-    setDraft({ page: '', text: conclusion.text })
+  const drafting = draft !== null
+  // The pages a claim can land on are read whenever a draft shows, also one restored after a restart.
+  useEffect(() => {
+    if (!drafting) return
     void wiki.cards().then((cards) => setPages([...cards].sort((a, b) => a.title.localeCompare(b.title))))
-  }
+  }, [drafting])
+  const claimDraft = useDraftSlot<HTMLDivElement>(drafting, () => setDraft({ page: '', text: conclusion.text }))
 
   const submit = async (): Promise<void> => {
     const { page, text } = draft!
@@ -133,20 +132,20 @@ export function ProjectConclusionPanel({
               ? <Button size="compact" onClick={() => onUnverify(conclusion.node!)}>{c.unverify}</Button>
               : null}
             {conclusion.state === 'verified' ? null : <Tag>{c.unverifiedState}</Tag>}
-            <Button size="compact" disabled={conclusion.state !== 'verified'} onClick={startWriting}>{c.write}</Button>
+            <Button size="compact" disabled={conclusion.state !== 'verified'} onClick={claimDraft.start}>{c.write}</Button>
           </>
         )}
       />
       <PanelBody>
         <p className="conclusion-detail-text">{conclusion.text}</p>
         <div className="conclusion-detail-meta">
-          <ProjectSignalKind tone={STATE_TONE[conclusion.state]}>{c.state[conclusion.state]}</ProjectSignalKind>
+          <ProjectSignalKind state={STATE[conclusion.state]}>{c.state[conclusion.state]}</ProjectSignalKind>
           {conclusion.date === undefined ? null : <span className="conclusion-detail-date">{fmt.date(conclusion.date)}</span>}
         </div>
         {draft === null
           ? null
           : (
-            <div className="conclusion-draft" ref={draftAt}>
+            <div className="conclusion-draft" ref={claimDraft.slot}>
               <DraftForm
                 destination={(invalid) => (
                   <>
@@ -167,13 +166,13 @@ export function ProjectConclusionPanel({
                       value={draft.text} aria-label={c.text} aria-invalid={invalid(draft.text.trim() === '')}
                       onChange={(event) => setDraft({ ...draft, text: event.target.value })}
                     />
-                    <DraftLine>
+                    <FieldRow>
                       <span className="conclusion-draft-evidence">
                         <Tag>{m.wiki.claims.experiment}</Tag>
                         <EntityLink kind="project" label={projectName} />
                         <span>{conclusion.node === undefined ? conclusion.text : node?.label ?? conclusion.node}</span>
                       </span>
-                    </DraftLine>
+                    </FieldRow>
                   </>
                 )}
               </DraftForm>
@@ -183,25 +182,26 @@ export function ProjectConclusionPanel({
         {conclusion.node === undefined
           ? (
             <>
-              <SectionHeading variant="rail">{c.source}</SectionHeading>
+              <SectionHeading level="group">{c.source}</SectionHeading>
               <p className="conclusion-detail-source">{conclusion.source}</p>
             </>
           )
           : (
             <>
-              <SectionHeading variant="rail" count={conclusion.tasks.length}>{c.tasks}</SectionHeading>
+              <SectionHeading level="group" count={conclusion.tasks.length}>{c.tasks}</SectionHeading>
               {conclusion.tasks.length === 0
-                ? <EmptyState variant="section">{c.noTasks}</EmptyState>
+                ? <EmptyState variant="section" />
                 : (
-                  <StructuredList variant="embedded" className="conclusion-chain">
+                  <List variant="embedded" className="conclusion-chain">
                     {conclusion.tasks.map((task) => (
-                      <StructuredRow key={task.id} className="conclusion-chain-row" onActivate={() => onOpenTask(task.id)}>
-                        <FadeText>{task.title}</FadeText>
-                      </StructuredRow>
+                      <Item
+                        key={task.id} className="conclusion-chain-row" onActivate={() => onOpenTask(task.id)}
+                        title={<FadeText>{task.title}</FadeText>}
+                      />
                     ))}
-                  </StructuredList>
+                  </List>
                 )}
-              <SectionHeading variant="rail">{c.node}</SectionHeading>
+              <SectionHeading level="group">{c.node}</SectionHeading>
               {node === undefined
                 ? null
                 : (
@@ -209,37 +209,35 @@ export function ProjectConclusionPanel({
                     <EntityLink kind="node" label={node.label} mode={node.mode} onOpen={() => onOpenNode(conclusion.node!)} />
                   </div>
                 )}
-              <SectionHeading variant="rail" count={conclusion.experiments.length}>{c.experiments}</SectionHeading>
+              <SectionHeading level="group" count={conclusion.experiments.length}>{c.experiments}</SectionHeading>
               {conclusion.experiments.length === 0
-                ? <EmptyState variant="section">{c.noExperiments}</EmptyState>
+                ? <EmptyState variant="section" />
                 : (
-                  <StructuredList variant="embedded" className="conclusion-chain">
+                  <List variant="embedded" className="conclusion-chain">
                     {conclusion.experiments.map((experiment) => (
-                      <StructuredRow key={experiment.id} className="conclusion-chain-row">
-                        <FadeText>{experiment.title}</FadeText>
-                        {experiment.title === experiment.id ? null : <span className="conclusion-chain-id">{experiment.id}</span>}
-                      </StructuredRow>
+                      <Item
+                        key={experiment.id} className="conclusion-chain-row" title={<FadeText>{experiment.title}</FadeText>}
+                        trailing={experiment.title === experiment.id ? null : <span className="conclusion-chain-id">{experiment.id}</span>}
+                      />
                     ))}
-                  </StructuredList>
+                  </List>
                 )}
             </>
           )}
 
-        <SectionHeading variant="rail">{c.wiki}</SectionHeading>
+        <SectionHeading level="group">{c.wiki}</SectionHeading>
         {conclusion.wiki.length === 0
-          ? <EmptyState variant="section">{c.notWritten}</EmptyState>
+          ? <EmptyState variant="section" />
           : (
-            <StructuredList variant="embedded" className="conclusion-chain">
+            <List variant="embedded" className="conclusion-chain">
               {conclusion.wiki.map((claim) => (
-                <StructuredRow
+                <Item
                   key={`${claim.page}#${claim.claim}`} className="conclusion-chain-row" data-wk={claim.page}
-                  onActivate={() => onOpenPage(claim.page)}
-                >
-                  <FadeText>{claim.title}</FadeText>
-                  <span className="conclusion-chain-id">v{claim.version}</span>
-                </StructuredRow>
+                  onActivate={() => onOpenPage(claim.page)} title={<FadeText>{claim.title}</FadeText>}
+                  trailing={<span className="conclusion-chain-id">v{claim.version}</span>}
+                />
               ))}
-            </StructuredList>
+            </List>
           )}
       </PanelBody>
     </>

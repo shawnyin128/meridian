@@ -32,7 +32,7 @@ describe('PaperUnderstanding', () => {
     // Every row draws a 54px box, stacked from the top of its list.
     vi.spyOn(HTMLElement.prototype, 'getClientRects').mockReturnValue([{}] as unknown as DOMRectList)
     vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
-      const rows = [...this.closest('.structured-list')!.querySelectorAll('.structured-row')]
+      const rows = [...this.closest('.list')!.querySelectorAll('.item')]
       return { top: 0, bottom: 54 * (rows.indexOf(this) + 1) } as DOMRect
     })
     const host = document.createElement('div')
@@ -46,8 +46,8 @@ describe('PaperUnderstanding', () => {
     expect(html).toContain('随笔')
     expect(html).toContain('fixed-context diagnostic')
     expect(host.querySelector('.paper-understanding-notes .paper-understanding-label')!.textContent).toBe('笔记 · 6')
-    expect(html).toContain('structured-list--embedded')
-    expect(html).toContain('structured-list--scrollable')
+    expect(html).toContain('list--embedded')
+    expect(html).toContain('list--scrollable')
     expect(html).not.toContain('Wiki 内化内容')
     act(() => root.unmount())
     host.remove()
@@ -60,8 +60,8 @@ describe('PaperUnderstanding', () => {
     const html = renderToStaticMarkup(
       <MessagesProvider><PaperUnderstanding reading={empty} error={null} onRead={() => undefined} /></MessagesProvider>,
     )
-    expect(html).toContain('还没有随笔和笔记')
-    expect(html).toContain('<div class="section-heading section-heading--page">个人理解</div>')
+    expect(html).toContain('<div class="empty-state empty-state--section">—</div>')
+    expect(html).toContain('<div class="section-heading section-heading--section">个人理解</div>')
     expect(html).not.toContain('去阅读论文')
   })
 })

@@ -37,7 +37,11 @@ function setValue(input: HTMLTextAreaElement, value: string): void {
 }
 
 describe('ReadingNotes', () => {
-  beforeEach(() => { vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} }) })
+  beforeEach(() => {
+    vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} })
+    vi.stubGlobal('meridian', { platform: 'darwin' })
+  })
+  afterEach(() => { vi.unstubAllGlobals() })
   const roots: ReturnType<typeof createRoot>[] = []
 
   beforeEach(() => {
@@ -67,10 +71,10 @@ describe('ReadingNotes', () => {
     )
     act(() => root.render(panel(null)))
     const card = () => host.querySelector('.highlight-card')!
-    expect([card().classList.contains('selected'), card().getAttribute('aria-current'), scrolled]).toEqual([false, null, []])
+    expect([card().classList.contains('item--selected'), card().getAttribute('aria-current'), scrolled]).toEqual([false, null, []])
     act(() => root.render(panel('highlight-1')))
-    expect([card().classList.contains('selected'), card().getAttribute('aria-current')]).toEqual([true, 'true'])
-    expect(scrolled).toEqual([['reading-card highlight-card yellow selected', { block: 'nearest' }]])
+    expect([card().classList.contains('item--selected'), card().getAttribute('aria-current')]).toEqual([true, 'true'])
+    expect(scrolled).toEqual([['item item--card item--slotted item--selected item--marked reading-card highlight-card yellow', { block: 'nearest' }]])
     expect(document.activeElement).toBe(document.body)
     delete (Element.prototype as Partial<Element>).scrollIntoView
   })
@@ -154,7 +158,7 @@ describe('ReadingNotes', () => {
     act(() => setValue(note, '修订笔记'))
     await act(async () => { note.closest('article')!.querySelector<HTMLButtonElement>('.reading-actions .btn')!.click() })
     await act(async () => { note.closest('article')!.querySelector<HTMLButtonElement>('.reading-delete')!.click() })
-    act(() => { host.querySelector<HTMLButtonElement>('.highlight-card .reading-page .source-anchor')!.click() })
+    act(() => { host.querySelector<HTMLButtonElement>('.highlight-card .item-meta .source-anchor')!.click() })
 
     expect(mutations).toEqual([
       { kind: 'highlight.update', id: 'highlight-1', note: '高亮判断' },
@@ -162,5 +166,43 @@ describe('ReadingNotes', () => {
       { kind: 'note.delete', id: 'note-1' },
     ])
     expect(jump).toHaveBeenCalledWith(2)
+  })
+
+  it('新笔记、改笔记和高亮批注都按长文本约定保存：⌘回车写回，单按回车只是换行，Esc 还原改动', async () => {
+    const host = document.createElement('div')
+    document.body.append(host)
+    const root = createRoot(host)
+    roots.push(root)
+    const mutations: ReadingMutation[] = []
+    act(() => root.render(
+      <MessagesProvider>
+        <Notes
+          reading={READING} currentPage={4} saving={false} onJump={vi.fn()}
+          onMutate={async (mutation) => { mutations.push(mutation); return true }}
+        />
+      </MessagesProvider>,
+    ))
+    const key = (field: HTMLTextAreaElement, init: KeyboardEventInit) => act(async () => {
+      field.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, cancelable: true, ...init }))
+    })
+    const compose = host.querySelector<HTMLTextAreaElement>('[aria-label="新笔记"]')!
+    const highlightNote = host.querySelector<HTMLTextAreaElement>('[aria-label="第 2 页高亮批注"]')!
+    const note = host.querySelector<HTMLTextAreaElement>('[aria-label="第 3 页笔记"]')!
+
+    act(() => setValue(compose, '新想法'))
+    act(() => setValue(highlightNote, '高亮判断'))
+    act(() => setValue(note, '修订笔记'))
+    for (const field of [compose, highlightNote, note]) await key(field, { key: 'Enter' })
+    expect(mutations).toEqual([])
+
+    await key(note, { key: 'Escape' })
+    expect(note.value).toBe('原笔记')
+    act(() => setValue(note, '修订笔记'))
+    for (const field of [compose, highlightNote, note]) await key(field, { key: 'Enter', metaKey: true })
+    expect(mutations).toEqual([
+      { kind: 'note.add', page: 4, text: '新想法' },
+      { kind: 'highlight.update', id: 'highlight-1', note: '高亮判断' },
+      { kind: 'note.update', id: 'note-1', text: '修订笔记' },
+    ])
   })
 })

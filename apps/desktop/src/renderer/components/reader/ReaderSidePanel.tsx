@@ -5,7 +5,7 @@ import { PaperMetadata } from '../PaperMetadata.js'
 import { ReadingNotes } from './ReadingNotes.js'
 import { ReadingRemark } from './ReadingRemark.js'
 import { PaperWikiIngest } from './PaperWikiIngest.js'
-import { ReaderPanelHeader } from './ReaderPanelHeader.js'
+import { PageHeader, PageTitle } from '../PageShell.js'
 import { SidePanel } from '../SidePanel.js'
 import { ToggleGroup, ToggleItem } from '../Toolbar.js'
 import { Tooltip } from '../Tooltip.js'
@@ -60,7 +60,7 @@ export function ReaderSidePanel({
       {tab === 'metadata' && paper !== null
         ? (
           <SidePanel surface="edge" label={m.reader.rail.tabs.metadata} className="reader-meta">
-            <ReaderPanelHeader title={m.reader.rail.tabs.metadata} />
+            <PageHeader size="pane"><PageTitle>{m.reader.rail.tabs.metadata}</PageTitle></PageHeader>
             <PaperMetadata paper={paper} readStateLabel={m.papers.metadata.fields.readState} onSaved={onPaper} />
           </SidePanel>
         )

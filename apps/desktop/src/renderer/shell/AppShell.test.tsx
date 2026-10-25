@@ -51,6 +51,7 @@ vi.mock('../ipc.js', () => ({
     delete: fixture.deleteChat,
   },
   extensions: { checkLatest: vi.fn() },
+  harness: { modelSettings: () => new Promise(() => {}) },
   idea: { list: none },
   inbox: { list: ({ kind }: { kind: string }) => Promise.resolve(kind === 'discovery' ? fixture.discovery : fixture.delivered) },
   jobs: { status: () => new Promise(() => {}) },
@@ -454,7 +455,7 @@ describe('AppShell keyboard navigation', () => {
   beforeEach(() => mount())
 
   it('takes the sidebar rows, from Feed to Trash, as one Tab stop with the up and down arrow keys between them', async () => {
-    const nav = document.querySelector<HTMLElement>('#sidebar .sb-nav')!
+    const nav = document.querySelector<HTMLElement>('#sidebar .nav-pane-nav')!
     const stops = [...document.querySelectorAll<HTMLElement>('#sidebar *')].filter((element) => element.tabIndex >= 0)
     expect(stops).toEqual([
       document.querySelector('#sSearch'), nav, document.querySelector('[data-chat="c1"] .row-actions'), document.querySelector('#sbgrip'),
@@ -498,11 +499,11 @@ describe('AppShell keyboard navigation', () => {
       expect(toggle.getAttribute('aria-expanded'), sect).toBe('true')
       act(() => toggle.click())
       expect(toggle.getAttribute('aria-expanded'), sect).toBe('false')
-      expect(document.querySelector(`#sect-${sect}`)!.classList.contains('closed'), sect).toBe(true)
+      expect(document.querySelector<HTMLElement>(`#sect-${sect}`)!.hidden, sect).toBe(true)
       act(() => toggle.click())
     }
-    act(() => document.querySelector<HTMLButtonElement>('[data-sect="chats"] .sb-add')!.click())
-    expect(document.querySelector('#sect-chats')!.classList.contains('closed')).toBe(false)
+    act(() => document.querySelector<HTMLButtonElement>('[data-sect="chats"] .add-action')!.click())
+    expect(document.querySelector<HTMLElement>('#sect-chats')!.hidden).toBe(false)
   })
 
   it('every sidebar fold is the shared fold toggle: the caret follows its label and the toggle names the group it folds', () => {
@@ -542,7 +543,7 @@ describe('AppShell keyboard navigation', () => {
       expect(toggle.getAttribute('aria-expanded'), selector).toBe('true')
       act(() => toggle.click())
       expect(toggle.getAttribute('aria-expanded'), selector).toBe('false')
-      expect(document.querySelector(group)!.classList.contains('closed'), selector).toBe(true)
+      expect(document.querySelector<HTMLElement>(group)!.hidden, selector).toBe(true)
     }
     expect(crumbs()).toEqual(['动态'])
   })
@@ -596,9 +597,9 @@ describe('AppShell sidebar rows', () => {
 
   it('names a watch, a discovery project and a chat in full in the shared tooltip, only while the row fades them out', () => {
     const names = {
-      '[data-watchrow="w-topic"] .watch-name': '推测解码',
-      '[data-discovery-project="p1"] .watch-name': '推理项目',
-      '[data-chat="c1"] .ct-t': '讨论',
+      '[data-watchrow="w-topic"] .fade-text': '推测解码',
+      '[data-discovery-project="p1"] .fade-text': '推理项目',
+      '[data-chat="c1"] .fade-text': '讨论',
     }
     for (const [selector, name] of Object.entries(names)) {
       const text = document.querySelector<HTMLElement>(selector)!
@@ -632,7 +633,7 @@ describe('AppShell sidebar rows', () => {
   })
 
   it('fades the sidebar\'s scroll area only toward the edge whose rows are hidden', () => {
-    const top = document.querySelector<HTMLElement>('.sb-top')!
+    const top = document.querySelector<HTMLElement>('#sidebar .nav-pane-rows')!
     let offset = 0
     Object.defineProperty(top, 'clientHeight', { configurable: true, get: () => 500 })
     Object.defineProperty(top, 'scrollHeight', { configurable: true, get: () => 700 })

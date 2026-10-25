@@ -11,7 +11,7 @@ import { sendsMessage } from '../../lib/chat.js'
 import { composing } from '../../lib/keyboard.js'
 import { useMessages } from '../../messages/useMessages.js'
 import { GenerationControl } from '../GenerationControl.js'
-import { NoModelTag } from '../NoModelTag.js'
+import { ModelStatusTag } from '../ModelStatusTag.js'
 import { PickerPopover, PickOption } from '../PickerPopover.js'
 import { Tag } from '../Tag.js'
 import { useWidgetSlots } from '../widget-slots.js'
@@ -59,7 +59,7 @@ const sameDraft = (a: readonly ChatRun[], b: readonly ChatRun[]) => JSON.stringi
 
 /**
  * The one chat composer, in the Chat screen and the reader's paper chat: a CodeMirror editor over
- * `draft` with its own undo history, the no-model state and the send control. Enter sends, Shift+Enter
+ * `draft` with its own undo history, the shared model status (see ModelStatusTag) and the send control. Enter sends, Shift+Enter
  * breaks the line, and an Enter that confirms an input method's composition belongs to the input
  * method. With `mentions`, typing `@` anywhere opens the picker of the candidates matching what
  * follows it up to the caret; picking one puts it in as a pill, which the caret steps over and a
@@ -68,7 +68,7 @@ const sameDraft = (a: readonly ChatRun[], b: readonly ChatRun[]) => JSON.stringi
  * `label` names the editor for assistive technology, as the placeholder does without it.
  */
 export function ChatComposer({
-  ref, id, label, placeholder, draft, onDraft, unavailable, running, noModel, sendId, onSend, onStop, mentions = [],
+  ref, id, label, placeholder, draft, onDraft, unavailable, running, sendId, onSend, onStop, mentions = [],
 }: {
   ref?: Ref<ChatComposerHandle>
   id?: string
@@ -78,7 +78,6 @@ export function ChatComposer({
   onDraft: (draft: ChatRun[]) => void
   unavailable: boolean
   running: boolean
-  noModel: boolean
   sendId?: string
   onSend: () => void
   onStop: () => void
@@ -171,7 +170,7 @@ export function ChatComposer({
                 }
               }}
             />
-            {noModel ? <NoModelTag label={m.chat.noModel} /> : null}
+            <ModelStatusTag />
             <GenerationControl
               className="send" id={sendId} running={running} disabled={unavailable || draftText(draft).trim() === ''}
               onStart={onSend} onStop={onStop}
@@ -180,7 +179,6 @@ export function ChatComposer({
         )}
         content={hits.length === 0 ? null : (
           <>
-            <div className="rh">{m.chat.mentionPickerHeading}</div>
             {hits.map((hit, at) => (
               <Fragment key={`${hit.kind}${hit.title}`}>
                 {hits[at - 1]?.kind === hit.kind ? null : <div className="rg">{m.chat.mentionGroup[hit.kind]}</div>}

@@ -2,13 +2,11 @@ import { later as zh } from '../zh/later.js'
 
 /** English counterpart of `zh/later`. `satisfies` makes a missing, extra or re-parameterised key a compile error. */
 export const later = {
-  title: 'Read Later',
-  empty: 'No papers saved for later yet',
+  title: 'Read later',
   groupBy: 'Group by',
   modes: { time: 'Date added', src: 'Source' },
   actions: {
-    downloading: 'Downloading from arXiv…',
-    removeFrom: 'Remove from Read Later',
+    removeFrom: 'Remove from read later',
   },
-  removed: (title: string) => `Removed “${title}” from Read Later`,
+  removed: (title: string) => `Removed “${title}” from read later`,
 } satisfies typeof zh

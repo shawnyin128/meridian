@@ -22,7 +22,7 @@ import { Card } from '../Card.js'
 import { ConfirmDialog } from '../ConfirmDialog.js'
 import { FadeText } from '../FadeText.js'
 import { DotsMenu } from '../FieldPickers.js'
-import { RowActions } from '../StructuredList.js'
+import { RowActions } from '../Item.js'
 import { InlineMessage } from '../InlineMessage.js'
 
 const OPTIONS: readonly AppearancePreference[] = ['light', 'dark', 'system']
@@ -145,12 +145,12 @@ function ColourThemeMenu({ name, onEdit, onDelete }: { name: string; onEdit: () 
           setConfirming(true)
         }}
       >
-        <MenuItem onSelect={onEdit}>{m.common.edit}</MenuItem>
+        <MenuItem onSelect={onEdit}>{m.settings.appearance.editor.edit}</MenuItem>
         <MenuItem className="mi danger" onSelect={() => { deleting.current = true }}>{m.common.delete}</MenuItem>
       </DotsMenu>
       <ConfirmDialog
         open={confirming} onOpenChange={setConfirming}
-        title={t.deleteTitle(name)} description={t.deleteDescription} confirmLabel={m.common.delete} onConfirm={onDelete}
+        title={t.deleteTitle(name)} description={t.deleteLoss} confirmLabel={m.common.delete} onConfirm={onDelete}
       />
     </>
   )

@@ -53,7 +53,7 @@ test('从论文屏搜:只命中会话那一类,点它进那条会话', async ({ 
   await win.locator('#sRes .rrow', { hasText: '对话：' }).click()
   await expect(win.locator('#crumb .cseg')).toHaveText(['对话', '摊薄的前提是共享前缀吗'])
   await expect(shown(win, '.msg')).toHaveCount(2)
-  await expect(win.locator('#chatList .chat-row.on .ct-t')).toHaveText('摊薄的前提是共享前缀吗')
+  await expect(win.locator('#chatList .chat-row.on .fade-text')).toHaveText('摊薄的前提是共享前缀吗')
 })
 
 test('从阅读器搜:全局侧栏连同全局搜索一起收起,阅读器里搜不了', async ({ win }) => {
@@ -62,10 +62,10 @@ test('从阅读器搜:全局侧栏连同全局搜索一起收起,阅读器里搜
     '我的库', '论文', 'STAR: SPECULATIVE DECODING WITH SEARCHABLE DRAFTING AND TARGET-AWARE REFINEMENT FOR MULTIMODAL GENERATION',
   ])
 
-  // While reading, the whole global sidebar is hidden (.main.reading>.sidebar{display:none}), taking
-  // the global search with it. This matches .main.reading .sidebar in
-  // e2e/fixtures/platform-shell-demo.html: it is how this screen should look, not a reader quirk.
-  await expect(win.locator('.sidebar')).toBeHidden()
+  // While reading, the whole global sidebar is hidden, taking the global search with it. This matches
+  // .main.reading .sidebar in e2e/fixtures/platform-shell-demo.html: it is how this screen should look,
+  // not a reader quirk.
+  await expect(win.locator('#sidebar')).toBeHidden()
   await expect(win.locator('#sSearch')).toBeHidden()
 })
 
@@ -110,7 +110,7 @@ test('从最近变动屏搜:命中多于上限时只出 SEARCH_LIMIT 条,没有�
 
 test('只命中某几类时就只出那几类,类别名搜不到东西,搜不到时写没有找到,清空与 Escape 都收起面板', async ({ win }) => {
   await search(win, '对话：')
-  await expect(win.locator('#sRes .empty-state')).toHaveText('没有找到匹配的内容')
+  await expect(win.locator('#sRes .empty-state')).toHaveText('无结果')
 
   await search(win, 'Distillation-based')
   await expect(rows(win)).toHaveText(['方法：Distillation-based QAT'])
@@ -122,7 +122,7 @@ test('只命中某几类时就只出那几类,类别名搜不到东西,搜不到
 
   // A query with no hits keeps the panel open with an empty state; clearing the query closes it.
   await win.locator('#sSearch').fill('这几个字库里没有')
-  await expect(win.locator('#sRes .empty-state')).toHaveText('没有找到匹配的内容')
+  await expect(win.locator('#sRes .empty-state')).toHaveText('无结果')
   await expect(win.locator('#sRes .rrow')).toHaveCount(0)
   await win.locator('#sSearch').fill('')
   await expect(win.locator('#sRes')).toHaveCount(0)
@@ -156,7 +156,7 @@ test('搜索跨边界的只有命中的那几条,不是整库', async ({ win }) 
 
 test('从对话屏搜项目:进那个项目,返回钮回到刚才那条会话', async ({ win }) => {
   const row = win.locator('#chatList .chat-row').first()
-  const title = await row.locator('.ct-t').innerText()
+  const title = await row.locator('.fade-text').innerText()
   await row.click()
   await expect(win.locator('#crumb .cseg')).toHaveText(['对话', title])
 
@@ -167,5 +167,5 @@ test('从对话屏搜项目:进那个项目,返回钮回到刚才那条会话', 
   // The project was opened from the chat screen, so the back button returns to that chat.
   await shown(win, '.desk-head .back').click()
   await expect(win.locator('#crumb .cseg')).toHaveText(['对话', title])
-  await expect(win.locator('#chatList .chat-row.on .ct-t')).toHaveText(title)
+  await expect(win.locator('#chatList .chat-row.on .fade-text')).toHaveText(title)
 })

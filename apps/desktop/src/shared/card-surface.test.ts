@@ -15,10 +15,10 @@ const { document, getComputedStyle } = globalThis as unknown as Window
 
 const RENDERER = join(import.meta.dirname, '..', 'renderer')
 
-/** The settings cards, the discovery directions panel and the upload progress card. */
+/** The settings cards and the upload progress card. */
 const CARDS = [
   'appearance-settings-card', 'language-settings-card', 'storage-card', 'delivery-settings-card', 'service-card',
-  'extension-settings-card', 'extension-tutorial', 'direction-panel', 'upcard',
+  'extension-settings-card', 'extension-tutorial', 'upcard',
 ]
 /** The properties that make up a card's surface. */
 const SURFACE = /^(border(-(top|right|bottom|left|color|width|style))?|border-radius|background(-color)?|box-shadow)$/
@@ -28,7 +28,7 @@ describe('卡片只有一种面', () => {
     document.head.innerHTML = `<style>${readFileSync(join(RENDERER, 'shell/tokens.css'), 'utf8')}${readFileSync(join(RENDERER, 'components/Card.css'), 'utf8')}</style>`
   })
 
-  it('设置里的卡片、发现方向面板和上传进度卡不在各自的样式表里另画边框、圆角、底色或阴影', () => {
+  it('设置里的卡片和上传进度卡不在各自的样式表里另画边框、圆角、底色或阴影', () => {
     const copies = readdirSync(RENDERER, { recursive: true, withFileTypes: true })
       .filter((entry) => entry.isFile() && entry.name.endsWith('.css'))
       .map((entry) => relative(RENDERER, join(entry.parentPath, entry.name)))
@@ -58,15 +58,10 @@ describe('卡片只有一种面', () => {
 
 /** The cards and panels on --card whose separating border phase 2 dropped, each with the border 0.0.15.4 drew. */
 const SEPARATED: [file: string, selector: string, border: string][] = [
-  ['routes/Feed.css', '.fitem', '1px solid var(--sep2)'],
-  ['components/paper/PaperCard.css', '.paper-card', '1px solid var(--sep)'],
+  ['components/Item.css', '.item--card', '1px solid var(--sep)'],
   ['components/paper-table/PaperTable.css', '.research-map-detail', '1px solid var(--sep)'],
-  ['routes/ResearchOverview.css', '.ovstat', '1px solid var(--sep)'],
-  ['components/project/ProjectSections.css', '.agcard', '1px solid var(--sep)'],
   ['components/project/ResearchGraph.css', '.rgraph-viewport', '1px solid var(--sep2)'],
   ['components/SidePanel.css', '.side-panel--card', '1px solid var(--sep)'],
-  ['routes/Reader.css', '.reading-card', '1px solid var(--sep2)'],
-  ['routes/Reader.css', '.wiki-ingest-scope', '1px solid var(--sep2)'],
 ]
 
 describe('卡片和画布之间的边', () => {

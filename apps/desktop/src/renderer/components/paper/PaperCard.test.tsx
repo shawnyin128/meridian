@@ -37,7 +37,7 @@ describe('PaperCard', () => {
     )
     const card = host.querySelector('.paper-card')!
     expect(card.hasAttribute('data-row-actions')).toBe(true)
-    expect(card.querySelector('.paper-card-heading .row-actions')!.textContent).toBe('稍后阅读')
+    expect(card.querySelector('.item-head .row-actions')!.textContent).toBe('稍后阅读')
   })
 
   it('元数据里的会场徽标是中性的标签，不用强调色', () => {

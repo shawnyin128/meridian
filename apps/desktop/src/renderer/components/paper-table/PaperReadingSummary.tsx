@@ -9,8 +9,11 @@ import { EmptyState } from '../EmptyState.js'
 import { EntityLink } from '../EntityLink.js'
 import { LoadingPlaceholder } from '../LoadingPlaceholder.js'
 import { PageError, SectionHeading } from '../PageShell.js'
-import { StructuredList, StructuredRow } from '../StructuredList.js'
+import { Item } from '../Item.js'
+import { List } from '../List.js'
+import { Property, PropertyList } from '../PropertyList.js'
 import { Button } from '../Button.js'
+import { IconOpen } from '../icons.js'
 
 const EXCERPT = 2
 
@@ -36,38 +39,36 @@ export function PaperReadingSummary({ paper, onRead, onConclusions }: {
   const remark = held?.remark ?? ''
   return (
     <div className="paper-reading-summary">
-      <dl className="paper-meta-list">
-        <dt>{m.papers.reading.notes}</dt>
-        <dd>{paper.noteCount === 0
+      <PropertyList>
+        <Property label={m.papers.reading.notes}>{paper.noteCount === 0
           ? paper.noteCount
-          : <EntityLink kind="paper" label={paper.noteCount} onOpen={() => onRead({ panel: 'notes' })} />}</dd>
-        <dt>{m.papers.reading.conclusions}</dt>
-        <dd>{paper.conclusionCount === 0
+          : <EntityLink kind="paper" label={paper.noteCount} onOpen={() => onRead({ panel: 'notes' })} />}</Property>
+        <Property label={m.papers.reading.conclusions}>{paper.conclusionCount === 0
           ? paper.conclusionCount
-          : <EntityLink kind="page" label={paper.conclusionCount} onOpen={onConclusions} />}</dd>
-      </dl>
-      <SectionHeading variant="rail">{m.papers.reading.remarkAndNotes}</SectionHeading>
+          : <EntityLink kind="page" label={paper.conclusionCount} onOpen={onConclusions} />}</Property>
+      </PropertyList>
+      <SectionHeading level="group">{m.papers.reading.remarkAndNotes}</SectionHeading>
       <PageError error={error} />
       {held === null
         ? (error === null ? <LoadingPlaceholder shape="rows" count={2} /> : null)
         : remark === '' && entries.length === 0
-        ? <EmptyState variant="section">{m.papers.reading.empty}</EmptyState>
+        ? <EmptyState variant="section" />
         : (
-          <StructuredList variant="embedded">
-            {remark === '' ? null : <StructuredRow className="nrow"><span className="nt">{remark}</span></StructuredRow>}
+          <List variant="embedded">
+            {remark === '' ? null : <Item className="nrow"><span className="nt">{remark}</span></Item>}
             {entries.slice(0, EXCERPT).map((entry) => (
-              <StructuredRow className="nrow" key={entry.id} onActivate={() => onRead(entryAnchor(entry))}>
+              <Item className="nrow" key={entry.id} onActivate={() => onRead(entryAnchor(entry))}>
                 {entry.quote === null ? null : <span className="nq">“{entry.quote}”</span>}
                 <span className="nt">{entry.text}</span>
-              </StructuredRow>
+              </Item>
             ))}
-          </StructuredList>
+          </List>
         )}
       {entries.length > EXCERPT
         ? (
-          <Button size="compact" variant="ghost" className="reading-summary-all" onClick={() => onRead({ panel: 'notes' })}>
-            {m.papers.reading.viewAll(entries.length)}
-          </Button>
+          <Button
+            size="compact" variant="ghost" className="reading-summary-all" icon={<IconOpen />} onClick={() => onRead({ panel: 'notes' })}
+          >{m.papers.reading.viewAll(entries.length)}</Button>
         )
         : null}
     </div>

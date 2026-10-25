@@ -1,10 +1,8 @@
 import type { PaperReading } from '../../../shared/contract.js'
 import { editField, type Drafts, type EditDraft } from '../../hooks/useDrafts.js'
-import { appMenu } from '../../ipc.js'
 import { useMessages } from '../../messages/useMessages.js'
-import { commitsMultiline } from '../../lib/keyboard.js'
 import { FormTextarea } from '../FormControls.js'
-import { ReaderPanelHeader } from './ReaderPanelHeader.js'
+import { PageHeader, PageTitle } from '../PageShell.js'
 import { SidePanel } from '../SidePanel.js'
 import { CommitActions } from '../CommitActions.js'
 
@@ -30,15 +28,11 @@ export function ReadingRemark({ reading, saving, onSave, edits }: {
   }
   return (
     <SidePanel surface="edge" label={m.reader.rail.tabs.remark} className="reading-remark">
-      <ReaderPanelHeader title={m.reader.remark.heading} />
+      <PageHeader size="pane"><PageTitle>{m.reader.remark.heading}</PageTitle></PageHeader>
       <div className="remark-compose">
         <FormTextarea
           aria-label={m.reader.rail.tabs.remark} placeholder={m.reader.remark.placeholder}
-          {...edit.fieldProps}
-          onKeyDown={(event) => {
-            if (commitsMultiline(appMenu.platform(), event.nativeEvent)) { event.preventDefault(); save(); return }
-            edit.fieldProps.onKeyDown(event)
-          }}
+          {...edit.fieldProps(save)}
         />
         <CommitActions place="item" saving={saving} canSave={!unchanged} onSave={save} />
       </div>

@@ -1,0 +1,16 @@
+/*
+ * The window's title bar. Its background drags the window; its controls are exempted one by one,
+ * because the breadcrumb is flex:1 and exempting it whole would leave only the strips above and below
+ * it draggable. The height is fixed at 50px: titleBarOverlay's height in main/index.ts matches this
+ * number by hand; change both together.
+ */
+.titlebar{display:flex;align-items:center;gap:var(--sp-8);height:50px;padding:var(--sp-12) var(--sp-16);background:var(--sidebar);backdrop-filter:blur(20px);border-bottom:1px solid var(--sep);z-index:5;-webkit-app-region:drag}
+.titlebar :is(button,a,input,select,textarea){-webkit-app-region:no-drag}
+/*
+ * Make way for window buttons: the three buttons of win32/linux are on the upper right, and the
+ * traffic light of darwin is on the upper left, except in full screen, where macOS hides it.
+ */
+:root[data-os="win32"] .titlebar,:root[data-os="linux"] .titlebar{padding-right:var(--window-buttons-end)}
+:root[data-os="darwin"]:not([data-fullscreen]) .titlebar{padding-left:var(--window-buttons-start)}
+/* The bar's content is only 26px tall, so its icon buttons take the nested size and the mark a glyph a step larger. */
+.brandmark{width:18px;height:18px;display:block}

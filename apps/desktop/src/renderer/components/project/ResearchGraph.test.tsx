@@ -181,7 +181,7 @@ describe('idea and graph association', () => {
     document.body.append(host)
     const root = createRoot(host)
     act(() => root.render(withMessages(<ResearchGraph graph={GRAPH} selected={null} onSelect={vi.fn()} />)))
-    const controls = host.querySelector<HTMLElement>('.graph-view-controls')!
+    const controls = host.querySelector<HTMLElement>('.zoom-control')!
     expect([controls, ...controls.querySelectorAll<HTMLElement>('*')].filter((element) => element.tabIndex === 0)).toEqual([controls])
     await act(async () => { controls.focus() })
     const walked: (string | null)[] = []
@@ -245,7 +245,7 @@ describe('idea and graph association', () => {
           .exec(host.querySelector('svg > g')!.getAttribute('transform')!)!
         return { x: Number(x), y: Number(y), zoom: Number(zoom) }
       }
-      const shown = () => host.querySelector('.graph-zoom-reset')!.textContent
+      const shown = () => host.querySelector('.zoom-control-reset')!.textContent
       return { host, root, view, shown }
     }
     afterEach(() => { vi.restoreAllMocks() })
@@ -304,7 +304,7 @@ describe('idea and graph association', () => {
       const opened = view()
       act(() => host.querySelector<HTMLButtonElement>('[aria-label="放大科研图"]')!.click())
       expect(view().zoom).toBeGreaterThan(opened.zoom)
-      act(() => host.querySelector<HTMLButtonElement>('.graph-zoom-reset')!.click())
+      act(() => host.querySelector<HTMLButtonElement>('.zoom-control-reset')!.click())
       expect(view()).toEqual(opened)
       act(() => root.unmount())
     })
@@ -346,7 +346,7 @@ describe('idea and graph association', () => {
     expect(onSelectTask).toHaveBeenCalledWith('task-7')
     expect(host.querySelector('.node-idea-row')?.textContent)
       .toContain('用动态预算控制校准成本')
-    expect(host.querySelector('.node-ideas')?.classList.contains('structured-list--embedded')).toBe(true)
+    expect(host.querySelector('.node-ideas')?.classList.contains('list--embedded')).toBe(true)
 
     act(() => (host.querySelector('.node-idea-row') as HTMLButtonElement).click())
     expect(onSelectIdea).toHaveBeenCalledWith('idea-1')
@@ -414,7 +414,7 @@ describe('idea and graph association', () => {
     )))
     const headings = [...host.querySelectorAll('.section-heading')].map((heading) => heading.textContent)
     expect([host.querySelector('.panel-head-title')!.textContent, ...headings]).toEqual([leaf.label, '任务 · 0', '关联想法 · 0'])
-    expect([...host.querySelectorAll('.empty-state')].map((node) => node.textContent)).toEqual(['还没有任务', '还没有关联想法'])
+    expect([...host.querySelectorAll('.empty-state')].map((node) => node.textContent)).toEqual(['—', '—'])
     act(() => root.unmount())
   })
 

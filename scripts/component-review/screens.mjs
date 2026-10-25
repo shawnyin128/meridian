@@ -5,7 +5,7 @@
 const V = '.screenslot:not([hidden]) '
 
 /** Closes open menus, dialogs and drafts, and leaves the reader, which hides the sidebar. */
-const reset = [['press', 'Escape'], ['press', 'Escape'], ['clickIf', '.main.reading .paper-chat-head .back']]
+const reset = [['press', 'Escape'], ['press', 'Escape'], ['clickIf', '.main.reading .paper-chat .desk-head .back']]
 /** Goes to the sidebar row `desk` from any screen. */
 const desk = (name) => [...reset, ['click', `[data-desk="${name}"]`], ['wait', 700]]
 const openSettings = [...reset, ['click', '.appbtn'], ['click', '[data-appmenu] .mi'], ['wait', '.set-side']]
@@ -29,7 +29,7 @@ export const STATES = [
   { screen: 'Shell', state: 'sidebar', batch: 'feeds', scope: 'shell', steps: desk('feed') },
   { screen: 'Shell', state: 'app-menu', batch: 'feeds', scope: 'overlay', steps: [...desk('feed'), ['click', '.appbtn'], ['wait', '[data-appmenu]']] },
   { screen: 'Shell', state: 'search', batch: 'feeds', scope: 'overlay', steps: [...desk('feed'), ['fill', '#sSearch', 'KV'], ['wait', '.pickhits'], ['wait', 600]] },
-  { screen: 'Shell', state: 'search-empty', batch: 'feeds', scope: 'overlay', steps: [...desk('feed'), ['fill', '#sSearch', 'zzzqqq'], ['wait', '.sres-empty']] },
+  { screen: 'Shell', state: 'search-empty', batch: 'feeds', scope: 'overlay', steps: [...desk('feed'), ['fill', '#sSearch', 'zzzqqq'], ['wait', '.sres .empty-state--option']] },
   { screen: 'Shell', state: 'command-palette', batch: 'feeds', scope: 'overlay', steps: [...desk('feed'), ['click', '.appbtn'], ['click', '[data-appmenu] .mi', 1], ['wait', '.cmdk-list']] },
   { screen: 'Shell', state: 'tooltip', batch: 'feeds', scope: 'overlay', keepPointer: true, steps: [...desk('feed'), ['hover', '#sbBtn'], ['wait', '.tooltip']] },
   { screen: 'Shell', state: 'about', batch: 'feeds', scope: 'overlay', steps: [...desk('feed'), ['click', '.appbtn'], ['click', '[data-appmenu] .mi', 3], ['wait', '.about-pop']] },
@@ -80,29 +80,30 @@ export const STATES = [
     ['click', `${V}.paper-detail-slot .panel-head .icbtn`], ['wait', `${V}[role="alert"], ${V}.pdfload`],
   ] },
   { screen: 'Wiki', state: 'home', batch: 'library', steps: openWiki },
-  { screen: 'Wiki', state: 'paper', batch: 'library', steps: [...openWiki, ['click', `${V}.wkcard--paper .research-object-card-open`], ['wait', `${V}.split-rail`], ['wait', 500]] },
-  { screen: 'Wiki', state: 'aggregation', batch: 'library', steps: [...openWiki, ['click', `${V}.wkcard:not(.wkcard--paper) .research-object-card-open`], ['wait', `${V}.split-rail`], ['wait', 500]] },
+  { screen: 'Wiki', state: 'paper', batch: 'library', steps: [...openWiki, ['click', `${V}.wkcard--paper .item-open`], ['wait', `${V}.split-rail`], ['wait', 500]] },
+  { screen: 'Wiki', state: 'aggregation', batch: 'library', steps: [...openWiki, ['click', `${V}.wkcard:not(.wkcard--paper) .item-open`], ['wait', `${V}.split-rail`], ['wait', 500]] },
   { screen: 'Wiki', state: 'review', batch: 'library', steps: [...openWiki, ['click', `${V}.desk-head .page-actions .btn`], ['wait', 900]] },
   { screen: 'Wiki', state: 'tidy', batch: 'library', steps: [...openWiki, ['click', `${V}.desk-head .page-actions .btn`, -1], ['wait', 900]] },
   { screen: '论文', state: 'notice-refusal', batch: 'library', scope: '.notice-host', steps: [
     ['fail', 'papers.update', 'write'], ...desk('papers'), ['radio', '1 星'], ['wait', '.notice.show'],
   ] },
-  // The rating is answered in Core's place, so nothing is written to the library copy.
+  // A move to the trash notices with its Undo. It is answered in Core's place, so nothing is written to the library copy.
   { screen: '论文', state: 'notice-success', batch: 'library', scope: '.notice-host', steps: [
-    ['answer', 'papers.update', "{ change: 'review-change' }"], ...desk('papers'), ['radio', '2 星'], ['wait', '.notice.show'],
+    ['answer', 'papers.delete', "{ change: 'review-change' }"], ...desk('papers'), ['rightclick', `${V}tbody tr`], ['wait', '.ctxmenu'],
+    ['clickText', '.ctxmenu [role="menuitem"]', '移到垃圾桶'], ['wait', '.notice.show'],
   ] },
 
   { screen: '总览', state: 'default', batch: 'research', steps: [...desk('restl'), ['wait', `${V}.ovcols`]] },
   { screen: '总览', state: 'filter-menu', batch: 'research', scope: 'overlay', steps: [...desk('restl'), ['click', `${V}.filter-menu`], ['wait', '.ctxmenu']] },
-  { screen: '项目', state: 'list', batch: 'research', steps: [...desk('resproj'), ['wait', `${V}.research-object-card`]] },
-  { screen: '项目', state: 'card-menu', batch: 'research', scope: 'overlay', steps: [...desk('resproj'), ['hover', `${V}.research-object-card`], ['click', `${V}.research-object-card .dots`], ['wait', '.ctxmenu']] },
-  { screen: '项目', state: 'draft', batch: 'research', steps: [...desk('resproj'), ['click', `${V}.page-actions .add-action`], ['wait', `${V}.research-object-card .form-control`]] },
+  { screen: '项目', state: 'list', batch: 'research', steps: [...desk('resproj'), ['wait', `${V}.item--card`]] },
+  { screen: '项目', state: 'card-menu', batch: 'research', scope: 'overlay', steps: [...desk('resproj'), ['hover', `${V}.item--card`], ['click', `${V}.item--card .dots`], ['wait', '.ctxmenu']] },
+  { screen: '项目', state: 'draft', batch: 'research', steps: [...desk('resproj'), ['click', `${V}.page-actions .add-action`], ['wait', `${V}.item--card .form-control`]] },
   { screen: '项目详情', state: 'default', batch: 'research', steps: openProject },
   { screen: '项目详情', state: 'task-panel', batch: 'research', steps: [...openProject, ['click', `${V}.plan-open`], ['wait', `${V}.project-detail-panel .panel-head`], ['wait', 500]] },
   { screen: '项目详情', state: 'records-graph', batch: 'research', steps: [...openProject, ['radio', '科研图'], ['wait', `${V}.rgraph-viewport`], ['wait', 600]] },
   { screen: '项目详情', state: 'records-conclusions', batch: 'research', steps: [...openProject, ['radio', '实验结论'], ['wait', 700]] },
   { screen: '想法', state: 'default', batch: 'research', steps: [...desk('ideas'), ['wait', `${V}.idea-card`]] },
-  { screen: '想法', state: 'panel', batch: 'research', steps: [...desk('ideas'), ['click', `${V}.idea-card .research-object-card-open`], ['wait', `${V}.idea-detail-panel .panel-head`], ['wait', 500]] },
+  { screen: '想法', state: 'panel', batch: 'research', steps: [...desk('ideas'), ['click', `${V}.idea-card .item-open`], ['wait', `${V}.idea-detail-panel .panel-head`], ['wait', 500]] },
   { screen: '想法', state: 'card-menu', batch: 'research', scope: 'overlay', steps: [...desk('ideas'), ['hover', `${V}.idea-card`], ['click', `${V}.idea-card .dots`], ['wait', '.ctxmenu']] },
   { screen: '最近变动', state: 'default', batch: 'research', steps: [...desk('changelog'), ['wait', `${V}.crow`]] },
   { screen: '最近变动', state: 'expanded', batch: 'research', steps: [...desk('changelog'), ['click', `${V}.card-tray-toggle`], ['wait', `${V}.diff`]] },

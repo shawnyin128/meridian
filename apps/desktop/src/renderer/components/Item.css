@@ -1,0 +1,89 @@
+/*
+ * Every item starts its content --item-inset inside a 1px edge, so rows and cards line up when a page
+ * mixes them: a card's own border, an outlined list's border, or the 1px an embedded row adds to its inset.
+ * An item lays out its slots; one that brings only its own content keeps the flow, and a slotted row's
+ * layout is :where()-weak, so a row whose cells sit on its list's grid lays them out there.
+ */
+.item{box-sizing:border-box;width:100%;min-width:0;margin:0;border:0;background-color:transparent;color:var(--ink);
+  font-family:inherit;font-size:var(--fs-body);font-weight:var(--fw-regular);line-height:var(--lh-ui);text-align:left;
+  transition:opacity var(--t-slow) var(--e-out),transform var(--t-slow) var(--e-out)}
+:where(.item--row.item--slotted){display:flex;align-items:center;gap:var(--sp-12)}
+/* A one-line row is one list row high even with a 24px control in it, as a section's empty state is; a longer one grows. */
+.item--row{min-height:var(--row-list-h);padding:var(--sp-6) calc(var(--item-inset) + 1px)}
+.list:not(.list--embedded)>.item--row{padding-inline:var(--item-inset)}
+/* The rows of a list nested in another surface's content already sit inside that surface's inset. */
+.list--nested>.item--row{padding-inline:0}
+.item--columns{display:grid}
+.item--subgrid{grid-column:1/-1;display:grid;grid-template-columns:subgrid}
+.item--card{padding:var(--sp-12) var(--item-inset);border:1px solid var(--sep);border-radius:var(--r-card);background-color:var(--card)}
+.item--card.item--slotted{display:flex;flex-direction:column;gap:var(--sp-8)}
+/* Cards one under another stand apart by the item gap; a grid of cards spaces them itself. */
+.item--card+.item--card{margin-top:var(--item-gap)}
+.item--card.item--muted{background-color:var(--content)}
+.item--row.item--muted .item-main{opacity:.52}
+/* A marked item carries its colour along its leading edge; its content keeps the shared inset. */
+.item--marked{--item-mark:var(--sep);border-left:3px solid var(--item-mark);padding-left:calc(var(--item-inset) - var(--sp-2))}
+/* A dismissed item fades and slides away before its list drops it. */
+.item--leaving{opacity:0;transform:translateX(var(--sp-24))}
+.item--actionable{cursor:pointer}
+
+/*
+ * The one selected look of rows and cards, the sidebar's current row's: --accent-soft with --accent-text.
+ * Hover lies over it as an image, so no state that sets an item's colour hides the hover; an item keeps
+ * it while a menu or dialog of its row actions is open. A row that is all one row tray (CardTray's row
+ * look) hovers whole as well, while only the tray's toggle takes the click.
+ */
+.item--selected{background-color:var(--accent-soft);color:var(--accent-text)}
+.item--actionable:hover,.item:has(>.card-tray--row:only-child):hover,.item:where(:has(.row-actions [data-state="open"])){
+  background-image:linear-gradient(var(--hover),var(--hover))}
+
+/*
+ * The drop feedback useDragReorder marks on a reorderable item: the item held dims, and a 2px line
+ * shows the side it would land on, above or below as its data-reorder-axis says. An item that is its
+ * own drag handle shows the drag cursors.
+ */
+.item[draggable]{cursor:var(--cursor-draggable)}
+.item[draggable]:active,.item[draggable].dragging{cursor:var(--cursor-dragging)}
+.item.dragging{opacity:.4}
+.item[data-reorder-axis="y"].drag-over-before{box-shadow:0 -2px 0 0 var(--ink)}
+.item[data-reorder-axis="y"].drag-over-after{box-shadow:0 2px 0 0 var(--ink)}
+
+/*
+ * The slots: the title and meta take the room, and everything after them keeps its own width at the
+ * item's end, the same 12px apart in a row and in a card's head as on the column grids rows share. A
+ * card's head sits on its first line: its texts on one baseline, its actions centred on that line.
+ */
+.item-head{display:flex;align-items:baseline;gap:var(--sp-12);min-width:0}
+.item-head>.item-actions{align-self:flex-start;margin-top:calc((var(--lh-ui) * var(--fs-body) - var(--sp-24)) / 2)}
+.item-leading{display:flex;flex:none;align-items:center;color:var(--ter)}
+.item-leading>svg,.item-trailing>svg{width:13px;height:13px}
+/* A leading mark belongs with the title it marks: it stands 8px before it, not a whole slot gap. */
+.item-leading{margin-right:calc(var(--sp-8) - var(--sp-12))}
+.item-main{display:flex;flex:1;min-width:0;align-items:center;gap:var(--sp-8)}
+.item--two-line .item-main,.item--card .item-main{flex-direction:column;align-items:stretch;gap:var(--sp-2)}
+.item-title{display:flex;min-width:0;align-items:center;gap:var(--sp-6);font-size:var(--fs-item-title)}
+.item-title>:is(h2,h3,h4){min-width:0;margin:0;font:inherit}
+.item--two-line .item-title,.item--card .item-title{font-weight:var(--fw-title)}
+.item-meta{display:flex;min-width:0;align-items:center;gap:var(--sp-6);color:var(--ter);font-size:var(--fs-meta)}
+/* A title or meta line that flows as text keeps its marks after its last word. */
+.item-line{display:block}
+.item-line>*+*{margin-left:var(--sp-6)}
+.item:not(.item--two-line,.item--card) .item-meta{flex:1}
+.item-tags{display:flex;flex:none;align-items:center;gap:var(--sp-6)}
+.item-trailing{display:flex;flex:none;align-items:center;justify-content:flex-end;gap:var(--sp-8);color:var(--ter);font-size:var(--fs-meta);
+  font-variant-numeric:tabular-nums;white-space:nowrap}
+.item>.item-actions,.item-head>.item-actions{margin-left:auto}
+/* The name button of an actionable item draws nothing of its own; its click reaches the item. */
+:where(.item-open){display:inline-flex;align-items:center;min-width:0;padding:0;border:0;background:none;
+  color:inherit;font:inherit;text-align:left;cursor:inherit}
+
+/*
+ * The row-actions slot: hidden and not clickable at rest, shown while its host (an element marked
+ * data-row-actions) is hovered or holds focus, while one of its menus, dialogs or expanded parts is
+ * open, and while one of its buttons shows a state (a running download, a pressed toggle). Hosts do
+ * not write their own reveal.
+ */
+.row-actions{display:inline-flex;flex:none;align-items:center;gap:var(--sp-4);opacity:0;pointer-events:none;
+  transition:opacity var(--t-fast) var(--e-out)}
+[data-row-actions]:hover .row-actions,[data-row-actions]:focus-within .row-actions,
+.row-actions:has([data-state="open"],[aria-expanded="true"],.busy,[aria-pressed="true"]){opacity:1;pointer-events:auto}

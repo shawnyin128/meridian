@@ -120,7 +120,7 @@ describe('DiscoverySettings', () => {
     const root = createRoot(host)
     await act(async () => { root.render(<MessagesProvider><DiscoverySettings /></MessagesProvider>) })
 
-    const refresh = host.querySelector<HTMLButtonElement>('.direction-project header button')!
+    const refresh = host.querySelector<HTMLButtonElement>('.delivery-directions .section-heading--group .section-heading-actions button')!
     await act(async () => { refresh.click() })
     const alert = host.querySelector('.delivery-directions [role="alert"]')
     expect([alert?.className, alert?.textContent]).toEqual(['inline-message inline-message--box inline-message--error page-error page-error--section', '需要更新 App'])

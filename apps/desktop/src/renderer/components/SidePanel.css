@@ -21,8 +21,6 @@
 .panel-head{display:flex;flex:none;flex-direction:column;gap:var(--sp-4);padding:var(--side-panel-block) var(--side-panel-inline)}
 .panel-head-actions{order:-1;display:flex;align-items:center;justify-content:flex-end;gap:var(--sp-8)}
 .panel-head-title{font-size:var(--fs-section);font-weight:var(--fw-title);line-height:var(--lh-ui);color:var(--ink);overflow-wrap:anywhere}
-/* A title edited in place keeps the head's ink rather than a property value's grey. */
-.panel-head-title .metadata-editable{color:inherit}
 
 .panel-body{flex:1 1 auto;min-height:0;overflow-x:hidden;overflow-y:auto;
   padding:var(--side-panel-block) var(--side-panel-inline)}

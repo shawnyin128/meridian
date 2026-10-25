@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode, RefObject } from 'react'
 import type { ProjectStatus, ProjectSummary } from '../../shared/contract.js'
 import {
@@ -6,7 +6,8 @@ import {
 } from '../../shared/project-signals.js'
 import type { ProjectSortKey } from '../../shared/project-signals.js'
 import { ACTIVE_PROJECT, PROJECT_STATUSES } from '../../shared/vocabulary.js'
-import type { CrumbSeg, ScreenKey } from '../shell/AppShell.js'
+import type { CrumbSeg } from '../components/Breadcrumb.js'
+import type { ScreenKey } from '../shell/AppShell.js'
 import { feed, project as projectApi } from '../ipc.js'
 import {
   useCrumbTail, useJump, useScreenEntry, useToday, useVaultRevision,
@@ -20,19 +21,19 @@ import {
 import { DotsMenu } from '../components/FieldPickers.js'
 import { EmptyState } from '../components/EmptyState.js'
 import { InlineDraftInput } from '../components/InlineDraftInput.js'
+import { InlineField } from '../components/InlineField.js'
 import { LoadingPlaceholder } from '../components/LoadingPlaceholder.js'
-import { ShortTextEditor } from '../components/ShortTextEditor.js'
 import { ProjectBlockerView, ProjectNextActionView } from '../components/project/ProjectControl.js'
 import { useAreaFilter } from '../components/project/ProjectAreaFilter.js'
 import { ProjectIdentity } from '../components/project/ProjectIdentity.js'
 import { EventText } from '../components/project/ProjectSignals.js'
-import { CardOpen, ResearchObjectCard } from '../components/ResearchObjectCard.js'
-import { RowActions, StructuredList, StructuredRow } from '../components/StructuredList.js'
+import { DraftSlot, useDraftSlot } from '../components/DraftSlot.js'
+import { Item, ItemOpen } from '../components/Item.js'
+import { List } from '../components/List.js'
 import { Tag } from '../components/Tag.js'
 import { dnum } from '../../shared/dates.js'
 import { useFormat } from '../lib/format.js'
 import { useMessages } from '../messages/useMessages.js'
-import type { Catalog } from '../messages/catalog.js'
 import { ProjectDetail } from './ProjectDetail.js'
 import type { RecordTab } from './ProjectDetail.js'
 import type { PlanTab } from '../components/project/ProjectPlan.js'
@@ -44,8 +45,9 @@ import type { NoticeAction } from '../components/Notice.js'
 import { useDragReorder, type Reorderable } from '../hooks/useDragReorder.js'
 import { DragHandle } from '../components/DragHandle.js'
 import {
-  PageBody, PageError, PageHeader, PageShell, PageTitle, PageToolbar, SectionHeading,
+  PageBody, PageError, PageHeader, PageShell, PageTitle, PageToolbar,
 } from '../components/PageShell.js'
+import { Group, GroupedList } from '../components/GroupedList.js'
 import { FadeText } from '../components/FadeText.js'
 import { namedRuns } from '../components/TitleNote.js'
 import './shell.css'
@@ -71,64 +73,66 @@ function signals(project: ProjectSummary, todayIso: string) {
 }
 
 /**
- * The … menu at the right end of a project row, the demo's projMenu: rename, change status, delete.
- * Rename replaces the content of the same popover, matching the demo, which closed the menu and
- * opened a rename popover in the same spot; while renaming, only the rename editor closes it.
+ * The … menu at the right end of a project row, the demo's projMenu: rename, move, change status,
+ * delete. Rename closes the menu and turns the project's name into its inline field in place (see
+ * ProjectName), keeping focus there.
  */
-function ProjectMenu({ project, onRename, onMove, canMove, onStatus, onDelete }: {
+function ProjectMenu({ project, onMove, canMove, onStatus, onDelete }: {
   project: ProjectSummary
-  onRename: (name: string) => boolean | Promise<boolean>
   onMove: (by: -1 | 1) => void
   canMove: (by: -1 | 1) => boolean
   onStatus: (status: ProjectStatus) => void
   onDelete: () => void
 }) {
   const m = useMessages()
-  // A rename being typed is kept with its project, and reopens the menu where it was typed.
   const kept = useDrafts<string>(['project', project.id])
-  const renaming = kept.get('rename') !== undefined
-  const [open, setOpen] = useState(false)
-  const close = () => {
-    setOpen(false)
-    kept.drop('rename')
-  }
+  const renaming = useRef(false)
 
   return (
     <DotsMenu
-      open={open || renaming}
-      onOpenChange={(next) => {
-        if (!next && renaming) return
-        setOpen(next)
+      stopRowActivation
+      onCloseAutoFocus={(event) => {
+        if (!renaming.current) return
+        renaming.current = false
+        // The name's field opens once the menu has let go of focus, so focus goes to it.
+        event.preventDefault()
+        kept.set(RENAME, project.name)
       }}
-      surface={renaming ? 'editor' : 'menu'} stopRowActivation
     >
-          {renaming
-            ? (
-              <ShortTextEditor
-                title={m.research.list.renameTitle} initialValue={project.name}
-                placeholder={m.project.identity.nameFieldLabel}
-                onSubmit={onRename} onClose={close} kept={{ drafts: kept, target: 'rename' }}
-              />
-            )
-            : (
-              <>
-                {/* Selecting "Rename" does not close the menu: it replaces the contents of the same menu */}
-                <MenuItem onSelect={(e) => { e.preventDefault(); kept.set('rename', project.name) }}>
-                  {m.research.list.rename}
-                </MenuItem>
-                <MenuItem disabled={!canMove(-1)} onSelect={() => onMove(-1)}>{m.common.moveUp}</MenuItem>
-                <MenuItem disabled={!canMove(1)} onSelect={() => onMove(1)}>{m.common.moveDown}</MenuItem>
-                <MenuSeparator />
-                <MenuRadioGroup value={project.status}>
-                  {PROJECT_STATUSES.map((s) => (
-                    <MenuRadioItem key={s} value={s} onSelect={() => onStatus(s)}>{s}</MenuRadioItem>
-                  ))}
-                </MenuRadioGroup>
-                <MenuSeparator />
-                <MenuItem className="mi danger" onSelect={onDelete}>{m.common.delete}</MenuItem>
-              </>
-            )}
+      <MenuItem onSelect={() => { renaming.current = true }}>{m.research.list.rename}</MenuItem>
+      <MenuItem disabled={!canMove(-1)} onSelect={() => onMove(-1)}>{m.common.moveUp}</MenuItem>
+      <MenuItem disabled={!canMove(1)} onSelect={() => onMove(1)}>{m.common.moveDown}</MenuItem>
+      <MenuSeparator />
+      <MenuRadioGroup value={project.status}>
+        {PROJECT_STATUSES.map((s) => (
+          <MenuRadioItem key={s} value={s} onSelect={() => onStatus(s)}>{s}</MenuRadioItem>
+        ))}
+      </MenuRadioGroup>
+      <MenuSeparator />
+      <MenuItem className="mi danger" onSelect={onDelete}>{m.common.delete}</MenuItem>
     </DotsMenu>
+  )
+}
+
+/** The draft a project's rename is kept under, with its project, so it reopens where it was typed. */
+const RENAME = 'rename'
+
+/**
+ * A project's name on its card or row: `children`, the identity that opens the project, at rest, and
+ * while the … menu's rename is open the name's inline field in their place, saved through `onRename`.
+ */
+function ProjectName({ project, onRename, children }: {
+  project: ProjectSummary
+  onRename: (name: string) => boolean | Promise<boolean>
+  children: ReactNode
+}) {
+  const m = useMessages()
+  return (
+    <InlineField
+      label={m.project.identity.nameFieldLabel} value={project.name} keep={{ scope: ['project', project.id], target: RENAME }}
+      className="project-name" normalize={(next) => next.trim()} validate={(next) => next !== ''} onSave={onRename}
+      rest={() => children}
+    />
   )
 }
 
@@ -139,7 +143,7 @@ function ProjectMenu({ project, onRename, onMove, canMove, onStatus, onDelete }:
  * `onCreate` returns whether the row is done.
  */
 function ProjectCreateRow({ row, triggers, onCreate, onCancel, kept }: {
-  row: RefObject<HTMLDivElement | null>
+  row: RefObject<HTMLElement | null>
   triggers: Array<RefObject<HTMLElement | null>>
   onCreate: (name: string) => boolean | Promise<boolean>
   onCancel: () => void
@@ -147,24 +151,18 @@ function ProjectCreateRow({ row, triggers, onCreate, onCancel, kept }: {
 }) {
   const m = useMessages()
   return (
-    <div className="research-object-card projpanel" ref={row}>
-      <div className="pp-h">
-        <InlineDraftInput
-          className="inedit" scopeRef={row} triggers={triggers} placeholder={m.project.identity.nameFieldLabel}
-          onSubmit={onCreate} onCancel={onCancel} kept={kept}
-        />
-      </div>
-    </div>
+    <DraftSlot as="card" className="projpanel" slot={row}>
+      <InlineDraftInput
+        className="inedit" scopeRef={row} triggers={triggers} placeholder={m.project.identity.nameFieldLabel}
+        onSubmit={onCreate} onCancel={onCancel} kept={kept}
+      />
+    </DraftSlot>
   )
 }
 
-export function projectPaperCountLabel(count: number, m: Catalog): string {
-  return m.research.panel.paperCount(count)
-}
-
 /** Ongoing projects expose the decisions a researcher needs before secondary counts and history. */
-function ProjectPanel({ project, onOpen, menu, reorder }: {
-  project: ProjectSummary; onOpen: () => void; menu: ReactNode
+function ProjectPanel({ project, onOpen, onRename, menu, reorder }: {
+  project: ProjectSummary; onOpen: () => void; onRename: (name: string) => boolean | Promise<boolean>; menu: ReactNode
   reorder: Reorderable
 }) {
   const today = useToday()
@@ -177,30 +175,31 @@ function ProjectPanel({ project, onOpen, menu, reorder }: {
   const record = newest?.date === project.lastProgress ? newest : undefined
 
   return (
-    <ResearchObjectCard
-      className="projpanel"
-      data-proj={project.id} onActivate={onOpen} {...reorder.item}
+    <Item
+      density="card" className="projpanel" data-proj={project.id} onActivate={onOpen} {...reorder.item}
+      title={(
+        <>
+          <ProjectName project={project} onRename={onRename}>
+            <ItemOpen><ProjectIdentity project={project} showTopic /></ItemOpen>
+          </ProjectName>
+          {stale ? <Tag state="warning">{m.research.panel.staleAlert(idle!)}</Tag> : null}
+        </>
+      )}
+      trailing={next && left !== null
+        ? (
+          <>
+            <span>{m.research.panel.milestoneOn(fmt.date(next.date))}</span>
+            <span>{left === 0 ? m.research.panel.dueToday : m.research.panel.dueInDays(left)}</span>
+          </>
+        )
+        : m.common.empty}
+      actions={<DragHandle {...reorder.handle} />} menu={menu}
     >
-      <div className="pp-h">
-        <CardOpen><ProjectIdentity project={project} showTopic /></CardOpen>
-        {stale ? <Tag tone="warn">{m.research.panel.staleAlert(idle!)}</Tag> : null}
-        <span className="dd">
-          {next && left !== null
-            ? (
-              <>
-                <span>{m.research.panel.milestoneOn(fmt.date(next.date))}</span>
-                {left === 0 ? m.research.panel.dueToday : m.research.panel.dueInDays(left)}
-              </>
-            )
-            : m.research.panel.noUpcomingMilestone}
-        </span>
-        <RowActions><DragHandle {...reorder.handle} />{menu}</RowActions>
-      </div>
       <div className="project-card-decisions">
         <div className="project-card-decision">
           <span className="project-card-label">{m.project.identity.focusLabel.currentGoal}</span>
-          <FadeText className="project-card-value" label={project.focus || m.research.panel.focusUndefined}>
-            {project.focus || m.research.panel.focusUndefined}
+          <FadeText className="project-card-value" label={project.focus || m.common.empty}>
+            {project.focus || m.common.empty}
           </FadeText>
         </div>
         <div className="project-card-decision">
@@ -222,12 +221,12 @@ function ProjectPanel({ project, onOpen, menu, reorder }: {
         </span>
         <span className="project-card-fact">
           <span className="project-card-label">{m.project.sections.papers}</span>
-          <span>{projectPaperCountLabel(project.paperCount, m)}</span>
+          <span>{project.paperCount}</span>
         </span>
         <span className="project-card-fact project-card-recent">
           <span className="project-card-label">{m.research.panel.recentProgressLabel}</span>
           {project.lastProgress === undefined
-            ? <FadeText className="project-card-empty">{m.research.panel.noRecords}</FadeText>
+            ? <FadeText className="project-card-empty">{m.common.empty}</FadeText>
             : (
               <>
                 <FadeText>{fmt.date(project.lastProgress)}</FadeText>
@@ -236,7 +235,7 @@ function ProjectPanel({ project, onOpen, menu, reorder }: {
             )}
         </span>
       </div>
-    </ResearchObjectCard>
+    </Item>
   )
 }
 
@@ -245,26 +244,28 @@ function ProjectPanel({ project, onOpen, menu, reorder }: {
  * focus and time since the last progress. The identity is the row's button; a click anywhere else on
  * the row opens it too.
  */
-function ProjectRow({ project, onOpen, menu, reorder }: {
-  project: ProjectSummary; onOpen: () => void; menu: ReactNode
+function ProjectRow({ project, onOpen, onRename, menu, reorder }: {
+  project: ProjectSummary; onOpen: () => void; onRename: (name: string) => boolean | Promise<boolean>; menu: ReactNode
   reorder: Reorderable
 }) {
   const { idle } = signals(project, useToday())
   const m = useMessages()
   return (
-    <StructuredRow
-      composite className="prow"
-      data-proj={project.id} onActivate={onOpen} {...reorder.item}
-    >
-      <button type="button" className="prow-open">
-        <ProjectIdentity project={project} variant="row" showPriority={false} showTopic />
-      </button>
-      <FadeText className="m">
-        {m.project.identity.focusWithLabel(m.project.identity.focusLabel[FOCUS_KEY[project.status]], project.focus)} ·{' '}
-        {idleNote(idle, m.project.signals.idle)}
-      </FadeText>
-      <RowActions><DragHandle {...reorder.handle} />{menu}</RowActions>
-    </StructuredRow>
+    <Item
+      composite className="prow" data-proj={project.id} onActivate={onOpen} {...reorder.item}
+      title={(
+        <ProjectName project={project} onRename={onRename}>
+          <ItemOpen><ProjectIdentity project={project} variant="row" showPriority={false} showTopic /></ItemOpen>
+        </ProjectName>
+      )}
+      meta={(
+        <FadeText className="m">
+          {m.project.identity.focusWithLabel(m.project.identity.focusLabel[FOCUS_KEY[project.status]], project.focus)} ·{' '}
+          {idleNote(idle, m.project.signals.idle)}
+        </FadeText>
+      )}
+      actions={<DragHandle {...reorder.handle} />} menu={menu}
+    />
   )
 }
 
@@ -297,7 +298,7 @@ function ProjectList({ onOpen, newRow, onNewRow, onReturn }: {
   const write = useVaultWrite()
   const undo = useUndo()
   const stopCreating = useCallback(() => setCreating(false), [setCreating])
-  const createRow = useRef<HTMLDivElement>(null)
+  const createDraft = useDraftSlot(creating, () => setCreating(true))
   const projNew = useRef<HTMLButtonElement>(null)
   const newTriggers = useMemo(() => [projNew], [])
   const { filter, shown } = useAreaFilter(projects ?? [])
@@ -309,7 +310,7 @@ function ProjectList({ onOpen, newRow, onNewRow, onReturn }: {
   // Each project the filter hides is a scope of its own, so moving a shown one leaves it where it is.
   const reorder = useDragReorder(
     ids, (id) => (shownIds.has(id) ? statusOf.get(id) ?? '' : `hidden ${id}`),
-    (order) => { void write(projectApi.reorder(order)) },
+    (order) => { void write(projectApi.reorder(order)) }, { axis: 'y', handle: 'grip' },
   )
   const sortBy = (key: ProjectSortKey) => {
     if (projects === null) return
@@ -327,10 +328,11 @@ function ProjectList({ onOpen, newRow, onNewRow, onReturn }: {
   }, [newRow, onNewRow, setCreating])
 
   /**
-   * Finishes a write: closes the new-project row, then lets `write` finish. Creating from the row does
-   * not come here: whether the row stays depends on that write's result.
+   * Finishes a write: closes the new-project row, then lets `write` finish, showing `note` with its
+   * `action` when given. Creating from the row does not come here: whether the row stays depends on
+   * that write's result.
    */
-  const applyWrite = <T,>(op: Promise<T>, note: string, action?: (result: T) => NoticeAction) => {
+  const applyWrite = <T,>(op: Promise<T>, note?: string, action?: (result: T) => NoticeAction) => {
     setCreating(false)
     void write(op, { note, action })
   }
@@ -343,7 +345,7 @@ function ProjectList({ onOpen, newRow, onNewRow, onReturn }: {
     (name === '' ? false : write(projectApi.create(name).then((id) => feed.append({
       source: 'me',
       body: { kind: 'runs', runs: namedRuns(m.research.list.createdFeedNote, name, { kind: 'project', id }) },
-    })), { note: m.research.list.createdNote }))
+    }))))
 
   if (!projects) {
     return (
@@ -364,14 +366,12 @@ function ProjectList({ onOpen, newRow, onNewRow, onReturn }: {
   const menuOf = (p: ProjectSummary) => (
     <ProjectMenu
       project={p}
-      onRename={(name) => write(projectApi.update(p.id, { name }), { note: m.research.list.renamed })}
       onMove={(by) => reorder.move(p.id, by)} canMove={(by) => reorder.canMove(p.id, by)}
-      onStatus={(status) => applyWrite(
-        projectApi.update(p.id, { status }), m.research.list.statusChangedTo(status),
-      )}
+      onStatus={(status) => applyWrite(projectApi.update(p.id, { status }))}
       onDelete={() => applyWrite(projectApi.delete(p.id), m.common.trashed, undo.change)}
     />
   )
+  const renameOf = (p: ProjectSummary) => (name: string) => write(projectApi.update(p.id, { name }))
 
   return (
     <PageShell>
@@ -387,15 +387,7 @@ function ProjectList({ onOpen, newRow, onNewRow, onReturn }: {
                 ]}
               />
             )}
-            <AddAction
-              size="regular" id="projNew" ref={projNew}
-              onClick={() => {
-                // An open row is only refocused, keeping the half-typed name, so this click does not
-                // count as outside the row.
-                if (creating) createRow.current?.querySelector('input')?.focus()
-                else setCreating(true)
-              }}
-            >{m.research.list.create}</AddAction>
+            <AddAction size="regular" id="projNew" ref={projNew} onClick={createDraft.start}>{m.research.list.create}</AddAction>
           </>
         )}
       >
@@ -406,36 +398,37 @@ function ProjectList({ onOpen, newRow, onNewRow, onReturn }: {
 
       <PageBody>
         {projects.length === 0 ? null : <PageToolbar>{filter}</PageToolbar>}
-        {groups.map((g, i) => (
-          <Fragment key={g.status}>
-            <SectionHeading count={g.items.length}>{g.status}</SectionHeading>
-            {i === 0 && creating
-              ? (
-                <ProjectCreateRow
-                  row={createRow} triggers={newTriggers}
-                  onCancel={stopCreating} onCreate={createProject} kept={{ drafts, target: 'new' }}
-                />
-              )
-              : g.items.length === 0 ? <EmptyState variant="section">{m.research.list.empty}</EmptyState> : null}
-            {g.status === ACTIVE_PROJECT
-              ? g.items.map((p) => (
-                <ProjectPanel
-                  project={p} onOpen={() => onOpen(p.id)} menu={menuOf(p)} key={p.id}
-                  reorder={{ item: reorder.itemProps(p.id), handle: reorder.handleProps(p.id) }}
-                />
-              ))
-              : (
-                <StructuredList variant="embedded" maxVisibleRows="all">
-                  {g.items.map((p) => (
-                    <ProjectRow
-                      project={p} onOpen={() => onOpen(p.id)} menu={menuOf(p)} key={p.id}
-                      reorder={{ item: reorder.itemProps(p.id), handle: reorder.handleProps(p.id) }}
-                    />
-                  ))}
-                </StructuredList>
-              )}
-          </Fragment>
-        ))}
+        <GroupedList>
+          {groups.map((g, i) => (
+            <Group key={g.status} title={g.status} count={g.items.length}>
+              {i === 0 && creating
+                ? (
+                  <ProjectCreateRow
+                    row={createDraft.slot} triggers={newTriggers}
+                    onCancel={stopCreating} onCreate={createProject} kept={{ drafts, target: 'new' }}
+                  />
+                )
+                : g.items.length === 0 ? <EmptyState variant="section" /> : null}
+              {g.status === ACTIVE_PROJECT
+                ? g.items.map((p) => (
+                  <ProjectPanel
+                    project={p} onOpen={() => onOpen(p.id)} onRename={renameOf(p)} menu={menuOf(p)} key={p.id}
+                    reorder={{ item: reorder.itemProps(p.id), handle: reorder.handleProps(p.id) }}
+                  />
+                ))
+                : (
+                  <List variant="embedded" rows="all">
+                    {g.items.map((p) => (
+                      <ProjectRow
+                        project={p} onOpen={() => onOpen(p.id)} onRename={renameOf(p)} menu={menuOf(p)} key={p.id}
+                        reorder={{ item: reorder.itemProps(p.id), handle: reorder.handleProps(p.id) }}
+                      />
+                    ))}
+                  </List>
+                )}
+            </Group>
+          ))}
+        </GroupedList>
       </PageBody>
     </PageShell>
   )

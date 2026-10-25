@@ -1,35 +1,13 @@
 /* Feature-owned styles for project detail sections. Routes only place these sections. */
-.agcard{background:var(--card);border:1px solid var(--sep);border-radius:var(--r-card);padding:var(--sp-12) var(--sp-16);margin-bottom:var(--sp-10)}
-.agh{display:flex;align-items:center;gap:var(--sp-8)}
-.agnm{font-size:var(--fs-base);font-weight:var(--fw-semibold)}
-.agbg{margin-left:auto;font-size:var(--fs-sm);color:var(--ter)}
-.agent-run-tray{margin-top:var(--sp-8)}
 .agsteps{padding:var(--sp-6) var(--sp-12) var(--sp-8)}
 .agstep{display:flex;gap:var(--sp-10);font-size:var(--fs-base);color:var(--sec);padding:var(--sp-4) 0;line-height:var(--lh-ui)}
 .agstep .agt{font-family:var(--mono);font-size:var(--fs-sm);color:var(--ter);flex-shrink:0;width:44px}
 
 .memo{font-size:var(--fs-base)}
 
-/* A project's areas: the + stays shown, and a click on an area edits it, as on any other property. */
-.project-areas .tagchip.tagadd{opacity:1;pointer-events:auto}
-.project-areas .tagchip-open{cursor:pointer}
-.wkrel .reladd{display:flex;align-items:center;gap:var(--sp-6);flex:1 1 auto;min-width:190px}
-.wkrel .reladd .segmented-control{flex-shrink:0}
-.wkrel .reladd .inedit{flex:1;min-width:0}
-.wkrel .reladd:has(.urldraft){flex-wrap:wrap}
+/* A web address relation's draft: its two fields on a line of their own below the group switch. */
 .wkrel .reladd .urldraft{display:flex;flex-direction:column;gap:var(--sp-6);flex:1 1 100%;min-width:0}
 .wkrel .reladd .urldraft .inedit{flex:none}
-.wkrel .tagchip[draggable]{cursor:var(--cursor-draggable)}
-.wkrel .tagchip[draggable]:active{cursor:var(--cursor-dragging)}
-.wkrel .tagchip.dragging{opacity:.4}
-.wkrel .tagchip.drop-before{box-shadow:-3px 0 0 -1px var(--ink)}
-.wkrel .tagchip.drop-after{box-shadow:3px 0 0 -1px var(--ink)}
 
-.attrow{display:flex;align-items:center;gap:var(--sp-8);font-size:var(--fs-sm);padding:var(--sp-6) var(--sp-2)}
-.attrow>svg{width:13px;height:13px;color:var(--ter);flex-shrink:0}
-.attrow .an{display:flex;flex:1;min-width:0;padding:0;border:0;background:none;color:inherit;font:inherit;text-align:left;cursor:pointer}
-.attrow .an:disabled{cursor:default}
-.attrow .as{font-size:var(--fs-sm);color:var(--ter);flex-shrink:0}
-.attrow .row-actions{margin:calc(-1 * var(--sp-4)) 0}
 .attachments{min-width:0;border-radius:var(--r-md);transition:background-color var(--t) var(--e-out),outline-color var(--t) var(--e-out);outline:1px solid transparent}
 .attachments.drag{background:var(--selected);outline-color:var(--ink)}

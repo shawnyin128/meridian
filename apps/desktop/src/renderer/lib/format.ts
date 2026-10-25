@@ -1,12 +1,14 @@
 import { useMemo } from 'react'
-import { dnum } from '../../shared/dates.js'
+import { dnum, localDayOf } from '../../shared/dates.js'
 import { useLocale } from '../messages/useMessages.js'
 import { formatNumber } from './number.js'
 import type { Locale } from '../shell/language.js'
 
-/** Locale-aware display formatting for dates, numbers and English plurals. */
+/** Locale-aware display formatting for dates, numbers, author lists and English plurals. */
 export type Format = {
   date: (iso: string) => string
+  /** The local calendar day of a timestamp, ISO or epoch ms, as `date` writes it. */
+  day: (at: string | number) => string
   dateRange: (start: string, end: string) => string
   dayHead: (iso: string, todayIso: string) => string
   monthYear: (iso: string) => string
@@ -16,6 +18,8 @@ export type Format = {
   clock: (at: string | number) => string
   number: (value: number) => string
   plural: (count: number, forms: { one: string; other: string }) => string
+  /** A paper's authors in their order, as one line. */
+  authors: (names: readonly string[]) => string
 }
 
 const ZH_WEEKDAYS = ['日', '一', '二', '三', '四', '五', '六'] as const
@@ -54,6 +58,7 @@ export function createFormat(locale: Locale): Format {
 
   return {
     date,
+    day: (at) => date(localDayOf(new Date(at).toISOString())),
     dateRange: (start, end) => (start === end ? date(start) : `${date(start)}–${date(end)}`),
     dayHead: (iso, todayIso) => {
       const days = dnum(todayIso) - dnum(iso)
@@ -83,6 +88,7 @@ export function createFormat(locale: Locale): Format {
     clock: (at) => clock.format(new Date(at)),
     number: (value) => formatNumber(locale, value),
     plural: (count, forms) => (plurals.select(count) === 'one' ? forms.one : forms.other),
+    authors: (names) => names.join(', '),
   }
 }
 

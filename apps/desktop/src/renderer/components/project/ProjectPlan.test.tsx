@@ -38,7 +38,7 @@ function renderPlan(tab: 'task' | 'ms', options: {
       <ProjectPlan
         projectId="p1" project={{ tasks, milestones }} tab={tab} today="2026-09-16"
         creating={creating} flashId={flashId} selectedTaskId={null}
-        listRef={createRef()} addRef={createRef()} timelineAddRef={createRef()}
+        listRef={createRef()} draftRef={createRef()} addRef={createRef()} timelineAddRef={createRef()}
         onTab={vi.fn()} onDiscardOpenEdits={vi.fn()} onStartTask={vi.fn()} onStartMilestone={vi.fn()}
         onCreating={vi.fn()} onCancelCreate={vi.fn()} onCreateTask={vi.fn()} onCreateMilestone={vi.fn()}
         onUpdateTask={vi.fn()} onDeleteTask={vi.fn()} onReorderTasks={vi.fn()} onOpenTask={vi.fn()}
@@ -58,13 +58,13 @@ describe('ProjectPlan', () => {
       host.innerHTML = renderPlan(tab, { tasks: [], milestones: [] })
       return [...host.querySelectorAll('.empty-state')].map((node) => [node.className, node.textContent])
     }
-    expect(empty('task')).toEqual([['empty-state empty-state--section', '还没有任务']])
-    expect(empty('ms')).toEqual([['empty-state empty-state--section', '还没有里程碑']])
+    expect(empty('task')).toEqual([['empty-state empty-state--section', '—']])
+    expect(empty('ms')).toEqual([['empty-state empty-state--section', '—']])
   })
 
   it('任务模式把日期和时间保留为两个独立编辑入口', () => {
     const output = renderPlan('task')
-    expect(output).toContain('structured-list--embedded')
+    expect(output).toContain('list--embedded')
     expect(output).toMatch(/<button type="button" class="schedule-trigger task-date-part"/)
     expect(output).toMatch(/<button type="button" class="schedule-trigger task-clock-part"/)
     expect(output).toContain('9月16日')
@@ -107,7 +107,7 @@ describe('ProjectPlan', () => {
         <ProjectPlan
           projectId="p1" project={{ tasks: [task, rangeTask, doneTask], milestones: [] }} tab="task" today="2026-09-16"
           creating={null} flashId={null} selectedTaskId={null}
-          listRef={createRef()} addRef={createRef()} timelineAddRef={createRef()}
+          listRef={createRef()} draftRef={createRef()} addRef={createRef()} timelineAddRef={createRef()}
           onTab={vi.fn()} onDiscardOpenEdits={vi.fn()} onStartTask={vi.fn()} onStartMilestone={vi.fn()}
           onCreating={vi.fn()} onCancelCreate={vi.fn()} onCreateTask={vi.fn()} onCreateMilestone={vi.fn()}
           onUpdateTask={vi.fn()} onDeleteTask={vi.fn()} onReorderTasks={onReorderTasks} onOpenTask={vi.fn()}
@@ -140,7 +140,7 @@ describe('ProjectPlan', () => {
 
   it('里程碑模式复用同一列表外壳并只显示里程碑字段', () => {
     const output = renderPlan('ms')
-    expect(output).toContain('structured-list--embedded')
+    expect(output).toContain('list--embedded')
     expect(output).toContain('完成首轮校准')
     expect(output).toContain('9月20日')
     expect(output).toContain('未完成')
@@ -152,6 +152,53 @@ describe('ProjectPlan', () => {
     expect(output.indexOf('task-create-row')).toBeGreaterThan(-1)
     expect(output.indexOf('task-create-row')).toBeLessThan(output.indexOf('data-row="task-1"'))
     expect(output).toMatch(/task-create-row[\s\S]*<input[^>]*class="form-control form-input form-control-inline/)
+  })
+
+  it('新建的任务和里程碑与已有的一行用同一套挑选器、落在同一列:日期和时段打开同一个编辑框,优先级和状态从菜单里挑,不是点一下换一个', async () => {
+    globalThis.IS_REACT_ACT_ENVIRONMENT = true
+    vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} })
+    const host = document.createElement('div')
+    document.body.append(host)
+    const onCreating = vi.fn()
+    const root = createRoot(host)
+    const render = (creating: PlanCreating, tab: 'task' | 'ms') => act(() => root.render(
+      <MessagesProvider>
+        <ProjectPlan
+          projectId="p1" project={{ tasks: [task], milestones: [milestone] }} tab={tab} today="2026-09-16"
+          creating={creating} flashId={null} selectedTaskId={null}
+          listRef={createRef()} draftRef={createRef()} addRef={createRef()} timelineAddRef={createRef()}
+          onTab={vi.fn()} onDiscardOpenEdits={vi.fn()} onStartTask={vi.fn()} onStartMilestone={vi.fn()}
+          onCreating={onCreating} onCancelCreate={vi.fn()} onCreateTask={vi.fn()} onCreateMilestone={vi.fn()}
+          onUpdateTask={vi.fn()} onDeleteTask={vi.fn()} onReorderTasks={vi.fn()} onOpenTask={vi.fn()}
+          onUpdateMilestone={vi.fn()} onDeleteMilestone={vi.fn()} onHoverMilestone={vi.fn()}
+        />
+      </MessagesProvider>,
+    ))
+    /** The class of each control of a row, with its element, in the row's order. */
+    const cells = (row: Element) => [...row.children].map((cell) => `${cell.tagName} ${cell.className.split(' ').filter((name) => !['task-create-row', 'milestone-create-row', 'done'].includes(name)).join(' ')}`)
+    const pick = async (trigger: Element, option: string) => {
+      await act(async () => { trigger.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, button: 0 })) })
+      const items = [...document.querySelectorAll<HTMLElement>('[role="menu"] [role="menuitemradio"]')]
+      await act(async () => { items.find((item) => item.textContent!.startsWith(option))!.click() })
+    }
+
+    render(newPlanRow('task', '2026-09-16'), 'task')
+    const draft = host.querySelector('.task-create-row')!
+    const saved = host.querySelector('[data-row="task-1"]')!
+    expect(cells(draft).slice(0, 4)).toEqual(cells(saved).slice(0, 4))
+    await pick(draft.querySelector('.plan-priority')!, 'P2')
+    expect(onCreating).toHaveBeenLastCalledWith(expect.objectContaining({ kind: 'task', draft: expect.objectContaining({ priority: 'p2' }) }))
+    await pick(draft.querySelector('.state-cell')!, '已完成')
+    expect(onCreating).toHaveBeenLastCalledWith(expect.objectContaining({ draft: expect.objectContaining({ state: 'done' }) }))
+
+    render(newPlanRow('ms', '2026-09-16'), 'ms')
+    const msDraft = host.querySelector('.milestone-create-row')!
+    expect(cells(msDraft).slice(0, 2)).toEqual(cells(host.querySelector('[data-row="milestone-1"]')!).slice(0, 2))
+    await pick(msDraft.querySelector('.state-cell')!, '已完成')
+    expect(onCreating).toHaveBeenLastCalledWith({ kind: 'ms', draft: expect.objectContaining({ done: true }) })
+    act(() => root.unmount())
+    host.remove()
+    vi.unstubAllGlobals()
   })
 
   it('已完成的任务默认折叠进已归档分组,活动列表里看不到它', () => {
@@ -210,7 +257,7 @@ describe('ProjectPlan', () => {
           <ProjectPlan
             projectId="p1" project={{ tasks: [task], milestones: [] }} tab="task" today="2026-09-16"
             creating={null} flashId={null} selectedTaskId={null}
-            listRef={createRef()} addRef={createRef()} timelineAddRef={createRef()}
+            listRef={createRef()} draftRef={createRef()} addRef={createRef()} timelineAddRef={createRef()}
             onTab={vi.fn()} onDiscardOpenEdits={vi.fn()} onStartTask={vi.fn()} onStartMilestone={vi.fn()}
             onCreating={vi.fn()} onCancelCreate={vi.fn()} onCreateTask={vi.fn()} onCreateMilestone={vi.fn()}
             onUpdateTask={onUpdateTask} onDeleteTask={vi.fn()} onReorderTasks={vi.fn()} onOpenTask={onOpenTask}
@@ -228,7 +275,7 @@ describe('ProjectPlan', () => {
       expect(title.textContent).toBe('校准批次')
       act(() => title.click())
       expect(onOpenTask).toHaveBeenCalledWith('task-1')
-      expect(host.querySelector('.plan-name-input')).toBeNull()
+      expect(host.querySelector('.metadata-input')).toBeNull()
     })
 
     it('任务行整行可点开任务详情,不止是拖拽把手', () => {
@@ -237,13 +284,13 @@ describe('ProjectPlan', () => {
       expect(onOpenTask).toHaveBeenCalledWith('task-1')
     })
 
-    it('改名从任务名旁的铅笔进入,在行内写回,不打开任务详情', async () => {
+    it('改名从任务名旁的铅笔进入,在行内用同一种就地输入框写回,不打开任务详情', async () => {
       const { host, onOpenTask, onUpdateTask } = mount()
       const rename = host.querySelector<HTMLButtonElement>('.task-row .plan-rename')!
       expect(rename.getAttribute('aria-label')).toBe('重命名任务：校准批次')
       act(() => rename.click())
-      const input = host.querySelector<HTMLInputElement>('.task-row .plan-name-input')!
-      expect(input.value).toBe('校准批次')
+      const input = host.querySelector<HTMLInputElement>('.task-row .metadata-input')!
+      expect([input.value, input.classList.contains('form-control-inline')]).toEqual(['校准批次', true])
       act(() => {
         Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')!.set!.call(input, '复核批次')
         input.dispatchEvent(new Event('input', { bubbles: true }))
@@ -259,7 +306,7 @@ describe('ProjectPlan', () => {
     it('一行任务只占一个 Tab 停靠点，方向键依次走过日期、时间、优先级、状态、任务名、改名铅笔和删除，双击仍不选中字', async () => {
       const { host } = mount()
       const row = host.querySelector<HTMLElement>('.task-row')!
-      const stops = [...host.querySelectorAll<HTMLElement>('.structured-list *')]
+      const stops = [...host.querySelectorAll<HTMLElement>('.list *')]
         .filter((element) => element.tabIndex >= 0 && !(element as HTMLButtonElement).disabled)
       expect(stops).toEqual([row])
       await act(async () => { row.focus() })
@@ -280,9 +327,9 @@ describe('ProjectPlan', () => {
     it('改名时点进输入框只是在编辑,不打开任务详情', () => {
       const { host, onOpenTask } = mount()
       act(() => host.querySelector<HTMLButtonElement>('.task-row .plan-rename')!.click())
-      act(() => host.querySelector<HTMLInputElement>('.task-row .plan-name-input')!.click())
+      act(() => host.querySelector<HTMLInputElement>('.task-row .metadata-input')!.click())
       expect(onOpenTask).not.toHaveBeenCalled()
-      expect(host.querySelector('.task-row .plan-name-input')).not.toBeNull()
+      expect(host.querySelector('.task-row .metadata-input')).not.toBeNull()
     })
   })
 })
@@ -311,17 +358,17 @@ describe('ProjectTaskPanel', () => {
     expect(output).toContain('进行中')
   })
 
-  it('没有备注时显示空状态提示,而不是空白', () => {
+  it('没有备注时是分节空态 —,而不是空白,也不写一句', () => {
     const output = renderTaskPanel({ note: undefined })
-    expect(output).toContain('还没有备注')
+    expect(output).toContain('<div class="empty-state empty-state--section">—</div>')
   })
 
-  it('显示任务挂在哪个科研节点上;还没挂时只写「未关联」', () => {
+  it('显示任务挂在哪个科研节点上;还没挂时是共享的空值 —', () => {
     const linked = renderTaskPanel({}, { id: 'kv.n3', label: '前缀共调度', mode: 'supported' })
     expect(linked).toContain('科研节点')
     expect(linked).toMatch(/<button type="button" class="entity-link entity-link--node"[^>]*><span class="status-dot status-dot--sm status-dot--good"/)
     expect(linked).not.toContain('title=')
-    expect(renderTaskPanel()).toContain('未关联')
+    expect(renderTaskPanel()).toContain('<div class="empty-state empty-state--section">—</div>')
     expect(renderTaskPanel()).not.toContain('agent 做这个任务')
   })
 
@@ -336,7 +383,8 @@ describe('ProjectTaskPanel', () => {
   it('有备注时渲染备注正文', () => {
     const output = renderTaskPanel({ note: '先跑 A/B 两组,再看结论' })
     expect(output).toContain('先跑 A/B 两组')
-    expect(output).not.toContain('还没有备注')
+    const empties = (html: string) => html.split('empty-state--section').length - 1
+    expect(empties(output)).toBe(empties(renderTaskPanel({ note: undefined })) - 1)
   })
 
   it('备注按长文本的同一套约定编辑:编辑的位置换成取消和保存,取消或 Esc 还原不写,保存或 ⌘回车写回', async () => {

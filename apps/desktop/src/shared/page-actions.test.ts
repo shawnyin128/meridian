@@ -106,25 +106,28 @@ const SLOT_PROPS: Record<string, Record<string, Slot>> = {
   PageHeader: { actions: 'page header' },
   SectionHeading: { actions: 'section heading' },
   TabbedSection: { actions: 'section heading' },
-  CollapsibleGroup: { actions: 'group heading' },
+  Group: { actions: 'group heading' },
   PanelHead: { actions: 'panel head' },
   IdeaPanel: { actions: 'panel head' },
+  Item: { actions: 'row actions', menu: 'row actions' },
   PaperCard: { actions: 'row actions' },
   IdeaCard: { menu: 'row actions' },
   IdeaRow: { menu: 'row actions' },
   ProjectPanel: { menu: 'row actions' },
   ProjectRow: { menu: 'row actions' },
-  Table: { head: 'table header' },
+  Table: { actions: 'table header' },
+  TableRow: { actions: 'row actions' },
+  Comparison: { head: 'table header' },
   TimelineBoard: { headerAction: 'timeline toolbar' },
   ModalDialog: { actions: 'dialog actions' },
-  SectHead: { extra: 'sidebar heading' },
+  NavSection: { action: 'sidebar heading' },
   NodeAssignment: { create: 'section heading' },
 }
 
 /** Elements whose children sit in one slot: components by name, plain elements by a class. */
 const SLOT_CHILDREN: Record<string, Slot> = {
   PageToolbar: 'page toolbar', RowActions: 'row actions', Tag: 'chip', tagchip: 'chip',
-  'th-add': 'table header', ServiceFoot: 'card foot', 'selection-tools-row': 'selection toolbar',
+  ServiceFoot: 'card foot', 'selection-tools-row': 'selection toolbar',
 }
 
 /** Components whose whole body is one slot wherever they are placed. */
@@ -155,6 +158,8 @@ const OPTION_SWITCHES = new Set(['f.basisLabel', 'm.project.workspace.kindLabel'
 const LABELLED: [RegExp, string][] = [
   [/^m\.(common\.(delete|deletePermanently|remove)|project\.attachments\.delete|project\.plan\.delete\w+For|papers\.rowActions\.delete)\b/, 'delete'],
   [/^m\.(inbox\.actions\.dismiss|later\.actions\.removeFrom|wiki\.removeFromPage|common\.removeLink|papers\.tags\.remove)\b/, 'remove'],
+  // ChipList names the × of each chip it draws `chip.remove`.
+  [/^chip\.remove\.label$/, 'remove'],
   [/^m\.(papers\.rowActions\.openReader|settings\.archived\.open|project\.idea\.openIdea|papers\.understanding\.goRead|wiki\.viewInPaperList)\b/, 'open'],
   [/^m\.(common\.(restore|undo)|settings\.archived\.unarchive)\b/, 'restore'],
   [/^m\.(trash\.clear|changelog\.clearArchived)\b/, 'clear'],
@@ -186,7 +191,7 @@ const PLACES: Record<string, Place[]> = {
     { slot: 'inline', size: 'chip', variant: 'icon', scope: 'a field adds a value after its chips' },
     { slot: 'sidebar heading', size: 'compact', variant: 'icon', scope: 'the sidebar starts a chat in its chats group' },
     { slot: 'row actions', size: 'compact', variant: 'labelled', scope: 'a suggestion row adds its suggestion' },
-    { slot: 'inline', size: 'compact', variant: 'labelled', scope: 'the heading of a suggestion group adds all of them' },
+    { slot: 'group heading', size: 'compact', variant: 'labelled', scope: 'a group adds to itself: a watch of its type, or all of its suggestions' },
   ],
   'view switch': [
     { slot: 'page toolbar', size: 'md', variant: 'plain' },
