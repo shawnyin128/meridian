@@ -25,7 +25,7 @@ const FADED: Record<string, [file: string, markup: RegExp][]> = {
   '.structured-list--fill': [['components/StructuredList.tsx', /list\.current = node\n\s*fade\(node\)/]],
   '.list-column': [['components/StructuredList.tsx', /<div ref=\{fade\} className=\{`list-column/]],
   '.modal-body': [['components/ModalDialog.tsx', /className="modal-body" ref=\{bodyFade\}/]],
-  '.table-scroll': [['components/Table.tsx', /className=\{`table-scroll table-scroll--\$\{rows\}`\} ref=\{fade\}/]],
+  '.table-scroll': [['components/Table.tsx', /className=\{`table-scroll table-scroll--\$\{rows\}[^`]*`\} ref=\{fade\}/]],
   '.pdetail': [['components/paper-table/PaperTable.tsx', /className="pdetail" ref=\{detailFade\}/]],
   '.paper-meta-list': [['components/PaperMetadata.tsx', /className="paper-meta-list" ref=\{listFade\}/]],
   '.reading-list': [['components/reader/ReadingNotes.tsx', /className="reading-list" ref=\{listFade\}/]],
