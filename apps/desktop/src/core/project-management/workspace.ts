@@ -477,7 +477,8 @@ export function sshFolders(target: SshTarget, path: string | undefined, ssh: Ssh
     path: folder,
     parent: folder === '/' ? null : posix.dirname(folder),
     folders: names.map((entry) => entry.slice(2))
-      .filter((name) => !name.startsWith('.') && !name.includes('\n') && !name.includes('\r'))
+      // A binding's path is trimmed and holds no line break, so such a name could not be bound.
+      .filter((name) => !name.startsWith('.') && !/[\n\r]|\s$/.test(name))
       .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))
       .map((name) => ({ name, path: posix.join(folder, name) })),
   }

@@ -597,15 +597,15 @@ describe('choosing a folder on an SSH host', () => {
     expect(calls[0]!.command.split('\n')).toContain('cd')
   })
 
-  it('打开一个文件夹时只列它这一层；根目录没有上一级；名字里带换行的文件夹不列出，因为它存不成工作区', () => {
+  it('打开一个文件夹时只列它这一层；根目录没有上一级；名字里带换行或以空白结尾的文件夹不列出，因为它存不成工作区', () => {
     const commands: string[] = []
     const ssh: SshExecutor = (_target, command) => {
       commands.push(command)
-      return remoteListing('/', ['srv', 'line\nbreak', 'home'])
+      return remoteListing('/', ['srv', 'line\nbreak', 'home', 'trailing ', ' leading'])
     }
     expect(sshFolders({ host: 'gpu-lab' }, '/srv/../', ssh)).toEqual({
       state: 'ready', path: '/', parent: null,
-      folders: [{ name: 'home', path: '/home' }, { name: 'srv', path: '/srv' }],
+      folders: [{ name: ' leading', path: '/ leading' }, { name: 'home', path: '/home' }, { name: 'srv', path: '/srv' }],
     })
     expect(commands[0]!.split('\n')).toContain("cd -- '/'")
   })
