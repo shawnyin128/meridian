@@ -669,3 +669,20 @@ describe('系统提高对比度', () => {
     })
   }
 })
+
+describe('暗色主题里反相的论文页', () => {
+  it('阅读器画出的论文页取 --paper-filter:亮色不动,暗色反相,色相转回原样', () => {
+    const css = readFileSync(new URL('../renderer/routes/Reader.css', import.meta.url), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '')
+    expect(/\.pdfpagebox canvas\{[^}]*filter:var\(--paper-filter\)/.test(css)).toBe(true)
+    expect([ROOT.get('--paper-filter'), DARK.get('--paper-filter')]).toEqual(['none', 'invert(.88) hue-rotate(180deg)'])
+  })
+
+  for (const theme of THEMES) {
+    it(`${named(theme)}的论文页${theme.mode === 'dark' ? '是深底' : '是白底'},选中高亮的轮廓和批注底线压在页上不低于 3:1`, () => {
+      const page = colour(theme, '--paper')
+      expect(luminance(page) < 0.05).toBe(theme.mode === 'dark')
+      const got = contrast(flatten(theme, ['--paper', '--hl-note']), page)
+      expect(got, `--hl-note 压在 --paper 上是 ${got.toFixed(2)}:1`).toBeGreaterThanOrEqual(MARK)
+    })
+  }
+})

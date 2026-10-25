@@ -224,9 +224,12 @@ function colours(modules: ColourThemeModules, mode: ColourMode) {
     '--diff-add': light ? alpha(moved('done', '#28a745'), 0.12) : alpha(done, 0.14),
     '--diff-del': alpha(error, light ? 0.1 : 0.12),
     '--hl': alpha(moved('highlight', '#ffd60a'), light ? 0.45 : 0.35),
-    '--paper': WHITE, '--scrim': light ? alpha(shadowOf(modules), 0.42) : alpha(desktop, 0.55),
+    '--paper': light ? WHITE : parse('#1f1f1f'), '--scrim': light ? alpha(shadowOf(modules), 0.42) : alpha(desktop, 0.55),
     '--hl-yellow': own('highlight'), '--hl-green': parse('#87d99a'), '--hl-blue': parse('#82c7f2'),
-    '--hl-pink': parse('#f0a0be'), '--hl-note': parse('#111111', 0.55), '--hl-sel': parse('#111111', 0.14),
+    '--hl-pink': parse('#f0a0be'),
+    // Dark themes invert the page (tokens.css --paper-filter), so the ink drawn on it turns light.
+    '--hl-note': light ? parse('#111111', 0.55) : parse('#e0e0e0', 0.55),
+    '--hl-sel': light ? parse('#111111', 0.14) : parse('#e0e0e0', 0.2),
   } satisfies Record<string, Colour>
 }
 
