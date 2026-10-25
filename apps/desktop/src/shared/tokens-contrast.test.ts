@@ -408,7 +408,7 @@ describe('选中、当前、已应用和按下的状态', () => {
 
   /** The on states of controls that already have a fill at rest: the current page, the applied filter, the picked column type. */
   const FILLED_ON = [
-    ['components/Pager.css', '.pgbtn.on'], ['routes/shell.css', '.filter-menu.on'],
+    ['components/Pager.css', '.pgbtn.on'], ['components/FilterMenu.css', '.filter-menu.on'],
     ['components/paper-table/PaperTable.css', '.ctbtn.on'],
   ] as const
 

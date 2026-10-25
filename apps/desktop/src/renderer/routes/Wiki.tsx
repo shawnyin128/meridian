@@ -865,7 +865,7 @@ export function Wiki() {
                               setAdding(null)
                               if (next) setColumnsDraft({ rows: shownAgg.columns, base: shownAgg.columns })
                             }}
-                            contentClassName="ctxmenu colpop" sticky="always"
+                            surface="form" contentClassName="colpop" sticky="always"
                             trigger={(
                               <IconButton
                                 label={m.wiki.columnSettings} size="nested" ref={colBtn} disabled={pending}

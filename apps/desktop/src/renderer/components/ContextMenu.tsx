@@ -1,6 +1,7 @@
 import * as Radix from '@radix-ui/react-context-menu'
 import type { KeyboardEvent as ReactKeyboardEvent, ReactElement, ReactNode } from 'react'
 import { ignoreComposingEscape } from '../lib/keyboard.js'
+import { menuSurfaceClass } from './ActionMenu.js'
 import { COLLISION_PADDING } from './floating-layer.js'
 import { OutsideToolbar } from './Toolbar.js'
 
@@ -40,7 +41,7 @@ export function ContextMenu({ trigger, label, className = '', children }: {
       <Radix.Trigger asChild onKeyDown={openFromKeyboard}>{trigger}</Radix.Trigger>
       <Radix.Portal>
         <Radix.Content
-          className={`ctxmenu${className ? ` ${className}` : ''}`} aria-label={label}
+          className={menuSurfaceClass('menu', className)} aria-label={label}
           collisionPadding={COLLISION_PADDING} onEscapeKeyDown={ignoreComposingEscape()}
         >
           <OutsideToolbar>{children}</OutsideToolbar>

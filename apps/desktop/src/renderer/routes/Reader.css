@@ -67,11 +67,9 @@
 .paper-highlight-outline path{fill:none;stroke:var(--hl-note);stroke-width:1.5px;stroke-linejoin:round;vector-effect:non-scaling-stroke}
 .paper-highlight .paper-highlight-note{fill:none;stroke:var(--hl-note);stroke-width:2.5px;vector-effect:non-scaling-stroke}
 /*
- * The selection toolbar, on the shared menu surface: the AI mark and the highlight colours in one row,
- * the note box under them as wide as the row, which grows with its lines; a long note wraps instead
- * of widening the toolbar.
+ * The selection toolbar, on the shared menu surface of a toolbar: the AI mark and the highlight colours
+ * in one row, the note box under them as wide as the row, which grows with its lines.
  */
-.ctxmenu.selection-tools{width:min-content;min-width:0}
 .selection-tools-body{display:flex;flex-direction:column;gap:var(--sp-8)}
 .selection-tools-row{display:flex;align-items:center;gap:var(--sp-10)}
 .selection-tools .form-textarea{width:100%;resize:none;field-sizing:content;max-height:calc(6lh + 2 * var(--sp-8) + 2px)}

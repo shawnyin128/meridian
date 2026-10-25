@@ -20,8 +20,8 @@ const HOST_RING = ['outline:var(--ring-width) solid var(--ring)', 'outline-offse
 const NOT_A_RING = new Set([
   'components/ModalDialog.css .modal:focus-visible',
   'components/AboutDialog.css .about-pop:focus',
-  'routes/shell.css .ctxmenu:focus-visible',
-  'routes/shell.css .mi[data-highlighted]:focus-visible',
+  'components/ActionMenu.css .ctxmenu:focus-visible',
+  'components/ActionMenu.css .mi[data-highlighted]:focus-visible',
   'components/Grip.css .grip',
   'components/Grip.css .grip-edge',
   'components/Grip.css .grip:focus-visible::after',

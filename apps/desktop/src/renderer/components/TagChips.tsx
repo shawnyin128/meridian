@@ -11,6 +11,7 @@ import { IconButton } from './IconButton.js'
 import { IconCross, IconPlus } from './icons.js'
 import { PickerPopover, PickOption } from './PickerPopover.js'
 import { Tag, tagClass } from './Tag.js'
+import './TagChips.css'
 
 /** What a chip list calls its parts: the `+`, a chip's ×, and the heading over the candidates. */
 export type TagChipLabels = { add: string; remove: (value: string) => string; existing: string }

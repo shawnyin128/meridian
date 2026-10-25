@@ -26,14 +26,17 @@ Current shared contracts:
   lock are implemented once. No create action opens a dialog.
 - `PickerPopover`: the shared anchored surface for input suggestions and compact pickers. It owns
   portal positioning, focus retention, anchor-aware outside interaction, spacing, and optional event
-  isolation; picker contents and domain selection policy stay configurable. `PickOption` is the one
-  candidate row: menu item anatomy, lit only as the active row, and the row under the pointer is it.
+  isolation; picker contents and domain selection policy stay configurable. Its `size` is a field's
+  candidates, a `tall` list or a `wide` results panel. `PickOption` is the one candidate row: menu
+  item anatomy, lit only as the active row, and the row under the pointer is it.
 - `ActionMenu` and `ActionPopover`: the two shared interactive-surface shells. Menus own action and
   radio-item semantics, and radio and checkbox items draw the one checked mark themselves; popovers
   retain normal focus for calendars, configuration forms and the reader's selection toolbar, which a
   popover places against a box it measures (`anchorBox`). Routes provide triggers, contents, and
   capability flags instead of assembling Radix roots and portals. Every menu and popover keeps
-  `COLLISION_PADDING` from the window edge.
+  `COLLISION_PADDING` from the window edge, and lies on the one menu surface of `ActionMenu.css`,
+  which ContextMenu and PickerPopover share; its `surface` holds items (`menu`), a ShortTextEditor
+  (`editor`), a form (`form`) or a toolbar (`toolbar`), and `contentClassName` only names or places it.
 - `ContextMenu`: the shared right-click menu of one element, opened by the pointer or by the
   ContextMenu key and Shift+F10. Radix owns placement at the point, roving focus with the arrow, Home
   and End keys, outside/Escape dismissal, and focus return.
@@ -158,6 +161,8 @@ Current shared contracts:
   topic editor of a paper, used by both the paper table and the detail panel.
 - `TagChips`: the one editor of a list of values as chips, with × to remove, `+` to add from a vocabulary,
   and an optional click on a chip to edit it in place; a paper's topics and a project's areas use it.
+  `TagChips.css` holds the chip base every row of chips uses: a chip's spacing (`tagchip`), its name
+  button (`tagchip-open`) and the relation row with its label (`wkrel`).
 - `paper/PaperCard`: discovery-card composition, actions/notices slots, metadata badges, recommendations,
   and the shared LaTeX-capable `PaperAbstract`. Inbox and read-later configure the same card.
 - `paper/PaperText`: every display of a paper title (inline) or abstract (block, through `Markdown`) with

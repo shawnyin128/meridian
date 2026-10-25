@@ -15,7 +15,7 @@ import { ShortTextEditor } from './ShortTextEditor.js'
  */
 export function FloatingTextEditor({
   open, anchor, editorKey, title, initialValue = '', placeholder, field, fieldChanged = false, onSubmit, onClose, onDelete,
-  contentClassName = 'ctxmenu drop', side = 'bottom', align = 'start', sideOffset = 6, kept,
+  side = 'bottom', align = 'start', sideOffset = 6, kept,
 }: {
   open: boolean
   anchor: ReactElement
@@ -28,7 +28,6 @@ export function FloatingTextEditor({
   onSubmit: (value: string) => boolean | Promise<boolean>
   onClose: () => void
   onDelete?: (() => void) | undefined
-  contentClassName?: string
   side?: ActionPopoverSide
   align?: ActionPopoverAlign
   sideOffset?: number
@@ -50,7 +49,7 @@ export function FloatingTextEditor({
   return (
     <ActionPopover
       open={open} anchor={anchor}
-      contentClassName={contentClassName} side={side} align={align} sideOffset={sideOffset}
+      surface="editor" side={side} align={align} sideOffset={sideOffset}
       contentProps={{
         // Anchored without a trigger, Radix hands focus back to nothing once the popover closes.
         onCloseAutoFocus: (event) => {

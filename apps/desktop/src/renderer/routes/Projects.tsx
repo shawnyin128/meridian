@@ -100,7 +100,7 @@ function ProjectMenu({ project, onRename, onMove, canMove, onStatus, onDelete }:
         if (!next && renaming) return
         setOpen(next)
       }}
-      contentClassName={renaming ? 'ctxmenu drop' : 'ctxmenu'} stopRowActivation
+      surface={renaming ? 'editor' : 'menu'} stopRowActivation
     >
           {renaming
             ? (
