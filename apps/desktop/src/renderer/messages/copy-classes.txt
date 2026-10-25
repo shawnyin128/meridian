@@ -72,6 +72,7 @@ common.calendar.previous action
 common.cancel action
 common.confirm action
 common.copied aria
+common.copy action
 common.createdOn state
 common.daySections.earlier label
 common.daySections.today label
@@ -699,7 +700,6 @@ settings.extensions.app.phase.latest state
 settings.extensions.app.phase.ready state
 settings.extensions.app.phase.unsupported state
 settings.extensions.app.restart action
-settings.extensions.copy action
 settings.extensions.copyInstallLabel aria
 settings.extensions.copyUpdateLabel aria
 settings.extensions.heading label
@@ -748,6 +748,7 @@ settings.model.clearKeyPending state
 settings.model.configured state
 settings.model.connection.action action
 settings.model.connection.connected state
+settings.model.connection.connectedNoModelCall state
 settings.model.connection.detailLabel label
 settings.model.connection.failures.authentication failure
 settings.model.connection.failures.configuration failure
@@ -781,6 +782,19 @@ settings.model.providers.openai-compatible.label label
 settings.model.providers.openai.label label
 settings.model.save action
 settings.model.saving aria
+settings.model.subscription.cliLabel label
+settings.model.subscription.copySignIn aria
+settings.model.subscription.defaultModel placeholder
+settings.model.subscription.missing state
+settings.model.subscription.otherModel aria
+settings.model.subscription.signIn.other state
+settings.model.subscription.signIn.signed-out state
+settings.model.subscription.signIn.subscription state
+settings.model.subscription.signIn.unknown state
+settings.model.subscription.signInCommand label
+settings.model.subscription.signInLabel label
+settings.model.subscriptions.claude.label label
+settings.model.subscriptions.codex.label label
 settings.model.templates.chooseAria aria
 settings.model.templates.chooseLabel label
 settings.model.templates.choosePlaceholder placeholder

@@ -208,8 +208,8 @@ export function Settings() {
     }
   }
 
-  const copyText = (text: string) => navigator.clipboard.writeText(text).then(() => true, (caught: unknown) => {
-    reportTo('extensions')(caught)
+  const copyText = (pane: CategoryKey) => (text: string) => navigator.clipboard.writeText(text).then(() => true, (caught: unknown) => {
+    reportTo(pane)(caught)
     return false
   })
 
@@ -356,14 +356,14 @@ export function Settings() {
     ),
     model: (
       <>
-        <ModelSettings />
+        <ModelSettings onCopy={copyText('model')} />
       </>
     ),
     extensions: (
       <>
         <ExtensionSettings
           statuses={extensionStatus} failed={extensionsError !== null}
-          onCopy={copyText}
+          onCopy={copyText('extensions')}
           plugin={pluginVersion === null ? undefined : {
             plugin: pluginVersion,
             checking: checkingPlugin,

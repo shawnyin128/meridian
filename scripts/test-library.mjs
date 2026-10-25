@@ -5,6 +5,7 @@ import { DESKTOP, openApp, readJson, readsCannedNetFile, redate, session, writeJ
 import { seedConversations } from './test-library/conversations.mjs'
 import { redateLater, seedInbox, seedWatches, writeInbox } from './test-library/feed.mjs'
 import { prepareWorkspace, redateEvents, seedLab, seedProposals } from './test-library/lab.mjs'
+import { seedModelChoice } from './test-library/model.mjs'
 import { arxivMetadata, importPapers, paperFiles, redatePapers, seedPapers, writeLegacyOverlap } from './test-library/papers.mjs'
 import { discoveryProgress, discoveryRecords, redateProjects, seedProjects } from './test-library/projects.mjs'
 import { relocate } from './test-library/relocate.mjs'
@@ -67,6 +68,7 @@ async function seed(out, app, today) {
     await seedLab(state, call, await seedProjects(state, call))
     await seedConversations(state, call)
     await seedProposals(state, call, files)
+    await seedModelChoice(call)
   })
   writeInbox(state, discoveryRecords(state))
   mkdirSync(join(out, 'library', '.meridian', 'discovery'), { recursive: true })

@@ -1,0 +1,7 @@
+.command-tray{font-size:var(--fs-cap)}
+.command-tray-summary{display:flex;min-width:0;align-items:center;gap:var(--sp-8)}
+.command-tray-heading{flex:0 0 auto;color:var(--ter)}
+.command-tray-summary code{color:var(--sec);font-family:var(--mono)}
+.command-tray-code{margin:0;padding:var(--sp-10) var(--sp-12);overflow:auto;color:var(--sec);font-family:var(--mono);
+  font-size:var(--fs-cap);line-height:1.55;white-space:pre-wrap;overflow-wrap:anywhere}
+.command-tray-code code{font:inherit}

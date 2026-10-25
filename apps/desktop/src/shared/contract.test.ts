@@ -35,6 +35,7 @@ import {
   HarnessCancelParamsSchema,
   HarnessCancelResultSchema,
   HarnessCliModelSchema,
+  HarnessUpdateSubscriptionParamsSchema,
   HarnessModelConnectionCheckResultSchema,
   HarnessPlanSchema,
   HarnessPaperWikiQualitySchema,
@@ -249,6 +250,17 @@ describe('contract schemas', () => {
     expect(() => HarnessCliModelSchema.parse({ source: 'cli', cli: 'gemini' })).toThrow()
     expect(() => HarnessCliModelSchema.parse({ source: 'cli', cli: 'claude', model: ' ' })).toThrow()
     expect(() => HarnessCliModelSchema.parse({ source: 'cli', cli: 'claude', apiKey: 'sk-x' })).toThrow()
+  })
+
+  it('订阅的模型名留空用 CLI 自己的默认，只收模型名的字符，不收会被读成 CLI 选项的值', () => {
+    for (const model of ['', 'opus', 'sonnet[1m]', 'claude-opus-4-5@20251101', 'us.anthropic.claude-v1:0', 'gpt-oss:20b', 'gpt-5.1-codex']) {
+      expect(HarnessUpdateSubscriptionParamsSchema.parse({ cli: 'claude', model }).model).toBe(model)
+    }
+    expect(HarnessUpdateSubscriptionParamsSchema.parse({ cli: 'codex', model: ' opus ' }).model).toBe('opus')
+    for (const model of ['--dangerously-skip-permissions', '-m', 'opus --tools Bash', 'a\nb', 'x'.repeat(201)]) {
+      expect(() => HarnessUpdateSubscriptionParamsSchema.parse({ cli: 'claude', model })).toThrow()
+    }
+    expect(() => HarnessUpdateSubscriptionParamsSchema.parse({ cli: 'gemini', model: '' })).toThrow()
   })
 
   it('Paper Wiki 质量报告的七个维度与问题汇总必须一致', () => {

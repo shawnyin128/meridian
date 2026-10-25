@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import type {
-  HarnessModelConnectionCheckResult, HarnessModelProfile, HarnessModelProtocol,
-  HarnessModelProvider, HarnessModelSettings,
+  HarnessCli, HarnessModelConnectionCheckResult, HarnessModelProfile, HarnessModelProtocol,
+  HarnessModelProvider, HarnessModelSettings, HarnessSubscriptionStatus,
 } from '../../../shared/contract.js'
 import { harness } from '../../ipc.js'
 import { useScreenLoad } from '../../hooks/useScreenLoad.js'
@@ -9,14 +9,18 @@ import { errorLabel, reasonLabel } from '../../lib/failure-label.js'
 import { useMessages } from '../../messages/useMessages.js'
 import { ChoicePicker } from '../FieldPickers.js'
 import { FieldRow, FieldRows, FormInput } from '../FormControls.js'
+import { InlineMessage } from '../InlineMessage.js'
 import { LoadingPlaceholder } from '../LoadingPlaceholder.js'
 import { PageError } from '../PageShell.js'
+import { Tag } from '../Tag.js'
 import {
   ServiceActions, ServiceCard, ServiceClearKeyButton, ServiceConnectionStatus, ServiceError,
   ServiceFoot, ServiceSavedKey, ServiceStatus,
 } from './ServiceCard.js'
 import { Button } from '../Button.js'
+import { CommandTray } from '../CommandTray.js'
 import { CommitActions } from '../CommitActions.js'
+import { SubscriptionModelField } from './SubscriptionModelField.js'
 
 /** Structural, language-neutral data for each provider. Copy comes from the catalog by provider id. */
 const PROVIDERS: Record<HarnessModelProvider, {
@@ -57,6 +61,14 @@ const PROVIDER_CHOICES: readonly HarnessModelProvider[] = ['openai', 'anthropic'
 const PROVIDER_NAMES: Record<Exclude<HarnessModelProvider, 'openai-compatible'>, string> = {
   openai: 'OpenAI', anthropic: 'Anthropic', 'google-gemini': 'Google Gemini',
 }
+/** A model choice: an API provider, or the subscription a CLI runs on. */
+type ModelChoice = HarnessModelProvider | HarnessCli
+const MODEL_CHOICES: readonly ModelChoice[] = [...PROVIDER_CHOICES, 'claude', 'codex']
+const isCli = (choice: ModelChoice): choice is HarnessCli => choice === 'claude' || choice === 'codex'
+/** The CLI each subscription runs on, by its product name. */
+const CLI_NAMES: Record<HarnessCli, string> = { claude: 'Claude Code', codex: 'Codex' }
+/** The command that signs each CLI in with the user's subscription, which the user runs in a terminal. */
+const SIGN_IN_COMMANDS: Record<HarnessCli, string> = { claude: 'claude auth login', codex: 'codex login' }
 /** The protocols an OpenAI-compatible service may speak, by their API names. */
 const COMPATIBLE_PROTOCOLS: readonly HarnessModelProtocol[] = ['responses', 'chat-completions']
 const AUTHENTICATIONS = ['api-key', 'none'] as const
@@ -122,7 +134,8 @@ const profileFor = (
 
 type ConnectionCheckState = { state: 'idle' | 'testing' } | HarnessModelConnectionCheckResult
 
-export function ModelSettings() {
+/** The model settings card; `onCopy` puts a command on the clipboard and resolves whether it did. */
+export function ModelSettings({ onCopy }: { onCopy: (text: string) => Promise<boolean> }) {
   const m = useMessages()
   const [settings, setSettings] = useState<HarnessModelSettings | null>(null)
   const [provider, setProvider] = useState<HarnessModelProvider>('openai')
@@ -130,6 +143,11 @@ export function ModelSettings() {
   const [baseUrl, setBaseUrl] = useState(PROVIDERS.openai.baseUrl)
   const [model, setModel] = useState('')
   const [authentication, setAuthentication] = useState<'api-key' | 'none'>('api-key')
+  // The subscription being edited, or null while an API provider is.
+  const [cli, setCli] = useState<HarnessCli | null>(null)
+  const [cliModel, setCliModel] = useState('')
+  const [cliStatus, setCliStatus] = useState<HarnessSubscriptionStatus | null>(null)
+  const [statusReads, setStatusReads] = useState(0)
   const [compatibleTemplate, setCompatibleTemplate] = useState<CompatibleTemplateId>('choose')
   const [apiKey, setApiKey] = useState('')
   const [editingApiKey, setEditingApiKey] = useState(false)
@@ -138,7 +156,7 @@ export function ModelSettings() {
   // Whether the last save succeeded; Save shows its check as it turns true.
   const [saved, setSaved] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
-  const { error, load } = useScreenLoad()
+  const { error, failure, load } = useScreenLoad(['subscription'])
   const [connectionCheck, setConnectionCheck] = useState<ConnectionCheckState>({ state: 'idle' })
 
   const resetCredentialDraft = () => {
@@ -169,11 +187,30 @@ export function ModelSettings() {
     setCompatibleTemplate(next.provider === 'openai-compatible'
       ? compatibleTemplateFor(next.baseUrl, next.protocol, next.authentication)
       : 'choose')
+    const active = next.subscription.active
+    setCli(active)
+    if (active !== null) setCliModel(next.subscription.models[active])
   }), [load])
 
   useEffect(() => {
+    if (cli === null) return
+    return load('subscription', harness.subscriptionStatus(cli), setCliStatus)
+  }, [cli, statusReads, load])
+
+  useEffect(() => {
     setConnectionCheck({ state: 'idle' })
-  }, [provider, protocol, baseUrl, model, authentication, apiKey, clearApiKey])
+  }, [provider, protocol, baseUrl, model, authentication, apiKey, clearApiKey, cli, cliModel])
+
+  const selectChoice = (next: ModelChoice) => {
+    if (isCli(next)) {
+      if (next !== cli) setCliStatus(null)
+      setCli(next)
+      setCliModel(settings?.subscription.models[next] ?? '')
+      return
+    }
+    setCli(null)
+    selectProvider(next)
+  }
 
   const selectProvider = (next: HarnessModelProvider) => {
     const saved = profileFor(settings, next)
@@ -227,14 +264,17 @@ export function ModelSettings() {
     setSaved(false)
     setSaveError(null)
     try {
-      const next = await harness.updateModelSettings({
-        provider, protocol, baseUrl, model, authentication,
-        ...(apiKey.trim() === '' ? {} : { apiKey }),
-        ...(clearApiKey ? { clearApiKey: true } : {}),
-      })
+      const next = cli === null
+        ? await harness.updateModelSettings({
+          provider, protocol, baseUrl, model, authentication,
+          ...(apiKey.trim() === '' ? {} : { apiKey }),
+          ...(clearApiKey ? { clearApiKey: true } : {}),
+        })
+        : await harness.updateSubscription({ cli, model: cliModel })
       setSaved(true)
       setSettings(next)
-      showProfile(next)
+      if (cli === null) showProfile(next)
+      else setCliModel(next.subscription.models[cli])
       setConnectionCheck({ state: 'idle' })
     } catch (caught) {
       setSaveError(errorLabel(m, caught))
@@ -247,6 +287,7 @@ export function ModelSettings() {
     setConnectionCheck({ state: 'testing' })
     try {
       setConnectionCheck(await harness.checkModelConnection())
+      if (cli !== null) setStatusReads((reads) => reads + 1)
     } catch {
       setConnectionCheck({
         state: 'failed', reason: 'unavailable',
@@ -261,6 +302,8 @@ export function ModelSettings() {
   }
 
   const selected = { ...PROVIDERS[provider], ...m.settings.model.providers[provider] }
+  const subscriptionSaved = cli !== null && settings.subscription.active === cli
+    && cliModel.trim() === settings.subscription.models[cli]
   const selectedCompatibleTemplate = compatibleTemplate !== 'choose' && compatibleTemplate !== 'custom'
     ? { ...COMPATIBLE_TEMPLATES[compatibleTemplate], ...m.settings.model.templates[compatibleTemplate] }
     : null
@@ -277,31 +320,71 @@ export function ModelSettings() {
     && normalizeBaseUrl(baseUrl) === normalizeBaseUrl(settings.baseUrl)
     && model === settings.model
     && authentication === settings.authentication
-  const canTestConnection = settings.configured && activeSelection
-    && apiKey.trim() === '' && !clearApiKey
+  const canTestConnection = cli !== null
+    ? subscriptionSaved
+    : settings.configured && activeSelection && settings.subscription.active === null
+      && settings.subscription.error === undefined && apiKey.trim() === '' && !clearApiKey
   const connectionStatus = connectionCheck.state === 'connected'
-    ? m.settings.model.connection.connected
+    ? connectionCheck.modelCalls === 0
+      ? m.settings.model.connection.connectedNoModelCall
+      : m.settings.model.connection.connected
     : connectionCheck.state === 'failed'
       ? m.settings.model.connection.failures[connectionCheck.reason]
       : null
+  const statusFailure = failure('subscription')
+  const subscriptionRows = cli === null ? null : (
+    <>
+      <FieldRow label={m.settings.model.subscription.cliLabel}>
+        {statusFailure !== null ? (
+          <InlineMessage tone="error" variant="line">{statusFailure}</InlineMessage>
+        ) : cliStatus === null ? (
+          <LoadingPlaceholder shape="lines" count={1} />
+        ) : cliStatus.state === 'missing' ? (
+          <InlineMessage tone="warning" variant="line">{m.settings.model.subscription.missing}</InlineMessage>
+        ) : (
+          <span>{cliStatus.version === null ? CLI_NAMES[cli] : `${CLI_NAMES[cli]} ${cliStatus.version}`}</span>
+        )}
+      </FieldRow>
+      {statusFailure === null && cliStatus?.state === 'found' ? (
+        <FieldRow label={m.settings.model.subscription.signInLabel}>
+          <Tag state={cliStatus.signIn === 'subscription' ? 'done' : 'warning'}>
+            {m.settings.model.subscription.signIn[cliStatus.signIn]}
+          </Tag>
+        </FieldRow>
+      ) : null}
+      <FieldRow label={m.settings.model.fields.modelIdLabel}>
+        <SubscriptionModelField
+          value={cliModel} models={cliStatus?.state === 'found' ? cliStatus.models : []} onChange={setCliModel}
+        />
+      </FieldRow>
+    </>
+  )
+  const signInCommand = cli !== null && statusFailure === null && cliStatus?.state === 'found'
+    && cliStatus.signIn !== 'subscription' ? (
+      <CommandTray
+        heading={m.settings.model.subscription.signInCommand} command={SIGN_IN_COMMANDS[cli]}
+        copyLabel={m.settings.model.subscription.copySignIn(CLI_NAMES[cli])} onCopy={onCopy}
+      />
+    ) : null
 
   return (
     <ServiceCard className="model-settings-card">
       <ServiceStatus
-        title={selected.label}
-        configured={savedSelection && savedProfile?.configured === true}
+        title={cli === null ? selected.label : m.settings.model.subscriptions[cli].label}
+        configured={cli === null ? savedSelection && savedProfile?.configured === true : subscriptionSaved}
         configuredLabel={m.settings.model.configured}
         notConfiguredLabel={m.settings.model.notConfigured}
       />
       <FieldRows>
         <FieldRow label={m.settings.model.fields.providerLabel}>
           <ChoicePicker
-            appearance="field" aria-label={m.settings.model.fields.providerLabel} value={provider}
-            options={PROVIDER_CHOICES} onPick={selectProvider}
-            label={(option) => (option === 'openai-compatible' ? m.settings.model.providers[option].label : PROVIDER_NAMES[option])}
+            appearance="field" aria-label={m.settings.model.fields.providerLabel} value={cli ?? provider}
+            options={MODEL_CHOICES} onPick={selectChoice}
+            label={(option) => (isCli(option) ? m.settings.model.subscriptions[option].label
+              : option === 'openai-compatible' ? m.settings.model.providers[option].label : PROVIDER_NAMES[option])}
           />
         </FieldRow>
-        {provider === 'openai-compatible' ? (
+        {cli !== null ? null : provider === 'openai-compatible' ? (
           <>
             <FieldRow label={m.settings.model.templates.chooseLabel}>
               <ChoicePicker
@@ -346,7 +429,7 @@ export function ModelSettings() {
             <span aria-label={m.settings.model.fields.protocolAria}>{selected.protocolLabel}</span>
           </FieldRow>
         )}
-        {compatibleTemplatePending ? null : (
+        {cli !== null ? subscriptionRows : compatibleTemplatePending ? null : (
           <>
             <FieldRow label={m.settings.model.fields.modelIdLabel}>
               <FormInput appearance="field" aria-label={m.settings.model.fields.modelIdAria} value={model}
@@ -377,6 +460,7 @@ export function ModelSettings() {
           </>
         )}
       </FieldRows>
+      {signInCommand}
       <ServiceFoot>
         {connectionStatus === null ? null : (
           <ServiceConnectionStatus
@@ -387,7 +471,7 @@ export function ModelSettings() {
           />
         )}
         <ServiceActions>
-          {authentication === 'api-key' && savedKeyAvailable ? (
+          {cli === null && authentication === 'api-key' && savedKeyAvailable ? (
             <ServiceClearKeyButton
               pending={clearApiKey}
               label={m.settings.model.clearKey}
@@ -405,7 +489,7 @@ export function ModelSettings() {
             onClick={() => { void testConnection() }}
           >{m.settings.model.connection.action}</Button>
           <CommitActions
-            place="foot" saving={saving} canSave={!compatibleTemplatePending} done={saved}
+            place="foot" saving={saving} canSave={cli !== null || !compatibleTemplatePending} done={saved}
             saveLabel={m.settings.model.save} busyLabel={m.settings.model.saving}
             onSave={() => { void save() }}
           />
@@ -413,6 +497,9 @@ export function ModelSettings() {
       </ServiceFoot>
       {settings.error === undefined ? null : (
         <ServiceError>{reasonLabel(m, settings.error)}</ServiceError>
+      )}
+      {settings.subscription.error === undefined ? null : (
+        <ServiceError>{reasonLabel(m, settings.subscription.error)}</ServiceError>
       )}
       {saveError === null ? null : <ServiceError>{saveError}</ServiceError>}
     </ServiceCard>

@@ -26,7 +26,7 @@ const ONE_LINE: Record<string, [file: string, markup: RegExp, count?: number]> =
   'card-tray-summary': ['components/CardTray.tsx', /<FadeText className="card-tray-summary">/],
   'choice-picker-value': ['components/FieldPickers.tsx', /<FadeText className="choice-picker-value"/g, 2],
   'api-state': ['components/settings/ApiOverview.tsx', /<FadeText className="api-state">/],
-  'extension-command-summary code': ['components/settings/ExtensionSettings.tsx', /<FadeText><code>\{command\}<\/code><\/FadeText>/],
+  'command-tray-summary code': ['components/CommandTray.tsx', /<FadeText><code>\{command\}<\/code><\/FadeText>/],
   'paper-understanding-quote': ['components/paper/PaperUnderstanding.tsx', /<FadeText className="paper-understanding-quote">/],
   'project-identity-topic': ['components/project/ProjectIdentity.tsx', /<FadeText className="project-identity-topic" label=/g, 2],
   'idea-draft-source': ['components/ideas/IdeaDraft.tsx', /<FadeText className="idea-draft-source" label=/],
