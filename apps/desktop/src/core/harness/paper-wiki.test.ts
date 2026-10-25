@@ -1,14 +1,24 @@
+import { EventEmitter } from 'node:events'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
-import { describe, expect, it } from 'vitest'
-import type { HarnessPaperWikiQuality, PaperRow } from '../../shared/contract.js'
+import { PassThrough } from 'node:stream'
+import { describe, expect, it, vi } from 'vitest'
+import type {
+  HarnessPaperWikiQuality, HarnessPlan, PaperReading, PaperRow, WikiPaper,
+} from '../../shared/contract.js'
 import { callFailure } from '../call-error.js'
+import type { VaultStore } from '../vault.js'
+import { CliRunError } from './cli/child.js'
+import type { CliCall, CliRunner } from './cli/runner.js'
+import type { HarnessExecution } from './cost-gate.js'
+import type { HarnessModelConfig, HarnessRuntimeModel } from './model-config.js'
 import type { PaperWikiDraft } from './paper-wiki.js'
 import {
-  citablePages, paperWikiHarnessError, projectPaperWikiReview, renderPaperWikiDraft,
+  citablePages, createPaperWikiHarnessRunner, paperWikiHarnessError, projectPaperWikiReview, renderPaperWikiDraft,
   validatePaperWikiDraftScope, validatePaperWikiDraftSemantics, validatePaperWikiQuality,
 } from './paper-wiki.js'
-import { HarnessRpcError } from './rpc.js'
+import { HARNESS_CAPABILITIES, HARNESS_PROTOCOL_VERSION } from './protocol.js'
+import { type HarnessChild, HarnessRpcError } from './rpc.js'
 
 const draft = (): PaperWikiDraft => ({
   problem: { text: 'Exact bottleneck', pages: [1] },
@@ -193,5 +203,173 @@ describe('Paper Wiki Harness draft boundary', () => {
     expect(paperWikiHarnessError(new HarnessRpcError({
       kind: 'harness_gone', message: 'gone',
     })).message).toContain('不会自动重试')
+  })
+})
+
+class FakeHarness extends EventEmitter implements HarnessChild {
+  readonly stdin = new PassThrough()
+  readonly stdout = new PassThrough()
+  readonly stderr = new PassThrough()
+  readonly kill = vi.fn(() => true)
+
+  send(message: object) {
+    this.stdout.write(`${JSON.stringify(message)}\n`)
+  }
+
+  ready() {
+    this.send({
+      type: 'event', id: 0, event: 'ready',
+      data: { protocol: HARNESS_PROTOCOL_VERSION, capabilities: [...HARNESS_CAPABILITIES] },
+    })
+  }
+
+  frame(): Promise<Record<string, unknown>> {
+    return new Promise((resolveFrame) => {
+      this.stdin.once('data', (chunk: Buffer) => resolveFrame(JSON.parse(chunk.toString('utf8').trim())))
+    })
+  }
+
+  callModel(callbackId: string) {
+    this.send({
+      type: 'callback', id: 1, callbackId, method: 'model.invoke',
+      params: { system: 'System rules', prompt: 'Paper scope', schema: { type: 'object' } },
+    })
+  }
+}
+
+const CLI_MODEL: HarnessRuntimeModel = { source: 'cli', cli: 'claude', model: 'opus' }
+
+const execution = (signal = new AbortController().signal): HarnessExecution => ({
+  plan: {
+    workflow: 'paper-wiki', targetId: 'p1', scopeDigest: 'digest-1', action: 'create',
+  } as HarnessPlan,
+  snapshot: {
+    paper: { pageCount: 4 } as PaperRow,
+    reading: { highlights: [], notes: [{ id: 'n1' }], remark: '' } as unknown as PaperReading,
+    wiki: {} as WikiPaper,
+  },
+  signal,
+  limits: { maxOutputTokens: 6_000, maxModelCalls: 1 },
+})
+
+const envelope = () => ({
+  schemaVersion: 'meridian.paper-wiki-draft.v2', workflow: 'paper-wiki', targetId: 'p1',
+  scopeDigest: 'digest-1', action: 'create', draft: draft(), reviewRequired: true, applied: false,
+  quality: {
+    schemaVersion: 'meridian.paper-wiki-calibration.v1', caseId: 'p1', passed: true,
+    dimensions: ['grounding', 'separation', 'retrieval', 'mechanism', 'evidence', 'implementation', 'uncertainty']
+      .map((id) => ({ id, passed: true })),
+    findings: [],
+  },
+})
+
+function paperWikiRunner(model: HarnessRuntimeModel, cli: CliRunner) {
+  const child = new FakeHarness()
+  const logs: string[] = []
+  const runner = createPaperWikiHarnessRunner({
+    store: {} as VaultStore,
+    model: { runtime: async () => model } as unknown as HarnessModelConfig,
+    cli,
+    launch: () => child,
+    onLog: (line) => logs.push(line),
+  })
+  return { child, runner, logs }
+}
+
+describe('Paper Wiki run on a subscription CLI', () => {
+  it('answers the run\'s one model call through the CLI runner with the run\'s own model', async () => {
+    const calls: CliCall[] = []
+    const { child, runner, logs } = paperWikiRunner(CLI_MODEL, async (call) => {
+      calls.push(call)
+      return {
+        output: { draft: 'candidate' }, turns: 3, durationMs: 86_200,
+        usage: { inputTokens: 93_516, cachedInputTokens: 87_410, outputTokens: 11_382 },
+      }
+    })
+    const running = runner.run(execution())
+    child.ready()
+    expect(await child.frame()).toMatchObject({ method: 'paper-wiki.propose', params: { model: CLI_MODEL } })
+
+    child.callModel('first')
+    expect(await child.frame()).toMatchObject({
+      type: 'response', callbackId: 'first', result: { output: { draft: 'candidate' } },
+    })
+    expect(calls).toEqual([expect.objectContaining({
+      cli: 'claude', model: 'opus', system: 'System rules', prompt: 'Paper scope', schema: { type: 'object' },
+    })])
+    child.callModel('second')
+    expect(await child.frame()).toMatchObject({ type: 'error', callbackId: 'second', error: { kind: 'bad_request' } })
+    expect(calls).toHaveLength(1)
+
+    child.send({ type: 'response', id: 1, ok: true, result: envelope() })
+    await expect(running).resolves.toMatchObject({ state: 'proposal-ready' })
+    expect(logs).toEqual(['claude: 86.2 s, 3 turns, 93516 input tokens (87410 cached), 11382 output tokens'])
+    runner.close()
+  })
+
+  it('passes a CLI failure to Harness as a model error in its own words', async () => {
+    const { child, runner } = paperWikiRunner(CLI_MODEL, async () => {
+      throw new CliRunError('failed', 'claude 运行失败：Claude AI usage limit reached')
+    })
+    const running = runner.run(execution())
+    child.ready()
+    await child.frame()
+
+    child.callModel('limit')
+    expect(await child.frame()).toMatchObject({
+      type: 'error', callbackId: 'limit',
+      error: { kind: 'model_error', message: 'claude 运行失败：Claude AI usage limit reached' },
+    })
+    child.send({ type: 'error', id: 1, ok: false, error: { kind: 'model_error', message: 'claude 运行失败' } })
+    await expect(running).rejects.toMatchObject({ reason: 'model' })
+    runner.close()
+  })
+
+  it('stops the CLI call when the user cancels the run, and when the run ends any other way', async () => {
+    const signals: AbortSignal[] = []
+    const hanging: CliRunner = (call) => new Promise((_, reject) => {
+      signals.push(call.signal)
+      call.signal.addEventListener('abort', () => reject(new CliRunError('cancelled', '已停止 claude')))
+    })
+
+    const cancelled = paperWikiRunner(CLI_MODEL, hanging)
+    const controller = new AbortController()
+    const running = cancelled.runner.run(execution(controller.signal))
+    cancelled.child.ready()
+    await cancelled.child.frame()
+    cancelled.child.callModel('call')
+    await vi.waitFor(() => expect(signals).toHaveLength(1))
+    controller.abort()
+    await expect(running).rejects.toMatchObject({ reason: 'cancelled' })
+    expect(signals[0]!.aborted).toBe(true)
+    cancelled.runner.close()
+
+    const crashed = paperWikiRunner(CLI_MODEL, hanging)
+    const failing = crashed.runner.run(execution())
+    crashed.child.ready()
+    await crashed.child.frame()
+    crashed.child.callModel('call')
+    await vi.waitFor(() => expect(signals).toHaveLength(2))
+    crashed.child.emit('exit', 1, null)
+    await expect(failing).rejects.toMatchObject({ reason: 'model' })
+    expect(signals[1]!.aborted).toBe(true)
+  })
+
+  it('offers no model call to a run on an API model', async () => {
+    const cli = vi.fn<CliRunner>()
+    const { child, runner } = paperWikiRunner({
+      provider: 'openai', protocol: 'responses', baseUrl: 'https://api.openai.com/v1',
+      model: 'gpt-5', authentication: 'api-key', apiKey: 'sk-test',
+    }, cli)
+    const running = runner.run(execution())
+    child.ready()
+    await child.frame()
+
+    child.callModel('call')
+    expect(await child.frame()).toMatchObject({ type: 'error', callbackId: 'call', error: { kind: 'bad_request' } })
+    expect(cli).not.toHaveBeenCalled()
+    child.send({ type: 'response', id: 1, ok: true, result: envelope() })
+    await running
+    runner.close()
   })
 })
