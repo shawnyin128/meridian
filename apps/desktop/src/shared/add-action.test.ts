@@ -137,12 +137,12 @@ describe('新建和添加的控件', () => {
       .toEqual([])
   })
 
-  it('只有加号和带字的加号一个样子:同一块浅底、墨色加号、同样的圆角、悬停和禁用,只有尺寸跟着槽走', () => {
+  it('只有加号和带字的加号一个样子:同一块浅底、墨色加号、悬停和禁用,尺寸跟着槽走;标签串里的是圆的,和标签一样', () => {
     expect(each((button, glyph) => `${button.backgroundColor} ${button.color} ${button.borderTopStyle} ${button.borderRadius} ${glyph.width}×${glyph.height}`)).toEqual({
       regular: 'var(--field) var(--ink) none var(--r-control) 12px×12px',
       compact: 'var(--field) var(--ink) none var(--r-control) 12px×12px',
       icon: 'var(--field) var(--ink) none var(--r-control) 12px×12px',
-      chip: 'var(--field) var(--ink) none var(--r-control) 12px×12px',
+      chip: 'var(--field) var(--ink) none var(--r-chip) 12px×12px',
     })
     const hover = (button: Element) => { button.dispatchEvent(new MouseEvent('mouseover', { bubbles: true })) }
     expect(new Set(Object.values(each((button) => `${button.boxShadow} | ${button.transition}`, '', hover)))).toEqual(new Set([

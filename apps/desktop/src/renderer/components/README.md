@@ -24,7 +24,8 @@ Current shared contracts:
   each, the few that are not text buttons (a composite row's open button, a chip's open part, a link).
 - `AddAction`: the one create or add control, the ＋ on a secondary Button's grey fill and never the
   accent, at its slot's size: `regular` in the page header bar, `compact` in headings, table headers and
-  rows, and, as the ＋ alone, `compact` in a heading or `chip`, a chip's height, after a field's chips.
+  rows, and, as the ＋ alone, a `compact` square in a heading or a `chip` circle, a chip's height, after
+  a field's chips.
 - `CommitActions`: the one Cancel and Save of a draft, Cancel first. Its `place` sets the size and the
   primary rule: at a dialog's, popover's or form's `foot` Save is the primary action at the regular
   size; in a `heading` and inside an `item` both are secondary at the compact size.
