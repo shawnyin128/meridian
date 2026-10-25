@@ -13,16 +13,21 @@ const choose = (app: ElectronApplication, id: string) => app.evaluate(({ Menu },
 const labelOf = (app: ElectronApplication, id: string) =>
   app.evaluate(({ Menu }, item) => Menu.getApplicationMenu()!.getMenuItemById(item)!.label, id)
 
+/** The fixture paper with a source PDF, opened in the reader from the paper table. */
+async function openReader(win: Page): Promise<void> {
+  await gotoPapers(win)
+  await win.locator('#libq').fill('STAR: SPECULATIVE DECODING')
+  await expect(win.locator('.ptable tbody tr')).toHaveCount(1)
+  await win.locator('.ptable tbody tr').click()
+  await shown(win, '.paper-detail-slot [aria-label="开始阅读"]').click()
+}
+
 /** The window's own zoom level, which Electron's zoom roles step. */
 const windowZoom = (app: ElectronApplication) =>
   app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]!.webContents.getZoomLevel())
 
 test('视图菜单的缩放在阅读器里缩放论文,别处缩放整个窗口', async ({ app, win }) => {
-  await gotoPapers(win)
-  await win.locator('#libq').fill('STAR: SPECULATIVE DECODING')
-  await expect(win.locator('.ptable tbody tr')).toHaveCount(1)
-  await win.locator('.ptable tbody tr').click()
-  await shown(win, '.pdetail [aria-label="开始阅读"]').click()
+  await openReader(win)
   const percent = shown(win, '.zoom-control .zoom-control-reset')
   await expect(percent).toHaveText('100%')
 
@@ -46,7 +51,7 @@ test('视图菜单的缩放在阅读器里缩放论文,别处缩放整个窗口'
 })
 
 test('视图菜单第一项随侧栏改名,点它收起和展开侧栏', async ({ app, win }) => {
-  await win.locator('.sidebar').waitFor()
+  await win.locator('#sidebar').waitFor()
   const main = win.locator('#main')
   await expect.poll(() => labelOf(app, 'toggleSidebar')).toBe('收起侧栏')
   await choose(app, 'toggleSidebar')
@@ -58,17 +63,14 @@ test('视图菜单第一项随侧栏改名,点它收起和展开侧栏', async (
 })
 
 test('文件菜单的新建项目打开项目列表里的新建行', async ({ app, win }) => {
-  await win.locator('.sidebar').waitFor()
+  await win.locator('#sidebar').waitFor()
   await choose(app, 'newProject')
   await expect(shown(win, '.projpanel .inedit')).toBeFocused()
 })
 
 test('在 macOS 上向返回方向轻扫,和点返回按钮一样回到来的那一屏', async ({ app, win }) => {
   test.skip(process.platform !== 'darwin', 'Electron emits swipe only on macOS')
-  await gotoPapers(win)
-  await win.locator('#libq').fill('STAR: SPECULATIVE DECODING')
-  await win.locator('.ptable tbody tr').click()
-  await shown(win, '.pdetail [aria-label="开始阅读"]').click()
+  await openReader(win)
   await expect(shown(win, '.zoom-control')).toBeVisible()
   await app.evaluate(({ BrowserWindow }) => { BrowserWindow.getAllWindows()[0]!.emit('swipe', {}, 'left') })
   await expect(shown(win, '#libq')).toBeVisible()
@@ -76,7 +78,7 @@ test('在 macOS 上向返回方向轻扫,和点返回按钮一样回到来的那
 
 test('右键项目卡片和侧栏的对话行打开它们 … 按钮的同一个菜单,主进程不再弹编辑菜单', async ({ app, win }) => {
   await win.locator('[data-desk="resproj"]').click()
-  const card = shown(win, '.research-object-card[data-actionable]').first()
+  const card = shown(win, '.projpanel[data-proj="draft"]')
   await card.click({ button: 'right', position: { x: 40, y: 16 } })
   await expect(win.locator('[role="menu"] [role="menuitem"]').first()).toHaveText('重命名')
   await expect(card.locator('.dots')).toHaveAttribute('aria-expanded', 'true')
