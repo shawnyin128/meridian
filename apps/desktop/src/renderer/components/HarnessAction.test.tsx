@@ -100,13 +100,15 @@ describe('HarnessAction', () => {
     expect(settings.openCategory).toHaveBeenCalledWith('model')
   })
 
-  it('cannot start a plan prepared with a model once the shell says no model is set up, and says so', () => {
+  it('starts a plan Core prepared with a model even while the shell says no model is set up, as the demo library\'s model does', () => {
     const start = vi.fn()
     act(() => root!.render(withMessages(<HarnessAction plan={plan()} running={false} onStart={start} onCancel={vi.fn()} />, false)))
     act(() => host.querySelector<HTMLButtonElement>('button')!.click())
     const confirm = Array.from(document.querySelectorAll<HTMLButtonElement>('button'))
       .find((candidate) => candidate.textContent === '开始生成')!
-    expect([confirm.disabled, document.querySelector('.modal-actions .tag')?.textContent]).toEqual([true, 'AI 未连接'])
+    expect([confirm.disabled, document.querySelector('.modal-actions .tag')?.textContent]).toEqual([false, '免费'])
+    act(() => confirm.click())
+    expect(start).toHaveBeenCalledOnce()
   })
 
   it('replaces the start gate with one explicit stop action while running, in the neutral tone', () => {

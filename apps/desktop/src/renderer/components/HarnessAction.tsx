@@ -3,7 +3,6 @@ import { useMessages } from '../messages/useMessages.js'
 import { ConfirmDialog } from './ConfirmDialog.js'
 import { GenerationControl } from './GenerationControl.js'
 import { ModelStatusTag } from './ModelStatusTag.js'
-import { useModelStatus } from '../hooks/useModelStatus.js'
 import { Property, PropertyList } from './PropertyList.js'
 import { Tag } from './Tag.js'
 import { Button } from './Button.js'
@@ -12,8 +11,7 @@ import './HarnessAction.css'
 /**
  * The one shared visual gate for cost-bearing Harness work. Feature components supply a prepared
  * plan and a start callback; they cannot skip the explicit acknowledgement represented here. It
- * cannot start while the plan was prepared without a model or the shell's model status says none is
- * set up.
+ * cannot start while the plan was prepared without a model, the model Core will run it with.
  */
 export function HarnessAction({ plan, running, stopping = false, onStart, onCancel }: {
   plan: HarnessPlan
@@ -24,12 +22,11 @@ export function HarnessAction({ plan, running, stopping = false, onStart, onCanc
   onCancel: () => void
 }) {
   const m = useMessages()
-  const { connected } = useModelStatus()
   if (running) {
     return <GenerationControl className="harness-trigger" running regular stopping={stopping} onStop={onCancel} />
   }
   const personal = plan.scope.notes + plan.scope.annotatedHighlights
-  const ready = plan.model.configured && connected === true
+  const ready = plan.model.configured
   const trigger = (
     <Button size="regular" className="harness-trigger" icon={<span aria-hidden="true">✦</span>}>{plan.label}</Button>
   )
@@ -43,7 +40,7 @@ export function HarnessAction({ plan, running, stopping = false, onStart, onCanc
       confirmDisabled={!ready}
       onConfirm={onStart}
       state={!ready
-        ? <ModelStatusTag state="warning" />
+        ? <ModelStatusTag state="warning" connected={false} />
         : (
           <Tag state={plan.model.billable ? 'warning' : undefined}>
             {plan.model.billable ? m.wiki.harness.billableNote : m.wiki.harness.freeNote}
