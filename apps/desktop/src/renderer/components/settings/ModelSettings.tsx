@@ -136,6 +136,8 @@ export function ModelSettings() {
   const [editingApiKey, setEditingApiKey] = useState(false)
   const [clearApiKey, setClearApiKey] = useState(false)
   const [saving, setSaving] = useState(false)
+  // Whether the last save succeeded; Save shows its check as it turns true.
+  const [saved, setSaved] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
   const { error, load } = useScreenLoad()
   const [connectionCheck, setConnectionCheck] = useState<ConnectionCheckState>({ state: 'idle' })
@@ -223,6 +225,7 @@ export function ModelSettings() {
 
   const save = async () => {
     setSaving(true)
+    setSaved(false)
     setSaveError(null)
     try {
       const next = await harness.updateModelSettings({
@@ -230,6 +233,7 @@ export function ModelSettings() {
         ...(apiKey.trim() === '' ? {} : { apiKey }),
         ...(clearApiKey ? { clearApiKey: true } : {}),
       })
+      setSaved(true)
       setSettings(next)
       showProfile(next)
       setConnectionCheck({ state: 'idle' })
@@ -402,7 +406,7 @@ export function ModelSettings() {
             onClick={() => { void testConnection() }}
           >{m.settings.model.connection.action}</Button>
           <CommitActions
-            place="foot" saving={saving} canSave={!compatibleTemplatePending}
+            place="foot" saving={saving} canSave={!compatibleTemplatePending} done={saved}
             saveLabel={m.settings.model.save} busyLabel={m.settings.model.saving}
             onSave={() => { void save() }}
           />

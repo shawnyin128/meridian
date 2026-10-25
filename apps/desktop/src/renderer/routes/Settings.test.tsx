@@ -400,6 +400,35 @@ describe('Settings', () => {
     expect(api.setSemanticKey).toHaveBeenCalledWith('new-secret')
   })
 
+  /** What a user and a screen reader get from a card's save: its name and whether the check shows. */
+  const doneLook = (save: HTMLButtonElement) => [save.getAttribute('aria-label'), save.querySelector('.cki') !== null]
+
+  it('科研数据源的 key 保存成功后，保存与论文推送的保存一样就地亮出对勾，名字是已保存', async () => {
+    api.requestedCategory = 'research'
+    await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
+    const input = document.querySelector<HTMLInputElement>('.setdlg [aria-label="Semantic Scholar API Key"]')!
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(input, 'new-secret')
+      input.dispatchEvent(new Event('input', { bubbles: true }))
+    })
+    const save = document.querySelector<HTMLButtonElement>('.semantic-key-card .service-actions .btn.pri')!
+    expect(doneLook(save)).toEqual([null, false])
+    await act(async () => { save.click() })
+    expect(doneLook(save)).toEqual(['已保存', true])
+  })
+
+  it('模型配置保存成功后，保存就地亮出对勾，名字是已保存；保存失败时不亮', async () => {
+    api.requestedCategory = 'model'
+    await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
+    const save = () => document.querySelector<HTMLButtonElement>('.model-settings-card .service-actions .btn.pri')!
+    expect(doneLook(save())).toEqual([null, false])
+    api.updateModelSettings.mockRejectedValueOnce(new Error('refused'))
+    await act(async () => { save().click() })
+    expect(doneLook(save())).toEqual([null, false])
+    await act(async () => { save().click() })
+    expect(doneLook(save())).toEqual(['已保存', true])
+  })
+
   it('已保存的 key 显示掩码末四位；标记清除后保存会调用 setSemanticKey(null)', async () => {
     api.requestedCategory = 'research'
     api.semanticKey.mockResolvedValueOnce({ configured: true, lastFour: 'ab12' })
