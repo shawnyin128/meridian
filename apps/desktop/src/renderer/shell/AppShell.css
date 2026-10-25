@@ -88,7 +88,7 @@
 .cmdk-list .empty-state{padding:0 var(--row-menu-pad)}
 .cmdk-title{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
 
-.sb-h{display:flex;align-items:center;gap:var(--sp-4);font-size:var(--fs-label);font-weight:var(--fw-label);color:var(--ter);padding:0 var(--row-nav-pad);margin:var(--sp-12) 0 var(--sp-4)}
+.sb-h{display:flex;align-items:center;gap:var(--sp-4);height:var(--sp-24);font-size:var(--fs-label);font-weight:var(--fw-label);color:var(--ter);padding:0 var(--row-nav-pad);margin:var(--sp-8) 0 0}
 .sect.closed{display:none}
 
 .sb-add{margin-left:auto}

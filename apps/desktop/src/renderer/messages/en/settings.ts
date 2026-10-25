@@ -41,6 +41,7 @@ export const settings = {
     themeProblemAt: (problem: string, path: string) => `${problem} · ${path}`,
     editor: {
       create: 'New theme',
+      createShort: 'Theme',
       name: 'Name',
       basedOn: 'Based on',
       mode: 'Mode being edited',

@@ -11,9 +11,6 @@
 .msgs{display:flex;flex-direction:column;gap:var(--sp-20)}
 .mwrap{width:min(var(--chatw),92%);margin:0 auto}
 
-.add-action{display:inline-flex;align-items:center;justify-content:center;gap:var(--sp-6);white-space:nowrap}
-.add-action>svg{width:12px;height:12px;flex:none}
-
 /* The paper table's group bar */
 .filters{display:flex;gap:var(--sp-6);margin-bottom:var(--sp-12)}
 

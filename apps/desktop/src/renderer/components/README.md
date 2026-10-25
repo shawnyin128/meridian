@@ -22,6 +22,10 @@ Current shared contracts:
   turns true it shows the check in place of its label for a moment. Screens render no raw `<button>`:
   `scripts/check-screen-elements.test.mjs` checks it, and `RAW_BUTTONS` there lists, with a reason
   each, the few that are not text buttons (a composite row's open button, a chip's open part, a link).
+- `AddAction`: the one create or add control, the ＋ on a secondary Button's grey fill and never the
+  accent, at its slot's size: `regular` in the page header bar, `compact` in headings, table headers and
+  rows, and, as the ＋ alone, a `compact` square in a heading or a `chip` circle, a chip's height, after
+  a field's chips.
 - `CommitActions`: the one Cancel and Save of a draft, Cancel first. Its `place` sets the size and the
   primary rule: at a dialog's, popover's or form's `foot` Save is the primary action at the regular
   size; in a `heading` and inside an `item` both are secondary at the compact size.
@@ -172,7 +176,7 @@ Current shared contracts:
 - `HeadingCount`: a heading's count, ` · N` after its text in the heading's own type. `PageTitle`,
   `SectionHeading`, `CollapsibleGroup`, `DayHeading`, `CardTray` and `ReaderPanelHeader` show it through
   their `count`; no message or screen writes `· N` itself.
-- `PickRow`, `Pager`, `Markdown`, `PaperMetadata`, `ParseProgress`, `AddAction`: shared feature widgets.
+- `PickRow`, `Pager`, `Markdown`, `PaperMetadata`, `ParseProgress`: shared feature widgets.
 - `RatingStars`, `ReadStatePicker` (in `PaperMetadata`) and `PaperTopics`: the one rating, reading-status and
   topic editor of a paper, used by both the paper table and the detail panel.
 - `TagChips`: the one editor of a list of values as chips, with × to remove, `+` to add from a vocabulary,

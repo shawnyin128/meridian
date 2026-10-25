@@ -80,7 +80,7 @@ export function IdeaRelations({ idea, projects, pages, onChange, onOpenProject, 
         variant="rail"
         actions={(
           <AddAction
-            variant="section" ref={add} label={m.project.links.addTitle}
+            size="compact" ref={add} label={m.project.links.addTitle}
             onClick={() => {
               if (adding !== null) draftRow.current?.querySelector('input')?.focus()
               else setAdding('projects')

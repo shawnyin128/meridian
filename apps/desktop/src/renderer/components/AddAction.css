@@ -1,0 +1,12 @@
+/*
+ * The ＋ alone of AddAction, on the button set's soft fill with its ink glyph, hover, press and
+ * disabled looks (Button.css): a 24px square with the button radius, or with .add-action-chip a circle
+ * as tall as a chip-shaped Tag, round like the tags it follows. The labelled AddAction is a Button and
+ * has no rule here.
+ */
+.add-action-icon{position:relative;flex:none;display:inline-grid;place-items:center;width:24px;height:24px;padding:0;border:0;border-radius:var(--r-control);background-color:var(--field);color:var(--ink);cursor:pointer;transition:box-shadow var(--t-fast) var(--e-out),color var(--t-fast) var(--e-out)}
+.add-action-chip{width:calc(var(--fs-sm) * var(--lh-ui) + 2 * var(--sp-2));height:calc(var(--fs-sm) * var(--lh-ui) + 2 * var(--sp-2));border-radius:var(--r-chip)}
+.add-action-icon>svg{display:block;width:12px;height:12px}
+:where(.add-action-icon):hover{box-shadow:inset 0 0 0 100vmax var(--hover)}
+.add-action-icon:enabled:active{background-image:linear-gradient(var(--press),var(--press))}
+.add-action-icon:disabled{opacity:.45;cursor:default;box-shadow:none}

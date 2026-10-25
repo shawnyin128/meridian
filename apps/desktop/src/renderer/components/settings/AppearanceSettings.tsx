@@ -18,7 +18,6 @@ import {
 } from '../../shell/appearance.js'
 import { useColourThemeFiles, useColourThemes } from '../../shell/useColourThemes.js'
 import { MenuItem } from '../ActionMenu.js'
-import { AddAction } from '../AddAction.js'
 import { Card } from '../Card.js'
 import { ConfirmDialog } from '../ConfirmDialog.js'
 import { FadeText } from '../FadeText.js'
@@ -161,11 +160,11 @@ function ColourThemeMenu({ name, onEdit, onDelete }: { name: string; onEdit: () 
  * Device-local colour theme selector: the built-in themes, then the custom theme files, each
  * previewed in light and dark; a file that cannot be used shows its reason. A custom theme's card
  * has a … menu to edit or delete it; deleting the theme in use returns the App to today's palette.
- * The card that creates a theme comes last. `onEdit` opens the theme editor on a theme, or on a new
- * one with null; `onError` receives a failed deletion. It changes only renderer tokens.
+ * `onEdit` opens the theme editor on a custom theme; `onError` receives a failed deletion. It changes
+ * only renderer tokens.
  */
 export function ColourThemeSettings({ onEdit, onError }: {
-  onEdit: (theme: ColourTheme | null) => void
+  onEdit: (theme: ColourTheme) => void
   onError: (error: unknown) => void
 }) {
   const m = useMessages()
@@ -224,9 +223,6 @@ export function ColourThemeSettings({ onEdit, onError }: {
             </span>
           ))}
         </div>
-        <AddAction
-          variant="chip" label={m.settings.appearance.editor.create} className="appearance-add" onClick={() => onEdit(null)}
-        />
       </div>
     </Card>
   )

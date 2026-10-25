@@ -309,6 +309,34 @@ describe('WatchSettings', () => {
     await act(async () => { root.unmount() })
   })
 
+  it('每条建议的「＋ 添加」在那一行共享的行操作槽里,悬停或键盘落到那一行才露出,Tab 照样走得到;「添加全部关键词」一直露着', async () => {
+    api.suggest.mockResolvedValueOnce({
+      topics: [{ name: 'batch aware verification', relatedPapers: 3 }, { name: 'draft trees', relatedPapers: 2 }],
+      authors: [{ name: 'Ada Expert', relatedPapers: 2 }],
+      paperCount: 8,
+    })
+    const root = createRoot(host)
+    await act(async () => { root.render(<MessagesProvider><WatchSettings /></MessagesProvider>) })
+    await act(async () => { enter(host.querySelector<HTMLInputElement>('input[placeholder="研究方向"]')!, '批量推理的动态验证') })
+    const section = host.querySelector('.watch-suggestions')!
+    await act(async () => { button(section, '查找建议').click() })
+
+    const rows = [...section.querySelectorAll('.watch-suggestion-row')]
+    expect(rows.map((row) => {
+      const add = row.querySelector<HTMLButtonElement>('.add-action')!
+      const slot = add.parentElement!
+      return [row.hasAttribute('data-row-actions'), slot.classList.contains('row-actions'), slot.tabIndex, add.textContent]
+    })).toEqual(rows.map(() => [true, true, 0, '添加']))
+    for (const row of rows) {
+      await act(async () => { row.querySelector<HTMLElement>('.row-actions')!.focus() })
+      expect(document.activeElement).toBe(row.querySelector('.add-action'))
+    }
+    const addAll = button(section.querySelector('.watch-suggestion-group-heading')!, '添加全部关键词')
+    expect([addAll.classList.contains('add-action'), addAll.closest('.row-actions')]).toEqual([true, null])
+
+    await act(async () => { root.unmount() })
+  })
+
   it('描述关注方向时输入法组字的回车不查找，组完字后的回车才查找', async () => {
     const root = createRoot(host)
     await act(async () => { root.render(<MessagesProvider><WatchSettings /></MessagesProvider>) })

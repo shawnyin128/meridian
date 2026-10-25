@@ -96,7 +96,7 @@ export const STATES = [
   { screen: '总览', state: 'filter-menu', batch: 'research', scope: 'overlay', steps: [...desk('restl'), ['click', `${V}.filter-menu`], ['wait', '.ctxmenu']] },
   { screen: '项目', state: 'list', batch: 'research', steps: [...desk('resproj'), ['wait', `${V}.research-object-card`]] },
   { screen: '项目', state: 'card-menu', batch: 'research', scope: 'overlay', steps: [...desk('resproj'), ['hover', `${V}.research-object-card`], ['click', `${V}.research-object-card .dots`], ['wait', '.ctxmenu']] },
-  { screen: '项目', state: 'draft', batch: 'research', steps: [...desk('resproj'), ['click', `${V}.add-action-page`], ['wait', `${V}.research-object-card .form-control`]] },
+  { screen: '项目', state: 'draft', batch: 'research', steps: [...desk('resproj'), ['click', `${V}.page-actions .add-action`], ['wait', `${V}.research-object-card .form-control`]] },
   { screen: '项目详情', state: 'default', batch: 'research', steps: openProject },
   { screen: '项目详情', state: 'task-panel', batch: 'research', steps: [...openProject, ['click', `${V}.plan-open`], ['wait', `${V}.node-document-head`], ['wait', 500]] },
   { screen: '项目详情', state: 'records-graph', batch: 'research', steps: [...openProject, ['radio', '科研图'], ['wait', `${V}.rgraph-viewport`], ['wait', 600]] },
@@ -140,7 +140,7 @@ export const STATES = [
   // The trash loads once per App run, so its failure comes in a batch that has not shown the trash.
   { screen: '垃圾桶', state: 'page-error', batch: 'settings', steps: [['fail', 'trash.list', 'newer-version'], ...desk('trash'), ['wait', `${V}[role="alert"]`]] },
   // Leaving the theme editor asks to discard the draft, so it is the batch's last state.
-  { screen: '设置', state: 'theme-editor', batch: 'settings', scope: 'overlay', steps: [...openSettings, ...settingsPane('appearance'), ['click', '.appearance-add'], ['wait', '.theme-editor-title']] },
+  { screen: '设置', state: 'theme-editor', batch: 'settings', scope: 'overlay', steps: [...openSettings, ...settingsPane('appearance'), ['click', '.set-body .section-heading .add-action'], ['wait', '.theme-editor-title']] },
 ]
 
 /** The screens in the order the map first visits them. */

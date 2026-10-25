@@ -339,7 +339,7 @@ export function WikiClaims({ page, pending, links, onApply, arrival, onArrived }
   return (
     <>
       <SectionHeading
-        actions={<AddAction variant="section" disabled={pending} label={c.add} onClick={() => open({ page: page.id, kind: 'add' })}>{c.addShort}</AddAction>}
+        actions={<AddAction size="compact" disabled={pending} label={c.add} onClick={() => open({ page: page.id, kind: 'add' })}>{c.addShort}</AddAction>}
       >{c.heading}
       </SectionHeading>
       {page.claims.length === 0 && addDraft === null

@@ -40,4 +40,3 @@
 .watch-suggestion-copy{display:grid;gap:var(--sp-2);min-width:0;flex:1}
 .watch-suggestion-copy .nm{color:var(--ink);font-size:var(--fs-sm)}
 .watch-suggestion-copy span:last-child{color:var(--ter);font-size:var(--fs-cap)}
-.watch-suggestion-row>.btn{flex-shrink:0}

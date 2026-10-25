@@ -392,13 +392,12 @@ export const PATTERNS = {
   },
   IconButton: {
     metrics: 'button',
-    entries: [entry('shared:IconButton', '.icbtn', { not: '.drag-handle, .dots, .add-action, .sb-add' })],
+    entries: [entry('shared:IconButton', '.icbtn', { not: '.drag-handle, .dots' })],
   },
   AddAction: {
     metrics: 'button',
     entries: [
       entry('shared:AddAction', '.add-action'),
-      entry('hand:shell/Sidebar.tsx', '.sb-add'),
     ],
   },
   ShowMore: {

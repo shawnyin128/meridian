@@ -644,14 +644,17 @@ test('没填 key 时关注建议从 arXiv 生成关键词与按姓名的作者,�
   await expect(section).not.toContainText('h-index')
   const suggestedAuthor = section.locator('.watch-suggestion-row').filter({ hasText: 'Mei Lin' })
   await expect(suggestedAuthor).toContainText('2 篇相关论文')
-  await suggestedAuthor.locator('.btn', { hasText: '添加' }).click()
+  // A suggestion's add shows in its row's actions slot once the row is hovered.
+  await suggestedAuthor.hover()
+  await suggestedAuthor.locator('.row-actions .add-action', { hasText: '添加' }).click()
   await expect.poll(async () => (await watchesFromCore(win))
     .find((item) => item.type === 'author' && item.name === 'Mei Lin')).toMatchObject({ type: 'author' })
   expect((await watchesFromCore(win)).find((item) => item.name === 'Mei Lin')).not.toHaveProperty('identity')
 
   const suggestedTopic = section.locator('.watch-suggestion-row')
     .filter({ hasText: 'batched inference' }).first()
-  await suggestedTopic.locator('.btn', { hasText: '添加' }).click()
+  await suggestedTopic.hover()
+  await suggestedTopic.locator('.row-actions .add-action', { hasText: '添加' }).click()
   await expect.poll(async () => (await watchesFromCore(win))
     .some((item) => item.type === 'topic' && item.name === 'batched inference')).toBe(true)
 

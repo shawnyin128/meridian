@@ -73,7 +73,6 @@ import { useVaultWrite } from '../hooks/useVaultWrite.js'
 import { useScrollFade } from '../hooks/useScrollFade.js'
 import { useSourceChatDeleted } from '../hooks/useSourceChatDeleted.js'
 import { FadeText } from '../components/FadeText.js'
-import { Button } from '../components/Button.js'
 import './shell.css'
 import './ProjectDetail.css'
 
@@ -148,7 +147,7 @@ export function ProjectIdeaPanel({
         <NodeAssignment
           node={linkedNode === undefined ? undefined : { id: linkedNode.id, label: linkedNode.label, mode: nodeMode(linkedNode) }}
           nodes={graph.nodes} canUnlink onOpen={onOpenNode} onSet={onSetNode}
-          create={workspaceManaged ? undefined : <Button size="compact" onClick={startNode}>{m.project.idea.createNode}</Button>}
+          create={workspaceManaged ? undefined : <AddAction size="compact" onClick={startNode}>{m.project.idea.createNode}</AddAction>}
           draft={draft === null ? undefined : (
             <div ref={draftAt}>
               <DraftForm
@@ -246,7 +245,7 @@ export function ProjectIdeaList({ projectId, ideas, error, graph, selectedId, on
       <SectionHeading
         actions={(
           <AddAction
-            variant="section" ref={add} label={m.ideas.create}
+            size="compact" ref={add} label={m.ideas.create}
             onClick={() => {
               // An open draft is only refocused, keeping what is typed.
               if (draft !== null) draftAt.current?.querySelector<HTMLElement>('.form-control')?.focus()
@@ -1214,7 +1213,7 @@ export function ProjectDetail({
                     actions={(
                       // The demo's relAdd guard: an open placeholder is only refocused, keeping what was typed.
                       <AddAction
-                        variant="section" ref={relAdd} label={m.project.links.addTitle}
+                        size="compact" ref={relAdd} label={m.project.links.addTitle}
                         onClick={() => {
                           if (relAdding) relRow.current?.querySelector('input')?.focus()
                           else {
