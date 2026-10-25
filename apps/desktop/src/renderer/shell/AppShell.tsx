@@ -17,6 +17,7 @@ import { ScreenBoundary } from '../components/ScreenBoundary.js'
 import { Tooltip } from '../components/Tooltip.js'
 import { usePruneDrafts } from '../hooks/useDrafts.js'
 import { GenerationsContext, useCoreGenerations } from '../hooks/useGenerations.js'
+import { useOpenerFocus } from '../hooks/useOpenerFocus.js'
 import { errorLabel } from '../lib/failure-label.js'
 import { commandShortcut, composing, pressesCommand } from '../lib/keyboard.js'
 import type { Catalog } from '../messages/catalog.js'
@@ -412,8 +413,9 @@ export function AppShell({ screens, settings }: {
   const [notice, setNotice] = useState<NoticeContent | null>(null)
   const noticeSeq = useRef(0)
   const jumpSeq = useRef(0)
-  /** Focus before the app menu opened, restored on close; when null, Radix returns focus to the logo button. */
-  const appMenuOpener = useRef<HTMLElement | null>(null)
+  const [appMenuOpen, setAppMenuOpen] = useState(false)
+  // With no element noted, Radix returns focus to the logo button.
+  const returnAppMenuFocus = useOpenerFocus(appMenuOpen)
   // The dialog a menu item asked for, opened only once the menu has closed and handed focus back.
   const wantDialog = useRef<'settings' | 'palette' | 'about' | null>(null)
   const [aboutOpen, setAboutOpen] = useState(false)
@@ -751,14 +753,7 @@ export function AppShell({ screens, settings }: {
         </IconButton>
         <ActionMenu
           align="start" sideOffset={6} contentData={{ 'data-appmenu': '' }}
-          onOpenChange={(open) => {
-            if (!open) return
-            // The body does not count as where focus was: Radix then returns focus to the logo button.
-            const active = document.activeElement
-            appMenuOpener.current = active instanceof HTMLElement && active !== document.body
-              ? active
-              : null
-          }}
+          open={appMenuOpen} onOpenChange={setAppMenuOpen}
           trigger={(
             <IconButton label="Meridian" size="nested" className="appbtn">
               <img className="brandmark" src={brandmark} alt="Meridian" />
@@ -773,10 +768,7 @@ export function AppShell({ screens, settings }: {
               // setTimeout cannot order this: Radix's FocusScope also schedules a 0 ms macrotask when
               // it unmounts, and which one runs first is not guaranteed.
               onCloseAutoFocus: (e) => {
-                if (appMenuOpener.current) {
-                  e.preventDefault()
-                  appMenuOpener.current.focus()
-                }
+                returnAppMenuFocus(e)
                 const wanted = wantDialog.current
                 wantDialog.current = null
                 if (wanted === 'settings') setSettingsOpen(true)

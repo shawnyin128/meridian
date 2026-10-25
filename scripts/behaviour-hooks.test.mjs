@@ -37,6 +37,12 @@ describe('each shared behaviour has one implementation', () => {
     })).toEqual([])
   })
 
+  it('focus goes back to the element that opened a layer only through useOpenerFocus', () => {
+    expect(copies(/[!=]== document\.body/, {
+      'hooks/useOpenerFocus.ts': { reason: 'the opener focus itself' },
+    })).toEqual([])
+  })
+
   it('an element\'s width is kept only through useElementWidth', () => {
     expect(copies(/set\w*\(\s*\w+\.clientWidth\s*\)|width: \w+\.clientWidth\b/, {
       'hooks/useElementWidth.ts': { reason: 'the width itself' },
