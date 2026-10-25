@@ -1024,37 +1024,37 @@ components/timeline/TimelineBoard.css:12: .glrow:hover { background }
 components/timeline/TimelineBoard.css:13: .timeline-item-label { color }
 components/timeline/TimelineBoard.css:14: .timeline-label-row.msl .timeline-item-label { color }
 components/timeline/TimelineBoard.css:14: .timeline-label-row.msl .timeline-item-label { font-weight }
-components/timeline/TimelineBoard.css:16: .timeline-label-open { display }
-components/timeline/TimelineBoard.css:16: .timeline-label-open { padding }
-components/timeline/TimelineBoard.css:16: .timeline-label-open { border }
-components/timeline/TimelineBoard.css:16: .timeline-label-open { border-radius }
-components/timeline/TimelineBoard.css:16: .timeline-label-open { background }
-components/timeline/TimelineBoard.css:16: .timeline-label-open { color }
-components/timeline/TimelineBoard.css:16: .timeline-label-open { font }
-components/timeline/TimelineBoard.css:16: .timeline-label-open { text-align }
-components/timeline/TimelineBoard.css:16: .timeline-label-open { cursor }
-components/timeline/TimelineBoard.css:17: .gwrap { overflow-x }
-components/timeline/TimelineBoard.css:19: .glabels .glrow:last-child { border-bottom }
-components/timeline/TimelineBoard.css:20: .glrow[draggable] { cursor }
-components/timeline/TimelineBoard.css:21: .glrow[draggable]:active { cursor }
-components/timeline/TimelineBoard.css:21: .glrow.dragging { cursor }
-components/timeline/TimelineBoard.css:22: .glrow.dragging { opacity }
-components/timeline/TimelineBoard.css:23: .glrow.drag-over-before { box-shadow }
-components/timeline/TimelineBoard.css:24: .glrow.drag-over-after { box-shadow }
-components/timeline/TimelineBoard.css:55: .gbar.label-beside .gbar-label { visibility }
-components/timeline/TimelineBoard.css:63: .glrow.msl { height }
-components/timeline/TimelineBoard.css:63: .glrow.msl { background }
-components/timeline/TimelineBoard.css:66: .glrow.msl { font-size }
-components/timeline/TimelineBoard.css:66: .glrow.msl { font-weight }
-components/timeline/TimelineBoard.css:66: .glrow.msl { color }
-components/timeline/TimelineBoard.css:66: .glrow.msl { cursor }
-components/timeline/TimelineBoard.css:72: .timeline-folded-count { color }
-components/timeline/TimelineBoard.css:72: .timeline-folded-count { font-weight }
-components/timeline/TimelineBoard.css:78: .glane-new { padding }
-components/timeline/TimelineBoard.css:78: .glane-new { border }
-components/timeline/TimelineBoard.css:78: .glane-new { border-radius }
-components/timeline/TimelineBoard.css:78: .glane-new { background }
-components/timeline/TimelineBoard.css:78: .glane-new { pointer-events }
+components/timeline/TimelineBoard.css:18: .timeline-label-open { display }
+components/timeline/TimelineBoard.css:18: .timeline-label-open { padding }
+components/timeline/TimelineBoard.css:18: .timeline-label-open { border }
+components/timeline/TimelineBoard.css:18: .timeline-label-open { border-radius }
+components/timeline/TimelineBoard.css:18: .timeline-label-open { background }
+components/timeline/TimelineBoard.css:18: .timeline-label-open { color }
+components/timeline/TimelineBoard.css:18: .timeline-label-open { font }
+components/timeline/TimelineBoard.css:18: .timeline-label-open { text-align }
+components/timeline/TimelineBoard.css:18: .timeline-label-open { cursor }
+components/timeline/TimelineBoard.css:19: .gwrap { overflow-x }
+components/timeline/TimelineBoard.css:21: .glabels .glrow:last-child { border-bottom }
+components/timeline/TimelineBoard.css:22: .glrow[draggable] { cursor }
+components/timeline/TimelineBoard.css:23: .glrow[draggable]:active { cursor }
+components/timeline/TimelineBoard.css:23: .glrow.dragging { cursor }
+components/timeline/TimelineBoard.css:24: .glrow.dragging { opacity }
+components/timeline/TimelineBoard.css:25: .glrow.drag-over-before { box-shadow }
+components/timeline/TimelineBoard.css:26: .glrow.drag-over-after { box-shadow }
+components/timeline/TimelineBoard.css:57: .gbar.label-beside .gbar-label { visibility }
+components/timeline/TimelineBoard.css:65: .glrow.msl { height }
+components/timeline/TimelineBoard.css:65: .glrow.msl { background }
+components/timeline/TimelineBoard.css:68: .glrow.msl { font-size }
+components/timeline/TimelineBoard.css:68: .glrow.msl { font-weight }
+components/timeline/TimelineBoard.css:68: .glrow.msl { color }
+components/timeline/TimelineBoard.css:68: .glrow.msl { cursor }
+components/timeline/TimelineBoard.css:74: .timeline-folded-count { color }
+components/timeline/TimelineBoard.css:74: .timeline-folded-count { font-weight }
+components/timeline/TimelineBoard.css:80: .glane-new { padding }
+components/timeline/TimelineBoard.css:80: .glane-new { border }
+components/timeline/TimelineBoard.css:80: .glane-new { border-radius }
+components/timeline/TimelineBoard.css:80: .glane-new { background }
+components/timeline/TimelineBoard.css:80: .glane-new { pointer-events }
 components/wiki/ProposalChange.css:8: .proposal-rows { margin }
 components/wiki/ProposalChange.css:10: .proposal-change+.proposal-change { margin-top }
 components/wiki/ProposalChange.css:12: .proposal-row>dt { white-space }

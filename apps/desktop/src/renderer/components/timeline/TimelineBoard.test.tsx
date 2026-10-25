@@ -418,7 +418,7 @@ describe('TimelineBoard 在总览上标出项目', () => {
     document.body.innerHTML = ''
   })
 
-  it('项目名只在它的里程碑那一行写一次，占满标签列，放不下才淡出；任务行不再重复项目标签', () => {
+  it('项目名只在它的里程碑那一行写一次，放不下才淡出；任务行不再重复项目标签', () => {
     const host = document.createElement('div')
     document.body.append(host)
     const projects: TimelineProject[] = [
@@ -442,7 +442,7 @@ describe('TimelineBoard 在总览上标出项目', () => {
     expect(host.querySelectorAll('.glrow .project-label')).toHaveLength(0)
   })
 
-  it('项目的折叠钮是共享的折叠钮，排在项目名前面；收起时箭头转向、任务行收走，点它不打开项目', () => {
+  it('项目的折叠钮是共享的折叠钮，跟在项目名后面；收起时箭头转向、任务行收走，点它不打开项目', () => {
     const host = document.createElement('div')
     document.body.append(host)
     const onProjectLabelClick = vi.fn()
@@ -459,7 +459,7 @@ describe('TimelineBoard 在总览上标出项目', () => {
     ))
     const lane = host.querySelector('.glrow.msl')!
     const fold = lane.querySelector<HTMLButtonElement>('.fold-toggle')!
-    expect(fold.compareDocumentPosition(lane.querySelector('.timeline-item-label')!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(fold.compareDocumentPosition(lane.querySelector('.timeline-item-label')!) & Node.DOCUMENT_POSITION_PRECEDING).toBeTruthy()
     expect([fold.getAttribute('aria-expanded'), fold.querySelector('.fold-caret')!.classList.contains('is-closed')]).toEqual(['true', false])
     act(() => fold.click())
     expect([fold.getAttribute('aria-expanded'), fold.querySelector('.fold-caret')!.classList.contains('is-closed')]).toEqual(['false', true])

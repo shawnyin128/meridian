@@ -92,6 +92,12 @@ describe('FoldToggle', () => {
     expect([...toggle.children].map((child) => child.className)).toEqual(['fold-caret is-closed'])
   })
 
+  it('end 跟在箭头后面，比如排在行尾的计数', () => {
+    act(() => root.render(<FoldToggle open onToggle={vi.fn()} end={<span className="n">3</span>}>关注·关键词</FoldToggle>))
+    const toggle = host.querySelector<HTMLButtonElement>('button.fold-toggle')!
+    expect([toggle.firstChild!.textContent, ...[...toggle.children].map((child) => child.className)]).toEqual(['关注·关键词', 'fold-caret', 'n'])
+  })
+
   it('给了 label 的带标签折叠钮由 label 命名，标签照样显示', () => {
     act(() => root.render(<FoldToggle label="展开详情" open={false} onToggle={vi.fn()}>安装命令</FoldToggle>))
     const toggle = host.querySelector<HTMLButtonElement>('button.fold-toggle')!

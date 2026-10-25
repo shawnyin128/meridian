@@ -25,7 +25,7 @@ import { RowActions } from '../StructuredList.js'
  * Each change goes to `onChange` as a function that takes the last confirmed column configuration
  * and returns the whole changed one; a name another column on the table already has is refused,
  * and renaming to the column's own name just closes the input.
- * Select and multi-select columns have a fold toggle before their name that expands their options,
+ * Select and multi-select columns have a fold toggle after their name that expands their options,
  * one per row, with rename and delete at the end of the row. Renaming goes to
  * `onRenameOption` (the papers holding it change too); deleting goes to `onChange` as usual, and
  * while any paper in the vault still holds that option, Core rejects it and a refusal notice shows
@@ -151,14 +151,7 @@ export function ColumnMenu({ columns, onChange, onRenameOption, onRetype }: {
           {columns.custom.map((c) => (
             <div key={c.key}>
               <div className="mi colrow" data-row-actions="">
-                <span className="ck">
-                  {c.type === 'text' ? null : (
-                    <FoldToggle
-                      variant="caret" label={m.papers.columnMenu.options} open={opened === c.key}
-                      controls={`${optionsId}${c.key}`} onToggle={() => setOpened(opened === c.key ? null : c.key)}
-                    />
-                  )}
-                </span>
+                <span className="ck" />
                 {renaming === c.key
                   ? (
                     <InlineDraftInput
@@ -178,6 +171,12 @@ export function ColumnMenu({ columns, onChange, onRenameOption, onRetype }: {
                     />
                   )
                   : <FadeText className="cl" label={c.label}>{c.label}</FadeText>}
+                {c.type === 'text' ? null : (
+                  <FoldToggle
+                    variant="caret" label={m.papers.columnMenu.options} open={opened === c.key}
+                    controls={`${optionsId}${c.key}`} onToggle={() => setOpened(opened === c.key ? null : c.key)}
+                  />
+                )}
                 <RowActions>
                   <IconButton
                     label={m.papers.columnMenu.changeType} size="nested" className="cmx typex" aria-expanded={retyping === c.key}

@@ -25,9 +25,9 @@ describe('窗口框架的滚动区', () => {
       .map((path) => `<style>${stylesheet(path)}</style>`).join('')
     const caret = '<span class="fold-caret is-closed"></span>'
     document.body.innerHTML = '<div class="sidebar">'
-      + `<div class="sb-h" data-sect="inbox"><button class="fold-toggle">${caret}收件</button></div>`
-      + `<div class="srow" id="rowInboxAll"><button class="icbtn xs fold-toggle">${caret}</button><button class="nav-row-label">论文推送</button></div>`
-      + `<button class="fold-toggle srow disc" data-disc="topics">${caret}关注·主题</button></div>`
+      + `<div class="sb-h" data-sect="inbox"><button class="fold-toggle">收件${caret}</button></div>`
+      + `<div class="srow" id="rowInboxAll"><button class="nav-row-label">论文推送</button><button class="icbtn xs fold-toggle">${caret}</button></div>`
+      + `<button class="fold-toggle srow disc" data-disc="topics">关注·主题${caret}</button></div>`
     for (const selector of ['[data-sect] .fold-caret', '#rowInboxAll .fold-caret', '[data-disc] .fold-caret']) {
       expect(getComputedStyle(document.querySelector(selector)).opacity, selector).toBe('1')
     }

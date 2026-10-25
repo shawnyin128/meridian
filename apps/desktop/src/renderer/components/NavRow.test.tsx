@@ -15,17 +15,18 @@ describe('NavRow', () => {
     )).toBe('<div class="srow"><button type="button" class="nav-row nav-row-label">讨论</button><button type="button">…</button></div>')
   })
 
-  it('leads a row with controls of its own with the fold of the group under it, before its label', () => {
+  it('puts the fold of the group under a row with controls of its own right after its label', () => {
     const markup = renderToStaticMarkup(
       <NavRow
         className="srow" label="论文推送" onActivate={() => undefined}
         fold={{ label: '收起/展开「论文推送」', open: false, onToggle: () => undefined, controls: 'g-inboxsub' }}
       >{null}</NavRow>,
     )
-    const [fold, ...rest] = markup.split('</button>')
-    expect(fold).toMatch(/^<div class="srow"><button [^>]*class="icbtn xs fold-toggle"[^>]*><span class="fold-caret is-closed"/)
+    const [label, fold, rest] = markup.split('</button>')
+    expect(label).toBe('<div class="srow"><button type="button" class="nav-row nav-row-label">论文推送')
+    expect(fold).toMatch(/^<button [^>]*class="icbtn xs fold-toggle"[^>]*><span class="fold-caret is-closed"/)
     expect(['aria-label="收起/展开「论文推送」"', 'aria-expanded="false"', 'aria-controls="g-inboxsub"'].filter((held) => !fold!.includes(held)))
       .toEqual([])
-    expect(rest.join('</button>')).toBe('<button type="button" class="nav-row nav-row-label">论文推送</button></div>')
+    expect(rest).toBe('</div>')
   })
 })

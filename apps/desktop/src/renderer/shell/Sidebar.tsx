@@ -237,13 +237,14 @@ export function Sidebar({
                 <FoldToggle
                   className="srow disc" data-disc="topics"
                   open={!closed['topics']} onToggle={() => toggle('topics')} controls="g-topics"
+                  end={topicPapers > 0 ? <CountBadge className="n" count={topicPapers} /> : null}
                 >
                   <span className="ic">
                     <Icon>
                       <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.83z" />
                       <line x1="7" y1="7" x2="7.01" y2="7" />
                     </Icon>
-                  </span>{m.shell.nav.watchTopics}{topicPapers > 0 ? <CountBadge className="n" count={topicPapers} /> : null}
+                  </span>{m.shell.nav.watchTopics}
                 </FoldToggle>
                 <div className={wgroup('topics')} id="g-topics">
                   {topics.map((w) => (
@@ -256,10 +257,11 @@ export function Sidebar({
                 <FoldToggle
                   className="srow disc" data-disc="authors"
                   open={!closed['authors']} onToggle={() => toggle('authors')} controls="g-authors"
+                  end={authorPapers > 0 ? <CountBadge className="n" count={authorPapers} /> : null}
                 >
                   <span className="ic">
                     <Icon><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></Icon>
-                  </span>{m.shell.nav.watchAuthors}{authorPapers > 0 ? <CountBadge className="n" count={authorPapers} /> : null}
+                  </span>{m.shell.nav.watchAuthors}
                 </FoldToggle>
                 <div className={wgroup('authors')} id="g-authors">
                   {authors.map((w) => (

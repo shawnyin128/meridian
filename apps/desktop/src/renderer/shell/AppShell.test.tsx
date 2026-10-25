@@ -190,14 +190,10 @@ function hoverTip(selector: string): [string | undefined, string | undefined] {
   return [tip?.firstChild?.textContent ?? undefined, tip?.querySelector('.tooltip-key')?.textContent ?? undefined]
 }
 
-/**
- * The button that activates a row: the row itself, the label button of a row that holds other
- * controls, or the first child of a section heading.
- */
+/** The button that activates a row: the row itself, or the first child of a row that holds other controls. */
 function controlOf(selector: string): HTMLElement {
   const row = document.querySelector<HTMLElement>(selector)!
-  const control = row.tagName === 'BUTTON' ? row
-    : row.querySelector<HTMLElement>(':scope > .nav-row-label') ?? row.firstElementChild as HTMLElement
+  const control = row.tagName === 'BUTTON' ? row : row.firstElementChild as HTMLElement
   expect(control.tagName, selector).toBe('BUTTON')
   return control
 }
@@ -509,17 +505,26 @@ describe('AppShell keyboard navigation', () => {
     expect(document.querySelector('#sect-chats')!.classList.contains('closed')).toBe(false)
   })
 
-  it('every sidebar fold is the shared fold toggle: the caret leads its label and the toggle names the group it folds', () => {
+  it('every sidebar fold is the shared fold toggle: the caret follows its label and the toggle names the group it folds', () => {
+    /** The fold toggle of a row that folds as a whole, and the label its caret follows. */
+    const whole = (selector: string, label: string) => {
+      const toggle = document.querySelector(selector)!.matches('button') ? document.querySelector(selector)! : controlOf(selector)
+      return [toggle, toggle.querySelector('.fold-caret')!.previousSibling!.textContent === label] as const
+    }
+    /** The caret-only fold toggle of a row whose label is a button of its own, and whether it follows that label. */
+    const beside = (selector: string) => {
+      const toggle = document.querySelector(`${selector} > .fold-toggle`)!
+      return [toggle, toggle.previousElementSibling!.matches('.nav-row-label')] as const
+    }
     const folds = [
-      [controlOf('[data-sect="inbox"]'), 'sect-inbox'], [controlOf('[data-sect="chats"]'), 'sect-chats'],
-      [controlOf('[data-sect="lib"]'), 'sect-lib'], [controlOf('[data-sect="research"]'), 'sect-research'],
-      [document.querySelector('#rowInboxAll')!.firstElementChild, 'g-inboxsub'],
-      [document.querySelector('[data-inbox="discovery"]')!.firstElementChild, 'g-discoverysub'],
-      [document.querySelector('[data-disc="topics"]'), 'g-topics'], [document.querySelector('[data-disc="authors"]'), 'g-authors'],
+      [...whole('[data-sect="inbox"]', '收件'), 'sect-inbox'], [...whole('[data-sect="chats"]', '对话'), 'sect-chats'],
+      [...whole('[data-sect="lib"]', '我的库'), 'sect-lib'], [...whole('[data-sect="research"]', '研究'), 'sect-research'],
+      [...beside('#rowInboxAll'), 'g-inboxsub'], [...beside('[data-inbox="discovery"]'), 'g-discoverysub'],
+      [...whole('[data-disc="topics"]', '关注·关键词'), 'g-topics'], [...whole('[data-disc="authors"]', '关注·作者'), 'g-authors'],
     ] as const
-    for (const [toggle, group] of folds) {
-      expect([toggle!.matches('button.fold-toggle'), toggle!.firstElementChild!.matches('.fold-caret')], group).toEqual([true, true])
-      expect(toggle!.getAttribute('aria-controls'), group).toBe(group)
+    for (const [toggle, follows, group] of folds) {
+      expect([toggle.matches('button.fold-toggle'), follows], group).toEqual([true, true])
+      expect(toggle.getAttribute('aria-controls'), group).toBe(group)
       expect(document.getElementById(group), group).not.toBeNull()
     }
   })

@@ -11,8 +11,8 @@ type NavRowFold = { label: string; open: boolean; onToggle: () => void; controls
  * button, activated by a click, Enter or Space. A row given a `label` holds controls of its own among
  * `children`, such as a "More" menu: it stays a div whose button is the `label`, and a pointer click
  * anywhere else on the row activates it too, so each control in `children` must stop its click from
- * reaching the row. Such a row can lead with `fold`, the caret that folds the group under the row,
- * named by `fold.label`. `className` gives the row its look; `selected` adds `on` for the row whose
+ * reaching the row. Such a row can carry `fold`, the caret right after its label that folds the
+ * group under the row, named by `fold.label`. `className` gives the row its look; `selected` adds `on` for the row whose
  * destination is shown. In a toolbar the row's buttons are controls of the toolbar.
  */
 export function NavRow({
@@ -37,8 +37,8 @@ export function NavRow({
   }
   return (
     <div className={rowClass} id={id} onClick={onActivate} {...data}>
-      {fold === undefined ? null : <FoldToggle variant="caret" {...fold} />}
       {asItem(<button type="button" className="nav-row nav-row-label">{label}</button>)}
+      {fold === undefined ? null : <FoldToggle variant="caret" {...fold} />}
       {children}
     </div>
   )

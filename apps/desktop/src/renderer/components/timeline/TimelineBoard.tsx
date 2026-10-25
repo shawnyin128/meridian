@@ -244,6 +244,10 @@ export function TimelineBoard({
                     : {})}
                   onClick={open}
                 >
+                  {/* A label that opens something is the row's button; its click reaches the row. */}
+                  <Tooltip label={labelFor(row)} whenClipped>
+                    {open === undefined ? text : <ToolbarButton className="timeline-label-open">{text}</ToolbarButton>}
+                  </Tooltip>
                   {foldable && row.kind === 'milestones' ? (
                     <FoldToggle
                       variant="caret" label={folded.has(row.project.id)
@@ -251,10 +255,6 @@ export function TimelineBoard({
                       open={!folded.has(row.project.id)} onToggle={() => toggleFold(row.project.id)}
                     />
                   ) : null}
-                  {/* A label that opens something is the row's button; its click reaches the row. */}
-                  <Tooltip label={labelFor(row)} whenClipped>
-                    {open === undefined ? text : <ToolbarButton className="timeline-label-open">{text}</ToolbarButton>}
-                  </Tooltip>
                   {row.kind === 'milestones' && folded.has(row.project.id) && shown.get(row.project.id)!.length > 0
                     ? <span className="timeline-folded-count">{m.timeline.fold.hidden(shown.get(row.project.id)!.length)}</span>
                     : null}
