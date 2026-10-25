@@ -14,7 +14,7 @@
 .desk .desk-body>*,.desk .desk-foot>*{max-width:var(--pagew);margin-left:auto;margin-right:auto}
 .desk .desk-body--prose>*{max-width:var(--prosew)}
 .desk-foot{flex-shrink:0;border-top:1px solid var(--sep);background:var(--sidebar);backdrop-filter:blur(20px);padding:var(--sp-12) var(--sp-16) var(--sp-16)}
-.desk-foot.bare{background:transparent;border-top:0;backdrop-filter:none;padding:var(--sp-8) var(--page-inset) var(--sp-16);overflow:hidden}
+.desk-foot.bare{background:transparent;border-top:0;backdrop-filter:none;padding:var(--sp-8) var(--page-inset) var(--sp-16);overflow:hidden;scrollbar-gutter:stable}
 .page-actions{display:flex;flex:none;align-items:center;gap:var(--sp-8);margin-left:auto}
 .page-toolbar{display:flex;align-items:flex-end;gap:var(--sp-8);min-height:28px;margin:0 0 var(--sp-14)}
 .page-toolbar--center{justify-content:center;margin:0}
