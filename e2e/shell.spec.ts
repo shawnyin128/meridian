@@ -152,6 +152,17 @@ test('侧栏分组抬头是 11px 半粗体,比正文分节抬头小一号', asyn
   await expect(head).toHaveCSS('font-weight', '600')
 })
 
+test('侧栏的分组抬头一样高:收件、对话、我的库、研究都是 24px 的一行,折叠钮在每一行的同一处', async ({ win }) => {
+  await expect(win.locator('.sidebar .sb-h')).toHaveCount(4)
+  const heads = await win.locator('.sidebar .sb-h').evaluateAll((all) => all.map((head) => {
+    const box = head.getBoundingClientRect()
+    const toggle = head.querySelector('.fold-toggle')!.getBoundingClientRect()
+    return [(head as HTMLElement).dataset['sect'], box.height, toggle.x - box.x, toggle.y + toggle.height / 2 - box.y]
+  }))
+  expect(heads.map(([sect, height]) => [sect, height])).toEqual([['inbox', 24], ['chats', 24], ['lib', 24], ['research', 24]])
+  expect(new Set(heads.map(([, , x, middle]) => `${x} ${middle}`)).size).toBe(1)
+})
+
 test('侧栏在论文与项目两屏之间切换,面包屑跟着换', async ({ win }) => {
   await gotoPapers(win)
   await expect(win.locator('#crumb .cseg')).toHaveText(['我的库', '论文'])
