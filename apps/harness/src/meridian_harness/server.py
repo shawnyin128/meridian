@@ -12,6 +12,7 @@ from typing import TextIO
 from .protocol import (
     CAPABILITIES,
     ERROR_KINDS,
+    MODEL_CALLBACK,
     PROTOCOL_VERSION,
     ProtocolViolation,
     callback,
@@ -72,6 +73,11 @@ class RequestContext:
         """Request one allowlisted, read-only value from Core."""
         self.check_cancelled()
         return self._read(method, params)
+
+    def invoke_model(self, params: object) -> object:
+        """Ask Core for the run's one model call on the user's subscription CLI."""
+        self.check_cancelled()
+        return self._read(MODEL_CALLBACK, params)
 
 
 def _ping(context: RequestContext, _params: object) -> object:
