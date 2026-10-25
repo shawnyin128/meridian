@@ -5,6 +5,7 @@ import { useScreenLoad } from '../../hooks/useScreenLoad.js'
 import { useMessages } from '../../messages/useMessages.js'
 import { useVaultRevision, type JumpAnchor } from '../../shell/AppShell.js'
 import { entryAnchor, readingEntries } from './reading-entries.js'
+import { CountBadge } from '../CountBadge.js'
 import { EmptyState } from '../EmptyState.js'
 import { LoadingPlaceholder } from '../LoadingPlaceholder.js'
 import { PageError, SectionHeading } from '../PageShell.js'
@@ -36,12 +37,12 @@ export function PaperReadingSummary({ paper, onRead, onConclusions }: {
       <dl className="paper-meta-list">
         <dt>{m.papers.reading.notes}</dt>
         <dd>{paper.noteCount === 0
-          ? '0'
-          : <button className="cnt" onClick={() => onRead({ panel: 'notes' })}>{paper.noteCount}</button>}</dd>
+          ? <CountBadge count={0} />
+          : <CountBadge count={paper.noteCount} onClick={() => onRead({ panel: 'notes' })} />}</dd>
         <dt>{m.papers.reading.conclusions}</dt>
         <dd>{paper.conclusionCount === 0
-          ? '0'
-          : <button className="cnt" onClick={onConclusions}>{paper.conclusionCount}</button>}</dd>
+          ? <CountBadge count={0} />
+          : <CountBadge count={paper.conclusionCount} onClick={onConclusions} />}</dd>
       </dl>
       <SectionHeading variant="rail">{m.papers.reading.remarkAndNotes}</SectionHeading>
       <PageError error={error} />

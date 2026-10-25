@@ -80,7 +80,6 @@
 .ptable td .ci .hid{display:none}
 .ptable td .ci.chip-expanded{display:flex;align-items:center;flex-wrap:wrap;gap:var(--sp-2);overflow:visible;white-space:normal;text-overflow:clip}
 .ptable td .ci.chip-expanded .hid{display:inline-block;animation:chip-row-reveal var(--t) var(--e-out) both}
-.morebadge{min-width:28px;margin-left:var(--sp-2)}
 @keyframes chip-row-reveal{from{opacity:0;transform:translateX(-4px)}to{opacity:1;transform:translateX(0)}}
 @media (prefers-reduced-motion:reduce){.ptable td .ci.chip-expanded .hid{animation:none}}
 /* Only a sortable header, the one that carries aria-sort, shows a pointer and darkens on hover. */

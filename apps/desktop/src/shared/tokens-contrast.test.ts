@@ -381,7 +381,7 @@ describe('强调色的字', () => {
   for (const theme of LIGHT_THEMES) {
     it(`${named(theme)}侧栏当前行上的计数,字压在它的标签底上不低于 4.5:1`, () => {
       const [row] = lookOf('shell/AppShell.css', '.srow.on').split(' ') as [string]
-      const [fill, text] = lookOf('components/Tag.css', '.count-badge').split(' ') as [string, string]
+      const [fill, text] = lookOf('components/CountBadge.css', '.count-badge').split(' ') as [string, string]
       const ground = ['--window', '--sidebar', row, fill]
       const got = contrast(colour(theme, text), flatten(theme, ground))
       expect(got, `${text} 压在 ${ground.join(' + ')} 上是 ${got.toFixed(2)}:1`).toBeGreaterThanOrEqual(TEXT)

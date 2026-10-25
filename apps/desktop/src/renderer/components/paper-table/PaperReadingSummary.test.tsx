@@ -79,4 +79,26 @@ describe('PaperReadingSummary', () => {
     await act(async () => { (rows[1] as HTMLElement).click() })
     expect(read).toEqual([{ page: 2, highlight: 'h1', panel: 'highlights' }])
   })
+
+  it('shows the note and conclusion counts as count badges; one above zero opens what it counts, zero is only shown', async () => {
+    const read: JumpAnchor[] = []
+    const host = document.createElement('div')
+    document.body.appendChild(host)
+    root = createRoot(host)
+    await act(async () => {
+      root!.render(
+        <MessagesProvider>
+          <PaperReadingSummary paper={PAPER} onRead={(anchor) => { read.push(anchor) }} onConclusions={() => {}} />
+        </MessagesProvider>,
+      )
+    })
+
+    const counts = [...host.querySelectorAll('.paper-meta-list dd')].map((dd) => dd.firstElementChild)
+    expect(counts.map((badge) => [badge?.tagName, badge?.className, badge?.textContent])).toEqual([
+      ['BUTTON', 'count-badge', '3'],
+      ['SPAN', 'count-badge', '0'],
+    ])
+    await act(async () => { (counts[0] as HTMLElement).click() })
+    expect(read).toEqual([{ panel: 'notes' }])
+  })
 })

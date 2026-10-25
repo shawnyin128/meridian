@@ -103,8 +103,10 @@ Current shared contracts:
   `TagButton` is the clickable tag and `tagClass` gives a trigger another component renders the same classes.
   A tag keeps the width of its text: the text beside it gives way first, and when its row still has no
   room the tag hides as a whole. Only a `capped` tag, whose placement caps it for a long value, fades its text.
-  `CountBadge` is the one count beside a label. A host places and sizes these through `className` but never
-  sets their fill, colour, border, radius or padding.
+  A host places and sizes a tag through `className` but never sets its fill, colour, border, radius or padding.
+- `CountBadge`: the one count beside a row or button label, zero shown as 0. With `onClick` it is a button in
+  the same look that opens what it counts; with `more` it counts the items folded away as +N and unfolds them.
+  A host only places it. A heading's count is not a badge: the heading shows it after its text as `· N`.
 - `StatusDot`: the one state dot, in two sizes, filled, half-filled or a ring. A dot whose state no nearby text names
   carries a `label`.
 - `ReadDots`: one neutral `StatusDot` per paper's reading state on one fading line, read first, then reading, then

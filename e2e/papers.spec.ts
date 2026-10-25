@@ -371,7 +371,9 @@ test('分组加筛选后,索引层计数、值 chip 计数与分页总数三者�
   const indexCount = await indexRow.locator('.n').innerText()
   await indexRow.click()
 
-  await expect(win.locator('.gnav button[aria-label="分组取值"]')).toHaveText(`${TOPIC} · ${indexCount}`)
+  const picker = win.locator('.gnav button[aria-label="分组取值"]')
+  await expect(picker).toHaveText(`${TOPIC}${indexCount}`)
+  await expect(picker.locator('.count-badge')).toHaveText(indexCount)
   await expect(win.locator('.pginfo')).toHaveText(`共 ${indexCount} 条`)
 })
 
