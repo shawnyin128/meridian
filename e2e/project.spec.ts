@@ -588,12 +588,12 @@ test('拖完任务条那一下不算点击,单击只定位闪烁,名称格仍可
   await win.locator('.gantt .gbar').first().click()
   const row = win.locator('#taskList .ddlrow[data-row="t2"]')
   await expect(row).toHaveClass(/\bflash\b/)
-  await expect(row.locator('.plan-name-input')).toHaveCount(0)
+  await expect(row.locator('.metadata-input')).toHaveCount(0)
   await expect(win.locator('.plan-time-pop')).toHaveCount(0)
 
   await rowAction(row, '.plan-rename')
-  await row.locator('.plan-name-input').fill(EDITED_TASK_TITLE)
-  await row.locator('.plan-name-input').press('Enter')
+  await row.locator('.metadata-input').fill(EDITED_TASK_TITLE)
+  await row.locator('.metadata-input').press('Enter')
   await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已更新任务')
 
   const saved = (await readDraft(win)).tasks.find((t) => t.id === 't2')!
@@ -616,7 +616,7 @@ test('任务时间列单独编辑时,名称、优先级与状态保持静息', a
   await row.locator('.task-date-part').click()
   const form = win.locator('.schedule-form')
   await expect(form).toBeVisible()
-  await expect(row.locator('.plan-name-input')).toHaveCount(0)
+  await expect(row.locator('.metadata-input')).toHaveCount(0)
   await expect(row.locator('.plan-priority')).toHaveCount(1)
   await expect(row.locator('.state-cell')).toHaveCount(1)
   await form.locator('input[type="date"]').first().fill(fixtureDay(today, T2_START + 1))
@@ -1632,7 +1632,7 @@ test('任务四列各自编辑,点击行或任务名只打开任务详情,不改
   const title = await row.locator('.plan-name').textContent()
   await row.evaluate((element) => (element as HTMLElement).click())
   await expect(side.locator('.node-document-title')).toHaveText(title!)
-  await expect(row.locator('.plan-name-input')).toHaveCount(0)
+  await expect(row.locator('.metadata-input')).toHaveCount(0)
   await expect(win.locator('.schedule-form')).toHaveCount(0)
   await win.keyboard.press('Escape')
   await expect(side.locator('.node-document-title')).toHaveCount(0)
@@ -1640,7 +1640,7 @@ test('任务四列各自编辑,点击行或任务名只打开任务详情,不改
   // The name opens the same panel, on a click and on Enter, and renaming starts from the pencil beside it.
   await row.locator('.plan-name').click()
   await expect(side.locator('.node-document-title')).toHaveText(title!)
-  await expect(row.locator('.plan-name-input')).toHaveCount(0)
+  await expect(row.locator('.metadata-input')).toHaveCount(0)
   await win.keyboard.press('Escape')
   await expect(side.locator('.node-document-title')).toHaveCount(0)
   await row.locator('.plan-name').focus()
@@ -1650,15 +1650,15 @@ test('任务四列各自编辑,点击行或任务名只打开任务详情,不改
   await expect(side.locator('.node-document-title')).toHaveCount(0)
 
   await rowAction(row, '.plan-rename')
-  await expect(row.locator('.plan-name-input')).toHaveCount(1)
+  await expect(row.locator('.metadata-input')).toHaveCount(1)
   await expect(win.locator('.schedule-form')).toHaveCount(0)
   await win.keyboard.press('Escape')
-  await expect(row.locator('.plan-name-input')).toHaveCount(0)
+  await expect(row.locator('.metadata-input')).toHaveCount(0)
 
   // The date and time-of-day triggers are two independent popovers now; open the date one.
   await row.locator('.task-date-part').click()
   await expect(win.locator('.schedule-form')).toBeVisible()
-  await expect(row.locator('.plan-name-input')).toHaveCount(0)
+  await expect(row.locator('.metadata-input')).toHaveCount(0)
   await win.keyboard.press('Escape')
 
   await row.locator('.plan-priority').click()
@@ -1754,7 +1754,7 @@ test('红色垃圾桶直接删除任务,不会先把这一行切进编辑态', a
   await row.locator('.row-delete').hover()
   await expect(row.locator('.row-delete')).toHaveCSS('color', bad)
   await row.locator('.row-delete').click()
-  await expect(win.locator('#taskList .plan-name-input')).toHaveCount(0)
+  await expect(win.locator('#taskList .metadata-input')).toHaveCount(0)
   await expect(win.locator('.plan-time-pop')).toHaveCount(0)
   await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已删除任务')
   const project = await call<{ tasks: { id: string }[] }>(win, 'project.get', { id: 'draft' })
@@ -1796,9 +1796,9 @@ test('节点面板开着时 Esc 先关任务名称格,再按一次才收面板',
   const head = await openNodePanel(win)
   const row = win.locator('#taskList .ddlrow').first()
   await rowAction(row, '.plan-rename')
-  await expect(row.locator('.plan-name-input')).toHaveCount(1)
+  await expect(row.locator('.metadata-input')).toHaveCount(1)
   await win.keyboard.press('Escape')
-  await expect(row.locator('.plan-name-input')).toHaveCount(0)
+  await expect(row.locator('.metadata-input')).toHaveCount(0)
   await expect(head).toContainText('树宽收益拐点')
 
   await win.keyboard.press('Escape')

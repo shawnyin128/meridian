@@ -639,7 +639,7 @@ describe('PaperTable', () => {
     expect(host.querySelector('#libq')?.classList).toContain('form-control-field')
   })
 
-  it('随笔与自定义文本列共用整格文本编辑器', async () => {
+  it('随笔与自定义文本列共用整格文本编辑器,就是就地编辑的那一个', async () => {
     const host = mount()
     columnsCall.resolve(NOTE_COLUMNS)
     listCall.resolve({ rows: [{ ...ROW, remark: '', custom: { note: '' } }], total: 1 })
@@ -647,12 +647,12 @@ describe('PaperTable', () => {
 
     const remarkCell = host.querySelector<HTMLElement>('td.pt-remark')!
     await act(async () => { press(remarkCell) })
-    expect(remarkCell.querySelector('input')?.classList).toContain('paper-text-cell-input')
+    expect(remarkCell.querySelector('input')?.classList).toContain('metadata-input')
     expect(remarkCell.querySelector('input')?.classList).toContain('form-control-inline')
 
     const customCell = host.querySelector<HTMLElement>('td.pt-cust')!
     await act(async () => { press(customCell) })
-    expect(customCell.querySelector('input')?.classList).toContain('paper-text-cell-input')
+    expect(customCell.querySelector('input')?.classList).toContain('metadata-input')
     expect(customCell.querySelector('input')?.classList).toContain('form-control-inline')
   })
 

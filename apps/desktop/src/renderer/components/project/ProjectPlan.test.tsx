@@ -228,7 +228,7 @@ describe('ProjectPlan', () => {
       expect(title.textContent).toBe('校准批次')
       act(() => title.click())
       expect(onOpenTask).toHaveBeenCalledWith('task-1')
-      expect(host.querySelector('.plan-name-input')).toBeNull()
+      expect(host.querySelector('.metadata-input')).toBeNull()
     })
 
     it('任务行整行可点开任务详情,不止是拖拽把手', () => {
@@ -237,13 +237,13 @@ describe('ProjectPlan', () => {
       expect(onOpenTask).toHaveBeenCalledWith('task-1')
     })
 
-    it('改名从任务名旁的铅笔进入,在行内写回,不打开任务详情', async () => {
+    it('改名从任务名旁的铅笔进入,在行内用同一种就地输入框写回,不打开任务详情', async () => {
       const { host, onOpenTask, onUpdateTask } = mount()
       const rename = host.querySelector<HTMLButtonElement>('.task-row .plan-rename')!
       expect(rename.getAttribute('aria-label')).toBe('重命名任务：校准批次')
       act(() => rename.click())
-      const input = host.querySelector<HTMLInputElement>('.task-row .plan-name-input')!
-      expect(input.value).toBe('校准批次')
+      const input = host.querySelector<HTMLInputElement>('.task-row .metadata-input')!
+      expect([input.value, input.classList.contains('form-control-inline')]).toEqual(['校准批次', true])
       act(() => {
         Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')!.set!.call(input, '复核批次')
         input.dispatchEvent(new Event('input', { bubbles: true }))
@@ -280,9 +280,9 @@ describe('ProjectPlan', () => {
     it('改名时点进输入框只是在编辑,不打开任务详情', () => {
       const { host, onOpenTask } = mount()
       act(() => host.querySelector<HTMLButtonElement>('.task-row .plan-rename')!.click())
-      act(() => host.querySelector<HTMLInputElement>('.task-row .plan-name-input')!.click())
+      act(() => host.querySelector<HTMLInputElement>('.task-row .metadata-input')!.click())
       expect(onOpenTask).not.toHaveBeenCalled()
-      expect(host.querySelector('.task-row .plan-name-input')).not.toBeNull()
+      expect(host.querySelector('.task-row .metadata-input')).not.toBeNull()
     })
   })
 })

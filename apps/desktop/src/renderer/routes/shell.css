@@ -52,16 +52,6 @@
 .th-add .row-actions{gap:0;vertical-align:middle}
 
 /*
- * Single-value metadata editing used across the app: Zotero-style hover over the whole cell; a click
- * replaces just that value with an input in the same place.
- */
-.metadata-field{display:block;width:100%;max-width:100%;min-width:0}
-.metadata-editable{display:block;box-sizing:border-box;width:100%;min-width:0;margin:calc(-1 * var(--sp-2)) 0;padding:var(--sp-2) 0;border:0;border-radius:var(--r-xs);background:transparent;color:var(--sec);font:inherit;line-height:inherit;text-align:left;overflow-wrap:anywhere;cursor:text}
-.metadata-editable:hover{background:var(--field);color:var(--ink)}
-.pv.metadata-editable{cursor:pointer}
-.form-control.metadata-input.multiline{display:block;field-sizing:content;resize:none;overflow:hidden;white-space:pre-wrap;overflow-wrap:anywhere}
-
-/*
  * Two-column page: body text on the left, a property column on the right with rows of related chips
  * below it. Shared by project details and wiki pages.
  */

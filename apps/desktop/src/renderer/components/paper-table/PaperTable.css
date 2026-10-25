@@ -128,7 +128,6 @@
 /* Custom columns: clicking a cell edits it in place */
 .pt-cust,.pt-remark{color:var(--sec);font-size:var(--fs-sm);cursor:text;min-width:70px}
 /* Text values use the shared inline editor; compact column-menu and picker inputs retain their own width. */
-.ptable td .paper-text-cell-input{display:block}
 
 /* Column menu: custom columns have rename/delete at the end of their rows. */
 .mi.colrow .cl{flex:1}
@@ -171,7 +170,6 @@
 .pd-h{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:var(--sp-4) var(--sp-8);margin-bottom:var(--sp-12)}
 .pd-t{order:1;width:100%;font-size:var(--fs-section);font-weight:var(--fw-title);line-height:var(--lh-ui)}
 /* The title is the panel's head, in the head's ink rather than a property value's grey. */
-.pd-t .metadata-editable{color:inherit}
 .pdetail>.paper-meta{height:auto;margin:0 calc(-1 * var(--sp-16)) calc(-1 * var(--sp-16))}
 .paper-reading-summary{margin-top:var(--sp-16)}
 .paper-reading-summary .reading-summary-all{margin:var(--sp-6) 0 0 calc(-1 * var(--sp-10))}

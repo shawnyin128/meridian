@@ -3,6 +3,7 @@ import { act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ProjectSummary } from '../../shared/contract.js'
+import { DraftsProvider } from '../hooks/useDrafts.js'
 import { MessagesProvider } from '../messages/useMessages.js'
 import { LANGUAGE_STORAGE_KEY } from '../shell/language.js'
 
@@ -18,9 +19,11 @@ const api = vi.hoisted(() => ({
 
 vi.mock('../ipc.js', () => ({
   feed: { append: vi.fn() },
+  library: { location: () => Promise.resolve({ root: '/vaults/projects' }) },
   project: {
     list: () => (api.loading ? new Promise(() => {}) : Promise.resolve(structuredClone(api.projects))),
     reorder: vi.fn(),
+    update: vi.fn((id: string, patch: { name?: string }) => Promise.resolve({ id, ...patch })),
     delete: () => Promise.resolve({ change: 'change-delete' }),
   },
   changelog: { undo: (id: string) => { api.undone.push(id); return Promise.resolve() } },
@@ -130,7 +133,7 @@ describe('项目列表的卡片', () => {
       summary({ id: 'kv', name: 'KV cache 量化', priority: 'p2', lastProgress: '2026-10-09' }),
     ]
     await act(async () => root.render(<MessagesProvider><Projects /></MessagesProvider>))
-    const afterName = (id: string) => host.querySelector(`[data-proj="${id}"] .pp-h > .research-object-card-open`)!.nextElementSibling!
+    const afterName = (id: string) => host.querySelector(`[data-proj="${id}"] .pp-h > .project-name:has(> .research-object-card-open)`)!.nextElementSibling!
     expect([afterName('spec').className, afterName('spec').textContent]).toEqual(['tag tag--label tag--warn', '已 10 天无推进'])
     expect(afterName('kv').className).toBe('dd')
     expect(host.querySelectorAll('.project-card-alert')).toHaveLength(0)
@@ -169,7 +172,7 @@ describe('Project list', () => {
       id: 'draft', name: 'draft 效率', status: '搁置', priority: 'p1', topic: '推理', focus: '等算力',
     })]
     await act(async () => root.render(<MessagesProvider><Projects /></MessagesProvider>))
-    const open = host.querySelector<HTMLElement>('.prow[data-proj="draft"]')!.firstElementChild as HTMLElement
+    const open = host.querySelector<HTMLElement>('.prow[data-proj="draft"] > .project-name')!.firstElementChild as HTMLElement
     expect(open.tagName).toBe('BUTTON')
     expect(open.textContent).toContain('draft 效率')
     act(() => open.click())
@@ -258,6 +261,46 @@ describe('项目的排序', () => {
     ;(await reorder()).mockClear()
     await act(async () => { open('b').dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', altKey: true, bubbles: true })) })
     expect(await reorder()).not.toHaveBeenCalled()
+  })
+})
+
+describe('项目改名', () => {
+  const type = (input: HTMLInputElement, value: string) => act(() => {
+    Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')!.set!.call(input, value)
+    input.dispatchEvent(new Event('input', { bubbles: true }))
+  })
+  const rename = async (id: string) => {
+    const dots = host.querySelector<HTMLElement>(`[data-proj="${id}"] .dots`)!
+    await act(async () => { dots.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, button: 0 })) })
+    const item = [...document.querySelectorAll<HTMLElement>('[role="menu"] [role="menuitem"]')].find((held) => held.textContent === '重命名')!
+    await act(async () => { item.click() })
+    // The menu hands focus over a timer after it closes; the field opens then.
+    await vi.waitFor(() => expect(host.querySelector(`[data-proj="${id}"] .metadata-input`)).not.toBeNull())
+  }
+
+  it('「更多」菜单的重命名合上菜单,把卡片和行上的名字就地变成同一种就地输入框;回车写回,Esc 收起不写', async () => {
+    api.projects = [summary({ id: 'a', name: '甲', status: '进行中' }), summary({ id: 'c', name: '丙', status: '搁置' })]
+    await act(async () => root.render(<MessagesProvider><DraftsProvider><Projects /></DraftsProvider></MessagesProvider>))
+    const update = vi.mocked((await import('../ipc.js')).project.update)
+    update.mockClear()
+    for (const [id, name] of [['a', '甲'], ['c', '丙']] as const) {
+      await rename(id)
+      const input = host.querySelector<HTMLInputElement>(`[data-proj="${id}"] .metadata-input`)!
+      expect([document.querySelector('[role="menu"]'), document.querySelector('.short-text-editor')]).toEqual([null, null])
+      expect([input.value, input.classList.contains('form-control-inline'), document.activeElement]).toEqual([name, true, input])
+      type(input, `${name}二`)
+      await act(async () => {
+        input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
+        await Promise.resolve()
+      })
+      expect(update).toHaveBeenLastCalledWith(id, { name: `${name}二` })
+      expect(host.querySelector(`[data-proj="${id}"] .metadata-input`)).toBeNull()
+    }
+    await rename('a')
+    const input = host.querySelector<HTMLInputElement>('[data-proj="a"] .metadata-input')!
+    type(input, '不要的名字')
+    act(() => { input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })) })
+    expect([update.mock.calls.length, host.querySelector('[data-proj="a"] .metadata-input')]).toEqual([2, null])
   })
 })
 

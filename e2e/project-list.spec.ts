@@ -183,8 +183,8 @@ test('新建一个项目,重命名、改状态、删掉,再从垃圾桶恢复', 
   await card.hover()
   await card.locator('.dots').click()
   await win.locator('.ctxmenu .mi', { hasText: '重命名' }).click()
-  await win.locator('.ctxmenu .mi-in input').fill(RENAMED_PROJECT)
-  await win.locator('.ctxmenu .mi-in input').press('Enter')
+  await card.locator('.metadata-input').fill(RENAMED_PROJECT)
+  await card.locator('.metadata-input').press('Enter')
   await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已重命名')
   await expect(card.locator('.project-identity-name')).toHaveText(RENAMED_PROJECT)
 
@@ -319,12 +319,12 @@ async function typeKey(win: Page, ch: string): Promise<void> {
   await cdp.detach()
 }
 
-test('项目菜单是真菜单;重命名框里打菜单项首字、方向键、Home/End、空格都进输入框,焦点不跳,Esc 取消、回车提交照旧', async ({ win }) => {
+test('项目菜单是真菜单;重命名合上菜单,把名字就地变成输入框:打菜单项首字、方向键、Home/End、空格都进输入框,焦点不跳,Esc 取消、回车提交照旧', async ({ win }) => {
   test.slow()
   await gotoList(win)
   const card = shown(win).locator('[data-proj="draft"]')
   const menu = win.locator('[role="menu"]')
-  const input = menu.locator('.mi-in input')
+  const input = card.locator('.metadata-input')
 
   await card.hover()
   await expect(card.locator('.dots')).toHaveAttribute('aria-haspopup', 'menu')
@@ -334,21 +334,20 @@ test('项目菜单是真菜单;重命名框里打菜单项首字、方向键、H
   await expect(menu.locator('[role="menuitemradio"][aria-checked="true"]')).toHaveText(ACTIVE)
 
   await menu.locator('[role="menuitem"]', { hasText: '重命名' }).click()
+  await expect(menu).toHaveCount(0)
   await expect(input).toBeFocused()
+  await expect(input).toHaveValue('draft 效率')
   await input.fill('')
   // The first character of each of the seven menu items: Rename, Move up, Move down, Active, Shelved, Finished, Delete.
   for (const ch of ['重', '上', '下', '进', '搁', '已', '删']) await typeKey(win, ch)
-  // If typeahead takes focus on a key, it moves it in a zero-delay setTimeout. Timers with the same delay
+  // If typeahead took focus on a key, it would move it in a zero-delay setTimeout. Timers with the same delay
   // fire in queue order, so waiting one zero-delay macrotask lets any scheduled focus move run first.
   await win.evaluate(() => new Promise<void>((r) => setTimeout(r, 0)))
-  // Assert here: the next press focuses the input first, which would hide whether focus had moved.
   await expect(input).toBeFocused()
   await input.press('Space')
   await input.press('a')
   await expect(input).toHaveValue('重上下进搁已删 a')
-  await expect(input).toBeFocused()
-  // Arrow keys and Home/End only move the caret in the input: Home then x, one right then y, End then z;
-  // Tab does not move focus out of the menu.
+  // Arrow keys and Home/End only move the caret in the input: Home then x, one right then y, End then z.
   await input.press('ArrowDown')
   await input.press('ArrowUp')
   await input.press('Home')
@@ -357,15 +356,12 @@ test('项目菜单是真菜单;重命名框里打菜单项首字、方向键、H
   await input.press('y')
   await input.press('End')
   await input.press('z')
-  // Same reason: assert before press('Tab'), which would otherwise focus the input again first.
-  await expect(input).toBeFocused()
-  await input.press('Tab')
   await expect(input).toHaveValue('x重y上下进搁已删 az')
   await expect(input).toBeFocused()
 
-  // Esc cancels: the menu closes and the name is unchanged.
+  // Esc cancels: the field closes and the name is unchanged.
   await input.press('Escape')
-  await expect(menu).toHaveCount(0)
+  await expect(input).toHaveCount(0)
   await expect(card.locator('.project-identity-name')).toHaveText('draft 效率')
   expect((await listProjects(win)).find((p) => p.id === 'draft')?.name).toBe('draft 效率')
 

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import type { DragEvent as ReactDragEvent, ReactNode, RefObject } from 'react'
+import type { DragEvent as ReactDragEvent, ReactNode } from 'react'
 import type {
   Facet, ListParams, PaperCell, PaperColumn, PaperColumns, PaperRow, ReadState, RecordedChange, SortDirection,
   SortKey,
@@ -22,11 +22,10 @@ import { PaperMetadata, PaperTitleField, RatingStars, ReadStatePicker, readState
 import { PaperTopics } from '../PaperTopics.js'
 import { PaperReadingSummary } from './PaperReadingSummary.js'
 import { FieldRow, FormInput } from '../FormControls.js'
+import { InlineField } from '../InlineField.js'
 import { SearchField } from '../ClearableInput.js'
 import { PageBody, PageError, PageHeader, PageShell, PageTitle, PageToolbar } from '../PageShell.js'
 import { useDrafts, useKeptTargets } from '../../hooks/useDrafts.js'
-import { NO_TRIGGERS } from '../../hooks/useOnLeave.js'
-import { useInlineDraft } from '../../hooks/useInlineDraft.js'
 import { useUndo } from '../../hooks/useUndo.js'
 import { useJumpOrigin } from '../../hooks/useJumpOrigin.js'
 import { useScreenLoad } from '../../hooks/useScreenLoad.js'
@@ -226,39 +225,6 @@ function GroupValuePicker({ current, facets, name, onPick }: {
 function opensPaperFrom(target: EventTarget | null): boolean {
   return !(target instanceof Element)
     || target.closest('button:not(.pt-open), input, select, textarea, [contenteditable="true"]') === null
-}
-
-/**
- * In-place editing of a text cell: Enter, a press outside `cell`, or focus leaving it hands the
- * input's text to `onSave`; Esc calls `onCancel` without writing the typed text. `onSave` returns
- * whether this edit is finished.
- */
-function TextCellEdit({ cell, initial, keep, onSave, onCancel }: {
-  cell: RefObject<HTMLTableCellElement | null>
-  initial: string
-  /** Keeps what is typed as a draft under `target` of `scope`, which the input starts from; closing drops it. */
-  keep: { scope: readonly string[]; target: string }
-  onSave: (value: string) => boolean | Promise<boolean>
-  onCancel: () => void
-}) {
-  const input = useRef<HTMLInputElement>(null)
-  const kept = useDrafts<string>(keep.scope)
-  const draft = useInlineDraft({
-    row: cell, triggers: NO_TRIGGERS, onCancel, kept: { drafts: kept, target: keep.target },
-    onSubmit: () => onSave(input.current!.value),
-  })
-  return (
-    <FormInput
-      appearance="inline" className="celledit paper-text-cell-input"
-      ref={input}
-      {...draft.inputProps}
-      onInput={(event) => {
-        draft.inputProps.onInput()
-        kept.set(keep.target, event.currentTarget.value)
-      }}
-      defaultValue={kept.get(keep.target) ?? initial}
-    />
-  )
 }
 
 /**
@@ -988,12 +954,12 @@ export function PaperTable() {
     }
     if (column.type === 'text') {
       return (
-        <TextCellEdit
-          cell={editingTd} initial={values[0] ?? ''} keep={{ scope: ['paper', p.id], target: `cell:${column.key}` }}
+        <InlineField
+          label={column.label} value={values[0] ?? ''} keep={{ scope: ['paper', p.id], target: `cell:${column.key}` }}
           onSave={(value) => holdCellSave(saveCell(p, column.key, value))}
           // Another cell may have been clicked before the write came back; close this cell only if it
           // is still the one being edited.
-          onCancel={() => setEditingCell((cur) => (cur !== null && cur.id === p.id && cur.key === column.key ? null : cur))}
+          cell={{ ref: editingTd, onClose: () => setEditingCell((cur) => (cur !== null && cur.id === p.id && cur.key === column.key ? null : cur)) }}
         />
       )
     }
@@ -1032,12 +998,13 @@ export function PaperTable() {
         >
           {editing
             ? (
-              <TextCellEdit
-                cell={editingTd} initial={p.remark ?? ''} keep={{ scope: ['paper', p.id], target: `cell:${k}` }}
+              <InlineField
+                label={names.columns.remark} value={p.remark ?? ''} keep={{ scope: ['paper', p.id], target: `cell:${k}` }}
                 onSave={(value) => holdCellSave(saveRemark(p, value))}
-                onCancel={() => setEditingCell((held) => (
-                  held !== null && held.id === p.id && held.key === k ? null : held
-                ))}
+                cell={{
+                  ref: editingTd,
+                  onClose: () => setEditingCell((held) => (held !== null && held.id === p.id && held.key === k ? null : held)),
+                }}
               />
             )
             : <span className="ci">{p.remark ?? ''}</span>}

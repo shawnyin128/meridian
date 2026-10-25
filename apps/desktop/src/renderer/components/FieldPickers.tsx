@@ -13,6 +13,7 @@ import { ToggleGroup, ToggleItem, useToolbarItem } from './Toolbar.js'
 import { FadeText } from './FadeText.js'
 import { Button } from './Button.js'
 import './FieldPickers.css'
+import './InlineField.css'
 
 const PRIORITIES: Task['priority'][] = ['p0', 'p1', 'p2']
 

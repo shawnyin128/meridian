@@ -200,8 +200,7 @@ function PlanNameCell({ value, label, keep, onSave, rest }: {
 }) {
   return (
     <InlineField
-      label={label} value={value} display={<FadeText>{value}</FadeText>} wrapperClassName="plan-name-cell" keep={keep}
-      buttonClassName="plan-cell plan-name" inputClassName="plan-name-input"
+      label={label} value={value} display={<FadeText>{value}</FadeText>} className="plan-name-cell" keep={keep}
       normalize={(next) => next.trim()} validate={(next) => next !== ''} onSave={onSave}
       {...(rest === undefined ? {} : { rest })}
     />
@@ -219,7 +218,7 @@ function TaskNameCell({ projectId, task, onSave }: { projectId: string; task: Ta
       value={task.title} label={m.project.plan.taskNamePlaceholder} onSave={(title) => onSave({ title })}
       keep={{ scope: ['project', projectId, 'task', task.id], target: 'name' }}
       rest={(edit) => (
-        <>
+        <span className="task-name">
           <ToolbarButton className="plan-cell plan-name plan-open"><FadeText>{task.title}</FadeText></ToolbarButton>
           <RowActions>
             <IconButton
@@ -227,7 +226,7 @@ function TaskNameCell({ projectId, task, onSave }: { projectId: string; task: Ta
               className="plan-rename" onClick={(event) => { event.stopPropagation(); edit() }}
             ><IconPencil /></IconButton>
           </RowActions>
-        </>
+        </span>
       )}
     />
   )

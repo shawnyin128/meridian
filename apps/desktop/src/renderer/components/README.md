@@ -12,7 +12,13 @@ Current shared contracts:
 - `timeline/MilestoneEditor`: the one milestone editor of both boards. The milestone lane opens it to
   name a new milestone and a diamond to rename or delete one, at the click; Enter or Space on a lane
   opens it on today's date.
-- `InlineField`: one-field-at-a-time editing, validation, cancel/save behavior, and presentation hooks.
+- `InlineField`: the one in-place edit of a value, a name included: the rail values, the paper title and
+  metadata, the plan's task and milestone names, a project's name on its card or row, and, with `cell`, a
+  paper table text cell that its table opens. At rest the value's hover fill reaches past its text by the
+  inline field's padding, so the field's text starts where the value's was; Enter, focus leaving or a press
+  outside saves, Escape cancels, and what is typed is kept as a draft. A rename starts from a click on the
+  name, or, where the name's click opens its item, from the item's rename command (the … menu's 重命名, a
+  task's pencil); it never opens a popover.
 - `Button`: the one text button: `primary`, `secondary` or `ghost`, in the `neutral` or `danger` tone,
   `regular` (30px) in the page header bar and at dialog, popover and form feet and `compact` (24px) in
   section, group and panel headings, inside rows and cards, and in toolbars, with an optional glyph before
@@ -58,7 +64,8 @@ Current shared contracts:
   ContextMenu key and Shift+F10. Radix owns placement at the point, roving focus with the arrow, Home
   and End keys, outside/Escape dismissal, and focus return.
 - `FloatingTextEditor`: positioned short-text create/rename behavior, including async-dismiss locking
-  and editor identity when the anchor changes.
+  and editor identity when the anchor changes. Only the timeline's milestones use it: a milestone named or
+  renamed at a point on the timeline has no text of its own to edit in place.
 - `ModalDialog`: the shared triggerless modal shell, overlay, accessibility defaults, and focus return.
   It owns the one dialog surface: the `confirm`, `form` and `wide` size steps on `--raised`, centring,
   a height cap with a scrolling body and pinned `actions`, the title role (`title` or `ModalTitle`),
@@ -71,7 +78,7 @@ Current shared contracts:
   when the confirmation has one, a short `state` beside the buttons (a `Tag`, such as its cost). The
   trigger opens it, or, when several ways lead to the same confirmation, the host holds it open and focus
   returns to where it was.
-- `ShortTextEditor`: the shared create/rename popover body, including fixed input geometry, focus,
+- `ShortTextEditor`: the body of `FloatingTextEditor`, including fixed input geometry, focus,
   Enter/Escape, async acceptance, and optional deletion.
 - `StructuredList`: list shell and actionable/static row semantics; routes only supply columns and cells.
   A row that holds controls of its own is `composite`: it stays a div that forwards pointer clicks, and
