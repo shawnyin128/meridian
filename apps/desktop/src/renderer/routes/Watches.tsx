@@ -538,10 +538,10 @@ export function WatchSettings() {
                         <strong>{m.watches.topicSuggestions}</strong>
                         {suggestions.topics.length > 1
                           ? (
-                            <Button
-                              size="compact" variant="ghost" disabled={addingSuggestion !== null}
+                            <AddAction
+                              size="compact" disabled={addingSuggestion !== null}
                               onClick={() => { void addAllSuggestedTopics() }}
-                            >{m.watches.addAllTopics}</Button>
+                            >{m.watches.addAllTopics}</AddAction>
                           )
                           : null}
                       </div>
@@ -552,10 +552,10 @@ export function WatchSettings() {
                               <FadeText className="nm" label={item.name}>{item.name}</FadeText>
                               <FadeText>{m.watches.relatedPapers(item.relatedPapers)}</FadeText>
                             </div>
-                            <Button
-                              size="compact" variant="ghost" disabled={addingSuggestion !== null}
+                            <AddAction
+                              size="compact" disabled={addingSuggestion !== null}
                               onClick={() => { void addSuggestedTopic(item.name) }}
-                            >{m.watches.addAction}</Button>
+                            >{m.watches.addAction}</AddAction>
                           </StructuredRow>
                         ))}
                       </StructuredList>
@@ -575,10 +575,10 @@ export function WatchSettings() {
                                 ? m.watches.suggestedAuthorInfo(item.relatedPapers, item.hIndex, item.citationCount)
                                 : m.watches.relatedPapers(item.relatedPapers)}</FadeText>
                             </div>
-                            <Button
-                              size="compact" variant="ghost" disabled={addingSuggestion !== null}
+                            <AddAction
+                              size="compact" disabled={addingSuggestion !== null}
                               onClick={() => { void addSuggestedAuthor(item) }}
-                            >{m.watches.addAction}</Button>
+                            >{m.watches.addAction}</AddAction>
                           </StructuredRow>
                         ))}
                       </StructuredList>

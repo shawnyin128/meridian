@@ -117,6 +117,7 @@ const SLOT_PROPS: Record<string, Record<string, Slot>> = {
   TimelineBoard: { headerAction: 'timeline toolbar' },
   ModalDialog: { actions: 'dialog actions' },
   SectHead: { extra: 'sidebar heading' },
+  NodeAssignment: { create: 'section heading' },
 }
 
 /** Elements whose children sit in one slot: components by name, plain elements by a class. */
@@ -158,6 +159,8 @@ const LABELLED: [RegExp, string][] = [
   [/^(r\.decline|m\.wiki\.ingest\.discardProposal)$/, 'decline a proposal'],
   [/^r\.apply$|\bm\.wiki\.ingest\.confirm\b/, 'apply a proposal'],
   [/^m\.wiki\.(queue|tidy)\.entry$/, 'open pending work'],
+  // A text button that creates or adds is an AddAction's job.
+  [/^m\.[\w.]+\.(add|create)([A-Z]\w*)?$/, 'add'],
 ]
 
 type Look = { operation: string; size: string; variant: string; label?: string }
@@ -178,6 +181,10 @@ const PLACES: Record<string, Place[]> = {
     { slot: 'table header', size: 'compact', variant: 'icon', scope: 'a table adds a column to itself' },
     { slot: 'inline', size: 'chip', variant: 'icon', scope: 'a field adds a value after its chips' },
     { slot: 'sidebar heading', size: 'compact', variant: 'icon', scope: 'the sidebar starts a chat in its chats group' },
+    {
+      slot: 'inline', size: 'compact', variant: 'labelled',
+      scope: 'a suggestion row adds its suggestion, and the heading of a suggestion group adds all of them',
+    },
   ],
   'view switch': [
     { slot: 'page toolbar', size: 'md', variant: 'plain' },
