@@ -136,16 +136,18 @@ async function step(win, [kind, target, arg]) {
  * Walks `states` on a fresh copy of `library` with `app`: one App run per batch, each under the
  * Electron lock and within the run budget. Every state starts at 1440x900 in the light theme with
  * its steps done; then `visit(state, context)` runs with `context = { win, electron }`, returns
- * that state's result and leaves 1440x900 light, and the state's `after` steps run. Returns
+ * that state's result and leaves 1440x900 light, and the state's `after` steps run. `finish`, when
+ * given, runs with the same context after the last batch's states, in that App run. Returns
  * `{ results, failures }`: the result of every state reached, and the state and reason of every
  * one that was not. Throws when a batch runs over its budget.
  */
-export async function walk({ app, library, name, states, visit }) {
+export async function walk({ app, library, name, states, visit, finish }) {
   const copy = copyLibrary(library, name)
   const results = []
   const failures = []
   try {
-    for (const batch of [...new Set(states.map((state) => state.batch))]) {
+    const batches = [...new Set(states.map((state) => state.batch))]
+    for (const batch of batches) {
       const todo = states.filter((state) => state.batch === batch)
       await withLock(() => session(copy, app, {}, async (_call, win, electron) => {
         const started = Date.now()
@@ -175,6 +177,7 @@ export async function walk({ app, library, name, states, visit }) {
               await setTheme(win, 'light')
             }
           }
+          if (finish && batch === batches.at(-1)) await finish({ win, electron })
           console.log(`batch ${batch}: ${todo.length} states in ${Math.round((Date.now() - started) / 1000)} s`)
         } finally {
           clearTimeout(watchdog)

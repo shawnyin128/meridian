@@ -1,9 +1,11 @@
 # Component review
 
-Scripts for the v0.0.20.0 componentization reviews (#558, catalog section 6). `measure`
+Two scripts for the v0.0.20.0 componentization reviews (#558, catalog section 6). `measure`
 re-measures every pattern of the component inventory and reports how far each one drifts.
+`sheets` puts every look of one component, from every screen, side by side for review in light
+and dark.
 
-They launch the App the quiet way the review brief requires:
+Both scripts launch the App the quiet way the review brief requires:
 - an isolated window, `--force-color-profile=srgb`, and the profile of a fresh library copy;
 - the copy is made with `ditto` from `outputs/test-library/v0.0.19.0`, with its `Singleton*` files
   deleted and then relocated, under `outputs/review/v0.0.20.0/components/libs/`;
@@ -66,6 +68,24 @@ The inventory brief leaves out some patterns. They get four more classes:
 
 Colours are named by the tokens of `shell/tokens.css` they resolve to. When several tokens share a
 value, all of them are listed, for example `--ink|--on-selected`.
+
+## sheets
+
+```bash
+node scripts/component-review/sheets.mjs <component>... [--app <app>] [--library <dir>] [--out <dir>]
+```
+
+`<component>` is `Row/Item`, `Card`, `SectionHeading`, `Button` or `EmptyState`, or the name of any
+pattern in `patterns.mjs`. Several components can share one walk. The script writes
+`<component>-light.png` and `<component>-dark.png` at 1440×900 to
+`outputs/review/v0.0.20.0/components/sheets/`, with `/` in the name written as `-`. A sheet taller
+than Chromium's screenshot limit continues in `-light-2.png` and so on.
+
+The sheet groups the instances by screen. It shows one crop for every distinct look of each
+selector entry on a screen. A look is a set of measured values, so identical instances share one
+crop. Each crop keeps 20px of context, and a dashed frame marks the instance. Its caption gives
+the state, the selector entry, how many instances share the look (`×N`) and the measured values.
+The sheet is drawn in the App's own window at the end of the last batch.
 
 ## The maps
 
