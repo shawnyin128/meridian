@@ -273,7 +273,7 @@ describe('WikiClaims', () => {
   it('修订在结论自己那一行就地改写:正文换成输入框,回车发一条 reviseClaim,通知写已修订,不弹对话框', async () => {
     openMenu('plain')
     // The draft opens once the menu has handed focus back, which Radix does in a 0 ms timeout.
-    await act(async () => { menuItem('修订').click(); await new Promise((done) => setTimeout(done, 0)) })
+    await act(async () => { menuItem('修订…').click(); await new Promise((done) => setTimeout(done, 0)) })
     expectNoDialog()
     const row = host.querySelector<HTMLElement>('[data-claim="plain"]')!
     expect(row.contains(draft())).toBe(true)
@@ -291,7 +291,7 @@ describe('WikiClaims', () => {
 
   it('标记冲突在那条结论下面就地打开草稿:与哪一条冲突、说明两栏,回车发一条 markConflict,通知写已标记冲突,不弹对话框', async () => {
     openMenu('plain')
-    await act(async () => { menuItem('标记冲突').click(); await new Promise((done) => setTimeout(done, 0)) })
+    await act(async () => { menuItem('标记冲突…').click(); await new Promise((done) => setTimeout(done, 0)) })
     expectNoDialog()
     const lines = host.querySelector<HTMLElement>('[data-claim="plain"] .wkclaim-lines')!
     expect(lines.lastElementChild!.contains(draft())).toBe(true)
@@ -381,7 +381,7 @@ describe('WikiClaims', () => {
 
   it('修订到一半那条结论从页上没了,它的草稿就丢掉;结论回来时也不带回草稿', async () => {
     openMenu('plain')
-    await act(async () => { menuItem('修订').click(); await new Promise((done) => setTimeout(done, 0)) })
+    await act(async () => { menuItem('修订…').click(); await new Promise((done) => setTimeout(done, 0)) })
     act(() => setValue(draft()!.querySelector('input')!, '改到一半'))
     const show = (page: typeof PAGE) => act(async () => {
       root!.render(<MessagesProvider><WikiClaims page={page} pending={false} links={links} onApply={onApply} /></MessagesProvider>)

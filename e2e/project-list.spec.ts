@@ -329,7 +329,7 @@ test('项目菜单是真菜单;重命名框里打菜单项首字、方向键、H
   await card.hover()
   await expect(card.locator('.dots')).toHaveAttribute('aria-haspopup', 'menu')
   await card.locator('.dots').click()
-  await expect(menu.locator('[role="menuitem"]')).toHaveText(['重命名', '上移', '下移', '删除'])
+  await expect(menu.locator('[role="menuitem"]')).toHaveText(['重命名…', '上移', '下移', '删除'])
   await expect(menu.locator('[role="menuitemradio"]')).toHaveText([...PROJECT_STATUSES])
   await expect(menu.locator('[role="menuitemradio"][aria-checked="true"]')).toHaveText(ACTIVE)
 

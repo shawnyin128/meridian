@@ -50,6 +50,20 @@ describe('ConfirmDialog', () => {
     expect(confirm).toHaveBeenCalledTimes(1)
   })
 
+  it('without a consequence the title alone carries the dialog: no body under it and no description', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    act(() => root!.render(
+      <MessagesProvider>
+        <ConfirmDialog trigger={<button>放弃</button>} title="放弃未保存的修改？" onConfirm={vi.fn()} />
+      </MessagesProvider>,
+    ))
+    act(() => host.querySelector<HTMLButtonElement>('button')!.click())
+    const dialog = document.querySelector<HTMLElement>('[role="alertdialog"]')!
+    expect([dialog.querySelector('.modal-title')!.textContent, dialog.querySelector('.modal-body'), dialog.hasAttribute('aria-describedby'),
+      warn.mock.calls.some(([message]) => String(message).includes('Description'))]).toEqual(['放弃未保存的修改？', null, false, false])
+    warn.mockRestore()
+  })
+
   it('confirms an irreversible loss with the solid danger button and anything else with the primary button', () => {
     const confirmOf = (tone: 'danger' | 'primary') => {
       act(() => root!.render(

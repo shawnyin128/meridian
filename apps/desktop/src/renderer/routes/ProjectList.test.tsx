@@ -231,7 +231,7 @@ describe('项目的排序', () => {
     await act(async () => { dots.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, button: 0 })) })
     const items = [...document.querySelectorAll<HTMLElement>('[role="menu"] [role="menuitem"]')]
     expect(items.map((item) => [item.textContent, item.hasAttribute('data-disabled')]).slice(0, 3))
-      .toEqual([['重命名', false], ['上移', true], ['下移', false]])
+      .toEqual([['重命名…', false], ['上移', true], ['下移', false]])
     await act(async () => { items[2]!.click() })
     expect(await reorder()).toHaveBeenCalledWith(['b', 'a', 'c'])
   })

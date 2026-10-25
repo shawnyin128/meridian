@@ -819,49 +819,19 @@ components/settings/ExtensionSettings.css:13: .extension-command-code { overflow
 components/settings/ExtensionSettings.css:14: .extension-command-code code { font }
 components/settings/ExtensionSettings.css:15: .extension-tutorial { margin-top }
 components/settings/ExtensionSettings.css:15: .extension-tutorial { color }
-components/settings/ExtensionSettings.css:16: .extension-tutorial-steps { margin }
-components/settings/ExtensionSettings.css:16: .extension-tutorial-steps { padding }
-components/settings/ExtensionSettings.css:17: .extension-tutorial-steps { list-style }
-components/settings/ExtensionSettings.css:18: .extension-tutorial-steps li { padding }
-components/settings/ExtensionSettings.css:18: .extension-tutorial-steps li { border-radius }
-components/settings/ExtensionSettings.css:18: .extension-tutorial-steps li { background }
-components/settings/ExtensionSettings.css:19: .extension-tutorial-steps li>span { flex }
-components/settings/ExtensionSettings.css:19: .extension-tutorial-steps li>span { width }
-components/settings/ExtensionSettings.css:19: .extension-tutorial-steps li>span { height }
-components/settings/ExtensionSettings.css:19: .extension-tutorial-steps li>span { border-radius }
-components/settings/ExtensionSettings.css:20: .extension-tutorial-steps li>span { background }
-components/settings/ExtensionSettings.css:20: .extension-tutorial-steps li>span { color }
-components/settings/ExtensionSettings.css:20: .extension-tutorial-steps li>span { font-size }
-components/settings/ExtensionSettings.css:20: .extension-tutorial-steps li>span { font-weight }
-components/settings/ExtensionSettings.css:21: .extension-tutorial-steps strong { display }
-components/settings/ExtensionSettings.css:21: .extension-prompt strong { display }
-components/settings/ExtensionSettings.css:21: .extension-tutorial-steps strong { color }
-components/settings/ExtensionSettings.css:21: .extension-prompt strong { color }
-components/settings/ExtensionSettings.css:21: .extension-tutorial-steps strong { font-size }
-components/settings/ExtensionSettings.css:21: .extension-prompt strong { font-size }
-components/settings/ExtensionSettings.css:21: .extension-tutorial-steps strong { font-weight }
-components/settings/ExtensionSettings.css:21: .extension-prompt strong { font-weight }
-components/settings/ExtensionSettings.css:22: .extension-prompt p { margin }
-components/settings/ExtensionSettings.css:22: .extension-prompt p { color }
-components/settings/ExtensionSettings.css:22: .extension-prompt p { font-size }
-components/settings/ExtensionSettings.css:22: .extension-prompt p { line-height }
-components/settings/ExtensionSettings.css:23: .extension-tutorial h4 { margin }
-components/settings/ExtensionSettings.css:23: .extension-tutorial h4 { color }
-components/settings/ExtensionSettings.css:23: .extension-tutorial h4 { font-size }
-components/settings/ExtensionSettings.css:23: .extension-tutorial h4 { font-weight }
-components/settings/ExtensionSettings.css:25: .extension-prompt-group h5 { margin }
-components/settings/ExtensionSettings.css:25: .extension-prompt-group h5 { color }
-components/settings/ExtensionSettings.css:25: .extension-prompt-group h5 { font-size }
-components/settings/ExtensionSettings.css:25: .extension-prompt-group h5 { font-weight }
-components/settings/ExtensionSettings.css:26: .extension-prompt-list { border-top }
-components/settings/ExtensionSettings.css:26: .extension-prompt-list { border-bottom }
-components/settings/ExtensionSettings.css:27: .extension-prompt { padding }
-components/settings/ExtensionSettings.css:28: .extension-prompt+.extension-prompt { border-top }
-components/settings/ExtensionSettings.css:30: .extension-healthy-list { margin }
-components/settings/ExtensionSettings.css:30: .extension-healthy-list { padding-left }
-components/settings/ExtensionSettings.css:30: .extension-healthy-list { color }
-components/settings/ExtensionSettings.css:30: .extension-healthy-list { font-size }
-components/settings/ExtensionSettings.css:30: .extension-healthy-list { line-height }
+components/settings/ExtensionSettings.css:16: .extension-prompt strong { color }
+components/settings/ExtensionSettings.css:16: .extension-prompt strong { font-size }
+components/settings/ExtensionSettings.css:16: .extension-prompt strong { font-weight }
+components/settings/ExtensionSettings.css:17: .extension-prompt p { margin }
+components/settings/ExtensionSettings.css:17: .extension-prompt p { color }
+components/settings/ExtensionSettings.css:17: .extension-prompt p { font-size }
+components/settings/ExtensionSettings.css:17: .extension-prompt p { line-height }
+components/settings/ExtensionSettings.css:19: .extension-prompt-group h5 { margin }
+components/settings/ExtensionSettings.css:19: .extension-prompt-group h5 { color }
+components/settings/ExtensionSettings.css:19: .extension-prompt-group h5 { font-size }
+components/settings/ExtensionSettings.css:19: .extension-prompt-group h5 { font-weight }
+components/settings/ExtensionSettings.css:20: .extension-prompt { padding }
+components/settings/ExtensionSettings.css:21: .extension-prompt+.extension-prompt { border-top }
 components/settings/ServiceCard.css:2: .service-status-head { padding-bottom }
 components/settings/ServiceCard.css:2: .service-status-head { border-bottom }
 components/settings/ServiceCard.css:3: .service-status-head strong { font-size }

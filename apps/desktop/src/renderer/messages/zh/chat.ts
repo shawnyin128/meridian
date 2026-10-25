@@ -18,6 +18,5 @@ export const chat = {
   paperChatWidth: '论文对话宽度',
   empty: '还没有对话',
   askAboutPaper: '向当前论文提问',
-  paperComposerPlaceholder: '问这篇论文，或记录相关想法…',
   actionDone: '已记入科研记录',
 } satisfies Record<string, unknown>

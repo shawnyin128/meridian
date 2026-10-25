@@ -8,7 +8,7 @@ export const watches = {
   paused: '已暂停',
   resume: '恢复',
   confirmRemove: (name: string) => `移除「${name}」？`,
-  confirmRemoveDescription: '它带来的推送会一起清掉，且不能撤销。',
+  confirmRemoveDescription: '它送来的推送一并清掉',
   confirmRemoveLabel: '确认移除',
   authorNamePlaceholder: '作者姓名',
   currentIdentity: (affiliations: string) => `当前身份：${affiliations}`,

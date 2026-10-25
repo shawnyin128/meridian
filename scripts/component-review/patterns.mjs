@@ -151,7 +151,7 @@ export const PATTERNS = {
       entry('shared:PaperMetadata', '.paper-meta-list'),
       entry('shared:ProposalRows', '.proposal-rows'),
       entry('hand:shell/CommandPalette.tsx', '.cmdk-list'),
-      entry('hand:components/settings/ExtensionSettings.tsx', '.extension-prompt-list'),
+      entry('hand:components/settings/ExtensionSettings.tsx', '.extension-prompt-group'),
       entry('hand:components/settings/DiscoverySettings.tsx', '.direction-project'),
       entry('hand:routes/Feed.tsx', '.brief'),
       entry('hand:routes/Watches.tsx', '.author-matches'),

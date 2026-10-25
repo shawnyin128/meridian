@@ -44,11 +44,11 @@ export const settings = {
       pick: '选取颜色',
       hex: '色值',
       changedOutside: '文件已在 App 外修改',
+      edit: '编辑…',
       manage: (name: string) => `管理「${name}」`,
       deleteTitle: (name: string) => `删除外观主题「${name}」？`,
-      deleteDescription: '它的主题文件会被删除，不能恢复。',
+      deleteDescription: '主题文件不能恢复',
       leaveTitle: '放弃未保存的修改？',
-      leaveDescription: '离开后这些修改不会保留。',
       leave: '放弃修改',
       modules: {
         ground: '窗口底色', sidebar: '侧栏', card: '卡片', field: '输入框', separator: '分隔线',
@@ -75,13 +75,12 @@ export const settings = {
     },
     rootLabel: '根目录',
     checkingDirectory: '正在检查论文库目录…',
-    chooseAction: '选择论文库根目录',
+    chooseAction: '选择论文库根目录…',
     restartNow: '立即重启',
     pendingNote: '重启后生效',
     resetLabel: '重置论文库',
     resetAction: '重置库…',
     resetTitle: '重置论文库？',
-    resetDescription: '当前论文、Wiki、项目与状态将清空，旧库会自动备份',
     resetting: '正在重置…',
     resetConfirm: '重置并重启',
     backupsHeading: '论文库备份',
@@ -89,7 +88,7 @@ export const settings = {
     backupSwitching: '正在切换…',
     backupDelete: '删除',
     backupDeleteTitle: (label: string) => `删除 ${label} 的备份？`,
-    backupDeleteDescription: '这会永久删除备份文件夹及其中的所有内容。',
+    backupDeleteDescription: '备份文件夹不能恢复',
     backupDeleting: '正在删除…',
     backupDeleted: '备份已删除',
     saved: '论文库位置已保存',
@@ -110,7 +109,7 @@ export const settings = {
       heading: 'Semantic Scholar',
       apply: '申请 key',
       inputLabel: 'Semantic Scholar API Key',
-      placeholder: '粘贴 Semantic Scholar API Key',
+      placeholder: 'API Key',
       stored: (lastFour: string) => `已保存的 Semantic Scholar API Key，末四位 ${lastFour}`,
       connection: {
         connected: '连接成功',
@@ -130,42 +129,35 @@ export const settings = {
     providers: {
       openai: {
         label: 'OpenAI',
-        modelPlaceholder: '输入 OpenAI 模型 ID',
       },
       anthropic: {
         label: 'Anthropic',
-        modelPlaceholder: '输入 Claude 模型 ID',
       },
       'google-gemini': {
         label: 'Google Gemini',
-        modelPlaceholder: '输入 Gemini 模型 ID',
       },
       'openai-compatible': {
         label: 'OpenAI 兼容 API',
-        modelPlaceholder: '输入服务提供的模型 ID',
-        baseUrlPlaceholder: '例如 https://api.example.com/v1',
+        baseUrlPlaceholder: 'https://api.example.com/v1',
       },
     },
     templates: {
       chooseLabel: '连接模板',
       chooseAria: '兼容服务模板',
-      choosePlaceholder: '选择常用服务…',
-      custom: '其他兼容服务（手动配置）',
+      choosePlaceholder: '模板',
+      custom: '其他兼容服务',
       summaryAria: '模板连接信息',
       deepseek: {
-        label: 'DeepSeek（云端）', authenticationLabel: 'API Key', modelPlaceholder: '输入 DeepSeek 模型 ID',
+        label: 'DeepSeek · 云端', authenticationLabel: 'API Key',
       },
       openrouter: {
-        label: 'OpenRouter（云端聚合）', authenticationLabel: 'API Key',
-        modelPlaceholder: '输入 OpenRouter 模型 ID',
+        label: 'OpenRouter · 云端聚合', authenticationLabel: 'API Key',
       },
       ollama: {
-        label: 'Ollama（本地）', authenticationLabel: '无需认证',
-        modelPlaceholder: '输入 Ollama 中已安装的模型 ID',
+        label: 'Ollama · 本地', authenticationLabel: '无需认证',
       },
       'lm-studio': {
-        label: 'LM Studio（本地）', authenticationLabel: '无需认证',
-        modelPlaceholder: '输入 LM Studio 中已加载的模型 ID',
+        label: 'LM Studio · 本地', authenticationLabel: '无需认证',
       },
     },
     fields: {
@@ -184,7 +176,6 @@ export const settings = {
     },
     configured: '已配置',
     notConfigured: '未配置',
-    apiKeyPlaceholder: '输入该服务的 API Key',
     keyStored: (lastFour: string) => `模型 API Key 已保存，末四位 ${lastFour}`,
     clearKeyPending: '将清除 Key',
     clearKey: '清除已保存的 Key',
@@ -245,15 +236,8 @@ export const settings = {
     copyUpdateLabel: (name: string) => `复制 ${name} 更新命令`,
     copyInstallLabel: (name: string) => `复制 ${name} 安装命令`,
     copy: '复制',
-    copied: (name: string) => `${name} 命令已复制`,
     tutorial: {
       heading: '在 Coding Agent 中使用 Meridian',
-      steps: [
-        { title: '确认已连接' },
-        { title: '说明目标与范围' },
-        { title: '保留关键决策' },
-      ],
-      examplesHeading: '可直接使用的提示词',
       groups: [
         {
           heading: '初始化项目目录',
@@ -314,14 +298,7 @@ export const settings = {
           ],
         },
       ],
-      healthyHeading: '正常情况下，agent 会',
-      healthy: [
-        '先检查 readiness 或读取最小必要上下文，而不是扫描整个库',
-        '区分来源事实、Wiki 综合、用户想法与本地实验结果',
-        '在写入失败、证据不足或状态冲突时如实报告，不绕过保护规则',
-      ],
-      copyPrompt: '复制提示词',
-      promptCopied: '提示词已复制',
+      copyPromptLabel: (label: string) => `复制提示词：${label}`,
     },
   },
   delivery: {

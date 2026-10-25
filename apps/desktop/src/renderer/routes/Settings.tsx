@@ -213,19 +213,10 @@ export function Settings() {
     }
   }
 
-  const copyExtensionCommand = (name: string, command: string) => {
-    void navigator.clipboard.writeText(command).then(
-      () => notice.success(m.settings.extensions.copied(name)),
-      reportTo('extensions'),
-    )
-  }
-
-  const copyAgentPrompt = (prompt: string) => {
-    void navigator.clipboard.writeText(prompt).then(
-      () => notice.success(m.settings.extensions.tutorial.promptCopied),
-      reportTo('extensions'),
-    )
-  }
+  const copyText = (text: string) => navigator.clipboard.writeText(text).then(() => true, (caught: unknown) => {
+    reportTo('extensions')(caught)
+    return false
+  })
 
   const titles: Record<CategoryKey, string> = {
     appearance: m.settings.appearance.heading,
@@ -309,7 +300,7 @@ export function Settings() {
                   busy={resetting} busyLabel={m.settings.storage.resetting}
                 >{m.settings.storage.resetAction}</Button>
               )}
-              title={m.settings.storage.resetTitle} description={m.settings.storage.resetDescription}
+              title={m.settings.storage.resetTitle}
               confirmLabel={m.settings.storage.resetConfirm}
               onConfirm={() => { void resetLibrary() }}
             />
@@ -377,7 +368,7 @@ export function Settings() {
       <>
         <ExtensionSettings
           statuses={extensionStatus} failed={extensionsError !== null}
-          onCopy={copyExtensionCommand} onCopyPrompt={copyAgentPrompt}
+          onCopy={copyText}
           plugin={pluginVersion === null ? undefined : {
             plugin: pluginVersion,
             checking: checkingPlugin,
@@ -455,7 +446,7 @@ export function Settings() {
             <ThemeEditor theme={editingTheme.theme} onBack={() => requestLeave('back')} onDirtyChange={setThemeDirty} />
             <ConfirmDialog
               open={leaving !== null} onOpenChange={(next) => { if (!next) setLeaving(null) }}
-              title={m.settings.appearance.editor.leaveTitle} description={m.settings.appearance.editor.leaveDescription}
+              title={m.settings.appearance.editor.leaveTitle}
               confirmLabel={m.settings.appearance.editor.leave} onConfirm={() => { if (leaving !== null) leave(leaving) }}
             />
           </>

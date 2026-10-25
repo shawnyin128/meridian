@@ -8,8 +8,9 @@ import { modalSurface } from './ModalDialog.js'
 
 /**
  * One destructive/confirming action shell with shared focus, wording order, and buttons, on the
- * dialog surface's confirmation step. `title` is the short question; `description` is the
- * consequence, on its own line under it. `state` is a short state shown beside the buttons, such as
+ * dialog surface's confirmation step. `title` is the short question; `description`, when given, is
+ * what is lost for good beyond what the title says, on its own line under it; without it the title
+ * alone carries the dialog. `state` is a short state shown beside the buttons, such as
  * what the confirmation costs or why it is disabled. `trigger` opens it; without one, the host opens
  * and closes it through `open` and `onOpenChange`, and closing returns focus to the element that held
  * it when it opened, while that element is still on the page.
@@ -20,7 +21,7 @@ export function ConfirmDialog({
 }: ({ trigger: ReactElement; open?: never; onOpenChange?: never }
   | { trigger?: never; open: boolean; onOpenChange: (open: boolean) => void }) & {
   title: ReactNode
-  description: ReactNode
+  description?: ReactNode
   state?: ReactNode
   confirmLabel?: ReactNode
   cancelLabel?: ReactNode
@@ -46,6 +47,7 @@ export function ConfirmDialog({
         <AlertDialog.Overlay className="scrim" />
         <AlertDialog.Content
           className={modalSurface('confirm')} onEscapeKeyDown={ignoreComposingEscape()}
+          {...(description === undefined ? { 'aria-describedby': undefined } : {})}
           {...(trigger === undefined ? {
             onCloseAutoFocus: (event: Event) => {
               event.preventDefault()
@@ -54,9 +56,11 @@ export function ConfirmDialog({
           } : {})}
         >
           <AlertDialog.Title className="modal-title">{title}</AlertDialog.Title>
-          <div className="modal-body">
-            <AlertDialog.Description className="modal-detail">{description}</AlertDialog.Description>
-          </div>
+          {description === undefined ? null : (
+            <div className="modal-body">
+              <AlertDialog.Description className="modal-detail">{description}</AlertDialog.Description>
+            </div>
+          )}
           <div className="modal-actions">
             {state === undefined ? null : <span className="modal-actions-state">{state}</span>}
             <AlertDialog.Cancel asChild><Button size="regular">{cancel}</Button></AlertDialog.Cancel>

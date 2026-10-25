@@ -10,7 +10,7 @@ export const watches = {
   paused: 'Paused',
   resume: 'Resume',
   confirmRemove: (name: string) => `Remove “${name}”?`,
-  confirmRemoveDescription: 'New papers from this watch will be removed from the inbox. This cannot be undone.',
+  confirmRemoveDescription: 'Its papers in the inbox go too',
   confirmRemoveLabel: 'Remove',
   authorNamePlaceholder: 'Author name',
   currentIdentity: (affiliations: string) => `Current identity: ${affiliations}`,

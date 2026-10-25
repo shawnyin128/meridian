@@ -265,7 +265,6 @@ export function ModelSettings() {
     ? { ...COMPATIBLE_TEMPLATES[compatibleTemplate], ...m.settings.model.templates[compatibleTemplate] }
     : null
   const compatibleTemplatePending = provider === 'openai-compatible' && compatibleTemplate === 'choose'
-  const modelPlaceholder = selectedCompatibleTemplate?.modelPlaceholder ?? selected.modelPlaceholder
   const savedProfile = profileFor(settings, provider, baseUrl)
   const savedKeyAvailable = savedProfile?.apiKeyConfigured === true
   const savedSelection = savedProfile !== undefined
@@ -350,7 +349,7 @@ export function ModelSettings() {
         <>
           <ServiceField label={m.settings.model.fields.modelIdLabel}>
             <FormInput appearance="field" aria-label={m.settings.model.fields.modelIdAria} value={model}
-              placeholder={modelPlaceholder} onChange={(event) => setModel(event.target.value)} />
+              placeholder={m.settings.model.fields.modelIdLabel} onChange={(event) => setModel(event.target.value)} />
           </ServiceField>
           {authentication === 'api-key' ? (
             <ServiceField label={m.settings.model.fields.apiKeyLabel}>
@@ -364,7 +363,7 @@ export function ModelSettings() {
                 <FormInput appearance="field" aria-label={m.settings.model.fields.apiKeyAria} type="password"
                   value={apiKey} autoFocus={editingApiKey}
                   autoComplete="new-password" spellCheck={false}
-                  placeholder={m.settings.model.apiKeyPlaceholder}
+                  placeholder={m.settings.model.fields.apiKeyLabel}
                   onBlur={() => { if (apiKey === '') setEditingApiKey(false) }}
                   onChange={(event) => {
                     setApiKey(event.target.value)

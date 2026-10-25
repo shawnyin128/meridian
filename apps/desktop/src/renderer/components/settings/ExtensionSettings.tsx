@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import type { ExtensionStatus } from '../../../shared/contract.js'
 import { useMessages } from '../../messages/useMessages.js'
 import { CardTray } from '../CardTray.js'
@@ -7,7 +8,7 @@ import { Tag, type TagTone } from '../Tag.js'
 import { Card } from '../Card.js'
 import { PluginVersionEntry, type PluginVersionEntryProps } from './PluginVersionEntry.js'
 import { FadeText } from '../FadeText.js'
-import { Button } from '../Button.js'
+import { Button, DONE_MS } from '../Button.js'
 import './ExtensionSettings.css'
 
 const STATE_TONE: Record<ExtensionStatus['state'], TagTone> = {
@@ -20,13 +21,24 @@ interface ExtensionSettingsProps {
   failed: boolean
   /** The plugin version row listed first, since both clients install that version; omitted until known. */
   plugin?: PluginVersionEntryProps | undefined
-  onCopy: (name: string, command: string) => void
-  onCopyPrompt: (prompt: string) => void
+  /** Copies `text`; resolves true once it is on the clipboard, false when it could not be copied. */
+  onCopy: (text: string) => Promise<boolean>
 }
 
-/** Installed coding-agent extensions and the explicit commands that manage them. */
-export function ExtensionSettings({ statuses, failed, plugin, onCopy, onCopyPrompt }: ExtensionSettingsProps) {
+/**
+ * Installed coding-agent extensions and the explicit commands that manage them, then the agent
+ * prompts, one line each, with a button that copies it. A copy turns its button into the check for
+ * DONE_MS.
+ */
+export function ExtensionSettings({ statuses, failed, plugin, onCopy }: ExtensionSettingsProps) {
   const m = useMessages()
+  const [copied, setCopied] = useState<string | null>(null)
+  useEffect(() => {
+    if (copied === null) return
+    const timer = window.setTimeout(() => setCopied(null), DONE_MS)
+    return () => window.clearTimeout(timer)
+  }, [copied])
+  const copy = (key: string, text: string) => { void onCopy(text).then((done) => { if (done) setCopied(key) }) }
   if (statuses === null) {
     return failed ? null : <LoadingPlaceholder shape="cards" count={1} />
   }
@@ -65,7 +77,8 @@ export function ExtensionSettings({ statuses, failed, plugin, onCopy, onCopyProm
                 action={(
                   <Button
                     size="compact" variant="ghost" aria-label={copyLabel}
-                    onClick={() => onCopy(extension.name, command)}
+                    done={copied === extension.id} doneLabel={m.common.copied}
+                    onClick={() => copy(extension.id, command)}
                   >{m.settings.extensions.copy}</Button>
                 )}
               >
@@ -78,41 +91,23 @@ export function ExtensionSettings({ statuses, failed, plugin, onCopy, onCopyProm
 
       <Card as="section" className="extension-tutorial" data-extension-tutorial="">
         <SectionHeading variant="group">{m.settings.extensions.tutorial.heading}</SectionHeading>
-        <ol className="extension-tutorial-steps">
-          {m.settings.extensions.tutorial.steps.map((step, index) => (
-            <li key={step.title}>
-              <span>{index + 1}</span>
-              <strong>{step.title}</strong>
-            </li>
-          ))}
-        </ol>
-
-        <h4>{m.settings.extensions.tutorial.examplesHeading}</h4>
         <div className="extension-prompt-groups">
           {m.settings.extensions.tutorial.groups.map((group) => (
             <section className="extension-prompt-group" key={group.heading}>
               <h5>{group.heading}</h5>
-              <div className="extension-prompt-list">
-                {group.examples.map((example) => (
-                  <div className="extension-prompt" key={example.label}>
-                    <div>
-                      <strong>{example.label}</strong>
-                      <p>{example.prompt}</p>
-                    </div>
-                    <Button size="compact" variant="ghost" onClick={() => onCopyPrompt(example.prompt)}>
-                      {m.settings.extensions.tutorial.copyPrompt}
-                    </Button>
-                  </div>
-                ))}
-              </div>
+              {group.examples.map((example) => (
+                <div className="extension-prompt" key={example.label}>
+                  <strong>{example.label}</strong>
+                  <p><FadeText label={example.prompt}>{example.prompt}</FadeText></p>
+                  <Button
+                    size="compact" variant="ghost" aria-label={m.settings.extensions.tutorial.copyPromptLabel(example.label)}
+                    done={copied === example.label} doneLabel={m.common.copied} onClick={() => copy(example.label, example.prompt)}
+                  >{m.settings.extensions.copy}</Button>
+                </div>
+              ))}
             </section>
           ))}
         </div>
-
-        <h4>{m.settings.extensions.tutorial.healthyHeading}</h4>
-        <ul className="extension-healthy-list">
-          {m.settings.extensions.tutorial.healthy.map((item) => <li key={item}>{item}</li>)}
-        </ul>
       </Card>
     </>
   )

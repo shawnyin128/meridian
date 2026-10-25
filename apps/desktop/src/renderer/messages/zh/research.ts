@@ -34,7 +34,7 @@ export const research = {
     sortPriority: '按优先级',
     sortMilestone: '按下一个里程碑',
     renameTitle: '重命名项目',
-    rename: '重命名',
+    rename: '重命名…',
     renamed: '已重命名',
     statusChangedTo: (status: string) => `已标记为 ${status}`,
     createdNote: '已创建项目',

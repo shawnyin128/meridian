@@ -240,12 +240,12 @@ describe('Trash', () => {
     expect(rows.map(restoreState)).toEqual([[true, null, ['恢复', '论文已有新的对话']], [false, null, ['恢复', null]]])
   })
 
-  it('彻底删除一条要先确认,确认后才清除', async () => {
+  it('彻底删除一条要先确认,标题已说彻底,下面不再写一句,确认后才清除', async () => {
     await act(async () => { button(host.querySelector('.trow')!, '彻底删除').click() })
     expect(api.purge).not.toHaveBeenCalled()
     const dialog = document.querySelector('[role="alertdialog"]')!
     expect(dialog.querySelector('.modal-title')!.textContent).toBe('彻底删除「Draft trees」？')
-    expect(dialog.querySelector('.modal-detail')!.textContent).toBe('删除后不可恢复。')
+    expect(dialog.querySelector('.modal-detail')).toBeNull()
 
     await act(async () => { button(dialog, '彻底删除').click() })
     expect(api.purge).toHaveBeenCalledExactlyOnceWith('trash-1')

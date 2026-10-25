@@ -38,7 +38,7 @@ export const research = {
     sortPriority: 'By priority',
     sortMilestone: 'By next milestone',
     renameTitle: 'Rename project',
-    rename: 'Rename',
+    rename: 'Rename…',
     renamed: 'Renamed',
     statusChangedTo: (status: string) => `Marked as ${status}`,
     createdNote: 'Project created',

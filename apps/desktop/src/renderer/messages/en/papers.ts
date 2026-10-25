@@ -94,7 +94,7 @@ export const papers = {
     alreadyInLibrary: 'This PDF is already in the library',
     dropPdfOnly: 'Drop PDF files here',
     importing: 'Importing…',
-    importAction: 'Import PDF',
+    importAction: 'Import PDF…',
   },
   columnMenu: {
     settings: 'Column settings',

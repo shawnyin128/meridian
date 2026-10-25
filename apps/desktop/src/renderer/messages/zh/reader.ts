@@ -31,7 +31,7 @@ export const reader = {
   },
   remark: {
     heading: '随笔 · 本篇',
-    placeholder: '对整篇论文的随想',
+    placeholder: '随笔',
   },
   selection: {
     highlight: '高亮',

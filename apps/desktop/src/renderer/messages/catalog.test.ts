@@ -46,27 +46,52 @@ describe('两个语言的消息目录', () => {
 })
 
 describe('确认框的文案', () => {
-  // The title and the consequence line of every ConfirmDialog in the App, as each screen passes them.
-  const confirmations = (m: typeof zh) => [
+  // The title of every ConfirmDialog in the App and its consequence line, absent where the title says it all.
+  const confirmations = (m: typeof zh): [string, string | undefined][] => [
     [m.trash.confirmClear, m.trash.confirmClearDescription(2)],
-    [m.trash.confirmPurge('Draft trees'), m.trash.confirmPurgeDescription],
+    [m.trash.confirmPurge('Draft trees'), undefined],
     [m.changelog.confirmDelete, m.changelog.confirmDeleteDescription],
     [m.changelog.confirmClearArchived(2), m.changelog.confirmClearArchivedDescription],
     [m.watches.confirmRemove('speculative decoding'), m.watches.confirmRemoveDescription],
-    [m.settings.storage.resetTitle, m.settings.storage.resetDescription],
+    [m.settings.storage.resetTitle, undefined],
     [m.settings.storage.backupDeleteTitle('9月15日 18:28'), m.settings.storage.backupDeleteDescription],
-    [m.settings.appearance.editor.leaveTitle, m.settings.appearance.editor.leaveDescription],
+    [m.settings.appearance.editor.leaveTitle, undefined],
     [m.settings.appearance.editor.deleteTitle('青瓷'), m.settings.appearance.editor.deleteDescription],
-  ] as const
+  ]
 
   for (const [language, catalog] of [['zh', zh], ['en', en]] as const) {
-    it(`${language}:标题只问一句,后果写在自己那一行`, () => {
+    it(`${language}:标题只问一句,后果只在丢掉了标题没说的东西时写一行短语,不成句`, () => {
       for (const [title, consequence] of confirmations(catalog)) {
         expect(title, title).toMatch(/^[^。.？?!！]+[？?]$/)
-        expect(consequence.trim(), title).not.toBe('')
+        if (consequence !== undefined) expect(consequence, title).toMatch(/^[^。.，,；;!！]+$/)
       }
     })
   }
+})
+
+describe('占位文字和要再问一步的命令', () => {
+  const catalogs = { zh: texts(zh as unknown as Node), en: texts(en as unknown as Node) }
+  /** Whether the key at `path` is a field's placeholder or a picker's empty value. */
+  const placeholder = (path: string) => /(^|\.)(placeholder|[a-z]+Placeholder|[a-z]+Pick)$/.test(path)
+  // The commands that open a file dialog, a dialog or an editor before they act, as #500 lists them.
+  const ASKING = [
+    'papers.upload.importAction', 'common.field.chooseDirectory', 'research.list.rename', 'settings.storage.chooseAction',
+    'project.identity.changeWorkspace', 'project.workspace.chooseLocal', 'project.attachments.addTitle',
+    'wiki.claims.revise', 'wiki.claims.markConflict', 'settings.appearance.editor.edit',
+  ]
+
+  it('每个占位文字只说出它那一栏的名字：不叫人输入、粘贴或选择，不举例，不写可选，不提问', () => {
+    const off = catalogs.zh.filter(([path, text]) => placeholder(path)
+      && /^(输入|粘贴|选择|选一|例如)|[（(]可|[？?]|…$/.test(text))
+    const offEn = catalogs.en.filter(([path, text]) => placeholder(path)
+      && /^(Type|Paste|Enter|Choose|Select|e\.g\.)|\(optional\)|\?|…$/i.test(text))
+    expect([...off, ...offEn]).toEqual([])
+  })
+
+  it('打开对话框、文件选择或编辑器才完成的命令以省略号结尾，两种语言都是', () => {
+    const at = (language: 'zh' | 'en') => new Map(catalogs[language])
+    expect(ASKING.filter((path) => !at('zh').get(path)?.endsWith('…') || !at('en').get(path)?.endsWith('…'))).toEqual([])
+  })
 })
 
 describe('一个概念一个词', () => {

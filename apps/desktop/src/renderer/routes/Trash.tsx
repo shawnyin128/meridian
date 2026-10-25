@@ -134,7 +134,7 @@ export function Trash() {
                         trigger={(
                           <IconButton label={m.common.deletePermanently} size="nested" tone="danger"><IconTrash /></IconButton>
                         )}
-                        title={m.trash.confirmPurge(plainOf(entry))} description={m.trash.confirmPurgeDescription}
+                        title={m.trash.confirmPurge(plainOf(entry))}
                         confirmLabel={m.trash.confirmPurgeLabel} onConfirm={() => purge(entry.id)}
                       />
                     </RowActions>

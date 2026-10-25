@@ -20,6 +20,5 @@ export const chat = {
   paperChatWidth: 'Paper chat width',
   empty: 'No conversation yet',
   askAboutPaper: 'Ask about this paper',
-  paperComposerPlaceholder: 'Ask about this paper, or note a related idea…',
   actionDone: 'Added to the research log',
 } satisfies typeof zh

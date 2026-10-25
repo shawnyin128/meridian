@@ -22,7 +22,7 @@ export const reader = {
     ariaLabel: 'Reading notes',
     heading: 'Reading notes',
     newAria: 'New note',
-    placeholder: (page: number) => `Add a note about page ${page}…`,
+    placeholder: (page: number) => `Note on page ${page}`,
     pageAria: (page: number) => `Page ${page} note`,
     deleted: 'Note deleted',
   },
@@ -33,7 +33,7 @@ export const reader = {
   },
   remark: {
     heading: 'Thoughts on this paper',
-    placeholder: 'Write your overall thoughts on this paper…',
+    placeholder: 'Thoughts',
   },
   selection: {
     highlight: 'Highlight',

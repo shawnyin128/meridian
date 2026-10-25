@@ -45,8 +45,8 @@ export const ideas = {
   editor: {
     sourceLabel: (source: string) => `Source: ${source}`,
     titleLabel: 'Title',
-    titlePlaceholder: 'What problem does this idea solve?',
-    bodyPlaceholder: 'Mechanism, hypothesis, or direction…',
+    titlePlaceholder: 'Title',
+    bodyPlaceholder: 'Idea',
   },
   nodeDraft: {
     nodeTitleLabel: 'Node title',

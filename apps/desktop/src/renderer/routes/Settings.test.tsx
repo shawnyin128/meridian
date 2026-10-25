@@ -473,7 +473,7 @@ describe('Settings', () => {
     expect(status.textContent).toContain('HTTP 401')
   })
 
-  it('扩展设置显示 Core 检查结果:已安装的给更新命令,未安装的给安装命令', async () => {
+  it('扩展设置显示 Core 检查结果:已安装的给更新命令,未安装的给安装命令;复制不再弹提示', async () => {
     const writeText = vi.fn(async () => {})
     Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText } })
     await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
@@ -513,14 +513,14 @@ describe('Settings', () => {
       dialog.querySelector<HTMLButtonElement>('[aria-label="复制 Claude Code 安装命令"]')!.click()
     })
     expect(writeText).toHaveBeenCalledWith('claude install command')
-    expect(api.success).toHaveBeenCalledWith('Claude Code 命令已复制')
+    expect(api.success).not.toHaveBeenCalled()
 
     const firstPrompt = dialog.querySelector('.extension-prompt p')?.textContent ?? ''
     await act(async () => {
       dialog.querySelector<HTMLButtonElement>('.extension-prompt button')!.click()
     })
     expect(writeText).toHaveBeenLastCalledWith(firstPrompt)
-    expect(api.success).toHaveBeenLastCalledWith('提示词已复制')
+    expect(api.success).not.toHaveBeenCalled()
   })
 
   it('外观设置用三张预览卡选择浅色、深色或跟随系统', async () => {
@@ -693,7 +693,7 @@ describe('Settings', () => {
       .querySelector('.row-actions button[aria-label="管理「青瓷」"]')).not.toBeNull()
 
     const items = await openThemeMenu(dialog, '青瓷')
-    expect(items.map((item) => item.textContent)).toEqual(['编辑', '删除'])
+    expect(items.map((item) => item.textContent)).toEqual(['编辑…', '删除'])
     await act(async () => { items[0]!.click() })
     expect(dialog.querySelector<HTMLInputElement>('input[aria-label="名称"]')!.value).toBe('青瓷')
     expect(dialog.querySelector<HTMLInputElement>('input[aria-label="色值"]')!.value).toBe(celadon.light.ground.toUpperCase())
@@ -833,7 +833,7 @@ describe('Settings', () => {
     const directory = dialog.querySelector('.storage-root .directory-field')!
     expect(directory.querySelector<HTMLInputElement>('input')?.value).toBe('/tmp/meridian')
     expect(directory.querySelector('input')?.hasAttribute('readonly')).toBe(true)
-    expect(directory.querySelector<HTMLButtonElement>('[aria-label="选择论文库根目录"]')?.disabled)
+    expect(directory.querySelector<HTMLButtonElement>('[aria-label="选择论文库根目录…"]')?.disabled)
       .toBe(true)
     expect(directory.querySelector('svg path')?.getAttribute('d')).toBe('M3 6h6l2 2h10v10H3z')
     expect(dialog.querySelector('.storage-root code')).toBeNull()
@@ -892,7 +892,7 @@ describe('Settings', () => {
     expect(dialog.querySelector('.page-error')?.textContent).toBe('不是 Meridian 论文库')
     expect(dialog.querySelector<HTMLInputElement>('.storage-root input')?.value)
       .toBe('/tmp/broken-library')
-    expect(dialog.querySelector<HTMLButtonElement>('[aria-label="选择论文库根目录"]')?.disabled)
+    expect(dialog.querySelector<HTMLButtonElement>('[aria-label="选择论文库根目录…"]')?.disabled)
       .toBe(false)
     expect(dialog.querySelector<HTMLButtonElement>('.storage-reset .btn.danger')?.disabled).toBe(false)
   })
@@ -944,7 +944,7 @@ describe('Settings', () => {
       .find((button) => button.textContent === '删除')!
     await act(async () => { deleteButton.click() })
     expect(api.deleteBackup).not.toHaveBeenCalled()
-    expect(document.querySelector('.modal.confirm')?.textContent).toContain('永久删除')
+    expect(document.querySelector('.modal.confirm')?.textContent).toContain('备份文件夹不能恢复')
 
     const confirm = [...document.querySelectorAll<HTMLButtonElement>('.modal.confirm .btn')]
       .find((button) => button.textContent === '删除')!
@@ -1060,12 +1060,12 @@ describe('Settings', () => {
 
     await pick(dialog, '模型服务', 'OpenAI 兼容 API')
     expect((await openPicker(dialog, '兼容服务模板')).map((item) => item.textContent)).toEqual([
-      '选择常用服务…',
-      'DeepSeek（云端）',
-      'OpenRouter（云端聚合）',
-      'Ollama（本地）',
-      'LM Studio（本地）',
-      '其他兼容服务（手动配置）',
+      '模板',
+      'DeepSeek · 云端',
+      'OpenRouter · 云端聚合',
+      'Ollama · 本地',
+      'LM Studio · 本地',
+      '其他兼容服务',
     ])
     await closePicker()
     expect(dialog.querySelector('[aria-label="模型协议"]')).toBeNull()
@@ -1073,13 +1073,13 @@ describe('Settings', () => {
     expect(dialog.querySelector('[aria-label="模型认证方式"]')).toBeNull()
     expect(dialog.querySelector('[aria-label="模型名称"]')).toBeNull()
 
-    await pick(dialog, '兼容服务模板', '其他兼容服务（手动配置）')
+    await pick(dialog, '兼容服务模板', '其他兼容服务')
 
     expect((await openPicker(dialog, '模型协议')).map((item) => item.textContent))
       .toEqual(['Responses API', 'Chat Completions API'])
     await closePicker()
     expect(dialog.querySelector<HTMLInputElement>('[aria-label="模型接口地址"]')?.placeholder)
-      .toBe('例如 https://api.example.com/v1')
+      .toBe('https://api.example.com/v1')
   })
 
   it('已保存的 API Key 只显示掩码和末四位', async () => {
@@ -1235,7 +1235,7 @@ describe('Settings', () => {
     }
 
     await pick(dialog, '模型服务', 'OpenAI 兼容 API')
-    await pick(dialog, '兼容服务模板', '其他兼容服务（手动配置）')
+    await pick(dialog, '兼容服务模板', '其他兼容服务')
     await pick(dialog, '模型协议', 'Chat Completions API')
     await fill('模型接口地址', 'https://third-party.example/v1')
     await fill('模型名称', 'third-party-model')
@@ -1276,7 +1276,7 @@ describe('Settings', () => {
     const dialog = document.querySelector('.setdlg')!
 
     await pick(dialog, '模型服务', 'OpenAI 兼容 API')
-    await pick(dialog, '兼容服务模板', 'DeepSeek（云端）')
+    await pick(dialog, '兼容服务模板', 'DeepSeek · 云端')
 
     expect(dialog.querySelector('[aria-label="模板连接信息"]')?.textContent)
       .toContain('Chat Completions API · API Key')
@@ -1286,10 +1286,10 @@ describe('Settings', () => {
     expect(dialog.querySelector('[aria-label="模型接口地址"]')).toBeNull()
     expect(dialog.querySelector('[aria-label="模型认证方式"]')).toBeNull()
     expect(dialog.querySelector<HTMLInputElement>('[aria-label="模型名称"]')?.placeholder)
-      .toBe('输入 DeepSeek 模型 ID')
+      .toBe('模型 ID')
     expect(dialog.querySelector('[aria-label="模型 API Key"]')).not.toBeNull()
 
-    await pick(dialog, '兼容服务模板', 'Ollama（本地）')
+    await pick(dialog, '兼容服务模板', 'Ollama · 本地')
     expect(dialog.querySelector('[aria-label="模板连接信息"]')?.textContent)
       .toContain('Responses API · 无需认证')
     expect(dialog.querySelector('[aria-label="模型 API Key"]')).toBeNull()

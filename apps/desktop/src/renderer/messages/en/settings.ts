@@ -51,11 +51,11 @@ export const settings = {
       pick: 'Pick a colour',
       hex: 'Hex value',
       changedOutside: 'Changed outside the App',
+      edit: 'Edit…',
       manage: (name: string) => `Manage “${name}”`,
       deleteTitle: (name: string) => `Delete the theme “${name}”?`,
-      deleteDescription: 'Its theme file is deleted and cannot be restored.',
+      deleteDescription: 'Its theme file cannot be restored',
       leaveTitle: 'Discard unsaved changes?',
-      leaveDescription: 'They are not kept once you leave.',
       leave: 'Discard changes',
       modules: {
         ground: 'Window', sidebar: 'Sidebar', card: 'Cards', field: 'Fields', separator: 'Separators',
@@ -82,13 +82,12 @@ export const settings = {
     },
     rootLabel: 'Root folder',
     checkingDirectory: 'Checking the library folder…',
-    chooseAction: 'Choose a library folder',
+    chooseAction: 'Choose a library folder…',
     restartNow: 'Restart now',
     pendingNote: 'Takes effect after restart',
     resetLabel: 'Reset the library',
     resetAction: 'Reset library…',
     resetTitle: 'Reset the library?',
-    resetDescription: 'Current papers, wiki, projects and state will be cleared. The old library is backed up automatically.',
     resetting: 'Resetting…',
     resetConfirm: 'Reset and restart',
     backupsHeading: 'Library backups',
@@ -96,7 +95,7 @@ export const settings = {
     backupSwitching: 'Switching…',
     backupDelete: 'Delete',
     backupDeleteTitle: (label: string) => `Delete the backup from ${label}?`,
-    backupDeleteDescription: 'This permanently deletes the backup folder and everything in it.',
+    backupDeleteDescription: 'The backup folder cannot be restored',
     backupDeleting: 'Deleting…',
     backupDeleted: 'Backup deleted',
     saved: 'Library location saved',
@@ -117,7 +116,7 @@ export const settings = {
       heading: 'Semantic Scholar',
       apply: 'Get a key',
       inputLabel: 'Semantic Scholar API key',
-      placeholder: 'Paste a Semantic Scholar API key',
+      placeholder: 'API key',
       stored: (lastFour: string) => `Saved Semantic Scholar API key ending in ${lastFour}`,
       connection: {
         connected: 'Connected',
@@ -137,42 +136,35 @@ export const settings = {
     providers: {
       openai: {
         label: 'OpenAI',
-        modelPlaceholder: 'OpenAI model ID',
       },
       anthropic: {
         label: 'Anthropic',
-        modelPlaceholder: 'Claude model ID',
       },
       'google-gemini': {
         label: 'Google Gemini',
-        modelPlaceholder: 'Gemini model ID',
       },
       'openai-compatible': {
         label: 'OpenAI-compatible API',
-        modelPlaceholder: 'Model ID provided by the service',
-        baseUrlPlaceholder: 'e.g. https://api.example.com/v1',
+        baseUrlPlaceholder: 'https://api.example.com/v1',
       },
     },
     templates: {
       chooseLabel: 'Connection template',
       chooseAria: 'Service template',
-      choosePlaceholder: 'Choose a common service…',
-      custom: 'Other compatible service (manual setup)',
+      choosePlaceholder: 'Template',
+      custom: 'Other compatible service',
       summaryAria: 'Template connection info',
       deepseek: {
-        label: 'DeepSeek (cloud)', authenticationLabel: 'API key', modelPlaceholder: 'DeepSeek model ID',
+        label: 'DeepSeek · Cloud', authenticationLabel: 'API key',
       },
       openrouter: {
         label: 'OpenRouter', authenticationLabel: 'API key',
-        modelPlaceholder: 'OpenRouter model ID',
       },
       ollama: {
-        label: 'Ollama (local)', authenticationLabel: 'No authentication needed',
-        modelPlaceholder: 'Model ID installed in Ollama',
+        label: 'Ollama · Local', authenticationLabel: 'No authentication needed',
       },
       'lm-studio': {
-        label: 'LM Studio (local)', authenticationLabel: 'No authentication needed',
-        modelPlaceholder: 'Model ID loaded in LM Studio',
+        label: 'LM Studio · Local', authenticationLabel: 'No authentication needed',
       },
     },
     fields: {
@@ -191,7 +183,6 @@ export const settings = {
     },
     configured: 'Configured',
     notConfigured: 'Not configured',
-    apiKeyPlaceholder: "This service's API key",
     keyStored: (lastFour: string) => `Saved API key ending in ${lastFour}`,
     clearKeyPending: 'Key will be cleared',
     clearKey: 'Clear saved key',
@@ -252,15 +243,8 @@ export const settings = {
     copyUpdateLabel: (name: string) => `Copy the ${name} update command`,
     copyInstallLabel: (name: string) => `Copy the ${name} install command`,
     copy: 'Copy',
-    copied: (name: string) => `${name} command copied`,
     tutorial: {
       heading: 'Use Meridian with a coding agent',
-      steps: [
-        { title: 'Confirm the connection' },
-        { title: 'State the outcome and scope' },
-        { title: 'Keep decisions explicit' },
-      ],
-      examplesHeading: 'Prompts you can use',
       groups: [
         {
           heading: 'Set up a repository',
@@ -321,14 +305,7 @@ export const settings = {
           ],
         },
       ],
-      healthyHeading: 'In a healthy run, the agent will',
-      healthy: [
-        'check readiness or request the smallest useful context instead of scanning the entire library',
-        'separate source facts, Wiki synthesis, user ideas, and local experiment results',
-        'report failed writes, insufficient evidence, and state conflicts instead of bypassing safeguards',
-      ],
-      copyPrompt: 'Copy prompt',
-      promptCopied: 'Prompt copied',
+      copyPromptLabel: (label: string) => `Copy the prompt: ${label}`,
     },
   },
   delivery: {

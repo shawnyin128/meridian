@@ -43,8 +43,8 @@ export const ideas = {
   editor: {
     sourceLabel: (source: string) => `来源：${source}`,
     titleLabel: '标题',
-    titlePlaceholder: '这个想法要解决什么问题？',
-    bodyPlaceholder: '机制、假设或方向…',
+    titlePlaceholder: '标题',
+    bodyPlaceholder: '想法',
   },
   nodeDraft: {
     nodeTitleLabel: '节点标题',

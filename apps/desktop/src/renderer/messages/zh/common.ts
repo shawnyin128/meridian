@@ -2,6 +2,7 @@
 export const common = {
   save: '保存',
   saved: '已保存',
+  copied: '已复制',
   cancel: '取消',
   edit: '编辑',
   confirm: '确认',
@@ -43,7 +44,7 @@ export const common = {
     clear: '清除输入',
     emptyValue: '—',
     edit: (label: string) => `编辑${label}`,
-    chooseDirectory: '选择目录',
+    chooseDirectory: '选择目录…',
   },
   pager: {
     total: (n: number) => `共 ${n} 条`,

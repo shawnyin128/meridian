@@ -5,6 +5,7 @@ import { common as zh } from '../zh/common.js'
 export const common = {
   save: 'Save',
   saved: 'Saved',
+  copied: 'Copied',
   cancel: 'Cancel',
   edit: 'Edit',
   confirm: 'Confirm',
@@ -45,7 +46,7 @@ export const common = {
     clear: 'Clear input',
     emptyValue: '—',
     edit: (label: string) => `Edit ${label}`,
-    chooseDirectory: 'Choose folder',
+    chooseDirectory: 'Choose folder…',
   },
   pager: {
     total: (n: number) => `${n} ${pluralEn(n, { one: 'item', other: 'items' })} total`,
