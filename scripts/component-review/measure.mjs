@@ -3,7 +3,7 @@ import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { parseArgs } from 'node:util'
 import { DESKTOP } from '../test-library/app.mjs'
-import { driftMarkdown, driftSummary } from './drift.mjs'
+import { driftMarkdown, driftSummary, newInstance } from './drift.mjs'
 import { COLOUR_TOKENS, PATTERNS, probeEntries, SHADOW_TOKENS, VARIANT_CLASSES } from './patterns.mjs'
 import { clearFocusPathInPage, markFocusPathInPage, measureInPage } from './probe.mjs'
 import { comboName, LIBRARY, REVIEW, setSize, setTheme, settle, SIZES, THEMES, walk } from './run.mjs'
@@ -90,14 +90,10 @@ async function visit(state, { win, electron }) {
 
 const { results, failures } = await walk({ app, library, name: `measure-${name}`, states: STATES, visit })
 
-// An element measured in an earlier state of the same screen counts once, as it first appeared.
+// An element counts once per screen and size and theme, as the first state showed it.
 const seen = new Set()
-const records = results.flatMap(({ result }) => result.records).filter((record) => {
-  const key = `${record.combo} ${record.screen} ${record.entry} ${record.id}`
-  if (seen.has(key)) return false
-  seen.add(key)
-  return true
-})
+const records = results.flatMap(({ result }) => result.records)
+  .filter((record) => newInstance(seen, `${record.combo} ${record.screen} ${record.entry}`, record))
 const summary = driftSummary(records, SCREEN_ORDER)
 const git = (cwd, ...args) => execFileSync('git', args, { cwd, encoding: 'utf8' }).trim()
 const meta = {
