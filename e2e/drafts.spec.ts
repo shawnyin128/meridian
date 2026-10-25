@@ -98,7 +98,7 @@ test('关掉 App 再打开,打了一半的新项目名或新任务那一行回�
   const first = await relaunch(app, configHome, profile)
   let second: Awaited<ReturnType<typeof relaunch>> | null = null
   try {
-    await first.win.locator('[data-desk="resproj"]').click()
+    // The App reopens on Projects, where the name was typed; a click outside the open row would create it.
     await expect(shown(first.win, '.projpanel .inedit')).toHaveValue('打了一半的项目名')
     const projects = await first.win.evaluate(() => (window as unknown as MeridianWindow).meridian.call('project.list', {}))
     expect(JSON.stringify(projects)).not.toContain('打了一半的项目名')

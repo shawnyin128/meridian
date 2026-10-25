@@ -6,6 +6,7 @@ import type { TrashEntry } from '../../shared/contract.js'
 import { MarkdownBox } from '../components/Markdown.js'
 import { MessagesProvider } from '../messages/useMessages.js'
 import { LANGUAGE_STORAGE_KEY } from './language.js'
+import { SHELL_STATE_STORAGE_KEY } from './shell-state.js'
 
 declare global {
   var IS_REACT_ACT_ENVIRONMENT: boolean
@@ -150,6 +151,8 @@ afterEach(() => {
   if (root !== null) act(() => root!.unmount())
   root = null
   vi.unstubAllGlobals()
+  // Each case starts where a first launch does, not where the case before left the shell.
+  window.localStorage.removeItem(SHELL_STATE_STORAGE_KEY)
 })
 
 /** Shows which settings category the shell has asked to open, or nothing while settings are closed. */
@@ -969,6 +972,49 @@ describe('AppShell ⌘Z', () => {
     await pressZ()
     expect(fixture.undoChange.mock.calls).toEqual([['ch-1']])
     expect(document.querySelector('.screenslot:not([hidden]) #ch-1')).not.toBeNull()
+  })
+})
+
+describe('AppShell 重新打开时回到上次的地方', () => {
+  const kept = () => JSON.parse(window.localStorage.getItem(SHELL_STATE_STORAGE_KEY) ?? 'null') as Record<string, unknown> | null
+  const keep = (state: Record<string, unknown>) => window.localStorage.setItem(SHELL_STATE_STORAGE_KEY, JSON.stringify(state))
+  const sbw = () => document.querySelector<HTMLElement>('#main')!.style.getPropertyValue('--sbw')
+
+  it('打开在上次显示的那一屏,侧栏是上次的宽度', async () => {
+    keep({ sidebarWidth: 260, screen: 'papers', inboxScope: 'all', inboxMode: 'watch', chat: null })
+    await mount()
+    expect(crumbs()).toEqual(['我的库', '论文', '深层'])
+    expect(document.querySelector('.screenslot:not([hidden])')!.textContent).toBe('deeper')
+    expect(sbw()).toBe('260px')
+  })
+
+  it('换屏、拖宽侧栏都记下来,下次照着打开', async () => {
+    await mount()
+    expect(kept()).toEqual({ sidebarWidth: 232, screen: 'feed', inboxScope: 'all', inboxMode: 'watch', chat: null })
+    await act(async () => { document.querySelector<HTMLButtonElement>('[data-desk="papers"]')!.click() })
+    const grip = document.querySelector<HTMLElement>('#sbgrip')!
+    act(() => { grip.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true, cancelable: true })) })
+    expect(kept()).toMatchObject({ screen: 'papers', sidebarWidth: Number.parseInt(sbw(), 10) })
+    expect(sbw()).not.toBe('232px')
+  })
+
+  it('阅读器记成打开它的那一屏', async () => {
+    await mount(<OpenReader />)
+    act(() => { document.querySelector<HTMLButtonElement>('#openReader')!.click() })
+    expect(kept()).toMatchObject({ screen: 'feed' })
+  })
+
+  it('上次开着的对话还在就回到它,已经不在了就回到动态', async () => {
+    keep({ sidebarWidth: 232, screen: 'chat', inboxScope: 'all', inboxMode: 'watch', chat: 'c1' })
+    await mount()
+    expect(crumbs()).toEqual(['对话'])
+    expect(document.querySelector('[data-chat="c1"]')!.classList.contains('on')).toBe(true)
+    act(() => root!.unmount())
+    root = null
+    keep({ sidebarWidth: 232, screen: 'chat', inboxScope: 'all', inboxMode: 'watch', chat: 'gone' })
+    await mount()
+    expect(crumbs()).toEqual(['动态'])
+    expect(kept()).toMatchObject({ screen: 'feed', chat: null })
   })
 })
 

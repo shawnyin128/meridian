@@ -26,6 +26,7 @@ import { CommandPalette, type PaletteCommand } from './CommandPalette.js'
 import { SETTINGS_CATEGORIES, SETTINGS_CATEGORY_LABEL, type SettingsCategory } from './settings-categories.js'
 import { Sidebar } from './Sidebar.js'
 import { JobsContext, useJobsPoll } from './useJobs.js'
+import { readShellState, writeShellState } from './shell-state.js'
 import { ColourThemeFilesContext, useColourThemeFilesPoll } from './useColourThemes.js'
 import brandmark from '../../../resources/mark-64.png'
 import { Button } from '../components/Button.js'
@@ -401,14 +402,19 @@ export function AppShell({ screens, settings }: {
   settings: ReactNode
 }) {
   const m = useMessages()
-  const [screen, setScreen] = useState<ScreenKey>('feed')
+  // The App reopens where it was: the screen, its sidebar selection and the sidebar's width.
+  const [restored] = useState(() => readShellState(
+    { sidebarWidth: SIDEBAR_WIDTH, screen: 'feed', inboxScope: ALL_WATCHES, inboxMode: 'watch', chat: null },
+    GRIP_LIMITS.sidebar,
+  ))
+  const [screen, setScreen] = useState<ScreenKey>(restored.screen)
   const [entry, setEntry] = useState(0)
   const [reentry, setReentry] = useState(0)
-  const [inboxScope, setInboxScope] = useState(ALL_WATCHES)
-  const [inboxMode, setInboxMode] = useState<InboxMode>('watch')
-  const [mounted, setMounted] = useState<ScreenKey[]>(['feed'])
+  const [inboxScope, setInboxScope] = useState(restored.inboxScope)
+  const [inboxMode, setInboxMode] = useState<InboxMode>(restored.inboxMode)
+  const [mounted, setMounted] = useState<ScreenKey[]>([restored.screen])
   const [tails, setTails] = useState<Partial<Record<ScreenKey, Deeper>>>({})
-  const [width, setWidth] = useState(SIDEBAR_WIDTH)
+  const [width, setWidth] = useState(restored.sidebarWidth)
   /** The paper chat's dragged width; null until the first drag, leaving the Reader's CSS default. */
   const [chatWidth, setChatWidth] = useState<number | null>(null)
   const [hidden, setHidden] = useState(false)
@@ -424,7 +430,7 @@ export function AppShell({ screens, settings }: {
   const [chatsRead, setChatsRead] = useState(false)
   const [projectIds, setProjectIds] = useState<string[] | null>(null)
   const [ideaIds, setIdeaIds] = useState<string[] | null>(null)
-  const [chatId, setChatId] = useState<string | null>(null)
+  const [chatId, setChatId] = useState<string | null>(restored.chat)
   const [inboxWatches, setInboxWatches] = useState<string[][]>([])
   const [discoveryCount, setDiscoveryCount] = useState(0)
   const [discoveryProjects, setDiscoveryProjects] = useState<DiscoveryProjectCount[]>([])
@@ -712,6 +718,23 @@ export function AppShell({ screens, settings }: {
       navigate('feed')
     }).catch((e: unknown) => notify.refusal(errorLabel(m, e)))
   }, [chatId, navigate, notify, bump, m])
+
+  // A kept chat that is gone by this launch leaves the Chats screen for the Feed, as deleting the open chat does.
+  const keptChatChecked = useRef(false)
+  useEffect(() => {
+    if (!chatsRead || keptChatChecked.current) return
+    keptChatChecked.current = true
+    if (chatId === null || chats.some((session) => session.id === chatId)) return
+    setChatId(null)
+    if (screen === 'chat') goTo('feed')
+  }, [chatsRead, chats, chatId, screen, goTo])
+
+  // The reader needs its paper, so it is kept as the screen it was opened from.
+  const readerFrom = jump?.screen === 'reader' ? jump.from : 'papers'
+  const kept = screen === 'reader' ? (readerFrom === 'reader' ? 'papers' : readerFrom) : screen
+  useEffect(() => {
+    writeShellState({ sidebarWidth: width, screen: kept, inboxScope, inboxMode, chat: chatId })
+  }, [width, kept, inboxScope, inboxMode, chatId])
 
   const chatSession = useMemo(() => {
     const open = chats.find((s) => s.id === chatId)

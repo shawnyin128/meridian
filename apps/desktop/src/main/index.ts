@@ -3,7 +3,7 @@ import {
   utilityProcess,
 } from 'electron'
 import { execFile, spawn } from 'node:child_process'
-import { existsSync, readFileSync, writeSync } from 'node:fs'
+import { existsSync, readFileSync, writeFileSync, writeSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { fileURLToPath } from 'node:url'
 import { dirname, join, resolve } from 'node:path'
@@ -15,6 +15,7 @@ import { MAIN_COPY, uiLocaleOf } from './messages.js'
 import { afterCoreStops } from './restart-core.js'
 import { canReplaceSelf, createMacSelfUpdate } from './mac-self-update.js'
 import { windowBackground } from './window-background.js'
+import { placeWindow, readWindowState, type WindowState } from './window-state.js'
 import { createUpdater, type InstallRoute } from './updater.js'
 import { releaseFilesUrl } from '../shared/app-update.js'
 import type { AppCommand, MenuState } from '../shared/app-commands.js'
@@ -71,6 +72,18 @@ function configuredVaultRoot(): string | undefined {
   }
 }
 
+/** Where the window's size and position are kept between launches: the App's user-data folder, never the vault. */
+const windowStateFile = () => join(app.getPath('userData'), 'window-state.json')
+
+/** The window as it last closed, or null when nothing was saved or the saved state is unreadable. */
+function savedWindow(): WindowState | null {
+  const file = windowStateFile()
+  if (!existsSync(file)) return null
+  const state = readWindowState(readFileSync(file, 'utf8'))
+  if (state === null) log('[main] The saved window size is unreadable; the window opens at its default size\n')
+  return state
+}
+
 /** Meridian's user-level configuration directory, shared with Core and the Python CLI. */
 function configHome(): string {
   return process.env['MERIDIAN_CONFIG_HOME'] ?? join(homedir(), '.meridian')
@@ -116,10 +129,11 @@ app.whenReady().then(() => {
   // Set the Dock icon explicitly so unpackaged runs still show Meridian's rounded macOS artwork.
   if (process.platform === 'darwin') app.dock?.setIcon(macIcon)
 
-  // The window opens on the system theme's background and shows once the renderer has painted.
+  // The window opens where it last closed, on the system theme's background, and shows once the
+  // renderer has painted.
+  const saved = savedWindow()
   const win = new BrowserWindow({
-    width: 1440,
-    height: 900,
+    ...placeWindow(saved, screen.getAllDisplays().map((display) => display.workArea)),
     show: false,
     focusable: !isolated,
     // Without it macOS pulls a shown window back onto a display and caps its height at the display's.
@@ -147,7 +161,10 @@ app.whenReady().then(() => {
 
   win.once('ready-to-show', () => {
     if (!isolated) {
-      if (!hidden) win.show()
+      if (hidden) return
+      // maximize() shows the window too, so an automated launch never gets here.
+      if (saved?.maximized === true) win.maximize()
+      win.show()
       return
     }
     // show() would activate the app. Inactive and unfocusable, the window never becomes key, so the
@@ -159,6 +176,15 @@ app.whenReady().then(() => {
   })
 
   win.webContents.setWindowOpenHandler(openLinks((url) => shell.openExternal(url)))
+
+  win.on('close', () => {
+    const state: WindowState = { ...win.getNormalBounds(), maximized: win.isMaximized() }
+    try {
+      writeFileSync(windowStateFile(), JSON.stringify(state))
+    } catch (error) {
+      log(`[main] Failed to keep the window size: ${error instanceof Error ? error.message : String(error)}\n`)
+    }
+  })
 
   // Forward renderer console output to Main stdout so headless agents can observe renderer behavior.
   win.webContents.on('console-message', (details) => {
