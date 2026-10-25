@@ -859,6 +859,19 @@ export const HarnessModelProtocolSchema = z.enum([
   'generate-content',
 ])
 
+/** The subscription CLIs a model call can run on: Claude Code (`claude`) and Codex CLI (`codex`). */
+export const HarnessCliSchema = z.enum(['claude', 'codex'])
+
+/**
+ * A model that runs on the user's own signed-in CLI instead of an API key. `model` names the CLI's
+ * model for the call; without it the CLI uses its own default.
+ */
+export const HarnessCliModelSchema = z.object({
+  source: z.literal('cli'),
+  cli: HarnessCliSchema,
+  model: z.string().trim().min(1).max(200).optional(),
+}).strict()
+
 export const HarnessModelProfileSchema = z.object({
   provider: HarnessModelProviderSchema,
   protocol: HarnessModelProtocolSchema,
@@ -2525,6 +2538,8 @@ export type HarnessModelConnectionFailure = z.infer<typeof HarnessModelConnectio
 export type HarnessModelConnectionCheckResult = z.infer<typeof HarnessModelConnectionCheckResultSchema>
 export type HarnessModelProvider = z.infer<typeof HarnessModelProviderSchema>
 export type HarnessModelProtocol = z.infer<typeof HarnessModelProtocolSchema>
+export type HarnessCli = z.infer<typeof HarnessCliSchema>
+export type HarnessCliModel = z.infer<typeof HarnessCliModelSchema>
 export type ProjectDetail = z.infer<typeof ProjectDetailSchema>
 export type ProjectSummary = z.infer<typeof ProjectSummarySchema>
 export type ProjectOverview = z.infer<typeof ProjectOverviewSchema>
