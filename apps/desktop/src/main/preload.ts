@@ -1,6 +1,7 @@
 import { contextBridge, ipcRenderer, webUtils } from 'electron'
 import type { CallRejection, ContractMethod } from '../shared/contract.js'
 import type { AppUpdateStatus } from '../shared/app-update.js'
+import { APP_COMMANDS, type AppCommand, type MenuState } from '../shared/app-commands.js'
 import { MAIN_COPY, type UiLocale } from './messages.js'
 
 const pending = new Map<number, { resolve: (v: unknown) => void; reject: (reason: unknown) => void }>()
@@ -76,6 +77,16 @@ contextBridge.exposeInMainWorld('meridian', {
     const relay = () => handler()
     ipcRenderer.on('meridian:open-palette', relay)
     return () => { ipcRenderer.off('meridian:open-palette', relay) }
+  },
+  onAppCommand(handler: (command: AppCommand) => void): () => void {
+    const relay = (_event: unknown, command: unknown) => {
+      if ((APP_COMMANDS as readonly unknown[]).includes(command)) handler(command as AppCommand)
+    }
+    ipcRenderer.on('meridian:app-command', relay)
+    return () => { ipcRenderer.off('meridian:app-command', relay) }
+  },
+  setMenuState(state: MenuState): void {
+    ipcRenderer.send('meridian:menu-state', state)
   },
   chooseLibraryRoot(): Promise<string | null> {
     return ipcRenderer.invoke('meridian:choose-library-root') as Promise<string | null>

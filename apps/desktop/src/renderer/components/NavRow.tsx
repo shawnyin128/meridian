@@ -39,8 +39,9 @@ type NavRowProps = {
  * click, Enter or Space. A row with `actions` or `fold` stays a div whose button is its label; a pointer
  * click anywhere else on it activates it too. `fold` puts the caret that folds the group under the row
  * right after its label. A row without `onActivate` opens nothing: the whole row is the fold toggle of
- * its group, its caret after its text. `selected` marks the row whose destination is shown. In a
- * toolbar the row's buttons are controls of the toolbar.
+ * its group, its caret after its text. `selected` marks the row whose destination is shown, whose
+ * accent turns to the neutral selected look while Meridian is not the active app. In a toolbar the
+ * row's buttons are controls of the toolbar.
  */
 export function NavRow({
   children, icon, count, end, actions, indent = 0, sub = false, dim = false, selected = false, className, onActivate, fold, id,

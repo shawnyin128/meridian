@@ -69,10 +69,10 @@ test('应用菜单里有「设置…」,其余菜单仍是 Electron 的角色', 
   console.log(`菜单 ${JSON.stringify(menu)}`)
 
   const mac = process.platform === 'darwin'
-  // Only "Settings…", the File menu and the Help menu are built by hand; the rest are still roles, so
-  // copy and paste, zoom and the developer tools remain. On macOS "Settings…" sits in the app-name menu
-  // and File is still a role; Windows and Linux add a Tools menu without a role, between View and
-  // Window. Every platform ends with the Help menu, which has no role.
+  // The top-level menus keep their roles, so copy and paste, full screen and, in this unpackaged run,
+  // the developer tools remain. On macOS "Settings…" sits in the app-name menu and File is still a
+  // role; Windows and Linux add a Tools menu without a role, between View and Window. Every platform
+  // ends with the Help menu, which has no role.
   expect(menu.map((top) => top.role)).toEqual(mac
     ? ['appmenu', 'filemenu', 'editmenu', 'viewmenu', 'windowmenu', null]
     : [null, 'editmenu', 'viewmenu', null, 'windowmenu', null])
@@ -80,7 +80,7 @@ test('应用菜单里有「设置…」,其余菜单仍是 Electron 的角色', 
   expect(menu.slice(mac ? 1 : 0).map((top) => top.label))
     .toEqual(mac ? ['文件', '编辑', '视图', '窗口', '帮助'] : ['文件', '编辑', '视图', '工具', '窗口', '帮助'])
   expect(menu.flatMap((top) => top.items).map((item) => item.label)
-    .filter((label) => /[A-Za-z]/.test(label.replace(/Meridian|Skill|MCP/g, '')))).toEqual([])
+    .filter((label) => /[A-Za-z]/.test(label.replace(/Meridian|Skill|MCP|PDF/g, '')))).toEqual([])
 
   const settings = menu.flatMap((top) => top.items).filter((item) => item.id === 'settings')
   expect(settings).toHaveLength(1)
@@ -132,10 +132,10 @@ test('preload 仍是窄接口:页面上没有任何收得下 channel 名的口�
   })
   console.log(`preload 面 ${JSON.stringify(surface)}`)
   expect(surface.meridian).toEqual([
-    'call:function', 'chooseLibraryRoot:function', 'chooseWorkspaceRoot:function', 'onFullScreen:function',
-    'onOpenAgentTutorial:function', 'onOpenPalette:function', 'onOpenSettings:function', 'pathForFile:function',
-    'platform:string', 'restartApp:function', 'revealFile:function', 'setLocale:function', 'setTitleBarTheme:function',
-    'toggleMaximize:function', 'updates:object',
+    'call:function', 'chooseLibraryRoot:function', 'chooseWorkspaceRoot:function', 'onAppCommand:function',
+    'onFullScreen:function', 'onOpenAgentTutorial:function', 'onOpenPalette:function', 'onOpenSettings:function',
+    'pathForFile:function', 'platform:string', 'restartApp:function', 'revealFile:function', 'setLocale:function',
+    'setMenuState:function', 'setTitleBarTheme:function', 'toggleMaximize:function', 'updates:object',
   ])
   expect(surface.escapes).toEqual([
     'require:undefined', 'process:undefined', 'ipcRenderer:undefined',

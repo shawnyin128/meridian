@@ -6,7 +6,7 @@ import type {
   PaperHighlight, PaperHighlightRect, PaperReading, PaperRow, ReadingMutation,
 } from '../../shared/contract.js'
 import { sharesText } from '../../shared/highlight-overlap.js'
-import { papers } from '../ipc.js'
+import { appMenu, papers } from '../ipc.js'
 import { useUndo } from '../hooks/useUndo.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
 import { useWheelZoom } from '../hooks/useWheelZoom.js'
@@ -18,7 +18,7 @@ import { useDrafts } from '../hooks/useDrafts.js'
 import { useOnLeave } from '../hooks/useOnLeave.js'
 import { land } from '../hooks/useArrival.js'
 import {
-  useCrumbTail, useJump, useNotice, useVaultRevision, type ScreenKey, type JumpAnchor,
+  useCrumbTail, useJump, useNotice, useScreenShown, useVaultRevision, type ScreenKey, type JumpAnchor,
 } from '../shell/AppShell.js'
 import type { CrumbSeg } from '../components/Breadcrumb.js'
 import { ActionPopover } from '../components/ActionPopover.js'
@@ -680,6 +680,19 @@ export function Reader() {
   }
 
   useWheelZoom(scroller, (factor, point) => zoomTo(shownZoom.current * factor, point))
+
+  // While the reader is shown, the View menu's zoom items, and their ⌘+, ⌘− and ⌘0, zoom the paper as its zoom control does.
+  const shown = useScreenShown()
+  const zoomHere = useRef(zoomAtCentre)
+  zoomHere.current = zoomAtCentre
+  useEffect(() => {
+    if (!shown) return
+    return appMenu.onAppCommand((command) => {
+      if (command === 'zoomIn') zoomHere.current(zoomStep(shownZoom.current, 1))
+      if (command === 'zoomOut') zoomHere.current(zoomStep(shownZoom.current, -1))
+      if (command === 'resetZoom') zoomHere.current(1)
+    })
+  }, [shown])
 
   useEffect(() => {
     const view = scroller.current
