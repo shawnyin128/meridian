@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { PaperRow, ProjectSummary } from '../../shared/contract.js'
 import { project } from '../ipc.js'
+import { CandidateField } from './CandidateField.js'
 import { ChipList } from './ChipList.js'
-import { PickerPopover, PickOption } from './PickerPopover.js'
 import { TitleNote } from './TitleNote.js'
 import { useCandidateKeys } from '../hooks/useCandidateKeys.js'
 import { NO_TRIGGERS } from '../hooks/useOnLeave.js'
@@ -76,9 +76,9 @@ export function ProjectChips({ paper, onError }: {
         onAdd: () => setOpen(true),
         draft: open
           ? (
-            <PickerPopover
-              open anchorRef={input} stopClickPropagation
-              anchor={(
+            <CandidateField
+              anchorRef={input} keys={keys} heading={m.research.chips.pickerHeading}
+              field={(
                 <FormInput
                   appearance="inline" className="tagin" ref={input} value={query}
                   placeholder={m.project.identity.nameFieldLabel}
@@ -87,18 +87,8 @@ export function ProjectChips({ paper, onError }: {
                   onKeyDown={(event) => { keys.onKeyDown(event); draft.inputProps.onKeyDown(event) }}
                 />
               )}
-              content={hits.length > 0
-                ? (
-                  <>
-                    <div className="rh">{m.research.chips.pickerHeading}</div>
-                    {hits.map((held, i) => (
-                      <PickOption keys={keys} index={i} key={held.id} onClick={() => draft.submit(() => add(held))}>
-                        {held.name}
-                      </PickOption>
-                    ))}
-                  </>
-                )
-                : null}
+              candidates={hits.map((held) => ({ id: held.id, label: held.name }))}
+              onPick={(_, i) => draft.submit(() => add(hits[i]!))}
             />
           )
           : undefined,
