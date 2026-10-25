@@ -72,6 +72,7 @@ export const DOMAIN_DRAWING = {
       { reason: 'edges, those on the active path, and the flow along it', classes: ['redges', 'active', 'active-edge-flows'] },
       { reason: 'nodes: their box, hover box, label, status dot and the idea pattern',
         classes: ['rgn', 'rgn-box', 'rgn-hover', 'rgn-label', 'nd', 'idea-node-pattern-base', 'idea-node-pattern-stripe'] },
+      { reason: 'the legend\'s node and path swatches, miniatures that must match the nodes and edges', classes: ['legend-node', 'legend-path'] },
     ],
   },
   'routes/Reader.css': {

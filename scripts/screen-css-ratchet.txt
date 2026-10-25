@@ -759,18 +759,6 @@ components/project/ResearchGraph.css:34: .legend-item { white-space }
 components/project/ResearchGraph.css:35: .legend-divider { width }
 components/project/ResearchGraph.css:35: .legend-divider { height }
 components/project/ResearchGraph.css:35: .legend-divider { background }
-components/project/ResearchGraph.css:36: .legend-path { width }
-components/project/ResearchGraph.css:36: .legend-path { height }
-components/project/ResearchGraph.css:36: .legend-path { border-radius }
-components/project/ResearchGraph.css:36: .legend-path { background }
-components/project/ResearchGraph.css:37: .legend-node { width }
-components/project/ResearchGraph.css:37: .legend-node { height }
-components/project/ResearchGraph.css:37: .legend-node { box-sizing }
-components/project/ResearchGraph.css:37: .legend-node { border-radius }
-components/project/ResearchGraph.css:38: .legend-node.current { border }
-components/project/ResearchGraph.css:38: .legend-node.current { background }
-components/project/ResearchGraph.css:39: .legend-node.idea { border }
-components/project/ResearchGraph.css:39: .legend-node.idea { background }
 components/project/ResearchGraph.css:42: .node-document-pane .node-document-head+* { margin-top }
 components/project/ResearchGraph.css:43: .node-document-pane .node-document-head { margin }
 components/project/ResearchGraph.css:43: .node-document-pane .node-document-head { padding }
