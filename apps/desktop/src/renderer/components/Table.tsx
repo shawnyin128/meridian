@@ -98,7 +98,6 @@ export function Table({ columns, rows = 'fill', actions, draft = null, className
   const box = useRef<HTMLDivElement | null>(null)
   const fade = useScrollFade('both', box)
   const cap = useRowCap(box, bodyRows, rows === 'capped' ? EMBEDDED_LIST_ROW_LIMIT : undefined)
-  const table = useRef<HTMLTableElement>(null)
   const drag = useRef<WidthDrag | null>(null)
   const [widths, setWidths] = useState<ReadonlyMap<Slot, number>>(new Map())
   const hasActions = actions !== undefined
@@ -203,7 +202,7 @@ export function Table({ columns, rows = 'fill', actions, draft = null, className
       className={`table-scroll table-scroll--${rows}${cap === null ? '' : ' table-scroll--capped-rows'}`} ref={fade}
       data-fade-held="left right top" style={cap === null ? undefined : { maxHeight: cap }}
     >
-      <table ref={table} className={classes('table', className)}>
+      <table className={classes('table', className)}>
         <colgroup>
           {columns.map((column) => (
             <col key={column.key} ref={colRef(column.key)} data-cw={column.key} style={{ width: `${widthOf(column.key)}px` }} />
