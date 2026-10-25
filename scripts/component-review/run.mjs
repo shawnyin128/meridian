@@ -3,6 +3,7 @@ import { mkdirSync, readdirSync, rmSync, rmdirSync } from 'node:fs'
 import { dirname, join, relative, resolve } from 'node:path'
 import { setTimeout as sleep } from 'node:timers/promises'
 import { session } from '../test-library/app.mjs'
+import { injector } from './inject.mjs'
 
 const REPO = resolve(import.meta.dirname, '../..')
 /** The main checkout, whose outputs/ folder holds the review even when a worktree runs this. */
@@ -109,11 +110,14 @@ export async function park(win) {
 /**
  * Runs one navigation step of screens.mjs with Playwright input: `['wait', ms | selector]`,
  * `['press', key]`, `['click' | 'rightclick' | 'hover', selector, index]` (index -1 is the last
- * match, the default the first), `['clickIf', selector]` (only when it is visible),
- * `['fill', selector, text]` and `['radio', name]` (the radio of that accessible name in the
- * visible screen). Throws when a target does not appear within STEP_TIMEOUT_MS.
+ * match, the default the first), `['clickText', selector, text]` (the first match holding that
+ * text), `['clickIf', selector]` (only when it is visible), `['fill', selector, text]`,
+ * `['radio', name]` (the radio of that accessible name in the visible screen) and `['drag',
+ * selector, type]` (a drag event of `type` carrying a PDF file, as the OS sends on a file drag). `['fail', method,
+ * reason]`, `['answer', method, source]`, `['hold', method]` and `['transform', method, source]`
+ * set a rule of `inject` for the state's Core calls. Throws when a target does not appear within STEP_TIMEOUT_MS.
  */
-async function step(win, [kind, target, arg]) {
+async function step(win, inject, [kind, target, arg]) {
   const nth = (locator) => (arg === -1 ? locator.last() : locator.nth(typeof arg === 'number' ? arg : 0))
   const options = { timeout: STEP_TIMEOUT_MS }
   if (kind === 'wait') {
@@ -121,6 +125,7 @@ async function step(win, [kind, target, arg]) {
     else await win.locator(target).first().waitFor({ state: 'visible', ...options })
   } else if (kind === 'press') await win.keyboard.press(target)
   else if (kind === 'click') await nth(win.locator(target)).click(options)
+  else if (kind === 'clickText') await win.locator(target, { hasText: arg }).first().click(options)
   else if (kind === 'clickIf') {
     const found = win.locator(target).first()
     if (await found.isVisible()) await found.click(options)
@@ -129,6 +134,17 @@ async function step(win, [kind, target, arg]) {
   else if (kind === 'hover') await nth(win.locator(target)).hover(options)
   else if (kind === 'fill') await win.locator(target).first().fill(arg, options)
   else if (kind === 'radio') await win.locator('.screenslot:not([hidden])').getByRole('radio', { name: target, exact: true }).first().click(options)
+  else if (kind === 'drag') {
+    const files = await win.evaluateHandle(() => {
+      const transfer = new DataTransfer()
+      transfer.items.add(new File(['%PDF-1.4'], 'review.pdf', { type: 'application/pdf' }))
+      return transfer
+    })
+    await win.locator(target).first().dispatchEvent(arg, { dataTransfer: files })
+  } else if (kind === 'fail') await inject.fail(target, arg)
+  else if (kind === 'answer') await inject.answer(target, arg)
+  else if (kind === 'hold') await inject.hold(target)
+  else if (kind === 'transform') await inject.transform(target, arg)
   else throw new Error(`Unknown step ${kind}`)
 }
 
@@ -136,7 +152,8 @@ async function step(win, [kind, target, arg]) {
  * Walks `states` on a fresh copy of `library` with `app`: one App run per batch, each under the
  * Electron lock and within the run budget. Every state starts at 1440x900 in the light theme with
  * its steps done; then `visit(state, context)` runs with `context = { win, electron }`, returns
- * that state's result and leaves 1440x900 light, and the state's `after` steps run. `finish`, when
+ * that state's result and leaves 1440x900 light, its fault-injection rules end, and the state's
+ * `after` steps run. `finish`, when
  * given, runs with the same context after the last batch's states, in that App run. Returns
  * `{ results, failures }`: the result of every state reached, and the state and reason of every
  * one that was not. Throws when a batch runs over its budget.
@@ -154,6 +171,7 @@ export async function walk({ app, library, name, states, visit, finish }) {
         const watchdog = setTimeout(() => { electron.close() }, BUDGET_MS)
         try {
           await win.locator('#sidebar').waitFor()
+          const inject = await injector(win)
           await setSize(electron, win, SIZES[0])
           await setTheme(win, 'light')
           let reached = true
@@ -164,15 +182,17 @@ export async function walk({ app, library, name, states, visit, finish }) {
               continue
             }
             try {
-              for (const item of state.steps) await step(win, item)
+              for (const item of state.steps) await step(win, inject, item)
               if (!state.keepPointer) await park(win)
               await settle(win)
               results.push({ state, result: await visit(state, { win, electron }) })
-              for (const item of state.after ?? []) await step(win, item)
+              await inject.clear()
+              for (const item of state.after ?? []) await step(win, inject, item)
               reached = true
             } catch (error) {
               reached = false
               failures.push({ screen: state.screen, state: state.state, reason: error.message.split('\n')[0] })
+              await inject.clear()
               await setSize(electron, win, SIZES[0])
               await setTheme(win, 'light')
             }

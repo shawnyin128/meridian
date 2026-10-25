@@ -7,8 +7,8 @@
  * element: its entry, a stable element id, its box, a short label and the metric values of its
  * pattern class, and its `path`, the element's position in the document as each ancestor's
  * index among its siblings, which stays the same when a later state draws the same screen again.
- * `scope` is `screen` (the visible screen and open overlays), `shell` (sidebar and title bar) or
- * `overlay` (open overlays only). At most `cap` elements are measured per entry; the total each
+ * `scope` is `screen` (the visible screen and open overlays), `shell` (sidebar and title bar),
+ * `overlay` (open overlays only) or a selector of the roots to search. At most `cap` elements are measured per entry; the total each
  * entry matched is returned in `totals`. The element id lives in `data-review-id`, so the same
  * element measured again carries the same id. Colours are named by the tokens in
  * `colourTokens` they resolve to, or given as `rgb(...)`. A field's `focus` is its current look,
@@ -65,6 +65,7 @@ export function measureInPage({ entries, scope, cap, colourTokens, shadowTokens,
     const overlays = [...document.body.children].filter((el) => el.id !== 'root' && el.tagName !== 'SCRIPT')
     if (scope === 'shell') return [...document.querySelectorAll('#sidebar, .titlebar')]
     if (scope === 'overlay') return overlays
+    if (scope !== 'screen') return [...document.querySelectorAll(scope)]
     return [document.querySelector('.screenslot:not([hidden])'), ...overlays].filter(Boolean)
   }
 
@@ -128,11 +129,12 @@ export function measureInPage({ entries, scope, cap, colourTokens, shadowTokens,
   }
   const classesOf = (el) => (typeof el.className === 'string' ? el.className : el.getAttribute('class') ?? '').split(/\s+/).filter(Boolean)
   const variant = (el) => classesOf(el).filter((c) => variantClasses.includes(c)).join(' ') || 'plain'
+  // A glyph's laid-out size: its box would follow a spinning ring's rotation.
   const glyph = (el) => {
     const svg = [...el.querySelectorAll('svg')].find(shown)
     if (!svg) return 'none'
-    const box = rect(svg)
-    return `${r1(box.width)}x${r1(box.height)}`
+    const cs = getComputedStyle(svg)
+    return `${px(cs.width)}x${px(cs.height)}`
   }
   const scroller = (el) => {
     const candidates = [el, ...el.querySelectorAll('*')].slice(0, 400)

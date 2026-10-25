@@ -20,7 +20,7 @@ const openWiki = [...desk('wiki'), ['wait', `${V}.wkgrid`]]
 
 /**
  * Every state: `screen` names the screen in reports, `batch` the App run it belongs to, `scope`
- * where its elements are measured (`screen`, `shell` or `overlay`, see probe.mjs), and `steps` how
+ * where its elements are measured (`screen`, `shell`, `overlay` or a selector, see probe.mjs), and `steps` how
  * to reach it. A state with `continues` starts where the state before it in the same batch ended
  * instead of from scratch; `keepPointer` leaves the pointer where the steps put it, and `after`
  * undoes what the steps changed that outlives the state, such as a stored view choice.
@@ -41,11 +41,32 @@ export const STATES = [
   { screen: '稍后阅读', state: 'default', batch: 'feeds', steps: [...desk('later'), ['wait', `${V}.paper-card`]] },
   { screen: '对话', state: 'thread', batch: 'feeds', steps: [...reset, ['click', '#chatList .chat-row'], ['wait', `${V}.stream`], ['wait', 800]] },
   { screen: '对话', state: 'row-hover', batch: 'feeds', scope: 'shell', keepPointer: true, steps: [['hover', '#chatList .chat-row'], ['wait', 300]] },
+  { screen: '论文推送', state: 'download-error', batch: 'feeds', steps: [
+    ['answer', 'inbox.download', "{ kind: 'failed', reason: 'not-pdf' }"], ...reset, ['click', '#rowInboxAll .nav-row-label'], ['hover', `${V}.paper-card`],
+    ['click', `${V}.paper-card [aria-label="下载并入库"]`], ['wait', `${V}.paper-card [role="alert"], ${V}.paper-card .pfail`],
+  ] },
+  // The held download is sent on afterwards and fails under the canned network, writing nothing.
+  { screen: '论文推送', state: 'downloading', batch: 'feeds', keepPointer: true, steps: [
+    ['hold', 'inbox.download'], ...reset, ['click', '#rowInboxAll .nav-row-label'], ['hover', `${V}.paper-card`, 1],
+    ['click', `${V}.paper-card [aria-label="下载并入库"]`, 1], ['wait', `${V}.paper-card .icbtn.busy`],
+  ] },
 
   { screen: '论文', state: 'table', batch: 'library', steps: [...desk('papers'), ['wait', `${V}tbody tr`]] },
   { screen: '论文', state: 'row-hover', batch: 'library', keepPointer: true, steps: [...desk('papers'), ['hover', `${V}tbody tr`], ['wait', 300]] },
   { screen: '论文', state: 'detail', batch: 'library', steps: [...desk('papers'), ['click', `${V}tbody tr`], ['wait', `${V}.pd-h`], ['wait', 500]] },
   { screen: '论文', state: 'grouped', batch: 'library', steps: [...desk('papers'), ['radio', '主题'], ['wait', `${V}.gxrow`]], after: [['radio', '无']] },
+  { screen: '论文', state: 'drop', batch: 'library', steps: [...desk('papers'), ['drag', `${V}.paper-library`, 'dragenter'], ['wait', `${V}.paper-drop`]], after: [['drag', `${V}.paper-library`, 'dragleave']] },
+  { screen: '论文', state: 'research-map', batch: 'library', steps: [...desk('papers'), ['radio', '研究地图'], ['wait', `${V}.research-map-layout`], ['wait', 600]], after: [['radio', '列表']] },
+  // A larger total than the library holds puts the pager under the table; typing a query reloads the list.
+  { screen: '论文', state: 'pager', batch: 'library', steps: [
+    ['transform', 'papers.list', '(list) => ({ ...list, total: Math.max(list.total, 45) })'], ...desk('papers'),
+    ['fill', `${V}.paper-search input`, 'e'], ['wait', `${V}.pgbtn`],
+  ], after: [['fill', `${V}.paper-search input`, '']] },
+  { screen: '论文', state: 'loading', batch: 'library', steps: [
+    ['hold', 'papers.reading'], ...desk('papers'), ['click', `${V}tbody tr`, 1], ['wait', `${V}.loading-placeholder`], ['wait', 400],
+  ] },
+  // The seeded EAGLE paper has more reading notes than the detail's excerpt shows.
+  { screen: '论文', state: 'show-more', batch: 'library', steps: [...desk('papers'), ['clickText', `${V}tbody tr`, 'EAGLE'], ['wait', `${V}.reading-summary-all`]] },
   { screen: '论文', state: 'context-menu', batch: 'library', scope: 'overlay', steps: [...desk('papers'), ['rightclick', `${V}tbody tr`], ['wait', '.ctxmenu']] },
   { screen: '阅读器', state: 'default', batch: 'library', steps: openReader },
   { screen: '阅读器', state: 'metadata', batch: 'library', continues: true, steps: readerTab('元数据') },
@@ -53,11 +74,23 @@ export const STATES = [
   { screen: '阅读器', state: 'notes', batch: 'library', continues: true, steps: readerTab('阅读笔记') },
   { screen: '阅读器', state: 'remark', batch: 'library', continues: true, steps: readerTab('随笔') },
   { screen: '阅读器', state: 'wiki', batch: 'library', continues: true, steps: readerTab('内化到 Wiki') },
+  // The reader keeps a paper it opened, so this state opens one no earlier state opened.
+  { screen: '阅读器', state: 'page-error', batch: 'library', steps: [
+    ...desk('papers'), ['click', `${V}tbody tr`, 2], ['wait', `${V}.pd-h`], ['fail', 'papers.get', 'not-found'], ['fail', 'papers.source', 'not-found'],
+    ['click', `${V}.pd-h .icbtn`], ['wait', `${V}[role="alert"], ${V}.pdfload`],
+  ] },
   { screen: 'Wiki', state: 'home', batch: 'library', steps: openWiki },
   { screen: 'Wiki', state: 'paper', batch: 'library', steps: [...openWiki, ['click', `${V}.wkcard--paper .research-object-card-open`], ['wait', `${V}.wkside`], ['wait', 500]] },
   { screen: 'Wiki', state: 'aggregation', batch: 'library', steps: [...openWiki, ['click', `${V}.wkcard:not(.wkcard--paper) .research-object-card-open`], ['wait', `${V}.wkside`], ['wait', 500]] },
   { screen: 'Wiki', state: 'review', batch: 'library', steps: [...openWiki, ['click', `${V}.desk-head .page-actions .btn`], ['wait', 900]] },
   { screen: 'Wiki', state: 'tidy', batch: 'library', steps: [...openWiki, ['click', `${V}.desk-head .page-actions .btn`, -1], ['wait', 900]] },
+  { screen: '论文', state: 'notice-refusal', batch: 'library', scope: '.notice-host', steps: [
+    ['fail', 'papers.update', 'write'], ...desk('papers'), ['radio', '1 星'], ['wait', '.notice.show'],
+  ] },
+  // The rating is answered in Core's place, so nothing is written to the library copy.
+  { screen: '论文', state: 'notice-success', batch: 'library', scope: '.notice-host', steps: [
+    ['answer', 'papers.update', "{ change: 'review-change' }"], ...desk('papers'), ['radio', '2 星'], ['wait', '.notice.show'],
+  ] },
 
   { screen: '总览', state: 'default', batch: 'research', steps: [...desk('restl'), ['wait', `${V}.ovcols`]] },
   { screen: '总览', state: 'filter-menu', batch: 'research', scope: 'overlay', steps: [...desk('restl'), ['click', `${V}.filter-menu`], ['wait', '.ctxmenu']] },
@@ -74,6 +107,7 @@ export const STATES = [
   { screen: '最近变动', state: 'default', batch: 'research', steps: [...desk('changelog'), ['wait', `${V}.crow`]] },
   { screen: '最近变动', state: 'expanded', batch: 'research', steps: [...desk('changelog'), ['click', `${V}.card-tray-toggle`], ['wait', `${V}.diff`]] },
   { screen: '垃圾桶', state: 'default', batch: 'research', steps: [...desk('trash'), ['wait', `${V}.trow`]] },
+  { screen: '论文', state: 'page-error', batch: 'research', steps: [['fail', 'papers.get', 'not-found'], ...desk('papers'), ['click', `${V}tbody tr`], ['wait', `${V}[role="alert"]`]] },
   { screen: '垃圾桶', state: 'confirm-purge', batch: 'research', scope: 'overlay', steps: [...desk('trash'), ['click', `${V}.desk-head .page-actions .btn`], ['wait', '.modal.confirm']] },
 
   { screen: '设置', state: 'appearance', batch: 'settings', scope: 'overlay', steps: [...openSettings, ...settingsPane('appearance')] },
@@ -86,7 +120,25 @@ export const STATES = [
   { screen: '设置', state: 'watches', batch: 'settings', scope: 'overlay', continues: true, steps: settingsPane('delivery-watch') },
   { screen: '设置', state: 'discovery', batch: 'settings', scope: 'overlay', continues: true, steps: settingsPane('delivery-discovery') },
   { screen: '设置', state: 'archived', batch: 'settings', scope: 'overlay', continues: true, steps: settingsPane('archived') },
+  { screen: '设置', state: 'delivery-error', batch: 'settings', scope: 'overlay', steps: [
+    ...openSettings, ...settingsPane('delivery'), ['fill', '.setdlg [aria-label="显示上限"]', '0'], ['wait', 400],
+  ] },
+  { screen: '设置', state: 'watch-errors', batch: 'settings', scope: 'overlay', steps: [
+    ['fail', 'watch.suggest', 'rate-limit'], ['fail', 'author.search', 'rate-limit'], ...openSettings, ...settingsPane('delivery-watch'),
+    ['fill', '.setdlg .watch-suggestions input', '我想关注批量推理中的动态验证与草稿树'], ['clickText', '.setdlg .watch-suggestions .btn', '查找建议'],
+    ['click', '.setdlg .section-heading:has-text("作者") button'], ['fill', '.setdlg .wrow.newrow input', 'Ada Lovelace'], ['wait', 1500],
+  ] },
+  { screen: '设置', state: 'author-searching', batch: 'settings', scope: 'overlay', steps: [
+    ['hold', 'author.search'], ...openSettings, ...settingsPane('delivery-watch'),
+    ['click', '.setdlg .section-heading:has-text("作者") button'], ['fill', '.setdlg .wrow.newrow input', 'Ada Lovelace'], ['wait', '.setdlg .author-search-note'],
+  ] },
+  { screen: '设置', state: 'theme-problem', batch: 'settings', scope: 'overlay', steps: [
+    ['transform', 'themes.list', "(files) => [...files, { state: 'unreadable', file: 'broken.json', reason: 'syntax' }]"],
+    ...openSettings, ...settingsPane('appearance'), ['wait', '.setdlg .appearance-problem'],
+  ] },
   { screen: '设置', state: 'confirm-reset', batch: 'settings', scope: 'overlay', steps: [...openSettings, ...settingsPane('storage'), ['click', '.storage-reset .btn'], ['wait', '.modal.confirm']] },
+  // The trash loads once per App run, so its failure comes in a batch that has not shown the trash.
+  { screen: '垃圾桶', state: 'page-error', batch: 'settings', steps: [['fail', 'trash.list', 'newer-version'], ...desk('trash'), ['wait', `${V}[role="alert"]`]] },
   // Leaving the theme editor asks to discard the draft, so it is the batch's last state.
   { screen: '设置', state: 'theme-editor', batch: 'settings', scope: 'overlay', steps: [...openSettings, ...settingsPane('appearance'), ['click', '.appearance-add'], ['wait', '.theme-editor-title']] },
 ]

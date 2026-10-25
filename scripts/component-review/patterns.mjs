@@ -367,6 +367,14 @@ export const PATTERNS = {
     ],
   },
   TimelineMarker: { metrics: 'tag', entries: [entry('hand:components/timeline/TimelineBoard.tsx', '.gddl')] },
+  RunningIndicator: {
+    metrics: 'button',
+    entries: [
+      entry('shared:IconButton', '.icbtn.busy'),
+      entry('shared:ActionButton', '.action-button:has(.ring)'),
+    ],
+  },
+  DropOverlay: { metrics: 'state', entries: [entry('hand:components/paper-table/PaperTable.tsx', '.paper-drop')] },
   Button: {
     metrics: 'button',
     entries: [
@@ -512,8 +520,6 @@ export const UNMEASURED = {
   GraphCanvas: 'domain-view drawing; catalog section 4 lets domain views keep their own canvas',
   PdfPage: 'domain-view drawing; catalog section 4 lets domain views keep their own canvas',
   HighlightMark: 'domain-view drawing; catalog section 4 lets domain views keep their own canvas',
-  DropOverlay: 'shown only while a file is dragged over the paper table, which needs an OS drag',
-  RunningIndicator: 'shown only while a generation runs, which needs a model call',
   Checklist: 'the first-run checklist is measured as a Card (.card-surface)',
 }
 

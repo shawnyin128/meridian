@@ -24,7 +24,7 @@ they run from a worktree. Build the App before a run: `npm --prefix apps/desktop
 ## measure
 
 ```bash
-node scripts/component-review/measure.mjs [--name baseline] [--app <app>] [--library <dir>] [--out <dir>]
+node scripts/component-review/measure.mjs [--name baseline] [--app <app>] [--library <dir>] [--out <dir>] [--compare <before.json>]
 ```
 
 The script walks every state of `screens.mjs` at 1440×900 and 1280×800, in light and dark. In
@@ -34,14 +34,20 @@ files to `outputs/review/v0.0.20.0/components/drift/`:
 - `<name>.json` holds every measurement, with its size and theme, screen, state, selector entry,
   element box and metric values. It also holds the summary and the states that were not reached.
 - `<name>.md` is the drift summary. It ranks the patterns by the number of distinct values of their
-  most varied metric, at 1440×900 light. For each pattern and metric it lists every distinct
-  value, how many instances have it, and the screens where it appears. For the other sizes and
-  themes, it lists only the metrics whose values differ.
+  most varied metric, at 1440×900 light. The ranking uses only the metrics that should agree:
+  height follows the content, so it has a column of its own and stays out of the ranking. For
+  each pattern and metric the summary lists every distinct value, how many instances have it, and
+  the screens where it appears. For the other sizes and themes, it lists only the metrics whose
+  values differ.
 
 An element counts once per screen, in the first state that shows it. A later state that shows it
-again, or draws it anew at the same place with the same label and values, adds nothing. Two runs on the same code and
-library write byte-identical files. A later phase compares its run with the baseline, for example
-`--name phase1`.
+again, or draws it anew at the same place with the same label and values, adds nothing. Two runs
+on the same code and library write byte-identical files.
+
+A later phase compares its run with the baseline, for example
+`--name phase1 --compare outputs/review/v0.0.20.0/components/drift/baseline.json`. The script then
+prints one table, and writes it to `<out>/compare.md`. The table gives, per pattern and metric at
+1440×900 light, the instances and the distinct values before → after, and the change.
 
 `--app` takes a built `apps/desktop` folder, the default being this checkout's, or a
 `Meridian.app`. `--library` takes another test library to copy.
@@ -98,5 +104,13 @@ The sheet is drawn in the App's own window at the end of the last batch.
 - `screens.mjs` is the navigation map. It lists every screen and state the inventory walked, each
   reached from any screen by Playwright input. A state that needs a new screen or setup is added
   there, in the batch of its area.
+- Some states need an answer Core does not give the test library: an error, a pending call, or a
+  longer list. `inject.mjs` reaches them without seed data. It patches the port through which the
+  preload talks to Core, in Electron's isolated world, over the DevTools protocol. A state's steps
+  can then make a Core call fail (`fail`), answer it in Core's place (`answer`), keep it pending
+  (`hold`), or change its answer (`transform`). The rules end after each state, and held calls
+  are sent on. Notices, inline and page errors, loading placeholders, busy labels, the running
+  ring, the pager and the drop overlay are reached this way, or by plain input such as rating a
+  paper or a synthetic file drag.
 
 Tests: `npx vitest run scripts/component-review/`.
