@@ -8,8 +8,8 @@
 /* The card's name button draws nothing of its own; its click reaches the card. */
 :where(.research-object-card-open){display:inline-flex;align-items:center;min-width:0;padding:0;border:0;background:none;
   color:inherit;font:inherit;text-align:left;cursor:inherit}
-/* The selected look of rows, cards and graph nodes; see StructuredList.css. */
-.research-object-card.selected{background-color:var(--selected);color:var(--on-selected)}
+/* The selected look of rows and cards; see StructuredList.css. */
+.research-object-card.selected{background-color:var(--accent-soft);color:var(--accent-text)}
 .research-object-card.muted{background:var(--content)}
 .research-object-card.dragging{opacity:.4}
 .research-object-card.drag-over-before{box-shadow:0 -3px 0 0 var(--ink)}

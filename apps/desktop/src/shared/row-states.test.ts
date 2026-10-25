@@ -25,7 +25,7 @@ const { document, MouseEvent, getComputedStyle } = globalThis as unknown as Wind
 const STYLES = [
   'shell/tokens.css', 'components/StructuredList.css', 'shell/AppShell.css', 'components/paper-table/PaperTable.css',
   'components/ResearchObjectCard.css', 'components/project/ResearchGraph.css', 'routes/Settings.css',
-  'components/timeline/TimelineBoard.css', 'routes/Ideas.css',
+  'components/timeline/TimelineBoard.css', 'routes/Ideas.css', 'routes/Reader.css',
 ].map((path) => readFileSync(join(import.meta.dirname, '..', 'renderer', path), 'utf8'))
 
 /** The style of `shown` inside fresh `markup`, after the pointer entered `hovered` when one is given. */
@@ -43,35 +43,32 @@ describe('选中的样子只有一种', () => {
     document.head.innerHTML = STYLES.map((css) => `<style>${css}</style>`).join('')
   })
 
-  it('选中的列表行、研究地图分组和卡片都铺中性的选中色，侧栏的当前行铺浅强调色、字用强调色', () => {
+  it('选中的列表行、研究地图分组、卡片和高亮卡片都和侧栏的当前行一个样子:浅强调色的底配强调色的字', () => {
     const looks = {
       row: styleOf('<div class="structured-list"><button class="structured-row structured-row--selected">项目</button></div>', '.structured-row'),
       sidebar: styleOf('<button class="nav-row srow on"><span class="ic"></span>论文</button>', '.srow'),
       map: styleOf('<div class="research-map-groups structured-list"><button class="structured-row structured-row--selected research-map-group">KV cache</button></div>', '.research-map-group'),
       card: styleOf('<article class="research-object-card selected">想法</article>', '.research-object-card'),
+      highlight: styleOf('<div class="reading-card highlight-card yellow selected">批注</div>', '.reading-card'),
     }
+    const current = ['var(--accent-soft)', 'var(--accent-text)', '']
     expect(Object.fromEntries(Object.entries(looks).map(([host, style]) => [host, [style.backgroundColor, style.color, style.boxShadow]])))
-      .toEqual({
-        row: ['var(--selected)', 'var(--on-selected)', ''],
-        sidebar: ['var(--accent-soft)', 'var(--accent-text)', ''],
-        map: ['var(--selected)', 'var(--on-selected)', ''],
-        card: ['var(--selected)', 'var(--on-selected)', ''],
-      })
+      .toEqual({ row: current, sidebar: current, map: current, card: current, highlight: current })
     expect(looks.card.borderColor).not.toBe('var(--accent)')
   })
 
-  it('选中的想法卡片，标题也用选中色上的强调色', () => {
+  it('选中的想法卡片，标题也用强调色的字', () => {
     const card = '<article class="research-object-card selected idea-card"><div class="idea-card-title-row"><strong>草稿头共享浅层 KV</strong></div></article>'
-    expect(styleOf(card, 'strong').color).toBe('var(--on-selected)')
+    expect(styleOf(card, 'strong').color).toBe('var(--accent-text)')
   })
 
   it('选中的侧栏行图标跟着字用同一个颜色', () => {
     expect(styleOf('<button class="nav-row srow on"><span class="ic"></span>论文</button>', '.ic').color).toBe('var(--accent-text)')
   })
 
-  it('选中的论文行铺选中色，标题用选中色上的强调色，左边不再画强调色竖条', () => {
-    expect(styleOf(TABLE_ROW('selected'), 'tr').getPropertyValue('--row-bg')).toBe('var(--selected)')
-    expect(styleOf(TABLE_ROW('selected'), '.pt-title').color).toBe('var(--on-selected)')
+  it('选中的论文行和侧栏的当前行一个样子:铺浅强调色，标题用强调色的字，左边不画强调色竖条', () => {
+    expect(styleOf(TABLE_ROW('selected'), 'tr').getPropertyValue('--row-bg')).toBe('var(--accent-soft)')
+    expect(styleOf(TABLE_ROW('selected'), '.pt-title').color).toBe('var(--accent-text)')
     expect(styleOf(TABLE_ROW('selected'), 'td').boxShadow).not.toContain('var(--accent)')
     expect(styleOf(TABLE_ROW('selected'), '.ci', 'td').boxShadow).not.toContain('var(--accent)')
   })
@@ -98,9 +95,9 @@ describe('悬停的反馈不被任何状态盖掉', () => {
     document.head.innerHTML = STYLES.map((css) => `<style>${css}</style>`).join('')
   })
 
-  it('选中的列表行和侧栏的当前行悬停时，选中色上再盖一层悬停色', () => {
+  it('选中的列表行和侧栏的当前行悬停时，浅强调色上再盖一层悬停色', () => {
     const row = styleOf('<div class="structured-list"><button class="structured-row structured-row--selected">项目</button></div>', '.structured-row', '.structured-row')
-    expect([row.backgroundColor, row.backgroundImage]).toEqual(['var(--selected)', HOVER])
+    expect([row.backgroundColor, row.backgroundImage]).toEqual(['var(--accent-soft)', HOVER])
     const sidebar = styleOf('<button class="nav-row srow on">论文</button>', '.srow', '.srow')
     expect([sidebar.backgroundColor, sidebar.backgroundImage]).toEqual(['var(--accent-soft)', HOVER])
   })
@@ -114,9 +111,9 @@ describe('悬停的反馈不被任何状态盖掉', () => {
     expect(styleOf(claim, '.wkclaim', '.wkclaim').backgroundImage).toBe('none')
   })
 
-  it('选中的论文行悬停时，选中色和悬停色叠在一起', () => {
+  it('选中的论文行悬停时，浅强调色和悬停色叠在一起', () => {
     const tr = styleOf(TABLE_ROW('selected'), 'tr', 'td')
-    expect([tr.getPropertyValue('--row-bg'), tr.getPropertyValue('--row-over')]).toEqual(['var(--selected)', 'var(--hover)'])
+    expect([tr.getPropertyValue('--row-bg'), tr.getPropertyValue('--row-over')]).toEqual(['var(--accent-soft)', 'var(--hover)'])
     expect(styleOf(TABLE_ROW('selected'), 'td.pt-dim').backgroundImage).toContain('var(--row-over)')
   })
 

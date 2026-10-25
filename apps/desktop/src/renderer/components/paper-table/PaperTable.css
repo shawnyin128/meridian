@@ -91,14 +91,14 @@
  */
 .ptable tbody tr{--row-bg:transparent;--row-over:transparent}
 .ptable tbody tr:hover,.ptable tbody tr:has(.stchip[data-state="open"]){--row-over:var(--hover)}
-.ptable tbody tr.selected{--row-bg:var(--selected)}
+.ptable tbody tr.selected{--row-bg:var(--accent-soft)}
 .ptable tbody td{background-color:var(--row-bg);background-image:linear-gradient(var(--row-over),var(--row-over))}
 .ptable tbody td:first-child{background-color:var(--content);
   background-image:linear-gradient(var(--row-over),var(--row-over)),linear-gradient(var(--row-bg),var(--row-bg))}
 .pt-title{font-weight:var(--fw-medium);color:var(--ink);cursor:pointer}
 /* The title is the row's button; it draws nothing of its own, and its click reaches the row. */
 .ptable .pt-open{width:100%;padding:0;border:0;background:none;color:inherit;font:inherit;text-align:left;cursor:inherit}
-.ptable tbody tr.selected .pt-title{color:var(--on-selected)}
+.ptable tbody tr.selected .pt-title{color:var(--accent-text)}
 .pt-title:hover{text-decoration:underline;text-underline-offset:2px}
 .ptable tbody tr{cursor:pointer}
 .pt-dim{color:var(--ter);white-space:nowrap}

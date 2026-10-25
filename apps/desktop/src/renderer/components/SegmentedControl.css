@@ -14,6 +14,7 @@
   background:transparent;color:var(--sec);font-family:var(--sans);font-size:var(--fs-sm);font-weight:var(--fw-medium);line-height:1;
   white-space:nowrap;cursor:pointer;transition:color var(--t-fast) var(--e-out)}
 .segmented-control--sm>button{height:20px;padding:0 var(--sp-8)}
-.segmented-control>button:not(:disabled):hover,.segmented-control>button[data-state="on"]{color:var(--ink)}
+.segmented-control>button[data-state="off"]:not(:disabled):hover{color:var(--ink)}
+.segmented-control>button[data-state="on"]{color:var(--accent-text)}
 .segmented-control>button[data-state="off"]:not(:disabled):active{background-image:linear-gradient(var(--press),var(--press))}
 .segmented-control>button:disabled{cursor:default;opacity:.5}
