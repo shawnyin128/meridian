@@ -7,15 +7,12 @@
 .collapsible-group.is-closed>.collapsible-group-head{margin-bottom:0}
 /*
  * A pinned heading covers the items scrolling under it, so it paints the page ground, and it holds
- * the space above its title as padding, so the title keeps that space while it is pinned.
+ * the space above its title as padding, so the title keeps that space while it is pinned. While
+ * pinned it fades the items under it through ScrollArea's data-stuck-fade.
  */
 .collapsible-group--sticky:not(:first-child){margin-top:var(--sp-8)}
-.collapsible-group--sticky>.section-heading.collapsible-group-head{position:sticky;top:calc(-1 * var(--sp-20));z-index:2;container-type:scroll-state;
+.collapsible-group--sticky>.section-heading.collapsible-group-head{position:sticky;top:calc(-1 * var(--sp-20));z-index:2;
   margin-inline:calc(-1 * var(--sp-4));padding:var(--sp-12) var(--sp-4) 0;background:var(--content)}
-/* While pinned, the heading fades the items scrolling under it, in its own paint. */
-.collapsible-group--sticky>.collapsible-group-head::after{content:"";position:absolute;top:100%;left:0;right:0;height:var(--sp-24);background:inherit;
-  mask-image:linear-gradient(#000,transparent);opacity:0;pointer-events:none;transition:opacity var(--t-fast) var(--e-out)}
-@container scroll-state(stuck: top){.collapsible-group--sticky>.collapsible-group-head::after{opacity:1}}
 /*
  * A group opened from its heading grows through its one grid row from 0fr, as CardTray does, and clips
  * its content only while it grows, so the content's own shadows and overflow show once it is open.

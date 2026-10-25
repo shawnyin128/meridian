@@ -57,7 +57,7 @@ export function Group({ title, count, meta, actions, fold, sticky = false, class
   return (
     <section className={classes} {...data}>
       <SectionHeading
-        level="group" count={count} meta={meta} actions={actions}
+        level="group" count={count} meta={meta} actions={actions} {...(sticky ? { 'data-stuck-fade': 'top' } : {})}
         className={className === undefined ? 'collapsible-group-head' : `collapsible-group-head ${className}`}
         fold={{ open: fold.open, controls: bodyId, onToggle: () => { setOpening(!fold.open); fold.onToggle() } }}
       ><span className="collapsible-group-title">{title}</span>
