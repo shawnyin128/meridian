@@ -1182,14 +1182,18 @@ test('年份与发表分两列:年份只写年份、仍按它排序,发表只写
   await expect(rows.first()).toHaveAttribute('aria-current', 'true')
 })
 
-test('详情里笔记与实验结论的数是普通的属性值:只是一段字,不算分隔线的行高和「Wiki」「文件」两行一样', async ({ win }) => {
+test('详情里笔记与实验结论的数是属性值:一段字,不为零时是实体链接,不算分隔线的行高和「Wiki」「文件」两行一样', async ({ win }) => {
   await gotoPapers(win)
   await firstPage(win)
   await win.locator('.ptable tbody tr').first().locator('td.pt-title').click()
   const counts = win.locator('.pdetail .paper-reading-summary .paper-meta-list dd')
   await expect(counts).toHaveCount(2)
-  expect(await counts.evaluateAll((dds) => dds.map((dd) => [dd.childElementCount, /^\d+$/.test(dd.textContent ?? '')])))
-    .toEqual([[0, true], [0, true]])
+  // A count above zero is the one entity link, holding only the number; a zero is the number alone.
+  expect(await counts.evaluateAll((dds) => dds.map((dd) => {
+    const shown = /^\d+$/.test(dd.textContent ?? '')
+    const link = dd.querySelector(':scope > .entity-link')
+    return shown && (dd.textContent === '0' ? dd.childElementCount === 0 : dd.childElementCount === 1 && link !== null)
+  }))).toEqual([true, true])
   const plain = win.locator('.pdetail .paper-meta .paper-meta-list').locator('dt:text-is("Wiki") + dd, dt:text-is("文件") + dd')
   await expect(plain).toHaveCount(2)
   // The last row of each list draws no divider under it, so rows are compared without theirs.

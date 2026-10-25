@@ -5,7 +5,7 @@ import type {
   SortKey,
 } from '../../../shared/contract.js'
 import { MAX_PDF_UPLOAD_BYTES } from '../../../shared/contract.js'
-import { DEFAULT_PAPER_GROUPS, READ_STATES } from '../../../shared/vocabulary.js'
+import { DEFAULT_PAPER_GROUPS, PAPER_PAGE, READ_STATES } from '../../../shared/vocabulary.js'
 import { papers } from '../../ipc.js'
 import { errorLabel } from '../../lib/failure-label.js'
 import type { Catalog } from '../../messages/catalog.js'
@@ -1379,6 +1379,7 @@ export function PaperTable() {
               <PaperReadingSummary
                 paper={detail}
                 onRead={(anchor) => open('reader', detail.id, anchor)}
+                onConclusions={() => open('wiki', `${PAPER_PAGE}${detail.id}`)}
               />
             </div>
           )}

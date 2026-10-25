@@ -63,7 +63,7 @@ describe('PaperReadingSummary', () => {
     await act(async () => {
       root!.render(
         <MessagesProvider>
-          <PaperReadingSummary paper={PAPER} onRead={(anchor) => { read.push(anchor) }} />
+          <PaperReadingSummary paper={PAPER} onRead={(anchor) => { read.push(anchor) }} onConclusions={() => {}} />
         </MessagesProvider>,
       )
     })
@@ -80,19 +80,40 @@ describe('PaperReadingSummary', () => {
     expect(read).toEqual([{ page: 2, highlight: 'h1', panel: 'highlights' }])
   })
 
-  it('shows the note and conclusion counts as plain property values, text like the other values of a property list', async () => {
+  it('shows the note and conclusion counts as links in the property list\'s text, the notes opening the reader at its notes and the conclusions the paper\'s Wiki page', async () => {
+    const read: JumpAnchor[] = []
+    const conclusions = vi.fn()
     const host = document.createElement('div')
     document.body.appendChild(host)
     root = createRoot(host)
     await act(async () => {
       root!.render(
         <MessagesProvider>
-          <PaperReadingSummary paper={PAPER} onRead={() => {}} />
+          <PaperReadingSummary paper={{ ...PAPER, conclusionCount: 2 }} onRead={(anchor) => { read.push(anchor) }} onConclusions={conclusions} />
         </MessagesProvider>,
       )
     })
 
-    expect([...host.querySelectorAll('.paper-meta-list dd')].map((dd) => [dd.childElementCount, dd.textContent]))
-      .toEqual([[0, '3'], [0, '0']])
+    const links = [...host.querySelectorAll('.paper-meta-list dd')].map((dd) => dd.querySelector<HTMLElement>(':scope > .entity-link'))
+    expect(links.map((link) => [link?.tagName, link?.textContent])).toEqual([['BUTTON', '3'], ['BUTTON', '2']])
+    await act(async () => { links[0]!.click() })
+    await act(async () => { links[1]!.click() })
+    expect([read, conclusions.mock.calls.length]).toEqual([[{ panel: 'notes' }], 1])
+  })
+
+  it('shows a zero count as plain text, like the other values of a property list', async () => {
+    const host = document.createElement('div')
+    document.body.appendChild(host)
+    root = createRoot(host)
+    await act(async () => {
+      root!.render(
+        <MessagesProvider>
+          <PaperReadingSummary paper={PAPER} onRead={() => {}} onConclusions={() => {}} />
+        </MessagesProvider>,
+      )
+    })
+
+    expect([...host.querySelectorAll('.paper-meta-list dd')].map((dd) => [dd.childElementCount, dd.textContent])[1])
+      .toEqual([0, '0'])
   })
 })
