@@ -49,25 +49,20 @@ const neutralOf = (win: Page) => win.evaluate(() => {
 })
 
 test('Meridian 不是当前的 App 时侧栏和设置的当前行从强调色变成中性灰,回来后变回', async ({ app, win }) => {
-  const sidebar = win.locator('#sidebar .nav-row.on')
-  await expect(sidebar).toBeVisible()
-  const active = await lookOf(sidebar)
+  // Settings opens first: a click gives the page its own focus back, which appSwitcher takes only once.
+  await openSettings(app, win)
+  const rows = [win.locator('#sidebar .nav-row.on'), win.locator('.setdlg .split-nav .nav-row.on')]
+  const active = [await lookOf(rows[0]!), await lookOf(rows[1]!)]
   const switcher = await appSwitcher(app, win)
   await switcher.away()
   await expect(win.locator('html')).toHaveAttribute('data-window-inactive', '')
-  const inactive = await lookOf(sidebar)
-  expect(inactive).toEqual(await neutralOf(win))
-  expect(inactive).not.toEqual(active)
+  const neutral = await neutralOf(win)
+  for (const [index, row] of rows.entries()) {
+    const inactive = await lookOf(row)
+    expect(inactive).toEqual(neutral)
+    expect(inactive).not.toEqual(active[index])
+  }
   await switcher.back()
   await expect(win.locator('html')).not.toHaveAttribute('data-window-inactive', '')
-  expect(await lookOf(sidebar)).toEqual(active)
-
-  await openSettings(app, win)
-  const category = win.locator('.setdlg .split-nav .nav-row.on')
-  const shown = await lookOf(category)
-  await switcher.away()
-  await expect(win.locator('html')).toHaveAttribute('data-window-inactive', '')
-  expect(await lookOf(category)).toEqual(await neutralOf(win))
-  expect(await lookOf(category)).not.toEqual(shown)
-  await switcher.back()
+  expect([await lookOf(rows[0]!), await lookOf(rows[1]!)]).toEqual(active)
 })
