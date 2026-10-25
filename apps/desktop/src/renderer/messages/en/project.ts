@@ -266,6 +266,7 @@ export const project = {
       activePath: 'Active research path',
       ideaLinked: 'Linked to selected idea',
     },
+    nodeName: (label: string, states: readonly string[]) => `${label} (${states.join(', ')})`,
     branchSummary: 'Branches',
     records: 'Research log',
     tasks: 'Tasks',

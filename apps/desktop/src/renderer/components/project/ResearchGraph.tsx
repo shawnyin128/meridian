@@ -15,7 +15,7 @@ import { recordKind, recordOrigin, sortRecordsNewestFirst } from '../../../share
 import { Markdown } from '../Markdown.js'
 import { plainTitle } from '../paper/paper-text.js'
 import { EmptyState } from '../EmptyState.js'
-import { EntityLink } from '../EntityLink.js'
+import { EntityLink, NODE_MODE_LOOK } from '../EntityLink.js'
 import { FadeText } from '../FadeText.js'
 import { IconButton } from '../IconButton.js'
 import { ownIdea, SourceChatDeleted } from '../ideas/IdeaPanel.js'
@@ -87,6 +87,37 @@ export function fittedView(content: { width: number; height: number }, width: nu
 /** A node's research state, the one the graph colours its dot by. */
 export const nodeMode = (node: GraphNode): NonNullable<GraphNode['mode']> =>
   node.mode ?? (node.state === 'done' ? 'supported' : 'unresolved')
+
+/** Where a node's state mark sits in the node, and its radius. */
+const MARK = { x: 18, y: GRAPH_NODE_HEIGHT / 2, r: 4 }
+/** A circle of radius `r` round the mark's centre as a path; `back` runs it the other way, which cuts it out of the one before. */
+const circle = (r: number, back = false) =>
+  `M${MARK.x - r} ${MARK.y}a${r} ${r} 0 1 ${back ? 1 : 0} ${2 * r} 0a${r} ${r} 0 1 ${back ? 1 : 0} ${-2 * r} 0Z`
+/** The hollow of a ring: the mark less its rim. */
+const HOLE = 2.5
+/** The half of a cross's arm width along each axis, and how far the cross reaches from the centre. */
+const ARM = 1.13
+const REACH = 3.2
+
+/**
+ * A node's state mark, whose shape says the state as its colour does (NODE_MODE_LOOK): a dot for a
+ * verified node, a ring for a candidate, a ring half filled for one that needs repair, and a cross for
+ * a failed one. Every part takes the dot's class, which colours it by the state.
+ */
+function StateMark({ mode }: { mode: NonNullable<GraphNode['mode']> }) {
+  const { fill } = NODE_MODE_LOOK[mode]
+  if (fill === 'full') return <circle cx={MARK.x} cy={MARK.y} r={MARK.r} className="nd" />
+  if (fill === 'cross') {
+    const [x, y, a, d] = [MARK.x, MARK.y, REACH, ARM]
+    const corners = [[-a, -a + d], [-a + d, -a], [0, -d], [a - d, -a], [a, -a + d], [d, 0], [a, a - d], [a - d, a], [0, d],
+      [-a + d, a], [-a, a - d], [-d, 0]]
+    return <path className="nd" d={`M${corners.map(([dx, dy]) => `${x + dx!} ${y + dy!}`).join('L')}Z`} />
+  }
+  const ring = `${circle(MARK.r)}${circle(HOLE, true)}`
+  // The left half of the hollow, drawn from its top to its bottom round the left.
+  const half = `M${MARK.x} ${MARK.y - HOLE}a${HOLE} ${HOLE} 0 0 0 0 ${2 * HOLE}Z`
+  return <path className="nd" d={fill === 'half' ? `${ring}${half}` : ring} />
+}
 
 /**
  * Lay out the read-only graph from topology instead of persisted display coordinates.
@@ -186,6 +217,7 @@ export function ResearchGraph({ graph, selected, ideaNodeIds = [], onSelect }: {
   onSelect: (nodeId: string) => void
 }) {
   const m = useMessages()
+  const legend = m.project.graph.legend
   const ideaPatternId = `idea-node-hatch-${useId().replaceAll(':', '')}`
   const viewport = useRef<HTMLDivElement>(null)
   const panStart = useRef<{
@@ -335,9 +367,15 @@ export function ResearchGraph({ graph, selected, ideaNodeIds = [], onSelect }: {
               {readingOrder.map((node) => {
                 const ideaRelated = ideaNodes.has(node.id)
                 const onRoute = routes.nodes.has(node.id) && !activeNodeIds.has(node.id)
+                const states = [
+                  legend[NODE_MODE_LOOK[nodeMode(node)].legend],
+                  ...(activeNodeIds.has(node.id) ? [legend.inProgress] : []),
+                  ...(onRoute ? [legend.activePath] : []),
+                  ...(ideaRelated ? [legend.ideaLinked] : []),
+                ]
                 return (
                   <Tooltip key={node.id} label={node.label} whenClipped>
-                    <ToggleItem asChild value={node.id} aria-label={node.label}>
+                    <ToggleItem asChild value={node.id} aria-label={m.project.graph.nodeName(node.label, states)}>
                       <g
                         className={`rgn ${node.state} ${nodeMode(node)}${onRoute ? ' active-path-node-graph' : ''}${activeNodeIds.has(node.id) ? ' active-leaf' : ''}${ideaRelated ? ' idea-related' : ''}${node.id === selected ? ' sel' : ''}`}
                         data-node={node.id} transform={`translate(${node.x},${node.y})`}
@@ -355,7 +393,7 @@ export function ResearchGraph({ graph, selected, ideaNodeIds = [], onSelect }: {
                           style={ideaRelated ? { fill: `url(#${ideaPatternId})` } : undefined}
                         />
                         <rect className="rgn-hover" width={node.width} height={GRAPH_NODE_HEIGHT} />
-                        <circle cx="18" cy={GRAPH_NODE_HEIGHT / 2} r="4" className="nd" />
+                        <StateMark mode={nodeMode(node)} />
                         <foreignObject
                           x={GRAPH_LABEL_LEFT} width={node.width - GRAPH_LABEL_LEFT - GRAPH_LABEL_RIGHT}
                           height={GRAPH_NODE_HEIGHT}
@@ -397,10 +435,12 @@ export function ResearchGraph({ graph, selected, ideaNodeIds = [], onSelect }: {
         </Toolbar>
       </div>
       <div className="glegend">
-        <span className="legend-item"><StatusDot tone="warn" size="md" />{m.project.graph.legend.needsRepair}</span>
-        <span className="legend-item"><StatusDot tone="good" size="md" />{m.project.graph.legend.verified}</span>
-        <span className="legend-item"><StatusDot tone="bad" size="md" />{m.project.graph.legend.failed}</span>
-        <span className="legend-item"><StatusDot tone="neutral" size="md" />{m.project.graph.legend.candidate}</span>
+        {(['repairable', 'supported', 'dead', 'unresolved'] as const).map((mode) => (
+          <span className="legend-item" key={mode}>
+            <StatusDot tone={NODE_MODE_LOOK[mode].tone} fill={NODE_MODE_LOOK[mode].fill} size="md" />
+            {legend[NODE_MODE_LOOK[mode].legend]}
+          </span>
+        ))}
         {routes.nodes.size === 0 ? null : (
           <>
             <span className="legend-divider" aria-hidden="true" />
