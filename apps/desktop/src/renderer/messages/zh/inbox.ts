@@ -7,7 +7,6 @@ export const inbox = {
     noneNew: '没有新论文',
     lastChecked: '上次检查',
   },
-  lastRefreshed: '上次刷新',
   checkNewPapers: '检查新论文',
   discovering: '正在发现…',
   refreshDiscovery: '刷新发现',
@@ -28,8 +27,6 @@ export const inbox = {
     dismiss: '忽略',
   },
   notices: {
-    queued: '已存入稍后阅读',
-    alreadyQueued: '已在稍后阅读中',
     dismissedAll: '已全部忽略',
     dismissed: '已忽略',
     duplicateToast: '库里已有这一篇',

@@ -23,7 +23,6 @@ export const wiki = {
     moveOutPaper: (paper: string, parent: string) => `把 ${paper} 从 ${parent} 移出`,
     editMetadata: (title: string) => `修改 ${title} 的元数据`,
   },
-  saved: '已保存',
   title: 'Wiki',
   subdivisionsHeading: (kind: string) => `细分${kind}`,
   addKind: (kind: string) => `添加${kind}`,
@@ -214,7 +213,7 @@ export const wiki = {
     markConflict: '标记冲突…',
     resolve: '处理冲突',
     retract: '撤回',
-    done: { add: '已添加', revise: '已修订', conflict: '已标记冲突', resolve: '已处理', retract: '已撤回' },
+    done: { retract: '已撤回' },
     form: {
       text: '结论',
       textPlaceholder: '结论',
@@ -285,8 +284,6 @@ export const wiki = {
     rejected: '已拒绝',
     reasonKind: { stale: '过期', invalid: '无效' },
     unreadable: '读不了的提案',
-    appliedNote: '提案已应用到 Wiki',
-    declinedNote: '提案已拒绝',
     rejectedNote: (message: string) => `没有应用：${message}`,
   },
 } satisfies Record<string, unknown>

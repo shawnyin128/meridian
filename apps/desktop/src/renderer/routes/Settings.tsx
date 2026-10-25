@@ -9,7 +9,7 @@ import { errorLabel, reasonLabel } from '../lib/failure-label.js'
 import { useFormat } from '../lib/format.js'
 import { useMessages } from '../messages/useMessages.js'
 import {
-  useChatSession, useJump, useNotice, useSettingsOpen, useVaultRevision,
+  useChatSession, useJump, useSettingsOpen, useVaultRevision,
 } from '../shell/AppShell.js'
 import { SETTINGS_CATEGORIES, SETTINGS_CATEGORY_LABEL, type SettingsCategory } from '../shell/settings-categories.js'
 import { IconOpen, IconRestore, IconTrash } from '../components/icons.js'
@@ -101,7 +101,6 @@ export function Settings() {
   const { open: jumpTo } = useJump()
   const { remove: deleteChat } = useChatSession()
   const { revision } = useVaultRevision()
-  const notice = useNotice()
   const format = useFormat()
   const setActionError = useCallback((pane: CategoryKey, message: string | null) => setActionErrors((held) => {
     const next = { ...held }
@@ -151,7 +150,7 @@ export function Settings() {
   }
 
   const unarchive = (session: ChatSession) => {
-    void write(chat.setArchived(session.id, false), { note: m.settings.archived.unarchived })
+    void write(chat.setArchived(session.id, false))
   }
 
   const openChat = (session: ChatSession) => {
@@ -167,7 +166,6 @@ export function Settings() {
       if (root === null) return
       const next = await library.configure(root)
       setLocation(next)
-      notice.success(next.restartRequired ? m.settings.storage.savedRestartRequired : m.settings.storage.saved)
     } catch (caught) {
       reportTo('storage')(caught)
     } finally {
@@ -205,7 +203,6 @@ export function Settings() {
     try {
       await library.deleteBackup(backup.id)
       setBackups((currentBackups) => currentBackups?.filter((item) => item.id !== backup.id) ?? [])
-      notice.success(m.settings.storage.backupDeleted)
     } catch (caught) {
       reportTo('storage')(caught)
     } finally {

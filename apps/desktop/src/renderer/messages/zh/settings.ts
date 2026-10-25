@@ -90,9 +90,6 @@ export const settings = {
     backupDeleteTitle: (label: string) => `删除 ${label} 的备份？`,
     backupDeleteDescription: '备份文件夹不能恢复',
     backupDeleting: '正在删除…',
-    backupDeleted: '备份已删除',
-    saved: '论文库位置已保存',
-    savedRestartRequired: '论文库位置已保存 · 重启后生效',
   },
   api: {
     heading: 'API',
@@ -314,17 +311,11 @@ export const settings = {
     refreshProject: '刷新本项目',
     core: '核心',
     setCoreAction: '设为核心',
-    noNewPapers: '没有发现新的论文',
-    newFound: (n: number) => `新发现 ${n} 篇论文`,
     failed: (n: number) => `${n} 个方向失败`,
-    setCore: '已设为核心方向',
-    disabled: '已关闭方向',
-    enabled: '已启用方向',
   },
   archived: {
     heading: '归档的对话',
     open: '打开',
     unarchive: '取消归档',
-    unarchived: '已取消归档',
   },
 } satisfies Record<string, unknown>

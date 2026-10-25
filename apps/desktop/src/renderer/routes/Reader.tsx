@@ -860,11 +860,7 @@ export function Reader() {
       ? removeFromReading(mutation)
       : await mutateReading(mutation) !== null, [mutateReading, removeFromReading])
 
-  const saveRemark = async (text: string): Promise<boolean> => {
-    const ok = await mutate({ kind: 'remark.set', text })
-    if (ok) notice.success(m.papers.notices.remarkSaved)
-    return ok
-  }
+  const saveRemark = (text: string): Promise<boolean> => mutate({ kind: 'remark.set', text })
 
   /** Writes the toolbar's `selection` as a new highlight in `color`; returns it, or null when Core refused. */
   const highlightSelection = async (selection: PendingHighlight, color: PaperHighlight['color']) => {

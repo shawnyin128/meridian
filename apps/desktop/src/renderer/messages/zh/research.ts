@@ -22,8 +22,6 @@ export const research = {
     historyProjects: '历史项目',
     milestonePopTitle: (isNew: boolean): string => (isNew ? '添加里程碑' : '里程碑'),
     newMilestoneOn: (date: string) => `添加里程碑 · ${date}`,
-    taskWindowMovedHours: (slots: number, hours: number) =>
-      `任务${slots > 0 ? '后移' : '前移'} ${hours} 小时`,
   },
   list: {
     title: '项目',
@@ -33,9 +31,6 @@ export const research = {
     sortMilestone: '按下一个里程碑',
     renameTitle: '重命名项目',
     rename: '重命名…',
-    renamed: '已重命名',
-    statusChangedTo: (status: string) => `已标记为 ${status}`,
-    createdNote: '已创建项目',
     createdFeedNote: (name: string) => `新项目《${name}》已创建`,
   },
   panel: {
@@ -48,7 +43,6 @@ export const research = {
   chips: {
     addProject: '关联项目',
     pickerHeading: '项目',
-    linked: (name: string) => `已记进项目《${name}》`,
     unlinked: '已移除关联',
   },
   schedule: {

@@ -642,7 +642,6 @@ export function AppShell({ screens, settings }: {
         onAction: () => {
           void trash.restore(entry).then(() => {
             bump()
-            notify.success(m.changelog.undoneNote)
           }).catch((e: unknown) => notify.refusal(errorLabel(m, e)))
         },
       })

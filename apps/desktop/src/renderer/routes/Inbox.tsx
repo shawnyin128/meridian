@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import type {
-  DiscoveryFetchResult, DiscoveryProfile, FetchStatus, InboxDownloadFailure, InboxEntry,
+  DiscoveryProfile, FetchStatus, InboxDownloadFailure, InboxEntry,
   InboxListParams, Watch,
 } from '../../shared/contract.js'
 import { listingsOf } from '../../shared/inbox-streams.js'
@@ -66,23 +66,6 @@ function fetchNote(status: FetchStatus | null, scope: string, m: Catalog): React
     <>
       {last !== undefined && fetched && last.added === 0 ? `${m.inbox.check.noneNew} · ` : null}
       {m.inbox.check.lastChecked}{' '}<DateTimeDisplay at={at} />
-    </>
-  )
-}
-
-/**
- * What a discovery refresh brought and how many directions failed; when the result says nothing is
- * new, also when the scope was last refreshed.
- */
-function discoveryResultNote(result: DiscoveryFetchResult, m: Catalog): ReactNode {
-  const parts = result.failedIntents > 0 ? [m.settings.discovery.failed(result.failedIntents)] : []
-  if (result.added > 0) return [m.settings.discovery.newFound(result.added), ...parts].join(' · ')
-  const { lastFetchedAt } = result
-  if (!result.nothingNew || lastFetchedAt === null) return [m.settings.discovery.noNewPapers, ...parts].join(' · ')
-  return (
-    <>
-      {m.settings.discovery.noNewPapers} · {m.inbox.lastRefreshed}{' '}<DateTimeDisplay at={lastFetchedAt} />
-      {parts.map((part) => ` · ${part}`).join('')}
     </>
   )
 }
@@ -171,8 +154,7 @@ export function Inbox() {
 
   const queue = (id: string) => {
     leave([id])
-    void inbox.readLater(id).then((queued) => {
-      notice.success(queued ? m.inbox.notices.queued : m.inbox.notices.alreadyQueued)
+    void inbox.readLater(id).then(() => {
       window.setTimeout(bump, LEAVE_MS)
     }).catch((e: unknown) => notice.refusal(errorLabel(m, e)))
   }
@@ -207,7 +189,7 @@ export function Inbox() {
   const refreshDiscovery = () => {
     setDiscovering(true)
     void (scope === ALL_WATCHES ? discovery.fetch() : discovery.fetch(scope, true)).then((result) => {
-      notice.success(discoveryResultNote(result, m))
+      if (result.failedIntents > 0) notice.refusal(m.settings.discovery.failed(result.failedIntents))
       bump()
     }).catch((e: unknown) => notice.refusal(errorLabel(m, e))).finally(() => setDiscovering(false))
   }
@@ -215,7 +197,6 @@ export function Inbox() {
   const feedback = (id: string, value: 'more' | 'less' | 'known') => {
     if (value === 'more') {
       void discovery.feedback(id, value).then(() => {
-        notice.success(m.inbox.notices.remembered)
         bump()
       }).catch((e: unknown) => notice.refusal(errorLabel(m, e)))
       return
@@ -300,7 +281,7 @@ export function Inbox() {
                 <Tag>{m.watches.paused}</Tag>
                 <Button
                   size="regular"
-                  onClick={() => { void write(watch.setActive(watched.id, true), { note: m.watches.notices.resumed }) }}
+                  onClick={() => { void write(watch.setActive(watched.id, true)) }}
                 >{m.watches.resume}</Button>
               </>
             ) : null}

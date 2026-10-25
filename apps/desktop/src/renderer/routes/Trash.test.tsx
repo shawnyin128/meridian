@@ -270,15 +270,8 @@ describe('Trash', () => {
     expect(api.purge).not.toHaveBeenCalled()
   })
 
-  it('恢复长标题的条目后，横幅写出完整标题，标题放不下时淡出而不是截断', async () => {
-    vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} })
+  it('恢复一条后它从列表上离开，不另弹通知', async () => {
     await act(async () => { button(host.querySelectorAll('.trow')[3]!, '恢复').click() })
-    const banner = document.createElement('div')
-    const shown = createRoot(banner)
-    act(() => shown.render(<>{api.notes[0]}</>))
-    const title = 'MoE 路由用熵正则代替负载均衡 load balancing.pdf'
-    expect(banner.textContent).toBe(`已恢复「${title}」`)
-    expect(banner.querySelector('.fade-text')!.textContent).toBe(title)
-    act(() => shown.unmount())
+    expect(api.notes).toEqual([undefined])
   })
 })

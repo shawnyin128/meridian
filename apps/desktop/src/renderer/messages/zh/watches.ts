@@ -40,10 +40,5 @@ export const watches = {
   addAction: '添加',
   addAllTopics: '添加全部关键词',
   notices: {
-    added: '已添加关注',
-    updated: '已更新关注',
-    resumed: '已恢复',
-    pausedNote: '已暂停',
-    removed: '已移除关注',
   },
 } satisfies Record<string, unknown>

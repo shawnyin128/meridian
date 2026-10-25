@@ -97,9 +97,6 @@ export const settings = {
     backupDeleteTitle: (label: string) => `Delete the backup from ${label}?`,
     backupDeleteDescription: 'The backup folder cannot be restored',
     backupDeleting: 'Deleting…',
-    backupDeleted: 'Backup deleted',
-    saved: 'Library location saved',
-    savedRestartRequired: 'Library location saved · takes effect after restarting',
   },
   api: {
     heading: 'API',
@@ -321,17 +318,11 @@ export const settings = {
     refreshProject: 'Refresh this project',
     core: 'Priority',
     setCoreAction: 'Mark as priority',
-    noNewPapers: 'No new papers found',
-    newFound: (n: number) => `${n} new ${pluralEn(n, { one: 'paper', other: 'papers' })} found`,
     failed: (n: number) => `${n} ${pluralEn(n, { one: 'direction', other: 'directions' })} failed`,
-    setCore: 'Marked as a priority direction',
-    disabled: 'Direction disabled',
-    enabled: 'Direction enabled',
   },
   archived: {
     heading: 'Archived chats',
     open: 'Open',
     unarchive: 'Unarchive',
-    unarchived: 'Unarchived',
   },
 } satisfies typeof zh

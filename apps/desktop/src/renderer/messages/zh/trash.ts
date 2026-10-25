@@ -9,13 +9,10 @@ export const trash = {
   projectGone: '项目已删除',
   paperTaken: '库中已有同名论文',
   chatTaken: '论文已有新的对话',
-  restored: (title: string) => `已恢复「${title}」`,
-  purged: '已彻底删除',
   clear: '清空垃圾桶',
   confirmClear: '清空垃圾桶？',
   confirmClearDescription: (count: number) => `${count} 项不能恢复`,
   confirmClearLabel: '确认清空',
   confirmPurge: (title: string) => `彻底删除「${title}」？`,
   confirmPurgeLabel: '彻底删除',
-  cleared: '已清空垃圾桶',
 } satisfies Record<string, unknown>

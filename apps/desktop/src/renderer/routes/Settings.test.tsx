@@ -935,7 +935,7 @@ describe('Settings', () => {
     expect(api.restartApp).toHaveBeenCalledOnce()
   })
 
-  it('永久删除备份前要求确认，成功后从列表移除', async () => {
+  it('永久删除备份前要求确认，成功后从列表移除，不另弹通知', async () => {
     api.libraryLocation.mockResolvedValueOnce({
       root: '/tmp/meridian', source: 'configured', locked: false, restartRequired: false, openError: null,
     })
@@ -961,7 +961,7 @@ describe('Settings', () => {
     expect(api.deleteBackup).toHaveBeenCalledWith('meridian-backup-20260915-182838Z')
     expect(dialog.querySelector('.storage-backup-list')).toBeNull()
     expect(dialog.textContent).not.toContain('论文库备份 ·')
-    expect(api.success).toHaveBeenCalledWith('备份已删除')
+    expect(api.success).not.toHaveBeenCalled()
   })
 
   it('确认删除备份后确认框关上，删除还没完成时那一行的删除按钮在原处转圈、按不动，名字是正在删除', async () => {

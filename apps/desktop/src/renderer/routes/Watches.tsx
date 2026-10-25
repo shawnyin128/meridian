@@ -210,15 +210,12 @@ export function WatchSettings() {
   }, [authorSearchNonce, editor, name, watches])
 
   /** Creates a watch. Returns true when the write succeeds; on failure it reports the error and returns false. */
-  const create = (fields: WatchFields): Promise<boolean> => write(watch.create(fields),
-    { note: m.watches.notices.added })
+  const create = (fields: WatchFields): Promise<boolean> => write(watch.create(fields))
 
   /** Saves the draft row: an edit updates the watch in place, keeping its delivered papers; a new row adds one. */
   const persist = (fields: WatchFields): Promise<boolean> => editor?.id === undefined
     ? create(fields)
-    : write(watch.update(editor.id, fields), {
-      note: m.watches.notices.updated,
-    })
+    : write(watch.update(editor.id, fields))
 
   const leaveDraft = useRef<(() => Promise<boolean>) | null>(null)
 
@@ -256,16 +253,11 @@ export function WatchSettings() {
   }
 
   const setActive = (w: Watch) => {
-    const active = !w.active
-    void write(watch.setActive(w.id, active), {
-      note: active
-        ? m.watches.notices.resumed
-        : m.watches.notices.pausedNote,
-    })
+    void write(watch.setActive(w.id, !w.active))
   }
 
   const remove = (id: string) => {
-    void write(watch.delete(id), { note: m.watches.notices.removed })
+    void write(watch.delete(id))
   }
 
   const clearSuggestionResults = () => {

@@ -34,7 +34,7 @@ import { IdeaDraft, type IdeaDraftText } from '../components/ideas/IdeaDraft.js'
 import { BackButton } from '../components/BackButton.js'
 import { FadeText } from '../components/FadeText.js'
 import { Toolbar } from '../components/Toolbar.js'
-import { namedRuns, TitleNote } from '../components/TitleNote.js'
+import { namedRuns } from '../components/TitleNote.js'
 import { Tooltip } from '../components/Tooltip.js'
 import { readStateName } from '../components/PaperMetadata.js'
 import { PaperText } from '../components/paper/PaperText.js'
@@ -157,7 +157,6 @@ export function Chat() {
   const act = (message: ChatMessage) => {
     if (id === null) return
     void chat.recordAction(id, message.id).then(async (p) => {
-      notice.success(<TitleNote message={m.chat.recordedNote} title={p.name} />)
       await feed.append({
         source: 'me', body: { kind: 'runs', runs: namedRuns(m.chat.recordedNote, p.name, { kind: 'project', id: p.id }) },
       })

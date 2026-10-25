@@ -26,8 +26,6 @@ export const research = {
     historyProjects: 'History',
     milestonePopTitle: (isNew: boolean) => (isNew ? 'Add milestone' : 'Edit milestone'),
     newMilestoneOn: (date: string) => `Add milestone · ${date}`,
-    taskWindowMovedHours: (slots: number, hours: number) =>
-      `Task moved ${slots > 0 ? 'later' : 'earlier'} by ${hours} ${pluralEn(hours, { one: 'hour', other: 'hours' })}`,
   },
   list: {
     title: 'Projects',
@@ -37,9 +35,6 @@ export const research = {
     sortMilestone: 'By next milestone',
     renameTitle: 'Rename project',
     rename: 'Rename…',
-    renamed: 'Renamed',
-    statusChangedTo: (status: string) => `Marked as ${status}`,
-    createdNote: 'Project created',
     createdFeedNote: (name: string) => `Created project “${name}”`,
   },
   panel: {
@@ -52,7 +47,6 @@ export const research = {
   chips: {
     addProject: 'Link project',
     pickerHeading: 'Projects',
-    linked: (name: string) => `Linked to project “${name}”`,
     unlinked: 'Link removed',
   },
   schedule: {

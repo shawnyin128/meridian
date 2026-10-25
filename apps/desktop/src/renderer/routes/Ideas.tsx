@@ -31,7 +31,6 @@ import {
 } from '../components/PageShell.js'
 import { useEscapeLayer, useJump, useScreenReentry, useVaultRevision } from '../shell/AppShell.js'
 import { BackButton } from '../components/BackButton.js'
-import { TitleNote } from '../components/TitleNote.js'
 import { useDraft } from '../hooks/useDrafts.js'
 import { useJumpOrigin } from '../hooks/useJumpOrigin.js'
 import { useScreenLoad } from '../hooks/useScreenLoad.js'
@@ -434,17 +433,14 @@ export function Ideas() {
   }
 
   const archive = (idea: ResearchIdea) => {
-    void write(
-      ideaApi.update(idea.id, { archived: !idea.archived }),
-      { note: idea.archived ? m.ideas.restoredNote : m.ideas.archivedNote },
-    )
+    void write(ideaApi.update(idea.id, { archived: !idea.archived }))
   }
   /** Creates the user's own idea; once written it takes the draft card's place and opens in the detail panel. */
   const createIdea = (title: string, body: string) => write(ideaApi.create(undefined, title, body).then((idea) => {
     setRows((held) => [idea, ...(held ?? [])])
     setSelectedId(idea.id)
     setDraft(null)
-  }), { note: m.chat.ideaSavedNote })
+  }))
   const remove = (idea: ResearchIdea) => {
     void write(ideaApi.delete(idea.id), { note: m.common.trashed, action: (trashed) => undo.restore([trashed]) }).then((saved) => {
       if (!saved) return
@@ -567,23 +563,12 @@ export function Ideas() {
                 pageTitles={pageTitles}
                 candidate={candidateNode === undefined ? undefined : { id: candidateNode.id, label: candidateNode.label, mode: nodeMode(candidateNode) }}
                 onClose={closeDetail}
-                onRelations={(relations, removed) => write(ideaApi.update(selected.id, { relations }), {
-                  note: removed === undefined ? m.project.links.added : <TitleNote message={m.project.links.removed} title={removed} />,
-                })}
-                onPlace={(kind) => void write(ideaApi.placeOnGraph(selected.id, { kind }), {
-                  note: kind === 'confirm' ? m.ideas.candidate.confirmed : m.ideas.candidate.dismissed,
-                })}
+                onRelations={(relations) => write(ideaApi.update(selected.id, { relations }))}
+                onPlace={(kind) => void write(ideaApi.placeOnGraph(selected.id, { kind }))}
                 onError={report}
-                onSave={(title, body) => write(
-                  ideaApi.update(selected.id, { title, body }), { note: m.ideas.updatedNote },
-                )}
-                onProject={(projectId) => void write(
-                  ideaApi.update(selected.id, { project: projectId }),
-                  { note: projectId === null ? m.ideas.work.cleared : m.ideas.work.placed },
-                )}
-                onPromote={() => void write(
-                  ideaApi.promote(selected.id), { note: m.ideas.promote.createdNote },
-                )}
+                onSave={(title, body) => write(ideaApi.update(selected.id, { title, body }))}
+                onProject={(projectId) => void write(ideaApi.update(selected.id, { project: projectId }))}
+                onPromote={() => void write(ideaApi.promote(selected.id))}
                 onOpen={jumpTo}
               />
             )}

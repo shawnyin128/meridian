@@ -442,12 +442,12 @@ const READABLE_ID = '13979-STAR-Speculative-Decodin'
 const readingOf = (win: Page) =>
   call<{ notes: unknown[]; highlights: unknown[] }>(win, 'papers.reading', { id: READABLE_ID })
 
-/** Clicks Undo on the notice the last write showed, and waits for the notice saying it was undone. */
+/** Clicks Undo on the notice the last write showed, and waits for the notice to close; the caller waits for what comes back. */
 async function undoFromNotice(win: Page): Promise<void> {
   const undo = win.locator('#notice .btn')
   await expect(undo).toHaveText('撤销')
   await undo.click()
-  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已撤销')
+  await expect(win.locator('#notice')).not.toHaveClass(/\bshow\b/)
 }
 
 test('删掉一条笔记,提示里的撤销把它放回', async ({ win }) => {

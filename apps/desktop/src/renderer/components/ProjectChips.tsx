@@ -8,7 +8,6 @@ import { IconCross } from './icons.js'
 import { PickerPopover, PickOption } from './PickerPopover.js'
 import { tagClass } from './Tag.js'
 import './TagChips.css'
-import { TitleNote } from './TitleNote.js'
 import { useCandidateKeys } from '../hooks/useCandidateKeys.js'
 import { NO_TRIGGERS } from '../hooks/useOnLeave.js'
 import { useDrafts } from '../hooks/useDrafts.js'
@@ -52,10 +51,7 @@ export function ProjectChips({ paper, onError }: {
     ? projects.filter((held) => !paper.projects.some((linked) => linked.id === held.id)
       && (!needle || held.name.toLowerCase().includes(needle)))
     : []
-  const add = (target: ProjectSummary) => write(
-    project.addPaper(target.id, paper.id),
-    { note: <TitleNote message={m.research.chips.linked} title={target.name} /> },
-  )
+  const add = (target: ProjectSummary) => write(project.addPaper(target.id, paper.id))
   const draft = useInlineDraft({
     row: input, triggers: NO_TRIGGERS, onCancel: close, isEmpty: () => needle === '',
     onSubmit: () => (hits[0] === undefined ? false : add(hits[0])),

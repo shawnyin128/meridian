@@ -64,7 +64,7 @@ const flush = async () => {
 describe('WikiClaims', () => {
   let root: Root | null = null
   let host: HTMLDivElement
-  const onApply = vi.fn<(title: string, ops: ProposalOp[], done: { note: string; undoable?: boolean }) => Promise<boolean>>(
+  const onApply = vi.fn<(title: string, ops: ProposalOp[], undoNote?: string) => Promise<boolean>>(
     () => Promise.resolve(true),
   )
   const links = { openPage: vi.fn(), openProject: vi.fn(), openReader: vi.fn() }
@@ -215,7 +215,7 @@ describe('WikiClaims', () => {
     expect(host.querySelector('.wkclaims > .wkclaim')!.contains(draft())).toBe(true)
   })
 
-  it('添加结论:个人判断作依据,回车写入,id 由正文算出,通知写已添加', async () => {
+  it('添加结论:个人判断作依据,回车写入,id 由正文算出,结论出现在页上,不另写通知', async () => {
     act(() => host.querySelector<HTMLButtonElement>('.add-action')!.click())
     const [text, note] = [...draft()!.querySelectorAll('input')]
     act(() => setValue(text!, 'Wide trees win at B ≥ 8'))
@@ -224,7 +224,7 @@ describe('WikiClaims', () => {
     expect(onApply).toHaveBeenCalledWith('给「Speculative decoding」添加结论', [{
       op: 'addClaim', page: 'topics/sd',
       claim: { id: 'wide-trees-win-at-b-8', text: 'Wide trees win at B ≥ 8', evidence: [{ kind: 'personal', text: '看过日志' }] },
-    }], { note: '已添加' })
+    }])
     expect(draft()).toBeNull()
   })
 
@@ -270,7 +270,7 @@ describe('WikiClaims', () => {
     }])
   })
 
-  it('修订在结论自己那一行就地改写:正文换成输入框,回车发一条 reviseClaim,通知写已修订,不弹对话框', async () => {
+  it('修订在结论自己那一行就地改写:正文换成输入框,回车发一条 reviseClaim,不写通知,不弹对话框', async () => {
     openMenu('plain')
     // The draft opens once the menu has handed focus back, which Radix does in a 0 ms timeout.
     await act(async () => { menuItem('修订…').click(); await new Promise((done) => setTimeout(done, 0)) })
@@ -283,13 +283,13 @@ describe('WikiClaims', () => {
     act(() => setValue(text, '另一条结论,改过'))
     await act(async () => { press(text, { key: 'Enter' }); await flush() })
     expect(onApply.mock.calls.at(-1)!.slice(1)).toEqual([
-      [{ op: 'reviseClaim', page: 'topics/sd', claim: 'plain', text: '另一条结论,改过' }], { note: '已修订' },
+      [{ op: 'reviseClaim', page: 'topics/sd', claim: 'plain', text: '另一条结论,改过' }],
     ])
     expect(draft()).toBeNull()
     expect(row.querySelector('.wkclaim-text')!.textContent).toBe('另一条结论')
   })
 
-  it('标记冲突在那条结论下面就地打开草稿:与哪一条冲突、说明两栏,回车发一条 markConflict,通知写已标记冲突,不弹对话框', async () => {
+  it('标记冲突在那条结论下面就地打开草稿:与哪一条冲突、说明两栏,回车发一条 markConflict,不写通知,不弹对话框', async () => {
     openMenu('plain')
     await act(async () => { menuItem('标记冲突…').click(); await new Promise((done) => setTimeout(done, 0)) })
     expectNoDialog()
@@ -307,7 +307,7 @@ describe('WikiClaims', () => {
     expect(onApply.mock.calls.at(-1)!.slice(1)).toEqual([[{
       op: 'markConflict', page: 'topics/sd', claim: 'plain',
       conflict: { id: 'k1', against: { kind: 'claim', ref: 'topics/sd#knee' }, note: '说法相反' },
-    }], { note: '已标记冲突' }])
+    }]])
     expect(draft()).toBeNull()
   })
 
@@ -319,11 +319,11 @@ describe('WikiClaims', () => {
     expect(onApply.mock.calls).toEqual([[
       '撤回「Speculative decoding」的一条结论',
       [{ op: 'retractClaim', page: 'topics/sd', claim: 'plain', reason: '撤回' }],
-      { note: '已撤回', undoable: true },
+      '已撤回',
     ]])
   })
 
-  it('处理冲突在那条冲突下面就地打开,不弹对话框;不算冲突只发一条,修订或撤回时与对应的 op 一起发,通知写已处理', async () => {
+  it('处理冲突在那条冲突下面就地打开,不弹对话框;不算冲突只发一条,修订或撤回时与对应的 op 一起发,不写通知', async () => {
     const resolve = () => act(() => host.querySelector<HTMLButtonElement>('.wkclaim-resolve')!.click())
     const done = { op: 'resolveConflict', page: 'topics/sd', claim: 'knee', conflict: 'batch', note: '场景不同' }
     const note = () => [...draft()!.querySelectorAll('input')].at(-1)!
@@ -332,7 +332,7 @@ describe('WikiClaims', () => {
     expect(host.querySelector('.wkclaim-conflict')!.nextElementSibling!.contains(draft())).toBe(true)
     act(() => setValue(note(), '场景不同'))
     await act(async () => { press(note(), { key: 'Enter' }); await flush() })
-    expect(onApply.mock.calls.at(-1)!.slice(1)).toEqual([[{ ...done, outcome: 'dismissed' }], { note: '已处理' }])
+    expect(onApply.mock.calls.at(-1)!.slice(1)).toEqual([[{ ...done, outcome: 'dismissed' }]])
     expect(draft()).toBeNull()
 
     resolve()

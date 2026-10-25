@@ -132,7 +132,6 @@ export function Changelog() {
   const undo = (id: string) => {
     void changelog.undo(id).then(() => {
       bump()
-      notice.success(m.changelog.undoneNote)
     }).catch((e: unknown) => notice.refusal(errorLabel(m, e)))
   }
 
@@ -141,16 +140,16 @@ export function Changelog() {
     void write(changelog.archive(id))
   }
 
-  const archiveAll = (count: number) => {
-    void write(changelog.archiveAll(), { note: m.changelog.archivedNote(count) })
+  const archiveAll = () => {
+    void write(changelog.archiveAll())
   }
 
   const deleteChange = (id: string) => {
-    void write(changelog.delete(id), { note: m.changelog.deletedNote })
+    void write(changelog.delete(id))
   }
 
-  const clearArchived = (count: number) => {
-    void write(changelog.clearArchived(), { note: m.changelog.clearedArchivedNote(count) })
+  const clearArchived = () => {
+    void write(changelog.clearArchived())
   }
 
   const fresh = (entries ?? []).filter((c) => !c.archived)
@@ -224,7 +223,7 @@ export function Changelog() {
           actions={(
             <Button
               size="compact" className="archall" disabled={unread === 0}
-              onClick={() => archiveAll(unread)}
+              onClick={archiveAll}
             >{m.changelog.archiveAll}</Button>
           )}
         >{m.changelog.unarchivedHeading}
@@ -236,7 +235,7 @@ export function Changelog() {
         {filed.length === 0 ? null : (
           <>
             <SectionHeading
-              actions={<ClearArchivedButton count={filed.length} onClear={() => clearArchived(filed.length)} />}
+              actions={<ClearArchivedButton count={filed.length} onClear={clearArchived} />}
             >{m.changelog.archivedHeading}
             </SectionHeading>
             {section(filed)}

@@ -117,14 +117,13 @@ describe('一个概念一个词', () => {
 
   it('计划里加任务或里程碑只叫添加', () => {
     expect([
-      zh.project.plan.newAction, zh.project.plan.taskCreated, zh.research.overview.milestonePopTitle(true),
+      zh.project.plan.newAction, zh.research.overview.milestonePopTitle(true),
       zh.research.overview.newMilestoneOn('X'),
     ].filter((text) => !text.includes('添加'))).toEqual([])
   })
 
   it('建一列只叫新建列,阅读状态只叫阅读状态', () => {
     expect([zh.papers.columnHeader.addColumn, zh.wiki.aggregation.addColumn]).toEqual(['新建列', '新建列'])
-    expect(zh.papers.notices.columnCreated).toContain('新建列')
     expect([zh.papers.columns.st, zh.papers.groupNames.readState, zh.papers.metadata.fields.readState])
       .toEqual(['阅读状态', '阅读状态', '阅读状态'])
   })
@@ -159,7 +158,7 @@ describe('一个对象一个词', () => {
       'wiki.queue.outcomes.retracted', 'project.conclusions.text', 'chat.conflictTitle', 'chat.conflictQuestion',
     ],
     experimentConclusion: [
-      'project.recordModes.conclusions', 'project.conclusions.heading', 'project.conclusions.verified',
+      'project.recordModes.conclusions', 'project.conclusions.heading',
       'project.signals.kind.conflict', 'project.signals.reason.conflictCount', 'project.signals.pulse.conflict',
       'wiki.claims.form.conclusion', 'wiki.claims.form.conclusionPick', 'wiki.queue.unverified',
       'wiki.queue.grounds.experiment', 'wiki.paperCardFooter', 'papers.reading.conclusions',
@@ -175,7 +174,6 @@ describe('一个对象一个词', () => {
     toRead: ['papers.readState.later'],
     readLater: [
       'shell.nav.later', 'shell.crumbs.later', 'later.title', 'later.removed', 'inbox.actions.readLater',
-      'inbox.notices.queued', 'inbox.notices.alreadyQueued',
     ],
     topic: [
       'papers.columns.topics', 'papers.groupNames.topics', 'papers.toolbar.searchPlaceholder', 'papers.tags.add',
@@ -276,11 +274,9 @@ describe('提示、标签和占位只说结果', () => {
   // The notices, labels and placeholders the copy audit shortened: each states its result or name in
   // one clause, with no explanation after it.
   const results = (m: typeof zh) => [
-    m.changelog.undoneNote, m.chat.ideaSavedNote, m.inbox.notices.duplicateToast, m.inbox.notices.remembered,
-    m.papers.parse.addedFixable, m.papers.notices.remarkSaved,
-    m.research.list.createdNote, m.research.list.createdFeedNote('Draft trees'), m.settings.archived.unarchived,
-    m.watches.notices.added, m.watches.notices.updated, m.watches.notices.resumed, m.watches.notices.pausedNote,
-    m.watches.notices.removed, m.watches.projectLabel, m.watches.focusPlaceholder, m.wiki.ingest.discarded,
+    m.chat.ideaSavedNote, m.inbox.notices.duplicateToast, m.inbox.notices.remembered,
+    m.research.list.createdFeedNote('Draft trees'),
+    m.watches.projectLabel, m.watches.focusPlaceholder, m.wiki.ingest.discarded,
     m.common.trashed, m.inbox.notices.dismissed, m.inbox.notices.dismissedAll, m.papers.notices.topicAdded,
     m.papers.notices.updated, m.papers.notices.optionRenamed, m.papers.notices.columnTypeChanged,
     m.papers.metadata.updated(m.papers.metadata.fields.title),

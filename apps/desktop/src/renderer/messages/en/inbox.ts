@@ -9,7 +9,6 @@ export const inbox = {
     noneNew: 'No new papers',
     lastChecked: 'Last checked',
   },
-  lastRefreshed: 'Last refreshed',
   checkNewPapers: 'Check for new papers',
   discovering: 'Discovering…',
   refreshDiscovery: 'Refresh discovery',
@@ -30,8 +29,6 @@ export const inbox = {
     dismiss: 'Dismiss',
   },
   notices: {
-    queued: 'Saved for later',
-    alreadyQueued: 'Already saved for later',
     dismissedAll: 'All dismissed',
     dismissed: 'Dismissed',
     duplicateToast: 'Already in the library',

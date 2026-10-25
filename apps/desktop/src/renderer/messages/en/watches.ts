@@ -44,10 +44,5 @@ export const watches = {
   addAction: 'Add',
   addAllTopics: 'Add all keywords',
   notices: {
-    added: 'Watch added',
-    updated: 'Watch updated',
-    resumed: 'Resumed',
-    pausedNote: 'Paused',
-    removed: 'Watch removed',
   },
 } satisfies typeof zh

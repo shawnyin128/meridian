@@ -21,7 +21,7 @@ import { useFollowEnd } from '../../hooks/useFollowEnd.js'
 import { useNoModelChats } from '../../hooks/useNoModelChats.js'
 import { useScreenLoad } from '../../hooks/useScreenLoad.js'
 import { useScrollFade } from '../../hooks/useScrollFade.js'
-import { namedRuns, TitleNote } from '../TitleNote.js'
+import { namedRuns } from '../TitleNote.js'
 import { useVaultWrite } from '../../hooks/useVaultWrite.js'
 import { useMessages } from '../../messages/useMessages.js'
 import { IdeaDraft, type IdeaDraftText } from '../ideas/IdeaDraft.js'
@@ -114,7 +114,6 @@ export function PaperChat({ paper, onBack = () => {}, prompt = null }: {
   const act = (message: ChatMessage) => {
     if (session === null) return
     void chat.recordAction(session.id, message.id).then(async (held) => {
-      notice.success(<TitleNote message={m.chat.recordedNote} title={held.name} />)
       await feed.append({
         source: 'me', body: { kind: 'runs', runs: namedRuns(m.chat.recordedNote, held.name, { kind: 'project', id: held.id }) },
       })

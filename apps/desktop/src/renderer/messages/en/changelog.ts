@@ -17,9 +17,4 @@ export const changelog = {
   confirmDelete: 'Delete this change record?',
   confirmDeleteDescription: 'Its undo history goes too',
   confirmDeleteLabel: 'Delete',
-  undoneNote: 'Undone',
-  archivedNote: (count: number) => `Archived ${count} ${pluralEn(count, { one: 'record', other: 'records' })}`,
-  deletedNote: 'Change deleted',
-  clearedArchivedNote: (count: number) =>
-    `Cleared ${count} archived ${pluralEn(count, { one: 'record', other: 'records' })}`,
 } satisfies typeof zh

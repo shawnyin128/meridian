@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act, type ReactNode } from 'react'
+import { act } from 'react'
 import { createRoot } from 'react-dom/client'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -446,7 +446,7 @@ describe('Inbox', () => {
     }
   })
 
-  it('刷新发现的结果说真的没有新论文时,提示说没有新的,并写出结果带回的这个范围上次刷新的日期与时刻', async () => {
+  it('刷新发现没有带来新论文时不弹通知,列表本身说明了结果', async () => {
     api.mode = 'discovery'
     api.scope = 'p1'
     const at = new Date(2026, 9, 23, 9, 30).getTime()
@@ -461,17 +461,13 @@ describe('Inbox', () => {
     const root = createRoot(host)
     await act(async () => { root.render(<MessagesProvider><Inbox /></MessagesProvider>) })
     const refresh = [...host.querySelectorAll<HTMLButtonElement>('.desk-head .btn')].find((held) => held.textContent === '刷新发现')!
+    api.notice.success.mockClear()
     await act(async () => { refresh.click() })
-    const toast = document.createElement('div')
-    const shown = createRoot(toast)
-    act(() => shown.render(<MessagesProvider>{api.notice.success.mock.calls.at(-1)![0] as ReactNode}</MessagesProvider>))
-    expect(toast.textContent).toMatch(/^没有发现新的论文 · 上次刷新 /)
-    expect([...toast.querySelectorAll('.date-chip')].map((chip) => chip.textContent)).toEqual(['10月23日', '09:30'])
-    act(() => shown.unmount())
+    expect([api.notice.success.mock.calls, api.notice.refusal.mock.calls]).toEqual([[], []])
     await act(async () => { root.unmount() })
   })
 
-  it('刷新发现没送来论文、但有方向失败时,结果不算真的没有新论文,提示不写上次刷新的时刻', async () => {
+  it('刷新发现有方向失败时只报失败:几个方向失败,不弹没有新论文的通知', async () => {
     api.mode = 'discovery'
     api.scope = 'p1'
     const at = new Date(2026, 9, 23, 9, 30).getTime()
@@ -485,13 +481,10 @@ describe('Inbox', () => {
     const root = createRoot(host)
     await act(async () => { root.render(<MessagesProvider><Inbox /></MessagesProvider>) })
     const refresh = [...host.querySelectorAll<HTMLButtonElement>('.desk-head .btn')].find((held) => held.textContent === '刷新发现')!
+    api.notice.success.mockClear()
+    api.notice.refusal.mockClear()
     await act(async () => { refresh.click() })
-    const toast = document.createElement('div')
-    const shown = createRoot(toast)
-    act(() => shown.render(<MessagesProvider>{api.notice.success.mock.calls.at(-1)![0] as ReactNode}</MessagesProvider>))
-    expect(toast.textContent).toBe('没有发现新的论文 · 1 个方向失败')
-    expect(toast.querySelectorAll('.date-chip')).toHaveLength(0)
-    act(() => shown.unmount())
+    expect([api.notice.success.mock.calls, api.notice.refusal.mock.calls]).toEqual([[], [['1 个方向失败']]])
     await act(async () => { root.unmount() })
   })
 

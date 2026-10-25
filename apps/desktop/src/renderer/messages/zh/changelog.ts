@@ -14,8 +14,4 @@ export const changelog = {
   confirmDelete: '删除这条变动记录？',
   confirmDeleteDescription: '这次变动不能再撤销',
   confirmDeleteLabel: '确认删除',
-  undoneNote: '已撤销',
-  archivedNote: (count: number) => `已归档 ${count} 条`,
-  deletedNote: '已删除变动记录',
-  clearedArchivedNote: (count: number) => `已清空 ${count} 条已归档记录`,
 } satisfies Record<string, unknown>

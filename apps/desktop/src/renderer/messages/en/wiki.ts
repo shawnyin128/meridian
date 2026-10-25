@@ -29,7 +29,6 @@ export const wiki = {
     moveOutPaper: (paper: string, parent: string) => `Remove ${paper} from ${parent}`,
     editMetadata: (title: string) => `Edit ${title}'s metadata`,
   },
-  saved: 'Saved',
   title: 'Wiki',
   subdivisionsHeading: (kind: string) => `${kind} subpages`,
   addKind: (kind: string) => `Add ${kind}`,
@@ -251,7 +250,7 @@ export const wiki = {
     markConflict: 'Mark conflict…',
     resolve: 'Resolve conflict',
     retract: 'Retract',
-    done: { add: 'Added', revise: 'Revised', conflict: 'Conflict marked', resolve: 'Resolved', retract: 'Retracted' },
+    done: { retract: 'Retracted' },
     form: {
       text: 'Finding',
       textPlaceholder: 'Finding',
@@ -322,8 +321,6 @@ export const wiki = {
     rejected: 'Rejected',
     reasonKind: { stale: 'out of date', invalid: 'invalid' },
     unreadable: 'Unreadable proposal',
-    appliedNote: 'Proposal applied to the Wiki',
-    declinedNote: 'Proposal declined',
     rejectedNote: (message: string) => `Not applied: ${message}`,
   },
 } satisfies typeof zh

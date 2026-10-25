@@ -434,7 +434,7 @@ test('在一条关注那一档里检查新论文只抓这一条;再抓没有新�
   await expect(shown(win, '.desk-head .fetchnote')).not.toContainText('没有新论文')
 })
 
-test('在一个项目那一档里刷新发现只刷这个项目;没有新的时,提示写出它上次刷新的时刻', async ({ win }) => {
+test('在一个项目那一档里刷新发现只刷这个项目;没有新的时列表不变,也不弹通知', async ({ win }) => {
   await openInbox(win, 'discovery')
   await shown(win, '.desk-head .btn').filter({ hasText: '刷新发现' }).click()
   await expect.poll(async () => (await discoveryFromCore(win)).length).toBeGreaterThan(0)
@@ -442,9 +442,10 @@ test('在一个项目那一档里刷新发现只刷这个项目;没有新的时,
   await win.locator(`[data-discovery-project="${project}"]`).click()
   const count = await shown(win, '.pcard').count()
 
-  await shown(win, '.desk-head .btn').filter({ hasText: '刷新发现' }).click()
-  await expect(win.locator('#notice[data-tone="success"] .notice-text'))
-    .toHaveText(/^没有发现新的论文 · 上次刷新 \d+月\d+日\d{2}:\d{2} · /)
+  const refresh = shown(win, '.desk-head .btn').filter({ hasText: '刷新发现' })
+  await refresh.click()
+  await expect(refresh).toBeEnabled()
+  await expect(win.locator('#notice.show[data-tone="success"]')).toHaveCount(0)
   await expect(shown(win, '.pcard')).toHaveCount(count)
 })
 

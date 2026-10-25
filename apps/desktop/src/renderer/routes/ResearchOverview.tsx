@@ -22,7 +22,7 @@ import {
 import { ProjectNextActionView } from '../components/project/ProjectControl.js'
 import { useAreaFilter } from '../components/project/ProjectAreaFilter.js'
 import { ProjectIdentity, ProjectLabel } from '../components/project/ProjectIdentity.js'
-import { DAY_SLOT_HOURS, useTimelinePeriod } from '../components/timeline/TimelineScale.js'
+import { useTimelinePeriod } from '../components/timeline/TimelineScale.js'
 import { TimelineBoard } from '../components/timeline/TimelineBoard.js'
 import { useMilestoneEditor } from '../components/timeline/MilestoneEditor.js'
 import { Tooltip } from '../components/Tooltip.js'
@@ -379,7 +379,6 @@ function OverviewGantt({
  * Projects screen.
  */
 export function ResearchOverview() {
-  const fmt = useFormat()
   const m = useMessages()
   const [rows, setRows] = useState<ProjectOverview[] | null>(null)
   const { revision } = useVaultRevision()
@@ -397,38 +396,21 @@ export function ResearchOverview() {
     anchor === undefined ? jumpTo('project', id) : jumpTo('project', id, anchor)
   ), [jumpTo])
 
-  const moveTask = useCallback((
-    projectId: string, taskId: string, start: string, end: string, days: number,
-  ) => {
-    void write(
-      projectApi.updateTask(projectId, taskId, { start, end }),
-      { note: m.project.plan.taskMoved(days) },
-    )
-  }, [write, m])
+  const moveTask = useCallback((projectId: string, taskId: string, start: string, end: string) => {
+    void write(projectApi.updateTask(projectId, taskId, { start, end }))
+  }, [write])
 
-  const moveTaskWindow = useCallback((
-    projectId: string, taskId: string,
-    patch: Pick<Task, 'start' | 'end' | 'window'>, slots: number,
-  ) => {
-    void write(
-      projectApi.updateTask(projectId, taskId, patch),
-      {
-        note: m.research.overview.taskWindowMovedHours(slots, Math.abs(slots) * DAY_SLOT_HOURS),
-      },
-    )
-  }, [write, m])
+  const moveTaskWindow = useCallback((projectId: string, taskId: string, patch: Pick<Task, 'start' | 'end' | 'window'>) => {
+    void write(projectApi.updateTask(projectId, taskId, patch))
+  }, [write])
 
   const moveMilestone = useCallback((projectId: string, milestoneId: string, date: string) => {
-    void write(
-      projectApi.updateMilestone(projectId, milestoneId, { date }),
-      { note: m.project.plan.rescheduledTo(fmt.date(date)) },
-    )
-  }, [write, fmt, m])
+    void write(projectApi.updateMilestone(projectId, milestoneId, { date }))
+  }, [write])
 
   const updateMilestone = useCallback((projectId: string, milestoneId: string, patch: Pick<Milestone, 'title' | 'date'>) => write(
     projectApi.updateMilestone(projectId, milestoneId, patch),
-    { note: m.project.plan.milestoneUpdated },
-  ), [write, m])
+  ), [write])
 
   const deleteMilestone = useCallback((projectId: string, milestoneId: string) => {
     void write(
@@ -439,8 +421,7 @@ export function ResearchOverview() {
 
   const newMilestone = useCallback((projectId: string, date: string, title: string) => write(
     projectApi.createMilestone(projectId, { date, title, done: false }),
-    { note: m.project.plan.milestoneCreated },
-  ), [write, m])
+  ), [write])
 
   return (
     <PageShell>

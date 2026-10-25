@@ -322,10 +322,11 @@ function ProjectList({ onOpen, newRow, onNewRow, onReturn }: {
   }, [newRow, onNewRow, setCreating])
 
   /**
-   * Finishes a write: closes the new-project row, then lets `write` finish. Creating from the row does
-   * not come here: whether the row stays depends on that write's result.
+   * Finishes a write: closes the new-project row, then lets `write` finish, showing `note` with its
+   * `action` when given. Creating from the row does not come here: whether the row stays depends on
+   * that write's result.
    */
-  const applyWrite = <T,>(op: Promise<T>, note: string, action?: (result: T) => NoticeAction) => {
+  const applyWrite = <T,>(op: Promise<T>, note?: string, action?: (result: T) => NoticeAction) => {
     setCreating(false)
     void write(op, { note, action })
   }
@@ -338,7 +339,7 @@ function ProjectList({ onOpen, newRow, onNewRow, onReturn }: {
     (name === '' ? false : write(projectApi.create(name).then((id) => feed.append({
       source: 'me',
       body: { kind: 'runs', runs: namedRuns(m.research.list.createdFeedNote, name, { kind: 'project', id }) },
-    })), { note: m.research.list.createdNote }))
+    }))))
 
   if (!projects) {
     return (
@@ -359,11 +360,9 @@ function ProjectList({ onOpen, newRow, onNewRow, onReturn }: {
   const menuOf = (p: ProjectSummary) => (
     <ProjectMenu
       project={p}
-      onRename={(name) => write(projectApi.update(p.id, { name }), { note: m.research.list.renamed })}
+      onRename={(name) => write(projectApi.update(p.id, { name }))}
       onMove={(by) => reorder.move(p.id, by)} canMove={(by) => reorder.canMove(p.id, by)}
-      onStatus={(status) => applyWrite(
-        projectApi.update(p.id, { status }), m.research.list.statusChangedTo(status),
-      )}
+      onStatus={(status) => applyWrite(projectApi.update(p.id, { status }))}
       onDelete={() => applyWrite(projectApi.delete(p.id), m.common.trashed, undo.change)}
     />
   )

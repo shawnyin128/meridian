@@ -13,7 +13,6 @@ import { LoadingPlaceholder } from '../components/LoadingPlaceholder.js'
 import { PaperText } from '../components/paper/PaperText.js'
 import { plainTitle } from '../components/paper/paper-text.js'
 import { RowActions, StructuredList, StructuredRow } from '../components/StructuredList.js'
-import { TitleNote } from '../components/TitleNote.js'
 import { Tooltip } from '../components/Tooltip.js'
 import {
   PageBody, PageError, PageHeader, PageShell, PageTitle, SectionHeading,
@@ -72,16 +71,15 @@ export function Trash() {
   useEffect(() => load('entries', trash.list(), setEntries), [revision, load])
 
   const restore = (entry: TrashEntry) => {
-    void write(trash.restore(entry.id),
-      { note: <TitleNote message={m.trash.restored} title={plainOf(entry)} /> })
+    void write(trash.restore(entry.id))
   }
 
   const purge = (id: string) => {
-    void write(trash.purge(id), { note: m.trash.purged })
+    void write(trash.purge(id))
   }
 
   const clear = () => {
-    void write(trash.clear(), { note: m.trash.cleared })
+    void write(trash.clear())
   }
 
   const held = entries ?? []

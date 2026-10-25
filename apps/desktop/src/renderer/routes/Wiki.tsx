@@ -434,7 +434,7 @@ export function Wiki() {
       // The gear's popover is open while adding === 'columns'; a successful save closes it here.
       setAdding(null)
       return recorded
-    }), { note, action: undoable ? undo.change : undefined }).finally(() => setPending(false))
+    }), undoable ? { note, action: undo.change } : {}).finally(() => setPending(false))
   }
 
   /**
@@ -698,9 +698,7 @@ export function Wiki() {
   const decide = (proposal: WikiProposal, decision: 'apply' | 'decline', reason?: string) => {
     setPending(true)
     void write(wiki.decide(proposal.id, decision, reason).then((receipt) => {
-      if (decision === 'decline') notice.success(m.wiki.queue.declinedNote)
-      else if (receipt.status === 'applied') notice.success(m.wiki.queue.appliedNote)
-      else notice.refusal(m.wiki.queue.rejectedNote(receipt.reason?.message ?? ''))
+      if (decision === 'apply' && receipt.status !== 'applied') notice.refusal(m.wiki.queue.rejectedNote(receipt.reason?.message ?? ''))
     })).finally(() => setPending(false))
   }
 
@@ -714,7 +712,7 @@ export function Wiki() {
     setSaving(true)
     void write(wiki.update(place!, next).then(() => {
       bodyEdit.drop()
-    }), { note: m.wiki.saved }).finally(() => setSaving(false))
+    })).finally(() => setSaving(false))
   }
 
   /** The body's section heading: the page name on the left, its EditActions on the right, like Project notes. */
@@ -734,13 +732,11 @@ export function Wiki() {
    * A Wiki paper page's bibliographic fields are the same frontmatter the paper list edits; only
    * papers.update writes them.
    */
-  const updateWikiPaper = (
-    patch: Partial<PaperFields>, label: string,
-  ): Promise<boolean> => {
+  const updateWikiPaper = (patch: Partial<PaperFields>): Promise<boolean> => {
     if (shownPaper === null) return Promise.resolve(false)
     const paperId = shownPaper.id.startsWith(PAPER_PAGE)
       ? shownPaper.id.slice(PAPER_PAGE.length) : shownPaper.id
-    return write(papers.update(paperId, patch), { note: m.project.identity.focusUpdated(label) })
+    return write(papers.update(paperId, patch))
   }
 
   return (
@@ -920,7 +916,7 @@ export function Wiki() {
                 />
                 <WikiClaims
                   page={shownAgg} pending={pending} links={claimLinks}
-                  onApply={(title, ops, done) => propose(title, ops, done.note, done.undoable)}
+                  onApply={(title, ops, undoNote) => propose(title, ops, undoNote, undoNote !== undefined)}
                   arrival={arrival?.page === shownAgg.id ? arrival.claim : undefined} onArrived={arrived}
                 />
                 {bodyHead(shownAgg.title)}
@@ -1002,22 +998,20 @@ export function Wiki() {
                     onSave={(title) => {
                       const next = title.trim()
                       if (next === '') { notice.refusal(m.wiki.titleRequired); return false }
-                      return updateWikiPaper({ title: next }, m.wiki.titleLabel)
+                      return updateWikiPaper({ title: next })
                     }}
                   />
                   <div className="pk">{m.wiki.shortTitleLabel}</div>
                   <InlineMetadataField
                     label={m.wiki.shortTitleLabel} value={shownPaper.short} keep={{ scope: ['wiki', shownPaper.id], target: 'short' }}
-                    onSave={(shortTitle) => updateWikiPaper(
-                      { shortTitle: shortTitle.trim() || null }, m.wiki.shortTitleLabel,
-                    )}
+                    onSave={(shortTitle) => updateWikiPaper({ shortTitle: shortTitle.trim() || null })}
                   />
                   <div className="pk">{m.wiki.authorsLabel}</div>
                   <InlineMetadataField
                     label={m.wiki.authorsLabel} value={shownPaper.authors.join(', ')} keep={{ scope: ['wiki', shownPaper.id], target: 'authors' }}
                     onSave={(authors) => updateWikiPaper({
                       authors: authors.split(/[,，;；\n]/).map((item) => item.trim()).filter(Boolean),
-                    }, m.wiki.authorsLabel)}
+                    })}
                   />
                   <div className="pk">{m.wiki.yearLabel}</div>
                   <InlineMetadataField
@@ -1025,19 +1019,19 @@ export function Wiki() {
                     keep={{ scope: ['wiki', shownPaper.id], target: 'year' }}
                     onSave={(year) => {
                       const text = year.trim()
-                      if (text === '') return updateWikiPaper({ year: null }, m.wiki.yearLabel)
+                      if (text === '') return updateWikiPaper({ year: null })
                       const next = Number(text)
                       if (!Number.isInteger(next) || next < 1000 || next > 3000) {
                         notice.refusal(m.wiki.yearRange)
                         return false
                       }
-                      return updateWikiPaper({ year: next }, m.wiki.yearLabel)
+                      return updateWikiPaper({ year: next })
                     }}
                   />
                   <div className="pk">{m.wiki.venueLabel}</div>
                   <InlineMetadataField
                     label={m.wiki.venueLabel} value={shownPaper.venue} keep={{ scope: ['wiki', shownPaper.id], target: 'venue' }}
-                    onSave={(venue) => updateWikiPaper({ venue: venue.trim() }, m.wiki.venueLabel)}
+                    onSave={(venue) => updateWikiPaper({ venue: venue.trim() })}
                   />
                   {shownPaper.pdf === ''
                     ? null

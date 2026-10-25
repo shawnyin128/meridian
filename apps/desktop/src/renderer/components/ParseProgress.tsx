@@ -38,12 +38,9 @@ export function ParseProgress({ onParsed, onOpenPaper }: {
       if (job.step !== 'done' && job.step !== 'failed') continue
       if (reported.current.has(job.id)) continue
       reported.current.add(job.id)
-      if (job.step === 'done' && job.found !== 'none') {
-        onParsed(job)
-        notice.success(m.papers.parse.addedFixable)
-      }
+      if (job.step === 'done' && job.found !== 'none') onParsed(job)
     }
-  }, [status, notice, onParsed, m])
+  }, [status, onParsed])
 
   const uploads = status?.uploads ?? []
   const shown = uploads.filter((job) => !closed.has(job.id))

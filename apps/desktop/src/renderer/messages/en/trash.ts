@@ -13,13 +13,10 @@ export const trash = {
   projectGone: 'Project deleted',
   paperTaken: 'Same name in library',
   chatTaken: 'Paper has a new chat',
-  restored: (title: string) => `Restored “${title}”`,
-  purged: 'Deleted permanently',
   clear: 'Empty trash',
   confirmClear: 'Empty the trash?',
   confirmClearDescription: (count: number) => `${count} ${pluralEn(count, { one: 'item', other: 'items' })} cannot be recovered`,
   confirmClearLabel: 'Empty trash',
   confirmPurge: (title: string) => `Delete “${title}” permanently?`,
   confirmPurgeLabel: 'Delete permanently',
-  cleared: 'Trash emptied',
 } satisfies typeof zh
