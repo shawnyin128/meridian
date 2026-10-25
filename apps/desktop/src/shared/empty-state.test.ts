@@ -46,7 +46,6 @@ const EMPTY = {
   'wiki.claims.form.noConclusions': zh.wiki.claims.form.noConclusions,
   'wiki.claims.form.noOthers': zh.wiki.claims.form.noOthers,
   'research.panel.noRecords': zh.research.panel.noRecords,
-  'research.panel.paperCount(0)': zh.research.panel.paperCount(0),
   'wiki.noBody': zh.wiki.noBody,
   'wiki.noChildren': zh.wiki.noChildren,
   'wiki.queue.empty': zh.wiki.queue.empty,

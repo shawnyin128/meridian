@@ -22,7 +22,6 @@ export const research = {
     focusWithActiveTasks: (label: string, n: number) =>
       `${label} · ${n} ${pluralEn(n, { one: 'active task', other: 'active tasks' })}`,
     noRecentRecord: 'No research log entries yet',
-    waitingForAgent: 'Waiting for an agent update',
     recentHeading: 'Recent research log',
     upcomingHeading: 'Upcoming milestones',
     historyProjects: 'History',
@@ -54,8 +53,6 @@ export const research = {
     recentProgressLabel: 'Recent progress',
     noRecords: 'No research updates yet',
     staleAlert: (n: number) => `No progress for ${n} ${pluralEn(n, { one: 'day', other: 'days' })}`,
-    paperCount: (n: number) =>
-      (n === 0 ? 'No linked papers yet' : `${n} linked ${pluralEn(n, { one: 'paper', other: 'papers' })}`),
   },
   chips: {
     addProject: 'Link project',

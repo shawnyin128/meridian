@@ -1076,8 +1076,6 @@ export function ProjectDetail({
                 <>
                   <SectionHeading variant="rail">{m.project.identity.heading}</SectionHeading>
                   <div className="wkprops">
-                    <div className="pk">{m.project.identity.typeLabel}</div>
-                    <div className="pv">{m.project.identity.typeValue}</div>
                     <ProjectIdentityFields
                       project={project}
                       fields={{

@@ -1,4 +1,3 @@
-import { pluralEn } from '../../lib/plural.js'
 import { inbox as zh } from '../zh/inbox.js'
 
 /** English counterpart of `zh/inbox`. `satisfies` makes a missing, extra or re-parameterised key a compile error. */
@@ -18,8 +17,6 @@ export const inbox = {
   sort: { recommended: 'Recommended', latest: 'Latest', published: 'Published', impact: 'Impact' },
   discoverySettings: 'Discovery settings',
   watchSettings: 'Watch settings',
-  discoverySummary: (projects: number, intents: number) =>
-    `${projects} ${pluralEn(projects, { one: 'project', other: 'projects' })} · ${intents} active research ${pluralEn(intents, { one: 'direction', other: 'directions' })}`,
   empty: {
     discoveryNone: 'No new discoveries yet',
     discoveryNoSeeds: 'No project papers with an arXiv ID yet',

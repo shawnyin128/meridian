@@ -24,7 +24,6 @@ import { namedRuns, TitleNote } from '../TitleNote.js'
 import { useVaultWrite } from '../../hooks/useVaultWrite.js'
 import { useMessages } from '../../messages/useMessages.js'
 import { IdeaDraft, type IdeaDraftText } from '../ideas/IdeaDraft.js'
-import { Tag } from '../Tag.js'
 import { PaperText } from '../paper/PaperText.js'
 import { plainTitle } from '../paper/paper-text.js'
 import { Button } from '../Button.js'
@@ -136,9 +135,9 @@ export function PaperChat({ paper, onBack = () => {}, prompt = null }: {
         <BackButton onClick={onBack} />
         <FadeText
           className="paper-chat-title"
-          label={paper === null ? m.common.loading : `${plainTitle(paper.title)}${m.chat.paperHeaderSuffix}`}
+          label={paper === null ? m.common.loading : plainTitle(paper.title)}
         >
-          {paper === null ? m.common.loading : <><PaperText text={paper.title} />{m.chat.paperHeaderSuffix}</>}
+          {paper === null ? m.common.loading : <PaperText text={paper.title} />}
         </FadeText>
       </header>
       <PageError error={error} />
@@ -168,7 +167,6 @@ export function PaperChat({ paper, onBack = () => {}, prompt = null }: {
       <div className="composer paper-chat-composer">
         <div className="mwrap">
           <div className="qacts">
-            {hasDiscussion ? null : <Tag>{m.chat.noDiscussion}</Tag>}
             <Button
               size="compact" variant="ghost" className="save-idea" disabled={session === null || !hasDiscussion}
               onClick={startIdea}

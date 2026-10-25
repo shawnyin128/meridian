@@ -352,6 +352,30 @@ describe('PaperTable', () => {
     expect(openedScreens).toEqual([['reader', 'p1'], ['wiki', `${PAPER_PAGE}p1`]])
   })
 
+  it('详情里文件那一行只写页数，不写 PDF 和已保存', async () => {
+    const paged = { ...ROW, pageCount: 12 }
+    jumpHere = { screen: 'papers', target: 'p1', from: 'papers', seq: 1, anchor: { detail: true } }
+    const host = mount()
+    columnsCall.resolve(EMPTY_COLUMNS)
+    listCall.resolve({ rows: [paged], total: 1 })
+    getCall.resolve(paged)
+    await flush()
+    const file = [...host.querySelectorAll('.pdetail .paper-meta-list dt')].find((dt) => dt.textContent === '文件')!
+    expect(file.nextElementSibling?.textContent).toBe('12 页')
+  })
+
+  it('拖进文件时整页只画出虚线落点，不写一句松开导入', async () => {
+    const host = mount()
+    columnsCall.resolve(EMPTY_COLUMNS)
+    listCall.resolve({ rows: [ROW], total: 1 })
+    await flush()
+    const enter = new Event('dragenter', { bubbles: true, cancelable: true })
+    Object.defineProperty(enter, 'dataTransfer', { value: { types: ['Files'] } })
+    await act(async () => { host.querySelector('.paper-library')!.dispatchEvent(enter) })
+    const drop = host.querySelector('.paper-drop')
+    expect([drop !== null, drop?.textContent]).toEqual([true, ''])
+  })
+
   it('带详情落点跳进来时打开那篇的详情,搜索框不填字', async () => {
     jumpHere = { screen: 'papers', target: 'p1', from: 'feed', seq: 1, anchor: { detail: true } }
     const host = mount()

@@ -59,7 +59,6 @@ export const common = {
     start: '发送',
     stop: '停止生成',
     running: '正在生成',
-    runningHint: '正在生成，点击停止',
   },
   anchor: {
     label: (page: number) => `p.${page}`,

@@ -25,9 +25,10 @@ const RunningGlyph = () => (
 
 /**
  * One shared start, running, and stop control for user-triggered generation. `disabled` disables the
- * start only: a running generation can always be stopped. With `showStatusText` it is a regular
- * Button whose label, while running, says it runs and, under the pointer or focus, that a press stops
- * it; otherwise it is the bare glyph button whose look its `className` gives.
+ * start only: a running generation can always be stopped, and while running the control is named
+ * `runningLabel`, by default the stop command. With `showStatusText` it is a regular Button whose
+ * label, while running, says it runs and, under the pointer or focus, that a press stops it; otherwise
+ * it is the bare glyph button whose look its `className` gives.
  */
 export function GenerationControl({
   running, onStart, onStop, idleContent, showStatusText = false,
@@ -43,17 +44,17 @@ export function GenerationControl({
 } & Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'children' | 'onClick' | 'aria-label'>) {
   const m = useMessages()
   const idle = idleLabel ?? m.common.generation.start
-  const runningHint = runningLabel ?? m.common.generation.runningHint
+  const stopLabel = runningLabel ?? m.common.generation.stop
   const control = {
     ...props,
     className: `generation-control${running ? ' is-running' : ''}${className ? ` ${className}` : ''}`,
-    'aria-label': running ? runningHint : idle,
+    'aria-label': running ? stopLabel : idle,
     disabled: !running && disabled,
     onClick: running ? onStop : onStart,
   }
   const glyph = running ? <RunningGlyph /> : idleContent ?? <Arrow />
   return (
-    <Tooltip label={running ? runningHint : idle}>
+    <Tooltip label={running ? stopLabel : idle}>
       {showStatusText
         ? (
           <Button {...control} size="regular" icon={glyph}>

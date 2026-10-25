@@ -11,6 +11,7 @@ import { IconCross } from './icons.js'
 import { ProgressFill } from './ProgressFill.js'
 import { Card } from './Card.js'
 import { Button } from './Button.js'
+import { Tag } from './Tag.js'
 import './ParseProgress.css'
 
 const PROGRESS: Record<MetadataJob['step'], number> = {
@@ -73,7 +74,7 @@ export function ParseProgress({ onParsed, onOpenPaper }: {
       {failed.length > 0 ? (
         <Card floating className="upcard compact quiet" role="status">
           <div className="upt">
-            <span>{m.papers.parse.needsAttention(failed.length)}</span>
+            <Tag tone="warn">{m.papers.parse.count(failed.length)}</Tag>
             <IconButton
               label={m.papers.parse.collapse} size="nested" className="upclose"
               onClick={() => close(failed)}

@@ -155,7 +155,7 @@ describe('一个对象一个词', () => {
     topic: [
       'papers.columns.topics', 'papers.groupNames.topics', 'papers.toolbar.searchPlaceholder', 'papers.tags.add',
       'papers.tags.existingTopics', 'papers.tags.remove', 'papers.notices.topicAdded', 'papers.metadata.fields.topics',
-      'papers.researchMap.kind.signal', 'papers.researchMap.reason.topic',
+      'papers.researchMap.reason.topic',
     ],
   }
   /** Texts that name a project's experiment conclusion and the finding it becomes in the Wiki. */

@@ -45,7 +45,7 @@ export function ResearchMap({ rows, total, loading, onOpenPaper, onReadPaper, on
   const entries = useMemo(() => {
     const groups = map.groups.map<MapEntry>((group) => ({
       id: group.id, label: group.label,
-      ...(group.kind === 'phrase' ? {} : { kind: m.papers.researchMap.kind[group.kind] }),
+      ...(group.kind === 'project' ? { kind: m.papers.researchMap.kind.project } : {}),
       papers: group.members.map((member) => ({
         paper: member.paper,
         chips: member.reasons.map((item) => ({ key: reasonKey(item), text: m.papers.researchMap.reason[item.kind](item.label) })),

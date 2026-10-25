@@ -29,7 +29,6 @@ export const ideas = {
   },
   candidate: { dismiss: 'Dismiss', confirmed: 'Idea put at this node of its source project', dismissed: 'Node dismissed' },
   manage: (title: string) => `Manage idea: ${title}`,
-  projectFinished: 'Project finished',
   updated: (date: string) => `Updated ${date}`,
   detailHeading: 'Idea details',
   bodyLabel: 'Idea',

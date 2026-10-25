@@ -111,21 +111,13 @@ export const project = {
       tasksOverdue: 'Tasks overdue',
       stale: 'Progress stalled',
     },
-    action: {
-      decideConflict: 'Review the evidence and decide',
-      clearBlocker: 'Decide how to clear the blocker',
-      fixPath: 'Ask the agent to fix the active research path',
-      rescheduleOrFinish: 'Finish it or reschedule',
-      confirmDelivery: 'Confirm delivery readiness',
-      chooseDirection: 'Choose whether to continue, shelve, or change direction',
-    },
     reason: {
       conflictCount: (n: number) =>
         `${n} conflicting experiment ${pluralEn(n, { one: 'conclusion', other: 'conclusions' })}`,
       overdueTasks: (n: number) => `${n} overdue ${pluralEn(n, { one: 'task', other: 'tasks' })}`,
       idleDays: (n: number) => `No progress for ${n} ${pluralEn(n, { one: 'day', other: 'days' })}`,
-      pathBroken: 'Active research path is broken',
-    pathMissing: 'No active research path is set in the research graph',
+      pathBroken: 'Broken',
+      pathMissing: 'Not set',
     },
     idle: {
       none: 'No progress yet',
@@ -133,7 +125,6 @@ export const project = {
       daysAgo: (n: number) => `Last progress ${n} ${pluralEn(n, { one: 'day', other: 'days' })} ago`,
     },
     pulse: {
-      notCounted: 'Not counted toward current progress',
       blocked: 'Blocked',
       conflict: 'Conflicting experiment conclusions',
       pathBroken: 'Path issue',
@@ -145,7 +136,6 @@ export const project = {
   identity: {
     heading: 'Properties',
     typeLabel: 'Type',
-    typeValue: 'Project',
     nameLabel: 'Name',
     statusLabel: 'Status',
     priorityLabel: 'Priority',

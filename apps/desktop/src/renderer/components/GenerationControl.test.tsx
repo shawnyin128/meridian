@@ -28,7 +28,7 @@ describe('GenerationControl', () => {
     expect(start).toHaveBeenCalledOnce()
     show(true, false)
     expect([host.querySelector('button'), button.getAttribute('aria-label'), button.querySelector('.ring.spin') !== null])
-      .toEqual([button, '正在生成，点击停止', true])
+      .toEqual([button, '停止生成', true])
     act(() => button.click())
     expect(stop).toHaveBeenCalledOnce()
 
@@ -38,7 +38,7 @@ describe('GenerationControl', () => {
     expect([text.className, text.getAttribute('aria-label')]).toEqual(['btn generation-control', '发送'])
     show(true, true)
     expect(host.querySelector('button')).toBe(text)
-    expect(text.getAttribute('aria-label')).toBe('正在生成，点击停止')
+    expect(text.getAttribute('aria-label')).toBe('停止生成')
     expect(text.className).toBe('btn generation-control is-running')
     expect(text.querySelector('.ring.spin')).not.toBeNull()
     expect(text.querySelector('.generation-stop')).not.toBeNull()

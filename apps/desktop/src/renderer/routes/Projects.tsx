@@ -32,7 +32,6 @@ import { Tag } from '../components/Tag.js'
 import { dnum } from '../../shared/dates.js'
 import { useFormat } from '../lib/format.js'
 import { useMessages } from '../messages/useMessages.js'
-import type { Catalog } from '../messages/catalog.js'
 import { ProjectDetail } from './ProjectDetail.js'
 import type { RecordTab } from './ProjectDetail.js'
 import type { PlanTab } from '../components/project/ProjectPlan.js'
@@ -158,10 +157,6 @@ function ProjectCreateRow({ row, triggers, onCreate, onCancel, kept }: {
   )
 }
 
-export function projectPaperCountLabel(count: number, m: Catalog): string {
-  return m.research.panel.paperCount(count)
-}
-
 /** Ongoing projects expose the decisions a researcher needs before secondary counts and history. */
 function ProjectPanel({ project, onOpen, menu, reorder }: {
   project: ProjectSummary; onOpen: () => void; menu: ReactNode
@@ -222,7 +217,7 @@ function ProjectPanel({ project, onOpen, menu, reorder }: {
         </span>
         <span className="project-card-fact">
           <span className="project-card-label">{m.project.sections.papers}</span>
-          <span>{projectPaperCountLabel(project.paperCount, m)}</span>
+          <span>{project.paperCount}</span>
         </span>
         <span className="project-card-fact project-card-recent">
           <span className="project-card-label">{m.research.panel.recentProgressLabel}</span>

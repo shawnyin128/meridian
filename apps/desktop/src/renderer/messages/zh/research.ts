@@ -18,7 +18,6 @@ export const research = {
     activeNodesMore: (n: number) => `等 ${n} 个`,
     focusWithActiveTasks: (label: string, n: number) => `${label} · ${n} 条进行中任务`,
     noRecentRecord: '暂无科研记录',
-    waitingForAgent: '等待 Agent 回传',
     recentHeading: '最近科研记录',
     upcomingHeading: '接下来的里程碑',
     historyProjects: '历史项目',
@@ -50,7 +49,6 @@ export const research = {
     recentProgressLabel: '最近推进',
     noRecords: '还没有记录',
     staleAlert: (n: number) => `已 ${n} 天无推进`,
-    paperCount: (n: number) => (n === 0 ? '还没有关联论文' : `关联论文 ${n} 篇`),
   },
   chips: {
     addProject: '关联项目',

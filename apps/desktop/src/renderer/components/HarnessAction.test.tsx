@@ -97,7 +97,7 @@ describe('HarnessAction', () => {
     act(() => root!.render(withMessages(<HarnessAction plan={plan()} running onStart={vi.fn()}
       onCancel={cancel} />)))
     const button = host.querySelector<HTMLButtonElement>('button')!
-    expect(button.getAttribute('aria-label')).toBe('正在生成，点击停止')
+    expect(button.getAttribute('aria-label')).toBe('停止生成')
     expect(button.className).toBe('btn generation-control is-running harness-trigger')
     expect(button.querySelector('.ring.spin')).not.toBeNull()
     expect(button.querySelector('.generation-stop')).not.toBeNull()

@@ -1231,7 +1231,7 @@ export function PaperTable() {
       }}
       onDragLeave={leaveDrop} onDrop={dropFiles}
     >
-      {dropActive ? <div className="paper-drop"><strong>{m.papers.upload.dropToImport}</strong></div> : null}
+      {dropActive ? <div className="paper-drop" /> : null}
       {/* As in the demo the title carries a count; until it arrives, the "·" and space after it are hidden. */}
       <PageHeader
         actions={(

@@ -34,7 +34,6 @@ import { BackButton } from '../components/BackButton.js'
 import { FadeText } from '../components/FadeText.js'
 import { Toolbar } from '../components/Toolbar.js'
 import { namedRuns, TitleNote } from '../components/TitleNote.js'
-import { Tag } from '../components/Tag.js'
 import { Tooltip } from '../components/Tooltip.js'
 import { readStateName } from '../components/PaperMetadata.js'
 import { PaperText } from '../components/paper/PaperText.js'
@@ -235,7 +234,6 @@ export function Chat() {
                     </Tooltip>
                   ))}
                 </span>
-                {hasDiscussion ? null : <Tag>{m.chat.noDiscussion}</Tag>}
                 <Button
                   size="compact" variant="ghost" className="save-idea" id="qaIdea" disabled={id === null || !hasDiscussion}
                   onClick={startIdea}

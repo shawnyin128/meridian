@@ -489,7 +489,7 @@ describe('Inbox', () => {
     const toast = document.createElement('div')
     const shown = createRoot(toast)
     act(() => shown.render(<MessagesProvider>{api.notice.success.mock.calls.at(-1)![0] as ReactNode}</MessagesProvider>))
-    expect(toast.textContent).toBe('没有发现新的论文 · 请求 0 个方向 · 1 个方向失败 · 下轮优先重试')
+    expect(toast.textContent).toBe('没有发现新的论文 · 1 个方向失败')
     expect(toast.querySelectorAll('.date-chip')).toHaveLength(0)
     act(() => shown.unmount())
     await act(async () => { root.unmount() })
@@ -614,7 +614,7 @@ describe('Inbox', () => {
     await act(async () => { root.unmount() })
   })
 
-  it('发现页用小齿轮直接打开发现设置，不在页面重复渲染方向编辑器；概况只写数量', async () => {
+  it('发现页用小齿轮直接打开发现设置，不在页面重复渲染方向编辑器，也不写方向概况', async () => {
     api.mode = 'discovery'
     api.profiles = [{
       id: 'p1', name: '项目一', seedCount: 2, positiveCount: 0, negativeCount: 0,
@@ -633,7 +633,7 @@ describe('Inbox', () => {
     const root = createRoot(host)
     await act(async () => { root.render(<MessagesProvider><Inbox /></MessagesProvider>) })
     const gear = host.querySelector<HTMLButtonElement>('[aria-label="发现设置"]')!
-    expect(host.querySelector('.discovery-note')?.textContent).toBe('1 个项目 · 2 个启用方向')
+    expect(host.textContent).not.toContain('启用方向')
     expect(gear.querySelector('svg')).not.toBeNull()
     expect(host.textContent).not.toContain('管理方向')
     expect(host.textContent).not.toContain('Draft Model')

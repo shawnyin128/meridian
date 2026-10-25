@@ -17,13 +17,8 @@ import { plainTitle } from '../paper/paper-text.js'
 import { Button } from '../Button.js'
 
 function resultNote(result: DiscoveryFetchResult, m: Catalog): string {
-  const parts = [
-    result.added === 0 ? m.settings.discovery.noNewPapers : m.settings.discovery.newFound(result.added),
-    m.settings.discovery.requested(result.intents),
-  ]
-  if (result.cachedIntents > 0) parts.push(m.settings.discovery.cooling(result.cachedIntents))
+  const parts = [result.added === 0 ? m.settings.discovery.noNewPapers : m.settings.discovery.newFound(result.added)]
   if (result.failedIntents > 0) parts.push(m.settings.discovery.failed(result.failedIntents))
-  if (result.deferredProjects > 0) parts.push(m.settings.discovery.deferred(result.deferredProjects))
   return parts.join(' · ')
 }
 

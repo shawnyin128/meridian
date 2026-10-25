@@ -15,7 +15,6 @@ export const inbox = {
   sort: { recommended: '推荐', latest: '最新', published: '已发表', impact: '影响力' },
   discoverySettings: '发现设置',
   watchSettings: '关注设置',
-  discoverySummary: (projects: number, intents: number) => `${projects} 个项目 · ${intents} 个启用方向`,
   empty: {
     discoveryNone: '还没有新的发现',
     discoveryNoSeeds: '还没有带 arXiv 编号的项目论文',

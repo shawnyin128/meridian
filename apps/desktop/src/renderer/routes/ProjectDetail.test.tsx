@@ -80,15 +80,15 @@ describe('attnItems', () => {
     }), TODAY, sm)).toEqual([
       {
         id: 'conflict', rank: 0, kind: '实验结论冲突', tone: 'bad',
-        reason: '2 条实验结论有冲突', action: '检查证据并裁决',
+        reason: '2 条实验结论有冲突',
       },
       {
         id: 'milestone-m2026-08-28', milestone: 'm2026-08-28', rank: 5, kind: '临近里程碑', tone: 'warn',
-        date: '2026-08-28', reason: '宽树实验补 B≥8', action: '确认交付准备',
+        date: '2026-08-28', reason: '宽树实验补 B≥8',
       },
       {
         id: 'stale', rank: 6, kind: '推进停滞', tone: 'warn',
-        reason: '已 8 天无推进', action: '确认继续、搁置或调整方向',
+        reason: '已 8 天无推进',
       },
     ])
   })
@@ -101,15 +101,15 @@ describe('attnItems', () => {
     }), TODAY, sm)).toEqual([
       {
         id: 'block', rank: 1, kind: '阻塞', tone: 'warn',
-        reason: '等 A100 机时(周四释放)', action: '确认如何解除阻塞',
+        reason: '等 A100 机时(周四释放)',
       },
       {
         id: 'milestone-m2026-08-28', milestone: 'm2026-08-28', rank: 5, kind: '临近里程碑', tone: 'warn',
-        date: '2026-08-28', reason: '宽树实验补 B≥8', action: '确认交付准备',
+        date: '2026-08-28', reason: '宽树实验补 B≥8',
       },
       {
         id: 'stale', rank: 6, kind: '推进停滞', tone: 'warn',
-        reason: '已 8 天无推进', action: '确认继续、搁置或调整方向',
+        reason: '已 8 天无推进',
       },
     ])
   })
@@ -144,11 +144,11 @@ describe('attnItems', () => {
     expect(items).toEqual([
       {
         id: 'overdue-tasks-2026-08-23', task: 'late-a', rank: 4, kind: '任务逾期', tone: 'bad',
-        date: '2026-08-23', reason: '1 条任务已过计划时间', action: '完成或重新排期',
+        date: '2026-08-23', reason: '1 条任务已过计划时间',
       },
       {
         id: 'overdue-tasks-2026-08-24', task: 'late-b', rank: 4, kind: '任务逾期', tone: 'bad',
-        date: '2026-08-24', reason: '2 条任务已过计划时间', action: '完成或重新排期',
+        date: '2026-08-24', reason: '2 条任务已过计划时间',
       },
     ])
   })
@@ -174,7 +174,7 @@ describe('attnItems', () => {
       ...project({}), research: { pathState: 'broken' },
     }, TODAY, sm)[0]).toEqual({
       id: 'path-broken', rank: 2, kind: '科研路径', tone: 'bad',
-      reason: '当前科研路径已断裂', action: '让 Agent 校正当前科研路径',
+      reason: '已断裂',
     })
   })
 
@@ -182,7 +182,7 @@ describe('attnItems', () => {
     expect(attnItems(project({ milestones: [milestone('2026-08-28')] }), TODAY, sm)).toEqual([
       {
         id: 'milestone-m2026-08-28', milestone: 'm2026-08-28', rank: 5, kind: '临近里程碑', tone: 'warn',
-        date: '2026-08-28', reason: '宽树实验补 B≥8', action: '确认交付准备',
+        date: '2026-08-28', reason: '宽树实验补 B≥8',
       },
     ])
     expect(attnItems(project({ milestones: [milestone('2026-08-29')] }), TODAY, sm)).toEqual([])
@@ -192,7 +192,7 @@ describe('attnItems', () => {
     expect(attnItems(project({ milestones: [milestone('2026-08-25')] }), TODAY, sm)).toEqual([
       {
         id: 'milestone-m2026-08-25', milestone: 'm2026-08-25', rank: 5, kind: '临近里程碑', tone: 'warn',
-        date: '2026-08-25', reason: '宽树实验补 B≥8', action: '确认交付准备',
+        date: '2026-08-25', reason: '宽树实验补 B≥8',
       },
     ])
   })
@@ -203,7 +203,7 @@ describe('attnItems', () => {
     }), TODAY, sm)).toEqual([
       {
         id: 'milestone-m2026-08-24', milestone: 'm2026-08-24', rank: 3, kind: '里程碑逾期', tone: 'bad',
-        date: '2026-08-24', reason: '宽树实验补 B≥8', action: '完成或重新排期',
+        date: '2026-08-24', reason: '宽树实验补 B≥8',
       },
     ])
   })
@@ -212,7 +212,7 @@ describe('attnItems', () => {
     expect(attnItems(project({ lastProgress: '2026-08-17' }), TODAY, sm)).toEqual([
       {
         id: 'stale', rank: 6, kind: '推进停滞', tone: 'warn',
-        reason: '已 8 天无推进', action: '确认继续、搁置或调整方向',
+        reason: '已 8 天无推进',
       },
     ])
     expect(attnItems(project({ lastProgress: '2026-08-18' }), TODAY, sm)).toEqual([])
@@ -594,6 +594,11 @@ describe('项目页跟着工作区刷新', () => {
     expect([...host.querySelectorAll('.page-error')].map((banner) => [
       banner.previousElementSibling?.textContent?.startsWith('关联想法') ?? false, banner.textContent,
     ])).toEqual([[true, '需要更新 App']])
+  })
+
+  it('属性一节从名称开始，不再写一行类型 · 项目', async () => {
+    const host = await mount()
+    expect([...host.querySelectorAll('.wkprops > .pk')].map((key) => key.textContent).slice(0, 1)).toEqual(['名称'])
   })
 
   it('一次只读一回：上一次还没回来时，到点了也不再读', async () => {

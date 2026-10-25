@@ -49,14 +49,6 @@ export type ProjectSignalMessages = {
     tasksOverdue: string
     stale: string
   }
-  action: {
-    decideConflict: string
-    clearBlocker: string
-    fixPath: string
-    rescheduleOrFinish: string
-    confirmDelivery: string
-    chooseDirection: string
-  }
   reason: {
     conflictCount: (count: number) => string
     overdueTasks: (count: number) => string
@@ -70,7 +62,6 @@ export type ProjectSignalMessages = {
     daysAgo: (days: number) => string
   }
   pulse: {
-    notCounted: string
     blocked: string
     conflict: string
     pathBroken: string
@@ -126,7 +117,6 @@ export type ProjectDecisionItem = {
   kind: string
   tone: 'bad' | 'warn'
   reason: string
-  action: string
   date?: string
   page?: string
   /** The task the item is about: for overdue tasks of one date, the first of them in plan order. */
@@ -157,14 +147,14 @@ export function projectDecisionItems(
   if (conflicting) {
     items.push({
       id: 'conflict', rank: 0, kind: m.kind.conflict, tone: 'bad',
-      reason: m.reason.conflictCount(conflicting), action: m.action.decideConflict,
+      reason: m.reason.conflictCount(conflicting),
       ...(project.conflictPage === undefined ? {} : { page: project.conflictPage }),
     })
   }
   if (project.block) {
     items.push({
       id: 'block', rank: 1, kind: m.kind.block, tone: 'warn',
-      reason: project.block, action: m.action.clearBlocker,
+      reason: project.block,
     })
   }
   if (project.research?.pathState === 'broken' || project.research?.pathState === 'missing') {
@@ -173,7 +163,6 @@ export function projectDecisionItems(
       id: broken ? 'path-broken' : 'path-missing', rank: 2,
       kind: m.kind.researchPath, tone: broken ? 'bad' : 'warn',
       reason: broken ? m.reason.pathBroken : m.reason.pathMissing,
-      action: m.action.fixPath,
     })
   }
   const milestone = [...project.milestones]
@@ -185,14 +174,12 @@ export function projectDecisionItems(
     if (left < 0) {
       items.push({
         id: `milestone-${milestone.id ?? milestone.date}`, ...about, rank: 3,
-        kind: m.kind.milestoneOverdue, tone: 'bad', reason: milestone.title,
-        action: m.action.rescheduleOrFinish, date: milestone.date,
+        kind: m.kind.milestoneOverdue, tone: 'bad', reason: milestone.title, date: milestone.date,
       })
     } else if (left <= NEAR_DAYS) {
       items.push({
         id: `milestone-${milestone.id ?? milestone.date}`, ...about, rank: 5,
-        kind: m.kind.milestoneNear, tone: 'warn', reason: milestone.title,
-        action: m.action.confirmDelivery, date: milestone.date,
+        kind: m.kind.milestoneNear, tone: 'warn', reason: milestone.title, date: milestone.date,
       })
     }
   }
@@ -207,23 +194,24 @@ export function projectDecisionItems(
   )) {
     items.push({
       id: `overdue-tasks-${date}`, task: first, rank: 4, kind: m.kind.tasksOverdue, tone: 'bad', date,
-      reason: m.reason.overdueTasks(count), action: m.action.rescheduleOrFinish,
+      reason: m.reason.overdueTasks(count),
     })
   }
   const idle = idleDays(project.lastProgress, todayIso)
   if (idle !== null && idle > STALE_DAYS) {
     items.push({
       id: 'stale', rank: 6, kind: m.kind.stale, tone: 'warn',
-      reason: m.reason.idleDays(idle), action: m.action.chooseDirection,
+      reason: m.reason.idleDays(idle),
     })
   }
   return items.sort((a, b) => a.rank - b.rank || dnum(a.date ?? todayIso) - dnum(b.date ?? todayIso))
 }
 
+/** A project's progress signal: its tone, its tag, and the line under the tag, absent when the tag says everything. */
 export type ProjectPulseSignal = {
   tone: 'blocked' | 'risk' | 'warn' | 'quiet' | 'healthy'
   label: string
-  detail: string
+  detail?: string
 }
 
 /** The compact progress signal is a projection of the ranked decisions, not a second policy. */
@@ -231,7 +219,7 @@ export function projectPulseSignal(
   project: ProjectSignalSource, todayIso: string, m: ProjectSignalMessages,
 ): ProjectPulseSignal {
   if (project.status !== ACTIVE_PROJECT) {
-    return { tone: 'quiet', label: project.status, detail: m.pulse.notCounted }
+    return { tone: 'quiet', label: project.status }
   }
   const first = projectDecisionItems(project, todayIso, m)[0]
   if (first?.id === 'block') return { tone: 'blocked', label: m.pulse.blocked, detail: first.reason }

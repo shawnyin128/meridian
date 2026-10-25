@@ -256,6 +256,30 @@ describe('研究总览的需要注意', () => {
     expect(api.open).toHaveBeenLastCalledWith('project', 'spec')
   })
 
+  it('需要注意的一行只有项目、日期、类型和内容，不写下一步该做什么', async () => {
+    api.rows = [{
+      ...row([]), block: '等 8 卡机器', lastProgress: '2026-10-01',
+      research: { ...row([]).research, pathState: 'broken' },
+    }]
+    await act(async () => root.render(<MessagesProvider><ResearchOverview /></MessagesProvider>))
+    expect([...host.querySelectorAll('.ovlist-row.attention')].map((line) => [
+      line.querySelector('.ovlist-kind')!.textContent, line.querySelector('.ovlist-main')!.textContent, line.querySelector('.ovlist-meta'),
+    ])).toEqual([['阻塞', '等 8 卡机器', null], ['科研路径', '已断裂', null], ['推进停滞', '已 15 天无推进', null]])
+  })
+
+  it('还没有科研记录的项目，项目推进里记录那一格下面写 —，不写等待回传', async () => {
+    api.rows = [row([])]
+    await act(async () => root.render(<MessagesProvider><ResearchOverview /></MessagesProvider>))
+    expect(host.querySelectorAll('.ovpulse-row .ovpulse-cell')[1]!.querySelector('.ovpulse-sub')!.textContent).toBe('—')
+  })
+
+  it('搁置的项目在项目推进里只有它的状态标签，下面不再写一句不计入', async () => {
+    api.rows = [{ ...row([]), status: '搁置' }]
+    await act(async () => root.render(<MessagesProvider><ResearchOverview /></MessagesProvider>))
+    const signal = host.querySelector('.ovpulse-cell.signal')!
+    expect([signal.querySelector('.tag')!.textContent, signal.querySelector('.ovpulse-sub')]).toEqual(['搁置', null])
+  })
+
   it('推进停滞在需要注意和项目推进里都是警示色', async () => {
     api.rows = [{ ...row([]), lastProgress: '2026-10-01' }]
     await act(async () => root.render(<MessagesProvider><ResearchOverview /></MessagesProvider>))

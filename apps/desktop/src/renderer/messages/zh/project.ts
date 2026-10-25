@@ -100,20 +100,12 @@ export const project = {
       tasksOverdue: '任务逾期',
       stale: '推进停滞',
     },
-    action: {
-      decideConflict: '检查证据并裁决',
-      clearBlocker: '确认如何解除阻塞',
-      fixPath: '让 Agent 校正当前科研路径',
-      rescheduleOrFinish: '完成或重新排期',
-      confirmDelivery: '确认交付准备',
-      chooseDirection: '确认继续、搁置或调整方向',
-    },
     reason: {
       conflictCount: (n: number) => `${n} 条实验结论有冲突`,
       overdueTasks: (n: number) => `${n} 条任务已过计划时间`,
       idleDays: (n: number) => `已 ${n} 天无推进`,
-      pathBroken: '当前科研路径已断裂',
-      pathMissing: '科研图尚未指定当前科研路径',
+      pathBroken: '已断裂',
+      pathMissing: '未指定',
     },
     idle: {
       none: '尚无推进',
@@ -121,7 +113,6 @@ export const project = {
       daysAgo: (n: number) => `上次推进 ${n} 天前`,
     },
     pulse: {
-      notCounted: '不计入当前推进',
       blocked: '受阻',
       conflict: '实验结论冲突',
       pathBroken: '路径异常',
@@ -133,7 +124,6 @@ export const project = {
   identity: {
     heading: '属性',
     typeLabel: '类型',
-    typeValue: '项目',
     nameLabel: '名称',
     statusLabel: '状态',
     priorityLabel: '优先级',

@@ -525,7 +525,7 @@ describe('Ideas', () => {
     expect(api.restored).toEqual(['trash-idea'])
   })
 
-  it('在已完成项目里做完的想法，取消归档按不了，菜单项后面写着项目已完成', async () => {
+  it('在已完成项目里做完的想法，取消归档按不了，菜单项后面不写原因', async () => {
     await act(async () => { root.render(<MessagesProvider><Ideas /></MessagesProvider>) })
     await act(async () => {
       host.querySelector('[data-idea="idea-completed"] .dots')!
@@ -533,8 +533,7 @@ describe('Ideas', () => {
     })
     const unarchive = [...document.querySelectorAll<HTMLElement>('[role="menu"] [role="menuitem"]')]
       .find((item) => item.textContent?.startsWith('取消归档'))!
-    expect([unarchive.hasAttribute('data-disabled'), unarchive.querySelector('.mi-key')?.textContent])
-      .toEqual([true, '项目已完成'])
+    expect([unarchive.hasAttribute('data-disabled'), unarchive.textContent]).toEqual([true, '取消归档'])
   })
 
   it('所在项目已不在时,详情里所在项目下面写一行警告', async () => {

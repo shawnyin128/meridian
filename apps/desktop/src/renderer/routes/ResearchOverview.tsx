@@ -117,7 +117,7 @@ function OverviewRow({ when, kind, main, meta, project, projectId, variant, onOp
 }
 
 /**
- * Needs attention: all projects' signals, merged and sorted, each with its next action at the right.
+ * Needs attention: all projects' signals, merged and sorted.
  * A row opens its project, at the task or milestone the signal is about.
  */
 function DecisionQueue({ rows, onOpen }: {
@@ -145,7 +145,6 @@ function DecisionQueue({ rows, onOpen }: {
             when={<OverviewDate date={x.date} />}
             kind={<ProjectSignalKind tone={x.tone}>{x.kind}</ProjectSignalKind>}
             main={x.reason}
-            meta={`${x.action} →`}
             project={x.name}
             projectId={x.projectId}
             onOpen={() => onOpen(x.projectId, x.task !== undefined ? { task: x.task }
@@ -202,7 +201,7 @@ function ProjectProgress({ rows, onOpen }: {
             : active
               ? m.research.overview.focusWithActiveTasks(m.project.identity.focusLabel[FOCUS_KEY[project.status]], activeCount)
               : m.project.identity.focusLabel[FOCUS_KEY[project.status]]
-          const when = latest ? fmt.date(latest.date) : m.research.overview.waitingForAgent
+          const when = latest ? fmt.date(latest.date) : '—'
           return (
             <StructuredRow
               className="ovlist-row progress ovpulse-row" data-proj={project.id}
@@ -228,7 +227,7 @@ function ProjectProgress({ rows, onOpen }: {
               </span>
               <span className="ovpulse-cell signal">
                 <Tag tone={PULSE_TONE[signal.tone]}>{signal.label}</Tag>
-                <FadeText className="ovpulse-sub" label={signal.detail}>{signal.detail}</FadeText>
+                {signal.detail === undefined ? null : <FadeText className="ovpulse-sub" label={signal.detail}>{signal.detail}</FadeText>}
               </span>
             </StructuredRow>
           )

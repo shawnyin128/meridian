@@ -256,7 +256,7 @@ export function PaperMetadata({ paper, readStateLabel, onSaved, titled = true }:
         </dd>
         <dt>{m.papers.metadata.wikiLabel}</dt><dd>{pageStateName(paper.pageState, m.papers.metadata.pageState)}</dd>
         <dt>{m.papers.metadata.fileLabel}</dt>
-        <dd>{m.papers.metadata.fileSummary(String(paper.pageCount || '—'))}</dd>
+        <dd>{paper.pageCount ? m.papers.metadata.pages(paper.pageCount) : '—'}</dd>
       </dl>
     </div>
   )

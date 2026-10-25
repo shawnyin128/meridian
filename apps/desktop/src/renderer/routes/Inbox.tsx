@@ -70,12 +70,12 @@ function fetchNote(status: FetchStatus | null, scope: string, m: Catalog): React
   )
 }
 
-/** What a discovery refresh brought; when the result says nothing is new, also when the scope was last refreshed. */
+/**
+ * What a discovery refresh brought and how many directions failed; when the result says nothing is
+ * new, also when the scope was last refreshed.
+ */
 function discoveryResultNote(result: DiscoveryFetchResult, m: Catalog): ReactNode {
-  const parts = [m.settings.discovery.requested(result.intents)]
-  if (result.cachedIntents > 0) parts.push(m.settings.discovery.cooling(result.cachedIntents))
-  if (result.failedIntents > 0) parts.push(m.settings.discovery.failed(result.failedIntents))
-  if (result.deferredProjects > 0) parts.push(m.settings.discovery.deferred(result.deferredProjects))
+  const parts = result.failedIntents > 0 ? [m.settings.discovery.failed(result.failedIntents)] : []
   if (result.added > 0) return [m.settings.discovery.newFound(result.added), ...parts].join(' · ')
   const { lastFetchedAt } = result
   if (!result.nothingNew || lastFetchedAt === null) return [m.settings.discovery.noNewPapers, ...parts].join(' · ')
@@ -336,16 +336,6 @@ export function Inbox() {
       <PageError error={error} />
 
       <PageBody>
-        {stream === 'discovery' ? (
-          <div className="discovery-summary">
-            <p className="discovery-note">
-              {m.inbox.discoverySummary(
-                profiles.filter((profile) => profile.intentCount > 0).length,
-                profiles.reduce((total, profile) => total + profile.intentCount, 0),
-              )}
-            </p>
-          </div>
-        ) : null}
         {entries === null
           ? (error === null ? <LoadingPlaceholder shape="cards" /> : null)
           : rows.length === 0

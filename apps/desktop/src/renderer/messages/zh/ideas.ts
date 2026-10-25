@@ -27,7 +27,6 @@ export const ideas = {
   },
   candidate: { dismiss: '忽略', confirmed: '想法已放进来源项目的这个节点', dismissed: '已忽略这个节点' },
   manage: (title: string) => `管理想法：${title}`,
-  projectFinished: '项目已完成',
   updated: (date: string) => `${date} 更新`,
   detailHeading: '想法详情',
   bodyLabel: '想法',

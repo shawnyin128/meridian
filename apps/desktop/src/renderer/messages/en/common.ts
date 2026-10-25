@@ -61,7 +61,6 @@ export const common = {
     start: 'Send',
     stop: 'Stop generating',
     running: 'Generating',
-    runningHint: 'Generating — click to stop',
   },
   anchor: {
     label: (page: number) => `p.${page}`,

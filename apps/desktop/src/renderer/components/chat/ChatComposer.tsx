@@ -180,7 +180,6 @@ export function ChatComposer({
         )}
         content={hits.length === 0 ? null : (
           <>
-            <div className="rh">{m.chat.mentionPickerHeading}</div>
             {hits.map((hit, at) => (
               <Fragment key={`${hit.kind}${hit.title}`}>
                 {hits[at - 1]?.kind === hit.kind ? null : <div className="rg">{m.chat.mentionGroup[hit.kind]}</div>}
