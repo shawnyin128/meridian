@@ -37,20 +37,6 @@
 .direction-seeds{display:block;margin-top:var(--sp-2);color:var(--ter);font-size:var(--fs-cap)}
 .direction-actions{display:flex;align-items:center;gap:var(--sp-6);flex:none}
 
-/*
- * Last header cell of both tables: the add-column + and the column-settings gear, nested icon
- * buttons in the header row's actions slot. Two 24px buttons fit in 52px once the cell's padding
- * drops from the 10px of .ptable th / .cmp th to 2px and the slot sets them side by side without its
- * gap, which also keeps the header no taller than one with text only.
- */
-.th-add{width:52px;white-space:nowrap}
-/*
- * Each table's th sets its padding with a selector more specific than .th-add, so this padding
- * override has to name the table too.
- */
-.ptable th.th-add,.cmp th.th-add{padding:var(--sp-2)}
-.th-add .row-actions{gap:0;vertical-align:middle}
-
 /* The label column is as wide as the longest label, which stays on one line. */
 .wkprops{display:grid;grid-template-columns:max-content minmax(0,1fr);width:100%;max-width:100%;min-width:0;row-gap:var(--sp-6);column-gap:var(--sp-12);font-size:var(--fs-sm);line-height:var(--lh-ui)}
 .wkprops>*{min-width:0}

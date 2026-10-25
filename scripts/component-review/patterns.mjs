@@ -40,7 +40,7 @@ export const SHADOW_TOKENS = ['sh-1', 'sh-2', 'sh-3', 'sh-paper']
  * project list and of Ideas, and the kind groups of the trash.
  */
 const GROUPED_SECTIONS = '.desk-body:has(.projpanel) > .section-heading, .desk-body:has(> .tgroup) > .section-heading, '
-  + '.ideas-list > .section-heading:not(:has(+ .idea-stats-head)), .idea-row-groups > .section-heading'
+  + '.ideas-list > .section-heading:not(:has(+ .table-scroll)), .idea-row-groups > .section-heading'
 
 /** One selector entry: `impl` is `shared:<Component>` or `hand:<file>`, `selector` finds its elements. */
 const entry = (impl, selector, options = {}) => ({ id: `${impl} ${selector}`, impl, selector, ...options })
@@ -171,9 +171,7 @@ export const PATTERNS = {
   Table: {
     metrics: 'list',
     entries: [
-      entry('hand:components/paper-table/PaperTable.tsx', '.ptable'),
-      entry('hand:routes/Wiki.tsx', '.cmp'),
-      entry('hand:routes/Ideas.tsx', '.idea-stats'),
+      entry('shared:Table', 'table.table'),
       entry('shared:Markdown', '.md table'),
     ],
   },
@@ -190,8 +188,7 @@ export const PATTERNS = {
       entry('shared:StructuredRow', '.structured-row', { not: '.structured-row:has(> .form-control)' }),
       entry('shared:NavRow', '.nav-row', { not: '.srow.disc, .sb-h' }),
       entry('shared:PickOption', '.mi.rrow', { parts: { title: '.rt', meta: '.rm' } }),
-      entry('hand:components/paper-table/PaperTable.tsx', '.ptable tbody tr', { parts: { title: '.pt-title' } }),
-      entry('hand:routes/Wiki.tsx', '.cmp tbody tr:not(.newrow)'),
+      entry('shared:Table', '.table-row:not(.newrow)', { parts: { title: '.table-cell--title' } }),
       entry('hand:routes/Wiki.tsx', '.wktoc li'),
       entry('hand:components/wiki/WikiClaims.tsx', '.wkclaim-lines li'),
       entry('hand:components/reader/PaperWikiIngest.tsx', '.wiki-ingest-scope > div'),
@@ -261,7 +258,7 @@ export const PATTERNS = {
       entry('shared:PickOption', '.mi.rrow .rt'),
       entry('hand:components/project/ProjectIdentity.tsx', '.project-identity-name'),
       entry('hand:routes/Ideas.tsx', '.idea-card-title, .idea-row-title'),
-      entry('hand:components/paper-table/PaperTable.tsx', '.pt-title'),
+      entry('shared:Table', '.table-cell--title'),
       entry('hand:routes/Changelog.tsx', '.crow .ct'),
       entry('hand:routes/Trash.tsx', '.tt2'),
       entry('hand:routes/Feed.tsx', '.fbody'),
@@ -282,7 +279,7 @@ export const PATTERNS = {
       entry('hand:routes/Ideas.tsx', '.idea-card-meta, .idea-card-source, .idea-row-meta'),
       entry('hand:routes/Projects.tsx', '.prow .m'),
       entry('hand:routes/Changelog.tsx', '.crow .cm'),
-      entry('hand:components/paper-table/PaperTable.tsx', '.pt-dim'),
+      entry('shared:Table', '.table-cell--meta'),
       entry('hand:routes/Wiki.tsx', '.wkcard .wm'),
       entry('hand:routes/ResearchOverview.tsx', '.ovpulse-sub'),
     ],
@@ -304,7 +301,7 @@ export const PATTERNS = {
     metrics: 'button',
     entries: [
       entry('shared:RowActions', '.row-actions'),
-      entry('hand:components/paper-table/PaperTable.tsx', '.row-actions-cell'),
+      entry('shared:Table', '.table-actions'),
     ],
   },
   OverflowMenu: { metrics: 'button', entries: [entry('shared:DotsMenu', '.dots')] },
@@ -322,7 +319,7 @@ export const PATTERNS = {
       entry('shared:StructuredRow', '.structured-row--selected'),
       entry('shared:NavRow', '.srow.on'),
       entry('shared:IconButton', '.icbtn[aria-pressed="true"]'),
-      entry('hand:components/paper-table/PaperTable.tsx', '.ptable tbody tr.selected'),
+      entry('shared:Table', '.table-row--selected'),
       entry('hand:components/reader/ReadingNotes.tsx', '.reading-card.selected'),
     ],
   },
@@ -421,7 +418,7 @@ export const PATTERNS = {
     metrics: 'button',
     entries: [
       entry('shared:SortMenu', '.sort-menu'),
-      entry('hand:components/paper-table/PaperTable.tsx', '.thsort'),
+      entry('shared:Table', '.table-sort'),
     ],
   },
   Picker: {

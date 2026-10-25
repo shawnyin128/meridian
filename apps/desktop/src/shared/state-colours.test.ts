@@ -121,7 +121,7 @@ describe('状态色', () => {
    * each with that issue. The list only shrinks.
    */
   const PENDING: Record<string, string> = {
-    'components/paper-table/PaperTable.css  .ptable th.column-moving  background': '#567, the drag feedback of a column',
+    'components/Table.css  .table th.table-move-moving  background': '#567, the drag feedback of a column',
     'components/project/ProjectPlan.css  50%  background': '#578, the landing flash of a plan row',
     'shell/tokens.css  .ddlrow.flash  background': '#578, the landing flash of a plan row',
     'routes/ResearchOverview.css  .ovstat.bad b  color': 'the Overview stat tiles, which the catalog has no row for',
@@ -186,8 +186,8 @@ describe('强调色', () => {
     'components/ChipToggles.css  .chip-toggle[data-state="on"]', 'components/ProgressFill.css  .progress-fill>span',
     'components/ResearchObjectCard.css  .research-object-card.selected', 'components/SegmentedControl.css  .segmented-control>button[data-state="on"]',
     'components/StructuredList.css  .structured-row--selected', 'components/Switch.css  .switch[data-state="checked"]',
+    'components/Table.css  .table-row--selected', 'components/Table.css  .table-row--selected>.table-cell--title',
     'components/chat/Chat.css  .send', 'components/icons.css  .ring',
-    'components/paper-table/PaperTable.css  .ptable tbody tr.selected', 'components/paper-table/PaperTable.css  .ptable tbody tr.selected .pt-title',
     'components/timeline/TimelineBoard.css  .gnow', 'components/timeline/TimelineBoard.css  .gnow::after',
     'components/timeline/TimelineBoard.css  .gtoday', 'routes/Reader.css  .reading-card.selected', 'shell/AppShell.css  .srow.on',
   ]
@@ -210,8 +210,8 @@ describe('强调色', () => {
       ['components/StructuredList.css', '.structured-row--selected'], ['components/ResearchObjectCard.css', '.research-object-card.selected'],
       ['routes/Reader.css', '.reading-card.selected'], ['components/ChipToggles.css', '.chip-toggle[data-state="on"]'],
     ] as const) expect(tokens(bodyOf(path, selector)), selector).toEqual(current)
-    expect(tokens(bodyOf('components/paper-table/PaperTable.css', '.ptable tbody tr.selected'))).toEqual(['--accent-soft'])
-    expect(tokens(bodyOf('components/paper-table/PaperTable.css', '.ptable tbody tr.selected .pt-title'))).toEqual(['--accent-text'])
+    expect(tokens(bodyOf('components/Table.css', '.table-row--selected'))).toEqual(['--accent-soft'])
+    expect(tokens(bodyOf('components/Table.css', '.table-row--selected>.table-cell--title'))).toEqual(['--accent-text'])
     expect(tokens(bodyOf('components/SegmentedControl.css', '.segmented-control>button[data-state="on"]'))).toEqual(['--accent-text'])
     for (const [path, selector] of [['components/ActionMenu.css', '.mi .ck'], ['components/icons.css', '.ring']] as const) {
       expect(tokens(bodyOf(path, selector)), selector).toEqual(['--accent-mark'])

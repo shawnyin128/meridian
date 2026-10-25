@@ -25,7 +25,7 @@ const FADED: Record<string, [file: string, markup: RegExp][]> = {
   '.structured-list--fill': [['components/StructuredList.tsx', /list\.current = node\n\s*fade\(node\)/]],
   '.list-column': [['components/StructuredList.tsx', /<div ref=\{fade\} className=\{`list-column/]],
   '.modal-body': [['components/ModalDialog.tsx', /className="modal-body" ref=\{bodyFade\}/]],
-  '.tblwrap': [['components/paper-table/PaperTable.tsx', /className="tblwrap" ref=\{tableFade\}/]],
+  '.table-scroll': [['components/Table.tsx', /className=\{`table-scroll table-scroll--\$\{rows\}`\} ref=\{fade\}/]],
   '.pdetail': [['components/paper-table/PaperTable.tsx', /className="pdetail" ref=\{detailFade\}/]],
   '.paper-meta-list': [['components/PaperMetadata.tsx', /className="paper-meta-list" ref=\{listFade\}/]],
   '.reading-list': [['components/reader/ReadingNotes.tsx', /className="reading-list" ref=\{listFade\}/]],
@@ -34,7 +34,6 @@ const FADED: Record<string, [file: string, markup: RegExp][]> = {
   '.paper-chat .msgs': [['components/chat/PaperChat.tsx', /streamFade\(area\)[\s\S]*className="msgs" ref=\{stream\}/]],
   '.idea-detail-panel': [['routes/Ideas.tsx', /className="idea-detail-panel node-document-pane" ref=\{panelFade\}/]],
   '.wkside': [['routes/Wiki.tsx', /className="wkside" ref=\{railFade\}/]],
-  '.cmpwrap': [['routes/Wiki.tsx', /className="cmpwrap" ref=\{wrapFade\}/]],
   '.gwrap': [['components/timeline/TimelineBoard.tsx', /className="gwrap" ref=\{wrapFade\}/]],
   '.cmdk-list': [['shell/CommandPalette.tsx', /className="cmdk-list" ref=\{listFade\}/]],
   '.pickhits': [['components/PickerPopover.tsx', /<Popover\.Content\s+ref=\{listFade\}/]],
@@ -62,12 +61,11 @@ const EXEMPT: Record<string, string> = {
  * makes it a scroll-state container, and the pseudo-element that fades the content while it is stuck.
  */
 const STUCK: Record<string, [container: string, fade: string]> = {
-  '.tblwrap .ptable thead th': ['.tblwrap .ptable thead th', '.tblwrap .ptable thead th:not(.column-drop-after)::after'],
-  '.ptable th:first-child,.ptable td:first-child': ['.ptable :is(th,td):first-child', '.ptable :is(th,td):first-child::before'],
-  '.ptable td.row-actions-cell,.tblwrap .ptable thead th.th-add': ['.ptable td.row-actions-cell', '.ptable :is(td.row-actions-cell,th.th-add)::before'],
+  '.table th': ['.table th', '.table th:not(.table-move-after)::after'],
+  '.table :is(th,td):first-child': ['.table :is(th,td):first-child', '.table :is(th,td):first-child::before'],
+  '.table .table-actions': ['.table .table-actions', '.table .table-actions::before'],
   '.collapsible-group-head': ['.collapsible-group-head', '.collapsible-group-head::after'],
   '.node-document-pane .node-document-head': ['.node-document-pane .node-document-head', '.node-document-pane .node-document-head::after'],
-  '.cmp th': ['.cmp th', '.cmp th::after'],
 }
 
 /** Sticky elements nothing slides under, and why. */

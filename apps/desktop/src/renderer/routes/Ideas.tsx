@@ -25,6 +25,7 @@ import { DetailPanel } from '../components/DetailPanel.js'
 import { TrailingDate } from '../components/DateTimeDisplay.js'
 import { CardOpen, ResearchObjectCard } from '../components/ResearchObjectCard.js'
 import { RowActions, StructuredList, StructuredRow } from '../components/StructuredList.js'
+import { Table, TableCell, TableOpen, TableRow } from '../components/Table.js'
 import { ProjectLabel, ProjectStatusTag } from '../components/project/ProjectIdentity.js'
 import {
   PageBody, PageError, PageHeader, PageShell, PageTitle, SectionHeading,
@@ -65,6 +66,10 @@ function ideaStatus(idea: ResearchIdea, project: ProjectSummary | undefined, det
   if (idea.archived) return 'archived'
   return idea.project === undefined ? 'open' : 'active'
 }
+
+/** The width the project column of the ideas by project starts at, and that of each count column, in px. */
+const STATS_NAME_WIDTH = 240
+const STATS_COUNT_WIDTH = 120
 
 /** Every project in `projects` order with the ideas sparked in it and how many of those are in progress or done, most first. */
 function ideasByProject(ideas: readonly { idea: ResearchIdea; status: IdeaStatus }[], projects: readonly ProjectSummary[]) {
@@ -540,22 +545,23 @@ export function Ideas() {
             {counts.every((count) => count.ideas === 0) ? null : (
               <>
                 <SectionHeading>{b.heading}</SectionHeading>
-                <div className="idea-stats-head" aria-hidden="true">
-                  <span /><span>{b.ideas}</span><span>{b.active}</span><span>{b.done}</span>
-                </div>
-                <StructuredList variant="embedded" className="idea-stats">
+                <Table
+                  className="idea-stats" rows="capped"
+                  columns={[
+                    { key: 'project', label: '', name: m.research.list.title, width: STATS_NAME_WIDTH },
+                    ...([['ideas', b.ideas], ['active', b.active], ['done', b.done]] as const)
+                      .map(([key, label]) => ({ key, label, width: STATS_COUNT_WIDTH, align: 'end' as const })),
+                  ]}
+                >
                   {counts.map(({ project, ideas, active, done: finished }) => (
-                    <StructuredRow
-                      className="idea-stats-row" key={project.id}
-                      onActivate={() => jumpTo('project', project.id)}
-                    >
-                      <FadeText className="idea-stats-name" label={project.name}>{project.name}</FadeText>
-                      {[[b.ideas, ideas], [b.active, active], [b.done, finished]].map(([label, count]) => (
-                        <span className={`idea-stats-n${count === 0 ? ' zero' : ''}`} aria-label={`${label} ${count}`} key={label}>{count}</span>
+                    <TableRow key={project.id} onClick={() => jumpTo('project', project.id)}>
+                      <TableCell kind="title"><TableOpen>{project.name}</TableOpen></TableCell>
+                      {[ideas, active, finished].map((count, i) => (
+                        <TableCell align="end" kind={count === 0 ? 'meta' : undefined} key={i}>{count}</TableCell>
                       ))}
-                    </StructuredRow>
+                    </TableRow>
                   ))}
-                </StructuredList>
+                </Table>
               </>
             )}
           </main>

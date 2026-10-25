@@ -77,6 +77,13 @@ Current shared contracts:
   A row that holds controls of its own is `composite`: it stays a div that forwards pointer clicks, and
   its children carry the keyboard-accessible control, so a button is never nested inside a button. A
   `selected` row takes the one selected look, the sidebar's current row's: `--accent-soft` with `--accent-text`.
+- `Table`: the one table, the paper table's, the Wiki comparison's and the ideas by project's. It owns the
+  header, the cells, sorting, column resizing, the sticky header, first column and actions column with their
+  fades, the row hover and selected looks, and cells that fade where they are cut off and show whole on hover
+  or fold their chips behind +N. `rows` is `fill` or `capped` at five rows; `actions` is the header cell of the
+  actions column (add a column, the column settings) and each `TableRow` puts its own actions in it; `draft` is
+  a `TableDraftHead` for a column being created. Screens render no raw `<table>`:
+  `scripts/check-screen-elements.test.mjs` checks it.
 - `NavRow`: the one row of a navigation list, the sidebar's and the Settings categories'. It is a button,
   or, when it holds controls of its own, a div whose label is the button; the row's class gives the look.
 - `SegmentedControl`: the only switch between peer views in the app, including the timeline scale: a track of

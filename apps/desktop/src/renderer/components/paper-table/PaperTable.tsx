@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import type { DragEvent as ReactDragEvent, ReactNode, RefObject } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import type { DragEvent as ReactDragEvent, RefObject } from 'react'
 import type {
   Facet, ListParams, PaperCell, PaperColumn, PaperColumns, PaperRow, ReadState, RecordedChange, SortDirection,
   SortKey,
@@ -33,18 +33,17 @@ import { useScreenLoad } from '../../hooks/useScreenLoad.js'
 import { useVaultWrite } from '../../hooks/useVaultWrite.js'
 import { useScrollFade } from '../../hooks/useScrollFade.js'
 import {
-  useCrumbTail, useEscapeLayer, useJump, useNotice, usePaperCount, useScreen, useScreenReentry, useVaultRevision,
+  useCrumbTail, useEscapeLayer, useJump, useNotice, usePaperCount, useScreenReentry, useVaultRevision,
 } from '../../shell/AppShell.js'
 import { AddAction } from '../AddAction.js'
 import { BackButton } from '../BackButton.js'
 import { IconButton } from '../IconButton.js'
-import { holdRepeatSelection, RowActions, StructuredList, StructuredRow } from '../StructuredList.js'
+import { holdRepeatSelection, StructuredList, StructuredRow } from '../StructuredList.js'
 import { PanelClose } from '../PanelClose.js'
 import { CountBadge } from '../CountBadge.js'
 import { Tag } from '../Tag.js'
-import { Grip, type GripLimits } from '../Grip.js'
-import { Toolbar, ToolbarButton } from '../Toolbar.js'
-import { Tooltip } from '../Tooltip.js'
+import { Table, TableCell, TableOpen, TableRow, type TableColumn } from '../Table.js'
+import { Toolbar } from '../Toolbar.js'
 import { DetailPanel } from '../DetailPanel.js'
 import { FadeText } from '../FadeText.js'
 import { ActionMenu, MenuRadioGroup, MenuRadioItem } from '../ActionMenu.js'
@@ -60,7 +59,6 @@ import './PaperTable.css'
 type ChipKey = 'topics'
 /** The title column renders separately; a BodyKey is a built-in column to its right. */
 export type BodyKey = 'short' | 'authors' | 'y' | 'venue' | 'rating' | 'st' | 'remark' | ChipKey
-type ColKey = 't' | BodyKey | 'x'
 
 /**
  * A column the table shows now. Custom columns carry their type and options and cannot be sorted.
@@ -87,38 +85,16 @@ export const COLUMNS: { k: BodyKey; sort?: SortKey }[] = [
   { k: 'remark' },
 ]
 
-/** Width of the last column: the row's delete button, the header's + and the column gear share it. */
-const ROWX_WIDTH = 52
-
-const DEFAULT_WIDTHS: Record<ColKey, number> = {
-  t: 300, short: 150, rating: 104, authors: 160, y: 104, venue: 120, topics: 240, st: 78,
-  remark: 220,
-  x: ROWX_WIDTH,
+const DEFAULT_WIDTHS: Record<'t' | BodyKey, number> = {
+  t: 300, short: 150, rating: 104, authors: 160, y: 104, venue: 120, topics: 240, st: 78, remark: 220,
 }
 
 /** Custom column width, as in the demo: a column that was never resized stays this wide. */
 const CUSTOM_WIDTH = 140
-const MIN_COLUMN_WIDTH = 56
-
-/** Lower limit for a manual drag; the browser can still shrink columns further as the window narrows. */
-const minimumWidth = (key: string): number => key === 'x' ? ROWX_WIDTH : MIN_COLUMN_WIDTH
-
-/** The width a double-click on a column's grip restores. */
-const defaultWidth = (key: string): number => (DEFAULT_WIDTHS as Record<string, number>)[key] ?? CUSTOM_WIDTH
-
-/** A column resize in progress: `start` is the grip's pane width when it began. */
-type WidthDrag = {
-  start: number
-  widths: Record<string, number>
-  left: { key: string; initial: number; width: number }
-  right?: { key: string; initial: number; width: number }
-}
 
 const MIN_PAGE_SIZE = 20
 const PAGE_SIZES = [MIN_PAGE_SIZE, 30, 50]
 const RESEARCH_MAP_LIMIT = 200
-
-const ARROW_PATH: Record<SortDirection, string> = { asc: 'M6 15l6-6 6 6', desc: 'M6 9l6 6 6-6' }
 
 /**
  * The values a cell holds now: text and single-choice columns store one value, a multi-choice column
@@ -177,14 +153,6 @@ export function movedColumnOrder(
   return next
 }
 
-function SortArrow({ direction }: { direction: SortDirection }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-      <path d={ARROW_PATH[direction]} />
-    </svg>
-  )
-}
-
 /**
  * The picked group value with its paper count; its menu switches to another value of the same group.
  * `name` gives the name each value shows.
@@ -225,7 +193,7 @@ function GroupValuePicker({ current, facets, name, onPick }: {
  */
 function opensPaperFrom(target: EventTarget | null): boolean {
   return !(target instanceof Element)
-    || target.closest('button:not(.pt-open), input, select, textarea, [contenteditable="true"]') === null
+    || target.closest('button:not(.table-open), input, select, textarea, [contenteditable="true"]') === null
 }
 
 /**
@@ -289,10 +257,6 @@ export function PaperTable() {
   const [size, setSize] = useState(MIN_PAGE_SIZE)
   const [sort, setSort] = useState<SortKey>('addedAt')
   const [direction, setDirection] = useState<SortDirection>('desc')
-  const [widths, setWidths] = useState<Record<string, number>>(DEFAULT_WIDTHS)
-  // How many chips each chip cell folds behind its +N, and the cells the user unfolded, by `data-fold` key.
-  const [folds, setFolds] = useState<ReadonlyMap<string, number>>(new Map())
-  const [unfolded, setUnfolded] = useState<ReadonlySet<string>>(new Set())
   const [columns, setColumns] = useState<PaperColumns>(
     { hidden: [], custom: [], groups: [...DEFAULT_PAPER_GROUPS] })
   const names = builtinNames(m, columns)
@@ -330,9 +294,6 @@ export function PaperTable() {
   const dropDepth = useRef(0)
   const [movingColumn, setMovingColumn] = useState<string | null>(null)
   const [columnDrop, setColumnDrop] = useState<{ key: string; after: boolean } | null>(null)
-  const drag = useRef<WidthDrag | null>(null)
-  const table = useRef<HTMLTableElement>(null)
-  const tableFade = useScrollFade('both')
   const detailFade = useScrollFade('y')
   const consumed = useRef(0)
   // Write queue of the cell being edited: each link resolves to the values the previous step settled
@@ -344,7 +305,6 @@ export function PaperTable() {
 
   const notice = useNotice()
   const paperCount = usePaperCount()
-  const screen = useScreen()
   const { jump, open } = useJump()
   // The revision is bumped after a write so the grouping and row-fetch effects run again, like the
   // demo's renderLibRows call after a submit.
@@ -497,185 +457,6 @@ export function PaperTable() {
 
   useEscapeLayer(detail !== null, closeDetail)
 
-  // A column's grip moves the boundary between two columns: the left column and its right neighbour
-  // grow and shrink by the same amount, so the total width stays fixed and columns further right do
-  // not move. A resize first freezes the widths the browser actually shows, so the slack left by
-  // width:100% is not redistributed across the table.
-  /** The column right of column `k`, which gives or takes the width `k` gains or loses. */
-  const columnAfter = (k: string): string | undefined => {
-    const keys = ['t', ...cols.map((column) => column.k), 'x']
-    return keys[keys.indexOf(k) + 1]
-  }
-
-  /**
-   * Freezes the column widths and starts resizing column `k` from `start`, the grip's pane width,
-   * or its measured width. Returns the sizes, measured the same way, that keep both columns at least
-   * at their minimum width.
-   */
-  const beginResize = (k: string, start?: number): GripLimits => {
-    const measured = { ...widths }
-    table.current?.querySelectorAll<HTMLElement>('col[data-cw]').forEach((column) => {
-      const key = column.dataset['cw']
-      const width = column.getBoundingClientRect().width
-      if (key !== undefined && width > 0) measured[key] = width
-    })
-    for (const [key, width] of Object.entries(measured)) {
-      const column = table.current?.querySelector<HTMLElement>(`col[data-cw="${key}"]`)
-      if (column) column.style.width = `${width}px`
-    }
-    const rightKey = columnAfter(k)
-    const leftWidth = measured[k] ?? widthOf(k)
-    const rightWidth = rightKey === undefined ? undefined : measured[rightKey] ?? widthOf(rightKey)
-    const from = start ?? leftWidth
-    drag.current = {
-      start: from,
-      widths: measured,
-      left: { key: k, initial: leftWidth, width: leftWidth },
-      ...(rightKey === undefined || rightWidth === undefined
-        ? {}
-        : { right: { key: rightKey, initial: rightWidth, width: rightWidth } }),
-    }
-    return {
-      min: from + minimumWidth(k) - leftWidth,
-      max: rightKey === undefined || rightWidth === undefined
-        ? Number.POSITIVE_INFINITY
-        : from + rightWidth - minimumWidth(rightKey),
-    }
-  }
-
-  const resizeTo = (size: number) => {
-    const d = drag.current!
-    const raw = size - d.start
-    const delta = d.right === undefined
-        ? Math.max(minimumWidth(d.left.key) - d.left.initial, raw)
-        : Math.max(
-          minimumWidth(d.left.key) - d.left.initial,
-          Math.min(d.right.initial - minimumWidth(d.right.key), raw),
-        )
-    d.left.width = d.left.initial + delta
-    if (d.right !== undefined) d.right.width = d.right.initial - delta
-    const left = table.current?.querySelector<HTMLElement>(`col[data-cw="${d.left.key}"]`)
-    if (left) left.style.width = `${d.left.width}px`
-    if (d.right !== undefined) {
-      const right = table.current?.querySelector<HTMLElement>(`col[data-cw="${d.right.key}"]`)
-      if (right) right.style.width = `${d.right.width}px`
-    }
-  }
-
-  const endResize = () => {
-    const d = drag.current!
-    drag.current = null
-    setWidths({
-      ...d.widths,
-      [d.left.key]: d.left.width,
-      ...(d.right === undefined ? {} : { [d.right.key]: d.right.width }),
-    })
-  }
-
-  const resetWidth = (k: string) => {
-    beginResize(k)
-    resizeTo(defaultWidth(k))
-    endResize()
-  }
-
-  // Recalculate truncation after data, columns, widths, panels, or editing state change. Text cells
-  // retain their hover preview; chip cells keep the first visible row and expose hidden items through
-  // an explicit +N toggle. Hidden screens measure as zero, so defer this work until Papers is active.
-  // It runs before paint, so a +N that changed is drawn with its new count.
-  useLayoutEffect(() => {
-    if (screen !== 'papers') return
-    const next = new Map<string, number>()
-    table.current?.querySelectorAll<HTMLElement>('td .ci').forEach((ci) => {
-      const td = ci.parentElement!
-      const open = ci.classList.contains('chip-expanded')
-      ci.classList.remove('chip-expanded')
-      ci.querySelectorAll('.hid').forEach((chip) => chip.classList.remove('hid'))
-      // The +N badge takes no room while the chips are measured.
-      const badge = ci.querySelector(':scope > .morebadge')
-      badge?.classList.add('hid')
-      if (!ci.querySelector('.tagchip')) {
-        td.classList.toggle('trunc', ci.scrollWidth > ci.clientWidth + 1)
-        return
-      }
-      if (ci.scrollWidth <= ci.clientWidth + 1) {
-        td.classList.remove('trunc')
-        return
-      }
-      const limit = ci.getBoundingClientRect().left + ci.clientWidth - 40
-      let hidden = 0
-      let real = 0
-      ;[...ci.children].forEach((chip, i) => {
-        // The first chip always stays, truncated if needed.
-        if (i === 0 || chip === badge) return
-        if (hidden > 0 || chip.getBoundingClientRect().right > limit) {
-          chip.classList.add('hid')
-          hidden++
-          // The trailing + is not content, so folding it away does not count toward +N.
-          if (!chip.classList.contains('tagadd')) real++
-        }
-      })
-      if (real > 0) next.set(ci.dataset['fold']!, real)
-      badge?.classList.remove('hid')
-      if (open) ci.classList.add('chip-expanded')
-      td.classList.add('trunc')
-    })
-    setFolds((held) => (held.size === next.size && [...next].every(([key, n]) => held.get(key) === n) ? held : next))
-    setUnfolded((held) => {
-      const kept = new Set([...held].filter((key) => next.has(key)))
-      return kept.size === held.size ? held : kept
-    })
-  }, [rows, columns, widths, detail, screen, editingCell, m])
-
-  /**
-   * A chip cell's chips on one line, `key` naming the cell: the chips past its end fold behind a +N
-   * count that unfolds them.
-   */
-  const chipCell = (key: string, chips: ReactNode) => {
-    const folded = folds.get(key) ?? 0
-    const open = folded > 0 && unfolded.has(key)
-    return (
-      <span className={open ? 'ci chip-expanded' : 'ci'} data-fold={key}>
-        {chips}
-        {folded === 0 ? null : (
-          <CountBadge
-            className="morebadge" count={folded} more={{ open }}
-            label={open ? m.papers.tags.showLess(folded) : m.papers.tags.showMore(folded)}
-            onClick={(event) => {
-              event.preventDefault()
-              event.stopPropagation()
-              setUnfolded((held) => {
-                const toggled = new Set(held)
-                if (!toggled.delete(key)) toggled.add(key)
-                return toggled
-              })
-            }}
-          />
-        )}
-      </span>
-    )
-  }
-
-  /**
-   * A column's current width: its dragged width once dragged, otherwise DEFAULT_WIDTHS for a built-in
-   * column and 140 for a custom one.
-   */
-  const widthOf = (k: string) => widths[k] ?? CUSTOM_WIDTH
-
-  /** The grip on the end edge of column `k`'s header; `name` is the column's shown name. */
-  const columnGrip = (k: string, name: string) => {
-    const right = columnAfter(k)
-    return (
-      <Tooltip label={m.papers.columnHeader.resize(name)} note={m.shell.sidebar.dragHint}>
-        <Grip
-          className="thgrip" label={m.papers.columnHeader.resize(name)} value={widthOf(k)} min={minimumWidth(k)}
-          max={right === undefined ? widthOf(k) : widthOf(k) + widthOf(right) - minimumWidth(right)}
-          onResizeStart={(size) => beginResize(k, size)} onResize={resizeTo} onResizeEnd={endResize}
-          onReset={() => resetWidth(k)}
-        />
-      </Tooltip>
-    )
-  }
-
   const clickHeader = (key: SortKey) => {
     if (sort === key) setDirection((d) => (d === 'asc' ? 'desc' : 'asc'))
     else {
@@ -683,7 +464,8 @@ export function PaperTable() {
       setDirection(key === 'year' ? 'desc' : 'asc')
     }
   }
-  const ariaSort = (key: SortKey) => (sort !== key ? undefined : direction === 'asc' ? 'ascending' : 'descending')
+  /** Sorting by `key` as a column's header offers it. */
+  const sortBy = (key: SortKey) => ({ direction: sort === key ? direction : undefined, onSort: () => clickHeader(key) })
 
   const addTopic = (p: PaperRow, value: string): Promise<boolean> =>
     write(papers.setTopic(p.id, value, true), { note: m.papers.notices.topicAdded, action: undo.change })
@@ -915,13 +697,6 @@ export function PaperTable() {
     const written = await papers.setColumns(next)
     bump()
     const gone = base.custom.find((c) => !next.custom.some((n) => n.key === c.key))
-    if (gone) {
-      setWidths((w) => {
-        const rest = { ...w }
-        delete rest[gone.key]
-        return rest
-      })
-    }
     const note = columnsNote(base, next, m.papers.notices)
     const dropped = gone !== undefined || next.custom.some((column) => base.custom
       .find((held) => held.key === column.key)?.options.some((option) => !column.options.includes(option)))
@@ -974,60 +749,57 @@ export function PaperTable() {
     writeColumnsAndCells(() => papers.setColumnType(key, type), m.papers.notices.columnTypeChanged)
 
   /**
-   * What a custom cell shows: when not editing, the text of a text column inside .ci, so it truncates
-   * and expands on hover like the remark cell, and chips for single- and multi-choice columns (inside
-   * .ci, so they fold into +N like the topics cell when they do not fit); when editing, the input or
+   * The cell of custom column `column` in row `p`: when not editing, the text of a text column, which
+   * fades and shows whole on hover like the remark cell, and chips for single- and multi-choice
+   * columns, which fold into +N like the topics cell when they do not fit; when editing, the input or
    * picker for the column type.
    */
   const customCell = (p: PaperRow, column: PaperColumn) => {
     const values = cellValues(p.custom[column.key])
     const editing = editingCell?.id === p.id && editingCell.key === column.key
-    if (!editing) {
-      if (column.type === 'text') return <span className="ci">{values[0] ?? ''}</span>
-      return chipCell(`${p.id}:${column.key}`, values.map((v) => <Tag shape="chip" capped className="tagchip" key={v}>{v}</Tag>))
-    }
-    if (column.type === 'text') {
-      return (
-        <TextCellEdit
-          cell={editingTd} initial={values[0] ?? ''} keep={{ scope: ['paper', p.id], target: `cell:${column.key}` }}
-          onSave={(value) => holdCellSave(saveCell(p, column.key, value))}
-          // Another cell may have been clicked before the write came back; close this cell only if it
-          // is still the one being edited.
-          onCancel={() => setEditingCell((cur) => (cur !== null && cur.id === p.id && cur.key === column.key ? null : cur))}
-        />
-      )
-    }
     return (
-      <CellPicker
-        column={column} values={values} onClose={closeCell} keep={{ scope: ['paper', p.id], target: `cell:${column.key}` }}
-        onCommit={(value, created) => savePick(p, column, value, created)}
-      />
+      <TableCell
+        kind="edit" className="pt-cust" key={column.key} ref={editing ? editingTd : undefined}
+        content={editing ? 'controls' : column.type === 'text' ? 'text' : 'chips'}
+        onClick={(e) => { e.stopPropagation(); openCell({ id: p.id, key: column.key }) }}
+      >
+        {!editing
+          ? column.type === 'text' ? values[0] ?? '' : values.map((v) => <Tag shape="chip" capped className="tagchip" key={v}>{v}</Tag>)
+          : column.type === 'text'
+            ? (
+              <TextCellEdit
+                cell={editingTd} initial={values[0] ?? ''} keep={{ scope: ['paper', p.id], target: `cell:${column.key}` }}
+                onSave={(value) => holdCellSave(saveCell(p, column.key, value))}
+                // Another cell may have been clicked before the write came back; close this cell only if it
+                // is still the one being edited.
+                onCancel={() => setEditingCell((cur) => (cur !== null && cur.id === p.id && cur.key === column.key ? null : cur))}
+              />
+            )
+            : (
+              <CellPicker
+                column={column} values={values} onClose={closeCell} keep={{ scope: ['paper', p.id], target: `cell:${column.key}` }}
+                onCommit={(value, created) => savePick(p, column, value, created)}
+              />
+            )}
+      </TableCell>
     )
   }
 
   const cell = (p: PaperRow, c: ShownCol) => {
-    if (c.column) {
-      const editing = editingCell?.id === p.id && editingCell.key === c.k
-      return (
-        <td
-          className="pt-cust" key={c.k} ref={editing ? editingTd : undefined}
-          onClick={(e) => { e.stopPropagation(); openCell({ id: p.id, key: c.k }) }}
-        >{customCell(p, c.column)}</td>
-      )
-    }
+    if (c.column) return customCell(p, c.column)
     const k = c.k
-    if (k === 'short') return <td className="pt-dim" key={k}><span className="ci">{p.shortTitle ?? ''}</span></td>
-    if (k === 'authors') return <td className="pt-dim" key={k}><span className="ci">{(p.authors ?? []).join(', ')}</span></td>
+    if (k === 'short') return <TableCell kind="meta" key={k}>{p.shortTitle ?? ''}</TableCell>
+    if (k === 'authors') return <TableCell kind="meta" key={k}>{(p.authors ?? []).join(', ')}</TableCell>
     if (k === 'rating') {
-      return <td key={k}><RatingStars value={p.rating} onChange={(rating) => setRating(p, rating)} /></td>
+      return <TableCell content="controls" key={k}><RatingStars value={p.rating} onChange={(rating) => setRating(p, rating)} /></TableCell>
     }
-    if (k === 'y') return <td className="pt-dim" key={k}><span className="ci">{p.year ?? ''}</span></td>
-    if (k === 'venue') return <td className="pt-dim" key={k}><span className="ci">{p.venue}</span></td>
+    if (k === 'y') return <TableCell kind="meta" key={k}>{p.year ?? ''}</TableCell>
+    if (k === 'venue') return <TableCell kind="meta" key={k}>{p.venue}</TableCell>
     if (k === 'remark') {
       const editing = editingCell?.id === p.id && editingCell.key === k
       return (
-        <td
-          className="pt-remark" key={k} ref={editing ? editingTd : undefined}
+        <TableCell
+          kind="edit" className="pt-remark" key={k} ref={editing ? editingTd : undefined} content={editing ? 'controls' : 'text'}
           onClick={(event) => { event.stopPropagation(); openCell({ id: p.id, key: k }) }}
         >
           {editing
@@ -1040,28 +812,26 @@ export function PaperTable() {
                 ))}
               />
             )
-            : <span className="ci">{p.remark ?? ''}</span>}
-        </td>
+            : p.remark ?? ''}
+        </TableCell>
       )
     }
     // This column is the user's own relationship with the paper, and only they change it; how far the
     // Wiki has written up the paper's page is a separate field.
     if (k === 'st') {
       return (
-        <td key={k}>
+        <TableCell content="controls" key={k}>
           <ReadStatePicker value={p.readState} onPick={(readState) => setReadState(p, readState)} />
-        </td>
+        </TableCell>
       )
     }
     return (
-      <td key={k}>
-        {chipCell(`${p.id}:${k}`, (
-          <PaperTopics
-            topics={p.topics} keep={['paper', p.id, 'topics-cell']} onError={report}
-            onAdd={(v) => addTopic(p, v)} onRemove={(v) => removeTopic(p, v)}
-          />
-        ))}
-      </td>
+      <TableCell content="chips" key={k}>
+        <PaperTopics
+          topics={p.topics} keep={['paper', p.id, 'topics-cell']} onError={report}
+          onAdd={(v) => addTopic(p, v)} onRemove={(v) => removeTopic(p, v)}
+        />
+      </TableCell>
     )
   }
 
@@ -1088,134 +858,108 @@ export function PaperTable() {
       ...base, order: movedColumnOrder(base, source, target, columnDrop?.after ?? false),
     }))
   }
+  const tableColumns: TableColumn[] = [
+    { key: 't', label: m.papers.columns.title, width: DEFAULT_WIDTHS.t, sort: sortBy('title'), headProps: { 'data-k': 'title' } },
+    ...cols.map((c): TableColumn => ({
+      key: c.k,
+      label: shownLabel(names.columns, c),
+      width: c.column ? CUSTOM_WIDTH : DEFAULT_WIDTHS[c.k],
+      sort: c.sort === undefined ? undefined : sortBy(c.sort),
+      move: movingColumn === c.k ? 'moving' : columnDrop?.key === c.k ? (columnDrop.after ? 'after' : 'before') : undefined,
+      lead: (
+        <span
+          className="thmove" draggable
+          onMouseDown={(event) => event.stopPropagation()}
+          onClick={(event) => event.stopPropagation()}
+          onDragStart={(event) => startColumnMove(event, c.k)}
+          onDragEnd={() => { setMovingColumn(null); setColumnDrop(null) }}
+        ><IconGrip /></span>
+      ),
+      headProps: {
+        'data-k': c.sort,
+        onDragOver: (event) => {
+          if (movingColumn !== null) {
+            event.preventDefault()
+            event.dataTransfer.dropEffect = 'move'
+            const bounds = event.currentTarget.getBoundingClientRect()
+            setColumnDrop({ key: c.k, after: event.clientX > bounds.left + bounds.width / 2 })
+          }
+        },
+        onDrop: (event) => dropColumn(event, c.k),
+      },
+    })),
+  ]
   const paperTable = (
-    <div className="tblwrap" ref={tableFade} data-fade-held="left right top">
-      <table ref={table} className="ptable">
-        <colgroup>
-          <col data-cw="t" style={{ width: `${widthOf('t')}px` }} />
-          {cols.map((c) => <col key={c.k} data-cw={c.k} style={{ width: `${widthOf(c.k)}px` }} />)}
-          {newCol ? <col style={{ width: `${CUSTOM_WIDTH}px` }} /> : null}
-          <col data-cw="x" style={{ width: `${widthOf('x')}px` }} />
-        </colgroup>
-        <thead>
-          <tr data-row-actions="">
-            {/* A sortable header sorts on click; its button is the keyboard's way to that click. */}
-            <th data-k="title" aria-sort={ariaSort('title')} onClick={() => clickHeader('title')}>
-              <button type="button" className="thsort">
-                {m.papers.columns.title}{sort === 'title' ? <> <SortArrow direction={direction} /></> : null}
-              </button>
-              {columnGrip('t', m.papers.columns.title)}
-            </th>
-            {cols.map((c) => (
-              <th
-                key={c.k} data-k={c.sort} aria-sort={c.sort ? ariaSort(c.sort) : undefined}
-                className={[
-                  movingColumn === c.k ? 'column-moving' : '',
-                  columnDrop?.key === c.k ? `column-drop-${columnDrop.after ? 'after' : 'before'}` : '',
-                ].filter(Boolean).join(' ') || undefined}
-                onDragOver={(event) => {
-                  if (movingColumn !== null) {
-                    event.preventDefault()
-                    event.dataTransfer.dropEffect = 'move'
-                    const bounds = event.currentTarget.getBoundingClientRect()
-                    setColumnDrop({ key: c.k, after: event.clientX > bounds.left + bounds.width / 2 })
+    <Table
+      className="ptable" columns={tableColumns}
+      draft={newCol
+        ? (
+          <NewColumnHead
+            cell={newColCell} triggers={[colAdd]} pickType kept={{ drafts: tableDrafts, target: 'new-column' }}
+            onCreate={createColumn}
+            onCancel={() => { columnDraftToken.current = null; setNewCol(false) }}
+          />
+        )
+        : null}
+      actions={(
+        <>
+          <AddAction
+            size="compact" ref={colAdd} label={m.papers.columnHeader.addColumn}
+            onClick={() => {
+              if (newCol) { newColCell.current?.querySelector('input')?.focus(); return }
+              setNewCol(true)
+            }}
+          />
+          <ColumnMenu
+            columns={columns} onChange={(update) => { void changeColumns(update) }}
+            onRenameOption={renameOption} onRetype={setColumnType}
+          />
+        </>
+      )}
+    >
+      {rows.map((p) => (
+        <ContextMenu
+          key={p.id} label={m.papers.contextMenu.label(plainTitle(p.title))} className="paper-row-menu"
+          trigger={(
+            // The row is the toolbar of its own controls, from its title to its delete, and keeps its row role.
+            <Toolbar role="row" aria-orientation={undefined}>
+              <TableRow
+                selected={detail?.id === p.id}
+                aria-current={detail?.id === p.id ? 'true' : undefined}
+                onClick={() => openDetail(p.id)}
+                onMouseDown={holdRepeatSelection}
+                onDoubleClick={(event) => {
+                  if (opensPaperFrom(event.target)) open('reader', p.id)
+                }}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' && event.target === event.currentTarget) {
+                    openDetail(p.id)
                   }
                 }}
-                onDrop={(event) => dropColumn(event, c.k)}
-                onClick={() => { if (c.sort) clickHeader(c.sort) }}
+                actions={(
+                  <IconButton
+                    label={m.papers.rowActions.delete} size="nested" tone="danger" className="rowx"
+                    onClick={(e) => { e.stopPropagation(); remove(p.id) }}
+                  ><IconTrash /></IconButton>
+                )}
               >
-                <span
-                  className="thmove" draggable
-                  onMouseDown={(event) => event.stopPropagation()}
-                  onClick={(event) => event.stopPropagation()}
-                  onDragStart={(event) => startColumnMove(event, c.k)}
-                  onDragEnd={() => { setMovingColumn(null); setColumnDrop(null) }}
-                ><IconGrip /></span>
-                {c.sort
-                  ? (
-                    <button type="button" className="thsort">
-                      {shownLabel(names.columns, c)}{sort === c.sort ? <> <SortArrow direction={direction} /></> : null}
-                    </button>
-                  )
-                  : shownLabel(names.columns, c)}
-                {columnGrip(c.k, shownLabel(names.columns, c))}
-              </th>
-            ))}
-            {newCol
-              ? (
-                <NewColumnHead
-                  cell={newColCell} triggers={[colAdd]} pickType kept={{ drafts: tableDrafts, target: 'new-column' }}
-                  onCreate={createColumn}
-                  onCancel={() => { columnDraftToken.current = null; setNewCol(false) }}
-                />
-              )
-              : null}
-            <th className="th-add">
-              <RowActions>
-                <AddAction
-                  size="compact" ref={colAdd} label={m.papers.columnHeader.addColumn}
-                  onClick={() => {
-                    if (newCol) { newColCell.current?.querySelector('input')?.focus(); return }
-                    setNewCol(true)
-                  }}
-                />
-                <ColumnMenu
-                  columns={columns} onChange={(update) => { void changeColumns(update) }}
-                  onRenameOption={renameOption} onRetype={setColumnType}
-                />
-              </RowActions>
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((p) => (
-            <ContextMenu
-              key={p.id} label={m.papers.contextMenu.label(plainTitle(p.title))} className="paper-row-menu"
-              trigger={(
-                // The row is the toolbar of its own controls, from its title to its delete, and keeps its row role.
-                <Toolbar role="row" aria-orientation={undefined}>
-                  <tr
-                    className={detail?.id === p.id ? 'selected' : undefined} data-row-actions=""
-                    aria-current={detail?.id === p.id ? 'true' : undefined}
-                    onClick={() => openDetail(p.id)}
-                    onMouseDown={holdRepeatSelection}
-                    onDoubleClick={(event) => {
-                      if (opensPaperFrom(event.target)) open('reader', p.id)
-                    }}
-                    onKeyDown={(event) => {
-                      if (event.key === 'Enter' && event.target === event.currentTarget) {
-                        openDetail(p.id)
-                      }
-                    }}
-                  >
-                    <td className="pt-title"><ToolbarButton className="ci pt-open"><PaperText text={p.title} /></ToolbarButton></td>
-                    {cols.map((c) => cell(p, c))}
-                    {newCol ? <td className="pt-cust" /> : null}
-                    <td className="row-actions-cell">
-                      <RowActions>
-                        <IconButton
-                          label={m.papers.rowActions.delete} size="nested" tone="danger" className="rowx"
-                          onClick={(e) => { e.stopPropagation(); remove(p.id) }}
-                        ><IconTrash /></IconButton>
-                      </RowActions>
-                    </td>
-                  </tr>
-                </Toolbar>
-              )}
-            >
-              <ContextMenuItem onSelect={() => openDetail(p.id)}>
-                {m.papers.contextMenu.openDetail}
-              </ContextMenuItem>
-              <ContextMenuItem onSelect={() => open('reader', p.id)}>{m.papers.contextMenu.openReader}</ContextMenuItem>
-              <ContextMenuSeparator />
-              <ContextMenuItem className="mi danger" onSelect={() => remove(p.id)}>
-                {m.papers.contextMenu.moveToTrash}
-              </ContextMenuItem>
-            </ContextMenu>
-          ))}
-        </tbody>
-      </table>
-    </div>
+                <TableCell kind="title" className="pt-title"><TableOpen><PaperText text={p.title} /></TableOpen></TableCell>
+                {cols.map((c) => cell(p, c))}
+              </TableRow>
+            </Toolbar>
+          )}
+        >
+          <ContextMenuItem onSelect={() => openDetail(p.id)}>
+            {m.papers.contextMenu.openDetail}
+          </ContextMenuItem>
+          <ContextMenuItem onSelect={() => open('reader', p.id)}>{m.papers.contextMenu.openReader}</ContextMenuItem>
+          <ContextMenuSeparator />
+          <ContextMenuItem className="mi danger" onSelect={() => remove(p.id)}>
+            {m.papers.contextMenu.moveToTrash}
+          </ContextMenuItem>
+        </ContextMenu>
+      ))}
+    </Table>
   )
 
   // The group bar shows only keys the gear menu lists. A hand-edited configuration may hold an

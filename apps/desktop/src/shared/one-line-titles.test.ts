@@ -14,18 +14,18 @@ const { document, getComputedStyle } = globalThis as unknown as Window
 const RENDERER = join(import.meta.dirname, '..', 'renderer')
 const SHEETS = [
   'shell/tokens.css', 'components/FadeText.css', 'components/ResearchObjectCard.css',
-  'components/paper-table/PaperTable.css', 'routes/Wiki.css',
+  'components/Table.css', 'components/paper-table/PaperTable.css', 'routes/Wiki.css',
 ]
 
 /**
  * A row of the paper table, with a title cut off, a text cell that fits and a chip cell cut off (the
- * table marks a cut cell `trunc`); a research map group and its detail head, each a name above the line
+ * table marks a cut text `table-cut`); a research map group and its detail head, each a name above the line
  * of its kind or count; and a Wiki home paper card.
  */
-const MARKUP = `<table class="ptable"><tbody><tr>
-  <td class="pt-title trunc"><button class="ci pt-open" id="cut">Speculative Decoding with Big Little Decoder</button></td>
-  <td class="pt-dim"><span class="ci" id="fits">2024</span></td>
-  <td class="trunc"><span class="ci" id="chips"><span class="tag tag--chip tagchip">推理</span></span></td>
+const MARKUP = `<table class="table ptable"><tbody><tr class="table-row">
+  <td class="table-cell--title pt-title"><span class="table-text table-cut" id="cut"><button class="table-open">Speculative Decoding with Big Little Decoder</button></span></td>
+  <td class="table-cell--meta"><span class="table-text" id="fits">2024</span></td>
+  <td><span class="table-chips" id="chips"><span class="tag tag--chip tagchip">推理</span></span></td>
 </tr></tbody></table>
 <span class="research-map-group-copy"><span class="fade-text research-map-group-name" id="group">KV cache 量化</span><span>项目关联</span></span>
 <div class="research-map-detail-head"><div><span class="fade-text research-map-detail-name" id="detail">KV cache 量化</span><span>3 篇论文</span></div></div>

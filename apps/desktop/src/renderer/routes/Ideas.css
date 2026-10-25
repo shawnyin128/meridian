@@ -41,13 +41,6 @@
   .idea-row-work{display:none}
 }
 
-/* Ideas by project: the name, then three counts spread over the list's width, under their column labels. */
-.idea-stats-head,.idea-stats-row{display:grid;grid-template-columns:minmax(0,2fr) repeat(3,minmax(0,1fr));align-items:center;column-gap:var(--sp-16)}
-.idea-stats-head{padding:0 var(--sp-12) var(--sp-6);color:var(--ter);font-size:var(--fs-cap);text-align:right}
-.idea-stats-row{padding:var(--sp-8) var(--sp-12);font-size:var(--fs-base)}
-.idea-stats-n{color:var(--sec);text-align:right;font-variant-numeric:tabular-nums}
-.idea-stats-n.zero{color:var(--ter)}
-
 /*
  * The detail panel follows a research graph node's layout, content on the left and its document on
  * the right, but keeps the idea itself editable.

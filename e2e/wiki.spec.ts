@@ -147,12 +147,12 @@ test('对照表的行是成员论文,格子按契约的列排,悬停看原文;�
   await expect(crumbs(win)).toHaveText(['我的库', 'Wiki', 'PTQ', agg.title])
 
   const table = shown(win).locator('table.cmp')
-  expect(await table.locator('thead th:not(.rx):not(.th-add)').allTextContents())
+  expect(await table.locator('thead th:not(.table-actions)').allTextContents())
     .toEqual(['论文', ...agg.columns.map((c) => c.label)])
   expect(await table.locator('tbody tr td.rh').allTextContents()).toEqual(agg.rows.map((r) => r.paper.title))
   // An empty cell shows a dash, and a filled cell ends with its anchor, p.N.
   const first = agg.rows[0]!
-  expect(await table.locator('tbody tr').first().locator('td:not(.rh):not(.rx):not(.td-add)').allTextContents()).toEqual(
+  expect(await table.locator('tbody tr').first().locator('td:not(.rh):not(.table-actions)').allTextContents()).toEqual(
     agg.columns.map((c) => {
       const cell = first.cells[c.key]
       return cell === undefined ? '—' : `${cell.value} p.${cell.page}`
@@ -437,7 +437,7 @@ test('论文对比:加一篇论文,拿掉;改列——改名生效,删有格子�
   await shown(win).locator('.wkmain .section-heading', { hasText: '论文对比' }).locator('[aria-label="添加论文"]').click()
   await expect(rows).toHaveCount(n + 1)
   await expect(rows.last()).toHaveClass(/\bnewrow\b/)
-  expect(await rows.last().locator('td:not(.rh):not(.rx):not(.td-add)').allTextContents()).toEqual(agg.columns.map(() => '—'))
+  expect(await rows.last().locator('td:not(.rh):not(.table-actions)').allTextContents()).toEqual(agg.columns.map(() => '—'))
   const holder = (await rows.last().boundingBox())!
   await pickInput(win).pressSequentially('QuaRot')
   await expect(win.locator('.pickhits .rrow').first()).toContainText('QuaRot')
@@ -446,13 +446,13 @@ test('论文对比:加一篇论文,拿掉;改列——改名生效,删有格子�
   await expect(rows).toHaveCount(n + 1)
   await expect(shown(win).locator('table.cmp tbody tr.newrow')).toHaveCount(0)
   const added = shown(win).locator('table.cmp tbody tr', { hasText: 'QuaRot' })
-  await expect(added.locator('td:not(.rh):not(.rx):not(.td-add)')).toHaveText(agg.columns.map(() => '—'))
+  await expect(added.locator('td:not(.rh):not(.table-actions)')).toHaveText(agg.columns.map(() => '—'))
   // The placeholder row is as tall as the one-line row that takes its place, both the table's last row.
   await expect(rows.last()).toHaveText(/QuaRot/)
   expect(Math.abs((await added.boundingBox())!.height - holder.height)).toBeLessThan(0.5)
 
   await added.hover()
-  await added.locator('td.rx').click()
+  await added.locator('td.table-actions').click()
   await expect(rows).toHaveCount(n)
 
   await shown(win).locator('table.cmp thead').hover()
@@ -490,7 +490,7 @@ test('论文对比:提案在路上时连着点另一行「从这一页移出」,
 
   // The two clicks are on different member rows, leaving only one microtask between them.
   await win.evaluate(async () => {
-    const cells = document.querySelectorAll('table.cmp tbody tr td.rx button')
+    const cells = document.querySelectorAll('table.cmp tbody tr td.table-actions button')
     ;(cells[0] as HTMLElement).click()
     await Promise.resolve()
     ;(cells[1] as HTMLElement).click()
@@ -556,7 +556,7 @@ test('论文对比:在表头末尾就地建一列,建完没有配置层', async 
   // The table renders only once wiki.aggregation returns, and allTextContents does not wait for elements,
   // so wait for the table first.
   await table.waitFor()
-  const heads = () => table.locator('thead th:not(.rx):not(.th-add)').allTextContents()
+  const heads = () => table.locator('thead th:not(.table-actions)').allTextContents()
   const before = await heads()
 
   await table.locator('thead').hover()
@@ -590,7 +590,7 @@ test('论文对比:在表头末尾就地建一列,建完没有配置层', async 
   await table.locator('thead th.th-new input').press('Enter')
   await expect(table.locator('thead th.th-new')).toHaveCount(1)
   await expect(table.locator('thead th.th-new input')).toHaveValue('新列 2')
-  // Remove the placeholder before counting headers: the `heads` selector excludes only .rx and .th-add, so
+  // Remove the placeholder before counting headers: the `heads` selector excludes only .table-actions, so
   // it also counts th.th-new (as an empty string), and column counts compare only once it is gone.
   await table.locator('thead th.th-new input').press('Escape')
   await expect(table.locator('thead th.th-new')).toHaveCount(0)
@@ -621,7 +621,7 @@ test('这一节没有成员时没有表,也就没有列入口', async ({ win }) 
   await gotoWiki(win)
   await shown(win).locator('[data-wk="topics/quantization"]').click()
   await expect(shown(win).locator('table.cmp')).toHaveCount(0)
-  await expect(shown(win).locator('.th-add')).toHaveCount(0)
+  await expect(shown(win).locator('th.table-actions')).toHaveCount(0)
   // The header keeps only the add-paper +: the gear comes with the table, so with no table there is none.
   const head = shown(win).locator('.wkmain .section-heading', { hasText: '论文对比' })
   await expect(head.locator('button')).toHaveCount(1)
