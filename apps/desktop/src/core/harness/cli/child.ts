@@ -27,11 +27,13 @@ const CMD_LINE_LIMIT = 8_191
 
 /**
  * Why a CLI call did not complete: the CLI is not installed or cannot start, lacks options the
- * runner passes, is not signed in with the user's subscription, reports the plan's usage limit
- * reached or fails any other way, runs past its timeout, or is cancelled.
+ * runner passes, is not signed in with the user's subscription or shows its sign-in in a form that
+ * cannot be read, reports the plan's usage limit reached or fails any other way, runs past its
+ * timeout, or is cancelled.
  */
 export type CliFailureKind =
-  | 'unavailable' | 'unsupported' | 'signed-out' | 'usage-limit' | 'failed' | 'timeout' | 'cancelled'
+  | 'unavailable' | 'unsupported' | 'signed-out' | 'sign-in-unknown'
+  | 'usage-limit' | 'failed' | 'timeout' | 'cancelled'
 
 /** A CLI call that did not complete, `kind` saying why and the message saying it in plain words. */
 export class CliRunError extends Error {

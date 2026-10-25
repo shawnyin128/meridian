@@ -82,6 +82,7 @@ export const common = {
       'key-unsaved': '没能保存密钥', 'key-unreadable': '没能读取已存的密钥', 'no-model': '还没有配置模型',
       cancelled: '已停止生成', model: '模型调用失败', 'update-files': '没能读写更新文件',
       'cli-missing': '没有找到 CLI', 'cli-unsupported': 'CLI 版本不受支持', 'cli-signed-out': '未用订阅登录',
+      'cli-sign-in-unknown': '无法确认登录方式',
       'usage-limit': '订阅额度已用完', 'cli-timeout': '运行超时', 'malformed-output': '模型输出无效',
     },
     unknown: '出了点问题',

@@ -49,7 +49,7 @@ describe('subscription CLI failures', () => {
     expect(readiness(installed({ signIn: 'other' }))).toEqual({ kind: 'signed-out', message: 'claude 没有用 Claude 订阅登录' })
     expect(readiness(installed({ cli: 'codex', signIn: 'other' }))).toEqual({ kind: 'signed-out', message: 'codex 没有用 ChatGPT 登录' })
     expect(readiness(installed({ signIn: 'signed-out' }))).toEqual({ kind: 'signed-out', message: 'claude 还没有登录' })
-    expect(readiness(installed({ signIn: 'unknown' }))).toEqual({ kind: 'signed-out', message: '读不出 claude 的登录状态' })
+    expect(readiness(installed({ signIn: 'unknown' }))).toEqual({ kind: 'sign-in-unknown', message: '读不出 claude 的登录状态' })
     expect(readiness(installed())).toEqual({ binary: '/bin/claude' })
   })
 })

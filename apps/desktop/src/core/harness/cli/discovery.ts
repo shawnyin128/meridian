@@ -2,12 +2,14 @@ import { accessSync, constants, existsSync, readdirSync, statSync } from 'node:f
 import { homedir, userInfo } from 'node:os'
 import { basename, isAbsolute, join } from 'node:path'
 import type { HarnessCli, HarnessModelConnectionCheckResult } from '../../../shared/contract.js'
-import { cliEnvironment, CliRunError, inTemporaryFolder, runChild } from './child.js'
+import { type ChildOutcome, cliEnvironment, CliRunError, inTemporaryFolder, runChild } from './child.js'
 import { CLI_CALL_FAILURES, readiness } from './failure.js'
 import { runnerFlags } from './runner.js'
 
 const SYSTEM_FOLDERS = ['/opt/homebrew/bin', '/usr/local/bin'] as const
 const PROBE_TIMEOUT_MS = 10_000
+/** A top-level key of a status output that may appear in the log: a plain field name. */
+const SHAPE_KEY = /^[A-Za-z_][\w-]{0,40}$/
 /**
  * The Windows files each CLI may be, best first. cmd.exe cannot carry the schema and the multi-line
  * system prompt Claude takes as arguments, so an npm `claude.cmd` shim cannot run a call.
@@ -43,6 +45,8 @@ export type DiscoveryOptions = {
   platform?: NodeJS.Platform
   /** How long each command discovery runs the CLI with (version, help, sign-in status) may take; 10 s by default. */
   probeTimeoutMs?: number
+  /** Where a line about a CLI that discovery cannot fully read goes. */
+  onLog?: (line: string) => void
 }
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -126,9 +130,36 @@ function claudeSignIn(stdout: string): CliSignIn {
   } catch {
     return 'unknown'
   }
-  if (!isRecord(status)) return 'unknown'
-  if (status['loggedIn'] !== true) return 'signed-out'
+  if (!isRecord(status) || typeof status['loggedIn'] !== 'boolean') return 'unknown'
+  if (!status['loggedIn']) return 'signed-out'
+  if (typeof status['authMethod'] !== 'string') return 'unknown'
   return status['authMethod'] === 'claude.ai' ? 'subscription' : 'other'
+}
+
+const typeName = (value: unknown) => (Array.isArray(value) ? 'array' : value === null ? 'null' : typeof value)
+
+/**
+ * The shape of the sign-in status output `status`, never its content: the kind of JSON its stdout
+ * holds, with the value type of each top-level key that is a plain field name, or how many lines of
+ * text it printed, then how many lines its stderr holds and its exit code.
+ */
+function statusShape(status: ChildOutcome): string {
+  const lines = (text: string) => text.split(/\r?\n/).filter((line) => line.trim() !== '').length
+  let stdout = `${lines(status.stdout)} lines of text`
+  try {
+    const json: unknown = JSON.parse(status.stdout)
+    if (!isRecord(json)) {
+      stdout = `JSON ${typeName(json)}`
+    } else {
+      const keys = Object.keys(json).sort()
+      const named = keys.filter((key) => SHAPE_KEY.test(key)).map((key) => `${key}: ${typeName(json[key])}`)
+      const others = keys.length - named.length
+      stdout = `a JSON object of ${[...named, ...(others === 0 ? [] : [`${others} other keys`])].join(', ') || 'no keys'}`
+    }
+  } catch {
+    // Text, not JSON: its line count is all the shape it has.
+  }
+  return `stdout ${stdout}, stderr ${lines(status.stderr)} lines, exit ${String(status.code)}`
 }
 
 function codexSignIn(text: string): CliSignIn {
@@ -140,8 +171,9 @@ function codexSignIn(text: string): CliSignIn {
 /**
  * Where `cli` is installed, its version, which of the runner's flags its help lacks and how it is
  * signed in, read from its own `--version`, help and status commands without a model call. Keeps
- * nothing else of their output. Rejects with a CliRunError when the installed CLI cannot start or
- * does not answer in time.
+ * nothing else of their output, and logs a sign-in status it cannot read through `onLog` by its
+ * shape alone. Rejects with a CliRunError when the installed CLI cannot start or does not answer in
+ * time.
  */
 export async function discoverCli(cli: HarnessCli, options: DiscoveryOptions = {}): Promise<CliDiscovery> {
   const binary = await resolveCliBinary(cli, options)
@@ -157,6 +189,9 @@ export async function discoverCli(cli: HarnessCli, options: DiscoveryOptions = {
     const missingFlags = runnerFlags(cli).filter((flag) => !listsFlag(`${help.stdout}\n${help.stderr}`, flag))
     const status = await probe(cli === 'claude' ? ['auth', 'status', '--json'] : ['login', 'status'])
     const signIn = cli === 'claude' ? claudeSignIn(status.stdout) : codexSignIn(`${status.stdout}\n${status.stderr}`)
+    if (signIn === 'unknown') {
+      options.onLog?.(`${cli} ${version ?? '(no version)'}: its sign-in status is in no form Meridian reads: ${statusShape(status)}`)
+    }
     return { cli, installed: true, binary, version, missingFlags, signIn }
   })
 }
@@ -169,10 +204,12 @@ export async function discoverCli(cli: HarnessCli, options: DiscoveryOptions = {
  */
 export async function checkCliConnection(
   cli: HarnessCli,
-  options: DiscoveryOptions & { onLog?: (line: string) => void } = {},
+  options: DiscoveryOptions = {},
 ): Promise<HarnessModelConnectionCheckResult> {
   let version: string | null = null
-  const failed = (reason: 'cli-missing' | 'cli-unsupported' | 'cli-signed-out' | 'cli-timeout', detail: string) => ({
+  const failed = (
+    reason: 'cli-missing' | 'cli-unsupported' | 'cli-signed-out' | 'cli-sign-in-unknown' | 'cli-timeout', detail: string,
+  ) => ({
     state: 'failed' as const, reason, detail, ...(version === null ? {} : { version }),
     modelCalls: 0 as const, maxOutputTokens: 1 as const,
   })

@@ -239,7 +239,7 @@ const background = createBackground({
   semanticScholarApiKey: semanticKey.current,
 })
 const cliRunner = createCliRunner({
-  discover: (cli) => discoverCli(cli),
+  discover: (cli) => discoverCli(cli, { onLog: (line) => console.error(`[harness] ${line}`) }),
   settingsRevision: () => harnessModel.subscriptionRevision(),
   internalMcp: createInternalMcp({ store, onLog: (line) => console.error(`[harness] ${line}`) }),
 })
@@ -531,7 +531,8 @@ registerHandler('harness.updateSubscription', (params) =>
   harnessModel.updateSubscription(HarnessUpdateSubscriptionParamsSchema.parse(params)))
 registerHandler('harness.subscriptionStatus', (params) =>
   subscriptionStatus(HarnessSubscriptionStatusParamsSchema.parse(params).cli, {
-    discover: (cli) => discoverCli(cli), listModels: listCliModels, onLog: (line) => console.error(`[harness] ${line}`),
+    discover: (cli) => discoverCli(cli, { onLog: (line) => console.error(`[harness] ${line}`) }),
+    listModels: listCliModels, onLog: (line) => console.error(`[harness] ${line}`),
   }))
 registerHandler('harness.applyPaperWiki', (params) =>
   harness.applyPaperWiki(HarnessApplyPaperWikiParamsSchema.parse(params)))

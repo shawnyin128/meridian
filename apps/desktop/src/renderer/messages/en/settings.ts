@@ -222,6 +222,7 @@ export const settings = {
         'cli-missing': 'CLI not found',
         'cli-unsupported': 'Unsupported CLI version',
         'cli-signed-out': 'Not signed in with subscription',
+        'cli-sign-in-unknown': 'Sign-in method unconfirmed',
         'cli-timeout': 'Timed out',
       },
     },

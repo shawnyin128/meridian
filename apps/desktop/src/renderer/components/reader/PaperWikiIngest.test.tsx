@@ -375,16 +375,16 @@ describe('PaperWikiIngest', () => {
     await act(async () => { root.render(withMessages(<Panel paper={paper} reading={reading} onJump={api.jump} />)) })
     const shown: (string | null | undefined)[] = []
     for (const reason of [
-      'cli-missing', 'cli-unsupported', 'cli-signed-out', 'usage-limit', 'cli-timeout', 'timeout', 'cancelled',
-      'malformed-output', 'model',
+      'cli-missing', 'cli-unsupported', 'cli-signed-out', 'cli-sign-in-unknown', 'usage-limit', 'cli-timeout', 'timeout',
+      'cancelled', 'malformed-output', 'model',
     ] as const) {
       core.failures = { p1: reason }
       await act(async () => { core.poll() })
       shown.push(host.querySelector('.wiki-ingest-status.inline-message--line.inline-message--error')?.textContent)
     }
     expect(shown).toEqual([
-      '没有找到 CLI', 'CLI 版本不受支持', '未用订阅登录', '订阅额度已用完', '运行超时', '连接超时', '已停止生成', '模型输出无效',
-      '模型调用失败',
+      '没有找到 CLI', 'CLI 版本不受支持', '未用订阅登录', '无法确认登录方式', '订阅额度已用完', '运行超时', '连接超时', '已停止生成',
+      '模型输出无效', '模型调用失败',
     ])
   })
 

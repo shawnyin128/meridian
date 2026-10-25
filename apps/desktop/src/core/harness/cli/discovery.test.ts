@@ -139,6 +139,32 @@ describe('subscription CLI discovery', () => {
     await expect(discoverCli('codex', signedOut.options)).resolves.toMatchObject({ signIn: 'signed-out' })
   })
 
+  it('fails the check of a sign-in it cannot read as its own reason, logging the status output\'s shape and none of its content', async () => {
+    const results: unknown[] = []
+    const logs: string[] = []
+    for (const [cli, status] of [
+      ['claude', 'Logged in as researcher@example.org\nToken sk-ant-oat01-secretsecret\n'],
+      ['claude', JSON.stringify({ signedIn: true, method: 'claude.ai', account: { email: 'researcher@example.org' } })],
+      ['codex', 'Signed in with ChatGPT as researcher@example.org\n'],
+    ] as const) {
+      const unreadable = machine({ version: '9.9.9\n', status })
+      executable(join(unreadable.home, '.local', 'bin', cli), STAND_IN)
+      results.push(await checkCliConnection(cli, { ...unreadable.options, onLog: (line) => logs.push(line) }))
+    }
+
+    expect(results).toEqual(['claude', 'claude', 'codex'].map((cli) => ({
+      state: 'failed', reason: 'cli-sign-in-unknown', detail: `读不出 ${cli} 的登录状态`, version: '9.9.9',
+      modelCalls: 0, maxOutputTokens: 1,
+    })))
+    expect(logs).toEqual([
+      'claude 9.9.9: its sign-in status is in no form Meridian reads: stdout 2 lines of text, stderr 0 lines, exit 0',
+      'claude 9.9.9: its sign-in status is in no form Meridian reads: '
+        + 'stdout a JSON object of account: object, method: string, signedIn: boolean, stderr 0 lines, exit 0',
+      'codex 9.9.9: its sign-in status is in no form Meridian reads: stdout 0 lines of text, stderr 1 lines, exit 0',
+    ])
+    expect(logs.join('\n')).not.toMatch(/researcher|sk-ant|secret|claude\.ai|Logged|ChatGPT as/)
+  })
+
   it('checks the connection from installation, the flags its help lists and sign-in, with no model call, naming the CLI problem', async () => {
     const missing = machine()
     await expect(checkCliConnection('claude', missing.options)).resolves.toEqual({

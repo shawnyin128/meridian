@@ -3,7 +3,7 @@ import type { CliFailureKind } from './child.js'
 import type { CliDiscovery } from './discovery.js'
 
 /** Why a CLI cannot run a call on the user's subscription, in the kind and words its call fails with. */
-export type CliUnready = { kind: 'unavailable' | 'unsupported' | 'signed-out'; message: string }
+export type CliUnready = { kind: 'unavailable' | 'unsupported' | 'signed-out' | 'sign-in-unknown'; message: string }
 
 /**
  * How each CLI words the error it reports once the user's plan has no usage left: the limit messages
@@ -27,6 +27,7 @@ export const CLI_CALL_FAILURES = {
   unavailable: 'cli-missing',
   unsupported: 'cli-unsupported',
   'signed-out': 'cli-signed-out',
+  'sign-in-unknown': 'cli-sign-in-unknown',
   'usage-limit': 'usage-limit',
   timeout: 'cli-timeout',
   cancelled: 'cancelled',
@@ -58,6 +59,6 @@ export function readiness(found: CliDiscovery): { binary: string } | CliUnready 
     case 'signed-out':
       return { kind: 'signed-out', message: `${found.cli} 还没有登录` }
     case 'unknown':
-      return { kind: 'signed-out', message: `读不出 ${found.cli} 的登录状态` }
+      return { kind: 'sign-in-unknown', message: `读不出 ${found.cli} 的登录状态` }
   }
 }

@@ -90,6 +90,7 @@ common.failure.reasons.busy failure
 common.failure.reasons.cancelled failure
 common.failure.reasons.changed failure
 common.failure.reasons.cli-missing failure
+common.failure.reasons.cli-sign-in-unknown failure
 common.failure.reasons.cli-signed-out failure
 common.failure.reasons.cli-timeout failure
 common.failure.reasons.cli-unsupported failure
@@ -758,6 +759,7 @@ settings.model.connection.connectedNoModelCall state
 settings.model.connection.detailLabel label
 settings.model.connection.failures.authentication failure
 settings.model.connection.failures.cli-missing failure
+settings.model.connection.failures.cli-sign-in-unknown failure
 settings.model.connection.failures.cli-signed-out failure
 settings.model.connection.failures.cli-timeout failure
 settings.model.connection.failures.cli-unsupported failure

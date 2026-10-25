@@ -352,9 +352,9 @@ describe('subscription CLI runner', () => {
     await expect(unsupported.runner(call('claude'))).rejects.toMatchObject({ kind: 'unsupported' })
     expect(unsupported.records()).toEqual([])
 
-    for (const signIn of ['other', 'signed-out', 'unknown'] as const) {
+    for (const [signIn, kind] of [['other', 'signed-out'], ['signed-out', 'signed-out'], ['unknown', 'sign-in-unknown']] as const) {
       const { runner, records } = standIns({ stdout: claudeResult({ structured_output: { title: 'Draft' } }) }, { signIn })
-      await expect(runner(call('claude'))).rejects.toMatchObject({ kind: 'signed-out' })
+      await expect(runner(call('claude'))).rejects.toMatchObject({ kind })
       expect(records()).toEqual([])
     }
   })

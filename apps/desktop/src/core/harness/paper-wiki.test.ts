@@ -434,7 +434,7 @@ describe('Paper Wiki run on a subscription CLI', () => {
   it('fails a run with the reason its CLI call failed for, each kind a reason of its own', async () => {
     const reasons: Record<CliFailureKind, string> = {
       unavailable: 'cli-missing', unsupported: 'cli-unsupported', 'signed-out': 'cli-signed-out',
-      'usage-limit': 'usage-limit', timeout: 'cli-timeout', cancelled: 'cancelled', failed: 'model',
+      'sign-in-unknown': 'cli-sign-in-unknown', 'usage-limit': 'usage-limit', timeout: 'cli-timeout', cancelled: 'cancelled', failed: 'model',
     }
     const failed: Record<string, unknown> = {}
     for (const kind of Object.keys(reasons) as CliFailureKind[]) {
