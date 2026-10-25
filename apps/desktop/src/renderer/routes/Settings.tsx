@@ -3,7 +3,6 @@ import type { ReactNode } from 'react'
 import type {
   ChatSession, ColourTheme, ExtensionStatus, LibraryBackup, LibraryLocation, PluginVersion,
 } from '../../shared/contract.js'
-import { localDayOf } from '../../shared/dates.js'
 import { appMenu, chat, extensions, library } from '../ipc.js'
 import { errorLabel, reasonLabel } from '../lib/failure-label.js'
 import { useFormat } from '../lib/format.js'
@@ -16,7 +15,7 @@ import { IconOpen, IconRestore, IconTrash } from '../components/icons.js'
 import { IconButton } from '../components/IconButton.js'
 import { EmptyState } from '../components/EmptyState.js'
 import { LoadingPlaceholder } from '../components/LoadingPlaceholder.js'
-import { DirectoryField } from '../components/FormControls.js'
+import { DirectoryField, FieldRow } from '../components/FormControls.js'
 import { InlineMessage } from '../components/InlineMessage.js'
 import { AppearanceSettings, ColourThemeSettings } from '../components/settings/AppearanceSettings.js'
 import { ThemeEditor } from '../components/settings/ThemeEditor.js'
@@ -249,12 +248,10 @@ export function Settings() {
     storage: (
       <>
         <Card className="storage-card">
-          <div className="storage-head">
-            <div>
-              <SectionHeading variant="group">{m.settings.storage.libraryTitle}</SectionHeading>
-            </div>
-            {location === null ? null : <Tag>{m.settings.storage.source[location.source]}</Tag>}
-          </div>
+          <SectionHeading
+            level="group" actions={location === null ? undefined : <Tag>{m.settings.storage.source[location.source]}</Tag>}
+          >{m.settings.storage.libraryTitle}
+          </SectionHeading>
           {location === null
             ? (storageFailure('location') === null
               ? <LoadingPlaceholder shape="lines" count={2} />
@@ -264,18 +261,19 @@ export function Settings() {
                 <PageError
                   variant="section" error={location.openError === null ? null : reasonLabel(m, location.openError)}
                 />
-                <label className="storage-root">
-                  <span>{m.settings.storage.rootLabel}</span>
-                  <DirectoryField
-                    value={location.root}
-                    readOnly
-                    chooseDisabled={location.locked}
-                    chooseLabel={choosing
-                      ? m.settings.storage.checkingDirectory : m.settings.storage.chooseAction}
-                    choosing={choosing}
-                    onChoose={() => { void chooseLibrary() }}
-                  />
-                </label>
+                <div className="storage-root">
+                  <FieldRow label={m.settings.storage.rootLabel}>
+                    <DirectoryField
+                      value={location.root}
+                      readOnly
+                      chooseDisabled={location.locked}
+                      chooseLabel={choosing
+                        ? m.settings.storage.checkingDirectory : m.settings.storage.chooseAction}
+                      choosing={choosing}
+                      onChoose={() => { void chooseLibrary() }}
+                    />
+                  </FieldRow>
+                </div>
               </>
             )}
           {location?.locked !== true && location?.restartRequired
@@ -311,7 +309,7 @@ export function Settings() {
               <SectionHeading count={backups.length}>{m.settings.storage.backupsHeading}</SectionHeading>
               <List className="storage-backup-list">
                 {backups.map((backup) => {
-                  const label = `${format.date(localDayOf(backup.createdAt))} ${format.clock(backup.createdAt)}`
+                  const label = `${format.day(backup.createdAt)} ${format.clock(backup.createdAt)}`
                   const busy = switchingBackup !== null || deletingBackup !== null
                   return (
                     <Item
@@ -459,7 +457,7 @@ export function Settings() {
               <ModalTitle className="set-t">{m.settings.title}</ModalTitle>
               {visibleCategories.map((c) => (
                 <NavRow
-                  key={c} className={SUB_CATEGORIES.has(c) ? 'srow set-sub' : 'srow'} selected={c === current}
+                  key={c} indent={SUB_CATEGORIES.has(c) ? 1 : 0} sub={SUB_CATEGORIES.has(c)} selected={c === current}
                   data-setcat={c} onActivate={() => setCurrent(c)}
                 >{m.settings.categories[SETTINGS_CATEGORY_LABEL[c]]}</NavRow>
               ))}

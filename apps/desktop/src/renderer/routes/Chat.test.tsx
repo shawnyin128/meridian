@@ -31,6 +31,8 @@ const api = vi.hoisted(() => ({
   recordAction: vi.fn<() => Promise<{ id: string; name: string }>>(),
   feedAppend: vi.fn(() => Promise.resolve()),
   createIdea: vi.fn(() => Promise.resolve({ id: 'idea-1' })),
+  /** Whether the model settings set up a model. */
+  configured: true,
 }))
 
 const session = vi.hoisted(() => ({ id: 'chat-1', revision: 0 }))
@@ -45,6 +47,7 @@ vi.mock('../ipc.js', () => ({
   appMenu: { platform: () => 'darwin' },
   chat: { send: api.send, messages: api.messages, cancel: api.cancel, create: api.create, recordAction: api.recordAction },
   feed: { append: api.feedAppend },
+  harness: { modelSettings: () => Promise.resolve({ configured: api.configured }) },
   idea: { create: api.createIdea },
   jobs: {
     status: (): Promise<JobsStatus> => Promise.resolve({
@@ -76,13 +79,18 @@ vi.mock('../hooks/useVaultWrite.js', () => ({
 
 const { Chat } = await import('./Chat.js')
 const { GenerationsContext, useCoreGenerations } = await import('../hooks/useGenerations.js')
+const { ModelStatusContext, useCoreModelStatus } = await import('../hooks/useModelStatus.js')
 const { useJobsPoll } = await import('../shell/useJobs.js')
 
 const noBump = () => {}
-/** The shell around the screen: the jobs poll and the generations it reports. */
+/** The shell around the screen: the jobs poll and the generations it reports, and the model status. */
 function Shell({ children }: { children: ReactNode }) {
   const { status, refresh } = useJobsPoll(noBump)
-  return <GenerationsContext.Provider value={useCoreGenerations(status, refresh)}>{children}</GenerationsContext.Provider>
+  return (
+    <GenerationsContext.Provider value={useCoreGenerations(status, refresh)}>
+      <ModelStatusContext.Provider value={useCoreModelStatus(false)}>{children}</ModelStatusContext.Provider>
+    </GenerationsContext.Provider>
+  )
 }
 const screen = () => <MessagesProvider><Shell><Chat /></Shell></MessagesProvider>
 
@@ -108,6 +116,7 @@ describe('Chat composer', () => {
     document.body.innerHTML = ''
     vi.clearAllMocks()
     api.generating.clear()
+    api.configured = true
     session.id = 'chat-1'
     session.revision = 0
     const host = document.createElement('div')
@@ -223,6 +232,7 @@ describe('Chat composer', () => {
     api.send.mockResolvedValueOnce({ id: 'chat-1', state: 'failed', reason: 'no-model' })
     const state = () => document.querySelector('.cbox .tag')?.textContent ?? null
     expect(state()).toBeNull()
+    api.configured = false
     type('为什么')
     press('Enter')
     await act(async () => { await Promise.resolve(); await Promise.resolve() })
@@ -231,6 +241,7 @@ describe('Chat composer', () => {
     expect(tag.tagName).toBe('BUTTON')
     act(() => tag.click())
     expect(settings.openCategory).toHaveBeenCalledWith('model')
+    api.configured = true
     type('再问一次')
     press('Enter')
     await act(async () => { await Promise.resolve(); await Promise.resolve() })

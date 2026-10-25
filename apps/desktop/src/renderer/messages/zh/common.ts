@@ -23,6 +23,7 @@ export const common = {
   moveDown: '下移',
   loading: '正在载入…',
   saving: '正在保存…',
+  noModel: 'AI 未连接',
   none: '暂无',
   trashed: '已移入垃圾桶',
   createdOn: (date: string) => `创建于 ${date}`,
@@ -37,6 +38,11 @@ export const common = {
   nav: { back: '返回' },
   dialog: { close: '关闭' },
   panel: { close: '收起详情' },
+  table: {
+    resize: (column: string) => `「${column}」列宽`,
+    showMore: (n: number) => `展开其余 ${n} 项`,
+    showLess: (n: number) => `收起其余 ${n} 项`,
+  },
   details: { expand: '展开详情', collapse: '收起详情' },
   field: {
     clear: '清除输入',

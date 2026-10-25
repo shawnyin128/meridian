@@ -70,8 +70,8 @@ const LINES: Record<string, [file: string, markup: RegExp, measure: RegExp]> = {
     /className=\{`paper-abstract pabs\$\{shut \? ' is-folded fade-lines' : ''\}\$\{overflows \? ' clipped' : ''\}`\}/, /useClipped\(body, text, true\)/],
 }
 
-/** A box marked as cut off: FadeText's `clipped`, and `trunc`, which the paper table sets on a cell it measured cut. */
-const CUT = /\.(clipped|trunc)\b/
+/** A box marked as cut off: FadeText's `clipped`, and `table-cut`, which a table sets on a cell's text it measured cut. */
+const CUT = /\.(clipped|table-cut)\b/
 
 /**
  * Every rule that keeps its text on one line and hides what overflows, by its selector: the selector of
@@ -79,13 +79,13 @@ const CUT = /\.(clipped|trunc)\b/
  */
 const ONE_LINE_CLIP: Record<string, { fade: string } | { never: string }> = {
   '.fade-text': { fade: '.fade-text.clipped' },
-  '.ptable td .ci': { fade: '.ptable td.trunc:not(:hover) .ci:not(:has(.tagchip)):not(:focus-visible)' },
+  '.table-text': { fade: '.table td:not(:hover)>.table-text.table-cut:not(:has(:focus-visible))' },
   // The text box of a needs-attention row is a FadeText; a record row's holds one that takes its width.
   '.attn-text': { never: 'a FadeText or holds one' },
   // Its segments are FadeTexts with a cap that shrink and fade first; only the fixed separators keep their width.
   '.crumb': { never: 'segments fade' },
-  // The palette's title is for assistive technology only: a 1px box clipped away.
-  '.cmdk-title': { never: 'visually hidden' },
+  // A hidden dialog title is for assistive technology only: a 1px box clipped away.
+  '.modal-title--hidden': { never: 'visually hidden' },
   // The composer's placeholder is drawn by its editor, which cannot tell whether the placeholder is cut off.
   '.chat-composer .cm-placeholder': { never: 'placeholder' },
   // Its column is as wide as the widest date chip in it, and the chip's own text is a FadeText.
@@ -94,8 +94,10 @@ const ONE_LINE_CLIP: Record<string, { fade: string } | { never: string }> = {
   '.glrow': { never: 'label fades' },
   // Its title is a FadeText that fades; a one-day bar too short for its title draws it beside the bar.
   '.gbar': { never: 'title fades' },
-  // Its content is a .ci that fades when the table marks the cell trunc, or chips that hide whole behind a count.
-  '.ptable td': { never: 'content fades' },
+  // Its content is a text that fades when the table marks it cut, or chips that hide whole behind a count.
+  '.table td': { never: 'content fades' },
+  // The chips past the cell's end hide whole behind a count; the first fades at its own cap.
+  '.table-chips': { never: 'chips fold' },
 }
 
 describe('放不下的文字淡出,不以省略号结尾', () => {

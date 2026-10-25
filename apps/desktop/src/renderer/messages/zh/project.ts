@@ -126,8 +126,6 @@ export const project = {
     focusRequired: (label: string) => `${label}不能为空`,
     startLabel: '开始',
     dueLabel: '截止',
-    startAfterDue: '开始日期不能晚于截止日期',
-    dueBeforeStart: '截止日期不能早于开始日期',
     paperCount: (n: number) => `${n} 篇`,
     workspaceLabel: '工作区',
     refreshWorkspace: '刷新',

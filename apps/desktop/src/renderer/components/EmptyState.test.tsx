@@ -23,6 +23,10 @@ describe('EmptyState', () => {
     expect(render(<EmptyState variant="section" />)).toBe('<div class="empty-state empty-state--section">—</div>')
   })
 
+  it('draws an empty option list as that line holding the no-result word, its word where an option\'s text starts', () => {
+    expect(render(<EmptyState variant="option" />)).toBe('<div class="empty-state empty-state--option">无结果</div>')
+  })
+
   it('draws a search or picker that found nothing as the same line holding the no-result word', () => {
     expect(render(<EmptyState variant="results" />)).toBe('<div class="empty-state empty-state--section">无结果</div>')
   })

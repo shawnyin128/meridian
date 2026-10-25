@@ -5,7 +5,7 @@ import { delivery } from '../../ipc.js'
 import { useMessages } from '../../messages/useMessages.js'
 import { useScreenLoad } from '../../hooks/useScreenLoad.js'
 import { useVaultWrite } from '../../hooks/useVaultWrite.js'
-import { composing } from '../../lib/keyboard.js'
+import { commitKeys } from '../../lib/keyboard.js'
 import { FormInput } from '../FormControls.js'
 import { Card } from '../Card.js'
 import { InlineMessage } from '../InlineMessage.js'
@@ -76,9 +76,7 @@ export function DeliverySettings() {
               setDrafts((held) => ({ ...held, [limit]: value }))
               setJustSaved(false)
             }}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter' && !composing(event.nativeEvent)) void save()
-            }}
+            onKeyDown={commitKeys({ onSave: () => { void save() } })}
           />
           <span>{m.settings.delivery.unit}</span>
         </div>,

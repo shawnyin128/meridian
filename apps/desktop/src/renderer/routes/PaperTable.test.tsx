@@ -665,7 +665,7 @@ describe('PaperTable', () => {
     expect(host.querySelector('#libq')?.classList).toContain('form-control-field')
   })
 
-  it('随笔与自定义文本列共用整格文本编辑器', async () => {
+  it('随笔与自定义文本列共用整格文本编辑器,就是就地编辑的那一个', async () => {
     const host = mount()
     columnsCall.resolve(NOTE_COLUMNS)
     listCall.resolve({ rows: [{ ...ROW, remark: '', custom: { note: '' } }], total: 1 })
@@ -673,20 +673,20 @@ describe('PaperTable', () => {
 
     const remarkCell = host.querySelector<HTMLElement>('td.pt-remark')!
     await act(async () => { press(remarkCell) })
-    expect(remarkCell.querySelector('input')?.classList).toContain('paper-text-cell-input')
+    expect(remarkCell.querySelector('input')?.classList).toContain('metadata-input')
     expect(remarkCell.querySelector('input')?.classList).toContain('form-control-inline')
 
     const customCell = host.querySelector<HTMLElement>('td.pt-cust')!
     await act(async () => { press(customCell) })
-    expect(customCell.querySelector('input')?.classList).toContain('paper-text-cell-input')
+    expect(customCell.querySelector('input')?.classList).toContain('metadata-input')
     expect(customCell.querySelector('input')?.classList).toContain('form-control-inline')
   })
 
-  it('放不下的自定义文本格与随笔格一样标成截断,整段字装在悬停展开的 .ci 里', async () => {
+  it('放不下的自定义文本格与随笔格一样标成截断,整段字装在悬停展开的格内文字里', async () => {
     const scrollWidth = vi.spyOn(HTMLElement.prototype, 'scrollWidth', 'get')
-      .mockImplementation(function () { return this.classList.contains('ci') ? 200 : 0 })
+      .mockImplementation(function () { return this.classList.contains('table-text') ? 200 : 0 })
     const clientWidth = vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get')
-      .mockImplementation(function () { return this.classList.contains('ci') ? 100 : 0 })
+      .mockImplementation(function () { return this.classList.contains('table-text') ? 100 : 0 })
     try {
       const host = mount()
       const text = '一段比格子宽得多的文字'
@@ -696,7 +696,8 @@ describe('PaperTable', () => {
 
       const cells = ['td.pt-remark', 'td.pt-cust'].map((selector) => {
         const td = host.querySelector<HTMLElement>(selector)!
-        return { trunc: td.classList.contains('trunc'), ci: td.querySelector('.ci')?.textContent }
+        const text = td.querySelector('.table-text')
+        return { trunc: text?.classList.contains('table-cut'), ci: text?.textContent }
       })
       expect(cells).toEqual([{ trunc: true, ci: text }, { trunc: true, ci: text }])
     } finally {
@@ -726,7 +727,7 @@ describe('PaperTable', () => {
     columnsCall.resolve(EMPTY_COLUMNS)
     listCall.resolve({ rows: [ROW], total: 1 })
     await flush()
-    const title = host.querySelector('.ptable tbody tr .pt-title .ci')!
+    const title = host.querySelector('.ptable tbody tr .pt-title .table-open')!
     const pressed = (detail: number) => {
       const event = new MouseEvent('mousedown', { bubbles: true, cancelable: true, detail })
       title.dispatchEvent(event)
@@ -735,14 +736,16 @@ describe('PaperTable', () => {
     expect([pressed(1), pressed(2)]).toEqual([false, true])
   })
 
-  it('论文行是操作槽的宿主，行尾的删除在槽里', async () => {
+  it('论文行是操作槽的宿主，行尾的删除在槽里;主题的 + 和每个主题的 × 也在槽里,随这一行显出', async () => {
     const host = mount()
     columnsCall.resolve(EMPTY_COLUMNS)
-    listCall.resolve({ rows: [ROW], total: 1 })
+    listCall.resolve({ rows: [{ ...ROW, topics: ['推理'] }], total: 1 })
     await flush()
     const row = host.querySelector('.ptable tbody tr')!
     expect(row.hasAttribute('data-row-actions')).toBe(true)
-    expect([...row.querySelectorAll('.row-actions button')].map((item) => item.getAttribute('aria-label'))).toEqual(['删除'])
+    const slotted = (cell: string) => [...row.querySelectorAll(`${cell} .row-actions button`)].map((item) => item.getAttribute('aria-label'))
+    expect(slotted('td.table-actions')).toEqual(['删除'])
+    expect(slotted('td .table-chips')).toEqual(['移除主题「推理」', '添加主题'])
   })
 
   it('行尾的删除把论文移到垃圾桶，画的是垃圾桶而不是关闭用的叉', async () => {
@@ -784,10 +787,10 @@ describe('PaperTable', () => {
     getCall.resolve(ROW)
     await enter(row.querySelector('.rowx')!)
     await flush()
-    expect(row.classList).not.toContain('selected')
+    expect(row.classList).not.toContain('table-row--selected')
     await enter(row)
     await flush()
-    expect(row.classList).toContain('selected')
+    expect(row.classList).toContain('table-row--selected')
   })
 
   it('一行论文只占一个 Tab 停靠点：前三行一共三站，进行先到标题，方向键依次走过星级、主题、状态和删除', async () => {
@@ -1003,9 +1006,9 @@ describe('PaperTable', () => {
 
   it('主题超出一行时用 +N 计数徽标收起,点击后展开且不会误开论文详情', async () => {
     const scrollWidth = vi.spyOn(HTMLElement.prototype, 'scrollWidth', 'get')
-      .mockImplementation(function () { return this.classList.contains('ci') ? 200 : 0 })
+      .mockImplementation(function () { return this.classList.contains('table-chips') ? 200 : 0 })
     const clientWidth = vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get')
-      .mockImplementation(function () { return this.classList.contains('ci') ? 100 : 0 })
+      .mockImplementation(function () { return this.classList.contains('table-chips') ? 100 : 0 })
     const rect = vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect')
       .mockImplementation(function () {
         const right = this.classList.contains('tagchip') && this.textContent !== 'one' ? 80 : 40
@@ -1025,11 +1028,11 @@ describe('PaperTable', () => {
       act(() => more.click())
       expect(more.getAttribute('aria-expanded')).toBe('true')
       expect(more.getAttribute('aria-label')).toBe('收起其余 2 项')
-      expect([more.textContent, chips.classList.contains('chip-expanded')]).toEqual(['−', true])
+      expect([more.textContent, chips.classList.contains('is-open')]).toEqual(['−', true])
       expect(openedScreens).toEqual([])
       act(() => more.click())
       expect(more.getAttribute('aria-expanded')).toBe('false')
-      expect([more.textContent, chips.classList.contains('chip-expanded')]).toEqual(['+2', false])
+      expect([more.textContent, chips.classList.contains('is-open')]).toEqual(['+2', false])
     } finally {
       scrollWidth.mockRestore()
       clientWidth.mockRestore()
@@ -1047,7 +1050,7 @@ describe('PaperTable', () => {
     // CSS owns the responsive width entirely; an inline pixel min-width would bring back horizontal scrolling.
     expect(table.style.minWidth).toBe('')
     const actual: Record<string, number> = {
-      t: 400, short: 180, rating: 100, authors: 170, y: 110, venue: 130, topics: 220, st: 90, x: 52,
+      t: 400, short: 180, rating: 100, authors: 170, y: 110, venue: 130, topics: 220, st: 90,
     }
     const column = (key: string) => host.querySelector<HTMLElement>(`col[data-cw="${key}"]`)!
     for (const [key, width] of Object.entries(actual)) {
@@ -1057,7 +1060,7 @@ describe('PaperTable', () => {
       })
     }
 
-    const titleGrip = host.querySelector<HTMLElement>('th:first-child .thgrip')!
+    const titleGrip = host.querySelector<HTMLElement>('th:first-child .table-grip')!
     await act(async () => {
       titleGrip.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, clientX: 400 }))
       document.dispatchEvent(new MouseEvent('mousemove', { bubbles: true, clientX: 450 }))
@@ -1083,7 +1086,7 @@ describe('PaperTable', () => {
     listCall.resolve({ rows: [ROW], total: 1 })
     await flush()
     const actual: Record<string, number> = {
-      t: 400, short: 180, rating: 100, authors: 170, y: 110, venue: 130, topics: 220, st: 90, remark: 220, x: 52,
+      t: 400, short: 180, rating: 100, authors: 170, y: 110, venue: 130, topics: 220, st: 90, remark: 220,
     }
     const column = (key: string) => host.querySelector<HTMLElement>(`col[data-cw="${key}"]`)!
     for (const [key, width] of Object.entries(actual)) {
@@ -1091,7 +1094,7 @@ describe('PaperTable', () => {
     }
     const titleHead = host.querySelector<HTMLElement>('th:first-child')!
     Object.defineProperty(titleHead, 'getBoundingClientRect', { configurable: true, value: () => ({ width: 400 }) })
-    const grip = titleHead.querySelector<HTMLElement>('.thgrip')!
+    const grip = titleHead.querySelector<HTMLElement>('.table-grip')!
     return { host, grip, width: (key: string) => column(key).style.width }
   }
   const mouseAt = (target: EventTarget, type: string, clientX = 0) => act(() => {
@@ -1165,12 +1168,86 @@ describe('PaperTable', () => {
     expect(listCallCount).toBe(listed)
   })
 
+  /** Mounts the table with the built-in columns and returns the header cell labelled `label`. */
+  const headerOf = (host: HTMLElement, label: string) =>
+    [...host.querySelectorAll<HTMLElement>('.ptable thead th')].find((th) => th.textContent === label)!
+  /** Presses Alt with `key` on `target` and lets the column write it starts land. */
+  const altOn = async (target: Element, key: string) => {
+    await act(async () => {
+      target.dispatchEvent(new KeyboardEvent('keydown', { key, altKey: true, bubbles: true, cancelable: true }))
+    })
+    setColumnsCalls.at(-1)?.resolve()
+    await flush()
+  }
+
+  it('表头里一列的排序按钮或列宽把手上按 Alt+→ / Alt+←,这列右移、左移一格,顺序写进库里;到了头不再挪,标题列不动', async () => {
+    const host = mount()
+    columnsCall.resolve(EMPTY_COLUMNS)
+    listCall.resolve({ rows: [ROW], total: 1 })
+    await flush()
+
+    await altOn(headerOf(host, '作者').querySelector('.table-sort')!, 'ArrowRight')
+    expect(setColumnsCalls.map((call) => call.columns.order))
+      .toEqual([['short', 'rating', 'y', 'authors', 'venue', 'topics', 'st', 'remark']])
+    expect(headTexts(host).slice(0, 6)).toEqual(['标题', '短标题', '评分', '年份', '作者', '发表'])
+
+    await altOn(headerOf(host, '评分').querySelector('.table-grip')!, 'ArrowLeft')
+    expect(setColumnsCalls.at(-1)!.columns.order)
+      .toEqual(['rating', 'short', 'y', 'authors', 'venue', 'topics', 'st', 'remark'])
+    expect(headTexts(host).slice(0, 3)).toEqual(['标题', '评分', '短标题'])
+
+    await altOn(headerOf(host, '评分').querySelector('.table-grip')!, 'ArrowLeft')
+    await altOn(headerOf(host, '标题').querySelector('.table-sort')!, 'ArrowRight')
+    expect(setColumnsCalls).toHaveLength(2)
+    expect(successes).toEqual([])
+  })
+
+  it('列宽把手上的 Alt+方向键留给挪列,不调列宽;不按 Alt 的方向键仍只调列宽', async () => {
+    const { grip, width } = await laidOutTable()
+    await act(async () => {
+      grip.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', altKey: true, bubbles: true, cancelable: true }))
+    })
+    expect([width('t'), width('short')]).toEqual(['300px', '150px'])
+    keyOn(grip, 'ArrowRight')
+    expect([width('t'), width('short')]).toEqual(['410px', '170px'])
+    expect(setColumnsCalls).toHaveLength(0)
+  })
+
+  it('按住一列的把手拖到另一列的右半边放下,这列落在它后面,顺序写进库里', async () => {
+    const host = mount()
+    columnsCall.resolve(EMPTY_COLUMNS)
+    listCall.resolve({ rows: [ROW], total: 1 })
+    await flush()
+    /** Dispatches a drag event of `type` on `target` with the pointer at `x`; jsdom has no DataTransfer, so it carries a stub. */
+    const dragAt = (target: Element, type: string, x = 0) => act(() => {
+      const event = new MouseEvent(type, { bubbles: true, cancelable: true, clientX: x })
+      Object.defineProperty(event, 'dataTransfer', {
+        value: { effectAllowed: '', dropEffect: '', types: ['text/plain'], setData: vi.fn(), getData: () => '', setDragImage: vi.fn() },
+      })
+      target.dispatchEvent(event)
+    })
+    const source = headerOf(host, '短标题')
+    const target = headerOf(host, '年份')
+    Object.defineProperty(target, 'getBoundingClientRect', { value: () => ({ left: 100, width: 80, top: 0, height: 30 }) })
+    dragAt(source.querySelector('[draggable="true"]')!, 'dragstart')
+    dragAt(target, 'dragover', 170)
+    // The table draws the drop look from its `move`: the held column dims, the line marks the right side.
+    const moves = () => [source, target].map((cell) => [...cell.classList].filter((name) => name.startsWith('table-move-')))
+    expect(moves()).toEqual([['table-move-moving'], ['table-move-after']])
+    dragAt(target, 'drop', 170)
+    expect(moves()).toEqual([[], []])
+    setColumnsCalls.at(-1)?.resolve()
+    await flush()
+    expect(setColumnsCalls.map((call) => call.columns.order))
+      .toEqual([['rating', 'authors', 'y', 'short', 'venue', 'topics', 'st', 'remark']])
+  })
+
   it('表格的上、左、右三边由吸住的表头、标题列和操作列守着；横向滚动时只标出藏着内容的那一边，由吸住的格子去淡出', async () => {
     const host = mount()
     columnsCall.resolve(EMPTY_COLUMNS)
     listCall.resolve({ rows: [ROW], total: 1 })
     await flush()
-    const wrap = host.querySelector<HTMLElement>('.tblwrap')!
+    const wrap = host.querySelector<HTMLElement>('.table-scroll')!
     let offset = 0
     Object.defineProperty(wrap, 'clientWidth', { configurable: true, get: () => 900 })
     Object.defineProperty(wrap, 'scrollWidth', { configurable: true, get: () => 1500 })
@@ -1332,9 +1409,9 @@ describe('PaperTable', () => {
 
     expect(labels()).toEqual(before)
     expect(labels()).toContain('选择')
-    expect(host.querySelectorAll('.ptable thead .thmove')).toHaveLength(COLUMNS.length + 1)
+    expect(host.querySelectorAll('.ptable thead .drag-handle')).toHaveLength(COLUMNS.length + 1)
     expect(host.querySelector<HTMLButtonElement>('[aria-label="新建列"]')!.disabled).toBe(false)
-    expect(row.classList).toContain('selected')
+    expect(row.classList).toContain('table-row--selected')
     expect(row.getAttribute('aria-current')).toBe('true')
   })
 
@@ -1484,7 +1561,7 @@ describe('PaperTable', () => {
     await flush()
 
     const title = host.querySelector<HTMLElement>('.pdetail .pd-t')
-    const short = host.querySelector<HTMLElement>('.paper-meta-list .paper-meta-editable')
+    const short = host.querySelector<HTMLElement>('.paper-meta-list .property-value')
     expect(title!.innerHTML).toMatch(/<strong>F<\/strong>luxBin <span><span class="katex">/)
     expect(short!.innerHTML).toContain('<em>Flux</em>')
     await act(async () => { title!.querySelector('button')!.click() })
@@ -1505,7 +1582,8 @@ describe('PaperTable', () => {
 
     const panel = host.querySelector<HTMLElement>('.paper-meta')!
     expect(panel.textContent).not.toContain('元数据')
-    expect(panel.firstElementChild!.tagName).toBe('DL')
+    expect(panel.firstElementChild!.className).toBe('paper-meta-list')
+    expect(panel.firstElementChild!.firstElementChild!.tagName).toBe('DL')
     const labels = [...panel.querySelectorAll('dt')].map((dt) => dt.textContent)
     const abstract = panel.querySelectorAll('dd')[labels.indexOf('摘要')]!
     expect(labels.indexOf('摘要')).toBe(labels.indexOf('作者') + 1)

@@ -96,8 +96,8 @@ describe('PickRow', () => {
     await flush() // The candidate arrives right after mounting, without typing
 
     const hit = document.querySelector<HTMLElement>('.pickhits .rrow')!
-    await act(async () => { hit.dispatchEvent(new MouseEvent('mousedown', { bubbles: true })) })
-    await act(async () => { hit.dispatchEvent(new MouseEvent('mousedown', { bubbles: true })) })
+    await act(async () => { hit.dispatchEvent(new MouseEvent('click', { bubbles: true })) })
+    await act(async () => { hit.dispatchEvent(new MouseEvent('click', { bubbles: true })) })
     expect(onPick).toHaveBeenCalledTimes(1)
 
     await act(async () => { settle(true) })
@@ -139,7 +139,7 @@ describe('PickRow', () => {
     await flush()
 
     const hit = document.querySelector<HTMLElement>('.pickhits .rrow')!
-    await act(async () => { hit.dispatchEvent(new MouseEvent('mousedown', { bubbles: true })) })
+    await act(async () => { hit.dispatchEvent(new MouseEvent('click', { bubbles: true })) })
 
     const outside = document.createElement('button')
     document.body.appendChild(outside)

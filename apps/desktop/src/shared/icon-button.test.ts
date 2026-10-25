@@ -147,7 +147,7 @@ describe('图标按钮', () => {
 
   it('表头末格的加号和齿轮只在一处定义', () => {
     const defining = (name: string) => STYLESHEETS.filter((path) => rulesOf(read(path))
-      .some(([selector]) => selector.split(',').some((part) => part.trim() === `.${name}`)))
-    expect(defining('th-add')).toEqual([join('routes', 'shell.css')])
+      .some(([selector]) => new RegExp(`\\.${name}(?![\\w-])`).test(selector)))
+    expect(defining('table-actions')).toEqual([join('components', 'Table.css')])
   })
 })

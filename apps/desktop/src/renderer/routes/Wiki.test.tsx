@@ -207,7 +207,7 @@ describe('Wiki keyboard reach', () => {
     const heads = all('.cmp thead th').length
     expect(all('.cmp tbody tr').map((tr) => tr.children.length)).toEqual([heads])
     expect(host.querySelector('.cmp td.na')!.textContent).toBe('—')
-    expect(host.querySelector('.cmp th.dv .wkind')!.textContent).toBe('自动')
+    expect(host.querySelector('.cmp thead .wkind')!.textContent).toBe('自动')
   })
 
   it('比较表那一行的移出在行尾操作槽里，行是槽的宿主', async () => {
@@ -222,13 +222,29 @@ describe('Wiki keyboard reach', () => {
     expect(tags('.wkmain .wkcard .tt')).toEqual(['BUTTON'])
     expect(tags('.cmp td.rh .entity-link')).toEqual(['BUTTON'])
     expect(tags('.cmp td.dv .tagchip')).toEqual(['BUTTON'])
-    expect(tags('.cmp td.rx .row-actions > *')).toEqual(['BUTTON'])
+    expect(tags('.cmp td.table-actions .row-actions > *')).toEqual(['BUTTON'])
     expect(tags('.wkside .wkrel .tagchip')).toEqual(['BUTTON', 'BUTTON'])
     expect(all('.wktoc li > button').map((b) => b.textContent)).toEqual(['背景', '结果'])
     expect(tags('.wkmain .md .entity-link')).toEqual(['A'])
 
     await press(host.querySelector<HTMLElement>('.cmp td.dv .tagchip')!)
     expect(fixture.aggregation).toHaveBeenLastCalledWith('methods/tree')
+  })
+
+  it('点目录里的一节,正文滚到那一节的标题,标题闪一下', async () => {
+    const scrolled: [string, ScrollLogicalPosition | undefined][] = []
+    // jsdom lays nothing out and has no scrollIntoView.
+    Element.prototype.scrollIntoView = function (this: Element, options?: boolean | ScrollIntoViewOptions) {
+      scrolled.push([this.textContent ?? '', typeof options === 'object' ? options.block : undefined])
+    }
+    try {
+      await press(host.querySelector<HTMLElement>('[data-wk="topics/sd"] .tt')!)
+      await press(all('.wktoc li > button').find((button) => button.textContent === '结果')!)
+      expect(scrolled).toEqual([['结果', 'start']])
+      expect([...host.querySelectorAll('.wkmain [data-arrived]')].map((heading) => heading.textContent)).toEqual(['结果'])
+    } finally {
+      delete (Element.prototype as Partial<Element>).scrollIntoView
+    }
   })
 
   it('比较表里的锚点是一个按钮:聚焦时显示原文,点它在阅读器里打开那篇论文的那一页', async () => {
@@ -246,7 +262,7 @@ describe('Wiki keyboard reach', () => {
 
   it('比较表的格子先是值,再是一段不断行的「空格 + 锚点」,紧贴值的最后一个字', async () => {
     await press(host.querySelector<HTMLElement>('[data-wk="topics/sd"] .tt')!)
-    const cell = host.querySelector<HTMLElement>('.cmp .source-anchor')!.closest('td')!
+    const cell = host.querySelector<HTMLElement>('.cmp .source-anchor')!.closest('.table-text')!
     expect([...cell.childNodes].map((node) => (node instanceof Element ? `${node.className}|${node.textContent}` : node.textContent)))
       .toEqual(['W4', 'source-anchor-keep| p.3'])
   })
@@ -355,6 +371,13 @@ describe('Wiki keyboard reach', () => {
     expect(body().scrollTop).toBe(160)
   })
 
+  it('首页按列表屏的栏宽排，打开的一页按阅读页的栏宽排', async () => {
+    const prose = () => host.querySelector('.wiki-body')!.classList.contains('desk-body--prose')
+    expect(prose()).toBe(false)
+    await press(host.querySelector<HTMLElement>('[data-wk="topics/sd"] .tt')!)
+    expect(prose()).toBe(true)
+  })
+
   it('从首页打开一页再按返回,首页回到原来滚到的位置', async () => {
     const body = () => host.querySelector<HTMLElement>('.wiki-body')!
     body().scrollTop = 120
@@ -408,7 +431,7 @@ describe('Wiki keyboard reach', () => {
   it('从这一页移出一篇论文,提示带撤销,撤销的是这次写入记下的那一条', async () => {
     fixture.apply.mockResolvedValue({ change: 'c-paper' })
     await press(host.querySelector<HTMLElement>('[data-wk="topics/sd"] .tt')!)
-    await press(host.querySelector<HTMLElement>('.cmp td.rx button')!)
+    await press(host.querySelector<HTMLElement>('.cmp td.table-actions button')!)
     await settle()
     expect(fixture.apply).toHaveBeenLastCalledWith({
       source: 'user', title: '把 EAGLE-2 从 推测解码 移出', ops: [{ op: 'removeMembership', paper: 'papers/p1', in: 'topics/sd' }],
@@ -607,7 +630,7 @@ describe('论文对比表的五行上限', () => {
    */
   const layOut = (heights: number[]) => {
     vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
-      if (this.classList.contains('cmpwrap')) return { top: 100, bottom: 100 } as DOMRect
+      if (this.classList.contains('table-scroll')) return { top: 100, bottom: 100 } as DOMRect
       const table = this.closest('.cmp')
       if (table === null || this.tagName !== 'TR') return { top: 0, bottom: 0 } as DOMRect
       const sizes = [30, ...heights]
@@ -627,7 +650,7 @@ describe('论文对比表的五行上限', () => {
       host.querySelector<HTMLElement>('[data-wk="topics/sd"] .tt')!.click()
       await Promise.resolve()
     })
-    return host.querySelector<HTMLElement>('.cmpwrap')!
+    return host.querySelector<HTMLElement>('.cmp')!.parentElement!
   }
 
   beforeEach(() => {

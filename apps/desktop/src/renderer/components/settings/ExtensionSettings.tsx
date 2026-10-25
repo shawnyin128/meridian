@@ -4,7 +4,7 @@ import { useMessages } from '../../messages/useMessages.js'
 import { CardTray } from '../CardTray.js'
 import { SectionHeading } from '../PageShell.js'
 import { LoadingPlaceholder } from '../LoadingPlaceholder.js'
-import { Tag, type TagTone } from '../Tag.js'
+import { Tag, type TagState } from '../Tag.js'
 import { Card } from '../Card.js'
 import { PluginVersionEntry, type PluginVersionEntryProps } from './PluginVersionEntry.js'
 import { FadeText } from '../FadeText.js'
@@ -13,8 +13,8 @@ import { Item } from '../Item.js'
 import { List } from '../List.js'
 import './ExtensionSettings.css'
 
-const STATE_TONE: Record<ExtensionStatus['state'], TagTone> = {
-  installed: 'good', 'update-required': 'warn', 'not-installed': 'neutral',
+const STATE: Record<ExtensionStatus['state'], TagState | undefined> = {
+  installed: 'done', 'update-required': 'warning', 'not-installed': undefined,
 }
 
 interface ExtensionSettingsProps {
@@ -60,13 +60,16 @@ export function ExtensionSettings({ statuses, failed, plugin, onCopy }: Extensio
             : m.settings.extensions.copyInstallLabel(extension.name)
           return (
             <section className="extension-entry" key={extension.id} data-extension={extension.id}>
-              <div className="extension-head">
-                <SectionHeading variant="group">{extension.name}</SectionHeading>
-                <Tag tone={STATE_TONE[extension.state]} className="extension-state">
-                  {m.settings.extensions.state[extension.state]}
-                  {extension.version === undefined ? '' : ` · ${extension.version}`}
-                </Tag>
-              </div>
+              <SectionHeading
+                level="group"
+                actions={(
+                  <Tag state={STATE[extension.state]} className="extension-state">
+                    {m.settings.extensions.state[extension.state]}
+                    {extension.version === undefined ? '' : ` · ${extension.version}`}
+                  </Tag>
+                )}
+              >{extension.name}
+              </SectionHeading>
               <CardTray
                 className="extension-command"
                 expandLabel={m.common.details.expand} collapseLabel={m.common.details.collapse}
@@ -92,11 +95,11 @@ export function ExtensionSettings({ statuses, failed, plugin, onCopy }: Extensio
       </Card>
 
       <Card as="section" className="extension-tutorial" data-extension-tutorial="">
-        <SectionHeading variant="group">{m.settings.extensions.tutorial.heading}</SectionHeading>
+        <SectionHeading level="group">{m.settings.extensions.tutorial.heading}</SectionHeading>
         <div className="extension-prompt-groups">
           {m.settings.extensions.tutorial.groups.map((group) => (
             <section className="extension-prompt-group" key={group.heading}>
-              <h5>{group.heading}</h5>
+              <SectionHeading level="group">{group.heading}</SectionHeading>
               <List variant="embedded" rows="all" nested className="extension-prompt-list">
                 {group.examples.map((example) => (
                   <Item

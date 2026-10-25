@@ -110,6 +110,51 @@ describe('ProjectRelations', () => {
     expect(onMove).not.toHaveBeenCalled()
   })
 
+  it('drags a chip by the chip itself onto the left half of another in its row, marks that side and puts it there', () => {
+    render()
+    /** Dispatches a drag event of `type` on `target` with the pointer at `x`; jsdom has no DataTransfer, so it carries a stub. */
+    const dragAt = (target: Element, type: string, x = 0) => act(() => {
+      const event = new MouseEvent(type, { bubbles: true, cancelable: true, clientX: x })
+      Object.defineProperty(event, 'dataTransfer', { value: { effectAllowed: '', setData: vi.fn(), setDragImage: vi.fn() } })
+      target.dispatchEvent(event)
+    })
+    const knee = host.querySelector<HTMLElement>('[data-wk="topics/knee"]')!
+    const board = host.querySelector<HTMLElement>('[data-url="https://wandb.ai/team/draft"]')!
+    knee.getBoundingClientRect = () => ({ left: 100, width: 80, top: 0, height: 20 }) as DOMRect
+    expect([board.draggable, board.dataset['reorderAxis']]).toEqual([true, 'x'])
+    dragAt(board, 'dragstart')
+    dragAt(knee, 'dragover', 110)
+    expect([board.classList.contains('dragging'), knee.classList.contains('drag-over-before')]).toEqual([true, true])
+    dragAt(knee, 'drop', 110)
+    expect(onMove).toHaveBeenCalledWith('rel-2', 0)
+    expect([board.classList.contains('dragging'), knee.classList.contains('drag-over-before')]).toEqual([false, false])
+  })
+
+  it('moves linked papers among papers and relation items among items, each counted on its own, as they are stored', () => {
+    act(() => {
+      root.render(
+        <MessagesProvider>
+          <ProjectRelations
+            groups={[{ group: PROJECT_PAPER_GROUP, items: [{ id: 'rel-3', text: 'Reading list' }, { id: 'rel-4', text: 'Notes' }] }]}
+            papers={[{ id: 'p1', title: 'EAGLE-2' }, { id: 'p2', title: 'Medusa' }]}
+            onEdit={onEdit} onRemove={vi.fn()} onOpenPage={vi.fn()} onOpenPaper={vi.fn()} onRemovePaper={vi.fn()} onMove={onMove}
+          />
+        </MessagesProvider>,
+      )
+    })
+    const altKey = (chip: Element, key: string) => act(() => {
+      chip.dispatchEvent(new KeyboardEvent('keydown', { key, altKey: true, bubbles: true }))
+    })
+    const chips = [...host.querySelectorAll('.wkrel .tagchip')]
+    altKey(chips[1]!, 'ArrowRight')
+    altKey(chips[2]!, 'ArrowLeft')
+    expect(onMove).not.toHaveBeenCalled()
+    altKey(chips[3]!, 'ArrowLeft')
+    expect(onMove).toHaveBeenLastCalledWith('rel-4', 0)
+    altKey(chips[0]!, 'ArrowRight')
+    expect(onMove).toHaveBeenLastCalledWith('p1', 1)
+  })
+
   it('opens a paper, a Wiki page and a URL from the button that holds each chip\'s name', () => {
     const open = vi.spyOn(window, 'open').mockImplementation(() => null)
     render()

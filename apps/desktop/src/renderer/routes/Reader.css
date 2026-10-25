@@ -7,9 +7,7 @@
 .paper-chat{flex:0 0 var(--rrw,300px);min-width:0;border-right:1px solid var(--sep);transition:transform var(--t-slow) var(--e-inout),opacity var(--t-slow) var(--e-inout)}
 /* The paper chat collapses as the sidebar does: out of the layout at once, then sliding away. */
 .main.sbhide .paper-chat{position:absolute;top:0;bottom:0;left:0;width:var(--rrw,300px);z-index:8;transform:translateX(-100%);opacity:0;pointer-events:none}
-.paper-chat-head{height:46px;box-sizing:border-box;padding:0 var(--sp-10);border-bottom:1px solid var(--sep);display:flex;align-items:center;gap:var(--sp-8);min-width:0;background:var(--sidebar)}
-.paper-chat-head .paper-chat-title{font-size:var(--fs-sm);font-weight:var(--fw-title);color:var(--sec)}
-.paper-chat .msgs{flex:1;overflow:auto;padding:var(--sp-16) 0;gap:var(--sp-14)}
+.paper-chat .msgs{padding:var(--sp-16) 0;gap:var(--sp-14)}
 .paper-chat .mwrap{width:calc(100% - 24px)}
 .paper-chat .bubble,.paper-chat .answer,.paper-chat .event{font-size:var(--fs-sm);line-height:1.5}
 .paper-chat .composer{padding:var(--sp-10) 0 var(--sp-12)}
@@ -74,14 +72,10 @@
 .selection-tools .form-textarea{width:100%;resize:none;field-sizing:content;max-height:calc(6lh + 2 * var(--sp-8) + 2px)}
 
 .reading-notes{width:320px;min-width:320px;box-sizing:border-box;border-left:1px solid var(--sep);background:var(--content);display:flex;flex-direction:column;overflow:hidden}
-/* The heading bar of every reader rail panel */
-.reader-panel-head{flex:none;height:46px;box-sizing:border-box;padding:0 var(--sp-14);display:flex;align-items:center;justify-content:space-between;gap:var(--sp-8);border-bottom:1px solid var(--sep)}
-.reader-panel-head strong{font-size:var(--fs-sm)}
-.reader-panel-head>span{font-size:var(--fs-cap);color:var(--ter)}
 .note-compose{padding:var(--sp-12);border-bottom:1px solid var(--sep);display:flex;flex-direction:column;gap:var(--sp-8);align-items:flex-end}
 .note-compose .form-textarea,.reading-card .form-textarea{width:100%}
 .note-compose .form-textarea{min-height:86px}.reading-card .form-textarea{min-height:64px}
-.reading-list{flex:1;overflow:auto;padding:var(--sp-12);display:flex;flex-direction:column}
+.reading-list{padding:var(--sp-12);display:flex;flex-direction:column}
 .reading-actions{display:flex;align-items:center;justify-content:flex-end}
 .highlight-card blockquote{max-height:calc(4 * 1lh);margin:0;color:var(--sec);font-size:var(--fs-sm);line-height:1.45}
 .reading-remark{width:320px;min-width:320px;box-sizing:border-box;border-left:1px solid var(--sep);background:var(--content);display:flex;flex-direction:column;overflow:hidden}
@@ -100,26 +94,19 @@
 .reader-rail button.on{background:var(--selected);color:var(--on-selected)}
 .reader-rail svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
 
-.zoomctl{position:absolute;bottom:16px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:var(--sp-2);background:var(--card);border-radius:var(--r-full);padding:var(--sp-4) var(--sp-6);box-shadow:var(--sh-2);z-index:22}
-.zoomctl .zoom-reset{min-width:52px}
 
 @media (max-width:1100px){.main.reading{--rrw:260px}}
 @media (max-width:900px){.reader-side{flex-basis:322px}.reader-side.collapsed{flex-basis:42px}.reader-side>.reader-meta,.reader-side>.reading-notes,.reader-side>.reading-remark,.reader-side>.wiki-ingest{width:280px;min-width:280px}}
 
-.wiki-ingest{box-sizing:border-box;background:var(--content);display:flex;flex-direction:column;overflow:auto}
+.wiki-ingest{box-sizing:border-box;background:var(--content);display:flex;flex-direction:column}
 .wiki-ingest-body{padding:var(--sp-12);display:flex;flex-direction:column;align-items:stretch}
 .wiki-ingest-body>p{font-size:var(--fs-sm);line-height:1.55;color:var(--sec);margin:0}
-.wiki-ingest-scope{margin:0 0 var(--sp-10);border:1px solid var(--sep2);border-radius:var(--r-card);overflow:hidden;background:var(--card)}
-.wiki-ingest-scope>div{height:35px;padding:0 var(--sp-10);display:flex;align-items:center;justify-content:space-between;border-top:1px solid var(--sep)}
-.wiki-ingest-scope>div:first-child{border-top:0}
-.wiki-ingest-scope span{color:var(--ter);font-size:var(--fs-cap)}
-.wiki-ingest-scope strong{font-size:var(--fs-sm)}
 .wiki-ingest .wiki-ingest-status{margin-top:var(--sp-10);padding:0 var(--sp-2)}
 .wiki-ingest-actions{display:flex;justify-content:flex-end;gap:var(--sp-8);margin-top:var(--sp-14)}
 .wiki-ingest-review{margin-top:var(--sp-14);padding-top:var(--sp-14);border-top:1px solid var(--sep2)}
-.wiki-ingest-review .form-textarea{width:100%;min-height:360px;font-family:var(--mono);font-size:var(--fs-cap);line-height:1.55}
+.wiki-ingest-review .form-textarea{width:100%;min-height:360px}
 .wiki-ingest-body>.tag{align-self:flex-start;margin-top:var(--sp-10)}
 .wiki-ingest-rejection{margin-top:var(--sp-14);padding:var(--sp-12);background:var(--field);border-radius:var(--r-lg)}
 .wiki-ingest-rejection-reasons{margin-bottom:var(--sp-10)}
-.wiki-ingest-rejection>.form-textarea{min-height:62px;font-family:var(--sans);font-size:var(--fs-sm)}
+.wiki-ingest-rejection>.form-textarea{min-height:62px}
 .wiki-ingest-rejection .wiki-ingest-actions{margin-top:var(--sp-10)}

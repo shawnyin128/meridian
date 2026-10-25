@@ -159,8 +159,8 @@ describe('新建和添加的控件', () => {
   it('屏幕不手搭加号:AddAction 之外的加号只用来放大,或者是候选列表里新建的那一行', () => {
     /** The ＋ glyphs that are no create or add control, by source and the element holding the glyph. */
     const OTHER_PLUSES = [
-      { reason: 'the zoom-in of a zoom control, which adds nothing', keys: ['routes/Reader.tsx IconButton', 'components/project/ResearchGraph.tsx IconButton'] },
-      { reason: 'the create row among a picker\'s candidates, an option of its list', keys: ['components/TagChips.tsx PickOption', 'components/paper-table/CellPicker.tsx PickOption'] },
+      { reason: 'the zoom-in of a zoom control, which adds nothing', keys: ['components/ZoomControl.tsx IconButton'] },
+      { reason: 'the create row among a picker\'s candidates, an option of its list', keys: ['components/CandidateField.tsx PickOption'] },
     ]
     const allowed = new Set(OTHER_PLUSES.flatMap(({ keys }) => keys))
     const pluses = READ.flatMap(({ path, found }) => found

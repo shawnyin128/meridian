@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest'
 import type { PaperColumns } from '../../shared/contract.js'
 import { papers as papersZh } from '../messages/zh/papers.js'
-import { columnsNote, movedColumnOrder } from './PaperTable.js'
+import { columnsNote } from './PaperTable.js'
 
 const notices = papersZh.notices
 const base: PaperColumns = {
@@ -37,19 +37,6 @@ describe('columnsNote', () => {
 
   it('什么都没动时没有可报的', () => {
     expect(columnsNote(base, { ...base }, notices)).toBeUndefined()
-  })
-
-  it('标题不进顺序,其余内置列与自定义列可以持久化换位', () => {
-    const order = movedColumnOrder(base, 'topics', 'short')
-    expect(order[0]).toBe('topics')
-    expect(order.indexOf('short')).toBeLessThan(order.indexOf('rating'))
-    expect(order).toContain('note')
-    expect(order).not.toContain('t')
-  })
-
-  it('拖到列的右半边时放到该列之后', () => {
-    const order = movedColumnOrder(base, 'topics', 'short', true)
-    expect(order.indexOf('topics')).toBe(order.indexOf('short') + 1)
   })
 
   it('删列压过同一次里的改名', () => {

@@ -7,11 +7,11 @@ import { wiki } from '../../ipc.js'
 import { claimId } from '../../lib/slug.js'
 import { useFormat } from '../../lib/format.js'
 import { useMessages } from '../../messages/useMessages.js'
-import { DraftForm, DraftLine } from '../DraftForm.js'
+import { DraftForm } from '../DraftForm.js'
 import { EmptyState } from '../EmptyState.js'
 import { FadeText } from '../FadeText.js'
 import { ChoicePicker } from '../FieldPickers.js'
-import { FormInput } from '../FormControls.js'
+import { FieldRow, FormInput } from '../FormControls.js'
 import { SectionHeading } from '../PageShell.js'
 import { PanelClose } from '../PanelClose.js'
 import { AgentLabel } from '../SourceLabel.js'
@@ -24,8 +24,8 @@ import { ProjectSignalDate, ProjectSignalKind } from './ProjectSignals.js'
 import { Button } from '../Button.js'
 import './ProjectConclusions.css'
 
-const STATE_TONE: Record<ConclusionState, 'warn' | 'good' | 'bad'> = {
-  pending: 'warn', verified: 'good', conflicting: 'bad',
+const STATE: Record<ConclusionState, 'warning' | 'done'> = {
+  pending: 'warning', verified: 'done', conflicting: 'warning',
 }
 
 type NodeLook = { label: string; mode: NonNullable<GraphNode['mode']> }
@@ -51,7 +51,7 @@ export function ProjectConclusionRow({ conclusion, node, selected, onOpen }: {
       className="attnrow record-row conclusion-row" selected={selected}
       data-conclusion={conclusion.id} onActivate={onOpen}
     >
-      <ProjectSignalKind tone={STATE_TONE[conclusion.state]}>{c.state[conclusion.state]}</ProjectSignalKind>
+      <ProjectSignalKind state={STATE[conclusion.state]}>{c.state[conclusion.state]}</ProjectSignalKind>
       <ProjectSignalDate date={conclusion.date} />
       <span className="attn-text record-text">
         <FadeText className="record-line" expand>
@@ -122,7 +122,7 @@ export function ProjectConclusionPanel({
   return (
     <>
       <SectionHeading
-        variant="rail" className="node-document-head"
+        level="group" className="node-document-head" data-stuck-fade="top"
         actions={(
           <>
             {conclusion.node !== undefined && conclusion.fingerprint !== undefined && conclusion.state === 'pending'
@@ -140,7 +140,7 @@ export function ProjectConclusionPanel({
       </SectionHeading>
       <p className="conclusion-detail-text">{conclusion.text}</p>
       <div className="conclusion-detail-meta">
-        <ProjectSignalKind tone={STATE_TONE[conclusion.state]}>{c.state[conclusion.state]}</ProjectSignalKind>
+        <ProjectSignalKind state={STATE[conclusion.state]}>{c.state[conclusion.state]}</ProjectSignalKind>
         {conclusion.date === undefined ? null : <span className="conclusion-detail-date">{fmt.date(conclusion.date)}</span>}
       </div>
       {draft === null
@@ -167,13 +167,13 @@ export function ProjectConclusionPanel({
                     value={draft.text} aria-label={c.text} aria-invalid={invalid(draft.text.trim() === '')}
                     onChange={(event) => setDraft({ ...draft, text: event.target.value })}
                   />
-                  <DraftLine>
+                  <FieldRow>
                     <span className="conclusion-draft-evidence">
                       <Tag>{m.wiki.claims.experiment}</Tag>
                       <EntityLink kind="project" label={projectName} />
                       <span>{conclusion.node === undefined ? conclusion.text : node?.label ?? conclusion.node}</span>
                     </span>
-                  </DraftLine>
+                  </FieldRow>
                 </>
               )}
             </DraftForm>
@@ -183,13 +183,13 @@ export function ProjectConclusionPanel({
       {conclusion.node === undefined
         ? (
           <>
-            <SectionHeading variant="rail">{c.source}</SectionHeading>
+            <SectionHeading level="group">{c.source}</SectionHeading>
             <p className="conclusion-detail-source">{conclusion.source}</p>
           </>
         )
         : (
           <>
-            <SectionHeading variant="rail" count={conclusion.tasks.length}>{c.tasks}</SectionHeading>
+            <SectionHeading level="group" count={conclusion.tasks.length}>{c.tasks}</SectionHeading>
             {conclusion.tasks.length === 0
               ? <EmptyState variant="section" />
               : (
@@ -202,7 +202,7 @@ export function ProjectConclusionPanel({
                   ))}
                 </List>
               )}
-            <SectionHeading variant="rail">{c.node}</SectionHeading>
+            <SectionHeading level="group">{c.node}</SectionHeading>
             {node === undefined
               ? null
               : (
@@ -210,7 +210,7 @@ export function ProjectConclusionPanel({
                   <EntityLink kind="node" label={node.label} mode={node.mode} onOpen={() => onOpenNode(conclusion.node!)} />
                 </div>
               )}
-            <SectionHeading variant="rail" count={conclusion.experiments.length}>{c.experiments}</SectionHeading>
+            <SectionHeading level="group" count={conclusion.experiments.length}>{c.experiments}</SectionHeading>
             {conclusion.experiments.length === 0
               ? <EmptyState variant="section" />
               : (
@@ -226,7 +226,7 @@ export function ProjectConclusionPanel({
           </>
         )}
 
-      <SectionHeading variant="rail">{c.wiki}</SectionHeading>
+      <SectionHeading level="group">{c.wiki}</SectionHeading>
       {conclusion.wiki.length === 0
         ? <EmptyState variant="section" />
         : (

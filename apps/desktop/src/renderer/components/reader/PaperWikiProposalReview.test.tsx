@@ -40,7 +40,7 @@ describe('PaperWikiProposalReview', () => {
     const group = host.querySelector('.list--embedded .paper-wiki-review-group')!
     expect(group.querySelector('.tag')!.textContent).toBe('论文原文')
     expect([...group.querySelectorAll('.proposal-text')].map((text) => text.textContent)).toEqual(['一句话'])
-    expect([...group.querySelectorAll('.proposal-row')].map((row) => [row.querySelector('dt')!.textContent, row.querySelector('dd')!.textContent]))
+    expect([...group.querySelectorAll('.proposal-rows .property')].map((row) => [row.querySelector('dt')!.textContent, row.querySelector('dd')!.textContent]))
       .toEqual([['输入', '原始分数'], ['输出', '校准分数'], ['原文', 'p.2'], ['你的笔记', '高亮批注']])
     expect(group.querySelectorAll('.proposal-rows')).toHaveLength(1)
     const anchor = group.querySelector<HTMLButtonElement>('.source-anchor')!
@@ -73,7 +73,7 @@ describe('PaperWikiProposalReview', () => {
       <MessagesProvider><PaperWikiProposalReview review={review} onJump={() => {}} /></MessagesProvider>,
     )
     return [...host.querySelectorAll('.paper-wiki-review-section')].map((section) => [
-      section.querySelector('h4')!.firstChild!.textContent, section.querySelector('.empty-state')?.textContent,
+      section.querySelector('.section-heading > span')!.firstChild!.textContent, section.querySelector('.empty-state')?.textContent,
     ])
   }
 
@@ -139,7 +139,7 @@ describe('PaperWikiProposalReview', () => {
       host.innerHTML = renderToStaticMarkup(
         <MessagesProvider><PaperWikiProposalReview review={review} onJump={() => {}} /></MessagesProvider>,
       )
-      return [...host.querySelectorAll('.paper-wiki-review-group')].map((group) => [...group.querySelectorAll('.proposal-row dt')].map((dt) => dt.textContent))
+      return [...host.querySelectorAll('.paper-wiki-review-group')].map((group) => [...group.querySelectorAll('.proposal-rows .property dt')].map((dt) => dt.textContent))
     }
     expect(labels('zh')).toEqual(groups.map(([, stored]) => [...stored]))
     expect(labels('en')).toEqual([

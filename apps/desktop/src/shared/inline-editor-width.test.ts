@@ -14,8 +14,8 @@ const { document, getComputedStyle } = globalThis as unknown as Window
 const RENDERER = join(import.meta.dirname, '..', 'renderer')
 /** The stylesheets that style an in-place editor in a property list, in bundle order. */
 const SHEETS = [
-  'components/FormControls.css', 'routes/shell.css', 'components/PaperMetadata.css',
-  'components/TagChips.css', 'components/paper-table/PaperTable.css', 'components/project/ProjectSections.css', 'routes/Wiki.css',
+  'components/FormControls.css', 'components/PropertyList.css', 'routes/shell.css', 'components/PaperMetadata.css',
+  'components/ChipList.css', 'components/paper-table/PaperTable.css', 'components/project/ProjectSections.css', 'routes/Wiki.css',
 ]
 
 const MULTILINE = 'form-control form-textarea form-control-inline metadata-input multiline'
@@ -27,14 +27,14 @@ const LINK_FIELD = 'form-control form-input form-control-inline inedit'
  * a project's relations.
  */
 const MARKUP = `<div class="wkside" id="rail-column">
-  <div class="wkprops"><div class="pk">当前目标</div><span class="metadata-field"><textarea class="${MULTILINE}" id="rail"></textarea></span></div>
+  <dl class="property-list"><div class="property"><dt class="property-label">当前目标</dt><dd class="property-value"><span class="metadata-field"><textarea class="${MULTILINE}" id="rail"></textarea></span></dd></div></dl>
   <div class="wkrel"><span class="rl">链接</span><span class="reladd"><div class="urldraft">
     <input class="${LINK_FIELD}" id="address"><input class="${LINK_FIELD}" id="link-name">
   </div></span></div>
 </div>
 <div class="pdetail">
   <div class="pd-h"><span class="pd-t"><span class="metadata-field"><textarea class="${MULTILINE}" id="paper-title"></textarea></span></span></div>
-  <dl class="paper-meta-list"><dt>作者</dt><dd><span class="metadata-field"><textarea class="${MULTILINE}" id="paper-field"></textarea></span></dd></dl>
+  <div class="paper-meta-list"><dl class="property-list"><div class="property"><dt class="property-label">作者</dt><dd class="property-value"><span class="metadata-field"><textarea class="${MULTILINE}" id="paper-field"></textarea></span></dd></div></dl></div>
 </div>`
 
 /**

@@ -1,11 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
-import { ClearableInput } from '../components/ClearableInput.js'
+import { SearchField } from '../components/ClearableInput.js'
 import { EmptyState } from '../components/EmptyState.js'
-import { IconSearch } from '../components/icons.js'
 import { ModalDialog, ModalTitle } from '../components/ModalDialog.js'
 import { PickOption } from '../components/PickerPopover.js'
+import { ScrollArea } from '../components/ScrollArea.js'
 import { useCandidateKeys } from '../hooks/useCandidateKeys.js'
-import { useScrollFade } from '../hooks/useScrollFade.js'
 import { composing } from '../lib/keyboard.js'
 import { useMessages } from '../messages/useMessages.js'
 
@@ -24,7 +23,6 @@ function PaletteBody({ commands, onCommand }: {
   const m = useMessages()
   const [q, setQ] = useState('')
   const list = useRef<HTMLDivElement | null>(null)
-  const listFade = useScrollFade('y', list)
 
   const needle = q.trim().toLowerCase()
   const shown = commands.filter((command) => command.label.toLowerCase().includes(needle))
@@ -37,9 +35,9 @@ function PaletteBody({ commands, onCommand }: {
   }, [keys.active])
 
   return (
-    <>
-      <ModalTitle className="cmdk-title">{m.shell.palette.title}</ModalTitle>
-      <ClearableInput
+    <div className="cmdk-body">
+      <ModalTitle hidden>{m.shell.palette.title}</ModalTitle>
+      <SearchField
         wrapperClassName="cmdk-field" id="cmdkq" placeholder={m.shell.palette.placeholder} autoComplete="off" value={q}
         onChange={(e) => setQ(e.target.value)} onClear={() => setQ('')}
         onKeyDown={(e) => {
@@ -48,18 +46,17 @@ function PaletteBody({ commands, onCommand }: {
           // The Enter that chooses must not also press whatever the chosen row opens, such as a dialog's close button.
           if (e.key === 'Enter') e.preventDefault()
         }}
-        leading={<IconSearch />}
       />
-      <div className="cmdk-list" ref={listFade}>
+      <ScrollArea axis="y" className="cmdk-list" ref={list}>
         {shown.map((command, at) => (
           <PickOption keys={keys} index={at} key={command.label} onClick={() => choose(at)}>
             {command.label}
             {command.shortcut === undefined ? null : <span className="mi-key">{command.shortcut}</span>}
           </PickOption>
         ))}
-        {shown.length === 0 ? <EmptyState variant="results" /> : null}
-      </div>
-    </>
+        {shown.length === 0 ? <EmptyState variant="option" /> : null}
+      </ScrollArea>
+    </div>
   )
 }
 
@@ -85,7 +82,7 @@ export function CommandPalette({ open, onOpenChange, commands }: {
   }
 
   return (
-    <ModalDialog open={open} onOpenChange={onOpenChange} size="form" className="cmdk" restoreFocus={!chosen}>
+    <ModalDialog open={open} onOpenChange={onOpenChange} size="form" place="top" className="cmdk" restoreFocus={!chosen}>
       <PaletteBody commands={commands} onCommand={(command) => close(command.run)} />
     </ModalDialog>
   )

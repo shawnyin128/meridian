@@ -17,12 +17,12 @@ import {
 } from '../shell/AppShell.js'
 import { CommitActions } from '../components/CommitActions.js'
 import { AddAction } from '../components/AddAction.js'
-import { DraftForm, DraftLine } from '../components/DraftForm.js'
+import { DraftForm } from '../components/DraftForm.js'
 import { MenuItem } from '../components/ActionMenu.js'
 import { EmptyState } from '../components/EmptyState.js'
 import { LoadingPlaceholder } from '../components/LoadingPlaceholder.js'
 import { DetailPanel } from '../components/DetailPanel.js'
-import { ChoicePicker, DateButton, DotsMenu, PriorityPicker } from '../components/FieldPickers.js'
+import { ChoicePicker, DateRangeField, DotsMenu, PriorityPicker } from '../components/FieldPickers.js'
 import { IconButton } from '../components/IconButton.js'
 import { IconOpen } from '../components/icons.js'
 import { SegmentedControl } from '../components/SegmentedControl.js'
@@ -38,6 +38,7 @@ import {
   ProjectBlockerView, ProjectNextActionView,
 } from '../components/project/ProjectControl.js'
 import { ProjectIdentityFields, ProjectPriorityTag } from '../components/project/ProjectIdentity.js'
+import { Property, PropertyList } from '../components/PropertyList.js'
 import {
   attachmentSizeText, PROJECT_PAPER_GROUP, PROJECT_RELATION_GROUPS, PROJECT_URL_GROUP, ProjectAgentSessions,
   ProjectAreasField, ProjectAttachments, ProjectMemo, ProjectRelations, ProjectUrlDraft,
@@ -52,11 +53,10 @@ import { IdeaDraft, type IdeaDraftText } from '../components/ideas/IdeaDraft.js'
 import { newPlanRow, ProjectPlan, ProjectTaskPanel } from '../components/project/ProjectPlan.js'
 import type { PlanCreating, PlanTab } from '../components/project/ProjectPlan.js'
 import { BackButton } from '../components/BackButton.js'
-import { dnum } from '../../shared/dates.js'
 import { useMessages } from '../messages/useMessages.js'
 import { InlineMetadataField } from '../components/InlineField.js'
 import { ModalDialog } from '../components/ModalDialog.js'
-import { DirectoryField, FormInput } from '../components/FormControls.js'
+import { DirectoryField, FieldRow, FieldRows, FormInput } from '../components/FormControls.js'
 import { InlineMessage } from '../components/InlineMessage.js'
 import { SshFolderBrowser, SshHostField, useSshFolders } from '../components/SshFolderPicker.js'
 import {
@@ -75,6 +75,7 @@ import { useUndo } from '../hooks/useUndo.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
 import { useScrollFade } from '../hooks/useScrollFade.js'
 import { useSourceChatDeleted } from '../hooks/useSourceChatDeleted.js'
+import { ARRIVAL_FLASH_MS, useArrival } from '../hooks/useArrival.js'
 import { FadeText } from '../components/FadeText.js'
 import './shell.css'
 import './ProjectDetail.css'
@@ -161,14 +162,14 @@ export function ProjectIdeaPanel({
                       aria-invalid={invalid(draft.label.trim() === '')}
                       onChange={(event) => setDraft({ ...draft, label: event.target.value })}
                     />
-                    <DraftLine label={g.afterLabel}>
+                    <FieldRow label={g.afterLabel}>
                       <ChoicePicker
                         appearance="field" aria-label={g.afterLabel} value={draft.after}
                         options={['', ...graph.nodes.map((node) => node.id)]}
                         label={(id) => (id === '' ? g.newRootOption : graph.nodes.find((node) => node.id === id)?.label ?? id)}
                         onPick={(after) => setDraft({ ...draft, after })}
                       />
-                    </DraftLine>
+                    </FieldRow>
                   </>
                 )}
               </DraftForm>
@@ -487,18 +488,10 @@ export function ProjectDetail({
     document.querySelector('.screenslot:not([hidden]) .node-document-pane')?.scrollTo({ top: 0 })
   }, [selectedNode, selectedIdeaId, selectedConclusion])
 
+  useArrival(flash, true, ({ id }) => planList.current?.querySelector(`[data-row="${CSS.escape(id)}"]`))
   useEffect(() => {
     if (!flash) return
-    const row = planList.current?.querySelector<HTMLElement>(`[data-row="${flash.id}"]`)
-    if (row) {
-      row.scrollIntoView({ block: 'nearest' })
-      // The row's class does not change: without clearing the animation and forcing a layout, locating
-      // the same row a second time would not replay the flash.
-      row.style.animation = 'none'
-      row.getBoundingClientRect()
-      row.style.animation = ''
-    }
-    const timer = window.setTimeout(() => setFlash(null), 1200)
+    const timer = window.setTimeout(() => setFlash(null), ARRIVAL_FLASH_MS)
     return () => window.clearTimeout(timer)
   }, [flash])
 
@@ -636,7 +629,7 @@ export function ProjectDetail({
           <PageTitle>{m.project.loadingTitle}</PageTitle>
         </PageHeader>
         <PageError error={error} />
-        <PageBody>{error === null ? <LoadingPlaceholder shape="lines" count={6} /> : null}</PageBody>
+        <PageBody column="prose">{error === null ? <LoadingPlaceholder shape="lines" count={6} /> : null}</PageBody>
       </PageShell>
     )
   }
@@ -794,14 +787,16 @@ export function ProjectDetail({
                   id="workspaceLocal" className="workspace-form"
                   onSubmit={(event) => { event.preventDefault(); void connectLocalWorkspace() }}
                 >
-                  <label>{m.project.workspace.pathLabel}
-                    <DirectoryField
-                      value={localPath} autoFocus required placeholder={m.project.workspace.localPlaceholder}
-                      chooseLabel={m.project.workspace.chooseLocal}
-                      onChoose={() => { void chooseLocalWorkspace() }}
-                      onChange={(event) => setLocalPath(event.target.value)}
-                    />
-                  </label>
+                  <FieldRows>
+                    <FieldRow label={m.project.workspace.pathLabel}>
+                      <DirectoryField
+                        value={localPath} autoFocus required placeholder={m.project.workspace.localPlaceholder}
+                        chooseLabel={m.project.workspace.chooseLocal}
+                        onChoose={() => { void chooseLocalWorkspace() }}
+                        onChange={(event) => setLocalPath(event.target.value)}
+                      />
+                    </FieldRow>
+                  </FieldRows>
                 </form>
               )
               : (
@@ -809,27 +804,29 @@ export function ProjectDetail({
                   id="workspaceSsh" className="workspace-form"
                   onSubmit={(event) => { event.preventDefault(); void submitSshWorkspace() }}
                 >
-                  <label>{m.project.workspace.hostLabel}
-                    <SshHostField
-                      value={sshHost} autoFocus required placeholder={m.project.workspace.hostPlaceholder}
-                      onValue={(host) => { setSshHost(host); remote.reset() }} onError={report}
-                    />
-                  </label>
-                  <label>{m.project.workspace.portLabel}
-                    <FormInput
-                      appearance="field" value={sshPort} type="number" min={1} max={65_535}
-                      placeholder={m.project.workspace.portLabel}
-                      onChange={(event) => { setSshPort(event.target.value); remote.reset() }}
-                    />
-                  </label>
-                  {remote.folder === null
-                    ? remote.issue === null ? null : <InlineMessage tone="error" variant="line">{remote.issue}</InlineMessage>
-                    : <SshFolderBrowser choice={remote} />}
+                  <FieldRows>
+                    <FieldRow label={m.project.workspace.hostLabel}>
+                      <SshHostField
+                        value={sshHost} autoFocus required placeholder={m.project.workspace.hostPlaceholder}
+                        onValue={(host) => { setSshHost(host); remote.reset() }} onError={report}
+                      />
+                    </FieldRow>
+                    <FieldRow label={m.project.workspace.portLabel}>
+                      <FormInput
+                        appearance="field" value={sshPort} type="number" min={1} max={65_535}
+                        placeholder={m.project.workspace.portLabel}
+                        onChange={(event) => { setSshPort(event.target.value); remote.reset() }}
+                      />
+                    </FieldRow>
+                    {remote.folder === null
+                      ? remote.issue === null ? null : <InlineMessage tone="error" variant="line">{remote.issue}</InlineMessage>
+                      : <SshFolderBrowser choice={remote} />}
+                  </FieldRows>
                 </form>
               )}
       </ModalDialog>
 
-      <PageBody className="project-detail-body">
+      <PageBody className="project-detail-body" column="prose">
         <ProjectTimeline
           project={project} hoverMilestone={hoverMilestone} onHoverMilestone={setHoverMilestone}
           onLocateTask={locateTask}
@@ -1039,8 +1036,8 @@ export function ProjectDetail({
               : node === undefined
               ? (
                 <>
-                  <SectionHeading variant="rail">{m.project.identity.heading}</SectionHeading>
-                  <div className="wkprops">
+                  <SectionHeading level="group">{m.project.identity.heading}</SectionHeading>
+                  <PropertyList>
                     <ProjectIdentityFields
                       project={project}
                       fields={{
@@ -1077,88 +1074,79 @@ export function ProjectDetail({
                         ),
                       }}
                     />
-                    <div className="pk">{m.project.identity.focusLabel[FOCUS_KEY[project.status]]}</div>
-                    <InlineMetadataField
-                      label={m.project.identity.focusLabel[FOCUS_KEY[project.status]]} value={project.focus}
-                      keep={{ scope: ['project', projectId], target: 'focus' }}
-                      onSave={(focus) => {
-                        const next = focus.trim()
-                        const label = m.project.identity.focusLabel[FOCUS_KEY[project.status]]
-                        if (next === '') { notice.refusal(m.project.identity.focusRequired(label)); return false }
-                        // On submit, close any editor open elsewhere without waiting for this write; whether
-                        // this field closes is left to InlineMetadataField, which follows the write's result
-                        discardOpenEdits()
-                        return writeProject(updateProject({ focus: next }))
-                      }}
-                    />
-                    <div className="pk">{m.project.control.nextAction}</div>
-                    <ProjectNextActionView action={controlState.next} />
-                    <div className="pk">{m.project.control.blocker}</div>
-                    <InlineMetadataField
-                      label={m.project.control.blocker} value={project.block ?? ''} keep={{ scope: ['project', projectId], target: 'block' }}
-                      display={<ProjectBlockerView blocker={controlState.blocker} />}
-                      onSave={(value) => {
-                        const next = value.trim()
-                        return writeProject(updateProject({ block: next === '' ? null : next }))
-                      }}
-                    />
-                    <div className="pk">{m.project.identity.startLabel}</div>
-                    <DateButton
-                      iso={project.start} className="pv metadata-editable"
-                      onPick={(start) => {
-                        if (dnum(start) > dnum(project.due)) {
-                          notice.refusal(m.project.identity.startAfterDue)
-                          return
-                        }
-                        applyWrite(updateProject({ start }))
-                      }}
-                    />
-                    <div className="pk">{m.project.identity.dueLabel}</div>
-                    <DateButton
-                      iso={project.due} className="pv metadata-editable"
-                      onPick={(due) => {
-                        if (dnum(due) < dnum(project.start)) {
-                          notice.refusal(m.project.identity.dueBeforeStart)
-                          return
-                        }
-                        applyWrite(updateProject({ due }))
-                      }}
-                    />
-                    <div className="pk">{m.project.sections.papers}</div>
-                    <div className="pv">
-                      {m.project.identity.paperCount(project.paperCount)}
-                    </div>
-                    <div className="pk">{m.project.identity.workspaceLabel}</div>
-                    {project.workspace === undefined
-                      ? (
-                        <button className="pv metadata-editable" onClick={openWorkspace}>
-                          {m.project.workspace.connect}
-                        </button>
-                      )
-                      : (
-                        <div className="pv workspace-field" data-row-actions="">
-                          <WorkspaceRoot
-                            state={project.workspace.state} name={workspaceName ?? project.workspace.root}
-                            root={project.workspace.root} onOpen={openWorkspace}
-                          />
-                          <RowActions>
-                            <DotsMenu>
-                              <MenuItem onSelect={refreshWorkspace}>{m.project.identity.refreshWorkspace}</MenuItem>
-                              <MenuItem onSelect={openWorkspace}>
-                                {m.project.identity.changeWorkspace}
-                              </MenuItem>
-                              <MenuItem
-                                className="mi danger"
-                                onSelect={() => applyWrite(projectApi.bindWorkspace(projectId, null))}
-                              >{m.project.identity.disconnectWorkspace}</MenuItem>
-                            </DotsMenu>
-                          </RowActions>
-                        </div>
+                    <Property label={m.project.identity.focusLabel[FOCUS_KEY[project.status]]}>
+                      <InlineMetadataField
+                        label={m.project.identity.focusLabel[FOCUS_KEY[project.status]]} value={project.focus}
+                        keep={{ scope: ['project', projectId], target: 'focus' }}
+                        onSave={(focus) => {
+                          const next = focus.trim()
+                          const label = m.project.identity.focusLabel[FOCUS_KEY[project.status]]
+                          if (next === '') { notice.refusal(m.project.identity.focusRequired(label)); return false }
+                          // On submit, close any editor open elsewhere without waiting for this write; whether
+                          // this field closes is left to InlineMetadataField, which follows the write's result
+                          discardOpenEdits()
+                          return writeProject(updateProject({ focus: next }))
+                        }}
+                      />
+                    </Property>
+                    <Property label={m.project.control.nextAction}><ProjectNextActionView action={controlState.next} /></Property>
+                    <Property label={m.project.control.blocker}>
+                      <InlineMetadataField
+                        label={m.project.control.blocker} value={project.block ?? ''} keep={{ scope: ['project', projectId], target: 'block' }}
+                        display={<ProjectBlockerView blocker={controlState.blocker} />}
+                        onSave={(value) => {
+                          const next = value.trim()
+                          return writeProject(updateProject({ block: next === '' ? null : next }))
+                        }}
+                      />
+                    </Property>
+                    <DateRangeField
+                      start={project.start} end={project.due} className="pv metadata-editable"
+                      onChange={(range) => applyWrite(updateProject({
+                        ...(range.start === project.start ? {} : { start: range.start }),
+                        ...(range.end === project.due ? {} : { due: range.end }),
+                      }))}
+                    >
+                      {(start, due) => (
+                        <>
+                          <Property label={m.project.identity.startLabel}>{start}</Property>
+                          <Property label={m.project.identity.dueLabel}>{due}</Property>
+                        </>
                       )}
-                  </div>
+                    </DateRangeField>
+                    <Property label={m.project.sections.papers}>{m.project.identity.paperCount(project.paperCount)}</Property>
+                    <Property label={m.project.identity.workspaceLabel}>
+                      {project.workspace === undefined
+                        ? (
+                          <button className="pv metadata-editable" onClick={openWorkspace}>
+                            {m.project.workspace.connect}
+                          </button>
+                        )
+                        : (
+                          <div className="workspace-field" data-row-actions="">
+                            <WorkspaceRoot
+                              state={project.workspace.state} name={workspaceName ?? project.workspace.root}
+                              root={project.workspace.root} onOpen={openWorkspace}
+                            />
+                            <RowActions>
+                              <DotsMenu>
+                                <MenuItem onSelect={refreshWorkspace}>{m.project.identity.refreshWorkspace}</MenuItem>
+                                <MenuItem onSelect={openWorkspace}>
+                                  {m.project.identity.changeWorkspace}
+                                </MenuItem>
+                                <MenuItem
+                                  className="mi danger"
+                                  onSelect={() => applyWrite(projectApi.bindWorkspace(projectId, null))}
+                                >{m.project.identity.disconnectWorkspace}</MenuItem>
+                              </DotsMenu>
+                            </RowActions>
+                          </div>
+                        )}
+                    </Property>
+                  </PropertyList>
 
                   <SectionHeading
-                    variant="rail"
+                    level="group"
                     actions={(
                       <AddAction size="compact" ref={relAdd} label={m.project.links.addTitle} onClick={relDraft.start}>
                         {m.project.sections.links}

@@ -15,21 +15,23 @@ type Window = {
 }
 const { document, getComputedStyle } = globalThis as unknown as Window
 
-const STYLES = readFileSync(join(import.meta.dirname, '../renderer/components/DraftForm.css'), 'utf8')
+const RENDERER = join(import.meta.dirname, '../renderer/components')
+/** The stylesheets of a draft and its field rows, in bundle order. */
+const STYLES = ['FormControls.css', 'DraftForm.css'].map((file) => readFileSync(join(RENDERER, file), 'utf8')).join('\n')
 
-// The markup DraftForm and DraftLine render for a claim's conflict draft, plus a line without a label.
+// The markup DraftForm and FieldRow render for a claim's conflict draft, plus a row without a label.
 const DRAFT = `
   <div class="draft-form" id="form">
-    <input class="form-control form-input" id="text">
-    <div class="draft-form-line" id="long-line">
-      <span class="draft-form-label" id="long">与哪一条冲突</span>
-      <div class="draft-form-fields" id="long-fields"><button class="form-control choice-picker"></button></div>
+    <input class="form-control form-input form-control-field" id="text">
+    <div class="field-row" id="long-line">
+      <label class="field-row-label" id="long">与哪一条冲突</label>
+      <div class="field-row-field" id="long-fields"><button class="form-control form-button form-control-field choice-picker"></button></div>
     </div>
-    <div class="draft-form-line" id="short-line">
-      <span class="draft-form-label" id="short">说明</span>
-      <div class="draft-form-fields" id="short-fields"><input class="form-control form-input"></div>
+    <div class="field-row" id="short-line">
+      <label class="field-row-label" id="short">说明</label>
+      <div class="field-row-field" id="short-fields"><input class="form-control form-input form-control-field"></div>
     </div>
-    <div class="draft-form-line" id="bare-line"><div class="draft-form-fields" id="bare-fields">实验</div></div>
+    <div class="field-row" id="bare-line"><div class="field-row-field" id="bare-fields">实验</div></div>
     <div class="draft-form-foot" id="foot"></div>
   </div>`
 

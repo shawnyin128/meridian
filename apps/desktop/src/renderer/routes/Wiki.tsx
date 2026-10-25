@@ -7,8 +7,9 @@ import type {
 import { PAPER_PAGE } from '../../shared/vocabulary.js'
 import { papers, project, wiki } from '../ipc.js'
 import {
-  useCrumbTail, useJump, useNotice, useScreenEntry, useVaultRevision, type CrumbSeg, type ScreenKey,
+  useCrumbTail, useJump, useNotice, useScreenEntry, useVaultRevision, type ScreenKey,
 } from '../shell/AppShell.js'
+import type { CrumbSeg } from '../components/Breadcrumb.js'
 import { AddAction } from '../components/AddAction.js'
 import { ActionPopover } from '../components/ActionPopover.js'
 import { BackButton } from '../components/BackButton.js'
@@ -25,6 +26,7 @@ import { IconCross, IconGear, IconTrash } from '../components/icons.js'
 import { useFormat } from '../lib/format.js'
 import { useMessages } from '../messages/useMessages.js'
 import { InlineMetadataField } from '../components/InlineField.js'
+import { Property, PropertyList } from '../components/PropertyList.js'
 import { LoadingPlaceholder } from '../components/LoadingPlaceholder.js'
 import { NewColumnHead } from '../components/paper-table/ColumnAdd.js'
 import { headingsOf, MarkdownBox } from '../components/Markdown.js'
@@ -32,7 +34,6 @@ import { Pager } from '../components/Pager.js'
 import { PickRow, type PickHit } from '../components/PickRow.js'
 import { nextKey, slugOf } from '../lib/slug.js'
 import { editText, useDraft, useDrafts, usePruneDrafts, type EditDraft } from '../hooks/useDrafts.js'
-import { useRowCap } from '../hooks/useRowCap.js'
 import { useScreenLoad } from '../hooks/useScreenLoad.js'
 import { useUndo } from '../hooks/useUndo.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
@@ -49,10 +50,12 @@ import { SourceAnchor } from '../components/SourceAnchor.js'
 import { CountBadge } from '../components/CountBadge.js'
 import { Tag, TagButton } from '../components/Tag.js'
 import { DraftSlot, focusDraft } from '../components/DraftSlot.js'
-import { Item, ItemOpen, RowActions } from '../components/Item.js'
-import { EMBEDDED_LIST_ROW_LIMIT, List } from '../components/List.js'
+import { Item, ItemOpen } from '../components/Item.js'
+import { List } from '../components/List.js'
+import { Table, TableCell, TableRow, type TableColumn } from '../components/Table.js'
 import { Tooltip } from '../components/Tooltip.js'
 import { useClipped } from '../hooks/useClipped.js'
+import { land } from '../hooks/useArrival.js'
 import { Button } from '../components/Button.js'
 import { CommitActions } from '../components/CommitActions.js'
 import './shell.css'
@@ -91,7 +94,7 @@ function AggregationCard({ card, onOpen, onRemove, pending }: {
   return (
     <Item
       density="card" className="wkcard" data-wk={card.id} onActivate={onOpen}
-      leading={<Tag tone="wiki" className="wkind">{card.kindLabel}</Tag>}
+      leading={<Tag className="wkind">{card.kindLabel}</Tag>}
       title={<ItemOpen className="tt"><FadeText>{card.title}</FadeText></ItemOpen>}
       tags={card.parentCount > 1 ? <Tag className="wkind">{m.wiki.aggregation.parentCount(card.parentCount)}</Tag> : null}
       actions={onRemove === undefined
@@ -126,7 +129,7 @@ function PaperCard({ paper, onOpen }: { paper: PaperRow; onOpen: () => void }) {
   return (
     <Item
       density="card" className="wkcard wkcard--paper" data-wk={`${PAPER_PAGE}${paper.id}`} onActivate={onOpen}
-      leading={<Tag tone="paper" className="wkind">{m.wiki.paperKind}</Tag>}
+      leading={<Tag className="wkind">{m.wiki.paperKind}</Tag>}
       title={(
         <Tooltip label={plainTitle(paper.title)} whenClipped>
           <ItemOpen className="tt"><span ref={title} className={`tt-lines fade-lines${titleCut ? ' clipped' : ''}`}><PaperText text={paper.title} /></span></ItemOpen>
@@ -144,117 +147,102 @@ function Cell({ cell, onAnchor }: { cell: WikiCell; onAnchor: (page: number) => 
   return <>{cell.value}<SourceAnchor page={cell.page} quote={cell.quote} separator=" " onOpen={() => onAnchor(cell.page)} /></>
 }
 
-/** The body rows of the comparison table in `box`, in document order. */
-const comparisonRows = (box: HTMLElement) => [...box.querySelectorAll<HTMLElement>('tbody tr')]
+/** The width the comparison's paper column and each of its other columns start at, in px. */
+const PAPER_WIDTH = 240
+const VALUE_WIDTH = 180
 
 /**
  * The paper comparison: rows are member papers, columns come from the aggregation's columns, empty
  * cells show a dash, and derived columns show chips. Every header cell has a body cell under it in
  * every row. An inner node with no columns and no rows takes no papers directly. Like an embedded
- * list, it shows its header and first five rows as rendered, and the rest scroll inside it.
+ * list, it shows its header and first five rows, and the rest scroll inside it.
  */
-function Table({ agg, onOpen, onAnchor, onRemove, pending, adding, head }: {
+function Comparison({ agg, onOpen, onAnchor, onRemove, pending, adding, head }: {
   agg: WikiAggregation
   onOpen: (id: string) => void
   /** Opens the source of the paper page `paper` at `page`. */
   onAnchor: (paper: string, page: number) => void
-  onRemove?: (paperId: string) => void
+  onRemove: (paperId: string) => void
   pending?: boolean
   /** The placeholder row for adding a paper: `row` goes on its `<tr>`, `input` sits in its first cell. */
   adding?: { row: RefObject<HTMLTableRowElement | null>; input: ReactNode } | undefined
   /**
-   * The cells at the end of the header row: `controls` holds the add-column + and the column-settings
-   * gear; `newColumn` is the placeholder header cell for a new column, null while it is closed. While
-   * it is open, every body row leaves an empty cell in the same position.
+   * The header's ends: `controls` holds the add-column + and the column-settings gear; `newColumn`
+   * is the placeholder header cell for a new column, null while it is closed. While it is open, every
+   * body row leaves an empty cell in the same position.
    */
   head?: { controls: ReactNode; newColumn: ReactNode } | undefined
 }) {
   const m = useMessages()
-  const wrap = useRef<HTMLDivElement | null>(null)
-  const wrapFade = useScrollFade('both', wrap)
-  const cap = useRowCap(wrap, comparisonRows, EMBEDDED_LIST_ROW_LIMIT)
   if (adding === undefined) {
     if (agg.columns.length === 0 && agg.rows.length === 0) {
       return <EmptyState variant="section" />
     }
     if (agg.rows.length === 0) return <EmptyState variant="section" />
   }
+  // Keys by kind, so a column's key never meets the paper column's or a derived column's.
+  const columns: TableColumn[] = [
+    { key: 'paper', label: m.wiki.paperKind, width: PAPER_WIDTH },
+    ...agg.columns.map((c) => ({ key: `column:${c.key}`, label: c.label, width: VALUE_WIDTH })),
+    ...agg.derivedColumns.map((d) => ({
+      key: `derived:${d.key}`, name: d.label, width: VALUE_WIDTH,
+      label: <span className="cmp-derived">{d.label}<Tag className="wkind">{m.wiki.autoColumn}</Tag></span>,
+    })),
+  ]
   return (
-    <div className="cmpwrap" ref={wrapFade} data-fade-held="top" style={cap === null ? undefined : { maxHeight: cap }}>
-      <table className="cmp">
-        <thead>
-          <tr data-row-actions="">
-            <th>{m.wiki.paperKind}</th>
-            {agg.columns.map((c) => <th key={c.key}>{c.label}</th>)}
-            {agg.derivedColumns.map((d) => (
-              <th className="dv" key={d.key}>{d.label}<Tag className="wkind">{m.wiki.autoColumn}</Tag></th>
-            ))}
-            {head?.newColumn}
-            {onRemove === undefined ? null : <th className="rx" />}
-            {head === undefined ? null : <th className="th-add"><RowActions>{head.controls}</RowActions></th>}
-          </tr>
-        </thead>
-        <tbody>
-          {agg.rows.map((row) => (
-            <tr key={row.paper.id} data-row-actions="">
-              <td className="rh">
-                <EntityLink
-                  kind="paper" label={<PaperText text={row.paper.title} />} data-wk={row.paper.id}
-                  title={row.paper.fullTitle === undefined ? undefined : plainTitle(row.paper.fullTitle)}
-                  onOpen={() => onOpen(row.paper.id)}
-                />
-              </td>
-              {agg.columns.map((c) => {
-                const cell = row.cells[c.key]
-                return cell === undefined
-                  ? <td className="na" key={c.key}>—</td>
-                  : <td key={c.key}><Cell cell={cell} onAnchor={(page) => onAnchor(row.paper.id, page)} /></td>
-              })}
-              {agg.derivedColumns.map((d) => {
-                const links = row.derived[d.key] ?? []
-                return (
-                  <td className="dv" key={d.key}>
-                    {links.length === 0 ? '—' : links.map((l) => (
-                      <Tooltip key={l.id} label={l.fullTitle}>
-                        <TagButton shape="chip" className="tagchip" data-wk={l.id} onClick={() => onOpen(l.id)}>
-                          {l.title}
-                        </TagButton>
-                      </Tooltip>
-                    ))}
-                  </td>
-                )
-              })}
-              {head === undefined || head.newColumn === null ? null : <td />}
-              {onRemove === undefined
-                ? null
-                : (
-                  <td className="rx">
-                    <RowActions>
-                      <IconButton
-                        label={m.wiki.removeFromPage} size="nested" aria-disabled={pending}
-                        onClick={() => onRemove(row.paper.id)}
-                      ><IconCross /></IconButton>
-                    </RowActions>
-                  </td>
-                )}
-              {head === undefined ? null : <td className="td-add" />}
-            </tr>
-          ))}
-          {adding === undefined
-            ? null
-            : (
-              <tr className="newrow" ref={adding.row}>
-                <td className="rh">{adding.input}</td>
-                {agg.columns.map((c) => <td className="na" key={c.key}>—</td>)}
-                {agg.derivedColumns.map((d) => <td className="na dv" key={d.key}>—</td>)}
-                {head === undefined || head.newColumn === null ? null : <td />}
-                {onRemove === undefined ? null : <td className="rx" />}
-                {head === undefined ? null : <td className="td-add" />}
-              </tr>
-            )}
-        </tbody>
-      </table>
-    </div>
+    <Table
+      className="cmp" rows="capped" columns={columns} draft={head?.newColumn ?? null}
+      actions={head === undefined ? null : head.controls}
+    >
+      {agg.rows.map((row) => (
+        <TableRow
+          key={row.paper.id}
+          actions={(
+            <IconButton
+              label={m.wiki.removeFromPage} size="nested" aria-disabled={pending}
+              onClick={() => onRemove(row.paper.id)}
+            ><IconCross /></IconButton>
+          )}
+        >
+          <TableCell kind="title" className="rh">
+            <EntityLink
+              kind="paper" label={<PaperText text={row.paper.title} />} data-wk={row.paper.id}
+              title={row.paper.fullTitle === undefined ? undefined : plainTitle(row.paper.fullTitle)}
+              onOpen={() => onOpen(row.paper.id)}
+            />
+          </TableCell>
+          {agg.columns.map((c) => {
+            const cell = row.cells[c.key]
+            return cell === undefined
+              ? <TableCell kind="meta" className="na" key={c.key}>—</TableCell>
+              : <TableCell key={c.key}><Cell cell={cell} onAnchor={(page) => onAnchor(row.paper.id, page)} /></TableCell>
+          })}
+          {agg.derivedColumns.map((d) => {
+            const links = row.derived[d.key] ?? []
+            return links.length === 0 ? <TableCell kind="meta" className="na dv" key={d.key}>—</TableCell> : (
+              <TableCell content="chips" className="dv" key={d.key}>
+                {links.map((l) => (
+                  <Tooltip key={l.id} label={l.fullTitle}>
+                    <TagButton shape="chip" className="tagchip" data-wk={l.id} onClick={() => onOpen(l.id)}>
+                      {l.title}
+                    </TagButton>
+                  </Tooltip>
+                ))}
+              </TableCell>
+            )
+          })}
+        </TableRow>
+      ))}
+      {adding === undefined
+        ? null
+        : (
+          <TableRow className="newrow" ref={adding.row}>
+            <TableCell content="controls" kind="title" className="rh">{adding.input}</TableCell>
+            {agg.columns.map((c) => <TableCell kind="meta" className="na" key={c.key}>—</TableCell>)}
+            {agg.derivedColumns.map((d) => <TableCell kind="meta" className="na dv" key={d.key}>—</TableCell>)}
+          </TableRow>
+        )}
+    </Table>
   )
 }
 
@@ -326,13 +314,16 @@ function Toc({ body, main }: { body: string; main: RefObject<HTMLDivElement | nu
   const base = Math.min(...headings.map((h) => h.depth))
   return (
     <>
-      <SectionHeading variant="rail">{m.wiki.toc}</SectionHeading>
+      <SectionHeading level="group">{m.wiki.toc}</SectionHeading>
       <ul className="wktoc">
         {headings.map((h) => (
           <li className={`l${h.depth - base + 1}${h.id === active ? ' on' : ''}`} key={h.id}>
             <button
               type="button"
-              onClick={() => main.current?.querySelector<HTMLElement>(`#${h.id}`)?.scrollIntoView({ block: 'start' })}
+              onClick={() => {
+                const heading = main.current?.querySelector(`#${h.id}`)
+                if (heading) land(heading, 'start')
+              }}
             ><FadeText label={h.text}>{h.text}</FadeText></button>
           </li>
         ))}
@@ -769,7 +760,7 @@ export function Wiki() {
 
       <PageError error={error} />
 
-      <PageBody className="wiki-body" ref={body}>
+      <PageBody className="wiki-body" column={place === null || place === REVIEW || place === TIDY ? 'page' : 'prose'} ref={body}>
         {error === null && (place === null ? home === null : place !== REVIEW && place !== TIDY && shownAgg === null && shownPaper === null)
           ? <LoadingPlaceholder shape="cards" />
           : null}
@@ -800,7 +791,7 @@ export function Wiki() {
                         ? (
                           <DraftSlot
                             as="card" className="wkcard newcard" slot={addRow}
-                            leading={<Tag tone="wiki" className="wkind">{shownAgg.kindLabel}</Tag>}
+                            leading={<Tag className="wkind">{shownAgg.kindLabel}</Tag>}
                             title={(
                               <PickRow
                                 row={addRow} triggers={[childBtn, paperBtn, colBtn]} allowNew
@@ -826,7 +817,7 @@ export function Wiki() {
                   )}
                 >{m.wiki.paperComparisonHeading}
                 </SectionHeading>
-                <Table
+                <Comparison
                   agg={shownAgg} onOpen={go} onAnchor={openSource} pending={pending}
                   adding={adding !== 'paper'
                     ? undefined
@@ -927,35 +918,34 @@ export function Wiki() {
                 />
               </div>
               <div className="wkside" ref={railFade} data-fade-paint="">
-                <SectionHeading variant="rail">{m.project.identity.heading}</SectionHeading>
-                <div className="wkprops">
-                  <div className="pk">{m.project.identity.typeLabel}</div><div className="pv">{shownAgg.kindLabel}</div>
-                  <div className="pk">{m.project.identity.nameLabel}</div>
-                  <InlineMetadataField
-                    label={m.wiki.nameFieldLabel} value={shownAgg.title} keep={{ scope: ['wiki', shownAgg.id], target: 'title' }}
-                    onSave={(title) => {
-                      const next = title.trim()
-                      if (next === '') { notice.refusal(m.wiki.nameRequired); return false }
-                      return propose(m.wiki.proposals.editMetadata(shownAgg.title), [{
-                        op: 'setAggregationMetadata', page: shownAgg.id, title: next,
-                        splitOn: shownAgg.splitOn ?? null,
-                      }])
-                    }}
-                  />
-                  <div className="pk">{m.wiki.scaleLabel}</div>
-                  <div className="pv">
-                    {m.wiki.scaleSummary(shownAgg.memberCount, shownAgg.childCount)}
-                  </div>
-                  <div className="pk">{m.wiki.splitOnLabel}</div>
-                  <InlineMetadataField
-                    label={m.wiki.splitOnLabel} value={shownAgg.splitOn ?? ''} keep={{ scope: ['wiki', shownAgg.id], target: 'splitOn' }}
-                    onSave={(splitOn) => propose(m.wiki.proposals.editMetadata(shownAgg.title), [{
-                      op: 'setAggregationMetadata', page: shownAgg.id, title: shownAgg.title,
-                      splitOn: splitOn.trim() || null,
-                    }])}
-                  />
-                  <div className="pk">{m.wiki.updatedLabel}</div><div className="pv">{fmt.date(shownAgg.updated)}</div>
-                </div>
+                <SectionHeading level="group">{m.project.identity.heading}</SectionHeading>
+                <PropertyList>
+                  <Property label={m.project.identity.typeLabel}>{shownAgg.kindLabel}</Property>
+                  <Property label={m.project.identity.nameLabel}>
+                    <InlineMetadataField
+                      label={m.wiki.nameFieldLabel} value={shownAgg.title} keep={{ scope: ['wiki', shownAgg.id], target: 'title' }}
+                      onSave={(title) => {
+                        const next = title.trim()
+                        if (next === '') { notice.refusal(m.wiki.nameRequired); return false }
+                        return propose(m.wiki.proposals.editMetadata(shownAgg.title), [{
+                          op: 'setAggregationMetadata', page: shownAgg.id, title: next,
+                          splitOn: shownAgg.splitOn ?? null,
+                        }])
+                      }}
+                    />
+                  </Property>
+                  <Property label={m.wiki.scaleLabel}>{m.wiki.scaleSummary(shownAgg.memberCount, shownAgg.childCount)}</Property>
+                  <Property label={m.wiki.splitOnLabel}>
+                    <InlineMetadataField
+                      label={m.wiki.splitOnLabel} value={shownAgg.splitOn ?? ''} keep={{ scope: ['wiki', shownAgg.id], target: 'splitOn' }}
+                      onSave={(splitOn) => propose(m.wiki.proposals.editMetadata(shownAgg.title), [{
+                        op: 'setAggregationMetadata', page: shownAgg.id, title: shownAgg.title,
+                        splitOn: splitOn.trim() || null,
+                      }])}
+                    />
+                  </Property>
+                  <Property label={m.wiki.updatedLabel}>{fmt.date(shownAgg.updated)}</Property>
+                </PropertyList>
                 <RailLinks
                   heading={m.project.sections.links}
                   rows={[
@@ -989,82 +979,79 @@ export function Wiki() {
                 />
               </div>
               <div className="wkside" ref={paperRailFade} data-fade-paint="">
-                <SectionHeading variant="rail">{m.project.identity.heading}</SectionHeading>
-                <div className="wkprops">
-                  <div className="pk">{m.project.identity.typeLabel}</div><div className="pv">{m.wiki.paperKind}</div>
-                  <div className="pk">{m.wiki.titleLabel}</div>
-                  <InlineMetadataField
-                    label={m.wiki.titleLabel} value={shownPaper.title} keep={{ scope: ['wiki', shownPaper.id], target: 'title' }}
-                    onSave={(title) => {
-                      const next = title.trim()
-                      if (next === '') { notice.refusal(m.wiki.titleRequired); return false }
-                      return updateWikiPaper({ title: next })
-                    }}
-                  />
-                  <div className="pk">{m.wiki.shortTitleLabel}</div>
-                  <InlineMetadataField
-                    label={m.wiki.shortTitleLabel} value={shownPaper.short} keep={{ scope: ['wiki', shownPaper.id], target: 'short' }}
-                    onSave={(shortTitle) => updateWikiPaper({ shortTitle: shortTitle.trim() || null })}
-                  />
-                  <div className="pk">{m.wiki.authorsLabel}</div>
-                  <InlineMetadataField
-                    label={m.wiki.authorsLabel} value={shownPaper.authors.join(', ')} keep={{ scope: ['wiki', shownPaper.id], target: 'authors' }}
-                    onSave={(authors) => updateWikiPaper({
-                      authors: authors.split(/[,，;；\n]/).map((item) => item.trim()).filter(Boolean),
-                    })}
-                  />
-                  <div className="pk">{m.wiki.yearLabel}</div>
-                  <InlineMetadataField
-                    label={m.wiki.yearLabel} value={shownPaper.year?.toString() ?? ''} inputMode="numeric"
-                    keep={{ scope: ['wiki', shownPaper.id], target: 'year' }}
-                    onSave={(year) => {
-                      const text = year.trim()
-                      if (text === '') return updateWikiPaper({ year: null })
-                      const next = Number(text)
-                      if (!Number.isInteger(next) || next < 1000 || next > 3000) {
-                        notice.refusal(m.wiki.yearRange)
-                        return false
-                      }
-                      return updateWikiPaper({ year: next })
-                    }}
-                  />
-                  <div className="pk">{m.wiki.venueLabel}</div>
-                  <InlineMetadataField
-                    label={m.wiki.venueLabel} value={shownPaper.venue} keep={{ scope: ['wiki', shownPaper.id], target: 'venue' }}
-                    onSave={(venue) => updateWikiPaper({ venue: venue.trim() })}
-                  />
+                <SectionHeading level="group">{m.project.identity.heading}</SectionHeading>
+                <PropertyList>
+                  <Property label={m.project.identity.typeLabel}>{m.wiki.paperKind}</Property>
+                  <Property label={m.wiki.titleLabel}>
+                    <InlineMetadataField
+                      label={m.wiki.titleLabel} value={shownPaper.title} keep={{ scope: ['wiki', shownPaper.id], target: 'title' }}
+                      onSave={(title) => {
+                        const next = title.trim()
+                        if (next === '') { notice.refusal(m.wiki.titleRequired); return false }
+                        return updateWikiPaper({ title: next })
+                      }}
+                    />
+                  </Property>
+                  <Property label={m.wiki.shortTitleLabel}>
+                    <InlineMetadataField
+                      label={m.wiki.shortTitleLabel} value={shownPaper.short} keep={{ scope: ['wiki', shownPaper.id], target: 'short' }}
+                      onSave={(shortTitle) => updateWikiPaper({ shortTitle: shortTitle.trim() || null })}
+                    />
+                  </Property>
+                  <Property label={m.wiki.authorsLabel}>
+                    <InlineMetadataField
+                      label={m.wiki.authorsLabel} value={fmt.authors(shownPaper.authors)} keep={{ scope: ['wiki', shownPaper.id], target: 'authors' }}
+                      onSave={(authors) => updateWikiPaper({
+                        authors: authors.split(/[,，;；\n]/).map((item) => item.trim()).filter(Boolean),
+                      })}
+                    />
+                  </Property>
+                  <Property label={m.wiki.yearLabel}>
+                    <InlineMetadataField
+                      label={m.wiki.yearLabel} value={shownPaper.year?.toString() ?? ''} inputMode="numeric"
+                      keep={{ scope: ['wiki', shownPaper.id], target: 'year' }}
+                      onSave={(year) => {
+                        const text = year.trim()
+                        if (text === '') return updateWikiPaper({ year: null })
+                        const next = Number(text)
+                        if (!Number.isInteger(next) || next < 1000 || next > 3000) {
+                          notice.refusal(m.wiki.yearRange)
+                          return false
+                        }
+                        return updateWikiPaper({ year: next })
+                      }}
+                    />
+                  </Property>
+                  <Property label={m.wiki.venueLabel}>
+                    <InlineMetadataField
+                      label={m.wiki.venueLabel} value={shownPaper.venue} keep={{ scope: ['wiki', shownPaper.id], target: 'venue' }}
+                      onSave={(venue) => updateWikiPaper({ venue: venue.trim() })}
+                    />
+                  </Property>
                   {shownPaper.pdf === ''
                     ? null
-                    : (
-                      <>
-                        <div className="pk">{m.wiki.originalLabel}</div>
-                        <div className="pv lm">{shownPaper.pdf}</div>
-                      </>
-                    )}
-                  <div className="pk">{m.wiki.updatedLabel}</div><div className="pv">{fmt.date(shownPaper.updated)}</div>
-                </div>
-                <SectionHeading variant="rail">{m.wiki.membershipHeading}</SectionHeading>
+                    : <Property label={m.wiki.originalLabel}>{shownPaper.pdf}</Property>}
+                  <Property label={m.wiki.updatedLabel}>{fmt.date(shownPaper.updated)}</Property>
+                </PropertyList>
+                <SectionHeading level="group">{m.wiki.membershipHeading}</SectionHeading>
                 {shownPaper.memberships.length === 0
                   ? <EmptyState variant="section" />
                   : shownPaper.memberships.map((ms) => (
                     <div className="memb" key={ms.aggregation.id}>
                       <div className="wkrel">
-                        <Tag tone="wiki" className="wkind">{ms.kindLabel}</Tag>
+                        <Tag className="wkind">{ms.kindLabel}</Tag>
                         <TagButton
                           shape="chip" className="tagchip" data-wk={ms.aggregation.id}
                           onClick={() => go(ms.aggregation.id)}
                         >{ms.aggregation.title}</TagButton>
                       </div>
-                      <div className="wkprops">
+                      <PropertyList>
                         {ms.cells.map((c) => (
-                          <Fragment key={c.label}>
-                            <div className="pk">{c.label}</div>
-                            <div className="pv">
-                              <Cell cell={c.cell} onAnchor={(page) => openSource(shownPaper.id, page)} />
-                            </div>
-                          </Fragment>
+                          <Property key={c.label} label={c.label}>
+                            <Cell cell={c.cell} onAnchor={(page) => openSource(shownPaper.id, page)} />
+                          </Property>
                         ))}
-                      </div>
+                      </PropertyList>
                     </div>
                   ))}
                 <WikiBacklinks links={shownBacklinks} onOpen={openBacklink} />

@@ -40,7 +40,7 @@ export function NodeAssignment({ node, nodes, canUnlink, create, draft, onOpen, 
     )
   return (
     <>
-      <SectionHeading variant="rail" actions={actions}>{m.project.plan.nodeHeading}</SectionHeading>
+      <SectionHeading level="group" actions={actions}>{m.project.plan.nodeHeading}</SectionHeading>
       {node === undefined
         ? draft ?? <EmptyState variant="section" />
         : (

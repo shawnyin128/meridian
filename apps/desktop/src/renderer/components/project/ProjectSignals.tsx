@@ -7,19 +7,25 @@ import { Item } from '../Item.js'
 import { List } from '../List.js'
 import { FadeText } from '../FadeText.js'
 import { AgentLabel } from '../SourceLabel.js'
-import { Tag, type TagTone } from '../Tag.js'
+import { Tag, type TagState } from '../Tag.js'
 import { EntityLink } from '../EntityLink.js'
 import { Tooltip } from '../Tooltip.js'
 import './ProjectSignals.css'
 
-/** Stable type column shared by project and overview decision rows and research records. */
-export function ProjectSignalKind({ tone, children }: {
-  tone: TagTone
+/** The state a research record's kind names: only a completion; every other kind is neutral. */
+export const RECORD_STATE: Partial<Record<EventKind, TagState>> = { complete: 'done' }
+
+/** The state the tag of a decision row of each tone names. */
+export const DECISION_STATE = { bad: 'error', warn: 'warning' } as const satisfies Record<ProjectDecisionItem['tone'], TagState>
+
+/** Stable type column shared by project and overview decision rows and research records; `state` colours a state's tag. */
+export function ProjectSignalKind({ state, children }: {
+  state?: TagState | undefined
   children: string
 }) {
   return (
     <span className="project-signal-kind">
-      <Tag tone={tone}>{children}</Tag>
+      <Tag state={state}>{children}</Tag>
     </span>
   )
 }
@@ -48,7 +54,7 @@ export function ProjectAttention({ items, onOpenPage, onLocateTask, onLocateMile
             className="attnrow project-signal-columns" key={item.id} data-wk={item.page}
             {...(open === undefined ? {} : { onActivate: open })}
           >
-            <ProjectSignalKind tone={item.tone}>{item.kind}</ProjectSignalKind>
+            <ProjectSignalKind state={DECISION_STATE[item.tone]}>{item.kind}</ProjectSignalKind>
             <ProjectSignalDate date={item.date} />
             <FadeText className="attn-text">{item.reason}</FadeText>
           </Item>
@@ -82,11 +88,6 @@ export function EventText({ text, origin, className }: {
       {origin === 'agent' ? <AgentLabel /> : null}
     </span>
   )
-}
-
-/** The tag tone of each research-record kind. */
-export const RECORD_TONE: Record<EventKind, TagTone> = {
-  start: 'info', reopen: 'neutral', result: 'good', decision: 'accent', complete: 'good', note: 'neutral', project: 'neutral',
 }
 
 /**
@@ -126,7 +127,7 @@ export function ProjectEventRow({
   const m = useMessages()
   return (
     <Item className="attnrow record-row">
-      <ProjectSignalKind tone={RECORD_TONE[kind]}>{m.project.records.kind[kind]}</ProjectSignalKind>
+      <ProjectSignalKind state={RECORD_STATE[kind]}>{m.project.records.kind[kind]}</ProjectSignalKind>
       <ProjectSignalDate date={date} />
       <span className="attn-text record-text">
         <FadeText className="record-line" expand>

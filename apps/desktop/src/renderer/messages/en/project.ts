@@ -129,8 +129,6 @@ export const project = {
     focusRequired: (label: string) => `${label} can't be empty.`,
     startLabel: 'Start',
     dueLabel: 'Due',
-    startAfterDue: "Start date can't be later than the due date.",
-    dueBeforeStart: "Due date can't be earlier than the start date.",
     paperCount: (n: number) => `${n} ${pluralEn(n, { one: 'paper', other: 'papers' })}`,
     workspaceLabel: 'Workspace',
     refreshWorkspace: 'Refresh workspace',

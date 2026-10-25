@@ -132,7 +132,7 @@ describe('WikiClaims', () => {
       .toEqual(['个人判断直觉', '实验draft 效率单请求实验单请求实测', '证据EAGLE-2 p.7wide trees amortize'])
     expect(knee.className).toBe(host.querySelector('[data-claim="plain"]')!.className)
     expect(knee.querySelector('.wkclaim-conflict')!.textContent).toBe('冲突批量场景仍净赚批量下拐点后移处理冲突')
-    expect([...knee.querySelectorAll('.wkclaim-conflict .tag')].map((tag) => tag.className)).toEqual(['tag tag--label tag--warn'])
+    expect([...knee.querySelectorAll('.wkclaim-conflict .tag')].map((tag) => tag.className)).toEqual(['tag tag--label tag--warning'])
     expect(host.querySelector('[data-claim="plain"] .wkclaim-evidence')!.textContent).toBe('实验draft 效率批量实验批量实测')
     const history = knee.querySelector<HTMLButtonElement>('.wkclaim-history .card-tray-toggle')!
     expect(history.querySelector('.fold-caret svg')).not.toBeNull()
@@ -181,7 +181,7 @@ describe('WikiClaims', () => {
     expect(tip()).toBe('“wide trees amortize”')
   })
 
-  it('带着要落到的结论打开时,把那条结论移到眼前;没带时不动', async () => {
+  it('带着要落到的结论打开时,把那条结论移到眼前并闪一下;没带时不动', async () => {
     const shown: (string | undefined)[] = []
     // jsdom lays nothing out and has no scrollIntoView.
     HTMLElement.prototype.scrollIntoView = function (this: HTMLElement) { shown.push(this.dataset.claim) }
@@ -192,6 +192,7 @@ describe('WikiClaims', () => {
         root!.render(<MessagesProvider><WikiClaims page={PAGE} pending={false} links={links} onApply={onApply} arrival={claim} /></MessagesProvider>)
       })
       expect(shown).toEqual([claim])
+      expect([...document.querySelectorAll<HTMLElement>('[data-arrived]')].map((row) => row.dataset.claim)).toEqual([claim])
     } finally {
       delete (HTMLElement.prototype as Partial<HTMLElement>).scrollIntoView
     }
@@ -295,7 +296,7 @@ describe('WikiClaims', () => {
     expectNoDialog()
     const lines = host.querySelector<HTMLElement>('[data-claim="plain"] .wkclaim-lines')!
     expect(lines.lastElementChild!.contains(draft())).toBe(true)
-    expect([...draft()!.querySelectorAll('.draft-form-label')].map((label) => label.textContent)).toEqual(['与哪一条冲突', '说明'])
+    expect([...draft()!.querySelectorAll('.field-row-label')].map((label) => label.textContent)).toEqual(['与哪一条冲突', '说明'])
     expect(document.activeElement).toBe(draft()!.querySelector('.choice-picker'))
     const note = draft()!.querySelector('input')!
     await act(async () => { press(note, { key: 'Enter' }); await flush() })

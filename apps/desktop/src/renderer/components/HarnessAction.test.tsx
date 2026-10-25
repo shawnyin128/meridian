@@ -10,12 +10,20 @@ const settings = vi.hoisted(() => ({ openCategory: vi.fn() }))
 vi.mock('../shell/AppShell.js', () => ({ useSettingsOpen: () => ({ open: false, openCategory: settings.openCategory }) }))
 
 const { HarnessAction } = await import('./HarnessAction.js')
+const { ModelStatusContext } = await import('../hooks/useModelStatus.js')
 
 declare global {
   var IS_REACT_ACT_ENVIRONMENT: boolean
 }
 
-const withMessages = (node: ReactNode) => <MessagesProvider>{node}</MessagesProvider>
+/** `node` in the shell, whose model status says a model is set up while `connected`. */
+const withMessages = (node: ReactNode, connected = true) => (
+  <MessagesProvider>
+    <ModelStatusContext.Provider value={{ connected, source: connected ? 'api' : null, track: (send) => send }}>
+      {node}
+    </ModelStatusContext.Provider>
+  </MessagesProvider>
+)
 
 const plan = (configured = true, billable = false): HarnessPlan => ({
   id: 'plan-1', workflow: 'paper-wiki', targetId: 'p1', scopeDigest: 'digest',
@@ -75,7 +83,7 @@ describe('HarnessAction', () => {
   it('shows the plan but cannot start when no model is configured', () => {
     const start = vi.fn()
     act(() => root!.render(withMessages(<HarnessAction plan={plan(false)} running={false} onStart={start}
-      onCancel={vi.fn()} />)))
+      onCancel={vi.fn()} />, false)))
     const button = host.querySelector<HTMLButtonElement>('button')!
     expect(button.disabled).toBe(false)
     act(() => button.click())
@@ -87,9 +95,18 @@ describe('HarnessAction', () => {
     act(() => confirm.click())
     expect(start).not.toHaveBeenCalled()
     const state = document.querySelector<HTMLElement>('.modal-actions .tag')!
-    expect([state.tagName, state.className]).toEqual(['BUTTON', 'tag tag--label tag--warn'])
+    expect([state.tagName, state.className]).toEqual(['BUTTON', 'tag tag--label tag--warning'])
     act(() => state.click())
     expect(settings.openCategory).toHaveBeenCalledWith('model')
+  })
+
+  it('cannot start a plan prepared with a model once the shell says no model is set up, and says so', () => {
+    const start = vi.fn()
+    act(() => root!.render(withMessages(<HarnessAction plan={plan()} running={false} onStart={start} onCancel={vi.fn()} />, false)))
+    act(() => host.querySelector<HTMLButtonElement>('button')!.click())
+    const confirm = Array.from(document.querySelectorAll<HTMLButtonElement>('button'))
+      .find((candidate) => candidate.textContent === '开始生成')!
+    expect([confirm.disabled, document.querySelector('.modal-actions .tag')?.textContent]).toEqual([true, 'AI 未连接'])
   })
 
   it('replaces the start gate with one explicit stop action while running, in the neutral tone', () => {

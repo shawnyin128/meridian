@@ -255,8 +255,8 @@ describe('Inbox', () => {
     expect(groups[0]!.querySelector('.heading-count')?.textContent).toBe(' · 2')
     expect(groups[0]!.querySelectorAll('.paper-card')).toHaveLength(2)
 
-    await act(async () => { groups[0]!.querySelector<HTMLButtonElement>('.collapsible-group-toggle')!.click() })
-    expect(groups[0]!.querySelector('.collapsible-group-toggle')?.getAttribute('aria-expanded')).toBe('false')
+    await act(async () => { groups[0]!.querySelector<HTMLButtonElement>('.collapsible-group-head .fold-toggle')!.click() })
+    expect(groups[0]!.querySelector('.collapsible-group-head .fold-toggle')?.getAttribute('aria-expanded')).toBe('false')
     expect(groups[0]!.querySelectorAll('.paper-card')).toHaveLength(0)
     expect(groups[1]!.querySelectorAll('.paper-card')).toHaveLength(1)
     await act(async () => { root.unmount() })
@@ -289,8 +289,8 @@ describe('Inbox', () => {
     const groups = [...host.querySelectorAll<HTMLElement>('.collapsible-group')]
     expect(groups.map((group) => group.dataset['group'])).toEqual(['w1', 'w2'])
 
-    await act(async () => { groups[0]!.querySelector<HTMLButtonElement>('.collapsible-group-toggle')!.click() })
-    const dismissAll = (group: HTMLElement) => [...group.querySelectorAll<HTMLButtonElement>('.collapsible-group-actions .btn')]
+    await act(async () => { groups[0]!.querySelector<HTMLButtonElement>('.collapsible-group-head .fold-toggle')!.click() })
+    const dismissAll = (group: HTMLElement) => [...group.querySelectorAll<HTMLButtonElement>('.collapsible-group-head .section-heading-actions .btn')]
       .filter((button) => button.textContent === '全部忽略')
     await act(async () => { dismissAll(groups[0]!)[0]!.click() })
     await act(async () => { await new Promise((done) => { setTimeout(done, 300) }) })
@@ -346,7 +346,7 @@ describe('Inbox', () => {
     const root = createRoot(host)
     await act(async () => { root.render(<MessagesProvider><Inbox /></MessagesProvider>) })
     expect(lastAction()).toBe('忽略')
-    expect([...host.querySelectorAll('.collapsible-group-actions .btn')].map((button) => button.textContent)).toEqual(['全部忽略'])
+    expect([...host.querySelectorAll('.collapsible-group-head .section-heading-actions .btn')].map((button) => button.textContent)).toEqual(['全部忽略'])
     await act(async () => { host.querySelector<HTMLButtonElement>('[aria-label="忽略"]')!.click() })
     expect(host.querySelector('.paper-card')!.classList.contains('is-leaving')).toBe(true)
     await act(async () => { await new Promise((done) => { setTimeout(done, 300) }) })
@@ -498,17 +498,17 @@ describe('Inbox', () => {
     api.scope = 'w1'
     const root = createRoot(host)
     await act(async () => { root.render(<MessagesProvider><Inbox /></MessagesProvider>) })
-    expect(host.querySelector('.fetchnote')!.textContent).toBe('没有新论文 · 上次检查 9月21日08:15')
+    expect(host.querySelector('.page-note')!.textContent).toBe('没有新论文 · 上次检查 9月21日08:15')
     await act(async () => { root.unmount() })
     status.fetch!.last = { watches: ['w1'], added: 2, at }
     const added = createRoot(host)
     await act(async () => { added.render(<MessagesProvider><Inbox /></MessagesProvider>) })
-    expect(host.querySelector('.fetchnote')!.textContent).toBe('上次检查 9月21日08:15')
+    expect(host.querySelector('.page-note')!.textContent).toBe('上次检查 9月21日08:15')
     await act(async () => { added.unmount() })
     api.scope = 'all'
     const all = createRoot(host)
     await act(async () => { all.render(<MessagesProvider><Inbox /></MessagesProvider>) })
-    expect(host.querySelector('.fetchnote')!.textContent).toBe('上次检查 9月20日14:05')
+    expect(host.querySelector('.page-note')!.textContent).toBe('上次检查 9月20日14:05')
     await act(async () => { all.unmount() })
   })
 
@@ -537,7 +537,7 @@ describe('Inbox', () => {
     }
     const root = createRoot(host)
     await act(async () => { root.render(<MessagesProvider><Inbox /></MessagesProvider>) })
-    const note = host.querySelector('.fetchnote')!
+    const note = host.querySelector('.page-note')!
     expect(note.firstChild!.textContent).toBe('上次检查')
     expect([...note.querySelectorAll('.date-time-display .date-chip')].map((chip) => chip.textContent)).toEqual(['9月20日', '14:05'])
     await act(async () => { root.unmount() })
@@ -549,7 +549,7 @@ describe('Inbox', () => {
     }
     const root = createRoot(host)
     await act(async () => { root.render(<MessagesProvider><Inbox /></MessagesProvider>) })
-    expect(host.querySelector('.fetchnote .inline-message--line.inline-message--error[role="alert"]')?.textContent).toBe('检查失败 · 网络不可用')
+    expect(host.querySelector('.page-note .inline-message--line.inline-message--error[role="alert"]')?.textContent).toBe('检查失败 · 网络不可用')
     await act(async () => { root.unmount() })
   })
 

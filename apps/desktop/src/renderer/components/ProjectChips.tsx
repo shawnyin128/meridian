@@ -1,13 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { PaperRow, ProjectSummary } from '../../shared/contract.js'
 import { project } from '../ipc.js'
-import { AddAction } from './AddAction.js'
-import { EntityLink } from './EntityLink.js'
-import { IconButton } from './IconButton.js'
-import { IconCross } from './icons.js'
-import { PickerPopover, PickOption } from './PickerPopover.js'
-import { tagClass } from './Tag.js'
-import './TagChips.css'
+import { CandidateField } from './CandidateField.js'
+import { ChipList } from './ChipList.js'
 import { useCandidateKeys } from '../hooks/useCandidateKeys.js'
 import { NO_TRIGGERS } from '../hooks/useOnLeave.js'
 import { useDrafts } from '../hooks/useDrafts.js'
@@ -19,9 +14,9 @@ import { useJump } from '../shell/AppShell.js'
 import { FormInput } from './FormControls.js'
 
 /**
- * The projects of a paper: one chip per project, whose name opens the project and whose × removes the
- * paper from that project; the "+" at the end picks a project this paper is not linked to yet. A write
- * bumps the vault revision by itself, and the current screen refetches on its own.
+ * The projects of a paper, on ChipList: one chip per project, whose name opens the project and whose ×
+ * removes the paper from that project; the "+" at the end picks a project this paper is not linked to
+ * yet. A write bumps the vault revision by itself, and the current screen refetches on its own.
  */
 export function ProjectChips({ paper, onError }: {
   paper: PaperRow
@@ -59,52 +54,41 @@ export function ProjectChips({ paper, onError }: {
   const keys = useCandidateKeys(hits.length, (i) => draft.submit(() => add(hits[i]!)))
 
   return (
-    <>
-      {paper.projects.map((linked) => (
-        <span className={tagClass('neutral', 'chip', 'tagchip')} key={linked.id} data-project={linked.id}>
-          <EntityLink kind="project" label={linked.name} onOpen={() => jumpTo('project', linked.id)} />
-          <IconButton
-            label={m.common.removeLink} size="inline" className="rx"
-            onClick={(event) => {
-              event.stopPropagation()
-              void write(project.removePaper(linked.id, paper.id), {
-                note: m.research.chips.unlinked, action: undo.change,
-              })
-            }}
-          ><IconCross /></IconButton>
-        </span>
-      ))}
-      <PickerPopover
-        open={open} anchorRef={input} stopClickPropagation
-        anchor={open
+    <ChipList
+      chips={paper.projects.map((linked) => ({
+        id: linked.id,
+        name: linked.name,
+        onOpen: () => jumpTo('project', linked.id),
+        data: { 'data-project': linked.id },
+        remove: {
+          label: m.common.removeLink,
+          onRemove: () => {
+            void write(project.removePaper(linked.id, paper.id), { note: m.research.chips.unlinked, action: undo.change })
+          },
+        },
+      }))}
+      add={{
+        label: m.research.chips.addProject,
+        onAdd: () => setOpen(true),
+        draft: open
           ? (
-            <FormInput
-              appearance="inline" className="tagin" ref={input} value={query}
-              placeholder={m.project.identity.nameFieldLabel}
-              {...draft.inputProps} onClick={(event) => event.stopPropagation()}
-              onChange={(event) => setQuery(event.target.value)}
-              onKeyDown={(event) => { keys.onKeyDown(event); draft.inputProps.onKeyDown(event) }}
+            <CandidateField
+              anchorRef={input} keys={keys} heading={m.research.chips.pickerHeading}
+              field={(
+                <FormInput
+                  appearance="inline" className="tagin" ref={input} value={query}
+                  placeholder={m.project.identity.nameFieldLabel}
+                  {...draft.inputProps} onClick={(event) => event.stopPropagation()}
+                  onChange={(event) => setQuery(event.target.value)}
+                  onKeyDown={(event) => { keys.onKeyDown(event); draft.inputProps.onKeyDown(event) }}
+                />
+              )}
+              candidates={hits.map((held) => ({ id: held.id, label: held.name }))}
+              onPick={(_, i) => draft.submit(() => add(hits[i]!))}
             />
           )
-          : (
-            <AddAction
-              size="chip" className="tagchip tagadd" label={m.research.chips.addProject}
-              onClick={(event) => { event.stopPropagation(); setOpen(true) }}
-            />
-          )}
-        content={hits.length > 0
-          ? (
-            <>
-              <div className="rh">{m.research.chips.pickerHeading}</div>
-              {hits.map((held, i) => (
-                <PickOption keys={keys} index={i} key={held.id} onClick={() => draft.submit(() => add(held))}>
-                  {held.name}
-                </PickOption>
-              ))}
-            </>
-          )
-          : null}
-      />
-    </>
+          : undefined,
+      }}
+    />
   )
 }

@@ -61,7 +61,7 @@ describe('ExtensionSettings', () => {
         />
       </MessagesProvider>,
     ))
-    expect([...host.querySelectorAll('.extension-head p')].map((p) => p.textContent))
+    expect([...host.querySelectorAll('.extension-entry .section-heading-meta')].map((p) => p.textContent))
       .toEqual(['—'])
     expect(host.querySelector('[data-extension-tutorial] > .section-heading + p')).toBeNull()
     expect(host.querySelector('.extension-tutorial-steps li p')).toBeNull()

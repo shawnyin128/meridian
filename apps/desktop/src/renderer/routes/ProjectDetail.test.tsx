@@ -79,7 +79,7 @@ describe('attnItems', () => {
       lastProgress: '2026-08-17',
     }), TODAY, sm)).toEqual([
       {
-        id: 'conflict', rank: 0, kind: '实验结论冲突', tone: 'bad',
+        id: 'conflict', rank: 0, kind: '实验结论冲突', tone: 'warn',
         reason: '2 条实验结论有冲突',
       },
       {
@@ -303,7 +303,7 @@ describe('project idea panel', () => {
 
   it('shows the shared idea panel: the head, the content, the research node, then the source', () => {
     const panel = mount(<ProjectIdeaPanel idea={idea} graph={graph} workspaceManaged {...handlers()} />)
-    expect([...panel.host.querySelectorAll('.section-heading--rail')].map((heading) => heading.textContent))
+    expect([...panel.host.querySelectorAll('.section-heading--group')].map((heading) => heading.textContent))
       .toEqual(['用动态预算控制校准成本', '内容', '科研节点关联节点', '来源'])
     expect(panel.host.querySelector('.idea-panel-head .project-idea-open-idea')).not.toBeNull()
     expect(panel.host.textContent).not.toContain('工作区科研图只读')
@@ -412,7 +412,7 @@ describe('project idea panel', () => {
   })
   it('只是关联这个项目、不在这里做的想法，详情里没有科研节点一节', () => {
     const panel = mount(<ProjectIdeaPanel idea={{ ...idea, project: 'other' }} graph={graph} workspaceManaged={false} related {...handlers()} />)
-    expect([...panel.host.querySelectorAll('.section-heading--rail')].map((heading) => heading.textContent))
+    expect([...panel.host.querySelectorAll('.section-heading--group')].map((heading) => heading.textContent))
       .toEqual(['用动态预算控制校准成本', '内容', '来源'])
     panel.unmount()
   })
@@ -599,7 +599,7 @@ describe('项目页跟着工作区刷新', () => {
 
   it('属性一节从名称开始，不再写一行类型 · 项目', async () => {
     const host = await mount()
-    expect([...host.querySelectorAll('.wkprops > .pk')].map((key) => key.textContent).slice(0, 1)).toEqual(['名称'])
+    expect([...host.querySelectorAll('.property-list .property-label')].map((key) => key.textContent).slice(0, 1)).toEqual(['名称'])
   })
 
   it('一次只读一回：上一次还没回来时，到点了也不再读', async () => {
@@ -649,5 +649,64 @@ describe('项目页跟着工作区刷新', () => {
     expect(host.querySelector('.page-error')?.textContent).toBe('需要更新 App')
     await wait(2_000)
     expect([gets, host.querySelector('.page-error')]).toEqual([3, null])
+  })
+})
+
+describe('项目的起止日期', () => {
+  let unmount = () => {}
+  const updates: unknown[] = []
+
+  beforeEach(() => {
+    globalThis.IS_REACT_ACT_ENVIRONMENT = true
+    vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} })
+    window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'zh')
+    shell.shown = true
+    updates.length = 0
+    const held = project({ start: '2026-09-02', due: '2026-09-15' })
+    vi.stubGlobal('meridian', {
+      call: (method: string, params: { patch?: Partial<ProjectDetail> }) => {
+        if (method === 'project.get') return Promise.resolve(structuredClone(held))
+        if (method === 'project.update') {
+          updates.push(params.patch)
+          Object.assign(held, params.patch)
+          return Promise.resolve({ project: structuredClone(held), change: 'change-dates' })
+        }
+        if (method === 'idea.list' || method === 'chat.list') return Promise.resolve([])
+        return new Promise(() => {})
+      },
+    })
+  })
+
+  afterEach(() => {
+    unmount()
+    vi.unstubAllGlobals()
+  })
+
+  it('属性栏的开始和截止是一个日期范围:截止的日历从开始那天起,开始挑到截止之后时截止跟着挪,一次写下两个', async () => {
+    const host = document.createElement('div')
+    document.body.append(host)
+    const root = createRoot(host)
+    await act(async () => {
+      root.render(withMessages(
+        <ProjectScreen projectId="draft" onBack={() => {}} onReturn={() => {}} tab="task" onTab={() => {}} record="tl" onRecord={() => {}} />,
+      ))
+    })
+    unmount = () => { act(() => root.unmount()); host.remove() }
+    await vi.waitFor(() => expect(host.querySelectorAll('.wkside .property').length).toBeGreaterThan(0))
+    const value = (label: string) => [...host.querySelectorAll('.wkside .property')]
+      .find((row) => row.querySelector('.property-label')!.textContent === label)?.querySelector<HTMLButtonElement>('.property-value > button')
+    const days = async (label: string) => {
+      await vi.waitFor(() => expect(value(label)).toBeDefined())
+      await act(async () => { value(label)!.click() })
+      return [...[...document.querySelectorAll('.calg')].at(-1)!.querySelectorAll<HTMLButtonElement>('button')]
+    }
+    const due = await days('截止')
+    expect(due.filter((day) => day.disabled).map((day) => day.textContent)).toEqual(['1'])
+    await act(async () => { due[9]!.click() })
+    expect(updates.at(-1)).toEqual({ due: '2026-09-10' })
+    await vi.waitFor(() => expect(document.querySelector('.calg')).toBeNull())
+    const start = await days('开始')
+    await act(async () => { start[19]!.click() })
+    expect(updates.at(-1)).toEqual({ start: '2026-09-20', due: '2026-09-20' })
   })
 })

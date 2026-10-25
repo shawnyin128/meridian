@@ -130,7 +130,7 @@ test('侧栏「总览」进的是研究总览,各块条数与 project.overview �
   await expect(shown(win).locator('.gantt .glrow')).toHaveCount(counts.ganttRows)
   await expect(shown(win).locator('.gantt .gddl')).toHaveCount(counts.diamonds)
 
-  await expect(shown(win).locator('.ovstat b')).toHaveText([
+  await expect(shown(win).locator('.stat-tile-value')).toHaveText([
     String(counts.active), String(counts.shelved), String(counts.openMilestones), String(counts.week),
   ])
   await expect(shown(win).locator('.ovlist-row.progress')).toHaveCount(counts.now)
@@ -303,7 +303,7 @@ test('总览横条是真实任务:拖动改任务日期,单击进所属项目', 
 
   await bar.click()
   await expect(win.locator('#crumb .cseg')).toHaveText(['研究', '项目', '复现 EAGLE-2'])
-  await expect(shown(win).locator('.task-row[data-row="t2"]')).toHaveClass(/\bflash\b/)
+  await expect(shown(win).locator('.task-row[data-row="t2"]')).toHaveAttribute('data-arrived')
 })
 
 test('总览时间线左栏宽度固定，长任务名不撑宽；点任务名跳到项目里的这条任务', async ({ win }) => {
@@ -326,7 +326,7 @@ test('总览时间线左栏宽度固定，长任务名不撑宽；点任务名�
 
   await label.click()
   await expect(win.locator('#crumb .cseg')).toHaveText(['研究', '项目', '复现 EAGLE-2'])
-  await expect(shown(win).locator('.task-row[data-row="t2"]')).toHaveClass(/\bflash\b/)
+  await expect(shown(win).locator('.task-row[data-row="t2"]')).toHaveAttribute('data-arrived')
 })
 
 test.describe('拖总览菱形改期', () => {

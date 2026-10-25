@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { Card } from '../Card.js'
 import { FormButton } from '../FormControls.js'
 import { InlineMessage } from '../InlineMessage.js'
+import { SectionHeading } from '../PageShell.js'
 import { Tag } from '../Tag.js'
 import { Button } from '../Button.js'
 import './ServiceCard.css'
@@ -11,7 +12,7 @@ export function ServiceCard({ children, className }: { children: ReactNode; clas
   return <Card className={className === undefined ? 'service-card' : `service-card ${className}`}>{children}</Card>
 }
 
-/** Status head: the service's name and an optional line under it on the left, a configured/not-configured pill on the right. */
+/** Status head: the service's name and an optional line after it, and a configured/not-configured pill at its end. */
 export function ServiceStatus({
   title, description, configured, configuredLabel, notConfiguredLabel,
 }: {
@@ -22,25 +23,15 @@ export function ServiceStatus({
   notConfiguredLabel: string
 }) {
   return (
-    <div className="service-status-head">
-      <div>
-        <strong>{title}</strong>
-        {description === undefined ? null : <p>{description}</p>}
-      </div>
-      <Tag tone={configured ? 'good' : 'neutral'} className="service-status-pill">
-        {configured ? configuredLabel : notConfiguredLabel}
-      </Tag>
-    </div>
-  )
-}
-
-/** One labeled settings row: a fixed-width label on the left, the field's control on the right. */
-export function ServiceField({ label, children }: { label: ReactNode; children: ReactNode }) {
-  return (
-    <div className="service-field">
-      <span>{label}</span>
-      {children}
-    </div>
+    <SectionHeading
+      level="group" meta={description}
+      actions={(
+        <Tag state={configured ? 'done' : undefined} className="service-status-pill">
+          {configured ? configuredLabel : notConfiguredLabel}
+        </Tag>
+      )}
+    >{title}
+    </SectionHeading>
   )
 }
 

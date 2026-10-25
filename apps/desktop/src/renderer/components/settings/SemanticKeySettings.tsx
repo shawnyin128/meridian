@@ -5,10 +5,10 @@ import { useScreenLoad } from '../../hooks/useScreenLoad.js'
 import { errorLabel } from '../../lib/failure-label.js'
 import { useMessages } from '../../messages/useMessages.js'
 import { EntityLink } from '../EntityLink.js'
-import { FormInput } from '../FormControls.js'
+import { FieldRow, FieldRows, FormInput } from '../FormControls.js'
 import { PageError } from '../PageShell.js'
 import {
-  ServiceActions, ServiceCard, ServiceClearKeyButton, ServiceConnectionStatus, ServiceError, ServiceField,
+  ServiceActions, ServiceCard, ServiceClearKeyButton, ServiceConnectionStatus, ServiceError,
   ServiceFoot, ServiceSavedKey, ServiceStatus,
 } from './ServiceCard.js'
 import { Button } from '../Button.js'
@@ -87,26 +87,28 @@ export function SemanticKeySettings() {
         configuredLabel={m.settings.model.configured}
         notConfiguredLabel={m.settings.model.notConfigured}
       />
-      <ServiceField label={m.settings.model.fields.apiKeyLabel}>
-        {showingSavedKey ? (
-          <ServiceSavedKey
-            ariaLabel={copy.stored(status.lastFour ?? '')}
-            lastFour={status.lastFour}
-            onClick={() => setEditing(true)}
-          />
-        ) : (
-          <FormInput appearance="field" aria-label={copy.inputLabel} type="password"
-            value={draft} autoFocus={editing}
-            autoComplete="new-password" spellCheck={false}
-            placeholder={copy.placeholder}
-            onBlur={() => { if (draft === '') setEditing(false) }}
-            onChange={(event) => {
-              setDraft(event.target.value)
-              setEditing(true)
-              setClearPending(false)
-            }} />
-        )}
-      </ServiceField>
+      <FieldRows>
+        <FieldRow label={m.settings.model.fields.apiKeyLabel}>
+          {showingSavedKey ? (
+            <ServiceSavedKey
+              ariaLabel={copy.stored(status.lastFour ?? '')}
+              lastFour={status.lastFour}
+              onClick={() => setEditing(true)}
+            />
+          ) : (
+            <FormInput appearance="field" aria-label={copy.inputLabel} type="password"
+              value={draft} autoFocus={editing}
+              autoComplete="new-password" spellCheck={false}
+              placeholder={copy.placeholder}
+              onBlur={() => { if (draft === '') setEditing(false) }}
+              onChange={(event) => {
+                setDraft(event.target.value)
+                setEditing(true)
+                setClearPending(false)
+              }} />
+          )}
+        </FieldRow>
+      </FieldRows>
       <ServiceFoot>
         {connectionMessage === null ? null : (
           <ServiceConnectionStatus

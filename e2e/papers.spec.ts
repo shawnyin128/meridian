@@ -108,7 +108,7 @@ test('论文表每一行等高,行高是 38px', async ({ win }) => {
 
 /** Index on the current page of the first row whose title cell is truncated. */
 const truncatedTitleRow = (win: Page) => win.locator('.ptable tbody tr')
-  .evaluateAll((rows) => rows.findIndex((tr) => tr.querySelector('td.pt-title.trunc') !== null))
+  .evaluateAll((rows) => rows.findIndex((tr) => tr.querySelector('td.pt-title .table-cut') !== null))
 
 test('论文表每一格的内容都在行内垂直居中,悬停展开截断的标题时文字不动', async ({ win }) => {
   await gotoPapers(win)
@@ -134,7 +134,7 @@ test('论文表每一格的内容都在行内垂直居中,悬停展开截断的�
   const title = row.locator('td.pt-title')
   const textTop = () => title.evaluate((td) => {
     const range = document.createRange()
-    range.selectNodeContents(td.querySelector('.ci')!)
+    range.selectNodeContents(td.querySelector('.table-text')!)
     return range.getBoundingClientRect().top
   })
   const resting = await textTop()
@@ -166,14 +166,14 @@ test('悬停截断的作者格与自定义文本格,浮框比格子宽,压到邻
   const row = win.locator('.ptable tbody tr').first()
 
   for (const [name, cell] of [
-    ['作者', row.locator('td.pt-dim', { hasText: LONG_AUTHORS[0] })],
+    ['作者', row.locator('td.table-cell--meta', { hasText: LONG_AUTHORS[0] })],
     ['备注', row.locator('td.pt-cust')],
   ] as const) {
     await parkPointer(win)
-    await expect(cell).toHaveClass(/\btrunc\b/)
+    await expect(cell.locator('.table-text')).toHaveClass(/\btable-cut\b/)
     await cell.hover()
     const reveal = await cell.evaluate((td) => {
-      const box = td.querySelector('.ci')!
+      const box = td.querySelector('.table-text')!
       const edge = td.getBoundingClientRect().right
       const rect = box.getBoundingClientRect()
       // A point just past the cell's right edge hits the box only when the cell does not clip it.
@@ -327,12 +327,12 @@ test('论文表比可视区宽,横向溢出大于零', async ({ win }) => {
   await firstPage(win)
   await parkPointer(win)
 
-  const { scrollWidth, clientWidth, expanded } = await win.locator('.tblwrap').evaluate((el) => ({
+  const { scrollWidth, clientWidth, expanded } = await win.locator('.table-scroll:has(> .ptable)').evaluate((el) => ({
     scrollWidth: el.scrollWidth,
     clientWidth: el.clientWidth,
-    expanded: document.querySelectorAll('.ptable td.trunc:hover').length,
+    expanded: document.querySelectorAll('.ptable td:hover > .table-cut').length,
   }))
-  console.log(`.tblwrap 横向溢出 ${scrollWidth - clientWidth}px(scrollWidth ${scrollWidth} − clientWidth ${clientWidth})`)
+  console.log(`论文表横向溢出 ${scrollWidth - clientWidth}px(scrollWidth ${scrollWidth} − clientWidth ${clientWidth})`)
   expect(expanded, '指针压在被截断的格子上,量到的不是表格自身的宽度').toBe(0)
   expect(scrollWidth - clientWidth).toBeGreaterThan(0)
 })
@@ -341,7 +341,7 @@ test('别的屏上的写不摘掉论文表的截断标记', async ({ win }) => {
   await gotoPapers(win)
   await firstPage(win)
   await parkPointer(win)
-  const truncated = win.locator('.ptable td.trunc')
+  const truncated = win.locator('.ptable .table-cut')
   const badges = win.locator('.ptable .morebadge')
   const cells = await truncated.count()
   const folded = await badges.count()
@@ -381,7 +381,7 @@ test('表内给论文加一个主题后,重新取数确认这一行的主题真�
   await gotoPapers(win)
   await firstPage(win)
   const row = win.locator('.ptable tbody tr').first()
-  const title = await row.locator('.pt-title .ci').innerText()
+  const title = await row.locator('.pt-title .table-text').innerText()
   const chips = row.locator('td:nth-child(7) .tagchip:not(.tagadd)')
   const before = await chips.allTextContents()
 
@@ -409,7 +409,7 @@ test('阅读状态列点它选一档就写回 core,页面状态不受影响', as
   await gotoPapers(win)
   await firstPage(win)
   const row = win.locator('.ptable tbody tr').first()
-  const title = await row.locator('.pt-title .ci').innerText()
+  const title = await row.locator('.pt-title .table-text').innerText()
   const chip = row.locator('.stchip')
 
   // The vault's paper pages store no reading status, so Core reports them as unread; this column
@@ -706,9 +706,9 @@ test('文本格开着时按住表格自己的滚动条,不算点到格外:格子
   await cell.click()
   await input.fill('按滚动条也不丢')
 
-  const wrap = win.locator('.tblwrap')
+  const wrap = win.locator('.table-scroll:has(> .ptable)')
   const box = (await wrap.boundingBox())!
-  // The bottom 5px of .tblwrap is the horizontal scrollbar track; no body row reaches this y.
+  // The bottom 5px of the table's scroll box is the horizontal scrollbar track; no body row reaches this y.
   await win.mouse.move(box.x + box.width / 2, box.y + box.height - 5)
   await win.mouse.down()
   await win.mouse.up()
@@ -726,12 +726,12 @@ test('文本格开着时按住表格自己的竖直滚动条,不算点到格外:
   await win.locator('.ptable thead th.th-new input').press('Enter')
   await expect(win.locator('.ptable thead th.th-new')).toHaveCount(0)
 
-  // At 50 per page the body is far taller than the viewport, so .tblwrap really scrolls vertically
+  // At 50 per page the body is far taller than the viewport, so the table's scroll box really scrolls vertically
   // and the check is not vacuous.
   await win.locator('.pagebar .segmented-control>button', { hasText: '50 / 页' }).click()
   await expect(win.locator('.ptable tbody tr')).toHaveCount(50)
 
-  const wrap = win.locator('.tblwrap')
+  const wrap = win.locator('.table-scroll:has(> .ptable)')
   const overflowsVertically = await wrap.evaluate((el) => el.scrollHeight > el.clientHeight)
   expect(overflowsVertically).toBe(true)
 
@@ -741,7 +741,7 @@ test('文本格开着时按住表格自己的竖直滚动条,不算点到格外:
   await input.fill('按竖滚动条也不丢')
 
   const box = (await wrap.boundingBox())!
-  // The rightmost 5px of .tblwrap is the vertical scrollbar track; no body column reaches this x.
+  // The rightmost 5px of the table's scroll box is the vertical scrollbar track; no body column reaches this x.
   await win.mouse.move(box.x + box.width - 5, box.y + box.height / 2)
   await win.mouse.down()
   await win.mouse.up()
@@ -1671,7 +1671,7 @@ test.describe(() => {
     await parkPointer(win)
     const resting = (await title.screenshot()).toString('base64')
     // The row hovered away from the title: the hover lies over the selected tint, the title stays folded.
-    await row.locator('td.pt-dim').last().hover()
+    await row.locator('td.table-cell--meta').last().hover()
     const rowHovered = (await title.screenshot()).toString('base64')
     await title.hover()
     const hovered = (await title.screenshot()).toString('base64')
@@ -1719,7 +1719,7 @@ test.describe(() => {
 
     const before = await list(listQuery)
     const row = win.locator('.ptable tbody tr').first()
-    const title = await row.locator('.pt-title .ci').innerText()
+    const title = await row.locator('.pt-title .table-text').innerText()
     const rowx = row.locator('.rowx')
     const menu = win.locator('[role="menu"]')
 
@@ -1733,7 +1733,7 @@ test.describe(() => {
     await win.mouse.click(box.x + box.width / 2, box.y + box.height / 2)
     await expect(menu).toHaveCount(0)
 
-    await expect(row.locator('.pt-title .ci')).toHaveText(title)
+    await expect(row.locator('.pt-title .table-text')).toHaveText(title)
     expect((await list(listQuery)).total).toBe(before.total)
   })
 })

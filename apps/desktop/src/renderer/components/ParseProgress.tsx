@@ -70,7 +70,7 @@ export function ParseProgress({ onParsed, onOpenPaper }: {
       {failed.length > 0 ? (
         <Card floating className="upcard compact quiet" role="status">
           <div className="upt">
-            <Tag tone="warn">{m.papers.parse.count(failed.length)}</Tag>
+            <Tag state="warning">{m.papers.parse.count(failed.length)}</Tag>
             <IconButton
               label={m.papers.parse.collapse} size="nested" className="upclose"
               onClick={() => close(failed)}

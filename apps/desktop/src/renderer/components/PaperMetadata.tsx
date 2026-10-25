@@ -3,6 +3,7 @@ import type { PaperFields, PaperRow, ReadState, RecordedChange } from '../../sha
 import { LATER_PAPER, READ_PAPER, READ_STATES, READING_PAPER, UNREAD_PAPER } from '../../shared/vocabulary.js'
 import { papers } from '../ipc.js'
 import { errorLabel } from '../lib/failure-label.js'
+import { useFormat, type Format } from '../lib/format.js'
 import type { Catalog } from '../messages/catalog.js'
 import { useMessages } from '../messages/useMessages.js'
 import { useNotice } from '../shell/AppShell.js'
@@ -11,6 +12,7 @@ import { InlineMetadataField } from './InlineField.js'
 import { PaperAbstract } from './paper/PaperAbstract.js'
 import { PaperText } from './paper/PaperText.js'
 import { PaperTopics } from './PaperTopics.js'
+import { Property, PropertyList } from './PropertyList.js'
 import { ProjectChips } from './ProjectChips.js'
 import { tagClass } from './Tag.js'
 import { ToggleGroup, ToggleItem } from './Toolbar.js'
@@ -64,7 +66,7 @@ export function ReadStatePicker({ value, onPick }: {
   return (
     <ChoicePicker
       value={value} options={READ_STATES} onPick={onPick} label={(state) => readStateName(m, state)} stopRowActivation
-      className={tagClass('neutral', 'chip', value === READING_PAPER ? 'stchip on' : 'stchip')}
+      className={tagClass(undefined, 'chip', value === READING_PAPER ? 'stchip on' : 'stchip')}
     />
   )
 }
@@ -74,8 +76,8 @@ type EditableField = 'title' | 'shortTitle' | 'authors' | 'venue' | 'year' | 'id
 const splitList = (value: string): string[] => value
   .split(/[,，;；\n]/).map((item) => item.trim()).filter(Boolean)
 
-function draftOf(paper: PaperRow, field: EditableField): string {
-  if (field === 'authors') return (paper.authors ?? []).join(', ')
+function draftOf(paper: PaperRow, field: EditableField, fmt: Format): string {
+  if (field === 'authors') return fmt.authors(paper.authors ?? [])
   if (field === 'year') return paper.year?.toString() ?? ''
   if (field === 'shortTitle') return paper.shortTitle ?? ''
   if (field === 'identifier') return paper.identifier ?? ''
@@ -162,10 +164,11 @@ function PaperFieldEditor({ paper, field, display, save }: {
   save: (field: EditableField, patch: Partial<PaperFields>) => Promise<boolean>
 }) {
   const m = useMessages()
+  const fmt = useFormat()
   const notice = useNotice()
   return (
     <InlineMetadataField
-      label={m.papers.metadata.fields[field]} value={draftOf(paper, field)} display={display || '—'}
+      label={m.papers.metadata.fields[field]} value={draftOf(paper, field, fmt)} display={display || '—'}
       keep={{ scope: ['paper', paper.id], target: `field:${field}` }}
       type={field === 'submitted' ? 'date' : 'text'}
       inputMode={field === 'year' ? 'numeric' : 'text'}
@@ -197,6 +200,7 @@ export function PaperMetadata({ paper, readStateLabel, onSaved, titled = true }:
   titled?: boolean
 }) {
   const m = useMessages()
+  const fmt = useFormat()
   const listFade = useScrollFade('y')
   const labels = { ...m.papers.metadata.fields, readState: readStateLabel }
   const notice = useNotice()
@@ -205,59 +209,54 @@ export function PaperMetadata({ paper, readStateLabel, onSaved, titled = true }:
   const ratingBusy = useRef(false)
 
   const editableRow = (field: EditableField, display: ReactNode) => (
-    <>
-      <dt>{labels[field]}</dt>
-      <dd className="paper-meta-editable">
-        <PaperFieldEditor key={`${paper.id}:${field}`} paper={paper} field={field} display={display} save={savePatch} />
-      </dd>
-    </>
+    <Property label={labels[field]}>
+      <PaperFieldEditor key={`${paper.id}:${field}`} paper={paper} field={field} display={display} save={savePatch} />
+    </Property>
   )
 
   return (
     <div className="paper-meta" aria-busy={ratingSaving}>
-      <dl className="paper-meta-list" ref={listFade}>
-        {titled ? editableRow('title', <PaperText text={paper.title} />) : null}
-        {editableRow('shortTitle', paper.shortTitle ? <PaperText text={paper.shortTitle} /> : '')}
-        {editableRow('authors', paper.authors?.join(', ') ?? '')}
-        <dt>{m.papers.metadata.abstractLabel}</dt>
-        <dd>{paper.abstract ? <PaperAbstract text={paper.abstract} folded /> : '—'}</dd>
-        {editableRow('venue', paper.venue)}
-        {editableRow('year', paper.year?.toString() ?? '')}
-        <dt>{labels.rating}</dt>
-        <dd>
-          <RatingStars
-            value={paper.rating} disabled={ratingSaving}
-            onChange={(rating) => {
-              if (ratingBusy.current) return
-              ratingBusy.current = true
-              setRatingSaving(true)
-              void savePatch('rating', { rating })
-                .finally(() => { ratingBusy.current = false; setRatingSaving(false) })
-            }}
-          />
-        </dd>
-        {editableRow('identifier', paper.identifier ?? '')}
-        {editableRow('submitted', paper.submitted ?? '')}
-        <dt>{labels.readState}</dt>
-        <dd>
-          <ReadStatePicker value={paper.readState} onPick={(readState) => { void savePatch('readState', { readState }) }} />
-        </dd>
-        <dt>{labels.topics}</dt>
-        <dd className="paper-meta-topics">
-          <PaperTopics
-            topics={paper.topics} keep={['paper', paper.id, 'topics']} onError={(error) => notice.refusal(errorLabel(m, error))}
-            onAdd={(topic) => saveTopic(topic, true)}
-            onRemove={(topic) => saveTopic(topic, false)}
-          />
-        </dd>
-        <dt>{m.papers.metadata.projectsLabel}</dt>
-        <dd className="paper-meta-projects">
-          <ProjectChips paper={paper} onError={(error) => notice.refusal(errorLabel(m, error))} />
-        </dd>
-        <dt>{m.papers.metadata.wikiLabel}</dt><dd>{pageStateName(paper.pageState, m.papers.metadata.pageState)}</dd>
-        <dt>{m.papers.metadata.fileLabel}</dt>
-        <dd>{paper.pageCount ? m.papers.metadata.pages(paper.pageCount) : m.common.empty}</dd>
-      </dl>
+      <div className="paper-meta-list" ref={listFade}>
+        <PropertyList>
+          {titled ? editableRow('title', <PaperText text={paper.title} />) : null}
+          {editableRow('shortTitle', paper.shortTitle ? <PaperText text={paper.shortTitle} /> : '')}
+          {editableRow('authors', fmt.authors(paper.authors ?? []))}
+          <Property label={m.papers.metadata.abstractLabel}>
+            {paper.abstract ? <PaperAbstract text={paper.abstract} folded /> : '—'}
+          </Property>
+          {editableRow('venue', paper.venue)}
+          {editableRow('year', paper.year?.toString() ?? '')}
+          <Property label={labels.rating}>
+            <RatingStars
+              value={paper.rating} disabled={ratingSaving}
+              onChange={(rating) => {
+                if (ratingBusy.current) return
+                ratingBusy.current = true
+                setRatingSaving(true)
+                void savePatch('rating', { rating })
+                  .finally(() => { ratingBusy.current = false; setRatingSaving(false) })
+              }}
+            />
+          </Property>
+          {editableRow('identifier', paper.identifier ?? '')}
+          {editableRow('submitted', paper.submitted ?? '')}
+          <Property label={labels.readState}>
+            <ReadStatePicker value={paper.readState} onPick={(readState) => { void savePatch('readState', { readState }) }} />
+          </Property>
+          <Property label={labels.topics} className="paper-meta-topics">
+            <PaperTopics
+              topics={paper.topics} keep={['paper', paper.id, 'topics']} onError={(error) => notice.refusal(errorLabel(m, error))}
+              onAdd={(topic) => saveTopic(topic, true)}
+              onRemove={(topic) => saveTopic(topic, false)}
+            />
+          </Property>
+          <Property label={m.papers.metadata.projectsLabel} className="paper-meta-projects">
+            <ProjectChips paper={paper} onError={(error) => notice.refusal(errorLabel(m, error))} />
+          </Property>
+          <Property label={m.papers.metadata.wikiLabel}>{pageStateName(paper.pageState, m.papers.metadata.pageState)}</Property>
+          <Property label={m.papers.metadata.fileLabel}>{paper.pageCount ? m.papers.metadata.pages(paper.pageCount) : m.common.empty}</Property>
+        </PropertyList>
+      </div>
     </div>
   )
 }

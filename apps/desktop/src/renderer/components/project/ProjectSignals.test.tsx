@@ -13,7 +13,7 @@ describe('ProjectSignals', () => {
   beforeEach(() => { window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'zh') })
 
   it('keeps type and date in stable shared columns', () => {
-    const type = renderToStaticMarkup(<ProjectSignalKind tone="bad">任务逾期</ProjectSignalKind>)
+    const type = renderToStaticMarkup(<ProjectSignalKind state="error">任务逾期</ProjectSignalKind>)
     const date = renderToStaticMarkup(
       <MessagesProvider><ProjectSignalDate date="2026-09-16" /></MessagesProvider>,
     )
@@ -22,7 +22,7 @@ describe('ProjectSignals', () => {
     )
 
     expect(type).toContain('class="project-signal-kind"')
-    expect(type).toContain('class="tag tag--label tag--bad"')
+    expect(type).toContain('class="tag tag--label tag--error"')
     expect(date).toContain('class="project-signal-date"')
     expect(date).toContain('class="tag tag--chip tag--neutral date-chip"')
     expect(emptyDate).toBe('<span class="project-signal-date"></span>')
@@ -51,7 +51,7 @@ describe('ProjectAttention', () => {
             { id: 'block', rank: 1, kind: '阻塞', tone: 'bad', reason: '等机器' },
             { id: 'milestone-m1', milestone: 'm1', rank: 3, kind: '里程碑逾期', tone: 'bad', reason: '初稿', date: '2026-10-13' },
             { id: 'overdue-tasks-2026-09-28', task: 't1', rank: 4, kind: '任务逾期', tone: 'bad', reason: '1 条任务已过计划时间', date: '2026-09-28' },
-            { id: 'conflict', page: 'topics/sd', rank: 0, kind: '冲突', tone: 'bad', reason: '1 处冲突' },
+            { id: 'conflict', page: 'topics/sd', rank: 0, kind: '冲突', tone: 'warn', reason: '1 处冲突' },
           ]}
           {...handlers}
         />
@@ -92,7 +92,7 @@ describe('ProjectEventRow', () => {
 
     const row = host.querySelector('.record-row')
     expect(row?.className).toBe('item item--row attnrow record-row')
-    expect(host.querySelector('.project-signal-kind .tag--good')?.textContent).toBe('实验结果')
+    expect(host.querySelector('.project-signal-kind .tag--neutral')?.textContent).toBe('实验结果')
     expect(host.querySelector('.project-signal-date .date-chip')).not.toBeNull()
     expect(host.querySelector('.record-line')?.textContent).toBe('第一个探针支持假设 · p99 从 80ms 降到 62ms')
     expect(host.querySelector('.record-who .source-label')?.textContent).toBe('agent')

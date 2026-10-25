@@ -34,7 +34,6 @@ chat.mentionGroup.page label
 chat.mentionGroup.paper label
 chat.mentionGroup.project label
 chat.newChat state
-chat.noModel state
 chat.paperChatLabel aria
 chat.paperChatWidth aria
 chat.quotePrefix content
@@ -101,6 +100,7 @@ common.menu.more action
 common.moveDown action
 common.moveUp action
 common.nav.back action
+common.noModel state
 common.noResults empty
 common.none state
 common.open action
@@ -124,6 +124,9 @@ common.saved state
 common.saving aria
 common.sshFolders.path aria
 common.sshFolders.up action
+common.table.resize action
+common.table.showLess aria
+common.table.showMore aria
 common.trashed notice
 common.unarchive action
 common.undo action
@@ -229,7 +232,6 @@ papers.cellPicker.placeholder placeholder
 papers.columnAdd.namePlaceholder placeholder
 papers.columnAdd.typeGroupAria aria
 papers.columnHeader.addColumn action
-papers.columnHeader.resize action
 papers.columnMenu.changeType action
 papers.columnMenu.deleteColumn action
 papers.columnMenu.deleteOption action
@@ -319,8 +321,6 @@ papers.rowActions.openReader action
 papers.tags.add action
 papers.tags.existingTopics label
 papers.tags.remove action
-papers.tags.showLess aria
-papers.tags.showMore aria
 papers.title label
 papers.toolbar.clearSearch action
 papers.toolbar.group label
@@ -397,7 +397,6 @@ project.identity.allAreas label
 project.identity.areaSeparator state
 project.identity.changeWorkspace action
 project.identity.disconnectWorkspace action
-project.identity.dueBeforeStart failure
 project.identity.dueLabel label
 project.identity.existingAreas label
 project.identity.filterArea aria
@@ -415,7 +414,6 @@ project.identity.paperCount state
 project.identity.priorityLabel label
 project.identity.refreshWorkspace action
 project.identity.removeArea action
-project.identity.startAfterDue failure
 project.identity.startLabel label
 project.identity.statusLabel label
 project.identity.topic label
@@ -1004,7 +1002,6 @@ wiki.harness.billableNote state
 wiki.harness.confirmTitle label
 wiki.harness.freeNote state
 wiki.harness.modelLabel label
-wiki.harness.notConnectedDetail state
 wiki.harness.personalContentLabel label
 wiki.harness.personalContentSummary state
 wiki.harness.scopeLabel label
@@ -1024,7 +1021,6 @@ wiki.ingest.modes.markdown label
 wiki.ingest.modes.structured label
 wiki.ingest.newContent state
 wiki.ingest.noPersonalRecords state
-wiki.ingest.notConnectedNote state
 wiki.ingest.personalRecordsIncluded state
 wiki.ingest.proposalContentLabel aria
 wiki.ingest.rejectReasons.missing-important label

@@ -55,7 +55,7 @@ describe('ParseProgress', () => {
     status = state([job({ step: 'failed', error: '服务器返回 429' })], 1)
     await act(async () => { root.render(<MessagesProvider><ParseProgress onParsed={() => {}} onOpenPaper={() => {}} /></MessagesProvider>) })
     const tag = document.body.querySelector('.parse-float .upt .tag')
-    expect([tag?.textContent, tag?.classList.contains('tag--warn'), document.body.querySelector('.parse-float .upt')?.textContent]).toEqual(['1 篇', true, '1 篇'])
+    expect([tag?.textContent, tag?.classList.contains('tag--warning'), document.body.querySelector('.parse-float .upt')?.textContent]).toEqual(['1 篇', true, '1 篇'])
     expect(document.body.textContent).not.toContain('服务器返回 429')
     await act(async () => { root.unmount() })
   })

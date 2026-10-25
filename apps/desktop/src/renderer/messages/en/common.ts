@@ -26,6 +26,7 @@ export const common = {
   moveDown: 'Move down',
   loading: 'Loading…',
   saving: 'Saving…',
+  noModel: 'AI not connected',
   none: 'None',
   trashed: 'Moved to trash',
   createdOn: (date: string) => `Created ${date}`,
@@ -39,6 +40,11 @@ export const common = {
   nav: { back: 'Back' },
   dialog: { close: 'Close' },
   panel: { close: 'Collapse details' },
+  table: {
+    resize: (column: string) => `${column} column width`,
+    showMore: (n: number) => `Show ${n} more`,
+    showLess: (n: number) => `Hide the other ${n}`,
+  },
   details: { expand: 'Show details', collapse: 'Hide details' },
   field: {
     clear: 'Clear input',

@@ -82,8 +82,8 @@ describe('WikiTidy', () => {
       ['链接失效', '推测解码加速', '→ old'], ['内容太少', '混合专家', ''], ['未归入主题', 'Paper A', ''], ['未归入主题', 'papers/b', ''],
     ])
     expect(rows.map((row) => row.querySelector('.tag')!.className)).toEqual([
-      'tag tag--label tag--bad', 'tag tag--label tag--bad', 'tag tag--label tag--bad',
-      'tag tag--label tag--warn', 'tag tag--label tag--warn', 'tag tag--label tag--warn',
+      'tag tag--label tag--warning', 'tag tag--label tag--error', 'tag tag--label tag--error',
+      'tag tag--label tag--warning', 'tag tag--label tag--warning', 'tag tag--label tag--warning',
     ])
     expect(rows.every((row) => !row.textContent!.includes('一句'))).toBe(true)
     expect(rows[4]!.querySelector('.tidy-open strong')!.textContent).toBe('A')

@@ -6,7 +6,7 @@
  */
 .pickhits{width:var(--radix-popover-trigger-width);min-width:190px;max-height:240px;overflow:auto}
 /* A long list, as the chat's mentions, scrolls past a taller height and never sideways. */
-.pickhits--tall{max-height:min(440px,55vh);overflow:hidden;overflow-y:auto}
+.pickhits--tall{max-height:var(--menu-list-h);overflow:hidden;overflow-y:auto}
 /*
  * A results panel, as the global search's: its left edge lines up with the field and its right edge
  * reaches 260px past the sidebar over the content, which comes to 270px wider than the field. It grows

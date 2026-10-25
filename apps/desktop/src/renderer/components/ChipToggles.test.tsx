@@ -47,7 +47,7 @@ describe('ChipToggles', () => {
     expect(group.getAttribute('role')).toBe('group')
     expect(group.getAttribute('aria-label')).toBe('丢弃原因')
     expect(chips().every((chip) => chip.classList.contains('tagchip'))).toBe(true)
-    expect(chips().every((chip) => chip.className.startsWith(tagClass('neutral', 'chip')))).toBe(true)
+    expect(chips().every((chip) => chip.className.startsWith(tagClass(undefined, 'chip')))).toBe(true)
     expect(host.querySelector('.segmented-control')).toBeNull()
     expect(chips().map((chip) => chip.getAttribute('aria-pressed'))).toEqual(['false', 'false', 'false'])
   })
