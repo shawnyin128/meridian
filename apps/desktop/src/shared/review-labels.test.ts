@@ -21,7 +21,7 @@ const STYLES = ['components/PropertyList.css', 'routes/shell.css', 'components/w
 
 // The markup ReviewQueue and PropertyList render for a card whose change rests on a project conclusion and a source passage, and that writes one more page.
 const CARD = `
-  <div class="structured-row review-row">
+  <div class="item item--row review-row">
     <div class="proposal-card" id="card">
       <div class="proposal-change" id="change">
         <div class="proposal-where"><span class="tag">添加结论</span><span class="proposal-target">推测解码</span></div>

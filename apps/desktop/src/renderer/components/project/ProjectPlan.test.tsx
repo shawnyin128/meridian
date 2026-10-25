@@ -38,7 +38,7 @@ function renderPlan(tab: 'task' | 'ms', options: {
       <ProjectPlan
         projectId="p1" project={{ tasks, milestones }} tab={tab} today="2026-09-16"
         creating={creating} flashId={flashId} selectedTaskId={null}
-        listRef={createRef()} addRef={createRef()} timelineAddRef={createRef()}
+        listRef={createRef()} draftRef={createRef()} addRef={createRef()} timelineAddRef={createRef()}
         onTab={vi.fn()} onDiscardOpenEdits={vi.fn()} onStartTask={vi.fn()} onStartMilestone={vi.fn()}
         onCreating={vi.fn()} onCancelCreate={vi.fn()} onCreateTask={vi.fn()} onCreateMilestone={vi.fn()}
         onUpdateTask={vi.fn()} onDeleteTask={vi.fn()} onReorderTasks={vi.fn()} onOpenTask={vi.fn()}
@@ -64,7 +64,7 @@ describe('ProjectPlan', () => {
 
   it('任务模式把日期和时间保留为两个独立编辑入口', () => {
     const output = renderPlan('task')
-    expect(output).toContain('structured-list--embedded')
+    expect(output).toContain('list--embedded')
     expect(output).toMatch(/<button type="button" class="schedule-trigger task-date-part"/)
     expect(output).toMatch(/<button type="button" class="schedule-trigger task-clock-part"/)
     expect(output).toContain('9月16日')
@@ -107,7 +107,7 @@ describe('ProjectPlan', () => {
         <ProjectPlan
           projectId="p1" project={{ tasks: [task, rangeTask, doneTask], milestones: [] }} tab="task" today="2026-09-16"
           creating={null} flashId={null} selectedTaskId={null}
-          listRef={createRef()} addRef={createRef()} timelineAddRef={createRef()}
+          listRef={createRef()} draftRef={createRef()} addRef={createRef()} timelineAddRef={createRef()}
           onTab={vi.fn()} onDiscardOpenEdits={vi.fn()} onStartTask={vi.fn()} onStartMilestone={vi.fn()}
           onCreating={vi.fn()} onCancelCreate={vi.fn()} onCreateTask={vi.fn()} onCreateMilestone={vi.fn()}
           onUpdateTask={vi.fn()} onDeleteTask={vi.fn()} onReorderTasks={onReorderTasks} onOpenTask={vi.fn()}
@@ -140,7 +140,7 @@ describe('ProjectPlan', () => {
 
   it('里程碑模式复用同一列表外壳并只显示里程碑字段', () => {
     const output = renderPlan('ms')
-    expect(output).toContain('structured-list--embedded')
+    expect(output).toContain('list--embedded')
     expect(output).toContain('完成首轮校准')
     expect(output).toContain('9月20日')
     expect(output).toContain('未完成')
@@ -166,7 +166,7 @@ describe('ProjectPlan', () => {
         <ProjectPlan
           projectId="p1" project={{ tasks: [task], milestones: [milestone] }} tab={tab} today="2026-09-16"
           creating={creating} flashId={null} selectedTaskId={null}
-          listRef={createRef()} addRef={createRef()} timelineAddRef={createRef()}
+          listRef={createRef()} draftRef={createRef()} addRef={createRef()} timelineAddRef={createRef()}
           onTab={vi.fn()} onDiscardOpenEdits={vi.fn()} onStartTask={vi.fn()} onStartMilestone={vi.fn()}
           onCreating={onCreating} onCancelCreate={vi.fn()} onCreateTask={vi.fn()} onCreateMilestone={vi.fn()}
           onUpdateTask={vi.fn()} onDeleteTask={vi.fn()} onReorderTasks={vi.fn()} onOpenTask={vi.fn()}
@@ -257,7 +257,7 @@ describe('ProjectPlan', () => {
           <ProjectPlan
             projectId="p1" project={{ tasks: [task], milestones: [] }} tab="task" today="2026-09-16"
             creating={null} flashId={null} selectedTaskId={null}
-            listRef={createRef()} addRef={createRef()} timelineAddRef={createRef()}
+            listRef={createRef()} draftRef={createRef()} addRef={createRef()} timelineAddRef={createRef()}
             onTab={vi.fn()} onDiscardOpenEdits={vi.fn()} onStartTask={vi.fn()} onStartMilestone={vi.fn()}
             onCreating={vi.fn()} onCancelCreate={vi.fn()} onCreateTask={vi.fn()} onCreateMilestone={vi.fn()}
             onUpdateTask={onUpdateTask} onDeleteTask={vi.fn()} onReorderTasks={vi.fn()} onOpenTask={onOpenTask}
@@ -306,7 +306,7 @@ describe('ProjectPlan', () => {
     it('一行任务只占一个 Tab 停靠点，方向键依次走过日期、时间、优先级、状态、任务名、改名铅笔和删除，双击仍不选中字', async () => {
       const { host } = mount()
       const row = host.querySelector<HTMLElement>('.task-row')!
-      const stops = [...host.querySelectorAll<HTMLElement>('.structured-list *')]
+      const stops = [...host.querySelectorAll<HTMLElement>('.list *')]
         .filter((element) => element.tabIndex >= 0 && !(element as HTMLButtonElement).disabled)
       expect(stops).toEqual([row])
       await act(async () => { row.focus() })

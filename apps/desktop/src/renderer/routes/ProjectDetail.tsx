@@ -27,7 +27,9 @@ import { IconButton } from '../components/IconButton.js'
 import { IconOpen } from '../components/icons.js'
 import { SegmentedControl } from '../components/SegmentedControl.js'
 import { TabbedSection } from '../components/TabbedSection.js'
-import { RowActions, StructuredList, StructuredRow } from '../components/StructuredList.js'
+import { DraftSlot, focusDraft, useDraftSlot } from '../components/DraftSlot.js'
+import { Item, RowActions } from '../components/Item.js'
+import { List } from '../components/List.js'
 import { TitleNote } from '../components/TitleNote.js'
 import {
   ProjectAttention, ProjectEventList, ProjectEventRow,
@@ -56,6 +58,8 @@ import { useMessages } from '../messages/useMessages.js'
 import { InlineMetadataField } from '../components/InlineField.js'
 import { ModalDialog } from '../components/ModalDialog.js'
 import { DirectoryField, FieldRow, FieldRows, FormInput } from '../components/FormControls.js'
+import { InlineMessage } from '../components/InlineMessage.js'
+import { SshFolderBrowser, SshHostField, useSshFolders } from '../components/SshFolderPicker.js'
 import {
   PageBody, PageError, PageHeader, PageShell, PageTitle, SectionHeading,
 } from '../components/PageShell.js'
@@ -129,11 +133,7 @@ export function ProjectIdeaPanel({
   const linkedNode = graph.nodes.find((node) => node.id === idea.node)
   // A node draft belongs to the idea it was opened for and shows only with it.
   const [draft, setDraft] = useDraft<{ label: string; after: string }>(['idea', idea.id], 'node')
-  const draftAt = useRef<HTMLDivElement>(null)
-  const startNode = () => {
-    if (draft === null) setDraft({ label: idea.title, after: '' })
-    else draftAt.current?.querySelector<HTMLElement>('.form-control')?.focus()
-  }
+  const nodeDraft = useDraftSlot<HTMLDivElement>(draft !== null, () => setDraft({ label: idea.title, after: '' }))
   return (
     <IdeaPanel
       idea={idea} onClose={onClose} onOpenSourcePaper={onOpenPaper} sourceChatDeleted={sourceChatDeleted}
@@ -147,9 +147,9 @@ export function ProjectIdeaPanel({
         <NodeAssignment
           node={linkedNode === undefined ? undefined : { id: linkedNode.id, label: linkedNode.label, mode: nodeMode(linkedNode) }}
           nodes={graph.nodes} canUnlink onOpen={onOpenNode} onSet={onSetNode}
-          create={workspaceManaged ? undefined : <AddAction size="compact" onClick={startNode}>{m.project.idea.createNode}</AddAction>}
+          create={workspaceManaged ? undefined : <AddAction size="compact" onClick={nodeDraft.start}>{m.project.idea.createNode}</AddAction>}
           draft={draft === null ? undefined : (
-            <div ref={draftAt}>
+            <div ref={nodeDraft.slot}>
               <DraftForm
                 canSave={draft.label.trim() !== ''} onCancel={() => setDraft(null)}
                 onSave={() => onCreateNode(draft.label.trim(), draft.after === '' ? null : draft.after)
@@ -206,7 +206,7 @@ export function ProjectIdeaList({ projectId, ideas, error, graph, selectedId, on
 }) {
   const m = useMessages()
   const [draft, setDraft] = useDraft<IdeaDraftText>(['project', projectId], 'idea')
-  const draftAt = useRef<HTMLDivElement>(null)
+  const ideaDraft = useDraftSlot(draft !== null, () => setDraft({ title: '', body: '' }))
   const add = useRef<HTMLButtonElement>(null)
   const triggers = useMemo(() => [add], [])
   const carried = (ideas ?? []).filter((idea) => idea.project === projectId)
@@ -216,27 +216,28 @@ export function ProjectIdeaList({ projectId, ideas, error, graph, selectedId, on
     const source = ideaSourceLabel(idea)
     const ideaNode = tag === null ? graph.nodes.find((node) => node.id === idea.node) : undefined
     return (
-      <StructuredRow
+      <Item
         className="project-idea-row" selected={selectedId === idea.id}
         data-idea={idea.id} key={idea.id} onActivate={() => onSelect(idea.id)}
-      >
-        <FadeText className="project-idea-title" label={idea.title}>{idea.title}</FadeText>
-        <span className="project-idea-flags">
-          {ideaNode === undefined
-            ? null
-            : (
-              <EntityLink kind="node" label={ideaNode.label} mode={nodeMode(ideaNode)} />
-            )}
-          {tag === null ? null : <Tag>{tag}</Tag>}
-          {idea.archived ? <Tag>{m.common.archived}</Tag> : null}
-          {chatDeleted(idea) ? <SourceChatDeleted /> : null}
-        </span>
-        {ownIdea(idea) ? null : (
+        title={<FadeText className="project-idea-title" label={idea.title}>{idea.title}</FadeText>}
+        tags={(
+          <span className="project-idea-flags">
+            {ideaNode === undefined
+              ? null
+              : (
+                <EntityLink kind="node" label={ideaNode.label} mode={nodeMode(ideaNode)} />
+              )}
+            {tag === null ? null : <Tag>{tag}</Tag>}
+            {idea.archived ? <Tag>{m.common.archived}</Tag> : null}
+            {chatDeleted(idea) ? <SourceChatDeleted /> : null}
+          </span>
+        )}
+        trailing={ownIdea(idea) ? null : (
           <FadeText className="project-idea-source" label={m.project.idea.sourceTag(source)}>
             <IdeaSource idea={idea} message={m.project.idea.sourceTag} />
           </FadeText>
         )}
-      </StructuredRow>
+      />
     )
   }
   const shown = carried.length + related.length + sparked.length
@@ -244,14 +245,7 @@ export function ProjectIdeaList({ projectId, ideas, error, graph, selectedId, on
     <>
       <SectionHeading
         actions={(
-          <AddAction
-            size="compact" ref={add} label={m.ideas.create}
-            onClick={() => {
-              // An open draft is only refocused, keeping what is typed.
-              if (draft !== null) draftAt.current?.querySelector<HTMLElement>('.form-control')?.focus()
-              else setDraft({ title: '', body: '' })
-            }}
-          >{m.project.idea.kind}</AddAction>
+          <AddAction size="compact" ref={add} label={m.ideas.create} onClick={ideaDraft.start}>{m.project.idea.kind}</AddAction>
         )}
         count={shown}
       >{m.project.linkedIdeas}
@@ -261,19 +255,19 @@ export function ProjectIdeaList({ projectId, ideas, error, graph, selectedId, on
         : shown === 0 && draft === null
         ? <EmptyState variant="section">{m.project.noLinkedIdeas}</EmptyState>
         : (
-          <StructuredList className="project-ideas" variant="embedded">
+          <List className="project-ideas" variant="embedded">
             {[...carried].sort(newestFirst).map((idea) => row(idea, null))}
             {[...related].sort(newestFirst).map((idea) => row(idea, m.project.sections.links))}
             {draft === null ? null : (
-              <StructuredRow className="project-idea-draft" rowRef={draftAt}>
+              <DraftSlot className="project-idea-draft" slot={ideaDraft.slot}>
                 <IdeaDraft
                   draft={draft} triggers={triggers} onChange={setDraft} onCancel={() => setDraft(null)}
                   onSave={(title, body) => onCreate(title, body).then((created) => { if (created) setDraft(null) })}
                 />
-              </StructuredRow>
+              </DraftSlot>
             )}
             {[...sparked].sort(newestFirst).map((idea) => row(idea, m.project.sections.source))}
-          </StructuredList>
+          </List>
         )}
     </>
   )
@@ -338,13 +332,13 @@ export function ProjectDetail({
   const [workspaceMode, setWorkspaceMode] = useState<'local' | 'ssh'>('local')
   const [localPath, setLocalPath] = useState('')
   const [sshHost, setSshHost] = useState('')
-  const [sshPath, setSshPath] = useState('')
   const [sshPort, setSshPort] = useState('')
+  const remote = useSshFolders()
   const [binding, setBinding] = useState<'local' | 'ssh' | null>(null)
   const planList = useRef<HTMLDivElement>(null)
+  const planDraft = useRef<HTMLElement>(null)
   const planAdd = useRef<HTMLButtonElement>(null)
   const ganttAdd = useRef<HTMLButtonElement>(null)
-  const relRow = useRef<HTMLDivElement>(null)
   const relAdd = useRef<HTMLButtonElement>(null)
   const relTriggers = useMemo(() => [relAdd], [])
   const relEditRow = useRef<HTMLDivElement>(null)
@@ -358,6 +352,12 @@ export function ProjectDetail({
   const keptAddGroup = PROJECT_RELATION_GROUPS.find((group) => relations.get(`add:${group}`) !== undefined)
   const relAdding = ownRelAdding || keptAddGroup !== undefined
   const relGroup = ownRelAdding ? ownRelGroup : keptAddGroup ?? ownRelGroup
+  // The demo's relAdd guard: an open placeholder is only refocused, keeping what was typed.
+  const relDraft = useDraftSlot<HTMLDivElement>(relAdding, () => {
+    setOwnRelGroup(relGroup)
+    setRelAdding(true)
+  })
+  const relRow = relDraft.slot
   const relEditing = ownRelEditing ?? relationItems?.find((item) => relations.get(`edit:${item.id}`) !== undefined) ?? null
   const dropAdds = useCallback(() => {
     for (const group of PROJECT_RELATION_GROUPS) relations.drop(`add:${group}`)
@@ -578,18 +578,24 @@ export function ProjectDetail({
     setWorkspaceMode(ssh ? 'ssh' : 'local')
     setLocalPath(workspace?.kind === 'local' ? workspace.root : '')
     setSshHost(ssh ? workspace.host ?? '' : '')
-    setSshPath(ssh ? workspace.root : '')
     setSshPort(ssh && workspace.port !== undefined ? String(workspace.port) : '')
+    remote.reset()
     setWorkspaceOpen(true)
   }
 
-  const connectSshWorkspace = async () => {
+  /** Connects to the host typed and shows its home; once connected, binds the folder shown. */
+  const submitSshWorkspace = async () => {
     const port = sshPort.trim() === '' ? undefined : Number(sshPort)
+    const target = { host: sshHost.trim(), ...(port === undefined ? {} : { port }) }
+    if (remote.folder === null) {
+      remote.connect(target)
+      return
+    }
     setBinding('ssh')
-    const connected = await writeProject(projectApi.bindWorkspace(projectId, {
-      kind: 'ssh', host: sshHost.trim(), path: sshPath.trim(),
-      ...(port === undefined ? {} : { port }),
-    }), m.project.workspace.sshConnected)
+    const connected = await writeProject(
+      projectApi.bindWorkspace(projectId, { kind: 'ssh', ...target, path: remote.folder.path }),
+      m.project.workspace.sshConnected,
+    )
     setBinding(null)
     if (connected) setWorkspaceOpen(false)
   }
@@ -649,7 +655,7 @@ export function ProjectDetail({
   /** When that tab already has a new row, moves focus back to it instead of opening a second one. */
   const focusOpenRow = (kind: PlanTab) => {
     if (openRowKind !== kind) return false
-    planList.current?.querySelector<HTMLInputElement>('.min')?.focus()
+    focusDraft(planDraft.current)
     return true
   }
 
@@ -775,10 +781,14 @@ export function ProjectDetail({
         title={m.project.workspace.dialogTitle}
         actions={(
           <CommitActions
-            place="foot" onCancel={() => setWorkspaceOpen(false)} saving={binding !== null}
+            place="foot" onCancel={() => setWorkspaceOpen(false)}
+            saving={binding !== null || (workspaceMode === 'ssh' && remote.folder === null && remote.opening)}
+            canSave={workspaceMode === 'local' || remote.folder === null || (!remote.opening && !remote.edited)}
             {...workspaceMode === 'local'
               ? { form: 'workspaceLocal', saveLabel: m.project.workspace.add, busyLabel: m.project.workspace.adding }
-              : { form: 'workspaceSsh', saveLabel: m.project.workspace.connect, busyLabel: m.project.workspace.connecting }}
+              : remote.folder === null
+                ? { form: 'workspaceSsh', saveLabel: m.project.workspace.connect, busyLabel: m.project.workspace.connecting }
+                : { form: 'workspaceSsh', saveLabel: m.project.workspace.choose, busyLabel: m.project.workspace.choosing }}
           />
         )}
       >
@@ -813,29 +823,25 @@ export function ProjectDetail({
               : (
                 <form
                   id="workspaceSsh" className="workspace-form"
-                  onSubmit={(event) => { event.preventDefault(); void connectSshWorkspace() }}
+                  onSubmit={(event) => { event.preventDefault(); void submitSshWorkspace() }}
                 >
                   <FieldRows>
                     <FieldRow label={m.project.workspace.hostLabel}>
-                      <FormInput
-                        appearance="field" value={sshHost} autoFocus required
-                        placeholder={m.project.workspace.hostPlaceholder}
-                        onChange={(event) => setSshHost(event.target.value)}
-                      />
-                    </FieldRow>
-                    <FieldRow label={m.project.workspace.pathLabel}>
-                      <FormInput
-                        appearance="field" value={sshPath} required placeholder={m.project.workspace.remotePlaceholder}
-                        onChange={(event) => setSshPath(event.target.value)}
+                      <SshHostField
+                        value={sshHost} autoFocus required placeholder={m.project.workspace.hostPlaceholder}
+                        onValue={(host) => { setSshHost(host); remote.reset() }} onError={report}
                       />
                     </FieldRow>
                     <FieldRow label={m.project.workspace.portLabel}>
                       <FormInput
                         appearance="field" value={sshPort} type="number" min={1} max={65_535}
                         placeholder={m.project.workspace.portLabel}
-                        onChange={(event) => setSshPort(event.target.value)}
+                        onChange={(event) => { setSshPort(event.target.value); remote.reset() }}
                       />
                     </FieldRow>
+                    {remote.folder === null
+                      ? remote.issue === null ? null : <InlineMessage tone="error" variant="line">{remote.issue}</InlineMessage>
+                      : <SshFolderBrowser choice={remote} />}
                   </FieldRows>
                 </form>
               )}
@@ -892,7 +898,7 @@ export function ProjectDetail({
             <ProjectPlan
               projectId={projectId} project={project} tab={tab} today={today} creating={creating}
               flashId={flash?.id ?? null} selectedTaskId={selectedTaskId}
-              listRef={planList} addRef={planAdd} timelineAddRef={ganttAdd}
+              listRef={planList} draftRef={planDraft} addRef={planAdd} timelineAddRef={ganttAdd}
               onTab={onTab} onDiscardOpenEdits={discardOpenEdits}
               onStartTask={() => startTask()} onStartMilestone={startMilestone}
               onCreating={setCreating} onCancelCreate={() => setCreating(null)} onHoverMilestone={setHoverMilestone}
@@ -1205,17 +1211,9 @@ export function ProjectDetail({
                   <SectionHeading
                     variant="rail"
                     actions={(
-                      // The demo's relAdd guard: an open placeholder is only refocused, keeping what was typed.
-                      <AddAction
-                        size="compact" ref={relAdd} label={m.project.links.addTitle}
-                        onClick={() => {
-                          if (relAdding) relRow.current?.querySelector('input')?.focus()
-                          else {
-                            setOwnRelGroup(relGroup)
-                            setRelAdding(true)
-                          }
-                        }}
-                      >{m.project.sections.links}</AddAction>
+                      <AddAction size="compact" ref={relAdd} label={m.project.links.addTitle} onClick={relDraft.start}>
+                        {m.project.sections.links}
+                      </AddAction>
                     )}
                   >{m.project.sections.links}
                   </SectionHeading>

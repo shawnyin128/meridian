@@ -76,6 +76,7 @@ import {
   ProjectCreateRelationParamsSchema,
   ProjectCreateTaskParamsSchema,
   ProjectBindWorkspaceParamsSchema,
+  SshFoldersParamsSchema,
   ProjectDeleteParamsSchema,
   ProjectSummarySchema,
   ProjectSetConclusionStateParamsSchema,
@@ -283,6 +284,15 @@ describe('contract schemas', () => {
     expect(() => ProjectBindWorkspaceParamsSchema.parse({
       id: 'p1', binding: { kind: 'ssh', host: 'gpu-lab', path: '/srv/repo', password: 'secret' },
     })).toThrow()
+  })
+
+  it('列出 SSH 主机上的文件夹只收主机、端口和目录，不收凭据', () => {
+    expect(SshFoldersParamsSchema.parse({ host: 'gpu-lab' })).toEqual({ host: 'gpu-lab' })
+    expect(SshFoldersParamsSchema.parse({ host: ' gpu-lab ', port: 2222, path: '/srv/repo' }))
+      .toEqual({ host: 'gpu-lab', port: 2222, path: '/srv/repo' })
+    expect(() => SshFoldersParamsSchema.parse({ host: 'gpu-lab', password: 'secret' })).toThrow()
+    expect(() => SshFoldersParamsSchema.parse({ host: 'gpu-lab', identityFile: '~/.ssh/id_lab' })).toThrow()
+    expect(() => SshFoldersParamsSchema.parse({ host: '' })).toThrow()
   })
 
   it('库设置只收一个根目录，内部派生路径不跨到页面', () => {

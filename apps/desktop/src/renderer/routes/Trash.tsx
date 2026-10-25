@@ -12,7 +12,8 @@ import { FadeText } from '../components/FadeText.js'
 import { LoadingPlaceholder } from '../components/LoadingPlaceholder.js'
 import { PaperText } from '../components/paper/PaperText.js'
 import { plainTitle } from '../components/paper/paper-text.js'
-import { RowActions, StructuredList, StructuredRow } from '../components/StructuredList.js'
+import { Item } from '../components/Item.js'
+import { List } from '../components/List.js'
 import { TitleNote } from '../components/TitleNote.js'
 import {
   PageBody, PageError, PageHeader, PageShell, PageTitle, SectionHeading,
@@ -22,7 +23,6 @@ import { useScreenLoad } from '../hooks/useScreenLoad.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
 import { Button } from '../components/Button.js'
 import './shell.css'
-import './Trash.css'
 
 /**
  * The order of the groups: the order of each kind's row in the sidebar, top to bottom. Attachments
@@ -115,29 +115,32 @@ export function Trash() {
           : groups.map((g) => (
             <Fragment key={g.kind}>
               <SectionHeading count={g.items.length}>{m.trash.kinds[g.kind]}</SectionHeading>
-              <StructuredList variant="embedded" maxVisibleRows="all" className="tgroup">
+              <List variant="embedded" rows="all" className="tgroup">
                 {g.items.map((entry) => (
-                  <StructuredRow className="trow" key={entry.id}>
-                    <FadeText className="tt2">{PAPER_KINDS.has(entry.kind) ? <PaperText text={entry.title} /> : entry.title}</FadeText>
-                    <span className="tm2">{m.trash.autoClear(daysLeft(entry.deletedAt, today))}</span>
-                    <RowActions>
-                      <IconButton
-                        label={m.common.restore} size="nested" disabled={!entry.restorable} onClick={() => restore(entry)}
-                        note={entry.restorable
-                          ? undefined
-                          : entry.kind === 'paper' ? m.trash.paperTaken : entry.kind === 'chat' ? m.trash.chatTaken : m.trash.projectGone}
-                      ><IconRestore /></IconButton>
-                      <ConfirmDialog
-                        trigger={(
-                          <IconButton label={m.common.deletePermanently} size="nested" tone="danger"><IconTrash /></IconButton>
-                        )}
-                        title={m.trash.confirmPurge(plainOf(entry))} description={m.trash.confirmPurgeDescription}
-                        confirmLabel={m.trash.confirmPurgeLabel} onConfirm={() => purge(entry.id)}
-                      />
-                    </RowActions>
-                  </StructuredRow>
+                  <Item
+                    className="trow" key={entry.id}
+                    title={<FadeText className="tt2">{PAPER_KINDS.has(entry.kind) ? <PaperText text={entry.title} /> : entry.title}</FadeText>}
+                    trailing={<span className="tm2">{m.trash.autoClear(daysLeft(entry.deletedAt, today))}</span>}
+                    actions={(
+                      <>
+                        <IconButton
+                          label={m.common.restore} size="nested" disabled={!entry.restorable} onClick={() => restore(entry)}
+                          note={entry.restorable
+                            ? undefined
+                            : entry.kind === 'paper' ? m.trash.paperTaken : entry.kind === 'chat' ? m.trash.chatTaken : m.trash.projectGone}
+                        ><IconRestore /></IconButton>
+                        <ConfirmDialog
+                          trigger={(
+                            <IconButton label={m.common.deletePermanently} size="nested" tone="danger"><IconTrash /></IconButton>
+                          )}
+                          title={m.trash.confirmPurge(plainOf(entry))} description={m.trash.confirmPurgeDescription}
+                          confirmLabel={m.trash.confirmPurgeLabel} onConfirm={() => purge(entry.id)}
+                        />
+                      </>
+                    )}
+                  />
                 ))}
-              </StructuredList>
+              </List>
             </Fragment>
           ))}
       </PageBody>
