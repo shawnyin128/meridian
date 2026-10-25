@@ -48,7 +48,7 @@ const MARKUP = `
   <section class="collapsible-group collapsible-group--quiet"><div class="collapsible-group-head"><button class="collapsible-group-toggle" id="quiet">已归档 · 2</button></div></section>
   <div class="section-heading section-heading--rail node-document-head"><span class="node-document-title" id="panel">基线：独立草稿模型</span></div>
   <div class="pd-h"><span class="pd-t" id="paper-detail">QuIP#: Even Better LLM Quantization</span></div>
-  <article class="paper-card"><div class="paper-card-heading"><h3 id="paper-card">Acceptance Is Not Speed</h3></div>
+  <article class="item item--card item--slotted paper-card"><div class="item-head"><div class="item-main"><div class="item-title"><h3 id="paper-card">Acceptance Is Not Speed</h3></div></div></div>
     <section class="paper-card-section"><div class="paper-card-label" id="card-label">摘要</div></section></article>
   <article class="item item--card wkcard"><div class="wt"><button class="tt" id="wiki-card">KV cache 压缩</button></div></article>
   <span class="project-identity header"><span class="project-identity-name" id="project-card">MoE 路由分析</span></span>

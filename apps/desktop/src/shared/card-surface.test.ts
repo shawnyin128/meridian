@@ -59,14 +59,11 @@ describe('卡片只有一种面', () => {
 /** The cards and panels on --card whose separating border phase 2 dropped, each with the border 0.0.15.4 drew. */
 const SEPARATED: [file: string, selector: string, border: string][] = [
   ['components/Item.css', '.item--card', '1px solid var(--sep)'],
-  ['routes/Feed.css', '.fitem', '1px solid var(--sep2)'],
-  ['components/paper/PaperCard.css', '.paper-card', '1px solid var(--sep)'],
   ['components/paper-table/PaperTable.css', '.research-map-detail', '1px solid var(--sep)'],
   ['routes/ResearchOverview.css', '.ovstat', '1px solid var(--sep)'],
   ['components/project/ResearchGraph.css', '.rgraph-viewport', '1px solid var(--sep2)'],
   ['routes/ProjectDetail.css', '.wkside.node-document-pane', '1px solid var(--sep)'],
   ['routes/Ideas.css', '.idea-detail-panel', '1px solid var(--sep)'],
-  ['routes/Reader.css', '.reading-card', '1px solid var(--sep2)'],
   ['routes/Reader.css', '.wiki-ingest-scope', '1px solid var(--sep2)'],
 ]
 

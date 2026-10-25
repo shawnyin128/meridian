@@ -85,6 +85,36 @@ describe('行和卡片的内缩与样子', () => {
     ]).toEqual([card, card, card])
   })
 
+  it('嵌在卡片正文或提示框里的列表，行从那块内容的边开始；标了颜色的卡片换上颜色的前沿，内容仍在同一处开始', () => {
+    const left = (markup: string, selector: string) => {
+      document.body.innerHTML = markup
+      const element = document.querySelector(selector)
+      let edge = '0px'
+      let pad = '0px'
+      for (const rule of [...document.styleSheets].flatMap((sheet) => [...sheet.cssRules])) {
+        if (rule.selectorText === undefined || !element.matches(rule.selectorText)) continue
+        const { style } = rule
+        const parts = (value: string) => value.trim().split(/\s+(?![^(]*\))/)
+        if (style.getPropertyValue('border') !== '') edge = parts(style.getPropertyValue('border'))[0]!
+        if (style.getPropertyValue('border-left') !== '') edge = parts(style.getPropertyValue('border-left'))[0]!
+        if (style.getPropertyValue('padding') !== '') { const sides = parts(style.getPropertyValue('padding')); pad = sides[3] ?? sides[1] ?? sides[0]! }
+        if (style.getPropertyValue('padding-inline') !== '') pad = parts(style.getPropertyValue('padding-inline'))[0]!
+        if (style.getPropertyValue('padding-left') !== '') pad = style.getPropertyValue('padding-left')
+      }
+      return px(edge) + px(pad)
+    }
+    expect(left('<div class="list list--embedded list--nested"><div class="item item--row">发现</div></div>', '.item')).toBe(0)
+    expect(left('<article class="item item--card item--marked">高亮</article>', '.item'))
+      .toBe(left('<article class="item item--card">笔记</article>', '.item'))
+  })
+
+  it('离开列表的项淡出并滑开；关掉的行字变淡', () => {
+    const leaving = styleOf('<article class="item item--card item--leaving">论文</article>', '.item')
+    expect([leaving.opacity, leaving.getPropertyValue('transform')]).toEqual(['0', 'translateX(var(--sp-24))'])
+    expect(styleOf('<div class="item item--row item--slotted item--muted"><span class="item-main">方向</span></div>', '.item-main').opacity)
+      .toBe('0.52')
+  })
+
   it('能打开的行和卡片悬停时盖同一层悬停色，不能打开的行不盖；选中的行和卡片都是浅强调底配强调色的字', () => {
     const HOVER = 'linear-gradient(var(--hover),var(--hover))'
     expect([

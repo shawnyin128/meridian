@@ -164,8 +164,8 @@ export function Changelog() {
         variant="row" composite
         summary={(
           <>
-            <ItemTitle className="ct"><span><ChangeTitle entry={c} /></span><ChangeSource source={c.source} /></ItemTitle>
-            <ItemMeta className="cm">{[metaBelowHeading(c.meta), hint(c, m.changelog.state)].filter((s) => s !== '').join(SEP)}</ItemMeta>
+            <ItemTitle flow className="ct"><span><ChangeTitle entry={c} /></span><ChangeSource source={c.source} /></ItemTitle>
+            <ItemMeta flow className="cm">{[metaBelowHeading(c.meta), hint(c, m.changelog.state)].filter((s) => s !== '').join(SEP)}</ItemMeta>
           </>
         )}
         action={(

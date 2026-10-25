@@ -119,12 +119,19 @@ describe('Item 的槽', () => {
       + '<span class="row-actions item-actions"><button type="button">删除</button><button type="button">更多</button></span></div>')
   })
 
-  it('卡片把槽排在头一行，正文在它下面；两行的行把次要信息放到标题下面', () => {
+  it('卡片把槽排在头一行，正文在它下面，槽能放下标题元素；两行的行把次要信息放到标题下面', () => {
     expect(renderToStaticMarkup(<Item density="card" title="KV 量化" trailing="10月24日"><p>正文</p></Item>))
       .toBe('<article class="item item--card item--slotted" data-row-actions=""><div class="item-head">'
-        + '<span class="item-main"><span class="item-title">KV 量化</span></span><span class="item-trailing">10月24日</span></div>'
+        + '<div class="item-main"><div class="item-title">KV 量化</div></div><div class="item-trailing">10月24日</div></div>'
         + '<p>正文</p></article>')
     expect(renderToStaticMarkup(<Item lines={2} title="KV 量化" meta="3 篇论文" />)).toContain('class="item item--row item--slotted item--two-line"')
+  })
+
+  it('标了颜色的卡片把颜色交给自己的前沿，离开列表的卡片和关掉的行各有一个样子', () => {
+    expect(renderToStaticMarkup(<Item density="card" mark="var(--hl-yellow)">高亮</Item>))
+      .toBe('<article class="item item--card item--marked" style="--item-mark:var(--hl-yellow)" data-row-actions="">高亮</article>')
+    expect(renderToStaticMarkup(<Item density="card" leaving>论文</Item>)).toContain('class="item item--card item--leaving"')
+    expect(renderToStaticMarkup(<Item muted title="方向" />)).toContain('class="item item--row item--slotted item--muted"')
   })
 
   it('空的槽不画', () => {

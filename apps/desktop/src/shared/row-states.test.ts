@@ -49,7 +49,7 @@ describe('选中的样子只有一种', () => {
       sidebar: styleOf('<button class="nav-row srow on"><span class="ic"></span>论文</button>', '.srow'),
       map: styleOf('<div class="research-map-groups list"><button class="item item--row item--actionable item--selected research-map-group">KV cache</button></div>', '.research-map-group'),
       card: styleOf('<article class="item item--card item--selected">想法</article>', '.item'),
-      highlight: styleOf('<div class="reading-card highlight-card yellow selected">批注</div>', '.reading-card'),
+      highlight: styleOf('<article class="item item--card item--selected item--marked reading-card highlight-card yellow">批注</article>', '.reading-card'),
     }
     const current = ['var(--accent-soft)', 'var(--accent-text)', '']
     expect(Object.fromEntries(Object.entries(looks).map(([host, style]) => [host, [style.backgroundColor, style.color, style.boxShadow]])))

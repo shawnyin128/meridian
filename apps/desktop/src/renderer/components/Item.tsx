@@ -56,8 +56,12 @@ type ItemProps = {
   composite?: boolean
   /** The item whose detail is open beside the list. */
   selected?: boolean
-  /** An archived card, on the page's own fill. */
+  /** An archived or switched-off item: a card on the page's own fill, a row with its title and meta dimmed. */
   muted?: boolean
+  /** An item sliding out of its list once it was dismissed or moved, before the list drops it. */
+  leaving?: boolean
+  /** A colour that marks the item along its leading edge, such as a highlight's colour. */
+  mark?: string
   onActivate?: () => void
   /** The DOM element of an item that is not a button row. */
   elementRef?: Ref<HTMLElement>
@@ -75,7 +79,7 @@ type ItemProps = {
  */
 export function Item({
   density = 'row', lines = 1, leading, title, meta, tags, trailing, actions, menu, children, className = '', columns,
-  composite = false, selected = false, muted = false, onActivate, elementRef, style, ...props
+  composite = false, selected = false, muted = false, leaving = false, mark, onActivate, elementRef, style, ...props
 }: ItemProps) {
   const card = density === 'card'
   const button = onActivate !== undefined && !composite && !card
@@ -84,11 +88,16 @@ export function Item({
     'item', `item--${density}`, slotted ? 'item--slotted' : '', lines === 2 && !card ? 'item--two-line' : '',
     columns === undefined ? '' : 'item--columns',
     onActivate === undefined ? '' : 'item--actionable',
-    selected ? 'item--selected' : '', muted ? 'item--muted' : '', className,
+    selected ? 'item--selected' : '', muted ? 'item--muted' : '', leaving ? 'item--leaving' : '', mark === undefined ? '' : 'item--marked',
+    className,
   ].filter(Boolean).join(' ')
-  const itemStyle = columns === undefined ? style : { ...style, gridTemplateColumns: columns }
-  const slot = (name: string, content: ReactNode) => (shown(content) ? <span className={`item-${name}`}>{content}</span> : null)
-  const main = shown(title) || shown(meta) ? <span className="item-main">{slot('title', title)}{slot('meta', meta)}</span> : null
+  const itemStyle = {
+    ...style, ...(columns === undefined ? {} : { gridTemplateColumns: columns }), ...(mark === undefined ? {} : { '--item-mark': mark }),
+  } as CSSProperties
+  // A card's slots may hold a heading; a row's stay phrasing content, as a button row's must.
+  const Slot = card ? 'div' : 'span'
+  const slot = (name: string, content: ReactNode) => (shown(content) ? <Slot className={`item-${name}`}>{content}</Slot> : null)
+  const main = shown(title) || shown(meta) ? <Slot className="item-main">{slot('title', title)}{slot('meta', meta)}</Slot> : null
   const tail = shown(actions) || shown(menu) ? <RowActions className="item-actions">{actions}{menu}</RowActions> : null
   const content = card && slotted
     ? <><div className="item-head">{slot('leading', leading)}{main}{slot('tags', tags)}{slot('trailing', trailing)}{tail}</div>{children}</>
@@ -113,16 +122,26 @@ export function Item({
   )
 }
 
-/**
- * An item's title or meta line inside a control of the item's own, such as the toggle of a fold that
- * is the row's summary: the slot's type, in the place the control gives it. `className` only names it.
- */
-export function ItemTitle({ children, className = '' }: { children: ReactNode; className?: string }) {
-  return <span className={`item-title${className ? ` ${className}` : ''}`}>{children}</span>
+type ItemLineProps = {
+  children: ReactNode
+  /** Its text and marks flow and wrap as text does, its marks after its last word, instead of laying out as the slot. */
+  flow?: boolean
+  className?: string
 }
 
-export function ItemMeta({ children, className = '' }: { children: ReactNode; className?: string }) {
-  return <span className={`item-meta${className ? ` ${className}` : ''}`}>{children}</span>
+const lineClass = (slot: string, flow: boolean, className: string) => `${slot}${flow ? ' item-line' : ''}${className ? ` ${className}` : ''}`
+
+/**
+ * An item's title or meta line outside its slots: a cell of a row that lays its cells out on a grid,
+ * or a line inside a control of the item's own, such as the toggle of a fold that is the row's summary.
+ * It has the slot's type and layout. `className` only names or places it.
+ */
+export function ItemTitle({ children, flow = false, className = '' }: ItemLineProps) {
+  return <span className={lineClass('item-title', flow, className)}>{children}</span>
+}
+
+export function ItemMeta({ children, flow = false, className = '' }: ItemLineProps) {
+  return <span className={lineClass('item-meta', flow, className)}>{children}</span>
 }
 
 /**

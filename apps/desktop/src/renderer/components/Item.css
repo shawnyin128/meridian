@@ -5,17 +5,25 @@
  * layout is :where()-weak, so a row whose cells sit on its list's grid lays them out there.
  */
 .item{box-sizing:border-box;width:100%;min-width:0;margin:0;border:0;background-color:transparent;color:var(--ink);
-  font-family:inherit;font-size:var(--fs-body);font-weight:var(--fw-regular);line-height:var(--lh-ui);text-align:left}
+  font-family:inherit;font-size:var(--fs-body);font-weight:var(--fw-regular);line-height:var(--lh-ui);text-align:left;
+  transition:opacity var(--t-slow) var(--e-out),transform var(--t-slow) var(--e-out)}
 :where(.item--row.item--slotted){display:flex;align-items:center;gap:var(--sp-12)}
 /* A one-line row is one list row high even with a 24px control in it, as a section's empty state is; a longer one grows. */
 .item--row{min-height:var(--row-list-h);padding:var(--sp-6) calc(var(--item-inset) + 1px)}
 .list:not(.list--embedded)>.item--row{padding-inline:var(--item-inset)}
+/* The rows of a list nested in another surface's content already sit inside that surface's inset. */
+.list--nested>.item--row{padding-inline:0}
 .item--columns{display:grid}
 .item--card{padding:var(--sp-12) var(--item-inset);border:1px solid var(--sep);border-radius:var(--r-card);background-color:var(--card)}
 .item--card.item--slotted{display:flex;flex-direction:column;gap:var(--sp-8)}
 /* Cards one under another stand apart by the item gap; a grid of cards spaces them itself. */
 .item--card+.item--card{margin-top:var(--item-gap)}
 .item--card.item--muted{background-color:var(--content)}
+.item--row.item--muted .item-main{opacity:.52}
+/* A marked item carries its colour along its leading edge; its content keeps the shared inset. */
+.item--marked{--item-mark:var(--sep);border-left:3px solid var(--item-mark);padding-left:calc(var(--item-inset) - 2px)}
+/* A dismissed item fades and slides away before its list drops it. */
+.item--leaving{opacity:0;transform:translateX(var(--sp-24))}
 .item--actionable{cursor:pointer}
 
 /*
@@ -45,14 +53,17 @@
  */
 .item-head{display:flex;align-items:baseline;gap:var(--sp-12);min-width:0}
 .item-head>.item-actions{align-self:flex-start;margin-top:calc((1lh - var(--sp-24)) / 2)}
-.item-head>.item-leading{align-self:center}
 .item-leading{display:flex;flex:none;align-items:center;color:var(--ter)}
 .item-leading>svg{width:13px;height:13px}
 .item-main{display:flex;flex:1;min-width:0;align-items:center;gap:var(--sp-8)}
 .item--two-line .item-main,.item--card .item-main{flex-direction:column;align-items:stretch;gap:var(--sp-2)}
 .item-title{display:flex;min-width:0;align-items:center;gap:var(--sp-6);font-size:var(--fs-item-title)}
+.item-title>:is(h2,h3,h4){min-width:0;margin:0;font:inherit}
 .item--two-line .item-title,.item--card .item-title{font-weight:var(--fw-title)}
 .item-meta{display:flex;min-width:0;align-items:center;gap:var(--sp-6);color:var(--ter);font-size:var(--fs-meta)}
+/* A title or meta line that flows as text keeps its marks after its last word. */
+.item-line{display:block}
+.item-line>*+*{margin-left:var(--sp-6)}
 .item:not(.item--two-line,.item--card) .item-meta{flex:1}
 .item-tags{display:flex;flex:none;align-items:center;gap:var(--sp-6)}
 .item-trailing{display:flex;flex:none;align-items:center;justify-content:flex-end;gap:var(--sp-8);color:var(--ter);font-size:var(--fs-meta);

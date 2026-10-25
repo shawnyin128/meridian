@@ -439,7 +439,7 @@ export function WatchSettings() {
                 : authorMatches.length === 0
                   ? <EmptyState variant="section">{m.watches.noMatches}</EmptyState>
                   : (
-                    <List variant="embedded" rows="all" className="author-matches">
+                    <List variant="embedded" rows="all" nested className="author-matches">
                       {authorMatches.map((candidate) => (
                         <Item
                           className="author-match" key={candidate.id} lines={2}

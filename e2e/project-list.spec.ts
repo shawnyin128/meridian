@@ -379,14 +379,16 @@ test('项目菜单是真菜单;重命名框里打菜单项首字、方向键、H
   await expect(card.locator('.project-identity-name')).toHaveText(RENAMED_PROJECT)
 })
 
-test('项目菜单开着、指针挪到菜单项上之后,悬停才露出的 ... 触发器仍然可见,面板也留着 hover 的描边', async ({ win }) => {
+test('项目菜单开着、指针挪到菜单项上之后,悬停才露出的 ... 触发器仍然可见,卡片也留着 hover 的底色', async ({ win }) => {
   await gotoList(win)
   const card = shown(win).locator('[data-proj="draft"]')
   const dots = card.locator('.dots')
 
   await card.hover()
   await settle(card)
-  const hoverBorderColor = await card.evaluate((el) => getComputedStyle(el).borderColor)
+  // A card's hover is the overlay image every item draws over its own colour (Item.css).
+  const hoverBg = await card.evaluate((el) => getComputedStyle(el).backgroundImage)
+  expect(hoverBg).not.toBe('none')
   await dots.click()
   // Moving the pointer onto a menu item really takes :hover off the card; without the move, :hover
   // sticks and the bug cannot show.
@@ -394,7 +396,7 @@ test('项目菜单开着、指针挪到菜单项上之后,悬停才露出的 ...
   await settle(dots)
   await expect(card.locator('.row-actions')).toHaveCSS('opacity', '1')
   await settle(card)
-  expect(await card.evaluate((el) => getComputedStyle(el).borderColor)).toBe(hoverBorderColor)
+  expect(await card.evaluate((el) => getComputedStyle(el).backgroundImage)).toBe(hoverBg)
 })
 
 test('搁置或已完成的项目菜单开着、指针挪到菜单项上之后,行也留着 hover 的底色', async ({ win }) => {

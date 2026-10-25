@@ -18,7 +18,7 @@ const ownItems = (list: HTMLElement) => [...list.querySelectorAll<HTMLElement>('
  * and how many rows it shows before it scrolls inside itself.
  */
 export function List({
-  children, className = '', variant = 'card', rows, grid = false, flush = false, style, ...props
+  children, className = '', variant = 'card', rows, grid = false, nested = false, flush = false, style, ...props
 }: {
   children: ReactNode
   className?: string
@@ -34,6 +34,8 @@ export function List({
   rows?: number | 'all' | 'fill'
   /** Lays the list's cards out in columns of the card width instead of one under another. */
   grid?: boolean
+  /** The list lies in another surface's content, a card's body or a message box: its rows start at that content's edge. */
+  nested?: boolean
   /** The list lies in a surface that clips at its edges, so it keeps no ring room of its own there. */
   flush?: boolean
   style?: CSSProperties
@@ -49,7 +51,7 @@ export function List({
     fade(node)
   }, [fade])
 
-  const variantClass = `${variant === 'embedded' ? ' list--embedded' : ''}${grid ? ' list--grid' : ''}`
+  const variantClass = `${variant === 'embedded' ? ' list--embedded' : ''}${grid ? ' list--grid' : ''}${nested ? ' list--nested' : ''}`
   const scrollClass = `${rows === 'fill' ? ' list--fill' : cap === null ? '' : ' list--scrollable'}${flush ? ' list--flush' : ''}`
   const listStyle = cap === null ? style : { ...style, maxHeight: cap }
   return (
