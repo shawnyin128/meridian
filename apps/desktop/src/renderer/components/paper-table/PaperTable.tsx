@@ -32,6 +32,7 @@ import { useJumpOrigin } from '../../hooks/useJumpOrigin.js'
 import { useScreenLoad } from '../../hooks/useScreenLoad.js'
 import { useVaultWrite } from '../../hooks/useVaultWrite.js'
 import { useScrollFade } from '../../hooks/useScrollFade.js'
+import { isClipped } from '../../hooks/useClipped.js'
 import {
   useCrumbTail, useEscapeLayer, useJump, useNotice, usePaperCount, useScreen, useScreenReentry, useVaultRevision,
 } from '../../shell/AppShell.js'
@@ -594,10 +595,10 @@ export function PaperTable() {
       const badge = ci.querySelector(':scope > .morebadge')
       badge?.classList.add('hid')
       if (!ci.querySelector('.tagchip')) {
-        td.classList.toggle('trunc', ci.scrollWidth > ci.clientWidth + 1)
+        td.classList.toggle('trunc', isClipped(ci, 'x'))
         return
       }
-      if (ci.scrollWidth <= ci.clientWidth + 1) {
+      if (!isClipped(ci, 'x')) {
         td.classList.remove('trunc')
         return
       }

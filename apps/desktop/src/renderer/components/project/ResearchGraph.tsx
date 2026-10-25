@@ -9,6 +9,7 @@ import type {
   Task,
 } from '../../../shared/contract.js'
 import { useWheelZoom } from '../../hooks/useWheelZoom.js'
+import { useElementWidth } from '../../hooks/useElementWidth.js'
 import { useMessages } from '../../messages/useMessages.js'
 import { activeRoutes } from '../../../shared/research-path.js'
 import { recordKind, recordOrigin, sortRecordsNewestFirst } from '../../../shared/project-signals.js'
@@ -190,7 +191,7 @@ export function ResearchGraph({ graph, selected, ideaNodeIds = [], onSelect }: {
   const panStart = useRef<{
     pointerId: number; clientX: number; clientY: number; x: number; y: number
   } | null>(null)
-  const [viewportWidth, setViewportWidth] = useState(780)
+  const viewportWidth = useElementWidth(viewport)
   const [view, setView] = useState(UNMOVED)
   const [panning, setPanning] = useState(false)
   // Until the user zooms or pans, the view follows the fitted one as the viewport's width settles.
@@ -201,15 +202,6 @@ export function ResearchGraph({ graph, selected, ideaNodeIds = [], onSelect }: {
   const contentHeight = Math.max(0, ...layout.nodes.map((node) => node.y + GRAPH_NODE_HEIGHT))
   const fitted = fittedView({ width: contentWidth, height: contentHeight }, viewportWidth)
 
-  useEffect(() => {
-    const element = viewport.current
-    if (element === null) return
-    const sync = () => setViewportWidth(element.clientWidth)
-    sync()
-    const resize = new ResizeObserver(sync)
-    resize.observe(element)
-    return () => resize.disconnect()
-  }, [graph.nodes.length])
   useEffect(() => {
     moved.current = false
     setView(fitted)
