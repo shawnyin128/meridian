@@ -50,7 +50,7 @@ const MARKUP = `
   <div class="pd-h"><span class="pd-t" id="paper-detail">QuIP#: Even Better LLM Quantization</span></div>
   <article class="item item--card item--slotted paper-card"><div class="item-head"><div class="item-main"><div class="item-title"><h3 id="paper-card">Acceptance Is Not Speed</h3></div></div></div>
     <section class="paper-card-section"><div class="paper-card-label" id="card-label">摘要</div></section></article>
-  <article class="item item--card wkcard"><div class="wt"><button class="tt" id="wiki-card">KV cache 压缩</button></div></article>
+  <article class="item item--card item--slotted wkcard"><div class="item-head"><div class="item-main"><div class="item-title"><button class="item-open tt" id="wiki-card">KV cache 压缩</button></div></div></div></article>
   <span class="project-identity header"><span class="project-identity-name" id="project-card">MoE 路由分析</span></span>
   <article class="item item--card item--slotted idea-card"><div class="item-head"><span class="item-main"><span class="item-title"><button class="item-open"><span class="fade-text idea-card-title" id="idea-card">蒸馏预算</span></button></span></span></div></article>
   <span class="project-card-label" id="project-label">当前目标</span>

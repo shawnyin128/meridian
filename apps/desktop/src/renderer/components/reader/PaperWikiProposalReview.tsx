@@ -99,20 +99,17 @@ function QualityReport({ quality }: { quality: HarnessPaperWikiQuality }) {
         <span>{title}</span>
       </div>
       {quality.findings.length === 0 ? null : (
-        <List className="paper-wiki-quality-findings" variant="embedded"
-          aria-label={m.wiki.quality.findingsListLabel}>
+        <List className="paper-wiki-quality-findings" variant="embedded" nested aria-label={m.wiki.quality.findingsListLabel}>
           {quality.findings.map((finding, index) => {
             const findingCopy: Record<string, { title: string; detail: string }> = m.wiki.quality.findings
             const copy = findingCopy[finding.code]
             const place = placeLabel(finding.path, m)
             return (
-              <Item className="paper-wiki-quality-finding"
-                key={`${finding.dimension}-${finding.code}-${finding.path}-${index}`}>
-                <Tooltip label={copy?.detail ?? finding.message}>
-                  <strong>{copy?.title ?? m.wiki.quality.needsReviewFallback}</strong>
-                </Tooltip>
-                {place === undefined ? null : <span className="paper-wiki-quality-place">{place}</span>}
-              </Item>
+              <Item
+                className="paper-wiki-quality-finding" key={`${finding.dimension}-${finding.code}-${finding.path}-${index}`} lines={2}
+                title={<Tooltip label={copy?.detail ?? finding.message}><strong>{copy?.title ?? m.wiki.quality.needsReviewFallback}</strong></Tooltip>}
+                meta={place === undefined ? null : <span className="paper-wiki-quality-place">{place}</span>}
+              />
             )
           })}
         </List>

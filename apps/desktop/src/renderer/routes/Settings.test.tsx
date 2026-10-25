@@ -515,7 +515,7 @@ describe('Settings', () => {
     expect(writeText).toHaveBeenCalledWith('claude install command')
     expect(api.success).toHaveBeenCalledWith('Claude Code 命令已复制')
 
-    const firstPrompt = dialog.querySelector('.extension-prompt p')?.textContent ?? ''
+    const firstPrompt = dialog.querySelector('.extension-prompt .item-meta')?.textContent ?? ''
     await act(async () => {
       dialog.querySelector<HTMLButtonElement>('.extension-prompt button')!.click()
     })

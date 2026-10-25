@@ -72,7 +72,7 @@ describe('ResearchMap', () => {
       </MessagesProvider>,
     )
     const faded = (selector: string) => [...host.querySelectorAll(`${selector} .fade-text:not(.tag-text, .read-dots)`)].map((line) => line.textContent)
-    expect(faded('.research-map-group-copy')).toEqual(['Speculative decoding'])
+    expect(faded('.research-map-group .item-main')).toEqual(['Speculative decoding'])
     expect(faded('.research-map-detail-head')).toEqual(['Speculative decoding'])
     expect(faded('.research-map-paper')).toEqual([title, '主题：Speculative decoding', 'Bravo', '主题：Speculative decoding'])
     expect([...host.querySelectorAll('.research-map-group-name, .research-map-detail-name')].every((name) => name.matches('.fade-text')))
@@ -97,7 +97,7 @@ describe('ResearchMap', () => {
     const kinds = [...host.querySelectorAll('.research-map-group')]
       .map((group) => [
         group.querySelector('.research-map-group-name')?.textContent,
-        group.querySelector('.research-map-group-copy>span:not(.research-map-group-name, .read-dots)')?.textContent ?? null,
+        group.querySelector('.research-map-group-kind')?.textContent ?? null,
       ])
     expect(kinds).toContainEqual(['Speculative decoding', '主题或方法信号'])
     expect(kinds).toContainEqual(['Kernel fusion', null])
@@ -209,7 +209,7 @@ describe('ResearchMap', () => {
       </MessagesProvider>,
     )
     const lines = [...host.querySelectorAll('.research-map-groups')[0]!.querySelectorAll('.research-map-group')].map((group) => {
-      const line = group.querySelector('.research-map-group-copy>.research-map-group-name+.read-dots')
+      const line = group.querySelector('.item-title:has(>.research-map-group-name)+.item-meta>.read-dots:first-child')
       return [
         group.querySelector('.research-map-group-name')?.textContent, line?.getAttribute('aria-label'), line?.textContent,
         [...line?.children ?? []].map((dot) => /status-dot--(half|ring)/.exec(dot.className)?.[1] ?? 'full'),

@@ -27,10 +27,10 @@ const MARKUP = `<table class="ptable"><tbody><tr>
   <td class="pt-dim"><span class="ci" id="fits">2024</span></td>
   <td class="trunc"><span class="ci" id="chips"><span class="tag tag--chip tagchip">推理</span></span></td>
 </tr></tbody></table>
-<span class="research-map-group-copy"><span class="fade-text research-map-group-name" id="group">KV cache 量化</span><span>项目关联</span></span>
+<div class="item item--row item--slotted item--two-line research-map-group"><span class="item-main"><span class="item-title"><span class="fade-text research-map-group-name" id="group">KV cache 量化</span></span><span class="item-meta"><span>项目关联</span></span></span></div>
 <div class="research-map-detail-head"><div><span class="fade-text research-map-detail-name" id="detail">KV cache 量化</span><span>3 篇论文</span></div></div>
-<article class="item item--card wkcard wkcard--paper"><div class="wt"><span class="tag">论文</span>
-  <button class="item-open tt" id="paper-title"><span class="tt-lines fade-lines" id="paper-lines">EAGLE: Speculative Sampling Requires Rethinking Feature Uncertainty</span></button>
+<article class="item item--card item--slotted wkcard wkcard--paper"><div class="item-head"><div class="item-leading"><span class="tag">论文</span></div>
+  <div class="item-main"><div class="item-title"><button class="item-open tt" id="paper-title"><span class="tt-lines fade-lines" id="paper-lines">EAGLE: Speculative Sampling Requires Rethinking Feature Uncertainty</span></button></div></div>
 </div><span class="fade-text wm" id="paper-meta">2024 arXiv · 推测解码</span></article>`
 
 describe('标题放不下时', () => {
@@ -48,7 +48,7 @@ describe('标题放不下时', () => {
   })
 
   it('研究地图的分组名和选中分组的名字淡出时保持自己的字号，不跟着下面那一行变小', () => {
-    expect([style('group').fontSize, style('detail').fontSize]).toEqual(['var(--fs-base)', 'var(--fs-group)'])
+    expect([style('group').fontSize, style('detail').fontSize]).toEqual(['var(--fs-item-title)', 'var(--fs-group)'])
   })
 
   it('Wiki 首页论文卡片的标题最多占两行，不用省略号截断，下面的年份、会场和主题只占一行', () => {

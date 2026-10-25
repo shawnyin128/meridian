@@ -5,7 +5,7 @@ import { EmptyState } from '../EmptyState.js'
 import { EntityLink } from '../EntityLink.js'
 import { FadeText } from '../FadeText.js'
 import { LoadingPlaceholder } from '../LoadingPlaceholder.js'
-import { Item } from '../Item.js'
+import { Item, ItemOpen } from '../Item.js'
 import { List } from '../List.js'
 import { Tag } from '../Tag.js'
 import { PaperText } from '../paper/PaperText.js'
@@ -89,9 +89,9 @@ export function TidyList({ rows, titles, failed, onOpen }: {
         >
           <ProjectSignalKind tone={SHOWN[row.kind]}>{t.kinds[row.kind]}</ProjectSignalKind>
           <span className="tidy-what">
-            <button type="button" className="tidy-open">
+            <ItemOpen className="tidy-open">
               <FadeText className="attn-text" label={plainTitle(name(row.page))}><PaperText text={name(row.page)} /></FadeText>
-            </button>
+            </ItemOpen>
             {row.targets.length === 0 && row.missing.length === 0 ? null : (
               <FadeText
                 className="tidy-wrong"

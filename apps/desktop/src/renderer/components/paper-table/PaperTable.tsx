@@ -1328,11 +1328,11 @@ export function PaperTable() {
                   {facets.map((f) => {
                     const newest = m.papers.groupIndex.newest(plainTitle(f.newestTitle))
                     return (
-                      <Item className="gxrow" key={f.value} onActivate={() => { setSel(f.value); setPage(1) }}>
-                        <span className="gx-t">{valueName(f.value)}</span>
-                        <FadeText className="gx-m" label={newest}>{newest}</FadeText>
-                        <CountBadge className="n" count={f.count} />
-                      </Item>
+                      <Item
+                        className="gxrow" key={f.value} onActivate={() => { setSel(f.value); setPage(1) }}
+                        title={<span className="gx-t">{valueName(f.value)}</span>} meta={<FadeText className="gx-m" label={newest}>{newest}</FadeText>}
+                        trailing={<CountBadge className="n" count={f.count} />}
+                      />
                     )
                   })}
                 </List>

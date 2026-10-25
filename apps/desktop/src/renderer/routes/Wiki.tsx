@@ -88,29 +88,26 @@ function AggregationCard({ card, onOpen, onRemove, pending }: {
   const summary = useRef<HTMLDivElement>(null)
   const summaryCut = useClipped(summary, card.summary, true)
   return (
-    <Item density="card" className="wkcard" data-wk={card.id} onActivate={onOpen}>
-      <div className="wt">
-        <Tag tone="wiki" className="wkind">{card.kindLabel}</Tag>
-        <ItemOpen className="tt"><FadeText>{card.title}</FadeText></ItemOpen>
-        {card.parentCount > 1 ? <Tag className="wkind">{m.wiki.aggregation.parentCount(card.parentCount)}</Tag> : null}
-        <span className="sp" />
-      </div>
+    <Item
+      density="card" className="wkcard" data-wk={card.id} onActivate={onOpen}
+      leading={<Tag tone="wiki" className="wkind">{card.kindLabel}</Tag>}
+      title={<ItemOpen className="tt"><FadeText>{card.title}</FadeText></ItemOpen>}
+      tags={card.parentCount > 1 ? <Tag className="wkind">{m.wiki.aggregation.parentCount(card.parentCount)}</Tag> : null}
+      actions={onRemove === undefined
+        ? undefined
+        : (
+          <IconButton
+            label={m.wiki.removeFromPage} size="nested" className="rx" aria-disabled={pending}
+            onClick={(e) => { e.stopPropagation(); onRemove() }}
+          ><IconCross /></IconButton>
+        )}
+    >
       <div ref={summary} className={`wm fade-lines${summaryCut ? ' clipped' : ''}`}>{card.summary}</div>
       <FadeText className="wf">
         {m.wiki.aggregation.cardFooter(
           card.childCount > 0 ? card.childCount : null, card.memberCount, fmt.date(card.updated),
         )}
       </FadeText>
-      {onRemove === undefined
-        ? null
-        : (
-          <RowActions>
-            <IconButton
-              label={m.wiki.removeFromPage} size="nested" className="rx" aria-disabled={pending}
-              onClick={(e) => { e.stopPropagation(); onRemove() }}
-            ><IconCross /></IconButton>
-          </RowActions>
-        )}
     </Item>
   )
 }
@@ -126,14 +123,15 @@ function PaperCard({ paper, onOpen }: { paper: PaperRow; onOpen: () => void }) {
   const line = [`${paper.year ?? ''} ${paper.venue}`.trim(), paper.topics.join(' / ')]
     .filter((part) => part !== '').join(' · ')
   return (
-    <Item density="card" className="wkcard wkcard--paper" data-wk={`${PAPER_PAGE}${paper.id}`} onActivate={onOpen}>
-      <div className="wt">
-        <Tag tone="paper" className="wkind">{m.wiki.paperKind}</Tag>
+    <Item
+      density="card" className="wkcard wkcard--paper" data-wk={`${PAPER_PAGE}${paper.id}`} onActivate={onOpen}
+      leading={<Tag tone="paper" className="wkind">{m.wiki.paperKind}</Tag>}
+      title={(
         <Tooltip label={plainTitle(paper.title)} whenClipped>
           <ItemOpen className="tt"><span ref={title} className={`tt-lines fade-lines${titleCut ? ' clipped' : ''}`}><PaperText text={paper.title} /></span></ItemOpen>
         </Tooltip>
-        <span className="sp" />
-      </div>
+      )}
+    >
       <FadeText className="wm" label={line}>{line}</FadeText>
       <FadeText className="wf">{m.wiki.paperCardFooter(paper.noteCount, paper.conclusionCount)}</FadeText>
     </Item>
@@ -804,9 +802,10 @@ export function Wiki() {
                       ))}
                       {adding === 'child'
                         ? (
-                          <Item density="card" className="wkcard newcard" elementRef={addRow}>
-                            <div className="wt">
-                              <Tag tone="wiki" className="wkind">{shownAgg.kindLabel}</Tag>
+                          <Item
+                            density="card" className="wkcard newcard" elementRef={addRow}
+                            leading={<Tag tone="wiki" className="wkind">{shownAgg.kindLabel}</Tag>}
+                            title={(
                               <PickRow
                                 row={addRow} triggers={[childBtn, paperBtn, colBtn]} allowNew
                                 placeholder={m.wiki.kindNamePlaceholder(shownAgg.kindLabel)}
@@ -814,7 +813,8 @@ export function Wiki() {
                                 onCancel={() => setAdding(null)} onError={report}
                                 kept={{ drafts: adds, target: 'add-child' }}
                               />
-                            </div>
+                            )}
+                          >
                             <div className="wf" />
                           </Item>
                         )

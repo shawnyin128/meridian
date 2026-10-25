@@ -176,7 +176,7 @@ describe('Wiki keyboard reach', () => {
 
   it('home, subpage and paper cards are the shared card Item, actionable', async () => {
     expect(all('.wkcard').map((el) => el.className)).toEqual([
-      'item item--card item--actionable wkcard', 'item item--card item--actionable wkcard wkcard--paper',
+      'item item--card item--slotted item--actionable wkcard', 'item item--card item--slotted item--actionable wkcard wkcard--paper',
     ])
     expect(all('.wkcard .tt').map((el) => el.classList.contains('item-open'))).toEqual([true, true])
     await press(host.querySelector<HTMLElement>('[data-wk="topics/sd"] .tt')!)

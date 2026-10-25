@@ -216,7 +216,7 @@ describe('PaperWikiProposalReview', () => {
       <MessagesProvider><PaperWikiProposalReview review={emptyReview} quality={report(paths, code)} onJump={() => {}} /></MessagesProvider>,
     )
     return [...host.querySelectorAll('.paper-wiki-quality-finding')].map((row) => ({
-      lines: [...row.children].map((line) => line.textContent!),
+      lines: [...row.querySelector('.item-main')!.children].map((line) => line.textContent!),
       place: row.querySelector('.paper-wiki-quality-place')?.textContent ?? '',
     }))
   }

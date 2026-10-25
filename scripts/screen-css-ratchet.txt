@@ -98,315 +98,276 @@ components/paper-table/PaperTable.css:23: .paper-drop strong { font-size }
 components/paper-table/PaperTable.css:24: .paper-drop span { font-size }
 components/paper-table/PaperTable.css:24: .paper-drop span { color }
 components/paper-table/PaperTable.css:27: .paper-search>.form-input { font-size }
-components/paper-table/PaperTable.css:30: .gxrow { display }
-components/paper-table/PaperTable.css:30: .gxrow { align-items }
-components/paper-table/PaperTable.css:30: .gxrow { gap }
-components/paper-table/PaperTable.css:30: .gxrow { padding }
-components/paper-table/PaperTable.css:31: .gxrow .gx-t { font-size }
-components/paper-table/PaperTable.css:31: .gxrow .gx-t { font-weight }
-components/paper-table/PaperTable.css:31: .gxrow .gx-t { min-width }
-components/paper-table/PaperTable.css:32: .gxrow .gx-m { font-size }
-components/paper-table/PaperTable.css:32: .gxrow .gx-m { color }
-components/paper-table/PaperTable.css:33: .gnav { margin-bottom }
-components/paper-table/PaperTable.css:39: .ptable { border-collapse }
-components/paper-table/PaperTable.css:39: .ptable { border-spacing }
-components/paper-table/PaperTable.css:39: .ptable { font-size }
-components/paper-table/PaperTable.css:39: .ptable { margin-bottom }
-components/paper-table/PaperTable.css:39: .ptable { table-layout }
-components/paper-table/PaperTable.css:41: .thsort { padding }
-components/paper-table/PaperTable.css:41: .thsort { border }
-components/paper-table/PaperTable.css:41: .thsort { background }
-components/paper-table/PaperTable.css:41: .thsort { color }
-components/paper-table/PaperTable.css:41: .thsort { font }
-components/paper-table/PaperTable.css:41: .thsort { cursor }
-components/paper-table/PaperTable.css:42: .thsort svg { width }
-components/paper-table/PaperTable.css:42: .thsort svg { height }
-components/paper-table/PaperTable.css:42: .thsort svg { vertical-align }
-components/paper-table/PaperTable.css:44: .ptable th>.thgrip { right }
-components/paper-table/PaperTable.css:45: .thmove { width }
-components/paper-table/PaperTable.css:45: .thmove { height }
-components/paper-table/PaperTable.css:45: .thmove { margin }
-components/paper-table/PaperTable.css:45: .thmove { color }
-components/paper-table/PaperTable.css:45: .thmove { opacity }
-components/paper-table/PaperTable.css:45: .thmove { cursor }
-components/paper-table/PaperTable.css:45: .thmove { vertical-align }
-components/paper-table/PaperTable.css:45: .thmove { border-radius }
-components/paper-table/PaperTable.css:46: .ptable th:hover .thmove { opacity }
-components/paper-table/PaperTable.css:46: .thmove:focus-visible { opacity }
-components/paper-table/PaperTable.css:47: .thmove:active { cursor }
-components/paper-table/PaperTable.css:47: .thmove:active { color }
-components/paper-table/PaperTable.css:48: .thmove svg { width }
-components/paper-table/PaperTable.css:48: .thmove svg { height }
-components/paper-table/PaperTable.css:49: .column-drag-ghost { left }
-components/paper-table/PaperTable.css:49: .column-drag-ghost { top }
-components/paper-table/PaperTable.css:49: .column-drag-ghost { width }
-components/paper-table/PaperTable.css:49: .column-drag-ghost { height }
-components/paper-table/PaperTable.css:49: .column-drag-ghost { opacity }
-components/paper-table/PaperTable.css:49: .column-drag-ghost { pointer-events }
-components/paper-table/PaperTable.css:50: .ptable td .ci { display }
-components/paper-table/PaperTable.css:50: .ptable td .ci { overflow }
-components/paper-table/PaperTable.css:50: .ptable td .ci { white-space }
-components/paper-table/PaperTable.css:52: .ptable td.trunc:not(:hover) .ci:not(:has(.tagchip)):not(:focus-visible) { mask-image }
-components/paper-table/PaperTable.css:54: .ptable td .ci:has(.tagchip) { padding }
-components/paper-table/PaperTable.css:54: .ptable td .ci:has(.tagchip) { margin }
-components/paper-table/PaperTable.css:55: .ptable td.trunc:has(.ci):not(:has(.tagchip)):hover { overflow }
-components/paper-table/PaperTable.css:57: .ptable td.trunc:hover .ci:not(:has(.tagchip)) { position }
-components/paper-table/PaperTable.css:57: .ptable td.trunc:hover .ci:not(:has(.tagchip)) { left }
-components/paper-table/PaperTable.css:57: .ptable td.trunc:hover .ci:not(:has(.tagchip)) { top }
-components/paper-table/PaperTable.css:57: .ptable td.trunc:hover .ci:not(:has(.tagchip)) { bottom }
-components/paper-table/PaperTable.css:57: .ptable td.trunc:hover .ci:not(:has(.tagchip)) { display }
-components/paper-table/PaperTable.css:57: .ptable td.trunc:hover .ci:not(:has(.tagchip)) { align-items }
-components/paper-table/PaperTable.css:57: .ptable td.trunc:hover .ci:not(:has(.tagchip)) { padding }
-components/paper-table/PaperTable.css:57: .ptable td.trunc:hover .ci:not(:has(.tagchip)) { width }
-components/paper-table/PaperTable.css:57: .ptable td.trunc:hover .ci:not(:has(.tagchip)) { background }
-components/paper-table/PaperTable.css:57: .ptable td.trunc:hover .ci:not(:has(.tagchip)) { z-index }
-components/paper-table/PaperTable.css:57: .ptable td.trunc:hover .ci:not(:has(.tagchip)) { overflow }
-components/paper-table/PaperTable.css:57: .ptable td.trunc:hover .ci:not(:has(.tagchip)) { text-overflow }
-components/paper-table/PaperTable.css:58: .tblwrap .ptable thead th { background }
-components/paper-table/PaperTable.css:59: .ptable th:first-child { background }
-components/paper-table/PaperTable.css:59: .ptable td:first-child { background }
-components/paper-table/PaperTable.css:70: .ptable td:first-child { overflow }
-components/paper-table/PaperTable.css:70: .ptable td.row-actions-cell { overflow }
-components/paper-table/PaperTable.css:72: .ptable :is(th,td):first-child::before { content }
-components/paper-table/PaperTable.css:72: .ptable :is(td.row-actions-cell,th.th-add)::before { content }
-components/paper-table/PaperTable.css:72: .tblwrap .ptable thead th:not(.column-drop-after)::after { content }
-components/paper-table/PaperTable.css:72: .ptable :is(th,td):first-child::before { position }
-components/paper-table/PaperTable.css:72: .ptable :is(td.row-actions-cell,th.th-add)::before { position }
-components/paper-table/PaperTable.css:72: .tblwrap .ptable thead th:not(.column-drop-after)::after { position }
-components/paper-table/PaperTable.css:72: .ptable :is(th,td):first-child::before { background }
-components/paper-table/PaperTable.css:72: .ptable :is(td.row-actions-cell,th.th-add)::before { background }
-components/paper-table/PaperTable.css:72: .tblwrap .ptable thead th:not(.column-drop-after)::after { background }
-components/paper-table/PaperTable.css:72: .ptable :is(th,td):first-child::before { opacity }
-components/paper-table/PaperTable.css:72: .ptable :is(td.row-actions-cell,th.th-add)::before { opacity }
-components/paper-table/PaperTable.css:72: .tblwrap .ptable thead th:not(.column-drop-after)::after { opacity }
-components/paper-table/PaperTable.css:73: .ptable :is(th,td):first-child::before { pointer-events }
-components/paper-table/PaperTable.css:73: .ptable :is(td.row-actions-cell,th.th-add)::before { pointer-events }
-components/paper-table/PaperTable.css:73: .tblwrap .ptable thead th:not(.column-drop-after)::after { pointer-events }
-components/paper-table/PaperTable.css:73: .ptable :is(th,td):first-child::before { transition }
-components/paper-table/PaperTable.css:73: .ptable :is(td.row-actions-cell,th.th-add)::before { transition }
-components/paper-table/PaperTable.css:73: .tblwrap .ptable thead th:not(.column-drop-after)::after { transition }
-components/paper-table/PaperTable.css:74: .ptable :is(th,td):first-child::before { top }
-components/paper-table/PaperTable.css:74: .ptable :is(th,td):first-child::before { bottom }
-components/paper-table/PaperTable.css:74: .ptable :is(th,td):first-child::before { left }
-components/paper-table/PaperTable.css:74: .ptable :is(th,td):first-child::before { width }
-components/paper-table/PaperTable.css:74: .ptable :is(th,td):first-child::before { mask-image }
-components/paper-table/PaperTable.css:75: .ptable :is(td.row-actions-cell,th.th-add)::before { top }
-components/paper-table/PaperTable.css:75: .ptable :is(td.row-actions-cell,th.th-add)::before { bottom }
-components/paper-table/PaperTable.css:75: .ptable :is(td.row-actions-cell,th.th-add)::before { right }
-components/paper-table/PaperTable.css:75: .ptable :is(td.row-actions-cell,th.th-add)::before { width }
-components/paper-table/PaperTable.css:75: .ptable :is(td.row-actions-cell,th.th-add)::before { mask-image }
-components/paper-table/PaperTable.css:76: .tblwrap .ptable thead th:not(.column-drop-after)::after { top }
-components/paper-table/PaperTable.css:76: .tblwrap .ptable thead th:not(.column-drop-after)::after { left }
-components/paper-table/PaperTable.css:76: .tblwrap .ptable thead th:not(.column-drop-after)::after { right }
-components/paper-table/PaperTable.css:76: .tblwrap .ptable thead th:not(.column-drop-after)::after { height }
-components/paper-table/PaperTable.css:76: .tblwrap .ptable thead th:not(.column-drop-after)::after { mask-image }
-components/paper-table/PaperTable.css:77: @container scroll-state(stuck: left) .ptable :is(th,td):first-child::before { opacity }
-components/paper-table/PaperTable.css:78: @container scroll-state(stuck: right) .ptable :is(td.row-actions-cell,th.th-add)::before { opacity }
-components/paper-table/PaperTable.css:79: @container scroll-state(stuck: top) .tblwrap .ptable thead th:not(.column-drop-after)::after { opacity }
-components/paper-table/PaperTable.css:80: .ptable td .ci .hid { display }
-components/paper-table/PaperTable.css:81: .ptable td .ci.chip-expanded { display }
-components/paper-table/PaperTable.css:81: .ptable td .ci.chip-expanded { align-items }
-components/paper-table/PaperTable.css:81: .ptable td .ci.chip-expanded { flex-wrap }
-components/paper-table/PaperTable.css:81: .ptable td .ci.chip-expanded { gap }
-components/paper-table/PaperTable.css:81: .ptable td .ci.chip-expanded { overflow }
-components/paper-table/PaperTable.css:81: .ptable td .ci.chip-expanded { white-space }
-components/paper-table/PaperTable.css:81: .ptable td .ci.chip-expanded { text-overflow }
-components/paper-table/PaperTable.css:82: .ptable td .ci.chip-expanded .hid { display }
-components/paper-table/PaperTable.css:82: .ptable td .ci.chip-expanded .hid { animation }
-components/paper-table/PaperTable.css:83: @keyframes chip-row-reveal from { opacity }
-components/paper-table/PaperTable.css:83: @keyframes chip-row-reveal from { transform }
-components/paper-table/PaperTable.css:83: @keyframes chip-row-reveal to { opacity }
-components/paper-table/PaperTable.css:83: @keyframes chip-row-reveal to { transform }
-components/paper-table/PaperTable.css:84: @media (prefers-reduced-motion:reduce) .ptable td .ci.chip-expanded .hid { animation }
-components/paper-table/PaperTable.css:86: .ptable th { text-align }
-components/paper-table/PaperTable.css:86: .ptable th { font-size }
-components/paper-table/PaperTable.css:86: .ptable th { color }
-components/paper-table/PaperTable.css:86: .ptable th { font-weight }
-components/paper-table/PaperTable.css:86: .ptable th { padding }
-components/paper-table/PaperTable.css:86: .ptable th { border-bottom }
-components/paper-table/PaperTable.css:86: .ptable th { cursor }
-components/paper-table/PaperTable.css:86: .ptable th { white-space }
-components/paper-table/PaperTable.css:86: .ptable th { user-select }
-components/paper-table/PaperTable.css:86: .ptable th { transition }
-components/paper-table/PaperTable.css:87: .ptable th[aria-sort] { cursor }
-components/paper-table/PaperTable.css:88: .ptable th[aria-sort]:hover { color }
-components/paper-table/PaperTable.css:89: .ptable th.column-moving { opacity }
-components/paper-table/PaperTable.css:89: .ptable th.column-moving { background }
-components/paper-table/PaperTable.css:90: .ptable th.column-drop-before::before { content }
-components/paper-table/PaperTable.css:90: .ptable th.column-drop-after::after { content }
-components/paper-table/PaperTable.css:90: .ptable th.column-drop-before::before { position }
-components/paper-table/PaperTable.css:90: .ptable th.column-drop-after::after { position }
-components/paper-table/PaperTable.css:90: .ptable th.column-drop-before::before { top }
-components/paper-table/PaperTable.css:90: .ptable th.column-drop-after::after { top }
-components/paper-table/PaperTable.css:90: .ptable th.column-drop-before::before { bottom }
-components/paper-table/PaperTable.css:90: .ptable th.column-drop-after::after { bottom }
-components/paper-table/PaperTable.css:90: .ptable th.column-drop-before::before { width }
-components/paper-table/PaperTable.css:90: .ptable th.column-drop-after::after { width }
-components/paper-table/PaperTable.css:90: .ptable th.column-drop-before::before { border-radius }
-components/paper-table/PaperTable.css:90: .ptable th.column-drop-after::after { border-radius }
-components/paper-table/PaperTable.css:90: .ptable th.column-drop-before::before { background }
-components/paper-table/PaperTable.css:90: .ptable th.column-drop-after::after { background }
-components/paper-table/PaperTable.css:90: .ptable th.column-drop-before::before { z-index }
-components/paper-table/PaperTable.css:90: .ptable th.column-drop-after::after { z-index }
-components/paper-table/PaperTable.css:91: .ptable th.column-drop-before::before { left }
-components/paper-table/PaperTable.css:91: .ptable th.column-drop-after::after { right }
-components/paper-table/PaperTable.css:92: .ptable td { padding }
-components/paper-table/PaperTable.css:92: .ptable td { box-sizing }
-components/paper-table/PaperTable.css:92: .ptable td { border-bottom }
-components/paper-table/PaperTable.css:92: .ptable td { vertical-align }
-components/paper-table/PaperTable.css:92: .ptable td { line-height }
-components/paper-table/PaperTable.css:92: .ptable td { overflow }
-components/paper-table/PaperTable.css:92: .ptable td { white-space }
-components/paper-table/PaperTable.css:94: .ptable tbody tr:last-child td { border-bottom }
-components/paper-table/PaperTable.css:95: .ptable td:last-child { padding-top }
-components/paper-table/PaperTable.css:95: .ptable td:last-child { padding-bottom }
-components/paper-table/PaperTable.css:95: .ptable td:last-child { text-align }
-components/paper-table/PaperTable.css:102: .ptable tbody tr { --row-bg }
-components/paper-table/PaperTable.css:102: .ptable tbody tr { --row-over }
-components/paper-table/PaperTable.css:103: .ptable tbody tr:hover { --row-over }
-components/paper-table/PaperTable.css:103: .ptable tbody tr:has(.stchip[data-state="open"]) { --row-over }
-components/paper-table/PaperTable.css:104: .ptable tbody tr.selected { --row-bg }
-components/paper-table/PaperTable.css:105: .ptable tbody td { background-color }
-components/paper-table/PaperTable.css:105: .ptable tbody td { background-image }
-components/paper-table/PaperTable.css:106: .ptable tbody td:first-child { background-color }
-components/paper-table/PaperTable.css:107: .ptable tbody td:first-child { background-image }
-components/paper-table/PaperTable.css:108: .pt-title { font-weight }
-components/paper-table/PaperTable.css:108: .pt-title { color }
-components/paper-table/PaperTable.css:108: .pt-title { cursor }
-components/paper-table/PaperTable.css:110: .ptable .pt-open { padding }
-components/paper-table/PaperTable.css:110: .ptable .pt-open { border }
-components/paper-table/PaperTable.css:110: .ptable .pt-open { background }
-components/paper-table/PaperTable.css:110: .ptable .pt-open { color }
-components/paper-table/PaperTable.css:110: .ptable .pt-open { font }
-components/paper-table/PaperTable.css:110: .ptable .pt-open { text-align }
-components/paper-table/PaperTable.css:110: .ptable .pt-open { cursor }
-components/paper-table/PaperTable.css:111: .ptable tbody tr.selected .pt-title { color }
-components/paper-table/PaperTable.css:112: .pt-title:hover { text-decoration }
-components/paper-table/PaperTable.css:112: .pt-title:hover { text-underline-offset }
-components/paper-table/PaperTable.css:113: .ptable tbody tr { cursor }
-components/paper-table/PaperTable.css:114: .pt-dim { color }
-components/paper-table/PaperTable.css:114: .pt-dim { white-space }
-components/paper-table/PaperTable.css:120: .tagchip.tagadd { opacity }
-components/paper-table/PaperTable.css:120: .tagchip.tagadd { pointer-events }
-components/paper-table/PaperTable.css:120: .tagchip.tagadd { transition }
-components/paper-table/PaperTable.css:121: .ptable tr:hover .tagadd { opacity }
-components/paper-table/PaperTable.css:121: .tagchip.tagadd:focus-visible { opacity }
-components/paper-table/PaperTable.css:121: .ptable tr:hover .tagadd { pointer-events }
-components/paper-table/PaperTable.css:121: .tagchip.tagadd:focus-visible { pointer-events }
-components/paper-table/PaperTable.css:123: .ptable .tagchip .rx { opacity }
-components/paper-table/PaperTable.css:123: .ptable .tagchip .rx { pointer-events }
-components/paper-table/PaperTable.css:123: .ptable .tagchip .rx { transition }
-components/paper-table/PaperTable.css:124: .ptable tr:hover .tagchip .rx { opacity }
-components/paper-table/PaperTable.css:124: .ptable .tagchip .rx:focus-visible { opacity }
-components/paper-table/PaperTable.css:124: .ptable tr:hover .tagchip .rx { pointer-events }
-components/paper-table/PaperTable.css:124: .ptable .tagchip .rx:focus-visible { pointer-events }
-components/paper-table/PaperTable.css:125: .ptable tr:has(.stchip[data-state="open"]) .tagadd { opacity }
-components/paper-table/PaperTable.css:126: .paper-meta-projects .tagchip.tagadd { opacity }
-components/paper-table/PaperTable.css:126: .paper-meta-topics .tagchip.tagadd { opacity }
-components/paper-table/PaperTable.css:126: .paper-meta-projects .tagchip.tagadd { pointer-events }
-components/paper-table/PaperTable.css:126: .paper-meta-topics .tagchip.tagadd { pointer-events }
-components/paper-table/PaperTable.css:127: .form-input.form-control-inline.tagin { display }
-components/paper-table/PaperTable.css:127: .form-input.form-control-inline.tagin { width }
-components/paper-table/PaperTable.css:127: .form-input.form-control-inline.tagin { vertical-align }
-components/paper-table/PaperTable.css:130: .pt-cust { color }
-components/paper-table/PaperTable.css:130: .pt-remark { color }
-components/paper-table/PaperTable.css:130: .pt-cust { font-size }
-components/paper-table/PaperTable.css:130: .pt-remark { font-size }
-components/paper-table/PaperTable.css:130: .pt-cust { cursor }
-components/paper-table/PaperTable.css:130: .pt-remark { cursor }
-components/paper-table/PaperTable.css:130: .pt-cust { min-width }
-components/paper-table/PaperTable.css:130: .pt-remark { min-width }
-components/paper-table/PaperTable.css:132: .ptable td .paper-text-cell-input { display }
-components/paper-table/PaperTable.css:137: .cmx { margin }
-components/paper-table/PaperTable.css:141: .ctbtn { border }
-components/paper-table/PaperTable.css:141: .ctbtn { background }
-components/paper-table/PaperTable.css:141: .ctbtn { color }
-components/paper-table/PaperTable.css:141: .ctbtn { cursor }
-components/paper-table/PaperTable.css:141: .ctbtn { padding }
-components/paper-table/PaperTable.css:141: .ctbtn { border-radius }
-components/paper-table/PaperTable.css:142: .ctbtn:hover { color }
-components/paper-table/PaperTable.css:143: .ctbtn.on { background }
-components/paper-table/PaperTable.css:143: .ctbtn.on { border-color }
-components/paper-table/PaperTable.css:143: .ctbtn.on { color }
-components/paper-table/PaperTable.css:144: .ctbtn svg { width }
-components/paper-table/PaperTable.css:144: .ctbtn svg { height }
-components/paper-table/PaperTable.css:150: .typerow { padding-left }
-components/paper-table/PaperTable.css:158: .ptable td.row-actions-cell { background-color }
-components/paper-table/PaperTable.css:159: .ptable td.row-actions-cell { background-image }
-components/paper-table/PaperTable.css:164: .paper-detail-slot { --detail-panel-width }
-components/paper-table/PaperTable.css:164: .paper-detail-slot { top }
-components/paper-table/PaperTable.css:164: .paper-detail-slot { border-left }
-components/paper-table/PaperTable.css:165: .paper-detail-slot { background }
-components/paper-table/PaperTable.css:166: .pdetail { box-sizing }
-components/paper-table/PaperTable.css:166: .pdetail { overflow }
-components/paper-table/PaperTable.css:166: .pdetail { overscroll-behavior }
-components/paper-table/PaperTable.css:166: .pdetail { padding }
-components/paper-table/PaperTable.css:167: .desk-body.withdetail { margin-right }
-components/paper-table/PaperTable.css:167: .desk-foot.withdetail { margin-right }
-components/paper-table/PaperTable.css:172: .pd-h { margin-bottom }
-components/paper-table/PaperTable.css:173: .pd-t { font-size }
-components/paper-table/PaperTable.css:173: .pd-t { font-weight }
-components/paper-table/PaperTable.css:173: .pd-t { line-height }
-components/paper-table/PaperTable.css:175: .pd-t .metadata-editable { color }
-components/paper-table/PaperTable.css:176: .pdetail .wkprops { grid-template-columns }
-components/paper-table/PaperTable.css:176: .pdetail .wkprops { font-size }
-components/paper-table/PaperTable.css:177: .pdetail>.paper-meta { margin }
-components/paper-table/PaperTable.css:178: .paper-reading-summary { margin-top }
-components/paper-table/PaperTable.css:179: .paper-reading-summary .paper-meta-list { padding }
-components/paper-table/PaperTable.css:180: .paper-reading-summary .reading-summary-all { margin }
-components/paper-table/PaperTable.css:187: .libbar .filters { margin }
-components/paper-table/PaperTable.css:188: .libbar .filters>.pt-dim { font-size }
-components/paper-table/PaperTable.css:193: .research-map { padding }
-components/paper-table/PaperTable.css:194: .research-map-limit { color }
-components/paper-table/PaperTable.css:194: .research-map-limit { font-size }
-components/paper-table/PaperTable.css:195: .research-map-layout { grid-template-columns }
-components/paper-table/PaperTable.css:197: .research-map-index { gap }
-components/paper-table/PaperTable.css:199: .research-map-group { display }
-components/paper-table/PaperTable.css:199: .research-map-group { grid-template-columns }
-components/paper-table/PaperTable.css:199: .research-map-group { align-items }
-components/paper-table/PaperTable.css:199: .research-map-group { gap }
-components/paper-table/PaperTable.css:199: .research-map-group { min-height }
-components/paper-table/PaperTable.css:199: .research-map-group { padding }
-components/paper-table/PaperTable.css:202: .research-map-group-copy .research-map-group-name { color }
-components/paper-table/PaperTable.css:202: .research-map-group-copy .research-map-group-name { font-size }
-components/paper-table/PaperTable.css:202: .research-map-group-copy .research-map-group-name { font-weight }
-components/paper-table/PaperTable.css:203: .research-map-group-copy>span { color }
-components/paper-table/PaperTable.css:203: .research-map-group-copy>span { font-size }
-components/paper-table/PaperTable.css:205: .research-map-detail { border }
-components/paper-table/PaperTable.css:205: .research-map-detail { border-radius }
-components/paper-table/PaperTable.css:205: .research-map-detail { background }
-components/paper-table/PaperTable.css:205: .research-map-detail { overflow }
-components/paper-table/PaperTable.css:206: .research-map-detail-head { padding }
-components/paper-table/PaperTable.css:206: .research-map-detail-head { border-bottom }
-components/paper-table/PaperTable.css:208: .research-map-detail-head .research-map-detail-name { color }
-components/paper-table/PaperTable.css:208: .research-map-detail-head .research-map-detail-name { font-size }
-components/paper-table/PaperTable.css:208: .research-map-detail-head .research-map-detail-name { font-weight }
-components/paper-table/PaperTable.css:209: .research-map-detail-head>div>span { color }
-components/paper-table/PaperTable.css:209: .research-map-detail-head>div>span { font-size }
-components/paper-table/PaperTable.css:210: .research-map-paper { display }
-components/paper-table/PaperTable.css:210: .research-map-paper { grid-template-columns }
-components/paper-table/PaperTable.css:210: .research-map-paper { grid-template-areas }
-components/paper-table/PaperTable.css:210: .research-map-paper { align-items }
-components/paper-table/PaperTable.css:210: .research-map-paper { gap }
-components/paper-table/PaperTable.css:210: .research-map-paper { min-height }
-components/paper-table/PaperTable.css:210: .research-map-paper { padding }
-components/paper-table/PaperTable.css:211: .research-map-paper-open { display }
-components/paper-table/PaperTable.css:211: .research-map-paper-open { padding }
-components/paper-table/PaperTable.css:211: .research-map-paper-open { border }
-components/paper-table/PaperTable.css:211: .research-map-paper-open { background }
-components/paper-table/PaperTable.css:211: .research-map-paper-open { color }
-components/paper-table/PaperTable.css:211: .research-map-paper-open { font }
-components/paper-table/PaperTable.css:211: .research-map-paper-open { text-align }
-components/paper-table/PaperTable.css:211: .research-map-paper-open { cursor }
-components/paper-table/PaperTable.css:212: .research-map-paper-title { font-weight }
-components/paper-table/PaperTable.css:214: .research-map-paper-meta { color }
-components/paper-table/PaperTable.css:214: .research-map-paper-meta { font-size }
-components/paper-table/PaperTable.css:214: .research-map-paper-meta { white-space }
-components/paper-table/PaperTable.css:215: .research-map-why { display }
-components/paper-table/PaperTable.css:215: .research-map-why { align-items }
-components/paper-table/PaperTable.css:215: .research-map-why { gap }
-components/paper-table/PaperTable.css:215: .research-map-why { color }
-components/paper-table/PaperTable.css:215: .research-map-why { font-size }
+components/paper-table/PaperTable.css:30: .gxrow .gx-t { min-width }
+components/paper-table/PaperTable.css:31: .gnav { margin-bottom }
+components/paper-table/PaperTable.css:37: .ptable { border-collapse }
+components/paper-table/PaperTable.css:37: .ptable { border-spacing }
+components/paper-table/PaperTable.css:37: .ptable { font-size }
+components/paper-table/PaperTable.css:37: .ptable { margin-bottom }
+components/paper-table/PaperTable.css:37: .ptable { table-layout }
+components/paper-table/PaperTable.css:39: .thsort { padding }
+components/paper-table/PaperTable.css:39: .thsort { border }
+components/paper-table/PaperTable.css:39: .thsort { background }
+components/paper-table/PaperTable.css:39: .thsort { color }
+components/paper-table/PaperTable.css:39: .thsort { font }
+components/paper-table/PaperTable.css:39: .thsort { cursor }
+components/paper-table/PaperTable.css:40: .thsort svg { width }
+components/paper-table/PaperTable.css:40: .thsort svg { height }
+components/paper-table/PaperTable.css:40: .thsort svg { vertical-align }
+components/paper-table/PaperTable.css:42: .ptable th>.thgrip { right }
+components/paper-table/PaperTable.css:43: .thmove { width }
+components/paper-table/PaperTable.css:43: .thmove { height }
+components/paper-table/PaperTable.css:43: .thmove { margin }
+components/paper-table/PaperTable.css:43: .thmove { color }
+components/paper-table/PaperTable.css:43: .thmove { opacity }
+components/paper-table/PaperTable.css:43: .thmove { cursor }
+components/paper-table/PaperTable.css:43: .thmove { vertical-align }
+components/paper-table/PaperTable.css:43: .thmove { border-radius }
+components/paper-table/PaperTable.css:44: .ptable th:hover .thmove { opacity }
+components/paper-table/PaperTable.css:44: .thmove:focus-visible { opacity }
+components/paper-table/PaperTable.css:45: .thmove:active { cursor }
+components/paper-table/PaperTable.css:45: .thmove:active { color }
+components/paper-table/PaperTable.css:46: .thmove svg { width }
+components/paper-table/PaperTable.css:46: .thmove svg { height }
+components/paper-table/PaperTable.css:47: .column-drag-ghost { left }
+components/paper-table/PaperTable.css:47: .column-drag-ghost { top }
+components/paper-table/PaperTable.css:47: .column-drag-ghost { width }
+components/paper-table/PaperTable.css:47: .column-drag-ghost { height }
+components/paper-table/PaperTable.css:47: .column-drag-ghost { opacity }
+components/paper-table/PaperTable.css:47: .column-drag-ghost { pointer-events }
+components/paper-table/PaperTable.css:48: .ptable td .ci { display }
+components/paper-table/PaperTable.css:48: .ptable td .ci { overflow }
+components/paper-table/PaperTable.css:48: .ptable td .ci { white-space }
+components/paper-table/PaperTable.css:50: .ptable td.trunc:not(:hover) .ci:not(:has(.tagchip)):not(:focus-visible) { mask-image }
+components/paper-table/PaperTable.css:52: .ptable td .ci:has(.tagchip) { padding }
+components/paper-table/PaperTable.css:52: .ptable td .ci:has(.tagchip) { margin }
+components/paper-table/PaperTable.css:53: .ptable td.trunc:has(.ci):not(:has(.tagchip)):hover { overflow }
+components/paper-table/PaperTable.css:55: .ptable td.trunc:hover .ci:not(:has(.tagchip)) { position }
+components/paper-table/PaperTable.css:55: .ptable td.trunc:hover .ci:not(:has(.tagchip)) { left }
+components/paper-table/PaperTable.css:55: .ptable td.trunc:hover .ci:not(:has(.tagchip)) { top }
+components/paper-table/PaperTable.css:55: .ptable td.trunc:hover .ci:not(:has(.tagchip)) { bottom }
+components/paper-table/PaperTable.css:55: .ptable td.trunc:hover .ci:not(:has(.tagchip)) { display }
+components/paper-table/PaperTable.css:55: .ptable td.trunc:hover .ci:not(:has(.tagchip)) { align-items }
+components/paper-table/PaperTable.css:55: .ptable td.trunc:hover .ci:not(:has(.tagchip)) { padding }
+components/paper-table/PaperTable.css:55: .ptable td.trunc:hover .ci:not(:has(.tagchip)) { width }
+components/paper-table/PaperTable.css:55: .ptable td.trunc:hover .ci:not(:has(.tagchip)) { background }
+components/paper-table/PaperTable.css:55: .ptable td.trunc:hover .ci:not(:has(.tagchip)) { z-index }
+components/paper-table/PaperTable.css:55: .ptable td.trunc:hover .ci:not(:has(.tagchip)) { overflow }
+components/paper-table/PaperTable.css:55: .ptable td.trunc:hover .ci:not(:has(.tagchip)) { text-overflow }
+components/paper-table/PaperTable.css:56: .tblwrap .ptable thead th { background }
+components/paper-table/PaperTable.css:57: .ptable th:first-child { background }
+components/paper-table/PaperTable.css:57: .ptable td:first-child { background }
+components/paper-table/PaperTable.css:68: .ptable td:first-child { overflow }
+components/paper-table/PaperTable.css:68: .ptable td.row-actions-cell { overflow }
+components/paper-table/PaperTable.css:70: .ptable :is(th,td):first-child::before { content }
+components/paper-table/PaperTable.css:70: .ptable :is(td.row-actions-cell,th.th-add)::before { content }
+components/paper-table/PaperTable.css:70: .tblwrap .ptable thead th:not(.column-drop-after)::after { content }
+components/paper-table/PaperTable.css:70: .ptable :is(th,td):first-child::before { position }
+components/paper-table/PaperTable.css:70: .ptable :is(td.row-actions-cell,th.th-add)::before { position }
+components/paper-table/PaperTable.css:70: .tblwrap .ptable thead th:not(.column-drop-after)::after { position }
+components/paper-table/PaperTable.css:70: .ptable :is(th,td):first-child::before { background }
+components/paper-table/PaperTable.css:70: .ptable :is(td.row-actions-cell,th.th-add)::before { background }
+components/paper-table/PaperTable.css:70: .tblwrap .ptable thead th:not(.column-drop-after)::after { background }
+components/paper-table/PaperTable.css:70: .ptable :is(th,td):first-child::before { opacity }
+components/paper-table/PaperTable.css:70: .ptable :is(td.row-actions-cell,th.th-add)::before { opacity }
+components/paper-table/PaperTable.css:70: .tblwrap .ptable thead th:not(.column-drop-after)::after { opacity }
+components/paper-table/PaperTable.css:71: .ptable :is(th,td):first-child::before { pointer-events }
+components/paper-table/PaperTable.css:71: .ptable :is(td.row-actions-cell,th.th-add)::before { pointer-events }
+components/paper-table/PaperTable.css:71: .tblwrap .ptable thead th:not(.column-drop-after)::after { pointer-events }
+components/paper-table/PaperTable.css:71: .ptable :is(th,td):first-child::before { transition }
+components/paper-table/PaperTable.css:71: .ptable :is(td.row-actions-cell,th.th-add)::before { transition }
+components/paper-table/PaperTable.css:71: .tblwrap .ptable thead th:not(.column-drop-after)::after { transition }
+components/paper-table/PaperTable.css:72: .ptable :is(th,td):first-child::before { top }
+components/paper-table/PaperTable.css:72: .ptable :is(th,td):first-child::before { bottom }
+components/paper-table/PaperTable.css:72: .ptable :is(th,td):first-child::before { left }
+components/paper-table/PaperTable.css:72: .ptable :is(th,td):first-child::before { width }
+components/paper-table/PaperTable.css:72: .ptable :is(th,td):first-child::before { mask-image }
+components/paper-table/PaperTable.css:73: .ptable :is(td.row-actions-cell,th.th-add)::before { top }
+components/paper-table/PaperTable.css:73: .ptable :is(td.row-actions-cell,th.th-add)::before { bottom }
+components/paper-table/PaperTable.css:73: .ptable :is(td.row-actions-cell,th.th-add)::before { right }
+components/paper-table/PaperTable.css:73: .ptable :is(td.row-actions-cell,th.th-add)::before { width }
+components/paper-table/PaperTable.css:73: .ptable :is(td.row-actions-cell,th.th-add)::before { mask-image }
+components/paper-table/PaperTable.css:74: .tblwrap .ptable thead th:not(.column-drop-after)::after { top }
+components/paper-table/PaperTable.css:74: .tblwrap .ptable thead th:not(.column-drop-after)::after { left }
+components/paper-table/PaperTable.css:74: .tblwrap .ptable thead th:not(.column-drop-after)::after { right }
+components/paper-table/PaperTable.css:74: .tblwrap .ptable thead th:not(.column-drop-after)::after { height }
+components/paper-table/PaperTable.css:74: .tblwrap .ptable thead th:not(.column-drop-after)::after { mask-image }
+components/paper-table/PaperTable.css:75: @container scroll-state(stuck: left) .ptable :is(th,td):first-child::before { opacity }
+components/paper-table/PaperTable.css:76: @container scroll-state(stuck: right) .ptable :is(td.row-actions-cell,th.th-add)::before { opacity }
+components/paper-table/PaperTable.css:77: @container scroll-state(stuck: top) .tblwrap .ptable thead th:not(.column-drop-after)::after { opacity }
+components/paper-table/PaperTable.css:78: .ptable td .ci .hid { display }
+components/paper-table/PaperTable.css:79: .ptable td .ci.chip-expanded { display }
+components/paper-table/PaperTable.css:79: .ptable td .ci.chip-expanded { align-items }
+components/paper-table/PaperTable.css:79: .ptable td .ci.chip-expanded { flex-wrap }
+components/paper-table/PaperTable.css:79: .ptable td .ci.chip-expanded { gap }
+components/paper-table/PaperTable.css:79: .ptable td .ci.chip-expanded { overflow }
+components/paper-table/PaperTable.css:79: .ptable td .ci.chip-expanded { white-space }
+components/paper-table/PaperTable.css:79: .ptable td .ci.chip-expanded { text-overflow }
+components/paper-table/PaperTable.css:80: .ptable td .ci.chip-expanded .hid { display }
+components/paper-table/PaperTable.css:80: .ptable td .ci.chip-expanded .hid { animation }
+components/paper-table/PaperTable.css:81: @keyframes chip-row-reveal from { opacity }
+components/paper-table/PaperTable.css:81: @keyframes chip-row-reveal from { transform }
+components/paper-table/PaperTable.css:81: @keyframes chip-row-reveal to { opacity }
+components/paper-table/PaperTable.css:81: @keyframes chip-row-reveal to { transform }
+components/paper-table/PaperTable.css:82: @media (prefers-reduced-motion:reduce) .ptable td .ci.chip-expanded .hid { animation }
+components/paper-table/PaperTable.css:84: .ptable th { text-align }
+components/paper-table/PaperTable.css:84: .ptable th { font-size }
+components/paper-table/PaperTable.css:84: .ptable th { color }
+components/paper-table/PaperTable.css:84: .ptable th { font-weight }
+components/paper-table/PaperTable.css:84: .ptable th { padding }
+components/paper-table/PaperTable.css:84: .ptable th { border-bottom }
+components/paper-table/PaperTable.css:84: .ptable th { cursor }
+components/paper-table/PaperTable.css:84: .ptable th { white-space }
+components/paper-table/PaperTable.css:84: .ptable th { user-select }
+components/paper-table/PaperTable.css:84: .ptable th { transition }
+components/paper-table/PaperTable.css:85: .ptable th[aria-sort] { cursor }
+components/paper-table/PaperTable.css:86: .ptable th[aria-sort]:hover { color }
+components/paper-table/PaperTable.css:87: .ptable th.column-moving { opacity }
+components/paper-table/PaperTable.css:87: .ptable th.column-moving { background }
+components/paper-table/PaperTable.css:88: .ptable th.column-drop-before::before { content }
+components/paper-table/PaperTable.css:88: .ptable th.column-drop-after::after { content }
+components/paper-table/PaperTable.css:88: .ptable th.column-drop-before::before { position }
+components/paper-table/PaperTable.css:88: .ptable th.column-drop-after::after { position }
+components/paper-table/PaperTable.css:88: .ptable th.column-drop-before::before { top }
+components/paper-table/PaperTable.css:88: .ptable th.column-drop-after::after { top }
+components/paper-table/PaperTable.css:88: .ptable th.column-drop-before::before { bottom }
+components/paper-table/PaperTable.css:88: .ptable th.column-drop-after::after { bottom }
+components/paper-table/PaperTable.css:88: .ptable th.column-drop-before::before { width }
+components/paper-table/PaperTable.css:88: .ptable th.column-drop-after::after { width }
+components/paper-table/PaperTable.css:88: .ptable th.column-drop-before::before { border-radius }
+components/paper-table/PaperTable.css:88: .ptable th.column-drop-after::after { border-radius }
+components/paper-table/PaperTable.css:88: .ptable th.column-drop-before::before { background }
+components/paper-table/PaperTable.css:88: .ptable th.column-drop-after::after { background }
+components/paper-table/PaperTable.css:88: .ptable th.column-drop-before::before { z-index }
+components/paper-table/PaperTable.css:88: .ptable th.column-drop-after::after { z-index }
+components/paper-table/PaperTable.css:89: .ptable th.column-drop-before::before { left }
+components/paper-table/PaperTable.css:89: .ptable th.column-drop-after::after { right }
+components/paper-table/PaperTable.css:90: .ptable td { padding }
+components/paper-table/PaperTable.css:90: .ptable td { box-sizing }
+components/paper-table/PaperTable.css:90: .ptable td { border-bottom }
+components/paper-table/PaperTable.css:90: .ptable td { vertical-align }
+components/paper-table/PaperTable.css:90: .ptable td { line-height }
+components/paper-table/PaperTable.css:90: .ptable td { overflow }
+components/paper-table/PaperTable.css:90: .ptable td { white-space }
+components/paper-table/PaperTable.css:92: .ptable tbody tr:last-child td { border-bottom }
+components/paper-table/PaperTable.css:93: .ptable td:last-child { padding-top }
+components/paper-table/PaperTable.css:93: .ptable td:last-child { padding-bottom }
+components/paper-table/PaperTable.css:93: .ptable td:last-child { text-align }
+components/paper-table/PaperTable.css:100: .ptable tbody tr { --row-bg }
+components/paper-table/PaperTable.css:100: .ptable tbody tr { --row-over }
+components/paper-table/PaperTable.css:101: .ptable tbody tr:hover { --row-over }
+components/paper-table/PaperTable.css:101: .ptable tbody tr:has(.stchip[data-state="open"]) { --row-over }
+components/paper-table/PaperTable.css:102: .ptable tbody tr.selected { --row-bg }
+components/paper-table/PaperTable.css:103: .ptable tbody td { background-color }
+components/paper-table/PaperTable.css:103: .ptable tbody td { background-image }
+components/paper-table/PaperTable.css:104: .ptable tbody td:first-child { background-color }
+components/paper-table/PaperTable.css:105: .ptable tbody td:first-child { background-image }
+components/paper-table/PaperTable.css:106: .pt-title { font-weight }
+components/paper-table/PaperTable.css:106: .pt-title { color }
+components/paper-table/PaperTable.css:106: .pt-title { cursor }
+components/paper-table/PaperTable.css:108: .ptable .pt-open { padding }
+components/paper-table/PaperTable.css:108: .ptable .pt-open { border }
+components/paper-table/PaperTable.css:108: .ptable .pt-open { background }
+components/paper-table/PaperTable.css:108: .ptable .pt-open { color }
+components/paper-table/PaperTable.css:108: .ptable .pt-open { font }
+components/paper-table/PaperTable.css:108: .ptable .pt-open { text-align }
+components/paper-table/PaperTable.css:108: .ptable .pt-open { cursor }
+components/paper-table/PaperTable.css:109: .ptable tbody tr.selected .pt-title { color }
+components/paper-table/PaperTable.css:110: .pt-title:hover { text-decoration }
+components/paper-table/PaperTable.css:110: .pt-title:hover { text-underline-offset }
+components/paper-table/PaperTable.css:111: .ptable tbody tr { cursor }
+components/paper-table/PaperTable.css:112: .pt-dim { color }
+components/paper-table/PaperTable.css:112: .pt-dim { white-space }
+components/paper-table/PaperTable.css:118: .tagchip.tagadd { opacity }
+components/paper-table/PaperTable.css:118: .tagchip.tagadd { pointer-events }
+components/paper-table/PaperTable.css:118: .tagchip.tagadd { transition }
+components/paper-table/PaperTable.css:119: .ptable tr:hover .tagadd { opacity }
+components/paper-table/PaperTable.css:119: .tagchip.tagadd:focus-visible { opacity }
+components/paper-table/PaperTable.css:119: .ptable tr:hover .tagadd { pointer-events }
+components/paper-table/PaperTable.css:119: .tagchip.tagadd:focus-visible { pointer-events }
+components/paper-table/PaperTable.css:121: .ptable .tagchip .rx { opacity }
+components/paper-table/PaperTable.css:121: .ptable .tagchip .rx { pointer-events }
+components/paper-table/PaperTable.css:121: .ptable .tagchip .rx { transition }
+components/paper-table/PaperTable.css:122: .ptable tr:hover .tagchip .rx { opacity }
+components/paper-table/PaperTable.css:122: .ptable .tagchip .rx:focus-visible { opacity }
+components/paper-table/PaperTable.css:122: .ptable tr:hover .tagchip .rx { pointer-events }
+components/paper-table/PaperTable.css:122: .ptable .tagchip .rx:focus-visible { pointer-events }
+components/paper-table/PaperTable.css:123: .ptable tr:has(.stchip[data-state="open"]) .tagadd { opacity }
+components/paper-table/PaperTable.css:124: .paper-meta-projects .tagchip.tagadd { opacity }
+components/paper-table/PaperTable.css:124: .paper-meta-topics .tagchip.tagadd { opacity }
+components/paper-table/PaperTable.css:124: .paper-meta-projects .tagchip.tagadd { pointer-events }
+components/paper-table/PaperTable.css:124: .paper-meta-topics .tagchip.tagadd { pointer-events }
+components/paper-table/PaperTable.css:125: .form-input.form-control-inline.tagin { display }
+components/paper-table/PaperTable.css:125: .form-input.form-control-inline.tagin { width }
+components/paper-table/PaperTable.css:125: .form-input.form-control-inline.tagin { vertical-align }
+components/paper-table/PaperTable.css:128: .pt-cust { color }
+components/paper-table/PaperTable.css:128: .pt-remark { color }
+components/paper-table/PaperTable.css:128: .pt-cust { font-size }
+components/paper-table/PaperTable.css:128: .pt-remark { font-size }
+components/paper-table/PaperTable.css:128: .pt-cust { cursor }
+components/paper-table/PaperTable.css:128: .pt-remark { cursor }
+components/paper-table/PaperTable.css:128: .pt-cust { min-width }
+components/paper-table/PaperTable.css:128: .pt-remark { min-width }
+components/paper-table/PaperTable.css:130: .ptable td .paper-text-cell-input { display }
+components/paper-table/PaperTable.css:135: .cmx { margin }
+components/paper-table/PaperTable.css:139: .ctbtn { border }
+components/paper-table/PaperTable.css:139: .ctbtn { background }
+components/paper-table/PaperTable.css:139: .ctbtn { color }
+components/paper-table/PaperTable.css:139: .ctbtn { cursor }
+components/paper-table/PaperTable.css:139: .ctbtn { padding }
+components/paper-table/PaperTable.css:139: .ctbtn { border-radius }
+components/paper-table/PaperTable.css:140: .ctbtn:hover { color }
+components/paper-table/PaperTable.css:141: .ctbtn.on { background }
+components/paper-table/PaperTable.css:141: .ctbtn.on { border-color }
+components/paper-table/PaperTable.css:141: .ctbtn.on { color }
+components/paper-table/PaperTable.css:142: .ctbtn svg { width }
+components/paper-table/PaperTable.css:142: .ctbtn svg { height }
+components/paper-table/PaperTable.css:148: .typerow { padding-left }
+components/paper-table/PaperTable.css:156: .ptable td.row-actions-cell { background-color }
+components/paper-table/PaperTable.css:157: .ptable td.row-actions-cell { background-image }
+components/paper-table/PaperTable.css:162: .paper-detail-slot { --detail-panel-width }
+components/paper-table/PaperTable.css:162: .paper-detail-slot { top }
+components/paper-table/PaperTable.css:162: .paper-detail-slot { border-left }
+components/paper-table/PaperTable.css:163: .paper-detail-slot { background }
+components/paper-table/PaperTable.css:164: .pdetail { box-sizing }
+components/paper-table/PaperTable.css:164: .pdetail { overflow }
+components/paper-table/PaperTable.css:164: .pdetail { overscroll-behavior }
+components/paper-table/PaperTable.css:164: .pdetail { padding }
+components/paper-table/PaperTable.css:165: .desk-body.withdetail { margin-right }
+components/paper-table/PaperTable.css:165: .desk-foot.withdetail { margin-right }
+components/paper-table/PaperTable.css:170: .pd-h { margin-bottom }
+components/paper-table/PaperTable.css:171: .pd-t { font-size }
+components/paper-table/PaperTable.css:171: .pd-t { font-weight }
+components/paper-table/PaperTable.css:171: .pd-t { line-height }
+components/paper-table/PaperTable.css:173: .pd-t .metadata-editable { color }
+components/paper-table/PaperTable.css:174: .pdetail .wkprops { grid-template-columns }
+components/paper-table/PaperTable.css:174: .pdetail .wkprops { font-size }
+components/paper-table/PaperTable.css:175: .pdetail>.paper-meta { margin }
+components/paper-table/PaperTable.css:176: .paper-reading-summary { margin-top }
+components/paper-table/PaperTable.css:177: .paper-reading-summary .paper-meta-list { padding }
+components/paper-table/PaperTable.css:178: .paper-reading-summary .reading-summary-all { margin }
+components/paper-table/PaperTable.css:185: .libbar .filters { margin }
+components/paper-table/PaperTable.css:186: .libbar .filters>.pt-dim { font-size }
+components/paper-table/PaperTable.css:191: .research-map { padding }
+components/paper-table/PaperTable.css:192: .research-map-limit { color }
+components/paper-table/PaperTable.css:192: .research-map-limit { font-size }
+components/paper-table/PaperTable.css:193: .research-map-layout { grid-template-columns }
+components/paper-table/PaperTable.css:195: .research-map-index { gap }
+components/paper-table/PaperTable.css:201: .research-map-detail { border }
+components/paper-table/PaperTable.css:201: .research-map-detail { border-radius }
+components/paper-table/PaperTable.css:201: .research-map-detail { background }
+components/paper-table/PaperTable.css:201: .research-map-detail { overflow }
+components/paper-table/PaperTable.css:202: .research-map-detail-head { padding }
+components/paper-table/PaperTable.css:202: .research-map-detail-head { border-bottom }
+components/paper-table/PaperTable.css:204: .research-map-detail-head .research-map-detail-name { color }
+components/paper-table/PaperTable.css:204: .research-map-detail-head .research-map-detail-name { font-size }
+components/paper-table/PaperTable.css:204: .research-map-detail-head .research-map-detail-name { font-weight }
+components/paper-table/PaperTable.css:205: .research-map-detail-head>div>span { color }
+components/paper-table/PaperTable.css:205: .research-map-detail-head>div>span { font-size }
+components/paper-table/PaperTable.css:207: .research-map-paper-meta { white-space }
+components/paper-table/PaperTable.css:208: .research-map-why { display }
+components/paper-table/PaperTable.css:208: .research-map-why { align-items }
+components/paper-table/PaperTable.css:208: .research-map-why { gap }
 components/paper/PaperCard.css:1: .paper-card-citations { font-variant-numeric }
 components/paper/PaperCard.css:2: .paper-card-label { font-size }
 components/paper/PaperCard.css:2: .paper-card-label { font-weight }
@@ -434,11 +395,8 @@ components/paper/PaperUnderstanding.css:4: .paper-understanding-text { white-spa
 components/paper/PaperUnderstanding.css:4: .paper-understanding-text { color }
 components/paper/PaperUnderstanding.css:4: .paper-understanding-text { overflow-wrap }
 components/paper/PaperUnderstanding.css:5: .paper-understanding-notes { margin-top }
-components/paper/PaperUnderstanding.css:6: .paper-understanding-row { display }
 components/paper/PaperUnderstanding.css:6: .paper-understanding-row { gap }
 components/paper/PaperUnderstanding.css:6: .paper-understanding-row { align-items }
-components/paper/PaperUnderstanding.css:6: .paper-understanding-row { min-height }
-components/paper/PaperUnderstanding.css:6: .paper-understanding-row { padding }
 components/paper/PaperUnderstanding.css:7: .paper-understanding-page { color }
 components/paper/PaperUnderstanding.css:7: .paper-understanding-page { font-size }
 components/paper/PaperUnderstanding.css:7: .paper-understanding-page { white-space }
@@ -692,27 +650,15 @@ components/reader/PaperWikiProposalReview.css:3: .paper-wiki-quality-head>strong
 components/reader/PaperWikiProposalReview.css:4: .paper-wiki-quality-head>span { font-size }
 components/reader/PaperWikiProposalReview.css:4: .paper-wiki-quality-head>span { font-weight }
 components/reader/PaperWikiProposalReview.css:4: .paper-wiki-quality-head>span { line-height }
-components/reader/PaperWikiProposalReview.css:5: .paper-wiki-quality-findings { margin-top }
-components/reader/PaperWikiProposalReview.css:5: .paper-wiki-quality-findings { color }
-components/reader/PaperWikiProposalReview.css:6: .paper-wiki-quality-finding { display }
-components/reader/PaperWikiProposalReview.css:6: .paper-wiki-quality-finding { padding }
-components/reader/PaperWikiProposalReview.css:7: .paper-wiki-quality-finding strong { font-size }
-components/reader/PaperWikiProposalReview.css:7: .paper-wiki-quality-finding strong { line-height }
-components/reader/PaperWikiProposalReview.css:8: .paper-wiki-quality-finding span { color }
-components/reader/PaperWikiProposalReview.css:8: .paper-wiki-quality-finding span { font-size }
-components/reader/PaperWikiProposalReview.css:8: .paper-wiki-quality-finding span { line-height }
-components/reader/PaperWikiProposalReview.css:9: .paper-wiki-quality-place { display }
-components/reader/PaperWikiProposalReview.css:9: .paper-wiki-quality-place { margin-top }
-components/reader/PaperWikiProposalReview.css:11: .paper-wiki-review-section-head { margin-bottom }
-components/reader/PaperWikiProposalReview.css:12: .paper-wiki-review-section-head h4 { margin }
-components/reader/PaperWikiProposalReview.css:12: .paper-wiki-review-section-head h4 { font-size }
-components/reader/PaperWikiProposalReview.css:12: .paper-wiki-review-section-head h4 { line-height }
-components/reader/PaperWikiProposalReview.css:13: .paper-wiki-review-group { display }
-components/reader/PaperWikiProposalReview.css:13: .paper-wiki-review-group { flex-direction }
-components/reader/PaperWikiProposalReview.css:13: .paper-wiki-review-group { gap }
-components/reader/PaperWikiProposalReview.css:13: .paper-wiki-review-group { padding }
-components/reader/PaperWikiProposalReview.css:15: .paper-wiki-review-group-head>strong { font-size }
-components/reader/PaperWikiProposalReview.css:15: .paper-wiki-review-group-head>strong { line-height }
+components/reader/PaperWikiProposalReview.css:6: .paper-wiki-review-section-head { margin-bottom }
+components/reader/PaperWikiProposalReview.css:7: .paper-wiki-review-section-head h4 { margin }
+components/reader/PaperWikiProposalReview.css:7: .paper-wiki-review-section-head h4 { font-size }
+components/reader/PaperWikiProposalReview.css:7: .paper-wiki-review-section-head h4 { line-height }
+components/reader/PaperWikiProposalReview.css:8: .paper-wiki-review-group { display }
+components/reader/PaperWikiProposalReview.css:8: .paper-wiki-review-group { flex-direction }
+components/reader/PaperWikiProposalReview.css:8: .paper-wiki-review-group { gap }
+components/reader/PaperWikiProposalReview.css:10: .paper-wiki-review-group-head>strong { font-size }
+components/reader/PaperWikiProposalReview.css:10: .paper-wiki-review-group-head>strong { line-height }
 components/settings/ExtensionSettings.css:1: .extension-settings-card { padding-block }
 components/settings/ExtensionSettings.css:2: .extension-entry { padding }
 components/settings/ExtensionSettings.css:3: .extension-entry+.extension-entry { border-top }
@@ -751,34 +697,22 @@ components/settings/ExtensionSettings.css:20: .extension-tutorial-steps li>span 
 components/settings/ExtensionSettings.css:20: .extension-tutorial-steps li>span { font-size }
 components/settings/ExtensionSettings.css:20: .extension-tutorial-steps li>span { font-weight }
 components/settings/ExtensionSettings.css:21: .extension-tutorial-steps strong { display }
-components/settings/ExtensionSettings.css:21: .extension-prompt strong { display }
 components/settings/ExtensionSettings.css:21: .extension-tutorial-steps strong { color }
-components/settings/ExtensionSettings.css:21: .extension-prompt strong { color }
 components/settings/ExtensionSettings.css:21: .extension-tutorial-steps strong { font-size }
-components/settings/ExtensionSettings.css:21: .extension-prompt strong { font-size }
 components/settings/ExtensionSettings.css:21: .extension-tutorial-steps strong { font-weight }
-components/settings/ExtensionSettings.css:21: .extension-prompt strong { font-weight }
-components/settings/ExtensionSettings.css:22: .extension-prompt p { margin }
-components/settings/ExtensionSettings.css:22: .extension-prompt p { color }
-components/settings/ExtensionSettings.css:22: .extension-prompt p { font-size }
-components/settings/ExtensionSettings.css:22: .extension-prompt p { line-height }
-components/settings/ExtensionSettings.css:23: .extension-tutorial h4 { margin }
-components/settings/ExtensionSettings.css:23: .extension-tutorial h4 { color }
-components/settings/ExtensionSettings.css:23: .extension-tutorial h4 { font-size }
-components/settings/ExtensionSettings.css:23: .extension-tutorial h4 { font-weight }
-components/settings/ExtensionSettings.css:25: .extension-prompt-group h5 { margin }
-components/settings/ExtensionSettings.css:25: .extension-prompt-group h5 { color }
-components/settings/ExtensionSettings.css:25: .extension-prompt-group h5 { font-size }
-components/settings/ExtensionSettings.css:25: .extension-prompt-group h5 { font-weight }
-components/settings/ExtensionSettings.css:26: .extension-prompt-list { border-top }
-components/settings/ExtensionSettings.css:26: .extension-prompt-list { border-bottom }
-components/settings/ExtensionSettings.css:27: .extension-prompt { padding }
-components/settings/ExtensionSettings.css:28: .extension-prompt+.extension-prompt { border-top }
-components/settings/ExtensionSettings.css:30: .extension-healthy-list { margin }
-components/settings/ExtensionSettings.css:30: .extension-healthy-list { padding-left }
-components/settings/ExtensionSettings.css:30: .extension-healthy-list { color }
-components/settings/ExtensionSettings.css:30: .extension-healthy-list { font-size }
-components/settings/ExtensionSettings.css:30: .extension-healthy-list { line-height }
+components/settings/ExtensionSettings.css:22: .extension-tutorial h4 { margin }
+components/settings/ExtensionSettings.css:22: .extension-tutorial h4 { color }
+components/settings/ExtensionSettings.css:22: .extension-tutorial h4 { font-size }
+components/settings/ExtensionSettings.css:22: .extension-tutorial h4 { font-weight }
+components/settings/ExtensionSettings.css:24: .extension-prompt-group h5 { margin }
+components/settings/ExtensionSettings.css:24: .extension-prompt-group h5 { color }
+components/settings/ExtensionSettings.css:24: .extension-prompt-group h5 { font-size }
+components/settings/ExtensionSettings.css:24: .extension-prompt-group h5 { font-weight }
+components/settings/ExtensionSettings.css:26: .extension-healthy-list { margin }
+components/settings/ExtensionSettings.css:26: .extension-healthy-list { padding-left }
+components/settings/ExtensionSettings.css:26: .extension-healthy-list { color }
+components/settings/ExtensionSettings.css:26: .extension-healthy-list { font-size }
+components/settings/ExtensionSettings.css:26: .extension-healthy-list { line-height }
 components/settings/ServiceCard.css:2: .service-status-head { padding-bottom }
 components/settings/ServiceCard.css:2: .service-status-head { border-bottom }
 components/settings/ServiceCard.css:3: .service-status-head strong { font-size }
@@ -951,56 +885,47 @@ components/wiki/ProposalChange.css:28: .proposal-card.is-declined .proposal-text
 components/wiki/ProposalChange.css:29: .proposal-decision { margin-top }
 components/wiki/ProposalChange.css:30: .proposal-decision { color }
 components/wiki/ProposalChange.css:30: .proposal-decision { font-size }
-components/wiki/ReviewQueue.css:1: .review-row { padding }
-components/wiki/ReviewQueue.css:2: .review-reason { color }
-components/wiki/ReviewQueue.css:2: .review-reason { overflow-wrap }
-components/wiki/WikiClaims.css:1: .wkclaim { padding }
-components/wiki/WikiClaims.css:3: .wkclaim-text { font-size }
-components/wiki/WikiClaims.css:3: .wkclaim-text { font-weight }
-components/wiki/WikiClaims.css:3: .wkclaim-text { line-height }
-components/wiki/WikiClaims.css:3: .wkclaim-text { overflow-wrap }
-components/wiki/WikiClaims.css:4: .wkclaim-meta { margin-top }
-components/wiki/WikiClaims.css:4: .wkclaim-meta { color }
-components/wiki/WikiClaims.css:4: .wkclaim-meta { font-size }
-components/wiki/WikiClaims.css:5: .wkclaim-version { font-variant-numeric }
-components/wiki/WikiClaims.css:5: .wkclaim-version { color }
-components/wiki/WikiClaims.css:5: .wkclaim-version { font-weight }
-components/wiki/WikiClaims.css:6: .wkclaim-lines { list-style }
-components/wiki/WikiClaims.css:6: .wkclaim-lines { margin }
-components/wiki/WikiClaims.css:6: .wkclaim-lines { padding }
-components/wiki/WikiClaims.css:7: .wkclaim-lines li { font-size }
-components/wiki/WikiClaims.css:7: .wkclaim-lines li { color }
-components/wiki/WikiClaims.css:7: .wkclaim-lines li { line-height }
-components/wiki/WikiClaims.css:8: .wkclaim-point { color }
-components/wiki/WikiClaims.css:8: .wkclaim-point { font-family }
-components/wiki/WikiClaims.css:8: .wkclaim-point { font-size }
-components/wiki/WikiClaims.css:9: .wkclaim-quote { color }
-components/wiki/WikiClaims.css:9: .wkclaim-quote { overflow-wrap }
-components/wiki/WikiClaims.css:10: .wkclaim-note { color }
-components/wiki/WikiClaims.css:10: .wkclaim-note { overflow-wrap }
-components/wiki/WikiClaims.css:11: .wkclaim-resolve { margin-left }
-components/wiki/WikiClaims.css:12: .wkclaim-history { margin-top }
-components/wiki/WikiClaims.css:12: .wkclaim-history { font-size }
-components/wiki/WikiClaims.css:12: .wkclaim-history { color }
-components/wiki/WikiClaims.css:14: .wkclaim-lines>li.wkclaim-resolving { display }
-components/wiki/WikiClaims.css:14: .wkclaim-lines>li.wkclaim-marking { display }
-components/wiki/WikiClaims.css:14: .wkclaim-lines>li.wkclaim-resolving { margin }
-components/wiki/WikiClaims.css:14: .wkclaim-lines>li.wkclaim-marking { margin }
+components/wiki/ReviewQueue.css:1: .review-reason { color }
+components/wiki/ReviewQueue.css:1: .review-reason { overflow-wrap }
+components/wiki/WikiClaims.css:2: .wkclaim-text { font-size }
+components/wiki/WikiClaims.css:2: .wkclaim-text { font-weight }
+components/wiki/WikiClaims.css:2: .wkclaim-text { line-height }
+components/wiki/WikiClaims.css:2: .wkclaim-text { overflow-wrap }
+components/wiki/WikiClaims.css:3: .wkclaim-meta { margin-top }
+components/wiki/WikiClaims.css:3: .wkclaim-meta { color }
+components/wiki/WikiClaims.css:3: .wkclaim-meta { font-size }
+components/wiki/WikiClaims.css:4: .wkclaim-version { font-variant-numeric }
+components/wiki/WikiClaims.css:4: .wkclaim-version { color }
+components/wiki/WikiClaims.css:4: .wkclaim-version { font-weight }
+components/wiki/WikiClaims.css:5: .wkclaim-lines { list-style }
+components/wiki/WikiClaims.css:5: .wkclaim-lines { margin }
+components/wiki/WikiClaims.css:5: .wkclaim-lines { padding }
+components/wiki/WikiClaims.css:6: .wkclaim-lines li { font-size }
+components/wiki/WikiClaims.css:6: .wkclaim-lines li { color }
+components/wiki/WikiClaims.css:6: .wkclaim-lines li { line-height }
+components/wiki/WikiClaims.css:7: .wkclaim-point { color }
+components/wiki/WikiClaims.css:7: .wkclaim-point { font-family }
+components/wiki/WikiClaims.css:7: .wkclaim-point { font-size }
+components/wiki/WikiClaims.css:8: .wkclaim-quote { color }
+components/wiki/WikiClaims.css:8: .wkclaim-quote { overflow-wrap }
+components/wiki/WikiClaims.css:9: .wkclaim-note { color }
+components/wiki/WikiClaims.css:9: .wkclaim-note { overflow-wrap }
+components/wiki/WikiClaims.css:10: .wkclaim-resolve { margin-left }
+components/wiki/WikiClaims.css:11: .wkclaim-history { margin-top }
+components/wiki/WikiClaims.css:11: .wkclaim-history { font-size }
+components/wiki/WikiClaims.css:11: .wkclaim-history { color }
+components/wiki/WikiClaims.css:13: .wkclaim-lines>li.wkclaim-resolving { display }
+components/wiki/WikiClaims.css:13: .wkclaim-lines>li.wkclaim-marking { display }
+components/wiki/WikiClaims.css:13: .wkclaim-lines>li.wkclaim-resolving { margin }
+components/wiki/WikiClaims.css:13: .wkclaim-lines>li.wkclaim-marking { margin }
 components/wiki/WikiTidy.css:2: .tidy-list { display }
 components/wiki/WikiTidy.css:2: .tidy-list { grid-template-columns }
 components/wiki/WikiTidy.css:2: .tidy-list { column-gap }
 components/wiki/WikiTidy.css:3: .tidy-list>.tidy-row { display }
 components/wiki/WikiTidy.css:3: .tidy-list>.tidy-row { grid-template-columns }
-components/wiki/WikiTidy.css:6: .tidy-open { padding }
-components/wiki/WikiTidy.css:6: .tidy-open { border }
-components/wiki/WikiTidy.css:6: .tidy-open { background }
-components/wiki/WikiTidy.css:6: .tidy-open { color }
-components/wiki/WikiTidy.css:6: .tidy-open { font }
-components/wiki/WikiTidy.css:6: .tidy-open { text-align }
-components/wiki/WikiTidy.css:6: .tidy-open { cursor }
-components/wiki/WikiTidy.css:7: .tidy-wrong { color }
-components/wiki/WikiTidy.css:7: .tidy-wrong { font-size }
-components/wiki/WikiTidy.css:8: .tidy-trashed { margin-left }
+components/wiki/WikiTidy.css:6: .tidy-wrong { color }
+components/wiki/WikiTidy.css:6: .tidy-wrong { font-size }
+components/wiki/WikiTidy.css:7: .tidy-trashed { margin-left }
 routes/Feed.css:7: .feedcol { background }
 routes/Feed.css:10: .feedcol .msgs>.page-toolbar { justify-content }
 routes/Feed.css:10: .feedcol .msgs>.page-toolbar { margin }
@@ -1500,119 +1425,108 @@ routes/Watches.css:27: .watch-suggestion-group-heading { color }
 routes/Watches.css:27: .watch-suggestion-group-heading { font-size }
 routes/Watches.css:28: .watch-suggestion-group-heading strong { font-weight }
 routes/Watches.css:28: .watch-suggestion-group-heading strong { color }
-routes/Wiki.css:12: .wkcard .wt { font-size }
-routes/Wiki.css:13: .wkcard .tt { display }
-routes/Wiki.css:13: .wkcard .tt { font-weight }
-routes/Wiki.css:14: .wkcard .tt>.fade-text { display }
-routes/Wiki.css:15: .wkcard .sp { margin-left }
-routes/Wiki.css:16: .wkcard .wm { font-size }
-routes/Wiki.css:16: .wkcard .wm { color }
-routes/Wiki.css:16: .wkcard .wm { margin-top }
-routes/Wiki.css:16: .wkcard .wm { line-height }
-routes/Wiki.css:16: .wkcard .wm { height }
-routes/Wiki.css:17: .wkcard .wf { font-size }
-routes/Wiki.css:17: .wkcard .wf { color }
-routes/Wiki.css:17: .wkcard .wf { margin-top }
-routes/Wiki.css:17: .wkcard .wf { display }
-routes/Wiki.css:17: .wkcard .wf { align-items }
-routes/Wiki.css:17: .wkcard .wf { gap }
-routes/Wiki.css:23: .wkcard--paper .tt { white-space }
-routes/Wiki.css:23: .wkcard--paper .tt { mask-image }
-routes/Wiki.css:24: .wkcard--paper .tt-lines { display }
-routes/Wiki.css:24: .wkcard--paper .tt-lines { height }
-routes/Wiki.css:25: .wkcard--paper .wm { display }
-routes/Wiki.css:28: .wkpage p { margin }
-routes/Wiki.css:36: .cmpwrap { overflow }
-routes/Wiki.css:36: .cmpwrap { margin }
-routes/Wiki.css:36: .cmpwrap { padding }
-routes/Wiki.css:37: .cmpwrap { overflow-y }
-routes/Wiki.css:37: .cmpwrap { overscroll-behavior }
-routes/Wiki.css:37: .cmpwrap { scrollbar-gutter }
-routes/Wiki.css:38: .cmp { border-collapse }
-routes/Wiki.css:38: .cmp { font-size }
-routes/Wiki.css:38: .cmp { line-height }
-routes/Wiki.css:39: .cmp th { text-align }
-routes/Wiki.css:39: .cmp th { font-size }
-routes/Wiki.css:39: .cmp th { color }
-routes/Wiki.css:39: .cmp th { font-weight }
-routes/Wiki.css:39: .cmp th { padding }
-routes/Wiki.css:39: .cmp th { border-bottom }
-routes/Wiki.css:39: .cmp th { white-space }
-routes/Wiki.css:39: .cmp th { background }
-routes/Wiki.css:42: .cmp th::after { content }
-routes/Wiki.css:42: .cmp th::after { position }
-routes/Wiki.css:42: .cmp th::after { top }
-routes/Wiki.css:42: .cmp th::after { left }
-routes/Wiki.css:42: .cmp th::after { right }
-routes/Wiki.css:42: .cmp th::after { height }
-routes/Wiki.css:42: .cmp th::after { background }
-routes/Wiki.css:43: .cmp th::after { mask-image }
-routes/Wiki.css:43: .cmp th::after { opacity }
-routes/Wiki.css:43: .cmp th::after { pointer-events }
-routes/Wiki.css:43: .cmp th::after { transition }
-routes/Wiki.css:44: @container scroll-state(stuck: top) .cmp th::after { opacity }
-routes/Wiki.css:45: .cmp td { padding }
-routes/Wiki.css:45: .cmp td { border-bottom }
-routes/Wiki.css:45: .cmp td { vertical-align }
-routes/Wiki.css:45: .cmp td { max-width }
-routes/Wiki.css:46: .cmp tbody tr:last-child td { border-bottom }
-routes/Wiki.css:47: .cmp td.rh { white-space }
-routes/Wiki.css:48: .cmp td.na { color }
-routes/Wiki.css:50: .cmp th .wkind { margin-left }
-routes/Wiki.css:53: .memb { margin }
-routes/Wiki.css:54: .memb .wkprops { margin-top }
-routes/Wiki.css:57: .section-heading+.md>h2:first-child { margin-top }
-routes/Wiki.css:58: .wkmain .md.src { margin-top }
-routes/Wiki.css:64: .wktoc { list-style }
-routes/Wiki.css:64: .wktoc { margin }
-routes/Wiki.css:64: .wktoc { padding }
-routes/Wiki.css:64: .wktoc { border-left }
-routes/Wiki.css:65: .wktoc li { font-size }
-routes/Wiki.css:65: .wktoc li { line-height }
-routes/Wiki.css:65: .wktoc li { color }
-routes/Wiki.css:65: .wktoc li { cursor }
-routes/Wiki.css:65: .wktoc li { padding }
-routes/Wiki.css:65: .wktoc li { margin-left }
-routes/Wiki.css:65: .wktoc li { border-left }
-routes/Wiki.css:65: .wktoc li { white-space }
-routes/Wiki.css:67: .wktoc li button { padding }
-routes/Wiki.css:67: .wktoc li button { border }
-routes/Wiki.css:67: .wktoc li button { background }
-routes/Wiki.css:67: .wktoc li button { color }
-routes/Wiki.css:67: .wktoc li button { font }
-routes/Wiki.css:67: .wktoc li button { text-align }
-routes/Wiki.css:67: .wktoc li button { cursor }
-routes/Wiki.css:68: .wktoc li:hover { color }
-routes/Wiki.css:69: .wktoc li.on { color }
-routes/Wiki.css:69: .wktoc li.on { font-weight }
-routes/Wiki.css:69: .wktoc li.on { border-left-color }
-routes/Wiki.css:70: .wktoc li.l2 { padding-left }
-routes/Wiki.css:70: .wktoc li.l2 { font-size }
-routes/Wiki.css:71: .wktoc li.l3 { padding-left }
-routes/Wiki.css:71: .wktoc li.l3 { font-size }
-routes/Wiki.css:71: .wktoc li.l3 { color }
-routes/Wiki.css:72: .wktoc li.l3.on { color }
-routes/Wiki.css:76: .wkcard .row-actions { top }
-routes/Wiki.css:76: .wkcard .row-actions { right }
-routes/Wiki.css:78: .cmp th.rx { width }
-routes/Wiki.css:78: .cmp td.rx { width }
-routes/Wiki.css:78: .cmp th.rx { padding-left }
-routes/Wiki.css:78: .cmp td.rx { padding-left }
-routes/Wiki.css:78: .cmp th.rx { padding-right }
-routes/Wiki.css:78: .cmp td.rx { padding-right }
-routes/Wiki.css:80: .cmp td.rx { padding-top }
-routes/Wiki.css:80: .cmp td.rx { padding-bottom }
-routes/Wiki.css:81: .coledit { margin }
-routes/Wiki.css:81: .coledit { max-width }
-routes/Wiki.css:83: .coledit .acts { margin-top }
-routes/Wiki.css:89: .wkcard.newcard { cursor }
-routes/Wiki.css:89: .wkcard.newcard { border-style }
-routes/Wiki.css:90: .wkcard.newcard .wf { height }
-routes/Wiki.css:96: .cmp th.th-new { padding }
-routes/Wiki.css:99: .colpop .coledit { margin }
-routes/Wiki.css:100: .coledit .ch { font-size }
-routes/Wiki.css:100: .coledit .ch { font-weight }
-routes/Wiki.css:100: .coledit .ch { color }
+routes/Wiki.css:13: .wkcard .wm { font-size }
+routes/Wiki.css:13: .wkcard .wm { color }
+routes/Wiki.css:13: .wkcard .wm { line-height }
+routes/Wiki.css:13: .wkcard .wm { height }
+routes/Wiki.css:14: .wkcard .wf { font-size }
+routes/Wiki.css:14: .wkcard .wf { color }
+routes/Wiki.css:14: .wkcard .wf { display }
+routes/Wiki.css:14: .wkcard .wf { align-items }
+routes/Wiki.css:14: .wkcard .wf { gap }
+routes/Wiki.css:19: .wkcard--paper .tt { white-space }
+routes/Wiki.css:19: .wkcard--paper .tt { mask-image }
+routes/Wiki.css:20: .wkcard--paper .tt-lines { display }
+routes/Wiki.css:20: .wkcard--paper .tt-lines { height }
+routes/Wiki.css:21: .wkcard--paper .wm { display }
+routes/Wiki.css:24: .wkpage p { margin }
+routes/Wiki.css:32: .cmpwrap { overflow }
+routes/Wiki.css:32: .cmpwrap { margin }
+routes/Wiki.css:32: .cmpwrap { padding }
+routes/Wiki.css:33: .cmpwrap { overflow-y }
+routes/Wiki.css:33: .cmpwrap { overscroll-behavior }
+routes/Wiki.css:33: .cmpwrap { scrollbar-gutter }
+routes/Wiki.css:34: .cmp { border-collapse }
+routes/Wiki.css:34: .cmp { font-size }
+routes/Wiki.css:34: .cmp { line-height }
+routes/Wiki.css:35: .cmp th { text-align }
+routes/Wiki.css:35: .cmp th { font-size }
+routes/Wiki.css:35: .cmp th { color }
+routes/Wiki.css:35: .cmp th { font-weight }
+routes/Wiki.css:35: .cmp th { padding }
+routes/Wiki.css:35: .cmp th { border-bottom }
+routes/Wiki.css:35: .cmp th { white-space }
+routes/Wiki.css:35: .cmp th { background }
+routes/Wiki.css:38: .cmp th::after { content }
+routes/Wiki.css:38: .cmp th::after { position }
+routes/Wiki.css:38: .cmp th::after { top }
+routes/Wiki.css:38: .cmp th::after { left }
+routes/Wiki.css:38: .cmp th::after { right }
+routes/Wiki.css:38: .cmp th::after { height }
+routes/Wiki.css:38: .cmp th::after { background }
+routes/Wiki.css:39: .cmp th::after { mask-image }
+routes/Wiki.css:39: .cmp th::after { opacity }
+routes/Wiki.css:39: .cmp th::after { pointer-events }
+routes/Wiki.css:39: .cmp th::after { transition }
+routes/Wiki.css:40: @container scroll-state(stuck: top) .cmp th::after { opacity }
+routes/Wiki.css:41: .cmp td { padding }
+routes/Wiki.css:41: .cmp td { border-bottom }
+routes/Wiki.css:41: .cmp td { vertical-align }
+routes/Wiki.css:41: .cmp td { max-width }
+routes/Wiki.css:42: .cmp tbody tr:last-child td { border-bottom }
+routes/Wiki.css:43: .cmp td.rh { white-space }
+routes/Wiki.css:44: .cmp td.na { color }
+routes/Wiki.css:46: .cmp th .wkind { margin-left }
+routes/Wiki.css:49: .memb { margin }
+routes/Wiki.css:50: .memb .wkprops { margin-top }
+routes/Wiki.css:53: .section-heading+.md>h2:first-child { margin-top }
+routes/Wiki.css:54: .wkmain .md.src { margin-top }
+routes/Wiki.css:60: .wktoc { list-style }
+routes/Wiki.css:60: .wktoc { margin }
+routes/Wiki.css:60: .wktoc { padding }
+routes/Wiki.css:60: .wktoc { border-left }
+routes/Wiki.css:61: .wktoc li { font-size }
+routes/Wiki.css:61: .wktoc li { line-height }
+routes/Wiki.css:61: .wktoc li { color }
+routes/Wiki.css:61: .wktoc li { cursor }
+routes/Wiki.css:61: .wktoc li { padding }
+routes/Wiki.css:61: .wktoc li { margin-left }
+routes/Wiki.css:61: .wktoc li { border-left }
+routes/Wiki.css:61: .wktoc li { white-space }
+routes/Wiki.css:63: .wktoc li button { padding }
+routes/Wiki.css:63: .wktoc li button { border }
+routes/Wiki.css:63: .wktoc li button { background }
+routes/Wiki.css:63: .wktoc li button { color }
+routes/Wiki.css:63: .wktoc li button { font }
+routes/Wiki.css:63: .wktoc li button { text-align }
+routes/Wiki.css:63: .wktoc li button { cursor }
+routes/Wiki.css:64: .wktoc li:hover { color }
+routes/Wiki.css:65: .wktoc li.on { color }
+routes/Wiki.css:65: .wktoc li.on { font-weight }
+routes/Wiki.css:65: .wktoc li.on { border-left-color }
+routes/Wiki.css:66: .wktoc li.l2 { padding-left }
+routes/Wiki.css:66: .wktoc li.l2 { font-size }
+routes/Wiki.css:67: .wktoc li.l3 { padding-left }
+routes/Wiki.css:67: .wktoc li.l3 { font-size }
+routes/Wiki.css:67: .wktoc li.l3 { color }
+routes/Wiki.css:68: .wktoc li.l3.on { color }
+routes/Wiki.css:71: .cmp th.rx { width }
+routes/Wiki.css:71: .cmp td.rx { width }
+routes/Wiki.css:71: .cmp th.rx { padding-left }
+routes/Wiki.css:71: .cmp td.rx { padding-left }
+routes/Wiki.css:71: .cmp th.rx { padding-right }
+routes/Wiki.css:71: .cmp td.rx { padding-right }
+routes/Wiki.css:73: .cmp td.rx { padding-top }
+routes/Wiki.css:73: .cmp td.rx { padding-bottom }
+routes/Wiki.css:74: .coledit { margin }
+routes/Wiki.css:74: .coledit { max-width }
+routes/Wiki.css:76: .coledit .acts { margin-top }
+routes/Wiki.css:82: .wkcard.newcard .wf { height }
+routes/Wiki.css:88: .cmp th.th-new { padding }
+routes/Wiki.css:91: .colpop .coledit { margin }
+routes/Wiki.css:92: .coledit .ch { font-size }
+routes/Wiki.css:92: .coledit .ch { font-weight }
+routes/Wiki.css:92: .coledit .ch { color }
 routes/shell.css:12: .mwrap { margin }
 routes/shell.css:15: .filters { margin-bottom }
 routes/shell.css:17: .discovery-summary { margin }
@@ -1627,169 +1541,158 @@ routes/shell.css:21: .direction-project>header { font-size }
 routes/shell.css:22: .direction-project>header strong { color }
 routes/shell.css:23: .direction-project>header span { color }
 routes/shell.css:24: .direction-project>header .btn { margin-left }
-routes/shell.css:25: .direction-row { min-height }
-routes/shell.css:25: .direction-row { padding }
-routes/shell.css:25: .direction-row { border-top }
-routes/shell.css:26: .direction-row.disabled .direction-main { opacity }
-routes/shell.css:28: .direction-name { color }
-routes/shell.css:28: .direction-name { font-size }
-routes/shell.css:29: .direction-seeds { display }
-routes/shell.css:29: .direction-seeds { margin-top }
-routes/shell.css:29: .direction-seeds { color }
-routes/shell.css:29: .direction-seeds { font-size }
-routes/shell.css:38: .th-add { width }
-routes/shell.css:38: .th-add { white-space }
-routes/shell.css:43: .ptable th.th-add { padding }
-routes/shell.css:43: .cmp th.th-add { padding }
-routes/shell.css:44: .th-add .row-actions { gap }
-routes/shell.css:44: .th-add .row-actions { vertical-align }
-routes/shell.css:47: .wkprops { font-size }
-routes/shell.css:47: .wkprops { line-height }
-routes/shell.css:49: .wkprops .pk { color }
-routes/shell.css:49: .wkprops .pk { font-size }
-routes/shell.css:49: .wkprops .pk { white-space }
-routes/shell.css:50: .wkprops .pv { color }
-routes/shell.css:56: .metadata-field { display }
-routes/shell.css:57: .metadata-editable { display }
-routes/shell.css:57: .metadata-editable { box-sizing }
-routes/shell.css:57: .metadata-editable { margin }
-routes/shell.css:57: .metadata-editable { padding }
-routes/shell.css:57: .metadata-editable { border }
-routes/shell.css:57: .metadata-editable { border-radius }
-routes/shell.css:57: .metadata-editable { background }
-routes/shell.css:57: .metadata-editable { color }
-routes/shell.css:57: .metadata-editable { font }
-routes/shell.css:57: .metadata-editable { line-height }
-routes/shell.css:57: .metadata-editable { text-align }
-routes/shell.css:57: .metadata-editable { overflow-wrap }
-routes/shell.css:57: .metadata-editable { cursor }
-routes/shell.css:58: .metadata-editable:hover { background }
-routes/shell.css:58: .metadata-editable:hover { color }
-routes/shell.css:59: .pv.metadata-editable { cursor }
-routes/shell.css:60: .form-control.metadata-input.multiline { display }
-routes/shell.css:60: .form-control.metadata-input.multiline { field-sizing }
-routes/shell.css:60: .form-control.metadata-input.multiline { resize }
-routes/shell.css:60: .form-control.metadata-input.multiline { overflow }
-routes/shell.css:60: .form-control.metadata-input.multiline { white-space }
-routes/shell.css:60: .form-control.metadata-input.multiline { overflow-wrap }
-routes/shell.css:66: .wkpage { display }
-routes/shell.css:66: .wkpage { gap }
-routes/shell.css:66: .wkpage { align-items }
-routes/shell.css:66: .wkpage { font-size }
-routes/shell.css:66: .wkpage { line-height }
-routes/shell.css:68: .wkpage .lm { font-size }
-routes/shell.css:71: .wkside { box-sizing }
-routes/shell.css:71: .wkside { flex }
-routes/shell.css:71: .wkside { width }
-routes/shell.css:71: .wkside { max-width }
-routes/shell.css:71: .wkside { font-size }
-routes/shell.css:71: .wkside { line-height }
-routes/shell.css:71: .wkside { border-left }
-routes/shell.css:71: .wkside { padding-left }
-routes/shell.css:72: .wkside { overflow-x }
-routes/shell.css:72: .wkside { overflow-y }
-routes/shell.css:72: .wkside { overscroll-behavior }
-routes/shell.css:73: .wkside { --fade-paint }
-routes/shell.css:73: .wkside { --fade-pad-top }
-routes/shell.css:73: .wkside { --fade-pad-bottom }
-routes/shell.css:78: .wkside:not(.node-document-pane) { --rail-room }
-routes/shell.css:79: .wkside:not(.node-document-pane) { flex-basis }
-routes/shell.css:79: .wkside:not(.node-document-pane) { width }
-routes/shell.css:80: .wkside:not(.node-document-pane) { max-width }
-routes/shell.css:80: .wkside:not(.node-document-pane) { margin-right }
-routes/shell.css:80: .wkside:not(.node-document-pane) { padding-right }
-routes/shell.css:81: .wkside:not(.node-document-pane) { padding-bottom }
-routes/shell.css:85: .desk-head .fetchnote { font-size }
-routes/shell.css:85: .desk-head .fetchnote { color }
-routes/shell.css:85: .desk-head .fetchnote { white-space }
-routes/shell.css:88: .attnrow { display }
-routes/shell.css:88: .attnrow { grid-template-columns }
-routes/shell.css:89: .attnrow { align-items }
-routes/shell.css:89: .attnrow { column-gap }
-routes/shell.css:90: .attn-text { overflow }
-routes/shell.css:90: .attn-text { white-space }
-routes/shell.css:91: .attn+.wkpage { margin-top }
-routes/shell.css:93: .tlrow { font-size }
-routes/shell.css:93: .tlrow { padding }
-routes/shell.css:94: .tlrow .tm { font-size }
-routes/shell.css:94: .tlrow .tm { color }
-routes/shell.css:95: .macts { margin-top }
-routes/shell.css:101: .md { line-height }
-routes/shell.css:102: .md.src { white-space }
-routes/shell.css:102: .md.src { outline }
-routes/shell.css:102: .md.src { caret-color }
-routes/shell.css:103: .md p { margin }
-routes/shell.css:104: .md p:last-child { margin-bottom }
-routes/shell.css:104: .md ul:last-child { margin-bottom }
-routes/shell.css:104: .md ol:last-child { margin-bottom }
-routes/shell.css:105: .md h1 { font-size }
-routes/shell.css:105: .md h2 { font-size }
-routes/shell.css:105: .md h1 { line-height }
-routes/shell.css:105: .md h2 { line-height }
-routes/shell.css:106: .md h3 { font-size }
-routes/shell.css:106: .md h4 { font-size }
-routes/shell.css:107: .md h1 { margin }
-routes/shell.css:107: .md h2 { margin }
-routes/shell.css:107: .md h3 { margin }
-routes/shell.css:107: .md h4 { margin }
-routes/shell.css:107: .md h1 { font-weight }
-routes/shell.css:107: .md h2 { font-weight }
-routes/shell.css:107: .md h3 { font-weight }
-routes/shell.css:107: .md h4 { font-weight }
-routes/shell.css:108: .md ul { margin }
-routes/shell.css:108: .md ol { margin }
-routes/shell.css:108: .md ul { padding-left }
-routes/shell.css:108: .md ol { padding-left }
-routes/shell.css:109: .md li { margin }
-routes/shell.css:110: .md code { font-family }
-routes/shell.css:110: .md code { font-size }
-routes/shell.css:110: .md code { background }
-routes/shell.css:110: .md code { border-radius }
-routes/shell.css:110: .md code { padding }
-routes/shell.css:111: .md pre { margin }
-routes/shell.css:111: .md pre { padding }
-routes/shell.css:111: .md pre { background }
-routes/shell.css:111: .md pre { border-radius }
-routes/shell.css:111: .md pre { overflow }
-routes/shell.css:111: .md pre { font-size }
-routes/shell.css:111: .md pre { line-height }
-routes/shell.css:112: .md pre code { background }
-routes/shell.css:112: .md pre code { padding }
-routes/shell.css:113: .md blockquote { margin }
-routes/shell.css:113: .md blockquote { padding }
-routes/shell.css:113: .md blockquote { border-left }
-routes/shell.css:113: .md blockquote { color }
-routes/shell.css:114: .md table { border-collapse }
-routes/shell.css:114: .md table { margin }
-routes/shell.css:114: .md table { font-size }
-routes/shell.css:114: .md table { display }
-routes/shell.css:114: .md table { overflow-x }
-routes/shell.css:115: .md th { border }
-routes/shell.css:115: .md td { border }
-routes/shell.css:115: .md th { padding }
-routes/shell.css:115: .md td { padding }
-routes/shell.css:115: .md th { text-align }
-routes/shell.css:115: .md td { text-align }
-routes/shell.css:115: .md th { vertical-align }
-routes/shell.css:115: .md td { vertical-align }
-routes/shell.css:116: .md th { background }
-routes/shell.css:116: .md th { font-weight }
-routes/shell.css:117: .md hr { border }
-routes/shell.css:117: .md hr { border-top }
-routes/shell.css:117: .md hr { margin }
-routes/shell.css:119: .md .katex-display { margin }
-routes/shell.css:120: .nrow { display }
-routes/shell.css:120: .nrow { padding }
-routes/shell.css:121: .nrow .nq { font-size }
-routes/shell.css:121: .nrow .nq { color }
-routes/shell.css:121: .nrow .nq { font-style }
-routes/shell.css:121: .nrow .nq { background }
-routes/shell.css:121: .nrow .nq { border-radius }
-routes/shell.css:121: .nrow .nq { padding }
-routes/shell.css:121: .nrow .nq { margin-bottom }
-routes/shell.css:122: .nrow .nt { font-size }
-routes/shell.css:122: .nrow .nt { color }
-routes/shell.css:122: .nrow .nt { overflow-wrap }
+routes/shell.css:33: .th-add { width }
+routes/shell.css:33: .th-add { white-space }
+routes/shell.css:38: .ptable th.th-add { padding }
+routes/shell.css:38: .cmp th.th-add { padding }
+routes/shell.css:39: .th-add .row-actions { gap }
+routes/shell.css:39: .th-add .row-actions { vertical-align }
+routes/shell.css:42: .wkprops { font-size }
+routes/shell.css:42: .wkprops { line-height }
+routes/shell.css:44: .wkprops .pk { color }
+routes/shell.css:44: .wkprops .pk { font-size }
+routes/shell.css:44: .wkprops .pk { white-space }
+routes/shell.css:45: .wkprops .pv { color }
+routes/shell.css:51: .metadata-field { display }
+routes/shell.css:52: .metadata-editable { display }
+routes/shell.css:52: .metadata-editable { box-sizing }
+routes/shell.css:52: .metadata-editable { margin }
+routes/shell.css:52: .metadata-editable { padding }
+routes/shell.css:52: .metadata-editable { border }
+routes/shell.css:52: .metadata-editable { border-radius }
+routes/shell.css:52: .metadata-editable { background }
+routes/shell.css:52: .metadata-editable { color }
+routes/shell.css:52: .metadata-editable { font }
+routes/shell.css:52: .metadata-editable { line-height }
+routes/shell.css:52: .metadata-editable { text-align }
+routes/shell.css:52: .metadata-editable { overflow-wrap }
+routes/shell.css:52: .metadata-editable { cursor }
+routes/shell.css:53: .metadata-editable:hover { background }
+routes/shell.css:53: .metadata-editable:hover { color }
+routes/shell.css:54: .pv.metadata-editable { cursor }
+routes/shell.css:55: .form-control.metadata-input.multiline { display }
+routes/shell.css:55: .form-control.metadata-input.multiline { field-sizing }
+routes/shell.css:55: .form-control.metadata-input.multiline { resize }
+routes/shell.css:55: .form-control.metadata-input.multiline { overflow }
+routes/shell.css:55: .form-control.metadata-input.multiline { white-space }
+routes/shell.css:55: .form-control.metadata-input.multiline { overflow-wrap }
+routes/shell.css:61: .wkpage { display }
+routes/shell.css:61: .wkpage { gap }
+routes/shell.css:61: .wkpage { align-items }
+routes/shell.css:61: .wkpage { font-size }
+routes/shell.css:61: .wkpage { line-height }
+routes/shell.css:63: .wkpage .lm { font-size }
+routes/shell.css:66: .wkside { box-sizing }
+routes/shell.css:66: .wkside { flex }
+routes/shell.css:66: .wkside { width }
+routes/shell.css:66: .wkside { max-width }
+routes/shell.css:66: .wkside { font-size }
+routes/shell.css:66: .wkside { line-height }
+routes/shell.css:66: .wkside { border-left }
+routes/shell.css:66: .wkside { padding-left }
+routes/shell.css:67: .wkside { overflow-x }
+routes/shell.css:67: .wkside { overflow-y }
+routes/shell.css:67: .wkside { overscroll-behavior }
+routes/shell.css:68: .wkside { --fade-paint }
+routes/shell.css:68: .wkside { --fade-pad-top }
+routes/shell.css:68: .wkside { --fade-pad-bottom }
+routes/shell.css:73: .wkside:not(.node-document-pane) { --rail-room }
+routes/shell.css:74: .wkside:not(.node-document-pane) { flex-basis }
+routes/shell.css:74: .wkside:not(.node-document-pane) { width }
+routes/shell.css:75: .wkside:not(.node-document-pane) { max-width }
+routes/shell.css:75: .wkside:not(.node-document-pane) { margin-right }
+routes/shell.css:75: .wkside:not(.node-document-pane) { padding-right }
+routes/shell.css:76: .wkside:not(.node-document-pane) { padding-bottom }
+routes/shell.css:80: .desk-head .fetchnote { font-size }
+routes/shell.css:80: .desk-head .fetchnote { color }
+routes/shell.css:80: .desk-head .fetchnote { white-space }
+routes/shell.css:83: .attnrow { display }
+routes/shell.css:83: .attnrow { grid-template-columns }
+routes/shell.css:84: .attnrow { align-items }
+routes/shell.css:84: .attnrow { column-gap }
+routes/shell.css:85: .attn-text { overflow }
+routes/shell.css:85: .attn-text { white-space }
+routes/shell.css:86: .attn+.wkpage { margin-top }
+routes/shell.css:88: .tlrow { font-size }
+routes/shell.css:88: .tlrow { padding }
+routes/shell.css:89: .tlrow .tm { font-size }
+routes/shell.css:89: .tlrow .tm { color }
+routes/shell.css:90: .macts { margin-top }
+routes/shell.css:96: .md { line-height }
+routes/shell.css:97: .md.src { white-space }
+routes/shell.css:97: .md.src { outline }
+routes/shell.css:97: .md.src { caret-color }
+routes/shell.css:98: .md p { margin }
+routes/shell.css:99: .md p:last-child { margin-bottom }
+routes/shell.css:99: .md ul:last-child { margin-bottom }
+routes/shell.css:99: .md ol:last-child { margin-bottom }
+routes/shell.css:100: .md h1 { font-size }
+routes/shell.css:100: .md h2 { font-size }
+routes/shell.css:100: .md h1 { line-height }
+routes/shell.css:100: .md h2 { line-height }
+routes/shell.css:101: .md h3 { font-size }
+routes/shell.css:101: .md h4 { font-size }
+routes/shell.css:102: .md h1 { margin }
+routes/shell.css:102: .md h2 { margin }
+routes/shell.css:102: .md h3 { margin }
+routes/shell.css:102: .md h4 { margin }
+routes/shell.css:102: .md h1 { font-weight }
+routes/shell.css:102: .md h2 { font-weight }
+routes/shell.css:102: .md h3 { font-weight }
+routes/shell.css:102: .md h4 { font-weight }
+routes/shell.css:103: .md ul { margin }
+routes/shell.css:103: .md ol { margin }
+routes/shell.css:103: .md ul { padding-left }
+routes/shell.css:103: .md ol { padding-left }
+routes/shell.css:104: .md li { margin }
+routes/shell.css:105: .md code { font-family }
+routes/shell.css:105: .md code { font-size }
+routes/shell.css:105: .md code { background }
+routes/shell.css:105: .md code { border-radius }
+routes/shell.css:105: .md code { padding }
+routes/shell.css:106: .md pre { margin }
+routes/shell.css:106: .md pre { padding }
+routes/shell.css:106: .md pre { background }
+routes/shell.css:106: .md pre { border-radius }
+routes/shell.css:106: .md pre { overflow }
+routes/shell.css:106: .md pre { font-size }
+routes/shell.css:106: .md pre { line-height }
+routes/shell.css:107: .md pre code { background }
+routes/shell.css:107: .md pre code { padding }
+routes/shell.css:108: .md blockquote { margin }
+routes/shell.css:108: .md blockquote { padding }
+routes/shell.css:108: .md blockquote { border-left }
+routes/shell.css:108: .md blockquote { color }
+routes/shell.css:109: .md table { border-collapse }
+routes/shell.css:109: .md table { margin }
+routes/shell.css:109: .md table { font-size }
+routes/shell.css:109: .md table { display }
+routes/shell.css:109: .md table { overflow-x }
+routes/shell.css:110: .md th { border }
+routes/shell.css:110: .md td { border }
+routes/shell.css:110: .md th { padding }
+routes/shell.css:110: .md td { padding }
+routes/shell.css:110: .md th { text-align }
+routes/shell.css:110: .md td { text-align }
+routes/shell.css:110: .md th { vertical-align }
+routes/shell.css:110: .md td { vertical-align }
+routes/shell.css:111: .md th { background }
+routes/shell.css:111: .md th { font-weight }
+routes/shell.css:112: .md hr { border }
+routes/shell.css:112: .md hr { border-top }
+routes/shell.css:112: .md hr { margin }
+routes/shell.css:114: .md .katex-display { margin }
+routes/shell.css:115: .nrow { display }
+routes/shell.css:116: .nrow .nq { font-size }
+routes/shell.css:116: .nrow .nq { color }
+routes/shell.css:116: .nrow .nq { font-style }
+routes/shell.css:116: .nrow .nq { background }
+routes/shell.css:116: .nrow .nq { border-radius }
+routes/shell.css:116: .nrow .nq { padding }
+routes/shell.css:116: .nrow .nq { margin-bottom }
+routes/shell.css:117: .nrow .nt { font-size }
+routes/shell.css:117: .nrow .nt { color }
+routes/shell.css:117: .nrow .nt { overflow-wrap }
 shell/AppShell.css:16: .titlebar { height }
 shell/AppShell.css:16: .titlebar { padding }
 shell/AppShell.css:16: .titlebar { background }
