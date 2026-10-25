@@ -111,6 +111,7 @@ describe('状态色', () => {
     'components/InlineMessage.css': 'errors, warnings and notes shown in place, as a line or on their tint',
     'components/Notice.css': "a notice's success or refusal icon",
     'components/IconButton.css': 'a danger icon action under the pointer',
+    'components/ActionMenu.css': 'a danger menu item',
     'components/FirstRunChecklist.css': "a finished first-run step's check",
   }
 
@@ -120,8 +121,6 @@ describe('状态色', () => {
    */
   const PENDING: Record<string, string> = {
     'routes/shell.css  .btn.danger  background-color': '#559, the danger Button',
-    'routes/shell.css  .mi.danger  color': '#560, the danger menu item',
-    'components/ShortTextEditor.css  .short-text-delete.mi.danger  color': '#560, the danger menu item',
     'components/paper-table/PaperTable.css  .ptable th.column-moving  background': '#567, the drag feedback of a column',
     'components/project/ProjectPlan.css  50%  background': '#578, the landing flash of a plan row',
     'shell/tokens.css  .ddlrow.flash  background': '#578, the landing flash of a plan row',
