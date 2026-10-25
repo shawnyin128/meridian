@@ -250,6 +250,9 @@ Current shared contracts:
 - `CardTray`: progressive disclosure for secondary card details. It keeps a one-line summary visible,
   expands details below the host without moving its primary identity, and owns the shared animation,
   keyboard semantics, and reduced-motion behavior.
+- `CommandTray`: the one command the user runs in their own terminal, on a `CardTray`: its heading and the
+  command on one line, the whole command once opened, and Copy, which shows the check once the command is on
+  the clipboard. The agent plugins' install and update commands and the subscription CLIs' sign-in commands use it.
 - `PageShell`: the shared page-level header/body/footer/error/section composition. Routes supply content
   and actions rather than copying the desktop shell structure. `PageHeader` heads a page or, at `size: 'pane'`,
   a pane beside it, such as the reader's paper chat and rail panels. `PageBody` keeps its content to the

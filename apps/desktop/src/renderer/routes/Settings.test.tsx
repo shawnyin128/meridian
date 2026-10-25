@@ -52,7 +52,7 @@ const api = vi.hoisted(() => ({
     },
   })),
   subscriptionStatus: vi.fn<(cli: HarnessCli) => Promise<HarnessSubscriptionStatus>>(async () => ({
-    state: 'found', version: '2.1.3', signIn: 'subscription',
+    state: 'found', version: '2.1.3', signIn: 'subscription', models: ['opus', 'sonnet'],
   })),
   checkModelConnection: vi.fn(async (): Promise<HarnessModelConnectionCheckResult> => ({
     state: 'connected' as const, modelCalls: 1 as const, maxOutputTokens: 1 as const,
@@ -551,7 +551,7 @@ describe('Settings', () => {
       .toBe('未安装')
     expect(dialog.querySelector('[data-extension="codex"] code')?.textContent)
       .toBe('codex update command')
-    expect(dialog.querySelector('[data-extension="codex"] .extension-command-summary span')?.textContent)
+    expect(dialog.querySelector('[data-extension="codex"] .command-tray-heading')?.textContent)
       .toBe('更新命令')
     expect(dialog.querySelector('[data-extension="claude-code"] code')?.textContent)
       .toBe('claude install command')
@@ -1445,7 +1445,7 @@ describe('Settings', () => {
   })
 
   it('读不出 CLI 的版本时 CLI 一行只写它的名字', async () => {
-    api.subscriptionStatus.mockResolvedValueOnce({ state: 'found', version: null, signIn: 'subscription' })
+    api.subscriptionStatus.mockResolvedValueOnce({ state: 'found', version: null, signIn: 'subscription', models: [] })
     api.requestedCategory = 'model'
     await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
     const dialog = document.querySelector('.setdlg')!
@@ -1460,7 +1460,7 @@ describe('Settings', () => {
     ['other', '未用订阅登录'],
     ['unknown', '读不出登录状态'],
   ] as const)('CLI 登录方式是 %s 时登录一行是提醒色的标签', async (signIn, text) => {
-    api.subscriptionStatus.mockResolvedValueOnce({ state: 'found', version: '2.1.3', signIn })
+    api.subscriptionStatus.mockResolvedValueOnce({ state: 'found', version: '2.1.3', signIn, models: [] })
     api.requestedCategory = 'model'
     await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
     const dialog = document.querySelector('.setdlg')!
@@ -1501,6 +1501,134 @@ describe('Settings', () => {
     expect(dialog.querySelector('[aria-label="模型 API Key 已保存，末四位 1111"]')).not.toBeNull()
     expect(modelRows(dialog).map(([label]) => label)).not.toContain('CLI')
     expect(testButton(dialog).disabled).toBe(true)
+  })
+
+  /** The text of each candidate row the open model list shows. */
+  const modelCandidates = () => [...document.querySelectorAll('.pickhits .rrow')].map((row) => row.textContent)
+  /** Focuses the model field of `dialog`, which opens its list. */
+  const focusModel = async (dialog: Element) => {
+    await act(async () => { dialog.querySelector<HTMLInputElement>('[aria-label="模型名称"]')!.focus() })
+  }
+  const keyOnModel = async (dialog: Element, key: string) => {
+    await act(async () => {
+      dialog.querySelector('[aria-label="模型名称"]')!.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true }))
+    })
+  }
+
+  it('订阅没用订阅登录时卡片里有一条登录命令，和扩展的安装命令同一种：复制后按钮就地亮出对勾', async () => {
+    const writeText = vi.fn(async () => {})
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText } })
+    api.subscriptionStatus.mockResolvedValueOnce({ state: 'found', version: '2.1.3', signIn: 'signed-out', models: [] })
+    api.requestedCategory = 'model'
+    await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
+    const dialog = document.querySelector('.setdlg')!
+
+    await pick(dialog, '模型服务', 'Claude 订阅')
+
+    const tray = dialog.querySelector('.model-settings-card .command-tray')!
+    expect([tray.querySelector('.command-tray-heading')?.textContent, tray.querySelector('.command-tray-summary code')?.textContent])
+      .toEqual(['登录命令', 'claude auth login'])
+    const copy = tray.querySelector<HTMLButtonElement>('button[aria-label="复制 Claude Code 登录命令"]')!
+    await act(async () => { copy.click() })
+    expect(writeText).toHaveBeenCalledWith('claude auth login')
+    expect(copy.getAttribute('aria-label')).toBe('已复制')
+  })
+
+  it.each([
+    ['other', 'codex login'],
+    ['unknown', 'codex login'],
+    ['subscription', null],
+  ] as const)('Codex 登录方式是 %s 时登录命令是 %s', async (signIn, command) => {
+    api.subscriptionStatus.mockResolvedValueOnce({ state: 'found', version: '0.163.0', signIn, models: [] })
+    api.requestedCategory = 'model'
+    await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
+    const dialog = document.querySelector('.setdlg')!
+
+    await pick(dialog, '模型服务', 'ChatGPT 订阅')
+
+    expect(dialog.querySelector('.model-settings-card .command-tray code')?.textContent ?? null).toBe(command)
+  })
+
+  it('没有找到 CLI 时不给登录命令', async () => {
+    api.subscriptionStatus.mockResolvedValueOnce({ state: 'missing' })
+    api.requestedCategory = 'model'
+    await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
+    const dialog = document.querySelector('.setdlg')!
+
+    await pick(dialog, '模型服务', 'Claude 订阅')
+
+    expect(dialog.querySelector('.model-settings-card .command-tray')).toBeNull()
+  })
+
+  it('订阅的模型是一个候选字段：聚焦就列出默认和 CLI 接受的模型，勾着当前的；点一个就选它', async () => {
+    api.requestedCategory = 'model'
+    await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
+    const dialog = document.querySelector('.setdlg')!
+    await pick(dialog, '模型服务', 'Claude 订阅')
+    expect(modelCandidates()).toEqual([])
+
+    await focusModel(dialog)
+    expect(modelCandidates()).toEqual(['默认', 'opus', 'sonnet'])
+    expect([...document.querySelectorAll('.pickhits .rrow')].map((row) => row.querySelector('.ck svg') !== null))
+      .toEqual([true, false, false])
+
+    await act(async () => { [...document.querySelectorAll<HTMLElement>('.pickhits .rrow')][1]!.click() })
+    expect(dialog.querySelector<HTMLInputElement>('[aria-label="模型名称"]')?.value).toBe('opus')
+    expect(modelCandidates()).toEqual([])
+    await act(async () => { dialog.querySelector<HTMLButtonElement>('.service-actions .btn.pri')!.click() })
+    expect(api.updateSubscription).toHaveBeenCalledWith({ cli: 'claude', model: 'opus' })
+  })
+
+  it('在模型字段里打字只留含它的模型，不在里面的名字有一行新建；回车用它，Esc 收起列表', async () => {
+    api.requestedCategory = 'model'
+    await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
+    const dialog = document.querySelector('.setdlg')!
+    await pick(dialog, '模型服务', 'Claude 订阅')
+    await focusModel(dialog)
+
+    await fill(dialog, '模型名称', 'son')
+    expect(modelCandidates()).toEqual(['sonnet', 'son'])
+    expect(document.querySelector('.pickhits .rrow.mk')?.getAttribute('aria-label')).toBe('使用 son')
+
+    await fill(dialog, '模型名称', 'claude-fable-5')
+    expect(modelCandidates()).toEqual(['claude-fable-5'])
+    await keyOnModel(dialog, 'Enter')
+    expect(modelCandidates()).toEqual([])
+    expect(dialog.querySelector<HTMLInputElement>('[aria-label="模型名称"]')?.value).toBe('claude-fable-5')
+
+    await fill(dialog, '模型名称', 'op')
+    expect(modelCandidates()).toEqual(['opus', 'op'])
+    await keyOnModel(dialog, 'Escape')
+    expect(modelCandidates()).toEqual([])
+    await act(async () => { dialog.querySelector<HTMLButtonElement>('.service-actions .btn.pri')!.click() })
+    expect(api.updateSubscription).toHaveBeenCalledWith({ cli: 'claude', model: 'op' })
+  })
+
+  it('打开模型列表时亮着的是当前的模型，直接回车不换模型', async () => {
+    api.requestedCategory = 'model'
+    await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
+    const dialog = document.querySelector('.setdlg')!
+    await pick(dialog, '模型服务', 'Claude 订阅')
+    await focusModel(dialog)
+    await act(async () => { [...document.querySelectorAll<HTMLElement>('.pickhits .rrow')][2]!.click() })
+
+    await act(async () => { dialog.querySelector<HTMLInputElement>('[aria-label="模型名称"]')!.blur() })
+    await focusModel(dialog)
+    expect(document.querySelector('.pickhits .rrow.on')?.textContent).toBe('sonnet')
+    await keyOnModel(dialog, 'Enter')
+    expect(dialog.querySelector<HTMLInputElement>('[aria-label="模型名称"]')?.value).toBe('sonnet')
+  })
+
+  it('CLI 不列模型时模型列表只有默认', async () => {
+    api.subscriptionStatus.mockResolvedValueOnce({ state: 'found', version: '0.163.0', signIn: 'subscription', models: [] })
+    api.requestedCategory = 'model'
+    await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
+    const dialog = document.querySelector('.setdlg')!
+    await pick(dialog, '模型服务', 'ChatGPT 订阅')
+
+    await focusModel(dialog)
+
+    expect(modelCandidates()).toEqual(['默认'])
   })
 
   it('读不到 CLI 的状态时原因写在 CLI 一行里，不在屏头', async () => {

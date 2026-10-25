@@ -1,13 +1,13 @@
 import { useEffect, useState } from 'react'
 import type { ExtensionStatus } from '../../../shared/contract.js'
 import { useMessages } from '../../messages/useMessages.js'
-import { CardTray } from '../CardTray.js'
 import { SectionHeading } from '../PageShell.js'
 import { LoadingPlaceholder } from '../LoadingPlaceholder.js'
 import { Tag, type TagState } from '../Tag.js'
 import { Card } from '../Card.js'
 import { PluginVersionEntry, type PluginVersionEntryProps } from './PluginVersionEntry.js'
 import { FadeText } from '../FadeText.js'
+import { CommandTray } from '../CommandTray.js'
 import { Button, DONE_MS } from '../Button.js'
 import { Item } from '../Item.js'
 import { List } from '../List.js'
@@ -70,25 +70,7 @@ export function ExtensionSettings({ statuses, failed, plugin, onCopy }: Extensio
                 )}
               >{extension.name}
               </SectionHeading>
-              <CardTray
-                className="extension-command"
-                expandLabel={m.common.details.expand} collapseLabel={m.common.details.collapse}
-                summary={(
-                  <span className="extension-command-summary">
-                    <span>{commandHeading}</span>
-                    <FadeText><code>{command}</code></FadeText>
-                  </span>
-                )}
-                action={(
-                  <Button
-                    size="compact" variant="ghost" aria-label={copyLabel}
-                    done={copied === extension.id} doneLabel={m.common.copied}
-                    onClick={() => copy(extension.id, command)}
-                  >{m.settings.extensions.copy}</Button>
-                )}
-              >
-                <pre className="extension-command-code"><code>{command}</code></pre>
-              </CardTray>
+              <CommandTray heading={commandHeading} command={command} copyLabel={copyLabel} onCopy={onCopy} />
             </section>
           )
         })}
@@ -110,7 +92,7 @@ export function ExtensionSettings({ statuses, failed, plugin, onCopy }: Extensio
                       <Button
                         size="compact" variant="ghost" aria-label={m.settings.extensions.tutorial.copyPromptLabel(example.label)}
                         done={copied === example.label} doneLabel={m.common.copied}
-                      >{m.settings.extensions.copy}</Button>
+                      >{m.common.copy}</Button>
                     )}
                   />
                 ))}

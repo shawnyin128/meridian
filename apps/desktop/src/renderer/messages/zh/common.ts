@@ -2,6 +2,7 @@
 export const common = {
   save: '保存',
   saved: '已保存',
+  copy: '复制',
   copied: '已复制',
   empty: '—',
   noResults: '无结果',

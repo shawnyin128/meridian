@@ -5,6 +5,7 @@ import { common as zh } from '../zh/common.js'
 export const common = {
   save: 'Save',
   saved: 'Saved',
+  copy: 'Copy',
   copied: 'Copied',
   empty: '—',
   noResults: 'No results',

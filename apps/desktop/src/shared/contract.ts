@@ -897,9 +897,9 @@ export const HarnessSubscriptionStatusParamsSchema = z.object({ cli: HarnessCliS
 
 /**
  * What Core finds of one subscription CLI on this machine: not installed, or installed in `version`
- * (null when it cannot be read) and signed in with a subscription, in another way such as an API
- * key, not at all, or in a way that cannot be read. Whether that version can run the model is the
- * connection check's to say.
+ * (null when it cannot be read), signed in with a subscription, in another way such as an API key,
+ * not at all, or in a way that cannot be read, and accepting `models` besides its own default.
+ * Whether that version can run the model is the connection check's to say.
  */
 export const HarnessSubscriptionStatusSchema = z.discriminatedUnion('state', [
   z.object({ state: z.literal('missing') }).strict(),
@@ -907,6 +907,7 @@ export const HarnessSubscriptionStatusSchema = z.discriminatedUnion('state', [
     state: z.literal('found'),
     version: z.string().min(1).max(100).nullable(),
     signIn: z.enum(['subscription', 'other', 'signed-out', 'unknown']),
+    models: z.array(z.string().min(1).max(200)).max(50),
   }).strict(),
 ])
 

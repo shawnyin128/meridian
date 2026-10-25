@@ -139,7 +139,7 @@ import { deleteColourTheme, listColourThemes, saveColourTheme } from './colour-t
 import {
   checkCliConnection, createChatHarnessRunner, createChatService, createCliRunner, createHarnessCostGate,
   createHarnessModelConfig, createHarnessProposalAudit, createMainCredentialVault, createPaperWikiHarnessRunner,
-  discoverCli, resolveCliBinary, subscriptionStatus,
+  discoverCli, listCliModels, resolveCliBinary, subscriptionStatus,
 } from './harness/index.js'
 import { placeResearchIdeaOnGraph, promoteResearchIdea } from './research-ideas/index.js'
 import { createWikiProposals, pdfPageText } from './wiki-proposals.js'
@@ -526,7 +526,7 @@ registerHandler('harness.checkModelConnection', (params) => {
 registerHandler('harness.updateSubscription', (params) =>
   harnessModel.updateSubscription(HarnessUpdateSubscriptionParamsSchema.parse(params)))
 registerHandler('harness.subscriptionStatus', (params) =>
-  subscriptionStatus(HarnessSubscriptionStatusParamsSchema.parse(params).cli, (cli) => discoverCli(cli)))
+  subscriptionStatus(HarnessSubscriptionStatusParamsSchema.parse(params).cli, (cli) => discoverCli(cli), listCliModels))
 registerHandler('harness.applyPaperWiki', (params) =>
   harness.applyPaperWiki(HarnessApplyPaperWikiParamsSchema.parse(params)))
 registerHandler('harness.rejectPaperWiki', (params) =>

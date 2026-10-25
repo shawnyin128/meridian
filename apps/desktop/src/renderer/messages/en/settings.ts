@@ -152,6 +152,9 @@ export const settings = {
     subscription: {
       cliLabel: 'CLI',
       signInLabel: 'Sign-in',
+      signInCommand: 'Sign-in command',
+      copySignIn: (name: string) => `Copy the ${name} sign-in command`,
+      otherModel: (name: string) => `Use ${name}`,
       missing: 'Not found',
       signIn: {
         subscription: 'Signed in with subscription', other: 'Not signed in with subscription', 'signed-out': 'Signed out',
@@ -252,7 +255,6 @@ export const settings = {
     installCommand: 'Install command',
     copyUpdateLabel: (name: string) => `Copy the ${name} update command`,
     copyInstallLabel: (name: string) => `Copy the ${name} install command`,
-    copy: 'Copy',
     tutorial: {
       heading: 'Use Meridian with a coding agent',
       groups: [

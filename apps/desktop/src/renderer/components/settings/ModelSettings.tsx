@@ -18,7 +18,9 @@ import {
   ServiceFoot, ServiceSavedKey, ServiceStatus,
 } from './ServiceCard.js'
 import { Button } from '../Button.js'
+import { CommandTray } from '../CommandTray.js'
 import { CommitActions } from '../CommitActions.js'
+import { SubscriptionModelField } from './SubscriptionModelField.js'
 
 /** Structural, language-neutral data for each provider. Copy comes from the catalog by provider id. */
 const PROVIDERS: Record<HarnessModelProvider, {
@@ -65,6 +67,8 @@ const MODEL_CHOICES: readonly ModelChoice[] = [...PROVIDER_CHOICES, 'claude', 'c
 const isCli = (choice: ModelChoice): choice is HarnessCli => choice === 'claude' || choice === 'codex'
 /** The CLI each subscription runs on, by its product name. */
 const CLI_NAMES: Record<HarnessCli, string> = { claude: 'Claude Code', codex: 'Codex' }
+/** The command that signs each CLI in with the user's subscription, which the user runs in a terminal. */
+const SIGN_IN_COMMANDS: Record<HarnessCli, string> = { claude: 'claude auth login', codex: 'codex login' }
 /** The protocols an OpenAI-compatible service may speak, by their API names. */
 const COMPATIBLE_PROTOCOLS: readonly HarnessModelProtocol[] = ['responses', 'chat-completions']
 const AUTHENTICATIONS = ['api-key', 'none'] as const
@@ -130,7 +134,8 @@ const profileFor = (
 
 type ConnectionCheckState = { state: 'idle' | 'testing' } | HarnessModelConnectionCheckResult
 
-export function ModelSettings() {
+/** The model settings card; `onCopy` puts a command on the clipboard and resolves whether it did. */
+export function ModelSettings({ onCopy }: { onCopy: (text: string) => Promise<boolean> }) {
   const m = useMessages()
   const [settings, setSettings] = useState<HarnessModelSettings | null>(null)
   const [provider, setProvider] = useState<HarnessModelProvider>('openai')
@@ -348,11 +353,19 @@ export function ModelSettings() {
         </FieldRow>
       ) : null}
       <FieldRow label={m.settings.model.fields.modelIdLabel}>
-        <FormInput appearance="field" aria-label={m.settings.model.fields.modelIdAria} value={cliModel}
-          placeholder={m.settings.model.subscription.defaultModel} onChange={(event) => setCliModel(event.target.value)} />
+        <SubscriptionModelField
+          value={cliModel} models={cliStatus?.state === 'found' ? cliStatus.models : []} onChange={setCliModel}
+        />
       </FieldRow>
     </>
   )
+  const signInCommand = cli !== null && statusFailure === null && cliStatus?.state === 'found'
+    && cliStatus.signIn !== 'subscription' ? (
+      <CommandTray
+        heading={m.settings.model.subscription.signInCommand} command={SIGN_IN_COMMANDS[cli]}
+        copyLabel={m.settings.model.subscription.copySignIn(CLI_NAMES[cli])} onCopy={onCopy}
+      />
+    ) : null
 
   return (
     <ServiceCard className="model-settings-card">
@@ -447,6 +460,7 @@ export function ModelSettings() {
           </>
         )}
       </FieldRows>
+      {signInCommand}
       <ServiceFoot>
         {connectionStatus === null ? null : (
           <ServiceConnectionStatus
