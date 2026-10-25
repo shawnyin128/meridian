@@ -289,13 +289,13 @@ export function ModelSettings() {
 
   return (
     <ServiceCard className="model-settings-card">
+      <ServiceStatus
+        title={selected.label}
+        configured={savedSelection && savedProfile?.configured === true}
+        configuredLabel={m.settings.model.configured}
+        notConfiguredLabel={m.settings.model.notConfigured}
+      />
       <FieldRows>
-        <ServiceStatus
-          title={selected.label}
-          configured={savedSelection && savedProfile?.configured === true}
-          configuredLabel={m.settings.model.configured}
-          notConfiguredLabel={m.settings.model.notConfigured}
-        />
         <FieldRow label={m.settings.model.fields.providerLabel}>
           <ChoicePicker
             appearance="field" aria-label={m.settings.model.fields.providerLabel} value={provider}
