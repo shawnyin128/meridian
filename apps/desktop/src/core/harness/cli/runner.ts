@@ -157,7 +157,7 @@ function codexArgs(
   return [
     'exec', '--ephemeral', '--skip-git-repo-check', '--sandbox', 'read-only',
     '--ignore-user-config', '--ignore-rules', '--json', '--color', 'never',
-    '--output-schema', files.schema, '-o', files.output, '-C', files.work,
+    '--output-schema', files.schema, '-o', files.output, '-C', files.work, '-c', 'web_search="disabled"',
     ...CODEX_DISABLED_FEATURES.flatMap((feature) => ['--disable', feature]),
     ...(call.model === undefined ? [] : [`--model=${call.model}`]),
     ...(mcp?.codexArgs ?? []),
