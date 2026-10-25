@@ -268,7 +268,7 @@ export function PaperWikiIngest({ paper, reading, onJump, edits }: {
               {...(shown.quality === undefined ? {} : { quality: shown.quality })} />
           </>
         ) : (
-          <FormTextarea appearance="field" aria-label={m.wiki.ingest.proposalContentLabel} {...edit?.fieldProps} />
+          <FormTextarea appearance="field" code aria-label={m.wiki.ingest.proposalContentLabel} {...edit?.fieldProps} />
         )}
       </ProposalChange>
       {rejection !== undefined ? (

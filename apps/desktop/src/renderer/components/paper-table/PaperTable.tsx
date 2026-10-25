@@ -21,8 +21,8 @@ import { Pager } from '../Pager.js'
 import { PaperMetadata, PaperTitleField, RatingStars, ReadStatePicker, readStateName } from '../PaperMetadata.js'
 import { PaperTopics } from '../PaperTopics.js'
 import { PaperReadingSummary } from './PaperReadingSummary.js'
-import { FormInput } from '../FormControls.js'
-import { ClearableInput } from '../ClearableInput.js'
+import { FieldRow, FormInput } from '../FormControls.js'
+import { SearchField } from '../ClearableInput.js'
 import { PageBody, PageError, PageHeader, PageShell, PageTitle, PageToolbar } from '../PageShell.js'
 import { useDrafts, useKeptTargets } from '../../hooks/useDrafts.js'
 import { NO_TRIGGERS } from '../../hooks/useOnLeave.js'
@@ -1270,21 +1270,22 @@ export function PaperTable() {
               onChange={(next) => { setView(next); setDetail(null) }}
             />
             <div className="libbar">
-              <ClearableInput
-                appearance="field" wrapperClassName="paper-search"
+              <SearchField
+                wrapperClassName="paper-search"
                 id="libq" placeholder={m.papers.toolbar.searchPlaceholder} autoComplete="off" value={q}
                 onChange={(e) => { setQ(e.target.value); setPage(1) }}
                 onClear={() => { setQ(''); setPage(1) }} clearLabel={m.papers.toolbar.clearSearch}
               />
               {view === 'table' ? <div className="filters">
-                <span className="pt-dim">{m.papers.toolbar.group}</span>
-                <SegmentedControl
-                  label={m.papers.toolbar.groupFieldAria}
-                  value={group}
-                  options={['none', ...columns.groups.filter((k) => k !== 'readState' && groupable.has(k))]
-                    .map((k) => ({ value: k, label: labelOf(k) }))}
-                  onChange={(value) => { setGroup(value); setSel(null); setPage(1) }}
-                />
+                <FieldRow label={m.papers.toolbar.group}>
+                  <SegmentedControl
+                    label={m.papers.toolbar.groupFieldAria}
+                    value={group}
+                    options={['none', ...columns.groups.filter((k) => k !== 'readState' && groupable.has(k))]
+                      .map((k) => ({ value: k, label: labelOf(k) }))}
+                    onChange={(value) => { setGroup(value); setSel(null); setPage(1) }}
+                  />
+                </FieldRow>
                 {columns.groups.includes('readState')
                   ? (
                     <>

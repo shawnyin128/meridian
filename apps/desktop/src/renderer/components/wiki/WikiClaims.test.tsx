@@ -295,7 +295,7 @@ describe('WikiClaims', () => {
     expectNoDialog()
     const lines = host.querySelector<HTMLElement>('[data-claim="plain"] .wkclaim-lines')!
     expect(lines.lastElementChild!.contains(draft())).toBe(true)
-    expect([...draft()!.querySelectorAll('.draft-form-label')].map((label) => label.textContent)).toEqual(['与哪一条冲突', '说明'])
+    expect([...draft()!.querySelectorAll('.field-row-label')].map((label) => label.textContent)).toEqual(['与哪一条冲突', '说明'])
     expect(document.activeElement).toBe(draft()!.querySelector('.choice-picker'))
     const note = draft()!.querySelector('input')!
     await act(async () => { press(note, { key: 'Enter' }); await flush() })

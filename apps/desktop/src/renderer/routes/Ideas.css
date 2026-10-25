@@ -59,9 +59,7 @@
   box-sizing:border-box;padding:var(--sp-20) var(--sp-24);border:1px solid var(--sep);border-radius:var(--r-card);background:var(--card);
   box-shadow:var(--sh-1);overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;
   --fade-paint:var(--card);--fade-pad-top:var(--sp-20);--fade-pad-bottom:var(--sp-20)}
-.idea-detail-editor{display:grid;gap:var(--sp-14);margin-top:var(--sp-20)}
-.idea-detail-editor label{display:grid;gap:var(--sp-6);color:var(--ter);font-size:var(--fs-sm)}
-.idea-detail-editor .form-control{width:100%}
+.idea-detail-editor{margin-top:var(--sp-20)}
 .idea-detail-editor .form-textarea{min-height:150px}
 .idea-detail-panel .idea-link-picker{width:100%}
 .idea-missing-project{margin-top:var(--sp-8)}

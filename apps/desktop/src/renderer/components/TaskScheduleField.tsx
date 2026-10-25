@@ -5,7 +5,7 @@ import { TASK_SLOT_ENDS, TASK_SLOT_STARTS } from '../../shared/contract.js'
 import { ActionPopover } from './ActionPopover.js'
 import { DateChip } from './DateTimeDisplay.js'
 import { ChoicePicker } from './FieldPickers.js'
-import { FormInput } from './FormControls.js'
+import { FieldRow, FieldRows, FormInput } from './FormControls.js'
 import { SegmentedControl } from './SegmentedControl.js'
 import { useToolbarItem } from './Toolbar.js'
 import { dnum } from '../../shared/dates.js'
@@ -45,24 +45,24 @@ export function TaskScheduleEditor({ mode, task, saving, onSave, onCancel }: {
     <form className="schedule-form" onSubmit={submit}>
       {mode === 'date'
         ? (
-          <>
-            <label>{m.research.schedule.startLabel}
+          <FieldRows>
+            <FieldRow label={m.research.schedule.startLabel}>
               <FormInput
-                className="schedule-input" type="date" required value={start}
+                type="date" required value={start}
                 onChange={(event) => {
                   const next = event.target.value
                   setStart(next)
                   if (next !== '' && end !== '' && dnum(end) < dnum(next)) setEnd(next)
                 }}
               />
-            </label>
-            <label>{m.research.schedule.endLabel}
+            </FieldRow>
+            <FieldRow label={m.research.schedule.endLabel}>
               <FormInput
-                className="schedule-input" type="date" required min={start} value={end}
+                type="date" required min={start} value={end}
                 onChange={(event) => setEnd(event.target.value)}
               />
-            </label>
-          </>
+            </FieldRow>
+          </FieldRows>
         )
         : (
           <>

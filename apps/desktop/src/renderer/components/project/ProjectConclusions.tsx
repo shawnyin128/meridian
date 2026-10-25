@@ -7,11 +7,11 @@ import { wiki } from '../../ipc.js'
 import { claimId } from '../../lib/slug.js'
 import { useFormat } from '../../lib/format.js'
 import { useMessages } from '../../messages/useMessages.js'
-import { DraftForm, DraftLine } from '../DraftForm.js'
+import { DraftForm } from '../DraftForm.js'
 import { EmptyState } from '../EmptyState.js'
 import { FadeText } from '../FadeText.js'
 import { ChoicePicker } from '../FieldPickers.js'
-import { FormInput } from '../FormControls.js'
+import { FieldRow, FormInput } from '../FormControls.js'
 import { SectionHeading } from '../PageShell.js'
 import { PanelClose } from '../PanelClose.js'
 import { AgentLabel } from '../SourceLabel.js'
@@ -168,13 +168,13 @@ export function ProjectConclusionPanel({
                     value={draft.text} aria-label={c.text} aria-invalid={invalid(draft.text.trim() === '')}
                     onChange={(event) => setDraft({ ...draft, text: event.target.value })}
                   />
-                  <DraftLine>
+                  <FieldRow>
                     <span className="conclusion-draft-evidence">
                       <Tag>{m.wiki.claims.experiment}</Tag>
                       <EntityLink kind="project" label={projectName} />
                       <span>{conclusion.node === undefined ? conclusion.text : node?.label ?? conclusion.node}</span>
                     </span>
-                  </DraftLine>
+                  </FieldRow>
                 </>
               )}
             </DraftForm>

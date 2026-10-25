@@ -69,9 +69,7 @@
 
 .storage-head{display:flex;align-items:flex-start;gap:var(--sp-16)}
 .storage-head>div{flex:1;min-width:0}
-.storage-root{display:grid;grid-template-columns:64px minmax(0,1fr);gap:var(--sp-12);margin-top:var(--sp-16);
-  padding:var(--sp-10) 0;border-top:1px solid var(--sep2);border-bottom:1px solid var(--sep2);align-items:center}
-.storage-root span{color:var(--ter);font-size:var(--fs-sm)}
+.storage-root{margin-top:var(--sp-16);padding:var(--sp-10) 0;border-top:1px solid var(--sep2);border-bottom:1px solid var(--sep2)}
 .storage-state{margin-top:var(--sp-12)}
 .storage-pending{margin-top:var(--sp-12)}
 .storage-reset{display:flex;align-items:center;justify-content:space-between;gap:var(--sp-16);margin-top:var(--sp-16);
@@ -82,11 +80,9 @@
 .storage-backup-path{color:var(--ter);font-family:var(--mono);font-size:var(--fs-cap)}
 .storage-backup-actions{display:flex;align-items:center;gap:var(--sp-8)}
 
-/* The status head, field rows, saved-key mask, and foot are shared card chrome; see ServiceCard.css. */
-.model-protocol{display:grid;grid-template-columns:var(--service-label-w) minmax(0,1fr);gap:var(--sp-12);align-items:center;margin-top:var(--sp-12);
-  color:var(--sec);font-size:var(--fs-sm)}
-.model-protocol strong{color:var(--ink);font-size:var(--fs-sm);font-weight:var(--fw-medium)}
-.model-template-summary{margin:var(--sp-10) 0 0 calc(var(--service-label-w) + var(--sp-12));padding:var(--sp-8) var(--sp-12);border-radius:var(--r-md);background:var(--field);
+/* The status head, saved-key mask and foot are ServiceCard's, and the field rows FieldRow's. A template's summary stands under the rows' fields. */
+.field-rows>.model-template-summary{grid-column:2}
+.model-template-summary{padding:var(--sp-8) var(--sp-12);border-radius:var(--r-md);background:var(--field);
   display:flex;flex-direction:column;gap:var(--sp-4);color:var(--sec);font-size:var(--fs-cap);line-height:var(--lh-ui)}
 .model-template-summary code{color:var(--ter);font-family:var(--mono);font-size:var(--fs-cap);overflow-wrap:anywhere}
 

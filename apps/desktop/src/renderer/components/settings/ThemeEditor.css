@@ -12,7 +12,6 @@
 
 .theme-editor-head{display:flex;align-items:center;gap:var(--sp-16)}
 .theme-editor-name{width:200px}
-.theme-editor-base{display:inline-flex;align-items:center;gap:var(--sp-8);color:var(--sec);font-size:var(--fs-sm)}
 .theme-editor-base-picker{width:120px}
 .theme-editor-modes{display:flex;align-items:center;gap:var(--sp-12);margin-bottom:var(--sp-12)}
 

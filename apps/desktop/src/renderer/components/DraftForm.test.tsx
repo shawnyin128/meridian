@@ -4,9 +4,9 @@ import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { MessagesProvider } from '../messages/useMessages.js'
 import { LANGUAGE_STORAGE_KEY } from '../shell/language.js'
-import { DraftForm, DraftLine } from './DraftForm.js'
+import { DraftForm } from './DraftForm.js'
 import { ChoicePicker } from './FieldPickers.js'
-import { FormInput, FormTextarea } from './FormControls.js'
+import { FieldRow, FormInput, FormTextarea } from './FormControls.js'
 
 describe('DraftForm', () => {
   let host: HTMLDivElement
@@ -44,9 +44,9 @@ describe('DraftForm', () => {
         {(invalid) => (
           <>
             <FormInput aria-label="title" value={title} aria-invalid={invalid(title === '')} onChange={() => {}} />
-            <DraftLine label="kind">
+            <FieldRow label="kind">
               <ChoicePicker appearance="field" aria-label="kind" value="a" options={['a', 'b']} onPick={() => {}} />
-            </DraftLine>
+            </FieldRow>
             <FormTextarea aria-label="body" value={body} aria-invalid={invalid(body === '')} onChange={() => {}} />
           </>
         )}
@@ -164,12 +164,6 @@ describe('DraftForm', () => {
     expect(onCancel).not.toHaveBeenCalled()
     pressOn('.outside')
     expect(onCancel).toHaveBeenCalledTimes(1)
-  })
-
-  it('sets a line\'s label in the label column and the fields after it in one box', () => {
-    show()
-    const line = host.querySelector('.draft-form-line')!
-    expect([...line.children].map((part) => [part.className, part.textContent])).toEqual([['draft-form-label', 'kind'], ['draft-form-fields', 'a']])
   })
 
   it('names where the item lands after an arrow, on a card of its own, only when that is elsewhere', () => {

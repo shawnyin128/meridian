@@ -16,7 +16,7 @@ import { IconOpen, IconRestore, IconTrash } from '../components/icons.js'
 import { IconButton } from '../components/IconButton.js'
 import { EmptyState } from '../components/EmptyState.js'
 import { LoadingPlaceholder } from '../components/LoadingPlaceholder.js'
-import { DirectoryField } from '../components/FormControls.js'
+import { DirectoryField, FieldRow } from '../components/FormControls.js'
 import { InlineMessage } from '../components/InlineMessage.js'
 import { AppearanceSettings, ColourThemeSettings } from '../components/settings/AppearanceSettings.js'
 import { ThemeEditor } from '../components/settings/ThemeEditor.js'
@@ -275,18 +275,19 @@ export function Settings() {
                 <PageError
                   variant="section" error={location.openError === null ? null : reasonLabel(m, location.openError)}
                 />
-                <label className="storage-root">
-                  <span>{m.settings.storage.rootLabel}</span>
-                  <DirectoryField
-                    value={location.root}
-                    readOnly
-                    chooseDisabled={location.locked}
-                    chooseLabel={choosing
-                      ? m.settings.storage.checkingDirectory : m.settings.storage.chooseAction}
-                    choosing={choosing}
-                    onChoose={() => { void chooseLibrary() }}
-                  />
-                </label>
+                <div className="storage-root">
+                  <FieldRow label={m.settings.storage.rootLabel}>
+                    <DirectoryField
+                      value={location.root}
+                      readOnly
+                      chooseDisabled={location.locked}
+                      chooseLabel={choosing
+                        ? m.settings.storage.checkingDirectory : m.settings.storage.chooseAction}
+                      choosing={choosing}
+                      onChoose={() => { void chooseLibrary() }}
+                    />
+                  </FieldRow>
+                </div>
               </>
             )}
           {location?.locked

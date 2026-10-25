@@ -36,7 +36,7 @@ Current shared contracts:
   layout, sibling controls, trigger refs, and persistence; trimming, validation, focus, Enter/Escape,
   outside cancellation, and async submission locking are implemented once.
 - `DraftForm`: the one form drafted in place, for a new item, or a change to one, that takes more than one
-  field. It opens where the item lands with its first field focused, and Cancel and Save at its foot. Enter
+  field, its labelled ones `FieldRow`s. It opens where the item lands with its first field focused, and Cancel and Save at its foot. Enter
   in a one-line field or ⌘Enter in a long text saves, Escape cancels, and a press outside keeps the draft.
   An item that lands elsewhere names its destination after an arrow, on a card of its own. Hosts provide
   the fields and the write; the refused look of a missing field, input method keys, menu keys and the save
@@ -157,10 +157,15 @@ Current shared contracts:
 - `FormInput`, `FormTextarea`, and `FormSelect`: the one field, in two appearances: `field`, the boxed field
   of forms, dialogs, popovers and filters (the default), and `inline`, which edits a value in the place of its
   text in a row, cell or property list. Both share one edge, fill, radius and the one focus rule in
-  `shell/tokens.css`; no other stylesheet draws a field's box. Feature components still own their layout,
-  validation, suggestions, and persistence.
-- `ClearableInput`: the shared controlled single-line field with one trailing clear action. Global and
-  library search configure the same focus restoration, icon geometry, and accessible naming.
+  `shell/tokens.css`; no other stylesheet draws a field's box or sets its text. A `field` sets its own font,
+  the body text, whatever the text around it; an `inline` field takes the text it replaces. Feature
+  components still own their layout, validation, suggestions, and persistence.
+- `FieldRow` and `FieldRows` (in `FormControls`): the one labelled field. The label stands in the label
+  column, in the meta size and `--ter`, and names the text field after it; the rows of one `FieldRows`, or of
+  a `DraftForm`, share a label column as wide as their longest label. Screens render no `<label>` of their own.
+- `ClearableInput`: the shared controlled single-line field with one trailing clear action. `SearchField` is
+  the one search, a `ClearableInput` with the search glyph at its start: the sidebar search, the command
+  palette and the library search configure the same focus restoration, icon geometry, and accessible naming.
 - `GenerationControl`: the shared idle, spinning, and hover-to-stop button contract for model-backed
   actions. Chat composers and Wiki Harness generation do not define independent running animations.
 - `RunningRing` (in `icons`): the one running indicator, `DownloadRing` without a total, turning once per

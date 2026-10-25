@@ -34,16 +34,6 @@ export function ServiceStatus({
   )
 }
 
-/** One labeled settings row: a fixed-width label on the left, the field's control on the right. */
-export function ServiceField({ label, children }: { label: ReactNode; children: ReactNode }) {
-  return (
-    <div className="service-field">
-      <span>{label}</span>
-      {children}
-    </div>
-  )
-}
-
 /** A saved secret shown masked with its last four characters; clicking it starts editing. */
 export function ServiceSavedKey({ ariaLabel, lastFour, onClick }: {
   ariaLabel: string

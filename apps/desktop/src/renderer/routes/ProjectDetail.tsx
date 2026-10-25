@@ -17,7 +17,7 @@ import {
 } from '../shell/AppShell.js'
 import { CommitActions } from '../components/CommitActions.js'
 import { AddAction } from '../components/AddAction.js'
-import { DraftForm, DraftLine } from '../components/DraftForm.js'
+import { DraftForm } from '../components/DraftForm.js'
 import { MenuItem } from '../components/ActionMenu.js'
 import { EmptyState } from '../components/EmptyState.js'
 import { LoadingPlaceholder } from '../components/LoadingPlaceholder.js'
@@ -55,7 +55,7 @@ import { useFormat } from '../lib/format.js'
 import { useMessages } from '../messages/useMessages.js'
 import { InlineMetadataField } from '../components/InlineField.js'
 import { ModalDialog } from '../components/ModalDialog.js'
-import { DirectoryField, FormInput } from '../components/FormControls.js'
+import { DirectoryField, FieldRow, FieldRows, FormInput } from '../components/FormControls.js'
 import {
   PageBody, PageError, PageHeader, PageShell, PageTitle, SectionHeading,
 } from '../components/PageShell.js'
@@ -162,14 +162,14 @@ export function ProjectIdeaPanel({
                       aria-invalid={invalid(draft.label.trim() === '')}
                       onChange={(event) => setDraft({ ...draft, label: event.target.value })}
                     />
-                    <DraftLine label={g.afterLabel}>
+                    <FieldRow label={g.afterLabel}>
                       <ChoicePicker
                         appearance="field" aria-label={g.afterLabel} value={draft.after}
                         options={['', ...graph.nodes.map((node) => node.id)]}
                         label={(id) => (id === '' ? g.newRootOption : graph.nodes.find((node) => node.id === id)?.label ?? id)}
                         onPick={(after) => setDraft({ ...draft, after })}
                       />
-                    </DraftLine>
+                    </FieldRow>
                   </>
                 )}
               </DraftForm>
@@ -798,14 +798,16 @@ export function ProjectDetail({
                   id="workspaceLocal" className="workspace-form"
                   onSubmit={(event) => { event.preventDefault(); void connectLocalWorkspace() }}
                 >
-                  <label>{m.project.workspace.pathLabel}
-                    <DirectoryField
-                      value={localPath} autoFocus required placeholder={m.project.workspace.localPlaceholder}
-                      chooseLabel={m.project.workspace.chooseLocal}
-                      onChoose={() => { void chooseLocalWorkspace() }}
-                      onChange={(event) => setLocalPath(event.target.value)}
-                    />
-                  </label>
+                  <FieldRows>
+                    <FieldRow label={m.project.workspace.pathLabel}>
+                      <DirectoryField
+                        value={localPath} autoFocus required placeholder={m.project.workspace.localPlaceholder}
+                        chooseLabel={m.project.workspace.chooseLocal}
+                        onChoose={() => { void chooseLocalWorkspace() }}
+                        onChange={(event) => setLocalPath(event.target.value)}
+                      />
+                    </FieldRow>
+                  </FieldRows>
                 </form>
               )
               : (
@@ -813,26 +815,28 @@ export function ProjectDetail({
                   id="workspaceSsh" className="workspace-form"
                   onSubmit={(event) => { event.preventDefault(); void connectSshWorkspace() }}
                 >
-                  <label>{m.project.workspace.hostLabel}
-                    <FormInput
-                      appearance="field" value={sshHost} autoFocus required
-                      placeholder={m.project.workspace.hostPlaceholder}
-                      onChange={(event) => setSshHost(event.target.value)}
-                    />
-                  </label>
-                  <label>{m.project.workspace.pathLabel}
-                    <FormInput
-                      appearance="field" value={sshPath} required placeholder={m.project.workspace.remotePlaceholder}
-                      onChange={(event) => setSshPath(event.target.value)}
-                    />
-                  </label>
-                  <label>{m.project.workspace.portLabel}
-                    <FormInput
-                      appearance="field" value={sshPort} type="number" min={1} max={65_535}
-                      placeholder={m.project.workspace.portLabel}
-                      onChange={(event) => setSshPort(event.target.value)}
-                    />
-                  </label>
+                  <FieldRows>
+                    <FieldRow label={m.project.workspace.hostLabel}>
+                      <FormInput
+                        appearance="field" value={sshHost} autoFocus required
+                        placeholder={m.project.workspace.hostPlaceholder}
+                        onChange={(event) => setSshHost(event.target.value)}
+                      />
+                    </FieldRow>
+                    <FieldRow label={m.project.workspace.pathLabel}>
+                      <FormInput
+                        appearance="field" value={sshPath} required placeholder={m.project.workspace.remotePlaceholder}
+                        onChange={(event) => setSshPath(event.target.value)}
+                      />
+                    </FieldRow>
+                    <FieldRow label={m.project.workspace.portLabel}>
+                      <FormInput
+                        appearance="field" value={sshPort} type="number" min={1} max={65_535}
+                        placeholder={m.project.workspace.portLabel}
+                        onChange={(event) => setSshPort(event.target.value)}
+                      />
+                    </FieldRow>
+                  </FieldRows>
                 </form>
               )}
       </ModalDialog>
