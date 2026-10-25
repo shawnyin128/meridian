@@ -34,7 +34,7 @@ export function useVaultWrite(): <T>(op: Promise<T>, opts?: WriteOpts<T>) => Pro
       if (opts.note !== undefined) notice.success(opts.note, action)
       const change = recordedChange(result)
       if (change !== null && action?.undoes !== true) {
-        offerUndo(() => { void write(changelog.undo(change), { note: m.changelog.undoneNote }) })
+        offerUndo(() => { void write(changelog.undo(change)) })
       }
       return true
     }).catch((e: unknown) => {
