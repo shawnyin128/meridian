@@ -56,6 +56,10 @@ describe('ResearchMap', () => {
     expect(list.classList.contains('structured-list--fill')).toBe(true)
     expect(list.style.maxHeight).toBe('')
     expect(host.querySelector('.research-map-index')?.classList.contains('list-column')).toBe(true)
+    // The index and the detail are the two columns of the shared split page, which takes the view's remaining height.
+    const split = host.querySelector('.research-map > .split-page')!
+    expect([split.className, ...[...split.children].map((column) => column.className)])
+      .toEqual(['split-page split-page--index', 'list-column research-map-index', 'research-map-detail'])
     act(() => root.unmount())
     host.remove()
     vi.restoreAllMocks()
@@ -190,8 +194,8 @@ describe('ResearchMap', () => {
       )
       return host.querySelector('.research-map')!
     }
-    expect([...render(2).children].map((child) => child.className)).toEqual(['research-map-layout'])
-    expect([...render(9).children].map((child) => child.className)).toEqual(['research-map-limit', 'research-map-layout'])
+    expect([...render(2).children].map((child) => child.className)).toEqual(['split-page split-page--index'])
+    expect([...render(9).children].map((child) => child.className)).toEqual(['research-map-limit', 'split-page split-page--index'])
     expect(render(9).textContent).not.toContain('自适应研究地图')
   })
 

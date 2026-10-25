@@ -22,6 +22,7 @@ import { IdeaRelations } from '../components/ideas/IdeaRelations.js'
 import { nodeMode } from '../components/project/ResearchGraph.js'
 import { LoadingPlaceholder } from '../components/LoadingPlaceholder.js'
 import { SidePanel } from '../components/SidePanel.js'
+import { SplitColumn, SplitPage } from '../components/SplitPage.js'
 import { TrailingDate } from '../components/DateTimeDisplay.js'
 import { CardOpen, ResearchObjectCard } from '../components/ResearchObjectCard.js'
 import { RowActions, StructuredList, StructuredRow } from '../components/StructuredList.js'
@@ -505,58 +506,60 @@ export function Ideas() {
       </PageHeader>
       <PageError error={error} />
       <PageBody className="ideas-body">
-        <div className={`ideas-workspace${selected === undefined ? '' : ' has-detail'}`}>
-          <main className="ideas-list">
-            <SectionHeading count={open.length}>{m.ideas.groups.open}</SectionHeading>
-            {draft === null
-              ? null
-              : (
-                <ResearchObjectCard className="idea-draft-card" cardRef={draftCard}>
-                  <IdeaDraft
-                    draft={draft} triggers={draftTriggers} onChange={setDraft} onSave={createIdea} onCancel={() => setDraft(null)}
-                  />
-                </ResearchObjectCard>
+        <SplitPage columns="rail">
+          <SplitColumn>
+            <main className="ideas-list">
+              <SectionHeading count={open.length}>{m.ideas.groups.open}</SectionHeading>
+              {draft === null
+                ? null
+                : (
+                  <ResearchObjectCard className="idea-draft-card" cardRef={draftCard}>
+                    <IdeaDraft
+                      draft={draft} triggers={draftTriggers} onChange={setDraft} onSave={createIdea} onCancel={() => setDraft(null)}
+                    />
+                  </ResearchObjectCard>
+                )}
+              {rows === null ? (
+                error === null ? <LoadingPlaceholder shape="cards" /> : null
+              ) : open.length === 0
+                ? (draft === null ? <EmptyState variant="section">{m.ideas.emptyGroup.open}</EmptyState> : null)
+                : open.map(card)}
+              <SectionHeading count={started.length}>{m.ideas.groups.active}</SectionHeading>
+              {/* Loaded rows of both groups lay out on one grid, so their columns line up across the groups. */}
+              {rows === null ? rowGroups : <div className="idea-row-groups">{rowGroups}</div>}
+              {archived.length === 0 ? null : (
+                <CollapsibleGroup
+                  variant="quiet" title={m.common.archived} count={archived.length}
+                  open={archiveOpen || archived.some((idea) => idea.id === selectedId)}
+                  onToggle={() => setArchiveOpen((held) => !held)}
+                >
+                  {archived.map(card)}
+                </CollapsibleGroup>
               )}
-            {rows === null ? (
-              error === null ? <LoadingPlaceholder shape="cards" /> : null
-            ) : open.length === 0
-              ? (draft === null ? <EmptyState variant="section">{m.ideas.emptyGroup.open}</EmptyState> : null)
-              : open.map(card)}
-            <SectionHeading count={started.length}>{m.ideas.groups.active}</SectionHeading>
-            {/* Loaded rows of both groups lay out on one grid, so their columns line up across the groups. */}
-            {rows === null ? rowGroups : <div className="idea-row-groups">{rowGroups}</div>}
-            {archived.length === 0 ? null : (
-              <CollapsibleGroup
-                variant="quiet" title={m.common.archived} count={archived.length}
-                open={archiveOpen || archived.some((idea) => idea.id === selectedId)}
-                onToggle={() => setArchiveOpen((held) => !held)}
-              >
-                {archived.map(card)}
-              </CollapsibleGroup>
-            )}
 
-            {counts.every((count) => count.ideas === 0) ? null : (
-              <>
-                <SectionHeading>{b.heading}</SectionHeading>
-                <div className="idea-stats-head" aria-hidden="true">
-                  <span /><span>{b.ideas}</span><span>{b.active}</span><span>{b.done}</span>
-                </div>
-                <StructuredList variant="embedded" className="idea-stats">
-                  {counts.map(({ project, ideas, active, done: finished }) => (
-                    <StructuredRow
-                      className="idea-stats-row" key={project.id}
-                      onActivate={() => jumpTo('project', project.id)}
-                    >
-                      <FadeText className="idea-stats-name" label={project.name}>{project.name}</FadeText>
-                      {[[b.ideas, ideas], [b.active, active], [b.done, finished]].map(([label, count]) => (
-                        <span className={`idea-stats-n${count === 0 ? ' zero' : ''}`} aria-label={`${label} ${count}`} key={label}>{count}</span>
-                      ))}
-                    </StructuredRow>
-                  ))}
-                </StructuredList>
-              </>
-            )}
-          </main>
+              {counts.every((count) => count.ideas === 0) ? null : (
+                <>
+                  <SectionHeading>{b.heading}</SectionHeading>
+                  <div className="idea-stats-head" aria-hidden="true">
+                    <span /><span>{b.ideas}</span><span>{b.active}</span><span>{b.done}</span>
+                  </div>
+                  <StructuredList variant="embedded" className="idea-stats">
+                    {counts.map(({ project, ideas, active, done: finished }) => (
+                      <StructuredRow
+                        className="idea-stats-row" key={project.id}
+                        onActivate={() => jumpTo('project', project.id)}
+                      >
+                        <FadeText className="idea-stats-name" label={project.name}>{project.name}</FadeText>
+                        {[[b.ideas, ideas], [b.active, active], [b.done, finished]].map(([label, count]) => (
+                          <span className={`idea-stats-n${count === 0 ? ' zero' : ''}`} aria-label={`${label} ${count}`} key={label}>{count}</span>
+                        ))}
+                      </StructuredRow>
+                    ))}
+                  </StructuredList>
+                </>
+              )}
+            </main>
+          </SplitColumn>
 
           {selected === undefined ? null : (
             <IdeaDetailPanel
@@ -587,7 +590,7 @@ export function Ideas() {
               onOpen={jumpTo}
             />
           )}
-        </div>
+        </SplitPage>
       </PageBody>
     </PageShell>
   )

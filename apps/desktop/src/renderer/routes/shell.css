@@ -69,13 +69,13 @@
 
 /*
  * Two-column page: body text on the left, a property column on the right with rows of related chips
- * below it. Shared by project details and wiki pages.
+ * below it. The Wiki's pages are the shared split page; the project page lays out its own two columns.
  */
-.wkpage{display:flex;gap:var(--sp-32);align-items:flex-start;font-size:var(--fs-read);line-height:var(--lh-read)}
+.wkpage{font-size:var(--fs-read);line-height:var(--lh-read)}
 .wkmain{flex:1;min-width:0}
 .wkpage .lm{font-size:var(--fs-sm)}
 /* A page body that holds a rail is a size container: 100cqh, its height inside the padding, keeps the rail inside the visible page at any window height. */
-.wiki-body,.project-detail-body{container-type:size}
+.project-detail-body{container-type:size}
 .wkside{box-sizing:border-box;flex:0 0 260px;width:260px;max-width:260px;min-width:0;font-size:var(--fs-sm);line-height:var(--lh-ui);border-left:1px solid var(--sep2);padding-left:var(--sp-24);
   position:sticky;top:0;z-index:2;max-height:100cqh;overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;
   --fade-paint:var(--content);--fade-pad-top:0px;--fade-pad-bottom:0px}

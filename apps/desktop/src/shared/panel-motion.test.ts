@@ -23,14 +23,14 @@ const { document, getComputedStyle } = globalThis as unknown as Window
 
 const stylesheet = (path: string) => readFileSync(join(import.meta.dirname, '..', 'renderer', path), 'utf8')
 const STYLES = [
-  'shell/AppShell.css', 'routes/Reader.css', 'components/SidePanel.css', 'routes/ProjectDetail.css', 'routes/Ideas.css',
+  'shell/AppShell.css', 'routes/Reader.css', 'components/SidePanel.css', 'components/SplitPage.css', 'routes/ProjectDetail.css', 'routes/Ideas.css',
   'components/paper-table/PaperTable.css', 'components/CollapsibleGroup.css', 'components/timeline/TimelineBoard.css',
 ]
 
 /** Every side panel as its screen places it: the paper detail, the idea and project panels, and a reader panel. */
 const PANELS = [
   '<div class="desk"><aside class="side-panel side-panel--edge paper-detail-slot"></aside></div>',
-  '<div class="ideas-workspace"><aside class="side-panel side-panel--card idea-detail-panel"></aside></div>',
+  '<div class="split-page split-page--rail"><aside class="side-panel side-panel--card idea-detail-panel"></aside></div>',
   '<div class="wkpage project-detail-page"><aside class="side-panel side-panel--card project-detail-panel"></aside></div>',
   '<div class="reader"><aside class="reader-side"><aside class="side-panel side-panel--edge reading-notes"></aside></aside></div>',
 ]

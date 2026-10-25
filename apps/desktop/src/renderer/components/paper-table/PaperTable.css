@@ -177,12 +177,11 @@
 .libbar .filters{align-items:center;flex-wrap:wrap;margin:0}
 .libbar .filters>.pt-dim{font-size:var(--fs-sm)}
 
-/* Research Map is a peer view of the table. It composes the shared list and segmented
- * controls; these rules only define its two-column domain layout and information hierarchy. */
-/* The map takes the view's remaining height; each of its two columns scrolls inside itself. */
+/* Research Map is a peer view of the table. It composes the shared list, segmented control and split
+ * page; these rules only define its information hierarchy. */
+/* The map takes the view's remaining height, which its split page fills; each column scrolls inside itself. */
 .research-map{display:flex;min-height:0;flex:1;flex-direction:column;gap:var(--sp-14);padding:var(--sp-2) var(--sp-2) 0}
 .research-map-limit{color:var(--ter);font-size:var(--fs-sm)}
-.research-map-layout{display:grid;flex:1;min-height:0;grid-template-columns:minmax(220px,310px) minmax(0,1fr);grid-template-rows:minmax(0,1fr);gap:var(--sp-16)}
 /* The groups, then the cross-group and ungrouped rows in a list of their own below them. */
 .research-map-index{min-width:0;gap:var(--sp-12)}
 .research-map-groups{min-width:0}
@@ -207,6 +206,6 @@
 .research-map-why{display:flex;grid-area:why;align-items:center;gap:var(--sp-4);color:var(--ter);font-size:var(--fs-cap)}
 
 @media (max-width:900px){
-  .research-map-layout{grid-template-columns:1fr;grid-template-rows:fit-content(50%) minmax(0,1fr)}.research-map-groups{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
+  .research-map-groups{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
   .research-map-groups>.structured-row:nth-child(2){border-top:0}
 }

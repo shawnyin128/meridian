@@ -29,9 +29,11 @@ const FADED: Record<string, [file: string, markup: RegExp][]> = {
   '.paper-meta-list': [['components/PaperMetadata.tsx', /className="paper-meta-list" ref=\{listFade\}/]],
   '.reading-list': [['components/reader/ReadingNotes.tsx', /className="reading-list" ref=\{listFade\}/]],
   '.panel-body': [['components/SidePanel.tsx', /ref=\{attach\} className=\{`panel-body/]],
+  '.split-column': [['components/SplitPage.tsx', /ref=\{useColumn\(ref\)\} className=\{`split-column/]],
+  '.split-rail': [['components/SplitPage.tsx', /ref=\{useColumn\(ref\)\} className=\{`split-rail/]],
   // Only the paper chat's stream scrolls; on the Chat and Feed screens it grows inside the page body, which fades it.
   '.paper-chat .msgs': [['components/chat/PaperChat.tsx', /streamFade\(area\)[\s\S]*className="msgs" ref=\{stream\}/]],
-  '.wkside': [['routes/Wiki.tsx', /className="wkside" ref=\{railFade\}/]],
+  '.wkside': [['routes/ProjectDetail.tsx', /className="wkside" ref=\{railFade\}/]],
   '.cmpwrap': [['routes/Wiki.tsx', /className="cmpwrap" ref=\{wrapFade\}/]],
   '.gwrap': [['components/timeline/TimelineBoard.tsx', /className="gwrap" ref=\{wrapFade\}/]],
   '.cmdk-list': [['shell/CommandPalette.tsx', /className="cmdk-list" ref=\{listFade\}/]],
@@ -99,11 +101,14 @@ describe('滚动区和吸住的部分都淡出而不是硬切', () => {
       .map(({ path, selector }) => `${path}  ${selector}`)).toEqual([])
   })
 
-  it('Wiki 的侧栏和项目节点面板的高度取自页面主体内的可见高度,不论窗口多高都止于页面主体之内', () => {
+  it('分栏页、项目右栏和项目节点面板的高度取自页面主体内的可见高度,不论窗口多高都止于页面主体之内', () => {
     const body = (path: string, selector: string) => RULES.filter((rule) => rule.path === path && rule.selector === selector)
       .map((rule) => rule.body).join(';')
-    expect(body('routes/shell.css', '.wiki-body,.project-detail-body')).toMatch(/container-type:\s*size/)
-    expect(source('routes/Wiki.tsx')).toMatch(/<PageBody className="wiki-body"[\s>]/)
+    // The split page takes its page body's height and lays both columns in one row of that height.
+    expect(body('components/SplitPage.css', '.split-page')).toMatch(/(^|;)\s*height:\s*100%;[\s\S]*grid-template-rows:\s*minmax\(0,\s*1fr\)/)
+    expect(body('components/SplitPage.css', '.split-page')).not.toMatch(/vh\b/)
+    expect(source('routes/Wiki.tsx').match(/<SplitPage columns="rail" className="wkpage">/g)).toHaveLength(2)
+    expect(body('routes/shell.css', '.project-detail-body')).toMatch(/container-type:\s*size/)
     expect(source('routes/ProjectDetail.tsx')).toMatch(/<PageBody className="project-detail-body">/)
     expect(body('routes/shell.css', '.wkside')).toMatch(/max-height:\s*100cqh/)
     expect(body('routes/ProjectDetail.css', '.project-detail-panel')).toMatch(/(^|;)\s*height:\s*100cqh/)
@@ -113,13 +118,12 @@ describe('滚动区和吸住的部分都淡出而不是硬切', () => {
   })
 
   it('想法详情面板的高度取自页面主体内的可见高度,不论窗口多高都止于页面主体之内', () => {
-    const body = (selector: string) => RULES.filter((rule) => rule.path === 'routes/Ideas.css' && rule.selector === selector)
+    // The list and the panel are a split page's columns; a side panel there is at most its column's height.
+    expect(source('routes/Ideas.tsx')).toMatch(/<PageBody className="ideas-body">\s*<SplitPage columns="rail">/)
+    const panel = RULES.filter((rule) => rule.path === 'components/SplitPage.css' && rule.selector === '.split-page>.side-panel')
       .map((rule) => rule.body).join(';')
-    expect(body('.ideas-body')).toMatch(/container-type:\s*size/)
-    for (const selector of ['.idea-detail-panel']) {
-      expect(body(selector), selector).toMatch(/max-height:\s*100cqh/)
-      expect(body(selector), selector).not.toMatch(/vh\b/)
-    }
+    expect(panel).toMatch(/max-height:\s*100%/)
+    expect(panel).not.toMatch(/vh\b/)
   })
 
   it('内容会滑到下面的吸住元素,吸住时在自己的边上淡出内容', () => {

@@ -147,6 +147,13 @@ Current shared contracts:
   wraps; the title comes first in the markup, so Tab reaches a title that is a control first. The panel
   is named by that title, or by its `label`. Screens only place it: its position, its height and the gap
   beside it.
+- `SplitPage`: the one page of two columns side by side, a master and its detail: the Wiki's pages and
+  their rail, the Ideas list and its panel, the research map's index and detail. It takes the height its
+  page body has left, and both columns start at its top and end at its bottom, each scrolling inside
+  itself and fading at a hidden edge: a `SplitColumn`, a `SplitRail` (properties and links after a rule,
+  in small text) or a `ListColumn` fills its column, and a `SidePanel` or a card is as tall as its content
+  up to the column's height. `columns` is `rail` (a main column and a rail or panel as wide as it is) or
+  `index` (a narrow index and its detail).
 - `DayHeading`: the small heading that opens one day in a list grouped by day, with an optional count.
 - `hooks/useCandidateKeys`: arrow-key, pointer and Enter handling for a candidate list, shared by every
   suggestion and picker dropdown.

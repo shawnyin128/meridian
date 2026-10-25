@@ -56,7 +56,7 @@ export const STATES = [
   { screen: '论文', state: 'detail', batch: 'library', steps: [...desk('papers'), ['click', `${V}tbody tr`], ['wait', `${V}.paper-detail-slot .panel-head`], ['wait', 500]] },
   { screen: '论文', state: 'grouped', batch: 'library', steps: [...desk('papers'), ['radio', '主题'], ['wait', `${V}.gxrow`]], after: [['radio', '无']] },
   { screen: '论文', state: 'drop', batch: 'library', steps: [...desk('papers'), ['drag', `${V}.paper-library`, 'dragenter'], ['wait', `${V}.paper-drop`]], after: [['drag', `${V}.paper-library`, 'dragleave']] },
-  { screen: '论文', state: 'research-map', batch: 'library', steps: [...desk('papers'), ['radio', '研究地图'], ['wait', `${V}.research-map-layout`], ['wait', 600]], after: [['radio', '列表']] },
+  { screen: '论文', state: 'research-map', batch: 'library', steps: [...desk('papers'), ['radio', '研究地图'], ['wait', `${V}.research-map .split-page`], ['wait', 600]], after: [['radio', '列表']] },
   // A larger total than the library holds puts the pager under the table; typing a query reloads the list.
   { screen: '论文', state: 'pager', batch: 'library', steps: [
     ['transform', 'papers.list', '(list) => ({ ...list, total: Math.max(list.total, 45) })'], ...desk('papers'),
@@ -80,8 +80,8 @@ export const STATES = [
     ['click', `${V}.paper-detail-slot .panel-head .icbtn`], ['wait', `${V}[role="alert"], ${V}.pdfload`],
   ] },
   { screen: 'Wiki', state: 'home', batch: 'library', steps: openWiki },
-  { screen: 'Wiki', state: 'paper', batch: 'library', steps: [...openWiki, ['click', `${V}.wkcard--paper .research-object-card-open`], ['wait', `${V}.wkside`], ['wait', 500]] },
-  { screen: 'Wiki', state: 'aggregation', batch: 'library', steps: [...openWiki, ['click', `${V}.wkcard:not(.wkcard--paper) .research-object-card-open`], ['wait', `${V}.wkside`], ['wait', 500]] },
+  { screen: 'Wiki', state: 'paper', batch: 'library', steps: [...openWiki, ['click', `${V}.wkcard--paper .research-object-card-open`], ['wait', `${V}.split-rail`], ['wait', 500]] },
+  { screen: 'Wiki', state: 'aggregation', batch: 'library', steps: [...openWiki, ['click', `${V}.wkcard:not(.wkcard--paper) .research-object-card-open`], ['wait', `${V}.split-rail`], ['wait', 500]] },
   { screen: 'Wiki', state: 'review', batch: 'library', steps: [...openWiki, ['click', `${V}.desk-head .page-actions .btn`], ['wait', 900]] },
   { screen: 'Wiki', state: 'tidy', batch: 'library', steps: [...openWiki, ['click', `${V}.desk-head .page-actions .btn`, -1], ['wait', 900]] },
   { screen: '论文', state: 'notice-refusal', batch: 'library', scope: '.notice-host', steps: [

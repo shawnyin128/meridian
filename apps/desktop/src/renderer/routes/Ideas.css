@@ -1,8 +1,6 @@
-/* A size container: 100cqh, its height inside the padding, keeps the detail panel inside the visible page at any window height. */
-.ideas-body{padding:var(--sp-20) var(--sp-24);container-type:size}
-.ideas-workspace{display:flex;align-items:flex-start;gap:var(--sp-24);width:100%}
+.ideas-body{padding:var(--sp-20) var(--sp-24)}
 /* An inline-size container: the rows' columns follow the list's own width, which the detail panel narrows. */
-.ideas-list{flex:1;min-width:0;container:idea-list/inline-size}
+.ideas-list{container:idea-list/inline-size}
 
 /* The idea card supports triage; full content and editing remain in the detail panel. */
 .idea-card{display:flex;align-items:flex-start;gap:var(--sp-12)}
@@ -48,8 +46,6 @@
 .idea-stats-n{color:var(--sec);text-align:right;font-variant-numeric:tabular-nums}
 .idea-stats-n.zero{color:var(--ter)}
 
-/* The idea's detail panel stays beside the list as it scrolls, as tall as its content up to the visible page. */
-.idea-detail-panel{position:sticky;top:0;z-index:2;align-self:flex-start;max-height:100cqh}
 .idea-detail-editor{display:grid;gap:var(--sp-14);margin-top:var(--sp-20)}
 .idea-detail-editor label{display:grid;gap:var(--sp-6);color:var(--ter);font-size:var(--fs-sm)}
 .idea-detail-editor .form-control{width:100%}
@@ -57,4 +53,3 @@
 .idea-detail-panel .idea-link-picker{width:100%}
 .idea-missing-project{margin-top:var(--sp-8)}
 
-@media (max-width:1150px){.ideas-workspace{gap:var(--sp-20)}}

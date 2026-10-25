@@ -7,6 +7,7 @@ import { FadeText } from '../FadeText.js'
 import { LoadingPlaceholder } from '../LoadingPlaceholder.js'
 import { RatingStars, ReadStatePicker } from '../PaperMetadata.js'
 import { ReadDots } from '../ReadDots.js'
+import { SplitPage } from '../SplitPage.js'
 import { ListColumn, StructuredList, StructuredRow } from '../StructuredList.js'
 import { CountBadge } from '../CountBadge.js'
 import { Tag } from '../Tag.js'
@@ -100,7 +101,7 @@ export function ResearchMap({ rows, total, loading, onOpenPaper, onReadPaper, on
         : map.groups.length === 0
           ? <EmptyState variant="page">{m.papers.researchMap.empty}</EmptyState>
           : (
-            <div className="research-map-layout">
+            <SplitPage columns="index">
               <ListColumn className="research-map-index">
                 <StructuredList className="research-map-groups" aria-label={m.papers.researchMap.groupListAria}>
                   {entries.groups.map(entryRow)}
@@ -162,7 +163,7 @@ export function ResearchMap({ rows, total, loading, onOpenPaper, onReadPaper, on
                     </StructuredList>
                   </div>
                 )}
-            </div>
+            </SplitPage>
           )}
     </section>
   )

@@ -127,13 +127,13 @@ test('第 6 批:Wiki 论文页的属性,四档窗口 × 亮暗', async ({ win, a
   await win.locator('[data-desk="wiki"]').click()
   const shownSlot = win.locator('.screenslot:not([hidden])')
   await shownSlot.locator('.wkgrid').last().locator('.wkcard').first().click()
-  await shownSlot.locator('.wkside .wkprops').waitFor()
+  await shownSlot.locator('.split-rail .wkprops').waitFor()
   for (const theme of ['light', 'dark'] as const) {
     await win.evaluate((t) => { document.documentElement.dataset['theme'] = t }, theme)
     for (const [w, h] of B6_SIZES) {
       await app.evaluate(({ BrowserWindow }, s) => BrowserWindow.getAllWindows()[0]!.setSize(s.w, s.h), { w, h })
       await parkPointer(win)
-      await shownSlot.locator('.wkside').screenshot({ path: `${B6}/wiki-paper-${theme}-${w}.png` })
+      await shownSlot.locator('.split-rail').screenshot({ path: `${B6}/wiki-paper-${theme}-${w}.png` })
     }
   }
 })

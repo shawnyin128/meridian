@@ -75,10 +75,9 @@ export const PATTERNS = {
   SplitPage: {
     metrics: 'page',
     entries: [
-      entry('hand:components/paper-table/ResearchMap.tsx', '.research-map-layout'),
-      entry('hand:routes/Wiki.tsx', '.wkpage'),
+      entry('shared:SplitPage', '.split-page'),
+      entry('hand:routes/ProjectDetail.tsx', '.project-detail-page'),
       entry('hand:routes/ResearchOverview.tsx', '.ovcols'),
-      entry('hand:routes/Ideas.tsx', '.ideas-workspace'),
     ],
   },
   SidePanel: {
@@ -87,7 +86,8 @@ export const PATTERNS = {
       entry('shared:SidePanel', '.side-panel', { parts: { head: '.panel-head, .reader-panel-head' } }),
       entry('shared:PaperChat', '.paper-chat'),
       entry('hand:routes/Settings.tsx', '.set-side'),
-      entry('hand:routes/Wiki.tsx', '.wkside'),
+      entry('shared:SplitRail', '.split-rail'),
+      entry('hand:routes/ProjectDetail.tsx', '.wkside'),
     ],
   },
   PanelHead: {
