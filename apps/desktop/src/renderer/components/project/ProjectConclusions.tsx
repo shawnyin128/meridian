@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type {
   ConclusionState, GraphNode, ProjectConclusion, ProposalOp, WikiAggregationCard,
 } from '../../../shared/contract.js'
@@ -96,10 +96,13 @@ export function ProjectConclusionPanel({
   // A draft belongs to the conclusion it was opened from and shows only with it.
   const [draft, setDraft] = useDraft<{ page: string; text: string }>(['project', projectId, 'conclusion', conclusion.id], 'claim')
   const [pages, setPages] = useState<WikiAggregationCard[]>([])
-  const claimDraft = useDraftSlot<HTMLDivElement>(draft !== null, () => {
-    setDraft({ page: '', text: conclusion.text })
+  const drafting = draft !== null
+  // The pages a claim can land on are read whenever a draft shows, also one restored after a restart.
+  useEffect(() => {
+    if (!drafting) return
     void wiki.cards().then((cards) => setPages([...cards].sort((a, b) => a.title.localeCompare(b.title))))
-  })
+  }, [drafting])
+  const claimDraft = useDraftSlot<HTMLDivElement>(drafting, () => setDraft({ page: '', text: conclusion.text }))
 
   const submit = async (): Promise<void> => {
     const { page, text } = draft!
