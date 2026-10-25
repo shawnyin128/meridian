@@ -931,8 +931,8 @@ function Writes({ names, silent = false }: { names: string[]; silent?: boolean }
 }
 
 /**
- * A screen of two rows, 甲 and 乙, and a count row: deleting 乙 records a change and offers its Undo,
- * and undoing it brings 乙 back as a new row and changes the count in place, as a refetch does.
+ * A screen of two rows and a count row: deleting the second row records a change and offers its Undo,
+ * and undoing it brings that row back as a new row and changes the count in place, as a refetch does.
  */
 function Rows() {
   const [rows, setRows] = useState(['甲', '乙'])
