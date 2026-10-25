@@ -146,6 +146,7 @@ export function TimelineBoard({
         }
       }
     },
+    { axis: 'y', handle: 'row' },
   )
 
   const onMove = useCallback((grab: Grab, delta: number) => {
@@ -240,7 +241,7 @@ export function TimelineBoard({
                   data-task={row.kind === 'task' ? row.task.id : undefined}
                   key={key}
                   {...(row.kind === 'task' && onReorderTasks !== undefined
-                    ? { ...labelReorder.handleProps(row.task.id), ...labelReorder.itemProps(row.task.id) }
+                    ? labelReorder.itemProps(row.task.id)
                     : {})}
                   onClick={open}
                 >

@@ -1139,6 +1139,76 @@ describe('PaperTable', () => {
     expect(listCallCount).toBe(listed)
   })
 
+  /** Mounts the table with the built-in columns and returns the header cell labelled `label`. */
+  const headerOf = (host: HTMLElement, label: string) =>
+    [...host.querySelectorAll<HTMLElement>('.ptable thead th')].find((th) => th.textContent === label)!
+  /** Presses Alt with `key` on `target` and lets the column write it starts land. */
+  const altOn = async (target: Element, key: string) => {
+    await act(async () => {
+      target.dispatchEvent(new KeyboardEvent('keydown', { key, altKey: true, bubbles: true, cancelable: true }))
+    })
+    setColumnsCalls.at(-1)?.resolve()
+    await flush()
+  }
+
+  it('表头里一列的排序按钮或列宽把手上按 Alt+→ / Alt+←,这列右移、左移一格,顺序写进库里;到了头不再挪,标题列不动', async () => {
+    const host = mount()
+    columnsCall.resolve(EMPTY_COLUMNS)
+    listCall.resolve({ rows: [ROW], total: 1 })
+    await flush()
+
+    await altOn(headerOf(host, '作者').querySelector('.thsort')!, 'ArrowRight')
+    expect(setColumnsCalls.map((call) => call.columns.order))
+      .toEqual([['short', 'rating', 'y', 'authors', 'venue', 'topics', 'st', 'remark']])
+    expect(headTexts(host).slice(0, 6)).toEqual(['标题', '短标题', '评分', '年份', '作者', '发表'])
+
+    await altOn(headerOf(host, '评分').querySelector('.thgrip')!, 'ArrowLeft')
+    expect(setColumnsCalls.at(-1)!.columns.order)
+      .toEqual(['rating', 'short', 'y', 'authors', 'venue', 'topics', 'st', 'remark'])
+    expect(headTexts(host).slice(0, 3)).toEqual(['标题', '评分', '短标题'])
+
+    await altOn(headerOf(host, '评分').querySelector('.thgrip')!, 'ArrowLeft')
+    await altOn(headerOf(host, '标题').querySelector('.thsort')!, 'ArrowRight')
+    expect(setColumnsCalls).toHaveLength(2)
+    expect(successes.at(-1)![0]).toBe('已调整列顺序')
+  })
+
+  it('列宽把手上的 Alt+方向键留给挪列,不调列宽;不按 Alt 的方向键仍只调列宽', async () => {
+    const { grip, width } = await laidOutTable()
+    await act(async () => {
+      grip.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', altKey: true, bubbles: true, cancelable: true }))
+    })
+    expect([width('t'), width('short')]).toEqual(['300px', '150px'])
+    keyOn(grip, 'ArrowRight')
+    expect([width('t'), width('short')]).toEqual(['410px', '170px'])
+    expect(setColumnsCalls).toHaveLength(0)
+  })
+
+  it('按住一列的把手拖到另一列的右半边放下,这列落在它后面,顺序写进库里', async () => {
+    const host = mount()
+    columnsCall.resolve(EMPTY_COLUMNS)
+    listCall.resolve({ rows: [ROW], total: 1 })
+    await flush()
+    /** Dispatches a drag event of `type` on `target` with the pointer at `x`; jsdom has no DataTransfer, so it carries a stub. */
+    const dragAt = (target: Element, type: string, x = 0) => act(() => {
+      const event = new MouseEvent(type, { bubbles: true, cancelable: true, clientX: x })
+      Object.defineProperty(event, 'dataTransfer', {
+        value: { effectAllowed: '', dropEffect: '', types: ['text/plain'], setData: vi.fn(), getData: () => '', setDragImage: vi.fn() },
+      })
+      target.dispatchEvent(event)
+    })
+    const source = headerOf(host, '短标题')
+    const target = headerOf(host, '年份')
+    Object.defineProperty(target, 'getBoundingClientRect', { value: () => ({ left: 100, width: 80, top: 0, height: 30 }) })
+    dragAt(source.querySelector('[draggable="true"]')!, 'dragstart')
+    dragAt(target, 'dragover', 170)
+    dragAt(target, 'drop', 170)
+    setColumnsCalls.at(-1)?.resolve()
+    await flush()
+    expect(setColumnsCalls.map((call) => call.columns.order))
+      .toEqual([['rating', 'authors', 'y', 'short', 'venue', 'topics', 'st', 'remark']])
+  })
+
   it('表格的上、左、右三边由吸住的表头、标题列和操作列守着；横向滚动时只标出藏着内容的那一边，由吸住的格子去淡出', async () => {
     const host = mount()
     columnsCall.resolve(EMPTY_COLUMNS)
@@ -1306,7 +1376,7 @@ describe('PaperTable', () => {
 
     expect(labels()).toEqual(before)
     expect(labels()).toContain('选择')
-    expect(host.querySelectorAll('.ptable thead .thmove')).toHaveLength(COLUMNS.length + 1)
+    expect(host.querySelectorAll('.ptable thead .drag-handle')).toHaveLength(COLUMNS.length + 1)
     expect(host.querySelector<HTMLButtonElement>('[aria-label="新建列"]')!.disabled).toBe(false)
     expect(row.classList).toContain('selected')
     expect(row.getAttribute('aria-current')).toBe('true')

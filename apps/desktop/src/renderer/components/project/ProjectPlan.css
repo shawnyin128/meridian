@@ -41,6 +41,4 @@
 .project-plan .ddlrow .min{flex:1;min-width:0}
 @keyframes plan-row-flash{0%,100%{background:transparent}50%{background:var(--tint-warn)}}
 .project-plan .ddlrow.flash{animation:plan-row-flash var(--t-flash) var(--e-inout) 2}
-.project-plan .task-row[draggable]{cursor:var(--cursor-draggable)}
-.project-plan .task-row[draggable]:active,.project-plan .task-row.dragging{cursor:var(--cursor-dragging)}
 .project-plan .row-actions{margin-left:var(--sp-2)}

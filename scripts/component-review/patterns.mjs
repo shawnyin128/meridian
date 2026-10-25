@@ -312,7 +312,6 @@ export const PATTERNS = {
     metrics: 'button',
     entries: [
       entry('shared:DragHandle', '.drag-handle'),
-      entry('hand:components/paper-table/PaperTable.tsx', '.thmove'),
     ],
   },
   ResizeGrip: { metrics: 'button', entries: [entry('shared:Grip', '.grip, .grip-edge')] },

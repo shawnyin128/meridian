@@ -430,7 +430,7 @@ export function Ideas() {
   const counts = ideasByProject(listed.map((idea) => ({ idea, status: statusOf(idea.id) })), projects)
 
   const ids = useMemo(() => listed.map((idea) => idea.id), [listed])
-  const reorder = useDragReorder(ids, statusOf, (order) => { void write(ideaApi.reorder(order)) })
+  const reorder = useDragReorder(ids, statusOf, (order) => { void write(ideaApi.reorder(order)) }, { axis: 'y', handle: 'grip' })
   const sortByUpdated = () => {
     const order = [...listed].sort((a, b) => b.updated.localeCompare(a.updated)).map((idea) => idea.id)
     void write(ideaApi.reorder(order))

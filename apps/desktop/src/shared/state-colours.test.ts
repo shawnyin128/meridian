@@ -121,7 +121,6 @@ describe('状态色', () => {
    * each with that issue. The list only shrinks.
    */
   const PENDING: Record<string, string> = {
-    'components/paper-table/PaperTable.css  .ptable th.column-moving  background': '#567, the drag feedback of a column',
     'components/project/ProjectPlan.css  50%  background': '#578, the landing flash of a plan row',
     'shell/tokens.css  .ddlrow.flash  background': '#578, the landing flash of a plan row',
     'routes/ResearchOverview.css  .ovstat.bad b  color': 'the Overview stat tiles, which the catalog has no row for',

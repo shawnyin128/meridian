@@ -62,7 +62,7 @@ const EXEMPT: Record<string, string> = {
  * makes it a scroll-state container, and the pseudo-element that fades the content while it is stuck.
  */
 const STUCK: Record<string, [container: string, fade: string]> = {
-  '.tblwrap .ptable thead th': ['.tblwrap .ptable thead th', '.tblwrap .ptable thead th:not(.column-drop-after)::after'],
+  '.tblwrap .ptable thead th': ['.tblwrap .ptable thead th', '.tblwrap .ptable thead th::after'],
   '.ptable th:first-child,.ptable td:first-child': ['.ptable :is(th,td):first-child', '.ptable :is(th,td):first-child::before'],
   '.ptable td.row-actions-cell,.tblwrap .ptable thead th.th-add': ['.ptable td.row-actions-cell', '.ptable :is(td.row-actions-cell,th.th-add)::before'],
   '.collapsible-group-head': ['.collapsible-group-head', '.collapsible-group-head::after'],

@@ -38,12 +38,12 @@ const STYLES = [
  */
 const SPOTS: Record<string, [markup: string, spot: string, held: string[]]> = {
   '列表的拖动把手': ['<span class="icbtn sm drag-handle" aria-hidden="true" draggable="true"></span>', '.drag-handle', ['press']],
-  '论文表的列移动把手': ['<table class="ptable"><thead><tr><th><span class="thmove" draggable="true"></span></th></tr></thead></table>', '.thmove', ['press']],
-  '关联 chip': ['<div class="wkrel"><span class="tag tag--chip tag--neutral tagchip" draggable="true"><button type="button" class="tagchip-open">链接</button></span></div>', '.tagchip', ['press']],
+  '论文表的列移动把手': ['<table class="ptable"><thead><tr><th data-reorder-item="short" data-reorder-axis="x"><span class="icbtn xs drag-handle" aria-hidden="true" draggable="true"></span></th></tr></thead></table>', '.drag-handle', ['press']],
+  '关联 chip': ['<div class="wkrel"><span class="tag tag--chip tag--neutral tagchip" data-reorder-item="r1" data-reorder-axis="x" draggable="true"><button type="button" class="tagchip-open">链接</button></span></div>', '.tagchip', ['press', 'dragging']],
   '时间线的任务条': ['<div class="grow"><button type="button" class="gbar"></button></div>', '.gbar', ['press', 'dragging']],
   '时间线的里程碑菱形': ['<div class="grow msrow"><span class="gddl"></span></div>', '.gddl', ['press', 'dragging']],
-  '计划的任务行': ['<div class="project-plan"><div id="taskList"><div class="structured-row structured-row--composite ddlrow task-row" data-row-actions="" draggable="true" data-reorder-item="t1"></div></div></div>', '.task-row', ['press', 'dragging']],
-  '时间线的任务标签行': ['<div class="glabels"><div class="glrow timeline-label-row" draggable="true" data-reorder-item="t1"><button type="button" class="timeline-label-open">任务</button></div></div>', '.glrow', ['press', 'dragging']],
+  '计划的任务行': ['<div class="project-plan"><div id="taskList"><div class="structured-row structured-row--composite ddlrow task-row" data-row-actions="" draggable="true" data-reorder-item="t1" data-reorder-axis="y"></div></div></div>', '.task-row', ['press', 'dragging']],
+  '时间线的任务标签行': ['<div class="glabels"><div class="glrow timeline-label-row" draggable="true" data-reorder-item="t1" data-reorder-axis="y"><button type="button" class="timeline-label-open">任务</button></div></div>', '.glrow', ['press', 'dragging']],
   // ResearchGraph adds `panning` as the pointer goes down on the background.
   '科研图的背景': ['<div class="rgraph"><div class="rgraph-viewport"><svg></svg></div></div>', '.rgraph-viewport', ['panning']],
 }
@@ -92,31 +92,50 @@ describe('拖动处的光标', () => {
   })
 })
 
-describe('拖动中的行和落点', () => {
-  /** Each reorderable row: its own stylesheet and its markup as its component renders it. */
-  const ROWS: Record<string, [sheet: string, markup: string]> = {
-    '项目行': ['routes/Projects.css', '<div class="structured-row structured-row--composite prow" data-reorder-item="p1"></div>'],
-    '想法行': ['routes/Ideas.css', '<div class="structured-row structured-row--composite idea-row" data-reorder-item="i1"></div>'],
-    '计划的任务行': ['components/project/ProjectPlan.css', '<div class="project-plan"><div class="structured-row structured-row--composite ddlrow task-row" draggable="true" data-reorder-item="t1"></div></div>'],
+describe('拖动中的条目和落点', () => {
+  /** Each reorderable item: the stylesheets that draw it and its markup as its component renders it with useDragReorder's attributes. */
+  const ITEMS: Record<string, [sheets: string[], markup: string]> = {
+    '项目行': [['components/StructuredList.css', 'routes/Projects.css'], '<div class="structured-row structured-row--composite prow" data-reorder-item="p1" data-reorder-axis="y"></div>'],
+    '项目卡片': [['components/ResearchObjectCard.css', 'routes/Projects.css'], '<article class="research-object-card projpanel" data-row-actions="" data-reorder-item="p1" data-reorder-axis="y"></article>'],
+    '想法行': [['components/StructuredList.css', 'routes/Ideas.css'], '<div class="structured-row structured-row--composite idea-row" data-reorder-item="i1" data-reorder-axis="y"></div>'],
+    '想法卡片': [['components/ResearchObjectCard.css', 'routes/Ideas.css'], '<article class="research-object-card idea-card" data-row-actions="" data-reorder-item="i1" data-reorder-axis="y"></article>'],
+    '计划的任务行': [['components/StructuredList.css', 'components/project/ProjectPlan.css'], '<div class="project-plan"><div class="structured-row structured-row--composite ddlrow task-row" draggable="true" data-reorder-item="t1" data-reorder-axis="y"></div></div>'],
+    '时间线的任务标签行': [['components/timeline/TimelineBoard.css'], '<div class="glabels"><div class="glrow timeline-label-row" draggable="true" data-reorder-item="t1" data-reorder-axis="y"></div></div>'],
+    '关联 chip': [['components/Tag.css', 'components/TagChips.css', 'components/project/ProjectSections.css'], '<div class="wkrel"><span class="tag tag--chip tag--neutral tagchip" draggable="true" data-reorder-item="r1" data-reorder-axis="x"></span></div>'],
+    '论文表的列': [['routes/shell.css', 'components/paper-table/PaperTable.css'], '<div class="tblwrap"><table class="ptable"><thead><tr><th data-reorder-item="short" data-reorder-axis="x"></th></tr></thead></table></div>'],
   }
-  /** The opacity and box shadow of the row in `markup` under `sheets`, held, then with the drop line above and below. */
+  /** The opacity and box shadow of the item in `markup` under `sheets`, held, then with the drop line before and after it. */
   const feedback = (sheets: string[], markup: string) => ['dragging', 'drag-over-before', 'drag-over-after'].map((state) => {
     document.head.innerHTML = sheets.map(source).map((css) => `<style>${css}</style>`).join('')
     document.body.innerHTML = markup
-    const row = document.querySelector('[data-reorder-item]')
-    row.classList.add(state)
-    const style = getComputedStyle(row)
+    const item = document.querySelector('[data-reorder-item]')
+    item.classList.add(state)
+    const style = getComputedStyle(item)
     return [style.opacity, style.boxShadow]
   })
+  /** The one drop look: the held item dims and a 2px ink line marks the side it lands on. */
+  const LOOK = {
+    y: [['0.4', ''], ['1', '0 -2px 0 0 var(--ink)'], ['1', '0 2px 0 0 var(--ink)']],
+    x: [['0.4', ''], ['1', '-2px 0 0 0 var(--ink)'], ['1', '2px 0 0 0 var(--ink)']],
+    // A header cell's neighbours paint over its edges, so its line lies just inside them.
+    header: [['0.4', ''], ['1', 'inset 2px 0 0 0 var(--ink)'], ['1', 'inset -2px 0 0 0 var(--ink)']],
+  }
 
-  it('项目行、想法行和计划的任务行拖动时变淡、落点画线,都只来自共享的拖动样式', () => {
-    const rows = Object.entries(ROWS)
-    expect(Object.fromEntries(rows.map(([name, [sheet, markup]]) => [name, [
-      feedback(['components/StructuredList.css', sheet], markup),
-      feedback(['components/StructuredList.css', sheet, 'components/DragHandle.css'], markup),
-    ]]))).toEqual(Object.fromEntries(rows.map(([name]) => [name, [
+  it('每个可拖动排序的条目拖动时变淡、落点画一条 2px 的线,都只来自共享的拖动样式,竖排画在上下,横排画在左右', () => {
+    const items = Object.entries(ITEMS)
+    expect(Object.fromEntries(items.map(([name, [sheets, markup]]) => [name, [
+      feedback(sheets, markup),
+      feedback([...sheets, 'components/DragHandle.css'], markup),
+    ]]))).toEqual(Object.fromEntries(items.map(([name, [, markup]]) => [name, [
       [['1', ''], ['1', ''], ['1', '']],
-      [['0.4', ''], ['1', '0 -2px 0 0 var(--ink)'], ['1', '0 2px 0 0 var(--ink)']],
+      markup.includes('<th ') ? LOOK.header : markup.includes('data-reorder-axis="x"') ? LOOK.x : LOOK.y,
     ]])))
+  })
+
+  it('落点只有共享的一套标记:别的样式表不写 drag-over-*,也不另起 drop-before、column-drop、column-moving 之类的落点类', () => {
+    const own = RULES.filter((rule) => rule.path !== 'components/DragHandle.css'
+      && /\.(drag-over-(before|after)|drop-(before|after)|column-drop-(before|after)|column-moving)\b/.test(rule.selector))
+      .map((rule) => `${rule.path}: ${rule.selector}`)
+    expect(own).toEqual([])
   })
 })

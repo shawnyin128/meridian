@@ -19,11 +19,6 @@
 .wkrel .reladd:has(.urldraft){flex-wrap:wrap}
 .wkrel .reladd .urldraft{display:flex;flex-direction:column;gap:var(--sp-6);flex:1 1 100%;min-width:0}
 .wkrel .reladd .urldraft .inedit{flex:none}
-.wkrel .tagchip[draggable]{cursor:var(--cursor-draggable)}
-.wkrel .tagchip[draggable]:active{cursor:var(--cursor-dragging)}
-.wkrel .tagchip.dragging{opacity:.4}
-.wkrel .tagchip.drop-before{box-shadow:-3px 0 0 -1px var(--ink)}
-.wkrel .tagchip.drop-after{box-shadow:3px 0 0 -1px var(--ink)}
 
 .attrow{display:flex;align-items:center;gap:var(--sp-8);font-size:var(--fs-sm);padding:var(--sp-6) var(--sp-2)}
 .attrow>svg{width:13px;height:13px;color:var(--ter);flex-shrink:0}

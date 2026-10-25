@@ -10,7 +10,7 @@ import { papers } from '../../ipc.js'
 import { errorLabel } from '../../lib/failure-label.js'
 import type { Catalog } from '../../messages/catalog.js'
 import { useMessages } from '../../messages/useMessages.js'
-import { IconGrip, IconRead, IconTrash } from '../icons.js'
+import { IconRead, IconTrash } from '../icons.js'
 import { CellPicker } from './CellPicker.js'
 import { NewColumnHead } from './ColumnAdd.js'
 import { builtinNames, columnKey, takenLabel } from './column-key.js'
@@ -32,10 +32,12 @@ import { useJumpOrigin } from '../../hooks/useJumpOrigin.js'
 import { useScreenLoad } from '../../hooks/useScreenLoad.js'
 import { useVaultWrite } from '../../hooks/useVaultWrite.js'
 import { useScrollFade } from '../../hooks/useScrollFade.js'
+import { useDragReorder } from '../../hooks/useDragReorder.js'
 import {
   useCrumbTail, useEscapeLayer, useJump, useNotice, usePaperCount, useScreen, useScreenReentry, useVaultRevision,
 } from '../../shell/AppShell.js'
 import { AddAction } from '../AddAction.js'
+import { DragHandle } from '../DragHandle.js'
 import { BackButton } from '../BackButton.js'
 import { IconButton } from '../IconButton.js'
 import { holdRepeatSelection, RowActions, StructuredList, StructuredRow } from '../StructuredList.js'
@@ -163,18 +165,6 @@ export function orderedColumns(columns: PaperColumns): ShownCol[] {
     const column = byKey.get(key)
     return column === undefined ? [] : [column]
   })
-}
-
-export function movedColumnOrder(
-  columns: PaperColumns, from: string, to: string, after = false,
-): string[] {
-  const keys = orderedColumns(columns).map((column) => column.k)
-  const fromAt = keys.indexOf(from)
-  if (fromAt < 0 || !keys.includes(to) || from === to) return keys
-  const next = keys.filter((key) => key !== from)
-  const toAt = next.indexOf(to)
-  next.splice(toAt + (after ? 1 : 0), 0, from)
-  return next
 }
 
 function SortArrow({ direction }: { direction: SortDirection }) {
@@ -328,8 +318,6 @@ export function PaperTable() {
   const [dropActive, setDropActive] = useState(false)
   const uploadInput = useRef<HTMLInputElement>(null)
   const dropDepth = useRef(0)
-  const [movingColumn, setMovingColumn] = useState<string | null>(null)
-  const [columnDrop, setColumnDrop] = useState<{ key: string; after: boolean } | null>(null)
   const drag = useRef<WidthDrag | null>(null)
   const table = useRef<HTMLTableElement>(null)
   const tableFade = useScrollFade('both')
@@ -1065,29 +1053,14 @@ export function PaperTable() {
     )
   }
 
-  const cols: ShownCol[] = orderedColumns(columns)
-    .filter((column) => column.column !== undefined || !columns.hidden.includes(column.k))
-  const startColumnMove = (event: ReactDragEvent, key: string) => {
-    event.dataTransfer.effectAllowed = 'move'
-    event.dataTransfer.setData('text/x-meridian-column', key)
-    const ghost = document.createElement('span')
-    ghost.className = 'column-drag-ghost'
-    document.body.append(ghost)
-    event.dataTransfer.setDragImage(ghost, 0, 0)
-    requestAnimationFrame(() => ghost.remove())
-    setMovingColumn(key)
-  }
-  const dropColumn = (event: ReactDragEvent, target: string) => {
-    event.preventDefault()
-    event.stopPropagation()
-    const source = event.dataTransfer.getData('text/x-meridian-column') || movingColumn
-    setMovingColumn(null)
-    setColumnDrop(null)
-    if (source === null || source === target) return
-    void changeColumns((base) => ({
-      ...base, order: movedColumnOrder(base, source, target, columnDrop?.after ?? false),
-    }))
-  }
+  const allCols = orderedColumns(columns)
+  const cols: ShownCol[] = allCols.filter((column) => column.column !== undefined || !columns.hidden.includes(column.k))
+  // A hidden column keeps its place in the stored order while the shown ones move around it.
+  const shownKeys = new Set(cols.map((column) => column.k))
+  const columnOrder = useDragReorder(
+    allCols.map((column) => column.k), (key) => (shownKeys.has(key) ? 'shown' : 'hidden'),
+    (order) => { void changeColumns((base) => ({ ...base, order })) }, { axis: 'x', handle: 'grip' },
+  )
   const paperTable = (
     <div className="tblwrap" ref={tableFade} data-fade-held="left right top">
       <table ref={table} className="ptable">
@@ -1109,28 +1082,14 @@ export function PaperTable() {
             {cols.map((c) => (
               <th
                 key={c.k} data-k={c.sort} aria-sort={c.sort ? ariaSort(c.sort) : undefined}
-                className={[
-                  movingColumn === c.k ? 'column-moving' : '',
-                  columnDrop?.key === c.k ? `column-drop-${columnDrop.after ? 'after' : 'before'}` : '',
-                ].filter(Boolean).join(' ') || undefined}
-                onDragOver={(event) => {
-                  if (movingColumn !== null) {
-                    event.preventDefault()
-                    event.dataTransfer.dropEffect = 'move'
-                    const bounds = event.currentTarget.getBoundingClientRect()
-                    setColumnDrop({ key: c.k, after: event.clientX > bounds.left + bounds.width / 2 })
-                  }
-                }}
-                onDrop={(event) => dropColumn(event, c.k)}
+                {...columnOrder.itemProps(c.k)}
                 onClick={() => { if (c.sort) clickHeader(c.sort) }}
               >
-                <span
-                  className="thmove" draggable
+                <DragHandle
+                  {...columnOrder.handleProps(c.k)} size="inline"
                   onMouseDown={(event) => event.stopPropagation()}
                   onClick={(event) => event.stopPropagation()}
-                  onDragStart={(event) => startColumnMove(event, c.k)}
-                  onDragEnd={() => { setMovingColumn(null); setColumnDrop(null) }}
-                ><IconGrip /></span>
+                />
                 {c.sort
                   ? (
                     <button type="button" className="thsort">

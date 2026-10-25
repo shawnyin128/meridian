@@ -2,10 +2,22 @@
 .drag-handle:active{cursor:var(--cursor-dragging)}
 /* The grip is drawn on a 12×16 box, narrower than the square glyphs IconButton sizes. */
 .icbtn.drag-handle>svg{width:9px;height:12px}
+/* An inline grip sits on the line before its item's label and shows while its item is hovered or holds focus. */
+.icbtn.xs.drag-handle{margin-inline:calc(-1 * var(--sp-6)) var(--sp-2);vertical-align:middle;opacity:0}
+[data-reorder-item]:is(:hover,:focus-within) .icbtn.xs.drag-handle{opacity:1}
+/* An item that is its own handle shows the drag cursors the grip shows. */
+[data-reorder-item][draggable="true"]{cursor:var(--cursor-draggable)}
+[data-reorder-item][draggable="true"]:active,[data-reorder-item][draggable="true"].dragging{cursor:var(--cursor-dragging)}
 /*
- * The drop feedback useDragReorder marks on a reorderable item: the item held dims, and a
- * line shows where it would land. :where() keeps these weaker than an item's own look, such as a card's.
+ * The drop feedback useDragReorder marks on a reorderable item: the item held dims, and a 2px line
+ * shows the side it would land on, above or below in a column, left or right in a run. :where() keeps
+ * these weaker than an item's own look, such as a card's.
  */
 :where([data-reorder-item]).dragging{opacity:.4}
-:where([data-reorder-item]).drag-over-before{box-shadow:0 -2px 0 0 var(--ink)}
-:where([data-reorder-item]).drag-over-after{box-shadow:0 2px 0 0 var(--ink)}
+:where([data-reorder-axis="y"]).drag-over-before{box-shadow:0 -2px 0 0 var(--ink)}
+:where([data-reorder-axis="y"]).drag-over-after{box-shadow:0 2px 0 0 var(--ink)}
+:where([data-reorder-axis="x"]).drag-over-before{box-shadow:-2px 0 0 0 var(--ink)}
+:where([data-reorder-axis="x"]).drag-over-after{box-shadow:2px 0 0 0 var(--ink)}
+/* A table header cell's neighbours paint over its edges, so its line lies just inside them. */
+:where(th[data-reorder-axis="x"]).drag-over-before{box-shadow:inset 2px 0 0 0 var(--ink)}
+:where(th[data-reorder-axis="x"]).drag-over-after{box-shadow:inset -2px 0 0 0 var(--ink)}

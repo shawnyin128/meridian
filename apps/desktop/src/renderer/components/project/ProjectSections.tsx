@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from 'react'
-import type { DragEvent as ReactDragEvent, KeyboardEvent as ReactKeyboardEvent, ReactNode, RefObject } from 'react'
+import type { ReactNode, RefObject } from 'react'
 import type { AgentSession, Attachment, RelationGroup } from '../../../shared/contract.js'
 import { projectAreas } from '../../../shared/project-signals.js'
 import { project as projectApi } from '../../ipc.js'
@@ -15,6 +15,7 @@ import { MarkdownBox } from '../Markdown.js'
 import { PaperText } from '../paper/PaperText.js'
 import { useFormat } from '../../lib/format.js'
 import type { KeptText, TextEdit } from '../../hooks/useDrafts.js'
+import { useDragReorder } from '../../hooks/useDragReorder.js'
 import { useInlineDraft } from '../../hooks/useInlineDraft.js'
 import { useMessages } from '../../messages/useMessages.js'
 import { FormInput } from '../FormControls.js'
@@ -190,59 +191,13 @@ export function ProjectRelations({
   onOpenPage: (page: string) => void
   onOpenPaper: (paperId: string) => void
   onRemovePaper: (paperId: string, title: string) => void
-  /** Puts the chip `id` at `index` among the chips of the same row, from a drop or Alt+← / Alt+→. */
+  /**
+   * Puts the chip `id` at `index` among the chips it moves with, from a drop or Alt+← / Alt+→: a row's
+   * relation items, or the linked papers.
+   */
   onMove: (id: string, index: number) => void
 }) {
   const m = useMessages()
-  const [dragging, setDragging] = useState<{ row: string; id: string } | null>(null)
-  const [dropAt, setDropAt] = useState<{ row: string; index: number } | null>(null)
-  // The row's chips in display order, so a drop index counts papers and items together.
-  const rowChipIds = (row: RelationGroup) => [
-    ...(isPaperRow(row.group) ? linked.map((paper) => paper.id) : []),
-    ...row.items.map((item) => item.id),
-  ]
-  const dragProps = (row: RelationGroup, id: string) => ({
-    draggable: true,
-    onDragStart: (event: ReactDragEvent) => {
-      event.dataTransfer.effectAllowed = 'move'
-      event.dataTransfer.setData('text/plain', id)
-      setDragging({ row: row.group, id })
-    },
-    onDragEnd: () => { setDragging(null); setDropAt(null) },
-    onDragOver: (event: ReactDragEvent<HTMLElement>) => {
-      if (dragging === null || dragging.row !== row.group) return
-      event.preventDefault()
-      const box = event.currentTarget.getBoundingClientRect()
-      const at = rowChipIds(row).indexOf(id) + (event.clientX > box.left + box.width / 2 ? 1 : 0)
-      setDropAt({ row: row.group, index: at })
-    },
-    onDrop: (event: ReactDragEvent) => {
-      if (dragging === null || dropAt === null || dragging.row !== row.group) return
-      event.preventDefault()
-      const ids = rowChipIds(row)
-      const from = ids.indexOf(dragging.id)
-      const to = dropAt.index > from ? dropAt.index - 1 : dropAt.index
-      setDragging(null)
-      setDropAt(null)
-      if (to !== from) onMove(dragging.id, to)
-    },
-    // The keyboard path of a drag: Alt+← / Alt+→ move the chip one place along its row.
-    onKeyDown: (event: ReactKeyboardEvent<HTMLElement>) => {
-      const by = event.key === 'ArrowLeft' ? -1 : event.key === 'ArrowRight' ? 1 : 0
-      if (by === 0 || !event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return
-      event.preventDefault()
-      const ids = rowChipIds(row)
-      const to = ids.indexOf(id) + by
-      if (to >= 0 && to < ids.length) onMove(id, to)
-    },
-  })
-  const chipClass = (row: RelationGroup, id: string) => {
-    const at = rowChipIds(row).indexOf(id)
-    const before = dropAt !== null && dropAt.row === row.group && dropAt.index === at
-    const after = dropAt !== null && dropAt.row === row.group && dropAt.index === at + 1
-      && at === rowChipIds(row).length - 1
-    return tagClass('neutral', 'chip', `tagchip${dragging?.id === id ? ' dragging' : ''}${before ? ' drop-before' : ''}${after ? ' drop-after' : ''}`)
-  }
   const groupLabel = (group: string) => (group === PROJECT_PAPER_GROUP
     ? m.project.sections.papers
     : group === PROJECT_URL_GROUP ? m.project.sections.urls : group)
@@ -263,6 +218,15 @@ export function ProjectRelations({
         row.group === group || (isPaperRow(group) && isPaperRow(row.group))))
       .map((group) => ({ group, items: [] })),
   ]
+  // Linked papers and a row's relation items are stored apart, so each moves only among its own kind.
+  const scopes = new Map(rows.flatMap((row) => [
+    ...(isPaperRow(row.group) ? linked.map((paper) => [paper.id, `${row.group} papers`] as const) : []),
+    ...row.items.map((item) => [item.id, `${row.group} items`] as const),
+  ]))
+  const scopeOf = (id: string) => scopes.get(id)!
+  const reorder = useDragReorder([...scopes.keys()], scopeOf, (order, moved) => {
+    onMove(moved, order.filter((id) => scopeOf(id) === scopeOf(moved)).indexOf(moved))
+  }, { axis: 'x', handle: 'row' })
   return (
     <>
       {rows.length === 0 ? <EmptyState variant="section">{m.project.links.empty}</EmptyState> : null}
@@ -288,8 +252,8 @@ export function ProjectRelations({
           {isPaperRow(row.group)
             ? linked.map((paper) => (
               <span
-                className={chipClass(row, paper.id)} key={paper.id} data-paper={paper.id} data-row-actions=""
-                onClick={() => onOpenPaper(paper.id)} {...dragProps(row, paper.id)}
+                className={tagClass('neutral', 'chip', 'tagchip')} key={paper.id} data-paper={paper.id} data-row-actions=""
+                onClick={() => onOpenPaper(paper.id)} {...reorder.itemProps(paper.id)}
               >
                 <button type="button" className="tagchip-open">
                   <FadeText className="tagchip-text"><PaperText text={paper.title} /></FadeText>
@@ -307,8 +271,8 @@ export function ProjectRelations({
             ? <div className="reladd" key={item.id} ref={editing.row}>{editing.input}</div>
             : (
               <span
-                className={chipClass(row, item.id)} key={item.id} data-wk={item.page} data-url={item.url}
-                data-row-actions="" {...dragProps(row, item.id)}
+                className={tagClass('neutral', 'chip', 'tagchip')} key={item.id} data-wk={item.page} data-url={item.url}
+                data-row-actions="" {...reorder.itemProps(item.id)}
                 onClick={item.url !== undefined
                   ? () => { window.open(item.url, '_blank') }
                   : item.page === undefined ? undefined : () => onOpenPage(item.page!)}

@@ -9,9 +9,10 @@
 /*
  * A relation row: its label, then its chips, spaced by the row's gap and wrapping when they run out of
  * room. A chip there shows the pointer only when it opens something: a page, a web address, or a
- * button's own target.
+ * button's own target. A chip that can be dragged takes the drag cursors of DragHandle.css instead.
  */
 .wkrel{display:flex;gap:var(--sp-6);align-items:center;flex-wrap:wrap;margin:var(--sp-4) 0}
 .wkrel .rl{font-size:var(--fs-sm);color:var(--ter);width:28px;flex-shrink:0}
-.wkrel .tagchip{cursor:default;margin:0;position:relative}
-.wkrel .tagchip:is([data-wk],[data-url]),.wkrel button.tagchip{cursor:pointer}
+.wkrel .tagchip{margin:0;position:relative}
+.wkrel .tagchip:not([draggable="true"]){cursor:default}
+.wkrel .tagchip:is([data-wk],[data-url]):not([draggable="true"]),.wkrel button.tagchip{cursor:pointer}

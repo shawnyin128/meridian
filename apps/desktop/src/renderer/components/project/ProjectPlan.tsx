@@ -28,7 +28,7 @@ import { RowActions, StructuredList, StructuredRow } from '../StructuredList.js'
 import { TabbedSection } from '../TabbedSection.js'
 import { Toolbar, ToolbarButton } from '../Toolbar.js'
 import { editText, useDrafts, type EditDraft } from '../../hooks/useDrafts.js'
-import { useDragReorder, type Reorderable } from '../../hooks/useDragReorder.js'
+import { useDragReorder, type ReorderItemProps } from '../../hooks/useDragReorder.js'
 import { useFormat } from '../../lib/format.js'
 import { useMessages } from '../../messages/useMessages.js'
 import type { Catalog } from '../../messages/catalog.js'
@@ -304,7 +304,7 @@ function TaskRow({ projectId, task, flash, selected, reorder, onSave, onDelete, 
    * column from the narrow plan list. Omitted for an archived row: it does not move, since its
    * position among other done tasks does not matter.
    */
-  reorder?: Reorderable
+  reorder?: ReorderItemProps
   onSave: (patch: TaskPatch) => Promise<boolean>
   onDelete: () => void
   /** Opens the task's detail panel; the row's own field editors swallow their clicks so they do not also open it. */
@@ -315,7 +315,7 @@ function TaskRow({ projectId, task, flash, selected, reorder, onSave, onDelete, 
     // The row is the toolbar of its own controls, from its date to its delete.
     <Toolbar label={task.title}>
       <StructuredRow
-        composite selected={selected} data-row={task.id} {...reorder?.item} {...reorder?.handle} onActivate={onOpen}
+        composite selected={selected} data-row={task.id} {...reorder} onActivate={onOpen}
         className={`ddlrow task-row${task.state === 'done' ? ' done' : ''}${flash ? ' flash' : ''}`}
       >
         <TaskScheduleField mode="date" task={task} onSave={onSave} className="task-date-part" stopRowActivation />
@@ -445,7 +445,7 @@ export function ProjectPlan({
     () => new Map(project.tasks.map((task) => [task.id, task.state === 'done'])), [project.tasks],
   )
   const taskOrder = useDragReorder(
-    taskIds, (id) => (taskDoneById.get(id) ? 'done' : 'active'), onReorderTasks,
+    taskIds, (id) => (taskDoneById.get(id) ? 'done' : 'active'), (order) => onReorderTasks(order), { axis: 'y', handle: 'row' },
   )
   const activeTasks = project.tasks.filter((task) => task.state !== 'done')
   const archivedTasks = project.tasks.filter((task) => task.state === 'done')
@@ -485,7 +485,7 @@ export function ProjectPlan({
                   <TaskRow
                     projectId={projectId}
                     key={task.id} task={task} flash={flashId === task.id} selected={selectedTaskId === task.id}
-                    reorder={{ item: taskOrder.itemProps(task.id), handle: taskOrder.handleProps(task.id) }}
+                    reorder={taskOrder.itemProps(task.id)}
                     onSave={(patch) => onUpdateTask(task.id, patch)}
                     onDelete={() => onDeleteTask(task.id)}
                     onOpen={() => onOpenTask(task.id)}
