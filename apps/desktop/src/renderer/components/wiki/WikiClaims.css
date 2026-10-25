@@ -1,4 +1,3 @@
-.wkclaim{padding:var(--sp-10) var(--sp-2)}
 .wkclaim-head{display:flex;align-items:flex-start;gap:var(--sp-8)}
 .wkclaim-text{flex:1;min-width:0;font-size:var(--fs-base);font-weight:var(--fw-medium);line-height:1.5;overflow-wrap:anywhere}
 .wkclaim-meta{display:flex;flex-wrap:wrap;gap:var(--sp-8);margin-top:var(--sp-2);color:var(--ter);font-size:var(--fs-sm)}

@@ -1,3 +1,4 @@
+import type { UpdateFailure } from '../../shared/app-update.js'
 import type { AuthorSearchFailure, CallFailure, InboxDownloadFailure } from '../../shared/contract.js'
 import { CallError } from '../call-error.js'
 import type { Catalog } from '../messages/catalog.js'
@@ -15,7 +16,7 @@ export function failureLabel(
 }
 
 /** Labels `reason` alone, or with the generic label when the reason is unknown. */
-export function reasonLabel(m: Catalog, reason: CallFailure): string {
+export function reasonLabel(m: Catalog, reason: CallFailure | UpdateFailure): string {
   return reason === 'unknown' ? m.common.failure.unknown : m.common.failure.reasons[reason]
 }
 

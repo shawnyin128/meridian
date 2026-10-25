@@ -8,7 +8,7 @@ import { TodayContext } from '../shell/AppShell.js'
 import { LANGUAGE_STORAGE_KEY } from '../shell/language.js'
 import { MenuItem } from './ActionMenu.js'
 import { ChoicePicker, DateButton, DotsMenu } from './FieldPickers.js'
-import { RowActions } from './StructuredList.js'
+import { RowActions } from './Item.js'
 import { TOOLTIP_DELAY } from './Tooltip.js'
 
 declare global {
