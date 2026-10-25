@@ -9,7 +9,7 @@ import type {
 } from '../../shared/contract.js'
 import { callFailure } from '../call-error.js'
 import type { VaultStore } from '../vault.js'
-import { CliRunError } from './cli/child.js'
+import { type CliFailureKind, CliRunError } from './cli/child.js'
 import { type CliCall, type CliRunner, createCliRunner } from './cli/runner.js'
 import type { HarnessExecution } from './cost-gate.js'
 import type { HarnessModelConfig, HarnessRuntimeModel } from './model-config.js'
@@ -132,6 +132,27 @@ describe('Paper Wiki Harness draft boundary', () => {
     })).toThrow('范围外的阅读记录')
   })
 
+  it('fails a draft Core finds outside the run\'s scope or malformed as malformed output', () => {
+    const reason = (check: () => void) => {
+      try {
+        check()
+      } catch (cause) {
+        return callFailure(cause)
+      }
+      return null
+    }
+    const duplicate = draft()
+    duplicate.retrieval.fits[1]!.query = duplicate.retrieval.fits[0]!.query
+    const statement = draft()
+    statement.open_questions = ['Test generalization']
+    expect([
+      reason(() => validatePaperWikiDraftScope(draft(), { paperPages: 3, readingRefs: new Set(['note:n1']) })),
+      reason(() => validatePaperWikiDraftScope(draft(), { paperPages: 4, readingRefs: new Set() })),
+      reason(() => validatePaperWikiDraftSemantics(duplicate)),
+      reason(() => validatePaperWikiDraftSemantics(statement)),
+    ]).toEqual(['malformed-output', 'malformed-output', 'malformed-output', 'malformed-output'])
+  })
+
   it('projects provenance and source anchors without reparsing Markdown', () => {
     const review = projectPaperWikiReview(draft())
     expect(review.schemaVersion).toBe('meridian.paper-wiki-review.v1')
@@ -188,13 +209,16 @@ describe('Paper Wiki Harness draft boundary', () => {
     }, 'p1')).toThrow('结论不一致')
   })
 
-  it('fails a run the user stopped as cancelled and every other Harness failure as a model failure', () => {
-    const failure = (kind: 'cancelled' | 'harness_gone' | 'bad_request' | 'model_error') =>
-      callFailure(paperWikiHarnessError(new HarnessRpcError({ kind, message: kind })))
+  it('fails a run the user stopped as cancelled, invalid output as malformed and every other Harness failure as a model failure', () => {
+    const failure = (kind: 'cancelled' | 'harness_gone' | 'bad_request' | 'model_error', detail?: string) =>
+      callFailure(paperWikiHarnessError(new HarnessRpcError({ kind, message: kind, ...(detail === undefined ? {} : { detail }) })))
     expect(failure('cancelled')).toBe('cancelled')
     expect(failure('harness_gone')).toBe('model')
     expect(failure('bad_request')).toBe('model')
     expect(failure('model_error')).toBe('model')
+    expect(failure('model_error', 'rate_limit')).toBe('model')
+    expect(failure('model_error', 'structured_output')).toBe('malformed-output')
+    expect(failure('model_error', 'invalid_anchor')).toBe('malformed-output')
   })
 
   it('turns cancellation and process loss into explicit no-retry messages', () => {
@@ -239,6 +263,19 @@ class FakeHarness extends EventEmitter implements HarnessChild {
 }
 
 const CLI_MODEL: HarnessRuntimeModel = { source: 'cli', cli: 'claude', model: 'opus' }
+const API_MODEL: HarnessRuntimeModel = {
+  provider: 'openai', protocol: 'responses', baseUrl: 'https://api.openai.com/v1',
+  model: 'gpt-5', authentication: 'api-key', apiKey: 'sk-test',
+}
+
+function alive(pid: number): boolean {
+  try {
+    process.kill(pid, 0)
+    return true
+  } catch {
+    return false
+  }
+}
 
 const execution = (signal = new AbortController().signal): HarnessExecution => ({
   plan: {
@@ -341,7 +378,10 @@ describe('Paper Wiki run on a subscription CLI', () => {
       ].join('\n'))
       chmodSync(claude, 0o755)
       const { child, runner, logs } = paperWikiRunner(CLI_MODEL, createCliRunner({
-        binary: async () => claude, environment: { PATH: '/usr/bin:/bin' },
+        discover: async (cli) => ({
+          cli, installed: true, binary: claude, version: '2.1.280', missingFlags: [], signIn: 'subscription',
+        }),
+        environment: { PATH: '/usr/bin:/bin' },
       }))
       const running = runner.run(execution())
       child.ready()
@@ -391,12 +431,82 @@ describe('Paper Wiki run on a subscription CLI', () => {
     expect(signals[1]!.aborted).toBe(true)
   })
 
+  it('fails a run with the reason its CLI call failed for, each kind a reason of its own', async () => {
+    const reasons: Record<CliFailureKind, string> = {
+      unavailable: 'cli-missing', unsupported: 'cli-unsupported', 'signed-out': 'cli-signed-out',
+      'sign-in-unknown': 'cli-sign-in-unknown', 'usage-limit': 'usage-limit', timeout: 'cli-timeout', cancelled: 'cancelled', failed: 'model',
+    }
+    const failed: Record<string, unknown> = {}
+    for (const kind of Object.keys(reasons) as CliFailureKind[]) {
+      const { child, runner } = paperWikiRunner(CLI_MODEL, async () => { throw new CliRunError(kind, `claude ${kind}`) })
+      const running = runner.run(execution()).catch((cause: unknown) => cause)
+      child.ready()
+      await child.frame()
+      child.callModel(kind)
+      await child.frame()
+      child.send({ type: 'error', id: 1, ok: false, error: { kind: 'model_error', message: `claude ${kind}`, detail: 'subscription_cli' } })
+      failed[kind] = callFailure(await running)
+      runner.close()
+    }
+    expect(failed).toEqual(reasons)
+  })
+
+  it('fails a run whose output Harness found invalid as malformed output, on a subscription and an API alike', async () => {
+    const output = async () => ({ output: { draft: 'not a draft' }, durationMs: 1 })
+    const failed = []
+    for (const [model, detail] of [
+      [CLI_MODEL, 'structured_output'], [CLI_MODEL, 'invalid_anchor'], [API_MODEL, 'structured_output'],
+    ] as const) {
+      const { child, runner } = paperWikiRunner(model, output)
+      const running = runner.run(execution()).catch((cause: unknown) => cause)
+      child.ready()
+      await child.frame()
+      child.send({ type: 'error', id: 1, ok: false, error: { kind: 'model_error', message: '草稿不符合结构要求', detail } })
+      failed.push(callFailure(await running))
+      runner.close()
+    }
+    expect(failed).toEqual(['malformed-output', 'malformed-output', 'malformed-output'])
+  })
+
+  it('cancelling a run on a subscription ends the CLI\'s child process', async () => {
+    const folder = mkdtempSync(join(tmpdir(), 'meridian-cli-cancel-test-'))
+    const pidFile = join(folder, 'pid')
+    let pid: number | undefined
+    try {
+      const claude = join(folder, 'claude')
+      writeFileSync(claude, [
+        `#!${process.execPath}`,
+        "require('node:fs').writeFileSync(process.env.PID_FILE, String(process.pid))",
+        'setInterval(() => {}, 1000)',
+      ].join('\n'))
+      chmodSync(claude, 0o755)
+      const { child, runner } = paperWikiRunner(CLI_MODEL, createCliRunner({
+        discover: async (cli) => ({
+          cli, installed: true, binary: claude, version: '2.1.280', missingFlags: [], signIn: 'subscription',
+        }),
+        environment: { PATH: '/usr/bin:/bin', PID_FILE: pidFile },
+      }))
+      const controller = new AbortController()
+      const running = runner.run(execution(controller.signal))
+      child.ready()
+      await child.frame()
+      child.callModel('call')
+      await vi.waitFor(() => { pid = Number(readFileSync(pidFile, 'utf8')) }, { timeout: 5_000 })
+      expect(alive(pid!)).toBe(true)
+
+      controller.abort()
+      await expect(running).rejects.toMatchObject({ reason: 'cancelled' })
+      await vi.waitFor(() => expect(alive(pid!)).toBe(false), { timeout: 5_000 })
+      runner.close()
+    } finally {
+      if (pid !== undefined && alive(pid)) process.kill(pid, 'SIGKILL')
+      rmSync(folder, { recursive: true, force: true })
+    }
+  }, 15_000)
+
   it('offers no model call to a run on an API model', async () => {
     const cli = vi.fn<CliRunner>()
-    const { child, runner } = paperWikiRunner({
-      provider: 'openai', protocol: 'responses', baseUrl: 'https://api.openai.com/v1',
-      model: 'gpt-5', authentication: 'api-key', apiKey: 'sk-test',
-    }, cli)
+    const { child, runner } = paperWikiRunner(API_MODEL, cli)
     const running = runner.run(execution())
     child.ready()
     await child.frame()

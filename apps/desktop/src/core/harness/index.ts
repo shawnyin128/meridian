@@ -1,5 +1,6 @@
-export { checkCliConnection, discoverCli, resolveCliBinary } from './cli/discovery.js'
+export { checkCliConnection, discoverCli } from './cli/discovery.js'
 export { createCliChatRunner } from './cli/chat-turn.js'
+export { createInternalMcp } from './cli/internal-mcp.js'
 export { createCliRunner } from './cli/runner.js'
 export type { CliRunner } from './cli/runner.js'
 export { createHarnessCostGate } from './cost-gate.js'

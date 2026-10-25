@@ -190,11 +190,14 @@ export const wiki = {
     startUpdate: '开始更新',
     billableNote: '会产生费用',
     freeNote: '免费',
+    planNote: { claude: '计入 Claude 订阅额度', codex: '计入 ChatGPT 订阅额度' },
     scopeLabel: '范围',
     personalContentLabel: '个人内容',
     personalContentSummary: (n: number, hasRemark: boolean) =>
       `${n} 条带文字的笔记${hasRemark ? ' · 1 篇随笔' : ''}`,
     modelLabel: '模型',
+    outputLimitLabel: '输出上限',
+    noOutputLimit: '不限',
   },
   claims: {
     heading: '结论',

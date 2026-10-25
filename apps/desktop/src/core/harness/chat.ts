@@ -1,10 +1,13 @@
 import { z, ZodError } from 'zod'
 import { HarnessModelConnectionCheckResultSchema } from '../../shared/contract.js'
 import type { HarnessCli, HarnessCliModel, HarnessModelConnectionCheckResult } from '../../shared/contract.js'
+import { CallError } from '../call-error.js'
 import { extractPdfPages } from '../paper-library/index.js'
 import type { VaultStore } from '../vault.js'
 import { CLI_CALL_TIMEOUT_MS, CLI_REQUEST_TIMEOUT_MS, cliCallError, cliUsageLine } from './cli-call.js'
 import type { CliChatResult, CliChatRunner } from './cli/chat-turn.js'
+import { CliRunError } from './cli/child.js'
+import { CLI_CALL_FAILURES } from './cli/failure.js'
 import type { HarnessModelConfig } from './model-config.js'
 import { launchHarnessProcess } from './process.js'
 import { createHarnessRpc, type HarnessCallback, type HarnessChild, HarnessRpcError } from './rpc.js'
@@ -174,9 +177,9 @@ export function messagesBefore(messages: readonly StoredChatMessage[], currentTe
 export class ChatFailure extends Error {}
 
 /**
- * What went wrong with a chat turn, as a ChatFailure in plain words: the text of a provider's response
- * or of a parser never reaches it. An error from outside the Harness call, such as an unreadable key,
- * is returned as it is.
+ * What went wrong with a chat turn, as a ChatFailure in plain words, or as a malformed-output
+ * CallError when the answer failed validation: the text of a provider's response or of a parser never
+ * reaches it. An error from outside the Harness call, such as an unreadable key, is returned as it is.
  */
 export function chatHarnessError(cause: unknown): Error {
   if (cause instanceof ZodError) return new ChatFailure('模型的回答读不出来')
@@ -187,6 +190,9 @@ export function chatHarnessError(cause: unknown): Error {
   if (cause.kind === 'harness_gone') return new ChatFailure('AI 服务停了')
   if (cause.kind === 'bad_request') return new ChatFailure('对话太长，或这次请求模型不支持')
   if (cause.kind === 'no_model') return new ChatFailure('还没有连上模型')
+  if (cause.kind === 'model_error' && cause.detail === 'structured_output') {
+    return new CallError('malformed-output', cause.message, { cause })
+  }
   // The Harness words a model's own failure plainly and safely (ModelInvocationError).
   if (cause.kind === 'model_error') return new ChatFailure(cause.message)
   return new ChatFailure('AI 服务出了错')
@@ -194,8 +200,9 @@ export function chatHarnessError(cause: unknown): Error {
 
 /**
  * A single-purpose chat client with a least-privilege callback surface. A turn on a subscription CLI
- * also gets its one model call from Core, which `cli` runs with the MCP servers `mcpFlags` gives it,
- * none without it.
+ * also gets its one model call from Core, which `cli` runs with the internal MCP server's vault
+ * lookups, scoped to the chat's paper in a paper chat; a turn whose CLI call fails fails for the CLI
+ * problem it met.
  */
 export function createChatHarnessRunner(options: {
   store: VaultStore
@@ -203,7 +210,6 @@ export function createChatHarnessRunner(options: {
   /** The connection check of a subscription CLI, which makes no model call. */
   checkCli: (cli: HarnessCli) => Promise<HarnessModelConnectionCheckResult>
   cli: CliChatRunner
-  mcpFlags?: (cli: HarnessCli) => readonly string[]
   launch?: () => HarnessChild
   onLog?: (line: string) => void
 }) {
@@ -265,13 +271,19 @@ export function createChatHarnessRunner(options: {
     },
   })
 
-  /** The one model call of a chat turn on `model`, which ends when `signal` aborts. */
-  const modelCall = (model: HarnessCliModel, signal: AbortSignal): HarnessCallback => {
+  /**
+   * The one model call of a turn of chat `chatId` on `model`, which ends when `signal` aborts and
+   * reports a CLI failure to `onFailure`.
+   */
+  const modelCall = (
+    chatId: string, model: HarnessCliModel, signal: AbortSignal, onFailure: (failure: CliRunError) => void,
+  ): HarnessCallback => {
     let called = false
     return async (params) => {
       if (called) throw new HarnessRpcError({ kind: 'bad_request', message: 'A run makes one model call' })
       called = true
       const call = ChatModelInvokeParamsSchema.parse(params)
+      const paperId = options.store.chatSession(chatId).paperId
       let result: CliChatResult
       try {
         result = await options.cli({
@@ -279,11 +291,12 @@ export function createChatHarnessRunner(options: {
           ...(model.model === undefined ? {} : { model: model.model }),
           system: call.system,
           prompt: call.prompt,
-          mcpFlags: options.mcpFlags?.(model.cli) ?? [],
+          lookup: paperId === undefined ? {} : { paperId },
           timeoutMs: CLI_CALL_TIMEOUT_MS,
           signal,
         })
       } catch (cause) {
+        if (cause instanceof CliRunError) onFailure(cause)
         throw cliCallError(model.cli, cause, options.onLog)
       }
       options.onLog?.(cliUsageLine(model.cli, result))
@@ -316,6 +329,7 @@ export function createChatHarnessRunner(options: {
     },
     async answer(id: string, text: string, signal: AbortSignal): Promise<string> {
       const ended = new AbortController()
+      let failure: CliRunError | undefined
       try {
         const model = await options.model.runtime()
         const result = ChatAnswerSchema.parse(await rpc.request('chat.answer', {
@@ -327,12 +341,16 @@ export function createChatHarnessRunner(options: {
           signal,
           ...('source' in model ? {
             timeoutMs: CLI_REQUEST_TIMEOUT_MS,
-            callbacks: { 'model.invoke': modelCall(model, AbortSignal.any([signal, ended.signal])) },
+            callbacks: {
+              'model.invoke': modelCall(id, model, AbortSignal.any([signal, ended.signal]), (cause) => { failure = cause }),
+            },
           } : {}),
         }))
         return result.answer
       } catch (cause) {
-        throw chatHarnessError(cause)
+        throw failure === undefined
+          ? chatHarnessError(cause)
+          : new CallError(CLI_CALL_FAILURES[failure.kind], failure.message, { cause: failure })
       } finally {
         ended.abort()
       }

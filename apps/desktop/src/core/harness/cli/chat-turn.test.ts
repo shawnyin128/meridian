@@ -4,6 +4,8 @@ import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import type { HarnessCli } from '../../../shared/contract.js'
 import { type CliChatCall, chatTurnFlags, createCliChatRunner } from './chat-turn.js'
+import type { CliDiscovery } from './discovery.js'
+import type { InternalMcpOpener, InternalMcpRun } from './internal-mcp.js'
 import { CODEX_DISABLED_FEATURES } from './runner.js'
 
 /** What a stand-in CLI saw: its arguments, stdin, the variables of interest and its folder. */
@@ -48,8 +50,12 @@ afterEach(() => {
   for (const folder of folders.splice(0)) rmSync(folder, { recursive: true, force: true })
 })
 
-/** Stand-in `claude` and `codex` executables answering `reply`, and the runner that starts them. */
-function standIns(reply: Reply) {
+/**
+ * Stand-in `claude` and `codex` executables answering `reply`, and the runner that starts them once
+ * each is found signed in as `signIn` says, giving a turn that looks up the vault the internal MCP
+ * server `internalMcp` opens.
+ */
+function standIns(reply: Reply, signIn: 'subscription' | 'signed-out' = 'subscription', internalMcp?: InternalMcpOpener) {
   const root = mkdtempSync(join(tmpdir(), 'meridian-chat-turn-test-'))
   folders.push(root)
   const bin = join(root, 'bin')
@@ -61,7 +67,10 @@ function standIns(reply: Reply) {
   const recordFile = join(root, 'record.jsonl')
   const go = join(root, 'go')
   const runner = createCliChatRunner({
-    binary: async (cli: HarnessCli) => join(bin, cli),
+    discover: async (cli: HarnessCli): Promise<CliDiscovery> => ({
+      cli, installed: true, binary: join(bin, cli), version: '1.0.0', missingFlags: [], signIn,
+    }),
+    ...(internalMcp === undefined ? {} : { internalMcp }),
     environment: {
       ...process.env, ANTHROPIC_API_KEY: 'sk-ant-must-not-cross', OPENAI_API_KEY: 'sk-must-not-cross', KEEP_ME: 'kept',
       PATH: '/usr/bin:/bin', STAND_IN_RECORD: recordFile, STAND_IN_REPLY: JSON.stringify(reply), STAND_IN_GO: go,
@@ -75,7 +84,7 @@ function standIns(reply: Reply) {
 
 const turn = (cli: HarnessCli, extra: Partial<CliChatCall> = {}): CliChatCall => ({
   cli, system: 'Chat rules\n\nConversation context:\n{"title":"T"}', prompt: 'Current user message:\nWhy?',
-  mcpFlags: [], timeoutMs: 20_000, signal: new AbortController().signal, ...extra,
+  timeoutMs: 20_000, signal: new AbortController().signal, ...extra,
 })
 
 const delta = (text: string) => ({
@@ -129,11 +138,13 @@ describe('a chat turn on Claude Code', () => {
     expect(existsSync(seenCall!.cwd)).toBe(false)
   })
 
-  it('fails in Claude\'s own words when its result is an error, and with the exit code when it printed none', async () => {
-    const limited = standIns({ lines: [claudeResult('Claude AI usage limit reached', { is_error: true, subtype: 'error_during_execution' })], exit: 1 })
+  it('fails in Claude\'s own words when its result is an error, at the usage limit when it says so, and with the exit code when it printed none', async () => {
+    const limited = standIns({ lines: [claudeResult('You\'ve hit your limit · resets 3pm', { is_error: true, subtype: 'error_during_execution' })], exit: 1 })
     await expect(limited.runner(turn('claude'))).rejects.toMatchObject({
-      name: 'CliRunError', kind: 'failed', message: 'claude 运行失败：Claude AI usage limit reached', exitCode: 1,
+      name: 'CliRunError', kind: 'usage-limit', message: 'claude 运行失败：You\'ve hit your limit · resets 3pm', exitCode: 1,
     })
+    const refused = standIns({ lines: [claudeResult('Overloaded', { is_error: true, subtype: 'error_during_execution' })], exit: 1 })
+    await expect(refused.runner(turn('claude'))).rejects.toMatchObject({ kind: 'failed', message: 'claude 运行失败：Overloaded' })
     const crashed = standIns({ lines: ['not json'], stderr: 'boom', exit: 2 })
     await expect(crashed.runner(turn('claude'))).rejects.toMatchObject({
       kind: 'failed', message: 'claude 运行失败（退出码 2）', exitCode: 2, stderr: 'boom',
@@ -156,7 +167,6 @@ describe('a chat turn on Codex', () => {
     })
     const seen: string[] = []
     const result = await runner(turn('codex', {
-      mcpFlags: ['-c', 'mcp_servers.meridian.command="x"'],
       onText: (text) => {
         seen.push(text)
         release()
@@ -174,13 +184,39 @@ describe('a chat turn on Codex', () => {
       '--ignore-user-config', '--ignore-rules', '--json', '--color', 'never', '-c', 'web_search="disabled"',
       '-C', expect.any(String),
       ...CODEX_DISABLED_FEATURES.flatMap((feature) => ['--disable', feature]),
-      '-c', 'mcp_servers.meridian.command="x"', '-',
+      '-',
     ])
     const work = seenCall!.argv[seenCall!.argv.indexOf('-C') + 1]!
     expect(work.split('/').slice(-2)).toEqual(seenCall!.cwd.split('/').slice(-2))
     expect(seenCall!.stdin).toBe('Chat rules\n\nConversation context:\n{"title":"T"}\n\nCurrent user message:\nWhy?')
     expect(seenCall!.env).toEqual({ KEEP_ME: 'kept' })
     expect(seenCall!.entries).toEqual([])
+  })
+
+  it('gives a turn that looks up the vault the internal MCP server, in the turn\'s own folder, and closes it after', async () => {
+    const runs: InternalMcpRun[] = []
+    const closed: boolean[] = []
+    const internalMcp: InternalMcpOpener = async (run) => {
+      runs.push(run)
+      return {
+        claudeArgs: ['--mcp-config', join(run.folder, 'mcp.json')], codexArgs: ['-c', 'mcp_servers.vault.command="x"'],
+        env: { VAULT_TOKEN: 'run-token' }, close: async () => { closed.push(true) },
+      }
+    }
+    const { runner, records } = standIns({ lines: [agentMessage('Found it [p. 9].'), { type: 'turn.completed', usage: codexUsage }] }, 'subscription', internalMcp)
+    await expect(runner(turn('codex', { lookup: { paperId: 'paper-1' } }))).resolves.toMatchObject({ answer: 'Found it [p. 9].' })
+
+    expect(runs).toEqual([{ paperId: 'paper-1', folder: expect.any(String) }])
+    expect(closed).toEqual([true])
+    const [seenCall] = records()
+    expect(seenCall!.argv.slice(-3)).toEqual(['-c', 'mcp_servers.vault.command="x"', '-'])
+    expect(seenCall!.argv).toContain('code_mode_host')
+  })
+
+  it('refuses a turn on a CLI not signed in with the subscription before starting it', async () => {
+    const { runner, records } = standIns({ lines: [] }, 'signed-out')
+    await expect(runner(turn('claude'))).rejects.toMatchObject({ name: 'CliRunError', kind: 'signed-out' })
+    expect(records()).toEqual([])
   })
 
   it('fails in the words of Codex\'s last error event when it exits with an error', async () => {
@@ -195,10 +231,10 @@ describe('a chat turn on Codex', () => {
 })
 
 describe('the flags a chat turn needs', () => {
-  it('lists each option a chat turn passes once, without its value', () => {
+  it('lists each option a chat turn passes once, without its value, a turn that looks up the vault included', () => {
     expect(chatTurnFlags('claude')).toEqual([
       '-p', '--output-format', '--verbose', '--include-partial-messages', '--tools', '--strict-mcp-config',
-      '--setting-sources', '--no-session-persistence', '--system-prompt', '--model',
+      '--setting-sources', '--no-session-persistence', '--system-prompt', '--model', '--mcp-config', '--allowedTools',
     ])
     expect(chatTurnFlags('codex')).toEqual([
       '--ephemeral', '--skip-git-repo-check', '--sandbox', '--ignore-user-config', '--ignore-rules', '--json',

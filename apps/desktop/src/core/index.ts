@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
-import type { CallFailure, ContractMethod, LibrarySource } from '../shared/contract.js'
+import type { CallFailure, ContractMethod, HarnessCli, LibrarySource } from '../shared/contract.js'
 import {
   AuthorSearchParamsSchema,
   ChatAppendParamsSchema,
@@ -137,9 +137,9 @@ import { createPluginVersionCheck } from './extensions/latest.js'
 import { openSemanticKeyStore } from './net/semantic-key.js'
 import { deleteColourTheme, listColourThemes, saveColourTheme } from './colour-themes.js'
 import {
-  checkCliConnection, createChatHarnessRunner, createChatService, createCliChatRunner, createCliRunner, createHarnessCostGate,
-  createHarnessModelConfig, createHarnessProposalAudit, createMainCredentialVault, createPaperWikiHarnessRunner,
-  discoverCli, listCliModels, resolveCliBinary, subscriptionStatus,
+  checkCliConnection, createChatHarnessRunner, createChatService, createCliChatRunner, createCliRunner,
+  createHarnessCostGate, createHarnessModelConfig, createHarnessProposalAudit, createInternalMcp,
+  createMainCredentialVault, createPaperWikiHarnessRunner, discoverCli, listCliModels, subscriptionStatus,
 } from './harness/index.js'
 import { placeResearchIdeaOnGraph, promoteResearchIdea } from './research-ideas/index.js'
 import { createWikiProposals, pdfPageText } from './wiki-proposals.js'
@@ -238,7 +238,12 @@ const background = createBackground({
   now: Date.now,
   semanticScholarApiKey: semanticKey.current,
 })
-const cliRunner = createCliRunner({ binary: (cli) => resolveCliBinary(cli) })
+const cliRunnerDeps = {
+  discover: (cli: HarnessCli) => discoverCli(cli, { onLog: (line) => console.error(`[harness] ${line}`) }),
+  settingsRevision: () => harnessModel.subscriptionRevision(),
+  internalMcp: createInternalMcp({ store, onLog: (line) => console.error(`[harness] ${line}`) }),
+}
+const cliRunner = createCliRunner(cliRunnerDeps)
 const paperWikiHarness = vaultRoot === undefined ? null : createPaperWikiHarnessRunner({
   store,
   model: harnessModel,
@@ -251,7 +256,7 @@ const chatHarness = createChatHarnessRunner({
   store,
   model: harnessModel,
   checkCli: (cli) => checkCliConnection(cli, { onLog: (line) => console.error(`[harness] ${line}`) }),
-  cli: createCliChatRunner({ binary: (cli) => resolveCliBinary(cli) }),
+  cli: createCliChatRunner(cliRunnerDeps),
   onLog: (line) => console.error(`[harness] ${line}`),
 })
 const chatService = createChatService({ store, model: harnessModel, runner: chatHarness })
@@ -528,7 +533,8 @@ registerHandler('harness.updateSubscription', (params) =>
   harnessModel.updateSubscription(HarnessUpdateSubscriptionParamsSchema.parse(params)))
 registerHandler('harness.subscriptionStatus', (params) =>
   subscriptionStatus(HarnessSubscriptionStatusParamsSchema.parse(params).cli, {
-    discover: (cli) => discoverCli(cli), listModels: listCliModels, onLog: (line) => console.error(`[harness] ${line}`),
+    discover: (cli) => discoverCli(cli, { onLog: (line) => console.error(`[harness] ${line}`) }),
+    listModels: listCliModels, onLog: (line) => console.error(`[harness] ${line}`),
   }))
 registerHandler('harness.applyPaperWiki', (params) =>
   harness.applyPaperWiki(HarnessApplyPaperWikiParamsSchema.parse(params)))

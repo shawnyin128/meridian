@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { z } from 'zod'
 import type { ChatMessage, PaperReading } from '../../shared/contract.js'
 import { CallError } from '../call-error.js'
+import { createFixtureStore } from '../fixture-store.js'
 import type { VaultStore } from '../vault.js'
 import {
   CHAT_CONTEXT_BUDGETS, ChatFailure, chatHarnessError, createChatHarnessRunner, messagesBefore, packChatHistory,
@@ -106,6 +107,13 @@ describe('chat failures in plain words', () => {
     expect(said(harness('bad_request', 'Harness callback is not allowed: x'))).toEqual([true, '对话太长，或这次请求模型不支持'])
   })
 
+  it('fails an answer that failed validation as malformed output, in the Harness\'s words', () => {
+    const invalid = chatHarnessError(new HarnessRpcError({
+      kind: 'model_error', message: '模型输出包含无效页码引用', detail: 'structured_output',
+    }))
+    expect(invalid).toMatchObject({ name: 'CallError', reason: 'malformed-output', message: '模型输出包含无效页码引用' })
+  })
+
   it('never passes on a parser\'s text, and leaves an error from outside the Harness call as it is', () => {
     const parsed = z.object({ answer: z.string().min(1) }).safeParse({ answer: '' })
     expect(said(parsed.error)).toEqual([true, '模型的回答读不出来'])
@@ -166,34 +174,37 @@ class FakeHarness extends EventEmitter implements HarnessChild {
 
 const CLI_MODEL: HarnessRuntimeModel = { source: 'cli', cli: 'claude', model: 'opus' }
 
+/** A runner of the fixture vault whose chat turns on a subscription CLI `cli` answers, and a chat of its own. */
 function chatRunner(model: HarnessRuntimeModel, cli: CliChatRunner) {
   const child = new FakeHarness()
   const logs: string[] = []
+  const store = createFixtureStore()
+  const chat = store.createChat('Speculative decoding', true).id
   const runner = createChatHarnessRunner({
-    store: {} as VaultStore,
+    store,
     model: { runtime: async () => model } as unknown as HarnessModelConfig,
     checkCli: async () => ({ state: 'connected', modelCalls: 0, maxOutputTokens: 1 }),
     cli,
     launch: () => child,
     onLog: (line) => logs.push(line),
   })
-  return { child, runner, logs }
+  return { child, runner, logs, chat, store }
 }
 
 describe('a chat turn on a subscription CLI', () => {
   it('answers the turn\'s one model call on the CLI with the whole turn and its model, and offers no second', async () => {
     const calls: CliChatCall[] = []
-    const { child, runner, logs } = chatRunner(CLI_MODEL, async (call) => {
+    const { child, runner, logs, chat } = chatRunner(CLI_MODEL, async (call) => {
       calls.push(call)
       return {
         answer: 'EAGLE reaches 3.76x [p. 6].', durationMs: 6_700,
         usage: { inputTokens: 24_182, cachedInputTokens: 23_327, outputTokens: 88 },
       }
     })
-    const answering = runner.answer('chat-1', 'Why?', new AbortController().signal)
+    const answering = runner.answer(chat, 'Why?', new AbortController().signal)
     child.ready()
     expect(await child.frame()).toMatchObject({
-      method: 'chat.answer', params: { chatId: 'chat-1', text: 'Why?', model: CLI_MODEL },
+      method: 'chat.answer', params: { chatId: chat, text: 'Why?', model: CLI_MODEL },
     })
 
     child.callModel('first')
@@ -201,7 +212,7 @@ describe('a chat turn on a subscription CLI', () => {
       type: 'response', callbackId: 'first', result: { output: 'EAGLE reaches 3.76x [p. 6].' },
     })
     expect(calls).toEqual([expect.objectContaining({
-      cli: 'claude', model: 'opus', system: 'Chat rules and context', prompt: 'History, then: Why?', mcpFlags: [],
+      cli: 'claude', model: 'opus', system: 'Chat rules and context', prompt: 'History, then: Why?', lookup: {},
     })])
     child.callModel('second')
     expect(await child.frame()).toMatchObject({ type: 'error', callbackId: 'second', error: { kind: 'bad_request' } })
@@ -213,50 +224,71 @@ describe('a chat turn on a subscription CLI', () => {
     runner.close()
   })
 
-  it('passes a CLI failure to Harness as a model error in the CLI\'s own words', async () => {
-    const { child, runner } = chatRunner(CLI_MODEL, async () => {
-      throw new CliRunError('failed', 'claude 运行失败：Claude AI usage limit reached')
+  it('scopes the vault lookups of a paper chat\'s turn to its paper', async () => {
+    const calls: CliChatCall[] = []
+    const { child, runner, store } = chatRunner(CLI_MODEL, async (call) => {
+      calls.push(call)
+      return { answer: 'Answer', durationMs: 1 }
     })
-    const answering = runner.answer('chat-1', 'Why?', new AbortController().signal)
+    const paper = store.listPapers({ page: 1, size: 1 }).rows[0]!.id
+    const answering = runner.answer(store.chatForPaper(paper).id, 'Why?', new AbortController().signal)
     child.ready()
     await child.frame()
+    child.callModel('call')
+    await child.frame()
+    child.send({ type: 'response', id: 1, ok: true, result: { answer: 'Answer' } })
 
-    child.callModel('limit')
-    expect(await child.frame()).toMatchObject({
-      type: 'error', callbackId: 'limit',
-      error: { kind: 'model_error', message: 'claude 运行失败：Claude AI usage limit reached' },
-    })
-    child.send({ type: 'error', id: 1, ok: false, error: { kind: 'model_error', message: 'claude 运行失败：Claude AI usage limit reached' } })
-    await expect(answering).rejects.toEqual(new ChatFailure('claude 运行失败：Claude AI usage limit reached'))
+    await answering
+    expect(calls).toEqual([expect.objectContaining({ lookup: { paperId: paper } })])
     runner.close()
+  })
+
+  it('fails a turn whose CLI call failed for the CLI problem it met, in the CLI\'s own words', async () => {
+    for (const [kind, reason] of [['usage-limit', 'usage-limit'], ['signed-out', 'cli-signed-out'], ['failed', 'model']] as const) {
+      const { child, runner, chat } = chatRunner(CLI_MODEL, async () => {
+        throw new CliRunError(kind, 'claude 运行失败：You\'ve hit your limit')
+      })
+      const answering = runner.answer(chat, 'Why?', new AbortController().signal)
+      child.ready()
+      await child.frame()
+
+      child.callModel('limit')
+      expect(await child.frame()).toMatchObject({
+        type: 'error', callbackId: 'limit',
+        error: { kind: 'model_error', message: 'claude 运行失败：You\'ve hit your limit' },
+      })
+      child.send({ type: 'error', id: 1, ok: false, error: { kind: 'model_error', message: 'claude 运行失败：You\'ve hit your limit' } })
+      await expect(answering).rejects.toMatchObject({ name: 'CallError', reason, message: 'claude 运行失败：You\'ve hit your limit' })
+      runner.close()
+    }
   })
 
   it('stops the CLI turn when the user stops the chat', async () => {
     const signals: AbortSignal[] = []
-    const { child, runner } = chatRunner(CLI_MODEL, (call) => new Promise((_, reject) => {
+    const { child, runner, chat } = chatRunner(CLI_MODEL, (call) => new Promise((_, reject) => {
       signals.push(call.signal)
       call.signal.addEventListener('abort', () => reject(new CliRunError('cancelled', '已停止 claude')))
     }))
     const controller = new AbortController()
-    const answering = runner.answer('chat-1', 'Why?', controller.signal)
+    const answering = runner.answer(chat, 'Why?', controller.signal)
     child.ready()
     await child.frame()
     child.callModel('call')
     await vi.waitFor(() => expect(signals).toHaveLength(1))
 
     controller.abort()
-    await expect(answering).rejects.toEqual(new ChatFailure('已停止生成'))
+    await expect(answering).rejects.toMatchObject({ name: 'CallError', reason: 'cancelled' })
     expect(signals[0]!.aborted).toBe(true)
     runner.close()
   })
 
   it('offers no model call to a chat on an API model', async () => {
     const cli = vi.fn<CliChatRunner>()
-    const { child, runner } = chatRunner({
+    const { child, runner, chat } = chatRunner({
       provider: 'openai', protocol: 'responses', baseUrl: 'https://api.openai.com/v1',
       model: 'gpt-5', authentication: 'api-key', apiKey: 'sk-test',
     }, cli)
-    const answering = runner.answer('chat-1', 'Why?', new AbortController().signal)
+    const answering = runner.answer(chat, 'Why?', new AbortController().signal)
     child.ready()
     await child.frame()
 
