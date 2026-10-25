@@ -583,7 +583,7 @@ export function Reader() {
       const page = note?.page ?? arrival.page ?? reading.lastPage ?? 1
       const pagebox = view.querySelector<HTMLElement>(`.pdfpagebox[data-page="${page}"]`)
       // Opening a paper resumes at its last page, and a note being written shows again: neither names an anchor.
-      if (pagebox !== null && arrival.page !== undefined) land(pagebox, 'start')
+      if (pagebox !== null && arrival.page !== undefined) land(pagebox, 'start', 'over')
       else pagebox?.scrollIntoView({ block: note === undefined ? 'start' : 'center' })
     }
     // The toolbar opens once the landing's scroll has been handled, as a scroll closes it.
@@ -951,7 +951,7 @@ export function Reader() {
 
   const jumpToPage = (page: number) => {
     const pagebox = scroller.current?.querySelector(`.pdfpagebox[data-page="${page}"]`)
-    if (pagebox) land(pagebox, 'start')
+    if (pagebox) land(pagebox, 'start', 'over')
   }
 
   const tail = useMemo<CrumbSeg[]>(
