@@ -34,6 +34,17 @@ describe('the internal MCP server\'s vault tools', () => {
     for (const tool of tools.definitions) expect(tool.annotations).toMatchObject({ readOnlyHint: true, destructiveHint: false })
   })
 
+  it('name no page the vault holds in their descriptions, so a model finds ids by searching', () => {
+    const store = createFixtureStore()
+    const pages = [...store.wikiCards().map((card) => card.id), `papers/${STAR}`, `papers/${MIXTRAL}`]
+    const texts = vaultTools(store, { paperId: STAR }).definitions.flatMap((tool) => [
+      tool.description,
+      ...Object.values(tool.inputSchema['properties'] as Record<string, { description?: string }>)
+        .map((property) => property.description ?? ''),
+    ])
+    for (const text of texts) for (const page of pages) expect(text).not.toContain(page)
+  })
+
   it('give every tool a closed schema whose strings and numbers are bounded', () => {
     for (const tool of vaultTools(createFixtureStore(), { paperId: STAR }).definitions) {
       expect(tool.inputSchema).toMatchObject({ type: 'object', additionalProperties: false })

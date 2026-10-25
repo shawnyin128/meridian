@@ -2,7 +2,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import type { HarnessCli } from '../../../shared/contract.js'
 import { type ChildOutcome, cliEnvironment, CliRunError, inTemporaryFolder, runChild, stderrExcerpt } from './child.js'
-import type { InternalMcp, InternalMcpOpener } from './internal-mcp.js'
+import { type InternalMcp, internalMcpArgs, type InternalMcpOpener } from './internal-mcp.js'
 import type { VaultToolScope } from './vault-tools.js'
 
 /** Codex features that give the model a tool or load outside code; every run turns them all off. */
@@ -11,8 +11,6 @@ export const CODEX_DISABLED_FEATURES = [
   'browser_use_external', 'view_image', 'hooks', 'tool_suggest', 'skill_search', 'goals',
   'sleep_tool', 'remote_plugin', 'skill_mcp_dependency_install', 'code_mode_host',
 ] as const
-/** The feature Codex calls MCP tools through, which a run with the internal MCP server keeps on. */
-const CODEX_MCP_FEATURE = 'code_mode_host'
 
 /** Keys whose value maps names to schemas, so a key named `default` inside is a name to keep. */
 const NAMED_SCHEMA_KEYS = new Set(['properties', '$defs', 'definitions', 'patternProperties'])
@@ -96,22 +94,29 @@ function codexArgs(
     'exec', '--ephemeral', '--skip-git-repo-check', '--sandbox', 'read-only',
     '--ignore-user-config', '--ignore-rules', '--json', '--color', 'never',
     '--output-schema', files.schema, '-o', files.output, '-C', files.work,
-    ...CODEX_DISABLED_FEATURES.filter((feature) => mcp === null || feature !== CODEX_MCP_FEATURE)
-      .flatMap((feature) => ['--disable', feature]),
+    ...CODEX_DISABLED_FEATURES.flatMap((feature) => ['--disable', feature]),
     ...(call.model === undefined ? [] : [`--model=${call.model}`]),
     ...(mcp?.codexArgs ?? []),
     '-',
   ]
 }
 
-/** Every flag the runner passes to `cli`, the way `claude --help` and `codex exec --help` list them. */
+/**
+ * Every flag the runner passes to `cli`, a call that looks up the vault included, the way
+ * `claude --help` and `codex exec --help` list them.
+ */
 export function runnerFlags(cli: HarnessCli): string[] {
   const call: CliCall = {
     cli, model: 'model', system: 'system', prompt: 'prompt', schema: {}, timeoutMs: 0, signal: new AbortController().signal,
   }
+  const lookup: InternalMcp = {
+    ...internalMcpArgs({ configFile: 'config', server: { command: 'server', args: [] }, env: {}, tools: ['tool'] }),
+    env: {},
+    close: async () => {},
+  }
   const args = cli === 'claude'
-    ? claudeArgs(call, {})
-    : codexArgs(call, { schema: 'schema', output: 'output', work: 'work' })
+    ? claudeArgs(call, {}, lookup)
+    : codexArgs(call, { schema: 'schema', output: 'output', work: 'work' }, lookup)
   return [...new Set(args.filter((arg) => arg.startsWith('-') && arg !== '-').map((arg) => arg.split('=')[0]!))]
 }
 

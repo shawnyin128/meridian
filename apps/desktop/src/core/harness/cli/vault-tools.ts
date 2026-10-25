@@ -44,7 +44,7 @@ const TitleSearchArgs = z.object({
   query: z.string().trim().min(1).max(200).describe('Words the title holds, compared without case.'),
 }).strict()
 const WikiPageArgs = z.object({
-  id: z.string().min(1).max(300).describe('A Wiki page id as title_search returns it, such as methods/rotation or papers/<id>.'),
+  id: z.string().min(1).max(300).describe('A Wiki page id: <id from title_search>.'),
 }).strict()
 const ProjectSummaryArgs = z.object({
   id: z.string().min(1).max(200).describe('A project id as title_search returns it.'),
