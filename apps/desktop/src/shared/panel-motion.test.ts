@@ -23,7 +23,7 @@ const { document, getComputedStyle } = globalThis as unknown as Window
 
 const stylesheet = (path: string) => readFileSync(join(import.meta.dirname, '..', 'renderer', path), 'utf8')
 const STYLES = [
-  'shell/AppShell.css', 'routes/Reader.css', 'components/DetailPanel.css', 'routes/ProjectDetail.css',
+  'components/NavPane.css', 'routes/Reader.css', 'components/DetailPanel.css', 'routes/ProjectDetail.css',
   'components/paper-table/PaperTable.css', 'components/GroupedList.css', 'components/timeline/TimelineBoard.css',
 ]
 
@@ -51,7 +51,7 @@ describe('面板的动效', () => {
 
   it('侧栏和论文对话收起时立刻让出位置，只用位移和透明度滑走', () => {
     for (const [markup, pane] of [
-      ['<div class="main sbhide"><div class="sidebar"></div></div>', '.sidebar'],
+      ['<div class="main sbhide"><div class="nav-pane nav-pane--collapsed"></div></div>', '.nav-pane'],
       ['<div class="main reading sbhide"><aside class="paper-chat stream"></aside></div>', '.paper-chat'],
     ] as const) {
       expect(transitioned(markup, pane), pane).toEqual(['transform', 'opacity'])

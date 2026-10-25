@@ -8,6 +8,7 @@ import { MAX_PDF_UPLOAD_BYTES } from '../../../shared/contract.js'
 import { DEFAULT_PAPER_GROUPS, PAPER_PAGE, READ_STATES } from '../../../shared/vocabulary.js'
 import { papers } from '../../ipc.js'
 import { errorLabel } from '../../lib/failure-label.js'
+import { useFormat } from '../../lib/format.js'
 import type { Catalog } from '../../messages/catalog.js'
 import { useMessages } from '../../messages/useMessages.js'
 import { IconGrip, IconRead, IconTrash } from '../icons.js'
@@ -32,6 +33,7 @@ import { useJumpOrigin } from '../../hooks/useJumpOrigin.js'
 import { useScreenLoad } from '../../hooks/useScreenLoad.js'
 import { useVaultWrite } from '../../hooks/useVaultWrite.js'
 import { useScrollFade } from '../../hooks/useScrollFade.js'
+import { isClipped } from '../../hooks/useClipped.js'
 import {
   useCrumbTail, useEscapeLayer, useJump, useNotice, usePaperCount, useScreen, useScreenReentry, useVaultRevision,
 } from '../../shell/AppShell.js'
@@ -276,6 +278,7 @@ function TextCellEdit({ cell, initial, keep, onSave, onCancel }: {
  */
 export function PaperTable() {
   const m = useMessages()
+  const fmt = useFormat()
   const jumpOrigin = useJumpOrigin()
   const [view, setView] = useState<'table' | 'research-map'>('table')
   const [rows, setRows] = useState<PaperRow[]>([])
@@ -596,10 +599,10 @@ export function PaperTable() {
       const badge = ci.querySelector(':scope > .morebadge')
       badge?.classList.add('hid')
       if (!ci.querySelector('.tagchip')) {
-        td.classList.toggle('trunc', ci.scrollWidth > ci.clientWidth + 1)
+        td.classList.toggle('trunc', isClipped(ci, 'x'))
         return
       }
-      if (ci.scrollWidth <= ci.clientWidth + 1) {
+      if (!isClipped(ci, 'x')) {
         td.classList.remove('trunc')
         return
       }
@@ -1019,7 +1022,7 @@ export function PaperTable() {
     }
     const k = c.k
     if (k === 'short') return <td className="pt-dim" key={k}><span className="ci">{p.shortTitle ?? ''}</span></td>
-    if (k === 'authors') return <td className="pt-dim" key={k}><span className="ci">{(p.authors ?? []).join(', ')}</span></td>
+    if (k === 'authors') return <td className="pt-dim" key={k}><span className="ci">{fmt.authors(p.authors ?? [])}</span></td>
     if (k === 'rating') {
       return <td key={k}><RatingStars value={p.rating} onChange={(rating) => setRating(p, rating)} /></td>
     }
@@ -1102,7 +1105,7 @@ export function PaperTable() {
         <thead>
           <tr data-row-actions="">
             {/* A sortable header sorts on click; its button is the keyboard's way to that click. */}
-            <th data-k="title" aria-sort={ariaSort('title')} onClick={() => clickHeader('title')}>
+            <th data-k="title" data-stuck-fade="top left" aria-sort={ariaSort('title')} onClick={() => clickHeader('title')}>
               <button type="button" className="thsort">
                 {m.papers.columns.title}{sort === 'title' ? <> <SortArrow direction={direction} /></> : null}
               </button>
@@ -1111,6 +1114,8 @@ export function PaperTable() {
             {cols.map((c) => (
               <th
                 key={c.k} data-k={c.sort} aria-sort={c.sort ? ariaSort(c.sort) : undefined}
+                // A column marking a drop after it draws the marker in the pseudo-element the fade would take.
+                data-stuck-fade={columnDrop?.key === c.k && columnDrop.after ? undefined : 'top'}
                 className={[
                   movingColumn === c.k ? 'column-moving' : '',
                   columnDrop?.key === c.k ? `column-drop-${columnDrop.after ? 'after' : 'before'}` : '',
@@ -1152,7 +1157,7 @@ export function PaperTable() {
                 />
               )
               : null}
-            <th className="th-add">
+            <th className="th-add" data-stuck-fade="top right">
               <RowActions>
                 <AddAction
                   size="compact" ref={colAdd} label={m.papers.columnHeader.addColumn}
@@ -1190,10 +1195,10 @@ export function PaperTable() {
                       }
                     }}
                   >
-                    <td className="pt-title"><ToolbarButton className="ci pt-open"><PaperText text={p.title} /></ToolbarButton></td>
+                    <td className="pt-title" data-stuck-fade="left"><ToolbarButton className="ci pt-open"><PaperText text={p.title} /></ToolbarButton></td>
                     {cols.map((c) => cell(p, c))}
                     {newCol ? <td className="pt-cust" /> : null}
-                    <td className="row-actions-cell">
+                    <td className="row-actions-cell" data-stuck-fade="right">
                       <RowActions>
                         <IconButton
                           label={m.papers.rowActions.delete} size="nested" tone="danger" className="rowx"
@@ -1260,7 +1265,7 @@ export function PaperTable() {
 
       <PageError error={error} />
 
-      <PageBody className={detail ? 'libview withdetail' : 'libview'}>
+      <PageBody fill className={detail ? 'libview withdetail' : 'libview'}>
         <div className="libwide">
           <PageToolbar className="paper-view-toolbar">
             <SegmentedControl

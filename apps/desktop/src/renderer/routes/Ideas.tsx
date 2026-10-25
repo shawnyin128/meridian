@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import type { KeyboardEvent, ReactNode } from 'react'
+import type { ReactNode } from 'react'
 import type { ComponentProps } from 'react'
 import type {
   IdeaRelations as IdeaRelationsValue, ProjectDetail, ProjectSummary, ResearchIdea,
 } from '../../shared/contract.js'
 import { FINISHED_PROJECT, SHELVED_PROJECT } from '../../shared/vocabulary.js'
-import { appMenu, idea as ideaApi, project as projectApi, wiki as wikiApi } from '../ipc.js'
+import { idea as ideaApi, project as projectApi, wiki as wikiApi } from '../ipc.js'
 import { MenuItem, MenuSeparator } from '../components/ActionMenu.js'
 import { SortMenu } from '../components/SortMenu.js'
 import { FormInput, FormTextarea } from '../components/FormControls.js'
@@ -43,7 +43,7 @@ import { useSourceChatDeleted } from '../hooks/useSourceChatDeleted.js'
 import { useDragReorder, type Reorderable } from '../hooks/useDragReorder.js'
 import { DragHandle } from '../components/DragHandle.js'
 import { failureOf } from '../lib/failure-label.js'
-import { commitsMultiline, composing } from '../lib/keyboard.js'
+import { commitKeys } from '../lib/keyboard.js'
 import { useMessages } from '../messages/useMessages.js'
 import { AgentLabel, SourceLabel } from '../components/SourceLabel.js'
 import { Tag } from '../components/Tag.js'
@@ -239,7 +239,7 @@ function IdeaDetailPanel({
   linked: ProjectSummary | undefined
   projects: ProjectSummary[]
   pageTitles: ReadonlyMap<string, string>
-  /** The idea's candidate node as its source project's graph names it, while one is shown. */
+  /** The idea's candidate node as its source project's graph names it, while one is shown; null once that project is gone. */
   candidate: ComponentProps<typeof IdeaNodeCandidate>['node'] | undefined
   onClose: () => void
   onSave: (title: string, body: string) => Promise<boolean>
@@ -274,12 +274,6 @@ function IdeaDetailPanel({
       if (saved) setEdit(null)
     })
   }
-  /** Enter commits the title, ⌘Enter on macOS or Ctrl+Enter elsewhere the body, and Escape restores both. */
-  const commitOrCancel = (multiline: boolean) => (event: KeyboardEvent<HTMLElement>) => {
-    if (composing(event.nativeEvent)) return
-    if (event.key === 'Escape') { event.stopPropagation(); cancelEditing(); return }
-    if (multiline ? commitsMultiline(appMenu.platform(), event.nativeEvent) : event.key === 'Enter') { event.preventDefault(); save() }
-  }
 
   return (
     <aside className="idea-detail-panel node-document-pane" ref={panelFade} data-fade-paint="" aria-label={m.ideas.detailHeading}>
@@ -300,14 +294,16 @@ function IdeaDetailPanel({
                 <span>{m.ideas.editor.titleLabel}</span>
                 <FormInput
                   autoFocus value={title} maxLength={160}
-                  onChange={(event) => setEdit({ ...edit!, title: event.target.value })} onKeyDown={commitOrCancel(false)}
+                  onChange={(event) => setEdit({ ...edit!, title: event.target.value })}
+                  onKeyDown={commitKeys({ onSave: save, onCancel: cancelEditing })}
                 />
               </label>
               <label>
                 <span>{m.ideas.bodyLabel}</span>
                 <FormTextarea
                   value={body} maxLength={20_000}
-                  onChange={(event) => setEdit({ ...edit!, body: event.target.value })} onKeyDown={commitOrCancel(true)}
+                  onChange={(event) => setEdit({ ...edit!, body: event.target.value })}
+                  onKeyDown={commitKeys({ multiline: true, onSave: save, onCancel: cancelEditing })}
                 />
               </label>
             </section>
@@ -367,7 +363,7 @@ export function Ideas() {
   const [projects, setProjects] = useState<ProjectSummary[]>([])
   const [pageTitles, setPageTitles] = useState<ReadonlyMap<string, string>>(new Map())
   const chatDeleted = useSourceChatDeleted()
-  const [candidateSource, setCandidateSource] = useState<ProjectDetail | null>(null)
+  const [candidateSource, setCandidateSource] = useState<ProjectDetail | 'gone' | null>(null)
   const [details, setDetails] = useState<ReadonlyMap<string, ProjectDetail>>(new Map())
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [archiveOpen, setArchiveOpen] = useState(false)
@@ -420,9 +416,14 @@ export function Ideas() {
   useEffect(() => {
     setCandidateSource(null)
     if (candidateProject === undefined) return
-    return load('candidate', projectApi.get(candidateProject), setCandidateSource)
+    // A deleted source project leaves the candidate in the missing-project state; any other failure stands.
+    return load('candidate', projectApi.get(candidateProject).catch((cause: unknown) => {
+      if (failureOf(cause) === 'not-found') return 'gone' as const
+      throw cause
+    }), setCandidateSource)
   }, [candidateProject, revision, load])
-  const candidateNode = selected?.candidateNode === undefined || candidateSource === null || candidateSource.id !== candidateProject
+  const candidateNode = selected?.candidateNode === undefined || candidateSource === null || candidateSource === 'gone'
+    || candidateSource.id !== candidateProject
     ? undefined
     : (candidateSource.workspace?.graph ?? candidateSource.graph).nodes.find((node) => node.id === selected.candidateNode)
   const current = listed.filter((idea) => !idea.archived)
@@ -575,7 +576,9 @@ export function Ideas() {
                 linked={selected.project === undefined ? undefined : projectsById.get(selected.project)}
                 projects={projects}
                 pageTitles={pageTitles}
-                candidate={candidateNode === undefined ? undefined : { id: candidateNode.id, label: candidateNode.label, mode: nodeMode(candidateNode) }}
+                candidate={candidateNode !== undefined
+                  ? { id: candidateNode.id, label: candidateNode.label, mode: nodeMode(candidateNode) }
+                  : candidateSource === 'gone' && selected.candidateNode !== undefined ? null : undefined}
                 onClose={closeDetail}
                 onRelations={(relations, removed) => write(ideaApi.update(selected.id, { relations }), {
                   note: removed === undefined ? m.project.links.added : <TitleNote message={m.project.links.removed} title={removed} />,

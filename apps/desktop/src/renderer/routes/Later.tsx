@@ -20,6 +20,7 @@ import { useFormat } from '../lib/format.js'
 import { useScreenLoad } from '../hooks/useScreenLoad.js'
 import { useUndo } from '../hooks/useUndo.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
+import { useArrival } from '../hooks/useArrival.js'
 import { PageBody, PageError, PageHeader, PageShell, PageTitle, PageToolbar } from '../components/PageShell.js'
 import { SourceLabel } from '../components/SourceLabel.js'
 import { shownSource } from '../lib/watch-source.js'
@@ -46,7 +47,6 @@ export function Later() {
   const { jump, open } = useJump()
   const { origin, back } = useJumpOrigin()
   const body = useRef<HTMLDivElement>(null)
-  const consumed = useRef(0)
   const { revision, bump } = useVaultRevision()
   const { error, load } = useScreenLoad()
   const write = useVaultWrite()
@@ -84,12 +84,8 @@ export function Later() {
 
   useEffect(() => load('entries', later.list(), setEntries), [revision, load])
 
-  // The entry can be scrolled to only once the queue has arrived.
-  useEffect(() => {
-    if (jump === null || jump.seq === consumed.current || entries === null) return
-    consumed.current = jump.seq
-    body.current?.querySelector(`[data-pid="${CSS.escape(jump.target)}"]`)?.scrollIntoView({ block: 'nearest' })
-  }, [jump, entries])
+  // The entry can be landed on only once the queue has arrived.
+  useArrival(jump, entries !== null, ({ target }) => body.current?.querySelector(`[data-pid="${CSS.escape(target)}"]`))
 
   const remove = (entry: LaterEntry) => {
     void write(later.remove(entry.id).then((trashed) => [trashed]), {

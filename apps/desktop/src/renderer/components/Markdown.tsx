@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef } from 'react'
-import type { KeyboardEvent as ReactKeyboardEvent, ReactNode, RefObject } from 'react'
+import type { ReactNode, RefObject } from 'react'
 import { useScrollFade } from '../hooks/useScrollFade.js'
 import type { Parent, Root } from 'mdast'
 import ReactMarkdown from 'react-markdown'
@@ -9,8 +9,7 @@ import remarkGfm from 'remark-gfm'
 import remarkMath from 'remark-math'
 import 'katex/dist/katex.min.css'
 import type { WikiRef } from '../../shared/contract.js'
-import { appMenu } from '../ipc.js'
-import { commitsMultiline, composing } from '../lib/keyboard.js'
+import { commitKeys } from '../lib/keyboard.js'
 import { EntityLink } from './EntityLink.js'
 import { MarkdownEditor } from './MarkdownEditor.js'
 import { remarkPaperText } from './paper/paper-text.js'
@@ -206,16 +205,7 @@ export function MarkdownBox({ text, editing, box, onCancel, onSave, onOpen, onAn
   if (!editing) source.current = text
   useEffect(() => { if (editing && live === undefined) box.current?.focus() }, [editing, box, live])
   const classes = `md${editing ? ' src' : ''}${className === undefined ? '' : ` ${className}`}`
-  const keys = (e: ReactKeyboardEvent) => {
-    if (commitsMultiline(appMenu.platform(), e.nativeEvent)) {
-      e.preventDefault()
-      onSave()
-      return
-    }
-    if (e.key !== 'Escape') return
-    e.stopPropagation()
-    if (!composing(e.nativeEvent)) onCancel()
-  }
+  const keys = commitKeys({ multiline: true, onSave, onCancel })
   // Under exactOptionalPropertyTypes an absent onOpen cannot be passed as undefined; it must be left out.
   const links = {
     ...(onOpen === undefined ? {} : { onOpen }), ...(onAnchor === undefined ? {} : { onAnchor }),

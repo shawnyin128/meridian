@@ -84,8 +84,8 @@ const ONE_LINE_CLIP: Record<string, { fade: string } | { never: string }> = {
   '.attn-text': { never: 'a FadeText or holds one' },
   // Its segments are FadeTexts with a cap that shrink and fade first; only the fixed separators keep their width.
   '.crumb': { never: 'segments fade' },
-  // The palette's title is for assistive technology only: a 1px box clipped away.
-  '.cmdk-title': { never: 'visually hidden' },
+  // A hidden dialog title is for assistive technology only: a 1px box clipped away.
+  '.modal-title--hidden': { never: 'visually hidden' },
   // The composer's placeholder is drawn by its editor, which cannot tell whether the placeholder is cut off.
   '.chat-composer .cm-placeholder': { never: 'placeholder' },
   // Its column is as wide as the widest date chip in it, and the chip's own text is a FadeText.

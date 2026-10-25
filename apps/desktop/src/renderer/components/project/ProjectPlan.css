@@ -39,6 +39,4 @@
 .project-plan .ddlrow .din.state-edit{padding:var(--sp-2) var(--sp-4);background:transparent;color:var(--ter);font-family:var(--sans);font-size:var(--fs-sm)}
 .project-plan .ddlrow .twinputs{display:flex;align-items:center;gap:var(--sp-4);flex-shrink:0}
 .project-plan .ddlrow .min{flex:1;min-width:0}
-@keyframes plan-row-flash{0%,100%{background:transparent}50%{background:var(--tint-warn)}}
-.project-plan .ddlrow.flash{animation:plan-row-flash var(--t-flash) var(--e-inout) 2}
 .project-plan .row-actions{margin-left:var(--sp-2)}

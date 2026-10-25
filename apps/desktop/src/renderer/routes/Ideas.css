@@ -1,5 +1,5 @@
 /* A size container: 100cqh, its height inside the padding, keeps the detail panel inside the visible page at any window height. */
-.ideas-body{padding:var(--sp-20) var(--sp-24);container-type:size}
+.ideas-body{container-type:size}
 .ideas-workspace{display:flex;align-items:flex-start;gap:0;width:100%;box-sizing:border-box}
 /* An inline-size container: the rows' columns follow the list's own width, which the detail panel narrows. */
 .ideas-list{flex:1;min-width:0;container:idea-list/inline-size}

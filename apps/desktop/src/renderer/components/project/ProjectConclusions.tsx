@@ -122,7 +122,7 @@ export function ProjectConclusionPanel({
   return (
     <>
       <SectionHeading
-        level="group" className="node-document-head"
+        level="group" className="node-document-head" data-stuck-fade="top"
         actions={(
           <>
             {conclusion.node !== undefined && conclusion.fingerprint !== undefined && conclusion.state === 'pending'

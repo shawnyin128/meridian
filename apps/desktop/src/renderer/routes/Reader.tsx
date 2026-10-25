@@ -16,9 +16,11 @@ import { typesText } from '../lib/keyboard.js'
 import { useMessages } from '../messages/useMessages.js'
 import { useDrafts } from '../hooks/useDrafts.js'
 import { useOnLeave } from '../hooks/useOnLeave.js'
+import { land } from '../hooks/useArrival.js'
 import {
-  useCrumbTail, useJump, useNotice, useVaultRevision, type CrumbSeg, type ScreenKey, type JumpAnchor,
+  useCrumbTail, useJump, useNotice, useVaultRevision, type ScreenKey, type JumpAnchor,
 } from '../shell/AppShell.js'
+import type { CrumbSeg } from '../components/Breadcrumb.js'
 import { ActionPopover } from '../components/ActionPopover.js'
 import type { AnchorBox } from '../components/floating-layer.js'
 import { FormTextarea } from '../components/FormControls.js'
@@ -577,11 +579,13 @@ export function Reader() {
       : view.querySelector(`.paper-highlight[data-highlight="${arrival.highlight}"]`)
     const note = arrival.page === undefined && arrival.highlight === undefined && opened !== null
       ? selectionNotes.get(opened) : undefined
-    if (mark !== null) mark.scrollIntoView({ block: 'center' })
+    if (mark !== null) land(mark, 'center')
     else {
       const page = note?.page ?? arrival.page ?? reading.lastPage ?? 1
-      view.querySelector<HTMLElement>(`.pdfpagebox[data-page="${page}"]`)
-        ?.scrollIntoView({ block: note === undefined ? 'start' : 'center' })
+      const pagebox = view.querySelector<HTMLElement>(`.pdfpagebox[data-page="${page}"]`)
+      // Opening a paper resumes at its last page, and a note being written shows again: neither names an anchor.
+      if (pagebox !== null && arrival.page !== undefined) land(pagebox, 'start', 'over')
+      else pagebox?.scrollIntoView({ block: note === undefined ? 'start' : 'center' })
     }
     // The toolbar opens once the landing's scroll has been handled, as a scroll closes it.
     if (note !== undefined) {
@@ -947,8 +951,8 @@ export function Reader() {
   }
 
   const jumpToPage = (page: number) => {
-    scroller.current?.querySelector<HTMLElement>(`.pdfpagebox[data-page="${page}"]`)
-      ?.scrollIntoView({ block: 'start' })
+    const pagebox = scroller.current?.querySelector(`.pdfpagebox[data-page="${page}"]`)
+    if (pagebox) land(pagebox, 'start', 'over')
   }
 
   const tail = useMemo<CrumbSeg[]>(

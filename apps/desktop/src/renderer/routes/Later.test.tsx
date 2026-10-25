@@ -75,7 +75,7 @@ describe('Later', () => {
     delete (HTMLElement.prototype as Partial<HTMLElement>).scrollIntoView
   })
 
-  it('从别处跳到一条时,把那一条移到眼前', async () => {
+  it('从别处跳到一条时,把那一条移到眼前并闪一下', async () => {
     const shown: (string | null)[] = []
     // jsdom lays nothing out and has no scrollIntoView.
     HTMLElement.prototype.scrollIntoView = function (this: HTMLElement) { shown.push(this.getAttribute('data-pid')) }
@@ -83,6 +83,7 @@ describe('Later', () => {
     const root = createRoot(host)
     await act(async () => { root.render(<MessagesProvider><Later /></MessagesProvider>) })
     expect(shown).toEqual(['later-1'])
+    expect([...host.querySelectorAll('[data-arrived]')].map((entry) => entry.getAttribute('data-pid'))).toEqual(['later-1'])
     await act(async () => { root.unmount() })
     delete (HTMLElement.prototype as Partial<HTMLElement>).scrollIntoView
   })

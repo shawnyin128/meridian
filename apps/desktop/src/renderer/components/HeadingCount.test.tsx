@@ -7,7 +7,6 @@ import { describe, expect, it, vi } from 'vitest'
 import { CardTray } from './CardTray.js'
 import { Group } from './GroupedList.js'
 import { PageTitle, SectionHeading } from './PageShell.js'
-import { ReaderPanelHeader } from './reader/ReaderPanelHeader.js'
 import { TOOLTIP_DELAY, TooltipProvider } from './Tooltip.js'
 
 declare global {
@@ -27,7 +26,6 @@ describe('标题的计数', () => {
     expect(html(<Group title="已归档" count={7} fold={{ open: true, onToggle: vi.fn() }}>内容</Group>))
       .toContain(`<span><span class="collapsible-group-title">已归档</span>${COUNT}</span>`)
     expect(html(<Group title="今天" count={7}>内容</Group>)).toBe(`<div class="section-heading section-heading--group"><span>今天${COUNT}</span></div>内容`)
-    expect(html(<ReaderPanelHeader title="阅读笔记" count={7} />)).toContain(`<strong>阅读笔记${COUNT}</strong>`)
     expect(html(<CardTray variant="row" summary="版本史" count={7}><p>旧版</p></CardTray>)).toContain(`>版本史${COUNT}</span>`)
   })
 

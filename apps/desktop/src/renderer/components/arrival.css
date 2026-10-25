@@ -1,0 +1,12 @@
+/*
+ * The flash of a row or anchor a jump has landed on, which useArrival marks [data-arrived] for two
+ * pulses of --t-flash. A target whose drawing covers its own background, marked
+ * [data-arrived="over"], flashes in a layer over that drawing instead, and must be positioned. With
+ * "Reduce motion" on, the animation stops, so the target keeps the tint for the same time.
+ */
+@keyframes arrival-flash{50%{background-color:var(--tint-warn)}}
+[data-arrived]:not([data-arrived="over"]),[data-arrived="over"]::after{animation:arrival-flash var(--t-flash) var(--e-inout) 2}
+[data-arrived="over"]::after{content:"";position:absolute;inset:0;z-index:3;border-radius:inherit;pointer-events:none}
+@media (prefers-reduced-motion:reduce){
+  [data-arrived]:not([data-arrived="over"]),[data-arrived="over"]::after{background-color:var(--tint-warn)}
+}

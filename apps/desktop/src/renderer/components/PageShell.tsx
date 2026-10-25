@@ -1,14 +1,13 @@
 import {
   forwardRef,
-  useCallback,
   type HTMLAttributes,
   type ReactNode,
 } from 'react'
-import { useScrollFade } from '../hooks/useScrollFade.js'
 import { FadeText } from './FadeText.js'
 import { FoldToggle } from './FoldToggle.js'
 import { HeadingCount, headingText } from './HeadingCount.js'
 import { InlineMessage } from './InlineMessage.js'
+import { ScrollArea } from './ScrollArea.js'
 import './PageShell.css'
 
 const classes = (base: string, className: string | undefined) =>
@@ -24,12 +23,16 @@ export const PageShell = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElemen
 /**
  * Fixed-height page identity bar: the back button when the page has one and the title, as children,
  * and `actions`, everything that acts on the whole page, at its right end. Page actions are default-size
- * buttons, the primary one last.
+ * buttons, the primary one last. `size: 'pane'` heads a pane beside the page, such as the reader's paper
+ * chat and rail panels: the same bar on the pane's ground, its title a step smaller.
  */
-export const PageHeader = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement> & { actions?: ReactNode }>(
-  function PageHeader({ className, children, actions, ...props }, ref) {
+export const PageHeader = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement> & {
+  actions?: ReactNode
+  size?: 'page' | 'pane'
+}>(
+  function PageHeader({ className, children, actions, size = 'page', ...props }, ref) {
     return (
-      <div ref={ref} className={classes('desk-head', className)} {...props}>
+      <div ref={ref} className={classes(size === 'pane' ? 'desk-head desk-head--pane' : 'desk-head', className)} {...props}>
         {children}
         {actions === undefined ? null : <div className="page-actions">{actions}</div>}
       </div>
@@ -37,10 +40,18 @@ export const PageHeader = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivEleme
   },
 )
 
-/** The one place for switching between peer views of the page, with the filters that go with them, at the body's start. */
-export const PageToolbar = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
-  function PageToolbar({ className, ...props }, ref) {
-    return <div ref={ref} className={classes('page-toolbar', className)} {...props} />
+/** A line of state among a page or pane head's actions, such as when the page last refreshed. */
+export function PageNote({ children }: { children: ReactNode }) {
+  return <span className="page-note">{children}</span>
+}
+
+/**
+ * The one place for switching between peer views of the page, with the filters that go with them, at the body's start.
+ * `align: 'center'` centres them over the stream of entries the toolbar heads, whose own gap spaces it.
+ */
+export const PageToolbar = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement> & { align?: 'start' | 'center' }>(
+  function PageToolbar({ className, align = 'start', ...props }, ref) {
+    return <div ref={ref} className={classes(align === 'center' ? 'page-toolbar page-toolbar--center' : 'page-toolbar', className)} {...props} />
   },
 )
 
@@ -62,16 +73,20 @@ export function PageTitle({ children, label, count, className, ...props }: {
   )
 }
 
-/** The only main scrolling area of the page; its top and bottom fade while content is hidden past them. */
-export const PageBody = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
-  function PageBody({ className, ...props }, ref) {
-    const fade = useScrollFade('y')
-    const attach = useCallback((node: HTMLDivElement | null) => {
-      fade(node)
-      if (typeof ref === 'function') ref(node)
-      else if (ref !== null) ref.current = node
-    }, [fade, ref])
-    return <div ref={attach} className={classes('desk-body', className)} data-fade-paint="" {...props} />
+/**
+ * The only main scrolling area of the page; its top and bottom fade while content is hidden past them.
+ * Its content keeps to the page's column: `column: 'page'` for list screens, `prose` for pages that are
+ * read, such as a Wiki page or a project. A `fill` body does not scroll: its content takes its height
+ * and scrolls inside, as a table does.
+ */
+export const PageBody = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement> & {
+  column?: 'page' | 'prose'
+  fill?: boolean
+}>(
+  function PageBody({ className, column = 'page', fill = false, ...props }, ref) {
+    const own = `desk-body${column === 'prose' ? ' desk-body--prose' : ''}`
+    if (fill) return <div ref={ref} className={classes(`${own} desk-body--fill`, className)} {...props} />
+    return <ScrollArea axis="y" fill gutter paint ref={ref} className={classes(own, className)} {...props} />
   },
 )
 
