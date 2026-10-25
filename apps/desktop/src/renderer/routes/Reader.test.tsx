@@ -20,6 +20,9 @@ const shell = vi.hoisted(() => ({
   /** The change entries changelog.undo was asked to undo, in order. */
   undone: [] as string[],
   writes: [] as ReadingMutation[],
+  /** Whether the reader is the screen shown, and the handler of the commands Main hands it while it is. */
+  shown: true,
+  appCommand: null as ((command: string) => void) | null,
   /** The paper's PDF bytes as `papers.source` answers them; by default they never arrive. */
   source: (): Promise<Uint8Array> => new Promise(() => {}),
   /** The reading state after `mutation`, as Core applies the highlight commands and the deletions. */
@@ -46,6 +49,12 @@ const shell = vi.hoisted(() => ({
 }))
 
 vi.mock('../ipc.js', () => ({
+  appMenu: {
+    onAppCommand: (handler: (command: string) => void) => {
+      shell.appCommand = handler
+      return () => { shell.appCommand = null }
+    },
+  },
   papers: {
     get: () => Promise.resolve({ id: 'paper-1', title: 'Paper One' }),
     reading: () => Promise.resolve(structuredClone(shell.reading)),
@@ -71,6 +80,7 @@ vi.mock('../shell/AppShell.js', () => ({
   }),
   useCrumbTail: () => {},
   useJump: () => ({ jump: shell.jump, open: vi.fn(), returnTo: shell.returnTo }),
+  useScreenShown: () => shell.shown,
   useVaultRevision: () => ({ revision: shell.revision, bump: vi.fn() }),
 }))
 
@@ -163,6 +173,28 @@ describe('Reader', () => {
     expect(shown()).toBe('100%')
     await press('Zoom out', 2)
     expect([shown(), button('Zoom in').disabled, button('Zoom out').disabled]).toEqual(['60%', false, true])
+  })
+
+  it('阅读器显示着时,视图菜单的放大、缩小、实际大小(⌘+、⌘−、⌘0)缩放论文,和缩放控件走同样的步子', async () => {
+    await render()
+    const shown = () => host.querySelector('.zoom-control-reset')!.textContent
+    const command = async (name: string) => { await act(async () => { shell.appCommand!(name) }) }
+    await command('zoomIn')
+    await command('zoomIn')
+    expect(shown()).toBe('140%')
+    await command('zoomOut')
+    expect(shown()).toBe('120%')
+    await command('resetZoom')
+    expect(shown()).toBe('100%')
+    await command('find')
+    expect(shown()).toBe('100%')
+  })
+
+  it('阅读器不在前面时不接缩放命令', async () => {
+    shell.shown = false
+    await render()
+    expect(shell.appCommand).toBeNull()
+    shell.shown = true
   })
 
   it('滚轮平常滚动页面;双指捏合或按住 Ctrl、⌘ 滚动才缩放,缩放不超出上下限', async () => {

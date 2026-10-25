@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import type { CSSProperties, ReactNode } from 'react'
+import type { AppCommand } from '../../shared/app-commands.js'
 import type { ChatSession, Watch } from '../../shared/contract.js'
 import { listingsOf } from '../../shared/inbox-streams.js'
 import { ACTIVE_PROJECT } from '../../shared/vocabulary.js'
@@ -21,14 +22,16 @@ import { usePruneDrafts } from '../hooks/useDrafts.js'
 import { GenerationsContext, useCoreGenerations } from '../hooks/useGenerations.js'
 import { ModelStatusContext, useCoreModelStatus } from '../hooks/useModelStatus.js'
 import { useOpenerFocus } from '../hooks/useOpenerFocus.js'
-import { errorLabel } from '../lib/failure-label.js'
-import { commandShortcut, composing, pressesCommand } from '../lib/keyboard.js'
+import { errorLabel, failureOf } from '../lib/failure-label.js'
+import { commandShortcut, composing, pressesCommand, typesText } from '../lib/keyboard.js'
 import type { Catalog } from '../messages/catalog.js'
 import { useMessages } from '../messages/useMessages.js'
 import { CommandPalette, type PaletteCommand } from './CommandPalette.js'
 import { SETTINGS_CATEGORIES, SETTINGS_CATEGORY_LABEL, type SettingsCategory } from './settings-categories.js'
 import { Sidebar } from './Sidebar.js'
 import { JobsContext, useJobsPoll } from './useJobs.js'
+import { readShellState, writeShellState } from './shell-state.js'
+import { itemsNow, landOnRestored, takeUndoOffers } from './undo-offers.js'
 import { ColourThemeFilesContext, useColourThemeFilesPoll } from './useColourThemes.js'
 import { Button } from '../components/Button.js'
 import './AppShell.css'
@@ -165,6 +168,11 @@ export function useCrumbTail(tail: CrumbSeg[], onLeafClick?: () => void): void {
 /**
  * Returns the two ways to show the app's one notice: `success` for an action that took effect,
  * `refusal` for one that was refused or failed and wrote nothing. A new notice replaces the shown one.
+ * An action marked `undoes` stays on offer after its notice is gone, as does the Undo of every write
+ * the change log records whose notice does not offer one (useVaultWrite): ⌘Z outside a text field runs
+ * the latest Undo still on offer exactly as a notice's button does, then returns to the screen that was
+ * shown when it was offered and lands on the item the undo brings back there, which flashes. Running
+ * it either way takes it off offer.
  * The returned object keeps the same reference throughout the lifetime of the shell.
  */
 export function useNotice(): { success: Notify; refusal: Notify } {
@@ -350,6 +358,27 @@ export function usePaperChatCollapsed(): boolean {
 const escapeLayers: { close: () => void }[] = []
 
 /**
+ * Focuses the search field of the screen shown, as "/" and Find do: the screen's own field wins over
+ * the always-mounted sidebar search, which sits earlier in the DOM and would otherwise match first in a
+ * single combined selector. A collapsed sidebar is inert, and its search is no fallback.
+ */
+function focusSearch(): void {
+  const field = document.querySelector<HTMLElement>(
+    '.screenslot:not([hidden]) #composer, .screenslot:not([hidden]) #libq',
+  ) ?? document.querySelector<HTMLElement>('#sidebar:not([inert]) #sSearch')
+  field?.focus()
+}
+
+/**
+ * Presses the back button of what is in front, as a trackpad swipe and the mouse's back button do:
+ * an open dialog's, or else the shown screen's first. With none there, nothing happens.
+ */
+function pressBack(): void {
+  const front = document.querySelector('[role="dialog"]') ?? document.querySelector('.screenslot:not([hidden])')
+  front?.querySelector<HTMLButtonElement>('button.back')?.click()
+}
+
+/**
  * Register one dismissible layer. Escape peels the most recently registered active layer and stops;
  * Radix surfaces handle their own Escape before this handler sees it. An Escape pressed while an
  * input method is composing peels nothing.
@@ -376,30 +405,39 @@ export function AppShell({ screens, settings }: {
   settings: ReactNode
 }) {
   const m = useMessages()
-  const [screen, setScreen] = useState<ScreenKey>('feed')
+  // The App reopens where it was: the screen, the reader's paper, its sidebar selection and the sidebar.
+  const [restored] = useState(() => readShellState({
+    sidebarWidth: SIDEBAR_WIDTH, sidebarHidden: false, screen: 'feed', inboxScope: ALL_WATCHES, inboxMode: 'watch',
+    chat: null, reader: null,
+  }, GRIP_LIMITS.sidebar))
+  const reopened: ScreenKey = restored.reader === null ? restored.screen : 'reader'
+  const [screen, setScreen] = useState<ScreenKey>(reopened)
   const [entry, setEntry] = useState(0)
   const [reentry, setReentry] = useState(0)
-  const [inboxScope, setInboxScope] = useState(ALL_WATCHES)
-  const [inboxMode, setInboxMode] = useState<InboxMode>('watch')
-  const [mounted, setMounted] = useState<ScreenKey[]>(['feed'])
+  const [inboxScope, setInboxScope] = useState(restored.inboxScope)
+  const [inboxMode, setInboxMode] = useState<InboxMode>(restored.inboxMode)
+  const [mounted, setMounted] = useState<ScreenKey[]>([reopened])
   const [tails, setTails] = useState<Partial<Record<ScreenKey, Deeper>>>({})
-  const [width, setWidth] = useState(SIDEBAR_WIDTH)
+  const [width, setWidth] = useState(restored.sidebarWidth)
   /** The paper chat's dragged width; null until the first drag, leaving the Reader's CSS default. */
   const [chatWidth, setChatWidth] = useState<number | null>(null)
-  const [hidden, setHidden] = useState(false)
+  const [hidden, setHidden] = useState(restored.sidebarHidden)
   const [paperCount, setPaperCount] = useState<number | null>(null)
   const [projectCount, setProjectCount] = useState<number | null>(null)
   const [trashCount, setTrashCount] = useState(0)
   const [changeCount, setChangeCount] = useState<number | null>(null)
   const [wikiCount, setWikiCount] = useState<number | null>(null)
   const [ideaCount, setIdeaCount] = useState<number | null>(null)
-  const [jump, setJump] = useState<ScreenJump | null>(null)
+  // A reopened reader is a jump from the screen it was opened from, as when it was opened.
+  const [jump, setJump] = useState<ScreenJump | null>(() => (restored.reader === null
+    ? null
+    : { screen: 'reader', target: restored.reader.paper, from: restored.reader.from, seq: 1 }))
   const [watches, setWatches] = useState<Watch[]>([])
   const [chats, setChats] = useState<ChatSession[]>([])
   const [chatsRead, setChatsRead] = useState(false)
   const [projectIds, setProjectIds] = useState<string[] | null>(null)
   const [ideaIds, setIdeaIds] = useState<string[] | null>(null)
-  const [chatId, setChatId] = useState<string | null>(null)
+  const [chatId, setChatId] = useState<string | null>(restored.chat)
   const [inboxWatches, setInboxWatches] = useState<string[][]>([])
   const [discoveryCount, setDiscoveryCount] = useState(0)
   const [discoveryProjects, setDiscoveryProjects] = useState<DiscoveryProjectCount[]>([])
@@ -411,7 +449,11 @@ export function AppShell({ screens, settings }: {
   const [bootError, setBootError] = useState<string | null>(null)
   const [notice, setNotice] = useState<NoticeContent | null>(null)
   const noticeSeq = useRef(0)
-  const jumpSeq = useRef(0)
+  /** The Undos notices have offered that nothing has run yet, the latest last, with the screen shown when each was offered. */
+  const undoOffers = useRef<{ run: () => void; screen: ScreenKey }[]>([])
+  const shownScreen = useRef(screen)
+  shownScreen.current = screen
+  const jumpSeq = useRef(restored.reader === null ? 0 : 1)
   const [appMenuOpen, setAppMenuOpen] = useState(false)
   // With no element noted, Radix returns focus to the logo button.
   const returnAppMenuFocus = useOpenerFocus(appMenuOpen)
@@ -490,6 +532,21 @@ export function AppShell({ screens, settings }: {
 
   // The platform name is for CSS: the room left for the window buttons on either side depends on it.
   useEffect(() => { document.documentElement.dataset.os = appMenu.platform() }, [])
+  // While Meridian is not the active app the document is marked, and the current navigation row turns grey.
+  useEffect(() => {
+    const root = document.documentElement
+    const mark = () => {
+      if (document.hasFocus()) delete root.dataset.windowInactive
+      else root.dataset.windowInactive = ''
+    }
+    mark()
+    window.addEventListener('focus', mark)
+    window.addEventListener('blur', mark)
+    return () => {
+      window.removeEventListener('focus', mark)
+      window.removeEventListener('blur', mark)
+    }
+  }, [])
   useEffect(() => appMenu.onFullScreen((on) => {
     if (on) document.documentElement.dataset.fullscreen = ''
     else delete document.documentElement.dataset.fullscreen
@@ -507,9 +564,21 @@ export function AppShell({ screens, settings }: {
 
   const bump = useCallback(() => setRevision((n) => n + 1), [])
   const notify = useMemo(() => {
+    const offered = (action: NoticeAction | undefined): NoticeAction | undefined => {
+      if (action?.undoes !== true) return action
+      const offer = { run: action.onAction, screen: shownScreen.current }
+      undoOffers.current.push(offer)
+      return {
+        ...action,
+        onAction: () => {
+          undoOffers.current = undoOffers.current.filter((held) => held !== offer)
+          offer.run()
+        },
+      }
+    }
     const of = (tone: NoticeTone): Notify => (text, action) => {
       noticeSeq.current += 1
-      setNotice({ id: noticeSeq.current, tone, text, action })
+      setNotice({ id: noticeSeq.current, tone, text, action: offered(action) })
     }
     return { success: of('success'), refusal: of('refusal') }
   }, [])
@@ -532,7 +601,7 @@ export function AppShell({ screens, settings }: {
   }), [settingsCategory, settingsOpen, openSettingsCategory])
 
   // ⌘B on macOS, Ctrl+B elsewhere, toggles the sidebar; Escape peels the topmost dismissible layer;
-  // "/" outside an editable element jumps to the nearest search field.
+  // "/" outside an editable element jumps to the nearest search field; the mouse's back button goes back.
   useEffect(() => {
     const key = (e: KeyboardEvent) => {
       if (pressesCommand(appMenu.platform(), e, 'B')) {
@@ -549,17 +618,21 @@ export function AppShell({ screens, settings }: {
       const editable = target.isContentEditable || /^(input|textarea|select)$/i.test(target.tagName)
       if (e.key === '/' && !editable) {
         e.preventDefault()
-        // The active screen's own field wins over the always-mounted sidebar search, which sits
-        // earlier in the DOM and would otherwise match first in a single combined selector. A
-        // collapsed sidebar is inert, and its search is no fallback.
-        const field = document.querySelector<HTMLElement>(
-          '.screenslot:not([hidden]) #composer, .screenslot:not([hidden]) #libq',
-        ) ?? document.querySelector<HTMLElement>('#sidebar:not([inert]) #sSearch')
-        field?.focus()
+        focusSearch()
       }
     }
+    const mouseBack = (e: MouseEvent) => {
+      // The mouse's back button is button 3.
+      if (e.button !== 3) return
+      e.preventDefault()
+      pressBack()
+    }
     document.addEventListener('keydown', key)
-    return () => document.removeEventListener('keydown', key)
+    document.addEventListener('mouseup', mouseBack)
+    return () => {
+      document.removeEventListener('keydown', key)
+      document.removeEventListener('mouseup', mouseBack)
+    }
   }, [])
 
   const setTail = useMemo(() => {
@@ -595,6 +668,26 @@ export function AppShell({ screens, settings }: {
     setScreen(next)
     setMounted((m) => (m.includes(next) ? m : [...m, next]))
   }, [])
+
+  // A write the change log records offers its Undo here too when no notice offers it (useVaultWrite).
+  useEffect(() => takeUndoOffers((run) => { undoOffers.current.push({ run, screen: shownScreen.current }) }), [])
+
+  // ⌘Z on macOS, Ctrl+Z elsewhere, outside a text field runs the latest Undo still on offer, goes back
+  // to where it was offered and lands on the item it brings back. In a text field it stays the field's own undo.
+  useEffect(() => {
+    const key = (e: KeyboardEvent) => {
+      if (!pressesCommand(appMenu.platform(), e, 'Z') || e.shiftKey || composing(e) || typesText(e.target)) return
+      const offer = undoOffers.current.pop()
+      if (offer === undefined) return
+      e.preventDefault()
+      const before = itemsNow()
+      offer.run()
+      goTo(offer.screen)
+      landOnRestored(before)
+    }
+    document.addEventListener('keydown', key)
+    return () => document.removeEventListener('keydown', key)
+  }, [goTo])
 
   // Every sidebar click is an entry: a screen showing a detail returns to its list, also when it is the current screen.
   const navigate = useCallback((next: ScreenKey) => {
@@ -641,6 +734,7 @@ export function AppShell({ screens, settings }: {
       bump()
       notify.success(m.common.trashed, {
         label: m.common.undo,
+        undoes: true,
         onAction: () => {
           void trash.restore(entry).then(() => {
             bump()
@@ -652,6 +746,39 @@ export function AppShell({ screens, settings }: {
       navigate('feed')
     }).catch((e: unknown) => notify.refusal(errorLabel(m, e)))
   }, [chatId, navigate, notify, bump, m])
+
+  // A kept chat that is gone by this launch leaves the Chats screen for the Feed, as deleting the open chat does.
+  const keptChatChecked = useRef(false)
+  useEffect(() => {
+    if (!chatsRead || keptChatChecked.current) return
+    keptChatChecked.current = true
+    if (chatId === null || chats.some((session) => session.id === chatId)) return
+    setChatId(null)
+    if (screen === 'chat') goTo('feed')
+  }, [chatsRead, chats, chatId, screen, goTo])
+
+  // A kept paper that is gone by this launch leaves the reader for the screen it was opened from.
+  useEffect(() => {
+    const reader = restored.reader
+    if (reader === null) return
+    void papers.get(reader.paper).catch((e: unknown) => {
+      if (failureOf(e) !== 'not-found' || shownScreen.current !== 'reader') return
+      setJump(null)
+      goTo(reader.from)
+    })
+  }, [restored, goTo])
+
+  // The reader is kept with its paper and the screen it was opened from, which stands in for it.
+  const readerFrom = jump?.screen === 'reader' ? jump.from : 'papers'
+  const origin = readerFrom === 'reader' ? 'papers' : readerFrom
+  const kept = screen === 'reader' ? origin : screen
+  const keptPaper = screen === 'reader' && jump?.screen === 'reader' ? jump.target : null
+  useEffect(() => {
+    writeShellState({
+      sidebarWidth: width, sidebarHidden: hidden, screen: kept, inboxScope, inboxMode, chat: chatId,
+      reader: keptPaper === null ? null : { paper: keptPaper, from: origin },
+    })
+  }, [width, hidden, kept, inboxScope, inboxMode, chatId, keptPaper, origin])
 
   const chatSession = useMemo(() => {
     const open = chats.find((s) => s.id === chatId)
@@ -680,10 +807,14 @@ export function AppShell({ screens, settings }: {
 
   const crumbs = useMemo(() => crumbsOf(m), [m])
 
+  // The creates and the import the palette and the File menu both offer, one implementation each.
+  const newProject = () => jumps.open('project', '', { newProject: true })
+  const importPdf = () => jumps.open('papers', '', { importPdf: true })
+  const newIdea = () => jumps.open('ideas', '', { newIdea: true })
   const commands: PaletteCommand[] = [
-    { label: m.research.list.create, run: () => jumps.open('project', '', { newProject: true }) },
-    { label: m.papers.upload.importAction, run: () => jumps.open('papers', '', { importPdf: true }) },
-    { label: m.ideas.create, run: () => jumps.open('ideas', '', { newIdea: true }) },
+    { label: m.research.list.create, run: newProject },
+    { label: m.papers.upload.importAction, run: importPdf },
+    { label: m.ideas.create, run: newIdea },
     { label: m.shell.titlebar.settings, shortcut: commandShortcut(appMenu.platform(), ','), run: () => setSettingsOpen(true) },
     ...SETTINGS_CATEGORIES.map((category) => ({
       label: m.shell.palette.settingsPane(m.settings.categories[SETTINGS_CATEGORY_LABEL[category]]),
@@ -701,6 +832,20 @@ export function AppShell({ screens, settings }: {
     { label: m.shell.nav.ideas, run: () => navigate('ideas') },
     { label: m.shell.nav.trash, run: () => navigate('trash') },
   ]
+
+  // A command from the application menu or a swipe runs what the shell renders now; the reader takes the zoom commands.
+  const onAppCommand = useRef<(command: AppCommand) => void>(() => {})
+  onAppCommand.current = (command) => {
+    if (command === 'newProject') newProject()
+    if (command === 'newIdea') newIdea()
+    if (command === 'newChat') newChat()
+    if (command === 'importPdf') importPdf()
+    if (command === 'find') focusSearch()
+    if (command === 'toggleSidebar') setHidden((h) => !h)
+    if (command === 'back') pressBack()
+  }
+  useEffect(() => appMenu.onAppCommand((command) => onAppCommand.current(command)), [])
+  useEffect(() => { appMenu.setMenuState({ sidebarHidden: hidden, reading: screen === 'reader' }) }, [hidden, screen])
 
   // A screen's own breadcrumbs: the last base segment carries its back action, then its deeper ones.
   const partsOf = (k: ScreenKey): CrumbSeg[] => {

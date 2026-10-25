@@ -3,11 +3,11 @@ import {
   utilityProcess,
 } from 'electron'
 import { execFile, spawn } from 'node:child_process'
-import { existsSync, readFileSync, writeSync } from 'node:fs'
+import { existsSync, readFileSync, writeFileSync, writeSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { fileURLToPath } from 'node:url'
 import { dirname, join, resolve } from 'node:path'
-import { editMenuTemplate, menuTemplate } from './menu.js'
+import { editMenuTemplate, menuTemplate, nextZoomLevel } from './menu.js'
 import { openLinks } from './links.js'
 import { packagedHarnessEnvironment } from './harness-sidecar.js'
 import { attachCredentialVault } from './credential-vault.js'
@@ -15,8 +15,10 @@ import { MAIN_COPY, uiLocaleOf } from './messages.js'
 import { afterCoreStops } from './restart-core.js'
 import { canReplaceSelf, createMacSelfUpdate } from './mac-self-update.js'
 import { windowBackground } from './window-background.js'
+import { placeWindow, readWindowState, type WindowState } from './window-state.js'
 import { createUpdater, type InstallRoute } from './updater.js'
 import { releaseFilesUrl } from '../shared/app-update.js'
+import type { AppCommand, MenuState } from '../shared/app-commands.js'
 import { displayVersion } from '../shared/app-version.js'
 import electronUpdater from 'electron-updater'
 import icon from '../../resources/icon.png?asset'
@@ -40,6 +42,8 @@ const UPDATE_INSTALL = 'meridian:update-install'
 const UPDATE_CHANGED = 'meridian:update-changed'
 const FULL_SCREEN = 'meridian:full-screen'
 const FULL_SCREEN_CHANGED = 'meridian:full-screen-changed'
+const APP_COMMAND = 'meridian:app-command'
+const MENU_STATE = 'meridian:menu-state'
 
 // A closed terminal or an earlier parent-process exit is normal, not an application failure. Without
 // this listener, EPIPE would become an uncaught exception and display a crash dialog.
@@ -66,6 +70,18 @@ function configuredVaultRoot(): string | undefined {
     log(`[main] Failed to read the active library configuration: ${error instanceof Error ? error.message : String(error)}\n`)
     return undefined
   }
+}
+
+/** Where the window's size and position are kept between launches: the App's user-data folder, never the vault. */
+const windowStateFile = () => join(app.getPath('userData'), 'window-state.json')
+
+/** The window as it last closed, or null when nothing was saved or the saved state is unreadable. */
+function savedWindow(): WindowState | null {
+  const file = windowStateFile()
+  if (!existsSync(file)) return null
+  const state = readWindowState(readFileSync(file, 'utf8'))
+  if (state === null) log('[main] The saved window size is unreadable; the window opens at its default size\n')
+  return state
 }
 
 /** Meridian's user-level configuration directory, shared with Core and the Python CLI. */
@@ -113,10 +129,11 @@ app.whenReady().then(() => {
   // Set the Dock icon explicitly so unpackaged runs still show Meridian's rounded macOS artwork.
   if (process.platform === 'darwin') app.dock?.setIcon(macIcon)
 
-  // The window opens on the system theme's background and shows once the renderer has painted.
+  // The window opens where it last closed, on the system theme's background, and shows once the
+  // renderer has painted.
+  const saved = savedWindow()
   const win = new BrowserWindow({
-    width: 1440,
-    height: 900,
+    ...placeWindow(saved, screen.getAllDisplays().map((display) => display.workArea)),
     show: false,
     focusable: !isolated,
     // Without it macOS pulls a shown window back onto a display and caps its height at the display's.
@@ -144,7 +161,10 @@ app.whenReady().then(() => {
 
   win.once('ready-to-show', () => {
     if (!isolated) {
-      if (!hidden) win.show()
+      if (hidden) return
+      // maximize() shows the window too, so an automated launch never gets here.
+      if (saved?.maximized === true) win.maximize()
+      win.show()
       return
     }
     // show() would activate the app. Inactive and unfocusable, the window never becomes key, so the
@@ -157,12 +177,30 @@ app.whenReady().then(() => {
 
   win.webContents.setWindowOpenHandler(openLinks((url) => shell.openExternal(url)))
 
+  win.on('close', () => {
+    const state: WindowState = { ...win.getNormalBounds(), maximized: win.isMaximized() }
+    try {
+      writeFileSync(windowStateFile(), JSON.stringify(state))
+    } catch (error) {
+      log(`[main] Failed to keep the window size: ${error instanceof Error ? error.message : String(error)}\n`)
+    }
+  })
+
   // Forward renderer console output to Main stdout so headless agents can observe renderer behavior.
   win.webContents.on('console-message', (details) => {
     log(`[renderer] ${details.message}\n`)
   })
 
-  // Settings only notifies this window; the renderer owns opening and closing the UI.
+  // Settings and the commands the page carries out only notify this window; the renderer owns the
+  // UI they open. The zoom items zoom the reader's paper while it is shown, the window otherwise.
+  let menuState: MenuState = { sidebarHidden: false, reading: false }
+  const onCommand = (command: AppCommand) => {
+    if ((command === 'zoomIn' || command === 'zoomOut' || command === 'resetZoom') && !menuState.reading) {
+      win.webContents.setZoomLevel(nextZoomLevel(command, win.webContents.getZoomLevel()))
+      return
+    }
+    win.webContents.send(APP_COMMAND, command)
+  }
   const installMenu = () => Menu.setApplicationMenu(Menu.buildFromTemplate(
     menuTemplate(
       process.platform,
@@ -170,8 +208,20 @@ app.whenReady().then(() => {
       copy().menu,
       () => win.webContents.send(OPEN_AGENT_TUTORIAL),
       () => win.webContents.send(OPEN_PALETTE),
+      { packaged: app.isPackaged, sidebarHidden: menuState.sidebarHidden, onCommand },
     )))
   installMenu()
+  win.webContents.ipc.on(MENU_STATE, (_event, state: unknown) => {
+    if (typeof state !== 'object' || state === null) return
+    const { sidebarHidden, reading } = state as Record<string, unknown>
+    if (typeof sidebarHidden !== 'boolean' || typeof reading !== 'boolean') return
+    const retitle = sidebarHidden !== menuState.sidebarHidden
+    menuState = { sidebarHidden, reading }
+    if (retitle) installMenu()
+  })
+  // The swipe Electron names `left` is the one browsers take as Back. It fires only when the Trackpad
+  // setting "Swipe between pages" allows three fingers.
+  win.on('swipe', (_event, direction) => { if (direction === 'left') onCommand('back') })
 
   // A secondary click on text opens the edit menu. A click the page handles itself, such as a paper
   // row's own context menu, prevents the default and never reaches Main.

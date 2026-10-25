@@ -19,7 +19,7 @@ export function menuSurfaceClass(surface: MenuSurface = 'menu', extra = ''): str
 }
 
 type ContentProps = Omit<DropdownMenu.DropdownMenuContentProps,
-  'children' | 'className' | 'side' | 'align' | 'sideOffset'
+  'children' | 'className' | 'side' | 'align' | 'sideOffset' | 'alignOffset'
 >
 
 export type ActionMenuProps = {
@@ -33,6 +33,7 @@ export type ActionMenuProps = {
   side?: DropdownMenu.DropdownMenuContentProps['side']
   align?: DropdownMenu.DropdownMenuContentProps['align']
   sideOffset?: number
+  alignOffset?: number
   stopContentClickPropagation?: boolean
   onContentClick?: MouseEventHandler<HTMLDivElement>
   contentProps?: ContentProps
@@ -51,7 +52,7 @@ export type ActionMenuProps = {
  */
 export function ActionMenu({
   trigger, children, open, onOpenChange, modal,
-  surface = 'menu', contentClassName = '', side = 'bottom', align = 'end', sideOffset = 4,
+  surface = 'menu', contentClassName = '', side = 'bottom', align = 'end', sideOffset = 4, alignOffset = 0,
   stopContentClickPropagation = false, onContentClick, contentProps, contentData, scrolls = false,
 }: ActionMenuProps) {
   const fade = useScrollFade('y')
@@ -75,6 +76,7 @@ export function ActionMenu({
           collisionPadding={COLLISION_PADDING} {...contentProps} {...contentData}
           onEscapeKeyDown={ignoreComposingEscape(contentProps?.onEscapeKeyDown)}
           className={menuSurfaceClass(surface, contentClassName)} side={side} align={align} sideOffset={sideOffset}
+          alignOffset={alignOffset}
           {...(scrolls ? { ref: fade, 'data-fade-paint': '' } : {})}
           {...(contentClick === undefined ? {} : { onClick: contentClick })}
         >

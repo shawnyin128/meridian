@@ -1,11 +1,12 @@
 // @vitest-environment jsdom
-import { act, useRef, type ReactNode } from 'react'
+import { act, useEffect, useRef, useState, type ReactNode } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { TrashEntry } from '../../shared/contract.js'
 import { MarkdownBox } from '../components/Markdown.js'
 import { MessagesProvider } from '../messages/useMessages.js'
 import { LANGUAGE_STORAGE_KEY } from './language.js'
+import { SHELL_STATE_STORAGE_KEY } from './shell-state.js'
 
 declare global {
   var IS_REACT_ACT_ENVIRONMENT: boolean
@@ -26,6 +27,15 @@ const fixture = vi.hoisted(() => ({
   today: () => Promise.resolve('2026-10-18'),
   /** What the native menu's Command Palette item sends, once the shell has subscribed to it. */
   openPalette: null as (() => void) | null,
+  /** What Main hands the page from a menu item or a swipe, once the shell has subscribed to it. */
+  appCommand: null as ((command: string) => void) | null,
+  menuStates: [] as { sidebarHidden: boolean; reading: boolean }[],
+  createChat: vi.fn(() => new Promise(() => {})),
+  undoChange: vi.fn<(id: string) => Promise<void>>(async () => { fixture.undone?.() }),
+  /** What undoing a change brings back on the page, as the refetch after it does. */
+  undone: null as (() => void) | null,
+  /** What papers.get answers for paper `id`; by default the paper is there. */
+  getPaper: (id: string): Promise<unknown> => Promise.resolve({ id }),
 }))
 
 const none = vi.hoisted(() => () => Promise.resolve([]))
@@ -41,13 +51,18 @@ vi.mock('../ipc.js', () => ({
       fixture.fullScreen.push(handler)
       return () => { fixture.fullScreen.splice(fixture.fullScreen.indexOf(handler), 1) }
     },
+    onAppCommand: (handler: (command: string) => void) => {
+      fixture.appCommand = handler
+      return () => { fixture.appCommand = null }
+    },
+    setMenuState: (state: { sidebarHidden: boolean; reading: boolean }) => { fixture.menuStates.push(state) },
     setTitleBarTheme: vi.fn(), toggleMaximize: vi.fn(),
   },
   appUpdates: { check: vi.fn(), status: () => new Promise(() => {}), onChange: () => () => {}, install: vi.fn() },
-  changelog: { list: none },
+  changelog: { list: none, undo: fixture.undoChange },
   colourThemes: { list: none },
   chat: {
-    list: () => Promise.resolve(fixture.chats), create: () => new Promise(() => {}), setArchived: vi.fn(),
+    list: () => Promise.resolve(fixture.chats), create: fixture.createChat, setArchived: vi.fn(),
     delete: fixture.deleteChat,
   },
   extensions: { checkLatest: vi.fn() },
@@ -56,7 +71,7 @@ vi.mock('../ipc.js', () => ({
   inbox: { list: ({ kind }: { kind: string }) => Promise.resolve(kind === 'discovery' ? fixture.discovery : fixture.delivered) },
   jobs: { status: () => new Promise(() => {}) },
   later: { list: none },
-  papers: { list: () => Promise.resolve({ rows: [], total: 0 }) },
+  papers: { list: () => Promise.resolve({ rows: [], total: 0 }), get: (id: string) => fixture.getPaper(id) },
   project: { list: () => Promise.resolve(fixture.projects) },
   search: { query: none },
   trash: { list: () => Promise.resolve(fixture.trash), restore: fixture.restoreTrash },
@@ -70,6 +85,11 @@ const {
   AppShell, useCrumbTail, useEscapeLayer, useJump, useNotice, usePaperChatCollapsed, useSettingsOpen,
 } = await import('./AppShell.js')
 const { useJumpOrigin } = await import('../hooks/useJumpOrigin.js')
+const { CallError } = await import('../call-error.js')
+const { useUndo } = await import('../hooks/useUndo.js')
+const { useVaultWrite } = await import('../hooks/useVaultWrite.js')
+const { Item } = await import('../components/Item.js')
+const { List } = await import('../components/List.js')
 const { Trash } = await import('../routes/Trash.js')
 const { TOOLTIP_DELAY } = await import('../components/Tooltip.js')
 
@@ -139,6 +159,8 @@ afterEach(() => {
   if (root !== null) act(() => root!.unmount())
   root = null
   vi.unstubAllGlobals()
+  // Each case starts where a first launch does, not where the case before left the shell.
+  window.localStorage.removeItem(SHELL_STATE_STORAGE_KEY)
 })
 
 /** Shows which settings category the shell has asked to open, or nothing while settings are closed. */
@@ -832,6 +854,319 @@ describe('AppShell command palette', () => {
 })
 
 
+describe('AppShell 菜单栏命令', () => {
+  const shown = () => document.querySelector('.screenslot:not([hidden])')!.textContent
+  const command = (name: string) => act(() => fixture.appCommand!(name))
+
+  it('文件菜单的新建项目、新建想法、导入 PDF… 和命令面板走同一个落点,新对话新建一段对话', async () => {
+    await mount(undefined, {
+      project: <JumpProbe id="projectJump" />, papers: <JumpProbe id="papersJump" />, ideas: <JumpProbe id="ideasJump" />,
+    })
+    command('newProject')
+    expect(shown()).toBe('{"newProject":true}')
+    command('importPdf')
+    expect(shown()).toBe('{"importPdf":true}')
+    command('newIdea')
+    expect(shown()).toBe('{"newIdea":true}')
+    fixture.createChat.mockClear()
+    command('newChat')
+    expect(fixture.createChat).toHaveBeenCalledTimes(1)
+  })
+
+  it('编辑 › 查找… 像「/」一样跳到搜索框,在文本框里也一样', async () => {
+    await mount(<input aria-label="名称" />)
+    const field = document.querySelector<HTMLInputElement>('[aria-label="名称"]')!
+    field.focus()
+    command('find')
+    expect(document.activeElement).toBe(document.querySelector('#sSearch'))
+  })
+
+  it('视图 › 收起侧栏和 ⌘B 是同一个开关,侧栏和阅读器的状态告诉主进程,菜单按它改名、缩放按它走', async () => {
+    fixture.menuStates.length = 0
+    await mount(<OpenReader />)
+    expect(fixture.menuStates.at(-1)).toEqual({ sidebarHidden: false, reading: false })
+    command('toggleSidebar')
+    expect(document.querySelector('#main')!.classList.contains('sbhide')).toBe(true)
+    expect(fixture.menuStates.at(-1)).toEqual({ sidebarHidden: true, reading: false })
+    press('b', { metaKey: true })
+    expect(fixture.menuStates.at(-1)).toEqual({ sidebarHidden: false, reading: false })
+    act(() => { document.querySelector<HTMLButtonElement>('#openReader')!.click() })
+    expect(fixture.menuStates.at(-1)).toEqual({ sidebarHidden: false, reading: true })
+  })
+
+  /** Mouse button `button` released on the page; returns whether the shell took it. */
+  const release = (button: number) => {
+    const event = new MouseEvent('mouseup', { button, bubbles: true, cancelable: true })
+    act(() => { document.body.dispatchEvent(event) })
+    return event.defaultPrevented
+  }
+
+  it('触控板轻扫和鼠标的后退键按下当前屏的返回按钮,别的鼠标键不算', async () => {
+    const back = vi.fn()
+    await mount(<button type="button" className="back" onClick={back}>返回</button>)
+    command('back')
+    expect(back).toHaveBeenCalledTimes(1)
+    expect(release(3)).toBe(true)
+    expect(back).toHaveBeenCalledTimes(2)
+    expect([release(0), release(1), release(2), release(4)]).toEqual([false, false, false, false])
+    expect(back).toHaveBeenCalledTimes(2)
+  })
+
+  it('开着对话框时后退只按对话框里的返回,没有就什么也不做,不碰后面那一屏', async () => {
+    const screen = vi.fn()
+    const dialog = vi.fn()
+    await mount(<button type="button" className="back" onClick={screen}>返回</button>)
+    const open = document.createElement('div')
+    open.setAttribute('role', 'dialog')
+    document.body.append(open)
+    command('back')
+    expect([screen.mock.calls.length, dialog.mock.calls.length]).toEqual([0, 0])
+    const inDialog = document.createElement('button')
+    inDialog.className = 'back'
+    inDialog.addEventListener('click', dialog)
+    open.append(inDialog)
+    release(3)
+    expect([screen.mock.calls.length, dialog.mock.calls.length]).toEqual([0, 1])
+  })
+})
+
+/**
+ * A screen whose button `name` makes a write that records change `name` and offers its Undo in the
+ * notice, or, `silent`, records it and shows no notice, as a change visible on screen does.
+ */
+function Writes({ names, silent = false }: { names: string[]; silent?: boolean }) {
+  const write = useVaultWrite()
+  const undo = useUndo()
+  return names.map((change) => (
+    <button
+      type="button" key={change} id={change}
+      onClick={() => { void write(Promise.resolve({ change }), silent ? {} : { note: '已删除', action: undo.change }) }}
+    >{change}</button>
+  ))
+}
+
+/**
+ * A screen of two rows and a count row: deleting the second row records a change and offers its Undo,
+ * and undoing it brings that row back as a new row and changes the count in place, as a refetch does.
+ */
+function Rows() {
+  const [rows, setRows] = useState(['甲', '乙'])
+  const write = useVaultWrite()
+  const undo = useUndo()
+  useEffect(() => {
+    fixture.undone = () => setRows(['甲', '乙'])
+    return () => { fixture.undone = null }
+  }, [])
+  return (
+    <>
+      <List>
+        <Item title={`共 ${rows.length} 行`} />
+        {rows.map((row) => <Item key={row} title={row} data-row={row} />)}
+      </List>
+      <button
+        type="button" id="drop"
+        onClick={() => {
+          setRows(['甲'])
+          void write(Promise.resolve({ change: 'ch-乙' }), { note: '已删除', action: undo.change })
+        }}
+      >删</button>
+    </>
+  )
+}
+
+describe('AppShell ⌘Z', () => {
+  beforeEach(() => { fixture.undoChange.mockClear() })
+  beforeAll(() => { Element.prototype.scrollIntoView = () => {} })
+  afterAll(() => { delete (Element.prototype as Partial<Element>).scrollIntoView })
+
+  /** Clicks button `id` and lets its write finish. */
+  const writeOf = async (id: string) => { await act(async () => { document.querySelector<HTMLButtonElement>(`#${id}`)!.click() }) }
+  /** Presses Z with `init` on `target`; returns whether the shell took the key. */
+  const pressZ = async (init: KeyboardEventInit = { metaKey: true }, target: Element = document.body) => {
+    const event = new KeyboardEvent('keydown', { key: 'z', bubbles: true, cancelable: true, ...init })
+    await act(async () => { target.dispatchEvent(event) })
+    return event.defaultPrevented
+  }
+
+  it('焦点不在文本框里时,⌘Z 像提示上的撤销一样撤掉最近一次提示过撤销的写入,提示淡出后也一样;再按撤掉前一次', async () => {
+    await mount(<Writes names={['ch-1', 'ch-2']} />)
+    await writeOf('ch-1')
+    await writeOf('ch-2')
+    expect(await pressZ()).toBe(true)
+    expect(fixture.undoChange.mock.calls).toEqual([['ch-2']])
+    expect(await pressZ()).toBe(true)
+    expect(fixture.undoChange.mock.calls).toEqual([['ch-2'], ['ch-1']])
+    expect(await pressZ()).toBe(false)
+    expect(fixture.undoChange).toHaveBeenCalledTimes(2)
+  })
+
+  it('没有提示的写入只要记进了最近变动,⌘Z 也撤得掉,也只撤一次', async () => {
+    await mount(<Writes names={['ch-1']} silent />)
+    await writeOf('ch-1')
+    expect(document.querySelector('#notice .notice-text')?.textContent ?? '').toBe('')
+    expect(await pressZ()).toBe(true)
+    expect(fixture.undoChange.mock.calls).toEqual([['ch-1']])
+    expect(await pressZ()).toBe(false)
+  })
+
+  it('点过提示上的撤销后,⌘Z 不再撤同一次写入', async () => {
+    await mount(<Writes names={['ch-1']} />)
+    await writeOf('ch-1')
+    await act(async () => { document.querySelector<HTMLButtonElement>('#notice button')!.click() })
+    expect(fixture.undoChange.mock.calls).toEqual([['ch-1']])
+    expect(await pressZ()).toBe(false)
+    expect(fixture.undoChange).toHaveBeenCalledTimes(1)
+  })
+
+  it('文本框里的 ⌘Z 留给文本框自己撤销;⇧⌘Z 和 macOS 上的 Control-Z 不撤写入', async () => {
+    await mount(<><Writes names={['ch-1']} /><input aria-label="名称" /></>)
+    await writeOf('ch-1')
+    const field = document.querySelector<HTMLInputElement>('[aria-label="名称"]')!
+    expect(await pressZ({ metaKey: true }, field)).toBe(false)
+    expect(await pressZ({ metaKey: true, shiftKey: true })).toBe(false)
+    expect(await pressZ({ ctrlKey: true })).toBe(false)
+    expect(fixture.undoChange).not.toHaveBeenCalled()
+  })
+
+  it('撤销之后回到那一屏,落到撤销放回来的那一项上并闪一下,原地改了字的行不闪', async () => {
+    await mount(undefined, { papers: <Rows /> })
+    await act(async () => { document.querySelector<HTMLButtonElement>('[data-desk="papers"]')!.click() })
+    await writeOf('drop')
+    await act(async () => { document.querySelector<HTMLButtonElement>('[data-desk="feed"]')!.click() })
+    await pressZ()
+    await act(async () => { await new Promise((done) => setTimeout(done, 0)) })
+    const shown = document.querySelector('.screenslot:not([hidden])')!
+    expect([...shown.querySelectorAll('.item')].map((item) => [item.textContent, item.hasAttribute('data-arrived')]))
+      .toEqual([['共 2 行', false], ['甲', false], ['乙', true]])
+  })
+
+  it('撤销之后回到提示撤销时显示的那一屏', async () => {
+    await mount(undefined, { papers: <Writes names={['ch-1']} /> })
+    await act(async () => { document.querySelector<HTMLButtonElement>('[data-desk="papers"]')!.click() })
+    await writeOf('ch-1')
+    await act(async () => { document.querySelector<HTMLButtonElement>('[data-desk="feed"]')!.click() })
+    expect(document.querySelector('.screenslot:not([hidden]) #ch-1')).toBeNull()
+    await pressZ()
+    expect(fixture.undoChange.mock.calls).toEqual([['ch-1']])
+    expect(document.querySelector('.screenslot:not([hidden]) #ch-1')).not.toBeNull()
+  })
+
+  it('撤销放回来的那一项还没出现 App 就关了,之后出现的行不会被落上', async () => {
+    await mount(<Writes names={['ch-1']} />)
+    await writeOf('ch-1')
+    await pressZ()
+    act(() => root!.unmount())
+    root = null
+    const late = document.createElement('div')
+    late.id = 'sidebar'
+    late.innerHTML = '<div class="item">迟来的</div>'
+    await act(async () => { document.body.append(late) })
+    expect(late.querySelector('.item')!.hasAttribute('data-arrived')).toBe(false)
+  })
+})
+
+describe('AppShell 重新打开时回到上次的地方', () => {
+  const kept = () => JSON.parse(window.localStorage.getItem(SHELL_STATE_STORAGE_KEY) ?? 'null') as Record<string, unknown> | null
+  const keep = (state: Record<string, unknown>) => window.localStorage.setItem(SHELL_STATE_STORAGE_KEY, JSON.stringify(state))
+  const sbw = () => document.querySelector<HTMLElement>('#main')!.style.getPropertyValue('--sbw')
+
+  it('打开在上次显示的那一屏,侧栏是上次的宽度', async () => {
+    keep({ sidebarWidth: 260, screen: 'papers', inboxScope: 'all', inboxMode: 'watch', chat: null })
+    await mount()
+    expect(crumbs()).toEqual(['我的库', '论文', '深层'])
+    expect(document.querySelector('.screenslot:not([hidden])')!.textContent).toBe('deeper')
+    expect(sbw()).toBe('260px')
+  })
+
+  it('换屏、拖宽侧栏都记下来,下次照着打开', async () => {
+    await mount()
+    expect(kept()).toEqual({
+      sidebarWidth: 232, sidebarHidden: false, screen: 'feed', inboxScope: 'all', inboxMode: 'watch', chat: null, reader: null,
+    })
+    await act(async () => { document.querySelector<HTMLButtonElement>('[data-desk="papers"]')!.click() })
+    const grip = document.querySelector<HTMLElement>('#sbgrip')!
+    act(() => { grip.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true, cancelable: true })) })
+    expect(kept()).toMatchObject({ screen: 'papers', sidebarWidth: Number.parseInt(sbw(), 10) })
+    expect(sbw()).not.toBe('232px')
+  })
+
+  it('阅读器记下它那篇论文和打开它的那一屏', async () => {
+    await mount(<OpenReader />)
+    act(() => { document.querySelector<HTMLButtonElement>('#openReader')!.click() })
+    expect(kept()).toMatchObject({ screen: 'feed', reader: { paper: 'paper-1', from: 'feed' } })
+    act(() => { document.querySelector<HTMLButtonElement>('[data-desk="papers"]')!.click() })
+    expect(kept()).toMatchObject({ screen: 'papers', reader: null })
+  })
+
+  it('上次停在阅读器上时重新打开那篇论文,返回仍回到打开它的那一屏', async () => {
+    keep({ sidebarWidth: 232, screen: 'papers', inboxScope: 'all', inboxMode: 'watch', chat: null, reader: { paper: 'paper-7', from: 'papers' } })
+    await mount(undefined, { reader: <ReaderProbe /> })
+    expect(document.querySelector('.screenslot:not([hidden])')!.textContent).toBe('paper-7 papers')
+    expect(kept()).toMatchObject({ screen: 'papers', reader: { paper: 'paper-7', from: 'papers' } })
+  })
+
+  it('上次阅读器里那篇论文已经不在了,就回到打开它的那一屏', async () => {
+    const held = fixture.getPaper
+    fixture.getPaper = () => Promise.reject(new CallError('papers.get', 'not-found'))
+    try {
+      keep({ sidebarWidth: 232, screen: 'papers', inboxScope: 'all', inboxMode: 'watch', chat: null, reader: { paper: 'gone', from: 'papers' } })
+      await mount(undefined, { reader: <ReaderProbe /> })
+      await act(async () => { await Promise.resolve() })
+      expect(document.querySelector('.screenslot:not([hidden])')!.textContent).toBe('deeper')
+      expect(kept()).toMatchObject({ screen: 'papers', reader: null })
+    } finally {
+      fixture.getPaper = held
+    }
+  })
+
+  it('收起的侧栏下次打开时仍收起', async () => {
+    keep({ sidebarWidth: 232, sidebarHidden: true, screen: 'feed', inboxScope: 'all', inboxMode: 'watch', chat: null, reader: null })
+    await mount()
+    expect(document.querySelector('#main')!.classList.contains('sbhide')).toBe(true)
+    press('b', { metaKey: true })
+    expect(kept()).toMatchObject({ sidebarHidden: false })
+  })
+
+  it('上次开着的对话还在就回到它,已经不在了就回到动态', async () => {
+    keep({ sidebarWidth: 232, screen: 'chat', inboxScope: 'all', inboxMode: 'watch', chat: 'c1' })
+    await mount()
+    expect(crumbs()).toEqual(['对话'])
+    expect(document.querySelector('[data-chat="c1"]')!.classList.contains('on')).toBe(true)
+    act(() => root!.unmount())
+    root = null
+    keep({ sidebarWidth: 232, screen: 'chat', inboxScope: 'all', inboxMode: 'watch', chat: 'gone' })
+    await mount()
+    expect(crumbs()).toEqual(['动态'])
+    expect(kept()).toMatchObject({ screen: 'feed', chat: null })
+  })
+
+  it('Meridian 不是当前的 App 时给文档打上标记,回来时去掉', async () => {
+    const focused = vi.spyOn(document, 'hasFocus').mockReturnValue(true)
+    await mount()
+    const marked = () => document.documentElement.hasAttribute('data-window-inactive')
+    expect(marked()).toBe(false)
+    focused.mockReturnValue(false)
+    act(() => { window.dispatchEvent(new FocusEvent('blur')) })
+    expect(marked()).toBe(true)
+    focused.mockReturnValue(true)
+    act(() => { window.dispatchEvent(new FocusEvent('focus')) })
+    expect(marked()).toBe(false)
+    focused.mockRestore()
+  })
+})
+
+/** The reader's slot: the paper its jump names and the screen it came from. */
+function ReaderProbe() {
+  const { jump } = useJump()
+  return <p>{jump === null ? '' : `${jump.target} ${jump.from}`}</p>
+}
+
+/** A button that opens the reader, as a paper's link does. */
+function OpenReader() {
+  const { open } = useJump()
+  return <button type="button" id="openReader" onClick={() => open('reader', 'paper-1')}>阅读</button>
+}
+
 describe('侧栏对话行的删除', () => {
   /** Opens the More menu of chat `id`'s sidebar row and returns its items. */
   async function chatMenu(id: string): Promise<HTMLElement[]> {
@@ -858,6 +1193,16 @@ describe('侧栏对话行的删除', () => {
     const undo = document.querySelector<HTMLButtonElement>('#notice button')!
     expect(undo.textContent).toBe('撤销')
     await act(async () => { undo.click() })
+    expect(fixture.restoreTrash).toHaveBeenCalledExactlyOnceWith('trash-9')
+  })
+
+  it('删掉的对话也能按 ⌘Z 放回', async () => {
+    await mount()
+    const items = await chatMenu('c1')
+    await act(async () => { items[1]!.click() })
+    await act(async () => {
+      document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'z', metaKey: true, bubbles: true, cancelable: true }))
+    })
     expect(fixture.restoreTrash).toHaveBeenCalledExactlyOnceWith('trash-9')
   })
 

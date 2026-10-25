@@ -113,6 +113,7 @@ Current shared contracts:
   editor's modules, at one height: a glyph slot, the text, and a count or a state at its end. It is a
   button, or, when it holds controls of its own or a fold caret, a div whose label is the button; a row that
   opens nothing is the fold toggle of its group. `indent`, `sub` and `dim` are its looks under a group.
+  While Meridian is not the active app, the current row's accent turns to the neutral selected look.
 - `NavSection`: a titled section of a navigation list whose 24px heading folds the rows under it.
 - `NavPane`: the sidebar's pane: its surface, width, collapse, the rows that scroll and the rows pinned
   under them, which keep the same room for the scrollbar so every row ends at one edge.
@@ -311,6 +312,10 @@ Current shared contracts:
   the end's calendar starts at the start, and a start picked after the end takes the end along to it. `DotsMenu` is the one
   overflow-menu trigger: `label` names it, `stopRowActivation` keeps a click from activating the row it
   sits in, and `open` with `onOpenChange` lets a host control it. The host owns the rule that reveals it.
+  A right-click on the row or card that holds it (an `Item`'s `menu` slot, or a row hosting `RowActions`)
+  opens this same menu at the pointer,
+  and the ContextMenu key or Shift+F10 there opens it at the trigger, so a row never defines a second,
+  right-click menu of its own.
 
 Dependency direction is enforced by ESLint: `components/`, `hooks/`, and `lib/` cannot import from
 `routes/`. If a shared component needs something currently owned by a route, move the smallest stable

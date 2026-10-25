@@ -7,8 +7,11 @@ import './Notice.css'
 /** What a notice reports: an action that took effect, or one that was refused and wrote nothing. */
 export type NoticeTone = 'success' | 'refusal'
 
-/** The one action a notice may offer, such as undoing what it reports. */
-export type NoticeAction = { label: string; onAction: () => void }
+/**
+ * The one action a notice may offer, such as undoing what it reports. `undoes` marks the Undo of the
+ * write the notice reports, which ⌘Z runs too until one of the two has run it.
+ */
+export type NoticeAction = { label: string; onAction: () => void; undoes?: true }
 
 /** One notice to show. A new `id` makes it a new notice, even when its text repeats the last one. */
 export type NoticeContent = { id: number; tone: NoticeTone; text: ReactNode; action?: NoticeAction | undefined }

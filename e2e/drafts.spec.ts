@@ -21,7 +21,8 @@ test('关掉 App 再打开,没存的阅读笔记和论文对话里没发出的�
 
   const reopened = await relaunch(app, configHome, profile)
   try {
-    await openReader(reopened.win)
+    // The App reopens the reader on the paper it showed; its side panel opens on its first tab.
+    await shown(reopened.win, '[aria-label="阅读笔记"]').click()
     const note = shown(reopened.win, 'textarea[aria-label="新笔记"]')
     await expect(note).toHaveValue('没存的笔记')
     await expect(reopened.win.locator('.paper-chat [contenteditable="true"]')).toHaveText('没发出的问题')
@@ -98,7 +99,7 @@ test('关掉 App 再打开,打了一半的新项目名或新任务那一行回�
   const first = await relaunch(app, configHome, profile)
   let second: Awaited<ReturnType<typeof relaunch>> | null = null
   try {
-    await first.win.locator('[data-desk="resproj"]').click()
+    // The App reopens on Projects, where the name was typed; a click outside the open row would create it.
     await expect(shown(first.win, '.projpanel .inedit')).toHaveValue('打了一半的项目名')
     const projects = await first.win.evaluate(() => (window as unknown as MeridianWindow).meridian.call('project.list', {}))
     expect(JSON.stringify(projects)).not.toContain('打了一半的项目名')
@@ -143,7 +144,7 @@ test('关掉 App 再打开,选中文字后工具条里没存的批注和论文�
   const first = await relaunch(app, configHome, profile)
   let second: Awaited<ReturnType<typeof relaunch>> | null = null
   try {
-    await openReader(first.win)
+    // The App reopens the reader on the paper it showed, with the toolbar's kept note.
     await expect(first.win.locator('.selection-tools textarea[aria-label="批注"]')).toHaveValue('没存的批注')
     expect(await highlights(first.win)).toBe(before)
     await first.win.keyboard.press('Escape')
