@@ -3,7 +3,7 @@
 .paper-understanding-label{margin-bottom:var(--sp-6);color:var(--ter);font-size:var(--fs-label);font-weight:var(--fw-label)}
 .paper-understanding-text{white-space:pre-wrap;color:var(--ink);overflow-wrap:anywhere}
 .paper-understanding-notes{margin-top:var(--sp-14)}
-.paper-understanding-row{display:grid;gap:var(--sp-12);align-items:start;min-height:52px;padding:var(--sp-8) var(--sp-10)}
+.paper-understanding-row{gap:var(--sp-12);align-items:start}
 .paper-understanding-page{color:var(--ter);font-size:var(--fs-sm);white-space:nowrap}
 .paper-understanding-note{display:flex;min-width:0;flex-direction:column;gap:var(--sp-4)}
 .paper-understanding-quote{color:var(--ter);font-size:var(--fs-sm)}
