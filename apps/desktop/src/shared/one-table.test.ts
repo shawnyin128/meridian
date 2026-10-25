@@ -43,3 +43,14 @@ describe('论文表、Wiki 的论文比较表和想法的各项目统计是同�
     expect(restyled).toEqual([])
   })
 })
+
+describe('表格和行、卡片用同一个内边距', () => {
+  it('第一列的内容从行和卡片开始的地方开始，最后一列在它们结束的地方结束', () => {
+    const rule = (path: string, selector: string) => [...source(path).replace(/\/\*[\s\S]*?\*\//g, '').matchAll(/([^{}]+)\{([^{}]*)\}/g)]
+      .find(([, prelude]) => prelude!.trim() === selector)?.[2] ?? ''
+    const inset = /padding:var\(--sp-6\) ([^;}]+)/.exec(rule('components/Item.css', '.item--row'))?.[1]
+    expect(inset).toBe('calc(var(--item-inset) + 1px)')
+    expect([rule('components/Table.css', '.table :is(th,td):first-child'), rule('components/Table.css', '.table :is(th,td):last-child')])
+      .toEqual([`padding-left:${inset}`, `padding-right:${inset}`])
+  })
+})

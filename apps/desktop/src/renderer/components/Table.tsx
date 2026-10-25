@@ -15,8 +15,12 @@ import { useToolbarItem } from './Toolbar.js'
 import { Tooltip } from './Tooltip.js'
 import './Table.css'
 
-/** The width of the actions column at a table's end: two nested 24px buttons in its header cell. */
-const ACTIONS_WIDTH = 52
+/**
+ * The width of the actions column at a table's end: two nested 24px buttons in its header cell, 2px
+ * inside its start and the 17px of --item-inset and an item's edge inside its end, where rows and
+ * cards end their actions.
+ */
+const ACTIONS_WIDTH = 67
 /** The width of a column being created. */
 const DRAFT_WIDTH = 140
 /** The least width a drag gives a column; the window can still shrink the table further. */
