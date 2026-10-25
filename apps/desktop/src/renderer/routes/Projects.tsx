@@ -26,8 +26,9 @@ import { ProjectBlockerView, ProjectNextActionView } from '../components/project
 import { useAreaFilter } from '../components/project/ProjectAreaFilter.js'
 import { ProjectIdentity } from '../components/project/ProjectIdentity.js'
 import { EventText } from '../components/project/ProjectSignals.js'
-import { CardOpen, ResearchObjectCard } from '../components/ResearchObjectCard.js'
-import { RowActions, StructuredList, StructuredRow } from '../components/StructuredList.js'
+import { DraftSlot, useDraftSlot } from '../components/DraftSlot.js'
+import { Item, ItemOpen } from '../components/Item.js'
+import { List } from '../components/List.js'
 import { Tag } from '../components/Tag.js'
 import { dnum } from '../../shared/dates.js'
 import { useFormat } from '../lib/format.js'
@@ -138,7 +139,7 @@ function ProjectMenu({ project, onRename, onMove, canMove, onStatus, onDelete }:
  * `onCreate` returns whether the row is done.
  */
 function ProjectCreateRow({ row, triggers, onCreate, onCancel, kept }: {
-  row: RefObject<HTMLDivElement | null>
+  row: RefObject<HTMLElement | null>
   triggers: Array<RefObject<HTMLElement | null>>
   onCreate: (name: string) => boolean | Promise<boolean>
   onCancel: () => void
@@ -146,14 +147,12 @@ function ProjectCreateRow({ row, triggers, onCreate, onCancel, kept }: {
 }) {
   const m = useMessages()
   return (
-    <div className="research-object-card projpanel" ref={row}>
-      <div className="pp-h">
-        <InlineDraftInput
-          className="inedit" scopeRef={row} triggers={triggers} placeholder={m.project.identity.nameFieldLabel}
-          onSubmit={onCreate} onCancel={onCancel} kept={kept}
-        />
-      </div>
-    </div>
+    <DraftSlot as="card" className="projpanel" slot={row}>
+      <InlineDraftInput
+        className="inedit" scopeRef={row} triggers={triggers} placeholder={m.project.identity.nameFieldLabel}
+        onSubmit={onCreate} onCancel={onCancel} kept={kept}
+      />
+    </DraftSlot>
   )
 }
 
@@ -172,25 +171,24 @@ function ProjectPanel({ project, onOpen, menu, reorder }: {
   const record = newest?.date === project.lastProgress ? newest : undefined
 
   return (
-    <ResearchObjectCard
-      className="projpanel"
-      data-proj={project.id} onActivate={onOpen} {...reorder.item}
+    <Item
+      density="card" className="projpanel" data-proj={project.id} onActivate={onOpen} {...reorder.item}
+      title={(
+        <>
+          <ItemOpen><ProjectIdentity project={project} showTopic /></ItemOpen>
+          {stale ? <Tag tone="warn">{m.research.panel.staleAlert(idle!)}</Tag> : null}
+        </>
+      )}
+      trailing={next && left !== null
+        ? (
+          <>
+            <span>{m.research.panel.milestoneOn(fmt.date(next.date))}</span>
+            <span>{left === 0 ? m.research.panel.dueToday : m.research.panel.dueInDays(left)}</span>
+          </>
+        )
+        : m.common.empty}
+      actions={<DragHandle {...reorder.handle} />} menu={menu}
     >
-      <div className="pp-h">
-        <CardOpen><ProjectIdentity project={project} showTopic /></CardOpen>
-        {stale ? <Tag tone="warn">{m.research.panel.staleAlert(idle!)}</Tag> : null}
-        <span className="dd">
-          {next && left !== null
-            ? (
-              <>
-                <span>{m.research.panel.milestoneOn(fmt.date(next.date))}</span>
-                {left === 0 ? m.research.panel.dueToday : m.research.panel.dueInDays(left)}
-              </>
-            )
-            : m.common.empty}
-        </span>
-        <RowActions><DragHandle {...reorder.handle} />{menu}</RowActions>
-      </div>
       <div className="project-card-decisions">
         <div className="project-card-decision">
           <span className="project-card-label">{m.project.identity.focusLabel.currentGoal}</span>
@@ -231,7 +229,7 @@ function ProjectPanel({ project, onOpen, menu, reorder }: {
             )}
         </span>
       </div>
-    </ResearchObjectCard>
+    </Item>
   )
 }
 
@@ -247,19 +245,17 @@ function ProjectRow({ project, onOpen, menu, reorder }: {
   const { idle } = signals(project, useToday())
   const m = useMessages()
   return (
-    <StructuredRow
-      composite className="prow"
-      data-proj={project.id} onActivate={onOpen} {...reorder.item}
-    >
-      <button type="button" className="prow-open">
-        <ProjectIdentity project={project} variant="row" showPriority={false} showTopic />
-      </button>
-      <FadeText className="m">
-        {m.project.identity.focusWithLabel(m.project.identity.focusLabel[FOCUS_KEY[project.status]], project.focus)} ·{' '}
-        {idleNote(idle, m.project.signals.idle)}
-      </FadeText>
-      <RowActions><DragHandle {...reorder.handle} />{menu}</RowActions>
-    </StructuredRow>
+    <Item
+      composite className="prow" data-proj={project.id} onActivate={onOpen} {...reorder.item}
+      title={<ItemOpen><ProjectIdentity project={project} variant="row" showPriority={false} showTopic /></ItemOpen>}
+      meta={(
+        <FadeText className="m">
+          {m.project.identity.focusWithLabel(m.project.identity.focusLabel[FOCUS_KEY[project.status]], project.focus)} ·{' '}
+          {idleNote(idle, m.project.signals.idle)}
+        </FadeText>
+      )}
+      actions={<DragHandle {...reorder.handle} />} menu={menu}
+    />
   )
 }
 
@@ -292,7 +288,7 @@ function ProjectList({ onOpen, newRow, onNewRow, onReturn }: {
   const write = useVaultWrite()
   const undo = useUndo()
   const stopCreating = useCallback(() => setCreating(false), [setCreating])
-  const createRow = useRef<HTMLDivElement>(null)
+  const createDraft = useDraftSlot(creating, () => setCreating(true))
   const projNew = useRef<HTMLButtonElement>(null)
   const newTriggers = useMemo(() => [projNew], [])
   const { filter, shown } = useAreaFilter(projects ?? [])
@@ -381,15 +377,7 @@ function ProjectList({ onOpen, newRow, onNewRow, onReturn }: {
                 ]}
               />
             )}
-            <AddAction
-              size="regular" id="projNew" ref={projNew}
-              onClick={() => {
-                // An open row is only refocused, keeping the half-typed name, so this click does not
-                // count as outside the row.
-                if (creating) createRow.current?.querySelector('input')?.focus()
-                else setCreating(true)
-              }}
-            >{m.research.list.create}</AddAction>
+            <AddAction size="regular" id="projNew" ref={projNew} onClick={createDraft.start}>{m.research.list.create}</AddAction>
           </>
         )}
       >
@@ -406,7 +394,7 @@ function ProjectList({ onOpen, newRow, onNewRow, onReturn }: {
             {i === 0 && creating
               ? (
                 <ProjectCreateRow
-                  row={createRow} triggers={newTriggers}
+                  row={createDraft.slot} triggers={newTriggers}
                   onCancel={stopCreating} onCreate={createProject} kept={{ drafts, target: 'new' }}
                 />
               )
@@ -419,14 +407,14 @@ function ProjectList({ onOpen, newRow, onNewRow, onReturn }: {
                 />
               ))
               : (
-                <StructuredList variant="embedded" maxVisibleRows="all">
+                <List variant="embedded" rows="all">
                   {g.items.map((p) => (
                     <ProjectRow
                       project={p} onOpen={() => onOpen(p.id)} menu={menuOf(p)} key={p.id}
                       reorder={{ item: reorder.itemProps(p.id), handle: reorder.handleProps(p.id) }}
                     />
                   ))}
-                </StructuredList>
+                </List>
               )}
           </Fragment>
         ))}

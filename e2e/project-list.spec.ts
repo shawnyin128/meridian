@@ -226,7 +226,7 @@ test('面板的最近推进、停滞天数与细行的上次推进都按最近�
   // Nothing has changed draft since its latest entry; the earliest entry is further back, so reading
   // the wrong end of the log gives a different number.
   expect(draftProgress).toBe(draft.at(-1)!.date)
-  await expect(shown(win).locator('[data-proj="draft"] .pp-h > .tag--warn'))
+  await expect(shown(win).locator('[data-proj="draft"] .item-title > .tag--warn'))
     .toHaveText(`已 ${daysSince(today, draftProgress!)} 天无推进`)
 
   // moe is shelved and shows as one compact row, ending with the days since it last progressed.
@@ -242,7 +242,7 @@ test('进行中卡片右上角的里程碑和搁置、已完成行末的说明�
     await expect.poll(() => win.evaluate(() => window.innerWidth)).toBe(width)
     const ends = await shown(win).locator('.projpanel[data-proj], .prow').evaluateAll((items) => items.map((item) => ({
       kind: item.classList.contains('prow') ? 'row' : 'card',
-      right: item.querySelector('.pp-h .dd, .prow .m')!.getBoundingClientRect().right,
+      right: item.querySelector('.item-head > .item-trailing, .item-main > .item-meta')!.getBoundingClientRect().right,
     })))
     const shownEnds = `${width}×${height}: ${JSON.stringify(ends)}`
     expect(new Set(ends.map((end) => end.kind)), shownEnds).toEqual(new Set(['card', 'row']))
@@ -375,14 +375,16 @@ test('项目菜单是真菜单;重命名框里打菜单项首字、方向键、H
   await expect(card.locator('.project-identity-name')).toHaveText(RENAMED_PROJECT)
 })
 
-test('项目菜单开着、指针挪到菜单项上之后,悬停才露出的 ... 触发器仍然可见,面板也留着 hover 的描边', async ({ win }) => {
+test('项目菜单开着、指针挪到菜单项上之后,悬停才露出的 ... 触发器仍然可见,卡片也留着 hover 的底色', async ({ win }) => {
   await gotoList(win)
   const card = shown(win).locator('[data-proj="draft"]')
   const dots = card.locator('.dots')
 
   await card.hover()
   await settle(card)
-  const hoverBorderColor = await card.evaluate((el) => getComputedStyle(el).borderColor)
+  // A card's hover is the overlay image every item draws over its own colour (Item.css).
+  const hoverBg = await card.evaluate((el) => getComputedStyle(el).backgroundImage)
+  expect(hoverBg).not.toBe('none')
   await dots.click()
   // Moving the pointer onto a menu item really takes :hover off the card; without the move, :hover
   // sticks and the bug cannot show.
@@ -390,7 +392,7 @@ test('项目菜单开着、指针挪到菜单项上之后,悬停才露出的 ...
   await settle(dots)
   await expect(card.locator('.row-actions')).toHaveCSS('opacity', '1')
   await settle(card)
-  expect(await card.evaluate((el) => getComputedStyle(el).borderColor)).toBe(hoverBorderColor)
+  expect(await card.evaluate((el) => getComputedStyle(el).backgroundImage)).toBe(hoverBg)
 })
 
 test('搁置或已完成的项目菜单开着、指针挪到菜单项上之后,行也留着 hover 的底色', async ({ win }) => {
@@ -400,7 +402,7 @@ test('搁置或已完成的项目菜单开着、指针挪到菜单项上之后,�
 
   await row.hover()
   await settle(row)
-  // The row's hover is an overlay image over its own colour (StructuredList.css).
+  // The row's hover is an overlay image over its own colour (Item.css).
   const hoverBg = await row.evaluate((el) => getComputedStyle(el).backgroundImage)
   expect(hoverBg).not.toBe('none')
   await dots.click()

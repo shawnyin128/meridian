@@ -524,7 +524,7 @@ describe('Settings', () => {
     expect(writeText).toHaveBeenCalledWith('claude install command')
     expect(api.success).not.toHaveBeenCalled()
 
-    const firstPrompt = dialog.querySelector('.extension-prompt p')?.textContent ?? ''
+    const firstPrompt = dialog.querySelector('.extension-prompt .item-meta')?.textContent ?? ''
     await act(async () => {
       dialog.querySelector<HTMLButtonElement>('.extension-prompt button')!.click()
     })
@@ -923,11 +923,11 @@ describe('Settings', () => {
 
     expect(dialog.querySelector('.storage-backup-list')).not.toBeNull()
     const at = new Date('2026-09-15T18:28:38.000Z')
-    expect([...dialog.querySelectorAll('.storage-backup-copy .date-time-display .date-chip')].map((chip) => chip.textContent))
+    expect([...dialog.querySelectorAll('.storage-backup-row .item-title .date-time-display .date-chip')].map((chip) => chip.textContent))
       .toEqual([`${at.getMonth() + 1}月${at.getDate()}日`, `${String(at.getHours()).padStart(2, '0')}:${String(at.getMinutes()).padStart(2, '0')}`])
-    expect(dialog.querySelector('.storage-backup-copy .storage-backup-path')?.textContent)
+    expect(dialog.querySelector('.storage-backup-row .item-meta .storage-backup-path')?.textContent)
       .toBe('/tmp/meridian-backup-20260915-182838Z')
-    const switchButton = [...dialog.querySelectorAll<HTMLButtonElement>('.storage-backup-actions .btn')]
+    const switchButton = [...dialog.querySelectorAll<HTMLButtonElement>('.storage-backup-row .item-trailing .btn')]
       .find((button) => button.textContent === '切换')!
     await act(async () => { switchButton.click() })
 
@@ -949,7 +949,7 @@ describe('Settings', () => {
     await act(async () => {
       dialog.querySelector<HTMLElement>('[data-setcat="storage"]')!.click()
     })
-    const deleteButton = [...dialog.querySelectorAll<HTMLButtonElement>('.storage-backup-actions .btn')]
+    const deleteButton = [...dialog.querySelectorAll<HTMLButtonElement>('.storage-backup-row .item-trailing .btn')]
       .find((button) => button.textContent === '删除')!
     await act(async () => { deleteButton.click() })
     expect(api.deleteBackup).not.toHaveBeenCalled()
@@ -978,13 +978,13 @@ describe('Settings', () => {
     await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
     const dialog = document.querySelector('.setdlg')!
     await act(async () => { dialog.querySelector<HTMLElement>('[data-setcat="storage"]')!.click() })
-    await act(async () => { dialog.querySelector<HTMLButtonElement>('.storage-backup-actions .btn.danger')!.click() })
+    await act(async () => { dialog.querySelector<HTMLButtonElement>('.storage-backup-row .item-trailing .btn.danger')!.click() })
     const confirm = [...document.querySelectorAll<HTMLButtonElement>('.modal.confirm .btn')]
       .find((button) => button.textContent === '删除')!
     await act(async () => { confirm.click() })
 
     expect(document.querySelector('.modal.confirm')).toBeNull()
-    const trigger = dialog.querySelector<HTMLButtonElement>('.storage-backup-actions .btn.danger')!
+    const trigger = dialog.querySelector<HTMLButtonElement>('.storage-backup-row .item-trailing .btn.danger')!
     expect([
       trigger.getAttribute('aria-label'), trigger.textContent, trigger.querySelector('.ring.spin') !== null, trigger.disabled,
       trigger.getAttribute('aria-busy'),
@@ -1032,7 +1032,7 @@ describe('Settings', () => {
     await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
     const settings = document.querySelector<HTMLElement>('[role="dialog"]')!
     await act(async () => { settings.querySelector<HTMLElement>('[data-setcat="storage"]')!.click() })
-    const deleteButton = [...settings.querySelectorAll<HTMLButtonElement>('.storage-backup-actions .btn')]
+    const deleteButton = [...settings.querySelectorAll<HTMLButtonElement>('.storage-backup-row .item-trailing .btn')]
       .find((button) => button.textContent === '删除')!
     await act(async () => { deleteButton.click() })
 

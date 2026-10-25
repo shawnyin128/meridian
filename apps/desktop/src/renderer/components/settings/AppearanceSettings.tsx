@@ -22,7 +22,7 @@ import { Card } from '../Card.js'
 import { ConfirmDialog } from '../ConfirmDialog.js'
 import { FadeText } from '../FadeText.js'
 import { DotsMenu } from '../FieldPickers.js'
-import { RowActions } from '../StructuredList.js'
+import { RowActions } from '../Item.js'
 import { InlineMessage } from '../InlineMessage.js'
 
 const OPTIONS: readonly AppearancePreference[] = ['light', 'dark', 'system']

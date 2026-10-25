@@ -46,8 +46,8 @@ describe('the selector map', () => {
     expect(new Set(entries.map((item) => item.id)).size).toBe(entries.length)
     const untagged = entries.filter((item) => !/^(shared:[A-Z]\w+|hand:(shell|routes|components)\/[\w/.-]+\.(tsx|css))$/.test(item.impl))
     expect(untagged.map((item) => item.id)).toEqual([])
-    expect(entries.find((item) => item.selector === '.structured-row')).toMatchObject({ pattern: 'Row', metrics: 'item', impl: 'shared:StructuredRow' })
-    expect(entries.find((item) => item.selector === '.research-object-card')).toMatchObject({ pattern: 'Card', metrics: 'item' })
+    expect(entries.find((item) => item.selector === '.item--row')).toMatchObject({ pattern: 'Row', metrics: 'item', impl: 'shared:Item' })
+    expect(entries.find((item) => item.selector === '.item--card')).toMatchObject({ pattern: 'Card', metrics: 'item' })
   })
 
   it('names only classes the renderer declares, so a renamed class fails here first', () => {

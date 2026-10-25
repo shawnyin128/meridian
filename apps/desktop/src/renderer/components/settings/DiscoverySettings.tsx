@@ -14,6 +14,8 @@ import { Card } from '../Card.js'
 import { FadeText } from '../FadeText.js'
 import { plainTitle } from '../paper/paper-text.js'
 import { Button } from '../Button.js'
+import { Item } from '../Item.js'
+import { List } from '../List.js'
 
 /** The only editor of research directions; the gear on the Discovery page just opens these settings. */
 export function DiscoverySettings() {
@@ -71,33 +73,37 @@ export function DiscoverySettings() {
             </header>
             {profile.intents.length === 0 ? (
               <EmptyState variant="section" />
-            ) : profile.intents.map((intent) => (
-              <div className={`direction-row${intent.enabled ? '' : ' disabled'}`} key={intent.id}>
-                <div className="direction-main">
-                  <div className="direction-name">
-                    {intent.core ? <Tag tone="accent">{m.settings.discovery.core}</Tag> : null}
-                    <span>{intent.label}</span>
-                  </div>
-                  <FadeText className="direction-seeds" label={intent.seeds.map((seed) => plainTitle(seed.title)).join(' · ')}>
-                    {intent.seeds.map((seed, at) => (
-                      <Fragment key={seed.id}>{at === 0 ? null : ' · '}<PaperText text={seed.title} /></Fragment>
-                    ))}
-                  </FadeText>
-                </div>
-                <div className="direction-actions">
-                  {!intent.core && intent.enabled ? (
-                    <Button
-                      size="compact" variant="ghost" disabled={busy.has(intent.id)}
-                      onClick={() => update(profile.id, intent.id, 'set-core')}
-                    >{m.settings.discovery.setCoreAction}</Button>
-                  ) : null}
-                  <Switch
-                    label={intent.label} checked={intent.enabled} disabled={busy.has(intent.id)}
-                    onChange={(on) => update(profile.id, intent.id, on ? 'enable' : 'disable')}
+            ) : (
+              <List variant="embedded" rows="all">
+                {profile.intents.map((intent) => (
+                  <Item
+                    className="direction-row" key={intent.id} lines={2} muted={!intent.enabled}
+                    title={<>{intent.core ? <Tag tone="accent">{m.settings.discovery.core}</Tag> : null}<span>{intent.label}</span></>}
+                    meta={(
+                      <FadeText className="direction-seeds" label={intent.seeds.map((seed) => plainTitle(seed.title)).join(' · ')}>
+                        {intent.seeds.map((seed, at) => (
+                          <Fragment key={seed.id}>{at === 0 ? null : ' · '}<PaperText text={seed.title} /></Fragment>
+                        ))}
+                      </FadeText>
+                    )}
+                    trailing={(
+                      <>
+                        {!intent.core && intent.enabled ? (
+                          <Button
+                            size="compact" variant="ghost" disabled={busy.has(intent.id)}
+                            onClick={() => update(profile.id, intent.id, 'set-core')}
+                          >{m.settings.discovery.setCoreAction}</Button>
+                        ) : null}
+                        <Switch
+                          label={intent.label} checked={intent.enabled} disabled={busy.has(intent.id)}
+                          onChange={(on) => update(profile.id, intent.id, on ? 'enable' : 'disable')}
+                        />
+                      </>
+                    )}
                   />
-                </div>
-              </div>
-            ))}
+                ))}
+              </List>
+            )}
           </section>
         ))}
       </Card>

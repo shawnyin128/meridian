@@ -48,8 +48,9 @@ import { tidyRows, TidyList } from '../components/wiki/WikiTidy.js'
 import { SourceAnchor } from '../components/SourceAnchor.js'
 import { CountBadge } from '../components/CountBadge.js'
 import { Tag, TagButton } from '../components/Tag.js'
-import { CardOpen, ResearchObjectCard } from '../components/ResearchObjectCard.js'
-import { EMBEDDED_LIST_ROW_LIMIT, RowActions } from '../components/StructuredList.js'
+import { DraftSlot, focusDraft } from '../components/DraftSlot.js'
+import { Item, ItemOpen, RowActions } from '../components/Item.js'
+import { EMBEDDED_LIST_ROW_LIMIT, List } from '../components/List.js'
 import { Tooltip } from '../components/Tooltip.js'
 import { useClipped } from '../hooks/useClipped.js'
 import { Button } from '../components/Button.js'
@@ -88,30 +89,27 @@ function AggregationCard({ card, onOpen, onRemove, pending }: {
   const summary = useRef<HTMLDivElement>(null)
   const summaryCut = useClipped(summary, card.summary, true)
   return (
-    <ResearchObjectCard variant="grid" className="wkcard" data-wk={card.id} onActivate={onOpen}>
-      <div className="wt">
-        <Tag tone="wiki" className="wkind">{card.kindLabel}</Tag>
-        <CardOpen className="tt"><FadeText>{card.title}</FadeText></CardOpen>
-        {card.parentCount > 1 ? <Tag className="wkind">{m.wiki.aggregation.parentCount(card.parentCount)}</Tag> : null}
-        <span className="sp" />
-      </div>
+    <Item
+      density="card" className="wkcard" data-wk={card.id} onActivate={onOpen}
+      leading={<Tag tone="wiki" className="wkind">{card.kindLabel}</Tag>}
+      title={<ItemOpen className="tt"><FadeText>{card.title}</FadeText></ItemOpen>}
+      tags={card.parentCount > 1 ? <Tag className="wkind">{m.wiki.aggregation.parentCount(card.parentCount)}</Tag> : null}
+      actions={onRemove === undefined
+        ? undefined
+        : (
+          <IconButton
+            label={m.wiki.removeFromPage} size="nested" className="rx" aria-disabled={pending}
+            onClick={(e) => { e.stopPropagation(); onRemove() }}
+          ><IconCross /></IconButton>
+        )}
+    >
       <div ref={summary} className={`wm fade-lines${summaryCut ? ' clipped' : ''}`}>{card.summary}</div>
       <FadeText className="wf">
         {m.wiki.aggregation.cardFooter(
           card.childCount > 0 ? card.childCount : null, card.memberCount, fmt.date(card.updated),
         )}
       </FadeText>
-      {onRemove === undefined
-        ? null
-        : (
-          <RowActions>
-            <IconButton
-              label={m.wiki.removeFromPage} size="nested" className="rx" aria-disabled={pending}
-              onClick={(e) => { e.stopPropagation(); onRemove() }}
-            ><IconCross /></IconButton>
-          </RowActions>
-        )}
-    </ResearchObjectCard>
+    </Item>
   )
 }
 
@@ -126,17 +124,18 @@ function PaperCard({ paper, onOpen }: { paper: PaperRow; onOpen: () => void }) {
   const line = [`${paper.year ?? ''} ${paper.venue}`.trim(), paper.topics.join(' / ')]
     .filter((part) => part !== '').join(' · ')
   return (
-    <ResearchObjectCard variant="grid" className="wkcard wkcard--paper" data-wk={`${PAPER_PAGE}${paper.id}`} onActivate={onOpen}>
-      <div className="wt">
-        <Tag tone="paper" className="wkind">{m.wiki.paperKind}</Tag>
+    <Item
+      density="card" className="wkcard wkcard--paper" data-wk={`${PAPER_PAGE}${paper.id}`} onActivate={onOpen}
+      leading={<Tag tone="paper" className="wkind">{m.wiki.paperKind}</Tag>}
+      title={(
         <Tooltip label={plainTitle(paper.title)} whenClipped>
-          <CardOpen className="tt"><span ref={title} className={`tt-lines fade-lines${titleCut ? ' clipped' : ''}`}><PaperText text={paper.title} /></span></CardOpen>
+          <ItemOpen className="tt"><span ref={title} className={`tt-lines fade-lines${titleCut ? ' clipped' : ''}`}><PaperText text={paper.title} /></span></ItemOpen>
         </Tooltip>
-        <span className="sp" />
-      </div>
+      )}
+    >
       <FadeText className="wm" label={line}>{line}</FadeText>
       <FadeText className="wf">{m.wiki.paperCardFooter(paper.noteCount, paper.conclusionCount)}</FadeText>
-    </ResearchObjectCard>
+    </Item>
   )
 }
 
@@ -445,8 +444,7 @@ export function Wiki() {
   const open = (what: 'child' | 'paper') => {
     setNewCol(false)
     if (adding !== what) { setAdding(what); return }
-    const held = what === 'paper' ? newPaperRow.current : addRow.current
-    held?.querySelector('input')?.focus()
+    focusDraft(what === 'paper' ? newPaperRow.current : addRow.current)
   }
 
   // An entry from the sidebar lands on the Wiki home; a jump from another screen lands on the page it
@@ -791,7 +789,7 @@ export function Wiki() {
                 {shownAgg.children.length === 0 && adding !== 'child'
                   ? <EmptyState variant="section" />
                   : (
-                    <div className="wkgrid">
+                    <List variant="embedded" rows="all" grid className="wkgrid">
                       {shownAgg.children.map((c) => (
                         <AggregationCard
                           key={c.id} card={c} pending={pending}
@@ -800,9 +798,10 @@ export function Wiki() {
                       ))}
                       {adding === 'child'
                         ? (
-                          <ResearchObjectCard variant="grid" className="wkcard newcard" cardRef={addRow}>
-                            <div className="wt">
-                              <Tag tone="wiki" className="wkind">{shownAgg.kindLabel}</Tag>
+                          <DraftSlot
+                            as="card" className="wkcard newcard" slot={addRow}
+                            leading={<Tag tone="wiki" className="wkind">{shownAgg.kindLabel}</Tag>}
+                            title={(
                               <PickRow
                                 row={addRow} triggers={[childBtn, paperBtn, colBtn]} allowNew
                                 placeholder={m.wiki.kindNamePlaceholder(shownAgg.kindLabel)}
@@ -810,12 +809,13 @@ export function Wiki() {
                                 onCancel={() => setAdding(null)} onError={report}
                                 kept={{ drafts: adds, target: 'add-child' }}
                               />
-                            </div>
+                            )}
+                          >
                             <div className="wf" />
-                          </ResearchObjectCard>
+                          </DraftSlot>
                         )
                         : null}
-                    </div>
+                    </List>
                   )}
                 <SectionHeading
                   actions={(
@@ -854,7 +854,7 @@ export function Wiki() {
                             size="compact" ref={colAdd} disabled={pending}
                             label={m.wiki.aggregation.addColumn}
                             onClick={() => {
-                              if (newCol) { newColCell.current?.querySelector('input')?.focus(); return }
+                              if (newCol) { focusDraft(newColCell.current); return }
                               setAdding(null)
                               setNewCol(true)
                             }}
@@ -1099,17 +1099,17 @@ export function Wiki() {
                 return roots.length === 0 ? null : (
                   <Fragment key={k.key}>
                     <SectionHeading>{k.label}</SectionHeading>
-                    <div className="wkgrid">
+                    <List variant="embedded" rows="all" grid className="wkgrid">
                       {roots.map((c) => <AggregationCard key={c.id} card={c} onOpen={() => go(c.id)} />)}
-                    </div>
+                    </List>
                   </Fragment>
                 )
               })}
 
               <SectionHeading>{m.project.sections.papers}</SectionHeading>
-              <div className="wkgrid">
+              <List variant="embedded" rows="all" grid className="wkgrid">
                 {rows.map((p) => <PaperCard key={p.id} paper={p} onOpen={() => go(`${PAPER_PAGE}${p.id}`)} />)}
-              </div>
+              </List>
             </>
           )
           : null}

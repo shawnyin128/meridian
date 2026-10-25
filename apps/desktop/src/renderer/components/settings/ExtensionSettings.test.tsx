@@ -67,7 +67,7 @@ describe('ExtensionSettings', () => {
     expect(host.querySelector('.extension-tutorial-steps li p')).toBeNull()
   })
 
-  it('lists the ten prompts as one-line rows under their groups, without tutorial steps or a list of what an agent does', async () => {
+  it('lists the ten prompts as one-line rows under their groups that copy on click, without tutorial steps or a list of what an agent does', async () => {
     const copy = vi.fn(async () => true)
     act(() => root.render(
       <MessagesProvider>
@@ -80,12 +80,13 @@ describe('ExtensionSettings', () => {
       .toEqual(['Use Meridian with a coding agent', 0])
     expect(host.querySelectorAll('.extension-prompt-group')).toHaveLength(4)
     expect(host.querySelectorAll('.extension-prompt')).toHaveLength(10)
-    const first = host.querySelector('.extension-prompt')!
-    expect([...first.children].map((cell) => cell.tagName)).toEqual(['STRONG', 'P', 'BUTTON'])
-    expect(first.querySelector('p > .fade-text')).not.toBeNull()
-    const firstPrompt = first.querySelector('p')?.textContent ?? ''
+    const first = host.querySelector<HTMLElement>('.extension-prompt')!
+    expect(first.querySelector('.item-meta .fade-text')).not.toBeNull()
+    const firstPrompt = first.querySelector('.item-meta')?.textContent ?? ''
     await act(async () => { first.querySelector<HTMLButtonElement>('button')!.click() })
-    expect(copy).toHaveBeenCalledWith(firstPrompt)
+    expect(copy.mock.calls).toEqual([[firstPrompt]])
+    await act(async () => { first.querySelector<HTMLElement>('.item-title')!.click() })
+    expect(copy.mock.calls).toEqual([[firstPrompt], [firstPrompt]])
     expect(firstPrompt).not.toContain('meridian.context')
   })
 

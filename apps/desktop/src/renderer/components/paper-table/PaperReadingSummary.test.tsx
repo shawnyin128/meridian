@@ -68,10 +68,10 @@ describe('PaperReadingSummary', () => {
       )
     })
 
-    const list = host.querySelector('.paper-reading-summary .structured-list')
-    expect(list?.classList.contains('structured-list--embedded')).toBe(true)
+    const list = host.querySelector('.paper-reading-summary .list')
+    expect(list?.classList.contains('list--embedded')).toBe(true)
     const rows = [...list!.children]
-    expect(rows.every((row) => row.classList.contains('structured-row'))).toBe(true)
+    expect(rows.every((row) => row.classList.contains('item'))).toBe(true)
     expect(rows.map((row) => row.textContent)).toEqual(['先看第三节的消融。', '“固定上下文”和自适应上下文对比', '第二条'])
     expect([list!.nextElementSibling?.textContent, list!.nextElementSibling?.querySelector('svg') !== null]).toEqual(['全部 3 条', true])
     expect(list!.nextElementSibling?.className).toBe('btn ghost sm reading-summary-all')

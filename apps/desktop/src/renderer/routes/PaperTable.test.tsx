@@ -872,8 +872,8 @@ describe('PaperTable', () => {
     const value = host.querySelector<HTMLElement>('.gxrow')!
     expect(value.tagName).toBe('BUTTON')
     expect(host.querySelector('.lmore')).toBeNull()
-    expect(value.classList.contains('structured-row')).toBe(true)
-    expect(value.parentElement!.classList.contains('structured-list--embedded')).toBe(true)
+    expect(value.classList.contains('item')).toBe(true)
+    expect(value.parentElement!.classList.contains('list--embedded')).toBe(true)
     await act(async () => { value.click() })
     await flush()
     expect(listParams.at(-1)?.facet).toEqual({ field: 'topics', value: '推理' })

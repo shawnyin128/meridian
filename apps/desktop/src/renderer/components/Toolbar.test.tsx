@@ -6,7 +6,7 @@ import { ActionPopover } from './ActionPopover.js'
 import { AddAction } from './AddAction.js'
 import { ChoicePicker } from './FieldPickers.js'
 import { IconButton } from './IconButton.js'
-import { RowActions } from './StructuredList.js'
+import { RowActions } from './Item.js'
 import { ToggleGroup, ToggleItem, Toolbar, ToolbarButton } from './Toolbar.js'
 
 declare global {

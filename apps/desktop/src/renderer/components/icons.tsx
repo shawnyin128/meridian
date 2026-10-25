@@ -126,6 +126,9 @@ export const IconFolder = () => (
   </Icon>
 )
 
+/** Opens the folder that holds the one a folder browser shows. */
+export const IconEnclosingFolder = () => <Icon sw={2.2}><path d="M6 15l6-6 6 6" /></Icon>
+
 /** Discovery's North Star: four long arms fill the viewBox; small bevels keep it a star at sidebar size. */
 export const IconNorthStar = () => (
   <Icon sw={2}>

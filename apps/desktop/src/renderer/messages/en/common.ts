@@ -46,6 +46,7 @@ export const common = {
     edit: (label: string) => `Edit ${label}`,
     chooseDirectory: 'Choose folder…',
   },
+  sshFolders: { up: 'Enclosing folder', path: 'Folder path' },
   pager: {
     total: (n: number) => `${n} ${pluralEn(n, { one: 'item', other: 'items' })} total`,
     perPage: 'Items per page',
@@ -74,7 +75,7 @@ export const common = {
       'newer-changes': 'Undo the newer changes first', 'in-use': 'Still in use', invalid: 'Not valid',
       'not-library': 'Not a Meridian library', busy: 'Still in progress', 'newer-version': 'Needs a newer App',
       'key-unsaved': 'Could not save the key', 'key-unreadable': 'Could not read the saved key', 'no-model': 'No model set up',
-      cancelled: 'Generation stopped', model: 'The model call failed',
+      cancelled: 'Generation stopped', model: 'The model call failed', 'update-files': 'Could not access the update files',
     },
     unknown: 'Something went wrong',
   },

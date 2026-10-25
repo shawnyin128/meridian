@@ -9,6 +9,8 @@ import { Card } from '../Card.js'
 import { PluginVersionEntry, type PluginVersionEntryProps } from './PluginVersionEntry.js'
 import { FadeText } from '../FadeText.js'
 import { Button, DONE_MS } from '../Button.js'
+import { Item } from '../Item.js'
+import { List } from '../List.js'
 import './ExtensionSettings.css'
 
 const STATE_TONE: Record<ExtensionStatus['state'], TagTone> = {
@@ -27,7 +29,7 @@ interface ExtensionSettingsProps {
 
 /**
  * Installed coding-agent extensions and the explicit commands that manage them, then the agent
- * prompts, one line each, with a button that copies it. A copy turns its button into the check for
+ * prompts, one row each, that copies its prompt on click. A copy turns its button into the check for
  * DONE_MS.
  */
 export function ExtensionSettings({ statuses, failed, plugin, onCopy }: ExtensionSettingsProps) {
@@ -95,16 +97,21 @@ export function ExtensionSettings({ statuses, failed, plugin, onCopy }: Extensio
           {m.settings.extensions.tutorial.groups.map((group) => (
             <section className="extension-prompt-group" key={group.heading}>
               <h5>{group.heading}</h5>
-              {group.examples.map((example) => (
-                <div className="extension-prompt" key={example.label}>
-                  <strong>{example.label}</strong>
-                  <p><FadeText label={example.prompt}>{example.prompt}</FadeText></p>
-                  <Button
-                    size="compact" variant="ghost" aria-label={m.settings.extensions.tutorial.copyPromptLabel(example.label)}
-                    done={copied === example.label} doneLabel={m.common.copied} onClick={() => copy(example.label, example.prompt)}
-                  >{m.settings.extensions.copy}</Button>
-                </div>
-              ))}
+              <List variant="embedded" rows="all" nested className="extension-prompt-list">
+                {group.examples.map((example) => (
+                  <Item
+                    composite className="extension-prompt" key={example.label} title={example.label}
+                    meta={<FadeText label={example.prompt}>{example.prompt}</FadeText>}
+                    onActivate={() => copy(example.label, example.prompt)}
+                    trailing={(
+                      <Button
+                        size="compact" variant="ghost" aria-label={m.settings.extensions.tutorial.copyPromptLabel(example.label)}
+                        done={copied === example.label} doneLabel={m.common.copied}
+                      >{m.settings.extensions.copy}</Button>
+                    )}
+                  />
+                ))}
+              </List>
             </section>
           ))}
         </div>

@@ -21,12 +21,12 @@ import { AgentLabel } from '../components/SourceLabel.js'
 import {
   PageBody, PageError, PageHeader, PageShell, PageTitle, SectionHeading,
 } from '../components/PageShell.js'
-import { RowActions, StructuredList, StructuredRow } from '../components/StructuredList.js'
+import { Item, ItemMeta, ItemTitle, RowActions } from '../components/Item.js'
+import { List } from '../components/List.js'
 import { IconButton } from '../components/IconButton.js'
 import { IconArchive, IconTrash, IconUndo } from '../components/icons.js'
 import { Button } from '../components/Button.js'
 import './shell.css'
-import './Changelog.css'
 
 /** The separator between the parts of the grey line; the same string splits `meta` and joins the parts. */
 const SEP = ' · '
@@ -158,13 +158,13 @@ export function Changelog() {
   const unread = fresh.length
 
   const row = (c: ChangeEntry) => (
-    <StructuredRow className="crow" key={c.id}>
+    <Item className="crow" lines={2} key={c.id}>
       <CardTray
         variant="row" composite
         summary={(
           <>
-            <span className="ct"><ChangeTitle entry={c} /><ChangeSource source={c.source} /></span>
-            <span className="cm">{[metaBelowHeading(c.meta), hint(c, m.changelog.state)].filter((s) => s !== '').join(SEP)}</span>
+            <ItemTitle flow className="ct"><span><ChangeTitle entry={c} /></span><ChangeSource source={c.source} /></ItemTitle>
+            <ItemMeta flow className="cm">{[metaBelowHeading(c.meta), hint(c, m.changelog.state)].filter((s) => s !== '').join(SEP)}</ItemMeta>
           </>
         )}
         action={(
@@ -187,7 +187,7 @@ export function Changelog() {
       >
         <DiffLines lines={c.lines} />
       </CardTray>
-    </StructuredRow>
+    </Item>
   )
 
   /**
@@ -205,7 +205,7 @@ export function Changelog() {
     return days.map((day, at) => (
       <Fragment key={`${day.date}-${at}`}>
         <DayHeading>{fmt.dayHead(day.date, today)}</DayHeading>
-        <StructuredList variant="embedded" maxVisibleRows="all">{day.entries.map(row)}</StructuredList>
+        <List variant="embedded" rows="all">{day.entries.map(row)}</List>
       </Fragment>
     ))
   }

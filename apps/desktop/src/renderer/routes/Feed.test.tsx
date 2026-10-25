@@ -80,7 +80,7 @@ describe('feed rows', () => {
     )
 
     expect(html).not.toContain('style="color')
-    expect(html.match(/<div class="fsrc"><span class="tag tag--label tag--neutral source-label"><span class="fic">/g)).toHaveLength(2)
+    expect(html.match(/<div class="item-meta"><span class="tag tag--label tag--neutral source-label"><span class="fic">/g)).toHaveLength(2)
     expect(html).toContain('<span class="fade-text tag-text" data-state="closed">我</span>')
     expect(html).toContain('<span class="fade-text tag-text" data-state="closed">实验</span>')
   })

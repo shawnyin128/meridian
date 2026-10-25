@@ -85,6 +85,7 @@ common.failure.reasons.refused failure
 common.failure.reasons.server failure
 common.failure.reasons.timeout failure
 common.failure.reasons.unavailable failure
+common.failure.reasons.update-files failure
 common.failure.reasons.write failure
 common.failure.unknown failure
 common.field.chooseDirectory action
@@ -121,6 +122,8 @@ common.retry action
 common.save action
 common.saved state
 common.saving aria
+common.sshFolders.path aria
+common.sshFolders.up action
 common.trashed notice
 common.unarchive action
 common.undo action
@@ -502,7 +505,9 @@ project.signals.reason.pathBroken state
 project.signals.reason.pathMissing state
 project.workspace.add action
 project.workspace.adding aria
+project.workspace.choose action
 project.workspace.chooseLocal action
+project.workspace.choosing aria
 project.workspace.connect action
 project.workspace.connecting aria
 project.workspace.dialogTitle label
@@ -513,7 +518,6 @@ project.workspace.local label
 project.workspace.localPlaceholder placeholder
 project.workspace.pathLabel label
 project.workspace.portLabel label
-project.workspace.remotePlaceholder placeholder
 project.workspace.state.invalid state
 project.workspace.state.missing state
 project.workspace.state.ready state

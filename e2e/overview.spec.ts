@@ -143,7 +143,7 @@ test('侧栏「总览」进的是研究总览,各块条数与 project.overview �
   const embeddedLists = shown(win).locator('.ovlist, .ovpulse')
   expect(await embeddedLists.count()).toBeGreaterThan(1)
   expect(await embeddedLists.evaluateAll(
-    (elements) => elements.every((element) => element.classList.contains('structured-list--embedded')),
+    (elements) => elements.every((element) => element.classList.contains('list--embedded')),
   )).toBe(true)
   const decisionGeometry = await shown(win).locator('.ovlist-row.attention').evaluateAll(
     (elements) => elements.map((row) => {

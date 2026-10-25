@@ -76,7 +76,7 @@ describe('WikiTidy', () => {
 
   it('一行一个信号:种类标签、页名和出错的那几处,只有名字,不写 Core 的句子;列表随页面滚动', () => {
     render([...SIGNALS, signal('unfiled-paper', 'papers/b')])
-    const rows = [...host.querySelectorAll<HTMLElement>('.structured-row')]
+    const rows = [...host.querySelectorAll<HTMLElement>('.item')]
     expect(rows.map((row) => [row.querySelector('.tag')!.textContent, row.querySelector('.tidy-open')!.textContent, row.querySelector('.tidy-wrong')?.textContent ?? ''])).toEqual([
       ['结论冲突', 'KV 压缩', '↔ 2bit 量化更省显存'], ['链接失效', 'H2O', '→ EAGLE-3 · gone'],
       ['链接失效', '推测解码加速', '→ old'], ['内容太少', '混合专家', ''], ['未归入主题', 'Paper A', ''], ['未归入主题', 'papers/b', ''],
@@ -87,7 +87,7 @@ describe('WikiTidy', () => {
     ])
     expect(rows.every((row) => !row.textContent!.includes('一句'))).toBe(true)
     expect(rows[4]!.querySelector('.tidy-open strong')!.textContent).toBe('A')
-    expect(host.querySelector('.structured-list--scrollable')).toBeNull()
+    expect(host.querySelector('.list--scrollable')).toBeNull()
   })
 
   it('链接指向垃圾桶里的论文时写它的标题并标上已在垃圾桶,哪里都没有的页写链接里的名字,都不写 id', () => {
@@ -104,7 +104,7 @@ describe('WikiTidy', () => {
 
   it('一行打开它出错的地方:冲突落到那条结论,别的落到页上;冲突里另一条结论是链接,打开它所在的那条', () => {
     render(SIGNALS)
-    const rows = [...host.querySelectorAll<HTMLElement>('.structured-row')]
+    const rows = [...host.querySelectorAll<HTMLElement>('.item')]
     expect(rows.map((row) => row.querySelector('.tidy-open')!.tagName)).toEqual(Array(5).fill('BUTTON'))
     act(() => rows[0]!.click())
     expect(onOpen).toHaveBeenLastCalledWith('topics/kv', 'topics/kv#evict')
@@ -120,9 +120,9 @@ describe('WikiTidy', () => {
   it('页名还没取到时是加载占位,没有要整理的时是分节空态', () => {
     render(SIGNALS, null)
     expect(host.querySelector('.loading-placeholder')).not.toBeNull()
-    expect(host.querySelector('.structured-row')).toBeNull()
+    expect(host.querySelector('.item')).toBeNull()
     render([])
     expect(host.querySelector('.empty-state--section')!.textContent).toBe('—')
-    expect(host.querySelector('.structured-row')).toBeNull()
+    expect(host.querySelector('.item')).toBeNull()
   })
 })

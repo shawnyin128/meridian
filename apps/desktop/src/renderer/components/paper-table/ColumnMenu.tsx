@@ -12,7 +12,7 @@ import { builtinNames, takenLabel } from './column-key.js'
 import { COLUMNS } from './PaperTable.js'
 import { afterLeaving, InlineDraftInput } from '../InlineDraftInput.js'
 import { FadeText } from '../FadeText.js'
-import { RowActions } from '../StructuredList.js'
+import { RowActions } from '../Item.js'
 
 /**
  * The column menu, opened from the gear at the end of the table header. Built-in columns take one

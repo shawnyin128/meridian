@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useState } from 'react'
 import type {
   ConclusionState, GraphNode, ProjectConclusion, ProposalOp, WikiAggregationCard,
 } from '../../../shared/contract.js'
@@ -15,7 +15,9 @@ import { FormInput } from '../FormControls.js'
 import { SectionHeading } from '../PageShell.js'
 import { PanelClose } from '../PanelClose.js'
 import { AgentLabel } from '../SourceLabel.js'
-import { StructuredList, StructuredRow } from '../StructuredList.js'
+import { useDraftSlot } from '../DraftSlot.js'
+import { Item } from '../Item.js'
+import { List } from '../List.js'
 import { Tag } from '../Tag.js'
 import { EntityLink } from '../EntityLink.js'
 import { ProjectSignalDate, ProjectSignalKind } from './ProjectSignals.js'
@@ -45,7 +47,7 @@ export function ProjectConclusionRow({ conclusion, node, selected, onOpen }: {
   const written = conclusion.wiki[0]
   const wikiState = written === undefined ? c.notWritten : c.writtenTo(written.title, written.version)
   return (
-    <StructuredRow
+    <Item
       className="attnrow record-row conclusion-row" selected={selected}
       data-conclusion={conclusion.id} onActivate={onOpen}
     >
@@ -60,7 +62,7 @@ export function ProjectConclusionRow({ conclusion, node, selected, onOpen }: {
         {node === undefined ? null : <EntityLink kind="node" label={node.label} mode={node.mode} fill />}
       </span>
       <span className="record-who">{conclusion.node === undefined ? null : <AgentLabel />}</span>
-    </StructuredRow>
+    </Item>
   )
 }
 
@@ -94,16 +96,10 @@ export function ProjectConclusionPanel({
   // A draft belongs to the conclusion it was opened from and shows only with it.
   const [draft, setDraft] = useDraft<{ page: string; text: string }>(['project', projectId, 'conclusion', conclusion.id], 'claim')
   const [pages, setPages] = useState<WikiAggregationCard[]>([])
-  const draftAt = useRef<HTMLDivElement>(null)
-
-  const startWriting = () => {
-    if (draft !== null) {
-      draftAt.current?.querySelector<HTMLElement>('.form-control')?.focus()
-      return
-    }
+  const claimDraft = useDraftSlot<HTMLDivElement>(draft !== null, () => {
     setDraft({ page: '', text: conclusion.text })
     void wiki.cards().then((cards) => setPages([...cards].sort((a, b) => a.title.localeCompare(b.title))))
-  }
+  })
 
   const submit = async (): Promise<void> => {
     const { page, text } = draft!
@@ -133,7 +129,7 @@ export function ProjectConclusionPanel({
               ? <Button size="compact" onClick={() => onUnverify(conclusion.node!)}>{c.unverify}</Button>
               : null}
             {conclusion.state === 'verified' ? null : <Tag>{c.unverifiedState}</Tag>}
-            <Button size="compact" disabled={conclusion.state !== 'verified'} onClick={startWriting}>{c.write}</Button>
+            <Button size="compact" disabled={conclusion.state !== 'verified'} onClick={claimDraft.start}>{c.write}</Button>
             <PanelClose onClose={onClose} />
           </>
         )}
@@ -147,7 +143,7 @@ export function ProjectConclusionPanel({
       {draft === null
         ? null
         : (
-          <div className="conclusion-draft" ref={draftAt}>
+          <div className="conclusion-draft" ref={claimDraft.slot}>
             <DraftForm
               destination={(invalid) => (
                 <>
@@ -194,13 +190,14 @@ export function ProjectConclusionPanel({
             {conclusion.tasks.length === 0
               ? <EmptyState variant="section" />
               : (
-                <StructuredList variant="embedded" className="conclusion-chain">
+                <List variant="embedded" className="conclusion-chain">
                   {conclusion.tasks.map((task) => (
-                    <StructuredRow key={task.id} className="conclusion-chain-row" onActivate={() => onOpenTask(task.id)}>
-                      <FadeText>{task.title}</FadeText>
-                    </StructuredRow>
+                    <Item
+                      key={task.id} className="conclusion-chain-row" onActivate={() => onOpenTask(task.id)}
+                      title={<FadeText>{task.title}</FadeText>}
+                    />
                   ))}
-                </StructuredList>
+                </List>
               )}
             <SectionHeading variant="rail">{c.node}</SectionHeading>
             {node === undefined
@@ -214,14 +211,14 @@ export function ProjectConclusionPanel({
             {conclusion.experiments.length === 0
               ? <EmptyState variant="section" />
               : (
-                <StructuredList variant="embedded" className="conclusion-chain">
+                <List variant="embedded" className="conclusion-chain">
                   {conclusion.experiments.map((experiment) => (
-                    <StructuredRow key={experiment.id} className="conclusion-chain-row">
-                      <FadeText>{experiment.title}</FadeText>
-                      {experiment.title === experiment.id ? null : <span className="conclusion-chain-id">{experiment.id}</span>}
-                    </StructuredRow>
+                    <Item
+                      key={experiment.id} className="conclusion-chain-row" title={<FadeText>{experiment.title}</FadeText>}
+                      trailing={experiment.title === experiment.id ? null : <span className="conclusion-chain-id">{experiment.id}</span>}
+                    />
                   ))}
-                </StructuredList>
+                </List>
               )}
           </>
         )}
@@ -230,17 +227,15 @@ export function ProjectConclusionPanel({
       {conclusion.wiki.length === 0
         ? <EmptyState variant="section" />
         : (
-          <StructuredList variant="embedded" className="conclusion-chain">
+          <List variant="embedded" className="conclusion-chain">
             {conclusion.wiki.map((claim) => (
-              <StructuredRow
+              <Item
                 key={`${claim.page}#${claim.claim}`} className="conclusion-chain-row" data-wk={claim.page}
-                onActivate={() => onOpenPage(claim.page)}
-              >
-                <FadeText>{claim.title}</FadeText>
-                <span className="conclusion-chain-id">v{claim.version}</span>
-              </StructuredRow>
+                onActivate={() => onOpenPage(claim.page)} title={<FadeText>{claim.title}</FadeText>}
+                trailing={<span className="conclusion-chain-id">v{claim.version}</span>}
+              />
             ))}
-          </StructuredList>
+          </List>
         )}
 
     </>
