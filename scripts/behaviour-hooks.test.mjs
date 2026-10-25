@@ -37,4 +37,10 @@ describe('each shared behaviour has one implementation', () => {
       'hooks/useClipped.ts': { reason: 'isClipped itself' },
     })).toEqual([])
   })
+
+  it('a timestamp\'s day and an author list are written only through the shared format', () => {
+    expect(copies(/\.date\((localDayOf|localDay|dayOf)\(|function localDay\(|authors[^\n]*\.join\(/, {
+      'lib/format.ts': { reason: 'the format itself' },
+    })).toEqual([])
+  })
 })

@@ -3,7 +3,6 @@ import type {
   CallFailure, HarnessPaperWikiRejectionFeedback, HarnessPaperWikiRejectionReason, HarnessPendingPaperWikiResult,
   HarnessPlan, HarnessRunReceipt, PaperReading, PaperRow,
 } from '../../../shared/contract.js'
-import { localDayOf } from '../../../shared/dates.js'
 import { PAPER_PAGE } from '../../../shared/vocabulary.js'
 import { harness } from '../../ipc.js'
 import { editField, useDrafts, type Drafts, type EditDraft } from '../../hooks/useDrafts.js'
@@ -259,7 +258,7 @@ export function PaperWikiIngest({ paper, reading, onJump, edits }: {
             onOpen={() => open('wiki', `${PAPER_PAGE}${shown.targetId}`)}
           />
         )}
-        by={<><AgentLabel />{made === undefined ? null : <span>{fmt.date(localDayOf(made))}</span>}</>}
+        by={<><AgentLabel />{made === undefined ? null : <span>{fmt.day(made)}</span>}</>}
       >
         {mode === 'structured' && shown.review !== undefined ? (
           <>

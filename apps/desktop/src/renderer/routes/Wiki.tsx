@@ -1014,7 +1014,7 @@ export function Wiki() {
                   />
                   <div className="pk">{m.wiki.authorsLabel}</div>
                   <InlineMetadataField
-                    label={m.wiki.authorsLabel} value={shownPaper.authors.join(', ')} keep={{ scope: ['wiki', shownPaper.id], target: 'authors' }}
+                    label={m.wiki.authorsLabel} value={fmt.authors(shownPaper.authors)} keep={{ scope: ['wiki', shownPaper.id], target: 'authors' }}
                     onSave={(authors) => updateWikiPaper({
                       authors: authors.split(/[,，;；\n]/).map((item) => item.trim()).filter(Boolean),
                     }, m.wiki.authorsLabel)}

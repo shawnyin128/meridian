@@ -1,6 +1,5 @@
 import type { ReactNode } from 'react'
 import type { ConflictTarget, DiffPiece, Evidence, ProposalOp, WikiProposal } from '../../../shared/contract.js'
-import { localDayOf } from '../../../shared/dates.js'
 import { PAPER_PAGE } from '../../../shared/vocabulary.js'
 import { useDrafts } from '../../hooks/useDrafts.js'
 import { useFormat } from '../../lib/format.js'
@@ -22,9 +21,6 @@ import { ProposalCard, ProposalChange, ProposalDecision, ProposalRows, ProposalT
 import type { ClaimLinks } from './WikiClaims.js'
 import { Button } from '../Button.js'
 import './ReviewQueue.css'
-
-/** Local calendar day, the vault's day, a proposal arrived or was decided, from epoch ms. */
-const dayOf = (ms: number): string => localDayOf(new Date(ms).toISOString())
 
 /** A Wiki page id as Core's findings write it. */
 const PAGE_ID = /[\p{L}\p{N}._-]+\/[\p{L}\p{N}._-]+/gu
@@ -268,7 +264,7 @@ export function ReviewQueue({ proposals, failed, pending, onApply, onDecline, li
   }
   /** The producer's label and the day `p` arrived. */
   const by = (p: WikiProposal) => (
-    <>{p.proposal?.producer.kind === 'ai' ? <AgentLabel /> : null}<span>{fmt.date(dayOf(p.received))}</span></>
+    <>{p.proposal?.producer.kind === 'ai' ? <AgentLabel /> : null}<span>{fmt.day(p.received)}</span></>
   )
   /** The pages `p` would write beyond the ones its blocks name. */
   const others = (p: WikiProposal): string[] => {
@@ -372,7 +368,7 @@ export function ReviewQueue({ proposals, failed, pending, onApply, onDecline, li
                         {p.status === 'applied' ? r.applied
                           : p.reason?.kind === 'declined' ? r.rejected : `${r.rejected} · ${r.reasonKind[p.reason?.kind ?? 'invalid']}`}
                       </Tag>
-                      {p.decided === null ? null : <span>{fmt.date(dayOf(p.decided.at))}</span>}
+                      {p.decided === null ? null : <span>{fmt.day(p.decided.at)}</span>}
                       {p.reason === null || p.reason.message === '' ? null : (
                         <span className="review-reason">
                           {p.reason.kind === 'declined' ? p.reason.message

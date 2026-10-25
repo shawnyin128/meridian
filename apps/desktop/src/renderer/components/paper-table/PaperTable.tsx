@@ -8,6 +8,7 @@ import { MAX_PDF_UPLOAD_BYTES } from '../../../shared/contract.js'
 import { DEFAULT_PAPER_GROUPS, PAPER_PAGE, READ_STATES } from '../../../shared/vocabulary.js'
 import { papers } from '../../ipc.js'
 import { errorLabel } from '../../lib/failure-label.js'
+import { useFormat } from '../../lib/format.js'
 import type { Catalog } from '../../messages/catalog.js'
 import { useMessages } from '../../messages/useMessages.js'
 import { IconGrip, IconRead, IconTrash } from '../icons.js'
@@ -275,6 +276,7 @@ function TextCellEdit({ cell, initial, keep, onSave, onCancel }: {
  */
 export function PaperTable() {
   const m = useMessages()
+  const fmt = useFormat()
   const jumpOrigin = useJumpOrigin()
   const [view, setView] = useState<'table' | 'research-map'>('table')
   const [rows, setRows] = useState<PaperRow[]>([])
@@ -1018,7 +1020,7 @@ export function PaperTable() {
     }
     const k = c.k
     if (k === 'short') return <td className="pt-dim" key={k}><span className="ci">{p.shortTitle ?? ''}</span></td>
-    if (k === 'authors') return <td className="pt-dim" key={k}><span className="ci">{(p.authors ?? []).join(', ')}</span></td>
+    if (k === 'authors') return <td className="pt-dim" key={k}><span className="ci">{fmt.authors(p.authors ?? [])}</span></td>
     if (k === 'rating') {
       return <td key={k}><RatingStars value={p.rating} onChange={(rating) => setRating(p, rating)} /></td>
     }
