@@ -4,7 +4,7 @@ import { NO_TRIGGERS, useOnLeave } from '../hooks/useOnLeave.js'
 import { appMenu } from '../ipc.js'
 import { commitsMultiline, composing } from '../lib/keyboard.js'
 import { Card } from './Card.js'
-import { EditActions } from './EditActions.js'
+import { CommitActions } from './CommitActions.js'
 import './DraftForm.css'
 
 /** Gives a field the refused look while it is `missing` after a save the draft refused; see DraftForm. */
@@ -88,7 +88,7 @@ export function DraftForm({ destination, canSave, onSave, onCancel, empty = fals
         )}
       {children(invalid)}
       <div className="draft-form-foot">
-        <EditActions editing saving={saving} canSave={canSave} onEdit={() => {}} onCancel={onCancel} onSave={save} />
+        <CommitActions place="item" saving={saving} canSave={canSave} onCancel={onCancel} onSave={save} />
       </div>
     </div>
   )

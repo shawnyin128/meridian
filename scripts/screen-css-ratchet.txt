@@ -1309,14 +1309,13 @@ routes/ProjectDetail.css:32: .workspace-root { text-align }
 routes/ProjectDetail.css:32: .workspace-root { cursor }
 routes/ProjectDetail.css:32: .workspace-root { padding }
 routes/ProjectDetail.css:33: .workspace-kinds { margin-bottom }
-routes/ProjectDetail.css:34: .workspace-local { min-width }
-routes/ProjectDetail.css:36: .workspace-form label { grid-template-columns }
-routes/ProjectDetail.css:37: .workspace-form label { color }
-routes/ProjectDetail.css:37: .workspace-form label { font-size }
-routes/ProjectDetail.css:38: .workspace-form .form-control { font-size }
-routes/ProjectDetail.css:39: .workspace-form .form-input[type="number"] { -moz-appearance }
-routes/ProjectDetail.css:40: .workspace-form .form-input[type="number"]::-webkit-inner-spin-button { appearance }
-routes/ProjectDetail.css:40: .workspace-form .form-input[type="number"]::-webkit-inner-spin-button { margin }
+routes/ProjectDetail.css:35: .workspace-form label { grid-template-columns }
+routes/ProjectDetail.css:36: .workspace-form label { color }
+routes/ProjectDetail.css:36: .workspace-form label { font-size }
+routes/ProjectDetail.css:37: .workspace-form .form-control { font-size }
+routes/ProjectDetail.css:38: .workspace-form .form-input[type="number"] { -moz-appearance }
+routes/ProjectDetail.css:39: .workspace-form .form-input[type="number"]::-webkit-inner-spin-button { appearance }
+routes/ProjectDetail.css:39: .workspace-form .form-input[type="number"]::-webkit-inner-spin-button { margin }
 routes/Projects.css:8: .pp-h .dd { margin-left }
 routes/Projects.css:8: .pp-h .dd { font-size }
 routes/Projects.css:8: .pp-h .dd { color }
@@ -1950,335 +1949,295 @@ routes/Wiki.css:102: .coledit .ch { font-size }
 routes/Wiki.css:102: .coledit .ch { font-weight }
 routes/Wiki.css:102: .coledit .ch { color }
 routes/shell.css:12: .mwrap { margin }
-routes/shell.css:22: .btn { display }
-routes/shell.css:22: .btn { align-items }
-routes/shell.css:22: .btn { justify-content }
-routes/shell.css:22: .btn { gap }
-routes/shell.css:22: .btn { height }
-routes/shell.css:22: .btn { padding }
-routes/shell.css:22: .btn { border }
-routes/shell.css:22: .btn { border-radius }
-routes/shell.css:22: .btn { background-color }
-routes/shell.css:22: .btn { color }
-routes/shell.css:22: .btn { font-family }
-routes/shell.css:22: .btn { font-size }
-routes/shell.css:22: .btn { font-weight }
-routes/shell.css:22: .btn { line-height }
-routes/shell.css:22: .btn { white-space }
-routes/shell.css:22: .btn { cursor }
-routes/shell.css:22: .btn { transition }
-routes/shell.css:23: .btn.sm { height }
-routes/shell.css:23: .btn.sm { padding }
-routes/shell.css:23: .btn.sm { font-size }
-routes/shell.css:24: .btn.pri { background-color }
-routes/shell.css:24: .btn.pri { color }
-routes/shell.css:25: .btn.ghost { background-color }
-routes/shell.css:25: .btn.ghost { color }
-routes/shell.css:26: .btn.danger { background-color }
-routes/shell.css:26: .btn.danger { color }
-routes/shell.css:27: .btn.pri.danger { background-color }
-routes/shell.css:27: .btn.pri.danger { color }
-routes/shell.css:28: .btn.ghost.danger { background-color }
-routes/shell.css:29: .btn:not(.danger)[aria-pressed="true"] { background-color }
-routes/shell.css:29: .btn:not(.danger)[aria-pressed="true"] { color }
-routes/shell.css:30: :where(.btn):hover { box-shadow }
-routes/shell.css:31: :where(.btn.ghost:not(.danger)):hover { color }
-routes/shell.css:32: :where(.btn.pri):hover { box-shadow }
-routes/shell.css:33: .btn:enabled:active { background-image }
-routes/shell.css:34: .btn.pri:enabled:active { background-image }
-routes/shell.css:35: .btn:disabled { opacity }
-routes/shell.css:35: .btn:disabled { cursor }
-routes/shell.css:35: .btn:disabled { box-shadow }
-routes/shell.css:37: .btn[aria-busy="true"] { opacity }
-routes/shell.css:39: .filter-menu.on { background-color }
-routes/shell.css:39: .filter-menu.on { border-color }
-routes/shell.css:39: .filter-menu.on { color }
-routes/shell.css:40: .add-action { white-space }
-routes/shell.css:41: .add-action>svg { width }
-routes/shell.css:41: .add-action>svg { height }
-routes/shell.css:44: .filters { margin-bottom }
-routes/shell.css:50: .wlist { margin-top }
-routes/shell.css:51: .wrow { display }
-routes/shell.css:51: .wrow { align-items }
-routes/shell.css:51: .wrow { gap }
-routes/shell.css:51: .wrow { min-height }
-routes/shell.css:51: .wrow { padding }
-routes/shell.css:51: .wrow { font-size }
-routes/shell.css:52: .wrow .nm { display }
-routes/shell.css:52: .wrow .nm { align-items }
-routes/shell.css:52: .wrow .nm { min-height }
-routes/shell.css:52: .wrow .nm { line-height }
-routes/shell.css:54: .discovery-summary { margin }
-routes/shell.css:55: .discovery-note { margin }
-routes/shell.css:55: .discovery-note { color }
-routes/shell.css:55: .discovery-note { font-size }
-routes/shell.css:56: .direction-panel { margin }
-routes/shell.css:57: .direction-project+.direction-project { border-top }
-routes/shell.css:58: .direction-project>header { padding }
-routes/shell.css:58: .direction-project>header { background }
-routes/shell.css:58: .direction-project>header { font-size }
-routes/shell.css:59: .direction-project>header strong { color }
-routes/shell.css:60: .direction-project>header span { color }
-routes/shell.css:61: .direction-project>header .btn { margin-left }
-routes/shell.css:62: .direction-row { min-height }
-routes/shell.css:62: .direction-row { padding }
-routes/shell.css:62: .direction-row { border-top }
-routes/shell.css:63: .direction-row.disabled .direction-main { opacity }
-routes/shell.css:65: .direction-name { color }
-routes/shell.css:65: .direction-name { font-size }
-routes/shell.css:66: .direction-seeds { display }
-routes/shell.css:66: .direction-seeds { margin-top }
-routes/shell.css:66: .direction-seeds { color }
-routes/shell.css:66: .direction-seeds { font-size }
-routes/shell.css:76: .ctxmenu { background }
-routes/shell.css:76: .pickhits { background }
-routes/shell.css:76: .ctxmenu { border-radius }
-routes/shell.css:76: .pickhits { border-radius }
-routes/shell.css:76: .ctxmenu { box-shadow }
-routes/shell.css:76: .pickhits { box-shadow }
-routes/shell.css:76: .ctxmenu { padding }
-routes/shell.css:76: .pickhits { padding }
-routes/shell.css:77: .ctxmenu { --fade-paint }
-routes/shell.css:77: .pickhits { --fade-paint }
-routes/shell.css:77: .ctxmenu { --fade-pad-top }
-routes/shell.css:77: .pickhits { --fade-pad-top }
-routes/shell.css:77: .ctxmenu { --fade-pad-bottom }
-routes/shell.css:77: .pickhits { --fade-pad-bottom }
-routes/shell.css:78: .ctxmenu { min-width }
-routes/shell.css:79: .mi { display }
-routes/shell.css:79: .mi { align-items }
-routes/shell.css:79: .mi { gap }
-routes/shell.css:79: .mi { padding }
-routes/shell.css:79: .mi { border }
-routes/shell.css:79: .mi { border-radius }
-routes/shell.css:79: .mi { background }
-routes/shell.css:79: .mi { font-family }
-routes/shell.css:79: .mi { font-size }
-routes/shell.css:79: .mi { line-height }
-routes/shell.css:79: .mi { text-align }
-routes/shell.css:79: .mi { color }
-routes/shell.css:79: .mi { cursor }
-routes/shell.css:79: .mi { user-select }
-routes/shell.css:79: .mi { transition }
-routes/shell.css:80: .mi[data-highlighted] { background }
-routes/shell.css:80: .mi.rrow.on { background }
-routes/shell.css:80: button.mi:not(:disabled):hover { background }
-routes/shell.css:81: .mi.danger { color }
-routes/shell.css:83: .mi[data-disabled] { opacity }
-routes/shell.css:83: button.mi:disabled { opacity }
-routes/shell.css:83: .mi[data-disabled] { cursor }
-routes/shell.css:83: button.mi:disabled { cursor }
-routes/shell.css:85: .mi.two-line { flex-direction }
-routes/shell.css:85: .mi.two-line { align-items }
-routes/shell.css:85: .mi.two-line { gap }
-routes/shell.css:85: .mi.two-line { padding-block }
-routes/shell.css:86: .mi .rt { font-weight }
-routes/shell.css:87: .mi .rm { font-size }
-routes/shell.css:87: .mi .rm { color }
-routes/shell.css:88: .mi.mk { color }
-routes/shell.css:89: .mi.mk svg { width }
-routes/shell.css:89: .mi.mk svg { height }
-routes/shell.css:91: .msep { height }
-routes/shell.css:91: .msep { background }
-routes/shell.css:91: .msep { margin }
-routes/shell.css:92: .pickhits .rh { padding }
-routes/shell.css:92: .pickhits .rg { padding }
-routes/shell.css:92: .pickhits .rh { font-size }
-routes/shell.css:92: .pickhits .rg { font-size }
-routes/shell.css:92: .pickhits .rh { color }
-routes/shell.css:92: .pickhits .rg { color }
-routes/shell.css:93: .pickhits .rg { font-weight }
-routes/shell.css:95: .mi .ck { display }
-routes/shell.css:95: .mi .ck { align-items }
-routes/shell.css:97: .cki { width }
-routes/shell.css:97: .cki { height }
-routes/shell.css:97: .cki { vertical-align }
-routes/shell.css:98: .mi-key { margin-left }
-routes/shell.css:98: .mi-key { color }
-routes/shell.css:98: .mi-key { font-size }
-routes/shell.css:100: .mi-in { padding }
-routes/shell.css:109: .th-add { width }
-routes/shell.css:109: .th-add { white-space }
-routes/shell.css:114: .ptable th.th-add { padding }
-routes/shell.css:114: .cmp th.th-add { padding }
-routes/shell.css:115: .th-add .row-actions { gap }
-routes/shell.css:115: .th-add .row-actions { vertical-align }
-routes/shell.css:118: .ctxmenu:focus-visible { outline }
-routes/shell.css:118: .mi[data-highlighted]:focus-visible { outline }
-routes/shell.css:121: .ctxmenu.drop { padding }
-routes/shell.css:121: .ctxmenu.drop { border-radius }
-routes/shell.css:121: .ctxmenu.drop { overflow }
-routes/shell.css:121: .ctxmenu.drop { min-width }
-routes/shell.css:124: .tagchip { margin }
-routes/shell.css:127: .wkprops { font-size }
-routes/shell.css:127: .wkprops { line-height }
-routes/shell.css:129: .wkprops .pk { color }
-routes/shell.css:129: .wkprops .pk { font-size }
-routes/shell.css:129: .wkprops .pk { white-space }
-routes/shell.css:130: .wkprops .pv { color }
-routes/shell.css:136: .metadata-field { display }
-routes/shell.css:137: .metadata-editable { display }
-routes/shell.css:137: .metadata-editable { box-sizing }
-routes/shell.css:137: .metadata-editable { margin }
-routes/shell.css:137: .metadata-editable { padding }
-routes/shell.css:137: .metadata-editable { border }
-routes/shell.css:137: .metadata-editable { border-radius }
-routes/shell.css:137: .metadata-editable { background }
-routes/shell.css:137: .metadata-editable { color }
-routes/shell.css:137: .metadata-editable { font }
-routes/shell.css:137: .metadata-editable { line-height }
-routes/shell.css:137: .metadata-editable { text-align }
-routes/shell.css:137: .metadata-editable { overflow-wrap }
-routes/shell.css:137: .metadata-editable { cursor }
-routes/shell.css:138: .metadata-editable:hover { background }
-routes/shell.css:138: .metadata-editable:hover { color }
-routes/shell.css:139: .pv.metadata-editable { cursor }
-routes/shell.css:140: .form-control.metadata-input.multiline { display }
-routes/shell.css:140: .form-control.metadata-input.multiline { field-sizing }
-routes/shell.css:140: .form-control.metadata-input.multiline { resize }
-routes/shell.css:140: .form-control.metadata-input.multiline { overflow }
-routes/shell.css:140: .form-control.metadata-input.multiline { white-space }
-routes/shell.css:140: .form-control.metadata-input.multiline { overflow-wrap }
-routes/shell.css:148: .wkpage { display }
-routes/shell.css:148: .wkpage { gap }
-routes/shell.css:148: .wkpage { align-items }
-routes/shell.css:148: .wkpage { font-size }
-routes/shell.css:148: .wkpage { line-height }
-routes/shell.css:150: .wkpage .lm { font-size }
-routes/shell.css:153: .wkside { box-sizing }
-routes/shell.css:153: .wkside { flex }
-routes/shell.css:153: .wkside { width }
-routes/shell.css:153: .wkside { max-width }
-routes/shell.css:153: .wkside { font-size }
-routes/shell.css:153: .wkside { line-height }
-routes/shell.css:153: .wkside { border-left }
-routes/shell.css:153: .wkside { padding-left }
-routes/shell.css:154: .wkside { overflow-x }
-routes/shell.css:154: .wkside { overflow-y }
-routes/shell.css:154: .wkside { overscroll-behavior }
-routes/shell.css:155: .wkside { --fade-paint }
-routes/shell.css:155: .wkside { --fade-pad-top }
-routes/shell.css:155: .wkside { --fade-pad-bottom }
-routes/shell.css:160: .wkside:not(.node-document-pane) { --rail-room }
-routes/shell.css:161: .wkside:not(.node-document-pane) { flex-basis }
-routes/shell.css:161: .wkside:not(.node-document-pane) { width }
-routes/shell.css:162: .wkside:not(.node-document-pane) { max-width }
-routes/shell.css:162: .wkside:not(.node-document-pane) { margin-right }
-routes/shell.css:162: .wkside:not(.node-document-pane) { padding-right }
-routes/shell.css:163: .wkside:not(.node-document-pane) { padding-bottom }
-routes/shell.css:166: .wkrel { margin }
-routes/shell.css:167: .wkrel .rl { font-size }
-routes/shell.css:167: .wkrel .rl { color }
-routes/shell.css:167: .wkrel .rl { width }
-routes/shell.css:168: .wkrel .tagchip { cursor }
-routes/shell.css:168: .wkrel .tagchip { margin }
-routes/shell.css:169: .wkrel .tagchip[data-wk] { cursor }
-routes/shell.css:171: .desk-head .fetchnote { font-size }
-routes/shell.css:171: .desk-head .fetchnote { color }
-routes/shell.css:171: .desk-head .fetchnote { white-space }
-routes/shell.css:174: .attn { padding }
-routes/shell.css:174: .attn { margin-bottom }
-routes/shell.css:175: .attnrow { display }
-routes/shell.css:175: .attnrow { grid-template-columns }
-routes/shell.css:176: .attnrow { align-items }
-routes/shell.css:176: .attnrow { column-gap }
-routes/shell.css:177: .attnrow { padding }
-routes/shell.css:177: .attnrow { font-size }
-routes/shell.css:177: .attnrow { cursor }
-routes/shell.css:179: .attnrow[data-wk] { cursor }
-routes/shell.css:180: .attnrow[data-wk]:hover { background }
-routes/shell.css:181: .attn-text { overflow }
-routes/shell.css:181: .attn-text { white-space }
-routes/shell.css:182: .attn+.wkpage { margin-top }
-routes/shell.css:184: .tlrow { font-size }
-routes/shell.css:184: .tlrow { padding }
-routes/shell.css:185: .tlrow .tm { font-size }
-routes/shell.css:185: .tlrow .tm { color }
-routes/shell.css:186: .macts { margin-top }
-routes/shell.css:192: .md { line-height }
-routes/shell.css:193: .md.src { white-space }
-routes/shell.css:193: .md.src { outline }
-routes/shell.css:193: .md.src { caret-color }
-routes/shell.css:194: .md p { margin }
-routes/shell.css:195: .md p:last-child { margin-bottom }
-routes/shell.css:195: .md ul:last-child { margin-bottom }
-routes/shell.css:195: .md ol:last-child { margin-bottom }
-routes/shell.css:196: .md h1 { font-size }
-routes/shell.css:196: .md h2 { font-size }
-routes/shell.css:196: .md h1 { line-height }
-routes/shell.css:196: .md h2 { line-height }
-routes/shell.css:197: .md h3 { font-size }
-routes/shell.css:197: .md h4 { font-size }
-routes/shell.css:198: .md h1 { margin }
-routes/shell.css:198: .md h2 { margin }
-routes/shell.css:198: .md h3 { margin }
-routes/shell.css:198: .md h4 { margin }
-routes/shell.css:198: .md h1 { font-weight }
-routes/shell.css:198: .md h2 { font-weight }
-routes/shell.css:198: .md h3 { font-weight }
-routes/shell.css:198: .md h4 { font-weight }
-routes/shell.css:199: .md ul { margin }
-routes/shell.css:199: .md ol { margin }
-routes/shell.css:199: .md ul { padding-left }
-routes/shell.css:199: .md ol { padding-left }
-routes/shell.css:200: .md li { margin }
-routes/shell.css:201: .md code { font-family }
-routes/shell.css:201: .md code { font-size }
-routes/shell.css:201: .md code { background }
-routes/shell.css:201: .md code { border-radius }
-routes/shell.css:201: .md code { padding }
-routes/shell.css:202: .md pre { margin }
-routes/shell.css:202: .md pre { padding }
-routes/shell.css:202: .md pre { background }
-routes/shell.css:202: .md pre { border-radius }
-routes/shell.css:202: .md pre { overflow }
-routes/shell.css:202: .md pre { font-size }
-routes/shell.css:202: .md pre { line-height }
-routes/shell.css:203: .md pre code { background }
-routes/shell.css:203: .md pre code { padding }
-routes/shell.css:204: .md blockquote { margin }
-routes/shell.css:204: .md blockquote { padding }
-routes/shell.css:204: .md blockquote { border-left }
-routes/shell.css:204: .md blockquote { color }
-routes/shell.css:205: .md table { border-collapse }
-routes/shell.css:205: .md table { margin }
-routes/shell.css:205: .md table { font-size }
-routes/shell.css:205: .md table { display }
-routes/shell.css:205: .md table { overflow-x }
-routes/shell.css:206: .md th { border }
-routes/shell.css:206: .md td { border }
-routes/shell.css:206: .md th { padding }
-routes/shell.css:206: .md td { padding }
-routes/shell.css:206: .md th { text-align }
-routes/shell.css:206: .md td { text-align }
-routes/shell.css:206: .md th { vertical-align }
-routes/shell.css:206: .md td { vertical-align }
-routes/shell.css:207: .md th { background }
-routes/shell.css:207: .md th { font-weight }
-routes/shell.css:208: .md hr { border }
-routes/shell.css:208: .md hr { border-top }
-routes/shell.css:208: .md hr { margin }
-routes/shell.css:210: .md .katex-display { margin }
-routes/shell.css:211: .cnt { border }
-routes/shell.css:211: .cnt { background }
-routes/shell.css:211: .cnt { padding }
-routes/shell.css:211: .cnt { font }
-routes/shell.css:211: .cnt { color }
-routes/shell.css:211: .cnt { cursor }
-routes/shell.css:212: .cnt:hover { color }
-routes/shell.css:212: .cnt:hover { text-decoration }
-routes/shell.css:213: .nrow { display }
-routes/shell.css:213: .nrow { padding }
-routes/shell.css:214: .nrow .nq { font-size }
-routes/shell.css:214: .nrow .nq { color }
-routes/shell.css:214: .nrow .nq { font-style }
-routes/shell.css:214: .nrow .nq { background }
-routes/shell.css:214: .nrow .nq { border-radius }
-routes/shell.css:214: .nrow .nq { padding }
-routes/shell.css:214: .nrow .nq { margin-bottom }
-routes/shell.css:215: .nrow .nt { font-size }
-routes/shell.css:215: .nrow .nt { color }
-routes/shell.css:215: .nrow .nt { overflow-wrap }
+routes/shell.css:15: .filter-menu.on { background-color }
+routes/shell.css:15: .filter-menu.on { border-color }
+routes/shell.css:15: .filter-menu.on { color }
+routes/shell.css:16: .add-action { white-space }
+routes/shell.css:17: .add-action>svg { width }
+routes/shell.css:17: .add-action>svg { height }
+routes/shell.css:20: .filters { margin-bottom }
+routes/shell.css:26: .wlist { margin-top }
+routes/shell.css:27: .wrow { display }
+routes/shell.css:27: .wrow { align-items }
+routes/shell.css:27: .wrow { gap }
+routes/shell.css:27: .wrow { min-height }
+routes/shell.css:27: .wrow { padding }
+routes/shell.css:27: .wrow { font-size }
+routes/shell.css:28: .wrow .nm { display }
+routes/shell.css:28: .wrow .nm { align-items }
+routes/shell.css:28: .wrow .nm { min-height }
+routes/shell.css:28: .wrow .nm { line-height }
+routes/shell.css:30: .discovery-summary { margin }
+routes/shell.css:31: .discovery-note { margin }
+routes/shell.css:31: .discovery-note { color }
+routes/shell.css:31: .discovery-note { font-size }
+routes/shell.css:32: .direction-panel { margin }
+routes/shell.css:33: .direction-project+.direction-project { border-top }
+routes/shell.css:34: .direction-project>header { padding }
+routes/shell.css:34: .direction-project>header { background }
+routes/shell.css:34: .direction-project>header { font-size }
+routes/shell.css:35: .direction-project>header strong { color }
+routes/shell.css:36: .direction-project>header span { color }
+routes/shell.css:37: .direction-project>header .btn { margin-left }
+routes/shell.css:38: .direction-row { min-height }
+routes/shell.css:38: .direction-row { padding }
+routes/shell.css:38: .direction-row { border-top }
+routes/shell.css:39: .direction-row.disabled .direction-main { opacity }
+routes/shell.css:41: .direction-name { color }
+routes/shell.css:41: .direction-name { font-size }
+routes/shell.css:42: .direction-seeds { display }
+routes/shell.css:42: .direction-seeds { margin-top }
+routes/shell.css:42: .direction-seeds { color }
+routes/shell.css:42: .direction-seeds { font-size }
+routes/shell.css:52: .ctxmenu { background }
+routes/shell.css:52: .pickhits { background }
+routes/shell.css:52: .ctxmenu { border-radius }
+routes/shell.css:52: .pickhits { border-radius }
+routes/shell.css:52: .ctxmenu { box-shadow }
+routes/shell.css:52: .pickhits { box-shadow }
+routes/shell.css:52: .ctxmenu { padding }
+routes/shell.css:52: .pickhits { padding }
+routes/shell.css:53: .ctxmenu { --fade-paint }
+routes/shell.css:53: .pickhits { --fade-paint }
+routes/shell.css:53: .ctxmenu { --fade-pad-top }
+routes/shell.css:53: .pickhits { --fade-pad-top }
+routes/shell.css:53: .ctxmenu { --fade-pad-bottom }
+routes/shell.css:53: .pickhits { --fade-pad-bottom }
+routes/shell.css:54: .ctxmenu { min-width }
+routes/shell.css:55: .mi { display }
+routes/shell.css:55: .mi { align-items }
+routes/shell.css:55: .mi { gap }
+routes/shell.css:55: .mi { padding }
+routes/shell.css:55: .mi { border }
+routes/shell.css:55: .mi { border-radius }
+routes/shell.css:55: .mi { background }
+routes/shell.css:55: .mi { font-family }
+routes/shell.css:55: .mi { font-size }
+routes/shell.css:55: .mi { line-height }
+routes/shell.css:55: .mi { text-align }
+routes/shell.css:55: .mi { color }
+routes/shell.css:55: .mi { cursor }
+routes/shell.css:55: .mi { user-select }
+routes/shell.css:55: .mi { transition }
+routes/shell.css:56: .mi[data-highlighted] { background }
+routes/shell.css:56: .mi.rrow.on { background }
+routes/shell.css:56: button.mi:not(:disabled):hover { background }
+routes/shell.css:57: .mi.danger { color }
+routes/shell.css:59: .mi[data-disabled] { opacity }
+routes/shell.css:59: button.mi:disabled { opacity }
+routes/shell.css:59: .mi[data-disabled] { cursor }
+routes/shell.css:59: button.mi:disabled { cursor }
+routes/shell.css:61: .mi.two-line { flex-direction }
+routes/shell.css:61: .mi.two-line { align-items }
+routes/shell.css:61: .mi.two-line { gap }
+routes/shell.css:61: .mi.two-line { padding-block }
+routes/shell.css:62: .mi .rt { font-weight }
+routes/shell.css:63: .mi .rm { font-size }
+routes/shell.css:63: .mi .rm { color }
+routes/shell.css:64: .mi.mk { color }
+routes/shell.css:65: .mi.mk svg { width }
+routes/shell.css:65: .mi.mk svg { height }
+routes/shell.css:67: .msep { height }
+routes/shell.css:67: .msep { background }
+routes/shell.css:67: .msep { margin }
+routes/shell.css:68: .pickhits .rh { padding }
+routes/shell.css:68: .pickhits .rg { padding }
+routes/shell.css:68: .pickhits .rh { font-size }
+routes/shell.css:68: .pickhits .rg { font-size }
+routes/shell.css:68: .pickhits .rh { color }
+routes/shell.css:68: .pickhits .rg { color }
+routes/shell.css:69: .pickhits .rg { font-weight }
+routes/shell.css:71: .mi .ck { display }
+routes/shell.css:71: .mi .ck { align-items }
+routes/shell.css:73: .cki { width }
+routes/shell.css:73: .cki { height }
+routes/shell.css:73: .cki { vertical-align }
+routes/shell.css:74: .mi-key { margin-left }
+routes/shell.css:74: .mi-key { color }
+routes/shell.css:74: .mi-key { font-size }
+routes/shell.css:76: .mi-in { padding }
+routes/shell.css:85: .th-add { width }
+routes/shell.css:85: .th-add { white-space }
+routes/shell.css:90: .ptable th.th-add { padding }
+routes/shell.css:90: .cmp th.th-add { padding }
+routes/shell.css:91: .th-add .row-actions { gap }
+routes/shell.css:91: .th-add .row-actions { vertical-align }
+routes/shell.css:94: .ctxmenu:focus-visible { outline }
+routes/shell.css:94: .mi[data-highlighted]:focus-visible { outline }
+routes/shell.css:97: .ctxmenu.drop { padding }
+routes/shell.css:97: .ctxmenu.drop { border-radius }
+routes/shell.css:97: .ctxmenu.drop { overflow }
+routes/shell.css:97: .ctxmenu.drop { min-width }
+routes/shell.css:100: .tagchip { margin }
+routes/shell.css:103: .wkprops { font-size }
+routes/shell.css:103: .wkprops { line-height }
+routes/shell.css:105: .wkprops .pk { color }
+routes/shell.css:105: .wkprops .pk { font-size }
+routes/shell.css:105: .wkprops .pk { white-space }
+routes/shell.css:106: .wkprops .pv { color }
+routes/shell.css:112: .metadata-field { display }
+routes/shell.css:113: .metadata-editable { display }
+routes/shell.css:113: .metadata-editable { box-sizing }
+routes/shell.css:113: .metadata-editable { margin }
+routes/shell.css:113: .metadata-editable { padding }
+routes/shell.css:113: .metadata-editable { border }
+routes/shell.css:113: .metadata-editable { border-radius }
+routes/shell.css:113: .metadata-editable { background }
+routes/shell.css:113: .metadata-editable { color }
+routes/shell.css:113: .metadata-editable { font }
+routes/shell.css:113: .metadata-editable { line-height }
+routes/shell.css:113: .metadata-editable { text-align }
+routes/shell.css:113: .metadata-editable { overflow-wrap }
+routes/shell.css:113: .metadata-editable { cursor }
+routes/shell.css:114: .metadata-editable:hover { background }
+routes/shell.css:114: .metadata-editable:hover { color }
+routes/shell.css:115: .pv.metadata-editable { cursor }
+routes/shell.css:116: .form-control.metadata-input.multiline { display }
+routes/shell.css:116: .form-control.metadata-input.multiline { field-sizing }
+routes/shell.css:116: .form-control.metadata-input.multiline { resize }
+routes/shell.css:116: .form-control.metadata-input.multiline { overflow }
+routes/shell.css:116: .form-control.metadata-input.multiline { white-space }
+routes/shell.css:116: .form-control.metadata-input.multiline { overflow-wrap }
+routes/shell.css:124: .wkpage { display }
+routes/shell.css:124: .wkpage { gap }
+routes/shell.css:124: .wkpage { align-items }
+routes/shell.css:124: .wkpage { font-size }
+routes/shell.css:124: .wkpage { line-height }
+routes/shell.css:126: .wkpage .lm { font-size }
+routes/shell.css:129: .wkside { box-sizing }
+routes/shell.css:129: .wkside { flex }
+routes/shell.css:129: .wkside { width }
+routes/shell.css:129: .wkside { max-width }
+routes/shell.css:129: .wkside { font-size }
+routes/shell.css:129: .wkside { line-height }
+routes/shell.css:129: .wkside { border-left }
+routes/shell.css:129: .wkside { padding-left }
+routes/shell.css:130: .wkside { overflow-x }
+routes/shell.css:130: .wkside { overflow-y }
+routes/shell.css:130: .wkside { overscroll-behavior }
+routes/shell.css:131: .wkside { --fade-paint }
+routes/shell.css:131: .wkside { --fade-pad-top }
+routes/shell.css:131: .wkside { --fade-pad-bottom }
+routes/shell.css:136: .wkside:not(.node-document-pane) { --rail-room }
+routes/shell.css:137: .wkside:not(.node-document-pane) { flex-basis }
+routes/shell.css:137: .wkside:not(.node-document-pane) { width }
+routes/shell.css:138: .wkside:not(.node-document-pane) { max-width }
+routes/shell.css:138: .wkside:not(.node-document-pane) { margin-right }
+routes/shell.css:138: .wkside:not(.node-document-pane) { padding-right }
+routes/shell.css:139: .wkside:not(.node-document-pane) { padding-bottom }
+routes/shell.css:142: .wkrel { margin }
+routes/shell.css:143: .wkrel .rl { font-size }
+routes/shell.css:143: .wkrel .rl { color }
+routes/shell.css:143: .wkrel .rl { width }
+routes/shell.css:144: .wkrel .tagchip { cursor }
+routes/shell.css:144: .wkrel .tagchip { margin }
+routes/shell.css:145: .wkrel .tagchip[data-wk] { cursor }
+routes/shell.css:147: .desk-head .fetchnote { font-size }
+routes/shell.css:147: .desk-head .fetchnote { color }
+routes/shell.css:147: .desk-head .fetchnote { white-space }
+routes/shell.css:150: .attn { padding }
+routes/shell.css:150: .attn { margin-bottom }
+routes/shell.css:151: .attnrow { display }
+routes/shell.css:151: .attnrow { grid-template-columns }
+routes/shell.css:152: .attnrow { align-items }
+routes/shell.css:152: .attnrow { column-gap }
+routes/shell.css:153: .attnrow { padding }
+routes/shell.css:153: .attnrow { font-size }
+routes/shell.css:153: .attnrow { cursor }
+routes/shell.css:155: .attnrow[data-wk] { cursor }
+routes/shell.css:156: .attnrow[data-wk]:hover { background }
+routes/shell.css:157: .attn-text { overflow }
+routes/shell.css:157: .attn-text { white-space }
+routes/shell.css:158: .attn+.wkpage { margin-top }
+routes/shell.css:160: .tlrow { font-size }
+routes/shell.css:160: .tlrow { padding }
+routes/shell.css:161: .tlrow .tm { font-size }
+routes/shell.css:161: .tlrow .tm { color }
+routes/shell.css:162: .macts { margin-top }
+routes/shell.css:168: .md { line-height }
+routes/shell.css:169: .md.src { white-space }
+routes/shell.css:169: .md.src { outline }
+routes/shell.css:169: .md.src { caret-color }
+routes/shell.css:170: .md p { margin }
+routes/shell.css:171: .md p:last-child { margin-bottom }
+routes/shell.css:171: .md ul:last-child { margin-bottom }
+routes/shell.css:171: .md ol:last-child { margin-bottom }
+routes/shell.css:172: .md h1 { font-size }
+routes/shell.css:172: .md h2 { font-size }
+routes/shell.css:172: .md h1 { line-height }
+routes/shell.css:172: .md h2 { line-height }
+routes/shell.css:173: .md h3 { font-size }
+routes/shell.css:173: .md h4 { font-size }
+routes/shell.css:174: .md h1 { margin }
+routes/shell.css:174: .md h2 { margin }
+routes/shell.css:174: .md h3 { margin }
+routes/shell.css:174: .md h4 { margin }
+routes/shell.css:174: .md h1 { font-weight }
+routes/shell.css:174: .md h2 { font-weight }
+routes/shell.css:174: .md h3 { font-weight }
+routes/shell.css:174: .md h4 { font-weight }
+routes/shell.css:175: .md ul { margin }
+routes/shell.css:175: .md ol { margin }
+routes/shell.css:175: .md ul { padding-left }
+routes/shell.css:175: .md ol { padding-left }
+routes/shell.css:176: .md li { margin }
+routes/shell.css:177: .md code { font-family }
+routes/shell.css:177: .md code { font-size }
+routes/shell.css:177: .md code { background }
+routes/shell.css:177: .md code { border-radius }
+routes/shell.css:177: .md code { padding }
+routes/shell.css:178: .md pre { margin }
+routes/shell.css:178: .md pre { padding }
+routes/shell.css:178: .md pre { background }
+routes/shell.css:178: .md pre { border-radius }
+routes/shell.css:178: .md pre { overflow }
+routes/shell.css:178: .md pre { font-size }
+routes/shell.css:178: .md pre { line-height }
+routes/shell.css:179: .md pre code { background }
+routes/shell.css:179: .md pre code { padding }
+routes/shell.css:180: .md blockquote { margin }
+routes/shell.css:180: .md blockquote { padding }
+routes/shell.css:180: .md blockquote { border-left }
+routes/shell.css:180: .md blockquote { color }
+routes/shell.css:181: .md table { border-collapse }
+routes/shell.css:181: .md table { margin }
+routes/shell.css:181: .md table { font-size }
+routes/shell.css:181: .md table { display }
+routes/shell.css:181: .md table { overflow-x }
+routes/shell.css:182: .md th { border }
+routes/shell.css:182: .md td { border }
+routes/shell.css:182: .md th { padding }
+routes/shell.css:182: .md td { padding }
+routes/shell.css:182: .md th { text-align }
+routes/shell.css:182: .md td { text-align }
+routes/shell.css:182: .md th { vertical-align }
+routes/shell.css:182: .md td { vertical-align }
+routes/shell.css:183: .md th { background }
+routes/shell.css:183: .md th { font-weight }
+routes/shell.css:184: .md hr { border }
+routes/shell.css:184: .md hr { border-top }
+routes/shell.css:184: .md hr { margin }
+routes/shell.css:186: .md .katex-display { margin }
+routes/shell.css:187: .cnt { border }
+routes/shell.css:187: .cnt { background }
+routes/shell.css:187: .cnt { padding }
+routes/shell.css:187: .cnt { font }
+routes/shell.css:187: .cnt { color }
+routes/shell.css:187: .cnt { cursor }
+routes/shell.css:188: .cnt:hover { color }
+routes/shell.css:188: .cnt:hover { text-decoration }
+routes/shell.css:189: .nrow { display }
+routes/shell.css:189: .nrow { padding }
+routes/shell.css:190: .nrow .nq { font-size }
+routes/shell.css:190: .nrow .nq { color }
+routes/shell.css:190: .nrow .nq { font-style }
+routes/shell.css:190: .nrow .nq { background }
+routes/shell.css:190: .nrow .nq { border-radius }
+routes/shell.css:190: .nrow .nq { padding }
+routes/shell.css:190: .nrow .nq { margin-bottom }
+routes/shell.css:191: .nrow .nt { font-size }
+routes/shell.css:191: .nrow .nt { color }
+routes/shell.css:191: .nrow .nt { overflow-wrap }
 shell/AppShell.css:16: .titlebar { height }
 shell/AppShell.css:16: .titlebar { padding }
 shell/AppShell.css:16: .titlebar { background }

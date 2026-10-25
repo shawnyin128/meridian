@@ -13,8 +13,19 @@ Current shared contracts:
   name a new milestone and a diamond to rename or delete one, at the click; Enter or Space on a lane
   opens it on today's date.
 - `InlineField`: one-field-at-a-time editing, validation, cancel/save behavior, and presentation hooks.
+- `Button`: the one text button: `primary`, `secondary` or `ghost`, in the `neutral` or `danger` tone,
+  `regular` (30px) for page, section, panel and dialog actions and `compact` (24px) inside rows, cards and
+  toolbars, with an optional glyph before its label. While `busy` it keeps its width and shows the
+  `RunningRing`, in full colour, in place of its label; its busy label is only its accessible name. It is
+  marked `aria-busy` and disabled, so a second press cannot start the action again. Each time `done`
+  turns true it shows the check in place of its label for a moment. Screens render no raw `<button>`.
+- `CommitActions`: the one Cancel and Save of a draft, Cancel first. Its `place` sets the size and the
+  primary rule: at a dialog's, popover's or form's `foot` Save is the primary action at the regular
+  size; in a `heading` both are secondary at the regular size, and inside an `item` both are secondary
+  at the compact size.
 - `EditActions`: the one edit contract of a long text: Edit in the heading's action slot, then Cancel and
-  Save in that same place. Save or ⌘Enter commits (Enter in a one-line field), Cancel or Escape restores.
+  Save (CommitActions) in that same place. Save or ⌘Enter commits (Enter in a one-line field), Cancel or
+  Escape restores.
 - `InlineDraftInput`: the shared input and lifecycle for placeholder/create rows. Hosts provide row
   layout, sibling controls, trigger refs, and persistence; trimming, validation, focus, Enter/Escape,
   outside cancellation, and async submission locking are implemented once.
@@ -83,8 +94,8 @@ Current shared contracts:
   - `success`: the action took effect, or what it asked for already held (the paper is already in the vault).
   - `refusal`: the action did not take effect, because Core refused it, the input was invalid or the call
     failed, and nothing was written.
-  - A form's save button that stays on screen shows its success in place (Saved) until the form changes
-    again and sends no notice. An error that belongs to a pane or card on screen stays with that pane or
+  - A form's save button that stays on screen shows its success in place (CommitActions' `done`, the
+    check) and sends no notice. An error that belongs to a pane or card on screen stays with that pane or
     card instead of becoming a notice.
 - `LoadingPlaceholder`: the one loading state, grey blocks in the shape of the result (`rows`, `cards`,
   `lines`, `sheet`). Data that has not arrived is `null`, and a screen shows this placeholder for it, never
@@ -140,11 +151,8 @@ Current shared contracts:
   library search configure the same focus restoration, icon geometry, and accessible naming.
 - `GenerationControl`: the shared idle, spinning, and hover-to-stop button contract for model-backed
   actions. Chat composers and Wiki Harness generation do not define independent running animations.
-- `ActionButton`: the busy state of a text button that starts an action. While `busy` it keeps its width and
-  shows the `RunningRing`, in full colour, in place of its text; its busy label is only its accessible name. It
-  is marked `aria-busy` and disabled, so a second press cannot start the action again.
 - `RunningRing` (in `icons`): the one running indicator, `DownloadRing` without a total, turning once per
-  `--t-spin` in the colour of the text around it. GenerationControl, ActionButton and About use it; on a
+  `--t-spin` in the colour of the text around it. GenerationControl, Button and About use it; on a
   solid accent fill (a primary button, the composer's send) it turns in the fill's ink, by its own rule in
   `icons.css`, and a running job is never drawn in a danger tone.
 - `CardTray`: progressive disclosure for secondary card details. It keeps a one-line summary visible,

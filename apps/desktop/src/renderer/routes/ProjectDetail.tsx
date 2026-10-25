@@ -15,7 +15,7 @@ import { appMenu, files, idea as ideaApi, papers, project as projectApi, wiki } 
 import {
   useCrumbTail, useEscapeLayer, useJump, useNotice, useToday, useVaultRevision,
 } from '../shell/AppShell.js'
-import { ActionButton } from '../components/ActionButton.js'
+import { CommitActions } from '../components/CommitActions.js'
 import { AddAction } from '../components/AddAction.js'
 import { DraftForm, DraftLine } from '../components/DraftForm.js'
 import { MenuItem } from '../components/ActionMenu.js'
@@ -773,22 +773,12 @@ export function ProjectDetail({
         open={workspaceOpen} onOpenChange={setWorkspaceOpen} size="form" className="workspace-dialog"
         title={m.project.workspace.dialogTitle}
         actions={(
-          <>
-            <button type="button" className="btn" onClick={() => setWorkspaceOpen(false)}>{m.common.cancel}</button>
-            {workspaceMode === 'local'
-              ? (
-                <ActionButton
-                  type="submit" form="workspaceLocal" className="workspace-local btn pri" disabled={binding !== null}
-                  busy={binding === 'local'} busyLabel={m.project.workspace.adding}
-                >{m.project.workspace.add}</ActionButton>
-              )
-              : (
-                <ActionButton
-                  type="submit" form="workspaceSsh" className="btn pri" disabled={binding !== null}
-                  busy={binding === 'ssh'} busyLabel={m.project.workspace.connecting}
-                >{m.project.workspace.connect}</ActionButton>
-              )}
-          </>
+          <CommitActions
+            place="foot" onCancel={() => setWorkspaceOpen(false)} saving={binding !== null}
+            {...workspaceMode === 'local'
+              ? { form: 'workspaceLocal', saveLabel: m.project.workspace.add, busyLabel: m.project.workspace.adding }
+              : { form: 'workspaceSsh', saveLabel: m.project.workspace.connect, busyLabel: m.project.workspace.connecting }}
+          />
         )}
       >
             <SegmentedControl

@@ -61,11 +61,11 @@ const PAIRED = new Set(readdirSync(RENDERER, { recursive: true, encoding: 'utf8'
   .filter((name) => /^[a-z][\w-]*$/.test(name) && !SET_CLASSES.has(name)))
 
 /** The stylesheet that owns the button set. */
-const BUTTON_SET = join('routes', 'shell.css')
+const BUTTON_SET = join('components', 'Button.css')
 /** The running ring's stylesheet, which colours the ring inside the buttons that hold it. */
 const RING_SHEET = join('components', 'icons.css')
 
-const STYLES = [join('shell', 'tokens.css'), BUTTON_SET].map((path) => readFileSync(join(RENDERER, path), 'utf8'))
+const STYLES = [join('shell', 'tokens.css'), join('routes', 'shell.css'), BUTTON_SET].map((path) => readFileSync(join(RENDERER, path), 'utf8'))
 
 /** Every variant and size of the set, by the classes a call site writes. */
 const VARIANTS = {
@@ -177,15 +177,14 @@ describe('按钮组', () => {
 
   describe('忙着的动作按钮', () => {
     beforeEach(() => {
-      document.head.innerHTML += ['ActionButton.css', 'icons.css']
-        .map((name) => `<style>${readFileSync(join(RENDERER, 'components', name), 'utf8')}</style>`).join('')
+      document.head.innerHTML += `<style>${readFileSync(join(RENDERER, RING_SHEET), 'utf8')}</style>`
     })
 
-    /** The computed styles of a busy ActionButton of `classes`, its hidden label, its ring and the ring's track. */
+    /** The computed styles of a busy Button of `classes`, its hidden label, its ring and the ring's track. */
     const busy = (classes: string) => {
-      document.body.innerHTML = `<button type="button" class="action-button ${classes}" aria-busy="true" disabled aria-label="正在重置…">`
-        + '<span class="action-label">重置库…</span><svg class="ring spin"><circle /><circle class="arc" /></svg></button>'
-      return ['button', '.action-label', '.ring', '.ring circle:not(.arc)']
+      document.body.innerHTML = `<button type="button" class="${classes}" aria-busy="true" disabled aria-label="正在重置…">`
+        + '<span class="btn-label">重置库…</span><svg class="ring spin"><circle /><circle class="arc" /></svg></button>'
+      return ['button', '.btn-label', '.ring', '.ring circle:not(.arc)']
         .map((selector) => getComputedStyle(document.querySelector(selector)))
     }
 

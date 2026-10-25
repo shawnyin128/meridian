@@ -140,10 +140,10 @@ describe('强调色', () => {
    * the running ring) and today on the timeline. The focus ring reads --ring.
    */
   const ACCENT = [
-    'components/Switch.css  .switch[data-state="checked"]',
+    'components/Button.css  .btn.pri', 'components/Switch.css  .switch[data-state="checked"]',
     'components/chat/Chat.css  .send', 'components/icons.css  .ring',
     'components/timeline/TimelineBoard.css  .gnow', 'components/timeline/TimelineBoard.css  .gnow::after',
-    'components/timeline/TimelineBoard.css  .gtoday', 'routes/shell.css  .btn.pri', 'shell/AppShell.css  .srow.on',
+    'components/timeline/TimelineBoard.css  .gtoday', 'shell/AppShell.css  .srow.on',
   ]
 
   it('强调色只在键盘焦点环、主操作、侧栏的当前行、开着的开关、运行中的圈和时间线的今天;标签、计数、列表的选中项和别的规则都不读', () => {

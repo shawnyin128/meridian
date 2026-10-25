@@ -26,7 +26,7 @@ import { DeliverySettings } from '../components/settings/DeliverySettings.js'
 import { ModelSettings } from '../components/settings/ModelSettings.js'
 import { ApiOverview } from '../components/settings/ApiOverview.js'
 import { ExtensionSettings } from '../components/settings/ExtensionSettings.js'
-import { ActionButton } from '../components/ActionButton.js'
+import { Button } from '../components/Button.js'
 import { ConfirmDialog } from '../components/ConfirmDialog.js'
 import { DateTimeDisplay } from '../components/DateTimeDisplay.js'
 import { ModalDialog, ModalTitle } from '../components/ModalDialog.js'
@@ -286,9 +286,9 @@ export function Settings() {
               ? (
                 <div className="storage-pending" role="status">
                   <Tag tone="warn">{m.settings.storage.pendingNote}</Tag>
-                  <button className="btn pri" onClick={() => appMenu.restartApp()}>
+                  <Button size="regular" variant="primary" onClick={() => appMenu.restartApp()}>
                     {m.settings.storage.restartNow}
-                  </button>
+                  </Button>
                 </div>
               )
               : null}
@@ -296,11 +296,11 @@ export function Settings() {
             <span>{m.settings.storage.resetLabel}</span>
             <ConfirmDialog
               trigger={(
-                <ActionButton
-                  className="btn danger" disabled={location === null || location.source === 'fixture'
+                <Button
+                  size="regular" tone="danger" disabled={location === null || location.source === 'fixture'
                     || location.restartRequired}
                   busy={resetting} busyLabel={m.settings.storage.resetting}
-                >{m.settings.storage.resetAction}</ActionButton>
+                >{m.settings.storage.resetAction}</Button>
               )}
               title={m.settings.storage.resetTitle} description={m.settings.storage.resetDescription}
               confirmLabel={m.settings.storage.resetConfirm}
@@ -324,21 +324,18 @@ export function Settings() {
                         <FadeText className="storage-backup-path" label={backup.path}>{backup.path}</FadeText>
                       </div>
                       <div className="storage-backup-actions">
-                        <button
-                          className="btn ghost sm" disabled={busy || location?.restartRequired === true}
+                        <Button
+                          size="compact" variant="ghost" disabled={busy || location?.restartRequired === true}
+                          busy={switchingBackup === backup.id} busyLabel={m.settings.storage.backupSwitching}
                           onClick={() => { void switchBackup(backup) }}
-                        >
-                          {switchingBackup === backup.id
-                            ? m.settings.storage.backupSwitching
-                            : m.settings.storage.backupSwitch}
-                        </button>
+                        >{m.settings.storage.backupSwitch}</Button>
                         <ConfirmDialog
                           trigger={(
-                            <ActionButton
-                              className="btn danger sm"
+                            <Button
+                              size="compact" tone="danger"
                               disabled={busy || location?.restartRequired === true}
                               busy={deletingBackup === backup.id} busyLabel={m.settings.storage.backupDeleting}
-                            >{m.settings.storage.backupDelete}</ActionButton>
+                            >{m.settings.storage.backupDelete}</Button>
                           )}
                           title={m.settings.storage.backupDeleteTitle(label)}
                           description={m.settings.storage.backupDeleteDescription}

@@ -200,8 +200,8 @@ const PLACES: Record<string, Place[]> = {
   restore: [{ slot: 'row actions', size: 'nested', variant: 'plain' }],
   close: [{ slot: 'panel head', size: 'default', variant: 'plain' }],
   edit: [
-    { slot: 'section heading', size: 'sm', variant: 'plain' },
-    { slot: 'panel head', size: 'sm', variant: 'plain', scope: 'a detail panel edits the idea it shows' },
+    { slot: 'section heading', size: 'md', variant: 'plain' },
+    { slot: 'panel head', size: 'md', variant: 'plain', scope: 'a detail panel edits the idea it shows' },
   ],
   'overflow menu': [{ slot: 'row actions', size: 'nested', variant: 'plain' }],
   clear: [
@@ -232,6 +232,19 @@ const buttonLook = (classes: string[]) => ({
     .map((word) => (word === 'pri' ? 'primary' : word)).join(' ') || 'plain',
 })
 
+/** The look of a text button: a Button by its size, variant and tone, a raw button by its btn classes, or null for any other element. */
+function textButtonLook(element: Node) {
+  const name = nameOf(element)
+  if (name === 'Button') {
+    const words = [...strings(attribute(element, 'variant')), ...strings(attribute(element, 'tone'))]
+    return {
+      size: strings(attribute(element, 'size')).includes('compact') ? 'sm' : 'md',
+      variant: ['primary', 'ghost', 'danger'].filter((word) => words.includes(word)).join(' ') || 'plain',
+    }
+  }
+  return (name === 'button' || name === 'ToolbarButton') && classesOf(element).includes('btn') ? buttonLook(classesOf(element)) : null
+}
+
 /** A Settings card's save, by its label. */
 const SETTINGS_SAVE = /\bm\.(common|settings\.model)\.save\b/
 
@@ -251,7 +264,7 @@ function lookOf(element: Node, source: string, path: string): Look | null {
     if (variant === 'section') return { operation: 'add', size: 'sm', variant: classesOf(element).includes('ghost') ? 'ghost' : 'plain' }
     return { operation: 'add', size: variant === 'icon' ? 'nested' : variant, variant }
   }
-  if (name === 'EditActions') return { operation: 'edit', size: 'sm', variant: 'plain' }
+  if (name === 'EditActions') return { operation: 'edit', size: 'md', variant: 'plain' }
   if (name === 'PanelClose') return { operation: 'close', size: 'default', variant: 'plain' }
   if (name === 'DotsMenu') return { operation: 'overflow menu', size: 'nested', variant: 'plain' }
   if (name === 'SegmentedControl') {
@@ -266,12 +279,13 @@ function lookOf(element: Node, source: string, path: string): Look | null {
       operation, size: literal('size') ?? 'default', variant: literal('tone') === 'danger' ? 'danger' : 'plain',
     }
   }
-  if (name === 'button' || name === 'ToolbarButton') {
+  if (name === 'Button' || name === 'button' || name === 'ToolbarButton') {
     const children = (element.children as Node[]).filter((child) => child.type === 'JSXExpressionContainer')
       .map((child) => text(child.expression as Node))
     const operation = path.startsWith('components/settings/') && children.some((child) => SETTINGS_SAVE.test(child))
       ? 'settings save' : children.map(labelled).find(Boolean)
-    return operation === undefined ? null : { operation, ...buttonLook(classesOf(element)) }
+    const look = textButtonLook(element) ?? buttonLook([])
+    return operation === undefined ? null : { operation, ...look }
   }
   return null
 }
@@ -347,9 +361,8 @@ function placementsIn(path: string): { actions: Placement[]; icons: IconPlacemen
       if (name === 'IconButton' && !CONTROL_FILES.has(path)) {
         icons.push({ slot, size: strings(attribute(held, 'size'))[0] ?? 'default', at: `${path}:${line(held)}` })
       }
-      if ((name === 'button' || name === 'ToolbarButton') && classesOf(held).includes('btn') && !CONTROL_FILES.has(path)) {
-        buttons.push({ slot, ...buttonLook(classesOf(held)), at: `${path}:${line(held)}` })
-      }
+      const textLook = textButtonLook(held)
+      if (textLook !== null && !CONTROL_FILES.has(path)) buttons.push({ slot, ...textLook, at: `${path}:${line(held)}` })
       const built = ((attribute(held, 'className')?.value as Node | undefined)?.expression as Node | undefined)
       const builder = built?.type === 'CallExpression' && (built.callee as Node).type === 'Identifier'
         ? functions.get((built.callee as Node).name as string) ?? [] : []
