@@ -4,6 +4,8 @@ import type { HarnessCli } from '../../../shared/contract.js'
 import { type ChildOutcome, cliEnvironment, CliRunError, inTemporaryFolder, runChild, stderrExcerpt } from './child.js'
 import type { CliDiscovery } from './discovery.js'
 import { reachedUsageLimit, readiness } from './failure.js'
+import type { InternalMcp, InternalMcpOpener } from './internal-mcp.js'
+import type { VaultToolScope } from './vault-tools.js'
 
 /** Codex features that give the model a tool or load outside code; every run turns them all off. */
 export const CODEX_DISABLED_FEATURES = [
@@ -11,6 +13,8 @@ export const CODEX_DISABLED_FEATURES = [
   'browser_use_external', 'view_image', 'hooks', 'tool_suggest', 'skill_search', 'goals',
   'sleep_tool', 'remote_plugin', 'skill_mcp_dependency_install', 'code_mode_host',
 ] as const
+/** The feature Codex calls MCP tools through, which a run with the internal MCP server keeps on. */
+const CODEX_MCP_FEATURE = 'code_mode_host'
 
 /** Keys whose value maps names to schemas, so a key named `default` inside is a name to keep. */
 const NAMED_SCHEMA_KEYS = new Set(['properties', '$defs', 'definitions', 'patternProperties'])
@@ -27,6 +31,8 @@ export type CliCall = {
   schema: Record<string, unknown>
   timeoutMs: number
   signal: AbortSignal
+  /** What the call may look up in the vault through the internal MCP server; without it the CLI has no tools. */
+  lookup?: VaultToolScope
 }
 
 export type CliUsage = { inputTokens: number; cachedInputTokens: number; outputTokens: number }
@@ -81,22 +87,27 @@ export function strictSchema(schema: unknown): unknown {
   return node
 }
 
-function claudeArgs(call: CliCall, schema: unknown): string[] {
+function claudeArgs(call: CliCall, schema: unknown, mcp: InternalMcp | null = null): string[] {
   return [
     '-p', '--output-format', 'json', '--json-schema', JSON.stringify(schema),
     '--tools', '', '--strict-mcp-config', '--setting-sources', 'project',
     '--no-session-persistence', '--system-prompt', call.system,
     ...(call.model === undefined ? [] : [`--model=${call.model}`]),
+    ...(mcp?.claudeArgs ?? []),
   ]
 }
 
-function codexArgs(call: CliCall, files: { schema: string; output: string; work: string }): string[] {
+function codexArgs(
+  call: CliCall, files: { schema: string; output: string; work: string }, mcp: InternalMcp | null = null,
+): string[] {
   return [
     'exec', '--ephemeral', '--skip-git-repo-check', '--sandbox', 'read-only',
     '--ignore-user-config', '--ignore-rules', '--json', '--color', 'never',
     '--output-schema', files.schema, '-o', files.output, '-C', files.work,
-    ...CODEX_DISABLED_FEATURES.flatMap((feature) => ['--disable', feature]),
+    ...CODEX_DISABLED_FEATURES.filter((feature) => mcp === null || feature !== CODEX_MCP_FEATURE)
+      .flatMap((feature) => ['--disable', feature]),
     ...(call.model === undefined ? [] : [`--model=${call.model}`]),
+    ...(mcp?.codexArgs ?? []),
     '-',
   ]
 }
@@ -187,31 +198,43 @@ function codexResult(outcome: ChildOutcome, outputFile: string): Omit<CliResult,
 /**
  * The runner that starts the CLI as `discover` finds it, once it is installed, supported and signed
  * in with the user's subscription, in `environment` without its API-key variables, inside an empty
- * folder of a fresh temporary folder that it removes afterwards.
+ * folder of a fresh temporary folder that it removes afterwards. A call with a `lookup` scope also
+ * gets the internal MCP server `internalMcp` opens in that folder, and only that server, which the
+ * runner closes once the CLI has exited, however the call ends; a refused call opens none.
  */
 export function createCliRunner(deps: {
   discover: (cli: HarnessCli) => Promise<CliDiscovery>
   environment?: NodeJS.ProcessEnv
+  internalMcp?: InternalMcpOpener
 }): CliRunner {
   const environment = deps.environment ?? process.env
   return async (call) => {
     const ready = readiness(await deps.discover(call.cli))
     if (!('binary' in ready)) throw new CliRunError(ready.kind, ready.message)
     const { binary } = ready
+    if (call.lookup !== undefined && deps.internalMcp === undefined) {
+      throw new Error('This runner has no internal MCP server for a call that looks up the vault')
+    }
     return inTemporaryFolder(async (root) => {
       const work = join(root, 'work')
       mkdirSync(work)
       const schema = strictSchema(call.schema)
       const files = { schema: join(root, 'schema.json'), output: join(root, 'output.json'), work }
       if (call.cli === 'codex') writeFileSync(files.schema, JSON.stringify(schema))
+      const mcp = call.lookup === undefined ? null : await deps.internalMcp!({ ...call.lookup, folder: root })
       const started = Date.now()
-      const outcome = await runChild(binary, call.cli === 'claude' ? claudeArgs(call, schema) : codexArgs(call, files), {
-        cwd: work,
-        env: cliEnvironment(environment, binary),
-        input: call.cli === 'claude' ? call.prompt : `${call.system}\n\n${call.prompt}`,
-        timeoutMs: call.timeoutMs,
-        signal: call.signal,
-      })
+      let outcome: ChildOutcome
+      try {
+        outcome = await runChild(binary, call.cli === 'claude' ? claudeArgs(call, schema, mcp) : codexArgs(call, files, mcp), {
+          cwd: work,
+          env: { ...cliEnvironment(environment, binary), ...mcp?.env },
+          input: call.cli === 'claude' ? call.prompt : `${call.system}\n\n${call.prompt}`,
+          timeoutMs: call.timeoutMs,
+          signal: call.signal,
+        })
+      } finally {
+        await mcp?.close()
+      }
       const durationMs = Date.now() - started
       const result = call.cli === 'claude' ? claudeResult(outcome) : codexResult(outcome, files.output)
       return { ...result, durationMs }
