@@ -13,7 +13,8 @@ type NavRowFold = { label: string; open: boolean; onToggle: () => void; controls
  * anywhere else on the row activates it too, so each control in `children` must stop its click from
  * reaching the row. Such a row can carry `fold`, the caret right after its label that folds the
  * group under the row, named by `fold.label`. `className` gives the row its look; `selected` adds `on` for the row whose
- * destination is shown. In a toolbar the row's buttons are controls of the toolbar.
+ * destination is shown, whose accent turns to the neutral selected look while Meridian is not the active
+ * app. In a toolbar the row's buttons are controls of the toolbar.
  */
 export function NavRow({
   children, label, fold, className, selected = false, onActivate, id, ...data
@@ -30,13 +31,13 @@ export function NavRow({
   if (label === undefined) {
     return asItem(
       <button
-        type="button" className={`nav-row ${rowClass}`} id={id}
+        type="button" className={`nav-row ${rowClass}`} id={id} data-nav-row=""
         onClick={onActivate} {...data}
       >{children}</button>,
     )
   }
   return (
-    <div className={rowClass} id={id} onClick={onActivate} {...data}>
+    <div className={rowClass} id={id} data-nav-row="" onClick={onActivate} {...data}>
       {asItem(<button type="button" className="nav-row nav-row-label">{label}</button>)}
       {fold === undefined ? null : <FoldToggle variant="caret" {...fold} />}
       {children}

@@ -3,3 +3,8 @@
   font:inherit;letter-spacing:inherit;text-transform:inherit;text-align:left;cursor:pointer}
 /* A composite row's button holds only its label and lays it out with the row's own gap. */
 :where(.nav-row-label){display:flex;align-items:center;gap:inherit;width:auto;min-width:0;cursor:inherit}
+/*
+ * While Meridian is not the active app (AppShell marks the document), a row's accent turns to the
+ * neutral selected look, as macOS greys an unemphasized selection.
+ */
+:root[data-window-inactive] [data-nav-row]{--accent-soft:var(--selected);--accent-text:var(--on-selected)}

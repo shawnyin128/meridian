@@ -524,6 +524,21 @@ export function AppShell({ screens, settings }: {
 
   // The platform name is for CSS: the room left for the window buttons on either side depends on it.
   useEffect(() => { document.documentElement.dataset.os = appMenu.platform() }, [])
+  // While Meridian is not the active app the document is marked, and the current navigation row turns grey.
+  useEffect(() => {
+    const root = document.documentElement
+    const mark = () => {
+      if (document.hasFocus()) delete root.dataset.windowInactive
+      else root.dataset.windowInactive = ''
+    }
+    mark()
+    window.addEventListener('focus', mark)
+    window.addEventListener('blur', mark)
+    return () => {
+      window.removeEventListener('focus', mark)
+      window.removeEventListener('blur', mark)
+    }
+  }, [])
   useEffect(() => appMenu.onFullScreen((on) => {
     if (on) document.documentElement.dataset.fullscreen = ''
     else delete document.documentElement.dataset.fullscreen

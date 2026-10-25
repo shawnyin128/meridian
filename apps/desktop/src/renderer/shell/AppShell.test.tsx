@@ -1016,6 +1016,20 @@ describe('AppShell 重新打开时回到上次的地方', () => {
     expect(crumbs()).toEqual(['动态'])
     expect(kept()).toMatchObject({ screen: 'feed', chat: null })
   })
+
+  it('Meridian 不是当前的 App 时给文档打上标记,回来时去掉', async () => {
+    const focused = vi.spyOn(document, 'hasFocus').mockReturnValue(true)
+    await mount()
+    const marked = () => document.documentElement.hasAttribute('data-window-inactive')
+    expect(marked()).toBe(false)
+    focused.mockReturnValue(false)
+    act(() => { window.dispatchEvent(new FocusEvent('blur')) })
+    expect(marked()).toBe(true)
+    focused.mockReturnValue(true)
+    act(() => { window.dispatchEvent(new FocusEvent('focus')) })
+    expect(marked()).toBe(false)
+    focused.mockRestore()
+  })
 })
 
 /** A button that opens the reader, as a paper's link does. */

@@ -79,6 +79,7 @@ Current shared contracts:
   `selected` row takes the one selected look, the sidebar's current row's: `--accent-soft` with `--accent-text`.
 - `NavRow`: the one row of a navigation list, the sidebar's and the Settings categories'. It is a button,
   or, when it holds controls of its own, a div whose label is the button; the row's class gives the look.
+  While Meridian is not the active app, the current row's accent turns to the neutral selected look.
 - `SegmentedControl`: the only switch between peer views in the app, including the timeline scale: a track of
   equal segments with a raised thumb that slides to the picked one, whose label is in `--accent-text`,
   radio-group semantics, and one Tab stop with arrow keys inside. The `.fchip` and `.segbtn` pill rows are retired.
