@@ -32,6 +32,8 @@ const fixture = vi.hoisted(() => ({
   menuStates: [] as { sidebarHidden: boolean; reading: boolean }[],
   createChat: vi.fn(() => new Promise(() => {})),
   undoChange: vi.fn<(id: string) => Promise<void>>(async () => {}),
+  /** What papers.get answers for paper `id`; by default the paper is there. */
+  getPaper: (id: string): Promise<unknown> => Promise.resolve({ id }),
 }))
 
 const none = vi.hoisted(() => () => Promise.resolve([]))
@@ -66,7 +68,7 @@ vi.mock('../ipc.js', () => ({
   inbox: { list: ({ kind }: { kind: string }) => Promise.resolve(kind === 'discovery' ? fixture.discovery : fixture.delivered) },
   jobs: { status: () => new Promise(() => {}) },
   later: { list: none },
-  papers: { list: () => Promise.resolve({ rows: [], total: 0 }) },
+  papers: { list: () => Promise.resolve({ rows: [], total: 0 }), get: (id: string) => fixture.getPaper(id) },
   project: { list: () => Promise.resolve(fixture.projects) },
   search: { query: none },
   trash: { list: () => Promise.resolve(fixture.trash), restore: fixture.restoreTrash },
@@ -80,6 +82,7 @@ const {
   AppShell, useCrumbTail, useEscapeLayer, useJump, useNotice, usePaperChatCollapsed, useSettingsOpen,
 } = await import('./AppShell.js')
 const { useJumpOrigin } = await import('../hooks/useJumpOrigin.js')
+const { CallError } = await import('../call-error.js')
 const { useUndo } = await import('../hooks/useUndo.js')
 const { useVaultWrite } = await import('../hooks/useVaultWrite.js')
 const { Trash } = await import('../routes/Trash.js')
@@ -1002,7 +1005,9 @@ describe('AppShell 重新打开时回到上次的地方', () => {
 
   it('换屏、拖宽侧栏都记下来,下次照着打开', async () => {
     await mount()
-    expect(kept()).toEqual({ sidebarWidth: 232, screen: 'feed', inboxScope: 'all', inboxMode: 'watch', chat: null })
+    expect(kept()).toEqual({
+      sidebarWidth: 232, sidebarHidden: false, screen: 'feed', inboxScope: 'all', inboxMode: 'watch', chat: null, reader: null,
+    })
     await act(async () => { document.querySelector<HTMLButtonElement>('[data-desk="papers"]')!.click() })
     const grip = document.querySelector<HTMLElement>('#sbgrip')!
     act(() => { grip.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true, cancelable: true })) })
@@ -1010,10 +1015,41 @@ describe('AppShell 重新打开时回到上次的地方', () => {
     expect(sbw()).not.toBe('232px')
   })
 
-  it('阅读器记成打开它的那一屏', async () => {
+  it('阅读器记下它那篇论文和打开它的那一屏', async () => {
     await mount(<OpenReader />)
     act(() => { document.querySelector<HTMLButtonElement>('#openReader')!.click() })
-    expect(kept()).toMatchObject({ screen: 'feed' })
+    expect(kept()).toMatchObject({ screen: 'feed', reader: { paper: 'paper-1', from: 'feed' } })
+    act(() => { document.querySelector<HTMLButtonElement>('[data-desk="papers"]')!.click() })
+    expect(kept()).toMatchObject({ screen: 'papers', reader: null })
+  })
+
+  it('上次停在阅读器上时重新打开那篇论文,返回仍回到打开它的那一屏', async () => {
+    keep({ sidebarWidth: 232, screen: 'papers', inboxScope: 'all', inboxMode: 'watch', chat: null, reader: { paper: 'paper-7', from: 'papers' } })
+    await mount(undefined, { reader: <ReaderProbe /> })
+    expect(document.querySelector('.screenslot:not([hidden])')!.textContent).toBe('paper-7 papers')
+    expect(kept()).toMatchObject({ screen: 'papers', reader: { paper: 'paper-7', from: 'papers' } })
+  })
+
+  it('上次阅读器里那篇论文已经不在了,就回到打开它的那一屏', async () => {
+    const held = fixture.getPaper
+    fixture.getPaper = () => Promise.reject(new CallError('papers.get', 'not-found'))
+    try {
+      keep({ sidebarWidth: 232, screen: 'papers', inboxScope: 'all', inboxMode: 'watch', chat: null, reader: { paper: 'gone', from: 'papers' } })
+      await mount(undefined, { reader: <ReaderProbe /> })
+      await act(async () => { await Promise.resolve() })
+      expect(document.querySelector('.screenslot:not([hidden])')!.textContent).toBe('deeper')
+      expect(kept()).toMatchObject({ screen: 'papers', reader: null })
+    } finally {
+      fixture.getPaper = held
+    }
+  })
+
+  it('收起的侧栏下次打开时仍收起', async () => {
+    keep({ sidebarWidth: 232, sidebarHidden: true, screen: 'feed', inboxScope: 'all', inboxMode: 'watch', chat: null, reader: null })
+    await mount()
+    expect(document.querySelector('#main')!.classList.contains('sbhide')).toBe(true)
+    press('b', { metaKey: true })
+    expect(kept()).toMatchObject({ sidebarHidden: false })
   })
 
   it('上次开着的对话还在就回到它,已经不在了就回到动态', async () => {
@@ -1043,6 +1079,12 @@ describe('AppShell 重新打开时回到上次的地方', () => {
     focused.mockRestore()
   })
 })
+
+/** The reader's slot: the paper its jump names and the screen it came from. */
+function ReaderProbe() {
+  const { jump } = useJump()
+  return <p>{jump === null ? '' : `${jump.target} ${jump.from}`}</p>
+}
 
 /** A button that opens the reader, as a paper's link does. */
 function OpenReader() {
