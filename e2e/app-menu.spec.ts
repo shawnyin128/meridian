@@ -36,7 +36,9 @@ test('视图菜单的缩放在阅读器里缩放论文,别处缩放整个窗口'
   await expect(percent).toHaveText('100%')
   expect(await windowZoom(app)).toBe(0)
 
-  await gotoPapers(win)
+  // In the reader the paper chat takes the sidebar's place; its back button leaves for Papers.
+  await shown(win, '.paper-chat .back').click()
+  await expect(shown(win, '#libq')).toBeVisible()
   await choose(app, 'zoomIn')
   await expect.poll(() => windowZoom(app)).toBe(0.5)
   await choose(app, 'resetZoom')
