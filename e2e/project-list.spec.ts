@@ -105,7 +105,7 @@ test('侧栏项目角标是进行中的项目数', async ({ win }) => {
   const active = projects.filter((p) => p.status === ACTIVE).length
   // The badge counts active projects; if all were active, this test could not tell the two counts apart.
   expect(active).toBeLessThan(projects.length)
-  await expect(win.locator('[data-desk="resproj"] .n')).toHaveText(String(active))
+  await expect(win.locator('[data-desk="resproj"] .nav-row-count')).toHaveText(String(active))
 })
 
 test('从别的屏再进「项目」落在列表,已经在项目屏时再点侧栏也落在列表', async ({ win }) => {

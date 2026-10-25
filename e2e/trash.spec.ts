@@ -57,8 +57,8 @@ test('删掉的论文进垃圾桶,恢复后回到列表且总数复原', async (
 
   await win.locator('.ptable tbody tr').first().locator('td').last().hover()
   await win.locator('.ptable tbody tr').first().locator('.rowx').click()
-  await expect(win.locator('[data-desk="papers"] .n')).toHaveText(String(total - 1))
-  await expect(win.locator('[data-desk="trash"] .n')).toHaveText('1')
+  await expect(win.locator('[data-desk="papers"] .nav-row-count')).toHaveText(String(total - 1))
+  await expect(win.locator('[data-desk="trash"] .nav-row-count')).toHaveText('1')
 
   await gotoTrash(win)
   await expect(win.locator('#crumb .cseg')).toHaveText(['垃圾桶'])
@@ -69,8 +69,8 @@ test('删掉的论文进垃圾桶,恢复后回到列表且总数复原', async (
 
   await restore(win.locator('.tgroup .trow'))
   await expect(win.locator('.tgroup .trow')).toHaveCount(0)
-  await expect(win.locator('[data-desk="trash"] .n')).toHaveCount(0)
-  await expect(win.locator('[data-desk="papers"] .n')).toHaveText(String(total))
+  await expect(win.locator('[data-desk="trash"] .nav-row-count')).toHaveCount(0)
+  await expect(win.locator('[data-desk="papers"] .nav-row-count')).toHaveText(String(total))
   expect(await paperTotal(win)).toBe(total)
 
   // What is restored is the exact paper itself, not just some paper with the same title: check by id.
@@ -117,10 +117,10 @@ test('垃圾桶的倒数按库里的今天算,把这一屏的钟拨走也不动'
   await gotoPapers(win)
   await win.locator('.ptable tbody tr').first().locator('td').last().hover()
   await win.locator('.ptable tbody tr').first().locator('.rowx').click()
-  await expect(win.locator('[data-desk="trash"] .n')).toHaveText('1')
+  await expect(win.locator('[data-desk="trash"] .nav-row-count')).toHaveText('1')
   await win.locator('.ptable tbody tr').first().locator('td').last().hover()
   await win.locator('.ptable tbody tr').first().locator('.rowx').click()
-  await expect(win.locator('[data-desk="trash"] .n')).toHaveText('2')
+  await expect(win.locator('[data-desk="trash"] .nav-row-count')).toHaveText('2')
 
   // The deletion time is the vault's today, so two deletions on one day share a time and a countdown.
   const stamps = await deletedAt(win)
@@ -237,7 +237,7 @@ test('清空垃圾桶要过二次确认,清掉的东西恢复不回来', async (
   await dialog.locator('.btn', { hasText: '确认清空' }).click()
   await expect(win.locator('.tgroup .trow')).toHaveCount(0)
   await expect(win.locator('.empty-state')).toHaveCount(1)
-  await expect(win.locator('[data-desk="trash"] .n')).toHaveCount(0)
+  await expect(win.locator('[data-desk="trash"] .nav-row-count')).toHaveCount(0)
 
   expect(ids).toHaveLength(2)
   for (const id of ids) expect(await restoreRefused(win, id)).toEqual({ reason: 'not-found' })

@@ -54,7 +54,7 @@ test('侧栏「Wiki」进 wiki 屏:标题与角标都是聚合总数,分节只�
 
   await expect(crumbs(win)).toHaveText(['我的库', 'Wiki'])
   await expect(shown(win).locator('.desk-head .t')).toHaveText(`Wiki · ${home.aggregationCount}`)
-  await expect(win.locator('[data-desk="wiki"] .n')).toHaveText(String(home.aggregationCount))
+  await expect(win.locator('[data-desk="wiki"] .nav-row-count')).toHaveText(String(home.aggregationCount))
   await expect(shown(win).locator('.desk-head .back')).toHaveCount(0)
   // A kind with no root page shows no heading of its own.
   const kinds = home.kinds.filter((k) => home.roots.some((c) => c.kind === k.key))
