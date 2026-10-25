@@ -76,7 +76,7 @@ export const IconGear = () => (
   </svg>
 )
 
-/** The chevron of a fold toggle, such as the one that expands a column's options in its row. */
+/** The chevron after a picker's value, pointing to the menu it opens; a fold draws FoldCaret instead. */
 export const IconChevron = () => (
   <svg
     viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"

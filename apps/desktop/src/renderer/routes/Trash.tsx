@@ -20,6 +20,7 @@ import {
 import { D1, dnum } from '../../shared/dates.js'
 import { useScreenLoad } from '../hooks/useScreenLoad.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
+import { Button } from '../components/Button.js'
 import './shell.css'
 import './Trash.css'
 
@@ -46,7 +47,7 @@ function ClearButton({ count, onClear }: { count: number; onClear: () => void })
   const m = useMessages()
   return (
     <ConfirmDialog
-      trigger={<button className="btn danger">{m.trash.clear}</button>}
+      trigger={<Button size="regular" tone="danger">{m.trash.clear}</Button>}
       title={m.trash.confirmClear} description={m.trash.confirmClearDescription(count)}
       confirmLabel={m.trash.confirmClearLabel} onConfirm={onClear}
     />
@@ -90,7 +91,7 @@ export function Trash() {
   return (
     <PageShell>
       <PageHeader actions={groups.length === 0 ? undefined : <ClearButton count={held.length} onClear={clear} />}>
-        <PageTitle>{m.trash.title(held.length)}</PageTitle>
+        <PageTitle count={held.length}>{m.trash.title}</PageTitle>
       </PageHeader>
 
       <PageError error={error} />
@@ -113,7 +114,7 @@ export function Trash() {
           )
           : groups.map((g) => (
             <Fragment key={g.kind}>
-              <SectionHeading>{m.trash.kinds[g.kind]} · {g.items.length}</SectionHeading>
+              <SectionHeading count={g.items.length}>{m.trash.kinds[g.kind]}</SectionHeading>
               <StructuredList variant="embedded" maxVisibleRows="all" className="tgroup">
                 {g.items.map((entry) => (
                   <StructuredRow className="trow" key={entry.id}>

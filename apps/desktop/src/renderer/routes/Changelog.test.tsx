@@ -90,7 +90,7 @@ describe('最近变动的来源标签', () => {
     api.entries = [{ ...entry('c1', '项目「draft 效率」· 改了字段', '我'), diff: ['- 旧', '+ 新'], lines: [['- 旧'], ['+ 新']] }]
     await act(async () => root.render(<MessagesProvider><Changelog /></MessagesProvider>))
     const toggle = host.querySelector<HTMLButtonElement>('.crow .card-tray-toggle')!
-    expect(toggle.parentElement!.querySelector('.card-tray-chevron svg')).not.toBeNull()
+    expect(toggle.parentElement!.querySelector('.fold-caret svg')).not.toBeNull()
     expect(toggle.getAttribute('aria-label')).toBeNull()
     expect(document.getElementById(toggle.getAttribute('aria-labelledby')!)!.textContent).toContain('项目「draft 效率」· 改了字段')
     expect(toggle.getAttribute('aria-expanded')).toBe('false')

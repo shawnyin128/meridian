@@ -91,7 +91,7 @@ export const settings = {
     resetDescription: 'Current papers, wiki, projects and state will be cleared. The old library is backed up automatically.',
     resetting: 'Resetting…',
     resetConfirm: 'Reset and restart',
-    backupsHeading: (count: number) => `Library backups · ${count}`,
+    backupsHeading: 'Library backups',
     backupSwitch: 'Switch',
     backupSwitching: 'Switching…',
     backupDelete: 'Delete',
@@ -343,7 +343,7 @@ export const settings = {
   },
   discovery: {
     heading: 'Discovery',
-    directionsHeading: (n: number) => `Research directions · ${n}`,
+    directionsHeading: 'Research directions',
     noDirections: 'No research directions yet',
     seeds: (n: number) => `${n} ${pluralEn(n, { one: 'seed paper', other: 'seed papers' })}`,
     refreshing: 'Refreshing…',
@@ -362,7 +362,7 @@ export const settings = {
     enabled: 'Direction enabled',
   },
   archived: {
-    heading: (count: number) => `Archived chats · ${count}`,
+    heading: 'Archived chats',
     empty: 'No archived chats yet',
     open: 'Open',
     unarchive: 'Unarchive',

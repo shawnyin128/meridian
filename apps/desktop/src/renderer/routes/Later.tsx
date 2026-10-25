@@ -23,6 +23,7 @@ import { useVaultWrite } from '../hooks/useVaultWrite.js'
 import { PageBody, PageError, PageHeader, PageShell, PageTitle, PageToolbar } from '../components/PageShell.js'
 import { SourceLabel } from '../components/SourceLabel.js'
 import { shownSource } from '../lib/watch-source.js'
+import { Button } from '../components/Button.js'
 import './shell.css'
 
 /** How entries are grouped: by the day they joined the queue, or by where they came from. */
@@ -109,7 +110,7 @@ export function Later() {
     <PageShell>
       <PageHeader>
         {origin === null ? null : <BackButton onClick={back} />}
-        <PageTitle>{m.later.title(entries?.length ?? 0)}</PageTitle>
+        <PageTitle count={entries?.length ?? 0}>{m.later.title}</PageTitle>
       </PageHeader>
 
       <PageError error={error} />
@@ -165,8 +166,8 @@ export function Later() {
                     </>
                   )}
                   notices={failed.has(x.id) ? (
-                    <PaperCardNotice tone="error" action={(
-                      <button className="btn ghost sm" onClick={() => read(x)}>{m.common.retry}</button>
+                    <PaperCardNotice action={(
+                      <Button size="compact" variant="ghost" onClick={() => read(x)}>{m.common.retry}</Button>
                     )}>{failureLabel(m, m.inbox.notices.downloadFailed, failed.get(x.id)!)}</PaperCardNotice>
                   ) : null}
                   metadata={(

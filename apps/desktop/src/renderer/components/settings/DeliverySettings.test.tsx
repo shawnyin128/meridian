@@ -40,21 +40,23 @@ describe('DeliverySettings', () => {
   })
   afterEach(() => { host.remove() })
 
-  it('保存成功后按钮就地写着已保存，不再另发提示；再改数字又回到保存', async () => {
+  it('保存成功后按钮就地亮出对勾，名字是已保存，不再另发提示；再改数字又回到保存', async () => {
     const root = createRoot(host)
     await act(async () => { root.render(<MessagesProvider><DeliverySettings /></MessagesProvider>) })
     const input = host.querySelector<HTMLInputElement>('input')!
     const button = host.querySelector<HTMLButtonElement>('button')!
 
+    /** What a user and a screen reader get from the button: its name, its label and whether the check shows. */
+    const look = () => [button.getAttribute('aria-label'), button.textContent, button.querySelector('.cki') !== null]
     type(input, '30')
-    expect(button.textContent).toBe('保存')
+    expect(look()).toEqual([null, '保存', false])
     await act(async () => { button.click() })
     expect(api.updateSettings).toHaveBeenCalledWith({ maxItemsPerRun: 30, maxShownPerScope: 20 })
-    expect(button.textContent).toBe('已保存')
+    expect(look()).toEqual(['已保存', '保存', true])
     expect(api.notice.success).not.toHaveBeenCalled()
 
     type(input, '31')
-    expect(button.textContent).toBe('保存')
+    expect(look()).toEqual([null, '保存', false])
     await act(async () => { root.unmount() })
   })
 
@@ -83,7 +85,9 @@ describe('DeliverySettings', () => {
     expect(shown.value).toBe('20')
     type(shown, '0')
     expect(button.disabled).toBe(true)
-    expect(host.querySelector('.delivery-setting-error')?.textContent).toBe('请输入 1–100 之间的整数')
+    const rangeError = host.querySelector('.delivery-setting-error')!
+    expect([rangeError.matches('.inline-message--line.inline-message--error[role="alert"]'), rangeError.textContent])
+      .toEqual([true, '请输入 1–100 之间的整数'])
     type(shown, '8')
     await act(async () => { button.click() })
     expect(api.updateSettings).toHaveBeenLastCalledWith({ maxItemsPerRun: 20, maxShownPerScope: 8 })

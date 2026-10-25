@@ -17,6 +17,7 @@ import { IconButton } from '../components/IconButton.js'
 import { EmptyState } from '../components/EmptyState.js'
 import { LoadingPlaceholder } from '../components/LoadingPlaceholder.js'
 import { DirectoryField } from '../components/FormControls.js'
+import { InlineMessage } from '../components/InlineMessage.js'
 import { AppearanceSettings, ColourThemeSettings } from '../components/settings/AppearanceSettings.js'
 import { ThemeEditor } from '../components/settings/ThemeEditor.js'
 import { LanguageSettings } from '../components/settings/LanguageSettings.js'
@@ -26,7 +27,7 @@ import { DeliverySettings } from '../components/settings/DeliverySettings.js'
 import { ModelSettings } from '../components/settings/ModelSettings.js'
 import { ApiOverview } from '../components/settings/ApiOverview.js'
 import { ExtensionSettings } from '../components/settings/ExtensionSettings.js'
-import { ActionButton } from '../components/ActionButton.js'
+import { Button } from '../components/Button.js'
 import { ConfirmDialog } from '../components/ConfirmDialog.js'
 import { DateTimeDisplay } from '../components/DateTimeDisplay.js'
 import { ModalDialog, ModalTitle } from '../components/ModalDialog.js'
@@ -235,7 +236,7 @@ export function Settings() {
     delivery: m.settings.delivery.heading,
     'delivery-watch': m.settings.categories.deliveryWatch,
     'delivery-discovery': m.settings.discovery.heading,
-    archived: m.settings.archived.heading(archived.length),
+    archived: m.settings.archived.heading,
   }
 
   const panes: Record<CategoryKey, ReactNode> = {
@@ -284,23 +285,23 @@ export function Settings() {
             ? <Tag className="storage-state">{m.settings.storage.lockedNote}</Tag>
             : location?.restartRequired
               ? (
-                <div className="storage-pending" role="status">
-                  <Tag tone="warn">{m.settings.storage.pendingNote}</Tag>
-                  <button className="btn pri" onClick={() => appMenu.restartApp()}>
-                    {m.settings.storage.restartNow}
-                  </button>
-                </div>
+                <InlineMessage
+                  tone="warning" variant="box" className="storage-pending"
+                  action={<Button size="regular" variant="primary" onClick={() => appMenu.restartApp()}>{m.settings.storage.restartNow}</Button>}
+                >
+                  {m.settings.storage.pendingNote}
+                </InlineMessage>
               )
               : null}
           <div className="storage-reset">
             <span>{m.settings.storage.resetLabel}</span>
             <ConfirmDialog
               trigger={(
-                <ActionButton
-                  className="btn danger" disabled={location === null || location.source === 'fixture'
+                <Button
+                  size="regular" tone="danger" disabled={location === null || location.source === 'fixture'
                     || location.restartRequired}
                   busy={resetting} busyLabel={m.settings.storage.resetting}
-                >{m.settings.storage.resetAction}</ActionButton>
+                >{m.settings.storage.resetAction}</Button>
               )}
               title={m.settings.storage.resetTitle} description={m.settings.storage.resetDescription}
               confirmLabel={m.settings.storage.resetConfirm}
@@ -312,7 +313,7 @@ export function Settings() {
           ? null
           : (
             <>
-              <SectionHeading>{m.settings.storage.backupsHeading(backups.length)}</SectionHeading>
+              <SectionHeading count={backups.length}>{m.settings.storage.backupsHeading}</SectionHeading>
               <StructuredList className="storage-backup-list">
                 {backups.map((backup) => {
                   const label = `${format.date(localDayOf(backup.createdAt))} ${format.clock(backup.createdAt)}`
@@ -324,21 +325,18 @@ export function Settings() {
                         <FadeText className="storage-backup-path" label={backup.path}>{backup.path}</FadeText>
                       </div>
                       <div className="storage-backup-actions">
-                        <button
-                          className="btn ghost sm" disabled={busy || location?.restartRequired === true}
+                        <Button
+                          size="compact" variant="ghost" disabled={busy || location?.restartRequired === true}
+                          busy={switchingBackup === backup.id} busyLabel={m.settings.storage.backupSwitching}
                           onClick={() => { void switchBackup(backup) }}
-                        >
-                          {switchingBackup === backup.id
-                            ? m.settings.storage.backupSwitching
-                            : m.settings.storage.backupSwitch}
-                        </button>
+                        >{m.settings.storage.backupSwitch}</Button>
                         <ConfirmDialog
                           trigger={(
-                            <ActionButton
-                              className="btn danger sm"
+                            <Button
+                              size="compact" tone="danger"
                               disabled={busy || location?.restartRequired === true}
                               busy={deletingBackup === backup.id} busyLabel={m.settings.storage.backupDeleting}
-                            >{m.settings.storage.backupDelete}</ActionButton>
+                            >{m.settings.storage.backupDelete}</Button>
                           )}
                           title={m.settings.storage.backupDeleteTitle(label)}
                           description={m.settings.storage.backupDeleteDescription}
@@ -471,7 +469,7 @@ export function Settings() {
             <div className="set-main">
               <div className="set-head">
                 <PageError error={actionErrors[current] ?? readErrors[current]} />
-                <SectionHeading>{titles[current]}</SectionHeading>
+                <SectionHeading count={current === 'archived' ? archived.length : undefined}>{titles[current]}</SectionHeading>
               </div>
               <div className="set-body" ref={paneFade}>{panes[current]}</div>
             </div>

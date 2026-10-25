@@ -4,13 +4,14 @@ import type { Task } from '../../shared/contract.js'
 import { useToday } from '../shell/AppShell.js'
 import { useFormat } from '../lib/format.js'
 import { useMessages } from '../messages/useMessages.js'
-import { ActionMenu, MenuRadioGroup, MenuRadioItem } from './ActionMenu.js'
+import { ActionMenu, MenuRadioGroup, MenuRadioItem, type MenuSurface } from './ActionMenu.js'
 import { ActionPopover, PopoverClose } from './ActionPopover.js'
 import { FormButton } from './FormControls.js'
 import { IconButton } from './IconButton.js'
 import { IconChevron, IconDots, IconNext, IconPrevious } from './icons.js'
 import { ToggleGroup, ToggleItem, useToolbarItem } from './Toolbar.js'
 import { FadeText } from './FadeText.js'
+import { Button } from './Button.js'
 import './FieldPickers.css'
 
 const PRIORITIES: Task['priority'][] = ['p0', 'p1', 'p2']
@@ -23,7 +24,7 @@ const PRIORITIES: Task['priority'][] = ['p0', 'p1', 'p2']
  * it leaves focus to an editor an item opens in place.
  */
 export function DotsMenu({
-  children, label, stopRowActivation = false, open, onOpenChange, contentClassName, onCloseAutoFocus,
+  children, label, stopRowActivation = false, open, onOpenChange, surface, onCloseAutoFocus,
 }: {
   children: ReactNode
   /** The name, e.g. naming which idea or chat the menu manages. Falls back to the shared "more actions" label when omitted. */
@@ -32,7 +33,7 @@ export function DotsMenu({
   stopRowActivation?: boolean
   open?: boolean
   onOpenChange?: (open: boolean) => void
-  contentClassName?: string
+  surface?: MenuSurface
   onCloseAutoFocus?: (event: Event) => void
 }) {
   const m = useMessages()
@@ -40,7 +41,7 @@ export function DotsMenu({
     <ActionMenu
       {...(open === undefined ? {} : { open })}
       {...(onOpenChange === undefined ? {} : { onOpenChange })}
-      {...(contentClassName === undefined ? {} : { contentClassName })}
+      {...(surface === undefined ? {} : { surface })}
       {...(onCloseAutoFocus === undefined ? {} : { contentProps: { onCloseAutoFocus } })}
       stopContentClickPropagation
       trigger={(
@@ -57,9 +58,10 @@ export function DotsMenu({
  * The one single-value picker: a menu of `options` with the picked one marked. With
  * `appearance="field"` it is the boxed field of a form, showing the picked option's label, or
  * `placeholder` while `value` matches no option, and with the refused look of a field while
- * `aria-invalid` holds. Otherwise the host field supplies the trigger's class, and its content as
- * `children`, which defaults to the picked option's label, and the trigger is one of the controls of
- * the toolbar it renders in.
+ * `aria-invalid` holds. With `appearance="button"` its trigger is a compact Button showing
+ * `children`, for a heading's actions. Otherwise the host field supplies the trigger's class, and its
+ * content as `children`, which defaults to the picked option's label. Outside the field appearance
+ * the trigger is one of the controls of the toolbar it renders in.
  */
 export function ChoicePicker<T extends string>({
   value, options, onPick, label = (option) => option, className, appearance, placeholder = '',
@@ -70,7 +72,7 @@ export function ChoicePicker<T extends string>({
   onPick: (next: T) => void
   label?: (option: T) => string
   className?: string
-  appearance?: 'field'
+  appearance?: 'field' | 'button'
   placeholder?: string
   disabled?: boolean
   'aria-label'?: string
@@ -91,16 +93,23 @@ export function ChoicePicker<T extends string>({
         <IconChevron />
       </FormButton>
     )
-    : asItem(
-      <button
-        className={className ?? 'pv metadata-editable'} aria-label={ariaLabel}
-        disabled={disabled} onClick={stopRowActivation ? (e) => e.stopPropagation() : undefined}
-      >{children ?? label(value)}</button>,
-    )
+    : appearance === 'button'
+      ? (
+        <Button
+          size="compact" className={className} aria-label={ariaLabel} disabled={disabled}
+          onClick={stopRowActivation ? (e) => e.stopPropagation() : undefined}
+        >{children ?? label(value)}</Button>
+      )
+      : asItem(
+        <button
+          className={className ?? 'pv metadata-editable'} aria-label={ariaLabel}
+          disabled={disabled} onClick={stopRowActivation ? (e) => e.stopPropagation() : undefined}
+        >{children ?? label(value)}</button>,
+      )
   return (
     <ActionMenu
       align="start" trigger={trigger} stopContentClickPropagation={stopRowActivation}
-      {...(appearance === 'field' ? { contentClassName: 'ctxmenu choice-picker-menu', scrolls: true } : {})}
+      {...(appearance === 'field' ? { contentClassName: 'choice-picker-menu', scrolls: true } : {})}
     >
       <MenuRadioGroup value={value}>
         {options.map((option) => (

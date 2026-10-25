@@ -11,6 +11,7 @@ import { useToolbarItem } from './Toolbar.js'
 import { dnum } from '../../shared/dates.js'
 import { useFormat } from '../lib/format.js'
 import { useMessages } from '../messages/useMessages.js'
+import { CommitActions } from './CommitActions.js'
 import './TaskScheduleField.css'
 
 export type ScheduleEditMode = 'date' | 'time'
@@ -98,8 +99,7 @@ export function TaskScheduleEditor({ mode, task, saving, onSave, onCancel }: {
           </>
         )}
       <div className="schedule-actions">
-        <button className="btn" type="button" disabled={saving} onClick={onCancel}>{m.common.cancel}</button>
-        <button className="btn pri" type="submit" disabled={saving}>{m.common.save}</button>
+        <CommitActions place="foot" onCancel={onCancel} saving={saving} />
       </div>
     </form>
   )
@@ -144,7 +144,7 @@ export function TaskScheduleField({ mode, task, onSave, className = '', stopRowA
           onClick={stopRowActivation ? (e) => e.stopPropagation() : undefined}
         ><DateChip>{label}</DateChip></button>,
       )}
-      contentClassName="ctxmenu schedule-pop" side="bottom" align="start" sideOffset={4}
+      surface="form" contentClassName="schedule-pop" side="bottom" align="start" sideOffset={4}
       contentProps={{ onEscapeKeyDown: (event) => { if (saving) event.preventDefault() } }}
     >
       {open

@@ -37,9 +37,11 @@ describe('PageShell', () => {
         <SectionHeading variant="group">今日</SectionHeading>
       </>,
     )
-    expect(html).toContain('class="ipcerror ipcerror--page" role="alert"')
+    expect(html).toContain('<div class="inline-message inline-message--box inline-message--error page-error page-error--page" role="alert">'
+      + '<div class="inline-message-text">打不开</div></div>')
     expect(renderToStaticMarkup(<PageError error="科研图读不了" variant="section" />))
-      .toBe('<div class="ipcerror ipcerror--section" role="alert">科研图读不了</div>')
+      .toBe('<div class="inline-message inline-message--box inline-message--error page-error page-error--section" role="alert">'
+        + '<div class="inline-message-text">科研图读不了</div></div>')
     expect(html).toContain(
       '<div class="section-heading section-heading--page">项目<div class="section-heading-actions"><button>新增</button></div></div>',
     )
@@ -51,7 +53,7 @@ describe('PageShell', () => {
     const html = renderToStaticMarkup(
       <PageHeader actions={<AddAction variant="page">Import</AddAction>}><PageTitle>Papers</PageTitle></PageHeader>,
     )
-    expect(html).toMatch(/^<div class="desk-head"><span class="fade-text t" data-state="closed">Papers<\/span><div class="page-actions"><button class="btn pri add-action add-action-page">/)
+    expect(html).toMatch(/^<div class="desk-head"><span class="fade-text t" data-state="closed">Papers<\/span><div class="page-actions"><button type="button" class="btn pri add-action add-action-page">/)
   })
 
   it('keeps peer-view switches in the shared content toolbar', () => {

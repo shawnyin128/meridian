@@ -7,6 +7,7 @@ import { Tag, type TagTone } from '../Tag.js'
 import { Card } from '../Card.js'
 import { PluginVersionEntry, type PluginVersionEntryProps } from './PluginVersionEntry.js'
 import { FadeText } from '../FadeText.js'
+import { Button } from '../Button.js'
 import './ExtensionSettings.css'
 
 const STATE_TONE: Record<ExtensionStatus['state'], TagTone> = {
@@ -62,10 +63,10 @@ export function ExtensionSettings({ statuses, failed, plugin, onCopy, onCopyProm
                   </span>
                 )}
                 action={(
-                  <button
-                    className="btn ghost sm" aria-label={copyLabel}
+                  <Button
+                    size="compact" variant="ghost" aria-label={copyLabel}
                     onClick={() => onCopy(extension.name, command)}
-                  >{m.settings.extensions.copy}</button>
+                  >{m.settings.extensions.copy}</Button>
                 )}
               >
                 <pre className="extension-command-code"><code>{command}</code></pre>
@@ -98,9 +99,9 @@ export function ExtensionSettings({ statuses, failed, plugin, onCopy, onCopyProm
                       <strong>{example.label}</strong>
                       <p>{example.prompt}</p>
                     </div>
-                    <button className="btn ghost sm" onClick={() => onCopyPrompt(example.prompt)}>
+                    <Button size="compact" variant="ghost" onClick={() => onCopyPrompt(example.prompt)}>
                       {m.settings.extensions.tutorial.copyPrompt}
-                    </button>
+                    </Button>
                   </div>
                 ))}
               </div>

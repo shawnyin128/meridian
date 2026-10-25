@@ -1,4 +1,4 @@
-.research-object-card{box-sizing:border-box;width:100%;min-height:68px;margin-bottom:var(--sp-12);padding:var(--sp-12) var(--pad-card-inline);
+.research-object-card{box-sizing:border-box;width:100%;min-height:68px;margin-bottom:var(--item-gap);padding:var(--sp-12) var(--item-inset);
   border:1px solid var(--sep);border-radius:var(--r-card);background:var(--card);
   transition:border-color var(--t) var(--e-out),background-color var(--t-fast) var(--e-out)}
 /* Grid cards sit in a grid that spaces them, and carry less padding. */

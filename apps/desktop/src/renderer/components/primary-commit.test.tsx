@@ -154,4 +154,20 @@ describe('每个屏幕只有一个主操作', () => {
     expect(host.querySelector('.update-row')).not.toBeNull()
     expect(solid(host).map((element) => element.textContent)).toEqual([])
   })
+
+  it('侧栏的更新提示是共享的中性提示框,重启是它唯一的操作', async () => {
+    await show(
+      <Sidebar
+        screen="feed" onNavigate={vi.fn()} onJump={vi.fn()} paperCount={0} changeCount={0} projectCount={0}
+        trashCount={0} wikiCount={0} ideaCount={0} inboxScope="all" inboxMode="watch" onOpenInbox={vi.fn()}
+        watches={[]} inboxWatches={[]} discoveryCount={0} discoveryProjects={[]} laterCount={0} chats={[]}
+        chatId={null} onOpenChat={vi.fn()} onNewChat={vi.fn()} onArchiveChat={vi.fn()} onDeleteChat={vi.fn()}
+        grip={{ label: '侧栏宽度', value: 232, min: 180, max: 360, onResize: vi.fn(), onReset: vi.fn() }} collapsed={false}
+      />,
+    )
+    const row = host.querySelector('.update-row')!
+    expect([row.matches('.inline-message--box.inline-message--info[role="status"]'), row.querySelector('.inline-message-lead svg') !== null,
+      row.querySelector('.inline-message-text')?.textContent, row.querySelector('.inline-message-action')?.textContent])
+      .toEqual([true, true, '新版本 0.0.16.1 已就绪', '重启'])
+  })
 })

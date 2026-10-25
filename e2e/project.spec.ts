@@ -707,7 +707,7 @@ test('新建一个任务再删掉,任务数前后一致', async ({ win }) => {
   await gotoProject(win)
   await expect(win.locator('#taskList .ddlrow')).toHaveCount(ACTIVE_TASK_ROWS)
 
-  await win.locator('.section-heading-actions .btn.sm', { hasText: '任务' }).click()
+  await win.locator('.section-heading-actions .add-action', { hasText: '任务' }).click()
   await win.locator('#taskList .min').fill(NEW_TASK_TITLE)
   await win.locator('#taskList .min').press('Enter')
 
@@ -1109,7 +1109,7 @@ test('新任务行开着且打了字时按侧栏会话的「...」:任务照样�
   const titles = () => call<{ tasks: { title: string }[] }>(win, 'project.get', { id: 'draft' })
     .then((p) => p.tasks.map((task) => task.title))
   const before = await titles()
-  await win.locator('.section-heading-actions .btn.sm', { hasText: '任务' }).click()
+  await win.locator('.section-heading-actions .add-action', { hasText: '任务' }).click()
   const input = win.locator('#taskList .ddlrow input.min')
   await input.fill('按菜单触发器建成的任务')
   await expect(input).toHaveValue('按菜单触发器建成的任务')
@@ -1466,7 +1466,7 @@ test('属性栏焦点格:回车后写被拒,格子仍在编辑、字还在', asy
   await call(win, 'project.delete', { id: 'draft' })
   await pin.press('Enter')
   await expect(win.locator('#notice[data-tone="refusal"] .notice-text')).toHaveText('这一项已不存在')
-  await expect(win.locator('.screenslot:not([hidden]) .ipcerror')).toHaveCount(0)
+  await expect(win.locator('.screenslot:not([hidden]) .page-error')).toHaveCount(0)
   await expect(pin).toHaveValue('项目没了这段还想留着')
 })
 
@@ -1777,7 +1777,7 @@ test('科研图由 Agent 管理:空图没有 App 侧新增入口', async ({ win 
   const main = win.locator('.screenslot:not([hidden]) .wkmain')
   await main.locator('.segmented-control>button', { hasText: '科研图' }).click()
   await expect(main.locator('.record-view .empty-state--section')).toHaveText('还没有科研图')
-  await expect(main.locator('.section-heading-actions .btn.sm', { hasText: '节点' })).toHaveCount(0)
+  await expect(main.locator('.section-heading-actions .btn', { hasText: '节点' })).toHaveCount(0)
 })
 
 test('节点面板由 Agent 管理:标题、状态、记录与分支都不可在 App 编辑', async ({ win }) => {
@@ -1807,7 +1807,7 @@ test('节点面板开着时 Esc 先关任务名称格,再按一次才收面板',
 
 test('节点面板开着时 Esc 先关日历,再按一次才收面板', async ({ win }) => {
   const head = await openNodePanel(win)
-  await win.locator('.section-heading-actions .btn.sm', { hasText: '任务' }).click()
+  await win.locator('.section-heading-actions .add-action', { hasText: '任务' }).click()
   await win.locator('#taskList .ddlrow .din').first().click()
   await expect(win.locator('.calg')).toHaveCount(1)
   await win.keyboard.press('Escape')

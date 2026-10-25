@@ -8,6 +8,7 @@ import { ENTITY_SCREEN, EntityLink, opensHere } from '../EntityLink.js'
 import { Icon } from '../icons.js'
 import { AgentLabel } from '../SourceLabel.js'
 import { Tag } from '../Tag.js'
+import { Button } from '../Button.js'
 
 export const plain = (text: string): { kind: 'text'; text: string } => ({ kind: 'text', text })
 export const said = (runs: ChatRun[]): ChatMessageFields => ({ role: 'you', runs, actions: [] })
@@ -75,12 +76,9 @@ export function ChatMessageView({ message, onAct }: {
             ? (
               <div className="macts">
                 {message.actions.map((action) => (
-                  <button
-                    className="btn sm" key={action.kind} disabled={action.done === true}
-                    onClick={() => onAct(action)}
-                  >
+                  <Button size="compact" key={action.kind} disabled={action.done === true} onClick={() => onAct(action)}>
                     {action.done === true ? m.chat.actionDone : action.label}
-                  </button>
+                  </Button>
                 ))}
               </div>
             )

@@ -562,7 +562,7 @@ describe('Wiki 首页屏头的待审阅与需要整理', () => {
       fixture.readingError = null
       fixture.cardsError = null
     }
-    return [host.querySelector('.ipcerror')?.textContent, host.querySelectorAll('.desk-body .loading-placeholder').length]
+    return [host.querySelector('.page-error')?.textContent, host.querySelectorAll('.desk-body .loading-placeholder').length]
   }
   const newer = (method: 'wiki.proposals' | 'wiki.signals' | 'wiki.cards' | 'papers.reading') => new CallError(method, 'newer-version')
 
@@ -583,7 +583,7 @@ describe('Wiki 首页屏头的待审阅与需要整理', () => {
   it('读论文的阅读记录失败时，原因写在论文页的阅读一节里，不再停在读取占位上，也不在页头重复', async () => {
     fixture.paper.mockReset().mockResolvedValue(PAPER)
     await openFailing('papers/p1', () => { fixture.readingError = newer('papers.reading') })
-    expect([...host.querySelectorAll('.ipcerror')].map((banner) => [banner.closest('.paper-understanding') !== null, banner.textContent]))
+    expect([...host.querySelectorAll('.page-error')].map((banner) => [banner.closest('.paper-understanding') !== null, banner.textContent]))
       .toEqual([[true, '需要更新 App']])
     expect(host.querySelectorAll('.desk-body .loading-placeholder')).toHaveLength(0)
   })

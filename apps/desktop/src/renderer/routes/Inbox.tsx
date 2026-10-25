@@ -20,6 +20,7 @@ import {
   PaperCard, PaperCardBadge, PaperCardCitations, PaperCardNotice,
 } from '../components/paper/PaperCard.js'
 import { EmptyState } from '../components/EmptyState.js'
+import { InlineMessage } from '../components/InlineMessage.js'
 import { LoadingPlaceholder } from '../components/LoadingPlaceholder.js'
 import { CollapsibleGroup } from '../components/CollapsibleGroup.js'
 import { DateTimeDisplay } from '../components/DateTimeDisplay.js'
@@ -32,6 +33,7 @@ import { shownSource } from '../lib/watch-source.js'
 import {
   PageBody, PageError, PageHeader, PageShell, PageTitle,
 } from '../components/PageShell.js'
+import { Button } from '../components/Button.js'
 import './shell.css'
 
 /** The demo's `.pcard` slide-away: the vault is written only after the card has slid away this long. */
@@ -53,7 +55,9 @@ const streamLabel = (m: Catalog, stream: 'watch' | 'discovery'): string =>
 function fetchNote(status: FetchStatus | null, scope: string, m: Catalog): ReactNode {
   if (status === null) return ''
   if (status.state === 'checking') return m.inbox.check.checking
-  if (status.state === 'failed') return failureLabel(m, m.inbox.check.failed, status.reason ?? 'unknown')
+  if (status.state === 'failed') {
+    return <InlineMessage tone="error" variant="line">{failureLabel(m, m.inbox.check.failed, status.reason ?? 'unknown')}</InlineMessage>
+  }
   const last = status.last
   const fetched = last?.watches === null ? scope === ALL_WATCHES : last?.watches.length === 1 && last.watches[0] === scope
   const at = last !== undefined && fetched ? last.at : status.checkedAt
@@ -263,8 +267,8 @@ export function Inbox() {
         </>
       )}
       notices={failed.has(p.id) ? (
-        <PaperCardNotice tone="error" action={(
-          <button className="btn ghost sm" onClick={() => ingest(p.id)}>{m.common.retry}</button>
+        <PaperCardNotice action={(
+          <Button size="compact" variant="ghost" onClick={() => ingest(p.id)}>{m.common.retry}</Button>
         )}>{failureLabel(m, m.inbox.notices.downloadFailed, failed.get(p.id)!)}</PaperCardNotice>
       ) : null}
       metadata={(
@@ -283,8 +287,8 @@ export function Inbox() {
   )
 
   const head = scope === ALL_WATCHES
-    ? m.inbox.headAll(streamLabel(m, stream), rows.length)
-    : m.inbox.headWatch(scopedProject ?? (watched ? label(watched, m.shell.watchKind) : ''), rows.length)
+    ? streamLabel(m, stream)
+    : scopedProject ?? (watched ? label(watched, m.shell.watchKind) : '')
 
   return (
     <PageShell>
@@ -294,10 +298,10 @@ export function Inbox() {
             {stream === 'watch' && watched !== undefined && !watched.active ? (
               <>
                 <Tag>{m.watches.paused}</Tag>
-                <button
-                  className="btn"
+                <Button
+                  size="regular"
                   onClick={() => { void write(watch.setActive(watched.id, true), { note: m.watches.notices.resumed }) }}
-                >{m.watches.resume}</button>
+                >{m.watches.resume}</Button>
               </>
             ) : null}
             <span className="fetchnote">{stream === 'watch' ? fetchNote(jobs?.fetch ?? null, scope, m) : ''}</span>
@@ -312,21 +316,21 @@ export function Inbox() {
               onClick={() => openCategory(stream === 'discovery' ? 'delivery-discovery' : 'delivery-watch')}
             ><IconGear /></IconButton>
             {stream === 'watch' ? (
-              <button
-                className="btn" disabled={jobs?.fetch?.state === 'checking'}
+              <Button
+                size="regular" busy={jobs?.fetch?.state === 'checking'} busyLabel={m.inbox.check.checking}
                 onClick={() => {
                   void inbox.fetch(scope === ALL_WATCHES ? undefined : scope).catch((e: unknown) => notice.refusal(errorLabel(m, e)))
                 }}
-              >{jobs?.fetch?.state === 'failed' ? m.common.retry : m.inbox.checkNewPapers}</button>
+              >{jobs?.fetch?.state === 'failed' ? m.common.retry : m.inbox.checkNewPapers}</Button>
             ) : (
-              <button className="btn" disabled={discovering} onClick={refreshDiscovery}>
-                {discovering ? m.inbox.discovering : m.inbox.refreshDiscovery}
-              </button>
+              <Button size="regular" busy={discovering} busyLabel={m.inbox.discovering} onClick={refreshDiscovery}>
+                {m.inbox.refreshDiscovery}
+              </Button>
             )}
           </>
         )}
       >
-        <PageTitle>{head}</PageTitle>
+        <PageTitle count={rows.length}>{head}</PageTitle>
       </PageHeader>
 
       <PageError error={error} />
@@ -349,7 +353,7 @@ export function Inbox() {
             <EmptyState
               variant="page"
               action={stream === 'discovery' && scope === ALL_WATCHES && !profiles.some((profile) => profile.seedCount > 0)
-                ? <button type="button" className="btn" onClick={() => enter('project')}>{m.inbox.empty.openProjects}</button>
+                ? <Button size="regular" onClick={() => enter('project')}>{m.inbox.empty.openProjects}</Button>
                 : undefined}
               icon={(
                 <Icon sw={1.4}>
@@ -371,10 +375,10 @@ export function Inbox() {
                   key={group.key} data-group={group.key} title={group.title} count={group.rows.length}
                   open={!folded.has(group.key)} onToggle={() => toggleGroup(group.key)}
                   actions={(
-                    <button
-                      className="btn sm"
+                    <Button
+                      size="compact"
                       onClick={() => dismiss(group.rows.map((r) => r.id), m.inbox.notices.dismissedAll)}
-                    >{m.inbox.dismissAll}</button>
+                    >{m.inbox.dismissAll}</Button>
                   )}
                 >
                   {group.rows.map(card)}

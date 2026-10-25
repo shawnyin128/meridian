@@ -20,6 +20,7 @@ import { ChipToggles } from '../ChipToggles.js'
 import { EntityLink } from '../EntityLink.js'
 import { FormTextarea } from '../FormControls.js'
 import { HarnessAction } from '../HarnessAction.js'
+import { InlineMessage } from '../InlineMessage.js'
 import { SectionHeading } from '../PageShell.js'
 import { NoModelTag } from '../NoModelTag.js'
 import { TabbedSection } from '../TabbedSection.js'
@@ -29,6 +30,7 @@ import { PaperText } from '../paper/PaperText.js'
 import { ProposalCard, ProposalChange, ProposalDecision } from '../wiki/ProposalChange.js'
 import { ReaderPanelHeader } from './ReaderPanelHeader.js'
 import { PaperWikiProposalReview } from './PaperWikiProposalReview.js'
+import { Button } from '../Button.js'
 
 type ReviewMode = 'structured' | 'markdown'
 
@@ -284,29 +286,25 @@ export function PaperWikiIngest({ paper, reading, onJump, edits }: {
             disabled={rejecting}
             value={rejectionNote} onChange={(event) => setRejection({ reasons: rejectionReasons, note: event.target.value })} />
           <div className="wiki-ingest-actions">
-            <button type="button" className="btn" disabled={rejecting}
-              onClick={() => setRejection(null)}>{m.wiki.ingest.backToReview}</button>
-            <button type="button" className="btn danger" disabled={rejecting}
-              onClick={submitRejection}>
-              {rejecting
-                ? m.wiki.ingest.discarding
-                : rejectionReasons.length === 0 && rejectionNote.trim() === ''
-                  ? m.wiki.ingest.discardNoFeedback
-                  : m.wiki.ingest.discardWithFeedback}
-            </button>
+            <Button size="compact" disabled={rejecting} onClick={() => setRejection(null)}>{m.wiki.ingest.backToReview}</Button>
+            <Button size="compact" tone="danger" busy={rejecting} busyLabel={m.wiki.ingest.discarding} onClick={submitRejection}>
+              {rejectionReasons.length === 0 && rejectionNote.trim() === ''
+                ? m.wiki.ingest.discardNoFeedback
+                : m.wiki.ingest.discardWithFeedback}
+            </Button>
           </div>
         </div>
       ) : (
         <ProposalDecision>
-          <button className="btn ghost danger" disabled={applying || rejecting}
-            onClick={() => setRejection({ reasons: [], note: '' })}>
-            {m.wiki.ingest.discardProposal}
-          </button>
-          <button className="btn"
-            disabled={applying || rejecting || draft.trim() === '' || pending?.stale === true}
-            onClick={() => { void apply() }}>
-            {applying ? m.wiki.ingest.writing : m.wiki.ingest.confirm}
-          </button>
+          <Button
+            size="compact" variant="ghost" tone="danger" disabled={applying || rejecting}
+            onClick={() => setRejection({ reasons: [], note: '' })}
+          >{m.wiki.ingest.discardProposal}</Button>
+          <Button
+            size="compact" busy={applying} busyLabel={m.wiki.ingest.writing}
+            disabled={rejecting || draft.trim() === '' || pending?.stale === true}
+            onClick={() => { void apply() }}
+          >{m.wiki.ingest.confirm}</Button>
           {pending?.stale === true
             ? (
               <TagButton tone="warn" disabled={applying || rejecting} onClick={() => setRejection({ reasons: [], note: '' })}>
@@ -336,23 +334,25 @@ export function PaperWikiIngest({ paper, reading, onJump, edits }: {
         <Tag>{personal === 0 ? m.wiki.ingest.noPersonalRecords : m.wiki.ingest.personalRecordsIncluded(personal)}</Tag>
 
         {plan === null && pending === null && error === null
-          ? <p className="wiki-ingest-status">{m.wiki.ingest.preparing}</p>
+          ? <InlineMessage tone="info" variant="line" className="wiki-ingest-status">{m.wiki.ingest.preparing}</InlineMessage>
           : null}
         {plan !== null && !plan.model.configured ? <NoModelTag label={m.wiki.ingest.notConnectedNote} /> : null}
-        {receipt !== null ? <p className="wiki-ingest-status done">{receipt.message}</p> : null}
+        {receipt !== null ? <InlineMessage tone="done" variant="line" className="wiki-ingest-status">{receipt.message}</InlineMessage> : null}
         {pending !== null ? <Tag tone="good">{m.wiki.ingest.restoredPending}</Tag> : null}
         {receipt?.warning === undefined ? null : (
-          <p className="wiki-ingest-status bad">{failureLabel(m, m.wiki.ingest.auditFailed, receipt.warning)}</p>
+          <InlineMessage tone="error" variant="line" className="wiki-ingest-status">
+            {failureLabel(m, m.wiki.ingest.auditFailed, receipt.warning)}
+          </InlineMessage>
         )}
-        {failed !== null ? <p className="wiki-ingest-status bad">{failed}</p> : null}
+        {failed !== null ? <InlineMessage tone="error" variant="line" className="wiki-ingest-status">{failed}</InlineMessage> : null}
 
         <div className="wiki-ingest-actions">
           {receipt === null && plan !== null && failure === undefined
             ? <HarnessAction plan={plan} running={running} onStart={start} onCancel={cancel} />
             : null}
-          {cancelling ? <span className="wiki-ingest-status">{m.wiki.ingest.stopping}</span> : null}
+          {cancelling ? <InlineMessage tone="info" variant="line" className="wiki-ingest-status">{m.wiki.ingest.stopping}</InlineMessage> : null}
           {receipt !== null || failed !== null || rejected
-            ? <button className="btn" onClick={reprepare}>{m.wiki.ingest.reprepare}</button>
+            ? <Button size="regular" onClick={reprepare}>{m.wiki.ingest.reprepare}</Button>
             : null}
         </div>
         {proposal !== undefined && !applied && !rejected ? (
@@ -373,8 +373,8 @@ export function PaperWikiIngest({ paper, reading, onJump, edits }: {
               )}
           </div>
         ) : null}
-        {applied ? <p className="wiki-ingest-status done">{m.wiki.ingest.written}</p> : null}
-        {rejected ? <p className="wiki-ingest-status">{m.wiki.ingest.discarded}</p> : null}
+        {applied ? <InlineMessage tone="done" variant="line" className="wiki-ingest-status">{m.wiki.ingest.written}</InlineMessage> : null}
+        {rejected ? <InlineMessage tone="info" variant="line" className="wiki-ingest-status">{m.wiki.ingest.discarded}</InlineMessage> : null}
       </div>
     </section>
   )

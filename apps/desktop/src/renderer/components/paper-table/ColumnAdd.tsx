@@ -36,29 +36,31 @@ export function ColumnTypePicker({ type, onPick, onKeyDown, buttons, focusAfterC
   const ownButtons = useRef<(HTMLButtonElement | null)[]>([])
   const refs = buttons ?? ownButtons
   return (
-    <div
-      className="mi-in ctrow" role="radiogroup" aria-label={m.papers.columnAdd.typeGroupAria}
-      onKeyDown={(e) => {
-        const i = TYPES.findIndex(({ type: t }) => t === type)
-        let next: number
-        if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') next = (i - 1 + TYPES.length) % TYPES.length
-        else if (e.key === 'ArrowRight' || e.key === 'ArrowDown') next = (i + 1) % TYPES.length
-        else { onKeyDown?.(e); return }
-        e.preventDefault()
-        onPick(TYPES[next]!.type)
-        refs.current[next]?.focus()
-      }}
-    >
-      {TYPES.map(({ type: t, Icon }, i) => (
-        <Tooltip key={t} label={m.papers.columnType[t]}>
-          <button
-            type="button" ref={(el) => { refs.current[i] = el }}
-            className={t === type ? 'ctbtn on' : 'ctbtn'} aria-label={m.papers.columnType[t]}
-            role="radio" aria-checked={t === type} tabIndex={t === type ? 0 : -1}
-            onClick={() => { onPick(t); focusAfterClick?.current?.focus() }}
-          ><Icon /></button>
-        </Tooltip>
-      ))}
+    <div className="mi-in">
+      <div
+        className="ctrow" role="radiogroup" aria-label={m.papers.columnAdd.typeGroupAria}
+        onKeyDown={(e) => {
+          const i = TYPES.findIndex(({ type: t }) => t === type)
+          let next: number
+          if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') next = (i - 1 + TYPES.length) % TYPES.length
+          else if (e.key === 'ArrowRight' || e.key === 'ArrowDown') next = (i + 1) % TYPES.length
+          else { onKeyDown?.(e); return }
+          e.preventDefault()
+          onPick(TYPES[next]!.type)
+          refs.current[next]?.focus()
+        }}
+      >
+        {TYPES.map(({ type: t, Icon }, i) => (
+          <Tooltip key={t} label={m.papers.columnType[t]}>
+            <button
+              type="button" ref={(el) => { refs.current[i] = el }}
+              className={t === type ? 'ctbtn on' : 'ctbtn'} aria-label={m.papers.columnType[t]}
+              role="radio" aria-checked={t === type} tabIndex={t === type ? 0 : -1}
+              onClick={() => { onPick(t); focusAfterClick?.current?.focus() }}
+            ><Icon /></button>
+          </Tooltip>
+        ))}
+      </div>
     </div>
   )
 }

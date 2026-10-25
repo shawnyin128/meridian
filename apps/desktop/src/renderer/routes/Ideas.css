@@ -8,7 +8,7 @@
 .idea-card{display:flex;align-items:flex-start;gap:var(--sp-12)}
 .idea-card-content{flex:1;min-width:0}
 .idea-card-title-row{display:flex;align-items:center;gap:var(--sp-8);min-width:0}
-.idea-card-title{font-size:var(--fs-card-title);font-weight:var(--fw-title)}
+.idea-card-title{font-size:var(--fs-item-title);font-weight:var(--fw-title)}
 .idea-relation-tag{max-width:220px}
 .idea-card-meta{display:flex;min-width:0;align-items:center;gap:var(--sp-8);margin-top:var(--sp-8)}
 .idea-card-source{color:var(--ter);font-size:var(--fs-cap)}
@@ -20,7 +20,7 @@
  * the widest project tags, and the source column takes what is left. The first column also holds the
  * row's inline padding, which the shared grid adds to its title.
  */
-.idea-row-groups{--idea-row-inset:calc(var(--pad-card-inline) + 1px);--idea-title-least:calc(12 * var(--fs-base) + var(--idea-row-inset));
+.idea-row-groups{--idea-row-inset:calc(var(--item-inset) + 1px);--idea-title-least:calc(12 * var(--fs-base) + var(--idea-row-inset));
   display:grid;column-gap:var(--sp-12);
   grid-template-columns:minmax(var(--idea-title-least),1.1fr) minmax(0,max-content) minmax(0,1.3fr) max-content max-content}
 .idea-row-groups>*{grid-column:1/-1}
@@ -64,7 +64,7 @@
 .idea-detail-editor .form-control{width:100%}
 .idea-detail-editor .form-textarea{min-height:150px}
 .idea-detail-panel .idea-link-picker{width:100%}
-.idea-missing-project{margin-top:var(--sp-8);color:var(--warn);font-size:var(--fs-cap)}
+.idea-missing-project{margin-top:var(--sp-8)}
 
 @media (max-width:1150px){
   .idea-detail-slot{--detail-panel-width:38%;--detail-panel-gap:var(--sp-20)}

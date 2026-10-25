@@ -259,7 +259,8 @@ describe('ReviewQueue', () => {
       }),
       proposal('n5', { titles, status: 'rejected', reason: { kind: 'invalid', message: '提案没有给出它依据的页的版本：topics/sd' }, decided }),
     ])
-    expect(row('n1').querySelector('.review-note--warn')!.innerHTML).toBe('这些引句没有文字层可核对：<strong>F</strong>lux p.1')
+    expect(row('n1').querySelector('.inline-message--line.inline-message--warning[role="status"] .inline-message-text')!.innerHTML)
+      .toBe('这些引句没有文字层可核对：<strong>F</strong>lux p.1')
     expect(row('n2').querySelector('.review-reason')!.innerHTML).toBe('引句在原文第 2 页找不到：<strong>F</strong>lux')
     expect(row('n3').querySelector('.review-reason')!.textContent).toBe('差 ~5% papers/flux')
     expect(row('n4').querySelector('.review-reason')!.textContent).toBe('依据的页在提案生成之后改过')
@@ -282,9 +283,9 @@ describe('ReviewQueue', () => {
   })
 
   it('拒绝在前、应用在后；第一条能应用的提案的应用是主按钮，其余的应用是次要按钮；拒绝是红色的幽灵按钮，确认拒绝是浅红按钮', () => {
-    expect(['p1', 'p2', 'p6', 'p7'].map((id) => apply(id).className)).toEqual(['btn pri', 'btn', 'btn', 'btn'])
+    expect(['p1', 'p2', 'p6', 'p7'].map((id) => apply(id).className)).toEqual(['btn pri sm', 'btn sm', 'btn sm', 'btn sm'])
     const actions = decision('p2').filter((part) => part.classList.contains('btn'))
-    expect(actions.map((b) => `${b.textContent} ${b.className}`)).toEqual(['拒绝 btn ghost danger', '应用 btn'])
+    expect(actions.map((b) => `${b.textContent} ${b.className}`)).toEqual(['拒绝 btn ghost danger sm', '应用 btn sm'])
     act(() => actions[0]!.dispatchEvent(new MouseEvent('click', { bubbles: true })))
     expect(document.querySelector<HTMLButtonElement>('.review-decline button')!.className).toBe('btn danger')
   })

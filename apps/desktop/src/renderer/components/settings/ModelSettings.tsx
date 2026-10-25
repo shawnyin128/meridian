@@ -16,6 +16,8 @@ import {
   ServiceActions, ServiceCard, ServiceClearKeyButton, ServiceConnectionStatus, ServiceError, ServiceField,
   ServiceFoot, ServiceSavedKey, ServiceStatus,
 } from './ServiceCard.js'
+import { Button } from '../Button.js'
+import { CommitActions } from '../CommitActions.js'
 
 /** Structural, language-neutral data for each provider. Copy comes from the catalog by provider id. */
 const PROVIDERS: Record<HarnessModelProvider, {
@@ -134,6 +136,8 @@ export function ModelSettings() {
   const [editingApiKey, setEditingApiKey] = useState(false)
   const [clearApiKey, setClearApiKey] = useState(false)
   const [saving, setSaving] = useState(false)
+  // Whether the last save succeeded; Save shows its check as it turns true.
+  const [saved, setSaved] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
   const { error, load } = useScreenLoad()
   const [connectionCheck, setConnectionCheck] = useState<ConnectionCheckState>({ state: 'idle' })
@@ -221,6 +225,7 @@ export function ModelSettings() {
 
   const save = async () => {
     setSaving(true)
+    setSaved(false)
     setSaveError(null)
     try {
       const next = await harness.updateModelSettings({
@@ -228,6 +233,7 @@ export function ModelSettings() {
         ...(apiKey.trim() === '' ? {} : { apiKey }),
         ...(clearApiKey ? { clearApiKey: true } : {}),
       })
+      setSaved(true)
       setSettings(next)
       showProfile(next)
       setConnectionCheck({ state: 'idle' })
@@ -394,18 +400,16 @@ export function ModelSettings() {
             />
           ) : null}
           {canTestConnection ? null : <Tag>{m.settings.model.connection.notSaved}</Tag>}
-          <button
-            className="btn" disabled={!canTestConnection || saving || connectionCheck.state === 'testing'}
+          <Button
+            size="regular" disabled={!canTestConnection || saving}
+            busy={connectionCheck.state === 'testing'} busyLabel={m.settings.model.connection.testing}
             onClick={() => { void testConnection() }}
-          >
-            {connectionCheck.state === 'testing'
-              ? m.settings.model.connection.testing
-              : m.settings.model.connection.action}
-          </button>
-          <button className="btn pri" disabled={saving || compatibleTemplatePending}
-            onClick={() => { void save() }}>
-            {saving ? m.settings.model.saving : m.settings.model.save}
-          </button>
+          >{m.settings.model.connection.action}</Button>
+          <CommitActions
+            place="foot" saving={saving} canSave={!compatibleTemplatePending} done={saved}
+            saveLabel={m.settings.model.save} busyLabel={m.settings.model.saving}
+            onSave={() => { void save() }}
+          />
         </ServiceActions>
       </ServiceFoot>
       {settings.error === undefined ? null : (

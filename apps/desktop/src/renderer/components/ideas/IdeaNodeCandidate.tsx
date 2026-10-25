@@ -3,6 +3,7 @@ import { useMessages } from '../../messages/useMessages.js'
 import { EntityLink } from '../EntityLink.js'
 import { SectionHeading } from '../PageShell.js'
 import { AgentLabel } from '../SourceLabel.js'
+import { Button } from '../Button.js'
 import './IdeaNodeCandidate.css'
 
 /**
@@ -22,8 +23,8 @@ export function IdeaNodeCandidate({ node, onConfirm, onDismiss }: {
         variant="rail"
         actions={(
           <>
-            <button className="btn sm" onClick={onDismiss}>{m.ideas.candidate.dismiss}</button>
-            <button className="btn sm" onClick={onConfirm}>{m.common.confirm}</button>
+            <Button size="compact" onClick={onDismiss}>{m.ideas.candidate.dismiss}</Button>
+            <Button size="compact" onClick={onConfirm}>{m.common.confirm}</Button>
           </>
         )}
       >{m.project.plan.nodeHeading}

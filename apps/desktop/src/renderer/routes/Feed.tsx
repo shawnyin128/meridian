@@ -20,6 +20,7 @@ import { SegmentedControl } from '../components/SegmentedControl.js'
 import { PaperText } from '../components/paper/PaperText.js'
 import { SourceLabel } from '../components/SourceLabel.js'
 import { Tag } from '../components/Tag.js'
+import { Button } from '../components/Button.js'
 import './shell.css'
 import './Feed.css'
 
@@ -103,7 +104,7 @@ function Body({ body, onOpenConflict }: {
             <span className="t">{item.text}</span>
             {/* The demo's briefConf: this button opens a chat about the conflicting conclusions. */}
             <span className="go">
-              <button className="btn ghost sm" onClick={onOpenConflict}>{item.action}</button>
+              <Button size="compact" variant="ghost" onClick={onOpenConflict}>{item.action}</Button>
             </span>
           </div>
         ))}

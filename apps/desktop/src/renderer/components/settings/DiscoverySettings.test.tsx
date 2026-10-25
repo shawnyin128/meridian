@@ -95,11 +95,11 @@ describe('DiscoverySettings', () => {
     const render = () => act(async () => { root.render(<MessagesProvider><DiscoverySettings /></MessagesProvider>) })
     api.profilesError = new CallError('discovery.profiles', 'newer-version')
     await render()
-    expect(host.querySelector('.delivery-directions .ipcerror')?.textContent).toBe('需要更新 App')
+    expect(host.querySelector('.delivery-directions .page-error')?.textContent).toBe('需要更新 App')
 
     api.revision = 1
     await render()
-    expect([host.querySelector('.delivery-directions .ipcerror'), host.querySelectorAll('.direction-row').length]).toEqual([null, 3])
+    expect([host.querySelector('.delivery-directions .page-error'), host.querySelectorAll('.direction-row').length]).toEqual([null, 3])
     act(() => root.unmount())
   })
 
@@ -108,10 +108,10 @@ describe('DiscoverySettings', () => {
     await act(async () => { root.render(<MessagesProvider><DiscoverySettings /></MessagesProvider>) })
     api.setIntent.mockRejectedValueOnce(new CallError('discovery.intent', 'changed'))
     await act(async () => { row('草稿头').querySelector<HTMLButtonElement>('[role="switch"]')!.click() })
-    expect(host.querySelector('.delivery-directions .ipcerror')?.textContent).toBe('内容已变化')
+    expect(host.querySelector('.delivery-directions .page-error')?.textContent).toBe('内容已变化')
 
     await act(async () => { row('草稿头').querySelector<HTMLButtonElement>('[role="switch"]')!.click() })
-    expect(host.querySelector('.delivery-directions .ipcerror')).toBeNull()
+    expect(host.querySelector('.delivery-directions .page-error')).toBeNull()
     act(() => root.unmount())
   })
 
@@ -123,7 +123,7 @@ describe('DiscoverySettings', () => {
     const refresh = host.querySelector<HTMLButtonElement>('.direction-project header button')!
     await act(async () => { refresh.click() })
     const alert = host.querySelector('.delivery-directions [role="alert"]')
-    expect([alert?.className, alert?.textContent]).toEqual(['ipcerror ipcerror--section', '需要更新 App'])
+    expect([alert?.className, alert?.textContent]).toEqual(['inline-message inline-message--box inline-message--error page-error page-error--section', '需要更新 App'])
 
     await act(async () => { root.unmount() })
   })

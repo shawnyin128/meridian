@@ -8,6 +8,7 @@ import { EmptyState } from '../EmptyState.js'
 import { LoadingPlaceholder } from '../LoadingPlaceholder.js'
 import { entryAnchor, readingEntries } from '../paper-table/reading-entries.js'
 import { FadeText } from '../FadeText.js'
+import { HeadingCount } from '../HeadingCount.js'
 import './PaperUnderstanding.css'
 
 /**
@@ -49,7 +50,7 @@ export function PaperUnderstanding({ reading, error, onRead }: {
           ) : null}
           {entries.length > 0 ? (
             <div className="paper-understanding-notes">
-              <div className="paper-understanding-label">{m.papers.understanding.notesLabel(entries.length)}</div>
+              <div className="paper-understanding-label">{m.papers.understanding.notesLabel}<HeadingCount count={entries.length} /></div>
               <StructuredList variant="embedded" aria-label={m.papers.understanding.notesAria}>
                 {entries.map((entry) => (
                   <StructuredRow

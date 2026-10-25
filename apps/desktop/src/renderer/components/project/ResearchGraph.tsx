@@ -25,9 +25,10 @@ import { SectionHeading } from '../PageShell.js'
 import { StatusDot } from '../StatusDot.js'
 import { StructuredList, StructuredRow } from '../StructuredList.js'
 import { AgentLabel } from '../SourceLabel.js'
-import { ToggleGroup, ToggleItem, Toolbar, ToolbarButton } from '../Toolbar.js'
+import { ToggleGroup, ToggleItem, Toolbar } from '../Toolbar.js'
 import { Tooltip } from '../Tooltip.js'
 import { ProjectEventList, ProjectEventRow } from './ProjectSignals.js'
+import { Button } from '../Button.js'
 import './ResearchGraph.css'
 
 type GraphNode = Graph['nodes'][number]
@@ -377,13 +378,13 @@ export function ResearchGraph({ graph, selected, ideaNodeIds = [], onSelect }: {
               <IconMinus />
             </IconButton>
             <Tooltip label={m.project.graph.resetView}>
-              <ToolbarButton
-                className="btn ghost sm graph-zoom-reset"
+              <Button
+                size="compact" variant="ghost" className="graph-zoom-reset"
                 onClick={() => {
                   moved.current = false
                   setView(fitted)
                 }}
-              >{Math.round(view.zoom * 100)}%</ToolbarButton>
+              >{Math.round(view.zoom * 100)}%</Button>
             </Tooltip>
             <IconButton
               label={m.project.graph.zoomIn} size="nested" disabled={view.zoom >= GRAPH_MAX_ZOOM}
@@ -495,7 +496,7 @@ export function ResearchNodePanel({
       </SectionHeading>
       {children.length === 0 ? null : (
         <>
-          <SectionHeading variant="rail">{m.project.graph.branchSummary(children.length)}</SectionHeading>
+          <SectionHeading variant="rail" count={children.length}>{m.project.graph.branchSummary}</SectionHeading>
           <div className="node-branch-groups">
             {branches.map((group) => (
               <div className={`node-branch-group ${group.key}`} key={group.key}>
@@ -513,7 +514,7 @@ export function ResearchNodePanel({
         </>
       )}
 
-      <SectionHeading variant="rail">{m.project.graph.tasks(tasks.length)}</SectionHeading>
+      <SectionHeading variant="rail" count={tasks.length}>{m.project.graph.tasks}</SectionHeading>
       {tasks.length === 0
         ? <EmptyState variant="section">{m.project.graph.noTasks}</EmptyState>
         : (
@@ -527,7 +528,7 @@ export function ResearchNodePanel({
           </StructuredList>
         )}
 
-      <SectionHeading variant="rail">{m.project.linkedIdeas(ideas.length)}</SectionHeading>
+      <SectionHeading variant="rail" count={ideas.length}>{m.project.linkedIdeas}</SectionHeading>
       {ideas.length === 0
         ? <EmptyState variant="section">{m.project.noLinkedIdeas}</EmptyState>
         : (
@@ -558,7 +559,7 @@ export function ResearchNodePanel({
 
       {nodeEvents.length === 0 ? null : (
         <>
-          <SectionHeading variant="rail">{m.project.graph.records(nodeEvents.length)}</SectionHeading>
+          <SectionHeading variant="rail" count={nodeEvents.length}>{m.project.graph.records}</SectionHeading>
           <ProjectEventList className="node-event-list">
             {nodeEvents.map((event, index) => (
               <ProjectEventRow

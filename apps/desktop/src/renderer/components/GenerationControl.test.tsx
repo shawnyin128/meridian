@@ -16,26 +16,36 @@ describe('GenerationControl', () => {
     const start = vi.fn()
     const stop = vi.fn()
 
-    act(() => root.render(
-      <MessagesProvider><GenerationControl running={false} onStart={start} onStop={stop} /></MessagesProvider>,
+    const show = (running: boolean, showStatusText: boolean) => act(() => root.render(
+      <MessagesProvider>
+        <GenerationControl running={running} onStart={start} onStop={stop} showStatusText={showStatusText} />
+      </MessagesProvider>,
     ))
+    show(false, false)
     const button = host.querySelector<HTMLButtonElement>('button')!
     expect(button.getAttribute('aria-label')).toBe('发送')
     act(() => button.click())
     expect(start).toHaveBeenCalledOnce()
-
-    act(() => root.render(
-      <MessagesProvider>
-        <GenerationControl running onStart={start} onStop={stop} showStatusText />
-      </MessagesProvider>,
-    ))
-    expect(button.getAttribute('aria-label')).toBe('正在生成，点击停止')
-    expect(button.querySelector('.ring.spin')).not.toBeNull()
-    expect(button.querySelector('.generation-stop')).not.toBeNull()
-    expect(button.textContent).toContain('正在生成')
-    expect(button.textContent).toContain('停止生成')
+    show(true, false)
+    expect([host.querySelector('button'), button.getAttribute('aria-label'), button.querySelector('.ring.spin') !== null])
+      .toEqual([button, '正在生成，点击停止', true])
     act(() => button.click())
     expect(stop).toHaveBeenCalledOnce()
+
+    // With its status text it is a Button: the same one before and while it runs.
+    show(false, true)
+    const text = host.querySelector<HTMLButtonElement>('button')!
+    expect([text.className, text.getAttribute('aria-label')]).toEqual(['btn generation-control', '发送'])
+    show(true, true)
+    expect(host.querySelector('button')).toBe(text)
+    expect(text.getAttribute('aria-label')).toBe('正在生成，点击停止')
+    expect(text.className).toBe('btn generation-control is-running')
+    expect(text.querySelector('.ring.spin')).not.toBeNull()
+    expect(text.querySelector('.generation-stop')).not.toBeNull()
+    expect(text.textContent).toContain('正在生成')
+    expect(text.textContent).toContain('停止生成')
+    act(() => text.click())
+    expect(stop).toHaveBeenCalledTimes(2)
     act(() => root.unmount())
   })
 

@@ -50,6 +50,13 @@ describe('推导色跟着模块走', () => {
 describe('对比度不足', () => {
   const pale = { ...DEFAULT_COLOUR_THEME.light, ink: '#8a8a8a' }
 
+  it('就地提示的四种语气的字都按中性框底检查:窗口底和画布一明一暗、哪种亮度都不够时,框底上的不足照样报出来', () => {
+    const split = { ...DEFAULT_COLOUR_THEME.light, sidebar: '#000000' }
+    const onBox = contrastShortfalls(split, 'light')
+      .filter(({ ground }) => ground.join(' + ') === '--window + --sidebar + --tint-mut').map(({ fg }) => fg)
+    expect(onBox.sort()).toEqual(['--bad-text', '--good-text', '--sec', '--warn-text'])
+  })
+
   it('正文色太浅时,对比度不足只记在正文这个模块上', () => {
     expect([...new Set(contrastShortfalls(pale, 'light').map((shortfall) => shortfall.module))]).toEqual(['ink'])
   })

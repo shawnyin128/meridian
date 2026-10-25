@@ -471,7 +471,7 @@ test('论文对比:加一篇论文,拿掉;改列——改名生效,删有格子�
   await editor.locator('.row .icbtn').first().click()
   await editor.locator('.btn.pri').click()
   await expect(win.locator('#notice[data-tone="refusal"] .notice-text')).toHaveText('还有内容在用')
-  await expect(shown(win).locator('.ipcerror')).toHaveCount(0)
+  await expect(shown(win).locator('.page-error')).toHaveCount(0)
   await expect(shown(win).locator('table.cmp thead th').nth(1)).toHaveText('比特')
   await expect(editor).toHaveCount(1)
 })
@@ -497,7 +497,7 @@ test('论文对比:提案在路上时连着点另一行「从这一页移出」,
   })
 
   await expect(rows).toHaveCount(agg.rows.length - 1)
-  await expect(shown(win).locator('.ipcerror')).toHaveCount(0)
+  await expect(shown(win).locator('.page-error')).toHaveCount(0)
   await expect(win.locator('#notice[data-tone="refusal"]')).toHaveCount(0)
   const changes = await call<{ title: string }[]>(win, 'changelog.list', {})
   expect(changes.filter((c) => c.title === `Wiki · 把 ${removed!.paper.title} 从 ${agg.title} 移出`)).toHaveLength(1)
@@ -647,7 +647,7 @@ test('细分:名字里没有字母数字时占位与打好的字都留着', asyn
   // Rejected: the message shows in the refusal notice, and the placeholder card keeps the typed text so it can be
   // fixed in place and submitted again.
   await expect(win.locator('#notice[data-tone="refusal"] .notice-text')).toHaveText('名字里得有字母或数字')
-  await expect(shown(win).locator('.ipcerror')).toHaveCount(0)
+  await expect(shown(win).locator('.page-error')).toHaveCount(0)
   await expect(cards).toHaveCount(n + 1)
   await expect(cards.last()).toHaveClass(/\bnewcard\b/)
   await expect(pickInput(win)).toHaveValue('!!!')

@@ -275,7 +275,7 @@ const lookOf = (path: string, selector: string): string => {
 
 describe('主操作', () => {
   /** The primary button and the composer's send: their fill and text tokens. */
-  const PRIMARY = [['routes/shell.css', '.btn.pri'], ['components/chat/Chat.css', '.send']] as const
+  const PRIMARY = [['components/Button.css', '.btn.pri'], ['components/chat/Chat.css', '.send']] as const
 
   it('主按钮和输入框的发送都是实心强调色配白字,两种主题一样', () => {
     expect(PRIMARY.map(([path, selector]) => lookOf(path, selector))).toEqual(['--accent-solid --on-accent', '--accent-solid --on-accent'])
@@ -330,13 +330,35 @@ describe('暗色的三级文字', () => {
   }
 })
 
-describe('出错的提示框', () => {
+/** The tones of the shared InlineMessage. */
+const MESSAGE_TONES = ['error', 'warning', 'info', 'done'] as const
+
+/** The text token of an InlineMessage tone, and the fill of its box, which every tone shares. */
+const messageLook = (tone: typeof MESSAGE_TONES[number]): [string, string] => [
+  lookOf('components/InlineMessage.css', `.inline-message--${tone}`).split(' ')[1]!,
+  lookOf('components/InlineMessage.css', '.inline-message--box').split(' ')[0]!,
+]
+
+describe('就地的错误、警告、提示和完成', () => {
+  it('每种语气只给字上它的文字色,框都铺同一个中性底', () => {
+    expect(Object.fromEntries(MESSAGE_TONES.map((tone) => [tone, lookOf('components/InlineMessage.css', `.inline-message--${tone}`)])))
+      .toEqual({ error: '无 --bad-text', warning: '无 --warn-text', info: '无 --sec', done: '无 --good-text' })
+    expect(lookOf('components/InlineMessage.css', '.inline-message--box')).toBe('--tint-mut 无')
+    const css = readFileSync(new URL('../renderer/components/InlineMessage.css', import.meta.url), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '')
+    expect([...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)].filter((rule) => /(?:^|;)\s*background/.test(rule[2]!)).map((rule) => rule[1]!.trim()))
+      .toEqual(['.inline-message--box'])
+  })
+
   for (const theme of THEMES) {
-    it(`${named(theme)}的错误提示框里的红字压在它自己的浅红底上,铺在画布和卡片上都不低于 4.5:1`, () => {
-      const [fill, text] = lookOf('components/PageShell.css', '.ipcerror').split(' ') as [string, string]
-      for (const ground of ['--content', '--card']) {
-        const got = contrast(colour(theme, text), flatten(theme, [ground, fill]))
-        expect(got, `${text} 压在 ${ground} + ${fill} 上是 ${got.toFixed(2)}:1`).toBeGreaterThanOrEqual(TEXT)
+    it(`${named(theme)}的每种语气,写成一行或放进框里,铺在画布、卡片、浮层和窗口底上,字都不低于 4.5:1`, () => {
+      for (const tone of MESSAGE_TONES) {
+        const [text, fill] = messageLook(tone)
+        for (const [where, ground] of SURFACES.slice(0, 4)) {
+          for (const stack of [ground, [...ground, fill]]) {
+            const got = contrast(colour(theme, text), flatten(theme, stack))
+            expect(got, `${tone}: ${text} 压在${where} ${stack.join(' + ')} 上是 ${got.toFixed(2)}:1`).toBeGreaterThanOrEqual(TEXT)
+          }
+        }
       }
     })
   }
@@ -381,7 +403,7 @@ describe('强调色的字', () => {
   for (const theme of LIGHT_THEMES) {
     it(`${named(theme)}侧栏当前行上的计数,字压在它的标签底上不低于 4.5:1`, () => {
       const [row] = lookOf('shell/AppShell.css', '.srow.on').split(' ') as [string]
-      const [fill, text] = lookOf('components/Tag.css', '.count-badge').split(' ') as [string, string]
+      const [fill, text] = lookOf('components/CountBadge.css', '.count-badge').split(' ') as [string, string]
       const ground = ['--window', '--sidebar', row, fill]
       const got = contrast(colour(theme, text), flatten(theme, ground))
       expect(got, `${text} 压在 ${ground.join(' + ')} 上是 ${got.toFixed(2)}:1`).toBeGreaterThanOrEqual(TEXT)
@@ -396,7 +418,7 @@ describe('选中、当前、已应用和按下的状态', () => {
     ['components/FieldPickers.css', '.cd.sel'],
     ['routes/Reader.css', '.reader-rail button.on'],
     ['components/ChipToggles.css', '.chip-toggle[data-state="on"]'],
-    ['routes/shell.css', '.btn:not(.danger)[aria-pressed="true"]'],
+    ['components/Button.css', '.btn:not(.danger)[aria-pressed="true"]'],
     ['components/IconButton.css', '.icbtn[aria-pressed="true"]'],
   ] as const
 
@@ -408,7 +430,7 @@ describe('选中、当前、已应用和按下的状态', () => {
 
   /** The on states of controls that already have a fill at rest: the current page, the applied filter, the picked column type. */
   const FILLED_ON = [
-    ['components/Pager.css', '.pgbtn.on'], ['routes/shell.css', '.filter-menu.on'],
+    ['components/Pager.css', '.pgbtn.on'], ['components/FilterMenu.css', '.filter-menu.on'],
     ['components/paper-table/PaperTable.css', '.ctbtn.on'],
   ] as const
 

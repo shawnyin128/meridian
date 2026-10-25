@@ -45,7 +45,7 @@ describe('PaperUnderstanding', () => {
     expect(html).toContain('个人理解')
     expect(html).toContain('随笔')
     expect(html).toContain('fixed-context diagnostic')
-    expect(html).toContain('笔记 · 6')
+    expect(host.querySelector('.paper-understanding-notes .paper-understanding-label')!.textContent).toBe('笔记 · 6')
     expect(html).toContain('structured-list--embedded')
     expect(html).toContain('structured-list--scrollable')
     expect(html).not.toContain('Wiki 内化内容')

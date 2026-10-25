@@ -73,6 +73,22 @@ describe('ChoicePicker', () => {
     act(() => root.unmount())
   })
 
+  it('in a heading is the compact text button showing its children, and opens its menu', async () => {
+    const host = document.createElement('div')
+    document.body.append(host)
+    const root = createRoot(host)
+    await act(async () => root.render(
+      <MessagesProvider>
+        <ChoicePicker appearance="button" value="" options={['n1', 'n2']} onPick={() => {}}>关联节点</ChoicePicker>
+      </MessagesProvider>,
+    ))
+    const trigger = host.querySelector('button')!
+    expect([trigger.className, trigger.textContent]).toEqual(['btn sm', '关联节点'])
+    await act(async () => { trigger.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, button: 0 })) })
+    expect([...document.querySelectorAll('[role="menuitemradio"]')].map((item) => item.textContent)).toEqual(['n1', 'n2'])
+    act(() => root.unmount())
+  })
+
   it('in a row is named by the value it shows, with no 点击修改 tooltip', () => {
     const host = document.createElement('div')
     document.body.append(host)

@@ -95,7 +95,7 @@ describe('WatchSettings', () => {
     const root = createRoot(host)
     api.listError = new CallError('watch.list', 'newer-version')
     await act(async () => { root.render(<MessagesProvider><WatchSettings /></MessagesProvider>) })
-    expect([host.querySelector('.ipcerror')?.textContent, host.querySelectorAll('.loading-placeholder').length])
+    expect([host.querySelector('.page-error')?.textContent, host.querySelectorAll('.loading-placeholder').length])
       .toEqual(['需要更新 App', 0])
     await act(async () => { root.unmount() })
   })
@@ -107,7 +107,7 @@ describe('WatchSettings', () => {
     await render()
     api.revision = 1
     await render()
-    expect([host.querySelector('.ipcerror'), host.querySelectorAll('[data-w]').length]).toEqual([null, 3])
+    expect([host.querySelector('.page-error'), host.querySelectorAll('[data-w]').length]).toEqual([null, 3])
     await act(async () => { root.unmount() })
   })
 
@@ -129,7 +129,7 @@ describe('WatchSettings', () => {
     await act(async () => { root.render(<MessagesProvider><WatchSettings /></MessagesProvider>) })
 
     const alert = host.querySelector('.watch-settings [role="alert"]')
-    expect([alert?.className, alert?.textContent]).toEqual(['ipcerror ipcerror--section', '需要更新 App'])
+    expect([alert?.className, alert?.textContent]).toEqual(['inline-message inline-message--box inline-message--error page-error page-error--section', '需要更新 App'])
 
     await act(async () => { root.unmount() })
   })
@@ -338,12 +338,15 @@ describe('WatchSettings', () => {
     await act(async () => { enter(authorList.querySelector<HTMLInputElement>('.newrow input')!, 'Ada Lovelace') })
     await act(async () => { await new Promise((done) => { setTimeout(done, 750) }) })
     expect(api.search).toHaveBeenCalledWith('Ada Lovelace')
-    expect(host.querySelector('.author-search-note.error span')?.textContent).toBe('搜索作者失败 · 网络不可用')
+    const searchError = host.querySelector('.author-search-note .inline-message--line.inline-message--error')!
+    expect([searchError.getAttribute('role'), searchError.querySelector('.inline-message-text')?.textContent,
+      searchError.querySelector('.inline-message-action')?.textContent]).toEqual(['alert', '搜索作者失败 · 网络不可用', '重试'])
 
     const section = host.querySelector('.watch-suggestions')!
     await act(async () => { enter(section.querySelector<HTMLInputElement>('input')!, '我想关注批量推理中的动态验证策略') })
     await act(async () => { button(section, '查找建议').click() })
-    expect(section.querySelector('.watch-suggestion-error')?.textContent).toBe('生成关注建议失败')
+    expect(section.querySelector('.watch-suggestion-error.inline-message--line.inline-message--error[role="alert"]')?.textContent)
+      .toBe('生成关注建议失败')
     await act(async () => { root.unmount() })
   })
 
@@ -356,13 +359,13 @@ describe('WatchSettings', () => {
     await act(async () => { authorList.previousElementSibling!.querySelector<HTMLButtonElement>('button')!.click() })
     await act(async () => { enter(authorList.querySelector<HTMLInputElement>('.newrow input')!, 'Ada Lovelace') })
     await act(async () => { await new Promise((done) => { setTimeout(done, 750) }) })
-    expect(host.querySelector('.author-search-note.error span')?.textContent)
+    expect(host.querySelector('.author-search-note .inline-message--error .inline-message-text')?.textContent)
       .toBe('搜索作者失败 · 没有 Semantic Scholar key')
 
     const section = host.querySelector('.watch-suggestions')!
     await act(async () => { enter(section.querySelector<HTMLInputElement>('input')!, '我想关注批量推理中的动态验证策略') })
     await act(async () => { button(section, '查找建议').click() })
-    expect(section.querySelector('.watch-suggestion-error')?.textContent).toBe('生成关注建议失败 · 正在限流')
+    expect(section.querySelector('.watch-suggestion-error.inline-message--error')?.textContent).toBe('生成关注建议失败 · 正在限流')
     await act(async () => { root.unmount() })
   })
 

@@ -2,6 +2,7 @@ import { Component, type ErrorInfo, type ReactNode } from 'react'
 import { PageFailure } from './PageShell.js'
 import { failureOf, reasonLabel } from '../lib/failure-label.js'
 import { useMessages } from '../messages/useMessages.js'
+import { Button } from './Button.js'
 
 /**
  * Keeps one screen's failure inside that screen. Every screen stays mounted at once, so without a
@@ -36,7 +37,7 @@ function ScreenFailure({ error, onRetry }: { error: Error; onRetry: () => void }
   return (
     <PageFailure
       className="screen-failure" title={m.errors.screen.title} error={reasonLabel(m, failureOf(error))}
-      action={<button className="btn" onClick={onRetry}>{m.errors.screen.retry}</button>}
+      action={<Button size="regular" onClick={onRetry}>{m.errors.screen.retry}</Button>}
     />
   )
 }

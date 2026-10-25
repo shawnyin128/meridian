@@ -13,8 +13,21 @@ Current shared contracts:
   name a new milestone and a diamond to rename or delete one, at the click; Enter or Space on a lane
   opens it on today's date.
 - `InlineField`: one-field-at-a-time editing, validation, cancel/save behavior, and presentation hooks.
+- `Button`: the one text button: `primary`, `secondary` or `ghost`, in the `neutral` or `danger` tone,
+  `regular` (30px) in the page header bar and at dialog, popover and form feet and `compact` (24px) in
+  section, group and panel headings, inside rows and cards, and in toolbars, with an optional glyph before
+  its label. While `busy` it keeps its width and shows the
+  `RunningRing`, in full colour, in place of its label; its busy label is only its accessible name. It is
+  marked `aria-busy` and disabled, so a second press cannot start the action again. Each time `done`
+  turns true it shows the check in place of its label for a moment. Screens render no raw `<button>`:
+  `scripts/check-screen-elements.test.mjs` checks it, and `RAW_BUTTONS` there lists, with a reason
+  each, the few that are not text buttons (a composite row's open button, a chip's open part, a link).
+- `CommitActions`: the one Cancel and Save of a draft, Cancel first. Its `place` sets the size and the
+  primary rule: at a dialog's, popover's or form's `foot` Save is the primary action at the regular
+  size; in a `heading` and inside an `item` both are secondary at the compact size.
 - `EditActions`: the one edit contract of a long text: Edit in the heading's action slot, then Cancel and
-  Save in that same place. Save or ⌘Enter commits (Enter in a one-line field), Cancel or Escape restores.
+  Save (CommitActions) in that same place. Save or ⌘Enter commits (Enter in a one-line field), Cancel or
+  Escape restores.
 - `InlineDraftInput`: the shared input and lifecycle for placeholder/create rows. Hosts provide row
   layout, sibling controls, trigger refs, and persistence; trimming, validation, focus, Enter/Escape,
   outside cancellation, and async submission locking are implemented once.
@@ -26,14 +39,17 @@ Current shared contracts:
   lock are implemented once. No create action opens a dialog.
 - `PickerPopover`: the shared anchored surface for input suggestions and compact pickers. It owns
   portal positioning, focus retention, anchor-aware outside interaction, spacing, and optional event
-  isolation; picker contents and domain selection policy stay configurable. `PickOption` is the one
-  candidate row: menu item anatomy, lit only as the active row, and the row under the pointer is it.
+  isolation; picker contents and domain selection policy stay configurable. Its `size` is a field's
+  candidates, a `tall` list or a `wide` results panel. `PickOption` is the one candidate row: menu
+  item anatomy, lit only as the active row, and the row under the pointer is it.
 - `ActionMenu` and `ActionPopover`: the two shared interactive-surface shells. Menus own action and
   radio-item semantics, and radio and checkbox items draw the one checked mark themselves; popovers
   retain normal focus for calendars, configuration forms and the reader's selection toolbar, which a
   popover places against a box it measures (`anchorBox`). Routes provide triggers, contents, and
   capability flags instead of assembling Radix roots and portals. Every menu and popover keeps
-  `COLLISION_PADDING` from the window edge.
+  `COLLISION_PADDING` from the window edge, and lies on the one menu surface of `ActionMenu.css`,
+  which ContextMenu and PickerPopover share; its `surface` holds items (`menu`), a ShortTextEditor
+  (`editor`), a form (`form`) or a toolbar (`toolbar`), and `contentClassName` only names or places it.
 - `ContextMenu`: the shared right-click menu of one element, opened by the pointer or by the
   ContextMenu key and Shift+F10. Radix owns placement at the point, roving focus with the arrow, Home
   and End keys, outside/Escape dismissal, and focus return.
@@ -83,8 +99,8 @@ Current shared contracts:
   - `success`: the action took effect, or what it asked for already held (the paper is already in the vault).
   - `refusal`: the action did not take effect, because Core refused it, the input was invalid or the call
     failed, and nothing was written.
-  - A form's save button that stays on screen shows its success in place (Saved) until the form changes
-    again and sends no notice. An error that belongs to a pane or card on screen stays with that pane or
+  - A form's save button that stays on screen shows its success in place (CommitActions' `done`, the
+    check) and sends no notice. An error that belongs to a pane or card on screen stays with that pane or
     card instead of becoming a notice.
 - `LoadingPlaceholder`: the one loading state, grey blocks in the shape of the result (`rows`, `cards`,
   `lines`, `sheet`). Data that has not arrived is `null`, and a screen shows this placeholder for it, never
@@ -103,8 +119,11 @@ Current shared contracts:
   `TagButton` is the clickable tag and `tagClass` gives a trigger another component renders the same classes.
   A tag keeps the width of its text: the text beside it gives way first, and when its row still has no
   room the tag hides as a whole. Only a `capped` tag, whose placement caps it for a long value, fades its text.
-  `CountBadge` is the one count beside a label. A host places and sizes these through `className` but never
-  sets their fill, colour, border, radius or padding.
+  A host places and sizes a tag through `className` but never sets its fill, colour, border, radius or padding.
+- `CountBadge`: the one count beside a row or button label, zero shown as 0. With `more` it is a button in the
+  same look that counts the items folded away as +N and unfolds them. A property's value is not a count beside
+  a label: a property list shows a count as plain text, like its other values.
+  A host only places it. A heading's count is not a badge: the heading shows it after its text as `· N`.
 - `StatusDot`: the one state dot, in two sizes, filled, half-filled or a ring. A dot whose state no nearby text names
   carries a `label`.
 - `ReadDots`: one neutral `StatusDot` per paper's reading state on one fading line, read first, then reading, then
@@ -140,11 +159,8 @@ Current shared contracts:
   library search configure the same focus restoration, icon geometry, and accessible naming.
 - `GenerationControl`: the shared idle, spinning, and hover-to-stop button contract for model-backed
   actions. Chat composers and Wiki Harness generation do not define independent running animations.
-- `ActionButton`: the busy state of a text button that starts an action. While `busy` it keeps its width and
-  shows the `RunningRing`, in full colour, in place of its text; its busy label is only its accessible name. It
-  is marked `aria-busy` and disabled, so a second press cannot start the action again.
 - `RunningRing` (in `icons`): the one running indicator, `DownloadRing` without a total, turning once per
-  `--t-spin` in the colour of the text around it. GenerationControl, ActionButton and About use it; on a
+  `--t-spin` in the colour of the text around it. GenerationControl, Button and About use it; on a
   solid accent fill (a primary button, the composer's send) it turns in the fill's ink, by its own rule in
   `icons.css`, and a running job is never drawn in a danger tone.
 - `CardTray`: progressive disclosure for secondary card details. It keeps a one-line summary visible,
@@ -153,11 +169,16 @@ Current shared contracts:
 - `PageShell`: the shared page-level header/body/footer/error/section composition. Routes supply content
   and actions rather than copying the desktop shell structure. `SectionHeading` is the one section heading:
   its `variant` is `page`, `content`, `group` or `rail`, and `actions` is the only right-hand slot.
+- `HeadingCount`: a heading's count, ` · N` after its text in the heading's own type. `PageTitle`,
+  `SectionHeading`, `CollapsibleGroup`, `DayHeading`, `CardTray` and `ReaderPanelHeader` show it through
+  their `count`; no message or screen writes `· N` itself.
 - `PickRow`, `Pager`, `Markdown`, `PaperMetadata`, `ParseProgress`, `AddAction`: shared feature widgets.
 - `RatingStars`, `ReadStatePicker` (in `PaperMetadata`) and `PaperTopics`: the one rating, reading-status and
   topic editor of a paper, used by both the paper table and the detail panel.
 - `TagChips`: the one editor of a list of values as chips, with × to remove, `+` to add from a vocabulary,
   and an optional click on a chip to edit it in place; a paper's topics and a project's areas use it.
+  `TagChips.css` holds the chip base every row of chips uses: a chip's spacing (`tagchip`), its name
+  button (`tagchip-open`) and the relation row with its label (`wkrel`).
 - `paper/PaperCard`: discovery-card composition, actions/notices slots, metadata badges, recommendations,
   and the shared LaTeX-capable `PaperAbstract`. Inbox and read-later configure the same card.
 - `paper/PaperText`: every display of a paper title (inline) or abstract (block, through `Markdown`) with

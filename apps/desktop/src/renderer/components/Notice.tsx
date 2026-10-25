@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Icon } from './icons.js'
+import { Button } from './Button.js'
 import './Notice.css'
 
 /** What a notice reports: an action that took effect, or one that was refused and wrote nothing. */
@@ -70,14 +71,14 @@ export function Notice({ notice }: { notice: NoticeContent | null }) {
               : <Icon sw={2}><circle cx="12" cy="12" r="9" /><path d="M12 7.5v5.5M12 16.5v.01" /></Icon>}
             <span className="notice-text">{notice.text}</span>
             {notice.action === undefined ? null : (
-              <button
-                type="button" className="btn ghost sm"
+              <Button
+                size="compact" variant="ghost"
                 onClick={() => {
                   window.clearTimeout(timer.current)
                   setShown(false)
                   notice.action!.onAction()
                 }}
-              >{notice.action.label}</button>
+              >{notice.action.label}</Button>
             )}
           </>
         )}

@@ -371,7 +371,9 @@ test('分组加筛选后,索引层计数、值 chip 计数与分页总数三者�
   const indexCount = await indexRow.locator('.n').innerText()
   await indexRow.click()
 
-  await expect(win.locator('.gnav button[aria-label="分组取值"]')).toHaveText(`${TOPIC} · ${indexCount}`)
+  const picker = win.locator('.gnav button[aria-label="分组取值"]')
+  await expect(picker).toHaveText(`${TOPIC}${indexCount}`)
+  await expect(picker.locator('.count-badge')).toHaveText(indexCount)
   await expect(win.locator('.pginfo')).toHaveText(`共 ${indexCount} 条`)
 })
 
@@ -496,7 +498,7 @@ test('标签添加框:写被拒时输入框与打好的字都留着', async ({ w
   await input.press('Enter')
 
   await expect(win.locator('#notice[data-tone="refusal"] .notice-text')).toHaveText('这一项已不存在')
-  await expect(shown(win, '.ipcerror')).toHaveCount(0)
+  await expect(shown(win, '.page-error')).toHaveCount(0)
   await expect(input).toHaveCount(1)
   await expect(input).toHaveValue(ADDED_TOPIC)
 })
@@ -522,7 +524,7 @@ test('标签添加框:点联想项写被拒时,候选层与打开的占位都留
   await hit.click()
 
   await expect(win.locator('#notice[data-tone="refusal"] .notice-text')).toHaveText('这一项已不存在')
-  await expect(shown(win, '.ipcerror')).toHaveCount(0)
+  await expect(shown(win, '.page-error')).toHaveCount(0)
   await expect(input).toHaveCount(1)
   await expect(hit).toHaveText(picked)
 })
@@ -560,7 +562,7 @@ test('标签添加框:提交在路上时点外,写落地前候选层与占位都
   })
 
   await expect(win.locator('#notice[data-tone="refusal"] .notice-text')).toHaveText('这一项已不存在')
-  await expect(shown(win, '.ipcerror')).toHaveCount(0)
+  await expect(shown(win, '.page-error')).toHaveCount(0)
   await expect(input).toHaveCount(1)
   await expect(input).toHaveValue(picked)
   await expect(hit).toHaveCount(1)
@@ -596,7 +598,7 @@ test('标签添加框:回车提交在路上时点外,写落地前占位、打的
   })
 
   await expect(win.locator('#notice[data-tone="refusal"] .notice-text')).toHaveText('这一项已不存在')
-  await expect(shown(win, '.ipcerror')).toHaveCount(0)
+  await expect(shown(win, '.page-error')).toHaveCount(0)
   await expect(input).toHaveCount(1)
   await expect(input).toHaveValue(ADDED_TOPIC)
   await expect(newRow).toHaveCount(1)
@@ -869,7 +871,7 @@ test('删掉一个没人用的选项,提示里的撤销把它放回', async ({ w
   const menu = win.locator('[data-radix-popper-content-wrapper] .mi.colrow')
   await win.locator('.ptable thead').hover()
   await win.locator('.ptable thead [aria-label="列设置"]').click()
-  await menu.filter({ hasText: '读法' }).locator('.cmx.optx').click()
+  await menu.filter({ hasText: '读法' }).locator('.fold-toggle').click()
   const spare = win.locator('[data-radix-popper-content-wrapper] .mi.optrow', { hasText: '略读' })
   await spare.hover()
   await spare.locator('[aria-label="删除选项"]').click()
@@ -984,7 +986,7 @@ test('列类型:建单选列、格子里建选项、按它分组、改名与撤�
   const title = await rows.first().locator('td.pt-title').innerText()
   await win.locator('.ptable thead').hover()
   await win.locator('.ptable thead [aria-label="列设置"]').click()
-  await menu.filter({ hasText: '读法' }).locator('.cmx.optx').click()
+  await menu.filter({ hasText: '读法' }).locator('.fold-toggle').click()
   const option = win.locator('[data-radix-popper-content-wrapper] .mi.optrow', { hasText: '精读' })
   await option.hover()
   await option.locator('.cmx').first().click()
@@ -1012,12 +1014,12 @@ test('列类型:建单选列、格子里建选项、按它分组、改名与撤�
   // is unchanged.
   await win.locator('.ptable thead').hover()
   await win.locator('.ptable thead [aria-label="列设置"]').click()
-  await menu.filter({ hasText: '读法' }).locator('.cmx.optx').click()
+  await menu.filter({ hasText: '读法' }).locator('.fold-toggle').click()
   const still = win.locator('[data-radix-popper-content-wrapper] .mi.optrow', { hasText: '略读' })
   await still.hover()
   await still.locator('.cmx.danger').click()
   await expect(win.locator('#notice[data-tone="refusal"] .notice-text')).toHaveText('还有内容在用')
-  await expect(shown(win, '.ipcerror')).toHaveCount(0)
+  await expect(shown(win, '.page-error')).toHaveCount(0)
   await expect.poll(head).toContain('读法')
 
   // Delete the column while grouping by it: its header and grouping-bar button go, and grouping
@@ -1180,6 +1182,27 @@ test('年份与发表分两列:年份只写年份、仍按它排序,发表只写
   await expect(rows.first()).toHaveAttribute('aria-current', 'true')
 })
 
+test('详情里笔记与实验结论的数是属性值:一段字,不为零时是实体链接,不算分隔线的行高和「Wiki」「文件」两行一样', async ({ win }) => {
+  await gotoPapers(win)
+  await firstPage(win)
+  await win.locator('.ptable tbody tr').first().locator('td.pt-title').click()
+  const counts = win.locator('.pdetail .paper-reading-summary .paper-meta-list dd')
+  await expect(counts).toHaveCount(2)
+  // A count above zero is the one entity link, holding only the number; a zero is the number alone.
+  expect(await counts.evaluateAll((dds) => dds.map((dd) => {
+    const shown = /^\d+$/.test(dd.textContent ?? '')
+    const link = dd.querySelector(':scope > .entity-link')
+    return shown && (dd.textContent === '0' ? dd.childElementCount === 0 : dd.childElementCount === 1 && link !== null)
+  }))).toEqual([true, true])
+  const plain = win.locator('.pdetail .paper-meta .paper-meta-list').locator('dt:text-is("Wiki") + dd, dt:text-is("文件") + dd')
+  await expect(plain).toHaveCount(2)
+  // The last row of each list draws no divider under it, so rows are compared without theirs.
+  const heights = [...new Set(await counts.or(plain).evaluateAll((dds) => dds.map((dd) => (
+    dd.getBoundingClientRect().height - parseFloat(getComputedStyle(dd).borderBottomWidth)).toFixed(1))))]
+  console.log(`详情里笔记、实验结论、Wiki、文件四行不算分隔线的行高 ${heights.join(', ')}px`)
+  expect(heights).toHaveLength(1)
+})
+
 test('齿轮里没有新建入口,建列归表头末尾的 ＋', async ({ win }) => {
   await gotoPapers(win)
   await firstPage(win)
@@ -1313,7 +1336,7 @@ test('建列被 core 拒绝:占位格与打好的列名都留着,改了再回车
   expect(await head()).not.toContain('读法')
   await expect(newInput).toBeFocused()
   await expect(win.locator('#notice[data-tone="refusal"] .notice-text')).toHaveText('还有内容在用')
-  await expect(shown(win, '.ipcerror')).toHaveCount(0)
+  await expect(shown(win, '.page-error')).toHaveCount(0)
   // After the rejection the placeholder, type popover, typed name and chosen type (Single choice,
   // not the default Text) all remain.
   await expect(newHead).toHaveCount(1)
@@ -1872,7 +1895,7 @@ test('改类型:多选 → 单选时有论文填着多个值,整次被拒,拒绝
   await firstPage(win)
   await retype(win, '标签', '单选')
   await expect(win.locator('#notice[data-tone="refusal"] .notice-text')).toHaveText('还有内容在用')
-  await expect(shown(win, '.ipcerror')).toHaveCount(0)
+  await expect(shown(win, '.page-error')).toHaveCount(0)
   // Rejected: Multiple choice stays selected in the type row; the table cells and Core are unchanged.
   await expect(win.locator('[data-radix-popper-content-wrapper] .typerow .ctbtn[aria-label="多选"]'))
     .toHaveAttribute('aria-checked', 'true')

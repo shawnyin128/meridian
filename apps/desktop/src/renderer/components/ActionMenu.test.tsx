@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act } from 'react'
+import { act, type ReactElement } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ActionMenu, MenuItem } from './ActionMenu.js'
@@ -38,6 +38,19 @@ describe('ActionMenu', () => {
     expect(menu?.classList.contains('ctxmenu')).toBe(true)
     act(() => document.querySelector<HTMLElement>('[role="menuitem"]')!.click())
     expect(choose).toHaveBeenCalledTimes(1)
+  })
+
+  it('keeps the menu surface under the classes a host adds, and takes the look its surface names', () => {
+    const surface = (menu: ReactElement) => {
+      act(() => root!.render(menu))
+      return document.querySelector('[role="menu"]')!.className
+    }
+    const trigger = <button type="button">更多</button>
+    expect([
+      surface(<ActionMenu open trigger={trigger}><MenuItem>重命名</MenuItem></ActionMenu>),
+      surface(<ActionMenu open trigger={trigger} contentClassName="choice-picker-menu"><MenuItem>P1</MenuItem></ActionMenu>),
+      surface(<ActionMenu open trigger={trigger} surface="editor"><input aria-label="新名称" /></ActionMenu>),
+    ]).toEqual(['ctxmenu', 'ctxmenu choice-picker-menu', 'ctxmenu ctxmenu--editor'])
   })
 
   it('stays open on an Escape that ends an input method composition and closes on the next one', () => {

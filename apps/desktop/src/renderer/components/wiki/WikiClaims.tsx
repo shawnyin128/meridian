@@ -25,6 +25,7 @@ import { AgentLabel } from '../SourceLabel.js'
 import { RowActions, StructuredList, StructuredRow } from '../StructuredList.js'
 import { Tag } from '../Tag.js'
 import { PaperText } from '../paper/PaperText.js'
+import { Button } from '../Button.js'
 import './WikiClaims.css'
 
 type Outcome = 'revised' | 'split' | 'retracted' | 'dismissed'
@@ -399,10 +400,10 @@ export function WikiClaims({ page, pending, links, onApply, arrival, onArrived }
                         <Tag tone="warn">{c.conflict}</Tag>
                         <ClaimSide item={x.against} title={x.title} point={x.point} links={links} />
                         <span className="wkclaim-note">{x.note}</span>
-                        <button
-                          type="button" className="btn ghost sm wkclaim-resolve" disabled={pending}
+                        <Button
+                          size="compact" variant="ghost" className="wkclaim-resolve" disabled={pending}
                           onClick={() => open({ page: page.id, kind: 'resolve', claim, conflict: x })}
-                        >{c.resolve}</button>
+                        >{c.resolve}</Button>
                       </li>
                       {form?.kind === 'resolve' && form.claim.id === claim.id && form.conflict.id === x.id
                         ? (
@@ -477,7 +478,7 @@ export function WikiClaims({ page, pending, links, onApply, arrival, onArrived }
                 {claim.history.length === 0
                   ? null
                   : (
-                    <CardTray variant="row" className="wkclaim-history" summary={c.history(claim.history.length)}>
+                    <CardTray variant="row" className="wkclaim-history" summary={c.history} count={claim.history.length}>
                       <DiffLines lines={[
                         ...claim.history.map((h) => `- v${h.version} · ${fmt.date(h.since)} · ${h.text}`),
                         `+ v${claim.version} · ${fmt.date(claim.since)} · ${claim.text}`,

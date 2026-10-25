@@ -2,6 +2,7 @@ import type { ButtonHTMLAttributes, ReactNode } from 'react'
 import { useMessages } from '../messages/useMessages.js'
 import { RunningRing } from './icons.js'
 import { Tooltip } from './Tooltip.js'
+import { Button } from './Button.js'
 import './GenerationControl.css'
 
 const Arrow = () => (
@@ -24,7 +25,9 @@ const RunningGlyph = () => (
 
 /**
  * One shared start, running, and stop control for user-triggered generation. `disabled` disables the
- * start only: a running generation can always be stopped.
+ * start only: a running generation can always be stopped. With `showStatusText` it is a regular
+ * Button whose label, while running, says it runs and, under the pointer or focus, that a press stops
+ * it; otherwise it is the bare glyph button whose look its `className` gives.
  */
 export function GenerationControl({
   running, onStart, onStop, idleContent, showStatusText = false,
@@ -41,25 +44,29 @@ export function GenerationControl({
   const m = useMessages()
   const idle = idleLabel ?? m.common.generation.start
   const runningHint = runningLabel ?? m.common.generation.runningHint
+  const control = {
+    ...props,
+    className: `generation-control${running ? ' is-running' : ''}${className ? ` ${className}` : ''}`,
+    'aria-label': running ? runningHint : idle,
+    disabled: !running && disabled,
+    onClick: running ? onStop : onStart,
+  }
+  const glyph = running ? <RunningGlyph /> : idleContent ?? <Arrow />
   return (
     <Tooltip label={running ? runningHint : idle}>
-      <button
-        {...props}
-        type="button"
-        className={`generation-control${running ? ' is-running' : ''}${className ? ` ${className}` : ''}`}
-        aria-label={running ? runningHint : idle}
-        disabled={!running && disabled}
-        onClick={running ? onStop : onStart}
-      >
-        {running ? <RunningGlyph /> : idleContent ?? <Arrow />}
-        {running && showStatusText ? (
-          <span className="generation-status-copy">
-            {/* No trailing ellipsis: this button-label pairs with the spinning RunningGlyph icon, which already reads as in-progress. */}
-            <span className="generation-running-copy">{m.common.generation.running}</span>
-            <span className="generation-stop-copy">{m.common.generation.stop}</span>
-          </span>
-        ) : null}
-      </button>
+      {showStatusText
+        ? (
+          <Button {...control} size="regular" icon={glyph}>
+            {running ? (
+              <span className="generation-status-copy">
+                {/* No trailing ellipsis: this button-label pairs with the spinning RunningGlyph icon, which already reads as in-progress. */}
+                <span className="generation-running-copy">{m.common.generation.running}</span>
+                <span className="generation-stop-copy">{m.common.generation.stop}</span>
+              </span>
+            ) : null}
+          </Button>
+        )
+        : <button {...control} type="button">{glyph}</button>}
     </Tooltip>
   )
 }

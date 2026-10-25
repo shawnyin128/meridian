@@ -105,6 +105,46 @@ describe('错误', () => {
   })
 })
 
+describe('状态色', () => {
+  /** The stylesheets that own a state colour, each with what it marks there. */
+  const OWNERS: Record<string, string> = {
+    'components/InlineMessage.css': 'errors, warnings and notes shown in place, as a line or on their tint',
+    'components/Notice.css': "a notice's success or refusal icon",
+    'components/IconButton.css': 'a danger icon action under the pointer',
+    'components/Button.css': "a danger button's soft fill",
+    'components/ActionMenu.css': 'a danger menu item',
+    'components/FirstRunChecklist.css': "a finished first-run step's check",
+  }
+
+  /**
+   * The state colours outside an owner that another open issue moves, as `<path>  <selector>  <property>`,
+   * each with that issue. The list only shrinks.
+   */
+  const PENDING: Record<string, string> = {
+    'components/paper-table/PaperTable.css  .ptable th.column-moving  background': '#567, the drag feedback of a column',
+    'components/project/ProjectPlan.css  50%  background': '#578, the landing flash of a plan row',
+    'shell/tokens.css  .ddlrow.flash  background': '#578, the landing flash of a plan row',
+    'routes/ResearchOverview.css  .ovstat.bad b  color': 'the Overview stat tiles, which the catalog has no row for',
+  }
+
+  /** Every declaration that writes text in --bad, --warn or --good, or lays a --tint-* fill, as `<path>  <selector>  <property>`. */
+  const stateColours = () => STYLESHEETS.flatMap((path) => rules(path).flatMap(({ selectors, body }) => body.split(';')
+    .map((declaration) => /^\s*(color|background(?:-color|-image)?)\s*:(.*)$/s.exec(declaration))
+    .filter((match) => match !== null && (match[1] === 'color'
+      ? /var\(--(?:bad|warn|good)\s*[,)]/.test(match[2]!)
+      : /var\(--tint-[\w-]+/.test(match[2]!)))
+    .flatMap((match) => selectors.map((selector) => `${path}  ${selector}  ${match![1]}`))))
+
+  it('错误、警告和完成的颜色只在它们的共享组件里:别的样式表不把字写成 --bad、--warn、--good,也不铺 --tint-* 的底', () => {
+    expect(stateColours().filter((found) => !(found.split('  ')[0]! in OWNERS) && !(found in PENDING))).toEqual([])
+  })
+
+  it('留给别的议题的状态色都还在:挪走的从清单里删掉', () => {
+    const found = new Set(stateColours())
+    expect(Object.keys(PENDING).filter((entry) => !found.has(entry))).toEqual([])
+  })
+})
+
 describe('结论冲突', () => {
   it('冲突的结论不画红条、红底块,也不因此缩进', () => {
     const drawn = STYLESHEETS.flatMap((path) => rules(path).flatMap(({ selectors, body }) => (
@@ -140,10 +180,10 @@ describe('强调色', () => {
    * the running ring) and today on the timeline. The focus ring reads --ring.
    */
   const ACCENT = [
-    'components/Switch.css  .switch[data-state="checked"]',
+    'components/Button.css  .btn.pri', 'components/Switch.css  .switch[data-state="checked"]',
     'components/chat/Chat.css  .send', 'components/icons.css  .ring',
     'components/timeline/TimelineBoard.css  .gnow', 'components/timeline/TimelineBoard.css  .gnow::after',
-    'components/timeline/TimelineBoard.css  .gtoday', 'routes/shell.css  .btn.pri', 'shell/AppShell.css  .srow.on',
+    'components/timeline/TimelineBoard.css  .gtoday', 'shell/AppShell.css  .srow.on',
   ]
 
   it('强调色只在键盘焦点环、主操作、侧栏的当前行、开着的开关、运行中的圈和时间线的今天;标签、计数、列表的选中项和别的规则都不读', () => {

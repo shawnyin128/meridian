@@ -21,13 +21,14 @@ describe('窗口框架的滚动区', () => {
   })
 
   it('侧栏各级的折叠箭头不悬停也看得见', () => {
-    document.head.innerHTML = ['components/IconButton.css', 'shell/AppShell.css']
+    document.head.innerHTML = ['components/IconButton.css', 'components/FoldCaret.css', 'components/FoldToggle.css', 'shell/AppShell.css']
       .map((path) => `<style>${stylesheet(path)}</style>`).join('')
+    const caret = '<span class="fold-caret is-closed"></span>'
     document.body.innerHTML = '<div class="sidebar">'
-      + '<button class="sb-h sect-h" data-sect="inbox">收件<span class="sh-caret"></span></button>'
-      + '<div class="srow" id="rowInboxAll"><button class="nav-row-label">论文推送</button><button class="icbtn xs sh-caret"></button></div>'
-      + '<button class="srow disc" data-disc="topics">关注·主题<span class="sh-caret"></span></button></div>'
-    for (const selector of ['[data-sect] .sh-caret', '#rowInboxAll .sh-caret', '[data-disc] .sh-caret']) {
+      + `<div class="sb-h" data-sect="inbox"><button class="fold-toggle">收件${caret}</button></div>`
+      + `<div class="srow" id="rowInboxAll"><button class="nav-row-label">论文推送</button><button class="icbtn xs fold-toggle">${caret}</button></div>`
+      + `<button class="fold-toggle srow disc" data-disc="topics">关注·主题${caret}</button></div>`
+    for (const selector of ['[data-sect] .fold-caret', '#rowInboxAll .fold-caret', '[data-disc] .fold-caret']) {
       expect(getComputedStyle(document.querySelector(selector)).opacity, selector).toBe('1')
     }
   })

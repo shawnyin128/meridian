@@ -153,7 +153,7 @@ export function ChatComposer({
     <>
       <PickerPopover
         open={hits.length > 0} onOpenChange={(open) => { if (!open) setDismissed(true) }}
-        contentClassName="pickhits cres" contentId="cRes" side="top" align="center" sideOffset={6}
+        size="tall" contentId="cRes" side="top" align="center" sideOffset={6}
         anchor={(
           <div className="cbox">
             <div

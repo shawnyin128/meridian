@@ -15,7 +15,7 @@ import { appMenu, files, idea as ideaApi, papers, project as projectApi, wiki } 
 import {
   useCrumbTail, useEscapeLayer, useJump, useNotice, useToday, useVaultRevision,
 } from '../shell/AppShell.js'
-import { ActionButton } from '../components/ActionButton.js'
+import { CommitActions } from '../components/CommitActions.js'
 import { AddAction } from '../components/AddAction.js'
 import { DraftForm, DraftLine } from '../components/DraftForm.js'
 import { MenuItem } from '../components/ActionMenu.js'
@@ -73,6 +73,7 @@ import { useVaultWrite } from '../hooks/useVaultWrite.js'
 import { useScrollFade } from '../hooks/useScrollFade.js'
 import { useSourceChatDeleted } from '../hooks/useSourceChatDeleted.js'
 import { FadeText } from '../components/FadeText.js'
+import { Button } from '../components/Button.js'
 import './shell.css'
 import './ProjectDetail.css'
 
@@ -147,7 +148,7 @@ export function ProjectIdeaPanel({
         <NodeAssignment
           node={linkedNode === undefined ? undefined : { id: linkedNode.id, label: linkedNode.label, mode: nodeMode(linkedNode) }}
           nodes={graph.nodes} canUnlink onOpen={onOpenNode} onSet={onSetNode}
-          create={workspaceManaged ? undefined : <button className="btn sm" onClick={startNode}>{m.project.idea.createNode}</button>}
+          create={workspaceManaged ? undefined : <Button size="compact" onClick={startNode}>{m.project.idea.createNode}</Button>}
           draft={draft === null ? undefined : (
             <div ref={draftAt}>
               <DraftForm
@@ -253,7 +254,8 @@ export function ProjectIdeaList({ projectId, ideas, error, graph, selectedId, on
             }}
           >{m.project.idea.kind}</AddAction>
         )}
-      >{m.project.linkedIdeas(shown)}
+        count={shown}
+      >{m.project.linkedIdeas}
       </SectionHeading>
       {ideas === null
         ? (error === null ? <LoadingPlaceholder shape="rows" count={2} /> : <PageError variant="section" error={error} />)
@@ -773,22 +775,12 @@ export function ProjectDetail({
         open={workspaceOpen} onOpenChange={setWorkspaceOpen} size="form" className="workspace-dialog"
         title={m.project.workspace.dialogTitle}
         actions={(
-          <>
-            <button type="button" className="btn" onClick={() => setWorkspaceOpen(false)}>{m.common.cancel}</button>
-            {workspaceMode === 'local'
-              ? (
-                <ActionButton
-                  type="submit" form="workspaceLocal" className="workspace-local btn pri" disabled={binding !== null}
-                  busy={binding === 'local'} busyLabel={m.project.workspace.adding}
-                >{m.project.workspace.add}</ActionButton>
-              )
-              : (
-                <ActionButton
-                  type="submit" form="workspaceSsh" className="btn pri" disabled={binding !== null}
-                  busy={binding === 'ssh'} busyLabel={m.project.workspace.connecting}
-                >{m.project.workspace.connect}</ActionButton>
-              )}
-          </>
+          <CommitActions
+            place="foot" onCancel={() => setWorkspaceOpen(false)} saving={binding !== null}
+            {...workspaceMode === 'local'
+              ? { form: 'workspaceLocal', saveLabel: m.project.workspace.add, busyLabel: m.project.workspace.adding }
+              : { form: 'workspaceSsh', saveLabel: m.project.workspace.connect, busyLabel: m.project.workspace.connecting }}
+          />
         )}
       >
             <SegmentedControl
@@ -879,7 +871,7 @@ export function ProjectDetail({
         {attn.length > 0
           ? (
             <>
-              <SectionHeading>{m.project.signals.heading(attn.length)}</SectionHeading>
+              <SectionHeading count={attn.length}>{m.project.signals.heading}</SectionHeading>
               <ProjectAttention
                 items={attn} onOpenPage={openWikiPage} onLocateTask={locateTask}
                 onLocateMilestone={(milestoneId) => locatePlanRow('ms', milestoneId)}

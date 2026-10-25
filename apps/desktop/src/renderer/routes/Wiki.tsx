@@ -46,11 +46,14 @@ import { WikiBacklinks } from '../components/wiki/WikiBacklinks.js'
 import { WikiClaims, type ClaimLinks } from '../components/wiki/WikiClaims.js'
 import { tidyRows, TidyList } from '../components/wiki/WikiTidy.js'
 import { SourceAnchor } from '../components/SourceAnchor.js'
-import { CountBadge, Tag, TagButton } from '../components/Tag.js'
+import { CountBadge } from '../components/CountBadge.js'
+import { Tag, TagButton } from '../components/Tag.js'
 import { CardOpen, ResearchObjectCard } from '../components/ResearchObjectCard.js'
 import { EMBEDDED_LIST_ROW_LIMIT, RowActions } from '../components/StructuredList.js'
 import { Tooltip } from '../components/Tooltip.js'
 import { useClipped } from '../hooks/useClipped.js'
+import { Button } from '../components/Button.js'
+import { CommitActions } from '../components/CommitActions.js'
 import './shell.css'
 import './Wiki.css'
 
@@ -283,11 +286,10 @@ function ColumnsEditor({ rows, stale, onRows, onSave, onCancel }: {
         </div>
       ))}
       <div className="acts">
-        <button className="btn" onClick={onCancel}>{m.common.cancel}</button>
-        <button
-          className="btn pri" disabled={stale || rows.some((c) => c.label.trim() === '')}
-          onClick={() => onSave(rows.map((c) => ({ key: c.key, label: c.label.trim() })))}
-        >{m.common.save}</button>
+        <CommitActions
+          place="foot" onCancel={onCancel} canSave={!stale && rows.every((c) => c.label.trim() !== '')}
+          onSave={() => onSave(rows.map((c) => ({ key: c.key, label: c.label.trim() })))}
+        />
       </div>
     </div>
   )
@@ -685,10 +687,12 @@ export function Wiki() {
   const queued = (proposals ?? []).filter((p) => p.status === 'queued').length
   const tidy = signals === null ? null : tidyRows(signals)
   const title = shownAgg?.title ?? (shownPaper === null ? null : <PaperText text={shownPaper.title} />)
-    ?? (place === REVIEW ? m.wiki.queue.title(queued) : null)
-    ?? (place === TIDY ? m.wiki.tidy.title(tidy?.length ?? 0) : null)
-    ?? (home === null ? 'Wiki' : m.wiki.title(home.aggregationCount))
+    ?? (place === REVIEW ? m.wiki.queue.entry : null)
+    ?? (place === TIDY ? m.wiki.tidy.entry : null)
+    ?? m.wiki.title
   const tidyCount = tidy?.length ?? 0
+  const titleCount = shownAgg !== null || shownPaper !== null ? undefined
+    : place === REVIEW ? queued : place === TIDY ? tidyCount : home?.aggregationCount
 
   /** Applies or declines a queued proposal; a proposal Core refuses on apply is reported with its reason. */
   const decide = (proposal: WikiProposal, decision: 'apply' | 'decline', reason?: string) => {
@@ -746,27 +750,27 @@ export function Wiki() {
           ? (
             <>
               {/* Papers filters its table down to this paper by title; the user continues from that row's details. */}
-              <button className="btn" onClick={() => jumpTo('papers', shownPaper.title)}>{m.wiki.viewInPaperList}</button>
-              <button className="btn" onClick={() => jumpTo('reader', shownPaper.id.slice(PAPER_PAGE.length))}>
+              <Button size="regular" onClick={() => jumpTo('papers', shownPaper.title)}>{m.wiki.viewInPaperList}</Button>
+              <Button size="regular" onClick={() => jumpTo('reader', shownPaper.id.slice(PAPER_PAGE.length))}>
                 {m.papers.understanding.goRead}
-              </button>
+              </Button>
             </>
           )
           : place === null && (queued > 0 || tidyCount > 0)
             ? (
               <>
                 {queued === 0 ? null : (
-                  <button type="button" className="btn" onClick={() => go(REVIEW)}>{m.wiki.queue.entry}<CountBadge count={queued} /></button>
+                  <Button size="regular" onClick={() => go(REVIEW)}>{m.wiki.queue.entry}<CountBadge count={queued} /></Button>
                 )}
                 {tidyCount === 0 ? null : (
-                  <button type="button" className="btn" onClick={() => go(TIDY)}>{m.wiki.tidy.entry}<CountBadge count={tidyCount} /></button>
+                  <Button size="regular" onClick={() => go(TIDY)}>{m.wiki.tidy.entry}<CountBadge count={tidyCount} /></Button>
                 )}
               </>
             )
             : undefined}
       >
         {place === null ? null : <BackButton onClick={back} />}
-        <PageTitle label={shownAgg?.title ?? (shownPaper === null ? undefined : plainTitle(shownPaper.title))}>{title}</PageTitle>
+        <PageTitle label={shownAgg?.title ?? (shownPaper === null ? undefined : plainTitle(shownPaper.title))} count={titleCount}>{title}</PageTitle>
       </PageHeader>
 
       <PageError error={error} />
@@ -865,7 +869,7 @@ export function Wiki() {
                               setAdding(null)
                               if (next) setColumnsDraft({ rows: shownAgg.columns, base: shownAgg.columns })
                             }}
-                            contentClassName="ctxmenu colpop" sticky="always"
+                            surface="form" contentClassName="colpop" sticky="always"
                             trigger={(
                               <IconButton
                                 label={m.wiki.columnSettings} size="nested" ref={colBtn} disabled={pending}

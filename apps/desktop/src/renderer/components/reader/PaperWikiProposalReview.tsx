@@ -4,6 +4,8 @@ import type {
 import { useMessages } from '../../messages/useMessages.js'
 import type { Catalog } from '../../messages/catalog.js'
 import { EmptyState } from '../EmptyState.js'
+import { HeadingCount } from '../HeadingCount.js'
+import { InlineMessage } from '../InlineMessage.js'
 import { SourceAnchor } from '../SourceAnchor.js'
 import { StructuredList, StructuredRow } from '../StructuredList.js'
 import { Tag } from '../Tag.js'
@@ -88,8 +90,9 @@ function QualityReport({ quality }: { quality: HarnessPaperWikiQuality }) {
     ? m.wiki.quality.passedTitle
     : m.wiki.quality.findingsTitle(quality.findings.length)
   return (
-    <section className={`paper-wiki-quality ${quality.passed ? 'passed' : 'needs-review'}`}
-      aria-label={m.wiki.quality.heading}>
+    <InlineMessage
+      tone={quality.passed ? 'done' : 'warning'} variant="box" className="paper-wiki-quality" aria-label={m.wiki.quality.heading}
+    >
       <div className="paper-wiki-quality-head">
         <strong>{m.wiki.quality.heading}</strong>
         <span>{title}</span>
@@ -113,7 +116,7 @@ function QualityReport({ quality }: { quality: HarnessPaperWikiQuality }) {
           })}
         </StructuredList>
       )}
-    </section>
+    </InlineMessage>
   )
 }
 
@@ -137,8 +140,7 @@ export function PaperWikiProposalReview({ review, quality, onJump }: {
         return (
           <section className="paper-wiki-review-section" key={section.id}>
             <div className="paper-wiki-review-section-head">
-              <h4>{words.title}</h4>
-              <span>{section.groups.length}</span>
+              <h4>{words.title}<HeadingCount count={section.groups.length} /></h4>
             </div>
             {section.groups.length === 0 ? (
               <EmptyState variant="section">{words.empty}</EmptyState>

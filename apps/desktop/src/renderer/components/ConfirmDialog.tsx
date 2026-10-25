@@ -3,6 +3,7 @@ import type { ReactElement, ReactNode } from 'react'
 import * as AlertDialog from '@radix-ui/react-alert-dialog'
 import { ignoreComposingEscape } from '../lib/keyboard.js'
 import { useMessages } from '../messages/useMessages.js'
+import { Button } from './Button.js'
 import { modalSurface } from './ModalDialog.js'
 
 /**
@@ -58,11 +59,13 @@ export function ConfirmDialog({
           </div>
           <div className="modal-actions">
             {state === undefined ? null : <span className="modal-actions-state">{state}</span>}
-            <AlertDialog.Cancel className="btn">{cancel}</AlertDialog.Cancel>
-            <AlertDialog.Action
-              className={confirmTone === 'danger' ? 'btn pri danger' : 'btn pri'}
-              disabled={confirmDisabled} onClick={onConfirm}
-            >{confirm}</AlertDialog.Action>
+            <AlertDialog.Cancel asChild><Button size="regular">{cancel}</Button></AlertDialog.Cancel>
+            <AlertDialog.Action asChild>
+              <Button
+                size="regular" variant="primary" tone={confirmTone === 'danger' ? 'danger' : 'neutral'}
+                disabled={confirmDisabled} onClick={onConfirm}
+              >{confirm}</Button>
+            </AlertDialog.Action>
           </div>
         </AlertDialog.Content>
       </AlertDialog.Portal>
