@@ -293,9 +293,14 @@ function contrastChecks(mode: ColourMode): ContrastCheck[] {
   /** A list's selected row or card, on the canvas, a card or a floating layer, at rest and hovered. */
   const selectedRow = (['--content', '--card', '--raised'] as const)
     .flatMap((surface) => [[surface, '--accent-soft'], [surface, '--accent-soft', '--hover']] as const)
-  /** Where an accent mark (a check mark, the running ring) sits: every surface, hovered, and a selected or current row. */
-  const marked = [...SURFACES.slice(0, 4), ['--card', '--hover'], ['--raised', '--hover'], ['--window', '--sidebar', '--hover'],
-    ...selectedRow, ...current] as const
+  /**
+   * Where an accent mark (a check mark, the running ring, a progress line) sits: every surface, hovered,
+   * a selected or current row, and a progress line's track on a card, a floating layer or a message box.
+   */
+  const boxes: readonly (readonly ColourToken[])[] = [...MESSAGE_BOX, ['--raised', '--tint-mut']]
+  const marked: readonly (readonly ColourToken[])[] = [...SURFACES.slice(0, 4), ['--card', '--hover'], ['--raised', '--hover'],
+    ['--window', '--sidebar', '--hover'], ...selectedRow, ...current, ['--card', '--track'], ['--raised', '--track'],
+    ...boxes.map((box): readonly ColourToken[] => [...box, '--track'])]
   return [
     ...over('ink', '--ink', [...SURFACES, ...CHIPS, ['--field'], ['--content', '--sel'], ['--card', '--selected', '--hover']]),
     ...over('ink', '--window', [['--ink']]),

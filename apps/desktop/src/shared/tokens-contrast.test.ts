@@ -419,14 +419,13 @@ describe('选中、当前、已应用和按下的状态', () => {
     ['components/ChipToggles.css', '.chip-toggle[data-state="on"]'],
   ] as const
 
-  it('选中的东西只有一个样子:侧栏的当前行、列表里选中的行和卡片、选中的高亮卡片和开着的标签开关都是浅强调底配强调色的字;选中的分段只把字换成强调色,滑块仍是浮层底;勾和运行中的圈用强调色的记号色;进度铺浅强调底', () => {
+  it('选中的东西只有一个样子:侧栏的当前行、列表里选中的行和卡片、选中的高亮卡片和开着的标签开关都是浅强调底配强调色的字;选中的分段只把字换成强调色,滑块仍是浮层底;勾和运行中的圈用强调色的记号色', () => {
     expect(Object.fromEntries(SELECTED.map(([path, selector]) => [selector, lookOf(path, selector)])))
       .toEqual(Object.fromEntries(SELECTED.map(([, selector]) => [selector, '--accent-soft --accent-text'])))
     expect(lookOf('components/SegmentedControl.css', '.segmented-thumb')).toBe('--raised 无')
     expect(lookOf('components/SegmentedControl.css', '.segmented-control>button[data-state="on"]')).toBe('无 --accent-text')
     expect(lookOf('components/ActionMenu.css', '.mi .ck')).toBe('无 --accent-mark')
     expect(lookOf('components/icons.css', '.ring')).toBe('无 --accent-mark')
-    expect(lookOf('components/ProgressFill.css', '.progress-fill>span')).toBe('--accent-soft 无')
   })
 
   /** A selected row or card, the selected highlight card and an on chip toggle: the accent soft fill on each surface a list lies on, at rest and hovered. */
@@ -476,6 +475,34 @@ describe('选中、当前、已应用和按下的状态', () => {
         expect(contrast(on, off), `${where} 开对关`).toBeGreaterThanOrEqual(1.2)
         expect(contrast(on, hover), `${where} 开对悬停`).toBeGreaterThanOrEqual(1.15)
         expect(contrast(colour(theme, '--on-selected'), on), `${where} 字`).toBeGreaterThanOrEqual(TEXT)
+      }
+    })
+  }
+})
+
+describe('进度', () => {
+  /** The surfaces a progress line runs along: the parse card, and an in-place message box on the canvas, a card, a floating layer and the window. */
+  const HOSTS = [['--raised'], ['--card'], ...[['--content'], ['--card'], ['--raised'], ['--window', '--sidebar']].map((ground) => [...ground, '--tint-mut'])]
+  const rule = (selector: string) => {
+    const css = readFileSync(new URL('../renderer/components/ProgressFill.css', import.meta.url), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '')
+    return [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)].find((match) => match[1]!.trim() === selector)?.[2] ?? ''
+  }
+
+  it('进度是宿主下边缘的一条细线:强调色的记号色在轨道色上从左填到进度,不再铺选中行那种浅强调底', () => {
+    expect(lookOf('components/ProgressFill.css', '.progress-fill')).toBe('--track 无')
+    expect(lookOf('components/ProgressFill.css', '.progress-fill>span')).toBe('--accent-mark 无')
+    expect(rule('.progress-fill')).toMatch(/(?:^|;)bottom:0(?:;|$)/)
+    expect(rule('.progress-fill')).toMatch(/(?:^|;)height:2px(?:;|$)/)
+    expect(rule('.progress-fill')).not.toMatch(/(?:^|;)(?:inset|top):/)
+  })
+
+  for (const theme of THEMES) {
+    it(`${named(theme)}进度线填上的部分对它的轨道和所在的面都不低于 3:1`, () => {
+      for (const host of HOSTS) {
+        for (const ground of [[...host, '--track'], host]) {
+          const got = contrast(colour(theme, '--accent-mark'), flatten(theme, ground))
+          expect(got, `--accent-mark 压在 ${ground.join(' + ')} 上是 ${got.toFixed(2)}:1`).toBeGreaterThanOrEqual(MARK)
+        }
       }
     })
   }
