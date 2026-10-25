@@ -3,10 +3,12 @@ import type { PaperColumn, PaperColumns } from '../../../shared/contract.js'
 import { LOCKED_PAPER_COLUMNS } from '../../../shared/vocabulary.js'
 import { useDrafts } from '../../hooks/useDrafts.js'
 import { useMessages } from '../../messages/useMessages.js'
+import { MenuItem } from '../ActionMenu.js'
 import { ActionPopover } from '../ActionPopover.js'
+import { DotsMenu } from '../FieldPickers.js'
 import { FoldToggle } from '../FoldToggle.js'
 import { IconButton } from '../IconButton.js'
-import { IconCheck, IconGear, IconPencil, IconTrash } from '../icons.js'
+import { IconCheck, IconGear } from '../icons.js'
 import { ColumnTypeIcon, ColumnTypePicker } from './ColumnAdd.js'
 import { builtinNames, takenLabel } from './column-key.js'
 import { COLUMNS } from './PaperTable.js'
@@ -17,7 +19,7 @@ import { RowActions } from '../Item.js'
 /**
  * The column menu, opened from the gear at the end of the table header. Built-in columns take one
  * row each, and clicking a row shows or hides the column; locked columns are grayed out and inert.
- * Custom columns take one row each, with rename and delete at the end of the row. Adding a column
+ * Custom columns take one row each, with rename and delete in the … menu at the end of the row. Adding a column
  * is not here but the + at the end of the header. Styled as the demo's colMenu, opened and closed
  * by Radix; while a rename input is open, Esc cancels only the rename and keeps the menu, and a
  * press anywhere else, inside the menu or outside it, or focus leaving the input renames as Enter
@@ -26,7 +28,7 @@ import { RowActions } from '../Item.js'
  * and returns the whole changed one; a name another column on the table already has is refused,
  * and renaming to the column's own name just closes the input.
  * Select and multi-select columns have a fold toggle after their name that expands their options,
- * one per row, with rename and delete at the end of the row. Renaming goes to
+ * one per row, with rename and delete in the … menu at the end of the row. Renaming goes to
  * `onRenameOption` (the papers holding it change too); deleting goes to `onChange` as usual, and
  * while any paper in the vault still holds that option, Core rejects it and a refusal notice shows
  * Core's message.
@@ -182,20 +184,18 @@ export function ColumnMenu({ columns, onChange, onRenameOption, onRetype }: {
                     label={m.papers.columnMenu.changeType} size="nested" className="cmx typex" aria-expanded={retyping === c.key}
                     onClick={() => setRetyping((k) => (k === c.key ? null : c.key))}
                   ><ColumnTypeIcon type={c.type} /></IconButton>
-                  <IconButton
-                    label={m.papers.columnMenu.rename} size="nested" className="cmx"
-                    onClick={() => afterLeaving(leaveRename, () => setRenaming(c.key))}
-                  ><IconPencil /></IconButton>
-                  {/* Core rejects group keys with no column, so a deleted column leaves the groups too. */}
-                  <IconButton
-                    label={m.papers.columnMenu.deleteColumn} size="nested" tone="danger" className="cmx"
-                    onClick={() => onChange((base) => ({
-                      ...base,
-                      custom: base.custom.filter((x) => x.key !== c.key),
-                      groups: base.groups.filter((g) => g !== c.key),
-                      order: base.order?.filter((key) => key !== c.key),
-                    }))}
-                  ><IconTrash /></IconButton>
+                  <DotsMenu onRename={() => afterLeaving(leaveRename, () => setRenaming(c.key))}>
+                    {/* Core rejects group keys with no column, so a deleted column leaves the groups too. */}
+                    <MenuItem
+                      className="mi danger"
+                      onSelect={() => onChange((base) => ({
+                        ...base,
+                        custom: base.custom.filter((x) => x.key !== c.key),
+                        groups: base.groups.filter((g) => g !== c.key),
+                        order: base.order?.filter((key) => key !== c.key),
+                      }))}
+                    >{m.common.delete}</MenuItem>
+                  </DotsMenu>
                 </RowActions>
               </div>
               {retyping === c.key
@@ -231,21 +231,19 @@ export function ColumnMenu({ columns, onChange, onRenameOption, onRetype }: {
                             )
                             : <FadeText className="cl" label={o}>{o}</FadeText>}
                           <RowActions>
-                            <IconButton
-                              label={m.papers.columnMenu.renameOption} size="nested" className="cmx"
-                              onClick={() => afterLeaving(
-                                leaveOptionRename, () => setRenamingOption({ key: c.key, from: o }),
-                              )}
-                            ><IconPencil /></IconButton>
-                            <IconButton
-                              label={m.papers.columnMenu.deleteOption} size="nested" tone="danger" className="cmx"
-                              onClick={() => onChange((base) => ({
-                                ...base,
-                                custom: base.custom.map((x) => (x.key === c.key
-                                  ? { ...x, options: x.options.filter((v) => v !== o) }
-                                  : x)),
-                              }))}
-                            ><IconTrash /></IconButton>
+                            <DotsMenu
+                              onRename={() => afterLeaving(leaveOptionRename, () => setRenamingOption({ key: c.key, from: o }))}
+                            >
+                              <MenuItem
+                                className="mi danger"
+                                onSelect={() => onChange((base) => ({
+                                  ...base,
+                                  custom: base.custom.map((x) => (x.key === c.key
+                                    ? { ...x, options: x.options.filter((v) => v !== o) }
+                                    : x)),
+                                }))}
+                              >{m.common.delete}</MenuItem>
+                            </DotsMenu>
                           </RowActions>
                         </div>
                       ))}

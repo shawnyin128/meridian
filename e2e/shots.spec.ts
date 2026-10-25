@@ -166,7 +166,7 @@ test('第 6 批:列菜单与改类型那一行,四档窗口 × 亮暗', async ({
       await win.locator('.ptable thead [aria-label="列设置"]').click()
       const row = win.locator('[data-radix-popper-content-wrapper] .mi.colrow', { hasText: '读法' })
       await row.hover()
-      // With the pointer on the row, its three .cmx (change type, rename, delete) show beside the options caret.
+      // With the pointer on the row, its change type and … buttons show beside the options caret.
       await win.screenshot({ path: `${B6}/column-menu-hover-${theme}-${w}.png` })
       await row.locator('[aria-label="改类型"]').click()
       await parkPointer(win)

@@ -135,7 +135,7 @@ describe('图标按钮', () => {
 
   it('别的样式表不改图标按钮的尺寸、颜色、边框或光标，只管放在哪里和显不显', () => {
     expect([...HOOKS]).toEqual(expect.arrayContaining([
-      'back', 'rowx', 'busy', 'dots', 'rx', 'tagchip-edit', 'cmx', 'ax', 'row-delete', 'plan-rename',
+      'back', 'rowx', 'busy', 'dots', 'rx', 'tagchip-edit', 'cmx', 'ax',
       'tbtn', 'appbtn', 'upclose',
     ]))
     const names = new RegExp(`\\.(?:${['icbtn', ...HOOKS].join('|')})(?![\\w-])`)

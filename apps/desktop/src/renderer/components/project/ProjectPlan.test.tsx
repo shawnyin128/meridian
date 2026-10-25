@@ -4,6 +4,7 @@ import { createRoot, type Root } from 'react-dom/client'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Milestone, Task } from '../../../shared/contract.js'
+import { DraftsProvider } from '../../hooks/useDrafts.js'
 import { MessagesProvider } from '../../messages/useMessages.js'
 import { LANGUAGE_STORAGE_KEY } from '../../shell/language.js'
 import { newPlanRow, ProjectPlan, ProjectTaskPanel, type PlanCreating } from './ProjectPlan.js'
@@ -73,17 +74,15 @@ describe('ProjectPlan', () => {
     expect(output).not.toContain('完成首轮校准')
   })
 
-  it('任务行和里程碑行的删除是行尾操作槽里的图标钮，悬停时标红；任务行的改名铅笔也在操作槽里', () => {
+  it('任务行和里程碑行的行尾只有一个「更多」按钮,改名和删除都在它的菜单里,行上没有铅笔和垃圾桶', () => {
     const host = document.createElement('div')
     host.innerHTML = renderPlan('task')
     const slot = (row: Element) => [...row.querySelectorAll('.row-actions button')].map((item) => [
-      item.getAttribute('aria-label'), item.textContent, item.classList.contains('icbtn'), item.classList.contains('danger'),
+      item.getAttribute('aria-label'), item.classList.contains('dots'),
     ])
-    expect(slot(host.querySelector('.task-row')!)).toEqual([
-      ['重命名任务：校准批次', '', true, false], ['删除任务：校准批次', '', true, true],
-    ])
+    expect(slot(host.querySelector('.task-row')!)).toEqual([['更多', true]])
     host.innerHTML = renderPlan('ms')
-    expect(slot(host.querySelector('.milestone-row')!)).toEqual([['删除里程碑：完成首轮校准', '', true, true]])
+    expect(slot(host.querySelector('.milestone-row')!)).toEqual([['更多', true]])
   })
 
   it('任务行整行就是拖拽把手，在窄的计划列表里不另占一列', () => {
@@ -244,29 +243,61 @@ describe('ProjectPlan', () => {
       root = null
       document.body.innerHTML = ''
     })
-    const mount = () => {
+    const mount = (tab: 'task' | 'ms' = 'task') => {
       globalThis.IS_REACT_ACT_ENVIRONMENT = true
       vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} })
+      // DraftsProvider asks where the vault is, to keep drafts per vault.
+      vi.stubGlobal('meridian', { call: () => Promise.resolve({ root: '/vaults/a' }) })
       const host = document.createElement('div')
       document.body.append(host)
       const onOpenTask = vi.fn()
       const onUpdateTask = vi.fn(() => Promise.resolve(true))
+      const onDeleteTask = vi.fn()
+      const onUpdateMilestone = vi.fn(() => Promise.resolve(true))
+      const onDeleteMilestone = vi.fn()
       root = createRoot(host)
       act(() => root!.render(
         <MessagesProvider>
-          <ProjectPlan
-            projectId="p1" project={{ tasks: [task], milestones: [] }} tab="task" today="2026-09-16"
-            creating={null} flashId={null} selectedTaskId={null}
-            listRef={createRef()} draftRef={createRef()} addRef={createRef()} timelineAddRef={createRef()}
-            onTab={vi.fn()} onDiscardOpenEdits={vi.fn()} onStartTask={vi.fn()} onStartMilestone={vi.fn()}
-            onCreating={vi.fn()} onCancelCreate={vi.fn()} onCreateTask={vi.fn()} onCreateMilestone={vi.fn()}
-            onUpdateTask={onUpdateTask} onDeleteTask={vi.fn()} onReorderTasks={vi.fn()} onOpenTask={onOpenTask}
-            onUpdateMilestone={vi.fn()} onDeleteMilestone={vi.fn()} onHoverMilestone={vi.fn()}
-          />
+          <DraftsProvider>
+            <ProjectPlan
+              projectId="p1" project={{ tasks: [task], milestones: [milestone] }} tab={tab} today="2026-09-16"
+              creating={null} flashId={null} selectedTaskId={null}
+              listRef={createRef()} draftRef={createRef()} addRef={createRef()} timelineAddRef={createRef()}
+              onTab={vi.fn()} onDiscardOpenEdits={vi.fn()} onStartTask={vi.fn()} onStartMilestone={vi.fn()}
+              onCreating={vi.fn()} onCancelCreate={vi.fn()} onCreateTask={vi.fn()} onCreateMilestone={vi.fn()}
+              onUpdateTask={onUpdateTask} onDeleteTask={onDeleteTask} onReorderTasks={vi.fn()} onOpenTask={onOpenTask}
+              onUpdateMilestone={onUpdateMilestone} onDeleteMilestone={onDeleteMilestone} onHoverMilestone={vi.fn()}
+            />
+          </DraftsProvider>
         </MessagesProvider>,
       ))
-      return { host, onOpenTask, onUpdateTask }
+      return { host, onOpenTask, onUpdateTask, onDeleteTask, onUpdateMilestone, onDeleteMilestone }
     }
+    /** Opens the … menu of the row `row` and returns its items' names. */
+    const openMenu = async (row: Element) => {
+      await act(async () => { row.querySelector('.dots')!.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, button: 0 })) })
+      return [...document.querySelectorAll<HTMLElement>('[role="menu"] [role="menuitem"]')].map((item) => item.textContent)
+    }
+    /** Picks the item named `name` of the open menu. */
+    const pick = async (name: string) => {
+      const item = [...document.querySelectorAll<HTMLElement>('[role="menu"] [role="menuitem"]')].find((held) => held.textContent === name)!
+      await act(async () => { item.click() })
+    }
+    /** Renames the name in `row` from its … menu, waiting for the field the menu opens once it lets go of focus. */
+    const renameFromMenu = async (row: Element) => {
+      await openMenu(row)
+      await pick('重命名')
+      await vi.waitFor(() => expect(row.querySelector('.metadata-input')).not.toBeNull())
+      return row.querySelector<HTMLInputElement>('.metadata-input')!
+    }
+    const type = (input: HTMLInputElement, value: string) => act(() => {
+      Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')!.set!.call(input, value)
+      input.dispatchEvent(new Event('input', { bubbles: true }))
+    })
+    const enter = (input: HTMLInputElement) => act(async () => {
+      input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
+      await Promise.resolve()
+    })
 
     it('任务名是一个按钮,点它(键盘回车同样触发点击)打开任务详情,不进入改名', () => {
       const { host, onOpenTask } = mount()
@@ -284,26 +315,44 @@ describe('ProjectPlan', () => {
       expect(onOpenTask).toHaveBeenCalledWith('task-1')
     })
 
-    it('改名从任务名旁的铅笔进入,在行内用同一种就地输入框写回,不打开任务详情', async () => {
+    it('改名从行尾「更多」菜单的重命名进入,在行内用同一种就地输入框写回,不打开任务详情', async () => {
       const { host, onOpenTask, onUpdateTask } = mount()
-      const rename = host.querySelector<HTMLButtonElement>('.task-row .plan-rename')!
-      expect(rename.getAttribute('aria-label')).toBe('重命名任务：校准批次')
-      act(() => rename.click())
-      const input = host.querySelector<HTMLInputElement>('.task-row .metadata-input')!
-      expect([input.value, input.classList.contains('form-control-inline')]).toEqual(['校准批次', true])
-      act(() => {
-        Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')!.set!.call(input, '复核批次')
-        input.dispatchEvent(new Event('input', { bubbles: true }))
-      })
-      await act(async () => {
-        input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
-        await Promise.resolve()
-      })
+      const row = host.querySelector('.task-row')!
+      expect(await openMenu(row)).toEqual(['重命名', '删除'])
+      await pick('重命名')
+      await vi.waitFor(() => expect(row.querySelector('.metadata-input')).not.toBeNull())
+      const input = row.querySelector<HTMLInputElement>('.metadata-input')!
+      expect([input.value, input.classList.contains('form-control-inline'), document.activeElement]).toEqual(['校准批次', true, input])
+      type(input, '复核批次')
+      await enter(input)
       expect(onUpdateTask).toHaveBeenCalledWith('task-1', { title: '复核批次' })
       expect(onOpenTask).not.toHaveBeenCalled()
     })
 
-    it('一行任务只占一个 Tab 停靠点，方向键依次走过日期、时间、优先级、状态、任务名、改名铅笔和删除，双击仍不选中字', async () => {
+    it('删除也在任务行的「更多」菜单里,选它直接删,不先确认,也不打开任务详情', async () => {
+      const { host, onOpenTask, onDeleteTask } = mount()
+      await openMenu(host.querySelector('.task-row')!)
+      await pick('删除')
+      expect([onDeleteTask.mock.calls, document.querySelector('[role="alertdialog"]'), onOpenTask.mock.calls])
+        .toEqual([[['task-1']], null, []])
+    })
+
+    it('里程碑也从行尾「更多」菜单重命名和删除;点它的名字不进入改名', async () => {
+      const { host, onUpdateMilestone, onDeleteMilestone } = mount('ms')
+      const row = host.querySelector('.milestone-row')!
+      act(() => row.querySelector<HTMLElement>('.plan-name-cell')!.click())
+      expect(row.querySelector('.metadata-input')).toBeNull()
+      const input = await renameFromMenu(row)
+      expect([input.value, document.activeElement]).toEqual(['完成首轮校准', input])
+      type(input, '完成第二轮校准')
+      await enter(input)
+      expect(onUpdateMilestone).toHaveBeenCalledWith('milestone-1', { title: '完成第二轮校准' })
+      expect(await openMenu(row)).toEqual(['重命名', '删除'])
+      await pick('删除')
+      expect(onDeleteMilestone).toHaveBeenCalledWith('milestone-1')
+    })
+
+    it('一行任务只占一个 Tab 停靠点，方向键依次走过日期、时间、优先级、状态、任务名和「更多」，双击仍不选中字', async () => {
       const { host } = mount()
       const row = host.querySelector<HTMLElement>('.task-row')!
       const stops = [...host.querySelectorAll<HTMLElement>('.list *')]
@@ -311,23 +360,23 @@ describe('ProjectPlan', () => {
       expect(stops).toEqual([row])
       await act(async () => { row.focus() })
       const walked: string[] = []
-      for (let step = 0; step < 8; step += 1) {
+      for (let step = 0; step < 7; step += 1) {
         walked.push(document.activeElement!.getAttribute('aria-label') ?? document.activeElement!.textContent ?? '')
         await act(async () => {
           document.activeElement!.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true, cancelable: true }))
           await new Promise((done) => setTimeout(done, 0))
         })
       }
-      expect(walked).toEqual(['9月16日', '08:00–10:00', 'P1', '进行中', '校准批次', '重命名任务：校准批次', '删除任务：校准批次', '9月16日'])
+      expect(walked).toEqual(['9月16日', '08:00–10:00', 'P1', '进行中', '校准批次', '更多', '9月16日'])
       const second = new MouseEvent('mousedown', { bubbles: true, cancelable: true, detail: 2 })
       row.querySelector('.plan-name')!.dispatchEvent(second)
       expect(second.defaultPrevented).toBe(true)
     })
 
-    it('改名时点进输入框只是在编辑,不打开任务详情', () => {
+    it('改名时点进输入框只是在编辑,不打开任务详情', async () => {
       const { host, onOpenTask } = mount()
-      act(() => host.querySelector<HTMLButtonElement>('.task-row .plan-rename')!.click())
-      act(() => host.querySelector<HTMLInputElement>('.task-row .metadata-input')!.click())
+      const input = await renameFromMenu(host.querySelector('.task-row')!)
+      act(() => input.click())
       expect(onOpenTask).not.toHaveBeenCalled()
       expect(host.querySelector('.task-row .metadata-input')).not.toBeNull()
     })

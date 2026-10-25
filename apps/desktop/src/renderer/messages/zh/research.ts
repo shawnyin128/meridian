@@ -30,7 +30,6 @@ export const research = {
     sortPriority: '按优先级',
     sortMilestone: '按下一个里程碑',
     renameTitle: '重命名项目',
-    rename: '重命名',
     createdFeedNote: (name: string) => `新项目《${name}》已创建`,
   },
   panel: {
