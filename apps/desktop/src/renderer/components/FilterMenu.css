@@ -3,3 +3,11 @@
 .filter-menu-label{color:var(--ter);font-size:var(--fs-sm);white-space:nowrap}
 /* An applied filter looks pressed; solid accent is kept for primary actions. */
 .filter-menu.on{background-color:var(--selected-strong);border-color:transparent;color:var(--on-selected)}
+/*
+ * The button keeps room for every label it can show: all of them lie in one grid cell and only the
+ * shown one paints, so picking an option never changes its width or moves the toolbar.
+ */
+.filter-menu-value{display:grid;min-width:0;text-align:center}
+.filter-menu-value>*{grid-area:1/1}
+.filter-menu-ghost{visibility:hidden;white-space:nowrap}
+.filter-menu-ghost::before{content:attr(data-label)}

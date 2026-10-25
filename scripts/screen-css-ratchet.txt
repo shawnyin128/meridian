@@ -358,68 +358,62 @@ components/paper-table/PaperTable.css:180: .paper-reading-summary .paper-meta-li
 components/paper-table/PaperTable.css:181: .paper-reading-summary .reading-summary-all { margin }
 components/paper-table/PaperTable.css:188: .libbar .filters { margin }
 components/paper-table/PaperTable.css:189: .libbar .filters>.pt-dim { font-size }
-components/paper-table/PaperTable.css:191: .libbar .read-state-filter { width }
-components/paper-table/PaperTable.css:191: .libbar .read-state-filter { box-sizing }
-components/paper-table/PaperTable.css:191: .libbar .read-state-filter { display }
-components/paper-table/PaperTable.css:191: .libbar .read-state-filter { align-items }
-components/paper-table/PaperTable.css:191: .libbar .read-state-filter { justify-content }
-components/paper-table/PaperTable.css:191: .libbar .read-state-filter { white-space }
-components/paper-table/PaperTable.css:196: .research-map { padding }
-components/paper-table/PaperTable.css:197: .research-map-limit { color }
-components/paper-table/PaperTable.css:197: .research-map-limit { font-size }
-components/paper-table/PaperTable.css:198: .research-map-layout { grid-template-columns }
-components/paper-table/PaperTable.css:200: .research-map-index { gap }
-components/paper-table/PaperTable.css:202: .research-map-group { display }
-components/paper-table/PaperTable.css:202: .research-map-group { grid-template-columns }
-components/paper-table/PaperTable.css:202: .research-map-group { align-items }
-components/paper-table/PaperTable.css:202: .research-map-group { gap }
-components/paper-table/PaperTable.css:202: .research-map-group { min-height }
-components/paper-table/PaperTable.css:202: .research-map-group { padding }
-components/paper-table/PaperTable.css:205: .research-map-group-copy .research-map-group-name { color }
-components/paper-table/PaperTable.css:205: .research-map-group-copy .research-map-group-name { font-size }
-components/paper-table/PaperTable.css:205: .research-map-group-copy .research-map-group-name { font-weight }
-components/paper-table/PaperTable.css:206: .research-map-group-copy>span { color }
-components/paper-table/PaperTable.css:206: .research-map-group-copy>span { font-size }
-components/paper-table/PaperTable.css:208: .research-map-detail { border }
-components/paper-table/PaperTable.css:208: .research-map-detail { border-radius }
-components/paper-table/PaperTable.css:208: .research-map-detail { background }
-components/paper-table/PaperTable.css:208: .research-map-detail { overflow }
-components/paper-table/PaperTable.css:209: .research-map-detail-head { padding }
-components/paper-table/PaperTable.css:209: .research-map-detail-head { border-bottom }
-components/paper-table/PaperTable.css:211: .research-map-detail-head .research-map-detail-name { color }
-components/paper-table/PaperTable.css:211: .research-map-detail-head .research-map-detail-name { font-size }
-components/paper-table/PaperTable.css:211: .research-map-detail-head .research-map-detail-name { font-weight }
-components/paper-table/PaperTable.css:212: .research-map-detail-head>div>span { color }
-components/paper-table/PaperTable.css:212: .research-map-detail-head>div>span { font-size }
-components/paper-table/PaperTable.css:214: .research-map-detail>.research-map-papers.structured-list--fill { padding }
-components/paper-table/PaperTable.css:214: .research-map-detail>.research-map-papers.structured-list--fill { margin-inline }
-components/paper-table/PaperTable.css:215: .research-map-paper { display }
-components/paper-table/PaperTable.css:215: .research-map-paper { grid-template-columns }
-components/paper-table/PaperTable.css:215: .research-map-paper { grid-template-areas }
-components/paper-table/PaperTable.css:215: .research-map-paper { align-items }
-components/paper-table/PaperTable.css:215: .research-map-paper { gap }
-components/paper-table/PaperTable.css:215: .research-map-paper { min-height }
-components/paper-table/PaperTable.css:215: .research-map-paper { padding }
-components/paper-table/PaperTable.css:216: .research-map-paper-open { display }
-components/paper-table/PaperTable.css:216: .research-map-paper-open { padding }
-components/paper-table/PaperTable.css:216: .research-map-paper-open { border }
-components/paper-table/PaperTable.css:216: .research-map-paper-open { background }
-components/paper-table/PaperTable.css:216: .research-map-paper-open { color }
-components/paper-table/PaperTable.css:216: .research-map-paper-open { font }
-components/paper-table/PaperTable.css:216: .research-map-paper-open { text-align }
-components/paper-table/PaperTable.css:216: .research-map-paper-open { cursor }
-components/paper-table/PaperTable.css:217: .research-map-paper-title { font-weight }
-components/paper-table/PaperTable.css:219: .research-map-paper-meta { color }
-components/paper-table/PaperTable.css:219: .research-map-paper-meta { font-size }
-components/paper-table/PaperTable.css:219: .research-map-paper-meta { white-space }
-components/paper-table/PaperTable.css:220: .research-map-why { display }
-components/paper-table/PaperTable.css:220: .research-map-why { align-items }
-components/paper-table/PaperTable.css:220: .research-map-why { gap }
-components/paper-table/PaperTable.css:220: .research-map-why { color }
-components/paper-table/PaperTable.css:220: .research-map-why { font-size }
-components/paper-table/PaperTable.css:223: @media (max-width:900px) .research-map-groups { display }
-components/paper-table/PaperTable.css:223: @media (max-width:900px) .research-map-groups { grid-template-columns }
-components/paper-table/PaperTable.css:224: @media (max-width:900px) .research-map-groups>.structured-row:nth-child(2) { border-top }
+components/paper-table/PaperTable.css:194: .research-map { padding }
+components/paper-table/PaperTable.css:195: .research-map-limit { color }
+components/paper-table/PaperTable.css:195: .research-map-limit { font-size }
+components/paper-table/PaperTable.css:196: .research-map-layout { grid-template-columns }
+components/paper-table/PaperTable.css:198: .research-map-index { gap }
+components/paper-table/PaperTable.css:200: .research-map-group { display }
+components/paper-table/PaperTable.css:200: .research-map-group { grid-template-columns }
+components/paper-table/PaperTable.css:200: .research-map-group { align-items }
+components/paper-table/PaperTable.css:200: .research-map-group { gap }
+components/paper-table/PaperTable.css:200: .research-map-group { min-height }
+components/paper-table/PaperTable.css:200: .research-map-group { padding }
+components/paper-table/PaperTable.css:203: .research-map-group-copy .research-map-group-name { color }
+components/paper-table/PaperTable.css:203: .research-map-group-copy .research-map-group-name { font-size }
+components/paper-table/PaperTable.css:203: .research-map-group-copy .research-map-group-name { font-weight }
+components/paper-table/PaperTable.css:204: .research-map-group-copy>span { color }
+components/paper-table/PaperTable.css:204: .research-map-group-copy>span { font-size }
+components/paper-table/PaperTable.css:206: .research-map-detail { border }
+components/paper-table/PaperTable.css:206: .research-map-detail { border-radius }
+components/paper-table/PaperTable.css:206: .research-map-detail { background }
+components/paper-table/PaperTable.css:206: .research-map-detail { overflow }
+components/paper-table/PaperTable.css:207: .research-map-detail-head { padding }
+components/paper-table/PaperTable.css:207: .research-map-detail-head { border-bottom }
+components/paper-table/PaperTable.css:209: .research-map-detail-head .research-map-detail-name { color }
+components/paper-table/PaperTable.css:209: .research-map-detail-head .research-map-detail-name { font-size }
+components/paper-table/PaperTable.css:209: .research-map-detail-head .research-map-detail-name { font-weight }
+components/paper-table/PaperTable.css:210: .research-map-detail-head>div>span { color }
+components/paper-table/PaperTable.css:210: .research-map-detail-head>div>span { font-size }
+components/paper-table/PaperTable.css:212: .research-map-detail>.research-map-papers.structured-list--fill { padding }
+components/paper-table/PaperTable.css:212: .research-map-detail>.research-map-papers.structured-list--fill { margin-inline }
+components/paper-table/PaperTable.css:213: .research-map-paper { display }
+components/paper-table/PaperTable.css:213: .research-map-paper { grid-template-columns }
+components/paper-table/PaperTable.css:213: .research-map-paper { grid-template-areas }
+components/paper-table/PaperTable.css:213: .research-map-paper { align-items }
+components/paper-table/PaperTable.css:213: .research-map-paper { gap }
+components/paper-table/PaperTable.css:213: .research-map-paper { min-height }
+components/paper-table/PaperTable.css:213: .research-map-paper { padding }
+components/paper-table/PaperTable.css:214: .research-map-paper-open { display }
+components/paper-table/PaperTable.css:214: .research-map-paper-open { padding }
+components/paper-table/PaperTable.css:214: .research-map-paper-open { border }
+components/paper-table/PaperTable.css:214: .research-map-paper-open { background }
+components/paper-table/PaperTable.css:214: .research-map-paper-open { color }
+components/paper-table/PaperTable.css:214: .research-map-paper-open { font }
+components/paper-table/PaperTable.css:214: .research-map-paper-open { text-align }
+components/paper-table/PaperTable.css:214: .research-map-paper-open { cursor }
+components/paper-table/PaperTable.css:215: .research-map-paper-title { font-weight }
+components/paper-table/PaperTable.css:217: .research-map-paper-meta { color }
+components/paper-table/PaperTable.css:217: .research-map-paper-meta { font-size }
+components/paper-table/PaperTable.css:217: .research-map-paper-meta { white-space }
+components/paper-table/PaperTable.css:218: .research-map-why { display }
+components/paper-table/PaperTable.css:218: .research-map-why { align-items }
+components/paper-table/PaperTable.css:218: .research-map-why { gap }
+components/paper-table/PaperTable.css:218: .research-map-why { color }
+components/paper-table/PaperTable.css:218: .research-map-why { font-size }
+components/paper-table/PaperTable.css:221: @media (max-width:900px) .research-map-groups { display }
+components/paper-table/PaperTable.css:221: @media (max-width:900px) .research-map-groups { grid-template-columns }
+components/paper-table/PaperTable.css:222: @media (max-width:900px) .research-map-groups>.structured-row:nth-child(2) { border-top }
 components/paper/PaperCard.css:1: .paper-card { border }
 components/paper/PaperCard.css:1: .paper-card { border-radius }
 components/paper/PaperCard.css:1: .paper-card { padding }

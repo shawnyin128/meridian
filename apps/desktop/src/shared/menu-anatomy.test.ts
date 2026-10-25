@@ -25,10 +25,10 @@ const declared = (path: string, selector: string) => Object.fromEntries(SELECTOR
 
 /**
  * The classes of the menu surface, its items, separator and input row and the filter menu's trigger,
- * and the classes screens hand a menu or popover surface to name it.
+ * and the classes screens hand a menu or popover surface, or the filter menu's trigger, to name it.
  */
 const MENU_CLASSES = new Set(['ctxmenu', 'pickhits', 'mi', 'msep', 'mi-in', 'filter-menu',
-  'sres', 'colpop', 'review-decline', 'selection-tools', 'paper-row-menu'])
+  'sres', 'colpop', 'review-decline', 'selection-tools', 'paper-row-menu', 'read-state-filter'])
 
 /** The first class of the element a selector selects, outside `:not()` and `:has()`. */
 const subjectClass = (selector: string) => /\.(-?[_a-zA-Z][\w-]*)/
@@ -65,6 +65,17 @@ describe('菜单与候选列表的条目', () => {
       expect.objectContaining({ padding: '0', overflow: 'hidden', 'min-width': '190px' }),
       expect.objectContaining({ padding: 'var(--sp-8)', 'min-width': '240px' }),
       expect.objectContaining({ width: 'min-content', 'min-width': '0' }),
+    ])
+  })
+
+  it('筛选按钮把名字和每个选项都叠在同一格里占位,只显出当前那个,所以换选项时宽度不变', () => {
+    const sheet = join('components', 'FilterMenu.css')
+    expect([declared(sheet, '.filter-menu-value'), declared(sheet, '.filter-menu-value>*'), declared(sheet, '.filter-menu-ghost'),
+      declared(sheet, '.filter-menu-ghost::before')]).toEqual([
+      expect.objectContaining({ display: 'grid' }),
+      expect.objectContaining({ 'grid-area': '1/1' }),
+      expect.objectContaining({ visibility: 'hidden' }),
+      expect.objectContaining({ content: 'attr(data-label)' }),
     ])
   })
 

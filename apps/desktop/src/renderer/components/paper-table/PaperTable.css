@@ -187,8 +187,6 @@
  */
 .libbar .filters{align-items:center;flex-wrap:wrap;margin:0}
 .libbar .filters>.pt-dim{font-size:var(--fs-sm)}
-/* Fixed width, so the toolbar layout does not shift when the label changes from "Reading status" to "Unread" or another value. */
-.libbar .read-state-filter{width:78px;box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;white-space:nowrap}
 
 /* Research Map is a peer view of the table. It composes the shared list and segmented
  * controls; these rules only define its two-column domain layout and information hierarchy. */
