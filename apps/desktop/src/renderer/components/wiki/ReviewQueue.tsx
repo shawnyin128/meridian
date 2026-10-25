@@ -318,20 +318,22 @@ export function ReviewQueue({ proposals, failed, pending, onApply, onDecline, li
                           if (declining !== null) reasons.drop(declining)
                           if (next) reasons.set(p.id, '')
                         }}
-                        contentClassName="ctxmenu review-decline" align="start"
+                        surface="form" contentClassName="review-decline" align="start"
                         trigger={<button type="button" className="btn ghost danger" disabled={pending}>{r.decline}</button>}
                       >
-                        <FormInput
-                          appearance="field" autoFocus value={reason} placeholder={r.reasonPlaceholder}
-                          onChange={(e) => reasons.set(p.id, e.target.value)}
-                        />
-                        <button
-                          type="button" className="btn danger" disabled={pending}
-                          onClick={() => {
-                            reasons.drop(p.id)
-                            onDecline(p, reason.trim())
-                          }}
-                        >{r.declineConfirm}</button>
+                        <div className="review-decline-form">
+                          <FormInput
+                            appearance="field" autoFocus value={reason} placeholder={r.reasonPlaceholder}
+                            onChange={(e) => reasons.set(p.id, e.target.value)}
+                          />
+                          <button
+                            type="button" className="btn danger" disabled={pending}
+                            onClick={() => {
+                              reasons.drop(p.id)
+                              onDecline(p, reason.trim())
+                            }}
+                          >{r.declineConfirm}</button>
+                        </div>
                       </ActionPopover>
                       <button type="button" className={p.id === lead ? 'btn pri' : 'btn'} disabled={pending || !applicable(p)} onClick={() => onApply(p)}>{r.apply}</button>
                       {p.staleNow ? <TagButton tone="warn" onClick={() => links.openPage(p.stalePage!)}>{r.stale}</TagButton> : null}

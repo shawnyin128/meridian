@@ -19,7 +19,7 @@ const { document, MouseEvent, getComputedStyle } = globalThis as unknown as Wind
 
 const STYLES = [
   'shell/tokens.css', 'components/Tag.css', 'routes/shell.css', 'components/paper-table/PaperTable.css', 'components/PaperMetadata.css',
-  'components/CollapsibleGroup.css', 'components/chat/Chat.css', 'components/ShortTextEditor.css',
+  'components/CollapsibleGroup.css', 'components/chat/Chat.css', 'components/ActionMenu.css', 'components/ShortTextEditor.css',
 ].map((path) => readFileSync(join(import.meta.dirname, '..', 'renderer', path), 'utf8'))
 
 /**

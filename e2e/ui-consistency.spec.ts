@@ -232,7 +232,7 @@ test('六处候选下拉都能用方向键选,都是同一个壳', async ({ win 
   await expect(win.locator('.pickhits .rrow.on')).toHaveCount(1)
   await win.keyboard.press('Escape')
 
-  await expect(win.locator('.ctxmenu.drop')).toHaveCount(0)
+  await expect(win.locator('.ctxmenu--editor')).toHaveCount(0)
 })
 
 test('界面上没有文字叉、没有文字加号,主按钮一律在取消右边', async ({ win }) => {

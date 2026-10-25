@@ -144,7 +144,7 @@ export function TaskScheduleField({ mode, task, onSave, className = '', stopRowA
           onClick={stopRowActivation ? (e) => e.stopPropagation() : undefined}
         ><DateChip>{label}</DateChip></button>,
       )}
-      contentClassName="ctxmenu schedule-pop" side="bottom" align="start" sideOffset={4}
+      contentClassName="schedule-pop" side="bottom" align="start" sideOffset={4}
       contentProps={{ onEscapeKeyDown: (event) => { if (saving) event.preventDefault() } }}
     >
       {open

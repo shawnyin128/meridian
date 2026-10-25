@@ -96,7 +96,6 @@
  */
 .cmp th.th-new{padding:var(--sp-4) var(--row-table-pad)}
 
-/* The column-settings popover the gear opens: .ctxmenu supplies its shell, and the editor sits inside */
-.colpop{padding:var(--sp-8);min-width:240px}
+/* The editor in the column-settings popover the gear opens */
 .colpop .coledit{margin:0;max-width:none}
 .coledit .ch{font-size:var(--fs-base);font-weight:var(--fw-semibold);color:var(--sec)}

@@ -1,5 +1,5 @@
 /*
- * Window shell, menu, tag and property-table rules shared by every screen, copied rule by rule from
+ * Window shell, tag and property-table rules shared by every screen, copied rule by rule from
  * e2e/fixtures/platform-shell-demo.html. Selectors keep the demo's names so the two can be compared
  * side by side.
  */
@@ -35,8 +35,6 @@
 .btn:disabled{opacity:.45;cursor:default;box-shadow:none}
 /* A busy button shows live progress, so it keeps its full colour while it cannot be clicked. */
 .btn[aria-busy="true"]{opacity:1}
-/* An applied filter looks pressed; solid accent is kept for primary actions. */
-.filter-menu.on{background-color:var(--selected-strong);border-color:transparent;color:var(--on-selected)}
 .add-action{display:inline-flex;align-items:center;justify-content:center;gap:var(--sp-6);white-space:nowrap}
 .add-action>svg{width:12px;height:12px;flex:none}
 
@@ -67,40 +65,6 @@
 .direction-actions{display:flex;align-items:center;gap:var(--sp-6);flex:none}
 
 /*
- * Menus (.ctxmenu) and candidate lists (.pickhits) share one surface and one item anatomy; Radix owns
- * position and open/close. An item's highlight is inset inside the surface's padding. A Radix item
- * lights up while [data-highlighted] and a candidate row (.rrow) while it is the active row (.on);
- * neither lights up on :hover, which would paint a second row while the keyboard moves. Only a
- * button row outside a Radix menu, as in the column settings, lights up on hover; its focus is the ring.
- */
-.ctxmenu,.pickhits{background:var(--raised);border-radius:var(--r-menu);box-shadow:var(--sh-2);padding:var(--pad-menu);z-index:90;
-  --fade-paint:var(--raised);--fade-pad-top:var(--pad-menu);--fade-pad-bottom:var(--pad-menu)}
-.ctxmenu{min-width:158px}
-.mi{display:flex;align-items:center;gap:var(--sp-10);width:100%;min-height:var(--row-menu-h);padding:0 var(--row-menu-pad);border:0;border-radius:var(--r-menu-item);background:transparent;font-family:var(--sans);font-size:var(--fs-base);line-height:var(--lh-ui);text-align:left;color:var(--ink);cursor:pointer;user-select:none;transition:background var(--t-fast) var(--e-out)}
-.mi[data-highlighted],.mi.rrow.on,button.mi:not(:disabled):hover{background:var(--hover)}
-.mi.danger{color:var(--bad)}
-/* A disabled item takes the button set's disabled look. */
-.mi[data-disabled],button.mi:disabled{opacity:.45;cursor:default}
-/* A candidate with a grey second line under its title, and a row that creates what was typed */
-.mi.two-line{flex-direction:column;align-items:stretch;gap:0;padding-block:var(--sp-4)}
-.mi .rt{font-weight:var(--fw-medium)}
-.mi .rm{font-size:var(--fs-sm);color:var(--ter)}
-.mi.mk{color:var(--ter)}
-.mi.mk svg{width:11px;height:11px;flex-shrink:0}
-/* The divider between groups of items, and the label that heads a candidate list or a group in it */
-.msep{height:1px;background:var(--sep2);margin:var(--sp-4) var(--sp-6)}
-.pickhits .rh,.pickhits .rg{padding:var(--sp-6) var(--row-menu-pad) var(--sp-4);font-size:var(--fs-cap);color:var(--ter)}
-.pickhits .rg{font-weight:var(--fw-semibold)}
-/* The one checked mark, in the slot before an item's label */
-.mi .ck{width:var(--row-menu-check);display:flex;align-items:center;flex-shrink:0}
-.mi .ck>span{display:flex}
-.cki{width:13px;height:13px;vertical-align:-2px}
-.mi-key{margin-left:auto;color:var(--ter);font-size:var(--fs-cap)}
-/* Input row in a popover */
-.mi-in{padding:var(--sp-6) var(--sp-8)}
-.mi-in .form-input{width:100%}
-
-/*
  * Last header cell of both tables: the add-column + and the column-settings gear, nested icon
  * buttons in the header row's actions slot. Two 24px buttons fit in 52px once the cell's padding
  * drops from the 10px of .ptable th / .cmp th to 2px and the slot sets them side by side without its
@@ -113,12 +77,6 @@
  */
 .ptable th.th-add,.cmp th.th-add{padding:var(--sp-2)}
 .th-add .row-actions{gap:0;vertical-align:middle}
-
-/* A menu surface takes focus only to hand it to an item, and a Radix item's highlight is its focus. */
-.ctxmenu:focus-visible,.mi[data-highlighted]:focus-visible{outline:0}
-
-/* Second popover form, for rename/edit (FloatingTextEditor, project rename): the demo's .ctxmenu.drop. */
-.ctxmenu.drop{padding:0;border-radius:var(--r-menu);overflow:hidden;min-width:190px}
 
 /* A chip tag in a row of them: the paper table's tag cells and the project's links section */
 .tagchip{margin:1px var(--sp-4) 1px 0}

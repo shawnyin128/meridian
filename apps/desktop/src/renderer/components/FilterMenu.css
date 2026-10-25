@@ -1,3 +1,5 @@
 /* The word filter leads its button, as quiet as a toolbar's other labels. */
 .filter-menu-group{display:inline-flex;align-items:center;gap:var(--sp-6);min-width:0}
 .filter-menu-label{color:var(--ter);font-size:var(--fs-sm);white-space:nowrap}
+/* An applied filter looks pressed; solid accent is kept for primary actions. */
+.filter-menu.on{background-color:var(--selected-strong);border-color:transparent;color:var(--on-selected)}
