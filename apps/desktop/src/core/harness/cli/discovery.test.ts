@@ -1,0 +1,156 @@
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { afterEach, describe, expect, it } from 'vitest'
+import { checkCliConnection, discoverCli, MINIMUM_CLI_VERSIONS, resolveCliBinary } from './discovery.js'
+
+/** Answers `--version`, `auth status --json` (Claude) and `login status` (Codex, on stderr) and records each call. */
+const STAND_IN = `#!${process.execPath}
+const fs = require('node:fs')
+const argv = process.argv.slice(2)
+fs.appendFileSync(process.env.STAND_IN_RECORD, JSON.stringify({
+  argv, apiKey: process.env.ANTHROPIC_API_KEY ?? process.env.OPENAI_API_KEY ?? null,
+}) + '\\n')
+if (argv[0] === '--version') process.stdout.write(process.env.STAND_IN_VERSION)
+else if (argv[0] === 'auth') process.stdout.write(process.env.STAND_IN_STATUS)
+else { process.stderr.write(process.env.STAND_IN_STATUS); process.exitCode = Number(process.env.STAND_IN_STATUS_EXIT ?? 0) }
+`
+
+const CLAUDE_STATUS = JSON.stringify({
+  loggedIn: true, authMethod: 'claude.ai', apiProvider: 'firstParty',
+  email: 'researcher@example.org', orgName: 'Example Lab', orgId: 'org-123',
+})
+
+const folders: string[] = []
+afterEach(() => {
+  for (const folder of folders.splice(0)) rmSync(folder, { recursive: true, force: true })
+})
+
+function scratch(): string {
+  const folder = mkdtempSync(join(tmpdir(), 'meridian-discovery-test-'))
+  folders.push(folder)
+  return folder
+}
+
+function executable(path: string, body: string): string {
+  mkdirSync(join(path, '..'), { recursive: true })
+  writeFileSync(path, body)
+  chmodSync(path, 0o755)
+  return path
+}
+
+/** A home folder, an environment with no PATH, and a login shell that knows nothing. */
+function machine(answers: { version?: string; status?: string; statusExit?: number } = {}) {
+  const root = scratch()
+  const home = join(root, 'home')
+  mkdirSync(home)
+  const record = join(root, 'record.jsonl')
+  const silentShell = executable(join(root, 'shell', 'silent'), '#!/bin/sh\necho "welcome from .zshrc"\n')
+  const environment: NodeJS.ProcessEnv = {
+    HOME: home,
+    ANTHROPIC_API_KEY: 'sk-ant-must-not-cross',
+    OPENAI_API_KEY: 'sk-must-not-cross',
+    STAND_IN_RECORD: record,
+    STAND_IN_VERSION: answers.version ?? '2.1.280 (Claude Code)\n',
+    STAND_IN_STATUS: answers.status ?? CLAUDE_STATUS,
+    STAND_IN_STATUS_EXIT: String(answers.statusExit ?? 0),
+  }
+  const options = { environment, home, shell: silentShell, systemFolders: [] }
+  const calls = () => existsSync(record)
+    ? readFileSync(record, 'utf8').trim().split('\n')
+      .map((line) => JSON.parse(line) as { argv: string[]; apiKey: string | null })
+    : []
+  return { root, home, environment, options, calls }
+}
+
+describe('subscription CLI discovery', () => {
+  it('finds a CLI through the user\'s login shell when the App has no PATH', async () => {
+    const { root, options } = machine()
+    const claude = executable(join(root, 'elsewhere', 'claude'), STAND_IN)
+    const argsFile = join(root, 'shell-args')
+    const shell = executable(join(root, 'shell', 'login'), [
+      '#!/bin/sh',
+      `printf '%s\\n' "$@" > '${argsFile}'`,
+      'echo "alias claude=/somewhere/else"',
+      `echo '${claude}'`,
+    ].join('\n'))
+
+    await expect(resolveCliBinary('claude', { ...options, shell })).resolves.toBe(claude)
+    expect(readFileSync(argsFile, 'utf8').trim().split('\n')).toEqual(['-l', '-i', '-c', 'command -v claude'])
+  })
+
+  it('falls back to ~/.local/bin, then Homebrew and the npm folders, newest Node first', async () => {
+    const { root, home, options } = machine()
+    expect(options.environment['PATH']).toBeUndefined()
+    await expect(resolveCliBinary('claude', options)).resolves.toBeNull()
+
+    const brew = executable(join(root, 'opt', 'homebrew', 'bin', 'claude'), STAND_IN)
+    await expect(resolveCliBinary('claude', { ...options, systemFolders: [join(root, 'opt', 'homebrew', 'bin')] }))
+      .resolves.toBe(brew)
+    const local = executable(join(home, '.local', 'bin', 'claude'), STAND_IN)
+    await expect(resolveCliBinary('claude', { ...options, systemFolders: [join(root, 'opt', 'homebrew', 'bin')] }))
+      .resolves.toBe(local)
+
+    executable(join(home, '.nvm', 'versions', 'node', 'v9.11.2', 'bin', 'codex'), STAND_IN)
+    const newest = executable(join(home, '.nvm', 'versions', 'node', 'v22.1.0', 'bin', 'codex'), STAND_IN)
+    await expect(resolveCliBinary('codex', options)).resolves.toBe(newest)
+    const npmGlobal = executable(join(home, '.npm-global', 'bin', 'codex'), STAND_IN)
+    await expect(resolveCliBinary('codex', options)).resolves.toBe(npmGlobal)
+  })
+
+  it('reports the version and a Claude subscription sign-in, and nothing else of the status', async () => {
+    const { home, options, calls } = machine()
+    const claude = executable(join(home, '.local', 'bin', 'claude'), STAND_IN)
+
+    const found = await discoverCli('claude', options)
+
+    expect(found).toEqual({ cli: 'claude', installed: true, binary: claude, version: '2.1.280', signIn: 'subscription' })
+    expect(JSON.stringify(found)).not.toMatch(/researcher|Example Lab|org-123/)
+    expect(calls().map((call) => call.argv)).toEqual([['--version'], ['auth', 'status', '--json']])
+    expect(calls().every((call) => call.apiKey === null)).toBe(true)
+  })
+
+  it('takes a ChatGPT login of codex as a subscription, and an API-key login or none as not one', async () => {
+    const chatgpt = machine({ version: 'codex-cli 0.163.0\n', status: 'Logged in using ChatGPT\n' })
+    executable(join(chatgpt.home, '.local', 'bin', 'codex'), STAND_IN)
+    await expect(discoverCli('codex', chatgpt.options)).resolves.toMatchObject({ version: '0.163.0', signIn: 'subscription' })
+    expect(chatgpt.calls().map((call) => call.argv)).toEqual([['--version'], ['login', 'status']])
+
+    const apiKey = machine({ version: 'codex-cli 0.163.0\n', status: 'Logged in using an API key - sk-proj-***ABCD\n' })
+    executable(join(apiKey.home, '.local', 'bin', 'codex'), STAND_IN)
+    const found = await discoverCli('codex', apiKey.options)
+    expect(found).toMatchObject({ signIn: 'other' })
+    expect(JSON.stringify(found)).not.toContain('sk-proj')
+
+    const signedOut = machine({ version: 'codex-cli 0.163.0\n', status: 'Not logged in\n', statusExit: 1 })
+    executable(join(signedOut.home, '.local', 'bin', 'codex'), STAND_IN)
+    await expect(discoverCli('codex', signedOut.options)).resolves.toMatchObject({ signIn: 'signed-out' })
+  })
+
+  it('checks the connection from installation, version and sign-in, with no model call', async () => {
+    const missing = machine()
+    await expect(checkCliConnection('claude', missing.options)).resolves.toEqual({
+      state: 'failed', reason: 'unavailable', detail: '没有找到 claude 命令', modelCalls: 0, maxOutputTokens: 1,
+    })
+
+    const old = machine({ version: '2.0.9 (Claude Code)\n' })
+    executable(join(old.home, '.local', 'bin', 'claude'), STAND_IN)
+    await expect(checkCliConnection('claude', old.options)).resolves.toMatchObject({
+      state: 'failed', reason: 'configuration',
+      detail: `claude 2.0.9 版本过旧，需要 ${MINIMUM_CLI_VERSIONS.claude} 或更新`,
+    })
+
+    const apiKey = machine({ status: JSON.stringify({ loggedIn: true, authMethod: 'api_key' }) })
+    executable(join(apiKey.home, '.local', 'bin', 'claude'), STAND_IN)
+    await expect(checkCliConnection('claude', apiKey.options)).resolves.toMatchObject({
+      state: 'failed', reason: 'authentication', detail: 'claude 没有用 Claude 订阅登录', modelCalls: 0,
+    })
+
+    const signedIn = machine({ version: '2.1.300 (Claude Code)\n' })
+    executable(join(signedIn.home, '.local', 'bin', 'claude'), STAND_IN)
+    await expect(checkCliConnection('claude', signedIn.options)).resolves.toEqual({
+      state: 'connected', modelCalls: 0, maxOutputTokens: 1,
+    })
+    expect(signedIn.calls().map((call) => call.argv)).toEqual([['--version'], ['auth', 'status', '--json']])
+  })
+})

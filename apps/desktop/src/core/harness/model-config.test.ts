@@ -62,8 +62,7 @@ describe('Harness model configuration', () => {
       baseUrl: 'http://127.0.0.1:8000/v1', model: 'local-2',
       authentication: 'api-key',
     })
-    expect((await config.runtime()).apiKey).toBe('keep-me')
-    expect((await config.runtime()).protocol).toBe('chat-completions')
+    expect(await config.runtime()).toMatchObject({ apiKey: 'keep-me', protocol: 'chat-completions' })
     expect((await config.update({
       provider: 'openai-compatible', protocol: 'chat-completions',
       baseUrl: 'http://127.0.0.1:8000/v1', model: 'local-2',

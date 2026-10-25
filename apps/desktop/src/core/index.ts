@@ -135,7 +135,7 @@ import { createPluginVersionCheck } from './extensions/latest.js'
 import { openSemanticKeyStore } from './net/semantic-key.js'
 import { deleteColourTheme, listColourThemes, saveColourTheme } from './colour-themes.js'
 import {
-  createChatHarnessRunner, createChatService, createHarnessCostGate,
+  checkCliConnection, createChatHarnessRunner, createChatService, createHarnessCostGate,
   createHarnessModelConfig, createHarnessProposalAudit,
   createMainCredentialVault, createPaperWikiHarnessRunner,
 } from './harness/index.js'
@@ -246,6 +246,7 @@ const paperWikiHarness = vaultRoot === undefined ? null : createPaperWikiHarness
 const chatHarness = createChatHarnessRunner({
   store,
   model: harnessModel,
+  checkCli: (cli) => checkCliConnection(cli),
   onLog: (line) => console.error(`[harness] ${line}`),
 })
 const chatService = createChatService({ store, model: harnessModel, runner: chatHarness })

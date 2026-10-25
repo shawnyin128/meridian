@@ -1,5 +1,7 @@
 import { spawn } from 'node:child_process'
-import { delimiter, dirname } from 'node:path'
+import { mkdtempSync, rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { delimiter, dirname, join } from 'node:path'
 
 /** Variables that make a CLI bill an API account instead of the user's subscription. */
 const API_KEY_VARIABLES = ['ANTHROPIC_API_KEY', 'ANTHROPIC_AUTH_TOKEN', 'OPENAI_API_KEY'] as const
@@ -20,6 +22,16 @@ export class CliRunError extends Error {
 }
 
 export type ChildOutcome = { code: number | null; stdout: string; stderr: string }
+
+/** Run `use` in a fresh empty folder under the system's temporary folder, removed once `use` settles. */
+export async function inTemporaryFolder<T>(use: (folder: string) => Promise<T>): Promise<T> {
+  const folder = mkdtempSync(join(tmpdir(), 'meridian-cli-'))
+  try {
+    return await use(folder)
+  } finally {
+    rmSync(folder, { recursive: true, force: true })
+  }
+}
 
 /**
  * The environment a CLI at `binary` runs in: `environment` without the API-key variables, and with

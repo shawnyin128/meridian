@@ -1,8 +1,7 @@
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import type { HarnessCli } from '../../../shared/contract.js'
-import { type ChildOutcome, cliEnvironment, CliRunError, runChild } from './child.js'
+import { type ChildOutcome, cliEnvironment, CliRunError, inTemporaryFolder, runChild } from './child.js'
 
 /** Codex features that give the model a tool or load outside code; every run turns them all off. */
 export const CODEX_DISABLED_FEATURES = [
@@ -161,7 +160,7 @@ function codexResult(outcome: ChildOutcome, outputFile: string): Omit<CliResult,
 
 /**
  * The runner that starts the CLI `binary` resolves, in `environment` without its API-key
- * variables, inside a fresh empty temporary folder that it removes afterwards.
+ * variables, inside an empty folder of a fresh temporary folder that it removes afterwards.
  */
 export function createCliRunner(deps: {
   binary: (cli: HarnessCli) => Promise<string | null>
@@ -171,8 +170,7 @@ export function createCliRunner(deps: {
   return async (call) => {
     const binary = await deps.binary(call.cli)
     if (binary === null) throw new CliRunError('unavailable', `没有找到 ${call.cli} 命令`)
-    const root = mkdtempSync(join(tmpdir(), 'meridian-cli-'))
-    try {
+    return inTemporaryFolder(async (root) => {
       const work = join(root, 'work')
       mkdirSync(work)
       const schema = strictSchema(call.schema)
@@ -189,8 +187,6 @@ export function createCliRunner(deps: {
       const durationMs = Date.now() - started
       const result = call.cli === 'claude' ? claudeResult(outcome) : codexResult(outcome, files.output)
       return { ...result, durationMs }
-    } finally {
-      rmSync(root, { recursive: true, force: true })
-    }
+    })
   }
 }

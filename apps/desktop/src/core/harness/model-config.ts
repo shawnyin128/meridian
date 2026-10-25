@@ -1,8 +1,8 @@
 import { chmodSync, existsSync, mkdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import type {
-  CallFailure, HarnessModelProfile, HarnessModelProtocol, HarnessModelProvider, HarnessModelSettings,
-  HarnessModelSettingsUpdate,
+  CallFailure, HarnessCliModel, HarnessModelProfile, HarnessModelProtocol, HarnessModelProvider,
+  HarnessModelSettings, HarnessModelSettingsUpdate,
 } from '../../shared/contract.js'
 import { HarnessModelSettingsUpdateSchema } from '../../shared/contract.js'
 import { CallError, callFailure } from '../call-error.js'
@@ -70,7 +70,8 @@ type LoadedConfig = {
   migrated?: boolean
 }
 
-export type HarnessRuntimeModel = {
+/** A model reached through a LangChain provider, with its API key when it needs one. */
+type HarnessApiModel = {
   provider: HarnessModelProvider
   protocol: HarnessModelProtocol
   baseUrl: string
@@ -78,6 +79,9 @@ export type HarnessRuntimeModel = {
   authentication: 'api-key' | 'none'
   apiKey?: string
 }
+
+/** The model a Harness run uses: an API provider, or the user's own signed-in CLI. */
+export type HarnessRuntimeModel = HarnessApiModel | HarnessCliModel
 
 const normalizeBaseUrl = (baseUrl: string) => baseUrl.replace(/\/+$/, '')
 
