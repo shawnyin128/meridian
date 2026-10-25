@@ -526,7 +526,9 @@ registerHandler('harness.checkModelConnection', (params) => {
 registerHandler('harness.updateSubscription', (params) =>
   harnessModel.updateSubscription(HarnessUpdateSubscriptionParamsSchema.parse(params)))
 registerHandler('harness.subscriptionStatus', (params) =>
-  subscriptionStatus(HarnessSubscriptionStatusParamsSchema.parse(params).cli, (cli) => discoverCli(cli), listCliModels))
+  subscriptionStatus(HarnessSubscriptionStatusParamsSchema.parse(params).cli, {
+    discover: (cli) => discoverCli(cli), listModels: listCliModels, onLog: (line) => console.error(`[harness] ${line}`),
+  }))
 registerHandler('harness.applyPaperWiki', (params) =>
   harness.applyPaperWiki(HarnessApplyPaperWikiParamsSchema.parse(params)))
 registerHandler('harness.rejectPaperWiki', (params) =>

@@ -156,6 +156,7 @@ export const settings = {
       copySignIn: (name: string) => `Copy the ${name} sign-in command`,
       otherModel: (name: string) => `Use ${name}`,
       missing: 'Not found',
+      unsupported: 'Unsupported version',
       signIn: {
         subscription: 'Signed in with subscription', other: 'Not signed in with subscription', 'signed-out': 'Signed out',
         unknown: 'Sign-in unreadable',

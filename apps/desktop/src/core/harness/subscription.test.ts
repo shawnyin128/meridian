@@ -8,6 +8,7 @@ import { listCliModels, subscriptionStatus } from './subscription.js'
 /** A stand-in for CLI discovery that answers `found` and records which CLI it was asked for. */
 const discovery = (found: CliDiscovery) => vi.fn(async () => found)
 const noModels = vi.fn(async () => [])
+const noLog = vi.fn()
 
 /**
  * A stand-in `codex` that records its arguments, working folder and environment in `<folder>/seen`
@@ -28,7 +29,7 @@ describe('subscription status', () => {
   it('reports a CLI discovery does not find as missing, listing no models', async () => {
     const discover = discovery({ cli: 'codex', installed: false })
 
-    await expect(subscriptionStatus('codex', discover, noModels)).resolves.toEqual({ state: 'missing' })
+    await expect(subscriptionStatus('codex', { discover, listModels: noModels, onLog: noLog })).resolves.toEqual({ state: 'missing' })
     expect(discover).toHaveBeenCalledWith('codex')
     expect(noModels).not.toHaveBeenCalled()
   })
@@ -37,9 +38,13 @@ describe('subscription status', () => {
     'reports an installed CLI signed in as %s with its version and models and never its path',
     async (signIn) => {
       const listModels = vi.fn(async () => ['opus'])
-      const status = await subscriptionStatus('claude', discovery({
-        cli: 'claude', installed: true, binary: '/Users/someone/.local/bin/claude', version: '2.1.280', signIn,
-      }), listModels)
+      const status = await subscriptionStatus('claude', {
+        discover: discovery({
+          cli: 'claude', installed: true, binary: '/Users/someone/.local/bin/claude', version: '2.1.280', missingFlags: [], signIn,
+        }),
+        listModels,
+        onLog: noLog,
+      })
 
       expect(status).toEqual({ state: 'found', version: '2.1.280', signIn, models: ['opus'] })
       expect(listModels).toHaveBeenCalledWith('claude', '/Users/someone/.local/bin/claude')
@@ -47,9 +52,31 @@ describe('subscription status', () => {
   )
 
   it('reports an installed CLI whose version could not be read with no version', async () => {
-    await expect(subscriptionStatus('claude', discovery({
-      cli: 'claude', installed: true, binary: '/opt/homebrew/bin/claude', version: null, signIn: 'subscription',
-    }), noModels)).resolves.toEqual({ state: 'found', version: null, signIn: 'subscription', models: [] })
+    await expect(subscriptionStatus('claude', {
+      discover: discovery({
+        cli: 'claude', installed: true, binary: '/opt/homebrew/bin/claude', version: null, missingFlags: [], signIn: 'subscription',
+      }),
+      listModels: noModels,
+      onLog: noLog,
+    })).resolves.toEqual({ state: 'found', version: null, signIn: 'subscription', models: [] })
+  })
+
+  it('reports a CLI whose help lacks a flag the runner passes as unsupported with its version, logging the flags it lacks', async () => {
+    const onLog = vi.fn()
+    const listModels = vi.fn(async () => ['opus'])
+
+    const status = await subscriptionStatus('claude', {
+      discover: discovery({
+        cli: 'claude', installed: true, binary: '/opt/homebrew/bin/claude', version: '2.0.1',
+        missingFlags: ['--json-schema', '--strict-mcp-config'], signIn: 'subscription',
+      }),
+      listModels,
+      onLog,
+    })
+
+    expect(status).toEqual({ state: 'unsupported', version: '2.0.1' })
+    expect(onLog).toHaveBeenCalledWith(expect.stringMatching(/claude 2\.0\.1.*--json-schema, --strict-mcp-config/))
+    expect(listModels).not.toHaveBeenCalled()
   })
 })
 

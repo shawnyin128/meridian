@@ -341,6 +341,12 @@ export function ModelSettings({ onCopy }: { onCopy: (text: string) => Promise<bo
           <LoadingPlaceholder shape="lines" count={1} />
         ) : cliStatus.state === 'missing' ? (
           <InlineMessage tone="warning" variant="line">{m.settings.model.subscription.missing}</InlineMessage>
+        ) : cliStatus.state === 'unsupported' ? (
+          <InlineMessage tone="warning" variant="line">
+            {cliStatus.version === null
+              ? m.settings.model.subscription.unsupported
+              : `${cliStatus.version} · ${m.settings.model.subscription.unsupported}`}
+          </InlineMessage>
         ) : (
           <span>{cliStatus.version === null ? CLI_NAMES[cli] : `${CLI_NAMES[cli]} ${cliStatus.version}`}</span>
         )}
@@ -489,7 +495,8 @@ export function ModelSettings({ onCopy }: { onCopy: (text: string) => Promise<bo
             onClick={() => { void testConnection() }}
           >{m.settings.model.connection.action}</Button>
           <CommitActions
-            place="foot" saving={saving} canSave={cli !== null || !compatibleTemplatePending} done={saved}
+            place="foot" saving={saving} done={saved}
+            canSave={cli !== null ? cliStatus?.state !== 'unsupported' : !compatibleTemplatePending}
             saveLabel={m.settings.model.save} busyLabel={m.settings.model.saving}
             onSave={() => { void save() }}
           />

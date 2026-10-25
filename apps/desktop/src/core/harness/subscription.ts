@@ -9,17 +9,22 @@ const LIST_TIMEOUT_MS = 10_000
 const MAX_MODELS = 50
 
 /**
- * What Settings shows of subscription CLI `cli`: missing, as `discover` finds it, or installed with
- * its version, how it is signed in and the models `listModels` finds it accepts. The binary's path
- * stays in Core.
+ * What Settings shows of subscription CLI `cli`, as `discover` finds it: missing; unsupported, with
+ * its version, when its help lacks a flag the runner passes, which flags going only to `onLog`; or
+ * installed with its version, how it is signed in and the models `listModels` finds it accepts. The
+ * binary's path stays in Core.
  */
-export async function subscriptionStatus(
-  cli: HarnessCli,
-  discover: (cli: HarnessCli) => Promise<CliDiscovery>,
-  listModels: (cli: HarnessCli, binary: string) => Promise<string[]>,
-): Promise<HarnessSubscriptionStatus> {
+export async function subscriptionStatus(cli: HarnessCli, { discover, listModels, onLog }: {
+  discover: (cli: HarnessCli) => Promise<CliDiscovery>
+  listModels: (cli: HarnessCli, binary: string) => Promise<string[]>
+  onLog: (line: string) => void
+}): Promise<HarnessSubscriptionStatus> {
   const found = await discover(cli)
   if (!found.installed) return { state: 'missing' }
+  if (found.missingFlags.length > 0) {
+    onLog(`${cli} ${found.version ?? '(no version)'}: its help lists no ${found.missingFlags.join(', ')}`)
+    return { state: 'unsupported', version: found.version }
+  }
   return { state: 'found', version: found.version, signIn: found.signIn, models: await listModels(cli, found.binary) }
 }
 

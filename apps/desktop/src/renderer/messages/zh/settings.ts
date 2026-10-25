@@ -149,6 +149,7 @@ export const settings = {
       copySignIn: (name: string) => `复制 ${name} 登录命令`,
       otherModel: (name: string) => `使用 ${name}`,
       missing: '没有找到',
+      unsupported: '版本不受支持',
       signIn: { subscription: '已用订阅登录', other: '未用订阅登录', 'signed-out': '未登录', unknown: '读不出登录状态' },
       defaultModel: '默认',
     },

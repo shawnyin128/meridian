@@ -1444,6 +1444,28 @@ describe('Settings', () => {
     expect(modelRows(dialog).map(([label]) => label)).toEqual(['模型服务', 'CLI', '模型 ID'])
   })
 
+  it.each([
+    ['2.0.1', '2.0.1 · 版本不受支持'],
+    [null, '版本不受支持'],
+  ] as const)('CLI 不支持 Meridian 要的选项时 CLI 一行和没找到一样是一条提醒行，带上版本 %s；没有登录一行，也不能存成在用的模型', async (version, text) => {
+    api.subscriptionStatus.mockResolvedValueOnce({ state: 'unsupported', version })
+    api.requestedCategory = 'model'
+    await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
+    const dialog = document.querySelector('.setdlg')!
+
+    await pick(dialog, '模型服务', 'Claude 订阅')
+
+    const line = dialog.querySelector('.model-settings-card .field-row .inline-message')
+    expect([line?.classList.contains('inline-message--line'), line?.classList.contains('inline-message--warning'), line?.textContent])
+      .toEqual([true, true, text])
+    expect(modelRows(dialog).map(([label]) => label)).toEqual(['模型服务', 'CLI', '模型 ID'])
+    expect(dialog.querySelector('.model-settings-card .command-tray')).toBeNull()
+    expect(dialog.querySelector<HTMLButtonElement>('.service-actions .btn.pri')?.disabled).toBe(true)
+
+    await pick(dialog, '模型服务', 'OpenAI')
+    expect(dialog.querySelector<HTMLButtonElement>('.service-actions .btn.pri')?.disabled).toBe(false)
+  })
+
   it('读不出 CLI 的版本时 CLI 一行只写它的名字', async () => {
     api.subscriptionStatus.mockResolvedValueOnce({ state: 'found', version: null, signIn: 'subscription', models: [] })
     api.requestedCategory = 'model'
