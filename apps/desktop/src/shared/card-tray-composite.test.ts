@@ -21,8 +21,8 @@ const STYLES = ['CardTray.css', 'FoldCaret.css', 'FoldToggle.css']
 const ROW = `
   <div class="card-tray card-tray--row"><div class="card-tray-head"><div class="fold-toggle fold-toggle--composite">
     <button class="fold-toggle-press card-tray-toggle" type="button" aria-expanded="false" aria-labelledby="s"></button>
-    <span class="fold-caret is-closed"></span>
     <span class="fold-toggle-label" id="s"><span class="fade-text card-tray-summary">项目「<a class="entity-link" href="#project:draft">draft 效率</a>」· 改了字段</span></span>
+    <span class="fold-caret is-closed"></span>
   </div></div></div>`
 
 describe('composite 行的展开钮', () => {

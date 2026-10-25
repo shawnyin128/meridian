@@ -26,7 +26,7 @@ describe('FoldCaret', () => {
     host.remove()
   })
 
-  it('读屏跳过它；开着时没有收起的标记，收起时带上，转向由它自己的样式表画', () => {
+  it('读屏跳过它；开着时没有收起的标记，收起时带上', () => {
     act(() => root.render(<FoldCaret open />))
     const caret = host.querySelector<HTMLElement>('.fold-caret')!
     expect([caret.getAttribute('aria-hidden'), caret.className]).toEqual(['true', 'fold-caret'])
@@ -52,7 +52,7 @@ describe('FoldToggle', () => {
     host.remove()
   })
 
-  it('带标签的折叠钮是一个按钮：箭头在前、标签在后，报出展开与否和它折叠的区域', () => {
+  it('带标签的折叠钮是一个按钮：标签在前、箭头跟在后面，报出展开与否和它折叠的区域', () => {
     const onToggle = vi.fn()
     const render = (open: boolean) => act(() => root.render(
       <FoldToggle open={open} onToggle={onToggle} controls="group-body" className="group-toggle">主题 · 3</FoldToggle>,
@@ -61,8 +61,7 @@ describe('FoldToggle', () => {
     const toggle = host.querySelector<HTMLButtonElement>('button.fold-toggle')!
     expect(toggle.className).toBe('fold-toggle group-toggle')
     expect([toggle.getAttribute('aria-expanded'), toggle.getAttribute('aria-controls')]).toEqual(['true', 'group-body'])
-    expect(toggle.firstElementChild!.matches('.fold-caret')).toBe(true)
-    expect(toggle.textContent).toBe('主题 · 3')
+    expect([toggle.firstChild!.textContent, toggle.lastElementChild!.className]).toEqual(['主题 · 3', 'fold-caret'])
     expect(toggle.querySelector('.fold-caret')!.classList.contains('is-closed')).toBe(false)
     act(() => toggle.click())
     expect(onToggle).toHaveBeenCalledOnce()
@@ -110,7 +109,7 @@ describe('FoldToggle', () => {
     const box = host.querySelector<HTMLElement>('.fold-toggle')!
     const toggle = box.querySelector<HTMLButtonElement>('button')!
     const link = host.querySelector('a')!
-    expect([...box.children].map((child) => child.className)).toEqual(['fold-toggle-press row-toggle', 'fold-caret is-closed', 'fold-toggle-label'])
+    expect([...box.children].map((child) => child.className)).toEqual(['fold-toggle-press row-toggle', 'fold-toggle-label', 'fold-caret is-closed'])
     expect(document.getElementById(toggle.getAttribute('aria-labelledby')!)!.textContent).toBe('改了 draft')
     expect([toggle.getAttribute('aria-expanded'), toggle.getAttribute('aria-controls')]).toEqual(['false', 'diff'])
     expect(toggle.contains(link)).toBe(false)
