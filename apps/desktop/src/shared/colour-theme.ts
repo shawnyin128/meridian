@@ -316,7 +316,9 @@ function contrastChecks(mode: ColourMode): ContrastCheck[] {
     ...over('accent', '--accent-mark', marked, MARK),
     ...over('error', '--bad', [['--content'], ['--card']], MARK),
     ...over('error', '--on-accent', solid('--bad-solid')),
-    ...over('error', '--bad-text', [...CHIPS, ['--content', '--tint-bad'], ['--card', '--tint-bad'], ['--card'], ['--raised'], ...MESSAGE_BOX]),
+    ...over('error', '--bad-text', [
+      ...CHIPS, ['--content', '--tint-bad'], ['--card', '--tint-bad'], ['--card'], ['--raised'], ['--raised', '--hover'], ...MESSAGE_BOX,
+    ]),
     ...over('warning', '--warn-text', [...CHIPS, ...MESSAGE_BOX]),
     ...over('done', '--good-text', [...CHIPS, ...MESSAGE_BOX]),
     ...over('highlight', '--ink', [['--card', HIGHLIGHTED], ['--content', HIGHLIGHTED]]),
@@ -398,6 +400,30 @@ function repaired(modules: ColourThemeModules, mode: ColourMode): ColourValues {
 export function deriveColourTokens(modules: ColourThemeModules, mode: ColourMode): Record<ColourToken | ShadowToken, string> {
   const values = Object.entries(repaired(modules, mode)).map(([token, colour]) => [token, cssOf(colour)])
   return { ...Object.fromEntries(values) as Record<ColourToken, string>, ...shadows(modules, mode) }
+}
+
+/** The colour tokens the system's Increase Contrast changes. */
+export type IncreasedContrastToken = '--sep' | '--sep2' | '--sep-strong' | '--ter'
+
+/**
+ * The colour tokens that change while the system's Increase Contrast is on, from the module colours of
+ * one mode: the separator steps toward the secondary ink until it reaches 3:1 on the canvas, a card and
+ * the window, the focused field's border until it reaches 4.5:1 there, the translucent separator
+ * becomes that separator, and tertiary text becomes the secondary.
+ * @returns Each of those tokens mapped to its CSS value.
+ */
+export function increasedContrastTokens(modules: ColourThemeModules, mode: ColourMode): Record<IncreasedContrastToken, string> {
+  const values = repaired(modules, mode)
+  const grounds = [values['--content'], values['--card'], values['--window']]
+  const toward = (min: number): Colour => {
+    for (let p = 100; p >= 0; p -= 1) {
+      const candidate = rounded(mix(parse(modules.separator), p, parse(modules.inkSecondary)))
+      if (grounds.every((ground) => contrastRatio(candidate, ground) >= min)) return candidate
+    }
+    return parse(modules.inkSecondary)
+  }
+  const separator = cssOf(toward(MARK))
+  return { '--sep': separator, '--sep2': separator, '--sep-strong': cssOf(toward(TEXT)), '--ter': cssOf(values['--sec']) }
 }
 
 /** A contrast target the derived tokens miss, with the ratio they reach. */

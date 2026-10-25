@@ -186,6 +186,16 @@
   --sh-paper:0 4px 22px rgba(0,0,0,.5);
 }
 
+/*
+ * With the system's Increase Contrast on, edges and tertiary text step toward the ink: a separator reaches
+ * 3:1 on the canvas, a card and the window, the focused field's border 4.5:1, and tertiary text is the
+ * secondary. colour-theme.ts derives the same steps for every other theme (increasedContrastTokens).
+ */
+@media (prefers-contrast:more){
+  :root:not([data-theme="dark"]){--sep:#8f8f8f;--sep2:#8f8f8f;--sep-strong:#717171;--ter:#555555}
+  [data-theme="dark"]{--sep:#5d6c83;--sep2:#5d6c83;--sep-strong:#7b899e;--ter:#aab6c8}
+}
+
 @media (min-width:1600px){:root{--pagew:1320px;--prosew:1200px;--chatw:880px;--cardw:280px;--card-tt:var(--fs-item-title);--card-fs:var(--fs-sm);--card-lines:3}}
 @media (min-width:2000px){:root{--pagew:1560px;--prosew:1320px;--chatw:1000px;--cardw:320px;--card-tt:var(--fs-read);--card-fs:var(--fs-base);--card-lines:3}}
 

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { BUILT_IN_COLOUR_THEMES, DEFAULT_COLOUR_THEME } from '../../shared/colour-theme.js'
+import { BUILT_IN_COLOUR_THEMES, DEFAULT_COLOUR_THEME, increasedContrastTokens } from '../../shared/colour-theme.js'
 import {
   APPEARANCE_STORAGE_KEY,
   COLOUR_THEME_CACHE_KEY,
@@ -11,9 +11,12 @@ import {
   setColourThemePreference,
 } from './appearance.js'
 
-/** The rules the applied colour theme added, as `<selector> --content:<value>`. */
-const themeRules = (): string[] => [...(document.getElementById('meridian-colour-theme')?.textContent ?? '').split('\n')]
-  .filter((rule) => rule !== '').map((rule) => `${rule.slice(0, rule.indexOf('{'))} ${/--content:[^;}]+/.exec(rule)![0]}`)
+/** The lines of the style element the applied colour theme added. */
+const themeLines = (): string[] => (document.getElementById('meridian-colour-theme')?.textContent ?? '').split('\n')
+  .filter((rule) => rule !== '')
+/** The token rules the applied colour theme added, as `<selector> --content:<value>`. */
+const themeRules = (): string[] => themeLines().filter((rule) => !rule.startsWith('@media'))
+  .map((rule) => `${rule.slice(0, rule.indexOf('{'))} ${/--content:[^;}]+/.exec(rule)![0]}`)
 
 describe('appearance preference', () => {
   let systemDark = false
@@ -79,6 +82,15 @@ describe('appearance preference', () => {
     setAppearancePreference('light')
     expect(document.documentElement.dataset.colourTheme).toBe('luodian')
     expect(themeRules()).toHaveLength(2)
+  })
+
+  it('with the system\'s Increase Contrast on, a theme\'s stronger edges and tertiary text follow the rules they override, in each mode', () => {
+    setColourThemePreference(BUILT_IN_COLOUR_THEMES.find((theme) => theme.id === 'luodian')!)
+    const theme = BUILT_IN_COLOUR_THEMES.find((held) => held.id === 'luodian')!
+    const rule = (selector: string, mode: 'light' | 'dark') => `${selector}{${Object.entries(increasedContrastTokens(theme[mode], mode))
+      .map(([name, value]) => `${name}:${value}`).join(';')}}`
+    expect(themeLines().at(-1)).toBe(`@media (prefers-contrast:more){${rule(':root:root:not([data-theme="dark"])', 'light')}${
+      rule(':root:root[data-theme="dark"]', 'dark')}}`)
   })
 
   it('persists a colour theme, and today\'s palette removes its rules so tokens.css alone applies', () => {

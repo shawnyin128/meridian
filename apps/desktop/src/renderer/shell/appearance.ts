@@ -1,4 +1,6 @@
-import { BUILT_IN_COLOUR_THEMES, DEFAULT_COLOUR_THEME, deriveColourTokens } from '../../shared/colour-theme.js'
+import {
+  BUILT_IN_COLOUR_THEMES, DEFAULT_COLOUR_THEME, deriveColourTokens, increasedContrastTokens,
+} from '../../shared/colour-theme.js'
 import type { ColourTheme } from '../../shared/contract.js'
 
 export type AppearancePreference = 'light' | 'dark' | 'system'
@@ -100,9 +102,14 @@ export function applyColourTheme(theme: ColourTheme): void {
     const tokens = Object.entries(deriveColourTokens(theme[mode], mode)).map(([name, value]) => `${name}:${value}`)
     return `${mode === 'dark' ? ':root:root[data-theme="dark"]' : ':root:root'}{${tokens.join(';')}}`
   })
+  // With Increase Contrast on, the theme's stronger edges and tertiary text follow, after the rules they override.
+  const increased = (['light', 'dark'] as const).map((mode) => {
+    const tokens = Object.entries(increasedContrastTokens(theme[mode], mode)).map(([name, value]) => `${name}:${value}`)
+    return `${mode === 'dark' ? ':root:root[data-theme="dark"]' : ':root:root:not([data-theme="dark"])'}{${tokens.join(';')}}`
+  })
   const style = document.createElement('style')
   style.id = COLOUR_THEME_STYLE
-  style.textContent = rules.join('\n')
+  style.textContent = [...rules, `@media (prefers-contrast:more){${increased.join('')}}`].join('\n')
   document.head.append(style)
   root.dataset.colourTheme = theme.id
 }
