@@ -190,10 +190,14 @@ function hoverTip(selector: string): [string | undefined, string | undefined] {
   return [tip?.firstChild?.textContent ?? undefined, tip?.querySelector('.tooltip-key')?.textContent ?? undefined]
 }
 
-/** The button that activates a row: the row itself, or the first child of a row that holds other controls. */
+/**
+ * The button that activates a row: the row itself, the label button of a row that holds other
+ * controls, or the first child of a section heading.
+ */
 function controlOf(selector: string): HTMLElement {
   const row = document.querySelector<HTMLElement>(selector)!
-  const control = row.tagName === 'BUTTON' ? row : row.firstElementChild as HTMLElement
+  const control = row.tagName === 'BUTTON' ? row
+    : row.querySelector<HTMLElement>(':scope > .nav-row-label') ?? row.firstElementChild as HTMLElement
   expect(control.tagName, selector).toBe('BUTTON')
   return control
 }
@@ -505,10 +509,25 @@ describe('AppShell keyboard navigation', () => {
     expect(document.querySelector('#sect-chats')!.classList.contains('closed')).toBe(false)
   })
 
+  it('every sidebar fold is the shared fold toggle: the caret leads its label and the toggle names the group it folds', () => {
+    const folds = [
+      [controlOf('[data-sect="inbox"]'), 'sect-inbox'], [controlOf('[data-sect="chats"]'), 'sect-chats'],
+      [controlOf('[data-sect="lib"]'), 'sect-lib'], [controlOf('[data-sect="research"]'), 'sect-research'],
+      [document.querySelector('#rowInboxAll')!.firstElementChild, 'g-inboxsub'],
+      [document.querySelector('[data-inbox="discovery"]')!.firstElementChild, 'g-discoverysub'],
+      [document.querySelector('[data-disc="topics"]'), 'g-topics'], [document.querySelector('[data-disc="authors"]'), 'g-authors'],
+    ] as const
+    for (const [toggle, group] of folds) {
+      expect([toggle!.matches('button.fold-toggle'), toggle!.firstElementChild!.matches('.fold-caret')], group).toEqual([true, true])
+      expect(toggle!.getAttribute('aria-controls'), group).toBe(group)
+      expect(document.getElementById(group), group).not.toBeNull()
+    }
+  })
+
   it('folds the inbox groups from buttons without leaving the current screen', () => {
     const groups = [
-      ['#rowInboxAll .sh-caret', '#g-inboxsub'],
-      ['[data-inbox="discovery"] .sh-caret', '#g-discoverysub'],
+      ['#rowInboxAll .fold-toggle', '#g-inboxsub'],
+      ['[data-inbox="discovery"] .fold-toggle', '#g-discoverysub'],
       ['[data-disc="topics"]', '#g-topics'],
       ['[data-disc="authors"]', '#g-authors'],
     ] as const
@@ -599,7 +618,7 @@ describe('AppShell sidebar rows', () => {
   })
 
   it('folds the delivery groups from inline icon buttons that state whether they are open', () => {
-    for (const selector of ['#rowInboxAll .sh-caret', '[data-inbox="discovery"] .sh-caret']) {
+    for (const selector of ['#rowInboxAll .fold-toggle', '[data-inbox="discovery"] .fold-toggle']) {
       const toggle = document.querySelector<HTMLElement>(selector)!
       expect(toggle.classList.contains('icbtn'), selector).toBe(true)
       expect(toggle.classList.contains('xs'), selector).toBe(true)

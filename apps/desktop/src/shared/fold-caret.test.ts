@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { readFileSync } from 'node:fs'
+import { readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
@@ -13,7 +13,39 @@ const { document, getComputedStyle } = globalThis as unknown as Window
 
 const RENDERER = join(import.meta.dirname, '..', 'renderer')
 
+/** Every renderer source and stylesheet except tests, as paths relative to the renderer with `/` separators. */
+const FILES = readdirSync(RENDERER, { recursive: true, encoding: 'utf8' })
+  .map((path) => path.split('\\').join('/'))
+  .filter((path) => /\.(tsx?|css)$/.test(path) && !/\.test\.tsx?$/.test(path))
+  .sort()
 const read = (path: string) => readFileSync(join(RENDERER, path), 'utf8')
+
+/** The fold caret's chevron: a stroke pointing down from 6,9 through 12,15 to 18,9. */
+const CHEVRON = /M\s*6[\s,]+9\s*l\s*6[\s,]+6\s+6[\s,]*-6/
+/** A quarter turn, the way a fold caret points at its label while folded. */
+const QUARTER_TURN = /rotate\(\s*[+-]?90deg\s*\)/
+
+/** Files that draw the same chevron for something other than a fold, each with what it draws. */
+const NOT_FOLDS: Record<string, string> = {
+  'components/icons.tsx': 'IconChevron, the chevron of a picker that opens a menu, which never turns',
+  'components/paper-table/PaperTable.tsx': 'the sort arrow of the sorted column\'s heading',
+}
+
+describe('折叠只有一种箭头', () => {
+  it('折叠箭头的笔画只有 FoldCaret 画，别处同样的笔画都不是折叠', () => {
+    const drawing = FILES.filter((path) => CHEVRON.test(read(path)))
+    expect(drawing).toEqual(['components/FoldCaret.tsx', ...Object.keys(NOT_FOLDS)].sort())
+  })
+
+  it('只有 FoldCaret 的样式表把东西转四分之一圈', () => {
+    expect(FILES.filter((path) => QUARTER_TURN.test(read(path)))).toEqual(['components/FoldCaret.css'])
+  })
+
+  it('选择器的箭头只用在选择器上，不拿来当折叠箭头', () => {
+    const using = FILES.filter((path) => path !== 'components/icons.tsx' && /\bIconChevron\b/.test(read(path)))
+    expect(using).toEqual(['components/FieldPickers.tsx'])
+  })
+})
 
 describe('折叠箭头的样子和动效', () => {
   const caret = (open: boolean) => {

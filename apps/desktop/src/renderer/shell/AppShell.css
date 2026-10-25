@@ -96,13 +96,6 @@
 .cmdk-title{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
 
 .sb-h{display:flex;align-items:center;gap:var(--sp-4);font-size:var(--fs-label);font-weight:var(--fw-label);color:var(--ter);padding:0 var(--row-nav-pad);margin:var(--sp-12) 0 var(--sp-4)}
-.sb-h.chats-h{display:flex;align-items:center}
-.sect-h{cursor:pointer;user-select:none}
-/* A fold caret always shows, in a row in the tone of the row's caret buttons; a closed group's caret turns to point at its title. */
-span.sh-caret{display:grid;place-items:center;transition:transform var(--t-fast) var(--e-out)}
-.srow span.sh-caret{color:var(--sec)}
-span.sh-caret svg{width:9px;height:9px}
-.sect-h.closed .sh-caret{transform:rotate(-90deg)}
 .sect.closed{display:none}
 
 .sb-add{margin-left:auto}
@@ -141,12 +134,8 @@ span.sh-caret svg{width:9px;height:9px}
 /* A sub-row's dot: filled when there are new papers (it has a badge), hollow otherwise */
 .srow.sub .ic:empty::before{content:"";width:7px;height:7px;border-radius:var(--r-full);box-sizing:border-box;border:1px solid var(--ter);background:transparent}
 .srow.sub:has(.n) .ic:empty::before{background:var(--sec);border-color:var(--sec)}
-/* A group's collapse caret sits right of its title, like a section's */
-.disc.closed .sh-caret{transform:rotate(-90deg)}
 /* .dim is a content state (a watch with no new papers), not an "unimplemented" mark */
 .srow.dim{color:var(--ter)}
-/* Inmail: its caret collapses the Discovery, topic and author groups under it. */
-.srow.closed>.sh-caret{transform:rotate(-90deg)}
 .wgroup.closed{display:none}
 
 /* The sidebar's and the paper chat's grips straddle the pane's right border. */

@@ -441,6 +441,31 @@ describe('TimelineBoard 在总览上标出项目', () => {
     expect(lanes.every((label) => label.matches('.fade-text'))).toBe(true)
     expect(host.querySelectorAll('.glrow .project-label')).toHaveLength(0)
   })
+
+  it('项目的折叠钮是共享的折叠钮，排在项目名前面；收起时箭头转向、任务行收走，点它不打开项目', () => {
+    const host = document.createElement('div')
+    document.body.append(host)
+    const onProjectLabelClick = vi.fn()
+    act(() => createRoot(host).render(
+      <MessagesProvider>
+        <TodayContext.Provider value="2026-09-16">
+          <Board
+            projects={[project]} showProjectNames foldable onProjectLabelClick={onProjectLabelClick} onTaskLabelClick={vi.fn()}
+            onTaskClick={vi.fn()} onMilestoneClick={vi.fn()} onMilestoneLaneClick={vi.fn()}
+            onMoveTask={vi.fn()} onMoveTaskWindow={vi.fn()} onMoveMilestone={vi.fn()}
+          />
+        </TodayContext.Provider>
+      </MessagesProvider>,
+    ))
+    const lane = host.querySelector('.glrow.msl')!
+    const fold = lane.querySelector<HTMLButtonElement>('.fold-toggle')!
+    expect(fold.compareDocumentPosition(lane.querySelector('.timeline-item-label')!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect([fold.getAttribute('aria-expanded'), fold.querySelector('.fold-caret')!.classList.contains('is-closed')]).toEqual(['true', false])
+    act(() => fold.click())
+    expect([fold.getAttribute('aria-expanded'), fold.querySelector('.fold-caret')!.classList.contains('is-closed')]).toEqual(['false', true])
+    expect(host.querySelectorAll('.timeline-label-row[data-task]')).toHaveLength(0)
+    expect(onProjectLabelClick).not.toHaveBeenCalled()
+  })
 })
 
 describe('TimelineBoard 的一天任务条', () => {

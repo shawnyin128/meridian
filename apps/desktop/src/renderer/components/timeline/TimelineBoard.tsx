@@ -6,8 +6,7 @@ import { dnum, isoOf } from '../../../shared/dates.js'
 import { useFormat } from '../../lib/format.js'
 import { useMessages } from '../../messages/useMessages.js'
 import { FadeText } from '../FadeText.js'
-import { IconButton } from '../IconButton.js'
-import { IconChevron } from '../icons.js'
+import { FoldToggle } from '../FoldToggle.js'
 import { ProjectPriorityTag } from '../project/ProjectIdentity.js'
 import { Toolbar, ToolbarButton } from '../Toolbar.js'
 import { Tooltip } from '../Tooltip.js'
@@ -246,12 +245,11 @@ export function TimelineBoard({
                   onClick={open}
                 >
                   {foldable && row.kind === 'milestones' ? (
-                    <IconButton
-                      label={folded.has(row.project.id)
+                    <FoldToggle
+                      variant="caret" label={folded.has(row.project.id)
                         ? m.timeline.fold.expand(row.project.name) : m.timeline.fold.collapse(row.project.name)}
-                      size="nested" className="timeline-fold" aria-expanded={!folded.has(row.project.id)}
-                      onClick={(event) => { event.stopPropagation(); toggleFold(row.project.id) }}
-                    ><IconChevron /></IconButton>
+                      open={!folded.has(row.project.id)} onToggle={() => toggleFold(row.project.id)}
+                    />
                   ) : null}
                   {/* A label that opens something is the row's button; its click reaches the row. */}
                   <Tooltip label={labelFor(row)} whenClipped>
